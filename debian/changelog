@@ -1,7 +1,10 @@
 mono (0.31-1) unstable; urgency=low
 
-  * (NOT RELEASED YET) New upstream release
-  * added additional entries to the hard-coded DLL map (closes: #236782)
+  * New upstream release
+  * Eduard Bloch
+    + added additional entries to the hard-coded DLL map (closes: #236782)
+    + included experimental patch for build failures on HPPA (partial fix 
+      for #240272)
 
  -- Eduard Bloch <blade@debian.org>  Tue,  6 Apr 2004 09:44:35 +0200
 

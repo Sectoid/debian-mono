@@ -42,7 +42,7 @@ mono for Debian
 | mono-jit (>> 0.29) | cli-virtual-machine
 | 
 |   * To run the interpreter, run /usr/bin/cli. This is a link to the "best"
-|     interpreter choosen with update-alternatives. Currently mono or mint.
+|     interpreter chosen with update-alternatives. Currently mono or mint.
 |   * To get the compiler, depend on
 | 
 | mono-mcs | c-sharp-compiler

@@ -1,0 +1,923 @@
+#! /bin/sh -e
+## 03_hppa_buildfix.dpatch by Eduard Bloch <blade@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+if [ $# -lt 1 ]; then
+    echo "`basename $0`: script expects -patch|-unpatch as argument" >&2
+    exit 1
+fi
+
+[ -f debian/patches/00patch-opts ] && . debian/patches/00patch-opts
+patch_opts="${patch_opts:--f --no-backup-if-mismatch} ${2:+-d $2}"
+
+case "$1" in
+    -patch) patch -p1 ${patch_opts} < $0;;
+    -unpatch) patch -R -p1 ${patch_opts} < $0;;
+    *)
+        echo "`basename $0`: script expects -patch|-unpatch as argument" >&2
+        exit 1;;
+esac
+
+exit 0
+
+@DPATCH@
+diff -urNad /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/hppa_atomic.S mono-0.31/mono/io-layer/hppa_atomic.S
+--- /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/hppa_atomic.S	1970-01-01 01:00:00.000000000 +0100
++++ mono-0.31/mono/io-layer/hppa_atomic.S	2004-04-07 00:58:13.000000000 +0200
+@@ -0,0 +1,263 @@
++/*
++    Copyright (c) 2003 Bernie Solomon <bernard@ugsolutions.com>
++    
++    Permission is hereby granted, free of charge, to any person obtaining
++    a copy of this software and associated documentation files (the
++    "Software"), to deal in the Software without restriction, including
++    without limitation the rights to use, copy, modify, merge, publish,
++    distribute, sublicense, and/or sell copies of the Software, and to
++    permit persons to whom the Software is furnished to do so, subject to
++    the following conditions:
++    
++    The above copyright notice and this permission notice shall be
++    included in all copies or substantial portions of the Software.
++    
++    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
++    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
++    LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
++    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
++    WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++
++
++
++    Implementation of "atomic" operations for HPPA. Currently (Oct 9th 2003)
++    only implemented for 64 bit compiles. There is only one atomic
++    instruction LDCW which is used to implement spinlocks. There are
++    16 locks which are selected by taking 4 bits out of the address of
++    the relevant variable to try to avoid too much contention
++    for a single lock.
++*/
++#include "config.h"
++
++#ifdef __LP64__
++#if SIZEOF_VOID_P != 8
++#error "__LP64__ state and SIZEOF_VOID_P don't match!!"
++#endif
++#define EXPORT_ARGS ,NO_RELOCATION,LONG_RETURN
++#define CALLINFO_ARGS ,ARGS_SAVED,ORDERING_AWARE
++#define RETURN	bve,n (%rp)
++#define LDPTR	ldd
++#define STPTR	std
++#else
++#if SIZEOF_VOID_P != 4
++#error "__LP64__ state and SIZEOF_VOID_P don't match!!"
++#endif
++#define CALLINFO_ARGS
++#define EXPORT_ARGS
++#define RETURN	bv,n (%rp)
++#define LDPTR	ldw
++#define STPTR	stw
++#endif
++        .code
++
++ .label	InterlockedIncrement
++        .EXPORT InterlockedIncrement,ENTRY,PRIV_LEV=3 EXPORT_ARGS
++        .PROC
++        .CALLINFO FRAME=0 CALLINFO_ARGS
++        .ENTRY
++        ADDIL   L%locks-$global$,%dp
++        LDO     R%locks-$global$(%r1),%r31
++        EXTRU	%arg0,28,4,%r28
++        ZDEP	%r28,27,28,%r29
++        ADD,L   %r29,%r31,%r31
++ .label	atomictest$1
++        LDCW    0(%r31),%r29
++        CMPB,<> %r0,%r29,gotlock$1
++        NOP
++ .label	spin$1
++        LDW     0(%r31),%r29
++        CMPB,=  %r29,%r0,spin$1
++        NOP
++        B,N     atomictest$1
++ .label	gotlock$1
++        LDW     0(%arg0),%ret0
++        LDI     1,%r29
++        LDO     1(%ret0),%ret0
++        STW     %ret0,0(%arg0)
++        STW     %r29,0(%r31)
++        .EXIT
++        RETURN
++        .PROCEND
++
++ .label	InterlockedDecrement
++        .EXPORT InterlockedDecrement,ENTRY,PRIV_LEV=3 EXPORT_ARGS
++        .PROC
++        .CALLINFO FRAME=0 CALLINFO_ARGS
++        .ENTRY
++        ADDIL   L%locks-$global$,%dp
++        LDO     R%locks-$global$(%r1),%r31
++        EXTRU	%arg0,28,4,%r28
++        ZDEP	%r28,27,28,%r29
++        ADD,L   %r29,%r31,%r31
++ .label	atomictest$2
++        LDCW    0(%r31),%r29
++        CMPB,<>	%r0,%r29,gotlock$2
++        NOP
++ .label	spin$2
++        LDW     0(%r31),%r29
++        CMPB,=	%r29,%r0,spin$2
++        NOP
++        B,N     atomictest$2
++ .label	gotlock$2
++        LDW     0(%arg0),%ret0
++        LDI     1,%r29
++        LDO     -1(%ret0),%ret0
++        STW     %ret0,0(%arg0)
++        STW     %r29,0(%r31)
++        .EXIT
++        RETURN
++        .PROCEND
++
++ .label	InterlockedExchange
++        .EXPORT InterlockedExchange,ENTRY,PRIV_LEV=3 EXPORT_ARGS
++        .PROC
++        .CALLINFO FRAME=0 CALLINFO_ARGS
++        .ENTRY
++        ADDIL   L%locks-$global$,%dp
++        LDO     R%locks-$global$(%r1),%r31
++        EXTRU	%arg0,28,4,%r28
++        ZDEP	%r28,27,28,%r29
++        ADD,L   %r29,%r31,%r31
++ .label	atomictest$3
++        LDCW    0(%r31),%r29
++        CMPB,<> %r0,%r29,gotlock$3
++        NOP
++ .label	spin$3
++        LDW     0(%r31),%r29
++        CMPB,=  %r29,%r0,spin$3
++        NOP
++        B,N     atomictest$3
++ .label	gotlock$3
++        LDW     0(%arg0),%ret0
++        STW     %arg1,0(%arg0)
++        LDI     1,%r29
++        STW     %r29,0(%r31)
++        .EXIT
++        RETURN
++        .PROCEND
++
++ .label	InterlockedExchangePointer
++        .EXPORT InterlockedExchangePointer,ENTRY,PRIV_LEV=3 EXPORT_ARGS
++        .PROC
++        .CALLINFO FRAME=0 CALLINFO_ARGS
++        .ENTRY
++        ADDIL   L%locks-$global$,%dp
++        LDO     R%locks-$global$(%r1),%r31
++        EXTRU	%arg0,28,4,%r28
++        ZDEP	%r28,27,28,%r29
++        ADD,L   %r29,%r31,%r31
++ .label	atomictest$4
++        LDCW    0(%r31),%r29
++        CMPB,<> %r0,%r29,gotlock$4
++        NOP
++ .label	spin$4
++        LDW     0(%r31),%r29
++        CMPB,=  %r29,%r0,spin$4
++        NOP
++        B,N     atomictest$4
++ .label	gotlock$4
++        LDPTR   0(%arg0),%ret0
++        STPTR   %arg1,0(%arg0)
++        LDI     1,%r29
++        STW     %r29,0(%r31)
++        .EXIT
++        RETURN
++        .PROCEND
++
++ .label	InterlockedCompareExchange
++        .EXPORT InterlockedCompareExchange,ENTRY,PRIV_LEV=3 EXPORT_ARGS
++        .PROC
++        .CALLINFO FRAME=0 CALLINFO_ARGS
++        .ENTRY
++        ADDIL   L%locks-$global$,%dp
++        LDO     R%locks-$global$(%r1),%r31
++        EXTRU	%arg0,28,4,%r28
++        ZDEP	%r28,27,28,%r29
++        ADD,L   %r29,%r31,%r31
++ .label	atomictest$5
++        LDCW    0(%r31),%r29
++        CMPB,<> %r0,%r29,gotlock$5
++        NOP
++ .label	spin$5
++        LDW     0(%r31),%r29
++        CMPB,=  %r29,%r0,spin$5
++        NOP
++        B,N     atomictest$5
++ .label	gotlock$5
++        LDW     0(%arg0),%ret0
++        sub,<>	%ret0,%r24,%r0
++        STW     %arg1,0(%arg0)		/* not done if %ret0 <> %r24 */
++        LDI     1,%r29
++        STW     %r29,0(%r31)
++        .EXIT
++        RETURN
++        .PROCEND
++
++ .label	InterlockedCompareExchangePointer
++        .EXPORT InterlockedCompareExchangePointer,ENTRY,PRIV_LEV=3 EXPORT_ARGS
++        .PROC
++        .CALLINFO FRAME=0 CALLINFO_ARGS
++        .ENTRY
++        ADDIL   L%locks-$global$,%dp
++        LDO     R%locks-$global$(%r1),%r31
++        EXTRU	%arg0,28,4,%r28
++        ZDEP	%r28,27,28,%r29
++        ADD,L   %r29,%r31,%r31
++ .label	atomictest$6
++        LDCW    0(%r31),%r29
++        CMPB,<>	%r0,%r29,gotlock$6
++        NOP
++ .label	spin$6
++        LDW     0(%r31),%r29
++        CMPB,=  %r29,%r0,spin$6
++        NOP
++        B,N     atomictest$6
++ .label	gotlock$6
++        LDPTR   0(%arg0),%ret0
++        sub,<>	%ret0,%r24,%r0
++        STPTR   %arg1,0(%arg0)
++        LDI     1,%r29
++        STW     %r29,0(%r31)
++        .EXIT
++        RETURN
++        .PROCEND
++
++
++        .data
++ .label	locks
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .ALIGN  16
++        .STRING "\x00\x00\x00\x01"
++        .IMPORT $global$,DATA
++        .END
+diff -urNad /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/Makefile.am mono-0.31/mono/io-layer/Makefile.am
+--- /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/Makefile.am	2004-04-07 00:57:51.000000000 +0200
++++ mono-0.31/mono/io-layer/Makefile.am	2004-04-07 00:58:13.000000000 +0200
+@@ -107,7 +107,7 @@
+ 	io-layer-dummy.c
+ 
+ HPPA_SRC = \
+-	hppa_atomic.s
++	hppa_atomic.S
+ 
+ if PLATFORM_WIN32
+ libwapi_la_SOURCES = $(WINDOWS_SRC)
+diff -urNad /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/Makefile.in mono-0.31/mono/io-layer/Makefile.in
+--- /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/Makefile.in	2004-04-07 00:57:51.000000000 +0200
++++ mono-0.31/mono/io-layer/Makefile.in	2004-04-07 00:58:13.000000000 +0200
+@@ -232,7 +232,7 @@
+ 
+ 
+ HPPA_SRC = \
+-	hppa_atomic.s
++	hppa_atomic.S
+ 
+ 
+ @HPPA_FALSE@@PLATFORM_WIN32_FALSE@libwapi_la_SOURCES = $(OTHER_SRC)
+@@ -324,7 +324,7 @@
+ 	  echo "rm -f \"$${dir}/so_locations\""; \
+ 	  rm -f "$${dir}/so_locations"; \
+ 	done
+-libwapi_la-hppa_atomic.lo: hppa_atomic.s
++libwapi_la-hppa_atomic.lo: hppa_atomic.S
+ libwapi.la: $(libwapi_la_OBJECTS) $(libwapi_la_DEPENDENCIES) 
+ 	$(LINK)  $(libwapi_la_LDFLAGS) $(libwapi_la_OBJECTS) $(libwapi_la_LIBADD) $(LIBS)
+ 
+@@ -388,14 +388,14 @@
+ .s.lo:
+ 	$(LTCCASCOMPILE) -c -o $@ `test -f '$<' || echo '$(srcdir)/'`$<
+ 
+-libwapi_la-hppa_atomic.o: hppa_atomic.s
+-	$(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.o `test -f 'hppa_atomic.s' || echo '$(srcdir)/'`hppa_atomic.s
++libwapi_la-hppa_atomic.o: hppa_atomic.S
++	$(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.o `test -f 'hppa_atomic.S' || echo '$(srcdir)/'`hppa_atomic.S
+ 
+-libwapi_la-hppa_atomic.obj: hppa_atomic.s
+-	$(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.obj `cygpath -w hppa_atomic.s`
++libwapi_la-hppa_atomic.obj: hppa_atomic.S
++	$(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.obj `cygpath -w hppa_atomic.S`
+ 
+-libwapi_la-hppa_atomic.lo: hppa_atomic.s
+-	$(LIBTOOL) --mode=compile $(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.lo `test -f 'hppa_atomic.s' || echo '$(srcdir)/'`hppa_atomic.s
++libwapi_la-hppa_atomic.lo: hppa_atomic.S
++	$(LIBTOOL) --mode=compile $(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.lo `test -f 'hppa_atomic.S' || echo '$(srcdir)/'`hppa_atomic.S
+ 
+ mostlyclean-libtool:
+ 	-rm -f *.lo
+diff -urNad /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/Makefile.in.orig mono-0.31/mono/io-layer/Makefile.in.orig
+--- /home/inet/debian/dev/build-area/mono-0.31/mono/io-layer/Makefile.in.orig	1970-01-01 01:00:00.000000000 +0100
++++ mono-0.31/mono/io-layer/Makefile.in.orig	2004-04-07 00:57:51.000000000 +0200
+@@ -0,0 +1,573 @@
++# Makefile.in generated by automake 1.6.3 from Makefile.am.
++# @configure_input@
++
++# Copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002
++# Free Software Foundation, Inc.
++# This Makefile.in is free software; the Free Software Foundation
++# gives unlimited permission to copy and/or distribute it,
++# with or without modifications, as long as this notice is preserved.
++
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY, to the extent permitted by law; without
++# even the implied warranty of MERCHANTABILITY or FITNESS FOR A
++# PARTICULAR PURPOSE.
++
++@SET_MAKE@
++SHELL = @SHELL@
++
++srcdir = @srcdir@
++top_srcdir = @top_srcdir@
++VPATH = @srcdir@
++prefix = @prefix@
++exec_prefix = @exec_prefix@
++
++bindir = @bindir@
++sbindir = @sbindir@
++libexecdir = @libexecdir@
++datadir = @datadir@
++sysconfdir = @sysconfdir@
++sharedstatedir = @sharedstatedir@
++localstatedir = @localstatedir@
++libdir = @libdir@
++infodir = @infodir@
++mandir = @mandir@
++includedir = @includedir@
++oldincludedir = /usr/include
++pkgdatadir = $(datadir)/@PACKAGE@
++pkglibdir = $(libdir)/@PACKAGE@
++pkgincludedir = $(includedir)/@PACKAGE@
++top_builddir = ../..
++
++ACLOCAL = @ACLOCAL@
++AUTOCONF = @AUTOCONF@
++AUTOMAKE = @AUTOMAKE@
++AUTOHEADER = @AUTOHEADER@
++
++am__cd = CDPATH="$${ZSH_VERSION+.}$(PATH_SEPARATOR)" && cd
++INSTALL = @INSTALL@
++INSTALL_PROGRAM = @INSTALL_PROGRAM@
++INSTALL_DATA = @INSTALL_DATA@
++install_sh_DATA = $(install_sh) -c -m 644
++install_sh_PROGRAM = $(install_sh) -c
++install_sh_SCRIPT = $(install_sh) -c
++INSTALL_SCRIPT = @INSTALL_SCRIPT@
++INSTALL_HEADER = $(INSTALL_DATA)
++transform = @program_transform_name@
++NORMAL_INSTALL = :
++PRE_INSTALL = :
++POST_INSTALL = :
++NORMAL_UNINSTALL = :
++PRE_UNINSTALL = :
++POST_UNINSTALL = :
++build_alias = @build_alias@
++build_triplet = @build@
++host_alias = @host_alias@
++host_triplet = @host@
++target_alias = @target_alias@
++target_triplet = @target@
++
++EXEEXT = @EXEEXT@
++OBJEXT = @OBJEXT@
++PATH_SEPARATOR = @PATH_SEPARATOR@
++AMTAR = @AMTAR@
++AS = @AS@
++AWK = @AWK@
++BISON = @BISON@
++BUILD_EXEEXT = @BUILD_EXEEXT@
++BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
++BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
++BUNDLE_FILE = @BUNDLE_FILE@
++CC = @CC@
++CCAS = @CCAS@
++CCASFLAGS = @CCASFLAGS@
++CC_FOR_BUILD = @CC_FOR_BUILD@
++CFLAGS = @CFLAGS@
++CPPFLAGS = @CPPFLAGS@
++DEPDIR = @DEPDIR@
++DISABLE_SHARED_HANDLES = @DISABLE_SHARED_HANDLES@
++DLLTOOL = @DLLTOOL@
++ECHO = @ECHO@
++GLIB_CFLAGS = @GLIB_CFLAGS@
++GLIB_LIBS = @GLIB_LIBS@
++GMODULE_CFLAGS = @GMODULE_CFLAGS@
++GMODULE_LIBS = @GMODULE_LIBS@
++HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
++HOST_CC = @HOST_CC@
++ICU_CFLAGS = @ICU_CFLAGS@
++ICU_CONFIG = @ICU_CONFIG@
++ICU_LIBS = @ICU_LIBS@
++INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
++LDFLAGS = @LDFLAGS@
++LIBC = @LIBC@
++LIBGC_CFLAGS = @LIBGC_CFLAGS@
++LIBGC_LIBS = @LIBGC_LIBS@
++LIBTOOL = @LIBTOOL@
++LN_S = @LN_S@
++MAINT = @MAINT@
++OBJDUMP = @OBJDUMP@
++PACKAGE = @PACKAGE@
++PKG_CONFIG = @PKG_CONFIG@
++RANLIB = @RANLIB@
++STRIP = @STRIP@
++VERSION = @VERSION@
++am__include = @am__include@
++am__quote = @am__quote@
++arch_target = @arch_target@
++install_sh = @install_sh@
++libgc_dir = @libgc_dir@
++libmono_cflags = @libmono_cflags@
++libmono_ldflags = @libmono_ldflags@
++libsuffix = @libsuffix@
++noinst_LTLIBRARIES = libwapi.la
++
++INCLUDES = \
++	$(GLIB_CFLAGS)		\
++	$(GMODULE_CFLAGS)	\
++	$(LIBGC_CFLAGS)		\
++	-DMONO_BINDIR=\""$(bindir)"\"	\
++	-I$(top_srcdir)	
++
++
++libwapiincludedir = $(includedir)/mono/io-layer
++
++OTHER_H = \
++	access.h	\
++	atomic.h	\
++	context.h	\
++	critical-sections.h	\
++	error.h		\
++	events.h	\
++	handles.h	\
++	io.h		\
++	io-layer.h	\
++	macros.h	\
++	mono-mutex.h	\
++	mutexes.h	\
++	processes.h	\
++	semaphores.h	\
++	sockets.h	\
++	status.h	\
++	system.h	\
++	threads.h	\
++	timefuncs.h	\
++	types.h		\
++	uglify.h	\
++	versioninfo.h	\
++	wait.h		\
++	wapi.h	
++
++
++OTHER_SRC = \
++	access.h		\
++	atomic.c		\
++	atomic.h		\
++	context.c		\
++	context.h		\
++	critical-sections.c	\
++	critical-sections.h	\
++	daemon.c		\
++	daemon-private.h	\
++	daemon-messages.c	\
++	daemon-messages.h	\
++	error.c			\
++	error.h			\
++	events.c		\
++	events.h		\
++	event-private.h		\
++	handles.c		\
++	handles.h		\
++	handles-private.h	\
++	io.c			\
++	io.h			\
++	io-private.h		\
++	io-layer.h		\
++	macros.h		\
++	misc.c			\
++	misc-private.h		\
++	mutexes.c		\
++	mutexes.h		\
++	mutex-private.h		\
++	mono-mutex.c		\
++	mono-mutex.h		\
++	mono-spinlock.h		\
++	processes.c		\
++	processes.h		\
++	process-private.h	\
++	semaphores.c		\
++	semaphores.h		\
++	semaphore-private.h	\
++	shared.c		\
++	shared.h		\
++	sockets.c		\
++	sockets.h		\
++	socket-private.h	\
++	socket-wrappers.h	\
++	status.h		\
++	system.c		\
++	system.h		\
++	threads.c		\
++	threads.h		\
++	thread-private.h	\
++	timefuncs.c		\
++	timefuncs.h		\
++	timefuncs-private.h	\
++	timed-thread.c		\
++	timed-thread.h		\
++	types.h			\
++	uglify.h		\
++	versioninfo.h		\
++	wait.c			\
++	wait.h			\
++	wapi.h			\
++	wapi-private.h
++
++
++WINDOWS_H = \
++	io-layer.h
++
++
++WINDOWS_SRC = \
++	io-layer.h		\
++	io-layer-dummy.c
++
++
++HPPA_SRC = \
++	hppa_atomic.s
++
++
++@HPPA_FALSE@@PLATFORM_WIN32_FALSE@libwapi_la_SOURCES = $(OTHER_SRC)
++@HPPA_TRUE@@PLATFORM_WIN32_FALSE@libwapi_la_SOURCES = $(OTHER_SRC) $(HPPA_SRC)
++@PLATFORM_WIN32_TRUE@libwapi_la_SOURCES = $(WINDOWS_SRC)
++@PLATFORM_WIN32_TRUE@libwapiinclude_HEADERS = $(WINDOWS_H)
++@PLATFORM_WIN32_FALSE@libwapiinclude_HEADERS = $(OTHER_H)
++# to enable pick up of config.h
++@HPPA_TRUE@@PLATFORM_WIN32_FALSE@libwapi_la_CCASFLAGS = -I$(top_builddir)
++
++EXTRA_DIST = \
++	$(WINDOWS_SRC)	\
++        $(HPPA_SRC) \
++	$(OTHER_SRC)
++
++subdir = mono/io-layer
++mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
++CONFIG_HEADER = $(top_builddir)/config.h
++CONFIG_CLEAN_FILES =
++LTLIBRARIES = $(noinst_LTLIBRARIES)
++
++libwapi_la_LDFLAGS =
++libwapi_la_LIBADD =
++am__objects_1 = atomic.lo context.lo critical-sections.lo daemon.lo \
++	daemon-messages.lo error.lo events.lo handles.lo io.lo misc.lo \
++	mutexes.lo mono-mutex.lo processes.lo semaphores.lo shared.lo \
++	sockets.lo system.lo threads.lo timefuncs.lo timed-thread.lo \
++	wait.lo
++am__objects_2 = libwapi_la-hppa_atomic.lo
++am__objects_3 = io-layer-dummy.lo
++@HPPA_FALSE@@PLATFORM_WIN32_FALSE@am_libwapi_la_OBJECTS = \
++@HPPA_FALSE@@PLATFORM_WIN32_FALSE@	$(am__objects_1)
++@HPPA_TRUE@@PLATFORM_WIN32_FALSE@am_libwapi_la_OBJECTS = \
++@HPPA_TRUE@@PLATFORM_WIN32_FALSE@	$(am__objects_1) \
++@HPPA_TRUE@@PLATFORM_WIN32_FALSE@	$(am__objects_2)
++@PLATFORM_WIN32_TRUE@am_libwapi_la_OBJECTS = $(am__objects_3)
++libwapi_la_OBJECTS = $(am_libwapi_la_OBJECTS)
++
++DEFS = @DEFS@
++DEFAULT_INCLUDES =  -I. -I$(srcdir) -I$(top_builddir)
++LIBS = @LIBS@
++depcomp = $(SHELL) $(top_srcdir)/depcomp
++am__depfiles_maybe = depfiles
++@AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/atomic.Plo ./$(DEPDIR)/context.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/critical-sections.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/daemon-messages.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/daemon.Plo ./$(DEPDIR)/error.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/events.Plo ./$(DEPDIR)/handles.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/io-layer-dummy.Plo ./$(DEPDIR)/io.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/misc.Plo ./$(DEPDIR)/mono-mutex.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/mutexes.Plo ./$(DEPDIR)/processes.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/semaphores.Plo ./$(DEPDIR)/shared.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/sockets.Plo ./$(DEPDIR)/system.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/threads.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/timed-thread.Plo \
++@AMDEP_TRUE@	./$(DEPDIR)/timefuncs.Plo ./$(DEPDIR)/wait.Plo
++COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
++	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) \
++	$(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
++CCLD = $(CC)
++LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
++	$(AM_LDFLAGS) $(LDFLAGS) -o $@
++CCASCOMPILE = $(CCAS) $(AM_CCASFLAGS) $(CCASFLAGS)
++LTCCASCOMPILE = $(LIBTOOL) --mode=compile $(CCAS) $(AM_CCASFLAGS) \
++	$(CCASFLAGS)
++DIST_SOURCES = $(libwapi_la_SOURCES)
++HEADERS = $(libwapiinclude_HEADERS)
++
++DIST_COMMON = $(libwapiinclude_HEADERS) ChangeLog Makefile.am \
++	Makefile.in
++SOURCES = $(libwapi_la_SOURCES)
++
++all: all-am
++
++.SUFFIXES:
++.SUFFIXES: .c .lo .o .obj .s
++$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ Makefile.am  $(top_srcdir)/configure.in $(ACLOCAL_M4)
++	cd $(top_srcdir) && \
++	  $(AUTOMAKE) --gnu  mono/io-layer/Makefile
++Makefile: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.in  $(top_builddir)/config.status
++	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__depfiles_maybe)
++
++clean-noinstLTLIBRARIES:
++	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
++	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
++	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
++	  test -z "$dir" && dir=.; \
++	  echo "rm -f \"$${dir}/so_locations\""; \
++	  rm -f "$${dir}/so_locations"; \
++	done
++libwapi_la-hppa_atomic.lo: hppa_atomic.s
++libwapi.la: $(libwapi_la_OBJECTS) $(libwapi_la_DEPENDENCIES) 
++	$(LINK)  $(libwapi_la_LDFLAGS) $(libwapi_la_OBJECTS) $(libwapi_la_LIBADD) $(LIBS)
++
++mostlyclean-compile:
++	-rm -f *.$(OBJEXT) core *.core
++
++distclean-compile:
++	-rm -f *.tab.c
++
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/atomic.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/context.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/critical-sections.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daemon-messages.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daemon.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/error.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/events.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/handles.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/io-layer-dummy.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/io.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/misc.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-mutex.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mutexes.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/processes.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/semaphores.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shared.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sockets.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/system.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/threads.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timed-thread.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timefuncs.Plo@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wait.Plo@am__quote@
++
++distclean-depend:
++	-rm -rf ./$(DEPDIR)
++
++.c.o:
++@AMDEP_TRUE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Po' tmpdepfile='$(DEPDIR)/$*.TPo' @AMDEPBACKSLASH@
++@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++	$(COMPILE) -c `test -f '$<' || echo '$(srcdir)/'`$<
++
++.c.obj:
++@AMDEP_TRUE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Po' tmpdepfile='$(DEPDIR)/$*.TPo' @AMDEPBACKSLASH@
++@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++	$(COMPILE) -c `cygpath -w $<`
++
++.c.lo:
++@AMDEP_TRUE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
++@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Plo' tmpdepfile='$(DEPDIR)/$*.TPlo' @AMDEPBACKSLASH@
++@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++	$(LTCOMPILE) -c -o $@ `test -f '$<' || echo '$(srcdir)/'`$<
++CCDEPMODE = @CCDEPMODE@
++
++.s.o:
++	$(CCASCOMPILE) -c `test -f '$<' || echo '$(srcdir)/'`$<
++
++.s.obj:
++	$(CCASCOMPILE) -c `cygpath -w $<`
++
++.s.lo:
++	$(LTCCASCOMPILE) -c -o $@ `test -f '$<' || echo '$(srcdir)/'`$<
++
++libwapi_la-hppa_atomic.o: hppa_atomic.s
++	$(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.o `test -f 'hppa_atomic.s' || echo '$(srcdir)/'`hppa_atomic.s
++
++libwapi_la-hppa_atomic.obj: hppa_atomic.s
++	$(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.obj `cygpath -w hppa_atomic.s`
++
++libwapi_la-hppa_atomic.lo: hppa_atomic.s
++	$(LIBTOOL) --mode=compile $(CCAS) $(libwapi_la_CCASFLAGS) $(CCASFLAGS) -c -o libwapi_la-hppa_atomic.lo `test -f 'hppa_atomic.s' || echo '$(srcdir)/'`hppa_atomic.s
++
++mostlyclean-libtool:
++	-rm -f *.lo
++
++clean-libtool:
++	-rm -rf .libs _libs
++
++distclean-libtool:
++	-rm -f libtool
++uninstall-info-am:
++libwapiincludeHEADERS_INSTALL = $(INSTALL_HEADER)
++install-libwapiincludeHEADERS: $(libwapiinclude_HEADERS)
++	@$(NORMAL_INSTALL)
++	$(mkinstalldirs) $(DESTDIR)$(libwapiincludedir)
++	@list='$(libwapiinclude_HEADERS)'; for p in $$list; do \
++	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
++	  f="`echo $$p | sed -e 's|^.*/||'`"; \
++	  echo " $(libwapiincludeHEADERS_INSTALL) $$d$$p $(DESTDIR)$(libwapiincludedir)/$$f"; \
++	  $(libwapiincludeHEADERS_INSTALL) $$d$$p $(DESTDIR)$(libwapiincludedir)/$$f; \
++	done
++
++uninstall-libwapiincludeHEADERS:
++	@$(NORMAL_UNINSTALL)
++	@list='$(libwapiinclude_HEADERS)'; for p in $$list; do \
++	  f="`echo $$p | sed -e 's|^.*/||'`"; \
++	  echo " rm -f $(DESTDIR)$(libwapiincludedir)/$$f"; \
++	  rm -f $(DESTDIR)$(libwapiincludedir)/$$f; \
++	done
++
++ETAGS = etags
++ETAGSFLAGS =
++
++tags: TAGS
++
++ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
++	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
++	unique=`for i in $$list; do \
++	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
++	  done | \
++	  $(AWK) '    { files[$$0] = 1; } \
++	       END { for (i in files) print i; }'`; \
++	mkid -fID $$unique
++
++TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
++		$(TAGS_FILES) $(LISP)
++	tags=; \
++	here=`pwd`; \
++	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
++	unique=`for i in $$list; do \
++	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
++	  done | \
++	  $(AWK) '    { files[$$0] = 1; } \
++	       END { for (i in files) print i; }'`; \
++	test -z "$(ETAGS_ARGS)$$tags$$unique" \
++	  || $(ETAGS) $(ETAGSFLAGS) $(AM_ETAGSFLAGS) $(ETAGS_ARGS) \
++	     $$tags $$unique
++
++GTAGS:
++	here=`$(am__cd) $(top_builddir) && pwd` \
++	  && cd $(top_srcdir) \
++	  && gtags -i $(GTAGS_ARGS) $$here
++
++distclean-tags:
++	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH
++DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
++
++top_distdir = ../..
++distdir = $(top_distdir)/$(PACKAGE)-$(VERSION)
++
++distdir: $(DISTFILES)
++	@list='$(DISTFILES)'; for file in $$list; do \
++	  if test -f $$file || test -d $$file; then d=.; else d=$(srcdir); fi; \
++	  dir=`echo "$$file" | sed -e 's,/[^/]*$$,,'`; \
++	  if test "$$dir" != "$$file" && test "$$dir" != "."; then \
++	    dir="/$$dir"; \
++	    $(mkinstalldirs) "$(distdir)$$dir"; \
++	  else \
++	    dir=''; \
++	  fi; \
++	  if test -d $$d/$$file; then \
++	    if test -d $(srcdir)/$$file && test $$d != $(srcdir); then \
++	      cp -pR $(srcdir)/$$file $(distdir)$$dir || exit 1; \
++	    fi; \
++	    cp -pR $$d/$$file $(distdir)$$dir || exit 1; \
++	  else \
++	    test -f $(distdir)/$$file \
++	    || cp -p $$d/$$file $(distdir)/$$file \
++	    || exit 1; \
++	  fi; \
++	done
++check-am: all-am
++check: check-am
++all-am: Makefile $(LTLIBRARIES) $(HEADERS)
++
++installdirs:
++	$(mkinstalldirs) $(DESTDIR)$(libwapiincludedir)
++
++install: install-am
++install-exec: install-exec-am
++install-data: install-data-am
++uninstall: uninstall-am
++
++install-am: all-am
++	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
++
++installcheck: installcheck-am
++install-strip:
++	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
++	  INSTALL_STRIP_FLAG=-s \
++	  `test -z '$(STRIP)' || \
++	    echo "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'"` install
++mostlyclean-generic:
++
++clean-generic:
++
++distclean-generic:
++	-rm -f Makefile $(CONFIG_CLEAN_FILES)
++
++maintainer-clean-generic:
++	@echo "This command is intended for maintainers to use"
++	@echo "it deletes files that may require special tools to rebuild."
++clean: clean-am
++
++clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
++	mostlyclean-am
++
++distclean: distclean-am
++
++distclean-am: clean-am distclean-compile distclean-depend \
++	distclean-generic distclean-libtool distclean-tags
++
++dvi: dvi-am
++
++dvi-am:
++
++info: info-am
++
++info-am:
++
++install-data-am: install-libwapiincludeHEADERS
++
++install-exec-am:
++
++install-info: install-info-am
++
++install-man:
++
++installcheck-am:
++
++maintainer-clean: maintainer-clean-am
++
++maintainer-clean-am: distclean-am maintainer-clean-generic
++
++mostlyclean: mostlyclean-am
++
++mostlyclean-am: mostlyclean-compile mostlyclean-generic \
++	mostlyclean-libtool
++
++uninstall-am: uninstall-info-am uninstall-libwapiincludeHEADERS
++
++.PHONY: GTAGS all all-am check check-am clean clean-generic \
++	clean-libtool clean-noinstLTLIBRARIES distclean \
++	distclean-compile distclean-depend distclean-generic \
++	distclean-libtool distclean-tags distdir dvi dvi-am info \
++	info-am install install-am install-data install-data-am \
++	install-exec install-exec-am install-info install-info-am \
++	install-libwapiincludeHEADERS install-man install-strip \
++	installcheck installcheck-am installdirs maintainer-clean \
++	maintainer-clean-generic mostlyclean mostlyclean-compile \
++	mostlyclean-generic mostlyclean-libtool tags uninstall \
++	uninstall-am uninstall-info-am uninstall-libwapiincludeHEADERS
++
++# Tell versions [3.59,3.63) of GNU make to not export all variables.
++# Otherwise a system limit (for SysV at least) may be exceeded.
++.NOEXPORT:
