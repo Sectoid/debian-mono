@@ -1,0 +1,40 @@
+#! /bin/sh -e
+## 01_arch_fallback.dpatch by Eduard Bloch <blade@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Using dpkg-architecture output to declare names of unsupported arches
+
+if [ $# -lt 1 ]; then
+    echo "`basename $0`: script expects -patch|-unpatch as argument" >&2
+    exit 1
+fi
+
+[ -f debian/patches/00patch-opts ] && . debian/patches/00patch-opts
+patch_opts="${patch_opts:--f --no-backup-if-mismatch} ${2:+-d $2}"
+
+case "$1" in
+    -patch) patch -p1 ${patch_opts} < $0;;
+    -unpatch) patch -R -p1 ${patch_opts} < $0;;
+    *)
+        echo "`basename $0`: script expects -patch|-unpatch as argument" >&2
+        exit 1;;
+esac
+
+exit 0
+
+@DPATCH@
+diff -urNad /home/inet/debian/dev/build-area/mono-0.30.1/configure.in mono-0.30.1/configure.in
+--- /home/inet/debian/dev/build-area/mono-0.30.1/configure.in	2004-02-13 02:24:03.000000000 +0100
++++ mono-0.30.1/configure.in	2004-02-24 18:32:35.000000000 +0100
+@@ -845,6 +845,11 @@
+ 		arch_target=s390;
+ 		ACCESS_UNALIGNED="no"
+ 		;;
++  *)
++    arch_target=`dpkg-architecture -qDEB_HOST_ARCH`
++    TARGET=`echo $arch_target | tr a-z A-Z`
++    ACCESS_UNALIGNED="no"
++    ;;
+ esac
+ 
+ if test ${TARGET} = ARM; then

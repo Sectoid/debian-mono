@@ -3,6 +3,8 @@
 #export DH_VERBOSE=1
 export DH_COMPAT=3
 
+include /usr/share/dpatch/dpatch.make
+
 # Use ./configure if configure exists, ./autogen.sh if not.
 # If neither exist, exit with an error.
 CONFCMD:=$(shell test -x configure && echo "configure" || echo "")
@@ -13,7 +15,7 @@ endif
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 
-build: build-stamp
+build: patch build-stamp
 build-stamp:
 	dh_testdir
 	# refresh autotools crap
@@ -28,7 +30,7 @@ build-stamp:
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 	touch build-stamp
 
-clean:
+clean: unpatch
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
