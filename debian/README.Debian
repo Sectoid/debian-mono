@@ -3,15 +3,13 @@ mono for Debian
 
 1. Documentation can be found in the separated monodoc packages.
 
-2. Supported Processor Architectures
+2. Supported Processor Architectures for Mono 1.0.x
     JIT:
     Linux/x86
     Linux/PPC
-    Linux/S390
-    Solaris/SPARC
     MacOS/PPC
 
-    Interpreter:
+    Interpreter (deprecated/unmaintained):
     Linux/x86
     Linux/PPC
     HP-UX/HPPA
@@ -19,6 +17,17 @@ mono for Debian
     StrongARM
     SPARC
     SPARC v9
+
+   Supported Processor Architectures for Mono 1.1.x
+    JIT:
+    Linux/x86
+    Linux/AMD64
+    Linux/PPC
+    Linux/S390
+    Linux/SPARC
+    
+    Interpreter (deprecated/unmaintained):
+    -
  
 3. Typical problems:
 3a.  Purge your ~/.wapi directory if you see messages like:
