@@ -35,7 +35,7 @@ build-stamp: cli-wrapper
 # we don't touch precompiled stuff
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE)
-	( cat debian/mono-jit.postinst.head; ARCH= ; case `dpkg-architecture -qDEB_HOST_ARCH` in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac )
+	( cat debian/mono-jit.postinst.head; ARCH= ; case `dpkg-architecture -qDEB_HOST_ARCH` in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
 	touch build-stamp
 
 #clean: unpatch
