@@ -55,13 +55,16 @@ Description: generic CLI (.NET/Mono) code interpreter
  
 Package: mono
 Architecture: all
-Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-common (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
+Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
 Description: The Mono .NET development environment
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
  .
- mono is a metapackage containing dependencies for the components of Mono.
+ mono is a metapackage containing dependencies for the components of
+ Mono. If you do not need all of them (or try to work around X11
+ dependencies), install the core packages manualy: mono-jit (or
+ mono-mint if JIT is not available), mono-mcs, mono-utils.
 
 Package: mono-utils
 Architecture: alpha arm hppa powerpc s390 sparc i386

@@ -1,8 +1,9 @@
-mono (0.30.2-2) unstable; urgency=low
+mono (0.31-1) unstable; urgency=low
 
-  * NOT RELEASED YET
+  * (NOT RELEASED YET) New upstream release
+  * added additional entries to the hard-coded DLL map (closes: #236782)
 
- -- Eduard Bloch <blade@debian.org>  Sat,  6 Mar 2004 13:39:08 +0100
+ -- Eduard Bloch <blade@debian.org>  Tue,  6 Apr 2004 09:44:35 +0200
 
 mono (0.30.2-1) unstable; urgency=low
 
