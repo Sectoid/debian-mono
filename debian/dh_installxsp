@@ -56,6 +56,16 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
 	    }
 	    
 	    doit("install",$hostfile,"$tmp/etc/mono-server/conf.d/".pkgfilename($package)."/10_".pkgfilename($package));
+
+	    if ($hostfile ne '') {
+                if (! $dh{NOSCRIPTS}) {
+		    autoscript($package,"postinst","postinst-monoxsp",
+			       "s/#PACKAGE#/$package/");
+		    autoscript($package,"postrm","postrm-monoxsp",
+			       "s/#PACKAGE#/$package/");
+                }
+	    }
+
 	}	
 }
 
