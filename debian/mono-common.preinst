@@ -1,0 +1,10 @@
+#!/bin/sh -e
+
+if [ configure = "$1" ] && [ -d /usr/lib/mono ] ; then
+   mkdir -p /usr/share/dotnet/mono
+   cp -af /usr/lib/mono/. /usr/share/dotnet/mono/
+   rm -rf /usr/lib/mono
+fi
+
+#DEBHELPER#
+

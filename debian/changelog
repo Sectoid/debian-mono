@@ -4,9 +4,11 @@ mono (0.95-0pre1v2) unstable; urgency=low
   * Eduard Bloch
     + setting virtual ".shlibs" via provides, currently libmono-0.95 and
       mono-assemblies-base-0.95
+    + mono-common.preinst now moves /usr/lib/mono directory (if exists) to
+      /usr/share/dotnet
   * Mirco 'meebey' Bauer
     + New upstream release
-    + enabled preview features (.NET 1.2 / gmcs)
+    + enabled preview features (.NET 1.2, generics)
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon,  7 Jun 2004 00:54:51 +0200
 
