@@ -124,7 +124,7 @@ sub extraDeps {
 foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     my $tmp = tmpdir($package);
     my %deps;
-    my %depkgs;
+    my @depkgs;
 
     delsubstvar( $package, "net:Depends" );    # for idempotency
 
@@ -149,7 +149,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
                 warning("Warning! No Debian dependency data for $name ($key)!");
              }
              else {
-                $depkgs{$libdata{$compat}} = 1;
+                push(@depkgs, $libdata{$compat});
              }
              #print "ok, ".$deps{ "$name/$vers" . "__" . lc($key) };
           }
@@ -158,7 +158,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     }, $tmp;
 
     my %depkgsFiltered;
-    for(keys %depkgs) {
+    for(@depkgs) {
        for(split(/,\s+/,$_)) {
           $depkgsFiltered{$_}=1;
        }
