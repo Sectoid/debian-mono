@@ -35,7 +35,8 @@ build-stamp: cli-wrapper
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
 	  --with-tls=pthread
-	# we don't install precompiled stuff (getting those build by the mcs source package)
+	# we don't install precompiled stuff
+	# (getting those build by the mcs source package)
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE) -j5 $(ATG)
 	( cat debian/mono-jit.postinst.head; ARCH= ; case $(DEB_HOST_ARCH) in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
@@ -46,9 +47,10 @@ clean: unpatch
 	dh_testroot
 	rm -f build-stamp
 	-$(MAKE) distclean
-	-cd debian/detector && $(MAKE) clean
+	-cd $(CURDIR)/debian/detector && $(MAKE) clean
 	rm -f cli-wrapper
-	-cd debian && rm -f dh_netdeps.1 dh_makenetlibs.1 dh_installxsp.1
+	-cd $(CURDIR)/debian && \
+	  rm -f mono-jit.postinst dh_netdeps.1 dh_makenetlibs.1 dh_installxsp.1
 	dh_clean
 
 install: build
@@ -57,11 +59,12 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) $(ATG) install DESTDIR=$(CURDIR)/debian/tmp
-	cd debian ; for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
-		do chmod +x $$x; pod2man $$x > $$x.1 ; done
+	cd $(CURDIR)/debian && \
+	  for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
+	    do chmod +x $$x; pod2man $$x > $$x.1 ; done
 	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
-	cd $(CURDIR)/debian/detector && $(MAKE) $(ATG) && \
-	  install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	cd $(CURDIR)/debian/detector && \
+	  $(MAKE) $(ATG) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
