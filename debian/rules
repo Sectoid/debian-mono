@@ -12,6 +12,7 @@ endif
 
 # include /usr/share/dpatch/dpatch.make
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
+UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 
 cli-wrapper: debian/cli-wrapper.c
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
@@ -112,7 +113,8 @@ binary-arch: build install
 	dh_strip -s
 	dh_compress -s
 	dh_fixperms -s
-	if test -d debian/libmono0 ; then dh_makeshlibs -plibmono0 -V 'libmono0 (= $(VERSION))' ;fi
+	echo "mono:upversion=$(UPVERSION)" >> $(CURDIR)/debian/libmono0.substvars
+	if test -d debian/libmono0 ; then dh_makeshlibs -plibmono0 -V 'libmono-$(UPVERSION)' ;fi
 	#dh_makeshlibs -plibmint0 -V 'libmint0 (= $(VERSION))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov
