@@ -36,10 +36,15 @@ Look for files named debian/package.hostxsp and install them as
 
 init();
 
+my $depname="net:XspServer";
+
 foreach my $package (@{$dh{DOPACKAGES}}) {
 	my $tmp=tmpdir($package);
 	my $hostfile=pkgfile($package,"hostxsp");
 	if ($hostfile) {
+    delsubstvar( $package, $depname );    # for idempotency
+    addsubstvar( $package, $depname, 
+      "mono-xsp | mono-apache-server" );
 	    if( ! -d "$tmp/etc/xsp/conf.d" ) {
 		doit("install","-d","$tmp/etc/xsp/conf.d");
 	    }
