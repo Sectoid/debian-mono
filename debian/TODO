@@ -1,8 +1,9 @@
 TODO soon:
+
+ - enable IPv6 in machine.config!
+
  - Choose a good policy for future assembly packages
    mono-assemblies-base, mono-assemblies-foo for 3rd party stuff
-
- - (pablo) svn-inject the -xsp and libapache packages
 
  - look over the AOD package
 

@@ -58,6 +58,7 @@ install: build
 	$(MAKE) install DESTDIR=$(PWD)/debian/tmp
 	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
 	cd $(CURDIR)/debian/detector && $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	cp debian/mono_config $(CURDIR)/debian/mono-common/etc/mono/config
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
