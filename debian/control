@@ -3,14 +3,14 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Teófilo Ruiz Suárez <teo@debian.org>, Mirco 'meebey' Bauer <mail@meebey.net>
-Standards-Version: 3.6.1
 Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake1.7 | automake, libtool, dpatch
 Build-Conflicts: libmint-dev
+Standards-Version: 3.6.1
 
 Package: mono-common
+Provides: cli-common
 Architecture: alpha arm hppa powerpc s390 sparc i386
 Depends: binfmt-support (>= 1.1.2)
-Provides: cli-common
 Conflicts: binfmt-detector-cli, cli-common
 Replaces: mono-jit (<< 0.16), binfmt-detector-cli
 Description: common files for the Mono CLI runtimes
@@ -67,8 +67,8 @@ Description: The Mono .NET development environment
  mono-mint if JIT is not available), mono-mcs, mono-utils.
 
 Package: mono-utils
-Architecture: alpha arm hppa powerpc s390 sparc i386
 Section: devel
+Architecture: alpha arm hppa powerpc s390 sparc i386
 Depends: ${shlibs:Depends}, mono-assemblies-base
 Description: Mono utilities
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -80,8 +80,8 @@ Description: Mono utilities
 
 
 Package: libmono0
-Architecture: i386 powerpc s390
 Section: libs
+Architecture: i386 powerpc s390
 Depends: ${shlibs:Depends}
 Conflicts: libmint0
 Description: libraries for the Mono interpreter
@@ -103,4 +103,3 @@ Description: libraries for the Mono interpreter - Development files
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
-
