@@ -1,9 +1,13 @@
-mono (1.0-2) UNRELEASED; urgency=low
+mono (1.0-2) unstable; urgency=medium
 
-  * Workarounds for FTBFS on architectures that have we already built for in
-    the past
+  * Eduard Bloch
+    + Workarounds for FTBFS on architectures that have we already built for in
+      the past
+    + dh_makenetlibs: extremely ugly workaround for collecting library data
+      even when not the whole assembly chain works (we need something more
+      mature than monodis to do this; closes: #258040)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat,  3 Jul 2004 12:55:22 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 07 Jul 2004 18:53:32 +0200
 
 mono (1.0-1) unstable; urgency=low
 

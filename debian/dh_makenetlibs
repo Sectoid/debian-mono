@@ -178,11 +178,28 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
                warning "$libfile has no valid signature, ignoring";
                next dll;
             }
-            my $dis = `monodis --assembly $libfile`;
-            $dis =~ m/Name:\s+(\S+)/;
-            $library = $1;
-            $dis =~ m/Version:\s+(\S+)/;
-            $ver = $1;
+            my $dis = `monodis --assembly $libfile 2>&1`;
+            if($dis =~ m/Name:\s+(\S+)/) {
+               $library = $1;
+               $dis =~ m/Version:\s+(\S+)/;
+               $ver = $1;
+            }
+            else {
+               # completely broken code, we need a mature app not
+               # depending on assembly loading
+               # verbose_print("trouble parsing monodis output, components not installed? Fallback to parsing the pure monodis output.");
+               # $dis = `monodis $libfile 2>&1`;
+               # $dis =~ /^module (\S+)/is;
+               # $library = $1;
+               # $library =~ s/'|"//;
+               warning("monodis could not open $libfile, maybe some components not installed yet. Using filename to guess the assembly name :(");
+               $libfile=~ m,/(\d+\.\d+.\d+.\d+)__(\w+)/([^/]+)\.dll$,is;
+#               print "moo: $1, $2, $3";
+               next dll if (! ($1 && $2 && $3));
+               $ver=$1;
+               $sig=$2;
+               $library=$3;
+            }
 
             if ( !-d "$tmp/DEBIAN" ) {
                 doit( "install", "-d", "$tmp/DEBIAN" );
