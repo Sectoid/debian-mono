@@ -26,6 +26,7 @@ build-stamp:
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc
 	$(MAKE)
+	$(CC) -o cli-wrapper debian/cli-wrapper.c
 	touch build-stamp
 
 clean:
@@ -45,7 +46,7 @@ clean:
 	# I shouldn't have to do this
 	rm -f mono/arch/arm/Makefile mono/arch/ppc/Makefile \
 	  mono/arch/sparc/Makefile mono/os/win32/Makefile \
-	  data/config config.log
+	  data/config config.log cli-wrapper
 
 	dh_clean
 
@@ -55,6 +56,7 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(PWD)/debian/tmp
+	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
 	cd $(CURDIR)/debian/detector && $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
