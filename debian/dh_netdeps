@@ -229,7 +229,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
        }
        else
        {
-          warning(
+          verbose_print(
              "Could not read debian/$package.substvars"
           );
        }
