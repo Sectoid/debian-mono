@@ -19,4 +19,15 @@ Reason:
 
 02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
 
+Provisoric virtual package and mono-assemblies policy:
+
+ - mono-assemblies-base is the core package, arch-independent. It does
+   NOT include arch-dependent components for portability reasons
+ - mono-assemblies-arch is the package which arch dependent files. It
+   also depends on mono-assemblies-base and provides "cli-runtime"
+ - cli-runtime: depend on it to get the whole assemblies suite
+ - cli-virtual-machine: depend on it to get working /usr/bin/cli with
+   the core assemblies parts (no arch-depent part)
+   
+ 
  Eduard Bloch <blade@debian.org> -- Thu, 15 Jan 2004 12:30:55 +0100
