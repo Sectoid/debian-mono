@@ -1,30 +1,162 @@
 mono for Debian
 ---------------
 
- - Documentation will be available soon, provided by the separated
-   monodoc packages.
+1. Documentation can be found in the separated monodoc packages.
  
-Purge your ~/.wapi directory if you see messages like:
+2. Purge your ~/.wapi directory if you see messages like:
 
-** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check
-failed.
+   ** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check
+   failed.
 
-** (/tmp/hello.exe:23770): WARNING **: Failed to attach shared memory!
-Falling back to non-shared handles
+   ** (/tmp/hello.exe:23770): WARNING **: Failed to attach shared memory!
+   Falling back to non-shared handles
 
-Reason:
+   Reason:
 
-02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
+   02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
 
-Provisoric virtual package and mono-assemblies policy:
+3. Provisoric virtual packages:
 
- - mono-assemblies-base is the core package, arch-independent. It does
-   NOT include arch-dependent components for portability reasons
- - mono-assemblies-arch is the package which arch dependent files. It
-   also depends on mono-assemblies-base and provides "cli-runtime"
- - cli-runtime: depend on it to get the whole assemblies suite
- - cli-virtual-machine: depend on it to get working /usr/bin/cli with
-   the core assemblies parts (no arch-depent part)
-   
- 
- Eduard Bloch <blade@debian.org> -- Thu, 15 Jan 2004 12:30:55 +0100
+   - mono-assemblies-base is the core package, arch-independent. It does
+      NOT include arch-dependent components for portability reasons
+   - mono-assemblies-arch is the package which arch dependent files. It
+      also depends on mono-assemblies-base and provides "cli-runtime"
+   - cli-runtime: depend on it to get the whole assemblies suite
+   - cli-virtual-machine: depend on it to get working /usr/bin/cli with
+      the core assemblies parts (no arch-depent part)
+      
+4. (for developers) Package installation policy be found on
+   http://wiki.debian.net/?MonoConventions . Recent snapshot:
+
+| Conventions for installation of Mono applications
+| 
+| Few ideas to build a semi-official policy for mono package installations.
+| 
+| Framework issues:
+| 
+|   * Depend on every library package that you need. Note that some applications
+|     or libs may open them via ldopen, so you need to track the dependencies
+|     manually
+|   * To get an interpreter, depend on:
+| 
+| mono-jit (>> 0.29) | cli-virtual-machine
+| 
+|   * To run the interpreter, run /usr/bin/cli. This is a link to the "best"
+|     interpreter choosen with update-alternatives. Currently mono or mint.
+|   * To get the compiler, depend on
+| 
+| mono-mcs | c-sharp-compiler
+| 
+| Note that there are no c-sharp-compiler alternatives yet, it is not clear
+| whether we will create the c-sharp-compiler alternative entry.
+| 
+| Library installation issues...
+| 
+|   * base assemblies are packaged. Currently they go into /usr/lib which is not
+|     the best location (aliens in the system). Ideally, we should get the GAC
+|     soon so the DLLs could be moved to separate location(s) without having a
+|     config hell in /etc/mono/config. See new-installation-proposal below.
+| 
+| Applications package installation issues... Possible cases:
+| 
+|   * application packages:
+|       + (bad idea) put the .exe into /usr/bin and let the user work with
+|         binfmt_support. Drawbacks:
+|           o executable with useless suffixes in binary paths
+|           o unnessesarly longer startup time -- kernels goes trough the binfmt
+|             path: run binfmt-cli-detector (on Debian executed trough a Perl
+|             wrapper which opens the file, checks the type, etc.), then run the
+|             actual interpreter
+|           o compatibility: $user may not have binfmt_misc in the kernel
+| 
+|       + general solution: a shell wrapper. On Debian, it runs /usr/bin/cli with
+|         the application name and parameters.
+| 
+|     Pro:
+| 
+| 
+|           o can be modified easily
+| 
+|     Contra:
+| 
+| 
+|           o shell invocation, a bit bloat that makes start time longer
+| 
+|       + a binary wrapper: an executable program which does the same thing as a
+|         shell wrapper.
+| 
+|     Pro:
+| 
+| 
+|           o Fast
+| 
+|     Contra:
+| 
+| 
+|           o cannot be modified. Could use a standard scheme for locating the
+|             EXE files, see below.
+| 
+| THE PLAN (new policy proposal)
+| 
+| We create the directory /usr/share/dotnet (not in /usr/lib since all of this is
+| arch-independent, interpreted code). In this "dot-net area", we create:
+| 
+|   * lib/ (with DLLs, this path needs to be known by the runtime. As well as /
+|     usr/lib for all the "incompatible" apps. Hm. We need the GAC).
+|   * $package name (where the actual package and its relevant files are located.
+|     For example, the monodoc.exe, assembler.exe etc., and the documentation
+|     directory)
+|   * bin/ (with .EXE executables, OR with symlinks to the $package dirs. For
+|     example, there is a symlink called usr/share/dotnet/exe/normalize which
+|     points to ../monodoc).
+| 
+| Why all this? First, to have reliable file locations. Second, to create a good
+| generic application invocation tool. Shell wrappers for each application can be
+| used too (of course), but I suggest a allround-program so there would be no
+| need to write shell scripts again and again. We store it as /usr/bin/
+| cli-wrapper. The application package would install a symlink cli-wrapper -> /
+| usr/bin/program-name. What would the wrapper do on start? It checks argv0
+| (which is "normalize", for example). It looks for /usr/bin/normalize.exe (and
+| executes it iff found), then for /usr/share/dotnet/exe/normalize.exe, then for
+| /usr/share/dotnet/exe/normalize (directory). If the last is found, it runs /usr
+| /share/dotnet/exe/normalize/normalize.exe. This is done because the application
+| may have additional assemblies in its startup directory, look for the
+| additional config file there and such things.
+
+PS: Some comparisons (not real benchmarks!), testing different
+invocation methods:
+
+  The "native" method via exec, binfmt_misc, binfmpt-support (Perl
+  script), binfmt-detector-cli:
+
+time for x in `seq 1000` ; do ./hello.exe > /dev/null; done
+
+real    3m2.969s
+user    2m8.060s
+sys     0m14.540s
+
+  The shell wrapper method using mono:
+
+time for x in `seq 1000` ; do ./hello.sh > /dev/null; done
+
+real    2m43.146s
+user    1m45.990s
+sys     0m11.140s
+
+  Using "cli-wrapper" with a symlink:
+
+time for x in `seq 1000` ; do ./hello > /dev/null; done
+
+real    2m23.958s
+user    1m32.720s
+sys     0m9.640s
+
+  The "interpreter" method using mono:
+
+time for x in `seq 1000` ; do /usr/bin/cli ./hello.exe > /dev/null; done
+
+real    2m23.699s
+user    1m33.140s
+sys     0m8.920s
+
+ Eduard Bloch <blade@debian.org> -- Wed, 11 Feb 2004 10:58:27 +0100
