@@ -1,3 +1,11 @@
+mono (1.0.2-2) unstable; urgency=high
+
+  * NOT RELEASED YET
+  * Mirco 'meebey' Bauer
+    + removed automake from build-deps 
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 12 Oct 2004 21:30:53 +0200
+
 mono (1.0.2-1) unstable; urgency=high
 
   * The "All or Nothing" release
