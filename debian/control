@@ -52,7 +52,7 @@ Description: generic CLI (.NET/Mono) code interpreter
  package is not available for your system architecture.
  
 Package: mono
-Architecture: all
+Architecture: arm powerpc s390 sparc i386 alpha
 Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
 Description: The Mono .NET development environment
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -61,7 +61,7 @@ Description: The Mono .NET development environment
  .
  mono is a metapackage containing dependencies for the components of
  Mono. If you do not need all of them (or try to work around X11
- dependencies), install the core packages manualy: mono-jit (or
+ dependencies), install the core packages manually: mono-jit (or
  mono-mint if JIT is not available), mono-mcs, mono-utils.
 
 Package: mono-utils
