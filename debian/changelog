@@ -1,10 +1,8 @@
 mono (0.91-0pre2) unstable; urgency=low
 
   * NOT RELEASED YET
-  * New upstream release
-  * set mono-jit priority lower if !i386 and !s390
-    (jit runs unstable on PPC yet,
-     Closes: Bug#238420 thanks to Michel Dänzer for the patch)
+  * JIT is more stable now (Closes: Bug#238420)
+  * New upstream release (Closes: Bug#249419)
   * FTBFS fixes for sparc in rules/control
   * added s390 architecture to mono-jit, libmono0 and libmono-dev
   * documentated supported architectures in README.Debian
