@@ -23,10 +23,10 @@ esac
 exit 0
 
 @DPATCH@
-diff -urNad /tmp/mono-0.31/data/config.in mono-0.31/data/config.in
---- /tmp/mono-0.31/data/config.in	2004-03-13 20:21:12.000000000 +0100
-+++ mono-0.31/data/config.in	2004-04-06 10:16:05.000000000 +0200
-@@ -4,18 +4,24 @@
+diff -urNad /home/inet/debian/dev/build-area/mono-0.31/data/config.in mono-0.31/data/config.in
+--- /home/inet/debian/dev/build-area/mono-0.31/data/config.in	2004-04-07 00:18:29.000000000 +0200
++++ mono-0.31/data/config.in	2004-04-07 00:21:56.000000000 +0200
+@@ -4,18 +4,26 @@
  	<dllmap dll="libxslt.dll" target="libxslt.so" />
  	<dllmap dll="libmySQL.dll" target="libmysqlclient.so" />
  	<dllmap dll="odbc32.dll" target="libodbc.so" />
@@ -56,9 +56,11 @@ diff -urNad /tmp/mono-0.31/data/config.in mono-0.31/data/config.in
 -	<dllmap dll="gstreamer" target="libgstreamer-0.6.so" />
 +  <dllmap dll="gnome-2" target="libgnome-2.so.0" />
 +  <dllmap dll="gconf-2" target="libgconf-2.so.4" />
-+	 <dllmap dll="gstreamer" target="libgstreamer-0.6.so.0" />
++  <dllmap dll="gstreamer" target="libgstreamer-0.6.so.0" />
 +  <dllmap dll="gtksourceview-1.0" target="libgtksourceview-1.0.so.0">
 +  <dllmap dll="gnomeui-2" target="libgnomeui-2.so.0" />
++  <dllmap dll="gobject-2" target="libgobject-2.0.so.0" />
++  <dllmap dll="gobject-2.0" target="libgobject-2.0.so.0" />
 +  <dllmap dll="gnomevfs-2" target="libgnomevfs-2.so.0" />
 +  <dllmap dll="gnomecanvas-2" target="libgnomecanvas-2.so.0" />
  </configuration>
