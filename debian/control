@@ -24,7 +24,7 @@ Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386
 Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
-Description: fast CLI (.NET/Mono) code interpreter
+Description: fast CLI (.NET/Mono) JIT compiler
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
