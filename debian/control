@@ -24,7 +24,8 @@ Description: common files for the Mono CLI runtimes
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc
-Depends: ${shlibs:Depends}, mono-assemblies-base (= ${Source-Version}), mono-common (= ${Source-Version})
+Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
+Conflicts: mono-assemblies-base (<< 0.29.99.20040114), mono-assemblies-base (>> ${Source-Version})
 Description: fast CLI (.NET/Mono) JIT compiler
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
@@ -40,7 +41,8 @@ Provides: cli-virtual-machine
 Architecture: i386 sparc powerpc arm hppa s390
 Conflicts: libmint0, libmint-dev
 Replaces: libmint0, libmint-dev
-Depends: ${shlibs:Depends}, mono-assemblies-base (= ${Source-Version}), mono-common (= ${Source-Version})
+Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
+Conflicts: mono-assemblies-base (<< 0.29.99.20040114), mono-assemblies-base (>> ${Source-Version})
 Recommends: mono-jit
 Description: generic CLI (.NET/Mono) code interpreter
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -53,7 +55,7 @@ Description: generic CLI (.NET/Mono) code interpreter
  
 Package: mono
 Architecture: all
-Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-common (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch (= ${Source-Version})
+Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-common (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
 Description: The Mono .NET development environment
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET

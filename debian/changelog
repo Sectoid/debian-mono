@@ -1,14 +1,11 @@
 mono (0.29.99.20040114-3) unstable; urgency=low
 
-  * NOT RELEASED YET
-  * the last release of 0.29* series
+  * bugfix release, hopefully the last of 0.29* series
   * Teófilo Ruiz Suárez:
     + added automake1.7 to Build-Deps
   * Eduard Bloch:
     + Included modified icu-config to use libicu26-dev
     + added libtool to Build-Deps (closes: #231271)
-
-    + TODO: TEST ALL OF THIS BELOW
     + hook to correct SONAMEs in /etc/mono/config file (Closes: #231191)
     + included a generic binary wrapper to mono-common to be used as
       PROGRAM to run /usr/bin/PROGRAM.exe with /usr/bin/cli
