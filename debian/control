@@ -10,7 +10,7 @@ Standards-Version: 3.6.1
 Package: mono-common
 Provides: cli-common
 Architecture: alpha arm hppa powerpc s390 sparc i386
-Depends: binfmt-support (>= 1.1.2)
+Depends: binfmt-support (>= 1.1.2), dpkg-dev
 Conflicts: binfmt-detector-cli, cli-common
 Replaces: mono-jit (<< 0.16), binfmt-detector-cli
 Description: common files for the Mono CLI runtimes

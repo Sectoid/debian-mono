@@ -9,6 +9,7 @@ mono (0.95-0pre1v2) unstable; urgency=low
   * Mirco 'meebey' Bauer
     + New upstream release
     + enabled preview features (.NET 1.2, generics)
+    + added dpkg-dev dependency to mono-jit (postinst needs it)
   * Michael Schiansky
     + Since beta1 (0.91) dllmaps are handled cleanly (Closes: #241686)
 
