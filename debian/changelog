@@ -1,6 +1,5 @@
-mono (1.0.4-0pre1) unstable; urgency=high
+mono (1.0.4-1) unstable; urgency=high
 
-  * NOT RELEASED YET
   * New upstream release
   * Mirco 'meebey' Bauer
     + removed automake from build-deps 
