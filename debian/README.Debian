@@ -14,11 +14,11 @@ mono for Debian
     Interpreter:
     Linux/x86
     Linux/PPC
+    HP-UX/HPPA
     S390
     StrongARM
     SPARC
     SPARC v9
-    HPPA
  
 3. Purge your ~/.wapi directory if you see messages like:
 
@@ -29,7 +29,6 @@ mono for Debian
    Falling back to non-shared handles
 
    Reason:
-
    02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
 
 4. Provisoric virtual packages:
