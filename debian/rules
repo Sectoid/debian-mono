@@ -44,9 +44,6 @@ cli-wrapper: debian/cli-wrapper.c
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 
 build: patch build-stamp
-	# someone forgot some directories in the source tarball...
-	find -type d \( -name CVS -or -name .svn \) | xargs rm -rf
-	
 build-stamp: cli-wrapper
 	dh_testdir
 	# using a better dllmap (should be fixed since beta1)
