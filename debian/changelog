@@ -1,17 +1,17 @@
-mono (0.95-0pre1v3) unstable; urgency=low
+mono (0.95-0pre1v4) unstable; urgency=low
 
   * (NOT RELEASED YET) New upstream release
   * Eduard Bloch
     + setting virtual ".shlibs" for libmono via provides, currently
       libmono-0.95
-    + dh_makenetlibs and dh_netdeps tools to manage assembly dependencies in
-      the Perl/Python way
+    + created new dh_makenetlibs and dh_netdeps tools to manage assembly
+      dependencies in the Perl/Python way
     + Moved Pablo's dh_installxsp script to mono-utils to mono-utils
     + mono-common.preinst now moves /usr/lib/mono directory (if exists) to
       /usr/share/dotnet
     + moved the check for mono-vs.-mint priority to debian/rules
   * Mirco 'meebey' Bauer
-    + New upstream release
+    + New upstream release updates
     + enabled preview features (.NET 1.2, generics)
   * Michael Schiansky
     + Since beta1 (0.91) dllmaps are handled cleanly (Closes: #241686)

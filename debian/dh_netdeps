@@ -138,6 +138,7 @@ sub resolveShlib {
 
 sub extraDeps {
    my $config=$_[0].".config";
+   return undef if (! -r $config);
    my $ret=undef;
 
    if(!%shlibdata) {
@@ -148,11 +149,9 @@ sub extraDeps {
       }
    }
 
-   if( -r $config) {
-      $config=`cat $config`;
-      while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
-         $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
-      }
+   $config=`cat $config`;
+   while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
+      $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
    }
    $ret=~s/^, // if $ret;
    return $ret;
@@ -171,9 +170,9 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
         local *F;
         my $file = $_;
         return unless open F, "monodis --assemblyref $file |";
-#        if ( my $extra = extraDeps ($file) ) {
-#           push ( @depkgs, $extra );
-#        }
+        if ( my $extra = extraDeps ($file) ) {
+           push ( @depkgs, $extra );
+        }
         our( $vers, $name, $key );
         while (<F>) {
             $vers = $1 if /Version=(.*)\n/;
