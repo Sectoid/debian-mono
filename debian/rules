@@ -26,7 +26,7 @@ build-stamp:
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc
 	$(MAKE)
-	$(CC) -o cli-wrapper debian/cli-wrapper.c
+	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 	touch build-stamp
 
 clean:
