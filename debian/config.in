@@ -1,0 +1,29 @@
+<configuration> 
+	<dllmap dll="cygwin1.dll" target="@LIBC@" />
+	<dllmap dll="libc" target="@LIBC@" />
+	<dllmap dll="libxslt.dll" target="libxslt.so.1" />
+	<dllmap dll="libmySQL.dll" target="libmysqlclient.so.12" />
+	<dllmap dll="odbc32.dll" target="libodbc.so" />
+	<dllmap dll="libglib-2.0-0.dll" target="libglib-2.0.so.0" />
+	<dllmap dll="libgobject-2.0-0.dll" target="libgobject-2.0.so.0" />
+	<dllmap dll="libgthread-2.0-0.dll" target="libgthread-2.0.so.0" />
+	<dllmap dll="libpango-1.0-0.dll" target="libpango-1.0.so.0" />
+	<dllmap dll="libatk-1.0-0.dll" target="libatk-1.0.so.0" />
+	<dllmap dll="libgdk-win32-2.0-0.dll" target="libgdk-x11-2.0.so.0" />
+	<dllmap dll="libgdk_pixbuf-2.0-0.dll" target="libgdk_pixbuf-2.0.so.0" />
+	<dllmap dll="libgtk-win32-2.0-0.dll" target="libgtk-x11-2.0.so.0" />
+	<dllmap dll="libglade-2.0-0.dll" target="libglade-2.0.so.0" />
+	<dllmap dll="oci" target="clntsh" />
+	<dllmap dll="gtkhtml-3.0" target="libgtkhtml-3.0.so.4" />
+	<dllmap dll="db2cli" target="libdb2_36.so"/>
+	<dllmap dll="gnome-2" target="libgnome-2.so.0" />
+	<dllmap dll="gconf-2" target="libgconf-2.so.4" />
+	<dllmap dll="gstreamer" target="libgstreamer-0.6.so.0" />
+	<dllmap dll="gtksourceview-1.0" target="libgtksourceview-1.0.so.0">
+	<dllmap dll="gnomeui-2" target="libgnomeui-2.so.0" />
+	<dllmap dll="gobject-2" target="libgobject-2.0.so.0" />
+	<dllmap dll="gobject-2.0" target="libgobject-2.0.so.0" />
+	<dllmap dll="gnomevfs-2" target="libgnomevfs-2.so.0" />  
+	<dllmap dll="gnomecanvas-2" target="libgnomecanvas-2.so.0" />
+	<dllmap dll="gnome-print2-2" target="libgnomeprint-2-2.so.0" />
+</configuration>
