@@ -151,40 +151,44 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     my $need_ldconfig = 0;
 
     doit( "rm", "-f", "$tmp/DEBIAN/netlibs" );
-
-    # So, we look for files or links to existing files with names that
-    # match "*.so*". Matching *.so.* is not good enough because of
-    # broken crap like db3. And we only look at real files not
-    # symlinks, so we don't accidentually add netlibs data to -dev
-    # packages. This may have a few false positives, which is ok,
-    # because only if we can get a library name and a major number from
-    # objdump is anything actually added.
-    my $exclude = '';
-    if ( defined( $dh{EXCLUDE_FIND} ) && $dh{EXCLUDE_FIND} ne '' ) {
-        $exclude = "! \\( $dh{EXCLUDE_FIND} \\) ";
+    if ( -e "debian/$package.netlibs" ) {
+        complex_doit("cat debian/$package.netlibs >$tmp/DEBIAN/netlibs");
     }
-    open( FIND, "find $tmp -type f \\( -name '*.dll' \\) $exclude |" );
-    while (<FIND>) {
-        chomp;
-        my ( $library, $ver, $libfile );
-        $libfile = $_;
-        my $sig = `monosn -T $_`;
-        $sig=~s/.*token is //;
-        chomp($sig);
-        my $dis = `monodis --assembly $libfile`;
-        $dis =~ m/Name:\s+(\S+)/;
-        $library = $1;
-        $dis =~ m/Version:\s+(\S+)/;
-        $ver  = $1;
+    else {
 
-        if ( !-d "$tmp/DEBIAN" ) {
-            doit( "install", "-d", "$tmp/DEBIAN" );
+        # So, we look for files or links to existing files with names that
+        # match "*.so*". Matching *.so.* is not good enough because of
+        # broken crap like db3. And we only look at real files not
+        # symlinks, so we don't accidentually add netlibs data to -dev
+        # packages. This may have a few false positives, which is ok,
+        # because only if we can get a library name and a major number from
+        # objdump is anything actually added.
+        my $exclude = '';
+        if ( defined( $dh{EXCLUDE_FIND} ) && $dh{EXCLUDE_FIND} ne '' ) {
+            $exclude = "! \\( $dh{EXCLUDE_FIND} \\) ";
         }
-        my $deps = $package;
-        if ( -e "debian/$package.netlibs" ) {
-            complex_doit("cat debian/$package.netlibs >$tmp/DEBIAN/netlibs");
-        }
-        else {
+        open( FIND, "find $tmp -type f \\( -name '*.dll' \\) $exclude |" );
+        dll: while (<FIND>) {
+            chomp;
+            my ( $library, $ver, $libfile );
+            $libfile = $_;
+            my $sig = `monosn -T $_`;
+            $sig =~ s/.*token is //;
+            chomp($sig);
+            if($sig=~/\s/) {
+               warning "$libfile has no valid signature, ignoring";
+               next dll;
+            }
+            my $dis = `monodis --assembly $libfile`;
+            $dis =~ m/Name:\s+(\S+)/;
+            $library = $1;
+            $dis =~ m/Version:\s+(\S+)/;
+            $ver = $1;
+
+            if ( !-d "$tmp/DEBIAN" ) {
+                doit( "install", "-d", "$tmp/DEBIAN" );
+            }
+            my $deps = $package;
 
             # Call isnative becuase it sets $dh{VERSION}
             # as a side effect.
@@ -197,32 +201,32 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
 
                 # Remove debian version, if any.
                 $version =~ s/-[^-]+$//;
-             }
+            }
 
-             if ( defined( $dh{M_PARAMS} ) && $dh{M_PARAMS} ne '' ) {
+            if ( defined( $dh{M_PARAMS} ) && $dh{M_PARAMS} ne '' ) {
                 $version = $dh{M_PARAMS};
-             }
-            if ($dh{V_FLAG_SET}) {
-               if ($dh{V_FLAG} ne '') {
-                  $deps=$dh{V_FLAG};
-               }	
-               else {
-                  $deps = "$package (>= $version)";
-               }
             }
-            if( defined($dh{R_FLAG})) {
+            if ( $dh{V_FLAG_SET} ) {
+                if ( $dh{V_FLAG} ne '' ) {
+                    $deps = $dh{V_FLAG};
+                }
+                else {
+                    $deps = "$package (>= $version)";
+                }
+            }
+            if ( defined( $dh{R_FLAG} ) ) {
                 $version =~ s/-[^-]+$//;
-               my @uvers = split(/\./, $version);
-               $uvers[1]++;
-               $deps = "$package (>= $version), $package (<< ".
-               join(".",@uvers)
-               .")";
+                my @uvers = split ( /\./, $version );
+                $uvers[1]++;
+                $deps =
+                  "$package (>= $version), $package (<< "
+                  . join ( ".", @uvers ) . ")";
             }
-            if( defined($dh{M_PARAMS})) {
-               $deps = "$package (>= ".$dh{M_PARAMS}.")";
+            if ( defined( $dh{M_PARAMS} ) ) {
+                $deps = "$package (>= " . $dh{M_PARAMS} . ")";
             }
-            if( defined($dh{L_PARAMS})) {
-               $deps .= ", $package (<< ".$dh{L_PARAMS}.")";
+            if ( defined( $dh{L_PARAMS} ) ) {
+                $deps .= ", $package (<< " . $dh{L_PARAMS} . ")";
             }
             if ( defined($library)
                 && defined($ver)
@@ -233,13 +237,12 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
             {
 
                 # Prevent duplicate lines from entering the file.
-                my $line = "$library $ver"."__$sig $deps";
+                my $line = "$library $ver" . "__$sig $deps";
+
                 # extra dependencies are to be resolved by dh_netlibs,
                 # don't forward the dependency libs to the apps where it
                 # does not belong to
-#                if ( my $extra = extraDeps ($libfile) ) {
-#                    $line .= ", $extra";
-#                }
+#                if ( my $extra = extraDeps ($libfile) )   { $line .= ", $extra";  }
                 if ( !$seen{$line} ) {
                     $seen{$line} = 1;
                     complex_doit("echo '$line' >>$tmp/DEBIAN/netlibs");
