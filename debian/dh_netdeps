@@ -49,8 +49,9 @@ variable shlib:Depends from debian/package.substvars.
 
 =item B<-r>
 
-Set a relaxed dependency on the VM, eg. "mono-jit | cli-virtual-machine" instead of
-hard versioned dependency on mono or mint packages.
+Don't set a strong versioned dependy on mono-jit or mono-mint packages.
+This option can be used to specify a relaxed dependency on the VM
+by-hand in the control file, eg. "mono-jit | cli-virtual-machine".
 
 =cut
 
@@ -241,7 +242,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     }
 
     addsubstvar( $package, "net:Depends",
-        ( (defined($dh{R_FLAG})) ? "mono-jit | cli-virtual-machine" : "mono-jit (>= $mono_version) | mono-mint (>= $mono_version), " )
+        ( (defined($dh{R_FLAG})) ? "" : "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)" )
         . join ( ", ", "", sort {
            # beautify the sort order, requested by meebey
            my $apkg;

@@ -4,7 +4,7 @@ mono (0.96-0pre1v1) unstable; urgency=low
   * FIXME: sync debian/NEWS revision line with the final release revision
   * Eduard Bloch
     + setting virtual ".shlibs" for libmono via provides, currently
-      libmono-0.95
+      libmono-0.96
     + created new dh_makenetlibs and dh_netdeps tools to manage assembly
       dependencies in the Perl/Python way
     + Moved Pablo's dh_installxsp script to mono-utils to mono-utils
