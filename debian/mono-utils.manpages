@@ -1,1 +1,11 @@
 debian/man/*.1
+man/cert2spc.1
+man/cilc.1
+man/disco.1
+man/genxs.1
+man/ilasm.1
+man/monostyle.1
+man/oldmono.1
+man/soapsuds.1
+man/sqlsharp.1
+man/wsdl.1
