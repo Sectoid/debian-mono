@@ -1,3 +1,9 @@
+mono (0.30.2-2) unstable; urgency=low
+
+  * NOT RELEASED YET
+
+ -- Eduard Bloch <blade@debian.org>  Sat,  6 Mar 2004 13:39:08 +0100
+
 mono (0.30.2-1) unstable; urgency=low
 
   * New upstream release

@@ -14,39 +14,54 @@ extern char **environ;
 #define NAME_ISREG(name)		\
 	((! stat(name,&si)) &&		\
 	 S_ISREG((&si)->st_mode))
-#define runit if(NAME_ISREG(cmd)) return execve("/usr/bin/cli",args,environ);
-#define trypath(dir) sprintf(cmd, "%s/%s.exe", dir, exName); runit; sprintf(cmd, "%s/%s/%s.exe", dir, exName, exName); runit;
-#define runthem(paths)  { char **tmp=paths; while(*tmp) { trypath(*tmp); tmp++; } }
-      
+
+
+char *buf;
+
 int main(int argc, char **argv){
    char *exName;
    char *args[argc+2];
    struct stat si;
-   char *paths[] = {
-      "/usr/bin",
-      "/usr/share/dotnet/exe",
-      "/usr/share/dotnet/bin",
-      "/usr/share/dotnet",
-      "/usr/lib/dotnet/exe",
-      "/usr/lib/dotnet/bin",
-      "/usr/lib/dotnet",
-      NULL
-   };
-   const char *path;
+   char *mypaths = "/usr/bin:/usr/share/dotnet/exe:/usr/share/dotnet/bin:"
+      "/usr/share/dotnet:/usr/lib/dotnet/exe:/usr/lib/dotnet/bin:/usr/lib/dotnet";
+   char **runpaths=NULL;
+   char *monopath=NULL;
    
    memcpy(args+sizeof(char), argv, sizeof(char *) * argc);
    args[argc+1]=NULL;
    args[0]=argv[0];
    exName = strrchr(argv[0], '/');
    if(!exName) exName=argv[0]; else exName++;
-   cmd = (char *) calloc( 215+strlen(exName), sizeof(char));
+   cmd = (char *) calloc( 512, sizeof(char));
    /* Done. exName has the binary name, look for it and write result to cmd */
 
-   path = getenv ("MONO_PATH");
-   if (path)
-      runthem(g_strsplit (path, G_SEARCHPATH_SEPARATOR_S, 1000));
+   monopath = getenv ("MONO_PATH");
+   /* only split to runpaths when found */
+   runpaths = g_strsplit (
+         monopath
+         ?
+         g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, mypaths)
+         :
+         mypaths
+         ,
+         G_SEARCHPATH_SEPARATOR_S, 1000);
 
-   runthem(paths);
+   /* extend monopath to the default lib path*/
+   monopath = g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, "/usr/share/dotnet/lib");
+
+   while(*runpaths) {
+      snprintf(cmd, 512, "%s/%s.exe", *runpaths, exName);
+      if(NAME_ISREG(cmd)) {
+         setenv("MONO_PATH", g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, *runpaths), 1);
+         return execve("/usr/bin/cli",args,environ);
+      }
+      snprintf(cmd, 512, "%s/%s/%s.exe", *runpaths, exName, exName);
+      if(NAME_ISREG(cmd)) {
+         setenv("MONO_PATH", g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, g_strjoin("/", *runpaths, exName)), 1);
+         return execve("/usr/bin/cli",args,environ);
+      }
+      runpaths++;
+   }
 
    /* should never be reached */
    errno = ENOENT;

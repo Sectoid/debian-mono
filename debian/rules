@@ -5,35 +5,28 @@ export DH_COMPAT=3
 
 include /usr/share/dpatch/dpatch.make
 
-# Use ./configure if configure exists, ./autogen.sh if not.
-# If neither exist, exit with an error.
-CONFCMD:=$(shell test -x configure && echo "configure" || echo "")
-ifeq (${CONFCMD},)
-CONFCMD:=$(shell test -x autogen.sh && echo "autogen.sh" || echo "")
-$(shell touch needs-maintclean)
-endif
-
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 
+cli-wrapper: debian/cli-wrapper.c
+	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
+
 build: patch build-stamp
-build-stamp:
+build-stamp: cli-wrapper
 	dh_testdir
 	# refresh autotools crap
-	NOCONFIGURE=yes sh debian/autogen.sh
-	# ...testing whether configure or autogen.sh check was successfull
-	test "${CONFCMD}"
-	PATH="$(CURDIR)/debian:$$PATH" ./$(CONFCMD) --prefix=/usr --with-gc=included \
+	install -m755 debian/autogen.sh .
+	#NOCONFIGURE=yes ./autogen.sh
+	./autogen.sh --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc
 	$(MAKE)
-	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 	touch build-stamp
 
 clean: unpatch
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
+	rm -f build-stamp autogen.sh
 
 	# Use the right clean target depending if we ran ./autogen.sh or not
 	-if [ -e "needs-maintclean" ]; then	\
