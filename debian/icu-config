@@ -27,7 +27,7 @@ loaddefs()
 #******************************************************************************
 #   Copyright (C) 1999-2003, International Business Machines
 #   Corporation and others.  All Rights Reserved.
-# $Revision: 1.36 $
+# $Revision: 1.35 $
 #******************************************************************************
 # This Makefile.inc is designed to be included into projects which make use
 # of the ICU.
@@ -67,11 +67,6 @@ UNICODE_VERSION="4"
 ICUPREFIX="icu"
 PACKAGE="icu"
 LIBICU="lib${ICUPREFIX}"
-
-# Static library prefix and file extension
-STATIC_PREFIX="s"
-LIBSICU="lib${STATIC_PREFIX}${ICUPREFIX}"
-A="a"
 
 # Suffix at the end of libraries. Usually empty.
 ICULIBSUFFIX=""
@@ -179,15 +174,15 @@ CXXFLAGS="-g -O2 ${THREADSCXXFLAGS} "
 DEFAULT_MODE="dll"
 DEFS="-DHAVE_CONFIG_H "
 FFLAGS=""
-INSTALL="/usr/bin/install -c"
+INSTALL="/home/gpanjav/bin/install -c"
 INSTALL_DATA="${INSTALL} -m 644"
 INSTALL_PROGRAM="${INSTALL}"
 INSTALL_SCRIPT="${INSTALL_PROGRAM}"
 LDFLAGS="${RPATHLDFLAGS}"
 LIBS="-lpthread -lm  "
 LIB_M=""
-LIB_VERSION="28.0"
-LIB_VERSION_MAJOR="28"
+LIB_VERSION="26.1"
+LIB_VERSION_MAJOR="26"
 MKINSTALLDIRS="${SHELL} ${pkgdatadir}/mkinstalldirs"
 RANLIB="ranlib"
 RMV="rm -rf"
@@ -216,7 +211,7 @@ pkgdatadir="${datadir}/${PACKAGE}${ICULIBSUFFIX}/${VERSION}"
 pkglibdir="${libdir}/${PACKAGE}${ICULIBSUFFIX}/${VERSION}"
 
 # The basename of the ICU data file (i.e. icudt21b )
-ICUDATA_NAME="icudt28l"
+ICUDATA_NAME="icudt26l"
 
 # Defaults for pkgdata's mode and directories
 # The default data dir changes depending on what packaging mode 
@@ -240,10 +235,10 @@ ICUPKGDATA_DIR="${ICUDATA_DIR}"
 
 ## -*-makefile-*-
 ## Linux-specific setup
-## Copyright (c) 1999-2003, International Business Machines Corporation and
+## Copyright (c) 1999-2001, International Business Machines Corporation and
 ## others. All Rights Reserved.
 ##
-## $Id: mh-linux,v 1.33 2003/12/18 23:14:13 emader-oss Exp $
+## $Id: mh-linux,v 1.31 2002/01/24 17:35:04 rviswanadha Exp $
 
 ## Commands to generate dependency files
 GEN_DEPS_c="${CC} -E -MM ${DEFS} ${CPPFLAGS}"
@@ -340,7 +335,7 @@ allflags()
     echo "  --ldflags-ustdio       Print ICU ustdio link directive. Use in addition to --ldflags "
     echo "  --ldflags-obsolete     Print ICU obsolete link directive. Use in addition to --ldflags. (requires icuapps/obsolete to be built and installed.) "
     echo "  --mandir               Print manpage (man) path"
-    echo "  --prefix               Print PREFIX to icu install (/usr)"
+    echo "  --prefix               Print PREFIX to icu install (/usr/local)"
     echo "  --prefix=XXX           Set prefix to XXX for remainder of command"
     echo "  --sbindir              Print system binary path (sbin) "
     echo "  --shared-datadir       Print shared data (share) path. This is NOT the ICU data dir."
@@ -654,4 +649,4 @@ sanity
 
 exit 0
 
-# Rebuilt on Mo Jan 26 16:57:21 CET 2004
+# Rebuilt on vie oct 10 00:59:23 CEST 2003

@@ -1,4 +1,4 @@
-mono (0.29.99.20040114-3) unstable; urgency=low
+mono (0.29+30pre2-1) unstable; urgency=low
 
   * NOT RELEASED YET
   * Included modified icu-config to use libicu26-dev
