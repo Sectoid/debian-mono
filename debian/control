@@ -68,7 +68,7 @@ Description: Mono utilities
 Package: libmono0
 Architecture: i386
 Section: libs
-Depends: ${shlibs:Depends}, mono-jit
+Depends: ${shlibs:Depends}
 Description: libraries for the Mono interpreter
  Shared libraries for Mono, used for embedding/hosting of the
  JIT. The package also contains libmono-profiler-conv used for
@@ -92,7 +92,7 @@ Description: libraries for the Mono interpreter - Development files
 Package: libmint0
 Section: libs
 Architecture: all
-Depends: ${shlibs:Depends}, mono-mint
+Depends: ${shlibs:Depends}
 Description: libraries for the Mono (mint) interpreter
  Shared object libraries for Mono, used for embedding/hosting of the
  JIT. The package also contains libmono-profiler-conv used for
