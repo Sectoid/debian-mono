@@ -1,3 +1,10 @@
+mono (0.30-0pre1v1) unstable; urgency=low
+
+  * NOT RELEASED YET
+  * catch-them-all cli-wrapper rewrite
+
+ -- Eduard Bloch <blade@debian.org>  Mon,  9 Feb 2004 00:23:40 +0100
+
 mono (0.29.99.20040114-3) unstable; urgency=low
 
   * bugfix release, hopefully the last of 0.29* series
