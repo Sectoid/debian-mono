@@ -129,8 +129,7 @@ sub extraDeps {
          $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
       }
    }
-   $ret=~s/^, //;
-   print "TEST: $ret\n";
+   $ret=~s/^, // if $ret;
    return $ret;
 }
 
