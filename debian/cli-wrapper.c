@@ -15,15 +15,14 @@ extern char **environ;
 	((! stat(name,&si)) &&		\
 	 S_ISREG((&si)->st_mode))
 
-
-char *buf;
+/* extend monopath to the default lib path */
+#define usdl "/usr/share/dotnet/lib"
+#define mypaths "/usr/bin:/usr/share/dotnet/bin:/usr/share/dotnet:/usr/lib/dotnet/bin:/usr/lib/dotnet"
 
 int main(int argc, char **argv){
    char *exName;
    char *args[argc+2];
    struct stat si;
-   char *mypaths = "/usr/bin:/usr/share/dotnet/exe:/usr/share/dotnet/bin:"
-      "/usr/share/dotnet:/usr/lib/dotnet/exe:/usr/lib/dotnet/bin:/usr/lib/dotnet";
    char **runpaths=NULL;
    char *monopath=NULL;
    
@@ -37,27 +36,20 @@ int main(int argc, char **argv){
 
    monopath = getenv ("MONO_PATH");
    /* only split to runpaths when found */
-   runpaths = g_strsplit (
-         monopath
-         ?
-         g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, mypaths)
-         :
-         mypaths
-         ,
+   runpaths = g_strsplit (monopath ?
+         g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, mypaths) :
+         mypaths,
          G_SEARCHPATH_SEPARATOR_S, 1000);
-
-   /* extend monopath to the default lib path*/
-   monopath = g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, "/usr/share/dotnet/lib");
 
    while(*runpaths) {
       snprintf(cmd, 512, "%s/%s.exe", *runpaths, exName);
       if(NAME_ISREG(cmd)) {
-         setenv("MONO_PATH", g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, *runpaths), 1);
+         setenv("MONO_PATH", g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, *runpaths, usdl), 1);
          return execve("/usr/bin/cli",args,environ);
       }
       snprintf(cmd, 512, "%s/%s/%s.exe", *runpaths, exName, exName);
       if(NAME_ISREG(cmd)) {
-         setenv("MONO_PATH", g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, g_strjoin("/", *runpaths, exName)), 1);
+         setenv("MONO_PATH", g_strjoin(G_SEARCHPATH_SEPARATOR_S, monopath, g_strjoin("/", *runpaths, exName), usdl), 1);
          return execve("/usr/bin/cli",args,environ);
       }
       runpaths++;
