@@ -1,1 +1,1 @@
-debian/dh_makenetlibs debian/dh_netdeps /usr/bin
+debian/dh_makenetlibs debian/dh_netdeps debian/dh_installxsp /usr/bin
