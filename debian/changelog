@@ -9,6 +9,8 @@ mono (0.95-0pre1v2) unstable; urgency=low
   * Mirco 'meebey' Bauer
     + New upstream release
     + enabled preview features (.NET 1.2, generics)
+  * Michael Schiansky
+    + Since beta1 (0.91) dllmaps are handled cleanly (Closes: #241686)
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon,  7 Jun 2004 00:54:51 +0200
 
