@@ -57,8 +57,6 @@ my $cli = '/usr/bin/cli';
 # my $python_major;
 my $mono_version = `$cli -V 2>&1`;
 
-print "fsck, $mono_version\n";
-
 if ( !-x "/usr/bin/monodis" ) {
     error(
 "Package mono-utils is not installed, aborting. (Probably forgot to Build-Depend on mono-utils.)"
@@ -171,16 +169,19 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
         return unless -f and /\.(exe|dll)$/;
         local *F;
         my $file = $_;
-        return unless open F, "monodis --assemblyref $file |";
+        return unless open F, "LANG=C monodis --assemblyref $file 2>&1 |";
         if ( my $extra = extraDeps ($file) ) {
            push ( @depkgs, $extra );
         }
         our( $vers, $name, $key );
         while (<F>) {
             $vers = $1 if /Version=(.*)\n/;
+            $name = $1 if /Could not find assembly ([^,]+),/;
             $name = $1 if /Name=(.*)\n/;
+            $vers = "$1.$2" if /Major\/Minor:\s*(\d+),(\d+)/;
+            $vers .= ".$1.$2" if /Build:\s*(\d+),(\d+)/;
 
-            if (/0x\S+:.([ABCDEF0123456789 ]+)\n/) {
+            if (/0x\S+:.([ABCDEF0123456789 ]+)\n/ || /Token:\s*(\w+)/) {
                 $key = $1;
                 $key =~ s/\ //g;
                 $key = $vers . "__" . lc($key);

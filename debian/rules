@@ -10,15 +10,15 @@ ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
 JIT="--with-jit=no"
 endif
 
-# include /usr/share/dpatch/dpatch.make
+include /usr/share/dpatch/dpatch.make
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 
 cli-wrapper: debian/cli-wrapper.c
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 
-#build: patch build-stamp
-build: build-stamp
+build: patch build-stamp
+#build: build-stamp
 build-stamp: cli-wrapper
 	dh_testdir
 	# using a better dllmap
@@ -38,8 +38,8 @@ build-stamp: cli-wrapper
 	( cat debian/mono-jit.postinst.head; ARCH= ; case `dpkg-architecture -qDEB_HOST_ARCH` in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
 	touch build-stamp
 
-#clean: unpatch
-clean:
+clean: unpatch
+#clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp autogen.sh

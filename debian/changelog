@@ -10,6 +10,9 @@ mono (0.96-0pre1v1) unstable; urgency=low
     + mono-common.preinst now moves /usr/lib/mono directory (if exists) to
       /usr/share/dotnet
     + moved the check for mono-vs.-mint priority to debian/rules
+    + applied the patch (as dpatch) from Jackson Harper,
+      http://bugzilla.ximian.com/showattachment.cgi?attach_id=8206 to fix the
+      monodis segfault while operating on unresolved assembly references
   * Mirco 'meebey' Bauer
     + New upstream release updates
     + enabled preview features (.NET 1.2, generics)
