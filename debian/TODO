@@ -2,7 +2,5 @@ TODO soon:
  - Finalize control file, decide on all package names.
  - Choose a good policy for future class package
    mono-classes-foobar sounds okay, or maybe cli-classes-foobar
- - after install, replace all the wrappers with symlinks to our
-   debian/cli-wrapper and install cli-wrapper in /usr/bin
  - svn-inject of the mcs package and move the chunks from debian/control
    to it, reviewing (discuss this!)
