@@ -76,7 +76,7 @@ Description: Mono utilities
  development platform.
  .
  This package includes various tools useful for .NET developers, like
- monodis, pedump and monograph.
+ pedump, monodis, monograph and monosn.
 
 
 Package: libmono0
