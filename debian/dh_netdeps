@@ -29,7 +29,12 @@ version ranges (as declared by the shlibs/netlibs files of the used
 packages). The dependency on a certain Mono version will be also added
 to the final variable.
 
-If you use this program, your package should build-depend on mono-utils.
+Note: the dependencies on shared libraries may be not resolved correctly
+if there are no .config files associated with the the .exe/.dll file
+which refers to the particular shared library (by its SONAME).
+
+If you use this program, your package should build-depend on mono-utils
+(>> 0.95).
 
 =head1 OPTIONS
 
@@ -37,7 +42,7 @@ If you use this program, your package should build-depend on mono-utils.
 
 =item B<-d>
 
-Attempt to predict and avoid dupes that may appear if you package
+Attempt to predict and avoid duplicates that may appear if you package
 both, native shared libraries and DLL assemblies in one package.
 The list of possibly duplicating candidates is expected to be in the
 variable shlib:Depends from debian/package.substvars.
@@ -97,7 +102,7 @@ foreach (@ARGV) {
 
 my $fh;
 my %libdata;
-open( $fh, "cat debian/*/DEBIAN/netlibs /var/lib/dpkg/info/*.netlibs 2>/dev/null |" );
+open( $fh, "cat /var/lib/dpkg/info/*.netlibs debian/*/DEBIAN/netlibs 2>/dev/null |" );
 while (<$fh>) {
     /(\S+)\s+(\S+)\s+(\w.*)\n?/;
     $libdata{"$1/$2"} = $3;
@@ -116,6 +121,10 @@ sub resolveShlib {
             $shlibdata{"$1.so.$2"} = $3;
         }
     }
+#    if ( -r "$file.config"
+#        && `cat $file.config` =~
+#        /dll=\W*$name[^>]+\Wtarget\W*=\W*(\w[\w.\-_\d]+)/
+#        && defined( $shlibdata{$1} ) )
     if ( -r "$file.config"
         && `cat $file.config` =~
         /dll=\W*$name[^>]+\Wtarget\W*=\W*(\w[\w.\-_\d]+)/
@@ -127,6 +136,27 @@ sub resolveShlib {
     return 0;
 }
 
+sub extraDeps {
+   my $config=$_[0].".config";
+   my $ret=undef;
+
+   if(!%shlibdata) {
+      open( $fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |" );
+      while (<$fh>) {
+         /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+         $shlibdata{"$1.so.$2"} = $3;
+      }
+   }
+
+   if( -r $config) {
+      $config=`cat $config`;
+      while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
+         $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
+      }
+   }
+   $ret=~s/^, // if $ret;
+   return $ret;
+}
 foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     my $tmp = tmpdir($package);
     my %deps;
@@ -141,6 +171,9 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
         local *F;
         my $file = $_;
         return unless open F, "monodis --assemblyref $file |";
+#        if ( my $extra = extraDeps ($file) ) {
+#           push ( @depkgs, $extra );
+#        }
         our( $vers, $name, $key );
         while (<F>) {
             $vers = $1 if /Version=(.*)\n/;
@@ -154,10 +187,11 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
                 if ( !defined( $libdata{$compat} ) ) {
 
                     # reuse the key variable
-                    if ( resolveShlib( $file, $name, \$key ) ) {
-                        push ( @depkgs, $key );
-                    }
-                    else {
+                    #if ( resolveShlib( $file, $name, \$key ) ) {
+                    #    push ( @depkgs, $key );
+                    #}
+                    #else
+                    {
                         warning(
 "Warning! No Debian dependency data for $name ($key)!"
                         );
@@ -171,12 +205,13 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
             }
         }
         close F;
-    }, $tmp;
-
+     }, $tmp;
     my %depkgsFiltered;
     for (@depkgs) {
        for ( split ( /\s*,\s*/, $_ ) ) {
-          $depkgsFiltered{$_} = 1;
+          # filter dupes and don't depend on this package
+          /^(\S+)/;
+          $depkgsFiltered{$_} = 1 if($1 ne $package);
        }
     }
     # now filter the dupes coming from shlibs
@@ -203,7 +238,6 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
            $apkg=$&;
            $b=~/^\S+/;
            if($apkg eq $&) {
-              print STDERR "test, $apkg $&\n";
               return -1 if( ($a=~/>=/) && ($b=~/<</));
               return 1 if( ($b=~/>=/) && ($a=~/<</));
            }

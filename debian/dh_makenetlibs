@@ -21,8 +21,7 @@ libraries it finds.
 
 By default, dh_makenetlibs scans the DLL files in the package
 directories and writes the discovered compatibility data (major/minor,
-build, token) to "netlibs" files int he appropriate packages. The
-dependencies on native shared libs are resolved using dpkg-shlibdeps.
+build, token) to "netlibs" files int he appropriate packages.
 
 However, if a file like debian/package.netlibs is found, this one will
 be installed and no scanning is performed.
@@ -192,7 +191,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
             isnative($package);
             my $version = $dh{VERSION};
 
-            # Old compatability levels include the
+            # Old compatibility levels include the
             # debian revision, while new do not.
             if ( !compat(3) ) {
 
@@ -235,9 +234,12 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
 
                 # Prevent duplicate lines from entering the file.
                 my $line = "$library $ver"."__$sig $deps";
-                if ( my $extra = extraDeps ($libfile) ) {
-                    $line .= ", $extra";
-                }
+                # extra dependencies are to be resolved by dh_netlibs,
+                # don't forward the dependency libs to the apps where it
+                # does not belong to
+#                if ( my $extra = extraDeps ($libfile) ) {
+#                    $line .= ", $extra";
+#                }
                 if ( !$seen{$line} ) {
                     $seen{$line} = 1;
                     complex_doit("echo '$line' >>$tmp/DEBIAN/netlibs");
