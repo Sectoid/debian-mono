@@ -3,8 +3,8 @@ mono (0.29.99.20040114-2) unstable; urgency=low
   * Finally closes the outstanding ITPs (closes: #132882)
   * Maintainer mailing list address fixed
   * libmint* removed (upstream request, considered as dead-end package)
-  * improved description, added manpages and pedump to mono-utils, dropped
-    monosn (upstream request)
+  * improved description, added pedump to mono-utils, dropped monosn (upstream
+    request)
 
  -- Eduard Bloch <blade@debian.org>  Sun, 18 Jan 2004 19:15:41 +0100
 
