@@ -42,20 +42,6 @@ Description: generic CLI (.NET/Mono) code interpreter
  development platform.
  .
  This package contains the generic .NET code interpreter "mint".
-
-Package: mono-common
-Provides: cli-common
-Architecture: all
-Depends: binfmt-support
-Conflicts: binfmt-support (<< 1.1.2)
-Replaces: mono-jit (<< 0.16)
-Description: common files for the Mono CLI runtimes
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
- .
- This package contains base configuration files and configures the
- system to run .NET executables as native applications.
  
 Package: mono
 Architecture: all
