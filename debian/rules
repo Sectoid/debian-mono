@@ -36,6 +36,7 @@ clean:
 	else					\
 	  $(MAKE) distclean;			\
 	fi
+	cd debian/detector && $(MAKE) clean
 
 	# I shouldn't have to do this
 	rm -f mono/arch/arm/Makefile mono/arch/ppc/Makefile \
@@ -50,6 +51,7 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(PWD)/debian/tmp
+	cd $(CURDIR)/debian/detector && $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
