@@ -1,6 +1,12 @@
+mono (0.30.1-1) unstable; urgency=low
+
+  * New upstream release
+  * SONAME wokraround for libgstreamer-0.6.so.1
+
+ -- Eduard Bloch <blade@debian.org>  Tue, 24 Feb 2004 18:15:49 +0100
+
 mono (0.29.99.20040114-4) unstable; urgency=low
 
-  * NOT RELEASED YET
   * Eduard Bloch:
     + catch-them-all cli-wrapper rewrite
     + set mono-common conflict with the virtual package cli-common

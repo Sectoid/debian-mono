@@ -1,0 +1,215 @@
+#!/usr/bin/perl -w
+
+=head1 NAME
+
+dh_dotnet - calculates .NET dependencies
+
+=cut
+
+use strict;
+use File::Find;
+use Debian::Debhelper::Dh_Lib;
+#eval 'use Debian::Debhelper::Dh_Lib';
+#print "You need to install the debhelper package in order to use this program!" if $@;
+
+
+=head1 SYNOPSIS
+
+FIXME: document debian/mono.local, document the usage
+
+B<dh_python> [S<I<debhelper options>>] [B<-n>] [B<-V> I<version>] [S<I<module dirs ...>>]
+
+=head1 DESCRIPTION
+
+dh_python is a debhelper program that is responsible for generating the
+${python:Depends} substitutions and adding them to substvars files. It
+will also add a postinst and a prerm script if required.
+
+The program will look at python scripts and modules in your package, and
+will use this information to generate a dependency on python, with the
+current major version, or on pythonX.Y if your scripts or modules need a
+specific python version. The dependency will be substituted into your
+package's control file wherever you place the token "${python:Depends}".
+
+If some modules need to be byte-compiled at install time, appropriate
+postinst and prerm scripts will be generated. If already byte-compiled
+modules are found, they are removed.
+
+If you use this program, your package should build-depend on python.
+
+=head1 OPTIONS
+
+=over 4
+
+=item I<module dirs>
+
+If your package installs python modules in non-standard directories, you
+can make dh_python check those directories by passing their names on the
+command line. By default, it will check /usr/lib/site-python,
+/usr/lib/$PACKAGE, /usr/share/$PACKAGE, /usr/lib/games/$PACKAGE,
+/usr/share/games/$PACKAGE and /usr/lib/python?.?/site-packages.
+
+Note: only /usr/lib/site-python, /usr/lib/python?.?/site-packages and the
+extra names on the command line are searched for binary (.so) modules.
+
+=item B<-V> I<version>
+
+If the .py files your package ships are meant to be used by a specific
+pythonX.Y version, you can set this option with the desired X.Y python
+version.
+Do not use if you ship modules in /usr/lib/site-python.
+
+=item B<-n>, B<--noscripts>
+
+Do not modify postinst/postrm scripts.
+
+=back
+
+=head1 CONFORMS TO
+
+Debian policy, version 3.5.7
+
+Python policy, version 0.3.7
+
+=cut
+
+init();
+
+my $cli = '/usr/bin/cli';
+
+# The current python major version
+# my $python_major;
+my $mono_version = `$cli -V 2>&1`;
+
+if (!-x "/usr/bin/monodis") {
+	error("Package mono-utils is not installed, aborting. (Probably forgot to Build-Depend on mono-utils.)");
+}
+
+if(system "grep \"Build-Dep.*mono-utils\" debian/control") { 
+   print "Warning: no Build-Depends on mono-utils!\n";
+}
+
+if (! defined $mono_version || $mono_version eq "") {
+	error("Mono is not installed, aborting. (Probably forgot to
+  Build-Depend on cli-virtual-machine.)");
+}
+elsif ($mono_version =~ /(mint|version)\ ([\d\.]+)/) {
+	$mono_version = "$2" ;
+} else { 
+	error("Unable to parse Mono version out of \"$mono_version\".");
+}
+
+# The next python version
+#my $python_nextversion = $python_version + 0.1;
+#my $python_nextmajor = $python_major + 1;
+#
+#my @python_allversions = ('1.5','2.1','2.2','2.3');
+#foreach (@python_allversions) {
+#	s/^/python/;
+#}
+
+# Check for -V
+my $usemono = $mono_version;
+if($dh{V_FLAG_SET}) {
+	$usemono = $dh{V_FLAG};
+}
+
+# Cleaning the paths given on the command line
+foreach (@ARGV) {
+	s#/$##;
+	s#^/##;
+}
+
+foreach my $package (@{$dh{DOPACKAGES}}) {
+	my $tmp=tmpdir($package);
+  my %deps;
+  my %libs;
+
+	delsubstvar($package, "mono:Depends"); # for idempotency
+	
+	# find binaries
+	find sub {
+     my $vers;
+     return unless -f and /\.(exe|dll)$/;
+		local *F;
+		return unless open F, "monodis --assemblyref $_|";
+    while(<F>) {
+       $vers=$1 if /Version=(.*)\n/;
+       $libs{$1}=$vers if /Name=(.*)\n/;
+    }
+		close F;
+	}, $tmp;
+
+  # we have a list of DLLs in %libs keys
+
+  if (%libs) {
+     my %libsLoc; # custom dll-to-pkgname map
+     my %minvLoc; # custom pkgname-to-min-version map
+     # first create reserve lists from mono.local
+     if(-r "debian/monolibs.local") {
+        my $l;
+        open($l, "<debian/monolibs.local");
+        while(<$l>) {
+           # syntax: 
+           # foobar.dll package-name
+           # optional with minimal/maximal version:
+           # package-name: (<= any-version-string)
+           # set 0 as version string to not match at a spec. version
+           if(/^(.+).dll\s(\S+)/) { $libsLoc{$1}=$2; }
+           if(/^[^:]+:\s*(.+)\n/) { $minvLoc{$1}=$2; }
+        }
+     }
+
+     # fill %deps with pkg names as keys
+     foreach my $lib (keys %libs) {
+        my $kand = $libsLoc{$lib}; # resolve via local map
+#        $kand = `dlocate -e /usr/lib/$lib.dll || dpkg -S /usr/lib/$lib.dll` 
+        $kand = `dpkg -S /usr/lib/$lib.dll` unless $kand;
+#        $kand = `dlocate -e $lib.dll | grep /usr/share/dotnet` unless $kand;
+        $kand = `dpkg -S $lib.dll | grep /usr/share/dotnet` unless $kand;
+        $kand =~ s/:.*//;
+        if($kand) { 
+           # we also don't want to have circular deps to this package
+           $deps{$kand} = 1 if($kand ne $package);
+        }
+        else {
+           print "Warning, $lib.dll not found on this system or in debian/mono.local!\n";
+        }
+     }
+
+     # some overrides
+     # $minvLoc{"mono-jit"} = ">= 0.29";
+
+     # preset the cli dep
+     
+        addsubstvar($package, "mono:Depends", "mono-jit (>> 0.29) | cli-virtual-machine");
+     
+     # finaly resolve the version and add it to substvars
+     foreach my $pkg (keys %deps) {
+        my $version = $minvLoc{$pkg};
+        $version =~ s#[\(\)]##g if $version;
+        if(!$version && `dpkg -s $pkg` =~ /^Version:\s*(\S+)/m) {
+           $version = ">= $1";
+           # FIXME add an option to match the exact versions
+           # match only the upstream version
+           if(!0) {
+              $version =~ s/-[^-]+$//;
+              $version =~ s/=/>/;
+           }
+        }
+        addsubstvar($package, "mono:Depends", $pkg, $version)
+     }
+	}
+}
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+This program may be a part of debhelper or mono-utils.
+
+=head1 AUTHOR
+
+Eduard Bloch <blade@debian.org>, partialy based on code from Brendan O'Dea <bod@debian.org>.
+
+=cut
