@@ -1,0 +1,165 @@
+mono (0.26-2) unstable; urgency=low
+
+  * No longer depend on an external libgc
+
+ -- Alp Toker <alp@atoker.com>  Tue, 26 Aug 2003 23:27:11 +0100
+
+mono (0.26-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Fri, 15 Aug 2003 15:41:38 +0100
+
+mono (0.24-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Wed,  7 May 2003 02:53:40 +0100
+
+mono (0.23-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Fri,  7 Mar 2003 20:32:37 +0000
+
+mono (0.22-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Thu,  6 Mar 2003 22:52:19 +0000
+
+mono (0.21-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Thu, 27 Feb 2003 22:55:33 +0000
+
+mono (0.20-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Mon, 24 Feb 2003 01:09:34 +0000
+
+mono (0.19-3) unstable; urgency=low
+
+  * Build libmono as a shared object (needed for mod_mono)
+
+ -- Alp Toker <alp@atoker.com>  Sat, 25 Jan 2003 05:26:44 +0000
+
+mono (0.19-2) unstable; urgency=low
+
+  * Build against the new libgc6c102
+  * Pipe binfmt-misc warnings to /dev/null
+
+ -- Alp Toker <alp@atoker.com>  Tue, 21 Jan 2003 07:17:12 +0000
+
+mono (0.19-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Tue, 21 Jan 2003 00:05:56 +0000
+
+mono (0.18-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Mon, 13 Jan 2003 17:16:34 +0000
+
+mono (0.17-3) unstable; urgency=low
+
+  * Include machine.config and anything else that goes in /etc/mono
+
+ -- Alp Toker <alp@atoker.com>  Tue, 17 Dec 2002 14:23:30 +0000
+
+mono (0.17-2) unstable; urgency=low
+
+  * Disable exuberant debugging in PPC trampoline code
+
+ -- Alp Toker <alp@atoker.com>  Mon, 16 Dec 2002 17:58:56 +0000
+
+mono (0.17-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Alp Toker <alp@atoker.com>  Tue, 10 Dec 2002 14:13:18 +0000
+
+mono (0.16-1) unstable; urgency=low
+
+  * New upstream version. Sorry I havn't been doing any CVS snapshots for
+     a month. I'll try and sort something out.
+  * Include a patch from Michel Danzer <daenzer@debian.org> to fix
+     idiotic build failure on non-i386 arches.
+  * Install /etc/mono/config and the manpage in the mono-common package,
+     and add a replaces for smooth upgrades (mono-config.5 used to be in
+     the mono-jit package).
+  * Switch from setting prefix to DESTDIR so /etc works too.
+  * Added some {}s to monoburg.y to make it parse correctly. Thanks to
+     Zoltan Varga's message on mono-list.
+  * Added data/config to the list of files that need to be cleaned 
+     manually.
+
+ -- Robert McQueen <robot101@debian.org>  Sat, 19 Oct 2002 16:16:08 +0100
+
+mono (0.15-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Robert McQueen <robot101@debian.org>  Sat, 24 Aug 2002 00:36:34 +0100
+
+mono (0.13-3) unstable; urgency=low
+
+  * Pass --disable-shared to configure, and link mono-jit statically.
+  * This turned out to be broken. Thanks to Dick Porter for putting up
+     with me moaning about libtool combinations for a day, and for fixing
+     it with the correct method I absolutely failed to see. Applied his
+     patch for this, should hit CVS soon or I'll back it out.
+  * Ship only a static libmono-dev for people interested in embedding.
+     Shared lib is useless because the API is massively unstable.
+  * Conflict the -dev with the old libmono0 until it is deemed useful
+     again.
+  * Change -a to -s in the binary-arch target so debhelper will only
+     build arch-specific packages if they're available on the build arch.
+  * Added mono-config.5 manpage to mono-jit package, and libmono.la and
+     pkg-config/mono files to libmono-dev package.
+
+ -- Robert McQueen <robot101@debian.org>  Wed, 14 Aug 2002 23:07:40 +0100
+
+mono (0.13-2) unstable; urgency=low
+
+  * Holiday maintainer upload. =)
+  * Switched to pristine upstream source tarball.
+  * Cleaned up debian/rules file, separated binary-arch/binary-indep
+     targets for builds on other arches.
+  * Stole the makefile magic from galeon (I did help write it =) to
+     automatically run configure or autogen.sh depending on whether we're
+     building from CVS or not, and then do the correct clean command
+     later.
+  * At the advice of Ximian folk, don't provide libmono0/libmono-dev for
+     the moment - the API is unstable.
+  * For when it does return... install the .a into libmono-dev and make
+     it arch: any.
+  * Include libmono.so.0 and libmono.so.0.0.0 into the mono-jit package.
+     These will be returned to a seperate package, and headers and static
+     libraries provided, when libmono's API is stable. To ease
+     transition, added a Replaces: header.
+  * Made mono-common arch: all, it contains no binaries currently.
+  * Leave out cil-opcodes.xml unless someone complains.
+  * Install documentation in mono-common, and have packages that depend
+     on it symlink to there instead. Made mono depend directly on
+     mono-common to prevent lintian griping about this. Added code to
+     postinsts of mono, mono-jit and mono-interpreter remove their doc
+     dir and replace it with a symlink on upgrades. Dpkg will not replace
+     a directory with a symlink, even if it's empty.
+  * Added -e to /bin/sh in the maintainer scripts.
+  * Don't ship monostyle.1 and monoburg.1 manpages, the programs are in
+     the mcs package and we don't ship them currently.
+  * Added undocumented symlink for monograph.1.
+  * Added rm to clean target for spare Makefiles left behind.
+
+ -- Robert McQueen <robot101@debian.org>  Sun,  4 Aug 2002 00:57:15 +0100
+
+mono (0.13-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Alp Toker <alp@atoker.com>  Sun, 28 Apr 2002 22:10:10 +0100

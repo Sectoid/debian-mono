@@ -1,0 +1,101 @@
+#!/usr/bin/make -f
+
+#export DH_VERBOSE=1
+export DH_COMPAT=3
+
+# Use ./configure if configure exists, ./autogen.sh if not.
+# If neither exist, exit with an error.
+CONFCMD:=$(shell test -x configure && echo "configure" || echo "")
+ifeq (${CONFCMD},)
+CONFCMD:=$(shell test -x autogen.sh && echo "autogen.sh" || echo "")
+$(shell touch needs-maintclean)
+endif
+ifeq (${CONFCMD},)
+$(error "neither configure nor autogen.sh found")
+endif
+
+build: build-stamp
+build-stamp:
+	dh_testdir
+	./$(CONFCMD) --prefix=/usr --with-gc=included \
+	  --mandir=\$${prefix}/share/man \
+	  --infodir=\$${prefix}/share/info \
+	  --sysconfdir=/etc
+	$(MAKE)
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp
+
+	# Use the right clean target depending if we ran ./autogen.sh or not
+	-if [ -e "needs-maintclean" ]; then	\
+	  rm -f needs-maintclean;		\
+	  $(MAKE) maintainer-clean;		\
+	else					\
+	  $(MAKE) distclean;			\
+	fi
+
+	# I shouldn't have to do this
+	rm -f mono/arch/arm/Makefile mono/arch/ppc/Makefile \
+	  mono/arch/sparc/Makefile mono/os/win32/Makefile \
+	  data/config config.log
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+	$(MAKE) install DESTDIR=$(PWD)/debian/tmp
+	install -o root -g root -m 644 debian/cli.binfmt \
+	  debian/mono-common/usr/share/binfmts/cli
+
+# Build architecture-independent files here.
+binary-indep: build install
+	dh_testdir -i
+	dh_testroot -i
+	dh_movefiles -i
+	dh_link -i
+	dh_installchangelogs -i ChangeLog
+	dh_installdocs -i
+#	dh_installexamples -i
+#	dh_installdebconf -i
+#	dh_installinfo -i
+	dh_undocumented -i
+	dh_installman -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir -s
+	dh_testroot -s
+	dh_movefiles -s
+	dh_link -s
+	dh_installchangelogs -s
+	dh_installdocs -s
+	dh_installexamples -s
+	dh_installmenu -s
+#	dh_installdebconf -s
+#	dh_installinfo -s
+	dh_undocumented -s
+	dh_installman -s
+	dh_strip -s
+	dh_compress -s
+	dh_fixperms -s
+	dh_makeshlibs -s
+	dh_installdeb -s
+	dh_shlibdeps -s
+	dh_gencontrol -s
+	dh_md5sums -s
+	dh_builddeb -s
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install

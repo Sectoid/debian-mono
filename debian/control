@@ -1,0 +1,60 @@
+Source: mono
+Section: interpreters
+Priority: optional
+Maintainer: Alp Toker <alp@atoker.com>
+Standards-Version: 3.5.6
+Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison
+
+Package: mono-jit
+Provides: cli-virtual-machine
+Architecture: i386
+Depends: ${shlibs:Depends}, mono-assemblies, mono-common (= ${Source-Version})
+Description: a .NET runtime environment
+ The Mono Project is an open development initiative sponsored by Ximian that is
+ working to develop an open source, Linux-based version of the Microsoft .NET
+ development platform. Its objective is to enable Linux developers to build and
+ deploy cross-platform .NET Applications. The project will implement various
+ technologies developed by Microsoft that have now been submitted to the ECMA
+ for standardization.
+
+Package: mono-interpreter
+Provides: cli-virtual-machine
+Architecture: any
+Depends: ${shlibs:Depends}, mono-assemblies, mono-common (= ${Source-Version})
+Recommends: mono-jit
+Description: the Mono interpreter
+ Description will be added soon.
+
+Package: mono-common
+Provides: cli-common
+Architecture: all
+Depends: binfmt-support, binfmt-detector-cli, cli-runtime
+Conflicts: binfmt-support (<< 1.1.2)
+Replaces: mono-jit (<< 0.16)
+Description: common files for the Mono CLI runtimes
+ Files needed by the cli-runtime.
+
+Package: mono
+Architecture: all
+Depends: mono-jit (= ${Source-Version}) | mono-interpreter (= ${Source-Version}), mono-common (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs
+Description: The Mono .NET development environment
+ A metapackage containing dependencies for the components of Mono.
+
+Package: mono-utils
+Architecture: any
+Depends: ${shlibs:Depends}, mono-assemblies
+Description: Mono utilities
+ Description will be added soon. Includes:
+ monodis - CIL image content dumper and disassembler
+
+Package: libmono0
+Architecture: i386
+Depends: ${shlibs:Depends}, mono-jit
+Description: Mono libraries
+ Shared object libraries for Mono, used for embedding/hosting of the JIT.
+
+Package: libmono-dev
+Architecture: i386
+Depends: libmono0 (= ${Source-Version})
+Description: Mono libraries - Development files
+ Header files and static libraries for libmono.

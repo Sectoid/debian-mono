@@ -1,0 +1,18 @@
+This package was debianized by Alp Toker <alp@atoker.com> using the Monodeb
+build system.
+
+It was downloaded via CVS from http://www.go-mono.com/
+
+Upstream Authors:
+Miguel de Icaza (miguel@ximian.com)
+Paolo Molaro (lupus@ximian.com)
+Dietmar Maurer (dietmar@ximian.com)
+
+Copyright:
+
+You are free to distribute this software under the terms of the GNU General
+Public License and GNU Library General Public License.  On Debian systems, the
+complete text of the GNU General Public License can be found in
+/usr/share/common-licenses/GPL file.  On Debian systems, the complete text of
+the GNU Library General Public License can be found in
+/usr/share/common-licenses/LGPL file.

@@ -1,0 +1,7 @@
+#!/bin/sh -e
+
+if [ remove = "$1" -a -x /usr/sbin/update-binfmts ]; then
+  /usr/sbin/update-binfmts --package mono-common --remove cli /usr/bin/cli &> /dev/null
+fi
+
+#DEBHELPER#

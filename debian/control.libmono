@@ -1,0 +1,12 @@
+Package: libmono0
+Architecture: any
+Section: libs
+Depends: ${shlibs:Depends}
+Description: Mono libraries
+ Shared libraries for the use of Mono by native applications.
+
+Package: libmono-dev
+Architecture: any
+Depends: libmono0 (= ${Source-Version})
+Description: Mono libraries - Development files
+ Header files and static libraries for libmono.

@@ -1,0 +1,7 @@
+#!/bin/sh -e
+
+if [ configure = "$1" -a -x /usr/sbin/update-binfmts ]; then
+  /usr/sbin/update-binfmts --import cli &> /dev/null
+fi
+
+#DEBHELPER#
