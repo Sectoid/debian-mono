@@ -15,9 +15,7 @@ use Debian::Debhelper::Dh_Lib;
 
 =head1 SYNOPSIS
 
-FIXME: document debian/mono.local, document the usage
-
-B<dh_python> [S<I<debhelper options>>] [B<-n>] [B<-V> I<version>] [S<I<module dirs ...>>]
+B<dh_python> [S<I<debhelper options>>]
 
 =head1 DESCRIPTION
 
@@ -88,7 +86,7 @@ if ( !-x "/usr/bin/monodis" ) {
 }
 
 if ( system "grep \"Build-Dep.*mono-utils\" debian/control" ) {
-    print "Warning: no Build-Depends on mono-utils!\n";
+    warning("Warning! No Build-Depends on mono-utils!");
 }
 
 if ( !defined $mono_version || $mono_version eq "" ) {
@@ -128,9 +126,36 @@ my $fh;
 my %libdata;
 open( $fh, "cat /var/lib/dpkg/info/*.netlibs debian/*/DEBIAN/netlibs 2>/dev/null |" );
 while (<$fh>) {
-    /(\S+)\s+(\S+)\s+(\S+)/;
+    /(\S+)\s+(\S+)\s+(\w.*)\n?/;
     $libdata{"$1/$2"} = $3;
 }
+
+## shared code
+my %shlibdata;
+open( $fh, "cat /var/lib/dpkg/info/*.shlibs 2>/dev/null |" );
+while (<$fh>) {
+    /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+    $shlibdata{"$1.so.$2"} = $3;
+}
+
+
+sub extraDeps {
+   my $config=$_[0].".config";
+   my $ret=undef;
+   if( -r $config) {
+      $config=`cat $config`;
+      while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
+         $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
+      }
+   }
+   $ret=~s/^, //;
+   print "TEST: $ret\n";
+   return $ret;
+}
+
+## /shared code
+
+
 
 #print (values %libdata);
 #exit 1;
@@ -160,7 +185,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
              $key = $vers . "__" . lc($key);
              my $compat = "$name/$key";
              if(!defined($libdata{$compat})) {
-                print "Warning: no Debian dependency data for $name ($key)!\n";
+                warning("Warning! No Debian dependency data for $name ($key)!");
              }
              else {
                 $depkgs{$libdata{$compat}} = 1;
@@ -175,7 +200,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     #exit 1;
 
     addsubstvar( $package, "net:Depends",
-        "mono-jit (>> $mono_version) | cli-virtual-machine", join(", ", (keys %depkgs)) );
+        "mono-jit (>> $mono_version) | cli-virtual-machine".(%depkgs?join(", ", "", (keys %depkgs)):""));
 
     #     # finaly resolve the version and add it to substvars
     #     foreach my $pkg (keys %deps) {

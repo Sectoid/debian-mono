@@ -11,7 +11,7 @@ use Debian::Debhelper::Dh_Lib;
 
 =head1 SYNOPSIS
 
-B<dh_makenetlibs> [S<I<debhelper options>>] [B<-m>I<minversion>] [B<-l>I<nextincompatible>] [B<-X>I<item>]
+B<dh_makenetlibs> [S<I<debhelper options>>] [B<-m>I<minversion>] [B<-V>I<[dependancies]>] [B<-l>I<nextincompatible>] [B<-X>I<item>]
 
 =head1 DESCRIPTION
 
@@ -22,7 +22,7 @@ libraries it finds.
 By default, dh_makenetlibs scans the DLL files in the package
 directories and writes the discovered compatibility data (major/minor,
 build, token) to "netlibs" files int he appropriate packages. The
-dependencies on native shared libs are resolved as good as possible.
+dependencies on native shared libs are resolved using dpkg-shlibdeps.
 
 However, if a file like debian/package.netlibs is found, this one will
 be installed and no scanning is performed.
@@ -106,10 +106,31 @@ and
 
 init();
 
+## shared code
+my $fh;
+my %shlibdata;
+open( $fh, "cat /var/lib/dpkg/info/*.shlibs 2>/dev/null |" );
+while (<$fh>) {
+    /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+    $shlibdata{"$1.so.$2"} = $3;
+}
+
+
 sub extraDeps {
    my $config=$_[0].".config";
-   return undef;
+   my $ret=undef;
+   if( -r $config) {
+      $config=`cat $config`;
+      while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
+         $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
+      }
+   }
+   $ret=~s/^, //;
+   print "TEST: $ret\n";
+   return $ret;
 }
+
+## /shared code
 
 foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     next if is_udeb($package);
