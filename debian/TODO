@@ -1,6 +1,7 @@
 TODO soon:
- - Finalize control file, decide on all package names.
  - Choose a good policy for future assembly packages
    mono-assemblies-base, mono-assemblies-foo for 3rd party stuff
- - files lists for lib package
- - proper local shlibs files for the packages
+
+ - (pablo) svn-inject the -xsp and libapache packages
+
+ - look over the AOD package
