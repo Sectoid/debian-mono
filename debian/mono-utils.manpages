@@ -1,1 +1,4 @@
-debian/man/*.1
+debian/man/pedump.1
+debian/man/monograph.1
+debian/man/monosn.1
+debian/tmp/usr/share/man/man1/monodis.1
