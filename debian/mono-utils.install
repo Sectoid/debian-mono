@@ -1,0 +1,1 @@
+debian/dh_makenetlibs debian/dh_netdeps /usr/bin

@@ -106,6 +106,10 @@ and
 
 init();
 
+if ( system "grep \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
+    warning("Warning! No Build-Depends on mono-utils (>= 0.95)!");
+}
+
 ## shared code
 my $fh;
 my %shlibdata;
