@@ -1,3 +1,9 @@
+mono (0.91-2) unstable; urgency=low
+
+  * NOT RELEASED YET
+
+ -- Eduard Bloch <blade@debian.org>  Sun, 30 May 2004 23:07:42 +0200
+
 mono (0.91-1) unstable; urgency=low
 
   * New upstream release (Closes: Bug#249419)

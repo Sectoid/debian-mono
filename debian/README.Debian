@@ -42,7 +42,10 @@ mono for Debian
    - cli-virtual-machine: depend on it to get working /usr/bin/cli with
       the core assemblies parts (no arch-depent part)
       
-5. (for developers) Package installation policy be found on
+5. (for developers) 
+   The main coordination site of the maintainers is on
+   http://pkg-mono.alioth.debian.org/, more details can be found there.
+   Package installation policy be found on
    http://wiki.debian.net/?MonoConventions . Recent snapshot:
 
 | MONO Conventions Version: 0.1.2
