@@ -9,7 +9,8 @@ mono (1.0-4) unstable; urgency=medium
       finaly prevent "unallowed" architectures from trying to build mono)
     + debian/README.Debian: fixed typo
   * Eduard Bloch
-    + --with-ntpl=no, still breaks on kernel 2.4 (closes: #256755, #257412)
+    + --with-ntpl=no! When compiled with NTPL support, it still breaks on
+      kernel 2.4 though not using the other libs (closes: #256755, #257412)
     + patched Makefiles to link explicitely with glib and dl, thanks to
       Russ Allbery <rra@stanford.edu> (closes: #262023)
     + disabled mono-mint build for i386 and powerpc, upstream wish
