@@ -7,22 +7,22 @@ export MONO_SHARED_DIR=$(CURDIR)
 DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
 ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
-JIT="--with-jit=no"
+JIT = --with-jit=no
 endif
 
 ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),s390)
-JIT="--with-jit=no --with-nptl=no"
-ATG="arch_target=s390"
+JIT = --with-jit=no --with-nptl=no
+ATG = arch_target=s390
 endif
 
 ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),alpha)
-JIT="--with-jit=no"
-ATG="arch_target=alpha"
+JIT = --with-jit=no
+ATG = arch_target=alpha
 endif
 
 ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),arm)
-JIT="--with-jit=no"
-ATG="arch_target=arm"
+JIT = --with-jit=no
+ATG = arch_target=arm
 endif
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
