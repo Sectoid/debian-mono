@@ -1,3 +1,9 @@
+mono (0.29.99.20040114-3) unstable; urgency=low
+
+  * NOT RELEASED YET
+
+ -- Eduard Bloch <blade@debian.org>  Thu, 22 Jan 2004 00:57:56 +0100
+
 mono (0.29.99.20040114-2) unstable; urgency=low
 
   * Finally closing the outstanding ITPs (closes: #132882)

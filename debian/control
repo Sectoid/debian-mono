@@ -38,6 +38,8 @@ Description: fast CLI (.NET/Mono) JIT compiler
 Package: mono-mint
 Provides: cli-virtual-machine
 Architecture: i386 sparc powerpc arm hppa s390
+Conflicts: libmint0, libmint-dev
+Replaces: libmint0, libmint-dev
 Depends: ${shlibs:Depends}, mono-assemblies-base (= ${Source-Version}), mono-common (= ${Source-Version})
 Recommends: mono-jit
 Description: generic CLI (.NET/Mono) code interpreter
