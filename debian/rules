@@ -48,6 +48,7 @@ clean: unpatch
 	-$(MAKE) distclean
 	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper
+	-cd debian && rm -f dh_netdeps.1 dh_makenetlibs.1 dh_installxsp.1
 	dh_clean
 
 install: build
