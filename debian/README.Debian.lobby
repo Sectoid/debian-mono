@@ -1,0 +1,9 @@
+mono for Debian
+---------------
+
+Because MONO requires a development version of the ICU library, the
+i18n support is limited. The library is not available in Debian because
+of the usual unpredictable compatibility issues with unreleased
+libraries.
+Please contact the Mono and ICU developers if you wish to improve this
+situation.

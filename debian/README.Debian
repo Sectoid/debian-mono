@@ -1,0 +1,10 @@
+mono for Debian
+---------------
+
+ - Because MONO requires a development version of the ICU library, the
+   i18n support is limited.
+ 
+ - Documentation package is not ready yet because of inconsistency and
+   evil build dependencies.
+
+ Eduard Bloch <blade@debian.org> -- Thu, 15 Jan 2004 12:30:55 +0100
