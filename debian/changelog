@@ -1,3 +1,12 @@
+mono (1.0.2-1) unstable; urgency=medium
+
+  * New upstream (bugfix) release
+  * Mirco 'meebey' Bauer
+    - applied debian/rules patch to fix FTBFS on i386 with amd64 kernel
+      (Closes: #265510 thanks to Kurt Roeckx <Q@ping.be>)
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 24 Sep 2004 19:06:12 +0200
+
 mono (1.0.1-1) unstable; urgency=medium
 
   * New upstream (bugfix) release

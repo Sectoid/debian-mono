@@ -28,6 +28,15 @@ endif
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 
+export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
+  confflags += --build $(DEB_HOST_GNU_TYPE)
+else
+  confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+endif
+
 include /usr/share/dpatch/dpatch.make
 
 cli-wrapper: debian/cli-wrapper.c
@@ -39,7 +48,7 @@ build-stamp: cli-wrapper
 	dh_testdir
 	# using a better dllmap (should be fixed since beta1)
 	#cp $(CURDIR)/debian/config.in $(CURDIR)/data/config.in
-	./configure --prefix=/usr --with-gc=included \
+	./configure $(confflags) --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
