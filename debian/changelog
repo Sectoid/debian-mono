@@ -4,8 +4,8 @@ mono (0.29.99.20040114-4) unstable; urgency=low
   * Eduard Bloch:
     + catch-them-all cli-wrapper rewrite
   * Teófilo Ruiz Suárez:
-    + removed libicu26-dev from Build-Depends and icu-config from debian/
-    (Closes: #231966)
+    + removed libicu26-dev from Build-Depends so mono-jit don't depend on
+    libicu26 (Closes: #231966)
 
  -- Eduard Bloch <blade@debian.org>  Mon,  9 Feb 2004 00:23:40 +0100
 
