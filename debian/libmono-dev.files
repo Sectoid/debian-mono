@@ -1,4 +1,4 @@
 usr/lib/libmono*.a
 usr/lib/libmono*.so
-usr/lib/pkgconfig
+usr/lib/pkgconfig/mono.pc
 usr/include
