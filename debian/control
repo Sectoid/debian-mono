@@ -1,7 +1,7 @@
 Source: mono
 Section: interpreters
 Priority: optional
-Maintainer: Debian Mono maintainers <pkg-mono-devel@alioth.debian.org>
+Maintainer: Debian Mono Group <pkg-mono-group@alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>
 Standards-Version: 3.6.1
 Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake
@@ -34,7 +34,7 @@ Description: fast CLI (.NET/Mono) code interpreter
 
 Package: mono-mint
 Provides: cli-virtual-machine
-Architecture: any
+Architecture: i386, sparc, powerpc, arm, hppa, s390
 Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
 Recommends: mono-jit
 Description: generic CLI (.NET/Mono) code interpreter
