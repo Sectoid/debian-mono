@@ -8,3 +8,29 @@ TODO soon:
  - look over the AOD package
 
  - (meebey) package some .NET programs like monodoc and monodevelop (CVS branch only)
+
+
+Test this with recent mono n=11:
+
+// $Id: ackermann.csharp,v 1.0 2002/02/14 10:58:00 dada Exp $
+// http://dada.perl.it/shootout/
+
+using System;
+
+class App {
+
+    public static int Ack(int M, int N) {
+        if (M == 0) return( N + 1 );
+        if (N == 0) return( Ack(M - 1, 1) );
+        return( Ack(M - 1, Ack(M, (N - 1))) );
+    }
+    
+    public static int Main(String[] args) {
+        int n;
+        n = System.Convert.ToInt32(args[0]);
+        if(n < 1) n = 1;
+    
+        Console.WriteLine("Ack(3," + n.ToString() + "): " + System.Convert.ToString(Ack(3, n)) + "\n");
+        return(0);
+    }
+}
