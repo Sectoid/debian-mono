@@ -1,0 +1,4 @@
+usr/lib/libmint*.a
+usr/lib/libmint*.so
+usr/lib/pkgconfig
+usr/include

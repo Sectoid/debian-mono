@@ -7,9 +7,9 @@ Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison
 
 Package: mono-common
 Provides: cli-common
-Architecture: all
+Architecture: any
 Depends: binfmt-support
-Conflicts: binfmt-support (<< 1.1.2)
+Conflicts: binfmt-support (<< 1.1.2), binfmt-detector-cli
 Replaces: mono-jit (<< 0.16)
 Description: common files for the Mono CLI runtimes
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -71,7 +71,7 @@ Section: libs
 Depends: ${shlibs:Depends}
 Description: libraries for the Mono interpreter
  Shared libraries for Mono, used for embedding/hosting of the
- JIT. The package also contains libmono-profiler-conv used for
+ JIT. The package also contains libmono-profiler-cov used for
  optimisation work.
  .
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -82,6 +82,7 @@ Package: libmono-dev
 Section: devel
 Architecture: i386
 Depends: libmono0 (= ${Source-Version})
+Conflicts: libmint-dev
 Description: libraries for the Mono interpreter - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
  .
@@ -106,6 +107,7 @@ Package: libmint-dev
 Architecture: all
 Section: devel
 Depends: libmint0 (= ${Source-Version})
+Conflicts: libmono-dev
 Description: libraries for the Mono (mint) interpreter - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
  .

@@ -11,6 +11,8 @@ CONFCMD:=$(shell test -x autogen.sh && echo "autogen.sh" || echo "")
 $(shell touch needs-maintclean)
 endif
 
+VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
+
 build: build-stamp
 build-stamp:
 	dh_testdir
@@ -91,7 +93,8 @@ binary-arch: build install
 	dh_strip -s
 	dh_compress -s
 	dh_fixperms -s
-	dh_makeshlibs -s
+	#dh_makeshlibs -s
+	for s in debian/*.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} >> debian/shlibs.local ; done
 	dh_installdeb -s
 	dh_shlibdeps -s
 	dh_gencontrol -s
