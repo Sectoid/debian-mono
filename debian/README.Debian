@@ -20,16 +20,34 @@ mono for Debian
     SPARC
     SPARC v9
  
-3. Purge your ~/.wapi directory if you see messages like:
+3. Typical problems:
+3a.  Purge your ~/.wapi directory if you see messages like:
 
-   ** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check
-   failed.
+     ** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check
+     failed.
 
-   ** (/tmp/hello.exe:23770): WARNING **: Failed to attach shared memory!
-   Falling back to non-shared handles
+     ** (/tmp/hello.exe:23770): WARNING **: Failed to attach shared memory!
+     Falling back to non-shared handles
 
-   Reason:
-   02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
+     Reason:
+     02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
+3b. Question: 
+    Mono does not work for me (wrong version of mscorlib reported) or
+    monodevelop breaks on start (MonoDevelop.Core.dll has incorrect
+    version...)
+    Answer:
+    Most likely you have compiled some old mono version before and have
+    a funny mixture of upstream and Debian files in different versions.
+    Make sure that /usr/local does not appear in the output of the
+    following commands and remove the particular files in /usr/local/...:
+
+    which mono
+    which mint
+    ldd $(which mono)
+    ls /usr/local/lib/Mono*dll
+    ls /usr/local/lib/System*dll
+    ls /usr/local/lib/I18*dll
+    (and maybe most other dll files there)
 
 4. Provisoric virtual packages:
 
