@@ -10,7 +10,7 @@ Standards-Version: 3.6.1
 Package: mono-common
 Provides: cli-common
 Architecture: alpha arm hppa powerpc s390 sparc i386
-Depends: binfmt-support (>= 1.1.2), dpkg-dev
+Depends: binfmt-support (>= 1.1.2)
 Conflicts: binfmt-detector-cli, cli-common
 Replaces: mono-jit (<< 0.16), binfmt-detector-cli
 Description: common files for the Mono CLI runtimes
@@ -24,7 +24,7 @@ Description: common files for the Mono CLI runtimes
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc s390
-Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion}, mono-common (= ${Source-Version})
+Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion}, mono-common (= ${Source-Version}), dpkg-dev
 Description: fast CLI (.NET/Mono) JIT compiler
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
