@@ -5,6 +5,7 @@ Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>
 Standards-Version: 3.6.1
 Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake
+Build-Conflicts: libmint-dev
 
 Package: mono-common
 Provides: cli-common
@@ -67,7 +68,7 @@ Description: Mono utilities
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
  .
- This package includes varios tools useful for .NET developers, like
+ This package includes various tools useful for .NET developers, like
  monodis, pedump and monograph.
 
 Package: libmono0
