@@ -1,10 +1,12 @@
-mono (1.0.2-2) unstable; urgency=high
+mono (1.0.4-0pre1) unstable; urgency=high
 
   * NOT RELEASED YET
+  * New upstream release
   * Mirco 'meebey' Bauer
     + removed automake from build-deps 
+    + JIT seems to be stable now (Closes: #258041)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 12 Oct 2004 21:30:53 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 5 Dec 2004 16:09:32 +0200
 
 mono (1.0.2-1) unstable; urgency=high
 

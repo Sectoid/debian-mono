@@ -5,6 +5,7 @@ export DH_COMPAT=3
 export MONO_SHARED_DIR=$(CURDIR)
 
 DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
+DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
 
 #ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
 #JIT = --with-jit=no
@@ -55,7 +56,7 @@ build-stamp: cli-wrapper
 	# we don't touch precompiled stuff
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE) -j5 $(ATG)
-	( cat debian/mono-jit.postinst.head; ARCH= ; case `dpkg-architecture -qDEB_HOST_ARCH` in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
+	( cat debian/mono-jit.postinst.head; ARCH= ; case $(DEB_HOST_ARCH) in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
 	touch build-stamp
 
 clean: unpatch
