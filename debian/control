@@ -2,6 +2,7 @@ Source: mono
 Section: interpreters
 Priority: optional
 Maintainer: Debian Mono maintainers <pkg-mono-devel@alioth.debian.org>
+Uploaders: Eduard Bloch <blade@debian.org>
 Standards-Version: 3.6.1
 Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake
 
@@ -22,7 +23,7 @@ Description: common files for the Mono CLI runtimes
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386
-Depends: ${shlibs:Depends}, mono-assemblies, mono-common (= ${Source-Version})
+Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
 Description: fast CLI (.NET/Mono) code interpreter
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
@@ -45,7 +46,7 @@ Description: generic CLI (.NET/Mono) code interpreter
  
 Package: mono
 Architecture: all
-Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-common (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs
+Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-common (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
 Description: The Mono .NET development environment
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
@@ -56,7 +57,7 @@ Description: The Mono .NET development environment
 Package: mono-utils
 Architecture: any
 Section: devel
-Depends: ${shlibs:Depends}, mono-assemblies
+Depends: ${shlibs:Depends}, mono-assemblies-base
 Description: Mono utilities
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
@@ -95,9 +96,8 @@ Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
 Description: libraries for the Mono (mint) interpreter
- Shared object libraries for Mono, used for embedding/hosting of the
- JIT. The package also contains libmono-profiler-conv used for
- optimisation work.
+ Shared object libraries for mint, the generic .NET code indepreter from
+ the Mono Project.
  .
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
@@ -109,7 +109,8 @@ Section: devel
 Depends: libmint0 (= ${Source-Version})
 Conflicts: libmono-dev
 Description: libraries for the Mono (mint) interpreter - Development files
- Header files and static libraries for libmono and libmono-profiler-conv.
+ Header files and static libraries for libmint0 library of the Mono
+ Project.
  .
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
