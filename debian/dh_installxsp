@@ -46,7 +46,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
 	    if( ! -d "$tmp/etc/xsp/conf.d/".pkgfilename($package)) {
 		doit("install","-d","$tmp/etc/xsp/conf.d/".pkgfilename($package));
 	    }
-	    doit("install",$hostfile,"$tmp/etc/xsp/conf.d/".pkgfilename($package)."/10_".pkgfilename($package));
+	    doit("install","-m",644,$hostfile,"$tmp/etc/xsp/conf.d/".pkgfilename($package)."/10_".pkgfilename($package));
 
 	    if( ! -d "$tmp/etc/mono-server/conf.d" ) {
 		doit("install","-d","$tmp/etc/mono-server/conf.d");
@@ -55,7 +55,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
 		doit("install","-d","$tmp/etc/mono-server/conf.d/".pkgfilename($package));
 	    }
 	    
-	    doit("install",$hostfile,"$tmp/etc/mono-server/conf.d/".pkgfilename($package)."/10_".pkgfilename($package));
+	    doit("install","-m",644,$hostfile,"$tmp/etc/mono-server/conf.d/".pkgfilename($package)."/10_".pkgfilename($package));
 
 	    if ($hostfile ne '') {
                 if (! $dh{NOSCRIPTS}) {
