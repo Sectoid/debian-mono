@@ -65,8 +65,8 @@ install: build
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	cd debian ; for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
 		do chmod +x $$x; pod2man $$x > $$x.1 ; done
-	# this is no longer installed by the build system, why?
-	cp -a ./mono/metadata/monosn $(CURDIR)/debian/tmp/usr/bin
+#	# this is no longer installed by the build system, why?
+#	cp -a ./mono/metadata/monosn $(CURDIR)/debian/tmp/usr/bin
 	# removing trash (real assemblies/libs get build by the mcs source package)
 	rm -f $(CURDIR)/debian/tmp/usr/lib/libMonoPosixHelper*
 	rm -f $(CURDIR)/debian/tmp/usr/lib/mscorlib.dll

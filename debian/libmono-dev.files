@@ -1,4 +1,6 @@
 usr/lib/libmono*.a
+usr/lib/libMono*.a
 usr/lib/libmono*.so
+usr/lib/libMono*.so
 usr/lib/pkgconfig/mono.pc
 usr/include

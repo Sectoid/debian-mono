@@ -1,8 +1,11 @@
-mono (0.96-2) unstable; urgency=low
+mono (0.97-1) unstable; urgency=low
 
-  * NOT RELEASED YET
+  * (NOT RELEASED YET) New upstream release
+  * Eduard Bloch
+    + Added libMonoPosixHelper... to libmono... packages
+    + monosn is gone, using sn to get the signature strings now
 
- -- Eduard Bloch <blade@debian.org>  Sat, 19 Jun 2004 14:46:32 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 28 Jun 2004 01:14:32 +0200
 
 mono (0.96-1) unstable; urgency=low
 

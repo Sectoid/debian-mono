@@ -172,9 +172,8 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
             chomp;
             my ( $library, $ver, $libfile );
             $libfile = $_;
-            my $sig = `monosn -T $_`;
-            $sig =~ s/.*token is //;
-            chomp($sig);
+            my $sig = `sn -T $_ 2>/dev/null`;
+            $sig =~ s/.*key token: (\w+).*/$1/is;
             if($sig=~/\s/) {
                warning "$libfile has no valid signature, ignoring";
                next dll;
