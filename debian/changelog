@@ -13,6 +13,8 @@ mono (0.95-0pre1v3) unstable; urgency=low
     + enabled preview features (.NET 1.2, generics)
   * Michael Schiansky
     + Since beta1 (0.91) dllmaps are handled cleanly (Closes: #241686)
+  * Pablo Fischer
+    + Added autoscript support to dh_installxsp	
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon,  7 Jun 2004 00:54:51 +0200
 
