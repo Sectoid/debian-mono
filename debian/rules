@@ -10,13 +10,12 @@ ifeq (${CONFCMD},)
 CONFCMD:=$(shell test -x autogen.sh && echo "autogen.sh" || echo "")
 $(shell touch needs-maintclean)
 endif
-ifeq (${CONFCMD},)
-$(error "neither configure nor autogen.sh found")
-endif
 
 build: build-stamp
 build-stamp:
 	dh_testdir
+	echo ...testing whether configure or autogen.sh check was successfull
+	test "${CONFCMD}"
 	./$(CONFCMD) --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
@@ -32,11 +31,11 @@ clean:
 	# Use the right clean target depending if we ran ./autogen.sh or not
 	-if [ -e "needs-maintclean" ]; then	\
 	  rm -f needs-maintclean;		\
-	  $(MAKE) maintainer-clean;		\
+	  -$(MAKE) maintainer-clean;		\
 	else					\
-	  $(MAKE) distclean;			\
+	  -$(MAKE) distclean;			\
 	fi
-	cd debian/detector && $(MAKE) clean
+	-cd debian/detector && $(MAKE) clean
 
 	# I shouldn't have to do this
 	rm -f mono/arch/arm/Makefile mono/arch/ppc/Makefile \
