@@ -1,11 +1,4 @@
-mono (0.29.99.20040114-0pre1v2) unstable; urgency=low
-
-  * NOT RELEASED YET
-  * Adapted the /usr/share/doc/mono-interpreter (now -mint) fixing hooks
-
- -- Eduard Bloch <blade@debian.org>  Sat, 17 Jan 2004 14:18:44 +0100
-
-mono (0.29.99.20040114-0pre1v1) unstable; urgency=low
+mono (0.29.99.20040114-1) unstable; urgency=low
 
   * New maintainer: Debian Mono maintainers <pkg-mono-devel@alioth.debian.org>
     after the previous maintainers stoped the work on it
@@ -18,8 +11,9 @@ mono (0.29.99.20040114-0pre1v1) unstable; urgency=low
   * merged binfmt-detector-cli and mono-common since they were already linked
     together and another 3kB package makes no much sense
   * limited the arch list to those officially supported by the Mono Project
+  * Adapted the /usr/share/doc/mono-interpreter (now -mint) fixing hooks
 
- -- Eduard Bloch <blade@debian.org>  Wed, 14 Jan 2004 23:02:54 +0100
+ -- Eduard Bloch <blade@debian.org>  Sun, 18 Jan 2004 19:11:04 +0100
 
 mono (0.26-2) unstable; urgency=low
 
