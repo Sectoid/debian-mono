@@ -1,3 +1,10 @@
+mono (1.0-5) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer
+    + debian/rules: s390 build should work now
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 08 Aug 2004 16:38:32 +0200
+
 mono (1.0-4) unstable; urgency=low
 
   * the "sorry for forgetting the NOT RELEASED YET tags" release
@@ -21,13 +28,6 @@ mono (1.0-2) unstable; urgency=medium
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 07 Jul 2004 18:53:32 +0200
 
-mono (1.0-1) unstable; urgency=low
-
-  * New upstream release (1.0 final)
-  * Mirco 'meebey' Bauer
-    + debian/rules: cleanup
-
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 30 Jun 2004 18:41:27 +0200
 
 mono (0.97-1) unstable; urgency=medium
 

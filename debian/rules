@@ -11,7 +11,7 @@ JIT="--with-jit=no"
 endif
 
 ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),s390)
-JIT="--with-jit=no"
+JIT="--with-jit=no --with-nptl=no"
 ATG="arch_target=s390"
 endif
 
