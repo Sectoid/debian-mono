@@ -1,3 +1,10 @@
+mono (0.31-3) unstable; urgency=low
+
+  * NOT RELEASED YET
+  * documentated supported architectures in README.Debian
+
+ -- Mirco 'meebey' Bauer <meebey@meebey.net>  Sun, 02 May 2004 19:19:22 +0200
+
 mono (0.31-2) unstable; urgency=low
 
   * kernel detection overridden to build 2.4 compatible version 
