@@ -1,3 +1,15 @@
+mono (1.0.5-0pre1) unstable; urgency=high
+
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + disabled building of .NET 2.0 classlib, because it breaks too much.
+      Upstream said it should not be used, even Novell does not ship it. 
+      This fixes some very strange bugs, all tested against 1.0.5.    
+      (Closes: #286270, #276464, #287279)
+    + cleanups in debian/rules
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 30 Jan 2004 01:07:36 +0200
+
 mono (1.0.4-1) unstable; urgency=high
 
   * New upstream release

@@ -25,14 +25,14 @@ Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc s390
 Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion}, mono-common (= ${Source-Version})
-Description: fast CLI (.NET/Mono) JIT compiler
+Description: fast CLI/.NET JIT compiler for Mono
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
  .
  This package contains the Virtual Execution Environment and code
  generator (Just-in-Time and Ahead-of-Time) "mono" which runs CLI/.NET
- applications, currently available for i386 and powerpc architectures
+ applications, currently available for i386, powerpc and s390 architectures
  only.
 
 Package: mono-mint
@@ -42,7 +42,7 @@ Conflicts: libmint0, libmint-dev
 Replaces: libmint0, libmint-dev
 Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion}, mono-common (= ${Source-Version})
 Recommends: mono-jit
-Description: generic CLI (.NET/Mono) code interpreter
+Description: deprecated CLI/.NET code interpreter for Mono
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.

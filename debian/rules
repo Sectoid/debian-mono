@@ -1,36 +1,20 @@
 #!/usr/bin/make -f
 
 #export DH_VERBOSE=1
-export DH_COMPAT=3
 export MONO_SHARED_DIR=$(CURDIR)
-
-DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
-DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
-
-#ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
-#JIT = --with-jit=no
-#endif
-
-ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),s390)
-JIT = --with-jit=yes --with-nptl=no
-ATG = arch_target=s390
-endif
-
-#ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),alpha)
-#JIT = --with-jit=no
-#ATG = arch_target=alpha
-#endif
-
-#ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),arm)
-#JIT = --with-jit=no
-#ATG = arch_target=arm
-#endif
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 
-export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
+DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
+DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_GNU_TYPE  := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+
+ifeq ($(DEB_BUILD_ARCH), s390)
+  JIT = --with-jit=yes --with-nptl=no
+  ATG = arch_target=s390
+endif
 
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
   confflags += --build $(DEB_HOST_GNU_TYPE)
@@ -46,14 +30,12 @@ cli-wrapper: debian/cli-wrapper.c
 build: patch build-stamp
 build-stamp: cli-wrapper
 	dh_testdir
-	# using a better dllmap (should be fixed since beta1)
-	#cp $(CURDIR)/debian/config.in $(CURDIR)/data/config.in
 	./configure $(confflags) --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
-	  --with-preview=yes --with-tls=pthread
-	# we don't touch precompiled stuff
+	  --with-tls=pthread
+	# we don't install precompiled stuff (getting those build by the mcs source package)
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE) -j5 $(ATG)
 	( cat debian/mono-jit.postinst.head; ARCH= ; case $(DEB_HOST_ARCH) in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
@@ -63,18 +45,9 @@ clean: unpatch
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
-	# Use the right clean target depending if we ran ./autogen.sh or not
-	-if [ -e "needs-maintclean" ]; then	\
-	  rm -f needs-maintclean;		\
-	  $(MAKE) maintainer-clean;		\
-	else					\
-	  $(MAKE) distclean;			\
-	fi
+	-$(MAKE) distclean
 	-cd debian/detector && $(MAKE) clean
-	# I shouldn't have to do this
-	rm -f mono/arch/arm/Makefile mono/arch/ppc/Makefile \
-	  mono/arch/sparc/Makefile mono/os/win32/Makefile \
-	  data/config config.log cli-wrapper
+	rm -f cli-wrapper
 	dh_clean
 
 install: build
@@ -85,11 +58,9 @@ install: build
 	$(MAKE) $(ATG) install DESTDIR=$(CURDIR)/debian/tmp
 	cd debian ; for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
 		do chmod +x $$x; pod2man $$x > $$x.1 ; done
-	# removing trash (real assemblies/libs get build by the mcs source package)
-	rm -f $(CURDIR)/debian/tmp/usr/lib/mscorlib.dll
-	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono
 	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
-	cd $(CURDIR)/debian/detector && $(MAKE) $(ATG) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	cd $(CURDIR)/debian/detector && $(MAKE) $(ATG) && \
+	  install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
@@ -101,10 +72,6 @@ binary-indep: build install
 	dh_link -i
 	dh_installchangelogs -i ChangeLog
 	dh_installdocs -i
-#	dh_installexamples -i
-#	dh_installdebconf -i
-#	dh_installinfo -i
-#	dh_undocumented -i
 	dh_installman -i
 	dh_compress -i
 	dh_fixperms -i
@@ -123,10 +90,6 @@ binary-arch: build install
 	dh_installchangelogs -s
 	dh_installdocs -s
 	dh_installexamples -s
-	dh_installmenu -s
-#	dh_installdebconf -s
-#	dh_installinfo -s
-	dh_undocumented -s
 	dh_installman -s
 	dh_strip -s
 	dh_compress -s
