@@ -3,6 +3,7 @@ mono (0.29.99.20040114-4) unstable; urgency=low
   * NOT RELEASED YET
   * Eduard Bloch:
     + catch-them-all cli-wrapper rewrite
+    + set mono-common conflict with the virtual package cli-common
   * Teófilo Ruiz Suárez:
     + removed libicu26-dev from Build-Depends so mono-jit don't depend on
     libicu26 (Closes: #231966)
