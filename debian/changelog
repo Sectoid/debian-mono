@@ -2,7 +2,8 @@ mono (0.95-0pre1v1) unstable; urgency=low
 
   * (NOT RELEASED YET) New upstream release
   * Eduard Bloch
-    + setting virtual ".shlibs" via provides, currently libmono-0.95
+    + setting virtual ".shlibs" via provides, currently libmono-0.95 and
+    mono-assemblies-base-0.95
   * Mirco 'meebey' Bauer
     + New upstream release
     + enabled preview features (.NET 1.2 / gmcs)
