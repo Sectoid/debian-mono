@@ -48,124 +48,175 @@ mono for Debian
    Package installation policy be found on
    http://wiki.debian.net/?MonoConventions . Recent snapshot:
 
-| MONO Conventions Version: 0.1.2
-| 
-| Conventions for packaging Mono applications/libraries for Debian GNU/Linux.
-| 
-| .NET Framework issues:
-| 
-|   * Depend on every library package that you need. Note that some applications
-|     or libs may open them via ldopen, so you need to track the dependencies
-|     manually
-|   * To get an interpreter, depend on:
-| 
-| mono-jit | cli-virtual-machine
-| 
-|   * To run the interpreter/jit-compiler, run //usr/bin/cli. This is a link to
-|     the "best" interpreter choosen with update-alternatives. Currently mono or
-|     mint.
-|   * To get the compiler, depend on
-| 
-| mono-mcs | c-sharp-compiler
-| 
-| Note that there are no c-sharp-compiler alternatives yet, it is not clear
-| whether we will create the c-sharp-compiler alternative entry. (Portable .NET
-| maybe comming into debian some day)
-| 
-| Library issues;
-| 
-|   * base assemblies are packaged. Currently they go into /usr/lib which is not
-|     the best location (aliens in the system). Ideally, we should get the GAC
-|     soon so the DLLs could be moved to separate location(s) without having a
-|     config (dll mapping) hell in /etcmono/config. See new-installation-proposal
-|     below.
-| 
-| Applications package issues... Possible cases:
-| 
-|   * application packages:
-|       + (bad idea) put the .exe into /usr/bin and let the user work with
-|         binfmt_support. Drawbacks:
-|           o executable with useless suffixes in binary paths
-|           o unnessesarly longer startup time -- kernels goes trough the binfmt
-|             path: run binfmt-cli-detector (on Debian executed trough a Perl
-|             wrapper which opens the file, checks the type, etc.), then run the
-|             actual interpreter
-|           o compatibility: $user may not have binfmt_misc in the kernel
-| 
-|       + general solution: a shell wrapper. On Debian, it runs //usr/bin/cli
-|         with the application name and parameters.
-| 
-|     Pro:
-| 
-| 
-|           o can be modified easily
-| 
-|     Contra:
-| 
-| 
-|           o shell invocation, a bit bloat that makes start time longer
-| 
-|       + a binary wrapper: an executable program which does the same thing as a
-|         shell wrapper.
-| 
-|     Pro:
-| 
-| 
-|           o Fast
-| 
-|     Contra:
-| 
-| 
-|           o cannot be modified. Could use a standard scheme for locating the
-|             EXE files, see below.
-| 
-| Naming:
-| 
-|   * The official name of the Mono Project is: Mono, mono:: or mono. To keep it
-|     unified (more transperant to the user) it should be always called "Mono",
-|     not MONO, not mono, not mono:: even no mixing with .NET in it. The
-|     explaination of Mono goes into the package long description.
-| 
-| THE PLAN (new policy proposal)
-| 
-| We create the directory //usr/share/dotnet (not in //usr/lib since all of this
-| is arch-independent, interpreted code). In this "dot-net area", we create:
-| 
-|   * /usr/share/dotnet/lib (with DLLs, this path needs to be known by the
-|     runtime. As well as usr/lib for all the "incompatible" apps. Hm. We need
-|     the GAC). In this directory should go general libs, which are shared
-|     between applications. Application specific libs should goto their dotnet
-|     $package directory.
-| 
-|   * /usr/share/dotnet/bin (with .EXE executables, OR with symlinks to the
-|     $package dirs. For example, there is a symlink called usr/share/dotnet/bin/
-|     normalize which points to ../monodoc).
-| 
-|   * /usr/share/dotnet$package_name (where the actual package and its relevant
-|     files are located. For example, the monodoc.exe, assembler.exe etc., and
-|     the documentation directory). The $source_package_name should be used if it
-|     makes sense, some programs don't like to be seperated too much (symlink
-|     hell is also no solution).
-| 
-|   * All .exe filesh must have the executable flag (+x), to keep compatibility
-|     with binfmt.
-| 
-| Why all this? First, to have reliable file locations. Second, to create a good
-| generic application invocation tool. Shell wrappers for each application are
-| the simplest and quite acceptable way. For those who are lazy to write them, I
-| suggest an allround-program that looks for the right EXE binary to start. We
-| store it as //usr/bin/cli-wrapper. The application package would install a
-| symlink cli-wrapper -> //usr/bin/program-name (without .exe!). The cli-wrapper
-| is in the mono-common package and part of the cli-virtual-machine. What would
-| the wrapper do on start? It checks argv0 (which is "normalize", for example).
-| It looks for //usr/bin/normalize.exe (and executes it if found), then for //usr
-| /share/dotnet/bin/normalize.exe, then for //usr/share/dotnet/bin/normalize/
-| normalize.exe. The last one is a directory symlink, pointing to ../monodoc.
-| These all is especially useful if the application has additional assemblies in
-| its startup directory, or looks for additional config files there or such
-| things. The libs placed in /usr/share/dotnet/lib are in the search path when
-| the cli-wrapper is used, if you don't use the cli-wrapper (shell scripts
-| instead) you need to set MONO_PATH yourself!
+-----------------------------------------------------------------------------
+|  
+|  MONO Conventions Version: 0.1.5
+|  
+|  Conventions for packaging Mono applications/libraries for Debian GNU/
+|  Linux.
+|  
+|  .NET Framework issues:
+|  
+|    * Depend on every library package that you need. Note that some
+|      applications or libs may open them via ldopen, so you need to track
+|      the dependencies manually
+|    * To get an interpreter, depend on:
+|  
+|  mono-jit | cli-virtual-machine
+|  
+|  (only if no specific Mono version is required) or use dh_netdeps (see
+|  below) which will add versioned or unversioned dependency (see
+|  manpage).
+|  
+|    * To run the interpreter/jit-compiler, run /usr/bin/cli. This is a
+|      link to the "best" interpreter chosen with update-alternatives.
+|      Currently mono or mint.
+|    * To get the compiler, depend on
+|  
+|  mono-mcs | c-sharp-compiler
+|  
+|  Note that there are no c-sharp-compiler alternatives yet, it is not
+|  clear whether we will create the c-sharp-compiler alternative entry.
+|  (Portable .NET maybe comming into debian some day)
+|  
+|  Applications package issues... Possible cases:
+|  
+|    * application packages:
+|        + (bad idea) put the .exe into /usr/bin and let the user work
+|          with binfmt_support. Drawbacks:
+|            o executable with useless suffixes in binary paths
+|            o unnessesarly longer startup time -- kernels goes trough the
+|              binfmt path: run binfmt-cli-detector (on Debian executed
+|              trough a Perl wrapper which opens the file, checks the
+|              type, etc.), then run the actual interpreter
+|            o compatibility: $user may not have binfmt_misc in the kernel
+|  
+|        + general solution: a shell wrapper. On Debian, it runs /usr/bin/
+|          cli with the application name and parameters.
+|  
+|      Pro:
+|  
+|  
+|            o can be modified easily
+|  
+|      Contra:
+|  
+|  
+|            o shell invocation, a bit bloat that makes start time longer
+|  
+|        + a binary wrapper: an executable program which does the same
+|          thing as a shell wrapper.
+|  
+|      Pro:
+|  
+|  
+|            o Fast
+|  
+|      Contra:
+|  
+|  
+|            o cannot be modified. Could use a standard scheme for
+|              locating the EXE files, see below.
+|  
+|  General Naming:
+|  
+|    * The official name of the Mono Project is: Mono, mono:: or mono. To
+|      keep it unified (more transperant to the user) it should be always
+|      called "Mono", not MONO, not mono, not mono:: even no mixing with
+|      .NET in it. The explaination of Mono goes into the package long
+|      description.
+|  
+|  Library Package Naming:
+|  
+|    * Most other languages have unified names for library/plugins/module/
+|      foobarextensionname packages in Debian, which makes it easier for
+|      users and maintainers. Perl for example uses libfoo-perl, java uses
+|      also libfoo-java. For .NET libraries (.NET CIL bytecode) libfoo-cil
+|      should be used, e.g. libgecko-cil. The term "sharp" does not
+|      represent the language, a .NET library can be used with all .NET
+|      implementated/enabled languages like C#, J#, ASP.NET, VB.NET (for
+|      more see: http://www.go-mono.com/languages.html ), this is why the
+|      extension "-cil" is the right one.
+|  
+|  Currently, the mono base packages are named after their original naming
+|  scheme introduced a while ago. It is possible that they will be
+|  splitted into many packages like libi18n.west-cil.
+|  
+|  THE PLAN (FHS conform packaging)
+|  
+|  We create the directory /usr/share/dotnet (not in /usr/lib since all of
+|  this is arch-independent, interpreted code). In this "dot-net area", we
+|  create:
+|  
+|    * usr/share/dotnet$package_name/ (where the actual package and its
+|      relevant files are located. For example, the monodoc.exe,
+|      assembler.exe etc., and the documentation directory). The
+|      $source_package_name should be used if it makes sense, some
+|      programs don't like to be seperated too much (symlink hell is also
+|      no solution).
+|  
+|    * /usr/share/dotnet/mono/gac/NAME/VERSION__SIGNATURE/NAME.dll: this
+|      is the future way for assembly installations (as done with
+|      gacutil).
+|  
+|    * /usr/share/dotnet/mono/PACKAGE: a symbolic name to resolve the DLLs
+|      that belong to a package. It contains links to the libraries in the
+|      GAC. Note: currently, gacutil creates messy absolute links pointing
+|      to the systemwide location (instead of relative symlinks), we need
+|      to fix them at package build time.
+|  
+|    * usr/share/dotnet/lib (with old/unversioned/misc. DLLs, this path
+|      needs to be known by the runtime). This is a deprecated location,
+|      use the GAC method instead (see above).
+|  
+|  THE PLAN II (program invocation)
+|  
+|    * usr/share/dotnet/bin (with .exe executables, OR with symlinks to
+|      the $package dirs. For example, there is a symlink called /usr/
+|      share/dotnet/bin/mcs which points to ../mono/1.0).
+|  
+|    * .exe files should have the executable flag (+x), to be executable
+|      by the kernel trough binfmt.
+|  
+|  Why all this? First, to have reliable file locations. Second, to create
+|  a good generic application invocation tool and move non-native
+|  executable files out of /usr/bin. Shell wrappers for each application
+|  are the simplest and quite acceptable way. For those who are lazy to
+|  write them, I suggest an allround-program that looks for the right EXE
+|  binary to start. We store it as /usr/bin/cli-wrapper. The application
+|  package would install a symlink cli-wrapper -> /usr/bin/program-name
+|  (without .exe!). The cli-wrapper is in the mono-common package and part
+|  of the cli-virtual-machine. What would the wrapper do on start? It
+|  checks argv0 (which is "mcs", for example). It looks for /usr/bin/
+|  mcs-exe (and executes it if found), then for /usr/share/dotnet/bin/
+|  mcs.exe, then for /usr/share/dotnet/bin/mcs/mcs.exe. The last one is a
+|  directory symlink, pointing to ../mono/1.0, so the wrapper finaly runs
+|  /usr/share/dotnet/mono/1.0/mcs.exe. These all is especially useful if
+|  the application has additional assemblies in its startup directory, or
+|  uses its own binary location to resolve other settings, like the
+|  default set of assemblies in the case of mcs.
+|  
+|  THE PLAN III (managed package dependencies)
+|  
+|  If you already got the idea how shared library on Debian are packaged,
+|  you almost know how the DLL assemblies are dealt with. There is one
+|  utility that creates a certain file with library name and version/
+|  compatibility data and the suggested dependency string. So every
+|  package providing libraries (DLLs) installs a such config file (var/lib
+|  /dpkg/info*.netlibs). The dh_makenetlibs utility creates such files and
+|  installs them into the package directories. See manpages for
+|  (important) details.
+|  
+|  The application packages working with the libraries use another tool to
+|  scan all binaries for references to DLLs and resolve them using the
+|  .netlibs files (see above), then the calculated dependency data is
+|  merged, filtered as needed and written to debian/package.substvars. You
+|  can insert it into the control files by using the ${net:Depends}
+|  variable.
+|  
+|  In order to use the dh_* tools, you will need mono-utils (>> 0.96).
+|  
+-----------------------------------------------------------------------------
 
 PS: Some comparisons (not real benchmarks!), testing different
 invocation methods:
@@ -203,4 +254,4 @@ real    2m23.699s
 user    1m33.140s
 sys     0m8.920s
 
- Eduard Bloch <blade@debian.org> -- Thu, 15 Apr 2004 23:32:45 +0200
+ Eduard Bloch <blade@debian.org> -- Sat, 19 Jun 2004 02:28:40 +0200
