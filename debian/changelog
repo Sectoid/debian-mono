@@ -7,6 +7,7 @@ mono (1.0.2-1) unstable; urgency=high
       (Closes: #265510 thanks to Kurt Roeckx <Q@ping.be>)
     + removed all not official supported architectures
       (Closes: #272846, #259680)
+    + cosmetic cleanups in debian/rules
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 11 Oct 2004 21:21:02 +0200
 
