@@ -92,7 +92,7 @@ Description: libraries for the Mono interpreter - Development files
 
 Package: libmint0
 Section: libs
-Architecture: all
+Architecture: any
 Depends: ${shlibs:Depends}
 Description: libraries for the Mono (mint) interpreter
  Shared object libraries for Mono, used for embedding/hosting of the
@@ -104,7 +104,7 @@ Description: libraries for the Mono (mint) interpreter
  development platform.
 
 Package: libmint-dev
-Architecture: all
+Architecture: any
 Section: devel
 Depends: libmint0 (= ${Source-Version})
 Conflicts: libmono-dev

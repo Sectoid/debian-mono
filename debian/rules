@@ -94,7 +94,7 @@ binary-arch: build install
 	dh_compress -s
 	dh_fixperms -s
 	#dh_makeshlibs -s
-	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} | tee $${s%%.shlibs.in}/DEBIAN/shlibs >> debian/shlibs.local ; done
+	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} | tee $${s%%.shlibs.in}/DEBIAN/shlibs >> shlibs.local ; done
 	dh_installdeb -s
 	dh_shlibdeps -s
 	dh_gencontrol -s
