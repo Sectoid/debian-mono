@@ -1,0 +1,4 @@
+debian/tmp/usr/lib/libmint*.a
+debian/tmp/usr/lib/libmint*.so
+debian/tmp/usr/lib/pkgconfig/mint.pc
+debian/tmp/usr/include
