@@ -76,7 +76,6 @@ Description: Mono utilities
  This package includes various tools useful for .NET developers, like
  pedump, monodis, monograph and monosn.
 
-
 Package: libmono0
 Section: libs
 Architecture: i386 powerpc
