@@ -57,6 +57,8 @@ my $cli = '/usr/bin/cli';
 # my $python_major;
 my $mono_version = `$cli -V 2>&1`;
 
+print "fsck, $mono_version\n";
+
 if ( !-x "/usr/bin/monodis" ) {
     error(
 "Package mono-utils is not installed, aborting. (Probably forgot to Build-Depend on mono-utils.)"
@@ -215,17 +217,21 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     }
     # now filter the dupes coming from shlibs
     if ( defined( $dh{D_FLAG} ) ) {
-        open( $fh, "<debian/$package.substvars" ) 
-        || warning(
-           "Could not read debian/$package.substvars"
-        );
-        while (<$fh>) {
-            if (/^shlibs:Depends=(.*)\n?/) {
+       if(open( $fh, "<debian/$package.substvars" )) {
+          while (<$fh>) {
+             if (/^shlibs:Depends=(.*)\n?/) {
                 for ( split ( /\s*,\s*/, $1 ) ) {
-                    delete $depkgsFiltered{$_};
+                   delete $depkgsFiltered{$_};
                 }
-            }
-        }
+             }
+          }
+       }
+       else
+       {
+          warning(
+             "Could not read debian/$package.substvars"
+          );
+       }
     }
 
     addsubstvar( $package, "net:Depends",
