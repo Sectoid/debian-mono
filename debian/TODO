@@ -5,3 +5,5 @@ TODO soon:
  - (pablo) svn-inject the -xsp and libapache packages
 
  - look over the AOD package
+
+ - (meebey) package some .NET programs like monodoc and monodevelop (CVS branch only)
