@@ -110,8 +110,7 @@ sub extraDeps {
          $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
       }
    }
-   $ret=~s/^, //;
-   print "TEST: $ret\n";
+   $ret=~s/^, // if $ret;
    return $ret;
 }
 
@@ -162,7 +161,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     #exit 1;
 
     addsubstvar( $package, "net:Depends",
-        "mono-jit (>> $mono_version) | cli-virtual-machine".(%depkgs?join(", ", "", (keys %depkgs)):""));
+        "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)".(%depkgs?join(", ", "", (keys %depkgs)):""));
 
     #     # finaly resolve the version and add it to substvars
     #     foreach my $pkg (keys %deps) {

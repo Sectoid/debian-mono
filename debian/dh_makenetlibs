@@ -106,7 +106,7 @@ and
 
 init();
 
-if ( system "grep \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
+if ( system "grep -q \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
     warning("Warning! No Build-Depends on mono-utils (>= 0.95)!");
 }
 
@@ -170,10 +170,6 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
         $dis =~ m/Version:\s+(\S+)/;
         $ver  = $1;
 
-        if ( defined( $dh{M_PARAMS} ) && $dh{M_PARAMS} ne '' ) {
-            $ver = $dh{M_PARAMS};
-        }
-
         if ( !-d "$tmp/DEBIAN" ) {
             doit( "install", "-d", "$tmp/DEBIAN" );
         }
@@ -194,7 +190,11 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
 
                 # Remove debian version, if any.
                 $version =~ s/-[^-]+$//;
-            }
+             }
+
+             if ( defined( $dh{M_PARAMS} ) && $dh{M_PARAMS} ne '' ) {
+                $version = $dh{M_PARAMS};
+             }
             if ($dh{V_FLAG_SET}) {
                if ($dh{V_FLAG} ne '') {
                   $deps=$dh{V_FLAG};
