@@ -58,7 +58,7 @@ install: build
 	$(MAKE) install DESTDIR=$(PWD)/debian/tmp
 	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
 	cd $(CURDIR)/debian/detector && $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
-	cp debian/mono_config $(CURDIR)/debian/mono-common/etc/mono/config
+#	cp debian/mono_config $(CURDIR)/debian/mono-common/etc/mono/config
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
@@ -89,6 +89,8 @@ binary-arch: build install
 	dh_movefiles -s
 	dh_link -s
 	install -m644 -D debian/lintian debian/mono/usr/share/lintian/overrides/mono
+	# the SONAMEs fix
+	perl -pe 's/-0.dll(.*)\.so/-0.dll$$1.so.0/' debian/mono-common/etc/mono/config
 #	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} | tee $${s%%.shlibs.in}/DEBIAN/shlibs >> shlibs.local ; done
 #	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} >> shlibs.local ; done
 	dh_installchangelogs -s
