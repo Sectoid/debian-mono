@@ -8,10 +8,10 @@ Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake1.7 | automa
 Build-Conflicts: libmint-dev
 
 Package: mono-common
-Provides: cli-common
 Architecture: any
-Depends: binfmt-support
-Conflicts: binfmt-support (<< 1.1.2), binfmt-detector-cli
+Depends: binfmt-support (>= 1.1.2)
+Provides: cli-common
+Conflicts: binfmt-detector-cli, cli-common
 Replaces: mono-jit (<< 0.16), binfmt-detector-cli
 Description: common files for the Mono CLI runtimes
  The Mono Project is an open development initiative sponsored by Ximian that is
