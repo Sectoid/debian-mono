@@ -5,6 +5,10 @@ export DH_COMPAT=3
 
 DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
+ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
+JIT="--with-jit=no"
+endif
+
 include /usr/share/dpatch/dpatch.make
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 
@@ -20,8 +24,7 @@ build-stamp: cli-wrapper
 	./autogen.sh --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
-	  --sysconfdir=/etc --with-sigaltstack=no \
-	  ifeq ($(DEB_BUILD_ARCH),sparc) --with-jit=no endif
+	  --sysconfdir=/etc --with-sigaltstack=no $(JIT)
 	$(MAKE)
 	touch build-stamp
 
