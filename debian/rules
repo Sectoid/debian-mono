@@ -29,7 +29,8 @@ build-stamp: cli-wrapper
 	./configure --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
-	  --sysconfdir=/etc --with-sigaltstack=no $(JIT)
+	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
+	  --with-preview=yes --with-icu=no
 	$(MAKE)
 	touch build-stamp
 
