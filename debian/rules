@@ -31,7 +31,9 @@ build-stamp: cli-wrapper
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
-	  --with-preview=yes --with-icu=no
+	  --with-preview=yes
+# we don't touch precompiled stuff
+	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE)
 	touch build-stamp
 

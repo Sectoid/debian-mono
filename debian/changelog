@@ -1,4 +1,4 @@
-mono (0.95-0pre1v1) unstable; urgency=low
+mono (0.95-0pre1v2) unstable; urgency=low
 
   * (NOT RELEASED YET) New upstream release
   * Eduard Bloch
@@ -7,9 +7,6 @@ mono (0.95-0pre1v1) unstable; urgency=low
   * Mirco 'meebey' Bauer
     + New upstream release
     + enabled preview features (.NET 1.2 / gmcs)
-    + disabled explicit icu support
-  * FIXME: enable ICU when the lib packages are accepted, add build-deps
-    hm... does mono really link directly with libicu*?
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon,  7 Jun 2004 00:54:51 +0200
 
