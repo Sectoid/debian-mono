@@ -2,8 +2,25 @@ mono for Debian
 ---------------
 
 1. Documentation can be found in the separated monodoc packages.
+
+2. Supported Processor Architectures
+    JIT:
+    Linux/x86
+    Linux/PPC
+    Linux/S390
+    Solaris/SPARC
+    MacOS/PPC
+
+    Interpreter:
+    Linux/x86
+    Linux/PPC
+    S390
+    StrongARM
+    SPARC
+    SPARC v9
+    HPPA
  
-2. Purge your ~/.wapi directory if you see messages like:
+3. Purge your ~/.wapi directory if you see messages like:
 
    ** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check
    failed.
@@ -15,7 +32,7 @@ mono for Debian
 
    02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
 
-3. Provisoric virtual packages:
+4. Provisoric virtual packages:
 
    - mono-assemblies-base is the core package, arch-independent. It does
       NOT include arch-dependent components for portability reasons
@@ -25,7 +42,7 @@ mono for Debian
    - cli-virtual-machine: depend on it to get working /usr/bin/cli with
       the core assemblies parts (no arch-depent part)
       
-4. (for developers) Package installation policy be found on
+5. (for developers) Package installation policy be found on
    http://wiki.debian.net/?MonoConventions . Recent snapshot:
 
 | MONO Conventions Version: 0.1.2
