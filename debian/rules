@@ -9,30 +9,32 @@ ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
 JIT="--with-jit=no"
 endif
 
-include /usr/share/dpatch/dpatch.make
+# include /usr/share/dpatch/dpatch.make
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 
 cli-wrapper: debian/cli-wrapper.c
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 
-build: patch build-stamp
+#build: patch build-stamp
+build: build-stamp
 build-stamp: cli-wrapper
 	dh_testdir
 	# refresh autotools crap
-	install -m755 debian/autogen.sh .
+	#install -m755 debian/autogen.sh .
 	#NOCONFIGURE=yes ./autogen.sh
-	./autogen.sh --prefix=/usr --with-gc=included \
+	#./autogen.sh --prefix=/usr --with-gc=included
+	./configure --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT)
 	$(MAKE)
 	touch build-stamp
 
-clean: unpatch
+#clean: unpatch
+clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp autogen.sh
-
 	# Use the right clean target depending if we ran ./autogen.sh or not
 	-if [ -e "needs-maintclean" ]; then	\
 	  rm -f needs-maintclean;		\
@@ -41,12 +43,10 @@ clean: unpatch
 	  $(MAKE) distclean;			\
 	fi
 	-cd debian/detector && $(MAKE) clean
-
 	# I shouldn't have to do this
 	rm -f mono/arch/arm/Makefile mono/arch/ppc/Makefile \
 	  mono/arch/sparc/Makefile mono/os/win32/Makefile \
 	  data/config config.log cli-wrapper
-
 	dh_clean
 
 install: build
@@ -54,7 +54,11 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	$(MAKE) install DESTDIR=$(PWD)/debian/tmp
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	# removing trash (real assemblies/libs get build by the mcs source package)
+	rm -f $(CURDIR)/debian/tmp/usr/lib/libMonoPosixHelper*
+	rm -f $(CURDIR)/debian/tmp/usr/lib/mscorlib.dll
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono
 	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
 	cd $(CURDIR)/debian/detector && $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
