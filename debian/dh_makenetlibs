@@ -11,7 +11,7 @@ use Debian::Debhelper::Dh_Lib;
 
 =head1 SYNOPSIS
 
-B<dh_makenetlibs> [S<I<debhelper options>>] [B<-m>I<minversion>] [B<-V>I<[dependancies]>] [B<-l>I<nextincompatible>] [B<-X>I<item>]
+B<dh_makenetlibs> [S<I<debhelper options>>] [B<-r>] [B<-V>I<[dependancies]>] [B<-m>I<minversion>] [B<-l>I<nextincompatible>] [B<-X>I<item>]
 
 =head1 DESCRIPTION
 
@@ -61,6 +61,15 @@ assembly packages coming from one source package.
 
 Specifies the (expected) version of this package when the compatibility
 to the current assemblies will break.
+
+=item B<-r>
+
+An experimental option to automaticaly guess the next incompatible
+upstream version and insert them (like working with -l and -m options,
+see above). Do not expect the guessed values to be always correct -
+normally, the usualy assumed version string has the form
+generation.major.minor where versions with changes in "minor" are
+compatible and "major" versions break with compatibility.
 
 =item B<-X>I<item>, B<--exclude=>I<item>
 
@@ -203,6 +212,14 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
                   $deps = "$package (>= $version)";
                }
             }
+            if( defined($dh{R_FLAG})) {
+                $version =~ s/-[^-]+$//;
+               my @uvers = split(/\./, $version);
+               $uvers[1]++;
+               $deps = "$package (>= $version), $package (<< ".
+               join(".",@uvers)
+               .")";
+            }
             if( defined($dh{M_PARAMS})) {
                $deps = "$package (>= ".$dh{M_PARAMS}.")";
             }
@@ -242,6 +259,10 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
 L<debhelper(7)>
 
 This program is a part of mono-utils.
+
+=head1 KNOWN BUGS
+
+Will possibly not work correctly with DH_COMPAT levels 1 and 2.
 
 =head1 AUTHOR
 
