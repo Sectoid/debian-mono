@@ -126,7 +126,7 @@ foreach (@ARGV) {
 
 my $fh;
 my %libdata;
-open( $fh, "cat /var/lib/dpkg/info/*.netlibs debian/*.netlibs 2>/dev/null |" );
+open( $fh, "cat /var/lib/dpkg/info/*.netlibs debian/*/DEBIAN/netlibs 2>/dev/null |" );
 while (<$fh>) {
     /(\S+)\s+(\S+)\s+(\S+)/;
     $libdata{"$1/$2"} = $3;
@@ -171,54 +171,11 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
        close F;
     }, $tmp;
 
-    print( keys %depkgs );
-    exit 1;
-
-    # we have a list of DLLs in %libs keys
-
-    #  my %libs;
-    #  if (%libs) {
-    #     my %libsLoc; # custom dll-to-pkgname map
-    #     my %minvLoc; # custom pkgname-to-min-version map
-    #     # first create reserve lists from mono.local
-    #     if(-r "debian/monolibs.local") {
-    #        my $l;
-    #        open($l, "<debian/monolibs.local");
-    #        while(<$l>) {
-    #           # syntax: 
-    #           # foobar.dll package-name
-    #           # optional with minimal/maximal version:
-    #           # package-name: (<= any-version-string)
-    #           # set 0 as version string to not match at a spec. version
-    #           if(/^(.+).dll\s(\S+)/) { $libsLoc{$1}=$2; }
-    #           if(/^[^:]+:\s*(.+)\n/) { $minvLoc{$1}=$2; }
-    #        }
-    #     }
-    #
-    #     # fill %deps with pkg names as keys
-    #     foreach my $lib (keys %libs) {
-    #        my $kand = $libsLoc{$lib}; # resolve via local map
-##        $kand = `dlocate -e /usr/lib/$lib.dll || dpkg -S /usr/lib/$lib.dll` 
-    #        $kand = `dpkg -S /usr/lib/$lib.dll` unless $kand;
-##        $kand = `dlocate -e $lib.dll | grep /usr/share/dotnet` unless $kand;
-    #        $kand = `dpkg -S $lib.dll | grep /usr/share/dotnet` unless $kand;
-    #        $kand =~ s/:.*//;
-    #        if($kand) { 
-    #           # we also don't want to have circular deps to this package
-    #           $deps{$kand} = 1 if($kand ne $package);
-    #        }
-    #        else {
-#           print "Warning, $lib.dll not found on this system or in debian/mono.local!\n";
-    #        }
-    #     }
-
-    # some overrides
-    # $minvLoc{"mono-jit"} = ">= 0.29";
-
-    # preset the cli dep
+    #print( keys %depkgs );
+    #exit 1;
 
     addsubstvar( $package, "net:Depends",
-        "mono-jit (>> 0.29) | cli-virtual-machine" );
+        "mono-jit (>> $mono_version) | cli-virtual-machine", join(", ", (keys %depkgs)) );
 
     #     # finaly resolve the version and add it to substvars
     #     foreach my $pkg (keys %deps) {

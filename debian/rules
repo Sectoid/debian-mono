@@ -62,6 +62,7 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	for x in debian/dh_* ; do chmod +x $$x; pod2man $$x > $$x.1 ; done
 	# this is no longer installed by the build system, why?
 	cp -a ./mono/metadata/monosn $(CURDIR)/debian/tmp/usr/bin
 	# removing trash (real assemblies/libs get build by the mcs source package)
@@ -78,6 +79,7 @@ binary-indep: build install
 	dh_testdir -i
 	dh_testroot -i
 	dh_movefiles -i
+	dh_install -i
 	dh_link -i
 	dh_installchangelogs -i ChangeLog
 	dh_installdocs -i
@@ -98,6 +100,7 @@ binary-arch: build install
 	dh_testdir -s
 	dh_testroot -s
 	dh_movefiles -s
+	dh_install -s
 	dh_link -s
 	install -m644 -D debian/lintian debian/mono/usr/share/lintian/overrides/mono
 	# the SONAMEs fix, done via dpatch now
