@@ -1,12 +1,9 @@
 mono for Debian
 ---------------
 
- - Because MONO requires a development version of the ICU library, the
-   i18n support is limited.
+ - Documentation will be available soon, provided by the separated
+   monodoc packages.
  
- - Documentation package is not ready yet because of inconsistency and
-   evil build dependencies.
-
 Purge your ~/.wapi directory if you see messages like:
 
 ** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check

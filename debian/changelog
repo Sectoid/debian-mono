@@ -1,6 +1,7 @@
 mono (0.29.99.20040114-3) unstable; urgency=low
 
   * NOT RELEASED YET
+  * Included modified icu-config to use libicu26-dev
 
  -- Eduard Bloch <blade@debian.org>  Thu, 22 Jan 2004 00:57:56 +0100
 

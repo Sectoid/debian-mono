@@ -20,7 +20,8 @@ build-stamp:
 	NOCONFIGURE=yes sh debian/autogen.sh
 	# ...testing whether configure or autogen.sh check was successfull
 	test "${CONFCMD}"
-	./$(CONFCMD) --prefix=/usr --with-gc=included \
+	chmod +x debian/icu-config
+	PATH="$(CURDIR)/debian:$$PATH" ./$(CONFCMD) --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc
