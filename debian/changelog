@@ -1,4 +1,4 @@
-mono (1.0.5-0pre1) unstable; urgency=high
+mono (1.0.5-1) unstable; urgency=high
 
   * New upstream release
   * Mirco 'meebey' Bauer
@@ -8,7 +8,7 @@ mono (1.0.5-0pre1) unstable; urgency=high
       (Closes: #286270, #276464, #287279)
     + cleanups in debian/rules
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 30 Jan 2004 01:07:36 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 30 Jan 2005 01:07:36 +0200
 
 mono (1.0.4-1) unstable; urgency=high
 
