@@ -92,34 +92,29 @@ while (<$fh>) {
     $libdata{"$1/$2"} = $3;
 }
 
-## shared code
 my %shlibdata;
-open( $fh, "cat /var/lib/dpkg/info/*.shlibs 2>/dev/null |" );
-while (<$fh>) {
-    /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-    $shlibdata{"$1.so.$2"} = $3;
+
+sub resolveShlib {
+    our( $file, $name, $outRef ) = @_;
+    if ( !%shlibdata ) {
+        open( $fh,
+"cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |"
+        );
+        while (<$fh>) {
+            /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+            $shlibdata{"$1.so.$2"} = $3;
+        }
+    }
+    if ( -r "$file.config"
+        && `cat $file.config` =~
+        /dll=\W*$name[^>]+\Wtarget\W*=\W*(\w[\w.\-_\d]+)/
+        && defined( $shlibdata{$1} ) )
+    {
+        $$outRef = $shlibdata{$1};
+        return 1;
+    }
+    return 0;
 }
-
-
-sub extraDeps {
-   my $config=$_[0].".config";
-   my $ret=undef;
-   if( -r $config) {
-      $config=`cat $config`;
-      while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
-         $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
-      }
-   }
-   $ret=~s/^, // if $ret;
-   return $ret;
-}
-
-## /shared code
-
-
-
-#print (values %libdata);
-#exit 1;
 
 foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     my $tmp = tmpdir($package);
@@ -129,42 +124,54 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     delsubstvar( $package, "net:Depends" );    # for idempotency
 
     # find binaries
-    # total falsch hier
     find sub {
-       my $vers;
-       return unless -f and /\.(exe|dll)$/;
-       local *F;
-       return unless open F, "monodis --assemblyref $_|";
-       our( $vers, $name, $key );
-       while (<F>) {
-          $vers = $1 if /Version=(.*)\n/;
-          $name = $1 if /Name=(.*)\n/;
+        my $vers;
+        return unless -f and /\.(exe|dll)$/;
+        local *F;
+        my $file = $_;
+        return unless open F, "monodis --assemblyref $file |";
+        our( $vers, $name, $key );
+        while (<F>) {
+            $vers = $1 if /Version=(.*)\n/;
+            $name = $1 if /Name=(.*)\n/;
 
-          if (/0x\S+:.([ABCDEF0123456789 ]+)\n/) {
-             $key = $1;
-             $key =~ s/\ //g;
-             $key = $vers . "__" . lc($key);
-             my $compat = "$name/$key";
-             if(!defined($libdata{$compat})) {
-                warning("Warning! No Debian dependency data for $name ($key)!");
-             }
-             else {
-                push(@depkgs, $libdata{$compat});
-             }
-             #print "ok, ".$deps{ "$name/$vers" . "__" . lc($key) };
-          }
-       }
-       close F;
+            if (/0x\S+:.([ABCDEF0123456789 ]+)\n/) {
+                $key = $1;
+                $key =~ s/\ //g;
+                $key = $vers . "__" . lc($key);
+                my $compat = "$name/$key";
+                if ( !defined( $libdata{$compat} ) ) {
+
+                    # reuse the key variable
+                    if ( resolveShlib( $file, $name, \$key ) ) {
+                        push ( @depkgs, $key );
+                    }
+                    else {
+                        warning(
+"Warning! No Debian dependency data for $name ($key)!"
+                        );
+                    }
+                }
+                else {
+                    push ( @depkgs, $libdata{$compat} );
+                }
+
+                #print "ok, ".$deps{ "$name/$vers" . "__" . lc($key) };
+            }
+        }
+        close F;
     }, $tmp;
 
     my %depkgsFiltered;
-    for(@depkgs) {
-       for(split(/,\s+/,$_)) {
-          $depkgsFiltered{$_}=1;
-       }
+    for (@depkgs) {
+        for ( split ( /,\s+/, $_ ) ) {
+            $depkgsFiltered{$_} = 1;
+        }
     }
 
-    addsubstvar( $package, "net:Depends", "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)".join(", ", "", sort (keys %depkgsFiltered)));
+    addsubstvar( $package, "net:Depends",
+        "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)"
+        . join ( ", ", "", sort ( keys %depkgsFiltered ) ) );
 }
 
 =head1 SEE ALSO

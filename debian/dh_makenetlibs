@@ -119,19 +119,20 @@ if ( system "grep -q \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
     warning("Warning! No Build-Depends on mono-utils (>= 0.95)!");
 }
 
-## shared code
 my $fh;
 my %shlibdata;
-open( $fh, "cat /var/lib/dpkg/info/*.shlibs 2>/dev/null |" );
-while (<$fh>) {
-    /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-    $shlibdata{"$1.so.$2"} = $3;
-}
-
-
 sub extraDeps {
    my $config=$_[0].".config";
    my $ret=undef;
+
+   if(!%shlibdata) {
+      open( $fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |" );
+      while (<$fh>) {
+         /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+         $shlibdata{"$1.so.$2"} = $3;
+      }
+   }
+
    if( -r $config) {
       $config=`cat $config`;
       while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
@@ -141,8 +142,6 @@ sub extraDeps {
    $ret=~s/^, // if $ret;
    return $ret;
 }
-
-## /shared code
 
 foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     next if is_udeb($package);
