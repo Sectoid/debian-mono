@@ -4,6 +4,7 @@ mono (0.29.99.20040114-3) unstable; urgency=low
   * the last release of 0.29* series
   * Included modified icu-config to use libicu26-dev
   * included my binary /usr/bin/cli wrapper to mono-common
+  * added libtool to Build-Deps (closes: #231271)
   * TODO: test it extensively!
   * added corrected /etc/mono/config file, which maps to actual SONAMEs
     (Closes: #231191)
