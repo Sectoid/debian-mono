@@ -99,7 +99,7 @@ binary-arch: build install
 	dh_compress -s
 	dh_fixperms -s
 	if test `dpkg-architecture -qDEB_HOST_ARCH` = i386 ; then dh_makeshlibs -plibmono0 -V 'libmono0 (= $(VERSION))' ;fi
-	dh_makeshlibs -plibmint0 -V 'libmint0 (= $(VERSION))'
+	#dh_makeshlibs -plibmint0 -V 'libmint0 (= $(VERSION))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov
 	# fix cross-dependencies... but calls for trouble... using -X for now

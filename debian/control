@@ -1,7 +1,7 @@
 Source: mono
 Section: interpreters
 Priority: optional
-Maintainer: Debian Mono Group <pkg-mono-group@alioth.debian.org>
+Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>
 Standards-Version: 3.6.1
 Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake
@@ -42,7 +42,9 @@ Description: generic CLI (.NET/Mono) code interpreter
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
  .
- This package contains the generic .NET code interpreter "mint".
+ This package contains the generic .NET code interpreter "mint". It is
+ more portable but slow implementation, don't use it unless the mono-jit
+ package is not available for your system architecture.
  
 Package: mono
 Architecture: all
@@ -89,28 +91,3 @@ Description: libraries for the Mono interpreter - Development files
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
-
-Package: libmint0
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}
-Description: libraries for the Mono (mint) interpreter
- Shared object libraries for mint, the generic .NET code indepreter from
- the Mono Project.
- .
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
-
-Package: libmint-dev
-Architecture: any
-Section: devel
-Depends: libmint0 (= ${Source-Version})
-Description: libraries for the Mono (mint) interpreter - Development files
- Header files and static libraries for libmint0 library of the Mono
- Project.
- .
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
-
