@@ -1,19 +1,16 @@
-mono (1.0-5) unstable; urgency=medium
+mono (1.0-4) unstable; urgency=medium
 
+  * the "sorry for forgetting the NOT RELEASED YET tags" release
   * Mono BSP
   * Mirco 'meebey' Bauer
     + debian/rules: s390 build should work now
       (showstopper for sarge, thus medium urgency)
     + debian/control: fixed typo, tuned Architecture field for mono
     + debian/README.Debian: fixed typo
+  * Eduard Bloch
+    + --with-ntpl=no, still breaks on kernel 2.4 (closes: #256755, #257412)
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 08 Aug 2004 16:38:32 +0200
-
-mono (1.0-4) unstable; urgency=low
-
-  * the "sorry for forgetting the NOT RELEASED YET tags" release
-
- -- Eduard Bloch <blade@debian.org>  Wed,  7 Jul 2004 23:27:22 +0200
 
 mono (1.0-3) unstable; urgency=low
 

@@ -43,7 +43,7 @@ build-stamp: cli-wrapper
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
-	  --with-preview=yes
+	  --with-preview=yes --with-nptl=no
 	# we don't touch precompiled stuff
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE) -j5 $(ATG)
@@ -133,5 +133,6 @@ binary-arch: build install
 	dh_md5sums -s
 	dh_builddeb -s
 
-binary: binary-indep binary-arch
+#binary: binary-indep binary-arch
+binary: binary-arch
 .PHONY: build clean binary-indep binary-arch binary install
