@@ -1,9 +1,12 @@
-mono (0.97-1) unstable; urgency=low
+mono (0.97-0pre1v1) unstable; urgency=low
 
-  * (NOT RELEASED YET) New upstream release
+  * (NOT RELEASED YET) New upstream release (Release Candidate)
+    + solves JIT crash problems with kernel 2.4.x (closes: #255485, #256200)
   * Eduard Bloch
-    + Added libMonoPosixHelper... to libmono... packages
+    + Added libMonoPosixHelper... to libmono... packages (closes: #256697)
     + monosn is gone, using sn to get the signature strings now
+    + set alternative dependency on mono-assemblies-base-0.96, apparently
+      compatible
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 28 Jun 2004 01:14:32 +0200
 
