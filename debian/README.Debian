@@ -7,4 +7,16 @@ mono for Debian
  - Documentation package is not ready yet because of inconsistency and
    evil build dependencies.
 
+Purge your ~/.wapi directory if you see messages like:
+
+** (/tmp/hello.exe:23770): WARNING **: Shared memory sanity check
+failed.
+
+** (/tmp/hello.exe:23770): WARNING **: Failed to attach shared memory!
+Falling back to non-shared handles
+
+Reason:
+
+02:00:00 < totte> .wapi is the shared memory file folder used to handle process.start and someother functions for our IO lib
+
  Eduard Bloch <blade@debian.org> -- Thu, 15 Jan 2004 12:30:55 +0100
