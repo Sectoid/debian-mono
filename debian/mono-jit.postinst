@@ -8,7 +8,7 @@ if [ "$1" = "configure" -a -d /usr/share/doc/mono-jit -a ! -h /usr/share/doc/mon
 fi
 
 ARCH=$(dpkg-architecture -qDEB_HOST_ARCH)
-if [[ "$ARCH" = "i386" || "$ARCH" = "s390" ]]; then
+if [[ "$ARCH" = "i386" || "$ARCH" = "powerpc" || "$ARCH" = "s390" ]]; then
 	update-alternatives --install /usr/bin/cli cli /usr/bin/mono 14 --slave /usr/share/man/man1/cli.1.gz cli.1.gz /usr/share/man/man1/mono.1.gz
 else
 	update-alternatives --install /usr/bin/cli cli /usr/bin/mono 9 --slave /usr/share/man/man1/cli.1.gz cli.1.gz /usr/share/man/man1/mono.1.gz
