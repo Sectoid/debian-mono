@@ -91,6 +91,8 @@ binary-arch: build install
 	install -m644 -D debian/lintian debian/mono/usr/share/lintian/overrides/mono
 	# the SONAMEs fix
 	perl -pe 's/-0.dll(.*)\.so/-0.dll$$1.so.0/; s/libgstreamer-0.6.so/libgstreamer-0.6.so.0/;' -i debian/mono-common/etc/mono/config
+	# gnomeui soname fix, it sucks
+	perl -pe 's!<configuration>!<configuration>\n<dllmap dll="gnomeui-2" target="libgnomeui-2.so.0" />!' -i debian/mono-common/etc/mono/config
 #	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} | tee $${s%%.shlibs.in}/DEBIAN/shlibs >> shlibs.local ; done
 #	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} >> shlibs.local ; done
 	dh_installchangelogs -s

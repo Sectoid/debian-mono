@@ -76,7 +76,7 @@ Description: Mono utilities
  monodis, pedump and monograph.
 
 Package: libmono0
-Architecture: i386
+Architecture: i386 powerpc
 Section: libs
 Depends: ${shlibs:Depends}
 Conflicts: libmint0
@@ -91,7 +91,7 @@ Description: libraries for the Mono interpreter
 
 Package: libmono-dev
 Section: devel
-Architecture: i386
+Architecture: i386 powerpc
 Depends: libmono0 (= ${Source-Version})
 Description: libraries for the Mono interpreter - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.

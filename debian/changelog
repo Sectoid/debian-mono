@@ -1,11 +1,13 @@
-mono (0.30.1-2) unstable; urgency=low
+mono (0.30.2-1) unstable; urgency=low
 
-  * NOT RELEASED YET
+  * New upstream release
   * Eduard Bloch:
-    + debian/control: limit all arch lists to those really supported by the
-      Mono project
+    + debian/control: limited "any" arch lists to those really supported by the
+      Mono project. libmono0(-dev) to i386 powerpc (closes: #235315)
+    + added a workaround for gnomeui-2 symbolic name (closes: #235946)
+    + deleting the alternatives entries only on removal (closes: #234815)
 
- -- Eduard Bloch <blade@debian.org>  Tue, 24 Feb 2004 19:28:29 +0100
+ -- Eduard Bloch <blade@debian.org>  Sat,  6 Mar 2004 13:15:43 +0100
 
 mono (0.30.1-1) unstable; urgency=low
 
