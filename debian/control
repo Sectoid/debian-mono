@@ -8,7 +8,7 @@ Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake1.7 | automa
 Build-Conflicts: libmint-dev
 
 Package: mono-common
-Architecture: any
+Architecture: alpha arm hppa powerpc s390 sparc i386
 Depends: binfmt-support (>= 1.1.2)
 Provides: cli-common
 Conflicts: binfmt-detector-cli, cli-common
@@ -38,7 +38,7 @@ Description: fast CLI (.NET/Mono) JIT compiler
 
 Package: mono-mint
 Provides: cli-virtual-machine
-Architecture: i386 sparc powerpc arm hppa s390
+Architecture: alpha arm hppa powerpc s390 sparc i386
 Conflicts: libmint0, libmint-dev
 Replaces: libmint0, libmint-dev
 Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
@@ -64,7 +64,7 @@ Description: The Mono .NET development environment
  mono is a metapackage containing dependencies for the components of Mono.
 
 Package: mono-utils
-Architecture: any
+Architecture: alpha arm hppa powerpc s390 sparc i386
 Section: devel
 Depends: ${shlibs:Depends}, mono-assemblies-base
 Description: Mono utilities

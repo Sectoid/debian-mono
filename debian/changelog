@@ -1,3 +1,12 @@
+mono (0.30.1-2) unstable; urgency=low
+
+  * NOT RELEASED YET
+  * Eduard Bloch:
+    + debian/control: limit all arch lists to those really supported by the
+      Mono project
+
+ -- Eduard Bloch <blade@debian.org>  Tue, 24 Feb 2004 19:28:29 +0100
+
 mono (0.30.1-1) unstable; urgency=low
 
   * New upstream release
