@@ -31,6 +31,17 @@ to the final variable.
 
 If you use this program, your package should build-depend on mono-utils.
 
+=head1 OPTIONS
+
+=over 4
+
+=item B<-d>
+
+Attempt to predict and avoid dupes that may appear if you package
+both, native shared libraries and DLL assemblies in one package.
+The list of possibly duplicating candidates is expected to be in the
+variable shlib:Depends from debian/package.substvars.
+
 =cut
 
 init();
@@ -164,14 +175,40 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
 
     my %depkgsFiltered;
     for (@depkgs) {
-        for ( split ( /,\s+/, $_ ) ) {
-            $depkgsFiltered{$_} = 1;
+       for ( split ( /\s*,\s*/, $_ ) ) {
+          $depkgsFiltered{$_} = 1;
+       }
+    }
+    # now filter the dupes coming from shlibs
+    if ( defined( $dh{D_FLAG} ) ) {
+        open( $fh, "<debian/$package.substvars" ) 
+        || warning(
+           "Could not read debian/$package.substvars"
+        );
+        while (<$fh>) {
+            if (/^shlibs:Depends=(.*)\n?/) {
+                for ( split ( /\s*,\s*/, $1 ) ) {
+                    delete $depkgsFiltered{$_};
+                }
+            }
         }
     }
 
     addsubstvar( $package, "net:Depends",
         "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)"
-        . join ( ", ", "", sort ( keys %depkgsFiltered ) ) );
+        . join ( ", ", "", sort {
+           # beautify the sort order... oh, it sucks
+           my $apkg;
+           $a=~/^\S+/;
+           $apkg=$&;
+           $b=~/^\S+/;
+           if($apkg eq $&) {
+              print STDERR "test, $apkg $&\n";
+              return -1 if( ($a=~/>=/) && ($b=~/<</));
+              return 1 if( ($b=~/>=/) && ($a=~/<</));
+           }
+           $a cmp $b;
+        } ( keys %depkgsFiltered ) ) );
 }
 
 =head1 SEE ALSO
