@@ -2,9 +2,9 @@ Source: mono
 Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
-Uploaders: Eduard Bloch <blade@debian.org>
+Uploaders: Eduard Bloch <blade@debian.org>, Teófilo Ruiz Suárez <teo@debian.org>
 Standards-Version: 3.6.1
-Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake1.7 | automake , libicu26-dev, libtool
+Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, automake1.7 | automake, libtool
 Build-Conflicts: libmint-dev
 
 Package: mono-common
