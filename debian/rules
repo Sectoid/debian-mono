@@ -19,7 +19,7 @@ build-stamp: cli-wrapper
 	./autogen.sh --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
-	  --sysconfdir=/etc
+	  --sysconfdir=/etc --with-sigaltstack=no
 	$(MAKE)
 	touch build-stamp
 
