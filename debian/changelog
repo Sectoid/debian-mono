@@ -1,6 +1,7 @@
 mono (0.96-0pre1v1) unstable; urgency=low
 
   * (NOT RELEASED YET) New upstream release
+  * FIXME: sync debian/NEWS revision line with the final release revision
   * Eduard Bloch
     + setting virtual ".shlibs" for libmono via provides, currently
       libmono-0.95

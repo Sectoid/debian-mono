@@ -1,0 +1,21 @@
+mono (0.96-0pre1v1) unstable; urgency=low
+
+  * It has been quite a while since the last Mono release in Debian and
+    we feel that it's time to announce few things changed in the
+    meantime:
+
+ - dependencies management and debhelper integration - the new
+   mono-utils package contains scripts to create and manage dependencies
+   between the .NET library packages.  They work in a similar way to the
+   .shlibs system in Debian. For more details, see dh_makenetlibs(1),
+   dh_netdeps(1) and monodoc's rules file as example.
+   Another script available now is dh_installxsp which will install
+   snippets of configuration files for XSP packages (HTML/ASP.NET server
+   and Apache module).
+
+ - the GAC - except of mscorlib.dll, all DLLs are moved into
+   /usr/share/dotnet hierarchy and are now loaded using the GAC (Global
+   Assembly Cache) method. This also makes sane versioning possible,
+   similar to SONAME handling on native shared libraries.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 16 Jun 2004 14:40:27 +0200
