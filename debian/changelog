@@ -1,6 +1,7 @@
 mono (0.30-0pre1v1) unstable; urgency=low
 
   * NOT RELEASED YET
+  * New upstream release
   * catch-them-all cli-wrapper rewrite
 
  -- Eduard Bloch <blade@debian.org>  Mon,  9 Feb 2004 00:23:40 +0100
