@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/cli "$0.exe" "$@"
