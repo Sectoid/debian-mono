@@ -84,6 +84,7 @@ binary-arch: build install
 	dh_testroot -s
 	dh_movefiles -s
 	dh_link -s
+	install -m644 -D debian/lintian debian/mono/usr/share/lintian/overrides/mono
 #	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} | tee $${s%%.shlibs.in}/DEBIAN/shlibs >> shlibs.local ; done
 #	cd debian; for s in *.shlibs.in ; do sed -e "s/_VERSION_/$(VERSION)/g" < $$s | tee $${s%%.in} >> shlibs.local ; done
 	dh_installchangelogs -s

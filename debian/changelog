@@ -1,6 +1,9 @@
-mono (0.29.99.20040114-1) unstable; urgency=low
+mono (0.29.99.20040114-0pre1v1) unstable; urgency=low
 
   * NOT RELEASED YET
+  * lots of big and small changes inside of debian/, see Subversion log for
+    details
+  * ignore lintian warnings about autotools! We fix it elsewhere.
 
  -- Eduard Bloch <blade@debian.org>  Wed, 14 Jan 2004 23:02:54 +0100
 
