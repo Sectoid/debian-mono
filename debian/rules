@@ -43,7 +43,7 @@ build-stamp: cli-wrapper
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
 	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
-	  --with-preview=yes --with-nptl=no
+	  --with-preview=yes --with-tls=pthread
 	# we don't touch precompiled stuff
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
 	$(MAKE) -j5 $(ATG)
