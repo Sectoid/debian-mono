@@ -47,7 +47,7 @@ if ( !-x "/usr/bin/monodis" ) {
     );
 }
 
-if ( system "grep \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
+if ( system "grep -q \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
     warning("Warning! No Build-Depends on mono-utils (>= 0.95)!");
 }
 
@@ -86,7 +86,7 @@ foreach (@ARGV) {
 
 my $fh;
 my %libdata;
-open( $fh, "cat /var/lib/dpkg/info/*.netlibs debian/*/DEBIAN/netlibs 2>/dev/null |" );
+open( $fh, "cat debian/*/DEBIAN/netlibs /var/lib/dpkg/info/*.netlibs 2>/dev/null |" );
 while (<$fh>) {
     /(\S+)\s+(\S+)\s+(\w.*)\n?/;
     $libdata{"$1/$2"} = $3;
@@ -157,27 +157,14 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
        close F;
     }, $tmp;
 
-    #print( keys %depkgs );
-    #exit 1;
+    my %depkgsFiltered;
+    for(keys %depkgs) {
+       for(split(/,\s+/,$_)) {
+          $depkgsFiltered{$_}=1;
+       }
+    }
 
-    addsubstvar( $package, "net:Depends",
-        "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)".(%depkgs?join(", ", "", (keys %depkgs)):""));
-
-    #     # finaly resolve the version and add it to substvars
-    #     foreach my $pkg (keys %deps) {
-    #        my $version = $minvLoc{$pkg};
-    #        $version =~ s#[\(\)]##g if $version;
-    #        if(!$version && `dpkg -s $pkg` =~ /^Version:\s*(\S+)/m) {
-    #           $version = ">= $1";
-    #           # FIXME add an option to match the exact versions
-    #           # match only the upstream version
-    #           if(!0) {
-    #              $version =~ s/-[^-]+$//;
-    #              $version =~ s/=/>/;
-    #           }
-    #        }
-    #        addsubstvar($package, "net:Depends", $pkg, $version);
-    #     }
+    addsubstvar( $package, "net:Depends", "mono-jit (>= $mono_version) | mono-mint (>= $mono_version)".join(", ", "", sort (keys %depkgsFiltered)));
 }
 
 =head1 SEE ALSO
