@@ -1,6 +1,7 @@
 mono (0.29.99.20040114-2) unstable; urgency=low
 
   * Finally closes the outstanding ITPs (closes: #132882)
+  * Maintainer mailing list address fixed
 
  -- Eduard Bloch <blade@debian.org>  Sun, 18 Jan 2004 19:15:41 +0100
 
