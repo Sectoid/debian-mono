@@ -5,10 +5,14 @@ mono (1.0-4) unstable; urgency=medium
   * Mirco 'meebey' Bauer
     + debian/rules: s390 build should work now
       (showstopper for sarge, thus medium urgency)
-    + debian/control: fixed typo, tuned Architecture field for mono
+    + debian/control: fixed typo, tuned Architecture field for mono (should
+      finaly prevent "unallowed" architectures from trying to build mono)
     + debian/README.Debian: fixed typo
   * Eduard Bloch
     + --with-ntpl=no, still breaks on kernel 2.4 (closes: #256755, #257412)
+    + patched Makefiles to link explicitely with glib and dl, thanks to
+      Russ Allbery <rra@stanford.edu> (closes: #262023)
+    + disabled mono-mint build for i386 and powerpc, upstream wish
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 08 Aug 2004 16:38:32 +0200
 
