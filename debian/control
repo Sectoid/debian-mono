@@ -72,6 +72,7 @@ Package: libmono0
 Architecture: i386
 Section: libs
 Depends: ${shlibs:Depends}
+Conflicts: libmint0
 Description: libraries for the Mono interpreter
  Shared libraries for Mono, used for embedding/hosting of the
  JIT. The package also contains libmono-profiler-cov used for
@@ -84,7 +85,7 @@ Description: libraries for the Mono interpreter
 Package: libmono-dev
 Section: devel
 Architecture: i386
-Depends: libmono0 (= ${Source-Version}), libmint-dev (= ${Source-Version})
+Depends: libmono0 (= ${Source-Version})
 Description: libraries for the Mono interpreter - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
  .
