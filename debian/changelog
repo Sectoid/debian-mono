@@ -5,10 +5,12 @@ mono (0.29.99.20040114-0pre1v1) unstable; urgency=low
   * Package descriptions written or improved
   * Library package separation to follow the shared libs conventions
     (libmono and libmono-profiler-... seem to belong together, though)
-  * Package renaming to avoid confusion
-    (mono in mono-jit, mint in mono-mint)
+  * libmono-dev depends on libmint-dev since the last contains the headers and
+    is available on all supported arches
+  * Package renaming to avoid confusion (mono in mono-jit, mint in mono-mint)
   * merged binfmt-detector-cli and mono-common since they were already linked
     together and another 3kB package makes no much sense
+  * limited the arch list to those officially supported by the Mono Project
 
  -- Eduard Bloch <blade@debian.org>  Wed, 14 Jan 2004 23:02:54 +0100
 
