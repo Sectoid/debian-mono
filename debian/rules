@@ -10,6 +10,21 @@ ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),sparc)
 JIT="--with-jit=no"
 endif
 
+ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),s390)
+JIT="--with-jit=no"
+ATG="arch_target=s390"
+endif
+
+ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),alpha)
+JIT="--with-jit=no"
+ATG="arch_target=alpha"
+endif
+
+ifeq ($(shell dpkg-architecture -qDEB_BUILD_ARCH),arm)
+JIT="--with-jit=no"
+ATG="arch_target=arm"
+endif
+
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 
@@ -31,7 +46,7 @@ build-stamp: cli-wrapper
 	  --with-preview=yes
 	# we don't touch precompiled stuff
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
-	$(MAKE)
+	$(MAKE) -j5 $(ATG)
 	( cat debian/mono-jit.postinst.head; ARCH= ; case `dpkg-architecture -qDEB_HOST_ARCH` in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
 	touch build-stamp
 
@@ -59,14 +74,14 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	$(MAKE) $(ATG) install DESTDIR=$(CURDIR)/debian/tmp
 	cd debian ; for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
 		do chmod +x $$x; pod2man $$x > $$x.1 ; done
 	# removing trash (real assemblies/libs get build by the mcs source package)
 	rm -f $(CURDIR)/debian/tmp/usr/lib/mscorlib.dll
 	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono
 	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
-	cd $(CURDIR)/debian/detector && $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	cd $(CURDIR)/debian/detector && $(MAKE) $(ATG) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
