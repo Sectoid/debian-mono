@@ -22,15 +22,17 @@ Description: common files for the Mono CLI runtimes
 
 Package: mono-jit
 Provides: cli-virtual-machine
-Architecture: i386
+Architecture: i386 powerpc
 Depends: ${shlibs:Depends}, mono-assemblies-base, mono-common (= ${Source-Version})
 Description: fast CLI (.NET/Mono) JIT compiler
  The Mono Project is an open development initiative sponsored by Ximian that is
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
  .
- This package contains the optimised .NET code interpreter "mono", which is
- currently available for i386 architecture only.
+ This package contains the Virtual Execution Environment and code
+ generator (Just-in-Time and Ahead-of-Time) "mono" which runs CLI/.NET
+ applications, currently available for i386 and powerpc architectures
+ only.
 
 Package: mono-mint
 Provides: cli-virtual-machine
@@ -66,7 +68,7 @@ Description: Mono utilities
  development platform.
  .
  This package includes varios tools useful for .NET developers, like
- monodis, monodis and monograph.
+ monodis, pedump and monograph.
 
 Package: libmono0
 Architecture: i386
