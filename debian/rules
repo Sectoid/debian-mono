@@ -37,9 +37,9 @@ clean:
 	# Use the right clean target depending if we ran ./autogen.sh or not
 	-if [ -e "needs-maintclean" ]; then	\
 	  rm -f needs-maintclean;		\
-	  -$(MAKE) maintainer-clean;		\
+	  $(MAKE) maintainer-clean;		\
 	else					\
-	  -$(MAKE) distclean;			\
+	  $(MAKE) distclean;			\
 	fi
 	-cd debian/detector && $(MAKE) clean
 
