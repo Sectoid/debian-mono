@@ -1,3 +1,15 @@
+mono (1.0.5-2) unstable; urgency=high
+
+  * Mirco 'meebey' Bauer
+    + removed mono-mint package and all packages for s390.
+      The mono-mint (the interpeter) is deprecated, unmaintained upstream
+      and was just a proof-of-concept programm.
+      The mono-jit is no longer supported for s390 by upstream in the stable
+      release and has a lot of bugs on that arch. This prevents Mono to enter
+      "testing", thus removed.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 15 Feb 2005 22:58:39 +0200
+
 mono (1.0.5-1) unstable; urgency=high
 
   * New upstream release

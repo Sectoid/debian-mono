@@ -11,11 +11,6 @@ DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
 DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 DEB_HOST_GNU_TYPE  := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 
-ifeq ($(DEB_BUILD_ARCH), s390)
-  JIT = --with-jit=yes --with-nptl=no
-  ATG = arch_target=s390
-endif
-
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
   confflags += --build $(DEB_HOST_GNU_TYPE)
 else
@@ -33,13 +28,13 @@ build-stamp: cli-wrapper
 	./configure $(confflags) --prefix=/usr --with-gc=included \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info \
-	  --sysconfdir=/etc --with-sigaltstack=no $(JIT) \
-	  --with-tls=pthread
+	  --sysconfdir=/etc --with-sigaltstack=no \
+	  --with-tls=pthread --with-nptl=no
 	# we don't install precompiled stuff
 	# (getting those build by the mcs source package)
 	perl -pe 's,\ runtime\ ,  ,' -i Makefile
-	$(MAKE) -j5 $(ATG)
-	( cat debian/mono-jit.postinst.head; ARCH= ; case $(DEB_HOST_ARCH) in i386|powerpc|s390) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
+	$(MAKE)
+	( cat debian/mono-jit.postinst.head; ARCH= ; case $(DEB_HOST_ARCH) in i386|powerpc) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
 	touch build-stamp
 
 clean: unpatch
@@ -99,11 +94,8 @@ binary-arch: build install
 	dh_compress -s
 	dh_fixperms -s
 	if test -d debian/libmono0 ; then dh_makeshlibs -plibmono0 -V 'libmono-$(UPVERSION)' ;fi
-	#dh_makeshlibs -plibmint0 -V 'libmint0 (= $(VERSION))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov
-	# fix cross-dependencies... but calls for trouble... using -X for now
-	# perl -pe 's/(Depends:.*)libmono0[^,\n]+[,\n](.*)/$$1$$2/' -i debian/libmono0/DEBIAN/control
 	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION)
 	dh_md5sums -s
 	dh_builddeb -s

@@ -34,7 +34,7 @@ if there are no .config files associated with the the .exe/.dll file
 which refers to the particular shared library (by its SONAME).
 
 If you use this program, your package should build-depend on mono-utils
-(>> 0.95).
+(>= 1.0).
 
 =head1 OPTIONS
 
@@ -69,8 +69,8 @@ if ( !-x "/usr/bin/monodis" ) {
     );
 }
 
-if ( system "grep -q \"Build-Dep.*mono-utils.*0.9\" debian/control" ) {
-    warning("Warning! No Build-Depends on mono-utils (>= 0.96)!");
+if ( system "egrep -q \"Build-Depends: .*mono-utils \(>= 1\.[0-9.-]+\)\" debian/control" ) {
+    warning("Warning! No Build-Depends on mono-utils (>= 1.0)!");
 }
 
 if ( !defined $mono_version || $mono_version eq "" ) {
