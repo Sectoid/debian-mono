@@ -1,11 +1,14 @@
-mono (1.0.2-1) unstable; urgency=medium
+mono (1.0.2-1) unstable; urgency=high
 
-  * New upstream (bugfix) release
+  * The "All or Nothing" release
+  * New upstream release (Closes: #273675)
   * Mirco 'meebey' Bauer
-    - applied debian/rules patch to fix FTBFS on i386 with amd64 kernel
+    + applied debian/rules patch to fix FTBFS on i386 with amd64 kernel
       (Closes: #265510 thanks to Kurt Roeckx <Q@ping.be>)
+    + removed all not official supported architectures
+      (Closes: #272846, #259680)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 24 Sep 2004 19:06:12 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 11 Oct 2004 21:21:02 +0200
 
 mono (1.0.1-1) unstable; urgency=medium
 

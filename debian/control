@@ -9,7 +9,7 @@ Standards-Version: 3.6.1
 
 Package: mono-common
 Provides: cli-common
-Architecture: arm powerpc s390 sparc i386 alpha
+Architecture: i386 powerpc s390
 Depends: binfmt-support (>= 1.1.2)
 Conflicts: binfmt-detector-cli, cli-common
 Replaces: mono-jit (<< 0.16), binfmt-detector-cli
@@ -23,7 +23,7 @@ Description: common files for the Mono CLI runtimes
 
 Package: mono-jit
 Provides: cli-virtual-machine
-Architecture: i386 powerpc
+Architecture: i386 powerpc s390
 Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion} | mono-assemblies-base-0.96, mono-common (= ${Source-Version})
 Description: fast CLI (.NET/Mono) JIT compiler
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -37,7 +37,7 @@ Description: fast CLI (.NET/Mono) JIT compiler
 
 Package: mono-mint
 Provides: cli-virtual-machine
-Architecture: arm s390 sparc alpha
+Architecture: s390
 Conflicts: libmint0, libmint-dev
 Replaces: libmint0, libmint-dev
 Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion} | mono-assemblies-base-0.96, mono-common (= ${Source-Version})
@@ -52,7 +52,7 @@ Description: generic CLI (.NET/Mono) code interpreter
  package is not available for your system architecture.
  
 Package: mono
-Architecture: arm powerpc s390 sparc i386 alpha
+Architecture: i386 powerpc s390
 Depends: mono-jit (= ${Source-Version}) | mono-mint (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
 Description: The Mono .NET development environment
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -66,7 +66,7 @@ Description: The Mono .NET development environment
 
 Package: mono-utils
 Section: devel
-Architecture: arm powerpc s390 sparc i386 alpha
+Architecture: i386 powerpc s390
 Depends: ${shlibs:Depends}, mono-assemblies-base
 Description: Mono utilities
  The Mono Project is an open development initiative sponsored by Ximian that is
@@ -78,7 +78,7 @@ Description: Mono utilities
 
 Package: libmono0
 Section: libs
-Architecture: i386 powerpc
+Architecture: i386 powerpc s390
 Depends: ${shlibs:Depends}
 Conflicts: libmint0
 Provides: libmono-${mono:upversion}
@@ -93,7 +93,7 @@ Description: libraries for the Mono interpreter
 
 Package: libmono-dev
 Section: devel
-Architecture: i386 powerpc
+Architecture: i386 powerpc s390
 Depends: libmono0 (= ${Source-Version}), libglib2.0-dev
 Description: libraries for the Mono interpreter - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
