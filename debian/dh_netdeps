@@ -47,9 +47,10 @@ both, native shared libraries and DLL assemblies in one package.
 The list of possibly duplicating candidates is expected to be in the
 variable shlib:Depends from debian/package.substvars.
 
-=item B<-k>
+=item B<-r>
 
-Don't add a versioned dependency on mono-jit or mono-mint.
+Set a relaxed dependency on the VM, eg. "mono-jit | cli-virtual-machine" instead of
+hard versioned dependency on mono or mint packages.
 
 =cut
 
@@ -240,7 +241,7 @@ foreach my $package ( @{ $dh{DOPACKAGES} } ) {
     }
 
     addsubstvar( $package, "net:Depends",
-        ( (defined($dh{K_FLAG})) ? "" : "mono-jit (>= $mono_version) | mono-mint (>= $mono_version), " )
+        ( (defined($dh{R_FLAG})) ? "mono-jit | cli-virtual-machine" : "mono-jit (>= $mono_version) | mono-mint (>= $mono_version), " )
         . join ( ", ", "", sort {
            # beautify the sort order, requested by meebey
            my $apkg;
