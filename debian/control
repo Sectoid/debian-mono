@@ -113,33 +113,3 @@ Description: libraries for the Mono (mint) interpreter - Development files
  working to develop an open source, Linux-based version of the Microsoft .NET
  development platform.
 
-Package: mono-classes-base
-Section: libs
-Priority: optional
-Architecture: all
-Depends: libxslt1, libxslt1-dev
-Provides: cli-runtime
-Conflicts: cli-runtime
-Description: the Mono .NET class libraries
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
- .
- This package contains a collection of mono assemblies (cross-platform
- .NET DLL libraries) that are used by nearly all .NET programs on the
- system.
-
-Package: mono-mcs
-Section: devel
-Priority: optional
-Architecture: all
-Depends: mono-jit (= ${Source-Version}) | cli-virtual-machine
-Provides: c-sharp-compiler
-Description: the Mono C# compiler
- This is the Mono C# (C-Sharp) compiler, a platform-independent compiler which
- produces .NET binary executables.
- .
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
- 
