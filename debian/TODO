@@ -1,6 +1,6 @@
 TODO soon:
  - Finalize control file, decide on all package names.
- - Choose a good policy for future class package
-   mono-classes-foobar sounds okay, or maybe cli-classes-foobar
+ - Choose a good policy for future assembly packages
+   mono-assemblies-base, mono-assemblies-foo for 3rd party stuff
  - files lists for lib package
  - proper local shlibs files for the packages
