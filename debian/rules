@@ -121,7 +121,7 @@ binary-arch: build install
 	dh_shlibdeps -s -Xlibmono-profiler-cov
 	# fix cross-dependencies... but calls for trouble... using -X for now
 	# perl -pe 's/(Depends:.*)libmono0[^,\n]+[,\n](.*)/$$1$$2/' -i debian/libmono0/DEBIAN/control
-	dh_gencontrol -s
+	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION)
 	dh_md5sums -s
 	dh_builddeb -s
 
