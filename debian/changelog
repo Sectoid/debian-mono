@@ -1,3 +1,9 @@
+mono (0.29-1) unstable; urgency=low
+
+  * NOT RELEASED YET
+
+ -- Eduard Bloch <blade@debian.org>  Wed, 14 Jan 2004 23:02:54 +0100
+
 mono (0.26-2) unstable; urgency=low
 
   * No longer depend on an external libgc
