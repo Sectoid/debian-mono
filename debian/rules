@@ -60,6 +60,8 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	# this is no longer installed by the build system, why?
+	cp -a ./mono/metadata/monosn $(CURDIR)/debian/tmp/usr/bin
 	# removing trash (real assemblies/libs get build by the mcs source package)
 	rm -f $(CURDIR)/debian/tmp/usr/lib/libMonoPosixHelper*
 	rm -f $(CURDIR)/debian/tmp/usr/lib/mscorlib.dll
