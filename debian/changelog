@@ -1,8 +1,10 @@
-mono (1.0-0pre1) unstable; urgency=low
+mono (1.0-0pre1v1) unstable; urgency=low
 
-  * New upstream release
+  * New upstream release (1.0 final)
+  * Mirco 'meebey' Bauer
+    + debian/rules: cleanup
 
- -- Eduard Bloch <blade@debian.org>  Mon, 28 Jun 2004 20:18:23 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 30 Jun 2004 18:41:27 +0200
 
 mono (0.97-1) unstable; urgency=medium
 
