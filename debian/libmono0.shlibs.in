@@ -1,2 +1,2 @@
-libmono 0 (= libmono0 _VERSION_)
-libmono-profiler-cov 0 (= libmono0 _VERSION_)
+libmono 0 libmono0 (= _VERSION_)
+libmono-profiler-cov 0 libmono0 (= _VERSION_)
