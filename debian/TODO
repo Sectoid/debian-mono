@@ -9,6 +9,7 @@ TODO soon:
 
  - (meebey) package some .NET programs like monodoc and monodevelop (CVS branch only)
 
+ - (pabl0) package some other .NET programs like evolution-sharp, beagle, mbloggy, daybook and dashboard when they are available
 
 Test this with recent mono n=11:
 
