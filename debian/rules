@@ -20,6 +20,8 @@ cli-wrapper: debian/cli-wrapper.c
 build: build-stamp
 build-stamp: cli-wrapper
 	dh_testdir
+	# using a better dllmap
+	cp $(CURDIR)/debian/config.in $(CURDIR)/data/config.in
 	# refresh autotools crap
 	#install -m755 debian/autogen.sh .
 	#NOCONFIGURE=yes ./autogen.sh
