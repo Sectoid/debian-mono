@@ -69,8 +69,8 @@ if ( !-x "/usr/bin/monodis" ) {
     );
 }
 
-if ( system "grep -q \"Build-Dep.*mono-utils.*0.95\" debian/control" ) {
-    warning("Warning! No Build-Depends on mono-utils (>= 0.95)!");
+if ( system "grep -q \"Build-Dep.*mono-utils.*0.9\" debian/control" ) {
+    warning("Warning! No Build-Depends on mono-utils (>= 0.96)!");
 }
 
 if ( !defined $mono_version || $mono_version eq "" ) {

@@ -63,7 +63,8 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	for x in debian/dh_* ; do chmod +x $$x; pod2man $$x > $$x.1 ; done
+	cd debian ; for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
+		do chmod +x $$x; pod2man $$x > $$x.1 ; done
 	# this is no longer installed by the build system, why?
 	cp -a ./mono/metadata/monosn $(CURDIR)/debian/tmp/usr/bin
 	# removing trash (real assemblies/libs get build by the mcs source package)
