@@ -1,7 +1,6 @@
-mono (0.96-0pre1v1) unstable; urgency=low
+mono (0.96-1) unstable; urgency=low
 
-  * (NOT RELEASED YET) New upstream release
-  * FIXME: sync debian/NEWS revision line with the final release revision
+  * New upstream release
   * Eduard Bloch
     + setting virtual ".shlibs" for libmono via provides, currently
       libmono-0.96
@@ -22,7 +21,7 @@ mono (0.96-0pre1v1) unstable; urgency=low
   * Pablo Fischer
     + Added autoscript support to dh_installxsp	
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 16 Jun 2004 14:40:27 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 19 Jun 2004 14:38:57 +0200
 
 mono (0.91-1) unstable; urgency=low
 

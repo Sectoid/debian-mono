@@ -1,4 +1,4 @@
-mono (0.96-0pre1v1) unstable; urgency=low
+mono (0.96-1) unstable; urgency=low
 
   * It has been quite a while since the last Mono release in Debian and
     we feel that it's time to announce few things changed in the
@@ -17,5 +17,8 @@ mono (0.96-0pre1v1) unstable; urgency=low
    /usr/share/dotnet hierarchy and are now loaded using the GAC (Global
    Assembly Cache) method. This also makes sane versioning possible,
    similar to SONAME handling on native shared libraries.
+ 
+ - see README.Debian for further details about changes and the current
+   .NET Debian policy
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 16 Jun 2004 14:40:27 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 19 Jun 2004 14:39:08 +0200
