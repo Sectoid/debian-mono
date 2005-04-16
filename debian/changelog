@@ -1,4 +1,4 @@
-mono (1.1.6-0pre5) experimental; urgency=low
+mono (1.1.6-1) experimental; urgency=low
 
   * New upstream release
     + New version (Closes: #296353, #301268)
