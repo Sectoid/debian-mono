@@ -1,3 +1,0 @@
-# we refresh the crap after clean, and stop bothering about standards version
-mono: outdated-autotools-helper-file config.guess 2001-09-04
-mono: outdated-autotools-helper-file config.sub 2001-09-07

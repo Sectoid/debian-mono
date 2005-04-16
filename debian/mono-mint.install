@@ -1,4 +1,0 @@
-debian/tmp/usr/bin/mint
-debian/tmp/usr/lib/libmint.so.*
-debian/tmp/usr/lib/pkgconfig/mint.pc
-debian/tmp/usr/share/man/man1/mint.1

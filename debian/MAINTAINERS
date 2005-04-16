@@ -1,4 +1,6 @@
-Current maintainers of the mono packages are:
+The Debian Mono Group maintains the Mono packages in Debian.
+In this group are prefered maintainers for certain packages.
+
+Current maintainers of the "mono" packages are:
 
 Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
-

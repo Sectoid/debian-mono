@@ -2,86 +2,178 @@ Source: mono
 Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
-Uploaders: Eduard Bloch <blade@debian.org>, Teófilo Ruiz Suárez <teo@debian.org>, Mirco Bauer <meebey@meebey.net>
-Build-Depends: debhelper (>> 3.0.0), libglib2.0-dev, bison, libtool, dpatch, libicu28-dev
-Build-Conflicts: libmint-dev
+Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
+Build-Depends: debhelper (>> 4.0.0), cli-common (>= 0.1), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
 Standards-Version: 3.6.1
 
 Package: mono-common
-Provides: cli-common
 Architecture: i386 powerpc
-Depends: binfmt-support (>= 1.1.2)
-Conflicts: binfmt-detector-cli, cli-common
-Replaces: mono-jit (<< 0.16), binfmt-detector-cli
-Description: common files for the Mono CLI runtimes
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
+Depends: cli-common (>= 0.1), binfmt-support (>= 1.1.2), 
+Description: common files for Mono
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
  This package contains base configuration files and configures the
- system to run .NET executables as native applications.
+ system to run CIL executables as native applications.
 
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc
-Depends: ${shlibs:Depends}, mono-assemblies-base-${mono:upversion}, mono-common (= ${Source-Version})
-Description: fast CLI/.NET JIT compiler for Mono
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
+Depends: mono-common (= ${Source-Version}), mono-assemblies-base-${mono:upversion}, ${shlibs:Depends},
+Description: fast CLI (.NET) JIT compiler for Mono
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
  This package contains the Virtual Execution Environment and code
- generator (Just-in-Time and Ahead-of-Time) "mono" which runs CLI/.NET
+ generator (Just-in-Time and Ahead-of-Time) "mono" which runs CLI (.NET)
  applications, currently available for i386 and powerpc architectures
  only.
 
 Package: mono
 Architecture: i386 powerpc
-Depends: mono-jit (= ${Source-Version}), mono-utils (= ${Source-Version}), mono-mcs, mono-assemblies-arch
-Description: Mono .NET development environment
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
+Depends: mono-common (= ${Source-Version}), mono-jit (= ${Source-Version})
+Description: Mono CLI (.NET) runtime
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
- mono is a metapackage containing dependencies for the components of
- Mono. If you do not need all of them (or try to work around X11
- dependencies), install the core packages manually: mono-jit (or
- mono-mint if JIT is not available), mono-mcs, mono-utils.
+ mono is a metapackage containing dependencies for the runtime of  Mono.
+ If you do not need all of them (or try to work around X11
+ dependencies), install the core packages manually: mono-jit, mono-mcs or
+ mono-utils.
+
+Package: mono-devel
+Architecture: i386 powerpc
+Depends: mono (= ${Source-Version}), mono-mcs, mono-gac, mono-utils, mono-jay
+Description: Mono CLI (.NET) runtime with development tools
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ mono-devel is a metapackage containing dependencies for the runtime and
+ development components of Mono.
 
 Package: mono-utils
 Section: devel
 Architecture: i386 powerpc
-Depends: ${shlibs:Depends}, mono-assemblies-base
+Depends: mono-common (= ${Source-Version}), mono-assemblies-base, ${shlibs:Depends}
+Provides: cil-disassembler
 Description: Mono utilities
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
- This package includes various tools useful for .NET developers, like
+ This package includes various tools useful for CLI (.NET) developers, like
  pedump, monodis, monograph and monosn.
 
 Package: libmono0
 Section: libs
 Architecture: i386 powerpc
-Depends: ${shlibs:Depends}
-Conflicts: libmint0
+Depends: mono-common (= ${Source-Version}), ${shlibs:Depends}
 Provides: libmono-${mono:upversion}
-Description: libraries for the Mono interpreter
+Description: libraries for the Mono JIT
  Shared libraries for Mono, used for embedding/hosting of the
  JIT. The package also contains libmono-profiler-cov used for
  optimisation work.
  .
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
 
 Package: libmono-dev
 Section: devel
 Architecture: i386 powerpc
-Depends: libmono0 (= ${Source-Version}), libglib2.0-dev
-Description: libraries for the Mono interpreter - Development files
+Depends: mono-common (= ${Source-Version}), libmono0 (= ${Source-Version}), libglib2.0-dev
+Description: libraries for the Mono JIT - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
  .
- The Mono Project is an open development initiative sponsored by Ximian that is
- working to develop an open source, Linux-based version of the Microsoft .NET
- development platform.
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+
+Package: mono-assemblies-base
+Section: libs
+Architecture: all
+Depends: mono-common (= ${Source-Version}), ${cli:Depends}
+Recommends: mono-assemblies-arch
+Provides: mono-assemblies-base-${mono:upversion}
+Description: Mono class library
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ This package contains a collection of mono assemblies 
+ (cross-platform CIL (.NET) libraries) that are used by nearly all CLI (.NET)
+ programs on the system.
+
+Package: mono-assemblies-arch
+Section: libs
+Architecture: i386 powerpc
+Depends:  mono-assemblies-base-${mono:upversion}, ${gdi:Depends}, ${shlibs:Depends}
+Provides: mono-assemblies-arch-${mono:upversion}
+Description: architecture specific files for Mono's class library
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ This package contains architecture specific files needed for
+ mono-assemblies-base and depends on further packages that provide needed
+ parts.
+
+Package: mono-mcs
+Section: devel
+Architecture: all
+Depends:  mono-jit (>= ${mono:upversion}) | cli-virtual-machine, mono-jit (<< ${mono:next-upversion}) | cli-virtual-machine
+Recommends: pkg-config
+Conflicts: pnet-compiler
+Provides: c-sharp-compiler, resource-file-generator, assembly-linker, strong-name-tool
+Description: Mono C# compiler
+ This is the Mono C# (C-Sharp) compiler, a platform-independent compiler which
+ produces CIL/.NET (Common Intermediate Language) binary executables, and the
+ most development tools around it like ilasm, wsdl stub generator, assembly
+ linker and security tools.
+ .
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ 
+Package: mono-gac
+Architecture: all
+Depends: mono-common (= ${Source-Version}), mono-jit | cli-virtual-machine, mono-assemblies-base
+Provides: global-assembly-cache-tool
+Description: Mono GAC tool
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ This package includes the Global Assembly Cache (GAC) Tool (gacutil)
+ used by Mono to store shared CIL/.NET (Common Intermediate Language) libraries.
+
+Package: mono-jay
+Section: devel
+Architecture: i386 powerpc
+Depends: mono-common (= ${Source-Version}), ${shlibs:Depends}
+Description: LALR(1) parser generator oriented to Java/.NET
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ Jay is a Yacc implementation oriented to Java-like input syntax. It
+ takes a grammar, specified in BNF and augmented with semantic actions,
+ and generates tables and an interpreter which recognizes the language
+ defined by the grammar and executes the semantic actions as their
+ corresponding phrases are recognized.

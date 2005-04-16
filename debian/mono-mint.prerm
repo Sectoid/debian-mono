@@ -1,8 +1,0 @@
-#!/bin/sh -e
-
-
-if [ "$1" = remove ]; then
-update-alternatives --remove cli /usr/bin/mint
-fi
-
-#DEBHELPER#

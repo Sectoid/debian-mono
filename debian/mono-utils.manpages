@@ -1,4 +1,5 @@
 debian/man/pedump.1
+debian/man/monodiet.1
 debian/man/monograph.1
 debian/tmp/usr/share/man/man1/monodis.1
 debian/dh_*.1

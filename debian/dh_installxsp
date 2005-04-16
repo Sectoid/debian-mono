@@ -36,7 +36,7 @@ Look for files named debian/package.hostxsp and install them as
 
 init();
 
-my $depname="net:XspServer";
+my $depname="cli:XspServer";
 
 foreach my $package (@{$dh{DOPACKAGES}}) {
 	my $tmp=tmpdir($package);

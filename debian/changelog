@@ -1,3 +1,37 @@
+mono (1.1.6-0pre5) experimental; urgency=low
+
+  * New upstream release
+    + New version (Closes: #296353, #301268)
+    + New build system, using one source tarball.
+    + Almost all programs have a manpage now.
+    + Mono 1.1.x branch supports AMD64 architecture.
+    + Remoting is fast again with 1.1.6
+      (Closes: #303349)
+  * Mirco 'meebey' Bauer
+    + Upstream merged mcs and mono into one mono tarball, this makes the
+      build process a lot easier.
+    + Dropping /usr/share/dotnet structure with this release, upstream
+      provides now a FHS conform solution.
+    + Added versioned mono-common dependency to mono, makes lintian happy.
+    + Added cli-common to build-dependencies.
+    + Added transition code to mono-common.postinst for moving
+      /usr/share/dotnet/mono to /usr/lib/mono
+      (thanks to Ingo Saitz aka Salz for helping with this)
+    + Added c-sharp-compiler, resource-file-generator, assembly-linker,
+      strong-name-tool, global-assembly-cache-tool and cil-disassembler
+      alternatives (those are common CLI programs).
+    + Added mono-devel metapackage.
+    + Added mono-common dependecy to all related packages.
+    + Removed a lot of hacks in debian/rules, not required anymore.
+    + Removed old Conflicts/Replaces.
+    + Removed icu28-dev from buil-dependencies (ICU is not recommended by
+      upstream anymore, and does break things).
+    + Added pkg-config to "Recommends" of mono-mcs. (Closes: #294606)
+    + created 07_no_libc_fun.dpatch
+      (Mono 1.1.x tries to use internal libc symbols, which is not required)
+     
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 2 Apr 2005 12:48:09 +0200
+
 mono (1.0.5-2) unstable; urgency=high
 
   * Mirco 'meebey' Bauer

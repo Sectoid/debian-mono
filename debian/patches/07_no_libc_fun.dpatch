@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 07_no_libc_fun.dpatch by Mirco Bauer <meebey@meebey.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-1.1.6/libgc/os_dep.c /tmp/dpep.XXSckM/mono-1.1.6/libgc/os_dep.c
+--- mono-1.1.6/libgc/os_dep.c	2005-03-30 23:23:15.000000000 +0200
++++ /tmp/dpep.XXSckM/mono-1.1.6/libgc/os_dep.c	2005-04-16 17:19:07.286471504 +0200
+@@ -939,7 +939,7 @@
+     /* since the correct value of __libc_stack_end never	*/
+     /* becomes visible to us.  The second test works around 	*/
+     /* this.							*/  
+-      if (0 != &__libc_stack_end && 0 != __libc_stack_end ) {
++      if (0) {
+ #       ifdef IA64
+ 	  /* Some versions of glibc set the address 16 bytes too	*/
+ 	  /* low while the initialization code is running.		*/

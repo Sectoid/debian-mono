@@ -5,6 +5,7 @@ export MONO_SHARED_DIR=$(CURDIR)
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
+NEXT_UPVERSION = $(shell perl -e '$$_=pop; s/(\d+)$$/$$1+1/e; print' $(UPVERSION))
 
 DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
@@ -17,6 +18,7 @@ else
   confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
+# Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
 
 cli-wrapper: debian/cli-wrapper.c
@@ -25,16 +27,13 @@ cli-wrapper: debian/cli-wrapper.c
 build: patch build-stamp
 build-stamp: cli-wrapper
 	dh_testdir
-	./configure $(confflags) --prefix=/usr --with-gc=included \
+	./configure $(confflags) --prefix=/usr \
 	  --mandir=\$${prefix}/share/man \
-	  --infodir=\$${prefix}/share/info \
-	  --sysconfdir=/etc --with-sigaltstack=no \
-	  --with-tls=pthread --with-nptl=no
-	# we don't install precompiled stuff
-	# (getting those build by the mcs source package)
-	perl -pe 's,\ runtime\ ,  ,' -i Makefile
+	  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
+	  --with-sigaltstack=no --with-tls=pthread --with-gc=included \
+	  --with-jit=yes --with-ikvm-native=yes
+	# --with-icu=yes 
 	$(MAKE)
-	( cat debian/mono-jit.postinst.head; ARCH= ; case $(DEB_HOST_ARCH) in i386|powerpc) cat debian/mono-jit.postinst.mono-setup ;; *) cat debian/mono-jit.postinst.mint-setup ;; esac ) > debian/mono-jit.postinst
 	touch build-stamp
 
 clean: unpatch
@@ -42,10 +41,13 @@ clean: unpatch
 	dh_testroot
 	rm -f build-stamp
 	-$(MAKE) distclean
-	-cd $(CURDIR)/debian/detector && $(MAKE) clean
+	# mono's distclean is not perfect
+	#-find -name "*.mdb" -or -name "*.resources" | xargs rm -f
+	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper
-	-cd $(CURDIR)/debian && \
-	  rm -f mono-jit.postinst dh_netdeps.1 dh_makenetlibs.1 dh_installxsp.1
+	rm -rf $(CURDIR)/.wapi
+	-cd debian && \
+	  rm -f dh_installxsp.1
 	dh_clean
 
 install: build
@@ -53,21 +55,37 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	$(MAKE) $(ATG) install DESTDIR=$(CURDIR)/debian/tmp
-	cd $(CURDIR)/debian && \
-	  for x in dh_netdeps dh_makenetlibs dh_installxsp ; \
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	# we do not want nunit, it's a slightly modified version
+	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
+	rm -f debian/tmp/usr/lib/mono/1.0/nunit*.dll
+	rm -rf  debian/tmp/usr/lib/mono/gac/nunit*
+	cd debian && \
+	  for x in dh_installxsp; \
 	    do chmod +x $$x; pod2man $$x > $$x.1 ; done
-	install -D -m755 cli-wrapper $(CURDIR)/debian/mono-common/usr/bin/cli-wrapper
-	cd $(CURDIR)/debian/detector && \
-	  $(MAKE) $(ATG) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	install -D -m755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
+	cd debian/detector && \
+	  $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
+	# MonoConventions: removing executable flag from .dll .mdb and .cs
+	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs chmod -x
+	# MonoConventions: adding executable flag to .exes
+	cd debian && find -type f -name "*.exe" | xargs chmod +x
 
 # Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir -i
 	dh_testroot -i
-	dh_install -i
+	dh_install -i -Xbin/mono -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/pedump -Xbin/jay
+	# delete gacutil from mono-mcs (this is already in mono-gac)
+	rm -f debian/mono-mcs/usr/bin/gacutil
+	rm -f debian/mono-mcs/usr/lib/mono/1.0/gacutil.exe*
+	# delete programs from mono-assemblies-base (those are already in mono-mcs)
+	rm -f debian/mono-assemblies-base/usr/lib/mono/1.0/*.exe*
+	# missing sqlite dll map
+	DIR=$$(echo $(CURDIR)/debian/mono-assemblies-base/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*); \
+	  echo "<dllmap dll=\"sqlite\" target=\"libsqlite.so.0\" />\n<dllmap dll=\"sqlite3\" target=\"libsqlite3.so.0\" />" > $$DIR/Mono.Data.SqliteClient.dll.config
 	dh_link -i
 	dh_installchangelogs -i ChangeLog
 	dh_installdocs -i
@@ -75,7 +93,9 @@ binary-indep: build install
 	dh_compress -i
 	dh_fixperms -i
 	dh_installdeb -i
-	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION)
+	dh_makeclilibs -i -m 1.0
+	dh_clideps -i
+	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i
 
@@ -85,21 +105,22 @@ binary-arch: build install
 	dh_testroot -s
 	dh_install -s
 	dh_link -s
-	install -m644 -D debian/lintian debian/mono/usr/share/lintian/overrides/mono
-	dh_installchangelogs -s
+	dh_installchangelogs -s ChangeLog
+	dh_installchangelogs -pmono-jay $(CURDIR)/mcs/jay/ChangeLog
 	dh_installdocs -s
 	dh_installexamples -s
 	dh_installman -s
+	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
 	dh_strip -s
 	dh_compress -s
+	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
-	if test -d debian/libmono0 ; then dh_makeshlibs -plibmono0 -V 'libmono-$(UPVERSION)' ;fi
+	if test -d debian/libmono0 ; then dh_makeshlibs -plibmono0 -V 'libmono-$(UPVERSION)' ; fi
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov
-	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION)
+	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -s
 	dh_builddeb -s
 
-#binary: binary-indep binary-arch
-binary: binary-arch
-.PHONY: build clean binary-indep binary-arch binary install
+binary: binary-indep binary-arch
+.PHONY: clean build binary-indep binary-arch install binary patch unpatch

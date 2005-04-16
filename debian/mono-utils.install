@@ -1,5 +1,3 @@
-debian/dh_makenetlibs		/usr/bin
-debian/dh_netdeps		/usr/bin
 debian/dh_installxsp		/usr/bin
 debian/postrm-monoxsp		/usr/share/debhelper/autoscripts
 debian/postinst-monoxsp		/usr/share/debhelper/autoscripts

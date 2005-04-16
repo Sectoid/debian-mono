@@ -1,7 +1,28 @@
 #!/bin/sh -e
 
-if [ configure = "$1" -a -x /usr/sbin/update-binfmts ]; then
+if [ configure = "$1" ] && [ -x /usr/sbin/update-binfmts ]; then
   /usr/sbin/update-binfmts --import cli &> /dev/null
+fi
+
+if [ configure = "$1" ] && [ -d /usr/share/dotnet/mono/ ] && ! [ -L /usr/share/dotnet/mono ]; then
+  if [ -L /usr/lib/mono ]; then
+    # it's a symlink
+    rm /usr/lib/mono
+  fi
+  if ! ( mkdir -p /usr/lib/mono && cp -af /usr/share/dotnet/mono/. /usr/lib/mono/ ); then
+    # unwind in case of error
+    rm -rf /usr/lib/mono
+    ln -s ../share/dotnet/mono /usr/lib/mono
+    exit 1
+  fi
+  rm -rf /usr/share/dotnet/mono
+  ln -s ../../lib/mono /usr/share/dotnet/mono
+fi
+
+if [ configure = "$1" ] && ! [ -L /usr/share/dotnet/mono ]; then
+  # it's not a symlink
+  mkdir -p /usr/share/dotnet
+  ln -s ../../lib/mono /usr/share/dotnet/mono
 fi
 
 #DEBHELPER#

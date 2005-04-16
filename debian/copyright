@@ -1,26 +1,40 @@
 This package was debianized by Alp Toker <alp@atoker.com> using the Monodeb
 build system.
 
-It was downloaded via CVS from http://www.go-mono.com/
+This package was re-debianized and merged with "mcs" by Mirco Bauer <meebey@meebey.net>
+
+It was downloaded from http://www.mono-project.com/Downloads
 
 Upstream Authors:
 Miguel de Icaza (miguel@ximian.com)
 Paolo Molaro (lupus@ximian.com)
 Dietmar Maurer (dietmar@ximian.com)
 
+C# Compiler:
+        Miguel de Icaza (miguel@ximian.com)
+
+Class Libraries:
+        Patrik Torstensson <patrik.torstensson@labs2.com>
+        Gaurav Vaish <gvaish@iitk.ac.in>
+        Jeff Stedfast (fejj@ximian.com)
+        Joe Shaw (joe@ximian.com)
+        Miguel de Icaza (miguel@ximian.com)
+        Sean MacIsaac (macisaac@ximian.com)
+        Vladimir Vukicevic (vladimir@ximian.com)
+        Garrett Rooney (rooneg@electricjellyfish.net)
+        Bob Smith (bob@thestuff.net)
+        John Barnette (jbarn@httcb.net)
+
 Copyright:
 
-You are free to distribute this software under the terms of the GNU General
-Public License and GNU Library General Public License.  On Debian systems, the
-complete text of the GNU General Public License can be found in
-/usr/share/common-licenses/GPL file.  On Debian systems, the complete text of
-the GNU Library General Public License can be found in
-/usr/share/common-licenses/LGPL file.
+The C# Compiler is released under the terms of the GNU GPL.
+On Debian systems, the complete text of the GNU General Public
+License can be found in /usr/share/common-licenses/GPL file.
 
 The class libraries are released under the terms of the MIT X11
 license:
 
-Copyright (c) 2001-2004 Novell
+Copyright (c) 2001-2005 Novell
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
@@ -52,5 +66,3 @@ Copyright:
 
 Distributed on the terms of the GNU General Public License which can
 be found in the file /usr/share/common-licenses/GPL on Debian systems.
-
-
