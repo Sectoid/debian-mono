@@ -3,12 +3,13 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
-Build-Depends: debhelper (>> 4.0.0), cli-common (>= 0.1), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
+Build-Depends: debhelper (>> 4.0.0), cli-common (>= 0.1.1), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
+Build-Conflicts: pnet-compiler
 Standards-Version: 3.6.1
 
 Package: mono-common
 Architecture: i386 powerpc
-Depends: cli-common (>= 0.1), binfmt-support (>= 1.1.2), 
+Depends: binfmt-support (>= 1.1.2), 
 Description: common files for Mono
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

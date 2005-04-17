@@ -1,5 +1,13 @@
 mono (1.1.6-1) experimental; urgency=low
 
+  * Mirco 'meebey' Bauer
+    + removed cli-common from mono-common deps, it's for build-deps.
+    + updated versioned build-dep of cli-common to >= 0.1.1
+     
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 17 Apr 2005 21:19:58 +0200
+
+mono (1.1.6-1) experimental; urgency=low
+
   * New upstream release
     + New version (Closes: #296353, #301268)
     + New build system, using one source tarball.
