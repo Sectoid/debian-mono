@@ -1,4 +1,4 @@
-mono (1.1.6-1) experimental; urgency=low
+mono (1.1.6-2) experimental; urgency=low
 
   * Mirco 'meebey' Bauer
     + removed cli-common from mono-common deps, it's for build-deps.
