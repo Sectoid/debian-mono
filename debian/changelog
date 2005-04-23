@@ -1,3 +1,11 @@
+mono (1.1.6-3) experimental; urgency=low
+
+  * NOT RELEASED YET
+  * Mirco 'meebey' Bauer
+    + updated "Section" fields in debian/control.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 17 Apr 2005 21:19:58 +0200
+
 mono (1.1.6-2) experimental; urgency=low
 
   * Mirco 'meebey' Bauer

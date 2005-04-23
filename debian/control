@@ -49,6 +49,7 @@ Description: Mono CLI (.NET) runtime
  mono-utils.
 
 Package: mono-devel
+Section: devel
 Architecture: i386 powerpc
 Depends: mono (= ${Source-Version}), mono-mcs, mono-gac, mono-utils, mono-jay
 Description: Mono CLI (.NET) runtime with development tools
@@ -151,6 +152,7 @@ Description: Mono C# compiler
  produce and execute CIL bytecode (assemblies), and a .NET class library.
  
 Package: mono-gac
+Section: devel
 Architecture: all
 Depends: mono-common (= ${Source-Version}), mono-jit | cli-virtual-machine, mono-assemblies-base
 Provides: global-assembly-cache-tool
