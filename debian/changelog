@@ -1,10 +1,11 @@
 mono (1.1.6-3) experimental; urgency=low
 
-  * NOT RELEASED YET
   * Mirco 'meebey' Bauer
     + updated "Section" fields in debian/control.
+    + added amd64 to the arch fields (Closes: #253542)
+      (thanks to Kurt Roeckx for testing it on AMD64)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 17 Apr 2005 21:19:58 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 14 May 2005 18:58:59 +0200
 
 mono (1.1.6-2) experimental; urgency=low
 
