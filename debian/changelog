@@ -30,6 +30,8 @@ mono (1.1.8-0pre3) unstable; urgency=low
       - Dropped mono-assemblies-arch package, there aren't any arch specific
         CIL libraries.
       - Changed static depends of mono-mcs to ${cli:Depends}
+      - Added mono-classlib-1.0 and mono-classlib-2.0 to buil-deps
+        (required for dh_makeclilibs)
     + debian/mono-utils.install:
       - Using mono/dis/.libs/monodis because the Makefile is confused and
         installs a libtool wrapp script instead.
