@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 #export DH_VERBOSE=1
+#export BOOTSTRAP=1
 export MONO_SHARED_DIR=$(CURDIR)
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
@@ -37,7 +38,7 @@ build-stamp: cli-wrapper
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 	  --with-sigaltstack=no --with-gc=included \
-	  --with-jit=yes --with-ikvm-native=yes
+	  --with-jit=yes --with-ikvm-native=no --with-preview=yes
 	$(MAKE)
 	touch build-stamp
 
@@ -65,6 +66,10 @@ install: build
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*.dll
 	rm -rf  debian/tmp/usr/lib/mono/gac/nunit*
+	# neither prj2make
+	rm -f debian/tmp/usr/bin/prj2make
+	rm -f debian/usr/share/man/man1/prj2make.1
+	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
 	cd debian && \
 	  for x in dh_installxsp; \
 	    do chmod +x $$x; pod2man $$x > $$x.1 ; done
@@ -73,24 +78,32 @@ install: build
 	  $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
-	# MonoConventions: removing executable flag from .dll .mdb and .cs
+	# CLI Policy
 	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs chmod -x
-	# MonoConventions: adding executable flag to .exes
 	cd debian && find -type f -name "*.exe" | xargs chmod +x
 
 # Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir -i
 	dh_testroot -i
-	dh_install -i -Xbin/mono -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/pedump -Xbin/jay
+	# that exclude list are programs for arch-dep packages
+	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
+        # without exluding other things too which I do not want
+	rm -f debian/mono-mcs/usr/bin/mono
 	# delete gacutil from mono-mcs (this is already in mono-gac)
 	rm -f debian/mono-mcs/usr/bin/gacutil
 	rm -f debian/mono-mcs/usr/lib/mono/1.0/gacutil.exe*
-	# delete programs from mono-assemblies-base (those are already in mono-mcs)
-	rm -f debian/mono-assemblies-base/usr/lib/mono/1.0/*.exe*
-	# missing sqlite dll map
-	DIR=$$(echo $(CURDIR)/debian/mono-assemblies-base/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*); \
-	  echo "<dllmap dll=\"sqlite\" target=\"libsqlite.so.0\" />\n<dllmap dll=\"sqlite3\" target=\"libsqlite3.so.0\" />" > $$DIR/Mono.Data.SqliteClient.dll.config
+	# delete wsdl2 from mono-mcs (this is already in mono-gmcs)
+	rm -f debian/mono-mcs/usr/bin/wsdl2
+	# delete gmcs from mono-mcs (this is already in mono-gmcs)
+	rm -f debian/mono-mcs/usr/bin/gmcs
+	# delete *.mdb from mono-classlib-1.0/2.0
+	cd debian/mono-classlib-1.0 && find -type f -name "*.mdb" | xargs rm -f
+	cd debian/mono-classlib-2.0 && find -type f -name "*.mdb" | xargs rm -f
+	# delete programs from mono-classlib-1.0/2.0 (those are already in mono-mcs/mono-gmcs)
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/*.exe*
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/*.exe*
 	dh_link -i
 	dh_installchangelogs -i ChangeLog
 	dh_installdocs -i
@@ -98,8 +111,10 @@ binary-indep: build install
 	dh_compress -i
 	dh_fixperms -i
 	dh_installdeb -i
-	dh_makeclilibs -i -m 1.0
-	dh_clideps -i
+	if [ ! $$BOOTSTRAP ]; then \
+	  dh_makeclilibs -i -m 1.0; \
+	  dh_clideps -i; \
+	fi
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i
@@ -120,7 +135,7 @@ binary-arch: build install
 	dh_compress -s
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
-	if test -d debian/libmono0 ; then dh_makeshlibs -plibmono0 -V 'libmono-$(UPVERSION)' ; fi
+	dh_makeshlibs -plibmono0 -V libmono-$(UPVERSION)
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov
 	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)

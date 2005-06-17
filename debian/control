@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
-Build-Depends: debhelper (>> 4.0.0), cli-common (>= 0.1.1), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
+Build-Depends: debhelper (>= 4.0.0), cli-common (>= 0.1.3), mono-classlib-1.0, mono-classlib-2.0, libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
 Build-Conflicts: pnet-compiler
 Standards-Version: 3.6.1
 
@@ -22,7 +22,7 @@ Description: common files for Mono
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc amd64
-Depends: mono-common (= ${Source-Version}), mono-assemblies-base-${mono:upversion}, ${shlibs:Depends}
+Depends: mono-common (= ${Source-Version}), mono-classlib-1.0-${mono:upversion}, ${shlibs:Depends}
 Description: fast CLI (.NET) JIT compiler for Mono
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -64,7 +64,7 @@ Description: Mono CLI (.NET) runtime with development tools
 Package: mono-utils
 Section: devel
 Architecture: i386 powerpc amd64
-Depends: mono-common (= ${Source-Version}), mono-assemblies-base, ${shlibs:Depends}
+Depends: mono-common (= ${Source-Version}), mono-classlib-1.0, ${shlibs:Depends}
 Provides: cil-disassembler
 Description: Mono utilities
  Mono is a platform for running and developing applications based on the
@@ -73,11 +73,12 @@ Description: Mono utilities
  produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
  This package includes various tools useful for CLI (.NET) developers, like
- pedump, monodis, monograph and monosn.
+ dh_installxsp, pedump, monodiet, monodis and monograph.
 
 Package: libmono0
 Section: libs
 Architecture: i386 powerpc amd64
+Replaces: libmono-dev (<= 1.1.6-4)
 Depends: mono-common (= ${Source-Version}), ${shlibs:Depends}
 Provides: libmono-${mono:upversion}
 Description: libraries for the Mono JIT
@@ -105,38 +106,76 @@ Description: libraries for the Mono JIT - Development files
 Package: mono-assemblies-base
 Section: libs
 Architecture: all
-Depends: mono-common (= ${Source-Version}), ${cli:Depends}
-Recommends: mono-assemblies-arch
-Provides: mono-assemblies-base-${mono:upversion}
-Description: Mono class library
+Depends: mono-classlib-1.0
+Description: Mono class library - transistion package
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
  Mono provides a complete .NET CLR including compiler and runtime, which can
  produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
- This package contains a collection of mono assemblies 
+ mono-assemblies-base is a metapackage for the "mono-assemblies-base to
+ mono-classlib-1.0" transistion.
+
+Package: mono-classlib-1.0
+Section: libs
+Architecture: all
+Replaces: mono-assemblies-base (<< 1.1.8)
+Depends: mono-common (= ${Source-Version})
+Provides: mono-classlib-1.0-${mono:upversion}
+Description: Mono class library (1.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ This package contains the Mono class library version 1.0
  (cross-platform CIL (.NET) libraries) that are used by nearly all CLI (.NET)
  programs on the system.
 
-Package: mono-assemblies-arch
+Package: mono-classlib-1.0-dbg
 Section: libs
-Architecture: i386 powerpc amd64
-Depends:  mono-assemblies-base-${mono:upversion}, ${gdi:Depends}, ${shlibs:Depends}
-Provides: mono-assemblies-arch-${mono:upversion}
-Description: architecture specific files for Mono's class library
+Architecture: all
+Replaces: mono-assemblies-base (<< 1.1.8)
+Depends: mono-common (= ${Source-Version}), mono-classlib-1.0 (= ${Source-Version})
+Description: Mono class library (1.0) - debug symbols
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
  Mono provides a complete .NET CLR including compiler and runtime, which can
  produce and execute CIL bytecode (assemblies), and a .NET class library.
  .
- This package contains architecture specific files needed for
- mono-assemblies-base and depends on further packages that provide needed
- parts.
+ This package contains debug symbols (*.mdb) for Mono class library 1.0
+
+Package: mono-classlib-2.0
+Section: libs
+Architecture: all
+Depends: mono-common (= ${Source-Version})
+Provides: mono-classlib-2.0-${mono:upversion}
+Description: Mono class library (2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ This package contains the Mono class library version 2.0
+ (cross-platform CIL (.NET) libraries) that are used by nearly all CLI (.NET)
+ programs on the system.
+
+Package: mono-classlib-2.0-dbg
+Section: libs
+Architecture: all
+Depends: mono-common (= ${Source-Version}), mono-classlib-1.0 (= ${Source-Version})
+Description: Mono class library (2.0) - debug symbols
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+ .
+ This package contains debug symbols (*.mdb) for Mono class library 2.0
 
 Package: mono-mcs
 Section: devel
 Architecture: all
-Depends:  mono-jit (>= ${mono:upversion}) | cli-virtual-machine, mono-jit (<< ${mono:next-upversion}) | cli-virtual-machine
+Depends: ${cli:Depends}
 Recommends: pkg-config
 Conflicts: pnet-compiler
 Provides: c-sharp-compiler, resource-file-generator, assembly-linker, strong-name-tool
@@ -150,11 +189,32 @@ Description: Mono C# compiler
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
  Mono provides a complete .NET CLR including compiler and runtime, which can
  produce and execute CIL bytecode (assemblies), and a .NET class library.
- 
+
+Package: mono-gmcs
+Section: devel
+Architecture: all
+Depends: ${cli:Depends}
+Recommends: pkg-config
+Conflicts: pnet-compiler
+Provides: c-sharp-2.0-compiler
+Description: Mono C# 2.0 compiler
+ This is the Mono C# (C-Sharp) 2.0 compiler, a platform-independent compiler
+ which produces CIL/.NET (Common Intermediate Language) binary executables.
+ The gmcs compiler supports the C# 2.0 featureset like generics, anonymous methods,
+ iterators, partial types and nullable types.
+ Warning: The C# 2.0 specification is not yet official (there is currently only
+ a draft), means no ISO nor EMCA standard yet and the specification may
+ change and breaks your code!
+ .
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete .NET CLR including compiler and runtime, which can
+ produce and execute CIL bytecode (assemblies), and a .NET class library.
+
 Package: mono-gac
 Section: devel
 Architecture: all
-Depends: mono-common (= ${Source-Version}), mono-jit | cli-virtual-machine, mono-assemblies-base
+Depends: mono-common (= ${Source-Version}), ${cli:Depends}
 Provides: global-assembly-cache-tool
 Description: Mono GAC tool
  Mono is a platform for running and developing applications based on the

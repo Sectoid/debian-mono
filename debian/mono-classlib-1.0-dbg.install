@@ -1,0 +1,9 @@
+debian/tmp/usr/lib/mono/gac/*/1.0.*/*.mdb
+debian/tmp/usr/lib/mono/gac/ByteFX.Data/0.7.6.1*/*.mdb
+debian/tmp/usr/lib/mono/gac/ICSharpCode.SharpZipLib/0.6.*/*.mdb
+debian/tmp/usr/lib/mono/gac/Microsoft.JScript/7.0.*/*.mdb
+debian/tmp/usr/lib/mono/gac/Microsoft.VisualBasic/7.0.*/*.mdb
+debian/tmp/usr/lib/mono/gac/Microsoft.VisualC/7.0.*/*.mdb
+debian/tmp/usr/lib/mono/gac/Microsoft.Vsa/7.0.*/*.mdb
+debian/tmp/usr/lib/mono/gac/cscompmgd/7.0.*/*.mdb
+debian/tmp/usr/lib/mono/1.0/mscorlib.dll.mdb

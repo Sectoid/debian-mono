@@ -1,3 +1,43 @@
+mono (1.1.8-0pre3) unstable; urgency=low
+
+  * New upstream release
+    + Fixed DirectoryInfo.GetFiles(), it failed when filename had a backspace
+      or space at the end. (Closes: #285287)
+    + With this release we also package the C# 2.0 part, for details see below.
+  * Mirco 'meebey' Bauer
+    + debian/mono-mcs.manpages:
+      - removed monoresgen.1
+      - removed prj2make.1
+    + debian/rules:
+      - disabled 07_no_libc_fun.dpatch
+        (upstream doesn't use internal libc symbols anymore)
+      - Deleting prj2make from build
+        (it is shipped with the prj2make-sharp package).
+      - Added --preview=yes and --with-ikvm-native=no to ./configure call
+        (libikvm-native.so is shipped by the ikvm package).
+      - A lot for changes to make the split of classlib 1.0/2.0 possible.
+    + debian/control:
+      - Updated versioned cli-common build-dep to >= 0.1.3
+      - Moved libMonoPosixHelper.so from libmono-dev to libmono0, because it's
+        an unversioned library now.
+      - Added "Replaces" to libmono0 for libmono-dev (<= 1.1.6-4).
+      - Renamed mono-assmeblies-base to mono-classlib-1.0 and set "Replaces"
+        and "Conflicts" for it.
+      - Added mono-assmeblies-base transistion package.
+      - Added new packages: mono-gmcs, mono-classlib-2.0, mono-classlib-1.0-dbg
+        and mono-classlib-2.0-dbg.
+      - Removed ${cli:Depends} in "Depends" from mono-classlib-1.0.
+      - Dropped mono-assemblies-arch package, there aren't any arch specific
+        CIL libraries.
+      - Changed static depends of mono-mcs to ${cli:Depends}
+    + debian/mono-utils.install:
+      - Using mono/dis/.libs/monodis because the Makefile is confused and
+        installs a libtool wrapp script instead.
+      - Added missing /usr/bin/monodiet
+      - Added new /usr/bin/mono-find-provides and /usr/bin/mono-find-requires
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 16 Jun 2005 22:13:54 +0200
+
 mono (1.1.6-4) unstable; urgency=low
 
   * upload to unstable
