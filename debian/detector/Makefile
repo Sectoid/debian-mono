@@ -3,4 +3,4 @@ binfmt-detector-cli: binfmt-detector-cli.c cil-coff.h
 	strip binfmt-detector-cli
 
 clean:
-	rm binfmt-detector-cli
+	rm -f binfmt-detector-cli
