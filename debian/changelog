@@ -34,7 +34,7 @@ mono (1.1.8.1-1) unstable; urgency=low
         (required for dh_makeclilibs)
     + debian/mono-utils.install:
       - Using mono/dis/.libs/monodis because the Makefile is confused and
-        installs a libtool wrapp script instead.
+        installs a libtool wrapper script instead.
       - Added missing /usr/bin/monodiet
       - Added new /usr/bin/mono-find-provides and /usr/bin/mono-find-requires
 
