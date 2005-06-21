@@ -1,4 +1,4 @@
-mono (1.1.8-0pre3) unstable; urgency=low
+mono (1.1.8.1-1) unstable; urgency=low
 
   * New upstream release
     + Fixed DirectoryInfo.GetFiles(), it failed when filename had a backspace
@@ -6,8 +6,8 @@ mono (1.1.8-0pre3) unstable; urgency=low
     + With this release we also package the C# 2.0 part, for details see below.
   * Mirco 'meebey' Bauer
     + debian/mono-mcs.manpages:
-      - removed monoresgen.1
-      - removed prj2make.1
+      - removed monoresgen.1 and prj2make.1
+        (the programs for those don't exist in the packages anymore).
     + debian/rules:
       - disabled 07_no_libc_fun.dpatch
         (upstream doesn't use internal libc symbols anymore)
@@ -38,7 +38,7 @@ mono (1.1.8-0pre3) unstable; urgency=low
       - Added missing /usr/bin/monodiet
       - Added new /usr/bin/mono-find-provides and /usr/bin/mono-find-requires
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 16 Jun 2005 22:13:54 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 21 Jun 2005 21:30:36 +0200
 
 mono (1.1.6-4) unstable; urgency=low
 

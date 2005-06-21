@@ -200,8 +200,8 @@ Provides: c-sharp-2.0-compiler
 Description: Mono C# 2.0 compiler
  This is the Mono C# (C-Sharp) 2.0 compiler, a platform-independent compiler
  which produces CIL/.NET (Common Intermediate Language) binary executables.
- The gmcs compiler supports the C# 2.0 featureset like generics, anonymous methods,
- iterators, partial types and nullable types.
+ The gmcs compiler supports the C# 2.0 featureset like generics, anonymous
+ methods, iterators, partial types and nullable types.
  WARNING: The C# 2.0 specification is not yet official (there is currently only
  a draft), means no ISO nor EMCA standard yet and the specification may
  change and breaks your code!
