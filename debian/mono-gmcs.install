@@ -1,0 +1,4 @@
+debian/tmp/usr/bin/gmcs
+debian/tmp/usr/bin/wsdl2
+debian/tmp/usr/lib/mono/2.0/gmcs.exe*
+debian/tmp/usr/lib/mono/2.0/wsdl2.exe*
