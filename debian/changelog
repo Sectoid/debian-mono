@@ -1,3 +1,13 @@
+mono (1.1.8.1-2) unstable; urgency=medium
+
+  * Mirco 'meebey' Bauer
+    + debian/control:
+      - Added "Replaces" to mono-utils for mono-mcs (<= 1.1.6-4).
+        This broke upgrading mono packages from 1.1.6 to 1.1.8.1, thus urgency
+        set to medium. (Closes: #316691)
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 3 Jul 2005 12:43:24 +0200
+
 mono (1.1.8.1-1) unstable; urgency=low
 
   * New upstream release
@@ -15,7 +25,7 @@ mono (1.1.8.1-1) unstable; urgency=low
         (it is shipped with the prj2make-sharp package).
       - Added --preview=yes and --with-ikvm-native=no to ./configure call
         (libikvm-native.so is shipped by the ikvm package).
-      - A lot for changes to make the split of classlib 1.0/2.0 possible.
+      - A lot of changes to make the split of classlib 1.0/2.0 possible.
     + debian/control:
       - Updated versioned cli-common build-dep to >= 0.1.3
       - Moved libMonoPosixHelper.so from libmono-dev to libmono0, because it's
@@ -26,12 +36,12 @@ mono (1.1.8.1-1) unstable; urgency=low
       - Added mono-assmeblies-base transistion package.
       - Added new packages: mono-gmcs, mono-classlib-2.0, mono-classlib-1.0-dbg
         and mono-classlib-2.0-dbg.
-      - Removed ${cli:Depends} in "Depends" from mono-classlib-1.0.
+      - Removed ${cli:Depends} from "Depends" of mono-classlib-1.0.
       - Dropped mono-assemblies-arch package, there aren't any arch specific
         CIL libraries.
       - Changed static depends of mono-mcs to ${cli:Depends}
-      - Added mono-classlib-1.0 and mono-classlib-2.0 to buil-deps
-        (required for dh_makeclilibs)
+      - Added mono-classlib-1.0 and mono-classlib-2.0 to build-deps
+        (required for dh_makeclilibs).
     + debian/mono-utils.install:
       - Using mono/dis/.libs/monodis because the Makefile is confused and
         installs a libtool wrapper script instead.
