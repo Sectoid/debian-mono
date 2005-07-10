@@ -1,7 +1,6 @@
 #!/usr/bin/make -f
 
 #export DH_VERBOSE=1
-#export BOOTSTRAP=1
 export MONO_SHARED_DIR=$(CURDIR)
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
@@ -47,11 +46,9 @@ clean: unpatch
 	dh_testroot
 	rm -f build-stamp
 	-$(MAKE) distclean
-	# mono's distclean is not perfect
-	#-find -name "*.mdb" -or -name "*.resources" | xargs rm -f
 	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper
-	rm -rf $(CURDIR)/.wapi
+	rm -rf $(MONO_SHARED_DIR)/.wapi
 	-cd debian && \
 	  rm -f dh_installxsp.1
 	dh_clean
@@ -82,7 +79,6 @@ install: build
 	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs chmod -x
 	cd debian && find -type f -name "*.exe" | xargs chmod +x
 
-# Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir -i
 	dh_testroot -i
@@ -111,15 +107,12 @@ binary-indep: build install
 	dh_compress -i
 	dh_fixperms -i
 	dh_installdeb -i
-	if [ ! $$BOOTSTRAP ]; then \
-	  dh_makeclilibs -i -m 1.0; \
-	  dh_clideps -i; \
-	fi
+	dh_makeclilibs -i -m 1.0 internal-mono
+	dh_clideps -i internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i
 
-# Build architecture-dependent files here.
 binary-arch: build install
 	dh_testdir -s
 	dh_testroot -s

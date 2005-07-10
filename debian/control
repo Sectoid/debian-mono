@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
-Build-Depends: debhelper (>= 4.0.0), cli-common (>= 0.1.3), mono-classlib-1.0, mono-classlib-2.0, libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
+Build-Depends: debhelper (>= 4.0.0), cli-common (>= 0.1.4), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
 Build-Conflicts: pnet-compiler
 Standards-Version: 3.6.1
 
@@ -52,6 +52,7 @@ Package: mono-devel
 Section: devel
 Architecture: i386 powerpc amd64
 Depends: mono (= ${Source-Version}), mono-mcs, mono-gac, mono-utils, mono-jay
+Suggests: mono-gmcs
 Description: Mono CLI (.NET) runtime with development tools
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -65,7 +66,7 @@ Package: mono-utils
 Section: devel
 Architecture: i386 powerpc amd64
 Replaces: mono-mcs (<= 1.1.6-4)
-Depends: mono-common (= ${Source-Version}), mono-classlib-1.0, ${shlibs:Depends}
+Depends: ${shlibs:Depends}, mono-classlib-1.0
 Provides: cil-disassembler
 Description: Mono utilities
  Mono is a platform for running and developing applications based on the
@@ -80,7 +81,7 @@ Package: libmono0
 Section: libs
 Architecture: i386 powerpc amd64
 Replaces: libmono-dev (<= 1.1.6-4)
-Depends: mono-common (= ${Source-Version}), ${shlibs:Depends}
+Depends:  ${shlibs:Depends}
 Provides: libmono-${mono:upversion}
 Description: libraries for the Mono JIT
  Shared libraries for Mono, used for embedding/hosting of the
@@ -95,7 +96,7 @@ Description: libraries for the Mono JIT
 Package: libmono-dev
 Section: devel
 Architecture: i386 powerpc amd64
-Depends: mono-common (= ${Source-Version}), libmono0 (= ${Source-Version}), libglib2.0-dev
+Depends: libmono0 (= ${Source-Version}), libglib2.0-dev
 Description: libraries for the Mono JIT - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
  .
@@ -121,7 +122,6 @@ Package: mono-classlib-1.0
 Section: libs
 Architecture: all
 Replaces: mono-assemblies-base (<< 1.1.8)
-Depends: mono-common (= ${Source-Version})
 Provides: mono-classlib-1.0-${mono:upversion}
 Description: Mono class library (1.0)
  Mono is a platform for running and developing applications based on the
@@ -135,9 +135,10 @@ Description: Mono class library (1.0)
 
 Package: mono-classlib-1.0-dbg
 Section: libs
+Priority: extra
 Architecture: all
 Replaces: mono-assemblies-base (<< 1.1.8)
-Depends: mono-common (= ${Source-Version}), mono-classlib-1.0 (= ${Source-Version})
+Depends: mono-classlib-1.0 (= ${Source-Version})
 Description: Mono class library (1.0) - debug symbols
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -149,7 +150,6 @@ Description: Mono class library (1.0) - debug symbols
 Package: mono-classlib-2.0
 Section: libs
 Architecture: all
-Depends: mono-common (= ${Source-Version})
 Provides: mono-classlib-2.0-${mono:upversion}
 Description: Mono class library (2.0)
  Mono is a platform for running and developing applications based on the
@@ -163,8 +163,9 @@ Description: Mono class library (2.0)
 
 Package: mono-classlib-2.0-dbg
 Section: libs
+Priority: extra
 Architecture: all
-Depends: mono-common (= ${Source-Version}), mono-classlib-1.0 (= ${Source-Version})
+Depends: mono-classlib-2.0 (= ${Source-Version})
 Description: Mono class library (2.0) - debug symbols
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -215,7 +216,7 @@ Description: Mono C# 2.0 compiler
 Package: mono-gac
 Section: devel
 Architecture: all
-Depends: mono-common (= ${Source-Version}), ${cli:Depends}
+Depends: ${cli:Depends}
 Provides: global-assembly-cache-tool
 Description: Mono GAC tool
  Mono is a platform for running and developing applications based on the
@@ -229,7 +230,7 @@ Description: Mono GAC tool
 Package: mono-jay
 Section: devel
 Architecture: i386 powerpc amd64
-Depends: mono-common (= ${Source-Version}), ${shlibs:Depends}
+Depends: ${shlibs:Depends}
 Description: LALR(1) parser generator oriented to Java/.NET
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
