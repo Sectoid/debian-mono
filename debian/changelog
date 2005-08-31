@@ -1,3 +1,16 @@
+mono (1.1.8.3-0pre1) unstable; urgency=low
+
+  * NOT RELEASED YET
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + debian/rules:
+      - Copying monodis to debian/tmp/usr/bin now, else dh_clideps in
+        internal-mono mode will fail.
+    + debian/mono-utils.install:
+      - Use monodis from debian/tmp again.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 28 Aug 2005 22:52:11 +0200
+
 mono (1.1.8.2-1) unstable; urgency=low
 
   * New upstream release

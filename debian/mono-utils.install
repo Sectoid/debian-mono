@@ -2,7 +2,7 @@ debian/dh_installxsp			/usr/bin/
 debian/postrm-monoxsp			/usr/share/debhelper/autoscripts/
 debian/postinst-monoxsp			/usr/share/debhelper/autoscripts/
 debian/tmp/usr/bin/pedump
-mono/dis/.libs/monodis			/usr/bin/
+debian/tmp/usr/bin/monodis		/usr/bin/
 debian/tmp/usr/bin/monograph
 debian/tmp/usr/bin/monodiet
 debian/tmp/usr/bin/mono-find-provides
