@@ -3,9 +3,9 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
-Build-Depends: debhelper (>= 4.0.0), cli-common (>= 0.1.4), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
+Build-Depends: debhelper (>= 4.0.0), cli-common (>= 0.2.1), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev
 Build-Conflicts: pnet-compiler
-Standards-Version: 3.6.1
+Standards-Version: 3.6.2.1
 
 Package: mono-common
 Architecture: i386 powerpc amd64

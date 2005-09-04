@@ -61,6 +61,7 @@ install: build
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	# hack, the buildsystem of mono installs sometimes libtool wrapper
 	cp mono/dis/.libs/monodis debian/tmp/usr/bin/
+	cp mono/monograph/.libs/monograph debian/tmp/usr/bin/
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*.dll
@@ -96,7 +97,7 @@ binary-indep: build install
 	rm -f debian/mono-mcs/usr/bin/wsdl2
 	# delete gmcs from mono-mcs (this is already in mono-gmcs)
 	rm -f debian/mono-mcs/usr/bin/gmcs
-	# delete *.mdb from mono-classlib-1.0/2.0
+	# delete *.mdb from mono-classlib-1.0/2.0 (those are already in mono-classlib-1.0/2.0-dbg)
 	cd debian/mono-classlib-1.0 && find -type f -name "*.mdb" | xargs rm -f
 	cd debian/mono-classlib-2.0 && find -type f -name "*.mdb" | xargs rm -f
 	# delete programs from mono-classlib-1.0/2.0 (those are already in mono-mcs/mono-gmcs)
