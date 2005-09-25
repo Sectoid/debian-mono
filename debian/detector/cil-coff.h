@@ -2,6 +2,8 @@
 #ifndef __MONO_CIL_COFF_H__
 #define __MONO_CIL_COFF_H__
 
+#include <stdint.h>
+
 /*
  * 25.2.1: Method header type values
  */
@@ -28,8 +30,8 @@
 /* 128 bytes */
 typedef struct {
 	char    msdos_sig [2];
-	unsigned short nlast_page;
-	unsigned short npages;
+	uint16_t nlast_page;
+	uint16_t npages;
 	char    msdos_header [54];
 	unsigned char pe_offset[4];
 	char    msdos_header2 [64];
@@ -37,13 +39,13 @@ typedef struct {
 
 /* 20 bytes */
 typedef struct {
-	unsigned short  coff_machine;
-	unsigned short  coff_sections;
-	unsigned long  coff_time;
-	unsigned long  coff_symptr;
-	unsigned long  coff_symcount;
-	unsigned short  coff_opt_header_size;
-	unsigned short  coff_attributes;
+	uint16_t  coff_machine;
+	uint16_t  coff_sections;
+	uint32_t  coff_time;
+	uint32_t  coff_symptr;
+	uint32_t  coff_symcount;
+	uint16_t  coff_opt_header_size;
+	uint16_t  coff_attributes;
 } COFFHeader;
 
 #define COFF_ATTRIBUTE_EXECUTABLE_IMAGE 0x0002
@@ -54,42 +56,42 @@ typedef struct {
 	unsigned char pe_magic[2];
 	unsigned char  pe_major;
 	unsigned char  pe_minor;
-	unsigned long pe_code_size;
-	unsigned long pe_data_size;
-	unsigned long pe_uninit_data_size;
-	unsigned long pe_rva_entry_point;
-	unsigned long pe_rva_code_base;
-	unsigned long pe_rva_data_base;
+	uint32_t pe_code_size;
+	uint32_t pe_data_size;
+	uint32_t pe_uninit_data_size;
+	uint32_t pe_rva_entry_point;
+	uint32_t pe_rva_code_base;
+	uint32_t pe_rva_data_base;
 } PEHeader;
 
 /* 68 bytes */
 typedef struct {
-	unsigned long pe_image_base;		/* must be 0x400000 */
-	unsigned long pe_section_align;       /* must be 8192 */
-	unsigned long pe_file_alignment;      /* must be 512 or 4096 */
-	unsigned short pe_os_major;            /* must be 4 */
-	unsigned short pe_os_minor;            /* must be 0 */
-	unsigned short pe_user_major;
-	unsigned short pe_user_minor;
-	unsigned short pe_subsys_major;
-	unsigned short pe_subsys_minor;
-	unsigned long pe_reserved_1;
-	unsigned long pe_image_size;
-	unsigned long pe_header_size;
-	unsigned long pe_checksum;
-	unsigned short pe_subsys_required;
-	unsigned short pe_dll_flags;
-	unsigned long pe_stack_reserve;
-	unsigned long pe_stack_commit;
-	unsigned long pe_heap_reserve;
-	unsigned long pe_heap_commit;
-	unsigned long pe_loader_flags;
-	unsigned long pe_data_dir_count;
+	uint32_t pe_image_base;		/* must be 0x400000 */
+	uint32_t pe_section_align;       /* must be 8192 */
+	uint32_t pe_file_alignment;      /* must be 512 or 4096 */
+	uint16_t pe_os_major;            /* must be 4 */
+	uint16_t pe_os_minor;            /* must be 0 */
+	uint16_t pe_user_major;
+	uint16_t pe_user_minor;
+	uint16_t pe_subsys_major;
+	uint16_t pe_subsys_minor;
+	uint32_t pe_reserved_1;
+	uint32_t pe_image_size;
+	uint32_t pe_header_size;
+	uint32_t pe_checksum;
+	uint16_t pe_subsys_required;
+	uint16_t pe_dll_flags;
+	uint32_t pe_stack_reserve;
+	uint32_t pe_stack_commit;
+	uint32_t pe_heap_reserve;
+	uint32_t pe_heap_commit;
+	uint32_t pe_loader_flags;
+	uint32_t pe_data_dir_count;
 } PEHeaderNT;
 
 typedef struct {
 	unsigned char rva[4];
-	unsigned long size;
+	uint32_t size;
 } PEDirEntry;
 
 /* 128 bytes */
@@ -123,14 +125,14 @@ typedef struct {
 
 typedef struct {
 	char    st_name [8];
-	unsigned long st_virtual_size;
-	unsigned long st_virtual_address;
-	unsigned long st_raw_data_size;
-	unsigned long st_raw_data_ptr;
-	unsigned long st_reloc_ptr;
-	unsigned long st_lineno_ptr;
-	unsigned short st_reloc_count;
-	unsigned short st_line_count;
+	uint32_t st_virtual_size;
+	uint32_t st_virtual_address;
+	uint32_t st_raw_data_size;
+	uint32_t st_raw_data_ptr;
+	uint32_t st_reloc_ptr;
+	uint32_t st_lineno_ptr;
+	uint16_t st_reloc_count;
+	uint16_t st_line_count;
 
 #define SECT_FLAGS_HAS_CODE               0x20
 #define SECT_FLAGS_HAS_INITIALIZED_DATA   0x40
@@ -142,22 +144,22 @@ typedef struct {
 #define SECT_FLAGS_MEM_EXECUTE            0x20000000
 #define SECT_FLAGS_MEM_READ               0x40000000
 #define SECT_FLAGS_MEM_WRITE              0x80000000
-	unsigned long st_flags;
+	uint32_t st_flags;
 
 } SectionTable;
 
 typedef struct {
-	unsigned long        ch_size;
-	unsigned short        ch_runtime_major;
-	unsigned short        ch_runtime_minor;
+	uint32_t        ch_size;
+	uint16_t        ch_runtime_major;
+	uint16_t        ch_runtime_minor;
 	PEDirEntry ch_metadata;
 
 #define CLI_FLAGS_ILONLY         0x01
 #define CLI_FLAGS_32BITREQUIRED  0x02
 #define CLI_FLAGS_TRACKDEBUGDATA 0x00010000
-	unsigned long        ch_flags;
+	uint32_t        ch_flags;
 
-	unsigned long        ch_entry_point;
+	uint32_t        ch_entry_point;
 	PEDirEntry ch_resources;
 	PEDirEntry ch_strong_name;
 	PEDirEntry ch_code_manager_table;

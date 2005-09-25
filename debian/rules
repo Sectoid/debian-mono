@@ -46,6 +46,8 @@ clean: unpatch
 	dh_testroot
 	rm -f build-stamp
 	-$(MAKE) distclean
+	# distclean misses stuff
+	find -name "*.mdb" | xargs rm -f
 	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper
 	rm -rf $(MONO_SHARED_DIR)/.wapi
@@ -64,8 +66,10 @@ install: build
 	cp mono/monograph/.libs/monograph debian/tmp/usr/bin/
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
-	rm -f debian/tmp/usr/lib/mono/1.0/nunit*.dll
+	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
+	rm -f debian/tmp/usr/lib/mono/2.0/nunit*
 	rm -rf  debian/tmp/usr/lib/mono/gac/nunit*
+	rm -f debian/tmp/usr/bin/nunit*
 	# neither prj2make
 	rm -f debian/tmp/usr/bin/prj2make
 	rm -f debian/usr/share/man/man1/prj2make.1
@@ -97,6 +101,8 @@ binary-indep: build install
 	rm -f debian/mono-mcs/usr/bin/wsdl2
 	# delete gmcs from mono-mcs (this is already in mono-gmcs)
 	rm -f debian/mono-mcs/usr/bin/gmcs
+	# delete monop2 from mono-mcs (this is already in mono-gmcs)
+	rm -f debian/mono-mcs/usr/bin/monop2
 	# delete *.mdb from mono-classlib-1.0/2.0 (those are already in mono-classlib-1.0/2.0-dbg)
 	cd debian/mono-classlib-1.0 && find -type f -name "*.mdb" | xargs rm -f
 	cd debian/mono-classlib-2.0 && find -type f -name "*.mdb" | xargs rm -f
@@ -110,8 +116,8 @@ binary-indep: build install
 	dh_compress -i
 	dh_fixperms -i
 	dh_installdeb -i
-	dh_makeclilibs -i -m 1.0 internal-mono
-	dh_clideps -i internal-mono
+	debian/dh_makeclilibs -i -m 1.0 internal-mono
+	debian/dh_clideps -i internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i

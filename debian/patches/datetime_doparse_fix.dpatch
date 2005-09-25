@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## datetime_doparse_fix.dpatch by Mirco Bauer <meebey@meebey.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad --exclude=CVS --exclude=.svn ./mcs/class/corlib/System/DateTime.cs /tmp/dpep-work.TvWOd3/mono-1.1.9/mcs/class/corlib/System/DateTime.cs
+--- ./mcs/class/corlib/System/DateTime.cs	2005-09-06 19:31:04.000000000 +0200
++++ /tmp/dpep-work.TvWOd3/mono-1.1.9/mcs/class/corlib/System/DateTime.cs	2005-09-24 16:19:05.000000000 +0200
+@@ -1307,7 +1307,7 @@
+ 
+ 			long newticks = (result.ticks - utcoffset).Ticks;
+ 
+-			result = new DateTime (newticks);
++			result = new DateTime (false, new TimeSpan (newticks));
+ 			if (use_localtime)
+ 				result = result.ToLocalTime ();
+ 

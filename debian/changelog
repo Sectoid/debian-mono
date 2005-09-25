@@ -1,3 +1,30 @@
+mono (1.1.9.1-1) unstable; urgency=low
+
+  * The "Mono becomes architecture friendly" release
+    - Mono 1.1.9 supports now IA-64 and ARM too
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + debian/readme:
+      - Removed MonoConventions.
+      - Added link to CLI Policy.
+    + debian/rules:
+      - Deleting more nunit files.
+    + debian/control:
+      - Dropped cli-common build dependency.
+      - Added ia64 arch-dep packages.
+    + debian/mono-gmcs.install:
+      - Added monop2.
+    + debian/patches/remove_broken_dllmap_from_mono-shlib-cop.dpatch:
+      - Wrote patch to remove a dllmap which was causing that dh_clidep
+        generates a dependency for libc6.
+    + Copied dh_makeclilibs and dh_clideps of cli-common to debian/ for
+      bootstrapping reasons, Mono is now autobuildable.
+    + Applied patch for binfmt-detector-cli which makes it 64bit clean.
+      (Closes: #325313, thanks to Colin Watson <cjwatson@debian.org> for the
+       patch)
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 24 Sep 2005 15:51:03 +0200
+
 mono (1.1.8.3-1) unstable; urgency=low
 
   * New upstream release

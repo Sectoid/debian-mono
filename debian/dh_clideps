@@ -1,0 +1,320 @@
+#!/usr/bin/perl -w
+
+=head1 NAME
+
+dh_clideps - calculates CLI (.NET) dependencies
+
+=cut
+
+use strict;
+use File::Find;
+use File::Temp;
+use Debian::Debhelper::Dh_Lib;
+
+#eval 'use Debian::Debhelper::Dh_Lib';
+#print "You need to install the debhelper package in order to use this program!" if $@;
+
+=head1 SYNOPSIS
+
+B<dh_clideps> [S<I<debhelper options>>]
+
+=head1 DESCRIPTION
+
+dh_clideps is a debhelper program that is responsible for generating the
+${cli:Depends} substitutions and adding them to substvars files.
+
+The program will look at .dll/.exe and .config files in your package, and
+will use the embedded dependency information to generate a dependency
+string on assembly and shared libs packages, including the setting of
+version ranges (as declared by the shlibs/clilibs files of the used
+packages). The dependency on a certain CLR (.NET runtime) version will be
+also added to the final variable.
+
+Note: the dependencies on shared libraries may be not resolved correctly
+if there are no .config files associated with the the .exe/.dll file
+which refers to the particular shared library (by its SONAME).
+
+If you use this program, your package should build-depend on cli-common
+(>= 0.2.0).
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-d>
+
+Attempt to predict and avoid duplicates that may appear if you package
+both, native shared libraries and DLL assemblies in one package.
+The list of possibly duplicating candidates is expected to be in the
+variable shlib:Depends from debian/package.substvars.
+
+=item B<-r>
+
+Don't set a strong versioned dependency on mono-jit or other CLR packages.
+This option can be used to specify a relaxed dependency on the VM
+by-hand in the control file, eg. "mono-jit | cli-virtual-machine".
+
+=item B<internal-mono>                             
+
+Uses the mono runtime in . (used for bootstrapping mono packages)  
+
+=cut
+
+init();
+
+my $clr;
+my $cli = '/usr/bin/cli';
+my $cli_version = `$cli --version 2>&1`;
+my $cli_parser;
+
+if (defined($ARGV[0]) && $ARGV[0] eq "internal-mono") {
+    $clr = "mono";
+    my $pwd=`pwd`;
+    chomp $pwd;
+    $cli_parser = "MONO_PATH=$pwd/debian/tmp/usr/lib/mono/1.0:$pwd/debian/tmp/usr/lib/mono/2.0 $pwd/debian/tmp/usr/bin/monodis";
+    $cli_version = `debian/tmp/usr/bin/mono --version 2>&1`;
+    verbose_print("Will use built Mono (debian/tmp/usr/bin/monodis) for CIL parsing.");
+} elsif (-x "/usr/bin/monodis") {
+    $clr = "mono";
+    $cli_parser = "/usr/bin/monodis";
+    verbose_print("Will use Mono (/usr/bin/monodis) for CIL parsing.");
+} elsif (-x "/usr/bin/ildasm") {
+    $clr = "pnet";
+    $cli_parser = "/usr/share/cli-common/ildasm-monodis";
+    verbose_print("Will use Portable.NET (/usr/bin/ildasm) for CIL parsing.");
+} else {
+    error("Could not find a CIL disassembler, aborting.");
+}
+
+{
+  local $/="";
+  open(FILE, 'debian/control');
+  my @filedata = <FILE>;
+  close(FILE);
+  if (!($filedata[0] =~ /Build-Depends(-Indep)?: .*cli-common \(>= 0\.2\.0\)/)) {
+      warning("Warning! No Build-Depends(-Indep) on cli-common (>= 0.2.0)!");
+  }
+}
+
+if (!defined $cli_version || $cli_version eq "" ) {
+    warning("Warning! No CLR is installed. (Probably forgot to Build-Depend on cli-virtual-machine.)");
+} else {
+  if ($clr eq "mono") {
+    if ($cli_version =~ /(mint|version)\ ([\d\.]+)/) {
+      $cli_version = "$2";
+    } else {
+      error("Unable to parse Mono version out of \"$cli_version\".");
+    }
+  } elsif ($clr eq "pnet") {
+    if ($cli_version =~ /ILRUN\ ([\d\.]+)/) {
+      $cli_version = "$1";
+    } else {
+      error("Unable to parse Portable.NET version out of \"$cli_version\".");
+    }
+  } else {
+    error("Unable to detect CLR, aborting.");
+  }
+}
+
+# Cleaning the paths given on the command line
+foreach (@ARGV) {
+    s#/$##;
+    s#^/##;
+}
+
+my $fh;
+my %libdata;
+open($fh, "cat /var/lib/dpkg/info/*.clilibs debian/*/DEBIAN/clilibs 2> /dev/null |");
+while (<$fh>) {
+    /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+    $libdata{"$1/$2"} = $3;
+}
+
+my %shlibdata;
+
+foreach my $package (@{$dh{DOPACKAGES}}) {
+    my $tmp = tmpdir($package);
+    my %deps;
+    my @depkgs;
+    my $found_exe = 0;
+    my $needs_net_1_0 = 0;
+    my $needs_net_2_0 = 0;
+    
+    delsubstvar($package, "cli:Depends");    # for idempotency
+
+    # find binaries
+    find (sub {
+        return unless -f and /\.(exe|dll)$/;
+        my $vers;
+        my $file = $_;
+        if (/\.exe$/) {
+          $found_exe = 1;
+        }
+        my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
+        my $command = "LANG=C $cli_parser --assemblyref $file 2>&1 > $tmpfile";
+        
+        system($command);
+        if ($?) {
+          my $output;
+          {
+            local *F;
+            open(F, $tmpfile);
+            local $/;
+            $output = <F>;
+            close(F);
+          }
+          error("cli_parser call failed: '".$command."' rc: $? output: $output");
+          return;
+        }
+        
+        if (my $extra = extraDeps($file)) {
+           push(@depkgs, $extra);
+        }
+        our($vers, $name, $key);
+        local *F;
+        open(F, $tmpfile);
+        while (<F>) {
+            $vers = $1 if /Version=(.*)\n/;
+            $name = $1 if /Could not find assembly ([^,]+),/;
+            $name = $1 if /Name=(.*)\n/;
+            $vers = "$1.$2" if /Major\/Minor:\s*(\d+),(\d+)/;
+            $vers .= ".$1.$2" if /Build:\s*(\d+),(\d+)/;
+
+            if (/0x\S+:.([ABCDEF0123456789 ]+)\n/ || /Token:\s*(\w+)/) {
+                $key = $1;
+                $key =~ s/\ //g;
+                $key = $vers . "__" . lc($key);
+                my $compat = "$name/$key";
+                if (!defined($libdata{$compat})) {
+                    warning("Warning! No Debian dependency data for $name ($key)!");
+                } else {
+                    push(@depkgs, $libdata{$compat});
+                }
+                #print "ok, ".$deps{ "$name/$vers" . "__" . lc($key) };
+
+                if ($name eq "mscorlib") {
+                  if ($vers eq "1.0.5000.0") {
+                    $needs_net_1_0 = 1;
+                  } elsif ($vers eq "2.0.3600.0") {
+                    $needs_net_2_0 = 1;
+                  } elsif ($vers eq "2.0.0.0") {
+                    $needs_net_2_0 = 1;
+                  } else {
+                    warning("Warning! Unknown mscorlib version: $vers!");
+                  }
+                } 
+            }
+        }
+        close(F);
+     }, $tmp);
+
+    my %depkgsFiltered;
+    for (@depkgs) {
+       for (split(/\s*,\s*/, $_ )) {
+          # filter dupes and don't depend on this package
+          /^(\S+)/;
+          if ($1 ne $package) {
+            $depkgsFiltered{$_} = 1;
+          }
+       }
+    }
+    # now filter the dupes coming from shlibs
+    if (defined($dh{D_FLAG})) {
+       if (open($fh, "< debian/$package.substvars" )) {
+          while (<$fh>) {
+             if (/^shlibs:Depends=(.*)\n?/) {
+                for (split(/\s*,\s*/, $1)) {
+                   delete $depkgsFiltered{$_};
+                }
+             }
+          }
+       } else {
+          verbose_print("Could not read debian/$package.substvars");
+       }
+    }
+
+    my $deps;
+    if (!defined($dh{R_FLAG}) && $found_exe) {
+        if ($clr eq "mono") {
+          if ($needs_net_2_0) {
+            $deps = "mono-jit (>= 1.1.8.1-1)";
+          } elsif ($needs_net_1_0) {
+            $deps = "mono-jit (>= 1.0)";
+          } else {
+            $deps = "mono-jit (>= $cli_version)";
+          }
+        } elsif ($clr eq "pnet") {
+          $deps = "pnet-interpreter (>= $cli_version)";
+        }
+    }
+    
+    $deps .= join(", ", "",
+        sort {
+            # beautify the sort order, requested by meebey
+            my $apkg;
+            $a=~/^\S+/;
+            $apkg=$&;
+            $b=~/^\S+/;
+            if($apkg eq $&) {
+               return -1 if( ($a=~/>=/) && ($b=~/<</));
+               return 1 if( ($b=~/>=/) && ($a=~/<</));
+            }
+            $a cmp $b;
+        } (keys %depkgsFiltered)
+    );
+
+    addsubstvar($package, "cli:Depends", $deps);
+}
+
+sub resolveShlib {
+    our($file, $name, $outRef) = @_;
+    if (!%shlibdata) {
+        open($fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |");
+        while (<$fh>) {
+            /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+            $shlibdata{"$1.so.$2"} = $3;
+        }
+    }
+    
+    if (-r "$file.config" &&
+        `cat $file.config` =~ /dll=\W*$name[^>]+\Wtarget\W*=\W*(\w[\w.\-_\d]+)/ &&
+        defined( $shlibdata{$1})) {
+        $$outRef = $shlibdata{$1};
+        return 1;
+    }
+    return 0;
+}
+
+sub extraDeps {
+   my $config=$_[0].".config";
+   return undef if (! -r $config);
+   my $ret=undef;
+
+   if (!%shlibdata) {
+      open($fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |");
+      while (<$fh>) {
+         /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+         $shlibdata{"$1.so.$2"} = $3;
+      }
+   }
+
+   $config = `cat $config`;
+   while ($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
+      $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
+   }
+   $ret =~ s/^, // if $ret;
+   return $ret;
+}
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+This program is a part of cli-common.
+
+=head1 AUTHOR
+
+Mirco Bauer <meebey@meebey.net>, Eduard Bloch <blade@debian.org>,
+partialy based on code from Brendan O'Dea <bod@debian.org>.
+
+=cut

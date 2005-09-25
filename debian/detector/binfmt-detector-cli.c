@@ -24,6 +24,7 @@
 #include <locale.h>
 #include <stdlib.h>
 #include <libintl.h>
+#include <stdint.h>
 
 #include "cil-coff.h"
 
@@ -56,7 +57,7 @@ int main(int argc, char **argv)
 	
 	{
 		MSDOSHeader msdos_header;
-		unsigned long pe_offset;
+		uint32_t pe_offset;
 		read = fread(&msdos_header, sizeof(msdos_header), 1, image);
 		if (read < 1) exit(EXIT_FAILURE);
 		pe_offset = msdos_header.pe_offset[0]
@@ -73,8 +74,8 @@ int main(int argc, char **argv)
 	if (execType == UNKNOWN)
 	{
 		DotNetHeader dotnet_header;
-		unsigned short pe_magic;
-		unsigned long rva;
+		uint16_t pe_magic;
+		uint32_t rva;
 		read = fread(&dotnet_header, sizeof(dotnet_header), 1, image);
 		if (read < 1) exit(EXIT_FAILURE);
 		pe_magic = dotnet_header.pe.pe_magic[0]

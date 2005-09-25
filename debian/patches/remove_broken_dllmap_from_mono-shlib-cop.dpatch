@@ -1,0 +1,15 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## remove_broken_dllmap_from_mono-shlib-cop.dpatch by Mirco Bauer <meebey@meebey.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad --exclude=CVS --exclude=.svn ./mcs/tools/mono-shlib-cop/mono-shlib-cop.exe.config /tmp/dpep-work.cUJt1r/mono-1.1.9/mcs/tools/mono-shlib-cop/mono-shlib-cop.exe.config
+--- ./mcs/tools/mono-shlib-cop/mono-shlib-cop.exe.config	2005-07-18 17:02:26.000000000 +0200
++++ /tmp/dpep-work.cUJt1r/mono-1.1.9/mcs/tools/mono-shlib-cop/mono-shlib-cop.exe.config	2005-09-10 19:53:18.000000000 +0200
+@@ -1,4 +1,3 @@
+ <configuration>
+-	<dllmap dll="does-not-exist" target="libc.so.6"/>
+ 	<dllmap dll="libgmodule-2.0.so" target="libgmodule-2.0.so.0"/>
+ </configuration>
