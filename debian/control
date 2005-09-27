@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
-Build-Depends: debhelper (>= 4.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev, dc
+Build-Depends: debhelper (>= 4.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev, dc, chrpath
 Build-Conflicts: pnet-compiler
 Standards-Version: 3.6.2.1
 

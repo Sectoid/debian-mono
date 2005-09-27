@@ -2,7 +2,7 @@
 
 # if we're configuring, /usr/share/doc/mono-jit is a directory,
 # and isn't a symlink, replace it with a symlink to mono-common
-if [ "$1" = "configure" -a -d /usr/share/doc/mono-jit -a ! -h /usr/share/doc/mono-jit ]; then
+if test "$1" = "configure" && test -d /usr/share/doc/mono-jit && ! test -h /usr/share/doc/mono-jit ; then
         rmdir /usr/share/doc/mono-jit
         ln -s mono-common /usr/share/doc/mono-jit
 fi
