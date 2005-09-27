@@ -11,6 +11,8 @@ mono (1.1.9.1-2) unstable; urgency=medium
       - Backport from upstream's SVN, fixes process signalling bug.
     + debian/patches/s390_compile_fix.dpatch:
       - Backport from upstream's SVN, should fix s390 build.
+  * Eduard Bloch
+    + fixed bashisms in maintainer scripts and added removal of rpath (chrpath)
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Sep 2005 11:58:34 +0200
 
