@@ -1,9 +1,18 @@
 mono (1.1.9.1-2) unstable; urgency=medium
 
   * Mirco 'meebey' Bauer
-    + Added dc to build-deps, required for full bootstrap (solves FTBFS).
+    + debian/control:
+      - Added dc to build-deps, required for full bootstrap (solves FTBFS).
+        (Closes: #330280)
+    + debian/rules:
+      - Making debian/dh_makeclilibs and debian/dh_clideps now executable.
+        (Closes: #330283)
+    + debian/patches/io_layer_fix_r50689.dpatch:
+      - Backport from upstream's SVN, fixes process signalling bug.
+    + debian/patches/s390_compile_fix.dpatch:
+      - Backport from upstream's SVN, should fix s390 build.
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 26 Sep 2005 11:00:37 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Sep 2005 11:58:34 +0200
 
 mono (1.1.9.1-1) unstable; urgency=low
 

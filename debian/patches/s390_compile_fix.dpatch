@@ -1,0 +1,18 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## s390_compile_fix.dpatch by Mirco Bauer <meebey@meebey.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-1.1.9.1~/mono/arch/s390/tramp.c mono-1.1.9.1/mono/arch/s390/tramp.c
+--- mono-1.1.9.1~/mono/arch/s390/tramp.c	2004-06-18 22:03:01.000000000 +0200
++++ mono-1.1.9.1/mono/arch/s390/tramp.c	2005-09-26 23:18:26.000000000 +0200
+@@ -1117,6 +1117,7 @@
+ 					/*-------------------------------------------------*/
+ 					/* stackval_to_data has placed data in result area */
+ 					/*-------------------------------------------------*/
++					break;
+ 			}
+ 			break;
+ 		default:

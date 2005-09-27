@@ -39,6 +39,7 @@ build-stamp: cli-wrapper
 	  --with-sigaltstack=no --with-gc=included \
 	  --with-jit=yes --with-ikvm-native=no --with-preview=yes
 	$(MAKE)
+	chmod +x debian/dh_makeclilibs debian/dh_clideps
 	touch build-stamp
 
 clean: unpatch
