@@ -1,0 +1,30 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## amd64_compile_fix_r50553.dpatch by Mirco Bauer <meebey@meebey.net>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-1.1.9.1~/mono/utils/ChangeLog mono-1.1.9.1/mono/utils/ChangeLog
+--- mono-1.1.9.1~/mono/utils/ChangeLog	2005-09-07 21:56:14.000000000 +0200
++++ mono-1.1.9.1/mono/utils/ChangeLog	2005-09-28 11:33:19.000000000 +0200
+@@ -1,3 +1,7 @@
++2005-09-12  Zoltan Varga  <vargaz at freemail.hu>
++
++	* mono-compiler.h (MONO_THREAD_VAR_OFFSET): Fix compilation on amd64
++	with recent binutils.
+ 
+ Wed Sep 7 21:23:18 BST 2005 Paolo Molaro <lupus@ximian.com>
+ 
+diff -urNad mono-1.1.9.1~/mono/utils/mono-compiler.h mono-1.1.9.1/mono/utils/mono-compiler.h
+--- mono-1.1.9.1~/mono/utils/mono-compiler.h	2005-08-27 16:36:10.000000000 +0200
++++ mono-1.1.9.1/mono/utils/mono-compiler.h	2005-09-28 11:33:19.000000000 +0200
+@@ -27,7 +27,7 @@
+ #if defined(PIC)
+ #define MONO_THREAD_VAR_OFFSET(var,offset) (offset) = -1
+ #else
+-#define MONO_THREAD_VAR_OFFSET(var,offset) __asm ("jmp 1f; .section writetext, \"awx\"; 1: movl $" #var "@TPOFF, %0; jmp 2f; .previous; 2:" : "=r" (offset));
++#define MONO_THREAD_VAR_OFFSET(var,offset) do { guint64 foo;  __asm ("jmp 1f; .section writetext, \"awx\"; 1: movq $" #var "@TPOFF, %0; jmp 2f; .previous; 2:" : "=a" (foo)); offset = foo; } while (0);
+ #endif
+ #elif defined(__ia64__) && !defined(__INTEL_COMPILER)
+ #define MONO_THREAD_VAR_OFFSET(var,offset) __asm ("addl %0 = @tprel(" #var "#), r0 ;;\n" : "=r" (offset));

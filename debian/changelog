@@ -1,3 +1,17 @@
+mono (1.1.9.1-2pre0) unstable; urgency=medium
+
+  * NOT RELEASED YET
+  * Mirco 'meebey' Bauer
+    + debian/patches/amd64_compile_fix_r50553.dpatch:
+      - Backport from upstream's SVN, should fix amd64 build.
+        (Closes: #330369)
+    + debian/patches/64bit_implicit_pointer_cast_fix.dpatch:
+      - Should fix problems with amd64 and ia64 build.
+        (Closes: #330982, thanks to David Mosberger-Tang
+         <David.Mosberger@acm.org> for the patch)
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 2 Oct 2005 17:17:19 +0200
+
 mono (1.1.9.1-2) unstable; urgency=medium
 
   * Mirco 'meebey' Bauer
