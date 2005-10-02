@@ -9,6 +9,7 @@ mono (1.1.9.1-2pre0) unstable; urgency=medium
       - Should fix problems with amd64 and ia64 build.
         (Closes: #330982, thanks to David Mosberger-Tang
          <David.Mosberger@acm.org> for the patch)
+    + Synced dh_makeclilibs and dh_clideps from cli-common.
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 2 Oct 2005 17:17:19 +0200
 
