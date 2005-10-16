@@ -8,6 +8,8 @@ mono (1.1.9.2-1) unstable; urgency=low
     + debian/mono-utils.install:
       - Removed dh_installxsp, postrm-monoxsp and postinst-monoxsp. Those files
         will be in the XSP package (mono-xsp-base) instead.
+    + debian/mono-utils.manpages:
+      - Removed dh_installxsp.1
     + debian/patches/s390_compile_fix.dpatch:
       - Updated the patch, one "break" was missing in an empty default label.
     + debian/patches/fix_xsp2_inherits.dpatch:
