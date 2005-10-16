@@ -1,4 +1,4 @@
-mono (1.1.9.2-1) unstable; urgency=low
+mono (1.1.9.2-0pre1) unstable; urgency=low
 
   * New upstream release
   * Mirco 'meebey' Bauer
@@ -12,7 +12,7 @@ mono (1.1.9.2-1) unstable; urgency=low
       - Updated the patch, one "break" was missing in an empty default label.
     + debian/patches/fix_xsp2_inherits.dpatch:
       - Added patch to fix class inheritance with XSP2.
-        (thanks to Dylan R. E. Moonfire <d.moonfire@mfgames.com> for the patch)
+        (thanks to Dylan R. E. Moonfire <debian@mfgames.com> for the patch)
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 16 Oct 2005 14:01:28 +0200
 
