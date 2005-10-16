@@ -2,3 +2,4 @@ remove_broken_dllmap_from_mono-shlib-cop
 datetime_doparse_fix
 s390_compile_fix
 64bit_implicit_pointer_cast_fix
+fix_xsp2_inherits
