@@ -1,9 +1,0 @@
-if [ "$1" = "remove" -o "$1" = "purge" ]; then
-    if [ -x /usr/sbin/mono-xsp-update.conf ]; then
-	mono-xsp-update.conf || true
-    fi
-    if [ -x /usr/sbin/mono-server-update.conf ]; then
-	mono-server-update.conf || true
-    fi
-fi
-

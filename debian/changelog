@@ -1,3 +1,18 @@
+mono (1.1.9.2-1) unstable; urgency=low
+
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + debian/patches/00list:
+      - Removed io_layer_fix_r50689, already applied upstream.
+      - Removed amd64_compile_fix_r50553, already applied upstream.
+    + debian/mono-utils.install:
+      - Removed dh_installxsp, postrm-monoxsp and postinst-monoxsp. Those files
+        will be in the XSP package (mono-xsp-base) instead.
+    + debian/patches/s390_compile_fix.dpatch:
+      - Updated the patch, one "break" was missing in an empty default label.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 16 Oct 2005 14:01:28 +0200
+
 mono (1.1.9.1-3) unstable; urgency=medium
 
   * Mirco 'meebey' Bauer
