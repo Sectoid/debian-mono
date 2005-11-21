@@ -1,6 +1,6 @@
 debian/tmp/usr/lib/mono/gac/*/2.0.*/
 debian/tmp/usr/lib/mono/gac/ByteFX.Data/0.7.6.2*/
-debian/tmp/usr/lib/mono/gac/ICSharpCode.SharpZipLib/2.6.*/
+debian/tmp/usr/lib/mono/gac/ICSharpCode.SharpZipLib/2.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.JScript/8.0.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.VisualC/8.0.*/

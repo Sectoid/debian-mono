@@ -74,6 +74,8 @@ install: build
 	rm -f debian/tmp/usr/bin/prj2make
 	rm -f debian/usr/share/man/man1/prj2make.1
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
+	# there is no xbuild.exe thus we don't want the wrapper script
+	rm -f debian/tmp/usr/bin/xbuild
 	install -D -m755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
 	cd debian/detector && \
 	  $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli

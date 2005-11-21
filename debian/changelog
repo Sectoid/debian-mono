@@ -1,3 +1,21 @@
+mono (1.1.10-1) unstable; urgency=low
+
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + debian/patches/00list:
+      - Removed fix_xsp2_inherits, already applied upstream.
+      - Removed datetime_doparse_fix, already applied upstream.
+      - Removed s390_compile_fix, already applied upstream.
+      - Removed 64bit_implicit_pointer_cast_fix, already applied upstream.
+    + debian/mono-mcs.manpages:
+      - Added mozroots.1
+    + debian/mono-classlib-1.0.install:
+      - Added dotnet.pc
+    + debian/control:
+      - Added libgdiplus to "Recommends" of mono. (Closes: #333851)
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 12 Nov 2005 21:54:15 +0200
+
 mono (1.1.9.2-1) unstable; urgency=low
 
   * New upstream release
