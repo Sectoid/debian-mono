@@ -1,10 +1,12 @@
 debian/tmp/usr/lib/mono/gac/*/2.0.*/*.mdb
 debian/tmp/usr/lib/mono/gac/ByteFX.Data/0.7.6.2*/*.mdb
 debian/tmp/usr/lib/mono/gac/ICSharpCode.SharpZipLib/2.6.*/*.mdb
+debian/tmp/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/*.mdb
 debian/tmp/usr/lib/mono/gac/Microsoft.JScript/8.0.*/*.mdb
-debian/tmp/usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/*.mdb
+#debian/tmp/usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/*.mdb
 debian/tmp/usr/lib/mono/gac/Microsoft.VisualC/8.0.*/*.mdb
 debian/tmp/usr/lib/mono/gac/Microsoft.Vsa/8.0.*/*.mdb
+debian/tmp/usr/lib/mono/gac/Microsoft.Build.*/2.*/*.mdb
 debian/tmp/usr/lib/mono/gac/Mono.C5/0.5.*/*.mdb
 debian/tmp/usr/lib/mono/gac/cscompmgd/8.0.*/*.mdb
 debian/tmp/usr/lib/mono/2.0/mscorlib.dll.mdb

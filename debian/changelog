@@ -1,3 +1,24 @@
+mono (1.1.12.1-1) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer
+    + debian/compat:
+       - Changed to 5.
+    + debian/mono-classlib-1.0.install:
+       - Added usr/lib/mono/compat-1.0/
+       - Added usr/lib/pkgconfig/mono-cairo.pc
+    + debian/mono-classlib-1.0-dbg.install:
+       - Removed usr/lib/mono/gac/Microsoft.VisualBasic/7.0.*/*.mdb
+    + debian/mono-classlib-2.0.install:
+       - Added usr/lib/mono/compat-2.0/
+       - Added usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
+       - Added usr/lib/mono/gac/Microsoft.Build.*/2.*/
+       - Removed usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/*.mdb
+    + debian/mono-classlib-2.0-dbg.install:
+       - Added usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/*.mdb
+       - Added usr/lib/mono/gac/Microsoft.Build.*/2.*/*.mdb
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Dec 2005 12:58:11 +0100
+
 mono (1.1.10-1) unstable; urgency=low
 
   * New upstream release
