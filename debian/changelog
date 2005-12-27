@@ -3,7 +3,7 @@ mono (1.1.12.1-1) unstable; urgency=low
   * New upstream release (Closes: #344531)
   * Mirco 'meebey' Bauer
     + debian/control:
-       - Added libx11-dev to build-deps.
+       - Added libx11-dev and libxt-dev to build-deps.
        - Added libgc-dev [kfreebsd-i386] to build-deps. (Closes: #322599)
     + debian/rules:
        - Added kfreebsd check for configure call.
