@@ -2,6 +2,7 @@ mono (1.1.13.1-1) unstable; urgency=low
 
   * New upstream release
   * Mirco 'meebey' Bauer
+    + synced dh_clideps and dh_makeclilibs from cli-common
     + debian/rules:
        - Added --with-static_mono=no to configure call, else the libmono0
          package would be useless and loading a 1.7mb shared library is not
