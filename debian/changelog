@@ -1,3 +1,32 @@
+mono (1.1.13-1) unstable; urgency=low
+
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + debian/rules:
+       - Added --with-static_mono=no to configure call, else the libmono0
+         package would be useless and loading a 1.7mb shared library is not
+         _that_ slow.
+       - Removed chrpath hack
+    + debian/control:
+       - Updated debhelper build-dep to >= 5.0.0
+       - Removed chrpath from build-deps.
+       - Adjusted some package descriptions.
+       - Added replaces to mono-gmcs for mono-mcs.
+       - Added ${misc:Depends} to all arch dep packages.
+    + debian/mono-jay.manpages:
+       - Updated path of jay.1
+    + debian/mono-common.dirs:
+       - Added usr/share/dotnet (Closes: #311540)
+    + debian/mono-gmcs.install:
+       - Added xbuild
+       - Added ilasm2
+    + debian/libmono0.install:
+       - Added libMonoSupportW.so
+    + debian/libmono-dev.install:
+       - Added libMonoSupportW.a
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 14 Jan 2006 17:21:28 +0100
+
 mono (1.1.12.1-1) unstable; urgency=low
 
   * New upstream release (Closes: #344531)

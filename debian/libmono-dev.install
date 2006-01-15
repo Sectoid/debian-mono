@@ -1,5 +1,6 @@
 debian/tmp/usr/lib/libmono*.a
+debian/tmp/usr/lib/libMono*.a
 debian/tmp/usr/lib/libmono*.so
-debian/tmp/usr/lib/libMonoPosixHelper.a
+debian/tmp/usr/lib/libMonoSupportW.a
 debian/tmp/usr/lib/pkgconfig/mono.pc
 debian/tmp/usr/include/

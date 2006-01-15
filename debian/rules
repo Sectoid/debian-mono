@@ -42,7 +42,7 @@ build-stamp: cli-wrapper
 	./configure $(confflags) --prefix=/usr \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
-	  --with-sigaltstack=no $(GC) \
+	  --with-sigaltstack=no $(GC) --with-static_mono=no \
 	  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 	  --with-libgdiplus=installed --with-x=yes
 	$(MAKE)
@@ -67,10 +67,6 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	# hack, the buildsystem of mono installs sometimes libtool wrapper
-	cp mono/dis/.libs/monodis debian/tmp/usr/bin/
-	cp mono/monograph/.libs/monograph debian/tmp/usr/bin/
-	chrpath -d $(CURDIR)/debian/tmp/usr/bin/monodis $(CURDIR)/debian/tmp/usr/bin/monograph
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
@@ -81,8 +77,6 @@ install: build
 	rm -f debian/tmp/usr/bin/prj2make
 	rm -f debian/usr/share/man/man1/prj2make.1
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
-	# there is no xbuild.exe thus we don't want the wrapper script
-	rm -f debian/tmp/usr/bin/xbuild
 	install -D -m755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
 	cd debian/detector && \
 	  $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
@@ -109,6 +103,10 @@ binary-indep: build install
 	rm -f debian/mono-mcs/usr/bin/gmcs
 	# delete monop2 from mono-mcs (this is already in mono-gmcs)
 	rm -f debian/mono-mcs/usr/bin/monop2
+	# delete ilasm2 from mono-mcs (this is already in mono-gmcs)
+	rm -f debian/mono-mcs/usr/bin/ilasm2
+	# delete xbuild from mono-mcs (this is already in mono-gmcs)
+	rm -f debian/mono-mcs/usr/bin/xbuild
 	# delete *.mdb from mono-classlib-1.0/2.0 (those are already in mono-classlib-1.0/2.0-dbg)
 	cd debian/mono-classlib-1.0 && find -type f -name "*.mdb" | xargs rm -f
 	cd debian/mono-classlib-2.0 && find -type f -name "*.mdb" | xargs rm -f

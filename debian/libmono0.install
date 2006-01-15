@@ -1,2 +1,3 @@
 debian/tmp/usr/lib/libmono*.so.*
 debian/tmp/usr/lib/libMonoPosixHelper.so
+debian/tmp/usr/lib/libMonoSupportW.so
