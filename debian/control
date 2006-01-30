@@ -8,7 +8,7 @@ Build-Conflicts: pnet-compiler
 Standards-Version: 3.6.2.1
 
 Package: mono-common
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}, binfmt-support (>= 1.1.2)
 Description: common files for Mono
  Mono is a platform for running and developing applications based on the
@@ -22,7 +22,7 @@ Description: common files for Mono
 
 Package: mono-jit
 Provides: cli-virtual-machine
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${Source-Version}), mono-classlib-1.0-${mono:upversion}
 Description: fast CLI JIT/AOT compiler for Mono
  Mono is a platform for running and developing applications based on the
@@ -33,11 +33,11 @@ Description: fast CLI JIT/AOT compiler for Mono
  .
  This package contains the Virtual Execution Environment and the JIT
  (Just-in-Time) and AOT (Ahead-of-Time) code generator "mono".
- "mono" runs CLI applications, currently available for i386, powerpc, amd64 and ia64
- architectures only.
+ "mono" runs CLI applications, which is currently only available for i386,
+ powerpc, amd64 and ia64 architectures.
 
 Package: mono
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Depends: mono-common (= ${Source-Version}), mono-jit (= ${Source-Version})
 Recommends: libgdiplus
 Description: Mono CLI (.NET) runtime
@@ -54,7 +54,7 @@ Description: Mono CLI (.NET) runtime
 
 Package: mono-devel
 Section: devel
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Depends: mono (= ${Source-Version}), mono-mcs, mono-gac, mono-utils, mono-jay
 Suggests: mono-gmcs
 Description: Mono CLI runtime with development tools
@@ -69,7 +69,7 @@ Description: Mono CLI runtime with development tools
 
 Package: mono-utils
 Section: devel
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Replaces: mono-mcs (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}, mono-classlib-1.0
 Provides: cil-disassembler
@@ -85,7 +85,7 @@ Description: Mono utilities
 
 Package: libmono0
 Section: libs
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Replaces: libmono-dev (<= 1.1.6-4)
 Depends:  ${shlibs:Depends}, ${misc:Depends}
 Provides: libmono-${mono:upversion}
@@ -101,7 +101,7 @@ Description: libraries for the Mono JIT
 
 Package: libmono-dev
 Section: devel
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Depends: libmono0 (= ${Source-Version}), libglib2.0-dev
 Description: libraries for the Mono JIT - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
@@ -243,7 +243,7 @@ Description: Mono GAC tool
 
 Package: mono-jay
 Section: devel
-Architecture: i386 powerpc amd64 ia64
+Architecture: i386 powerpc amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: LALR(1) parser generator oriented to Java/CLI
  Mono is a platform for running and developing applications based on the
