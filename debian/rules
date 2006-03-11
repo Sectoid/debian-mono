@@ -171,12 +171,11 @@ binary-arch: build install
 	dh_installman -s
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
 	dh_strip -s
-	dh_compress -s
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
 	dh_makeshlibs -plibmono0 -V libmono-$(UPVERSION)
 	dh_installdeb -s
-	dh_shlibdeps -s -Xlibmono-profiler-cov
+	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono0/usr/lib
 	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -s
 	dh_builddeb -s

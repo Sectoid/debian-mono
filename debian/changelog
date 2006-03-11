@@ -35,6 +35,12 @@ mono (1.1.13.4-1) unstable; urgency=low
       - Updated support archs list.
     + debian/changelog:
       - Fixed indentation of some entries.
+  * Sebastian Dröge
+    + debian/patches/unix-end-point-serialize.dpatch (SVN rev 57026):
+      - Fix the serialization of UnixEndPoint
+    + debian/rules:
+      - Add debian/libmono0/usr/lib to the search path of dh_shlibdeps to get
+        the missing libmono0 dependencies in mono-jit and mono-utils.
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 11 Mar 2006 22:46:42 +0100
 
