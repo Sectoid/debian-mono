@@ -129,7 +129,7 @@ Description: Mono class library - transistion package
 Package: libmono-corlib1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
 Description: Mono core library (1.0)
  Mono is a platform for running and developing applications based on the
@@ -175,7 +175,7 @@ Description: Mono class library (1.0) - debug symbols
 Package: libmono-corlib2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
 Description: Mono core library (2.0)
  Mono is a platform for running and developing applications based on the
@@ -219,7 +219,7 @@ Description: Mono class library (2.0) - debug symbols
 Package: libmono-winforms1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib1.0-cil (>= 1.0), mono-classlib-1.0 (>= 1.0), libgdiplus (>= 1.0)
 Description: Mono System.Windows.Forms library
  Mono is a platform for running and developing applications based on the
@@ -233,7 +233,7 @@ Description: Mono System.Windows.Forms library
 Package: libmono-winforms2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib2.0-cil (>= 1.0), mono-classlib-1.0 (>= 1.0), libgdiplus (>= 1.0)
 Description: Mono Sytem.Windows.Forms library
  Mono is a platform for running and developing applications based on the
@@ -247,7 +247,7 @@ Description: Mono Sytem.Windows.Forms library
 Package: libmono-cairo1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib1.0-cil (>= 1.0), mono-classlib-1.0 (>= 1.0), libcairo2 (>= 1.0.2-2)
 Description: Mono Cairo library
  Mono is a platform for running and developing applications based on the
@@ -261,7 +261,7 @@ Description: Mono Cairo library
 Package: libmono-cairo2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib2.0-cil (>= 1.0), mono-classlib-2.0 (>= 1.0), libcairo2 (>= 1.0.2-2)
 Description: Mono Sytem.Windows.Forms library
  Mono is a platform for running and developing applications based on the
@@ -275,7 +275,7 @@ Description: Mono Sytem.Windows.Forms library
 Package: libmono-sharpzip0.6-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
 Description: Mono SharpZipLib library
  Mono is a platform for running and developing applications based on the
@@ -289,7 +289,7 @@ Description: Mono SharpZipLib library
 Package: libmono-sharpzip0.84-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
 Description: Mono SharpZipLib library
  Mono is a platform for running and developing applications based on the
@@ -303,7 +303,7 @@ Description: Mono SharpZipLib library
 Package: libmono-sharpzip2.6-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
 Description: Mono SharpZipLib library
  Mono is a platform for running and developing applications based on the
@@ -317,7 +317,7 @@ Description: Mono SharpZipLib library
 Package: libmono-sharpzip2.84-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
 Description: Mono SharpZipLib library
  Mono is a platform for running and developing applications based on the
@@ -331,7 +331,7 @@ Description: Mono SharpZipLib library
 Package: libmono-npgsql1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
 Description: Mono Npgsql library
  Mono is a platform for running and developing applications based on the
@@ -345,7 +345,7 @@ Description: Mono Npgsql library
 Package: libmono-npgsql2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
 Description: Mono Npgsql library
  Mono is a platform for running and developing applications based on the
@@ -359,7 +359,7 @@ Description: Mono Npgsql library
 Package: libmono-bytefx0.7.6.1-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib1.0-cil (>= 1.0), mono-classlib-1.0 (>= 1.0), libmono-sharpzip0.84-cil
 Description: Mono ByteFX.Data library
  Mono is a platform for running and developing applications based on the
@@ -373,7 +373,7 @@ Description: Mono ByteFX.Data library
 Package: libmono-bytefx0.7.6.2-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib2.0-cil (>= 1.0), mono-classlib-2.0 (>= 1.0), libmono-sharpzip2.84-cil
 Description: Mono ByteFX.Data library
  Mono is a platform for running and developing applications based on the
@@ -387,7 +387,7 @@ Description: Mono ByteFX.Data library
 Package: libmono-firebirdsql1.7-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib1.0-cil (>= 1.0), mono-classlib-1.0 (>= 1.0), libfbembed1
 Description: Mono FirebirdSql library
  Mono is a platform for running and developing applications based on the
@@ -401,7 +401,7 @@ Description: Mono FirebirdSql library
 Package: libmono-sqlite1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib1.0-cil (>= 1.0), mono-classlib-1.0 (>= 1.0), libsqlite0 (>= 2.8.16), libsqlite3-0 (>= 3.2.8)
 Description: Mono Sqlite library
  Mono is a platform for running and developing applications based on the
@@ -415,7 +415,7 @@ Description: Mono Sqlite library
 Package: libmono-sqlite2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: libmono-corlib2.0-cil (>= 1.0), mono-classlib-2.0 (>= 1.0), libsqlite0 (>= 2.8.16), libsqlite3-0 (>= 3.2.8)
 Description: Mono Sqlite library
  Mono is a platform for running and developing applications based on the
