@@ -23,7 +23,7 @@ Description: common files for Mono
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc amd64 ia64 arm armeb
-Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${Source-Version}), mono-classlib-1.0-${mono:upversion}
+Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${Source-Version})
 Description: fast CLI JIT/AOT compiler for Mono
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -261,7 +261,7 @@ Description: Mono Cairo library
 Package: libmono-cairo2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4), mono-classlib-1.0-dbg (<< 1.1.13.4)
+Replaces: mono-classlib-2.0 (<< 1.1.13.4), mono-classlib-2.0-dbg (<< 1.1.13.4)
 Depends: libmono-corlib2.0-cil (>= 1.0), mono-classlib-2.0 (>= 1.0), libcairo2 (>= 1.0.2-2)
 Description: Mono Sytem.Windows.Forms library
  Mono is a platform for running and developing applications based on the
