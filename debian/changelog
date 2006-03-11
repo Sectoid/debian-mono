@@ -1,4 +1,4 @@
-mono (1.1.13.4-0pre8) unstable; urgency=low
+mono (1.1.13.4-1) unstable; urgency=low
 
   * New upstream release
   * Mirco 'meebey' Bauer
@@ -32,8 +32,10 @@ mono (1.1.13.4-0pre8) unstable; urgency=low
       - Moved mscorlib.dll to libmono-corlib2.0-cil.install
     + debian/README.Debian:
       - Updated support archs list.
+    + debian/changelog:
+      - Fixed indentation of some entries.
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 5 Mar 2006 17:09:33 +0100
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 11 Mar 2006 22:46:42 +0100
 
 mono (1.1.13.2-1) unstable; urgency=low
 
