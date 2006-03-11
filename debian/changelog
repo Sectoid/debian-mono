@@ -1,9 +1,46 @@
+mono (1.1.13.4-0pre8) unstable; urgency=low
+
+  * New upstream release
+  * Mirco 'meebey' Bauer
+    + Splitted some ABI problematic libraries into own packages
+      (conforming to CLI Policy 0.3.0)
+    + debian/control:
+      - Added libmono-corlib1.0-cil package
+      - Added libmono-corlib2.0-cil package
+        (this solves tight dependency problems on mono-jit)
+      - Added libmono-firebirdsql1.7-cil package
+      - Added libmono-bytefx0.7.6.1-cil package
+      - Added libmono-bytefx0.7.6.2-cil package
+      - Added libmono-npgsql1.0-cil package
+      - Added libmono-npgsql2.0-cil package
+      - Added libmono-sharpzip0.6-cil package
+      - Added libmono-sharpzip0.84-cil package
+      - Added libmono-sharpzip2.6-cil package
+      - Added libmono-sharpzip2.84-cil package
+      - Added libmono-winforms1.0-cil package
+      - Added libmono-winforms2.0-cil package
+      - Added libmono-sqlite1.0-cil package
+      - Added libmono-sqlite2.0-cil package
+      - Added libmono-cairo1.0-cil package
+      - Added libmono-cairo2.0-cil package
+      - Added replaces for mono-classlib-1.0/2.0(-dbg).
+      - Added splitted packages to mono-classlib-1.0/2.0 depends, for
+        transistion.
+    + debian/mono-classlib-1.0.install:
+      - Moved mscorlib.dll to libmono-corlib1.0-cil.install
+    + debian/mono-classlib-2.0.install:
+      - Moved mscorlib.dll to libmono-corlib2.0-cil.install
+    + debian/README.Debian:
+      - Updated support archs list.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 5 Mar 2006 17:09:33 +0100
+
 mono (1.1.13.2-1) unstable; urgency=low
 
   * New upstream release
   * Mirco 'meebey' Bauer
     + debian/control:
-       - Added arm and armeb to arch lists
+      - Added arm and armeb to arch lists
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 28 Jan 2006 22:57:07 +0100
 
@@ -13,27 +50,27 @@ mono (1.1.13.1-1) unstable; urgency=low
   * Mirco 'meebey' Bauer
     + synced dh_clideps and dh_makeclilibs from cli-common
     + debian/rules:
-       - Added --with-static_mono=no to configure call, else the libmono0
+      - Added --with-static_mono=no to configure call, else the libmono0
          package would be useless and loading a 1.7mb shared library is not
          _that_ slow.
-       - Removed chrpath hack
+      - Removed chrpath hack
     + debian/control:
-       - Updated debhelper build-dep to >= 5.0.0
-       - Removed chrpath from build-deps.
-       - Adjusted some package descriptions.
-       - Added replaces to mono-gmcs for mono-mcs.
-       - Added ${misc:Depends} to all arch dep packages.
+      - Updated debhelper build-dep to >= 5.0.0
+      - Removed chrpath from build-deps.
+      - Adjusted some package descriptions.
+      - Added replaces to mono-gmcs for mono-mcs.
+      - Added ${misc:Depends} to all arch dep packages.
     + debian/mono-jay.manpages:
-       - Updated path of jay.1
+      - Updated path of jay.1
     + debian/mono-common.dirs:
-       - Added usr/share/dotnet (Closes: #311540)
+      - Added usr/share/dotnet (Closes: #311540)
     + debian/mono-gmcs.install:
-       - Added xbuild
-       - Added ilasm2
+      - Added xbuild
+      - Added ilasm2
     + debian/libmono0.install:
-       - Added libMonoSupportW.so
+      - Added libMonoSupportW.so
     + debian/libmono-dev.install:
-       - Added libMonoSupportW.a
+      - Added libMonoSupportW.a
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 14 Jan 2006 17:21:28 +0100
 
@@ -42,26 +79,26 @@ mono (1.1.12.1-1) unstable; urgency=low
   * New upstream release (Closes: #344531)
   * Mirco 'meebey' Bauer
     + debian/control:
-       - Added libx11-dev and libxt-dev to build-deps.
-       - Added libgc-dev [kfreebsd-i386] to build-deps. (Closes: #322599)
+      - Added libx11-dev and libxt-dev to build-deps.
+      - Added libgc-dev [kfreebsd-i386] to build-deps. (Closes: #322599)
     + debian/rules:
-       - Added kfreebsd check for configure call.
-       - Added --with-libgdiplus=installed and --with-x=yes to configure call.
+      - Added kfreebsd check for configure call.
+      - Added --with-libgdiplus=installed and --with-x=yes to configure call.
     + debian/compat:
-       - Changed to 5.
+      - Changed to 5.
     + debian/mono-classlib-1.0.install:
-       - Added usr/lib/mono/compat-1.0/
-       - Added usr/lib/pkgconfig/mono-cairo.pc
+      - Added usr/lib/mono/compat-1.0/
+      - Added usr/lib/pkgconfig/mono-cairo.pc
     + debian/mono-classlib-1.0-dbg.install:
-       - Removed usr/lib/mono/gac/Microsoft.VisualBasic/7.0.*/*.mdb
+      - Removed usr/lib/mono/gac/Microsoft.VisualBasic/7.0.*/*.mdb
     + debian/mono-classlib-2.0.install:
-       - Added usr/lib/mono/compat-2.0/
-       - Added usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
-       - Added usr/lib/mono/gac/Microsoft.Build.*/2.*/
-       - Removed usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/*.mdb
+      - Added usr/lib/mono/compat-2.0/
+      - Added usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
+      - Added usr/lib/mono/gac/Microsoft.Build.*/2.*/
+      - Removed usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/*.mdb
     + debian/mono-classlib-2.0-dbg.install:
-       - Added usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/*.mdb
-       - Added usr/lib/mono/gac/Microsoft.Build.*/2.*/*.mdb
+      - Added usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/*.mdb
+      - Added usr/lib/mono/gac/Microsoft.Build.*/2.*/*.mdb
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Dec 2005 12:58:11 +0100
 

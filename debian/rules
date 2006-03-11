@@ -91,6 +91,10 @@ binary-indep: build install
 	dh_testroot -i
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo1.0-cil/usr/lib/mono/gac/Mono.Cairo/1.0.*/
+	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo2.0-cil/usr/lib/mono/gac/Mono.Cairo/2.0.*/
+	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
+	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
 	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
         # without exluding other things too which I do not want
 	rm -f debian/mono-mcs/usr/bin/mono
@@ -113,6 +117,35 @@ binary-indep: build install
 	# delete programs from mono-classlib-1.0/2.0 (those are already in mono-mcs/mono-gmcs)
 	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/*.exe*
 	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/*.exe*
+	# delete mscorlib.dll from mono-classlib-1.0/2.0 (those are already in libmono-corlib1.0/2.0-cil)
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/mscorlib.dll*
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/mscorlib.dll*
+	# delete ICSharpCode.SharpZipLib from mono-classlib-1.0/2.0 (those are already in libmono-sharpzip*-cil)
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/ICSharpCode.SharpZipLib.dll*
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/ICSharpCode.SharpZipLib.dll*
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/compat-1.0/ICSharpCode.SharpZipLib.dll*
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/compat-2.0/ICSharpCode.SharpZipLib.dll*
+	# delete Npgsql from mono-classlib-1.0/2.0 (those are already in libmono-npgsql*-cil)
+	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/Npgsql/
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/Npgsql.dll
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/Npgsql.dll
+	# delete ByteFX.Data from mono-classlib-1.0/2.0 (those are already in libmono-bytefx*-cil)
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/ByteFX.Data.dll
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/ByteFX.Data.dll
+	# delete FirebirdSql.Data.Firebird from mono-classlib-1.0 (those are already in libmono-firebirdsql1.7-cil)
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/FirebirdSql.Data.Firebird.dll
+	# delete Mono.Data.SqliteClient from mono-classlib-1.0/2.0 (those are already in libmono-sqlite*-cil)
+	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/Mono.Data.SqliteClient/
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/Mono.Data.SqliteClient.dll
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/Mono.Data.SqliteClient.dll
+	# delete System.Windows.Forms from mono-classlib-1.0/2.0 (those are already in libmono-winforms*-cil)
+	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/System.Windows.Forms/
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/System.Windows.Forms.dll
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/System.Windows.Forms.dll
+	# delete Mono.Cairo from mono-classlib-1.0/2.0 (those are already in libmono-cairo*-cil)
+	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/Mono.Cairo/
+	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/Mono.Cairo.dll
+	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/Mono.Cairo.dll
 	dh_link -i
 	dh_installchangelogs -i ChangeLog
 	dh_installdocs -i
