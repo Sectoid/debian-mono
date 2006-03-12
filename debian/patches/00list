@@ -1,2 +1,3 @@
 remove_broken_dllmap_from_mono-shlib-cop.dpatch
 unix-end-point-serialize.dpatch
+unix-end-point-equals.dpatch

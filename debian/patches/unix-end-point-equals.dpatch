@@ -1,0 +1,137 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+Index: mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs
+===================================================================
+--- mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs	(revision 57753)
++++ mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs	(revision 57754)
+@@ -41,6 +41,11 @@
+ 		
+ 		public UnixEndPoint (string filename)
+ 		{
++			if (filename == null)
++				throw new ArgumentNullException ("filename");
++
++			if (filename == "")
++				throw new ArgumentException ("Cannot be empty.", "filename");
+ 			this.filename = filename;
+ 		}
+ 		
+@@ -93,6 +98,20 @@
+ 		public override string ToString() {
+ 			return(filename);
+ 		}
++
++		public override int GetHashCode ()
++		{
++			return filename.GetHashCode ();
++		}
++
++		public override bool Equals (object o)
++		{
++			UnixEndPoint other = o as UnixEndPoint;
++			if (other == null)
++				return false;
++
++			return (other.filename == filename);
++		}
+ 	}
+ }
+ 
+Index: mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs
+===================================================================
+--- mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs	(revision 57754)
++++ mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs	(revision 57755)
+@@ -42,6 +42,11 @@
+ 		
+ 		public UnixEndPoint (string filename)
+ 		{
++			if (filename == null)
++				throw new ArgumentNullException ("filename");
++
++			if (filename == "")
++				throw new ArgumentException ("Cannot be empty.", "filename");
+ 			this.filename = filename;
+ 		}
+ 		
+@@ -60,8 +65,6 @@
+ 
+ 		public override EndPoint Create (SocketAddress socketAddress)
+ 		{
+-			int size = socketAddress.Size;
+-			byte [] bytes = new byte [size];
+ 			/*
+ 			 * Should also check this
+ 			 *
+@@ -73,8 +76,9 @@
+ 				throw new ArgumentException ("socketAddress is not a unix socket address.");
+ 			 */
+ 
+-			for (int i = 2; i < size - 2; i++) {
+-				bytes [i] = socketAddress [i];
++			byte [] bytes = new byte [socketAddress.Size - 2];
++			for (int i = 0; i < bytes.Length; i++) {
++				bytes [i] = socketAddress [i + 2];
+ 			}
+ 
+ 			string name = Encoding.Default.GetString (bytes);
+@@ -95,6 +99,20 @@
+ 		public override string ToString() {
+ 			return(filename);
+ 		}
++
++		public override int GetHashCode ()
++		{
++			return filename.GetHashCode ();
++		}
++
++		public override bool Equals (object o)
++		{
++			UnixEndPoint other = o as UnixEndPoint;
++			if (other == null)
++				return false;
++
++			return (other.filename == filename);
++		}
+ 	}
+ }
+ 
+Index: mono/metadata/socket-io.c
+===================================================================
+--- mono/metadata/socket-io.c	(revision 57755)
++++ mono/metadata/socket-io.c	(revision 57756)
+@@ -823,7 +823,19 @@
+ 	field=mono_class_get_field_from_name(sockaddr_class, "data");
+ 
+ 	/* Make sure there is space for the family and size bytes */
+-	data=mono_array_new(domain, mono_get_byte_class (), sa_size+2);
++#ifdef HAVE_SYS_UN_H
++	if (saddr->sa_family == AF_UNIX) {
++		/* sa_len includes the entire sockaddr size, so we don't need the
++		 * N bytes (sizeof (unsigned short)) of the family. */
++		data=mono_array_new(domain, mono_get_byte_class (), sa_size - 2);
++	} else
++#endif
++	{
++		/* May be the +2 here is too conservative, as sa_len returns
++		 * the length of the entire sockaddr_in/in6, including
++		 * sizeof (unsigned short) of the family */
++		data=mono_array_new(domain, mono_get_byte_class (), sa_size+2);
++	}
+ 
+ 	/* The data buffer is laid out as follows:
+ 	 * bytes 0 and 1 are the address family
+Index: mcs/class/System/System.Net.Sockets/Socket.cs
+===================================================================
+--- mcs/class/System/System.Net.Sockets/Socket.cs	(revision 57756)
++++ mcs/class/System/System.Net.Sockets/Socket.cs	(revision 57757)
+@@ -508,7 +508,7 @@
+ 			ConstructorInfo cons=unixendpointtype.GetConstructor(arg_types);
+ 
+ 			object[] args=new object[1];
+-			args[0]="";
++			args[0]="nothing";
+ 
+ 			unixendpoint=cons.Invoke(args);
+ 		}

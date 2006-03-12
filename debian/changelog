@@ -1,3 +1,11 @@
+mono (1.1.13.4-2) unstable; urgency=low
+
+  * debian/patches/unix-end-point-equals.dpatch (SVN rev 57754:57757):
+    + Fix Equals() and GetHashCode() of Mono.Unix.UnixEndPoint.
+      http://bugzilla.ximian.com/show_bug.cgi?id=77747
+
+ -- Sebastian Dröge <slomo@ubuntu.com>  Sun, 12 Mar 2006 16:11:47 +0100
+
 mono (1.1.13.4-1) unstable; urgency=low
 
   * New upstream release
