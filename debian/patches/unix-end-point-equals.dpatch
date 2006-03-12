@@ -2,10 +2,10 @@
 
 @DPATCH@
 
-Index: mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs
+Index: mono/mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs
 ===================================================================
---- mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs	(revision 57753)
-+++ mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs	(revision 57754)
+--- mono/mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs	(revision 57753)
++++ mono/mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs	(revision 57754)
 @@ -41,6 +41,11 @@
  		
  		public UnixEndPoint (string filename)
@@ -39,10 +39,10 @@ Index: mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs
  	}
  }
  
-Index: mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs
+Index: mono/mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs
 ===================================================================
---- mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs	(revision 57754)
-+++ mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs	(revision 57755)
+--- mono/mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs	(revision 57754)
++++ mono/mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs	(revision 57755)
 @@ -42,6 +42,11 @@
  		
  		public UnixEndPoint (string filename)
@@ -97,10 +97,10 @@ Index: mcs/class/Mono.Posix/Mono.Posix/UnixEndPoint.cs
  	}
  }
  
-Index: mono/metadata/socket-io.c
+Index: mono/mono/metadata/socket-io.c
 ===================================================================
---- mono/metadata/socket-io.c	(revision 57755)
-+++ mono/metadata/socket-io.c	(revision 57756)
+--- mono/mono/metadata/socket-io.c	(revision 57755)
++++ mono/mono/metadata/socket-io.c	(revision 57756)
 @@ -823,7 +823,19 @@
  	field=mono_class_get_field_from_name(sockaddr_class, "data");
  
@@ -122,10 +122,10 @@ Index: mono/metadata/socket-io.c
  
  	/* The data buffer is laid out as follows:
  	 * bytes 0 and 1 are the address family
-Index: mcs/class/System/System.Net.Sockets/Socket.cs
+Index: mono/mcs/class/System/System.Net.Sockets/Socket.cs
 ===================================================================
---- mcs/class/System/System.Net.Sockets/Socket.cs	(revision 57756)
-+++ mcs/class/System/System.Net.Sockets/Socket.cs	(revision 57757)
+--- mono/mcs/class/System/System.Net.Sockets/Socket.cs	(revision 57756)
++++ mono/mcs/class/System/System.Net.Sockets/Socket.cs	(revision 57757)
 @@ -508,7 +508,7 @@
  			ConstructorInfo cons=unixendpointtype.GetConstructor(arg_types);
  
