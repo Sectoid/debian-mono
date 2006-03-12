@@ -2,8 +2,9 @@ mono (1.1.13.4-1) unstable; urgency=low
 
   * New upstream release
   * Mirco 'meebey' Bauer
-    + Splitted some ABI problematic libraries into own packages
-      (conforming to CLI Policy 0.3.0)
+    + Splitted some ABI problematic libraries into own packages.
+      Conforming to CLI Policy 0.3.0, for more details see:
+      http://pkg-mono.alioth.debian.org/cli-policy/ch3.html#s3.1
     + debian/control:
       - Added libmono-corlib1.0-cil package
       - Added libmono-corlib2.0-cil package
