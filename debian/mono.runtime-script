@@ -34,7 +34,7 @@ if ($mode eq "name")
 
 # Get the base file
 my $basename = shift @ARGV;
-my $cligac = "/usr/lib/cli-common/packages.d/$basename.installcligac";
+my $cligac = "/usr/share/cli-common/packages.d/$basename.installcligac";
 
 if (! -f $cligac)
 {
@@ -43,7 +43,7 @@ if (! -f $cligac)
 }
 
 # Get the base directory
-my $basedir = "/usr/lib/cli-common/packages.d/";
+my $basedir = "/usr/share/cli-common/packages.d/";
 
 # Removing is also simple
 if ($mode eq "remove")
