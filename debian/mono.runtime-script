@@ -115,7 +115,7 @@ while (@ARGV)
     # relative path to this program (since gacutil doesn't like
     # absolute paths). There isn't a problem of doing too many
     # since we typically run from the root context.
-    my $cmd = "(cd / && /usr/bin/gacutil /i ./$dll)";
+    my $cmd = "(cd / && /usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /i ./$dll)";
     print "   ";
     system($cmd);
 }
