@@ -66,11 +66,11 @@ my $clr;
 my $cli = '/usr/bin/cli';
 my $cli_version = `$cli --version 2>&1`;
 my $cli_parser;
+my $pwd=`pwd`;
+chomp $pwd;
 
 if (defined($ARGV[0]) && $ARGV[0] eq "internal-mono") {
     $clr = "mono";
-    my $pwd=`pwd`;
-    chomp $pwd;
     $cli_parser = "LD_LIBRARY_PATH=$pwd/debian/tmp/usr/lib MONO_PATH=$pwd/debian/tmp/usr/lib/mono/1.0:$pwd/debian/tmp/usr/lib/mono/2.0 $pwd/debian/tmp/usr/bin/monodis";
     $cli_version = `LD_LIBRARY_PATH=$pwd/debian/tmp/usr/lib $pwd/debian/tmp/usr/bin/mono --version 2>&1`;
     verbose_print("Will use built Mono (debian/tmp/usr/bin/monodis) for CIL parsing.");
@@ -186,7 +186,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
                 $key = $vers . "__" . lc($key);
                 my $compat = "$name/$key";
                 if (!defined($libdata{$compat})) {
-                    warning("Warning! No Debian dependency data for $name ($key)!");
+                    warning("Warning: No Debian dependency data for $name ($key)!");
                 } else {
                     push(@depkgs, $libdata{$compat});
                 }
@@ -200,7 +200,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
                   } elsif ($vers eq "2.0.0.0") {
                     $needs_net_2_0 = 1;
                   } else {
-                    warning("Warning! Unknown mscorlib version: $vers!");
+                    warning("Warning: Unknown mscorlib version: $vers!");
                   }
                 } 
             }
@@ -252,9 +252,9 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
         sort {
             # beautify the sort order, requested by meebey
             my $apkg;
-            $a=~/^\S+/;
+            $a =~ /^\S+/;
             $apkg=$&;
-            $b=~/^\S+/;
+            $b =~ /^\S+/;
             if($apkg eq $&) {
                return -1 if( ($a=~/>=/) && ($b=~/<</));
                return 1 if( ($b=~/>=/) && ($a=~/<</));
@@ -266,41 +266,33 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     addsubstvar($package, "cli:Depends", $deps);
 }
 
-sub resolveShlib {
-    our($file, $name, $outRef) = @_;
-    if (!%shlibdata) {
-        open($fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |");
-        while (<$fh>) {
-            /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-            $shlibdata{"$1.so.$2"} = $3;
-        }
-    }
-    
-    if (-r "$file.config" &&
-        `cat $file.config` =~ /dll=\W*$name[^>]+\Wtarget\W*=\W*(\w[\w.\-_\d]+)/ &&
-        defined( $shlibdata{$1})) {
-        $$outRef = $shlibdata{$1};
-        return 1;
-    }
-    return 0;
-}
-
 sub extraDeps {
    my $config=$_[0].".config";
    return undef if (! -r $config);
    my $ret=undef;
 
    if (!%shlibdata) {
-      open($fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |");
+      open($fh, "cat /var/lib/dpkg/info/*.shlibs $pwd/debian/shlibs.local $pwd/debian/*/DEBIAN/shlibs 2>/dev/null |");
       while (<$fh>) {
-         /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-         $shlibdata{"$1.so.$2"} = $3;
+          /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+          my ($soname, $soversion, $dependency);
+          #chomp;
+          #my($soname, $soversion, $dependency) = split(/\s+/, $_, 3);
+          $soname = $1;    
+          $soversion = $2; 
+          $dependency = $3;
+          $shlibdata{"$soname.so.$soversion"} = $dependency;
       }
    }
 
    $config = `cat $config`;
-   while ($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
-      $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
+   while ($config =~ s/\Wtarget\W*=\W*(\w[\w.\-\d]+\.so\.\d+)//) {
+       verbose_print("found $config: '$1'");
+       if (defined($shlibdata{$1})) {
+           $ret .= ", ".$shlibdata{$1};
+       } else {
+           warning("Warning: Missing shlibs entry for $1!");
+       }
    }
    $ret =~ s/^, // if $ret;
    return $ret;

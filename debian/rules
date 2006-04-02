@@ -91,16 +91,25 @@ binary-indep: build install
 	dh_testroot -i
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
+        # without exluding other things too which I do not want
+	rm -f debian/mono-mcs/usr/bin/mono
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo1.0-cil/usr/lib/mono/gac/Mono.Cairo/1.0.*/
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo2.0-cil/usr/lib/mono/gac/Mono.Cairo/2.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
-	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
-        # without exluding other things too which I do not want
-	rm -f debian/mono-mcs/usr/bin/mono
+	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms1.0-cil/usr/lib/mono/gac/System.Windows.Forms/1.0.*/
+	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms2.0-cil/usr/lib/mono/gac/System.Windows.Forms/2.0.*/
+	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	# delete gacutil from mono-mcs (this is already in mono-gac)
 	rm -f debian/mono-mcs/usr/bin/gacutil
 	rm -f debian/mono-mcs/usr/lib/mono/1.0/gacutil.exe*
+	# delete mbas from mono-mcs (this is already in mono-mbas)
+	rm -f debian/mono-mcs/usr/bin/mbas
+	rm -f debian/mono-mcs/usr/lib/mono/1.0/mbas.exe*
+	# delete mjs from mono-mcs (this is already in mono-mjs)
+	rm -f debian/mono-mcs/usr/bin/mjs
+	rm -f debian/mono-mcs/usr/lib/mono/1.0/mjs.exe*
 	# delete wsdl2 from mono-mcs (this is already in mono-gmcs)
 	rm -f debian/mono-mcs/usr/bin/wsdl2
 	# delete gmcs from mono-mcs (this is already in mono-gmcs)
@@ -111,49 +120,107 @@ binary-indep: build install
 	rm -f debian/mono-mcs/usr/bin/ilasm2
 	# delete xbuild from mono-mcs (this is already in mono-gmcs)
 	rm -f debian/mono-mcs/usr/bin/xbuild
-	# delete *.mdb from mono-classlib-1.0/2.0 (those are already in mono-classlib-1.0/2.0-dbg)
-	cd debian/mono-classlib-1.0 && find -type f -name "*.mdb" | xargs rm -f
-	cd debian/mono-classlib-2.0 && find -type f -name "*.mdb" | xargs rm -f
-	# delete programs from mono-classlib-1.0/2.0 (those are already in mono-mcs/mono-gmcs)
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/*.exe*
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/*.exe*
-	# delete mscorlib.dll from mono-classlib-1.0/2.0 (those are already in libmono-corlib1.0/2.0-cil)
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/mscorlib.dll*
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/mscorlib.dll*
-	# delete ICSharpCode.SharpZipLib from mono-classlib-1.0/2.0 (those are already in libmono-sharpzip*-cil)
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/ICSharpCode.SharpZipLib.dll*
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/ICSharpCode.SharpZipLib.dll*
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/compat-1.0/ICSharpCode.SharpZipLib.dll*
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/compat-2.0/ICSharpCode.SharpZipLib.dll*
-	# delete Npgsql from mono-classlib-1.0/2.0 (those are already in libmono-npgsql*-cil)
-	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/Npgsql/
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/Npgsql.dll
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/Npgsql.dll
-	# delete ByteFX.Data from mono-classlib-1.0/2.0 (those are already in libmono-bytefx*-cil)
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/ByteFX.Data.dll
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/ByteFX.Data.dll
-	# delete FirebirdSql.Data.Firebird from mono-classlib-1.0 (those are already in libmono-firebirdsql1.7-cil)
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/FirebirdSql.Data.Firebird.dll
-	# delete Mono.Data.SqliteClient from mono-classlib-1.0/2.0 (those are already in libmono-sqlite*-cil)
-	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/Mono.Data.SqliteClient/
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/Mono.Data.SqliteClient.dll
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/Mono.Data.SqliteClient.dll
-	# delete System.Windows.Forms from mono-classlib-1.0/2.0 (those are already in libmono-winforms*-cil)
-	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/System.Windows.Forms/
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/System.Windows.Forms.dll
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/System.Windows.Forms.dll
-	# delete Mono.Cairo from mono-classlib-1.0/2.0 (those are already in libmono-cairo*-cil)
-	rm -rf debian/mono-classlib-*/usr/lib/mono/gac/Mono.Cairo/
-	rm -f debian/mono-classlib-1.0/usr/lib/mono/1.0/Mono.Cairo.dll
-	rm -f debian/mono-classlib-2.0/usr/lib/mono/2.0/Mono.Cairo.dll
+	# delete Mono.Data from libmono1.0/2.0-cil (those are already in libmono-data*-cil)
+	#rm -rf debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data/
+	#rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data/
+	#rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.dll
+	#rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.dll
+	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data*-cil)
+	rm -rf debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
+	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
+	rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.Tds.dll
+	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.Tds.dll
+	# delete Mono.Data.SqliteClient from libmono1.0/2.0-cil (those are already in libmono-sqlite*-cil)
+	rm -rf debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/
+	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/
+	rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.SqliteClient.dll
+	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.SqliteClient.dll
+	# delete Mono.Cairo from libmono1.0/2.0-cil (those are already in libmono-cairo*-cil)
+	rm -rf debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Cairo/
+	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Cairo/
+	rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Cairo.dll
+	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Cairo.dll
+	# delete Mono.Security from libmono1.0/2.0-cil (those are already in libmono-security*-cil)
+	rm -rf debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Security/
+	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Security/
+	rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Security.dll
+	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Security.dll
+	# delete Mono.C5 from libmono2.0-cil (those are already in libmono-c5-*-cil)
+	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.C5/
+	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.C5.dll
+	# delete System.Windows.Forms from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Windows.Forms/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Windows.Forms/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Windows.Forms.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Windows.Forms.dll
+	# delete System.Drawing.Design from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing.Design/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Drawing.Design/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Drawing.Design.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Drawing.Design.dll
+	# delete System.Design from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Design/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Design/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Design.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Design.dll
+	# delete System.Data.OracleClient from libmono-system1.0/2.0-cil (those are already in libmono-oracle*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Data.OracleClient/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Data.OracleClient/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Data.OracleClient.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Data.OracleClient.dll
+	# delete System.DirectoryServices from libmono-system1.0/2.0-cil (those are already in libmono-system-ldap*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.DirectoryServices/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.DirectoryServices/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.DirectoryServices.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.DirectoryServices.dll
+	# delete System.Data from libmono-system1.0/2.0-cil (those are already in libmono-system-data*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Data/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Data/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Data.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Data.dll
+	# delete System.Data from libmono-system1.0/2.0-cil (those are already in libmono-system-data*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Data.Tds/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Data.Tds/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Data.Tds.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Data.Tds.dll
+	# delete System.Web from libmono-system1.0/2.0-cil (those are already in libmono-system-web*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Web/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Web/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Web.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Web.dll
+	# delete System.Web.Services from libmono-system1.0/2.0-cil (those are already in libmono-system-web*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Web.Services/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Web.Services/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Web.Services.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Web.Services.dll
+	# delete System.Runtime from libmono-system1.0/2.0-cil (those are already in libmono-system-runtime*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Runtime.*/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Runtime.*/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Runtime.*.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Runtime.*.dll
+	# delete System.Messaging from libmono-system1.0/2.0-cil (those are already in libmono-system-messaging*-cil)
+	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Messaging/
+	rm -rf debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Messaging/
+	rm -f debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Messaging.*.dll
+	rm -f debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Messaging.*.dll
 	dh_link -i
-	dh_installchangelogs -i ChangeLog
+	dh_installchangelogs -i
 	dh_installdocs -i
 	dh_installman -i
 	dh_compress -i
 	dh_fixperms -i
 	dh_installdeb -i
 	debian/dh_makeclilibs -i -m 1.0 internal-mono
+	# APIs that may grow need tighter deps
+	debian/dh_makeclilibs \
+	  -plibmono-corlib2.0-cil \
+	  -plibmono-system2.0-cil \
+	  -plibmono-microsoft8.0-cil \
+	  -plibmono-winforms1.0-cil \
+	  -plibmono-winforms2.0-cil \
+	  -plibmono1.0-cil \
+	  -plibmono2.0-cil \
+	  -m $(UPVERSION) internal-mono
 	debian/dh_clideps -i internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
@@ -164,16 +231,16 @@ binary-arch: build install
 	dh_testroot -s
 	dh_install -s
 	dh_link -s
-	dh_installchangelogs -s ChangeLog
+	dh_installchangelogs -s
 	dh_installchangelogs -pmono-jay $(CURDIR)/mcs/jay/ChangeLog
 	dh_installdocs -s
-	dh_installexamples -s
 	dh_installman -s
+	dh_installexamples -s
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
-	dh_makeshlibs -plibmono0 -V libmono-$(UPVERSION)
+	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono0/usr/lib
 	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)

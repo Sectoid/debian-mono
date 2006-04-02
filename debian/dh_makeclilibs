@@ -279,28 +279,6 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     }
 }
 
-sub extraDeps {
-   my $config=$_[0].".config";
-   my $ret=undef;
-
-   if (!%shlibdata) {
-      open($fh, "cat /var/lib/dpkg/info/*.shlibs debian/shlibs.local debian/*/DEBIAN/shlibs 2>/dev/null |");
-      while (<$fh>) {
-         /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-         $shlibdata{"$1.so.$2"} = $3;
-      }
-   }
-
-   if (-r $config) {
-      $config = `cat $config`;
-      while($config=~s/\Wtarget\W*=\W*(\w[\w.\-\d]+)//) {
-         $ret.= (", ".$shlibdata{$1}) if(defined($shlibdata{$1}));
-      }
-   }
-   $ret=~s/^, // if $ret;
-   return $ret;
-}
-
 =head1 SEE ALSO
 
 L<debhelper(7)>

@@ -1,0 +1,8 @@
+debian/tmp/usr/lib/mono/gac/Microsoft.JScript/8.0.*/
+debian/tmp/usr/lib/mono/gac/Microsoft.VisualBasic/8.0.*/
+debian/tmp/usr/lib/mono/gac/Microsoft.VisualC/8.0.*/
+debian/tmp/usr/lib/mono/gac/Microsoft.Vsa/8.0.*/
+debian/tmp/usr/lib/mono/2.0/Microsoft.JScript.dll
+debian/tmp/usr/lib/mono/2.0/Microsoft.VisualBasic.dll
+debian/tmp/usr/lib/mono/2.0/Microsoft.VisualC.dll
+debian/tmp/usr/lib/mono/2.0/Microsoft.Vsa.dll

@@ -1,10 +1,68 @@
-mono (1.1.13.4-2) unstable; urgency=low
+mono (1.1.13.4-1pre12) unstable; urgency=low
 
-  * debian/patches/unix-end-point-equals.dpatch (SVN rev 57754:57757):
-    + Fix Equals() and GetHashCode() of Mono.Unix.UnixEndPoint.
-      http://bugzilla.ximian.com/show_bug.cgi?id=77747
+  * Mirco 'meebey' Bauer
+    + Splitted left libraries of mono-classlib-1.0 and mono-classlib-2.0
+      into own packages to avoid ABI breakages and meet the CLI Policy.
+      All libraries in a package must have the same version number
+      (required for versioned package names), see CLI Policy 0.4.0:
+      http://pkg-mono.alioth.debian.org/cli-policy/....
+      mono-classlib-1.0/2.0 are now empty transition packages.
+    + debian/mono-classlib-1.0.install
+      debian/mono-classlib-1.0-dbg.install
+      debian/mono-classlib-2.0.install
+      debian/mono-classlib-2.0-dbg.install:
+      - Removed, not needed anymore because of splitting.
+    + debian/control:
+      - Removed mono-classlib-1.0/2.0-dbg package
+        Removed mono-assemblies-base package:
+      - Changed mono-classlib-1.0/2.0 to have a minimum as depencies for the
+        transition to avoid a dependency hell.
+        All packages that have a binary dependency on
+        mono-classlib-1.0/2.0 must be rebuild!
+      - Removed pnet-compiler Build-Conflicts and Conflicts.
+      - Updated libgdiplus dependency of libmono-winforms1.0/2.0-cil
+        to >= 1.1.13.4
+      - Moved System.Drawing.Design and System.Design to
+        libmono-winforms1.0/2.0-cil
+      - Added mono-mbas package, to avoid GUI dependency chain
+      - Added mono-mjs package, to avoid GUI dependency chain
+      - Added libmono-corlib2.0-cil to mono-utils binary deps, required for
+        monodis to parse 2.0 libraries.
+      - Added libmono-system1.0-cil package
+      - Added libmono-system2.0-cil package
+      - Added libmono-system-data1.0-cil package
+      - Added libmono-system-data2.0-cil package
+      - Added libmono-system-ldap1.0-cil package
+      - Added libmono-system-ldap2.0-cil package
+      - Added libmono1.0-cil package
+      - Added libmono2.0-cil package
+      - Added libmono-data-tds1.0-cil package
+      - Added libmono-data-tds2.0-cil package
+      - Added libmono-accessibility1.0-cil package
+      - Added libmono-accessibility2.0-cil package
+      - Added libmono-c5-0.5-cil package
+      - Added libmono-cscompmgd7.0-cil package
+      - Added libmono-cscompmgd8.0-cil package
+      - Added libmono-ldap1.0-cil package
+      - Added libmono-ldap2.0-cil package
+      - Added libmono-microsoft-build2.0-cil package
+      - Added libmono-microsoft7.0-cil package
+      - Added libmono-microsoft8.0-cil package
+      - Added libmono-oracle1.0-cil package
+      - Added libmono-oracle2.0-cil package
+      - Added libmono-peapi1.0-cil package
+      - Added libmono-peapi2.0-cil package
+      - Added libmono-relaxng1.0-cil package
+      - Added libmono-relaxng2.0-cil package
+    + debian/rules:
+      - Added dh_makeclilibs call for 2.0 libraries, with tighter dependencies.
 
- -- Sebastian Dröge <slomo@ubuntu.com>  Sun, 12 Mar 2006 16:11:47 +0100
+  * Sebastian Dröge
+    + debian/patches/unix-end-point-equals.dpatch (SVN rev 57754:57757):
+      - Fix Equals() and GetHashCode() of Mono.Unix.UnixEndPoint.
+        http://bugzilla.ximian.com/show_bug.cgi?id=77747
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 26 Mar 2006 19:22:47 +0100
 
 mono (1.1.13.4-1) unstable; urgency=low
 

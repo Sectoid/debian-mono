@@ -1,9 +1,8 @@
-debian/tmp/usr/lib/mono/gac/*/1.0.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.JScript/7.0.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.VisualBasic/7.0.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.VisualC/7.0.*/
 debian/tmp/usr/lib/mono/gac/Microsoft.Vsa/7.0.*/
-debian/tmp/usr/lib/mono/gac/cscompmgd/7.0.*/
-debian/tmp/usr/lib/mono/1.0/
-debian/tmp/usr/lib/mono/compat-1.0/
-debian/tmp/usr/lib/pkgconfig/dotnet.pc
+debian/tmp/usr/lib/mono/1.0/Microsoft.JScript.dll
+debian/tmp/usr/lib/mono/1.0/Microsoft.VisualBasic.dll
+debian/tmp/usr/lib/mono/1.0/Microsoft.VisualC.dll
+debian/tmp/usr/lib/mono/1.0/Microsoft.Vsa.dll
