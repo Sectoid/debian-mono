@@ -2,7 +2,7 @@ Source: mono
 Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
-Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>
+Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>, Sebastian Dröge <slomo@ubuntu.com>
 Build-Depends: debhelper (>= 5.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev, dc, libx11-dev, libxt-dev, libgc-dev [kfreebsd-i386]
 Standards-Version: 3.6.2.1
 

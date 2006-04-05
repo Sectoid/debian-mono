@@ -1,0 +1,34 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+--- mono/mono/metadata/file-io.c	2006/02/28 18:14:03	57409
++++ mono/mono/metadata/file-io.c	2006/03/24 16:50:25	58447
+@@ -6,7 +6,7 @@
+  *	Gonzalo Paniagua Javier (gonzalo@ximian.com)
+  *
+  * (C) 2001,2002,2003 Ximian, Inc.
+- * Copyright (c) 2004,2005 Novell, Inc. (http://www.novell.com)
++ * Copyright (c) 2004,2005,2006 Novell, Inc. (http://www.novell.com)
+  */
+ 
+ #include <config.h>
+@@ -337,7 +337,7 @@
+ 	if (result == -1)
+ 		return FALSE;
+ 
+-	if ((buf.st_mode & S_IFLNK) != 0) {
++	if (S_ISLNK (buf.st_mode)) {
+ 		result = stat (filename, &linkbuf);
+ 		if (result != -1) {
+ 			buf = linkbuf;
+@@ -351,7 +351,7 @@
+ 		buf.st_mode &= ~S_IFSOCK; /* don't consider socket protection */
+ 
+ 	file_attrs = 0;
+-	if ((buf.st_mode & S_IFDIR) != 0)
++	if (S_ISDIR (buf.st_mode))
+ 		file_attrs |= FILE_ATTRIBUTE_DIRECTORY;
+ 	else
+ 		file_attrs |= FILE_ATTRIBUTE_ARCHIVE;
+

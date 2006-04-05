@@ -58,9 +58,19 @@ mono (1.1.13.4-1pre12) unstable; urgency=low
       - Added dh_makeclilibs call for 2.0 libraries, with tighter dependencies.
 
   * Sebastian Dröge
+    + Add myself to Uploaders
+    + Added debian/mono-api-check:
+      - small wrapper script for comparing two assemblies and testing whether
+        their API is compatible.
     + debian/patches/unix-end-point-equals.dpatch (SVN rev 57754:57757):
       - Fix Equals() and GetHashCode() of Mono.Unix.UnixEndPoint.
         http://bugzilla.ximian.com/show_bug.cgi?id=77747
+    + debian/patches/file-io.dpatch (SVN rev 57409:58447):
+      - Named pipes and block devices are no directories. Backported
+        from the 1.1.13 branch
+    + debian/patches/resource-manager-boo.dpatch:
+      - Fix the long outstanding breakage of boo. See
+        http://bugzilla.ximian.com/show_bug.cgi?id=77242
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 26 Mar 2006 19:22:47 +0100
 
