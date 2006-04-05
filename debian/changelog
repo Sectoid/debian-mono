@@ -1,11 +1,10 @@
-mono (1.1.13.4-1pre12) unstable; urgency=low
+mono (1.1.13.4-1pre13) unstable; urgency=low
 
   * Mirco 'meebey' Bauer
     + Splitted left libraries of mono-classlib-1.0 and mono-classlib-2.0
       into own packages to avoid ABI breakages and meet the CLI Policy.
       All libraries in a package must have the same version number
-      (required for versioned package names), see CLI Policy 0.4.0:
-      http://pkg-mono.alioth.debian.org/cli-policy/....
+      (required for versioned package names), see CLI Policy 0.4.0
       mono-classlib-1.0/2.0 are now empty transition packages.
     + debian/mono-classlib-1.0.install
       debian/mono-classlib-1.0-dbg.install
@@ -18,7 +17,7 @@ mono (1.1.13.4-1pre12) unstable; urgency=low
       - Changed mono-classlib-1.0/2.0 to have a minimum as depencies for the
         transition to avoid a dependency hell.
         All packages that have a binary dependency on
-        mono-classlib-1.0/2.0 must be rebuild!
+        mono-classlib-1.0/2.0 should be rebuild!
       - Removed pnet-compiler Build-Conflicts and Conflicts.
       - Updated libgdiplus dependency of libmono-winforms1.0/2.0-cil
         to >= 1.1.13.4
@@ -26,8 +25,8 @@ mono (1.1.13.4-1pre12) unstable; urgency=low
         libmono-winforms1.0/2.0-cil
       - Added mono-mbas package, to avoid GUI dependency chain
       - Added mono-mjs package, to avoid GUI dependency chain
-      - Added libmono-corlib2.0-cil to mono-utils binary deps, required for
-        monodis to parse 2.0 libraries.
+      - Added libmono-corlib2.0-cil to mono-utils Suggests, needed when
+        monodis parses 2.0 libraries.
       - Added libmono-system1.0-cil package
       - Added libmono-system2.0-cil package
       - Added libmono-system-data1.0-cil package
@@ -40,7 +39,7 @@ mono (1.1.13.4-1pre12) unstable; urgency=low
       - Added libmono-data-tds2.0-cil package
       - Added libmono-accessibility1.0-cil package
       - Added libmono-accessibility2.0-cil package
-      - Added libmono-c5-0.5-cil package
+      - Added libmono-c5-1.0-cil package
       - Added libmono-cscompmgd7.0-cil package
       - Added libmono-cscompmgd8.0-cil package
       - Added libmono-ldap1.0-cil package

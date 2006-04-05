@@ -70,7 +70,8 @@ Package: mono-utils
 Section: devel
 Architecture: i386 powerpc amd64 ia64 arm armeb
 Replaces: mono-mcs (<= 1.1.6-4)
-Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-corlib1.0-cil, libmono-corlib2.0-cil
+Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-corlib1.0-cil
+Suggests: libmono-corlib2.0-cil
 Provides: cil-disassembler
 Description: Mono utilities
  Mono is a platform for running and developing applications based on the
@@ -139,7 +140,7 @@ Description: Mono libraries (2.0)
  .
  This package contains the Mono libraries.
 
-Package: libmono-c5-0.5-cil
+Package: libmono-c5-1.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-2), mono-classlib-2.0-dbg (<< 1.1.13.4-2)
@@ -869,6 +870,36 @@ Description: Mono C# compiler
  produces CIL (Common Intermediate Language) binary executables, and the
  most development tools around it like ilasm, wsdl stub generator, assembly
  linker and security tools.
+ .
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+
+Package: mono-mbas
+Section: devel
+Architecture: all
+Depends: ${cli:Depends}
+Replaces: mono-mcs (<< 1.1.13.4-2)
+Description: Mono Basic compiler
+ This is the Mono Basic compiler, a platform-independent compiler which
+ produces CIL (Common Intermediate Language) binary executables.
+ .
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+
+Package: mono-mjs
+Section: devel
+Architecture: all
+Depends: ${cli:Depends}
+Replaces: mono-mcs (<< 1.1.13.4-2)
+Description: Mono JScript compiler
+ This is the Mono JScript compiler, a platform-independent compiler which
+ produces CIL (Common Intermediate Language) binary executables.
  .
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
