@@ -145,8 +145,10 @@ binary-indep: build install
 	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Security/
 	rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Security.dll
 	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Security.dll
-	# delete Mono.C5 from libmono2.0-cil (those are already in libmono-c5-*-cil)
+	# delete Mono.C5 from libmono1.0/2.0-cil (those are already in libmono-c5-*-cil)
+	rm -rf debian/libmono1.0-cil/usr/lib/mono/gac/Mono.C5/
 	rm -rf debian/libmono2.0-cil/usr/lib/mono/gac/Mono.C5/
+	rm -f debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.C5.dll
 	rm -f debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.C5.dll
 	# delete System.Windows.Forms from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
 	rm -rf debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Windows.Forms/
