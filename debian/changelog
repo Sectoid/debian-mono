@@ -65,9 +65,6 @@ mono (1.1.13.4-1pre12) unstable; urgency=low
     + debian/patches/unix-end-point-equals.dpatch (SVN rev 57754:57757):
       - Fix Equals() and GetHashCode() of Mono.Unix.UnixEndPoint.
         http://bugzilla.ximian.com/show_bug.cgi?id=77747
-    + debian/patches/file-io.dpatch (SVN rev 57409:58447):
-      - Named pipes and block devices are no directories. Backported
-        from the 1.1.13 branch
     + debian/patches/resource-manager-boo.dpatch:
       - Fix the long outstanding breakage of boo. See
         http://bugzilla.ximian.com/show_bug.cgi?id=77242
