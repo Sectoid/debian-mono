@@ -1,11 +1,13 @@
-mono (1.1.13.4-1pre13) unstable; urgency=low
+mono (1.1.13.6-0pre1) unstable; urgency=medium
 
+  * New upstream release
   * Mirco 'meebey' Bauer
     + Splitted left libraries of mono-classlib-1.0 and mono-classlib-2.0
       into own packages to avoid ABI breakages and meet the CLI Policy.
       All libraries in a package must have the same version number
       (required for versioned package names), see CLI Policy 0.4.0
       mono-classlib-1.0/2.0 are now empty transition packages.
+      This also solves the circular depedency. (Closes: #358363)
     + debian/mono-classlib-1.0.install
       debian/mono-classlib-1.0-dbg.install
       debian/mono-classlib-2.0.install
@@ -15,7 +17,7 @@ mono (1.1.13.4-1pre13) unstable; urgency=low
       - Removed mono-classlib-1.0/2.0-dbg package
         Removed mono-assemblies-base package:
       - Changed mono-classlib-1.0/2.0 to have a minimum as depencies for the
-        transition to avoid a dependency hell.
+        transition to avoid a dependency hell. (Closes: #360996)
         All packages that have a binary dependency on
         mono-classlib-1.0/2.0 should be rebuild!
       - Removed pnet-compiler Build-Conflicts and Conflicts.
@@ -67,10 +69,10 @@ mono (1.1.13.4-1pre13) unstable; urgency=low
     + debian/patches/resource-manager-boo.dpatch:
       - Fix the long outstanding breakage of boo. See
         http://bugzilla.ximian.com/show_bug.cgi?id=77242
-    + debian/patches/*:
+    + debian/patches/*.dpatch:
       - Removed all obsolete, old patches
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 26 Mar 2006 19:22:47 +0100
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 5 Apr 2006 23:47:48 +0200
 
 mono (1.1.13.4-1) unstable; urgency=low
 

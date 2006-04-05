@@ -1,5 +1,6 @@
 #!/bin/sh
 
+NAME=$(basename $0)
 MONO_API_INFO=/usr/lib/mono/1.0/mono-api-info.exe
 MONO_API_DIFF=/usr/lib/mono/1.0/mono-api-diff.exe
 
@@ -9,7 +10,7 @@ API_DIFF=`tempfile`
 
 if [ ! -e "$1" -a ! -e "$2" ]
 then
-	echo "usage: api-check old.dll new.dll"
+	echo "usage: $NAME old.dll new.dll"
 	exit 1
 fi
 
