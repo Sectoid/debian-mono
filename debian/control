@@ -932,7 +932,7 @@ Description: Mono C# 2.0 compiler
 Package: mono-gac
 Section: devel
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${cli:Depends}, cli-common (>= 0.4.0)
 Provides: global-assembly-cache-tool
 Description: Mono GAC tool
  Mono is a platform for running and developing applications based on the

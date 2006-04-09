@@ -2,6 +2,7 @@
 
 if [ "$1" = remove ]; then
         update-alternatives --remove global-assembly-cache-tool /usr/bin/gacutil
+	/usr/share/cli-common/gac-remove mono
 fi
 
 #DEBHELPER#

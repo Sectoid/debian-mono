@@ -1,2 +1,4 @@
 debian/tmp/usr/bin/gacutil
 debian/tmp/usr/lib/mono/1.0/gacutil.exe
+debian/tmp/usr/share/cli-common/runtimes.d/
+debian/MonoGetAssemblyName.exe	/usr/share/mono/

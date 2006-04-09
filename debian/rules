@@ -47,6 +47,10 @@ build-stamp: cli-wrapper
 	  --with-libgdiplus=installed --with-x=yes
 	$(MAKE)
 	chmod +x debian/dh_makeclilibs debian/dh_clideps
+	# Build the late-GAC tool
+	mcs/class/lib/default/mcs.exe /t:exe \
+		/out:debian/MonoGetAssemblyName.exe \
+		debian/MonoGetAssemblyName.cs
 	touch build-stamp
 
 clean: unpatch
@@ -57,7 +61,7 @@ clean: unpatch
 	# distclean misses stuff
 	find -name "*.mdb" | xargs rm -f
 	-cd debian/detector && $(MAKE) clean
-	rm -f cli-wrapper
+	rm -f cli-wrapper debian/MonoGetAssemblyName.exe
 	rm -rf $(MONO_SHARED_DIR)/.wapi
 	dh_clean
 
@@ -85,6 +89,8 @@ install: build
 	# CLI Policy
 	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs chmod -x
 	cd debian && find -type f -name "*.exe" | xargs chmod +x
+	# Late GAC
+	install -D -m755 debian/mono.runtime-script debian/tmp/usr/share/cli-common/runtimes.d/mono
 
 binary-indep: build install
 	dh_testdir -i

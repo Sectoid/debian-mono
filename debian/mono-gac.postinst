@@ -1,5 +1,9 @@
 #!/bin/sh -e
 
+# Install the gac
+/usr/share/cli-common/gac-install mono
+
+# Update the alternatives
 update-alternatives \
 	--install /usr/bin/cli-gacutil global-assembly-cache-tool /usr/bin/gacutil 10 \
 	--slave /usr/share/man/man1/cli-gacutil.1.gz cli-gacutil.1.gz /usr/share/man/man1/gacutil.1.gz

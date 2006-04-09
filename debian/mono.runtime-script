@@ -135,28 +135,14 @@ sub get_full_name
     my $dll = shift;
 
     # Open a pipe to monop
-    my $cmd = "/usr/bin/monop -r:$dll";
-    open PIPE, "$cmd |" or die "E: Cannot open pipe: monop $dll";
+    my $cmd = "/usr/bin/mono /usr/share/mono/MonoGetAssemblyName.exe $dll";
+    open PIPE, "$cmd |" or die "E: Cannot open pipe to assembly builder $dll";
 
-    # Go through the file and get the last four lines when we find
-    # PublicKey (which is the end of the block.
-    my @p = ();
-
-    while (<PIPE>)
-    {
-	# Add to the list
-	chomp;
-	push @p, $_;
-
-	# Get rid of elements to keep only the last four lines
-	shift @p while (@p > 4);
-
-	# Stop if we have the publick key
-	last if /PublicKey/;
-    }
-
-    # Full version
-    # return join(",", @p);
+    # This generate a single line that produces the desired results
+    $_ = <PIPE>;
+    chomp;
+    my @p = split(/, /);
+    close PIPE;
 
     # Clean up the path and build the mono-specific directory
     my %hash = ();

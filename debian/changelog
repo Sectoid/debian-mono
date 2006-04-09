@@ -1,3 +1,10 @@
+mono (1.1.13.6-2) unstable; urgency=low
+
+  * Dylan R. E. Moonfire
+    + Included the late-GAC install hooks.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 09 Apr 2006 14:07:23 -0500
+
 mono (1.1.13.6-1) unstable; urgency=high
 
   * New upstream release
