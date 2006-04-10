@@ -7,6 +7,8 @@ VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 NEXT_UPVERSION = $(shell perl -e '$$_=pop; s/(\d+)$$/$$1+1/e; print' $(UPVERSION))
 
+RUN_MONO = LD_LIBRARY_PATH=debian/tmp/usr/lib MONO_PATH=debian/tmp/usr/lib/mono/1.0:debian/tmp/usr/lib/mono/2.0 debian/tmp/usr/bin/mono
+
 DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
 DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -48,9 +50,9 @@ build-stamp: cli-wrapper
 	$(MAKE)
 	chmod +x debian/dh_makeclilibs debian/dh_clideps
 	# Build the late-GAC tool
-	mcs/class/lib/default/mcs.exe /t:exe \
-		/out:debian/MonoGetAssemblyName.exe \
-		debian/MonoGetAssemblyName.cs
+	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
+	  /out:debian/MonoGetAssemblyName.exe \
+	  debian/MonoGetAssemblyName.cs
 	touch build-stamp
 
 clean: unpatch
@@ -81,16 +83,17 @@ install: build
 	rm -f debian/tmp/usr/bin/prj2make
 	rm -f debian/usr/share/man/man1/prj2make.1
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
-	install -D -m755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
+	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
 	cd debian/detector && \
-	  $(MAKE) && install -D -m755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	  $(MAKE) && \
+	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 	# CLI Policy
 	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs chmod -x
 	cd debian && find -type f -name "*.exe" | xargs chmod +x
 	# Late GAC
-	install -D -m755 debian/mono.runtime-script debian/tmp/usr/share/cli-common/runtimes.d/mono
+	install -D -m 755 debian/mono.runtime-script debian/tmp/usr/share/cli-common/runtimes.d/mono
 
 binary-indep: build install
 	dh_testdir -i
