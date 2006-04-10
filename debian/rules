@@ -49,10 +49,6 @@ build-stamp: cli-wrapper
 	  --with-libgdiplus=installed --with-x=yes
 	$(MAKE)
 	chmod +x debian/dh_makeclilibs debian/dh_clideps
-	# Build the late-GAC tool
-	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
-	  /out:debian/MonoGetAssemblyName.exe \
-	  debian/MonoGetAssemblyName.cs
 	touch build-stamp
 
 clean: unpatch
@@ -73,6 +69,10 @@ install: build
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	# Build the late-GAC tool
+	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
+	  /out:debian/MonoGetAssemblyName.exe \
+	  debian/MonoGetAssemblyName.cs
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
