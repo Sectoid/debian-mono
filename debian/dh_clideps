@@ -34,8 +34,8 @@ Note: the dependencies on shared libraries may be not resolved correctly
 if there are no .config files associated with the the .exe/.dll file
 which refers to the particular shared library (by its SONAME).
 
-If you use this program, your package should build-depend on cli-common
-(>= 0.2.0).
+If you use this program, your package should build-depend on cli-common-dev
+(>= 0.4.0).
 
 =head1 OPTIONS
 
@@ -50,9 +50,9 @@ variable shlib:Depends from debian/package.substvars.
 
 =item B<-r>
 
-Don't set a strong versioned dependency on mono-jit or other CLR packages.
-This option can be used to specify a relaxed dependency on the VM
-by-hand in the control file, eg. "mono-jit | cli-virtual-machine".
+Don't set a strong versioned dependency on mono-runtime or other CLR packages.
+This option can be used to specify a relaxed dependency on the VM/CLR
+by-hand in the control file, eg. "mono-runtime | cli-runtime".
 
 =item B<internal-mono>                             
 
@@ -91,8 +91,8 @@ if (defined($ARGV[0]) && $ARGV[0] eq "internal-mono") {
   open(FILE, 'debian/control');
   my @filedata = <FILE>;
   close(FILE);
-  if (!($filedata[0] =~ /Build-Depends(-Indep)?: .*cli-common \(>= 0\.2\.0\)/)) {
-      warning("Warning! No Build-Depends(-Indep) on cli-common (>= 0.2.0)!");
+  if (!($filedata[0] =~ /Build-Depends(-Indep)?: .*cli-common-dev \(>= 0\.4\.0\)/)) {
+      warning("Warning! No Build-Depends(-Indep) on cli-common-dev (>= 0.4.0)!");
   }
 }
 
@@ -218,9 +218,10 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
           }
        }
     }
+    
     # now filter the dupes coming from shlibs
     if (defined($dh{D_FLAG})) {
-       if (open($fh, "< debian/$package.substvars" )) {
+       if (open($fh, "< $pwd/debian/$package.substvars" )) {
           while (<$fh>) {
              if (/^shlibs:Depends=(.*)\n?/) {
                 for (split(/\s*,\s*/, $1)) {
@@ -229,7 +230,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
              }
           }
        } else {
-          verbose_print("Could not read debian/$package.substvars");
+          verbose_print("Could not read $pwd/debian/$package.substvars");
        }
     }
 
@@ -237,15 +238,20 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     if (!defined($dh{R_FLAG}) && $found_exe) {
         if ($clr eq "mono") {
           if ($needs_net_2_0) {
-            $deps = "mono-jit (>= 1.1.8.1-1)";
+            $deps = "mono-runtime (>= 1.1.8.1)";
           } elsif ($needs_net_1_0) {
-            $deps = "mono-jit (>= 1.0)";
+            $deps = "mono-runtime (>= 1.0)";
           } else {
-            $deps = "mono-jit (>= $cli_version)";
+            $deps = "mono-runtime (>= $cli_version)";
           }
         } elsif ($clr eq "pnet") {
           $deps = "pnet-interpreter (>= $cli_version)";
         }
+    }
+    
+    if (-f "$tmp/usr/share/cli-common/packages.d/$package.installcligac") {
+    	$deps .= ", " if defined $deps && $deps ne '';
+        $deps .= "cli-common (>= 0.4.0)";
     }
     
     $deps .= join(", ", "",
@@ -302,7 +308,7 @@ sub extraDeps {
 
 L<debhelper(7)>
 
-This program is a part of cli-common.
+This program is a part of cli-common-dev.
 
 =head1 AUTHOR
 

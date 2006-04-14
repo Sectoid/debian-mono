@@ -1,8 +1,13 @@
-mono (1.1.13.6-1pre1) unstable; urgency=low
+mono (1.1.13.6-2) unstable; urgency=low
 
-  * NOT RELEASED YET
   * Dylan R. E. Moonfire
     + Included the late-GAC install hooks.
+  * Mirco 'meebey' Bauer:
+    + synced dh_clideps and dh_makeclilibs from cli-common 0.4.0
+    + debian/control:
+      - New meta package mono-runtime.
+      - Removed libmono-$version provides of libmono0, not needed anymore.
+        The shlibs file uses now libmono0.
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 09 Apr 2006 14:07:23 -0500
 

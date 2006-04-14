@@ -19,6 +19,19 @@ Description: common files for Mono
  This package contains base configuration files and configures the
  system to run CIL executables like native applications.
 
+Package: mono-runtime
+Provides: cli-runtime
+Architecture: i386 powerpc amd64 ia64 arm armeb
+Depends: mono-jit (= ${Source-Version}), mono-gac (= ${Source-Version})
+Description: Mono runtime
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package is a meta package and pulls the VM and the GAC in.
+
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 powerpc amd64 ia64 arm armeb
@@ -67,12 +80,12 @@ Description: Mono CLI runtime with development tools
  development components of Mono.
 
 Package: mono-utils
+Provides: cil-disassembler
 Section: devel
 Architecture: i386 powerpc amd64 ia64 arm armeb
 Replaces: mono-mcs (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-corlib1.0-cil
 Suggests: libmono-corlib2.0-cil
-Provides: cil-disassembler
 Description: Mono utilities
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -88,7 +101,6 @@ Section: libs
 Architecture: i386 powerpc amd64 ia64 arm armeb
 Replaces: libmono-dev (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Provides: libmono-${mono:upversion}
 Description: libraries for the Mono JIT
  Shared libraries for Mono, used for embedding/hosting of the JIT.
  The package also contains libmono-profiler-cov used for optimisation work.
