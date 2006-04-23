@@ -3,7 +3,7 @@ mono (1.1.13.6-3) unstable; urgency=medium
   * Mirco 'meebey' Bauer:
     + debian/control:
       - Package mono-gac can not depend on cli-common >= 0.4.0 yet, which is
-        still in, the NEW queue. Changed to use "Recommends" instead.
+        still in the NEW queue. Changed to use "Recommends" instead.
         This caused FTBFS for packages that build-depend on  cli-common or
         mono-gac, thus using urgency=medium.
       - Removed stdout and stderr redirect in mono-common.{postinst,prerm} to 
