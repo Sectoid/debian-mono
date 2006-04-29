@@ -1,7 +1,8 @@
 #!/bin/sh
 
 NAME=$(basename $0)
-MONO_API_INFO=/usr/lib/mono/1.0/mono-api-info.exe
+MONO_API_INFO1=/usr/lib/mono/1.0/mono-api-info.exe
+MONO_API_INFO2=/usr/lib/mono/2.0/mono-api-info.exe
 MONO_API_DIFF=/usr/lib/mono/1.0/mono-api-diff.exe
 
 API_OLD=`tempfile`
@@ -10,8 +11,19 @@ API_DIFF=`tempfile`
 
 if [ ! -e "$1" -a ! -e "$2" ]
 then
-	echo "usage: $NAME old.dll new.dll"
+	echo "usage: $NAME [-2] old.dll new.dll"
 	exit 1
+fi
+
+if [ "$1" = "-2" ]; then
+	if [ ! -x $MONO_API_INFO2 ]; then
+		echo "Error: $MONO_API_INFO2 does not exist, you need to install the mono-gmcs package"
+		exit 1
+	fi
+	MONO_API_INFO=$MONO_API_INFO2
+	shift
+else
+	MONO_API_INFO=$MONO_API_INFO1
 fi
 
 ${MONO_API_INFO} "$1" > ${API_OLD}
