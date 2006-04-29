@@ -1,3 +1,11 @@
+mono (1.1.13.6-3pre1) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer:
+    + debian/mono-api-check:
+      - Added .NET 2.0 support (-2 parameter).
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 29 Apr 2006 13:33:34 +0200
+
 mono (1.1.13.6-3) unstable; urgency=medium
 
   * Mirco 'meebey' Bauer:
