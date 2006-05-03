@@ -3,6 +3,11 @@ mono (1.1.13.6-3pre1) unstable; urgency=low
   * Mirco 'meebey' Bauer:
     + debian/mono-api-check:
       - Added .NET 2.0 support (-2 parameter).
+  * Sebastian 'slomo' Dröge:
+    + debian/patches/fix-mono-cairo-image-surface-constructor-signature.dpatch:
+      - Fix the signature of the Mono.Cairo.ImageSurface constructor. It should
+        take a byte array, not a string. The old version with the string could
+        never work and would've caused a segfault instead. (SVN rev 60175)
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 29 Apr 2006 13:33:34 +0200
 
