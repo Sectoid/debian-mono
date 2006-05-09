@@ -1,15 +1,18 @@
-mono (1.1.13.6-3pre1) unstable; urgency=low
+mono (1.1.13.6-4) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:
     + debian/mono-api-check:
       - Added .NET 2.0 support (-2 parameter).
+    + debian/rules:
+      - pass -r to dh_clideps call for mono-gac, to prevent a circular
+        dependency between mono-gac <-> mono-runtime. (Closes: #365822)
   * Sebastian 'slomo' Dröge:
     + debian/patches/fix-mono-cairo-image-surface-constructor-signature.dpatch:
       - Fix the signature of the Mono.Cairo.ImageSurface constructor. It should
         take a byte array, not a string. The old version with the string could
         never work and would've caused a segfault instead. (SVN rev 60175)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 29 Apr 2006 13:33:34 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 9 May 2006 22:34:09 +0200
 
 mono (1.1.13.6-3) unstable; urgency=medium
 
@@ -17,7 +20,7 @@ mono (1.1.13.6-3) unstable; urgency=medium
     + debian/control:
       - Package mono-gac can not depend on cli-common >= 0.4.0 yet, which is
         still in the NEW queue. Changed to use "Recommends" instead.
-        This caused FTBFS for packages that build-depend on  cli-common or
+        This caused FTBFS for packages that build-depend on cli-common or
         mono-gac, thus using urgency=medium.
       - Removed stdout and stderr redirect in mono-common.{postinst,prerm} to 
         aid debugging a problem with binfmt.

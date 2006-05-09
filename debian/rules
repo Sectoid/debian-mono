@@ -221,6 +221,8 @@ binary-indep: build install
 	  -plibmono2.0-cil \
 	  -m $(UPVERSION) internal-mono
 	debian/dh_clideps -i internal-mono
+	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
+	debian/dh_clideps -pmono-gac -r internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i
