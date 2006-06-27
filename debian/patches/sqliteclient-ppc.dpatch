@@ -1,0 +1,41 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+--- mono/mcs/class/Mono.Data.SqliteClient/Mono.Data.SqliteClient/SqliteCommand.cs	(Revision 60675)
++++ mono/mcs/class/Mono.Data.SqliteClient/Mono.Data.SqliteClient/SqliteCommand.cs	(Revision 60676)
+@@ -517,10 +517,7 @@
+ 
+ 		public int LastInsertRowID () 
+ 		{
+-			if (parent_conn.Version == 3)
+-				return Sqlite.sqlite3_last_insert_rowid(parent_conn.Handle);
+-			else
+-				return Sqlite.sqlite_last_insert_rowid(parent_conn.Handle);
++			return parent_conn.LastInsertRowId;
+ 		}
+ 		
+ 		private string GetError3() {
+--- mono/mcs/class/Mono.Data.SqliteClient/Mono.Data.SqliteClient/Sqlite.cs	(Revision 60675)
++++ mono/mcs/class/Mono.Data.SqliteClient/Mono.Data.SqliteClient/Sqlite.cs	(Revision 60676)
+@@ -151,7 +151,7 @@
+ 		internal static extern int sqlite3_changes (IntPtr handle);
+ 
+ 		[DllImport("sqlite3")]
+-		internal static extern int sqlite3_last_insert_rowid (IntPtr sqlite_handle);
++		internal static extern long sqlite3_last_insert_rowid (IntPtr sqlite_handle);
+ 
+ 		[DllImport ("sqlite3")]
+ 		internal static extern SqliteError sqlite3_prepare16 (IntPtr sqlite_handle, IntPtr zSql, int zSqllen, out IntPtr pVm, out IntPtr pzTail);
+--- mono/mcs/class/Mono.Data.SqliteClient/Mono.Data.SqliteClient/SqliteConnection.cs	(Revision 60675)
++++ mono/mcs/class/Mono.Data.SqliteClient/Mono.Data.SqliteClient/SqliteConnection.cs	(Revision 60676)
+@@ -110,7 +110,7 @@
+ 		public int LastInsertRowId {
+ 			get {
+ 				if (Version == 3)
+-					return Sqlite.sqlite3_last_insert_rowid (Handle);
++					return (int)Sqlite.sqlite3_last_insert_rowid (Handle);
+ 				else
+ 					return Sqlite.sqlite_last_insert_rowid (Handle);
+ 			}
+
