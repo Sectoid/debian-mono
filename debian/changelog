@@ -5,10 +5,11 @@ mono (1.1.13.8-1) unstable; urgency=low
     + debian/patches/ppc_missing_lock.dpatch:
       - Add a missing lock and make some memory executable to fix
         various segfaults on PPC64 SMP machines with 32 bit userland.
-        Patch from mono SVN, thanks to Johannes Berg (Closes: #371134)
+        Patch from mono SVN (rev 61756). Thanks to Johannes Berg
+        (Closes: #371134)
     + debian/patches/sqliteclient-ppc.dpatch:
       - LastInsertRowID() returns long, not int for sqlite3.
-        Fixes it to not return always 0 on PPC. Patch from mono SVN.
+        Fixes it to not return always 0 on PPC. Patch from mono SVN (rev 60676).
     + debian/patches/resource-manager-boo.dpatch:
       - dropped, upstream now
 
