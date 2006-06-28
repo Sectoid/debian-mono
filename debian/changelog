@@ -16,7 +16,8 @@ mono (1.1.13.8-1) unstable; urgency=low
       - don't output the Byte Order Mark on UTF8 locales to the console. This
         breaks scripts and everything that parses the output of mono programs.
     + debian/mono.runtime-scripts:
-      - added LANG=C to all calls of external programs
+      - added LANG=C to all calls of external programs where the output is
+        parsed
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Jun 2006 15:11:24 +0200
 
