@@ -12,6 +12,11 @@ mono (1.1.13.8-1) unstable; urgency=low
         Fixes it to not return always 0 on PPC. Patch from mono SVN (rev 60676).
     + debian/patches/resource-manager-boo.dpatch:
       - dropped, upstream now
+    + debian/patches/console-no-utf8-bom.dpatch:
+      - don't output the Byte Order Mark on UTF8 locales to the console. This
+        breaks scripts and everything that parses the output of mono programs.
+    + debian/mono.runtime-scripts:
+      - added LANG=C to all calls of external programs
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Jun 2006 15:11:24 +0200
 

@@ -62,9 +62,9 @@ if ($mode eq "remove")
 	    # Clean up the line and get the base directory
 	    chomp;
 	    my $basedir = dirname($_);
-	    system("rm -f $_/*");
-	    system("rmdir $_");
-	    system("rmdir $basedir");
+	    system("LANG=C rm -f $_/*");
+	    system("LANG=C rmdir $_");
+	    system("LANG=C rmdir $basedir");
 	}
 
 	close UNINSTALL;
@@ -116,7 +116,7 @@ while (@ARGV)
     # absolute paths). There isn't a problem of doing too many
     # since we typically run from the root context.
     my $cmd = "(cd / && "
-    	. "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /i ./$dll"
+    	. "LANG=C /usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /i ./$dll"
 	. " > /dev/null)";
     system($cmd);
 }
@@ -135,7 +135,7 @@ sub get_full_name
     my $dll = shift;
 
     # Open a pipe to monop
-    my $cmd = "/usr/bin/mono /usr/share/mono/MonoGetAssemblyName.exe $dll";
+    my $cmd = "LANG=C /usr/bin/mono /usr/share/mono/MonoGetAssemblyName.exe $dll";
     open PIPE, "$cmd |" or die "E: Cannot open pipe to assembly builder $dll";
 
     # This generate a single line that produces the desired results

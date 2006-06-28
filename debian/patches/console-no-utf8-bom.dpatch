@@ -1,0 +1,17 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+--- trunk/mcs/class/corlib/System/Console.cs	2006/01/02 20:42:25	54982
++++ trunk/mcs/class/corlib/System/Console.cs	2006/01/20 00:47:16	55804
+@@ -63,8 +63,7 @@
+ 				// On Unix systems (128), do not output the
+ 				// UTF-8 ZWNBSP (zero-width non-breaking space).
+ 				//
++				if (code_page == UTF8Encoding.UTF8_CODE_PAGE || ((code_page & 0x10000000) != 0))
+-				if (code_page != -1 && ((code_page & 0x0fffffff) == 3 // UTF8Encoding.UTF8_CODE_PAGE
+-					|| ((code_page & 0x10000000) != 0)))
+ 					encoding = Encoding.UTF8Unmarked;
+ 				else
+ 					encoding = Encoding.Default;
+
