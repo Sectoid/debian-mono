@@ -62,7 +62,7 @@ if ($mode eq "remove")
 	    # Clean up the line and get the base directory
 	    chomp;
 		 my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $_"
-		 . " > /dev/null)";
+		 . " > /dev/null";
 		 system($cmd) == 0 or die "E: removing Assembly $_ failed\n";
 	}
 
