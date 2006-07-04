@@ -15,9 +15,14 @@ mono (1.1.13.8-1) unstable; urgency=low
     + debian/patches/console-no-utf8-bom.dpatch:
       - don't output the Byte Order Mark on UTF8 locales to the console. This
         breaks scripts and everything that parses the output of mono programs.
+    + debian/patches/gacutil-remove-full-assembly-name.dpatch:
+      - Allow removal of assemblies with neutral culture info when given as
+        full assembly name to gacutil
     + debian/mono.runtime-scripts:
       - added LANG=C to all calls of external programs where the output is
         parsed
+      - Exit with a non-0 exit code if something goes wrong (Closes: #366451)
+      - Use the full assembly name and gacutil /u for uninstallation
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 27 Jun 2006 15:11:24 +0200
 

@@ -61,10 +61,9 @@ if ($mode eq "remove")
 	{
 	    # Clean up the line and get the base directory
 	    chomp;
-	    my $basedir = dirname($_);
-	    system("rm -f $_/*");
-	    system("rmdir $_");
-	    system("rmdir $basedir");
+		 my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $_"
+		 . " > /dev/null)";
+		 system($cmd) == 0 or die "E: removing Assembly $_ failed\n";
 	}
 
 	close UNINSTALL;
@@ -102,7 +101,7 @@ while (@ARGV)
     if (! -f $dll)
     {
 	print STDERR "E: Assembly does not exist: $dll\n";
-	next;
+	exit 1;
     }
     
     # Figure out the mono's precise name
@@ -115,10 +114,10 @@ while (@ARGV)
     # relative path to this program (since gacutil doesn't like
     # absolute paths). There isn't a problem of doing too many
     # since we typically run from the root context.
-    my $cmd = "(cd / && "
-    	. "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /i ./$dll"
-	. " > /dev/null)";
-    system($cmd);
+    my $cmd = "(cd `dirname $dll` && "
+    	. "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /i `basename $dll`"
+	   . " > /dev/null)";
+    system($cmd) == 0 or die "E: installing Assembly $dll failed\n";
 }
 
 close CLIGAC;
@@ -141,29 +140,6 @@ sub get_full_name
     # This generate a single line that produces the desired results
     $_ = <PIPE>;
     chomp;
-    my @p = split(/, /);
-    close PIPE;
-
-    # Clean up the path and build the mono-specific directory
-    my %hash = ();
-    $hash{"Assembly"} = shift @p;
-
-    foreach my $p (@p)
-    {
-	if ($p =~ /^(\w+)=(.*)$/)
-	{
-	    $hash{$1} = $2;
-	}
-	else
-	{
-	    print "E: Unknown line: $p\n";
-	    exit 1;
-	}
-    }
-
-    # Figure out the path
-    # /usr/lib/mono/gac/log4net/1.2.9.0__a5715cc6d5c3540b
-    return "/usr/lib/mono/gac/"
-	. "$hash{Assembly}/$hash{Version}"
-	. "__$hash{PublicKeyToken}/";
+	 # assembly1, Version=1.0.0.0, Culture=en, PublicKeyToken=0123456789abcdef
+    return $_;
 }
