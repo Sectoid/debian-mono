@@ -1,5 +1,7 @@
 mono (1.1.13.8-1) unstable; urgency=low
 
+  * Mirco 'meebey' Bauer:
+    + Updated debian/watch to use URL for stable releases.
   * Sebastian 'slomo' Dröge:
     + New upstream release
     + debian/patches/ppc_missing_lock.dpatch:
