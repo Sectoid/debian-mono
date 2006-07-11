@@ -63,7 +63,8 @@ if ($mode eq "remove")
 	    chomp;
 		 my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $_"
 		 . " > /dev/null";
-		 system($cmd) == 0 or die "E: removing Assembly $_ failed\n";
+		 system($cmd) == 0 or
+		 	print STDERR "W: removing Assembly $_ failed!\n";
 	}
 
 	close UNINSTALL;
