@@ -2,4 +2,6 @@ debian/man/gmcs.1
 debian/man/wsdl2.1
 debian/man/monop2.1
 debian/man/ilasm2.1
+debian/man/resgen2.1
+debian/man/mono-service2.1
 debian/man/xbuild.1

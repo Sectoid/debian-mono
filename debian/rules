@@ -83,6 +83,8 @@ install: build
 	rm -f debian/tmp/usr/bin/prj2make
 	rm -f debian/usr/share/man/man1/prj2make.1
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
+	# upstream forgot to remove this one
+	rm -f debian/tmp/usr/bin/mbas
 	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
 	cd debian/detector && \
 	  $(MAKE) && \
@@ -113,9 +115,6 @@ binary-indep: build install
 	# delete gacutil from mono-mcs (this is already in mono-gac)
 	rm debian/mono-mcs/usr/bin/gacutil
 	rm debian/mono-mcs/usr/lib/mono/1.0/gacutil.exe*
-	# delete mbas from mono-mcs (this is already in mono-mbas)
-	rm debian/mono-mcs/usr/bin/mbas
-	rm debian/mono-mcs/usr/lib/mono/1.0/mbas.exe*
 	# delete mjs from mono-mcs (this is already in mono-mjs)
 	rm debian/mono-mcs/usr/bin/mjs
 	rm debian/mono-mcs/usr/lib/mono/1.0/mjs.exe*
@@ -127,6 +126,10 @@ binary-indep: build install
 	rm debian/mono-mcs/usr/bin/monop2
 	# delete ilasm2 from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/ilasm2
+	# delete resgen2 from mono-mcs (this is already in mono-gmcs)
+	rm debian/mono-mcs/usr/bin/resgen2
+	# delete mono-service2 from mono-mcs (this is already in mono-gmcs)
+	rm debian/mono-mcs/usr/bin/mono-service2
 	# delete xbuild from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/xbuild
 	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data-tds*-cil)

@@ -1,8 +1,2 @@
 remove_broken_dllmap_from_mono-shlib-cop.dpatch
-unix-end-point-serialize.dpatch
-unix-end-point-equals.dpatch
-fix-mono-cairo-image-surface-constructor-signature.dpatch
-ppc_missing_lock.dpatch
-sqliteclient-ppc.dpatch
 console-no-utf8-bom.dpatch
-gacutil-remove-full-assembly-name.dpatch

@@ -1,11 +1,33 @@
-mono (1.1.13.8-2) unstable; urgency=low
+mono (1.1.17.1-0pre1) unstable; urgency=low
 
+  * New upstream release
+  * Mirco 'meebey' Bauer:
+    + debian/patches/unix-end-point-serialize.dpatch
+    + debian/patches/unix-end-point-equals.dpatch
+    + debian/patches/fix-mono-cairo-image-surface-constructor-signature.dpatch
+    + debian/patches/ppc_missing_lock.dpatch
+    + debian/patches/sqliteclient-ppc.dpatch
+    + debian/patches/gacutil-remove-full-assembly-name.dpatch:
+      - Removed, already applied upstream.
+    + debian/patches/console-no-utf8-bom.dpatch:
+      - Updated, thanks to Sebastian 'slomo' Dröge.
+    + debian/control:
+      - Removed mono-mbas package.
+    + debian/libmono-microsoft{7,8}.0-cil.install
+      debian/mono-mbas.install
+      debian/mono-mcs.manpages:
+      - Removed VB.NET, upstream split it into a separate tarball. 
+    + debian/mono-gmcs.install:
+      - Added bin/resgen2 and bin/mono-service2
+    + debian/libmono{1,2}.0-cil.install:
+      - Added mono-service.exe
+    + Updated to Standards Version 3.7.2 (no changes needed).
   * Sebastian 'slomo' Dröge:
     + debian/mono.runtime-script:
       - don't fail on removal if an assembly can't be removed. This is most
         likely the case because the assembly is already gone.
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 11 Jul 2006 18:54:42 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 3 Sep 2006 17:19:37 +0200
 
 mono (1.1.13.8-1) unstable; urgency=low
 
