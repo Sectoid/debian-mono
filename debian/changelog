@@ -6,6 +6,8 @@ mono (1.1.17.1-2) unstable; urgency=high
         bugs (random crashes, e.g. FTBFS for ARM). According to upstream this
         is an untested feature, and should not be used by the runtime itself.
         (thanks to Sebastian 'slomo' Dröge for the investigation)
+    + debian/watch:
+      - Updated
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 4 Sep 2006 22:44:55 +0200
 
