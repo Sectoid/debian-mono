@@ -44,7 +44,7 @@ build-stamp: cli-wrapper
 	./configure $(confflags) --prefix=/usr \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
-	  --with-sigaltstack=no $(GC) --with-static_mono=no \
+	  --with-sigaltstack=no $(GC) \
 	  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 	  --with-libgdiplus=installed --with-x=yes
 	$(MAKE)
