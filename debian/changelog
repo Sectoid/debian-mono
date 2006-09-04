@@ -5,8 +5,9 @@ mono (1.1.17.1-2) unstable; urgency=high
       - Removed --with-static_mono=no from configure call, caused bad runtime
         bugs (random crashes, e.g. FTBFS for ARM). According to upstream this
         is an untested feature, and should not be used by the runtime itself.
+        (thanks to Sebastian 'slomo' Dröge for the investigation)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 3 Sep 2006 17:19:37 +0200
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 4 Sep 2006 22:44:55 +0200
 
 mono (1.1.17.1-1) unstable; urgency=low
 
