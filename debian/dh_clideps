@@ -66,7 +66,7 @@ my $clr;
 my $cli = '/usr/bin/cli';
 my $cli_version = `$cli --version 2>&1`;
 my $cli_parser;
-my $pwd=`pwd`;
+my $pwd = `pwd`;
 chomp $pwd;
 
 if (defined($ARGV[0]) && $ARGV[0] eq "internal-mono") {
@@ -123,24 +123,45 @@ foreach (@ARGV) {
 }
 
 my $fh;
-my %libdata;
+
+verbose_print("Loading clilibs...");
+my %clilibdata;
 open($fh, "cat /var/lib/dpkg/info/*.clilibs debian/*/DEBIAN/clilibs 2> /dev/null |");
 while (<$fh>) {
     /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-    $libdata{"$1/$2"} = $3;
+    $clilibdata{"$1/$2"} = $3;
 }
+close($fh);
 
+
+verbose_print("Loading shlibs...");
 my %shlibdata;
+open($fh, "cat /var/lib/dpkg/info/*.shlibs $pwd/debian/shlibs.local $pwd/debian/*/DEBIAN/shlibs 2> /dev/null |");
+while (<$fh>) {
+  /(\S+)\s+(\S+)\s+(\w.*)\n?/;
+  my ($soname, $soversion, $dependency);
+  #chomp;
+  #my($soname, $soversion, $dependency) = split(/\s+/, $_, 3);
+  $soname = $1;
+  $soversion = $2;
+  $dependency = $3;
+  $shlibdata{"$soname.so.$soversion"} = $dependency;
+}
+close($fh);
 
 foreach my $package (@{$dh{DOPACKAGES}}) {
     my $tmp = tmpdir($package);
-    my %deps;
-    my @depkgs;
+    my %refs = ( depends => [],
+                 recommends => [],
+                 suggests => [] );
     my $found_exe = 0;
     my $needs_net_1_0 = 0;
     my $needs_net_2_0 = 0;
     
-    delsubstvar($package, "cli:Depends");    # for idempotency
+    # for idempotency
+    delsubstvar($package, "cli:Depends");
+    delsubstvar($package, "cli:Suggests");
+    delsubstvar($package, "cli:Recommends");
 
     # find binaries
     find (sub {
@@ -150,6 +171,14 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
         if (/\.exe$/) {
           $found_exe = 1;
         }
+
+        verbose_print("Package: $package Assembly: $file");
+        
+        my %shlibRefs = resolveShlibRefs($package, $file);
+        push(@{$refs{depends}},    @{$shlibRefs{depends}});
+        push(@{$refs{recommends}}, @{$shlibRefs{recommends}});
+        push(@{$refs{suggests}},   @{$shlibRefs{suggests}});
+        
         my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
         my $command = "LANG=C $cli_parser --assemblyref $file 2>&1 > $tmpfile";
         
@@ -167,9 +196,6 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
           return;
         }
         
-        if (my $extra = extraDeps($file)) {
-           push(@depkgs, $extra);
-        }
         our($vers, $name, $key);
         local *F;
         open(F, $tmpfile);
@@ -185,10 +211,10 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
                 $key =~ s/\ //g;
                 $key = $vers . "__" . lc($key);
                 my $compat = "$name/$key";
-                if (!defined($libdata{$compat})) {
+                if (!defined($clilibdata{$compat})) {
                     warning("Warning: No Debian dependency data for $name ($key)!");
                 } else {
-                    push(@depkgs, $libdata{$compat});
+                    push(@{$refs{depends}}, $clilibdata{$compat});
                 }
                 #print "ok, ".$deps{ "$name/$vers" . "__" . lc($key) };
 
@@ -208,100 +234,222 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
         close(F);
      }, $tmp);
 
-    my %depkgsFiltered;
-    for (@depkgs) {
-       for (split(/\s*,\s*/, $_ )) {
-          # filter dupes and don't depend on this package
-          /^(\S+)/;
-          if ($1 ne $package) {
-            $depkgsFiltered{$_} = 1;
-          }
-       }
-    }
-    
-    # now filter the dupes coming from shlibs
-    if (defined($dh{D_FLAG})) {
-       if (open($fh, "< $pwd/debian/$package.substvars" )) {
-          while (<$fh>) {
-             if (/^shlibs:Depends=(.*)\n?/) {
-                for (split(/\s*,\s*/, $1)) {
-                   delete $depkgsFiltered{$_};
-                }
-             }
-          }
-       } else {
-          verbose_print("Could not read $pwd/debian/$package.substvars");
-       }
-    }
+    $refs{depends}    = filterDuplicates($package, $refs{depends});
+    $refs{recommends} = filterDuplicates($package, $refs{recommends});
+    $refs{suggests}   = filterDuplicates($package, $refs{suggests});
 
-    my $deps;
+    my $vm_ref = "";
     if (!defined($dh{R_FLAG}) && $found_exe) {
         if ($clr eq "mono") {
           if ($needs_net_2_0) {
-            $deps = "mono-runtime (>= 1.1.8.1)";
+            $vm_ref = "mono-runtime (>= 1.1.8.1), ";
           } elsif ($needs_net_1_0) {
-            $deps = "mono-runtime (>= 1.0)";
+            $vm_ref = "mono-runtime (>= 1.0), ";
           } else {
-            $deps = "mono-runtime (>= $cli_version)";
+            $vm_ref = "mono-runtime (>= $cli_version), ";
           }
         } elsif ($clr eq "pnet") {
-          $deps = "pnet-interpreter (>= $cli_version)";
+          $vm_ref = "pnet-interpreter (>= $cli_version), ";
         }
     }
     
     if (-f "$tmp/usr/share/cli-common/packages.d/$package.installcligac") {
-    	$deps .= ", " if defined $deps && $deps ne '';
-        $deps .= "cli-common (>= 0.4.0)";
+        $vm_ref .= "cli-common (>= 0.4.0), ";
     }
     
-    $deps .= join(", ", "",
-        sort {
-            # beautify the sort order, requested by meebey
-            my $apkg;
-            $a =~ /^\S+/;
-            $apkg=$&;
-            $b =~ /^\S+/;
-            if($apkg eq $&) {
-               return -1 if( ($a=~/>=/) && ($b=~/<</));
-               return 1 if( ($b=~/>=/) && ($a=~/<</));
-            }
-            $a cmp $b;
-        } (keys %depkgsFiltered)
-    );
+    #$deps .= join(", ", "",
+    #    sort {
+    #        # beautify the sort order, requested by meebey
+    #        my $apkg;
+    #        $a =~ /^\S+/;
+    #        $apkg=$&;
+    #        $b =~ /^\S+/;
+    #        if($apkg eq $&) {
+    #           return -1 if( ($a=~/>=/) && ($b=~/<</));
+    #           return 1 if( ($b=~/>=/) && ($a=~/<</));
+    #        }
+    #        $a cmp $b;
+    #    } (keys %depkgsFiltered)
+    #);
+    
+    @{$refs{depends}}    = sort(@{$refs{depends}});
+    @{$refs{recommends}} = sort(@{$refs{recommends}});
+    @{$refs{suggests}}   = sort(@{$refs{suggests}});
 
-    addsubstvar($package, "cli:Depends", $deps);
+    addsubstvar($package, "cli:Depends",    $vm_ref . join(", ", @{$refs{depends}}));
+    addsubstvar($package, "cli:Recommends", join(", ", @{$refs{recommends}}));
+    addsubstvar($package, "cli:Suggests",   join(", ", @{$refs{suggests}}));
 }
 
-sub extraDeps {
-   my $config=$_[0].".config";
-   return undef if (! -r $config);
-   my $ret=undef;
+sub filterDuplicates {
+  my $package = shift;
+  my $packages = shift;
+  
+  my %packagesFiltered;
+  for (@{$packages}) {
+    # filter dupes and don't depend on this package
+    /^(\S+)/;
+    if ($1 ne $package) {
+      $packagesFiltered{$_} = 1;
+    }
+  }
 
-   if (!%shlibdata) {
-      open($fh, "cat /var/lib/dpkg/info/*.shlibs $pwd/debian/shlibs.local $pwd/debian/*/DEBIAN/shlibs 2>/dev/null |");
+  # now filter the dupes coming from shlibs
+  if (defined($dh{D_FLAG})) {
+    my $fh;
+    if (open($fh, "< $pwd/debian/$package.substvars" )) {
       while (<$fh>) {
-          /(\S+)\s+(\S+)\s+(\w.*)\n?/;
-          my ($soname, $soversion, $dependency);
-          #chomp;
-          #my($soname, $soversion, $dependency) = split(/\s+/, $_, 3);
-          $soname = $1;    
-          $soversion = $2; 
-          $dependency = $3;
-          $shlibdata{"$soname.so.$soversion"} = $dependency;
+        if (/^shlibs:Depends=(.*)\n?/) {
+          for (split(/\s*,\s*/, $1)) {
+            delete $packagesFiltered{$_};
+          }
+        }
       }
+      close($fh);
+    } else {
+      verbose_print("Could not read $pwd/debian/$package.substvars");
+    }
+  }
+  
+  return [ keys %packagesFiltered ];
+}
+
+sub loadDllMap {
+   my $filename = shift;
+   our $dllmapdata = shift;
+   if (!-f $filename) {
+     verbose_print("loadDllMap(): DLL map $filename not found, ignoring...");
+     return;
+   }
+   
+   use XML::DOM;
+   my $parser = new XML::DOM::Parser;
+   my $doc = $parser->parsefile($filename, whitespace => 'strip');
+   my $root = $doc->getDocumentElement();
+   my @mapentries = $root->getElementsByTagName("dllmap");
+   foreach my $mapentry (@mapentries) {
+     my $dll = $mapentry->getAttribute("dll");
+     my $target = $mapentry->getAttribute("target");
+     #verbose_print("DLL map: '$dll' target: '$target'");
+     $dllmapdata->{$dll} = $target;
+   }
+}
+
+sub resolveShlibRefs {
+   my $package = shift;
+   my $assembly_filename = shift;
+   my $config_filename = $assembly_filename.".config";
+   my %ret = ( depends => [],
+               recommends => [],
+               suggests => [] );
+   if (-r $config_filename) {
+     verbose_print("Found DLL map: $config_filename");
+   } else {
+     verbose_print("Found no specific DLL map, but resolving modulerefs anyway");
    }
 
-   $config = `cat $config`;
-   while ($config =~ s/\Wtarget\W*=\W*(\w[\w.\-\d]+\.so\.\d+)//) {
-       verbose_print("found $config: '$1'");
-       if (defined($shlibdata{$1})) {
-           $ret .= ", ".$shlibdata{$1};
-       } else {
-           warning("Warning: Missing shlibs entry for $1!");
-       }
+   # load dll maps
+   verbose_print("Loading DLL maps for: $assembly_filename...");
+   my %dllmapdata;
+   loadDllMap("/etc/mono/config", \%dllmapdata);
+   loadDllMap("$pwd/debian/tmp/etc/mono/config", \%dllmapdata);
+   loadDllMap($config_filename, \%dllmapdata);
+    
+   # load clideps overrides
+   verbose_print("Loading clideps-override...");
+   my %clideps_override;
+   open($fh, "cat $pwd/debian/$package.clideps-override 2> /dev/null |");
+   while (<$fh>) {
+     /(\S+)\s+(\S+)(?:\s+(\(\S+\s+\S+\)))?\n?/;
+     my ($type, $package, $version);
+     $type = $1;    
+     $package = $2; 
+     $version = $3 if defined($3);
+     if ($version) {
+       $clideps_override{$package} = $type." ".$version;
+     } else {
+       $clideps_override{$package} = $type;
+     }
    }
-   $ret =~ s/^, // if $ret;
-   return $ret;
+   close($fh);
+   
+   # parse modulerefs
+   my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
+   my $command = "LANG=C $cli_parser --moduleref $assembly_filename 2>&1 > $tmpfile";
+   
+   system($command);
+   if ($?) {
+     my $output;
+     {
+       local *F;
+       open(F, $tmpfile);
+       local $/;
+       $output = <F>;
+       close(F);
+     }
+     error("cli_parser call failed: '".$command."' rc: $? output: $output");
+     return;
+   }
+   
+   local *F;
+   open(F, $tmpfile);
+   while (<F>) {
+     my $name = $1 if /\d+:\s+(.*)\n/;
+     if (!defined($name)) {
+       next;
+     }
+     my $target = $dllmapdata{$name};
+     
+     if (defined($target)) {
+       verbose_print("Resolved moduleref via DLL map: $name to: $target");
+     } elsif (defined($shlibdata{$name})) {
+       verbose_print("Resolved moduleref via direct match in shlibs");
+     } else {
+       warning("Warning: Could not resolve moduleref: $name for: $assembly_filename!");
+       next;
+     }
+ 
+     my $pkgref;
+     if (defined($target) && defined($shlibdata{$target})) {
+       $pkgref = $shlibdata{$target};
+     } elsif (defined($shlibdata{$name})) {
+       $pkgref = $shlibdata{$name};
+     } elsif (defined($target) && defined($shlibdata{$target.".0"})) {
+       # for DLL maps that have an unversioned library as target
+       $pkgref = $shlibdata{$target.".0"};
+     } else {
+       warning("Warning: Missing shlibs entry: $target or $name for: $assembly_filename!");
+       next;
+     }
+
+     my $type = "depends";
+     my $pkg = $pkgref;
+     $pkgref =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
+     my $pkgname = $1;
+     if (defined($clideps_override{$pkgname})) {
+       verbose_print("Found clideps-overidde: $pkgname for: $package");
+
+       my $override = $clideps_override{$pkgname};
+       $override =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
+       if ($1 eq "suggests" ||
+           $1 eq "recommends") {
+           $type = $1;
+       } elsif ($1 eq "ignores") {
+       } else {
+         warning("Warning: unknown override type: $1 in: '$override' for: $package!");
+       }
+       
+       if (defined($2)) {
+         $pkg = "$pkgname $2";
+       } else {
+         $pkg = $pkgref;
+       }
+     }
+     push(@{$ret{$type}}, $pkg);
+   } 
+   close(F);
+   
+   return %ret;
 }
 
 =head1 SEE ALSO

@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>, Sebastian Dröge <slomo@ubuntu.com>
-Build-Depends: debhelper (>= 5.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxslt1-dev, dc, libx11-dev, libxt-dev, libgc-dev [kfreebsd-i386]
+Build-Depends: debhelper (>= 5.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxml-dom-perl, libxslt1-dev, dc, libx11-dev, libxt-dev, libgc-dev [kfreebsd-i386]
 Standards-Version: 3.7.2
 
 Package: mono-common
@@ -231,6 +231,7 @@ Package: libmono-system1.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System libraries (1.0)
  Mono is a platform for running and developing applications based on the
@@ -245,6 +246,7 @@ Package: libmono-system2.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System libraries (2.0)
  Mono is a platform for running and developing applications based on the
@@ -455,6 +457,7 @@ Package: libmono-winforms1.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System.Windows.Forms library
  Mono is a platform for running and developing applications based on the
@@ -469,6 +472,7 @@ Package: libmono-winforms2.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System.Windows.Forms library
  Mono is a platform for running and developing applications based on the

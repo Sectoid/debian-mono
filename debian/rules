@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-#export DH_VERBOSE=1
+export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
@@ -32,6 +32,10 @@ else
 	GC = --with-gc=included
 endif
 
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+endif
+
 # Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
 
@@ -41,7 +45,7 @@ cli-wrapper: debian/cli-wrapper.c
 build: patch build-stamp
 build-stamp: cli-wrapper
 	dh_testdir
-	./configure $(confflags) --prefix=/usr \
+	CFLAGS=$(CFLAGS) ./configure $(confflags) --prefix=/usr \
 	  --mandir=\$${prefix}/share/man \
 	  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 	  --with-sigaltstack=no $(GC) \
@@ -55,6 +59,7 @@ clean: unpatch
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
+	rm -f install-stamp
 	-$(MAKE) distclean
 	# distclean misses stuff
 	find -name "*.mdb" | xargs rm -f
@@ -63,7 +68,8 @@ clean: unpatch
 	rm -rf $(MONO_SHARED_DIR)/.wapi
 	dh_clean
 
-install: build
+install: build install-stamp
+install-stamp:
 	dh_testdir
 	dh_testroot
 	dh_clean -k
@@ -96,6 +102,7 @@ install: build
 	cd debian && find -type f -name "*.exe" | xargs chmod +x
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/tmp/usr/share/cli-common/runtimes.d/mono
+	touch install-stamp
 
 binary-indep: build install
 	dh_testdir -i

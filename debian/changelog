@@ -1,3 +1,33 @@
+mono (1.1.17.1-3) unstable; urgency=high
+
+  * Mirco 'meebey' Bauer:
+    + debian/patches/arm_support_larger_stack_r65218.dpatch:
+      - Should fix ARM FTBFS, taken from upstream SVN, thus urgency=medium.
+    + debian/dh_clideps:
+      - Synced from cli-common package, contains bugfix for dependencies on
+        libmono0 and other packages.
+    + debian/control:
+      - Added "Suggests: ${cli:Suggests}" to libmono-system{1,2}.0-cil and
+        libmono-winforms{1,2}.0-cil.
+      - Added libxml-dom-perl to build-deps (needed by debian/dh_clideps)
+    + libmono-system2.0-cil.clideps-override
+      libmono-winforms1.0-cil.clideps-override
+      libmono-system1.0-cil.clideps-override
+      libmono-winforms2.0-cil.clideps-override:
+      - Added, used to override specific Depends to Suggests for assembly
+        references.
+    + debian/shlibs.local:
+      - Updated
+    + debian/mono-common.postinst:
+      - Removed old /usr/share/dotnet/mono to /usr/lib/mono transition code.
+      - Added removal of unneeded /usr/share/dotnet/mono symlink.
+        (Closes: #387277)
+    + debian/rules:
+      - Honor noopt in DEB_BUILD_OPTIONS.
+        (thanks to Timo Lindfors <lindi@kurp.hut.fi>, Closes: #380617)
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Mon, 4 Sep 2006 22:44:55 +0200
+
 mono (1.1.17.1-2) unstable; urgency=high
 
   * Mirco 'meebey' Bauer:
