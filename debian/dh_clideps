@@ -416,7 +416,7 @@ sub resolveShlibRefs {
    
    # parse modulerefs
    my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
-   my $command = "LANG=C $cli_parser --moduleref $assembly_filename 2>&1 > $tmpfile";
+   my $command = "LANG=C $cli_parser_paths $cli_parser --moduleref $assembly_filename 2>&1 > $tmpfile";
    
    system($command);
    if ($?) {
