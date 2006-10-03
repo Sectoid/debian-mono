@@ -219,6 +219,7 @@ binary-indep: build install
 	dh_compress -i
 	dh_fixperms -i
 	dh_installdeb -i
+	#DH_VERBOSE=1 DH_AUTOSCRIPTDIR=$(CURDIR)/debian debian/dh_monoaot -i
 	debian/dh_makeclilibs -i -m 1.0 internal-mono
 	# APIs that may grow need tighter deps
 	debian/dh_makeclilibs \
@@ -230,7 +231,6 @@ binary-indep: build install
 	  -plibmono1.0-cil \
 	  -plibmono2.0-cil \
 	  -m $(UPVERSION) internal-mono
-	#DH_VERBOSE=1 debian/dh_clideps -i internal-mono -l debian/tmp
 	debian/dh_clideps -i internal-mono -l debian/tmp
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
 	debian/dh_clideps -pmono-gac -r internal-mono

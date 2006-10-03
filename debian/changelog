@@ -1,3 +1,17 @@
+mono (1.1.17.1-5) unstable; urgency=high
+
+  * Mirco 'meebey' Bauer:
+    + debian/patches/fix_tmp_race_r65441.dpatch:
+      - Fixes tempfile race condition (CVE-2006-5072), taken from upstream SVN.
+    + debian/control:
+      - Added mono binary packages to Build-Conflicts, else it tries to use it
+        during bootstrap and fails.
+    + debian/dh_clideps
+      debian/dh_makeclilibs:
+      - Synced from cli-common-dev 0.4.6.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue, 3 Oct 2006 14:02:21 +0200
+
 mono (1.1.17.1-4) unstable; urgency=high
 
   * Mirco 'meebey' Bauer:
