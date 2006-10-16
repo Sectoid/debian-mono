@@ -10,6 +10,8 @@ mono (1.1.18-1) unstable; urgency=low
     + debian/rules:
       - Added parameters to $(MAKE) so an existing Mono install is not used.
         (thanks to Raja R Harinath <harinath@gmail.com> to for the hint)
+    + debian/libmono-winforms{1,2}.0-cil.clideps-override:
+      - Added suggests libgnomeui-0.
     + debian/watch:
       - Updated location again.
 
