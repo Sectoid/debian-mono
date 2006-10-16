@@ -3,6 +3,7 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
+MONO_API = 1.1.17.1
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
 NEXT_UPVERSION = $(shell perl -e '$$_=pop; s/(\d+)$$/$$1+1/e; print' $(UPVERSION))
@@ -51,7 +52,7 @@ build-stamp: cli-wrapper
 	  --with-sigaltstack=no $(GC) \
 	  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 	  --with-libgdiplus=installed --with-x=yes
-	$(MAKE)
+	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
 	chmod +x debian/dh_makeclilibs debian/dh_clideps
 	touch build-stamp
 
@@ -230,7 +231,7 @@ binary-indep: build install
 	  -plibmono-winforms2.0-cil \
 	  -plibmono1.0-cil \
 	  -plibmono2.0-cil \
-	  -m $(UPVERSION) internal-mono
+	  -m $(MONO_API) internal-mono
 	debian/dh_clideps -i internal-mono -l debian/tmp
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
 	debian/dh_clideps -pmono-gac -r internal-mono
@@ -252,7 +253,7 @@ binary-arch: build install
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
-	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
+	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(MONO_API))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono0/usr/lib
 	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)

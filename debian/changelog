@@ -1,3 +1,20 @@
+mono (1.1.18-1) unstable; urgency=low
+
+  * New upstream release
+  * Mirco 'meebey' Bauer:
+    + debian/patches/arm_support_larger_stack_r65218.dpatch
+      debian/patches/fix_tmp_race_r65441.dpatch:
+      - Removed, already applied upstream.
+    + debian/control:
+      - Removed Mono from Build-Conflicts.
+    + debian/rules:
+      - Added parameters to $(MAKE) so an existing Mono install is not used.
+        (thanks to Raja R Harinath <harinath@gmail.com> to for the hint)
+    + debian/watch:
+      - Updated location again.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 15 Oct 2006 13:03:38 +0200
+
 mono (1.1.17.1-5) unstable; urgency=high
 
   * Mirco 'meebey' Bauer:
