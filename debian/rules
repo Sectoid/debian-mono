@@ -29,7 +29,7 @@ endif
 
 ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
 	confflags += --enable-minimal=aot
-else
+endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
