@@ -1,3 +1,18 @@
+mono (1.1.18-2) unstable; urgency=medium
+
+  * The "clean me harder for etch" and "please build on arm this time" release
+  * Mirco 'meebey' Bauer:
+    + debian/control:
+      - Removed obsolete mono-classlib-{1,2}.0 transition packages.
+      - Changed dependency of mono-runtime on mono-gac to
+        (= ${source:Version}) for making Mono binNMUable.
+      - Removed libgc-dev build-dep for kfreebsd.
+    + debian/rules:
+      - Added --enable-minimal=aot to configure call for kfreebsd, this might
+        give us a successful build.
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 18 Oct 2006 23:09:35 +0200
+
 mono (1.1.18-1) unstable; urgency=low
 
   * New upstream release

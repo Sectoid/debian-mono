@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@meebey.net>, Sebastian Dröge <slomo@ubuntu.com>
-Build-Depends: debhelper (>= 5.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxml-dom-perl, libxslt1-dev, dc, libx11-dev, libxt-dev, libgc-dev [kfreebsd-i386], zlib1g-dev
+Build-Depends: debhelper (>= 5.0.0), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxml-dom-perl, libxslt1-dev, dc, libx11-dev, libxt-dev, zlib1g-dev
 Standards-Version: 3.7.2
 
 Package: mono-common
@@ -22,7 +22,7 @@ Description: common files for Mono
 Package: mono-runtime
 Provides: cli-runtime
 Architecture: i386 powerpc amd64 ia64 arm armeb
-Depends: mono-jit (= ${Source-Version}), mono-gac (= ${Source-Version})
+Depends: mono-jit (= ${Source-Version}), mono-gac (= ${source:Version})
 Description: Mono runtime
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -195,37 +195,6 @@ Description: Mono core library (2.0)
  .
  This package contains the Core Library (mscorlib.dll) of Mono which is the
  glue between the Class Library and the JIT.
-
-Package: mono-classlib-1.0
-Section: libs
-Architecture: all
-Replaces: mono-assemblies-base (<< 1.1.8)
-Depends: libmono-corlib1.0-cil (>= 1.0), libmono-system1.0-cil (>= 1.0), libmono1.0-cil (>= 1.1.13.4)
-Provides: mono-classlib-1.0-${mono:upversion}
-Description: Mono class library (1.0) - transition package
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- This is an empty transition package, which will be removed once nothing
- depends on it anymore.
-
-Package: mono-classlib-2.0
-Section: libs
-Architecture: all
-Depends: libmono-corlib2.0-cil (>= 1.0), libmono-system2.0-cil (>= 1.0), libmono2.0-cil (>= 1.1.13.4)
-Provides: mono-classlib-2.0-${mono:upversion}
-Description: Mono class library (2.0) - transition package
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- This is an empty transition package, which will be removed once nothing
- depends on it anymore.
 
 Package: libmono-system1.0-cil
 Section: libs

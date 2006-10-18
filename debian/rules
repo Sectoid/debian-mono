@@ -28,10 +28,8 @@ else
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
-	GC = --with-gc=boehm
+	confflags += --enable-minimal=aot
 else
-	GC = --with-gc=included
-endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
