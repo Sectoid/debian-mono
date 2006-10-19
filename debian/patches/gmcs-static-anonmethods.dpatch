@@ -1,0 +1,16 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+Index: mono/mcs/mcs/anonymous.cs
+===================================================================
+--- mono/mcs/mcs/anonymous.cs	(revision 66807)
++++ mono/mcs/mcs/anonymous.cs	(working copy)
+@@ -1232,6 +1232,7 @@
+ 
+ 			aec.CurrentAnonymousMethod = this;
+ 			aec.IsFieldInitializer = ec.IsFieldInitializer;
++			aec.IsStatic = ec.IsStatic;
+ 
+ 			Report.Debug (64, "RESOLVE ANONYMOUS METHOD #1", this, Location, ec, aec,
+ 				      RootScope, Parameters, Block);
