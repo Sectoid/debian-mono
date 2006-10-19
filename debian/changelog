@@ -2,7 +2,7 @@ mono (1.1.18-3) unstable; urgency=low
 
   * Sebastian 'slomo' Dröge:
     + debian/patches/gmcs-static-anonmethods.dpatch:
-      - Fix from SVN (r66807) for static anonymous methods
+      - Fix from SVN (r66807) for compilation of static anonymous methods
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Thu, 19 Oct 2006 06:58:20 +0200
 
