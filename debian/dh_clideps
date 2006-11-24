@@ -210,114 +210,66 @@ while (<$fh>) {
 }
 close($fh);
 
+our $needs_net_1_0;
+our $needs_net_2_0;
+
 foreach my $package (@{$dh{DOPACKAGES}}) {
-    my $tmp = tmpdir($package);
-    my %refs = ( depends => [],
-                 recommends => [],
-                 suggests => [] );
-    my $found_exe = 0;
-    my $needs_net_1_0 = 0;
-    my $needs_net_2_0 = 0;
-    
-    # for idempotency
-    delsubstvar($package, "cli:Depends");
-    delsubstvar($package, "cli:Suggests");
-    delsubstvar($package, "cli:Recommends");
+  my $tmp = tmpdir($package);
+  my %refs = ( depends => [],
+               recommends => [],
+               suggests => [] );
+  my $found_exe = 0;
+  $needs_net_1_0 = 0;
+  $needs_net_2_0 = 0;
+  
+  # for idempotency
+  delsubstvar($package, "cli:Depends");
+  delsubstvar($package, "cli:Suggests");
+  delsubstvar($package, "cli:Recommends");
 
-    # find binaries
-    find (sub {
-        return unless -f && !-l && /\.(exe|dll)$/;
-        my $vers;
-        my $file = $_;
-        if (/\.exe$/) {
-          $found_exe = 1;
-        }
-
-        verbose_print("Package: $package Assembly: $file");
-        
-        my %shlibRefs = resolveShlibRefs($package, $file);
-        push(@{$refs{depends}},    @{$shlibRefs{depends}});
-        push(@{$refs{recommends}}, @{$shlibRefs{recommends}});
-        push(@{$refs{suggests}},   @{$shlibRefs{suggests}});
-        
-        my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
-        my $command = "LANG=C $cli_parser_paths MONO_GAC_PREFIX=\$MONO_GAC_PREFIX:$tmp/usr $cli_parser --assemblyref $file 2>&1 > $tmpfile";
-        verbose_print("running CLI parser command: $command");
-        
-        system($command);
-        if ($?) {
-          my $output;
-          {
-            local *F;
-            open(F, $tmpfile);
-            local $/;
-            $output = <F>;
-            close(F);
-          }
-          error("cli_parser call failed: '".$command."' rc: $? output: $output");
-          return;
-        }
-        
-        our($vers, $name, $key);
-        local *F;
-        open(F, $tmpfile);
-        while (<F>) {
-            $vers = $1 if /Version=(.*)\n/;
-            $name = $1 if /Could not find assembly ([^,]+),/;
-            $name = $1 if /Name=(.*)\n/;
-            $vers = "$1.$2" if /Major\/Minor:\s*(\d+),(\d+)/;
-            $vers .= ".$1.$2" if /Build:\s*(\d+),(\d+)/;
-
-            if (/0x\S+:.([ABCDEF0123456789 ]+)\n/ || /Token:\s*(\w+)/) {
-                $key = $1;
-                $key =~ s/\ //g;
-                $key = $vers . "__" . lc($key);
-                my $compat = "$name/$key";
-                if (!defined($clilibdata{$compat})) {
-                    warning("Warning: No Debian dependency data for $name ($key)!");
-                } else {
-                    push(@{$refs{depends}}, $clilibdata{$compat});
-                }
-                #print "ok, ".$deps{ "$name/$vers" . "__" . lc($key) };
-
-                if ($name eq "mscorlib") {
-                  if ($vers eq "1.0.5000.0") {
-                    $needs_net_1_0 = 1;
-                  } elsif ($vers eq "2.0.3600.0") {
-                    $needs_net_2_0 = 1;
-                  } elsif ($vers eq "2.0.0.0") {
-                    $needs_net_2_0 = 1;
-                  } else {
-                    warning("Warning: Unknown mscorlib version: $vers!");
-                  }
-                } 
-            }
-        }
-        close(F);
-     }, $tmp);
-
-    $refs{depends}    = filterDuplicates($package, $refs{depends});
-    $refs{recommends} = filterDuplicates($package, $refs{recommends});
-    $refs{suggests}   = filterDuplicates($package, $refs{suggests});
-
-    my $vm_ref = "";
-    if (!defined($dh{R_FLAG}) && $found_exe) {
-        if ($clr eq "mono") {
-          if ($needs_net_2_0) {
-            $vm_ref = "mono-runtime (>= 1.1.8.1), ";
-          } elsif ($needs_net_1_0) {
-            $vm_ref = "mono-runtime (>= 1.0), ";
-          } else {
-            $vm_ref = "mono-runtime (>= $cli_version), ";
-          }
-        } elsif ($clr eq "pnet") {
-          $vm_ref = "pnet-interpreter (>= $cli_version), ";
-        }
+  # find binaries
+  find (sub {
+    return unless -f && !-l && /\.(exe|dll)$/;
+    my $file = $_;
+    if (/\.exe$/) {
+      $found_exe = 1;
     }
-    
-    if (-f "$tmp/usr/share/cli-common/packages.d/$package.installcligac") {
-        $vm_ref .= "cli-common (>= 0.4.0), ";
+
+    verbose_print("Package: $package Assembly: $file");
+        
+    my %shlibRefs = resolveShlibRefs($package, $file);
+    push(@{$refs{depends}},    @{$shlibRefs{depends}});
+    push(@{$refs{recommends}}, @{$shlibRefs{recommends}});
+    push(@{$refs{suggests}},   @{$shlibRefs{suggests}});
+
+    my %clilibRefs = resolveClilibRefs($package, $tmp, $file);
+    push(@{$refs{depends}},    @{$clilibRefs{depends}});
+    push(@{$refs{recommends}}, @{$clilibRefs{recommends}});
+    push(@{$refs{suggests}},   @{$clilibRefs{suggests}});
+  }, $tmp);
+
+  $refs{depends}    = filterDuplicates($package, $refs{depends});
+  $refs{recommends} = filterDuplicates($package, $refs{recommends});
+  $refs{suggests}   = filterDuplicates($package, $refs{suggests});
+
+  my $vm_ref = "";
+  if (!defined($dh{R_FLAG}) && $found_exe) {
+    if ($clr eq "mono") {
+      if ($needs_net_2_0) {
+        $vm_ref = "mono-runtime (>= 1.1.8.1), ";
+      } elsif ($needs_net_1_0) {
+        $vm_ref = "mono-runtime (>= 1.0), ";
+      } else {
+        $vm_ref = "mono-runtime (>= $cli_version), ";
+      }
+    } elsif ($clr eq "pnet") {
+      $vm_ref = "pnet-interpreter (>= $cli_version), ";
     }
+  }
+    
+  if (-f "$tmp/usr/share/cli-common/packages.d/$package.installcligac") {
+    $vm_ref .= "cli-common (>= 0.4.0), ";
+  }
     
     #$deps .= join(", ", "",
     #    sort {
@@ -334,13 +286,13 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
     #    } (keys %depkgsFiltered)
     #);
     
-    @{$refs{depends}}    = sort(@{$refs{depends}});
-    @{$refs{recommends}} = sort(@{$refs{recommends}});
-    @{$refs{suggests}}   = sort(@{$refs{suggests}});
+  @{$refs{depends}}    = sort(@{$refs{depends}});
+  @{$refs{recommends}} = sort(@{$refs{recommends}});
+  @{$refs{suggests}}   = sort(@{$refs{suggests}});
 
-    addsubstvar($package, "cli:Depends",    $vm_ref . join(", ", @{$refs{depends}}));
-    addsubstvar($package, "cli:Recommends", join(", ", @{$refs{recommends}}));
-    addsubstvar($package, "cli:Suggests",   join(", ", @{$refs{suggests}}));
+  addsubstvar($package, "cli:Depends",    $vm_ref . join(", ", @{$refs{depends}}));
+  addsubstvar($package, "cli:Recommends", join(", ", @{$refs{recommends}}));
+  addsubstvar($package, "cli:Suggests",   join(", ", @{$refs{suggests}}));
 }
 
 sub filterDuplicates {
@@ -349,9 +301,14 @@ sub filterDuplicates {
   
   my %packagesFiltered;
   for (@{$packages}) {
-    # filter dupes and don't depend on this package
+    # filter undef, empties, dups and don't depend on ourself package
+    if (!$_) {
+      next;
+    }
+    
     /^(\S+)/;
-    if ($1 ne $package) {
+    if ($1 &&
+        $1 ne $package) {
       $packagesFiltered{$_} = 1;
     }
   }
@@ -397,6 +354,142 @@ sub loadDllMap {
    }
 }
 
+sub loadOverrides {
+   my $package = shift;
+   my $overridedata = shift;
+   
+   # load clideps overrides
+   verbose_print("Loading clideps-override for $package...");
+   my $fh;
+   open($fh, "cat $pwd/debian/$package.clideps-override 2> /dev/null |");
+   while (<$fh>) {
+     /(\S+)\s+(\S+)(?:\s+(\(\S+\s+\S+\)))?\n?/;
+     my ($type, $package, $version);
+     $type = $1;    
+     $package = $2; 
+     $version = $3 if defined($3);
+     if ($version) {
+       $overridedata->{$package} = $type." ".$version;
+     } else {
+       $overridedata->{$package} = $type;
+     }
+   }
+   close($fh);
+}
+
+sub resolveOverride {
+  my $package = shift;
+  my $pkgref = shift;
+  my %ret = ( depends => undef,
+              recommends => undef,
+              suggests => undef );
+
+  my $type = "depends";
+  my $newpkgref = $pkgref;
+  $newpkgref =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
+  my $pkgname = $1;
+  my $ver = $2;
+  # hack for libc6, for ia64 and alpha the package name is libc6.1
+  if ($pkgname =~ m/^libc6/) {
+    $newpkgref = "libc6 $ver | libc6.1 $ver";
+  }
+ 
+  my %overridedata;
+  loadOverrides($package, \%overridedata);
+  if (defined($overridedata{$pkgname})) {
+    verbose_print("Found clideps-override: $pkgname for: $package");
+
+    my $override = $overridedata{$pkgname};
+    $override =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
+    if ($1 eq "suggests" ||
+        $1 eq "recommends") {
+      $type = $1;
+    } elsif ($1 eq "ignores") {
+    } else {
+      warning("Warning: unknown override type: $1 in: '$override' for: $package!");
+    }
+       
+    if (defined($2)) {
+      $newpkgref = "$pkgname $2";
+    } else {
+      $newpkgref = $pkgref;
+    }
+  }
+  verbose_print("resolved pkgref: $pkgref to $type: $newpkgref");
+  $ret{$type} = $newpkgref;
+  
+  return %ret; 
+}
+
+sub resolveClilibRefs {
+  my $package = shift;
+  my $tmp = shift;
+  my $assembly_filename = shift;
+  my %ret = ( depends => [],
+              recommends => [],
+              suggests => [] );
+
+  my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
+  my $command = "LANG=C $cli_parser_paths MONO_GAC_PREFIX=\$MONO_GAC_PREFIX:$tmp/usr $cli_parser --assemblyref $assembly_filename 2>&1 > $tmpfile";
+  verbose_print("running CLI parser command: $command");
+  
+  system($command);
+  if ($?) {
+    my $output;
+    {
+      local *F;
+      open(F, $tmpfile);
+      local $/;
+      $output = <F>;
+      close(F);
+    }
+    error("cli_parser call failed: '".$command."' rc: $? output: $output");
+    return;
+  }
+        
+  my ($ver, $name, $key);
+  local *F;
+  open(F, $tmpfile);
+  while (<F>) {
+    $ver  = $1 if /Version=(.*)\n/;
+    $name = $1 if /Could not find assembly ([^,]+),/;
+    $name = $1 if /Name=(.*)\n/;
+    $ver  = "$1.$2" if /Major\/Minor:\s*(\d+),(\d+)/;
+    $ver  .= ".$1.$2" if /Build:\s*(\d+),(\d+)/;
+
+    if (/0x\S+:.([ABCDEF0123456789 ]+)\n/ || /Token:\s*(\w+)/) {
+      $key = $1;
+      $key =~ s/\ //g;
+      $key = $ver . "__" . lc($key);
+      my $compat = "$name/$key";
+      if (!defined($clilibdata{$compat})) {
+        warning("Warning: No Debian dependency data for $name ($key)!");
+      } else {
+        my $pkgref = $clilibdata{$compat};
+        my %overriddenRef = resolveOverride($package, $pkgref);
+        push(@{$ret{depends}},    $overriddenRef{depends});
+        push(@{$ret{recommends}}, $overriddenRef{recommends});
+        push(@{$ret{suggests}},   $overriddenRef{suggests});
+      }
+
+      if ($name eq "mscorlib") {
+        if ($ver eq "1.0.5000.0") {
+          $needs_net_1_0 = 1;
+        } elsif ($ver eq "2.0.3600.0") {
+          $needs_net_2_0 = 1;
+        } elsif ($ver eq "2.0.0.0") {
+          $needs_net_2_0 = 1;
+        } else {
+          warning("Warning: Unknown mscorlib version: $ver!");
+        }
+      } 
+    }
+  }
+  close(F);
+  
+  return %ret;
+}
+
 sub resolveShlibRefs {
    my $package = shift;
    my $assembly_filename = shift;
@@ -416,24 +509,6 @@ sub resolveShlibRefs {
    loadDllMap("/etc/mono/config", \%dllmapdata);
    loadDllMap("$pwd/debian/tmp/etc/mono/config", \%dllmapdata);
    loadDllMap($config_filename, \%dllmapdata);
-    
-   # load clideps overrides
-   verbose_print("Loading clideps-override...");
-   my %clideps_override;
-   open($fh, "cat $pwd/debian/$package.clideps-override 2> /dev/null |");
-   while (<$fh>) {
-     /(\S+)\s+(\S+)(?:\s+(\(\S+\s+\S+\)))?\n?/;
-     my ($type, $package, $version);
-     $type = $1;    
-     $package = $2; 
-     $version = $3 if defined($3);
-     if ($version) {
-       $clideps_override{$package} = $type." ".$version;
-     } else {
-       $clideps_override{$package} = $type;
-     }
-   }
-   close($fh);
    
    # parse modulerefs
    my (undef, $tmpfile) = File::Temp::tempfile("/tmp/".basename($0).".XXXX", UNLINK => 1);
@@ -485,36 +560,10 @@ sub resolveShlibRefs {
        next;
      }
 
-     my $type = "depends";
-     my $pkg = $pkgref;
-     $pkgref =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
-     my $pkgname = $1;
-     my $ver = $2;
-     # hack for libc6, for ia64 and alpha the package name is libc6.1
-     if ($pkgname =~ m/^libc6/) {
-       $pkg = "libc6 $ver | libc6.1 $ver";
-     }
-     
-     if (defined($clideps_override{$pkgname})) {
-       verbose_print("Found clideps-overidde: $pkgname for: $package");
-
-       my $override = $clideps_override{$pkgname};
-       $override =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
-       if ($1 eq "suggests" ||
-           $1 eq "recommends") {
-           $type = $1;
-       } elsif ($1 eq "ignores") {
-       } else {
-         warning("Warning: unknown override type: $1 in: '$override' for: $package!");
-       }
-       
-       if (defined($2)) {
-         $pkg = "$pkgname $2";
-       } else {
-         $pkg = $pkgref;
-       }
-     }
-     push(@{$ret{$type}}, $pkg);
+     my %overriddenRef = resolveOverride($package, $pkgref);
+     push(@{$ret{depends}},    $overriddenRef{depends});
+     push(@{$ret{recommends}}, $overriddenRef{recommends});
+     push(@{$ret{suggests}},   $overriddenRef{suggests});
    } 
    close(F);
    

@@ -357,6 +357,7 @@ Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6-2), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
 Depends: ${cli:Depends}
+Suggests: ${cli:Suggests}
 Description: Mono System.Web Library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

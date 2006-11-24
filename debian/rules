@@ -138,6 +138,10 @@ binary-indep: build install
 	rm debian/mono-mcs/usr/bin/mono-service2
 	# delete xbuild from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/xbuild
+	# delete mkbundle2 from mono-mcs (this is already in mono-gmcs)
+	rm debian/mono-mcs/usr/bin/mkbundle2
+	# delete sgen from mono-mcs (this is already in mono-gmcs)
+	rm debian/mono-mcs/usr/bin/sgen
 	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data-tds*-cil)
 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
 	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
@@ -230,7 +234,8 @@ binary-indep: build install
 	  -plibmono1.0-cil \
 	  -plibmono2.0-cil \
 	  -m $(MONO_API) internal-mono
-	debian/dh_clideps -i internal-mono -l debian/tmp
+	#debian/dh_clideps -i internal-mono -l debian/tmp
+	DH_VERBOSE=1 debian/dh_clideps -i internal-mono -l debian/tmp
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
 	debian/dh_clideps -pmono-gac -r internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
