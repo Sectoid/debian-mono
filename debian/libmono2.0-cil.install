@@ -1,3 +1,5 @@
 debian/tmp/usr/lib/mono/gac/Mono.*/2.0.*/
+debian/tmp/usr/lib/mono/gac/OpenSystem.C/2.0.*
 debian/tmp/usr/lib/mono/gac/mono-service/2.0.*/
 debian/tmp/usr/lib/mono/2.0/Mono.*.dll
+debian/tmp/usr/lib/mono/2.0/OpenSystem.C.dll

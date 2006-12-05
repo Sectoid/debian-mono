@@ -1,3 +1,2 @@
 remove_broken_dllmap_from_mono-shlib-cop.dpatch
 console-no-utf8-bom.dpatch
-#fix_directory_exists_reverts_r67043.dpatch

@@ -1,8 +1,8 @@
-mono (1.2.1-1~pre1) unstable; urgency=low
+mono (1.2.2-1~pre1) unstable; urgency=low
 
-  * New upstream release
   * Mirco 'meebey' Bauer:
-    + debian/NEWS: 
+    + New upstream release (1.2.1)
+    + debian/NEWS:
       - Added entry for Mono 1.2
     + debian/patches/gmcs-static-anonmethods.dpatch:
       - Removed, already applied upstream.
@@ -13,8 +13,16 @@ mono (1.2.1-1~pre1) unstable; urgency=low
       - Override for GUI/X11 dependency on libmono-winforms2.0-cil to suggests.
     + debian/dh_clideps:
       - Synced from cli-common-dev 0.4.7.
+  * Sebastian 'slomo' Dröge:
+    + New upstream release (1.2.2)
+    + debian/rules:
+      - Update MONO_API to 1.2.2
+    + debian/libmono?.0-cil.install:
+      - Add OpenSystem.C library
+    + debian/patches/*:
+      - Remove obsolete patches
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 22 Nov 2006 21:36:33 +0100
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Tue,  5 Dec 2006 20:03:41 +0100
 
 mono (1.1.18-3) unstable; urgency=low
 
