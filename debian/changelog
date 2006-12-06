@@ -1,5 +1,12 @@
 mono (1.2.2-1~pre1) unstable; urgency=low
 
+  * New upstream release
+    + Mono 1.2.2 contains important bugfixes for the ARM architecture
+      (see #394418), but urgency is not raised because it's a new version.
+    + This release has upstream security support for XXX years as it's used 
+      in enterprise distribution by upstream.
+    + It's ... TODO
+
   * Mirco 'meebey' Bauer:
     + New upstream release (1.2.1)
     + debian/NEWS:
@@ -13,6 +20,8 @@ mono (1.2.2-1~pre1) unstable; urgency=low
       - Override for GUI/X11 dependency on libmono-winforms2.0-cil to suggests.
     + debian/dh_clideps:
       - Synced from cli-common-dev 0.4.7.
+    + debian/shlibs.local:
+      - Synced versions from /var/lib/dpkg/info/*.shlibs
   * Sebastian 'slomo' Dröge:
     + New upstream release (1.2.2)
     + debian/rules:

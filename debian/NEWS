@@ -1,8 +1,29 @@
-mono (1.2-1) unstable; urgency=low
+mono (1.2.2-1) unstable; urgency=low
 
-  * WRITE ME
+  * Here we go, Mono 1.2 is now official stable and released!
+    (Hopefully in time for Debian/Etch)
 
- -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sun, 12 Nov 2006 13:53:44 +0100
+  * Mono 1.2 brings alot of new features in:
+    - The C# 2.0 compiler is now stable, and the ECMA standard was updated, so
+      it's safe to use C# 2.0 (gmcs) now. _But_ the 2.0 API is not complete, thus
+      there are classes/methods still missing.
+    - Mono is now officially supported on the following architectures:
+      + 32bit: i386, powerpc, arm, s390, sparc.
+      + 64bit: amd64, s390x, ia64.
+      The debian packages are available for: i386, powerpc arm, amd64 and ia64.
+      Packages for s390, s390x, sparc and kfreebsd-i386 are under review, when
+      the ports are prooved to be stable enough, we will include them.
+
+  * Complete Announcement of Mono 1.2 (vs Mono 1.0):
+    http://www.go-mono.com/archive/1.2/
+    
+  * Announcement of Mono 1.2.1:
+    http://www.go-mono.com/archive/1.2.1/
+ 
+  * Announcement of Mono 1.2.2:
+    http://www.go-mono.com/archive/1.2.2/
+
+ -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Wed, 6 Nov 2006 23:00:28 +0200
 
 mono (0.96-1) unstable; urgency=low
 
