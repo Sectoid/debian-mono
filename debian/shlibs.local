@@ -1,4 +1,4 @@
-libgdiplus 0 libgdiplus (>= 1.2.2)
+libgdiplus 0 libgdiplus (>= 1.1.18)
 libcairo 2 libcairo2 (>= 1.2.4)
 libfbembed 1 libfbembed1
 libsqlite 0 libsqlite0 (>= 2.8.17)

@@ -1,7 +1,6 @@
-mono (1.2.2-1) unstable; urgency=low
+mono (1.2.2.1-1) unstable; urgency=low
 
   * Here we go, Mono 1.2 is now official stable and released!
-    (Hopefully in time for Debian/Etch)
 
   * Mono 1.2 brings alot of new features in:
     - The C# 2.0 compiler is now stable, and the ECMA standard was updated, so
@@ -13,6 +12,10 @@ mono (1.2.2-1) unstable; urgency=low
       The debian packages are available for: i386, powerpc arm, amd64 and ia64.
       Packages for s390, s390x, sparc and kfreebsd-i386 are under review, when
       the ports are prooved to be stable enough, we will include them.
+    - Complete System.Windows.Forms 1.1 API
+      This version is not using wine! SWF runs natively on Linux (X11 driver)
+      using an own implementation (libgdiplus).
+    - File System Watching API now supports inotify.
 
   * Complete Announcement of Mono 1.2 (vs Mono 1.0):
     http://www.go-mono.com/archive/1.2/

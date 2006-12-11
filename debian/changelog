@@ -1,16 +1,18 @@
-mono (1.2.2.1-1~pre1) unstable; urgency=low
+mono (1.2.2.1-1) unstable; urgency=low
 
   * New upstream release
-    + Mono 1.2.2 contains important bugfixes for the ARM architecture
+    + Mono 1.2.2.1 contains important bugfixes for the ARM architecture
       (see #394418), but urgency is not raised because it's a new version.
-    + This release has upstream security support for XXX years as it's used 
-      in enterprise distribution by upstream.
-    + It's ... TODO
+    + Mono 1.2 has upstream security support for 7 years as it's used 
+      in enterprise distributions by upstream.
+    + For more Mono 1.2 news check the NEWS file.
 
   * Mirco 'meebey' Bauer:
     + New upstream release (1.2.1)
     + debian/NEWS:
       - Added entry for Mono 1.2
+    + debian/control:
+      - Removed unstable warning from mono-gmcs description.
     + debian/patches/gmcs-static-anonmethods.dpatch:
       - Removed, already applied upstream.
     + debian/mono-gmcs.install:
@@ -27,7 +29,7 @@ mono (1.2.2.1-1~pre1) unstable; urgency=low
     + New upstream release (1.2.2.1)
     + debian/rules:
       - Update MONO_API to 1.2.2
-    + debian/libmono?.0-cil.install:
+    + debian/libmono{1,2}.0-cil.install:
       - Add OpenSystem.C library
     + debian/patches/*:
       - Remove obsolete patches
