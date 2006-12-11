@@ -1,4 +1,4 @@
-mono (1.2.2-1~pre1) unstable; urgency=low
+mono (1.2.2.1-1~pre1) unstable; urgency=low
 
   * New upstream release
     + Mono 1.2.2 contains important bugfixes for the ARM architecture
@@ -24,6 +24,7 @@ mono (1.2.2-1~pre1) unstable; urgency=low
       - Synced versions from /var/lib/dpkg/info/*.shlibs
   * Sebastian 'slomo' Dröge:
     + New upstream release (1.2.2)
+    + New upstream release (1.2.2.1)
     + debian/rules:
       - Update MONO_API to 1.2.2
     + debian/libmono?.0-cil.install:
