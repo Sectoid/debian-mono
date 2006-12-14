@@ -16,6 +16,10 @@ mono (1.2.2.1-2) unstable; urgency=low
       - Adds kfreebsd support to Mono.
         (Closes: #394456, thanks to Petr Salinger <Petr.Salinger@seznam.cz>
          and Aurelien Jarno <aurelien@aurel32.net> for the patch)
+    + debian/changelog:
+      - Using now the email address of the maintainer who approves the upload
+        and is resposible for it, instead of the Debian Mono Group address, as
+        requested by the Debian Release Manager Andreas Barth.
 
  -- Mirco Bauer <meebey@meebey.net>  Thu, 15 Dec 2006 23:04:04 +0100
 
