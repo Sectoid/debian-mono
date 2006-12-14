@@ -31,8 +31,7 @@ else
 	confflags += --with-tls=pthread
 endif
 
-#ifeq ($(DEB_BUILD_ARCH), arm)
-ifeq ($(DEB_BUILD_ARCH), i386)
+ifeq ($(DEB_BUILD_ARCH), arm)
 	confflags += --disable-mcs-build
 else ifeq ($(DEB_BUILD_ARCH), armeb)
 	confflags += --disable-mcs-build
