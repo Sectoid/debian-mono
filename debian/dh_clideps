@@ -389,9 +389,11 @@ sub resolveOverride {
   $newpkgref =~ m/(\S+)(?:\s+(\(\S+\s+\S+\)))?/;
   my $pkgname = $1;
   my $ver = $2;
-  # hack for libc6, for ia64 and alpha the package name is libc6.1
-  if ($pkgname =~ m/^libc6/) {
-    $newpkgref = "libc6 $ver | libc6.1 $ver";
+  # hack for libc6,
+  # for ia64 and alpha the package name is libc6.1,
+  # for kfreebsd-i386 and kfreebsd-amd64 it is libc0.1
+  if ($pkgname =~ m/^libc[06]/) {
+    $newpkgref = "libc6 $ver | libc6.1 $ver | libc0.1 $ver";
   }
  
   my %overridedata;

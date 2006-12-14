@@ -1,0 +1,257 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 
+##
+## All lines beginning with ## DP:' are a description of the patch.
+## DP: kfreebsd support - mainly backport of gc 6.8
+
+@DPATCH@
+
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/configure.in
++++ mono-1.1.18/configure.in
+@@ -88,6 +88,16 @@
+ 		libdl=
+ 		libgc_threads=no
+ 		;;
++	*-*-kfreebsd*-gnu)
++		platform_win32=no
++		CPPFLAGS="$CPPFLAGS -DGC_FREEBSD_THREADS -D_GNU_SOURCE -D_REENTRANT -DUSE_MMAP -DUSE_MUNMAP -DTHREAD_LOCAL_ALLOC -pthread"
++		libmono_cflags="-D_REENTRANT -DTHREAD_LOCAL_ALLOC -pthread"
++		libmono_ldflags="-lpthread -pthread"
++		libdl="-ldl"
++		libgc_threads=pthreads
++		need_link_unlink=yes
++		with_sigaltstack=no
++		;;
+ # these flags will work for all versions of -STABLE
+ #
+ 	*-*-*freebsd4*)
+@@ -1663,6 +1673,11 @@
+ 	LIBC="libc.so.12"
+ 	INTL="libintl.so.0"
+ 	;;
++     *-*-kfreebsd*-gnu)
++	LIBC="libc.so.0.1"
++	INTL="libc.so.0.1"
++	X11="libX11.so.6"
++	;;
+     *-*-*freebsd*)
+     	LIBC="libc.so"
+ 	INTL="libintl.so"
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/libgc/configure.in
++++ mono-1.1.18/libgc/configure.in
+@@ -103,6 +103,17 @@
+ 	AC_DEFINE(THREAD_LOCAL_ALLOC)
+ 	THREADDLLIBS="-lpthread -lrt"
+ 	;;
++      *-*-kfreebsd*-gnu)
++        AC_DEFINE(GC_FREEBSD_THREADS)
++        INCLUDES="$INCLUDES -pthread"
++        THREADDLLIBS=-pthread
++        AC_DEFINE(_REENTRANT)
++        if test "${enable_parallel_mark}" = yes; then
++          AC_DEFINE(PARALLEL_MARK)
++        fi
++        AC_DEFINE(THREAD_LOCAL_ALLOC)
++        AC_DEFINE(USE_COMPILER_TLS)
++        ;;
+      *-*-freebsd4*)
+ 	AC_MSG_WARN("FreeBSD does not yet fully support threads with Boehm GC.")
+ 	AC_DEFINE(GC_FREEBSD_THREADS)
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/libgc/dyn_load.c
++++ mono-1.1.18/libgc/dyn_load.c
+@@ -26,7 +26,7 @@
+  * None of this is safe with dlclose and incremental collection.
+  * But then not much of anything is safe in the presence of dlclose.
+  */
+-#if defined(__linux__) && !defined(_GNU_SOURCE)
++#if (defined(__linux__) || defined(__GLIBC__)) && !defined(_GNU_SOURCE)
+     /* Can't test LINUX, since this must be define before other includes */
+ #   define _GNU_SOURCE
+ #endif
+@@ -386,7 +386,7 @@
+ /* For glibc 2.2.4+.  Unfortunately, it doesn't work for older	*/
+ /* versions.  Thanks to Jakub Jelinek for most of the code.	*/
+ 
+-# if defined(LINUX) /* Are others OK here, too? */ \
++# if (defined(LINUX) || defined (__GLIBC__)) /* Are others OK here, too? */ \
+      && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ > 2) \
+          || (__GLIBC__ == 2 && __GLIBC_MINOR__ == 2 && defined(DT_CONFIG))) 
+ 
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/libgc/include/gc.h
++++ mono-1.1.18/libgc/include/gc.h
+@@ -484,7 +484,7 @@
+ #   define GC_RETURN_ADDR (GC_word)__return_address
+ #endif
+ 
+-#ifdef __linux__
++#if defined(__linux__) || defined(__GLIBC__)
+ # include <features.h>
+ # if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 1 || __GLIBC__ > 2) \
+      && !defined(__ia64__)
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/libgc/include/private/gcconfig.h
++++ mono-1.1.18/libgc/include/private/gcconfig.h
+@@ -55,7 +55,7 @@
+ # endif
+ 
+ /* And one for FreeBSD: */
+-# if defined(__FreeBSD__) && !defined(FREEBSD)
++# if (defined(__FreeBSD__) || defined(__FreeBSD_kernel__)) && !defined(FREEBSD)
+ #    define FREEBSD
+ # endif
+ 
+@@ -1275,8 +1275,15 @@
+ #	ifndef GC_FREEBSD_THREADS
+ #	    define MPROTECT_VDB
+ #	endif
+-#      define SIG_SUSPEND SIGTSTP
+-#      define SIG_THR_RESTART SIGCONT
++#       ifdef __GLIBC__
++#           define SIG_SUSPEND          (32+6)
++#           define SIG_THR_RESTART      (32+5)
++            extern int _end[];
++#           define DATAEND (_end)
++#       else
++#           define SIG_SUSPEND SIGTSTP
++#           define SIG_THR_RESTART SIGCONT
++#       endif
+ #	define FREEBSD_STACKBOTTOM
+ #	ifdef __ELF__
+ #	    define DYNAMIC_LOADING
+@@ -1989,6 +1996,28 @@
+ #	    define PREFETCH_FOR_WRITE(x) __builtin_prefetch((x), 1)
+ #	endif
+ #   endif
++#   ifdef FREEBSD
++#	define OS_TYPE "FREEBSD"
++#	ifndef GC_FREEBSD_THREADS
++#	    define MPROTECT_VDB
++#	endif
++#	ifdef __GLIBC__
++#	    define SIG_SUSPEND		(32+6)
++#	    define SIG_THR_RESTART	(32+5)
++	    extern int _end[];
++#	    define DATAEND (_end)
++#	else
++#	    define SIG_SUSPEND SIGUSR1
++#	    define SIG_THR_RESTART SIGUSR2
++#	endif
++#	define FREEBSD_STACKBOTTOM
++#	ifdef __ELF__
++#	    define DYNAMIC_LOADING
++#	endif
++	extern char etext[];
++	extern char * GC_FreeBSDGetDataStart();
++#	define DATASTART GC_FreeBSDGetDataStart(0x1000, &etext)
++#   endif
+ #   ifdef NETBSD
+ #	define OS_TYPE "NETBSD"
+ #	ifdef __ELF__
+@@ -2060,7 +2089,7 @@
+ #   define SUNOS5SIGS
+ # endif
+ 
+-# if defined(FREEBSD) && (__FreeBSD__ >= 4)
++# if defined(FREEBSD) && ((__FreeBSD__ >= 4) || (__FreeBSD_kernel__ >= 4))
+ #   define SUNOS5SIGS
+ # endif
+ 
+@@ -2123,7 +2152,7 @@
+ #   define CACHE_LINE_SIZE 32	/* Wild guess	*/
+ # endif
+ 
+-# ifdef LINUX
++# if defined(LINUX) || defined(__GLIBC__)
+ #   define REGISTER_LIBRARIES_EARLY
+     /* We sometimes use dl_iterate_phdr, which may acquire an internal	*/
+     /* lock.  This isn't safe after the world has stopped.  So we must	*/
+@@ -2204,7 +2233,7 @@
+ #if defined(SPARC)
+ # define CAN_SAVE_CALL_ARGS
+ #endif
+-#if (defined(I386) || defined(X86_64)) && defined(LINUX)
++#if (defined(I386) || defined(X86_64)) && (defined(LINUX) || defined(__GLIBC__))
+ 	    /* SAVE_CALL_CHAIN is supported if the code is compiled to save	*/
+ 	    /* frame pointers by default, i.e. no -fomit-frame-pointer flag.	*/
+ # define CAN_SAVE_CALL_ARGS
+
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/libgc/configure
++++ mono-1.1.18/libgc/configure
+@@ -3974,6 +4636,32 @@
+ 
+ 	THREADDLLIBS="-lpthread -lrt"
+ 	;;
++      *-*-kfreebsd*-gnu)
++        cat >>confdefs.h <<\_ACEOF
++#define GC_FREEBSD_THREADS 1
++_ACEOF
++
++        INCLUDES="$INCLUDES -pthread"
++        THREADDLLIBS=-pthread
++        cat >>confdefs.h <<\_ACEOF
++#define _REENTRANT 1
++_ACEOF
++
++        if test "${enable_parallel_mark}" = yes; then
++          cat >>confdefs.h <<\_ACEOF
++#define PARALLEL_MARK 1
++_ACEOF
++
++        fi
++        cat >>confdefs.h <<\_ACEOF
++#define THREAD_LOCAL_ALLOC 1
++_ACEOF
++
++        cat >>confdefs.h <<\_ACEOF
++#define USE_COMPILER_TLS 1
++_ACEOF
++
++        ;;
+      *-*-freebsd4*)
+ 	{ echo "$as_me:$LINENO: WARNING: \"FreeBSD does not yet fully support threads with Boehm GC.\"" >&5
+ echo "$as_me: WARNING: \"FreeBSD does not yet fully support threads with Boehm GC.\"" >&2;}
+
+only in patch2:
+unchanged:
+--- mono-1.1.18.orig/configure
++++ mono-1.1.18/configure
+@@ -2245,6 +2828,16 @@
+ 		libdl=
+ 		libgc_threads=no
+ 		;;
++	*-*-kfreebsd*-gnu)
++		platform_win32=no
++		CPPFLAGS="$CPPFLAGS -DGC_FREEBSD_THREADS -D_GNU_SOURCE -D_REENTRANT -DUSE_MMAP -DUSE_MUNMAP -DTHREAD_LOCAL_ALLOC -pthread"
++		libmono_cflags="-D_REENTRANT -DTHREAD_LOCAL_ALLOC -pthread"
++		libmono_ldflags="-lpthread -pthread"
++		libdl="-ldl"
++		libgc_threads=pthreads
++		need_link_unlink=yes
++		with_sigaltstack=no
++		;;
+ # these flags will work for all versions of -STABLE
+ #
+ 	*-*-*freebsd4*)
+@@ -35603,6 +38772,11 @@
+ 	LIBC="libc.so.12"
+ 	INTL="libintl.so.0"
+ 	;;
++     *-*-kfreebsd*-gnu)
++	LIBC="libc.so.0.1"
++	INTL="libc.so.0.1"
++	X11="libX11.so.6"
++	;;
+     *-*-*freebsd*)
+     	LIBC="libc.so"
+ 	INTL="libintl.so"

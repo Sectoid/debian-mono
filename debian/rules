@@ -22,14 +22,20 @@ else
 	confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
-ifeq ($(DEB_BUILD_ARCH), amd64)
+ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
+	confflags += --with-tls=__thread
+        confflags += --enable-minimal=aot
+else ifeq ($(DEB_BUILD_ARCH), amd64)
 	confflags += --with-tls=__thread
 else
 	confflags += --with-tls=pthread
 endif
 
-ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
-	confflags += --enable-minimal=aot
+#ifeq ($(DEB_BUILD_ARCH), arm)
+ifeq ($(DEB_BUILD_ARCH), i386)
+	confflags += --disable-mcs-build
+else ifeq ($(DEB_BUILD_ARCH), armeb)
+	confflags += --disable-mcs-build
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
@@ -52,6 +58,7 @@ build-stamp: cli-wrapper
 	  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 	  --with-libgdiplus=installed --with-x=yes
 	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
+	cd mcs/jay && $(MAKE)
 	chmod +x debian/dh_makeclilibs debian/dh_clideps
 	touch build-stamp
 
@@ -75,10 +82,7 @@ install-stamp:
 	dh_clean -k
 	dh_installdirs
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	# Build the late-GAC tool
-	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
-	  /out:debian/MonoGetAssemblyName.exe \
-	  debian/MonoGetAssemblyName.cs
+	cd mcs/jay && $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
@@ -98,8 +102,8 @@ install-stamp:
 	install -o root -g root -m 644 debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 	# CLI Policy
-	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs chmod -x
-	cd debian && find -type f -name "*.exe" | xargs chmod +x
+	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs -r chmod -x
+	cd debian && find -type f -name "*.exe" | xargs -r chmod +x
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/tmp/usr/share/cli-common/runtimes.d/mono
 	touch install-stamp
@@ -107,6 +111,10 @@ install-stamp:
 binary-indep: build install
 	dh_testdir -i
 	dh_testroot -i
+	# Build the late-GAC tool
+	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
+	  /out:debian/MonoGetAssemblyName.exe \
+	  debian/MonoGetAssemblyName.cs
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
 	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,

@@ -1,3 +1,24 @@
+mono (1.2.2.1-2) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer:
+    + debian/rules:
+      - Added --disable-mcs-build to configure call when building on arm(eb).
+        (on arm it doesn't need to build the complete base-class-libraries,
+         since it's arch-indep, in arch-indep packages, and already in the
+         archive when uploaded. This should reduce the build time from 10
+         hours to about 1 hour)
+      - Added kfreebsd checks for configure confflags.
+      - Moved building of MonoGetAssemblyName.exe from install to binary-indep,
+        else the compiler isn't available yet (if only binary-arch is build).
+    + debian/dh_clideps:
+     - Synced from cli-common (contains support for kfreebsd)
+    + debian/patches/kfreebsd_support.dpatch:
+      - Adds kfreebsd support to Mono.
+        (Closes: #394456, thanks to Petr Salinger <Petr.Salinger@seznam.cz>
+         and Aurelien Jarno <aurelien@aurel32.net> for the patch)
+
+ -- Mirco Bauer <meebey@meebey.net>  Thu, 15 Dec 2006 23:04:04 +0100
+
 mono (1.2.2.1-1) unstable; urgency=low
 
   * New upstream release
