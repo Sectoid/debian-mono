@@ -1,4 +1,4 @@
-mono (1.2.2.1-2) unstable; urgency=low
+mono (1.2.2.1-2~pre1) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:
     + debian/rules:

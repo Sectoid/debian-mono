@@ -17,29 +17,37 @@ DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 DEB_HOST_GNU_TYPE  := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
-	confflags += --build $(DEB_HOST_GNU_TYPE)
+	CONF_FLAGS += --build $(DEB_HOST_GNU_TYPE)
 else
-	confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+	CONF_FLAGS += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
-	confflags += --with-tls=__thread
-        confflags += --enable-minimal=aot
+	CONF_FLAGS += --with-tls=__thread
+        CONF_FLAGS += --enable-minimal=aot
 else ifeq ($(DEB_BUILD_ARCH), amd64)
-	confflags += --with-tls=__thread
+	CONF_FLAGS += --with-tls=__thread
 else
-	confflags += --with-tls=pthread
+	CONF_FLAGS += --with-tls=pthread
 endif
 
-ifeq ($(DEB_BUILD_ARCH), arm)
-	confflags += --disable-mcs-build
-else ifeq ($(DEB_BUILD_ARCH), armeb)
-	confflags += --disable-mcs-build
-endif
+#ifeq ($(DEB_BUILD_ARCH), arm)
+#	confflags += --disable-mcs-build
+#else ifeq ($(DEB_BUILD_ARCH), armeb)
+#	confflags += --disable-mcs-build
+#endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
 endif
+
+CONFIGURE =	CFLAGS=$(CFLAGS) \
+		./configure $(CONF_FLAGS) --prefix=/usr \
+		  --mandir=\$${prefix}/share/man \
+		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
+		  --with-sigaltstack=no \
+		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
+		  --with-libgdiplus=installed --with-x=yes
 
 # Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
@@ -47,41 +55,86 @@ include /usr/share/dpatch/dpatch.make
 cli-wrapper: debian/cli-wrapper.c
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 
-build: patch build-stamp
-build-stamp: cli-wrapper
+configure-arch: patch configure-arch-stamp
+configure-arch-stamp:
 	dh_testdir
-	CFLAGS=$(CFLAGS) ./configure $(confflags) --prefix=/usr \
-	  --mandir=\$${prefix}/share/man \
-	  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
-	  --with-sigaltstack=no $(GC) \
-	  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
-	  --with-libgdiplus=installed --with-x=yes
-	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
-	cd mcs/jay && $(MAKE)
-	chmod +x debian/dh_makeclilibs debian/dh_clideps
-	touch build-stamp
+	$(CONFIGURE) --disable-mcs-build
+	touch configure-arch-stamp
 
-clean: unpatch
+configure-indep: patch configure-indep-stamp
+configure-indep-stamp:
+	dh_testdir
+	$(CONFIGURE)
+	touch configure-indep-stamp
+
+#configure: patch configure-stamp
+#configure-stamp:
+#	dh_testdir
+#	$(CONFIGURE) --disable-mcs-build
+#	touch configure-stamp
+
+build-arch: configure-arch build-arch-stamp
+build-arch-stamp: cli-wrapper
+	dh_testdir
+	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
+	cd mcs/jay && \
+	  $(MAKE)
+	cd debian/detector && \
+	  $(MAKE)
+	touch build-arch-stamp
+
+build-indep: configure-indep build-indep-stamp
+build-indep-stamp:
+	dh_testdir
+	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
+	#cd mcs && \
+	#  LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
+	chmod +x debian/dh_makeclilibs debian/dh_clideps
+	touch build-indep-stamp
+
+build: build-arch
+
+clean: clean-patched unpatch
+clean-patched:
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp
-	rm -f install-stamp
+	rm -f configure-*-stamp
+	rm -f build-*-stamp
+	rm -f install-*-stamp
 	-$(MAKE) distclean
 	# distclean misses stuff
-	find -name "*.mdb" | xargs rm -f
+	find -name "*.mdb" | xargs -r rm -f
 	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper debian/MonoGetAssemblyName.exe
 	rm -rf $(MONO_SHARED_DIR)/.wapi
 	dh_clean
 
-install: build install-stamp
-install-stamp:
+install: install-arch install-indep
+
+install-arch: install-arch-stamp
+install-arch-stamp:
 	dh_testdir
 	dh_testroot
-	dh_clean -k
-	dh_installdirs
+	#dh_clean -k -s
+	dh_installdirs -s
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	cd mcs/jay && $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	cd mcs/jay && \
+	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	cd debian/detector && \
+	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
+	install -o root -g root -m 644 debian/cli.binfmt \
+	  debian/mono-common/usr/share/binfmts/cli
+	touch install-arch-stamp
+
+install-indep: install-indep-stamp
+install-indep-stamp:
+	dh_testdir
+	dh_testroot
+	#dh_clean -k -i
+	dh_installdirs -i
+	cd mcs && \
+	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
@@ -94,22 +147,18 @@ install-stamp:
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
-	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
-	cd debian/detector && \
-	  $(MAKE) && \
-	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
-	install -o root -g root -m 644 debian/cli.binfmt \
-	  debian/mono-common/usr/share/binfmts/cli
+	# Late GAC
+	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
 	# CLI Policy
 	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs -r chmod -x
 	cd debian && find -type f -name "*.exe" | xargs -r chmod +x
-	# Late GAC
-	install -D -m 755 debian/mono.runtime-script debian/tmp/usr/share/cli-common/runtimes.d/mono
-	touch install-stamp
+	touch install-indep-stamp
 
-binary-indep: build install
-	dh_testdir -i
-	dh_testroot -i
+binary: binary-indep binary-arch
+
+binary-indep: build-indep install-indep
+	dh_testdir
+	dh_testroot
 	# Build the late-GAC tool
 	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
 	  /out:debian/MonoGetAssemblyName.exe \
@@ -119,12 +168,14 @@ binary-indep: build install
 	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
         # without exluding other things too which I do not want
 	rm -f debian/mono-mcs/usr/bin/mono
+	install -m 644 debian/System.Drawing.dll.config debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing/1.0.*/
+	install -m 644 debian/System.Drawing.dll.config debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Drawing/2.0.*/
+	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms1.0-cil/usr/lib/mono/gac/System.Windows.Forms/1.0.*/
+	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms2.0-cil/usr/lib/mono/gac/System.Windows.Forms/2.0.*/
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo1.0-cil/usr/lib/mono/gac/Mono.Cairo/1.0.*/
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo2.0-cil/usr/lib/mono/gac/Mono.Cairo/2.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
-	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms1.0-cil/usr/lib/mono/gac/System.Windows.Forms/1.0.*/
-	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms2.0-cil/usr/lib/mono/gac/System.Windows.Forms/2.0.*/
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	# delete gacutil from mono-mcs (this is already in mono-gac)
 	rm debian/mono-mcs/usr/bin/gacutil
@@ -250,9 +301,9 @@ binary-indep: build install
 	dh_md5sums -i
 	dh_builddeb -i
 
-binary-arch: build install
-	dh_testdir -s
-	dh_testroot -s
+binary-arch: build-arch install-arch
+	dh_testdir
+	dh_testroot
 	dh_install -s
 	dh_link -s
 	dh_installchangelogs -s
@@ -271,5 +322,4 @@ binary-arch: build install
 	dh_md5sums -s
 	dh_builddeb -s
 
-binary: binary-indep binary-arch
 .PHONY: clean build binary-indep binary-arch install binary patch unpatch
