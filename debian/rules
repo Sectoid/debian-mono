@@ -31,12 +31,6 @@ else
 	CONF_FLAGS += --with-tls=pthread
 endif
 
-#ifeq ($(DEB_BUILD_ARCH), arm)
-#	confflags += --disable-mcs-build
-#else ifeq ($(DEB_BUILD_ARCH), armeb)
-#	confflags += --disable-mcs-build
-#endif
-
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
 endif
@@ -67,12 +61,6 @@ configure-indep-stamp:
 	$(CONFIGURE)
 	touch configure-indep-stamp
 
-#configure: patch configure-stamp
-#configure-stamp:
-#	dh_testdir
-#	$(CONFIGURE) --disable-mcs-build
-#	touch configure-stamp
-
 build-arch: configure-arch build-arch-stamp
 build-arch-stamp: cli-wrapper
 	dh_testdir
@@ -87,8 +75,6 @@ build-indep: configure-indep build-indep-stamp
 build-indep-stamp:
 	dh_testdir
 	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
-	#cd mcs && \
-	#  LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
 	chmod +x debian/dh_makeclilibs debian/dh_clideps
 	touch build-indep-stamp
 
@@ -115,31 +101,34 @@ install-arch: install-arch-stamp
 install-arch-stamp:
 	dh_testdir
 	dh_testroot
-	#dh_clean -k -s
+	dh_clean -k -s
 	dh_installdirs -s
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	cd mcs/jay && \
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	cd debian/detector && \
-	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
-	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
-	install -o root -g root -m 644 debian/cli.binfmt \
-	  debian/mono-common/usr/share/binfmts/cli
 	touch install-arch-stamp
 
 install-indep: install-indep-stamp
 install-indep-stamp:
 	dh_testdir
 	dh_testroot
-	#dh_clean -k -i
+	dh_clean -k -i
 	dh_installdirs -i
 	cd mcs && \
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	touch install-indep-stamp
+
+binary: binary-arch binary-indep
+
+binary-indep: build-arch install-arch build-indep install-indep
+	dh_testdir
+	dh_testroot
+
 	# we do not want nunit, it's a forked version
 	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
 	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
 	rm -f debian/tmp/usr/lib/mono/2.0/nunit*
-	rm -rf  debian/tmp/usr/lib/mono/gac/nunit*
+	rm -rf debian/tmp/usr/lib/mono/gac/nunit*
 	rm -f debian/tmp/usr/bin/nunit*
 	# neither prj2make
 	rm -f debian/tmp/usr/bin/prj2make
@@ -147,27 +136,18 @@ install-indep-stamp:
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
+	
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
 	# CLI Policy
 	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs -r chmod -x
 	cd debian && find -type f -name "*.exe" | xargs -r chmod +x
-	touch install-indep-stamp
-
-binary: binary-indep binary-arch
-
-binary-indep: build-indep install-indep
-	dh_testdir
-	dh_testroot
-	# Build the late-GAC tool
+	# Build the late-GAC tool,
+	# using the built Mono runtime from debian/tmp
+	# (thus the install-arch target dependency!)
 	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
 	  /out:debian/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
-	# that exclude list are programs for arch-dep packages
-	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
-	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
-        # without exluding other things too which I do not want
-	rm -f debian/mono-mcs/usr/bin/mono
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing/1.0.*/
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Drawing/2.0.*/
 	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms1.0-cil/usr/lib/mono/gac/System.Windows.Forms/1.0.*/
@@ -177,6 +157,13 @@ binary-indep: build-indep install-indep
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
+	
+	# that exclude list are programs for arch-dep packages
+	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+	
+	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
+        # without exluding other things too, which I do not want
+	rm -f debian/mono-mcs/usr/bin/mono
 	# delete gacutil from mono-mcs (this is already in mono-gac)
 	rm debian/mono-mcs/usr/bin/gacutil
 	rm debian/mono-mcs/usr/lib/mono/1.0/gacutil.exe*
@@ -274,6 +261,7 @@ binary-indep: build-indep install-indep
 	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Messaging/
 	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Messaging.dll
 	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Messaging.dll
+
 	dh_link -i
 	dh_installchangelogs -i
 	dh_installdocs -i
@@ -304,6 +292,13 @@ binary-indep: build-indep install-indep
 binary-arch: build-arch install-arch
 	dh_testdir
 	dh_testroot
+	
+	cd debian/detector && \
+	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
+	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
+	install -o root -g root -m 644 debian/cli.binfmt \
+	  debian/mono-common/usr/share/binfmts/cli
+
 	dh_install -s
 	dh_link -s
 	dh_installchangelogs -s
