@@ -22,6 +22,9 @@ mono (1.2.2.1-2~pre1) unstable; urgency=low
       - Using now the email address of the maintainer who approves the upload
         and is responsible for it, instead of the Debian Mono Group address, as
         requested by the Debian Release Manager Andreas Barth.
+  * Sebastian 'slomo' Dröge:
+    + debian/control:
+      - Update to use my debian.org mail address
 
  -- Mirco Bauer <meebey@meebey.net>  Thu, 15 Dec 2006 23:04:04 +0100
 
