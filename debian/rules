@@ -28,7 +28,7 @@ ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
 else ifeq ($(DEB_BUILD_ARCH), amd64)
 	CONF_FLAGS += --with-tls=__thread
 else
-	CONF_FLAGS += --with-tls=pthread
+#	CONF_FLAGS += --with-tls=pthread
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
@@ -101,7 +101,7 @@ install-arch: install-arch-stamp
 install-arch-stamp:
 	dh_testdir
 	dh_testroot
-	dh_clean -k -s
+	#dh_clean -k -s
 	dh_installdirs -s
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	cd mcs/jay && \
@@ -112,7 +112,7 @@ install-indep: install-indep-stamp
 install-indep-stamp:
 	dh_testdir
 	dh_testroot
-	dh_clean -k -i
+	#dh_clean -k -i
 	dh_installdirs -i
 	cd mcs && \
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
@@ -137,6 +137,9 @@ binary-indep: build-arch install-arch build-indep install-indep
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
 	
+	# that exclude list are programs for arch-dep packages
+	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
 	# CLI Policy
@@ -157,9 +160,6 @@ binary-indep: build-arch install-arch build-indep install-indep
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
-	
-	# that exclude list are programs for arch-dep packages
-	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
 	
 	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
         # without exluding other things too, which I do not want
