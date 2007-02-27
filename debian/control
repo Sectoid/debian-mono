@@ -8,7 +8,7 @@ Build-Depends-Indep: libgamin-dev, libcupsys2-dev, librsvg2-dev, libgtk2.0-dev, 
 Standards-Version: 3.7.2
 
 Package: mono-common
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}, binfmt-support (>= 1.1.2)
 Description: common files for Mono
  Mono is a platform for running and developing applications based on the
@@ -22,7 +22,7 @@ Description: common files for Mono
 
 Package: mono-runtime
 Provides: cli-runtime
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: mono-jit (= ${Source-Version}), mono-gac (= ${source:Version})
 Description: Mono runtime
  Mono is a platform for running and developing applications based on the
@@ -35,7 +35,7 @@ Description: Mono runtime
 
 Package: mono-jit
 Provides: cli-virtual-machine
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${Source-Version})
 Description: fast CLI JIT/AOT compiler for Mono
  Mono is a platform for running and developing applications based on the
@@ -47,10 +47,10 @@ Description: fast CLI JIT/AOT compiler for Mono
  This package contains the Virtual Execution Environment and the JIT
  (Just-in-Time) and AOT (Ahead-of-Time) code generator "mono".
  "mono" runs CLI applications, which is currently only available for i386,
- powerpc, arm, amd64 and ia64 architectures.
+ powerpc, arm, amd64 kfreebsd-amd64 and ia64 architectures.
 
 Package: mono
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: mono-common (= ${Source-Version}), mono-jit (= ${Source-Version})
 Recommends: libgdiplus, libmono-corlib1.0-cil
 Description: Mono CLI (.NET) runtime
@@ -67,7 +67,7 @@ Description: Mono CLI (.NET) runtime
 
 Package: mono-devel
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: mono (= ${Source-Version}), mono-mcs, mono-gac, mono-utils, mono-jay
 Suggests: mono-gmcs
 Description: Mono CLI runtime with development tools
@@ -83,7 +83,7 @@ Description: Mono CLI runtime with development tools
 Package: mono-utils
 Provides: cil-disassembler
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Replaces: mono-mcs (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-corlib1.0-cil
 Suggests: libmono-corlib2.0-cil
@@ -99,7 +99,7 @@ Description: Mono utilities
 
 Package: libmono0
 Section: libs
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Replaces: libmono-dev (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: libraries for the Mono JIT
@@ -114,7 +114,7 @@ Description: libraries for the Mono JIT
 
 Package: libmono-dev
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: libmono0 (= ${Source-Version}), libglib2.0-dev
 Description: libraries for the Mono JIT - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
@@ -916,7 +916,7 @@ Description: Mono GAC tool
 
 Package: mono-jay
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 ia64 arm armeb
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: LALR(1) parser generator oriented to Java/CLI
  Mono is a platform for running and developing applications based on the
