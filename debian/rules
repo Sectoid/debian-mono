@@ -149,6 +149,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	# Build the late-GAC tool,
 	# using the built Mono runtime from debian/tmp
 	# (thus the install-arch target dependency!)
+	mkdir -p debian/mono-gac/usr/share/mono
 	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
 	  /out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
