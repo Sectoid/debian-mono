@@ -1,0 +1,15 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+--- mono/mcs/class/FirebirdSql.Data.Firebird/Makefile.old	2007-02-26 23:06:40.510241854 +0100
++++ mono/mcs/class/FirebirdSql.Data.Firebird/Makefile	2007-02-26 23:07:08.607843047 +0100
+@@ -8,7 +8,7 @@
+ LIB_DEFINE_FLAGS = 
+ 
+ ifeq ($(PLATFORM), linux)
+-LIB_DEFINE_FLAGS = /d:LINUX
++LIB_DEFINE_FLAGS = /d:LINUX /d:FBCLIENT
+ endif
+ 
+ LIB_MCS_FLAGS = \

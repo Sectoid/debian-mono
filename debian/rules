@@ -3,7 +3,7 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-MONO_API = 1.2.2
+MONO_API = 1.2.3
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
@@ -105,7 +105,7 @@ install-arch-stamp:
 	dh_installdirs -s
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	cd mcs/jay && \
-	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp prefix=/usr INSTALL=../../install-sh
 	touch install-arch-stamp
 
 install-indep: install-indep-stamp
@@ -115,7 +115,8 @@ install-indep-stamp:
 	#dh_clean -k -i
 	dh_installdirs -i
 	cd mcs && \
-	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp && \
+	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0
 	touch install-indep-stamp
 
 binary: binary-arch binary-indep
@@ -149,8 +150,10 @@ binary-indep: build-arch install-arch build-indep install-indep
 	# using the built Mono runtime from debian/tmp
 	# (thus the install-arch target dependency!)
 	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
-	  /out:debian/MonoGetAssemblyName.exe \
+	  /out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
+	install -m 644 debian/System.Data.dll.config debian/libmono-system-data1.0-cil/usr/lib/mono/gac/System.Data/1.0.*/
+	install -m 644 debian/System.Data.dll.config debian/libmono-system-data2.0-cil/usr/lib/mono/gac/System.Data/2.0.*/
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing/1.0.*/
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Drawing/2.0.*/
 	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms1.0-cil/usr/lib/mono/gac/System.Windows.Forms/1.0.*/
@@ -188,6 +191,10 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm debian/mono-mcs/usr/bin/mkbundle2
 	# delete sgen from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/sgen
+	# delete al2 from mono-mcs (this is already in mono-gmcs)
+	rm debian/mono-mcs/usr/bin/al2
+	# FIXME delete httpcfg from mono-mcs (this has no corresponding binary)
+	rm debian/mono-mcs/usr/bin/httpcfg
 	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data-tds*-cil)
 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
 	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Tds/

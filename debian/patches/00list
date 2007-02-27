@@ -1,3 +1,4 @@
 remove_broken_dllmap_from_mono-shlib-cop.dpatch
 console-no-utf8-bom.dpatch
 kfreebsd_support.dpatch
+firebird-fbclient.dpatch

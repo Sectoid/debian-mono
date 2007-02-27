@@ -7,5 +7,12 @@ debian/tmp/usr/bin/mono-service2
 debian/tmp/usr/bin/mkbundle2
 debian/tmp/usr/bin/xbuild
 debian/tmp/usr/bin/sgen
+debian/tmp/usr/bin/al2
 debian/tmp/usr/lib/mono/2.0/*.exe*
-debian/tmp/usr/lib/mono/xbuild/
+debian/tmp/usr/lib/mono/2.0/xbuild.rsp
+debian/tmp/usr/lib/mono/2.0/MSBuild/
+debian/tmp/usr/lib/mono/2.0/Microsoft.Build.xsd
+debian/tmp/usr/lib/mono/2.0/Microsoft.CSharp.targets
+debian/tmp/usr/lib/mono/2.0/Microsoft.Common.tasks
+debian/tmp/usr/lib/mono/2.0/Microsoft.Common.targets
+debian/tmp/usr/lib/mono/2.0/Microsoft.VisualBasic.targets

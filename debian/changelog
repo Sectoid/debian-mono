@@ -1,4 +1,4 @@
-mono (1.2.2.1-3~pre1) unstable; urgency=low
+mono (1.2.3.1-1) experimental; urgency=low
 
   * Mirco 'meebey' Bauer:
     + debian/rules:
@@ -18,12 +18,47 @@ mono (1.2.2.1-3~pre1) unstable; urgency=low
       - Adds kfreebsd support to Mono.
         (Closes: #394456, thanks to Petr Salinger <Petr.Salinger@seznam.cz>
          and Aurelien Jarno <aurelien@aurel32.net> for the patch)
-    + debian/changelog:
-      - Using now the email address of the maintainer who approves the upload
-        and is responsible for it, instead of the Debian Mono Group address, as
-        requested by the Debian Release Manager Andreas Barth.
 
- -- Mirco Bauer <meebey@meebey.net>  Sat, 24 Feb 2007 17:21:18 +0100
+  * Sebastian 'slomo' Dröge:
+    + New upstream release (Closes: #411924):
+      - Fixes assertion failures on PPC (Closes: #403495)
+    + debian/libmono-system2.0-cil.clideps-override:
+      - Move libasound2 to Suggests
+    + debian/libmono-system1.0-cil.install,
+      debian/libmono-system2.0-cil.install:
+      - Add CustomMarshalers.dll
+    + debian/libmono-system-data1.0-cil.clideps-override,
+      debian/libmono-system-data2.0-cil.clideps-override:
+      - Move libgda2-3 to Suggests
+    + debian/libmono-winforms1.0-cil.clideps-override,
+      debian/libmono-winforms2.0-cil.clideps-override:
+      - Move librsvg2-2 to Suggests
+    + debian/mono-common.install:
+      - Update path for cil-opcodes.xml
+    + debian/mono-gmcs.install:
+      - Add /usr/bin/al2 utility
+      - Update path for xbuild stuff
+    + debian/rules:
+      - Install new System.Data.dll.config file
+      - Remove new utilities from mono-mcs as they're already elsewhere
+      - Update MONO_API to 1.2.3
+    + debian/shlibs.local:
+      - Add shlibs entry for libasound2
+    + debian/System.Data.dll.config:
+      - Added new dllmaps
+    + debian/shlibs.local,
+      debian/patches/firebird-fbclient.dpatch,
+      debian/FirebirdSql.Data.Firebird.dll.config:
+      - Use libfbclient1 instead of the embedded libfbembed1
+        library which is not thread-safe (Closes: #410379)
+    + debian/control:
+      - Clean up Build-Depends-Indep
+    + debian/rules,
+      debian/mono-gac.install:
+      - Fix various build failures caused by the binary-arch / binary-indep
+        split
+
+ -- Sebastian Dröge <slomo@debian.org>  Tue, 27 Feb 2007 09:44:02 +0100
 
 mono (1.2.2.1-2) unstable; urgency=high
 

@@ -1,2 +1,2 @@
 debian/tmp/etc/mono
-debian/tmp/usr/share/mono/cil/cil-opcodes.xml
+debian/tmp/usr/share/mono-1.0/mono/cil/cil-opcodes.xml
