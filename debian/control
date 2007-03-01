@@ -428,7 +428,7 @@ Package: libmono-winforms1.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
-Suggests: ${cli:Suggests}
+Suggests: ${cli:Suggests}, shared-mime-info
 Depends: ${cli:Depends}
 Description: Mono System.Windows.Forms library
  Mono is a platform for running and developing applications based on the
@@ -443,7 +443,7 @@ Package: libmono-winforms2.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
-Suggests: ${cli:Suggests}
+Suggests: ${cli:Suggests}, shared-mime-info
 Depends: ${cli:Depends}
 Description: Mono System.Windows.Forms library
  Mono is a platform for running and developing applications based on the
