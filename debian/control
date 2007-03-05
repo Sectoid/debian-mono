@@ -85,7 +85,7 @@ Provides: cil-disassembler
 Section: devel
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Replaces: mono-mcs (<= 1.1.6-4)
-Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-corlib1.0-cil
+Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-corlib1.0-cil (>= ${mono:upversion}), libmono-corlib1.0-cil (<< ${mono:next-upversion})
 Suggests: libmono-corlib2.0-cil
 Description: Mono utilities
  Mono is a platform for running and developing applications based on the

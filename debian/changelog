@@ -4,8 +4,11 @@ mono (1.2.3.1-2) experimental; urgency=low
     + debian/control:
       - Also add kfreebsd-amd64 to archs
       - Let libmono-winforms*.0-cil suggest shared-mime-info (Closes: #394674)
+      - Make mono-utils depend on libmono-corlib1.0-cil with a stricter
+        version requirement as it most probably breaks with other
+        versions. (Closes: #412970)
 
- -- Sebastian Dröge <slomo@debian.org>  Tue, 27 Feb 2007 21:14:24 +0100
+ -- Sebastian Dröge <slomo@debian.org>  Mon,  5 Mar 2007 08:00:35 +0100
 
 mono (1.2.3.1-1) experimental; urgency=low
 
