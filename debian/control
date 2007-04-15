@@ -37,6 +37,7 @@ Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb
 Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${Source-Version})
+Conflicts: mono-utils (<< 1.2.3.1)
 Description: fast CLI JIT/AOT compiler for Mono
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

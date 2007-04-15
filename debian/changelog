@@ -1,3 +1,13 @@
+mono (1.2.3.1-3) experimental; urgency=low
+
+  * Sebastian 'slomo' Dröge:
+    + debian/control:
+      - Also let mono-jit conflict with mono-utils (<< 1.2.3.1), otherwise the
+        previously added stricter dependencies in mono-utils don't have any
+        effect for pre-1.2.3.1-2 mono versions. (Closes: #412970)
+
+ -- Sebastian Dröge <slomo@debian.org>  Tue,  6 Mar 2007 07:32:55 +0100
+
 mono (1.2.3.1-2) experimental; urgency=low
 
   * Sebastian 'slomo' Dröge:
