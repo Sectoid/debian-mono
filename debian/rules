@@ -318,7 +318,7 @@ binary-arch: build-arch install-arch
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
-	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(MONO_API))'
+	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono0/usr/lib
 	dh_gencontrol -s -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)

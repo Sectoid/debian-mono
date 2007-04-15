@@ -1,3 +1,17 @@
+mono (1.2.3.1-4) unstable; urgency=low
+
+  * Upload to unstable
+  * Sebastian 'slomo' Dröge:
+    + debian/control:
+      - Let mono-utils depend on exactly the same upstream version of libmono0
+        that it was build with and remove the other workarounds for bug #412970
+        as this is now the correct fix. Thanks to Mirco Bauer for investigating
+      - Add armel to architectures
+    + debian/rules:
+      - The shlibs file of libmono0 now contains >= $UPVERSION
+
+ -- Sebastian Dröge <slomo@debian.org>  Sun, 15 Apr 2007 21:06:21 +0200
+
 mono (1.2.3.1-3) experimental; urgency=low
 
   * Sebastian 'slomo' Dröge:
