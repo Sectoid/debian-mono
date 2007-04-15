@@ -1,3 +1,16 @@
+mono (1.2.3.1-5) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer:
+    + debian/control:
+      - Added Conflicts: mono-utils (<< 1.2.3.1-4) to libmono0, to aid partial
+        upgrade of Mono from etch to lenny or sid, thanks to Rene Engelhard for
+        the hints. (really Closes: #412970)
+      - Moved binfmt-support dependency to recommends. (Closes: #418765)
+        The mono-common.postinst and mono-common.prerm scripts already checks
+        if binfmt-support is actually installed.
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 16 Apr 2007 01:12:04 +0200
+
 mono (1.2.3.1-4) unstable; urgency=low
 
   * Upload to unstable
