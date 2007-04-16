@@ -8,6 +8,7 @@ mono (1.2.3.1-5) unstable; urgency=low
       - Moved binfmt-support dependency to recommends. (Closes: #418765)
         The mono-common.postinst and mono-common.prerm scripts already checks
         if binfmt-support is actually installed.
+      - Updated to use my Debian email address now.
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 16 Apr 2007 01:12:04 +0200
 
