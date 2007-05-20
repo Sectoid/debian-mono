@@ -5,3 +5,4 @@ libsqlite 0 libsqlite0 (>= 2.8.17)
 libsqlite3 0 libsqlite3-0 (>= 3.3.8)
 libMonoPosixHelper 0 libmono0 (>= 1.2.2)
 libasound 2 libasound2 (>> 1.0.12)
+libgda-2 3 libgda2-3

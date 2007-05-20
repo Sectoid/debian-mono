@@ -1,3 +1,58 @@
+mono (1.2.4-1~pre4) UNRELEASED; urgency=medium
+
+  * The clean me harder and be nicer to embedded devices upload
+  * Mirco 'meebey' Bauer:
+    + New upstream release
+      - Fixes endian problem with UDP multicasts (Closes: #406909)
+    + debian/patches/dont_remap_non-runtime_libs.dpatch:
+      - Don't remap referenced versions for libraries that are not part of the
+        runtime (like Npgsql, Novell.Directory.Ldap and Mono.* specially
+        Mono.Cairo) because that makes predictable dependency tracking
+        impossible for such libraries and is pretty insane as the remapped
+        version must be 100% ABI compatible.
+        This caused FTBFS for applications using Gtk# (which uses Mono.Cairo
+        version 1.0) but runs and compiles (gmcs) under CLR 2.0.
+        (Closes: #425194)
+    + debian/control:
+      - New package mono-dbg, containing all debug sybols (*.mdb), which is
+        27 MB for all libraries and applications of the mono source package.
+        This new package should make specially embedded device users happy.
+      - New package mono-jit-dbg, unstripped mono-jit
+      - New package libmono0-dbg, unstripped libmono0
+      - Add libgdiplus dependency to libmono-winforms{1,2}.0-cil, as it's only
+        indirectly used via System.Drawing of libmono-system{1,2}.0-cil, which
+        only suggests libgdiplus.
+    + debian/rules:
+      - Bumped MONO_API to 1.2.4
+      - Install Mono.Data.Sqlite.dll.config
+      - Enabled sigaltstack in ./configure call, since we use __thread / NPTL.
+      - Call debian/dh_clifixperms in binary-indep target
+      - Call debian/dh_clistrip in binary-indep target
+    + debian/libmono-sqlite{1,2}.0-cil.install:
+      - Added Mono.Data.Sqlite.dll
+    + debian/libmono-dev.install:
+      - Added dotnet.pc
+    + debian/patches/fix-mono.pc.in.dpatch
+      debian/patches/fix-mono-cairo.pc.in.dpatch:
+      - Replace ../../ with @prefix@
+    + debian/mono-gmcs.install:
+      - Added httpcfg and mono-api-info2
+    + debian/libmono-system1.0-cil.clideps-override:
+      - Move libcupsys2 to Suggests.
+      - Move libgdiplus to Suggests.
+    + debian/libmono-system-data{1,2}.0-cil.clideps-override:
+      - Move libglib2.0-0 to Suggests.
+    + debian/libmono-winforms{1,2}.0-cil.clideps-override:
+      - Move libglib2.0-0 to Suggests.
+    + debian/dh_clifixperms:
+      - Copied from cli-common-dev
+    + debian/dh_clistrip:
+      - Copied from cli-common-dev
+    + debian/shlibs.local:
+      - Added libgda-2
+
+ -- Mirco Bauer <meebey@debian.org>  Sat, 19 May 2007 15:43:00 +0200
+
 mono (1.2.3.1-5) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:

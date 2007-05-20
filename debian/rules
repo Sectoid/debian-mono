@@ -3,7 +3,7 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-MONO_API = 1.2.3
+MONO_API = 1.2.4
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
@@ -27,8 +27,6 @@ ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
         CONF_FLAGS += --enable-minimal=aot
 else ifeq ($(DEB_BUILD_ARCH), amd64)
 	CONF_FLAGS += --with-tls=__thread
-else
-#	CONF_FLAGS += --with-tls=pthread
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
@@ -39,7 +37,7 @@ CONFIGURE =	CFLAGS=$(CFLAGS) \
 		./configure $(CONF_FLAGS) --prefix=/usr \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
-		  --with-sigaltstack=no \
+		  --with-sigaltstack=yes \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 		  --with-libgdiplus=installed --with-x=yes
 
@@ -163,6 +161,8 @@ binary-indep: build-arch install-arch build-indep install-indep
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo2.0-cil/usr/lib/mono/gac/Mono.Cairo/2.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
+	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/1.0.*/
+	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/2.0.*/
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	
 	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
@@ -184,6 +184,8 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm debian/mono-mcs/usr/bin/ilasm2
 	# delete resgen2 from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/resgen2
+	# delete mono-api-info2 from mono-mcs (this is already in mono-gmcs)
+	rm debian/mono-mcs/usr/bin/mono-api-info2
 	# delete mono-service2 from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/mono-service2
 	# delete xbuild from mono-mcs (this is already in mono-gmcs)
@@ -194,7 +196,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm debian/mono-mcs/usr/bin/sgen
 	# delete al2 from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/al2
-	# FIXME delete httpcfg from mono-mcs (this has no corresponding binary)
+	# delete httpcfg from mono-mcs (this is already in mono-gmcs)
 	rm debian/mono-mcs/usr/bin/httpcfg
 	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data-tds*-cil)
 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
@@ -206,6 +208,11 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/
 	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.SqliteClient.dll
 	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.SqliteClient.dll
+	# delete Mono.Data.Sqlite from libmono1.0/2.0-cil (those are already in libmono-sqlite*-cil)
+	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/
+	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/
+	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.Sqlite.dll
+	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.Sqlite.dll
 	# delete Mono.Cairo from libmono1.0/2.0-cil (those are already in libmono-cairo*-cil)
 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Cairo/
 	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Cairo/
@@ -274,8 +281,10 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_installchangelogs -i
 	dh_installdocs -i
 	dh_installman -i
+	debian/dh_clistrip -i --dbg-package=mono-dbg
 	dh_compress -i
 	dh_fixperms -i
+	debian/dh_clifixperms -i
 	dh_installdeb -i
 	#DH_VERBOSE=1 DH_AUTOSCRIPTDIR=$(CURDIR)/debian debian/dh_monoaot -i
 	debian/dh_makeclilibs -i -m 1.0 internal-mono
@@ -315,7 +324,9 @@ binary-arch: build-arch install-arch
 	dh_installman -s
 	dh_installexamples -s
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
-	dh_strip -s
+	#dh_strip -s
+	dh_strip -pmono-jit --dbg-package=mono-jit-dbg
+	dh_strip -plibmono0 --dbg-package=libmono0-dbg
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
 	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'

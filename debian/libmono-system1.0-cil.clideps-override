@@ -1,3 +1,5 @@
 suggests libfam0
 suggests libgamin0
 suggests libx11-6
+suggests libcupsys2
+suggests libgdiplus
