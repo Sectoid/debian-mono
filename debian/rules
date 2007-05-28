@@ -324,9 +324,9 @@ binary-arch: build-arch install-arch
 	dh_installman -s
 	dh_installexamples -s
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
-	#dh_strip -s
 	dh_strip -pmono-jit --dbg-package=mono-jit-dbg
 	dh_strip -plibmono0 --dbg-package=libmono0-dbg
+	dh_strip -s
 	dh_compress -s -Xskeleton.cs
 	dh_fixperms -s
 	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'

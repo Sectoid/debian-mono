@@ -4,7 +4,13 @@ mono (1.2.4-2) unstable; urgency=low
     + debian/patches/00list:
       - Disabled dont_remap_non-runtime_libs patch, has side effects
         and breaks banshee, means applications using libmono-cairo{1,2}.0-cil
-        running on CLR 2.0 need again to depend on the 2.0 version explicitly.
+        running on CLR 2.0 need again to depend on the 2.0 version explicitly
+    + debian/rules:
+      - Call dh_strip in binary-arch target, else mono-utils binaries have
+        debugging symbols.
+    + debian/control:
+      - Strictly depend on upstream version for assemblies doing ICalls
+        (internal calls into the runtime implementation).
   * Sebastian 'slomo' Dröge:
     + debian/rules:
       - Set executable bit on dh_clistrip and the other debhelper scripts
