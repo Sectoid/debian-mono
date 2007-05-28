@@ -4,4 +4,4 @@ kfreebsd_support.dpatch
 firebird-fbclient.dpatch
 fix-mono.pc.in
 fix-mono-cairo.pc.in
-dont_remap_non-runtime_libs
+#dont_remap_non-runtime_libs

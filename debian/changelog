@@ -1,11 +1,16 @@
 mono (1.2.4-2) unstable; urgency=low
 
+  * Mirco 'meebey' Bauer:
+    + debian/patches/00list:
+      - Disabled dont_remap_non-runtime_libs patch, has side effects
+        and breaks banshee, means applications using libmono-cairo{1,2}.0-cil
+        running on CLR 2.0 need again to depend on the 2.0 version explicitly.
   * Sebastian 'slomo' Dröge:
     + debian/rules:
       - Set executable bit on dh_clistrip and the other debhelper scripts
         to fix FTBFS.
 
- -- Sebastian Dröge <slomo@debian.org>  Mon, 21 May 2007 14:11:16 +0200
+ -- Mirco Bauer <meebey@debian.org>  Mon, 28 May 2007 16:18:53 +0200
 
 mono (1.2.4-1) unstable; urgency=medium
 
