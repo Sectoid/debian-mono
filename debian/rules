@@ -23,10 +23,15 @@ else
 endif
 
 ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
-	CONF_FLAGS += --with-tls=__thread
         CONF_FLAGS += --enable-minimal=aot
+endif
+
+ifeq ($(DEB_BUILD_ARCH), i386)
+	CONF_FLAGS += --with-sigaltstack=yes
 else ifeq ($(DEB_BUILD_ARCH), amd64)
-	CONF_FLAGS += --with-tls=__thread
+	CONF_FLAGS += --with-sigaltstack=yes
+else
+	CONF_FLAGS += --with-sigaltstack=no
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
@@ -37,8 +42,8 @@ CONFIGURE =	CFLAGS=$(CFLAGS) \
 		./configure $(CONF_FLAGS) --prefix=/usr \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
-		  --with-sigaltstack=yes \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
+		  --with-tls=__thread \
 		  --with-libgdiplus=installed --with-x=yes
 
 # Include dpatch stuff.

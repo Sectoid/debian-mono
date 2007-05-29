@@ -1,3 +1,12 @@
+mono (1.2.4-3) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer:
+    + debian/rules:
+      - Enable sigaltstack only for i386 and amd64, fixes FTBFS for ia64 and
+        possibly other archs.
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 29 May 2007 22:54:24 +0200
+
 mono (1.2.4-2) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:
