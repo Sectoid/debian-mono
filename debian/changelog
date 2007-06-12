@@ -1,3 +1,14 @@
+mono (1.2.4-4) unstable; urgency=low
+
+  * debian/patches/g_thread_init.dpatch:
+    + Call g_thread_init() as early as possible as this is required for newer
+      glib versions. See:
+      http://bugzilla.ximian.com/show_bug.cgi?id=81862
+      http://bugzilla.gnome.org/show_bug.cgi?id=331853
+      Patch from upstream SVN, rev. 78018.
+
+ -- Sebastian Dröge <slomo@debian.org>  Tue, 12 Jun 2007 20:11:05 +0200
+
 mono (1.2.4-3) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:
