@@ -34,6 +34,16 @@ else
 	CONF_FLAGS += --with-sigaltstack=no
 endif
 
+ifeq ($(DEB_BUILD_ARCH), arm)
+	CONF_FLAGS += --with-tls=pthread
+else ifeq ($(DEB_BUILD_ARCH), armeb)
+	CONF_FLAGS += --with-tls=pthread
+else ifeq ($(DEB_BUILD_ARCH), armel)
+	CONF_FLAGS += --with-tls=pthread
+else
+	CONF_FLAGS += --with-tls=__thread
+endif
+
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
 endif
@@ -43,7 +53,6 @@ CONFIGURE =	CFLAGS=$(CFLAGS) \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
-		  --with-tls=__thread \
 		  --with-libgdiplus=installed --with-x=yes
 
 # Include dpatch stuff.
