@@ -1,4 +1,4 @@
-mono (1.2.4-4) UNRELEASED; urgency=low
+mono (1.2.4-4) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:
     + debian/rules:
