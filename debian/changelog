@@ -1,3 +1,12 @@
+mono (1.2.4-5) UNRELEASED; urgency=low
+
+  * debian/patches/mono-ppc-corruption.dpatch:
+    + Fix memory corruption on PPC, causing many Gtk# programs to crash.
+      Patch from upstream SVN.
+      (Closes: #428209, #430614, #427934, #428190, #429685)
+
+ -- Sebastian Dröge <slomo@debian.org>  Mon, 16 Jul 2007 13:52:03 +0200
+
 mono (1.2.4-4) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:

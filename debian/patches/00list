@@ -6,3 +6,4 @@ fix-mono.pc.in
 fix-mono-cairo.pc.in
 #dont_remap_non-runtime_libs
 g_thread_init.dpatch
+mono-ppc-corruption.dpatch
