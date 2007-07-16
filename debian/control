@@ -24,7 +24,7 @@ Description: common files for Mono
 Package: mono-runtime
 Provides: cli-runtime
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: mono-jit (= ${Source-Version}), mono-gac (= ${source:Version})
+Depends: mono-jit (= ${binary:Version}), mono-gac (= ${source:Version})
 Description: Mono runtime
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -37,7 +37,7 @@ Description: Mono runtime
 Package: mono-jit
 Provides: cli-virtual-machine
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${Source-Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${binary:Version})
 Description: fast CLI JIT/AOT compiler for Mono
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -53,7 +53,7 @@ Description: fast CLI JIT/AOT compiler for Mono
 Package: mono-jit-dbg
 Priority: extra
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: mono-jit (= ${Source-Version})
+Depends: mono-jit (= ${binary:Version})
 Recommends: gdb
 Description: fast CLI JIT/AOT compiler for Mono, debugging symbols
  Mono is a platform for running and developing applications based on the
@@ -66,7 +66,7 @@ Description: fast CLI JIT/AOT compiler for Mono, debugging symbols
 
 Package: mono
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: mono-common (= ${Source-Version}), mono-jit (= ${Source-Version})
+Depends: mono-common (= ${binary:Version}), mono-jit (= ${binary:Version})
 Recommends: libgdiplus, libmono-corlib1.0-cil
 Description: Mono CLI (.NET) runtime
  Mono is a platform for running and developing applications based on the
@@ -83,7 +83,7 @@ Description: Mono CLI (.NET) runtime
 Package: mono-devel
 Section: devel
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: mono (= ${Source-Version}), mono-mcs, mono-gac, mono-utils, mono-jay
+Depends: mono (= ${binary:Version}), mono-mcs, mono-gac, mono-utils, mono-jay
 Suggests: mono-gmcs
 Description: Mono CLI runtime with development tools
  Mono is a platform for running and developing applications based on the
@@ -132,7 +132,7 @@ Package: libmono0-dbg
 Priority: extra
 Section: libdevel
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: libmono0 (= ${Source-Version})
+Depends: libmono0 (= ${binary:Version})
 Recommends: gdb
 Description: libraries for the Mono JIT, debugging symbols
  This package contains the debugging symbols of the Mono JIT libraries.
@@ -146,7 +146,7 @@ Description: libraries for the Mono JIT, debugging symbols
 Package: libmono-dev
 Section: devel
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: libmono0 (= ${Source-Version}), libglib2.0-dev
+Depends: libmono0 (= ${binary:Version}), libglib2.0-dev
 Description: libraries for the Mono JIT - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
  .
