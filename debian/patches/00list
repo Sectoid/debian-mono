@@ -6,4 +6,5 @@ fix-mono.pc.in
 fix-mono-cairo.pc.in
 #dont_remap_non-runtime_libs
 g_thread_init.dpatch
-mono-ppc-corruption.dpatch
+ppc_fix_memory_corruption_r81413.patch
+armel_fix_configure_fpu_check.dpatch

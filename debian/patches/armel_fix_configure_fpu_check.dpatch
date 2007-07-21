@@ -1,0 +1,186 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## armel_fix_configure_fpu_check.dpatch by Riku Voipio <riku.voipio@iki.fi>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-1.2.4~/configure.in mono-1.2.4/configure.in
+--- mono-1.2.4~/configure.in	2007-07-21 15:36:55.000000000 +0200
++++ mono-1.2.4/configure.in	2007-07-21 15:36:59.000000000 +0200
+@@ -1880,19 +1880,24 @@
+ 	])
+ fi
+ 
++AC_ARG_WITH(fpu, [ --with-fpu=FPA,VFP,NONE	Select fpu to use on arm],[fpu=$withval])
++
+ if test ${TARGET} = ARM; then
+ 	dnl ******************************************
+ 	dnl *** Check to see what FPU is available ***
+ 	dnl ******************************************
+ 	AC_MSG_CHECKING(which FPU to use)
+ 
+-	AC_TRY_COMPILE([], [
+-		__asm__ ("ldfd f0, [r0]");
+-		], fpu=FPA, [
+-			AC_TRY_COMPILE([], [
+-				__asm__ ("fldd d0, [r0]");
+-			], fpu=VFP, fpu=NONE)
+-		])
++	if test "x$fpu" = "x"; then
++
++		AC_TRY_COMPILE([], [
++			__asm__ ("ldfd f0, [r0]");
++			], fpu=FPA, [
++				AC_TRY_COMPILE([], [
++					__asm__ ("fldd d0, [r0]");
++				], fpu=VFP, fpu=NONE)
++			])
++	fi
+ 
+ 	AC_MSG_RESULT($fpu)
+ 	CPPFLAGS="$CPPFLAGS -DARM_FPU_$fpu=1"
+diff -urNad mono-1.2.4~/configure mono-1.2.4/configure
+--- mono-1.2.4~/configure	2007-07-21 15:36:55.000000000 +0200
++++ mono-1.2.4/configure	2007-07-21 15:38:46.000000000 +0200
+@@ -1606,6 +1606,7 @@
+   --with-jit=yes,no       If you want to build scripts that default to the JIT
+   --with-interp=yes,no    If you want to build scripts that default to the interpreter
+   --with-x                use the X Window System
++ --with-fpu=FPA,VFP,NONE        Select fpu to use on arm
+  --with-preview=yes,no     If you want to install the 2.0 FX preview
+ 
+ Some influential environment variables:
+@@ -40074,23 +40075,31 @@
+ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ fi
+ 
++# Check whether --with-fpu was given.
++if test "${with_fpu+set}" = set; then
++  withval=$with_fpu; fpu=$withval
++fi
++
++
+ if test ${TARGET} = ARM; then
+-				{ echo "$as_me:$LINENO: checking which FPU to use" >&5
++                                { echo "$as_me:$LINENO: checking which FPU to use" >&5
+ echo $ECHO_N "checking which FPU to use... $ECHO_C" >&6; }
+ 
+-	cat >conftest.$ac_ext <<_ACEOF
++        if test "x$fpu" = "x"; then
++
++                cat >conftest.$ac_ext <<_ACEOF
+ /* confdefs.h.  */
+ _ACEOF
+ cat confdefs.h >>conftest.$ac_ext
+ cat >>conftest.$ac_ext <<_ACEOF
+ /* end confdefs.h.  */
+-
++   
+ int
+ main ()
+ {
+ 
+-		__asm__ ("ldfd f0, [r0]");
+-
++                        __asm__ ("ldfd f0, [r0]");
++   
+   ;
+   return 0;
+ }
+@@ -40108,45 +40117,28 @@
+   rm -f conftest.er1
+   cat conftest.err >&5
+   echo "$as_me:$LINENO: \$? = $ac_status" >&5
+-  (exit $ac_status); } &&
+-	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+-  { (case "(($ac_try" in
+-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+-  *) ac_try_echo=$ac_try;;
+-esac
+-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+-  (eval "$ac_try") 2>&5
+-  ac_status=$?
+-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+-  (exit $ac_status); }; } &&
+-	 { ac_try='test -s conftest.$ac_objext'
+-  { (case "(($ac_try" in
+-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+-  *) ac_try_echo=$ac_try;;
+-esac
+-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+-  (eval "$ac_try") 2>&5
+-  ac_status=$?
+-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+-  (exit $ac_status); }; }; then
++  (exit $ac_status); } && {
++         test -z "$ac_c_werror_flag" ||
++         test ! -s conftest.err
++       } && test -s conftest.$ac_objext; then
+   fpu=FPA
+ else
+   echo "$as_me: failed program was:" >&5
+ sed 's/^/| /' conftest.$ac_ext >&5
+ 
+ 
+-			cat >conftest.$ac_ext <<_ACEOF
++                                cat >conftest.$ac_ext <<_ACEOF
+ /* confdefs.h.  */
+ _ACEOF
+ cat confdefs.h >>conftest.$ac_ext
+-cat >>conftest.$ac_ext <<_ACEOF
++cat >>conftest.$ac_ext <<_ACEOF  
+ /* end confdefs.h.  */
+ 
+ int
+ main ()
+ {
+-
+-				__asm__ ("fldd d0, [r0]");
++ 
++                                        __asm__ ("fldd d0, [r0]");
+ 
+   ;
+   return 0;
+@@ -40165,35 +40157,19 @@
+   rm -f conftest.er1
+   cat conftest.err >&5
+   echo "$as_me:$LINENO: \$? = $ac_status" >&5
+-  (exit $ac_status); } &&
+-	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+-  { (case "(($ac_try" in
+-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+-  *) ac_try_echo=$ac_try;;
+-esac
+-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+-  (eval "$ac_try") 2>&5
+-  ac_status=$?
+-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+-  (exit $ac_status); }; } &&
+-	 { ac_try='test -s conftest.$ac_objext'
+-  { (case "(($ac_try" in
+-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+-  *) ac_try_echo=$ac_try;;
+-esac
+-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+-  (eval "$ac_try") 2>&5
+-  ac_status=$?
+-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+-  (exit $ac_status); }; }; then
++  (exit $ac_status); } && {
++         test -z "$ac_c_werror_flag" ||
++         test ! -s conftest.err
++       } && test -s conftest.$ac_objext; then
+   fpu=VFP
+ else
+   echo "$as_me: failed program was:" >&5
+ sed 's/^/| /' conftest.$ac_ext >&5
+ 
+-	fpu=NONE
++        fpu=NONE
+ fi
+ 
++
+ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ 
+ fi
