@@ -39,7 +39,7 @@ ifeq ($(DEB_BUILD_ARCH), arm)
 else ifeq ($(DEB_BUILD_ARCH), armeb)
 	CONF_FLAGS += --with-tls=pthread
 else ifeq ($(DEB_BUILD_ARCH), armel)
-	CONF_FLAGS += --with-tls=pthread
+	CONF_FLAGS += --with-tls=pthread --with-fpu=NONE
 else
 	CONF_FLAGS += --with-tls=__thread
 endif

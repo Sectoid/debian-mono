@@ -9,12 +9,14 @@ mono (1.2.4-5) unstable; urgency=low
         (Closes: #428209, #430614, #427934, #428190, #429685)
         (Thanks to Wouter Verhelst for testing the patch)
     + debian/patches/armel_fix_configure_fpu_check.dpatch:
-      - Use softfloat on armel. (Closes: #430582)
+      - Detect FPU correctly. (Closes: #430582)
         (Thanks to Riku Voipio <riku.voipio@iki.fi> for the patch)
     + debian/patches/fix_delegate_memory_leak_r79001.dpatch:
       - Fix memory leak for delegates passed to unmanaged land, taken from
         upstream SVN. (Closes: #428781)
         (Thanks to Chris Howie <cdhowie@nerdshack.com> for investigation)
+    + debian/rules:
+      - Use softfloat on armel.
 
  -- Mirco Bauer <meebey@debian.org>  Sat, 21 Jul 2007 15:48:05 +0200
 
