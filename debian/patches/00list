@@ -8,3 +8,4 @@ fix-mono-cairo.pc.in
 g_thread_init.dpatch
 ppc_fix_memory_corruption_r81413.patch
 armel_fix_configure_fpu_check.dpatch
+fix_delegate_memory_leak_r79001.dpatch
