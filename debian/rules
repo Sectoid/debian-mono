@@ -64,12 +64,16 @@ cli-wrapper: debian/cli-wrapper.c
 configure-arch: patch configure-arch-stamp
 configure-arch-stamp:
 	dh_testdir
+	#chmod +x debian/autogen.sh
+	#NOCONFIGURE=1 debian/autogen.sh
 	$(CONFIGURE) --disable-mcs-build
 	touch configure-arch-stamp
 
 configure-indep: patch configure-indep-stamp
 configure-indep-stamp:
 	dh_testdir
+	#chmod +x debian/autogen.sh
+	#NOCONFIGURE=1 debian/autogen.sh
 	$(CONFIGURE)
 	touch configure-indep-stamp
 
@@ -93,6 +97,8 @@ build-indep-stamp:
 build: build-arch
 
 clean: clean-patched unpatch
+	#rm -f configure
+
 clean-patched:
 	dh_testdir
 	dh_testroot

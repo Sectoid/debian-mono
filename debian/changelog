@@ -1,5 +1,6 @@
 mono (1.2.4-5) unstable; urgency=low
 
+  * The "there is more than Linux and X86" release
   * Mirco 'meebey' Bauer:
     + debian/control:
       - Replaced ${Source-Version} with ${source:Version} and ${binary:Version}
@@ -15,6 +16,8 @@ mono (1.2.4-5) unstable; urgency=low
       - Fix memory leak for delegates passed to unmanaged land, taken from
         upstream SVN. (Closes: #428781)
         (Thanks to Chris Howie <cdhowie@nerdshack.com> for investigation)
+    + debian/patches/kfreebsd_support.dpatch:
+      - Updated, added support for kfreebsd-amd64
     + debian/rules:
       - Use softfloat on armel.
   * Sebastian 'slomo' Dröge:
