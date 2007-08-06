@@ -17,6 +17,9 @@ mono (1.2.4-5) unstable; urgency=low
         (Thanks to Chris Howie <cdhowie@nerdshack.com> for investigation)
     + debian/rules:
       - Use softfloat on armel.
+  * Sebastian 'slomo' Dröge:
+    + debian/patches/armel_fix_configure_fpu_check.dpatch:
+      - Regenerate configure for the change.
 
  -- Mirco Bauer <meebey@debian.org>  Sat, 21 Jul 2007 15:48:05 +0200
 
