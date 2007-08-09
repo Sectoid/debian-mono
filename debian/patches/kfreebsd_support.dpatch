@@ -6,8 +6,8 @@
 
 @DPATCH@
 diff -urNad mono-1.2.4~/configure.in mono-1.2.4/configure.in
---- mono-1.2.4~/configure.in	2007-04-25 20:48:44.000000000 +0200
-+++ mono-1.2.4/configure.in	2007-08-09 19:37:54.000000000 +0200
+--- mono-1.2.4~/configure.in	2007-08-09 20:27:13.000000000 +0200
++++ mono-1.2.4/configure.in	2007-08-09 20:27:18.000000000 +0200
 @@ -93,6 +93,16 @@
  		libgc_threads=pthreads
  		with_sigaltstack=no
@@ -38,9 +38,9 @@ diff -urNad mono-1.2.4~/configure.in mono-1.2.4/configure.in
      	LIBC="libc.so"
  	INTL="libintl.so"
 diff -urNad mono-1.2.4~/configure mono-1.2.4/configure
---- mono-1.2.4~/configure	2007-05-14 19:21:16.000000000 +0200
-+++ mono-1.2.4/configure	2007-08-09 19:42:28.000000000 +0200
-@@ -2847,6 +2847,16 @@
+--- mono-1.2.4~/configure	2007-08-09 20:27:13.000000000 +0200
++++ mono-1.2.4/configure	2007-08-09 20:27:58.000000000 +0200
+@@ -2848,6 +2848,16 @@
  		libgc_threads=pthreads
  		with_sigaltstack=no
  		;;
@@ -57,174 +57,174 @@ diff -urNad mono-1.2.4~/configure mono-1.2.4/configure
  # these flags will work for all versions of -STABLE
  #
  	*-*-*freebsd4*)
-@@ -6531,7 +6541,7 @@
+@@ -6532,7 +6542,7 @@
    ;;
  *-*-irix6*)
    # Find out which ABI we are using.
--  echo '#line 6534 "configure"' > conftest.$ac_ext
-+  echo '#line 6544 "configure"' > conftest.$ac_ext
+-  echo '#line 6535 "configure"' > conftest.$ac_ext
++  echo '#line 6545 "configure"' > conftest.$ac_ext
    if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
    (eval $ac_compile) 2>&5
    ac_status=$?
-@@ -9330,11 +9340,11 @@
+@@ -9331,11 +9341,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:9333: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:9343: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:9334: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:9344: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>conftest.err)
     ac_status=$?
     cat conftest.err >&5
--   echo "$as_me:9337: \$? = $ac_status" >&5
-+   echo "$as_me:9347: \$? = $ac_status" >&5
+-   echo "$as_me:9338: \$? = $ac_status" >&5
++   echo "$as_me:9348: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s "$ac_outfile"; then
       # The compiler can only warn and ignore the option if not recognized
       # So say no if there are warnings other than the usual output.
-@@ -9598,11 +9608,11 @@
+@@ -9599,11 +9609,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:9601: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:9611: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:9602: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:9612: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>conftest.err)
     ac_status=$?
     cat conftest.err >&5
--   echo "$as_me:9605: \$? = $ac_status" >&5
-+   echo "$as_me:9615: \$? = $ac_status" >&5
+-   echo "$as_me:9606: \$? = $ac_status" >&5
++   echo "$as_me:9616: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s "$ac_outfile"; then
       # The compiler can only warn and ignore the option if not recognized
       # So say no if there are warnings other than the usual output.
-@@ -9702,11 +9712,11 @@
+@@ -9703,11 +9713,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:9705: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:9715: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:9706: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:9716: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>out/conftest.err)
     ac_status=$?
     cat out/conftest.err >&5
--   echo "$as_me:9709: \$? = $ac_status" >&5
-+   echo "$as_me:9719: \$? = $ac_status" >&5
+-   echo "$as_me:9710: \$? = $ac_status" >&5
++   echo "$as_me:9720: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s out/conftest2.$ac_objext
     then
       # The compiler can only warn and ignore the option if not recognized
-@@ -12154,7 +12164,7 @@
+@@ -12155,7 +12165,7 @@
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<EOF
--#line 12157 "configure"
-+#line 12167 "configure"
+-#line 12158 "configure"
++#line 12168 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -12254,7 +12264,7 @@
+@@ -12255,7 +12265,7 @@
    lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
    lt_status=$lt_dlunknown
    cat > conftest.$ac_ext <<EOF
--#line 12257 "configure"
-+#line 12267 "configure"
+-#line 12258 "configure"
++#line 12268 "configure"
  #include "confdefs.h"
  
  #if HAVE_DLFCN_H
-@@ -14622,11 +14632,11 @@
+@@ -14623,11 +14633,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:14625: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:14635: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:14626: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:14636: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>conftest.err)
     ac_status=$?
     cat conftest.err >&5
--   echo "$as_me:14629: \$? = $ac_status" >&5
-+   echo "$as_me:14639: \$? = $ac_status" >&5
+-   echo "$as_me:14630: \$? = $ac_status" >&5
++   echo "$as_me:14640: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s "$ac_outfile"; then
       # The compiler can only warn and ignore the option if not recognized
       # So say no if there are warnings other than the usual output.
-@@ -14726,11 +14736,11 @@
+@@ -14727,11 +14737,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:14729: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:14739: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:14730: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:14740: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>out/conftest.err)
     ac_status=$?
     cat out/conftest.err >&5
--   echo "$as_me:14733: \$? = $ac_status" >&5
-+   echo "$as_me:14743: \$? = $ac_status" >&5
+-   echo "$as_me:14734: \$? = $ac_status" >&5
++   echo "$as_me:14744: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s out/conftest2.$ac_objext
     then
       # The compiler can only warn and ignore the option if not recognized
-@@ -16296,11 +16306,11 @@
+@@ -16297,11 +16307,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:16299: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:16309: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:16300: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:16310: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>conftest.err)
     ac_status=$?
     cat conftest.err >&5
--   echo "$as_me:16303: \$? = $ac_status" >&5
-+   echo "$as_me:16313: \$? = $ac_status" >&5
+-   echo "$as_me:16304: \$? = $ac_status" >&5
++   echo "$as_me:16314: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s "$ac_outfile"; then
       # The compiler can only warn and ignore the option if not recognized
       # So say no if there are warnings other than the usual output.
-@@ -16400,11 +16410,11 @@
+@@ -16401,11 +16411,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:16403: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:16413: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:16404: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:16414: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>out/conftest.err)
     ac_status=$?
     cat out/conftest.err >&5
--   echo "$as_me:16407: \$? = $ac_status" >&5
-+   echo "$as_me:16417: \$? = $ac_status" >&5
+-   echo "$as_me:16408: \$? = $ac_status" >&5
++   echo "$as_me:16418: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s out/conftest2.$ac_objext
     then
       # The compiler can only warn and ignore the option if not recognized
-@@ -18630,11 +18640,11 @@
+@@ -18631,11 +18641,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:18633: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:18643: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:18634: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:18644: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>conftest.err)
     ac_status=$?
     cat conftest.err >&5
--   echo "$as_me:18637: \$? = $ac_status" >&5
-+   echo "$as_me:18647: \$? = $ac_status" >&5
+-   echo "$as_me:18638: \$? = $ac_status" >&5
++   echo "$as_me:18648: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s "$ac_outfile"; then
       # The compiler can only warn and ignore the option if not recognized
       # So say no if there are warnings other than the usual output.
-@@ -18898,11 +18908,11 @@
+@@ -18899,11 +18909,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:18901: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:18911: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:18902: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:18912: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>conftest.err)
     ac_status=$?
     cat conftest.err >&5
--   echo "$as_me:18905: \$? = $ac_status" >&5
-+   echo "$as_me:18915: \$? = $ac_status" >&5
+-   echo "$as_me:18906: \$? = $ac_status" >&5
++   echo "$as_me:18916: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s "$ac_outfile"; then
       # The compiler can only warn and ignore the option if not recognized
       # So say no if there are warnings other than the usual output.
-@@ -19002,11 +19012,11 @@
+@@ -19003,11 +19013,11 @@
     -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
     -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
     -e 's:$: $lt_compiler_flag:'`
--   (eval echo "\"\$as_me:19005: $lt_compile\"" >&5)
-+   (eval echo "\"\$as_me:19015: $lt_compile\"" >&5)
+-   (eval echo "\"\$as_me:19006: $lt_compile\"" >&5)
++   (eval echo "\"\$as_me:19016: $lt_compile\"" >&5)
     (eval "$lt_compile" 2>out/conftest.err)
     ac_status=$?
     cat out/conftest.err >&5
--   echo "$as_me:19009: \$? = $ac_status" >&5
-+   echo "$as_me:19019: \$? = $ac_status" >&5
+-   echo "$as_me:19010: \$? = $ac_status" >&5
++   echo "$as_me:19020: \$? = $ac_status" >&5
     if (exit $ac_status) && test -s out/conftest2.$ac_objext
     then
       # The compiler can only warn and ignore the option if not recognized
-@@ -39479,6 +39489,11 @@
+@@ -39480,6 +39490,11 @@
  	LIBC="libc.so.12"
  	INTL="libintl.so.0"
  	;;
@@ -237,8 +237,8 @@ diff -urNad mono-1.2.4~/configure mono-1.2.4/configure
      	LIBC="libc.so"
  	INTL="libintl.so"
 diff -urNad mono-1.2.4~/libgc/configure.in mono-1.2.4/libgc/configure.in
---- mono-1.2.4~/libgc/configure.in	2007-04-25 20:48:40.000000000 +0200
-+++ mono-1.2.4/libgc/configure.in	2007-08-09 19:37:54.000000000 +0200
+--- mono-1.2.4~/libgc/configure.in	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/libgc/configure.in	2007-08-09 20:27:18.000000000 +0200
 @@ -103,6 +103,17 @@
  	AC_DEFINE(THREAD_LOCAL_ALLOC)
  	THREADDLLIBS="-lpthread -lrt"
@@ -258,8 +258,8 @@ diff -urNad mono-1.2.4~/libgc/configure.in mono-1.2.4/libgc/configure.in
  	AC_MSG_WARN("FreeBSD does not yet fully support threads with Boehm GC.")
  	AC_DEFINE(GC_FREEBSD_THREADS)
 diff -urNad mono-1.2.4~/libgc/configure mono-1.2.4/libgc/configure
---- mono-1.2.4~/libgc/configure	2007-05-14 19:21:22.000000000 +0200
-+++ mono-1.2.4/libgc/configure	2007-08-09 19:37:54.000000000 +0200
+--- mono-1.2.4~/libgc/configure	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/libgc/configure	2007-08-09 20:27:18.000000000 +0200
 @@ -4632,6 +4632,32 @@
  
  	THREADDLLIBS="-lpthread -lrt"
@@ -294,8 +294,8 @@ diff -urNad mono-1.2.4~/libgc/configure mono-1.2.4/libgc/configure
  	{ echo "$as_me:$LINENO: WARNING: \"FreeBSD does not yet fully support threads with Boehm GC.\"" >&5
  echo "$as_me: WARNING: \"FreeBSD does not yet fully support threads with Boehm GC.\"" >&2;}
 diff -urNad mono-1.2.4~/libgc/dyn_load.c mono-1.2.4/libgc/dyn_load.c
---- mono-1.2.4~/libgc/dyn_load.c	2007-04-25 20:48:40.000000000 +0200
-+++ mono-1.2.4/libgc/dyn_load.c	2007-08-09 19:37:54.000000000 +0200
+--- mono-1.2.4~/libgc/dyn_load.c	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/libgc/dyn_load.c	2007-08-09 20:27:18.000000000 +0200
 @@ -26,7 +26,7 @@
   * None of this is safe with dlclose and incremental collection.
   * But then not much of anything is safe in the presence of dlclose.
@@ -315,8 +315,8 @@ diff -urNad mono-1.2.4~/libgc/dyn_load.c mono-1.2.4/libgc/dyn_load.c
           || (__GLIBC__ == 2 && __GLIBC_MINOR__ == 2 && defined(DT_CONFIG))) 
  
 diff -urNad mono-1.2.4~/libgc/include/gc.h mono-1.2.4/libgc/include/gc.h
---- mono-1.2.4~/libgc/include/gc.h	2007-04-25 20:48:40.000000000 +0200
-+++ mono-1.2.4/libgc/include/gc.h	2007-08-09 19:37:54.000000000 +0200
+--- mono-1.2.4~/libgc/include/gc.h	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/libgc/include/gc.h	2007-08-09 20:27:18.000000000 +0200
 @@ -484,7 +484,7 @@
  #   define GC_RETURN_ADDR (GC_word)__return_address
  #endif
@@ -327,8 +327,8 @@ diff -urNad mono-1.2.4~/libgc/include/gc.h mono-1.2.4/libgc/include/gc.h
  # if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 1 || __GLIBC__ > 2) \
       && !defined(__ia64__)
 diff -urNad mono-1.2.4~/libgc/include/private/gcconfig.h mono-1.2.4/libgc/include/private/gcconfig.h
---- mono-1.2.4~/libgc/include/private/gcconfig.h	2007-04-25 20:48:40.000000000 +0200
-+++ mono-1.2.4/libgc/include/private/gcconfig.h	2007-08-09 19:37:55.000000000 +0200
+--- mono-1.2.4~/libgc/include/private/gcconfig.h	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/libgc/include/private/gcconfig.h	2007-08-09 20:27:18.000000000 +0200
 @@ -55,7 +55,7 @@
  # endif
  
@@ -413,8 +413,8 @@ diff -urNad mono-1.2.4~/libgc/include/private/gcconfig.h mono-1.2.4/libgc/includ
  	    /* frame pointers by default, i.e. no -fomit-frame-pointer flag.	*/
  # define CAN_SAVE_CALL_ARGS
 diff -urNad mono-1.2.4~/mono/mini/exceptions-amd64.c mono-1.2.4/mono/mini/exceptions-amd64.c
---- mono-1.2.4~/mono/mini/exceptions-amd64.c	2007-04-25 20:48:42.000000000 +0200
-+++ mono-1.2.4/mono/mini/exceptions-amd64.c	2007-08-09 19:37:55.000000000 +0200
+--- mono-1.2.4~/mono/mini/exceptions-amd64.c	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/mono/mini/exceptions-amd64.c	2007-08-09 20:27:18.000000000 +0200
 @@ -643,7 +643,7 @@
  static inline guint64*
  gregs_from_ucontext (ucontext_t *ctx)
@@ -425,8 +425,8 @@ diff -urNad mono-1.2.4~/mono/mini/exceptions-amd64.c mono-1.2.4/mono/mini/except
  #else
      guint64 *gregs = (guint64 *) &ctx->uc_mcontext.gregs;
 diff -urNad mono-1.2.4~/mono/mini/mini-amd64.h mono-1.2.4/mono/mini/mini-amd64.h
---- mono-1.2.4~/mono/mini/mini-amd64.h	2007-04-25 20:48:42.000000000 +0200
-+++ mono-1.2.4/mono/mini/mini-amd64.h	2007-08-09 19:37:55.000000000 +0200
+--- mono-1.2.4~/mono/mini/mini-amd64.h	2007-08-09 20:16:30.000000000 +0200
++++ mono-1.2.4/mono/mini/mini-amd64.h	2007-08-09 20:27:18.000000000 +0200
 @@ -210,7 +210,7 @@
  
  #endif /* PLATFORM_WIN32 */

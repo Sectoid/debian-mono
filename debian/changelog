@@ -15,7 +15,7 @@ mono (1.2.4-5) unstable; urgency=low
   * Mirco 'meebey' Bauer:
     + debian/control:
       - Replaced ${Source-Version} with ${source:Version} and ${binary:Version}
-    + debian/patches/ppc_fix_memory_corruption_r81413.patch:
+    + debian/patches/ppc_fix_memory_corruption_r81413.dpatch:
       - Fix memory corruption on PPC, caused all Gtk# programs to crash.
         Patch taken from upstream SVN.
         (Closes: #428209, #430614, #427934, #428190, #429685)
