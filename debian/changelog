@@ -1,3 +1,14 @@
+mono (1.2.4-6) unstable; urgency=medium
+
+  * Mirco 'meebey' Bauer:
+    + debian/patches/kfreebsd_support.dpatch:
+      - Patch configure script too, as we are not re-autogening.
+        This made kfreebsd-* FTBFS.
+    + Urgency set to medium, as the last upload fixes an important crash
+      bug (#428190) for PPC.
+      
+ -- Mirco Bauer <meebey@debian.org>  Thu, 09 Aug 2007 19:36:21 +0200
+
 mono (1.2.4-5) unstable; urgency=low
 
   * The "there is more than Linux and X86" release
