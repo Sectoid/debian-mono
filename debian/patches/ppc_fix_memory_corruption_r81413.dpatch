@@ -1,12 +1,10 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
 
 @DPATCH@
-
-Index: mono/mono/mini/mini-ppc.c
-===================================================================
---- mono/mono/mini/mini-ppc.c	(Revision 81412)
-+++ mono/mono/mini/mini-ppc.c	(Revision 81413)
-@@ -2560,8 +2560,12 @@
+diff -urNad mono-1.2.5~/mono/mini/mini-ppc.c mono-1.2.5/mono/mini/mini-ppc.c
+--- mono-1.2.5~/mono/mini/mini-ppc.c	2007-08-17 19:54:05.000000000 +0200
++++ mono-1.2.5/mono/mini/mini-ppc.c	2007-08-17 19:58:10.000000000 +0200
+@@ -2563,8 +2563,12 @@
  			ppc_rlwinm (code, ppc_r11, ppc_r11, 0, 0, 27);
  			/* use ctr to store the number of words to 0 if needed */
  			if (ins->flags & MONO_INST_INIT) {
@@ -21,7 +19,7 @@ Index: mono/mono/mini/mini-ppc.c
  				ppc_srawi (code, ppc_r0, ppc_r0, 2);
  				ppc_mtctr (code, ppc_r0);
  			}
-@@ -2571,7 +2575,10 @@
+@@ -2574,7 +2578,10 @@
  			
  			if (ins->flags & MONO_INST_INIT) {
  				/* adjust the dest reg by -4 so we can use stwu */

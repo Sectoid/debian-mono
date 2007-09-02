@@ -1,2 +1,2 @@
 version=2
-http://go-mono.com/sources-stable/ .+/mono-([\d\.]+)\.tar\.gz
+http://go-mono.com/sources-stable/ .+/mono-([\d\.]+)\.tar\.bz2

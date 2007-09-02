@@ -971,7 +971,7 @@ Package: mono-mjs
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-mcs (<< 1.1.13.6-1)
+Replaces: mono-mcs (<< 1.2.5-1)
 Description: Mono JScript compiler
  This is the Mono JScript compiler, a platform-independent compiler which
  produces CIL (Common Intermediate Language) binary executables.

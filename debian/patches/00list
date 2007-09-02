@@ -1,10 +1,7 @@
 armel_fix_configure_fpu_check
 kfreebsd_support
-remove_broken_dllmap_from_mono-shlib-cop
 console-no-utf8-bom
 firebird-fbclient
 fix-mono.pc.in
 fix-mono-cairo.pc.in
 g_thread_init
-ppc_fix_memory_corruption_r81413
-fix_delegate_memory_leak_r79001

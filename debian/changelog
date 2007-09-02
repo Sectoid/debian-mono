@@ -1,3 +1,36 @@
+mono (1.2.5-1~pre1) UNRELEASED; urgency=low
+
+  * NOT RELEASED YET
+  * Mirco 'meebey' Bauer:
+    + New upstream release
+    + debian/watch:
+      - Updated
+    + debian/rules:
+      - Bumped MONO_API to 1.2.5
+    + debian/patches/kfreebsd_support.dpatch
+      debian/patches/armel_fix_configure_fpu_check.dpatch:
+      - Updated (re-autoconfed)
+      - Updated
+    + debian/patches/ppc_fix_memory_corruption_r81413.dpatch:
+      debian/patches/fix_delegate_memory_leak_r79001.dpatch
+      debian/patches/remove_broken_dllmap_from_mono-shlib-cop.dpatch:
+      - Removed, already applied upstream.
+    + debian/mono-utils.install
+      debian/mono-utils.manpages:
+      - Removed monodiet as removed by upstream
+    + debian/man/resgen.1:
+      - Removed, supplied upstream.
+    + debian/mono-mcs.manpages:
+      - Added monolinker.1
+      - Updated resgen.1
+    + debian/mono-mcs.manpages
+      debian/mono-mjs.manpages:
+      - Moved mono-mjs.1 manpage to mono-mjs package.
+    + debian/control:
+      - Added "Replaces" for mono-mjs.1 move to mono-mjs package.
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 02 Sep 2007 21:36:13 +0200
+
 mono (1.2.4-6) unstable; urgency=medium
 
   * Mirco 'meebey' Bauer:

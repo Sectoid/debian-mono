@@ -3,7 +3,7 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-MONO_API = 1.2.4
+MONO_API = 1.2.5
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
@@ -55,6 +55,9 @@ CONFIGURE =	CFLAGS=$(CFLAGS) \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 		  --with-libgdiplus=installed --with-x=yes
 
+# no usable moonlight yet, maybe with 1.2.6
+#		  --with-moonlight=yes \
+
 # Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
 
@@ -95,6 +98,8 @@ build-indep-stamp:
 	touch build-indep-stamp
 
 build: build-arch
+
+build-all: build-arch build-indep
 
 clean: clean-patched unpatch
 	#rm -f configure
@@ -155,7 +160,8 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
-	
+	# shouldn't be there without --with-moonlight
+	rm -f debian/tmp/usr/bin/smcs	
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
 
