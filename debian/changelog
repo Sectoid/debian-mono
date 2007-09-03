@@ -1,6 +1,5 @@
-mono (1.2.5-1~pre1) UNRELEASED; urgency=low
+mono (1.2.5-1) unstable; urgency=low
 
-  * NOT RELEASED YET
   * Mirco 'meebey' Bauer:
     + New upstream release
     + debian/watch:
