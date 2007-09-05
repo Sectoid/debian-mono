@@ -1,6 +1,6 @@
 libgdiplus 0 libgdiplus (>= 1.1.18)
 libcairo 2 libcairo2 (>= 1.2.4)
-libfbclient 1 libfbclient1
+libfbclient 2 libfbclient2
 libsqlite 0 libsqlite0 (>= 2.8.17)
 libsqlite3 0 libsqlite3-0 (>= 3.3.8)
 libMonoPosixHelper 0 libmono0 (>= 1.2.2)

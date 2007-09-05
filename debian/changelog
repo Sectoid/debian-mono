@@ -1,3 +1,12 @@
+mono (1.2.5-2) UNRELEASED; urgency=low
+
+  * debian/FirebirdSql.Data.Firebird.dll.config,
+    debian/shlibs.local:
+    + Use libfbclient2 instead of old and to be removed libfbclient1.
+      Thanks to Damyan Ivanov <dmn@debian.org> for the patch (Closes: #440850).
+
+ -- Sebastian Dröge <slomo@debian.org>  Wed, 05 Sep 2007 07:02:15 +0200
+
 mono (1.2.5-1) unstable; urgency=low
 
   * Mirco 'meebey' Bauer:
