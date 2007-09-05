@@ -1,9 +1,13 @@
-mono (1.2.5-2) UNRELEASED; urgency=low
+mono (1.2.5-2) unstable; urgency=medium
 
-  * debian/FirebirdSql.Data.Firebird.dll.config,
-    debian/shlibs.local:
-    + Use libfbclient2 instead of old and to be removed libfbclient1.
-      Thanks to Damyan Ivanov <dmn@debian.org> for the patch (Closes: #440850).
+  * Sebastian 'slomo' Dröge:
+    + debian/FirebirdSql.Data.Firebird.dll.config,
+      debian/shlibs.local:
+      - Use libfbclient2 instead of old and to be removed libfbclient1.
+        Thanks to Damyan Ivanov <dmn@debian.org> for the
+        patch (Closes: #440850).
+    + debian/changelog:
+      - Use urgency=medium because of the RC bugfix.
 
  -- Sebastian Dröge <slomo@debian.org>  Wed, 05 Sep 2007 07:02:15 +0200
 
