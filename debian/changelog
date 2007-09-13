@@ -1,3 +1,13 @@
+mono (1.2.5-3) unstable; urgency=high
+
+  * Mirco 'meebey' Bauer:
+    + debian/patches/ppc_fix_mono_class_proxy_vtable_r84948.dpatch:
+      - Fixes crash bug on PPC for all applications that use DBus,
+        thus setting urgency to high. (Closes: #437452, #441795, #441879)
+        (Thanks to Bram Senders <bram@luon.net> for testing the patch)
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 13 Sep 2007 21:44:16 +0200
+
 mono (1.2.5-2) unstable; urgency=medium
 
   * Sebastian 'slomo' Dröge:
