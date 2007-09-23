@@ -1,3 +1,12 @@
+mono (1.2.5.1-1) unstable; urgency=low
+
+  * Mirco 'meebey' Bauer:
+    + New upstream (bugfix) release. (Closes: #443468)
+    + debian/System.Windows.Forms.dll.config:
+      - Added libX11 and libXcursor.
+
+ -- Mirco Bauer <meebey@debian.org>  Sat, 22 Sep 2007 19:33:05 +0200
+
 mono (1.2.5-3) unstable; urgency=high
 
   * Mirco 'meebey' Bauer:
