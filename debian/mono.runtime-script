@@ -59,12 +59,13 @@ if ($mode eq "remove")
 
 	while (<UNINSTALL>)
 	{
-	    # Clean up the line and get the base directory
-	    chomp;
-		 my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $_"
-		 . " > /dev/null";
-		 system($cmd) == 0 or
-		 	print STDERR "W: removing Assembly $_ failed!\n";
+	    # Clean up the line
+	    my $assembly = chomp;
+	    my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $assembly > /dev/null";
+	    my $res = system($cmd);
+	    if (!$res) {
+                print STDERR "W: removing Assembly $assembly failed!\n";
+            }
 	}
 
 	close UNINSTALL;
@@ -81,7 +82,7 @@ if ($mode eq "remove")
 if ($mode ne "install")
 {
     print STDERR "E: Unknown mode: $mode\n";
-    print STDERR "E: Use: install, remove, or name\n";
+    print STDERR "E: Use: install, remove or name\n";
     exit 1;
 }
 
