@@ -1,6 +1,9 @@
 mono (1.2.5.1-2) UNRELEASED; urgency=low
 
   * NOT RELEASED YET
+  * debian/mono.runtime-script:
+    - When removing GAC libraries, output the assembly name correctly on
+      errors.
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 24 Sep 2007 00:32:39 +0200
 
