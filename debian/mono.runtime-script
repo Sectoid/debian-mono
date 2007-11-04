@@ -59,13 +59,13 @@ if ($mode eq "remove")
 
 	while (<UNINSTALL>)
 	{
-	    # Clean up the line
-	    my $assembly = chomp;
-	    my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $assembly > /dev/null";
-	    my $res = system($cmd);
-	    if (!$res) {
-                print STDERR "W: removing Assembly $assembly failed!\n";
-            }
+		my $assembly = $_;
+		chomp($assembly);
+		my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $assembly ";
+		my $res = system($cmd);
+		if ($res > 0) {
+			print STDERR "W: removing assembly: $assembly failed!\n";
+		}
 	}
 
 	close UNINSTALL;
