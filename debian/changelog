@@ -1,11 +1,13 @@
-mono (1.2.5.1-2) UNRELEASED; urgency=low
+mono (1.2.5.1-2) unstable; urgency=high
 
-  * NOT RELEASED YET
-  * debian/mono.runtime-script:
-    - When removing GAC libraries, output the assembly name correctly on
-      errors.
+  * Mirco 'meebey' Bauer:
+    + debian/mono.runtime-script:
+      - When removing GAC libraries, output the assembly name correctly on
+        errors.
+    + debian/patches/fix_BigInteger_overflow_CVE-2007-5197.dpatch:
+      - Fixes CVE-2007-5197, thus urgency set to high.
 
- -- Mirco Bauer <meebey@debian.org>  Mon, 24 Sep 2007 00:32:39 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 04 Nov 2007 15:34:08 +0100
 
 mono (1.2.5.1-1) unstable; urgency=low
 
