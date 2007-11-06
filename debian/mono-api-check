@@ -1,9 +1,9 @@
 #!/bin/sh
 
 NAME=$(basename $0)
-MONO_API_INFO1=/usr/lib/mono/1.0/mono-api-info.exe
-MONO_API_INFO2=/usr/lib/mono/2.0/mono-api-info.exe
-MONO_API_DIFF=/usr/lib/mono/1.0/mono-api-diff.exe
+MONO_API_INFO1=/usr/bin/mono /usr/lib/mono/1.0/mono-api-info.exe
+MONO_API_INFO2=/usr/bin/mono /usr/lib/mono/2.0/mono-api-info.exe
+MONO_API_DIFF=/usr/bin/mono /usr/lib/mono/1.0/mono-api-diff.exe
 
 API_OLD=`tempfile`
 API_NEW=`tempfile`
