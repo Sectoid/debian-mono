@@ -5,6 +5,10 @@ mono (1.2.5.2-1) UNRELEASED; urgency=low
       - SECURITY: Fixes CVE-2007-5473, only Windows is affected:
          XSP could've returned page source code instead of the requested
          page under certain circumstances.
+    + debian/patches/mono-cairo_1.2.dpatch,
+      debian/rules:
+      - Build Mono.Cairo with support for cairo 1.2 functions.
+      - Bump MONO_API to 1.2.5.2 for this.
 
  -- Sebastian Dröge <slomo@debian.org>  Sun, 11 Nov 2007 11:54:28 +0100
 

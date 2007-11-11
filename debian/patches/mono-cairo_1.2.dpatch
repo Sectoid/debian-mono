@@ -1,0 +1,15 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+--- mono-1.2.5.2/mcs/class/Mono.Cairo/Makefile.old	2007-11-11 12:00:10.000000000 +0100
++++ mono-1.2.5.2/mcs/class/Mono.Cairo/Makefile	2007-11-11 12:00:12.000000000 +0100
+@@ -3,7 +3,7 @@
+ include ../../build/rules.make
+ 
+ LIBRARY = Mono.Cairo.dll
+-#LIB_MCS_FLAGS = -d:CAIRO_1_2
++LIB_MCS_FLAGS = -d:CAIRO_1_2
+ NO_TEST = yes
+ 
+ EXTRA_DISTFILES = \

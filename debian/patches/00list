@@ -7,3 +7,4 @@ fix-mono-cairo.pc.in
 g_thread_init
 ppc_fix_mono_class_proxy_vtable_r84948
 fix_BigInteger_overflow_CVE-2007-5197
+mono-cairo_1.2.dpatch
