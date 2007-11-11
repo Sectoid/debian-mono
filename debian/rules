@@ -3,7 +3,7 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-MONO_API = 1.2.5.2
+MONO_API = 1.2.5
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
@@ -324,6 +324,11 @@ binary-indep: build-arch install-arch build-indep install-indep
 	  -plibmono1.0-cil \
 	  -plibmono2.0-cil \
 	  -m $(MONO_API) internal-mono
+	# FIXME: only needed for the 1.2 methods in Mono.Cairo
+	debian/dh_makeclilibs \
+	  -plibmono-cairo1.0-cil \
+	  -plibmono-cairo2.0-cil \
+	  -m 1.2.5.2 internal-mono
 	debian/dh_clideps -i internal-mono -l debian/tmp
 	#DH_VERBOSE=1 debian/dh_clideps -i internal-mono -l debian/tmp
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
