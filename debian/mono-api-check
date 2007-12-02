@@ -1,19 +1,19 @@
 #!/bin/sh
 
 NAME=$(basename $0)
-MONO_API_INFO1=/usr/bin/mono /usr/lib/mono/1.0/mono-api-info.exe
-MONO_API_INFO2=/usr/bin/mono /usr/lib/mono/2.0/mono-api-info.exe
-MONO_API_DIFF=/usr/bin/mono /usr/lib/mono/1.0/mono-api-diff.exe
-
-API_OLD=`tempfile`
-API_NEW=`tempfile`
-API_DIFF=`tempfile`
+MONO_API_INFO1="/usr/bin/mono /usr/lib/mono/1.0/mono-api-info.exe"
+MONO_API_INFO2="/usr/bin/mono /usr/lib/mono/2.0/mono-api-info.exe"
+MONO_API_DIFF="/usr/bin/mono /usr/lib/mono/1.0/mono-api-diff.exe"
 
 if [ ! -e "$1" -a ! -e "$2" ]
 then
 	echo "usage: $NAME [-2] old.dll new.dll"
 	exit 1
 fi
+
+API_OLD=$(tempfile)
+API_NEW=$(tempfile)
+API_DIFF=$(tempfile)
 
 if [ "$1" = "-2" ]; then
 	if [ ! -x $MONO_API_INFO2 ]; then
@@ -30,21 +30,32 @@ ${MONO_API_INFO} "$1" > ${API_OLD}
 ${MONO_API_INFO} "$2" > ${API_NEW}
 ${MONO_API_DIFF} ${API_OLD} ${API_NEW} > ${API_DIFF}
 
-name=`head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^name | cut -d\= -f2 | sed 's;\";;g'`
-missing_total=`head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^missing_total | cut -d\= -f2 | sed 's;\";;g'`
-extra_total=`head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^extra_total | cut -d\= -f2 | sed 's;\";;g'`
+grep -q 'Assembly version not equal: ' ${API_DIFF}
+version_changed=$?
 
-printf "CLI API Check\n"
-printf "Assembly Name:\t\t%s\n" $name
-printf "Missing Interfaces:\t%d\n" $missing_total
-printf "Additional Interfaces:\t%d\n\n" $extra_total
+name=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^name | cut -d\= -f2 | sed 's;\";;g')
+missing_total=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^missing_total | cut -d\= -f2 | sed 's;\";;g')
+extra_total=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^extra_total | cut -d\= -f2 | sed 's;\";;g')
+
+if [ -z $missing_total ]; then
+	missing_total=0
+fi
+if [ -z $extra_total ]; then
+	extra_total=0
+fi
+
+echo "CLI API Check"
+echo -e "Assembly Name:\t\t$name"
+echo -e "Missing Interfaces:\t$missing_total"
+echo -e "Additional Interfaces:\t$extra_total"
 
 if [ $missing_total ]
 then
 	if [ $missing_total -gt 0 ]
 	then
-		printf "The two assemblies you compared are NOT API compatible!\n"
-		printf "You must use a new package name!\n\n"
+		echo 
+		echo "The two assemblies you compared are NOT API compatible!"
+		echo "You must use a new package name!"
 	fi
 fi
 
@@ -52,9 +63,16 @@ if [ $extra_total ]
 then
 	if [ $extra_total -gt 0 ]
 	then
-		printf "The new assembly has additional interfaces. You must raise\n"
-		printf "the minimal version in clilibs!\n"
+		echo
+		echo "The new assembly has additional interfaces. You must raise"
+		echo "the minimal version in clilibs!"
 	fi
+fi
+
+if [ $version_changed ]; then
+	echo
+	echo "The assembly versions do NOT MATCH!"
+	echo "If they are API compatible you MUST generate and install a GAC policy file!"
 fi
 
 rm -f ${API_OLD} ${API_NEW} ${API_DIFF}
