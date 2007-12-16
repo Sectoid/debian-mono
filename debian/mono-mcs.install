@@ -1,3 +1,2 @@
-debian/tmp/usr/bin/
-debian/tmp/usr/lib/mono/1.0/*.exe*
-debian/mono-api-check /usr/bin
+debian/tmp/usr/bin/mcs
+debian/tmp/usr/lib/mono/1.0/mcs.exe*

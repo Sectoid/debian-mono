@@ -5,9 +5,9 @@
 ## DP: No description.
 
 @DPATCH@
-diff -urNad mono-1.2.4~/mono-cairo.pc.in mono-1.2.4/mono-cairo.pc.in
---- mono-1.2.4~/mono-cairo.pc.in	2007-04-25 20:48:44.000000000 +0200
-+++ mono-1.2.4/mono-cairo.pc.in	2007-05-17 11:14:44.000000000 +0200
+diff -urNad mono-1.2.6~/data/mono-cairo.pc.in mono-1.2.6/data/mono-cairo.pc.in
+--- mono-1.2.6~/data/mono-cairo.pc.in	2007-11-08 23:07:46.000000000 +0100
++++ mono-1.2.6/data/mono-cairo.pc.in	2007-12-16 15:51:57.000000000 +0100
 @@ -1,5 +1,5 @@
 -prefix=${pcfiledir}/../..
 -exec_prefix=${pcfiledir}/../..

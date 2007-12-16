@@ -3,7 +3,7 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-MONO_API = 1.2.5
+MONO_API = 1.2.6
 
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,')
@@ -53,10 +53,8 @@ CONFIGURE =	CFLAGS=$(CFLAGS) \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
-		  --with-libgdiplus=installed --with-x=yes
-
-# no usable moonlight yet, maybe with 1.2.6
-#		  --with-moonlight=yes \
+		  --with-libgdiplus=installed --with-x=yes \
+		  --with-moonlight=yes
 
 # Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
@@ -140,6 +138,7 @@ install-indep-stamp:
 	cd mcs && \
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp && \
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0
+	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_1
 	touch install-indep-stamp
 
 binary: binary-arch binary-indep
@@ -160,16 +159,11 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm -f debian/tmp/usr/lib/mono/1.0/prj2make.exe*
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
-	# shouldn't be there without --with-moonlight
-	rm -f debian/tmp/usr/bin/smcs	
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
 
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
-	# CLI Policy
-	cd debian && find -type f -name "*.dll" -or -name "*.mdb" -or -name "*.cs" | xargs -r chmod -x
-	cd debian && find -type f -name "*.exe" | xargs -r chmod +x
 	# Build the late-GAC tool,
 	# using the built Mono runtime from debian/tmp
 	# (thus the install-arch target dependency!)
@@ -191,39 +185,14 @@ binary-indep: build-arch install-arch build-indep install-indep
 	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/2.0.*/
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	
-	# delete bin/mono from mono-mcs, no way to exclude it with dh_install,
-        # without exluding other things too, which I do not want
-	rm -f debian/mono-mcs/usr/bin/mono
-	# delete gacutil from mono-mcs (this is already in mono-gac)
-	rm debian/mono-mcs/usr/bin/gacutil
-	rm debian/mono-mcs/usr/lib/mono/1.0/gacutil.exe*
-	# delete mjs from mono-mcs (this is already in mono-mjs)
-	rm debian/mono-mcs/usr/bin/mjs
-	rm debian/mono-mcs/usr/lib/mono/1.0/mjs.exe*
-	# delete wsdl2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/wsdl2
-	# delete gmcs from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/gmcs
-	# delete monop2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/monop2
-	# delete ilasm2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/ilasm2
-	# delete resgen2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/resgen2
-	# delete mono-api-info2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/mono-api-info2
-	# delete mono-service2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/mono-service2
-	# delete xbuild from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/xbuild
-	# delete mkbundle2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/mkbundle2
-	# delete sgen from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/sgen
-	# delete al2 from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/al2
-	# delete httpcfg from mono-mcs (this is already in mono-gmcs)
-	rm debian/mono-mcs/usr/bin/httpcfg
+	# delete gacutil from mono-1.0-tools-dev (this is already in mono-gac)
+	rm debian/mono-1.0-tools-dev/usr/lib/mono/1.0/gacutil.exe*
+	# delete mjs from mono-1.0-tools-dev (this is already in mono-mjs)
+	rm debian/mono-1.0-tools-dev/usr/lib/mono/1.0/mjs.exe*
+	# delete mono-service from mono-1.0-tools-dev (this is already in mono-1.0-service)
+	rm debian/mono-1.0-tools-dev/usr/lib/mono/1.0/mono-service.exe*
+	# delete mono-service from mono-2.0-tools-dev (this is already in mono-2.0-service)
+	rm debian/mono-2.0-tools-dev/usr/lib/mono/2.0/mono-service.exe*
 	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data-tds*-cil)
 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
 	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Tds/

@@ -1,0 +1,10 @@
+debian/tmp/usr/bin/wsdl2 
+debian/tmp/usr/bin/monop2
+debian/tmp/usr/bin/ilasm2 
+debian/tmp/usr/bin/resgen2
+debian/tmp/usr/bin/mono-api-info2
+debian/tmp/usr/bin/mkbundle2
+debian/tmp/usr/bin/sgen
+debian/tmp/usr/bin/al2
+debian/tmp/usr/bin/httpcfg
+debian/tmp/usr/lib/mono/2.0/*.exe*

@@ -5,9 +5,9 @@
 ## DP: No description.
 
 @DPATCH@
-diff -urNad mono-1.2.4~/mono.pc.in mono-1.2.4/mono.pc.in
---- mono-1.2.4~/mono.pc.in	2007-04-25 20:48:44.000000000 +0200
-+++ mono-1.2.4/mono.pc.in	2007-05-17 11:03:54.000000000 +0200
+diff -urNad mono-1.2.6~/data/mono.pc.in mono-1.2.6/data/mono.pc.in
+--- mono-1.2.6~/data/mono.pc.in	2007-11-08 23:07:46.000000000 +0100
++++ mono-1.2.6/data/mono.pc.in	2007-12-16 15:50:02.000000000 +0100
 @@ -1,5 +1,5 @@
 -prefix=${pcfiledir}/../..
 -exec_prefix=${pcfiledir}/../..
@@ -15,4 +15,4 @@ diff -urNad mono-1.2.4~/mono.pc.in mono-1.2.4/mono.pc.in
 +exec_prefix=${prefix}
  libdir=${prefix}/@reloc_libdir@
  includedir=${prefix}/include/mono-@API_VER@
- 
+ sysconfdir=@sysconfdir@
