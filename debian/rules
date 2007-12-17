@@ -218,7 +218,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Security/
 	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Security.dll
 	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Security.dll
-	# delete Mono.C5 from libmono1.0/-cil (those are already in libmono-c5-1.0--cil)
+	# delete Mono.C5 from libmono1.0/2.0-cil (those are already in libmono-c5-1.0-cil)
 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.C5/
 	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.C5.dll
 	# delete System.Windows.Forms from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
@@ -271,12 +271,9 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Messaging/
 	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Messaging.dll
 	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Messaging.dll
-
-	# delete Mono.Mozilla from libmono1.0/2.0-cil
- 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Mozilla/
-	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Mozilla/
-	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Mozilla.dll
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Mozilla.dll
+	# delete Mono.Mozulla from libmono-system1.0/2.0-cil (those are already in libmono-mozilla0.1-cil)
+	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/Mono.Mozilla.dll
+	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/Mono.Mozilla.dll
 
 	dh_link -i
 	dh_installchangelogs -i

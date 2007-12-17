@@ -64,37 +64,6 @@ Description: fast CLI JIT/AOT compiler for Mono, debugging symbols
  .
  This package contains the debugging symbols of the Mono JIT/AOT compiler.
 
-Package: mono
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: mono-common (= ${binary:Version}), mono-jit (= ${binary:Version})
-Recommends: libgdiplus, libmono-corlib1.0-cil
-Description: Mono CLI (.NET) runtime
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- mono is a metapackage containing dependencies for the runtime of Mono.
- If you do not need all of them (or try to work around X11
- dependencies), install the core packages manually: mono-jit, mono-mcs or
- mono-utils.
-
-Package: mono-devel
-Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
-Depends: mono (= ${binary:Version}), mono-mcs, mono-gac, mono-utils, mono-jay
-Suggests: mono-gmcs
-Description: Mono CLI runtime with development tools
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- mono-devel is a metapackage containing dependencies for the runtime and
- development components of Mono.
-
 Package: mono-utils
 Provides: cil-disassembler
 Section: devel
@@ -202,6 +171,7 @@ Package: libmono-mozilla0.1-cil
 Section: libs
 Architecture: all
 Depends: ${cli:Depends}
+Recommends: libgluezilla
 Description: Mono Mozilla library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -209,7 +179,8 @@ Description: Mono Mozilla library
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
  .
- This package contains the Mono Mozilla library.
+ This package contains the implementation of the WebControl class based on the
+ Mozilla engine using libgluezilla.
 
 Package: libmono-corlib1.0-cil
 Section: libs
@@ -1094,11 +1065,12 @@ Description: Mono C# 3.0 compiler for CLI 2.1 (Moonlight / Silverlight)
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
 
-Package: mono-1.0-tools-dev
+Package: mono-1.0-devel
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-mcs (<< 1.2.6-1), mono-1.0-service (<< 1.2.6-1)
+Recommends: mono-mcs
+Replaces: mono-mcs (<< 1.2.6-1)
 Description: Mono development tools for CLI 1.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1108,11 +1080,12 @@ Description: Mono development tools for CLI 1.0
  .
  This package contains various development tools for Mono targeting CLI 1.0.
 
-Package: mono-2.0-tools-dev
+Package: mono-2.0-devel
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-gmcs (<< 1.2.6-1), mono-2.0-service (<< 1.2.6-1)
+Recommends: mono-gmcs
+Replaces: mono-gmcs (<< 1.2.6-1)
 Description: Mono development tools for CLI 2.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1125,7 +1098,7 @@ Description: Mono development tools for CLI 2.0
 Package: mono-1.0-service
 Section: devel
 Architecture: all
-Depends: ${cli:Depends}, mono-1.0-tools-dev
+Depends: ${cli:Depends}
 Replaces: mono-mcs (<< 1.2.6-1)
 Description: Mono service manager for CLI 1.0
  Mono is a platform for running and developing applications based on the
@@ -1135,14 +1108,14 @@ Description: Mono service manager for CLI 1.0
  bytecode (aka assemblies), and a class library.
  .
  This package contains the mono-service manager, used to start and stop
- services.
+ services based on the System.ServiceProcess API.
 
 Package: mono-2.0-service
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-gmcs (<< 1.2.6-1), mono-2.0-tools-dev
-Description: Mono server manager for CLI 2.0
+Replaces: mono-gmcs (<< 1.2.6-1)
+Description: Mono service manager for CLI 2.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
  Mono provides a complete CLR (Common Language Runtime) including compiler and
@@ -1150,7 +1123,7 @@ Description: Mono server manager for CLI 2.0
  bytecode (aka assemblies), and a class library.
  .
  This package contains the mono-service2 manager, used to start and stop
- services.
+ services based on the System.ServiceProcess API.
 
 Package: mono-xbuild
 Section: devel
@@ -1205,3 +1178,12 @@ Description: LALR(1) parser generator oriented to Java/CLI
  and generates tables and an interpreter which recognizes the language
  defined by the grammar and executes the semantic actions as their
  corresponding phrases are recognized.
+
+Package: prj2make-sharp
+Section: devel
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, pkg-config, libmono-dev
+Description: Convert VS.NET solution files to Makefiles
+ prj2make-solution is a utility used to read a "solution" file created
+ with Visual Studio .NET and generate a usual Makefile suitable for
+ compilation with a C# compiler.

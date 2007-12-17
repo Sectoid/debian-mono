@@ -1,6 +1,5 @@
 mono (1.2.6-1~pre1) UNRELEASED; urgency=low
 
-  [ Mirco Bauer ]
   * New upstream release.
     + Invoking GetFields on emitted type doesn't crash anymore, as seen with
       nemerle. (Closes: #452585)
@@ -22,25 +21,26 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
   * debian/libmono1.0-cil.install:
     + Added Mono.Cecil.dll and Mono.Cecil.Mdb.dll.
   * debian/control:
-    + Created mono-smcs, mono-xbuild, mono-1.0-tools-dev, mono-2.0-tools-dev,
-      libmono-mozilla0.1-cil, libmono-corlib2.1-cil, libmono-system2.1-cil and
-      libmono-db2-1.0-cil packages.
-      (monolinker.exe is now shipped, Closes: #443833)
+    + Added new packages (mono-mcs/gmcs needed to be split as some parts of the
+      runtime relies on the compiler, like the XmlSerializer class):
+      - mono-mcs was split to: mono-1.0-devel and mono-1.0-service.
+        (monolinker.exe is now shipped part of mono-1.0-devel, Closes: #443833)
+      - mono-gmcs was split to: mono-2.0-devel, mono-2.0-service and
+        mono-xbuild.
+      - mono-smcs, containing the new compiler for moonlight/silverlight
+        applications.
+      - libmono-corlib2.1-cil and libmono-system2.1-cil, containing the
+        moonlight/silverlight runtime libraries.
+      - libmono-db2-1.0-cil, containing IBM DB2 database connector.
+      - libmono-mozilla0.1-cil, containing the WebControl implementation using
+        the Mozilla engine.
+      - prj2make-sharp, upstream moved distribution of prj2make-sharp to Mono.
   * debian/update-shlibs.local.sh:
     + Wrote this script to ease updating the debian/shlibs.local file.
   * debian/shlibs.local:
     + Updated
 
-  [ Sebastian Dröge ]
-  * debian/rules:
-    + Don't ship Mono.Mozilla in libmono2.0-cil.
-  * debian/control,
-    debian/mono-1.0-service.install,
-    debian/mono-2.0-service.install:
-    + Make the old mono-[12].0-service packages transitional packages
-      and ship the binaries in mono-[12].0-tools-dev.
-
- -- Sebastian Dröge <slomo@debian.org>  Mon, 17 Dec 2007 08:53:37 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 16 Dec 2007 15:44:33 +0100
 
 mono (1.2.5.1-2) unstable; urgency=high
 
