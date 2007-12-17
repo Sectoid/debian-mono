@@ -1098,7 +1098,7 @@ Package: mono-1.0-tools-dev
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-mcs (<< 1.2.6-1)
+Replaces: mono-mcs (<< 1.2.6-1), mono-1.0-service (<< 1.2.6-1)
 Description: Mono development tools for CLI 1.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1112,7 +1112,7 @@ Package: mono-2.0-tools-dev
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-gmcs (<< 1.2.6-1)
+Replaces: mono-gmcs (<< 1.2.6-1), mono-2.0-service (<< 1.2.6-1)
 Description: Mono development tools for CLI 2.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1125,7 +1125,7 @@ Description: Mono development tools for CLI 2.0
 Package: mono-1.0-service
 Section: devel
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${cli:Depends}, mono-1.0-tools-dev
 Replaces: mono-mcs (<< 1.2.6-1)
 Description: Mono service manager for CLI 1.0
  Mono is a platform for running and developing applications based on the
@@ -1141,7 +1141,7 @@ Package: mono-2.0-service
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Replaces: mono-gmcs (<< 1.2.6-1)
+Replaces: mono-gmcs (<< 1.2.6-1), mono-2.0-tools-dev
 Description: Mono server manager for CLI 2.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

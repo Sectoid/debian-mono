@@ -1,5 +1,6 @@
 mono (1.2.6-1~pre1) UNRELEASED; urgency=low
 
+  [ Mirco Bauer ]
   * New upstream release.
     + Invoking GetFields on emitted type doesn't crash anymore, as seen with
       nemerle. (Closes: #452585)
@@ -30,7 +31,16 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
   * debian/shlibs.local:
     + Updated
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 16 Dec 2007 15:44:33 +0100
+  [ Sebastian Dröge ]
+  * debian/rules:
+    + Don't ship Mono.Mozilla in libmono2.0-cil.
+  * debian/control,
+    debian/mono-1.0-service.install,
+    debian/mono-2.0-service.install:
+    + Make the old mono-[12].0-service packages transitional packages
+      and ship the binaries in mono-[12].0-tools-dev.
+
+ -- Sebastian Dröge <slomo@debian.org>  Mon, 17 Dec 2007 08:53:37 +0100
 
 mono (1.2.5.1-2) unstable; urgency=high
 

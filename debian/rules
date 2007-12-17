@@ -272,6 +272,12 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Messaging.dll
 	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Messaging.dll
 
+	# delete Mono.Mozilla from libmono1.0/2.0-cil
+ 	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Mozilla/
+	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Mozilla/
+	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Mozilla.dll
+	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Mozilla.dll
+
 	dh_link -i
 	dh_installchangelogs -i
 	dh_installdocs -i
