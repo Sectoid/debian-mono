@@ -35,6 +35,8 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
       - libmono-mozilla0.1-cil, containing the WebControl implementation using
         the Mozilla engine.
       - prj2make-sharp, upstream moved distribution of prj2make-sharp to Mono.
+    + Removed mono and mono-devel meta packages, as they are not useful for
+      anyone.
   * debian/update-shlibs.local.sh:
     + Wrote this script to ease updating the debian/shlibs.local file.
   * debian/shlibs.local:
