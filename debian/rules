@@ -139,6 +139,21 @@ install-indep-stamp:
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp && \
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0
 	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_1
+	# copy missing 2.0 manpage
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/gmcs.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/smcs.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/monop.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/monop2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/resgen.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/resgen2.1
 	touch install-indep-stamp
 
 binary: binary-arch binary-indep
@@ -155,11 +170,19 @@ binary-indep: build-arch install-arch build-indep install-indep
 	rm -f debian/tmp/usr/bin/nunit*
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
+	# don't want docs of bundled libgc
+	rm -rf debian/tmp/usr/share/libgc-mono
+	# never ever install cecil.pc! mono ships an internal version for GAC only
+	rm -f debian/tmp/usr/lib/pkgconfig/cecil.pc
+	# Mono.Mozilla.dll is linked with CLI 2.0, thus the symlink in 1.0/ doesn't make sense
+	rm -f debian/tmp/usr/lib/mono/1.0/Mono.Mozilla.dll
+
 	# that exclude list are programs for arch-dep packages
-	dh_install -i -Xbin/monodiet -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+	dh_install -i --list-missing -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
 
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
+
 	# Build the late-GAC tool,
 	# using the built Mono runtime from debian/tmp
 	# (thus the install-arch target dependency!)
@@ -167,6 +190,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
 	  /out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
+
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data1.0-cil/usr/lib/mono/gac/System.Data/1.0.*/
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data2.0-cil/usr/lib/mono/gac/System.Data/2.0.*/
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing/1.0.*/
@@ -181,96 +205,6 @@ binary-indep: build-arch install-arch build-indep install-indep
 	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/2.0.*/
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	
-	# delete gacutil from mono-1.0-tools-dev (this is already in mono-gac)
-	rm debian/mono-1.0-tools-dev/usr/lib/mono/1.0/gacutil.exe*
-	# delete mjs from mono-1.0-tools-dev (this is already in mono-mjs)
-	rm debian/mono-1.0-tools-dev/usr/lib/mono/1.0/mjs.exe*
-	# delete mono-service from mono-1.0-tools-dev (this is already in mono-1.0-service)
-	rm debian/mono-1.0-tools-dev/usr/lib/mono/1.0/mono-service.exe*
-	# delete mono-service from mono-2.0-tools-dev (this is already in mono-2.0-service)
-	rm debian/mono-2.0-tools-dev/usr/lib/mono/2.0/mono-service.exe*
-	# delete Mono.Data.Tds from libmono1.0/2.0-cil (those are already in libmono-data-tds*-cil)
-	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
-	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Tds/
-	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.Tds.dll
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.Tds.dll
-	# delete Mono.Data.SqliteClient from libmono1.0/2.0-cil (those are already in libmono-sqlite*-cil)
-	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/
-	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/
-	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.SqliteClient.dll
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.SqliteClient.dll
-	# delete Mono.Data.Sqlite from libmono1.0/2.0-cil (those are already in libmono-sqlite*-cil)
-	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/
-	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/
-	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Data.Sqlite.dll
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Data.Sqlite.dll
-	# delete Mono.Cairo from libmono1.0/2.0-cil (those are already in libmono-cairo*-cil)
-	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Cairo/
-	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Cairo/
-	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Cairo.dll
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Cairo.dll
-	# delete Mono.Security from libmono1.0/2.0-cil (those are already in libmono-security*-cil)
-	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.Security/
-	rm -r debian/libmono2.0-cil/usr/lib/mono/gac/Mono.Security/
-	rm debian/libmono1.0-cil/usr/lib/mono/1.0/Mono.Security.dll
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.Security.dll
-	# delete Mono.C5 from libmono1.0/2.0-cil (those are already in libmono-c5-1.0-cil)
-	rm -r debian/libmono1.0-cil/usr/lib/mono/gac/Mono.C5/
-	rm debian/libmono2.0-cil/usr/lib/mono/2.0/Mono.C5.dll
-	# delete System.Windows.Forms from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Windows.Forms/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Windows.Forms/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Windows.Forms.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Windows.Forms.dll
-	# delete System.Drawing.Design from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing.Design/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Drawing.Design/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Drawing.Design.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Drawing.Design.dll
-	# delete System.Design from libmono-system1.0/2.0-cil (those are already in libmono-winforms*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Design/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Design/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Design.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Design.dll
-	# delete System.Data.OracleClient from libmono-system1.0/2.0-cil (those are already in libmono-oracle*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Data.OracleClient/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Data.OracleClient/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Data.OracleClient.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Data.OracleClient.dll
-	# delete System.DirectoryServices from libmono-system1.0/2.0-cil (those are already in libmono-system-ldap*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.DirectoryServices/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.DirectoryServices/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.DirectoryServices.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.DirectoryServices.dll
-	# delete System.Data from libmono-system1.0/2.0-cil (those are already in libmono-system-data*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Data/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Data/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Data.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Data.dll
-	# delete System.Web from libmono-system1.0/2.0-cil (those are already in libmono-system-web*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Web/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Web/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Web.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Web.dll
-	# delete System.Web.Services from libmono-system1.0/2.0-cil (those are already in libmono-system-web*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Web.Services/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Web.Services/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Web.Services.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Web.Services.dll
-	# delete System.Runtime from libmono-system1.0/2.0-cil (those are already in libmono-system-runtime*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Runtime.*/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Runtime.*/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Runtime.*.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Runtime.*.dll
-	# delete System.Messaging from libmono-system1.0/2.0-cil (those are already in libmono-system-messaging*-cil)
-	rm -r debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Messaging/
-	rm -r debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Messaging/
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/System.Messaging.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/System.Messaging.dll
-	# delete Mono.Mozulla from libmono-system1.0/2.0-cil (those are already in libmono-mozilla0.1-cil)
-	rm debian/libmono-system1.0-cil/usr/lib/mono/1.0/Mono.Mozilla.dll
-	rm debian/libmono-system2.0-cil/usr/lib/mono/2.0/Mono.Mozilla.dll
-
 	dh_link -i
 	dh_installchangelogs -i
 	dh_installdocs -i

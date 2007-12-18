@@ -6,6 +6,11 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
   * debian/rules:
     + Updated MONO_API to 1.2.6
     + Enabled moonlight support in configure call.
+    + Removed all "rm debian/tmp/usr/lib/mono/gac/"... calls, instead list
+      libraries explicitly in .install files.
+      (this is pretty error prone when upstream introduces new libraries and
+       the rm list became way too long)
+    + Copy various 1.0 manpages to 2.0 manpages for missing 2.0 manpages.
   * debian/control:
     + Added new packages (mono-mcs/gmcs needed to be split as some parts of the
       runtime relies on the compiler, like the XmlSerializer class):
@@ -26,6 +31,8 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
     + libmono-corlib{1,2}.0-cil recommends libmono-i18n{1,2}.0-cil now.
     + Removed mono and mono-devel meta packages, as they are not useful for
       anyone.
+  * debian/libmono-system2.0-cil.install:
+    + Added System.Web.Extensions.dll and System.Web.Extensions.Design.dll
   * debian/patches/00list:
     + Disabled armel_fix_configure_fpu_check.dpatch
       (FPU check is fixed upstream)

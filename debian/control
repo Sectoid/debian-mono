@@ -1022,9 +1022,9 @@ Description: Mono JScript compiler
 Package: mono-mcs
 Section: devel
 Architecture: all
+Provides: c-sharp-compiler
 Depends: ${cli:Depends}
 Recommends: pkg-config
-Provides: c-sharp-compiler, resource-file-generator, assembly-linker, strong-name-tool
 Description: Mono C# compiler for CLI 1.1
  This is the Mono C# (C-Sharp) compiler, a platform-independent compiler which
  produces CIL (Common Intermediate Language) binary executables.
@@ -1039,10 +1039,10 @@ Description: Mono C# compiler for CLI 1.1
 Package: mono-gmcs
 Section: devel
 Architecture: all
+Provides: c-sharp-2.0-compiler, c-sharp-3.0-compiler
 Depends: ${cli:Depends}
 Recommends: pkg-config
 Replaces: mono-mcs (>= 1.1.10), mono-mcs (<= 1.1.13)
-Provides: c-sharp-2.0-compiler, c-sharp-3.0-compiler
 Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
  This is the Mono C# (C-Sharp) 2.0 and C# 3.0 compiler, a platform-independent
  compiler which produces CIL (Common Intermediate Language) binary executables.
@@ -1098,6 +1098,7 @@ Description: Mono C# 3.0 compiler for CLI 2.1 (Moonlight / Silverlight)
 Package: mono-1.0-devel
 Section: devel
 Architecture: all
+Provides: resource-file-generator, assembly-linker, strong-name-tool
 Depends: ${cli:Depends}
 Recommends: mono-mcs
 Replaces: mono-mcs (<< 1.2.6-1)
