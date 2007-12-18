@@ -187,6 +187,7 @@ Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6-2), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
+Recommends: libmono-i18n1.0-cil
 Description: Mono core library (1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -202,6 +203,7 @@ Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
+Recommends: libmono-i18n2.0-cil
 Description: Mono core library (2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -225,6 +227,34 @@ Description: Mono core library (2.1)
  .
  This package contains the Core Library (mscorlib.dll) of Mono which is the
  glue between the BCL (Base Class Libraries) and the JIT.
+
+Package: libmono-i18n1.0-cil
+Section: libs
+Architecture: all
+Replaces: libmono-corlib1.0-cil (<< 1.2.6-1)
+Depends: ${cli:Depends}
+Description: Mono I18N libraries (1.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains I18N libraries containing code pages definitions.
+
+Package: libmono-i18n2.0-cil
+Section: libs
+Architecture: all
+Replaces: libmono-corlib2.0-cil (<< 1.2.6-1)
+Depends: ${cli:Depends}
+Description: Mono I18N libraries (2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains I18N libraries containing code pages definitions.
 
 Package: libmono-system1.0-cil
 Section: libs

@@ -1,0 +1,9 @@
+debian/tmp/usr/bin/xbuild
+debian/tmp/usr/lib/mono/2.0/xbuild.exe*
+debian/tmp/usr/lib/mono/2.0/xbuild.rsp
+debian/tmp/usr/lib/mono/2.0/Microsoft.Build.xsd
+debian/tmp/usr/lib/mono/2.0/Microsoft.CSharp.targets
+debian/tmp/usr/lib/mono/2.0/Microsoft.Common.tasks  
+debian/tmp/usr/lib/mono/2.0/Microsoft.Common.targets
+debian/tmp/usr/lib/mono/2.0/Microsoft.VisualBasic.targets
+debian/tmp/usr/lib/mono/2.0/MSBuild/

@@ -1,3 +1,1 @@
-debian/tmp/usr/lib/mono/gac/I18N*/1.0.*/
-debian/tmp/usr/lib/mono/1.0/I18N*.dll
 debian/tmp/usr/lib/mono/1.0/mscorlib.dll*

@@ -5,21 +5,7 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
       nemerle. (Closes: #452585)
   * debian/rules:
     + Updated MONO_API to 1.2.6
-    + Enabled moonlight in configure call.
-  * debian/patches/00list:
-    + Disabled armel_fix_configure_fpu_check.dpatch
-      (FPU check is fixed upstream)
-  * debian/patches/kfreebsd_support.dpatch:
-    + Updated (and re-autoconfed)
-  * debian/patches/fix-mono.pc.in.dpatch:
-    + Updated
-  * debian/patches/ppc_fix_mono_class_proxy_vtable_r84948.dpatch:
-    + Removed, already applied upstream.
-  * debian/patches/fix_Mono.Cecil_linkage.dpatch:
-    + Link Mono.Cecil(.Mdb) against CLI 1.0 instead of 2.0, patch taken from
-      upstream.
-  * debian/libmono1.0-cil.install:
-    + Added Mono.Cecil.dll and Mono.Cecil.Mdb.dll.
+    + Enabled moonlight support in configure call.
   * debian/control:
     + Added new packages (mono-mcs/gmcs needed to be split as some parts of the
       runtime relies on the compiler, like the XmlSerializer class):
@@ -34,9 +20,26 @@ mono (1.2.6-1~pre1) UNRELEASED; urgency=low
       - libmono-db2-1.0-cil, containing IBM DB2 database connector.
       - libmono-mozilla0.1-cil, containing the WebControl implementation using
         the Mozilla engine.
+      - libmono-i18n1.0-cil and libmono-i18n2.0-cil, containing I18N libraries
+        with code page definitions, moved from libmono-corlib{1,2}.0-cil.
       - prj2make-sharp, upstream moved distribution of prj2make-sharp to Mono.
+    + libmono-corlib{1,2}.0-cil recommends libmono-i18n{1,2}.0-cil now.
     + Removed mono and mono-devel meta packages, as they are not useful for
       anyone.
+  * debian/patches/00list:
+    + Disabled armel_fix_configure_fpu_check.dpatch
+      (FPU check is fixed upstream)
+  * debian/patches/kfreebsd_support.dpatch:
+    + Updated (and re-autoconfed)
+  * debian/patches/fix-mono.pc.in.dpatch:
+    + Updated
+  * debian/patches/ppc_fix_mono_class_proxy_vtable_r84948.dpatch:
+    + Removed, already applied upstream.
+  * debian/patches/fix_Mono.Cecil_linkage.dpatch:
+    + Link Mono.Cecil(.Mdb) against CLI 1.0 instead of 2.0, patch taken from
+      upstream.
+  * debian/libmono1.0-cil.install:
+    + Added Mono.Cecil.dll and Mono.Cecil.Mdb.dll.
   * debian/update-shlibs.local.sh:
     + Wrote this script to ease updating the debian/shlibs.local file.
   * debian/shlibs.local:
