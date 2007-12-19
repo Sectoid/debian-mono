@@ -1,39 +1,60 @@
-This package was re-debianized and merged with "mcs" by 
+This package was re-debianized and merged with the "mcs" source package by
 Mirco Bauer <meebey@meebey.net>.
 
 This package was debianized by Alp Toker <alp@atoker.com> using the Monodeb
 build system.
 
-It was downloaded from http://www.mono-project.com/Downloads
+It was downloaded from:
+http://www.mono-project.com/Downloads
 
 Upstream Authors:
 Miguel de Icaza (miguel@ximian.com)
 Paolo Molaro (lupus@ximian.com)
 Dietmar Maurer (dietmar@ximian.com)
 
-C# Compiler:
-        Miguel de Icaza (miguel@ximian.com)
+mcs/mcs/* (C# Compiler)
+Miguel de Icaza (miguel@ximian.com)
 
-Class Libraries:
-        Patrik Torstensson <patrik.torstensson@labs2.com>
-        Gaurav Vaish <gvaish@iitk.ac.in>
-        Jeff Stedfast (fejj@ximian.com)
-        Joe Shaw (joe@ximian.com)
-        Miguel de Icaza (miguel@ximian.com)
-        Sean MacIsaac (macisaac@ximian.com)
-        Vladimir Vukicevic (vladimir@ximian.com)
-        Garrett Rooney (rooneg@electricjellyfish.net)
-        Bob Smith (bob@thestuff.net)
-        John Barnette (jbarn@httcb.net)
+mcs/class/* (Class Libraries)
+Patrik Torstensson <patrik.torstensson@labs2.com>
+Gaurav Vaish <gvaish@iitk.ac.in>
+Jeff Stedfast (fejj@ximian.com)
+Joe Shaw (joe@ximian.com)
+Miguel de Icaza (miguel@ximian.com)
+Sean MacIsaac (macisaac@ximian.com)
+Vladimir Vukicevic (vladimir@ximian.com)
+Garrett Rooney (rooneg@electricjellyfish.net)
+Bob Smith (bob@thestuff.net)
+John Barnette (jbarn@httcb.net)
 
 Copyright:
 
+WRITE ME!
+
+-------------------------------------------------------------------------------
+
+mcs/class/System.Web.Extensions/System.Web.Script.Serialization/JSON/*
+
+Creative Commons?!?
+
+CLEARIFY ME!
+
+-------------------------------------------------------------------------------
+
+mcs/mcs/*
+
 The C# Compiler is released under the terms of the GNU GPL.
+
 On Debian systems, the complete text of the GNU General Public
 License can be found in /usr/share/common-licenses/GPL file.
 
+-------------------------------------------------------------------------------
+
+mcs/class/*
+
 The class libraries are released under the terms of the MIT X11
-license:
+
+MIT/X11 License
 
 Copyright (c) 2001-2005 Novell
 
@@ -60,10 +81,90 @@ The Mono runtime and the Mono C# Compiler are also available under a
 proprietary license for those who can not use the LGPL and the GPL in
 their code.
 
-The package contains an additional tool called binfmt-detector-cli
-(Upstream author: Ilya Konstantinov <future@shiny.co.il>). 
+-------------------------------------------------------------------------------
 
-Copyright:
+mcs/class/MicrosoftAjaxLibrary/*
 
+Microsoft Permissive License (Ms-PL)
+
+This license governs use of the accompanying software. If you use the software,
+you accept this license. If you do not accept the license, do not use the
+software.
+
+1. Definitions
+
+The terms "reproduce," "reproduction," "derivative works," and "distribution"
+have the same meaning here as under U.S. copyright law.
+
+A "contribution" is the original software, or any additions or changes to the
+software.
+
+A "contributor" is any person that distributes its contribution under this
+license.
+
+ "Licensed patents" are a contributor's patent claims that read directly on its
+ contribution.
+ 
+2. Grant of Rights
+
+(A) Copyright Grant- Subject to the terms of this license, including the license
+conditions and limitations in section 3, each contributor grants you a
+non-exclusive, worldwide, royalty-free copyright license to reproduce its
+contribution, prepare derivative works of its contribution, and distribute its
+ contribution or any derivative works that you create.
+
+(B) Patent Grant- Subject to the terms of this license, including the license
+conditions and limitations in section 3, each contributor grants you a
+non-exclusive, worldwide, royalty-free license under its licensed patents to
+make, have made, use, sell, offer for sale, import, and/or otherwise dispose of
+its contribution in the software or derivative works of the contribution in the
+software.
+ 
+3. Conditions and Limitations
+
+(A) No Trademark License- This license does not grant you rights to use any
+contributors' name, logo, or trademarks.
+
+(B) If you bring a patent claim against any contributor over patents that you
+claim are infringed by the software, your patent license from such contributor
+to the software ends automatically.
+
+(C) If you distribute any portion of the software, you must retain all
+copyright, patent, trademark, and attribution notices that are present in the
+software.
+
+(D) If you distribute any portion of the software in source code form, you may
+do so only under this license by including a complete copy of this license with
+your distribution. If you distribute any portion of the software in compiled or
+object code form, you may only do so under a license that complies with this
+license.
+
+(E) The software is licensed "as-is." You bear the risk of using it. The
+contributors give no express warranties, guarantees or conditions. You may have
+additional consumer rights under your local laws which this license cannot
+change. To the extent permitted under your local laws, the contributors exclude
+the implied warranties of merchantability, fitness for a particular purpose and
+non-infringement.
+
+(F) If you distribute the software or derivative works with programs you
+develop, you agree to indemnify, defend, and hold harmless all contributors from
+any claims, including attorneys' fees, related to the distribution or use of
+your programs.  For clarity, you have no such obligations to a contributor for
+any claims based solely on the unmodified contributions of that contributor.
+
+(G) If you make any additions or changes to the original software, you may only
+distribute them under a new namespace.  In addition, you will clearly identify
+your changes or additions as your own.
+
+-------------------------------------------------------------------------------
+
+debian/detector/*
+
+The source package contains an additional tool called binfmt-detector-cli.
+
+Author:
+Ilya Konstantinov <future@shiny.co.il>
+
+License:
 Distributed on the terms of the GNU General Public License which can
 be found in the file /usr/share/common-licenses/GPL on Debian systems.
