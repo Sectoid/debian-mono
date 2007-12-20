@@ -1,4 +1,4 @@
-mono (1.2.6+dfsg-1~pre1) UNRELEASED; urgency=low
+mono (1.2.6+dfsg-1) unstable; urgency=low
 
   * DFSG version of Mono 1.2.6
     + Deleted mcs/class/System.Web.Extensions/System.Web.Script.Serialization/
