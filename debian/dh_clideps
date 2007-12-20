@@ -212,6 +212,7 @@ close($fh);
 
 our $needs_net_1_0;
 our $needs_net_2_0;
+our $needs_net_2_1;
 
 foreach my $package (@{$dh{DOPACKAGES}}) {
   my $tmp = tmpdir($package);

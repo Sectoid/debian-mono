@@ -15,6 +15,7 @@ mono (1.2.6+dfsg-1~pre1) UNRELEASED; urgency=low
       (this is pretty error prone when upstream introduces new libraries and
        the rm list became way too long)
     + Copy various 1.0 manpages to 2.0 manpages for missing 2.0 manpages.
+    + Remove +dfsg part in upstream version detection (UPVERSION variable).
   * debian/control:
     + Added new packages (mono-mcs/gmcs needed to be split as some parts of the
       runtime relies on the compiler, like the XmlSerializer class):

@@ -1049,25 +1049,25 @@ Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
  The gmcs compiler supports two different featuresets (C# versions).
  .
  With C# 2.0 (which is the default) it supports:
- - generics
- - iterators (yield)
- - nullable value types
- - partial types
- - anonymous methods
- - static classes
- - coalesce operator: ??
+  - generics
+  - iterators (yield)
+  - nullable value types
+  - partial types
+  - anonymous methods
+  - static classes
+  - coalesce operator: ??
  .
  With C# 3.0 it supports:
- - Language Integrated Query (LINQ)
- - object initializers
- - collection initializers
- - anonymous types
- - local variable type inference
- - implicitly-typed arrays
- - lambda expressions
- - automatic properties
- - extension methods
- - partial methods
+  - Language Integrated Query (LINQ)
+  - object initializers
+  - collection initializers
+  - anonymous types
+  - local variable type inference
+  - implicitly-typed arrays
+  - lambda expressions
+  - automatic properties
+  - extension methods
+  - partial methods
  .
  This compiler targets the CLI 2.0 runtime version.
  .
@@ -1080,7 +1080,7 @@ Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
 Package: mono-smcs
 Section: devel
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${cli:Depends}, libmono-corlib2.1-cil, libmono-system2.1-cil
 Recommends: pkg-config
 Description: Mono C# 3.0 compiler for CLI 2.1 (Moonlight / Silverlight)
  This is a special C# (C-Sharp) 3.0 compiler for Moonlight (Silverlight)
