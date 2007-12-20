@@ -1,6 +1,10 @@
-mono (1.2.6-1~pre2) UNRELEASED; urgency=low
+mono (1.2.6+dfsg-1~pre1) UNRELEASED; urgency=low
 
-  * New upstream release.
+  * DFSG version of Mono 1.2.6
+    + Deleted mcs/class/System.Web.Extensions/System.Web.Script.Serialization/
+      JSON/* as those source files are licensed under Creative Commons
+      Attribution 2.5 which is not DFSG-free.
+  * New upstream release
     + Invoking GetFields on emitted type doesn't crash anymore, as seen with
       nemerle. (Closes: #452585)
   * debian/rules:
@@ -31,8 +35,8 @@ mono (1.2.6-1~pre2) UNRELEASED; urgency=low
     + libmono-corlib{1,2}.0-cil recommends libmono-i18n{1,2}.0-cil now.
     + Removed mono and mono-devel meta packages, as they are not useful for
       anyone.
-  * debian/libmono-system2.0-cil.install:
-    + Added System.Web.Extensions.dll and System.Web.Extensions.Design.dll
+  * debian/dh_clideps:
+    + Synced from cli-common 0.5.3, needed for CLI 2.1 support.
   * debian/patches/00list:
     + Disabled armel_fix_configure_fpu_check.dpatch
       (FPU check is fixed upstream)

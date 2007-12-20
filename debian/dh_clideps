@@ -221,6 +221,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
   my $found_exe = 0;
   $needs_net_1_0 = 0;
   $needs_net_2_0 = 0;
+  $needs_net_2_1 = 0;
   
   # for idempotency
   delsubstvar($package, "cli:Depends");
@@ -255,7 +256,9 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
   my $vm_ref = "";
   if (!defined($dh{R_FLAG}) && $found_exe) {
     if ($clr eq "mono") {
-      if ($needs_net_2_0) {
+      if ($needs_net_2_1) {
+        $vm_ref = "mono-runtime (>= 1.2.6), ";
+      } elsif ($needs_net_2_0) {
         $vm_ref = "mono-runtime (>= 1.1.8.1), ";
       } elsif ($needs_net_1_0) {
         $vm_ref = "mono-runtime (>= 1.0), ";
@@ -268,7 +271,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
   }
     
   if (-f "$tmp/usr/share/cli-common/packages.d/$package.installcligac") {
-    $vm_ref .= "cli-common (>= 0.4.0), ";
+    $vm_ref .= "cli-common (>= 0.5.1), ";
   }
     
     #$deps .= join(", ", "",
@@ -481,6 +484,8 @@ sub resolveClilibRefs {
           $needs_net_2_0 = 1;
         } elsif ($ver eq "2.0.0.0") {
           $needs_net_2_0 = 1;
+        } elsif ($ver eq "2.1.0.0") {
+          $needs_net_2_1 = 1;
         } else {
           warning("Warning: Unknown mscorlib version: $ver!");
         }

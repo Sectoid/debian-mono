@@ -29,16 +29,6 @@ John Barnette (jbarn@httcb.net)
 
 Copyright:
 
-WRITE ME!
-
--------------------------------------------------------------------------------
-
-mcs/class/System.Web.Extensions/System.Web.Script.Serialization/JSON/*
-
-Creative Commons?!?
-
-CLEARIFY ME!
-
 -------------------------------------------------------------------------------
 
 mcs/mcs/*
@@ -155,6 +145,15 @@ any claims based solely on the unmodified contributions of that contributor.
 (G) If you make any additions or changes to the original software, you may only
 distribute them under a new namespace.  In addition, you will clearly identify
 your changes or additions as your own.
+
+-------------------------------------------------------------------------------
+
+mcs/class/System.Web.Extensions/System.Web.Script.Serialization/JSON/*
+
+Creative Commons Attribution 2.5 License
+
+As that license is not conform with the DFSG, those source files were deleted
+from the tarball.
 
 -------------------------------------------------------------------------------
 

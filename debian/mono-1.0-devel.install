@@ -14,7 +14,6 @@ debian/tmp/usr/bin/macpack
 debian/tmp/usr/bin/mkbundle
 debian/tmp/usr/bin/mono-api-diff
 debian/tmp/usr/bin/mono-api-info
-debian/tmp/usr/bin/mono-service
 debian/tmp/usr/bin/mono-shlib-cop
 debian/tmp/usr/bin/mono-xmltool
 debian/tmp/usr/bin/monop
