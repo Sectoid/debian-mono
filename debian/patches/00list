@@ -4,6 +4,5 @@ console-no-utf8-bom
 firebird-fbclient
 fix-mono.pc.in
 fix-mono-cairo.pc.in
-g_thread_init
 fix_BigInteger_overflow_CVE-2007-5197
 fix_Mono.Cecil_linkage

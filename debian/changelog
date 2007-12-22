@@ -14,6 +14,8 @@ mono (1.2.6+dfsg-2) unstable; urgency=low
   * debian/libmono-system{1,2}.0-cil.clideps-override:
     + Added suggests libmono-winforms{1,2}.0-cil, doesn't make sense to pull in
       System.Windows.Forms for designer classes (which are only used by VS.NET)
+  * debian/patches/g_thread_init.dpatch:
+    + Dropped, already applied upstream.
         
  -- Mirco Bauer <meebey@debian.org>  Fri, 21 Dec 2007 01:35:40 +0100
 
