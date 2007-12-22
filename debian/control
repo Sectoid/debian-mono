@@ -8,7 +8,7 @@ Build-Depends-Indep: libgamin-dev, libcupsys2-dev, librsvg2-dev, libgtk2.0-dev, 
 Standards-Version: 3.7.2
 
 Package: mono-common
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: binfmt-support (>= 1.1.2)
 Description: common files for Mono
@@ -23,7 +23,7 @@ Description: common files for Mono
 
 Package: mono-runtime
 Provides: cli-runtime
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: mono-jit (= ${binary:Version}), mono-gac (= ${source:Version})
 Description: Mono runtime
  Mono is a platform for running and developing applications based on the
@@ -36,7 +36,7 @@ Description: Mono runtime
 
 Package: mono-jit
 Provides: cli-virtual-machine
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${shlibs:Depends}, ${misc:Depends}, mono-common (= ${binary:Version})
 Description: fast CLI JIT/AOT compiler for Mono
  Mono is a platform for running and developing applications based on the
@@ -52,7 +52,7 @@ Description: fast CLI JIT/AOT compiler for Mono
 
 Package: mono-jit-dbg
 Priority: extra
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: mono-jit (= ${binary:Version})
 Recommends: gdb
 Description: fast CLI JIT/AOT compiler for Mono, debugging symbols
@@ -67,7 +67,7 @@ Description: fast CLI JIT/AOT compiler for Mono, debugging symbols
 Package: mono-utils
 Provides: cil-disassembler
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: mono-mcs (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}, libmono0 (<< ${mono:next-upversion}), libmono-corlib1.0-cil
 Suggests: libmono-corlib2.0-cil
@@ -83,7 +83,7 @@ Description: Mono utilities
 
 Package: libmono0
 Section: libs
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: libmono-dev (<= 1.1.6-4)
 Conflicts: mono-utils (<< 1.2.3.1-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -100,7 +100,7 @@ Description: libraries for the Mono JIT
 Package: libmono0-dbg
 Priority: extra
 Section: libdevel
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: libmono0 (= ${binary:Version})
 Recommends: gdb
 Description: libraries for the Mono JIT, debugging symbols
@@ -114,7 +114,7 @@ Description: libraries for the Mono JIT, debugging symbols
 
 Package: libmono-dev
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: libmono0 (= ${binary:Version}), libglib2.0-dev
 Description: libraries for the Mono JIT - Development files
  Header files and static libraries for libmono and libmono-profiler-conv.
@@ -1116,7 +1116,7 @@ Section: devel
 Architecture: all
 Depends: ${cli:Depends}
 Recommends: mono-gmcs
-Replaces: mono-gmcs (<< 1.2.6-1)
+Replaces: mono-gmcs (<< 1.2.6-1), mono-common (<< 1.2.6-2)
 Description: Mono development tools for CLI 2.0
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1195,7 +1195,7 @@ Description: Mono GAC tool
 
 Package: mono-jay
 Section: devel
-Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel
+Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: LALR(1) parser generator oriented to Java/CLI
  Mono is a platform for running and developing applications based on the

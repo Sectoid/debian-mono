@@ -1,3 +1,22 @@
+mono (1.2.6+dfsg-2) unstable; urgency=low
+
+  * The "Welcome SPARC and S390 Users!" release
+  * debian/mono-2.0-devel.install
+    debian/mono-2.0-devel.manpages:
+    + Added mconfig
+  * debian/control:
+    + Added sparc and s390 to Architecture fields. (Closes: #332511, #377584)
+      (as the last 3 feature-releases of Mono were able to build on sparc, and
+       upstream is getting sparc port contributions again, it should be safe
+       to enable sparc now)
+    + Added Replaces << mono-common 1.2.6+dfsg-2 to mono-2.0-devel, as
+      /etc/mono/mconfig/ was moved to mono-2.0-devel.
+  * debian/libmono-system{1,2}.0-cil.clideps-override:
+    + Added suggests libmono-winforms{1,2}.0-cil, doesn't make sense to pull in
+      System.Windows.Forms for designer classes (which are only used by VS.NET)
+        
+ -- Mirco Bauer <meebey@debian.org>  Fri, 21 Dec 2007 01:35:40 +0100
+
 mono (1.2.6+dfsg-1) unstable; urgency=low
 
   * DFSG version of Mono 1.2.6

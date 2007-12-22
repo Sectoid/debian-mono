@@ -4,3 +4,4 @@ suggests libx11-6
 suggests libasound2
 suggests libcupsys2
 suggests libgdiplus
+suggests libmono-winforms2.0-cil

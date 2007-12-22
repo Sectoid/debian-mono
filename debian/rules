@@ -27,6 +27,7 @@ ifeq ($(DEB_BUILD_ARCH_OS), kfreebsd)
 endif
 
 ifeq ($(DEB_BUILD_ARCH), i386)
+#	MAKE_FLAGS += RUNTIME=$(CURDIR)/debian/mono-aot-wrapper
 	CONF_FLAGS += --with-sigaltstack=yes
 else ifeq ($(DEB_BUILD_ARCH), amd64)
 	CONF_FLAGS += --with-sigaltstack=yes
@@ -86,12 +87,13 @@ build-arch-stamp: cli-wrapper
 	  $(MAKE)
 	cd debian/detector && \
 	  $(MAKE)
+	#debian/mono-aot-bootstrap
 	touch build-arch-stamp
 
 build-indep: configure-indep build-indep-stamp
 build-indep-stamp:
 	dh_testdir
-	LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false
+	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
 	chmod +x debian/dh_makeclilibs debian/dh_clideps debian/dh_clistrip debian/dh_clifixperms debian/dh_monoaot
 	touch build-indep-stamp
 
@@ -110,7 +112,9 @@ clean-patched:
 	rm -f install-*-stamp
 	-$(MAKE) distclean
 	# distclean misses stuff
-	find -name "*.mdb" | xargs -r rm -f
+	find -name "*.mdb" -delete
+	# AOT stuff we created using mono-aot-wrapper/mono-aot-bootstrap
+	find mcs/class/lib -name "*.so" -delete
 	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper debian/MonoGetAssemblyName.exe
 	rm -rf $(MONO_SHARED_DIR)/.wapi
