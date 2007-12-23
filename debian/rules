@@ -249,7 +249,7 @@ binary-arch: build-arch install-arch
 	cd debian/detector && \
 	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
 	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
-	install -o root -g root -m 644 debian/cli.binfmt \
+	install -D -m 644 -o root -g root debian/cli.binfmt \
 	  debian/mono-common/usr/share/binfmts/cli
 
 	dh_install -s

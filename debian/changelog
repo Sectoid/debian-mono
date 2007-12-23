@@ -1,3 +1,12 @@
+mono (1.2.6+dfsg-3) UNRELEASED; urgency=low
+
+  * debian/rules:
+    + Pass -D to cli.binfmt install call, makes it not failing on archs that
+      are not listed in debian/control.
+      (thanks to Emanuele Rocca <ema@debian.org> for the hint)
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 23 Dec 2007 00:42:15 +0100
+
 mono (1.2.6+dfsg-2) unstable; urgency=low
 
   * The "Welcome SPARC and S390 Users!" release
