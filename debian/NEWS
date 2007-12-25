@@ -2,7 +2,7 @@ mono (1.2.2.1-1) unstable; urgency=low
 
   * Here we go, Mono 1.2 is now official stable and released!
 
-  * Mono 1.2 brings alot of new features in:
+  * Mono 1.2 brings a lot of new features in:
     - The C# 2.0 compiler is now stable, and the ECMA standard was updated, so
       it's safe to use C# 2.0 (gmcs) now. _But_ the 2.0 API is not complete, thus
       there are classes/methods still missing.
@@ -34,21 +34,21 @@ mono (0.96-1) unstable; urgency=low
     we feel that it's time to announce few things changed in the
     meantime:
 
- - dependencies management and debhelper integration - the new
-   mono-utils package contains scripts to create and manage dependencies
-   between the .NET library packages.  They work in a similar way to the
-   .shlibs system in Debian. For more details, see dh_makenetlibs(1),
-   dh_netdeps(1) and monodoc's rules file as example.
-   Another script available now is dh_installxsp which will install
-   snippets of configuration files for XSP packages (HTML/ASP.NET server
-   and Apache module).
+  - dependencies management and debhelper integration - the new
+    mono-utils package contains scripts to create and manage dependencies
+    between the .NET library packages.  They work in a similar way to the
+    .shlibs system in Debian. For more details, see dh_makenetlibs(1),
+    dh_netdeps(1) and monodoc's rules file as example.
+    Another script available now is dh_installxsp which will install
+    snippets of configuration files for XSP packages (HTML/ASP.NET server
+    and Apache module).
 
- - the GAC - except of mscorlib.dll, all DLLs are moved into
-   /usr/share/dotnet hierarchy and are now loaded using the GAC (Global
-   Assembly Cache) method. This also makes sane versioning possible,
-   similar to SONAME handling on native shared libraries.
+  - the GAC - except of mscorlib.dll, all DLLs are moved into
+    /usr/share/dotnet hierarchy and are now loaded using the GAC (Global
+    Assembly Cache) method. This also makes sane versioning possible,
+    similar to SONAME handling on native shared libraries.
  
- - see README.Debian for further details about changes and the current
-   .NET Debian policy
+  - see README.Debian for further details about changes and the current
+    .NET Debian policy
 
  -- Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>  Sat, 19 Jun 2004 14:39:08 +0200

@@ -116,7 +116,7 @@ Description: libraries for the Mono JIT, debugging symbols
  bytecode (aka assemblies), and a class library.
 
 Package: libmono-dev
-Section: devel
+Section: libdevel
 Architecture: i386 kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: libmono0 (= ${binary:Version}), libglib2.0-dev
 Description: libraries for the Mono JIT - Development files

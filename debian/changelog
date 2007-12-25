@@ -14,6 +14,9 @@ mono (1.2.6+dfsg-3) unstable; urgency=low
   * debian/control:
     + Added Homepage, Vcs-Svn and Vcs-Browser fields.
     + Updated Standards-Version to 3.7.3, no changes needed.
+    + Changed Section of libmono-dev to libmono-dev.
+  * debian/NEWS:
+    + Fixed typo and indention.
 
  -- Mirco Bauer <meebey@debian.org>  Tue, 25 Dec 2007 13:40:33 +0100
 
