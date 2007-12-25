@@ -110,7 +110,7 @@ clean-patched:
 	rm -f configure-*-stamp
 	rm -f build-*-stamp
 	rm -f install-*-stamp
-	-$(MAKE) distclean
+	[ ! -f Makefile ] || $(MAKE) distclean
 	# distclean misses stuff
 	find -name "*.mdb" -delete
 	# AOT stuff we created using mono-aot-wrapper/mono-aot-bootstrap

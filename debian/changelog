@@ -1,11 +1,21 @@
-mono (1.2.6+dfsg-3) UNRELEASED; urgency=low
+mono (1.2.6+dfsg-3) unstable; urgency=low
 
   * debian/rules:
     + Pass -D to cli.binfmt install call, makes it not failing on archs that
       are not listed in debian/control.
       (thanks to Emanuele Rocca <ema@debian.org> for the hint)
+    + Enhanced "make distclean" error handling, making lintian happy.
+  * debian/libmono-system-messaging{1,2}.0-cil.clideps-override:
+    + Added suggests libmono-winforms{1,2}.0-cil, doesn't make sense to pull in
+      System.Windows.Forms for designer classes (which are only used by VS.NET)
+  * debian/patches/fix_implicit_pointer_conversions.dpatch:
+    + Fixed implicit pointer conversions by including a missing header, which
+      caused FTBFS on IA64.
+  * debian/control:
+    + Added Homepage, Vcs-Svn and Vcs-Browser fields.
+    + Updated Standards-Version to 3.7.3, no changes needed.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 23 Dec 2007 00:42:15 +0100
+ -- Mirco Bauer <meebey@debian.org>  Tue, 25 Dec 2007 13:40:33 +0100
 
 mono (1.2.6+dfsg-2) unstable; urgency=low
 
