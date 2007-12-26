@@ -7,3 +7,4 @@ fix-mono-cairo.pc.in
 fix_BigInteger_overflow_CVE-2007-5197
 fix_Mono.Cecil_linkage
 fix_implicit_pointer_conversions
+ppc_disable_delegate_trampoline_optimization
