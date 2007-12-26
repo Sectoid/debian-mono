@@ -4,6 +4,10 @@ mono (1.2.6+dfsg-4) unstable; urgency=low
     + Disables delegate trampoline code for PPC, fixes instant SIGILL runtime
       crashes for every invoked application (as seen in PPC build logs of
       gtk-sharp2, gnome-sharp2 or beagle).
+  * debian/patches/fix_threads.h.dpatch:
+    + Don't include threads-type.h in threads.h and moved functions to the
+      correct header, fixes compiling of OpenOffice.org's Mono bridge.
+      (taken from upstream SVN revision 91687 + 91817)
   * debian/rules:
     + Make sure -j1 is passed to make, Mono's build system doesn't like -j > 1.
 
