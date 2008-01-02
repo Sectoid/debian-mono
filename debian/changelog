@@ -1,3 +1,12 @@
+mono (1.2.6+dfsg-6) UNRELEASED; urgency=low
+
+  * NOT RELEASED YET
+  * debian/control:
+    + Added libmono-dev and pkg-config to recommends of mono-{1,2}.0-devel, as
+      mkbundle(2) uses pkg-config and needs mono.pc.
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 02 Jan 2008 21:05:48 +0100
+
 mono (1.2.6+dfsg-5) unstable; urgency=low
 
   * debian/rules:

@@ -1105,7 +1105,7 @@ Section: devel
 Architecture: all
 Provides: resource-file-generator, assembly-linker, strong-name-tool
 Depends: ${cli:Depends}
-Recommends: mono-mcs
+Recommends: mono-mcs, libmono-dev, pkg-config
 Replaces: mono-mcs (<< 1.2.6-1)
 Description: Mono development tools for CLI 1.0
  Mono is a platform for running and developing applications based on the
@@ -1120,7 +1120,7 @@ Package: mono-2.0-devel
 Section: devel
 Architecture: all
 Depends: ${cli:Depends}
-Recommends: mono-gmcs
+Recommends: mono-gmcs, libmono-dev, pkg-config
 Replaces: mono-gmcs (<< 1.2.6-1), mono-common (<< 1.2.6-2)
 Description: Mono development tools for CLI 2.0
  Mono is a platform for running and developing applications based on the
