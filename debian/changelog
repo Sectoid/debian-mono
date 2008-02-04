@@ -1,11 +1,26 @@
-mono (1.2.6+dfsg-6) UNRELEASED; urgency=low
+mono (1.2.6+dfsg-6) unstable; urgency=high
 
-  * NOT RELEASED YET
+  * debian/mono-mcs.postinst
+    debian/mono-1.0-devel.postinst:
+    + Moved alternatives handling for cli-sn, cli-resgen and cli-al from
+      mono-mcs to mono-1.0-devel, as mono-1.0-devel ships those applications
+      (since mono 1.2.6+dfsg-1). (Closes: #460513)
+      This caused FTBS for different source packages that didn't explicitly
+      build-depend on mono-mcs, thus urgency set to high.
+      (Thanks to Laurent Bigonville <bigon@bigon.be> for the investigation)
+  * debian/mono-utils.postint
+    debian/mono-utils.postinst:
+    + Fixed file name.
   * debian/control:
     + Added libmono-dev and pkg-config to recommends of mono-{1,2}.0-devel, as
       mkbundle(2) uses pkg-config and needs mono.pc.
+  * debian/patches/ppc_disable_delegate_trampoline_optimization.dpatch
+    debian/patches/ppc_fix_flushing_of_icache_r92014.dpatch
+    + Replaced ppc_disable_delegate_trampoline_optimization with
+      ppc_fix_flushing_of_icache_r92014, as that one fixes instead of
+      workarounds the PPC SIGILL issue (taken from upstream's SVN).
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 02 Jan 2008 21:05:48 +0100
+ -- Mirco Bauer <meebey@debian.org>  Mon, 04 Feb 2008 20:57:20 +0100
 
 mono (1.2.6+dfsg-5) unstable; urgency=low
 
@@ -39,7 +54,7 @@ mono (1.2.6+dfsg-3) unstable; urgency=low
       (thanks to Emanuele Rocca <ema@debian.org> for the hint)
     + Enhanced "make distclean" error handling, making lintian happy.
   * debian/libmono-system-messaging{1,2}.0-cil.clideps-override
-    debian/libmono--bytefx0.7.6.{1,2}-cil.clideps-override:
+    debian/libmono-bytefx0.7.6.{1,2}-cil.clideps-override:
     + Added suggests libmono-winforms{1,2}.0-cil, doesn't make sense to pull in
       System.Windows.Forms for designer classes (which are only used by VS.NET)
   * debian/patches/fix_implicit_pointer_conversions.dpatch:

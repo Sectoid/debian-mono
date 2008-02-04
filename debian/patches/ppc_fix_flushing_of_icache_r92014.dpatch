@@ -1,0 +1,38 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## ppc_fix_flushing_of_icache_r92014.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-1.2.6~/mono/mini/ChangeLog mono-1.2.6/mono/mini/ChangeLog
+--- mono-1.2.6~/mono/mini/ChangeLog	2007-12-11 17:04:37.000000000 +0100
++++ mono-1.2.6/mono/mini/ChangeLog	2007-12-29 22:46:48.000000000 +0100
+@@ -1,3 +1,6 @@
++2007-12-29  Zoltan Varga  <vargaz at gmail.com>
++
++       * mini-ppc.c (mono_arch_get_delegate_invoke_impl): Fix flushing of icache.
+ 
+ Mon Dec 10 11:08:49 CET 2007 Paolo Molaro <lupus@ximian.com>
+ 
+diff -urNad mono-1.2.6~/mono/mini/mini-ppc.c mono-1.2.6/mono/mini/mini-ppc.c
+--- mono-1.2.6~/mono/mini/mini-ppc.c	2007-11-08 23:07:34.000000000 +0100
++++ mono-1.2.6/mono/mini/mini-ppc.c	2007-12-29 22:46:48.000000000 +0100
+@@ -316,7 +316,7 @@
+ 
+ 		g_assert ((code - start) <= 16);
+ 
+-		mono_arch_flush_icache (code, 16);
++		mono_arch_flush_icache (start, 16);
+ 		cached = start;
+ 		mono_mini_arch_unlock ();
+ 		return cached;
+@@ -350,7 +350,7 @@
+ 
+ 		g_assert ((code - start) <= size);
+ 
+-		mono_arch_flush_icache (code, size);
++		mono_arch_flush_icache (start, size);
+ 		cache [sig->param_count] = start;
+ 		mono_mini_arch_unlock ();
+ 		return start;
