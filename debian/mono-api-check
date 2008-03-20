@@ -1,19 +1,10 @@
 #!/bin/sh
 
 NAME=$(basename $0)
-MONO_API_INFO1="/usr/bin/mono /usr/lib/mono/1.0/mono-api-info.exe"
-MONO_API_INFO2="/usr/bin/mono /usr/lib/mono/2.0/mono-api-info.exe"
-MONO_API_DIFF="/usr/bin/mono /usr/lib/mono/1.0/mono-api-diff.exe"
+MONO_API_INFO1="/usr/lib/mono/1.0/mono-api-info.exe"
+MONO_API_INFO2="/usr/lib/mono/2.0/mono-api-info.exe"
+MONO_API_DIFF="/usr/lib/mono/1.0/mono-api-diff.exe"
 
-if [ ! -e "$1" -a ! -e "$2" ]
-then
-	echo "usage: $NAME [-2] old.dll new.dll"
-	exit 1
-fi
-
-API_OLD=$(tempfile)
-API_NEW=$(tempfile)
-API_DIFF=$(tempfile)
 
 if [ "$1" = "-2" ]; then
 	if [ ! -x $MONO_API_INFO2 ]; then
@@ -26,12 +17,42 @@ else
 	MONO_API_INFO=$MONO_API_INFO1
 fi
 
-${MONO_API_INFO} "$1" > ${API_OLD}
-${MONO_API_INFO} "$2" > ${API_NEW}
-${MONO_API_DIFF} ${API_OLD} ${API_NEW} > ${API_DIFF}
+KEEP=0
+if [ "$1" = "-k" ]; then
+	KEEP=1
+	shift
+fi
 
+if [ $# -lt 2 ]; then
+	echo "usage: $NAME [-2] [-k] old.dll new.dll"
+	exit 1
+fi
+
+if [ ! -r $1 ]; then
+	echo "Error: $1 does not exist or is not readable"
+	exit 1
+fi
+
+if [ ! -r $2 ]; then
+	echo "Error: $2 does not exist or is not readable"
+	exit 1
+fi
+
+ASM_NAME=$(basename $1)
+API_OLD=$(tempfile --suffix=_$ASM_NAME.api-old)
+API_NEW=$(tempfile --suffix=_$ASM_NAME.api-new)
+API_DIFF=$(tempfile --suffix=_$ASM_NAME.api-diff)
+
+/usr/bin/cli ${MONO_API_INFO} "$1" > ${API_OLD}
+/usr/bin/cli ${MONO_API_INFO} "$2" > ${API_NEW}
+/usr/bin/cli ${MONO_API_DIFF} ${API_OLD} ${API_NEW} > ${API_DIFF}
+
+version_changed=0
 grep -q 'Assembly version not equal: ' ${API_DIFF}
-version_changed=$?
+if [ $? = 0 ]; then
+	version_changed=1
+fi
+echo $version_changed
 
 name=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^name | cut -d\= -f2 | sed 's;\";;g')
 missing_total=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^missing_total | cut -d\= -f2 | sed 's;\";;g')
@@ -69,10 +90,15 @@ then
 	fi
 fi
 
-if [ $version_changed ]; then
+if [ $version_changed = 1 ]; then
 	echo
 	echo "The assembly versions do NOT MATCH!"
 	echo "If they are API compatible you MUST generate and install a GAC policy file!"
 fi
 
-rm -f ${API_OLD} ${API_NEW} ${API_DIFF}
+rm -f ${API_OLD} ${API_NEW}
+if [ $KEEP = 1 ]; then
+	echo "API diff file: ${API_DIFF}"
+else
+	rm -f ${API_OLD} ${API_NEW}
+fi
