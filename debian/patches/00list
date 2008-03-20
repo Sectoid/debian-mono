@@ -9,3 +9,4 @@ fix_Mono.Cecil_linkage
 fix_implicit_pointer_conversions
 ppc_fix_flushing_of_icache_r92014
 fix_threads.h
+method-signature-testing.dpatch
