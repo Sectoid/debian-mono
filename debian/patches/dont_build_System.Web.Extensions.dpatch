@@ -1,0 +1,28 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## dont_build_System.Web.Extensions.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-1.9+dfsg~/mcs/class/Makefile mono-1.9+dfsg/mcs/class/Makefile
+--- mono-1.9+dfsg~/mcs/class/Makefile	2008-03-20 21:46:36.000000000 +0100
++++ mono-1.9+dfsg/mcs/class/Makefile	2008-03-20 22:27:45.000000000 +0100
+@@ -102,8 +102,6 @@
+ 
+ net_2_0_dirs := \
+ 	System.Core			\
+-	System.Web.Extensions		\
+-	System.Web.Extensions.Design	\
+ 	Microsoft.Build.Framework	\
+ 	Microsoft.Build.Utilities	\
+ 	Microsoft.Build.Engine		\
+@@ -117,8 +115,6 @@
+ 
+ net_3_5_dirs := \
+ 	System.Xml.Linq			\
+-	System.Web.Extensions		\
+-	System.Web.Extensions.Design	\
+ 
+ default_SUBDIRS := $(common_dirs) $(default_dirs)
+ net_2_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs)

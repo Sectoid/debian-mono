@@ -1,12 +1,10 @@
-#armel_fix_configure_fpu_check
 kfreebsd_support
 console-no-utf8-bom
 firebird-fbclient
 fix-mono.pc.in
 fix-mono-cairo.pc.in
 fix_BigInteger_overflow_CVE-2007-5197
-fix_Mono.Cecil_linkage
 fix_implicit_pointer_conversions
-ppc_fix_flushing_of_icache_r92014
-fix_threads.h
-method-signature-testing.dpatch
+method-signature-testing
+dont_build_System.Web.Extensions
+99_autoreconf
