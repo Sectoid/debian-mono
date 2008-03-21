@@ -53,7 +53,7 @@ ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
 endif
 
-CONFIGURE =	CFLAGS=$(CFLAGS) \
+CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		./configure $(CONF_FLAGS) --prefix=/usr \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \

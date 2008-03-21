@@ -3,6 +3,8 @@ mono (1.2.6+dfsg-7) UNRELEASED; urgency=low
   * debian/patches/method-signature-testing.dpatch:
     + Patch from upstream SVN to fix db4o build failure with cecil 0.6,
       improves checking of method signatures.
+  * debian/rules:
+    + Put CFLAGS into "" to make the shell happy and fix FTBFS.
 
  -- Sebastian Dröge <slomo@debian.org>  Thu, 20 Mar 2008 20:14:49 +0100
 
