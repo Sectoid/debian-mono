@@ -173,6 +173,7 @@ Description: Mono C5 library
 Package: libmono-mozilla0.2-cil
 Section: libs
 Architecture: all
+Replaces: libmono-mozilla0.1-cil
 Depends: ${cli:Depends}
 Recommends: libgluezilla
 Description: Mono Mozilla library
