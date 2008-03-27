@@ -170,7 +170,7 @@ Description: Mono C5 library
  .
  This package contains the Mono C5 library.
 
-Package: libmono-mozilla0.1-cil
+Package: libmono-mozilla0.2-cil
 Section: libs
 Architecture: all
 Depends: ${cli:Depends}

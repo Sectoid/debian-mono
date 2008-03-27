@@ -1,4 +1,4 @@
-mono (1.9+dfsg-1~pre1) UNRELEASED; urgency=low
+mono (1.9+dfsg-1) experimental; urgency=low
 
   [ Mirco Bauer ]
   * DFSG version of Mono 1.9
@@ -7,6 +7,8 @@ mono (1.9+dfsg-1~pre1) UNRELEASED; urgency=low
       is licensed under Creative Commons Attribution 2.5 which is not
       DFSG-free.
   * New upstream release.
+  * debian/rules:
+    + Bumped clilibs to 1.9
   * debian/mono-api-check:
     + Implemented -k switch to keep and inspect the XML diff file.
     + Fixed application invocation.
@@ -14,6 +16,13 @@ mono (1.9+dfsg-1~pre1) UNRELEASED; urgency=low
     debian/patches/fix_Mono.Cecil_linkage.dpatch
     debian/patches/ppc_fix_flushing_of_icache_r92014.dpatch:
     + Removed, already applied upstream.
+  * debian/libmono2.0-cil.install:
+    + Added Mono.Web.dll
+  * debian/control
+    debian/libmono-mozilla0.1-cil.install
+    debian/libmono-mozilla0.2-cil.install:
+    + Renamed libmono-mozilla0.1-cil to libmono-mozilla0.2-cil, as the assembly
+      version (ABI) was bumped from 0.1 to 0.2.
 
   [ Sebastian Dröge ]
   * debian/patches/method-signature-testing.dpatch:
