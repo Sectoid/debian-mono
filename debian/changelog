@@ -1,3 +1,17 @@
+mono (1.9+dfsg-2) unstable; urgency=low
+
+  * Upload to unstable.
+  * debian/control:
+    + Fixed Vcs-Svn field.
+    + Cleaned up Uploaders field.
+  * debian/rules:
+    + Delete binaries missed by "make clean". (Closes: #424576)
+      (thanks to Sandro Tosi <matrixhasu@gmail.com> for the patch)
+  * debian/mono-common.preinst:
+    + Removed empty script.
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 07 Apr 2008 22:11:03 +0200
+
 mono (1.9+dfsg-1) experimental; urgency=low
 
   [ Mirco Bauer ]

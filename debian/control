@@ -2,12 +2,12 @@ Source: mono
 Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
-Uploaders: Eduard Bloch <blade@debian.org>, Mirco Bauer <meebey@debian.org>, Sebastian Dröge <slomo@debian.org>
+Uploaders: Mirco Bauer <meebey@debian.org>, Sebastian Dröge <slomo@debian.org>
 Build-Depends: debhelper (>= 5.0.0), dpkg-dev (>= 1.13.19), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxml-dom-perl, libxslt1-dev, dc, libx11-dev, libxt-dev, zlib1g-dev
 Build-Depends-Indep: libgamin-dev, libcupsys2-dev, librsvg2-dev, libgtk2.0-dev, libgnomeui-dev, libgda2-dev
 Standards-Version: 3.7.3
 Homepage: http://www.mono-project.com/
-Vcs-Svn: svn://svn.debian.org/pkg-mono/mono/mono/trunk
+Vcs-Svn: svn://svn.debian.org/svn/pkg-mono/mono/trunk
 Vcs-Browser: http://svn.debian.org/wsvn/pkg-mono/mono/trunk/
 
 Package: mono-common

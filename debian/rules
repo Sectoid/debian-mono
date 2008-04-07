@@ -129,6 +129,14 @@ clean-patched:
 	-cd debian/detector && $(MAKE) clean
 	rm -f cli-wrapper debian/MonoGetAssemblyName.exe
 	rm -rf $(MONO_SHARED_DIR)/.wapi
+
+	rm -f mcs/class/lib/default/mono-api-info.exe               \
+	      mcs/class/lib/net_2_0/mono-api-info.exe               \
+	      mcs/class/Managed.Windows.Forms/resources/*.resources \
+	      mcs/class/Mono.Data.Sqlite/resources/SR.resources     \
+	      mcs/class/Novell.Directory.Ldap/Novell.Directory.Ldap.Utilclass/ResultCodeMessages.resources \
+	      mcs/class/System.Web/resources/TranslationResources.resources
+
 	rm -f configure-*-stamp
 	rm -f build-*-stamp
 	rm -f install-*-stamp
