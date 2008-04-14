@@ -1,3 +1,11 @@
+mono (1.9+dfsg-3~pre1) UNRELEASED; urgency=low
+
+  * debian/patches/pass_CPPFLAGS_nicely_r98803.dpatch:
+    + Pass CPPFLAGS nicely to libgc, fixes FTBFS. (Closes: #475972)
+      (taken from upstream SVN revision 98803)
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 14 Apr 2008 22:29:51 +0200
+
 mono (1.9+dfsg-2) unstable; urgency=low
 
   * Upload to unstable.

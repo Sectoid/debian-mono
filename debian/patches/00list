@@ -7,4 +7,5 @@ fix_BigInteger_overflow_CVE-2007-5197
 fix_implicit_pointer_conversions
 method-signature-testing
 dont_build_System.Web.Extensions
+pass_CPPFLAGS_nicely_r98803
 99_autoreconf
