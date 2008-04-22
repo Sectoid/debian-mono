@@ -1,17 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 
 NAME=$(basename $0)
 MONO_API_INFO1="/usr/lib/mono/1.0/mono-api-info.exe"
 MONO_API_INFO2="/usr/lib/mono/2.0/mono-api-info.exe"
 MONO_API_DIFF="/usr/lib/mono/1.0/mono-api-diff.exe"
 
-
+RUNTIME_VERSION=1
 if [ "$1" = "-2" ]; then
 	if [ ! -x $MONO_API_INFO2 ]; then
 		echo "Error: $MONO_API_INFO2 does not exist, you need to install the mono-gmcs package"
 		exit 1
 	fi
 	MONO_API_INFO=$MONO_API_INFO2
+	RUNTIME_VERSION=2
 	shift
 else
 	MONO_API_INFO=$MONO_API_INFO1
@@ -38,21 +39,109 @@ if [ ! -r $2 ]; then
 	exit 1
 fi
 
+if ! [ "$1" = "${1%.deb}" ]; then
+	DEB_TMP_DIR1=/tmp/$NAME-$$-$RANDOM
+	DEB_TMP_DIR2=/tmp/$NAME-$$-$RANDOM
+
+	mkdir $DEB_TMP_DIR1
+	if [ $? != 0 ]; then
+		echo "Error: could not create: $DEB_TMP_DIR1"
+		exit 1
+	fi
+
+	mkdir $DEB_TMP_DIR2
+	if [ $? != 0 ]; then
+		echo "Error: could not create: $DEB_TMP_DIR2"
+		exit 1
+	fi
+
+	dpkg -x $1 $DEB_TMP_DIR1
+	if [ $? != 0 ]; then
+		echo "Error: could extract: $1"
+		exit 1
+	fi
+
+	dpkg -x $2 $DEB_TMP_DIR2
+	if [ $? != 0 ]; then
+		echo "Error: could extract: $2"
+		exit 1
+	fi
+
+	DLLS=$(find $DEB_TMP_DIR1 -type f -name "*.dll")
+	for DLL1 in $DLLS; do
+		FILE=${DLL1#$DEB_TMP_DIR1/}
+		DLL2=$DEB_TMP_DIR2/$FILE
+		#echo $DLL1
+		#echo $DLL2
+
+		if [ $RUNTIME_VERSION = 2 ]; then
+			RUNTIME_VERSION_PARAM="-2"
+		fi
+		if [ $KEEP = 1 ]; then
+			KEEP_PARAM="-k"
+		fi
+		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $DLL1 $DLL2
+	done
+
+	rm -rf $DEB_TMP_DIR1
+	rm -rf $DEB_TMP_DIR2
+	
+	exit 0
+fi
+
+if ! [ "$1" = "${1%.changes}" ]; then
+	DEB_DIR1=$(dirname $1)
+	DEB_DIR2=$(dirname $2)
+	DEBS=$(grep ".deb$" $2 | cut -d ' ' -f 6)
+	for DEB in $DEBS; do
+		PKG_VERSION2=$(dpkg -I $DEB_DIR2/$DEB | grep Version: | cut -d ':' -f 2 | sed -e 's/^ *//')
+		break
+	done
+
+	DEBS=$(grep ".deb$" $1 | cut -d ' ' -f 6)
+	for DEB1 in $DEBS; do
+		PKG_NAME=$(dpkg -I $DEB_DIR1/$DEB1  | grep Package: | cut -d ':' -f 2 | sed -e 's/^ *//')
+		PKG_ARCH=$(dpkg -I $DEB_DIR1/$DEB1  | grep Architecture: | cut -d ':' -f 2 | sed -e 's/^ *//')
+		DEB2=$DEB_DIR2/${PKG_NAME}_${PKG_VERSION2}_${PKG_ARCH}.deb
+
+		if [ $RUNTIME_VERSION = 2 ]; then
+			RUNTIME_VERSION_PARAM="-2"
+		fi
+		if [ $KEEP = 1 ]; then
+			KEEP_PARAM="-k"
+		fi
+		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $DEB1 $DEB2
+	done
+
+	exit 0
+fi
+
 ASM_NAME=$(basename $1)
 API_OLD=$(tempfile --suffix=_$ASM_NAME.api-old)
 API_NEW=$(tempfile --suffix=_$ASM_NAME.api-new)
 API_DIFF=$(tempfile --suffix=_$ASM_NAME.api-diff)
 
-/usr/bin/cli ${MONO_API_INFO} "$1" > ${API_OLD}
-/usr/bin/cli ${MONO_API_INFO} "$2" > ${API_NEW}
-/usr/bin/cli ${MONO_API_DIFF} ${API_OLD} ${API_NEW} > ${API_DIFF}
+/usr/bin/cli ${MONO_API_INFO} "$1" > ${API_OLD} 2> /dev/null
+if [ $? != 0 ]; then
+	echo "Error: ${MONO_API_INFO} on $1 failed!"
+	exit 1
+fi
+/usr/bin/cli ${MONO_API_INFO} "$2" > ${API_NEW} 2> /dev/null
+if [ $? != 0 ]; then
+	echo "Error: ${MONO_API_INFO} on $2 failed!"
+	exit 1
+fi
+/usr/bin/cli ${MONO_API_DIFF} ${API_OLD} ${API_NEW} > ${API_DIFF} 2> /dev/null
+if [ $? != 0 ]; then
+	echo "Error: ${MONO_API_DIFF} failed!"
+	exit 1
+fi
 
 version_changed=0
 grep -q 'Assembly version not equal: ' ${API_DIFF}
 if [ $? = 0 ]; then
 	version_changed=1
 fi
-echo $version_changed
 
 name=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^name | cut -d\= -f2 | sed 's;\";;g')
 missing_total=$(head -n3 ${API_DIFF} | tail -n1 | sed 's;\ ;\n;g' | grep ^missing_total | cut -d\= -f2 | sed 's;\";;g')
