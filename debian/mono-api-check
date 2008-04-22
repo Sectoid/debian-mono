@@ -80,7 +80,9 @@ if ! [ "$1" = "${1%.deb}" ]; then
 		if [ $KEEP = 1 ]; then
 			KEEP_PARAM="-k"
 		fi
+		echo -e "Library:\t\t/$FILE"
 		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $DLL1 $DLL2
+		echo
 	done
 
 	rm -rf $DEB_TMP_DIR1
@@ -110,7 +112,10 @@ if ! [ "$1" = "${1%.changes}" ]; then
 		if [ $KEEP = 1 ]; then
 			KEEP_PARAM="-k"
 		fi
+		echo -e "Package:\t\t$PKG_NAME"
+		echo    "------------------------------------------------------"
 		$0 $RUNTIME_VERSION_PARAM $KEEP_PARAM $DEB1 $DEB2
+		echo
 	done
 
 	exit 0
