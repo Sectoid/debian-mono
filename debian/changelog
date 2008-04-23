@@ -1,3 +1,25 @@
+mono (1.9.1+dfsg-1) unstable; urgency=low
+
+  * DFSG version of Mono 1.9.1
+    + Deleted the mcs/class/System.Web.Extensions/ directory as
+      mcs/class/System.Web.Extensions/System.Web.Script.Serialization/JSON/*.cs
+      is licensed under Creative Commons Attribution 2.5 which is not
+      DFSG-free.
+  * New upstream release.
+  * debian/libmono1.0-cil.install:
+    + Added internal cecil.pc as mono-tools >= 1.9 needs it.
+  * debian/patches/pass_CPPFLAGS_nicely_r98803.dpatch:
+    + Updated
+  * debian/mono-api-check:
+    + Fixed bashism. (Closes: #471879)
+    + Implemented support to check APIs on .deb and .changes files.
+  * debian/rules:
+    + clilibs are now defined much more granularly now (per package).
+      Checked APIs of mono 1.2.2.1 vs 1.2.6 and 1.2.6 vs 1.9.
+    + Bumped clilibs of libmono-system-web2.0-cil to 1.9.1
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 22 Apr 2008 20:09:39 +0200
+
 mono (1.9+dfsg-3) unstable; urgency=low
 
   * debian/patches/pass_CPPFLAGS_nicely_r98803.dpatch:

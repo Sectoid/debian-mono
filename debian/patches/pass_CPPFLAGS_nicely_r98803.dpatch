@@ -5,21 +5,9 @@
 ## DP: No description.
 
 @DPATCH@
-diff -urNad mono-1.9+dfsg~/ChangeLog mono-1.9+dfsg/ChangeLog
---- mono-1.9+dfsg~/ChangeLog	2008-01-29 23:02:47.000000000 +0100
-+++ mono-1.9+dfsg/ChangeLog	2008-04-15 22:27:07.000000000 +0200
-@@ -1,3 +1,8 @@
-+2008-03-22  Zoltan Varga  <vargaz at gmail.com>
-+
-+      * configure.in: Pass CPPFLAGS to libgc configure using ac_configure_args instead
-+      of exporting it. Fixes #373113.
-+
- 2008-01-28  Wade Berrier  <wberrier@novell.com>
- 
- 	* configure.in: version bump -> 1.9
-diff -urNad mono-1.9+dfsg~/configure.in mono-1.9+dfsg/configure.in
---- mono-1.9+dfsg~/configure.in	2008-04-15 22:27:03.000000000 +0200
-+++ mono-1.9+dfsg/configure.in	2008-04-15 22:27:07.000000000 +0200
+diff -urNad mono-1.9.1+dfsg~/configure.in mono-1.9.1+dfsg/configure.in
+--- mono-1.9.1+dfsg~/configure.in	2008-04-22 20:16:11.000000000 +0200
++++ mono-1.9.1+dfsg/configure.in	2008-04-22 20:16:15.000000000 +0200
 @@ -670,13 +670,6 @@
  		;;
  

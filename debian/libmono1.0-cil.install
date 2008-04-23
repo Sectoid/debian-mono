@@ -19,3 +19,4 @@ debian/tmp/usr/lib/mono/gac/OpenSystem.C/1.0.5000.0__*/
 debian/tmp/usr/lib/mono/gac/Mono.Cecil/
 debian/tmp/usr/lib/mono/gac/Mono.Cecil.Mdb/
 debian/tmp/usr/lib/mono/gac/mono-service/1.0.5000.0__*/
+debian/tmp/usr/lib/pkgconfig/cecil.pc

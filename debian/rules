@@ -3,8 +3,6 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-MONO_API = 1.9
-
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,' | sed 's,+dfsg.*,,') 
 NEXT_UPVERSION = $(shell perl -e '$$_=pop; s/(\d+)$$/$$1+1/e; print' $(UPVERSION))
@@ -203,7 +201,8 @@ binary-indep: build-arch install-arch build-indep install-indep
 	# don't want docs of bundled libgc
 	rm -rf debian/tmp/usr/share/libgc-mono
 	# never ever install cecil.pc! mono ships an internal version for GAC only
-	rm -f debian/tmp/usr/lib/pkgconfig/cecil.pc
+	# args, mono-tools >= 1.9 needs this now :(
+	#rm -f debian/tmp/usr/lib/pkgconfig/cecil.pc
 	# Mono.Mozilla.dll is linked with CLI 2.0, thus the symlink in 1.0/ doesn't make sense
 	rm -f debian/tmp/usr/lib/mono/1.0/Mono.Mozilla.dll
 
@@ -246,20 +245,38 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_installdeb -i
 	#DH_VERBOSE=1 DH_AUTOSCRIPTDIR=$(CURDIR)/debian debian/dh_monoaot -i
 	debian/dh_makeclilibs -i -m 1.0 internal-mono
-	# APIs that grow need tighter deps
-	debian/dh_makeclilibs \
-	  -plibmono-corlib2.0-cil \
-	  -plibmono-system2.0-cil \
-	  -plibmono-microsoft8.0-cil \
-	  -plibmono-winforms1.0-cil \
-	  -plibmono-winforms2.0-cil \
-	  -plibmono1.0-cil \
-	  -plibmono2.0-cil \
-	  -m $(MONO_API) internal-mono
-	debian/dh_clideps -i internal-mono -l debian/tmp
-	#DH_VERBOSE=1 debian/dh_clideps -i internal-mono -l debian/tmp
+	debian/dh_makeclilibs -p libmono1.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-cairo1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-cairo2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-corlib1.0-cil -m 1.2.2.1 internal-mono
+	debian/dh_makeclilibs -p libmono-corlib2.0-cil -m 1.2.2.1 internal-mono
+	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-ldap1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-ldap2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-oracle2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-system1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-system2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-system-data1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-system-data2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-system-ldap2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-system-web2.0-cil -m 1.9.1 internal-mono
+	debian/dh_makeclilibs -p libmono-security1.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-security2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-sqlite1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-web1.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-web2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-winforms1.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-relaxng1.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-relaxng2.0-cil -m 1.9 internal-mono
+	debian/dh_clideps -i -l debian/tmp internal-mono
+	#DH_VERBOSE=1 debian/dh_clideps -i -l debian/tmp internal-mono
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
-	debian/dh_clideps -pmono-gac -r internal-mono
+	debian/dh_clideps -p mono-gac -r internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i
