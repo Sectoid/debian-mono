@@ -1,3 +1,13 @@
+mono (1.9.1+dfsg-2) UNRELEASED; urgency=low
+
+  * NOT RELEASED YET
+  * debian/control:
+    + Added xdg-utils | libgnome2-0 | konqueror to suggests of mono-jit as
+      starting processes can make use of those if installed (to emulate
+      ShellExecute).
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 23 Apr 2008 22:25:43 +0200
+
 mono (1.9.1+dfsg-1) unstable; urgency=low
 
   * DFSG version of Mono 1.9.1
