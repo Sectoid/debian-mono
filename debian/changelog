@@ -1,12 +1,31 @@
-mono (1.9.1+dfsg-2) UNRELEASED; urgency=low
+mono (1.9.1+dfsg-2) unstable; urgency=medium
 
-  * NOT RELEASED YET
+  * Urgency set to medium as this release contains important bugfixes for
+    different architectures.
   * debian/control:
     + Added xdg-utils | libgnome2-0 | konqueror to suggests of mono-jit as
       starting processes can make use of those if installed (to emulate
       ShellExecute).
+  * debian/patches/fix_bound_checking_r98524_r98527.dpatch:
+    + Fixes bound checking caused SIGSEGV on AMD64 when building XSP.
+      (Closes: #486652, patch taken from upstream SVN revision 98524 and 98527)
+      (thanks to Jo Shields <directhex@apebox.org> for investigation and
+       providing the dpatch)
+  * debian/patches/fix_softfloat_r105848.dpatch:
+    + Fixed softfloat caused SIGABRT on armel when building banshee.
+      (Closes: #485112, patch taken from upstream SVN revision 105848)
+  * debian/patches/fix_stack_alignment_r105650_r105651.dpatch:
+    + Fixes stack alignment, caused assertions on AMD64. (Closes: #473119)
+      (patch taken from upstream SVN revision 105650 and 105651)
+  * debian/patches/fix_xen_support_r103474_r103475.dpatch:
+    + Fixes XEN support caused "4gb seg fixup" messages. (Closes: #481699)
+      (patch taken from upstream SVN revision 103474 and 103475)
+      (thanks to Andrew Deason <adeason2@uiuc.edu> for investigation and
+       providing the dpatch)
+  * debian/patches/99_autoreconf.dpatch:
+    + Updated
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 23 Apr 2008 22:25:43 +0200
+ -- Mirco Bauer <meebey@debian.org>  Tue, 17 Jun 2008 23:59:52 +0200
 
 mono (1.9.1+dfsg-1) unstable; urgency=low
 

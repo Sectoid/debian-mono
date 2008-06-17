@@ -1,0 +1,120 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_softfloat_r105848.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fixes softfloat issues causing SIGABRT on armel, see
+## DP: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=485112
+## DP: Patch taken from upstream SVN revision 105848.
+
+@DPATCH@
+diff -urNad mono-1.9.1+dfsg~/mono/mini/mini.c mono-1.9.1+dfsg/mono/mini/mini.c
+--- mono-1.9.1+dfsg~/mono/mini/mini.c	2008-02-06 21:28:25.000000000 +0100
++++ mono-1.9.1+dfsg/mono/mini/mini.c	2008-06-17 23:29:29.000000000 +0200
+@@ -622,7 +622,6 @@
+            (cfg)->disable_ssa = TRUE; \
+ 	} while (0)
+ 
+-
+ #define NEW_INDLOAD(cfg,dest,addr,vtype) do {	\
+ 		(dest) = mono_mempool_alloc0 ((cfg)->mempool, sizeof (MonoInst));	\
+ 		(dest)->inst_left = addr;	\
+@@ -2857,11 +2856,23 @@
+ 			MONO_INST_NEW (cfg, (ins), OP_NOP);	\
+ 		}	\
+ 	} while (0)
++
++#define NEW_TEMPLOAD_SOFT_FLOAT(cfg,bblock,ins,num) do {		\
++	if ((ins)->opcode == CEE_LDIND_R4) {						\
++	    int idx = (num);										\
++	    int temp;											\
++	    NEW_TEMPLOADA (cfg, (ins), (idx));							\
++		temp = handle_load_float (cfg, (bblock), (ins), ip);		\
++		NEW_TEMPLOAD (cfg, (ins), (temp));							\
++	}																\
++	} while (0)
++
+ #else
+ #define LDLOC_SOFT_FLOAT(cfg,ins,idx,ip)
+ #define STLOC_SOFT_FLOAT(cfg,ins,idx,ip)
+ #define LDARG_SOFT_FLOAT(cfg,ins,idx,ip)
+ #define STARG_SOFT_FLOAT(cfg,ins,idx,ip)
++#define NEW_TEMPLOAD_SOFT_FLOAT(cfg,bblock,ins,num)
+ #endif
+ 
+ static MonoMethod*
+@@ -3820,14 +3831,7 @@
+ 
+ 		if (rvar) {
+ 			NEW_TEMPLOAD (cfg, ins, rvar->inst_c0);
+-#ifdef MONO_ARCH_SOFT_FLOAT
+-			if (ins->opcode == CEE_LDIND_R4) {
+-				int temp;
+-				NEW_TEMPLOADA (cfg, ins, rvar->inst_c0);
+-				temp = handle_load_float (cfg, bblock, ins, ip);
+-				NEW_TEMPLOAD (cfg, ins, temp);
+-			}
+-#endif
++			NEW_TEMPLOAD_SOFT_FLOAT (cfg, ebblock, ins, rvar->inst_c0);
+ 			*sp++ = ins;
+ 		}
+ 		*last_b = ebblock;
+@@ -5549,7 +5553,6 @@
+ 					//g_assert (returnvar != -1);
+ 					NEW_TEMPSTORE (cfg, store, return_var->inst_c0, *sp);
+ 					store->cil_code = sp [0]->cil_code;
+-					/* FIXME: handle CEE_STIND_R4 */
+ 					if (store->opcode == CEE_STOBJ) {
+ 						g_assert_not_reached ();
+ 						NEW_TEMPLOADA (cfg, store, return_var->inst_c0);
+@@ -5923,6 +5926,31 @@
+ 		case CEE_CONV_R_UN:
+ 			CHECK_STACK (1);
+ 			ADD_UNOP (*ip);
++
++#ifdef MONO_ARCH_SOFT_FLOAT
++			/*
++			 * Its rather hard to emit the soft float code during the decompose
++			 * pass, so avoid it in some specific cases.
++			 */
++			if (ins->opcode == OP_LCONV_TO_R4) {
++				MonoInst *conv;
++
++				ins->opcode = OP_LCONV_TO_R8;
++				ins->type = STACK_R8;
++
++				--sp;
++				*sp++ = emit_tree (cfg, bblock, ins, ip + 1);
++
++				MONO_INST_NEW (cfg, conv, CEE_CONV_R4);
++				conv->inst_left = sp [-1];
++				conv->type = STACK_R8;
++				sp [-1] = ins;
++
++				ip++;
++				break;
++			}
++#endif
++
+ 			if (mono_find_jit_opcode_emulation (ins->opcode)) {
+ 				--sp;
+ 				*sp++ = emit_tree (cfg, bblock, ins, ip + 1);
+@@ -6734,6 +6762,7 @@
+ 					} else {
+ 						temp = mono_emit_method_call_spilled (cfg, bblock, wrapper, mono_method_signature (wrapper), iargs, ip, NULL);
+ 						NEW_TEMPLOAD (cfg, *sp, temp);
++						NEW_TEMPLOAD_SOFT_FLOAT (cfg, bblock, *sp, temp);
+ 						sp++;
+ 					}
+ 				} else {
+diff -urNad mono-1.9.1+dfsg~/mono/mini/mini.h mono-1.9.1+dfsg/mono/mini/mini.h
+--- mono-1.9.1+dfsg~/mono/mini/mini.h	2008-06-17 23:28:42.000000000 +0200
++++ mono-1.9.1+dfsg/mono/mini/mini.h	2008-06-17 23:29:29.000000000 +0200
+@@ -244,7 +244,7 @@
+ 	mono_container_of(ptr, type, member)*/
+ 
+ #define MONO_INST_LIST_ENTRY(ptr, type, member)	\
+-	((type *)(ptr))
++	((type *)(gpointer)(ptr))
+ 
+ #define MONO_INST_LIST_FIRST_ENTRY(ptr, type, member) \
+ 	MONO_INST_LIST_ENTRY((ptr)->next, type, member)

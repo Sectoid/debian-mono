@@ -8,4 +8,8 @@ fix_implicit_pointer_conversions
 method-signature-testing
 dont_build_System.Web.Extensions
 pass_CPPFLAGS_nicely_r98803
+fix_bound_checking_r98524_r98527
+fix_softfloat_r105848
+fix_stack_alignment_r105650_r105651
+fix_xen_support_r103474_r103475
 99_autoreconf
