@@ -425,7 +425,7 @@ Package: libmono-system-web1.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
-Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
+Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion}), libgdiplus
 Description: Mono System.Web library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -439,7 +439,7 @@ Package: libmono-system-web2.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6-2), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
-Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
+Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion}), libgdiplus
 Suggests: ${cli:Suggests}
 Description: Mono System.Web Library
  Mono is a platform for running and developing applications based on the

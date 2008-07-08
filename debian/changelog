@@ -1,3 +1,39 @@
+mono (1.9.1+dfsg-3~pre1) unstable; urgency=low
+
+  * debian/shlibs.local:
+    + Updated for the Mono 1.9 release.
+  * debian/rules:
+    debian/libmono-system2.0-cil.install:
+    + Added System.Xml.Linq library but with the correct compiler-directory.
+      (Closes: #487996)
+  * debian/rules:
+    + Removed --list-missing from dh_install call, it's useless in the current
+      implementation.
+  * debian/control:
+    + Added libdiplus to dependencies of libmono-system-web1.0-cil and
+      libmono-system-web2.0-cil as System.Web.UI.WebControls.WebColorConverter
+      invokes it (which is needed by most web applications). (Closes: #479683)
+  * debian/patches/fix_Dictionary_preventing_GC_r102114.dpatch:
+    Clear empty slots in keySlots and valueSlots. Otherwise the garbage
+    collector cannot reclaim the referenced key/value.
+    (patch taken from upstream SVN revision 102114)
+  * debian/patches/fix_TdsConnectionPool_svn.dpatch:
+    Remove unnecessary locks and code refactoring.
+    Update according to the new return type of
+    TdsConnectionPool.GetConnectionPool().
+    Added member to keep track of pool status.
+    Do not call tds.Reset () as it is already done in the connection pool.
+    Honor timeout and throw appropriate exception when connections are not
+    available.
+    When pooled connection cannot be reset, remove it from pool and allow slot
+    to be re-used for a newly established.
+    When pool is full, and no connection becomes available before the connect
+    timeout has elapsed, then throw an InvalidOperationException.
+    (patch taken from upstream SVN revisions 105424, 105432, 105433, 105719,
+     106448 and 107325)
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 18 Jun 2008 01:05:00 +0200
+
 mono (1.9.1+dfsg-2) unstable; urgency=medium
 
   * Urgency set to medium as this release contains important bugfixes for

@@ -12,4 +12,6 @@ fix_bound_checking_r98524_r98527
 fix_softfloat_r105848
 fix_stack_alignment_r105650_r105651
 fix_xen_support_r103474_r103475
+fix_Dictionary_preventing_GC_r102114
+fix_TdsConnectionPool_svn
 99_autoreconf

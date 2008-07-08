@@ -1,0 +1,35 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_Dictionary_preventing_GC_r102114.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: * Dictionary.cs (Clear, Remove): Clear empty slots in keySlots 
+## DP: and valueSlots. Otherwise the garbage collector cannot reclaim 
+## DP: the referenced key/value. Fixes bug #384723.
+
+@DPATCH@
+diff -urNad mono-1.9.1+dfsg~/mcs/class/corlib/System.Collections.Generic/Dictionary.cs mono-1.9.1+dfsg/mcs/class/corlib/System.Collections.Generic/Dictionary.cs
+--- mono-1.9.1+dfsg~/mcs/class/corlib/System.Collections.Generic/Dictionary.cs	2007-11-08 23:13:53.000000000 +0100
++++ mono-1.9.1+dfsg/mcs/class/corlib/System.Collections.Generic/Dictionary.cs	2008-07-08 14:13:04.000000000 +0200
+@@ -383,7 +383,10 @@
+ 		{
+ 			count = 0;
+ 			// clear the hash table
+-			Array.Clear(table, 0, table.Length);
++			Array.Clear (table, 0, table.Length);
++			// clear key and value arrays
++			Array.Clear (keySlots, 0, keySlots.Length);
++			Array.Clear (valueSlots, 0, valueSlots.Length);
+ 
+ 			// empty the "empty slots chain"
+ 			emptySlot = NO_SLOT;
+@@ -510,6 +513,10 @@
+ 			linkSlots [cur].Next = emptySlot;
+ 			emptySlot = cur;
+ 			
++			// clear empty key and value slots
++			keySlots [cur] = default (TKey);
++			valueSlots [cur] = default (TValue);
++
+ 			generation++;
+ 			return true;
+ 		}

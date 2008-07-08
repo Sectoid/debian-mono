@@ -1,7 +1,7 @@
 #!/bin/sh -e
 
 VERSION=$(dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
-UPVERSION=$(echo $VERSION | sed 's,-.*,,')
+UPVERSION=$(echo $VERSION | sed 's,-.*,,' | sed 's,+dfsg,,')
 
 echo -n "Updating shlibs.local for Mono $UPVERSION..."
 
