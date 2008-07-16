@@ -13,6 +13,11 @@ mono (1.9.1+dfsg-3~pre1) unstable; urgency=low
     + Added libdiplus to dependencies of libmono-system-web1.0-cil and
       libmono-system-web2.0-cil as System.Web.UI.WebControls.WebColorConverter
       invokes it (which is needed by most web applications). (Closes: #479683)
+    + Removed -1 revision of all Replaces lines with << as condition, as it's
+      useless and makes backports and Ubuntu integration easier.
+    + Added Conflicts on mono-classlib-{1,2}.0 (<< 1.1.13.6) and
+      mono-classlib-{1,2}.0-dbg to ensure they are removed on all systems and
+      the transition is finished long time ago.
   * debian/patches/fix_Dictionary_preventing_GC_r102114.dpatch:
     Clear empty slots in keySlots and valueSlots. Otherwise the garbage
     collector cannot reclaim the referenced key/value.
@@ -31,6 +36,10 @@ mono (1.9.1+dfsg-3~pre1) unstable; urgency=low
     timeout has elapsed, then throw an InvalidOperationException.
     (patch taken from upstream SVN revisions 105424, 105432, 105433, 105719,
      106448 and 107325)
+  * debian/libmono-system1.0-cil.clideps-override
+    debian/libmono-system2.0-cil.clideps-override:
+    + libcupsys2 package was renamed to libcups2, moves the dependeny on
+      libcups2 to suggests.
 
  -- Mirco Bauer <meebey@debian.org>  Wed, 18 Jun 2008 01:05:00 +0200
 

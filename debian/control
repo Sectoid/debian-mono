@@ -132,7 +132,7 @@ Description: libraries for the Mono JIT - Development files
 Package: libmono1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono libraries (1.0)
  Mono is a platform for running and developing applications based on the
@@ -146,7 +146,7 @@ Description: Mono libraries (1.0)
 Package: libmono2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono libraries (2.0)
  Mono is a platform for running and developing applications based on the
@@ -160,7 +160,7 @@ Description: Mono libraries (2.0)
 Package: libmono-c5-1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono C5 library
  Mono is a platform for running and developing applications based on the
@@ -190,7 +190,8 @@ Description: Mono Mozilla library
 Package: libmono-corlib1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-2), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
+Conflicts: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
 Recommends: libmono-i18n1.0-cil
 Description: Mono core library (1.0)
@@ -206,7 +207,8 @@ Description: Mono core library (1.0)
 Package: libmono-corlib2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
+Conflicts: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
 Recommends: libmono-i18n2.0-cil
 Description: Mono core library (2.0)
@@ -264,7 +266,7 @@ Description: Mono I18N libraries (2.0)
 Package: libmono-system1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
 Description: Mono System libraries (1.0)
@@ -279,7 +281,7 @@ Description: Mono System libraries (1.0)
 Package: libmono-system2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
 Description: Mono System libraries (2.0)
@@ -308,7 +310,7 @@ Description: Mono System libraries (2.1)
 Package: libmono-system-messaging1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System.Messaging library
@@ -323,7 +325,7 @@ Description: Mono System.Messaging library
 Package: libmono-system-messaging2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System.Messaging Library
@@ -338,7 +340,7 @@ Description: Mono System.Messaging Library
 Package: libmono-security1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Security library
  Mono is a platform for running and developing applications based on the
@@ -352,7 +354,7 @@ Description: Mono Security library
 Package: libmono-security2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Security library
  Mono is a platform for running and developing applications based on the
@@ -366,7 +368,7 @@ Description: Mono Security library
 Package: libmono-data-tds1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Data library
  Mono is a platform for running and developing applications based on the
@@ -380,7 +382,7 @@ Description: Mono Data library
 Package: libmono-data-tds2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Data Library
  Mono is a platform for running and developing applications based on the
@@ -394,7 +396,7 @@ Description: Mono Data Library
 Package: libmono-system-data1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System.Data library
@@ -409,7 +411,7 @@ Description: Mono System.Data library
 Package: libmono-system-data2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono System.Data Library
@@ -424,7 +426,7 @@ Description: Mono System.Data Library
 Package: libmono-system-web1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion}), libgdiplus
 Description: Mono System.Web library
  Mono is a platform for running and developing applications based on the
@@ -438,7 +440,7 @@ Description: Mono System.Web library
 Package: libmono-system-web2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-2), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion}), libgdiplus
 Suggests: ${cli:Suggests}
 Description: Mono System.Web Library
@@ -453,7 +455,7 @@ Description: Mono System.Web Library
 Package: libmono-system-runtime1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono System.Runtime library
  Mono is a platform for running and developing applications based on the
@@ -467,7 +469,7 @@ Description: Mono System.Runtime library
 Package: libmono-system-runtime2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono System.Runtime Library
  Mono is a platform for running and developing applications based on the
@@ -481,7 +483,7 @@ Description: Mono System.Runtime Library
 Package: libmono-system-ldap1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono System.DirectoryServices library
  Mono is a platform for running and developing applications based on the
@@ -495,7 +497,7 @@ Description: Mono System.DirectoryServices library
 Package: libmono-system-ldap2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono System.DirectoryServices library
  Mono is a platform for running and developing applications based on the
@@ -509,7 +511,7 @@ Description: Mono System.DirectoryServices library
 Package: libmono-winforms1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}, shared-mime-info
 Depends: ${cli:Depends}, libgdiplus
 Description: Mono System.Windows.Forms library
@@ -524,7 +526,7 @@ Description: Mono System.Windows.Forms library
 Package: libmono-winforms2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}, shared-mime-info
 Depends: ${cli:Depends}, libgdiplus
 Description: Mono System.Windows.Forms library
@@ -706,7 +708,7 @@ Description: Mono DB2 library
 Package: libmono-oracle1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Oracle library
  Mono is a platform for running and developing applications based on the
@@ -720,7 +722,7 @@ Description: Mono Oracle library
 Package: libmono-oracle2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Oracle library
  Mono is a platform for running and developing applications based on the
@@ -762,7 +764,7 @@ Description: Mono Sqlite library
 Package: libmono-accessibility1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Accessibility library
  Mono is a platform for running and developing applications based on the
@@ -776,7 +778,7 @@ Description: Mono Accessibility library
 Package: libmono-accessibility2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Accessibility library
  Mono is a platform for running and developing applications based on the
@@ -790,7 +792,7 @@ Description: Mono Accessibility library
 Package: libmono-cscompmgd7.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono cscompmgd library
  Mono is a platform for running and developing applications based on the
@@ -804,7 +806,7 @@ Description: Mono cscompmgd library
 Package: libmono-cscompmgd8.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono cscompmgd library
  Mono is a platform for running and developing applications based on the
@@ -818,7 +820,7 @@ Description: Mono cscompmgd library
 Package: libmono-ldap1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono LDAP library
  Mono is a platform for running and developing applications based on the
@@ -832,7 +834,7 @@ Description: Mono LDAP library
 Package: libmono-ldap2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono LDAP library
  Mono is a platform for running and developing applications based on the
@@ -846,7 +848,7 @@ Description: Mono LDAP library
 Package: libmono-microsoft-build2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Microsoft.Build libraries
  Mono is a platform for running and developing applications based on the
@@ -860,7 +862,7 @@ Description: Mono Microsoft.Build libraries
 Package: libmono-microsoft7.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Microsoft libraries
  Mono is a platform for running and developing applications based on the
@@ -874,7 +876,7 @@ Description: Mono Microsoft libraries
 Package: libmono-microsoft8.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Microsoft libraries
  Mono is a platform for running and developing applications based on the
@@ -888,7 +890,7 @@ Description: Mono Microsoft libraries
 Package: libmono-peapi1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono PEAPI library
  Mono is a platform for running and developing applications based on the
@@ -902,7 +904,7 @@ Description: Mono PEAPI library
 Package: libmono-peapi2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono PEAPI library
  Mono is a platform for running and developing applications based on the
@@ -916,7 +918,7 @@ Description: Mono PEAPI library
 Package: libmono-relaxng1.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.6-1), mono-classlib-1.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Relaxng library
  Mono is a platform for running and developing applications based on the
@@ -930,7 +932,7 @@ Description: Mono Relaxng library
 Package: libmono-relaxng2.0-cil
 Section: libs
 Architecture: all
-Replaces: mono-classlib-2.0 (<< 1.1.13.6-1), mono-classlib-2.0-dbg (<< 1.1.13.6-1)
+Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
 Description: Mono Relaxng library
  Mono is a platform for running and developing applications based on the
