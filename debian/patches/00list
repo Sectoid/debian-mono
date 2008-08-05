@@ -3,6 +3,7 @@ console-no-utf8-bom
 firebird-fbclient
 fix-mono.pc.in
 fix-mono-cairo.pc.in
+fix-mono-nunit.pc.in
 fix_BigInteger_overflow_CVE-2007-5197
 fix_implicit_pointer_conversions
 method-signature-testing

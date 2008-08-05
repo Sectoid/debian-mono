@@ -187,6 +187,23 @@ Description: Mono Mozilla library
  This package contains the implementation of the WebControl class based on the
  Mozilla engine using libgluezilla.
 
+Package: libmono-nunit2.2-cil
+Section: libs
+Architecture: all
+Provides: libnunit2.2-cil
+Conflicts: libnunit2.2-cil
+Depends: ${cli:Depends}
+Description: Mono Unit test framework for CLI
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains NUnit which is a unit testing framework. It serves the
+ same purpose as JUnit does in the Java world. It supports test categories,
+ testing for exceptions and writing test results in plain text or XML.
+
 Package: libmono-corlib1.0-cil
 Section: libs
 Architecture: all

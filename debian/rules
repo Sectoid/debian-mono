@@ -194,11 +194,12 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_testroot
 
 	# we do not want nunit, it's a forked version
-	rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
-	rm -f debian/tmp/usr/lib/mono/1.0/nunit*
-	rm -f debian/tmp/usr/lib/mono/2.0/nunit*
-	rm -rf debian/tmp/usr/lib/mono/gac/nunit*
-	rm -f debian/tmp/usr/bin/nunit*
+	# nunit 2.4 API has changed too much, thus needing this nunit 2.2 now
+	#rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
+	#rm -f debian/tmp/usr/lib/mono/1.0/nunit*
+	#rm -f debian/tmp/usr/lib/mono/2.0/nunit*
+	#rm -rf debian/tmp/usr/lib/mono/gac/nunit*
+	#rm -f debian/tmp/usr/bin/nunit*
 	# upstream forgot to remove this one
 	rm -f debian/tmp/usr/bin/mbas
 	# don't want docs of bundled libgc
