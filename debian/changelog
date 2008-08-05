@@ -1,4 +1,4 @@
-mono (1.9.1+dfsg-3~pre2) unstable; urgency=medium
+mono (1.9.1+dfsg-3) unstable; urgency=medium
 
   * debian/control
     debian/rules
@@ -6,17 +6,12 @@ mono (1.9.1+dfsg-3~pre2) unstable; urgency=medium
     + Added libmono-nunit2.2-cil package needed by packages like monodevelop
       and mono-tools, the nunit 2.4 API (libnunit2.4-cil) changed too much to
       port these packages. (thus urgency set to medium)
-  * debian/patches/fix-mono-nunit.pc.in.dpatch:
-    + Remove stupid relative path from prefix variable.
   * debian/shlibs.local:
-    + Updated for the Mono 1.9 release.
+    + Updated for the Mono 1.9 release (forgot this in -1).
   * debian/rules:
     debian/libmono-system2.0-cil.install:
     + Added System.Xml.Linq library but with the correct compiler-directory.
       (Closes: #487996)
-  * debian/rules:
-    + Removed --list-missing from dh_install call, it's useless in the current
-      implementation.
   * debian/control:
     + Added libdiplus to dependencies of libmono-system-web1.0-cil and
       libmono-system-web2.0-cil as System.Web.UI.WebControls.WebColorConverter
@@ -38,6 +33,11 @@ mono (1.9.1+dfsg-3~pre2) unstable; urgency=medium
     debian/libmono-system2.0-cil.clideps-override:
     + libcupsys2 package was renamed to libcups2, moving the dependeny on
       libcups2 to suggests (as it was before).
+  * debian/rules:
+    + Removed --list-missing from dh_install call, it's useless in the current
+      implementation.
+  * debian/patches/fix-mono-nunit.pc.in.dpatch:
+    + Remove stupid relative path from prefix variable.
 
  -- Mirco Bauer <meebey@debian.org>  Tue, 05 Aug 2008 21:46:48 +0200
 
