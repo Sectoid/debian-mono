@@ -1,3 +1,10 @@
+mono (1.9.1+dfsg-4~pre1) unstable; urgency=low
+
+  * Added lpia to Architecture fields.
+    (to make Jo Shields more happy)
+
+ -- Mirco Bauer <meebey@debian.org>  Fri, 29 Aug 2008 22:38:44 +0200
+
 mono (1.9.1+dfsg-3) unstable; urgency=medium
 
   * debian/control
