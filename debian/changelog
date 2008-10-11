@@ -7,24 +7,19 @@ mono (1.9.1+dfsg-4) unstable; urgency=high
   [ Jo Shields ]
   * Add myself to Uploaders
   * debian/patches/fix_sloppy_attribute_encode_CVE-2008-3422.dpatch:
-    + Fixes CVE-2008-3422, thus urgency set to high.
-    + Closes #494406
+    + Fixes CVE-2008-3422, thus urgency set to high (Closes: #494406)
   * debian/patches/fix_CRLF_injection_CVE-2008-3906.dpatch:
-    + Fixes CVE-2008-3906, thus urgency set to high.
-    + Closes #498894
+    + Fixes CVE-2008-3906, thus urgency set to high (Closes: #498894)
   * debian/patches/fix_IsolatedStorage_regression_r99231_r101171_r101172.dpatch:
     + Fix regression in IsolatedStorage behaviour causing exceptions 
-      with subdirectories
-    + Closes #501505
+      with subdirectories (Closes: #501505)
   * debian/patches/fix_mono-config_man_page_r111681.dpatch:
-    + Fix minor manpage typo
-    + Closes #495624
+    + Fix minor manpage typo (Closes: #495624)
   * debian/control:
-    + Tweak description of mono-xbuild package
-    + Closes #493478
+    + Tweak description of mono-xbuild package (Closes: #493478)
   * debian/man/*:
     + Update default manpage to point to correct URL for documentation
-    + Closes #500771
+      (Closes: #500771)
 
  -- Jo Shields <directhex@apebox.org>  Fri, 10 Oct 2008 12:32:44 +0100
 
