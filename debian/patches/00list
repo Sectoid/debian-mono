@@ -15,4 +15,8 @@ fix_stack_alignment_r105650_r105651
 fix_xen_support_r103474_r103475
 fix_Dictionary_preventing_GC_r102114
 fix_TdsConnectionPool_svn
+fix_sloppy_attribute_encode_CVE-2008-3422
+fix_CRLF_injection_CVE-2008-3906
+fix_IsolatedStorage_regression_r99231_r101171_r101172
+fix_mono-config_man_page_r111681
 99_autoreconf

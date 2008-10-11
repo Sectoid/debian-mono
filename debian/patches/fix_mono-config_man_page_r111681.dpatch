@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_mono-config_man_page_r111681.dpatch by Jo Shields <directhex@apebox.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Fix minor typo in mono-config man page
+
+@DPATCH@
+--- mono/man/mono-config.5	2007/02/23 14:12:53	73363
++++ mono/man/mono-config.5	2008/08/27 03:27:55	111681
+@@ -60,7 +60,7 @@
+ This is the target library, where the function can be found.
+ .TP
+ .I name
+-This is the name of the fuction as it appears in the metadata: it is the name 
++This is the name of the function as it appears in the metadata: it is the name 
+ of the P/Invoke method.
+ .TP
+ .I target
+
