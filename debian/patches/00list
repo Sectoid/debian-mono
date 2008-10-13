@@ -19,4 +19,5 @@ fix_sloppy_attribute_encode_CVE-2008-3422
 fix_CRLF_injection_CVE-2008-3906
 fix_IsolatedStorage_regression_r99231_r101171_r101172
 fix_mono-config_man_page_r111681
+fix_Assembly.LoadFrom_deadlock
 99_autoreconf

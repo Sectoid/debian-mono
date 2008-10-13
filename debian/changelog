@@ -3,6 +3,11 @@ mono (1.9.1+dfsg-4) unstable; urgency=high
   [ Mirco Bauer ]
   * Added lpia to Architecture fields.
     (to make Jo Shields more happy)
+  * debian/fix_Assembly.LoadFrom_deadlock.dpatch:
+    + Fixes deadlock in loading assemblies code like Assembly.LoadFrom(),
+      causing deadlocks (mostly) on SMP systems.
+      (patches taken from upstream SVN revisions: r105036, r105153, r113458,
+       r115451 and r115697) 
 
   [ Jo Shields ]
   * Add myself to Uploaders
