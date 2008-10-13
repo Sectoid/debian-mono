@@ -26,7 +26,7 @@ mono (1.9.1+dfsg-4) unstable; urgency=high
     + Update default manpage to point to correct URL for documentation
       (Closes: #500771)
 
- -- Jo Shields <directhex@apebox.org>  Fri, 10 Oct 2008 12:32:44 +0100
+ -- Jo Shields <directhex@apebox.org>  Mon, 13 Oct 2008 23:21:40 +0200
 
 mono (1.9.1+dfsg-3) unstable; urgency=medium
 
