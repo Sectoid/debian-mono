@@ -1,3 +1,124 @@
+mono (2.0-1) experimental; urgency=low
+
+  * New upstream release.
+    + System.Web.Extensions is included in the debian source and binary
+      packages now, as JSON.NET was relicensed to MIT/X11 and thus no DFSGing
+      needed anymore! (Closes: #497213)
+    + With this release, we changed the default development stack from 1.0 to
+      2.0. This has no influence to the runtime nor existing binary packages,
+      for more details see:
+      http://wiki.debian.org/Teams/DebianMonoGroup/Mono20Transition
+  * debian/copyright:
+    + Updated license info of JSON.NET
+  * debian/control:
+    + Removed libgda2-dev from buid-deps as debian/update-shlibs.local.sh
+      takes already care of it.
+    + mono-utils depends on libmono-corlib2.0-cil and only suggests
+      libmono-corlib1.0-cil now as the default runtime was changed to 2.0.
+    + Updated libcupsys2-dev build-dependency to libcups2-dev.
+    + Updated Standards-Version to 3.8.0 (no changes needed).
+  * debian/rules:
+    + Pass --enable-quiet-build=no to configure call, else we get a less
+      verbose build log.
+    + Bumped clilibs to 2.0 of libmono{1,2}.0-cil, libmono-cairo{1,2}.0-cil,
+      libmono-data-tds{1,2}.0-cil, libmono-system2.0-cil,
+      libmono-system-runtime2.0-cil, libmono-security{1,2}.0-cil,
+      libmono-web2.0-cil, libmono-winforms2.0-cil and libmono-system2.1-cil.
+  * debian/mono.runtime-script:
+    + Call the script of gacutil instead of passing the application filename
+      directly to mono, as we rely on the default gacutil now provided by the
+      mono-gac package.
+  * debian/patches/method-signature-testing.dpatch
+    debian/patches/pass_CPPFLAGS_nicely_r98803.dpatch
+    debian/patches/fix_bound_checking_r98524_r98527.dpatch
+    debian/patches/fix_softfloat_r105848.dpatch
+    debian/patches/fix_stack_alignment_r105650_r105651.dpatch
+    debian/patches/fix_xen_support_r103474_r103475.dpatch
+    debian/patches/fix_Dictionary_preventing_GC_r102114.dpatch
+    debian/patches/fix_TdsConnectionPool_svn.dpatch
+    debian/patches/fix_Assembly.LoadFrom_deadlock.dpatch:
+    + Removed, already applied upstream.
+  * debian/patches/dont_build_System.Web.Extensions.dpatch:
+    + Disabled, JSON.NET was re-licensed to MIT/X11.
+  * debian/libmono-system-web2.0-cil.install:
+    + Added System.Web.Extensions.dll and System.Web.Extensions.Design.dll.
+  * debian/update-shlibs.local.sh:
+    + Fixed grep calls so it doesn't match udeb lines.
+  * debian/shlibs.local:
+    + Updated
+  * debian/control
+    debian/libmono-mozilla0.2-cil.install
+    debian/libmono-webbrowser0.5-cil.install:
+    + Renamed libmono-mozilla0.2-cil to libmono-webbrowser0.5-cil and
+      removed Replaces.
+  * debian/control
+    debian/libmono{1,2}.0-cil.install
+    debian/libmono-posix{1,2}.0-cil.install:
+    debian/libmono-getoptions{1,2}.0-cil.install:
+    debian/libmono-data{1,2}.0-cil.install:
+    + Moved the Mono.Posix, Mono.GetOptions and Mono.Data.* libraries into
+      extra packages to support smaller install sizes of typical applications
+      (e.g. tomboy or gnome-do).
+    + Added libmono-posix{1,2}.0-cil, libmono-getoptions{1,2}.0-cil and
+      libmono-data{1,2}.0-cil as dependency of libmono{1,2}-cil to aid a smooth
+      runtime transition.
+  * debian/libmono-system-data2.0-cil.install:
+    + Added System.Data.DataSetExtensions.dll and System.Data.Linq.dll.
+  * debian/rules
+    debian/libmono{1,2}.0-cil.install:
+    + Dropped Mono.Security.Win32.dll as the library is only useful on
+      Windows.
+  * debian/patches/build_genxs_2.0.dpatch:
+    + Enables compiling genxs for CLI 2.0 as upstream provided a genxs2 script
+      but forgot to build the actual application.
+  * debian/mono-2.0-devel.install
+    debian/mono-2.0-devel.manpages:
+    + Added xsd2 and genxs2
+  * debian/mono-devel.install
+    debian/mono-devel.manpages
+    debian/mono-1.0-devel.install
+    debian/mono-1.0-devel.manpages:
+    + Moved all unversioned tools and default scripts (with their manpages) to
+      mono-devel.
+  * debian/mono-mcs.install
+    debian/mono-mcs.manpages
+    debian/mono-gmcs.install
+    debian/mono-gmcs.manpages
+    debian/mono-devel.install
+    debian/mono-devel.manpages
+    debian/control:
+    + Moved gmcs script and manpage from mono-gmcs to mono-devel.
+    + Added Replaces for mono-mcs and mono-gmcs to mono-devel.
+    + Added gmcs2 script and manpage to mono-gmcs
+    + Added mcs1 script and manpage to mono-mcs.
+      This changes are needed to get a default compiler target using a single
+      package that depends on the current default which is 2.0 (gmcs2).
+  * debian/System.Windows.Forms.dll.config:
+    + Added dll-map for libgdk_pixbuf-2.0.so
+  * debian/control:
+    + Improved many package descriptions by adding the names of the
+      libraries they contain with a brief description of what they do.
+  * debian/control
+    debian/mono-gac.install
+    debian/mono-{1,2}.0-gac.install:
+    + The default script "gacutil" is still shipped in mono-gac but
+      "gacutil1" and "gacutil2" are now in mono-1.0-gac and mono-2.0-gac.
+      mono-gac pulls in mono-2.0-gac by default.
+      This is needed to make a 2.0-only install possible.
+  * debian/control:
+    + Added mono-1.0-runtime and mono-2.0-runtime package, which pull in the
+      runtime stack of the specific runtime version in.
+      mono-runtime pulls in mono-2.0-runtime as the new default runtime.
+      This is needed to make a 2.0-only install possible.
+  * debian/libmono-dev.install:
+    + Added dotnet35.pc
+  * debian/mono-smcs.install:
+    + Added smcs.pc
+  * debian/control:
+    + s/meta package/metapackage/ as lintian says so.
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 11 Nov 2008 00:21:27 +0100
+
 mono (1.9.1+dfsg-4) unstable; urgency=high
 
   [ Mirco Bauer ]

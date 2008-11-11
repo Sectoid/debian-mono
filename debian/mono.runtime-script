@@ -61,7 +61,7 @@ if ($mode eq "remove")
 	{
 		my $assembly = $_;
 		chomp($assembly);
-		my $cmd = "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /u $assembly > /dev/null";
+		my $cmd = "/usr/bin/gacutil -u $assembly > /dev/null";
 		my $res = system($cmd);
 		if ($res > 0) {
 			print STDERR "W: removing assembly: $assembly failed!\n";
@@ -117,7 +117,7 @@ while (@ARGV)
     # absolute paths). There isn't a problem of doing too many
     # since we typically run from the root context.
     my $cmd = "(cd `dirname $dll` && "
-    	. "/usr/bin/mono /usr/lib/mono/1.0/gacutil.exe /i `basename $dll`"
+    	. "/usr/bin/gacutil -i `basename $dll`"
 	   . " > /dev/null)";
     system($cmd) == 0 or die "E: installing Assembly $dll failed\n";
 }

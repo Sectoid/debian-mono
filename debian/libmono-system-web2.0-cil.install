@@ -1,4 +1,12 @@
 debian/tmp/usr/lib/mono/gac/System.Web/2.0.0.0__*/
+debian/tmp/usr/lib/mono/gac/System.Web.Extensions/1.0.61025.0__*/
+debian/tmp/usr/lib/mono/gac/System.Web.Extensions/3.5.0.0__*/
+debian/tmp/usr/lib/mono/gac/System.Web.Extensions.Design/1.0.61025.0__*/
+debian/tmp/usr/lib/mono/gac/System.Web.Extensions.Design/3.5.0.0__*/
 debian/tmp/usr/lib/mono/gac/System.Web.Services/2.0.0.0__*/
 debian/tmp/usr/lib/mono/2.0/System.Web.dll
+debian/tmp/usr/lib/mono/2.0/System.Web.Extensions.dll
+debian/tmp/usr/lib/mono/2.0/System.Web.Extensions.Design.dll
 debian/tmp/usr/lib/mono/2.0/System.Web.Services.dll
+debian/tmp/usr/lib/mono/3.5/System.Web.Extensions.dll
+debian/tmp/usr/lib/mono/3.5/System.Web.Extensions.Design.dll

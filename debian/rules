@@ -55,7 +55,8 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 		  --with-libgdiplus=installed --with-x=yes \
 		  --with-moonlight=yes \
-		  --with-oprofile=yes
+		  --with-oprofile=yes \
+		  --enable-quiet-build=no
 
 # Mono's build system doesn't like -j > 1
 MAKE_FLAGS += -j1
@@ -74,16 +75,12 @@ cli-wrapper: debian/cli-wrapper.c
 configure-arch: patch configure-arch-stamp
 configure-arch-stamp:
 	dh_testdir
-	#chmod +x debian/autogen.sh
-	#NOCONFIGURE=1 debian/autogen.sh
 	$(CONFIGURE) --disable-mcs-build
 	touch configure-arch-stamp
 
 configure-indep: patch configure-indep-stamp
 configure-indep-stamp:
 	dh_testdir
-	#chmod +x debian/autogen.sh
-	#NOCONFIGURE=1 debian/autogen.sh
 	$(CONFIGURE)
 	touch configure-indep-stamp
 
@@ -160,14 +157,32 @@ install-indep-stamp:
 	#dh_clean -k -i
 	dh_installdirs -i
 	cd mcs && \
-	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp && \
-	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0
-	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_1
+	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp && \
+	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0 && \
+	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_1 && \
+	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_3_5
+
+	# upstream forgot to remove this one
+	rm -f debian/tmp/usr/bin/mbas
+	# don't want docs of bundled libgc
+	rm -rf debian/tmp/usr/share/libgc-mono
+	# Mono.WebBrowser.dll is linked with CLI 2.0, thus the symlink in 1.0/ doesn't make sense
+	rm -f debian/tmp/usr/lib/mono/1.0/Mono.WebBrowser.dll
+	# Mono.Security.Win32.dll is only useful on windows, as it wrap the win api
+	rm -f $(CURDIR)/usr/lib/mono/gac/Mono.Security.Win32/1.0.5000.0__*/Mono.Security.Win32.dll \
+	      $(CURDIR)/usr/lib/mono/gac/Mono.Security.Win32/2.0.0.0__*/Mono.Security.Win32.dll \
+	      $(CURDIR)/usr/lib/mono/1.0/Mono.Security.Win32.dll \
+	      $(CURDIR)/usr/lib/mono/2.0/Mono.Security.Win32.dll
+
 	# copy missing 2.0 manpages
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/al.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/al2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/gmcs.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/gmcs2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/smcs.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service.1 \
@@ -182,9 +197,43 @@ install-indep-stamp:
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/resgen.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/resgen2.1
-	# move System.Xml.Linq.dll symlink to the correct directory
-	mv $(CURDIR)/debian/tmp/usr/lib/mono/3.5/System.Xml.Linq.dll \
-	   $(CURDIR)/debian/tmp/usr/lib/mono/2.0/
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/genxs.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/genxs2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/xsd.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/xsd2.1
+	# copy missing 1.0 manpages
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/al.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/al1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/genxs.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/genxs1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/mcs1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/monop.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/monop1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/resgen.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/resgen1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl1.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/xsd.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/xsd1.1
+	# copy missing default scripts
+	cp $(CURDIR)/debian/tmp/usr/bin/xsd \
+	   $(CURDIR)/debian/tmp/usr/bin/xsd1
+	# copy missing 2.0 scripts
+	cp $(CURDIR)/debian/tmp/usr/bin/gmcs \
+	   $(CURDIR)/debian/tmp/usr/bin/gmcs2
+	# gacutil should be 2.0 by default (like all other development tools)
+	mv $(CURDIR)/debian/tmp/usr/bin/gacutil \
+	   $(CURDIR)/debian/tmp/usr/bin/gacutil1
+	cp $(CURDIR)/debian/tmp/usr/bin/gacutil2 \
+	   $(CURDIR)/debian/tmp/usr/bin/gacutil
+
 	touch install-indep-stamp
 
 binary: binary-arch binary-indep
@@ -193,22 +242,6 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_testdir
 	dh_testroot
 
-	# we do not want nunit, it's a forked version
-	# nunit 2.4 API has changed too much, thus needing this nunit 2.2 now
-	#rm -f debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
-	#rm -f debian/tmp/usr/lib/mono/1.0/nunit*
-	#rm -f debian/tmp/usr/lib/mono/2.0/nunit*
-	#rm -rf debian/tmp/usr/lib/mono/gac/nunit*
-	#rm -f debian/tmp/usr/bin/nunit*
-	# upstream forgot to remove this one
-	rm -f debian/tmp/usr/bin/mbas
-	# don't want docs of bundled libgc
-	rm -rf debian/tmp/usr/share/libgc-mono
-	# never ever install cecil.pc! mono ships an internal version for GAC only
-	# args, mono-tools >= 1.9 needs this now :(
-	#rm -f debian/tmp/usr/lib/pkgconfig/cecil.pc
-	# Mono.Mozilla.dll is linked with CLI 2.0, thus the symlink in 1.0/ doesn't make sense
-	rm -f debian/tmp/usr/lib/mono/1.0/Mono.Mozilla.dll
 
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
@@ -249,34 +282,37 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_installdeb -i
 	#DH_VERBOSE=1 DH_AUTOSCRIPTDIR=$(CURDIR)/debian debian/dh_monoaot -i
 	debian/dh_makeclilibs -i -m 1.0 internal-mono
-	debian/dh_makeclilibs -p libmono1.0-cil -m 1.9 internal-mono
-	debian/dh_makeclilibs -p libmono2.0-cil -m 1.9 internal-mono
-	debian/dh_makeclilibs -p libmono-cairo1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-cairo2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono1.0-cil -m 2.0 internal-mono
+	debian/dh_makeclilibs -p libmono2.0-cil -m 2.0 internal-mono
+	debian/dh_makeclilibs -p libmono-cairo1.0-cil -m 2.0 internal-mono
+	debian/dh_makeclilibs -p libmono-cairo2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-corlib1.0-cil -m 1.2.2.1 internal-mono
 	debian/dh_makeclilibs -p libmono-corlib2.0-cil -m 1.2.2.1 internal-mono
-	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 2.0 internal-mono
+	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-ldap1.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-ldap2.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-oracle2.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-system1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-system2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-system2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-system-data1.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-system-data2.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-system-ldap2.0-cil -m 1.2.6 internal-mono
+	debian/dh_makeclilibs -p libmono-system-runtime2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-system-web2.0-cil -m 1.9.1 internal-mono
-	debian/dh_makeclilibs -p libmono-security1.0-cil -m 1.9 internal-mono
-	debian/dh_makeclilibs -p libmono-security2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-security1.0-cil -m 2.0 internal-mono
+	debian/dh_makeclilibs -p libmono-security2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-sqlite1.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 internal-mono
 	debian/dh_makeclilibs -p libmono-web1.0-cil -m 1.9 internal-mono
-	debian/dh_makeclilibs -p libmono-web2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-web2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-winforms1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 2.0 internal-mono
 	debian/dh_makeclilibs -p libmono-relaxng1.0-cil -m 1.9 internal-mono
 	debian/dh_makeclilibs -p libmono-relaxng2.0-cil -m 1.9 internal-mono
+	# preview APIs get tighter clilibs
+	debian/dh_makeclilibs -p libmono-system2.1-cil -m 2.0 internal-mono
 	debian/dh_clideps -i -l debian/tmp internal-mono
 	#DH_VERBOSE=1 debian/dh_clideps -i -l debian/tmp internal-mono
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)

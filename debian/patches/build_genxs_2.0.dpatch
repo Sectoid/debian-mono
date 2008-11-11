@@ -1,0 +1,29 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## build_genxs_2.0.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-2.0~/mcs/tools/Makefile mono-2.0/mcs/tools/Makefile
+--- mono-2.0~/mcs/tools/Makefile	2008-09-02 17:44:36.000000000 +0200
++++ mono-2.0/mcs/tools/Makefile	2008-11-01 12:52:49.000000000 +0100
+@@ -8,7 +8,7 @@
+ net_1_1_bootstrap_SUBDIRS = gacutil security resgen culevel
+ net_2_0_bootstrap_SUBDIRS = resgen
+ 
+-net_2_0_SUBDIRS = al corcompare mono-xsd wsdl compiler-tester monop xbuild resgen mono-service mkbundle sgen security mconfig installutil nunitreport gacutil
++net_2_0_SUBDIRS = al corcompare mono-xsd wsdl compiler-tester monop xbuild resgen mono-service mkbundle sgen security mconfig installutil nunitreport gacutil genxs
+ net_2_1_raw_SUBDIRS = compiler-tester
+ net_2_1_SUBDIRS = compiler-tester tuner
+ 
+diff -urNad mono-2.0~/mcs/tools/genxs/Makefile mono-2.0/mcs/tools/genxs/Makefile
+--- mono-2.0~/mcs/tools/genxs/Makefile	2008-09-02 17:44:14.000000000 +0200
++++ mono-2.0/mcs/tools/genxs/Makefile	2008-11-01 12:52:02.000000000 +0100
+@@ -5,4 +5,6 @@
+ LOCAL_MCS_FLAGS = -r:System.Xml.dll
+ PROGRAM = $(topdir)/class/lib/$(PROFILE)/genxs.exe
+ 
++CLEAN_FILES = *.exe *.mdb
++
+ include ../../build/executable.make
