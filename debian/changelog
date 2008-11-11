@@ -1,3 +1,10 @@
+mono (2.0-2~pre1) experimental; urgency=low
+
+  * debian/mono-1.0-devel.manpages:
+    + Removed mcs1 as it's already shipped in mono-mcs.
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 11 Nov 2008 22:31:28 +0100
+
 mono (2.0-1) experimental; urgency=low
 
   * New upstream release.
