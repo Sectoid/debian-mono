@@ -1,4 +1,4 @@
-mono (2.0.1-1~pre1) experimental; urgency=low
+mono (2.0.1-1~pre2) experimental; urgency=low
 
   * New upstream (bugfix) release.
   * debian/mono-1.0-devel.manpages:
