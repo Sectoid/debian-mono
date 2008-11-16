@@ -1,7 +1,13 @@
-mono (2.0-2~pre1) experimental; urgency=low
+mono (2.0.1-1~pre1) experimental; urgency=low
 
+  * New upstream (bugfix) release.
   * debian/mono-1.0-devel.manpages:
     + Removed mcs1 as it's already shipped in mono-mcs.
+  * debian/patches/99_autoreconf.dpatch:
+    + Updated
+  * debian/mono-devel.links:
+    + Make csc a symlink to gmcs, a runtime version neutral default
+      compiler.
 
  -- Mirco Bauer <meebey@debian.org>  Tue, 11 Nov 2008 22:31:28 +0100
 
