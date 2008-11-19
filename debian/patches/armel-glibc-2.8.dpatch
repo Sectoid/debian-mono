@@ -1,0 +1,30 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## armel-glibc-2.8.dpatch by Michael Casadevall  <sonicmctails@gmail.com>
+## tweaked for 2.0.1 by Jo Shields <directhex@apebox.org>
+##
+## DP: Moved the location files are included to prevent a FTBFS
+## DP: since in 2.8, you can't include headers within a function
+## DP: and expect it to work
+@DPATCH@
+diff -urNad mono-2.0.1~/mono/arch/arm/tramp.c mono-2.0.1/mono/arch/arm/tramp.c
+--- mono-2.0.1~/mono/arch/arm/tramp.c	2008-11-19 23:05:19.000000000 +0000
++++ mono-2.0.1/mono/arch/arm/tramp.c	2008-11-19 23:07:02.000000000 +0000
+@@ -10,6 +10,9 @@
+ 
+ #if defined(_WIN32_WCE) || defined (UNDER_CE)
+ #	include <windows.h>
++#else
++#include <unistd.h>
++#include <sys/mman.h>
+ #endif
+ 
+ #if !defined(PLATFORM_MACOSX)
+@@ -76,8 +79,6 @@
+ 	code_buff = malloc(code_size);
+ 	VirtualProtect(code_buff, code_size, PAGE_EXECUTE_READWRITE, &old_prot);
+ #else
+-#include <unistd.h>
+-#include <sys/mman.h>
+ 	int page_size = sysconf(_SC_PAGESIZE);
+ 	int new_code_size;
+ 

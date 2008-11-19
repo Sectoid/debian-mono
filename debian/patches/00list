@@ -6,5 +6,6 @@ fix-mono-cairo.pc.in
 fix-mono-nunit.pc.in
 fix_BigInteger_overflow_CVE-2007-5197
 fix_implicit_pointer_conversions
+armel-glibc-2.8
 build_genxs_2.0
 99_autoreconf

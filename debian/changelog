@@ -1,5 +1,11 @@
 mono (2.0.1-1~pre2) experimental; urgency=low
 
+  [ Jo Shields ]
+  * debian/patches/armel-glibc-2.8.dpatch:
+    + Fix build failure on armel architecture on libc6 2.8 (Thanks
+      to Michael Casadevall <sonicmctails@gmail.com> for the patch)
+
+  [ Mirco Bauer ]
   * New upstream (bugfix) release.
   * debian/mono-1.0-devel.manpages:
     + Removed mcs1 as it's already shipped in mono-mcs.
