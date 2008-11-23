@@ -1,3 +1,4 @@
+armel_fix_configure_fpu_check
 kfreebsd_support
 console-no-utf8-bom
 firebird-fbclient

@@ -1,9 +1,4 @@
-mono (2.0.1-1~pre2) experimental; urgency=low
-
-  [ Jo Shields ]
-  * debian/patches/armel-glibc-2.8.dpatch:
-    + Fix build failure on armel architecture on libc6 2.8 (Thanks
-      to Michael Casadevall <sonicmctails@gmail.com> for the patch)
+mono (2.0.1-1~pre3) experimental; urgency=low
 
   [ Mirco Bauer ]
   * New upstream (bugfix) release.
@@ -14,8 +9,21 @@ mono (2.0.1-1~pre2) experimental; urgency=low
   * debian/mono-devel.links:
     + Make csc a symlink to gmcs, a runtime version neutral default
       compiler.
+  * debian/patches/armel_fix_configure_fpu_check.dpatch:
+    + Forward ported patch from 1.2.4 to fix FTBFS on linux/armel.
+  * debian/patches/99_autoreconf.dpatch:
+    + Updated
 
- -- Mirco Bauer <meebey@debian.org>  Tue, 11 Nov 2008 22:31:28 +0100
+  [ Jo Shields ]
+  * debian/patches/armel-glibc-2.8.dpatch:
+    + Fix build failure on armel architecture on libc6 2.8 (Thanks
+      to Michael Casadevall <sonicmctails@gmail.com> for the patch)
+
+  [ David Paleino ]
+  * Group Policy:
+    + implemented get-orig-source target in debian/rules
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 23 Nov 2008 16:16:00 +0100
 
 mono (2.0-1) experimental; urgency=low
 

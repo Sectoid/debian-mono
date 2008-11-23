@@ -351,5 +351,14 @@ binary-arch: build-arch install-arch
 	dh_md5sums -s
 	dh_builddeb -s
 
+get-orig-source:
+	[ -d ../tarballs ] || mkdir ../tarballs
+	uscan \
+		--force-download \
+		--download-version $(UPVERSION) \
+		--repack \
+		--rename \
+		--destdir ../tarballs
+
 .PHONY: clean build binary-indep binary-arch install binary patch unpatch
 .NOTPARALLEL:
