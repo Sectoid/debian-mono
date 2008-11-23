@@ -1,2 +1,5 @@
-debian/tmp/etc/mono
+debian/tmp/etc/mono/browscap.ini
+debian/tmp/etc/mono/config
+debian/tmp/etc/mono/1.0/
+debian/tmp/etc/mono/2.0/
 debian/tmp/usr/share/mono-1.0/mono/cil/cil-opcodes.xml

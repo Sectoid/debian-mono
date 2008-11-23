@@ -1,4 +1,4 @@
-mono (2.0.1-1~pre3) experimental; urgency=low
+mono (2.0.1-1~pre4) experimental; urgency=low
 
   [ Mirco Bauer ]
   * New upstream (bugfix) release.
@@ -13,6 +13,10 @@ mono (2.0.1-1~pre3) experimental; urgency=low
     + Forward ported patch from 1.2.4 to fix FTBFS on linux/armel.
   * debian/patches/99_autoreconf.dpatch:
     + Updated
+  * debian/mono-common.install:
+    + Name the /etc files and directories explicitly to make sure not to
+      install /etc/mconfig by accident when doing a binary-indep binary-arch
+      (in that order) build.
 
   [ Jo Shields ]
   * debian/patches/armel-glibc-2.8.dpatch:
