@@ -1,4 +1,4 @@
-mono (2.0.1-1~pre4) experimental; urgency=low
+mono (2.0.1-1) experimental; urgency=low
 
   [ Mirco Bauer ]
   * New upstream (bugfix) release.
