@@ -1,3 +1,13 @@
+mono (2.0.1-2) UNRELEASED; urgency=low
+
+  [ Jo Shields ]
+  * debian/patches/fix_wsdl2_duplicate_keys_r117243.dpatch:
+    + Fix bug in wsdl2 preventing parsing of Amazon Web Services 
+      wsdl file (thanks to Iain Lane <laney@ubuntu.com> for help
+      isolating this bug)
+
+ -- Jo Shields <directhex@apebox.org>  Fri, 28 Nov 2008 23:15:00 +0000
+
 mono (2.0.1-1) experimental; urgency=low
 
   [ Mirco Bauer ]
