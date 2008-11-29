@@ -1,0 +1,26 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_NetworkInterface_exception_r120282.dpatch by Jo Shields <directhex@apebox.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Upstream patch to prevent System.Net.NetworkInformation.NetworkInterface from
+## DP: causing an exception on "funny" input data
+
+@DPATCH@
+Index: mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs
+===================================================================
+--- mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs	(revision 120281)
++++ mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs	(revision 120282)
+@@ -180,8 +180,11 @@
+ 							address = new IPAddress (sockaddr.sin_addr);
+ 						} else if (sockaddr.sin_family == AF_PACKET) {
+ 							sockaddr_ll sockaddrll = (sockaddr_ll) Marshal.PtrToStructure (addr.ifa_addr, typeof (sockaddr_ll));
+-							if (((int)sockaddrll.sll_halen) > sockaddrll.sll_addr.Length)
+-								throw new SystemException("Bad hardware address length");
++							if (((int)sockaddrll.sll_halen) > sockaddrll.sll_addr.Length){
++								Console.Error.WriteLine ("Got a bad hardware address length for an AF_PACKET {0} {1}",
++											 sockaddrll.sll_halen, sockaddrll.sll_addr.Length);
++								continue;
++							}
+ 							
+ 							macAddress = new byte [(int) sockaddrll.sll_halen];
+ 							Array.Copy (sockaddrll.sll_addr, 0, macAddress, 0, macAddress.Length);

@@ -5,6 +5,9 @@ mono (2.0.1-2) UNRELEASED; urgency=low
     + Fix bug in wsdl2 preventing parsing of Amazon Web Services 
       wsdl file (thanks to Iain Lane <laney@ubuntu.com> for help
       isolating this bug)
+  * debian/patches/fix_NetworkInterface_exception_r120282.dpatch:
+    + Warn, rather than fail, on "funny" network interfaces
+      (Closes: #507297)
 
  -- Jo Shields <directhex@apebox.org>  Fri, 28 Nov 2008 23:15:00 +0000
 
