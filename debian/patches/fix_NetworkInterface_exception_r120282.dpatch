@@ -6,10 +6,10 @@
 ## DP: causing an exception on "funny" input data
 
 @DPATCH@
-Index: mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs
+Index: mono-2.0.1/mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs
 ===================================================================
---- mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs	(revision 120281)
-+++ mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs	(revision 120282)
+--- mono-2.0.1/mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs	(revision 120281)
++++ mono-2.0.1/mcs/class/System/System.Net.NetworkInformation/NetworkInterface.cs	(revision 120282)
 @@ -180,8 +180,11 @@
  							address = new IPAddress (sockaddr.sin_addr);
  						} else if (sockaddr.sin_family == AF_PACKET) {

@@ -6,10 +6,10 @@
 ## DP: cause wsdl files to be badly processed, due to key duplication
 
 @DPATCH@
-Index: mcs/class/System.Web.Services/System.Web.Services.Description/BasicProfileChecker.cs
+Index: mono-2.0.1/mcs/class/System.Web.Services/System.Web.Services.Description/BasicProfileChecker.cs
 ===================================================================
---- mcs/class/System.Web.Services/System.Web.Services.Description/BasicProfileChecker.cs	(revision 117242)
-+++ mcs/class/System.Web.Services/System.Web.Services.Description/BasicProfileChecker.cs	(revision 117243)
+--- mono-2.0.1/mcs/class/System.Web.Services/System.Web.Services.Description/BasicProfileChecker.cs	(revision 117242)
++++ mono-2.0.1/mcs/class/System.Web.Services/System.Web.Services.Description/BasicProfileChecker.cs	(revision 117243)
 @@ -177,7 +177,7 @@
  				foreach (OperationMessage om in op.Messages) {
  					Message msg = ctx.Services.GetMessage (om.Message);
