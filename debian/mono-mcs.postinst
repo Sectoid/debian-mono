@@ -1,8 +1,0 @@
-#!/bin/sh
-set -e
-
-update-alternatives \
-	--install /usr/bin/cli-csc c-sharp-compiler /usr/bin/mcs 10 \
-	--slave /usr/share/man/man1/cli-csc.1.gz cli-csc.1.gz /usr/share/man/man1/mcs.1.gz
-
-#DEBHELPER#

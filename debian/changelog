@@ -9,7 +9,24 @@ mono (2.0.1-2) UNRELEASED; urgency=low
     + Warn, rather than fail, on "funny" network interfaces
       (Closes: #507297)
 
- -- Jo Shields <directhex@apebox.org>  Fri, 28 Nov 2008 23:15:00 +0000
+  [ Mirco Bauer ]
+  * debian/mono-1.0-devel.postinst
+    debian/mono-1.0-devel.prerm
+    debian/mono-mcs.postinst
+    debian/mono-mcs.prerm
+    debian/mono-devel.postinst
+    debian/mono-devel.prerm:
+    + Moved update-alternative calls to mono-devel.{postinst,prerm}.
+  * debian/mono.links
+    debian/mono.postinst
+    + Removed, those are just left-overs.
+  * debian/mono-jit.postinst:
+    + Lowered alternative priority to 10 like all other alternative we install.
+  * debian/control:
+    + Moved cli-* Provides from mono-1.0-devel, mono-mcs and mono-gmcs to
+      mono-devel, as thats where the cli-* alternatives now lives.
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 18 Dec 2008 16:01:51 +0100
 
 mono (2.0.1-1) experimental; urgency=low
 

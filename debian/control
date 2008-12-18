@@ -55,7 +55,6 @@ Description: Mono runtime (1.0)
  CLI 1.0 in.
 
 Package: mono-2.0-runtime
-Provides: cli-runtime
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: mono-jit (= ${binary:Version}),
          libmono-corlib2.0-cil (= ${source:Version}),
@@ -1209,7 +1208,6 @@ Description: Mono JScript compiler
 Package: mono-mcs
 Section: devel
 Architecture: all
-Provides: c-sharp-compiler
 Depends: ${cli:Depends}
 Recommends: pkg-config
 Description: Mono C# 1.0 compiler for CLI 1.1
@@ -1226,7 +1224,6 @@ Description: Mono C# 1.0 compiler for CLI 1.1
 Package: mono-gmcs
 Section: devel
 Architecture: all
-Provides: c-sharp-2.0-compiler, c-sharp-3.0-compiler
 Depends: ${cli:Depends}
 Recommends: pkg-config
 Replaces: mono-mcs (>= 1.1.10), mono-mcs (<= 1.1.13)
@@ -1287,7 +1284,12 @@ Description: Mono C# 3.0 compiler for CLI 2.1 (Moonlight / Silverlight)
 Package: mono-devel
 Section: devel
 Architecture: all
-Provides: resource-file-generator, assembly-linker, strong-name-tool
+Provides: c-sharp-compiler,
+ c-sharp-2.0-compiler,
+ c-sharp-3.0-compiler,
+ resource-file-generator,
+ assembly-linker,
+ strong-name-tool
 Replaces: mono-1.0-devel (<< 2.0),
           mono-mcs (<< 2.0),
           mono-gmcs (<< 2.0)

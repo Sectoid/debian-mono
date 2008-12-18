@@ -7,6 +7,8 @@ if test "$1" = "configure" && test -d /usr/share/doc/mono-jit && ! test -h /usr/
         ln -s mono-common /usr/share/doc/mono-jit
 fi
 
-update-alternatives --install /usr/bin/cli cli /usr/bin/mono 14 --slave /usr/share/man/man1/cli.1.gz cli.1.gz /usr/share/man/man1/mono.1.gz
+update-alternatives \
+	--install /usr/bin/cli cli /usr/bin/mono 10 \
+	--slave /usr/share/man/man1/cli.1.gz cli.1.gz /usr/share/man/man1/mono.1.gz
 
 #DEBHELPER#
