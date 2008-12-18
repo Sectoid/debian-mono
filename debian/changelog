@@ -10,13 +10,10 @@ mono (2.0.1-2) UNRELEASED; urgency=low
       (Closes: #507297)
 
   [ Mirco Bauer ]
-  * debian/mono-1.0-devel.postinst
-    debian/mono-1.0-devel.prerm
-    debian/mono-mcs.postinst
-    debian/mono-mcs.prerm
-    debian/mono-devel.postinst
-    debian/mono-devel.prerm:
-    + Moved update-alternative calls to mono-devel.{postinst,prerm}.
+  * debian/mono-1.0-devel.{postinst,prerm}
+    debian/mono-mcs.{postinst,prerm}
+    debian/mono-devel.{postinst,prerm}:
+    + Moved update-alternatives calls to mono-devel.{postinst,prerm}.
   * debian/mono.links
     debian/mono.postinst
     + Removed, those are just left-overs.
