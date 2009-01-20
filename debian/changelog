@@ -1,4 +1,4 @@
-mono (2.0.1-2) UNRELEASED; urgency=low
+mono (2.0.1-2) experimental; urgency=low
 
   [ Jo Shields ]
   * debian/patches/fix_wsdl2_duplicate_keys_r117243.dpatch:
@@ -22,8 +22,17 @@ mono (2.0.1-2) UNRELEASED; urgency=low
   * debian/control:
     + Moved cli-* Provides from mono-1.0-devel, mono-mcs and mono-gmcs to
       mono-devel, as thats where the cli-* alternatives now lives.
+    + Added many stronged versioned binary dependencies to mono-devel as hack
+      to make experimental buildds happy, else everything needing
+      mono-devel >= 2.0 will FTBFS in experimental (e.g. KDE4).
+      (thanks goes to Modestas Vainius for the investigation)
 
- -- Mirco Bauer <meebey@debian.org>  Thu, 18 Dec 2008 16:01:51 +0100
+   [ David Paleino ]
+   * debian/patches/fix_TcpClient_IPv6_r122598.dpatch:
+     + Fix bug in TcpClient() implementation preventing IPv6 connections
+       from working
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 20 Jan 2009 21:53:21 +0100
 
 mono (2.0.1-1) experimental; urgency=low
 

@@ -9,6 +9,7 @@ fix_BigInteger_overflow_CVE-2007-5197
 fix_implicit_pointer_conversions
 fix_wsdl2_duplicate_keys_r117243
 fix_NetworkInterface_exception_r120282
+fix_TcpClient_IPv6_r122598
 armel-glibc-2.8
 build_genxs_2.0
 99_autoreconf

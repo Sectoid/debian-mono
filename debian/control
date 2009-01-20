@@ -1293,9 +1293,25 @@ Provides: c-sharp-compiler,
 Replaces: mono-1.0-devel (<< 2.0),
           mono-mcs (<< 2.0),
           mono-gmcs (<< 2.0)
-Depends: ${cli:Depends},
+Depends: mono-runtime (>= 2.0),
+         libc6 (>= 2.7-1) | libc6.1 (>= 2.7-1) | libc0.1 (>= 2.7-1),
+         libglib2.0-0 (>= 2.16.0),
+         libmono-corlib1.0-cil (>= 2.0),
+         libmono-corlib2.0-cil (>= 2.0),
+         libmono-system1.0-cil (>= 2.0),
+         libmono-data-tds1.0-cil (>= 2.0),
+         libmono-data-tds2.0-cil (>= 2.0),
+         libmono-getoptions1.0-cil (>= 1.0),
+         libmono-relaxng1.0-cil (>= 1.9),
+         libmono-security1.0-cil (>= 2.0),
+         libmono-system-data1.0-cil (>= 1.2.6),
+         libmono-system-web1.0-cil (>= 2.0),
+         libmono-system-web2.0-cil (>= 2.0),
+         libmono-system-runtime1.0-cil (>= 2.0),
+         libmono1.0-cil (>= 2.0),
          mono-2.0-devel (= ${source:Version}),
-         mono-gac (= ${source:Version})
+         mono-gac (= ${source:Version}),
+         ${cli:Depends}
 Description: Mono development tools
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
