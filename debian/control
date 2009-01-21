@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Mirco Bauer <meebey@debian.org>, Sebastian Dröge <slomo@debian.org>, Jo Shields <directhex@apebox.org>
-Build-Depends: debhelper (>= 5.0.0), dpkg-dev (>= 1.13.19), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxml-dom-perl, libxslt1-dev, dc, libx11-dev, libxt-dev, zlib1g-dev
+Build-Depends: debhelper (>= 7.1), dpkg-dev (>= 1.13.19), libglib2.0-dev (>= 2.4), bison, libtool, dpatch, libxml-dom-perl, libxslt1-dev, dc, libx11-dev, libxt-dev, zlib1g-dev
 Build-Depends-Indep: libgamin-dev, libcups2-dev, librsvg2-dev, libgtk2.0-dev, libgnomeui-dev
 Standards-Version: 3.8.0
 Homepage: http://www.mono-project.com/
@@ -105,8 +105,7 @@ Provides: cil-disassembler
 Section: devel
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: mono-mcs (<= 1.1.6-4)
-Depends: ${shlibs:Depends}, ${misc:Depends}, libmono0 (<< ${mono:next-upversion}), libmono-corlib2.0-cil
-Suggests: libmono-corlib1.0-cil
+Depends: ${shlibs:Depends}, ${misc:Depends}, libmono0 (= ${binary:Version}), libmono-corlib2.0-cil (= ${source:Version}) | libmono-corlib1.0-cil (= ${source:Version})
 Description: Mono utilities
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

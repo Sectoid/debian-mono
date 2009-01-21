@@ -281,42 +281,42 @@ binary-indep: build-arch install-arch build-indep install-indep
 	debian/dh_clifixperms -i
 	dh_installdeb -i
 	#DH_VERBOSE=1 DH_AUTOSCRIPTDIR=$(CURDIR)/debian debian/dh_monoaot -i
-	debian/dh_makeclilibs -i -m 1.0 internal-mono
-	debian/dh_makeclilibs -p libmono1.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-cairo1.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-cairo2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-corlib1.0-cil -m 1.2.2.1 internal-mono
-	debian/dh_makeclilibs -p libmono-corlib2.0-cil -m 1.2.2.1 internal-mono
-	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-ldap1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-ldap2.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-oracle2.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-system1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-system2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-system-data1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-system-data2.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-system-ldap2.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-system-runtime2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-system-web2.0-cil -m 1.9.1 internal-mono
-	debian/dh_makeclilibs -p libmono-security1.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-security2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-sqlite1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-web1.0-cil -m 1.9 internal-mono
-	debian/dh_makeclilibs -p libmono-web2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-winforms1.0-cil -m 1.2.6 internal-mono
-	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 2.0 internal-mono
-	debian/dh_makeclilibs -p libmono-relaxng1.0-cil -m 1.9 internal-mono
-	debian/dh_makeclilibs -p libmono-relaxng2.0-cil -m 1.9 internal-mono
+	debian/dh_makeclilibs -i -m 1.0 --internal-mono
+	debian/dh_makeclilibs -p libmono1.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-cairo1.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-cairo2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-corlib1.0-cil -m 1.2.2.1 --internal-mono
+	debian/dh_makeclilibs -p libmono-corlib2.0-cil -m 1.2.2.1 --internal-mono
+	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-ldap1.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-ldap2.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-oracle2.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-system1.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-system2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-system-data1.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-system-data2.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-system-ldap2.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-system-runtime2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-system-web2.0-cil -m 1.9.1 --internal-mono
+	debian/dh_makeclilibs -p libmono-security1.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-security2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-sqlite1.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-web1.0-cil -m 1.9 --internal-mono
+	debian/dh_makeclilibs -p libmono-web2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-winforms1.0-cil -m 1.2.6 --internal-mono
+	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 2.0 --internal-mono
+	debian/dh_makeclilibs -p libmono-relaxng1.0-cil -m 1.9 --internal-mono
+	debian/dh_makeclilibs -p libmono-relaxng2.0-cil -m 1.9 --internal-mono
 	# preview APIs get tighter clilibs
-	debian/dh_makeclilibs -p libmono-system2.1-cil -m 2.0 internal-mono
-	debian/dh_clideps -i -l debian/tmp internal-mono
-	#DH_VERBOSE=1 debian/dh_clideps -i -l debian/tmp internal-mono
+	debian/dh_makeclilibs -p libmono-system2.1-cil -m 2.0 --internal-mono
+	debian/dh_clideps -i -l debian/tmp --internal-mono
+	#DH_VERBOSE=1 debian/dh_clideps -i -l debian/tmp --internal-mono
 	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
-	debian/dh_clideps -p mono-gac -r internal-mono
+	debian/dh_clideps -p mono-gac -r --internal-mono
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i

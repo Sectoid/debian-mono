@@ -75,7 +75,7 @@ compatible and "major" versions break with compatibility.
 Exclude files that contain "item" anywhere in their filename or directory 
 from being treated as shared libraries.
 
-=item B<internal-mono>
+=item B<--internal-mono>
 
 Uses the Mono runtime in . (used for bootstrapping Mono packages)
 
@@ -116,7 +116,13 @@ and
 
 =cut
 
-init();
+init(options => {
+#  "V", => \$dh{V_FLAG},
+  "r" => \$dh{R_FLAG},
+  "m=s" => \$dh{M_PARAMS},
+  "l=s" => \$dh{L_PARAMS},
+  "internal-mono"  => \$dh{INTERNAL_MONO_FLAG},
+});
 
 my $clr;
 my $cli = '/usr/bin/cli';
@@ -124,7 +130,7 @@ my $cli_version = `$cli --version 2>&1`;
 my $cli_parser;
 my $sn = 'sn';
 
-if (defined($ARGV[0]) && $ARGV[0] eq "internal-mono") {
+if (defined($dh{INTERNAL_MONO_FLAG})) {
     $clr = "mono";
     my $mono_path = "LD_LIBRARY_PATH=debian/tmp/usr/lib MONO_PATH=debian/tmp/usr/lib/mono/1.0:debian/tmp/usr/lib/mono/2.0";
     $cli_parser = "$mono_path debian/tmp/usr/bin/monodis";
@@ -233,22 +239,22 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
                 $version = $dh{M_PARAMS};
             }
             if ($dh{V_FLAG_SET}) {
-                if ( $dh{V_FLAG} ne '' ) {
+                if ($dh{V_FLAG} ne '' ) {
                     $deps = $dh{V_FLAG};
                 } else {
                     $deps = "$package (>= $version)";
                 }
             }
-            if (defined( $dh{R_FLAG})) {
+            if (defined($dh{R_FLAG})) {
                 $version =~ s/-[^-]+$//;
                 my @uvers = split ( /\./, $version );
                 $uvers[1]++;
                 $deps = "$package (>= $version), $package (<< ".join(".", @uvers).")";
             }
-            if (defined( $dh{M_PARAMS})) {
+            if (defined($dh{M_PARAMS})) {
                 $deps = "$package (>= ".$dh{M_PARAMS}.")";
             }
-            if (defined( $dh{L_PARAMS})) {
+            if (defined($dh{L_PARAMS})) {
                 $deps .= ", $package (<< ".$dh{L_PARAMS}.")";
             }
             if (defined($library) &&
