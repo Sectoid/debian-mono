@@ -1,3 +1,9 @@
+mono (2.0.1-3) experimental; urgency=low
+
+  * Rebuilt against libc6 and glib from unstable.
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 26 Jan 2009 22:49:05 +0100
+
 mono (2.0.1-2) experimental; urgency=low
 
   [ Jo Shields ]
