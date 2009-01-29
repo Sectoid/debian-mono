@@ -12,7 +12,7 @@ DH_OPTIONSINTERNAL_MONO_PARAM = --internal-mono
 ifeq ($(shell dpkg --compare-versions $$(dpkg-query -f '$${Version}' -W debhelper) lt 7.1; echo $$?), 0)
 	DH_INTERNAL_MONO_PARAM = internal-mono
 endif
-DH_OPTIONS += $(DH_INTERNAL_MONO_PARAM)
+export DH_OPTIONS += $(DH_INTERNAL_MONO_PARAM)
 
 DEB_BUILD_ARCH := $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
