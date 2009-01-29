@@ -1,8 +1,6 @@
 mono (2.0.1-4) experimental; urgency=low
 
   * debian/rules:
-    + Pass the --internal-mono parameter via DH_OPTIONS instead of in every
-      dh_*cli* command invocation.
     + Pass internal-mono instead of --internal-mono if the debhelper version
       is older than 7.1, as that one doesn't support custom parameters via
       init(). This ensures backwards compatibility with older debhelper
