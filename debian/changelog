@@ -7,6 +7,10 @@ mono (2.0.1-4) experimental; urgency=low
       versions, as found in Ubuntu.
   * debian/control:
     + Lowered debhelper build-dep to >= 5.
+  * debian/dh_clideps
+    debian/dh_makeclilibs:
+    + Re-synced from cli-common 0.6.0, needed for dh 7.0 backwards
+      compatibilty.
 
  -- Mirco Bauer <meebey@debian.org>  Tue, 27 Jan 2009 00:15:04 +0100
 
