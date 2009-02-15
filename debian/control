@@ -1207,7 +1207,9 @@ Description: Mono JScript compiler
 Package: mono-mcs
 Section: devel
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${cli:Depends},
+         libmono-corlib1.0-cil (>= ${mono:upversion}),
+         libmono-corlib1.0-cil (<< ${mono:next-upversion})
 Recommends: pkg-config
 Description: Mono C# 1.0 compiler for CLI 1.1
  This is the Mono C# (C-Sharp) 1.0 compiler, a platform-independent compiler
@@ -1223,7 +1225,9 @@ Description: Mono C# 1.0 compiler for CLI 1.1
 Package: mono-gmcs
 Section: devel
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${cli:Depends},
+         libmono-corlib2.0-cil (>= ${mono:upversion}),
+         libmono-corlib2.0-cil (<< ${mono:next-upversion})
 Recommends: pkg-config
 Replaces: mono-mcs (>= 1.1.10), mono-mcs (<= 1.1.13)
 Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
