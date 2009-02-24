@@ -6,8 +6,17 @@ mono (2.0.1-5) unstable; urgency=low
   * debian/control:
     + The compilers (mono-mcs and mono-gmcs) are not forward compatible with
       newer upstream versions, thus added stronger dependencies.
+    + Removed libgamin-dev, libcups2-dev, librsvg2-dev, libgtk2.0-dev and
+      libgnomeui-dev from build-deps-indep as those packages are only needed
+      to generate the debian/shlibs.local file using the
+      debian/update-shlibs.local.sh script (the script checks now if those
+      are installed). This extended hack is needed as shared-mime-info in
+      unstable conflicts with gnome < 2.24 and gnome 2.24 is blocked by
+      the Mono 2.0 transition.
+  * debian/shlibs.local:
+    + Updated using the debian/update-shlibs.local.sh script.
 
- -- Mirco Bauer <meebey@debian.org>  Tue, 24 Feb 2009 23:12:16 +0100
+ -- Mirco Bauer <meebey@debian.org>  Wed, 25 Feb 2009 00:10:02 +0100
 
 mono (2.0.1-4) experimental; urgency=low
 
