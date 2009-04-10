@@ -204,6 +204,27 @@ Alexei A. Vorontsov, Charlie Poole or Copyright (C) 2000-2004 Philip A. Craig
 
 -------------------------------------------------------------------------------
 
+docs/AgilityPack.dll
+
+Copyright (C) ???? Simon Mourier <simonm@microsoft.com>
+
+Mono bundles a binary-only copy of the Html Agility Pack library.
+
+Mono used the source of beagle to produce the binary.
+
+Beagle's version claims to be BSD licensed:
+http://svn.gnome.org/viewvc/beagle/trunk/Filters/HtmlAgilityPack/HtmlDocument.cs?revision=16&view=markup&pathrev=16
+
+While the original project says it's CC Share-alike 2.5 licensed:
+http://htmlagilitypack.codeplex.com/license
+
+FIXME:
+Either beagle illegal relicensed Html Agility Pack from CC Share-alike to
+BSD (3 clause) or the author of Html Agility Pack published somewhere a BSD
+version (or maybe even relicensed specially for beagle)
+
+-------------------------------------------------------------------------------
+
 debian/detector/*
 
 The source package contains an additional tool called binfmt-detector-cli.
