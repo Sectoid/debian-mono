@@ -1,0 +1,163 @@
+2008-08-13  Bill Holmes  <billholmes54@gmail.com>
+
+	* eglib.vcproj, genmdesc.vcproj, libgc.vcproj, libmono.vcproj, libtest.vcproj,
+	  mono.vcproj, monoburg.vcproj, monodiet.vcproj, monodis.vcproj, monograph.vcproj,
+	  pedump.vcproj, test_eglib.vcproj, teste.vcproj, test-invoke.vcproj,
+	  test-metadata.vcproj:  Updating the preprocessor definitions for MSVC builds to
+	  match the gcc build in Cygwin.
+
+	Contributed under MIT/X11 license.
+
+2008-06-02  Bill Holmes  <billholmes54@gmail.com>
+	* mono.sln, libtest.vcproj:  Adding libtest to the VS solution.
+	  libtest is needed for the marshaling tests.
+
+	Contributed under MIT/X11 license.
+
+2008-06-02  Bill Holmes  <billholmes54@gmail.com>
+	* monodiet.vcproj, libgc.vcproj, test_eglib.vcproj,
+	  eglib.vcproj, teste.vcproj, genmdesc.vcproj, monoburg.vcproj,
+	  monograph.vcproj, pedump.vcproj, test-metadata.vcproj,
+	  libmono.vcproj, mono.sln, mono.vcproj, monodis.vcproj,test-invoke.vcproj
+	  Changes to the Visual Studio projects to unify the output directories
+	  for each project and configuration.
+
+	Contributed under MIT/X11 license.
+
+2008-05-29  Bill Holmes  <billholmes54@gmail.com>
+	* libmono.vcproj: Add missing files mono-property-hash and
+	  mono-value-hash.
+
+	Contributed under MIT/X11 license.
+	
+2008-04-28  Kornél Pál  <kornelpal@gmail.com>
+
+	* create-windef.pl, mono.def: Export MonoFixupCorEE.
+	* libmono.vcproj: Add coree.c and coree.h.
+
+	Contributed under MIT/X11 license.
+
+2008-04-15  Jonathan Chambers  <joncham@gmail.com>
+	* mono.sln, libmono.vcproj, monoburg.vcproj, genmdesc.vcproj: Flush Win64
+	  and eglib changes.
+
+	Contributed under MIT/X11 license.
+
+2008-04-04  Bill Holmes  <billholmes54@gmail.com>
+
+	* runburg.bat, runmdesc.bat:  Reverting back to r97888.  The PATH was correct before.
+
+	Contributed under MIT/X11 license.
+
+2008-03-19  Bill Holmes  <billholmes54@gmail.com>
+
+	* libmono.vcproj:  Adding a link to version.lib for the eglib targets.
+
+	Contributed under MIT/X11 license.
+
+2008-03-10  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono.sln: Fixing configuration list to build the correct targets for the 
+	  specified configuration.
+
+	* runburg.bat, runmdesc.bat:  Changing the PATH environment variable assignment 
+	  to the correct location.
+
+	* libmono.vcproj:  Adding missing files.
+
+	Contributed under MIT/X11 license.
+
+2007-12-31  Jonathan Chambers  <joncham@gmail.com>
+
+	* mono.sln, libmono.vcproj, mono.vcproj, mono.def: Update .def
+	file and fix some eglib target settings.
+	
+	Contributed under MIT/X11 license.
+
+2007-08-29  Jonathan Chambers <joncham@gmail.com>
+
+	* mono.sln, libmono.vcproj, mono.vcproj, genmdesc.vcproj, monoburg.vcproj: 
+	Setup eglib configurations (Debug_eglib, Release_eglib). They
+	do not build at this point.
+	
+	Contributed under MIT/X11 license.
+
+2007-08-29  Jonathan Chambers <joncham@gmail.com>
+
+	* monodiet.vcproj, libgc.vcproj, eglib.vcproj, libmono.vcproj, mono.vcproj, 
+	genmdesc.vcproj, monoburg.vcproj, pedump.vcproj: 
+	Make output directories a bit more usable.
+	
+	Contributed under MIT/X11 license.
+
+2007-08-14  Jonathan Chambers <joncham@gmail.com>
+
+	* libmono.vcproj, mono.vcproj, genmdesc.vcproj, monobug.vcproj: 
+	Use MONO_DEPENDENCIES_PREFIX env var to locate dependencies. No longer
+	need VSDependencies.zip.
+	
+	* winsetup.bat, runmdesc.bat, runburg.bat: No longer
+	need VSDependencies.zip. Use MONO_DEPENDENCIES_PREFIX to
+	setup PATH.
+	
+	* mono.def: Remove missing functions.
+	
+	Contributed under MIT/X11 license.
+
+2007-08-14  Jonathan Chambers <joncham@gmail.com>
+
+	* libmono.vcproj: Enable intrinsic functions.
+
+2007-05-13  Raja R Harinath  <harinath@gmail.com>
+
+	* Makefile.am (VCPROJS): New.
+	(EXTRA_DIST): Don't use glob.
+
+2007-04-27  Jonathan Chambers <joncham@gmail.com>
+	
+	Combined patch from Michael Jerris <mike@jerris.com> and me.
+	* getopt.c: Added public domain implementation for Windows.
+	* getopt.h: Added public domain implementation for Windows.
+	* getopt_long.c: Added public domain implementation for Windows.
+	* test_eglib.vcproj: Update project.
+	* eglib.vcproj: Update project. Add pre-build step to copy
+	winconfig.h to config.h for msvc build.
+	
+2007-04-25  Jonathan Chambers  <joncham@gmail.com>
+
+	* mono.sln: Added eglib projects.
+	* test_eglib.vcproj: Added.
+	* pedump.vcproj: Change output directories for uniformity.
+	* monodiet.vcproj: Change output directories for uniformity.
+
+2007-04-24  Jonathan Chambers  <joncham@gmail.com>
+
+	* eglib.vcproj: Added.
+
+2007-03-30  Jonathan Chambers  <joncham@gmail.com>
+
+	* libmono.vcproj, mono.vcproj: Reset browse information
+	settings to default.
+	
+	Contributed under MIT/X11 license.
+	
+2007-03-25  Marek Safar  <marek.safar@gmail.com>
+
+	* monodiet.vcproj, monodis.vcproj, monograph.vcproj, pedump.vsproj:
+	Fixed build.
+
+2007-03-19  Jonathan Chambers  <joncham@gmail.com>
+
+	* libmono.vcproj, genmdesc.vcproj: Reset browse information
+	settings to default.
+	
+	Contributed under MIT/X11 license.
+	
+2007-03-15  Jonathan Chambers  <joncham@gmail.com>
+
+	* *.vcproj: Begin Win64 port. Run bat files with $(Platform) argument.
+	* *.bat: Begin Win64 port. Run bat files with $(Platform) argument.
+	Contributed under MIT/X11 license.
+
+
+

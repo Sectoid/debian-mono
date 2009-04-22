@@ -1,0 +1,8 @@
+2008-07-01  Marek Safar  <marek.safar@gmail.com>
+
+	* ContentDispositionTest.cs: Fixed broken test.
+
+2008-02-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContentTypeTest.cs : (oops we didn't have ChangeLog here) added
+	  another .ctor() test.
