@@ -1,0 +1,66 @@
+2008-10-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* web.config: default values for httpRuntime are different in 2.0
+
+
+2008-08-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* machine.config: Fix syntax error.
+
+2008-03-23  Dean Brettle  <dean@brettle.com>
+
+	* Makefile.am: added Browsers/Compat.browser
+
+2008-02-29  Marek Habersack  <mhabersack@novell.com>
+
+	* machine.config: added an entry to ignore the browserCaps section.
+
+2007-12-15  Marek Habersack  <mhabersack@novell.com>
+
+	* web.config: compilation/compilers are no longer necessary.
+
+2007-12-08  Marek Habersack  <mhabersack@novell.com>
+
+	* machine.config: updated the LocalSqlServer connection string to
+	match MS.NET and added a new connection string, LocalSqliteServer,
+	to be used by default on Unix.
+	Updated the AspNetSqlMembershipProvider definition to match
+	MS.NET.
+
+	* settings.map: added
+
+	* Makefile.am: added settings.map
+
+2007-10-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* web.config, machine.config: moved webSerices section from former
+	  to latter.
+
+2007-09-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* machine.config : added WCF sectionGroups.
+
+2007-09-04  Marek Habersack  <mhabersack@novell.com>
+
+	* machine.config: added an entry to ignore the <system.webServer>
+	section. Fixes bug #82535
+
+2007-07-03  Marek Habersack  <mhabersack@novell.com>
+
+	* DefaultWsdlHelpGenerator.aspx: make head server-side, for the
+	service generator to run on sites which use stylesheet themes
+	configured in web.config. Fixes bug #81994
+
+2007-05-01  Marek Habersack  <mhabersack@novell.com>
+
+	* machine.config: added standard data provider factories, or
+	otherwise the SqlDataSource tests will fail.
+
+2007-04-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DefaultWsdlHelpGenerator.aspx :
+	  ProfileViolations could be null, when there is no Binding. So,
+	  don't omit null check.
+
+	  Stop your bad habit of missing ChangeLog. Former changes (as long
+	  as logged) can be seen in ../../ChangeLog.

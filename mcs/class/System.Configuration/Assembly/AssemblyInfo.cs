@@ -1,0 +1,70 @@
+//
+// AssemblyInfo.cs
+//
+// Author:
+//   Lluis Sanchez Gual (lluis@novell.com)
+//
+// (C) 2005 Novell, Inc.  http://www.novell.com
+//
+
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+// 
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+
+using System;
+using System.Diagnostics;
+using System.Reflection;
+using System.Resources;
+using System.Security;
+using System.Security.Permissions;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// General Information about the System.Configuration (.Net 2.0 only) assembly
+
+[assembly: AssemblyTitle ("System.Configuration.dll")]
+[assembly: AssemblyDescription ("System.Configuration.dll")]
+[assembly: AssemblyDefaultAlias ("System.Configuration.dll")]
+
+[assembly: AssemblyCompany (Consts.MonoCompany)]
+[assembly: AssemblyProduct (Consts.MonoProduct)]
+[assembly: AssemblyCopyright (Consts.MonoCopyright)]
+[assembly: AssemblyVersion (Consts.FxVersion)]
+[assembly: SatelliteContractVersion (Consts.FxVersion)]
+[assembly: AssemblyInformationalVersion (Consts.FxFileVersion)]
+
+[assembly: CLSCompliant (true)]
+[assembly: NeutralResourcesLanguage ("en-US")]
+
+[assembly: ComVisible (false)]
+[assembly: AllowPartiallyTrustedCallers]
+
+#if !TARGET_JVM //TARGET_JVM does not support signing
+	[assembly: AssemblyDelaySign (true)]
+	[assembly: AssemblyKeyFile ("../msfinal.pub")]
+#endif
+
+#if NET_2_0
+	[assembly: AssemblyFileVersion (Consts.FxFileVersion)]
+	[assembly: SecurityPermission (SecurityAction.RequestMinimum, SkipVerification = true)]
+	[assembly: Debuggable (DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
+	[assembly: CompilationRelaxations (CompilationRelaxations.NoStringInterning)]
+	[assembly: ComCompatibleVersion (1, 0, 3300, 0)]
+#endif

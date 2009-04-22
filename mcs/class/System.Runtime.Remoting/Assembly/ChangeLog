@@ -1,0 +1,13 @@
+2008-04-23  Andreas Nahr <ClassDevelopment@A-SoftTech.com>
+
+	* AssemblyInfo.cs: Added missing attributes
+
+2004-05-13  Lluis Sanchez Gual <lluis@ximian.com>
+
+	* AssemblyInfo.cs: Removed CLSCompliant attribute.
+
+2004-03-31  Andreas Nahr <ClassDevelopment@A-SoftTech.com>
+
+	* AssemblyInfo.cs: Added
+	* ChangeLog: Added
+	* Locale.cs: Added

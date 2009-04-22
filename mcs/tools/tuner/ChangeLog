@@ -1,0 +1,132 @@
+2008-06-10  Jb Evain  <jbevain@novell.com>
+
+	* masterinfos/silverlight/System.Net.info
+	* masterinfos/silverlight/mscorlib.info
+	* masterinfos/silverlight/System.Xml.info
+	* masterinfos/silverlight/System.info:
+		Update to SL2B2 API.
+
+2008-04-13  Jb Evain  <jbevain@novell.com>
+
+	* masterinfos/silverlight/*.info: 2.0 api.
+	* Makefile: update.
+	Merged from the Moonlight 2 branch.
+
+Thu Mar 13 22:32:24 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile: strong name the tuned assemblies.
+
+2008-03-13  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/AdjustVisibility.cs: don't adjust enums.
+
+2008-02-18  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (inst-%, gac-%): Fix dependencies.
+
+2008-02-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile: Improve.  Update to new net_2_1 profiles.  Specify
+	more dependencies.  Do work only when necessary.
+	* Descriptors/smcs.xml: Add CompilerCallableEntryPoint.
+
+2008-02-01  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: remove System.Core temporary hack.
+
+2008-02-01  Jb Evain  <jbevain@novell.com>
+
+	* Makefile, Descriptors/System.Core.xml:
+	protect some internals of System.Core as apparently
+	the masterinfos are somewhat wrong.
+
+2007-10-26  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: disable the `always build the tuner` as per
+	Paolo's suggestion. Need to use the build mecanism from now.
+
+2007-10-26  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: activate the InjectAttributes step.
+
+2007-10-25  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/InjectAttributes.cs: inject security attributes
+	defined in the public api.
+
+2007-10-25  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/InjectAttributes.cs: infrastructure for
+	the attribute injector.
+
+2007-10-25  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/PrintStatus.cs: print which items
+	have been internalized if the parameter `display_internalized`
+	is set to true.
+
+	* Makefile: define parameter `display_internalized` and set it
+	to false. Set it explicitely to true if you want a detailed log
+	about which metadata items have been internalized.
+
+2007-10-25  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/TunerAnnotations.cs
+	* Mono.Tuner/AdjustVisibility.cs:
+		Annotate the items that have been internalized
+		for later use.
+
+	* Makefile: always rebuild Mono.Tuner.dll for now.
+
+2007-09-04  Jb Evain  <jbevain@novell.com>
+
+	* masterinfos/*.info added, so we don't have to download them.
+	* Makefile: use directly the .info files from the repo.
+
+2007-08-28  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: mdb support.
+
+2007-08-21  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: tune on `all`, and only re-installed the tuned
+	assemblies on `install`.
+
+2007-08-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: re-install in the GAC the tuned assemblies.
+
+2007-08-13  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: tune on net_2_1 install.
+
+2007-08-11  Jb Evain  <jbevain@novell.com>
+
+	* Descriptors/System.xml, Makefile: add a descriptor
+	to protect some classes in System.
+
+2007-08-05  Jb Evain  <jbevain@novell.com>
+
+	* Descriptors/smcs.xml, Makefile: add a descriptor
+	to protect some classes in smcs.
+
+2007-08-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : a bit win32 friendly fix.
+
+2007-08-01  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/CheckVisibilit.cs:
+		New debugging step to ensure that the even after
+		API tuning the visibility is correct.
+
+2007-07-27  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/RemoveSerialization.cs:
+		Add a new linker step to remove automatically everything
+		serialization related.
+
+2007-07-18  Jb Evain  <jbevain@novell.com>
+
+	* tuner: new tool to tune the Mono assemblies from a full 2.1
+	profile to a stripped down silverlight compatible assembly set.

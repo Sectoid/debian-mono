@@ -1,0 +1,21 @@
+2008-02-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* AppSettingsExpressionBuilderTest.cs: Added and improved tests for
+	GetAppSetting overloads.
+
+2007-12-23  Vladimir Krasnov <vladimirk@mainsoft.com>
+
+	* added AppSettingsExpressionBuilderTest.cs
+
+2006-06-21 Andrew Skiba <andrews@mainsoft.com>
+
+	* TemplateControlCompilerTest.cs: NunitWeb refactoring
+
+2006-06-18  Andrew Skiba  <andrews@mainsoft.com>
+
+	* TemplateControlCompilerTest.cs: new test.
+
+2006-01-20  Chris Toshok  <toshok@ximian.com>
+
+	* ClientBuildManagerParameterTest.cs: new test.
+

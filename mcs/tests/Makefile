@@ -1,0 +1,113 @@
+#
+# use `run-test'
+#
+
+thisdir = tests
+SUBDIRS =
+include ../build/rules.make
+
+DISTFILES = README.tests
+DISTFILES += $(wildcard *.cs) $(wildcard *.il) $(wildcard *.xml) $(wildcard *.inc) $(wildcard known-issues-*) $(wildcard *.snk)
+
+with_mono_path = MONO_PATH="$(topdir)/class/lib/$(PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH"
+
+ifeq (default, $(PROFILE))
+# force this, we don't case if CSC is broken. This also
+# means we can use --options, yay.
+MCS = $(with_mono_path) $(INTERNAL_MCS)
+endif
+ilasm = $(topdir)/class/lib/net_1_1_bootstrap/ilasm.exe
+ILASM = MONO_PATH="$(topdir)/class/lib/net_1_1_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(ilasm)
+
+ifeq (net_2_0, $(PROFILE))
+BOOTSTRAP_MCS = MONO_PATH="$(topdir)/class/lib/net_2_0_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/net_2_0_bootstrap/mcs.exe
+endif
+
+USE_MCS_FLAGS :=
+
+# mention all targets
+all-local $(STD_TARGETS:=-local):
+
+VALID_PROFILE := $(filter default net_2_0 net_2_1, $(PROFILE))
+ifdef VALID_PROFILE
+# casts
+bootstrap-cast.exe: gen-cast-test.cs
+	$(BOOT_COMPILE) -target:exe /out:$@ $<
+
+casts.cs: bootstrap-cast.exe
+	$(with_mono_path) $(RUNTIME) $(RUNTIME_FLAGS) $< >$@
+
+casts-mcs.exe: casts.cs
+	$(CSCOMPILE) -target:exe /out:$@ $<
+
+casts-boot.exe: casts.cs
+	$(BOOT_COMPILE) -target:exe /out:$@ $<
+
+boot-casts.out: casts-boot.exe
+	$(with_mono_path) $(RUNTIME) $(RUNTIME_FLAGS) $< >$@
+
+mcs-casts.out: casts-mcs.exe
+	$(with_mono_path) $(RUNTIME) $(RUNTIME_FLAGS) $< >$@
+
+test-casts: boot-casts.out mcs-casts.out
+	cmp $^
+
+test-local: casts-boot.exe
+
+ifeq (net_2_1, $(PROFILE))
+COMPILER_NAME = smcs
+TEST_PATTERN = '*test-*.cs'
+LOCAL_RUNTIME_FLAGS = --security=temporary-smcs-hack
+endif
+ifeq (net_2_0, $(PROFILE))
+COMPILER_NAME = gmcs
+TEST_PATTERN = '*test-*.cs'
+# LOCAL_RUNTIME_FLAGS = --security=validil
+TOPTIONS += '-il:ver-il-gmcs.xml'
+endif
+ifeq (default, $(PROFILE))
+COMPILER_NAME = mcs
+TEST_PATTERN = 'test-*.cs'
+LOCAL_RUNTIME_FLAGS = --security=validil
+endif
+
+COMPILER = $(topdir)/class/lib/$(PROFILE)/$(COMPILER_NAME).exe
+TESTER = MONO_RUNTIME='$(RUNTIME)' $(TEST_RUNTIME) $(RUNTIME_FLAGS) $(LOCAL_RUNTIME_FLAGS) $(topdir)/class/lib/$(PROFILE)/compiler-tester.exe
+
+TEST_ILS := $(wildcard *-lib.il)
+
+check: run-test
+
+run-test-local: $(TEST_ILS:.il=.dll)
+	$(TESTER) -mode:pos -files:$(TEST_PATTERN) -compiler:$(COMPILER) -issues:known-issues-$(COMPILER_NAME) -log:$(COMPILER_NAME).log $(TOPTIONS)
+
+test-everything:
+	$(MAKE) PROFILE=default run-test
+	$(MAKE) PROFILE=net_2_0 run-test
+
+test-generics:
+	$(MAKE) PROFILE=net_2_0 run-test
+
+clean-local:
+	-rm -fr dir-*
+	-rm -f *.exe *.dll *.netmodule *.out *.pdb *.mdb casts.cs *.log
+	-rm -f xml-*.xml
+
+dist-local: dist-default
+	rm -f $(distdir)/casts.cs
+
+%-il.dll: %-il.il
+	$(ILASM) /dll $<
+
+%-lib.dll: %-lib.il
+	$(ILASM) /dll /out:$@ $<
+
+ifeq (default, $(PROFILE))
+run-test-local: ilasm
+ilasm:
+	$(ILASM) /dll property-il.il
+	$(CSCOMPILE) /r:property-il.dll property-main.cs /out:property-main.exe
+	$(TEST_RUNTIME) property-main.exe
+endif
+
+endif

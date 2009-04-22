@@ -1,0 +1,178 @@
+2008-08-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-profiler-logging.c (detect_fast_timer): Add missing return type.
+
+2008-08-22  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Backported fixes from trunk (making it
+	identical to r111250):
+	- r111250 (correct accounting of allocations happening at JIT time).
+	- r111096 (emit directives blocks).
+	- r111095 (stack tracking).
+	- r109120 (fix bug 412473).
+	- r109069 (fix allocation summaries).
+	- r108633 (emit full type names for loaded classes, by Rodrigo Kumpera).
+	- r108632 (use the "runtime initialized" hook to register the thread).
+
+2008-07-04  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fix an embarassingly stupid problem with
+	buffer sizes.
+
+2008-07-03  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Changed the way to wait for the writer
+	thread to avoid passing an invalid handle to pthread_join.
+
+2008-06-28  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: When offloading flushing to the writer
+	thread, first check that it still exists.
+
+2008-06-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Offload more flushing to the writer thread,
+	and fix the shutdown sequence.
+
+2008-06-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Made so that at appdomain unload the
+	buffers are flushed by the profiler worker thread (which we know
+	is registered with the runtime).
+
+2008-06-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Added more logging code.
+
+2008-06-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Record also the domain of each statistical
+	hit, so that mono_jit_info_table_find works properly.
+
+2008-06-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fixed breakage introduced in r105966
+
+2008-06-17  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Implemented signal based enable-disable
+	toggling for the statistical and enter-exit events.
+
+2008-06-17  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (write_statistical_hit): Use the proper
+	domain instead of trying to get one.
+
+2008-06-16  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (module_end_load, assembly_end_load):
+	Properly check the return value of "mono_assembly_fill_assembly_name",
+	otherwise "mono_stringify_assembly_name" can crash.
+
+2008-06-16  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fix a segfault on shutdown (see Marek's
+	fix for the default profiler in r105466, the problem is the same.
+
+2008-06-16  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Initial implementation of summary report
+	for allocations at each collection.
+
+2008-05-23  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fix warnings x86 and remove debugging code.
+
+2008-05-23  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fix the build on x86.
+
+2008-05-23  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Support call chains (backtrace) in the
+	stat profiler.
+
+2008-05-12  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (handle_heap_profiling): Flush all data
+	buffers, so that objext allocation events are written before the heap
+	description (which contains the "object free" events).
+
+2008-05-12  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Added support for a global counter of all
+	garbage collections, so that the file decoder can correlate the
+	events properly.
+
+2008-05-12  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fixed a bug that prevented using rdtsc,
+	and enabled rdtsc by default,adding a command line option to revert
+	to using gettimeofday.
+
+2008-05-02  Massimiliano Mantione <massi@ximian.com>
+	 * mono-profiler-logging.c: Turned DEBUG_STATISTICAL_PROFILER off...
+
+2008-05-02  Massimiliano Mantione <massi@ximian.com>
+	 * mono-profiler-logging.c : Rework statistical profiler, adding the
+	 ability to scan symbol tables in elf files instead of using dladdr
+	 (dladdr skips lots of symbols which this way we get correctly).
+
+2008-04-16  Massimiliano Mantione <massi@ximian.com>
+	 * mono-profiler-logging.c (gc_event): Fix deadlock condition.
+
+2008-04-16  Massimiliano Mantione <massi@ximian.com>
+	 * mono-profiler-logging.c (write_current_block): Added an incremental
+	 "counter delta" field to the block header, so that each block has a
+	 timestamp directly in the header.
+	 This will allow tools to know when a block has been emitted without
+	 decoding (even without reading) the block contents.
+	 So, if the user is only interested in blocks emitted in a certain
+	 time interval, the tool can seek into the file instead of reading the
+	 block contents.
+	 Of course this breaks the file format, but at this stage we can still
+	 do it, and... better now than later.
+
+2008-04-10  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (profiler_heap_scan): removed debugging code
+	and therefore removed unconditional inclusion of signal.h (it is now
+	included anyway on Unix platforms).
+
+2008-04-10  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Added possibiliy of requesting heap
+	snapshots with a signal (like heap-shot).
+
+2008-04-02  Rodrigo Kumpera <rkumpera@novell.com>
+
+	* mono-profiler-logging.c: Fix the arm build. G_BREAKPOINT() does
+	a "raise(SIGTRAL)" and in some platforms <signal.h> must be included.
+
+2008-03-28  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Added option to append a suffix to the
+	default file name.
+
+2008-03-27  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: setup_user_options: set default log file
+	name to the name of the executed application.
+
+2008-03-26  Massimiliano Mantione <massi@ximian.com>
+	* Makefile.am: enabled the logging profiler on Linux.
+
+2008-03-26  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Attach and detach the writer thread.
+
+2008-03-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fixed bug with memory region indexes.
+
+2008-03-18  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c:
+	OPEN_FILE(): Fixed file creation.
+	[UN]LOCK_PROFILER(): Removed logging message.
+
+2008-03-11  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Fixed heap profiler, added a new way to
+	get the symbol names for unmanaged functions, and fixed lots of bugs.
+
+2008-01-08  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: First code drop of new logging profiler
+	(and shamefully forgot to set HAS_OPROFILE to 0...).
+	* Makefile.am: Added logging profiler, but commented in out to avoid
+	breaking the build on Windows.
+
+2005-07-25  Zoltan Varga  <vargaz@freemail.hu>
+
+	* mono-cov.c: Applied patch from Iain McCoy (iain@mccoy.id.au). Fixes
+	#75619.
+
+2003-11-12  Jackson Harper  <jackson@ximian.com>
+
+	* mono-cov.c: Change default assembly name to mscorlib.dll
+	
+Tue Jul 1 11:26:10 CEST 2003 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile.am: added.
+
+Mon Jun 16 18:21:26 CEST 2003 Paolo Molaro <lupus@ximian.com>
+
+	* mono-cov.c: coverage profiler.
+
