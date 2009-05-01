@@ -1,4 +1,4 @@
-mono (2.0.1-6) UNRELEASED; urgency=low
+mono (2.0.1-6) unstable; urgency=low
 
   [ Jo Shields ]
   * debian/control:
@@ -6,7 +6,12 @@ mono (2.0.1-6) UNRELEASED; urgency=low
       avoid multiple packages with identical short descriptions
       (Closes: #519404)
 
- -- Jo Shields <directhex@apebox.org>  Thu, 12 Mar 2009 11:11:22 +0000
+  [ Sebastian Dröge ]
+  * debian/patches/fix_null_funcptr_marshalling_r127347.dpatch:
+    + Fix marshalling for NULL function pointers, they should be mapped
+      to managed null delegates and vice versa. Patch from upstream SVN.
+
+ -- Sebastian Dröge <slomo@debian.org>  Fri, 01 May 2009 13:37:07 +0200
 
 mono (2.0.1-5) unstable; urgency=low
 

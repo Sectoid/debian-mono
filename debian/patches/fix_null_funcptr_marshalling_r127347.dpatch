@@ -1,0 +1,18 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+
+@DPATCH@
+
+--- mono/mono/metadata/marshal.c	2009-02-18 23:10:16 UTC (rev 127346)
++++ mono/mono/metadata/marshal.c	2009-02-18 23:12:09 UTC (rev 127347)
+@@ -383,6 +383,9 @@
+ #endif
+ 	MonoDelegate *d;
+ 
++	if (ftn == NULL)
++		return NULL;
++
+ 	mono_marshal_lock ();
+ 	if (delegate_hash_table == NULL)
+ 		delegate_hash_table = delegate_hash_table_new ();
+
+

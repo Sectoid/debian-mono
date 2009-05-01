@@ -10,6 +10,7 @@ fix_implicit_pointer_conversions
 fix_wsdl2_duplicate_keys_r117243
 fix_NetworkInterface_exception_r120282
 fix_TcpClient_IPv6_r122598
+fix_null_funcptr_marshalling_r127347.dpatch
 armel-glibc-2.8
 build_genxs_2.0
 99_autoreconf
