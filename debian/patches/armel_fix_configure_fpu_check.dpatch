@@ -5,34 +5,6 @@
 ## DP: No description.
 
 @DPATCH@
-diff -urNad mono-2.0.1~/configure mono-2.0.1/configure
---- mono-2.0.1~/configure	2008-10-22 19:20:01.000000000 +0200
-+++ mono-2.0.1/configure	2008-11-23 15:47:00.000000000 +0100
-@@ -1657,6 +1657,7 @@
-   --with-jit=yes,no       If you want to build scripts that default to the JIT
-   --with-interp=yes,no    If you want to build scripts that default to the interpreter
-   --with-x                use the X Window System
-+ --with-fpu=FPA,VFP,NONE	Select fpu to use on arm
-  --with-preview=yes,no     If you want to install the 2.0 FX preview
-  --with-moonlight=yes,no   If you want to build the Moonlight 2.1 assemblies
-  --with-oprofile=no,<path>   Enable oprofile support (defaults to NO)
-@@ -39096,7 +39097,7 @@
- main ()
- {
- 
--		__asm__ ("ldfd f0, [r0]");
-+			__asm__ ("ldfd f0, [r0]");
- 
-   ;
-   return 0;
-@@ -39128,6 +39129,7 @@
- fi
- 
- rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-+	fi
- 
- 	{ echo "$as_me:$LINENO: result: $fpu" >&5
- echo "${ECHO_T}$fpu" >&6; }
 diff -urNad mono-2.0.1~/configure.in mono-2.0.1/configure.in
 --- mono-2.0.1~/configure.in	2008-10-20 19:29:46.000000000 +0200
 +++ mono-2.0.1/configure.in	2008-11-23 16:08:54.000000000 +0100

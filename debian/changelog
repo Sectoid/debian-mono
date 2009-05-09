@@ -1,3 +1,52 @@
+mono (2.4+dfsg-1~pre1) unstable; urgency=low
+
+  * New upstream release.
+    + For release highlights see the NEWS.Debian file
+  * DFSG edition of Mono 2.4 as the source taball contained a binary that is
+    not part of the bootstrapping process (docs/AgilityPack.dll) and is CC
+    Share-alike 2.5 licensed (non-free). Also it contained non-free
+    specification files needed by the RabbitMQ.Client library.
+  * debian/rules:
+    + Made get-orig-source policy conform (by using . as output path).
+    + Dropped --with-oprofile from configure call as debian doesn't ship the
+      needed header files for it.
+    + Dropped--with-moonlight from configure call as the moon source package
+      will ship the assemblies with the release containing Silverlight 2.0
+      support.
+  * debian/README.source:
+    + Mention which files we removed and how to create the tarball we use.
+    + Document which binaries are required to bootstrap the C# compiler.
+  * debian/NEWS:
+    + Updated for Mono 2.4, Mono 2.2 and Mono 2.0.
+  * debian/patches/kfreebsd_support.dpatch
+    debian/patches/build_genxs_2.0.dpatch:
+    + Updated to cleanly apply again.
+  * debian/patches/fix_wsdl2_duplicate_keys_r117243.dpatch
+    debian/patches/fix_NetworkInterface_exception_r120282.dpatch
+    debian/patches/fix_TcpClient_IPv6_r122598.dpatch:
+    + Dropped, already applied upstream.
+  * debian/patches/armel_fix_configure_fpu_check.dpatch:
+    + Only patch configure.in, autoreconf takes care of configure.
+  * debian/patches/armel-glibc-2.8.dpatch:
+    + Dropped, fixed upstream in a different way.
+  * debian/patches/fix_NetworkInterface_endless_loop.dpatch:
+    + Fix loop by setting next item. (Closes: #519480)
+  * debian/libmono-system2.1-cil.install:
+    + Added Mono.CompilerServices.SymbolWriter.dll,
+      System.Runtime.Serialization.dll, System.ServiceModel.dll,
+      System.ServiceModel.Web.dll and System.Xml.Linq.dll.
+  * debian/libmono-system-web2.0-cil.install:
+    + Added system.web.extensions_1.0.pc and
+      system.web.extensions.design_1.0.pc.
+  * debian/libmono2.0-cil.install:
+    + Added mono.web.pc.
+  * debian/control:
+    debian/patches/99_autoreconf.dpatch:
+    + Added autoconf to build-deps, as we autoreconf in debian/rules now.
+    + Dropped autoreconf dpatch.
+
+ -- Mirco Bauer <meebey@debian.org>  Sat, 11 Apr 2009 02:25:02 +0200
+
 mono (2.0.1-6) unstable; urgency=low
 
   [ Jo Shields ]

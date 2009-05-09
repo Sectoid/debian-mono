@@ -3,9 +3,14 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
-VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
-UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,' | sed 's,+dfsg.*,,') 
+MAKEFILE = $(firstword $(MAKEFILE_LIST))
+DEBIAN_DIR = $(dir $(MAKEFILE))
+SOURCE_DIR = $(DEBIAN_DIR)/..
+
+VERSION = $(shell dpkg-parsechangelog -l$(DEBIAN_DIR)/changelog | grep ^Vers | cut -d\  -f2)
+UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,' | sed 's,+dfsg.*,,')
 NEXT_UPVERSION = $(shell perl -e '$$_=pop; s/(\d+)$$/$$1+1/e; print' $(UPVERSION))
+DEB_SOURCE_NAME = $(shell dpkg-parsechangelog -l$(DEBIAN_DIR)/changelog | grep ^Source | cut -d" " -f2)
 
 RUN_MONO = LD_LIBRARY_PATH=debian/tmp/usr/lib MONO_PATH=debian/tmp/usr/lib/mono/1.0:debian/tmp/usr/lib/mono/2.0 debian/tmp/usr/bin/mono
 DH_INTERNAL_MONO_PARAM = --internal-mono
@@ -58,8 +63,6 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 		  --with-libgdiplus=installed --with-x=yes \
-		  --with-moonlight=yes \
-		  --with-oprofile=yes \
 		  --enable-quiet-build=no
 
 # Mono's build system doesn't like -j > 1
@@ -76,17 +79,25 @@ include /usr/share/dpatch/dpatch.make
 cli-wrapper: debian/cli-wrapper.c
 	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
 
-configure-arch: patch configure-arch-stamp
-configure-arch-stamp:
+autoreconf: patch autoreconf-stamp
+autoreconf-stamp:
+	autoreconf -f -i -s
+	touch $@
+
+configure-arch: configure-arch-stamp
+configure-arch-stamp: autoreconf
 	dh_testdir
 	$(CONFIGURE) --disable-mcs-build
-	touch configure-arch-stamp
+	touch $@
 
 configure-indep: patch configure-indep-stamp
-configure-indep-stamp:
+configure-indep-stamp: autoreconf
 	dh_testdir
 	$(CONFIGURE)
-	touch configure-indep-stamp
+	touch $@
+
+build: build-arch
+build-all: build-arch build-indep
 
 build-arch: configure-arch build-arch-stamp
 build-arch-stamp: cli-wrapper
@@ -97,7 +108,7 @@ build-arch-stamp: cli-wrapper
 	cd debian/detector && \
 	  $(MAKE)
 	#debian/mono-aot-bootstrap
-	touch build-arch-stamp
+	touch $@
 
 build-indep: configure-indep build-indep-stamp
 build-indep-stamp:
@@ -108,15 +119,9 @@ build-indep-stamp:
 	         debian/dh_clistrip \
 	         debian/dh_clifixperms \
 	         debian/dh_monoaot
-	touch build-indep-stamp
-
-build: build-arch
-
-build-all: build-arch build-indep
+	touch $@
 
 clean: clean-patched unpatch
-	#rm -f configure
-
 clean-patched:
 	dh_testdir
 	dh_testroot
@@ -136,9 +141,15 @@ clean-patched:
 	      mcs/class/Novell.Directory.Ldap/Novell.Directory.Ldap.Utilclass/ResultCodeMessages.resources \
 	      mcs/class/System.Web/resources/TranslationResources.resources
 
+	# clean stuff handled by autoreconf
+	rm -rf configure config.sub config.guess ltmain.sh aclocal.m4 autom4te.cache/
+	find . -name "Makefile.in" -delete
+
+	rm -f autoreconf-stamp
 	rm -f configure-*-stamp
 	rm -f build-*-stamp
 	rm -f install-*-stamp
+
 	dh_clean
 
 install: install-arch install-indep
@@ -245,7 +256,6 @@ binary: binary-arch binary-indep
 binary-indep: build-arch install-arch build-indep install-indep
 	dh_testdir
 	dh_testroot
-
 
 	# that exclude list are programs for arch-dep packages
 	dh_install -i -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
@@ -355,14 +365,35 @@ binary-arch: build-arch install-arch
 	dh_md5sums -s
 	dh_builddeb -s
 
+get-orig-source: TARBALL_DIR = $(DEB_SOURCE_NAME)-$(UPVERSION)
 get-orig-source:
-	[ -d ../tarballs ] || mkdir ../tarballs
 	uscan \
-		--force-download \
+		--package $(DEB_SOURCE_NAME) \
+		--watchfile $(DEBIAN_DIR)/watch \
+		--upstream-version $(UPVERSION) \
 		--download-version $(UPVERSION) \
-		--repack \
+		--destdir . \
+		--force-download \
 		--rename \
-		--destdir ../tarballs
+		--repack
+	if [ -d $(TARBALL_DIR) ]; then \
+		echo "$(TARBALL_DIR) is in the way, bailing out!"; \
+		exit 1; \
+	fi
+	if [ -d $(TARBALL_DIR)+dfsg ]; then \
+		echo "$(TARBALL_DIR)+dfsg is in the way, bailing out!"; \
+		exit 1; \
+	fi
+	tar -xzf $(DEB_SOURCE_NAME)_$(UPVERSION).orig.tar.gz
+	rm $(DEB_SOURCE_NAME)_$(UPVERSION).orig.tar.gz
+	rm -rf $(TARBALL_DIR)/mcs/class/RabbitMQ.Client/docs/specs/
+	find $(TARBALL_DIR) -name "*.dll" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*"
+	find $(TARBALL_DIR) -name "*.dll" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -delete
+	find $(TARBALL_DIR) -name "*.exe" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*"
+	find $(TARBALL_DIR) -name "*.exe" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -delete
+	mv $(TARBALL_DIR) $(TARBALL_DIR)+dfsg
+	tar -czf $(DEB_SOURCE_NAME)_$(UPVERSION)+dfsg.orig.tar.gz $(TARBALL_DIR)+dfsg
+	rm -r $(TARBALL_DIR)+dfsg
 
-.PHONY: clean build binary-indep binary-arch install binary patch unpatch
+.PHONY: autoreconf clean build binary-indep binary-arch install binary patch unpatch
 .NOTPARALLEL:

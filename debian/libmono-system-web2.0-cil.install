@@ -10,3 +10,5 @@ debian/tmp/usr/lib/mono/2.0/System.Web.Extensions.Design.dll
 debian/tmp/usr/lib/mono/2.0/System.Web.Services.dll
 debian/tmp/usr/lib/mono/3.5/System.Web.Extensions.dll
 debian/tmp/usr/lib/mono/3.5/System.Web.Extensions.Design.dll
+debian/tmp/usr/lib/pkgconfig/system.web.extensions_1.0.pc
+debian/tmp/usr/lib/pkgconfig/system.web.extensions.design_1.0.pc

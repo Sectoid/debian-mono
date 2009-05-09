@@ -1,3 +1,57 @@
+mono (2.4-1) unstable; urgency=low
+
+  * Mono 2.4 ships a lot of goodies:
+    + SIMD support in Mono.
+    + No expensive polls in the threading implementation any longer.
+    + Speed-up garbarge collection on multi-core systems.
+    + Optimized XPath (using 15% less memory).
+    + Faster DateTime.TryParse implementation (by not using try/catch).
+    + Support for precompiled ASP.NET pages.
+  * Complete Announcement of Mono 2.4 (vs Mono 2.2):
+    http://www.mono-project.com/Release_Notes_Mono_2.4
+    
+  * Mono 2.2 also ships with lovely thins:
+    + The tree-based code generation engine in the JIT was replaced with the
+      Linear IL engine, which allows better optimizations.
+    + Generic sharing is now used in all cases (reduces memory usage).
+    + Generic sharing is now supported on ARM.
+    + Support of full Ahead of Time Compilation.
+    + New PerformanceCounters implementation that allows to monitor the runtime
+      internals. Including the GUI tool "mperfmon" to view them.
+    + Interactive shell called "csharp" that allows to execute C#
+      expressions inside a shell. There is also a GUI version available
+      called "gsharp".
+    + Live Inspection. You can attach using the csharp shell to a
+      running process and run code inside to debug things.
+    + The C# compiler will now optimize empty strings ("") away with
+      String.Empty (which reduces memory usage).
+    + The Regular Expressions engine has been rewritten being more efficient.
+      At the same time compiled regex are also supported now.
+    + ASP.NET supports now new routing handlers needed by ASP.NET MVC.
+    + In the WinForms implementation were almost 200 bugs fixed (since Mono 2.0)
+  * Complete Announcement of Mono 2.2 (vs Mono 2.0):
+    http://www.mono-project.com/Release_Notes_Mono_2.2
+ 
+  * Mono 2.0 shipped with:
+    + A console debugger (mdb) part of the mono-debugger package.
+    + WinForms 2.0 API is complete.
+    + WinForms's WebBrowser was implemented using Mozilla's Gecko HTML
+      rendering engine.
+    + WinForms now supports international keyboard input through XIM.
+    + Performance of locking (used by threading) was significally improved.
+    + New debug parameter "--debug=cast" which print outs the types in for
+      InvalidCastException.
+    + The C# compiler supports now expression trees (for LINQ) which completes
+      the C# 3.0 support.
+    + The C# compiler is now dual-licensed under MIT/X11 and GPLv2 (only).
+    + LINQ and LINQ to XML are now complete.
+    + Big Arrays for 64bit architectures are now support (but have to be
+      compiled using the --enable-big-arrays configure switch)
+  * Complete Announcement of Mono 2.0:
+    http://www.mono-project.com/Release_Notes_Mono_2.0
+
+ -- Mirco Bauer <meebey@debian.org>  Fri, 10 Apr 2009 00:58:39 +0200
+
 mono (1.2.2.1-1) unstable; urgency=low
 
   * Here we go, Mono 1.2 is now official stable and released!

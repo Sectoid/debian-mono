@@ -14,7 +14,8 @@ Build-Depends: debhelper (>= 5),
 	dc,
 	libx11-dev,
 	libxt-dev,
-	zlib1g-dev
+	zlib1g-dev,
+	autoconf
 Standards-Version: 3.8.0
 Homepage: http://www.mono-project.com/
 Vcs-Svn: svn://svn.debian.org/svn/pkg-mono/mono/trunk

@@ -5,10 +5,10 @@
 ## DP: kfreebsd support - mainly backport of gc 6.8
 
 @DPATCH@
-diff -urNad mono-1.2.6~/configure.in mono-1.2.6/configure.in
---- mono-1.2.6~/configure.in	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/configure.in	2007-12-16 15:42:43.000000000 +0100
-@@ -93,6 +93,16 @@
+diff -urNad mono-2.4+dfsg~/configure.in mono-2.4+dfsg/configure.in
+--- mono-2.4+dfsg~/configure.in	2009-04-11 03:00:41.000000000 +0200
++++ mono-2.4+dfsg/configure.in	2009-04-11 03:02:23.000000000 +0200
+@@ -98,6 +98,16 @@
  		libgc_threads=pthreads
  		with_sigaltstack=no
  		;;
@@ -22,10 +22,10 @@ diff -urNad mono-1.2.6~/configure.in mono-1.2.6/configure.in
 +		need_link_unlink=yes
 +		with_sigaltstack=no
 +		;;
- # these flags will work for all versions of -STABLE
- #
- 	*-*-*freebsd4*)
-@@ -1855,6 +1865,11 @@
+ 	*-*-*freebsd*)
+ 		platform_win32=no
+ 		if test "x$PTHREAD_CFLAGS" = "x"; then
+@@ -2011,6 +2021,11 @@
  	LIBC="libc.so.12"
  	INTL="libintl.so.0"
  	;;
@@ -37,30 +37,30 @@ diff -urNad mono-1.2.6~/configure.in mono-1.2.6/configure.in
      *-*-*freebsd*)
      	LIBC="libc.so"
  	INTL="libintl.so"
-diff -urNad mono-1.2.6~/libgc/configure.in mono-1.2.6/libgc/configure.in
---- mono-1.2.6~/libgc/configure.in	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/libgc/configure.in	2007-12-16 15:42:43.000000000 +0100
-@@ -103,6 +103,17 @@
+diff -urNad mono-2.4+dfsg~/libgc/configure.in mono-2.4+dfsg/libgc/configure.in
+--- mono-2.4+dfsg~/libgc/configure.in	2009-04-11 03:00:20.000000000 +0200
++++ mono-2.4+dfsg/libgc/configure.in	2009-04-11 03:00:52.000000000 +0200
+@@ -112,6 +112,17 @@
  	AC_DEFINE(THREAD_LOCAL_ALLOC)
  	THREADDLLIBS="-lpthread -lrt"
  	;;
-+      *-*-kfreebsd*-gnu)
-+        AC_DEFINE(GC_FREEBSD_THREADS)
-+        INCLUDES="$INCLUDES -pthread"
-+        THREADDLLIBS=-pthread
-+        AC_DEFINE(_REENTRANT)
-+        if test "${enable_parallel_mark}" = yes; then
-+          AC_DEFINE(PARALLEL_MARK)
-+        fi
-+        AC_DEFINE(THREAD_LOCAL_ALLOC)
-+        AC_DEFINE(USE_COMPILER_TLS)
-+        ;;
-      *-*-freebsd4*)
- 	AC_MSG_WARN("FreeBSD does not yet fully support threads with Boehm GC.")
++     *-*-kfreebsd*-gnu)
++	AC_DEFINE(GC_FREEBSD_THREADS)
++	INCLUDES="$INCLUDES -pthread"
++	THREADDLLIBS=-pthread
++	AC_DEFINE(_REENTRANT)
++	if test "${enable_parallel_mark}" = yes; then
++		AC_DEFINE(PARALLEL_MARK)
++	fi
++	AC_DEFINE(THREAD_LOCAL_ALLOC)
++	AC_DEFINE(USE_COMPILER_TLS)
++	;;
+       *-*-freebsd*)
  	AC_DEFINE(GC_FREEBSD_THREADS)
-diff -urNad mono-1.2.6~/libgc/dyn_load.c mono-1.2.6/libgc/dyn_load.c
---- mono-1.2.6~/libgc/dyn_load.c	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/libgc/dyn_load.c	2007-12-16 15:42:43.000000000 +0100
+ 	if test "x$PTHREAD_CFLAGS" != "x"; then
+diff -urNad mono-2.4+dfsg~/libgc/dyn_load.c mono-2.4+dfsg/libgc/dyn_load.c
+--- mono-2.4+dfsg~/libgc/dyn_load.c	2009-04-11 03:00:20.000000000 +0200
++++ mono-2.4+dfsg/libgc/dyn_load.c	2009-04-11 03:00:52.000000000 +0200
 @@ -26,7 +26,7 @@
   * None of this is safe with dlclose and incremental collection.
   * But then not much of anything is safe in the presence of dlclose.
@@ -79,10 +79,10 @@ diff -urNad mono-1.2.6~/libgc/dyn_load.c mono-1.2.6/libgc/dyn_load.c
       && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ > 2) \
           || (__GLIBC__ == 2 && __GLIBC_MINOR__ == 2 && defined(DT_CONFIG))) 
  
-diff -urNad mono-1.2.6~/libgc/include/gc.h mono-1.2.6/libgc/include/gc.h
---- mono-1.2.6~/libgc/include/gc.h	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/libgc/include/gc.h	2007-12-16 15:42:43.000000000 +0100
-@@ -484,7 +484,7 @@
+diff -urNad mono-2.4+dfsg~/libgc/include/gc.h mono-2.4+dfsg/libgc/include/gc.h
+--- mono-2.4+dfsg~/libgc/include/gc.h	2009-04-11 03:00:20.000000000 +0200
++++ mono-2.4+dfsg/libgc/include/gc.h	2009-04-11 03:00:52.000000000 +0200
+@@ -488,7 +488,7 @@
  #   define GC_RETURN_ADDR (GC_word)__return_address
  #endif
  
@@ -91,9 +91,9 @@ diff -urNad mono-1.2.6~/libgc/include/gc.h mono-1.2.6/libgc/include/gc.h
  # include <features.h>
  # if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 1 || __GLIBC__ > 2) \
       && !defined(__ia64__)
-diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/include/private/gcconfig.h
---- mono-1.2.6~/libgc/include/private/gcconfig.h	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/libgc/include/private/gcconfig.h	2007-12-16 15:42:43.000000000 +0100
+diff -urNad mono-2.4+dfsg~/libgc/include/private/gcconfig.h mono-2.4+dfsg/libgc/include/private/gcconfig.h
+--- mono-2.4+dfsg~/libgc/include/private/gcconfig.h	2009-04-11 03:00:20.000000000 +0200
++++ mono-2.4+dfsg/libgc/include/private/gcconfig.h	2009-04-11 03:00:52.000000000 +0200
 @@ -55,7 +55,7 @@
  # endif
  
@@ -103,7 +103,7 @@ diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/includ
  #    define FREEBSD
  # endif
  
-@@ -1279,8 +1279,15 @@
+@@ -1291,8 +1291,15 @@
  #	ifndef GC_FREEBSD_THREADS
  #	    define MPROTECT_VDB
  #	endif
@@ -121,7 +121,7 @@ diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/includ
  #	define FREEBSD_STACKBOTTOM
  #	ifdef __ELF__
  #	    define DYNAMIC_LOADING
-@@ -2009,6 +2016,28 @@
+@@ -2032,6 +2039,28 @@
  	extern char * GC_FreeBSDGetDataStart();
  #	define DATASTART GC_FreeBSDGetDataStart(0x1000, &etext)
  #   endif
@@ -150,7 +150,7 @@ diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/includ
  #   ifdef NETBSD
  #	define OS_TYPE "NETBSD"
  #	ifdef __ELF__
-@@ -2080,7 +2109,7 @@
+@@ -2103,7 +2132,7 @@
  #   define SUNOS5SIGS
  # endif
  
@@ -159,7 +159,7 @@ diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/includ
  #   define SUNOS5SIGS
  # endif
  
-@@ -2143,7 +2172,7 @@
+@@ -2166,7 +2195,7 @@
  #   define CACHE_LINE_SIZE 32	/* Wild guess	*/
  # endif
  
@@ -168,7 +168,7 @@ diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/includ
  #   define REGISTER_LIBRARIES_EARLY
      /* We sometimes use dl_iterate_phdr, which may acquire an internal	*/
      /* lock.  This isn't safe after the world has stopped.  So we must	*/
-@@ -2224,7 +2253,7 @@
+@@ -2247,7 +2276,7 @@
  #if defined(SPARC)
  # define CAN_SAVE_CALL_ARGS
  #endif
@@ -177,10 +177,10 @@ diff -urNad mono-1.2.6~/libgc/include/private/gcconfig.h mono-1.2.6/libgc/includ
  	    /* SAVE_CALL_CHAIN is supported if the code is compiled to save	*/
  	    /* frame pointers by default, i.e. no -fomit-frame-pointer flag.	*/
  # define CAN_SAVE_CALL_ARGS
-diff -urNad mono-1.2.6~/mono/mini/exceptions-amd64.c mono-1.2.6/mono/mini/exceptions-amd64.c
---- mono-1.2.6~/mono/mini/exceptions-amd64.c	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/mono/mini/exceptions-amd64.c	2007-12-16 15:42:43.000000000 +0100
-@@ -682,7 +682,7 @@
+diff -urNad mono-2.4+dfsg~/mono/mini/exceptions-amd64.c mono-2.4+dfsg/mono/mini/exceptions-amd64.c
+--- mono-2.4+dfsg~/mono/mini/exceptions-amd64.c	2009-04-11 03:00:20.000000000 +0200
++++ mono-2.4+dfsg/mono/mini/exceptions-amd64.c	2009-04-11 03:00:52.000000000 +0200
+@@ -740,7 +740,7 @@
  static inline guint64*
  gregs_from_ucontext (ucontext_t *ctx)
  {
@@ -189,15 +189,16 @@ diff -urNad mono-1.2.6~/mono/mini/exceptions-amd64.c mono-1.2.6/mono/mini/except
      guint64 *gregs = (guint64 *) &ctx->uc_mcontext;
  #else
      guint64 *gregs = (guint64 *) &ctx->uc_mcontext.gregs;
-diff -urNad mono-1.2.6~/mono/mini/mini-amd64.h mono-1.2.6/mono/mini/mini-amd64.h
---- mono-1.2.6~/mono/mini/mini-amd64.h	2007-12-16 15:41:43.000000000 +0100
-+++ mono-1.2.6/mono/mini/mini-amd64.h	2007-12-16 15:42:43.000000000 +0100
-@@ -220,7 +220,7 @@
+diff -urNad mono-2.4+dfsg~/mono/mini/mini-amd64.h mono-2.4+dfsg/mono/mini/mini-amd64.h
+--- mono-2.4+dfsg~/mono/mini/mini-amd64.h	2009-04-11 03:00:20.000000000 +0200
++++ mono-2.4+dfsg/mono/mini/mini-amd64.h	2009-04-11 03:00:52.000000000 +0200
+@@ -245,8 +245,7 @@
  
- #endif /* PLATFORM_WIN32 */
+ #define MONO_ARCH_NOMAP32BIT
  
--#ifdef __FreeBSD__
-+#if defined (__FreeBSD__) || defined(__FreeBSD_kernel__)
- 
+-#elif defined (__FreeBSD__)
+-
++#elif defined (__FreeBSD__) || defined(__FreeBSD_kernel__)
  #define REG_RAX 7
  #define REG_RCX 4
+ #define REG_RDX 3
