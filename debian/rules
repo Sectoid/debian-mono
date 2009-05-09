@@ -3,6 +3,9 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
+# Assume Debian behaviour by default.
+DISTRO = $(shell lsb_release -si)
+
 VERSION = $(shell dpkg-parsechangelog | grep ^Vers | cut -d\  -f2)
 UPVERSION = $(shell echo $(VERSION) | sed 's,-.*,,' | sed 's,+dfsg.*,,') 
 NEXT_UPVERSION = $(shell perl -e '$$_=pop; s/(\d+)$$/$$1+1/e; print' $(UPVERSION))
@@ -118,6 +121,7 @@ clean: clean-patched unpatch
 	#rm -f configure
 
 clean-patched:
+	echo "distro is $(DISTRO)"
 	dh_testdir
 	dh_testroot
 	[ ! -f Makefile ] || $(MAKE) distclean
@@ -281,6 +285,21 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_installman -i
 	debian/dh_clistrip -i --dbg-package=mono-dbg
 	dh_compress -i
+	
+	# Hack workaround to kill sucky Ubuntu symlink mess
+	if [ "$(DISTRO)" = "Ubuntu" ]; then \
+	  for p in $$(dh_listpackages -i); do \
+	    ( \
+	      echo "# revert Ubuntu doc dir symlinking to Debian style"; \
+	      echo "if [ \"\$$1\" = \"upgrade\" ]; then"; \
+	      echo "  dpkg --compare-versions \$$2 lt 2.4 && if [ -L /usr/share/doc/$$p ]; then"; \
+	      echo "    rm -fr /usr/share/doc/$$p"; \
+	      echo "  fi;"; \
+	      echo "fi"; \
+	    ) >> debian/$$p.preinst.debhelper; \
+	  done; \
+	fi
+
 	dh_fixperms -i
 	debian/dh_clifixperms -i
 	dh_installdeb -i
@@ -347,6 +366,21 @@ binary-arch: build-arch install-arch
 	dh_strip -plibmono0 --dbg-package=libmono0-dbg
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
+
+	# Hack workaround to kill sucky Ubuntu symlink mess
+	if [ "$(DISTRO)" = "Ubuntu" ]; then \
+	  for p in $$(dh_listpackages -a); do \
+	    ( \
+	      echo "# revert Ubuntu doc dir symlinking to Debian style"; \
+	      echo "if [ \"\$$1\" = \"upgrade\" ]; then"; \
+	      echo "  dpkg --compare-versions \$$2 lt 2.4 && if [ -L /usr/share/doc/$$p ]; then"; \
+	      echo "    rm -fr /usr/share/doc/$$p"; \
+	      echo "  fi;"; \
+	      echo "fi"; \
+	    ) >> debian/$$p.preinst.debhelper; \
+	  done; \
+	fi
+
 	dh_fixperms -s
 	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
 	dh_installdeb -s
