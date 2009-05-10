@@ -45,6 +45,11 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     debian/patches/99_autoreconf.dpatch:
     + Added autoconf to build-deps, as we autoreconf in debian/rules now.
     + Dropped autoreconf dpatch.
+  * debian/control:
+    + Updated Vcs-* fields for the migrated git repository.
+    + Added new mono-csharp-shell package.
+    + mono-devel recommends mono-csharp-shell now (very useful for
+      debugging).
 
  -- Mirco Bauer <meebey@debian.org>  Sun, 10 May 2009 18:47:59 +0200
 

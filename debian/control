@@ -18,8 +18,8 @@ Build-Depends: debhelper (>= 5),
 	autoconf
 Standards-Version: 3.8.0
 Homepage: http://www.mono-project.com/
-Vcs-Svn: svn://svn.debian.org/svn/pkg-mono/mono/trunk
-Vcs-Browser: http://svn.debian.org/wsvn/pkg-mono/mono/trunk/
+Vcs-Git: git://git.debian.org/git/pkg-mono/packages/mono.git
+Vcs-Browser: http://git.debian.org/?p=pkg-mono/packages/mono.git
 
 Package: mono-common
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
@@ -1313,6 +1313,7 @@ Provides: c-sharp-compiler,
 Replaces: mono-1.0-devel (<< 2.0),
           mono-mcs (<< 2.0),
           mono-gmcs (<< 2.0)
+Recommends: mono-csharp-shell
 Depends: mono-runtime (>= 2.0),
          libc6 (>= 2.7-1) | libc6.1 (>= 2.7-1) | libc0.1 (>= 2.7-1),
          libglib2.0-0 (>= 2.16.0),
@@ -1504,3 +1505,21 @@ Description: Convert VS.NET solution files to Makefiles
  prj2make-solution is a utility used to read a "solution" file created
  with Visual Studio .NET and generate a usual Makefile suitable for
  compilation with a C# compiler.
+
+Package: mono-csharp-shell
+Section: shells
+Architecture: all
+Homepage: http://www.mono-project.com/CsharpRepl
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}
+Description: interactive C# shell
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the interactive C# shell named csharp.  csharp permits
+ dynamically evaluating C# statements, and can be used for writing scripts or
+ testing code fragments.
+ For examples and a brief overview of the commands see:
+ http://www.mono-project.com/CsharpRepl
