@@ -11,5 +11,4 @@ fix_implicit_pointer_conversions
 fix_null_funcptr_marshalling_r127347
 disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
-armel-glibc-2.8
 build_genxs_2.0
