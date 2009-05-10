@@ -286,17 +286,10 @@ binary-indep: build-arch install-arch build-indep install-indep
 	debian/dh_clistrip -i --dbg-package=mono-dbg
 	dh_compress -i
 	
-	# Hack workaround to kill sucky Ubuntu symlink mess
+	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)
 	if [ "$(DISTRO)" = "Ubuntu" ]; then \
 	  for p in $$(dh_listpackages -i); do \
-	    ( \
-	      echo "# revert Ubuntu doc dir symlinking to Debian style"; \
-	      echo "if [ \"\$$1\" = \"upgrade\" ]; then"; \
-	      echo "  dpkg --compare-versions \$$2 lt 2.4 && if [ -L /usr/share/doc/$$p ]; then"; \
-	      echo "    rm -fr /usr/share/doc/$$p"; \
-	      echo "  fi;"; \
-	      echo "fi"; \
-	    ) >> debian/$$p.preinst.debhelper; \
+	    sed "s/#PACKAGENAME#/$$p/g" $(CURDIR)/debian/preinst.ubuntu >> debian/$$p.preinst.debhelper; \
 	  done; \
 	fi
 
@@ -367,17 +360,10 @@ binary-arch: build-arch install-arch
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
 
-	# Hack workaround to kill sucky Ubuntu symlink mess
+	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)
 	if [ "$(DISTRO)" = "Ubuntu" ]; then \
 	  for p in $$(dh_listpackages -a); do \
-	    ( \
-	      echo "# revert Ubuntu doc dir symlinking to Debian style"; \
-	      echo "if [ \"\$$1\" = \"upgrade\" ]; then"; \
-	      echo "  dpkg --compare-versions \$$2 lt 2.4 && if [ -L /usr/share/doc/$$p ]; then"; \
-	      echo "    rm -fr /usr/share/doc/$$p"; \
-	      echo "  fi;"; \
-	      echo "fi"; \
-	    ) >> debian/$$p.preinst.debhelper; \
+	    sed "s/#PACKAGENAME#/$$p/g" $(CURDIR)/debian/preinst.ubuntu >> debian/$$p.preinst.debhelper; \
 	  done; \
 	fi
 
