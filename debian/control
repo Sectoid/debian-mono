@@ -13,7 +13,6 @@ Build-Depends: debhelper (>= 5),
 	libxslt1-dev,
 	dc,
 	lsb-release,
-	gawk,
 	libx11-dev,
 	libxt-dev,
 	zlib1g-dev
