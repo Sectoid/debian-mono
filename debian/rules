@@ -267,8 +267,9 @@ binary-indep: build-arch install-arch build-indep install-indep
 	# using the built Mono runtime from debian/tmp
 	# (thus the install-arch target dependency!)
 	mkdir -p debian/mono-gac/usr/share/mono
-	$(RUN_MONO) mcs/class/lib/default/mcs.exe /t:exe \
-	  /out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
+	$(RUN_MONO) mcs/class/lib/net_2_0/gmcs.exe \
+	  -target:exe \
+	  -out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
 
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data1.0-cil/usr/lib/mono/gac/System.Data/1.0.*/

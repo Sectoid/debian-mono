@@ -13,6 +13,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Dropped--with-moonlight from configure call as the moon source package
       will ship the assemblies with the release containing Silverlight 2.0
       support.
+    + Build MonoGetAssemblyName using gmcs instead of mcs.
   * debian/README.source:
     + Mention which files we removed and how to create the tarball we use.
     + Document which binaries are required to bootstrap the C# compiler.
@@ -45,7 +46,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Added autoconf to build-deps, as we autoreconf in debian/rules now.
     + Dropped autoreconf dpatch.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 11 Apr 2009 02:25:02 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 10 May 2009 18:47:59 +0200
 
 mono (2.0.1-6) unstable; urgency=low
 
