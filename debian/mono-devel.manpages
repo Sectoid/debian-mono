@@ -13,6 +13,7 @@ debian/tmp/usr/share/man/man1/macpack.1
 debian/tmp/usr/share/man/man1/makecert.1
 debian/tmp/usr/share/man/man1/mcs.1
 debian/tmp/usr/share/man/man1/mkbundle.1
+debian/tmp/usr/share/man/man1/mono-cil-strip.1
 debian/tmp/usr/share/man/man1/mono-shlib-cop.1
 debian/tmp/usr/share/man/man1/mono-xmltool.1
 debian/tmp/usr/share/man/man1/monolinker.1

@@ -32,10 +32,6 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Dropped, fixed upstream in a different way.
   * debian/patches/fix_NetworkInterface_endless_loop.dpatch:
     + Fix loop by setting next item. (Closes: #519480)
-  * debian/libmono-system2.1-cil.install:
-    + Added Mono.CompilerServices.SymbolWriter.dll,
-      System.Runtime.Serialization.dll, System.ServiceModel.dll,
-      System.ServiceModel.Web.dll and System.Xml.Linq.dll.
   * debian/libmono-system-web2.0-cil.install:
     + Added system.web.extensions_1.0.pc and
       system.web.extensions.design_1.0.pc.
@@ -50,8 +46,23 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Added new mono-csharp-shell package.
     + mono-devel recommends mono-csharp-shell now (very useful for
       debugging).
+    + Added new libmono-management2.0-cil, libmono-messaging2.0-cil,
+      libmono-simd2.0-cil and libmono-wcf3.0-cil packages.
+    + Merged monodoc, monodoc-base and monodoc-manual packages from the
+      monodoc source package. 
+    + Dropped mono-smcs, libmono-corlib2.1-cil and libmono-system2.1-cil as
+      those will be shipped by the moon source package.
+  * debian/libmono-cairo1.0-cil.install
+    debian/libmono-cairo2.0-cil.install
+    debian/patches/fix-mono-cairo.pc.in.dpatch:
+    + Moved mono-cairo.pc from libmono-cairo1.0-cil to libmono-cairo2.0-cil
+      and reference the CLI 2.0 version in the pkg-config file now.
+  * debian/mono-devel.install:
+    + Added mono-cil-strip
+    + Removed CorCompare.exe
+    + Updated mono-shlib-cop and sqlsharp as they are now CLI 2.0
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 10 May 2009 18:47:59 +0200
+ -- Mirco Bauer <meebey@debian.org>  Wed, 13 May 2009 01:40:02 +0200
 
 mono (2.0.1-6) unstable; urgency=low
 

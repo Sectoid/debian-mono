@@ -16,6 +16,7 @@ debian/tmp/usr/bin/mcs
 debian/tmp/usr/bin/mkbundle
 debian/tmp/usr/bin/mono-api-diff
 debian/tmp/usr/bin/mono-api-info
+debian/tmp/usr/bin/mono-cil-strip
 debian/tmp/usr/bin/mono-shlib-cop
 debian/tmp/usr/bin/mono-xmltool
 debian/tmp/usr/bin/monop
@@ -31,7 +32,6 @@ debian/tmp/usr/bin/soapsuds
 debian/tmp/usr/bin/sqlsharp
 debian/tmp/usr/bin/wsdl
 debian/tmp/usr/bin/xsd
-debian/tmp/usr/lib/mono/1.0/CorCompare.exe
 debian/tmp/usr/lib/mono/1.0/browsercaps-updater.exe
 debian/tmp/usr/lib/mono/1.0/caspol.exe
 debian/tmp/usr/lib/mono/1.0/cert2spc.exe
@@ -47,7 +47,7 @@ debian/tmp/usr/lib/mono/1.0/installvst.exe
 debian/tmp/usr/lib/mono/1.0/macpack.exe
 debian/tmp/usr/lib/mono/1.0/makecert.exe
 debian/tmp/usr/lib/mono/1.0/mono-api-diff.exe
-debian/tmp/usr/lib/mono/1.0/mono-shlib-cop.exe*
+debian/tmp/usr/lib/mono/1.0/mono-cil-strip.exe
 debian/tmp/usr/lib/mono/1.0/mono-xmltool.exe
 debian/tmp/usr/lib/mono/1.0/monolinker.exe
 debian/tmp/usr/lib/mono/1.0/mozroots.exe
@@ -57,5 +57,6 @@ debian/tmp/usr/lib/mono/1.0/setreg.exe
 debian/tmp/usr/lib/mono/1.0/signcode.exe
 debian/tmp/usr/lib/mono/1.0/sn.exe
 debian/tmp/usr/lib/mono/1.0/soapsuds.exe
-debian/tmp/usr/lib/mono/1.0/sqlsharp.exe
+debian/tmp/usr/lib/mono/2.0/mono-shlib-cop.exe*
+debian/tmp/usr/lib/mono/2.0/sqlsharp.exe
 debian/mono-api-check /usr/bin/

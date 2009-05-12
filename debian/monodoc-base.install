@@ -1,0 +1,16 @@
+/usr/bin/mdassembler
+/usr/bin/mdoc
+/usr/bin/mdoc-assemble
+/usr/bin/mdoc-export-html
+/usr/bin/mdoc-export-msxdoc
+/usr/bin/mdoc-update
+/usr/bin/mdoc-validate
+/usr/bin/mdvalidater
+/usr/bin/mod
+/usr/bin/monodocer
+/usr/bin/monodocs2html
+/usr/bin/monodocs2slashdoc
+/usr/lib/mono/1.0/mod.exe
+/usr/lib/mono/2.0/mdoc.exe
+/usr/lib/mono/gac/monodoc/
+/usr/lib/pkgconfig/monodoc.pc

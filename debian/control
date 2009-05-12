@@ -374,6 +374,53 @@ Description: Mono Unit test framework for CLI
  same purpose as JUnit does in the Java world. It supports test categories,
  testing for exceptions and writing test results in plain text or XML.
 
+Package: libmono-management2.0-cil
+Section: libs
+Architecture: all
+Depends: ${cli:Depends}
+Description: Mono Management library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono.Management library for CLI 2.0, which provides
+ attach functionality for the Mono runtime. It allows to load code externally
+ into a Mono process to debug or augment code live.
+
+Package: libmono-messaging2.0-cil
+Section: libs
+Architecture: all
+Depends: ${cli:Depends}
+Homepage: http://mono-project.com/SystemMessaging
+Description: Mono Messaging library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono.Messaging library for CLI 2.0, which provides
+ messaging functionality using different implementations. At this time Mono
+ does not provide a System.Messaging implementation.
+
+Package: libmono-simd2.0-cil
+Section: libs
+Architecture: all
+Depends: ${cli:Depends}
+Homepage: http://go-mono.com/docs/index.aspx?tlink=0@N%3aMono.Simd
+Description: Mono SIMDy (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono.Simd library for CLI 2.0, which provides a
+ number of classes that are hardware accelerated by mapping the classes and
+ the actual operations to native SIMD instructions on a processor.
+
 Package: libmono-corlib1.0-cil
 Section: libs
 Architecture: all
@@ -407,21 +454,6 @@ Description: Mono core library (for CLI 2.0)
  .
  This package contains the Core Library (mscorlib.dll) of Mono for CLI 2.0, 
  which is the glue between the BCL (Base Class Libraries) and the JIT.
-
-Package: libmono-corlib2.1-cil
-Section: libs
-Architecture: all
-Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
-Description: Mono core library (for CLI 2.1)
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- This package contains the Core Library (mscorlib.dll) of Mono for CLI 2.1 
- (Silverlight/Moonlight), which is the glue between the BCL (Base Class 
- Libraries) and the JIT.
 
 Package: libmono-i18n1.0-cil
 Section: libs
@@ -482,21 +514,6 @@ Description: Mono System libraries (for CLI 2.0)
  bytecode (aka assemblies), and a class library.
  .
  This package contains the BCL (Base Class Libraries) of Mono for CLI 2.0.
-
-Package: libmono-system2.1-cil
-Section: libs
-Architecture: all
-Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
-Description: Mono System libraries (for CLI 2.1)
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- This package contains the BCL (Base Class Libraries) of Mono for CLI 2.1 
- (Silverlight/Moonlight).
 
 Package: libmono-system-messaging1.0-cil
 Section: libs
@@ -642,6 +659,26 @@ Description: Mono System.Web Library (for CLI 2.0)
  bytecode (aka assemblies), and a class library.
  .
  This package contains the Mono System.Web library for CLI 2.0.
+
+Package: libmono-wcf3.0-cil
+Section: libs
+Architecture: all
+Depends: ${cli:Depends}
+Homepage: http://mono-project.com/WCF
+Description: Mono WCF libraries (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Windows Communication Foundation (WCF) libraries
+ of Mono for CLI 2.0. The WFC stack is for building SOA-based applications.
+ Its development is in early stages.
+ .
+ WCF is also used in Moonlight, but it cuts down huge parts of .NET 3.0
+ features but this implementation used by Moonlight should be almost feature
+ complete.
 
 Package: libmono-system-runtime1.0-cil
 Section: libs
@@ -1281,26 +1318,6 @@ Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
 
-Package: mono-smcs
-Section: devel
-Architecture: all
-Depends: ${cli:Depends},
-         libmono-corlib2.1-cil (= ${source:Version}),
-         libmono-system2.1-cil (= ${source:Version})
-Recommends: pkg-config
-Description: Mono C# 3.0 compiler for CLI 2.1 (Moonlight / Silverlight)
- This is a special C# (C-Sharp) 3.0 compiler for Moonlight (Silverlight)
- applications, a platform-independent compiler which
- produces CIL (Common Intermediate Language) binary executables.
- This compiler targets the CLI 2.1 runtime version, also known as Moonlight or
- Silverlight.
- .
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
-
 Package: mono-devel
 Section: devel
 Architecture: all
@@ -1523,3 +1540,42 @@ Description: interactive C# shell
  testing code fragments.
  For examples and a brief overview of the commands see:
  http://www.mono-project.com/CsharpRepl
+
+Package: monodoc 
+Architecture: all
+Suggests: monodoc-http   
+Depends: monodoc-browser,
+ monodoc-manual
+Description: Mono documentation viewer
+ The MonoDoc Project is the documentation framework of the Mono project which
+ provides detailed API documentation for all Mono components and the Mono CLI
+ implementation.
+ .
+ This is a metapackage containing dependencies for the main components of
+ monodoc.
+
+Package: monodoc-base
+Architecture: all
+Depends: ${cli:Depends}
+Description: shared MonoDoc binaries
+ The MonoDoc Project is the documentation framework of the Mono project which
+ provides detailed API documentation for all Mono components and the Mono CLI
+ implementation.
+ .
+ This packages contains the shared binaries which are used by the monodoc
+ programs like the documentation file compiler (assembler.exe aka
+"monodoc").
+
+Package: monodoc-manual
+Architecture: all
+Section: doc
+Recommends: monodoc-browser | monodoc-http | monodoc-viewer
+Suggests: monodoc-gtk-manual,
+ monodoc-gecko-manual,
+ monodoc-nunit-manual
+Description: compiled XML documentation from the Mono project
+ The MonoDoc Project is the documentation framework of the Mono project which
+ provides detailed API documentation for all Mono components and the Mono CLI
+ implementation.
+ .
+ This packages contains the compiled XML documentation of MonoDoc.

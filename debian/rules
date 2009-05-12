@@ -184,10 +184,14 @@ install-indep-stamp:
 	# Mono.WebBrowser.dll is linked with CLI 2.0, thus the symlink in 1.0/ doesn't make sense
 	rm -f debian/tmp/usr/lib/mono/1.0/Mono.WebBrowser.dll
 	# Mono.Security.Win32.dll is only useful on windows, as it wrap the win api
-	rm -f $(CURDIR)/usr/lib/mono/gac/Mono.Security.Win32/1.0.5000.0__*/Mono.Security.Win32.dll \
-	      $(CURDIR)/usr/lib/mono/gac/Mono.Security.Win32/2.0.0.0__*/Mono.Security.Win32.dll \
-	      $(CURDIR)/usr/lib/mono/1.0/Mono.Security.Win32.dll \
-	      $(CURDIR)/usr/lib/mono/2.0/Mono.Security.Win32.dll
+	rm -f $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Security.Win32/1.0.5000.0__*/Mono.Security.Win32.dll \
+	      $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Security.Win32/2.0.0.0__*/Mono.Security.Win32.dll \
+	      $(CURDIR)/debian/tmp/usr/lib/mono/1.0/Mono.Security.Win32.dll \
+	      $(CURDIR)/debian/tmp/usr/lib/mono/2.0/Mono.Security.Win32.dll
+	# bug in Mono 2.4: <kangaroo> if you meant on 2.4 that was a bug
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.CompilerServices.SymbolWriter/
+	# CLI 1.0 is only kept for compat, don't ship new 1.0 libs
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Messaging/1.0.5000.0__*/
 
 	# copy missing 2.0 manpages
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/al.1 \
