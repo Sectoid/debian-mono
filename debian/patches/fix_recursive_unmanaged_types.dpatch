@@ -1,0 +1,52 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_recursive_unmanaged_types.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Patch takes from upstream's SVN, revision 132861
+## DP: 2009-04-28  Marek Safar  <marek.safar@gmail.com>
+## DP: A fix for bug #495112
+## DP: * class.cs (IsUnmanagedType): Handle recursive unmanaged types using
+## DP:   local cache.
+			
+@DPATCH@
+diff -urNad mono-2.4+dfsg~/mcs/mcs/class.cs mono-2.4+dfsg/mcs/mcs/class.cs
+--- mono-2.4+dfsg~/mcs/mcs/class.cs	2009-03-09 17:52:16.000000000 +0100
++++ mono-2.4+dfsg/mcs/mcs/class.cs	2009-05-19 00:10:18.000000000 +0200
+@@ -2914,6 +2914,9 @@
+ 	}
+ 
+ 	public sealed class Struct : ClassOrStruct {
++
++		bool is_unmanaged, has_unmanaged_check_done;
++
+ 		// <summary>
+ 		//   Modifiers allowed in a struct declaration
+ 		// </summary>
+@@ -2973,6 +2976,11 @@
+ 			if (requires_delayed_unmanagedtype_check)
+ 				return true;
+ 
++			if (has_unmanaged_check_done)
++				return is_unmanaged;
++
++			has_unmanaged_check_done = true;
++
+ 			foreach (FieldBase f in fields) {
+ 				if ((f.ModFlags & Modifiers.STATIC) != 0)
+ 					continue;
+@@ -2981,6 +2989,7 @@
+ 				// struct S { S* s; }
+ 				Type mt = f.MemberType;
+ 				if (mt == null) {
++					has_unmanaged_check_done = false;
+ 					requires_delayed_unmanagedtype_check = true;
+ 					return true;
+ 				}
+@@ -2997,6 +3006,7 @@
+ 				return false;
+ 			}
+ 
++			is_unmanaged = true;
+ 			return true;
+ 		}
+ 

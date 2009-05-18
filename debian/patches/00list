@@ -13,3 +13,4 @@ disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
 build_genxs_2.0
 fix_mod_script
+fix_recursive_unmanaged_types
