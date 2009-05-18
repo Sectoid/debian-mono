@@ -175,10 +175,7 @@ Package: libmono1.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends},
-         libmono-posix1.0-cil (= ${source:Version}),
-         libmono-getoptions1.0-cil (= ${source:Version}),
-         libmono-data1.0-cil (= ${source:Version})
+Depends: ${cli:Depends}
 Description: Mono libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -195,10 +192,7 @@ Package: libmono2.0-cil
 Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends},
-         libmono-posix2.0-cil (= ${source:Version}),
-         libmono-getoptions2.0-cil (= ${source:Version}),
-         libmono-data2.0-cil (= ${source:Version})
+Depends: ${cli:Depends}
 Description: Mono libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -216,7 +210,7 @@ Package: libmono-posix1.0-cil
 Section: libs
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
-Depends: ${cli:Depends}, 
+Depends: ${cli:Depends}
 Description: Mono.Posix library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1331,25 +1325,9 @@ Replaces: mono-1.0-devel (<< 2.0),
           mono-mcs (<< 2.0),
           mono-gmcs (<< 2.0)
 Recommends: mono-csharp-shell
-Depends: mono-runtime (>= 2.0),
-         libc6 (>= 2.7-1) | libc6.1 (>= 2.7-1) | libc0.1 (>= 2.7-1),
-         libglib2.0-0 (>= 2.16.0),
-         libmono-corlib1.0-cil (>= 2.0),
-         libmono-corlib2.0-cil (>= 2.0),
-         libmono-system1.0-cil (>= 2.0),
-         libmono-data-tds1.0-cil (>= 2.0),
-         libmono-data-tds2.0-cil (>= 2.0),
-         libmono-getoptions1.0-cil (>= 1.0),
-         libmono-relaxng1.0-cil (>= 1.9),
-         libmono-security1.0-cil (>= 2.0),
-         libmono-system-data1.0-cil (>= 1.2.6),
-         libmono-system-web1.0-cil (>= 2.0),
-         libmono-system-web2.0-cil (>= 2.0),
-         libmono-system-runtime1.0-cil (>= 2.0),
-         libmono1.0-cil (>= 2.0),
+Depends: ${cli:Depends},
          mono-2.0-devel (= ${source:Version}),
-         mono-gac (= ${source:Version}),
-         ${cli:Depends}
+         mono-gac (= ${source:Version})
 Description: Mono development tools
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

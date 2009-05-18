@@ -52,6 +52,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       monodoc source package. 
     + Dropped mono-smcs, libmono-corlib2.1-cil and libmono-system2.1-cil as
       those will be shipped by the moon source package.
+    + Removed transition dependencies from libmono1.0-cil, libmono2.0-cil
+      mono-devel, as the Mono 2.0 transition has been completed some weeks ago.
   * debian/libmono-cairo1.0-cil.install
     debian/libmono-cairo2.0-cil.install
     debian/patches/fix-mono-cairo.pc.in.dpatch:
