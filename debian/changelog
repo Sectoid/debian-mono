@@ -67,6 +67,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Run mod and monodoc on CLI 2.0.
   * debian/patches/fix_recursive_unmanaged_types.dpatch:
     + Fixes recursive structs regression as seen with OpenOffice.org.
+  * debian/copyright:
+    + Added Lucene.Net, RabbitMQ.Client and HtmlAgilityPack licenses.
 
  -- Mirco Bauer <meebey@debian.org>  Wed, 13 May 2009 01:40:02 +0200
 

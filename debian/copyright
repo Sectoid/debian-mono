@@ -40,6 +40,27 @@ License can be found in /usr/share/common-licenses/GPL file.
 
 -------------------------------------------------------------------------------
 
+mcs/tools/monodoc/Lucene.Net/*
+
+Copyright 2004 The Apache Software Foundation
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+On Debian systems, the complete text of Apache License, Version 2.0
+can be found in /usr/share/common-licenses/Apache-2.0 file.
+
+-------------------------------------------------------------------------------
+
 mcs/class/*
 
 The class libraries are released under the terms of the MIT X11
@@ -841,6 +862,14 @@ FIXME:
 Either beagle illegal relicensed Html Agility Pack from CC Share-alike to
 BSD (3 clause) or the author of Html Agility Pack published somewhere a BSD
 version (or maybe even relicensed specially for beagle)
+
+TEMP FIX:
+AgilityPack.dll was removed from the mono source tarball, see debian/rules
+get-orig-source target.
+
+2009-05-19:
+The license on http://htmlagilitypack.codeplex.com/license now says:
+Microsoft Public License (Ms-PL)
 
 -------------------------------------------------------------------------------
 
