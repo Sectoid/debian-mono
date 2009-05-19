@@ -11,6 +11,7 @@ fix_implicit_pointer_conversions
 fix_null_funcptr_marshalling_r127347
 disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
+build_cecil_as_2.0
+build_firebirdsql_as_2.0
 build_genxs_2.0
-fix_mod_script
 fix_recursive_unmanaged_types

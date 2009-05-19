@@ -71,6 +71,9 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Fixes recursive structs regression as seen with OpenOffice.org.
   * debian/copyright:
     + Added Lucene.Net, RabbitMQ.Client and HtmlAgilityPack licenses.
+  * debian/patches/build_cecil_as_2.0.dpatch
+    debian/patches/build_firebirdsql_as_2.0.dpatch:
+    + Build Mono.Cecil and FirebirdSql.Data.Firebird for CLI 2.0.
 
  -- Mirco Bauer <meebey@debian.org>  Wed, 13 May 2009 01:40:02 +0200
 

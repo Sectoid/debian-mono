@@ -6,21 +6,19 @@
 
 @DPATCH@
 diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
---- mono-2.4+dfsg~/mcs/tools/Makefile	2009-04-11 02:43:07.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/Makefile	2009-04-11 02:44:26.000000000 +0200
-@@ -53,7 +53,8 @@
- 	nunitreport	\
- 	sqlsharp	\
- 	gacutil		\
--	csharplib
-+	csharplib	\
-+	genxs
- 
- net_2_1_dirs := \
- 	compiler-tester
+--- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-20 00:22:24.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-20 00:23:59.000000000 +0200
+@@ -37,6 +37,7 @@
+ 	csharp		\
+ 	mono-xsd	\
+ 	wsdl		\
++	genxs		\
+ 	compiler-tester	\
+ 	monop		\
+ 	xbuild		\
 diff -urNad mono-2.4+dfsg~/mcs/tools/genxs/Makefile mono-2.4+dfsg/mcs/tools/genxs/Makefile
---- mono-2.4+dfsg~/mcs/tools/genxs/Makefile	2009-04-11 02:43:07.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/genxs/Makefile	2009-04-11 02:43:42.000000000 +0200
+--- mono-2.4+dfsg~/mcs/tools/genxs/Makefile	2009-05-20 00:16:56.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/genxs/Makefile	2009-05-20 00:22:38.000000000 +0200
 @@ -5,4 +5,6 @@
  LOCAL_MCS_FLAGS = -r:System.Xml.dll
  PROGRAM = $(topdir)/class/lib/$(PROFILE)/genxs.exe
