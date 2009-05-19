@@ -351,12 +351,12 @@ Description: Mono Web Browser library
  This package contains the implementation of the WebControl class based on the
  Mozilla engine using libgluezilla.
 
-Package: libmono-nunit2.2-cil
+Package: libmono-nunit2.4-cil
 Section: libs
 Architecture: all
-Provides: libnunit2.2-cil
-Conflicts: libnunit2.2-cil
-Depends: ${cli:Depends}
+Conflicts: libnunit2.2-cil, libmono-nunit2.2-cil
+Replaces: libmono-nunit2.2-cil
+Depends: ${cli:Depends}, libnunit2.4-cil
 Description: Mono Unit test framework for CLI
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

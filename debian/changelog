@@ -54,6 +54,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       those will be shipped by the moon source package.
     + Removed transition dependencies from libmono1.0-cil, libmono2.0-cil
       mono-devel, as the Mono 2.0 transition has been completed some weeks ago.
+    + Renamed libmono-nunit2.2-cil to libmono-nunit2.4-cil and only ship a
+      symlink to nunit.pc with a binary dependency on libnunit2.4-cil.
   * debian/libmono-cairo1.0-cil.install
     debian/libmono-cairo2.0-cil.install
     debian/patches/fix-mono-cairo.pc.in.dpatch:

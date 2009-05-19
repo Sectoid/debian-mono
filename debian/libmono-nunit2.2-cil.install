@@ -1,4 +1,0 @@
-debian/tmp/usr/lib/mono/gac/nunit.*/2.2.*/
-debian/tmp/usr/lib/mono/1.0/nunit.*.dll
-debian/tmp/usr/lib/mono/2.0/nunit.*.dll
-debian/tmp/usr/lib/pkgconfig/mono-nunit.pc
