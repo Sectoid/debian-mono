@@ -152,7 +152,8 @@ clean-patched:
 
 	dh_clean
 
-install: install-arch install-indep
+install: install-all
+install-all: install-arch install-indep
 
 install-arch: install-arch-stamp
 install-arch-stamp:
