@@ -76,9 +76,6 @@ endif
 # Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
 
-cli-wrapper: debian/cli-wrapper.c
-	$(CC) -o cli-wrapper debian/cli-wrapper.c `pkg-config glib-2.0 --cflags --libs`
-
 autoreconf: patch autoreconf-stamp
 autoreconf-stamp:
 	autoreconf -f -i -s
@@ -100,7 +97,7 @@ build: build-arch
 build-all: build-arch build-indep
 
 build-arch: configure-arch build-arch-stamp
-build-arch-stamp: cli-wrapper
+build-arch-stamp:
 	dh_testdir
 	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
 	cd mcs/jay && \
@@ -131,7 +128,7 @@ clean-patched:
 	# AOT stuff we created using mono-aot-wrapper/mono-aot-bootstrap
 	find mcs/class/lib -name "*.so" -delete
 	-cd debian/detector && $(MAKE) clean
-	rm -f cli-wrapper debian/MonoGetAssemblyName.exe
+	rm -f debian/MonoGetAssemblyName.exe
 	rm -rf $(MONO_SHARED_DIR)/.wapi
 
 	rm -f mcs/class/lib/default/mono-api-info.exe               \
@@ -347,10 +344,9 @@ binary-arch: build-arch install-arch
 	dh_testroot
 	
 	cd debian/detector && \
-	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-common/usr/lib/cli/binfmt-detector-cli
-	install -D -m 755 cli-wrapper debian/mono-common/usr/bin/cli-wrapper
+	  install -D -m 755 binfmt-detector-cli $(CURDIR)/debian/mono-runtime/usr/lib/cli/binfmt-detector-cli
 	install -D -m 644 -o root -g root debian/cli.binfmt \
-	  debian/mono-common/usr/share/binfmts/cli
+	  debian/mono-runtime/usr/share/binfmts/cli
 
 	dh_install -s
 	dh_link -s
@@ -360,7 +356,7 @@ binary-arch: build-arch install-arch
 	dh_installman -s
 	dh_installexamples -s
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
-	dh_strip -pmono-jit --dbg-package=mono-jit-dbg
+	dh_strip -pmono-runtime --dbg-package=mono-runtime-dbg
 	dh_strip -plibmono0 --dbg-package=libmono0-dbg
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs

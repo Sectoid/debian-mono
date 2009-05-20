@@ -16,6 +16,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Build MonoGetAssemblyName using gmcs instead of mcs.
     + Don't allow dh_clideps to add mono-runtime dependencies to
       mono-1.0/2.0-gac to prevent circular dependency hell. (Closes: #528090)
+  * debian/cli-wrapper.c
+    + Dropped as this wrapper is obsolete since mono 1.1.6-1.
   * debian/README.source:
     + Mention which files we removed and how to create the tarball we use.
     + Document which binaries are required to bootstrap the C# compiler.
@@ -50,14 +52,16 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       debugging).
     + Added new libmono-management2.0-cil, libmono-messaging2.0-cil,
       libmono-simd2.0-cil and libmono-wcf3.0-cil packages.
-    + Merged monodoc, monodoc-base and monodoc-manual packages from the
-      monodoc source package. 
+    + Merged monodoc-base and monodoc-manual packages from the monodoc source
+      package.
     + Dropped mono-smcs, libmono-corlib2.1-cil and libmono-system2.1-cil as
       those will be shipped by the moon source package.
     + Removed transition dependencies from libmono1.0-cil, libmono2.0-cil
       mono-devel, as the Mono 2.0 transition has been completed some weeks ago.
     + Renamed libmono-nunit2.2-cil to libmono-nunit2.4-cil and only ship a
       symlink to nunit.pc with a binary dependency on libnunit2.4-cil.
+    + Added mono-complete metapackage to make ISVs and users installing
+      non-Debian applications happy.
   * debian/libmono-cairo1.0-cil.install
     debian/libmono-cairo2.0-cil.install
     debian/patches/fix-mono-cairo.pc.in.dpatch:
@@ -67,8 +71,6 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Added mono-cil-strip
     + Removed CorCompare.exe
     + Updated mono-shlib-cop and sqlsharp as they are now CLI 2.0
-  * debian/patches/fix_mod_script.dpatch:
-    + Run mod and monodoc on CLI 2.0.
   * debian/patches/fix_recursive_unmanaged_types.dpatch:
     + Fixes recursive structs regression as seen with OpenOffice.org.
   * debian/copyright:
@@ -76,8 +78,21 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/patches/build_cecil_as_2.0.dpatch
     debian/patches/build_firebirdsql_as_2.0.dpatch:
     + Build Mono.Cecil and FirebirdSql.Data.Firebird for CLI 2.0.
+  * debian/control
+    debian/rules
+    debian/mono-jt.*
+    debian/mono-common.*
+    debian/libmono0.*
+    debian/mono-runtime.*:
+    + Merged mono-jit, mono-common and libmono0 (except libmono.so.*)
+      packages into mono-runtime. libmono0 was pulled in by
+      libmono-system2.0-cil as it pinvokes libMonoPosixHelper.so for
+      compression stream APIs. Since the interpreter (mint) was dropped long
+      time ago and is unmainained upstream, there is no reason to keep those
+      3 domains (VM, config / binfmt support, helper libraries) split.
+    + Renamed mono-jit-dbg package to mono-runtime-dbg.
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 13 May 2009 01:40:02 +0200
+ -- Mirco Bauer <meebey@debian.org>  Wed, 20 May 2009 02:56:39 +0200
 
 mono (2.0.1-6) unstable; urgency=low
 

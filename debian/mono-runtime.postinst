@@ -3,12 +3,21 @@
 # if we're configuring, /usr/share/doc/mono-jit is a directory,
 # and isn't a symlink, replace it with a symlink to mono-common
 if test "$1" = "configure" && test -d /usr/share/doc/mono-jit && ! test -h /usr/share/doc/mono-jit ; then
-        rmdir /usr/share/doc/mono-jit
-        ln -s mono-common /usr/share/doc/mono-jit
+	rmdir /usr/share/doc/mono-jit
+	ln -s mono-common /usr/share/doc/mono-jit
 fi
 
 update-alternatives \
 	--install /usr/bin/cli cli /usr/bin/mono 10 \
 	--slave /usr/share/man/man1/cli.1.gz cli.1.gz /usr/share/man/man1/mono.1.gz
+
+if [ configure = "$1" ] && [ -x /usr/sbin/update-binfmts ]; then
+	update-binfmts --import cli
+fi
+
+if [ configure = "$1" ] && [ -d /usr/share/dotnet/mono/ ] && [ -L /usr/share/dotnet/mono ]; then
+	# it's a symlink
+	rm /usr/share/dotnet/mono
+fi
 
 #DEBHELPER#
