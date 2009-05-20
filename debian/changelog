@@ -93,6 +93,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Renamed mono-jit-dbg package to mono-runtime-dbg.
   * debian/shlibs.local:
     + Updated using the debian/update-shlibs.local.sh script.
+  * debian/watch:
+    + Mangle +dfsg version.
 
  -- Mirco Bauer <meebey@debian.org>  Wed, 20 May 2009 02:56:39 +0200
 

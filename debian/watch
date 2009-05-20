@@ -1,2 +1,3 @@
 version=2
-http://go-mono.com/sources-stable/ .+/mono-([\d\.]+)\.tar\.bz2
+opts=dversionmangle=s/\+dfsg// \
+	http://go-mono.com/sources-stable/ .+/mono-([\d\.]+)\.tar\.bz2
