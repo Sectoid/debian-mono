@@ -91,6 +91,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       time ago and is unmainained upstream, there is no reason to keep those
       3 domains (VM, config / binfmt support, helper libraries) split.
     + Renamed mono-jit-dbg package to mono-runtime-dbg.
+  * debian/shlibs.local:
+    + Updated using the debian/update-shlibs.local.sh script.
 
  -- Mirco Bauer <meebey@debian.org>  Wed, 20 May 2009 02:56:39 +0200
 
