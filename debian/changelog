@@ -70,6 +70,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       and reference the CLI 2.0 version in the pkg-config file now.
   * debian/mono-devel.install:
     + Added mono-cil-strip
+    + Added getline.cs, mono-lineeditor.pc, Options.cs and mono-options.pc
     + Removed CorCompare.exe
     + Updated mono-shlib-cop and sqlsharp as they are now CLI 2.0
   * debian/patches/fix_recursive_unmanaged_types.dpatch:
