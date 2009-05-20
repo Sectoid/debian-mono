@@ -1,5 +1,6 @@
 mono (2.4+dfsg-1~pre1) unstable; urgency=low
 
+  * NOT RELEASED YET
   * New upstream release.
     + For release highlights see the NEWS.Debian file
   * DFSG edition of Mono 2.4 as the source taball contained a binary that is
@@ -96,7 +97,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/watch:
     + Mangle +dfsg version.
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 20 May 2009 02:56:39 +0200
+ -- Mirco Bauer <meebey@debian.org>  Thu, 21 May 2009 01:04:54 +0200
 
 mono (2.0.1-6) unstable; urgency=low
 
