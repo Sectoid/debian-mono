@@ -78,8 +78,9 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/copyright:
     + Added Lucene.Net, RabbitMQ.Client and HtmlAgilityPack licenses.
   * debian/patches/build_cecil_as_2.0.dpatch
-    debian/patches/build_firebirdsql_as_2.0.dpatch:
-    + Build Mono.Cecil and FirebirdSql.Data.Firebird for CLI 2.0.
+    debian/patches/build_firebirdsql_as_2.0.dpatch
+    debian/patches/build_permview_as_2.0.dpatch:
+    + Build Mono.Cecil, FirebirdSql.Data.Firebird and permview for CLI 2.0.
   * debian/control
     debian/rules
     debian/mono-jt.*
