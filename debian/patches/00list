@@ -5,13 +5,13 @@ console-no-utf8-bom
 firebird-fbclient
 fix-mono.pc.in
 fix-mono-cairo.pc.in
-fix-mono-nunit.pc.in
 fix_BigInteger_overflow_CVE-2007-5197
 fix_implicit_pointer_conversions
+fix_NetworkInterface_endless_loop
 fix_null_funcptr_marshalling_r127347
+fix_recursive_unmanaged_types
 disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
 build_cecil_as_2.0
 build_firebirdsql_as_2.0
 build_genxs_2.0
-fix_recursive_unmanaged_types
