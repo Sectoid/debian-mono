@@ -335,8 +335,9 @@ binary-indep: build-arch install-arch build-indep install-indep
 	debian/dh_makeclilibs -p libmono-system2.1-cil -m 2.0 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_clideps -i -l debian/tmp $(DH_INTERNAL_MONO_PARAM)
 	#DH_VERBOSE=1 debian/dh_clideps -i -l debian/tmp $(DH_INTERNAL_MONO_PARAM)
-	# mono-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-gac)
-	debian/dh_clideps -p mono-gac -r $(DH_INTERNAL_MONO_PARAM)
+	# mono-1.0/2.0-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-1.0/2.0-gac)
+	debian/dh_clideps -p mono-1.0-gac -r $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_clideps -p mono-2.0-gac -r $(DH_INTERNAL_MONO_PARAM)
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
 	dh_md5sums -i
 	dh_builddeb -i
