@@ -187,7 +187,7 @@ install-indep-stamp:
 	      $(CURDIR)/debian/tmp/usr/lib/mono/1.0/Mono.Security.Win32.dll \
 	      $(CURDIR)/debian/tmp/usr/lib/mono/2.0/Mono.Security.Win32.dll
 	# bug in Mono 2.4: <kangaroo> if you meant on 2.4 that was a bug
-	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.CompilerServices.SymbolWriter/
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.CompilerServices.SymbolWriter/2.0.5.0__*/
 	# CLI 1.0 is only kept for compat, don't ship new 1.0 libs
 	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Messaging/1.0.5000.0__*/
 
