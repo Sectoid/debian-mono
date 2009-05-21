@@ -1365,7 +1365,8 @@ Provides: c-sharp-compiler,
 Replaces: mono-1.0-devel (<< 2.0),
           mono-2.0-devel (<< 2.4),
           mono-mcs (<< 2.0),
-          mono-gmcs (<< 2.0)
+          mono-gmcs (<< 2.0),
+          libmono-dev (<< 2.4)
 Recommends: mono-csharp-shell
 Depends: ${cli:Depends},
          mono-2.0-devel (= ${source:Version}),

@@ -60,6 +60,8 @@ debian/tmp/usr/lib/mono/2.0/mono-shlib-cop.exe*
 debian/tmp/usr/lib/mono/2.0/sqlsharp.exe
 debian/tmp/usr/lib/mono-source-libs/getline.cs
 debian/tmp/usr/lib/mono-source-libs/Options.cs
+debian/tmp/usr/lib/pkgconfig/dotnet.pc
+debian/tmp/usr/lib/pkgconfig/dotnet35.pc
 debian/tmp/usr/lib/pkgconfig/mono-lineeditor.pc
 debian/tmp/usr/lib/pkgconfig/mono-options.pc
 debian/mono-api-check /usr/bin/

@@ -130,6 +130,12 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     debian/mono-devel.install:
     + Removed mono-api-info1 as dropped by upstream and moved
       2.0/mono-api-info.exe from mono-2.0-devel to mono-devel.
+  * debian/control
+    debian/libmono0.install
+    debian/libmono-dev.install
+    debian/mono-devel.install:
+    + Moved dotnet.pc and dotnet35.pc from libmono-dev to mono-devel.
+    + Removed libmono-profiler-*.a as unused and unneeded.
 
  -- Mirco Bauer <meebey@debian.org>  Thu, 21 May 2009 01:04:54 +0200
 
