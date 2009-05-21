@@ -100,6 +100,11 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Updated using the debian/update-shlibs.local.sh script.
   * debian/watch:
     + Mangle +dfsg version.
+  * debian/control
+    debian/libmono1.0-cil.install
+    debian/libmono-cecil0.6.8-cil.install:
+    + Moved Mono.Cecil and Mono.Cecil.Mdb from libmono1.0-cil to
+      libmono-cecil0.6.8-cil, as it's now build for CLI 2.0.
 
  -- Mirco Bauer <meebey@debian.org>  Thu, 21 May 2009 01:04:54 +0200
 

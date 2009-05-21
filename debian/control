@@ -283,6 +283,21 @@ Description: Mono.GetOptions library (for CLI 2.0)
  This package contains the Mono.GetOptions library for CLI 2.0 that allows to
  parse command line options and arguments easily.
 
+Package: libmono-cecil0.6.8-cil
+Section: libs
+Architecture: all
+Replaces: libmono1.0-cil (<< 2.4)
+Depends: ${cli:Depends}
+Description: Mono.Cecil library
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono.Cecil library that allows to generate and
+ inspect programs and libraries in the ECMA CIL format.
+
 Package: libmono-data1.0-cil
 Section: libs
 Architecture: all
