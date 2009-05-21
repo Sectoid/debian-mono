@@ -17,6 +17,8 @@ System.Windows.Forms.Design/PropertyTab.cs
 System.Windows.Forms.Design/ToolStripItemDesignerAvailability.cs
 System.Windows.Forms.Design/ToolStripItemDesignerAvailabilityAttribute.cs
 System.Windows.Forms.Design/WindowsFormsComponentEditor.cs
+System.Windows.Forms.Internal/Accessor.cs
+System.Windows.Forms.Internal/DebugHelper.cs
 System.Windows.Forms.PropertyGridInternal/PropertiesTab.cs
 System.Windows.Forms.RTF/Charcode.cs
 System.Windows.Forms.RTF/Charset.cs
@@ -385,6 +387,7 @@ System.Windows.Forms/IDeviceContext.cs
 System.Windows.Forms/IDropTarget.cs
 System.Windows.Forms/IFeatureSupport.cs
 System.Windows.Forms/IFileReaderService.cs
+System.Windows.Forms/IKeyFilter.cs
 System.Windows.Forms/IMessageFilter.cs
 System.Windows.Forms/IRootGridEntry.cs
 System.Windows.Forms/IWin32Window.cs

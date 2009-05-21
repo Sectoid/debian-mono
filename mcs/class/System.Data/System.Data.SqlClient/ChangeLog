@@ -1,14 +1,233 @@
-2008-08-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+2009-01-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SqlConnection.cs: adapt to changes in TdsConnectionPool.
+	Don't Close() on every error.
+
+2009-01-17  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlParameter.cs: Renamed isDirty to typeChanged; it is now now only
+	used to indicate whether the type of the parameter has been updated.
+	Changed signature of 'updated' argument in GetFrameworkValue to ref
+	to match delegate in Mono.Data.Tds, and convert value if either the
+	type has been changed or if the 'updated' argument is true (which -
+	for now - means the value or size changed in TdsMetaParameter).
+	Various fixes for derived parameters:
+	- parameter_type 2 means InputOutput parameter, while 3 means Output;
+	- Only set precision and scale is type is decimal.
+	- When type has variable size, then also set Size.
+
+2009-01-04  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlDataReader.cs: Added GetSchemaRowDbType overload for
+	getting sql type of a given column (identified using its
+	ordinal). Modified GetBytes to throw SqlNullValueException
+	(2.0 profile) or return 0 (1.0 profile) when reading bytes
+	sequentially. Added support for non-sequentially reading
+	text and ntext columns using GetBytes. Modified GetChar
+	to throw a NotSupportedException to match MS.
+
+2009-01-04  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandBuilder.cs (RefreshSchema): Clear commands.
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlDataReader.cs: Removed unused dataTypeNames, and
+	unnecessary initializations. Added missing reader state
+	and row state checks. Fixed implementation of HasRows.
+	Modified type of DataType to object on 1.0 profile for
+	compatibility with .NET 1.x. Do not mark (Big)VarBinary
+	or ((Big)Binary as long, as unit tests show that IsLong
+	is for wide (unicode) data types. Fixed type data for
+	SmallDateTime and SmallMoney data types. Improved support
+	for bigint data type (using TDS 7.0).
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs: Moved connection reset before the throw.
+	Improved exception message.
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandBuilder.cs: Only set SourceColumn for null check
+	parameters on the 2.0 profile, and set SourceVersion to
+	Current on 1.0 profile. Changed accessibility of RefreshSchema
+	to public, and do not immediately create commands. Removed
+	CWL.
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlParameter.cs: When setting ParameterName or sourceName to
+	null, use a zero-length string instead. On 1.0 profile, only
+	infer type from value if value is not null or DBNull. Store
+	raw value in TdsMetadataParameter, and use delegate to convert
+	it to framework type (when necessary). Improve implementation
+	of SqlValue (still needs lots of work).
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandBuilder.cs: Added missing checks for QuotePrefix and
+	QuoteSuffix on 2.0 profile, and return a zero-length string if
+	not set (or set to null) on 1.0 profile. Do not allow the value
+	of CatalogSeparator and SchemaSeparator to be changed from '.'.
+	Modified generated SQL to match MS. Added implementation for
+	QuoteIdenfifier. Modified parameters to match MS.
+	* SqlParameter.cs (SqlValue): Keep Value in sync.
+
+2008-12-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SqlParameter.cs: I removed these 2 lines I added 2 patches ago in
+	the previous patch...
+
+2008-12-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SqlConnection.cs: close the connection on error.
+
+2008-12-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SqlParameter.cs: don't allocate error strings until the error
+	actually happens. Compare types instead of strings. Use a Hashtable
+	for type mappings.
+
+2008-12-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SqlParameter.cs: use the underlying type when inferring the type for
+	enumerations.
+
+2008-11-13  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlCommand.cs: When a timeout exception occurs, reset the
+	connection before re-using it.  Fixes connection corrupted errors
+	on timeout exception.
+	
+2008-11-09  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnection.cs (ClearPool): Added null check.
+
+2008-11-09  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnection.cs: In Close, also remove reference to pool. In Open,
+	set TdsConnection.Pooling to false for a non-pooled connection.
+	Fixed ClearAllPools to no longer create a new connection for each
+	pool. In ClearPool, perform a lookup of the pool to clear using
+	the connectionstring as the pool field may refer to another pool
+	(as the connectionstring may have changed).
+
+2008-09-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlDataReader.cs (GetSqlXml): Handle the scenario when Sql
+	Server 2005 returns Xml column type as NTEXT when called from
+	clients that use < TDS 8.0 protocol.
+	
+2008-09-20  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlCommand.cs (DeriveParameters): Simplification of the if-else loop.
+	
+2008-09-20  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlCommand.cs (DeriveParameters): Handle no square brackets 
+	case in schema/procedure names.
+	
+2008-09-17  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlCommand.cs (DeriveParameters): Escape/trim both
+	schema/procedure names before passing as parameter values.
+	
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SqlDependency.cs : wrong namespace.
+
+2008-08-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnection.cs: Use constants for min/max values. When value is
+	zero-length string, then fallback to default value for boolean and
+	integer backed properties. Throw ArgumentException when min pool size
+	exceeds max pool size. Check whether value for 'MARS' is a bool.
+	The 'user instance' property is 2.0 only.
+
+2008-08-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnection.cs: Convert keywords to lowercase instead of uppercase
+	to avoid further case changes in exception messages.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs (ExecuteReader): When behavior includes SingleRow,
+	then only return a single result. Fixes bug #412569.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs: Fixed order of arguments for ArgumentException in
+	CommandTimeout.
+	* SqlConnection.cs (ChangePassword): Do not allow empty connection
+	string. Updated exception messages.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs: Fixed param name in ArgumentException for negative
+	CommandTimeout to match MS. On 2.0 profile, throw NRE in Prepare
+	when connection is NULL. In Prepare, return immediately after
+	connection check (2.0 only) for stored procedures, or when no
+	parameters are added. Added check to see if transaction is
+	associated with same connection as the command and updated
+	exception messages.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs: Added bool argument to ValidateCommand to specify
+	whether an async method is being executed. Minor changes to exception
+	messages to match MS.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs: Avoid NRE in CloseDataReader when connection is NULL.
+	Fixes bug #412584. Removed unused moreResults eargument from
+	CloseDataReader. Removed behavior argument from Execute, and have it
+	use the behavior field instead. In ValidateCommand, throw
+	InvalidOperationException instead of NRE when Connection is NULL.
+	* SqlDataReader.cs: Sync with SqlCommand's CloseDataReader signature
+	change.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs: (Transaction): On the 1.0 profile, do not allow
+	Transaction to be set when a reader is open for the current connection. 
+	Fixes bug #412579. 
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommand.cs (Connection): Do not throw InvalidOperationException
+	if transaction is in progress. Fixes bug #412576. On 1.0 profile, throw
+	InvalidOperationException when a reader is open for the current
+	connection. Do not set transaction to NULL when changing connection,
+	instead set it to null in Transaction when transaction is no longer
+	open.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnection.cs: Use null as default value for connectionString
+	field. Remove Init method, as initialization is done in
+	SetDefaultConnectionParameters. Initialize parms in
+	SetDefaultConnectionParameters to avoid calling Reset on newly
+	initialized collection. In Dispose (bool), also invoke base.Dispose if
+	SqlConnection was already disposed. Fixes bug #412571. 
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnection.cs (ChangeState): Return immediately when new state
+	equals original state. Fixes bug #412574. Removed extra whitespace.
+
+2008-07-23  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* SqlDataReader.cs (NextResult): Memleak fix - mark datatypeNames
 	array to be GCed along with schemaTable.
-       
-2008-08-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+2008-07-23  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* SqlDataReader.cs: Do not generate schemaTable unless otherwise
 	asked for; use command.Tds.Columns instead.  Improves performance
 	of the DataReader.
-
+	
 2008-07-10  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #326182

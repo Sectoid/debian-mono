@@ -2,13 +2,14 @@ thisdir = class
 
 bootstrap_dirs := \
 	corlib					\
+	Mono.CompilerServices.SymbolWriter	\
 	System					\
 	System.XML				\
 	Mono.Security				\
 	System.Security				\
 	System.Configuration			\
-	System					\
-	Mono.CompilerServices.SymbolWriter
+	System
+
 
 # Note that Mono.Security and System.Security aren't listed.
 # We may have to add those if 'mcs' starts using them.
@@ -30,6 +31,7 @@ common_dirs := \
 	corlib				\
 	System				\
 	System.XML			\
+	Mono.CompilerServices.SymbolWriter \
 	Mono.Security			\
 	System				\
 	System.Security			\
@@ -45,7 +47,6 @@ common_dirs := \
 	System.Data			\
 	Mono.Data			\
 	Mono.GetOptions			\
-	Mono.CompilerServices.SymbolWriter \
 	Mono.Posix			\
 	Accessibility			\
 	Mono.WebBrowser			\
@@ -76,7 +77,10 @@ common_dirs := \
 	Novell.Directory.Ldap		\
 	Mono.Security.Win32		\
 	System.DirectoryServices	\
+	RabbitMQ.Client			\
+	Mono.Messaging			\
 	System.Messaging	        \
+	Mono.Messaging.RabbitMQ		\
 	System.ServiceProcess           \
 	System.Drawing.Design		\
 	System.Design			\
@@ -88,7 +92,7 @@ common_dirs := \
 	CustomMarshalers		\
 	OpenSystem.C
 
-default_dirs :=		\
+net_1_1_dirs :=		\
 	FirebirdSql.Data.Firebird	\
 	Mono.Cecil			\
 	Mono.Cecil.Mdb		\
@@ -99,32 +103,50 @@ net_2_0_dirs := \
 	Microsoft.Build.Engine		\
 	Microsoft.Build.Tasks		\
 	System.Core			\
-	System.Web.Extensions		\
-	System.Web.Extensions.Design	\
 	System.Xml.Linq			\
 	System.Data.DataSetExtensions	\
-	System.Data.Linq
+	System.Data.Linq		\
+	System.Web.Abstractions		\
+	System.Web.Routing		\
+	System.Web.Extensions_1.0	\
+	System.Web.Extensions.Design_1.0	\
+	System.Web.Extensions		\
+	System.Web.Extensions.Design	\
+	System.ComponentModel.DataAnnotations	\
+	System.Web.DynamicData		\
+	System.Runtime.Serialization	\
+	System.IdentityModel		\
+	System.IdentityModel.Selectors	\
+	System.ServiceModel		\
+	System.ServiceModel.Web		\
+	Mono.Management			\
+	Mono.Options 			\
+	Mono.Simd
 
 net_2_1_dirs := \
 	corlib			\
+	Mono.CompilerServices.SymbolWriter \
 	System			\
 	System.Net		\
 	System.XML		\
-	System.Core
+	System.Core		\
+	System.Xml.Linq	\
+	System.Runtime.Serialization	\
+	System.ServiceModel	\
+	System.ServiceModel.Web
 
 net_3_5_dirs := \
-	System.Web.Extensions		\
 	System.Web.Extensions.Design
 
-default_SUBDIRS := $(common_dirs) $(default_dirs)
+net_1_1_SUBDIRS := $(common_dirs) $(net_1_1_dirs)
 net_2_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs)
-net_2_1_bootstrap_SUBDIRS := $(net_2_1_dirs)
+net_2_1_bootstrap_SUBDIRS := corlib System Mono.CompilerServices.SymbolWriter
 net_2_1_raw_SUBDIRS := $(net_2_1_dirs)
 net_3_5_SUBDIRS := $(net_3_5_dirs)
 
 include ../build/rules.make
 
-SUBDIRS = $(common_dirs) $(default_dirs) $(net_2_0_dirs) $(net_2_1_dirs) $(net_3_5_dirs)
+SUBDIRS = $(common_dirs) $(net_1_1_dirs) $(net_2_0_dirs) $(net_2_1_dirs) $(net_3_5_dirs)
 
 # These libraries below are either unimplemented or don't compile, but
 #BROKEN_SUBDIRS =

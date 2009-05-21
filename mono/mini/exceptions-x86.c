@@ -24,6 +24,7 @@
 
 #include "mini.h"
 #include "mini-x86.h"
+#include "debug-mini.h"
 
 #ifdef PLATFORM_WIN32
 static void (*restore_stack) (void *);
@@ -130,7 +131,7 @@ win32_handle_stack_overflow (EXCEPTION_POINTERS* ep, struct sigcontext *sctx)
 	do {
 		MonoContext new_ctx;
 
-		ji = mono_arch_find_jit_info (domain, jit_tls, &rji, &rji, &ctx, &new_ctx, NULL, &lmf, NULL, NULL);
+		ji = mono_arch_find_jit_info (domain, jit_tls, &rji, &rji, &ctx, &new_ctx, &lmf, NULL);
 		if (!ji) {
 			g_warning ("Exception inside function without unwind info");
 			g_assert_not_reached ();
@@ -334,8 +335,18 @@ mono_arch_get_call_filter (void)
 	x86_mov_reg_membase (code, X86_ESI, X86_EAX,  G_STRUCT_OFFSET (MonoContext, esi), 4);
 	x86_mov_reg_membase (code, X86_EDI, X86_EAX,  G_STRUCT_OFFSET (MonoContext, edi), 4);
 
+	/* align stack and save ESP */
+	x86_mov_reg_reg (code, X86_EDX, X86_ESP, 4);
+	x86_alu_reg_imm (code, X86_AND, X86_ESP, -MONO_ARCH_FRAME_ALIGNMENT);
+	g_assert (MONO_ARCH_FRAME_ALIGNMENT >= 8);
+	x86_alu_reg_imm (code, X86_SUB, X86_ESP, MONO_ARCH_FRAME_ALIGNMENT - 8);
+	x86_push_reg (code, X86_EDX);
+
 	/* call the handler */
 	x86_call_reg (code, X86_ECX);
+
+	/* restore ESP */
+	x86_pop_reg (code, X86_ESP);
 
 	/* restore EBP */
 	x86_pop_reg (code, X86_EBP);
@@ -373,26 +384,32 @@ throw_exception (unsigned long eax, unsigned long ecx, unsigned long edx, unsign
 	ctx.ecx = ecx;
 	ctx.eax = eax;
 
-	if (mono_debugger_throw_exception ((gpointer)(eip - 5), (gpointer)esp, exc)) {
-		/*
-		 * The debugger wants us to stop on the `throw' instruction.
-		 * By the time we get here, it already inserted a breakpoint on
-		 * eip - 5 (which is the address of the call).
-		 */
-		ctx.eip = eip - 5;
-		ctx.esp = esp + sizeof (gpointer);
-		restore_context (&ctx);
-		g_assert_not_reached ();
-	}
-
-	/* adjust eip so that it point into the call instruction */
-	ctx.eip -= 1;
-
 	if (mono_object_isinst (exc, mono_defaults.exception_class)) {
 		MonoException *mono_ex = (MonoException*)exc;
 		if (!rethrow)
 			mono_ex->stack_trace = NULL;
 	}
+
+	if (mono_debug_using_mono_debugger ()) {
+		guint8 buf [16], *code;
+
+		mono_breakpoint_clean_code (NULL, (gpointer)eip, 8, buf, sizeof (buf));
+		code = buf + 8;
+
+		if (buf [3] == 0xe8) {
+			MonoContext ctx_cp = ctx;
+			ctx_cp.eip = eip - 5;
+
+			if (mono_debugger_handle_exception (&ctx_cp, exc)) {
+				restore_context (&ctx_cp);
+				g_assert_not_reached ();
+			}
+		}
+	}
+
+	/* adjust eip so that it point into the call instruction */
+	ctx.eip -= 1;
+
 	mono_handle_exception (&ctx, exc, (gpointer)eip, FALSE);
 	restore_context (&ctx);
 
@@ -566,8 +583,7 @@ mono_arch_get_throw_corlib_exception (void)
  */
 MonoJitInfo *
 mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *res, MonoJitInfo *prev_ji, MonoContext *ctx, 
-			 MonoContext *new_ctx, char **trace, MonoLMF **lmf, int *native_offset,
-			 gboolean *managed)
+			 MonoContext *new_ctx, MonoLMF **lmf, gboolean *managed)
 {
 	MonoJitInfo *ji;
 	gpointer ip = MONO_CONTEXT_GET_IP (ctx);
@@ -648,7 +664,7 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 
 		if ((ji = mono_jit_info_table_find (domain, (gpointer)(*lmf)->eip))) {
 		} else {
-			if (!(*lmf)->method)
+			if (!((guint32)((*lmf)->previous_lmf) & 1))
 				/* Top LMF entry */
 				return (gpointer)-1;
 			/* Trampoline lmf frame */
@@ -782,6 +798,9 @@ mono_arch_handle_exception (void *sigctx, gpointer obj, gboolean test_only)
 
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
 
+	if (mono_debugger_handle_exception (&mctx, (MonoObject *)obj))
+		return TRUE;
+
 	mono_handle_exception (&mctx, obj, (gpointer)mctx.eip, test_only);
 
 	mono_arch_monoctx_to_sigctx (&mctx, sigctx);
@@ -823,6 +842,13 @@ altstack_handle_and_restore (void *sigctx, gpointer obj, gboolean stack_ovf)
 
 	restore_context = mono_arch_get_restore_context ();
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
+
+	if (mono_debugger_handle_exception (&mctx, (MonoObject *)obj)) {
+		if (stack_ovf)
+			prepare_for_guard_pages (&mctx);
+		restore_context (&mctx);
+	}
+
 	mono_handle_exception (&mctx, obj, (gpointer)mctx.eip, FALSE);
 	if (stack_ovf)
 		prepare_for_guard_pages (&mctx);

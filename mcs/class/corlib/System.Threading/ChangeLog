@@ -1,3 +1,37 @@
+2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WaitHandle.cs: implemented SignalAndWait.
+
+2008-12-20  Miguel de Icaza  <miguel@novell.com>
+
+	* WaitHandle.cs: Add two overloads that were introduced in 3.5.
+
+2008-11-25  Geoff Norton  <gnorton@novell.com>
+
+	* SynchronizationContext.cs: A temporary horrible hack to SyncContext
+	to hard-wire all calls back to the main thread (moonlight-only) so that
+	we can use our unit test harness.  This will be fixed for 2.1 when we
+	implement Dispatcher properly.
+
+2008-10-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Interlocked.cs: make CompareExchange internal in 1.1 for use by the
+	runtime.
+
+2008-09-19  Miguel de Icaza  <miguel@novell.com>
+
+	* WaitHandle.cs (WaitOne): Add new 3.5 SP1 overload.
+
+Tue Sep 16 21:02:59 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Thread.cs: fixed SpinWait() implementation (bug #423582).
+
+Tue Sep 9 15:19:48 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Timer.cs: use a separate queue for timers that are far in the future
+	so they don't need to be looked at as often (bug #418272).
+	Better precision of recheduling time.
+
 2008-07-03  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 
 	* ThreadPool.cs:

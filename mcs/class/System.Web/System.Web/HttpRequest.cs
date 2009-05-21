@@ -726,7 +726,7 @@ namespace System.Web {
 			int content_length = ContentLength;
 
 #if NET_2_0
-			HttpRuntimeSection config = (HttpRuntimeSection) WebConfigurationManager.GetSection ("system.web/httpRuntime");
+			HttpRuntimeSection config = (HttpRuntimeSection) WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime");
 #else
 			HttpRuntimeConfig config = (HttpRuntimeConfig) HttpContext.GetAppConfig ("system.web/httpRuntime");
 #endif
@@ -806,8 +806,8 @@ namespace System.Web {
 					ms.Write (buffer, 0, total);
 
 				buffer = new byte [INPUT_BUFFER_SIZE];
-				long maxlength = config.MaxRequestLength * 1024;
-				long disk_th = config.RequestLengthDiskThreshold * 1024;
+				long maxlength = config.MaxRequestLength * 1024L;
+				long disk_th = config.RequestLengthDiskThreshold * 1024L;
 				int n;
 				while (true) {
 					n = worker_request.ReadEntityBody (buffer, INPUT_BUFFER_SIZE);
@@ -1206,7 +1206,7 @@ namespace System.Web {
 					virtualPath = "~";
 			}
 
-			if (virtualPath.IndexOf (':') != -1)
+			if (!VirtualPathUtility.IsValidVirtualPath (virtualPath))
 				throw new HttpException (String.Format ("'{0}' is not a valid virtual path.", virtualPath));
 
 			string appVirtualPath = HttpRuntime.AppDomainAppVirtualPath;
@@ -1410,7 +1410,7 @@ namespace System.Web {
 		
 			foreach (string key in coll.Keys) {
 				string val = coll [key];
-				if (val != null && val != "" && CheckString (val))
+				if (val != null && val.Length > 0 && CheckString (val))
 					ThrowValidationException (name, key, val);
 			}
 		}
@@ -1452,6 +1452,7 @@ namespace System.Web {
 			char current = val [0];
 			for (int idx = 1; idx < len; idx++) {
 				char next = val [idx];
+				// See http://secunia.com/advisories/14325
 				if (current == '<' || current == '\xff1c') {
 					if (next == '!' || next < ' '
 					    || (next >= 'a' && next <= 'z')
@@ -1743,7 +1744,7 @@ namespace System.Web {
 			
 			if (path.IndexOf (":\\") != 1 && !path.StartsWith ("\\\\"))
 				return path;
-			return path.Substring (path.LastIndexOf ("\\") + 1);
+			return path.Substring (path.LastIndexOf ('\\') + 1);
 		}
 	}
 #endregion

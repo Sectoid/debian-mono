@@ -28,6 +28,7 @@
 
 #include "mini.h"
 #include "mini-amd64.h"
+#include "debug-mini.h"
 
 #define ALIGN_TO(val,align) (((val) + ((align) - 1)) & ~((align) - 1))
 
@@ -179,10 +180,16 @@ mono_arch_get_restore_context_full (guint32 *code_size, MonoJumpInfo **ji, gbool
 	amd64_mov_reg_membase (code, AMD64_R14, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, r14), 8);
 	amd64_mov_reg_membase (code, AMD64_R15, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, r15), 8);
 
-	amd64_mov_reg_membase (code, AMD64_RSP, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, rsp), 8);
-
-	/* get return address */
-	amd64_mov_reg_membase (code, AMD64_R11, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, rip), 8);
+	if (mono_running_on_valgrind ()) {
+		/* Prevent 'Address 0x... is just below the stack ptr.' errors */
+		amd64_mov_reg_membase (code, AMD64_R8, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, rsp), 8);
+		amd64_mov_reg_membase (code, AMD64_R11, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, rip), 8);
+		amd64_mov_reg_reg (code, AMD64_RSP, AMD64_R8, 8);
+	} else {
+		amd64_mov_reg_membase (code, AMD64_RSP, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, rsp), 8);
+		/* get return address */
+		amd64_mov_reg_membase (code, AMD64_R11, AMD64_R11,  G_STRUCT_OFFSET (MonoContext, rip), 8);
+	}
 
 	/* jump to the saved IP */
 	amd64_jump_reg (code, AMD64_R11);
@@ -308,37 +315,32 @@ mono_amd64_throw_exception (guint64 dummy1, guint64 dummy2, guint64 dummy3, guin
 	ctx.rcx = rcx;
 	ctx.rdx = rdx;
 
-	if (!rethrow && mono_debugger_throw_exception ((gpointer)(rip - 8), (gpointer)rsp, exc)) {
-		/*
-		 * The debugger wants us to stop on the `throw' instruction.
-		 * By the time we get here, it already inserted a breakpoint on
-		 * eip - 8 (which is the address of the `mov %r15,%rdi ; callq throw').
-		 */
-
-		/* FIXME FIXME
-		 *
-		 * In case of a rethrow, the JIT is emitting code like this:
-		 *
-		 *    mov    0xffffffffffffffd0(%rbp),%rax'
-		 *    mov    %rax,%rdi
-		 *    callq  throw
-		 *
-		 * Here, restore_context() wouldn't restore the %rax register correctly.
-		 */
-		ctx.rip = rip - 8;
-		ctx.rsp = rsp + 8;
-		restore_context (&ctx);
-		g_assert_not_reached ();
-	}
-
-	/* adjust eip so that it point into the call instruction */
-	ctx.rip -= 1;
-
 	if (mono_object_isinst (exc, mono_defaults.exception_class)) {
 		MonoException *mono_ex = (MonoException*)exc;
 		if (!rethrow)
 			mono_ex->stack_trace = NULL;
 	}
+
+	if (mono_debug_using_mono_debugger ()) {
+		guint8 buf [16], *code;
+
+		mono_breakpoint_clean_code (NULL, (gpointer)rip, 8, buf, sizeof (buf));
+		code = buf + 8;
+
+		if (buf [3] == 0xe8) {
+			MonoContext ctx_cp = ctx;
+			ctx_cp.rip = rip - 5;
+
+			if (mono_debugger_handle_exception (&ctx_cp, exc)) {
+				restore_context (&ctx_cp);
+				g_assert_not_reached ();
+			}
+		}
+	}
+
+	/* adjust eip so that it point into the call instruction */
+	ctx.rip -= 1;
+
 	mono_handle_exception (&ctx, exc, (gpointer)rip, FALSE);
 	restore_context (&ctx);
 
@@ -536,8 +538,7 @@ mono_arch_get_throw_corlib_exception_full (guint32 *code_size, MonoJumpInfo **ji
  */
 MonoJitInfo *
 mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *res, MonoJitInfo *prev_ji, MonoContext *ctx, 
-			 MonoContext *new_ctx, char **trace, MonoLMF **lmf, int *native_offset,
-			 gboolean *managed)
+			 MonoContext *new_ctx, MonoLMF **lmf, gboolean *managed)
 {
 	MonoJitInfo *ji;
 	int i;
@@ -584,6 +585,10 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 			new_ctx->r13 = lmf_addr->r13;
 			new_ctx->r14 = lmf_addr->r14;
 			new_ctx->r15 = lmf_addr->r15;
+#ifdef PLATFORM_WIN32
+			new_ctx->rdi = lmf_addr->rdi;
+			new_ctx->rsi = lmf_addr->rsi;
+#endif
 		}
 		else {
 			offset = omit_fp ? 0 : -1;
@@ -620,6 +625,14 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 					case AMD64_RBP:
 						new_ctx->rbp = reg;
 						break;
+#ifdef PLATFORM_WIN32
+					case AMD64_RDI:
+						new_ctx->rdi = reg;
+						break;
+					case AMD64_RSI:
+						new_ctx->rsi = reg;
+						break;
+#endif
 					default:
 						g_assert_not_reached ();
 					}
@@ -674,12 +687,8 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 
 		ji = mono_jit_info_table_find (domain, (gpointer)rip);
 		if (!ji) {
-			if (!(*lmf)->method)
-				/* Top LMF entry */
-				return (gpointer)-1;
-			/* Trampoline lmf frame */
-			memset (res, 0, sizeof (MonoJitInfo));
-			res->method = (*lmf)->method;
+			// FIXME: This can happen with multiple appdomains (bug #444383)
+			return (gpointer)-1;
 		}
 
 		new_ctx->rip = rip;
@@ -691,6 +700,10 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 		new_ctx->r13 = (*lmf)->r13;
 		new_ctx->r14 = (*lmf)->r14;
 		new_ctx->r15 = (*lmf)->r15;
+#ifdef PLATFORM_WIN32
+		new_ctx->rdi = (*lmf)->rdi;
+		new_ctx->rsi = (*lmf)->rsi;
+#endif
 
 		*lmf = (gpointer)(((guint64)(*lmf)->previous_lmf) & ~1);
 
@@ -712,6 +725,9 @@ mono_arch_handle_exception (void *sigctx, gpointer obj, gboolean test_only)
 	MonoContext mctx;
 
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
+
+	if (mono_debugger_handle_exception (&mctx, (MonoObject *)obj))
+		return TRUE;
 
 	mono_handle_exception (&mctx, obj, MONO_CONTEXT_GET_IP (&mctx), test_only);
 
@@ -864,6 +880,13 @@ altstack_handle_and_restore (void *sigctx, gpointer obj, gboolean stack_ovf)
 
 	restore_context = mono_get_restore_context ();
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
+
+	if (mono_debugger_handle_exception (&mctx, (MonoObject *)obj)) {
+		if (stack_ovf)
+			prepare_for_guard_pages (&mctx);
+		restore_context (&mctx);
+	}
+
 	mono_handle_exception (&mctx, obj, MONO_CONTEXT_GET_IP (&mctx), FALSE);
 	if (stack_ovf)
 		prepare_for_guard_pages (&mctx);
@@ -1042,6 +1065,13 @@ mono_arch_notify_pending_exc (void)
 	lmf->previous_lmf = (gpointer)((guint64)lmf->previous_lmf | 1);
 
 	*(gpointer*)(lmf->rsp - 8) = get_throw_pending_exception ();
+}
+
+void
+mono_arch_exceptions_init (void)
+{
+	/* Call this to avoid initialization races */
+	get_throw_pending_exception ();
 }
 
 #ifdef PLATFORM_WIN32

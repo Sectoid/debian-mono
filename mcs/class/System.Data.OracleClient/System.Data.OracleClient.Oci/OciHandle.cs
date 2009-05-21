@@ -19,13 +19,17 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Security.Cryptography;
+using System.Globalization;
 
 namespace System.Data.OracleClient.Oci {
 	internal abstract class OciHandle : IDisposable {
 		#region Fields
 
 		bool disposed = false;
-		IntPtr handle = IntPtr.Zero;
+
+		protected internal IntPtr handle = IntPtr.Zero;
 		OciHandle parent = null;
 		OciHandleType type;
 
@@ -33,7 +37,7 @@ namespace System.Data.OracleClient.Oci {
 
 		#region Constructors
 
-		public OciHandle (OciHandleType type, OciHandle parent, IntPtr newHandle) {
+		internal OciHandle (OciHandleType type, OciHandle parent, IntPtr newHandle) {
 			this.type = type;
 			this.parent = parent;
 			this.handle = newHandle;
@@ -47,15 +51,15 @@ namespace System.Data.OracleClient.Oci {
 
 		#region Properties
 
-		public OciHandle Parent {
+		internal OciHandle Parent {
 			get { return parent; }
 		}
 
-		public IntPtr Handle { 
+		internal IntPtr Handle { 
 			get { return handle; }
 		}
 
-		public OciHandleType HandleType { 
+		internal OciHandleType HandleType { 
 			get { return type; }
 		}
 
@@ -63,7 +67,7 @@ namespace System.Data.OracleClient.Oci {
 
 		#region Methods
 
-		public OciHandle Allocate (OciHandleType type) {
+		internal OciHandle Allocate (OciHandleType type) {
 			int status = 0;
 			IntPtr newHandle = IntPtr.Zero;
 
@@ -147,11 +151,11 @@ namespace System.Data.OracleClient.Oci {
 			}
 		}
 
-		public bool GetAttributeBool (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		internal bool GetAttributeBool (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			return (GetAttributeInt32 (attrType, errorHandle) != 0);
 		}
 
-		public sbyte GetAttributeSByte (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		internal sbyte GetAttributeSByte (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			int status = 0;
 			sbyte output;
 
@@ -170,7 +174,7 @@ namespace System.Data.OracleClient.Oci {
 			return output;
 		}
 
-		public byte GetAttributeByte (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		internal byte GetAttributeByte (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			int status = 0;
 			byte output;
 
@@ -189,7 +193,7 @@ namespace System.Data.OracleClient.Oci {
 			return output;
 		}
 
-		public ushort GetAttributeUInt16 (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		internal ushort GetAttributeUInt16 (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			int status = 0;
 			ushort output;
 
@@ -208,7 +212,7 @@ namespace System.Data.OracleClient.Oci {
 			return output;
 		}
 
-		public int GetAttributeInt32 (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		internal int GetAttributeInt32 (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			int status = 0;
 			int output;
 
@@ -220,14 +224,52 @@ namespace System.Data.OracleClient.Oci {
 				errorHandle);
 
 			if (status != 0) {
-				OciErrorInfo info = errorHandle.HandleError ();
+				OciErrorInfo info = OciErrorHandle.HandleError (errorHandle, status);
 				throw new OracleException (info.ErrorCode, info.ErrorMessage);
 			}
 
 			return output;
 		}
 
-		public IntPtr GetAttributeIntPtr (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		[DllImport ("oci", EntryPoint = "OCIAttrGet")]
+		internal static extern int OCIAttrGetRowIdDesc (IntPtr trgthndlp,
+			[MarshalAs (UnmanagedType.U4)] OciHandleType trghndltyp,
+			IntPtr attributep,
+			ref uint sizep,
+			[MarshalAs (UnmanagedType.U4)] OciAttributeType attrtype,
+			IntPtr errhp);
+		internal OciRowIdDescriptor GetAttributeRowIdDescriptor (OciErrorHandle errorHandle, OciHandle env)
+		{
+			OciRowIdDescriptor descriptor = null;				
+			IntPtr outputPtr = IntPtr.Zero;
+			int outSize = 16;
+			int status = 0;
+			OciAttributeType attrType = OciAttributeType.RowId; 
+
+			outputPtr = OciCalls.AllocateClear (outSize);
+
+			uint siz = (uint) outSize;
+			status = OCIAttrGetRowIdDesc (Handle,
+				HandleType,
+				outputPtr,
+				ref siz,
+				attrType,
+				errorHandle);
+
+			if (status != 0) {
+				OciErrorInfo info = errorHandle.HandleError ();
+				throw new OracleException (info.ErrorCode, info.ErrorMessage);
+			}
+
+			if (outputPtr != IntPtr.Zero && siz > 0) {
+				descriptor = (OciRowIdDescriptor) env.Allocate(OciHandleType.RowId);
+				descriptor.SetHandle (outputPtr);
+			}
+
+			return descriptor;
+		}
+
+		internal IntPtr GetAttributeIntPtr (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			int status = 0;
 			IntPtr output = IntPtr.Zero;
 			status = OciCalls.OCIAttrGetIntPtr (Handle,
@@ -245,7 +287,7 @@ namespace System.Data.OracleClient.Oci {
 			return output;
 		}
 
-		public string GetAttributeString (OciAttributeType attrType, OciErrorHandle errorHandle) {
+		internal string GetAttributeString (OciAttributeType attrType, OciErrorHandle errorHandle) {
 			string output = String.Empty;
 			IntPtr outputPtr = IntPtr.Zero;
 			int outSize;
@@ -263,7 +305,7 @@ namespace System.Data.OracleClient.Oci {
 				throw new OracleException (info.ErrorCode, info.ErrorMessage);
 			}
 
-			if (outputPtr != IntPtr.Zero && outSize > 0) {
+			if (outputPtr != IntPtr.Zero && outSize > 0) {				
 				object str = Marshal.PtrToStringAnsi (outputPtr, outSize);
 				if (str != null) 
 					output = String.Copy ((string) str);
@@ -272,7 +314,7 @@ namespace System.Data.OracleClient.Oci {
 			return output;
 		}
 
-		public void SetAttributeString (string attribute, OciAttributeType attrType, OciErrorHandle errorHandle) 
+		internal void SetAttributeString (string attribute, OciAttributeType attrType, OciErrorHandle errorHandle) 
 		{
 			int status = 0;
 			
@@ -289,7 +331,7 @@ namespace System.Data.OracleClient.Oci {
 			}
 		}
 
-		public void SetHandle (IntPtr h)
+		internal void SetHandle (IntPtr h)
 		{
 			handle = h;
 		}

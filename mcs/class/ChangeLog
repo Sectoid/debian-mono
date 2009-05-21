@@ -1,3 +1,93 @@
+2008-12-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : revert previous one and retry before I revert everything.
+
+2008-12-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : actually RabbitMQ.Client is under wrong build practice :(
+
+2008-12-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : add new sys.messaging implementation.
+
+2008-11-20  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: add System.Xml.Linq to the net_2_1 build.
+
+2008-11-05  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (net_2_0_dirs): Npgsql requires .NET 2.0+ now.
+
+2008-10-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Malefile: ... and Sys.ComponentModel.DataAnnotations.dll.
+
+2008-10-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Malefile: added Sys.Web.DynamicData to the build.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* I18N/Makefile: Add doc-update target support.
+
+2008-10-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile (net_2_0_dirs): Add Mono.Options.
+
+2008-10-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: add System.Web.Abstractions and System.Web.Routing.
+
+2008-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : changed some net_2_0_dirs orders; Sys.Web.Extensions
+	  will depend on Sys.Data.Linq (LinqDataSource).
+
+2008-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile (net_2_0_dirs): Add Mono.Simd.
+
+2008-09-30  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (net_2_0_dirs): added System.Web.Extensions_1.0 and
+	System.Web.Extensions.Design_1.0
+	(net_3_5_dirs): removed System.Web.Extensions, the 3.5 version is
+	now built in the 2.0 profile.
+
+2008-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile (net_2_0_dirs): Add Mono.Management.
+
+2008-09-23  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Build Mono.CompilerServices.SymbolWriter before it's
+	used.
+
+2008-09-23  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: compile the SymbolWriter during net_2_1_raw.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: add System.ServiceModel.Web to the net_2_1_raw build.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: add System.ServiceModel to the net_2_1_raw build.
+
+2008-09-09  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: build System.Runtime.Serialization
+	during the net_2_1_raw profile.
+
+2008-08-21  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: add wcf and cardspace to the build.
+
+2008-07-31  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: update net_2_1_bootstrap_SUBDIRS to only build
+	corlib and System.
 2008-05-22  Andreia Gaita <avidigal@novell.com> 
 
 	* Makefile, Mono.Mozilla, Mono.WebBrowser: Long overdue rename of

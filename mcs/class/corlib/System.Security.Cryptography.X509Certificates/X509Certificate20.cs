@@ -5,7 +5,7 @@
 //	Sebastien Pouliot  <sebastien@ximian.com>
 //
 // (C) 2002, 2003 Motus Technologies Inc. (http://www.motus.com)
-// Copyright (C) 2004-2006 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004-2006,2008 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -42,8 +42,11 @@ namespace System.Security.Cryptography.X509Certificates {
 
 	[ComVisible (true)]
 	[MonoTODO ("X509ContentType.SerializedCert isn't supported (anywhere in the class)")]
+#if NET_2_1
+	public partial class X509Certificate {
+#else
 	public partial class X509Certificate : IDeserializationCallback, ISerializable {
-
+#endif
 		private string issuer_name;
 		private string subject_name;
 
@@ -177,12 +180,14 @@ namespace System.Security.Cryptography.X509Certificates {
 				switch (contentType) {
 				case X509ContentType.Cert:
 					return x509.RawData;
+#if !NET_2_1
 				case X509ContentType.Pfx: // this includes Pkcs12
 					// TODO
 					throw new NotSupportedException ();
 				case X509ContentType.SerializedCert:
 					// TODO
 					throw new NotSupportedException ();
+#endif
 				default:
 					string msg = Locale.GetText ("This certificate format '{0}' cannot be exported.", contentType);
 					throw new CryptographicException (msg);
@@ -193,10 +198,6 @@ namespace System.Security.Cryptography.X509Certificates {
 				if (password != null)
 					Array.Clear (password, 0, password.Length);
 			}
-		}
-
-		void IDeserializationCallback.OnDeserialization (object sender)
-		{
 		}
 
 		[ComVisible (false)]
@@ -273,13 +274,17 @@ namespace System.Security.Cryptography.X509Certificates {
 			byte[] rawData = Load (fileName);
 			Import (rawData, (string)null, keyStorageFlags);
 		}
+#if !NET_2_1
+		void IDeserializationCallback.OnDeserialization (object sender)
+		{
+		}
 
 		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
 		{
 			// will throw a NRE if info is null (just like MS implementation)
 			info.AddValue ("RawData", x509.RawData);
 		}
-
+#endif
 		[ComVisible (false)]
 		public virtual void Reset ()
 		{

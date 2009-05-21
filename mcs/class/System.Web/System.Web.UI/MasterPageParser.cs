@@ -33,9 +33,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Web;
 using System.Web.Compilation;
+using System.Web.Hosting;
 using System.Web.Util;
 
 namespace System.Web.UI
@@ -43,6 +45,7 @@ namespace System.Web.UI
 	internal sealed class MasterPageParser: UserControlParser
 	{
 		Type masterType;
+		string masterTypeVirtualPath;
 		List <string> contentPlaceHolderIds;
 		string cacheEntryName;
 		
@@ -88,6 +91,10 @@ namespace System.Web.UI
 		internal override void AddDirective (string directive, Hashtable atts)
 		{
 			if (String.Compare ("MasterType", directive, true) == 0) {
+				PageParserFilter pfilter = PageParserFilter;
+				if (pfilter != null)
+					pfilter.PreprocessDirective (directive.ToLower (CultureInfo.InvariantCulture), atts);
+				
 				string type = GetString (atts, "TypeName", null);
 				if (type != null) {
 					masterType = LoadType (type);
@@ -95,13 +102,17 @@ namespace System.Web.UI
 						ThrowParseException ("Could not load type '" + type + "'.");
 				} else {
 					string path = GetString (atts, "VirtualPath", null);
-					if (path != null) {
-						masterType = BuildManager.GetCompiledType (path);
+					if (!String.IsNullOrEmpty (path)) {
+						if (!HostingEnvironment.VirtualPathProvider.FileExists (path))
+							ThrowParseFileNotFound (path);
+						
+						masterTypeVirtualPath = path;
 						AddDependency (path);
 					} else
 						ThrowParseException ("The MasterType directive must have either a TypeName or a VirtualPath attribute.");
 				}
-				AddAssembly (masterType.Assembly, true);
+				if (masterType != null)
+					AddAssembly (masterType.Assembly, true);
 			}
 			else
 				base.AddDirective (directive, atts);
@@ -118,7 +129,12 @@ namespace System.Web.UI
 		}
 		
 		internal Type MasterType {
-			get { return masterType; }
+			get {
+				if (masterType == null && !String.IsNullOrEmpty (masterTypeVirtualPath))
+					masterType = BuildManager.GetCompiledType (masterTypeVirtualPath);
+				
+				return masterType;
+			}
 		}
 
 		internal override string DefaultBaseTypeName {

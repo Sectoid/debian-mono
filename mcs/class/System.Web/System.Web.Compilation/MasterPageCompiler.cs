@@ -49,7 +49,8 @@ namespace System.Web.Compilation
 		{
 			base.CreateMethods ();
 
-			if (parser.MasterType != null) {
+			Type type = parser.MasterType;
+			if (type != null) {
 				CodeMemberProperty mprop = new CodeMemberProperty ();
 				mprop.Name = "Master";
 				mprop.Type = new CodeTypeReference (parser.MasterType);
@@ -58,6 +59,7 @@ namespace System.Web.Compilation
 				prop = new CodeCastExpression (parser.MasterType, prop);
 				mprop.GetStatements.Add (new CodeMethodReturnStatement (prop));
 				mainClass.Members.Add (mprop);
+				AddReferencedAssembly (type.Assembly);
 			}
 		}
 	}

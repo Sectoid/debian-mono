@@ -55,7 +55,7 @@ namespace System.Security.Cryptography.Xml
 		public XmlDsigXsltTransform (bool includeComments) 
 		{
 			comments = includeComments;
-			Algorithm = "http://www.w3.org/TR/1999/REC-xslt-19991116";
+			Algorithm = XmlSignature.AlgorithmNamespaces.XmlDsigXsltTransform;
 		}
 
 		public override Type [] InputTypes {
@@ -141,24 +141,29 @@ namespace System.Security.Cryptography.Xml
 		public override void LoadInput (object obj) 
 		{
 			// possible input: Stream, XmlDocument, and XmlNodeList
-			if (obj is Stream) {
+			Stream s = (obj as Stream);
+			if (s != null) {
 				inputDoc = new XmlDocument ();
 #if NET_1_1
 				inputDoc.XmlResolver = GetResolver ();
 #endif
 //				inputDoc.Load (obj as Stream);
-				inputDoc.Load (new XmlSignatureStreamReader (
-					new StreamReader (obj as Stream)));
+				inputDoc.Load (new XmlSignatureStreamReader (new StreamReader (s)));
+				return;
 			}
-			else if (obj is XmlDocument) {
-				inputDoc= obj as XmlDocument;
+
+			XmlDocument xd = (obj as XmlDocument);
+			if (xd != null) {
+				inputDoc = xd;
+				return;
 			}
-			else if (obj is XmlNodeList) {
+
+			XmlNodeList nl = (obj as XmlNodeList);
+			if (nl != null) {
 				inputDoc = new XmlDocument ();
 #if NET_1_1
 				inputDoc.XmlResolver = GetResolver ();
 #endif
-				XmlNodeList nl = (XmlNodeList) obj;
 				for (int i = 0; i < nl.Count; i++)
 					inputDoc.AppendChild (inputDoc.ImportNode (nl [i], true));
 			}

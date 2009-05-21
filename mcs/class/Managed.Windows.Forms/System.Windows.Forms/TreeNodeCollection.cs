@@ -142,7 +142,11 @@ namespace System.Windows.Forms {
 			}
 
 			SetupNode (node);
-
+#if NET_2_0
+			// UIA Framework Event: Collection Changed
+			if (tree_view != null)
+				tree_view.OnUIACollectionChanged (owner, new CollectionChangeEventArgs (CollectionChangeAction.Add, node));
+#endif
 			return res;
 		}
 
@@ -392,6 +396,11 @@ namespace System.Windows.Forms {
 				tree_view.UpdateScrollBars (false);
 				tree_view.UpdateBelow (parent);
 			}
+#if NET_2_0
+			// UIA Framework Event: Collection Changed
+			if (tree_view != null)
+				tree_view.OnUIACollectionChanged (owner, new CollectionChangeEventArgs (CollectionChangeAction.Remove, removed));
+#endif
 		}
 
 #if NET_2_0
@@ -434,9 +443,7 @@ namespace System.Windows.Forms {
 			}
 
 			if (owner != null && tree_view != null && (owner.IsExpanded || owner.IsRoot)) {
-				// tree_view.UpdateBelow (owner);
-				tree_view.UpdateNode (owner);
-				tree_view.UpdateNode (node);
+				 tree_view.UpdateBelow (owner);
 			} else if (owner != null && tree_view != null) {
 				tree_view.UpdateBelow (owner);
 			}

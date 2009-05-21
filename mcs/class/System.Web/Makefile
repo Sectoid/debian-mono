@@ -64,7 +64,6 @@ RESOURCE_FILES_2 = \
 	resources/transparent.gif \
 	resources/webform.js \
 	resources/WebUIValidation_2.0.js \
-	System.Web.Configuration_2.0/RandomRoboBotKeywords.txt \
 	System.Web.UI.WebControls/GridView.js \
 	System.Web.UI.WebControls/DetailsView.js \
 	System.Web.UI.WebControls/TreeView.js \
@@ -80,6 +79,7 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/MyPage.aspx.cs \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/MyPageWithMaster.aspx \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/Web.mono.config \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/Web.mono.config.1.1 \
 	Test/mainsoft/NunitWebResources/menuclass.aspx \
 	Test/mainsoft/NunitWebResources/FormView.aspx \
 	Test/mainsoft/NunitWebResources/PostBackMenuTest.aspx \
@@ -143,7 +143,23 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWebResources/RedirectOnError.aspx \
 	Test/mainsoft/NunitWebResources/TestCapability.browser \
 	Test/mainsoft/NunitWebResources/PageWithAdapter.aspx \
-	Test/mainsoft/MainsoftWebTest/nunitweb_config.xml 
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind1.aspx \
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind2.aspx \
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind3.aspx \
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind4.aspx \
+	Test/mainsoft/NunitWebResources/ValidPropertyBind1.aspx \
+	Test/mainsoft/NunitWebResources/ValidPropertyBind2.aspx \
+	Test/mainsoft/NunitWebResources/ValidPropertyBind3.aspx \
+	Test/mainsoft/NunitWebResources/ValidPropertyBind4.aspx \
+	Test/mainsoft/NunitWebResources/ValidPropertyBind5.aspx \
+	Test/mainsoft/NunitWebResources/ReadWritePropertyControl.ascx \
+	Test/mainsoft/MainsoftWebTest/nunitweb_config.xml \
+	Test/mainsoft/NunitWebResources/TemplateControlParsingTest.aspx \
+	Test/mainsoft/NunitWebResources/ContentPlaceHolderInTemplate.aspx \
+	Test/mainsoft/NunitWebResources/ContentPlaceHolderInTemplate.master \
+	Test/mainsoft/NunitWebResources/MissingMasterFile.aspx \
+	Test/mainsoft/NunitWebResources/CustomSectionEmptyCollection.aspx \
+	Test/mainsoft/NunitWebResources/LoginDisplayRememberMe.aspx
 
 RESX_DIST =  resources/TranslationResources.resx
 ifeq (net_2_0, $(PROFILE))
@@ -158,7 +174,7 @@ endif
 
 LIB_MCS_FLAGS = \
 	-unsafe \
-	-nowarn:612,618,649	\
+	-nowarn:612,618	\
 	-r:$(corlib)	 		\
 	-r:System.dll 			\
 	-r:System.Drawing.dll 		\
@@ -181,7 +197,10 @@ echo-warning:
 endif
 endif
 
-TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -doc:$(test_lib:.dll=.xml)  -nowarn:219 -nowarn:169 $(NUNIT_RESOURCE_FILES:%=/resource:%)
+TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -doc:$(test_lib:.dll=.xml)  -nowarn:219,169,1591 $(NUNIT_RESOURCE_FILES:%=/resource:%)
+ifeq (net_2_0, $(PROFILE))
+TEST_MCS_FLAGS += -r:System.Web.Extensions.dll
+endif
 
 EXTRA_DISTFILES = $(RESOURCE_FILES_2) $(RESOURCE_FILES_1) $(TEST_RESOURCE_FILES) UplevelHelperDefinitions.xml $(RESX_DIST) \
 		  SQLiteProviders_DatabaseSchema.sql
@@ -197,6 +216,18 @@ endif
 ifdef MONOWEB_DEP_FILE
 LIB_MCS_FLAGS += -define:MONOWEB_DEP -r:$(MONOWEB_DEP)
 $(the_lib): $(MONOWEB_DEP_FILE)
+endif
+
+ifdef DEBUG
+LIB_MCS_FLAGS += -define:DEBUG
+endif
+
+ifdef TRACE
+LIB_MCS_FLAGS += -define:TRACE
+endif
+
+ifdef MONO_TRACE
+LIB_MCS_FLAGS += -define:TRACE -define:MONO_TRACE
 endif
 
 $(the_lib): $(RESX_RES) $(RESOURCE_FILES2) $(RESOURCE_FILES_1)

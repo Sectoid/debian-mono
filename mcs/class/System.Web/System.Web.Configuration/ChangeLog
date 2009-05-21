@@ -1,13 +1,26 @@
+2009-01-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HandlerFactoryConfiguration.cs: Allow handlers with non-public
+	.ctors. Fixes bug #463971 for 1.0 profile.
+
 2008-10-13  Marek Habersack  <mhabersack@novell.com>
 
 	* HandlerFactoryConfiguration.cs: do not store call-specific data
 	in a class field.
 
+2008-10-12  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpRuntimeConfig.cs: Added support for several undocumented options,
+	and removed support for options that are not supported or 2.0 only.
+	* HttpRuntimeConfigurationHandler.cs: Added support for several
+	undocumented options, and removed support for options that are not
+	support or 2.0 only.
+
 2008-08-20  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpRuntimeConfig.cs: implemented the undocumented (but
 	supported in .NET 1.1) option EnableHeaderChecking to support fix
-	for bug #416620
+	for bug #418620
 
 2008-06-30  Marek Habersack  <mhabersack@novell.com>
 

@@ -384,8 +384,8 @@ namespace Mono.CSharp {
 			if (ds == null)
 				ds = owner.ResolveContext.DeclContainer;
 			
-			EmitContext ec = new EmitContext (owner.ResolveContext, ds, owner.ResolveContext.DeclContainer,
-				Location, null, typeof (Attribute), owner.ResolveContext.DeclContainer.ModFlags, false);
+			EmitContext ec = new EmitContext (owner.ResolveContext, ds, ds,
+				Location, null, typeof (Attribute), ds.ModFlags, false);
 			ec.IsAnonymousMethodAllowed = false;
 
 			ConstructorInfo ctor = ResolveConstructor (ec);
@@ -457,26 +457,19 @@ namespace Mono.CSharp {
 				return null;
 			
 			ConstructorInfo constructor = (ConstructorInfo)mg;
-
-			// TODO: move to OverloadResolve
-			ObsoleteAttribute oa = AttributeTester.GetMethodObsoleteAttribute (constructor);
-			if (oa != null && !Owner.ResolveContext.IsInObsoleteScope) {
-				AttributeTester.Report_ObsoleteMessage (oa, mg.GetSignatureForError (), mg.Location);
-			}
-
 			if (PosArguments == null) {
 				pos_values = EmptyObject;
 				return constructor;
 			}
 
-			ParameterData pd = TypeManager.GetParameterData (constructor);
+			AParametersCollection pd = TypeManager.GetParameterData (constructor);
 
 			int pos_arg_count = PosArguments.Count;
 			pos_values = new object [pos_arg_count];
 			for (int j = 0; j < pos_arg_count; ++j) {
 				Argument a = (Argument) PosArguments [j];
 
-				if (!a.Expr.GetAttributableValue (a.Type, out pos_values [j]))
+				if (!a.Expr.GetAttributableValue (ec, a.Type, out pos_values [j]))
 					return null;
 			}
 
@@ -499,7 +492,8 @@ namespace Mono.CSharp {
 			}
 
 			if (Type == TypeManager.indexer_name_type || Type == TypeManager.conditional_attribute_type) {
-				if (!Tokenizer.IsValidIdentifier ((string)pos_values [0])) {
+				string v = pos_values [0] as string;
+				if (!Tokenizer.IsValidIdentifier (v) || Tokenizer.IsKeyword (v)) {
 					Report.Error (633, ((Argument)PosArguments[0]).Expr.Location,
 						"The argument to the `{0}' attribute must be a valid identifier", GetSignatureForError ());
 					return null;
@@ -507,7 +501,7 @@ namespace Mono.CSharp {
 			}
 
 			if (Type == TypeManager.methodimpl_attr_type && pos_values.Length == 1 &&
-				pd.ParameterType (0) == TypeManager.short_type &&
+				pd.Types [0] == TypeManager.short_type &&
 				!System.Enum.IsDefined (typeof (MethodImplOptions), pos_values [0].ToString ())) {
 				Error_AttributeEmitError ("Incorrect argument value.");
 				return null;
@@ -531,7 +525,7 @@ namespace Mono.CSharp {
 				string member_name = (string) de.Key;
 
 				if (seen_names.Contains(member_name)) {
-					Report.Error(643, Location, "'" + member_name + "' duplicate named attribute argument");
+					Report.Error(643, Location, "'{0}' duplicate named attribute argument", member_name);
 					return false;
 				}				
 				seen_names.Add(member_name);
@@ -591,7 +585,7 @@ namespace Mono.CSharp {
 					}
 
 					object value;
-					if (!a.Expr.GetAttributableValue (member.Type, out value))
+					if (!a.Expr.GetAttributableValue (ec, member.Type, out value))
 						return false;
 
 					PropertyBase pb = TypeManager.GetProperty (pi);
@@ -618,7 +612,7 @@ namespace Mono.CSharp {
 					}
 
  					object value;
-					if (!a.Expr.GetAttributableValue (member.Type, out value))
+					if (!a.Expr.GetAttributableValue (ec, member.Type, out value))
 						return false;
 
 					FieldBase fb = TypeManager.GetField (fi);
@@ -858,11 +852,11 @@ namespace Mono.CSharp {
 			// TODO: we can skip the first item
 			if (((IList) valid_targets).Contains (ExplicitTarget)) {
 				switch (ExplicitTarget) {
-					case "return": Target = AttributeTargets.ReturnValue; return true;
-					case "param": Target = AttributeTargets.Parameter; return true;
-					case "field": Target = AttributeTargets.Field; return true;
-					case "method": Target = AttributeTargets.Method; return true;
-					case "property": Target = AttributeTargets.Property; return true;
+				case "return": Target = AttributeTargets.ReturnValue; return true;
+				case "param": Target = AttributeTargets.Parameter; return true;
+				case "field": Target = AttributeTargets.Field; return true;
+				case "method": Target = AttributeTargets.Method; return true;
+				case "property": Target = AttributeTargets.Property; return true;
 				}
 				throw new InternalErrorException ("Unknown explicit target: " + ExplicitTarget);
 			}
@@ -988,15 +982,15 @@ namespace Mono.CSharp {
 			// IS is correct because for corlib we are using an instance from old corlib
 			if (!(perm is System.Security.CodeAccessPermission)) {
 				switch (action) {
-					case SecurityAction.Demand:
-						action = (SecurityAction)13;
-						break;
-					case SecurityAction.LinkDemand:
-						action = (SecurityAction)14;
-						break;
-					case SecurityAction.InheritanceDemand:
-						action = (SecurityAction)15;
-						break;
+				case SecurityAction.Demand:
+					action = (SecurityAction)13;
+					break;
+				case SecurityAction.LinkDemand:
+					action = (SecurityAction)14;
+					break;
+				case SecurityAction.InheritanceDemand:
+					action = (SecurityAction)15;
+					break;
 				}
 			}
 
@@ -1015,14 +1009,6 @@ namespace Mono.CSharp {
 			ps.AddPermission (perm);
 		}
 
-		static object GetValue (object value)
-		{
-			if (value is EnumConstant)
-				return ((EnumConstant) value).GetValue ();
-			else
-				return value;				
-		}
-
 		public object GetPropertyValue (string name)
 		{
 			if (prop_info_arr == null)
@@ -1036,25 +1022,12 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		object GetFieldValue (string name)
-		{
-			int i;
-			if (field_info_arr == null)
-				return null;
-			i = 0;
-			foreach (FieldInfo fi in field_info_arr) {
-				if (fi.Name == name)
-					return GetValue (field_values_arr [i]);
-				i++;
-			}
-			return null;
-		}
-
 		//
 		// Theoretically, we can get rid of this, since FieldBuilder.SetCustomAttribute()
 		// and ParameterBuilder.SetCustomAttribute() are supposed to handle this attribute.
 		// However, we can't, since it appears that the .NET 1.1 SRE hangs when given a MarshalAsAttribute.
 		//
+#if !NET_2_0
 		public UnmanagedMarshal GetMarshal (Attributable attr)
 		{
 			UnmanagedType UnmanagedType;
@@ -1128,9 +1101,46 @@ namespace Mono.CSharp {
 			}
 		}
 
+		object GetFieldValue (string name)
+		{
+			int i;
+			if (field_info_arr == null)
+				return null;
+			i = 0;
+			foreach (FieldInfo fi in field_info_arr) {
+				if (fi.Name == name)
+					return GetValue (field_values_arr [i]);
+				i++;
+			}
+			return null;
+		}
+
+		static object GetValue (object value)
+		{
+			if (value is EnumConstant)
+				return ((EnumConstant) value).GetValue ();
+			else
+				return value;				
+		}
+		
+#endif
+
 		public CharSet GetCharSetValue ()
 		{
 			return (CharSet)System.Enum.Parse (typeof (CharSet), pos_values [0].ToString ());
+		}
+
+		public bool HasField (string fieldName)
+		{
+			if (field_info_arr == null)
+				return false;
+
+			foreach (FieldInfo fi in field_info_arr) {
+				if (fi.Name == fieldName)
+					return true;
+			}
+
+			return false;
 		}
 
 		public bool IsInternalMethodImplAttribute {
@@ -1226,7 +1236,7 @@ namespace Mono.CSharp {
 							return;
 
 						if (arg.Type.IsArray) {
-							Report.Error (3016, Location, "Arrays as attribute arguments are not CLS-compliant");
+							Report.Warning (3016, 1, Location, "Arrays as attribute arguments are not CLS-compliant");
 							return;
 						}
 					}
@@ -1243,7 +1253,7 @@ namespace Mono.CSharp {
 						return;
 
 					if (arg.Type.IsArray) {
-						Report.Error (3016, Location, "Arrays as attribute arguments are not CLS-compliant");
+						Report.Warning (3016, 1, Location, "Arrays as attribute arguments are not CLS-compliant");
 						return;
 					}
 				}
@@ -1533,8 +1543,10 @@ namespace Mono.CSharp {
 		/// Returns true if parameters of two compared methods are CLS-Compliant.
 		/// It tests differing only in ref or out, or in array rank.
 		/// </summary>
-		public static Result AreOverloadedMethodParamsClsCompliant (Type[] types_a, Type[] types_b) 
+		public static Result AreOverloadedMethodParamsClsCompliant (AParametersCollection pa, AParametersCollection pb) 
 		{
+			Type [] types_a = pa.Types;
+			Type [] types_b = pb.Types;
 			if (types_a == null || types_b == null)
 				return Result.Ok;
 
@@ -1560,25 +1572,10 @@ namespace Mono.CSharp {
 					}
 				}
 
-				Type aBaseType = aType;
-				bool is_either_ref_or_out = false;
-
-				if (aType.IsByRef || aType.IsPointer) {
-					aBaseType = aType.GetElementType ();
-					is_either_ref_or_out = true;
-				}
-
-				Type bBaseType = bType;
-				if (bType.IsByRef || bType.IsPointer) 
-				{
-					bBaseType = bType.GetElementType ();
-					is_either_ref_or_out = !is_either_ref_or_out;
-				}
-
-				if (aBaseType != bBaseType)
+				if (aType != bType)
 					return Result.Ok;
 
-				if (is_either_ref_or_out)
+				if (pa.FixedParameters [i].ModFlags != pb.FixedParameters [i].ModFlags)
 					result = Result.RefOutArrayError;
 			}
 			return result;
@@ -1602,7 +1599,7 @@ namespace Mono.CSharp {
 			}
 
 			bool result;
-			if (type.IsArray || type.IsByRef) {
+			if (type.IsArray) {
 				result = IsClsCompliant (TypeManager.GetElementType (type));
 			} else if (TypeManager.IsNullableType (type)) {
 				result = IsClsCompliant (TypeManager.GetTypeArguments (type) [0]);
@@ -1711,13 +1708,6 @@ namespace Mono.CSharp {
 			return GetClsCompliantAttributeValue (type, type.Assembly);
 		}
 
-		// Registers the core type as we assume that they will never be obsolete which
-		// makes things easier for bootstrap and faster (we don't need to query Obsolete attribute).
-		public static void RegisterNonObsoleteType (Type type)
-		{
-			analyzed_types_obsolete [type] = FALSE;
-		}
-
 		/// <summary>
 		/// Returns instance of ObsoleteAttribute when type is obsolete
 		/// </summary>
@@ -1733,17 +1723,19 @@ namespace Mono.CSharp {
 			ObsoleteAttribute result = null;
 			if (TypeManager.HasElementType (type)) {
 				result = GetObsoleteAttribute (TypeManager.GetElementType (type));
-			} else if (TypeManager.IsGenericParameter (type) || TypeManager.IsGenericType (type))
-				return null;
-			else {
+			} else if (TypeManager.IsGenericParameter (type))
+				result = null;	// TODO: throw new NotSupportedException ()
+			else if (TypeManager.IsGenericType (type) && !TypeManager.IsGenericTypeDefinition (type)) {
+				return GetObsoleteAttribute (TypeManager.DropGenericTypeArguments (type));
+			} else {
 				DeclSpace type_ds = TypeManager.LookupDeclSpace (type);
 
 				// Type is external, we can get attribute directly
 				if (type_ds == null) {
 					if (TypeManager.obsolete_attribute_type != null) {
-						object [] attribute = type.GetCustomAttributes (TypeManager.obsolete_attribute_type, false);
+						object[] attribute = type.GetCustomAttributes (TypeManager.obsolete_attribute_type, false);
 						if (attribute.Length == 1)
-							result = (ObsoleteAttribute) attribute [0];
+							result = (ObsoleteAttribute) attribute[0];
 					}
 				} else {
 					result = type_ds.GetObsoleteAttribute ();
@@ -1820,7 +1812,7 @@ namespace Mono.CSharp {
 			Report.Warning (618, 2, loc, "`{0}' is obsolete: `{1}'", member, oa.Message);
 		}
 
-		public static bool IsConditionalMethodExcluded (MethodBase mb)
+		public static bool IsConditionalMethodExcluded (MethodBase mb, Location loc)
 		{
 			object excluded = analyzed_method_excluded [mb];
 			if (excluded != null)
@@ -1837,11 +1829,12 @@ namespace Mono.CSharp {
 			}
 
 			foreach (ConditionalAttribute a in attrs) {
-				if (RootContext.AllDefines.Contains (a.ConditionString)) {
+				if (loc.CompilationUnit.IsConditionalDefined (a.ConditionString)) {
 					analyzed_method_excluded.Add (mb, FALSE);
 					return false;
 				}
 			}
+
 			analyzed_method_excluded.Add (mb, TRUE);
 			return true;
 		}
@@ -1850,7 +1843,7 @@ namespace Mono.CSharp {
 		/// Analyzes class whether it has attribute which has ConditionalAttribute
 		/// and its condition is not defined.
 		/// </summary>
-		public static bool IsAttributeExcluded (Type type)
+		public static bool IsAttributeExcluded (Type type, Location loc)
 		{
 			if (!type.IsClass)
 				return false;
@@ -1862,7 +1855,7 @@ namespace Mono.CSharp {
 			if (class_decl == null && TypeManager.conditional_attribute_type != null) {
 				object[] attributes = type.GetCustomAttributes (TypeManager.conditional_attribute_type, false);
 				foreach (ConditionalAttribute ca in attributes) {
-					if (RootContext.AllDefines.Contains (ca.ConditionString))
+					if (loc.CompilationUnit.IsConditionalDefined (ca.ConditionString))
 						return false;
 				}
 				return attributes.Length > 0;

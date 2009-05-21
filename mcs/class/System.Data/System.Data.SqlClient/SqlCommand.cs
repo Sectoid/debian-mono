@@ -65,7 +65,6 @@ namespace System.Data.SqlClient {
 
 		const int DEFAULT_COMMAND_TIMEOUT = 30;
 
-		bool disposed;
 		int commandTimeout;
 		bool designTimeVisible;
 		string commandText;
@@ -77,6 +76,7 @@ namespace System.Data.SqlClient {
 		SqlParameterCollection parameters;
 		string preparedStatement;
 #if NET_2_0
+		bool disposed;
 		SqlNotificationRequest notification;
 		bool notificationAutoEnlist;
 #endif
@@ -157,7 +157,7 @@ namespace System.Data.SqlClient {
 			set {
 				if (value != commandText && preparedStatement != null)
 					Unprepare ();
-				commandText = value; 
+				commandText = value;
 			}
 		}
 
@@ -173,7 +173,12 @@ namespace System.Data.SqlClient {
 			get { return commandTimeout; }
 			set { 
 				if (value < 0)
+#if NET_2_0
+					throw new ArgumentException ("The property value assigned is less than 0.",
+						"CommandTimeout");
+#else
 					throw new ArgumentException ("The property value assigned is less than 0.");
+#endif
 				commandTimeout = value; 
 			}
 		}
@@ -214,11 +219,13 @@ namespace System.Data.SqlClient {
 #endif //NET_2_0
 		SqlConnection Connection {
 			get { return connection; }
-			set {
-				if (transaction != null && connection.Transaction != null && connection.Transaction.IsOpen)
-					throw new InvalidOperationException ("The Connection property was changed while a transaction was in progress.");
-				transaction = null;
-				connection = value; 
+			set
+			{
+#if ONLY_1_1
+				if (connection != null && connection.DataReader != null)
+					throw new InvalidOperationException ("The connection is busy fetching data.");
+#endif
+				connection = value;
 			}
 		}
 
@@ -283,8 +290,19 @@ namespace System.Data.SqlClient {
 #endif
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public new SqlTransaction Transaction {
-			get { return transaction; }
-			set { transaction = value; }
+			get {
+				if (transaction != null && !transaction.IsOpen)
+					transaction = null;
+				return transaction;
+			}
+			set
+			{
+#if ONLY_1_1
+				if (connection != null && connection.DataReader != null)
+					throw new InvalidOperationException ("The connection is busy fetching data.");
+#endif
+				transaction = value;
+			}
 		}
 
 #if !NET_2_0
@@ -325,7 +343,7 @@ namespace System.Data.SqlClient {
 #if NET_2_0
 		override
 #endif // NET_2_0
-		void Cancel () 
+		void Cancel ()
 		{
 			if (Connection == null || Connection.Tds == null)
 				return;
@@ -339,29 +357,80 @@ namespace System.Data.SqlClient {
 		}
 #endif // NET_2_0
 
-		internal void CloseDataReader (bool moreResults)
+		internal void CloseDataReader ()
 		{
-			Connection.DataReader = null;
+			if (Connection != null) {
+				Connection.DataReader = null;
 
-			if ((behavior & CommandBehavior.CloseConnection) != 0)
-				Connection.Close ();
+				if ((behavior & CommandBehavior.CloseConnection) != 0)
+					Connection.Close ();
+
+				if (Tds != null)
+					Tds.SequentialAccess = false;
+			}
 
 			// Reset the behavior
 			behavior = CommandBehavior.Default;
-			if (Tds != null)
-				Tds.SequentialAccess = false;
 		}
 
-		public new SqlParameter CreateParameter () 
+		public new SqlParameter CreateParameter ()
 		{
 			return new SqlParameter ();
 		}
 
+		private string EscapeProcName (string name, bool schema)
+		{
+			string procName;
+			string tmpProcName = name.Trim ();
+			int procNameLen = tmpProcName.Length;
+			char[] brkts = new char [] {'[', ']'};
+			bool foundMatching = false;
+			int start = 0, count = procNameLen;
+			int sindex = -1, eindex = -1;
+			
+			// We try to match most of the "brackets" combination here, however
+			// there could be other combinations that may generate a different type
+			// of exception in MS.NET
+			
+			if (procNameLen > 1) {
+				if ((sindex = tmpProcName.IndexOf ('[')) <= 0)
+					foundMatching = true;
+				else
+					foundMatching = false;
+			
+				if (foundMatching == true && sindex > -1) {
+					eindex = tmpProcName.IndexOf (']');
+					if (sindex > eindex && eindex != -1) {
+						foundMatching = false;
+					} else if (eindex == procNameLen-1) {
+						if (tmpProcName.IndexOfAny (brkts, 1, procNameLen-2) != -1) {
+							foundMatching = false;
+						} else {
+							start = 1;
+							count = procNameLen - 2;
+						}
+					} else if (eindex == -1 && schema) {
+						foundMatching = true;
+					} else {
+						foundMatching = false;
+					}
+				}
+			
+				if (foundMatching)
+					procName = tmpProcName.Substring (start, count);
+				else
+					throw new ArgumentException (String.Format ("SqlCommand.CommandText property value is an invalid multipart name {0}, incorrect usage of quotes", CommandText));
+			} else {
+				procName = tmpProcName;
+			}
+			
+			return procName;
+		}
 		internal void DeriveParameters ()
 		{
 			if (commandType != CommandType.StoredProcedure)
 				throw new InvalidOperationException (String.Format ("SqlCommand DeriveParameters only supports CommandType.StoredProcedure, not CommandType.{0}", commandType));
-			ValidateCommand ("DeriveParameters");
+			ValidateCommand ("DeriveParameters", false);
 
 			string procName = CommandText;
 			string schemaName = String.Empty;
@@ -370,6 +439,9 @@ namespace System.Data.SqlClient {
 				schemaName = procName.Substring (0, dotPosition);
 				procName = procName.Substring (dotPosition + 1);
 			}
+			
+			procName = EscapeProcName (procName, false);
+			schemaName = EscapeProcName (schemaName, true);
 			
 			SqlParameterCollection localParameters = new SqlParameterCollection (this);
 			localParameters.Add ("@procedure_name", SqlDbType.NVarChar, procName.Length).Value = procName;
@@ -381,6 +453,7 @@ namespace System.Data.SqlClient {
 			try {
 				Connection.Tds.ExecProc (sql, localParameters.MetaParameters, 0, true);
 			} catch (TdsTimeoutException ex) {
+				Connection.Tds.Reset ();
 				throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 			} catch (TdsInternalException ex) {
 				Connection.Close ();
@@ -401,7 +474,7 @@ namespace System.Data.SqlClient {
 				throw new InvalidOperationException ("Stored procedure '" + procName + "' does not exist.");
 		}
 
-		private void Execute (CommandBehavior behavior, bool wantResults)
+		private void Execute (bool wantResults)
 		{
 			int index = 0;
 			Connection.Tds.RecordsAffected = -1;
@@ -441,6 +514,7 @@ namespace System.Data.SqlClient {
 						// 1) Network is down/server is down/not reachable
 						// 2) Somebody has an exclusive lock on Table/DB
 						// In any of these cases, don't close the connection. Let the user do it
+						Connection.Tds.Reset ();
 						throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 					} catch (TdsInternalException ex) {
 						Connection.Close ();
@@ -457,6 +531,7 @@ namespace System.Data.SqlClient {
 					try {
 						Connection.Tds.Execute (sql, parms, CommandTimeout, wantResults);
 					} catch (TdsTimeoutException ex) {
+						Connection.Tds.Reset ();
 						throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 					} catch (TdsInternalException ex) {
 						Connection.Close ();
@@ -469,7 +544,8 @@ namespace System.Data.SqlClient {
 				try {
 					Connection.Tds.ExecPrepared (preparedStatement, parms, CommandTimeout, wantResults);
 				} catch (TdsTimeoutException ex) {
-						throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
+					Connection.Tds.Reset ();
+					throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 				} catch (TdsInternalException ex) {
 					Connection.Close ();
 					throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
@@ -483,15 +559,15 @@ namespace System.Data.SqlClient {
 #endif // NET_2_0
 		int ExecuteNonQuery ()
 		{
-			ValidateCommand ("ExecuteNonQuery");
+			ValidateCommand ("ExecuteNonQuery", false);
 			int result = 0;
 			behavior = CommandBehavior.Default;
 
 			try {
-				Execute (CommandBehavior.Default, false);
+				Execute (false);
 				result = Connection.Tds.RecordsAffected;
-			}
-			catch (TdsTimeoutException e) {
+			} catch (TdsTimeoutException e) {
+				Connection.Tds.Reset ();
 				throw SqlException.FromTdsInternalException ((TdsInternalException) e);
 			}
 
@@ -506,13 +582,14 @@ namespace System.Data.SqlClient {
 
 		public new SqlDataReader ExecuteReader (CommandBehavior behavior)
 		{
-			ValidateCommand ("ExecuteReader");
+			ValidateCommand ("ExecuteReader", false);
+			if ((behavior & CommandBehavior.SingleRow) != 0)
+				behavior |= CommandBehavior.SingleResult;
 			this.behavior = behavior;
 			if ((behavior & CommandBehavior.SequentialAccess) != 0)
 				Tds.SequentialAccess = true;
-			Execute (behavior, true);
+			Execute (true);
 			Connection.DataReader = new SqlDataReader (this);
-			
 			return Connection.DataReader;
 		}
 
@@ -524,9 +601,13 @@ namespace System.Data.SqlClient {
 		{
 			try {
 				object result = null;
-				ValidateCommand ("ExecuteScalar");
+#if NET_2_0
+				ValidateCommand ("ExecuteScalar", false);
+#else
+				ValidateCommand ("ExecuteReader", false);
+#endif
 				behavior = CommandBehavior.Default;
-				Execute (CommandBehavior.Default, true);
+				Execute (true);
 
 				try {
 					if (Connection.Tds.NextResult () && Connection.Tds.NextRow ())
@@ -537,6 +618,7 @@ namespace System.Data.SqlClient {
 						GetOutputParameters ();
 					}
 				} catch (TdsTimeoutException ex) {
+					Connection.Tds.Reset ();
 					throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 				} catch (TdsInternalException ex) {
 					Connection.Close ();
@@ -544,19 +626,19 @@ namespace System.Data.SqlClient {
 				}
 
 				return result;
-			}
-			finally {
-				CloseDataReader (true);
+			} finally {
+				CloseDataReader ();
 			}
 		}
 
 		public XmlReader ExecuteXmlReader ()
 		{
-			ValidateCommand ("ExecuteXmlReader");
+			ValidateCommand ("ExecuteXmlReader", false);
 			behavior = CommandBehavior.Default;
 			try {
-				Execute (CommandBehavior.Default, true);
+				Execute (true);
 			} catch (TdsTimeoutException e) {
+				Connection.Tds.Reset ();
 				throw SqlException.FromTdsInternalException ((TdsInternalException) e);
 			}
 
@@ -626,10 +708,15 @@ namespace System.Data.SqlClient {
 #endif // NET_2_0
 		void Prepare ()
 		{
-			ValidateCommand ("Prepare");
+#if NET_2_0
+			if (Connection == null)
+				throw new NullReferenceException ();
+#endif
 
-			if (CommandType == CommandType.StoredProcedure)
+			if (CommandType == CommandType.StoredProcedure || CommandType == CommandType.Text && Parameters.Count == 0)
 				return;
+
+			ValidateCommand ("Prepare", false);
 
 			try {
 				foreach (SqlParameter param in Parameters)
@@ -652,30 +739,30 @@ namespace System.Data.SqlClient {
 			preparedStatement = null;
 		}
 
-		private void ValidateCommand (string method)
+		private void ValidateCommand (string method, bool async)
 		{
 			if (Connection == null)
+				throw new InvalidOperationException (String.Format ("{0}: A Connection object is required to continue.", method));
+			if (Transaction == null && Connection.Transaction != null)
+				throw new InvalidOperationException (String.Format (
+					"{0} requires a transaction if the command's connection is in a pending transaction.",
 #if NET_2_0
-				throw new NullReferenceException (String.Format ("{0} requires a Connection object to continue.", method));
+					method));
 #else
-				throw new InvalidOperationException (String.Format ("{0} requires a Connection object to continue.", method));
+					"Execute"));
 #endif
-			if (Connection.Transaction != null && transaction != Connection.Transaction)
-				throw new InvalidOperationException ("The Connection object does not have the same transaction as the command object.");
+			if (Transaction != null && Transaction.Connection != Connection)
+				throw new InvalidOperationException ("The connection does not have the same transaction as the command.");
 			if (Connection.State != ConnectionState.Open)
-#if NET_2_0
-				throw new NullReferenceException (String.Format ("ExecuteNonQuery requires an open Connection object to continue. This connection is closed.", method));
-#else
-				throw new InvalidOperationException (String.Format ("ExecuteNonQuery requires an open Connection object to continue. This connection is closed.", method));
-#endif
+				throw new InvalidOperationException (String.Format ("{0} requires an open connection to continue. This connection is closed.", method));
 			if (CommandText.Length == 0)
-				throw new InvalidOperationException ("The command text for this Command has not been set.");
+				throw new InvalidOperationException (String.Format ("{0}: CommandText has not been set for this Command.", method));
 			if (Connection.DataReader != null)
 				throw new InvalidOperationException ("There is already an open DataReader associated with this Connection which must be closed first.");
 			if (Connection.XmlReader != null)
 				throw new InvalidOperationException ("There is already an open XmlReader associated with this Connection which must be closed first.");
 #if NET_2_0
-			if (method.StartsWith ("Begin") && !Connection.AsyncProcessing)
+			if (async && !Connection.AsyncProcessing)
 				throw new InvalidOperationException ("This Connection object is not " + 
 					"in Asynchronous mode. Use 'Asynchronous" +
 					" Processing = true' to set it.");
@@ -755,6 +842,7 @@ namespace System.Data.SqlClient {
 										      callback,
 										      state);
 					} catch (TdsTimeoutException ex) {
+						Connection.Tds.Reset ();
 						throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 					} catch (TdsInternalException ex) {
 						Connection.Close ();
@@ -769,6 +857,7 @@ namespace System.Data.SqlClient {
 						else
 							ar = Connection.Tds.BeginExecuteNonQuery (sql, parms, callback, state);
 					} catch (TdsTimeoutException ex) {
+						Connection.Tds.Reset ();
 						throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 					} catch (TdsInternalException ex) {
 						Connection.Close ();
@@ -781,6 +870,7 @@ namespace System.Data.SqlClient {
 				try {
 					Connection.Tds.ExecPrepared (preparedStatement, parms, CommandTimeout, wantResults);
 				} catch (TdsTimeoutException ex) {
+					Connection.Tds.Reset ();
 					throw SqlException.FromTdsInternalException ((TdsInternalException) ex);
 				} catch (TdsInternalException ex) {
 					Connection.Close ();
@@ -804,7 +894,7 @@ namespace System.Data.SqlClient {
 
 		public IAsyncResult BeginExecuteNonQuery (AsyncCallback callback, object stateObject)
 		{
-			ValidateCommand ("BeginExecuteNonQuery");
+			ValidateCommand ("BeginExecuteNonQuery", true);
 			SqlAsyncResult ar = new SqlAsyncResult (callback, stateObject);
 			ar.EndMethod = "EndExecuteNonQuery";
 			ar.InternalResult = BeginExecuteInternal (CommandBehavior.Default, false, ar.BubbleCallback, ar);
@@ -840,7 +930,7 @@ namespace System.Data.SqlClient {
 
 		public IAsyncResult BeginExecuteReader (AsyncCallback callback, object stateObject, CommandBehavior behavior)
 		{
-			ValidateCommand ("BeginExecuteReader");
+			ValidateCommand ("BeginExecuteReader", true);
 			this.behavior = behavior;
 			SqlAsyncResult ar = new SqlAsyncResult (callback, stateObject);
 			ar.EndMethod = "EndExecuteReader";
@@ -873,7 +963,7 @@ namespace System.Data.SqlClient {
 
 		public IAsyncResult BeginExecuteXmlReader (AsyncCallback callback, object stateObject)
 		{
-			ValidateCommand ("BeginExecuteXmlReader");
+			ValidateCommand ("BeginExecuteXmlReader", true);
 			SqlAsyncResult ar = new SqlAsyncResult (callback, stateObject);
 			ar.EndMethod = "EndExecuteXmlReader";
 			ar.InternalResult = BeginExecuteInternal (behavior, true, 

@@ -6,12 +6,12 @@
 //   Diego Caravana (diego@toth.it)
 //   Sebastien Pouliot (sebastien@ximian.com)
 //   Daniel Morgan (danielmorgan@verizon.net)
+//   Gert Driesen (drieseng@users.sourceforge.net)
 //
 // Copyright (C) 2002 Tim Coleman
 // Portions (C) 2003 Motus Technologies Inc. (http://www.motus.com)
 // Portions (C) 2003 Daniel Morgan
 //
-
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -33,9 +33,11 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-using Mono.Security.Protocol.Ntlm;
 using System;
+using System.Globalization;
 using System.Text;
+
+using Mono.Security.Protocol.Ntlm;
 
 namespace Mono.Data.Tds.Protocol
 {
@@ -44,6 +46,8 @@ namespace Mono.Data.Tds.Protocol
 		#region Fields
 
 		public readonly static TdsVersion Version = TdsVersion.tds70;
+		static readonly decimal SMALLMONEY_MIN = -214748.3648m;
+		static readonly decimal SMALLMONEY_MAX = 214748.3647m;
 
 		#endregion // Fields
 
@@ -79,14 +83,15 @@ namespace Mono.Data.Tds.Protocol
 
 			StringBuilder result = new StringBuilder ();
 			foreach (TdsMetaParameter p in Parameters) {
-				string includeAt = "@";
-				if (p.ParameterName [0] == '@')
-					includeAt = string.Empty;
+				string parameterName = p.ParameterName;
+				if (parameterName [0] == '@') {
+					parameterName = parameterName.Substring (1);
+				}
 				if (p.Direction != TdsParameterDirection.ReturnValue) {
 					if (result.Length > 0)
 						result.Append (", ");
 					if (p.Direction == TdsParameterDirection.InputOutput)
-						result.Append (String.Format("{0}{1}={1} output", includeAt, p.ParameterName));
+						result.AppendFormat ("@{0}={0} output", parameterName);
 					else
 						result.Append (FormatParameter (p));
 				}
@@ -123,12 +128,17 @@ namespace Mono.Data.Tds.Protocol
 			int count = 0;
 			if (Parameters != null) {
 				foreach (TdsMetaParameter p in Parameters) {
+					string parameterName = p.ParameterName;
+					if (parameterName [0] == '@') {
+						parameterName = parameterName.Substring (1);
+					}
+
 					if (p.Direction != TdsParameterDirection.Input) {
 						if (count == 0)
 							select.Append ("select ");
 						else
 							select.Append (", ");
-						select.Append (p.ParameterName);
+						select.Append ("@" + parameterName);
 							
 						declare.Append (String.Format ("declare {0}\n", p.Prepare ()));
 
@@ -136,14 +146,13 @@ namespace Mono.Data.Tds.Protocol
 							if (p.Direction == TdsParameterDirection.InputOutput)
 								set.Append (String.Format ("set {0}\n", FormatParameter(p)));
 							else
-								set.Append (String.Format ("set {0}=NULL\n", p.ParameterName));
+								set.Append (String.Format ("set @{0}=NULL\n", parameterName));
 						}
 					
-						count += 1;
+						count++;
 					}
-					
 					if (p.Direction == TdsParameterDirection.ReturnValue)
-						exec = p.ParameterName + "=";
+						exec = "@" + parameterName + "=";
 				}
 			}
 			exec = "exec " + exec;
@@ -353,18 +362,15 @@ namespace Mono.Data.Tds.Protocol
 
 		public override bool Reset ()
 		{
-			try {
-				ExecProc ("sp_reset_connection");
-				base.Reset ();
-			} catch (Exception e) {
-				System.Reflection.PropertyInfo pinfo = e.GetType ().GetProperty ("Class");
-				if (pinfo != null && pinfo.PropertyType == typeof (byte)) {
-					byte klass = (byte) pinfo.GetValue (e, null);
-					// 11 to 16 indicates error that can be fixed by the user such as 'Invalid object name'
-					if (klass < 11 || klass > 16)
-						return false;
-				}
-			}
+			// Check validity of the connection - a false removes
+			// the connection from the pool
+			// NOTE: MS implementation will throw a connection-reset error as it will
+			// try to use the same connection
+			if (!Comm.IsConnected ())
+				return false;
+
+			// Set "reset-connection" bit for the next message packet
+			Comm.ResetConnection = true;
 
 			return true;
 		}
@@ -395,8 +401,14 @@ namespace Mono.Data.Tds.Protocol
 				foreach (TdsMetaParameter param in parameters) {
 					if (param.Direction == TdsParameterDirection.ReturnValue) 
 						continue;
-					Comm.Append ( (byte) param.ParameterName.Length );
-					Comm.Append (param.ParameterName);
+					string pname = param.ParameterName;
+					if (pname != null && pname.Length > 0 && pname [0] == '@') {
+						Comm.Append ( (byte) pname.Length);
+						Comm.Append (pname);
+					} else {
+						Comm.Append ( (byte) (pname.Length + 1));
+						Comm.Append ("@" + pname);
+					}
 					short status = 0; // unused
 					if (param.Direction != TdsParameterDirection.Input)
 						status |= 0x01; // output
@@ -458,13 +470,30 @@ namespace Mono.Data.Tds.Protocol
 				case "money" : {
 					Decimal val = (decimal) param.Value;
 					int[] arr = Decimal.GetBits (val);
-					int sign = (val>0 ? 1: -1);
-					Comm.Append (sign * arr[1]);
-					Comm.Append (sign * arr[0]);
+
+					if (val >= 0) {
+						Comm.Append (arr[1]);
+						Comm.Append (arr[0]);
+					} else {
+						Comm.Append (~arr[1]);
+						Comm.Append (~arr[0] + 1);
+					}
 					break;
 				}
 				case "smallmoney": {
 					Decimal val = (decimal) param.Value;
+					if (val < SMALLMONEY_MIN || val > SMALLMONEY_MAX)
+						throw new OverflowException (string.Format (
+							CultureInfo.InvariantCulture,
+							"Value '{0}' is not valid for SmallMoney."
+							+ "  Must be between {1:N4} and {2:N4}.",
+#if NET_2_0
+							val,
+#else
+							val.ToString (CultureInfo.CurrentCulture),
+#endif
+							SMALLMONEY_MIN, SMALLMONEY_MAX));
+
 					int[] arr = Decimal.GetBits (val);
 					int sign = (val>0 ? 1: -1);
 					Comm.Append (sign * arr[0]);
@@ -507,13 +536,14 @@ namespace Mono.Data.Tds.Protocol
 
 		private string FormatParameter (TdsMetaParameter parameter)
 		{
-			string includeAt = "@";
-			if (parameter.ParameterName [0] == '@')
-				includeAt = string.Empty;
+			string parameterName = parameter.ParameterName;
+			if (parameterName [0] == '@') {
+				parameterName = parameterName.Substring (1);
+			}
 			if (parameter.Direction == TdsParameterDirection.Output)
-				return String.Format ("{0}{1}={1} output", includeAt, parameter.ParameterName);
+				return String.Format ("@{0}=@{0} output", parameterName);
 			if (parameter.Value == null || parameter.Value == DBNull.Value)
-				return parameter.ParameterName + "=NULL";
+				return String.Format ("@{0}=NULL", parameterName);
 
 			string value = null;
 			switch (parameter.TypeName) {
@@ -568,7 +598,7 @@ namespace Mono.Data.Tds.Protocol
 				break;
 			}
 
-			return includeAt + parameter.ParameterName + "=" + value;
+			return "@" + parameterName + "=" + value;
 		}
 
 		public override string Prepare (string commandText, TdsMetaParameterCollection parameters)
@@ -607,9 +637,7 @@ namespace Mono.Data.Tds.Protocol
 				bool autoIncrement = (flagData[2] & 0x10) > 0;
 				bool isIdentity = (flagData[2] & 0x10) > 0;
 
-				TdsColumnType columnType = (TdsColumnType) (Comm.GetByte () & 0xff);
-				if ((byte) columnType == 0xef)
-					columnType = TdsColumnType.NChar;
+				TdsColumnType columnType = (TdsColumnType) ((Comm.GetByte () & 0xff));
 
 				byte xColumnType = 0;
 				if (IsLargeType (columnType)) {
@@ -631,23 +659,18 @@ namespace Mono.Data.Tds.Protocol
 				else
 					columnSize = Comm.GetByte () & 0xff;
 
+				if (IsWideType ((TdsColumnType) columnType))
+					columnSize /= 2;
+
 				byte precision = 0;
 				byte scale = 0;
 
-				switch (columnType) {
-				case TdsColumnType.NText:
-				case TdsColumnType.NChar:
-				case TdsColumnType.NVarChar:
-					columnSize /= 2;
-					break;
-				case TdsColumnType.Decimal:
-				case TdsColumnType.Numeric:
-				  /*
-					Comm.Skip (1);
-				  */
+				if (columnType == TdsColumnType.Decimal || columnType == TdsColumnType.Numeric) {
 					precision = Comm.GetByte ();
 					scale = Comm.GetByte ();
-					break;
+				} else {
+					precision = GetPrecision (columnType, columnSize);
+					scale = GetScale (columnType, columnSize);
 				}
 
 				string columnName = Comm.GetString (Comm.GetByte ());
@@ -706,6 +729,136 @@ namespace Mono.Data.Tds.Protocol
 					}
 				}
 			}
+		}
+
+		byte GetScale (TdsColumnType type, int columnSize)
+		{
+			switch (type) {
+			case TdsColumnType.DateTime:
+				return 0x03;
+			case TdsColumnType.DateTime4:
+				return 0x00;
+			case TdsColumnType.DateTimeN:
+				switch (columnSize) {
+				case 4:
+					return 0x00;
+				case 8:
+					return 0x03;
+				}
+				break;
+			default:
+				return 0xff;
+			}
+
+			throw new NotSupportedException (string.Format (
+				CultureInfo.InvariantCulture,
+				"Fixed scale not defined for column " +
+				"type '{0}' with size {1}.", type, columnSize));
+		}
+
+		byte GetPrecision (TdsColumnType type, int columnSize)
+		{
+			switch (type) {
+			case TdsColumnType.Binary:
+				return 0xff;
+			case TdsColumnType.Bit:
+				return 0xff;
+			case TdsColumnType.Char:
+				return 0xff;
+			case TdsColumnType.DateTime:
+				return 0x17;
+			case TdsColumnType.DateTime4:
+				return 0x10;
+			case TdsColumnType.DateTimeN:
+				switch (columnSize) {
+				case 4:
+					return 0x10;
+				case 8:
+					return 0x17;
+				}
+				break;
+			case TdsColumnType.Real:
+				return 0x07;
+			case TdsColumnType.Float8:
+				return 0x0f;
+			case TdsColumnType.FloatN:
+				switch (columnSize) {
+				case 4:
+					return 0x07;
+				case 8:
+					return 0x0f;
+				}
+				break;
+			case TdsColumnType.Image:
+				return 0xff;
+			case TdsColumnType.Int1:
+				return 0x03;
+			case TdsColumnType.Int2:
+				return 0x05;
+			case TdsColumnType.Int4:
+				return 0x0a;
+			case TdsColumnType.IntN:
+				switch (columnSize) {
+				case 1:
+					return 0x03;
+				case 2:
+					return 0x05;
+				case 4:
+					return 0x0a;
+				}
+				break;
+			case TdsColumnType.Void:
+				return 0x01;
+			case TdsColumnType.Text:
+				return 0xff;
+			case TdsColumnType.UniqueIdentifier:
+				return 0xff;
+			case TdsColumnType.VarBinary:
+				return 0xff;
+			case TdsColumnType.VarChar:
+				return 0xff;
+			case TdsColumnType.Money:
+				return 19;
+			case TdsColumnType.NText:
+				return 0xff;
+			case TdsColumnType.NVarChar:
+				return 0xff;
+			case TdsColumnType.BitN:
+				return 0xff;
+			case TdsColumnType.MoneyN:
+				switch (columnSize) {
+				case 4:
+					return 0x0a;
+				case 8:
+					return 0x13;
+				}
+				break;
+			case TdsColumnType.Money4:
+				return 0x0a;
+			case TdsColumnType.NChar:
+				return 0xff;
+			case TdsColumnType.BigBinary:
+				return 0xff;
+			case TdsColumnType.BigVarBinary:
+				return 0xff;
+			case TdsColumnType.BigVarChar:
+				return 0xff;
+			case TdsColumnType.BigNVarChar:
+				return 0xff;
+			case TdsColumnType.BigChar:
+				return 0xff;
+			case TdsColumnType.SmallMoney:
+				return 0x0a;
+			case TdsColumnType.Variant:
+				return 0xff;
+			case TdsColumnType.BigInt:
+				return 0xff;
+			}
+
+			throw new NotSupportedException (string.Format (
+				CultureInfo.InvariantCulture,
+				"Fixed precision not defined for column " +
+				"type '{0}' with size {1}.", type, columnSize));
 		}
 
 		#endregion // Methods

@@ -1,16 +1,35 @@
+#if NET_2_0
+
 using System;
 using System.Data;
+using System.Data.Common;
+using System.Globalization;
+using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.IO;
-using System.Data.Common;
+using System.Threading;
+
 using NUnit.Framework;
 
 [TestFixture]
 public class BinarySerializationTest
 {
-#if NET_2_0
+	private CultureInfo originalCulture;
+
+	[SetUp]
+	public void SetUp ()
+	{
+		originalCulture = Thread.CurrentThread.CurrentCulture;
+		Thread.CurrentThread.CurrentCulture = new CultureInfo ("en-US");
+	}
+
+	[TearDown]
+	public void TearDown ()
+	{
+		Thread.CurrentThread.CurrentCulture = originalCulture;
+	}
+
 	[Test]
 	public void RemotingFormatDataTableTest ()
 	{
@@ -172,6 +191,59 @@ public class BinarySerializationTest
 		dt.Rows[0].RejectChanges();
 		dt.Rows[1].RejectChanges();
 	}
+
+	[Test]
+	public void TestDefaultValues ()
+	{
+	 	//Serialize Table
+		DataTable tb1 = new DataTable ();
+		tb1.Columns.Add ("id", typeof (int));
+		tb1.Columns.Add ("Date", typeof (string));
+		tb1.Columns["id"].DefaultValue = 10;
+		tb1.Columns["Date"].DefaultValue = "9/15/2008";
+		tb1.Rows.Add (tb1.NewRow());
+
+		MemoryStream ms = new MemoryStream ();
+		BinaryFormatter bf = new BinaryFormatter ();
+		tb1.RemotingFormat = SerializationFormat.Binary;
+		bf.Serialize (ms,tb1);
+		byte [] serializedStream = ms.ToArray ();
+		ms.Close ();
+		//DserializeTable
+		ms = new MemoryStream (serializedStream);
+		DataTable dt = (DataTable)bf.Deserialize (ms);
+		ms.Close ();
+
+		//Table Data
+		for (int i = 0; i < tb1.Rows.Count; i++) 
+			for (int j = 0; j < tb1.Columns.Count; j++) {
+				Assert.AreEqual (tb1.Columns[j].DefaultValue, dt.Rows [i][j], "#1 Element differs from DefaultValue at Row :{0} Column :{1}", i, j);
+				Assert.AreEqual (tb1.Rows [i][j], dt.Rows [i][j], "#2 Elements differ at Row :{0} Column :{1}", i, j);
+			}
+	}
+
+	[Test]
+	public void TestEmptyTable ()
+	{
+	 	//Serialize Table
+		DataTable tb1 = new DataTable ();
+		tb1.Columns.Add ("id", typeof (int));
+		tb1.Columns.Add ("Date", typeof (string));
+
+		MemoryStream ms = new MemoryStream ();
+		BinaryFormatter bf = new BinaryFormatter ();
+		tb1.RemotingFormat = SerializationFormat.Binary;
+		bf.Serialize (ms,tb1);
+		byte [] serializedStream = ms.ToArray ();
+		ms.Close ();
+		//DserializeTable
+		ms = new MemoryStream (serializedStream);
+		DataTable dt = (DataTable)bf.Deserialize (ms);
+		ms.Close ();
+
+		Assert.AreEqual(tb1.Rows.Count, dt.Rows.Count);
+	}
+
 	[Test]
 	public void Test_With_Null_Values1 ()
 	{
@@ -688,5 +760,6 @@ public class BinarySerializationTest
 		for (int i = 0; i < ds.Relations.Count; i++)
 			Assert.AreEqual (ds.Relations [i].RelationName, ds.Relations [i].RelationName, "#9 Relation : {0} differs", ds.Relations [i]);
 	}
-#endif
 }
+
+#endif

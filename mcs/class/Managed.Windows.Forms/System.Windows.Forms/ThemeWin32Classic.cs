@@ -51,7 +51,6 @@ namespace System.Windows.Forms
 		/* Hardcoded colour values not exposed in the API constants in all configurations */
 		protected static readonly Color arrow_color = Color.Black;
 		protected static readonly Color pen_ticks_color = Color.Black;
-		protected static readonly Color progressbarblock_color = Color.FromArgb (255, 0, 0, 128);
 		protected static StringFormat string_format_menu_text;
 		protected static StringFormat string_format_menu_shortcut;
 		protected static StringFormat string_format_menu_menubar_text;
@@ -660,7 +659,7 @@ namespace System.Windows.Forms
 				check_or_radio_checked = ((RadioButton)button).Checked;
 			}
 			
-			if ((button.Focused || button.paint_as_acceptbutton) && button.Enabled && !check_or_radio) {
+			if (button.Focused && button.Enabled && !check_or_radio) {
 				// shrink the rectangle for the normal button drawing inside the focus rectangle
 				borderRectangle = Rectangle.Inflate (button.ClientRectangle, -1, -1);
 			} else {
@@ -957,13 +956,60 @@ namespace System.Windows.Forms
 			if (button is CheckBox)
 				check_size = (button as CheckBox).Appearance == Appearance.Normal ? 13 : 0;
 				
-			glyphArea = new Rectangle (0, (button.Height - check_size) / 2, check_size, check_size);
+			glyphArea = new Rectangle (0, 2, check_size, check_size);
+			
+			Rectangle content_rect = button.ClientRectangle;
+			ContentAlignment align = ContentAlignment.TopLeft;;
+			
+			if (button is CheckBox)
+				align = (button as CheckBox).CheckAlign;
+			else if (button is RadioButton)
+				align = (button as RadioButton).CheckAlign;
+
+			switch (align) {
+				case ContentAlignment.BottomCenter:
+					glyphArea.Y = button.Height - check_size;
+					glyphArea.X = (button.Width - check_size) / 2 - 2;
+					break;
+				case ContentAlignment.BottomLeft:
+					glyphArea.Y = button.Height - check_size - 2;
+					content_rect.Width -= check_size;
+					content_rect.Offset (check_size, 0);
+					break;
+				case ContentAlignment.BottomRight:
+					glyphArea.Y = button.Height - check_size - 2;
+					glyphArea.X = button.Width - check_size;
+					content_rect.Width -= check_size;
+					break;
+				case ContentAlignment.MiddleCenter:
+					glyphArea.Y = (button.Height - check_size) / 2;
+					glyphArea.X = (button.Width - check_size) / 2;
+					break;
+				case ContentAlignment.MiddleLeft:
+					glyphArea.Y = (button.Height - check_size) / 2;
+					content_rect.Width -= check_size;
+					content_rect.Offset (check_size, 0);
+					break;
+				case ContentAlignment.MiddleRight:
+					glyphArea.Y = (button.Height - check_size) / 2;
+					glyphArea.X = button.Width - check_size;
+					content_rect.Width -= check_size;
+					break;
+				case ContentAlignment.TopCenter:
+					glyphArea.X = (button.Width - check_size) / 2;
+					break;
+				case ContentAlignment.TopLeft:
+					content_rect.Width -= check_size;
+					content_rect.Offset (check_size, 0);
+					break;
+				case ContentAlignment.TopRight:
+					glyphArea.X = button.Width - check_size;
+					content_rect.Width -= check_size;
+					break;
+			}
 			
 			Image image = button.Image;
 			string text = button.Text;
-			Rectangle content_rect = button.ClientRectangle;
-			content_rect.Width -= check_size;
-			content_rect.Offset (check_size, 0);
 			
 			Size proposed = Size.Empty;
 			
@@ -1599,7 +1645,7 @@ namespace System.Windows.Forms
 		public override void ComboBoxDrawBackground (ComboBox comboBox, Graphics g, Rectangle clippingArea, FlatStyle style)
 		{
 			if (!comboBox.Enabled)
-				g.FillRectangle (ResPool.GetSolidBrush (ColorControl), comboBox.Bounds);
+				g.FillRectangle (ResPool.GetSolidBrush (ColorControl), comboBox.ClientRectangle);
 
 			if (comboBox.DropDownStyle == ComboBoxStyle.Simple)
 				g.FillRectangle (ResPool.GetSolidBrush (comboBox.Parent.BackColor), comboBox.ClientRectangle);
@@ -1704,37 +1750,28 @@ namespace System.Windows.Forms
 
 		public override void DataGridPaintColumnHeaders (Graphics g, Rectangle clip, DataGrid grid)
 		{
+			if (!grid.CurrentTableStyle.ColumnHeadersVisible)
+				return;
+
 			Rectangle columns_area = grid.column_headers_area;
 
-            // Paint corner shared between row and column header
+			// Paint corner shared between row and column header
 			if (grid.CurrentTableStyle.CurrentRowHeadersVisible) {
 				Rectangle rect_bloc = grid.column_headers_area;
 				rect_bloc.Width = grid.RowHeaderWidth;
 				if (clip.IntersectsWith (rect_bloc)) {
-					if (grid.VisibleColumnCount > 0) {
-						if (grid.FlatMode)
-							g.FillRectangle (ResPool.GetSolidBrush (grid.CurrentTableStyle.CurrentHeaderBackColor), rect_bloc);
-						else
-							CPDrawBorder3D (g, rect_bloc, Border3DStyle.RaisedInner, 
-								Border3DSide.Left | Border3DSide.Right | 
-								Border3DSide.Top | Border3DSide.Bottom | Border3DSide.Middle, 
-								grid.CurrentTableStyle.CurrentHeaderBackColor);
-					} else {
-						g.FillRectangle (ResPool.GetSolidBrush (grid.BackgroundColor), rect_bloc);
-					}
+					if (grid.FlatMode)
+						g.FillRectangle (ResPool.GetSolidBrush (grid.CurrentTableStyle.CurrentHeaderBackColor), rect_bloc);
+					else
+						CPDrawBorder3D (g, rect_bloc, Border3DStyle.RaisedInner, 
+							Border3DSide.Left | Border3DSide.Right | 
+							Border3DSide.Top | Border3DSide.Bottom | Border3DSide.Middle, 
+							grid.CurrentTableStyle.CurrentHeaderBackColor);
 				}
 
 				columns_area.X += grid.RowHeaderWidth;
 				columns_area.Width -= grid.RowHeaderWidth;
 			}
-
-			// Set unused area
-			Rectangle column_headers_area_complete = columns_area;
-			column_headers_area_complete.Width = grid.column_headers_max_width;
-			
-			if (grid.CurrentTableStyle.CurrentRowHeadersVisible) {
-				column_headers_area_complete.Width -= grid.RowHeaderWidth;
-			}		
 
 			// Set column painting
 			Rectangle rect_columnhdr = new Rectangle ();
@@ -1768,11 +1805,10 @@ namespace System.Windows.Forms
 
 			g.Clip = prev_clip;
 				
-			Rectangle not_usedarea = column_headers_area_complete;				
-			not_usedarea.X = rect_columnhdr.X + rect_columnhdr.Width;
-			not_usedarea.Width = grid.ClientRectangle.X + grid.ClientRectangle.Width - rect_columnhdr.X - rect_columnhdr.Height;		
+			Rectangle not_usedarea = grid.column_headers_area;
+			not_usedarea.X = (column_cnt == 0) ? grid.RowHeaderWidth : rect_columnhdr.X + rect_columnhdr.Width;
+			not_usedarea.Width = grid.ClientRectangle.X + grid.ClientRectangle.Width - not_usedarea.X;
 			g.FillRectangle (ResPool.GetSolidBrush (grid.BackgroundColor), not_usedarea);
-			
 		}
 
 		public override void DataGridPaintColumnHeader (Graphics g, Rectangle bounds, DataGrid grid, int col)
@@ -2624,7 +2660,7 @@ namespace System.Windows.Forms
 			}	
 
 #if NET_2_0
-			if (control.ShowGroups && control.View != View.List && control.Groups.Count > 0) {
+			if (control.UsingGroups) {
 				// Use InternalCount instead of Count to take into account Default Group as needed
 				for (int i = 0; i < control.Groups.InternalCount; i++) {
 					ListViewGroup group = control.Groups.GetInternalGroup (i);
@@ -2635,7 +2671,7 @@ namespace System.Windows.Forms
 
 			ListViewInsertionMark insertion_mark = control.InsertionMark;
 			int insertion_mark_index = insertion_mark.Index;
-			if (insertion_mark.Bounds != Rectangle.Empty &&
+			if (Application.VisualStylesEnabled && insertion_mark.Bounds != Rectangle.Empty &&
 					(control.View != View.Details && control.View != View.List) &&
 					insertion_mark_index > -1 && insertion_mark_index < control.Items.Count) {
 
@@ -2648,30 +2684,27 @@ namespace System.Windows.Forms
 			
 			// draw the gridlines
 			if (details && control.GridLines) {
+				Size control_size = control.ClientSize;
 				int top = (control.HeaderStyle == ColumnHeaderStyle.None) ?
-					2 : control.Font.Height + 2;
+					0 : control.header_control.Height;
 
 				// draw vertical gridlines
-				foreach (ColumnHeader col in control.Columns)
+				foreach (ColumnHeader col in control.Columns) {
+					int column_right = col.Rect.Right - control.h_marker;
 					dc.DrawLine (SystemPens.Control,
-						     col.Rect.Right, top,
-						     col.Rect.Right, control.TotalHeight);
-				// draw horizontal gridlines
-				ListViewItem last_item = null;
-				foreach (ListViewItem item in control.Items) {
-					dc.DrawLine (SystemPens.Control,
-						     item.GetBounds (ItemBoundsPortion.Entire).Left, item.GetBounds (ItemBoundsPortion.Entire).Top,
-						     control.TotalWidth, item.GetBounds (ItemBoundsPortion.Entire).Top);
-					last_item = item;
+						     column_right, top,
+						     column_right, control_size.Height);
 				}
 
-				// draw a line after at the bottom of the last item
-				if (last_item != null) {
-					dc.DrawLine (SystemPens.Control,
-						     last_item.GetBounds (ItemBoundsPortion.Entire).Left,
-						     last_item.GetBounds (ItemBoundsPortion.Entire).Bottom,
-						     control.TotalWidth,
-						     last_item.GetBounds (ItemBoundsPortion.Entire).Bottom);
+				// draw horizontal gridlines
+				int item_height = control.ItemSize.Height;
+				if (item_height == 0)
+					item_height =  control.Font.Height + 2;
+
+				int y = top + item_height - (control.v_marker % item_height); // scroll bar offset
+				while (y < control_size.Height) {
+					dc.DrawLine (SystemPens.Control, 0, y, control_size.Width, y);
+					y += item_height;
 				}
 			}			
 			
@@ -2718,9 +2751,39 @@ namespace System.Windows.Forms
 						if (rect.Width <= 0)
 							continue;
 
-						dc.DrawString (col.Text, control.Font,
-							       SystemBrushes.ControlText,
-							       rect, col.Format);
+#if NET_2_0
+						int image_index;
+						if (control.SmallImageList == null)
+							image_index = -1;
+						else 
+							image_index = col.ImageKey == String.Empty ? col.ImageIndex : control.SmallImageList.Images.IndexOfKey (col.ImageKey);
+
+						if (image_index > -1 && image_index < control.SmallImageList.Images.Count) {
+							int image_width = control.SmallImageList.ImageSize.Width + 5;
+							int text_width = (int)dc.MeasureString (col.Text, control.Font).Width;
+							int x_origin = rect.X;
+
+							switch (col.TextAlign) {
+								case HorizontalAlignment.Left:
+									break;
+								case HorizontalAlignment.Right:
+									x_origin = rect.Right - (text_width + image_width);
+									break;
+								case HorizontalAlignment.Center:
+									x_origin = (rect.Width - (text_width + image_width)) / 2 + rect.X;
+									break;
+							}
+
+							if (x_origin < rect.X)
+								x_origin = rect.X;
+
+							control.SmallImageList.Draw (dc, new Point (x_origin, rect.Y), image_index);
+							rect.X += image_width;
+							rect.Width -= image_width;
+						}
+#endif
+
+						dc.DrawString (col.Text, control.Font, SystemBrushes.ControlText, rect, col.Format);
 					}
 					int right = control.GetReorderedColumn (control.Columns.Count - 1).Rect.Right - control.h_marker;
 					if (right < control.Right) {
@@ -2951,7 +3014,7 @@ namespace System.Windows.Forms
 
 #if NET_2_0
 			// Tile view renders its Text in a different fashion
-			if (control.View == View.Tile) {
+			if (control.View == View.Tile && Application.VisualStylesEnabled) {
 				// Item.Text is drawn using its first subitem's bounds
 				dc.DrawString (item.Text, item.Font, textBrush, item.SubItems [0].Bounds, format);
 
@@ -2989,10 +3052,12 @@ namespace System.Windows.Forms
 						width += col.Width;
 					focus_rect = new Rectangle (0, full_rect.Y, width, full_rect.Height);
 				}
-				if (item.Selected)
-					CPDrawFocusRectangle (dc, focus_rect, ColorHighlightText, ColorHighlight);
-				else
-					CPDrawFocusRectangle (dc, focus_rect, control.ForeColor, control.BackColor);
+				if (control.ShowFocusCues) {
+					if (item.Selected)
+						CPDrawFocusRectangle (dc, focus_rect, ColorHighlightText, ColorHighlight);
+					else
+						CPDrawFocusRectangle (dc, focus_rect, control.ForeColor, control.BackColor);
+				}
 			}
 
 			format.Dispose ();
@@ -3025,6 +3090,7 @@ namespace System.Windows.Forms
 			ColumnHeader col = control.Columns [index];
 			StringFormat format = new StringFormat ();
 			format.Alignment = col.Format.Alignment;
+			format.LineAlignment = StringAlignment.Center;
 			format.FormatFlags = StringFormatFlags.NoWrap;
 			format.Trimming = StringTrimming.EllipsisCharacter;
 
@@ -3139,7 +3205,17 @@ namespace System.Windows.Forms
 		// Sizing
 		public override int ListViewGetHeaderHeight (ListView listView, Font font)
 		{
+			return ListViewGetHeaderHeight (font);
+		}
+
+		static int ListViewGetHeaderHeight (Font font)
+		{
 			return font.Height + 5;
+		}
+
+		public static int ListViewGetHeaderHeight ()
+		{
+			return ListViewGetHeaderHeight (ThemeEngine.Current.DefaultFont);
 		}
 
 		public override Size ListViewCheckBoxSize {
@@ -3423,16 +3499,6 @@ namespace System.Windows.Forms
 					brush_text,
 					rect_text, string_format);
 				
-				if (!item.MenuBar && item.Shortcut != Shortcut.None && item.ShowShortcut) {
-					string str = item.GetShortCutText ();
-					Rectangle rect = rect_text;
-					rect.X = item.XTab;
-					rect.Width -= item.XTab;
-
-					e.Graphics.DrawString (str, e.Font, brush_text,
-						rect, string_format_menu_shortcut);
-				}
-				
 				if (item.MenuBar) {
 					Border3DStyle border_style = Border3DStyle.Adjust;
 					if ((item.Status & DrawItemState.HotLight) != 0)
@@ -3448,9 +3514,29 @@ namespace System.Windows.Forms
 					e.Graphics.DrawString (item.Text, e.Font, Brushes.White, 
 							       new RectangleF(rect_text.X + 1, rect_text.Y + 1, rect_text.Width, rect_text.Height),
 							       string_format);
+
 				}
 				
 				e.Graphics.DrawString (item.Text, e.Font, ResPool.GetSolidBrush(ColorGrayText), rect_text, string_format);
+			}
+
+			if (!item.MenuBar && item.Shortcut != Shortcut.None && item.ShowShortcut) {
+				string str = item.GetShortCutText ();
+				Rectangle rect = rect_text;
+				rect.X = item.XTab;
+				rect.Width -= item.XTab;
+
+				if (item.Enabled) {
+					e.Graphics.DrawString (str, e.Font, brush_text, rect, string_format_menu_shortcut);
+				} else {
+					if ((item.Status & DrawItemState.Selected) != DrawItemState.Selected) {
+						e.Graphics.DrawString (str, e.Font, Brushes.White, 
+								       new RectangleF(rect.X + 1, rect.Y + 1, rect.Width, rect_text.Height),
+								       string_format_menu_shortcut);
+
+					}
+					e.Graphics.DrawString (str, e.Font, ResPool.GetSolidBrush(ColorGrayText), rect, string_format_menu_shortcut);
+				}
 			}
 
 			/* Draw arrow */
@@ -4176,7 +4262,7 @@ namespace System.Windows.Forms
 			case 1: { // Continuous
 				int pixels_to_draw;
 				pixels_to_draw = (int)(client_area.Width * ((double)(ctrl.Value - ctrl.Minimum) / (double)(Math.Max(ctrl.Maximum - ctrl.Minimum, 1))));
-				dc.FillRectangle (ResPool.GetSolidBrush (progressbarblock_color), new Rectangle (client_area.X, client_area.Y, pixels_to_draw, client_area.Height));
+				dc.FillRectangle (ResPool.GetSolidBrush (ctrl.ForeColor), new Rectangle (client_area.X, client_area.Y, pixels_to_draw, client_area.Height));
 				break;
 			}
 			case 2: // Marquee
@@ -4192,13 +4278,14 @@ namespace System.Windows.Forms
 			case 0:
 			default:  // Blocks
 				Rectangle block_rect;
-				int space_betweenblocks = 2;
+				int space_betweenblocks = ProgressBarChunkSpacing;
 				int block_width;
 				int increment;
 				int barpos_pixels;
 				int block_count = 0;
 				
-				block_width = (client_area.Height * 2) / 3;
+				block_width = ProgressBarGetChunkSize (client_area.Height);
+				block_width = Math.Max (block_width, 0); // block_width is used to break out the loop below, it must be >= 0!
 				barpos_pixels = (int)(((double)(ctrl.Value - ctrl.Minimum) * client_area.Width) / (Math.Max (ctrl.Maximum - ctrl.Minimum, 1)));
 				increment = block_width + space_betweenblocks;
 				
@@ -4215,7 +4302,7 @@ namespace System.Windows.Forms
 					}
 					
 					if (clip_rect.IntersectsWith (block_rect) == true) {				
-						dc.FillRectangle (ResPool.GetSolidBrush (progressbarblock_color), block_rect);
+						dc.FillRectangle (ResPool.GetSolidBrush (ctrl.ForeColor), block_rect);
 					}				
 					
 					block_rect.X  += increment;
@@ -4226,9 +4313,24 @@ namespace System.Windows.Forms
 			}
 		}
 		
+		public const int ProgressBarChunkSpacing = 2;
+
+		public static int ProgressBarGetChunkSize ()
+		{
+			return ProgressBarGetChunkSize (ProgressBarDefaultHeight);
+		}
+		
+		static int ProgressBarGetChunkSize (int progressBarClientAreaHeight)
+		{
+			int size = (progressBarClientAreaHeight * 2) / 3;
+			return size;
+		}
+
+		const int ProgressBarDefaultHeight = 23;
+
 		public override Size ProgressBarDefaultSize {
 			get {
-				return new Size (100, 23);
+				return new Size (100, ProgressBarDefaultHeight);
 			}
 		}
 
@@ -4829,16 +4931,13 @@ namespace System.Windows.Forms
 				return;
 			}
 
-			if (panel.Text == String.Empty)
-					return;
-
 			string text = panel.Text;
 			StringFormat string_format = new StringFormat ();
 			string_format.Trimming = StringTrimming.Character;
 			string_format.FormatFlags = StringFormatFlags.NoWrap;
 
 			
-			if (text [0] == '\t') {
+			if (text != null && text.Length > 0 && text [0] == '\t') {
 				string_format.Alignment = StringAlignment.Center;
 				text = text.Substring (1);
 				if (text [0] == '\t') {
@@ -4986,16 +5085,6 @@ namespace System.Windows.Forms
 		public override void DrawTabControl (Graphics dc, Rectangle area, TabControl tab)
 		{
 			ThemeElements.CurrentTheme.TabControlPainter.Draw (dc, area, tab);
-		}
-
-		public override Rectangle TabControlGetLeftScrollRect (TabControl tab)
-		{
-			return ThemeElements.CurrentTheme.TabControlPainter.GetLeftScrollRect (tab);
-		}
-
-		public override Rectangle TabControlGetRightScrollRect (TabControl tab)
-		{
-			return ThemeElements.CurrentTheme.TabControlPainter.GetRightScrollRect (tab);
 		}
 
 		public override Rectangle TabControlGetDisplayRectangle (TabControl tab)
@@ -5307,7 +5396,7 @@ namespace System.Windows.Forms
 #else
 			Color foreground = this.ColorInfoText;
 #endif
-			TextFormatFlags flags = TextFormatFlags.HidePrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter;
+			TextFormatFlags flags = TextFormatFlags.HidePrefix;
 			TextRenderer.DrawTextInternal (dc, control.Text, control.Font, text_rect, foreground, flags, false);
 		}
 
@@ -5524,7 +5613,7 @@ namespace System.Windows.Forms
 				thumb_area.X = area.X + channel_startpoint.X;
 				thumb_area.Y = area.Y + channel_startpoint.Y;
 				thumb_area.Height = area.Height - space_from_right - space_from_left;
-				thumb_area.Width = 4;
+				thumb_area.Width = TrackBarVerticalTrackWidth;
 
 				pixel_len = thumb_area.Height - 11;
 				if (tb.Maximum == tb.Minimum) {
@@ -5572,7 +5661,7 @@ namespace System.Windows.Forms
 				thumb_area.X = area.X + channel_startpoint.X;
 				thumb_area.Y = area.Y + channel_startpoint.Y;
 				thumb_area.Width = area.Width - space_from_right - space_from_left;
-				thumb_area.Height = 4;
+				thumb_area.Height = TrackBarHorizontalTrackHeight;
 
 				pixel_len = thumb_area.Width - 11;
 				if (tb.Maximum == tb.Minimum) {
@@ -5589,9 +5678,18 @@ namespace System.Windows.Forms
 
 		protected virtual Size TrackBarGetThumbSize (TrackBar trackBar)
 		{
+			return TrackBarGetThumbSize ();
+		}
+
+		public static Size TrackBarGetThumbSize ()
+		{
 			/* Draw thumb fixed 10x22 size */
 			return new Size (10, 22);
 		}
+
+		public const int TrackBarVerticalTrackWidth = 4;
+
+		public const int TrackBarHorizontalTrackHeight = 4;
 
 		#region Ticks
 		protected interface ITrackBarTickPainter

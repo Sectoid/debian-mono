@@ -69,14 +69,14 @@ namespace System.Web.UI.WebControls {
 		}
 
 		#region Fields
-		private int styles;
-		private int stylesTraked;
+		int styles;
+		int stylesTraked;
 		internal StateBag	viewstate;
-		private FontInfo	fontinfo;
-		private bool		tracking;
+		FontInfo	fontinfo;
+		bool		tracking;
 		bool _isSharedViewState;
 #if NET_2_0
-		private string		registered_class;
+		string		registered_class;
 #endif
 		#endregion	// Fields
 
@@ -173,6 +173,9 @@ namespace System.Web.UI.WebControls {
 
 			set 
 			{
+				if (value < BorderStyle.NotSet || value > BorderStyle.Outset)
+					throw new ArgumentOutOfRangeException ("value", "The selected value is not one of the BorderStyle enumeration values.");
+				
 				viewstate["BorderStyle"] = value;
 				SetBit ((int) Styles.BorderStyle);
 			}
@@ -217,12 +220,16 @@ namespace System.Web.UI.WebControls {
 		{
 			get 
 			{
-				if (!CheckBit ((int) Styles.CssClass)) 
+				if (!CheckBit ((int) Styles.CssClass))
 				{
-					return string.Empty;
+					return String.Empty;
 				}
 
-				return (string)viewstate["CssClass"];
+				string ret = viewstate["CssClass"] as string;
+				if (ret == null)
+					return String.Empty;
+
+				return ret;
 			}
 
 			set 
@@ -403,16 +410,18 @@ namespace System.Web.UI.WebControls {
 		{
 #if NET_2_0
 			if (RegisteredCssClass.Length > 0) {
-				if (CssClass.Length > 0)
-					writer.AddAttribute (HtmlTextWriterAttribute.Class, CssClass + " " + RegisteredCssClass);
+				string cssclass = CssClass;
+				if (!String.IsNullOrEmpty (cssclass))
+					writer.AddAttribute (HtmlTextWriterAttribute.Class, cssclass + " " + RegisteredCssClass);
 				else
 					writer.AddAttribute (HtmlTextWriterAttribute.Class, RegisteredCssClass);
 			}
 			else 
 #endif
 			{
-				if (CssClass.Length > 0)
-					writer.AddAttribute (HtmlTextWriterAttribute.Class, CssClass);
+				string cssclass = CssClass;
+				if (cssclass != null && cssclass.Length > 0)
+					writer.AddAttribute (HtmlTextWriterAttribute.Class, cssclass);
 #if NET_2_0
 				CssStyleCollection col = new CssStyleCollection ();
 				FillStyleAttributes (col, owner);
@@ -487,32 +496,33 @@ namespace System.Web.UI.WebControls {
 
 			if (CheckBit ((int) Style.Styles.FontAll)) {
 				// Fonts are a bit weird
-				if (fontinfo.Name != string.Empty) {
-					s = fontinfo.Names[0];
-					for (int i = 1; i < fontinfo.Names.Length; i++)
-						s += "," + fontinfo.Names[i];
+				FontInfo font = Font;
+				if (font.Name != string.Empty) {
+					s = font.Names[0];
+					for (int i = 1; i < font.Names.Length; i++)
+						s += "," + font.Names[i];
 					writer.AddStyleAttribute (HtmlTextWriterStyle.FontFamily, s);
 				}
 
-				if (fontinfo.Bold)
+				if (font.Bold)
 					writer.AddStyleAttribute (HtmlTextWriterStyle.FontWeight, "bold");
 
-				if (fontinfo.Italic)
+				if (font.Italic)
 					writer.AddStyleAttribute (HtmlTextWriterStyle.FontStyle, "italic");
 
-				if (!fontinfo.Size.IsEmpty)
-					writer.AddStyleAttribute (HtmlTextWriterStyle.FontSize, fontinfo.Size.ToString());
+				if (!font.Size.IsEmpty)
+					writer.AddStyleAttribute (HtmlTextWriterStyle.FontSize, font.Size.ToString());
 
 				// These styles are munged into a attribute decoration
 				s = string.Empty;
 
-				if (fontinfo.Overline)
+				if (font.Overline)
 					s += "overline ";
 
-				if (fontinfo.Strikeout)
+				if (font.Strikeout)
 					s += "line-through ";
 
-				if (fontinfo.Underline)
+				if (font.Underline)
 					s += "underline ";
 
 				s = (s != "") ? s : AlwaysRenderTextDecoration ? "none" : "";

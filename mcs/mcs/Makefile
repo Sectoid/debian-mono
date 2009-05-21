@@ -36,7 +36,7 @@ PROGRAM_COMPILE = $(BOOT_COMPILE)
 CLEAN_FILES += y.output
 
 %-parser.cs: %-parser.jay $(topdir)/jay/skeleton.cs
-	$(topdir)/jay/jay -ctv < $(topdir)/jay/skeleton.cs $< > jay-tmp.out && mv jay-tmp.out $@
+	$(topdir)/jay/jay -cv < $(topdir)/jay/skeleton.cs $< > jay-tmp.out && mv jay-tmp.out $@
 
 
 ifeq (net_2_0_bootstrap, $(PROFILE))
@@ -51,7 +51,7 @@ clean-program:
 
 $(PROGRAM) $(PROGRAM).config: $(dir $(PROGRAM))/.stamp
 
-$(PROGRAM): $(topdir)/class/lib/default/mcs.exe
+$(PROGRAM): $(topdir)/class/lib/net_1_1/mcs.exe
 	cp $< $@
 
 $(PROGRAM).config: gmcs.exe.config
@@ -83,6 +83,10 @@ KEEP_OUTPUT_FILE_COPY = yes
 
 include ../build/executable.make
 endif
+
+#
+# Below this line we have local targets used for testing and development
+#
 
 # Testing targets
 
@@ -126,11 +130,27 @@ do-corlib:
 
 PROFILER=default
 
+do-gettext:
+	xgettext --keyword='Report.Error:3' --keyword='Report.Error:2' --keyword='Report.Warning:3' --keyword='Report.Warning:2' -o mcs.po --language='C#' `cat gmcs.exe.sources | grep -v /`
+
 profile : $(PROGRAM)
 	$(RUNTIME) $(RUNTIME_FLAGS) --profile=$(PROFILER) $(PROGRAM) $(USE_MCS_FLAGS) -target:exe -out:mcs2.exe $(BUILT_SOURCES) @$(response)
 
+#
+# quick hack target, to quickly develop the gmcs compiler
+# Update manually.
 qh:
-	MONO_PATH="../class/lib/net_2_0_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) ../class/lib/net_2_0_bootstrap/gmcs.exe  /codepage:65001 -d:GMCS_SOURCE  -d:NET_1_1 -d:NET_2_0 -debug -target:exe -out:gmcs.exe cs-parser.cs  @gmcs.exe.sources
+	MONO_PATH="../class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) ../class/lib/net_2_0/gmcs.exe  /codepage:65001 -d:GMCS_SOURCE  -d:NET_1_1 -d:NET_2_0 -debug -target:exe -out:gmcs.exe cs-parser.cs  @gmcs.exe.sources
 	@ cp $(COMPILER_NAME).exe* $(topdir)/class/lib/$(PROFILE)/
-	
-	
+
+q: cs-parser.cs qh
+	echo 'System.Console.WriteLine ("Hello");' | mono csharp.exe
+	echo -e 'using System;\nConsole.WriteLine ("hello");' | mono csharp.exe
+	echo -e '"foo" == "bar";' | mono csharp.exe
+	echo -e 'var a = 1;\na + 2;' | mono csharp.exe
+	echo -e 'int j;\nj = 1;' | mono csharp.exe
+	echo -e 'var a = new int[]{1,2,3};\nfrom x in a select x;' | mono csharp.exe
+	echo -e 'var a = from f in System.IO.Directory.GetFiles ("/tmp") where f == "passwd" select f;' | mono csharp.exe
+
+
+

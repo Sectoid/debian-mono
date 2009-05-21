@@ -21,7 +21,7 @@ using CategoryAttribute = NUnit.Framework.CategoryAttribute;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class FormTest
+	public class FormTest : TestHelper
 	{
 		[Test]
 		public void AcceptButton ()
@@ -656,14 +656,14 @@ namespace MonoTests.System.Windows.Forms
 				f.ShowDialog ();
 
 				Assert.AreEqual ("VisibleChanged", f.Reason, "#B0");
-				Assert.AreEqual (1, log.CountEvents ("Closing"), "#B1");
 #if NET_2_0
+				Assert.AreEqual (1, log.CountEvents ("Closing"), "#B1");
 				Assert.AreEqual (1, log.CountEvents ("FormClosing"), "#B2");
 #endif
 				Assert.AreEqual (1, log.CountEvents ("HandleDestroyed"), "#B3");
 
-				Assert.AreEqual (1, log.CountEvents ("Closed"), "#B4");
 #if NET_2_0
+				Assert.AreEqual (1, log.CountEvents ("Closed"), "#B4");
 				Assert.AreEqual (1, log.CountEvents ("FormClosed"), "#B5");
 #endif
 				Assert.AreEqual (0, log.CountEvents ("Disposed"), "#B6");
@@ -2013,19 +2013,22 @@ namespace MonoTests.System.Windows.Forms
 			Assert.IsFalse (myform.IsDisposed, "A2");
 
 			myform.Close ();
-
-			Assert.IsFalse (myform.Visible, "A3");
-			Assert.IsFalse (myform.IsDisposed, "A4");
+#if NET_2_0
+			Assert.IsTrue (myform.IsDisposed, "A3");
+#else
+			Assert.IsFalse (myform.Visible, "A4");
+			Assert.IsFalse (myform.IsDisposed, "A5");
 
 			myform.Show ();
 
-			Assert.IsTrue (myform.Visible, "A5");
-			Assert.IsFalse (myform.IsDisposed, "A6");
+			Assert.IsTrue (myform.Visible, "A6");
+			Assert.IsFalse (myform.IsDisposed, "A7");
 
 			myform.Close ();
 
-			Assert.IsFalse (myform.Visible, "A7");
-			Assert.IsTrue (myform.IsDisposed, "A8");
+			Assert.IsFalse (myform.Visible, "A8");
+			Assert.IsTrue (myform.IsDisposed, "A9");
+#endif
 		}
 
 		[Test]
@@ -2038,11 +2041,13 @@ namespace MonoTests.System.Windows.Forms
 			Assert.IsFalse (f.Visible, "A1");
 			f.Close ();
 			Assert.AreEqual (0, f.close_count, "A2");
-
-
+#if NET_2_0
+			Assert.IsTrue (f.IsDisposed, "A3");
+#else
 			f.Show ();
 			f.Close ();
-			Assert.AreEqual (1, f.close_count, "A3");
+			Assert.AreEqual (1, f.close_count, "A4");
+#endif
 		}
 
 		class WMCloseWatcher : Form {
@@ -2081,9 +2086,9 @@ namespace MonoTests.System.Windows.Forms
 		[Test]
 		public void OnActivateEventHandlingTest1 ()
 		{
-			if (TestHelper.RunningOnUnix) {
-				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
-			}
+//			if (TestHelper.RunningOnUnix) {
+//				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
+//			}
 
 			SwallowOnActivated f = new SwallowOnActivated ();
 
@@ -2303,6 +2308,39 @@ namespace MonoTests.System.Windows.Forms
 			Assert.AreEqual (new Size (292, 266), f.ClientSize, "A4");
 		}
 #endif
+
+		[Test]  // bug #438866
+		public void MinMaxSize ()
+		{
+			Form f = new Form ();
+			
+			f.MinimumSize = new Size (200, 200);
+			f.MaximumSize = new Size (150, 150);
+
+			Assert.AreEqual (new Size (150, 150), f.MinimumSize, "A1");
+			Assert.AreEqual (new Size (150, 150), f.MaximumSize, "A2");
+			
+			f.MinimumSize = new Size (200, 200);
+
+			Assert.AreEqual (new Size (200, 200), f.MinimumSize, "A3");
+			Assert.AreEqual (new Size (200, 200), f.MaximumSize, "A4");
+			
+			f.Dispose ();
+		}
+
+		[Test]
+		public void MinSizeIssue ()
+		{
+			Form f = new Form ();
+
+			f.MinimumSize = new Size (100, 100);
+
+			f.Show ();
+
+			Assert.AreEqual (new Size (300, 300), f.Size, "A1");
+
+			f.Dispose ();
+		}
 		
 		[Test]  // Bug #81582
 		[Category ("NotWorking")]
@@ -2338,9 +2376,9 @@ namespace MonoTests.System.Windows.Forms
 		[Test] // bug #339641
 		public void ChildFocused ()
 		{
-			if (TestHelper.RunningOnUnix) {
-				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
-			}
+//			if (TestHelper.RunningOnUnix) {
+//				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
+//			}
 			using (Form f = new TimeBombedForm ()) {
 				TreeView tv = new TreeView ();
 				EventLogger log = new EventLogger (tv);

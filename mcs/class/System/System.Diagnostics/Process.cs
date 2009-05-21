@@ -334,6 +334,10 @@ namespace System.Diagnostics {
 			}
 		}
 
+		/* data type is from the MonoProcessData enum in mono-proclib.h in the runtime */
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern static long GetProcessData (int pid, int data_type, out int error);
+
 		[MonoTODO]
 #if NET_2_0
 		[Obsolete ("Use NonpagedSystemMemorySize64")]
@@ -382,7 +386,6 @@ namespace System.Diagnostics {
 			}
 		}
 
-		[MonoTODO]
 #if NET_2_0
 		[Obsolete ("Use PeakVirtualMemorySize64")]
 #endif
@@ -390,11 +393,11 @@ namespace System.Diagnostics {
 		[MonitoringDescription ("The maximum amount of virtual memory used by this process.")]
 		public int PeakVirtualMemorySize {
 			get {
-				return(0);
+				int error;
+				return (int)GetProcessData (pid, 8, out error);
 			}
 		}
 
-		[MonoTODO]
 #if NET_2_0
 		[Obsolete ("Use PeakWorkingSet64")]
 #endif
@@ -402,7 +405,8 @@ namespace System.Diagnostics {
 		[MonitoringDescription ("The maximum amount of system memory used by this process.")]
 		public int PeakWorkingSet {
 			get {
-				return(0);
+				int error;
+				return (int)GetProcessData (pid, 5, out error);
 			}
 		}
 
@@ -447,23 +451,23 @@ namespace System.Diagnostics {
 			}
 		}
 
-		[MonoTODO]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The maximum amount of virtual memory used by this process.")]
 		[ComVisible (false)]
 		public long PeakVirtualMemorySize64 {
 			get {
-				return(0);
+				int error;
+				return GetProcessData (pid, 8, out error);
 			}
 		}
 
-		[MonoTODO]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The maximum amount of system memory used by this process.")]
 		[ComVisible (false)]
 		public long PeakWorkingSet64 {
 			get {
-				return(0);
+				int error;
+				return GetProcessData (pid, 5, out error);
 			}
 		}
 #endif
@@ -514,7 +518,6 @@ namespace System.Diagnostics {
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		static extern bool SetPriorityClass (IntPtr handle, int priority, out int error);
 
-		[MonoTODO]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The amount of memory exclusively used by this process.")]
 #if NET_2_0
@@ -522,7 +525,8 @@ namespace System.Diagnostics {
 #endif
 		public int PrivateMemorySize {
 			get {
-				return(0);
+				int error;
+				return (int)GetProcessData (pid, 6, out error);
 			}
 		}
 
@@ -718,7 +722,6 @@ namespace System.Diagnostics {
 			}
 		}
 
-		[MonoTODO]
 #if NET_2_0
 		[Obsolete ("Use VirtualMemorySize64")]
 #endif
@@ -726,11 +729,11 @@ namespace System.Diagnostics {
 		[MonitoringDescription ("The amount of virtual memory currently used for this process.")]
 		public int VirtualMemorySize {
 			get {
-				return(0);
+				int error;
+				return (int)GetProcessData (pid, 7, out error);
 			}
 		}
 
-		[MonoTODO]
 #if NET_2_0
 		[Obsolete ("Use WorkingSet64")]
 #endif
@@ -738,38 +741,39 @@ namespace System.Diagnostics {
 		[MonitoringDescription ("The amount of physical memory currently used for this process.")]
 		public int WorkingSet {
 			get {
-				return(0);
+				int error;
+				return (int)GetProcessData (pid, 4, out error);
 			}
 		}
 
 #if NET_2_0
-		[MonoTODO]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The amount of memory exclusively used by this process.")]
 		[ComVisible (false)]
 		public long PrivateMemorySize64 {
 			get {
-				return(0);
+				int error;
+				return GetProcessData (pid, 6, out error);
 			}
 		}
 
-		[MonoTODO]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The amount of virtual memory currently used for this process.")]
 		[ComVisible (false)]
 		public long VirtualMemorySize64 {
 			get {
-				return(0);
+				int error;
+				return GetProcessData (pid, 7, out error);
 			}
 		}
 
-		[MonoTODO]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The amount of physical memory currently used for this process.")]
 		[ComVisible (false)]
 		public long WorkingSet64 {
 			get {
-				return(0);
+				int error;
+				return GetProcessData (pid, 4, out error);
 			}
 		}
 #endif
@@ -964,7 +968,7 @@ namespace System.Diagnostics {
 						   Process process)
 		{
 			ProcInfo proc_info=new ProcInfo();
-			IntPtr stdin_rd, stdin_wr;
+			IntPtr stdin_rd = IntPtr.Zero, stdin_wr = IntPtr.Zero;
 			IntPtr stdout_wr;
 			IntPtr stderr_wr;
 			bool ret;
@@ -981,8 +985,23 @@ namespace System.Diagnostics {
 			}
 
 			if (startInfo.RedirectStandardInput == true) {
-				ret = MonoIO.CreatePipe (out stdin_rd,
-						         out stdin_wr);
+				if (IsWindows) {
+					int DUPLICATE_SAME_ACCESS = 0x00000002;
+					IntPtr stdin_wr_tmp;
+
+					ret = MonoIO.CreatePipe (out stdin_rd,
+									 out stdin_wr_tmp);
+					if (ret) {
+						ret = MonoIO.DuplicateHandle (Process.GetCurrentProcess ().Handle, stdin_wr_tmp,
+						Process.GetCurrentProcess ().Handle, out stdin_wr, 0, 0, DUPLICATE_SAME_ACCESS);
+						MonoIO.Close (stdin_wr_tmp, out error);
+					}
+				}
+				else
+				{
+					ret = MonoIO.CreatePipe (out stdin_rd,
+									 out stdin_wr);
+				}
 				if (ret == false) {
 					throw new IOException ("Error creating standard input pipe");
 				}
@@ -996,9 +1015,23 @@ namespace System.Diagnostics {
 			}
 
 			if (startInfo.RedirectStandardOutput == true) {
-				IntPtr out_rd;
-				ret = MonoIO.CreatePipe (out out_rd,
-						         out stdout_wr);
+				IntPtr out_rd = IntPtr.Zero;
+				if (IsWindows) {
+					IntPtr out_rd_tmp;
+					int DUPLICATE_SAME_ACCESS = 0x00000002;
+
+					ret = MonoIO.CreatePipe (out out_rd_tmp,
+									 out stdout_wr);
+					if (ret) {
+						MonoIO.DuplicateHandle (Process.GetCurrentProcess ().Handle, out_rd_tmp,
+						Process.GetCurrentProcess ().Handle, out out_rd, 0, 0, DUPLICATE_SAME_ACCESS);
+						MonoIO.Close (out_rd_tmp, out error);
+					}
+				}
+				else {
+					ret = MonoIO.CreatePipe (out out_rd,
+									 out stdout_wr);
+				}
 
 				process.stdout_rd = out_rd;
 				if (ret == false) {
@@ -1015,9 +1048,23 @@ namespace System.Diagnostics {
 			}
 
 			if (startInfo.RedirectStandardError == true) {
-				IntPtr err_rd;
-				ret = MonoIO.CreatePipe (out err_rd,
-						         out stderr_wr);
+				IntPtr err_rd = IntPtr.Zero;
+				if (IsWindows) {
+					IntPtr err_rd_tmp;
+					int DUPLICATE_SAME_ACCESS = 0x00000002;
+
+					ret = MonoIO.CreatePipe (out err_rd_tmp,
+									 out stderr_wr);
+					if (ret) {
+						MonoIO.DuplicateHandle (Process.GetCurrentProcess ().Handle, err_rd_tmp,
+						Process.GetCurrentProcess ().Handle, out err_rd, 0, 0, DUPLICATE_SAME_ACCESS);
+						MonoIO.Close (err_rd_tmp, out error);
+					}
+				}
+				else {
+					ret = MonoIO.CreatePipe (out err_rd,
+									 out stderr_wr);
+				}
 
 				process.stderr_rd = err_rd;
 				if (ret == false) {
@@ -1237,14 +1284,22 @@ namespace System.Diagnostics {
 			return WaitForExit_internal (process_handle, ms);
 		}
 
+		/* Waits up to ms milliseconds for process 'handle' to 
+		 * wait for input.  ms can be <0 to mean wait forever.
+		 */
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern bool WaitForInputIdle_internal(IntPtr handle, int ms);
+
+		// The internal call is only implemented properly on Windows.
 		[MonoTODO]
 		public bool WaitForInputIdle() {
-			return(false);
+			return WaitForInputIdle (-1);
 		}
 
+		// The internal call is only implemented properly on Windows.
 		[MonoTODO]
 		public bool WaitForInputIdle(int milliseconds) {
-			return(false);
+			return WaitForInputIdle_internal (process_handle, milliseconds);
 		}
 
 		private static bool IsLocalMachine (string machineName)
@@ -1348,7 +1403,7 @@ namespace System.Diagnostics {
 						completed = true;
 						if (wait_handle != null)
 							wait_handle.Set ();
-						Flush (true);
+						FlushLast ();
 						return;
 					}
 
@@ -1366,6 +1421,16 @@ namespace System.Diagnostics {
 				}
 			}
 
+			void FlushLast ()
+			{
+				Flush (true);
+				if (err_out) {
+					process.OnOutputDataReceived (null);
+				} else {
+					process.OnErrorDataReceived (null);
+				}
+			}
+			
 			void Flush (bool last)
 			{
 				if (sb.Length == 0 ||
@@ -1575,6 +1640,21 @@ namespace System.Diagnostics {
 			synchronizingObject.BeginInvoke (exited_event, args);
 		}
 
+		static bool IsWindows
+		{
+			get
+			{
+				PlatformID platform = Environment.OSVersion.Platform;
+				if (platform == PlatformID.Win32S ||
+					platform == PlatformID.Win32Windows ||
+					platform == PlatformID.Win32NT ||
+					platform == PlatformID.WinCE) {
+					return true;
+				}
+				return false;
+			}
+		}
+
 		class ProcessWaitHandle : WaitHandle
 		{
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
@@ -1585,27 +1665,9 @@ namespace System.Diagnostics {
 				// Need to keep a reference to this handle,
 				// in case the Process object is collected
 				Handle = ProcessHandle_duplicate (handle);
-			}
 
-			[MethodImplAttribute (MethodImplOptions.InternalCall)]
-			private extern static void ProcessHandle_close (IntPtr handle);
-			
-			private bool disposed = false;
-			
-			protected override void Dispose (bool explicitDisposing)
-			{
-				if (this.disposed == false) {
-					this.disposed = true;
-					
-					ProcessHandle_close (Handle);
-					Handle = IntPtr.Zero;
-				}
-				base.Dispose (explicitDisposing);
-			}
-
-			~ProcessWaitHandle ()
-			{
-				Dispose (false);
+				// When the wait handle is disposed, the duplicated handle will be
+				// closed, so no need to override dispose (bug #464628).
 			}
 		}
 	}

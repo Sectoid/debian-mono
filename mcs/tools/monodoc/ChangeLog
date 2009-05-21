@@ -1,0 +1,130 @@
+2009-02-25  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: 
+	  - s/TEST_FILES/MAN_TEST_FILES/g: $(TEST_FILES) is used by the normal
+	    build process, so the local definition is lost (and thus ignored).
+	    Result: Test/* isn't actually copied.  Oops.  Changing to
+	    MAN_TEST_FILES allows things to be copied.
+	  - Fix the filenames within $(MAN_TEST_FILES) so `make dist-local'
+	    works without error.
+	  - Fixes #479753.
+
+2009-01-05  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: Fix $(the_lib) dependencies so that monodoc.dll is rebuilt
+	  when one of Resources/* is modified.
+	* Resources/mdoc-html-utils.xsl: Rework the Requirements block so that
+	  it doesn't require //AssemblyInfo or //AssemblyVersion.  This allows
+	  `mdoc update -fno-assembly-versions ...`-produced XML to still
+	  produce HTML with a Requirements section (skipping the Assembly
+	  Versions block but generating the Namespace and Assembly blocks).
+	  Change the behavior of //since generation so that instead of
+	  printing out a note before the method summary, a Since block is added
+	  to the Requirements section, and the Since block contains the
+	  //since/@version text.  All this to make Mike Kestner happier. :-)
+
+2008-10-29  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Monodoc/xhtml-provider.cs: Use HelpSource.Message(), not 
+	  Console.WriteLine().
+
+2008-10-28  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Monodoc/provider.cs: Add HelpSource.InlineCss and
+	  HelpSource.InlineJavaScript virtual properties, so that the help
+	  source can provide specific CSS and JavaScript to be included into
+	  the generated HTML document.  This is used by the ASP.NET front-end,
+	  as it needs to insert the CSS & JavaScript separately (as it also
+	  inserts its own CSS & JavaScript).
+	* Monodoc/ecma-provider.cs, Monodoc/ecmaspec-provider.cs,
+	  Monodoc/error-provider.cs: Override InlineCss & InlineJavaScript, as
+	  appropriate.
+
+2008-10-24  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Monodoc/addins-provider.cs, Monodoc/ecma-provider.cs,
+	  Monodoc/ecmaspec-provider.cs, Monodoc/error-provider.cs,
+	  Monodoc/man-provider.cs, Monodoc/monohb-provider.cs,
+	  Monodoc/provider.cs: Remove Console.WriteLine() spew; helps cleanup
+	  `make` output in mcs/docs (from `mdoc assemble`, which indirectly
+	  invokes most of the *-provider files).  We solve this problem by
+	  providing a TraceLevel-based message system, so that messages are
+	  only generated if they are less than or equal to the requested
+	  output level (thus skipping the more verbose "every file" messages
+	  from ecma-provider.cs & error-provider.cs).
+	* provider.cs: Change Node.CompareTo() to use a "natural sorting"
+	  algorithm -- this allows the C# Language Specification nodes to
+	  continue being displayed in the correct order.
+
+2008-10-21  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Monodoc/provider.cs: 
+	  - Fix Node.Sort() so that it doesn't NRE if nodes == null.
+	  - Fix Node.CompareTo() so that it can sort Nodes that haven't been
+	    loaded yet.
+	  - Add "libraries" as an alias for "root", so that .source files can
+	    refer to the parent "libraries" (which would allow us to change
+	    the location of "libraries" in the future, should we want to).
+	  - If a /monodoc/source/@path refers to a nonexistant node, then
+	    insert the contents under Various instead of ignoring it.
+	  - Sort the top-level nodes.
+	  - Sort the `parent` node after inserting children under it.  This
+	    allows multiple different .source files to insert nodes under the
+	    same parent node and still have the child nodes sorted as most
+	    mortals would expect.
+	  - Support a //node/@parent attribute, which allows for creating
+	    nodes underneath the specified parent node.  This allows multiple
+	    different .source files to contribute to the tree and depend upon
+	    each other.  Thus, instead of having a single monodoc.xml file
+	    that needs to know the entire tree in advance, the entire tree can
+	    be spread across multiple .source files and filled at runtime.
+
+2008-10-18  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile $(LIBRARY_PACKAGE): Set to `monodoc`, as we historically
+	  have had a monodoc package (and thus should preserve it).
+
+2008-10-17  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: Distribute monodoc.dll.config.in.
+
+2008-10-17  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: Generate a monodoc.dll.config (installed by gacutil), so
+	  that monodoc.dll can find the documentation sources.
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Mono.Documentation/ManifestResourceResolver.cs, 
+	  Mono.Documentation/XmlDocUtils.cs: Make types public so that they
+	  can be used from ../mdoc/mdoc.exe.
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: Update $(thisdir).
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Assmbly/AssemblyInfo.cs: Change location of mono.snk (since the 
+	  monodoc directory was moved from mcs/class to mcs/tools).
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: Improve `make clean` support.
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Makefile: Add EXTRA_DISTFILES; monodoc.dll should depend upon
+	  Makefile (in case the /resource: lines change); shorten the .gif
+	  resource names.
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* Test (svn:ignore): Ignore generated files.
+	* Makefile: Add tests for man-provider.
+
+2008-10-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	* ChangeLog: Added/Started.
+	* Makefile: Added; build monodoc.dll.
+

@@ -221,6 +221,7 @@ namespace System.ComponentModel
 
 			//In order to detect that this is a virtual property with override, we check the non null accessor
 			MethodInfo mi = getter != null ? getter : setter;
+
 			if (mi == null || !mi.IsVirtual || (mi.Attributes & MethodAttributes.NewSlot) == MethodAttributes.NewSlot) {
 				accessors_inited = true;
 				return;

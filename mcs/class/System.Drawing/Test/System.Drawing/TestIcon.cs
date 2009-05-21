@@ -365,7 +365,17 @@ namespace MonoTests.System.Drawing {
 				Assert.Ignore ("Depends on bug #323511");
 
 			using (Icon icon = new Icon (TestBitmap.getInFile ("bitmaps/323511.ico"))) {
-				SaveAndCompare ("256", icon, true);
+				// FIXME: use this instead after bug #415809 is fixed
+				//SaveAndCompare ("256", icon, true);
+
+				MemoryStream ms = new MemoryStream ();
+				icon.Save (ms);
+				ms.Position = 0;
+
+				using (Icon loaded = new Icon (ms)) {
+					Assert.AreEqual (icon.Height, loaded.Height, "Loaded.Height");
+					Assert.AreEqual (icon.Width, loaded.Width, "Loaded.Width");
+				}
 			}
 		}
 
@@ -464,6 +474,39 @@ namespace MonoTests.System.Drawing {
 			}
 		}
 
+		[Test] // bug #415581
+#if TARGET_JVM
+		[Ignore ("Icon256ToBitmap Not Working")]
+#endif
+		public void Icon256ToBitmap ()
+		{
+			if (RunningOnUnix)
+				Assert.Ignore ("Depends on bug #323511");
+
+			using (FileStream fs = File.OpenRead (TestBitmap.getInFile ("bitmaps/415581.ico"))) {
+				Icon icon = new Icon (fs, 48, 48);
+				using (Bitmap b = icon.ToBitmap ()) {
+					Assert.AreEqual (0, b.Palette.Entries.Length, "#A1");
+					Assert.AreEqual (48, b.Height, "#A2");
+					Assert.AreEqual (48, b.Width, "#A3");
+					Assert.IsTrue (b.RawFormat.Equals (ImageFormat.MemoryBmp), "#A4");
+					Assert.AreEqual (2, b.Flags, "#A5");
+				}
+				icon.Dispose ();
+			}
+
+			using (FileStream fs = File.OpenRead (TestBitmap.getInFile ("bitmaps/415581.ico"))) {
+				Icon icon = new Icon (fs, 256, 256);
+				using (Bitmap b = icon.ToBitmap ()) {
+					Assert.AreEqual (0, b.Palette.Entries.Length, "#B1");
+					Assert.AreEqual (48, b.Height, "#B2");
+					Assert.AreEqual (48, b.Width, "#B3");
+					Assert.IsTrue (b.RawFormat.Equals (ImageFormat.MemoryBmp), "#B4");
+					Assert.AreEqual (2, b.Flags, "#B5");
+				}
+			}
+		}
+
 #if NET_2_0
 		[Test]
 		[ExpectedException (typeof (ArgumentException))]
@@ -504,11 +547,9 @@ namespace MonoTests.System.Drawing {
 
 		private static bool RunningOnUnix {
 			get {
-#if NET_2_0
-				return Environment.OSVersion.Platform == PlatformID.Unix;
-#else
-				return (int) Environment.OSVersion.Platform == 128;
-#endif
+				int p = (int) Environment.OSVersion.Platform;
+
+				return (p == 4) || (p == 6) || (p == 128);
 			}
 		}
 	}

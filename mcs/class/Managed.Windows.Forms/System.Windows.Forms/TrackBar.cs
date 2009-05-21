@@ -174,7 +174,7 @@ namespace System.Windows.Forms
 		}
 
 #if NET_2_0
-		public new event EventHandler RightToLeftLayoutChanged {
+		public event EventHandler RightToLeftLayoutChanged {
 			add {Events.AddHandler (RightToLeftLayoutChangedEvent, value);}
 			remove {Events.RemoveHandler (RightToLeftLayoutChangedEvent, value);}
 		}
@@ -204,6 +204,24 @@ namespace System.Windows.Forms
 		}
 		
 		#endregion // Events
+
+		#region UIA FrameWork Events
+#if NET_2_0
+		static object UIAValueParamChangedEvent = new object ();
+
+		internal event EventHandler UIAValueParamChanged {
+			add { Events.AddHandler (UIAValueParamChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAValueParamChangedEvent, value); }
+		}
+
+		internal void OnUIAValueParamChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIAValueParamChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+#endif
+		#endregion
 
 		public TrackBar ()
 		{
@@ -277,7 +295,7 @@ namespace System.Windows.Forms
 #if NET_2_0
 		public override bool AutoSize {
 #else
-		public new bool AutoSize {
+		public bool AutoSize {
 #endif
 			get { return autosize; }
 			set { autosize = value;}
@@ -364,6 +382,10 @@ namespace System.Windows.Forms
 #endif
 				
 				largeChange = value;				
+
+#if NET_2_0
+					OnUIAValueParamChanged ();
+#endif
 			}
 		}
 
@@ -379,6 +401,10 @@ namespace System.Windows.Forms
 						minimum = maximum;
 
 					Refresh ();
+
+#if NET_2_0
+					OnUIAValueParamChanged ();
+#endif
 				}
 			}
 		}
@@ -396,6 +422,10 @@ namespace System.Windows.Forms
 						maximum = minimum;
 
 					Refresh ();
+
+#if NET_2_0
+					OnUIAValueParamChanged ();
+#endif
 				}
 			}
 		}
@@ -461,6 +491,10 @@ namespace System.Windows.Forms
 #endif
 				if (smallChange != value) {
 					smallChange = value;					
+
+#if NET_2_0
+					OnUIAValueParamChanged ();
+#endif
 				}
 			}
 		}
@@ -673,14 +707,16 @@ namespace System.Windows.Forms
 			}
 		}
 		
-		private void LargeIncrement ()
+			// Used by UIA implementation, so making internal
+		internal void LargeIncrement ()
     		{    			
 			UpdatePos (position + LargeChange, true);
 			Invalidate (thumb_area);
 			OnScroll (new EventArgs ());
     		}
 
-    		private void LargeDecrement ()
+			// Used by UIA implementation, so making internal
+    		internal void LargeDecrement ()
     		{
 			UpdatePos (position - LargeChange, true);
 			Invalidate (thumb_area);

@@ -76,6 +76,10 @@ namespace Mono.Cecil {
 			}
 		}
 
+		public bool HasSecurityDeclarations {
+			get { return (m_secDecls == null) ? false : (m_secDecls.Count > 0); }
+		}
+
 		public SecurityDeclarationCollection SecurityDeclarations {
 			get {
 				if (m_secDecls == null)
@@ -83,6 +87,10 @@ namespace Mono.Cecil {
 
 				return m_secDecls;
 			}
+		}
+
+		public bool HasCustomAttributes {
+			get { return (m_customAttrs == null) ? false : (m_customAttrs.Count > 0); }
 		}
 
 		public CustomAttributeCollection CustomAttributes {
@@ -110,6 +118,10 @@ namespace Mono.Cecil {
 		public PInvokeInfo PInvokeInfo {
 			get { return m_pinvoke; }
 			set { m_pinvoke = value; }
+		}
+
+		public bool HasOverrides {
+			get { return (m_overrides == null) ? false : (m_overrides.Count > 0); }
 		}
 
 		public OverrideCollection Overrides {
@@ -263,6 +275,16 @@ namespace Mono.Cecil {
 					m_attributes |= MethodAttributes.NewSlot;
 				} else
 					m_attributes &= ~(MethodAttributes.VtableLayoutMask & MethodAttributes.NewSlot);
+			}
+		}
+
+		public bool IsStrict {
+			get { return (m_attributes & MethodAttributes.Strict) != 0; }
+			set {
+				if (value)
+					m_attributes |= MethodAttributes.Strict;
+				else
+					m_attributes &= ~MethodAttributes.Strict;
 			}
 		}
 
@@ -587,14 +609,22 @@ namespace Mono.Cecil {
 			if (meth.PInvokeInfo != null)
 				nm.PInvokeInfo = meth.PInvokeInfo; // TODO: import module ?
 
-			foreach (ParameterDefinition param in meth.Parameters)
-				nm.Parameters.Add (ParameterDefinition.Clone (param, context));
-			foreach (MethodReference ov in meth.Overrides)
-				nm.Overrides.Add (context.Import (ov));
-			foreach (CustomAttribute ca in meth.CustomAttributes)
-				nm.CustomAttributes.Add (CustomAttribute.Clone (ca, context));
-			foreach (SecurityDeclaration sec in meth.SecurityDeclarations)
-				nm.SecurityDeclarations.Add (SecurityDeclaration.Clone (sec));
+			if (meth.HasParameters) {
+				foreach (ParameterDefinition param in meth.Parameters)
+					nm.Parameters.Add (ParameterDefinition.Clone (param, context));
+			}
+			if (meth.HasOverrides) {
+				foreach (MethodReference ov in meth.Overrides)
+					nm.Overrides.Add (context.Import (ov));
+			}
+			if (meth.HasCustomAttributes) {
+				foreach (CustomAttribute ca in meth.CustomAttributes)
+					nm.CustomAttributes.Add (CustomAttribute.Clone (ca, context));
+			}
+			if (meth.HasSecurityDeclarations) {
+				foreach (SecurityDeclaration sec in meth.SecurityDeclarations)
+					nm.SecurityDeclarations.Add (SecurityDeclaration.Clone (sec));
+			}
 
 			if (meth.Body != null)
 				nm.Body = MethodBody.Clone (meth.Body, nm, context);

@@ -21,12 +21,12 @@ SUPPORT_FILES = $(symlinks) mono-wrapper etc/mono/config
 
 if INSTALL_2_0
 if INSTALL_2_1
-build_profiles = default net_2_0 net_3_5 net_2_1
+build_profiles = net_1_1 net_2_0 net_3_5 net_2_1
 else
-build_profiles = default net_2_0 net_3_5
+build_profiles = net_1_1 net_2_0 net_3_5
 endif
 else
-build_profiles = default
+build_profiles = net_1_1
 endif
 
 if BUILD_MCS
@@ -75,8 +75,13 @@ mcs-do-run-test-profiles: test-support-files
 	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(build_profiles)' run-test-profiles
 
 if PLATFORM_WIN32
+if CROSS_COMPILING
+cur_dir_cmd = pwd
+PLATFORM_PATH_SEPARATOR = :
+else
 cur_dir_cmd = cygpath -w -a .
 PLATFORM_PATH_SEPARATOR = ;
+endif
 else
 cur_dir_cmd = pwd
 PLATFORM_PATH_SEPARATOR = :
@@ -129,7 +134,7 @@ $(tmpinst)/bin/mono: mono-wrapper etc/mono/config
 $(tmpinst)/bin/mcs: $(tmpinst)/bin/mono Makefile
 	echo '#! /bin/sh' > $@ ; \
 	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
-	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/default/mcs.exe"'" "$$@"' >> $@ ; \
+	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_1_1/mcs.exe"'" "$$@"' >> $@ ; \
 	chmod +x $@
 
 $(tmpinst)/bin/gmcs: $(tmpinst)/bin/mono Makefile

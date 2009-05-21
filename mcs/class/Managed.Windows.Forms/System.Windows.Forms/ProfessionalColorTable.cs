@@ -237,7 +237,7 @@ namespace System.Windows.Forms
 					tool_strip_border = Color.FromArgb (219, 216, 209);
 					tool_strip_content_panel_gradient_begin = SystemColors.ButtonFace;
 					tool_strip_content_panel_gradient_end = Color.FromArgb (246, 245, 244);
-					tool_strip_drop_down_background = Color.FromArgb (249, 248, 247);
+					tool_strip_drop_down_background = SystemColors.Window;
 
 					tool_strip_gradient_begin = Color.FromArgb (245, 244, 242);
 					tool_strip_gradient_end = SystemColors.ButtonFace;
@@ -614,13 +614,15 @@ namespace System.Windows.Forms
 		
 		private ColorSchemes GetCurrentStyle ()
 		{
-			if (!VisualStyleInformation.IsEnabledByUser)
+			if (!VisualStyleInformation.IsEnabledByUser || string.IsNullOrEmpty (VisualStylesEngine.Instance.VisualStyleInformationFileName))
+
+
 				return ColorSchemes.Classic;
 			else {
-				switch (VisualStyleInformation.DisplayName) {
-					case "Aero style":
+				switch (System.IO.Path.GetFileNameWithoutExtension (VisualStylesEngine.Instance.VisualStyleInformationFileName).ToLowerInvariant ()) {
+					case "aero":
 						return ColorSchemes.Aero;
-					case "Media Center Style":
+					case "royale":
 						return ColorSchemes.MediaCenter;
 					default:
 						switch (VisualStyleInformation.ColorScheme) {

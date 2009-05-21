@@ -9,7 +9,7 @@ endif
 
 check-local: test
 
-aotcheck: testaot
+aotcheck: testaot gshared-aot
 
 TEST_PROG = ../interpreter/mint
 JITTEST_PROG = ../mini/mono
@@ -82,6 +82,7 @@ BASE_TEST_CS_SRC=		\
 	exception14.cs		\
 	exception15.cs		\
 	exception16.cs		\
+	exception17.cs		\
 	typeload-unaligned.cs	\
 	struct.cs		\
 	valuetype-gettype.cs	\
@@ -168,6 +169,7 @@ BASE_TEST_CS_SRC=		\
 	delegate6.cs		\
 	delegate7.cs		\
 	delegate8.cs		\
+	delegate9.cs		\
 	remoting1.cs		\
 	remoting2.cs		\
 	remoting3.cs		\
@@ -250,6 +252,7 @@ BASE_TEST_CS_SRC=		\
 	test-type-ctor.cs 	\
 	soft-float-tests.cs	\
 	thread-exit.cs		\
+	finalize-parent.cs	\
 	assemblyresolve_event2.2.cs	\
 	interlocked-2.2.cs	\
 	pinvoke-2.2.cs 		\
@@ -280,7 +283,24 @@ BASE_TEST_CS_SRC=		\
 	generic-virtual2.2.cs	\
 	generic-valuetype-interface.2.cs	\
 	generic-getgenericarguments.2.cs	\
+	generic-type-builder.2.cs	\
+	generic-synchronized.2.cs	\
+	generic-delegate-ctor.2.cs	\
+	generic-array-iface-set.2.cs	\
+	generic-typedef.2.cs	\
+	generic-marshalbyref.2.cs	\
+	bug-431413.2.cs	\
+	bug-459285.2.cs	\
+	generic-virtual-invoke.2.cs	\
+	bug-461198.2.cs	\
+	generic-sealed-virtual.2.cs	\
+	generic-stack-traces.2.cs	\
+	generic-stack-traces2.2.cs	\
+	bug-472600.2.cs	\
 	recursive-generics.2.cs	\
+	bug-473482.2.cs	\
+	bug-473999.2.cs	\
+	bug-479763.2.cs	\
 	bug-80392.2.cs		\
 	dynamic-method-access.2.cs	\
 	bug-82194.2.cs	\
@@ -301,8 +321,31 @@ BASE_TEST_CS_SRC=		\
 	thunks.cs \
 	winx64structs.cs \
 	bug-349190.2.cs	\
-	nullable_boxing.2.cs \
-	valuetype-equals.cs
+	nullable_boxing.2.cs	\
+	valuetype-equals.cs	\
+	custom-modifiers.2.cs	\
+	bug-382986.cs	\
+	test-inline-call-stack.cs	\
+	bug-324535.cs	\
+	modules.cs	\
+	bug-81673.cs	\
+	bug-81691.cs	\
+	bug-80307.cs	\
+	bug-415577.cs	\
+	filter-stack.cs	\
+	vararg2.cs	\
+	bug-389886-sre-generic-interface-instances.cs	\
+	bug-461867.cs	\
+	bug-461941.cs	\
+	bug-461261.cs	\
+	bug-400716.cs	\
+	bug-462592.cs	\
+	bug-459094.cs	\
+	generic-unloading.2.cs	\
+	generic-unloading-sub.2.cs	\
+	bug-467456.cs	\
+	appdomain-unload-callback.cs	\
+	bug-472692.2.cs
 
 if AMD64
 TEST_CS_SRC = $(BASE_TEST_CS_SRC) async-exc-compilation.cs
@@ -316,7 +359,9 @@ endif
 
 if IA64
 TEST_CS_SRC+=async-exc-compilation.cs
-PLATFORM_DISABLED_TESTS=winx64structs.exe
+# bug #319249
+PLATFORM_DISABLED_TESTS=exception17.exe
+PLATFORM_DISABLED_TESTS+=winx64structs.exe
 endif
 
 if X86
@@ -334,7 +379,6 @@ endif
 
 DISABLED_TESTS=			\
 	delegate-async-exception.exe	\
-	appdomain-unload.exe		\
 	bug-348522.2.exe	\
 	$(PLATFORM_DISABLED_TESTS)
 
@@ -348,7 +392,6 @@ TEST_IL_SRC=			\
 	ldftn-access.il		\
 	cpblkTest.il		\
 	vbinterface.il		\
-	jmpTest.il		\
 	calliTest.il		\
 	ckfiniteTest.il		\
 	fault-handler.il		\
@@ -376,6 +419,7 @@ TEST_IL_SRC=			\
 	bug-79956.2.il	\
 	bug-327438.2.il \
 	bug-387274.2.il	\
+	bug-426309.2.il	\
 	ldtoken_with_byref_typespec.2.il \
 	resolve_method_bug.2.il \
 	resolve_field_bug.2.il \
@@ -391,7 +435,14 @@ TEST_IL_SRC=			\
 	generic-tailcall2.2.il	\
 	generic-array-exc.2.il	\
 	generic-valuetype-newobj2.2.il	\
-	generic-valuetype-newobj.2.il
+	generic-valuetype-newobj.2.il	\
+	generic-constrained.2.il	\
+	bug-81466.il	\
+	bug457574.il	\
+	bug445361.il	\
+	bug-463303.il	\
+	bug469742.2.il	\
+	bug-481403.il
 
 #	bug-318677.il
 
@@ -420,20 +471,24 @@ EXTRA_DIST=test-driver $(TEST_CS_SRC) $(TEST_IL_SRC) \
 
 # mkbundle works on ppc, but the pkg-config POC doesn't when run with make test
 if POWERPC
-test:	assemblyresolve/test/asm.dll testjit test-type-load test-inline-call-stack test-bug-80307 test-bug-81673 test-bug-81691 test-bug-81466 test-bug-324535 test-generic-sharing test-bug-382986
+test_platform:
 else
 # Can't use mkbundle on win32 since there is no static build there
 # Can't run test-unhandled-exception on Windows because of all the debug popups...
 if PLATFORM_WIN32
-test:   assemblyresolve/test/asm.dll testjit test-type-load test-inline-call-stack test-bug-80307 test-bug-81673 test-bug-81691 test-bug-81466 test-bug-324535 test-generic-sharing test-bug-382986
+test_platform:
 else
-test:	assemblyresolve/test/asm.dll testjit testbundle test-type-load test-inline-call-stack test-iomap-regression test-bug-80307 test-bug-81673 test-bug-81691 test-bug-81466 test-bug-324535 custom-modifiers test-generic-sharing test-bug-382986 test-modules
+test_platform:	testbundle test-iomap-regression
 endif
 endif
 
 if INSTALL_2_1
-test : test-coreclr-security
+test_2_1 : test-coreclr-security
+else
+test_2_1 :
 endif
+
+test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test_2_1
 
 assemblyresolve/test/asm.dll:
 	$(MAKE) -C assemblyresolve prereq
@@ -474,12 +529,13 @@ testb: $(TEST_PROG) $(TESTBS)
 		$(srcdir)/test-driver '$(with_mono_path) $(TEST_PROG_RUN)' $$i '$(DISABLED_TESTS)' $(RUNTIME_ARGS);	\
 	done
 
-testjit: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQSI_CS)
+runtest: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQSI_CS)
 	@failed=0; \
 	passed=0; \
 	failed_tests="";\
 	for i in $(TESTSI_CS) $(TESTBS) $(TESTSI_IL); do	\
 		rm -f $${i}.so; \
+		if [ x$(AOT) = x1 ]; then $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $${i} > /dev/null || exit 1; fi; \
 		if $(srcdir)/test-driver '$(with_mono_path) $(JITTEST_PROG_RUN)' $$i '$(DISABLED_TESTS)' $(RUNTIME_ARGS); \
 		then \
 			passed=`expr $${passed} + 1`; \
@@ -493,46 +549,20 @@ testjit: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQS
 	if [ $${failed} != 0 ]; then echo -e "\nFailed tests:\n"; \
 	  for i in $${failed_tests}; do echo $${i}; done; exit 1; fi
 
-testaot: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la
-	@failed=0; \
-	passed=0; \
-	failed_tests="";\
-	for i in $(TESTSI_CS) $(TESTSI_IL) $(TESTBS); do	\
-		rm -f $${i}.so; \
-		$(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $${i} > /dev/null || exit 1; \
-		if $(srcdir)/test-driver '$(with_mono_path) $(JITTEST_PROG_RUN)' $$i "$(DISABLED_TESTS)" $(RUNTIME_ARGS); \
-		then \
-			passed=`expr $${passed} + 1`; \
-		else \
-			if [ $$? = 2 ]; then break; fi; \
-			failed=`expr $${failed} + 1`; \
-			failed_tests="$${failed_tests} $$i"; \
-		fi \
-	done; \
-	echo "$${passed} test(s) passed. $${failed} test(s) did not pass."; \
-	if [ $$failed != 0 ]; then echo -e "\nFailed tests:\n"; \
-	  for i in $${failed_tests}; do echo $${i}; done; exit 1; fi
+runtest-managed: test-runner.exe $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQSI_CS)
+	@$(RUNTIME) ./test-runner.exe -j a --disabled '$(DISABLED_TESTS)' $(TESTSI_CS) $(TESTBS) $(TESTSI_IL)
+
+testjit:
+	@$(MAKE) runtest
+
+testaot:
+	@$(MAKE) AOT=1 runtest
 
 testtrace:
-	$(MAKE) RUNTIME_ARGS="$${RUNTIME_ARGS} --trace" testjit
+	@$(MAKE) RUNTIME_ARGS="$${RUNTIME_ARGS} --trace" runtest
 
-testinterp: $(TESTSI_CS) $(TESTSI_IL) libtest.la
-	@failed=0; \
-	passed=0; \
-	failed_tests="";\
-	for i in $(TESTSI_CS) $(TESTSI_IL); do \
-		if $(srcdir)/test-driver '$(with_mono_path) $(TEST_PROG_RUN)' $$i "$(DISABLED_TESTS)" $(RUNTIME_ARGS); \
-		then \
-			passed=`expr $${passed} + 1`; \
-		else \
-			if [ $$? = 2 ]; then break; fi; \
-			failed=`expr $${failed} + 1`; \
-			failed_tests="$${failed_tests} $$i"; \
-		fi \
-	done; \
-	echo "$${passed} test(s) passed. $${failed} test(s) did not pass."; \
-	if [ $$failed != 0 ]; then echo -e "\nFailed tests:\n"; \
-	  for i in $${failed_tests}; do echo $${i}; done; exit 1; fi
+testinterp:
+	@$(MAKE) JITTEST_PROG_RUN="$(TEST_PROG_RUN)" runtest
 
 testjitspeed: $(JITTEST_PROG) $(TESTBS)
 	for i in $(TESTBS); do	\
@@ -541,8 +571,9 @@ testjitspeed: $(JITTEST_PROG) $(TESTBS)
 	done
 
 test-iomap-regression: exists.cs
-	$(MCS) $(srcdir)/exists.cs -out:exists.exe
-	MONO_IOMAP=all $(RUNTIME) exists.exe
+	@$(MCS) $(srcdir)/exists.cs -out:exists.exe
+	@echo "Testing exists.exe..."
+	@MONO_IOMAP=all $(RUNTIME) exists.exe
 
 stresstest: $(STRESS_TESTS)
 	@failed=0; \
@@ -563,26 +594,25 @@ stresstest: $(STRESS_TESTS)
 	  for i in $${failed_tests}; do echo $${i}; done; exit 1; fi
 
 testbundle: console.exe
-	$(MKBUNDLE) --static console.exe
-	$(with_mono_path) MONO_CFG_DIR=$(mono_cfg_dir) MONO_SHARED_DIR=$(mono_build_root)/runtime ./a.out
-	- rm -rf a.out
+	@echo "Testing mkbundle..."
+	@$(MKBUNDLE) --static console.exe > mkbundle.stdout
+	@$(with_mono_path) MONO_CFG_DIR=$(mono_cfg_dir) MONO_SHARED_DIR=$(mono_build_root)/runtime ./a.out >> mkbundle.stdout
+	@- rm -rf a.out
 
 EXTRA_DIST += load-missing.il t-missing.cs load-exceptions.cs
 test-type-load: TestDriver.dll
-	$(ILASM) /dll /output:load-missing.dll $(srcdir)/load-missing.il
-	$(MCS) -t:library -out:t.dll -d:FOUND $(srcdir)/t-missing.cs
-	$(MCS) -r:TestDriver.dll -r:load-missing.dll -r:t.dll -out:load-exceptions.exe $(srcdir)/load-exceptions.cs
-	$(MCS) -t:library -out:t.dll $(srcdir)/t-missing.cs
-	$(RUNTIME) load-exceptions.exe
+	@$(ILASM) /dll /output:load-missing.dll $(srcdir)/load-missing.il > /dev/null
+	@$(MCS) -t:library -out:t.dll -d:FOUND $(srcdir)/t-missing.cs
+	@$(MCS) -r:TestDriver.dll -r:load-missing.dll -r:t.dll -out:load-exceptions.exe $(srcdir)/load-exceptions.cs
+	@$(MCS) -t:library -out:t.dll $(srcdir)/t-missing.cs
+	@echo "Testing load-exception.exe..."
+	@$(RUNTIME) load-exceptions.exe > load-exceptions.exe.stdout 2> load-exceptions.exe.stderr
 
 EXTRA_DIST += test-inline-call-stack-library.cs test-inline-call-stack.cs
 test-inline-call-stack-library.dll: TestDriver.dll $(srcdir)/test-inline-call-stack-library.cs
 	$(MCS) -t:library -out:test-inline-call-stack-library.dll $(srcdir)/test-inline-call-stack-library.cs
 test-inline-call-stack.exe: TestDriver.dll test-inline-call-stack-library.dll $(srcdir)/test-inline-call-stack.cs
 	$(MCS) -r:TestDriver.dll -r:test-inline-call-stack-library.dll -out:test-inline-call-stack.exe $(srcdir)/test-inline-call-stack.cs
-test-inline-call-stack: TestDriver.dll test-inline-call-stack-library.dll test-inline-call-stack.exe
-	$(RUNTIME) test-inline-call-stack.exe
-
 
 EXTRA_DIST += unhandled-exception-base-configuration.config
 EXTRA_DIST += unhandled-exception-legacy-configuration.config
@@ -613,49 +643,35 @@ unhandled-exception-test-runner.2.exe: unhandled-exception-test-runner.2.cs
 test-unhandled-exception: unhandled-exception-test-runner.2.exe unhandled-exception-config_files unhandled-exception-test-case.1.exe unhandled-exception-test-case-legacy.1.exe  unhandled-exception-test-case.2.exe unhandled-exception-test-case-legacy.2.exe
 	$(RUNTIME) unhandled-exception-test-runner.2.exe RUNTIME:../mini/mono,GTC:F
 
-EXTRA_DIST += bug-80307.cs
+# We use 'test-support-files' to handle an ordering issue between the 'mono/' and 'runtime/' directories
 bug-80307.exe: $(srcdir)/bug-80307.cs
 	$(MCS) -r:System.Web -out:$@ $(srcdir)/bug-80307.cs
-
-# We use 'test-support-files' to handle an ordering issue between the 'mono/' and 'runtime/' directories
-test-bug-80307: bug-80307.exe
 	cd $(top_builddir)/runtime && $(MAKE) test-support-files
-	$(RUNTIME) bug-80307.exe
 
-EXTRA_DIST += bug-81673.cs bug-81673-interface.cs
+EXTRA_DIST += bug-81673-interface.cs
 bug-81673.exe bug-81673-interface.dll: $(srcdir)/bug-81673.cs $(srcdir)/bug-81673-interface.cs
 	$(MCS) -target:library -out:bug-81673-interface.dll $(srcdir)/bug-81673-interface.cs
 	$(MCS) -out:bug-81673.exe -r:bug-81673-interface.dll $(srcdir)/bug-81673.cs
 	$(MCS) -define:WITH_STOP -target:library -out:bug-81673-interface.dll $(srcdir)/bug-81673-interface.cs
 
-test-bug-81673 : bug-81673.exe bug-81673-interface.dll
-	$(RUNTIME) bug-81673.exe
-
-EXTRA_DIST += bug-81691.cs bug-81691-a.cs bug-81691-b.cs
+EXTRA_DIST += bug-81691-a.cs bug-81691-b.cs
 bug-81691.exe bug-81691-b.dll: $(srcdir)/bug-81691.cs $(srcdir)/bug-81691-a.cs $(srcdir)/bug-81691-b.cs
 	$(MCS) -target:library -out:bug-81691-a.dll $(srcdir)/bug-81691-a.cs
 	$(MCS) -target:library -out:bug-81691-b.dll -r:bug-81691-a.dll $(srcdir)/bug-81691-b.cs
 	$(MCS) -r:bug-81691-b.dll -out:bug-81691.exe $(srcdir)/bug-81691.cs
 	rm -f bug-81691-a.dll
 
-test-bug-81691 : bug-81691.exe bug-81691-b.dll
-	$(RUNTIME) bug-81691.exe
-
-EXTRA_DIST += bug-81466.il bug-81466-lib.il
+EXTRA_DIST += bug-81466-lib.il
 bug-81466-lib.dll: bug-81466-lib.il
 	$(ILASM) /dll /output:bug-81466-lib.dll $(srcdir)/bug-81466-lib.il
 bug-81466.exe: bug-81466.il bug-81466-lib.dll
 	$(ILASM) /exe /output:bug-81466.exe $(srcdir)/bug-81466.il
-test-bug-81466: bug-81466.exe bug-81466-lib.dll
-	$(RUNTIME) bug-81466.exe
 
-EXTRA_DIST += bug-324535-il.il bug-324535.cs
+EXTRA_DIST += bug-324535-il.il
 bug-324535-il.dll : bug-324535-il.il
 	$(ILASM) /dll /output:bug-324535-il.dll $(srcdir)/bug-324535-il.il
 bug-324535.exe : bug-324535.cs bug-324535-il.dll
 	$(MCS) -r:bug-324535-il.dll -out:bug-324535.exe $(srcdir)/bug-324535.cs
-test-bug-324535 : bug-324535.exe bug-324535-il.dll
-	$(RUNTIME) bug-324535.exe
 
 EXTRA_DIST += make_imt_test.sh
 imt_big_iface_test.cs: $(srcdir)/make_imt_test.sh
@@ -664,18 +680,14 @@ imt_big_iface_test.cs: $(srcdir)/make_imt_test.sh
 EXTRA_DIST += custom-modifiers.2.cs custom-modifiers-lib.il
 custom-modifiers-lib.dll: custom-modifiers-lib.il
 	$(ILASM) /dll /output:custom-modifiers-lib.dll $(srcdir)/custom-modifiers-lib.il
-custom-modifiers.exe: custom-modifiers.2.cs custom-modifiers-lib.dll
-	$(MCS) -r:custom-modifiers-lib.dll -out:custom-modifiers.exe $(srcdir)/custom-modifiers.2.cs
-custom-modifiers: custom-modifiers.exe
-	$(RUNTIME) custom-modifiers.exe
+custom-modifiers.2.exe: custom-modifiers.2.cs custom-modifiers-lib.dll
+	$(MCS) -r:custom-modifiers-lib.dll -out:custom-modifiers.2.exe $(srcdir)/custom-modifiers.2.cs
 
-EXTRA_DIST += bug-382986.cs  bug-382986-lib.cs
+EXTRA_DIST += bug-382986-lib.cs
 bug-382986-lib.dll: bug-382986-lib.cs
 	$(MCS) -target:library -out:$@ $(srcdir)/bug-382986-lib.cs
 bug-382986.exe: bug-382986.cs bug-382986-lib.dll
 	$(MCS) -out:$@ -r:bug-382986-lib.dll $(srcdir)/bug-382986.cs
-test-bug-382986: bug-382986.exe
-	$(RUNTIME) bug-382986.exe
 
 EXTRA_DIST += coreclr-security.cs
 
@@ -684,7 +696,8 @@ coreclr-security.exe : coreclr-security.cs
 	$(SMCS) -out:coreclr-security.exe $(srcdir)/coreclr-security.cs
 
 test-coreclr-security : coreclr-security.exe
-	$(RUNTIME21) --security=core-clr-test coreclr-security.exe
+	@echo "Testing coreclr-security.exe..."
+	@$(RUNTIME21) --security=core-clr-test coreclr-security.exe
 endif
 
 EXTRA_DIST += generic-unboxing.2.il
@@ -709,6 +722,11 @@ generic-delegate2-lib.2.dll : generic-delegate2-lib.2.il
 generic-delegate2.2.exe : generic-delegate2.2.cs generic-delegate2-lib.2.dll
 	$(MCS) -r:generic-delegate2-lib.2.dll -out:$@ $(srcdir)/generic-delegate2.2.cs
 
+gshared: test-generic-sharing
+
+gshared-aot:
+	@$(MAKE) AOT=1 gshared
+
 test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
 		shared-generic-synchronized.2.exe generic-initobj.2.exe		\
 		generics-sharing-other-exc.2.exe generic-box.2.exe		\
@@ -724,13 +742,21 @@ test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
 		generic-exceptions.2.exe generic-delegate2.2.exe		\
 		generic-virtual2.2.exe generic-valuetype-interface.2.exe	\
 		generic-valuetype-newobj.2.exe generic-valuetype-newobj2.2.exe	\
-		generic-getgenericarguments.2.exe
-	for fn in $+ ; do	\
+		generic-getgenericarguments.2.exe generic-type-builder.2.exe	\
+		generic-synchronized.2.exe generic-delegate-ctor.2.exe		\
+		generic-constrained.2.exe bug-431413.2.exe			\
+		generic-virtual-invoke.2.exe generic-typedef.2.exe		\
+		generic-marshalbyref.2.exe bug-459285.2.exe bug-461198.2.exe	\
+		generic-sealed-virtual.2.exe generic-stack-traces.2.exe		\
+		generic-stack-traces2.2.exe bug-472600.2.exe bug-473482.2.exe	\
+		bug-473999.2.exe bug-479763.2.exe
+	@for fn in $+ ; do	\
 		echo "Testing $$fn ...";	\
-		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared                $$fn || exit 1;	\
-		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,shared         $$fn || exit 1;	\
-		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,-inline        $$fn || exit 1;	\
-		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,-inline,shared $$fn || exit 1;	\
+		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared                $$fn > $$fn.stdout || exit 1;	\
+		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,shared         $$fn > $$fn.stdout || exit 1;	\
+		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,-inline        $$fn > $$fn.stdout || exit 1;	\
+		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared,-inline,shared $$fn > $fn.stdout || exit 1;	\
+		if [ x$(AOT) = x1 ]; then MONO_GENERIC_SHARING=all $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $$fn > /dev/null || exit 1; MONO_GENERIC_SHARING=all $(RUNTIME) $$fn > $$fn.stdout || exit 1; fi; \
 	done
 
 EXTRA_DIST += async-exceptions.cs
@@ -745,8 +771,6 @@ modules-m1.netmodule: modules-m1.cs
 	$(MCS) -out:$@ /target:module $(srcdir)/modules-m1.cs
 modules.exe: modules.cs modules-m1.netmodule
 	$(MCS) -out:$@ /addmodule:modules-m1.netmodule -r:TestDriver.dll $(srcdir)/modules.cs
-test-modules: modules.exe
-	$(RUNTIME) modules.exe
 
 # Useful if mono is compiled with --enable-shared=no
 patch-libtool:

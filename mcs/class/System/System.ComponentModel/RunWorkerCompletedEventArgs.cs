@@ -43,7 +43,7 @@ namespace System.ComponentModel
 			this.result = result;
 		}
 
-		object result, user_state;
+		object result;
 
 		public object Result {
 			get {
@@ -53,10 +53,12 @@ namespace System.ComponentModel
 		}
 
 		// It is always null. See .ctor() for details.
+#if !NET_2_1
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
+#endif
 		public new object UserState {
-			get { return user_state; }
+			get { return null; }
 		}
 	}
 }

@@ -1160,6 +1160,7 @@ namespace System.Windows.Forms
 #endif
 			default: // Blocks
 				int block_width = renderer.GetInteger (IntegerProperty.ProgressChunkSize);
+				block_width = Math.Max (block_width, 0); // block_width is used to break out the loop below, it must be >= 0!
 				int first_pixel_outside_filled_area = (int)(((double)(ctrl.Value - ctrl.Minimum) * client_area.Width) / (Math.Max (ctrl.Maximum - ctrl.Minimum, 1))) + client_area.X;
 				int block_count = 0;
 				int increment = block_width + renderer.GetInteger (IntegerProperty.ProgressSpaceSize);
@@ -1319,8 +1320,10 @@ namespace System.Windows.Forms
 
 				if (bar.Enabled && bar.ThumbPos.Height >= 20) {
 					element = VisualStyleElement.ScrollBar.GripperVertical.Normal;
-					renderer = new VisualStyleRenderer (element);
-					renderer.DrawBackground (dc, bar.ThumbPos, clip);
+					if (VisualStyleRenderer.IsElementDefined (element)) {
+						renderer = new VisualStyleRenderer (element);
+						renderer.DrawBackground (dc, bar.ThumbPos, clip);
+					}
 				}
 				#endregion
 			} else {
@@ -1409,8 +1412,10 @@ namespace System.Windows.Forms
 
 				if (bar.Enabled && bar.ThumbPos.Height >= 20) {
 					element = VisualStyleElement.ScrollBar.GripperHorizontal.Normal;
-					renderer = new VisualStyleRenderer (element);
-					renderer.DrawBackground (dc, bar.ThumbPos, clip);
+					if (VisualStyleRenderer.IsElementDefined (element)) {
+						renderer = new VisualStyleRenderer (element);
+						renderer.DrawBackground (dc, bar.ThumbPos, clip);
+					}
 				}
 				#endregion
 			}
@@ -1444,12 +1449,9 @@ namespace System.Windows.Forms
 			get {
 				return
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.ArrowButton.DownDisabled) &&
-					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.GripperHorizontal.Normal) &&
-					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.GripperVertical.Normal) &&
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.LeftTrackHorizontal.Disabled) &&
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.LowerTrackVertical.Disabled) &&
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.RightTrackHorizontal.Disabled) &&
-					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.SizeBox.LeftAlign) &&
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.ThumbButtonHorizontal.Disabled) &&
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.ThumbButtonVertical.Disabled) &&
 					VisualStyleRenderer.IsElementDefined (VisualStyleElement.ScrollBar.UpperTrackVertical.Disabled);
@@ -1737,7 +1739,7 @@ namespace System.Windows.Forms
 				base.ToolTipDrawBackground (dc, clip_rectangle, control);
 				return;
 			}
-			new VisualStyleRenderer (element).DrawBackground (dc, control.Bounds);
+			new VisualStyleRenderer (element).DrawBackground (dc, control.ClientRectangle);
 		}
 		public override bool ToolTipTransparentBackground {
 			get {

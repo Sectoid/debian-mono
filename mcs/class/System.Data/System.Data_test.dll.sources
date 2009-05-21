@@ -14,6 +14,7 @@ System.Data.SqlTypes/SqlDateTimeTest.cs
 System.Data.SqlTypes/SqlGuidTest.cs
 System.Data.SqlTypes/SqlDecimalTest.cs
 System.Data.SqlTypes/SqlStringTest.cs
+System.Data.SqlTypes/SqlXmlTest.cs
 System.Xml/XmlDataDocumentTest.cs
 System.Xml/XmlDataDocumentTest2.cs
 System.Data/BinarySerializationTest.cs
@@ -54,6 +55,7 @@ System.Data/DataViewTest.cs
 System.Data/DataViewTest2.cs
 System.Data/DataViewTest_IBindingList.cs
 System.Data/DataViewTest_IBindingListView.cs
+System.Data/DBConcurrencyExceptionTest.cs
 System.Data/ForeignKeyConstraintTest.cs
 System.Data/ForeignKeyConstraintTest2.cs
 System.Data/MonkeyDataSet.cs
@@ -86,11 +88,14 @@ System.Data.Common/DataColumnMappingCollectionTest.cs
 System.Data.Common/DataTableMappingCollectionTest.cs
 System.Data.Common/DBDataPermissionAttributeTest.cs
 System.Data.Common/DBDataPermissionTest.cs
+System.Data.Common/DbCommandBuilderTest.cs
 System.Data.Common/DbConnectionStringBuilderTest.cs
 System.Data.Common/DbDataAdapterTest.cs
 System.Data.Common/DbProviderFactoriesConfigurationHandlerTest.cs
 System.Data.Common/DbTransactionTest.cs
+System.Data.Odbc/OdbcCommandBuilderTest.cs
 System.Data.Odbc/OdbcCommandTest.cs
+System.Data.Odbc/OdbcConnectionStringBuilderTest.cs
 System.Data.Odbc/OdbcConnectionTest.cs
 System.Data.Odbc/OdbcDataAdapterTest.cs
 System.Data.Odbc/OdbcMetaDataCollectionNamesTest.cs
@@ -105,6 +110,8 @@ System.Data.OleDb/OleDbMetaDataCollectionNamesTest.cs
 System.Data.OleDb/OleDbParameterCollectionTest.cs
 System.Data.OleDb/OleDbPermissionAttributeTest.cs
 System.Data.OleDb/OleDbPermissionTest.cs
+System.Data.Sql/SqlNotificationRequestTest.cs
+System.Data.SqlClient/SqlCommandBuilderTest.cs
 System.Data.SqlClient/SqlCommandTest.cs
 System.Data.SqlClient/SqlConnectionTest.cs
 System.Data.SqlClient/SqlConnectionStringBuilderTest.cs
@@ -112,4 +119,5 @@ System.Data.SqlClient/SqlClientMetaDataCollectionNamesTest.cs
 System.Data.SqlClient/SqlClientPermissionAttributeTest.cs
 System.Data.SqlClient/SqlClientPermissionTest.cs
 System.Data.SqlClient/SqlDataAdapterTest.cs
+System.Data.SqlClient/SqlParameterTest.cs
 Mono.Data.SqlExpressions/DataColumnExpressionTest.cs

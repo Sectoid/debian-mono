@@ -9,11 +9,11 @@
 //
 // Authors:
 //    Tim Coleman <tim@timcoleman.com>
-//    Daniel Moragn <danielmorgan@verizon.net>
+//    Daniel Moragn <monodanmorg@yahoo.com>
 //    Hubert FONGARNAND <informatique.internet@fiducial.fr>
 //
 // Copyright (C) Tim Coleman , 2003
-// Copyright (C) Daniel Morgan, 2005
+// Copyright (C) Daniel Morgan, 2005, 2008
 // Copyright (C) Hubert FONGARNAND, 2005
 //
 // Licensed under the MIT/X11 License.
@@ -60,6 +60,7 @@ namespace System.Data.OracleClient
 		DbType dbType = DbType.AnsiString;
 		int offset;
 		bool sizeSet;
+		bool oracleTypeSet;
 		object value = DBNull.Value;
 		OciLobLocator lobLocator;  // only if Blob or Clob
 		IntPtr bindOutValue = IntPtr.Zero;
@@ -68,23 +69,22 @@ namespace System.Data.OracleClient
 
 		OracleParameterCollection container;
 		OciBindHandle bindHandle;
-		//OciErrorHandle errorHandle;
 		OracleConnection connection;
 		byte[] bytes;
 		IntPtr bindValue = IntPtr.Zero;
 		bool useRef;
 		OciDataType bindType;
+		OracleType bindOracleType;
 
-		short indicator; // TODO: handle indicator to indicate NULL value for OUT parameters
+		short indicator; 
 		int bindSize;
-		//uint position = 0;
 
 		#endregion // Fields
 
 		#region Constructors
 
 		// constructor for cloning the object
-		internal OracleParameter (OracleParameter value)
+		private OracleParameter (OracleParameter value)
 		{
 			this.name = value.name;
 			this.oracleType = value.oracleType;
@@ -101,11 +101,22 @@ namespace System.Data.OracleClient
 			this.sizeSet = value.sizeSet;
 			this.value = value.value;
 			this.lobLocator = value.lobLocator;
+			this.oracleTypeSet = value.oracleTypeSet;
 		}
 
 		public OracleParameter ()
-			: this (String.Empty, OracleType.VarChar, 0, ParameterDirection.Input, false, 0, 0, String.Empty, DataRowVersion.Current, null)
 		{
+			this.name = String.Empty;
+			this.oracleType = OracleType.VarChar;
+			this.size = 0;
+			this.direction = ParameterDirection.Input;
+			this.isNullable = false;
+			this.precision = 0;
+			this.scale = 0;
+			this.srcColumn = String.Empty;
+			this.srcVersion = DataRowVersion.Current;
+			this.value = null;
+			this.oracleTypeSet = false;
 		}
 
 		public OracleParameter (string name, object value)
@@ -234,7 +245,10 @@ namespace System.Data.OracleClient
 #endif
 		public OracleType OracleType {
 			get { return oracleType; }
-			set { SetOracleType (value); }
+			set { 
+				oracleTypeSet = true;
+				SetOracleType (value, false); 
+			}
 		}
 
 #if !NET_2_0
@@ -329,7 +343,6 @@ namespace System.Data.OracleClient
 #endif
 		[RefreshProperties (RefreshProperties.All)]
 		[TypeConverter (typeof(StringConverter))]
-		[MonoTODO("InferOracleType is not always needed")]
 		public
 #if NET_2_0
 		override
@@ -338,7 +351,8 @@ namespace System.Data.OracleClient
 			get { return this.value; }
 			set {
 				this.value = value;
-				InferOracleType (value);
+				if (!oracleTypeSet)
+					InferOracleType (value);
 			}
 		}
 
@@ -367,14 +381,10 @@ namespace System.Data.OracleClient
 		{
 			connection = con;
 
-			//errorHandle = connection.ErrorHandle;
-
 			if (bindHandle == null)
 				bindHandle = new OciBindHandle ((OciHandle) statement);
 
 			IntPtr tmpHandle = bindHandle.Handle;
-
-			//position = pos;
 
 			if (Direction != ParameterDirection.Input)
 				AssertSizeIsSet ();
@@ -387,81 +397,251 @@ namespace System.Data.OracleClient
 			bindType = ociType;
 			int rsize = 0;
 
+			string svalue;
+			string sDate;
+			DateTime dt;
 			bool isnull = false;
-			if (direction == ParameterDirection.Input || direction == ParameterDirection.InputOutput) {
-				try {
-					Type nullable = v.GetType ().GetInterface ("System.Data.SqlTypes.INullable", false);
-					if (nullable != null) {
-						INullable mynullable = (INullable)v;
-						isnull = mynullable.IsNull;
-					}
-				}
-				catch(Exception e) {
-					System.IO.TextWriter.Null.WriteLine(e.Message);
-				}
-			}
 
-			// TODO: handle InputOutput and Return parameters
-			if (direction == ParameterDirection.Output) {
-				// TODO: need to figure out how OracleParameter
-				//       which uses OciBindHandle to share code
-				//       with OciDefineHandle
+			if (direction == ParameterDirection.Input || direction == ParameterDirection.InputOutput) {
+				if (v == null)
+					isnull = true;
+				else if (v is DBNull)
+					isnull = true;
+				else {
+					INullable mynullable = v as INullable;
+					if (mynullable != null)
+						isnull = mynullable.IsNull;
+				}					
+			} 
+
+			if (isnull == true && direction == ParameterDirection.Input) {
+				indicator = 0;
+				bindType = OciDataType.VarChar2;
+				bindSize = 0;
+			} else {
 				switch(ociType) {
-					case OciDataType.VarChar2:
-					case OciDataType.String:
-					case OciDataType.VarChar:
-					case OciDataType.Char:
-					case OciDataType.CharZ:
-					case OciDataType.OciString:
-						bindType = OciDataType.Char;
-						bindSize = size * 2;
-						bindOutValue = OciCalls.AllocateClear (bindSize);
-						bindValue = bindOutValue;
-						break;
-					case OciDataType.RowIdDescriptor:
-						size = 10;
-						bindType = OciDataType.Char;
-						bindSize = size * 2;
-						bindOutValue = OciCalls.AllocateClear (bindSize);
-						bindValue = bindOutValue;
-						break;
-					case OciDataType.Date:
-						bindSize = 7;
-						bindType = OciDataType.Date;
-						bindOutValue = OciCalls.AllocateClear (bindSize);
-						bindValue = bindOutValue;
-						break;
-					case OciDataType.TimeStamp:
-						dateTimeDesc = (OciDateTimeDescriptor) connection.Environment.Allocate (OciHandleType.TimeStamp);
-						if (dateTimeDesc == null) {
-							OciErrorInfo info = connection.ErrorHandle.HandleError ();
-							throw new OracleException (info.ErrorCode, info.ErrorMessage);
+				case OciDataType.VarChar2:
+				case OciDataType.String:
+				case OciDataType.VarChar:
+				case OciDataType.Char:
+				case OciDataType.CharZ:
+				case OciDataType.OciString:
+					bindType = OciDataType.String;
+					indicator = 0;
+					svalue = "\0";
+					// convert value from managed type to type to marshal
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+
+						svalue = v.ToString ();
+
+						if (direction == ParameterDirection.Input && size > 0 && svalue.Length > size)
+							svalue = svalue.Substring(0, size);
+
+						svalue = svalue.ToString () + '\0';
+					}
+
+					// set bind length to size of data
+					//bindSize = (size + 1) * 4;
+					if (direction == ParameterDirection.Input)
+						bindSize = Encoding.UTF8.GetMaxByteCount (svalue.Length);
+					else
+						bindSize = Encoding.UTF8.GetMaxByteCount (size + 1);
+
+					// allocate memory based on bind length
+					bytes = new byte [bindSize];				
+
+					if (direction == ParameterDirection.Input ||
+						direction == ParameterDirection.InputOutput) {
+						
+						// convert managed type to memory allocated earlier
+						// in this case using OCIUnicodeToCharSet
+						rsize = 0;
+						// Get size of buffer
+						status = OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
+						// Fill buffer
+						status = OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
+					}
+					break;
+				case OciDataType.Date:
+					bindType = OciDataType.Date;
+					bindSize = 7;
+					// convert value from managed type to type to marshal
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+
+						if (isnull)
+							bytes = new byte [7];
+						else {
+							sDate = "";
+							dt = DateTime.MinValue;
+							if (v is String) {
+								sDate = (string) v;
+								dt = DateTime.Parse (sDate);
+							}
+							else if (v is DateTime)
+								dt = (DateTime) v;
+							else if (v is OracleString) {
+								sDate = v.ToString ();
+								dt = DateTime.Parse (sDate);
+							}
+							else if (v is OracleDateTime) {
+								OracleDateTime odt = (OracleDateTime) v;
+								dt = (DateTime) odt.Value;
+							}
+							else
+								throw new NotImplementedException ("For OracleType.DateTime, data type not implemented: " + v.GetType().ToString() + ".");
+
+							// for Input and InputOuput, create byte array and pack DateTime into it
+							bytes = PackDate (dt);
 						}
-						dateTimeDesc.ErrorHandle = connection.ErrorHandle;
-						bindSize = 11;
-						bindType = OciDataType.TimeStamp;
-						bindOutValue = dateTimeDesc.Handle;
-						bindValue = dateTimeDesc.Handle;
-						useRef = true;
-						break;
-					case OciDataType.Number:
-						bindSize = 22;
-						bindType = OciDataType.Char;
-						bindOutValue = OciCalls.AllocateClear (bindSize);
-						bindValue = bindOutValue;
-						break;
-					case OciDataType.Long:
-					case OciDataType.LongVarChar:
-						// LAMESPEC: you don't know size until you get it;
-						// therefore, you must allocate an insane size
-						// see OciDefineHandle
-						bindSize = OciDefineHandle.LongVarCharMaxValue;
-						bindOutValue = OciCalls.AllocateClear (bindSize);
-						bindType = OciDataType.LongVarChar;
-						bindValue = bindOutValue;
-						break;
-					case OciDataType.Blob:
-					case OciDataType.Clob:
+					} else	{
+						// allocate 7-byte array for Output and ReturnValue to put date
+						bytes = new byte [7];
+					}
+					break;
+				case OciDataType.TimeStamp:
+					dateTimeDesc = (OciDateTimeDescriptor) connection.Environment.Allocate (OciHandleType.TimeStamp);
+					if (dateTimeDesc == null) {
+						OciErrorInfo info = connection.ErrorHandle.HandleError ();
+						throw new OracleException (info.ErrorCode, info.ErrorMessage);
+					}
+					dateTimeDesc.ErrorHandle = connection.ErrorHandle;
+					bindSize = 11;
+					bindType = OciDataType.TimeStamp;
+					bindOutValue = dateTimeDesc.Handle;
+					bindValue = dateTimeDesc.Handle;
+					useRef = true;
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+
+						dt = DateTime.MinValue;
+						sDate = "";
+						if (isnull)
+							indicator = -1;
+						else if (v is String) {
+							sDate = (string) v;
+							dt = DateTime.Parse (sDate);
+						}
+						else if (v is DateTime)
+							dt = (DateTime) v;
+						else if (v is OracleString) {
+							sDate = (string) v;
+							dt = DateTime.Parse (sDate);
+						}
+						else if (v is OracleDateTime) {
+							OracleDateTime odt = (OracleDateTime) v;
+							dt = (DateTime) odt.Value;
+						}
+						else
+							throw new NotImplementedException ("For OracleType.Timestamp, data type not implemented: " + v.GetType().ToString()); // ?
+
+						short year = (short) dt.Year;
+						byte month = (byte) dt.Month;
+						byte day = (byte) dt.Day;
+						byte hour = (byte) dt.Hour;
+						byte min = (byte) dt.Minute;
+						byte sec = (byte) dt.Second;
+						uint fsec = (uint) dt.Millisecond;
+						string timezone = "";
+						dateTimeDesc.SetDateTime (connection.Session,
+							connection.ErrorHandle,
+							year, month, day, hour, min, sec, fsec,
+							timezone);
+					}
+					break;
+				case OciDataType.Integer:
+				case OciDataType.Float:
+				case OciDataType.Number:
+					bindType = OciDataType.String;
+					indicator = 0;
+					svalue = "\0";
+					// define size for binding
+					bindSize = 30; // a NUMBER is 22 bytes but as a string we need more
+					// allocate memory
+					bytes = new byte [bindSize];
+					// convert value from managed type to type to marshal
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+
+						svalue = null;
+						if(v is IFormattable)
+							svalue = ((IFormattable)v).ToString (null, con.SessionFormatProvider);
+						else if (v is OracleNumber)
+							svalue = ((OracleNumber)v).ToString(con.SessionFormatProvider);
+						else
+							svalue = v.ToString();
+
+						svalue = svalue + "\0";
+
+						rsize = 0;
+						// Get size of buffer
+						OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
+
+						// Fill buffer
+						bytes = new byte [bindSize];
+						OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
+					} 
+					break;
+				case OciDataType.Long:
+				case OciDataType.LongVarChar:
+					bindType = OciDataType.LongVarChar;
+
+					// FIXME: use piecewise fetching for Long, Clob, Blob, and Long Raw
+					// See http://download.oracle.com/docs/cd/B19306_01/appdev.102/b14250/oci05bnd.htm#sthref724
+					
+					bindSize = Size + 5; // 4 bytes prepended for length, bytes, 1 byte NUL character
+
+					indicator = 0;
+					svalue = "\0";
+					// convert value from managed type to type to marshal
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+
+						svalue = v.ToString () + '\0';
+					}
+
+					bytes = new byte [bindSize];
+					// LONG is only ANSI 
+					ASCIIEncoding enc = new ASCIIEncoding ();
+					
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+						int byteCount = 0;
+						if (svalue.Length > 0) {	
+							byteCount = enc.GetBytes (svalue, 4, svalue.Length, bytes, 0);
+							// LONG VARCHAR prepends a 4-byte length
+							if (byteCount > 0) {
+								byte[] byteArrayLen = BitConverter.GetBytes ((uint) byteCount);
+								bytes[0] = byteArrayLen[0];
+								bytes[1] = byteArrayLen[1];
+								bytes[2] = byteArrayLen[2];
+								bytes[3] = byteArrayLen[3];
+							}
+						}
+					}
+					break;
+				case OciDataType.Clob:
+					if (direction == ParameterDirection.Input) {
+						svalue = v.ToString();
+						rsize = 0;
+
+						// Get size of buffer
+						OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
+
+						// Fill buffer
+						bytes = new byte[rsize];
+						OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
+
+						bindType = OciDataType.Long;
+						bindSize = bytes.Length;
+					} 
+					else if (direction == ParameterDirection.InputOutput) {
+						// not the exact error that .net 2.0 throws, but this is better
+						throw new NotImplementedException ("Parameters of OracleType.Clob with direction of InputOutput are not supported.");
+					}
+					else {
+						// Output and Return parameters
 						bindSize = -1;
 						lobLocator = (OciLobLocator) connection.Environment.Allocate (OciHandleType.LobLocator);
 						if (lobLocator == null) {
@@ -473,165 +653,121 @@ namespace System.Data.OracleClient
 						lobLocator.ErrorHandle = connection.ErrorHandle;
 						lobLocator.Service = statement.Service;
 						useRef = true;
-						break;
-					case OciDataType.RSet: // REF CURSOR
-						cursor = IntPtr.Zero;
-						OciCalls.OCIHandleAlloc (connection.Environment,
-							out cursor,
-							OciHandleType.Statement,
-							0,
-							IntPtr.Zero);
+					}
+					break;
+				case OciDataType.Blob:
+					if (direction == ParameterDirection.Input) {
+						if (v is byte[]) {
+							bytes = (byte[]) v;
+							bindType = OciDataType.LongRaw;
+							bindSize = bytes.Length;
+						}
+						else if (v is OracleLob) {
+							OracleLob lob = (OracleLob) v;
+							if (lob.LobType == OracleType.Blob) {
+								lobLocator = lob.Locator;
+								bindOutValue = lobLocator.Handle;
+								bindValue = lobLocator.Handle;
+								lobLocator.ErrorHandle = connection.ErrorHandle;
+								lobLocator.Service = connection.ServiceContext;
+								useRef = true;
+							}
+							else
+								throw new NotImplementedException("For OracleType.Blob, data type OracleLob of LobType Clob/NClob is not implemented.");
+						}
+						else
+							throw new NotImplementedException ("For OracleType.Blob, data type not implemented: " + v.GetType().ToString()); // ?
+					}
+					else if (direction == ParameterDirection.InputOutput) {
+						// not the exact error that .net 2.0 throws, but this is better
+						throw new NotImplementedException ("Parameters of OracleType.Blob with direction of InputOutput are not supported.");
+					}
+					else {
+						bindSize = -1;
+						if (value != null && value is OracleLob) {
+							OracleLob blob = (OracleLob) value;
+							if (blob.LobType == OracleType.Blob)
+								if (value != OracleLob.Null) {
+									lobLocator = blob.Locator;
+									byte[] bs = (byte[]) blob.Value;
+									bindSize = bs.Length;
+								}
+						}
+						if (lobLocator == null) {
+							lobLocator = (OciLobLocator) connection.Environment.Allocate (OciHandleType.LobLocator);
+							if (lobLocator == null) {
+								OciErrorInfo info = connection.ErrorHandle.HandleError ();
+								throw new OracleException (info.ErrorCode, info.ErrorMessage);
+							}
+						}
+						bindOutValue = lobLocator.Handle;
+						bindValue = lobLocator.Handle;
+						lobLocator.ErrorHandle = connection.ErrorHandle;
+						lobLocator.Service = connection.ServiceContext;
+						useRef = true;
+					}
+					break;
+				default:
+					// FIXME: move this up - see how Char, Number, and Date are done...
+					if (direction == ParameterDirection.Output || 
+						direction == ParameterDirection.InputOutput || 
+						direction == ParameterDirection.ReturnValue) {
 
+						switch(ociType) {
+						case OciDataType.RowIdDescriptor:
+							size = 10;
+							bindType = OciDataType.Char;
+							bindSize = size * 2;
+							bindOutValue = OciCalls.AllocateClear (bindSize);
+							bindValue = bindOutValue;
+							break;
+						case OciDataType.RSet: // REF CURSOR
+							cursor = IntPtr.Zero;
+							OciCalls.OCIHandleAlloc (connection.Environment,
+								out cursor,
+								OciHandleType.Statement,
+								0,
+								IntPtr.Zero);
+
+							bindSize = 0;
+							bindType = OciDataType.RSet;
+							break;
+						default:
+							// define other types
+							throw new NotImplementedException ("Data Type not implemented: " + ociType.ToString() + ".");
+						} // switch of ociDataType for output
+						bindValue = bindOutValue;
+					}
+					else if ((v == DBNull.Value || v == null || isnull == true) && direction == ParameterDirection.Input) {
+						indicator = 0;
+						bindType = OciDataType.VarChar2;
 						bindSize = 0;
-						bindType = OciDataType.RSet;
-						break;
-					default:
-						// define other types
-						throw new NotImplementedException ();
-				}
-				bindValue = bindOutValue;
+					}
+					else {
+						if (bindOracleType == OracleType.Raw) {
+							byte[] val = v as byte[];
+							bindValue = OciCalls.AllocateClear (val.Length);
+							Marshal.Copy (val, 0, bindValue, val.Length);
+							bindSize = val.Length;
+						} else {
+							svalue = v.ToString () + '\0';
+							rsize = 0;
+
+							// Get size of buffer
+							OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
+
+							// Fill buffer
+							bytes = new byte[rsize];
+							OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
+
+							bindType = OciDataType.String;
+							bindSize = bytes.Length;
+						} // else oracleType
+					} // else - Input, Ouput...
+					break;
+				}			
 			}
-			else if ((v == DBNull.Value || v == null || isnull == true) && direction == ParameterDirection.Input) {
-				indicator = 0;
-				bindType = OciDataType.VarChar2;
-				bindSize = 0;
-			}
-			else {
-				// TODO: do other data types and oracle data types
-				// should I be using IConvertible to convert?
-				string sDate = "";
-				DateTime dt = DateTime.MinValue;
-				if (oracleType == OracleType.Timestamp){
-					bindType = OciDataType.TimeStamp;
-					bindSize = 11;
-					dt = DateTime.MinValue;
-					sDate = "";
-					if (v is String){
-						sDate = (string) v;
-						dt = DateTime.Parse (sDate);
-					}
-					else if (v is DateTime)
-						dt = (DateTime) v;
-					else if (v is OracleString){
-						sDate = (string) v;
-						dt = DateTime.Parse (sDate);
-					}
-					else if (v is OracleDateTime) {
-						OracleDateTime odt = (OracleDateTime) v;
-						dt = (DateTime) odt.Value;
-					}
-					else
-						throw new NotImplementedException (); // ?
-
-					short year = (short) dt.Year;
-					byte month = (byte) dt.Month;
-					byte day = (byte) dt.Day;
-					byte hour = (byte) dt.Hour;
-					byte min = (byte) dt.Minute;
-					byte sec = (byte) dt.Second;
-					uint fsec = (uint) dt.Millisecond;
-					string timezone = "";
-					dateTimeDesc = (OciDateTimeDescriptor) connection.Environment.Allocate (OciHandleType.TimeStamp);
-					if (dateTimeDesc == null) {
-						OciErrorInfo info = connection.ErrorHandle.HandleError ();
-						throw new OracleException (info.ErrorCode, info.ErrorMessage);
-					}
-					dateTimeDesc.ErrorHandle = connection.ErrorHandle;
-					dateTimeDesc.SetDateTime (connection.Session,
-						connection.ErrorHandle,
-						year, month, day, hour, min, sec, fsec,
-						timezone);
-					useRef = true;
-				}
-				else if (oracleType == OracleType.DateTime) {
-					sDate = "";
-					dt = DateTime.MinValue;
-					if (v is String) {
-						sDate = (string) v;
-						dt = DateTime.Parse (sDate);
-					}
-					else if (v is DateTime)
-						dt = (DateTime) v;
-					else if (v is OracleString) {
-						sDate = (string) v;
-						dt = DateTime.Parse (sDate);
-					}
-					else if (v is OracleDateTime) {
-						OracleDateTime odt = (OracleDateTime) v;
-						dt = (DateTime) odt.Value;
-					}
-					else
-						throw new NotImplementedException (); // ?
-
-					bytes = PackDate (dt);
-					bindType = OciDataType.Date;
-					bindSize = bytes.Length;
-				}
-				else if (oracleType == OracleType.Blob) {
-					bytes = (byte[]) v;
-					bindType = OciDataType.LongRaw;
-					bindSize = bytes.Length;
-				}
-				else if (oracleType == OracleType.Clob) {
-					string sv = v.ToString();
-					rsize = 0;
-
-					// Get size of buffer
-					OciCalls.OCIUnicodeToCharSet (statement.Parent, null, sv, out rsize);
-
-					// Fill buffer
-					bytes = new byte[rsize];
-					OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, sv, out rsize);
-
-					bindType = OciDataType.Long;
-					bindSize = bytes.Length;
-				}
-				else if (oracleType == OracleType.Raw) {
-					byte[] val = v as byte[];
-					bindValue = OciCalls.AllocateClear (val.Length);
-					Marshal.Copy (val, 0, bindValue, val.Length);
-					bindSize = val.Length;
-				}
-                                else if (oracleType == OracleType.Number
-                                        || oracleType == OracleType.Double
-                                        || oracleType == OracleType.Int32
-                                        || oracleType == OracleType.Int16
-                                        || oracleType == OracleType.Byte
-                                        || oracleType == OracleType.Float) {
-					string svalue = null;
-					if(v is IFormattable)
-						svalue = ((IFormattable)v).ToString (null, con.SessionFormatProvider);
-					else if (v is OracleNumber)
-						svalue = ((OracleNumber)v).ToString(con.SessionFormatProvider);
-					else
-						svalue = v.ToString();
-					rsize = 0;
-
-					// Get size of buffer
-					OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
-
-					// Fill buffer
-					bytes = new byte[rsize];
-					OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
-
-					bindType = OciDataType.VarChar2;
-					bindSize = svalue.Length;
-				} else {
-					string svalue = v.ToString () + '\0';
-					rsize = 0;
-
-					// Get size of buffer
-					OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
-
-					// Fill buffer
-					bytes = new byte[rsize];
-					OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
-
-					bindType = OciDataType.String;
-					bindSize = svalue.Length;
-				}
-			}
-
+			
 			// Now, call the appropriate OCI Bind function;
 
 			if (useRef == true) {
@@ -717,11 +853,7 @@ namespace System.Data.OracleClient
 					IntPtr.Zero,
 					0);
 			}
-
-			if (status != 0) {
-				OciErrorInfo info = connection.ErrorHandle.HandleError ();
-				throw new OracleException (info.ErrorCode, info.ErrorMessage);
-			}
+			OciErrorHandle.ThrowExceptionIfError (connection.ErrorHandle, status);
 
 			bindHandle.SetHandle (tmpHandle);
 		}
@@ -737,43 +869,45 @@ namespace System.Data.OracleClient
 			string exception = String.Format ("The parameter data type of {0} is invalid.", type.FullName);
 			switch (type.FullName) {
 			case "System.Int64":
-				SetOracleType (OracleType.Number);
+				SetOracleType (OracleType.Number, true);
 				break;
 			case "System.Boolean":
 			case "System.Byte":
-				SetOracleType (OracleType.Byte);
+				SetOracleType (OracleType.Byte, true);
 				break;
 			case "System.String":
 			case "System.Data.OracleClient.OracleString":
-				SetOracleType (OracleType.VarChar);
+				SetOracleType (OracleType.VarChar, true);
 				break;
 			case "System.Data.OracleClient.OracleDateTime":
 			case "System.DateTime":
-				SetOracleType (OracleType.DateTime);
+				SetOracleType (OracleType.DateTime, true);
 				break;
 			case "System.Decimal":
 			case "System.Data.OracleClient.OracleNumber":
-				SetOracleType (OracleType.Number);
-				//scale = ((decimal) value).Scale;
+				SetOracleType (OracleType.Number, true);
 				break;
 			case "System.Double":
-				SetOracleType (OracleType.Double);
+				SetOracleType (OracleType.Double, true);
 				break;
 			case "System.Byte[]":
 			case "System.Guid":
-				SetOracleType (OracleType.Raw);
+				SetOracleType (OracleType.Raw, true);
 				break;
 			case "System.Int32":
-				SetOracleType (OracleType.Int32);
+				SetOracleType (OracleType.Int32, true);
 				break;
 			case "System.Single":
-				SetOracleType (OracleType.Float);
+				SetOracleType (OracleType.Float, true);
 				break;
 			case "System.Int16":
-				SetOracleType (OracleType.Int16);
+				SetOracleType (OracleType.Int16, true);
 				break;
 			case "System.DBNull":
 				break; //unable to guess type
+			case "System.Data.OracleClient.OracleLob":
+				SetOracleType (((OracleLob) value).LobType, true); 
+				break;
 			default:
 				throw new ArgumentException (exception);
 			}
@@ -889,7 +1023,8 @@ namespace System.Data.OracleClient
 				break;
 			case DbType.StringFixedLength:
 				oracleType = OracleType.NChar;
-				ociType = OciDataType.Char;
+				ociType = OciDataType.Char;																																																																																																																																																																																																																																																														
+
 				break;
 			default:
 				throw new ArgumentException (exception);
@@ -897,7 +1032,7 @@ namespace System.Data.OracleClient
 			dbType = type;
 		}
 
-		private void SetOracleType (OracleType type)
+		private void SetOracleType (OracleType type, bool inferring)
 		{
 			FreeHandle ();
 			string exception = String.Format ("No mapping exists from OracleType {0} to a known DbType.", type);
@@ -994,7 +1129,9 @@ namespace System.Data.OracleClient
 				throw new ArgumentException (exception);
 			}
 
-			oracleType = type;
+			if (!oracleTypeSet || !inferring )
+				oracleType = type;
+			bindOracleType = type;
 		}
 
 #if NET_2_0
@@ -1005,6 +1142,7 @@ namespace System.Data.OracleClient
 
 		public void ResetOracleType ()
 		{
+			oracleTypeSet = false;
 			InferOracleType (value);
 		}
 #endif // NET_2_0
@@ -1022,8 +1160,12 @@ namespace System.Data.OracleClient
 			if (indicator == -1)
 				return;
 
-			byte[] buffer = null;
-			object tmp = null;
+			int rsize = 0;
+			IntPtr env = IntPtr.Zero;
+			StringBuilder ret = null;
+
+			// FIXME: redo all types - see how Char, Number, and Date are done
+			// here and in Bind()
 
 			switch (ociType) {
 			case OciDataType.VarChar2:
@@ -1033,53 +1175,81 @@ namespace System.Data.OracleClient
 			case OciDataType.CharZ:
 			case OciDataType.OciString:
 			case OciDataType.RowIdDescriptor:
-				buffer = new byte [Size];
-				Marshal.Copy (bindOutValue, buffer, 0, Size);
-
 				// Get length of returned string
-				int 	rsize = 0;
-				IntPtr	env = cmd.Connection.Environment;
-				OciCalls.OCICharSetToUnicode (env, null, buffer, out rsize);
+				rsize = 0;
+				env = cmd.Connection.Environment;
+				OciCalls.OCICharSetToUnicode (env, null, bytes, out rsize);
 
 				// Get string
-				StringBuilder ret = new StringBuilder(rsize);
-				OciCalls.OCICharSetToUnicode (env, ret, buffer, out rsize);
+				ret = new StringBuilder(rsize);
+				OciCalls.OCICharSetToUnicode (env, ret, bytes, out rsize);
 
 				value = ret.ToString ();
+				break;
+			case OciDataType.Long:
+			case OciDataType.LongVarChar:
+				int longSize = 0;
+				if (BitConverter.IsLittleEndian)
+					longSize = BitConverter.ToInt32 (new byte [] {bytes [0], bytes [1], bytes [2], bytes [3]}, 0);
+				else
+					longSize = BitConverter.ToInt32 (new byte [] {bytes [3], bytes [2], bytes [1], bytes [0]}, 0);
+
+				ASCIIEncoding encoding = new ASCIIEncoding ();
+				value = encoding.GetString (bytes, 4, longSize);
+				encoding = null;
 				break;
 			case OciDataType.Integer:
 			case OciDataType.Number:
 			case OciDataType.Float:
-				tmp = Marshal.PtrToStringAnsi (bindOutValue, bindSize);
-				if (tmp != null)
-					value = Decimal.Parse (String.Copy ((string) tmp), cmd.Connection.SessionFormatProvider);
+				rsize = 0;
+				env = cmd.Connection.Environment;
+				OciCalls.OCICharSetToUnicode (env, null, bytes, out rsize);
+
+				// Get string
+				ret = new StringBuilder(rsize);
+				OciCalls.OCICharSetToUnicode (env, ret, bytes, out rsize);
+
+				// if not empty, parse string as a decimal using session format
+				if (ret.Length > 0)
+					value = Decimal.Parse (ret.ToString (), cmd.Connection.SessionFormatProvider);
 				break;
 			case OciDataType.TimeStamp:
 				value = dateTimeDesc.GetDateTime (connection.Environment, dateTimeDesc.ErrorHandle);
 				break;
 			case OciDataType.Date:
-				value = UnpackDate (bindOutValue);
+				value = UnpackDate (bytes);
 				break;
 			case OciDataType.Blob:
 			case OciDataType.Clob:
-				OracleLob lob = new OracleLob (lobLocator, ociType);
-				lob.connection = connection;
-				value = lob;
+				if (value != null && value is OracleLob && value != OracleLob.Null) {
+					OracleLob lob2 = (OracleLob) value;
+					lob2.connection = connection;
+				}
+				else {
+					OracleLob lob = new OracleLob (lobLocator, ociType);
+					lob.connection = connection;
+					value = lob;
+				}
 				break;
-			case OciDataType.RSet: // REF CURSOR
-				OciStatementHandle cursorStatement = new OciStatementHandle (cmd.Connection.Environment, cursor);
-				cursorStatement.ErrorHandle = cmd.ErrorHandle;
-				cursorStatement.Command = cmd.Connection.CreateCommand ();
-				cursorStatement.SetupRefCursorResult ();
+			case OciDataType.RSet: // REF CURSOR				
+				OciStatementHandle cursorStatement = GetOutRefCursor (cmd);
 				value = new OracleDataReader (cursorStatement.Command, cursorStatement, true, CommandBehavior.Default);
-				cursor = IntPtr.Zero;
-				cursorStatement = null;
 				break;
 			default:
-				throw new NotImplementedException ();
+				throw new NotImplementedException ("Data Type not implemented: " + ociType.ToString() + ".");
 			}
-			tmp = null;
-			buffer = null;
+		}
+
+		internal OciStatementHandle GetOutRefCursor (OracleCommand cmd) 
+		{
+				OciStatementHandle cursorStatement = new OciStatementHandle (cmd.Connection.ServiceContext, cursor);
+
+				cursorStatement.ErrorHandle = cmd.ErrorHandle;
+				cursorStatement.Command = cmd;
+				cursorStatement.SetupRefCursorResult (cmd.Connection);
+				cursorStatement.Service = cmd.Connection.ServiceContext;
+				cursor = IntPtr.Zero;
+				return cursorStatement;			
 		}
 
 		internal void Update (OracleCommand cmd)
@@ -1111,21 +1281,21 @@ namespace System.Data.OracleClient
 			bindValue = IntPtr.Zero;
 
 			bindHandle = null;
-			//errorHandle = null;
 			connection = null;
 		}
 
 		// copied from OciDefineHandle
 		[MonoTODO ("Be able to handle negative dates... i.e. BCE.")]
-		internal DateTime UnpackDate (IntPtr dateValue)
+		private DateTime UnpackDate (byte[] bytes)
 		{
-			byte century = Marshal.ReadByte (dateValue, 0);
-			byte year = Marshal.ReadByte (dateValue, 1);
-			byte month = Marshal.ReadByte (dateValue, 2);
-			byte day = Marshal.ReadByte (dateValue, 3);
-			byte hour = Marshal.ReadByte (dateValue, 4);
-			byte minute = Marshal.ReadByte (dateValue, 5);
-			byte second = Marshal.ReadByte (dateValue, 6);
+			byte century = bytes [0];
+			byte year    = bytes [1];
+			byte month   = bytes [2];
+			byte day     = bytes [3];
+			byte hour    = bytes [4];
+			byte minute  = bytes [5];
+			byte second  = bytes [6];
+
 
 			return new DateTime ((century - 100) * 100 + (year - 100),
 						month,
@@ -1136,7 +1306,7 @@ namespace System.Data.OracleClient
 
 		}
 
-		internal byte[] PackDate (DateTime dateValue)
+		private byte[] PackDate (DateTime dateValue)
 		{
 			byte[] buffer = new byte[7];
 

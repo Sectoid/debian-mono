@@ -49,7 +49,7 @@ the_libdir = $(topdir)/class/$(lib_dir)/$(PROFILE)/
 the_lib = $(the_libdir)$(LIBRARY_NAME)
 the_pdb = $(the_lib:.dll=.pdb)
 the_mdb = $(the_lib).mdb
-library_CLEAN_FILES += $(makefrag) $(the_lib) $(the_pdb) $(the_mdb)
+library_CLEAN_FILES += $(makefrag) $(the_lib) $(the_lib).so $(the_pdb) $(the_mdb)
 
 ifdef LIBRARY_NEEDS_POSTPROCESSING
 build_libdir = fixup/$(PROFILE)/
@@ -94,7 +94,7 @@ ifdef NO_SIGN_ASSEMBLY
 SN = :
 else
 sn = $(topdir)/class/lib/net_1_1_bootstrap/sn.exe
-SN = MONO_PATH="$(topdir)/class/lib/net_1_1_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn)
+SN = $(Q) MONO_PATH="$(topdir)/class/lib/net_1_1_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn)
 SNFLAGS = -q -R
 endif
 
@@ -174,7 +174,7 @@ ifndef NO_TEST
 $(test_nunit_dep): $(topdir)/build/deps/nunit-$(PROFILE).stamp
 	@if test -f $@; then :; else rm -f $<; $(MAKE) $<; fi
 $(topdir)/build/deps/nunit-$(PROFILE).stamp:
-	cd ${topdir}/nunit20 && $(MAKE)
+	cd ${topdir}/nunit24 && $(MAKE)
 	echo "stamp" >$@
 library_CLEAN_FILES += $(topdir)/build/deps/nunit-$(PROFILE).stamp
 endif
@@ -195,30 +195,38 @@ test-local: $(test_assemblies)
 run-test-local: run-test-lib
 run-test-ondotnet-local: run-test-ondotnet-lib
 
-TEST_HARNESS_EXCLUDES = /exclude:NotWorking,ValueAdd,CAS,InetAccess
-TEST_HARNESS_EXCLUDES_ONDOTNET = /exclude:NotDotNet,CAS
+TEST_HARNESS_EXCLUDES = -exclude=$(PLATFORM_TEST_HARNESS_EXCLUDES)NotWorking,ValueAdd,CAS,InetAccess
+TEST_HARNESS_EXCLUDES_ONDOTNET = /exclude:$(PLATFORM_TEST_HARNESS_EXCLUDES)NotDotNet,CAS
 
 ifdef TEST_HARNESS_VERBOSE
-TEST_HARNESS_OUTPUT = /labels
-TEST_HARNESS_OUTPUT_ONDOTNET = /labels
+TEST_HARNESS_OUTPUT = -labels
+TEST_HARNESS_OUTPUT_ONDOTNET = -labels
 TEST_HARNESS_POSTPROC = :
 TEST_HARNESS_POSTPROC_ONDOTNET = :
 else
-TEST_HARNESS_OUTPUT = /output:TestResult-$(PROFILE).log
-TEST_HARNESS_OUTPUT_ONDOTNET = /output:TestResult-ondotnet-$(PROFILE).log
-TEST_HARNESS_POSTPROC = (echo ''; cat TestResult-$(PROFILE).log) | sed '1,/^Tests run: /d'
-TEST_HARNESS_POSTPROC_ONDOTNET = (echo ''; cat TestResult-ondotnet-$(PROFILE).log) | sed '1,/^Tests run: /d'
+TEST_HARNESS_OUTPUT = -output=TestResult-$(PROFILE).log
+TEST_HARNESS_OUTPUT_ONDOTNET = -output=TestResult-ondotnet-$(PROFILE).log
+TEST_HARNESS_POSTPROC = (echo ''; cat TestResult-$(PROFILE).log) | sed '1,/^Tests run: /d'; xsltproc $(topdir)/build/nunit-summary.xsl TestResult-$(PROFILE).xml >> TestResult-$(PROFILE).log
+TEST_HARNESS_POSTPROC_ONDOTNET = (echo ''; cat TestResult-ondotnet-$(PROFILE).log) | sed '1,/^Tests run: /d'; xsltproc $(topdir)/build/nunit-summary.xsl TestResult-ondotnet-$(PROFILE).xml >> TestResult-ondotnet-$(PROFILE).log
+endif
+
+ifdef FIXTURE
+FIXTURE_ARG = -fixture=MonoTests.$(FIXTURE)
+endif
+
+ifdef TESTNAME
+TESTNAME_ARG = -run=MonoTests.$(TESTNAME)
 endif
 
 ## FIXME: i18n problem in the 'sed' command below
 run-test-lib: test-local
 	ok=:; \
-	MONO_REGISTRY_PATH="$(HOME)/.mono/registry" $(TEST_RUNTIME) $(RUNTIME_FLAGS) $(TEST_HARNESS) $(TEST_HARNESS_FLAGS) $(LOCAL_TEST_HARNESS_FLAGS) $(TEST_HARNESS_EXCLUDES) $(TEST_HARNESS_OUTPUT) /xml:TestResult-$(PROFILE).xml $(test_assemblies) || ok=false; \
+	MONO_REGISTRY_PATH="$(HOME)/.mono/registry" $(TEST_RUNTIME) $(RUNTIME_FLAGS) $(TEST_HARNESS) $(test_assemblies) -noshadow $(TEST_HARNESS_FLAGS) $(LOCAL_TEST_HARNESS_FLAGS) $(TEST_HARNESS_EXCLUDES) $(TEST_HARNESS_OUTPUT) -xml=TestResult-$(PROFILE).xml $(FIXTURE_ARG) $(TESTNAME_ARG)|| ok=false; \
 	$(TEST_HARNESS_POSTPROC) ; $$ok
 
 run-test-ondotnet-lib: test-local
 	ok=:; \
-	$(TEST_HARNESS) $(TEST_HARNESS_FLAGS) $(LOCAL_TEST_HARNESS_ONDOTNET_FLAGS) $(TEST_HARNESS_EXCLUDES_ONDOTNET) $(TEST_HARNESS_OUTPUT_ONDOTNET) /xml:TestResult-ondotnet-$(PROFILE).xml $(test_assemblies) || ok=false; \
+	$(TEST_HARNESS) $(test_assemblies) -noshadow $(TEST_HARNESS_FLAGS) $(LOCAL_TEST_HARNESS_ONDOTNET_FLAGS) $(TEST_HARNESS_EXCLUDES_ONDOTNET) $(TEST_HARNESS_OUTPUT_ONDOTNET) -xml=TestResult-ondotnet-$(PROFILE).xml $(FIXTURE_ARG) $(TESTNAME_ARG) || ok=false; \
 	$(TEST_HARNESS_POSTPROC_ONDOTNET) ; $$ok
 endif
 
@@ -227,11 +235,11 @@ DISTFILES = $(wildcard *$(LIBRARY)*.sources) $(EXTRA_DISTFILES)
 TEST_FILES =
 
 ifdef HAVE_CS_TESTS
-TEST_FILES += `sed -e '/^$$/d' -e 's,^,Test/,' $(test_sourcefile)`
+TEST_FILES += `sed -e '/^$$/d' -e 's,^../,,' -et -e 's,^,Test/,' $(test_sourcefile)`
 DISTFILES += $(test_sourcefile)
 endif
 ifdef HAVE_VB_TESTS
-TEST_FILES += `sed -e '/^$$/d' -e 's,^,Test/,' $(btest_sourcefile)`
+TEST_FILES += `sed -e '/^$$/d' -e 's,^../,,' -et -e 's,^,Test/,' $(btest_sourcefile)`
 DISTFILES += $(btest_sourcefile)
 endif
 
@@ -289,6 +297,8 @@ BUILT_SOURCES_cmdline = `echo $(BUILT_SOURCES) | $(PLATFORM_CHANGE_SEPARATOR_CMD
 endif
 endif
 
+Q_AOT=$(if $(V),,@echo "AOT [$(PROFILE)] $(notdir $(@))";)
+
 # The library
 
 $(the_lib): $(the_libdir)/.stamp
@@ -297,12 +307,17 @@ $(build_lib): $(response) $(sn) $(BUILT_SOURCES) $(build_libdir:=/.stamp)
 ifdef LIBRARY_USE_INTERMEDIATE_FILE
 	$(LIBRARY_COMPILE) $(LIBRARY_FLAGS) $(LIB_MCS_FLAGS) -target:library -out:$(LIBRARY_NAME) $(BUILT_SOURCES_cmdline) @$(response)
 	$(SN) $(SNFLAGS) $(LIBRARY_NAME) $(LIBRARY_SNK)
-	mv $(LIBRARY_NAME) $@
-	test ! -f $(LIBRARY_NAME).mdb || mv $(LIBRARY_NAME).mdb $@.mdb
-	test ! -f $(LIBRARY_NAME:.dll=.pdb) || mv $(LIBRARY_NAME:.dll=.pdb) $(dir $@)$(LIBRARY_NAME:.dll=.pdb)
+	$(Q) mv $(LIBRARY_NAME) $@
+	$(Q) test ! -f $(LIBRARY_NAME).mdb || mv $(LIBRARY_NAME).mdb $@.mdb
+	$(Q) test ! -f $(LIBRARY_NAME:.dll=.pdb) || mv $(LIBRARY_NAME:.dll=.pdb) $(dir $@)$(LIBRARY_NAME:.dll=.pdb)
 else
 	$(LIBRARY_COMPILE) $(LIBRARY_FLAGS) $(LIB_MCS_FLAGS) -target:library -out:$@ $(BUILT_SOURCES_cmdline) @$(response)
 	$(SN) $(SNFLAGS) $@ $(LIBRARY_SNK)
+endif
+ifdef ENABLE_AOT
+ifneq (,$(filter $(AOT_IN_PROFILES), $(PROFILE)))
+	$(Q_AOT) MONO_PATH=$(the_libdir) $(RUNTIME) --aot=bind-to-runtime-version $@ > $(PROFILE)_aot.log 2>&1
+endif
 endif
 
 $(makefrag): $(sourcefile)
@@ -362,3 +377,22 @@ ifneq ($(response),$(sourcefile))
 $(response): $(topdir)/build/library.make $(depsdir)/.stamp
 endif
 $(makefrag) $(test_response) $(test_makefrag) $(btest_response) $(btest_makefrag): $(topdir)/build/library.make $(depsdir)/.stamp
+
+## Documentation stuff
+
+Q_MDOC_UP=$(if $(V),,@echo "MDOC-UP [$(PROFILE)] $(notdir $(@))";)
+MDOC_UP  =$(Q_MDOC_UP) \
+	if `echo $(PROFILE) | grep ^net_1_ > /dev/null 2>/dev/null` ; then    \
+		$(RUNTIME) $(topdir)/tools/mdoc/monodocer1.exe                      \
+			-path:Documentation/en -assembly:$(the_lib) ;                     \
+	else                                                                  \
+		$(RUNTIME) $(topdir)/tools/mdoc/mdoc.exe update --delete            \
+			-o Documentation/en $(the_lib) ;                                  \
+	fi
+
+doc-update-local: $(the_libdir)/.doc-stamp
+
+$(the_libdir)/.doc-stamp: $(the_lib)
+	$(MDOC_UP)
+	@echo "doc-stamp" > $@
+

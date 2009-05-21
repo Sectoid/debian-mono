@@ -87,11 +87,6 @@ namespace System
 
 		private static readonly Decimal MaxValueDiv10 = MaxValue / 10;
 
-		// maximal decimal value as double
-		private static readonly double dDecMaxValue = 7.922816251426433759354395033e28;
-		// epsilon decimal value as double
-		private static readonly double dDecEpsilon = 0.5e-28;  // == 0.5 * 1 / 10^28
-
 		// some constants
 		private const int DECIMAL_DIVIDE_BY_ZERO = 5;
 		private const uint MAX_SCALE = 28;
@@ -146,7 +141,6 @@ namespace System
 		public Decimal (uint value) 
 		{
 			lo = value;
-			flags = hi = mid = 0;
 		}
 
 		public Decimal (long value) 
@@ -184,7 +178,8 @@ namespace System
 
 		public Decimal (float value) 
 		{
-			if (value > (float)Decimal.MaxValue || value < (float)Decimal.MinValue) {
+			if (value > (float)Decimal.MaxValue || value < (float)Decimal.MinValue ||
+				float.IsNaN (value) || float.IsNegativeInfinity (value) || float.IsPositiveInfinity (value)) {
 				throw new OverflowException (Locale.GetText (
 					"Value {0} is greater than Decimal.MaxValue or less than Decimal.MinValue", value));
 			}
@@ -199,7 +194,8 @@ namespace System
 
 		public Decimal (double value) 
 		{
-			if (value > (double)Decimal.MaxValue || value < (double)Decimal.MinValue) {
+			if (value > (double)Decimal.MaxValue || value < (double)Decimal.MinValue ||
+				double.IsNaN (value) || double.IsNegativeInfinity (value) || double.IsPositiveInfinity (value)) {
 				throw new OverflowException (Locale.GetText (
 					"Value {0} is greater than Decimal.MaxValue or less than Decimal.MinValue", value));
 			}
@@ -1291,30 +1287,58 @@ namespace System
 			return Convert.ToInt64 (this);
 		}
 
+#if ONLY_1_1
+#pragma warning disable 3019
+		[CLSCompliant (false)]
+#endif
 		sbyte IConvertible.ToSByte (IFormatProvider provider)
 		{
 			return Convert.ToSByte (this);
 		}
+#if ONLY_1_1
+#pragma warning restore 3019
+#endif
 
 		float IConvertible.ToSingle (IFormatProvider provider)
 		{
 			return Convert.ToSingle (this);
 		}
 
+#if ONLY_1_1
+#pragma warning disable 3019
+		[CLSCompliant (false)]
+#endif
 		ushort IConvertible.ToUInt16 (IFormatProvider provider)
 		{
 			return Convert.ToUInt16 (this);
 		}
+#if ONLY_1_1
+#pragma warning restore 3019
+#endif
 
+#if ONLY_1_1
+#pragma warning disable 3019
+		[CLSCompliant (false)]
+#endif
 		uint IConvertible.ToUInt32 (IFormatProvider provider)
 		{
 			return Convert.ToUInt32 (this);
 		}
+#if ONLY_1_1
+#pragma warning restore 3019
+#endif
 
+#if ONLY_1_1
+#pragma warning disable 3019
+		[CLSCompliant (false)]
+#endif
 		ulong IConvertible.ToUInt64 (IFormatProvider provider)
 		{
 			return Convert.ToUInt64 (this);
 		}
+#if ONLY_1_1
+#pragma warning restore 3019
+#endif
 
 		public string ToString (string format, IFormatProvider provider) 
 		{
@@ -1343,8 +1367,8 @@ namespace System
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern int decimal2Int64 (ref Decimal val, out long result);
 
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private static extern int double2decimal (out Decimal erg, double val, int digits);
+//		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+//		private static extern int double2decimal (out Decimal erg, double val, int digits);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern int decimalIncr (ref Decimal d1, ref Decimal d2);
@@ -1365,8 +1389,8 @@ namespace System
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern void decimalFloorAndTrunc (ref Decimal val, int floorFlag);
 
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private static extern void decimalRound (ref Decimal val, int decimals);
+//		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+//		private static extern void decimalRound (ref Decimal val, int decimals);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern int decimalMult (ref Decimal pd1, ref Decimal pd2);

@@ -363,7 +363,34 @@ namespace Tests.System.Web.Script.Serialization
 		}
 
 		[Test]
-		[NUnit.Framework.Category ("NotWorking")]
+		public void TestDeserializeUnquotedKeys ()
+		{
+			JavaScriptSerializer ser = new JavaScriptSerializer ();
+			IDictionary dict = ser.Deserialize <Dictionary <string, object>> ("{itemOne:\"1\",itemTwo:\"2\"}");
+
+			Assert.AreEqual ("1", dict ["itemOne"], "#A1");
+			Assert.AreEqual ("2", dict ["itemTwo"], "#A2");
+
+			dict = ser.Deserialize <Dictionary <string, object>> ("{itemOne:1,itemTwo:2}");
+			Assert.AreEqual (1, dict ["itemOne"], "#B1");
+			Assert.AreEqual (2, dict ["itemTwo"], "#B2");
+		}
+
+		[Test]
+		public void TestDeserializeUnquotedKeysWithSpaces ()
+		{
+			JavaScriptSerializer ser = new JavaScriptSerializer ();
+			IDictionary dict = ser.Deserialize <Dictionary <string, object>> ("{ itemOne :\"1\",itemTwo:\"2\"}");
+
+			Assert.AreEqual ("1", dict ["itemOne"], "#A1");
+			Assert.AreEqual ("2", dict ["itemTwo"], "#A2");
+
+			dict = ser.Deserialize <Dictionary <string, object>> ("{   itemOne   :1,   itemTwo   :2}");
+			Assert.AreEqual (1, dict ["itemOne"], "#B1");
+			Assert.AreEqual (2, dict ["itemTwo"], "#B2");
+		}
+		
+		[Test]
 		public void TestDeserialize () {
 			JavaScriptSerializer ser = new JavaScriptSerializer ();
 			Assert.IsNull (ser.Deserialize<X> (""));
@@ -382,7 +409,6 @@ namespace Tests.System.Web.Script.Serialization
 		}
 
 		[Test]
-		[NUnit.Framework.Category ("NotWorking")]
 		public void TestDeserializeTypeResolver () 
 		{
 			JavaScriptSerializer ser = new JavaScriptSerializer (new SimpleTypeResolver ());
@@ -395,7 +421,6 @@ namespace Tests.System.Web.Script.Serialization
 		}
 
 		[Test]
-		[Category("NotWorking")]
 		public void TestDeserializeBugs () {
 			JavaScriptSerializer ser = new JavaScriptSerializer ();
 
@@ -481,8 +506,7 @@ namespace Tests.System.Web.Script.Serialization
 		public void TestDeserializeConverter1 () {
 			JavaScriptSerializer serializer = new JavaScriptSerializer ();
 
-			serializer.RegisterConverters (new JavaScriptConverter [] { 
-            new ListItemCollectionConverter() });
+			serializer.RegisterConverters (new JavaScriptConverter [] {new ListItemCollectionConverter()});
 
 			ListBox ListBox1 = new ListBox ();
 			ListBox1.Items.Add ("a1");
@@ -526,7 +550,7 @@ namespace Tests.System.Web.Script.Serialization
 		[Category ("NotDotNet")]
 		public void TestSerialize2 () {
 			JavaScriptSerializer ser = new JavaScriptSerializer ();
-			ser.Serialize ("aaa", null);
+			ser.Serialize ("aaa", (StringBuilder)null);
 		}
 
 		static readonly long InitialJavaScriptDateTicks = new DateTime (1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Ticks;
@@ -792,7 +816,7 @@ namespace Tests.System.Web.Script.Serialization
 			string s = ser.Serialize(pc);
 			MyPointContainer pc2 = ser.Deserialize<MyPointContainer>(s);
 		}
-
+		
 		[Test]
 		public void MaxJsonLengthDeserializeObject () 
 		{
@@ -855,7 +879,7 @@ namespace Tests.System.Web.Script.Serialization
 
 		[Test]
 		[ExpectedException(typeof(ArgumentException))]
-		public void RecursionLimitDeserializeToDeap () 
+		public void RecursionLimitDeserializeToDeep () 
 		{
 			JavaScriptSerializer ser = new JavaScriptSerializer ();
 			ser.RecursionLimit = 2;
@@ -873,7 +897,6 @@ namespace Tests.System.Web.Script.Serialization
 
 		[Test]
 		[ExpectedException(typeof(ArgumentException))]
-		[NUnit.Framework.Category ("NotWorking")]
 		public void RecursionLimitSerializeToDeep () 
 		{
 			JavaScriptSerializer ser = new JavaScriptSerializer ();
@@ -883,7 +906,6 @@ namespace Tests.System.Web.Script.Serialization
 		}
 
 		[Test]
-		[NUnit.Framework.Category ("NotWorking")]
 		public void RecursionLimitSerialize2 () 
 		{
 			JavaScriptSerializer ser = new JavaScriptSerializer ();
@@ -902,7 +924,6 @@ namespace Tests.System.Web.Script.Serialization
 		}
 
 		[Test]
-		[NUnit.Framework.Category ("NotWorking")]
 		public void SimpleTypeResolver () 
 		{
 			JavaScriptSerializer ser = new JavaScriptSerializer (new SimpleTypeResolver ());
@@ -1029,6 +1050,228 @@ namespace Tests.System.Web.Script.Serialization
 			CustomResolver.Reset ();
 			X x2 = ser.Deserialize<X> (s);
 			Assert.IsTrue (x.Equals (x2), "x != x2");
+		}
+
+		[Test]
+		public void InfinityAndNaN ()
+		{
+			JavaScriptSerializer ser = new JavaScriptSerializer ();
+
+			double nan = Double.NaN;
+			string s = ser.Serialize (nan);
+			Assert.AreEqual (s, "NaN", "#A1");
+			nan = (double)ser.DeserializeObject (s);
+			Assert.AreEqual (Double.NaN, nan, "#A2");
+			nan = (double)ser.Deserialize <double> (s);
+			Assert.AreEqual (Double.NaN, nan, "#A3");
+			
+			double infinity = Double.PositiveInfinity;
+			s = ser.Serialize (infinity);
+			Assert.AreEqual (s, "Infinity", "#B1");
+			infinity = (double)ser.DeserializeObject (s);
+			Assert.AreEqual (Double.PositiveInfinity, infinity, "#B2");
+			infinity = ser.Deserialize <double> (s);
+			Assert.AreEqual (Double.PositiveInfinity, infinity, "#B3");
+			
+			infinity = Double.NegativeInfinity;
+			s = ser.Serialize (infinity);
+			Assert.AreEqual (s, "-Infinity", "#C1");
+			infinity = (double)ser.DeserializeObject (s);
+			Assert.AreEqual (Double.NegativeInfinity, infinity, "#C2");
+			infinity = ser.Deserialize <double> (s);
+			Assert.AreEqual (Double.NegativeInfinity, infinity, "#C3");
+
+			var dict = new Dictionary <string, object> ();
+			dict.Add ("A", Double.NaN);
+			dict.Add ("B", Double.PositiveInfinity);
+			dict.Add ("C", Double.NegativeInfinity);
+			s = ser.Serialize (dict);
+			Assert.AreEqual ("{\"A\":NaN,\"B\":Infinity,\"C\":-Infinity}", s, "#D1");
+			
+			dict = (Dictionary <string, object>)ser.DeserializeObject (s);
+			Assert.AreEqual (Double.NaN, dict ["A"], "#D2");
+			Assert.AreEqual (Double.PositiveInfinity, dict ["B"], "#D3");
+			Assert.AreEqual (Double.NegativeInfinity, dict ["C"], "#D4");
+
+			dict = (Dictionary <string, object>)ser.Deserialize <Dictionary <string, object>> (s);
+			Assert.AreEqual (Double.NaN, dict ["A"], "#D5");
+			Assert.AreEqual (Double.PositiveInfinity, dict ["B"], "#D6");
+			Assert.AreEqual (Double.NegativeInfinity, dict ["C"], "#D7");
+
+			var arr = new ArrayList () {
+					Double.NaN,
+					Double.PositiveInfinity,
+					Double.NegativeInfinity};
+			s = ser.Serialize (arr);
+			Assert.AreEqual ("[NaN,Infinity,-Infinity]", s, "#E1");
+
+			object[] arr2 = (object[])ser.DeserializeObject (s);
+			Assert.AreEqual (3, arr2.Length, "#E2");
+			Assert.AreEqual (Double.NaN, arr2 [0], "#E3");
+			Assert.AreEqual (Double.PositiveInfinity, arr2 [1], "#E4");
+			Assert.AreEqual (Double.NegativeInfinity, arr2 [2], "#E5");
+
+			arr = ser.Deserialize <ArrayList> (s);
+			Assert.AreEqual (3, arr.Count, "#E6");
+			Assert.AreEqual (Double.NaN, arr [0], "#E7");
+			Assert.AreEqual (Double.PositiveInfinity, arr [1], "#E8");
+			Assert.AreEqual (Double.NegativeInfinity, arr [2], "#E9");
+		}
+
+		[Test]
+		public void StandalonePrimitives ()
+		{
+			JavaScriptSerializer ser = new JavaScriptSerializer ();
+
+			object o;
+			int i;
+			
+			o = ser.DeserializeObject ("1");
+			Assert.AreEqual (typeof (global::System.Int32), o.GetType (), "#A1");
+			i = (int)o;
+			Assert.AreEqual (1, i, "#A2");
+			o =ser.DeserializeObject ("-1");
+			Assert.AreEqual (typeof (global::System.Int32), o.GetType (), "#A3");
+			i = (int)o;
+			Assert.AreEqual (-1, i, "#A4");
+			
+			o = ser.DeserializeObject ("2147483649");
+			Assert.AreEqual (typeof (global::System.Int64), o.GetType (), "#B1");
+			long l = (long)o;
+			Assert.AreEqual (2147483649, l, "#B2");
+			o = ser.DeserializeObject ("-2147483649");
+			Assert.AreEqual (typeof (global::System.Int64), o.GetType (), "#B3");
+			l = (long)o;
+			Assert.AreEqual (-2147483649, l, "#B4");
+
+			o = ser.DeserializeObject ("9223372036854775808");
+			Assert.AreEqual (typeof (global::System.Decimal), o.GetType (), "#C1");
+			decimal d = (decimal)o;
+			Assert.AreEqual (9223372036854775808m, d, "#C2");
+			o = ser.DeserializeObject ("-9223372036854775809");
+			Assert.AreEqual (typeof (global::System.Decimal), o.GetType (), "#C3");
+			d = (decimal)o;
+			Assert.AreEqual (-9223372036854775809m, d, "#C4");
+
+			o = ser.DeserializeObject ("79228162514264337593543950336");
+			Assert.AreEqual (typeof (global::System.Double), o.GetType (), "#D1");
+			double db = (double)o;
+			Assert.AreEqual (79228162514264337593543950336.0, db, "#D2");
+			o = ser.DeserializeObject ("-79228162514264337593543950336");
+			Assert.AreEqual (typeof (global::System.Double), o.GetType (), "#D3");
+			db = (double)o;
+			Assert.AreEqual (-79228162514264337593543950336.0, db, "#D4");
+			
+			o = ser.DeserializeObject ("\"test string\"");
+			Assert.AreEqual (typeof (global::System.String), o.GetType (), "#E1");
+			string s = (string)o;
+			Assert.AreEqual ("test string", s, "#E2");
+
+			o = ser.DeserializeObject ("true");
+			Assert.AreEqual (typeof (global::System.Boolean), o.GetType (), "#F1");
+			bool b = (bool)o;
+			Assert.AreEqual (true, b, "#F2");
+
+			o = ser.DeserializeObject ("false");
+			Assert.AreEqual (typeof (global::System.Boolean), o.GetType (), "#F3");
+			b = (bool)o;
+			Assert.AreEqual (false, b, "#F4");
+
+			o = ser.DeserializeObject ("-1.7976931348623157E+308");
+			Assert.AreEqual (typeof (global::System.Double), o.GetType (), "#G1");
+			db = (double)o;
+			Assert.AreEqual (Double.MinValue, db, "#G2");
+
+			o = ser.DeserializeObject ("1.7976931348623157E+308");
+			Assert.AreEqual (typeof (global::System.Double), o.GetType (), "#G3");
+			db = (double)o;
+			Assert.AreEqual (Double.MaxValue, db, "#G4");
+		}
+
+		class SomeDict : IDictionary<string, object>
+		{
+			void IDictionary<string, object>.Add (string key, object value) {
+				throw new NotSupportedException ();
+			}
+
+			bool IDictionary<string, object>.ContainsKey (string key) {
+				throw new NotSupportedException ();
+			}
+
+			ICollection<string> IDictionary<string, object>.Keys {
+				get { throw new NotSupportedException (); }
+			}
+
+			bool IDictionary<string, object>.Remove (string key) {
+				throw new NotSupportedException ();
+			}
+
+			bool IDictionary<string, object>.TryGetValue (string key, out object value) {
+				throw new NotSupportedException ();
+			}
+
+			ICollection<object> IDictionary<string, object>.Values {
+				get { throw new NotSupportedException (); }
+			}
+
+			object IDictionary<string, object>.this [string key] {
+				get { throw new NotSupportedException (); }
+				set { throw new NotSupportedException (); }
+			}
+
+			void ICollection<KeyValuePair<string, object>>.Add (KeyValuePair<string, object> item) {
+				throw new NotSupportedException ();
+			}
+
+			void ICollection<KeyValuePair<string, object>>.Clear () {
+				throw new NotSupportedException ();
+			}
+
+			bool ICollection<KeyValuePair<string, object>>.Contains (KeyValuePair<string, object> item) {
+				throw new NotSupportedException ();
+			}
+
+			void ICollection<KeyValuePair<string, object>>.CopyTo (KeyValuePair<string, object> [] array, int arrayIndex) {
+				throw new NotSupportedException ();
+			}
+
+			int ICollection<KeyValuePair<string, object>>.Count {
+				get { throw new NotSupportedException (); }
+			}
+
+			bool ICollection<KeyValuePair<string, object>>.IsReadOnly {
+				get { throw new NotSupportedException (); }
+			}
+
+			bool ICollection<KeyValuePair<string, object>>.Remove (KeyValuePair<string, object> item) {
+				throw new NotSupportedException ();
+			}
+
+			IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator () {
+				return GetEnumerator ();
+			}
+
+			IEnumerator IEnumerable.GetEnumerator () {
+				return ((IEnumerable<KeyValuePair<string, object>>) this).GetEnumerator ();
+			}
+
+			protected IEnumerator<KeyValuePair<string, object>> GetEnumerator () {
+				yield return new KeyValuePair<string, object> ("hello", "world");
+			}
+		}
+
+		[Test] //bug #424704
+		public void NonGenericClassImplementingClosedGenericIDictionary ()
+		{
+			JavaScriptSerializer ser = new JavaScriptSerializer ();
+
+			SomeDict dictIn = new SomeDict ();
+
+			string s = ser.Serialize (dictIn);
+
+			Dictionary<string, object> dictOut = ser.Deserialize<Dictionary<string, object>> (s);
+			Assert.AreEqual (dictOut.Count, 1, "#1");
+			Assert.AreEqual (dictOut["hello"], "world", "#2");
 		}
 	}
 }

@@ -100,12 +100,19 @@ namespace System.Web.UI
 
 		internal void ThrowParseException (string message, params object[] parms)
 		{
+			if (parms == null)
+				throw new ParseException (location, message);
 			throw new ParseException (location, String.Format (message, parms));
 		}
 		
 		internal void ThrowParseException (string message, Exception inner, params object[] parms)
 		{
 			throw new ParseException (location, String.Format (message, parms), inner);
+		}
+
+		internal void ThrowParseFileNotFound (string path, params object[] parms)
+		{
+			ThrowParseException ("The file '" + path + "' does not exist", parms);
 		}
 		
 		internal ILocation Location {
@@ -130,12 +137,12 @@ namespace System.Web.UI
 		internal virtual string BaseVirtualDir {
 			get {
 				if (baseVDir == null)
-					baseVDir = UrlUtils.GetDirectory (context.Request.FilePath);
-
+					baseVDir = VirtualPathUtility.GetDirectory (context.Request.FilePath);
+				
 				return baseVDir;
 			}
 
-			set { 
+			set {
 				if (VirtualPathUtility.IsRooted (value))
 					baseVDir = VirtualPathUtility.ToAbsolute (value);
 				else
@@ -146,7 +153,7 @@ namespace System.Web.UI
 #if NET_2_0
 		internal CompilationSection CompilationConfig {
 			get {
-				return WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection;
+				return WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
 			}
 		}
 

@@ -60,11 +60,19 @@ namespace System.Collections.Generic {
 		// "keySlots" and "valueSlots" is the heap itself, it stores the data
 		// "linkSlots" contains information about how the slots in the heap
 		//             are connected into linked lists
+		//             In addition, the HashCode field can be used to check if the
+		//             corresponding key and value are present (HashCode has the
+		//             HASH_FLAG bit set in this case), so, to iterate over all the
+		//             items in the dictionary, simply iterate the linkSlots array
+		//             and check for the HASH_FLAG bit in the HashCode field.
+		//             For this reason, each time a hashcode is calculated, it needs
+		//             to be ORed with HASH_FLAG before comparing it with the save hashcode.
 		// "touchedSlots" and "emptySlot" manage the free space in the heap 
 
 		const int INITIAL_SIZE = 10;
 		const float DEFAULT_LOAD_FACTOR = (90f / 100);
 		const int NO_SLOT = -1;
+		const int HASH_FLAG = -2147483648;
 		
 		private struct Link {
 			public int HashCode;
@@ -120,7 +128,7 @@ namespace System.Collections.Generic {
 					throw new ArgumentNullException ("key");
 
 				// get first item of linked list corresponding to given key
-				int hashCode = hcp.GetHashCode (key);
+				int hashCode = hcp.GetHashCode (key) | HASH_FLAG;
 				int cur = table [(hashCode & int.MaxValue) % table.Length] - 1;
 				
 				// walk linked list until right slot is found or end is reached 
@@ -139,7 +147,7 @@ namespace System.Collections.Generic {
 					throw new ArgumentNullException ("key");
 			
 				// get first item of linked list corresponding to given key
-				int hashCode = hcp.GetHashCode (key);
+				int hashCode = hcp.GetHashCode (key) | HASH_FLAG;
 				int index = (hashCode & int.MaxValue) % table.Length;
 				int cur = table [index] - 1;
 
@@ -285,12 +293,9 @@ namespace System.Collections.Generic {
 			if (array.Length - index < Count)
 				throw new ArgumentException ("Destination array cannot hold the requested elements!");
 
-			for (int i = 0; i < table.Length; i++) {
-				int cur = table [i] - 1;
-				while (cur != NO_SLOT) {
-					array [index++] = new KeyValuePair<TKey, TValue> (keySlots [cur], valueSlots [cur]);
-					cur = linkSlots [cur].Next;
-				}
+			for (int i = 0; i < touchedSlots; i++) {
+				if ((linkSlots [i].HashCode & HASH_FLAG) != 0)
+					array [index++] = new KeyValuePair<TKey, TValue> (keySlots [i], valueSlots [i]);
 			}
 		}
 		
@@ -309,7 +314,7 @@ namespace System.Collections.Generic {
 			for (int i = 0; i < table.Length; i++) {
 				int cur = table [i] - 1;
 				while (cur != NO_SLOT) {
-					int hashCode = newLinkSlots [cur].HashCode = hcp.GetHashCode(keySlots [cur]);
+					int hashCode = newLinkSlots [cur].HashCode = hcp.GetHashCode(keySlots [cur]) | HASH_FLAG;
 					int index = (hashCode & int.MaxValue) % newSize;
 					newLinkSlots [cur].Next = newTable [index] - 1;
 					newTable [index] = cur + 1;
@@ -336,7 +341,7 @@ namespace System.Collections.Generic {
 				throw new ArgumentNullException ("key");
 
 			// get first item of linked list corresponding to given key
-			int hashCode = hcp.GetHashCode (key);
+			int hashCode = hcp.GetHashCode (key) | HASH_FLAG;
 			int index = (hashCode & int.MaxValue) % table.Length;
 			int cur = table [index] - 1;
 
@@ -385,9 +390,10 @@ namespace System.Collections.Generic {
 			count = 0;
 			// clear the hash table
 			Array.Clear (table, 0, table.Length);
-			// clear key and value arrays
+			// clear arrays
 			Array.Clear (keySlots, 0, keySlots.Length);
 			Array.Clear (valueSlots, 0, valueSlots.Length);
+			Array.Clear (linkSlots, 0, linkSlots.Length);
 
 			// empty the "empty slots chain"
 			emptySlot = NO_SLOT;
@@ -398,8 +404,11 @@ namespace System.Collections.Generic {
 
 		public bool ContainsKey (TKey key)
 		{
+			if (key == null)
+				throw new ArgumentNullException ("key");
+
 			// get first item of linked list corresponding to given key
-			int hashCode = hcp.GetHashCode (key);
+			int hashCode = hcp.GetHashCode (key) | HASH_FLAG;
 			int cur = table [(hashCode & int.MaxValue) % table.Length] - 1;
 			
 			// walk linked list until right slot is found or end is reached
@@ -478,7 +487,7 @@ namespace System.Collections.Generic {
 				throw new ArgumentNullException ("key");
 
 			// get first item of linked list corresponding to given key
-			int hashCode = hcp.GetHashCode (key);
+			int hashCode = hcp.GetHashCode (key) | HASH_FLAG;
 			int index = (hashCode & int.MaxValue) % table.Length;
 			int cur = table [index] - 1;
 			
@@ -514,6 +523,7 @@ namespace System.Collections.Generic {
 			linkSlots [cur].Next = emptySlot;
 			emptySlot = cur;
 
+			linkSlots [cur].HashCode = 0;
 			// clear empty key and value slots
 			keySlots [cur] = default (TKey);
 			valueSlots [cur] = default (TValue);
@@ -528,7 +538,7 @@ namespace System.Collections.Generic {
 				throw new ArgumentNullException ("key");
 
 			// get first item of linked list corresponding to given key
-			int hashCode = hcp.GetHashCode (key);
+			int hashCode = hcp.GetHashCode (key) | HASH_FLAG;
 			int cur = table [(hashCode & int.MaxValue) % table.Length] - 1;
 
 			// walk linked list until right slot is found or end is reached
@@ -590,6 +600,8 @@ namespace System.Collections.Generic {
 
 		TValue ToTValue (object value)
 		{
+			if (value == null && !typeof (TValue).IsValueType)
+				return default (TValue);
 			if (!(value is TValue))
 				throw new ArgumentException ("not of type: " + typeof (TValue).ToString (), "value");
 			return (TValue) value;
@@ -645,7 +657,7 @@ namespace System.Collections.Generic {
 
 		bool ICollection<KeyValuePair<TKey, TValue>>.Contains (KeyValuePair<TKey, TValue> keyValuePair)
 		{
-			return this.ContainsKey (keyValuePair.Key);
+			return ContainsKeyValuePair (keyValuePair);
 		}
 
 		void ICollection<KeyValuePair<TKey, TValue>>.CopyTo (KeyValuePair<TKey, TValue> [] array, int index)
@@ -655,7 +667,19 @@ namespace System.Collections.Generic {
 
 		bool ICollection<KeyValuePair<TKey, TValue>>.Remove (KeyValuePair<TKey, TValue> keyValuePair)
 		{
+			if (!ContainsKeyValuePair (keyValuePair))
+				return false;
+
 			return Remove (keyValuePair.Key);
+		}
+
+		bool ContainsKeyValuePair (KeyValuePair<TKey, TValue> pair)
+		{
+			TValue value;
+			if (!TryGetValue (pair.Key, out value))
+				return false;
+
+			return EqualityComparer<TValue>.Default.Equals (pair.Value, value);
 		}
 
 		void ICollection.CopyTo (Array array, int index)
@@ -670,13 +694,31 @@ namespace System.Collections.Generic {
 			if (array.Length - index < count)
 				throw new ArgumentException ("Destination array cannot hold the requested elements!");
 
-			for (int i = 0; i < table.Length; i++) {
-				int cur = table [i] - 1;
-				while (cur != NO_SLOT) {
-					array.SetValue (new DictionaryEntry (keySlots [cur], valueSlots [cur]), index++);
-					cur = linkSlots [cur].Next;
-				}
+			KeyValuePair<TKey, TValue> [] pairs = array as KeyValuePair<TKey, TValue> [];
+			if (pairs != null) {
+				this.CopyTo (pairs, index);
+				return;
 			}
+
+			DictionaryEntry [] entries = array as DictionaryEntry [];
+			if (entries != null) {
+				for (int i = 0; i < touchedSlots; i++) {
+					if ((linkSlots [i].HashCode & HASH_FLAG) != 0)
+						entries [index++] = new DictionaryEntry (keySlots [i], valueSlots [i]);
+				}
+				return;
+			}
+
+			object [] objects = array as object [];
+			if (objects != null && objects.GetType () == typeof (object [])) {
+				for (int i = 0; i < touchedSlots; i++) {
+					if ((linkSlots [i].HashCode & HASH_FLAG) != 0)
+						objects [index++] = new KeyValuePair<TKey, TValue> (keySlots [i], valueSlots [i]);
+				}
+				return;
+			}
+
+			throw new ArgumentException ("Invalid array type");
 		}
 
 		IEnumerator IEnumerable.GetEnumerator ()
@@ -738,7 +780,7 @@ namespace System.Collections.Generic {
 
 			public void Reset ()
 			{
-				((IEnumerator)host_enumerator).Reset ();
+				host_enumerator.Reset ();
 			}
 		}
 
@@ -747,38 +789,26 @@ namespace System.Collections.Generic {
 			IDisposable, IDictionaryEnumerator, IEnumerator
 		{
 			Dictionary<TKey, TValue> dictionary;
-			int curTableItem;
 			int cur;
 			int stamp;
+			const int NOT_STARTED = -1; // must be -1
 
 			internal Enumerator (Dictionary<TKey, TValue> dictionary)
 			{
 				this.dictionary = dictionary;
 				stamp = dictionary.generation;
 
-				// The following stanza is identical to IEnumerator.Reset (),
-				// but because of the definite assignment rule, we cannot call it here.
-				curTableItem = -1;
-				cur = NO_SLOT;
+				cur = NOT_STARTED;
 			}
 
 			public bool MoveNext ()
 			{
 				VerifyState ();
-				
-				do {
-					if (cur == NO_SLOT) {
-						//move to next item in table, check if we reached the end
-						if (curTableItem+1 >= dictionary.table.Length)
-							return false;
-
-						curTableItem++;
-						cur = dictionary.table [curTableItem] - 1;
-					} else
-						cur = dictionary.linkSlots [cur].Next;	
-				} while (cur == NO_SLOT);
-				
-				return true;
+				while (cur < dictionary.touchedSlots) {
+					if ((dictionary.linkSlots [++cur].HashCode & HASH_FLAG) != 0)
+						return true;
+				}
+				return false;
 			}
 
 			public KeyValuePair<TKey, TValue> Current {
@@ -811,8 +841,12 @@ namespace System.Collections.Generic {
 
 			void IEnumerator.Reset ()
 			{
-				curTableItem = -1;
-				cur = NO_SLOT;
+				Reset ();
+			}
+
+			internal void Reset ()
+			{
+				cur = NOT_STARTED;
 			}
 
 			DictionaryEntry IDictionaryEnumerator.Entry {
@@ -850,7 +884,7 @@ namespace System.Collections.Generic {
 			void VerifyCurrent ()
 			{
 				VerifyState ();
-				if (cur == NO_SLOT)
+				if (cur == NOT_STARTED || cur >= dictionary.touchedSlots)
 					throw new InvalidOperationException ("Current is not valid");
 			}
 
@@ -888,12 +922,9 @@ namespace System.Collections.Generic {
 			public void CopyTo (TKey [] array, int index)
 			{
 				CopyToCheck ((IList)array, index);
-				for (int i = 0; i < dictionary.table.Length; i++) {
-					int cur = dictionary.table [i] - 1;
-					while (cur != NO_SLOT) {
-						array [index++] = dictionary.keySlots [cur];
-						cur = dictionary.linkSlots [cur].Next;
-					}
+				for (int i = 0; i < dictionary.touchedSlots; i++) {
+					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
+						array [index++] = dictionary.keySlots [i];
 				}
 			}
 
@@ -931,12 +962,9 @@ namespace System.Collections.Generic {
 			{
 				IList list = array;
 				CopyToCheck (list, index);
-				for (int i = 0; i < dictionary.table.Length; i++) {
-					int cur = dictionary.table [i] - 1;
-					while (cur != NO_SLOT) {
-						list [index++] = dictionary.keySlots [cur];
-						cur = dictionary.linkSlots [cur].Next;
-					}
+				for (int i = 0; i < dictionary.touchedSlots; i++) {
+					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
+						list [index++] = dictionary.keySlots [i];
 				}
 			}
 
@@ -990,7 +1018,7 @@ namespace System.Collections.Generic {
 
 				void IEnumerator.Reset ()
 				{
-					((IEnumerator)host_enumerator).Reset ();
+					host_enumerator.Reset ();
 				}
 			}
 		}
@@ -1019,12 +1047,9 @@ namespace System.Collections.Generic {
 				if (array.Length - index < dictionary.Count)
 					throw new ArgumentException ("Destination array cannot hold the requested elements!");
 
-				for (int i = 0; i < dictionary.table.Length; i++) {
-					int cur = dictionary.table [i] - 1;
-					while (cur != NO_SLOT) {
-						array [index++] = dictionary.valueSlots [cur];
-						cur = dictionary.linkSlots [cur].Next;
-					}
+				for (int i = 0; i < dictionary.touchedSlots; i++) {
+					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
+						array [index++] = dictionary.valueSlots [i];
 				}
 			}
 
@@ -1113,7 +1138,7 @@ namespace System.Collections.Generic {
 
 				void IEnumerator.Reset ()
 				{
-					((IEnumerator)host_enumerator).Reset ();
+					host_enumerator.Reset ();
 				}
 			}
 		}

@@ -140,6 +140,8 @@ typedef struct {
 
 struct _MonoException {
 	MonoObject object;
+	/* Stores the IPs and the generic sharing infos
+	   (vtable/MRGCTX) of the frames. */
 	MonoArray  *trace_ips;
 	MonoObject *inner_ex;
 	MonoString *message;
@@ -444,7 +446,7 @@ typedef struct {
 
 typedef struct {
 	MonoObject object;
-	guint16 intType;
+	guint32 intType;
 } MonoInterfaceTypeAttribute;
 
 /* used to free a dynamic method */
@@ -551,15 +553,21 @@ struct _MonoReflectionGenericMethod {
 
 struct _MonoDelegate {
 	MonoObject object;
+	/* The compiled code of the target method */
 	gpointer method_ptr;
+	/* The invoke code */
 	gpointer invoke_impl;
 	MonoObject *target;
 	MonoMethod *method;
-	MonoObject *target_type;
-	MonoString *method_name;
 	gpointer delegate_trampoline;
+	/* 
+	 * If non-NULL, this points to a memory location which stores the address of 
+	 * the compiled code of the method, or NULL if it is not yet compiled.
+	 */
+	guint8 **method_code;
 	MonoReflectionMethod *method_info;
 	MonoReflectionMethod *original_method_info;
+	MonoObject *data;
 };
 
 typedef struct _MonoMulticastDelegate MonoMulticastDelegate;
@@ -1079,6 +1087,11 @@ typedef struct {
 	MonoReflectionMethodBuilder *mb;
 } MonoReflectionMethodOnTypeBuilderInst;
 
+typedef struct {
+	MonoObject object;
+	MonoBoolean visible;
+} MonoReflectionComVisibleAttribute;
+
 enum {
 	RESOURCE_LOCATION_EMBEDDED = 1,
 	RESOURCE_LOCATION_ANOTHER_ASSEMBLY = 2,
@@ -1197,19 +1210,24 @@ mono_nullable_box (guint8 *buf, MonoClass *klass) MONO_INTERNAL;
 
 #define MONO_IMT_SIZE 19
 
-typedef struct _MonoImtBuilderEntry {
-	MonoMethod *method;
-	struct _MonoImtBuilderEntry *next;
+typedef union {
 	int vtable_slot;
+	gpointer target_code;
+} MonoImtItemValue;
+
+typedef struct _MonoImtBuilderEntry {
+	gpointer key;
+	struct _MonoImtBuilderEntry *next;
+	MonoImtItemValue value;
 	int children;
 } MonoImtBuilderEntry;
 
 typedef struct _MonoIMTCheckItem MonoIMTCheckItem;
 
 struct _MonoIMTCheckItem {
-	MonoMethod       *method;
+	gpointer          key;
 	int               check_target_idx;
-	int               vtable_slot;
+	MonoImtItemValue  value;
 	guint8           *jmp_code;
 	guint8           *code_target;
 	guint8            is_equals;
@@ -1218,7 +1236,8 @@ struct _MonoIMTCheckItem {
 	guint8            short_branch;
 };
 
-typedef gpointer (*MonoImtThunkBuilder) (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckItem **imt_entries, int count);
+typedef gpointer (*MonoImtThunkBuilder) (MonoVTable *vtable, MonoDomain *domain,
+		MonoIMTCheckItem **imt_entries, int count, gpointer fail_trunk);
 
 void
 mono_install_imt_thunk_builder (MonoImtThunkBuilder func) MONO_INTERNAL;
@@ -1235,9 +1254,16 @@ mono_vtable_build_imt_slot (MonoVTable* vtable, int imt_slot) MONO_INTERNAL;
 guint32
 mono_method_get_imt_slot (MonoMethod *method) MONO_INTERNAL;
 
+void
+mono_method_add_generic_virtual_invocation (MonoDomain *domain, gpointer *vtable_slot,
+	MonoGenericInst *method_inst, gpointer code) MONO_INTERNAL;
+
+gpointer
+mono_method_alloc_generic_virtual_thunk (MonoDomain *domain, int size) MONO_INTERNAL;
+
 typedef enum {
-	MONO_UNHANLED_POLICY_LEGACY,
-	MONO_UNHANLED_POLICY_CURRENT
+	MONO_UNHANDLED_POLICY_LEGACY,
+	MONO_UNHANDLED_POLICY_CURRENT
 } MonoRuntimeUnhandledExceptionPolicy;
 
 MonoRuntimeUnhandledExceptionPolicy
@@ -1245,8 +1271,16 @@ mono_runtime_unhandled_exception_policy_get (void) MONO_INTERNAL;
 void
 mono_runtime_unhandled_exception_policy_set (MonoRuntimeUnhandledExceptionPolicy policy) MONO_INTERNAL;
 
+MonoVTable *
+mono_class_try_get_vtable (MonoDomain *domain, MonoClass *class) MONO_INTERNAL;
+
 MonoException *
 mono_runtime_class_init_full (MonoVTable *vtable, gboolean raise_exception) MONO_INTERNAL;
 
+void
+mono_method_clear_object (MonoDomain *domain, MonoMethod *method) MONO_INTERNAL;
+
 #endif /* __MONO_OBJECT_INTERNALS_H__ */
+
+
 

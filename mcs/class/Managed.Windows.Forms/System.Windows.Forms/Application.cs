@@ -157,6 +157,7 @@ namespace System.Windows.Forms
 
 		private Application ()
 		{
+			browser_embedded = false;
 		}
 
 #if NET_2_0
@@ -171,32 +172,43 @@ namespace System.Windows.Forms
 		#region Private Methods
 
 #if NET_2_0
+		
 		private static void InitializeUIAutomation ()
 		{
-			// Initialize the UIAutomationWinforms FormListener
-			// class, which signs up for the PreRun and FormAdded
-			// events so that it can provide a11y support for MWF.
-			string uia_winforms_assembly = "UIAutomationWinforms, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f4ceacb585d99812";
-			string listener_type_name = "Mono.UIAutomation.Winforms.FormListener";
-			string init_method_name = "Initialize";
-			
+			// Initialize the UIAutomationWinforms Global class,
+			// which create some listeners which subscribe to internal
+			// MWF events so that it can provide a11y support for MWF
+			const string UIA_WINFORMS_ASSEMBLY = 
+			  "UIAutomationWinforms, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f4ceacb585d99812";
+			MethodInfo init_method;
 			Assembly mwf_providers = null;
 			try {
-				mwf_providers = Assembly.Load (uia_winforms_assembly);
+				mwf_providers = Assembly.Load (UIA_WINFORMS_ASSEMBLY);
 			} catch { }
 			
 			if (mwf_providers == null)
 				return;
-			
+
+			const string UIA_WINFORMS_TYPE     = "Mono.UIAutomation.Winforms.Global";
+			const string UIA_WINFORMS_METHOD   = "Initialize";
 			try {
-				Type listener_type = mwf_providers.GetType (listener_type_name, false);
-				if (listener_type == null)
-					return;
-				MethodInfo init_method = listener_type.GetMethod (init_method_name, BindingFlags.Static | BindingFlags.Public);
-				if (init_method == null)
-					return;
-				init_method.Invoke (null, new object [] {});
-			} catch { }
+				Type global_type = mwf_providers.GetType (UIA_WINFORMS_TYPE, false);
+				if (global_type != null) {
+					init_method = global_type.GetMethod (UIA_WINFORMS_METHOD, 
+					                                     BindingFlags.Static | 
+					                                     BindingFlags.Public);
+					if (init_method != null)
+						init_method.Invoke (null, new object [] {});
+					else
+						throw new Exception (String.Format ("Method {0} not found in type {1}.",
+						                                    UIA_WINFORMS_METHOD, UIA_WINFORMS_TYPE));
+				}
+				else
+					throw new Exception (String.Format ("Type {0} not found in assembly {1}.",
+					                                    UIA_WINFORMS_TYPE, UIA_WINFORMS_ASSEMBLY));
+			} catch (Exception ex) {
+				Console.Error.WriteLine ("Error setting up UIA: " + ex);
+			}
 		}
 #endif
 		
@@ -480,6 +492,11 @@ namespace System.Windows.Forms
 			}
 		}
 
+		internal static void AddKeyFilter (IKeyFilter value)
+		{
+			XplatUI.AddKeyFilter (value);
+		}
+
 		public static void DoEvents ()
 		{
 			XplatUI.DoEvents ();
@@ -723,14 +740,18 @@ namespace System.Windows.Forms
 			Run (new ApplicationContext (mainForm));
 		}
 
+#if NET_2_0
+		internal static void FirePreRun ()
+		{
+			EventHandler handler = PreRun;
+			if (handler != null)
+				handler (null, EventArgs.Empty);
+		}
+#endif
+
 		public static void Run (ApplicationContext context)
 		{
 #if NET_2_0
-			// Signal that the Application loop is about to run.
-			// This allows UIA to initialize a11y support for MWF
-			// before the main loop begins.
-			if (PreRun != null)
-				PreRun (null, EventArgs.Empty);
 			// If a sync context hasn't been created by now, create
 			// a default one
 			if (SynchronizationContext.Current == null)
@@ -925,7 +946,14 @@ namespace System.Windows.Forms
 				case Msg.WM_RBUTTONDOWN:
 					if (keyboard_capture != null) {
 						Control c2 = Control.FromHandle (msg.hwnd);
-						
+
+						// the target is not a winforms control (an embedded control, perhaps), so
+						// release everything
+						if (c2 == null) {
+							ToolStripManager.FireAppClicked ();
+							goto default;
+						}
+
 						// If we clicked a ToolStrip, we have to make sure it isn't
 						// the one we are on, or any of its parents or children
 						// If we clicked off the dropped down menu, release everything

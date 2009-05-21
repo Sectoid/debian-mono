@@ -1,3 +1,50 @@
+2008-12-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* IsolatedStorageFile.cs: Use Url as the default evidence type when
+	null is supplied.
+	[Fix bug #430932]
+
+2008-09-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MoonIsolatedStorageFile.cs: Add application and iste specific 
+	initialization. Add rumenditary quota support (not thread or cross 
+	process safe). Add a bunch of TODO & FIXME.
+	* MoonIsolatedStorageFileStream.cs: Add quota checks (delegated 
+	into MoonIsolatedStorageFile).
+
+2008-09-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MoonIsolatedStorageFile.cs: Add calls to PreCheck inside EndRead
+	and EndWrite methods.
+	* MoonIsolatedStorageFileStream.cs: Throw an IsolatedStorageException
+	when DeleteFile is called on an unexisting file.
+
+2008-08-22  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* MoonIsolatedStorageFile.cs: Implement Remove. Add a bunch of FIXME 
+	mostly related to quota.
+	* MoonIsolatedStorageFileStream.cs: Add a call to the container's
+	PreCheck method in most methods. Add FIXME for quota.
+
+2008-08-21  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* MoonIsolatedStorageFile.cs: Split Application and Site storage.
+	Start looking at quota.
+	* MoonIsolatedStorageFileStream.cs: Added more validation to 
+	ctors. Removed IsAsync (not in beta2). (SetLength) Start using some 
+	quota checks 
+
+2008-08-20  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* MoonIsolatedStorageFile.cs: More fixes to match unit tests.
+
+2008-08-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MoonIsolatedStorageFile.cs: Fix API to match SL2 beta2. Start
+	implementing new feature (while writing unit tests).
+	* MoonIsolatedStorageFileStream.cs: Add new async methods [Begin|
+	End][Read|Write] present in b2. Fix endless recursion in WriteByte.
+
 2008-04-18  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* IsolatedStorageFile.cs: Fix CreateDirectory to accept multiple 

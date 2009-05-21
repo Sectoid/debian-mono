@@ -79,11 +79,6 @@ namespace Mono.CSharp
 		static string win32IconFile;
 
 		//
-		// An array of the defines from the command line
-		//
-		ArrayList defines;
-
-		//
 		// Output file
 		//
 		static string output_file;
@@ -98,6 +93,8 @@ namespace Mono.CSharp
 		//
 		Encoding encoding;
 
+		static readonly char[] argument_value_separator = new char [] { ';', ',' };
+
 		static public void Reset ()
 		{
 			embedded_resources = null;
@@ -108,18 +105,12 @@ namespace Mono.CSharp
 		public Driver ()
 		{
 			encoding = Encoding.Default;
-
-			//
-			// Setup default defines
-			//
-			defines = new ArrayList ();
-			defines.Add ("__MonoCS__");
 		}
 
-		public static Driver Create (string [] args)
+		public static Driver Create (string [] args, bool require_files)
 		{
 			Driver d = new Driver ();
-			if (!d.ParseArguments (args))
+			if (!d.ParseArguments (args, require_files))
 				return null;
 
 			return d;
@@ -166,7 +157,7 @@ namespace Mono.CSharp
 
 			using (input){
 				SeekableStreamReader reader = new SeekableStreamReader (input, encoding);
-				Tokenizer lexer = new Tokenizer (reader, file, defines);
+				Tokenizer lexer = new Tokenizer (reader, file);
 				int token, tokens = 0, errors = 0;
 
 				while ((token = lexer.token ()) != Token.EOF){
@@ -207,7 +198,7 @@ namespace Mono.CSharp
 		
 		void Parse (SeekableStreamReader reader, CompilationUnit file)
 		{
-			CSharpParser parser = new CSharpParser (reader, file, defines);
+			CSharpParser parser = new CSharpParser (reader, file);
 			parser.ErrorOutput = Report.Stderr;
 			try {
 				parser.parse ();
@@ -236,36 +227,39 @@ namespace Mono.CSharp
 			Console.WriteLine (
 				"Mono C# compiler, Copyright 2001 - 2008 Novell, Inc.\n" +
 				"mcs [options] source-files\n" +
-				"   --about            About the Mono C# compiler\n" +
-				"   -addmodule:M1[,Mn] Adds the module to the generated assembly\n" + 
-				"   -checked[+|-]      Sets default aritmetic overflow context\n" +
-				"   -codepage:ID       Sets code page to the one in ID (number, utf8, reset)\n" +
-				"   -clscheck[+|-]     Disables CLS Compliance verifications\n" +
-				"   -define:S1[;S2]    Defines one or more conditional symbols (short: -d)\n" +
-				"   -debug[+|-], -g    Generate debugging information\n" + 
-				"   -delaysign[+|-]    Only insert the public key into the assembly (no signing)\n" +
-				"   -doc:FILE          Process documentation comments to XML file\n" + 
-				"   -help              Lists all compiler options (short: -?)\n" + 
-				"   -keycontainer:NAME The key pair container used to sign the output assembly\n" +
-				"   -keyfile:FILE      The key file used to strongname the ouput assembly\n" +
-				"   -langversion:TEXT  Specifies language version modes: ISO-1, ISO-2, or Default\n" + 
-				"   -lib:PATH1[,PATHn] Specifies the location of referenced assemblies\n" +
-				"   -main:CLASS        Specifies the class with the Main method (short: -m)\n" +
-				"   -noconfig[+|-]     Disables implicit references to assemblies\n" +
-				"   -nostdlib[+|-]     Does not reference mscorlib.dll library\n" +
-				"   -nowarn:W1[,Wn]    Suppress one or more compiler warnings\n" + 
-				"   -optimize[+|-]     Enables advanced compiler optimizations (short: -o)\n" + 
-				"   -out:FILE          Specifies output assembly name\n" +
-				"   -pkg:P1[,Pn]       References packages P1..Pn\n" + 
-				"   -recurse:SPEC      Recursively compiles files according to SPEC pattern\n" + 
-				"   -reference:A1[,An] Imports metadata from the specified assembly (short: -r)\n" +
-				"   -reference:ALIAS=A Imports metadata using specified extern alias (short: -r)\n" +				
-				"   -target:KIND       Specifies the format of the output assembly (short: -t)\n" +
-				"                      KIND can be one of: exe, winexe, library, module\n" +
-				"   -unsafe[+|-]       Allows to compile code which uses unsafe keyword\n" +
-				"   -warnaserror[+|-]  Treats all warnings as errors\n" +
-				"   -warn:0-4          Sets warning level, the default is 3 (short -w:)\n" +
-				"   -help2             Shows internal compiler options\n" + 
+				"   --about              About the Mono C# compiler\n" +
+				"   -addmodule:M1[,Mn]   Adds the module to the generated assembly\n" + 
+				"   -checked[+|-]        Sets default aritmetic overflow context\n" +
+				"   -codepage:ID         Sets code page to the one in ID (number, utf8, reset)\n" +
+				"   -clscheck[+|-]       Disables CLS Compliance verifications\n" +
+				"   -define:S1[;S2]      Defines one or more conditional symbols (short: -d)\n" +
+				"   -debug[+|-], -g      Generate debugging information\n" + 
+				"   -delaysign[+|-]      Only insert the public key into the assembly (no signing)\n" +
+				"   -doc:FILE            Process documentation comments to XML file\n" + 
+				"   -help                Lists all compiler options (short: -?)\n" + 
+				"   -keycontainer:NAME   The key pair container used to sign the output assembly\n" +
+				"   -keyfile:FILE        The key file used to strongname the ouput assembly\n" +
+				"   -langversion:TEXT    Specifies language version modes: ISO-1, ISO-2, or Default\n" + 
+				"   -lib:PATH1[,PATHn]   Specifies the location of referenced assemblies\n" +
+				"   -main:CLASS          Specifies the class with the Main method (short: -m)\n" +
+				"   -noconfig            Disables implicitly referenced assemblies\n" +
+				"   -nostdlib[+|-]       Does not reference mscorlib.dll library\n" +
+				"   -nowarn:W1[,Wn]      Suppress one or more compiler warnings\n" + 
+				"   -optimize[+|-]       Enables advanced compiler optimizations (short: -o)\n" + 
+				"   -out:FILE            Specifies output assembly name\n" +
+#if !SMCS_SOURCE
+				"   -pkg:P1[,Pn]         References packages P1..Pn\n" + 
+#endif
+				"   -recurse:SPEC        Recursively compiles files according to SPEC pattern\n" + 
+				"   -reference:A1[,An]   Imports metadata from the specified assembly (short: -r)\n" +
+				"   -reference:ALIAS=A   Imports metadata using specified extern alias (short: -r)\n" +				
+				"   -target:KIND         Specifies the format of the output assembly (short: -t)\n" +
+				"                        KIND can be one of: exe, winexe, library, module\n" +
+				"   -unsafe[+|-]         Allows to compile code which uses unsafe keyword\n" +
+				"   -warnaserror[+|-]    Treats all warnings as errors\n" +
+				"   -warnaserror:W1[,Wn] Treats one or more compiler warnings as errors\n" +
+				"   -warn:0-4            Sets warning level, the default is 4 (short -w:)\n" +
+				"   -help2               Shows internal compiler options\n" + 
 				"\n" +
 				"Resources:\n" +
 				"   -linkresource:FILE[,ID] Links FILE as a resource (short: -linkres)\n" +
@@ -301,11 +295,11 @@ namespace Mono.CSharp
 
 			Location.InEmacs = Environment.GetEnvironmentVariable ("EMACS") == "t";
 
-			Driver d = Driver.Create (args);
+			Driver d = Driver.Create (args, true);
 			if (d == null)
 				return 1;
 
-			if (d.Compile () && Report.Errors == 0) {
+			else if (d.Compile () && Report.Errors == 0) {
 				if (Report.Warnings > 0) {
 					Console.WriteLine ("Compilation succeeded - {0} warning(s)", Report.Warnings);
 				}
@@ -466,6 +460,9 @@ namespace Mono.CSharp
 		/// </summary>
 		static public void LoadReferences ()
 		{
+			link_paths.Add (GetSystemDir ());
+			link_paths.Add (Directory.GetCurrentDirectory ());
+
 			//
 			// Load Core Library for default compilation
 			//
@@ -581,7 +578,7 @@ namespace Mono.CSharp
 			Location.AddFile (f);
 		}
 
-		bool ParseArguments (string[] args)
+		bool ParseArguments (string[] args, bool require_files)
 		{
 			references = new ArrayList ();
 			external_aliases = new Hashtable ();
@@ -597,7 +594,7 @@ namespace Mono.CSharp
 				if (arg.Length == 0)
 					continue;
 
-				if (arg.StartsWith ("@")) {
+				if (arg [0] == '@') {
 					string [] extra_args;
 					string response_file = arg.Substring (1);
 
@@ -630,20 +627,20 @@ namespace Mono.CSharp
 						continue;
 					}
 
-					if (arg.StartsWith ("-")) {
+					if (arg [0] == '-') {
 						if (UnixParseOption (arg, ref args, ref i))
 							continue;
 
 						// Try a -CSCOPTION
 						string csc_opt = "/" + arg.Substring (1);
-						if (CSCParseOption (csc_opt, ref args, ref i))
+						if (CSCParseOption (csc_opt, ref args))
 							continue;
 
 						Error_WrongOption (arg);
 						return false;
 					}
 					if (arg [0] == '/') {
-						if (CSCParseOption (arg, ref args, ref i))
+						if (CSCParseOption (arg, ref args))
 							continue;
 
 						// Need to skip `/home/test.cs' however /test.cs is considered as error
@@ -657,6 +654,9 @@ namespace Mono.CSharp
 				ProcessSourceFiles (arg, false);
 			}
 
+			if (require_files == false)
+				return true;
+					
 			//
 			// If we are an exe, require a source file for the entry point
 			//
@@ -683,12 +683,12 @@ namespace Mono.CSharp
 		{
 			Location.Initialize ();
 
-			int files_count = Location.SourceFiles.Length;
-			for (int i = 0; i < files_count; ++i) {
+			ArrayList cu = Location.SourceFiles;
+			for (int i = 0; i < cu.Count; ++i) {
 				if (tokenize) {
-					tokenize_file (Location.SourceFiles [i]);
+					tokenize_file ((CompilationUnit) cu [i]);
 				} else {
-					Parse (Location.SourceFiles [i]);
+					Parse ((CompilationUnit) cu [i]);
 				}
 			}
 		}
@@ -735,8 +735,11 @@ namespace Mono.CSharp
 			}
 		}
 
-		static void DefineDefaultConfig ()
+		public void ProcessDefaultConfig ()
 		{
+			if (!load_default_config)
+				return;
+	
 			//
 			// For now the "default config" is harcoded into the compiler
 			// we can move this outside later
@@ -745,7 +748,6 @@ namespace Mono.CSharp
 				"System",
 				"System.Xml",
 #if NET_2_1
-				"System.Core",
 				"System.Net",
 				"System.Windows",
 				"System.Windows.Browser",
@@ -774,11 +776,11 @@ namespace Mono.CSharp
 				"System.Windows.Forms"
 #endif
 			};
-			
-			if (RootContext.Version == LanguageVersion.LINQ)
-				soft_references.Add ("System.Core");
 
 			soft_references.AddRange (default_config);
+
+			if (RootContext.Version > LanguageVersion.ISO_2)
+				soft_references.Add ("System.Core");
 		}
 
 		public static string OutputFile
@@ -859,7 +861,7 @@ namespace Mono.CSharp
 					Usage ();
 					Environment.Exit (1);
 				}
-				defines.Add (args [++i]);
+				RootContext.AddConditional (args [++i]);
 				return true;
 
 			case "--tokenize": 
@@ -1062,11 +1064,50 @@ namespace Mono.CSharp
 			return false;
 		}
 
+#if !SMCS_SOURCE
+		public static string GetPackageFlags (string packages, bool fatal)
+		{
+			ProcessStartInfo pi = new ProcessStartInfo ();
+			pi.FileName = "pkg-config";
+			pi.RedirectStandardOutput = true;
+			pi.UseShellExecute = false;
+			pi.Arguments = "--libs " + packages;
+			Process p = null;
+			try {
+				p = Process.Start (pi);
+			} catch (Exception e) {
+				Report.Error (-27, "Couldn't run pkg-config: " + e.Message);
+				if (fatal)
+					Environment.Exit (1);
+				p.Close ();
+				return null;
+			}
+			
+			if (p.StandardOutput == null){
+				Report.Warning (-27, 1, "Specified package did not return any information");
+				p.Close ();
+				return null;
+			}
+			string pkgout = p.StandardOutput.ReadToEnd ();
+			p.WaitForExit ();
+			if (p.ExitCode != 0) {
+				Report.Error (-27, "Error running pkg-config. Check the above output.");
+				if (fatal)
+					Environment.Exit (1);
+				p.Close ();
+				return null;
+			}
+			p.Close ();
+
+			return pkgout;
+		}
+#endif
+
 		//
 		// This parses the -arg and /arg options to the compiler, even if the strings
 		// in the following text use "/arg" on the strings.
 		//
-		bool CSCParseOption (string option, ref string [] args, ref int i)
+		bool CSCParseOption (string option, ref string [] args)
 		{
 			int idx = option.IndexOf (':');
 			string arg, value;
@@ -1080,7 +1121,7 @@ namespace Mono.CSharp
 				value = option.Substring (idx + 1);
 			}
 
-			switch (arg){
+			switch (arg.ToLower (CultureInfo.InvariantCulture)){
 			case "/nologo":
 				return true;
 
@@ -1144,12 +1185,12 @@ namespace Mono.CSharp
 					Environment.Exit (1);
 				}
 
-				foreach (string d in value.Split (';', ',')){
+				foreach (string d in value.Split (argument_value_separator)) {
 					if (!Tokenizer.IsValidIdentifier (d)) {
 						Report.Warning (2029, 1, "Invalid conditional define symbol `{0}'", d);
 						continue;
 					}
-					defines.Add (d);
+					RootContext.AddConditional (d);
 				}
 				return true;
 			}
@@ -1160,7 +1201,7 @@ namespace Mono.CSharp
 				//
 				Console.WriteLine ("To file bug reports, please visit: http://www.mono-project.com/Bugs");
 				return true;
-
+#if !SMCS_SOURCE
 			case "/pkg": {
 				string packages;
 
@@ -1169,41 +1210,17 @@ namespace Mono.CSharp
 					Environment.Exit (1);
 				}
 				packages = String.Join (" ", value.Split (new Char [] { ';', ',', '\n', '\r'}));
+				string pkgout = GetPackageFlags (packages, true);
 				
-				ProcessStartInfo pi = new ProcessStartInfo ();
-				pi.FileName = "pkg-config";
-				pi.RedirectStandardOutput = true;
-				pi.UseShellExecute = false;
-				pi.Arguments = "--libs " + packages;
-				Process p = null;
-				try {
-					p = Process.Start (pi);
-				} catch (Exception e) {
-					Report.Error (-27, "Couldn't run pkg-config: " + e.Message);
-					Environment.Exit (1);
-				}
-
-				if (p.StandardOutput == null){
-					Report.Warning (-27, 1, "Specified package did not return any information");
-					return true;
-				}
-				string pkgout = p.StandardOutput.ReadToEnd ();
-				p.WaitForExit ();
-				if (p.ExitCode != 0) {
-					Report.Error (-27, "Error running pkg-config. Check the above output.");
-					Environment.Exit (1);
-				}
-
 				if (pkgout != null){
 					string [] xargs = pkgout.Trim (new Char [] {' ', '\n', '\r', '\t'}).
 						Split (new Char [] { ' ', '\t'});
 					args = AddArgs (args, xargs);
 				}
 				
-				p.Close ();
 				return true;
 			}
-				
+#endif
 			case "/linkres":
 			case "/linkresource":
 			case "/res":
@@ -1211,27 +1228,27 @@ namespace Mono.CSharp
 				if (embedded_resources == null)
 					embedded_resources = new Resources ();
 
-				bool embeded = arg.StartsWith ("/r");
-				string[] s = value.Split (',');
+				bool embeded = arg [1] == 'r' || arg [1] == 'R';
+				string[] s = value.Split (argument_value_separator);
 				switch (s.Length) {
-					case 1:
-						if (s[0].Length == 0)
-							goto default;
-						embedded_resources.Add (embeded, s [0], Path.GetFileName (s[0]));
-						break;
-					case 2:
-						embedded_resources.Add (embeded, s [0], s [1]);
-						break;
-					case 3:
-						if (s [2] != "public" && s [2] != "private") {
-							Report.Error (1906, "Invalid resource visibility option `{0}'. Use either `public' or `private' instead", s [2]);
-							return true;
-						}
-						embedded_resources.Add (embeded, s [0], s [1], s [2] == "private");
-						break;
-					default:
-						Report.Error (-2005, "Wrong number of arguments for option `{0}'", option);
-						break;
+				case 1:
+					if (s[0].Length == 0)
+						goto default;
+					embedded_resources.Add (embeded, s [0], Path.GetFileName (s[0]));
+					break;
+				case 2:
+					embedded_resources.Add (embeded, s [0], s [1]);
+					break;
+				case 3:
+					if (s [2] != "public" && s [2] != "private") {
+						Report.Error (1906, "Invalid resource visibility option `{0}'. Use either `public' or `private' instead", s [2]);
+						return true;
+					}
+					embedded_resources.Add (embeded, s [0], s [1], s [2] == "private");
+					break;
+				default:
+					Report.Error (-2005, "Wrong number of arguments for option `{0}'", option);
+					break;
 				}
 
 				return true;
@@ -1251,7 +1268,7 @@ namespace Mono.CSharp
 					Environment.Exit (1);
 				}
 
-				string [] refs = value.Split (new char [] { ';', ',' });
+				string[] refs = value.Split (argument_value_separator);
 				foreach (string r in refs){
 					string val = r;
 					int index = val.IndexOf ('=');
@@ -1261,8 +1278,9 @@ namespace Mono.CSharp
 						AddExternAlias (alias, assembly);
 						return true;
 					}
-					
-					references.Add (val);
+
+					if (val.Length != 0)
+						references.Add (val);
 				}
 				return true;
 			}
@@ -1272,7 +1290,7 @@ namespace Mono.CSharp
 					Environment.Exit (1);
 				}
 
-				string [] refs = value.Split (new char [] { ';', ',' });
+				string[] refs = value.Split (argument_value_separator);
 				foreach (string r in refs){
 					modules.Add (r);
 				}
@@ -1283,6 +1301,9 @@ namespace Mono.CSharp
 					Report.Error (5, arg + " requires an argument");
 					Environment.Exit (1);
 				}
+				
+				if (win32IconFile != null)
+					Report.Error (1565, "Cannot specify the `win32res' and the `win32ico' compiler option at the same time");
 
 				win32ResourceFile = value;
 				return true;
@@ -1292,6 +1313,9 @@ namespace Mono.CSharp
 					Report.Error (5, arg + " requires an argument");
 					Environment.Exit (1);
 				}
+
+				if (win32ResourceFile != null)
+					Report.Error (1565, "Cannot specify the `win32res' and the `win32ico' compiler option at the same time");
 
 				win32IconFile = value;
 				return true;
@@ -1312,7 +1336,7 @@ namespace Mono.CSharp
 					Environment.Exit (1);
 				}
 
-				libdirs = value.Split (new Char [] { ',' });
+				libdirs = value.Split (argument_value_separator);
 				foreach (string dir in libdirs)
 					link_paths.Add (dir);
 				return true;
@@ -1354,6 +1378,14 @@ namespace Mono.CSharp
 				return true;
 
 			case "/warnaserror":
+				if (value.Length == 0) {
+					Report.WarningsAreErrors = true;
+				} else {
+					foreach (string wid in value.Split (argument_value_separator))
+						Report.AddWarningAsError (wid);
+				}
+				return true;
+
 			case "/warnaserror+":
 				Report.WarningsAreErrors = true;
 				return true;
@@ -1373,10 +1405,13 @@ namespace Mono.CSharp
 					Report.Error (5, "/nowarn requires an argument");
 					Environment.Exit (1);
 				}
-				
-				warns = value.Split (new Char [] {','});
+
+				warns = value.Split (argument_value_separator);
 				foreach (string wc in warns){
 					try {
+						if (wc.Trim ().Length == 0)
+							continue;
+
 						int warn = Int32.Parse (wc);
 						if (warn < 1) {
 							throw new ArgumentOutOfRangeException("warn");
@@ -1389,12 +1424,7 @@ namespace Mono.CSharp
 				return true;
 			}
 
-			case "/noconfig-":
-				load_default_config = true;
-				return true;
-				
 			case "/noconfig":
-			case "/noconfig+":
 				load_default_config = false;
 				return true;
 
@@ -1460,16 +1490,12 @@ namespace Mono.CSharp
 				case "default":
 					RootContext.Version = LanguageVersion.Default;
 #if GMCS_SOURCE					
-					defines.Add ("__V2__");
+					RootContext.AddConditional ("__V2__");
 #endif
 					return true;
 #if GMCS_SOURCE
 				case "iso-2":
 					RootContext.Version = LanguageVersion.ISO_2;
-					return true;
-					
-				case "linq":
-					Report.Warning (-30, 1, "Deprecated: The `linq' option is no longer required and should not be used");
 					return true;
 #endif
 				}
@@ -1565,7 +1591,7 @@ namespace Mono.CSharp
 			
 			return true;
 		}
-		
+
 		//
 		// Main compilation method
 		//
@@ -1581,28 +1607,7 @@ namespace Mono.CSharp
 			if (RootContext.ToplevelTypes.NamespaceEntry != null)
 				throw new InternalErrorException ("who set it?");
 
-			if (load_default_config)
-				DefineDefaultConfig ();
-
-			if (Report.Errors > 0){
-				return false;
-			}
-
-			//
-			// Load assemblies required
-			//
-			if (timestamps)
-				ShowTime ("Loading references");
-			link_paths.Add (GetSystemDir ());
-			link_paths.Add (Directory.GetCurrentDirectory ());
-			LoadReferences ();
-			
-			if (timestamps)
-				ShowTime ("   References loaded");
-			
-			if (Report.Errors > 0){
-				return false;
-			}
+			ProcessDefaultConfig ();
 
 			//
 			// Quick hack
@@ -1637,12 +1642,23 @@ namespace Mono.CSharp
 
 			RootNamespace.Global.AddModuleReference (CodeGen.Module.Builder);
 
+			//
+			// Load assemblies required
+			//
+			if (timestamps)
+				ShowTime ("Loading references");
+
+			LoadReferences ();
+			
 			if (modules.Count > 0) {
 				foreach (string module in modules)
 					LoadModule (module);
 			}
 			
-			if (!TypeManager.InitCoreTypes ())
+			if (timestamps)
+				ShowTime ("References loaded");
+			
+			if (!TypeManager.InitCoreTypes () || Report.Errors > 0)
 				return false;
 
 			TypeManager.InitOptionalCoreTypes ();
@@ -1667,8 +1683,6 @@ namespace Mono.CSharp
 				RootContext.BootCorlib_PopulateCoreTypes ();
 			RootContext.PopulateTypes ();
 
-			RootContext.DefineTypes ();
-			
 			if (Report.Errors == 0 &&
 				RootContext.Documentation != null &&
 				!RootContext.Documentation.OutputDocComment (
@@ -1781,11 +1795,12 @@ namespace Mono.CSharp
 			}
 
 			if (win32IconFile != null) {
-				MethodInfo define_icon = typeof (AssemblyBuilder).GetMethod ("DefineIconResource", BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic);
+				MethodInfo define_icon = typeof (AssemblyBuilder).GetMethod ("DefineIconResource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 				if (define_icon == null) {
 					Report.RuntimeMissingSupport (Location.Null, "resource embeding");
+				} else {
+					define_icon.Invoke (CodeGen.Assembly.Builder, new object [] { win32IconFile });
 				}
-				define_icon.Invoke (CodeGen.Assembly.Builder, new object [] { win32IconFile });
 			}
 
 			if (Report.Errors > 0)
@@ -1939,7 +1954,7 @@ namespace Mono.CSharp
 		{
 			Report.Stderr = error;
 			try {
-				Driver d = Driver.Create (args);
+				Driver d = Driver.Create (args, true);
 				if (d == null)
 					return false;
 
@@ -1956,17 +1971,30 @@ namespace Mono.CSharp
 				return Report.AllWarnings;
 			}
 		}
+
+		public static void Reset ()
+		{
+			Reset (true);
+		}
+
+		public static void PartialReset ()
+		{
+			Reset (false);
+		}
 		
-		static void Reset ()
+		public static void Reset (bool full_flag)
 		{
 			Driver.Reset ();
-			RootContext.Reset ();
+			RootContext.Reset (full_flag);
 			Tokenizer.Reset ();
 			Location.Reset ();
 			Report.Reset ();
 			TypeManager.Reset ();
 			TypeHandle.Reset ();
-			RootNamespace.Reset ();
+
+			if (full_flag)
+				RootNamespace.Reset ();
+			
 			NamespaceEntry.Reset ();
 			CodeGen.Reset ();
 			Attribute.Reset ();
@@ -1975,6 +2003,9 @@ namespace Mono.CSharp
 			AnonymousMethodBody.Reset ();
 			AnonymousMethodStorey.Reset ();
 			SymbolWriter.Reset ();
+			Switch.Reset ();
+			Linq.QueryBlock.TransparentParameter.Reset ();
 		}
+
 	}
 }

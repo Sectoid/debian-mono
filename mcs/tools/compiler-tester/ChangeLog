@@ -1,3 +1,23 @@
+2008-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	* compiler-tester.cs: Better -warnaserror detection.
+
+2008-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* compiler-tester.cs: Fixed broken value type test.
+
+2008-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	* compiler-tester.cs: Add non-varags LogLine overload.
+
+2008-07-28  Marek Safar  <marek.safar@gmail.com>
+
+	* compiler-tester.cs: Removed ExecuteFile.
+
+2008-07-24  Marek Safar  <marek.safar@gmail.com>
+
+	* compiler-tester.cs: Always exercise symbol writer.
+
 2008-07-29  Martin Baulig  <martin@ximian.com>
 
 	* compiler-tester.cs: Added `-compiler-options' command line

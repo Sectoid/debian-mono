@@ -1,29 +1,90 @@
-2008-09-02  Rodrigo Kumpera  <rkumpera@novell.com>
-	[Backport to 2.0]
+2009-02-21  Jb Evain  <jbevain@novell.com>
+
+	* EventHandlerList.cs: fix the 1.1 profile.
+
+2009-02-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* EventHandlerList.cs: there's no need for HandlerEntry here.
+	Just store the delegate.
+
+2009-02-19  Marek Habersack  <mhabersack@novell.com>
+
+	* AttributeCollection.cs: this [Type] shouldn't throw a NREX when
+	attrList is null.
+
+	* TypeDescriptor.cs: GetConverter (Type) must throw
+	ArgumentNullException if the passed parameter is null.
+	FindDefaultConverterType should gracefully cope with type being
+	null.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* BindingList.cs: Add calls InsertItem which raises OnListChanged, so 
+	don't raise a duplicate OnListChanged in AddNewCore.
+
+2008-12-22  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ReferenceConverter.cs: Implemented.
+	[Fixes bug #381435]
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* TypeDescriptor.cs: Added support for NullableConverter.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* NullableConverter.cs: Implemented.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ListSortDescriptionCollection.cs: Add the items supplied in the 
+	ctor to the internal list.
+
+2008-11-21  Rolf Bjarne Kvinge  <rkvinge@novell.com>
+
+	* TypeConverter_2_1.cs: fix method signatures to match SL2 api.
+
+2008-11-20  Jb Evain  <jbevain@novell.com>
+
+	* TypeConverter_2_1.cs: update to SL2 api.
+
+2008-11-12  Jb Evain  <jbevain@novell.com>
+
+	* IComponent.cs
+	* ComponentCollection.cs
+	* PropertyDescriptor.cs: adjust api for NET_2_1.
+
+2008-09-08  Jonathan Pobst  <monkey@jpobst.com>
+
+	* BackgroundWorker.cs: If the user sets Cancel to true, but then
+	throws an exception in DoWork, we need to set Cancel back to false.
+	[Fixes bug #328830]
+
+2008-09-01  Rodrigo Kumpera  <rkumpera@novell.com>
+
 	* ReflectionPropertyDescriptor.cs (SetValue, GetValue) : Lookup
 	the MethodInfo for accessors in parent types in case of partial
 	overrides of virtual properties.
 
-2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
-	[Backport to 2.0]
-	Apply patch from Achille Fouilleul (achille.fouilleul at gadz dot org)
+2008-08-07  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* BackgroundWorker.cs: Ensure the async object is set to null before
-	calling RunWorkerCompleted, as IsBusy is based off the async object.
-	[Fixes bug #394365]
+	* DefaultValueAttribute.cs: Fix Equals (wrt boxing) and 
+	GetHashCode (wrt NRE on null Value).
+	* PropertyChangedEventArgs.cs: Property PropertyName is not
+	virtual for NET_2_1
 
-2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
-	[Backport to 2.0]
-	Apply patches from Jordan Callicoat (MonkeeSage at gmail dot com)
+2008-07-31  Jb Evain  <jbevain@novell.com>
 
-	* AsyncCompleteEventArgs.cs: RaiseExceptionIfNecessary should throw
-	TargetInvocationException if there was an exception, and IOE if
-	the operation was cancelled.
-	* BackgroundWorker.cs: Do not call RunWorkerCompleted from CancelAsync,
-	setting cancel_pending to true is enough.
-	* RunWorkerCompletedEventArgs.cs: Raise exceptions when user tries
-	to access the Result if there are any exceptions.
-	[Fixes bugs #328830 and 373153]
+	* BackgroundWorker.cs
+	* DoWorkEventArgs.cs
+	* DefaultValueAttribute.cs
+	* RunWorkerCompletedEventArgs.cs: clean up for NET_2_1.
+
+	* TypeConverter_2_1.cs: new specific type for NET_2_1.
+
+2008-07-23  Marek Habersack  <mhabersack@novell.com>
+
+	* EventHandlerList.cs: optimize the implementation.
 
 2008-07-17  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -47,6 +108,27 @@
 	 - Object-ReferenceConverter should be the last entry in the predefined 
 	 converters table, so that when we look up we don't end up with the wrong 
 	 converter for derived types.
+
+2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	Apply patch from Achille Fouilleul (achille.fouilleul at gadz dot org)
+
+	* BackgroundWorker.cs: Ensure the async object is set to null before
+	calling RunWorkerCompleted, as IsBusy is based off the async object.
+	[Fixes bug #394365]
+
+2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
+	
+	Apply patches from Jordan Callicoat (MonkeeSage at gmail dot com)
+
+	* AsyncCompleteEventArgs.cs: RaiseExceptionIfNecessary should throw
+	TargetInvocationException if there was an exception, and IOE if
+	the operation was cancelled.
+	* BackgroundWorker.cs: Do not call RunWorkerCompleted from CancelAsync,
+	setting cancel_pending to true is enough.
+	* RunWorkerCompletedEventArgs.cs: Raise exceptions when user tries
+	to access the Result if there are any exceptions.
+	[Fixes bugs #328830 and 373153]
 
 2008-07-01  Rodrigo Kumpera  <rkumpera@novell.com>
 

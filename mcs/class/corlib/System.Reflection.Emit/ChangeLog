@@ -1,7 +1,78 @@
+2008-02-21  Jb Evain  <jbevain@novell.com>
+
+	* ModuleBuilder.cs: override GetModuleVersionId
+	so that we can get the module guid from Module.ModuleVersionId.
+	Part of the fix for #471302.
+
+2008-11-23  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* AssemblyBuilder.cs: When assembly is strongnamed, then explicitly
+	set PublicKey flag. Do not allow AssemblyFlagsAttribute to overwrite
+	flags value, and ignore PublicKey flag if assembly is not strongnamed.
+	Fixes bug #432423.
+
+2008-11-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConstructorOnTypeBuilderInst.cs (MetadataToken): Make this property
+	work under compiler context. Same hack as the one applied to
+	MethodOnTypeBuilderInst.
+
+	Fixes #442610.
+
+2008-09-23  Marek Safar  <marek.safar@gmail.com>
+
+	* ModuleBuilder.cs: Fixed NRE when default symbol writer cannot be
+	loaded. 
+ 
+2008-09-16  Jb Evain  <jbevain@novell.com>
+
+	* AssemblyBuilder.cs (AddTypeForwarder): correctly grow the
+	type_forwarders array, to make that work for more than one
+	type forwarder. Managed part of the fix for #422929.
+
+2008-09-04  Marek Safar  <marek.safar@gmail.com>
+
+	* TypeBuilder.cs: Add mcs specific SetCharSet method.
+
 2008-08-12  Zoltan Varga  <vargaz@gmail.com>
 
 	* TypeBuilder.cs (CreateType): Avoid creating a default ctor if the
 	type has a constructor defined using DefineMethod. Fixes #416632.
+
+2008-07-25  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetMethod): Allow created TypeBuilders
+	to be used.
+
+2008-07-23  Marek Safar  <marek.safar@gmail.com>
+			Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetMethod): A fix for #408933
+
+2008-07-22  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Change visibility of the parent
+	MethodBuilder to internal.
+
+2008-07-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeBuilder.cs (get_umarshal): Add support for all 
+	MarshalAsAttribute fields to fix the build.
+	
+	* CustomAttributeBuilder.cs (get_umarshal): Decode enums properly.
+
+2008-07-21  Marek Safar  <marek.safar@gmail.com>
+
+	* ParameterBuilder.cs, CustomAttributeBuilder.cs: Check for
+	UnmanagedType.ByValArray to be used only on fields.
+
+2008-07-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Special case all methods
+	under compiler context as needed by mcs. 
+
+	* MethodBuilder.cs: Change the visibility of some fields
+	to internal so MethodOnTypeBuilderInst can use it.
 
 2008-07-11  Marek Safar  <marek.safar@gmail.com>
 

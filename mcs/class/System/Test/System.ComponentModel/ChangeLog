@@ -1,20 +1,49 @@
-2008-09-02  Rodrigo Kumpera  <rkumpera@novell.com>
-	[Backport to 2.0]
+2009-02-19  Marek Habersack  <mhabersack@novell.com>
+
+	* TypeDescriptorTests.cs: added a test for
+	TypeDescriptor.GetConverter (null) case.
+
+2008-12-22  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ReferenceConverterTest.cs: Added.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* TypeDescriptorTests.cs: Added a test for the NullableConverter support.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* NullableConverterTest.cs: Added.
+
+2008-10-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* TypeDescriptorTests.cs:
+	* PropertyDescriptorTests.cs: Define alias for S.C.DescriptionAttribute
+	to avoid ambiguous reference error using more recent versions of
+	NUnit (which also contains a DescriptionAttribute).
+
+2008-09-01  Rodrigo Kumpera  <rkumpera@novell.com>
+
 	* PropertyDescriptorTest.cs: Tests for Get/Set Value of partial
 	overrides of virtual properties.
 
-2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
-	[Backport to 2.0]
-	* BackgroundWorkerTest.cs: Add some asserts for bug #364365.
+2008-08-07  Sebastien Pouliot  <sebastien@ximian.com>
 
-2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
-	[Backport to 2.0]
-	* BackgroundWorkerTest.cs: Add tests for bugs 328830 and 373153.
+	* DefaultValueAttributeTest.cs: New. A few unit tests for 
+	DefaultValueAttribute - showing problems in Equals and GetHashCode.
 
 2008-07-16  Ivan N. Zlatev  <contact@i-nz.net>
 
 	* TypeDescriptorTests.cs: Add a test that both GetConverter 
 	overloads return the same converter.
+
+2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* BackgroundWorkerTest.cs: Add some asserts for bug #364365.
+
+2008-07-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* BackgroundWorkerTest.cs: Add tests for bugs 328830 and 373153.
 
 2008-07-03  Gert Driesen  <drieseng@users.sourceforge.net>
 

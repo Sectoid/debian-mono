@@ -7,8 +7,6 @@
 
 void* mono_ldftn (MonoMethod *method) MONO_INTERNAL;
 
-void* mono_ldftn_nosync (MonoMethod *method) MONO_INTERNAL;
-
 void* mono_ldvirtfn (MonoObject *obj, MonoMethod *method) MONO_INTERNAL;
 
 void* mono_ldvirtfn_gshared (MonoObject *obj, MonoMethod *method) MONO_INTERNAL;
@@ -53,6 +51,8 @@ gint64 mono_lshr (gint64 a, gint32 shamt) MONO_INTERNAL;
 
 MonoArray *mono_array_new_va (MonoMethod *cm, ...) MONO_INTERNAL;
 
+MonoArray *mono_array_new_1 (MonoMethod *cm, guint32 length) MONO_INTERNAL;
+
 MonoArray *mono_array_new_2 (MonoMethod *cm, guint32 length1, guint32 length2) MONO_INTERNAL;
 
 gpointer mono_class_static_field_address (MonoDomain *domain, MonoClassField *field) MONO_INTERNAL;
@@ -83,9 +83,7 @@ double mono_conv_to_r8_un (guint32 a) MONO_INTERNAL;
 
 double mono_lconv_to_r8_un (guint64 a) MONO_INTERNAL;
 
-gpointer mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, MonoGenericContext *context, gpointer *this_arg) MONO_INTERNAL;
-
-gpointer mono_helper_compile_generic_method_wo_context (MonoObject *obj, MonoMethod *method, gpointer *this_arg) MONO_INTERNAL;
+gpointer mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, gpointer *this_arg) MONO_INTERNAL;
 
 MonoString *mono_helper_ldstr (MonoImage *image, guint32 idx) MONO_INTERNAL;
 
@@ -156,6 +154,8 @@ MonoException *mono_create_corlib_exception_0 (guint32 token) MONO_INTERNAL;
 MonoException *mono_create_corlib_exception_1 (guint32 token, MonoString *arg) MONO_INTERNAL;
 
 MonoException *mono_create_corlib_exception_2 (guint32 token, MonoString *arg1, MonoString *arg2) MONO_INTERNAL;
+
+MonoObject* mono_object_castclass (MonoObject *obj, MonoClass *klass) MONO_INTERNAL;
 
 #endif /* __MONO_JIT_ICALLS_H__ */
 

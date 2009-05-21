@@ -1,3 +1,52 @@
+2008-12-01  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: move tuning logic inside ../moon. We now simply build
+	the tuner as a simple library.
+
+2008-11-20  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: simplify Makefile and tune System.Xml.Linq.
+
+2008-10-16  Jb Evain  <jbevain@novell.com>
+
+	* masterinfos/silverlight/*.info: update to SL2.
+
+2008-09-23  Jb Evain  <jbevain@novell.com>
+
+	* masterinfos/silverlight/Mono.CompilerServices.SymbolWriter.info
+	* Makefile:
+		tune the SymbolWriter as well.
+
+2008-09-23  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: only execute the check visibility step if
+	CHECK_VISIBILITY is defined.
+
+2008-09-18  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/AdjustVisibility.cs: correctly process public nested types.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: tune System.ServiceModel.Web.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: tune System.ServiceModel.dll
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: make the linker generate new guids for the tuned
+	assemblies.
+
+2008-09-09  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: tune System.Runtime.Serialization as well.
+
+2008-08-05  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Tuner/CheckVisibility.cs: properly verify famorassem.
+
 2008-06-10  Jb Evain  <jbevain@novell.com>
 
 	* masterinfos/silverlight/System.Net.info

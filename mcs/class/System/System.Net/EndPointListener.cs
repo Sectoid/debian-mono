@@ -36,8 +36,7 @@ using System.Security.Cryptography.X509Certificates;
 using Mono.Security.Authenticode;
 
 namespace System.Net {
-	
-	sealed class EndPointListener : IHttpListenerContextBinder
+	sealed class EndPointListener
 	{
 		IPEndPoint endpoint;
 		Socket sock;
@@ -50,12 +49,10 @@ namespace System.Net {
 
 		public EndPointListener (IPAddress addr, int port, bool secure)
 		{
-#if !EMBEDDED_IN_1_0
 			if (secure) {
 				this.secure = secure;
 				LoadCertificateAndKey (addr, port);
 			}
-#endif
 
 			endpoint = new IPEndPoint (addr, port);
 			sock = new Socket (addr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -64,7 +61,7 @@ namespace System.Net {
 			sock.BeginAccept (OnAccept, this);
 			prefixes = new Hashtable ();
 		}
-#if !EMBEDDED_IN_1_0
+
 		void LoadCertificateAndKey (IPAddress addr, int port)
 		{
 			// Actually load the certificate
@@ -80,7 +77,7 @@ namespace System.Net {
 				// ignore errors
 			}
 		}
-#endif
+
 		static void OnAccept (IAsyncResult ares)
 		{
 			EndPointListener epl = (EndPointListener) ares.AsyncState;
@@ -152,7 +149,13 @@ namespace System.Net {
 					host = host.Substring (0, colon);
 			}
 
-			string path = HttpUtility.UrlDecode (raw_url);
+			string path;
+			Uri raw_uri;
+			if (Uri.MaybeUri (raw_url) && Uri.TryCreate (raw_url, UriKind.Absolute, out raw_uri))
+				path = raw_uri.PathAndQuery;
+			else
+				path = HttpUtility.UrlDecode (raw_url);
+			
 			string path_slash = path [path.Length - 1] == '/' ? path : path + "/";
 			
 			HttpListener best_match = null;

@@ -2,8 +2,13 @@ if PLATFORM_WIN32
 # Use -m here. This will use / as directory separator (C:/WINNT).
 # The files that use MONO_ASSEMBLIES and/or MONO_CFG_DIR replace the
 # / by \ if running under WIN32.
+if CROSS_COMPILING
+assembliesdir = ${libdir}
+confdir = ${sysconfdir}
+else
 assembliesdir = `cygpath -m "${libdir}"`
 confdir = `cygpath -m "${sysconfdir}"`
+endif
 export HOST_CC
 # The mingw math.h has "extern inline" functions that dont appear in libs, so
 # optimisation is required to actually inline them
@@ -82,6 +87,8 @@ libmonoruntime_la_SOURCES = \
 	mono-debug-debugger.c	\
 	profiler.c	\
 	profiler-private.h	\
+	attach.h	\
+	attach.c	\
 	rand.h		\
 	rand.c		\
 	security.c	\
@@ -123,8 +130,6 @@ libmonoruntime_la_SOURCES = \
 	mono-endian.c	\
 	mono-endian.h	\
 	mono-config.c	\
-	rawbuffer.c	\
-	rawbuffer.h	\
 	loader.c	\
 	class.c		\
 	class-internals.h		\
@@ -134,7 +139,9 @@ libmonoruntime_la_SOURCES = \
 	mono-perfcounters.h	\
 	mono-perfcounters-def.h	\
 	debug-helpers.c	\
-	generic-sharing.c
+	generic-sharing.c	\
+	mempool-internals.h	\
+	metadata-verify.c
 
 libmonoruntime_static_la_SOURCES = $(libmonoruntime_la_SOURCES)
 
@@ -174,7 +181,7 @@ if DTRACE_G_REQUIRED
 PEDUMP_DTRACE_OBJECT = pedump-dtrace.$(OBJEXT)
 
 pedump-dtrace.$(OBJEXT): $(top_srcdir)/data/mono.d libmonoruntime.la ../io-layer/libwapi.la ../utils/libmonoutils.la
-	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/dtrace-prelink.sh \
+	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/data/dtrace-prelink.sh \
 	--pic pedump-dtrace.$(OBJEXT) $(top_srcdir)/data/mono.d libmonoruntime.la ../io-layer/libwapi.la ../utils/libmonoutils.la
 
 else

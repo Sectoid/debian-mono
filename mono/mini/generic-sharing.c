@@ -30,25 +30,10 @@ mono_get_generic_context_from_code (guint8 *code)
 	return mono_jit_info_get_generic_sharing_context (jit_info);
 }
 
-/*
- * mini_method_get_context:
- * @method: a method
- *
- * Returns the generic context of a method or NULL if it doesn't have
- * one.  For an inflated method that's the context stored in the
- * method.  Otherwise it's in the method's generic container or in the
- * generic container of the method's class.
- */
 MonoGenericContext*
 mini_method_get_context (MonoMethod *method)
 {
-	if (method->is_inflated)
-		return mono_method_get_context (method);
-	if (method->is_generic)
-		return &(mono_method_get_generic_container (method)->context);
-	if (method->klass->generic_container)
-		return &method->klass->generic_container->context;
-	return NULL;
+	return mono_method_get_context_general (method, TRUE);
 }
 
 /*
@@ -64,133 +49,18 @@ int
 mono_method_check_context_used (MonoMethod *method)
 {
 	MonoGenericContext *method_context = mini_method_get_context (method);
-	int context_used;
+	int context_used = 0;
 
-	if (!method_context)
-		return 0;
-
-	context_used = mono_generic_context_check_used (method_context);
-	context_used |= mono_class_check_context_used (method->klass);
+	if (!method_context) {
+		/* It might be a method of an array of an open generic type */
+		if (method->klass->rank)
+			context_used = mono_class_check_context_used (method->klass);
+	} else {
+		context_used = mono_generic_context_check_used (method_context);
+		context_used |= mono_class_check_context_used (method->klass);
+	}
 
 	return context_used;
-}
-
-static gboolean
-generic_inst_is_sharable (MonoGenericInst *inst, gboolean allow_type_vars)
-{
-	int i;
-
-	for (i = 0; i < inst->type_argc; ++i) {
-		MonoType *type = inst->type_argv [i];
-		int type_type;
-
-		if (MONO_TYPE_IS_REFERENCE (type))
-			continue;
-
-		type_type = mono_type_get_type (type);
-		if (allow_type_vars && (type_type == MONO_TYPE_VAR || type_type == MONO_TYPE_MVAR))
-			continue;
-
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-/*
- * mono_generic_context_is_sharable:
- * @context: a generic context
- *
- * Returns whether the generic context is sharable.  A generic context
- * is sharable iff all of its type arguments are reference type.
- */
-gboolean
-mono_generic_context_is_sharable (MonoGenericContext *context, gboolean allow_type_vars)
-{
-	g_assert (context->class_inst || context->method_inst);
-
-	if (context->class_inst && !generic_inst_is_sharable (context->class_inst, allow_type_vars))
-		return FALSE;
-
-	if (context->method_inst && !generic_inst_is_sharable (context->method_inst, allow_type_vars))
-		return FALSE;
-
-	return TRUE;
-}
-
-/*
- * mono_method_is_generic_impl:
- * @method: a method
- *
- * Returns whether the method is either generic or part of a generic
- * class.
- */
-gboolean
-mono_method_is_generic_impl (MonoMethod *method)
-{
-	if (method->is_inflated) {
-		g_assert (method->wrapper_type == MONO_WRAPPER_NONE);
-		return TRUE;
-	}
-	/* We don't treat wrappers as generic code, i.e., we never
-	   apply generic sharing to them.  This is especially
-	   important for static rgctx invoke wrappers, which only work
-	   if not compiled with sharing. */
-	if (method->wrapper_type != MONO_WRAPPER_NONE)
-		return FALSE;
-	if (method->klass->generic_container)
-		return TRUE;
-	return FALSE;
-}
-
-/*
- * mono_method_is_generic_sharable_impl:
- * @method: a method
- * @allow_type_vars: whether to regard type variables as reference types
- *
- * Returns TRUE iff the method is inflated or part of an inflated
- * class, its context is sharable and it has no constraints on its
- * type parameters.  Otherwise returns FALSE.
- */
-gboolean
-mono_method_is_generic_sharable_impl (MonoMethod *method, gboolean allow_type_vars)
-{
-	if (!mono_method_is_generic_impl (method))
-		return FALSE;
-
-	if (method->is_inflated) {
-		MonoMethodInflated *inflated = (MonoMethodInflated*)method;
-		MonoGenericContext *context = &inflated->context;
-
-		if (!mono_generic_context_is_sharable (context, allow_type_vars))
-			return FALSE;
-
-		g_assert (inflated->declaring);
-
-		if (inflated->declaring->is_generic) {
-			g_assert (mono_method_get_generic_container (inflated->declaring)->type_params);
-
-			if (mono_method_get_generic_container (inflated->declaring)->type_params->constraints)
-				return FALSE;
-		}
-	}
-
-	if (method->klass->generic_class) {
-		if (!mono_generic_context_is_sharable (&method->klass->generic_class->context, allow_type_vars))
-			return FALSE;
-
-		g_assert (method->klass->generic_class->container_class &&
-				method->klass->generic_class->container_class->generic_container &&
-				method->klass->generic_class->container_class->generic_container->type_params);
-
-		if (method->klass->generic_class->container_class->generic_container->type_params->constraints)
-			return FALSE;
-	}
-
-	if (method->klass->generic_container && !allow_type_vars)
-		return FALSE;
-
-	return TRUE;
 }
 
 static gboolean
@@ -281,6 +151,18 @@ mini_get_basic_type_from_generic (MonoGenericSharingContext *gsctx, MonoType *ty
 }
 
 /*
+ * mini_type_get_underlying_type:
+ *
+ *   Return the underlying type of TYPE, taking into account enums and generic
+ * sharing.
+ */
+MonoType*
+mini_type_get_underlying_type (MonoGenericSharingContext *gsctx, MonoType *type)
+{
+	return mono_type_get_basic_type_from_generic (mono_type_get_underlying_type (type));
+}
+
+/*
  * mini_type_stack_size:
  * @gsctx: a generic sharing context
  * @t: a type
@@ -297,6 +179,32 @@ mini_type_stack_size (MonoGenericSharingContext *gsctx, MonoType *t, int *align)
 	// FIXME: Some callers might not pass in a gsctx
 	//allow_open = gsctx != NULL;
 	return mono_type_stack_size_internal (t, align, allow_open);
+}
+
+/*
+ * mini_type_stack_size_full:
+ *
+ *   Same as mini_type_stack_size, but handle pinvoke data types as well.
+ */
+int
+mini_type_stack_size_full (MonoGenericSharingContext *gsctx, MonoType *t, guint32 *align, gboolean pinvoke)
+{
+	int size;
+
+	if (pinvoke) {
+		size = mono_type_native_stack_size (t, align);
+	} else {
+		int ialign;
+
+		if (align) {
+			size = mini_type_stack_size (gsctx, t, &ialign);
+			*align = ialign;
+		} else {
+			size = mini_type_stack_size (gsctx, t, NULL);
+		}
+	}
+	
+	return size;
 }
 
 /*

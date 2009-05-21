@@ -1,3 +1,44 @@
+2008-11-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* EncryptedXmlTest.cs: Add null check test cases for many methods.
+	* SignedXmlTest.cs: New. Check that GetIdElement returns null when
+	either parameter is null.
+	* TransformTest.cs: New. Check null check behavior.
+	* XmlDecryptionTransformTest.cs: New. Check null check behavior.
+	* XmlDsigC14NTransformTest.cs: Confirm MS.NET NRE behavior inside
+	GetDigestedOutput method.
+	* XmlDsigExcC14NTransformTest.cs: Confirm MS.NET NRE behavior inside
+	GetDigestedOutput method.
+
+2008-10-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* XmlDsigXsltTranformTest.cs: Added test for .ctor (bool).
+	* XmlDsigEnvelopedTransformTest.cs: Added test for .ctor (bool). Use
+	Assert class. Improved properties tests.
+	* XmlDsigC14TransformTest.cs: Added test for .ctor (bool).
+	* XmlDsigExcC14NTransformTest.cs: Added .ctor tests and added asserts
+	IncludsiveNamespacesPrefixList
+	* XmlDsigExcC14NWithCommentsTransformTest.cs: Added basic .ctor and
+	properties tests.
+	* XmlDsigC14NWithCommentsTransformTest.cs: Fixed line endings.
+	* XmlLicenseTransformTest.cs: Added basic .ctor and properties tests.
+
+2008-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SignedXmlTest.cs: Add test cases for HMACSHA[256|384|512] and
+	HMACRIPEMD160 which are supported in 2.0. Based on test case from
+	Fredrik Olsson on bug #425724.
+
+2008-08-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* KeyInfoX509DataTest.cs
+	* SignedInfoTest.cs
+	* XmlDsigC14NTransformTest.cs
+	* XmlDsigExcC14NTransformTest.cs
+	* XmlDsigC14NWithCommentsTransformTest.cs
+	* ReferenceTet.cs
+	* SignatureTest.cs: Fixed line endings.
+
 2008-05-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* XmlDsigBase64TransformTest.cs: Add test case for InputTypes

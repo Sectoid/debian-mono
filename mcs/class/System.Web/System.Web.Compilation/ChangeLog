@@ -1,8 +1,274 @@
+2009-02-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AppResourcesAssemblyBuilder.cs:
+	* AspComponentFoundry.cs:
+	* AssemblyBuilder.cs:
+	* CachingCompiler.cs:
+	* AspGenerator.cs:
+	* WsdlBuildProvider.cs:
+	* BaseCompiler.cs:
+	* BuildProvider.cs:
+	* AppWebReferencesCompiler.cs:
+	* TemplateControlCompiler.cs:
+	* BuildManager.cs:
+	* AppCodeCompiler.cs: settings that have to be in
+	machine.config or the root level web.config now call
+	GetWebApplicationSection.
+
+2009-02-26  Marek Habersack  <mhabersack@novell.com>
+
+	* TagAttributes.cs: modified ToString to return string formatted
+	in a more helpful way.
+
+	* AspParser.cs: added ToString, helpful when debugging.
+
+	* AspGenerator.cs: properly print leading and trailing plain text
+	when looking for embedded tags in ProcessTagsInAttributes.
+
+2009-02-25  Marek Habersack  <mhabersack@novell.com>
+ 
+ 	* AspTokenizer.cs: put_back now uses a stack and allows more than
+ 	one invocation when called inside a tag.
+ 
+ 	* AspGenerator.cs: when a nested parser is used, pay attention to
+ 	server tags found inside client tags and add them to the control
+ 	tree.
+
+2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BuildManager.cs: updated comment.
+
+2009-02-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TemplateControlCompiler.cs: lowercase place holder names
+	* BuildManager.cs: initial support for precompiled sites.
+
+2009-02-13  Marek Habersack  <mhabersack@novell.com>
+
+	* AspParser.cs: added an event raised when parsing is complete.
+
+	* AspGenerator.cs: added support for PageParserFilter which, if
+	found, is used to control certain aspects of code parsing
+	(accepting/rejecting control types, accepting/rejecting code
+	snippets, parsing completion)
+	Added the AddControl method, used by PageParserFilter when a
+	custom filter wants to inject a control in the current control
+	builder tree.
+
+2009-02-05  Marek Habersack  <mhabersack@novell.com>
+
+	* AppResourcesCompiler.cs: implemented a type resolver for
+	ResXResourceReader so that it can correctly resolve
+	System.Resources types which are normally found in
+	System.Windows.Forms but are included by System.Web
+	directly. Without the type resolver, code comparing types inside
+	ResXResourceReader when file references are used in side the .resx
+	file will not work correctly. The reason for that is that .resx
+	files will name "System.Resources.ResXFileRef,
+	System.Windows.Forms" as the file reference handler, while inside
+	System.Web ResXFileRef will be of type
+	"System.Resources.ResXFileRef, System.Web". Fixes bug #466059
+
+	* GenericBuildProvider.cs: added a new virtual method, MapPath,
+	which can be overriden by builders which need special handling of
+	virtual path mapping.
+
+	* PageBuildProvider.cs: provide implementation of
+	GenericBuildProvider.MapPath which takes into account fake virtual
+	paths. Fixes bug #463950
+
+2009-01-26  Marek Habersack  <mhabersack@novell.com>
+
+	* CompilationException.cs: added a Message override to make error
+	messages more useful.
+
+2009-01-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AspComponentFoundry.cs: no need to throw. Caller handles a null
+	return value.
+
+2009-01-23  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: if dependencyCache already contains the virtual
+	path, replace its corresponding file set (in AddToCache). This can
+	happen only if the requested virtual path compilation resulted in
+	errors and the compilation has been retried. Fixes bug #462681
+
+2009-01-14  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: implemented a work around which allows the
+	server controls embedded in client tag attributes to be parsed and
+	compiled.
+
+2009-01-13  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs, AspGenerator.cs, BaseCompiler.cs,
+	GlobalAsaxCompiler.cs, PageThemeCompiler.cs: updates related to
+	ControlBuilder cleanup.
+
+2009-01-12  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: do not generate #line pragmas for
+	plain strings. Fixes bug #461214
+
+2008-12-11  Marek Habersack  <mhabersack@novell.com>
+
+	* BaseCompiler.cs: added a new method, InitializeType, to be
+	overriden in child classes when any class initialization needs to
+	be performed before methods, constructors and fields are created.
+
+	* TemplateControlCompiler.cs: if the parser has any custom
+	controls registered, compile them here - in the InitializeType
+	method.
+
+2008-12-10  Marek Habersack  <mhabersack@novell.com>
+
+	* ParseException.cs: made serializable.
+
+	* PageCompiler.cs: CreateStronglyTypedProperty calls
+	AddReferencedAssembly to add type's assembly to the unit's
+	references after the typed property has been created.
+
+	* BaseCompiler.cs: added a new helper method,
+	AddReferencedAssembly to be used whenever an assembly location
+	needs to be added to the compilation unit's list after the parsing
+	is done (e.g. when processing PreviousPageType or MasterPageType
+	properties in PageParser)
+
+2008-12-08  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: use the correct regex match group
+	index in SanitizeBindCall (), fixes bug #457011
+
+2008-12-05  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: attempt to enter the compilation critical
+	section with a timeout up to 3 times before giving up. This avoids
+	deadlocks in situations where there are two virtual directores
+	each containing user controls referencing user controls from the
+	other directory.
+
+2008-12-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AspParser.cs: reset to the next character in a partial match in case
+	of failure. Fixes bug #314688.
+
+2008-12-01  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: instead of adding ContentPlaceHolder
+	instances to the ContentPlaceHolders collection when the
+	placeholder is instantiated in the control build method, collect
+	the ids and store them in ContentPlaceHolders inside the
+	constructor. Fixes bug #449970
+	For each content placeholder generate a public virtual property
+	named "Template_PLACEHOLDERID", this is compatible with what .NET
+	does.
+
+	* BaseCompiler.cs: added new virtual method,
+	AddStatementsToConstructor, which is called just before
+	CreateConstructor returns.
+
+2008-11-25  Marek Habersack  <mhabersack@novell.com>
+
+	* AspComponentFoundry.cs: GetComponentType methods replaced with
+	GetComponent returning an instance of AspComponent which fully
+	describes the registered item. Components are cached, indexed by
+	full tag name.
+
+	* AspComponent.cs: added
+
+2008-11-21  Marek Habersack  <mhabersack@novell.com>
+
+	* CompilationException.cs: made serializable.
+
+	* TemplateControlCompiler.cs: make the Bind regex stricter.
+	When creating Eval expression from Bind, replace single quotes
+	with double quotes. Fixes bug #447597
+	When processing Bind expressions and the regex doesn't match,
+	throw an exception.
+
+2008-11-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AspTokenizer.cs: if there's a newline between the opening server tag
+	and any other special character, treat the block as a code-render
+	block.
+	Bug #445889 fixed.
+
+2008-11-14  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: treat Eval and Bind expressions as
+	verbatim code. The only difference between the two is that in the
+	latter case Bind is replaced with Eval in the output code. Fixes
+	bug #444725
+	If BindingDirection of the parent template builder is OneWay in
+	RegisterBindingInfo, do not throw an exception but simply do not
+	register the binding.
+
+2008-10-29  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: seal the internal classes.
+	Remove unused BuildCacheItem.ValidBuild property.
+
 2008-10-16  Marek Habersack  <mhabersack@novell.com>
 
 	* TemplateControlCompiler.cs: IsWritablePropertyOrField doesn't
 	use PropertyInfo.CanWrite to check whether the property is
 	writable anymore, it calls GetSetMethod (false) instead.
+
+2008-10-10  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: allow whitespace around parentheses 
+	in the Bind and Eval expressions.
+
+2008-10-09  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: if monoSettings section is found in the
+	system.web section in web.config, use its contents to augment
+	compiler configuration. Used to work around the issue reported in
+	bug #433806
+
+2008-10-08  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: templates must be instantiated even
+	for builders which process children as properties.
+
+2008-10-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AssemblyBuilder.cs: use CodeBase to get to the original assembly
+	path because Location might point the the shadow copy. Bug #409646
+	and others fixed.
+
+2008-10-03  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: if an assembly fails to build out of a batch of
+	files, extract the virtual path that was requested by the client
+	and attempt to compile it alone.
+
+2008-09-29  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManagerRemoveEntryEventHandler.cs: added
+
+	* BuildManager.cs: added a static event to notify interested
+	parties when an entry is removed from the buildCache. Fixes bug
+	#429926.
+
+2008-09-26  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: when creating a cache entry for a virtual path,
+	make it depend on a list of files built recursively from all the
+	virtual path's dependencies. Fixes bug #430114
+
+2008-09-24  Andreia Gaita <avidigal@novell.com> 
+ 
+	* AspParser.cs: When parsing text which contain xml tags that resemble
+	the end string, append the original text instead of the end string,
+	because the casing might not match between the two. Fixes #320445
+
+2008-09-23  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: ignore whitespace only if it's between
+	CodeRender blocks, not between DataBinding and
+	CodeRenderExpression.
 
 2008-09-01  Marek Habersack  <mhabersack@novell.com>
 

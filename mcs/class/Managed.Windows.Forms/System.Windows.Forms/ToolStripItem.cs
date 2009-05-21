@@ -114,14 +114,13 @@ namespace System.Windows.Forms
 			this.auto_size = true;
 			this.auto_tool_tip = this.DefaultAutoToolTip;
 			this.available = true;
-			this.back_color = Control.DefaultBackColor;
+			this.back_color = Color.Empty;
 			this.background_image_layout = ImageLayout.Tile;
 			this.can_select = true;
 			this.display_style = this.DefaultDisplayStyle;
 			this.dock = DockStyle.None;
 			this.enabled = true;
-			this.font = new Font ("Tahoma", 8.25f);
-			this.fore_color = Control.DefaultForeColor;
+			this.fore_color = Color.Empty;
 			this.image = image;
 			this.image_align = ContentAlignment.MiddleCenter;
 			this.image_index = -1;
@@ -278,7 +277,15 @@ namespace System.Windows.Forms
 		}
 
 		public virtual Color BackColor {
-			get { return this.back_color; }
+			get {
+				if (back_color != Color.Empty)
+					return back_color;
+
+				if (Parent != null)
+					return parent.BackColor;
+
+				return Control.DefaultBackColor;
+			}
 			set {
 				if (this.back_color != value) {
 					back_color = value;
@@ -397,9 +404,16 @@ namespace System.Windows.Forms
 		}
 
 		[Localizable (true)]
-		public virtual Font Font
-		{
-			get { return this.font; }
+		public virtual Font Font {
+			get { 
+				if (font != null)
+					return font;
+					
+				if (Parent != null)
+					return Parent.Font;
+					
+				return DefaultFont;
+			}
 			set { 
 				if (this.font != value) {
 					this.font = value; 
@@ -411,7 +425,15 @@ namespace System.Windows.Forms
 		}
 
 		public virtual Color ForeColor {
-			get { return this.fore_color; }
+			get { 
+				if (fore_color != Color.Empty)
+					return fore_color;
+					
+				if (Parent != null)
+					return parent.ForeColor;
+					
+				return Control.DefaultForeColor;
+			}
 			set { 
 				if (this.fore_color != value) {
 					this.fore_color = value; 
@@ -445,12 +467,12 @@ namespace System.Windows.Forms
 					return this.image;
 					
 				if (this.image_index >= 0)
-					if (this.owner != null && this.owner.ImageList != null)
+					if (this.owner != null && this.owner.ImageList != null && this.owner.ImageList.Images.Count > this.image_index)
 						return this.owner.ImageList.Images[this.image_index];
 
 
 				if (!string.IsNullOrEmpty (this.image_key))
-					if (this.owner != null && this.owner.ImageList != null)
+					if (this.owner != null && this.owner.ImageList != null && this.owner.ImageList.Images.Count > this.image_index)
 						return this.owner.ImageList.Images[this.image_key];
 						
 				return null;
@@ -614,9 +636,13 @@ namespace System.Windows.Forms
 			get { return this.owner; }
 			set { 
 				if (this.owner != value) {
-					this.owner = value; 
-					this.CalculateAutoSize (); 
-					OnOwnerChanged (EventArgs.Empty);
+					if (this.owner != null)
+						this.owner.Items.Remove (this);
+					
+					if (value != null)	
+						value.Items.Add (this);
+					else
+						this.owner = null;
 				}
 			}
 		}
@@ -868,16 +894,16 @@ namespace System.Windows.Forms
 		}
 
 		[EditorBrowsable (EditorBrowsableState.Never)]
-		public virtual void ResetBackColor () { this.BackColor = Control.DefaultBackColor; }
+		public virtual void ResetBackColor () { this.BackColor = Color.Empty; }
 
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public virtual void ResetDisplayStyle () { this.display_style = this.DefaultDisplayStyle; }
 
 		[EditorBrowsable (EditorBrowsableState.Never)]
-		public virtual void ResetFont () { this.font = new Font ("Tahoma", 8.25f); }
+		public virtual void ResetFont () { this.font = null; }
 
 		[EditorBrowsable (EditorBrowsableState.Never)]
-		public virtual void ResetForeColor () { this.ForeColor = Control.DefaultForeColor; }
+		public virtual void ResetForeColor () { this.ForeColor = Color.Empty; }
 
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public virtual void ResetImage () { this.image = null; }
@@ -904,6 +930,7 @@ namespace System.Windows.Forms
 					
 				this.Invalidate ();
 				this.Parent.NotifySelectedChanged (this);
+				OnUIASelectionChanged ();
 			}
 		}
 
@@ -1095,6 +1122,7 @@ namespace System.Windows.Forms
 				this.is_selected = false;
 				this.is_pressed = false;
 				this.Invalidate ();
+				OnUIASelectionChanged ();
 			}
 
 			EventHandler eh = (EventHandler)(Events [MouseLeaveEvent]);
@@ -1142,6 +1170,7 @@ namespace System.Windows.Forms
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
 		protected internal virtual void OnOwnerFontChanged (EventArgs e)
 		{
+			this.CalculateAutoSize ();
 		}
 		
 		protected virtual void OnPaint (PaintEventArgs e)
@@ -1162,6 +1191,8 @@ namespace System.Windows.Forms
 		
 		protected virtual void OnParentChanged (ToolStrip oldParent, ToolStrip newParent)
 		{
+			this.text_size = TextRenderer.MeasureText (this.Text == null ? string.Empty : this.text, this.Font, Size.Empty, TextFormatFlags.HidePrefix);
+			
 			if (oldParent != null)
 				oldParent.PerformLayout ();
 				
@@ -1499,16 +1530,16 @@ namespace System.Windows.Forms
 					preferred_size = new Size (width, height);
 					break;
 				case ToolStripItemDisplayStyle.Image:
-					if (this.Image == null)
+					if (this.GetImageSize () == Size.Empty)
 						preferred_size = this.DefaultSize;
 					else {
 						switch (this.image_scaling) {
 							case ToolStripItemImageScaling.None:
-								preferred_size = this.Image.Size;
+								preferred_size = this.GetImageSize ();
 								break;
 							case ToolStripItemImageScaling.SizeToFit:
 								if (this.parent == null)
-									preferred_size = this.Image.Size;
+									preferred_size = this.GetImageSize ();
 								else
 									preferred_size = this.parent.ImageScalingSize;
 								break;
@@ -1519,8 +1550,8 @@ namespace System.Windows.Forms
 					int width2 = text_size.Width + this.padding.Horizontal;
 					int height2 = text_size.Height + this.padding.Vertical;
 
-					if (this.Image != null) {
-						Size image_size = this.Image.Size;
+					if (this.GetImageSize () != Size.Empty) {
+						Size image_size = this.GetImageSize ();
 						
 						if (this.image_scaling == ToolStripItemImageScaling.SizeToFit && this.parent != null)
 							image_size = this.parent.ImageScalingSize;
@@ -1622,6 +1653,8 @@ namespace System.Windows.Forms
 			}
 		}
 
+		private static Font DefaultFont { get { return new Font ("Tahoma", 8.25f); } }
+		
 		internal virtual ToolStripTextDirection DefaultTextDirection { get { return ToolStripTextDirection.Inherit; } }
 
 		internal virtual void Dismiss (ToolStripDropDownCloseReason reason)
@@ -1629,6 +1662,7 @@ namespace System.Windows.Forms
 			if (is_selected) {
 				this.is_selected = false;
 				this.Invalidate ();
+				OnUIASelectionChanged ();
 			}
 		}
 		
@@ -1696,16 +1730,29 @@ namespace System.Windows.Forms
 		
 		internal Size GetImageSize ()
 		{
-			if (this.Image == null)
-				return Size.Empty;
+			// Get the actual size of our internal image -or-
+			// Get the ImageList.ImageSize if we are using ImageLists
+			if (this.image_scaling == ToolStripItemImageScaling.None) {
+				if (this.image != null)
+					return image.Size;
+					
+				if (this.image_index >= 0 || !string.IsNullOrEmpty (this.image_key))
+					if (this.owner != null && this.owner.ImageList != null)
+						return this.owner.ImageList.ImageSize;
+			} else {
+				// If we have an image and a parent, return ImageScalingSize
+				if (this.Parent == null)
+					return Size.Empty;
+					
+				if (this.image != null)
+					return this.Parent.ImageScalingSize;
+
+				if (this.image_index >= 0 || !string.IsNullOrEmpty (this.image_key))
+					if (this.owner != null && this.owner.ImageList != null)
+						return this.Parent.ImageScalingSize;
+			}
 			
-			if (this.image_scaling == ToolStripItemImageScaling.None)
-				return this.Image.Size;
-				
-			if (this.Parent == null)
-				return Size.Empty;
-				
-			return this.Parent.ImageScalingSize;
+			return Size.Empty;
 		}
 		
 		internal string GetToolTip ()
@@ -1724,8 +1771,8 @@ namespace System.Windows.Forms
 				
 			switch (met) {
 				case ToolStripItemEventType.MouseUp:
-					this.OnMouseUp ((MouseEventArgs)e);
 					this.HandleClick (e);
+					this.OnMouseUp ((MouseEventArgs)e);
 					break;
 				case ToolStripItemEventType.MouseDown:
 					this.OnMouseDown ((MouseEventArgs)e);
@@ -1835,7 +1882,17 @@ namespace System.Windows.Forms
 			get { return this.visible; }
 			set { this.visible = value; Invalidate (); }
 		}
-		
+
+		internal ToolStrip InternalOwner {
+			set {
+				if (this.owner != value) {
+					this.owner = value;
+					this.CalculateAutoSize ();
+					OnOwnerChanged (EventArgs.Empty);
+				}
+			}
+		}
+
 		internal Point Location {
 			get { return this.bounds.Location; }
 			set {
@@ -1890,6 +1947,24 @@ namespace System.Windows.Forms
 		{
 			OnDragOver (dragEvent);
 		}
+		#endregion
+
+		#region UIA Framework: Methods, Properties and Events
+
+		static object UIASelectionChangedEvent = new object ();
+
+		internal event EventHandler UIASelectionChanged {
+			add { Events.AddHandler (UIASelectionChangedEvent, value); }
+			remove { Events.RemoveHandler (UIASelectionChangedEvent, value); }
+		}
+
+		internal void OnUIASelectionChanged ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIASelectionChangedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+		
 		#endregion
 
 		[ComVisible (true)]

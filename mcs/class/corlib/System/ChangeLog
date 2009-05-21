@@ -1,9 +1,228 @@
+2009-03-06  Miguel de Icaza  <miguel@novell.com>
+ 
+	* Convert.cs: Apply patch from Tom Hindle that uses
+	IConvertible.ToType if there are no other possible conversions
+	defined. 
+ 
+	Fixes: #481687
+	
+2009-02-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* Enum.cs (FindName): Use a hash table for looking up names instead of
+	a linear search for enums with a lot of values.
+
+2009-02-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* String.cs (FormatHelper): If all the arguments are strings, compute an
+	initial length for the stringbuilder to avoid reallocations.
+
+2009-02-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r127929.
+	
+	* Enum.cs (GetInfo): Add a global cache in addition to the thread-local
+	caches to accomodate short living threads like threadpool threads.
+
+2009-02-21  Jb Evain  <jbevain@novell.com>
+
+	backport of r127628.
+
+	* MonoType.cs (InvokeMember): don't pass a null args to
+	Binder.BindToMethod. Fix for #471275.
+
+2009-02-12  Lluis Sanchez Gual  <lluis@novell.com>
+
+	* MarshalByRefObject.cs: Implemented MemberwiseClone(bool).
+
+2009-02-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AppDomain.cs: this fixes the remoting tests.
+	Zoltan found out that there was a domain improperly using shadow
+	copy.
+
+2009-02-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* DateTime.cs: check for null and empty strings before anything else
+	in CoreParse.
+
+2009-01-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AppDomain.cs: LoadAssembly() returns null instead of throwing now.
+	Add new LoadSatellite method.
+
+2009-01-12  Bill Holmes  <billholmes54@gmail.com>
+
+	* Variant.cs (GetValue):  Handling the NULL IDispatch 
+	  and IUnknown case.
+
+	Contributed under MIT/X11 license.
+
+2009-01-09  Miguel de Icaza  <miguel@novell.com>
+
+	* DateTime.cs: Implement TryParse in a way that will not depend on
+	the try/catch statement.   The try/catch statement is still there
+	*just in case*, I might have missed some codepaths.
+
+2009-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTime.cs : when ".FF..." is specified, allow milliseconds-less
+	  time. Fix #444103.
+
+2008-12-19  Bill Holmes  <billholmes54@gmail.com>
+
+	* Environment.cs (GetEnvironmentVariable) :  Avoiding an nre if 
+	  the variable is not set.
+
+	* Environment.cs (SetEnvironmentVariable) : Adding a call to 
+	  internalBroadcastSettingChange to notify Windows that an environment 
+	  variable has changed.
+
+	Contributed under MIT/X11 license.
+
+2008-12-18  Jb Evain  <jbevain@novell.com>
+
+	* String.cs: the Compare methods that were specific to SL2 are now
+	also in .net 2/3.5 sp1.
+
+2008-12-10  Bill Holmes  <billholmes54@gmail.com>
+
+	* Variant.cs (SetValue):   Changing the behavior for COM object in 
+	  VARIANTs to match MS.  Also adding support for BStrWrapper, 
+	  UnknownWrapper, and DispatchWrapper.
+
+	Contributed under MIT/X11 license.
+
+2008-11-28  Miguel De Icaza  <miguel@novell.com>
+
+	* TermInfoDriver.cs: Also register a mapping to make verase be the
+	backspace key.  Funny thing: verase was fetched from the termios,
+	but it was *never* actually used in this file.
+
+	VSUSP and VINTR are likewise ignored.   Must ponder this.
+
+	This makes the backspace key in MacOS work on interactive
+	applications.
+	
+2008-11-15  Kornél Pál  <kornelpal@gmail.com>
+
+	* Convert.cs: Removed useless check from ToChar (ushort).
+
+2008-11-06  Bill Holmes  <billholmes54@gmail.com>
+
+	* Type.cs (FindMembers):  Changing the instantiated type of the 
+	  returned MemberInfo array to match the MemberTypes flag
+	  passed in argument 1.
+
+	Contributed under MIT/X11 license.
+
+Mon Nov 3 16:39:37 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Array.cs: in the IList set_Item, ensure the array
+	element is set using the proper type checks (bug #440819).
+
+Mon Oct 13 16:40:56 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Environment.cs, OperatingSystem.cs: complete support for
+	PlatformID (bug #433108).
+
+2008-10-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AppDomain.cs: (Load(AssemblyName)) Use the CodeBase after the Name
+	when both are provided.
+	Fixes bug #322228.
+
+2008-10-08  Bill Holmes  <billholmes54@gmail.com>
+
+	* Variant.cs : Adding the BRECORD field to ensure the right size on
+	  a 64-bit OS.  32-bit 16 bytes, 32-bit 24 bytes.
+
+	Contributed under MIT/X11 license.
+
+2008-10-08  Bill Holmes  <billholmes54@gmail.com>
+
+	* Variant.cs (SetValue) : Adding code to handle enums.
+
+	Contributed under MIT/X11 license.
+
+2008-10-08  Bill Holmes  <billholmes54@gmail.com>
+
+	* Variant.cs : Cleaning up some tab formatting problems.
+
+	Contributed under MIT/X11 license.
+
+2008-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* PlatformID.cs: Define Xbox/MacOSX on the 2.0 profile too, since it
+	is part of NET 3.5 SP1.
+
+2008-10-07  Marek Habersack  <mhabersack@novell.com>
+
+	* Math.cs: implemented the away from zero rounding for the Round
+	(double, int, MidpointRounding) overload.
+
+2008-10-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* Activator.cs (CreateInstance): Don't return the return value of the
+	ctor.Invoke (object, ...) overload since it is null, return 'newOb' instead.
+
+Mon Oct 6 15:12:25 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Array.cs: better message when keys cannot be compared
+	when sorting (bug #368455).
+
 2008-09-29  Rodrigo Kumpera  <rkumpera@novell.com>
 
-       * Type.cs (MakeGenericType): Only use UnderlyingSystemType for user types.
-       This must exclude TypeBuilder and EnumBuilder. Fixes #430508.
+	* Type.cs (MakeGenericType): Only use UnderlyingSystemType for user types.
+	This must exclude TypeBuilder and EnumBuilder. Fixes #430508.
 
-		Backported from trunk.
+2008-09-28  Juraj Skripsky  <js@hotfeet.ch>
+
+	* String.cs (ReplaceUnchecked): Avoid any unnecessary work and 
+	string allocations by returning early when no oldValue was found.
+
+2008-09-24  Marek Habersack  <mhabersack@novell.com>
+
+	* Double.cs: check whether decimal_separator, group_separator and
+	currency_symbol strings aren't empty before trying to index them
+	in Parse ().
+
+2008-09-24  Jb Evain  <jbevain@novell.com>
+
+	* AppDomain.cs (CreateDomain): call the domain initializer in
+	the newly created AppDomain. Fixes #429545.
+
+2008-09-24  Jb Evain  <jbevain@novell.com>
+
+	* AppDomain.cs: implement the CreateDomain overload which
+	takes an AppDomain initializer. Fixes #429545.
+
+2008-09-17  Robert Jordan  <robertj@gmx.net>
+
+	* DelegateSerializationHolder.cs: Starting with .NET 2.0, delegates
+	of non-public methods are allowed to be serialized. Fixes #425345.
+
+2008-09-15  Andy Hume  <andyhume32@yahoo.co.uk>
+
+	* DateTimeOffset.cs: DateTimeOffset currently has no
+	deserialization constructor, thus deserialization
+	fails ("SerializationException: The constructor to deserialize an
+	object of type System.DateTimeOffset was not found.")
+
+	Patch attached, implements GetObjectData and that constructor.
+	Also includes tests, which include round-tripping to/from MSFT.
+
+2008-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* ConsoleDriver.cs: Remove obsolete GetTtySize icall.
+
+2008-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	* Convert.cs, Decimal.cs: Fixed float/double to decimal range check.
+
+2008-09-07  Miguel de Icaza  <miguel@novell.com>
+
+	* TermInfoDriver.cs: Add support for updating the size of the
+	terminal when it changes.   
 
 2008-08-27  Miguel de Icaza  <miguel@novell.com>
 
@@ -16,24 +235,106 @@
 	build gmcs.exe with the bootstrap corlib, we need to ensure all
 	the new stuff is included in BOOTSTRAP_NET_2_0
 
+2008-08-26  Robert Jordan  <robertj@gmx.net>
+
+	* AppDomain.cs (get_Evidence): Fix endless recursion exposed
+	by the test case of bug #420197.
+
 2008-08-24  Miguel de Icaza  <miguel@novell.com>
 
 	* TermInfoDriver.cs (GetKeyFromBuffer): Add support for reporting
 	Alt-LETTER sequences.   They were ignored previously.
+
+2008-08-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AppDomainSetup.cs: Remove IAppDomainSetup for SL2. This helps
+	the tuner since the methods are then defined correctly (wrt to the
+	implicit implementation of the interfaces)/
+
+2008-08-21  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* Nullable.cs: Add two ComVisible(false) for SL2 profile.
+	* PlatformID.cs: Add Xbox and MacOX for SL2 profile.
+	* WeakReference.cs: Add default, protected, ctor for SL2.
 
 2008-08-20  Miguel de Icaza  <miguel@novell.com>
 
 	* ConsoleDriver.cs: TtySetup now takes an extra argument: the
 	keypadXmit string.
 
+2008-08-16  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Exception.cs: Fixed value of HResult to match MS. Added support for
+	(de)serializing Data. Use deserialized ClassName, if available, to
+	when name of type is used.
+
+2008-08-10  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* IServiceProvider.cs: Added ComVisible attribute (1.0 only).
+	* String.cs: Fixed argument names to match MS.
+
+2008-08-10  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Boolean.cs
+	* Byte.cs
+	* Char.cs
+	* DateTime.cs
+	* DBNull.cs
+	* Decimal.cs
+	* Double.cs
+	* Enum.cs
+	* Int16.cs
+	* Int32.cs
+	* Int64.cs
+	* Single.cs
+	* String.cs
+	* UInt16.cs
+	* UInt32.cs
+	* UInt64.cs: Added missing CLSCompliant attributes for 1.0 profile.
+
+2008-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTime.cs : zzzz format allows non-fixed length of number, even
+	  in exact parsing mode. Fixed bug #377042.
+
+2008-08-05  Jb Evain  <jbevain@novell.com>
+
+	* String.cs: add new NET_2_1 Compare methods.
+
 2008-08-03  Miguel de Icaza  <miguel@novell.com>
 
 	* ConsoleDriver.cs: If the terminal is dumb, do not activate the
 	full terminal support.
 
+2008-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	* Type.cs: Removed _MemberInfo from base classes list.
+	
+2008-07-28  Marek Safar  <marek.safar@gmail.com>
+
+	* KnownTerminals.cs: Don't initialize rarely used static data.
+
 2008-07-24  Zoltan Varga  <vargaz@gmail.com>
 
+	* Delegate.cs: Move the rarely used fields to a separate object, add
+	'method_code' field.
+
+	* Environment.cs: Bump corlib version.
+
 	* ConsoleDriver.cs: Remove unused Suspend icall.
+
+2008-07-21  Marek Safar  <marek.safar@gmail.com>
+
+	* AppDomain.cs (Load): Check for 0-length assembly name.
+
+2008-07-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Enum.cs (GetHashCode): Use new icall get_hashcode to
+	avoid allocating a boxed version of the enum basetype.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	* String.cs: reverted GetHashCode changes.
 
 2008-07-08  Andreas Nahr <ClassDevelopment@A-SoftTech.com>
 

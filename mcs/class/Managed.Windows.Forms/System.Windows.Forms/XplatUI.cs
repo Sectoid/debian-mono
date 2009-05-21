@@ -44,6 +44,7 @@ namespace System.Windows.Forms {
 		#region Local Variables
 		static XplatUIDriver		driver;
 		static String			default_class_name;
+		internal static ArrayList key_filters = new ArrayList ();
 		#endregion	// Local Variables
 
 		#region Private Methods
@@ -111,6 +112,13 @@ namespace System.Windows.Forms {
 
 			// Initialize things that need to be done after the driver is ready
 			DataFormats.GetFormat(0);
+
+#if NET_2_0
+			// Signal that the Application loop can be run.
+			// This allows UIA to initialize a11y support for MWF
+			// before the main loop begins.
+			Application.FirePreRun ();
+#endif
 		}
 		#endregion	// Constructor & Destructor
 
@@ -118,12 +126,9 @@ namespace System.Windows.Forms {
 
 		public static bool RunningOnUnix {
 			get {
-#if NET_2_0
-				return (Environment.OSVersion.Platform == PlatformID.Unix);
-#else
-				int platform = (int) Environment.OSVersion.Platform;
-				return (platform == 128);
-#endif
+				int p = (int) Environment.OSVersion.Platform;
+				
+				return (p == 4 || p == 6 || p == 128);
 			}
 		}
 
@@ -1254,6 +1259,25 @@ namespace System.Windows.Forms {
 		// Santa's little helper
 		internal static void Version() {
 			Console.WriteLine("Xplat version $Revision: $");
+		}
+
+		internal static void AddKeyFilter (IKeyFilter value)
+		{
+			lock (key_filters) {
+				key_filters.Add (value);
+			}
+		}
+
+		internal static bool FilterKey (KeyFilterData key)
+		{
+			lock (key_filters) {
+				for (int i = 0; i < key_filters.Count; i++) {
+					IKeyFilter filter = (IKeyFilter) key_filters[i];
+					if (filter.PreFilterKey (key))
+						return true;
+				}
+			}
+			return false;
 		}
 		#endregion	// Public Static Methods
 

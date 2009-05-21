@@ -72,11 +72,15 @@ namespace System.Data.SqlClient
 		static TdsConnectionPoolManager sqlConnectionPools = new TdsConnectionPoolManager (TdsVersion.tds70);
 #if NET_2_0
 		const int DEFAULT_PACKETSIZE = 8000;
+		const int MAX_PACKETSIZE = 32768;
 #else
 		const int DEFAULT_PACKETSIZE = 8192;
+		const int MAX_PACKETSIZE = 32767;
 #endif
+		const int MIN_PACKETSIZE = 512;
 		const int DEFAULT_CONNECTIONTIMEOUT = 15;
 		const int DEFAULT_MAXPOOLSIZE = 100;
+		const int MIN_MAXPOOLSIZE = 1;
 		const int DEFAULT_MINPOOLSIZE = 0;
 		const int DEFAULT_PORT = 1433;
 
@@ -91,7 +95,7 @@ namespace System.Data.SqlClient
 
 		// Connection parameters
 		
-		TdsConnectionParameters parms = new TdsConnectionParameters ();
+		TdsConnectionParameters parms;
 		bool connectionReset;
 		bool pooling;
 		string dataSource;
@@ -102,7 +106,6 @@ namespace System.Data.SqlClient
 		int port;
 		bool fireInfoMessageEventOnUserErrors;
 		bool statisticsEnabled;
-		bool userInstance;
 		
 		// The current state
 		ConnectionState state = ConnectionState.Closed;
@@ -117,21 +120,12 @@ namespace System.Data.SqlClient
 
 		#region Constructors
 
-		public SqlConnection () : this (String.Empty)
+		public SqlConnection () : this (null)
 		{
 		}
 	
 		public SqlConnection (string connectionString)
 		{
-			Init (connectionString);
-		}
-
-		private void Init (string connectionString)
-		{
-			connectionTimeout = DEFAULT_CONNECTIONTIMEOUT;
-			dataSource = string.Empty;
-			packetSize = DEFAULT_PACKETSIZE;
-			port = DEFAULT_PORT;
 			ConnectionString = connectionString;
 		}
 
@@ -160,7 +154,7 @@ namespace System.Data.SqlClient
 			set {
 				if (state == ConnectionState.Open)
 					throw new InvalidOperationException ("Not Allowed to change ConnectionString property while Connection state is OPEN");
-				SetConnectionString (value); 
+				SetConnectionString (value);
 			}
 		}
 	
@@ -393,7 +387,7 @@ namespace System.Data.SqlClient
 #if NET_2_0
 		override
 #endif // NET_2_0
-		void ChangeDatabase (string database) 
+		void ChangeDatabase (string database)
 		{
 			if (!IsValidDatabaseName (database))
 				throw new ArgumentException (String.Format ("The database name {0} is not valid.", database));
@@ -404,6 +398,9 @@ namespace System.Data.SqlClient
 
 		private void ChangeState (ConnectionState currentState)
 		{
+			if (currentState == state)
+				return;
+
 			ConnectionState originalState = state;
 			state = currentState;
 			OnStateChange (CreateStateChangeEvent (originalState, currentState));
@@ -413,7 +410,7 @@ namespace System.Data.SqlClient
 #if NET_2_0
 		override
 #endif // NET_2_0
-		void Close () 
+		void Close ()
 		{
 			if (transaction != null && transaction.IsOpen)
 				transaction.Rollback ();
@@ -426,13 +423,13 @@ namespace System.Data.SqlClient
 
 			if (tds != null && tds.IsConnected) {
 				if (pooling && tds.Pooling) {
-#if NET_2_0
-					if(pool != null) pool.ReleaseConnection (ref tds);
-#else
-					if(pool != null) pool.ReleaseConnection (tds);
-#endif
-				}else
-					if(tds != null) tds.Disconnect ();
+					if (pool != null) {
+						pool.ReleaseConnection (tds);
+						pool = null;
+					}
+				} else {
+					tds.Disconnect ();
+				}
 			}
 
 			if (tds != null) {
@@ -443,7 +440,7 @@ namespace System.Data.SqlClient
 			ChangeState (ConnectionState.Closed);
 		}
 
-		public new SqlCommand CreateCommand () 
+		public new SqlCommand CreateCommand ()
 		{
 			SqlCommand command = new SqlCommand ();
 			command.Connection = this;
@@ -462,14 +459,11 @@ namespace System.Data.SqlClient
 
 		protected override void Dispose (bool disposing)
 		{
-			if (disposed)
-				return;
-
 			try {
-				if (disposing) {
+				if (disposing && !disposed) {
 					if (State == ConnectionState.Open) 
 						Close ();
-					ConnectionString = string.Empty;
+					ConnectionString = null;
 				}
 			} finally {
 				disposed = true;
@@ -533,6 +527,7 @@ namespace System.Data.SqlClient
 					if(!ParseDataSource (dataSource, out port, out serverName))
 						throw new SqlException(20, 0, "SQL Server does not exist or access denied.",  17, "ConnectionOpen (Connect()).", dataSource, parms.ApplicationName, 0);
 					tds = new Tds70 (serverName, port, PacketSize, ConnectionTimeout);
+					tds.Pooling = false;
 				}
 				else {
 					if(!ParseDataSource (dataSource, out port, out serverName))
@@ -565,7 +560,7 @@ namespace System.Data.SqlClient
 			ChangeState (ConnectionState.Open);
 		}
 
-		private bool ParseDataSource (string theDataSource, out int thePort, out string theServerName) 
+		private bool ParseDataSource (string theDataSource, out int thePort, out string theServerName)
 		{
 			theServerName = string.Empty;
 			string theInstanceName = string.Empty;
@@ -577,11 +572,11 @@ namespace System.Data.SqlClient
 			bool success = true;
 
 			int idx = 0;
-			if ((idx = theDataSource.IndexOf (",")) > -1) {
+			if ((idx = theDataSource.IndexOf (',')) > -1) {
 				theServerName = theDataSource.Substring (0, idx);
 				string p = theDataSource.Substring (idx + 1);
 				thePort = Int32.Parse (p);
-			} else if ((idx = theDataSource.IndexOf ("\\")) > -1) {
+			} else if ((idx = theDataSource.IndexOf ('\\')) > -1) {
 				theServerName = theDataSource.Substring (0, idx);
 				theInstanceName = theDataSource.Substring (idx + 1);
 
@@ -606,11 +601,14 @@ namespace System.Data.SqlClient
 			if (value.ToUpper() == "SSPI")
 				return true;
 
-			return ConvertToBoolean("integrated security", value);
+			return ConvertToBoolean ("integrated security", value, false);
 		}
 
-		private bool ConvertToBoolean (string key, string value)
+		private bool ConvertToBoolean (string key, string value, bool defaultValue)
 		{
+			if (value.Length == 0)
+				return defaultValue;
+
 			string upperValue = value.ToUpper ();
 
 			if (upperValue == "TRUE" || upperValue == "YES")
@@ -622,13 +620,16 @@ namespace System.Data.SqlClient
 				"Invalid value \"{0}\" for key '{1}'.", value, key));
 		}
 
-		private int ConvertToInt32 (string key, string value)
+		private int ConvertToInt32 (string key, string value, int defaultValue)
 		{
+			if (value.Length == 0)
+				return defaultValue;
+
 			try {
 				return int.Parse (value);
 			} catch (Exception ex) {
 				throw new ArgumentException (string.Format (CultureInfo.InvariantCulture,
-					"Invalid value \"{0}\" for key '{1}'.", value, key));
+					"Invalid value \"{0}\" for key '{1}'.", value, key), ex);
 			}
 		}
 
@@ -695,7 +696,7 @@ namespace System.Data.SqlClient
 					else {
 						if (name != String.Empty && name != null) {
 							value = sb.ToString ();
-							SetProperties (name.ToUpper ().Trim() , value);
+							SetProperties (name.ToLower ().Trim() , value);
 						}
 						else if (sb.Length != 0)
 							throw new ArgumentException ("Format of initialization string does not conform to specifications");
@@ -731,13 +732,22 @@ namespace System.Data.SqlClient
 				}
 			}
 
+			if (minPoolSize > maxPoolSize)
+				throw new ArgumentException ("Invalid value for "
+					+ "'min pool size' or 'max pool size'; "
+					+ "'min pool size' must not be greater "
+					+ "than 'max pool size'.");
+
 			connectionString = connectionString.Substring (0 , connectionString.Length-1);
 			this.connectionString = connectionString;
 		}
 
 		void SetDefaultConnectionParameters ()
 		{
-			parms.Reset ();
+			if (parms == null)
+				parms = new TdsConnectionParameters ();
+			else
+				parms.Reset ();
 			dataSource = string.Empty;
 			connectionTimeout = DEFAULT_CONNECTIONTIMEOUT;
 			connectionReset = true;
@@ -745,6 +755,7 @@ namespace System.Data.SqlClient
 			maxPoolSize = DEFAULT_MAXPOOLSIZE;
 			minPoolSize = DEFAULT_MINPOOLSIZE;
 			packetSize = DEFAULT_PACKETSIZE;
+			port = DEFAULT_PORT;
  #if NET_2_0
 			async = false;
  #endif
@@ -753,122 +764,130 @@ namespace System.Data.SqlClient
 		private void SetProperties (string name , string value)
 		{
 			switch (name) {
-			case "APP" :
-			case "APPLICATION NAME" :
+			case "app" :
+			case "application name" :
 				parms.ApplicationName = value;
 				break;
-			case "ATTACHDBFILENAME" :
-			case "EXTENDED PROPERTIES" :
-			case "INITIAL FILE NAME" :
+			case "attachdbfilename" :
+			case "extended properties" :
+			case "initial file name" :
 				parms.AttachDBFileName = value;
 				break;
-			case "TIMEOUT" :
-			case "CONNECT TIMEOUT" :
-			case "CONNECTION TIMEOUT" :
-				int tmpTimeout = ConvertToInt32 ("connection timeout", value);
+			case "timeout" :
+			case "connect timeout" :
+			case "connection timeout" :
+				int tmpTimeout = ConvertToInt32 ("connect timeout", value,
+					DEFAULT_CONNECTIONTIMEOUT);
 				if (tmpTimeout < 0)
-					throw new ArgumentException ("Invalid CONNECTION TIMEOUT .. Must be an integer >=0 ");
+					throw new ArgumentException ("Invalid 'connect timeout'. Must be an integer >=0 ");
 				else 
 					connectionTimeout = tmpTimeout;
 				break;
-			case "CONNECTION LIFETIME" :
+			case "connection lifetime" :
 				break;
-			case "CONNECTION RESET" :
-				connectionReset = ConvertToBoolean ("connection reset", value);
+			case "connection reset" :
+				connectionReset = ConvertToBoolean ("connection reset", value, true);
 				break;
-			case "LANGUAGE" :
-			case "CURRENT LANGUAGE" :
+			case "language" :
+			case "current language" :
 				parms.Language = value;
 				break;
-			case "DATA SOURCE" :
-			case "SERVER" :
-			case "ADDRESS" :
-			case "ADDR" :
-			case "NETWORK ADDRESS" :
+			case "data source" :
+			case "server" :
+			case "address" :
+			case "addr" :
+			case "network address" :
 				dataSource = value;
 				break;
-			case "ENCRYPT":
-				if (ConvertToBoolean("encrypt", value))
+			case "encrypt":
+				if (ConvertToBoolean (name, value, false))
 					throw new NotImplementedException("SSL encryption for"
 						+ " data sent between client and server is not"
 						+ " implemented.");
 				break;
-			case "ENLIST" :
-				if (!ConvertToBoolean("enlist", value))
+			case "enlist" :
+				if (!ConvertToBoolean (name, value, true))
 					throw new NotImplementedException("Disabling the automatic"
 						+ " enlistment of connections in the thread's current"
 						+ " transaction context is not implemented.");
 				break;
-			case "INITIAL CATALOG" :
-			case "DATABASE" :
+			case "initial catalog" :
+			case "database" :
 				parms.Database = value;
 				break;
-			case "INTEGRATED SECURITY" :
-			case "TRUSTED_CONNECTION" :
+			case "integrated security" :
+			case "trusted_connection" :
 				parms.DomainLogin = ConvertIntegratedSecurity(value);
 				break;
-			case "MAX POOL SIZE" :
-				int tmpMaxPoolSize = ConvertToInt32 ("max pool size" , value);
-				if (tmpMaxPoolSize < 0)
-					throw new ArgumentException ("Invalid MAX POOL SIZE. Must be a intger >= 0");
+			case "max pool size" :
+				int tmpMaxPoolSize = ConvertToInt32 (name, value, DEFAULT_MAXPOOLSIZE);
+				if (tmpMaxPoolSize < MIN_MAXPOOLSIZE)
+					throw new ArgumentException (string.Format (CultureInfo.InvariantCulture,
+						"Invalid '{0}'. The value must be greater than {1}.",
+						name, MIN_MAXPOOLSIZE));
 				else
 					maxPoolSize = tmpMaxPoolSize;
 				break;
-			case "MIN POOL SIZE" :
-				int tmpMinPoolSize = ConvertToInt32 ("min pool size" , value);
+			case "min pool size" :
+				int tmpMinPoolSize = ConvertToInt32 (name, value, DEFAULT_MINPOOLSIZE);
 				if (tmpMinPoolSize < 0)
-					throw new ArgumentException ("Invalid MIN POOL SIZE. Must be a intger >= 0");
+					throw new ArgumentException ("Invalid 'min pool size'. Must be a integer >= 0");
 				else
 					minPoolSize = tmpMinPoolSize;
 				break;
-#if NET_2_0	
-			case "MULTIPLEACTIVERESULTSETS":
+#if NET_2_0
+			case "multipleactiveresultsets":
+				// FIXME: not implemented
+				ConvertToBoolean (name, value, false);
 				break;
-			case "ASYNCHRONOUS PROCESSING" :
-			case "ASYNC" :
-				async = ConvertToBoolean (name, value);
+			case "asynchronous processing" :
+			case "async" :
+				async = ConvertToBoolean (name, value, false);
 				break;
-#endif	
-			case "NET" :
-			case "NETWORK" :
-			case "NETWORK LIBRARY" :
+#endif
+			case "net" :
+			case "network" :
+			case "network library" :
 				if (!value.ToUpper ().Equals ("DBMSSOCN"))
 					throw new ArgumentException ("Unsupported network library.");
 				break;
-			case "PACKET SIZE" :
-				int tmpPacketSize = ConvertToInt32 ("packet size", value);
-				if (tmpPacketSize < 512 || tmpPacketSize > 32767)
-					throw new ArgumentException ("Invalid PACKET SIZE. The integer must be between 512 and 32767");
+			case "packet size" :
+				int tmpPacketSize = ConvertToInt32 (name, value, DEFAULT_PACKETSIZE);
+				if (tmpPacketSize < MIN_PACKETSIZE || tmpPacketSize > MAX_PACKETSIZE)
+					throw new ArgumentException (string.Format (CultureInfo.InvariantCulture,
+						"Invalid 'Packet Size'. The value must be between {0} and {1}.",
+						MIN_PACKETSIZE, MAX_PACKETSIZE));
 				else
 					packetSize = tmpPacketSize;
 				break;
-			case "PASSWORD" :
-			case "PWD" :
+			case "password" :
+			case "pwd" :
 				parms.Password = value;
 				break;
-			case "PERSISTSECURITYINFO" :
-			case "PERSIST SECURITY INFO" :
+			case "persistsecurityinfo" :
+			case "persist security info" :
 				// FIXME : not implemented
 				// throw new NotImplementedException ();
 				break;
-			case "POOLING" :
-				pooling = ConvertToBoolean("pooling", value);
+			case "pooling" :
+				pooling = ConvertToBoolean (name, value, true);
 				break;
-			case "UID" :
-			case "USER" :
-			case "USER ID" :
+			case "uid" :
+			case "user" :
+			case "user id" :
 				parms.User = value;
 				break;
-			case "WSID" :
-			case "WORKSTATION ID" :
+			case "wsid" :
+			case "workstation id" :
 				parms.Hostname = value;
 				break;
-				
-			case "USER INSTANCE":
-				userInstance = ConvertToBoolean ("user instance", value);
+#if NET_2_0
+			case "user instance":
+				userInstance = ConvertToBoolean (name, value, false);
 				break;
+#endif
 			default :
-				throw new ArgumentException("Keyword not supported :"+name);
+				throw new ArgumentException("Keyword not supported : '" + name + "'.");
 			}
 		}
 
@@ -905,7 +924,7 @@ namespace System.Data.SqlClient
 		}
 #endif
 
-		private sealed class SqlMonitorSocket : UdpClient 
+		private sealed class SqlMonitorSocket : UdpClient
 		{
 			// UDP port that the SQL Monitor listens
 			private static readonly int SqlMonitorUdpPort = 1434;
@@ -921,7 +940,7 @@ namespace System.Data.SqlClient
 				instance = InstanceName;
 			}
 
-			internal int DiscoverTcpPort (int timeoutSeconds) 
+			internal int DiscoverTcpPort (int timeoutSeconds)
 			{
 				int SqlServerTcpPort;
 				Client.Blocking = false;
@@ -931,7 +950,7 @@ namespace System.Data.SqlClient
 				Byte[] rawrq = new Byte [instance.Length + 1];
 				rawrq[0] = 4;
 				enc.GetBytes (instance, 0, instance.Length, rawrq, 1);
-				int bytes = Send (rawrq, rawrq.Length);
+				Send (rawrq, rawrq.Length);
 
 				if (!Active)
 					return -1; // Error
@@ -976,9 +995,11 @@ namespace System.Data.SqlClient
 		}
 
 #if NET_2_0
-		struct ColumnInfo {
+		struct ColumnInfo
+		{
 			public string name;
 			public Type type;
+
 			public ColumnInfo (string name, Type type)
 			{
 				this.name = name; this.type = type;
@@ -1650,10 +1671,12 @@ namespace System.Data.SqlClient
 		
 		public static void ChangePassword (string connectionString, string newPassword)
 		{
-			if (connectionString == null || newPassword == null || newPassword == String.Empty)
-				throw new ArgumentNullException ();
+			if (String.IsNullOrEmpty (connectionString))
+				throw new ArgumentNullException ("The 'connectionString' cannot be null or empty.");
+			if (String.IsNullOrEmpty (newPassword))
+				throw new ArgumentNullException ("The 'newPassword' cannot be null or empty.");
 			if (newPassword.Length > 128)
-				throw new ArgumentException ("The value of newPassword exceeds its permittable length which is 128");
+				throw new ArgumentException ("The length of 'newPassword' cannot exceed 128 characters.");
 			using (SqlConnection conn = new SqlConnection (connectionString)) {
 				conn.Open ();
 				conn.tds.Execute (String.Format ("sp_password '{0}', '{1}', '{2}'",
@@ -1663,26 +1686,25 @@ namespace System.Data.SqlClient
 
 		public static void ClearAllPools ()
 		{
-#if NET_2_0
-			IDictionary <string, TdsConnectionPool> pools = SqlConnection.sqlConnectionPools.GetConnectionPool ();
-#else
-			Hashtable pools = SqlConnection.sqlConnectionPools.GetConnectionPool ();
-#endif
+			// FIXME: locking
+			IDictionary pools = SqlConnection.sqlConnectionPools.GetConnectionPool ();
 			foreach (TdsConnectionPool pool in pools.Values) {
-				if (pool != null) {
+				if (pool != null)
 					pool.ResetConnectionPool ();
-					Tds tds = pool.GetConnection ();
-					tds.Pooling = false;
-				}
 			}
+			pools.Clear ();
 		}
 
 		public static void ClearPool (SqlConnection connection)
 		{
+			if (connection == null)
+				throw new ArgumentNullException ("connection");
+
+			// FIXME: locking
 			if (connection.pooling) {
-				connection.pooling = false;
-				if (connection.pool != null)
-					connection.pool.ResetConnectionPool (connection.Tds);
+				TdsConnectionPool pool = sqlConnectionPools.GetConnectionPool (connection.ConnectionString);
+				if (pool != null)
+					pool.ResetConnectionPool ();
 			}
 		}
 
@@ -1693,7 +1715,8 @@ namespace System.Data.SqlClient
 #if NET_2_0
 		#region Fields Net 2
 
-		bool async = false;
+		bool async;
+		bool userInstance;
 
 		#endregion // Fields  Net 2
 

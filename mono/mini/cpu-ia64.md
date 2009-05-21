@@ -6,7 +6,7 @@
 
 label: len:0
 break: len:48
-jmp: len:48
+jmp: len:128
 br: len:48
 throw: src1:i len:96
 rethrow: src1:i len:48
@@ -24,9 +24,6 @@ compare_imm: src1:i len:48
 icompare_imm: src1:i len:48
 fcompare: src1:f src2:f clob:a len:48
 oparglist: src1:b len:48
-outarg: src1:i len:48
-outarg_imm: len:48
-setret: dest:r src1:i len:48
 setlret: dest:r src1:i src2:i len:48
 checkthis: src1:b len:48
 call: dest:r clob:c len:80
@@ -366,3 +363,36 @@ ia64_loadu4_membase_inc: dest:b src1:i len:48
 ia64_loadi8_membase_inc: dest:b src1:i len:48
 ia64_loadr4_membase_inc: dest:b src1:i len:48
 ia64_loadr8_membase_inc: dest:b src1:i len:48
+
+relaxed_nop: len:0
+
+# Linear IR opcodes
+nop: len:0
+dummy_use: len:0
+dummy_store: len:0
+not_reached: len:0
+not_null: src1:i len:0
+
+jump_table: dest:i len:48
+
+localloc_imm: dest:i len:92
+
+vcall2: len:80 clob:c
+vcall2_reg: src1:i len:80 clob:c
+vcall2_membase: src1:b len:80 clob:c
+
+int_conv_to_i1: dest:i src1:i len:48
+int_conv_to_u1: dest:i src1:i len:48
+int_conv_to_i2: dest:i src1:i len:48
+int_conv_to_u2: dest:i src1:i len:48
+int_conv_to_i4: dest:i src1:i len:48
+int_conv_to_u4: dest:i src1:i len:48
+int_conv_to_i8: dest:i src1:i len:48
+int_conv_to_u8: dest:i src1:i len:48
+
+long_add_imm: dest:i src1:i len:48
+long_sub_imm: dest:i src1:i len:48
+long_and_imm: dest:i src1:i len:48
+long_or_imm: dest:i src1:i len:48
+long_xor_imm: dest:i src1:i len:48
+

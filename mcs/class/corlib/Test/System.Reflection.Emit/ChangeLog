@@ -1,9 +1,74 @@
+2009-01-21  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r123959.
+
+	* TypeBuilderTest.cs: Add test for fields in dynamic generic
+	classes.
+
+2008-11-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConstructorOnTypeBuilderInstTest.cs: Add test for
+	MetadataToken under compilation context.
+	
+2008-09-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Fix the 1.0 build.
+
 2008-09-29 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* TypeBuilderTest.cs: Add a test for MakeGenericType with EnumBuilder.
 	Tests #430508.
 
-	Backported from trunk.
+2008-09-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: New test for a field with initialized data
+	that is referenced from another assembly.
+
+2008-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeBuilderTest.cs: Add a test for IsAssignableFrom and generic instances
+	of dynamic types.
+
+2008-08-14  Raja R Harinath  <harinath@hurrynot.org>
+
+	* TypeBuilderTest.cs (DefineCtorUsingDefineMethod): Use a
+	'DefineMethod' overload that's present in the 1.1 profile.
+
+2008-08-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeBuilderTest.cs: Add new test for #416632.
+
+2008-07-30 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInstTest.cs: Regression test for #412965.
+
+2008-07-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: New test for the regression found by
+	bug-333798-tb.2.cs.
+
+	* MethodOnTypeBuilderInstTest.cs: Renable some CompilerContext
+	tests.
+
+2008-07-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Disable the special behavior of GetMethod
+	under compiler behavior as mcs has been fixed.
+
+2008-07-22 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilderTest.cs: Added tests for the special cased behavior
+	of GetMethod.
+
+2008-07-17 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInstTest.cs: Disable new tests as the change
+	that made then work was reverted.
+
+2008-07-16 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInstTest.cs: Added test for stuff under compiler
+	context.
 
 2008-06-21  Gert Driesen  <drieseng@users.sourceforge.net>
 

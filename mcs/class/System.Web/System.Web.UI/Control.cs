@@ -131,6 +131,7 @@ namespace System.Web.UI
 		const int ENABLE_THEMING = 1 << 16;
 #endif
 		const int AUTOID_SET = 1 << 17;
+		const int REMOVED = 1 << 18;
 		/*************/
 
 		static Control ()
@@ -150,7 +151,7 @@ namespace System.Web.UI
 			if (this is INamingContainer)
 				stateMask |= IS_NAMING_CONTAINER;
 		}
-
+		
 #if NET_2_0
 		ControlAdapter adapter;
 		bool did_adapter_lookup;
@@ -200,8 +201,9 @@ namespace System.Web.UI
 		public Control BindingContainer {
 			get {
 				Control container = NamingContainer;
-				if (container != null && (container.stateMask & BINDING_CONTAINER) == 0)
+				if (container != null && container is INonBindingContainer || (stateMask & BINDING_CONTAINER) == 0)
 					container = container.BindingContainer;
+
 				return container;
 			}
 		}
@@ -292,7 +294,15 @@ namespace System.Web.UI
 			get { return _isChildControlStateCleared; }
 		}
 
-		protected internal bool IsViewStateEnabled {
+		protected bool LoadViewStateByID {
+			get { return false; }
+		}
+#endif
+
+#if NET_2_0
+		protected internal
+#endif
+		bool IsViewStateEnabled {
 			get {
 				for (Control control = this; control != null; control = control.Parent)
 					if (!control.EnableViewState)
@@ -302,10 +312,7 @@ namespace System.Web.UI
 			}
 		}
 
-		protected bool LoadViewStateByID {
-			get { return false; }
-		}
-
+#if NET_2_0
 		protected char IdSeparator {
 			get { return '$'; }
 		}
@@ -576,7 +583,7 @@ namespace System.Web.UI
 			get { return (stateMask & AUTO_EVENT_WIREUP) != 0; }
 			set { SetMask (AUTO_EVENT_WIREUP, value); }
 		}
-
+		
 		internal void SetBindingContainer (bool isBC)
 		{
 			SetMask (BINDING_CONTAINER, isBC);
@@ -584,7 +591,20 @@ namespace System.Web.UI
 
 		internal void ResetChildNames ()
 		{
-			defaultNumberID = 0;
+			ResetChildNames (-1);
+		}
+
+		internal void ResetChildNames (int value)
+		{
+			if (value < 0)
+				defaultNumberID = 0;
+			else
+				defaultNumberID = value;
+		}
+
+		internal int GetDefaultNumberID ()
+		{
+			return defaultNumberID;
 		}
 
 		string GetDefaultName ()
@@ -623,10 +643,12 @@ namespace System.Web.UI
 			control._parent = this;
 			Control nc = ((stateMask & IS_NAMING_CONTAINER) != 0) ? this : NamingContainer;
 
-			if ((stateMask & (INITING | INITED)) != 0)
+			if ((stateMask & (INITING | INITED)) != 0) {
 				control.InitRecursive (nc);
-			else {
+				control.SetMask (REMOVED, false);
+			} else {
 				control.SetNamingContainer (nc);
+				control.SetMask (REMOVED, false);
 				return;
 			}
 
@@ -1551,29 +1573,29 @@ namespace System.Web.UI
 				}
 			}
 
-			stateMask |= INITING;
+			if ((stateMask & REMOVED) == 0 && (stateMask & INITED) != INITED) {
+				stateMask |= INITING;
 #if NET_2_0
-			ApplyTheme ();
-			ControlAdapter tmp = Adapter;
-			if (tmp != null)
-				tmp.OnInit (EventArgs.Empty);
-			else
+				ApplyTheme ();
+				ControlAdapter tmp = Adapter;
+				if (tmp != null)
+					tmp.OnInit (EventArgs.Empty);
+				else
 #endif
-				OnInit (EventArgs.Empty);
+					OnInit (EventArgs.Empty);
+				TrackViewState ();
+				stateMask |= INITED;
+				stateMask &= ~INITING;
+			}
+			
 #if MONO_TRACE
 			if (trace != null)
 				trace.Write ("control", String.Concat ("End InitRecursive ", _userId, " ", type_name));
 #endif
-			TrackViewState ();
-			stateMask |= INITED;
-			stateMask &= ~INITING;
 		}
 
 		internal object SaveViewStateRecursive ()
 		{
-			if (!EnableViewState)
-				return null;
-
 			TraceContext trace = (Context != null && Context.Trace.IsEnabled) ? Context.Trace : null;
 #if MONO_TRACE
 			string type_name = null;
@@ -1585,7 +1607,7 @@ namespace System.Web.UI
 
 			ArrayList controlList = null;
 			ArrayList controlStates = null;
-
+			
 			int idx = -1;
 			if (HasControls ()) {
 				int len = _controls.Count;
@@ -1611,7 +1633,10 @@ namespace System.Web.UI
 			if (Adapter != null)
 				thisAdapterViewState = Adapter.SaveAdapterViewState ();
 #endif
-			object thisState = SaveViewState ();
+			object thisState = null;
+
+			if (IsViewStateEnabled)
+				thisState = SaveViewState ();
 
 			if (thisState == null && controlList == null && controlStates == null) {
 				if (trace != null) {
@@ -1637,7 +1662,7 @@ namespace System.Web.UI
 
 		internal void LoadViewStateRecursive (object savedState)
 		{
-			if (!EnableViewState || savedState == null)
+			if (savedState == null)
 				return;
 
 #if MONO_TRACE
@@ -1731,6 +1756,7 @@ namespace System.Web.UI
 				control.SetMask (ID_SET, false);
 			}
 			control.NullifyUniqueID ();
+			control.SetMask (REMOVED, true);
 		}
 		
 #if NET_2_0
@@ -1855,6 +1881,34 @@ namespace System.Web.UI
 
 		internal bool IsPrerendered {
 			get { return (stateMask & PRERENDERED) != 0; }
+		}
+
+		bool CheckForValidationSupport ()
+		{
+			return GetType ().GetCustomAttributes (typeof (SupportsEventValidationAttribute), false).Length > 0;
+		}
+
+		//
+		// Apparently this is where .NET routes validation from all the controls which
+		// support it. See:
+		//
+		//  http://odetocode.com/Blogs/scott/archive/2006/03/20/3145.aspx
+		//    Sample in here contains ValidateEvent in the stack trace
+		//
+		//  http://odetocode.com/blogs/scott/archive/2006/03/21/3153.aspx
+		//
+		//  http://www.alexthissen.nl/blogs/main/archive/2005/12/13/event-validation-of-controls-in-asp-net-2-0.aspx
+		//
+		// It also seems that it's the control's responsibility to call this method or
+		// validation won't take place. Also, the SupportsEventValidation attribute must be
+		// present on the control for validation to take place.
+		//
+		internal void ValidateEvent (String uniqueId, String argument)
+		{
+			Page page = Page;
+			
+			if (page != null && CheckForValidationSupport ())
+				page.ClientScript.ValidateEvent (uniqueId, argument);
 		}
 #endif
 		void IParserAccessor.AddParsedSubObject (object obj)

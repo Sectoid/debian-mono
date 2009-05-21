@@ -14,7 +14,6 @@
 
 @SET_MAKE@
 
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -37,29 +36,21 @@ target_triplet = @target@
 subdir = scripts
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/mono-find-provides.in \
-	$(srcdir)/mono-find-requires.in $(srcdir)/mono-nunit.pc.in
+	$(srcdir)/mono-find-requires.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = mono-nunit.pc mono-find-provides \
-	mono-find-requires
-am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkgconfigdir)"
+CONFIG_CLEAN_FILES = mono-find-provides mono-find-requires
+am__installdirs = "$(DESTDIR)$(bindir)"
 binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
 SCRIPTS = $(bin_SCRIPTS)
 SOURCES =
 DIST_SOURCES =
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
-pkgconfigDATA_INSTALL = $(INSTALL_DATA)
-DATA = $(pkgconfig_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -107,12 +98,16 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
+GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GMODULE_CFLAGS = @GMODULE_CFLAGS@
 GMODULE_LIBS = @GMODULE_LIBS@
+GMSGFMT = @GMSGFMT@
+GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
 HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
+HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -136,6 +131,9 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MSGFMT = @MSGFMT@
+MSGFMT_015 = @MSGFMT_015@
+MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
@@ -156,9 +154,13 @@ SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
 STRIP = @STRIP@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 X11 = @X11@
 XATTR_LIB = @XATTR_LIB@
+XGETTEXT = @XGETTEXT@
+XGETTEXT_015 = @XGETTEXT_015@
+XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
 XMKMF = @XMKMF@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -231,6 +233,7 @@ target_os = @target_os@
 target_vendor = @target_vendor@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+@USE_BATCH_FILES_FALSE@SCRIPT_IN = script.in
 
 #
 # Scripts that we install
@@ -244,6 +247,15 @@ top_srcdir = @top_srcdir@
 # To preserve compatibility with old Makefiles and tools we keep the
 # command names that had the suffix 2 (like wsdl2)
 #
+@USE_BATCH_FILES_TRUE@SCRIPT_IN = script.bat.in
+@USE_BATCH_FILES_FALSE@SMCS_IN = smcs.in
+@USE_BATCH_FILES_TRUE@SMCS_IN = smcs.bat.in
+@USE_BATCH_FILES_FALSE@FILTER = cat
+@USE_BATCH_FILES_TRUE@FILTER = sed -e 's,\.bat\.exe,\.exe,g' -e 's,/,\\,g'
+@USE_BATCH_FILES_FALSE@SCRIPT_SUFFIX = 
+@USE_BATCH_FILES_TRUE@SCRIPT_SUFFIX = .bat
+COMPAT_1_0_SUFFIX = 1$(SCRIPT_SUFFIX)
+COMPAT_2_0_SUFFIX = 2$(SCRIPT_SUFFIX)
 bin_SCRIPTS = \
 	$(scripts_1_0)		\
 	$(scripts_1_0_umask)	\
@@ -254,67 +266,85 @@ bin_SCRIPTS = \
 	$(scripts_service)	\
 	$(scripts_nunit)	\
 	$(scripts_rpmhelpers)	\
+	$(MDOC_SUBCOMMANDS)	\
+	$(MDOC_COMPAT)		\
+	mod			\
 	mono-test-install
 
 scripts_1_0_compat = \
-	al1			\
-	genxs1			\
-	ilasm1			\
-	mcs1			\
-	mkbundle1		\
-	mono-api-info1		\
-	monop1			\
-	resgen1			\
-	wsdl1
+	al1$(SCRIPT_SUFFIX)			\
+	genxs1$(SCRIPT_SUFFIX)			\
+	ilasm1$(SCRIPT_SUFFIX)			\
+	mcs1$(SCRIPT_SUFFIX)			\
+	mkbundle1$(SCRIPT_SUFFIX)		\
+	gacutil1$(SCRIPT_SUFFIX)			\
+	monop1$(SCRIPT_SUFFIX)			\
+	resgen1$(SCRIPT_SUFFIX)			\
+	wsdl1$(SCRIPT_SUFFIX)
 
 scripts_1_0 = \
-	caspol			\
-	cert2spc		\
-	certmgr			\
-	chktrust		\
-	cilc			\
-	disco			\
-	dtd2xsd			\
-	dtd2rng			\
-	gacutil			\
-	installvst		\
-	macpack			\
-	mcs			\
-	mjs			\
-	monolinker		\
-	mono-api-diff 		\
-	mono-shlib-cop 		\
-	mono-xmltool		\
-	mozroots		\
-	permview		\
-	prj2make		\
-	secutil			\
-	setreg			\
-	signcode		\
-	soapsuds		\
-	sqlsharp		\
-	xsd
+	caspol$(SCRIPT_SUFFIX)			\
+	cert2spc$(SCRIPT_SUFFIX)		\
+	certmgr$(SCRIPT_SUFFIX)			\
+	chktrust$(SCRIPT_SUFFIX)		\
+	cilc$(SCRIPT_SUFFIX)			\
+	disco$(SCRIPT_SUFFIX)			\
+	dtd2xsd$(SCRIPT_SUFFIX)			\
+	dtd2rng$(SCRIPT_SUFFIX)			\
+	installvst$(SCRIPT_SUFFIX)		\
+	genxs$(SCRIPT_SUFFIX)			\
+	macpack$(SCRIPT_SUFFIX)			\
+	mcs$(SCRIPT_SUFFIX)			\
+	mjs$(SCRIPT_SUFFIX)			\
+	monolinker$(SCRIPT_SUFFIX)		\
+	mono-cil-strip$(SCRIPT_SUFFIX)		\
+	mono-xmltool$(SCRIPT_SUFFIX)		\
+	mozroots$(SCRIPT_SUFFIX)		\
+	permview$(SCRIPT_SUFFIX)		\
+	prj2make$(SCRIPT_SUFFIX)		\
+	secutil$(SCRIPT_SUFFIX)			\
+	setreg$(SCRIPT_SUFFIX)			\
+	signcode$(SCRIPT_SUFFIX)		\
+	soapsuds$(SCRIPT_SUFFIX)		\
+	xsd$(SCRIPT_SUFFIX)
 
 scripts_1_0_umask = \
-	makecert		\
-	sn
+	makecert$(SCRIPT_SUFFIX)		\
+	sn$(SCRIPT_SUFFIX)
 
 scripts_2_0 = \
-	al2			\
-	gacutil2	\
-	genxs2			\
-	gmcs			\
-	httpcfg			\
-	ilasm2			\
-	mconfig			\
-	mkbundle2		\
-	mono-api-info2 		\
-	monop2 			\
-	resgen2			\
-	wsdl2			\
-	xsd2			\
-	sgen			\
-	xbuild
+	al2$(SCRIPT_SUFFIX)			\
+	csharp$(SCRIPT_SUFFIX)			\
+	gacutil2$(SCRIPT_SUFFIX)		\
+	gmcs$(SCRIPT_SUFFIX)			\
+	httpcfg$(SCRIPT_SUFFIX)			\
+	ilasm2$(SCRIPT_SUFFIX)			\
+	mconfig$(SCRIPT_SUFFIX)			\
+	mkbundle2$(SCRIPT_SUFFIX)		\
+	mdoc$(SCRIPT_SUFFIX)                    \
+	mono-api-info$(SCRIPT_SUFFIX) 		\
+	mono-shlib-cop$(SCRIPT_SUFFIX) 		\
+	monop2$(SCRIPT_SUFFIX) 			\
+	resgen2$(SCRIPT_SUFFIX)			\
+	wsdl2$(SCRIPT_SUFFIX)			\
+	xsd2$(SCRIPT_SUFFIX)			\
+	sgen$(SCRIPT_SUFFIX)			\
+	sqlsharp$(SCRIPT_SUFFIX)		\
+	xbuild$(SCRIPT_SUFFIX)
+
+MDOC_SUBCOMMANDS = \
+	mdoc-assemble \
+	mdoc-export-html \
+	mdoc-export-msxdoc \
+	mdoc-update \
+	mdoc-validate
+
+MDOC_COMPAT = \
+	mdassembler		\
+	mdvalidater		\
+	monodocer		\
+	monodocs2html		\
+	monodocs2slashdoc
 
 
 #
@@ -325,40 +355,43 @@ scripts_2_0 = \
 # the scripts_1_0_compat list
 #
 scripts_defaults = \
-	al			\
-	genxs			\
-	ilasm			\
-	mkbundle		\
-	mono-api-info		\
-	monop			\
-	resgen			\
-	wsdl
+	al$(SCRIPT_SUFFIX)			\
+	ilasm$(SCRIPT_SUFFIX)			\
+	gacutil$(SCRIPT_SUFFIX)			\
+	mkbundle$(SCRIPT_SUFFIX)		\
+	monop$(SCRIPT_SUFFIX)			\
+	resgen$(SCRIPT_SUFFIX)			\
+	wsdl$(SCRIPT_SUFFIX)
 
-scripts_2_1 = smcs
+scripts_2_1 = smcs$(SCRIPT_SUFFIX)
 scripts_service = mono-service mono-service2
-scripts_nunit = nunit-console nunit-console2
+scripts_nunit = nunit-console$(SCRIPT_SUFFIX) nunit-console2$(SCRIPT_SUFFIX)
 scripts_rpmhelpers = mono-find-provides mono-find-requires
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = mono-nunit.pc
-CLEANFILES = $(scripts_1_0) $(scripts_1_0_umask) $(scripts_2_0) $(scripts_2_1) $(scripts_defaults) $(scripts_1_0_compat) mono-service mono-service2 nunit-console nunit-console2 mono-find-provides mono-find-requires
+CLEANFILES = $(scripts_1_0) $(scripts_1_0_umask) $(scripts_2_0) $(scripts_2_1) $(scripts_defaults) $(scripts_1_0_compat) mono-service mono-service2 nunit-console nunit-console2 mono-find-provides mono-find-requires mod $(MDOC_SUBCOMMANDS)
 DISTCLEANFILES = $(pkgconfig_DATA) $(scripts_rpmhelpers)
 EXTRA_DIST = \
-	script.in              \
-	script_umask.in        \
+	script.in		\
+	script.bat.in		\
+	script_umask.in		\
+	script_umask.bat.in	\
 	smcs.in			\
-	mono-service.in        \
-	mono-nunit.pc.in       \
-	mono-find-provides.in  \
+	smcs.bat.in		\
+	mod.in			\
+	mono-service.in		\
+	mono-find-provides.in	\
 	mono-find-requires.in	\
-	mono-test-install		\
+	mono-test-install	\
+	$(MDOC_COMPAT)		\
 	patch-quiet.sh
 
 @USE_JIT_FALSE@mono_interp = mint
 @USE_JIT_TRUE@mono_interp = mono
+@CROSS_COMPILING_FALSE@@PLATFORM_WIN32_TRUE@plat_bindir = $(shell cygpath -m $(libdir))
+@CROSS_COMPILING_TRUE@@PLATFORM_WIN32_TRUE@plat_bindir = $(bindir)
 @PLATFORM_WIN32_FALSE@plat_bindir = $(bindir)
-@PLATFORM_WIN32_TRUE@plat_bindir = $(shell cygpath -m $(libdir))
+@CROSS_COMPILING_FALSE@@PLATFORM_WIN32_TRUE@mono_instdir = $(shell cygpath -m $(libdir))/mono
+@CROSS_COMPILING_TRUE@@PLATFORM_WIN32_TRUE@mono_instdir = $(prefix)/lib/mono
 @PLATFORM_WIN32_FALSE@mono_instdir = $(prefix)/lib/mono
-@PLATFORM_WIN32_TRUE@mono_instdir = $(shell cygpath -m $(libdir))/mono
 REWRITE_COMMON = sed \
 	-e 's,@''bindir@,$(bindir),g'				\
 	-e 's,@''plat_bindir@,$(plat_bindir),g'			\
@@ -404,8 +437,6 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
-mono-nunit.pc: $(top_builddir)/config.status $(srcdir)/mono-nunit.pc.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 mono-find-provides: $(top_builddir)/config.status $(srcdir)/mono-find-provides.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 mono-find-requires: $(top_builddir)/config.status $(srcdir)/mono-find-requires.in
@@ -435,23 +466,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-pkgconfigDATA: $(pkgconfig_DATA)
-	@$(NORMAL_INSTALL)
-	test -z "$(pkgconfigdir)" || $(MKDIR_P) "$(DESTDIR)$(pkgconfigdir)"
-	@list='$(pkgconfig_DATA)'; for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  f=$(am__strip_dir) \
-	  echo " $(pkgconfigDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(pkgconfigdir)/$$f'"; \
-	  $(pkgconfigDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(pkgconfigdir)/$$f"; \
-	done
-
-uninstall-pkgconfigDATA:
-	@$(NORMAL_UNINSTALL)
-	@list='$(pkgconfig_DATA)'; for p in $$list; do \
-	  f=$(am__strip_dir) \
-	  echo " rm -f '$(DESTDIR)$(pkgconfigdir)/$$f'"; \
-	  rm -f "$(DESTDIR)$(pkgconfigdir)/$$f"; \
-	done
 tags: TAGS
 TAGS:
 
@@ -487,9 +501,9 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(SCRIPTS) $(DATA)
+all-am: Makefile $(SCRIPTS)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkgconfigdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -536,7 +550,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-pkgconfigDATA
+install-data-am:
 
 install-dvi: install-dvi-am
 
@@ -570,7 +584,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binSCRIPTS uninstall-pkgconfigDATA
+uninstall-am: uninstall-binSCRIPTS
 
 .MAKE: install-am install-strip
 
@@ -580,12 +594,11 @@ uninstall-am: uninstall-binSCRIPTS uninstall-pkgconfigDATA
 	install-binSCRIPTS install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-pkgconfigDATA install-ps \
-	install-ps-am install-strip installcheck installcheck-am \
-	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
-	ps ps-am uninstall uninstall-am uninstall-binSCRIPTS \
-	uninstall-pkgconfigDATA
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	uninstall uninstall-am uninstall-binSCRIPTS
 
 
 mono-service: mono-service.in Makefile
@@ -596,38 +609,49 @@ mono-service2: mono-service.in Makefile
 	$(REWRITE2) -e 's,@''exe_name@,$@,g' $(srcdir)/mono-service.in > $@.tmp
 	mv $@.tmp $@
 
-nunit-console: script.in Makefile
-	$(REWRITE1_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/script.in > $@.tmp
+nunit-console$(SCRIPT_SUFFIX): $(SCRIPT_IN) Makefile
+	$(REWRITE1_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
 
-nunit-console2: script.in Makefile
-	$(REWRITE2_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/script.in > $@.tmp
+nunit-console2$(SCRIPT_SUFFIX): $(SCRIPT_IN) Makefile
+	$(REWRITE2_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
 
-smcs: smcs.in Makefile
-	$(REWRITE2_1) -e "s,@""exe_name@,smcs,g" $(srcdir)/smcs.in > $@.tmp
+smcs$(SCRIPT_SUFFIX): $(SMCS_IN) Makefile
+	$(REWRITE2_1) -e "s,@""exe_name@,smcs,g" $(srcdir)/$(SMCS_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
 
-$(scripts_1_0): script.in Makefile
-	$(REWRITE1) -e 's,@''exe_name@,$@,g' $(srcdir)/script.in > $@.tmp
+mod$(SCRIPT_SUFFIX): mod.in Makefile
+	$(REWRITE1) -e "s,@""exe_name@,mod,g" $(srcdir)/mod.in > $@.tmp
+	mv $@.tmp $@
+
+$(scripts_1_0): $(SCRIPT_IN) Makefile
+	$(REWRITE1) -e 's,@''exe_name@,$@,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
 
 $(scripts_1_0_umask): script_umask.in Makefile
 	$(REWRITE1) -e 's,@''exe_name@,$@,g' $(srcdir)/script_umask.in > $@.tmp
 	mv $@.tmp $@
 
-$(scripts_1_0_compat): script.in Makefile
-	t=`basename $@ 1`; $(REWRITE1) -e "s,@exe_name@,$$t,g" $(srcdir)/script.in > $@.tmp
+$(scripts_1_0_compat): $(SCRIPT_IN) Makefile
+	t=`basename $@ $(COMPAT_1_0_SUFFIX)`; $(REWRITE1) -e "s,@exe_name@,$$t,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
 
-$(scripts_defaults): script.in Makefile
-	$(REWRITE2) -e "s,@exe_name@,$@,g" $(srcdir)/script.in > $@.tmp
+$(scripts_defaults): $(SCRIPT_IN) Makefile
+	$(REWRITE2) -e "s,@exe_name@,$@,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
 
-$(scripts_2_0): script.in Makefile
-	n=`echo $@ | sed 's,2$$,,'`; \
-	$(REWRITE2) -e "s,@""exe_name@,$$n,g" $(srcdir)/script.in > $@.tmp
+$(scripts_2_0): $(SCRIPT_IN) Makefile
+	n=`echo $@ | sed 's,$(COMPAT_2_0_SUFFIX)$$,,'`; \
+	$(REWRITE2) -e "s,@""exe_name@,$$n,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
 	mv $@.tmp $@
+
+$(MDOC_SUBCOMMANDS): Makefile
+	for script in $(MDOC_SUBCOMMANDS) ; do                  \
+		cmd=`echo $$script | sed 's/mdoc-//'` ;         \
+		echo "#!/bin/sh" > $$script ;                   \
+		echo "exec mdoc $$cmd \"\$$@\"" >> $$script;    \
+	done
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

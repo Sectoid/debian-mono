@@ -1,4 +1,4 @@
-// cs1686.cs: Local variable `a' or its members cannot have their address taken and be used inside an anonymous method block
+// CS1686: Local variable or parameter `a' cannot have their address taken and be used inside an anonymous method or lambda expression
 // Line: 11
 // Compiler options: -unsafe
 

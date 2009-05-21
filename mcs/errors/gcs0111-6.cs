@@ -1,15 +1,13 @@
-// CS0111: A member `C.Foo()' is already defined. Rename this member or use different parameter types
+// CS0111: A member `C.I<int>.Prop' is already defined. Rename this member or use different parameter types
 // Line: 12
 
-
-public partial class C
+interface I<T>
 {
-	partial void Foo ();
+	T Prop { get; set; }
 }
 
-public partial class C
+class C : I<int>
 {
-	void Foo ()
-	{
-	}
+	int I<int>.Prop { get; set; }
+	int I<int>.Prop { get; set; }
 }

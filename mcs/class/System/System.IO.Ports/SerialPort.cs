@@ -107,7 +107,7 @@ namespace System.IO.Ports
 				return ports[0];
 			} else {
 				int p = (int)Environment.OSVersion.Platform;
-				if (p == 4 || p == 128)
+				if (p == 4 || p == 128 || p == 6)
 					return "ttyS0"; // Default for Unix
 				else
 					return "COM1"; // Default for Windows
@@ -118,9 +118,7 @@ namespace System.IO.Ports
 		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
 		public Stream BaseStream {
 			get {
-				if (!is_open)
-					throw new InvalidOperationException ();
-
+				CheckOpen ();
 				return (Stream) stream;
 			}
 		}
@@ -304,6 +302,8 @@ namespace System.IO.Ports
 			set {
 				if (value == null)
 					throw new ArgumentNullException ("value");
+				if (value.Length == 0)
+					throw new ArgumentException ("NewLine cannot be null or empty.", "value");
 				
 				new_line = value;
 			}
@@ -520,7 +520,7 @@ namespace System.IO.Ports
 			List<string> serial_ports = new List<string>();
 			
 			// Are we on Unix?
-			if (p == 4 || p == 128) {
+			if (p == 4 || p == 128 || p == 6) {
 				string[] ttys = Directory.GetFiles("/dev/", "tty*");
 				foreach (string dev in ttys) {
 					if (dev.StartsWith("/dev/ttyS") || dev.StartsWith("/dev/ttyUSB"))

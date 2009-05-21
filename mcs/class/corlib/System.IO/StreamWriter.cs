@@ -49,7 +49,6 @@ namespace System.IO {
 		private Encoding internalEncoding;
 
 		private Stream internalStream;
-		private bool closed = false;
 
 		private bool iflush;
 		
@@ -62,10 +61,10 @@ namespace System.IO {
 		private char[] decode_buf;
 		private int decode_pos;
 
-		private bool DisposedAlready = false;
-		private bool preamble_done = false;
+		private bool DisposedAlready;
+		private bool preamble_done;
 
-		public new static readonly StreamWriter Null = new StreamWriter (Stream.Null, Encoding.UTF8Unmarked, 0);
+		public new static readonly StreamWriter Null = new StreamWriter (Stream.Null, Encoding.UTF8Unmarked, 1);
 
 		public StreamWriter (Stream stream)
 			: this (stream, Encoding.UTF8Unmarked, DefaultBufferSize) {}
@@ -85,16 +84,15 @@ namespace System.IO {
 				preamble_done = true;
 		}
 
-		//[MonoTODO("Nothing is done with bufferSize")]
 		public StreamWriter (Stream stream, Encoding encoding, int bufferSize) {
 			if (null == stream)
 				throw new ArgumentNullException("stream");
 			if (null == encoding)
 				throw new ArgumentNullException("encoding");
-			if (bufferSize < 0)
+			if (bufferSize <= 0)
 				throw new ArgumentOutOfRangeException("bufferSize");
 			if (!stream.CanWrite)
-				throw new ArgumentException("Can not write to stream", "stream");
+				throw new ArgumentException ("Can not write to stream");
 
 			internalStream = stream;
 
@@ -111,21 +109,10 @@ namespace System.IO {
 			: this (path, append, encoding, DefaultFileBufferSize) {}
 		
 		public StreamWriter (string path, bool append, Encoding encoding, int bufferSize) {
-			if (null == path)
-				throw new ArgumentNullException("path");
-			if (String.Empty == path)
-				throw new ArgumentException("path cannot be empty string");
-			if (path.IndexOfAny (Path.InvalidPathChars) != -1)
-				throw new ArgumentException("path contains invalid characters");
-
 			if (null == encoding)
 				throw new ArgumentNullException("encoding");
-			if (bufferSize < 0)
+			if (bufferSize <= 0)
 				throw new ArgumentOutOfRangeException("bufferSize");
-
-			string DirName = Path.GetDirectoryName(path);
-			if (DirName != String.Empty && !Directory.Exists(DirName))
-				throw new DirectoryNotFoundException();
 
 			FileMode mode;
 
@@ -149,13 +136,9 @@ namespace System.IO {
 				return iflush;
 			}
 			set {
-				if (DisposedAlready)
-					throw new ObjectDisposedException("StreamWriter");
 				iflush = value;
-
-				if (iflush) {
+				if (iflush)
 					Flush ();
-				}
 			}
 		}
 
@@ -323,7 +306,6 @@ namespace System.IO {
 
 		public override void Close()
 		{
-                        closed = true;
 			Dispose (true);
 		}
 

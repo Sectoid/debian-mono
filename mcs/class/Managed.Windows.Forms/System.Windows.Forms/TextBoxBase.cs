@@ -380,34 +380,24 @@ namespace System.Windows.Forms
 			}
 
 			set {
-				int	i;
-				int	l;
-
-				document.Empty();
-
-				l = value.Length;
-
-				document.SuspendRecalc ();
-				for (i = 0; i < l; i++) {
-
+				StringBuilder sb = new StringBuilder ();
+			
+				for (int i = 0; i < value.Length; i++) {
 					// Don't add the last line if it is just an empty line feed
 					// the line feed is reflected in the previous line's ending 
-					if (i == l - 1 && value [i].Length == 0)
+					if (i == value.Length - 1 && value[i].Length == 0)
 						break;
-
-					LineEnding ending = LineEnding.Rich;
-					if (value [i].EndsWith ("\r"))
-						ending = LineEnding.Hard;
-
-					document.Add (i + 1, CaseAdjust (value[i]), alignment, Font, this.ForeColor, ending);
+						
+					sb.Append (value[i] + Environment.NewLine);
 				}
 
-				document.ResumeRecalc (true);
+				int newline_length = Environment.NewLine.Length;
 
-				if (IsHandleCreated)
-					CalculateDocument ();
+				// We want to remove the final new line character
+				if (sb.Length >= newline_length)
+					sb.Remove (sb.Length - newline_length, newline_length);
 
-				OnTextChanged(EventArgs.Empty);
+				Text = sb.ToString ();
 			}
 		}
 
@@ -611,6 +601,9 @@ namespace System.Windows.Forms
 #endif
 				}
 
+				// If SelectionStart has been used, we don't highlight on focus
+				has_been_focused = true;
+				
 				document.InvalidateSelectionArea ();
 				document.SetSelectionStart (value, false);
 				if (selection_length > -1)
@@ -791,7 +784,7 @@ namespace System.Windows.Forms
 
 		public void Clear ()
 		{
-			Text = null;
+			Text = string.Empty;
 		}
 
 		public void ClearUndo ()
@@ -1109,6 +1102,12 @@ namespace System.Windows.Forms
 #endif
 		protected override bool ProcessDialogKey (Keys keyData)
 		{
+			// The user can use Ctrl-Tab or Ctrl-Shift-Tab to move control focus
+			// instead of inserting a Tab.  However, the focus-moving-tab-stuffs
+			// doesn't work if Ctrl is pushed, so we remove it before sending it.
+			if (accepts_tab && (keyData & (Keys.Control | Keys.Tab)) == (Keys.Control | Keys.Tab))
+				keyData ^= Keys.Control;
+				
 			return base.ProcessDialogKey(keyData);
 		}
 
@@ -1222,10 +1221,11 @@ namespace System.Windows.Forms
 						}
 					}
 
-					OnTextChanged(EventArgs.Empty);
 					document.AlignCaret();
 					document.UpdateCaret();
 					CaretMoved(this, null);
+					OnTextChanged (EventArgs.Empty);
+		
 					return true;
 				}
 			}
@@ -1376,8 +1376,9 @@ namespace System.Windows.Forms
 					if (!read_only && accepts_tab && document.multiline) {
 						document.InsertCharAtCaret ('\t', true);
 
-						OnTextChanged(EventArgs.Empty);
 						CaretMoved(this, null);
+						OnTextChanged (EventArgs.Empty);
+
 						return true;
 					}
 					break;
@@ -1476,9 +1477,10 @@ namespace System.Windows.Forms
 				}
 			}
 
+			CaretMoved (this, null);
+
 			if (fire_changed)
 				OnTextChanged(EventArgs.Empty);
-			CaretMoved(this, null);
 		}
 
 		private void HandleEnter ()
@@ -1493,13 +1495,12 @@ namespace System.Windows.Forms
 				line = document.CaretLine;
 
 				document.Split (document.CaretLine, document.CaretTag, document.CaretPosition);
-				line.ending = LineEnding.Rich;
+				line.ending = document.StringToLineEnding (Environment.NewLine);
 				document.InsertString (line, line.text.Length, document.LineEndingToString (line.ending));
 				
-				OnTextChanged (EventArgs.Empty);
-
 				document.UpdateView (line, document.Lines - line.line_no, 0);
 				CaretMoved (this, null);
+				OnTextChanged (EventArgs.Empty);
 			}
 		}
 		
@@ -1577,8 +1578,9 @@ namespace System.Windows.Forms
 #if NET_2_0
 						OnTextUpdate ();
 #endif
+						CaretMoved (this, null);
 						OnTextChanged(EventArgs.Empty);
-						CaretMoved(this, null);
+
 					} else {
 						XplatUI.AudibleAlert();
 					}
@@ -1634,7 +1636,11 @@ namespace System.Windows.Forms
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 #endif
-		public new event EventHandler AutoSizeChanged {
+		public
+#if NET_2_0
+		new
+#endif
+		event EventHandler AutoSizeChanged {
 			add { Events.AddHandler (AutoSizeChangedEvent, value); }
 			remove { Events.RemoveHandler (AutoSizeChangedEvent, value); }
 		}
@@ -1763,6 +1769,18 @@ namespace System.Windows.Forms
 				document.InvalidateSelectionArea();
 			}
 		}
+
+		#region UIA Framework Properties
+
+		internal ScrollBar UIAHScrollBar {
+			get { return hscroll; }
+		}
+
+		internal ScrollBar UIAVScrollBar {
+			get { return vscroll; }
+		}
+
+		#endregion UIA Framework Properties
 
 		internal Graphics CreateGraphicsInternal ()
 		{
@@ -2095,7 +2113,10 @@ namespace System.Windows.Forms
 				switch (scrollbars) {
 				case RichTextBoxScrollBars.Both:
 				case RichTextBoxScrollBars.Horizontal:
-					hscroll.Visible = hscroll.Enabled;
+					if (richtext)
+						hscroll.Visible = hscroll.Enabled;
+					else
+						hscroll.Visible = this.Multiline;
 					break;
 				case RichTextBoxScrollBars.ForcedBoth:
 				case RichTextBoxScrollBars.ForcedHorizontal:
@@ -2112,12 +2133,10 @@ namespace System.Windows.Forms
 			switch (scrollbars) {
 			case RichTextBoxScrollBars.Both:
 			case RichTextBoxScrollBars.Vertical:
-
-				if (richtext) {
+				if (richtext)
 					vscroll.Visible = vscroll.Enabled;
-				} else {
-					vscroll.Visible = true;
-				}
+				else 
+					vscroll.Visible = this.Multiline;
 				break;
 			case RichTextBoxScrollBars.ForcedBoth:
 			case RichTextBoxScrollBars.ForcedVertical:
@@ -2448,7 +2467,10 @@ namespace System.Windows.Forms
 			return true;
 		}
 
-		internal abstract Color ChangeBackColor (Color backColor);
+		internal virtual Color ChangeBackColor (Color backColor)
+		{
+			return backColor;
+		}
 
 		internal override bool IsInputCharInternal (char charCode)
 		{

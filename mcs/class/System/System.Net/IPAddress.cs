@@ -153,7 +153,7 @@ namespace System.Net {
 				m_Family = AddressFamily.InterNetworkV6;
 				m_ScopeId = 0;
 			} else {
-				m_Address = (address [3] << 24) + (address [2] << 16) +
+				m_Address = ((uint) address [3] << 24) + (address [2] << 16) +
 					(address [1] << 8) + address [0];
 			}
 		}
@@ -197,6 +197,8 @@ namespace System.Net {
 
 #if NET_2_0
 		public
+#else
+		internal
 #endif
 		static bool TryParse (string ipString, out IPAddress address)
 		{
@@ -246,25 +248,42 @@ namespace System.Net {
 			// Make the number in network order
 			try {
 				long a = 0;
-				byte val = 0;
+				long val = 0;
 				for (int i = 0; i < ips.Length; i++) {
 					string subnet = ips [i];
 					if ((3 <= subnet.Length && subnet.Length <= 4) &&
-					    (subnet [0] == '0') &&
-					    (subnet [1] == 'x' || subnet [2] == 'X')) {
+					    (subnet [0] == '0') && (subnet [1] == 'x' || subnet [1] == 'X')) {
 						if (subnet.Length == 3)
 							val = (byte) Uri.FromHex (subnet [2]);
 						else 
 							val = (byte) ((Uri.FromHex (subnet [2]) << 4) | Uri.FromHex (subnet [3]));
 					} else if (subnet.Length == 0)
 						return null;
-					else 
-						val = byte.Parse (subnet, NumberStyles.None);
+					else if (subnet [0] == '0') {
+						// octal
+						val = 0;
+						for (int j = 1; j < subnet.Length; j++) {
+							if ('0' <= subnet [j] && subnet [j] <= '7')
+								val = (val << 3) + subnet [j] - '0';
+							else
+								return null;
+						}
+					}
+					else {
+#if NET_2_0
+						if (!Int64.TryParse (subnet, NumberStyles.None, null, out val))
+							return null;
+#else
+						val = long.Parse (subnet, NumberStyles.None);
+#endif
+					}
 
-					if (ips.Length < 4 && i == (ips.Length - 1)) 
+					if (i == (ips.Length - 1)) 
 						i = 3;
-
-					a |= (long) val << (i << 3);
+					else if (val > 0xFF)
+						return null; // e.g. 256.0.0.1
+					for (int j = 0; val > 0; j++, val /= 0x100)
+						a |= (val & 0xFF) << ((i - j) << 3);
 				}
 
 				return (new IPAddress (a));
@@ -275,12 +294,11 @@ namespace System.Net {
 		
 		private static IPAddress ParseIPV6 (string ip)
 		{
-			try {
-				IPv6Address newIPv6Address = IPv6Address.Parse(ip);
-				return new IPAddress (newIPv6Address.Address, newIPv6Address.ScopeId);
-			} catch (Exception) {
-				return null;
-			}
+			IPv6Address newIPv6Address;
+
+			if (IPv6Address.TryParse(ip, out newIPv6Address))
+				return  new IPAddress (newIPv6Address.Address, newIPv6Address.ScopeId);
+			return null;
 		}
 
 		[Obsolete("This property is obsolete. Use GetAddressBytes.")]

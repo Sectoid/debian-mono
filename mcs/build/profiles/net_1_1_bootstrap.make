@@ -8,6 +8,11 @@ NO_SIGN_ASSEMBLY = yes
 NO_TEST = yes
 NO_INSTALL = yes
 
+#
+# Copy from rules.make because I don't know how to unset MCS_FLAGS
+#
+USE_MCS_FLAGS = /codepage:$(CODEPAGE) $(LOCAL_MCS_FLAGS) $(PLATFORM_MCS_FLAGS) $(PROFILE_MCS_FLAGS)
+
 profile-check:
 	@:
 

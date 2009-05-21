@@ -9,6 +9,9 @@
 /* Disable AOT support */
 #undef DISABLE_AOT
 
+/* Disable agent attach support */
+#undef DISABLE_ATTACH
+
 /* Disable COM support */
 #undef DISABLE_COM
 
@@ -45,6 +48,9 @@
 /* Disable inter-process shared handles */
 #undef DISABLE_SHARED_HANDLES
 
+/* Disable SIMD intrinsics related optimizations. */
+#undef DISABLE_SIMD
+
 /* Disable advanced SSA JIT optimizations */
 #undef DISABLE_SSA
 
@@ -53,6 +59,9 @@
 
 /* Has the 'aintl' function */
 #undef HAVE_AINTL
+
+/* Define to 1 if you have the <alloca.h> header file. */
+#undef HAVE_ALLOCA_H
 
 /* Supports C99 array initialization */
 #undef HAVE_ARRAY_ELEM_INIT
@@ -80,6 +89,9 @@
 
 /* Define to 1 if you have the <curses.h> header file. */
 #undef HAVE_CURSES_H
+
+/* Define to 1 if you have the <dirent.h> header file. */
+#undef HAVE_DIRENT_H
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -285,8 +297,17 @@
 /* Define to 1 if you have the `pthread_mutex_timedlock' function. */
 #undef HAVE_PTHREAD_MUTEX_TIMEDLOCK
 
+/* Define to 1 if you have the <pwd.h> header file. */
+#undef HAVE_PWD_H
+
 /* Define to 1 if you have the `remap_file_pages' function. */
 #undef HAVE_REMAP_FILE_PAGES
+
+/* Define to 1 if you have the `rint' function. */
+#undef HAVE_RINT
+
+/* Define to 1 if you have the `round' function. */
+#undef HAVE_ROUND
 
 /* Define to 1 if you have the `sched_setaffinity' function. */
 #undef HAVE_SCHED_SETAFFINITY
@@ -311,6 +332,9 @@
 
 /* Using the simple generational GC. */
 #undef HAVE_SGEN_GC
+
+/* Define to 1 if you have the `shm_open' function. */
+#undef HAVE_SHM_OPEN
 
 /* Have signbit */
 #undef HAVE_SIGNBIT
@@ -369,17 +393,26 @@
 /* Define to 1 if `d_type' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
 
+/* Define to 1 if the system has the type `struct flock'. */
+#undef HAVE_STRUCT_FLOCK
+
 /* Have struct ip_mreq */
 #undef HAVE_STRUCT_IP_MREQ
 
 /* Have struct ip_mreqn */
 #undef HAVE_STRUCT_IP_MREQN
 
+/* Define to 1 if `kp_proc' is member of `struct kinfo_proc'. */
+#undef HAVE_STRUCT_KINFO_PROC_KP_PROC
+
 /* Define to 1 if the system has the type `struct pollfd'. */
 #undef HAVE_STRUCT_POLLFD
 
 /* Define to 1 if the system has the type `struct stat'. */
 #undef HAVE_STRUCT_STAT
+
+/* Define to 1 if the system has the type `struct timespec'. */
+#undef HAVE_STRUCT_TIMESPEC
 
 /* Define to 1 if the system has the type `struct timeval'. */
 #undef HAVE_STRUCT_TIMEVAL
@@ -408,11 +441,17 @@
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
 
+/* Define to 1 if you have the <sys/ipc.h> header file. */
+#undef HAVE_SYS_IPC_H
+
 /* Define to 1 if you have the <sys/mkdev.h> header file. */
 #undef HAVE_SYS_MKDEV_H
 
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #undef HAVE_SYS_MMAN_H
+
+/* Define to 1 if you have the <sys/mount.h> header file. */
+#undef HAVE_SYS_MOUNT_H
 
 /* Define to 1 if you have the <sys/param.h> header file. */
 #undef HAVE_SYS_PARAM_H
@@ -423,11 +462,20 @@
 /* Define to 1 if you have the <sys/sdt.h> header file. */
 #undef HAVE_SYS_SDT_H
 
+/* Define to 1 if you have the <sys/sem.h> header file. */
+#undef HAVE_SYS_SEM_H
+
 /* Define to 1 if you have the <sys/sendfile.h> header file. */
 #undef HAVE_SYS_SENDFILE_H
 
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#undef HAVE_SYS_SOCKET_H
+
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 #undef HAVE_SYS_SOCKIO_H
+
+/* Define to 1 if you have the <sys/statfs.h> header file. */
+#undef HAVE_SYS_STATFS_H
 
 /* Define to 1 if you have the <sys/statvfs.h> header file. */
 #undef HAVE_SYS_STATVFS_H
@@ -447,8 +495,14 @@
 /* Define to 1 if you have the <sys/un.h> header file. */
 #undef HAVE_SYS_UN_H
 
+/* Define to 1 if you have the <sys/user.h> header file. */
+#undef HAVE_SYS_USER_H
+
 /* Define to 1 if you have the <sys/utime.h> header file. */
 #undef HAVE_SYS_UTIME_H
+
+/* Define to 1 if you have the <sys/utsname.h> header file. */
+#undef HAVE_SYS_UTSNAME_H
 
 /* Define to 1 if you have the <sys/vfstab.h> header file. */
 #undef HAVE_SYS_VFSTAB_H
@@ -479,6 +533,9 @@
 
 /* Define to 1 if you have the `ttyname_r' function. */
 #undef HAVE_TTYNAME_R
+
+/* Define to 1 if you have the <ucontext.h> header file. */
+#undef HAVE_UCONTEXT_H
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
@@ -552,8 +609,11 @@
 /* Platform is Win32 */
 #undef PLATFORM_WIN32
 
-/* pthread_t is a pointer */
+/* pthread is a pointer */
 #undef PTHREAD_POINTER_ID
+
+/* size of machine integer registers */
+#undef SIZEOF_REGISTER
 
 /* The size of `size_t', as computed by sizeof. */
 #undef SIZEOF_SIZE_T
@@ -572,6 +632,9 @@
 
 /* ... */
 #undef USE_MACH_SEMA
+
+/* Use malloc for each single mempool allocation */
+#undef USE_MALLOC_FOR_MEMPOOLS
 
 /* Use mono_mutex_t */
 #undef USE_MONO_MUTEX

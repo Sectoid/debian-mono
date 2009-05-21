@@ -36,7 +36,7 @@ namespace MonoTests.System.Windows.Forms
 {
 
 	[TestFixture]
-	public class DataGridViewColumnCollectionTest 
+	public class DataGridViewColumnCollectionTest : TestHelper 
 	{
 		[Test]
 		[ExpectedException (typeof (InvalidOperationException), "Column's SortMode cannot be set to Automatic while the DataGridView control's SelectionMode is set to FullColumnSelect.")]
@@ -94,6 +94,38 @@ namespace MonoTests.System.Windows.Forms
 			Assert.AreEqual (true, col.Visible, "#A col.Visible");
 			Assert.AreEqual (100, col.Width, "#A col.Width");
 			
+		}
+
+		[Test]
+		public void IndexUpdatedOnColumnCollectionChange ()
+		{
+			DataGridView dgv = new DataGridView ();
+
+			Form f = new Form ();
+			f.Controls.Add (dgv);
+			f.Show ();
+
+			dgv.Columns.Add ("A1", "A1");
+			Assert.AreEqual (0, dgv.Columns[0].Index, "A1");
+
+			dgv.Columns.Add ("A2", "A2");
+			Assert.AreEqual (0, dgv.Columns[0].Index, "A2");
+			Assert.AreEqual (1, dgv.Columns[1].Index, "A3");
+
+			dgv.Columns.Insert (0, new DataGridViewTextBoxColumn ());
+			Assert.AreEqual (0, dgv.Columns[0].Index, "A4");
+			Assert.AreEqual (1, dgv.Columns[1].Index, "A5");
+			Assert.AreEqual (2, dgv.Columns[2].Index, "A6");
+
+			dgv.Columns.RemoveAt (1);
+			Assert.AreEqual (0, dgv.Columns[0].Index, "A7");
+			Assert.AreEqual (1, dgv.Columns[1].Index, "A8");
+
+			dgv.Columns.RemoveAt (0);
+			Assert.AreEqual (0, dgv.Columns[0].Index, "A9");
+
+			f.Close ();
+			f.Dispose ();
 		}
 	}
 }

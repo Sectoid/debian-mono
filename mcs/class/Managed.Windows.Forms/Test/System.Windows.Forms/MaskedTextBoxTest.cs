@@ -23,12 +23,12 @@ using System.Reflection;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class MaskedTextBoxTest
+	public class MaskedTextBoxTest : TestHelper
 	{
 		[SetUp]
-		public void Setup ()
-		{
+		protected override void SetUp () {
 			Thread.CurrentThread.CurrentCulture = CultureInfo.GetCultureInfo ("en-US");
+			base.SetUp ();
 		}
 
 		[Test]
@@ -207,6 +207,24 @@ namespace MonoTests.System.Windows.Forms
 			Assert.AreEqual ("Abc", mtb.Text, "#T5");
 			mtb.Text = "123";
 			Assert.AreEqual ("1bc", mtb.Text, "#T6");
+			mtb.Dispose ();
+		}
+
+		[Test]
+		public void TextTest2 ()
+		{
+			MaskedTextBox mtb;
+
+			mtb = new MaskedTextBox ();
+			mtb.Mask = "99 99";
+
+			mtb.Text = "23 34";
+			Assert.AreEqual ("23 34", mtb.Text, "#T1");
+
+			mtb.RejectInputOnFirstFailure = true;
+			mtb.Text = "23 34";
+			Assert.AreEqual ("23 34", mtb.Text, "#T2");
+
 			mtb.Dispose ();
 		}
 		

@@ -38,7 +38,8 @@ namespace System.Net {
 	public sealed class HttpListenerRequest
 	{
 		string [] accept_types;
-		int client_cert_error;
+//		int client_cert_error;
+//		bool no_get_certificate;
 		Encoding content_encoding;
 		long content_length;
 		bool cl_set;
@@ -46,7 +47,6 @@ namespace System.Net {
 		WebHeaderCollection headers;
 		string method;
 		Stream input_stream;
-		bool is_authenticated;
 		Version version;
 		NameValueCollection query_string; // check if null is ok, check if read-only, check case-sensitiveness
 		string raw_url;
@@ -54,7 +54,6 @@ namespace System.Net {
 		Uri url;
 		Uri referrer;
 		string [] user_languages;
-		bool no_get_certificate;
 		HttpListenerContext context;
 		bool is_chunked;
 		static byte [] _100continue = Encoding.ASCII.GetBytes ("HTTP/1.1 100 Continue\r\n\r\n");
@@ -66,6 +65,7 @@ namespace System.Net {
 			this.context = context;
 			headers = new WebHeaderCollection ();
 			input_stream = Stream.Null;
+			version = HttpVersion.Version10;
 		}
 
 		static char [] separators = new char [] { ' ' };
@@ -139,9 +139,19 @@ namespace System.Net {
 				return;
 			}
 
-			if (host == null || host.Length == 0)
+			string path;
+			Uri raw_uri;
+			if (Uri.MaybeUri (raw_url) && Uri.TryCreate (raw_url, UriKind.Absolute, out raw_uri))
+				path = raw_uri.PathAndQuery;
+			else
+				path = raw_url;
+
+			if ((host == null || host.Length == 0))
 				host = UserHostAddress;
 
+			if (raw_uri != null)
+				host = raw_uri.Host;
+	
 			int colon = host.IndexOf (':');
 			if (colon >= 0)
 				host = host.Substring (0, colon);
@@ -150,10 +160,9 @@ namespace System.Net {
 								(IsSecureConnection) ? "https" : "http",
 								host,
 								LocalEndPoint.Port);
-			try {
-				url = new Uri (base_uri + raw_url);
-			} catch {
-				context.ErrorMessage = "Invalid url";
+
+			if (!Uri.TryCreate (base_uri + path, UriKind.Absolute, out url)){
+				context.ErrorMessage = "Invalid url: " + base_uri + path;
 				return;
 			}
 
@@ -285,12 +294,16 @@ namespace System.Net {
 			get { return accept_types; }
 		}
 
+		[MonoTODO ("Always returns 0")]
 		public int ClientCertificateError {
 			get {
+/*				
 				if (no_get_certificate)
 					throw new InvalidOperationException (
 						"Call GetClientCertificate() before calling this method.");
 				return client_cert_error;
+*/
+				return 0;
 			}
 		}
 
@@ -335,8 +348,9 @@ namespace System.Net {
 			get { return input_stream; }
 		}
 
+		[MonoTODO ("Always returns false")]
 		public bool IsAuthenticated {
-			get { return is_authenticated; }
+			get { return false; }
 		}
 
 		public bool IsLocal {

@@ -1,3 +1,34 @@
+
+2008-12-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* XmlSerializer.cs: updated to work with shadowcopy fixes.
+
+2008-11-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeData.cs : do not reject ICollection<T> for not implementing
+	  Item[T]. Fixed bug #430759.
+
+2008-09-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSerializer.cs : revert previous change and fix sys.data tests.
+
+2008-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSerializer.cs : in 2.0 profile it seems to create XmlReader
+	  for stream and textreader, that skips whitespaces.
+
+2008-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationCodeGenerator.cs
+	  XmlSerializationWriterInterpreter.cs : fixed bug #419973.
+	  Sometimes implicit operators could involve and it affects on
+	  typecasting. It's simple for code generator, but very bad for
+	  reflection.
+
+2008-08-19  Jb Evain  <jbevain@novell.com>
+
+	* XmlRootAttribute.cs: ifdef out parts to compile on net_2_1.
+
 2008-07-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlSerializationWriter.cs : more helpful error message.

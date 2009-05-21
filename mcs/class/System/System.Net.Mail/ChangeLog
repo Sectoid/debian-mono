@@ -1,3 +1,50 @@
+
+2008-11-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SmtpClient.cs: remove unused variable and obsolete comment.
+
+2008-09-17  Miguel de Icaza  <miguel@novell.com>
+
+	* SmtpClient.cs: Actually set some of the headers like Priority,
+	ReplyTo and Sender.
+
+2008-09-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SmtpClient.cs : attachment stream consumption was insufficient.
+	  Fix bug #347553, by David Ion.
+
+2008-08-16  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SmtpClient.cs: Fixed paramname of Argument(Null)Exceptions to match
+	MS. Removed upper limit check for Port. Modified Send to no longer
+	allow a whitespace-only Host. Moved checks for SpecifiedPickupDirectory
+	delivery method to SendFile, and use Path.IsPathRooted to check for
+	absolute paths instead of using a unix-only check. In Send, wrap all
+	non-SMTP errors in an SmtpException.
+	* SmtpException.cs: Correctly chain up all .ctors. Removed extra
+	null check in deserialization .ctor.
+
+2008-08-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SmtpClient.cs : fixed bug #382670, based on the patch by Ted
+	  Unangst. DeriveryMethod.SpecifiedPickupDirectory was not supported.
+
+2008-08-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SmtpClient.cs : Patch by Ted Unangst, fixed bug #392843.
+	  Encode emails correctly as well as join multiple emails
+	  correctly.
+
+2008-08-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SmtpClient.cs : fixed bug #392682, in the same spirit in the
+	  patch by Ted Unangst, to assure safety on socket closing.
+
+2008-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SmtpClient.cs : Fixed bug #392809, patch by Ted Unangst. Text body
+	  was not copied to byte array which is being sent. 
+
 2008-04-21  Andreas Nahr <ClassDevelopment@A-SoftTech.com>
 
 	* SmtpClient.cs: Fix bug with string handling

@@ -62,12 +62,8 @@ IMAGES_RESOURCES = \
 	resources/16_user-home.png		\
 	resources/32_user-home.png		\
 	resources/user-home.png		\
-	resources/dialog-error.png		\
 	resources/16_dialog-error.png		\
-	resources/dialog-information.png	\
 	resources/16_dialog-information.png	\
-	resources/dialog-question.png		\
-	resources/dialog-warning.png		\
 	resources/16_dialog-warning.png		\
 	resources/1-up.png			\
 	resources/2-up.png			\
@@ -110,18 +106,12 @@ TEST_MCS_FLAGS = /r:System.Data.dll /r:System.Drawing.dll \
 	-resource:Test/resources/32x32.ico,32x32.ico \
 	-nowarn:618,612
 
-SWF.csproj: System.Windows.Forms.dll.sources System.Windows.Forms.dll.resources build-csproj
-	./build-csproj
-
-SWF2k5.csproj: System.Windows.Forms.dll.sources System.Windows.Forms.dll.resources build-csproj2k5
-	./build-csproj2k5
-
 include ../../build/library.make
 
-TEST_HARNESS_EXCLUDES = /exclude:Interactive,NotWorking,ValueAdd,CAS,InetAccess
-TEST_HARNESS_EXCLUDES_ONDOTNET = /exclude:Interactive,NotDotNet,CAS
+TEST_HARNESS_EXCLUDES = -exclude=Interactive,NotWorking,ValueAdd,CAS,InetAccess
+TEST_HARNESS_EXCLUDES_ONDOTNET = -exclude=Interactive,NotDotNet,CAS
 
-$(the_lib): $(RESOURCES) SWF.csproj SWF2k5.csproj
+$(the_lib): $(RESOURCES)
 
 $(RESX_RESOURCES): %.resources: %.resx
 	$(RESGEN) $< || cp $@.prebuilt $@

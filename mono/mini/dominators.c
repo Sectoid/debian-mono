@@ -9,8 +9,12 @@
  */
 #include <string.h>
 #include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/mempool.h>
+#include <mono/metadata/mempool-internals.h>
 
 #include "mini.h"
+
+#ifndef DISABLE_JIT
 
 //#define DEBUG_DOMINATORS
 
@@ -19,19 +23,6 @@
  * it is the entry bblock.
  */
 #define HAS_DFN(bb, entry) ((bb)->dfn || ((bb) == entry))
-
-static inline GSList*
-g_slist_prepend_mempool (MonoMemPool *mp, GSList   *list,
-						 gpointer  data)
-{
-  GSList *new_list;
-
-  new_list = mono_mempool_alloc (mp, sizeof (GSList));
-  new_list->data = data;
-  new_list->next = list;
-
-  return new_list;
-}
 
 /*
  * Compute dominators and immediate dominators using the algorithm in the
@@ -352,7 +343,7 @@ mono_compute_natural_loops (MonoCompile *cfg)
 					if ((cb->dfn && mono_bitset_test_fast (in_loop_blocks, cb->dfn)) || (!cb->dfn && g_list_find (h->loop_blocks, cb)))
 						continue;
 
-					h->loop_blocks = g_list_prepend (h->loop_blocks, cb);
+					h->loop_blocks = g_list_prepend_mempool (cfg->mempool, h->loop_blocks, cb);
 					cb->nesting++;
 					if (cb->dfn)
 						mono_bitset_set_fast (in_loop_blocks, cb->dfn);
@@ -368,7 +359,7 @@ mono_compute_natural_loops (MonoCompile *cfg)
 
 				/* add the header if not already there */
 				if (!((h->dfn && mono_bitset_test_fast (in_loop_blocks, h->dfn)) || (!h->dfn && g_list_find (h->loop_blocks, h)))) {
-					h->loop_blocks = g_list_prepend (h->loop_blocks, h);
+					h->loop_blocks = g_list_prepend_mempool (cfg->mempool, h->loop_blocks, h);
 					h->nesting++;
 				}
 			}
@@ -445,10 +436,7 @@ clear_loops (MonoCompile *cfg)
     
 	for (i = 0; i < cfg->num_bblocks; ++i) {
 		cfg->bblocks[i]->nesting = 0;
-		if (cfg->bblocks[i]->loop_blocks) {
-			g_list_free (cfg->bblocks[i]->loop_blocks);        
-			cfg->bblocks[i]->loop_blocks = NULL;
-		}
+		cfg->bblocks[i]->loop_blocks = NULL;
 	}
 
 	cfg->comp_done &= ~MONO_COMP_LOOPS;   
@@ -462,3 +450,12 @@ mono_free_loop_info (MonoCompile *cfg)
     if (cfg->comp_done & MONO_COMP_LOOPS)
         clear_loops (cfg);
 }
+
+#else /* DISABLE_JIT */
+
+void
+mono_free_loop_info (MonoCompile *cfg)
+{
+}
+
+#endif /* DISABLE_JIT */

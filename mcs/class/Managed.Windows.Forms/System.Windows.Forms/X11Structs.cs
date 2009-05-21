@@ -1353,6 +1353,12 @@ namespace System.Windows.Forms {
 		SYSTEM_TRAY_CANCEL_MESSAGE	= 2
 	}
 
+	internal enum NetWmStateRequest {
+		_NET_WM_STATE_REMOVE 		= 0,
+		_NET_WM_STATE_ADD		= 1,
+		_NET_WM_STATE_TOGGLE		= 2
+	}
+
 	[Flags]
 	internal enum XSizeHintsFlags  {
 		USPosition			= (1 << 0),
@@ -1473,6 +1479,7 @@ namespace System.Windows.Forms {
 	}
 
 	internal struct ClipboardStruct {
+		internal object		Source;
 		internal object		Item;			// Object on the clipboard
 		internal object		Type;			// Type if object on the clipboard
 		internal ArrayList	Formats;		// list of formats available in the clipboard

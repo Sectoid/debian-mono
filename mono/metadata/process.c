@@ -21,6 +21,7 @@
 #include <mono/metadata/cil-coff.h>
 #include <mono/metadata/exception.h>
 #include <mono/utils/strenc.h>
+#include <mono/utils/mono-proclib.h>
 #include <mono/io-layer/io-layer.h>
 /* FIXME: fix this code to not depend so much on the inetrnals */
 #include <mono/metadata/class-internals.h>
@@ -497,7 +498,6 @@ complete_path (const gunichar2 *appname, gchar **completed)
 	gchar *utf8app, *utf8appmemory;
 	gchar *found;
 
-
 	utf8appmemory = utf8app = g_utf16_to_utf8 (appname, -1, NULL, NULL, NULL);
 #ifdef PLATFORM_WIN32 // Should this happen on all platforms? 
 	{
@@ -808,6 +808,22 @@ MonoBoolean ves_icall_System_Diagnostics_Process_WaitForExit_internal (MonoObjec
 	}
 }
 
+MonoBoolean ves_icall_System_Diagnostics_Process_WaitForInputIdle_internal (MonoObject *this, HANDLE process, gint32 ms)
+{
+	guint32 ret;
+	
+	MONO_ARCH_SAVE_REGS;
+
+	if(ms<0) {
+		/* Wait forever */
+		ret=WaitForInputIdle (process, INFINITE);
+	} else {
+		ret=WaitForInputIdle (process, ms);
+	}
+
+	return (ret) ? FALSE : TRUE;
+}
+
 gint64 ves_icall_System_Diagnostics_Process_ExitTime_internal (HANDLE process)
 {
 	gboolean ret;
@@ -1029,3 +1045,16 @@ ves_icall_System_Diagnostics_Process_ProcessHandle_close (HANDLE process)
 
 	CloseHandle (process);
 }
+
+gint64
+ves_icall_System_Diagnostics_Process_GetProcessData (int pid, gint32 data_type, gint32 *error)
+{
+	MonoProcessError perror;
+	guint64 res;
+
+	res = mono_process_get_data_with_error (GINT_TO_POINTER (pid), data_type, &perror);
+	if (error)
+		*error = perror;
+	return res;
+}
+

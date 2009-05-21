@@ -13,111 +13,6 @@
 /* Parameters used by the register allocator */
 /*-------------------------------------------*/
 
-#define MONO_EMIT_NEW_MOVE(cfg,dest,offset,src,imm,size) do { 			\
-                MonoInst *inst; 						\
-		int tmpr = 0;							\
-		int sReg, dReg;							\
-										\
-		inst = mono_mempool_alloc0 ((cfg)->mempool, sizeof (MonoInst));	\
-		if (size > 256) {						\
-			tmpr = mono_regstate_next_int (cfg->rs);		\
-			MONO_EMIT_NEW_ICONST(cfg,tmpr,size);			\
-			inst->dreg	  = dest;				\
-			inst->inst_offset = offset;				\
-			inst->sreg1	  = src;				\
-			inst->inst_imm	  = imm;				\
-			inst->sreg2	  = tmpr;				\
-		} else {							\
-			if (s390_is_uimm12(offset)) {				\
-				inst->dreg	  = dest;			\
-				inst->inst_offset = offset;			\
-			} else {						\
-				dReg = mono_regstate_next_int (cfg->rs);	\
-				MONO_EMIT_NEW_BIALU_IMM(cfg, OP_ADD_IMM,	\
-					dReg, dest, offset);			\
-				inst->dreg	  = dReg;			\
-				inst->inst_offset = 0;				\
-			}							\
-			if (s390_is_uimm12(imm)) {  				\
-				inst->sreg1	  = src; 			\
-				inst->inst_imm    = imm;   			\
-			} else {						\
-				sReg = mono_regstate_next_int (cfg->rs);	\
-				MONO_EMIT_NEW_BIALU_IMM(cfg, OP_ADD_IMM,	\
-					sReg, src, imm);   			\
-				inst->sreg1	  = sReg;			\
-				inst->inst_imm    = 0;				\
-			}							\
-		}								\
-                inst->opcode 	  = OP_S390_MOVE; 				\
-		inst->backend.size	  = size;					\
-	        mono_bblock_add_inst (cfg->cbb, inst); 				\
-	} while (0)
-
-#define MONO_OUTPUT_VTR(cfg, size, dr, sr, so) do {				\
-	int reg = mono_regstate_next_int (cfg->rs);				\
-	switch (size) {								\
-		case 0: 							\
-			MONO_EMIT_NEW_ICONST(cfg, reg, 0);			\
-			mono_call_inst_add_outarg_reg(cfg, call, reg, dr, FALSE);	\
-		break;								\
-		case 1:								\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOADU1_MEMBASE,	\
-				reg, sr, so);					\
-			mono_call_inst_add_outarg_reg(cfg, call, reg, dr, FALSE);	\
-		break;								\
-		case 2:								\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOADU2_MEMBASE,	\
-				reg, sr, so);					\
-			mono_call_inst_add_outarg_reg(cfg, call, reg, dr, FALSE);	\
-		break;								\
-		case 4:								\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOAD_MEMBASE,	\
-				reg, sr, so);					\
-			mono_call_inst_add_outarg_reg(cfg, call, reg, dr, FALSE);	\
-		break;								\
-		case 8:								\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOAD_MEMBASE,	\
-				reg, sr, so);					\
-			mono_call_inst_add_outarg_reg(cfg, call, reg, dr, FALSE);	\
-			reg = mono_regstate_next_int (cfg->rs);			\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOAD_MEMBASE,	\
-				reg, sr, so + sizeof (guint32));					\
-			mono_call_inst_add_outarg_reg(cfg, call, reg, dr + 1, FALSE);	\
-		break;								\
-	}									\
-} while (0)
-
-#define MONO_OUTPUT_VTS(cfg, size, dr, dx, sr, so) do {				\
-	int tmpr;								\
-	switch (size) {								\
-		case 0: 							\
-			tmpr = mono_regstate_next_int (cfg->rs);		\
-			MONO_EMIT_NEW_ICONST(cfg, tmpr, 0);			\
-			MONO_EMIT_NEW_STORE_MEMBASE(cfg, OP_STORE_MEMBASE_REG,  \
-				dr, dx, tmpr);					\
-		break;								\
-		case 1:								\
-			tmpr = mono_regstate_next_int (cfg->rs);		\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOADU1_MEMBASE,	\
-				tmpr, sr, so);					\
-			MONO_EMIT_NEW_STORE_MEMBASE(cfg, OP_STORE_MEMBASE_REG,  \
-				dr, dx, tmpr);					\
-		break;								\
-		case 2:								\
-			tmpr = mono_regstate_next_int (cfg->rs);		\
-			MONO_EMIT_NEW_LOAD_MEMBASE_OP(cfg, OP_LOADU2_MEMBASE,	\
-				tmpr, sr, so);					\
-			MONO_EMIT_NEW_STORE_MEMBASE(cfg, OP_STORE_MEMBASE_REG,  \
-				dr, dx, tmpr);					\
-		break;								\
-		case 4:								\
-		case 8:								\
-			MONO_EMIT_NEW_MOVE (cfg, dr, dx, sr, so, size);		\
-		break;								\
-	}									\
-} while (0)
-
 struct MonoLMF {
 	gpointer    previous_lmf;
 	gpointer    lmf_addr;
@@ -132,6 +27,7 @@ struct MonoLMF {
 typedef struct ucontext MonoContext;
 
 typedef struct MonoCompileArch {
+	int bkchain_reg;
 } MonoCompileArch;
 
 typedef struct
@@ -158,15 +54,13 @@ typedef struct
 #define MONO_ARCH_NEED_DIV_CHECK		1
 #define MONO_ARCH_HAVE_ATOMIC_ADD 1
 #define MONO_ARCH_HAVE_ATOMIC_EXCHANGE 1
-#define MONO_ARCH_ENABLE_NORMALIZE_OPCODES 1
+#define MONO_ARCH_HAVE_DECOMPOSE_OPTS 1
+#define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 // #define MONO_ARCH_SIGSEGV_ON_ALTSTACK		1
 // #define MONO_ARCH_SIGNAL_STACK_SIZE		65536
 // #define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION	1
 
 #define MONO_ARCH_USE_SIGACTION 	1
-// #define CUSTOM_STACK_WALK 		1
-// #define CUSTOM_EXCEPTION_HANDLING 	1
-// #define mono_find_jit_info 		mono_arch_find_jit_info
 
 #define S390_STACK_ALIGNMENT		 8
 #define S390_FIRST_ARG_REG 		s390_r2
@@ -183,12 +77,13 @@ typedef struct
 /* Definitions used by mini-codegen.c            */
 /*===============================================*/
 
-/*--------------------------------------------*/
-/* use s390_r2-s390_r6 as parm registers      */
-/* s390_r0, s390_r1, s390_r13 used internally */
-/* s390_r15 is the stack pointer              */
-/*--------------------------------------------*/
-#define MONO_ARCH_CALLEE_REGS (0x1ffc)
+/*-----------------------------------------------------*/
+/* use s390_r2-s390_r6 as parm registers               */
+/* s390_r0, s390_r1, s390_r12, s390_r13 used internally*/
+/* s390_r8..s390_r11 are used for global regalloc      */
+/* s390_r15 is the stack pointer                       */
+/*-----------------------------------------------------*/
+#define MONO_ARCH_CALLEE_REGS (0xfc)
 
 #define MONO_ARCH_CALLEE_SAVED_REGS 0xff80
 
@@ -221,7 +116,6 @@ typedef struct
 #define MONO_ARCH_FRAME_ALIGNMENT 4
 #define MONO_ARCH_CODE_ALIGNMENT 32
 
-#define MONO_ARCH_BASEREG s390_r15
 #define MONO_ARCH_RETREG1 s390_r2
 
 /*-----------------------------------------------*/

@@ -26,6 +26,7 @@
 using System;
 using System.Data;
 using System.Collections;
+using System.Globalization;
 using System.Windows.Forms;
 
 using NUnit.Framework;
@@ -33,18 +34,8 @@ using NUnit.Framework;
 namespace MonoTests.System.Windows.Forms.DataBinding {
 
 	[TestFixture]
-	public class BindingTest {
-
-		[SetUp]
-		protected virtual void SetUp ()
-		{
-		}
-
-		[TearDown]
-		protected virtual void TearDown ()
-		{
-		}
-
+	public class BindingTest : TestHelper {
+		
 		[Test]
 		public void CtorTest ()
 		{
@@ -67,6 +58,7 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 			Assert.AreEqual (String.Empty, b.FormatString, "ctor8");
 			Assert.IsNull (b.FormatInfo, "ctor9");
 			Assert.IsNull (b.NullValue, "ctor10");
+			Assert.AreEqual (Convert.DBNull, b.DataSourceNullValue, "ctor11");
 #endif
 		}
 
@@ -77,6 +69,18 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 
 			Assert.IsNull (b.PropertyName, "ctornull1");
 			Assert.IsNull (b.DataSource, "ctornull2");
+		}
+
+		[Test]
+		public void CtorEmptyProperty ()
+		{
+			Binding b = new Binding ("Text", 6, String.Empty);
+			Control c = new Control ();
+			c.BindingContext = new BindingContext ();
+			c.CreateControl ();
+
+			c.DataBindings.Add (b);
+			Assert.AreEqual ("6", c.Text, "A1");
 		}
 
 		[Test]
@@ -241,6 +245,9 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 			f.Show (); // Need this to init data binding
 
 			Assert.AreEqual (DBNull.Value, c.Tag, "1");
+			
+			f.Dispose ();
+			
 		}
 
 		// For this case to work, the data source property needs
@@ -260,6 +267,134 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 
 			item.Text = "B";
 			Assert.AreEqual ("B", c.Text, "#B1");
+		}
+
+		[Test]
+		public void DataSourcePropertyChanged_Original ()
+		{
+			Control c = new Control ();
+			c.BindingContext = new BindingContext ();
+			c.CreateControl ();
+
+			MockItem item = new MockItem ("A", 0);
+			Binding binding = new Binding ("Text", item, "Text");
+
+			c.DataBindings.Add (binding);
+			Assert.AreEqual ("A", c.Text, "#A1");
+
+			item.Text = "B";
+			Assert.AreEqual ("B", c.Text, "#B1");
+		}
+
+		[Test]
+		public void DataSourcePropertyChanged_Original_BadName ()
+		{
+			Control c = new Control ();
+			c.BindingContext = new BindingContext ();
+			c.CreateControl ();
+
+			MockItem item = new MockItem ("A", 0);
+			Binding binding = new Binding ("Text", item, "xxxxxxTextXXXXX");
+
+			try {
+				c.DataBindings.Add (binding);
+				Assert.Fail ("exc1");
+			} catch (ArgumentException ex) {
+				Assert.AreEqual ("dataMember", ex.ParamName, "ex.ParamName"); // (test is not locale dependent)
+			}
+		}
+
+		[Test]
+		public void DataSourcePropertyChanged_OneDeep ()
+		{
+			Control c = new Control ();
+			c.BindingContext = new BindingContext ();
+			c.CreateControl ();
+
+			MockItem item = new MockItem ("A", 0);
+			One parent = new One ();
+			parent.MockItem = item;
+			Binding binding = new Binding ("Text", parent, "MockItem.Text");
+
+			c.DataBindings.Add (binding);
+			Assert.AreEqual ("A", c.Text, "#A1");
+
+			item.Text = "B";
+			Assert.AreEqual ("B", c.Text, "#B1");
+		}
+
+		[Test]
+		public void DataSourcePropertyChanged_ThreeDeep ()
+		{
+			Control c = new Control ();
+			c.BindingContext = new BindingContext ();
+			c.CreateControl ();
+
+			MockItem item = new MockItem ("A", 0);
+			One parent = new One ();
+			parent.Two = new Two ();
+			parent.Two.Three = new Three ();
+			parent.Two.Three.MockItem = item;
+			Binding binding = new Binding ("Text", parent, "Two.Three.MockItem.Text");
+
+			c.DataBindings.Add (binding);
+			Console.WriteLine ("c.Text: " + c.Text);
+			Assert.AreEqual ("A", c.Text, "#A1");
+
+			item.Text = "B";
+			Assert.AreEqual ("B", c.Text, "#B1");
+
+			Assert.AreEqual (1, c.DataBindings.Count, "c.DataBindings.Count");
+			BindingMemberInfo bmi = c.DataBindings[0].BindingMemberInfo;
+			Assert.AreEqual ("Two.Three.MockItem", bmi.BindingPath, "bmi.BindingPath");
+			Assert.AreEqual ("Two.Three.MockItem.Text", bmi.BindingMember, "bmi.BindingMember");
+			Assert.AreEqual ("Text", bmi.BindingField, "bmi.BindingField");
+		}
+
+		[Test]
+		public void DataSourcePropertyChanged_DataSet ()
+		{
+			DataSet ds = new DataSet ();
+
+			DataTable table1 = new DataTable ("Customers");
+			table1.Columns.Add ("Id", typeof (int));
+			table1.Columns.Add ("Name", typeof (string));
+			table1.Rows.Add (new object[] {3, "customer1"});
+			table1.Rows.Add (new object[] {7, "customer2"});
+			ds.Tables.Add (table1);
+
+			DataTable table2 = new DataTable ("Orders");
+			table2.Columns.Add ("OrderId", typeof (int));
+			table2.Columns.Add ("CustomerId", typeof (int));
+			table2.Rows.Add (new object[] {56, 7});
+			table2.Rows.Add (new object[] {57, 3});
+			ds.Tables.Add (table2);
+
+			DataRelation relation = new DataRelation ("CustomerOrders", table1.Columns ["Id"],
+					table2.Columns ["CustomerId"]);
+			ds.Relations.Add (relation);
+
+			Control ctrl = new Control ();
+			ctrl.BindingContext = new BindingContext ();
+			ctrl.CreateControl ();
+
+			ctrl.DataBindings.Add ("Text", ds, "Customers.CustomerOrders.OrderId");
+			Assert.AreEqual ("57", ctrl.Text, "A1");
+		}
+
+		[Test]
+		public void DataSourcePropertyDifferentType ()
+		{
+			Exception exc = new Exception (String.Empty, new ArgumentNullException ("PARAM"));
+
+			// The type of the property is Exception, but we know that the value
+			// is actually an ArgumentException, thus specify the ParamName property
+			Control ctrl = new Control ();
+			ctrl.BindingContext = new BindingContext ();
+			ctrl.CreateControl ();
+
+			ctrl.DataBindings.Add ("Text", exc, "InnerException.ParamName");
+			Assert.AreEqual ("PARAM", ctrl.Text, "A1");
 		}
 
 		[Test]
@@ -336,6 +471,8 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 			item.ObjectValue = "C";
 			binding.ReadValue ();
 			Assert.AreEqual ("C", c.Tag, "#D1");
+			
+			c.Dispose();
 		}
 
 		[Test]
@@ -522,6 +659,7 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 			Assert.AreEqual (String.Empty, binding.FormatString, "#A1");
 		}
 #endif
+
 	}
 
 	class ChildMockItem : MockItem
@@ -572,5 +710,91 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 		}
 	}
 #endif
+
+	class One
+	{
+		//----
+		//private global::System.Collections.Generic.IList<Two> m_twoList
+		//    = new global::System.Collections.Generic.List<Two> ();
+		//
+		//public global::System.Collections.Generic.IList<Two> TwoList
+		//{
+		//    get { return m_twoList; }
+		//}
+
+		//----
+		private Two m_two;
+
+		public Two Two
+		{
+			get { return m_two; }
+			set { m_two = value; }
+		}
+	
+		//----
+		private MockItem m_MockItem;
+
+		public MockItem MockItem
+		{
+			get { return m_MockItem; }
+			set { m_MockItem = value; }
+		}
+	
+		//----
+		public override string ToString ()
+		{
+			return "!!! ToString on One !!!";
+		}
+	}
+
+	class Two
+	{
+		//private global::System.Collections.Generic.IList<MockItem> m_MockItemList
+		//    = new global::System.Collections.Generic.List<MockItem> ();
+		//
+		//public global::System.Collections.Generic.IList<MockItem> MockItemList
+		//{
+		//    get { return m_MockItemList; }
+		//}
+
+		//----
+		private MockItem m_MockItem;
+
+		public MockItem MockItem
+		{
+			get { return m_MockItem; }
+			set { m_MockItem = value; }
+		}
+
+		private Three m_Three;
+
+		public Three Three
+		{
+			get { return m_Three; }
+			set { m_Three = value; }
+		}
+
+		public override string ToString ()
+		{
+			return "!!! ToString on Two !!!";
+		}
+	}
+
+	class Three
+	{
+		private MockItem m_MockItem;
+
+		public MockItem MockItem
+		{
+			get { return m_MockItem; }
+			set { m_MockItem = value; }
+		}
+
+		public override string ToString ()
+		{
+			return "!!! ToString on Three !!!";
+		}
+	}
+
 }
 

@@ -17,18 +17,14 @@ using System.Reflection.Emit;
 namespace Mono.CSharp {
 	public class LambdaExpression : AnonymousMethodExpression
 	{
-		readonly bool explicit_parameters;
-
 		//
 		// The parameters can either be:
 		//    A list of Parameters (explicitly typed parameters)
 		//    An ImplicitLambdaParameter
 		//
-		public LambdaExpression (TypeContainer host, Parameters parameters, Location loc)
-			: base (host, parameters, loc)
+		public LambdaExpression (Location loc)
+			: base (loc)
 		{
-			if (parameters.Count > 0)
-				explicit_parameters = !(parameters.FixedParameters [0] is ImplicitLambdaParameter);
 		}
 
 		protected override Expression CreateExpressionTree (EmitContext ec, Type delegate_type)
@@ -45,13 +41,13 @@ namespace Mono.CSharp {
 			arguments.Add (new Argument (expr));
 			arguments.Add (new Argument (args));
 			return CreateExpressionFactoryCall ("Lambda",
-				new TypeArguments (loc, new TypeExpression (delegate_type, loc)),
+				new TypeArguments (new TypeExpression (delegate_type, loc)),
 				arguments);
 		}
 
 		public override bool HasExplicitParameters {
 			get {
-				return explicit_parameters;
+				return Parameters.Count > 0 && !(Parameters.FixedParameters [0] is ImplicitLambdaParameter);
 			}
 		}
 
@@ -60,9 +56,9 @@ namespace Mono.CSharp {
 			if (!TypeManager.IsDelegateType (delegateType))
 				return null;
 
-			ParameterData d_params = TypeManager.GetDelegateParameters (delegateType);
+			AParametersCollection d_params = TypeManager.GetDelegateParameters (delegateType);
 
-			if (explicit_parameters) {
+			if (HasExplicitParameters) {
 				if (!VerifyExplicitParameters (delegateType, d_params, ec.IsInProbingMode))
 					return null;
 
@@ -76,12 +72,10 @@ namespace Mono.CSharp {
 			if (!VerifyParameterCompatibility (delegateType, d_params, ec.IsInProbingMode))
 				return null;
 
-			if (Parameters.Types == null)
-				Parameters.Types = new Type [Parameters.Count];
-
+			Type [] ptypes = new Type [Parameters.Count];
 			for (int i = 0; i < d_params.Count; i++) {
 				// D has no ref or out parameters
-				if ((d_params.ParameterModifier (i) & Parameter.Modifier.ISBYREF) != 0)
+				if ((d_params.FixedParameters [i].ModFlags & Parameter.Modifier.ISBYREF) != 0)
 					return null;
 
 				Type d_param = d_params.Types [i];
@@ -91,13 +85,18 @@ namespace Mono.CSharp {
 				if (d_param.IsGenericParameter)
 					d_param = delegateType.GetGenericArguments () [d_param.GenericParameterPosition];
 #endif
-				// When inferred context exists all generics parameters have type replacements
+				//
+				// When type inference context exists try to apply inferred type arguments
+				//
 				if (tic != null) {
 					d_param = tic.InflateGenericArgument (d_param);
 				}
 
-				Parameters.Types [i] = Parameters.FixedParameters[i].ParameterType = d_param;
+				ptypes [i] = d_param;
+				((ImplicitLambdaParameter) Parameters.FixedParameters [i]).Type = d_param;
 			}
+
+			Parameters.Types = ptypes;
 			return Parameters;
 		}
 
@@ -106,7 +105,7 @@ namespace Mono.CSharp {
 			//
 			// Only explicit parameters can be resolved at this point
 			//
-			if (explicit_parameters) {
+			if (HasExplicitParameters) {
 				if (!Parameters.Resolve (ec))
 					return null;
 			}
@@ -118,9 +117,7 @@ namespace Mono.CSharp {
 
 		protected override AnonymousMethodBody CompatibleMethodFactory (Type returnType, Type delegateType, Parameters p, ToplevelBlock b)
 		{
-			return new LambdaMethod (Host,
-				p, b, returnType,
-				delegateType, loc);
+			return new LambdaMethod (p, b, returnType, delegateType, loc);
 		}
 
 		public override string GetSignatureForError ()
@@ -131,11 +128,16 @@ namespace Mono.CSharp {
 
 	public class LambdaMethod : AnonymousMethodBody
 	{
-		public LambdaMethod (TypeContainer host, Parameters parameters,
+		public LambdaMethod (Parameters parameters,
 					ToplevelBlock block, Type return_type, Type delegate_type,
 					Location loc)
-			: base (host, parameters, block, return_type, delegate_type, loc)
+			: base (parameters, block, return_type, delegate_type, loc)
 		{
+		}
+
+		protected override void CloneTo (CloneContext clonectx, Expression target)
+		{
+			// TODO: nothing ??
 		}
 
 		public override string ContainerType {
@@ -146,11 +148,6 @@ namespace Mono.CSharp {
 
 		public override Expression CreateExpressionTree (EmitContext ec)
 		{
-			//
-			// Remove IL method implementation when expression tree is requested
-			//
-			method.Parent.PartialContainer.RemoveMethod (method);
-
 			Expression args = parameters.CreateExpressionTree (ec, loc);
 			Expression expr = Block.CreateExpressionTree (ec);
 			if (expr == null)
@@ -160,7 +157,7 @@ namespace Mono.CSharp {
 			arguments.Add (new Argument (expr));
 			arguments.Add (new Argument (args));
 			return CreateExpressionFactoryCall ("Lambda",
-				new TypeArguments (loc, new TypeExpression (type, loc)),
+				new TypeArguments (new TypeExpression (type, loc)),
 				arguments);
 		}
 	}
@@ -184,10 +181,13 @@ namespace Mono.CSharp {
 
 		public override void Emit (EmitContext ec)
 		{
-			if (ec.ReturnType == TypeManager.void_type)
+			if (ec.ReturnType == TypeManager.void_type) {
 				((ExpressionStatement) Expr).EmitStatement (ec);
-			else
-				base.Emit (ec);
+				ec.ig.Emit (OpCodes.Ret);
+				return;
+			}
+
+			base.Emit (ec);
 		}
 
 		protected override bool DoResolve (EmitContext ec)

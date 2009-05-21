@@ -1,3 +1,213 @@
+2008-09-24  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* Test/testblob.cs
+	* Test/TestOracleClient.cs: update tests for parameter type of blob
+
+	* System.Data.OracleClient/OracleLob.cs: position was never
+	being reset to the offset causing the reading of a Blob to
+	be out of range
+
+	* System.Data.OracleClient/OracleParameter.cs: fixes for 
+	character and blob types
+
+2008-09-16  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleBFile.cs: do not
+	throw a NotImplementedException in internal constructor
+
+2008-09-16  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* Test/TestOracleClient.cs: add tests
+	for TIMESTAMP Input, Output, InputOutput, Return 
+	parameters and handle DBNull.Value too
+
+	* System.Data.OracleClient/OracleCommandBuilder.cs
+	* System.Data.OracleClient/OracleDataAdapter.cs: cleanup warnings
+	for default profile
+
+	* System.Data.OracleClient.Oci/OciDateTimeDescriptor.cs
+	* System.Data.OracleClient/OracleParameter.cs: fix parameters
+	for TIMESTAMP Input, Output, InputOutput, Return
+	parameters and handle DBNUll.Value via indicator = -1
+	However, TIMESTAMP WITH TIMEZONE and TIMESTAMP WITH LOCAL TIMESTAMP
+	not tested.
+
+2008-09-14  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleParameter.cs: fixes
+	for OracleType.Blob parameters.  Also some case statements
+	not properly tabbed.
+
+2008-09-14  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* Test/TestOracleClient.cs: add tests for parameters
+	of oracle type CLOB, add tests for setting oracle type
+	directly or inferred via the value, and 
+	clean up compile warnings
+
+	* System.Data.OracleClient/OracleParameter.cs: fix
+	for handling parameters of oracle type CLOB for
+	Input, Output, and Return.  InputOutput is not supported.
+	And handle CLOB parameters that are DBNull.Value or
+	their value length is zero.
+
+2008-09-13  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleConnection.cs: add stubs
+	for method GetSchema which is part of NET_2_0, and clean up warnings
+
+	* System.Data.OracleClient/OracleCommand.cs
+	* ystem.Data.OracleClient/OracleParameter.cs
+	* System.Data.OracleClient/OracleBFile.cs
+	* System.Data.OracleClient.Oci/OciHandle.cs: clean up warnings
+
+	* System.Data.OracleClient.Oci/OciDescriptorHandle.cs
+	* System.Data.OracleClient.Oci/OciDefineHandle.cs: make methods internal
+
+2008-09-13  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* Test/TestOracleClient.cs: add test for LONG (long varchar)
+	testing paramters for Input, Output, 
+	InputOutput, and ReturnValue and
+	situations when any of these could be DBNull.Value
+
+	* System.Data.OracleClient/OracleParameter.cs: fix
+	handling of parameters LONG (long varchar).  However,
+	it probably would be better to implement LONG using
+	piecewise operation.  Also, remove old code.
+
+2008-09-10  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* Test/TestOracleClient.cs: fix typo,
+	  enable more test,
+          Tests pass for parameters for Character, Number, and Date
+	  for Input, Output, InputOutput, and ReturnValue and
+	  situations when any of these could be DBNull.Value
+
+	* System.Data.OracleClient/OracleParameter.cs: fix
+	handling of parameters for character, number, and date
+	types.  Need to redo all the other types based on the above.
+
+	* System.Data.OracleClient.Oci/OciDefineHandle.cs: rename private
+	method DefineLong to DefineLongVarChar
+
+2008-09-06  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* Test/TestOracleClient.cs: get oracle connected tests
+	going again
+	
+	*  System.Data.OracleClient.Oci/OciDefineHandle.cs
+	* System.Data.OracleClient/OracleDataReader.cs
+	* System.Data.OracleClient/OracleCommand.cs: fix character
+	field value for a reader that was retrieved from a REF CURSOR.
+	It was failing due to OCI_INVALID_HANDLE - resolve the error
+	by passing a connection object which has a valid environment
+	handle.
+
+	* System.Data.OracleClient.Oci/OciCalls.cs: correct 
+	call to OCIDefineByPos
+
+	* System.Data.OracleClient/OracleParameter.cs: better way to
+	determine if the input value Is Null instead of using reflection.
+	Flush - Re-arraning how variables are being bound.
+
+	* System.Data.OracleClient/OciGlue.cs: add function
+	to convert OCI Return / Error Status Code to a String Description
+ 
+	* System.Data.OracleClient.Oci/OciErrorHandle.cs: better
+	error handling
+
+2008-09-04  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleDataReader.cs: return true
+	in NextResult if another result	
+
+2008-09-04  Daniel Morgan <monodanmorg@yahoo.com>
+	
+	* System.Data.OracleClient/OracleCommand.cs: removed AssertNoDataReader
+	because oracle allows multiple result sets and has since .NET 1.0,
+	fix bug where REF CURSOR would not work for ExecuteReader or
+	filling a DataSet via an OracleDataAdapter.  The REF CURSOR is used to
+	populate the DataSet.
+
+	* System.Data.OracleClient/OracleDataReader.cs: fix for getting
+	next result set; implement NET_2_0 methods 
+	GetProviderSpecificFieldType,
+	GetProviderSpecificValuee, 
+	GetProviderSpecificValue; and validate the reader is open
+	before allowing a Read or NextResult, otherwise, throw
+	an InvalidOperationException
+
+	* System.Data.OracleClient/OracleParameter.cs: fix for
+	getting one or more REF CURSOR out parameters if
+	ExecuteReader was called. 
+
+	* System.Data.OracleClient.Oci/OciErrorHandle.cs
+	* System.Data.OracleClient.Oci/OciHandle.cs: add addiional method
+	for getting error, such as, INVALID_HANDLE being passed to OCI
+
+2008-08-27  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleConnectionStringBuilder.cs: modified -
+	add missing connection options, correct case of some connection options,
+	added dictionary for mapping
+	defaults, for Item this indexer needs to return a default
+	for a valid keyword if it does not exist in the dictionary,
+	must override the Keys and Values collection to return all keys
+	and values whether or not they exist in the dictionary and if
+	they do not then return a default value for Values
+
+2008-08-26  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleParameter.cs
+	* System.Data.OracleClient.Oci/OciStatementHandle.cs
+	* System.Data.OracleClient.Oci/OciDefineHandle.cs: fix bug
+	for GetOracleLob in OracleDataReader that was created
+	via a REF CURSOR.  Bug occurred because the cursor when created
+	did not have a ServiceContext - this was solved by passing
+	the connection in which did.  Fixes bug#350408.  In OracleParameter, also
+	show the data type that is not implemented.
+
+	* Test/testblob.cs
+	* Test/TestOracleClient.cs: updated tests
+
+	* Test/refcursortest.cs: added ref cursor test with blob
+
+2008-08-25  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleCommand.cs
+	* System.Data.OracleClient.Oci/OciHandle.cs
+	* System.Data.OracleClient.Oci/OciRowIdDescriptor.cs: fix
+	bug 378470 by fixing method ExecuteOracleNonQuery 
+        by getting the Universal ROWID and
+	returning it as an output parameter OracleString.
+        This will only work for Oracle 9i clients and above.
+
+2008-08-23  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient.dll.sources: added 
+	files to build: 
+           OracleClientFactory.cs
+           OracleConnectionStringBuilder.cs
+
+	* System.Data.OracleClient/OracleClientFactory.cs: added
+	method to file: DbConnectionStringBuilder and modified
+	CreateDataSourceEnumerator to return a null
+
+	* System.Data.OracleClient/OracleConnectionStringBuilder.cs: add
+	new file
+
+2008-08-20  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* System.Data.OracleClient/OracleConnection.cs: allow 
+	the use of a connection string which allows a
+	TNS network description that is parentheses delimited
+	like the following which has the hostname, port, and
+	service name without requiring use of a TNSNAMES.ORA
+	file.
+
+User ID=SCOTT;Password=TIGER;Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.101)(PORT=1521))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=TESTDB)))
+
 2008-05-02  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* System.Data.OracleClient_test.dll.sources: Added

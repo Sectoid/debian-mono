@@ -53,6 +53,15 @@ namespace System.Windows.Forms {
 
 			OnCurrentChanged (EventArgs.Empty);
 		}
+
+		public override PropertyDescriptorCollection GetItemProperties ()
+		{
+			PropertyDescriptor property = parent.GetItemProperties ().Find (property_name, true);
+
+			// We can't just pass property.PropertyType, since the actual object could implement
+			// more elements and not only those described in the property type
+			return TypeDescriptor.GetProperties (property.GetValue (parent.Current));
+		}
 	}
 }
 

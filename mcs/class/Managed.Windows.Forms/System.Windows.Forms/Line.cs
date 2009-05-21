@@ -58,7 +58,7 @@ namespace System.Windows.Forms
 		internal Line			left;			// Line with smaller line number
 		internal Line			right;			// Line with higher line number
 		internal LineColor		color;			// We're doing a black/red tree. this is the node color
-		internal int			DEFAULT_TEXT_LEN;	// 
+		static int			DEFAULT_TEXT_LEN = 0;	// 
 		internal bool			recalc;			// Line changed
 		#endregion	// Local Variables
 
@@ -143,6 +143,7 @@ namespace System.Windows.Forms
 			}
 		}
 
+		// UIA: Method used via reflection in TextRangeProvider
 		internal int Height {
 			get { return height; }
 			set { height = value; }
@@ -169,6 +170,7 @@ namespace System.Windows.Forms
 			}
 		}
 			
+		// UIA: Method used via reflection in TextRangeProvider
 		internal int Width {
 			get {
 				int res = (int) widths [text.Length];
@@ -183,6 +185,7 @@ namespace System.Windows.Forms
 			}
 		}
 		
+		// UIA: Method used via reflection in TextRangeProvider
 		internal int X {
 			get {
 				if (document.multiline)
@@ -191,6 +194,7 @@ namespace System.Windows.Forms
 			}
 		}
 
+		// UIA: Method used via reflection in TextRangeProvider
 		internal int Y {
 			get {
 				if (!document.multiline)
@@ -463,7 +467,7 @@ namespace System.Windows.Forms
 			prev_ascent = this.ascent;
 			this.height = 0;		// Reset line height
 			this.ascent = 0;		// Reset the ascent for the line
-			tag.Shift = 0;
+			tag.Shift = 0;			// Reset shift (which should be stored as pixels, not as points)
 
 			if (ending == LineEnding.Wrap)
 				widths[0] = document.left_margin + hanging_indent;
@@ -480,7 +484,7 @@ namespace System.Windows.Forms
 
 				while (tag.Length == 0) {	// We should always have tags after a tag.length==0 unless len==0
 					//tag.Ascent = 0;
-					tag.Shift = tag.Line.ascent - tag.Ascent;
+					tag.Shift = (tag.Line.ascent - tag.Ascent) / 72;
 					tag = tag.Next;
 				}
 
@@ -548,14 +552,14 @@ namespace System.Windows.Forms
 						// We have a tag that has a taller ascent than the line;
 						t = tags;
 						while (t != null && t != tag) {
-							t.Shift = tag.Ascent - t.Ascent;
+							t.Shift = (tag.Ascent - t.Ascent) / 72;
 							t = t.Next;
 						}
 
 						// Save on our line
 						this.ascent = tag.Ascent;
 					} else {
-						tag.Shift = this.ascent - tag.Ascent;
+						tag.Shift = (this.ascent - tag.Ascent) / 72;
 					}
 
 					tag = tag.Next;
@@ -567,7 +571,7 @@ namespace System.Windows.Forms
 			}
 
 			while (tag != null) {	
-				tag.Shift = tag.Line.ascent - tag.Ascent;
+				tag.Shift = (tag.Line.ascent - tag.Ascent) / 72;
 				tag = tag.Next;
 			}
 

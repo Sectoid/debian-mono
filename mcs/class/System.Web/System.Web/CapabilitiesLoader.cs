@@ -42,7 +42,7 @@ using System.Web.Configuration;
 
 namespace System.Web
 {
-	class BrowserData
+	sealed class BrowserData
 	{
 		static char [] wildchars = new char [] {'*', '?'};
 
@@ -73,7 +73,7 @@ namespace System.Web
 				this.pattern = this.pattern.Replace (")", "\\)");
 				this.pattern = this.pattern.Replace ("[", "\\[");
 				this.pattern = this.pattern.Replace ("]", "\\]");
-				this.pattern = this.pattern.Replace ("?", ".");
+				this.pattern = this.pattern.Replace ('?', '.');
 				this.pattern = this.pattern.Replace ("*", ".*");
 			}
 		}
@@ -166,7 +166,7 @@ namespace System.Web
 		}
 	}
 	
-	class CapabilitiesLoader : MarshalByRefObject
+	sealed class CapabilitiesLoader : MarshalByRefObject
 	{
 		const int userAgentsCacheSize = 3000;
 		static Hashtable defaultCaps;
@@ -213,7 +213,7 @@ namespace System.Web
 		static Hashtable userAgentsCache = Hashtable.Synchronized(new Hashtable(userAgentsCacheSize+10));
 #endif
 
-		private CapabilitiesLoader () {}
+		CapabilitiesLoader () {}
 
 		static CapabilitiesLoader ()
 		{
@@ -349,7 +349,7 @@ namespace System.Web
 			if (userAgent != null)
 				userAgent = userAgent.Trim ();
 
-			if (alldata == null || userAgent == null || userAgent == "")
+			if (alldata == null || userAgent == null || userAgent.Length == 0)
 				return defaultCaps;
 
 			Hashtable userBrowserCaps = (Hashtable) (userAgentsCache.Contains(userAgent)? userAgentsCache [userAgent] : null);
@@ -366,7 +366,7 @@ namespace System.Web
 				if (userBrowserCaps == null)
 					userBrowserCaps = defaultCaps;
 
-				lock (typeof (CapabilitiesLoader)) {
+				lock (lockobj) {
 					if (userAgentsCache.Count >= userAgentsCacheSize)
 						userAgentsCache.Clear ();
 				}
@@ -403,7 +403,7 @@ namespace System.Web
 		}
 
 #if TARGET_J2EE
-		private static TextReader GetJavaTextReader(string filename)
+		static TextReader GetJavaTextReader(string filename)
 		{
 			try
 			{

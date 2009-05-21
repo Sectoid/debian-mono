@@ -19,7 +19,7 @@ using NUnit.Framework;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class PictureBoxTest
+	public class PictureBoxTest : TestHelper
 	{
 		[Test]
 		public void PictureBoxPropertyTest ()
@@ -140,7 +140,6 @@ namespace MonoTests.System.Windows.Forms
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void ImageLocation_Sync ()
 		{
 			Form f = new Form ();
@@ -322,6 +321,72 @@ namespace MonoTests.System.Windows.Forms
 				Assert.IsNotNull (ex.Message, "#4");
 			}
 		}
+
+		[Test] // LoadAsync ()
+		public void LoadAsync1_ImageLocation_Empty ()
+		{
+			PictureBox pb = new PictureBox ();
+			pb.ImageLocation = string.Empty;
+
+			try {
+				pb.LoadAsync ();
+				Assert.Fail ("#1");
+			} catch (InvalidOperationException ex) {
+				// ImageLocation must be set
+				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+			}
+		}
+
+		[Test] // LoadAsync ()
+		public void LoadAsync1_ImageLocation_Null ()
+		{
+			PictureBox pb = new PictureBox ();
+			pb.ImageLocation = null;
+
+			try {
+				pb.LoadAsync ();
+				Assert.Fail ("#1");
+			} catch (InvalidOperationException ex) {
+				// ImageLocation must be set
+				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+			}
+		}
+
+		[Test] // LoadAsync (String)
+		public void LoadASync2_Url_Empty ()
+		{
+			PictureBox pb = new PictureBox ();
+
+			try {
+				pb.LoadAsync (string.Empty);
+				Assert.Fail ("#1");
+			} catch (InvalidOperationException ex) {
+				// ImageLocation must be set
+				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+			}
+		}
+
+		[Test] // LoadAsync (String)
+		public void LoadAsync2_Url_Null ()
+		{
+			PictureBox pb = new PictureBox ();
+
+			try {
+				pb.LoadAsync ((string) null);
+				Assert.Fail ("#1");
+			} catch (InvalidOperationException ex) {
+				// ImageLocation must be set
+				Assert.AreEqual (typeof (InvalidOperationException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+			}
+		}
 #endif
 
 		[Test]
@@ -348,7 +413,7 @@ namespace MonoTests.System.Windows.Forms
 #endif
 
 		[TestFixture]
-		public class PictureBoxSizeModeEventClass
+		public class PictureBoxSizeModeEventClass : TestHelper
 		{
 			static bool eventhandled = false;
 			public static void SizeMode_EventHandler (object sender, EventArgs e)

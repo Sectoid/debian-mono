@@ -34,24 +34,15 @@ using System.Reflection;
 using System.Text;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-
-#if !EMBEDDED_IN_1_0
 using Mono.Security.Protocol.Tls;
-#endif
 
 namespace System.Net {
-	
-	interface IHttpListenerContextBinder {
-		bool BindContext (HttpListenerContext context);
-		void UnbindContext (HttpListenerContext context);
-	}
-	
 	sealed class HttpConnection
 	{
 		const int BufferSize = 8192;
 		Socket sock;
 		Stream stream;
-		IHttpListenerContextBinder epl;
+		EndPointListener epl;
 		MemoryStream ms;
 		byte [] buffer;
 		HttpListenerContext context;
@@ -65,16 +56,7 @@ namespace System.Net {
 		bool secure;
 		AsymmetricAlgorithm key;
 
-#if EMBEDDED_IN_1_0
-		public HttpConnection (Socket sock, IHttpListenerContextBinder epl)
-		{
-			this.sock = sock;
-			this.epl = epl;
-			stream = new NetworkStream (sock, false);
-			Init ();
-		}
-#else
-		public HttpConnection (Socket sock, IHttpListenerContextBinder epl, bool secure, X509Certificate2 cert, AsymmetricAlgorithm key)
+		public HttpConnection (Socket sock, EndPointListener epl, bool secure, X509Certificate2 cert, AsymmetricAlgorithm key)
 		{
 			this.sock = sock;
 			this.epl = epl;
@@ -83,14 +65,16 @@ namespace System.Net {
 			if (secure == false) {
 				stream = new NetworkStream (sock, false);
 			} else {
+#if EMBEDDED_IN_1_0
+				throw new NotImplementedException ();
+#else
 				SslServerStream ssl_stream = new SslServerStream (new NetworkStream (sock, false), cert, false, false);
 				ssl_stream.PrivateKeyCertSelectionDelegate += OnPVKSelection;
 				stream = ssl_stream;
-
+#endif
 			}
 			Init ();
 		}
-#endif
 
 		AsymmetricAlgorithm OnPVKSelection (X509Certificate certificate, string targetHost)
 		{
@@ -137,7 +121,11 @@ namespace System.Net {
 		{
 			if (buffer == null)
 				buffer = new byte [BufferSize];
-			stream.BeginRead (buffer, 0, BufferSize, OnRead, this);
+			try {
+				stream.BeginRead (buffer, 0, BufferSize, OnRead, this);
+			} catch {
+				sock.Close (); // stream disposed
+			}
 		}
 
 		public RequestStream GetRequestStream (bool chunked, long contentlength)
@@ -177,7 +165,7 @@ namespace System.Net {
 				nread = stream.EndRead (ares);
 				ms.Write (buffer, 0, nread);
 			} catch (Exception e) {
-				Console.WriteLine (e);
+				//Console.WriteLine (e);
 				if (ms.Length > 0)
 					SendError ();
 				sock.Close ();
@@ -316,8 +304,8 @@ namespace System.Net {
 
 		public void Close ()
 		{
-			if (o_stream != null) {
-				Stream st = o_stream;
+			if (sock != null) {
+				Stream st = GetResponseStream ();
 				st.Close ();
 				o_stream = null;
 			}
@@ -331,13 +319,21 @@ namespace System.Net {
 					return;
 				}
 
-				Socket s = sock;
-				sock = null;
-				try {
-					s.Shutdown (SocketShutdown.Both);
-				} finally {
-					s.Close ();
+				if (context.Response.Headers ["connection"] == "close") {
+					Socket s = sock;
+					sock = null;
+					try {
+						s.Shutdown (SocketShutdown.Both);
+					} catch {
+					} finally {
+						s.Close ();
+					}
+				} else {
+					Init ();
+					BeginReadRequest ();
+					return;
 				}
+
 				if (context_bound)
 					epl.UnbindContext (context);
 			}

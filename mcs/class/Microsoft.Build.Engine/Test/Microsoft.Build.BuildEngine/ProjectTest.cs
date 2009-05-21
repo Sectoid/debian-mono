@@ -28,11 +28,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Xml;
 using Microsoft.Build.BuildEngine;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using NUnit.Framework;
+using System.Text;
 
 namespace MonoTests.Microsoft.Build.BuildEngine {
 
@@ -1142,6 +1144,417 @@ namespace MonoTests.Microsoft.Build.BuildEngine {
 			project.SetProjectExtensions ("name", "1");
 			Assert.AreEqual ("1", project.GetProjectExtensions ("name"), "A1");
 			Assert.IsTrue (project.IsDirty, "A2");
+		}
+
+		[Test]
+		public void TestBuildProjectError1 ()
+		{
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			Assert.IsFalse (project.Build ((string) null), "A1");
+			Assert.IsFalse (project.Build ((string[]) null), "A2");
+			Assert.IsFalse (project.Build ((string []) null, null), "A3");
+			Assert.IsFalse (project.Build ((string []) null, null, BuildSettings.None), "A4");
+		}
+
+		[Test]
+		public void TestBuildProjectError2 ()
+		{
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			try {
+				project.Build (new string [] { null });
+			} catch {
+				return;
+			}
+			Assert.Fail ("Expected exception for project.Build, null string in targetNames []");
+		}
+
+		[Test]
+		public void TestBuildProjectFile1 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", false, new string [] { "1", "2" }, new bool [] { true, true }, "TBPF1");
+			CheckProjectBuild (project, new string [] { "main" }, true, new string [] { "main" }, "TBPF1");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml1 ()
+		{
+			Project project = CreateAndLoadProject (null, false, new string [] { "1", "2" }, new bool [] { true, true }, "TBPFX1");
+			CheckProjectBuild (project, new string [] { "main" }, true, new string [] { "main" }, "TBPFX1");
+		}
+
+		[Test]
+		public void TestBuildProjectFile2 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", false, new string [] { "1", "2", "3" }, new bool [] { true, false, true }, "TBPF2");
+			CheckProjectBuild (project, new string [] { "main" }, false, new string [0], "TBPF2");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml2 ()
+		{
+			Project project = CreateAndLoadProject (null, false, new string [] { "1", "2", "3" }, new bool [] { true, false, true }, "TBPFX2");
+			CheckProjectBuild (project, new string [] { "main" }, false, new string [0], "TBPFX2");
+		}
+
+		[Test]
+		public void TestBuildProjectFile3 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", false, new string [] { "1", "2", "3" }, new bool [] { true, true, true }, "TBPF3");
+			CheckProjectBuild (project, new string [] { "1", "2" }, true, new string [] { "1", "2" }, "TBPF3");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml3 ()
+		{
+			Project project = CreateAndLoadProject (null, false, new string [] { "1", "2", "3" }, new bool [] { true, true, true }, "TBPFX3");
+			CheckProjectBuild (project, new string [] { "1", "2" }, true, new string [] { "1", "2" }, "TBPFX3");
+		}
+
+		[Test]
+		public void TestBuildProjectFile4 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", false, new string [] { "1", "2", "3" }, new bool [] { true, false, true }, "TBPF4");
+			CheckProjectBuild (project, new string [] { "main" }, false, new string [0], "TBPF4");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml4 ()
+		{
+			Project project = CreateAndLoadProject (null, false, new string [] { "1", "2", "3" }, new bool [] { true, false, true }, "TBPFX4");
+			CheckProjectBuild (project, new string [] { "main" }, false, new string [0], "TBPFX4");
+		}
+
+		//Run separate tests
+
+		//Run single target
+		[Test]
+		public void TestBuildProjectFile5 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", true, new string [] { "1", "2", "3" }, new bool [] { true, false, true }, "TBPF5");
+			CheckProjectBuild (project, new string [] { "main" }, false, new string [0], "TBPF5");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml5 ()
+		{
+			Project project = CreateAndLoadProject (null, true, new string [] { "1", "2", "3" }, new bool [] { true, false, true }, "TBPFX5");
+			CheckProjectBuild (project, new string [] { "main" }, false, new string [0], "TBPFX5");
+		}
+
+		[Test]
+		public void TestBuildProjectFile6 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", true, new string [] { "1", "2", "3" }, new bool [] { true, true, true }, "TBPF6");
+			CheckProjectBuild (project, new string [] { "main" }, true, new string [] { "main" }, "TBPF6");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml6 ()
+		{
+			Project project = CreateAndLoadProject (null, true, new string [] { "1", "2", "3" }, new bool [] { true, true, true }, "TBPFX6");
+			CheckProjectBuild (project, new string [] { "main" }, true, new string [] { "main" }, "TBPFX6");
+		}
+
+		// run multiple targets
+		[Test]
+		public void TestBuildProjectFile7 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", true, new string [] { "1", "2", "3" }, new bool [] { true, true, true }, "TBPF7");
+			CheckProjectBuild (project, new string [] { "1", "2", "3" }, true, new string [] { "1", "2", "3" }, "TBPF7");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml7 ()
+		{
+			Project project = CreateAndLoadProject (null, true, new string [] { "1", "2", "3" }, new bool [] { true, true, true }, "TBPFX7");
+			CheckProjectBuild (project, new string [] { "1", "2", "3" }, true, new string [] { "1", "2", "3" }, "TBPFX7");
+		}
+
+		[Test]
+		public void TestBuildProjectFile8 ()
+		{
+			Project project = CreateAndLoadProject ("foo.proj", true, new string [] { "1", "2", "3" }, new bool [] { true, true, false }, "TBPF8");
+			CheckProjectBuild (project, new string [] { "1", "2", "3" }, false, new string [] { "1", "2"}, "TBPF8");
+		}
+
+		[Test]
+		public void TestBuildProjectFileXml8 ()
+		{
+			Project project = CreateAndLoadProject (null, true, new string [] { "1", "2", "3" }, new bool [] { true, true, false }, "TBPFX8");
+			CheckProjectBuild (project, new string [] { "1", "2", "3" }, false, new string [] { "1", "2"}, "TBPFX8");
+		}
+
+		[Test]
+		public void TestBatchedMetadataRef1 ()
+		{
+			//test for multiple items with same metadata also
+			 string projectString = @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+			<UsingTask TaskName=""BatchingTestTask"" AssemblyFile=""Test/resources/TestTasks.dll"" />
+			<ItemGroup>
+				<Coll1 Include=""A1""><Name>Abc</Name></Coll1>
+				<Coll1 Include=""A2""><Name>Def</Name></Coll1>
+				<Coll1 Include=""A3""><Name>Xyz</Name></Coll1>
+				<Coll1 Include=""A4""><Name>Xyz</Name></Coll1>
+				<Coll2 Include=""B1""></Coll2>
+			</ItemGroup>
+				<Target Name=""ShowMessage"">
+					<BatchingTestTask Sources=""%(Coll1.Name)"">
+						<Output TaskParameter=""Output"" ItemName=""FinalList"" />
+					</BatchingTestTask>
+					<Message Text=""Msg: %(Coll1.Name)"" />
+				</Target>
+		 </Project>";
+
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			project.LoadXml (projectString);
+			Assert.IsTrue (project.Build ("ShowMessage"), "A1: Build failed");
+
+			BuildItemGroup include = project.GetEvaluatedItemsByName ("FinalList");
+			Assert.AreEqual (3, include.Count, "A2");
+
+			Assert.AreEqual ("FinalList", include [0].Name, "A3");
+			Assert.AreEqual ("Abc", include [0].FinalItemSpec, "A4");
+
+			Assert.AreEqual ("FinalList", include [1].Name, "A5");
+			Assert.AreEqual ("Def", include [1].FinalItemSpec, "A6");
+
+			Assert.AreEqual ("FinalList", include [2].Name, "A7");
+			Assert.AreEqual ("Xyz", include [2].FinalItemSpec, "A8");
+		}
+
+		[Test]
+		public void TestBatchedMetadataRef2 ()
+		{
+			string projectString = @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+			<UsingTask TaskName=""BatchingTestTask"" AssemblyFile=""Test/resources/TestTasks.dll"" />
+			<ItemGroup>
+				<Coll1 Include=""A1""><Name>Abc</Name></Coll1>
+				<Coll1 Include=""A2""><Name>Def</Name></Coll1>
+				<Coll1 Include=""A3""><Name>Xyz</Name></Coll1>
+				<Coll1 Include=""A4""><Name>Abc</Name></Coll1>
+				<Coll2 Include=""B1""><Name>Bar</Name></Coll2>
+				<Coll2 Include=""B2""><Name>Bar</Name></Coll2>
+			</ItemGroup>
+				<Target Name=""ShowMessage"">
+					<BatchingTestTask Sources=""%(Name)"" Strings=""@(Coll2)"">
+						<Output TaskParameter=""Output"" ItemName=""FinalList"" />
+					</BatchingTestTask>
+					<Message Text=""Msg: %(Coll1.Name)"" />
+				</Target>
+				<Target Name=""ShowMessage2"">
+					<BatchingTestTask Sources=""%(Name)"" Strings=""@(Coll1)"">
+						<Output TaskParameter=""Output"" ItemName=""FinalList2"" />
+					</BatchingTestTask>
+					<Message Text=""Msg: %(Coll1.Name)"" />
+				</Target>
+		 </Project>";
+
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			project.LoadXml (projectString);
+			Assert.IsTrue (project.Build ("ShowMessage"), "A1: Build failed");
+
+			BuildItemGroup include = project.GetEvaluatedItemsByName ("FinalList");
+			Assert.AreEqual (1, include.Count, "A2");
+
+			Assert.AreEqual ("FinalList", include [0].Name, "A3");
+			Assert.AreEqual ("Bar", include [0].FinalItemSpec, "A4");
+
+			Assert.IsTrue (project.Build ("ShowMessage2"), "A1: Build failed");
+			include = project.GetEvaluatedItemsByName ("FinalList2");
+			Assert.AreEqual (3, include.Count, "A5");
+
+			Assert.AreEqual ("FinalList2", include [0].Name, "A6");
+			Assert.AreEqual ("Abc", include [0].FinalItemSpec, "A7");
+
+			Assert.AreEqual ("FinalList2", include [1].Name, "A8");
+			Assert.AreEqual ("Def", include [1].FinalItemSpec, "A9");
+
+			Assert.AreEqual ("FinalList2", include [2].Name, "A10");
+			Assert.AreEqual ("Xyz", include [2].FinalItemSpec, "A11");
+		}
+
+		[Test]
+		public void TestBatchedMetadataRef3 ()
+		{
+			string projectString = @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+			<UsingTask TaskName=""BatchingTestTask"" AssemblyFile=""Test/resources/TestTasks.dll"" />
+			<ItemGroup>
+				<Coll1 Include=""A1""><Name>Abc</Name></Coll1>
+				<Coll1 Include=""A2""><Name>Def</Name></Coll1>
+				<Coll1 Include=""A3""><Name>Xyz</Name></Coll1>
+				<Coll1 Include=""A4""><Name>Abc</Name></Coll1>
+				<Coll2 Include=""B1""><Name>Bar</Name></Coll2>
+				<Coll2 Include=""B2""><Name>Bar</Name></Coll2>
+			</ItemGroup>
+				<Target Name=""ShowMessage"">
+					<BatchingTestTask SingleTaskItem=""%(Coll2.Name)"" >
+						<Output TaskParameter=""SingleStringOutput"" ItemName=""FinalList"" />
+					</BatchingTestTask>
+					<Message Text=""Msg: %(Coll1.Name)"" />
+				</Target>
+		 </Project>";
+
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			project.LoadXml (projectString);
+			Assert.IsTrue (project.Build ("ShowMessage"), "A1: Build failed");
+
+			BuildItemGroup include = project.GetEvaluatedItemsByName ("FinalList");
+			Assert.AreEqual (1, include.Count, "A2");
+
+			Assert.AreEqual ("FinalList", include [0].Name, "A3");
+			Assert.AreEqual ("Bar", include [0].FinalItemSpec, "A4");
+
+		}
+
+		[Test]
+		public void TestBatchedMetadataRef4 ()
+		{
+			string projectString = @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+			<UsingTask TaskName=""BatchingTestTask"" AssemblyFile=""Test/resources/TestTasks.dll"" />
+			<ItemGroup>
+				<Coll1 Include=""A1""><Name>Abc</Name></Coll1>
+				<Coll1 Include=""A2""><Name>Def</Name></Coll1>
+				<Coll1 Include=""A3""><Name>Xyz</Name></Coll1>
+				<Coll2 Include=""B1""><Name>Bar</Name></Coll2>
+			</ItemGroup>
+				<Target Name=""ShowMessage"">
+					<BatchingTestTask SingleTaskItem=""%(Coll3.Name)"" >
+						<Output TaskParameter=""SingleStringOutput"" ItemName=""FinalList"" />
+					</BatchingTestTask>
+				</Target>
+		 </Project>";
+
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			project.LoadXml (projectString);
+			Assert.IsTrue (project.Build ("ShowMessage"), "A1: Build failed");
+
+			BuildItemGroup include = project.GetEvaluatedItemsByName ("FinalList");
+			Assert.AreEqual (0, include.Count, "A2");
+		}
+
+		[Test]
+		public void TestInitialTargets ()
+		{
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			project.LoadXml (@"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"" InitialTargets=""pre  "">
+				<Target Name=""boo"">
+					<Message Text=""Executing boo target""/>
+				</Target>
+				<Target Name=""pre"">
+					<Message Text=""Executing pre target""/>
+				</Target>
+			</Project>");
+
+			MonoTests.Microsoft.Build.Tasks.TestMessageLogger logger =
+				new MonoTests.Microsoft.Build.Tasks.TestMessageLogger ();
+			engine.RegisterLogger (logger);
+
+			try {
+				Assert.IsTrue (project.Build (), "Build failed");
+
+				Assert.AreEqual (0, logger.CheckHead ("Executing pre target", MessageImportance.Normal), "A1");
+				Assert.AreEqual (0, logger.CheckHead ("Executing boo target", MessageImportance.Normal), "A2");
+				Assert.AreEqual (0, logger.Count, "A3");
+			} catch {
+				logger.DumpMessages ();
+				throw;
+			}
+		}
+
+		static void CheckBuildItem (BuildItem item, string name, string [,] metadata, string finalItemSpec, string prefix)
+		{
+			Assert.AreEqual (name, item.Name, prefix + "#1");
+			for (int i = 0; i < metadata.GetLength (0); i++) {
+				string key = metadata [i, 0];
+				string val = metadata [i, 1];
+				Assert.IsTrue (item.HasMetadata (key), String.Format ("{0}#2: Expected metadata '{1}' not found", prefix, key));
+				Assert.AreEqual (val, item.GetMetadata (key), String.Format ("{0}#3: Value for metadata {1}", prefix, key));
+				Assert.AreEqual (val, item.GetEvaluatedMetadata (key), String.Format ("{0}#4: Value for evaluated metadata {1}", prefix, key));
+			}
+			Assert.AreEqual (finalItemSpec, item.FinalItemSpec, prefix + "#5");
+		}
+
+		void CheckProjectBuild (Project project, string [] targetNames, bool result, string [] outputNames, string prefix)
+		{
+			IDictionary targetOutputs = new Hashtable ();
+
+			Assert.AreEqual (result, project.Build (targetNames, targetOutputs), prefix + "A1");
+			Assert.AreEqual (outputNames.Length, targetOutputs.Keys.Count, prefix + "A2");
+
+			foreach (string outputName in outputNames) {
+				Assert.IsTrue (targetOutputs.Contains (outputName), prefix + " A3: target " + outputName);
+
+				object o = targetOutputs [outputName];
+				Assert.IsTrue (typeof (ITaskItem []).IsAssignableFrom (o.GetType ()), prefix + " A4: target " + outputName);
+
+				ITaskItem [] items = (ITaskItem [])o;
+				Assert.AreEqual (0, items.Length, prefix + "A5: target " + outputName);
+			}
+		}
+
+		string CreateProjectString (bool run_separate, string [] targets, bool [] results, string prefix)
+		{
+			StringBuilder sb = new StringBuilder ();
+			sb.Append (@"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">");
+			sb.AppendFormat ("<Target Name = \"{0}\"><Message Text = \"#Target {1}:{0} called\" />", "main", prefix);
+
+			sb.AppendFormat ("<CallTarget Targets=\"");
+			for (int i = 0; i < targets.Length; i++)
+				sb.AppendFormat ("{0};", targets [i]);
+			sb.AppendFormat ("\" ");
+
+			if (run_separate)
+				sb.AppendFormat (" RunEachTargetSeparately=\"true\" ");
+			sb.AppendFormat ("/></Target>\n");
+
+			for (int i = 0; i < targets.Length; i++) {
+				sb.AppendFormat ("<Target Name = \"{0}\"><Message Text = \"#Target {1}:{0} called\" />", targets [i], prefix);
+				if (!results [i])
+					sb.AppendFormat ("<Error Text = \"#Error message for target {0}:{1}\"/>", prefix, targets [i]);
+				sb.Append ("</Target>\n");
+			}
+
+			sb.Append ("</Project>");
+
+			return sb.ToString ();
+		}
+
+		void CreateProjectFile (string fname, bool run_separate, string [] targets, bool [] results, string prefix)
+		{
+			using (StreamWriter sw = new StreamWriter (fname))
+				sw.Write (CreateProjectString (run_separate, targets, results, prefix));
+		}
+
+		Project CreateAndLoadProject (string fname, bool run_separate, string [] targets, bool [] results, string prefix)
+		{
+			Engine engine = new Engine (Consts.BinPath);
+			Project project = engine.CreateNewProject ();
+
+			string projectXml = CreateProjectString (run_separate, targets, results, prefix);
+			if (fname == null) {
+				project.LoadXml (projectXml);
+			} else {
+				using (StreamWriter sw = new StreamWriter (fname))
+					sw.Write (projectXml);
+				project.Load (fname);
+		                File.Delete (fname);
+			}
+
+			return project;
 		}
 	}
 }

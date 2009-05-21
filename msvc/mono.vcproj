@@ -44,7 +44,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\libgc\include;..\;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0\glib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib\glib-2.0\include&quot;;..\mono\;..\mono\jit"
-				PreprocessorDefinitions="_DEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
+				PreprocessorDefinitions="_DEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -65,7 +65,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
 				GenerateDebugInformation="true"
@@ -146,7 +147,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
 				GenerateDebugInformation="true"
@@ -204,7 +206,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				AdditionalIncludeDirectories="..\libgc\include;..\;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0\glib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib\glib-2.0\include&quot;;..\mono\;..\mono\jit"
-				PreprocessorDefinitions="NDEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
+				PreprocessorDefinitions="NDEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="true"
 				UsePrecompiledHeader="0"
@@ -222,7 +224,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
 				GenerateDebugInformation="true"
@@ -301,7 +304,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib glib-2.0.lib ws2_32.lib gthread-2.0.lib mono.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
 				GenerateDebugInformation="true"
@@ -361,7 +365,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\libgc\include;..\;..\mono\;..\mono\jit;..\mono\eglib\src;..\..\mono\eglib\src"
-				PreprocessorDefinitions="_DEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
+				PreprocessorDefinitions="_DEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -382,7 +386,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
 				GenerateDebugInformation="true"
@@ -463,7 +468,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
 				GenerateDebugInformation="true"
@@ -521,7 +527,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				AdditionalIncludeDirectories="..\libgc\include;..\;..\mono\;..\mono\jit;..\mono\eglib\src;..\..\mono\eglib\src"
-				PreprocessorDefinitions="NDEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
+				PreprocessorDefinitions="NDEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE;HAVE_CONFIG_H;WINVER=0x0500;_WIN32_WINNT=0x0500;_WIN32_IE=0x0501;WIN32_THREADS;FD_SETSIZE=1024"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="true"
 				UsePrecompiledHeader="0"
@@ -539,7 +545,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
 				GenerateDebugInformation="true"
@@ -618,7 +625,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
+				LinkLibraryDependencies="false"
+				AdditionalDependencies="mono.lib version.lib libgc.lib eglib.lib ws2_32.lib Psapi.lib winmm.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
 				GenerateDebugInformation="true"

@@ -1557,9 +1557,6 @@ namespace MonoTests.System
 		}
 
 		[Test]
-#if NET_2_0
-		[Category ("NotWorking")]
-#endif
 		public void ZLiteral ()
 		{
 			// However, "Z" and "'Z'" are different.
@@ -2094,7 +2091,35 @@ namespace MonoTests.System
 			}
 		}
 
+		[Test]
+		public void Bug377042 ()
+		{
+			string [] f = new string [] {
+				"yyyy-MM-ddTHH:mm:ssZ",
+				"yyyy-MM-ddTHH:mm:sszzzz",
+				"yyyy-MM-dd"
+				};
+			DateTimeStyles dts = DateTimeStyles.AdjustToUniversal;
 #if NET_2_0
+			dts |= DateTimeStyles.AssumeUniversal;
+#endif
+			DateTime result = DateTime.ParseExact ("2005-01-01T01:11:11+8:00", f, new DateTimeFormatInfo (), dts);
+		}
+
+		[Test]
+		[ExpectedException (typeof (FormatException))]
+		public void EmptyString ()
+		{
+			DateTime.Parse ("");
+		}
+#if NET_2_0
+		[Test]
+		public void TryEmptyString ()
+		{
+			DateTime date;
+			Assert.IsFalse (DateTime.TryParse ("", out date));
+		}
+
 		[Test]
 		public void Kind ()
 		{
@@ -2359,6 +2384,20 @@ namespace MonoTests.System
 		{
 			DateTimeStyles illegal = DateTimeStyles.AssumeLocal | DateTimeStyles.AssumeUniversal;
 			DateTime.ParseExact ("", "", null, illegal);
+		}
+
+		[Test]
+		[ExpectedException (typeof (FormatException))]
+		public void TrailingDot ()
+		{
+			DateTime.ParseExact ("12:00:00", "HH:mm:ss.", null);
+		}
+
+		[Test]
+		public void TrailingFlexibleMilliseconds ()
+		{
+			// bug #444103.
+			DateTime.ParseExact ("12:00:00", "HH:mm:ss.FFFFFFF", null);
 		}
 #endif
 	}

@@ -1,38 +1,25 @@
 thisdir = tools/corcompare
-SUBDIRS = 
+SUBDIRS =
 include ../../build/rules.make
 
-ALL_PROGRAMS = $(topdir)/class/lib/$(PROFILE)/mono-api-info.exe
+ALL_PROGRAMS = mono-api-info.exe
 
-ifeq (default, $(PROFILE))
-ALL_PROGRAMS += CorCompare.exe mono-api-info.exe mono-api-diff.exe transform.exe
-endif
+CECIL = ../../class/lib/net_1_1/Mono.Cecil.dll
 
-CORCOMPARE_SOURCES = \
-	CompletionInfo.cs \
-	CorCompare.cs \
-	MissingAttribute.cs \
-	MissingBase.cs \
-	MissingConstructor.cs \
-	MissingEvent.cs \
-	MissingField.cs \
-	MissingInterface.cs \
-	MissingMember.cs \
-	MissingMethod.cs \
-	MissingNameSpace.cs \
-	MissingNestedType.cs \
-	MissingProperty.cs \
-	MissingType.cs \
-	ToDoAssembly.cs
+COMMON_SOURCES = \
+	AssemblyResolver.cs	\
+	Util.cs	\
+	WellFormedXmlWriter.cs
 
 PROGRAM_INSTALL_DIR = $(mono_libdir)/mono/$(FRAMEWORK_VERSION)
 
-APIINFO_SOURCES = mono-api-info.cs
-APIDIFF_SOURCES = mono-api-diff.cs
+APIINFO_SOURCES = mono-api-info.cs $(COMMON_SOURCES)
 
-DISTFILES= $(CORCOMPARE_SOURCES) $(APIINFO_SOURCES) $(APIDIFF_SOURCES) cormissing.xsl mono-api.xsl transform.cs
+DISTFILES= $(COMMON_SOURCES) $(APIINFO_SOURCES)
 
 all-local: $(ALL_PROGRAMS)
+
+doc-update-local:
 
 install-local: $(ALL_PROGRAMS)
 	$(MKINSTALLDIRS) $(DESTDIR)$(PROGRAM_INSTALL_DIR)
@@ -54,19 +41,5 @@ clean-local:
 
 dist-local: dist-default
 
-CorCompare.exe: $(CORCOMPARE_SOURCES)
-	$(CSCOMPILE) -out:$@ $^
-
-mono-api-diff.exe: $(APIDIFF_SOURCES)
-	$(CSCOMPILE) -out:$@ $^
-
-$(topdir)/class/lib/$(PROFILE)/mono-api-info.exe: $(APIINFO_SOURCES)
-	$(CSCOMPILE) -out:$@ $^
-
-mono-api-info.exe: $(topdir)/class/lib/$(PROFILE)/mono-api-info.exe
-	cp $< $@
-	-cp $<.mdb $@.mdb
-	
-transform.exe: transform.cs
-	$(CSCOMPILE) -out:$@ $^
-	
+mono-api-info.exe: $(APIINFO_SOURCES)
+	$(CSCOMPILE) -r:$(CECIL) -out:$@ $^

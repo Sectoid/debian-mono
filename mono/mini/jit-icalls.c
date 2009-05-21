@@ -9,27 +9,15 @@
  */
 
 #include <math.h>
+#include <limits.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #include "jit-icalls.h"
 
 void*
 mono_ldftn (MonoMethod *method)
-{
-	gpointer addr;
-
-	MONO_ARCH_SAVE_REGS;
-
-	addr = mono_create_jump_trampoline (mono_domain_get (), method, TRUE);
-
-	return mono_create_ftnptr (mono_domain_get (), addr);
-}
-
-/*
- * Same as mono_ldftn, but do not add a synchronized wrapper. Used in the
- * synchronized wrappers to avoid infinite recursion.
- */
-void*
-mono_ldftn_nosync (MonoMethod *method)
 {
 	gpointer addr;
 
@@ -64,11 +52,8 @@ ldvirtfn_internal (MonoObject *obj, MonoMethod *method, gboolean gshared)
 		res = mono_class_inflate_generic_method (res, &context);
 	}
 
-	/* FIXME: only do this for methods which can be shared! */
-	if (res->is_inflated && mono_method_get_context (res)->method_inst &&
-			mono_class_generic_sharing_enabled (res->klass)) {
+	if (mono_method_needs_static_rgctx_invoke (res, FALSE))
 		res = mono_marshal_get_static_rgctx_invoke (res);
-	}
 
 	return mono_ldftn (res);
 }
@@ -600,7 +585,7 @@ mono_fcgt (double a, double b)
 gboolean
 mono_fcgt_un (double a, double b)
 {
-	return a > b;
+	return isunordered (a, b) || a > b;
 }
 
 gboolean
@@ -612,7 +597,7 @@ mono_fclt (double a, double b)
 gboolean
 mono_fclt_un (double a, double b)
 {
-	return a < b;
+	return isunordered (a, b) || a < b;
 }
 
 double
@@ -679,6 +664,34 @@ mono_array_new_va (MonoMethod *cm, ...)
 }
 
 /* Specialized version of mono_array_new_va () which avoids varargs */
+MonoArray *
+mono_array_new_1 (MonoMethod *cm, guint32 length)
+{
+	MonoDomain *domain = mono_domain_get ();
+	guint32 lengths [1];
+	guint32 *lower_bounds;
+	int pcount;
+	int rank;
+
+	MONO_ARCH_SAVE_REGS;
+
+	pcount = mono_method_signature (cm)->param_count;
+	rank = cm->klass->rank;
+
+	lengths [0] = length;
+
+	g_assert (rank == pcount);
+
+	if (cm->klass->byval_arg.type == MONO_TYPE_ARRAY) {
+		lower_bounds = alloca (sizeof (guint32) * rank);
+		memset (lower_bounds, 0, sizeof (guint32) * rank);
+	} else {
+		lower_bounds = NULL;
+	}
+
+	return mono_array_new_full (domain, cm->klass, lengths, lower_bounds);
+}
+
 MonoArray *
 mono_array_new_2 (MonoMethod *cm, guint32 length1, guint32 length2)
 {
@@ -818,12 +831,26 @@ mono_fconv_ovf_u8 (double v)
 	guint64 res;
 
 	MONO_ARCH_SAVE_REGS;
-    
+/*
+ * The soft-float implementation of some ARM devices have a buggy guin64 to double
+ * conversion that it looses precision even when the integer if fully representable
+ * as a double.
+ * 
+ * This was found with 4294967295ull, converting to double and back looses one bit of precision.
+ * 
+ * To work around this issue we test for value boundaries instead. 
+ */
+#if defined(__arm__) && MONO_ARCH_SOFT_FLOAT 
+	if (isnan (v) || !(v >= -0.5 && v <= ULLONG_MAX+0.5)) {
+		mono_raise_exception (mono_get_exception_overflow ());
+	}
 	res = (guint64)v;
-
+#else
+	res = (guint64)v;
 	if (isnan(v) || trunc (v) != res) {
 		mono_raise_exception (mono_get_exception_overflow ());
 	}
+#endif
 	return res;
 }
 
@@ -860,34 +887,23 @@ mono_lconv_to_r8_un (guint64 a)
 #endif
 
 gpointer
-mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, MonoGenericContext *context, gpointer *this_arg)
+mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, gpointer *this_arg)
 {
-	MonoMethod *vmethod, *inflated;
+	MonoMethod *vmethod;
 	gpointer addr;
+	MonoGenericContext *context = mono_method_get_context (method);
 
 	mono_jit_stats.generic_virtual_invocations++;
 
 	if (obj == NULL)
 		mono_raise_exception (mono_get_exception_null_reference ());
 	vmethod = mono_object_get_virtual_method (obj, method);
-
-	/* 'vmethod' is partially inflated.  All the blanks corresponding to the type parameters of the
-	   declaring class have been inflated.  We still need to fully inflate the method parameters.
-
-	   FIXME: This code depends on the declaring class being fully inflated, since we inflate it twice with 
-	   the same context.
-	*/
 	g_assert (!vmethod->klass->generic_container);
 	g_assert (!vmethod->klass->generic_class || !vmethod->klass->generic_class->context.class_inst->is_open);
 	g_assert (!context->method_inst || !context->method_inst->is_open);
-	inflated = mono_class_inflate_generic_method (vmethod, context);
-	if (mono_class_generic_sharing_enabled (inflated->klass) &&
-			mono_method_is_generic_sharable_impl (method, FALSE)) {
-		/* The method is shared generic code, so it needs a
-		   MRGCTX. */
-		inflated = mono_marshal_get_static_rgctx_invoke (inflated);
-	}
-	addr = mono_compile_method (inflated);
+	if (mono_method_needs_static_rgctx_invoke (vmethod, FALSE))
+		vmethod = mono_marshal_get_static_rgctx_invoke (vmethod);
+	addr = mono_compile_method (vmethod);
 
 	/* Since this is a virtual call, have to unbox vtypes */
 	if (obj->vtable->klass->valuetype)
@@ -896,14 +912,6 @@ mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, MonoGen
 		*this_arg = obj;
 
 	return addr;
-}
-
-gpointer
-mono_helper_compile_generic_method_wo_context (MonoObject *obj, MonoMethod *method, gpointer *this_arg)
-{
-	MonoGenericContext *context = mono_method_get_context (method);
-
-	return mono_helper_compile_generic_method (obj, method, context, this_arg);
 }
 
 MonoString*
@@ -954,4 +962,19 @@ MonoException *
 mono_create_corlib_exception_2 (guint32 token, MonoString *arg1, MonoString *arg2)
 {
 	return mono_exception_from_token_two_strings (mono_defaults.corlib, token, arg1, arg2);
+}
+
+MonoObject*
+mono_object_castclass (MonoObject *obj, MonoClass *klass)
+{
+	if (!obj)
+		return NULL;
+
+	if (mono_object_isinst (obj, klass))
+		return obj;
+
+	mono_raise_exception (mono_exception_from_name (mono_defaults.corlib,
+					"System", "InvalidCastException"));
+
+	return NULL;
 }

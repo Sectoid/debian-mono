@@ -1,14 +1,41 @@
-2008-10-12  Robert Jordan  <robertj@gmx.net>
+2008-09-18  Robert Jordan  <robertj@gmx.net>
 
-	* TcpConnectionPool.cs: Fix the build and
-	set NoDelay on both profiles.
+	* TcpConnectionPool.cs: Set NoDelay on both profiles.
 
 2008-09-18  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r113381.
-	
 	* TcpConnectionPool.cs: Set the NoDelay flag on the socket to avoid 
 	excessive waiting by the tcp stack. Fixes #416462.
+
+2008-09-17  Jeffrey Stedfast  <fejj@novell.com>
+
+	* TcpChannel.cs (ParseTcpURL): If given "tcp://", don't set host
+	to "", leave it as null.
+
+	* TcpClientChannel.cs (TcpClientChannel): Use the default
+	SinkProviders if the sinkProvider argument is null.
+
+	* TcpChannel.cs (ParseTcpURL): TcpClientTransportSink needs the
+	host component, so extract that info into its own string as well.
+
+2008-09-12  Jeffrey Stedfast  <fejj@novell.com>
+
+	Fix for bug #320298
+
+	* TcpClientTransportSink.cs: Updated for change to
+	TcpChannel.ParseTcpURL(). We now need to do our own integer
+	conversion/validation of the port.
+
+	* TcpChannel.cs (ParseTcpURL): We need to match the
+	protocol ("tcp") case-insensitively. The objectURI is supposed to
+	include the leading '/' character. Also, we need to ignore invalid
+	port designators since Microsoft's .NET implementation of
+	TcpChannel.Parse() doesn't seem to care that they are valid.
+
+2008-08-09  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* TcpChannel.cs: Fixed argument names to match MS.
+	* TcpServerChannel.cs: Fixed argument names to match MS.
 
 2008-06-18  Robert Jordan  <robertj@gmx.net>
 

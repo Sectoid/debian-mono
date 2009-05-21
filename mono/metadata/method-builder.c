@@ -66,7 +66,9 @@ mono_mb_new_base (MonoClass *klass, MonoWrapperType type)
 
 	mb->code_size = 40;
 	mb->code = g_malloc (mb->code_size);
-	
+	/* placeholder for the wrapper always at index 1 */
+	mono_mb_add_data (mb, NULL);
+
 	return mb;
 }
 
@@ -128,14 +130,14 @@ mono_mb_create_method (MonoMethodBuilder *mb, MonoMethodSignature *signature, in
 {
 	MonoMethodHeader *header;
 	MonoMethodWrapper *mw;
-	MonoMemPool *mp;
+	MonoImage *image;
 	MonoMethod *method;
 	GList *l;
 	int i;
 
 	g_assert (mb != NULL);
 
-	mp = mb->method->klass->image->mempool;
+	image = mb->method->klass->image;
 
 	mono_loader_lock ();
 	if (mb->dynamic) {
@@ -155,18 +157,18 @@ mono_mb_create_method (MonoMethodBuilder *mb, MonoMethodSignature *signature, in
 	} else {
 		/* Realloc the method info into a mempool */
 
-		method = mono_mempool_alloc0 (mp, sizeof (MonoMethodWrapper));
+		method = mono_image_alloc0 (image, sizeof (MonoMethodWrapper));
 		memcpy (method, mb->method, sizeof (MonoMethodWrapper));
 
 		if (mb->no_dup_name)
 			method->name = mb->name;
 		else
-			method->name = mono_mempool_strdup (mp, mb->name);
+			method->name = mono_image_strdup (image, mb->name);
 
 		((MonoMethodNormal *)method)->header = header = (MonoMethodHeader *) 
-			mono_mempool_alloc0 (mp, sizeof (MonoMethodHeader) + mb->locals * sizeof (MonoType *));
+			mono_image_alloc0 (image, sizeof (MonoMethodHeader) + mb->locals * sizeof (MonoType *));
 
-		header->code = mono_mempool_alloc (mp, mb->pos);
+		header->code = mono_image_alloc (image, mb->pos);
 		memcpy ((char*)header->code, mb->code, mb->pos);
 
 		for (i = 0, l = mb->locals_list; l; l = l->next, i++) {
@@ -185,6 +187,9 @@ mono_mb_create_method (MonoMethodBuilder *mb, MonoMethodSignature *signature, in
 	header->num_locals = mb->locals;
 	header->init_locals = TRUE;
 
+	header->num_clauses = mb->num_clauses;
+	header->clauses = mb->clauses;
+
 	mw = (MonoMethodWrapper*) mb->method;
 	i = g_list_length (mw->method_data);
 	if (i) {
@@ -194,7 +199,7 @@ mono_mb_create_method (MonoMethodBuilder *mb, MonoMethodSignature *signature, in
 		if (method->dynamic)
 			data = g_malloc (sizeof (gpointer) * (i + 1));
 		else
-			data = mono_mempool_alloc (mp, sizeof (gpointer) * (i + 1));
+			data = mono_image_alloc (image, sizeof (gpointer) * (i + 1));
 		/* store the size in the first element */
 		data [0] = GUINT_TO_POINTER (i);
 		i = 1;
@@ -515,4 +520,11 @@ mono_mb_emit_add_to_local (MonoMethodBuilder *mb, guint16 local, gint32 incr)
 	mono_mb_emit_icon (mb, incr);
 	mono_mb_emit_byte (mb, CEE_ADD);
 	mono_mb_emit_stloc (mb, local); 
+}
+
+void
+mono_mb_set_clauses (MonoMethodBuilder *mb, int num_clauses, MonoExceptionClause *clauses)
+{
+	mb->num_clauses = num_clauses;
+	mb->clauses = clauses;
 }

@@ -4,7 +4,7 @@ include ../build/rules.make
 
 BUILT_FILES = common/Consts.cs
 
-all-local install-local test-local run-test-local run-test-ondotnet-local uninstall-local: $(BUILT_FILES)
+all-local install-local test-local run-test-local run-test-ondotnet-local uninstall-local doc-update-local: $(BUILT_FILES)
 	@:
 
 clean-local:
@@ -14,11 +14,11 @@ common/Consts.cs: common/Consts.cs.in $(wildcard config.make)
 	test -n '$(MONO_VERSION)'
 	sed -e 's,@''MONO_VERSION@,$(MONO_VERSION),' $< > $@
 
-PLATFORMS = linux win32
+PLATFORMS = darwin linux win32
 PROFILES = \
 	basic \
 	net_1_1_bootstrap \
-	default \
+	net_1_1	\
 	net_2_0_bootstrap \
 	net_2_0 \
 	net_2_1_bootstrap \
@@ -41,6 +41,7 @@ DISTFILES = \
 	corcompare-api.xsl		\
 	executable.make			\
 	library.make			\
+	nunit-summary.xsl		\
 	rules.make			\
 	$(COMMON_SRCS:%=common/%)	\
 	$(PLATFORMS:%=platforms/%.make) $(PROFILES:%=profiles/%.make)

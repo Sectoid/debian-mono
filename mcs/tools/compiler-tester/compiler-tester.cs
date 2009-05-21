@@ -175,16 +175,19 @@ namespace TestRunner {
 				public bool Checked;
 			}
 
-			string test_file;
 			ArrayList methods;
 			public bool IsNewSet;
 
 			public VerificationData (string test_file)
 			{
+#if NET_2_0
 				this.test_file = test_file;
+#endif				
 			}
 
-#if NET_2_0			
+#if NET_2_0
+			string test_file;
+
 			public static VerificationData FromFile (string name, XmlReader r)
 			{
 				VerificationData tc = new VerificationData (name);
@@ -493,12 +496,13 @@ namespace TestRunner {
 			string[] test_args;
 
 			if (test.CompilerOptions != null) {
-				test_args = new string [1 + test.CompilerOptions.Length];
+				test_args = new string [2 + test.CompilerOptions.Length];
 				test.CompilerOptions.CopyTo (test_args, 0);
 			} else {
-				test_args = new string [1];
+				test_args = new string [2];
 			}
-			test_args [test_args.Length - 1] = test.FileName;
+			test_args [test_args.Length - 2] = test.FileName;
+			test_args [test_args.Length - 1] = "-debug";
 
 			return tester.Invoke (test_args);
 		}
@@ -580,6 +584,13 @@ namespace TestRunner {
 			Console.Write (msg, rest);
 			if (log_file != null)
 				log_file.Write (msg, rest);
+		}
+
+		protected void LogLine (string msg)
+		{
+			Console.WriteLine (msg);
+			if (log_file != null)
+				log_file.WriteLine (msg);
 		}
 
 		protected void LogLine (string msg, params object [] rest)
@@ -770,7 +781,9 @@ namespace TestRunner {
 			bool success = true;
 			Type[] types = assembly.GetTypes ();
 			foreach (Type t in types) {
-				if (!t.IsClass && t.IsValueType)
+				
+				// Skip interfaces
+				if (!t.IsClass && !t.IsValueType)
 					continue;
 
 				if (test.VerificationProvider == null) {
@@ -794,20 +807,6 @@ namespace TestRunner {
 			return success;
 		}
 
-#if !NET_2_1
-		int ExecFile (string exe_name, string filename)
-		{
-			if (mono == null)
-				pi.FileName = exe_name;
-			else
-				pi.Arguments = exe_name;
-
-			Process p = Process.Start (pi);
-			p.WaitForExit ();
-			return p.ExitCode;
-		}
-#endif
-
 		bool ExecuteFile (MethodInfo entry_point, string exe_name, string filename)
 		{
 			TextWriter stdout = Console.Out;
@@ -827,14 +826,6 @@ namespace TestRunner {
 				}
 			}
 			catch (Exception e) {
-#if !NET_2_1
-				int exit_code = ExecFile (exe_name, filename);
-				if (exit_code == 0) {
-					LogLine ("(appdomain method failed, external executable succeeded)");
-					LogLine (e.ToString ());
-					return true;
-				}
-#endif
 				HandleFailure (filename, TestResult.ExecError, e.ToString ());
 				return false;
 			}
@@ -891,7 +882,9 @@ namespace TestRunner {
 					break;
 
 				case TestResult.ILError:
-					LogFileLine (file, "IL REGRESSION: " + extra);
+					if (!update_verif_file) {
+						LogFileLine (file, "IL REGRESSION: " + extra);
+					}
 					extra = null;
 					break;
 			}
@@ -1041,7 +1034,7 @@ namespace TestRunner {
 			is_warning = false;
 			if (compiler_options != null) {
 				foreach (string s in compiler_options) {
-					if (s.EndsWith ("warnaserror"))
+					if (s.StartsWith ("-warnaserror") || s.StartsWith ("/warnaserror"))
 						is_warning = true;
 				}
 			}

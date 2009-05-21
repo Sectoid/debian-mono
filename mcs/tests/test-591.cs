@@ -1,43 +1,23 @@
-// Compiler options: -unsafe
+// It's actually C# specification and csc bug
+// https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=310363
 
-using System;
-
-namespace Bug
+class C1
 {
-	unsafe struct Demo
+	static void Foo (string val)
 	{
-		fixed bool test [4];
-	
-		bool Fixed ()
-		{
-			fixed (bool* data_ptr = test)
-			{
-				return true;
-			}
-		}
-		
-		static bool Foo (int [] data)
-		{
-			fixed (int* data_ptr = data)
-			{
-				return data_ptr == null ? true : false;
-			}
-		}
-		
-		public static int Main ()
-		{
-			if (!Foo (null))
-				return 1;
-			
-			if (!Foo (new int [0]))
-				return 2;
-			
-			if (!new Demo().Fixed ())
-				return 3;
-			
-			Console.WriteLine ("OK");
-			return 0;
+		const object obj = null;
+		switch (val) {
+			case (string) obj:
+				return;
 		}
 	}
 }
 
+class C2
+{
+	public static void Main ()
+	{
+		const object o = null;
+		const string s = (string) o;
+	}
+}

@@ -1,20 +1,20 @@
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I .
 
-SUBDIRS = $(libgc_dir) $(eglib_dir) mono $(ikvm_native_dir) support docs data runtime scripts man samples web msvc
+SUBDIRS = po $(libgc_dir) $(eglib_dir) mono $(ikvm_native_dir) support data runtime scripts man samples web msvc docs
 
 # Keep in sync with SUBDIRS
 ## 'tools' is not normally built
-DIST_SUBDIRS = libgc $(eglib_dir) mono ikvm-native support docs data runtime scripts man samples web tools msvc
+DIST_SUBDIRS = po libgc $(eglib_dir) mono ikvm-native support data runtime scripts man samples web tools msvc docs
 
-EXTRA_DIST= mono-uninstalled.pc.in LICENSE
+EXTRA_DIST= nls.m4 po.m4 progtest.m4 mono-uninstalled.pc.in build-mingw32.sh LICENSE mkinstalldirs
 
 DISTCHECK_CONFIGURE_FLAGS = EXTERNAL_MCS=false EXTERNAL_RUNTIME=false
 
 # Distribute the 'mcs' tree too
 dist-hook:
 	test -d $(distdir)/mcs || mkdir $(distdir)/mcs
-	d=`cd $(distdir)/mcs && pwd`; cd $(mcs_topdir) && $(MAKE) PROFILE=default distdir=$$d dist-recursive
+	d=`cd $(distdir)/mcs && pwd`; cd $(mcs_topdir) && $(MAKE) PROFILE=net_1_1 distdir=$$d dist-recursive
 	d=`cd $(distdir)/mcs && pwd`; cd $(mcs_topdir) && $(MAKE) PROFILE=net_2_0 distdir=$$d dist-recursive
 
 pkgconfigdir = $(libdir)/pkgconfig

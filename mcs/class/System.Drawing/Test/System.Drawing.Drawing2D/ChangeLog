@@ -1,3 +1,40 @@
+2008-12-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GraphicsPathTest.cs, LinearGradientBrushTest.cs, TestMatrix.cs:
+	Add delta when comparing floating point values since there can be
+	small differences between different platforms.
+
+2008-12-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* LinearGradientBrushTest.cs, GraphicsPathTest.cs,
+	  TestMatrix.cs : fix tests wrt rounding that were failing on .NET
+	  too (exposed by nunit24).
+
+2008-11-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GraphicsPathIteratorTest.cs: New. Add some (incomplete) unit 
+	tests for GraphicsPathIterator. Test cases are mostly to ensure 
+	null check compatibility with MS.
+	* LinearGradientBrushTest.cs: Add test case when setting null
+	on properties.
+	* PathGradientBrushTest.cs: Add test case when setting null
+	on properties.
+
+2008-09-03  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GraphicsPathTest.cs: Add unit test to check for an open curve
+	points.
+
+2008-09-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GraphicsPathTest.cs: Add a bunch of unit tests to check when 
+	points can be compressed (removed) when adding shapes to a path.
+
+2008-08-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GraphicsPathTest.cs: Add test case for "half" closed paths.
+	[Bug #413461]
+
 2007-10-30  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* GraphicsPathTest.cs: Added IsVisible test cases on ellipses 

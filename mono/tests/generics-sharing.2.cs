@@ -98,7 +98,7 @@ public class IGenImpl<T> : IGen<T> {
 public class GenA<T> {
 	public static T[] arr;
 
-	public static GenA () {
+	static GenA () {
 		arr = new T [3];
 	}
 
@@ -289,7 +289,7 @@ public class GenB<T> {
 public class GenC<T> {
 	public static int field ;
 
-	public static GenC () {
+	static GenC () {
 		field = 1234;
 	}
 }
@@ -326,7 +326,7 @@ public class GenABDeriv<T> : GenA<GenB<T>> {
 
 public class NonGenUser<T> where T : NonGen {
 	public int getNonGenField () {
-		return T.field;
+		return NonGen.field;
 	}
 }
 

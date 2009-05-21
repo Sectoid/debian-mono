@@ -57,7 +57,9 @@ namespace System.Reflection {
 		}
 
 		// Note: changes to fields must be reflected in _MonoReflectionAssembly struct (object-internals.h)
+#pragma warning disable 169
 		private IntPtr _mono_assembly;
+#pragma warning restore 169
 
 		private ResolveEventHolder resolve_event_holder;
 		private Evidence _evidence;
@@ -303,7 +305,14 @@ namespace System.Reflection {
 			if (data == (IntPtr) 0)
 				return null;
 			else {
+#if NET_2_0
+				UnmanagedMemoryStream stream;
+				unsafe {
+					stream = new UnmanagedMemoryStream ((byte*) data, size);
+				}
+#else
 				IntPtrStream stream = new IntPtrStream (data, size);
+#endif
 				/* 
 				 * The returned pointer points inside metadata, so
 				 * we have to increase the refcount of the module, and decrease
@@ -436,13 +445,35 @@ namespace System.Reflection {
 
 			aname.CultureInfo = culture;
 			aname.Name = aname.Name + ".resources";
-			try {
-				return Load (aname);
-			} catch (Exception) {
-				// Try the assembly directory
-				string fullName = Path.Combine (Path.GetDirectoryName (Location), Path.Combine (culture.Name, aname.Name + ".dll"));
-				return LoadFrom (fullName);
-			}
+			Assembly assembly = AppDomain.CurrentDomain.LoadSatellite (aname);
+			if (assembly != null)
+				return assembly;
+
+			// Try the assembly directory
+			string fullName = Path.Combine (Path.GetDirectoryName (Location), Path.Combine (culture.Name, aname.Name + ".dll"));
+			return LoadFrom (fullName);
+		}
+
+		internal Assembly GetSatelliteAssemblyNoThrow (CultureInfo culture, Version version)
+		{
+			if (culture == null)
+				throw new ArgumentException ("culture");
+
+			AssemblyName aname = GetName (true);
+			if (version != null)
+				aname.Version = version;
+
+			aname.CultureInfo = culture;
+			aname.Name = aname.Name + ".resources";
+			Assembly assembly = AppDomain.CurrentDomain.LoadSatellite (aname);
+			if (assembly != null)
+				return assembly;
+
+			// Try the assembly directory
+			string fullName = Path.Combine (Path.GetDirectoryName (Location), Path.Combine (culture.Name, aname.Name + ".dll"));
+			if (!File.Exists (fullName))
+				return null;
+			return LoadFrom (fullName);
 		}
 		
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
@@ -714,8 +745,9 @@ namespace System.Reflection {
 		}
 
 		private class ResourceCloseHandler {
-
+#pragma warning disable 169, 414
 			Module module;
+#pragma warning restore 169, 414			
 
 			public ResourceCloseHandler (Module module) {
 				this.module = module;

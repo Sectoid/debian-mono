@@ -44,7 +44,7 @@ namespace System.Drawing.Printing
 		private static Hashtable doc_info = new Hashtable ();
 		private static bool cups_installed;
 		
-		private string printer_name;
+		//private string printer_name;
 		
 		private static Hashtable installed_printers;
 		private static string default_printer = String.Empty;
@@ -118,11 +118,8 @@ namespace System.Drawing.Printing
 				IntPtr ppd_handle = ppdOpenFile (ppd_filename);
 				return ppd_handle;
 			}
-			catch (Exception ex) {
+			catch (Exception) {
 				Console.WriteLine ("There was an error opening the printer {0}. Please check your cups installation.");
-#if DEBUG
-				Console.WriteLine (ex.Message);
-#endif
 			}
 			return IntPtr.Zero;
 		}
@@ -228,7 +225,7 @@ namespace System.Drawing.Printing
 				cups_dests_size = Marshal.SizeOf (typeof(CUPS_DESTS));
 				ptr = dests;
 				for (int i = 0; i < ret; i++) {
-					ptr_printer = (IntPtr) Marshal.ReadInt32 (ptr);
+					ptr_printer = (IntPtr) Marshal.ReadIntPtr (ptr);
 					if (Marshal.PtrToStringAnsi (ptr_printer).Equals(printer)) {
 						name = printer;
 						break;
@@ -557,7 +554,7 @@ namespace System.Drawing.Printing
 				ptr_printers = dests;
 
 				for (int i = 0; i < count; i++) {
-					ptr_printer = (IntPtr) Marshal.ReadInt32 (ptr_printers);
+					ptr_printer = (IntPtr) Marshal.ReadIntPtr (ptr_printers);
 					if (Marshal.PtrToStringAnsi (ptr_printer).Equals(printer)) {
 						found = true;
 						break;
@@ -801,8 +798,8 @@ namespace System.Drawing.Printing
 		[DllImport("libcups", CharSet=CharSet.Ansi)]
 		static extern int cupsGetDests (ref IntPtr dests);
 
-		[DllImport("libcups", CharSet=CharSet.Ansi)]
-		static extern void cupsGetDest (string name, string instance, int num_dests, ref IntPtr dests);
+//		[DllImport("libcups", CharSet=CharSet.Ansi)]
+//		static extern void cupsGetDest (string name, string instance, int num_dests, ref IntPtr dests);
 
 		[DllImport("libcups")]
 		static extern void cupsFreeDests (int num_dests, IntPtr dests);

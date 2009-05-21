@@ -28,11 +28,13 @@
 #if NET_2_0
 
 using System;
+using System.Collections.Generic;
+using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 
 namespace Microsoft.Build.BuildEngine {
-	internal class MetadataReference {
+	internal class MetadataReference : IReference {
 	
 		string		itemName;
 		string		metadataName;
@@ -65,6 +67,66 @@ namespace Microsoft.Build.BuildEngine {
 
 		public int End {
 			get { return start + length - 1; }
+		}
+
+		public string ConvertToString (Project project)
+		{
+			return project.GetMetadataBatched (itemName, metadataName);
+		}
+
+		public ITaskItem [] ConvertToITaskItemArray (Project project)
+		{
+			List<ITaskItem> items = new List<ITaskItem> ();
+			if (IsQualified) {
+				// Bucket would have item lists with same metadata values,
+				// so just get the value from the first item
+				BuildItemGroup group;
+				if (project.TryGetEvaluatedItemByNameBatched (itemName, out group))
+					BuildItemGroupToITaskItems (group, items, true);
+			} else {
+				// Get unique metadata values from _all_ item lists
+				foreach (BuildItemGroup group in project.GetAllItemGroups ())
+					BuildItemGroupToITaskItems (group, items, false);
+			}
+
+			return items.Count == 0 ? null : items.ToArray ();
+		}
+
+		// Gets metadata values from build item @group and adds as ITaskItem
+		// objects to @items
+		// @only_one: Batched case, all item lists would have same metadata values,
+		//	      just return first one
+		void BuildItemGroupToITaskItems (BuildItemGroup group, List<ITaskItem> items, bool only_one)
+		{
+			foreach (BuildItem item in group) {
+				if (!item.HasMetadata (metadataName))
+					continue;
+
+				string metadata = item.GetMetadata (metadataName);
+				if (HasTaskItem (items, metadata))
+					//return only unique metadata values
+					continue;
+
+				items.Add (new TaskItem (metadata));
+				if (only_one)
+					break;
+			}
+		}
+
+		private bool HasTaskItem (List<ITaskItem> items, string itemspec)
+		{
+			foreach (ITaskItem task_item in items)
+				if (task_item.ItemSpec == itemspec)
+					return true;
+			return false;
+		}
+
+		public override string ToString ()
+		{
+			if (IsQualified)
+				return String.Format ("%({0}.{1})", itemName, metadataName);
+			else
+				return String.Format ("%({0})", metadataName);
 		}
 	}
 }

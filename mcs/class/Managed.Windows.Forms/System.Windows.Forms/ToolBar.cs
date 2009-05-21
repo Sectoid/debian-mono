@@ -218,8 +218,6 @@ namespace System.Windows.Forms
 		public 
 #if NET_2_0
 		override
-#else
-		new
 #endif
 		bool AutoSize {
 			get { return autosize; }
@@ -404,7 +402,7 @@ namespace System.Windows.Forms
 
 		// XXX this should probably go away and it should call
 		// into Control.ImeMode instead.
-		new ImeMode ime_mode = ImeMode.Disable;
+		ImeMode ime_mode = ImeMode.Disable;
 
 		[Browsable (false)]
 		[EditorBrowsable (EditorBrowsableState.Never)]
@@ -525,6 +523,28 @@ namespace System.Windows.Forms
 
 			base.Dispose (disposing);
 		}
+
+#if NET_2_0
+		internal void UIAPerformClick (ToolBarButton button)
+		{
+			ToolBarItem previous_item = current_item;
+			current_item = null;
+			
+			foreach (ToolBarItem item in items)
+				if (item.Button == button) {
+					current_item = item;
+					break;
+				}
+
+			try {
+				if (current_item == null)
+					throw new ArgumentException ("button", "The button specified is not part of this toolbar");
+				OnButtonClick (new ToolBarButtonClickEventArgs (button));
+			} finally {
+				current_item = previous_item;
+			}
+		}
+#endif
 
 		protected virtual void OnButtonClick (ToolBarButtonClickEventArgs e)
 		{
@@ -1112,6 +1132,25 @@ namespace System.Windows.Forms
 			private bool redraw;    // Flag if needs to redraw after add/remove operations
 			#endregion
 
+			#region UIA Framework Events
+#if NET_2_0
+			static object UIACollectionChangedEvent = new object ();
+			
+			internal event CollectionChangeEventHandler UIACollectionChanged {
+				add { owner.Events.AddHandler (UIACollectionChangedEvent, value); }
+				remove { owner.Events.RemoveHandler (UIACollectionChangedEvent, value); }
+			}
+
+			internal void OnUIACollectionChanged (CollectionChangeEventArgs e)
+			{
+				CollectionChangeEventHandler eh
+					= (CollectionChangeEventHandler) owner.Events [UIACollectionChangedEvent];
+				if (eh != null)
+					eh (owner, e);
+			}
+#endif
+			#endregion
+
 			#region constructors
 			public ToolBarButtonCollection (ToolBar owner)
 			{
@@ -1134,9 +1173,20 @@ namespace System.Windows.Forms
 			public virtual ToolBarButton this [int index] {
 				get { return (ToolBarButton) list [index]; }
 				set {
+#if NET_2_0
+					// UIA Framework Event: Button Removed
+					OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Remove, index));
+#endif
+
 					value.SetParent (owner);
 					list [index] = value;
 					owner.Redraw (true);
+
+#if NET_2_0
+
+				// UIA Framework Event: Button Added
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Add, index));
+#endif
 				}
 			}
 
@@ -1191,6 +1241,12 @@ namespace System.Windows.Forms
 				result = list.Add (button);
 				if (redraw)
 					owner.Redraw (true);
+
+#if NET_2_0
+				// UIA Framework Event: Button Added
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Add, result));
+#endif
+
 				return result;
 			}
 
@@ -1211,6 +1267,11 @@ namespace System.Windows.Forms
 			{
 				list.Clear ();
 				owner.Redraw (false);
+
+#if NET_2_0
+				// UIA Framework Event: Button Cleared
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Refresh, -1));
+#endif
 			}
 
 			public bool Contains (ToolBarButton button)
@@ -1296,6 +1357,11 @@ namespace System.Windows.Forms
 			{
 				list.Insert (index, button);
 				owner.Redraw (true);
+
+#if NET_2_0
+				// UIA Framework Event: Button Added
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Add, index));
+#endif
 			}
 
 			public void Remove (ToolBarButton button)
@@ -1308,6 +1374,11 @@ namespace System.Windows.Forms
 			{
 				list.RemoveAt (index);
 				owner.Redraw (true);
+
+#if NET_2_0
+				// UIA Framework Event: Button Removed
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Remove, index));
+#endif
 			}
 
 #if NET_2_0

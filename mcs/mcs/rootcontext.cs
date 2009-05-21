@@ -65,6 +65,20 @@ namespace Mono.CSharp {
 		static public bool Checked;
 
 		//
+		// If true, it means that the compiler is executing as
+		// in eval mode so unresolved variables are resolved in
+		// static classes maintained by the eval engine.
+		//
+		static public bool EvalMode;
+
+		//
+		// If true, the compiler is operating in statement mode,
+		// this currently turns local variable declaration into
+		// static variables of a class
+		//
+		static public bool StatementMode;
+		
+		//
 		// Whether to allow Unsafe code
 		//
 		static public bool Unsafe;
@@ -93,7 +107,7 @@ namespace Mono.CSharp {
 		// This hashtable contains all of the #definitions across the source code
 		// it is used by the ConditionalAttribute handler.
 		//
-		public static Hashtable AllDefines = new Hashtable ();
+		static ArrayList AllDefines = new ArrayList ();
 		
 		//
 		// This keeps track of the order in which classes were defined
@@ -119,15 +133,22 @@ namespace Mono.CSharp {
 		//
 		static RootContext ()
 		{
-			Reset ();
+			Reset (true);
 		}
 
-		public static void Reset ()
+		public static void PartialReset ()
 		{
-			root = new RootTypes ();
+			Reset (false);
+		}
+		
+		public static void Reset (bool full)
+		{
+			if (full)
+				root = new RootTypes ();
+			
 			type_container_resolve_order = new ArrayList ();
 			EntryPoint = null;
-			Report.WarningLevel = 3;
+			Report.WarningLevel = 4;
 			Checked = false;
 			Unsafe = false;
 			StdLib = true;
@@ -141,6 +162,24 @@ namespace Mono.CSharp {
 			Documentation = null;
 			impl_details_class = null;
 			helper_classes = null;
+
+			//
+			// Setup default defines
+			//
+			RootContext.AllDefines = new ArrayList ();
+			RootContext.AddConditional ("__MonoCS__");
+		}
+
+		public static void AddConditional (string p)
+		{
+			if (AllDefines.Contains (p))
+				return;
+			AllDefines.Add (p);
+		}
+
+		public static bool IsConditionalDefined (string value)
+		{
+			return AllDefines.Contains (value);
 		}
 
 		static public RootTypes ToplevelTypes {
@@ -249,7 +288,6 @@ namespace Mono.CSharp {
 			if (ds == null)
 				return;
 
-			ds.DefineMembers ();
 			ds.Define ();
 		}
 		
@@ -273,14 +311,19 @@ namespace Mono.CSharp {
 			if (type_container_resolve_order != null){
 				foreach (TypeContainer tc in type_container_resolve_order)
 					tc.ResolveType ();
-				foreach (TypeContainer tc in type_container_resolve_order)
-					tc.DefineMembers ();
+				foreach (TypeContainer tc in type_container_resolve_order) {
+					try {
+						tc.Define ();
+					} catch (Exception e) {
+						throw new InternalErrorException (tc, e);
+					}
+				}
 			}
 
 			ArrayList delegates = root.Delegates;
 			if (delegates != null){
 				foreach (Delegate d in delegates)
-					d.DefineMembers ();
+					d.Define ();
 			}
 
 			//
@@ -290,33 +333,6 @@ namespace Mono.CSharp {
 				Hashtable seen = new Hashtable ();
 				foreach (TypeContainer tc in type_container_resolve_order)
 					TypeManager.CheckStructCycles (tc, seen);
-			}
-		}
-
-		//
-		// DefineTypes is used to fill in the members of each type.
-		//
-		static public void DefineTypes ()
-		{
-			ArrayList delegates = root.Delegates;
-			if (delegates != null){
-				foreach (Delegate d in delegates)
-					d.Define ();
-			}
-
-			if (type_container_resolve_order != null){
-				foreach (TypeContainer tc in type_container_resolve_order) {
-					// When compiling corlib, these types have already been
-					// populated from BootCorlib_PopulateCoreTypes ().
-					if (!RootContext.StdLib &&
-					    ((tc.Name == "System.Object") ||
-					     (tc.Name == "System.Attribute") ||
-					     (tc.Name == "System.ValueType") ||
-					     (tc.Name == "System.Runtime.CompilerServices.IndexerNameAttribute")))
-						continue;
-
-					tc.Define ();
-				}
 			}
 		}
 

@@ -178,6 +178,7 @@ enum {
 #define METHOD_ATTRIBUTE_REUSE_SLOT                0x0000
 #define METHOD_ATTRIBUTE_NEW_SLOT                  0x0100
 
+#define METHOD_ATTRIBUTE_STRICT                    0x0200
 #define METHOD_ATTRIBUTE_ABSTRACT                  0x0400
 #define METHOD_ATTRIBUTE_SPECIAL_NAME              0x0800
 

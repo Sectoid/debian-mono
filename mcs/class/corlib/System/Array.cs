@@ -181,6 +181,11 @@ namespace System
 			if (unchecked ((uint) index) >= unchecked ((uint) Length))
 				throw new ArgumentOutOfRangeException ("index");
 
+			object[] oarray = this as object [];
+			if (oarray != null) {
+				oarray [index] = (object)item;
+				return;
+			}
 			SetGenericValueImpl (index, ref item);
 		}
 
@@ -1383,15 +1388,6 @@ namespace System
 			array [j] = val;
 		}
 
-#if NET_2_0
-		void generic_swapper<T> (int i, int j) {
-			T[] array = this as T[];
-			T val = array [i];
-			array [i] = array [j];
-			array [j] = val;
-		}
-#endif
-
 		static int new_gap (int gap)
 		{
 			gap = (gap * 10) / 13;
@@ -1723,7 +1719,7 @@ namespace System
 			else if (value1 is IComparable)
 				return ((IComparable) value1).CompareTo (value2);
 
-			string msg = Locale.GetText ("No IComparable or IComparable<T> interface found for type '{0}'.");
+			string msg = Locale.GetText ("No IComparable or IComparable<{0}> interface found.");
 			throw new InvalidOperationException (String.Format (msg, typeof (T)));
 		}
 
@@ -2228,12 +2224,10 @@ namespace System
 		class ArrayReadOnlyList<T> : IList<T>
 		{
 			T [] array;
-			bool is_value_type;
 
 			public ArrayReadOnlyList (T [] array)
 			{
 				this.array = array;
-				is_value_type = typeof (T).IsValueType;
 			}
 
 			public T this [int index] {
@@ -2304,7 +2298,7 @@ namespace System
 				throw ReadOnlyError ();
 			}
 
-			Exception ReadOnlyError ()
+			static Exception ReadOnlyError ()
 			{
 				return new NotSupportedException ("This collection is read-only.");
 			}

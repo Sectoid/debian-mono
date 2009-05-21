@@ -116,6 +116,9 @@ struct _MonoDebugSourceLocation {
 /* The variable is in the two registers "offset" and "index". */
 #define MONO_DEBUG_VAR_ADDRESS_MODE_TWO_REGISTERS	0x20000000
 
+/* The variable is dead. */
+#define MONO_DEBUG_VAR_ADDRESS_MODE_DEAD		0x30000000
+
 struct _MonoDebugVarInfo {
 	guint32 index;
 	guint32 offset;
@@ -126,7 +129,7 @@ struct _MonoDebugVarInfo {
 };
 
 #define MONO_DEBUGGER_MAJOR_VERSION			80
-#define MONO_DEBUGGER_MINOR_VERSION			0
+#define MONO_DEBUGGER_MINOR_VERSION			1
 #define MONO_DEBUGGER_MAGIC				0x7aff65af4253d427ULL
 
 extern MonoSymbolTable *mono_symbol_table;
@@ -189,8 +192,5 @@ mono_debug_print_stack_frame (MonoMethod *method, guint32 native_offset, MonoDom
 
 int             mono_debugger_method_has_breakpoint       (MonoMethod *method);
 int             mono_debugger_insert_breakpoint           (const gchar *method_name, gboolean include_namespace);
-gboolean        mono_debugger_unhandled_exception         (gpointer addr, gpointer stack, MonoObject *exc);
-void            mono_debugger_handle_exception            (gpointer addr, gpointer stack, MonoObject *exc);
-gboolean        mono_debugger_throw_exception             (gpointer addr, gpointer stack, MonoObject *exc);
 
 #endif /* __MONO_DEBUG_H__ */

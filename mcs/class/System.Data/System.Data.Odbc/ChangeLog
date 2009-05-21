@@ -1,3 +1,52 @@
+2009-02-20  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* OdbcDataReader.cs (GetValue): Handle null image data.  Fixes ##419224
+	Patch by John Mortlock <johnm@hlaustralia.com.au>.
+	
+2009-01-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcDataReader.cs: Fixed GetBytes with limited length. Added reader
+	state and argument checks.
+
+2009-01-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommand.cs: Do not allow negative CommandTimeout. Reject invalid
+	value for CommandType and UpdatedRowSource. In Dispose, clear
+	CommandText (2.0 only) and Parameters. Include method that is being
+	executed in the exception messages for Connection and CommandText
+	verification.
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommandBuilder.cs (QuoteIdentifier): Escape QuoteSuffix
+	character(s) in unquoted identifier.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcColumn.cs: Treat OdbcType.Numeric as decimal.
+	* OdbcConnection.cs: Keep (weak) list of commands to allow us to
+	dispose them (and free their corresponding statement handles) when
+	the connection is closed. Fixed bug #341743.
+	* OdbcCommand.cs: Add internal Unlink method that is invoked when the
+	OdbcConnection is disposed, and which frees the statement handle.
+	Modified ExecuteNonQuery helper to take CommandBehavior and rename
+	freeHandle argument to createReader. Added CommandBehavior argument
+	to ExecSQL. Added FreeStatement overload that takes an option to not
+	perform an unlink. Fixes bug #3417434.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* libodbc.cs: Add IdentifierQuoteChar to OdbcInfo.
+	* OdbcCommandBuilder.cs: Return a zero-length string when QuotePrefix
+	or QuoteSuffix are not set (or are set to null). Changing QuotePrefix
+	or QuoteSuffix after a command has been generated should result in an
+	InvalidOperationException. Implemented support for obtaining
+	character(s) for quoting identifiers from specified connection.
+	Modified generated SQL to match MS.
+	* OdbcConnectionStringBuilder.cs: Improved special casing of Driver
+	and Dsn keywords. Re-use implemenation of DbConnectionStringBuilder.
+	Improved argument checks to match MS.
+
 2008-10-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* OdbcDataReader.cs: apply patch from Steve ? that fixes bug #433741.
@@ -6,15 +55,15 @@
 2008-08-26  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	Patch provided by Ernesto <equistango@gmail.com>
-	* OdbcDataReader.cs: Do not call GetSchemaTable in the
-	constructor, fetch column information instead.  Enhances
-	performance. 
-
+	* OdbcDataReader.cs: Don't call GetSchemaTable in the constructor
+	instead just get column information.  Enhances performance of
+	DataReader.
+	
 2008-08-26  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	Patch provided by Ernesto <equistango@gmail.com>
-	* OdbcParameter.cs (CopyValue): Handle Binary types just like
-	VarBinary/Image.
+	* OdbcParameter.cs (CopyValue): Handle Binary type along with
+	VarBinary and Image. 
 	
 2008-07-06  Sebastien Pouliot  <sebastien@ximian.com>
 

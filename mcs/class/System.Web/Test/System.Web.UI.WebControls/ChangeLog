@@ -1,3 +1,40 @@
+2009-02-10  Marek Habersack  <mhabersack@novell.com>
+
+	* ImageButtonTest.cs: added test for bug #463939
+
+2009-02-09  Marek Habersack  <mhabersack@novell.com>
+
+	* ObjectDataSourceViewTest.cs: added test for bug #471767
+
+2009-02-06  Marek Habersack  <mhabersack@novell.com>
+
+	* StyleTest.cs: added tests for CssClass and BorderStyle. 
+	Renamed the Style_CssClass method to Style_RegisteredCssClass.
+
+2009-02-05  Marek Habersack  <mhabersack@novell.com>
+
+	* LoginTest.cs: added test for Bug #468359
+
+2009-01-21  Marek Habersack  <mhabersack@novell.com>
+
+	* MenuTest.cs: temporarily disabled the Menu_DefaultRender test
+	(Nunit 2.4 issue).
+
+2008-10-08  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlParameterTest.cs: added a test for ControlParameter
+	evaluating a complex property expression.
+
+2008-09-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* RoleGroupCollectionTest.cs: Add test case this[int].
+
+2008-07-28  Marek Habersack  <mhabersack@novell.com>
+
+	* MasterPageTest.cs: added a test for situations when a page tries
+	to use a content place holder not defined in the associated master
+	page (bug #325114)
+
 2008-07-23  Marek Habersack  <mhabersack@novell.com>
 
 	* SqlDataSourceTest.cs: fix the failing test again.

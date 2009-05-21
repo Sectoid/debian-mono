@@ -33,7 +33,7 @@ namespace Mono.GetOptions
 
 	public delegate void ErrorReporter (int num, string msg);
 
-	[Obsolete ("This class is being obsoleted, please use NDesk.Options instead (http://ndesk.org/options)")]
+	[Obsolete ("This class is being obsoleted, we suggest that you use NDesk.Options library instead (ndesk.org/options")]
 	public class Options
 	{
 		public OptionsParsingMode ParsingMode;

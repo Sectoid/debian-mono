@@ -154,7 +154,18 @@ using System; using System.Net; namespace MonoHttp {
 					host = host.Substring (0, colon);
 			}
 
-			string path = HttpUtility.UrlDecode (raw_url);
+			string path;
+			Uri raw_uri;
+			#if NET_2_0
+if (MonoHttp.Utility.MaybeUri (raw_url) && Uri.TryCreate (raw_url, UriKind.Absolute, out raw_uri))
+#else
+try { raw_uri = new Uri (raw_url); } catch { raw_uri = null; } if (raw_uri != null)
+#endif
+
+				path = raw_uri.PathAndQuery;
+			else
+				path = HttpUtility.UrlDecode (raw_url);
+			
 			string path_slash = path [path.Length - 1] == '/' ? path : path + "/";
 			
 			HttpListener best_match = null;

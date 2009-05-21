@@ -118,18 +118,26 @@ namespace System.Configuration
 						break;
 #if (XML_DEP)
 					case SettingsSerializeAs.Xml:
-						XmlSerializer serializer = new XmlSerializer (propertyValue.GetType());
-						StringWriter w = new StringWriter(CultureInfo.InvariantCulture);
-
-						serializer.Serialize (w, propertyValue);
-						serializedValue = w.ToString();
+						if (propertyValue != null) {
+							XmlSerializer serializer = new XmlSerializer (propertyValue.GetType ());
+							StringWriter w = new StringWriter(CultureInfo.InvariantCulture);
+	
+							serializer.Serialize (w, propertyValue);
+							serializedValue = w.ToString();
+						}
+						else
+							serializedValue = null;
 						break;
 #endif
 					case SettingsSerializeAs.Binary:
-						BinaryFormatter bf = new BinaryFormatter ();
-						MemoryStream ms = new MemoryStream ();
-						bf.Serialize (ms, propertyValue);
-						serializedValue = ms.ToArray();
+						if (propertyValue != null) {
+							BinaryFormatter bf = new BinaryFormatter ();
+							MemoryStream ms = new MemoryStream ();
+							bf.Serialize (ms, propertyValue);
+							serializedValue = ms.ToArray();
+						}
+						else
+							serializedValue = null;
 						break;
 					default:
 						serializedValue = null;
@@ -186,7 +194,7 @@ namespace System.Configuration
 			try {
 				switch (property.SerializeAs) {
 					case SettingsSerializeAs.String:
-						if (serializedValue is string && ((string) serializedValue).Length > 0)
+						if (serializedValue is string)
 							deserializedObject = TypeDescriptor.GetConverter (property.PropertyType).ConvertFromInvariantString ((string) serializedValue);
 						break;
 #if (XML_DEP)

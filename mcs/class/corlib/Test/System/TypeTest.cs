@@ -1839,7 +1839,7 @@ PublicKeyToken=b77a5c561934e089"));
 			typeof(B).InvokeMember ("", BindingFlags.CreateInstance, null, null, new object [] { 1 });
 		}
 
-		static string bug336841 (string param1, params string [] param2)
+		internal static string bug336841 (string param1, params string [] param2)
 		{
 			StringBuilder sb = new StringBuilder ();
 			sb.Append ("#A:");
@@ -1853,12 +1853,12 @@ PublicKeyToken=b77a5c561934e089"));
 			return sb.ToString ();
 		}
 
-		static string bug336841 (string param1)
+		internal static string bug336841 (string param1)
 		{
 			return "#B:" + param1;
 		}
 
-		static string bug336841 (params string [] param1)
+		internal static string bug336841 (params string [] param1)
 		{
 			StringBuilder sb = new StringBuilder ();
 			sb.Append ("#C:");
@@ -2870,6 +2870,12 @@ PublicKeyToken=b77a5c561934e089"));
 		}
 
 		[Test]
+		public void IsInstanceOfArrayOfNullable ()
+		{
+			Assert.IsTrue (typeof (Nullable<int>[]).IsInstanceOfType (new Nullable<int> [0]));
+		}
+
+		[Test]
 		public void ByrefType ()
 		{
 			Type foo_type = typeof (Foo<>);
@@ -3057,6 +3063,42 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.AreEqual(1, mArgs[0].GetCustomAttributes (typeof (DocAttribute), true).Length, "#1");
 		}
 #endif
+
+		[Test]
+		public void TypeGetMemberReturnTypeTest ()
+		{
+			object obj;
+			MemberTypes memtype;
+			Type testtype;
+			object [] flagsandtypes = new object [] {
+				MemberTypes.All, typeof (MemberInfo []),
+				MemberTypes.Constructor, typeof (ConstructorInfo []),
+				MemberTypes.Custom, typeof (MemberInfo []),
+				MemberTypes.Event, typeof (EventInfo []),
+				MemberTypes.Field, typeof (FieldInfo []),
+				MemberTypes.Method, typeof (MethodInfo []),
+				MemberTypes.NestedType, typeof (Type []),
+				MemberTypes.Property, typeof (PropertyInfo []),
+				MemberTypes.TypeInfo, typeof (Type [])};
+
+			for (int i=0; i < flagsandtypes.Length; i+=2) {
+				memtype = (MemberTypes)flagsandtypes [i];
+				testtype = (Type)flagsandtypes [i+1];
+				obj = GetType ().GetMember ("DummyMember", memtype,
+						BindingFlags.Public | BindingFlags.Instance);
+				Assert.AreEqual (testtype.GetHashCode (), obj.GetType ().GetHashCode (),
+						"Expected " + testtype.FullName);
+			}
+
+		}
+ 
+ 		[Test]
+ 		public void TypeNameStartsWithSpace ()
+		{
+			Type t1 = Type.GetType ("System.Type, mscorlib");
+			Type t2 = Type.GetType (" System.Type, mscorlib");
+			Assert.AreEqual (t1, t2);
+		}
 
 		static bool ContainsProperty (PropertyInfo [] props, string name)
 		{

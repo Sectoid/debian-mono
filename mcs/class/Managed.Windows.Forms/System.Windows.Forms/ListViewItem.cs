@@ -52,8 +52,8 @@ namespace System.Windows.Forms
 		private string image_key = String.Empty;
 		string tooltip_text = String.Empty;
 		int indent_count;
+		Point position = new Point (-1, -1);		// cached to mimic .Net behaviour	
 #endif
-		Point position = new Point (-1, -1);		// cached to mimic .Net behaviour
 		Rectangle bounds = Rectangle.Empty;
 		Rectangle checkbox_rect;	// calculated by CalcListViewItem method
 		Rectangle icon_rect;
@@ -68,6 +68,35 @@ namespace System.Windows.Forms
 
 		internal int row;
 		internal int col;
+
+#if NET_2_0
+	
+		#region UIA Framework: Methods, Properties and Events
+
+		internal event EventHandler UIATextChanged;
+	
+		internal event LabelEditEventHandler UIASubItemTextChanged;
+
+		internal void OnUIATextChanged ()
+		{
+			if (UIATextChanged != null)
+				UIATextChanged (this, EventArgs.Empty);
+		}
+
+		internal void OnUIASubItemTextChanged (LabelEditEventArgs args)
+		{
+			//If our index is 0 we also generate TextChanged for the ListViewItem
+			//because ListViewItem.Text is the same as ListViewItem.SubItems [0].Text
+			if (args.Item == 0)
+				OnUIATextChanged ();
+
+			if (UIASubItemTextChanged != null)
+				UIASubItemTextChanged (this, args);
+		}
+
+		#endregion // UIA Framework: Methods, Properties and Events
+
+#endif
 
 		#endregion Instance Variables
 
@@ -86,7 +115,7 @@ namespace System.Windows.Forms
 
 		public ListViewItem (ListViewItem.ListViewSubItem [] subItems, int imageIndex)
 		{
-			this.sub_items = new ListViewSubItemCollection (this);
+			this.sub_items = new ListViewSubItemCollection (this, null);
 			for (int i = 0; i < subItems.Length; i++)
 				sub_items.Add (subItems [i]);
 			this.image_index = imageIndex;
@@ -95,13 +124,12 @@ namespace System.Windows.Forms
 		public ListViewItem (string text, int imageIndex)
 		{
 			this.image_index = imageIndex;
-			this.sub_items = new ListViewSubItemCollection (this);
-			this.sub_items.Add (text);
+			this.sub_items = new ListViewSubItemCollection (this, text);
 		}
 
 		public ListViewItem (string [] items, int imageIndex)
 		{
-			this.sub_items = new ListViewSubItemCollection (this);
+			this.sub_items = new ListViewSubItemCollection (this, null);
 			if (items != null) {
 				for (int i = 0; i < items.Length; i++)
 					sub_items.Add (new ListViewSubItem (this, items [i]));
@@ -130,7 +158,7 @@ namespace System.Windows.Forms
 
 		public ListViewItem(ListViewSubItem[] subItems, string imageKey)
 		{
-			this.sub_items = new ListViewSubItemCollection (this);
+			this.sub_items = new ListViewSubItemCollection (this, null);
 			for (int i = 0; i < subItems.Length; i++)
 				this.sub_items.Add (subItems [i]);
 			this.ImageKey = imageKey;
@@ -301,6 +329,10 @@ namespace System.Windows.Forms
 					prev_focused_item.UpdateFocusedState ();
 					
 				owner.focused_item_index = value ? Index : -1;
+#if NET_2_0
+				if (value)
+					owner.OnUIAFocusedItemChanged ();
+#endif
 
 				UpdateFocusedState ();
 			}
@@ -597,6 +629,12 @@ namespace System.Windows.Forms
 				if (owner != null)
 					Layout ();
 				Invalidate ();
+
+#if NET_2_0
+				//UIA Framework: Generates Text changed
+				OnUIATextChanged ();
+
+#endif 
 			}
 		}
 
@@ -661,7 +699,7 @@ namespace System.Windows.Forms
 			clone.selected = this.selected;
 			clone.font = this.font;
 			clone.state_image_index = this.state_image_index;
-			clone.sub_items = new ListViewSubItemCollection (this);
+			clone.sub_items = new ListViewSubItemCollection (this, null);
 			
 			foreach (ListViewSubItem subItem in this.sub_items)
 				clone.sub_items.Add (subItem.Text, subItem.ForeColor,
@@ -773,50 +811,77 @@ namespace System.Windows.Forms
 		#region Protected Methods
 		protected virtual void Deserialize (SerializationInfo info, StreamingContext context)
 		{
-			sub_items = new ListViewSubItemCollection (this);
+			sub_items = new ListViewSubItemCollection (this, null);
+			int sub_items_count = 0;
 
-			Type lvsubitem_type = typeof (ListViewSubItem);
-
-			int count = info.GetInt32 ("subitems_count");
-			if (count > 0) {
-				sub_items.Clear ();
-
-				ListViewSubItem [] si = new ListViewSubItem [count];
-				for (int i = 0; i < count; i++)
-					si [i] = (ListViewSubItem) info.GetValue ("subitem" + i, lvsubitem_type);
-
-				sub_items.AddRange (si);
+			foreach (SerializationEntry entry in info) {
+				switch (entry.Name) {
+					case "Text":
+						sub_items.Add ((string)entry.Value);
+						break;
+					case "Font":
+						font = (Font)entry.Value;
+						break;
+					case "Checked":
+						is_checked = (bool)entry.Value;
+						break;
+					case "ImageIndex":
+						image_index = (int)entry.Value;
+						break;
+					case "StateImageIndex":
+						state_image_index = (int)entry.Value;
+						break;
+					case "UseItemStyleForSubItems":
+						use_item_style = (bool)entry.Value;
+						break;
+					case "SubItemCount":
+						sub_items_count = (int)entry.Value;
+						break;
+#if NET_2_0
+					case "Group":
+						group = (ListViewGroup)entry.Value;
+						break;
+					case "ImageKey":
+						if (image_index == -1)
+							image_key = (string)entry.Value;
+						break;
+#endif
+				}
 			}
 
-			font = (Font) info.GetValue ("font", typeof (Font));
-			is_checked = info.GetBoolean ("is_checked");
-			image_index = info.GetInt32 ("image_index");
-			state_image_index = info.GetInt32 ("state_image_index");
-			use_item_style = info.GetBoolean ("use_item_style");
-#if NET_2_0
-			group = (ListViewGroup) info.GetValue ("group", typeof (ListViewGroup));
-			if (image_index == -1)
-				image_key = info.GetString ("image_key");
-#endif
+			Type subitem_type = typeof (ListViewSubItem);
+			if (sub_items_count > 0) {
+				sub_items.Clear (); // .net fixup
+				Text = info.GetString ("Text");
+				for (int i = 0; i < sub_items_count - 1; i++)
+					sub_items.Add ((ListViewSubItem)info.GetValue ("SubItem" + (i + 1), subitem_type));
+			}
 
+			// After any sub item has been added.
+			ForeColor = (Color)info.GetValue ("ForeColor", typeof (Color));
+			BackColor = (Color)info.GetValue ("BackColor", typeof (Color));
 		}
 
 		protected virtual void Serialize (SerializationInfo info, StreamingContext context)
 		{
-			info.AddValue ("subitems_count", sub_items.Count);
-			for (int i = 0; i < sub_items.Count; i++)
-				info.AddValue ("subitem" + i, sub_items [i]);
-
-			info.AddValue ("font", Font);
-			info.AddValue ("image_index", image_index);
-			info.AddValue ("is_checked", is_checked);
-			info.AddValue ("state_image_index", state_image_index);
-			info.AddValue ("use_item_style", use_item_style);
+			info.AddValue ("Text", Text);
+			info.AddValue ("Font", Font);
+			info.AddValue ("ImageIndex", image_index);
+			info.AddValue ("Checked", is_checked);
+			info.AddValue ("StateImageIndex", state_image_index);
+			info.AddValue ("UseItemStyleForSubItems", use_item_style);
+			info.AddValue ("BackColor", BackColor);
+			info.AddValue ("ForeColor", ForeColor);
 #if NET_2_0
-			info.AddValue ("image_key", image_key);
-			info.AddValue ("group", group);
+			info.AddValue ("ImageKey", image_key);
+			info.AddValue ("Group", group);
 #endif
-
+			if (sub_items.Count > 1) {
+				info.AddValue ("SubItemCount", sub_items.Count);
+				for (int i = 1; i < sub_items.Count; i++) {
+					info.AddValue ("SubItem" + i, sub_items [i]);
+				}
+			}
 		}
 		#endregion	// Protected Methods
 
@@ -893,11 +958,11 @@ namespace System.Windows.Forms
 			this.group = group;
 		}
 
-#endif
 		internal void SetPosition (Point position)
 		{
 			this.position = position;
 		}
+#endif	
 
 		// When focus changed, we need to invalidate area
 		// with previous layout and with the new one
@@ -1056,6 +1121,9 @@ namespace System.Windows.Forms
 				break;
 #if NET_2_0
 			case View.Tile:
+				if (!Application.VisualStylesEnabled)
+					goto case View.LargeIcon;
+
 				label_rect = icon_rect = Rectangle.Empty;
 
 				if (owner.LargeImageList != null) {
@@ -1129,19 +1197,38 @@ namespace System.Windows.Forms
 		[TypeConverter (typeof(ListViewSubItemConverter))]
 		public class ListViewSubItem
 		{
-			private Color back_color;
-			private Font font;
-			private Color fore_color;
+			[NonSerialized]
 			internal ListViewItem owner;
 			private string text = string.Empty;
 #if NET_2_0
-			private string name = String.Empty;
-			private object tag;
+			private string name;
+			private object userData;
 #endif
+			private SubItemStyle style;
+			[NonSerialized]
 			internal Rectangle bounds;
+
+#if NET_2_0
+		
+			#region UIA Framework: Methods, Properties and Events
+		
+			[field:NonSerialized]
+			internal event EventHandler UIATextChanged;
+
+			private void OnUIATextChanged ()
+			{
+				if (UIATextChanged != null)
+					UIATextChanged (this, EventArgs.Empty);
+			}
+
+			#endregion // UIA Framework: Methods, Properties and Events
+
+#endif
 			
 			#region Public Constructors
 			public ListViewSubItem ()
+				: this (null, string.Empty, Color.Empty,
+					Color.Empty, null)
 			{
 			}
 
@@ -1156,23 +1243,22 @@ namespace System.Windows.Forms
 			{
 				this.owner = owner;
 				Text = text;
-				this.fore_color = foreColor;
-				this.back_color = backColor;
-				this.font = font;
+				this.style = new SubItemStyle (foreColor,
+					backColor, font);
 			}
 			#endregion // Public Constructors
 
 			#region Public Instance Properties
 			public Color BackColor {
 				get {
-					if (this.back_color != Color.Empty)
-						return this.back_color;
+					if (style.backColor != Color.Empty)
+						return style.backColor;
 					if (this.owner != null && this.owner.ListView != null)
 						return this.owner.ListView.BackColor;
 					return ThemeEngine.Current.ColorWindow;
 				}
 				set { 
-					back_color = value; 
+					style.backColor = value;
 					Invalidate ();
 				}
 			}
@@ -1199,30 +1285,30 @@ namespace System.Windows.Forms
 			[Localizable (true)]
 			public Font Font {
 				get {
-					if (font != null)
-						return font;
+					if (style.font != null)
+						return style.font;
 					else if (owner != null)
 						return owner.Font;
 					return ThemeEngine.Current.DefaultFont;
 				}
-				set { 
-					if (font == value)
+				set {
+					if (style.font == value)
 						return;
-					font = value; 
+					style.font = value; 
 					Invalidate ();
-				    }
+				}
 			}
 
 			public Color ForeColor {
 				get {
-					if (this.fore_color != Color.Empty)
-						return this.fore_color;
+					if (style.foreColor != Color.Empty)
+						return style.foreColor;
 					if (this.owner != null && this.owner.ListView != null)
 						return this.owner.ListView.ForeColor;
 					return ThemeEngine.Current.ColorWindowText;
 				}
-				set { 
-					fore_color = value; 
+				set {
+					style.foreColor = value;
 					Invalidate ();
 				}
 			}
@@ -1231,10 +1317,12 @@ namespace System.Windows.Forms
 			[Localizable (true)]
 			public string Name {
 				get {
+					if (name == null)
+						return string.Empty;
 					return name;
 				}
 				set {
-					name = value == null ? String.Empty : value;
+					name = value;
 				}
 			}
 
@@ -1244,10 +1332,10 @@ namespace System.Windows.Forms
 			[Localizable (false)]
 			public object Tag {
 				get {
-					return tag;
+					return userData;
 				}
 				set {
-					tag = value;
+					userData = value;
 				}
 			}
 #endif
@@ -1265,6 +1353,11 @@ namespace System.Windows.Forms
 					      	text = value; 
 
 					Invalidate ();
+
+#if NET_2_0
+					// UIA Framework: Generates SubItem TextChanged
+					OnUIATextChanged ();
+#endif
 				    }
 			}
 			#endregion // Public Instance Properties
@@ -1272,9 +1365,7 @@ namespace System.Windows.Forms
 			#region Public Methods
 			public void ResetStyle ()
 			{
-				font = ThemeEngine.Current.DefaultFont;
-				back_color = ThemeEngine.Current.DefaultControlBackColor;
-				fore_color = ThemeEngine.Current.DefaultControlForeColor;
+				style.Reset ();
 				Invalidate ();
 			}
 
@@ -1284,7 +1375,6 @@ namespace System.Windows.Forms
 			}
 			#endregion // Public Methods
 
-			
 			#region Private Methods
 			private void Invalidate ()
 			{
@@ -1293,6 +1383,15 @@ namespace System.Windows.Forms
 
 				owner.Invalidate ();
 			}
+
+#if NET_2_0
+			[OnDeserialized]
+			void OnDeserialized (StreamingContext context)
+			{
+				name = null;
+				userData = null;
+			}
+#endif
 
 			internal int Height {
 				get {
@@ -1306,6 +1405,32 @@ namespace System.Windows.Forms
 			}
 
 			#endregion // Private Methods
+
+			[Serializable]
+			class SubItemStyle
+			{
+				public SubItemStyle ()
+				{
+				}
+
+				public SubItemStyle (Color foreColor, Color backColor, Font font)
+				{
+					this.foreColor = foreColor;
+					this.backColor = backColor;
+					this.font = font;
+				}
+
+				public void Reset ()
+				{
+					foreColor = Color.Empty;
+					backColor = Color.Empty;
+					font = null;
+				}
+
+				public Color backColor;
+				public Color foreColor;
+				public Font font;
+			}
 		}
 
 		public class ListViewSubItemCollection : IList, ICollection, IEnumerable
@@ -1314,13 +1439,18 @@ namespace System.Windows.Forms
 			internal ListViewItem owner;
 
 			#region Public Constructors
-			public ListViewSubItemCollection (ListViewItem owner)
+			public ListViewSubItemCollection (ListViewItem owner) : this (owner, owner.Text)
 			{
-				this.owner = owner;
-				this.list = new ArrayList ();
  			}
 			#endregion // Public Constructors
 
+			internal ListViewSubItemCollection (ListViewItem owner, string text)
+			{
+				this.owner = owner;
+				this.list = new ArrayList ();
+				if (text != null)
+					Add (text);
+			}
 			#region Public Properties
 			[Browsable (false)]
 			public int Count {
@@ -1446,6 +1576,11 @@ namespace System.Windows.Forms
 			{
 				subItem.owner = owner;
 				list.Add (subItem);
+
+#if NET_2_0
+				//UIA Framework
+				subItem.UIATextChanged += OnUIASubItemTextChanged;
+#endif
 			}
 
 			public void Clear ()
@@ -1483,6 +1618,10 @@ namespace System.Windows.Forms
 
 				ListViewSubItem sub_item = (ListViewSubItem) item;
 				sub_item.owner = this.owner;
+#if NET_2_0
+				//UIA Framework
+				sub_item.UIATextChanged += OnUIASubItemTextChanged;
+#endif
 				return list.Add (sub_item);
 			}
 
@@ -1549,6 +1688,11 @@ namespace System.Windows.Forms
 				list.Insert (index, item);
 				owner.Layout ();
 				owner.Invalidate ();
+
+#if NET_2_0
+				//UIA Framework
+				item.UIATextChanged += OnUIASubItemTextChanged;
+#endif
 			}
 
 			public void Remove (ListViewSubItem item)
@@ -1556,6 +1700,11 @@ namespace System.Windows.Forms
 				list.Remove (item);
 				owner.Layout ();
 				owner.Invalidate ();
+
+#if NET_2_0
+				//UIA Framework
+				item.UIATextChanged -= OnUIASubItemTextChanged;
+#endif
 			}
 
 #if NET_2_0
@@ -1569,9 +1718,28 @@ namespace System.Windows.Forms
 
 			public void RemoveAt (int index)
 			{
+#if NET_2_0
+				//UIA Framework
+				if (index >= 0 && index < list.Count)
+					((ListViewSubItem) list [index]).UIATextChanged -= OnUIASubItemTextChanged;
+#endif
+
 				list.RemoveAt (index);
+
 			}
 			#endregion // Public Methods
+#if NET_2_0
+			#region UIA Event Handler
+			
+			private void OnUIASubItemTextChanged (object sender, EventArgs args)
+			{
+				owner.OnUIASubItemTextChanged (new LabelEditEventArgs (list.IndexOf (sender)));
+			}
+
+			#endregion
+
+#endif
+
 		}
 		#endregion // Subclasses
 	}

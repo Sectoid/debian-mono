@@ -66,6 +66,7 @@ void ves_icall_System_Diagnostics_FileVersionInfo_GetVersionInfo_internal (MonoO
 MonoBoolean ves_icall_System_Diagnostics_Process_ShellExecuteEx_internal (MonoProcessStartInfo *proc_start_info, MonoProcInfo *process_handle) MONO_INTERNAL;
 MonoBoolean ves_icall_System_Diagnostics_Process_CreateProcess_internal (MonoProcessStartInfo *proc_start_info, HANDLE stdin_handle, HANDLE stdout_handle, HANDLE stderr_handle, MonoProcInfo *process_handle) MONO_INTERNAL;
 MonoBoolean ves_icall_System_Diagnostics_Process_WaitForExit_internal (MonoObject *this, HANDLE process, gint32 ms) MONO_INTERNAL;
+MonoBoolean ves_icall_System_Diagnostics_Process_WaitForInputIdle_internal (MonoObject *this, HANDLE process, gint32 ms) MONO_INTERNAL;
 gint64 ves_icall_System_Diagnostics_Process_ExitTime_internal (HANDLE process) MONO_INTERNAL;
 gint64 ves_icall_System_Diagnostics_Process_StartTime_internal (HANDLE process) MONO_INTERNAL;
 gint32 ves_icall_System_Diagnostics_Process_ExitCode_internal (HANDLE process) MONO_INTERNAL;
@@ -76,6 +77,7 @@ MonoBoolean ves_icall_System_Diagnostics_Process_Kill_internal (HANDLE process, 
 gint64 ves_icall_System_Diagnostics_Process_Times (HANDLE process, gint32 type) MONO_INTERNAL;
 gint32 ves_icall_System_Diagnostics_Process_GetPriorityClass (HANDLE process, gint32 *error) MONO_INTERNAL;
 MonoBoolean ves_icall_System_Diagnostics_Process_SetPriorityClass (HANDLE process, gint32 priority_class, gint32 *error) MONO_INTERNAL;
+gint64 ves_icall_System_Diagnostics_Process_GetProcessData (int pid, gint32 data_type, gint32 *error) MONO_INTERNAL;
 
 HANDLE ves_icall_System_Diagnostics_Process_ProcessHandle_duplicate (HANDLE process);
 void ves_icall_System_Diagnostics_Process_ProcessHandle_close (HANDLE process);

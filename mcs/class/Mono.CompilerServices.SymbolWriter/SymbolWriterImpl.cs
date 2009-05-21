@@ -262,7 +262,7 @@ namespace Mono.CompilerServices.SymbolWriter
 			}
 			ni.UsingClauses.Add (fullName);
 		}
-		
+
 		int GetCurrentNamespace (ISymbolDocumentWriter doc)
 		{
 			if (namespaceStack.Count == 0) {
@@ -285,6 +285,7 @@ namespace Mono.CompilerServices.SymbolWriter
 			}
 			return ni.NamespaceID;
 		}
+
 	}
 	
 	class SymbolDocumentWriterImpl: ISymbolDocumentWriter, ISourceFile, ICompileUnit

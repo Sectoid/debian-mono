@@ -35,6 +35,11 @@
 #include <mono/io-layer/handles-private.h>
 #include <mono/io-layer/socket-wrappers.h>
 
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
 #undef DEBUG
 
 static guint32 startup_count=0;
@@ -749,8 +754,8 @@ int _wapi_setsockopt(guint32 fd, int level, int optname,
 		return(SOCKET_ERROR);
 	}
 
-#if defined(__FreeBSD__)
-	/* FreeBSD's multicast sockets also need SO_REUSEPORT when SO_REUSEADDR is requested.  */
+#if defined(SO_REUSEPORT)
+	/* BSD's and MacOS X multicast sockets also need SO_REUSEPORT when SO_REUSEADDR is requested.  */
 	if (level == SOL_SOCKET && optname == SO_REUSEADDR) {
 		int type;
 		int type_len = sizeof (type);

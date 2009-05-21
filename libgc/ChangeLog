@@ -1,3 +1,14 @@
+2009-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* include/private/gcconfig.h: Applied patch from Koushik Dutta
+	(koush@koushikdutta.com). Define SEARCH_FOR_DATA_START for android.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* include/private/gc_locks.h (test_and_set): The PPC64 case is
+	wrong, as it operates on 64 bit values, not on 32 bit ones as the
+	function requires.  The PPC32 case is sufficient.
+
 2008-09-29  Geoff Norton  <gnorton@novell.com>
 
 	* include/private/gcconfig.h: Make Darwin/ARM use mmap() instead of
@@ -13,6 +24,17 @@
 	* pthread_support.c: GCC shipped with SLES9 ppc gets confused with our current
 	GC_setspecific define.  Unfold the define into a static inline on all platforms
 	except ppc where it is a static leaf function.
+
+2008-08-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* include/private/gc_locks.h: Add amd64 support so parallel mark works on
+	amd64 too.
+
+2008-08-05  Andreas Färber  <andreas.faerber@web.de>
+
+	* autogen.sh: Suppress arguments warning for NOCONFIGURE.
+	
+	Contributed under MIT/X11 license.
 
 2008-08-03  Zoltan Varga  <vargaz@gmail.com>
 

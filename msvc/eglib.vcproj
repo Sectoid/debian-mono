@@ -45,7 +45,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="../eglib/src;../eglib"
-				PreprocessorDefinitions="_DEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
+				PreprocessorDefinitions="_DEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -177,7 +177,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				AdditionalIncludeDirectories="../eglib/src;../eglib"
-				PreprocessorDefinitions="NDEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
+				PreprocessorDefinitions="NDEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="4"
@@ -305,7 +305,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="../eglib/src;../eglib"
-				PreprocessorDefinitions="_DEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
+				PreprocessorDefinitions="_DEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -437,7 +437,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				AdditionalIncludeDirectories="../eglib/src;../eglib"
-				PreprocessorDefinitions="NDEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
+				PreprocessorDefinitions="NDEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_LIB;_CRT_NONSTDC_NO_DEPRECATE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="4"
@@ -552,15 +552,23 @@
 				>
 			</File>
 			<File
-				RelativePath="..\eglib\src\gdate.c"
+				RelativePath="..\eglib\src\gdate-win32.c"
 				>
 			</File>
 			<File
-				RelativePath="..\eglib\src\gdir.c"
+				RelativePath="..\eglib\src\gdir-win32.c"
 				>
 			</File>
 			<File
 				RelativePath="..\eglib\src\gerror.c"
+				>
+			</File>
+			<File
+				RelativePath="..\eglib\src\gfile-posix.c"
+				>
+			</File>
+			<File
+				RelativePath="..\eglib\src\gfile-win32.c"
 				>
 			</File>
 			<File
@@ -584,11 +592,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\eglib\src\gmisc.c"
+				RelativePath="..\eglib\src\gmisc-win32.c"
 				>
 			</File>
 			<File
-				RelativePath="..\eglib\src\gmodule.c"
+				RelativePath="..\eglib\src\gmodule-win32.c"
 				>
 			</File>
 			<File
@@ -632,7 +640,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\eglib\src\gtimer.c"
+				RelativePath="..\eglib\src\gtimer-win32.c"
 				>
 			</File>
 			<File

@@ -1952,6 +1952,34 @@ namespace MonoTests.System.Xml
 		}
 
 		[Test]
+		public void ReadContentStringOnEndElement ()
+		{
+			XmlReader xr = XmlReader.Create (new StringReader ("<a>test</a>"));
+			xr.Read ();
+			xr.Read ();
+			xr.Read ();
+			AssertEquals (String.Empty, xr.ReadContentAsString ()); // does not fail, unlike at Element!
+		}
+
+		[Test]
+		public void ReadContentStringOnPI ()
+		{
+			XmlReader xr = XmlReader.Create (new StringReader ("<?pi ?><a>test</a>"));
+			xr.Read ();
+			AssertEquals (String.Empty, xr.ReadContentAsString ());
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))] // unlike ReadContentAsString()
+		public void ReadElementContentStringOnPI ()
+		{
+			XmlReader xr = XmlReader.Create (new StringReader ("<?pi ?><a>test</a>"));
+			xr.Read ();
+			AssertEquals (XmlNodeType.ProcessingInstruction, xr.NodeType);
+			xr.ReadElementContentAsString ();
+		}
+
+		[Test]
 		[ExpectedException (typeof (XmlException))]
 		public void ReadElementContentStringMixedContent ()
 		{
@@ -2053,6 +2081,86 @@ namespace MonoTests.System.Xml
 			sub.Close ();
 			AssertEquals ("#1", XmlNodeType.EndElement, reader.NodeType);
 			AssertEquals ("#2", "item-list", reader.Name);
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void ReadSubtreeOnNonElement ()
+		{
+			string xml = @"<x> <y/></x>";
+			XmlReader r = XmlReader.Create (new StringReader (xml));
+			r.Read (); // x
+			r.Read (); // ws
+			r.ReadSubtree ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void ReadSubtreeOnNonElement2 ()
+		{
+			string xml = @"<x> <y/></x>";
+			XmlReader r = XmlReader.Create (new StringReader (xml));
+			r.ReadSubtree ();
+		}
+
+		[Test]
+		public void ReadSubtreeEmptyElement ()
+		{
+			string xml = @"<x/>";
+			XmlReader r = XmlReader.Create (new StringReader (xml));
+			r.Read ();
+			XmlReader s = r.ReadSubtree ();
+			Assert ("#1", s.Read ());
+			AssertEquals ("#2", XmlNodeType.Element, s.NodeType);
+			Assert ("#3", !s.Read ());
+			AssertEquals ("#4", XmlNodeType.None, s.NodeType);
+		}
+
+		[Test]
+		public void ReadSubtreeEmptyElementWithAttribute ()
+		{
+			string xml = @"<root><x a='b'/></root>";
+			XmlReader r = XmlReader.Create (new StringReader (xml));
+			r.Read ();
+			r.Read ();
+			XmlReader r2 = r.ReadSubtree ();
+			Console.WriteLine ("X");
+			r2.Read ();
+			XmlReader r3 = r2.ReadSubtree ();
+			r2.MoveToFirstAttribute ();
+			Assert ("#1", !r.IsEmptyElement);
+			Assert ("#2", !r2.IsEmptyElement);
+			r3.Close ();
+			Assert ("#3", r.IsEmptyElement);
+			Assert ("#4", r2.IsEmptyElement);
+			r2.Close ();
+			Assert ("#5", r.IsEmptyElement);
+			Assert ("#6", r2.IsEmptyElement);
+		}
+
+		[Test]
+		public void ReadContentAsBase64 ()
+		{
+			byte[] randomData = new byte[24];
+			for (int i = 0; i < randomData.Length; i++)
+				randomData [i] = (byte) i;
+
+			string xmlString = "<?xml version=\"1.0\"?><data>" +
+			Convert.ToBase64String (randomData) + "</data>";
+			TextReader textReader = new StringReader (xmlString);
+			XmlReader xmlReader = XmlReader.Create (textReader);
+			xmlReader.ReadToFollowing ("data");
+
+			int readBytes = 0;
+			byte[] buffer = new byte [24];
+
+			xmlReader.ReadStartElement ();
+			readBytes = xmlReader.ReadContentAsBase64 (buffer, 0, buffer.Length);
+			AssertEquals ("#1", 24, readBytes);
+			AssertEquals ("#2", 0, xmlReader.ReadContentAsBase64 (buffer, 0, buffer.Length));
+			StringWriter sw = new StringWriter ();
+			foreach (byte b in buffer) sw.Write ("{0:X02}", b);
+			AssertEquals ("#3", "000102030405060708090A0B0C0D0E0F1011121314151617", sw.ToString ());
 		}
 #endif
 	}

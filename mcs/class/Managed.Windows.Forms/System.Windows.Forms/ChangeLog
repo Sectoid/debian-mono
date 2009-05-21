@@ -1,6 +1,2324 @@
+2009-02-24  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCell.cs: Invalidate the datagrid when the cell is selected 
+	or deselected.
+	[Fixes bug #479124]
+
+2009-02-23  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Make the ScrollBars property work properly.
+
+2009-02-22  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix row removal in the data-bound scenario.
+
+2009-02-19  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCell.cs: Use strict equality comparison in order to 
+	prevent superfluous CellValueChanged events.
+
+2009-02-19  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Do not reset the columns when the data list changes, 
+	but only the rows. Fixes multiple bugs related to sorting, custom 
+	column styles being reset and more.
+
+2009-02-07  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: End or if end fails then cancel the current edit 
+	operation before clearing the data source.
+
+2009-02-07  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Data-bind only after the handle is created.
+	[Fixes bug #473680]
+
+2009-02-05  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewRowCollection.cs, DataGridView.cs: Fix row insertation: 
+	   - Use ArrayList.Insert instead of the Item property so that the item 
+	   is actually inserted and not an existing item replaced.
+	   - Call DataGridView.OnRowsAddedInternal and drop internal from 
+	   OnRowsAdded for binary compitability. This also fixes several 
+	   redrawing issues.
+	[Fixes bug #472968]
+
+2009-02-05  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+        * ToolBarButton.cs: OnTextChanged added.
+	(Backport of r125802.) r: jpobst
+
+2009-02-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewRowCollection.cs, DataGridView.cs: Move row completion 
+	code in the row collection code, so that the completion happens before 
+	the CollectionChanged event, also better encapsulation.
+	[Fixes bug #471987]
+
+2009-02-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: When editing is finished do not remove the editing 
+	row, because it has already become a real one. Instead add a new one.
+	[Fixes bug #471754]
+
+2009-02-02  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+        * ToolBar.cs: Add new UIAPerformClick method to be called by   
+        UIAutomationWinforms when someone calls Invoke() on the    
+        ToolBarButtonProvider. (Backport of r125354.) r: jpobst
+
+2009-02-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Complete incomplete rows when they are added to 
+	the grid.
+	[Fixes bug #471068]
+
+2009-02-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs, DataGridViewColumnCollection.cs: Ensure that the 
+	binding is cleared prior to setting it to null. Fixes a regression 
+	causing exceptions when the DataSource is set to null and then set 
+	again to a data source.
+
+2009-02-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs, DataGridViewImageColumn.cs, DataGridViewCell.cs: 
+	   - Make Image/Bitmap cells work.
+	   - Handle images with size greater than the cell.
+	   - Default to MiddleCenter alignment for image cells.
+	[Fixes bug #471101]
+
+2009-01-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+        * XplatUIX11.cs: We should use utf8 handling clipboard transference
+        with other x11 applications, and use utf16 when handling clipboard
+        data in the class library. Update the related points as well.
+        Fixes #468683.
+
+2009-01-28  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCell.cs: Format strings according to the supplied 
+	CellStyle.Format.
+	[Fixes bug #470384]
+
+2009-01-28  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Reset the hover cell if it gets moved due to row(s) 
+	addition or removal. Fixes multiple crashes in OnMouseMove.
+
+2009-01-28  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeNode.cs: NextVisibleNode and PrevVisibleNode properties don't
+	take into account the fact that OpenTreeNodeEnumerator needs to call
+	MoveNext/MovePrevious to actually put the passed node as the one
+	retrieved in Current. This way this property should work as really
+	expected in .net.
+	Fixes part of #467225.
+
+2009-01-28  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* TreeView.cs: When calculating the scrollbars, don't use
+	TreeNode.Bounds, since it still can have the values of the previous
+	-and now invalid- layout -which depends on TreeView.skipped_nodes, and
+	could not have been updated as well-, and use the actual number of
+	visible number of nodes to compute the height needed to contain all
+	the nodes. Also reset the value of vbar to 0 when disabled - this way
+	we make sure that, when re-enabled, it will update the visible area of
+	the treeview, even if the previous value before disabling it is the
+	same as now. Finally don't do anything for the vbar.ValueChanged
+	handler - for the case wheer we manually set the value but don't the
+	vbar is disabled already.
+	Fixes part of #467225.
+
+2009-01-28  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeView.cs: In CollapseAll, set vbar to the maximum value, instead 
+	of trying to set as top node the highest parent of the previous
+	top node. Moving to the bottom of the TreeView after a call
+	to CollapseAll is exactly what .net does. This should avoid some
+	nasty issue when CollapseAll is called and we don't need the
+	vertical scroll bar.
+	
+2009-01-27  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix a NRE when setting the CurrentCell to null.
+
+2009-01-27  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs: Fire Timer.Tick even if there is no MainForm for the 
+	current context.
+	[Fixes bug #469239]
+
+2009-01-26  Andreia Gaita  <avidigal@novell.com>
+
+	* WebBrowser.cs: fix initial value of ScrollbarsEnabled, so they
+	won't be disabled by default.
+	Fixes #468690
+
+2009-01-26  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Do not clear the rows if we are not databound.
+
+2009-01-26  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Do not be too smart about selecting the first cell 
+	when the first row is added as this is not what MS does. Fixes the 
+	failing unit tests.
+
+2009-01-23  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs, DataGridViewCell.cs: Fix crashes when there is no 
+	editing control.
+
+2009-01-23  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix new row adding/editing in the non-databound 
+	scenario.
+
+2009-01-21  Neville Gao  <nevillegao@gmail.com>
+
+	* ToolBar.cs: Backported r124045: Control enabled to support
+	accessibility. Added UIACollectionChangedEvent.
+	[Fixes Bug #455950]
+
+2009-01-21  Mike Gorse  <mgorse@novell.com>
+
+	* TrackBar.cs: Backported R124116: Make LargeIncrement/Decrement
+	  internal so that UIA can use them.
+	  Added UIAValueParamChangedEvent.
+
+2009-01-21  Mario Carrion <mcarrion@novell.com>
+	
+	* Form.cs: Backported r124064: UIA Support: Internal events 
+	added: UIAWindowStateChanged and UIATopMostChanged.
+
+2009-01-21  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* MenuItem.cs: Add UIACheckChanged, UIARadioCheckChanged,
+	UIAEnabledChanged, and UIATextChanged events.
+
+	* Form.cs: Add UIAMenuChanged event.
+
+	* Menu.cs:
+	* MenuAPI.cs: Note which internal APIs are being used by UIA.
+
+2009-01-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeView.cs: When handling mouse up event, check whether
+	highlighted_node is null or not - usually it should be non-null
+	alwaays, since the mouse down handler sets it, but some externa
+	operations, such TreeNodeCollection.Clear, could set it to null.
+	Fixes #438650.
+
+2009-01-19  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ThemeWin32Classic.cs: Draw the menu item shortcut even if the menu 
+	item is disabled.
+
+2009-01-19  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* MenuAPI.cs: Do not handle shortcuts if the menu item is disabled.
+	[Fixes bug #467285]
+
+2009-01-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MonthCalendar.cs: When handling the selection changes using the
+	mouse, don't set SelectionRange if the selection range didn't actually
+	change. This matters because, even if we set the range to the same
+	previous range, an extra DateChanged event is fired. Just to be clear:
+	SelectionRage property doesn't check whether the new value is
+	different to the previous one (by ref equals doesn't work here).
+	Fixes other bits of #364914.
+
+2009-01-19  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* MonthCalendar.cs: Remove the extra OnDateChanged call when handling
+	selection using the keyboard, since we are already firing this event
+	when setting SelectionRange. Also don't set SelectionRange if the
+	previous and the new value are the same (the property, just as .net
+	does, doesn't check whether the previous value and the new one are the
+	same). This saves us from firing OnDateChanged event if the selection
+	range didn't change actually.
+	Fixes the remaining bits of #364914.
+
+2009-01-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListBox.cs: When removing an item and the last item is selected,
+	remove it from the selection, and if selection mode is One try to
+	select the new last item.
+	Fixes #465422.
+
+2009-01-16  Mike Gorse  <mgorse@novell.com>
+
+	* Splitter.cs: Make MaxSize internal so that UIA code can use it.
+
+2009-01-16  Mario Carrion <mcarrion@novell.com>
+
+	* ColumnHeader.cs: UIA Support: raising internal event UIATextChanged 
+	when changing Text. 
+
+2009-01-16  Carlos Alberto Cortez <calberto.cortez@ggmail.com>
+
+	* X11Structs.cs:
+	* XplatUIX11.cs: Properly encode/decode the unicode strings we
+	store/retrieve in the Clipboard. Also, since we try to convert the
+	data to different formats, separate the source and the result of
+	it, so we can always fallback to the original and don't mix wrong
+	conversions.
+
+2009-01-16  Mike Gorse  <mgorse@novell.com>
+
+	* TextControl.cs: Add UIASelectionChanged event.
+
+2009-01-16  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Forward the first key events to the editing control.
+	[Fixes bug #457307]
+
+2009-01-14  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Application.cs: Oops, launch the copied handler of PreRun instead of
+	the global one (gendarme would bark otherwise). (Improving r123375)
+
+2009-01-14  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* XplatUI.cs:
+	* Application.cs: Move the PreRun event fire to the end of the XplatUI
+	static ctor (we don't move the PreRun event to this class because its
+	usage would cause the call to the static ctor). This way we can get
+	a11y support for dialogs that run without App.Run.
+
+2009-01-14  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* ListView.cs: New internal property to know the inner array's length of
+	the location of items, in order to avoid a try-catch strategy for the
+	case when this array has not been resized yet (for reference, look at
+	r123288). r: jpobst
+
+2009-01-13  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Application.cs: Simplify UIA initialization, reducing it from 4 to 1
+	reflection calls. This requires UIAutomationWinforms r123213.
+
+2009-01-12  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* MonthCalendar.cs: Detect selection changes in MouseDown/MouseMove
+	handlers and fire the DateSelected event until MouseUp is reached,
+	like .net does, instead of firing it for each mouse event.
+	Fixes part of #364914.
+
+2009-01-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeView.cs: When the selection gets canceled using the BeforeSelect
+	event, invalidate the previous highlighted_node bounds, to show the
+	user that the item was *not* selected.
+	Fixes #464191.
+
+2009-01-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ComboBox.cs: Separate some scroll logic: setting SelectedIndex, as
+	well as -in DropDown and Simple modes- writing in the textbox should
+	try to set the requested item as the top one, but navigating with the
+	keyboard and handling mouse selection don't need that behaviour. Also,
+	when resetting selected_index handling key press events, reset
+	ComboListBox.HighlightIndex. 
+	Fixes the remaining bits of #464188.
+
+2009-01-11  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix crashes when shortcut keys are pressed, but 
+	there are no cells:
+	   - CurrentCellAddress should be -1, -1 and not 0, 0.
+	   - Be tolerant and fall back to clearing the current cell if either 
+	   column or row is -1 in MoveCurrentCell.
+	   - Misc. more -1 checks.
+
+2009-01-11  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Preserve the column index. Fixes a regression 
+	introduced by the data binding position tracking code.
+
+2009-01-11  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: If the bottom of the row matches the client height 
+	do not regard the row as partially visible. Fixes the weird scrolling 
+	when there is no scrollbar.
+
+2009-01-11  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewComboBoxCell.cs: Implement/Fix the data binding.
+
+2009-01-09  Mario Carrion  <mcarrion@novell.com>
+
+	* MessageBox.cs: Fixed internal UIAIconRectangle property.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCheckBoxCell.cs: Respect the ReadOnly state of the Cell.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Track the Position in the CurrencyManager.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Implement data-bound new item editing/addition.
+	* DataGridViewRowCollection.cs: Make it possible for us to internally 
+	remove the edit row.
+	[Fixes bugs #457107, #457308, #325240]
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* CurrencyManager.cs: Even if Position is set to a greater value than the 
+	list count reset it to position of the last item.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* BindingSource.cs: AddNew doesn't set index/add_pending for IBindingList. 
+	Fix that in order to make CancelNew to work.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* BindingSource.cs: When adding a new item try to delegate to the internal 
+	list first before throwing an exception.
+
+2009-01-09  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ComboBox.cs: When setting the text and adjusting the top_item, do it
+	*only* if the current item is *not* visible already.
+	Fixes part of #464188.
+
+2009-01-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Requesting the CurrencyManager for the first time can 
+	lead to unexpected OnBindingContextChanged calls and recursive rebinding. 
+	Fix that.
+	[Fixes bug #464493]
+
+2009-01-08  Brad Taylor  <brad@getcoded.net>
+
+	* ComboBox.cs: Expose a few private fields as internal UIA properties.
+
+2009-01-07  Mario Carrion <mcarrion@novell.com>
+	
+	* DataGrid.cs: CWL removed.
+
+2009-01-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RadioButton.cs: When setting Checked, we should first update the
+	check state of the current RadioButton, as well as invalidating it,
+	and after that actually update the siblings. This is done to match
+	.net.
+	Fixes the remaining bits of #463028.
+
+2009-01-05  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RadioButton.cs: Setting Checked to false should set TabStop to stop
+	as well. Also, when we get the focus and no other RadioButton is
+	selected in the parent control, we should mark ourselves as Checked.
+	Fixes part of #463028.
+
+2009-01-05  Mario Carrion <mcarrion@novell.com>
+
+	* DataGrid.cs: UIA suppport. internal events: 
+	UIAGridCellChanged, UIAColumnsHeadersVisibleChanged, 
+	UIASelectionChanged, UIACollectionChanged. Internal properties: 
+	UIARowHeight, UIACellsArea, UIACaptionArea, 
+	UIAColumnHeadersArea, UIASelectedRows, UIACurrentTableStyle, 
+	UIAVScrollBar and UIAHScrollBar.
+
+2009-01-05  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripSplitStackLayout.cs: Enable the overflow button if any
+	of the buttons are set to Overflow = Always.
+	[Fixes bug #463013]
+
+2009-01-03  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* BindingNavigator.cs: Properly enable/disable the toolstrip buttons,
+	based on whether the binding source is availble or not. Fixes #463008.
+
+2009-01-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCell.cs: We should return a value even if we are not bound 
+	to a DataGridView.
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* CurrencyManager.cs, DataGrid.cs: 
+	   - Rename CanAddRows to AllowNew. The CurrencyManager has no 
+	   concept of "rows".
+	   - Add two more internal properties AllowRemove and AllowEdit.
+	* DataGridView.cs: Refactor in a data-bound situation AllowUserToAddRows, 
+	AllowUserToDeleteRows and cell ReadOnly state to be also checked against the 
+	CurrencyManager data source.
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix crashes caused by assigning negative values to 
+	ScrollBar.LargeIncrement when the ClientSize.Width/Height is less than 
+	the column/row heights/widths.
+	[Fixes bug #462684]
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Non-autogenerated columns that have a data property 
+	set that exists in the current datasource should be set to be data-bound.
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix column sorting for columns containing null 
+	values. A "null" value is not always "null" (e.g could be String.Empty) 
+	and thus parsing numeric types throwed an exception for "null" values.
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Detach the editing control when the edit is 
+	finished.
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Multiple fixes to handle last column/row removal 
+	and cell movement after that instead of throwing exceptions.
+
+2009-01-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCellCollection.cs: When cells are removed the column 
+	indices become invalid if the cell is not the last one and have to 
+	be refreshed.
+
+2009-01-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Return false in CommitEdit if there was an error.
+
+2009-01-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Remove a leftover Console.WriteLine.
+
+2009-01-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewRow.cs: Access the indexer of the data manager directly 
+	instead of the internal list.
+
+2009-01-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCell.cs, DataGridView.cs, DataGridViewCheckBoxCell.cs: 
+	Rewrite the value getting, setting, parsing, formatting logic:
+	   - If data-bound value get/set should actually get and set from the 
+	     data source.
+	   - Make proper usage of TypeConverters for value parsing/formatting.
+	   - Raise DataError if setting the new value fails.
+	   - Get rid off the internal valueType field and get/set the ValueType 
+	   property instead.
+	[Fixes bug #462051]
+
+2009-01-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Rewrite the DataBinding layer:
+	   - Get rid off all BindingSource/IBindingList/DataSet/DataTable 
+	   specific code.
+	   - Get rid off the per DataSource type column autogeneration code.
+	   - Use the CurrencyManager for everything that is DataBinding related.
+
+2009-01-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* CurrencyManager.cs: Do not fire duplicate ListChanged events.
+
+2008-12-31  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs, DataGridViewRow.cs: Add a new internal property 
+	DataManager to fetch the CurrencyManager for the DataGridView and to 
+	spare this logic for the other components to follow.
+
+2008-12-31  Mario Carrion  <mcarrion@novell.com>
+
+	* MessageBox.cs: UIA support: new properties: UIAMessage, 
+	UIAMessageRectangle and UIAIconRectangle.
+
+2008-12-31  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* FileDialog.cs: Add PopupButtonPanel.PopupButton.PerformClick method
+	and DirComboBox.DirComboBoxItem.ToString override for UIA support.
+
+2008-12-31  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Do not autogenerate duplicate column for a 
+	data member that has already problematically been assigned one.
+	[Fixes bug #457305]
+
+2008-12-30  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ProfessionalColorTable.cs: Better detection of user's theme.
+	[Fixes bug #462766]
+
+2008-12-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: In the case where there are no autogenerated 
+	columns and the user adds columns problematically we must generate 
+	the rows after the very first column is added.
+
+2008-12-30  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimePicker.cs: When increasing/decreasing the value of month
+	with ShowUpDown set to true, moving from december to january, and
+	moving from january to december should adjust the year to the next and
+	the previous year, respectively.
+	Fixes the remaining bits of #459674.
+
+2008-12-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: If a new cell is selected edit mode should be 
+	immediately enabled only if EditOnEnter is set. Whether the mouse 
+	or not was used to select the cell is irrelevant.
+
+2008-12-29  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Remove a bogus ReBind call, which was causing 
+	recursive rebinding.
+
+2008-12-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimePicker.cs: Handle the "MMMM" month format.
+	Fixes #459674.
+
+2008-12-23  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: 
+	   - Make ReBind private and refactor various calls to call ReBind 
+	   instead of ClearBinding/DoBinding
+	   - Rebind when the column collection changes
+	* DataGridViewColumnCollection.cs: 
+	   - Leave the rebinding on change to be handled by the DataGridView.
+
+2008-12-23  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Add a ReBind convenience method.
+	* DataGridViewColumnCollection.cs: Rebind when a column is added.
+	[Fixes bug #462019]
+
+2008-12-23  Neville Gao  <nevillegao@gmail.com>
+
+	* StatusBar.cs: Modified argument variable.
+	* SplitContainer.cs: Control enabled to support accessibility.
+	[Fixes Bug #455950]
+
+2008-12-22  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripMenuItem.cs: Guard against an NRE.
+	[Fixes bug #457110]
+
+2008-12-22  Mario Carrion  <mcarrion@novell.com>
+
+	* Control.cs: AccessibleXXXX properties don't return 
+	AccessibleObject.XXXX, instead a local referece is returned.
+
+2008-12-22  Neville Gao  <nevillegao@gmail.com>
+
+	* PrintPreviewControl.cs: Added internal properties to support
+	accessibility.
+	[Fixes Bug #459699]
+
+2008-12-19  Mario Carrion  <mcarrion@novell.com>
+
+	* Control.cs: Reverted r121561. 
+
+2008-12-19  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* X11DesktopColors.cs: Since r121873 we don't need gtk a11y checks here,
+	it has been moved to the bridge.
+
+2008-12-18  Brad Taylor  <brad@getcoded.net>
+
+	* DateTimePicker.cs: Add a few UIA specific events, and a couple
+	internal methods useful for UIA.
+
+2008-12-18  Mario Carrion <mcarrion@novell.com>
+
+	* ListBox.cs: Fixed GetItemRectangle when MultiColumn is true.
+	[Fixes Bug #455752]
+
+2008-12-17  Mike Gorse  <mgorse@novell.com>
+
+	* ListView.cs, ListViewItem.cs: Send OnUIAFocusedItemChanged if an
+	  item's Focused property is set.
+
+2008-12-17  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* TreeView.cs:
+	* TreeNode.cs:
+	* TreeNodeCollection.cs: Add events for UIA support:
+	UIACheckBoxesChanged, UIALabelEditChanged, UIANodeTextChanged, and
+	UIACollectionChanged.
+
+2008-12-17  Bill Holmes  <billholmes54@gmail.com>
+
+	* ListViewItem.cs (ListViewSubItem.ctor): Initalizing the 
+	  SubItemStyle member field. 
+
+	Contributed under MIT/X11 license.
+
+2008-12-16  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListBox.cs: In MultiColumn mode don't use top_index to calculate the
+	y coord, since it's useless in this case, and we need to rely only on
+	the number of rows and ItemHeight to compute this value.
+	Fixes part of #257471.
+
+2008-12-15  Mike Gorse  <mgorse@novell.com>
+
+	* StatusBar.cs: Send OnUIACollectionChanged in Remove().
+
+2008-12-15  Mario Carrion  <mcarrion@novell.com>
+
+	* Control.cs: Accessibility properties instantiate AccessibilityObject when
+	needed.
+	[Fixes Bug #459223]
+
+2008-12-15  Brad Taylor  <brad@getcoded.net>
+
+	* ToolStripItem.cs: Add a UIA specific event for listening for when a
+	ToolStripItem becomes selected or deselected.
+
+2008-12-15  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MonthCalendar.cs: Select the date in MouseDown, not in MouseUp, as
+	.net does. Use the date in the point of the mouse move coords as the
+	new range as well, if the left button of the mouse is being pressed.
+	Fixes #364914.
+
+2008-12-12  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* MonthCalendar.cs: When modifying either AnnuallyBoldedDates,
+	MonthlyBoldedDates or BoldedDates call UpdateBoldedDates, to
+	effectively repaint the control.
+	Fixes the remaining bits of #417961.
+
+2008-12-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MonthCalendar.cs: When setting MaxDate/MinDate, adjust the selected
+	range to contain only dates within the new possible range.
+	Fixes part of #417961.
+
+2008-12-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MaskedTextBox.cs: MaskedTextService.Replace doesn't expect the
+	length of the text, but the end position, so we need to substract 1 to
+	have a valid value. Also, in the same InputText method, don't use
+	SelectionLength as the length of the text, since the selected text
+	could actually be empty, but we need to set the value anyway.
+	Fixes #457370.
+
+2008-12-10  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TextBox.cs: Don't do any auto complete task if the custom source is
+	null or empty. Also avoid duplication of code.
+	Fixes #457743.
+
+2008-12-09  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Refresh column sizes when new rows are added.
+	[Fixes bug #457050]
+
+2008-12-09  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+	* RichTextBox.cs: When parsing the contents of a rtf file, don't call
+	Split to create a line - we are already doing this, by _adding_ a new
+	one when rtf_cursor_x is 0 (this field gets this value just after we
+	receive the newline param as true). This avoids having a proportional number
+	of empty lines in the end of the rich text box.
+	Fixes #396664.
+
+2008-12-09  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RichTextBox.cs: When saving the contents as a plain text, don't add
+	a new line for every Line structure, since the data in Document
+	already contains the new line characters. This avoids duplicated new
+	lines using the Save methods.
+	Fixes #445618.
+
+2008-12-09  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* TreeView.cs: Expose ScrollBars as internal properties, for use by UIA
+	framework.  Fixes bug #457678.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewRow.cs: Prevent an exception on a not yet databound grid, 
+	where datasource is null.
+	[Fixes exception reported in bug 441240]
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: EndEdit validation fixes.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: This is the cool patch that adds support for 
+	actually updating the data in the databinding backend after editing. 
+	With bonus firing and handling the DataError event.
+
+2008-12-08  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Line.cs: When calculating the text tags's Shift value, store it as
+	pixels instead of points. This way we can actually handle different
+	fonts in the same RichTextBox, as well as the right size of the caret.
+	Fixes part of #351938.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewCheckBoxCell.cs: Fix to make it work. Wrong value was 
+	casted to CheckState causing InvalidCastExceptions.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix the DataGridViewEditMode.EditOnEnter behavior 
+	to not depend on the item being clicked.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Implement NotifyCurrentCellDirty, so that it no 
+	longer throws a NotImplementedException.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Set EditingControlFormattedValue when preparing an 
+	IDataGridViewEditingControl for editing.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewComboBoxCell.cs: Implement data binding support.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Use the CurrencyManager to update the data source 
+	binding position instead of casting the data sourcde to BindingSource.
+	This enables position updating for other type of data sources.
+
+2008-12-08  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ComboBox.cs: Update the SelectedIndex before updating the Text 
+	in OnDisplayMemberChanged.
+
+2008-12-07  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix our support for IDataGridViewEditingControl.
+	[Fixes bug #457112]
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Sorting fixes:
+	   - Be strict when sorting is enabled.
+	   - If there is a data source delegate the sorting request.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* Binding.cs: When converting the data also try with the destination 
+	type typeconverter. This indirectly adds support for Nullable types 
+	in our databinding layer.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: When cell editing is finished focus back the 
+	DataGridView. Fixes keyboard navigation post-editing.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix the cell editing by delaying the currentCell 
+	setting to after EndEdit is called for the old cell.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* BindingSource.cs: Reset the bindings. Fixes a NotWorking test.
+
+2008-12-06  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs: Send WM_HELP only to the focused window.
+
+2008-12-05  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* CurrencyManager.cs: Fix exceptions when resetting the data source 
+	for the same time (e.g. in ComboBox): 
+	   - Do not set the list position if we are still transferring data
+	   - When resetting the list firstly push the data then update the 
+	   binding.
+	* Binding.cs: Check BindingManager.Position == -1 instead of 
+	BindingManager.Current == null in order to avoid unexpected 
+	exceptions.
+
+2008-12-05  Brad Taylor  <brad@getcoded.net>
+
+	* MonthCalendar.cs: Add UIA specific events so that we can know when
+	the selection changes, and when MaxSelectedCount changes.
+
+2008-12-05  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Cleanup rows_displayed out of OnPaint. It's not 
+	used for anything.
+
+2008-12-05  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix scrolling and selection of cells/rows prior
+	to the control being drawn for the first time by:
+	   - Implement DisplayedRowsCount to not rely on the control being
+	   already painted. Also added support for the partial row flag.
+	   - Fix scrolling to take into account partial rows and scroll to
+	   them.
+	[Fixes bug #456527]
+
+2008-12-05  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Do not reset the CurrentCell when the handle is
+	created if the user has already set it.
+
+2008-12-05  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix CurrentCell to actually select the cell.
+
+2008-12-01  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: Add support to RichTextFormat by reading it as ascii
+	text and then let the underneath users of IDataObject interpret and
+	parse by themselves. 
+	Fixes #439251.
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix my previous commit to actually update what it 
+	was supposed to.
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Ensure that when a row is removed the all the 
+	current row/column/cell get updated. Fixes multiple exceptions.
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Fix scrolling to the current cell when key navigation 
+	is used.
+	[Fixes bug #443560]
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs, DataGridViewCell.cs: Fire CellStateChanged events.
+	* DataGridViewCell.cs: Set the cell as selected prior to setting the 
+	new state.
+	[Fixes issue 1 in bug #443560]
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Invalidate after the current row/column seletion 
+	chagnes.
+	[Fixes bug #438434]
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Refresh the data if the data list is reset, etc.
+
+2008-12-01  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Handle datasource state changes:
+	   - IBindingList - list changes
+	   - BindingSource - list changed and datasource changes
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Select the first cell when databound. 
+	Visually select when CurrentCell is set.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Set the current cell before raising CellClick.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Cleanup MoveCurrentCell to not fire any CellEnter, 
+	CellLeave events as this is already done in SetCurrentCellAddressCore.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Set the minimum size for the columns to be the 
+	width of their header, so that the columns don't get squashed 
+	all together.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: After the data is bound PerformLayout, so that 
+	the columns get autosized.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Move all currentCell setting code into 
+	one central place - SetCurrentCellAddressCore. That way the 
+	current cell is properly updated when programatically set.
+	Fire RowEnter/Leave events.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs: Update the CurrencyManager.Position, so that 
+	when a BindingSource is used BindingSource.Current will be correct.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* GroupBoxRenderer.cs: Fix when VisualStyles disabled:
+	   - No caption text is drawn because Color.Empty is used.
+	   - Fix top and height off by 1.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridViewRow.cs: Implement DataBoundItem.
+
+2008-11-30  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* BindingSource.cs: Return null for Current if there is no data present.
+
+2008-11-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MenuAPI.cs: Add a Menu.SelectedItem null check when navigating the
+	menus using the arrow keys. Also when handling the left arrow key, don't 
+	assign the current menu to the parent one, if the parent is null.
+	Fixes #446392.
+
+2008-11-24  Everaldo Canuto  <ecanuto@novell.com>
+
+	* PrintPreviewDialog.cs: Fix toolbar size, height must be 26. Fixes bug
+	#413501.
+
+2008-11-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Scrollbar.cs:
+	* ScrollableControl.cs: Simplify the code to manually set the size of
+	the thum area, avoiding duplication of code, and also preserving the
+	right value for different code paths - this can happen when size
+	changes are made to the scrollbar after setting LargeChange, Maximum
+	or related properties for the ScrollBar.
+
+2008-11-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ScrollableControl.cs: When scrolling, don't invalidate the entire
+	area, and call to XplatUIX11.ScrollWindow instead. This is exactly
+	what .Net does: copy the visible area, and only invalidate the part of
+	the area that wasn't visible before scrolling.
+	Fixes #441738.
+
+2008-11-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Listen for a DataTable's TableCleared event so we
+	can clear ourselves when it is raised, we don't have a newrowindex
+	if we don't have any columns.
+	* DataGridViewRowCollection.cs: Ensure we always delete all the rows,
+	re-index after each delete so the NewRow will have the correct index.
+	[Fixes bug #448005]
+
+2008-11-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Form.cs: Don't change min/max size if it is empty.
+	[Fixes bug #447873]
+
+2008-11-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ScrollBar.cs:
+	* ScrollableControl.cs: When the manual thumb size is used, the
+	maximum allowed value should depend on that thumb size, instead of
+	LargeChange (using the maximum - LargeChange + 1 value). But
+	LargeChange should be used normally when incrementing/decrementing.
+	Fixes the remaining part of #441546.
+
+2008-11-23  Andreia Gaita  <avidigal@novell.com>
+
+	* WebBrowser.cs, WebBrowserBase.cs: Delay loading of DocumentStream 
+	until an about:blank has been loaded (according to spec). Fix 
+	ScrollbarsEnabled to set when a document is loaded (since we use js 
+	for it). Fix url so it reflects the current loading document and not 
+	the previous one. Send StatusChanged events.
+
+2008-11-23  Andreia Gaita  <avidigal@novell.com>
+
+	* Application.cs: If a message comes in for an embedded control
+	(like webbrowser) when we're capturing the keyboard, release the
+	capture and continue.
+	[fixes #429462]
+
+2008-11-22  Andreia Gaita  <avidigal@novell.com>
+
+	* XplatUI.cs: Only use PlatformID.MacOSX enum when not building on VS
+
+2008-11-21  Andreia Gaita  <avidigal@novell.com>
+
+	* WebBrowser.cs, HtmlDocument.cs: Fixes for #428172
+	
+2008-11-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ScrollBar.cs:
+	* ScrollableControl.cs: Set manually the thumb size for the
+	ScrollableControl scrollbars, so any further changes to the underneath
+	scrollbars respect the original size.
+	Fixes part of #441546.
+
+2008-11-21  Geoff Norton  <gnorton@novell.com>
+
+	* XplatUI.cs: Ensure that we can run on .net 2.0 with mono 2.2 where
+	PlatformID.MacOSX now exists.
+
+2008-11-20  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextBoxBase.cs: Provide a default implementation for ChangeBackColor.
+	Having something internal abstract isn't very nice for people who want
+	to inherit from this class.
+
+2008-11-20  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripItem.cs: Don't crash if ImageIndex or ImageKey is set to an
+	invalid value.  Just return null for the Image, and use the ImageList's
+	ImageSize for calculations.
+
+2008-11-20  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: Call HideWindow instead of Hide when closing the dropdown
+	through DroppedDown so the proper events get called and state gets reset.
+	[Fixes bug #446805]
+
+2008-11-18  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewColumnCollection.cs: Make sure we re-index the columns after
+	the collection is modified.
+
+2008-11-17  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DomainUpDown.cs: Remove string cache and reflection optimizations.  They
+	aren't always correct, and fixing them for every case is not worth the
+	negligible benefit they provide.
+	[Fixes bug #445713]
+
+2008-11-17  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: We should never add actual cells to the RowTemplate.
+	Internally, use RowTemplateFull to give us a new row with cells.
+	* DataGridViewColumnCollection.cs: Clear Rows when we clear Columns.
+	* DataGridViewRowCollection.cs: Use RowTemplateFull.
+
+2008-11-17  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: Forms without borders should be able to change its
+	size - specially they should be able to be maximized, adding the
+	respective MotifFunctions.Resize bit when setting window properties as
+	well as *not* marking the Hwnd as size fixed.
+	Fixes #444347.
+
+2008-11-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewCellStyle.cs: Allow SelectionBackColor to have
+	an alpha value.
+	[Fixes bug #444348]
+
+2008-11-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Add internal to OnAutoSizeColumnModeChanged.
+	* DataGridViewColumn.cs: Recalculate columns when AutoSizeMode changes.  Raise
+	AutoSizeColumnModeChanged.
+	[Fixes bug #443609]
+
+2008-11-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewRowCollection.cs: Guard against the user deleting the
+	NewRow.  Add an internal delete so we can still delete it.
+	* DataGridView.cs: Use the new internal delete when deleting the NewRow.
+	[Fixes bug #442181]
+
+2008-11-10  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextControl.cs: Add some order of operation to our math so
+	we don't end up with a negative height for our invalidate rect.
+	[Fixes bug #381889]
+
+2008-11-10  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Control.cs: When our enabled changes, notify our implicit children
+	controls as well as our regular controls.
+	[Fixes bug #441523]
+
+2008-11-08  Andreia Gaita <shana@jitted.com> 
+
+	* HtmlElement.cs: Small code cleanup
+
+2008-11-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* BindingNavigator.cs: MoveFirstItem should be enabled only if
+	position is larger than 0, not only different than 0. Also Position
+	and Count items should be enabled if the BindingSource is non null and
+	non empty.
+	Fixes #439961.
+
+2008-11-05  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TabControl.cs: Don't raise SelectedIndexChanged until we have
+	actually modified the tab collection, so TabCount will be correct.
+	[Fixes bug #441896]
+
+2008-11-05  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* ListViewItem.cs: Mark ListViewSubItem.UIATextChanged event as
+	NonSerialized to fix serialization of ListViewItem.
+
+2008-11-04  Mike Gorse  <mgorse@novell.com>
+
+	* ListView.cs: Call OnUIAFocusedItemChanged after completing the
+	  focus change, and always call in SetFocusedItem.
+	* ListBox.cs: Add UIAFocusedItemChanged as in ListView.
+
+2008-11-04  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: Only call OnDrawItem when we are using an OwnerDraw
+	mode.  Based on a patch by John Mortlock.
+	[Fixes bug #436790]
+
+2008-11-04  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* ListView.cs: Use the UsingGroups property where needed, instead of
+	duplicating the check in other places.
+
+2008-11-04  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs: When calculating layout, refresh the count of items
+	belonging to the default item, insteas of doing it only one time. This
+	was already working fine for icon views, not not for details.
+	Fixes #438948.
+
+2008-11-03  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs:
+	* ListViewItem.cs:
+	* ThemeWin32Classic.cs: Don't render Tile view if there wasn't a call
+	to Applicatin.EnableVisualStyles, and use LargeIcon view, as .net
+	does.
+	Fixes #437933.
+
+2008-11-03  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* ListView.cs: Wrap call to OnUIAFocusedItemChanged with #if NET_2_0.
+
+2008-11-03  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* ListView.cs: Add internal UIAFocusedItemChanged event.  Fixes bug
+	#441280, patch by Mike Gorse <mgorse@novell.com>.
+
+2008-11-03  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TreeView.cs: When doing ExpandAll, don't scroll to the bottom
+	if there is no scrollbar.
+	[Fixes bug #440885]
+
+2008-11-03  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ProgressBar.cs, ThemeWin32Classic.cs, ThemeVisualStyles.cs: Commit
+	patch from Andy Hume that fixes many issues with ProgressBar.
+	[See bug #440220]
+
+2008-11-03  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Form.cs: Don't allow MinimumSize and MaximumSize to conflict.
+	[Fixes bug #438866]
+
+2008-11-03  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* UpDownBase.cs:
+	* DomainUpDown.cs:
+	* NumericUpDown.cs: Internal events added to UpDownBase:
+	UIAUpButtonClick and UIADownButtonClick.  Patch by Neville Gao
+	<ngao@novell.com>.
+
+2008-11-03  Sandy Armstrong  <sanfordarmstrong@gmail.com>
+
+	* ToolStripLabel.cs: Internal event added: UIAIsLinkChanged.
+
+2008-11-02  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs:
+	* ThemeWin32Classic.cs: Don't use groups nor insertion mark in
+	Application.EnableVisualStyles hasn't been called.
+	Fixes part of #437933.
+
+2008-10-31  Andreia Gaita  <shana@jitted.com>
+
+	* Form.cs (SetVisibleCore): since set_ActiveControl no longer calls focus
+	  if the container is not focused already, we need to specifically set
+	  focus to the first available control, or to the form itself if there
+	  are no controls.
+
+2008-10-31  Andreia Gaita  <shana@jitted.com>
+
+	activate message fix: a call to .Show now waits until both WM_SHOWWINDOW and
+	WM_ACTIVATE have been processed before returning, so it is guaranteed that
+	once it returns and the form is visible, it is actually on the screen on X11
+
+	* ContainerControl.cs: Only send focus to the control if the top container
+	  is already focused. This is so that, when a form is first shown, all
+	  the enter/leave events are done first before any focus stuff comes in.
+	  If a control has no top container, there's an extra check on Control.Focus
+	  to make sure it gets focused in this particular case.
+
+	* Control.cs: Force focus if the control is active but did not receive
+	  focus after being set as active.
+
+	* MdiClient.cs: Dispose the form when closing
+
+	* XplatUIX11.cs: When mapping and unmapping windows, make sure the call
+	  doesn't return until both WM_SHOWWINDOW and WM_ACTIVATE have come in
+	  if the window is a top Form.
+	  Reset all hwnd properties when the window has been destroyed so that
+	  we don't land in any codepaths that might try to do something with it.
+	  Added a bunch of debugging messages. If TRACE is defined, all X calls
+	  are logged through DebugHelper. Set a few missing EntryPoint attributes.
+
+2008-10-29  Mario Carrion <mcarrion@novell.com>
+
+	* ListViewItem.cs: Control enabled to support Accessibility:
+	- Internal events: UIATextChanged, UIASubItemTextChanged.
+	- Internal event UIATextChanged in ListViewSubItem that triggers
+	UIASubItemTextChanged.
+	* ListView.cs: Control enabled to support Accessibility:
+	- Internal events: UIACheckBoxesChanged, UIAMultiSelectChanged, 
+	UIAShowGroupsChanged, UIAViewChanged and UIALabelEditChanged.
+	- Internal event UIACollectionChanged in ColumnHeaderCollection.
+	- Internal event UIACollectionChanged in ListViewItemCollection.
+	- Internal properties: UIAHeaderControl, UIAColumns, UIARows, 
+	UIADefaultListViewGroup, UIAHScrollBar and UIAVScrollBar.
+	- Internal methods: UIAGetHeaderBounds.
+
+2008-10-25  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* ScrollableControl.cs: Actually fire the 2.0 Scroll event when we get
+	the event from the respective scrollbars.
+	Fixes #436709.
+
+2008-10-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ComboBox.cs: Use the new CanNavigateAutoCompleteList property of the
+	textbox to know whether any navigation key will be handled or not. If
+	not, don't pass the message to the textbox, and use it here instead. 
+	* TextBox.cs: Define a new CanNavigateAutoCompleteList property -which
+	is more precise- than the previous AutoCompleteMatches one.
+	This should the keyboard navigation in ComboBox when using auto
+	complete modes.
+
+2008-10-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: Fix item height calculation based off Font to match .Net.
+	[Fixes bug #436730]
+
+2008-10-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripDropDownItem.cs: Call OnClick instead of base.OnClick so
+	overridden methods will get called.
+	* ToolStripItem.cs: Raise Click before MouseUp.
+	* ToolStripSplitButton.cs: Fix up some bounding rectangles to take
+	the item's location into account.
+	[Fixes bug #437683]
+
+2008-10-24  Neville Gao  <nevillegao@gmail.com>
+
+	* NumericUpDown.cs: Control enabled to support accessibility.
+	[Fiexes bug #438135]
+
+2008-10-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TextBox.cs: Check that we actually have items no navigate, select
+	text when pressing enter, as well as handle direction keys only if
+	mode is different to Suggest or the suggest listbox is visible.
+
+2008-10-23  Andreia Gaita  <shana@jitted.com>
+
+	* WebBrowser.cs: Use the new ContentStream property to retrieve
+	  a stream encoded from the document content
+
+2008-10-23  Andreia Gaita  <shana@jitted.com>
+
+	* HtmlDocument.cs,
+	  HtmlElement.cs,
+	  HtmlWindow.cs: Fix GetHashcode for null objects
+
+2008-10-22  Andreia Gaita  <shana@jitted.com>
+
+	* HtmlDocument.cs,
+	  HtmlElement.cs,
+	  HtmlWindow.cs: Fix equality operators (fixes #428173)
+
+2008-10-21  Jonathan Pobst  <monkey@jpobst.com>
+
+	* XplatUIWin32.cs: Apply patch from John Mortlock that ensures
+	mouse_state gets set during WM_MOUSEMOVE and WM_NCMOUSEMOVE.
+	[Fixes bug #436772]
+
+2008-10-21  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: Fire SelectedIndexChanged when the user selects the
+	same item with the mouse as was already selected.
+	[Fixes bug #436789]
+
+2008-10-21  Brad Taylor  <brad@getcoded.net>
+	
+	* TextControl.cs: Break out code to get the visible range into
+	  GetVisibleLineIndexes to be used in UIA code.
+	
+	* Line.cs:
+	* TextControl.cs:
+	* TextBoxBase.cs: Add comments indicating that the method or property
+	  is used via reflection from UIA code.
+
+2008-10-20  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListViewItem.cs: Match .net serialization.
+	Fixes remaining part of #417520.
+
+2008-10-20  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripProfessionalRenderer.cs: Don't paint over a set BackgroundImage.
+
+2008-10-20  Mario Carrion <mcarrion@novell.com>
+
+	* ErrorProvider.cs, ToolTip.cs, HelpProvider.cs: UIA internal property 
+	added: UIAToolTipRectangle.
+
+2008-10-19  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* ListViewItem.cs: When deserializing enumerate over the data, instead
+	of accessing the data directly. This way we handle much better the
+	cases were we lack information.
+	Fixes #417520.
+
+2008-10-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs: When removing an item from a main ListView.Items
+	collection (and not a ListViewGroupCollection.Items one), remove it
+	also from the group, as .net does. Patch by Mario Carrion (mario at
+	novell dot com).
+	Fixes #436653.
+
+2008-10-19  Andreia Gaita  <avidigal@novell.com>
+
+	* Form.cs: Forms that get closed without a handle being created are
+	disposed in 2.0. Fixes failing FormTest.FormClose and
+	FormTest.FormClose2 on windows.
+
+2008-10-18  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs: If both scrollbars are visible, the vertical one
+	shouldn't extend too far down.
+	Fixes #435771.
+
+2008-10-17  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Add the ability to resize columns and rows with
+	the mouse.  Also support double-clicking to autoresize.
+	* DataGridViewColumn.cs: Invalidate the grid if a column's width changes.
+	* DataGridViewRow.cs: Invalidate the grid if a row's height changes.
+	* DataGridViewTextBoxCell.cs: Add 1 to preferred width so ellipsis
+	isn't shown on autoresize.
+	[Fixes bug #420193]
+
+2008-10-17  Mario Carrion <mcarrion@novell.com>
+
+	* ComboBox.cs: Remove UIAListbox.
+
+2008-10-17  Mario Carrion <mcarrion@novell.com>
+
+	* ComboBox.cs, ListBox.cs: Using added/removed item in 
+	  OnUIACollectionChangedEvent instead of index.
+
+2008-10-17  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: When we are sorting the items, if the item's type
+	doesn't support IComparer, use a default one that compares based
+	off the item's visible text.
+	[Fixes bug #436328]
+
+2008-10-17  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ColumnHeader.cs: Invalidate ListView.header_control when setting
+	ImageIndex/ImageKey.
+	* ThemeWin32Classic.cs: When drawing the column header, draw a image
+	for the column if available, and make the required adjustments to the
+	text location.
+	Fixes #435105.
+
+2008-10-17  Neville Gao  <nevillegao@gmail.com>
+
+	* StatusBarPanel.cs: Control enabled to support accessibility.
+	[Fixes bug #435988]
+
+2008-10-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: When a user begins an edit in the 'new row',
+	make that a real row, and add a new 'new row'.  If the user
+	cancels the edit, remove the new 'new row' and reset everything.
+	Also, ensure UserAddedRow and UserRemovedRow events are raised.
+	[Fixes bug #430954]
+
+2008-10-16  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* TableLayoutSettings.cs: Fix NREs when deserializing and 
+	panel is not yet set.
+	[Fixes bug #436199]
+
+2008-10-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Invalidate after deleting a row.
+
+2008-10-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Handle Enter and Escape keys.
+	  - Move call to EndEdit to MoveCurrentCell.
+	  - Remove call to EndEdit from navigation key routines.
+	  - Fire CellLeave and CellEnter.
+
+2008-10-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewCell.cs: Some fixes to the new cell border
+	painting code.
+
+2008-10-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeEngine.cs: Enable visualstyles rendering by default
+	(on platforms that support it).
+
+2008-10-15  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs, XplatUICarbon.cs: Do not Timer.Tick before 
+	MainForm.OnLoad has completed unless DoEvents is forced.
+	[Fixes bug #412536]
+
+2008-10-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolTip.cs: Ensure that Timer.Internal cannot be set to 0.
+
+2008-10-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Control.cs: Make our implementation of DrawToBitmap better 
+	match WmPaint.  [Fixes bug #435579]
+
+2008-10-14  Andreia Gaita  <avidigal@novell.com>
+
+	* WebBrowser.cs: Use DocumentElement as the document's root for the
+	whole content. Should fix DocumentText and DocumentStream problems.
+
+2008-10-14  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewColumnCollection.cs: Remove calls to OnColumnAddedInternal,
+	these will get called in DGV.OnCollectionChanged.  Make sure 
+	OnCollectionChanged always gets called.
+	* DataGridView.cs: Make a OnColumnRemovedInternal that removes the cells
+	from every row.  Call this in OnCollectionChanged.
+	[Fixes bug #433669]
+
+2008-10-13  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ComboBox.cs: WM_KEYDOWN and WM_KEYUP messages should be sent to the
+	textbox if auto complete is used, since we need to navigate over it.
+	And in this case don't pass this messages to the base impl. Also hide
+	the auto complete list box when displaying the drop down listbox.
+	* TextBox.cs: new internal members to expose some of the auto complete
+	functionality to combobox.
+
+2008-10-13  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs, XplatUICarbon.cs, Form.cs: Do not Timer.Tick before 
+	MainForm.OnLoad has completed.
+	[Fixes bug #412536]
+
+2008-10-13  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TextBox.cs: Apply an old-approved patch that adds autocomplete's
+	Append support to this controls. We need it to apply new patches.
+
+2008-10-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Control.cs: When updating z order in child controls, send to back
+	the implicit controls. Also, do it explicitly, instead of making
+	GetAllControls return the implicit controls in a specific order, and
+	thus avoid depending on that, which could change in the future.
+	Fixes #434304.
+
+2008-10-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* X11Dnd.cs: Try to call Application.DoEvents before returning in a
+	call to StartDrag, since we must fire DragDrop/DragLeave *before*
+	that, as .net does - instead of firing DragDrop/DragLeave *after* the
+	call to Control.DoDragDrop has completed. This is needed since at the
+	point of returning, we have sent related dnd ClientMessages, but we
+	need to wait for them to fire the wmf respective ones.
+	Fixes #325076.
+
+2008-10-09  Everaldo Canuto  <ecanuto@novell.com>
+
+	* LinkLabel.cs: Recreate link pieces when change Padding.
+
+2008-10-09  Everaldo Canuto  <ecanuto@novell.com>
+
+	* LinkLabel.cs: Take Padding into account when recreate link pieces.
+	[Fixes bug #412530]
+
+2008-10-08  Everaldo Canuto  <ecanuto@novell.com>
+
+	* Control.cs: Implement internal property PaddingClientRectangle, it will be
+	useful for drawing controls that must take care about Padding property.
+
+2008-10-08  Jonathan Pobst  <monkey@jpobst.com>
+
+	* BindingSource.cs: Make item_type internal so we can access it in DGV.
+	* DataGridView.cs: Add support for autogenerating columns from a
+	BindingSource.
+
+2008-10-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Comment out an exception that is getting thrown
+	too often currently.
+
+2008-10-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Always rebind to the datasource, as things may
+	have changed in it that we aren't capturing yet.
+
+2008-10-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewTextBoxCell.cs: Don't default to VerticalCenter font
+	drawing mode.  If we are top aligned, give ourselves some top padding.
+
+2008-10-06  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* X11Dnd.cs: When firing the default dnd enter/leave events, fire the
+	events on the control under the mouse pointer, instead of firing them
+	on the window generating the dnd operation. To achieve this re-use the
+	code used to get the window under the pointer when getting MouseMove
+	events.
+	Fixes #381876.
+
+2008-10-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* X11Dnd.cs: Don't check that that the window sending the dnd events
+	is the owner of the selection. Although Gtk+ sets it that way, it's
+	not a requirement of the XDnd protocol, and Qt doesn't seem to do it.
+	So, just as Gtk+ does, we set our window sending the dnd events as the
+	owner of the selection, but don't check it when receiving them. This
+	should fix interoperability with Qt/Kde.
+	Fixes #324251.
+
+2008-10-06  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Make sure we take the vertical scrollbar into
+	account when autosizing columns.
+
+2008-10-06  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Handle sorting datetimes.
+
+2008-10-04  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ButtonBase.cs, Control.cs, Label.cs, PictureBox.cs, TabControl.cs, 
+	TextBoxBase.cs, ToolBar.cs, TrackBar.cs, TreeView.cs: Cleanup 
+	compilation warnings.
+
+2008-10-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* RTF.cs, Application.cs, BindingContext.cs, BindingSource.cs, 
+	ContextMenuStrip.cs, Control.cs, Hwnd.cs, Line.cs, MaskedTextBox.cs, 
+	ProgressBar.cs, SaveFileDialog.cs, TextControl.cs, Theme.cs, 
+	ToolBar.cs, ToolStripItemCollection.cs, TrackBar.cs: Cleanup 
+	compilation warnings.
+
+2008-10-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataGridView.cs, DataGridViewCell.cs, 
+	DataGridViewCellValidatingEventArgs.cs, 
+	DataGridViewComboBoxEditingControl.cs, DataGridViewHeaderCell.cs, 
+	DataGridViewRow.cs, DataGridViewRowHeaderCell.cs, 
+	DataGridViewTextBoxEditingControl.cs: Cleanup compilation warnings.
+
+2008-10-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* HtmlElementEventArgs.cs, HtmlWindowCollection.cs: 
+	Cleanup compilation warnings.
+
+2008-10-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIWin32.cs: Cleanup compilation warnings.
+
+2008-10-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* PropertyGrid.cs: Cleanup compilation warnings.
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewRow.cs: Only clear the row background if we
+	are going to paint a new background.
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewCell.cs, DataGridViewColumnHeaderCell.cs,
+	DataGridViewRowHeaderCell.cs: Remove PaintPartBorder and
+	use PaintBorder instead.	
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: When CellBorderStyle is set, update the
+	AdvancedCellBorderStyle to match.
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewCell.cs: Add helper methods to convert Alignment
+	to TextFormatFlags and align rectangles.
+	* DataGridViewTextBoxCell.cs: Use Alignment when painting text.
+	* DataGridViewImageCell.cs: Use Alignment when painting the image.
+
+2008-10-02  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* ToolTip.cs: Display tooltips only for controls on the active form.
+	[Fixes bug #428115]
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Make OnCellValueNeeded internal.
+	* DataGridViewCell.cs: Raise the CellValueNeeded event so the
+	user can supply their own value if they choose.
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewColumnHeaderCell.cs: Create a new style object
+	so the DefaultCellStyle doesn't get changed.
+
+2008-10-02  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripItem.cs: Check to make sure the owner is actually
+	changing in InternalOwner before doing any work.  Fixes some
+	failing tests.
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewColumnHeaderCell.cs: Correctly calculate style.
+	* DataGridView.cs: Use a column header's inherited style instead
+	of just using the default.
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* SplitContainer.cs: Raise SplitterMoved when the splitter is
+	moved through code.
+
+2008-10-01  Mario Carrion <mcarrion@novell.com>
+
+	* ScrollBar.cs: Internal property added: UIAThumbPosition.
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripOverflowButton.cs: Use InternalOwner instead of Owner.
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripItem.cs: When the user sets Owner, we need to remove
+	it from its previous owner and then add it to the new owner's
+	item collection.  Also, create InternalOwner, so we can set the owner
+	that doesn't do this new stuff.
+	* ToolStripItemCollection.cs: Use InternalOwner instead of Owner.
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripItem.cs: When our parent changes, recalculate our text
+	size, since we may be getting our Font from our parent.  When our
+	owner's Font changes, recalculate ourselves as we may be using
+	that font.
+
+2008-10-01  Everaldo Canuto  <ecanuto@novell.com>
+
+	* MenuAPI.cs: Select the first option of a popup when opening the popup via
+	return key. [Fixes bug #413792].
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripItem.cs: Make Font, BackColor, and ForeColor be
+	ambient properties.  (Get their value from their parents if
+	values haven't been set.)
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripSystemRenderer.cs: Call overridden methods' bases
+	after our logic, so users can do painting by handling the events.
+	Currently, we draw over any user painting.
+
+2008-10-01  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripProfessionalRenderer.cs: Call overridden methods' bases
+	after our logic, so users can do painting by handling the events.
+	Currently, we draw over any user painting.
+
 2008-09-30  Everaldo Canuto  <ecanuto@novell.com>
 
 	* MenuAPI.cs: Prevent NRE when deactivate menu. Fixes #413636.
+
+2008-09-30  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TreeNode.cs, TreeView.cs: Move logic that determines the node
+	image to draw to TreeNode.  Give Index/Keys put on the node
+	precedence over the global one for the TreeView.
+
+2008-09-30  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TreeNode.cs: Setting ImageIndex or ImageKey should reset the other.
+
+2008-09-29  Mario Carrion <mcarrion@novell.com>
+
+	* ListBox.cs: Index fixed.
+
+2008-09-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TabControl.cs: When expanding the tab -because it's selected now-,
+	using Right alignment, instead of adding some selected delta value to
+	the X origin, substract it, so it gets a location adjacent to the panel, 
+	instead of be more separated.
+	Fixes #409170.
+
+2008-09-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	* MessageBox.cs: Use SystemIcons for graphics instead of keeping our
+	own copies of them.
+
+2008-09-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* X11Dnd.cs: source and related fields should be set to IntPtr.Zero,
+	as well as the other static fields, to avoid using their previous
+	values my mistake when handling the dnd events. This should avoid
+	handling any status event after the drop has been finalized/cancelled.
+
+2008-09-28  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* X11Dnd.cs: We have to send a dnd enter event as soon as we start the
+	operation, instead of waiting until we get any movement - this will
+	help us to have the data available in case no movement was detected
+	and _still_ we have to fire DragEnter and DragLeave/DragDrop events.
+	Finally add a windows.forms-only fallback to fire the mentioned events
+	if no movement at all was detected, just like .net does.
+	Fixes #381876.
+
+2008-09-27  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeWin32Classic.cs: When drawing a status bar panel, don't
+	return early if the text is empty because the icon doesn't get
+	drawn then.  [Fixes bug #428113]
+
+2008-09-25  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* FileDialog.cs: Implement basic support for sorting by columns in
+	Details view. Patch by Eric Petit.
+	Fixes #428006.
+
+2008-09-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ThemeWin32Classis.cs: When drawing gridlines take into account the
+	case where ListView.ItemSize hasn't been computed, and provide a
+	fallback as well. This prevents a division by 0.
+
+2008-09-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeVisualStyles.cs: Use ClientRectangle instead of Bounds to
+	correctly draw tooltip backgrounds.
+
+2008-09-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ImageList.cs: Change CopyTo implementation to ensure clones are
+	created of our images.
+	[Fixes bug #409169]
+
+2008-09-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Control.cs: When setting fonts, we need to ensure we change our
+	reference to the new font object, even if it represents the same
+	font as before.  If we don't, the original font can get disposed
+	and we will still try to use it.
+	[Fixes bug #386450]
+
+2008-09-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* FileDialog.cs: Take into account Tile view when selecting the view
+	(2.0 profile).
+
+2008-09-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ThemeWin32Classic.cs: When drawing gridlines for ListView don't use
+	the item bounds, since we can't iterate over them in virtual mode.
+	Also fix wrong calculation of the gridlines when using scrolling.
+	Fixes #400390.
+
+2008-09-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: When handling EnterNotify events, take into account
+	both the public and implicit controls when trying to detect the
+	grab/ungrab process. This should fix ListView selection in Details
+	view.
+
+2008-09-23  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TreeView.cs: Redraw the whole node area when the selected node changes.
+	Things like state images were not getting redrawn because the invalid
+	rectangle was too small.
+	[Fixes bug #428211]
+
+2008-09-23  Mario Carrion  <mcarrion@novell.com>
+
+	* ListBox.cs: UIA Selection Pattern fully supported in ListBox control.
+	[Fixes bug #428993]
+
+2008-09-23  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Form.cs: Do not set the Form's icon in the backend if showicon = false.
+	[Fixes bug #428114]
+
+2008-09-23  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeWin32Classic.cs: Allow tooltips to be multiline.
+	[Fixes bug #427884]
+
+2008-09-23  Jonathan Pobst  <monkey@jpobst.com>
+
+	* StatusBar.cs: Add tooltip support.
+	[Fixes bug #428113]
+
+2008-09-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ThemeWin32Classic.cs: Use StringAlignment.Center for the vertical
+	alignments of sub items in Details view. Patch by John Mortlock (johnm at 
+	hlaustralia.com.au).
+	Fixes #425360.
+
+2008-09-23  Neville Gao  <nevillegao@gmail.com>
+
+	* StatusBar.cs: Add UIA event in AddInternal () to support accessibility.
+	[Fixes bug #419079]
+
+2008-09-22  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextBoxBase.cs: Set Text to "" instead of null in Clear().
+	[Fixes bug #428107]
+
+2008-09-22  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* ListView.cs: Don't do anything when EnsureVisible is called inside a
+	BeginUpdate/EndUpdate block.
+	Fixes #425049.
+
+2008-09-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListViewItem.cs: The semantics for the public .ctor of
+	ListViewSubItemCollection need us to already have a Text value for the
+	item, which in our implementation have as available *after* adding the
+	first sub item. So create an internal .ctor that satisfies our needs
+	and let the public .ctor have the same semantics as .net.
+	Fixes #427561.
+
+2008-09-19  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* ListControl.cs: Changes in Formatting related values should call
+	RefreshItems, as .net does.
+	* ComboBox.cs:
+	* ListBox.cs: In the respective overrides of RefreshItems calculate
+	layout as well as refreshing - again, this is what .net does.
+	Fixes #426168.
+
+2008-09-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListBox.cs: In UpdateTopItem, don' call to XplatUI.ScrollWindow,
+	since we are already doing that when we change the value of the
+	scrollbar or force the call to ScrollWindow in the same method. This
+	way we don't cause a Invalidate call for all the listbox bounds for
+	methods calling UpdateTopItem with an already updated top item. This
+	was happening specially calling EnsureVisible with already visible
+	items.
+
+2008-09-18  Mike Gorse <mgorse@novell.com>
+
+	* Application.cs, IKeyFilter.cs, X11Keyboard.cs, XplatUI.cs,
+	  XplatUIStructs.cs: Added KeyFilter
+	[Fixes bug #427039]
+
+2008-09-18  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* RelatedPropertyManager.cs: The properties returned by
+	GetItemProperties should be that ones of the *actual* object returned
+	by the property, not the property type - this is very special when the
+	property exposes a type, but the returned object actually is a child
+	class and implements more functionality and properties.
+
+2008-09-18  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Binding.cs: Don't look for the property in the data source if the
+	passed string is empty.
+
+2008-09-18  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs: Comment out _NET_WM_WINDOW_TYPE_DIALOG in order to 
+	fix unused variable warnings.
+
+2008-09-18  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs: Send WM_HELP when F1 is pressed.
+	[Fixes bug #427073]
+
+2008-09-18  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs: 
+	 - Do not set _NET_WM_WINDOW_TYPE_DIALOG for modal forms, because this 
+	 leads to the window manager overriding our border style and zorder. 
+	 - Allow the activation of non-modal forms, which are children of a 
+	 modal form.
+	[Fixes bug #423417]
+
+2008-09-17  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* XplatUIX11.cs, X11Structs.cs: For mapped windows SetTopMost should 
+	ask the window manager to do the work instead of changing the property 
+	directly.
+	[Fixes bug #423417]
+
+2008-09-17  Everaldo Canuto  <ecanuto@novell.com>
+
+	* CurrencyManager.cs: Check for positon before call ChangeRecordState in
+	AddNew to fix some navigation for empty datasets. [Fixes #323053]
+
+2008-09-17  Everaldo Canuto  <ecanuto@novell.com>
+
+	* FileDialog.cs: Remove OnPaint method on PopupButtonPanel and set 
+	InternalBorderStyle to BorderStyle.Fixed3D. It is the best way to get 3d
+	border and fixes some drawing issues when resize form.
+
+2008-09-17  Everaldo Canuto  <ecanuto@novell.com>
+
+	* FileDialog.cs: Lots of layout fixes to mimic Win32. [Fixes #408752]
+	
+	* ThemeWin32Classic.cs: We don't need to reduce button size when it is
+	AcceptButton.
+
+2008-09-17  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* TextBoxBase.cs: For standard textbox the scrollbars are always 
+	visible if Multiline is true.
+	[Fixes bug #426896]
+
+2008-05-12  Everaldo Canuto  <ecanuto@novell.com>
+
+	* DataGridTextBoxColumn.cs: Uncomment code accidentally commited in last
+	patch.
+	
+2008-05-12  Everaldo Canuto  <ecanuto@novell.com>
+
+	[Fixes most od DBNull and HeadersVisible problems]
+	
+	* DataGrid.cs:
+	- ShowingColumnHeaders removed because we dont need it, ColumnHeadersVisible
+	returns the value that we need.
+	- Fixed FromPixelToColumn method that return zero for first	column and for
+	row header cell, now it returns -1 for row header cell.
+	- Fixed HitTest to check row header cell in column header area, it now
+	returns HitTestType.None. [Fixes #322864]
+	- Fixed the calculation of visible columns in UpdateVisibleColumn, now it
+	checks for RowHeadersVisible and other things.
+	- If an exception occurs when setting CurrentCell and user type 'yes' in
+	message dialog, invalidade current and new cell and set setting_current_cell
+	to false to prevent future errors. [Partially fixes #323050]
+
+	* DataGridColumnStyle.cs: Don't call EndEdit after set property_descriptor
+	value (SetColumnValueAtRow), it must be done by grid to properly show 
+	messages. [Fixes #323050]
+
+	* ThemeWin32Classic.cs: Lots of fixes in DataGridPaintColumnHeaders to
+	better draw column and row header. Also dont draw anything when column
+	headers is not visible.
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeWin32Classic.cs: Hook ListViewItems into the ShowFocusCues
+	logic.
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TreeView.cs: Don't start editing a node on right click, only
+	left click.
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* NativeWindow.cs: Reenable the ThreadExceptionDialog I accidentally
+	disabled over a year ago.
+	* Form.cs: Wrap calling Load in a try/catch because it can happen
+	before the catch-all one in NativeWindow.
+	[Fixes bug #425414]
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripDropDownMenu.cs: Calculate the connected area better
+	to take into account when the drop down is not directly under the
+	owner item.
+	* ToolStripProfessionalRenderer.cs: Draw the whole unconnected area.
+
+2008-09-16  Mario Carrion <mcarrion@novell.com>
+
+	* ScrollBar.cs: New event added: UIAValueChanged, generated when
+	  LargeChange, SmallChange, Maximum or Minimum values are changed.
+	[Fixes bug #426464]
+
+2008-09-16  Mario Carrion <mcarrion@novell.com>
+
+	* ErrorProvider.cs: Component enabled to support accessibility.
+	* Application.cs: Updated to Initialize UIA in ErrorProvider.
+	[Fixes bug #426459]
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextBoxBase.cs: Flag has_been_focused when SelectionStart is set
+	so we don't highlight on first focus.
+	[Fixes bug #360869]
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextControl.cs: Correctly calculate the height of the area we 
+	need to invalidate when we have started scrolling and viewport_y
+	is used.  [Fixes bug #387608]
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextControl.cs: When getting the SelectedText, don't add in
+	NewLine characters, as they are already contained in the lines.
+	[Fixes bug #388115]
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextBoxBase.cs: Replace the buggy Lines setter with one that
+	simply concats the lines and send it to the Text setter.
+	[Fixes issue #2 and #3 of 388115]
+
+2008-09-16  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Binding.cs: The default value of DataSourceNullValue should be
+	Convert.DBNull actually. Also, the NullValue should only be used *if*
+	itself is not null, and use the null/Convert.DBNull value instead.
+
+2008-09-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextControl.cs: Add a method to convert a string newline to the
+	newline enum.
+	* TextBoxBase.cs: When the user hits enter, insert a native newline.
+	[Fixes part 1 of bug #388115]
+
+2008-09-15  Mario Carrion <mcarrion@novell.com>
+
+	* ToolTip.cs: UnPopup event set to internal to match public API.
+
+2008-09-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextBoxBase.cs: If the user is using Ctrl-Tab to move focus, we
+	have to remove the Ctrl in order for the focus moving code to kick in.
+	[Fixes bug #426170]
+
+2008-09-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* CheckedListBox.cs: Return the real item index from Add.  It may not be
+	the last item if the list is sorted.  The user can change the NewValue in
+	the ItemCheck event, we need to use that value if so.
+	* ListBox.cs: Return the real item index from a sorted Add.
+	[Fixes bug #426166]
+
+2008-09-15  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* MimeIcon.cs: Add null checks in the GnomeHandler, because it might 
+	happen that the icons from the theme is missing or the particular size 
+	unavailable.
+	[Fixes bug #424981]
+
+2008-09-15  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Binding.cs: When assigning null or DBNull depending on value/ref type,
+	use IsValueType instead to get the precise desired value.
+	Fixes #424276.
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TreeNodeCollection.cs: When adding a new node to an opened node,
+	we have to invalidate everything below the parent node because
+	every node scoots down and we have to repaint them.
+	[Fixes bug #411386]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeWin32Classic.cs: Take CheckBox and RadioButton's CheckAlign
+	property into account when drawing.
+	[Fixes bug #416064]
+
+2008-09-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListBox.cs: When calling Items.Clear(), call
+	SelectedIndexCollection.ClearCore instead of normal Clear method, to
+	not fire any Selected*Changed event - this is done to match .net and
+	don't have invalid values when changing the DataSourceProperty.
+	Fixes #424273.
+
+2008-09-12  Mario Carrion  <mcarrion@novell.com>
+
+	* HelpProvider.cs: Control enabled to support accessibility.
+	* Application.cs: Updated to Initialize UIA in HelpProvider.
+	[Fixes bug #425988]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Form.cs: When we are showing a dialog box, if its owner is TopMost,
+	make the dialog TopMost as well.
+	[Fixes bug #425984]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Win32DnD.cs, XplatUIWin32.cs: Applied patch from Andy Hume that handles
+	clipboard data better.
+	[Fixes bug #414446]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextBoxBase.cs: Applied patch from John Mortlock that ensures
+	TextChanged and SelectionChanged events fire in the same order as .Net.
+	[Fixes bug #425725]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: When sorting a column, if it only contains numbers,
+	do a numeric sort instead of a string sort.
+	[Fixes bug #425849]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TableLayoutSettings.cs, TableLayoutStyleCollection.cs: Guard
+	against NRE's when the settings have a null panel.
+	* TableLayoutPanel.cs: When setting the TableLayoutSettings, ensure
+	the panel gets set.
+	[Fixes bug #425647]
+
+2008-09-11  Mario Carrion  <mcarrion@novell.com>
+
+	* ToolTip.cs: Control enabled to support accessibility.
+	* Application.cs: Updated to Initialize UIA in ToolTip.
+	[Fixes bug #425277]
+
+2008-09-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Control.cs: Make the custom Enumerator internal to fix build.
+
+2008-09-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewCheckBoxCell.cs: If our content is clicked and we aren't
+	already in edit mode, begin edit mode.  Generally edit mode isn't
+	started until the second click, but CheckBoxes are special.
+
+2008-09-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ErrorProvider.cs: Never try to add our icons to ContainerControl,
+	since that can be set to anything.  Always add them to the Control's
+	parent.  [Fixes bug #416058]
+
+2008-09-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ListView.cs: Use a custom enumerator for ListViewItemCollection
+	so items can be deleted in a foreach.
+	[Fixes bug #425342]
+
+2008-09-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewRow.cs: Better implementation of GetPreferredHeight.
+	Store the user set explicit height so that the row can be AutoSized
+	and then when AutoSize is turned off, it can get its original size back.
+	* DataGridView.cs: Use the Row's GetPreferredHeight instead of 
+	duplicating the logic.  When setting AutoSizeRowsMode to None, reset
+	rows' heights back to their explicit values.
+	[Fixes bug #415780]
+
+2008-09-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimePicker.cs: When getting focus, select the checkbox if we are
+	already showing it. Also, don't change its value when pressing space
+	if the checkbox is not visible (ShowCheckBox as false). Finally, the
+	checkbox should remain selected as long as Checked is false, and the
+	other parts are disabled.
+	Fixes #424267.
+	
+2008-09-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* MessageBox.cs: Handle shortcut keys to dialog buttons.
+	[Fixes bug #425425]
+
+2008-09-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Binding.cs: When the value retrieved from the control property is
+	null, don't return Convert.DBNull for Nullable instances, since they
+	can *actually* get a null value.
+	Fixes #424265.
+
+2008-09-10  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Control.cs: Add an internal field to force doublebuffering regardless
+	of what the public mechanisms are set to.  This is because MS's native
+	controls are doublebuffered even though their .Net bits are set to false.
+	* ProgressBar.cs: Set force_double_buffer to true.
+	[Fixes bug #406595]
+
+2008-09-10  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridViewCheckBoxColumn.cs: Use the threestate constructor for
+	the cell template.
+	* DataGridViewCheckBoxCell.cs: Add proper support for threestate.
+	* DataGridViewCell.cs: Implement GetEditedFormattedValue for types
+	without EditingControls, paint background selection for types without
+	EditingControls, reset the EditingCellValueChanged flag when the
+	cell's value is committed.
+	* DataGridView.cs: Make BeginEdit and EndEdit work with cells that don't
+	have EditingControls, remove a double call to a cell's OnContentClickInternal,
+	don't do cell changing logic in OnMouseDown if the cell didn't change.
+	[Fixes bug #420351]
+
+2008-09-10  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimePicker.cs: Fix the edition of am/pm specifier.
+
+2008-09-09  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextControl.cs: Add "&" to the list of valid characters in a URL.
+
+2008-09-09  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* DateTimePicker.cs: Before incrementing or decrementing any part in
+	the textbox, end any current edit. Also when ending the current edit
+	use the editing_part_index field instead of the current selected
+	value, since they can be out of synch, and we really need to work on
+	the *real* current edit part. Finally when PartData.Selected changes,
+	always try to end any ongoing edit.
+	This should fix some small errors handling mouse navigation and
+	increase/decrease operations.
+
+2008-09-09  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimePicker.cs: 'hh' and 'HH' formats (12 and 24 hour formats
+	respectively) should handled different, since the 12 hours format
+	needs the value typed by the user to be adjusted depending on the
+	a.m/p.m value, so it is preserved, and only changed when the value
+	reaches the 12 value (when it changes from a.m to p.m).
+	Fixes part of #416555.
+
+2008-09-08  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStrip.cs: Ensure MouseDown gets called for MenuStrip items.
+	* ToolStripDropDownItem.cs: Don't fire events and such again if
+	ShowDropDown is called on an already dropped down item.
+	* ToolStripMenuItem.cs: Call ShowDropDown even if there aren't any
+	subitems, the user may add some in the DropDownOpening event.
+	[Fixes bug #417877]
+
+2008-09-08  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: Fix IOORE when setting SelectedItem to null.
+	[Fixes bug #424270]
+
+2008-09-08  Jonathan Pobst  <monkey@jpobst.com>
+
+	* MdiClient.cs: When looking for menustrips on a child form to merge,
+	look inside ToolStripContainers.
+	[Fixes bug #424264]
 
 2008-09-08  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -24,12 +2342,69 @@
 	   - Niceify and move the debug CWLS.
 	[Fixes bug #409028]
 
+2008-09-05  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs: Don't call Invalidate at all from SetItemLocation,
+	since we are already calling Invalidate for the entire control when
+	needed - and call Redraw() when size changes, since we need to paint
+	there by ourselved and not anymore from the mentioned method. 
+	This should improve the layout process. Also clean some not needed calls 
+	here and there.
+
+2008-09-05  Jonathan Pobst  <monkey@jpobst.com>
+
+	* MenuAPI.cs: Add a null check to the Alt-F4 code.
+	[Fixes bug #420309]
+
+2008-09-05  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThreadExceptionDialog.cs: Disable AutoScaling for this dialog.
+	[Fixes bug #423040]
+
 2008-09-04  Ivan N. Zlatev  <contact@i-nz.net>
 
 	* GridEntry.cs, CategoryGridEntry.cs, RootGridEntry.cs, PropertyGrid.cs, 
 	PropertyGridView.sc: Implement lazy/delayed propertygrid population 
 	on item expansion. Improves performance and fixes bug #417955.
 	[Fixes bug #417955]
+
+2008-09-05  Stephane Delcroix  <sdelcroix@novell.com>
+
+	* Control.cs: only check for OptimizedDoubleBuffer in NET_2_0.
+	fix the build.
+
+2008-09-04  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TextControl.cs: Add "_" to the list of valid characters in a URL.
+	[Fixes bug #423408]
+
+2008-09-04  Jonathan Pobst  <monkey@jpobst.com>
+
+	* Control.cs: If using OptimizedDoubleBuffer, ensure the clip 
+	region gets set.
+	[Fixes bug #414166]
+
+2008-09-04  Jonathan Pobst  <monkey@jpobst.com>
+
+	* FontDialog.cs: When storing our font size from the starting font,
+	use SizeInPoints instead of Size in case Size is a different unit
+	from Points.
+	[Fixes bug #416489]
+
+2008-09-04  Jonathan Pobst  <monkey@jpobst.com>
+
+	* FileDialog.cs: When enter is pressed on a SaveFileDialog and we
+	don't use it for anything else, check if a directory is highlighted.
+	If it is, navigate into it.
+	[Fixes bug #422087]
+
+2008-09-04  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Binding.cs: When acquiring a BindingManagerBase for the first time,
+	check that the specified property actually exists in the data source,
+	and throw an ArgumentException if that's not the case - this is only
+	done for this scenario, since for later cases (such Position changes)
+	we throw different exceptions (match .Net).
 
 2008-09-03  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -41,6 +2416,19 @@
 	  ToolStripStatusLabel.cs: Add missing PerformLayout calls to various 
 	  properties.
 	  [Fixes bug #418684]
+
+2008-09-03  Neville Gao  <nevillegao@gmail.com>
+
+	* StatusBar.cs: Control enabled to support accessibility.
+	[Fixes bug #419079]
+
+2008-09-02  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Binding.cs: When connecting the event handler for the "Changed"
+	event for the property, only do it for PropertyManager, and not for
+	CurrencyManager - this is exactly what does .Net, totally ignoring any
+	change in the property of the elements of a list.
+	Fixes the tests.
 
 2008-09-02  Jonathan Pobst  <monkey@jpobst.com>
 
@@ -58,16 +2446,72 @@
 	* XplatUIX11.cs: Provide MouseButtons/State information to the XPlatUI.
 	[Fixes bug #419001]
 
+2008-08-27  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DataGridView.cs: Raise CellContentClick event.
+	[Fixes part of bug #420351]
+
+2008-08-27  Mario Carrion  <mcarrion@novell.com>
+
+	* ScrollBar.cs: Control enabled to support accessibility.
+	[Fixes bug #416759]
+
+2008-08-27  Mario Carrion  <mcarrion@novell.com>
+
+	* ComboBox.cs: Control enabled to support accessibility.
+	[Fixes bug #416663]
+
+2008-08-27  Mario Carrion  <mcarrion@novell.com>
+
+	* ListBox.cs: Control enabled to support accessibility.
+	[Fixes bug #416640]
+
+2008-08-27  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ComboBox.cs: Don't suppress the TextChanged event when changing
+	the SelectedIndex.
+	* ToolStripComboBox.cs: Listen to the ComboBox's TextChanged event
+	and re-raise it.
+	[Fixes bug #420673]
+
 2008-08-26  Jonathan Pobst  <monkey@jpobst.com>
 
 	* ErrorProvider.cs: Fix a regression NRE when setting properties
 	for a control before it has a parent.
 	[Fixes bug #420305]
 
-2008-08-19  Jonathan Pobst  <monkey@jpobst.com>
+2008-08-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
-	* LinkLabel.cs: Always clear any previous links when LinkArea
-	is set.  [Fixes bug #410709]
+	* Binding.cs: Use the BindingManagerBase.Current value to obtain
+	connect the property "Changed" event, instead of using the data
+	sources - this is useful when the property specifies actually a
+	multiple objects path.
+	Fixes part of #417973.
+
+2008-08-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RelatedPropertyManager.cs: PropertyManager instances associated to a
+	nested properties should return not the properties of the data source
+	itself, but the properties of the type of a specific property in the
+	data source - match .net.
+
+2008-08-24  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ListBox.cs (IntegerCollection): To avoid duplication, moved code for
+	AddRange overloads into AddItems method, and added missing NULL check.
+	Added extra argument check to RemoveAt for compatibility with MS. 
+	Modified IList implementation of Add, Contains, IndexOf and Remove to
+	throw an ArgumentException if item is not an int. Modified IList.Insert
+	to throw a NotSupportException instead of an Exception. Implemented
+	ICollection.
+	(ObjectCollection): To avoid duplication, use AddItems method from
+	AddRange overloads. On 1.0 profile, first perform NULL check on items
+	in AddItems.
+
+2008-08-23  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Control.cs: Do not modify bounds directly in .ctor's. Fixes bug
+	 #419087.
 
 2008-08-22  Atsushi Enomoto  <atsushi@ximian.com>
 
@@ -80,10 +2524,97 @@
 	  receiving correct input, which blocked precise input handling
 	  on non-XIM mode.
 
+2008-08-20  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* ListView.cs: When calling OnCacheVirtualItems, cast to the right
+	type of delegate, instead of EventHandler - this was causing a type
+	cast exception in all apps handling this event.
+	Fixes #417876.
+
+2008-08-20  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripDropDownItem.cs: Always raise DropDownOpening in
+	ShowDropDown to give the user a chance to dynamically add
+	drop down items.  [Step 1 of fixing bug #417877]
+
+2008-08-20  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* X11Dnd.cs: Don't fire pseudo motion DragOver events if we haven't
+	had any mouse motion since the call to StartDrag, to match the dnd
+	behaviour of .net.
+	Fixes part of #381876.
+
+2008-08-20  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: Only do the children control bounds check for EnterNotify
+	if mode is NotifyUngrab, and let it flow if mode is NotifyNormal.
+	Also, if we are actually moving into a different window after
+	grabbing, generate a LeaveNotify event for the previous window, since
+	we need to fire the leave events until the grab ends, not when
+	actually moving outside of the control.
+
+2008-08-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: The check inside EnterNotify case to fire MouseEnter
+	events only for client windows was wrong - we need to compare the
+	client window against the window receiving the EnterNotify event, not
+	against zero (since client window is never Zero, btw).
+	This prevents having unnecessary handling of EnterNotify events for
+	non-client windows when a gran begins.
+
+2008-08-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: Handling X ButtonPress events, we must *not* generate
+	MouseMove/MotionNotify events at all (which should only happen after
+	MouseUp/ButtonRelease, as .Net does).
+	This avoids firing an extra and unnecessary MouseMove event just after
+	every MouseDown event.
+
+2008-08-19  Jonathan Pobst  <monkey@jpobst.com>
+
+	* LinkLabel.cs: Always clear any previous links when LinkArea
+	is set.  [Fixes bug #410709]
+
+2008-08-19  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripProfessionalRenderer.cs: Revert last change.
+	* ProfessionalColorTable.cs: For Classic, use SystemColors.Window
+	for ToolStripDropDownBackground.
+
+2008-08-19  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripProfessionalRenderer.cs: Use Window color for the 
+	background of dropdowns to match .Net when the user is not
+	using the default white.  [Fixes bug #418108]
+
 2008-08-19  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XplatUIWin32.cs : SetTimer() used to set wrong window handle and
 	  it caused timer registration twice. Fixed bug #418107.
+
+2008-08-18  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	[Correction: This is the actual change to X11Dnd issue, not the
+	previous one, which was actually a different issue.]
+
+	* X11Dnd.cs: Increase the interval for the Timer, to not fire our
+	pseudo motion HandleMouseOver method so aggresive. Also, don't call it
+	when the pointer is actually in motion, but only when the pointer
+	seems to stop (as .net does).
+	Fixes part of #381876.
+
+
+2008-08-18  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ListBox.cs: Fix CopyTo implementation.
+	[Fixes bug #409169]
+
+2008-08-18  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeWin32Classic.cs: Use ClientRectangle instead of Bounds when
+	drawing a ComboBox's background.  Fixes bad disabled rendering when
+	the control is not at 0,0.
+	[Fixes bug #416063]
 
 2008-08-16  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -92,6 +2623,14 @@
 	Avoids wrong prioritization of duplicate attributes when retrieving 
 	the converter and editor.
 	[Fixes bug #417729]
+
+2008-08-15  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* XplatUIX11.cs: Increase the interval for the Timer, to not fire our
+	pseudo motion HandleMouseOver method so aggresive. Also, don't call it
+	when the pointer is actually in motion, but only when the pointer
+	seems to stop (as .net does).
+	Fixes part of #381876.
 
 2008-08-15  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -102,10 +2641,11 @@
 
 2008-08-14  Geoff Norton  <gnorton@novell.com>
 
-	* XplatUICarbon.cs: Track the ActiveWindow internally for GetActive().
-	Don't prematurely display POPUP windows.  Fully fixed #393317.
+	* XplatUICarbon.cs: Properly implement PeekMessage and DoEvents.
+	Fixes #396983.  Properly fix ActiveWindow trackin and do not
+	prematurely show POPUP windows.
 
-2008-08-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+2008-08-12  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
 
 	* XplatUIX11.cs: Handle the obscured regions while scrolling using
 	GraphicsExpose event, processing it just after we copy the scrolled
@@ -121,14 +2661,6 @@
 	handling. Also ignore any MouseMove events generated together with
 	MouseDown events - we are only interested in the real motion event.
 	Fixes part of #414963.
-
-2008-08-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
-
-	* XplatUIX11.cs: When getting EnterNotify with mode other than
-	NotifyNormal (pseudo motion events), ignore them as we used to do
-	before, since it's breaking our selection code and some drag and drop
-	operations, because of the confusion of generating extra events (not
-	fired by .net, btw).
 
 2008-08-08  Jonathan Pobst  <monkey@jpobst.com>
 
@@ -147,20 +2679,6 @@
 	* PropertyGrid.cs: Refresh should also repopulate the PropertyGrid.
 	[Fixes part of bug #415452]
 
-2008-08-07  Andreia Gaita <avidigal@novell.com> 
-
-	* WebBrowser.cs: Remove extraneous CWL. Fixes #411372 (partially)
-
-2008-08-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
-
-	* ListBox.cs: Selection changes made in the MouseDown handler should
-	use the *Core versions of selection in SelectedIndices collection,
-	since the SelectedIndexChanged/SelectedValueChanged events are fired
-	until we get a MouseUp event, and thus we need to separate the logic
-	from the events, as done in the keyboard navigation. Also, fire those
-	selection events from keyboard navigation in SelectionMode.None, even
-	if we don't have a selection, as .Net does.
-
 2008-08-05  Ivan N. Zlatev  <contact@i-nz.net>
 
 	* GridEntry.cs: ITypeDescriptorContext should be relative to the parent 
@@ -174,27 +2692,22 @@
 	share the same logic.
 	[Fixes bug #414454]
 
-2008-08-01  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+2008-08-03  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
-	* DateTimePicker.cs: 
-	* ThemeWin32Classic.cs: Add a editing capability to DateTimePicker, in
-	order to set the value as required (which means: when selection
-	changes for a part being edited, and not before that if not needed).
-	Also use an enum to describe which part are we using, and use the
-	selection as a property in PartData, in order to notify the
-	DateTimePicker owner that we need to end the current edit.
-	Fixes #383462.
+	* ListBox.cs: Selection changes made in the MouseDown handler should
+	use the *Core versions of selection in SelectedIndices collection,
+	since the SelectedIndexChanged/SelectedValueChanged events are fired
+	until we get a MouseUp event, and thus we need to separate the logic
+	from the events, as done in the keyboard navigation. Also, fire those
+	selection events from keyboard navigation in SelectionMode.None, even
+	if we don't have a selection, as .Net does.
 
-2008-08-01  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+2008-08-01  Jonathan Pobst  <monkey@jpobst.com>
 
-	* ThemeWin32Classic.cs: Don't draw ListViewSubItem instances from
-	DrawListViewItem - we need to reuse the main item's drawing for the
-	first sub item in case owner draw is true, but wants the system to
-	do the default draw for the first sub item, without incurring in a
-	recursion problem.
-	Fixes #410880.
+	* ToolStripButton.cs, ToolStripMenuItem.cs: Guard against a NRE my
+	last change introduced when an item is clicked but isn't on a toolstrip.
 
-2008-08-01  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+2008-07-31  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* ListBindingHelper.cs: When looking for an object's properties, check
 	if it implements ICustomTypeDescriptor, in which case we should
@@ -202,21 +2715,43 @@
 	actual properties. This is what .Net seems to do.
 	Fixes a UsingWebBrowser problem during initialization.
 
-
-2008-08-01  Jonathan Pobst  <monkey@jpobst.com>
-
-	* ToolStripButton.cs, ToolStripMenuItem.cs: Guard against a NRE my
-	last change introduced when an item is clicked but isn't on a toolstrip.
-
-2008-07-31  Geoff Norton  <gnorton@novell.com>
-
-	* XplatUICarbon.cs: Properly implement PeekMessage and DoEvents.
-	Fixes #396983
-
 2008-07-31  Jonathan Pobst  <monkey@jpobst.com>
 
 	* ToolStrip.cs: Fix an NRE caused by clicking on a ToolStripButton
 	sitting on a MenuStrip.
+
+2008-07-31  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripButton.cs: If we "click" a top button on a menustrip that has
+	no children with the keyboard, we need to release the keyboard capture.
+	[Fixes bug #413567]
+
+2008-07-31  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripMenuItem.cs: If we "click" a top level menu item that has
+	no children with the keyboard, we need to release the keyboard capture.
+	[Fixes bug #413567]
+
+2008-07-31  George Giolfan  <georgegiolfan@yahoo.com>
+
+	* ThemeVisualStyles.cs: Made ScrollBar rendering less strict so it supports
+	the GTK+-based implementation of VisualStyles.
+	* ThemeWin32Classic.cs: Exposed various layout values for use in the
+	GTK+-based implementation of VisualStyles: ListViewGetHeaderHeight(Font),
+	ListViewGetHeaderHeight(), ProgressBarChunkSpacing, ProgressBarGetChunkSize(),
+	ProgressBarGetChunkSize(int), ProgressBarDefaultHeight,
+	TrackBarGetThumbSize(), TrackBarVerticalTrackWidth,
+	TrackBarHorizontalTrackHeight.
+
+2008-07-31  George Giolfan  <georgegiolfan@yahoo.com>
+
+	* TabControl.cs: Added hot style handling for the scroll buttons.
+	right_slider_state, left_slider_state are now of type PushButtonState to
+	allow for a hot state. Added tracking of the mouse button being held down
+	on a tab page. Extracted HasHotElementStyles, RightScrollButtonArea,
+	LeftScrollButtonArea.
+	* Theme.cs, ThemeWin32Classic.cs: Removed TabControlGetLeftScrollRect,
+	TabControlGetRightScrollRect.
 
 2008-07-30  Everaldo Canuto  <ecanuto@novell.com>
 
@@ -234,12 +2769,6 @@
 
 	* Form.cs: Ensure closing events are raised only once.
 	[Fixes bug #413143]
-
-2008-07-29  Jonathan Pobst  <monkey@jpobst.com>
-
-	* ListBox.cs: Don't let the user set TopIndex so high that it
-	scrolls up far enough to show empty items.
-	[Fixes bug #412728]
 
 2008-07-30  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -261,7 +2790,7 @@
 	* MenuAPI.cs: Don't create tracker on TrackPopupMenu, it will be created in
 	MainMenu (already done) and ContextMenu creation.
 
-	* ContextMenu.cs: Create tracker on construction.
+	* ContextMenu.cs: Create tracker on construction. 
 
 2008-07-30  Everaldo Canuto  <ecanuto@novell.com>
 
@@ -299,6 +2828,27 @@
 	all keyboard messages.
 	[Fixes bug #378728]
 
+2008-07-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ListBox.cs: Don't let the user set TopIndex so high that it
+	scrolls up far enough to show empty items.
+	[Fixes bug #412728]
+
+2008-07-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ThemeWin32Classic.cs: Actually commit the changes to fix #410880
+	(I'm an idiot and forgot to commit the actual changes, as well as
+	specify the right file, which is this one, not ListView.cs).
+
+2008-07-28  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ListView.cs: Don't draw ListViewSubItem instances from
+	DrawListViewItem - we need to reuse the main item's drawing for the
+	first sub item in case owner draw is true, but wants the system to
+	do the default draw for the first sub item, without incurring in a
+	recursion problem.
+	Fixes #410880.
+
 2008-07-28  Jonathan Pobst  <monkey@jpobst.com>
 
 	* ToolStripButton.cs: Update Checked for CheckOnClick before
@@ -314,6 +2864,15 @@
 
 	* PropertyGrid.cs: Invalidate the View when the PropertyTab 
 	changes.
+
+2008-07-25  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* WebBrowser.cs: Removed debug output.
+
+2008-07-25  Jonathan Pobst  <monkey@jpobst.com>
+
+	* FileDialog.cs: Apply patch from Ernesto to clean up some
+	dialog messages.
 
 2008-07-25  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -358,10 +2917,26 @@
 
 	* TableLayoutPanel.cs: Layout on Row/Column count change.
 
-2008-07-15  Jonathan Pobst  <monkey@jpobst.com>
-	[Backport to 2.0]
-	* ImageList.cs: Fix ICollection.CopyTo implementation for
-	ImageListCollection.  [Fixes bug #409169]
+2008-07-22  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ListViewItem.cs: Changed binary serialization to match MS. Fixes
+	bug #409351.
+	* PictureBox.cs: When ImageLocation is set to null or an empty string,
+	only set image to null if it was previously initialized from an url
+	(or using ImageLocation). In ImageLocation, load specified image
+	asynchronously if WaitOnLoad is false. Added support for local file
+	paths to LoadAsync, and added missing argument check.
+
+2008-07-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimePicker.cs: 
+	* ThemeWin32Classic.cs: Add a editing capability to DateTimePicker, in
+	order to set the value as required (which means: when selection
+	changes for a part being edited, and not before that if not needed).
+	Also use an enum to describe which part are we using, and use the
+	selection as a property in PartData, in order to notify the
+	DateTimePicker owner that we need to end the current edit.
+	Fixes #383462.
 
 2008-07-17  Ivan N. Zlatev  <contact@i-nz.net>
 
@@ -377,6 +2952,11 @@
 	now fixed, in TypeDescriptor that was causing the wrong converter to be 
 	returned which caused GetPropertiesSupported == false in most cases.
 	[Fixes bug #409027]
+
+2008-07-15  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ImageList.cs: Fix ICollection.CopyTo implementation for
+	ImageListCollection.  [Fixes bug #409169]
 
 2008-07-14  Jonathan Pobst  <monkey@jpobst.com>
 

@@ -73,6 +73,8 @@ namespace System.Windows.Forms {
 		private bool		is_year_going_down;
 		private bool		is_mouse_moving_year;
 		private int		year_moving_count;
+		private bool 		date_selected_event_pending;
+
 #if NET_2_0
 		bool			right_to_left_layout;
 #endif
@@ -213,6 +215,8 @@ namespace System.Windows.Forms {
 					annually_bolded_dates.Clear ();
 					annually_bolded_dates.AddRange (value);
 				}
+
+				UpdateBoldedDates ();
 			}
 			get {
 				if (annually_bolded_dates == null || annually_bolded_dates.Count == 0) {
@@ -268,6 +272,8 @@ namespace System.Windows.Forms {
 					bolded_dates.Clear ();
 					bolded_dates.AddRange (value);
 				}
+
+				UpdateBoldedDates ();
 			}
 			get {
 				if (bolded_dates == null || bolded_dates.Count == 0) 
@@ -380,8 +386,15 @@ namespace System.Windows.Forms {
 #endif
 				}
 
-				if (max_date != value) {
-					max_date = value;
+				if (max_date == value)
+					return;
+					
+				max_date = value;
+
+				if (max_date < selection_range.Start || max_date < selection_range.End) {
+					DateTime start = max_date < selection_range.Start ? max_date : selection_range.Start;
+					DateTime end = max_date < selection_range.End ? max_date : selection_range.End;
+					SelectionRange = new SelectionRange (start, end);
 				}
 			}
 			get {
@@ -413,6 +426,7 @@ namespace System.Windows.Forms {
 			
 				if (max_selection_count != value) {
 					max_selection_count = value;
+					this.OnUIAMaxSelectionCountChanged ();
 				}
 			}
 			get {
@@ -452,8 +466,15 @@ namespace System.Windows.Forms {
 #endif
 				}
 
-				if (max_date != value) {
-					min_date = value;
+				if (min_date == value)
+					return;
+
+				min_date = value;
+
+				if (min_date > selection_range.Start || min_date > selection_range.End) {
+					DateTime start = min_date > selection_range.Start ? min_date : selection_range.Start;
+					DateTime end = min_date > selection_range.End ? min_date : selection_range.End;
+					SelectionRange = new SelectionRange (start, end);
 				}
 			}
 			get {
@@ -471,6 +492,8 @@ namespace System.Windows.Forms {
 					monthly_bolded_dates.Clear ();
 					monthly_bolded_dates.AddRange (value);
 				}
+
+				UpdateBoldedDates ();
 			}
 			get {
 				if (monthly_bolded_dates == null || monthly_bolded_dates.Count == 0) 
@@ -547,6 +570,7 @@ namespace System.Windows.Forms {
 					SelectionRange.End = value;
 					this.InvalidateDateRange (new SelectionRange (old_end, SelectionRange.End));
 					this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
+					this.OnUIASelectionChanged ();
 				}
 			}
 			get {
@@ -613,6 +637,7 @@ namespace System.Windows.Forms {
 						this.InvalidateDateRange (new_range);
 					// raise date changed event
 					this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
+					this.OnUIASelectionChanged ();
 				}
 			}
 			get {
@@ -643,6 +668,7 @@ namespace System.Windows.Forms {
 					
 					this.Invalidate ();
 					this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
+					this.OnUIASelectionChanged ();
 				}
 			}
 			get {
@@ -1591,14 +1617,18 @@ namespace System.Windows.Forms {
 					range.End = range.Start.AddDays (MaxSelectionCount-1);
 				}
 			}
-			this.SelectionRange = range;
+
+			// Avoid re-setting SelectionRange to the same value and fire an extra DateChanged event
+			if (range.Start != selection_range.Start || range.End != selection_range.End)
+				SelectionRange = range;
 		}
 
 		// attempts to add the date to the selection without throwing exception
 		private void SelectDate (DateTime date) {
 			// try and add the new date to the selction range
+			SelectionRange range = null;
 			if (is_shift_pressed || (click_state [0])) {
-				SelectionRange range = new SelectionRange (first_select_start_date, date);
+				range = new SelectionRange (first_select_start_date, date);
 				if (range.Start.AddDays (MaxSelectionCount-1) < range.End) {
 					// okay the date is beyond what is allowed, lets set the maximum we can
 					if (range.Start != first_select_start_date) {
@@ -1607,13 +1637,16 @@ namespace System.Windows.Forms {
 						range.End = range.Start.AddDays (MaxSelectionCount-1);
 					}
 				}
-				SelectionRange = range;
 			} else {
 				if (date >= MinDate && date <= MaxDate) {
-					SelectionRange = new SelectionRange (date, date);
+					range = new SelectionRange (date, date);
 					first_select_start_date = date;
 				}
 			}
+				
+			// Only set if we re actually getting a different range (avoid an extra DateChanged event)
+			if (range != null && range.Start != selection_range.Start || range.End != selection_range.End)
+				SelectionRange = range;
 		}
 
 		// gets the week of the year
@@ -1848,16 +1881,6 @@ namespace System.Windows.Forms {
 			IsYearGoingUp = false;
 			is_mouse_moving_year = false;
 			
-			HitTestInfo hti = this.HitTest (this.PointToClient (MousePosition));
-			switch (hti.HitArea) {
-			case HitArea.PrevMonthDate:
-			case HitArea.NextMonthDate:
-			case HitArea.Date:
-				this.SelectDate (clicked_date);
-				this.OnDateSelected (new DateRangeEventArgs (SelectionStart, SelectionEnd));
-				break;
-			}
-
 			// invalidate the next monthbutton
 			if (this.is_next_clicked) {
 				this.Invalidate(
@@ -1914,7 +1937,6 @@ namespace System.Windows.Forms {
 			updown_timer.Enabled = true;
 		}
 
-
 		// occurs when mouse moves around control, used for selection
 		private void MouseMoveHandler (object sender, MouseEventArgs e) {
 			HitTestInfo hti = this.HitTest (e.X, e.Y);
@@ -1937,6 +1959,10 @@ namespace System.Windows.Forms {
 					}
 
 					if (prev_clicked != clicked_date) {
+						// select date after updating click_state and clicked_date
+						SelectDate (clicked_date);
+						date_selected_event_pending = true;
+
 						Rectangle invalid = Rectangle.Union (prev_rect, clicked_rect);
 						Invalidate (invalid);
 					}
@@ -1990,6 +2016,11 @@ namespace System.Windows.Forms {
 				case HitArea.PrevMonthDate:
 				case HitArea.NextMonthDate:
 					DoDateMouseDown (hti);
+
+					// select date before updating click_state
+					SelectDate (clicked_date);
+					date_selected_event_pending = true;
+
 					// leave clicked state blank if drop down window
 					if (owner == null) {
 						click_state [0] = true;
@@ -1998,6 +2029,7 @@ namespace System.Windows.Forms {
 						click_state [1] = false;
 						click_state [2] = false;
 					}
+
 					break;
 				case HitArea.TitleMonth:
 					month_title_click_location = hti.Point;
@@ -2072,7 +2104,6 @@ namespace System.Windows.Forms {
 							DateTime date = GetFirstDateInMonth (this.SelectionStart);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.End:
@@ -2087,7 +2118,6 @@ namespace System.Windows.Forms {
 							DateTime date = GetLastDateInMonth (this.SelectionStart);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.PageUp:
@@ -2098,7 +2128,6 @@ namespace System.Windows.Forms {
 							DateTime date = this.SelectionStart.AddMonths (-1);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.PageDown:
@@ -2109,7 +2138,6 @@ namespace System.Windows.Forms {
 							DateTime date = this.SelectionStart.AddMonths (1);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.Up:
@@ -2120,7 +2148,6 @@ namespace System.Windows.Forms {
 							DateTime date = this.SelectionStart.AddDays (-7);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.Down:
@@ -2131,7 +2158,6 @@ namespace System.Windows.Forms {
 							DateTime date = this.SelectionStart.AddDays (7);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.Left:
@@ -2142,7 +2168,6 @@ namespace System.Windows.Forms {
 							DateTime date = this.SelectionStart.AddDays (-1);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.Right:
@@ -2153,7 +2178,6 @@ namespace System.Windows.Forms {
 							DateTime date = this.SelectionStart.AddDays (1);
 							this.SetSelectionRange (date, date);
 						}
-						this.OnDateChanged (new DateRangeEventArgs (SelectionStart, SelectionEnd));
 						e.Handled = true;
 						break;
 					case Keys.F4:
@@ -2187,6 +2211,11 @@ namespace System.Windows.Forms {
 			click_state [2] = false;
 			// do the regulare mouseup stuff
 			this.DoMouseUp ();
+
+			if (date_selected_event_pending) {
+				OnDateSelected (new DateRangeEventArgs (SelectionStart, SelectionEnd));
+				date_selected_event_pending = false;
+			}
 		}
 
 		// raised by any key up events
@@ -2424,5 +2453,36 @@ namespace System.Windows.Forms {
 		}
 
 		#endregion 	// inner classes
+
+		#region UIA Framework: Methods, Properties and Events
+
+		static object UIAMaxSelectionCountChangedEvent = new object ();
+		static object UIASelectionChangedEvent = new object ();
+
+		internal event EventHandler UIAMaxSelectionCountChanged {
+			add { Events.AddHandler (UIAMaxSelectionCountChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAMaxSelectionCountChangedEvent, value); }
+		}
+
+		internal event EventHandler UIASelectionChanged {
+			add { Events.AddHandler (UIASelectionChangedEvent, value); }
+			remove { Events.RemoveHandler (UIASelectionChangedEvent, value); }
+		}
+
+		private void OnUIAMaxSelectionCountChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIAMaxSelectionCountChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		private void OnUIASelectionChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIASelectionChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		#endregion
 	}
 }

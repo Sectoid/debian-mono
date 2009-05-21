@@ -65,9 +65,11 @@ namespace System.Reflection {
 	[Serializable()]
 	internal class MonoMethod : MethodInfo, ISerializable
 	{
+#pragma warning disable 649
 		internal IntPtr mhandle;
 		string name;
 		Type reftype;
+#pragma warning restore 649
 
 		internal MonoMethod () {
 		}
@@ -255,12 +257,22 @@ namespace System.Reflection {
 			return attrs;
 		}
 
+		static bool ShouldPrintFullName (Type type) {
+			return type.IsClass && (!type.IsPointer ||
+#if NET_2_0
+ 				(!type.GetElementType ().IsPrimitive && !type.GetElementType ().IsNested));
+#else
+				!type.GetElementType ().IsPrimitive);
+#endif
+		}
+
 		public override string ToString () {
 			StringBuilder sb = new StringBuilder ();
-			if (ReturnType.IsClass)
-				sb.Append (ReturnType.ToString ());
+			Type retType = ReturnType;
+			if (ShouldPrintFullName (retType))
+				sb.Append (retType.ToString ());
 			else
-				sb.Append (ReturnType.Name);
+				sb.Append (retType.Name);
 			sb.Append (" ");
 			sb.Append (Name);
 #if NET_2_0 || BOOTSTRAP_NET_2_0
@@ -284,7 +296,7 @@ namespace System.Reflection {
 				bool byref = pt.IsByRef;
 				if (byref)
 					pt = pt.GetElementType ();
-				if (pt.IsClass)
+				if (ShouldPrintFullName (pt))
 					sb.Append (pt.ToString ());
 				else
 					sb.Append (pt.Name);
@@ -378,9 +390,11 @@ namespace System.Reflection {
 	
 	internal class MonoCMethod : ConstructorInfo, ISerializable
 	{
+#pragma warning disable 649		
 		internal IntPtr mhandle;
 		string name;
 		Type reftype;
+#pragma warning restore 649		
 		
 		public override MethodImplAttributes GetMethodImplementationFlags() {
 			MonoMethodInfo info;
@@ -419,6 +433,10 @@ namespace System.Reflection {
 				throw new MemberAccessException ("Cannot create an instance of " + DeclaringType + " because Type.ContainsGenericParameters is true.");
 #endif
 
+			if ((invokeAttr & BindingFlags.CreateInstance) != 0 && DeclaringType.IsAbstract) {
+				throw new MemberAccessException (String.Format ("Cannot create an instance of {0} because it is an abstract class", DeclaringType));
+			}
+
 			Exception exc = null;
 			object o = null;
 
@@ -434,7 +452,7 @@ namespace System.Reflection {
 
 			if (exc != null)
 				throw exc;
-			return o;
+			return (obj == null) ? o : null;
 		}
 
 		public override Object Invoke (BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture) {

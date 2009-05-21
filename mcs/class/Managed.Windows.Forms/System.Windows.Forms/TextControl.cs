@@ -231,8 +231,6 @@ namespace System.Windows.Forms {
 		internal int		document_x;		// Width of the document
 		internal int		document_y;		// Height of the document
 
-		internal Rectangle	invalid;
-
 		internal int		crlf_size;		// 1 or 2, depending on whether we use \r\n or just \n
 
 		internal TextBoxBase	owner;			// Who's owning us?
@@ -314,6 +312,7 @@ namespace System.Windows.Forms {
 			}
 		}
 
+		// UIA: Method used via reflection in TextRangeProvider
 		internal int Lines {
 			get {
 				return lines;
@@ -660,11 +659,18 @@ namespace System.Windows.Forms {
 
 		private void SetSelectionVisible (bool value)
 		{
+#if NET_2_0
+			bool old_selection_visible = selection_visible;
+#endif
 			selection_visible = value;
 
 			// cursor and selection are enemies, we can't have both in the same room at the same time
 			if (owner.IsHandleCreated && !owner.show_caret_w_selection)
 				XplatUI.CaretVisible (owner.Handle, !selection_visible);
+#if NET_2_0
+			if (UIASelectionChanged != null && (selection_visible || old_selection_visible))
+				UIASelectionChanged (this, EventArgs.Empty);
+#endif
 		}
 
 		private void DecrementLines(int line_no) {
@@ -873,7 +879,7 @@ namespace System.Windows.Forms {
 						offset_x, 
 						line.Y - viewport_y + offset_y, 
 						viewport_width, 
-						owner.Height - line.Y - viewport_y));
+						owner.Height - (line.Y - viewport_y)));
 				} else {
 					// The tag was above the visible area, draw everything
 					owner.Invalidate();
@@ -945,7 +951,7 @@ namespace System.Windows.Forms {
 						offset_x, 
 						line.Y - viewport_y + offset_y, 
 						viewport_width, 
-						owner.Height - line.Y - viewport_y));
+						owner.Height - (line.Y - viewport_y)));
 				} else {
 					// The tag was above the visible area, draw everything
 					owner.Invalidate();
@@ -1039,7 +1045,7 @@ namespace System.Windows.Forms {
 						}
 					} else {
 						if (char.IsLetterOrDigit (line_no_breaks_string [i]) == false &&
-							"@-/:~.?=".IndexOf (line_no_breaks_string [i].ToString ()) == -1) {
+							"@-/:~.?=_&".IndexOf (line_no_breaks_string [i].ToString ()) == -1) {
 							link_end = i - 1;
 							line_no_breaks_index = i;
 							break;
@@ -1681,6 +1687,18 @@ namespace System.Windows.Forms {
 			Console.WriteLine ("</doc>");
 		}
 
+		// UIA: Used via reflection by TextProviderBehavior
+		internal void GetVisibleLineIndexes (Rectangle clip, out int start, out int end)
+		{
+			if (multiline) {
+				start = GetLineByPixel(clip.Top + viewport_y - offset_y, false).line_no;
+				end = GetLineByPixel(clip.Bottom + viewport_y - offset_y, false).line_no;
+			} else {
+				start = GetLineByPixel(clip.Left + viewport_x - offset_x, false).line_no;
+				end = GetLineByPixel(clip.Right + viewport_x - offset_x, false).line_no;
+			}
+		}
+
 		internal void Draw (Graphics g, Rectangle clip)
 		{
 			Line line;		// Current line being drawn
@@ -1693,14 +1711,7 @@ namespace System.Windows.Forms {
 			Color current_color;
 
 			// First, figure out from what line to what line we need to draw
-
-			if (multiline) {
-				start = GetLineByPixel(clip.Top + viewport_y - offset_y, false).line_no;
-				end = GetLineByPixel(clip.Bottom + viewport_y - offset_y, false).line_no;
-			} else {
-				start = GetLineByPixel(clip.Left + viewport_x - offset_x, false).line_no;
-				end = GetLineByPixel(clip.Right + viewport_x - offset_x, false).line_no;
-			}
+			GetVisibleLineIndexes (clip, out start, out end);
 
 			// remove links in the list (used for mouse down events) that are within the clip area.
 			InvalidateLinks (clip);
@@ -1941,6 +1952,22 @@ namespace System.Windows.Forms {
 			return string.Empty;
 		}
 
+		internal LineEnding StringToLineEnding (string ending)
+		{
+			switch (ending) {
+				case "\r":
+					return LineEnding.Limp;
+				case "\r\n":
+					return LineEnding.Hard;
+				case "\r\r\n":
+					return LineEnding.Soft;
+				case "\n":
+					return LineEnding.Rich;
+				default:
+					return LineEnding.None;
+			}
+		}
+		
 		internal void Insert (Line line, int pos, bool update_caret, string s)
 		{
 			Insert (line, pos, update_caret, s, line.FindTag (pos));
@@ -3136,11 +3163,11 @@ namespace System.Windows.Forms {
 				start = selection_start.line.line_no;
 				end = selection_end.line.line_no;
 
-				sb.Append(selection_start.line.text.ToString(selection_start.pos, selection_start.line.text.Length - selection_start.pos) + Environment.NewLine);
+				sb.Append(selection_start.line.text.ToString(selection_start.pos, selection_start.line.text.Length - selection_start.pos));
 
 				if ((start + 1) < end) {
 					for (i = start + 1; i < end; i++) {
-						sb.Append(GetLine(i).text.ToString() + Environment.NewLine);
+						sb.Append(GetLine(i).text.ToString());
 					}
 				}
 
@@ -3345,6 +3372,8 @@ namespace System.Windows.Forms {
 		}
 
 
+		// UIA: Method used via reflection in TextRangeProvider
+
 		/// <summary>Give it a Line number and it returns the Line object at with that line number</summary>
 		internal Line GetLine(int LineNo) {
 			Line	line = document;
@@ -3468,6 +3497,8 @@ namespace System.Windows.Forms {
 			}
 			return last;
 		}
+
+		// UIA: Method used via reflection in TextProviderBehavior
 
 		// Give it x/y pixel coordinates and it returns the Tag at that position
 		internal LineTag FindCursor (int x, int y, out int index)
@@ -3983,6 +4014,9 @@ namespace System.Windows.Forms {
 		internal event EventHandler WidthChanged;
 		internal event EventHandler HeightChanged;
 		internal event EventHandler LengthChanged;
+#if NET_2_0
+		internal event EventHandler UIASelectionChanged;
+#endif
 		#endregion	// Events
 
 		#region Administrative

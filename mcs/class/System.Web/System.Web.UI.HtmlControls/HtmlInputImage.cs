@@ -46,13 +46,12 @@ namespace System.Web.UI.HtmlControls {
 #if NET_2_0
 	[SupportsEventValidation]
 #endif
-	public class HtmlInputImage : HtmlInputControl, IPostBackDataHandler,
-		      IPostBackEventHandler {
+	public class HtmlInputImage : HtmlInputControl, IPostBackDataHandler, IPostBackEventHandler 
+	{
+		static readonly object ServerClickEvent = new object ();
 
-		private static readonly object ServerClickEvent = new object ();
-
-		private int clicked_x;
-		private int clicked_y;
+		int clicked_x;
+		int clicked_y;
 
 		public HtmlInputImage () : base ("image")
 		{
@@ -189,6 +188,7 @@ namespace System.Web.UI.HtmlControls {
 
 		protected virtual void RaisePostDataChangedEvent ()
 		{
+			ValidateEvent (UniqueID, String.Empty);
 			RaisePostDataChangedEventInternal ();
 		}
 #endif		
@@ -250,7 +250,7 @@ namespace System.Web.UI.HtmlControls {
 		{
 #if NET_2_0
 			if (Page != null)
-				Page.ClientScript.RegisterForEventValidation (this.UniqueID);
+				Page.ClientScript.RegisterForEventValidation (UniqueID);
 			
 			if (CausesValidation && Page != null && Page.AreValidatorsUplevel (ValidationGroup)) {
 				ClientScriptManager csm = Page.ClientScript;
@@ -267,7 +267,7 @@ namespace System.Web.UI.HtmlControls {
 			base.RenderAttributes (writer);
 		}
 
-		private void SetAtt (string name, string value)
+		void SetAtt (string name, string value)
 		{
 			if ((value == null) || (value.Length == 0))
 				Attributes.Remove (name);
@@ -275,7 +275,7 @@ namespace System.Web.UI.HtmlControls {
 				Attributes [name] = value;
 		}
 
-		private string GetAtt (string name)
+		string GetAtt (string name)
 		{
 			string res = Attributes [name];
 			if (res == null)

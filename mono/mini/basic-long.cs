@@ -349,6 +349,17 @@ class Tests {
 		return (int)(a & 8);
 	}
 
+	public static int get_high_bit (ulong a) {
+		if ((a & 0x8000000000000000) != 0)
+			return 1;
+		return 0;
+	}
+
+	public static int test_1_and () {
+		ulong a = 0xabcd1234deadbeef;
+		return get_high_bit (a);
+	}
+
 	public static int test_10_or () {
 		long a = 8;
 		long b = 2;		
@@ -1182,6 +1193,22 @@ class Tests {
 		long t = ((long)(hrssec) * 1000L);
 
 		return t == 0 ? 0 : 1;
+	}
+
+	public static int test_0_conv_u () {
+		unsafe {
+			int** dead = (int**) 0xdeadbeaf;
+			long i = (long)dead;
+			return (i == 0xdeadbeaf) ? 0 : 1;
+		}
+	}
+
+	public static int test_0_lconv_to_u2 () {
+		unchecked { 
+			ulong value = (ulong)(short)-10;
+			value = (ushort)value;
+		    return (value == 65526) ? 0 : 1;
+		}
 	}
 }
 

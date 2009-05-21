@@ -566,6 +566,7 @@ namespace System.Xml
 			curNodePeekIndex = peekCharsIndex;
 			preserveCurrentTag = true;
 			nestLevel = 0;
+			ClearValueBuffer ();
 
 			if (startNodeType == XmlNodeType.Attribute) {
 				if (currentAttribute == 0)
@@ -700,13 +701,11 @@ namespace System.Xml
 			Clear ();
 		}
 
-#if !NET_2_1
 		public override void ResolveEntity ()
 		{
 			// XmlTextReader does not resolve entities.
 			throw new InvalidOperationException ("XmlTextReader cannot resolve external entities.");
 		}
-#endif
 
 #if NET_2_0
 		[MonoTODO] // FIXME: Implement, for performance improvement
@@ -1942,7 +1941,7 @@ namespace System.Xml
 #if NET_2_0
 						if (entityHandling == EntityHandling.ExpandEntities) {
 							string value = DTD.GenerateEntityAttributeText (entName);
-							foreach (char c in value)
+							foreach (char c in (IEnumerable<char>) value)
 								AppendValueChar (c);
 						} else
 #endif

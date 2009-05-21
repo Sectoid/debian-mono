@@ -3101,6 +3101,13 @@ namespace MonoTests.System
 				AppDomain.Unload (ad);
 			}
 		}
+		
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void Load_EmptyString ()
+		{
+			AppDomain.CurrentDomain.Load ("");
+		}
 
 		[Test]
 		public void SetAppDomainPolicy ()
@@ -3290,7 +3297,7 @@ namespace MonoTests.System
 				// check for Unix platforms - see FAQ for more details
 				// http://www.mono-project.com/FAQ:_Technical#How_to_detect_the_execution_platform_.3F
 				int platform = (int) Environment.OSVersion.Platform;
-				return ((platform == 4) || (platform == 128));
+				return ((platform == 4) || (platform == 128) || (platform == 6));
 			}
 		}
 

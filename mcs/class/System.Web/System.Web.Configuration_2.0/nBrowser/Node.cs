@@ -2,7 +2,8 @@
 /*
 Used to determine Browser Capabilities by the Browsers UserAgent String and related
 Browser supplied Headers.
-Copyright (C) 2002-Present  Owen Brady (Ocean at xvision.com)
+Copyright (C) 2002-Present  Owen Brady (Ocean at owenbrady dot net) 
+and Dean Brettle (dean at brettle dot com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy 
 of this software and associated documentation files (the "Software"), to deal
@@ -469,6 +470,12 @@ namespace System.Web.Configuration.nBrowser
 				{
 					ProcessSampleHeaders(xmlNode.ChildNodes[a]);
 				}
+				
+				if (Id == "default" && (Identification == null || Identification.Length == 0))
+				{
+					Identification = new Identification[1];
+					Identification[0] = new System.Web.Configuration.nBrowser.Identification(true, "header", "User-Agent", ".");
+				}
 			}
 		}
 		/// <summary>
@@ -577,6 +584,7 @@ namespace System.Web.Configuration.nBrowser
 					return false;
 			}
 
+			result.AddMatchingBrowserId (this.Id);
 			#region Browser Identification Successfull
 			//----------------------------------------------------------------------
 			//By reaching this point, it either means there were no Identification 
@@ -667,7 +675,7 @@ namespace System.Web.Configuration.nBrowser
 					//and only the newest one (most recent matches) are the ones
 					//we want to insert.
 					//----------------------------------------------------------------------
-					for (int a = matchList.Count - 1; a >= 0 && v != null && v.Length > 0 &&  v.IndexOf("$") > -1; a--)
+					for (int a = matchList.Count - 1; a >= 0 && v != null && v.Length > 0 &&  v.IndexOf('$') > -1; a--)
 					{
 						// Don't do substitution if the match has no groups or was a nonMatch
 						if (matchList[a].Groups.Count == 0 || !matchList[a].Success)
@@ -678,7 +686,7 @@ namespace System.Web.Configuration.nBrowser
 					//----------------------------------------------------------------------
 					//Checks to make sure we extract the result we where looking for.
 					//----------------------------------------------------------------------
-					if (v.IndexOf("$") > -1 || v.IndexOf("%") > -1)
+					if (v.IndexOf('$') > -1 || v.IndexOf('%') > -1)
 					{
 						//----------------------------------------------------------------------
 						//Microsoft has a nasty habbit of using capability items in regular expressions
@@ -754,7 +762,7 @@ namespace System.Web.Configuration.nBrowser
 			}
 			if (Identification == null || Identification.Length == 0)
 			{
-				throw new nBrowser.Exception("Missing Identification Section where one is required");
+				throw new nBrowser.Exception(String.Format("Missing Identification Section where one is required (Id={0}, RefID={1})", Id, RefId));
 			}
 			if (header == null)
 			{

@@ -52,6 +52,7 @@ namespace System
 	, _Exception
 #endif
 	{
+#pragma warning disable 169, 649
 		#region Sync with object-internals.h
 		IntPtr [] trace_ips;
 		Exception inner_exception;
@@ -61,10 +62,11 @@ namespace System
 		string stack_trace;
 		string remote_stack_trace;
 		int remote_stack_index;
-		internal int hresult = unchecked ((int)0x80004005);
+		internal int hresult = -2146233088;
 		string source;
-		private IDictionary _data;
+		IDictionary _data;
 		#endregion
+#pragma warning restore 169, 649		
 
 		public Exception ()
 		{
@@ -89,6 +91,15 @@ namespace System
 			hresult             = info.GetInt32  ("HResult");
 			source              = info.GetString ("Source");
 			inner_exception     = (Exception) info.GetValue ("InnerException", typeof (Exception));
+
+#if NET_2_0
+			try {
+				_data = (IDictionary) info.GetValue ("Data", typeof (IDictionary));
+			} catch (SerializationException) {
+				// member did not exist in .NET 1.x
+			}
+#endif
+
 		}
 
 		public Exception (string message, Exception innerException)
@@ -121,6 +132,14 @@ namespace System
 			stack_trace = s;
 		}
 
+		string ClassName {
+			get {
+				if (class_name == null)
+					class_name = GetType ().ToString ();
+				return class_name;
+			}
+		}
+
 		public virtual string Message {
 			get {
 				if (message == null)
@@ -129,7 +148,7 @@ namespace System
 #else
 					message = string.Format (Locale.GetText ("Exception of type {0} was thrown."),
 #endif
-						GetType ().ToString());
+						ClassName);
 
 				return message;
 			}
@@ -258,10 +277,7 @@ namespace System
 			if (info == null)
 				throw new ArgumentNullException ("info");
 
-			if (class_name == null)
-				class_name = GetType ().FullName;
-
-			info.AddValue ("ClassName", class_name);
+			info.AddValue ("ClassName", ClassName);
 			info.AddValue ("Message", message);
 			info.AddValue ("InnerException", inner_exception);
 			info.AddValue ("HelpURL", help_link);
@@ -271,6 +287,9 @@ namespace System
 			info.AddValue ("HResult", hresult);
 			info.AddValue ("Source", Source);
 			info.AddValue ("ExceptionMethod", null);
+#if NET_2_0
+			info.AddValue ("Data", _data, typeof (IDictionary));
+#endif
 		}
 
 #if ONLY_1_1
@@ -278,7 +297,7 @@ namespace System
 #endif
 		public override string ToString ()
 		{
-			System.Text.StringBuilder result = new System.Text.StringBuilder (this.GetType ().FullName);
+			System.Text.StringBuilder result = new System.Text.StringBuilder (ClassName);
 			result.Append (": ").Append (Message);
 
 			if (null != remote_stack_trace)

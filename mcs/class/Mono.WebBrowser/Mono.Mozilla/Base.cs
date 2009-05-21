@@ -35,7 +35,7 @@ namespace Mono.Mozilla
 	internal class Base
 	{
 		private static Hashtable boundControls;
-		internal static bool initialized;
+		private static bool initialized;
 		private static object initLock = new object ();
 		private static string monoMozDir;
 
@@ -112,7 +112,7 @@ namespace Mono.Mozilla
 			IntPtr ptrCallback = Marshal.AllocHGlobal (Marshal.SizeOf (info.callback));
 			Marshal.StructureToPtr (info.callback, ptrCallback, true);
 			
-			info.gluezilla = gluezilla_createBrowserWindow (ptrCallback, handle, width, height, Environment.CurrentDirectory, monoMozDir, control.platform);
+			info.gluezilla = gluezilla_bind (ptrCallback, handle, width, height, Environment.CurrentDirectory, monoMozDir, control.platform);
 			lock (initLock) {
 				if (info.gluezilla == IntPtr.Zero) {
 					Marshal.FreeHGlobal (ptrCallback);
@@ -120,9 +120,18 @@ namespace Mono.Mozilla
 					initialized = false;
 					return false;
 				}
-			}			
+			}
 			boundControls.Add (control as IWebBrowser, info);
-			return true;			
+			return true;
+		}
+
+		public static bool Create (IWebBrowser control) {
+			if (!isInitialized ())
+				return false;
+			BindingInfo info = getBinding (control);
+
+			gluezilla_createBrowserWindow (info.gluezilla);
+			return true;
 		}
 
 		public static void Shutdown (IWebBrowser control)
@@ -237,6 +246,7 @@ namespace Mono.Mozilla
 			gluezilla_stringSet (str, text);
 		}
 
+
 		public static object GetProxyForObject (IWebBrowser control, Guid iid, object obj)
 		{
 			if (!isInitialized ())
@@ -249,6 +259,15 @@ namespace Mono.Mozilla
 			object o = Marshal.GetObjectForIUnknown (ret);
 			return o;
 		}
+
+		public static nsIServiceManager GetServiceManager (IWebBrowser control)
+		{
+			if (!isInitialized ())
+				return null;
+			BindingInfo info = getBinding (control);
+					
+			return gluezilla_getServiceManager2 (info.gluezilla);
+		}		
 
 		public static string EvalScript (IWebBrowser control, string script)
 		{
@@ -268,11 +287,17 @@ namespace Mono.Mozilla
 		private static extern short gluezilla_init (Platform platform, out Platform mozPlatform);
 
 		[DllImport ("gluezilla")]
-		private static extern IntPtr gluezilla_shutdown (IntPtr instance);
+		private static extern IntPtr gluezilla_bind (IntPtr events, IntPtr hwnd,
+					Int32 width, Int32 height,
+					string startDir, string dataDir,
+					Platform platform);
 
 		[DllImport ("gluezilla")]
-		private static extern IntPtr gluezilla_createBrowserWindow (/*IntPtr instance, */IntPtr events, IntPtr hwnd, Int32 width, Int32 height, string startDir, string dataDir, Platform platform);
-		
+		private static extern int gluezilla_createBrowserWindow (IntPtr instance);
+
+		[DllImport ("gluezilla")]
+		private static extern IntPtr gluezilla_shutdown (IntPtr instance);
+
 		// layout
 		[DllImport ("gluezilla")]
 		private static extern int gluezilla_focus (IntPtr instance, FocusOption focus);
@@ -344,7 +369,7 @@ namespace Mono.Mozilla
 
 		[DllImport ("gluezilla")]
 		[return: MarshalAs (UnmanagedType.Interface)]
-		public static extern nsIServiceManager  gluezilla_getServiceManager ();
+		public static extern nsIServiceManager  gluezilla_getServiceManager2 (IntPtr instance);
 
 		[DllImport ("gluezilla")]
 		private static extern IntPtr gluezilla_evalScript (IntPtr instance, string script);

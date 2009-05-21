@@ -37,7 +37,7 @@ namespace MonoTests.System.Windows.Forms
 {
 
 	[TestFixture]
-	public class DataGridViewRowCollectionTest
+	public class DataGridViewRowCollectionTest : TestHelper
 	{
 		private DataGridView CreateAndFill ()
 		{
@@ -98,6 +98,56 @@ namespace MonoTests.System.Windows.Forms
 				dgv.Rows.Add (row);
 				Assert.AreEqual (0, row.Index, "#02");
 			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void RemoveAtNewRowException ()
+		{
+			DataGridView dgv = new DataGridView ();
+			dgv.Columns.Add ("A", "A");
+			dgv.Rows.RemoveAt (0);
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void RemoveNewRowException ()
+		{
+			DataGridView dgv = new DataGridView ();
+			dgv.Columns.Add ("A", "A");
+			dgv.Rows.Remove (dgv.Rows[0]);
+		}
+
+
+		[Test]	// bug #442181
+		public void RemoveNewRowClear ()
+		{
+			DataGridView dgv = new DataGridView ();
+			dgv.Columns.Add ("A", "A");
+			dgv.Rows.Clear ();
+			
+			Assert.AreEqual (1, dgv.Rows.Count, "A1");
+
+			// This was crashing in the bug
+			dgv.Sort (dgv.Columns[0], ListSortDirection.Ascending);
+		}
+		
+		[Test]  // bug #448005
+		public void ClearRows ()
+		{
+			DataGridView dgv = new DataGridView ();
+			dgv.Columns.Add ("A", "A");
+			dgv.Columns.Add ("A2", "A2");
+
+			dgv.Rows.Add (1, 2);
+			dgv.Rows.Add (1, 2);
+			dgv.Rows.Add (1, 2);
+			dgv.Rows.Add (1, 2);
+			dgv.Rows.Add (1, 2);
+
+			dgv.Rows.Clear ();
+
+			Assert.AreEqual (1, dgv.Rows.Count, "A1");
 		}
 	}
 }

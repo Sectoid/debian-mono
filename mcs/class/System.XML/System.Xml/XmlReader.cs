@@ -880,6 +880,8 @@ namespace System.Xml
 
 		public virtual XmlReader ReadSubtree ()
 		{
+			if (NodeType != XmlNodeType.Element)
+				throw new InvalidOperationException (String.Format ("ReadSubtree() can be invoked only when the reader is positioned on an element. Current node is {0}. {1}", NodeType, GetLocation ()));
 			return new SubtreeXmlReader (this);
 		}
 
@@ -899,8 +901,10 @@ namespace System.Xml
 				case XmlNodeType.Whitespace:
 				case XmlNodeType.CDATA:
 					break;
-				default:
+				case XmlNodeType.Element:
 					throw new InvalidOperationException (String.Format ("Node type {0} is not supported in this operation.{1}", NodeType, GetLocation ()));
+				default:
+					return String.Empty;
 				}
 			}
 
@@ -1074,6 +1078,9 @@ namespace System.Xml
 		public virtual string ReadElementContentAsString ()
 		{
 			bool isEmpty = IsEmptyElement;
+			// unlike ReadStartElement() it rejects non-content nodes (this check is done before MoveToContent())
+			if (NodeType != XmlNodeType.Element)
+				throw new InvalidOperationException (String.Format ("'{0}' is an element node.", NodeType));
 			ReadStartElement ();
 			if (isEmpty)
 				return String.Empty;
@@ -1148,6 +1155,9 @@ namespace System.Xml
 		public virtual string ReadElementContentAsString (string localName, string namespaceURI)
 		{
 			bool isEmpty = IsEmptyElement;
+			// unlike ReadStartElement() it rejects non-content nodes (this check is done before MoveToContent())
+			if (NodeType != XmlNodeType.Element)
+				throw new InvalidOperationException (String.Format ("'{0}' is an element node.", NodeType));
 			ReadStartElement (localName, namespaceURI);
 			if (isEmpty)
 				return String.Empty;
@@ -1255,6 +1265,16 @@ namespace System.Xml
 			return binary.ReadElementContentAsBinHex (
 				buffer, offset, length);
 		}
+
+		private void CheckSupport ()
+		{
+			// Default implementation expects both.
+			if (!CanReadBinaryContent || !CanReadValueChunk)
+				throw new NotSupportedException ();
+			if (binary == null)
+				binary = new XmlReaderBinarySupport (this);
+		}
+		
 #endif
 
 #if NET_2_0
@@ -1272,18 +1292,7 @@ namespace System.Xml
 			return binary.ReadValueChunk (buffer, offset, length);
 		}
 
-		private void CheckSupport ()
-		{
-			// Default implementation expects both.
-			if (!CanReadBinaryContent || !CanReadValueChunk)
-				throw new NotSupportedException ();
-			if (binary == null)
-				binary = new XmlReaderBinarySupport (this);
-		}
-
-#if !NET_2_1
 		public abstract void ResolveEntity ();
-#endif
 
 		public virtual void Skip ()
 		{
@@ -1307,12 +1316,12 @@ namespace System.Xml
 		{
 			return new XmlException (this as IXmlLineInfo, BaseURI, message);
 		}
-
+#if NET_2_0
 		private XmlException XmlError (string message, Exception innerException)
 		{
 			return new XmlException (this as IXmlLineInfo, BaseURI, message);
 		}
-
+#endif
 		#endregion
 	}
 }

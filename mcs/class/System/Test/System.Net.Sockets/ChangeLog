@@ -1,3 +1,22 @@
+2009-01-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SocketTest.cs:
+	(TestSelect1) avoid RST by reading the bytes from the client.
+
+2009-01-07  Geoff Norton  <gnorton@novell.com>
+
+	* SocketTest.cs: Disable some tests on the Mac that rely on socket
+	options that are unavailable.
+
+2008-12-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UdpClientTest.cs: test closing a UDP socket while receiving.
+
+2008-11-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SocketTest.cs: added test case based on the one in bug
+	#443346.
+
 2008-06-19  Dick Porter  <dick@ximian.com>
 
 	* SocketTest.cs: Tests for generic Send() and Receive() methods.

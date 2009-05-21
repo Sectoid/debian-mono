@@ -43,6 +43,8 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using System.Globalization;
+using System.Xml;
 
 namespace System.Data.SqlClient
 {
@@ -55,14 +57,12 @@ namespace System.Data.SqlClient
 		#region Fields
 
 		SqlCommand command;
-		ArrayList dataTypeNames;
 		bool disposed;
 		bool isClosed;
 		bool moreResults;
 		int resultsRead;
 		int rowsRead;
 		DataTable schemaTable;
-		bool hasRows;
 		bool haveRead;
 		bool readResult;
 		bool readResultUsed;
@@ -100,16 +100,8 @@ namespace System.Data.SqlClient
 
 		internal SqlDataReader (SqlCommand command)
 		{
-			readResult = false;
-			haveRead = false;
-			readResultUsed = false;
 			this.command = command;
-			resultsRead = 0;
-			isClosed = false;
 			command.Tds.RecordsAffected = -1;
-#if NET_2_0
-			visibleFieldCount = 0;
-#endif
 			NextResult ();
 		}
 
@@ -130,7 +122,10 @@ namespace System.Data.SqlClient
 		override
 #endif // NET_2_0
 		int FieldCount {
-			get { return command.Tds.Columns.Count; }
+			get {
+				ValidateState ();
+				return command.Tds.Columns.Count;
+			}
 		}
 
 		public
@@ -163,7 +158,7 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		int RecordsAffected {
 			get {
-				return command.Tds.RecordsAffected; 
+				return command.Tds.RecordsAffected;
 			}
 		}
 
@@ -173,11 +168,12 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		bool HasRows {
 			get {
-				if (haveRead) 
-					return readResult;
-			
-				haveRead = true;
-				readResult = ReadRecord ();
+				ValidateState ();
+
+				if (rowsRead > 0)
+					return true;
+				if (!haveRead)
+					readResult = ReadRecord ();
 				return readResult;
 			}
 		}
@@ -211,7 +207,7 @@ namespace System.Data.SqlClient
 			while (NextResult ())
 				;
 			isClosed = true;
-			command.CloseDataReader (moreResults);
+			command.CloseDataReader ();
 		}
 
 		private static DataTable ConstructSchemaTable ()
@@ -219,7 +215,9 @@ namespace System.Data.SqlClient
 			Type booleanType = typeof (bool);
 			Type stringType = typeof (string);
 			Type intType = typeof (int);
+#if NET_2_0
 			Type typeType = typeof (Type);
+#endif
 			Type shortType = typeof (short);
 
 			DataTable schemaTable = new DataTable ("SchemaTable");
@@ -235,7 +233,11 @@ namespace System.Data.SqlClient
 			schemaTable.Columns.Add ("BaseColumnName", stringType);
 			schemaTable.Columns.Add ("BaseSchemaName", stringType);
 			schemaTable.Columns.Add ("BaseTableName", stringType);
+#if NET_2_0
 			schemaTable.Columns.Add ("DataType", typeType);
+#else
+			schemaTable.Columns.Add ("DataType", typeof (object));
+#endif
 			schemaTable.Columns.Add ("AllowDBNull", booleanType);
 			schemaTable.Columns.Add ("ProviderType", intType);
 			schemaTable.Columns.Add ("IsAliased", booleanType);
@@ -250,36 +252,74 @@ namespace System.Data.SqlClient
 			return schemaTable;
 		}
 		
-		private void GetSchemaRowTypeName (TdsColumnType ctype, int csize, out string typeName) 
+		private string GetSchemaRowTypeName (TdsColumnType ctype, int csize, short precision, short scale)
 		{
 			int dbType;
 			bool isLong;
 			Type fieldType;
-			
-			GetSchemaRowType (ctype, csize, out dbType, out fieldType, out isLong, out typeName);
+
+			string typeName;
+			GetSchemaRowType (ctype, csize, precision, scale,
+				out dbType, out fieldType, out isLong,
+				out typeName);
+			return typeName;
 		}
 
-		private void GetSchemaRowFieldType (TdsColumnType ctype, int csize, out Type fieldType) 
+		private Type GetSchemaRowFieldType (TdsColumnType ctype, int csize, short precision, short scale)
 		{
 			int dbType;
 			bool isLong;
+			Type fieldType;
 			string typeName;
-			
-			GetSchemaRowType (ctype, csize, out dbType, out fieldType, out isLong, out typeName);
+
+			GetSchemaRowType (ctype, csize, precision, scale,
+				out dbType, out fieldType, out isLong,
+				out typeName);
+			return fieldType;
 		}
 
-		private void GetSchemaRowDbType (TdsColumnType ctype, int csize, out int dbType) 
+		SqlDbType GetSchemaRowDbType (int ordinal)
+		{
+			int csize;
+			short precision, scale;
+			TdsColumnType ctype;
+			TdsDataColumn column;
+
+			if (ordinal < 0 || ordinal >= command.Tds.Columns.Count)
+				throw new IndexOutOfRangeException ();
+
+			column = command.Tds.Columns [ordinal];
+#if NET_2_0
+			ctype = (TdsColumnType) column.ColumnType;
+			csize = (int) column.ColumnSize;
+			precision = (short) (column.NumericPrecision ?? 0);
+			scale = (short) (column.NumericScale ?? 0);
+#else
+			ctype = (TdsColumnType) column ["ColumnType"];
+			csize = (int) column ["ColumnSize"];
+			precision = (short) ((byte) column ["NumericPrecision"]);
+			scale = (short) ((byte) column ["NumericScale"]);
+#endif
+			return GetSchemaRowDbType (ctype, csize, precision, scale);
+		}
+
+		private SqlDbType GetSchemaRowDbType (TdsColumnType ctype, int csize, short precision, short scale)
 		{
 			Type fieldType;
 			bool isLong;
 			string typeName;
-			
-			GetSchemaRowType (ctype, csize, out dbType, out fieldType, out isLong, out typeName);
+			int dbType;
+
+			GetSchemaRowType (ctype, csize, precision, scale,
+				out dbType, out fieldType, out isLong,
+				out typeName);
+			return (SqlDbType) dbType;
 		}
 		
-		private void GetSchemaRowType (TdsColumnType ctype, int csize, 
-		                               out int dbType, out Type fieldType, 
-		                               out bool isLong, out string typeName)
+		private void GetSchemaRowType (TdsColumnType ctype, int csize,
+                                               short precision, short scale,
+                                               out int dbType, out Type fieldType,
+                                               out bool isLong, out string typeName)
 		{
 			dbType = -1;
 			typeName = string.Empty;
@@ -359,7 +399,7 @@ namespace System.Data.SqlClient
 					typeName = "varbinary";
 					dbType = (int) SqlDbType.VarBinary;
 					fieldType = typeof (byte[]);
-					isLong = true;
+					isLong = false;
 					break;
 				case TdsColumnType.VarChar :
 				case TdsColumnType.BigVarChar :
@@ -373,7 +413,7 @@ namespace System.Data.SqlClient
 					typeName = "binary";
 					dbType = (int) SqlDbType.Binary;
 					fieldType = typeof (byte[]);
-					isLong = true;
+					isLong = false;
 					break;
 				case TdsColumnType.Char :
 				case TdsColumnType.BigChar :
@@ -392,18 +432,38 @@ namespace System.Data.SqlClient
 				case TdsColumnType.DateTime4 :
 				case TdsColumnType.DateTime :
 				case TdsColumnType.DateTimeN :
-					typeName = "datetime";
-					dbType = (int) SqlDbType.DateTime;
-					fieldType = typeof (DateTime);
-					isLong = false;
+					switch (csize) {
+					case 4:
+						typeName = "smalldatetime";
+						dbType = (int) SqlDbType.SmallDateTime;
+						fieldType = typeof (DateTime);
+						isLong = false;
+						break;
+					case 8:
+						typeName = "datetime";
+						dbType = (int) SqlDbType.DateTime;
+						fieldType = typeof (DateTime);
+						isLong = false;
+						break;
+					}
 					break;
 				case TdsColumnType.Money :
 				case TdsColumnType.MoneyN :
 				case TdsColumnType.Money4 :
-					typeName = "money";
-					dbType = (int) SqlDbType.Money;
-					fieldType = typeof (decimal);
-					isLong = false;
+					switch (csize) {
+					case 4:
+						typeName = "smallmoney";
+						dbType = (int) SqlDbType.SmallMoney;
+						fieldType = typeof (decimal);
+						isLong = false;
+						break;
+					case 8:
+						typeName = "money";
+						dbType = (int) SqlDbType.Money;
+						fieldType = typeof (decimal);
+						isLong = false;
+						break;
+					}
 					break;
 				case TdsColumnType.NText :
 					typeName = "ntext";
@@ -419,9 +479,16 @@ namespace System.Data.SqlClient
 					break;
 				case TdsColumnType.Decimal :
 				case TdsColumnType.Numeric :
-					typeName = "decimal";
-					dbType = (int) SqlDbType.Decimal;
-					fieldType = typeof (decimal);
+					// TDS 7.0 returns bigint as decimal(19,0)
+					if (precision == 19 && scale == 0) {
+						typeName = "bigint";
+						dbType = (int) SqlDbType.BigInt;
+						fieldType = typeof (long);
+					} else {
+						typeName = "decimal";
+						dbType = (int) SqlDbType.Decimal;
+						fieldType = typeof (decimal);
+					}
 					isLong = false;
 					break;
 				case TdsColumnType.NChar :
@@ -496,13 +563,19 @@ namespace System.Data.SqlClient
 		long GetBytes (int i, long dataIndex, byte[] buffer, int bufferIndex, int length)
 		{
 			if ((command.CommandBehavior & CommandBehavior.SequentialAccess) != 0) {
+				ValidateState ();
+				EnsureDataAvailable ();
+
 				try {
 					long len = ((Tds)command.Tds).GetSequentialColumnValue (i, dataIndex, buffer, bufferIndex, length);
 					if (len == -1)
-						throw new InvalidCastException ("Invalid attempt to GetBytes on column "
-										+ "'" + command.Tds.Columns[i]["ColumnName"] +
-										"'." + "The GetBytes function"
-										+ " can only be used on columns of type Text, NText, or Image");
+						throw CreateGetBytesOnInvalidColumnTypeException (i);
+					if (len == -2)
+#if NET_2_0
+						throw new SqlNullValueException ();
+#else
+						return 0;
+#endif
 					return len;
 				} catch (TdsInternalException ex) {
 					command.Connection.Close ();
@@ -512,17 +585,49 @@ namespace System.Data.SqlClient
 
 			object value = GetValue (i);
 			if (!(value is byte [])) {
-				if (value is DBNull) throw new SqlNullValueException ();
-				throw new InvalidCastException ("Type is " + value.GetType ().ToString ());
+				SqlDbType type = GetSchemaRowDbType (i);
+				switch (type) {
+				case SqlDbType.Image:
+					if (value is DBNull)
+						throw new SqlNullValueException ();
+					break;
+				case SqlDbType.Text:
+#if NET_2_0
+					string text = value as string;
+					if (text != null)
+						value = Encoding.Default.GetBytes (text);
+					else
+						value = null;
+					break;
+#else
+					throw new InvalidCastException ();
+#endif
+				case SqlDbType.NText:
+#if NET_2_0
+					string ntext = value as string;
+					if (ntext != null)
+						value = Encoding.Unicode.GetBytes (ntext);
+					else
+						value = null;
+					break;
+#else
+					throw new InvalidCastException ();
+#endif
+				default:
+					throw CreateGetBytesOnInvalidColumnTypeException (i);
+				}
 			}
-			
-			if ( buffer == null )
+
+			if (buffer == null)
 				return ((byte []) value).Length; // Return length of data
 
 			// Copy data into buffer
 			int availLen = (int) ( ( (byte []) value).Length - dataIndex);
 			if (availLen < length)
 				length = availLen;
+			if (dataIndex < 0)
+				return 0;
+
 			Array.Copy ((byte []) value, (int) dataIndex, buffer, bufferIndex, length);
 			return length; // return actual read count
 		}
@@ -534,12 +639,7 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		char GetChar (int i)
 		{
-			object value = GetValue (i);
-			if (!(value is char)) {
-				if (value is DBNull) throw new SqlNullValueException ();
-				throw new InvalidCastException ("Type is " + value.GetType ().ToString ());
-			}
-			return (char) value;
+			throw new NotSupportedException ();
 		}
 
 		public
@@ -549,6 +649,12 @@ namespace System.Data.SqlClient
 		long GetChars (int i, long dataIndex, char[] buffer, int bufferIndex, int length)
 		{
 			if ((command.CommandBehavior & CommandBehavior.SequentialAccess) != 0) {
+				ValidateState ();
+				EnsureDataAvailable ();
+
+				if (i < 0 || i >= command.Tds.Columns.Count)
+					throw new IndexOutOfRangeException ();
+
 				Encoding encoding = null;
 				byte mul = 1;
 				TdsColumnType colType = (TdsColumnType) command.Tds.Columns[i]["ColumnType"];
@@ -623,21 +729,31 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		string GetDataTypeName (int i)
 		{
+			TdsDataColumn column;
 			TdsColumnType ctype;
 			string datatypeName;
 			int csize;
-			
+			short precision;
+			short scale;
+
+			ValidateState ();
+
 			if (i < 0 || i >= command.Tds.Columns.Count)
 				throw new IndexOutOfRangeException ();
+
+			column = command.Tds.Columns [i];
 #if NET_2_0
-			ctype = (TdsColumnType) command.Tds.Columns[i].ColumnType;
-			csize = (int) command.Tds.Columns[i].ColumnSize;
+			ctype = (TdsColumnType) column.ColumnType;
+			csize = (int) column.ColumnSize;
+			precision = (short) (column.NumericPrecision ?? 0);
+			scale = (short) (column.NumericScale ?? 0);
 #else
-			ctype = (TdsColumnType) command.Tds.Columns[i]["ColumnType"];
-			csize = (int) command.Tds.Columns[i]["ColumnSize"];
+			ctype = (TdsColumnType) column ["ColumnType"];
+			csize = (int) column ["ColumnSize"];
+			precision = (short) ((byte) column ["NumericPrecision"]);
+			scale = (short) ((byte) column ["NumericScale"]);
 #endif
-			GetSchemaRowTypeName (ctype, csize, out datatypeName);
-			return datatypeName;
+			return GetSchemaRowTypeName (ctype, csize, precision, scale);
 		}
 
 		public
@@ -688,21 +804,31 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		Type GetFieldType (int i)
 		{
+			TdsDataColumn column;
 			TdsColumnType ctype;
-			Type fieldType;
 			int csize;
-			
+			short precision;
+			short scale;
+
+			ValidateState ();
+
 			if (i < 0 || i >= command.Tds.Columns.Count)
 				throw new IndexOutOfRangeException ();
+
+			column = command.Tds.Columns [i];
 #if NET_2_0
-			ctype = (TdsColumnType) command.Tds.Columns[i].ColumnType;
-			csize = (int) command.Tds.Columns[i].ColumnSize;
+			ctype = (TdsColumnType) column.ColumnType;
+			csize = (int) column.ColumnSize;
+			precision = (short) (column.NumericPrecision ?? 0);
+			scale = (short) (column.NumericScale ?? 0);
 #else
-			ctype = (TdsColumnType) command.Tds.Columns[i]["ColumnType"];
-			csize = (int) command.Tds.Columns[i]["ColumnSize"];
+			ctype = (TdsColumnType) column ["ColumnType"];
+			csize = (int) column ["ColumnSize"];
+			precision = (short) ((byte) column ["NumericPrecision"]);
+			scale = (short) ((byte) column ["NumericScale"]);
 #endif
-			GetSchemaRowFieldType (ctype, csize, out fieldType);			
-			return fieldType;
+			return GetSchemaRowFieldType (ctype, csize, precision,
+				scale);
 		}
 
 		public
@@ -781,6 +907,8 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		string GetName (int i)
 		{
+			ValidateState ();
+
 			if (i < 0 || i >= command.Tds.Columns.Count)
 				throw new IndexOutOfRangeException ();
 #if NET_2_0
@@ -796,6 +924,11 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		int GetOrdinal (string name)
 		{
+			ValidateState ();
+
+			if (name == null)
+				throw new ArgumentNullException ("fieldName");
+
 			string colName;
 			foreach (TdsDataColumn schema in command.Tds.Columns) {
 #if NET_2_0
@@ -806,8 +939,8 @@ namespace System.Data.SqlClient
 				colName = (string) schema["ColumnName"];
 				if (colName.Equals (name) || String.Compare (colName, name, true) == 0)
 					return (int) schema["ColumnOrdinal"];
-#endif						
-			}			
+#endif
+			}
 			throw new IndexOutOfRangeException ();
 		}
 
@@ -828,8 +961,6 @@ namespace System.Data.SqlClient
 			if (!moreResults)
 				return null;
 
-			dataTypeNames = new ArrayList (command.Tds.Columns.Count);
-
 			foreach (TdsDataColumn schema in command.Tds.Columns) {
 				DataRow row = schemaTable.NewRow ();
 
@@ -841,9 +972,7 @@ namespace System.Data.SqlClient
 				row [IS_ROW_VERSION_IDX]		= GetSchemaValue (schema.IsRowVersion);
 				row [IS_HIDDEN_IDX]		= GetSchemaValue (schema.IsHidden);
 				row [IS_IDENTITY_IDX]		= GetSchemaValue (schema.IsIdentity);
-				row [COLUMN_SIZE_IDX]		= GetSchemaValue (schema.ColumnSize);
 				row [NUMERIC_PRECISION_IDX]	= GetSchemaValue (schema.NumericPrecision);
-				row [NUMERIC_SCALE_IDX]		= GetSchemaValue (schema.NumericScale);
 				row [IS_KEY_IDX]			= GetSchemaValue (schema.IsKey);
 				row [IS_ALIASED_IDX]		= GetSchemaValue (schema.IsAliased);
 				row [IS_EXPRESSION_IDX]		= GetSchemaValue (schema.IsExpression);
@@ -855,51 +984,57 @@ namespace System.Data.SqlClient
 				row [BASE_TABLE_NAME_IDX]		= GetSchemaValue (schema.BaseTableName);
 				row [ALLOW_DBNULL_IDX]		= GetSchemaValue (schema.AllowDBNull);
 #else
-				row ["ColumnName"]		= GetSchemaValue (schema, "ColumnName");
-				row ["ColumnOrdinal"]		= GetSchemaValue (schema, "ColumnOrdinal");
-				row ["IsUnique"]		= GetSchemaValue (schema, "IsUnique");
-				row ["IsAutoIncrement"]		= GetSchemaValue (schema, "IsAutoIncrement");
-				row ["IsRowVersion"]		= GetSchemaValue (schema, "IsRowVersion");
-				row ["IsHidden"]		= GetSchemaValue (schema, "IsHidden");
-				row ["IsIdentity"]		= GetSchemaValue (schema, "IsIdentity");
-				row ["ColumnSize"]		= GetSchemaValue (schema, "ColumnSize");
-				row ["NumericPrecision"]	= GetSchemaValue (schema, "NumericPrecision");
-				row ["NumericScale"]		= GetSchemaValue (schema, "NumericScale");
-				row ["IsKey"]			= GetSchemaValue (schema, "IsKey");
-				row ["IsAliased"]		= GetSchemaValue (schema, "IsAliased");
-				row ["IsExpression"]		= GetSchemaValue (schema, "IsExpression");
-				row ["IsReadOnly"]		= GetSchemaValue (schema, "IsReadOnly");
-				row ["BaseServerName"]		= GetSchemaValue (schema, "BaseServerName");
-				row ["BaseCatalogName"]		= GetSchemaValue (schema, "BaseCatalogName");
-				row ["BaseColumnName"]		= GetSchemaValue (schema, "BaseColumnName");
-				row ["BaseSchemaName"]		= GetSchemaValue (schema, "BaseSchemaName");
-				row ["BaseTableName"]		= GetSchemaValue (schema, "BaseTableName");
-				row ["AllowDBNull"]		= GetSchemaValue (schema, "AllowDBNull");
+				row [COLUMN_NAME_IDX]		= GetSchemaValue (schema, "ColumnName");
+				row [COLUMN_ORDINAL_IDX]		= GetSchemaValue (schema, "ColumnOrdinal");
+				row [IS_UNIQUE_IDX]		= GetSchemaValue (schema, "IsUnique");
+				row [IS_AUTO_INCREMENT_IDX]		= GetSchemaValue (schema, "IsAutoIncrement");
+				row [IS_ROW_VERSION_IDX]		= GetSchemaValue (schema, "IsRowVersion");
+				row [IS_HIDDEN_IDX]		= GetSchemaValue (schema, "IsHidden");
+				row [IS_IDENTITY_IDX]		= GetSchemaValue (schema, "IsIdentity");
+				row [IS_KEY_IDX]			= GetSchemaValue (schema, "IsKey");
+				row [IS_ALIASED_IDX]		= GetSchemaValue (schema, "IsAliased");
+				row [IS_EXPRESSION_IDX]		= GetSchemaValue (schema, "IsExpression");
+				row [IS_READ_ONLY_IDX]		= GetSchemaValue (schema, "IsReadOnly");
+				row [BASE_SERVER_NAME_IDX]		= GetSchemaValue (schema, "BaseServerName");
+				row [BASE_CATALOG_NAME_IDX]		= GetSchemaValue (schema, "BaseCatalogName");
+				row [BASE_COLUMN_NAME_IDX]		= GetSchemaValue (schema, "BaseColumnName");
+				row [BASE_SCHEMA_NAME_IDX]		= GetSchemaValue (schema, "BaseSchemaName");
+				row [BASE_TABLE_NAME_IDX]		= GetSchemaValue (schema, "BaseTableName");
+				row [ALLOW_DBNULL_IDX]		= GetSchemaValue (schema, "AllowDBNull");
 #endif
 				// We don't always get the base column name.
 				if (row [BASE_COLUMN_NAME_IDX] == DBNull.Value)
 					row [BASE_COLUMN_NAME_IDX] = row [COLUMN_NAME_IDX];
 
 				TdsColumnType ctype;
-				int csize, dbType;				
+				int csize, dbType;
 				Type fieldType;
 				bool isLong;
 				string typeName;
+				short precision;
+				short scale;
 #if NET_2_0
 				ctype = (TdsColumnType) schema.ColumnType;
 				csize = (int) schema.ColumnSize;
+				precision = (short) GetSchemaValue (schema.NumericPrecision);
+				scale = (short) GetSchemaValue (schema.NumericScale);
 #else
 				ctype = (TdsColumnType) schema ["ColumnType"];
 				csize = (int) schema ["ColumnSize"];
+				precision = (short) ((byte) GetSchemaValue (schema, "NumericPrecision"));
+				scale = (short) ((byte) GetSchemaValue (schema, "NumericScale"));
 #endif
 
-				GetSchemaRowType (ctype, csize, out dbType,
-				                  out fieldType, out isLong, out typeName);
+				GetSchemaRowType (ctype, csize, precision, scale,
+					out dbType, out fieldType, out isLong,
+					out typeName);
 				
-				dataTypeNames.Add (typeName);
+				row [COLUMN_SIZE_IDX] = csize;
+				row [NUMERIC_PRECISION_IDX] = precision;
+				row [NUMERIC_SCALE_IDX] = scale;
 				row [PROVIDER_TYPE_IDX] = dbType;
 				row [DATA_TYPE_IDX] = fieldType;
-				row [IS_LONG_IDX] = isLong;			
+				row [IS_LONG_IDX] = isLong;
 #if NET_2_0
 				if ((bool)row [IS_HIDDEN_IDX] == false)
 					visibleFieldCount += 1;
@@ -919,6 +1054,7 @@ namespace System.Data.SqlClient
 				return DBNull.Value;
 		}
 
+#if NET_2_0
 		static object GetSchemaValue (object value)
 		{
 			if (value == null)
@@ -926,6 +1062,7 @@ namespace System.Data.SqlClient
 
 			return value;
 		}
+#endif		
 		
 		public
 #if NET_2_0
@@ -1042,21 +1179,6 @@ namespace System.Data.SqlClient
 		SqlInt64 GetSqlInt64 (int i)
 		{
 			object value = GetSqlValue (i);
-			// TDS 7.0 returns bigint as decimal(19,0)
-			if (value is SqlDecimal) {
-				TdsDataColumn schema = command.Tds.Columns[i];
-				byte precision, scale;
-
-#if NET_2_0
-				precision = (byte)schema.NumericPrecision;
-				scale = (byte)schema.NumericScale;
-#else
-				precision = (byte)schema["NumericPrecision"];
-				scale = (byte)schema["NumericScale"];
-#endif
-				if (precision == 19 && scale == 0)
-					value = (SqlInt64) (SqlDecimal) value;
-			}
 			if (!(value is SqlInt64))
 				throw new InvalidCastException ("Type is " + value.GetType ().ToString ());
 			return (SqlInt64) value;
@@ -1103,8 +1225,20 @@ namespace System.Data.SqlClient
 		{
 			object value = GetSqlValue (i);
 			if (!(value is SqlXml)) {
-				if (value is DBNull) throw new SqlNullValueException ();
-				throw new InvalidCastException ("Type is " + value.GetType ().ToString ());
+				if (value is DBNull) {
+					throw new SqlNullValueException ();
+				} else if (command.Tds.TdsVersion == TdsVersion.tds70 && value is SqlString) {
+					// Workaround for TDS 7 clients
+					// Xml column types are supported only from Sql Server 2005 / TDS 8, however
+					// when a TDS 7 client requests for Xml column data, Sql Server 2005 returns
+					// it as NTEXT
+					MemoryStream stream = null;
+					if (!((SqlString) value).IsNull)
+						stream = new MemoryStream (Encoding.Unicode.GetBytes (value.ToString()));
+					value = new SqlXml (stream);
+				} else {
+					throw new InvalidCastException ("Type is " + value.GetType ().ToString ());
+				}
 			}
 			return (SqlXml) value;
 		}
@@ -1116,22 +1250,14 @@ namespace System.Data.SqlClient
 #endif
 		object GetSqlValue (int i)
 		{
-			int dbType, csize;
+			int csize;
+			short precision, scale;
 			TdsColumnType ctype;
-			
-			if (i < 0 || i >= command.Tds.Columns.Count)
-				throw new IndexOutOfRangeException ();
-#if NET_2_0
-			ctype = (TdsColumnType) command.Tds.Columns[i].ColumnType;
-			csize = (int) command.Tds.Columns[i].ColumnSize;
-#else
-			ctype = (TdsColumnType) command.Tds.Columns[i]["ColumnType"];
-			csize = (int) command.Tds.Columns[i]["ColumnSize"];
-#endif
-			GetSchemaRowDbType (ctype, csize, out dbType);
-			SqlDbType type = (SqlDbType) dbType;
+			TdsDataColumn column;
+
 			object value = GetValue (i);
 
+			SqlDbType type = GetSchemaRowDbType (i);
 			switch (type) {
 			case SqlDbType.BigInt:
 				if (value == DBNull.Value)
@@ -1214,6 +1340,12 @@ namespace System.Data.SqlClient
 #endif
 		int GetSqlValues (object[] values)
 		{
+			ValidateState ();
+			EnsureDataAvailable ();
+
+			if (values == null)
+				throw new ArgumentNullException ("values");
+
 			int count = 0;
 			int columnCount = command.Tds.Columns.Count;
 			int arrayCount = values.Length;
@@ -1249,6 +1381,9 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		object GetValue (int i)
 		{
+			ValidateState ();
+			EnsureDataAvailable ();
+
 			if (i < 0 || i >= command.Tds.Columns.Count)
 				throw new IndexOutOfRangeException ();
 
@@ -1270,6 +1405,12 @@ namespace System.Data.SqlClient
 #endif // NET_2_0
 		int GetValues (object[] values)
 		{
+			ValidateState ();
+			EnsureDataAvailable ();
+
+			if (values == null)
+				throw new ArgumentNullException ("values");
+
 			int len = values.Length;
 			int bigDecimalIndex = command.Tds.ColumnValues.BigDecimalIndex;
 
@@ -1321,8 +1462,12 @@ namespace System.Data.SqlClient
 		{
 			ValidateState ();
 
-			if ((command.CommandBehavior & CommandBehavior.SingleResult) != 0 && resultsRead > 0)
+			if ((command.CommandBehavior & CommandBehavior.SingleResult) != 0 && resultsRead > 0) {
+				moreResults = false;
+				rowsRead = 0;
+				haveRead = false;
 				return false;
+			}
 
 			try {
 				moreResults = command.Tds.NextResult ();
@@ -1335,10 +1480,10 @@ namespace System.Data.SqlClient
 			else {
 				// new schema - don't do anything except reset schemaTable as command.Tds.Columns is already updated
 				schemaTable = null;
-				dataTypeNames = null;
 			}
 
 			rowsRead = 0;
+			haveRead = false;
 			resultsRead += 1;
 			return moreResults;
 		}
@@ -1351,27 +1496,28 @@ namespace System.Data.SqlClient
 		{
 			ValidateState ();
 
-			if ((command.CommandBehavior & CommandBehavior.SingleRow) != 0 && rowsRead > 0)
+			if (!haveRead || readResultUsed)
+				readResult = ReadRecord ();
+			readResultUsed = true;
+			return readResult;
+		}
+
+		internal bool ReadRecord ()
+		{
+			readResultUsed = false;
+
+			if ((command.CommandBehavior & CommandBehavior.SingleRow) != 0 && haveRead)
 				return false;
 			if ((command.CommandBehavior & CommandBehavior.SchemaOnly) != 0)
 				return false;
 			if (!moreResults)
 				return false;
-	
-			if ((haveRead) && (!readResultUsed))
-			{
-				readResultUsed = true;
-				return true;
-			}
-			return (ReadRecord ());
-		}
 
-		internal bool ReadRecord ()
-		{
 			try {
 				bool result = command.Tds.NextRow ();
-			
-				rowsRead += 1;
+				if (result)
+					rowsRead++;
+				haveRead = true;
 				return result;
 			} catch (TdsInternalException ex) {
 				command.Connection.Close ();
@@ -1384,7 +1530,23 @@ namespace System.Data.SqlClient
 			if (IsClosed)
 				throw new InvalidOperationException ("Invalid attempt to read data when reader is closed");
 		}
-		
+
+		void EnsureDataAvailable ()
+		{
+			if (!readResult || !haveRead || !readResultUsed)
+				throw new InvalidOperationException ("No data available.");
+		}
+
+		InvalidCastException CreateGetBytesOnInvalidColumnTypeException (int ordinal)
+		{
+			string message = string.Format (CultureInfo.InvariantCulture,
+				"Invalid attempt to GetBytes on column '{0}'." +
+				"The GetBytes function can only be used on " +
+				"columns of type Text, NText, or Image.",
+				GetName (ordinal));
+			return new InvalidCastException (message);
+		}
+
 #if NET_2_0
 		public override Type GetProviderSpecificFieldType (int i)
 		{

@@ -80,6 +80,13 @@ endif
 mono_SOURCES = \
 	main.c
 
+# We build this after libmono was built so it contains the date when the final
+# link was done
+buildver.h: libmono-static.la
+	@echo "const char *build_date = \"`date`\";" > buildver.h
+
+main.$(OBJEXT): buildver.h
+
 if DTRACE_G_REQUIRED
 LIBMONO_DTRACE_OBJECT = .libs/mono-dtrace.$(OBJEXT)
 if STATIC_MONO
@@ -112,11 +119,11 @@ mono_LDFLAGS = \
 if DTRACE_G_REQUIRED
 
 mono-dtrace.$(OBJEXT): $(top_srcdir)/data/mono.d mini.lo $(monodir)/mono/metadata/libmonoruntime-static.la
-	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/dtrace-prelink.sh \
+	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/data/dtrace-prelink.sh \
 	$@ $(top_srcdir)/data/mono.d $(monodir)/mono/metadata/libmonoruntime-static.la mini.lo
 
 .libs/mono-dtrace.$(OBJEXT): $(top_srcdir)/data/mono.d mini.lo $(monodir)/mono/metadata/libmonoruntime.la
-	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/dtrace-prelink.sh \
+	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/data/dtrace-prelink.sh \
 	--pic $@ $(top_srcdir)/data/mono.d $(monodir)/mono/metadata/libmonoruntime.la mini.lo
 
 endif
@@ -206,6 +213,9 @@ hppa_sources = \
 
 common_sources = \
 	mini.c		\
+	ir-emit.h	\
+	method-to-ir.c	\
+	decompose.c	\
 	mini.h		\
 	version.h	\
 	optflags-def.h		\
@@ -227,11 +237,7 @@ common_sources = \
 	abcremoval.h	\
 	ssapre.c	\
 	ssapre.h	\
-	aliasing.c	\
-	aliasing.h	\
 	local-propagation.c	\
-	simple-cee-ops.h \
-	simple-mini-ops.h \
 	driver.c	\
 	debug-mini.c	\
 	debug-mini.h	\
@@ -246,7 +252,12 @@ common_sources = \
 	declsec.h	\
 	wapihandles.c	\
 	branch-opts.c	\
-	generic-sharing.c
+	generic-sharing.c	\
+	regalloc2.c	\
+	simd-methods.h	\
+	simd-intrinsics.c	\
+	unwind.h	\
+	unwind.c
 
 test_sources = 		\
 	basic-calls.cs 	\
@@ -262,7 +273,8 @@ test_sources = 		\
 	iltests.il.in		\
 	test.cs			\
 	generics.cs	\
-	generics-variant-types.il
+	generics-variant-types.il	\
+	basic-simd.cs
 
 if MONO_DEBUGGER_SUPPORTED
 if AMD64
@@ -277,34 +289,34 @@ else
 mono_debugger_sources =
 endif
 
-regtests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe iltests.exe devirtualization.exe generics.exe bench.exe
-
-common_BURGSRC= $(srcdir)/inssel.brg $(srcdir)/inssel-float.brg
+regtests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe iltests.exe devirtualization.exe generics.exe basic-simd.exe
 
 if X86
 arch_sources = $(x86_sources) $(mono_debugger_sources)
-arch_BURGSRC= $(srcdir)/inssel-long32.brg $(srcdir)/inssel-x86.brg
 arch_built=cpu-x86.h
 arch_define=__i386__
 endif
 
 if AMD64
 arch_sources = $(amd64_sources) $(mono_debugger_sources)
-arch_BURGSRC= $(srcdir)/inssel-long.brg $(srcdir)/inssel-amd64.brg
 arch_built=cpu-amd64.h
 arch_define=__x86_64__
 endif
 
 if POWERPC
 arch_sources = $(ppc_sources)
-arch_BURGSRC= $(srcdir)/inssel-long32.brg $(srcdir)/inssel-ppc.brg
 arch_built=cpu-ppc.h
 arch_define=__ppc__
 endif
 
+if POWERPC64
+arch_sources = $(ppc_sources)
+arch_built=cpu-ppc64.h
+arch_define=__ppc64__
+endif
+
 if MIPS
 arch_sources = $(mips_sources)
-arch_BURGSRC= $(srcdir)/inssel-long32-mips.brg $(srcdir)/inssel-mips.brg
 arch_built=cpu-mips.h
 arch_define=__mips__
 endif
@@ -313,21 +325,18 @@ if ARM
 # pick up arm_dpimacros.h and arm_fpamacros.h
 ARCH_CFLAGS = -I../arch/arm
 arch_sources = $(arm_sources)
-arch_BURGSRC= $(srcdir)/inssel-long32.brg $(srcdir)/inssel-arm.brg $(srcdir)/inssel-softfloat.brg
 arch_built=cpu-arm.h
 arch_define=__arm__
 endif
 
 if SPARC
 arch_sources = $(sparc_sources)
-arch_BURGSRC= $(srcdir)/inssel-long32.brg $(srcdir)/inssel-sparc.brg
 arch_built=cpu-sparc.h
 arch_define=__sparc__
 endif
 
 if SPARC64
 arch_sources = $(sparc_sources)
-arch_BURGSRC= $(srcdir)/inssel-long.brg $(srcdir)/inssel-sparc.brg
 arch_built=cpu-sparc.h
 arch_define=__sparc__
 endif
@@ -341,21 +350,18 @@ endif
 
 if S390x
 arch_sources = $(s390x_sources)
-arch_BURGSRC= $(srcdir)/inssel-long.brg $(srcdir)/inssel-s390x.brg
 arch_built=cpu-s390x.h
 arch_define=__s390__
 endif
 
 if IA64
 arch_sources = $(ia64_sources)
-arch_BURGSRC = $(srcdir)/inssel-long.brg $(srcdir)/inssel-ia64.brg
 arch_built = cpu-ia64.h
 arch_define=__ia64__
 endif
 
 if ALPHA
 arch_sources = $(alpha_sources) $(mono_debugger_sources)
-arch_BURGSRC = $(srcdir)/inssel-long.brg $(srcdir)/inssel-alpha.brg
 arch_built = cpu-alpha.h
 arch_define=__alpha__
 endif
@@ -363,14 +369,11 @@ endif
 if HPPA
 # Only support 32-bit targets for now
 arch_sources = $(hppa_sources)
-arch_BURGSRC = $(srcdir)/inssel-long32.brg $(srcdir)/inssel-hppa.brg
 arch_built = cpu-hppa.h
 arch_define=__hppa__
 endif
 
 libmono_la_SOURCES = $(common_sources) $(arch_sources)
-
-nodist_libmono_la_SOURCES = inssel.c inssel.h
 
 libmono_static_la_SOURCES = $(libmono_la_SOURCES)
 nodist_libmono_static_la_SOURCES = $(nodist_libmono_la_SOURCES)
@@ -385,6 +388,9 @@ libmonoinclude_HEADERS = jit.h
 
 libmono_la_LIBADD = \
 	$(libs) $(LIBMONO_DTRACE_OBJECT)
+
+basic-simd.exe: basic-simd.cs
+	$(MCS) -out:$@ $< -r:TestDriver.dll -r:Mono.Simd.dll
 
 generics.exe: generics.cs TestDriver.dll generics-variant-types.dll
 	$(MCS) -out:$@ $< -r:TestDriver.dll -r:generics-variant-types.dll
@@ -410,7 +416,7 @@ generics-variant-types.dll: generics-variant-types.il
 # $(arch_define) is the preprocessor symbol that enables all the opcodes
 # for the specific platform in mini-ops.h
 if CROSS_COMPILING
-GENMDESC_PRG=perl genmdesc.pl $(arch_define) $(srcdir)
+GENMDESC_PRG=perl $(srcdir)/genmdesc.pl $(arch_define) $(srcdir)
 else !CROSS_COMPILING
 GENMDESC_PRG=./genmdesc
 endif !CROSS_COMPILING
@@ -423,6 +429,9 @@ cpu-amd64.h: cpu-amd64.md genmdesc$(EXEEXT)
 
 cpu-ppc.h: cpu-ppc.md genmdesc$(EXEEXT)
 	$(GENMDESC_PRG) $(srcdir)/cpu-ppc.md cpu-ppc.h ppcg4
+
+cpu-ppc64.h: cpu-ppc64.md genmdesc$(EXEEXT)
+	$(GENMDESC_PRG) $(srcdir)/cpu-ppc64.md cpu-ppc64.h ppc64_cpu_desc
 
 cpu-arm.h: cpu-arm.md genmdesc$(EXEEXT)
 	$(GENMDESC_PRG) $(srcdir)/cpu-arm.md cpu-arm.h arm_cpu_desc
@@ -448,9 +457,6 @@ cpu-hppa.h: cpu-hppa.md genmdesc$(EXEEXT)
 cpu-mips.h: cpu-mips.md genmdesc$(EXEEXT)
 	$(GENMDESC_PRG) $(srcdir)/cpu-mips.md cpu-mips.h mips_desc
 
-inssel.c inssel.h: $(BURGSRC)
-	$(monodir)/mono/monoburg/monoburg -c 1 -p -e $(BURGSRC) -d inssel.h -s inssel.c
-
 testi: mono test.exe
 	$(RUNTIME) -v -v --ncompile 1 --compile Test:$(mtest) test.exe
 
@@ -462,7 +468,8 @@ rcheck: mono $(regtests)
 	$(RUNTIME) --regression $(regtests)
 
 aotcheck: mono $(regtests)
-	for i in $(regtests); do $(RUNTIME) --aot $$i || exit 1; done
+	rm -f *.exe.so
+	$(RUNTIME) --aot $(regtests) || exit 1
 	for i in $(regtests); do $(RUNTIME_AOTCHECK) --regression $$i || exit 1; done
 	rm -f *.exe.so
 
@@ -490,12 +497,12 @@ docu: mini.sgm
 check-local: rcheck
 
 clean-local:
-	rm -f mono a.out gmon.out *.o test.exe
+	rm -f mono a.out gmon.out *.o buildver.h test.exe
 
 pkgconfigdir = $(libdir)/pkgconfig
 
 if JIT_SUPPORTED
-BUILT_SOURCES = version.h inssel.c inssel.h $(arch_built)
+BUILT_SOURCES = version.h $(arch_built)
 else
 BUILT_SOURCES = version.h
 endif
@@ -504,19 +511,17 @@ CLEANFILES= $(BUILT_SOURCES) *.exe *.dll
 EXTRA_DIST = $(common_BURGSRC) cprop.c TestDriver.cs ldscript ldscript.mono \
 	genmdesc.pl	\
 	$(test_sources) \
-	inssel-long.brg inssel-long32.brg \
-	inssel-softfloat.brg	\
-	$(x86_sources) inssel-x86.brg cpu-x86.md \
-	$(amd64_sources) inssel-amd64.brg cpu-amd64.md \
-	$(ppc_sources) inssel-ppc.brg cpu-ppc.md \
-	$(arm_sources) inssel-arm.brg cpu-arm.md \
-	$(mips_sources) inssel-mips.brg inssel-long32-mips.brg cpu-mips.md \
-	$(sparc_sources) inssel-sparc.brg cpu-sparc.md \
-	$(s390_sources) inssel-s390.brg cpu-s390.md \
-	$(s390x_sources) inssel-s390x.brg cpu-s390x.md \
-	$(ia64_sources) inssel-ia64.brg cpu-ia64.md \
-	$(alpha_sources) inssel-alpha.brg cpu-alpha.md \
-	$(hppa_sources) inssel-hppa.brg cpu-hppa.md
+	$(x86_sources) cpu-x86.md \
+	$(amd64_sources) cpu-amd64.md \
+	$(ppc_sources) cpu-ppc.md cpu-ppc64.md \
+	$(arm_sources) cpu-arm.md \
+	$(mips_sources) cpu-mips.md \
+	$(sparc_sources) cpu-sparc.md \
+	$(s390_sources) cpu-s390.md \
+	$(s390x_sources) cpu-s390x.md \
+	$(ia64_sources) cpu-ia64.md \
+	$(alpha_sources) cpu-alpha.md \
+	$(hppa_sources) cpu-hppa.md
 
 version.h: Makefile
 	if test -d $(top_srcdir)/.git/svn; then svn_info='git svn info'; fi; \
@@ -531,3 +536,8 @@ version.h: Makefile
 	else \
 		echo "#define FULL_VERSION \"tarball\""; \
 	fi > version.h
+
+# Utility target for patching libtool to speed up linking
+patch-libtool:
+	sed -e 's,if (for obj in $$oldobjs,if (for obj in "",g' < ../../libtool > 2; mv 2 ../../libtool
+	chmod a+x ../../libtool

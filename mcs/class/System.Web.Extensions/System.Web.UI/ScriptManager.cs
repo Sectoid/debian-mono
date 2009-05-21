@@ -403,13 +403,36 @@ namespace System.Web.UI
 			page.ClientScript.RegisterWebFormClientScript ();
 		}
 
+		UpdatePanel FindPanelWithId (string id)
+		{
+			if (_updatePanels == null)
+				return null;
+			foreach (UpdatePanel panel in _updatePanels) {
+				if (panel.ID == id)
+					return panel;
+			}
+			return null;
+		}
+		
 		protected virtual bool LoadPostData (string postDataKey, NameValueCollection postCollection) {
 			_isInAsyncPostBack = true;
 			string arg = postCollection [postDataKey];
 			if (!String.IsNullOrEmpty (arg)) {
 				string [] args = arg.Split ('|');
-				_panelToRefreshID = args [0];
-				_asyncPostBackSourceElementID = args [1];
+				switch (args.Length) {
+					case 1:
+						_asyncPostBackSourceElementID = args [0];
+						break;
+
+					case 2:
+						_panelToRefreshID = args [0];
+						_asyncPostBackSourceElementID = args [1];
+						break;
+
+					default: // "impossible situation"
+						throw new InvalidOperationException ("Unexpected format of post data.");
+				}
+				
 				return true;
 			}
 			return false;
@@ -541,6 +564,12 @@ namespace System.Web.UI
 					RegisterScriptReference (this, ajaxWebFormsExtensionScript, true);
 			}
 
+			if (!String.IsNullOrEmpty (_panelToRefreshID)) {
+				UpdatePanel panel = FindPanelWithId (_panelToRefreshID);
+				if (panel != null)
+					RegisterPanelForRefresh (panel);
+			}
+			
 			// Register Scripts
 			if (_scriptToRegister != null)
 				for (int i = 0; i < _scriptToRegister.Count; i++)
@@ -665,9 +694,10 @@ namespace System.Web.UI
 			if (control == null)
 				return false;
 
-			if (control is UpdatePanel && ((UpdatePanel) control).RequiresUpdate)
-				return true;
-
+			UpdatePanel panel = control as UpdatePanel;
+			if (panel != null && panel.RequiresUpdate)
+					return true;
+			
 			return HasBeenRendered (control.Parent);
 		}
 
@@ -832,10 +862,18 @@ namespace System.Web.UI
 			return sb.ToString ();
 		}
 
-		void RegisterServiceReference (Control control, ServiceReference serviceReference) {
+		void RegisterServiceReference (Control control, ServiceReference serviceReference)
+		{
 			if (serviceReference.InlineScript) {
 				string url = control.ResolveUrl (serviceReference.Path);
-				LogicalTypeInfo logicalTypeInfo = LogicalTypeInfo.GetLogicalTypeInfo (WebServiceParser.GetCompiledType (url, Context), url);
+				Type type = WebServiceParser.GetCompiledType (url, Context);
+				if (type != null) {
+					object[] attributes = type.GetCustomAttributes (typeof (ScriptServiceAttribute), true);
+					if (attributes.Length == 0)
+						throw new InvalidOperationException ("Only Web services with a [ScriptService] attribute on the class definition can be called from script.");
+				}
+				
+				LogicalTypeInfo logicalTypeInfo = LogicalTypeInfo.GetLogicalTypeInfo (type, url);
 				RegisterClientScriptBlock (control, typeof (ScriptManager), url, logicalTypeInfo.Proxy, true);
 			}
 			else {
@@ -843,6 +881,8 @@ namespace System.Web.UI
 				string pathInfo = "/js.invoke";
 #else
 				string pathInfo = "/js";
+				if (IsDebuggingEnabled)
+					pathInfo += "debug";
 #endif
 				string url = String.Concat (control.ResolveClientUrl (serviceReference.Path), pathInfo);
 				RegisterClientScriptInclude (control, typeof (ScriptManager), url, url);
@@ -1158,11 +1198,19 @@ namespace System.Web.UI
 			WriteCallbackOutput (output, pageRedirect, null, redirectUrl);
 		}
 
-		internal void WriteCallbackPanel (TextWriter output, UpdatePanel panel, StringBuilder panelOutput) {
+		void RegisterPanelForRefresh (UpdatePanel panel)
+		{
 			if (_panelsToRefresh == null)
 				_panelsToRefresh = new List<UpdatePanel> ();
-			_panelsToRefresh.Add (panel);
+			else if (_panelsToRefresh.Contains (panel))
+				return;
 
+			panel.Update ();
+			_panelsToRefresh.Add (panel);
+		}
+		
+		internal void WriteCallbackPanel (TextWriter output, UpdatePanel panel, StringBuilder panelOutput) {
+			RegisterPanelForRefresh (panel);
 			WriteCallbackOutput (output, updatePanel, panel.ClientID, panelOutput);
 		}
 
@@ -1203,6 +1251,11 @@ namespace System.Web.UI
 			HtmlTextParser parser = new HtmlTextParser (output);
 			page.Form.RenderControl (parser);
 
+			Dictionary <string, string> pageHiddenFields = parser.HiddenFields;
+			if (pageHiddenFields != null)
+				foreach (KeyValuePair <string, string> kvp in pageHiddenFields)
+					WriteCallbackOutput (output, hiddenField, kvp.Key, kvp.Value);
+			
 			WriteCallbackOutput (output, asyncPostBackControlIDs, null, FormatListIDs (_asyncPostBackControls, false));
 			WriteCallbackOutput (output, postBackControlIDs, null, FormatListIDs (_postBackControls, false));
 			WriteCallbackOutput (output, updatePanelIDs, null, FormatUpdatePanelIDs (_updatePanels, false));
@@ -1268,12 +1321,16 @@ namespace System.Web.UI
 		void WriteScriptBlocks (HtmlTextWriter output, List<RegisteredScript> scriptList) {
 			if (scriptList == null)
 				return;
-			Hashtable registeredScripts = new Hashtable ();
+			var registeredScripts = new Dictionary <string, RegisteredScript> ();
+			Control control;
+			
 			for (int i = 0; i < scriptList.Count; i++) {
 				RegisteredScript scriptEntry = scriptList [i];
 				if (registeredScripts.ContainsKey (scriptEntry.Key))
 					continue;
-				if (Page == scriptEntry.Control || HasBeenRendered (scriptEntry.Control)) {
+
+ 				control = scriptEntry.Control;
+				if (Page == control || HasBeenRendered (control)) {
 					registeredScripts.Add (scriptEntry.Key, scriptEntry);
 					switch (scriptEntry.ScriptType) {
 					case RegisteredScriptType.ClientScriptBlock:
@@ -1369,10 +1426,29 @@ namespace System.Web.UI
 		{
 			bool _done;
 
+			public Dictionary <string, string> _hiddenFields;
+
+			public Dictionary <string, string> HiddenFields {
+				get { return _hiddenFields; }
+			}
+			
 			public HtmlTextParser (HtmlTextWriter responseOutput)
-				: base (new TextParser (responseOutput), responseOutput) {
+				: this (new TextParser (responseOutput), responseOutput) {
 			}
 
+			HtmlTextParser (TextParser parser, HtmlTextWriter responseOutput)
+				: base (parser, responseOutput)
+			{
+				parser.HiddenFieldParsed += new TextParser.TextParserHiddenFieldParsedEventHandler (OnHiddenFieldParsed);
+			}
+			
+			void OnHiddenFieldParsed (TextParser sender, TextParserHiddenFieldParsedEventArgs args)
+			{
+				if (_hiddenFields == null)
+					_hiddenFields = new Dictionary <string, string> ();
+				_hiddenFields [args.Name] = args.Value;
+			}
+			
 			public override void WriteAttribute (string name, string value) {
 				if (!_done && String.Compare ("action", name, StringComparison.OrdinalIgnoreCase) == 0) {
 					_done = true;
@@ -1383,8 +1459,31 @@ namespace System.Web.UI
 			}
 		}
 
+		sealed class TextParserHiddenFieldParsedEventArgs : EventArgs
+		{
+			public string Name {
+				get;
+				private set;
+			}
+
+			public string Value {
+				get;
+				private set;
+			}
+			
+			public TextParserHiddenFieldParsedEventArgs (string name, string value)
+			{
+				this.Name = name;
+				this.Value = value;
+			}
+		}
+		
 		sealed class TextParser : TextWriter
 		{
+			public delegate void TextParserHiddenFieldParsedEventHandler (TextParser sender, TextParserHiddenFieldParsedEventArgs args);
+
+			static object textParserHiddenFieldParsedEvent = new object ();
+			
 			int _state;
 			char _charState = (char) 255;
 			const char nullCharState = (char) 255;
@@ -1392,7 +1491,13 @@ namespace System.Web.UI
 			Dictionary<string, string> _currentField;
 			string _currentAttribute;
 			readonly HtmlTextWriter _responseOutput;
-
+			TextParserHiddenFieldParsedEventHandler _hiddenFieldParsedHandler;
+			
+			public event TextParserHiddenFieldParsedEventHandler HiddenFieldParsed {
+				add { _hiddenFieldParsedHandler = value; }
+				remove { _hiddenFieldParsedHandler = null; }
+			}
+			
 			public override Encoding Encoding {
 				get { return Encoding.UTF8; }
 			}
@@ -1511,10 +1616,13 @@ namespace System.Web.UI
 					return;
 
 				string value = _currentField ["value"];
-				if (String.IsNullOrEmpty (value))
+				if (value == null)
 					return;
 
-				ScriptManager.WriteCallbackOutput (_responseOutput, hiddenField, _currentField ["name"], HttpUtility.HtmlDecode (value));
+				if (_hiddenFieldParsedHandler != null)
+					_hiddenFieldParsedHandler (this, new TextParserHiddenFieldParsedEventArgs (_currentField ["name"], HttpUtility.HtmlDecode (value)));
+				else
+					ScriptManager.WriteCallbackOutput (_responseOutput, hiddenField, _currentField ["name"], HttpUtility.HtmlDecode (value));
 			}
 		}
 
@@ -1532,7 +1640,7 @@ namespace System.Web.UI
 			}
 		}
 
-		sealed class CultureInfoSerializer : JavaScriptSerializer.LazyDictionary
+		sealed class CultureInfoSerializer
 		{
 			readonly CultureInfo _ci;
 			public CultureInfoSerializer (CultureInfo ci) {
@@ -1540,11 +1648,18 @@ namespace System.Web.UI
 					throw new ArgumentNullException ("ci");
 				_ci = ci;
 			}
-			protected override IEnumerator<KeyValuePair<string, object>> GetEnumerator () {
-				yield return new KeyValuePair<string, object> ("name", _ci.Name);
-				yield return new KeyValuePair<string, object> ("numberFormat", _ci.NumberFormat);
-				yield return new KeyValuePair<string, object> ("dateTimeFormat", _ci.DateTimeFormat);
+
+			public string name {
+				get { return _ci.Name; }
 			}
+
+			public NumberFormatInfo numberFormat {
+				get { return _ci.NumberFormat; }
+			}
+
+			public DateTimeFormatInfo dateTimeFormat {
+				get { return _ci.DateTimeFormat; }
+			}			
 		}
 
 		sealed class ScriptReferenceEntry

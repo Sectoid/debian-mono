@@ -55,8 +55,11 @@ namespace System.Web.UI
 		
 		internal UserControlParser (string virtualPath, string inputFile, HttpContext context, string type)
 		{
+#if NET_2_0
+			VirtualPath = new VirtualPath (virtualPath);
+#endif
 			Context = context;
-			BaseVirtualDir = UrlUtils.GetDirectory (virtualPath);
+			BaseVirtualDir = VirtualPathUtility.GetDirectory (virtualPath, false);
 			InputFile = inputFile;
 			SetBaseType (type);
 			AddApplicationAssembly ();
@@ -70,8 +73,9 @@ namespace System.Web.UI
 		
 		internal UserControlParser (string virtualPath, string inputFile, TextReader reader, HttpContext context)
 		{
+			VirtualPath = new VirtualPath (virtualPath);
 			Context = context;
-			BaseVirtualDir = UrlUtils.GetDirectory (virtualPath);
+			BaseVirtualDir = VirtualPathUtility.GetDirectory (virtualPath, false);
 
 			if (String.IsNullOrEmpty (inputFile)) {
 				HttpRequest req = context != null ? context.Request : null;
@@ -85,27 +89,26 @@ namespace System.Web.UI
 			AddApplicationAssembly ();
 		}
 
-		internal UserControlParser (TextReader reader, HttpContext context)
+		internal UserControlParser (TextReader reader, int? uniqueSuffix, HttpContext context)
 		{
 			Context = context;
 
 			string fpath = context.Request.FilePath;
-			BaseVirtualDir = UrlUtils.GetDirectory (fpath);
+			VirtualPath = new VirtualPath (fpath);
+			BaseVirtualDir = VirtualPathUtility.GetDirectory (fpath, false);
 
 			// We're probably being called by ParseControl - let's use the requested
-			// control's path as our input file, since that's the context we're being
-			// invoked from.
-			InputFile = VirtualPathUtility.GetFileName (fpath);
+			// control's path plus unique suffix as our input file, since that's the
+			// context we're being invoked from.
+			InputFile = VirtualPathUtility.GetFileName (fpath) + "#" + (uniqueSuffix != null ? ((int)uniqueSuffix).ToString ("x") : "0");
 			Reader = reader;
 			SetBaseType (null);
 			AddApplicationAssembly ();
-		}
-#endif
+		}		
 
-#if NET_2_0
-		internal static Type GetCompiledType (TextReader reader, HttpContext context)
+		internal static Type GetCompiledType (TextReader reader, int? inputHashCode, HttpContext context)
 		{
-			UserControlParser ucp = new UserControlParser (reader, context);
+			UserControlParser ucp = new UserControlParser (reader, inputHashCode, context);
 			return ucp.CompileIntoType ();
 		}
 #endif

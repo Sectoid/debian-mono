@@ -1,3 +1,68 @@
+2009-01-14  Geoff Norton  <gnorton@novell.com>
+
+	* supportw.c: Use unsigned int instead of uint, as its more portable.
+	Fixes compilation issue on Mac OSX.
+
+2009-01-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* signal.c: Don't allow registration of a realtime signal to happen
+	if it was already registered outside of Mono.Posix.
+
+2008-12-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* signal.c: Improve error checking within Mono_Posix_FromRealTimeSignum.
+
+2008-12-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* map.h: Flush.
+	* signal.c: Add Mono_Posix_SIGRTMIN(), Mono_Posix_SIGRTMAX(),
+	  Mono_Posix_FromRealTimeSignum().
+	  Patch thanks to tim.jenks@realtimeworlds.com.
+
+2008-11-06  Alan McGovern  <amcgovern@novell.com>
+
+	* Makefile.am: Missed out on a header file for minizip
+
+2008-11-06  Alan McGovern  <amcgovern@novell.com>
+
+	* minizip/minizip/miniunz.c :
+	* Makefile.am: Removed unnecessary file from build and svn.
+
+2008-11-06  Alan McGovern  <amcgovern@novell.com>
+
+	* minizip/*.am :
+	* Makefile.am: Merged minizip build into the support code.
+
+2008-11-05  Bill Holmes  <billholmes54@gmail.com>
+
+	* Makefile.am : For generation of map.c adding preprocessor
+	  checks for sys/time.h, unistd.h, dirent.h and utime.h.
+
+	* map.c : Re-run 'make refresh' to add preprocessor checks
+	  for sys/time.h, unistd.h, dirent.h and utime.h.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* time.c: Add Mono_Posix_Syscall_nanosleep().
+
+2008-10-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* fcntl.c: Use Mono_Posix_{From,To}Flock() for flock conversion.
+	* Makefile.am: Include <time.h> in map.c.
+	* map.c, map.h: Flush; adds Flock, Timespec support.
+
+2008-09-14  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* serial.c: When writing bytes and polling, take into account negative
+	values to indicate infinite timeout. Patch by Leszek Ciesielski.
+	Fixes #399245.
+
+2008-07-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (patch-libtool): New helper target.
+
 2008-04-05  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* serial.c (set_attributes): When setting parity to Even,

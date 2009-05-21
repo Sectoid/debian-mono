@@ -1,8 +1,1031 @@
-2008-09-25  Marek Safar  <marek.safar at gmail.com>
-  
+2009-03-08  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Use correct common base type for unmanaged delayed
+	check.
+
+	* rootcontext.cs: Wrap unhandled exception.
+
+2009-03-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #480100
+	* parameter.cs: A parameter is not hoisted when used directly as ET.
+
+2009-03-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #481258
+	* class.cs: Set extension method flag in partial container.
+
+2009-02-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #479532
+	* expression.cs: Implement NewInitialize::AddressOf.
+
+2009-02-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #413633
+	* expression.cs: Iterate all base class-constraint types.
+
+2009-02-20  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #477447
+	* statement.cs: Add reference to correct parent storey when this
+	is accessible from deep children storey (more than 1 level).
+
+2009-02-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #472805
+	* typemanager.cs, namespace.cs: Import only visible extension method
+	types.
+
+2009-02-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #476266
+	* anonymous.cs: Mutate multi-dimensional arrays.
+
+2009-02-16  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475965
+	* generics.cs: Check generic parameter type after extracting from
+	Expression<T>.
+
+2009-02-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475327
+	* expression.cs (ArrayCreation): Don't mutate values optimized away.
+
+2009-02-12  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug ##475246
+	* expression.cs: More broken flowanalysis hacking needed.
+
+2009-02-03  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs, generic.cs: Emit type parameter constraints for nested
+	types.
+
+2009-02-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #471213
+	* class.cs: Avoid emitting backing field for abstract event fields.
+
+2009-02-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #359731
+	* cs-tokenizer.cs, cs-parser.jay: Correctly parse nested query
+	expressions.
+
+2009-01-30  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #470767
+	* statement.cs: Introduced BlockScopeExpression, needed when 
+	expression tree conversion has to emit scope variables.
+
+2009-01-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #470227
+	* cs-tokenizer.cs: Remove too agressive parser optimization.
+
+2009-01-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #324319
+	* class.cs: Remove too early base type resolve.
+
+2009-01-27  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: Fixed recent regression when initializing captured 
+	this.
+
+2009-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #469019
+	* anonymous.cs: Use all parent type parameters when instantiating
+	nested generic storey.
+
+2009-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Check for null instance methodgroup expression.
+
+2009-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #469244
+	* cs-tokenizer.cs, cs-parser.jay: Fixed parsing of nullable type
+	instance inside a conditional expression.
+
+2009-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, ecore.cs: Explicitly casts type arguments to pass
+	verifier checks.
+
+2009-01-16  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs (LiftedBinaryOperator): Check for all possible null
+	expressions.
+
+2009-01-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #466634
+	* statement.cs: Add reference for nested storey when only this
+	is captured.
+
+2009-01-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #466474
+	* codegen.cs: Emit SecurityPermissionAttribute when -unsafe option
+	was specified.
+
+2009-01-15  Marek Safar  <marek.safar@gmail.com>
+
+	* iterators.cs, anonymous.cs, expression.cs, statement.cs, ecore.cs:
+	Fixed nested stories parent referencing process. Also fixes #463985.
+
+2009-01-06  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, iterators.cs, expression.cs, statement.cs, doc.cs, 
+	class.cs, cs-parser.jay, codegen.cs: Clean up destructor
+	implementation. Also fixes #463108.
+
+2009-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #416109
+	* decl.cs: Issue correct CLSAttribute warning location.
+
+2009-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #456775
+	* attribute.cs: Use attribute owner scope when resolving attribute
+	arguments.
+
+2009-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #457257
+	* decl.cs: Fixed incorrect member declaring type comparison.
+
+2009-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #460896
+	* driver.cs: Handle /RES resources as embeddable.
+
+2009-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #462515
+	* ecore.cs: Report inacessible members upwards.
+
+2009-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #463190, #463192
+	* decl.cs, namespace.cs: Also import internal extension classes.
+
+2009-01-04  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #463415
+	* generic.cs: Use right index for RemoveDependentTypes.
+
+2009-01-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #463196
+	* expression.cs: Fixed enum to null comparison.
+
+2009-01-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #463121
+	* nullable.cs: Fixed nullable user equality operator comparison.
+
+2009-01-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #462950
+	* class.cs, decl.cs: Use full explicit name when defining automatic
+	property backing field.
+
+2009-01-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #462592
+	* pending.cs: Emit type arguments for generic proxy method.
+
+2008-12-30  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (As): Mutate all type arguments.
+
+2008-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #462622
+	* anonymous.cs: Resolve anonymous type GetHashCode in unchecked
+	context.
+
+2008-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #450782
+	* ecore.cs: Consider more variables of form V.I to be fixed.
+
+2008-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #460712
+	* typemanager.cs: Core types could be imported.
+
+2008-12-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bugs #460847, #460772, #458049, #457339, #447807
+	* generic.cs, parameter.cs, lambda.cs, linq.cs, anonymous.cs
+	statement.cs, ecore.cs, class.cs, delegate.cs, flowanalysis.cs
+	cs-parser.jay, driver.cs: LINQ implementation upgrade to deal with
+	user lambdas used inside query clauses.
+
+2008-12-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #460229
+	* cs-tokenizer.cs: Ignore wrongly placed BOM markers.
+
+2008-12-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #459952
+	* decl.cs, namespace.cs: Use common CheckAccessLevel.
+
+2008-12-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #459630
+	* convert.cs: Enum to valuetype conversion is not allowed.
+
+2008-12-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #457087
+	* generic.cs: Don't crash when constraint comes from type
+	declaration.
+
+2008-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #459221
+	* anonymous.cs, statement.cs: Delay only captured this
+	initialization.
+
+2008-12-12  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #457489
+	* anonymous.cs, statement.cs: Split anonymous storey instantiation
+	and initialization to capture scope initializers correctly.
+
+2008-12-11  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, parameter.cs, expression.cs, statement.cs, doc.cs:
+	ParameterReference refactoring.
+
+2008-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, namespace.cs, driver.cs: Allow ExtensionAttribute
+	to be imported from any assembly.
+
+2008-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs, lambda.cs, linq.cs, iterators.cs, anonymous.cs
+	statement.cs, class.cs, cs-parser.jay: Removed duplicate parameters
+	from anonymous method and lambda expression.
+
+2008-12-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #448560
+	* expression.cs (As): Box any generic type arguments to be
+	verifiable.
+
+2008-11-29  Raja R Harinath  <harinath@hurrynot.org>
+
+	Add tripwire for implicit conversion bugs
+	* ecore.cs (MethodGroupExpr.Error_ArgumentCountWrong): New helper
+	for CS1501 error.
+	(MethodGroupExpr.OverloadResolve): Add sanity check between
+	IsApplicable and VerifyArgumentsCompat.
+	(VerifyArgumentsCompat): Report CS1501 where appropriate.
+
+2008-11-29  Raja R Harinath  <harinath@hurrynot.org>
+
+	Fix build break in System.Data_test
+	* convert.cs (ImplicitConversionExists): Move NullLiteral
+	conversions ...
+	(ImplicitStandardConversionExists): ... here.
+
+2008-11-28  Marek Safar  <marek.safar@gmail.com>
+
+	* literal.cs: Emit correctly explicit null to nullable cast.
+
+2008-11-28  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, generics.cs: Fixed crash when type arguments fail to
+	resolve.
+
+2008-11-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #449005
+	* convert.cs, nullable.cs: Use only one implicit nullable
+	conversion.
+
+2008-11-27  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, literal.cs: More Convert cleanup is needed.
+
+2008-11-27  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, class.cs: Fixed misleading error message.
+
+2008-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #449005
+	* nullable.cs (EmitEquality): Disable optimization for user operator
+	operands.
+
+2008-11-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #447027
+	* anonymous.cs (HoistedVariable): Cache also outer access to deal
+	with context variables stored as expression instances.
+
+2008-11-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #447027
+	* delegate.cs: Fixed delegate VerifyMethod logic.
+
+2008-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, delegate.cs: MethodGroup expressions can be applicable
+	but not verifiable.
+
+2008-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, decl.cs, anonymous.cs, class.cs, enum.cs: Rewrote
+	member type resolve to follow normal flow, instead of random
+	property access.
+
+2008-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	* iterators.cs (GetEnumeratorStatement): Re-use already resolved
+	type.
+
+2008-11-21  Marek Safar  <marek.safar@gmail.com>
+
+	* const.cs: Emit decimal array constant as literal.
+
+2008-11-20  Marek Safar  <marek.safar@gmail.com>
+
+	* iterators.cs, ecore.cs: Removed CurrentBlock statement.
+
+2008-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	* eval.cs, location.cs, driver.cs (Location.SourceFiles): Turned
+	into real property (saves 8 MB for corlib compilation).
+
+2008-11-19  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, lambda.cs, linq.cs, iterators.cs, anonymous.cs,
+	nullable.cs, expression.cs, statement.cs, ecore.cs, cs-parser.jay
+	generic-mcs.cs: Small cleanup of TypeArguments.
+
+2008-11-18  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, iterators.cs, anonymous.cs, nullable.cs, ecore.cs,
+	expression.cs, namespace.cs, generic-mcs.cs, class.cs: Small cleanup
+	of ConstructedType expression, renamed to GenericTypeExpr.
+
+2008-11-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #445303
+	* location.cs (IsConditionalDefined): Handle undefined global
+	defines.
+
+2008-11-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #444678
+	* expression.cs (TryReduceConstant): Always create new constant
+	instance.
+
+2008-11-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #444673
+	* ecore.cs: Ignore open generic types when used as generic type
+	instance fields.
+
+2008-11-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #445458
+	* expression.cs, cs-parser.jay: Don't crash when an expression
+	statement is null.
+
+2008-11-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #445464
+	* expression.cs, cs-parser.jay: Fixed typeof of non-generic type
+	inside unbound type.
+
+2008-11-14  Jb Evain  <jbevain@novell.com>
+
+	* driver.cs: ignore empty -nowarn argument such as
+	the one in -nowarn:12,13,,.
+
+2008-11-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #444271
+	* anonymous.cs: Rescan parent storeys when best candidate was
+	undone.
+
+2008-11-13  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, expression.cs, ecore.cs, cs-parser.jay: Removed
+	useless UnboundTypeExpression.
+	
+	* attribute.cs: Do check obsolete attribute on generic types.
+
+2008-11-12  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bugs #425680, #400139
+	* ecore.cs, expression.cs: Trying to do some almost_matched_members
+	refactoring.
+
+2008-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #435747
+	* assign.cs, expression.cs: Cleanup New assignment to emit correcly
+	compound value types assignment. Few micro optimizations added.
+
+2008-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #442610
+	* anonymous.cs (MutateConstructor): More SRE hacking.
+
+2008-11-10  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #442579
+	* ecore.cs: Also initialize expanded form of a method with 1 params
+	parameter.
+
+2008-11-06  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (UnaryMutator): Do early l-side check.
+
+2008-11-05  Miguel de Icaza  <miguel@novell.com>
+
+	* codegen.cs (InitDynamic): also setup Assembly.Name like we do in
+	Init, otherwise we would crash later on when checking for friend
+	assemblies. 
+
+	* eval.cs: Do not hide errors from invalid calls to LoadAssembly.
+	Otherwise we never get any meaningful information as to what
+	failed. 
+
+2008-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #436318
+	* driver.cs, report.cs: Add -warnaserror:Wn to command line options.
+
+2008-11-05  Miguel de Icaza  <miguel@novell.com>
+
+	* namespace.cs: Turns out that it was a really bad idea to hide
+	the errors for namespaces not found here in eval mode.    
+
+	* eval.cs: When we process using clauses, only enter those into
+	the list of valid using clauses after they have been validated.   
+
+	The above change gives the proper semantics: it does not
+	senselessly report the same errors with broken using statements by
+	never storing them in the first place when they are invalid.
+
+2008-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #421839
+	* cs-parser.jay: Remove expression from coalesce rule to force lower
+	priority than the assignment operator.
+
+2008-11-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #437875
+	* nullable.cs: Compile correctly method group operand used with null
+	coalescing operator.
+
+2008-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #434589
+	* expression.cs (Binary): Ignore lifted conversions when at least
+	one operand is of reference type.
+
+2008-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Better syntax error report.
+
+2008-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #436792
+	* cs-parser.jay: Use GetLocation to access location.
+
+2008-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #440774
+	* cs-parser.jay: Also set current_array_type when parsing local
+	variables types.
+
+2008-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #440785
+	* expression.cs (As): Don't resolve self modifing expression
+	multiple times.
+
+2008-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #439447
+	* cs-tokenizer.cs: Tokenize surrogates only where allowed.
+
+2008-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #437571
+	* cs-parser.jay: Fixes internal error for invalid expression
+	statements.
+
+2008-10-17  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Resolve correctly ambiguous params delegate methods.
+
+2008-10-17  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, anonymous.cs: Simplified GetDeclarations.
+
+2008-10-17  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: More precise cast parsing.
+
+2008-10-16  Martin Baulig  <martin@ximian.com>
+
+	* anonymous.cs (AnonymousMethodStorey): Put back the
+	`hoisted_locals' hashtable and use it in EmitType().
+
+2008-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, nullable.cs, expression.cs, statement.cs,
+	cs-parser.jay: Tokenizer optimizations and memory reduction, saves
+	~5MB for corlib.
+
+2008-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Add bool type to the list of valid cast tokens.
+
+2008-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs: Mutate scope initializers.
+
+2008-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Use typeless value for This constant.
+	
+	* ecore.cs: Access FieldInfo via GetConstructedFieldInfo.
+
+2008-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, cs-parser.jay: Unify context sensite keyword
+	tokenizer.
+
+2008-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Add missing alias qualifier and dotted generic
+	type to type cast.
+
+2008-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, expression.cs, cs-parser.jay: Reworked parens
+	parser and tokenizer. Fixes many ambiguities including #433258.
+
+2008-10-10  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Fixed missing accessor recovery.
+
+2008-10-10  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #433701
+	* expression.cs: Better error message.
+
+2008-10-10  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, expression.cs: Start reporting real parser errors.
+	
+	* Makefile: Disabled unused debug symbols.
+
+	Also fixes: #320556, #321097, #321656, #321876, #351316
+
+2008-10-09  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs: rename "<interactive>" to "{interactive}", to work
+	around a requirement in the compiler that this be a valid
+	filename, and in Windows it is not (433886).
+
+2008-10-09  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, cs-parser.jay: Fixed more subtle parser problems
+
+2008-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs, eval.cs, anonymous.cs, statement.cs, class.cs
+	cs-parser.jay: Generic type declaration and type arguments cleanup.
+
+2008-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Allow parsing weird array creation construct.
+
+2008-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Conflicts reduction.
+
+2008-10-04  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Conflicts reduction.
+
+2008-10-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	Fix #398325
+	* flowanalysis.cs (MyBitvector.MakeShared): Rename from 'Shared'
+	property.  Add a 'count' hint about the use of the shared vector.
+	Ensure that we don't leak out dirty bits.
+	(UsageVector.MergeChild): Throw away information about variables
+	in child vectors.
+	Based on patch and analysis by Moritz Kroll <Moritz.Kroll@gmx.de>.
+
+2008-10-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #431746
+	* iterators.cs, anonymous.cs: Re-initialize hoisted iterator
+	parameters when iterator is created.
+
+2008-10-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #431827
+	* expression.cs: Fixed right based pointer arithmetic operations
+	emit.
+
+2008-10-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #353779
+	* assign.cs, expression.cs: Fixed compound assignment conversions.
+
+2008-10-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #375262
+	* statement.cs: Refactor ArrayForeach to be usable with string
+	indexer. Optimized single dimentional arrays foreach.
+
+2008-10-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #431255
+	* anonymous.cs, expression.cs: Removed broken optimization.
+
+2008-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: Use full type parameters of parent generic
+	containers. Removed unnecessary AddParentStoreyReference call.
+
+2008-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #324702
+	* class.cs: Use better shorter names for explicit interface member
+	implementations.
+
+	* ecore.cs, typemanager.cs: Convert only mscorlib predefined names.
+
+2008-10-01  Marek Safar  <marek.safar@gmail.com>
+	
+	* expression.cs: Use new interface to check fixed expression.
+
+2008-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #421101
+	* expression.cs, statement.cs, ecore.cs: Use IFixedExpression
+	interface to check for fixed fixed-buffers.
+
+2008-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #429264
+	* assign.cs, anonymous.cs, ecore.cs: More type mutators added.
+	
+	* delegate.cs: Removed unnecessary casts.
+
+2008-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #352151
+	* decl.cs, iterators.cs, anonymous.cs, report.cs, namespace.cs,
+	class.cs: Fixed already defined explicit interface members check.
+
+2008-09-29  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	cs-tokenizer.cs: Fix typo.
+
+2008-09-28  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs (InteractiveBase): The quit command now just sets a
+	flag, instead of calling Environment.Exit(), it is milder on
+	embedded hosts. 
+
+	CompiledMethod is now in Mono.CSharp, not nested inside
+	the Evaluator, it was inconvenient to use.
+
+2008-09-27  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs (Evaluator): Introduce Compile method, to allow compiled
+	code to be invoked without having to reparse.
+
+2008-09-27  Miguel de Icaza  <miguel@novell.com>
+
+	* ecore.cs: The recent changes to FieldExpr broke this as well.
+	Fixes LINQ queries in the interactive shell.
+
+	* Multiple files: indentation fixing for the Mono coding
+	guidelines for the switch statement.
+
+	* eval.cs: Make the Evaluator API thread safe.
+
+2008-09-26  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs, statement.cs, class.cs, cs-parser.jay: Simplified
+	constructor parsing.
+
+2008-09-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #325326
+	* statement.cs: Check possible mistaken empty statement using
+	explicit blocks only.
+
+2008-09-25  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs (LoadAssembly, ReferenceAssembly): Call
+	RootNamespace.ComputeNamespaces to update the internal list of
+	namespaces, this is no longer done for us.
+
+	(InteractiveBase): Use the Evaluator APIs instead of calling into
+	Driver directly
+
+2008-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #429264
+	* expression.cs: Missing mutator for access to multidimensional
+	arrays.
+
+2008-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs, statement: Emit DebuggerHidden attribute for iterator
+	entry wrapper.
+	
+	* driver.cs: Missing input argument check.
+
+2008-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, eval.cs, decl.cs, anonymous.cs,
+	expression.cs, statement.cs, rootcontext.cs, class.cs, 
+	cs-parser.jay, driver.cs, generic-mcs.cs, enum.cs: Removed obsolete
+	DefineMembers.
+
+2008-09-24  Miguel de Icaza  <miguel@novell.com>
+
+	* ecore.cs (FieldExpr): Only initialize eclass when we return a
+	fully constructed FieldExpr, fixes the regression introduced in
+	the last commit.
+	
+	* ecore.cs, expression.cs: Plug back the eclass initialization as
+	otherwise it regresses `csharp'. 
+
+2008-09-24  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, decl.cs, convert.cs, assign.cs, expression.cs,
+	ecore.cs, attribute.cs: Moved obsolete method checks from emit
+	phase to resolve phase. It resolves problems with expression trees
+	and fixes bugs #323796, #325156.
+
+2008-09-23  Marek Safar  <marek.safar@gmail.com>
+
+	* codegen.cs: Report better error when symbol writer is missing.
+
+2008-09-23  Marek Safar  <marek.safar@gmail.com>
+
+	* codegen.cs: Set .NET symbol writer.
+	
+	* decl.cs: Guard against null generic arguments.
+	
+	* report.cs: Don't report exactly same additional details.
+
+2008-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #324917
+	* cs-parser.jay: Add missing multidimensional non-expression type
+	ranks.
+	
+2008-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #428191
+	* anonymous.cs: Create an outer generic fields also for non-storey
+	anonymous methods.
+
+2008-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #378294
+	* class.cs: Make fixed size buffers gmcs feature only.
+
+2008-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #355622, #324993
+	* assign.cs, const.cs, class.cs: Create new EmitContext for each
+	field initializer.
+
+2008-09-19  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs, expression.cs, namespace.cs, delegate.cs: Duplicate
+	error reporting.
+
+2008-09-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #416110
+	* generic.cs: Struct constraint results in default ctor and
+	ValueType base type constraint to be set.
+
+2008-09-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #423791
+	* generic.cs: Fixed params output type type-inference.
+
+2008-09-19  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, expression.cs: Fixed few expression crashes.
+	
+2008-09-19  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Don't break on extra partial modifier.
+
+2008-09-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #427592
+	* generic.cs: Use common parameter resolve method.
+
+2008-09-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #414758
+	* expression.cs, ecore.cs: Fixed crash when accessing non-static
+	property.
+
+2008-09-18  Marek Safar  <marek.safar@gmail.com>
+
 	* driver.cs, namespace.cs: Read types and namespaces after all
 	requested assemblies are loaded, fixes issues with System.Core
 	auto-reference, and #419888.
+
+2008-09-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #417705
+	* cs-parser.jay: Fixed as/is operator expression split.
+
+2008-09-18  Marek Safar  <marek.safar@gmail.com>
+
+	* const.cs, expression.cs, statement.cs, ecore.cs, cs-parser.jay:
+	Fixed expression tree representation of empty new expression and
+	new initializer expression.
+
+2008-09-18  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs: Remove warning, keep reference to driver around.
+
+	* Hide fields that do not need to be public.
+
+2008-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #426385
+	* expression.cs (ImplicitlyTypedArrayCreation): Use full implicit
+	conversion for array elements.
+
+2008-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, statement.cs, class.cs, cs-parser.jay: Fixed
+	void parsing conflicts.
+
+2008-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #425601
+	* driver.cs, typemanager.cs, namespace.cs: Automatically reference
+	System.Core only when there is no custom ExtensionAttribute
+	implementation.
+
+2008-09-15  Miguel de Icaza  <miguel@novell.com>
+
+	* namespace.cs: Do not report CS0246 (name
+
+2008-09-12  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #425669
+	* generic.cs: Don't cache generic static anonymous method 
+	containers.
+
+2008-09-12  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, class.cs, delegate.cs: Check recursive inherited
+	conflicting constraints.
+
+2008-09-12  Raja R Harinath  <harinath@hurrynot.org>
+
+	* cs-tokenizer.cs (consume_identifier): Allow partial methods in
+	mcs too.
+
+2008-09-12  Marek Safar  <marek.safar@gmail.com>
+
+	* literal.cs, convert.cs, expression.cs, statement.cs: More null
+	to null pointer conversion fixes.
+
+2008-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, expression.cs: An implicitly typed local variable
+	declarator cannot use an array initializer.
+
+2008-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Reduced number of printed tokens, add sorting.
+
+2008-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs (InflatedConstraints): Don't crash when constraints
+	are different.
+	
+	* cs-parser.jay: const_declarator is a block.
+
+	* constant.cs: Check for not allowed NaN conversions.
+
+2008-09-10  Miguel de Icaza  <miguel@novell.com>
+
+	* driver.cs: Drop --shell argument, the compiler is no longer a
+	REPL. 
+
+	* eval.cs: Move most of the code that deals with evaluation into
+	this file and document the public API from repl.cs
+
+	* repl.cs: Remove from here.
+	
+2008-09-10  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #424684
+	* generic.cs: Generic class constraints must come first.
+
+2008-09-09  Miguel de Icaza  <miguel@novell.com>
+
+	* cs-parser.jay: Improve error reporting for syntax errors in
+	statements and expressions, we now report the expected tokens
+	instead of reporting the useless "; expected".
+
+	Drop the strings from the token declaration, it turns out that
+	they did not do what I thought they did.  Instead they were adding
+	two sets of tokens to the tables.
+
+2008-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, parameter.cs, expression.cs, class.cs,
+	delegate.cs: Share special type check.
+
+2008-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #423981
+	* expression.cs (EmitBranchable): Correctly emit inverted float conditions.
+
+2008-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs (ReducedConstantExpression): Implemented ConvertExplicitly and
+	ConvertImplicitly.
+
+2008-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bugs: #324750, #335946
+	* cs-tokenizer.cs, cs-parser.jay, expression.cs: Use a custom 
+	lookup rule to determine ?-based tokens.
+
+2008-09-08  Miguel de Icaza  <miguel@novell.com>
+
+	* repl.cs (OptionalAssign.EmitStatement): It is possible that some
+	expressions (like event adding or removing) end up here, so we
+	need to treat those as statements.
+
+	Add LoadAssembly method.
+
+2008-09-04  Miguel de Icaza  <miguel@novell.com>
+
+	* repl.cs: Add Time method.
+
+2008-09-05  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Fixed swaped UTF-16 surrogates parsing.
+
+2008-09-05  Miguel de Icaza  <miguel@novell.com>
+
+	* repl.cs: Add workaround for old compilers.
+
+2008-09-04  Jb Evain  <jbevain@novell.com>
+
+	* repl.cs (PrettyPrint): pretty print everything that
+	implements IDictionary, as well as IEnumerables. Also,
+	add a quit helper property.
+
+2008-09-04  Marek Safar  <marek.safar@gmail.com>
+
+	* constant.cs: Better error reporting for decimal literals.
+	
+	* class.cs, attribute.cs, typemanager.cs: Emit more fixed buffer
+	field attributes.
+	
+2008-09-04  Marek Safar  <marek.safar@gmail.com>
+			Miguel de Icaza  <miguel@novell.com>
+
+	A fix for bug #422951
+	* assign.cs (Assign.DoResolve): Perform the type conversions
+	checks before we attempt to initialize `New' initializers. 
 
 2008-09-04  Marek Safar  <marek.safar@gmail.com>
 
@@ -11,6 +1034,39 @@
 	EmptyExpression.Null instance expression which is just another
 	hack for undecided member instance exression.
 
+2008-09-04  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, ecore.cs: Emit full expression tree for reduced
+	binary expressions.
+
+2008-09-04  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (This): Guard against multi-resolving.
+	
+	* ecore.cs, statement.cs (Throw): Simplified.
+	
+	* flowanalysis.cs: Also verify event fields.
+
+2008-09-04  Miguel de Icaza  <miguel@novell.com>
+
+	* assign.cs (Assign.DoResolve): Perform the type conversions
+	checks before we attempt to initialize `New' initializers. 
+
+	* repl.cs (PrettyPrint): Add Hashtable prettyprint
+
+	* anonymous.cs (AnonymousTypeClass): On EvalMode make the class
+	public. 
+
+	* repl.cs: Update help.
+
+2008-09-03  Miguel de Icaza  <miguel@novell.com>
+
+	* driver.cs (ProcessDefaultConfig): Now it encapsulates all the
+	handling of the default config handling, including the special
+	treatment of System.Core assembly. 
+
+	Fixes the REPL processing for LINQ.
+
 2008-09-03  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #422507
@@ -18,13 +1074,149 @@
 
 2008-09-03  Marek Safar  <marek.safar@gmail.com>
 
+	* driver.cs: Don't self reference System.Core assembly.
+
+2008-09-03  Marek Safar  <marek.safar@gmail.com>
+
 	A fix for bug #422507
 	* expression.cs (StringConcat): Add missing type mutator.
+
+2008-09-03  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs (TypeInferenceContext): Follow equality rule for
+	constructed type lower bound type inference.
+
+2008-09-02  Miguel de Icaza  <miguel@novell.com>
+
+	* getline.cs (CmdRefresh): Apply patch from Douglas S. Blank
+	<dblank@cs.brynmawr.edu> which updates the cursor position on
+	refresh.
+	
+2008-09-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #367145
+	* driver.cs: Fixed import of extension methods when using -noconfig
+	option.
+
+2008-09-02  Marek Safar  <marek.safar@gmail.com>
+
+	* iterator.cs: Don't emit GetEnumerator method twice but call a generic
+	version from non-generic implementation instead.
+
+2008-09-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #418908
+	* class.cs: Use AddScopeStatement for field initializers.
+
+2008-09-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #415385
+	* ecore.cs, convert.cs: Do method group conversion for equal group types.
 
 2008-09-01  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #421736
 	* iterators.cs: Don't crash on unreachable iterators.
+
+2008-09-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #421628
+	* parameter.cs, attribute.cs: Clone also parameter attributes.
+
+2008-08-30  Miguel de Icaza  <miguel@novell.com>
+
+	* namespace.cs (LookupType): In EvalMode, try to replace
+	the TypeBuilder from our cache with a Type as Reflection.Emit does
+	not  like to mix code from older assemblies emitted and new
+	assemblies emitted. 
+
+	This sounds like a serious Mono bug that prevents multiple
+	assemblies to be generated and consumed at the same time.
+
+	* cs-parser.jay (push_current_class): Do not make interactive
+	classes internal or private, make them public as we currently
+	generate each new class in a new assembly.   
+
+2008-08-29  Miguel de Icaza  <miguel@novell.com>
+
+ 	* decl.cs, roottypes.cs, class.cs:: Add an infrastructure to
+ 	remove types that are entered into the global namespace during
+ 	parsing so that we can remove them on failure.
+ 
+ 	* cs-parser.jay: Parsing: we now keep track of types that are
+ 	entered into global variables and queue those in case the parsing
+ 	or resolution fail.
+ 
+ 	This happens in a few situations: during partial-input, we invoke
+ 	the parser repeatedly for example with the string "class X", this
+ 	would cause X to be registed, and we need to remove this
+ 	registration so that another parse attempt later with say "class X {"
+ 	would actually work.
+ 
+ 	Additionally, if there is an error in the resolution phase, for
+ 	example: "class X : NonExistant {}" th
+ 	
+	* cs-parser.jay: Be more precise with the errors being raised,
+	instead of flagging all exceptions during parsing to be attributed
+	to the parsing process, distinguish those from errors happening in
+	the actions and hint that using -v would produce the actual
+	exception. 
+
+	* repl.cs: Do not load all compiler references on each reset,
+	doing the partial reset takes care of this.
+	
+2008-08-28  Miguel de Icaza  <miguel@novell.com>
+
+	* repl.cs: Add support for loading all the files from
+	~/.config/csharp/*cs as startup scripts and ~/.config/csharp/*.dll
+	as shell libraries.
+
+	Introduce a micro-parser that is able to deambiguate on its input
+	whether we are dealing with a compilation unit (namespace, class,
+	interface, struct, delegate) declaration or a statement.   This
+	allows both declarations and statements to be entered. 
+
+	Set history size by default to 300 lines.
+
+	Instead of distinguishing based on the parser.InteractiveResult,
+	have only two cases: statements were parsed, or a compilation unit
+	was.   Always pull the Using statement additions from the
+	compilation unit parse.
+	
+	* cs-tokenizer.cs: Rename tokens to better describe their intent
+	(EvalStatementParserCharacter and EvalCompilationUnitParserCharacter).
+	
+	* rootcontext.cs: Split EvalMode into EvalMode and StatementMode.
+	EvalMode is used to trigger the lookup of global variables while
+	StatementMode is used turn variable declarations into static
+	fields.
+
+	* getline.cs: Allow history size to be set.
+	
+2008-08-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #360755
+	* ecore.cs (SimpleName): Exclude indexers from simple name resolve.
+
+2008-08-29  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, iterators.cs, codegen.cs: Removed unused variable.
+	
+	* typemanager.cs, statement.cs, ecore.cs, enum.cs: Don't reconstruct enum
+	member name, it is too confusing
+	
+	* decl.cs, class.cs: Don't report unused fields with attached attribute.
+	
+	* rootcontext.cs: Finally default to warning level 4.
+
+2008-08-28  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs (CheckBase): Ignore overloaded operators.
+
+2008-08-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #420830
+	* expression.cs, cs-parser.jay: Put back InvocationOrCast expression.
 
 2008-08-28  Marek Safar  <marek.safar@gmail.com>
 
@@ -41,10 +1233,235 @@
 	
 	* attribute (IsClsCompliant): Use FALSE value for pointer types.
 
+2008-08-27  Miguel de Icaza  <miguel@novell.com>
+
+	* repl.cs: Add support for aborting the running code with C-c. 
+
+2008-08-27  Raja R Harinath  <harinath@hurrynot.org>
+
+	* cs-parser.jay (CS1002): Dump 'yyToken' with Report.ExtraInformation.
+
+2008-08-27  Miguel de Icaza  <miguel@novell.com>
+
+	* cs-parser.jay (interactive_statement_list): A new set of rules
+	for hosting statements that uses the "interactive_" prefix.   
+
+	* repl.cs: Add support for parsing `using' as a statement or as a
+	directive.  Deambiguating before passing this to the parser.
+
+	We need to distinguish statement_expressions that occur at the
+	toplevel vs those that occur embedded into expressions.
+
+	* getline.cs: Applied patch from Stuart Carnie <stuart.carnie@gmail.com> 
+	that fixes the cursor key handling, and a history bug.
+	
+2008-08-26  Miguel de Icaza  <miguel@novell.com>
+
+	* Makefile: Drop BOOTSTRAP_COMPILER as that was masking the
+	limitations in Console, instead the 2.0 bootstrap libraries now
+	include the Console bits.
+
+	Also, remove the use of Nullables from getline.cs
+
+	------------
+	
+	Interactive support for the C# compiler.   Use gmcs --shell to
+	enter a read-eval-print loop shell.
+
+	Docs: http://www.mono-project.com/CsharpRepl
+	
+	* sources: include repl.cs here and getline.cs for gmcs.exe,
+	everything else is getline.cs impaired.
+
+	* Makefile: when bootstrapping pass a special flag
+	BOOTSTRAP_COMPILER which we use to prevent failures in compilation
+	as we use NET_2_0 define to pull 2.0 APIs from System.Console.
+	This distinguishes those two cases.
+
+	* repl.cs: Support for a read-eval-print loop.   Will be soon
+	refactored into eval support and then REPL on top of it.
+
+	* ecore.cs: If a simplename lookup fails, before erroring out,
+	if we are in EvalMode to resolve the name to a declaration in the
+	Eval-land.    
+
+	This means that variable declarations that happened in previous
+	classes (as repl puts every statement in a separate class) are
+	made visible in this way.
+
+	* cs-parser.jay: UnexpectedEOF, a new flag that is set if we
+	triggered an error due to the end of file being reached.   This is
+	used to do multi-line input, and notify the caller that the user
+	needs to provide more text before a successful parse.
+
+	Add new grammar rules after the INTERACTIVE_PARSER token is seen
+	to drive the evaluation with a custom wrapper. 
+
+	* driver.cs: Add support for --shell, and refactor some code to be
+	reused from repl.cs
+	
+	* namespace.cs: Add support for serializing the contents of the
+	namespaces and reloading them.  
+
+	* getline.cs: A managed implementation of ReadLine under
+	X11/Apache2 license terms.  Easy to embed in other applications as
+	well.
+
+	* namespace.cs: Add some functions to save and restore the
+	namespace state.
+
+	* rootcontext.cs: New public field.
+
+	* cs-tokenizer.cs: Add support for one of the possible characters
+	we introduce into the token stream.  
+
+	This patch does not affect the regular tokenization process, the
+	only performance hit would happen if there is an invalid character
+	on the input string.
+
+	* support.cs: Move isatty helper routine here.
+
+	* codegen.cs: Small cleanup, and add a mechanism to initialize the
+	code generator for in-memory assemblies.
+
+2008-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, ecore.cs, delegate.cs, cs-parser.jay, expression.cs: A type
+	parameter cannot be always used as a type.
+
+2008-08-21  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, expression.cs: Use single ExplicitReferenceConversion routine.
+
+2008-08-21  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs: Implement explicit array to IList<T> conversion.
+
+2008-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #362740
+	* cs-tokenizer.cs: Handle UTF-16 surrogates.
+
+2008-08-20  Marek Safar  <marek.safar@gmail.com>
+	
+	* generic.cs, support.cs, typemanager.cs, lambda.cs, parameter.cs,
+	pending.cs, ecore.cs, linq.cs, class.cs, decl.cs, delegate.cs,
+	flowanalysis.cs, iterators.cs, cs-parser.jay, convert.cs, anonymous.cs,
+	expression.cs, attribute.cs, statement.cs, doc.cs: Refactored parameters
+	handling to use just one type of infrastructure and deal with generics
+	more effectivelly.
+
+2008-07-23  Martin Baulig  <martin@ximian.com>
+
+	*** Merged this from trunk revision 108527 ***
+
+	* statement.cs
+	(ExplicitBlock.EmitSymbolInfo): Moved to `ToplevelBlock'.
+	(ToplevelBlock.EmitSymbolInfo): Tell the symbol writer about the
+	scope variable.
+
+2008-08-15  Marek Safar  <marek.safar@gmail.com>
+	
+	* ecore.cs, linq.cs, const.cs, expression.cs, statement.cs: More robust
+	error checks.
+
+2008-08-15  Marek Safar  <marek.safar@gmail.com>
+	
+	* delegate.cs: Fixed compiler crash when creating delegate using partial
+	method.
+	
+	* typemanager.cs: MulticastDelegate is not a delegate.
+
+2008-08-14  Marek Safar  <marek.safar@gmail.com>
+	
+	* expression.cs, ecore.cs, anonymous.cs, class.cs: Fixed missing error
+	checks.
+
+2008-08-14  Raja R Harinath  <harinath@hurrynot.org>
+
+	* cs-parser.jay (type): Allow 'var' in mcs too.
+	(local_variable_type): Likewise.
+
+2008-08-14  Marek Safar  <marek.safar@gmail.com>
+	
+	* driver.cs: Removed broken -noconfig variants.
+
 2008-08-14  Marek Safar  <marek.safar@gmail.com>
 	
 	A fix for bug #417078
 	* expression.cs: Emit correctly left side pointer operators.
+
+2008-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, lambda.cs: Inflate method generic arguments only.
+
+2008-08-12  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Fixed struct layout check regression.
+
+2008-08-12  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, enum.cs: Simplified enum parsing.
+	
+	* decl.cs: Check all type parameters conflicts.
+	
+	* expression.cs, statement.cs, attribute.cs: More expression checks.
+
+2008-08-11  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs: Add type inference types restriction.
+	
+	* parameter.cs, class.cs, delegate.cs, iterators.cs, cs-parser.jay,
+	anonymous.cs, expression.cs: Allocate less accessor parameters.
+
+2008-08-08  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, ecore.cs: Ambiguous operators can come from different
+	classes.
+
+2008-08-08  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, delegate.cs: Fixed delegate compatibility conversion. 
+
+2008-08-07  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs, decl.cs, iterator.cs, ecore.cs: Refactor base type resolving.
+	Also fixes #362146 and #381592.
+
+2008-08-07  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Reduced constant cannot be used as an attribute value.
+	
+	* cs-parser.jay: Base expression has to be a type.
+	
+	* expression.cs (Conditional): Uses ReducedExpression.
+
+2008-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #376826
+	* parameter.cs, ecore.cs, anonymous.cs, expression.cs, statement.cs: An
+	address of hoisted local variable or parameter cannot be taken.
+
+2008-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, constant.cs, expression.cs, statement.cs: Resolve correctly 
+	anonymous method inside checked/unchecked expression.
+
+2008-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs (IsEqual): Guard against null.
+	
+	* ecore.cs, class.cs, convert.cs, const.cs, constant.cs, expression.cs,
+	attribute.cs, enum.cs, statement.cs: Pass EmitContext to constant conversion
+	routine. Fixed few misleading conversion errors.
+
+2008-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Consider generics when checking cycles in struct layout.
+
+2008-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	* cs-tokenizer.cs (get_cmd_arg): Simplify.  Don't be too pedantic.
 
 2008-08-04  Marek Safar  <marek.safar@gmail.com>
 
@@ -52,11 +1469,69 @@
 	* anonymous.cs: Use same anonymous implementation method for all anonymous
 	method emits.
 
+2008-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, anonymous.cs, statement.cs: Emit inherited anonymous method
+	constraints.
+
+2008-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Typeof argument has to be a type expression.
+	
+	* namespace.cs: Check alias and namespace definitions collisions.
+	
+	* class.cs, pending.cs: Moved explicit interface accessor implementation
+	check.
+	
+	* delegate.cs, expression.cs: Verify special name invocations.
+	
+2008-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Don't choke on empty generic type arguments.
+	
+	* cs-tokenizer.cs: Handle escaped preprocessor directives.
+	
+	* expression.cs, ecore.cs: Minor expressions bugs.
+
+2008-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Removed duplicate interface declaration (fixes 2 conflicts)
+	and added more error handling.
+	
+	* class.cs, iterators.cs, anonymous.cs: Removed useless interface parameter.
+	
+	*  modifiers.cs, enum.cs: Fixed.
+
+2008-07-31  Jb Evain  <jbevain@novell.com>
+
+	* driver.cs: remove -pkg ability of smcs.
+
+2008-07-30  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs (Switch): Correctly set empty default target for single
+	blocks.
+
+2008-07-30  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, assign.cs, driver.cs, expression.cs, statement.cs: Rewrote
+	string switch statement implementation to use string dictionary which
+	significantly (2-8x) improves performance of generated code.
+
 2008-07-29  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #412880 by Atsushi Enomoto <atsushi@ximian.com>
 	* modifiers.cs (GetDescription): Fixed FamANDAssem case.
 	
+2008-07-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #412595
+	* typemanager.cs, convert.cs, expression.cs: Some types are never
+	convertible to each other.
+
+2008-07-29  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs (CreateNullConstant): An error messages update.
+
 2008-07-29  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #412595
@@ -70,6 +1545,23 @@
 	* driver.cs
 	(CompilerCallableEntryPoint.Reset): Call SymbolWriter.Reset().
 
+2008-07-28  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs (IsLambdaOpenParens): Optimized using more stop tokens.
+	
+	* expression.cs (ElementAccess): Exact size allocation.
+
+2008-07-26  Marek Safar  <marek.safar@gmail.com>
+
+	* driver.cs: Replaced outdated UnixParseOption with CSCParseOption.
+
+2008-07-25  Marek Safar  <marek.safar@gmail.com>
+
+	* flowanalysis.cs (StructInfo): Fixed detection of dynamic types.
+	
+	* class.cs: Removed $PRIVATE$ field hack which caused problems during
+	flow analysis.
+
 2008-07-25  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #412217
@@ -77,29 +1569,60 @@
 
 2008-07-25  Marek Safar  <marek.safar@gmail.com>
 
+	A fix for bug #323644
+	* typemanager.cs (IsValidProperty): Verify DefaultMemberName when checking
+	indexers.
+
+2008-07-25  Marek Safar  <marek.safar@gmail.com>
+
 	A fix for bug #412134
 	* expression.cs (ResolveOperatorEnum): Do implicit conversion of
 	non-enumerable operands when overloading equality or bitwise operators.
 
-2008-07-23  Martin Baulig  <martin@ximian.com>
+2008-07-25  Marek Safar  <marek.safar@gmail.com>
 
-	* anonymous.cs
-	(AnonymousMethodStorey.EmitHoistedVariables): Added the required
-	symbolwriter calls to tell the debugger about the scope variable.
-	(AnonymousMethodStorey.EmitType): Added the required symbol writer
-	calls to tell the debugger about captured variables.
+	* anonymous.cs: Cache closed generic anonymous method delegates.
 
-	* statement.cs
-	(ExplicitBlock.EmitSymbolInfo): Moved to `ToplevelBlock'.
-	(ToplevelBlock.EmitSymbolInfo): Tell the symbol writer about the
-	scope variable.
+2008-07-24  Marek Safar  <marek.safar@gmail.com>
 
-	* class.cs
-	(MethodOrOperator.Define): Set `Modifiers.DEBUGGER_HIDDEN' if
-	we're an iterator.
-	(MethodOrOperator.Emit): Add the `[DebuggerHidden]' custom
-	attribute if requested.
-	(Constructor.Emit): Likewise.
+	* lambda.cs, linq.cs, class.cs, iterators.cs, cs-parser.jay, assign.cs, 
+	anonymous.cs, statement.cs: Always emit anonymous method as static method
+	when is instance free. Use nesting for nested anynomous methods blocks.
+	
+2008-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs (MutateGenericMethod): Added extra code path for imported
+	types.
+
+2008-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Removed MakeSimpleCall.
+
+2008-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #323012
+	* class.cs, pending.cs: Emit proxy for indexers when they differ in name.
+	Base method implementing interface has to be public.
+
+2008-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Don't break on missing argument.
+
+2008-07-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #320993
+	* report.cs, parameter.cs, class.cs, decl.cs, delegate.cs, attribute.cs,
+	  enum.cs, codegen.cs: Report CLS compliance errors as warnings.
+
+2008-07-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #320748
+	* convert.cs: Implicit user operators cannot convert to interfaces
+
+2008-07-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #312686
+	* driver.cs: Ignore empty assembly references.
 
 2008-07-22  Marek Safar  <marek.safar@gmail.com>
 
@@ -108,18 +1631,109 @@
 
 2008-07-21  Marek Safar  <marek.safar@gmail.com>
 
+	A fix for bug #409045
+	* cs-tokenizer.cs, rootcontext.cs, class.cs, location.cs, delegate.cs,
+	  cs-parser.jay, driver.cs, expression.cs, attribute.cs: Conditional
+	  identifiers are file specific unless passed as input arguments.
+
+2008-07-21  Marek Safar  <marek.safar@gmail.com>
+
+	 * typemanager.cs, parameter.cs, class.cs, attribute.cs: Use an attribute
+	 to emit UnmanagedMarshal data under 2.0 profile.
+
+2008-07-21  Marek Safar  <marek.safar@gmail.com>
+
 	A fix for bug #410369
 	* parameter.cs: Clone correctly ParamsParameter.
 
-2008-07-19  Marek Safar  <marek.safar@gmail.com>
+2008-07-21  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (Argument): Always report type for type based expressions
+	errors.
+
+2008-07-18  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #410666
 	* anonymous.cs: Correctly initialize generic storey reference.
 
 2008-07-18  Marek Safar  <marek.safar@gmail.com>
 
+	* convert.cs: Don't box same type arguments.
+
+2008-07-18  Marek Safar  <marek.safar@gmail.com>
+
 	* ecore.cs, linq.cs, delegate.cs, constant.cs, nullable.cs, expression.cs:
 	Finished missing generic type mutators.
+
+2008-07-18  Marek Safar  <marek.safar@gmail.com>
+
+	* iterators.cs, statement.cs: Finished statements CloneTo.
+
+2008-07-18  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: ExpressionTreeProxy is of Value type expression.
+	
+	* expression.cs: Emit optimized default value expressions in expression tree
+	array initializer.
+
+2008-07-18  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, cs-parser.jay, statement.cs: Error reporting fixes.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #367536
+	* cs-parser.jay: Check static constructor of generic types for an access
+	modifier.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #353800
+	* lambda.cs: Emit ret for contextual statements.
+	
+	* codegen.cs: Keep both resolved and unreachable flags, otherwise we end
+	up emitting redundant ret for all anonymous methods with return.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #365188
+	* ecore.cs, anonymous.cs, expression.cs, codegen.cs, statement.cs: Don't
+	create anonymous method storey in unreachable block.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, typemanager.cs, cs-tokenizer.cs, parameter.cs, namespace.cs,
+	class.cs, delegate.cs, flowanalysis.cs, iterators.cs, anonymous.cs,
+	driver.cs, nullable.cs, expression.cs, attribute.cs, codegen.cs,
+	statement.cs: Fixed relevant defects found by Gendarme.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #325291
+	* modifiers.cs, class.cs, cs-parser.jay, anonymous.cs, codegen.cs, 
+	statement.cs: Replaced IAnonymousHost with top level block flag.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay: Clean up unused open_parens.
+
+2008-07-17  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Custom error message for a range variable assignment.
+
+2008-07-16  Marek Safar  <marek.safar@gmail.com>
+
+	* constant.cs, typemanager.cs: Emit empty string ("") as string.Empty field
+	load.
+
+2008-07-16  Marek Safar  <marek.safar@gmail.com>
+
+	* literal.cs: Null literal is of object type.
+
+2008-07-16  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs (LiftedBinaryOperator): Always lift unwrapped nullable
+	expression of nullable equality comparison.
 
 2008-07-15  Marek Safar  <marek.safar@gmail.com>
 
@@ -477,7 +2091,8 @@
 
 2008-06-12  Marek Safar  <marek.safar@gmail.com>
 
-	* class.cs: Stop using public method which should not exist.
+	* class.cs: Stop using public method which should not exist
+	(MethodBuilder.SetGenericMethodSignature).
 
 2008-06-11  Martin Baulig  <martin@ximian.com>
 

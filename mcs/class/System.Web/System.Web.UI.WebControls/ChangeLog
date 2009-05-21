@@ -1,3 +1,149 @@
+2009-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* WebControl.cs: if savedState is not an instance of Pair in
+	LoadViewState, do not attempt to load from it.
+
+2009-02-10  Marek Habersack  <mhabersack@novell.com>
+
+	* ImageButton.cs: AddAttributesToRender renders the onclick
+	attribute only if any of the following is true:
+	  - OnClientClick is not empty
+	  - Validation is enabled for the control
+	  - PostBackUrl is used
+	PostBackOptions now indicate that control requires the javascript
+	protocol for the handler.
+	RaisePostBackEvent passes String.Empty as the argument.
+	Fixes bug #463939
+
+2009-02-09  Marek Habersack  <mhabersack@novell.com>
+
+	* ObjectDataSourceView.cs: ExecuteSelect returns a single-item
+	array of objects containing the result, if the result isn't one of
+	DataSet, DataTable or IEnumerable. Fixes bug #471767
+
+2009-02-06  Marek Habersack  <mhabersack@novell.com>
+
+	* Style.cs: if CssClass is null, return String.Empty. Fixes bug
+	#473303
+	Added a range check to the BorderStyle property.
+
+2009-02-05  Marek Habersack  <mhabersack@novell.com>
+
+	* Login.cs: check the value of DisplayRememberMe when creating
+	the child controls. Fixes #468359
+
+2009-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* Substitution.cs: added. Fixes bug #467460
+
+2009-01-13  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlBuilder.cs: updates related to ControlBuilder cleanup.
+
+2008-12-01  Marek Habersack  <mhabersack@novell.com>
+
+	* Style.cs: WriteStyleAttributes must not use the fontinfo field
+	directly, it has to be done via the Font property. Fixes bug
+	#449793
+
+2008-11-15  Marek Habersack  <mhabersack@novell.com>
+
+	* ContentPlaceHolder.cs, Content.cs, FormViewPagerRow.cs,
+	ChangePassword.cs, DetailsViewPagerRow.cs: implements
+	INonBindingContainer interface.
+
+	* Wizard.cs: implement INonBindingContainer interface for several
+	private/internal classes.
+
+2008-10-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ImageButton.cs: clicking an image causes a postback.
+	Bug #439004 fixed.
+
+2008-10-24  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBox.cs: register for event validation in Render ().
+
+2008-10-21  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlDataSource.cs: DataFile may be an URL.
+
+2008-10-17  Marek Habersack  <mhabersack@novell.com>
+
+	* ImageMap.cs: added the SupportsEventValidation attribute to the
+	class.
+	Validate the event in RaisePostBackEvent ().
+	Register for event validation in Render ().
+
+	* DropDownList.cs, ListBox.cs: validate the event in LoadPostData ().
+
+	* TextBox.cs: validate the event in LoadPostData ().
+	Register for event validation in AddAttributesToRender ().
+
+	* HiddenField.cs: validate the event in RaisePostDataChangedEvent.
+	Register for event validation in Render ().
+
+	* RadioButton.cs: validate the event in LoadPostData ().
+	Register for event validation in InternalAddAttributesToRender.
+
+	* CheckBox.cs, RadioButtonList.cs: validate the event in
+	RaisePostDataChangedEvent.
+
+	* Menu.cs: added the SupportsEventValidation attribute to the
+	class.
+	Validate the event in RaisePostBackEvent ().
+	Register for event validation in GetClientEvent ().
+
+	* DetailsView.cs, GridView.cs: validate the event in
+	RaisePostBackEvent ().
+	Register for validation in GetCallbackScript () and in OnPreRender
+
+	* Button.cs, Table.cs, BulletedList.cs, Calendar.cs, LinkButton.cs,
+	ImageButton.cs, TreeView.cs: validate the event in RaisePostBackEvent ().
+
+2008-10-14  Marek Habersack  <mhabersack@novell.com>
+
+	* CompositeDataBoundControl.cs: renamed the itemcount ViewState
+	item from "_ItemCount" to "_!ItemCount" for .NET
+	compatibility. This item is accessed and used by some commercial
+	ASP.NET controls.
+
+	* DataBoundControl.cs: OnPagePreLoad must force databinding also
+	when the request is not a postback.
+
+2008-10-13  Marek Habersack  <mhabersack@novell.com>
+
+	* Table.cs, TableRowCollection.cs, TableRow.cs: render table
+	sections when necessary. Fixes bug #434555
+
+2008-10-08  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlParameter.cs: Evaluate calls DataBinder.Eval to do the
+	evaluation now. This makes it support complex expressions.
+
+2008-09-30  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* RoleGroupCollection.cs: Fix recursive calls (wrong target)
+	[Found using Gendarme's BadRecursiveInvocationRule]
+
+2008-09-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XmlDataSource.cs: Make sure the result of the multiplication is a
+	long (not an integer casted into a long since it could overflow).
+	[Found using Gendarme's ReviewCastOnIntegerMultiplicationRule]
+
+2008-09-17  Juraj Skripsky  <js@hotfeet.ch>
+
+	* RadioButton.cs (ValueAttribute, LoadPostData): Fixes bug #426959.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IPersistedSelector.cs : new in 3.5 SP1.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataBoundControlMode.cs : new 3.5 SP1 type.
+
 2008-08-25  Marek Habersack  <mhabersack@novell.com>
 
 	* DataBoundControl.cs: set RequiresDataBinding to true in

@@ -41,7 +41,7 @@ namespace Mono.CSharp {
 		///   Whether warnings should be considered errors
 		/// </summary>
 		static public bool WarningsAreErrors;
-
+		static ArrayList warnings_as_error;
 
 		/// <summary>  
 		///   Whether to dump a stack trace on errors. 
@@ -99,9 +99,13 @@ namespace Mono.CSharp {
 			1717, 1718, 1720,
 			1901,
 			2002, 2023, 2029,
-			3005, 3012, 3018, 3019, 3021, 3022, 3023, 3026, 3027,
+			3000, 3001, 3002, 3003, 3005, 3006, 3007, 3008, 3009,
+			3010, 3011, 3012, 3013, 3014, 3015, 3016, 3017, 3018, 3019,
+			3021, 3022, 3023, 3026, 3027,
+			
+			414,	// Non ISO-1 warnings
 #if GMCS_SOURCE
-			402, 414, 458, 464, 693, 1058, 1700, 3024
+			402, 458, 464, 693, 1058, 1700, 3024
 #endif
 		};
 
@@ -119,6 +123,7 @@ namespace Mono.CSharp {
 			warning_regions_table = null;
 			reporting_disabled = false;
 			error_stack = warning_stack = null;
+			warnings_as_error = null;
 		}
 
 		public static void DisableReporting ()
@@ -406,12 +411,24 @@ namespace Mono.CSharp {
 				return regions.IsWarningEnabled (code, location.Row);
 			}
 
+			bool IsErrorWarning {
+				get {
+					if (WarningsAreErrors)
+						return true;
+
+					if (warnings_as_error == null)
+						return false;
+
+					return warnings_as_error.Contains (code);
+				}
+			}
+
 			public override void Print ()
 			{
 				if (!IsEnabled ())
 					return;
 
-				if (WarningsAreErrors) {
+				if (IsErrorWarning) {
 					new ErrorMessage (this).Print ();
 					return;
 				}
@@ -476,18 +493,6 @@ namespace Mono.CSharp {
 		{
 			static string prefix, postfix;
 
-			[System.Runtime.InteropServices.DllImport ("libc", EntryPoint="isatty")]
-			extern static int _isatty (int fd);
-			
-			static bool isatty (int fd)
-			{
-				try {
-					return _isatty (fd) == 1;
-				} catch {
-					return false;
-				}
-			}
-			
 			static ErrorMessage ()
 			{
 				string term = Environment.GetEnvironmentVariable ("TERM");
@@ -509,7 +514,7 @@ namespace Mono.CSharp {
 				if (!xterm_colors)
 					return;
 
-				if (!(isatty (1) && isatty (2)))
+				if (!(UnixUtils.isatty (1) && UnixUtils.isatty (2)))
 					return;
 				
 				string config = Environment.GetEnvironmentVariable ("MCS_COLORS");
@@ -637,7 +642,7 @@ namespace Mono.CSharp {
 			Console.WriteLine (FriendlyStackTrace (new StackTrace (true)));
 		}
 
-		public static bool IsValidWarning (int code)
+		static bool IsValidWarning (int code)
 		{	
 			return Array.BinarySearch (AllWarnings, code) >= 0;
 		}
@@ -679,8 +684,10 @@ namespace Mono.CSharp {
 					return;
 				}
 
+				// FIXME: Completely wrong, it has to use FindMembers
 				MemberCore mc = temp_ds.GetDefinition (mi.Name);
-				SymbolRelatedToPreviousError (mc);
+				if (mc != null)
+					SymbolRelatedToPreviousError (mc);
 			}
 		}
 
@@ -716,7 +723,43 @@ namespace Mono.CSharp {
 
 		static void SymbolRelatedToPreviousError (string loc, string symbol)
 		{
-			extra_information.Add (String.Format ("{0} (Location of the symbol related to previous ", loc));
+			string msg = String.Format ("{0} (Location of the symbol related to previous ", loc);
+			if (extra_information.Contains (msg))
+				return;
+
+			extra_information.Add (msg);
+		}
+
+		public static void AddWarningAsError (string warningId)
+		{
+			int id;
+			try {
+				id = int.Parse (warningId);
+			} catch {
+				id = -1;
+			}
+
+			if (!CheckWarningCode (id, warningId, Location.Null))
+				return;
+
+			if (warnings_as_error == null)
+				warnings_as_error = new ArrayList ();
+			
+			warnings_as_error.Add (id);
+		}
+
+		public static bool CheckWarningCode (int code, Location loc)
+		{
+			return CheckWarningCode (code, code.ToString (), loc);
+		}
+
+		public static bool CheckWarningCode (int code, string scode, Location loc)
+		{
+			if (IsValidWarning (code))
+				return true;
+
+			Report.Warning (1691, 1, loc, "`{0}' is not a valid warning number", scode);
+			return false;
 		}
 
 		public static void ExtraInformation (Location loc, string msg)
@@ -1103,7 +1146,7 @@ namespace Mono.CSharp {
 
 		public void WarningDisable (Location location, int code)
 		{
-			if (CheckWarningCode (code, location))
+			if (Report.CheckWarningCode (code, location))
 				regions.Add (new Disable (location.Row, code));
 		}
 
@@ -1114,7 +1157,7 @@ namespace Mono.CSharp {
 
 		public void WarningEnable (Location location, int code)
 		{
-			if (CheckWarningCode (code, location))
+			if (Report.CheckWarningCode (code, location))
 				regions.Add (new Enable (location.Row, code));
 		}
 
@@ -1128,15 +1171,6 @@ namespace Mono.CSharp {
 				result = pragma.IsEnabled (code, result);
 			}
 			return result;
-		}
-
-		static bool CheckWarningCode (int code, Location loc)
-		{
-			if (Report.IsValidWarning (code))
-				return true;
-
-			Report.Warning (1691, 1, loc, "`{0}' is not a valid warning number", code.ToString ());
-			return false;
 		}
 	}
 }

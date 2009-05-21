@@ -1,3 +1,53 @@
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlParameterTest.cs: Added .ctor tests. Improved 
+	ParameterType and ResetDbType tests. Added ParameterName,
+	SourceColumn and Value tests. Partially enable SqlValue
+	test.
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandBuilderTest.cs: Added tests for CatalogLocation,
+	CatalogSeparator, ConflictOption, QuoteIdentifier, QuotePrefix,
+	QuoteSuffix  and SchemaSeparator.
+	* SqlParameterTest.cs: Moved existing tests from ProviderTests
+	to increase their visibility. Added tests for type inference.
+
+2008-11-09  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnectionTest.cs: Added test for null check in ClearPool.
+
+2008-08-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnectionTest.cs: Enabled connection string related tests that
+	previously failed. Added/improved connection string tests.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlConnectionTest.cs: Enabled tests for ChangePassword argument
+	checks.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandTest.cs: Enabled CommandTimeout test. Enabled test for
+	Prepare with NULL connection. Enabled test for bug #412586.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandTest.cs: Enabled and improved tests for Execute* with
+	closed connection.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandTest.cs: Enabled test for bug #412584.
+
+2008-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlCommandTest.cs: Added tests for bug #412584, #412586, Moved tests
+	that do not require connection from ProviderTests.
+	* SqlConnectionTest.cs: Moved tests that do not require connection
+	from ProviderTests.
+
 2008-07-03  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* SqlCommandTest.cs: Removed extra tabs. Update bug number.

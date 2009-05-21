@@ -4,7 +4,7 @@ SUBDIRS =
 
 LIBRARY = System.Drawing.dll
 
-LIB_MCS_FLAGS = /unsafe /r:$(corlib) /r:System.dll /nowarn:649 /nowarn:169 \
+LIB_MCS_FLAGS = /unsafe /r:$(corlib) /r:System.dll \
 	-resource:Assembly/Mono.ico,Mono.ico -resource:Assembly/Information.ico,Information.ico \
 	-resource:Assembly/Error.ico,Error.ico -resource:Assembly/Warning.ico,Warning.ico \
 	-resource:Assembly/Question.ico,Question.ico
@@ -50,6 +50,7 @@ EXTRA_DISTFILES = Test/resources/indexed.png	\
 	Test/System.Drawing/bitmaps/32bpp.ico	\
 	Test/System.Drawing/bitmaps/80509.ico	\
 	Test/System.Drawing/bitmaps/323511.ico	\
+	Test/System.Drawing/bitmaps/415581.ico	\
 	Test/System.Drawing/bitmaps/non-inverted.bmp	\
 	Test/System.Drawing/bitmaps/milkmateya01.emf	\
 	Test/System.Drawing/bitmaps/telescope_01.wmf	\

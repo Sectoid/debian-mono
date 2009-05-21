@@ -162,7 +162,11 @@ namespace System.Data.OracleClient
 		}
 
 		[DefaultValue ("")]
+#if NET_2_0
+		[SettingsBindableAttribute (true)]
+#else
 		[RecommendedAsConfigurable (true)]
+#endif
 		[RefreshProperties (RefreshProperties.All)]
 		[Editor ("Microsoft.VSDesigner.Data.Oracle.Design.OracleConnectionStringEditor, " + Consts.AssemblyMicrosoft_VSDesigner, typeof(UITypeEditor))]
 		public
@@ -485,6 +489,7 @@ namespace System.Data.OracleClient
 
 			bool inQuote = false;
 			bool inDQuote = false;
+			int inParen = 0;
 
 			string name = String.Empty;
 			StringBuilder sb = new StringBuilder ();
@@ -501,6 +506,14 @@ namespace System.Data.OracleClient
 					break;
 				case '"' :
 					inDQuote = !inDQuote;
+					break;
+				case '(':
+					inParen++;
+					sb.Append (c);
+					break;
+				case ')':
+					inParen--;
+					sb.Append (c);
 					break;
 				case ';' :
 					if (!inDQuote && !inQuote) {
@@ -538,7 +551,7 @@ namespace System.Data.OracleClient
 						sb.Append (c);
 					break;
 				case '=' :
-					if (!inDQuote && !inQuote) {
+					if (!inDQuote && !inQuote && inParen == 0) {
 						name = sb.ToString ();
 						sb = new StringBuilder ();
 					}
@@ -575,6 +588,7 @@ namespace System.Data.OracleClient
 
 			bool inQuote = false;
 			bool inDQuote = false;
+			int inParen = 0;
 
 			string name = String.Empty;
 			string value = String.Empty;
@@ -587,6 +601,14 @@ namespace System.Data.OracleClient
 					break;
 				case '"' :
 					inDQuote = !inDQuote;
+					break;
+				case '(':
+					inParen++;
+					sb.Append (c);
+					break;
+				case ')':
+					inParen--;
+					sb.Append (c);
 					break;
 				case ';' :
 					if (!inDQuote && !inQuote) {
@@ -603,7 +625,7 @@ namespace System.Data.OracleClient
 						sb.Append (c);
 					break;
 				case '=' :
-					if (!inDQuote && !inQuote) {
+					if (!inDQuote && !inQuote && inParen == 0) {
 						name = sb.ToString ();
 						sb = new StringBuilder ();
 					}
@@ -691,12 +713,30 @@ namespace System.Data.OracleClient
 				"Invalid value \"{0}\" for key '{1}'.", value, key));
 		}
 
-
 		#endregion // Methods
 
 		public event OracleInfoMessageEventHandler InfoMessage;
 #if !NET_2_0
 		public event StateChangeEventHandler StateChange;
 #endif
+
+#if NET_2_0
+		public override DataTable GetSchema ()
+		{
+			throw new NotImplementedException("GetSchema()");
+		}
+
+		public override DataTable GetSchema (String collectionName)
+		{
+			throw new NotImplementedException("GetSchema (String collectionName)");
+		}
+
+		public override DataTable GetSchema (String collectionName, string [] restrictionValues)
+		{
+			throw new NotImplementedException("GetSchema (String collectionName, string [] restrictionValues)");
+		}
+#endif
 	}
 }
+
+

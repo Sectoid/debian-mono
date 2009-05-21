@@ -459,7 +459,16 @@ namespace System.Windows.Forms
 		[DefaultValue(true)]
 		public bool ColumnHeadersVisible {
 			get { return grid_style.ColumnHeadersVisible; }
-			set { grid_style.ColumnHeadersVisible = value; }
+			set { 
+				if (grid_style.ColumnHeadersVisible != value) {
+					grid_style.ColumnHeadersVisible = value; 
+
+#if NET_2_0
+					// UIA Framework: To keep track of header
+					OnUIAColumnHeadersVisibleChanged ();
+#endif
+				}
+			}
 		}
 
 		bool setting_current_cell;
@@ -511,6 +520,9 @@ namespace System.Windows.Forms
 											  "Error when committing the row to the original data source",
 											  MessageBoxButtons.YesNo);
 							if (r == DialogResult.Yes) {
+								InvalidateRowHeader (value.RowNumber);
+								InvalidateRowHeader (current_cell.RowNumber);
+								setting_current_cell = false;
 								Edit ();
 								return;
 							}
@@ -519,7 +531,7 @@ namespace System.Windows.Forms
 						}
 					}
 
-					if (value.RowNumber == RowsCount && !ListManager.CanAddRows)
+					if (value.RowNumber == RowsCount && !ListManager.AllowNew)
 						value.RowNumber --;
 				}
 
@@ -529,7 +541,7 @@ namespace System.Windows.Forms
 
 				EnsureCellVisibility (value);
 
-				if (CurrentRow == RowsCount && ListManager.CanAddRows) {
+				if (CurrentRow == RowsCount && ListManager.AllowNew) {
 					cursor_in_add_row = true;
 					add_row_changed = false;
 					AddNewRow ();
@@ -708,8 +720,17 @@ namespace System.Windows.Forms
 		public object this [int rowIndex, int columnIndex] {
 			get { return CurrentTableStyle.GridColumnStyles[columnIndex].GetColumnValueAtRow (ListManager,
 													  rowIndex); }
-			set { CurrentTableStyle.GridColumnStyles[columnIndex].SetColumnValueAtRow (ListManager,
-												   rowIndex, value); }
+			set { 
+				CurrentTableStyle.GridColumnStyles[columnIndex].SetColumnValueAtRow (ListManager,
+												     rowIndex, value); 
+
+#if NET_2_0
+				// UIA Framework: Raising changes in datasource.
+				OnUIAGridCellChanged (new CollectionChangeEventArgs (CollectionChangeAction.Refresh,
+				                                                     new DataGridCell (rowIndex,
+ 				                                                                       columnIndex)));
+#endif
+			}
 		}
 
 		public Color LinkColor {
@@ -932,7 +953,7 @@ namespace System.Windows.Forms
 
 		internal bool ShowEditRow {
 			get {
-				if (ListManager != null && !ListManager.CanAddRows)
+				if (ListManager != null && !ListManager.AllowNew)
 					return false;
 
 				return !_readonly;
@@ -1185,7 +1206,10 @@ namespace System.Windows.Forms
 				int offset_x = x + horiz_pixeloffset;
 				int column_x;
 				int column_under_mouse = FromPixelToColumn (offset_x, out column_x);
-				
+
+				if (column_under_mouse == -1)
+					return new HitTestInfo (-1, -1, HitTestType.None);
+
 				if ((column_x + CurrentTableStyle.GridColumnStyles[column_under_mouse].Width - offset_x < RESIZE_HANDLE_HORIZ_SIZE)
 				    && column_under_mouse < CurrentTableStyle.GridColumnStyles.Count) {
 
@@ -1532,6 +1556,10 @@ namespace System.Windows.Forms
 				
 				list.ApplySort (prop, direction);
 				Refresh ();
+				if (this.is_editing)
+					//CurrentTableStyle.GridColumnStyles[CurrentColumn].UpdateUI ();
+					this.InvalidateColumn (CurrentTableStyle.GridColumnStyles[CurrentColumn]);
+
 				break;
 
 			case HitTestType.ColumnResize:
@@ -2070,10 +2098,22 @@ namespace System.Windows.Forms
 			if (selected_rows.Count == 0)
 				selection_start = row;
 
+#if NET_2_0
+			// UIA Framework: To raise event only when selecting
+			bool wasSelected = rows [row].IsSelected;
+#endif
+
 			selected_rows[row] = true;
 			rows[row].IsSelected = true;
 
 			InvalidateRow (row);
+
+#if NET_2_0
+			// UIA Framework:
+			if (!wasSelected)
+				OnUIASelectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, row));
+#endif
+
 		}
 
 		public void SetDataBinding (object dataSource, string dataMember)
@@ -2157,9 +2197,20 @@ namespace System.Windows.Forms
 
 		public void UnSelect (int row)
 		{
+#if NET_2_0
+			// UIA Framework: To raise event only when unselecting 
+			bool wasSelected = rows  [row].IsSelected;
+
+#endif
 			rows[row].IsSelected = false;
 			selected_rows.Remove (row);
 			InvalidateRow (row);
+
+#if NET_2_0
+			// UIA Framework: Raises selection event
+			if (!wasSelected)
+				OnUIASelectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, row));
+#endif
 		}
 		#endregion	// Public Instance Methods
 
@@ -2354,10 +2405,24 @@ namespace System.Windows.Forms
 					new_rows[i].VerticalOffset = new_rows[i-1].VerticalOffset + new_rows[i-1].Height;
 			}
 
+#if NET_2_0
+			// UIA Framework event: Updates collection list depending on binding
+			CollectionChangeAction action = CollectionChangeAction.Refresh;
+			if (rows != null) {
+				if (new_rows.Length - rows.Length > 0)
+					action = CollectionChangeAction.Add;
+				else
+					action = CollectionChangeAction.Remove;
+			}
+#endif
 			rows = new_rows;
 
 			if (recalc)
 				CalcAreasAndInvalidate ();
+#if NET_2_0
+			// UIA Framework event: Row added/removed 
+			OnUIACollectionChangedEvent (new CollectionChangeEventArgs (action, -1));
+#endif 
 		}
 
 		internal void UpdateRowsFrom (DataGridRelationshipRow row)
@@ -2759,7 +2824,7 @@ namespace System.Windows.Forms
 		#region Public Instance Methods
 
 		// Calc the max with of all columns
-		int CalcAllColumnsWidth ()
+		private int CalcAllColumnsWidth ()
 		{
 			int width = 0;
 			int cnt = CurrentTableStyle.GridColumnStyles.Count;
@@ -2774,18 +2839,20 @@ namespace System.Windows.Forms
 		}
 
 		// Gets a column from a pixel
-		int FromPixelToColumn (int pixel, out int column_x)
+		private int FromPixelToColumn (int pixel, out int column_x)
 		{
 			int width = 0;
 			int cnt = CurrentTableStyle.GridColumnStyles.Count;
 			column_x = 0;
 
 			if (cnt == 0)
-				return 0;
+				return -1;
 				
 			if (CurrentTableStyle.CurrentRowHeadersVisible) {
 				width += row_headers_area.X + row_headers_area.Width;
 				column_x += row_headers_area.X + row_headers_area.Width;
+				if (pixel < width)
+					return -1;
 			}
 
 			for (int col = 0; col < cnt; col++) {
@@ -2910,7 +2977,7 @@ namespace System.Windows.Forms
 				if (ShowParentRows)
 					parent_rows.Width -= vert_scrollbar.Width;
 
-				if (!ShowingColumnHeaders) {
+				if (!ColumnHeadersVisible) {
 					if (column_headers_area.X + column_headers_area.Width > vert_scrollbar.Location.X) {
 						column_headers_area.Width -= vert_scrollbar.Width;
 					}
@@ -3003,7 +3070,7 @@ namespace System.Windows.Forms
 					column_headers_area.Width += RowHeaderWidth;
 			}
 
-			if (ShowingColumnHeaders)
+			if (ColumnHeadersVisible)
 				column_headers_area.Height = CurrentTableStyle.HeaderFont.Height + 6;
 			else
 				column_headers_area.Height = 0;
@@ -3064,23 +3131,25 @@ namespace System.Windows.Forms
 
 		void UpdateVisibleColumn ()
 		{
-			if (CurrentTableStyle.GridColumnStyles.Count == 0) {
-				visible_column_count = 0;
-				return;
-			}
-			
-			int col;
-			int max_pixel = horiz_pixeloffset + cells_area.Width;
-			int unused;
-
-			first_visible_column = FromPixelToColumn (horiz_pixeloffset, out unused);
-
-			col = FromPixelToColumn (max_pixel, out unused);
-			
-			visible_column_count = 1 + col - first_visible_column;
-
 			visible_column_count = 0;
-			for (int i = first_visible_column; i <= col; i ++) {
+			
+			if (CurrentTableStyle.GridColumnStyles.Count == 0)
+				return;
+
+			int min_pixel;
+			int max_pixel;
+			int max_col;
+			int unused;
+			
+			min_pixel = horiz_pixeloffset;
+			if (CurrentTableStyle.CurrentRowHeadersVisible)
+				min_pixel += row_headers_area.X + row_headers_area.Width;
+			max_pixel = min_pixel + cells_area.Width;
+
+			first_visible_column = FromPixelToColumn (min_pixel, out unused);
+			max_col = FromPixelToColumn (max_pixel, out unused);
+
+			for (int i = first_visible_column; i <= max_col; i ++) {
 				if (CurrentTableStyle.GridColumnStyles[i].bound)
 					visible_column_count++;
 			}
@@ -3209,10 +3278,6 @@ namespace System.Windows.Forms
 			}
 		}
 
-		bool ShowingColumnHeaders {
-			get { return ColumnHeadersVisible && CurrentTableStyle.GridColumnStyles.Count > 0; }
-		}
-
 		internal Rectangle RowHeadersArea {
 			get { return row_headers_area; }
 		}
@@ -3228,5 +3293,102 @@ namespace System.Windows.Forms
 		#endregion Instance Properties
 
 		#endregion // Code originally in DataGridDrawingLogic.cs
+
+#if NET_2_0
+		
+		#region UIA Framework: Methods, Properties and Events
+		
+		static object UIACollectionChangedEvent = new object ();
+		static object UIASelectionChangedEvent = new object ();
+		static object UIAColumnHeadersVisibleChangedEvent = new object ();
+		static object UIAGridCellChangedEvent = new object ();
+
+		internal ScrollBar UIAHScrollBar {
+			get { return horiz_scrollbar; }
+		}
+
+		internal ScrollBar UIAVScrollBar {
+			get { return vert_scrollbar; }
+		}
+
+		internal DataGridTableStyle UIACurrentTableStyle {
+			get { return current_style; }
+		}
+
+		internal int UIASelectedRows {
+			get { return selected_rows.Count; }
+		}
+
+		internal Rectangle UIAColumnHeadersArea {
+			get { return ColumnHeadersArea; }
+		}
+
+		internal Rectangle UIACaptionArea {
+			get { return caption_area; }
+		}
+
+		internal Rectangle UIACellsArea {
+			get { return cells_area; }
+		}
+
+		internal int UIARowHeight {
+			get { return RowHeight; }
+		}
+
+		internal event CollectionChangeEventHandler UIACollectionChanged {
+			add { Events.AddHandler (UIACollectionChangedEvent, value); }
+			remove { Events.RemoveHandler (UIACollectionChangedEvent, value); }
+		}
+
+		internal event CollectionChangeEventHandler UIASelectionChanged {
+			add { Events.AddHandler (UIASelectionChangedEvent, value); }
+			remove { Events.RemoveHandler (UIASelectionChangedEvent, value); }
+		}
+
+		internal event EventHandler UIAColumnHeadersVisibleChanged {
+			add { Events.AddHandler (UIAColumnHeadersVisibleChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAColumnHeadersVisibleChangedEvent, value); }
+		}
+
+		internal event CollectionChangeEventHandler UIAGridCellChanged {
+			add { Events.AddHandler (UIAGridCellChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAGridCellChangedEvent, value); }
+		}
+
+		internal void OnUIACollectionChangedEvent (CollectionChangeEventArgs args)
+		{
+			CollectionChangeEventHandler eh
+				= (CollectionChangeEventHandler) Events [UIACollectionChangedEvent];
+			if (eh != null)
+				eh (this, args);
+		}
+
+		internal void OnUIASelectionChangedEvent (CollectionChangeEventArgs args)
+		{
+			CollectionChangeEventHandler eh
+				= (CollectionChangeEventHandler) Events [UIASelectionChangedEvent];
+			if (eh != null)
+				eh (this, args);
+		}
+
+		internal void OnUIAColumnHeadersVisibleChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIAColumnHeadersVisibleChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIAGridCellChanged (CollectionChangeEventArgs args)
+		{
+			CollectionChangeEventHandler eh
+				= (CollectionChangeEventHandler) Events [UIAGridCellChangedEvent];
+			if (eh != null)
+				eh (this, args);
+		}
+
+		#endregion // UIA Framework: Methods, Properties and Events
+
+#endif
+
 	}
 }

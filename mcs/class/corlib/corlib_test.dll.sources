@@ -1,5 +1,7 @@
 ../../../build/common/Consts.cs
 Microsoft.Win32/RegistryKeyTest.cs
+Mono/DataConvertTest.cs
+../Mono/DataConverter.cs
 System/ActivatorTest.cs
 System/AppDomainSetupTest.cs
 System/AppDomainTest.cs
@@ -19,6 +21,7 @@ System/CharEnumeratorTest.cs
 System/CharTest.cs
 System/DelegateTest.cs
 System/ModuleHandleTest.cs
+System/ObsoleteAttributeTest.cs
 System/IntegerTryParse.cs
 System.Collections/ArrayListTest.cs
 System.Collections/BitArrayTest.cs
@@ -94,6 +97,7 @@ System.IO/StreamReaderTest.cs
 System.IO/StreamWriterTest.cs
 System.IO/StringReaderTest.cs
 System.IO/StringWriterTest.cs
+System.IO/TextReaderTest.cs
 System.IO/TextWriterTest.cs
 System.IO/UnmanagedMemoryStreamTest.cs
 System.IO.IsolatedStorage/IsolatedStorageTest.cs
@@ -161,9 +165,11 @@ System.Runtime.Remoting/SoapServicesTest.cs
 System.Runtime.Remoting/SynchronizationAttributeTest.cs
 System.Runtime.Remoting.Channels/ChannelServicesTest.cs
 System.Runtime.Remoting.Contexts/SynchronizationAttributeTest.cs
+System.Runtime.Remoting.Metadata.W3cXsd2001/SoapHexBinaryTest.cs
 System.Runtime.Serialization/FormatterServicesTests.cs
 System.Runtime.Serialization/ObjectIDGeneratorTests.cs
 System.Runtime.Serialization/SerializationTest.cs
+System.Runtime.Serialization/SerializationTest2.cs
 System.Runtime.Serialization/SerializationCallbackTest.cs
 System.Runtime.Serialization/ArraySerializationTest.cs
 System.Runtime.Serialization/ObjectManagerTest.cs

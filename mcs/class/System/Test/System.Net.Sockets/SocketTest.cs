@@ -223,6 +223,9 @@ namespace MonoTests.System.Net.Sockets
 				Socket.Select (list, empty, empty, -1);
 				Assertion.AssertEquals ("#05", 0, empty.Count);
 				Assertion.AssertEquals ("#06", 1, list.Count);
+				// Need to read the 10 bytes from the client to avoid a RST
+				byte [] bytes = new byte [10];
+				acc.Receive (bytes);
 			} finally {
 				if (acc != null)
 					acc.Close ();
@@ -600,6 +603,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 
 		[Test]
+		[Category ("NotOnMac")] // DontFragment doesn't work on Mac
 		public void DontFragmentChangeTcp ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
@@ -628,6 +632,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 
 		[Test]
+		[Category ("NotOnMac")] // DontFragment doesn't work on Mac
 		public void DontFragmentChangeUdp ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
@@ -1100,6 +1105,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 
 		[Test]
+		[Category ("NotOnMac")] // Mac doesn't throw when overflowing the ttl
 		public void TtlChangeOverflow ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
@@ -1892,6 +1898,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 		
 		[Test]
+		[Category ("NotOnMac")] // MacOSX will block attempting to connect to 127.0.0.4 causing the test to fail
 		public void BeginConnectMultiple ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
@@ -2337,6 +2344,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 		
 		[Test]
+		[Category ("NotOnMac")] // MacOSX trashes the fd after the failed connect attempt to 127.0.0.4
 		public void ConnectMultiple ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
@@ -2792,6 +2800,34 @@ namespace MonoTests.System.Net.Sockets
 			RRCReady.WaitOne (1000, false);
 			Assert.IsTrue (RRCLastRead);
 		}
+
+#if NET_2_0
+		[Test]
+                public void ConnectedProperty ()
+                {
+			TcpListener listener = new TcpListener (IPAddress.Loopback, 23456);
+			listener.Start();
+
+			Socket client = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			client.Connect (IPAddress.Loopback, 23456);
+			Socket server = listener.AcceptSocket ();
+
+			try {
+				server.EndSend(server.BeginSend (new byte[10], 0, 10, SocketFlags.None, null, null));
+				client.Close ();
+				try {
+					server.EndReceive (server.BeginReceive (new byte[10], 0, 10, SocketFlags.None, null, null));
+				} catch {
+				}
+				Assert.IsTrue (!client.Connected);
+				Assert.IsTrue (!server.Connected);
+			} finally {
+				listener.Stop ();
+				client.Close ();
+				server.Close ();
+			}
+		}
+#endif
 	}
 }
 

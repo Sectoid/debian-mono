@@ -212,6 +212,9 @@ namespace System.Windows.Forms
 
 				image_index = value;
 				image_key = String.Empty;
+
+				if (owner != null)
+					owner.header_control.Invalidate ();
 			}
 		}
 
@@ -228,6 +231,9 @@ namespace System.Windows.Forms
 			set {
 				image_key = value == null ? String.Empty : value;
 				image_index = -1;
+
+				if (owner != null)
+					owner.header_control.Invalidate ();
 			}
 		}
 
@@ -287,9 +293,16 @@ namespace System.Windows.Forms
 		public string Text {
 			get { return text; }
 			set {
-				text = value;
-				if (owner != null)
-					owner.Redraw (true);
+				if (text != value) {
+					text = value;
+					if (owner != null)
+						owner.Redraw (true);
+
+#if NET_2_0
+					// UIA Framework: Raising Value changed event
+					OnUIATextChanged ();
+#endif
+				}
 			}
 		}
 
@@ -360,5 +373,27 @@ namespace System.Windows.Forms
 			base.Dispose (disposing);
 		}
 		#endregion // Protected Methods
+
+#if NET_2_0
+		
+		#region UIA Framework: Methods, Properties and Events
+
+		static object UIATextChangedEvent = new object ();
+
+		internal event EventHandler UIATextChanged {
+			add { Events.AddHandler (UIATextChangedEvent, value); }
+			remove { Events.RemoveHandler (UIATextChangedEvent, value); }
+		}
+
+		private void OnUIATextChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIATextChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		#endregion
+
+#endif
 	}
 }

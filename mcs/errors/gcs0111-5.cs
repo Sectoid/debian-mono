@@ -1,16 +1,22 @@
-// CS0111: A member `C.Foo()' is already defined. Rename this member or use different parameter types
-// Line: 11
+// CS0111: A member `MyClass.IMyInterface<System.String>.Prop' is already defined. Rename this member or use different parameter types
+// Line: 18
 
+using System;
 
-public partial class C
+interface IMyInterface<T>
 {
-	void Foo ()
+	bool Prop { set; }
+}
+
+public class MyClass: IMyInterface<string>
+{
+	bool IMyInterface<string>.Prop
 	{
+		set {}
 	}
-	
-	partial void Foo ();
-	
-	partial void Foo ()
+
+	bool IMyInterface<System.String>.Prop
 	{
+		set {}
 	}
 }

@@ -91,9 +91,14 @@ public class IPAddressTest
 		"12.1.4.6 foo.bar.test.test.baf", "12.1.4.6",
 		"12.3 foo.bar.test.test.4", "12.0.0.3",
 		"12 foo.bar.test.test.baf", "0.0.0.12",
-		//"65536", "0.1.0.0",
-		//"65535", "0.0.255.255",
-		//"20.65535", "20.0.255.255"
+		"65536", "0.1.0.0",
+		"65535", "0.0.255.255",
+		"20.65535", "20.0.255.255",
+		"0313.027035210", "203.92.58.136", // bug #411920
+		"0313.0134.035210", "203.92.58.136", // too
+		"7848198702", "211.202.2.46", // too
+		"1434328179", "85.126.28.115", // too
+		"3397943208", "202.136.127.168", // too
 	};
 
 	static string [] ipv4ParseWrong = new string [] {
@@ -487,6 +492,32 @@ public class IPAddressTest
 	}
 
 #if NET_2_0
+	[Test]
+	public void FromBytes1 ()
+	{
+		byte[] val1 = new byte[4];
+		val1[0] = 82;
+		val1[1] = 165;
+		val1[2] = 240;
+		val1[3] = 134;
+		CompareIPs (val1, "82.165.240.134");
+
+		byte[] val2 = new byte[4];
+		val2[0] = 123;
+		val2[1] = 124;
+		val2[2] = 125;
+		val2[3] = 126;
+		CompareIPs (val2, "123.124.125.126");
+	}
+
+	void CompareIPs (byte [] bytes, string address)
+	{
+		IPAddress ip = new IPAddress (bytes);
+		IPAddress ip2 = IPAddress.Parse (address);
+		Assert.IsTrue (ip2.Equals (ip), "#A-" + address);
+		Assert.IsTrue (ip.Equals (ip2), "#B-" + address);
+	}
+
 	[Test]
 	public void TryParse_IpString_Null ()
 	{

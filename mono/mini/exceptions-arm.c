@@ -367,8 +367,7 @@ mono_arch_get_throw_corlib_exception_full (guint32 *code_size, MonoJumpInfo **ji
  */
 MonoJitInfo *
 mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *res, MonoJitInfo *prev_ji,
-			 MonoContext *ctx, MonoContext *new_ctx, char **trace, MonoLMF **lmf,
-			 int *native_offset, gboolean *managed)
+			 MonoContext *ctx, MonoContext *new_ctx, MonoLMF **lmf, gboolean *managed)
 {
 	MonoJitInfo *ji;
 	gpointer ip = MONO_CONTEXT_GET_IP (ctx);
@@ -427,7 +426,13 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 			sp += sizeof (gulong);
 			new_ctx->eip = *(gulong*)sp;
 			sp += sizeof (gulong);
-			new_ctx->ebp = new_ctx->esp;
+			new_ctx->ebp = new_ctx->regs [ARMREG_R11 - 4];
+			/*
+			 * FIXME this doesn't really do what is supposed to. MonoContext::regs map r4-r11, r12(ip), r14(lr)
+			 * This code is storing in MonoContext::fregs [0]. 
+			 */
+			/* Needed by get_exception_catch_class () */
+			new_ctx->regs [ARMREG_R11] = new_ctx->ebp;
 		}
 
 		if (*lmf && (MONO_CONTEXT_GET_BP (ctx) >= (gpointer)(*lmf)->ebp)) {

@@ -49,7 +49,11 @@ namespace System.Windows.Forms {
 
 		private bool show_panels = false;
 		private bool sizing_grip = true;
-
+		
+		// Stuff for panel Tooltips
+		private Timer tooltip_timer;
+		private ToolTip tooltip_window;
+		private StatusBarPanel tooltip_currently_showing;
 		#endregion	// Fields
 
 		#region Public Constructors
@@ -58,6 +62,10 @@ namespace System.Windows.Forms {
 			Dock = DockStyle.Bottom;
 			this.TabStop = false;
 			this.SetStyle(ControlStyles.UserPaint | ControlStyles.Selectable, false);
+
+			// For displaying/hiding tooltips
+			MouseMove += new MouseEventHandler (StatusBar_MouseMove);
+			MouseLeave += new EventHandler (StatusBar_MouseLeave);
 		}
 		#endregion	// Public Constructors
 
@@ -385,6 +393,81 @@ namespace System.Windows.Forms {
 		}
 		#endregion	// Internal Methods
 
+		#region Stuff for ToolTips
+		private void StatusBar_MouseMove (object sender, MouseEventArgs e)
+		{
+			if (!show_panels)
+				return;
+				
+			StatusBarPanel p = GetPanelAtPoint (e.Location);
+			
+			if (p != tooltip_currently_showing)
+				MouseLeftPanel (tooltip_currently_showing);
+				
+			if (p != null && tooltip_currently_showing == null)
+				MouseEnteredPanel (p);
+		}
+
+		private void StatusBar_MouseLeave (object sender, EventArgs e)
+		{
+			if (tooltip_currently_showing != null)
+				MouseLeftPanel (tooltip_currently_showing);
+		}
+
+		private StatusBarPanel GetPanelAtPoint (Point point)
+		{
+			foreach (StatusBarPanel p in Panels)
+				if (point.X >= p.X && point.X <= (p.X + p.Width))
+					return p;
+					
+			return null;
+		}
+		
+		private void MouseEnteredPanel (StatusBarPanel item)
+		{
+			tooltip_currently_showing = item;
+			ToolTipTimer.Start ();
+		}
+
+		private void MouseLeftPanel (StatusBarPanel item)
+		{
+			ToolTipTimer.Stop ();
+			ToolTipWindow.Hide (this);
+			tooltip_currently_showing = null;
+		}
+
+		private Timer ToolTipTimer {
+			get {
+				if (tooltip_timer == null) {
+					tooltip_timer = new Timer ();
+					tooltip_timer.Enabled = false;
+					tooltip_timer.Interval = 500;
+					tooltip_timer.Tick += new EventHandler (ToolTipTimer_Tick);
+				}
+
+				return tooltip_timer;
+			}
+		}
+
+		private ToolTip ToolTipWindow {
+			get {
+				if (tooltip_window == null)
+					tooltip_window = new ToolTip ();
+
+				return tooltip_window;
+			}
+		}
+
+		private void ToolTipTimer_Tick (object o, EventArgs args)
+		{
+			string tooltip = tooltip_currently_showing.ToolTipText;
+
+			if (tooltip != null && tooltip.Length > 0)
+				ToolTipWindow.Present (this, tooltip);
+
+			ToolTipTimer.Stop ();
+		}
+		#endregion
 
 		#region Events
 		[Browsable(false)]
@@ -460,6 +543,25 @@ namespace System.Windows.Forms {
 #endif
 			#endregion	// Fields
 
+			#region UIA Framework Events
+#if NET_2_0
+			static object UIACollectionChangedEvent = new object ();
+
+			internal event CollectionChangeEventHandler UIACollectionChanged {
+				add { owner.Events.AddHandler (UIACollectionChangedEvent, value); }
+				remove { owner.Events.RemoveHandler (UIACollectionChangedEvent, value); }
+			}
+			
+			internal void OnUIACollectionChanged (CollectionChangeEventArgs e)
+			{
+				CollectionChangeEventHandler eh
+					= (CollectionChangeEventHandler) owner.Events [UIACollectionChangedEvent];
+				if (eh != null)
+					eh (owner, e);
+			}
+#endif
+			#endregion
+
 			#region Public Constructors
 			public StatusBarPanelCollection (StatusBar owner)
 			{
@@ -480,6 +582,11 @@ namespace System.Windows.Forms {
 					owner.CalcPanelSizes ();
 					owner.Refresh ();
 				}
+
+#if NET_2_0
+				// UIA Framework Event: Panel Added
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Add, res));
+#endif
 
 				return res;
 			}
@@ -509,9 +616,19 @@ namespace System.Windows.Forms {
 					if (index < 0 || index >= Count)
 						throw new ArgumentOutOfRangeException ("index");
 
+#if NET_2_0
+					// UIA Framework Event: Panel Removed
+					OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Remove, index));
+#endif
+
 					value.SetParent (owner);
 
 					panels [index] = value;
+
+#if NET_2_0
+					// UIA Framework Event: Panel Added
+					OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Add, index));
+#endif
 				}
 			}
 			
@@ -557,6 +674,11 @@ namespace System.Windows.Forms {
 				panels.Clear ();
 
 				owner.Refresh ();
+
+#if NET_2_0
+				// UIA Framework Event: Panel Cleared
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Refresh, -1));
+#endif
 			}
 
 			public bool Contains (StatusBarPanel panel) {
@@ -614,14 +736,31 @@ namespace System.Windows.Forms {
 
 				panels.Insert(index, value);
 				owner.Refresh ();
+
+#if NET_2_0
+				// UIA Framework Event: Panel Added
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Add, index));
+#endif
 			}
 
 			public virtual void Remove (StatusBarPanel value) {
+				int index = IndexOf (value);
 				panels.Remove (value);
+
+#if NET_2_0
+				// UIA Framework Event: Panel Removed
+				if (index >= 0)
+					OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Remove, index));
+#endif
 			}
 
 			public virtual void RemoveAt (int index) {
 				panels.RemoveAt (index);
+
+#if NET_2_0
+				// UIA Framework Event: Panel Removed
+				OnUIACollectionChanged (new CollectionChangeEventArgs (CollectionChangeAction.Remove, index));
+#endif
 			}
 
 #if NET_2_0

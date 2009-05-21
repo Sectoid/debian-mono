@@ -15,6 +15,7 @@ delegate.cs
 doc-bootstrap.cs
 enum.cs
 ecore.cs
+eval.cs
 expression.cs
 flowanalysis.cs
 generic.cs

@@ -604,20 +604,24 @@ internal class Win32ResFileReader {
 
 	int read_int16 () {
 		int b1 = res_file.ReadByte ();
-		int b2 = res_file.ReadByte ();
-
-		if ((b1 == -1) || (b2 == -1))
+		if (b1 == -1)
 			return -1;
-		else
-			return b1 | (b2 << 8);
+
+		int b2 = res_file.ReadByte ();
+		if (b2 == -1)
+			return -1;
+
+		return b1 | (b2 << 8);
 	}
 
 	int read_int32 () {
 		int w1 = read_int16 ();
-		int w2 = read_int16 ();
-
-		if ((w1 == -1) || (w2 == -1))
+		if (w1 == -1)
 			return -1;
+		int w2 = read_int16 ();
+		if (w2 == -1)
+			return -1;
+
 		return w1 | (w2 << 16);
 	}
 
@@ -708,6 +712,7 @@ internal class Win32ResFileReader {
 //
 internal class ICONDIRENTRY {
 
+#pragma warning disable 649
 	public byte bWidth;
 	public byte bHeight;
 	public byte bColorCount;
@@ -716,7 +721,7 @@ internal class ICONDIRENTRY {
 	public Int16 wBitCount;
 	public Int32 dwBytesInRes;
 	public Int32 dwImageOffset;
-
+#pragma warning restore 649
 	public byte[] image;
 
 	public override string ToString () {

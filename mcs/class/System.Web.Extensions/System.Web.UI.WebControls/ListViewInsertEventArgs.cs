@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2008 Novell, Inc
 //
 
 //
@@ -36,6 +36,8 @@ namespace System.Web.UI.WebControls
 {
 	public class ListViewInsertEventArgs : CancelEventArgs
 	{
+		IOrderedDictionary _values;
+
 		public ListViewInsertEventArgs (ListViewItem item)
 		{
 			Item = item;
@@ -47,7 +49,11 @@ namespace System.Web.UI.WebControls
 		}
 		
 		public IOrderedDictionary Values {
-			get { throw new NotImplementedException (); }
+			get {
+				if (_values == null)
+					_values = new OrderedDictionary ();
+				return _values;
+			}
 		}
 	}
 }

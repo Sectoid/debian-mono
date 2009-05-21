@@ -7,7 +7,7 @@
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //
 // (C) 2001-2003 Ximian, Inc.  http://www.ximian.com
-// Copyright (C) 2004-2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004-2005, 2008 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -41,6 +41,9 @@ using System.Threading;
 using Microsoft.Win32.SafeHandles;
 using System.Security.AccessControl;
 #endif
+#if NET_2_1
+using System.IO.IsolatedStorage;
+#endif
 
 namespace System.IO
 {
@@ -51,27 +54,19 @@ namespace System.IO
 	{
 		// construct from handle
 		
-#if NET_2_0_SAFEFILEHANDLE_ENABLED
 		[Obsolete ("Use FileStream(SafeFileHandle handle, FileAccess access) instead")]
-#endif
 		public FileStream (IntPtr handle, FileAccess access)
 			: this (handle, access, true, DefaultBufferSize, false) {}
 
-#if NET_2_0_SAFEFILEHANDLE_ENABLED
 		[Obsolete ("Use FileStream(SafeFileHandle handle, FileAccess access) instead")]
-#endif
 		public FileStream (IntPtr handle, FileAccess access, bool ownsHandle)
 			: this (handle, access, ownsHandle, DefaultBufferSize, false) {}
 		
-#if NET_2_0_SAFEFILEHANDLE_ENABLED
 		[Obsolete ("Use FileStream(SafeFileHandle handle, FileAccess access, int bufferSize) instead")]
-#endif
 		public FileStream (IntPtr handle, FileAccess access, bool ownsHandle, int bufferSize)
 			: this (handle, access, ownsHandle, bufferSize, false) {}
 
-#if NET_2_0_SAFEFILEHANDLE_ENABLED
 		[Obsolete ("Use FileStream(SafeFileHandle handle, FileAccess access, int bufferSize, bool isAsync) instead")]
-#endif
 		public FileStream (IntPtr handle, FileAccess access, bool ownsHandle, int bufferSize, bool isAsync)
 			: this (handle, access, ownsHandle, bufferSize, isAsync, false) {}
 
@@ -210,18 +205,36 @@ namespace System.IO
 			if (bufferSize <= 0)
 				throw new ArgumentOutOfRangeException ("bufferSize", "Positive number required.");
 
-			if (mode < FileMode.CreateNew || mode > FileMode.Append)
+			if (mode < FileMode.CreateNew || mode > FileMode.Append) {
+#if NET_2_1
+				if (anonymous)
+					throw new ArgumentException ("mode", "Enum value was out of legal range.");
+				else
+#endif
 				throw new ArgumentOutOfRangeException ("mode", "Enum value was out of legal range.");
+			}
 
-			if (access < FileAccess.Read || access > FileAccess.ReadWrite)
+			if (access < FileAccess.Read || access > FileAccess.ReadWrite) {
+#if NET_2_1
+				if (anonymous)
+					throw new IsolatedStorageException ("Enum value for FileAccess was out of legal range.");
+				else
+#endif
 				throw new ArgumentOutOfRangeException ("access", "Enum value was out of legal range.");
+			}
 
 #if NET_2_0
-			if (share < FileShare.None || share > (FileShare.ReadWrite | FileShare.Delete))
+			if (share < FileShare.None || share > (FileShare.ReadWrite | FileShare.Delete)) {
 #else
-			if (share < FileShare.None || share > FileShare.ReadWrite)
+			if (share < FileShare.None || share > FileShare.ReadWrite) {
+#endif
+#if NET_2_1
+				if (anonymous)
+					throw new IsolatedStorageException ("Enum value for FileShare was out of legal range.");
+				else
 #endif
 				throw new ArgumentOutOfRangeException ("share", "Enum value was out of legal range.");
+			}
 
 			if (path.IndexOfAny (Path.InvalidPathChars) != -1) {
 				throw new ArgumentException ("Name has invalid chars");
@@ -256,7 +269,11 @@ namespace System.IO
 					// don't leak the path information for isolated storage
 					string msg = Locale.GetText ("Could not find a part of the path \"{0}\".");
 					string fname = (anonymous) ? dname : Path.GetFullPath (path);
+#if NET_2_1
+					throw new IsolatedStorageException (String.Format (msg, fname));
+#else
 					throw new DirectoryNotFoundException (String.Format (msg, fname));
+#endif
 				}
 			}
 
@@ -265,7 +282,11 @@ namespace System.IO
 				// don't leak the path information for isolated storage
 				string msg = Locale.GetText ("Could not find file \"{0}\".");
 				string fname = (anonymous) ? Path.GetFileName (path) : Path.GetFullPath (path);
+#if NET_2_1
+				throw new IsolatedStorageException (String.Format (msg, fname));
+#else
 				throw new FileNotFoundException (String.Format (msg, fname), fname);
+#endif
 			}
 
 			// IsolatedStorage needs to keep the Name property to the default "[Unknown]"

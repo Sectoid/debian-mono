@@ -101,12 +101,12 @@ namespace System.Web.UI.WebControls
 		ArrayList styles = new ArrayList ();
 		Hashtable customNavigation;
 		
-		private static readonly object ActiveStepChangedEvent = new object();
-		private static readonly object CancelButtonClickEvent = new object();
-		private static readonly object FinishButtonClickEvent = new object();
-		private static readonly object NextButtonClickEvent = new object();
-		private static readonly object PreviousButtonClickEvent = new object();
-		private static readonly object SideBarButtonClickEvent = new object();
+		static readonly object ActiveStepChangedEvent = new object();
+		static readonly object CancelButtonClickEvent = new object();
+		static readonly object FinishButtonClickEvent = new object();
+		static readonly object NextButtonClickEvent = new object();
+		static readonly object PreviousButtonClickEvent = new object();
+		static readonly object SideBarButtonClickEvent = new object();
 		
 		public event EventHandler ActiveStepChanged {
 			add { Events.AddHandler (ActiveStepChangedEvent, value); }
@@ -1005,7 +1005,7 @@ namespace System.Web.UI.WebControls
 			buttonBarCell.Controls.Add (_finishNavContainer);
 		}
 
-		private static void AddNavButtonsTable (BaseWizardNavigationContainer container, out TableRow row)
+		static void AddNavButtonsTable (BaseWizardNavigationContainer container, out TableRow row)
 		{
 			Table t = new Table ();
 			t.CellPadding = 5;
@@ -1456,7 +1456,7 @@ namespace System.Web.UI.WebControls
 				((WebControl) styleDef [0]).ApplyStyle ((Style) styleDef [1]);
 		}
 
-		private BaseWizardNavigationContainer GetCurrentNavContainer ()
+		BaseWizardNavigationContainer GetCurrentNavContainer ()
 		{
 			if (customNavigation != null && customNavigation [ActiveStep] != null) {
 				return (BaseWizardNavigationContainer) customNavigation [ActiveStep];
@@ -1476,11 +1476,10 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		class TableCellNamingContainer : TableCell, INamingContainer
+		class TableCellNamingContainer : TableCell, INamingContainer, INonBindingContainer
 		{
 			public TableCellNamingContainer ()
 			{
-				SetBindingContainer (false);
 			}
 		}
 
@@ -1517,7 +1516,7 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		class WizardHeaderCell : TableCell, INamingContainer
+		class WizardHeaderCell : TableCell, INamingContainer, INonBindingContainer
 		{
 			bool _initialized;
 
@@ -1527,7 +1526,6 @@ namespace System.Web.UI.WebControls
 			
 			public WizardHeaderCell ()
 			{
-				SetBindingContainer (false);
 			}
 			
 			public void ConfirmInitState ()
@@ -1681,7 +1679,7 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		internal class BaseWizardContainer : Table, INamingContainer
+		internal class BaseWizardContainer : Table, INamingContainer, INonBindingContainer
 		{
 			public TableCell InnerCell {
 				get { return Rows [0].Cells [0]; }
@@ -1689,11 +1687,10 @@ namespace System.Web.UI.WebControls
 
 			internal BaseWizardContainer ()
 			{
-				SetBindingContainer (false);
 				InitTable ();
 			}
 
-			private void InitTable () {
+			void InitTable () {
 				TableRow row = new TableRow ();
 				TableCell cell = new TableCell ();
 
@@ -1715,11 +1712,10 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		internal class BaseWizardNavigationContainer : Control, INamingContainer
+		internal class BaseWizardNavigationContainer : Control, INamingContainer, INonBindingContainer
 		{
 			internal BaseWizardNavigationContainer ()
 			{
-				SetBindingContainer (false);
 			}
 
 			public virtual void PrepareControlHierarchy ()

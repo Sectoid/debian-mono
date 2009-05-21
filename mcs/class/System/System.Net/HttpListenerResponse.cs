@@ -392,10 +392,9 @@ namespace System.Net {
 			return false;
 		}
 
-		internal void SendHeaders (bool closing)
+		internal void SendHeaders (bool closing, MemoryStream ms)
 		{
 			//TODO: When do we send KeepAlive?
-			MemoryStream ms = new MemoryStream ();
 			Encoding encoding = content_encoding;
 			if (encoding == null)
 				encoding = Encoding.Default;
@@ -443,11 +442,13 @@ namespace System.Net {
 					status_code == 413 || status_code == 414 || status_code == 500 ||
 					status_code == 503);
 
-			if (conn_close == false)
+			if (conn_close == false) {
 				conn_close = (context.Request.Headers ["connection"] == "close");
+				conn_close |= (v <= HttpVersion.Version10);
+			}
 
 			// They sent both KeepAlive: true and Connection: close!?
-			if (!chunked || conn_close)
+			if (!keep_alive || conn_close)
 				headers.SetInternal ("Connection", "close");
 
 			if (chunked)
@@ -480,12 +481,12 @@ namespace System.Net {
 			string headers_str = headers.ToString ();
 			writer.Write (headers_str);
 			writer.Flush ();
-			// Perf.: use TCP_CORK if we're writing more?
 			int preamble = encoding.GetPreamble ().Length;
 			if (output_stream == null)
 				output_stream = context.Connection.GetResponseStream ();
 
-			output_stream.InternalWrite (ms.GetBuffer (), 0 + preamble, (int) ms.Length - preamble);
+			/* Assumes that the ms was at position 0 */
+			ms.Position = preamble;
 			HeadersSent = true;
 		}
 

@@ -37,7 +37,7 @@ using System.ComponentModel;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class ToolStripItemTests
+	public class ToolStripItemTests : TestHelper
 	{
 		[Test]
 		public void Constructor ()
@@ -1183,6 +1183,25 @@ namespace MonoTests.System.Windows.Forms
 			tsi.ImageIndex = 0;
 			il.Images[0] = i1;
 			Assert.AreEqual (i1.GetPixel (0, 0), (tsi.Image as Bitmap).GetPixel (0, 0), "D16");
+		}
+		
+		[Test]	// This should not crash
+		public void BehaviorImageListBadIndex ()
+		{
+			Form f = new Form ();
+			ToolStrip ts = new ToolStrip ();
+			ImageList il = new ImageList ();
+
+			ts.ImageList = il;
+
+			ts.Items.Add ("Hey").ImageIndex = 3;
+
+			Image i = ts.Items[0].Image;
+			
+			f.Controls.Add (ts);
+
+			f.Show ();
+			f.Dispose ();
 		}
 		
 		private class EventWatcher

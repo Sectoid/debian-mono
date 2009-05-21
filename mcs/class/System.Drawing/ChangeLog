@@ -1,6 +1,15 @@
+2008-08-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Makefile: Add 415581.ico.
+
 2008-08-06  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* Makefile: Add 323511.ico.
+
+2008-08-06  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Drawing_test.dll.sources: Add System.Drawing.Imaging.
+	FrameDimension unit tests to the build
 
 2007-10-22  Andreia Gaita  <avidigal@novell.com>
 

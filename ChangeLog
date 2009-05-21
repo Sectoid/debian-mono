@@ -1,21 +1,386 @@
+2009-02-26  Marek Habersack  <mhabersack@novell.com>
+
+	* data/mono.web.pc.in: added. Fixes bug #479760
+
+	* data/Makefile.am:  added mono.pc{.in} wherever necessary
+
+2009-02-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* configure.in: include stdio so that NULL is defined when checking
+	for ifreq.
+
+2009-01-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Complete the OPROFILE checks.
+
+2009-01-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Avoid error messages in the quiet code if libgc/Makefile
+	does not exist yet. Fixes #466814.
+
+2009-01-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Check for the existence of the gettext executables.
+
+2008-01-08  Christian Prochnow  <cproch@seculogix.de>
+
+	* configure.in: Check for sys/statfs.h and sys/mount.h
+
+2009-01-07  Geoff Norton  <gnorton@novell.com>
+
+	* configure.in: Provide platform information to the mcs build tree
+
+2009-01-06  Jb Evain  <jbevain@novell.com>
+
+	* scripts/Makefile.am: don't generate a script for the now
+	dead mono-api-diff.
+
+2008-12-05  Jonathan Pryor  <jpryor@novell.com>
+
+	* man/mdoc-update.1: Document -fno-assembly-versions.
+
+2009-01-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Disable sigaltstack on freebsd as it doesn't seem to work.
+
+2008-12-16  Marek Habersack  <mhabersack@novell.com>
+
+	* data/system.web.extensions.design_1.0.pc.in: added
+
+	* data/Makefile.am (EXTRA_DIST): added
+	system.web.extensions.design_1.0.pc.in. Also added to
+	pkgconfig_DATA
+
+	* configure.in: added data/system.web.extensions_1.0.pc to
+	AC_OUTPUT
+
+2008-12-16  Bill Holmes  <billholmes54@gmail.com>
+
+	* winconfig.h : Defining the SIZEOF_REGISTER variable for the MSVC builds.
+
+	Code is contributed under MIT/X11 license.
+
+2008-12-15  Marek Habersack  <mhabersack@novell.com>
+
+	* data/Makefile.am (EXTRA_DIST): added
+	system.web.extensions_1.0.pc.in. Also added to pkgconfig_DATA
+
+	* data/system.web.extensions_1.0.pc.in: added. This file serves
+	the purpose of making MonoDevelop see the 1.0 version of the
+	System.Web.Extensions assembly in the project references
+	editor. This will also make legacy 2.0 ASP.NET apps not fail when
+	they reference the 1.0 version of the assembly in their project
+	files.
+
+	* configure.in: added data/system.web.extensions_1.0.pc to AC_OUTPUT
+
+2008-12-11  Mark Mason <mmason@upwardaccess.com>
+
+	* configure.in: introduce SIZEOF_REGISTER - usually ==SIZEOF_VOID_P, except on mips/n32
+	
+2008-12-05  Marek Habersack  <mhabersack@novell.com>
+
+	* configure.in: check whether round (3) and rint (3) are present
+	in the C library.
+
+2008-12-05  Jonathan Pryor  <jpryor@novell.com>
+
+	* man/mdoc-update.1: Document new parameters such as --exceptions.
+
+2008-12-04  Mark Probst  <mark.probst@gmail.com>
+
+	* configure.in: Disabling the sibling call optimization doesn't
+	work, so we're using -mminimal-toc.
+
+2008-12-03  Mark Probst  <mark.probst@gmail.com>
+
+	* configure.in: Disable sibling call optimization on PPC64 as it
+	seems to trip up GCC on the build bot.
+
+2008-11-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* data/mono-nunit.pc.in : add new 2.4.8 files.
+
+2008-11-21  Jb Evain  <jbevain@novell.com>
+
+	* scripts/Makefile.am: use only one mono-api-info pointing to the cecil one
+	which is mscorlib agnostic.
+
+2008-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Only enable AOT on linux. Fixes #447265.
+
+2008-11-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Remove mono/monoburg/Makefile; fixes the build.
+
+2008-11-14  Andreas Färber  <andreas.faerber@web.de>
+
+	* configure.in: Add preprocessor defines for ppc(64).
+	Suggested by Paolo and Mark.
+	
+	Contributed under MIT/X11 license.
+
+2008-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add an ENABLE_AOT variable to config.make, currently only
+	enabled for AMD64.
+
+2008-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Bump version to 2.3.
+
+Mon Nov 10 17:37:08 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* configure.in: check for sys/user.h and struct kinfo_proc members.
+
+2008-11-07  Bill Holmes  <billholmes54@gmail.com>
+
+	* winconfig.h : Removing HAVE_DIRENT_H, HAVE_STDINT_H,
+	  HAVE_VISIBILITY_HIDDEN, HAVE_ZLIB for the VC builds.
+
+	Code is contributed under MIT/X11 license.
+
+2008-11-05  Bill Holmes  <billholmes54@gmail.com>
+
+	* configure.in : Adding a auto configure check for dirent.h.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-30  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile.am: Build `docs` after `runtime`, so that it can depend
+	  upon mdoc.exe for it's operation.
+
+2008-10-30  Jonathan Pryor  <jpryor@novell.com>
+
+	* man/mdoc-assemble.1: Document //node use within .source files.
+
+2008-10-27  Jb Evain  <jbevain@novell.com>
+
+	* data/cecil.pc.in: update version.
+
+2008-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/Makefile.am: Add gacutil1 script.
+
+2008-10-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* data/dotnet35.pc.in : added sys.cm.dataannotations.dll too.
+
+2008-10-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* data/net_2_0/web.config : added new assemblies and namespaces in
+	  pages and compilation sections.
+
+2008-10-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* data/dotnet35.pc.in : added new assemblies (dlinq, abstractions,
+	  routing, dynamic data).
+
+2008-10-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/mod.in: Remove bash-isms.
+
+2008-10-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Generate data/monodoc.pc.
+
+2008-10-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* data/Makefile.am: Add monodoc.pc to $(pkgconfig_DATA), $(DISTCLEANFILES).
+
+2008-10-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* data/monodoc.pc.in: Fixup sourcesdir.
+	* data/Makefile.am (EXTRA_DIST): Add monodoc.pc.in.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/Makefile.am: Install scripts for mdoc-compat commands.
+	* scripts (svn:ignore): Ignore generated files.
+	* mdassembler, mdvalidater, monodocer, monodocs2html, 
+	  monodocs2slashdoc: Added; "compatibility" scripts, converting the
+	  previous commands into mdoc commands.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/Makefile.am: Create scripts for mdoc sub-commands.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/Makefile.am: Add mod.
+
+2008-10-16  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/Makefile.am: Move mono-shlib-cop to scripts_2_0.
+
+2008-10-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Add checks for `struct flock`, `struct timespec`.
+
+2008-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* data/mono-options.pcs.in: We're not installing Mono.Options.dll into 
+	  the GAC anymore, we're just concerned `pkg-config --variable=Source` 
+	  support.
+
+2008-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* data/mono-options.pc.in: Add a Sources variable so that 
+	  `pkg-config --variable Sources mono-options` can be used to grab the
+	  sources to Mono.Options (useful for embedding).
+
+2008-10-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Generate data/mono-options.pc.
+	* data/Makefile.am: Support mono-options.pc.in and mono-options.pc.
+	* data/mono-options.pc.in: Added.
+
+Mon Oct 13 11:26:19 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* configure.in: check for shm_open ().
+
+2008-10-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Only process Makefiles with patch-quiet.sh which have a 
+	corresponding Makefile.in.
+
 2008-10-11  Zoltan Varga  <vargaz@gmail.com>
 
-	Merge r115522 from HEAD.
-	
 	* configure.in: Make --enable-minimal=reflection_emit turn on
-	==enable-minimal=reflection_emit_save too.
+	--enable-minimal=reflection_emit_save too.
 
-	Merge r115514 from HEAD.
-	
 	* README: Add docs for the option.
-	
-	Merge r115513 from HEAD.
 
 	* configure.in: Add --enable-minimal=reflection_emit_save option.
 
-2008-10-6  Zoltan Varga  <vargaz@gmail.com>
-	
-	* configure.in: Add --enable-minimal=jit option.
+2008-10-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* data/net_2_0/web.config: add UrlRouting.axd handler (forbidden).
+
+2008-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (dist-hook): Use 'net_1_1' instead of 'default'.
+
+	* runtime/Makefile.am: Rename 'default' profile to 'net_1_1'.
+
+2008-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* data/Makefile.am : there seems a couple more of required changes.
+
+2008-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* scripts/Makefile.am : one more dist fix is needed.
+
+2008-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* configure.in : fix missing change for previous change.
+
+2008-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* scripts/mono-nunit.pc.in, data/mono-nunit.pc.in:
+	  move former to latter.
+	* scripts/Makefile.am : remove packaging info.
+	* data/Makefile.am : add mono-nunit.pc too.
+
+2008-10-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* configure.in: Add simd intrinsics to the disable set.
+
+2008-10-01  Jb Evain  <jbevain@novell.com>
+
+	* scripts/Makefile.am: add mono-cil-strip.
+
+2008-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/patch-quiet.sh: Handle the ifs used by some versions of
+	automake.
+
+2008-09-25  Luis Ortiz  <lortiz@interactivesupercomputing.com>
+
+	* configure.in: Big arrays are only supported on 64 bit systems. 
+
+	Fixes #430022
+
+2008-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add --enable-minimal=attach option.
+
+2008-09-22  Raja R Harinath  <harinath@hurrynot.org>
+
+	* scripts/patch-quiet.sh: Skip Makefiles that've already been
+	patched.  Handle automake 1.10a.
+
+2008-09-18  Mark Probst  <mark.probst@gmail.com>
+
+	* docs/generic-sharing: More generic sharing porting
+	documentation.
+
+2008-09-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile.am (EXTRA_DIST): Update.
+	* nls.m4, progtest.m4: Really add from Gettext 0.17.
+
+2008-09-15  Raja R Harinath  <harinath@hurrynot.org>
+
+	* configure.in (AC_CONFIG_FILES): Put po/mcs/Makefile.in in its
+	own stanza.
+	(AC_OUTPUT): Don't list po/mcs/Makefile, it's automatically
+	handled by AM_PO_SUBDIRS.
+
+2008-09-14  Miguel de Icaza  <miguel@novell.com>
+
+	* Added some infrastructure to start the translation of the
+	compiler error messages.
+
+	Currently the compiler does not yet use the infrastructure,
+	that needs a bit of work, but the PO infrastructure is in place. 
+
+2008-09-14  gettextize  <bug-gnu-gettext@gnu.org>
+
+	* Makefile.am (SUBDIRS): Add po/mcs.
+	(DIST_SUBDIRS): Add po/mcs.
+	(EXTRA_DIST): Add config.rpath.
+	* configure.in (AC_CONFIG_FILES): Add po/mcs/Makefile.in.
+
+2008-09-14  gettextize  <bug-gnu-gettext@gnu.org>
+
+	* gettext.m4: New file, from gettext-0.17.
+	* iconv.m4: New file, from gettext-0.17.
+	* lib-ld.m4: New file, from gettext-0.17.
+	* lib-link.m4: New file, from gettext-0.17.
+	* lib-prefix.m4: New file, from gettext-0.17.
+	* nls.m4: New file, from gettext-0.17.
+	* po.m4: New file, from gettext-0.17.
+	* progtest.m4: New file, from gettext-0.17.
+	* Makefile.am (EXTRA_DIST): Add the new files.
+
+2008-09-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/patch-quiet.sh: Remove an obsolete comment. Change the Makefile so
+	this script is rerun if Makefile.am changes.
+
+2008-09-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add a DISABLE_JIT automake conditional too.
+
+	* configure.in: Add a --enable-minimal=jit option to disable jit, only
+	allowing full-aot execution.
+
+2008-09-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Move the computation of export_ldflags after libtool has
+	been created.
+
+2008-09-08  Massimiliano Mantione  <massi@ximian.com>
+
+	* configure.in: Added DISABLE_PROFILER automake conditional.
+
+2008-08-29  Geoff Norton  <gnorton@novell.com>
+
+	* configure.in: Rollup our unrolled FreeBSD support so that we properly
+	build and compile on FreeBSD6+.  (FreeBSD5 is 2004)
 
 2008-08-28  Geoff Norton  <gnorton@novell.com>
 
@@ -26,33 +391,97 @@
 	* build-iphone.sh: Update build-iphone to not wget old inssel's, and build
 	out of the box with teh current SDK.
 
-2008-08-13  Bill Holmes  <billholmes54@gmail.com>
+2008-08-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/Makefile.am (scripts_2_0): Add gacutil2.
+	* scripts/gacutil2: New file.
+
+2008-08-22  Jb Evain  <jbevain@novell.com>
+
+	* data/wcf.pc.in
+	* data/Makefile.am
+	* configure.in: add a new wcf.pc for assemblies recently moved
+	from olive to mcs.
+
+2008-08-12  Bill Holmes  <billholmes54@gmail.com>
 
 	* winconfig.h:  Updating the config file for MSVC builds to match
  	  the config file used when compiling with gcc in Cygwin.
 
 	Contributed under MIT/X11 license.
 
+2008-08-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* docs/generic-sharing: Some updates from an irc talk with Mark.
+
 2008-08-06  Zoltan Varga  <vargaz@gmail.com>
 
+	* Makefile.am (EXTRA_DIST): Add dtrace-prelink.sh and build-mingw32.sh.
+
 	* scripts/Makefile.am (EXTRA_DIST): Add patch-quiet.sh.
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* configure.in: use the PKG_CONFIG_PATH only when cross-compiling.
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* configure.in: added support for cross-compilation
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* build-mingw32.sh: added a script to build Mono for Windows on a
+	Linux host using mingw.
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* scripts/Makefile.am: added support for cross-compilation,
+	including .bat generation for windows targets.
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* scripts/smcs.bat.in, scripts/script.bat.in,
+	scripts/script_umask.bat.in: added .bat templates.
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* runtime/Makefile.am: mingw cross-compilation support.
+
+2008-08-05  Andreas Färber  <andreas.faerber@web.de>
+
+	* autogen.sh: Suppress arguments warning for NOCONFIGURE.
+	
+	Contributed under MIT/X11 license.
+
+2008-08-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Enable dtrace by default on platforms which support it.
+
+2008-07-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/patch-quiet.sh: Make the libtool --quiet flag configurable by
+	V=1 as well.
 
 2008-07-24  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Patch libtool to avoid the 
 	'copying selected object files ...' messages.
-	
-	* configure.in: Invoke patch-quiet.sh using AC_CONFIG_COMMANDS so it
-	runs during a reconfigure too.
 
-	Backported from trunk.
-	
 2008-07-24  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* configure.in: Change USED_GC_NAME to show if parallel mark is used.
 	This is shown in mono --version.
 
-	Backported from trunk.
+2008-07-22  Mark Probst  <mark.probst@gmail.com>
+
+	* configure.in: New configure option (--with-malloc-mempools) to
+	make mempools use malloc for every single allocation, which makes
+	it easier to use debugging/profiling tools like Valgrind.
+
+2008-07-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Invoke patch-quiet.sh using AC_CONFIG_COMMANDS so it
+	runs during a reconfigure too.
 
 2008-07-13  Zoltan Varga  <vargaz@gmail.com>
 

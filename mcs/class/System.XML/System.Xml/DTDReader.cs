@@ -1369,7 +1369,7 @@ namespace System.Xml
 			if (target == "xml") {
 				ReadTextDeclaration ();
 				return;
-			} else if (String.Compare (target, "xml", true, CultureInfo.InvariantCulture) == 0)
+			} else if (CultureInfo.InvariantCulture.CompareInfo.Compare (target, "xml", CompareOptions.IgnoreCase) == 0)
 				throw NotWFError ("Not allowed processing instruction name which starts with 'X', 'M', 'L' was found.");
 
 			currentInput.AllowTextDecl = false;
@@ -1456,6 +1456,7 @@ namespace System.Xml
 
 		// Note that now this method behaves differently from
 		// XmlTextReader's one. It calles AppendValueChar() internally.
+		/*
 		private int ReadCharacterReference ()
 		{
 			int value = 0;
@@ -1502,6 +1503,7 @@ namespace System.Xml
 			AppendValueChar (value);
 			return value;
 		}
+		*/
 
 		private void AppendNameChar (int ch)
 		{

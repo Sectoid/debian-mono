@@ -53,7 +53,7 @@ namespace Npgsql
         // Logging related values
         private static readonly String CLASSNAME = "NpgsqlCommand";
         private static ResourceManager resman = new ResourceManager(typeof(NpgsqlCommand));
-        private readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
+        private static readonly Regex parameterReplace = new Regex(@"([:@][\w\.]*)", RegexOptions.Singleline);
 
         private NpgsqlConnection            connection;
         private NpgsqlConnector             connector;
@@ -665,16 +665,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        if (parameters[i].Value!=DBNull.Value)
-                        {
-                            parameterFormatCodes[i] = (Int16) FormatCode.Binary;
-                            parameterValues[i]=(byte[])parameters[i].Value;
-                        }
-                        else
-                        {
-                            parameterValues[i] = parameters[i].TypeInfo.ConvertToBackend(parameters[i].Value, true);
-                        }
-
+                        parameterFormatCodes[i] = (Int16) FormatCode.Binary;
+                        parameterValues[i]=(byte[])parameters[i].Value;
                     }
                 }
                 bind.ParameterValues = parameterValues;
@@ -1373,7 +1365,7 @@ namespace Npgsql
         {
         
             String quote_pattern = @"['][^']*[']";
-            String pattern = "[- |\n\r\t,)(;=+/<>]" + parameterName + "([- |\n\r\t,)(;=+/<>]|$)";
+            String pattern = "[- |\n\r\t,)(;=+/]" + parameterName + "([- |\n\r\t,)(;=+/]|$)";
             Int32 start, end;
             String withoutquote = result;
             Boolean found = false;

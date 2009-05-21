@@ -1,8 +1,11 @@
-with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/default
+with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/net_1_1
 with_mono_path2 = MONO_PATH=$(mcs_topdir)/class/lib/net_2_0
 
-RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper --debug --security
-RUNTIME2 = $(with_mono_path2) $(top_builddir)/runtime/mono-wrapper --debug --security
+RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper --debug
+RUNTIME2 = $(with_mono_path2) $(top_builddir)/runtime/mono-wrapper --debug
+
+CAS_RUNTIME = $(RUNTIME) --security
+CAS_RUNTIME2 = $(RUNTIME2) --security
 
 PROFILE = net_1_1
 
@@ -12,8 +15,8 @@ compiler_defines = -d:NET_1_1
 # CSCOMPILE = gmcs -debug
 # compiler_defines += -d:NET_2_0
 # else
-CSCOMPILE = $(RUNTIME) $(mcs_topdir)/class/lib/default/mcs.exe -debug
-SN = $(RUNTIME) $(mcs_topdir)/tools/security/sn.exe
+CSCOMPILE = $(RUNTIME) $(mcs_topdir)/class/lib/net_1_1/mcs.exe -debug
+SN = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper --debug $(mcs_topdir)/tools/security/sn.exe
 # endif
 
 EXTRA_DIST = icall1.cs icall2.cs icall3.cs icall4.cs icall5.cs icall6.cs \
@@ -49,14 +52,14 @@ UNHANDLED_TEST_FILES = aptc2b cas2 pinvoke3
 
 run: tests
 	@for i in $(FULLTRUST_TEST_FILES); do	\
-		$(RUNTIME) $$i.exe;	\
+		$(CAS_RUNTIME) $$i.exe;	\
 	done;
 
 test: tests
 	@failed=0; \
 	passed=0; \
 	for i in $(FULLTRUST_TEST_FILES); do	\
-		$(RUNTIME) $$i.exe > /dev/null;	\
+		$(CAS_RUNTIME) $$i.exe > /dev/null;	\
 		if [ "$$?" = "0" ]; then	\
 			echo -e "fulltrust-$$i\tpass";	\
 			passed=`expr $${passed} + 1`; \
@@ -67,7 +70,7 @@ test: tests
 		fi;	\
 	done;	\
 	for i in $(UNHANDLED_TEST_FILES); do	\
-		$(RUNTIME) $$i.exe > /dev/null;	\
+		$(CAS_RUNTIME) $$i.exe > /dev/null;	\
 		if [ "$$?" = "0" ]; then	\
 			echo -e "unhandled-$$i\tFAIL ($$?)";	\
 			failed=`expr $${failed} + 1`; \

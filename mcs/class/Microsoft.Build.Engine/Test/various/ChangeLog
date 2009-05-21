@@ -1,3 +1,17 @@
+2009-01-01  Ankit Jain  <jankit@novell.com>
+
+	* Items.cs: Add tests for expression parsing, mainly for concat'ing
+	expressions. Remove "NotWorking" for some tests that are working now.
+
+2008-11-21  Ankit Jain  <jankit@novell.com>
+
+	* Items.cs (TestItemsInTarget1): Remove 'NotWorking' attribute.
+
+2008-11-11  Jonathan Chambers  <joncham@gmail.com>
+
+	* Items.cs: Use Path.DirectorySeparatorChar instead of 
+	hardcoded '/' to fix test on Windows.
+
 2007-01-23  Marek Sieradzki  <marek.sieradzki@gmail.com>
 
 	* EvaluationOrder.cs: Removed NotWorking from test that started to

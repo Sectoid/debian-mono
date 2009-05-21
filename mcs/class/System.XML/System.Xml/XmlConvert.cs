@@ -315,12 +315,22 @@ namespace System.Xml {
 
 		public static byte ToByte(string s)
 		{
-			return Byte.Parse(s, CultureInfo.InvariantCulture);
+			return Byte.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 		}
 
 		public static char ToChar(string s)
 		{
+#if !NET_2_1
 			return Char.Parse(s);
+#else
+			if (s == null)
+				throw new ArgumentNullException ("s");
+
+			if (s.Length != 1)
+				throw new FormatException ("String contain more than one char");
+
+			return s [0];
+#endif
 		}
 
 #if NET_2_0
@@ -334,7 +344,6 @@ namespace System.Xml {
 #if NET_2_0
 		public static DateTime ToDateTime (string value, XmlDateTimeSerializationMode mode)
 		{
-			string modestr = null;
 			DateTime dt;
 			switch (mode) {
 			case XmlDateTimeSerializationMode.Local:
@@ -413,7 +422,7 @@ namespace System.Xml {
 		[CLSCompliant (false)]
 		public static SByte ToSByte(string s)
 		{
-			return SByte.Parse(s, CultureInfo.InvariantCulture);
+			return SByte.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 		}
 
 		public static float ToSingle(string s)
@@ -556,33 +565,27 @@ namespace System.Xml {
 		{
 			// Unlike usual DateTime formatting, it preserves
 			// MaxValue/MinValue as is.
-			string modestr = null;
 			switch (mode) {
 			case XmlDateTimeSerializationMode.Local:
 				return (value == DateTime.MinValue ? DateTime.MinValue : value == DateTime.MaxValue ? value : value.ToLocalTime ()).ToString (
 					"yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz",
 					CultureInfo.InvariantCulture);
-				break;
 			case XmlDateTimeSerializationMode.RoundtripKind:
 				return value.ToString (
 					"yyyy-MM-ddTHH:mm:ss.FFFFFFFK",
 					CultureInfo.InvariantCulture);
-				break;
 			default:
 				return value.ToString (
 					"yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz",
 					CultureInfo.InvariantCulture);
-				break;
 			case XmlDateTimeSerializationMode.Utc:
 				return (value == DateTime.MinValue ? DateTime.MinValue : value == DateTime.MaxValue ? value : value.ToUniversalTime ()).ToString (
 					"yyyy-MM-ddTHH:mm:ss.FFFFFFFZ",
 					CultureInfo.InvariantCulture);
-				break;
 			case XmlDateTimeSerializationMode.Unspecified:
 				return value.ToString (
 					"yyyy-MM-ddTHH:mm:ss.FFFFFFF",
 					CultureInfo.InvariantCulture);
-				break;
 			}
 		}
 #endif
@@ -709,19 +712,19 @@ namespace System.Xml {
 		[CLSCompliant (false)]
 		public static UInt16 ToUInt16(string s)
 		{
-			return UInt16.Parse(s, CultureInfo.InvariantCulture);
+			return UInt16.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 		}
 
 		[CLSCompliant (false)]
 		public static UInt32 ToUInt32(string s)
 		{
-			return UInt32.Parse(s, CultureInfo.InvariantCulture);
+			return UInt32.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 		}
 
 		[CLSCompliant (false)]
 		public static UInt64 ToUInt64(string s)
 		{
-			return UInt64.Parse(s, CultureInfo.InvariantCulture);
+			return UInt64.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture);
 		}
 
 		public static string VerifyName (string name)

@@ -1,3 +1,122 @@
+2009-02-24  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile: Remove and don't install nunit-docs.source.  As
+	  Atsushi Enomoto said on 2008-11-26, Mono's NUnit is for internal use
+	  only, and installing nunit-docs.source causes an warning message
+	  during monodoc startup.
+	* docs/nunit-docs.source: Remove.
+
+2008-12-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : remove sys.messaging from CENTUM_TESTS. It has never
+	  been supported, and now, it's heavily developed.
+
+2008-12-08  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/monodoc.xml: Rename the "File Formats" node to "Commands and
+	  Files", so that ~all man pages can be under the same node.
+	* docs/lang-csharp.source: Since C# is the only current language, move
+	  the child nodes "up" a node so we have "Languages/C# Compiler Error
+	  Reference" and "Languages/C# Language Specification" nodes.
+
+2008-12-02  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile: Build additional directories (Npgsql,
+	  System.Configuration.Install, System.Design, System.Runtime.Remoting,
+	  System.Runtime.Serialization.Formatters.Soap); shorten entries.
+
+2008-11-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* docs/Makefile: remove nunit docs that do not exist (and I don't
+	  think such docs for private mono use should be provided).
+
+2008-11-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : I happened to remove errors and docs which
+	  used to be broken.
+
+2008-11-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : replace nunit20 with nunit24.
+
+2008-11-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile: Don't build mono-file-formats.*, mono-tools.*
+	* docs/mono-file-formats.config, docs/mono-file-formats.source, 
+	  docs/mono-tools.config, docs/mono-tools.source: Removed (now located 
+	  in mono/docs).
+
+2008-11-02  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile (MONO_DIRS): Add Mono.Simd.
+
+2008-10-31  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile: Restructure the *.tree/*.zip rules to support
+	  concurrent builds (`make -jN`).
+
+2008-10-27  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile (DISTFILES): Add mono-file-formats.config.
+
+2008-10-22  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs (svn:ignore): Ignore generated files.
+	* docs/lang-csharp.source: Added; combined .source file for the C#
+	  language specification and error reference.
+	* docs/Makefile: Support lang-csharp.source, mono-file-formats.*, etc.
+	* *.tree/*.zip should be rebuilt when Makefile is changed.
+	* docs/mono-file-formats.config, docs/mono-file-formats.source: Added;
+	  moving file format documentation out from mono-tools.* so that it's
+	  easier to find.
+	* docs/mono-tools.config: Move mdoc(5), mono-config(5) to
+	  mono-file-formats.config.
+	* docs/mono-tools.source, docs/Mono.source, docs/netdocs.source,
+	  docs/Novell.source, docs/nunit-docs.source: Add /monodoc/node
+	  information so that the documentation is inserted into the correct
+	  location.
+	* docs/monodoc.xml: Vastly simplify the default monodoc.xml as
+	  structure can be/has been pushed out into the .source files.  This
+	  should help simplify the life of downstream packagers who wish to
+	  add additional documentation to monodoc.
+	* docs/ecma334.source, docs/cs-errors.source: Remove (replaced with
+	  lang-csharp.source).
+
+2008-10-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile (MONO_DIRS): Add Mono.Data.SqliteClient docs.
+
+2008-10-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile (MONODOC_INSTALL_DIR): Prefix path with $(DESTDIR) so 
+	  that it installs properly under the buildbot.
+
+2008-10-18  Raja R Harinath  <harinath@hurrynot.org>
+
+	* docs/Makefile (DISTFILES): Don't use 'find' to list files.
+
+2008-10-18  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (net_2_0_SUBDIRS): Add 'docs'.
+	* docs/Makefile: Build documentation only in the net_2_0 profile.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile: Add install/uninstall support.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* docs/Makefile: Assemble documentation.
+	* docs/cs-errors.config: Update to refer to correct directory.
+	* docs/mono-tools.config: Man pages are in mono/man now...
+
+2008-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* README: Update after the profile changes.
+
+	* Makefile */Makefile build/profiles/*.make: Rename the 'default'
+	profile to 'net_1_1'.
+
 2008-05-14  Marek Safar  <marek.safar@gmail.com>
 
 	* Makefile: Enabled more tests.

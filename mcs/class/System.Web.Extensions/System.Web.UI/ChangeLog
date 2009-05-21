@@ -1,3 +1,27 @@
+2009-01-26  Marek Habersack  <mhabersack@novell.com>
+
+	* ScriptManager.cs: before registering script service reference
+	check if the service type is decorated with the [ScriptService]
+	custom attribute. Only such service types can be called from
+	client JavaScript.
+
+2008-10-02  Marek Habersack  <mhabersack@novell.com>
+
+	* ScriptManager.cs: reverting revision 114552 since the real bug
+	was somewhere else. The correct fix is to make sure UpdatePanels
+	which output something _or_ have been named in the POST request as
+	requiring a refresh are marked as such. Only in that situation
+	HasBeenRendered returns true (as it should for those panels)
+	Cosmetical output change - the hidden fields are output after the
+	update panels contents is sent in an async request. It makes the
+	async response look similar to the MS.NET's one but, more
+	importantly, makes debugging easier.
+
+2008-09-23  Marek Habersack  <mhabersack@novell.com>
+
+	* ScriptManager.cs: CultureInfoSerializer no longer derives from
+	the obsolete LazyDictionary.
+
 2008-09-01  Marek Habersack  <mhabersack@novell.com>
 
 	* UpdatePanel.cs: if the writer passed to RenderChildren is not

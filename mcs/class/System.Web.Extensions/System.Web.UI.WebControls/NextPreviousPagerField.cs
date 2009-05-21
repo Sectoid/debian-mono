@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2008 Novell, Inc
 //
 
 //
@@ -54,22 +54,23 @@ namespace System.Web.UI.WebControls
 			base.CopyProperties (newField);
 
 			NextPreviousPagerField field = newField as NextPreviousPagerField;
-			if (field != null) {
-				field.ButtonCssClass = ButtonCssClass;
-				field.ButtonType = ButtonType;
-				field.FirstPageImageUrl = FirstPageImageUrl;
-				field.FirstPageText = FirstPageText;
-				field.LastPageImageUrl = LastPageImageUrl;
-				field.LastPageText = LastPageText;
-				field.NextPageImageUrl = NextPageImageUrl;
-				field.NextPageText = NextPageText;
-				field.PreviousPageImageUrl = PreviousPageImageUrl;
-				field.PreviousPageText = PreviousPageText;
-				field.ShowFirstPageButton = ShowFirstPageButton;
-				field.ShowLastPageButton = ShowLastPageButton;
-				field.ShowNextPageButton = ShowNextPageButton;
-				field.ShowPreviousPageButton = ShowPreviousPageButton;
-			}
+			if (field == null)
+				return;
+			
+			field.ButtonCssClass = ButtonCssClass;
+			field.ButtonType = ButtonType;
+			field.FirstPageImageUrl = FirstPageImageUrl;
+			field.FirstPageText = FirstPageText;
+			field.LastPageImageUrl = LastPageImageUrl;
+			field.LastPageText = LastPageText;
+			field.NextPageImageUrl = NextPageImageUrl;
+			field.NextPageText = NextPageText;
+			field.PreviousPageImageUrl = PreviousPageImageUrl;
+			field.PreviousPageText = PreviousPageText;
+			field.ShowFirstPageButton = ShowFirstPageButton;
+			field.ShowLastPageButton = ShowLastPageButton;
+			field.ShowNextPageButton = ShowNextPageButton;
+			field.ShowPreviousPageButton = ShowPreviousPageButton;
 		}
 
 		// What's the fieldIndex used for?
@@ -80,37 +81,9 @@ namespace System.Web.UI.WebControls
 			_totalRowCount = totalRowCount;
 			_fieldIndex = fieldIndex;
 
-			bool queryMode = !String.IsNullOrEmpty (DataPager.QueryStringField);
 			bool setPagePropertiesNeeded = false;
-			
-			if (queryMode && !QueryStringHandled) {
-				QueryStringHandled = true;
-
-				// We need to calculate the new start index since it is probably out
-				// of date because the GET parameter with the page number hasn't
-				// been processed yet
-				int pageNumber = -1;
-				try {
-					pageNumber = Int32.Parse (QueryStringValue);
-				} catch {
-					// ignore
-				}
-
-				if (pageNumber >= 0) {
-					pageNumber--; // we're zero-based since we're calculating
-						      // the offset/index
-					if (pageNumber >= 0) {
-						// zero-based calculation again
-						int pageCount = (_totalRowCount - 1) / _maximumRows; 
-						if (pageNumber <= pageCount) {
-							_startRowIndex = pageNumber * _maximumRows;
-							setPagePropertiesNeeded = true;
-						}
-					}
-				}
-			}
-			
-			bool enablePrevFirst = _startRowIndex > _maximumRows;
+			bool queryMode = GetQueryModeStartRowIndex (_totalRowCount, _maximumRows, ref _startRowIndex, ref setPagePropertiesNeeded);
+			bool enablePrevFirst = _startRowIndex >= _maximumRows;
 			bool enableNextLast = (_startRowIndex + _maximumRows) < _totalRowCount;
 			bool addNonBreakingSpace = RenderNonBreakingSpacesBetweenControls;
 
@@ -119,6 +92,13 @@ namespace System.Web.UI.WebControls
 					      queryMode, enablePrevFirst, addNonBreakingSpace);
 			
 			int newPageNum = -1;
+			if (ShowPreviousPageButton) {
+				if (queryMode)
+					newPageNum = (_startRowIndex / _maximumRows) - 1;
+				
+				CreateButton (container, DataControlCommands.PreviousPageCommandArgument, PreviousPageText, PreviousPageImageUrl, newPageNum,
+					      queryMode, enablePrevFirst, addNonBreakingSpace);
+			}
 			
 			if (ShowNextPageButton) {
 				if (queryMode)
@@ -139,20 +119,12 @@ namespace System.Web.UI.WebControls
 					      queryMode, enableNextLast, addNonBreakingSpace);
 			}
 			
-			if (ShowPreviousPageButton) {
-				if (queryMode)
-					newPageNum = (_startRowIndex / _maximumRows) - 1;
-				
-				CreateButton (container, DataControlCommands.PreviousPageCommandArgument, PreviousPageText, PreviousPageImageUrl, newPageNum,
-					      queryMode, enablePrevFirst, addNonBreakingSpace);
-			}
-			
 			if (setPagePropertiesNeeded)
 				DataPager.SetPageProperties (_startRowIndex, _maximumRows, true);
 		}
 
-		void CreateButton (DataPagerFieldItem container, string commandName, string text, string imageUrl, int pageNum, bool queryMode,
-				   bool enabled, bool addNonBreakingSpace)
+		void CreateButton (DataPagerFieldItem container, string commandName, string text, string imageUrl, int pageNum,
+				   bool queryMode, bool enabled, bool addNonBreakingSpace)
 		{
 			WebControl ctl = null;
 			
@@ -164,7 +136,6 @@ namespace System.Web.UI.WebControls
 				h.Enabled = enabled;
 				h.NavigateUrl = GetQueryStringNavigateUrl (pageNum);
 				h.CssClass = ButtonCssClass;
-
 				ctl = h;
 			} else {
 				if (!enabled && RenderDisabledButtonsAsLabels) {
@@ -174,24 +145,30 @@ namespace System.Web.UI.WebControls
 				} else {
 					switch (ButtonType) {
 						case ButtonType.Button:
-							ctl = new Button ();
+							Button btn = new Button ();
+							btn.CommandName = commandName;
+							btn.Text = text;
+							ctl = btn;
 							break;
 
 						case ButtonType.Link:
-							ctl = new LinkButton ();
+							LinkButton lbtn = new LinkButton ();
+							lbtn.CommandName = commandName;
+							lbtn.Text = text;
+							ctl = lbtn;
 							break;
 
 						case ButtonType.Image:
-							ImageButton btn = new ImageButton ();
-							btn.ImageUrl = imageUrl;
-							btn.AlternateText = text;
-							ctl = btn;
+							ImageButton ibtn = new ImageButton ();
+							ibtn.CommandName = commandName;
+							ibtn.ImageUrl = imageUrl;
+							ibtn.AlternateText = text;
+							ctl = ibtn;
 							break;
 					}
 
 					if (ctl != null) {
 						ctl.Enabled = enabled;
-						((Button)ctl).CommandName = commandName;
 						ctl.CssClass = ButtonCssClass;
 					}
 				}
@@ -290,9 +267,9 @@ namespace System.Web.UI.WebControls
 			int newStartIndex = -1;
 			int pageSize = DataPager.PageSize;
 			
-			if (String.Compare (commandName, DataControlCommands.FirstPageCommandArgument, StringComparison.OrdinalIgnoreCase) == 0) {
+			if (String.Compare (commandName, DataControlCommands.FirstPageCommandArgument, StringComparison.OrdinalIgnoreCase) == 0)
 				newStartIndex = 0;
-			} else if (String.Compare (commandName, DataControlCommands.LastPageCommandArgument, StringComparison.OrdinalIgnoreCase) == 0) {
+			else if (String.Compare (commandName, DataControlCommands.LastPageCommandArgument, StringComparison.OrdinalIgnoreCase) == 0) {
 				int lastPageMod = _totalRowCount % pageSize;
 				if (lastPageMod == 0)
 					newStartIndex = _totalRowCount - pageSize;

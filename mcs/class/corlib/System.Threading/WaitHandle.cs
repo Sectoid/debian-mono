@@ -266,30 +266,42 @@ namespace System.Threading
 			}
 		}
 
-		[MonoTODO]
 		public static bool SignalAndWait (WaitHandle toSignal,
 						  WaitHandle toWaitOn)
 		{
-			throw new NotImplementedException ();
+			return SignalAndWait (toSignal, toWaitOn, -1, false);
 		}
 		
-		[MonoTODO]
 		public static bool SignalAndWait (WaitHandle toSignal,
 						  WaitHandle toWaitOn,
 						  int millisecondsTimeout,
 						  bool exitContext)
 		{
-			throw new NotImplementedException ();
+			if (toSignal == null)
+				throw new ArgumentNullException ("toSignal");
+			if (toWaitOn == null)
+				throw new ArgumentNullException ("toWaitOn");
+
+			if (millisecondsTimeout < -1)
+				throw new ArgumentOutOfRangeException ("millisecondsTimeout");
+
+			return SignalAndWait_Internal (toSignal.Handle, toWaitOn.Handle, millisecondsTimeout, exitContext);
 		}
 		
-		[MonoTODO]
 		public static bool SignalAndWait (WaitHandle toSignal,
 						  WaitHandle toWaitOn,
 						  TimeSpan timeout,
 						  bool exitContext)
 		{
-			throw new NotImplementedException ();
+			double ms = timeout.TotalMilliseconds;
+			if (ms > Int32.MaxValue)
+				throw new ArgumentOutOfRangeException ("timeout");
+
+			return SignalAndWait (toSignal, toWaitOn, Convert.ToInt32 (ms), false);
 		}
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		static extern bool SignalAndWait_Internal (IntPtr toSignal, IntPtr toWaitOn, int ms, bool exitContext);
 
 		public virtual bool WaitOne()
 		{
@@ -321,6 +333,11 @@ namespace System.Threading
 			}
 		}
 
+		public virtual bool WaitOne (int millisecondsTimeout)
+		{
+			return WaitOne (millisecondsTimeout, false);
+		}
+
 		public virtual bool WaitOne(TimeSpan timeout, bool exitContext)
 		{
 			CheckDisposed ();
@@ -348,6 +365,24 @@ namespace System.Threading
 			if (disposed || safe_wait_handle == null)
 				throw new ObjectDisposedException (GetType ().FullName);
 		}
+
+		public static bool WaitAll(WaitHandle[] waitHandles, int millisecondsTimeout)
+		{
+			CheckArray (waitHandles, true);
+			return WaitAll_internal (waitHandles, millisecondsTimeout, false);
+		}
+
+		public static bool WaitAll(WaitHandle[] waitHandles, TimeSpan timeout)
+		{
+			CheckArray (waitHandles, true);
+			long ms = (long) timeout.TotalMilliseconds;
+			
+			if (ms < -1 || ms > Int32.MaxValue)
+				throw new ArgumentOutOfRangeException ("timeout");
+
+			return (WaitAll_internal (waitHandles, (int) ms, false));
+		}
+		
 #else
 		private IntPtr os_handle = InvalidHandle;
 		

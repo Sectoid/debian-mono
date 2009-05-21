@@ -253,7 +253,7 @@ namespace System.Web.Security
 				return FormsAuthenticationTicket.FromByteArray (bytes);
 
 #if NET_2_0
-			MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetSection (machineKeyConfigPath);
+			MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetWebApplicationSection (machineKeyConfigPath);
 #else
 			MachineKeyConfig config = HttpContext.GetAppConfig (machineKeyConfigPath) as MachineKeyConfig;
 #endif
@@ -349,7 +349,7 @@ namespace System.Web.Security
 
 			byte [] result = ticket_bytes;
 #if NET_2_0
-			MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetSection (machineKeyConfigPath);
+			MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetWebApplicationSection (machineKeyConfigPath);
 #else
 			MachineKeyConfig config = HttpContext.GetAppConfig (machineKeyConfigPath) as MachineKeyConfig;
 #endif
@@ -720,13 +720,13 @@ namespace System.Web.Security
 			Redirect (LoginUrl + "?" + extraQueryString);
 		}
 
-		private static void Redirect (string url)
+		static void Redirect (string url)
 		{
 			HttpContext.Current.Response.Redirect (url);
 		}
 #endif
 
-		private static void Redirect (string url, bool end)
+		static void Redirect (string url, bool end)
 		{
 			HttpContext.Current.Response.Redirect (url, end);
 		}

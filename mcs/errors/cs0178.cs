@@ -1,7 +1,5 @@
-// cs0178.cs: Invalid rank specifier: expected `,' or `]'
-// Line :
-
-using System;
+// CS0178: Invalid rank specifier: expected `,' or `]'
+// Line: 8
 
 public class Blah {
 	

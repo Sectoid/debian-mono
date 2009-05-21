@@ -77,7 +77,7 @@ namespace System.Windows.Forms {
 			#region ToolTipWindow Class Local Variables
 			private Control associated_control;
 			#endregion	// ToolTipWindow Class Local Variables
-
+			
 			#region ToolTipWindow Class Constructor
 			internal ToolTipWindow() {
 				Visible = false;
@@ -86,6 +86,11 @@ namespace System.Windows.Forms {
 				BackColor = ThemeEngine.Current.ColorInfo;
 
 				VisibleChanged += new EventHandler(ToolTipWindow_VisibleChanged);
+
+#if NET_2_0
+				// UIA Framework: Used to generate UnPopup
+				VisibleChanged += new EventHandler (OnUIAToolTip_VisibleChanged);
+#endif
 
 				SetStyle (ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
 				SetStyle (ControlStyles.ResizeRedraw, true);
@@ -174,6 +179,24 @@ namespace System.Windows.Forms {
 					XplatUI.SetTopmost(control.window.Handle, false);
 				}
 			}
+#if NET_2_0
+
+			// UIA Framework
+			private void OnUIAToolTip_VisibleChanged (object sender, EventArgs e)
+			{
+				if (Visible == false) 
+					OnUnPopup (new PopupEventArgs (associated_control, associated_control, false, Size.Empty));
+			}
+
+			private void OnUnPopup (PopupEventArgs e)
+			{
+				PopupEventHandler eh = (PopupEventHandler) (Events [UnPopupEvent]);
+				if (eh != null)
+					eh (this, e);
+			}
+
+#endif
+
 			#endregion	// ToolTipWindow Class Protected Instance Methods
 
 			#region Internal Properties
@@ -249,6 +272,11 @@ namespace System.Windows.Forms {
 			#region Internal Events
 			static object DrawEvent = new object ();
 			static object PopupEvent = new object ();
+	
+#if NET_2_0
+			// UIA Framework
+			static object UnPopupEvent = new object ();
+#endif
 
 			public event DrawToolTipEventHandler Draw {
 				add { Events.AddHandler (DrawEvent, value); }
@@ -259,6 +287,13 @@ namespace System.Windows.Forms {
 				add { Events.AddHandler (PopupEvent, value); }
 				remove { Events.RemoveHandler (PopupEvent, value); }
 			}
+
+#if NET_2_0
+			internal event PopupEventHandler UnPopup {
+				add { Events.AddHandler (UnPopupEvent, value); }
+				remove { Events.RemoveHandler (UnPopupEvent, value); }
+			}
+#endif
 			#endregion
 		}
 		#endregion	// ToolTipWindow Class
@@ -290,10 +325,65 @@ namespace System.Windows.Forms {
 			tooltip_window.Draw += new DrawToolTipEventHandler (tooltip_window_Draw);
 			tooltip_window.Popup += new PopupEventHandler (tooltip_window_Popup);
 
+#if NET_2_0
+			// UIA Framework: Static event handlers
+			tooltip_window.UnPopup += delegate (object sender, PopupEventArgs args) {
+				OnUnPopup (args);
+			};
+			UnPopup += new PopupEventHandler (OnUIAUnPopup);
+#endif
+
 			timer = new Timer();
 			timer.Enabled = false;
 			timer.Tick +=new EventHandler(timer_Tick);
+
 		}
+
+
+		#region UIA Framework: Events, Delegates and Methods
+#if NET_2_0
+		// NOTE: 
+		//	We are using Reflection to add/remove internal events.
+		//      Class ToolTipListener uses the events.
+		//
+		//	- UIAUnPopup. Event used to generate ChildRemoved in ToolTip
+		//	- UIAToolTipHookUp. Event used to keep track of associated controls
+		//	- UIAToolTipUnhookUp. Event used to remove track of associated controls
+		static object UnPopupEvent = new object ();
+
+		internal event PopupEventHandler UnPopup {
+			add { Events.AddHandler (UnPopupEvent, value); }
+			remove { Events.RemoveHandler (UnPopupEvent, value); }
+		}
+
+		internal static event PopupEventHandler UIAUnPopup;
+		internal static event ControlEventHandler UIAToolTipHookUp;
+		internal static event ControlEventHandler UIAToolTipUnhookUp;
+
+		internal Rectangle UIAToolTipRectangle {
+			get { return tooltip_window.Bounds; }
+		}
+
+		internal static void OnUIAUnPopup (object sender, PopupEventArgs args)
+		{
+			if (UIAUnPopup != null)
+				UIAUnPopup (sender, args);
+		}
+
+		internal static void OnUIAToolTipHookUp (object sender, ControlEventArgs args)
+		{
+			if (UIAToolTipHookUp != null)
+				UIAToolTipHookUp (sender, args);
+		}
+
+		internal static void OnUIAToolTipUnhookUp (object sender, ControlEventArgs args)
+		{
+			if (UIAToolTipUnhookUp != null)
+				UIAToolTipUnhookUp (sender, args);
+		}
+
+#endif 
+		#endregion
 
 		public ToolTip(System.ComponentModel.IContainer cont) : this() {
 			cont.Add (this);
@@ -504,10 +594,20 @@ namespace System.Windows.Forms {
 
 		public void RemoveAll() {
 			tooltip_strings.Clear();
+#if NET_2_0
+			//UIA Framework: ToolTip isn't associated anymore
+			foreach (Control control in controls)
+				OnUIAToolTipUnhookUp (this, new ControlEventArgs (control));
+#endif
+
 			controls.Clear();
 		}
 
 		public void SetToolTip(Control control, string caption) {
+#if NET_2_0
+			// UIA Framework
+			OnUIAToolTipHookUp (this, new ControlEventArgs (control));
+#endif
 			tooltip_strings[control] = caption;
 
 			// no need for duplicates
@@ -657,6 +757,11 @@ namespace System.Windows.Forms {
 
 				tooltip_strings.Clear();
 				
+#if NET_2_0
+				//UIA Framework: ToolTip isn't associated anymore
+				foreach (Control control in controls)
+					OnUIAToolTipUnhookUp (this, new ControlEventArgs (control));
+#endif
 				controls.Clear();
 			}
 		}
@@ -761,6 +866,10 @@ namespace System.Windows.Forms {
 			if (!is_active)
 				return;
 
+			// Display tooltips only for the controls in the active form
+			if (control.FindForm () != Form.ActiveForm)
+				return;
+
 			if (!show_always) {
 				IContainerControl cc = last_control.GetContainerControl ();
 				if ((cc == null) || (cc.ActiveControl == null)) {
@@ -771,7 +880,7 @@ namespace System.Windows.Forms {
 			string text = (string)tooltip_strings[control];
 			if (text != null && text.Length > 0) {
 				if (active_control == null) {
-					timer.Interval = initial_delay;
+					timer.Interval = Math.Max (initial_delay, 1);
 				} else {
 					timer.Interval = Math.Max (re_show_delay, 1);
 				}
@@ -819,7 +928,7 @@ namespace System.Windows.Forms {
 #endif
 				ThemeEngine.Current.DrawToolTip (e.Graphics, e.Bounds, tooltip_window);
 		}
-
+		
 		private bool MouseInControl (Control control, bool fuzzy) {
 			Point	m;
 			Point	c;
@@ -872,6 +981,7 @@ namespace System.Windows.Forms {
 		}
 
 #if NET_2_0
+/*
 		private void Hide (Control sender)
 		{
 			timer.Stop();
@@ -884,6 +994,7 @@ namespace System.Windows.Forms {
 			if (last_control == sender)
 				last_control = null;
 		}
+*/
 #endif
 
 		private void control_MouseMove(object sender, MouseEventArgs e) {
@@ -906,6 +1017,15 @@ namespace System.Windows.Forms {
 			if (eh != null)
 				eh (this, e);
 		}
+
+#if NET_2_0
+		internal void OnUnPopup (PopupEventArgs e)
+		{
+			PopupEventHandler eh = (PopupEventHandler) (Events [UnPopupEvent]);
+			if (eh != null)
+				eh (this, e);
+		}
+#endif
 		
 		internal bool Visible {
 			get { return tooltip_window.Visible; }

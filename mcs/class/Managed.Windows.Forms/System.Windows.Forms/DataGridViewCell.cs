@@ -21,6 +21,7 @@
 //
 // Author:
 //	Pedro Martínez Juliá <pedromj@gmail.com>
+//	Ivan N. Zlatev  <contact@i-nz.net>
 //
 
 
@@ -50,12 +51,13 @@ namespace System.Windows.Forms {
 		private DataGridViewCellStyle style;
 		private object tag;
 		private string toolTipText;
-		internal object valuex;
-		internal Type valueType;
+		private object valuex;
+		private Type valueType;
 
 		protected DataGridViewCell ()
 		{
 			columnIndex = -1;
+			dataGridViewOwner = null;
 			errorText = string.Empty;
 		}
 
@@ -161,19 +163,9 @@ namespace System.Windows.Forms {
 			get {
 				if (DataGridView == null)
 					return null;
-					
+				
 				DataGridViewCellStyle style = InheritedStyle;
-
-				TypeConverter source = null;
-				TypeConverter dest = null;
-				
-				if (ValueType != null)
-					source = TypeDescriptor.GetConverter (ValueType);
-					
-				if (FormattedValueType != null)
-					dest = TypeDescriptor.GetConverter (FormattedValueType);
-				
-				return GetFormattedValue (Value, RowIndex, ref style, source, dest, DataGridViewDataErrorContexts.Formatting);
+				return GetFormattedValue (Value, RowIndex, ref style, null, null, DataGridViewDataErrorContexts.Formatting);
 			}
 		}
 
@@ -324,10 +316,11 @@ namespace System.Windows.Forms {
 				return false;
 			}
 			set {
-				if (value != ((State & DataGridViewElementStates.Selected) != 0)) {
-					SetState(State ^ DataGridViewElementStates.Selected);
-				}
+				bool changed = selected != value;
 				selected = value;
+
+				if (value != ((State & DataGridViewElementStates.Selected) != 0))
+					SetState(State ^ DataGridViewElementStates.Selected);
 				
 				// If our row is selected, unselect it and select
 				// the first cell in it that isn't us
@@ -339,6 +332,9 @@ namespace System.Windows.Forms {
 					else if (OwningRow.Cells.Count > 1)
 						OwningRow.Cells[1].Selected = true;
 				}
+
+				if (changed && DataGridView != null && DataGridView.IsHandleCreated)
+					DataGridView.Invalidate ();
 			}
 		}
 
@@ -420,6 +416,12 @@ namespace System.Windows.Forms {
 			}
 		}
 
+		internal override void SetState (DataGridViewElementStates state) {
+			base.SetState (state);
+			if (DataGridView != null)
+				DataGridView.OnCellStateChangedInternal (new DataGridViewCellStateChangedEventArgs (this, state));
+		}
+
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
 		public virtual DataGridViewAdvancedBorderStyle AdjustCellBorderStyle (DataGridViewAdvancedBorderStyle dataGridViewAdvancedBorderStyleInput,	DataGridViewAdvancedBorderStyle dataGridViewAdvancedBorderStylePlaceholder, bool singleVerticalBorderAdded, bool singleHorizontalBorderAdded, bool isFirstDisplayedColumn, bool isFirstDisplayedRow) {
 			return dataGridViewAdvancedBorderStyleInput;
@@ -469,11 +471,16 @@ namespace System.Windows.Forms {
 			if (rowIndex < 0 || rowIndex >= DataGridView.RowCount)
 				throw new ArgumentOutOfRangeException ("rowIndex", "Specified argument was out of the range of valid values.");
 			
+			// If we are in edit mode, this returns the value of the editing control
+			// If we aren't in edit mode, return the cell's value
+			// Basically, return what the user is currently seeing
 			if (IsInEditMode) {
-				IDataGridViewEditingControl ctrl = DataGridView.EditingControl as IDataGridViewEditingControl;
-				return ctrl.GetEditingControlFormattedValue (context);
+				if (DataGridView.EditingControl != null)
+					return (DataGridView.EditingControl as IDataGridViewEditingControl).GetEditingControlFormattedValue (context);
+				else
+					return (this as IDataGridViewEditingCell).GetEditingCellFormattedValue (context);
 			}
-			
+				
 			DataGridViewCellStyle style = InheritedStyle;
 			
 			return GetFormattedValue (GetValue (rowIndex), rowIndex, ref style, null, null, context);
@@ -675,31 +682,32 @@ namespace System.Windows.Forms {
 				throw new ArgumentException ("formattedValue is null.");
 			if (ValueType == null)
 				throw new FormatException ("valuetype is null");
-			if (formattedValue.GetType () != FormattedValueType)
+			if (!FormattedValueType.IsAssignableFrom (formattedValue.GetType ()))
 				throw new ArgumentException ("formattedValue is not of formattedValueType.");
 			
-			// If formatted is null, return raw null value
-			if (formattedValue == cellStyle.NullValue)
-				return cellStyle.DataSourceNullValue;
-				
-			// Convert the formatted value to a string
-			string s = formattedValueTypeConverter.ConvertToString (formattedValue);
-			
-			// Convert the string to the raw value
-			object o = valueTypeConverter.ConvertFromString (s);
-			
-			return o;
+			if (formattedValueTypeConverter == null)
+				formattedValueTypeConverter = FormattedValueTypeConverter;
+			if (valueTypeConverter == null)
+				valueTypeConverter = ValueTypeConverter;
+
+			if (valueTypeConverter != null && valueTypeConverter.CanConvertFrom (FormattedValueType))
+				return valueTypeConverter.ConvertFrom (formattedValue);
+			if (formattedValueTypeConverter != null && formattedValueTypeConverter.CanConvertTo (ValueType))
+				return formattedValueTypeConverter.ConvertTo (formattedValue, ValueType);
+			return Convert.ChangeType (formattedValue, ValueType);
 		}
 
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
 		public virtual void PositionEditingControl (bool setLocation, bool setSize, Rectangle cellBounds, Rectangle cellClip, DataGridViewCellStyle cellStyle, bool singleVerticalBorderAdded, bool singleHorizontalBorderAdded, bool isFirstDisplayedColumn, bool isFirstDisplayedRow)
 		{
-			if (setLocation && setSize)
-				DataGridView.EditingControl.Bounds = cellBounds;
-			else if (setLocation)
-				DataGridView.EditingControl.Location = cellBounds.Location;	
-			else if (setSize)
-				DataGridView.EditingControl.Size = cellBounds.Size;
+			if (DataGridView.EditingControl != null) {
+				if (setLocation && setSize)
+					DataGridView.EditingControl.Bounds = cellBounds;
+				else if (setLocation)
+					DataGridView.EditingControl.Location = cellBounds.Location;	
+				else if (setSize)
+					DataGridView.EditingControl.Size = cellBounds.Size;
+			}
 		}
 
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
@@ -857,7 +865,7 @@ namespace System.Windows.Forms {
 				
 			if (rowIndex < 0 || rowIndex >= DataGridView.RowCount)
 				throw new ArgumentOutOfRangeException ("rowIndex");
-				
+
 			// Give the user a chance to custom format
 			if (!(this is DataGridViewRowHeaderCell)) {
 				DataGridViewCellFormattingEventArgs e = new DataGridViewCellFormattingEventArgs (ColumnIndex, rowIndex, value, FormattedValueType, cellStyle);
@@ -870,22 +878,22 @@ namespace System.Windows.Forms {
 				value = e.Value;
 			}
 			
-			// Try to use Format/FormatProvider
-			IFormattable formattable = value as IFormattable;
+			if (FormattedValueType == typeof(string) && value is IFormattable && !String.IsNullOrEmpty (cellStyle.Format))
+				return ((IFormattable) value).ToString (cellStyle.Format, cellStyle.FormatProvider);
+			if (value != null && FormattedValueType.IsAssignableFrom (value.GetType()))
+				return value;
 
-			if (formattable != null && cellStyle != null)
-				return formattable.ToString (cellStyle.Format, cellStyle.FormatProvider);
-			
-			// Try to use the value type coverter
+			if (formattedValueTypeConverter == null)
+				formattedValueTypeConverter = FormattedValueTypeConverter;
+			if (valueTypeConverter == null)
+				valueTypeConverter = ValueTypeConverter;
+
 			if (valueTypeConverter != null && valueTypeConverter.CanConvertTo (FormattedValueType))
 				return valueTypeConverter.ConvertTo (value, FormattedValueType);
-			
-			// Try to use the formatted value type coverter
 			if (formattedValueTypeConverter != null && formattedValueTypeConverter.CanConvertFrom (ValueType))
 				return formattedValueTypeConverter.ConvertFrom (value);
-			
-			// Now what? Give up?
-			return value;
+
+			return Convert.ChangeType (value, FormattedValueType);
 		}
 
 		protected virtual Size GetPreferredSize (Graphics graphics, DataGridViewCellStyle cellStyle, int rowIndex, Size constraintSize)
@@ -902,11 +910,48 @@ namespace System.Windows.Forms {
 		}
 
 		protected virtual object GetValue (int rowIndex) {
-			
 			if (DataGridView != null && (RowIndex < 0 || RowIndex >= DataGridView.Rows.Count))
 				throw new ArgumentOutOfRangeException ("rowIndex", "Specified argument was out of the range of valid values.");
 				
-			return valuex;
+			if (DataProperty != null)
+				return DataProperty.GetValue (OwningRow.DataBoundItem);
+			
+			if (valuex != null)
+				return valuex;
+
+			DataGridViewCellValueEventArgs dgvcvea = new DataGridViewCellValueEventArgs (columnIndex, rowIndex);
+			if (DataGridView != null)
+				DataGridView.OnCellValueNeeded (dgvcvea);
+			return dgvcvea.Value;
+		}
+		
+		private PropertyDescriptor DataProperty {
+			get {
+				if (OwningColumn != null && !String.IsNullOrEmpty (OwningColumn.DataPropertyName) && 
+				    OwningRow != null && OwningRow.DataBoundItem != null)
+					return TypeDescriptor.GetProperties (OwningRow.DataBoundItem)[OwningColumn.DataPropertyName];
+				return null;
+			}
+		}
+
+		private TypeConverter FormattedValueTypeConverter {
+			get {
+				if (FormattedValueType != null)
+					return TypeDescriptor.GetConverter (FormattedValueType);
+				return null;
+			}
+		}
+
+		private TypeConverter ValueTypeConverter {
+			get {
+				if (DataProperty != null && DataProperty.Converter != null)
+					return DataProperty.Converter;
+				if (Value != null)
+					return TypeDescriptor.GetConverter (Value);
+				if (ValueType != null)
+					return TypeDescriptor.GetConverter (ValueType);
+				return null;
+			}
 		}
 
 		protected virtual bool KeyDownUnsharesRow (KeyEventArgs e, int rowIndex)
@@ -1097,7 +1142,7 @@ namespace System.Windows.Forms {
 			if ((paintParts & DataGridViewPaintParts.ContentForeground) == DataGridViewPaintParts.ContentForeground)
 				PaintPartContent (graphics, cellBounds, rowIndex, cellState, cellStyle, formattedValue);
 			if ((paintParts & DataGridViewPaintParts.Border) == DataGridViewPaintParts.Border)
-				PaintPartBorder (graphics, cellBounds, rowIndex);
+				PaintBorder (graphics, clipBounds, cellBounds, cellStyle, advancedBorderStyle);
 			if ((paintParts & DataGridViewPaintParts.Focus) == DataGridViewPaintParts.Focus)
 				PaintPartFocus (graphics, cellBounds);
 			if ((paintParts & DataGridViewPaintParts.ErrorIcon) == DataGridViewPaintParts.ErrorIcon)
@@ -1105,92 +1150,54 @@ namespace System.Windows.Forms {
 					PaintErrorIcon (graphics, clipBounds, cellBounds, ErrorText);
 		}
 
-		protected virtual void PaintBorder (Graphics graphics, Rectangle clipBounds, Rectangle bounds, DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle) {
-			Pen pen = new Pen(DataGridView.GridColor);
-			/*
-			switch (advancedBorderStyle.All) {
-				case DataGridViewAdvancedCellBorderStyle.None:
-					break;
+		protected virtual void PaintBorder (Graphics graphics, Rectangle clipBounds, Rectangle bounds, DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle)
+		{
+			Pen pen = new Pen (DataGridView.GridColor);
+
+			// Paint the left border, if any
+			switch (advancedBorderStyle.Left) {
 				case DataGridViewAdvancedCellBorderStyle.Single:
-					graphics.DrawRectangle(pen, bounds);
+					if (DataGridView.CellBorderStyle != DataGridViewCellBorderStyle.Single)
+						graphics.DrawLine (pen, bounds.X, bounds.Y, bounds.X, bounds.Y + bounds.Height - 1);
 					break;
 				case DataGridViewAdvancedCellBorderStyle.Inset:
-					bounds.X += 1;
-					bounds.Y += 1;
-					bounds.Width -= 2;
-					bounds.Height -= 2;
-					graphics.DrawRectangle(pen, bounds);
+					graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X, bounds.Y + bounds.Height - 1);
 					break;
 				case DataGridViewAdvancedCellBorderStyle.InsetDouble:
 				case DataGridViewAdvancedCellBorderStyle.Outset:
 				case DataGridViewAdvancedCellBorderStyle.OutsetDouble:
-				case DataGridViewAdvancedCellBorderStyle.OutsetPartial:
+					graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X, bounds.Y + bounds.Height - 1);
+					graphics.DrawLine(pen, bounds.X + 2, bounds.Y, bounds.X + 2, bounds.Y + bounds.Height - 1);
 					break;
-				case DataGridViewAdvancedCellBorderStyle.NotSet:
-				*/
-					switch (advancedBorderStyle.Left) {
-						case DataGridViewAdvancedCellBorderStyle.None:
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Single:
-							graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X, bounds.Y + bounds.Height - 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Inset:
-							graphics.DrawLine(pen, bounds.X + 2, bounds.Y, bounds.X + 2, bounds.Y + bounds.Height - 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.InsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.Outset:
-						case DataGridViewAdvancedCellBorderStyle.OutsetDouble:
-							graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X, bounds.Y + bounds.Height - 1);
-							graphics.DrawLine(pen, bounds.X + 2, bounds.Y, bounds.X + 2, bounds.Y + bounds.Height - 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.OutsetPartial:
-							break;
-					}
-					switch (advancedBorderStyle.Right) {
-						case DataGridViewAdvancedCellBorderStyle.None:
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Single:
-							graphics.DrawLine(pen, bounds.X + bounds.Width - 1, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Inset:
-							graphics.DrawLine(pen, bounds.X + bounds.Width + 1, bounds.Y, bounds.X + bounds.Width - 3, bounds.Y + bounds.Height - 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.InsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.Outset:
-						case DataGridViewAdvancedCellBorderStyle.OutsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.OutsetPartial:
-							break;
-					}
-					switch (advancedBorderStyle.Top) {
-						case DataGridViewAdvancedCellBorderStyle.None:
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Single:
-							graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Inset:
-							graphics.DrawLine(pen, bounds.X, bounds.Y + 2, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height + 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.InsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.Outset:
-						case DataGridViewAdvancedCellBorderStyle.OutsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.OutsetPartial:
-							break;
-					}
-					switch (advancedBorderStyle.Bottom) {
-						case DataGridViewAdvancedCellBorderStyle.None:
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Single:
-							graphics.DrawLine(pen, bounds.X, bounds.Y + bounds.Height - 1, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1);
-							break;
-						case DataGridViewAdvancedCellBorderStyle.Inset:
-						case DataGridViewAdvancedCellBorderStyle.InsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.Outset:
-						case DataGridViewAdvancedCellBorderStyle.OutsetDouble:
-						case DataGridViewAdvancedCellBorderStyle.OutsetPartial:
-							break;
-					}
-			//		break;
-			//}
+			}
+			
+			// Paint the right border, if any
+			switch (advancedBorderStyle.Right) {
+				case DataGridViewAdvancedCellBorderStyle.Single:
+					graphics.DrawLine(pen, bounds.X + bounds.Width - 1, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1);
+					break;
+				case DataGridViewAdvancedCellBorderStyle.Inset:
+					graphics.DrawLine(pen, bounds.X + bounds.Width, bounds.Y, bounds.X + bounds.Width, bounds.Y + bounds.Height - 1);
+					break;
+			}
+			
+			// Paint the top border, if any
+			switch (advancedBorderStyle.Top) {
+				case DataGridViewAdvancedCellBorderStyle.Single:
+					if (DataGridView.CellBorderStyle != DataGridViewCellBorderStyle.Single)
+						graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y);
+					break;
+				case DataGridViewAdvancedCellBorderStyle.Inset:
+					graphics.DrawLine(pen, bounds.X, bounds.Y, bounds.X + bounds.Width - 1, bounds.Y);
+					break;
+			}
+			
+			// Paint the bottom border, if any
+			switch (advancedBorderStyle.Bottom) {
+				case DataGridViewAdvancedCellBorderStyle.Single:
+					graphics.DrawLine(pen, bounds.X, bounds.Y + bounds.Height - 1, bounds.X + bounds.Width - 1, bounds.Y + bounds.Height - 1);
+					break;
+			}
 		}
 
 		protected virtual void PaintErrorIcon (Graphics graphics, Rectangle clipBounds, Rectangle cellValueBounds, string errorText)
@@ -1223,35 +1230,6 @@ namespace System.Windows.Forms {
 		{
 			return ThemeEngine.Current.ResPool.GetPen (DataGridView.GridColor);
 		}
-		
-		internal virtual void PaintPartBorder (Graphics graphics, Rectangle cellBounds, int rowIndex)
-		{
-			Pen p = GetBorderPen ();
-
-			if (columnIndex == -1) {
-				graphics.DrawLine (p, cellBounds.Left, cellBounds.Top, cellBounds.Left, cellBounds.Bottom - 1);
-				graphics.DrawLine (p, cellBounds.Right - 1, cellBounds.Top, cellBounds.Right - 1, cellBounds.Bottom - 1);
-
-				if (rowIndex == DataGridView.Rows.Count - 1 || rowIndex == -1)
-					graphics.DrawLine (p, cellBounds.Left, cellBounds.Bottom - 1, cellBounds.Right - 1, cellBounds.Bottom - 1);
-				else
-					graphics.DrawLine (p, cellBounds.Left + 3, cellBounds.Bottom - 1, cellBounds.Right - 3, cellBounds.Bottom - 1);
-					
-				if (rowIndex == -1)
-					graphics.DrawLine (p, cellBounds.Left, cellBounds.Top, cellBounds.Right - 1, cellBounds.Top);				
-			} else if (rowIndex == -1) {
-				graphics.DrawLine (p, cellBounds.Left, cellBounds.Bottom - 1, cellBounds.Right - 1, cellBounds.Bottom - 1);
-				graphics.DrawLine (p, cellBounds.Left, cellBounds.Top, cellBounds.Right - 1, cellBounds.Top);
-
-				if (columnIndex == DataGridView.Columns.Count - 1 || columnIndex == -1)
-					graphics.DrawLine (p, cellBounds.Right - 1, cellBounds.Top, cellBounds.Right - 1, cellBounds.Bottom - 1);
-				else
-					graphics.DrawLine (p, cellBounds.Right - 1, cellBounds.Top + 3, cellBounds.Right - 1, cellBounds.Bottom - 3);
-			} else {
-				graphics.DrawLine (p, cellBounds.Right - 1, cellBounds.Top, cellBounds.Right - 1, cellBounds.Bottom - 1);
-				graphics.DrawLine (p, cellBounds.Left, cellBounds.Bottom - 1, cellBounds.Right - 1, cellBounds.Bottom - 1);
-			}
-		}
 
 		internal virtual void PaintPartContent (Graphics graphics, Rectangle cellBounds, int rowIndex, DataGridViewElementStates cellState, DataGridViewCellStyle cellStyle, object formattedValue)
 		{
@@ -1261,7 +1239,8 @@ namespace System.Windows.Forms {
 			Color color = Selected ? cellStyle.SelectionForeColor : cellStyle.ForeColor;
 
 			TextFormatFlags flags = TextFormatFlags.EndEllipsis | TextFormatFlags.VerticalCenter | TextFormatFlags.TextBoxControl;
-
+			flags |= AlignmentToFlags (style.Alignment);
+			
 			cellBounds.Height -= 2;
 			cellBounds.Width -= 2;
 
@@ -1283,7 +1262,7 @@ namespace System.Windows.Forms {
 			if ((cellState & DataGridViewElementStates.Selected) != DataGridViewElementStates.Selected)
 				return;
 
-			if (RowIndex >= 0 && IsInEditMode)
+			if (RowIndex >= 0 && IsInEditMode && EditType != null)
 				return;
 				
 			Color color = cellStyle.SelectionBackColor;
@@ -1315,10 +1294,21 @@ namespace System.Windows.Forms {
 			pea.Paint (pea.ClipBounds, pea.PaintParts);
 		}
 		
-		protected virtual bool SetValue (int rowIndex, object value) {
-			if (valuex != value) {
+		protected virtual bool SetValue (int rowIndex, object value)
+		{
+			object oldValue = this.Value;
+
+			if (DataProperty != null && !DataProperty.IsReadOnly)
+				DataProperty.SetValue (OwningRow.DataBoundItem, value);
+			else
 				valuex = value;
+
+			if (!Object.ReferenceEquals (oldValue, value) || !Object.Equals (oldValue, value)) {
 				RaiseCellValueChanged (new DataGridViewCellEventArgs (ColumnIndex, RowIndex));
+				
+				// Set this dirty flag back to false
+				if (this is IDataGridViewEditingCell)
+					(this as IDataGridViewEditingCell).EditingCellValueChanged = false;
 				
 				if (DataGridView != null)
 					DataGridView.InvalidateCell (this);
@@ -1334,7 +1324,7 @@ namespace System.Windows.Forms {
 			}
 		}
 
-		internal Rectangle InternalErrorIconsBounds {
+		internal virtual Rectangle InternalErrorIconsBounds {
 			get { return GetErrorIconBounds (null, null, -1); }
 		}
 
@@ -1362,6 +1352,70 @@ namespace System.Windows.Forms {
 			if (DataGridView != null) {
 				DataGridView.OnCellErrorTextChanged(args);
 			}
+		}
+
+		internal TextFormatFlags AlignmentToFlags (DataGridViewContentAlignment align)
+		{
+			TextFormatFlags flags = TextFormatFlags.Default;
+
+			switch (align) {
+				case DataGridViewContentAlignment.BottomCenter:
+					flags |= TextFormatFlags.Bottom;
+					flags |= TextFormatFlags.HorizontalCenter;
+					break;
+				case DataGridViewContentAlignment.BottomLeft:
+					flags |= TextFormatFlags.Bottom;
+					break;
+				case DataGridViewContentAlignment.BottomRight:
+					flags |= TextFormatFlags.Bottom;
+					flags |= TextFormatFlags.Right;
+					break;
+				case DataGridViewContentAlignment.MiddleCenter:
+					flags |= TextFormatFlags.VerticalCenter;
+					flags |= TextFormatFlags.HorizontalCenter;
+					break;
+				case DataGridViewContentAlignment.MiddleLeft:
+					flags |= TextFormatFlags.VerticalCenter;
+					break;
+				case DataGridViewContentAlignment.MiddleRight:
+					flags |= TextFormatFlags.VerticalCenter;
+					flags |= TextFormatFlags.Right;
+					break;
+				case DataGridViewContentAlignment.TopLeft:
+					flags |= TextFormatFlags.Top;
+					break;
+				case DataGridViewContentAlignment.TopCenter:
+					flags |= TextFormatFlags.HorizontalCenter;
+					flags |= TextFormatFlags.Top;
+					break;
+				case DataGridViewContentAlignment.TopRight:
+					flags |= TextFormatFlags.Right;
+					flags |= TextFormatFlags.Top;
+					break;
+			}
+
+			return flags;
+		}
+
+		internal Rectangle AlignInRectangle (Rectangle outer, Size inner, DataGridViewContentAlignment align)
+		{
+			int x = 0;
+			int y = 0;
+
+			if (align == DataGridViewContentAlignment.BottomLeft || align == DataGridViewContentAlignment.MiddleLeft || align == DataGridViewContentAlignment.TopLeft)
+				x = outer.X;
+			else if (align == DataGridViewContentAlignment.BottomCenter || align == DataGridViewContentAlignment.MiddleCenter || align == DataGridViewContentAlignment.TopCenter)
+				x = Math.Max (outer.X + ((outer.Width - inner.Width) / 2), outer.Left);
+			else if (align == DataGridViewContentAlignment.BottomRight || align == DataGridViewContentAlignment.MiddleRight || align == DataGridViewContentAlignment.TopRight)
+				x = Math.Max (outer.Right - inner.Width, outer.X);
+			if (align == DataGridViewContentAlignment.TopCenter || align == DataGridViewContentAlignment.TopLeft || align == DataGridViewContentAlignment.TopRight)
+				y = outer.Y;
+			else if (align == DataGridViewContentAlignment.MiddleCenter || align == DataGridViewContentAlignment.MiddleLeft || align == DataGridViewContentAlignment.MiddleRight)
+				y = Math.Max (outer.Y + (outer.Height - inner.Height) / 2, outer.Y);
+			else if (align == DataGridViewContentAlignment.BottomCenter || align == DataGridViewContentAlignment.BottomRight || align == DataGridViewContentAlignment.BottomLeft)
+				y = Math.Max (outer.Bottom - inner.Height, outer.Y);
+
+			return new Rectangle (x, y, Math.Min (inner.Width, outer.Width), Math.Min (inner.Height, outer.Height));
 		}
 
 		[ComVisibleAttribute(true)]

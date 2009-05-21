@@ -67,7 +67,11 @@ namespace System.Security.Cryptography.Xml {
 
 		public XmlDsigExcC14NTransform (bool includeComments, string inclusiveNamespacesPrefixList)
 		{
-			Algorithm = XmlSignature.AlgorithmNamespaces.XmlDsigExcC14NTransform;
+			if (includeComments)
+				Algorithm = XmlSignature.AlgorithmNamespaces.XmlDsigExcC14NWithCommentsTransform;
+			else
+				Algorithm = XmlSignature.AlgorithmNamespaces.XmlDsigExcC14NTransform;
+			this.inclusiveNamespacesPrefixList = inclusiveNamespacesPrefixList;
 			canonicalizer = new XmlCanonicalizer (includeComments, true, PropagatedNamespaces);
 		}
 
@@ -106,6 +110,7 @@ namespace System.Security.Cryptography.Xml {
 #if NET_2_0
 		public override byte[] GetDigestedOutput (HashAlgorithm hash)
 		{
+			// no null check, MS throws a NullReferenceException here
 			return hash.ComputeHash ((Stream) GetOutput ());
 		}
 #endif
@@ -130,21 +135,30 @@ namespace System.Security.Cryptography.Xml {
 		public override void LoadInput (object obj) 
 		{
 			canonicalizer.InclusiveNamespacesPrefixList = InclusiveNamespacesPrefixList;
-			if (obj is Stream) {
-				s = (obj as Stream);
+			// possible input: Stream, XmlDocument, and XmlNodeList
+			Stream stream = (obj as Stream);
+			if (stream != null) {
 				XmlDocument doc = new XmlDocument ();
 				doc.PreserveWhitespace = true;	// REALLY IMPORTANT
 #if NET_1_1
 				doc.XmlResolver = GetResolver ();
 #endif
-				doc.Load (new XmlSignatureStreamReader (
-					new StreamReader ((Stream) obj)));
+				doc.Load (new XmlSignatureStreamReader (new StreamReader (stream)));
 //				doc.Load ((Stream) obj);
 				s = canonicalizer.Canonicalize (doc);
-			} else if (obj is XmlDocument)
-				s = canonicalizer.Canonicalize ((obj as XmlDocument));
-			else if (obj is XmlNodeList)
-				s = canonicalizer.Canonicalize ((obj as XmlNodeList));
+				return;
+			}
+
+			XmlDocument xd = (obj as XmlDocument);
+			if (xd != null) {
+				s = canonicalizer.Canonicalize (xd);
+				return;
+			}
+
+			XmlNodeList nl = (obj as XmlNodeList);
+			if (nl != null) {
+				s = canonicalizer.Canonicalize (nl);
+			}
 #if NET_2_0
 			else
 				throw new ArgumentException ("obj");

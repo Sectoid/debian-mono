@@ -30,6 +30,7 @@ using System.ComponentModel.Design;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms.Theming;
+using System.Windows.Forms.VisualStyles;
 
 namespace System.Windows.Forms {
 #if NET_2_0
@@ -55,10 +56,11 @@ namespace System.Windows.Forms {
 		private bool show_tool_tips;
 		private TabSizeMode size_mode;
 		private bool show_slider = false;
-		private ButtonState right_slider_state;
-		private ButtonState left_slider_state;
+		private PushButtonState right_slider_state = PushButtonState.Normal;
+		private PushButtonState left_slider_state = PushButtonState.Normal;
 		private int slider_pos = 0;
 		TabPage entered_tab_page;
+		bool mouse_down_on_a_tab_page;
 #if NET_2_0
 		private bool rightToLeftLayout;
 #endif		
@@ -211,7 +213,11 @@ namespace System.Windows.Forms {
 		}
 
 		[Localizable(true)]
-		public new Point Padding {
+		public
+#if NET_2_0
+		new
+#endif
+		Point Padding {
 			get { return padding; }
 			set {
 				if (value.X < 0 || value.Y < 0)
@@ -315,7 +321,7 @@ namespace System.Windows.Forms {
 
 				if (new_index != -1) {
 					int le = TabPages[new_index].TabBounds.Right;
-					int re = ThemeEngine.Current.TabControlGetLeftScrollRect (this).Left;
+					int re = LeftScrollButtonArea.Left;
 					if (show_slider && le > re) {
 						int i = 0;
 						for (i = 0; i < new_index - 1; i++) {
@@ -451,12 +457,36 @@ namespace System.Windows.Forms {
 			get { return slider_pos; }
 		}
 
-		internal ButtonState RightSliderState {
+		internal PushButtonState RightSliderState {
 			get { return right_slider_state; }
+			private set {
+				if (right_slider_state == value)
+					return;
+				PushButtonState old_value = right_slider_state;
+				right_slider_state = value;
+				if (NeedsToInvalidateScrollButton (old_value, value))
+					Invalidate (RightScrollButtonArea);
+			}
 		}
 
-		internal ButtonState LeftSliderState {
+		internal PushButtonState LeftSliderState {
 			get { return left_slider_state; }
+			set {
+				if (left_slider_state == value)
+					return;
+				PushButtonState old_value = left_slider_state;
+				left_slider_state = value;
+				if (NeedsToInvalidateScrollButton (old_value, value))
+					Invalidate (LeftScrollButtonArea);
+			}
+		}
+
+		bool NeedsToInvalidateScrollButton (PushButtonState oldState, PushButtonState newState)
+		{
+			if ((oldState == PushButtonState.Hot && newState == PushButtonState.Normal) ||
+				(oldState == PushButtonState.Normal && newState == PushButtonState.Hot))
+				return HasHotElementStyles;
+			return true;
 		}
 
 		internal TabPage EnteredTabPage {
@@ -464,7 +494,7 @@ namespace System.Windows.Forms {
 			private set {
 				if (entered_tab_page == value)
 					return;
-				if (ThemeElements.CurrentTheme.TabControlPainter.HasHotElementStyles (this)) {
+				if (HasHotElementStyles) {
 					Region area_to_invalidate = new Region ();
 					area_to_invalidate.MakeEmpty ();
 					if (entered_tab_page != null)
@@ -882,10 +912,10 @@ namespace System.Windows.Forms {
 				return;
 
 			if (ShowSlider) {
-				Rectangle right = ThemeEngine.Current.TabControlGetRightScrollRect (this);
-				Rectangle left = ThemeEngine.Current.TabControlGetLeftScrollRect (this);
+				Rectangle right = RightScrollButtonArea;
+				Rectangle left = LeftScrollButtonArea;
 				if (right.Contains (e.X, e.Y)) {
-					right_slider_state = ButtonState.Pushed;
+					right_slider_state = PushButtonState.Pressed;
 					if (CanScrollRight) {
 						slider_pos++;
 						SizeTabs ();
@@ -910,7 +940,7 @@ namespace System.Windows.Forms {
 					}
 					return;
 				} else if (left.Contains (e.X, e.Y)) {
-					left_slider_state = ButtonState.Pushed;
+					left_slider_state = PushButtonState.Pressed;
 					if (CanScrollLeft) {
 						slider_pos--;
 						SizeTabs ();
@@ -941,23 +971,48 @@ namespace System.Windows.Forms {
 				if (!GetTabRect (i).Contains (e.X, e.Y))
 					continue;
 				SelectedIndex = i;
+				mouse_down_on_a_tab_page = true;
 				break;
 			}
 		}
 
 		private void MouseUpHandler (object sender, MouseEventArgs e)
 		{
-			if (ShowSlider && (left_slider_state == ButtonState.Pushed || right_slider_state == ButtonState.Pushed)) {
+			mouse_down_on_a_tab_page = false;
+			if (ShowSlider && (left_slider_state == PushButtonState.Pressed || right_slider_state == PushButtonState.Pressed)) {
 				Rectangle invalid;
-				if (left_slider_state == ButtonState.Pushed)
-					invalid = ThemeEngine.Current.TabControlGetLeftScrollRect (this);
-				else
-					invalid = ThemeEngine.Current.TabControlGetRightScrollRect (this);
-				left_slider_state = ButtonState.Normal;
-				right_slider_state = ButtonState.Normal;
-
+				if (left_slider_state == PushButtonState.Pressed) {
+					invalid = LeftScrollButtonArea;
+					left_slider_state = GetScrollButtonState (invalid, e.Location);
+				} else {
+					invalid = RightScrollButtonArea;
+					right_slider_state = GetScrollButtonState (invalid, e.Location);
+				}
 				Invalidate (invalid);
 			}
+		}
+
+		bool HasHotElementStyles {
+			get {
+				return ThemeElements.CurrentTheme.TabControlPainter.HasHotElementStyles (this);
+			}
+		}
+
+		Rectangle LeftScrollButtonArea {
+			get {
+				return ThemeElements.CurrentTheme.TabControlPainter.GetLeftScrollRect (this);
+			}
+		}
+
+		Rectangle RightScrollButtonArea {
+			get {
+				return ThemeElements.CurrentTheme.TabControlPainter.GetRightScrollRect (this);
+			}
+		}
+
+		static PushButtonState GetScrollButtonState (Rectangle scrollButtonArea, Point cursorLocation)
+		{
+			return scrollButtonArea.Contains (cursorLocation) ? PushButtonState.Hot : PushButtonState.Normal;
 		}
 
 		private void SizeChangedHandler (object sender, EventArgs e)
@@ -1310,7 +1365,7 @@ namespace System.Windows.Forms {
 					break;
 				case TabAlignment.Right:
 					r.Y -= ThemeEngine.Current.TabControlSelectedDelta.Y;
-					r.X += ThemeEngine.Current.TabControlSelectedDelta.X;
+					r.X -= ThemeEngine.Current.TabControlSelectedDelta.X;
 					break;
 			}
 
@@ -1384,6 +1439,25 @@ namespace System.Windows.Forms {
 
 		void OnMouseMove (object sender, MouseEventArgs e)
 		{
+			if (!mouse_down_on_a_tab_page && ShowSlider) {
+				if (LeftSliderState == PushButtonState.Pressed ||
+					RightSliderState == PushButtonState.Pressed)
+					return;
+				if (LeftScrollButtonArea.Contains (e.Location)) {
+					LeftSliderState = PushButtonState.Hot;
+					RightSliderState = PushButtonState.Normal;
+					EnteredTabPage = null;
+					return;
+				}
+				if (RightScrollButtonArea.Contains (e.Location)) {
+					RightSliderState = PushButtonState.Hot;
+					LeftSliderState = PushButtonState.Normal;
+					EnteredTabPage = null;
+					return;
+				}
+				LeftSliderState = PushButtonState.Normal;
+				RightSliderState = PushButtonState.Normal;
+			}
 			if (EnteredTabPage != null && EnteredTabPage.TabBounds.Contains (e.Location))
 				return;
 			for (int index = 0; index < TabCount; index++) {
@@ -1398,6 +1472,10 @@ namespace System.Windows.Forms {
 
 		void OnMouseLeave (object sender, EventArgs e)
 		{
+			if (ShowSlider) {
+				LeftSliderState = PushButtonState.Normal;
+				RightSliderState = PushButtonState.Normal;
+			}
 			EnteredTabPage = null;
 		}
 		#endregion	// Internal & Private Methods
@@ -1533,13 +1611,27 @@ namespace System.Windows.Forms {
 
 			public override void Remove (Control value)
 			{
+				bool change_index = false;
+				
 				TabPage page = value as TabPage;
 				if (page != null && owner.Controls.Contains (page)) {
 					int index = owner.IndexForTabPage (page);
 					if (index < owner.SelectedIndex || owner.SelectedIndex == Count - 1)
-						owner.SelectedIndex--;
+						change_index = true;
 				}
+				
 				base.Remove (value);
+				
+				// We don't want to raise SelectedIndexChanged until after we
+				// have removed from the collection, so TabCount will be
+				// correct for the user.
+				if (change_index && Count > 0)
+					owner.SelectedIndex--;
+				else if (change_index) {
+					owner.selected_index = -1;
+					owner.OnSelectedIndexChanged (EventArgs.Empty);
+				} else
+					owner.Redraw ();
 			}
 		}
 		#endregion	// Class TabControl.ControlCollection

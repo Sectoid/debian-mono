@@ -299,6 +299,7 @@ namespace MonoTests.System.IO
 				AssertEquals ("#B3", "foo/bar", Path.GetDirectoryName ("foo/bar/"));
 				AssertEquals ("#B4", "/", Path.GetDirectoryName ("/tmp"));
 				AssertNull ("#B5", Path.GetDirectoryName ("/"));
+				AssertEquals ("#B6", "a", Path.GetDirectoryName ("a//b"));
 			}
 		}
 
@@ -948,7 +949,7 @@ namespace MonoTests.System.IO
 			// check for Unix platforms - see FAQ for more details
 			// http://www.mono-project.com/FAQ:_Technical#How_to_detect_the_execution_platform_.3F
 			int platform = (int) Environment.OSVersion.Platform;
-			if ((platform == 4) || (platform == 128))
+			if ((platform == 4) || (platform == 128) || (platform == 6))
 				return;
 
 			string curdir = Directory.GetCurrentDirectory ();
@@ -973,7 +974,7 @@ namespace MonoTests.System.IO
 			// check for Unix platforms - see FAQ for more details
 			// http://www.mono-project.com/FAQ:_Technical#How_to_detect_the_execution_platform_.3F
 			int platform = (int) Environment.OSVersion.Platform;
-			if ((platform == 4) || (platform == 128))
+			if ((platform == 4) || (platform == 128) || (platform == 6))
 				return;
 
 			string curdir = Directory.GetCurrentDirectory ();
@@ -1002,7 +1003,7 @@ namespace MonoTests.System.IO
 			// check for Unix platforms - see FAQ for more details
 			// http://www.mono-project.com/FAQ:_Technical#How_to_detect_the_execution_platform_.3F
 			int platform = (int) Environment.OSVersion.Platform;
-			if ((platform == 4) || (platform == 128))
+			if ((platform == 4) || (platform == 128) || (platform == 6))
 				return;
 
 			AssertEquals ("1", @"C:\Windows\dir", Path.GetFullPath (@"C:\Windows\System32\..\dir"));

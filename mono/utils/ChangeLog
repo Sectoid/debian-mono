@@ -1,9 +1,171 @@
+2009-03-05  Mark Probst  <mark.probst@gmail.com>
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* mono-compiler.h: MONO_THREAD_VAR_OFFSET for PPC(64).
+
+	Backport of r127060.
+
+2009-01-19  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono-path.c (mono_path_canonicalize): Adding support for UNC
+	   paths on Windows.
+
+	Contributed under MIT/X11 license.
+
+2009-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-mmap.c: Applied patch from Koushik Dutta
+	(koush@koushikdutta.com). Add an #ifdef HAVE_SHM_OPEN.
+
+2009-01-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-hash.c: Change the roots to use write barriers when running with
+	SGEN, to avoid scanning all the hash nodes at every minor collection.
+
+2009-01-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-hash.c: Rewrite the SGEN specific parts to use a user defined
+	marker function instead of registering each GC node as a hash root.
+
+2009-01-08  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono-dl.c (mono_dl_open): Fix the MSVC build.
+
+	Contributed under MIT/X11 license.
+
+2008-12-19  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-dl.c (mono_dl_open): Do not crash if the platform does not
+	support dlopen.
+
+2008-12-08  Kornél Pál  <kornelpal@gmail.com>
+
+	* mono-time.c (mono_100ns_ticks, PLATFORM_WIN32): Use GetSystemTimeAsFileTime
+	with ULARGE_INTEGER that is more efficient.
+
+	Contributed under MIT/X11 license.
+
+2008-12-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-property-hash.c (mono_property_hash_destroy): Release
+	the root hashtable as well.
+
+2008-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* freebsd-elf_common.h (struct): Use uint32_t instead of 
+	u_int32_t to fix the build on opensolaris.
+
+2008-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* freebsd-dwarf.h: Add dwarf.h header file from freebsd.
+
+2008-11-14  Andreas Färber  <andreas.faerber@web.de>
+
+	* Makefile.am (ENABLE_DTRACE): Re-add dtrace -h flag.
+	Fixes #445074.
+	
+	Contributed under MIT/X11 license.
+
+Mon Nov 10 17:38:41 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-proclib.c: adapt code for FreeBSD and hopefully other BSD
+	systems.
+
+Mon Nov 10 17:27:01 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-proclib.c, mono-proclib.h: added elapsed time and parent pid.
+
+2008-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (libmonoutils_la_SOURCES): Add the freebsd-elf*.h files to
+	the build.
+
+2008-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* freebsd-elf32.h freebsd-elf64.h freebsd-elf_common.h: Add elf header
+	files from freebsd.
+
+Wed Oct 22 17:43:03 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-proclib.c, mono-proclib.h: added functions to get info
+	about the processors in the system.
+
+Wed Oct 22 16:45:20 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-proclib.c, mono-mmap.c: basic support for OSX and
+	(untested) BSD systems.
+
+2008-10-13  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono-proclib.c : Adding a compilation check for HAVE_UNISTD_H.
+
+	Contributed under MIT/X11 license.
+
+Mon Oct 13 14:36:10 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-proclib.c, mono-proclib.h: added a function to deal with
+	error handling if the caller needs the info.
+
+Mon Oct 13 11:11:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile.am, mono-proclib.c, mono-proclib.h: utility functions to
+	access process-related information.
+
 2008-10-08  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r115182.
-	
 	* mono-compiler.h (MONO_THREAD_VAR_OFFSET): Apply a patch from
 	the fedora packagers to the IA64 MONO_THREAD_VAR_OFFSET definition.
+
+2008-09-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-mmap.c (mono_shared_area_for_pid): Fix a warning.
+
+Thu Sep 18 18:16:45 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-mmap.c, mono-mmap.h: added mono_shared_area_instances ()
+	too return the list of mono processes with performance counter data.
+
+2008-08-27  Bill Holmes  <billholmes54@gmail.com>
+
+	* strenc.c : Fixing some waringings and compiler errors when using
+	  eglib.
+
+	Contributed under MIT/X11 license.
+
+2008-08-20  Mike Voorhees  <vernish13@gmail.com>
+
+	* strenc.h : Adding declaration for mono_utf8_validate_and_len.
+
+	* strenc.c : Adding implementation for mono_utf8_validate_and_len.
+
+	Contributed under MIT/X11 license.
+
+2008-08-03  Andreas Färber  <andreas.faerber@web.de>
+
+	* mono-io-portability.c (mono_portability_find_file): Fix ANSI C compliance.
+	
+	Contributed under MIT/X11 license.
+
+Fri Aug 1 15:48:53 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mono-mmap.h, mono-mmap.c: added support for storing some runtime data
+	in a shared memory page.
+
+2008-07-21  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono-membar.h :  From previous commit.  When including glib.h,
+ 	  <> should be used and not "".
+
+	Contributed under MIT/X11 license.
+
+2008-07-21  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono-membar.h :  Including glib.h to get definition of 'inline.'  Needed
+	  by the MSVC compiler.
+
+	Contributed under MIT/X11 license.
 
 2008-07-09  Zoltan Varga  <vargaz@gmail.com>
 

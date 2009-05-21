@@ -21,6 +21,7 @@
 //
 // Author:
 //	Pedro Martínez Juliá <pedromj@gmail.com>
+//	Ivan N. Zlatev <contact@i-nz.net>
 //
 
 
@@ -45,8 +46,6 @@ namespace System.Windows.Forms {
 		private int maxDropDownItems;
 		private bool sorted;
 		private string valueMember;
-
-		private DataGridViewComboBoxEditingControl editingControl;
 
 		public DataGridViewComboBoxCell () : base() {
 			autoComplete = true;
@@ -127,7 +126,19 @@ namespace System.Windows.Forms {
 
 		[Browsable (false)]
 		public virtual ObjectCollection Items {
-			get { return items; }
+			get {
+				if (DataGridView != null && DataGridView.BindingContext != null 
+				    && DataSource != null && !String.IsNullOrEmpty (ValueMember)) {
+					items.Clear ();
+					CurrencyManager dataManager = (CurrencyManager) DataGridView.BindingContext[DataSource];
+					if (dataManager != null && dataManager.Count > 0) {
+						foreach (object item in dataManager.List)
+							items.Add (item);
+					}
+				}
+
+				return items;
+			}
 		}
 
 		[DefaultValue (8)]
@@ -169,6 +180,8 @@ namespace System.Windows.Forms {
 			cell.autoComplete = this.autoComplete;
 			cell.dataSource = this.dataSource;
 			cell.displayStyle = this.displayStyle;
+			cell.displayMember = this.displayMember;
+			cell.valueMember = this.valueMember;
 			cell.displayStyleForCurrentCellOnly = this.displayStyleForCurrentCellOnly;
 			cell.dropDownWidth = this.dropDownWidth;
 			cell.flatStyle = this.flatStyle;
@@ -185,32 +198,23 @@ namespace System.Windows.Forms {
 		public override void InitializeEditingControl (int rowIndex, object initialFormattedValue, DataGridViewCellStyle dataGridViewCellStyle) {
 			base.InitializeEditingControl (rowIndex, initialFormattedValue, dataGridViewCellStyle);
 			
-			editingControl = DataGridView.EditingControl as DataGridViewComboBoxEditingControl;
-			
-			if (editingControl == null)
-				return;
-			
-			string text = initialFormattedValue == null ? string.Empty : initialFormattedValue.ToString ();
-
-			// A simple way to check if the control has
-			// been initialized already.
-			if (editingControl.Items.Count > 0) {
-				editingControl.SelectedIndex = editingControl.FindString (text);
-				return;
-			}
+			ComboBox editingControl = DataGridView.EditingControl as ComboBox;
 			
 			editingControl.DropDownStyle = ComboBoxStyle.DropDownList;
-			editingControl.Items.AddRange (this.Items);
-			
-			editingControl.Sorted = sorted;
-			editingControl.SelectedIndex = editingControl.FindString (text);
+			editingControl.Sorted = Sorted;
+			editingControl.DataSource = null;
+			editingControl.ValueMember = null;
+			editingControl.DisplayMember = null;
+			editingControl.Items.Clear();
+			editingControl.SelectedIndex = -1;
 
-			editingControl.SelectedIndexChanged += new EventHandler (editingControl_SelectedIndexChanged);
-		}
-
-		void editingControl_SelectedIndexChanged (object sender, EventArgs e)
-		{
-			Value = editingControl.SelectedItem;
+			if (DataSource != null) {
+				editingControl.DataSource = DataSource;
+				editingControl.ValueMember = ValueMember;
+				editingControl.DisplayMember = DisplayMember;
+			} else {
+				editingControl.Items.AddRange (this.Items);
+			}
 		}
 
 		public override bool KeyEntersEditMode (KeyEventArgs e)

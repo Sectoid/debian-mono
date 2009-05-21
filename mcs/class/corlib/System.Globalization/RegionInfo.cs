@@ -56,7 +56,11 @@ namespace System.Globalization
 			}
 		}
 
+#if NET_2_0
 		int lcid; // it is used only for Equals() (not even used in GetHashCode()).
+#endif
+
+#pragma warning disable 649
 		int regionId;
 		string iso2Name;
 		string iso3Name;
@@ -65,6 +69,7 @@ namespace System.Globalization
 		string currencySymbol;
 		string isoCurrencySymbol;
 		string currencyEnglishName;
+#pragma warning restore 649
 
 		public RegionInfo (int culture)
 		{
@@ -99,6 +104,7 @@ namespace System.Globalization
 #endif
 		}
 
+#if NET_2_0
 		bool GetByTerritory (CultureInfo ci)
 		{
 			if (ci == null)
@@ -108,9 +114,12 @@ namespace System.Globalization
 			this.lcid = ci.LCID;
 			return construct_internal_region_from_name (ci.Territory.ToUpperInvariant ());
 		}
+#endif		
 
+#if !NET_2_0
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern bool construct_internal_region_from_lcid (int lcid);
+#endif
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern bool construct_internal_region_from_name (string name);

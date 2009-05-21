@@ -21,6 +21,7 @@
 #	l  long reg (forced eax:edx)
 #	L  long reg (dynamic)
 #	y  the reg needs to be one of EAX,EBX,ECX,EDX (sete opcodes)
+#	x  XMM reg (XMM0 - X007)
 #
 # len:number         describe the maximun length in bytes of the instruction
 # 		     number is a positive integer.  If the length is not specified
@@ -122,17 +123,14 @@ compare: src1:i src2:i len:2
 compare_imm: src1:i len:6
 fcompare: src1:f src2:f clob:a len:9
 oparglist: src1:b len:10
-outarg: src1:i len:1
-outarg_imm: len:5
-setret: dest:a src1:i len:2
 setlret: dest:l src1:i src2:i len:4
-checkthis: src1:b len:2
+checkthis: src1:b len:3
 voidcall: len:17 clob:c
 voidcall_reg: src1:i len:11 clob:c
 voidcall_membase: src1:b len:16 clob:c
-fcall: dest:f len:17 clob:c
-fcall_reg: dest:f src1:i len:11 clob:c
-fcall_membase: dest:f src1:b len:16 clob:c
+fcall: dest:f len:48 clob:c
+fcall_reg: dest:f src1:i len:48 clob:c
+fcall_membase: dest:f src1:b len:48 clob:c
 lcall: dest:l len:17 clob:c
 lcall_reg: dest:l src1:i len:11 clob:c
 lcall_membase: dest:l src1:b len:16 clob:c
@@ -297,6 +295,7 @@ abs: dest:f src1:f len:2
 tan: dest:f src1:f len:49
 atan: dest:f src1:f len:8
 sqrt: dest:f src1:f len:2
+round: dest:f src1:f len:2
 bigmul: len:2 dest:l src1:a src2:i
 bigmul_un: len:2 dest:l src1:a src2:i
 sext_i1: dest:i src1:y len:3
@@ -307,4 +306,299 @@ atomic_add_new_i4: src1:b src2:i dest:i len:16
 atomic_exchange_i4: src1:b src2:i dest:a len:24
 atomic_cas_imm_i4: src1:b src2:i dest:a len:24
 memory_barrier: len:16
+
+relaxed_nop: len:2
+hard_nop: len:1
+
+# Linear IR opcodes
+nop: len:0
+dummy_use: len:0
+dummy_store: len:0
+not_reached: len:0
+not_null: src1:i len:0
+
+jump_table: dest:i len:5
+
+int_adc: dest:i src1:i src2:i len:2 clob:1
+int_addcc: dest:i src1:i src2:i len:2 clob:1
+int_subcc: dest:i src1:i src2:i len:2 clob:1
+int_sbb: dest:i src1:i src2:i len:2 clob:1
+
+int_add_imm: dest:i src1:i len:6 clob:1
+int_sub_imm: dest:i src1:i len:6 clob:1
+int_mul_imm: dest:i src1:i len:9
+int_div_imm: dest:a src1:a len:15 clob:d
+int_div_un_imm: dest:a src1:a len:15 clob:d
+int_rem_imm: dest:a src1:a len:15 clob:d
+int_rem_un_imm: dest:d src1:a len:15 clob:a
+int_and_imm: dest:i src1:i len:6 clob:1
+int_or_imm: dest:i src1:i len:6 clob:1
+int_xor_imm: dest:i src1:i len:6 clob:1
+int_shl_imm: dest:i src1:i len:6 clob:1
+int_shr_imm: dest:i src1:i len:6 clob:1
+int_shr_un_imm: dest:i src1:i len:6 clob:1
+
+int_conv_to_r_un: dest:f src1:i len:32
+
+int_ceq: dest:y len:6
+int_cgt: dest:y len:6
+int_cgt_un: dest:y len:6
+int_clt: dest:y len:6
+int_clt_un: dest:y len:6
+
+cond_exc_ieq: len:6
+cond_exc_ine_un: len:6
+cond_exc_ilt: len:6
+cond_exc_ilt_un: len:6
+cond_exc_igt: len:6
+cond_exc_igt_un: len:6
+cond_exc_ige: len:6
+cond_exc_ige_un: len:6
+cond_exc_ile: len:6
+cond_exc_ile_un: len:6
+cond_exc_iov: len:6
+cond_exc_ino: len:6
+cond_exc_ic: len:6
+cond_exc_inc: len:6
+
+icompare: src1:i src2:i len:2
+icompare_imm: src1:i len:6
+
+cmov_ieq: dest:i src1:i src2:i len:16 clob:1
+cmov_ige: dest:i src1:i src2:i len:16 clob:1
+cmov_igt: dest:i src1:i src2:i len:16 clob:1
+cmov_ile: dest:i src1:i src2:i len:16 clob:1
+cmov_ilt: dest:i src1:i src2:i len:16 clob:1
+cmov_ine_un: dest:i src1:i src2:i len:16 clob:1
+cmov_ige_un: dest:i src1:i src2:i len:16 clob:1
+cmov_igt_un: dest:i src1:i src2:i len:16 clob:1
+cmov_ile_un: dest:i src1:i src2:i len:16 clob:1
+cmov_ilt_un: dest:i src1:i src2:i len:16 clob:1
+
+long_conv_to_ovf_i4_2: dest:i src1:i src2:i len:30
+long_conv_to_r8_2: dest:f src1:i src2:i len:37 
+long_conv_to_r4_2: dest:f src1:i src2:i len:64
+long_conv_to_r_un_2: dest:f src1:i src2:i len:37 
+
+fmove: dest:f src1:f
+float_conv_to_r4: dest:f src1:f
+
+load_mem: dest:i len:9
+loadi4_mem: dest:i len:9
+loadu1_mem: dest:i len:9
+loadu2_mem: dest:i len:9
+
+vcall2: len:17 clob:c
+vcall2_reg: src1:i len:11 clob:c
+vcall2_membase: src1:b len:16 clob:c
+
+localloc_imm: dest:i len:120
+
+x86_add_membase_reg: src1:b src2:i len:11
+x86_sub_membase_reg: src1:b src2:i len:11
+x86_and_membase_reg: src1:b src2:i len:11
+x86_or_membase_reg: src1:b src2:i len:11
+x86_xor_membase_reg: src1:b src2:i len:11
+x86_mul_membase_reg: src1:b src2:i len:13
+
+x86_and_reg_membase: dest:i src1:i src2:b clob:1 len:6
+x86_or_reg_membase: dest:i src1:i src2:b clob:1 len:6
+x86_xor_reg_membase: dest:i src1:i src2:b clob:1 len:6
+
+x86_fxch: len:2
+
+addps: dest:x src1:x src2:x len:3 clob:1
+divps: dest:x src1:x src2:x len:3 clob:1
+mulps: dest:x src1:x src2:x len:3 clob:1
+subps: dest:x src1:x src2:x len:3 clob:1
+maxps: dest:x src1:x src2:x len:3 clob:1
+minps: dest:x src1:x src2:x len:3 clob:1
+compps: dest:x src1:x src2:x len:4 clob:1
+andps: dest:x src1:x src2:x len:3 clob:1
+andnps: dest:x src1:x src2:x len:3 clob:1
+orps: dest:x src1:x src2:x len:3 clob:1
+xorps: dest:x src1:x src2:x len:3 clob:1
+
+haddps: dest:x src1:x src2:x len:4 clob:1
+hsubps: dest:x src1:x src2:x len:4 clob:1
+addsubps: dest:x src1:x src2:x len:4 clob:1
+dupps_low: dest:x src1:x len:4
+dupps_high: dest:x src1:x len:4
+
+addpd: dest:x src1:x src2:x len:4 clob:1
+divpd: dest:x src1:x src2:x len:4 clob:1
+mulpd: dest:x src1:x src2:x len:4 clob:1
+subpd: dest:x src1:x src2:x len:4 clob:1
+maxpd: dest:x src1:x src2:x len:4 clob:1
+minpd: dest:x src1:x src2:x len:4 clob:1
+comppd: dest:x src1:x src2:x len:5 clob:1
+andpd: dest:x src1:x src2:x len:4 clob:1
+andnpd: dest:x src1:x src2:x len:4 clob:1
+orpd: dest:x src1:x src2:x len:4 clob:1
+xorpd: dest:x src1:x src2:x len:4 clob:1
+
+haddpd: dest:x src1:x src2:x len:5 clob:1
+hsubpd: dest:x src1:x src2:x len:5 clob:1
+addsubpd: dest:x src1:x src2:x len:5 clob:1
+duppd: dest:x src1:x len:5
+
+pand: dest:x src1:x src2:x len:4 clob:1
+por: dest:x src1:x src2:x len:4 clob:1
+pxor: dest:x src1:x src2:x len:4 clob:1
+
+sqrtps: dest:x src1:x len:4
+rsqrtps: dest:x src1:x len:4
+rcpps: dest:x src1:x len:4
+
+pshufflew_high: dest:x src1:x len:5
+pshufflew_low: dest:x src1:x len:5
+pshuffled: dest:x src1:x len:5
+
+extract_mask: dest:i src1:x len:4
+
+paddb: dest:x src1:x src2:x len:4 clob:1
+paddw: dest:x src1:x src2:x len:4 clob:1
+paddd: dest:x src1:x src2:x len:4 clob:1
+paddq: dest:x src1:x src2:x len:4 clob:1
+
+psubb: dest:x src1:x src2:x len:4 clob:1
+psubw: dest:x src1:x src2:x len:4 clob:1
+psubd: dest:x src1:x src2:x len:4 clob:1
+psubq: dest:x src1:x src2:x len:4 clob:1
+
+pmaxb_un: dest:x src1:x src2:x len:4 clob:1
+pmaxw_un: dest:x src1:x src2:x len:5 clob:1
+pmaxd_un: dest:x src1:x src2:x len:5 clob:1
+
+pmaxb: dest:x src1:x src2:x len:5 clob:1
+pmaxw: dest:x src1:x src2:x len:4 clob:1
+pmaxd: dest:x src1:x src2:x len:5 clob:1
+
+pavgb_un: dest:x src1:x src2:x len:4 clob:1
+pavgw_un: dest:x src1:x src2:x len:4 clob:1
+
+pminb_un: dest:x src1:x src2:x len:4 clob:1
+pminw_un: dest:x src1:x src2:x len:5 clob:1
+pmind_un: dest:x src1:x src2:x len:5 clob:1
+
+pminb: dest:x src1:x src2:x len:5 clob:1
+pminw: dest:x src1:x src2:x len:4 clob:1
+pmind: dest:x src1:x src2:x len:5 clob:1
+
+pcmpeqb: dest:x src1:x src2:x len:4 clob:1
+pcmpeqw: dest:x src1:x src2:x len:4 clob:1
+pcmpeqd: dest:x src1:x src2:x len:4 clob:1
+pcmpeqq: dest:x src1:x src2:x len:5 clob:1
+
+pcmpgtb: dest:x src1:x src2:x len:4 clob:1
+pcmpgtw: dest:x src1:x src2:x len:4 clob:1
+pcmpgtd: dest:x src1:x src2:x len:4 clob:1
+pcmpgtq: dest:x src1:x src2:x len:5 clob:1
+
+psumabsdiff: dest:x src1:x src2:x len:4 clob:1
+
+unpack_lowb: dest:x src1:x src2:x len:4 clob:1
+unpack_loww: dest:x src1:x src2:x len:4 clob:1
+unpack_lowd: dest:x src1:x src2:x len:4 clob:1
+unpack_lowq: dest:x src1:x src2:x len:4 clob:1
+unpack_lowps: dest:x src1:x src2:x len:3 clob:1
+unpack_lowpd: dest:x src1:x src2:x len:4 clob:1
+
+unpack_highb: dest:x src1:x src2:x len:4 clob:1
+unpack_highw: dest:x src1:x src2:x len:4 clob:1
+unpack_highd: dest:x src1:x src2:x len:4 clob:1
+unpack_highq: dest:x src1:x src2:x len:4 clob:1
+unpack_highps: dest:x src1:x src2:x len:3 clob:1
+unpack_highpd: dest:x src1:x src2:x len:4 clob:1
+
+packw: dest:x src1:x src2:x len:4 clob:1 
+packd: dest:x src1:x src2:x len:4 clob:1 
+
+packw_un: dest:x src1:x src2:x len:4 clob:1 
+packd_un: dest:x src1:x src2:x len:5 clob:1 
+
+paddb_sat: dest:x src1:x src2:x len:4 clob:1
+paddb_sat_un: dest:x src1:x src2:x len:4 clob:1
+
+paddw_sat: dest:x src1:x src2:x len:4 clob:1
+paddw_sat_un: dest:x src1:x src2:x len:4 clob:1
+
+psubb_sat: dest:x src1:x src2:x len:4 clob:1
+psubb_sat_un: dest:x src1:x src2:x len:4 clob:1
+
+psubw_sat: dest:x src1:x src2:x len:4 clob:1
+psubw_sat_un: dest:x src1:x src2:x len:4 clob:1
+
+pmulw: dest:x src1:x src2:x len:4 clob:1
+pmuld: dest:x src1:x src2:x len:5 clob:1
+pmulq: dest:x src1:x src2:x len:4 clob:1
+
+pmul_high_un: dest:x src1:x src2:x len:4 clob:1
+pmul_high: dest:x src1:x src2:x len:4 clob:1
+
+pshrw: dest:x src1:x len:5 clob:1
+pshrw_reg: dest:x src1:x src2:x len:4 clob:1
+
+psarw: dest:x src1:x len:5 clob:1
+psarw_reg: dest:x src1:x src2:x len:4 clob:1
+
+pshlw: dest:x src1:x len:5 clob:1
+pshlw_reg: dest:x src1:x src2:x len:4 clob:1
+
+pshrd: dest:x src1:x len:5 clob:1
+pshrd_reg: dest:x src1:x src2:x len:4 clob:1
+
+psard: dest:x src1:x len:5 clob:1
+psard_reg: dest:x src1:x src2:x len:4 clob:1
+
+pshld: dest:x src1:x len:5 clob:1
+pshld_reg: dest:x src1:x src2:x len:4 clob:1
+
+pshrq: dest:x src1:x len:5 clob:1
+pshrq_reg: dest:x src1:x src2:x len:4 clob:1
+
+pshlq: dest:x src1:x len:5 clob:1
+pshlq_reg: dest:x src1:x src2:x len:4 clob:1
+
+xmove: dest:x src1:x len:4
+xzero: dest:x len:4
+
+iconv_to_x: dest:x src1:i len:4
+extract_i4: dest:i src1:x len:4
+
+extract_i2: dest:i src1:x len:10
+extract_u2: dest:i src1:x len:10
+extract_i1: dest:i src1:x len:10
+extract_u1: dest:i src1:x len:10
+extract_r8: dest:f src1:x len:8 
+
+iconv_to_r8_raw: dest:f src1:i len:17 
+
+insert_i2: dest:x src1:x src2:i len:5 clob:1
+
+extractx_u2: dest:i src1:x len:5
+insertx_u1_slow: dest:x src1:i src2:i len:15 clob:x
+
+insertx_i4_slow: dest:x src1:x src2:i len:13 clob:x
+insertx_r4_slow: dest:x src1:x src2:f len:24 clob:1
+insertx_r8_slow: dest:x src1:x src2:f len:24 clob:1
+
+loadx_membase: dest:x src1:b len:7
+storex_membase: dest:b src1:x len:7
+storex_membase_reg: dest:b src1:x len:7
+
+loadx_aligned_membase: dest:x src1:b len:7
+storex_aligned_membase_reg: dest:b src1:x len:7
+storex_nta_membase_reg: dest:b src1:x len:7
+
+fconv_to_r8_x: dest:x src1:f len:14 
+xconv_r8_to_i4: dest:y src1:x len:7
+
+prefetch_membase: src1:b len:4
+
+expand_i1: dest:x src1:y len:17 clob:1
+expand_i2: dest:x src1:i len:15
+expand_i4: dest:x src1:i len:9
+expand_r4: dest:x src1:f len:13
+expand_r8: dest:x src1:f len:13
 

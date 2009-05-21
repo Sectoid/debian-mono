@@ -1,5 +1,8 @@
 #include <config.h>
 #include "mini.h"
+#ifndef PLATFORM_WIN32
+#include "buildver.h"
+#endif
 
 #ifdef PLATFORM_WIN32
 
@@ -27,6 +30,7 @@ main ()
 int
 main (int argc, char* argv[])
 {
+	mono_build_date = build_date;
 	return mono_main (argc, argv);
 }
 

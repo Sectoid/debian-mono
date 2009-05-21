@@ -1,3 +1,81 @@
+2009-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeTest.cs : added test for parsing no-millisecond time
+	  with optional millisecond designator.
+
+2008-11-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TypeTest.cs: new test for Type.GetType.
+
+2008-11-06  Bill Holmes  <billholmes54@gmail.com>
+
+	* TypeTest.cs: TypeGetMemberReturnTypeTest added to check that the
+	  instantiated type of the returned MemberInfo array matches the
+	  MemberTypes flag passed in.
+
+	Contributed under MIT/X11 license.
+
+2008-10-07  Marek Habersack  <mhabersack@novell.com>
+
+	* MathTest.cs: added tests for rounding doubles with truncation in
+	the away from zero mode.
+
+2008-09-25  Marek Habersack  <mhabersack@novell.com>
+
+	* DoubleTest.cs: added a test for TryParse invoked with various
+	strings, including strings with embedded whitespace.
+
+2008-09-24  Jb Evain  <jbevain@novell.com>
+
+	* AppDomainSetupTest.cs: fix domain initializer test to actually
+	assert that the initializer delegate is called in the new domain.
+	Test for #429545.
+
+2008-09-24  Jb Evain  <jbevain@novell.com>
+
+	* AppDomainTest.cs: add test for bug #429545.
+
+2008-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeTest.cs EnumTest.cs: Fix warnings.
+
+2008-09-04  Jb Evain  <jbevain@novell.com>
+
+	* TypeTest.cs: enable test as r112307 fixes it.
+
+2008-09-04  Jb Evain  <jbevain@novell.com>
+
+	* TypeTest.cs: add test for IsInstanceOfType on arrays of nullables.
+
+2008-08-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ObsoleteAttributeTest.cs: New. Old tests I forgot to commit when 
+	doing a gendarme rule.
+
+2008-08-16  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ExceptonTest.cs: Added GetObjectData and deserialization ctor tests.
+	Added/improved tests for Source, HResult and StackTrace. Use Assert
+	instead of deriving from TestCase.
+	* ExceptionCas.cs: Sync with method name change in ExceptionTest.cs.
+
+2008-08-09  Raja R Harinath  <harinath@hurrynot.org>
+
+	* DateTimeTest.cs (Bug377042): Allow compilation on the 1.1 profile.
+
+2008-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeTest.cs : added test for bug #377042.
+
+2008-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeTest.cs : removed NotWorking from ZLiteral as it seems gone
+	  (unless it works only in Japan ...)
+
+2008-07-22 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EnumTest.cs: Tests for GetHashCode().
+
 2008-07-06  Andreas Nahr <ClassDevelopment@A-SoftTech.com>
 
 	* DateTimeOffsetTest.cs: Fix wrong test (DateTimeOffset has no public CompareTo (object))
@@ -10,7 +88,7 @@
 2008-07-04  Marek Safar  <marek.safar@gmail.com>
 
 	* StringTest.cs: Removed NotWorking flags.
-﻿
+?
 2008-06-19  Jb Evain  <jbevain@novell.com>
 
 	* AppDomainSetupTest.cs (AppDomainInitializerNonStaticMethod):
@@ -45,7 +123,7 @@
 
 	* ArrayTest.cs: New IndexOf test.
 
-﻿2008-05-28 Rodrigo Kumpera  <rkumpera@novell.com>
+?2008-05-28 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* DelegateTest.cs (CreateDelegate1_Method_Private_Instance): Added test
 	for bug #372406. It tries to create a delegate to a private instance
@@ -113,12 +191,12 @@
 
 	* TypeTest.cs: Add a test for #346419.
 
-﻿2008-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
+?2008-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* TypeTest.cs (GetGenericArguments_ArgumentsHaveAttributes): Added test for bug #377596.
 	It verifies if it's possible to retrieve attributes from generic arguments.
 
-﻿2008-04-01  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
+?2008-04-01  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 
 	* StringTest.cs: New tests for string to check for several corner-cases
 	  and parameter errors.
@@ -765,12 +843,12 @@
 
 	* CharTest.cs : added tests for utf32 conversion methods.
 
-2006-07-19  Kornél Pál  <kornelpal@gmail.com>
+2006-07-19  Kornel Pal  <kornelpal@gmail.com>
 
 	* StringTest.cs: Added some more TestSbytePtrConstructorNegative tests
 	  and TestSbytePtrConstructorOverflow tests.
 
-2006-07-18  Kornél Pál  <kornelpal@gmail.com>
+2006-07-18  Kornel Pal  <kornelpal@gmail.com>
 
 	* StringTest.cs: Added several tests for constructors that take sbyte*
 	  as an argument. This covers bug #78703 as well. Renamed
@@ -1914,14 +1992,14 @@
 	* ArrayTest.cs: Fix a few tests where NullReferenceException 
 	is expected, not ArgumentNullException.
 
-2003-11-01  Pedro Martínez Juliá  <yoros@wanadoo.es>
+2003-11-01  Pedro Martinez Julia  <yoros@wanadoo.es>
 
 	* DateTimeTest.cs: Changed the Asserts to fix some things related to
 	universal time, we can't test the equality if one DateTime is into
 	the code and the other comes from the TimeZone. Different TimeZones,
 	different errors in the test.
 
-2003-10-31  Pedro Martínez Juliá  <yoros@wanadoo.es>
+2003-10-31  Pedro Martinez Julia  <yoros@wanadoo.es>
 
 	* DateTimeTest.cs: Removed Universal Time in ToString because in
 	each computer that could be different. We need more control over
@@ -2032,7 +2110,7 @@
 	* RandomTest.cs: Added a test to compare Mono's random streams with
 	MS implementation (framework and Rotor). Converted to NUnit2 format.
 
-2003-06-01  Pedro Martínez Juliá  <yoros@wanadoo.es>
+2003-06-01  Pedro Martinez Julia  <yoros@wanadoo.es>
 
 	* DoubleFormatterTest.cs: added the last changes from the author of
 	this test (Patrick Kalkman <kalkman@cistron.nl>).
@@ -2084,7 +2162,7 @@
 	* ConvertTest.cs: Added some tests for ToXXX methods.
 	TestConvertFromNull ()
 		
-2003-03-22  Pedro Martínez Juliá  <yoros@wanadoo.es>
+2003-03-22  Pedro Martinez Julia  <yoros@wanadoo.es>
 
 	* DoubleTest.cs: Converted to Nunit 2.0. Completed ToString test.
 
@@ -2126,7 +2204,7 @@
 	* MarshalByRefTest.cs: New unit tests from Jean-Marc Andr 
 	[jean-marc.andre@polymtl.ca]. One failure on .NET in the latter.
 
-2003-02-08  Pedro Martínez Juliá  <yoros@wanadoo.es>
+2003-02-08  Pedro Martinez Julia  <yoros@wanadoo.es>
 
 	* MathTest.cs: Add more tests because they were insufficient. Now
 	they check limit values. Also add comments with the tests for the

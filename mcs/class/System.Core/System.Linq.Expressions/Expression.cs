@@ -241,7 +241,7 @@ namespace System.Linq.Expressions {
 				}
 
 				// Use IsNumber to avoid expensive reflection.
-				if (IsNumber (ultype)){
+				if (IsNumber (ultype)) {
 					if (ultype == urtype && ltype == rtype)
 						return null;
 
@@ -263,6 +263,9 @@ namespace System.Linq.Expressions {
 					// == and != allow reference types without operators defined.
 					//
 					if (!ltype.IsValueType && !rtype.IsValueType)
+						return null;
+
+					if (ltype == rtype && ultype.IsEnum)
 						return null;
 
 					if (ltype == rtype && ultype == typeof (bool))
@@ -982,6 +985,8 @@ namespace System.Linq.Expressions {
 				throw new ArgumentNullException ("propertyAccessor");
 			if (expression == null)
 				throw new ArgumentNullException ("expression");
+
+			CheckNonGenericMethod (propertyAccessor);
 
 			var prop = GetAssociatedProperty (propertyAccessor);
 			if (prop == null)
@@ -1905,8 +1910,16 @@ namespace System.Linq.Expressions {
 			return arguments.ToList ();
 		}
 
+		static void CheckNonGenericMethod (MethodBase method)
+		{
+			if (method.IsGenericMethodDefinition || method.ContainsGenericParameters)
+				throw new ArgumentException ("Can not used open generic methods");
+		}
+
 		static ReadOnlyCollection<Expression> CheckMethodArguments (MethodBase method, IEnumerable<Expression> args)
 		{
+			CheckNonGenericMethod (method);
+
 			var arguments = CreateArgumentList (args);
 			var parameters = method.GetParameters ();
 
@@ -2067,6 +2080,8 @@ namespace System.Linq.Expressions {
 			if (propertyAccessor == null)
 				throw new ArgumentNullException ("propertyAccessor");
 
+			CheckNonGenericMethod (propertyAccessor);
+
 			if (!propertyAccessor.IsStatic) {
 				if (expression == null)
 					throw new ArgumentNullException ("expression");
@@ -2209,7 +2224,7 @@ namespace System.Linq.Expressions {
 			if (IsInt (t))
 				return true;
 
-			return t == typeof (float) || t == typeof (double) || t == typeof (decimal);
+			return t == typeof (float) || t == typeof (double);
 		}
 
 		static bool IsSignedNumber (Type t)
@@ -2236,7 +2251,7 @@ namespace System.Linq.Expressions {
 		//
 		internal virtual void Emit (EmitContext ec)
 		{
-			throw new NotImplementedException ();
+			throw new NotImplementedException (String.Format ("Emit method is not implemented in expression type {0}", GetType ()));
 		}
 	}
 }

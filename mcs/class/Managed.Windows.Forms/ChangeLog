@@ -1,3 +1,48 @@
+2009-01-16  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* System.Windows.Forms_test.dll.sources: Add ClipboardTest.cs.
+
+2008-11-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: here is another nunit24 option breakage.
+
+2008-11-11  Andres G. Aragoneses  <aaragoneses@novell.com>
+
+	* Application.cs: After UIA assembly is successfully loaded,
+	dump any exception that happens on initialization to stderr.
+
+2008-11-08  Andreia Gaita <shana@jitted.com> 
+
+	* SWF2k5-tests.csproj: Fix the previous ChangeLog entry (bad merge). Update
+	  regenerated test project.
+
+2008-11-08  Andreia Gaita <shana@jitted.com> 
+
+	* build-csproj2k5-tests: Added net_2_0 configuration to go along with the
+	  profile targets (so MD doesn't complain at me)
+
+2008-10-31  Andreia Gaita  <shana@jitted.com>
+
+	* System.Windows.Forms.dll.sources, SWF.csproj,
+	  SWF2k5.csproj:
+	  Added internal classes for debugging purposes
+
+2008-10-23  Andreia Gaita  <shana@jitted.com>
+
+	* SWF.csproj, SWF2k5.csproj: Update project files
+
+2008-09-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	* System.Windows.Forms.dll.resources: Removed unused dialog-*.png images.
+
+2008-09-18  Mike Gorse <<mgorse@novell.com>
+
+	* System.Windows.Forms.dll.sources: Added IKeyFilter.cs.
+
+2008-08-02  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* System.Windows.Forms_test.dll.sources: Added FormEventTest.cs.
+
 2008-07-11  Jonathan Pobst  <monkey@jpobst.com>
 
 	* System.Windows.Forms.dll.sources: Remove the clearlooks, nice,
@@ -813,7 +858,7 @@
 	* resources/, System.Windows.Forms.dll.resources, Makefile:
 	  Add user-home Tango icon in various sizes.
 
-2006-09-05  KornÃ©l PÃ¡l  <kornelpal@hotmail.com>
+2006-09-05  KornAcl PA!l  <kornelpal@hotmail.com>
 
 	* Makefile: Removed CODEPAGE as now UTF-8 is the default.
 
@@ -976,7 +1021,7 @@
 
 	* System.Windows.Forms_test.dll.sources: Added System.Resources/CultureTest.cs
 
-2005-11-12  Pedro MartÃ­nez JuliÃ¡  <pedromj@gmail.com>
+2005-11-12  Pedro MartA-nez JuliA!  <pedromj@gmail.com>
 
 	* System.Windows.Forms_test.dll.sources: Added DataGridViewElementTest.cs
 	DataGridViewBandTest.cs DataGridViewCellTest.cs
@@ -1024,7 +1069,7 @@
 
 	* System.Windows.Forms_test.dll.sources : Added Common.cs
 
-2005-09-27  KornÃ©l PÃ¡l  <kornelpal@hotmail.com>
+2005-09-27  KornAcl PA!l  <kornelpal@hotmail.com>
 
 	* Makefile: Replaced /codepage with CODEPAGE.
 

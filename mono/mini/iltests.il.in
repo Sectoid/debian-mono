@@ -486,10 +486,6 @@ COND:   ldloc.0
 		ret
 	}
 
-#if arch != __ppc__
-	//
-	// Tail calls are not supported on PowerPC.
-	// 
 	.method static public int32 test_0_tail_calls () il managed {
 		.maxstack 16
 		.locals init (
@@ -560,18 +556,34 @@ COND:   ldloc.0
 		call int32 Tests::tail4 (int32, int32)
 		ret
 	}
-#endif
 
 	.method public static int32 test_5_jmp () cil managed {
-		jmp int32 Tests::jmp2 ()
-		ldc.i4.0
+		ldc.i4.1
+		ldc.i4.2
+		call int32 Tests::jmp2 (int32, int32)
 		ret
 	}
 
-	.method public static int32 jmp2 () cil managed {
-		ldc.i4.5
+	.method public static int32 jmp2 (int32, int32) cil managed {
+		ldarg.0
+		ldc.i4.1
+		add
+		starg.s 0
+		ldarg.1
+		ldc.i4.1
+		add
+		starg.s 1
+		jmp int32 Tests::jmp3 (int32, int32)
+		ldc.i4.0
 		ret
 	}		
+
+	.method public static int32 jmp3 (int32 i, int32 j) cil managed {
+		ldarg.0
+		ldarg.1
+		add
+		ret
+	}
 
 	.method static public int32 test_11_switch_with_nonempty_stack () il managed {
 		.maxstack 16
@@ -706,6 +718,15 @@ COND:   ldloc.0
 		ret
 	L1:
 		ldc.i4.0
+		ret
+	}
+
+	.method public static int32 test_1234_conv_ovf_i8_un () cil managed {
+		.maxstack 16
+
+		ldc.i4 1234
+		conv.ovf.i8.un
+		conv.i4
 		ret
 	}
 
@@ -875,6 +896,27 @@ COND:   ldloc.0
 		conv.i4
 		ret
 	}
+
+#if !defined(__ppc__) && !defined(__powerpc__)
+    	// PPC handles overflow by clipping, but this test assumes
+	// no overflow handling.  According to ECMA the result of
+	// float->int conversion is undefined if overflow occurs, so
+	// both behaviours are valid.
+	.method public static int32 test_0_fconv_to_i () cil managed {
+		.maxstack 16
+
+		ldc.r8 2147483648.0
+		conv.i
+		ldc.i8 2147483648
+		conv.i
+		beq L1
+		ldc.i4.1
+		ret
+	L1:
+		ldc.i4.0
+		ret
+	}
+#endif
 
 	.method public static int32 test_0_get_type_from_handle_on_bblock_boundary () cil managed 
 	{
@@ -1087,6 +1129,25 @@ COND:   ldloc.0
 		ldloca.s 0
 		ldfld object Tests/xxx::a
 		brfalse OK
+		ldc.i4.s 1
+		ret
+	OK:
+		ldc.i4.s 0
+		ret
+	}
+
+	.method public static int32 test_0_newobj_vtype_primitive () {
+		.maxstack 6
+		.locals init (
+			native int V_0
+		)
+
+		ldc.i4.s 10
+		newobj instance void native int::'.ctor'(int32)
+		stloc.0
+		ldloc.0
+		ldc.i4.s 10
+		beq OK
 		ldc.i4.s 1
 		ret
 	OK:
@@ -1757,6 +1818,347 @@ HAS_VALUE:	ldc.i4.1
 		ldc.i4.1
 		xor
 		conv.u4
+		ret
+	}
+
+	// Test calling ldfld directly on a vtype instead of a vtype address
+	.method public static int32 test_5_call_ldfld_vtype () cil managed
+	{
+		.maxstack 16
+		.locals init (
+			valuetype Tests/TailCallStruct arg
+		)
+		ldloca 0
+		ldc.i4.2
+		stfld int32 Tests/TailCallStruct::a
+		ldloca 0
+		ldc.i4.4
+		stfld int32 Tests/TailCallStruct::b
+		ldloc.0
+		call valuetype Tests/TailCallStruct Tests::tail2 (valuetype Tests/TailCallStruct)
+		ldfld int32 Tests/TailCallStruct::a
+		ret
+	}
+
+	.method public static int32 throw_ret () cil managed
+	{
+		ldstr "FOO"
+		newobj instance void class [mscorlib]System.OverflowException::.ctor(string)
+		throw
+		ldc.i4.4
+		ret
+	}
+
+	.method public static int32 throw2_ret () cil managed
+	{
+		// Disable inlining
+		ldc.i4.5
+		localloc
+		pop
+
+		call int32 Tests::throw_ret ()
+		ret
+	}
+
+	// Test inlining a method which contains just a throw
+	.method public static int32 test_0_inline_throw () cil managed
+	{
+		.maxstack 16
+		.locals init (
+				int32 v_0
+		)
+
+		.try {
+			call int32 Tests::throw2_ret ()
+			stloc.0
+			leave L0
+		} catch [mscorlib]System.OverflowException {
+			pop
+			leave L1
+		}
+
+		L0:
+			ldc.i4.1
+			ret
+		L1:
+			ldc.i4.0
+			ret			
+	}
+
+    .method public static int32 test_0_stelem_any_null_opt () cil managed
+    {
+		.maxstack 16
+		.locals init (
+				object[]	V_0,
+				int32	V_1)
+
+		ldc.i4.s 10
+		newarr [mscorlib]System.Object
+		stloc.0
+
+		ldc.i4.0
+		stloc.1
+		br L0
+
+	L1:
+		ldloc.0
+		ldloc.1
+		ldnull
+		stelem.any [mscorlib]System.Object
+		ldloc.1
+		ldc.i4.1
+		add
+		stloc.1
+	L0:
+		ldloc.1
+		ldc.i4.s 10
+		blt L1
+
+		ldc.i4.0
+		ret
+	}
+
+    // method line 2
+    .method public static  hidebysig 
+           default int32 manyargs_callee (int32 a, int32 b, int32 c, int32 d, int32 e, int32 f, int32 g, int32 h, int32 i, int32 j, int32 k, int32 l, int32 m, int32 n, int32 o, int32 p)  cil managed 
+    {
+        // Method begins at RVA 0x20f4
+	// Code size 44 (0x2c)
+	.maxstack 8
+	IL_0000:  ldarg.0 
+	IL_0001:  ldarg.1 
+	IL_0002:  add 
+	IL_0003:  ldarg.2 
+	IL_0004:  add 
+	IL_0005:  ldarg.3 
+	IL_0006:  add 
+	IL_0007:  ldarg.s 4
+	IL_0009:  add 
+	IL_000a:  ldarg.s 5
+	IL_000c:  add 
+	IL_000d:  ldarg.s 6
+	IL_000f:  add 
+	IL_0010:  ldarg.s 7
+	IL_0012:  add 
+	IL_0013:  ldarg.s 8
+	IL_0015:  add 
+	IL_0016:  ldarg.s 9
+	IL_0018:  add 
+	IL_0019:  ldarg.s 10
+	IL_001b:  add 
+	IL_001c:  ldarg.s 11
+	IL_001e:  add 
+	IL_001f:  ldarg.s 12
+	IL_0021:  add 
+	IL_0022:  ldarg.s 13
+	IL_0024:  add 
+	IL_0025:  ldarg.s 14
+	IL_0027:  add 
+	IL_0028:  ldarg.s 15
+	IL_002a:  add 
+	IL_002b:  ret 
+    } // end of method main::callee
+
+    // method line 3
+    .method public static  hidebysig 
+           default int32 manyargs_tail_caller (int32 a, int32 b, int32 c, int32 d, int32 e, int32 f, int32 g, int32 h, int32 i, int32 j, int32 k, int32 l, int32 m, int32 n, int32 o, int32 p)  cil managed 
+    {
+        // Method begins at RVA 0x2124
+	// Code size 34 (0x22)
+	.maxstack 17
+	IL_0000:  ldarg.0 
+	IL_0001:  ldarg.1 
+	IL_0002:  ldarg.2 
+	IL_0003:  ldarg.3 
+	IL_0004:  ldarg.s 4
+	IL_0006:  ldarg.s 5
+	IL_0008:  ldarg.s 6
+	IL_000a:  ldarg.s 7
+	IL_000c:  ldarg.s 8
+	IL_000e:  ldarg.s 9
+	IL_0010:  ldarg.s 10
+	IL_0012:  ldarg.s 11
+	IL_0014:  ldarg.s 12
+	IL_0016:  ldarg.s 13
+	IL_0018:  ldarg.s 14
+	IL_001a:  ldarg.s 15
+	          tail.
+	IL_001c:  call int32 class Tests::manyargs_callee(int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32)
+	IL_0021:  ret 
+    } // end of method main::caller
+
+    // method line 4
+    .method public static  hidebysig 
+           default int32 test_0_many_args_tail_call ()  cil managed 
+    {
+        // Method begins at RVA 0x2154
+	// Code size 43 (0x2b)
+	.maxstack 17
+	IL_0000:  ldc.i4.1 
+	IL_0001:  ldc.i4.2 
+	IL_0002:  ldc.i4.3 
+	IL_0003:  ldc.i4.4 
+	IL_0004:  ldc.i4.5 
+	IL_0005:  ldc.i4.6 
+	IL_0006:  ldc.i4.7 
+	IL_0007:  ldc.i4.8 
+	IL_0008:  ldc.i4.s 0x09
+	IL_000a:  ldc.i4.s 0x0a
+	IL_000c:  ldc.i4.s 0x0b
+	IL_000e:  ldc.i4.s 0x0c
+	IL_0010:  ldc.i4.s 0x0d
+	IL_0012:  ldc.i4.s 0x0e
+	IL_0014:  ldc.i4.s 0x0f
+	IL_0016:  ldc.i4.s 0x10
+	IL_0018:  call int32 class Tests::manyargs_tail_caller(int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32, int32)
+	IL_001d:  ldc.i4 136
+	IL_0022:  beq IL_0029
+
+	IL_0027:  ldc.i4.1 
+	IL_0028:  ret 
+	IL_0029:  ldc.i4.0 
+	IL_002a:  ret 
+    } // end of method main::Main
+
+	.class nested private auto ansi beforefieldinit R1
+    	   extends [mscorlib]System.MarshalByRefObject
+	{
+		.field  public  int32 test_field
+
+    	.method public hidebysig  specialname  rtspecialname
+           		instance default void '.ctor' ()  cil managed
+    	{
+			ret
+		}
+	}
+
+	.method public static hidebysig
+			default int32 return_0 () cil managed
+	{
+		ldc.i4.0
+		ret
+	}
+
+	.method public static hidebysig
+			default int32 test_1_volatile_marshalbyref_bug_432673 () cil managed
+	{
+		.locals init (
+			class Tests/R1 v_0
+		)
+
+		newobj instance void class Tests/R1::.ctor ()
+		stloc.0
+		ldloc.0
+		ldc.i4.0
+		volatile.
+		stfld int32 Tests/R1::test_field
+		call int32 class Tests::return_0 ()
+		ldc.i4.1
+		add
+		ret
+	}
+
+	.method public static default int32 return_2 () cil managed
+	{
+		// Prevent inlining
+		ldc.i4.s 16
+        localloc
+		pop
+		ldc.i4.s 2
+		ret
+	}
+
+	.method public static hidebysig
+			default int32 test_1_cmov_opt_regress_463357 () cil managed
+	{
+		call int32 class Tests::return_2 ()
+		ldc.i4.0
+		ceq
+		brfalse L1
+		ldc.i4.0
+		ret
+		br L2
+	L1: nop
+	L2: nop
+		ldc.i4.1
+		ret
+	}
+
+   .method public static hidebysig default int32 cmov_opt_regress_474718_inner (int32 A_1)  cil managed 
+   {
+      .maxstack 3
+      .locals init (int32 V_0, bool V_1, bool V_2)
+      
+	  ldc.i4.0
+      IL_000b:  stloc.1 
+      IL_000d:  br IL_002f
+
+	  ldc.i4.1    
+	  stloc.2
+      IL_001e:  ldloc.2 
+      IL_001f:  brfalse IL_0036
+
+      IL_0024:  
+      IL_002a:  br IL_0041
+    
+      IL_002f:  ldloc.1
+      IL_0030:  stloc.2 
+      IL_0031:  br IL_001e
+    
+      IL_0036:  ldc.i4 0
+      IL_003b:  stloc.0 
+      IL_003c:  br IL_0041
+    
+      IL_0041:  ldloc.0 
+      IL_0042:  ret 
+  } 
+
+    .method public static default int32 test_0_cmov_opt_regress_474718 ()  cil managed 
+    {
+        .maxstack 16
+        ldc.i4.1
+        call int32 Tests::cmov_opt_regress_474718_inner (int32)
+        ret
+   }
+
+	.method public static default int32 test_5_createarr_newobj () cil managed
+	{
+		.maxstack 16
+
+		ldc.i4 5
+		newobj void char[]::.ctor(int32)
+		ldlen
+		ret
+	}
+
+	.method public static default int32 test_0_initblk_3_regress_481458 () cil managed
+	{
+		.maxstack 16
+		.locals init (native int)
+
+		ldc.i4.s 10
+		localloc
+		stloc.0
+
+		// Set the first value to 3
+		ldloc.0
+		ldc.i4.0
+		add		//addr
+		ldc.i4.3	//value
+		stind.i1
+
+		// Zero out the first 3 values
+		ldloc.0		//addr
+		ldc.i4.0	//value
+		ldc.i4.s 3	//size
+		initblk
+
+		// Load the first value
+		ldloc.0
+		ldc.i4.0
+		add	
+		ldind.u1
+		conv.i4
 		ret
 	}
 }

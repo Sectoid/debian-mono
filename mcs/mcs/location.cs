@@ -76,6 +76,7 @@ namespace Mono.CSharp {
 	{
 		CompileUnitEntry comp_unit;
 		Hashtable include_files;
+		Hashtable conditionals;
 
 		public CompilationUnit (string name, string path, int index)
 			: base (name, path, index, false)
@@ -88,6 +89,22 @@ namespace Mono.CSharp {
 
 			if (!include_files.Contains (file.Path))
 				include_files.Add (file.Path, file);
+		}
+
+		public void AddDefine (string value)
+		{
+			if (conditionals == null)
+				conditionals = new Hashtable (2);
+
+			conditionals [value] = true;
+		}
+
+		public void AddUndefine (string value)
+		{
+			if (conditionals == null)
+				conditionals = new Hashtable (2);
+
+			conditionals [value] = null;
 		}
 
 		CompileUnitEntry ICompileUnit.Entry {
@@ -110,6 +127,21 @@ namespace Mono.CSharp {
 					comp_unit.AddFile (include.SourceFileEntry);
 				}
 			}
+		}
+
+		public bool IsConditionalDefined (string value)
+		{
+			if (conditionals != null) {
+				object res = conditionals [value];
+				if (res != null)
+					return (bool)res;
+				
+				// When conditional was undefined
+				if (conditionals.Contains (value))
+					return false;					
+			}
+
+			return RootContext.IsConditionalDefined (value);
 		}
 	}
 
@@ -205,11 +237,10 @@ namespace Mono.CSharp {
 			compile_units.Add (unit);
 		}
 
-		static public CompilationUnit[] SourceFiles {
+		// IList<CompilationUnit>
+		static public ArrayList SourceFiles {
 			get {
-				CompilationUnit[] retval = new CompilationUnit [compile_units.Count];
-				compile_units.CopyTo (retval, 0);
-				return retval;
+				return compile_units;
 			}
 		}
 

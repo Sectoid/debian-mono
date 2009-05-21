@@ -83,18 +83,28 @@ namespace Mono.CSharp {
 
 		static public string FileName;
 
+#if MS_COMPATIBLE
+		const AssemblyBuilderAccess COMPILER_ACCESS = 0;
+#else
+		/* Keep this in sync with System.Reflection.Emit.AssemblyBuilder */
+		const AssemblyBuilderAccess COMPILER_ACCESS = (AssemblyBuilderAccess) 0x800;
+#endif
+				
 		//
-		// Initializes the symbol writer
+		// Initializes the code generator variables for interactive use (repl)
 		//
-		static void InitializeSymbolWriter (string filename)
+		static public void InitDynamic (string name)
 		{
-			if (!SymbolWriter.Initialize (Module.Builder, filename)) {
-				Report.Warning (
-					-18, 1, "Could not find the symbol writer assembly (Mono.CompilerServices.SymbolWriter.dll). This is normally an installation problem. Please make sure to compile and install the mcs/class/Mono.CompilerServices.SymbolWriter directory.");
-				return;
-			}
+			current_domain = AppDomain.CurrentDomain;
+			AssemblyName an = Assembly.GetAssemblyName (name, name);
+			
+			Assembly.Builder = current_domain.DefineDynamicAssembly (an, AssemblyBuilderAccess.Run | COMPILER_ACCESS);
+			Module.Builder = Assembly.Builder.DefineDynamicModule (Basename (name), false);
+#if GMCS_SOURCE
+			Assembly.Name = Assembly.Builder.GetName ();
+#endif
 		}
-
+		
 		//
 		// Initializes the code generator variables
 		//
@@ -124,15 +134,8 @@ namespace Mono.CSharp {
 			current_domain = AppDomain.CurrentDomain;
 
 			try {
-#if MS_COMPATIBLE
-				const AssemblyBuilderAccess COMPILER_ACCESS = 0;
-#else
-				/* Keep this in sync with System.Reflection.Emit.AssemblyBuilder */
-				const AssemblyBuilderAccess COMPILER_ACCESS = (AssemblyBuilderAccess) 0x800;
-#endif
-				
 				Assembly.Builder = current_domain.DefineDynamicAssembly (an,
-					AssemblyBuilderAccess.Save | COMPILER_ACCESS, Dirname (name));
+					AssemblyBuilderAccess.RunAndSave | COMPILER_ACCESS, Dirname (name));
 			}
 			catch (ArgumentException) {
 				// specified key may not be exportable outside it's container
@@ -165,11 +168,23 @@ namespace Mono.CSharp {
 			// If the third argument is true, the ModuleBuilder will dynamically
 			// load the default symbol writer.
 			//
-			Module.Builder = Assembly.Builder.DefineDynamicModule (
-				Basename (name), Basename (output), false);
+			try {
+				Module.Builder = Assembly.Builder.DefineDynamicModule (
+					Basename (name), Basename (output), want_debugging_support);
 
-			if (want_debugging_support)
-				InitializeSymbolWriter (output);
+#if !MS_COMPATIBLE
+				// TODO: We should use SymbolWriter from DefineDynamicModule
+				if (want_debugging_support && !SymbolWriter.Initialize (Module.Builder, output)) {
+					Report.Error (40, "Unexpected debug information initialization error `{0}'",
+						"Could not find the symbol writer assembly (Mono.CompilerServices.SymbolWriter.dll)");
+					return false;
+				}
+#endif
+			} catch (ExecutionEngineException e) {
+				Report.Error (40, "Unexpected debug information initialization error `{0}'",
+					e.Message);
+				return false;
+			}
 
 			return true;
 		}
@@ -361,11 +376,6 @@ namespace Mono.CSharp {
 		public bool HasReturnLabel;
 
 		/// <summary>
-		///   Whether we are inside an iterator block.
-		/// </summary>
-		public bool InIterator;
-
-		/// <summary>
 		///  Whether we are in a `fixed' initialization
 		/// </summary>
 		public bool InFixedInitializer;
@@ -442,7 +452,6 @@ namespace Mono.CSharp {
 #endif
 
 			IsStatic = (code_flags & Modifiers.STATIC) != 0;
-			InIterator = (code_flags & Modifiers.METHOD_YIELDS) != 0;
 			ReturnType = return_type;
 			IsConstructor = is_constructor;
 			CurrentBlock = null;
@@ -598,7 +607,13 @@ namespace Mono.CSharp {
 		
 		public bool IsInCompoundAssignment {
 			get { return (flags & Flags.InCompoundAssignment) != 0; }
-		}		
+		}
+
+		public bool IsVariableCapturingRequired {
+			get {
+				return !IsInProbingMode && (CurrentBranching == null || !CurrentBranching.CurrentUsageVector.IsUnreachable);
+			}
+		}
 
 		public FlowBranching CurrentBranching {
 			get { return current_flow_branching; }
@@ -751,16 +766,18 @@ namespace Mono.CSharp {
 		}
 
 		bool resolved;
+		bool unreachable;
 
 		public bool ResolveTopBlock (EmitContext anonymous_method_host, ToplevelBlock block,
 					     Parameters ip, IMethodData md, out bool unreachable)
 		{
-			current_phase = Phase.Resolving;
-			
-			unreachable = false;
-
-			if (resolved)
+			if (resolved) {
+				unreachable = this.unreachable;
 				return true;
+			}
+
+			current_phase = Phase.Resolving;
+			unreachable = false;
 
 			if (!loc.IsNull)
 				CurrentFile = loc.File;
@@ -787,7 +804,7 @@ namespace Mono.CSharp {
 
 					bool flow_unreachable = top_level.End ();
 					if (flow_unreachable)
-						unreachable = true;
+						this.unreachable = unreachable = true;
 				}
 #if PRODUCTION
 			} catch (Exception e) {
@@ -852,9 +869,7 @@ namespace Mono.CSharp {
 				// this case.
 				//
 
-				if ((block != null) && block.IsDestructor) {
-					// Nothing to do; S.R.E automatically emits a leave.
-				} else if (HasReturnLabel || !unreachable) {
+				if (HasReturnLabel || !unreachable) {
 					if (return_type != TypeManager.void_type)
 						ig.Emit (OpCodes.Ldloc, TemporaryReturn ());
 					ig.Emit (OpCodes.Ret);
@@ -866,7 +881,7 @@ namespace Mono.CSharp {
 		///   This is called immediately before emitting an IL opcode to tell the symbol
 		///   writer to which source line this opcode belongs.
 		/// </summary>
-		public void Mark (Location loc, bool check_file)
+		public void Mark (Location loc)
 		{
 			if (!SymbolWriter.HasSymbolWriter || OmitDebuggingInfo || loc.IsNull)
 				return;
@@ -915,8 +930,6 @@ namespace Mono.CSharp {
 
 		public void FreeTemporaryLocal (LocalBuilder b, Type t)
 		{
-			Stack s;
-
 			if (temporary_storage == null) {
 				temporary_storage = new Hashtable ();
 				temporary_storage [t] = b;
@@ -927,9 +940,8 @@ namespace Mono.CSharp {
 				temporary_storage [t] = b;
 				return;
 			}
-			if (o is Stack) {
-				s = (Stack) o;
-			} else {
+			Stack s = o as Stack;
+			if (s == null) {
 				s = new Stack ();
 				s.Push (o);
 				temporary_storage [t] = s;
@@ -992,7 +1004,7 @@ namespace Mono.CSharp {
 				throw new Exception ("NeedReturnLabel called from Emit phase, should only be called during Resolve");
 			}
 			
-			if (!InIterator && !HasReturnLabel) 
+			if (!HasReturnLabel)
 				HasReturnLabel = true;
 		}
 
@@ -1137,6 +1149,33 @@ namespace Mono.CSharp {
 			runtime_compatibility_attr_type = TypeManager.CoreLookupType (
 				"System.Runtime.CompilerServices", "RuntimeCompatibilityAttribute", Kind.Class, false);
 
+			if (RootContext.Unsafe) {
+				//
+				// Emits [assembly: SecurityPermissionAttribute (SecurityAction.RequestMinimum, SkipVerification = true)]
+				// when -unsafe option was specified
+				//
+				
+				Location loc = Location.Null;
+
+				MemberAccess system_security_permissions = new MemberAccess (new MemberAccess (
+					new QualifiedAliasMember (QualifiedAliasMember.GlobalAlias, "System", loc), "Security", loc), "Permissions", loc);
+
+				ArrayList pos = new ArrayList (1);
+				pos.Add (new Argument (new MemberAccess (new MemberAccess (system_security_permissions, "SecurityAction", loc), "RequestMinimum")));
+
+				ArrayList named = new ArrayList (1);
+				named.Add (new DictionaryEntry ("SkipVerification", new Argument (new BoolLiteral (true, loc))));
+
+				GlobalAttribute g = new GlobalAttribute (new NamespaceEntry (null, null, null), "assembly", system_security_permissions,
+					"SecurityPermissionAttribute", new object[] { pos, named }, loc, false);
+				g.AttachTo (this);
+
+				if (g.Resolve () != null) {
+					declarative_security = new ListDictionary ();
+					g.ExtractSecurityPermissionSet (declarative_security);
+				}
+			}
+
 			if (OptAttributes == null)
 				return;
 
@@ -1205,43 +1244,41 @@ namespace Mono.CSharp {
 					//       are loaded yet.
 					// TODO: Does not handle quoted attributes properly
 					switch (a.Name) {
-						case "AssemblyKeyFile":
-						case "AssemblyKeyFileAttribute":
-						case "System.Reflection.AssemblyKeyFileAttribute":
-							if (RootContext.StrongNameKeyFile != null) {
-								Report.SymbolRelatedToPreviousError (a.Location, a.Name);
-								Report.Warning (1616, 1, "Option `{0}' overrides attribute `{1}' given in a source file or added module",
-                                    "keyfile", "System.Reflection.AssemblyKeyFileAttribute");
-							}
-							else {
-								string value = a.GetString ();
-								if (value.Length != 0)
-									RootContext.StrongNameKeyFile = value;
-							}
-							break;
-						case "AssemblyKeyName":
-						case "AssemblyKeyNameAttribute":
-						case "System.Reflection.AssemblyKeyNameAttribute":
-							if (RootContext.StrongNameKeyContainer != null) {
-								Report.SymbolRelatedToPreviousError (a.Location, a.Name);
-								Report.Warning (1616, 1, "Option `{0}' overrides attribute `{1}' given in a source file or added module",
+					case "AssemblyKeyFile":
+					case "AssemblyKeyFileAttribute":
+					case "System.Reflection.AssemblyKeyFileAttribute":
+						if (RootContext.StrongNameKeyFile != null) {
+							Report.SymbolRelatedToPreviousError (a.Location, a.Name);
+							Report.Warning (1616, 1, "Option `{0}' overrides attribute `{1}' given in a source file or added module",
+									"keyfile", "System.Reflection.AssemblyKeyFileAttribute");
+						} else {
+							string value = a.GetString ();
+							if (value.Length != 0)
+								RootContext.StrongNameKeyFile = value;
+						}
+						break;
+					case "AssemblyKeyName":
+					case "AssemblyKeyNameAttribute":
+					case "System.Reflection.AssemblyKeyNameAttribute":
+						if (RootContext.StrongNameKeyContainer != null) {
+							Report.SymbolRelatedToPreviousError (a.Location, a.Name);
+							Report.Warning (1616, 1, "Option `{0}' overrides attribute `{1}' given in a source file or added module",
 									"keycontainer", "System.Reflection.AssemblyKeyNameAttribute");
-							}
-							else {
-								string value = a.GetString ();
-								if (value.Length != 0)
-									RootContext.StrongNameKeyContainer = value;
-							}
-							break;
-						case "AssemblyDelaySign":
-						case "AssemblyDelaySignAttribute":
-						case "System.Reflection.AssemblyDelaySignAttribute":
-							RootContext.StrongNameDelaySign = a.GetBoolean ();
-							break;
+						} else {
+							string value = a.GetString ();
+							if (value.Length != 0)
+								RootContext.StrongNameKeyContainer = value;
+						}
+						break;
+					case "AssemblyDelaySign":
+					case "AssemblyDelaySignAttribute":
+					case "System.Reflection.AssemblyDelaySignAttribute":
+						RootContext.StrongNameDelaySign = a.GetBoolean ();
+						break;
 					}
 				}
 			}
-
+			
 			AssemblyName an = new AssemblyName ();
 			an.Name = Path.GetFileNameWithoutExtension (name);
 
@@ -1544,7 +1581,9 @@ namespace Mono.CSharp {
 		// TODO: make it private and move all builder based methods here
 		public ModuleBuilder Builder;
 		bool m_module_is_unsafe;
+#if GMCS_SOURCE		
 		bool has_default_charset;
+#endif		
 
 		public CharSet DefaultCharSet = CharSet.Ansi;
 		public TypeAttributes DefaultCharSetType = TypeAttributes.AnsiClass;
@@ -1589,7 +1628,7 @@ namespace Mono.CSharp {
 				}
 				else if (CodeGen.Assembly.IsClsCompliant != a.GetBoolean ()) {
 					Report.SymbolRelatedToPreviousError (CodeGen.Assembly.ClsCompliantAttribute.Location, CodeGen.Assembly.ClsCompliantAttribute.GetSignatureForError ());
-					Report.Error (3017, a.Location, "You cannot specify the CLSCompliant attribute on a module that differs from the CLSCompliant attribute on the assembly");
+					Report.Warning (3017, 1, a.Location, "You cannot specify the CLSCompliant attribute on a module that differs from the CLSCompliant attribute on the assembly");
 					return;
 				}
 			}
@@ -1599,7 +1638,11 @@ namespace Mono.CSharp {
 
 		public bool HasDefaultCharSet {
 			get {
+#if GMCS_SOURCE		
 				return has_default_charset;
+#else
+				return false;
+#endif								
 			}
 		}
 
@@ -1623,18 +1666,18 @@ namespace Mono.CSharp {
 				has_default_charset = true;
 				DefaultCharSet = a.GetCharSetValue ();
 				switch (DefaultCharSet) {
-					case CharSet.Ansi:
-					case CharSet.None:
-						break;
-					case CharSet.Auto:
-						DefaultCharSetType = TypeAttributes.AutoClass;
-						break;
-					case CharSet.Unicode:
-						DefaultCharSetType = TypeAttributes.UnicodeClass;
-						break;
-					default:
-						Report.Error (1724, a.Location, "Value specified for the argument to 'System.Runtime.InteropServices.DefaultCharSetAttribute' is not valid");
-						break;
+				case CharSet.Ansi:
+				case CharSet.None:
+					break;
+				case CharSet.Auto:
+					DefaultCharSetType = TypeAttributes.AutoClass;
+					break;
+				case CharSet.Unicode:
+					DefaultCharSetType = TypeAttributes.UnicodeClass;
+					break;
+				default:
+					Report.Error (1724, a.Location, "Value specified for the argument to 'System.Runtime.InteropServices.DefaultCharSetAttribute' is not valid");
+					break;
 				}
 			}
 #endif

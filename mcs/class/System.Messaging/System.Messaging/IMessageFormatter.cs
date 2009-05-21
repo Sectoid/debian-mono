@@ -43,4 +43,10 @@ namespace System.Messaging
 		
 		void Write(Message message, object obj);
 	}
+	
+	internal enum FormatterTypes
+	{
+		Xml = 0,
+		Binary = 768
+	}
 }

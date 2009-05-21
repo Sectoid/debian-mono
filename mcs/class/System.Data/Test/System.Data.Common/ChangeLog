@@ -1,3 +1,26 @@
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* DbCommandBuilderTest.cs: Added test for QuoteIdentifier.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* DbCommandBuilderTest.cs: Added tests for properties.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* DbCommandBuilderTest.cs: Added tests for QuotePrefix and
+	QuoteSuffix.
+	* DbConnectionStringBuilderTest.cs: Added tests for both odbc and
+	non-odbc rules.
+
+2008-10-07  Daniel Morgan  <monodanmorg@yahoo.com>
+
+	* DbConnectionStringBuilderTest.cs: add tests
+	EmbeddedCharTest1, 2, 3, and 4 for testing setting and getting
+	various connection strings you would find for SqlClient, Odbc, 
+	or Oracle.  Fix test ICollectionCopyToTest to index
+	into the collection in order.
+
 2008-03-23  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* DataContainerTest.cs: Code formatting.

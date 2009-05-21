@@ -55,7 +55,9 @@ namespace System {
 
 	[Serializable]
 #if NET_2_0
+#if !NET_2_1
 	[TypeConverter (typeof (UriTypeConverter))]
+#endif
 	public class Uri : ISerializable {
 #else
 	public class Uri : MarshalByRefObject, ISerializable {
@@ -144,6 +146,41 @@ namespace System {
 			default:
 				string msg = Locale.GetText ("Invalid UriKind value '{0}'.", uriKind);
 				throw new ArgumentException ("uriKind", msg);
+			}
+		}
+
+		//
+		// An exception-less constructor, returns success
+		// condition on the out parameter `success'.
+		//
+		internal Uri (string uriString, UriKind uriKind, out bool success)
+		{
+			if (uriString == null){
+				success = false;
+				return;
+			}
+
+			source = uriString;
+			if (ParseNoExceptions (uriKind, uriString) != null)
+				success = false;
+			else {
+				success = true;
+				
+				switch (uriKind) {
+				case UriKind.Absolute:
+					if (!IsAbsoluteUri)
+						success = false;
+					break;
+				case UriKind.Relative:
+					if (IsAbsoluteUri)
+						success = false;
+					break;
+				case UriKind.RelativeOrAbsolute:
+					break;
+				default:
+					success = false;
+					break;
+				}
 			}
 		}
 
@@ -474,16 +511,18 @@ namespace System {
 
 				if (host == "loopback" || host == "localhost") 
 					return true;
-					
-				try {
-					if (IPAddress.Loopback.Equals (IPAddress.Parse (host)))
-						return true;
-				} catch (FormatException) {}
 
-				try {
-					return IPv6Address.IsLoopback (IPv6Address.Parse (host));
-				} catch (FormatException) {}
-				
+				IPAddress result;
+				if (IPAddress.TryParse (host, out result))
+					if (IPAddress.Loopback.Equals (result))
+						return true;
+
+				IPv6Address result6;
+				if (IPv6Address.TryParse (host, out result6)){
+					if (IPv6Address.IsLoopback (result6))
+						return true;
+				}
+
 				return false;
 			} 
 		}
@@ -664,27 +703,38 @@ namespace System {
 			if (IsDomainAddress (name))
 				return UriHostNameType.Dns;				
 				
-			try {
-				IPv6Address.Parse (name);
+			IPv6Address addr;
+			if (IPv6Address.TryParse (name, out addr))
 				return UriHostNameType.IPv6;
-			} catch (FormatException) {}
 			
 			return UriHostNameType.Unknown;
 		}
 		
 		internal static bool IsIPv4Address (string name)
-		{		
+		{
 			string [] captures = name.Split (new char [] {'.'});
 			if (captures.Length != 4)
 				return false;
+
 			for (int i = 0; i < 4; i++) {
+				int length;
+
+				length = captures [i].Length;
+				if (length == 0)
+					return false;
+				uint number;
+#if NET_2_0
+				if (!UInt32.TryParse (captures [i], out number))
+					return false;
+#else
 				try {
-					int d = Int32.Parse (captures [i], CultureInfo.InvariantCulture);
-					if (d < 0 || d > 255)
-						return false;
+					number = UInt32.Parse (captures [i]);
 				} catch (Exception) {
 					return false;
 				}
+#endif
+				if (number > 255)
+					return false;
 			}
 			return true;
 		}			
@@ -1206,17 +1256,21 @@ namespace System {
 			path = path.Replace ("\\", "/");
 		}
 
-		private void ParseAsWindowsAbsoluteFilePath (string uriString)
+		//
+		// Returns null on success, string with error on failure
+		//
+		private string ParseAsWindowsAbsoluteFilePath (string uriString)
 		{
-			if (uriString.Length > 2 && uriString [2] != '\\'
-					&& uriString [2] != '/')
-				throw new UriFormatException ("Relative file path is not allowed.");
+			if (uriString.Length > 2 && uriString [2] != '\\' && uriString [2] != '/')
+				return "Relative file path is not allowed.";
 			scheme = UriSchemeFile;
 			host = String.Empty;
 			port = -1;
 			path = uriString.Replace ("\\", "/");
 			fragment = String.Empty;
 			query = String.Empty;
+
+			return null;
 		}
 
 		private void ParseAsUnixAbsoluteFilePath (string uriString)
@@ -1248,10 +1302,26 @@ namespace System {
 				path = uriString;
 		}
 
-		// this parse method is as relaxed as possible about the format
-		// it will hardly ever throw a UriFormatException
+		//
+		// This parse method will throw exceptions on failure
+		//  
 		private void Parse (UriKind kind, string uriString)
 		{			
+			if (uriString == null)
+				throw new ArgumentNullException ("uriString");
+
+			string s = ParseNoExceptions (kind, uriString);
+			if (s != null)
+				throw new UriFormatException (s);
+		}
+
+		//
+		// This parse method will not throw exceptions on failure
+		//
+		// Returns null on success, or a description of the error in the parsing
+		//
+		private string ParseNoExceptions (UriKind kind, string uriString)
+		{
 			//
 			// From RFC 2396 :
 			//
@@ -1259,21 +1329,18 @@ namespace System {
 			//       12            3  4          5       6  7        8 9
 			//			
 			
-			if (uriString == null)
-				throw new ArgumentNullException ("uriString");
-
 			uriString = uriString.Trim();
 			int len = uriString.Length;
 
 			if (len == 0){
 				if (kind == UriKind.Relative || kind == UriKind.RelativeOrAbsolute){
 					isAbsoluteUri = false;
-					return;
+					return null;
 				}
 			}
 			
 			if (len <= 1 && (kind != UriKind.Relative))
-				throw new UriFormatException ();
+				return "Absolute URI is too short";
 
 			int pos = 0;
 
@@ -1281,7 +1348,7 @@ namespace System {
 			// Identify Windows path, unix path, or standard URI.
 			pos = uriString.IndexOf (':');
 			if (pos == 0) {
-				throw new UriFormatException("Invalid URI: The format of the URI could not be determined.");
+				return "Invalid URI: The format of the URI could not be determined.";
 			} else if (pos < 0) {
 				// It must be Unix file path or Windows UNC
 				if (uriString [0] == '/' && Path.DirectorySeparatorChar == '/'){
@@ -1296,13 +1363,15 @@ namespace System {
 					isAbsoluteUri = false;
 					path = uriString;
 				}
-				return;
+				return null;
 			} else if (pos == 1) {
 				if (!IsAlpha (uriString [0]))
-					throw new UriFormatException ("URI scheme must start with a letter.");
+					return "URI scheme must start with a letter.";
 				// This means 'a:' == windows full path.
-				ParseAsWindowsAbsoluteFilePath (uriString);
-				return;
+				string msg = ParseAsWindowsAbsoluteFilePath (uriString);
+				if (msg != null)
+					return msg;
+				return null;
 			} 
 
 			// scheme
@@ -1310,10 +1379,8 @@ namespace System {
 
 			// Check scheme name characters as specified in RFC2396.
 			// Note: different checks in 1.x and 2.0
-			if (!CheckSchemeName (scheme)) {
-				string msg = Locale.GetText ("URI scheme must start with a letter and must consist of one of alphabet, digits, '+', '-' or '.' character.");
-				throw new UriFormatException (msg);
-			}
+			if (!CheckSchemeName (scheme)) 
+				return Locale.GetText ("URI scheme must start with a letter and must consist of one of alphabet, digits, '+', '-' or '.' character.");
 
 			// from here we're practically working on uriString.Substring(startpos,endpos-startpos)
 			int startpos = pos + 1;
@@ -1343,14 +1410,14 @@ namespace System {
 			if (IsPredefinedScheme (scheme) && scheme != UriSchemeMailto && scheme != UriSchemeNews && (
 				(endpos-startpos < 2) ||
 				(endpos-startpos >= 2 && uriString [startpos] == '/' && uriString [startpos+1] != '/')))				
-				throw new UriFormatException ("Invalid URI: The Authority/Host could not be parsed.");
+				return "Invalid URI: The Authority/Host could not be parsed.";
 			
 			
 			bool startsWithSlashSlash = endpos-startpos >= 2 && uriString [startpos] == '/' && uriString [startpos+1] == '/';
 			bool unixAbsPath = scheme == UriSchemeFile && startsWithSlashSlash && (endpos-startpos == 2 || uriString [startpos+2] == '/');
 			if (startsWithSlashSlash) {
 				if (kind == UriKind.Relative)
-					throw new UriFormatException ("Absolute URI when we expected a relative one");
+					return "Absolute URI when we expected a relative one";
 				
 				if (scheme != UriSchemeMailto && scheme != UriSchemeNews)
 					startpos += 2;
@@ -1378,7 +1445,7 @@ namespace System {
 			} else if (!IsPredefinedScheme (scheme)) {
 				path = uriString.Substring(startpos, endpos-startpos);
 				isOpaquePart = true;
-				return;
+				return null;
 			}
 
 			// 5 path
@@ -1412,16 +1479,19 @@ namespace System {
 			if (pos != -1 && pos != endpos - 1) {
 				string portStr = uriString.Substring(pos + 1, endpos - (pos + 1));
 				if (portStr.Length > 0 && portStr[portStr.Length - 1] != ']') {
-					try {
 #if NET_2_0
-						port = (int) UInt16.Parse (portStr, NumberStyles.Integer, CultureInfo.InvariantCulture);
+					if (!Int32.TryParse (portStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out port) ||
+					    port < 0 || port > UInt16.MaxValue)
+						return "Invalid URI: Invalid port number";
+					endpos = pos;
 #else
+					try {
 						port = (int) UInt32.Parse (portStr, CultureInfo.InvariantCulture);
-#endif
 						endpos = pos;
 					} catch (Exception) {
-						throw new UriFormatException ("Invalid URI: Invalid port number");
+						return "Invalid URI: Invalid port number";
 					}
+#endif
 				} else {
 					if (port == -1) {
 						port = GetDefaultPort (scheme);
@@ -1456,30 +1526,41 @@ namespace System {
 					host = String.Empty;
 				}
 			} else if (host.Length == 0 &&
-				(scheme == UriSchemeHttp || scheme == UriSchemeGopher || scheme == UriSchemeNntp
-				 || scheme == UriSchemeHttps || scheme == UriSchemeFtp)) {
-				throw new UriFormatException ("Invalid URI: The hostname could not be parsed");
+				   (scheme == UriSchemeHttp || scheme == UriSchemeGopher || scheme == UriSchemeNntp ||
+				    scheme == UriSchemeHttps || scheme == UriSchemeFtp)) {
+				return "Invalid URI: The hostname could not be parsed";
 			}
 
 			bool badhost = ((host.Length > 0) && (CheckHostName (host) == UriHostNameType.Unknown));
 			if (!badhost && (host.Length > 1) && (host[0] == '[') && (host[host.Length - 1] == ']')) {
-				try {
-					host = "[" + IPv6Address.Parse (host).ToString (true) + "]";
-				}
-				catch (Exception) {
+				IPv6Address ipv6addr;
+				
+				if (IPv6Address.TryParse (host, out ipv6addr))
+					host = "[" + ipv6addr.ToString (true) + "]";
+				else
 					badhost = true;
-				}
 			}
-			if (badhost) {
-				string msg = Locale.GetText ("Invalid URI: The hostname could not be parsed.");
-				throw new UriFormatException (msg);
-			}
+#if NET_2_0
+			if (badhost && (Parser is DefaultUriParser || Parser == null))
+				return Locale.GetText ("Invalid URI: The hostname could not be parsed. (" + host + ")");
+
+			UriFormatException ex = null;
+			if (Parser != null)
+				Parser.InitializeAndValidate (this, out ex);
+			if (ex != null)
+				return ex.Message;
+#else
+			if (badhost)
+				return Locale.GetText ("Invalid URI: The hostname could not be parsed. (" + host + ")");
+#endif
 
 			if ((scheme != Uri.UriSchemeMailto) &&
 					(scheme != Uri.UriSchemeNews) &&
 					(scheme != Uri.UriSchemeFile)) {
 				path = Reduce (path);
 			}
+
+			return null;
 		}
 
 		private static string Reduce (string path)
@@ -1729,6 +1810,18 @@ namespace System {
 			return false;
 		}
 
+		internal static bool MaybeUri (string s)
+		{
+			int p = s.IndexOf (':');
+			if (p == -1)
+				return false;
+
+			if (p >= 10)
+				return false;
+
+			return IsPredefinedScheme (s.Substring (0, p));
+		}
+		
 		private static bool IsPredefinedScheme (string scheme)
 		{
 			switch (scheme) {
@@ -1899,21 +1992,30 @@ namespace System {
 		{
 			if (uriString == null)
 				return false;
-			Uri uri = new Uri (uriString, uriKind);
-			return uri.IsWellFormedOriginalString ();
+
+			if (uriKind != UriKind.RelativeOrAbsolute &&
+				uriKind != UriKind.Absolute &&
+				uriKind != UriKind.Relative) {
+				string msg = Locale.GetText ("Invalid UriKind value '{0}'.", uriKind);
+                                throw new ArgumentException ("uriKind", msg);
+			}
+
+			Uri uri;
+			if (Uri.TryCreate (uriString, uriKind, out uri))
+				return uri.IsWellFormedOriginalString ();
+			return false;
 		}
 
-		// [MonoTODO ("rework code to avoid exception catching")]
 		public static bool TryCreate (string uriString, UriKind uriKind, out Uri result)
 		{
-			try {
-				result = new Uri (uriString, uriKind);
+			bool success;
+			Uri r = new Uri (uriString, uriKind, out success);
+			if (success){
+				result = r;
 				return true;
 			}
-			catch (UriFormatException) {
-				result = null;
-				return false;
-			}
+			result = null;
+			return false;
 		}
 
 		// [MonoTODO ("rework code to avoid exception catching")]

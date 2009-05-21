@@ -1,3 +1,25 @@
+2009-01-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* UnixSignalTest.cs: Fix the RealTimeSignum constructor
+	tests to take into account the fact that some signals might be
+	in used by the runtime. Added a test for multiple registration
+	of a rt signal.
+
+2009-01-07  Geoff Norton  <gnorton@novell.com>
+
+	* UnixSignalTest.cs: Disable the tests that storm signals on OSX.
+	(They wont work)
+
+2008-11-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* UnixSignalTest.cs: Add tests for RealTimeSignum constructors,
+	  .RealTimeSignum and .IsRealTimeSignal properties.
+	  Patch thanks to tim.jenks@realtimeworlds.com.
+
+2008-11-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UnixSignalTest.cs: use WaitAny + 30s timeout.
+
 2008-02-12  Zoltan Varga  <vargaz@gmail.com>
 
 	* UnixSignalTest.cs: Fix the build.

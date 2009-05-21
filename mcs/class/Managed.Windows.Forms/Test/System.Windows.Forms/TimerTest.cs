@@ -18,7 +18,7 @@ using NUnit.Framework;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class TimerTest
+	public class TimerTest : TestHelper
 	{
 		bool Ticked;
 		
@@ -156,7 +156,6 @@ namespace MonoTests.System.Windows.Forms
 		}
 
 		[Test] // bug #325033
-		[Category ("NotWorking")]
 		public void RunningThread ()
 		{
 			Application.Run (new Bug325033Form ());

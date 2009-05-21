@@ -1,3 +1,44 @@
+2009-02-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* StringReaderTest.cs: new test for ReadLine.
+
+2008-12-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BinaryReaderTest.cs : fix tests that are also failing under .NET
+	  (Exposed by nunit24).
+
+2008-11-09 William Holmes <billholmes54@gmail.com>
+
+	* TextReaderTest.cs: Added a test for the Null field of
+	  the TextReader.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* PathTest.cs: add test for bug #439751.
+
+2008-10-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* BinaryReaderTest.cs: Add a test for #434581.
+
+2008-08-16  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* StreamWriterTest.cs: Removed Constructor2_Path_Whitespace test, as
+	it only applies to Windows (and is duplicate for illegal chars test).
+	Only check paramname for buffersize exception on 2.0 profile.
+
+2008-08-15  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* StreamWriterTest.cs: Added more .ctor tests. Enabled AutoFlush
+	test.
+
+2008-08-15  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* StreamWriterTest.cs: Moved ctor argument checks to separate methods.
+	Added and improved ctor tests. Added test for Close. Improved
+	(Auto)Flush tests. Use Assert class instead of Assertion.
+
 2008-06-21  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* PathCas.cs: Updated method names to reflect changes in PathTest.
