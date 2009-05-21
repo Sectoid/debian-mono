@@ -104,8 +104,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/control
     debian/libmono1.0-cil.install
     debian/libmono-cecil-private-cil.install:
-    + Moved Mono.Cecil and Mono.Cecil.Mdb from libmono1.0-cil to
-      libmono-cecil-private-cil, as it's now build for CLI 2.0.
+    + Moved Mono.Cecil from libmono1.0-cil to libmono-cecil-private-cil, as
+      it's now build for CLI 2.0.
   * debian/libmono-system-web2.0-cil.install:
     + Added System.ComponentModel.DataAnnotations, System.Web.Abstractions,
       System.Web.DynamicData and System.Web.Routing.
