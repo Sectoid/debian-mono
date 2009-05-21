@@ -289,7 +289,6 @@ binary-indep: build-arch install-arch build-indep install-indep
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	
 	dh_link -i
-	dh_installchangelogs -i
 	dh_installdocs -i
 	dh_installman -i
 	debian/dh_clistrip -i --dbg-package=mono-dbg
