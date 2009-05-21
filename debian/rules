@@ -398,5 +398,5 @@ get-orig-source:
 	tar -czf $(DEB_SOURCE_NAME)_$(UPVERSION)+dfsg.orig.tar.gz $(TARBALL_DIR)+dfsg
 	rm -r $(TARBALL_DIR)+dfsg
 
-.PHONY: autoreconf clean build binary-indep binary-arch install binary patch unpatch
+.PHONY: autoreconf configure-arch configure-indep clean clean-patched build build-all build-arch build-indep binary-indep binary-arch install install-all install-arch install-indep binary binary-arch binary-indep patch unpatch get-orig-source
 .NOTPARALLEL:
