@@ -9,7 +9,7 @@ mono (2.4-1) unstable; urgency=low
     + Support for precompiled ASP.NET pages.
   * Complete Announcement of Mono 2.4 (vs Mono 2.2):
     http://www.mono-project.com/Release_Notes_Mono_2.4
-    
+
   * Mono 2.2 also ships with lovely things:
     + The tree-based code generation engine in the JIT was replaced with the
       Linear IL engine, which allows better optimizations.
