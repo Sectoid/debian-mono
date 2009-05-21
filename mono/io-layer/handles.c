@@ -14,10 +14,18 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/mman.h>
-#include <dirent.h>
+#ifdef HAVE_SYS_SOCKET_H
+#  include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_UN_H
+#  include <sys/un.h>
+#endif
+#ifdef HAVE_SYS_MMAN_H
+#  include <sys/mman.h>
+#endif
+#ifdef HAVE_DIRENT_H
+#  include <dirent.h>
+#endif
 #include <sys/stat.h>
 
 #include <mono/os/gc_wrapper.h>
@@ -108,8 +116,16 @@ struct _WapiFileShareLayout *_wapi_fileshare_layout = NULL;
 
 guint32 _wapi_fd_reserve;
 
-mono_mutex_t _wapi_global_signal_mutex;
-pthread_cond_t _wapi_global_signal_cond;
+/* 
+ * This is an internal handle which is used for handling waiting for multiple handles.
+ * Threads which wait for multiple handles wait on this one handle, and when a handle
+ * is signalled, this handle is signalled too.
+ */
+static gpointer _wapi_global_signal_handle;
+
+/* Point to the mutex/cond inside _wapi_global_signal_handle */
+mono_mutex_t *_wapi_global_signal_mutex;
+pthread_cond_t *_wapi_global_signal_cond;
 
 int _wapi_sem_id;
 gboolean _wapi_has_shut_down = FALSE;
@@ -120,6 +136,8 @@ gboolean _wapi_has_shut_down = FALSE;
  */
 static pid_t _wapi_pid;
 static mono_once_t pid_init_once = MONO_ONCE_INIT;
+
+static gpointer _wapi_handle_real_new (WapiHandleType type, gpointer handle_specific);
 
 static void pid_init (void)
 {
@@ -187,9 +205,6 @@ static void handle_cleanup (void)
 	}
 	
 	_wapi_shm_semaphores_remove ();
-
-	mono_mutex_destroy(&_wapi_global_signal_mutex);
-	pthread_cond_destroy(&_wapi_global_signal_cond);
 }
 
 void _wapi_cleanup ()
@@ -206,8 +221,6 @@ void _wapi_cleanup ()
 static mono_once_t shared_init_once = MONO_ONCE_INIT;
 static void shared_init (void)
 {
-	int thr_ret;
-	
 	g_assert ((sizeof (handle_ops) / sizeof (handle_ops[0]))
 		  == WAPI_HANDLE_COUNT);
 	
@@ -239,12 +252,12 @@ static void shared_init (void)
 	g_assert (_wapi_fileshare_layout != NULL);
 	
 	_wapi_collection_init ();
-	
-	thr_ret = pthread_cond_init(&_wapi_global_signal_cond, NULL);
-	g_assert (thr_ret == 0);
-	
-	thr_ret = mono_mutex_init(&_wapi_global_signal_mutex, NULL);
-	g_assert (thr_ret == 0);
+
+	/* Can't call wapi_handle_new as it calls us recursively */
+	_wapi_global_signal_handle = _wapi_handle_real_new (WAPI_HANDLE_EVENT, NULL);
+
+	_wapi_global_signal_cond = &_WAPI_PRIVATE_HANDLES (GPOINTER_TO_UINT (_wapi_global_signal_handle)).signal_cond;
+	_wapi_global_signal_mutex = &_WAPI_PRIVATE_HANDLES (GPOINTER_TO_UINT (_wapi_global_signal_handle)).signal_mutex;
 
 	/* Using g_atexit here instead of an explicit function call in
 	 * a cleanup routine lets us cope when a third-party library
@@ -402,15 +415,11 @@ again:
 	return(0);
 }
 
-gpointer _wapi_handle_new (WapiHandleType type, gpointer handle_specific)
+static gpointer _wapi_handle_real_new (WapiHandleType type, gpointer handle_specific)
 {
 	guint32 handle_idx = 0;
 	gpointer handle;
 	int thr_ret;
-	
-	g_assert (_wapi_has_shut_down == FALSE);
-	
-	mono_once (&shared_init_once, shared_init);
 	
 #ifdef DEBUG
 	g_message ("%s: Creating new handle of type %s", __func__,
@@ -481,6 +490,15 @@ gpointer _wapi_handle_new (WapiHandleType type, gpointer handle_specific)
 		
 done:
 	return(handle);
+}
+
+gpointer _wapi_handle_new (WapiHandleType type, gpointer handle_specific)
+{
+	g_assert (_wapi_has_shut_down == FALSE);
+	
+	mono_once (&shared_init_once, shared_init);
+
+	return _wapi_handle_real_new (type, handle_specific);
 }
 
 gpointer _wapi_handle_new_from_offset (WapiHandleType type, guint32 offset,
@@ -1511,14 +1529,14 @@ static int timedwait_signal_poll_cond (pthread_cond_t *cond, mono_mutex_t *mutex
 	return(ret);
 }
 
-int _wapi_handle_wait_signal (void)
+int _wapi_handle_wait_signal (gboolean poll)
 {
-	return timedwait_signal_poll_cond (&_wapi_global_signal_cond, &_wapi_global_signal_mutex, NULL, TRUE);
+	return _wapi_handle_timedwait_signal_handle (_wapi_global_signal_handle, NULL, TRUE, poll);
 }
 
-int _wapi_handle_timedwait_signal (struct timespec *timeout)
+int _wapi_handle_timedwait_signal (struct timespec *timeout, gboolean poll)
 {
-	return timedwait_signal_poll_cond (&_wapi_global_signal_cond, &_wapi_global_signal_mutex, timeout, TRUE);
+	return _wapi_handle_timedwait_signal_handle (_wapi_global_signal_handle, timeout, TRUE, poll);
 }
 
 int _wapi_handle_wait_signal_handle (gpointer handle, gboolean alertable)
@@ -1527,11 +1545,11 @@ int _wapi_handle_wait_signal_handle (gpointer handle, gboolean alertable)
 	g_message ("%s: waiting for %p", __func__, handle);
 #endif
 	
-	return _wapi_handle_timedwait_signal_handle (handle, NULL, alertable);
+	return _wapi_handle_timedwait_signal_handle (handle, NULL, alertable, FALSE);
 }
 
 int _wapi_handle_timedwait_signal_handle (gpointer handle,
-					  struct timespec *timeout, gboolean alertable)
+										  struct timespec *timeout, gboolean alertable, gboolean poll)
 {
 #ifdef DEBUG
 	g_message ("%s: waiting for %p (type %s)", __func__, handle,
@@ -1567,7 +1585,30 @@ int _wapi_handle_timedwait_signal_handle (gpointer handle,
 		
 	} else {
 		guint32 idx = GPOINTER_TO_UINT(handle);
-		return timedwait_signal_poll_cond (&_WAPI_PRIVATE_HANDLES(idx).signal_cond, &_WAPI_PRIVATE_HANDLES(idx).signal_mutex, timeout, alertable);
+		int res;
+		pthread_cond_t *cond;
+		mono_mutex_t *mutex;
+
+		if (alertable && !wapi_thread_set_wait_handle (handle))
+			return 0;
+
+		cond = &_WAPI_PRIVATE_HANDLES (idx).signal_cond;
+		mutex = &_WAPI_PRIVATE_HANDLES (idx).signal_mutex;
+
+		if (poll) {
+			/* This is needed when waiting for process handles */
+			res = timedwait_signal_poll_cond (cond, mutex, timeout, alertable);
+		} else {
+			if (timeout)
+				res = mono_cond_timedwait (cond, mutex, timeout);
+			else
+				res = mono_cond_wait (cond, mutex);
+		}
+
+		if (alertable)
+			wapi_thread_clear_wait_handle (handle);
+
+		return res;
 	}
 }
 
@@ -1682,6 +1723,7 @@ static void _wapi_handle_check_share_by_pid (struct _WapiFileShare *share_info)
 	}
 }
 
+#ifdef __linux__
 /* Scan /proc/<pids>/fd/ for open file descriptors to the file in
  * question.  If there are none, reset the share info.
  *
@@ -1815,6 +1857,29 @@ done:
 
 	_wapi_handle_unlock_shared_handles ();
 }
+#else
+//
+// Other implementations (non-Linux)
+//
+void _wapi_handle_check_share (struct _WapiFileShare *share_info, int fd)
+{
+	int thr_ret;
+	
+	/* Prevents entries from expiring under us if we remove this
+	 * one */
+	thr_ret = _wapi_handle_lock_shared_handles ();
+	g_assert (thr_ret == 0);
+	
+	/* Prevent new entries racing with us */
+	thr_ret = _wapi_shm_sem_lock (_WAPI_SHARED_SEM_FILESHARE);
+	g_assert (thr_ret == 0);
+	
+	_wapi_handle_check_share_by_pid (share_info);
+
+	thr_ret = _wapi_shm_sem_unlock (_WAPI_SHARED_SEM_FILESHARE);
+	_wapi_handle_unlock_shared_handles ();
+}
+#endif
 
 void _wapi_handle_dump (void)
 {

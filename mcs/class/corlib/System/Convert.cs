@@ -681,10 +681,6 @@ namespace System {
 		[CLSCompliant (false)]
 		public static char ToChar (ushort value) 
 		{ 
-			if (value > Char.MaxValue)
-				throw new OverflowException (Locale.GetText (
-					"Value is greater than Char.MaxValue"));
-	  
 			return (char)value; 
 		}
 
@@ -834,11 +830,7 @@ namespace System {
 
 		public static decimal ToDecimal (double value) 
 		{ 
-			if (value > (double)Decimal.MaxValue || value < (double)Decimal.MinValue) 
-				throw new OverflowException (Locale.GetText (
-					"Value is greater than Decimal.MaxValue or less than Decimal.MinValue"));
-
-			return (decimal)value; 
+			return (decimal) value; 
 		}
 
 		public static decimal ToDecimal (float value) 
@@ -2914,9 +2906,7 @@ namespace System {
 				else if (conversionType == conversionTable[18]) // 18 TypeCode.String
 					return (object) convertValue.ToString (provider);
 				else {
-					throw new InvalidCastException (
-						String.Format (Locale.GetText ("Unknown target convertion type from {0} to {1}"), 
-							       value.GetType (), conversionType));
+					return convertValue.ToType (conversionType, provider);
 				}
 			} else
 				// Not in the conversion table

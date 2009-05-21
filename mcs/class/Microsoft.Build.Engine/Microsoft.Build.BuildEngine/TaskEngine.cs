@@ -125,7 +125,8 @@ namespace Microsoft.Build.BuildEngine {
 				
 				propertyInfo = taskType.GetProperty (taskParameter);
 				if (propertyInfo == null)
-					throw new Exception ("Could not get property info.");
+					throw new Exception (String.Format (
+						"The parameter '{0}' was not found for the '{1}' task.", taskParameter, taskElement.Name));
 				if (!propertyInfo.IsDefined (outputAttribute, false))
 					throw new Exception ("This is not output property.");
 				
@@ -164,9 +165,8 @@ namespace Microsoft.Build.BuildEngine {
 			
 			if (parentProject.EvaluatedItemsByName.ContainsKey (itemName)) {
 				BuildItemGroup big = parentProject.EvaluatedItemsByName [itemName];
-				big.Clear ();
-				parentProject.EvaluatedItemsByName.Remove (itemName);
-				parentProject.EvaluatedItemsByName.Add (itemName, newItems);
+				foreach (BuildItem item in newItems)
+					big.AddItem (item);
 			} else {
 				parentProject.EvaluatedItemsByName.Add (itemName, newItems);
 			}

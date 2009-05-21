@@ -76,29 +76,29 @@ public partial class Page : TemplateControl, IHttpHandler
 {
 #if NET_2_0
 	static string machineKeyConfigPath = "system.web/machineKey";
-	private bool _eventValidation = true;
-	private object [] _savedControlState;
-	private bool _doLoadPreviousPage;
+	bool _eventValidation = true;
+	object [] _savedControlState;
+	bool _doLoadPreviousPage;
 	string _focusedControlID;
 	bool _hasEnabledControlArray;
 #endif
-	private bool _viewState = true;
-	private bool _viewStateMac;
-	private string _errorPage;
-	private bool is_validated;
-	private bool _smartNavigation;
-	private int _transactionMode;
-	private ValidatorCollection _validators;
-	private bool renderingForm;
-	private string _savedViewState;
-	private ArrayList _requiresPostBack;
-	private ArrayList _requiresPostBackCopy;
-	private ArrayList requiresPostDataChanged;
-	private IPostBackEventHandler requiresRaiseEvent;
-	private IPostBackEventHandler formPostedRequiresRaiseEvent;
-	private NameValueCollection secondPostData;
-	private bool requiresPostBackScript;
-	private bool postBackScriptRendered;
+	bool _viewState;
+	bool _viewStateMac;
+	string _errorPage;
+	bool is_validated;
+	bool _smartNavigation;
+	int _transactionMode;
+	ValidatorCollection _validators;
+	bool renderingForm;
+	string _savedViewState;
+	ArrayList _requiresPostBack;
+	ArrayList _requiresPostBackCopy;
+	ArrayList requiresPostDataChanged;
+	IPostBackEventHandler requiresRaiseEvent;
+	IPostBackEventHandler formPostedRequiresRaiseEvent;
+	NameValueCollection secondPostData;
+	bool requiresPostBackScript;
+	bool postBackScriptRendered;
 	bool handleViewState;
 	string viewStateUserKey;
 	NameValueCollection _requestValueCollection;
@@ -110,7 +110,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	CultureInfo _appUICulture;
 
 	// The initial context
-	private HttpContext _context;
+	HttpContext _context;
 	
 	// cached from the initial context
 	HttpApplicationState _application;
@@ -148,6 +148,8 @@ public partial class Page : TemplateControl, IHttpHandler
 	internal const string CallbackSourceID = "__CALLBACKTARGET";
 	internal const string PreviousPageID = "__PREVIOUSPAGE";
 
+	int maxPageStateFieldLength = -1;
+	string uniqueFilePathSuffix;
 	HtmlHead htmlHeader;
 	
 	MasterPage masterPage;
@@ -157,7 +159,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	bool isCrossPagePostBack;
 	bool isPostBack;
 	bool isCallback;
-	ArrayList requireStateControls;
+	List <Control> requireStateControls;
 	HtmlForm _form;
 
 	string _title;
@@ -167,17 +169,17 @@ public partial class Page : TemplateControl, IHttpHandler
 
 	bool _maintainScrollPositionOnPostBack;
 
-	private bool asyncMode = false;
-	private TimeSpan asyncTimeout;
-	private const double DefaultAsyncTimeout = 45.0;
-	private List<PageAsyncTask> parallelTasks;
-	private List<PageAsyncTask> serialTasks;
+	bool asyncMode = false;
+	TimeSpan asyncTimeout;
+	const double DefaultAsyncTimeout = 45.0;
+	List<PageAsyncTask> parallelTasks;
+	List<PageAsyncTask> serialTasks;
 
-	private ViewStateEncryptionMode viewStateEncryptionMode;
-	private bool controlRegisteredForViewStateEncryption = false;
+	ViewStateEncryptionMode viewStateEncryptionMode;
+	bool controlRegisteredForViewStateEncryption = false;
 #endif
 
-	#region Constructor
+	#region Constructors	
 	public Page ()
 	{
 		scriptManager = new ClientScriptManager (this);
@@ -185,13 +187,15 @@ public partial class Page : TemplateControl, IHttpHandler
 		ID = "__Page";
 		
 #if NET_2_0
-		PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+		PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
 		if (ps != null) {
 			asyncTimeout = ps.AsyncTimeout;
 			viewStateEncryptionMode = ps.ViewStateEncryptionMode;
+			_viewState = ps.EnableViewState;
 		} else {
 			asyncTimeout = TimeSpan.FromSeconds (DefaultAsyncTimeout);
 			viewStateEncryptionMode = ViewStateEncryptionMode.Auto;
+			_viewState = true;
 		}
 #endif
 	}
@@ -614,7 +618,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	void InitializeStyleSheet ()
 	{
 		if (_styleSheetTheme == null) {
-			PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+			PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
 			if (ps != null)
 				_styleSheetTheme = ps.StyleSheetTheme;
 		}
@@ -632,7 +636,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	void InitializeTheme ()
 	{
 		if (_theme == null) {
-			PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+			PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
 			if (ps != null)
 				_theme = ps.Theme;
 		}
@@ -660,12 +664,13 @@ public partial class Page : TemplateControl, IHttpHandler
 	public string Title {
 		get {
 			if (_title == null) {
-				if (htmlHeader != null)
+				if (htmlHeader != null && htmlHeader.Title != null)
 					return htmlHeader.Title;
 				return String.Empty;
 			}
 			return _title;
 		}
+
 		set {
 			if (htmlHeader != null)
 				htmlHeader.Title = value;
@@ -1032,8 +1037,7 @@ public partial class Page : TemplateControl, IHttpHandler
 					cache.VaryByHeaders [h.Trim ()] = true;
 			}
 #if NET_2_0
-			if (PageAdapter != null)
-			{
+			if (PageAdapter != null) {
 				if (PageAdapter.CacheVaryByParams != null) {
 					foreach (string p in PageAdapter.CacheVaryByParams)
 						cache.VaryByParams [p] = true;
@@ -1088,7 +1092,8 @@ public partial class Page : TemplateControl, IHttpHandler
 	}
 
 #if NET_2_0
-	protected internal override void Render (HtmlTextWriter writer) {
+	protected internal override void Render (HtmlTextWriter writer)
+	{
 		if (MaintainScrollPositionOnPostBack) {
 			ClientScript.RegisterWebFormClientScript ();
 
@@ -1126,7 +1131,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	}
 #endif
 
-	private void RenderPostBackScript (HtmlTextWriter writer, string formUniqueID)
+	void RenderPostBackScript (HtmlTextWriter writer, string formUniqueID)
 	{
 #if ONLY_1_1
 		writer.WriteLine ("<input type=\"hidden\" name=\"{0}\" value=\"\" />", postEventSourceID);
@@ -1201,7 +1206,7 @@ public partial class Page : TemplateControl, IHttpHandler
 				}
 			} else
 #endif
-			scriptManager.RegisterHiddenField ("__VIEWSTATE", _savedViewState);
+				scriptManager.RegisterHiddenField ("__VIEWSTATE", _savedViewState);
 
 		scriptManager.WriteHiddenFields (writer);
 		if (requiresPostBackScript) {
@@ -1243,7 +1248,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		postBackScriptRendered = false;
 	}
 
-	private void ProcessPostData (NameValueCollection data, bool second)
+	void ProcessPostData (NameValueCollection data, bool second)
 	{
 		NameValueCollection requestValues = _requestValueCollection == null ?
 			new NameValueCollection () :
@@ -1251,9 +1256,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		
 		if (data != null && data.Count > 0) {
 			Hashtable used = new Hashtable ();
-			foreach (string id in data.AllKeys){
-				if (id == "__VIEWSTATE" || id == postEventSourceID || id == postEventArgumentID ||
-				    id == ClientScriptManager.EventStateFieldName)
+			foreach (string id in data.AllKeys) {
+				if (id == "__VIEWSTATE" || id == postEventSourceID || id == postEventArgumentID || id == ClientScriptManager.EventStateFieldName)
 					continue;
 			
 				if (used.ContainsKey (id))
@@ -1262,7 +1266,7 @@ public partial class Page : TemplateControl, IHttpHandler
 				used.Add (id, id);
 
 				Control ctrl = FindControl (id, true);
-				if (ctrl != null){
+				if (ctrl != null) {
 					IPostBackDataHandler pbdh = ctrl as IPostBackDataHandler;
 					IPostBackEventHandler pbeh = ctrl as IPostBackEventHandler;
 
@@ -1404,7 +1408,7 @@ public partial class Page : TemplateControl, IHttpHandler
 #if NET_2_0
 	delegate void ProcessRequestDelegate (HttpContext context);
 
-	private sealed class DummyAsyncResult : IAsyncResult
+	sealed class DummyAsyncResult : IAsyncResult
 	{
 		readonly object state;
 		readonly WaitHandle asyncWaitHandle;
@@ -1467,8 +1471,7 @@ public partial class Page : TemplateControl, IHttpHandler
 #if NET_2_0
 		if (PageAdapter != null) {
 			_requestValueCollection = PageAdapter.DeterminePostBackMode();
-		}
-		else
+		} else
 #endif
 		{
 			_requestValueCollection = this.DeterminePostBackMode();
@@ -1479,23 +1482,21 @@ public partial class Page : TemplateControl, IHttpHandler
 		if (_requestValueCollection != null) {
 			if (!isCrossPagePostBack && _requestValueCollection [PreviousPageID] != null && _requestValueCollection [PreviousPageID] != Request.FilePath) {
 				_doLoadPreviousPage = true;
-			}
-			else {
+			} else {
 				isCallback = _requestValueCollection [CallbackArgumentID] != null;
 				// LAMESPEC: on Callback IsPostBack is set to false, but true.
 				//isPostBack = !isCallback;
 				isPostBack = true;
 			}
+			
 			string lastFocus = _requestValueCollection [LastFocusID];
-			if (!String.IsNullOrEmpty (lastFocus)) {
+			if (!String.IsNullOrEmpty (lastFocus))
 				_focusedControlID = UniqueID2ClientID (lastFocus);
-			}
 		}
 		
 		if (!isCrossPagePostBack) {
-			if (_context.PreviousHandler is Page) {
+			if (_context.PreviousHandler is Page)
 				previousPage = (Page) _context.PreviousHandler;
-			}
 		}
 
 		Trace.Write ("aspx.page", "Begin PreInit");
@@ -1537,7 +1538,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		RenderPage ();
 	}
 
-	void RestorePageState () {
+	void RestorePageState ()
+	{
 #if NET_2_0
 		if (IsPostBack || IsCallback) {
 			if (_requestValueCollection != null)
@@ -1552,7 +1554,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		}
 	}
 
-	void ProcessPostData () {
+	void ProcessPostData ()
+	{
 
 #if NET_2_0
 		if (IsPostBack || IsCallback) {
@@ -1577,7 +1580,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		}
 	}
 
-	void ProcessLoad () { 
+	void ProcessLoad ()
+	{ 
 #if NET_2_0
 		Trace.Write ("aspx.page", "Begin PreLoad");
 		OnPreLoad (EventArgs.Empty);
@@ -1589,7 +1593,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		Trace.Write ("aspx.page", "End Load");
 	}
 
-	void ProcessRaiseEvents () {
+	void ProcessRaiseEvents ()
+	{
 
 #if NET_2_0
 		if (IsPostBack || IsCallback) {
@@ -1605,7 +1610,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		}
 	}
 
-	bool ProcessLoadComplete() {
+	bool ProcessLoadComplete ()
+	{
 		
 #if NET_2_0
 		Trace.Write ("aspx.page", "Begin LoadComplete");
@@ -1655,7 +1661,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		return false;
 	}
 
-	internal void RenderPage () {
+	internal void RenderPage ()
+	{
 #if NET_2_0
 		scriptManager.ResetEventValidationState ();
 #endif
@@ -1667,7 +1674,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		Trace.Write ("aspx.page", "End Render");
 	}
 
-	internal void SetContext (HttpContext context) {
+	internal void SetContext (HttpContext context)
+	{
 		_context = context;
 
 		_application = context.Application;
@@ -1676,7 +1684,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		_cache = context.Cache;
 	}
 
-	private void RenderTrace ()
+	void RenderTrace ()
 	{
 		TraceManager traceManager = HttpRuntime.TraceManager;
 
@@ -1694,19 +1702,6 @@ public partial class Page : TemplateControl, IHttpHandler
 		}
 	}
 	
-#if NET_2_0
-	bool CheckForValidationSupport (Control targetControl)
-	{
-		if (targetControl == null)
-			return false;
-		Type type = targetControl.GetType ();
-		object[] attributes = type.GetCustomAttributes (false);
-		foreach (object attr in attributes)
-			if (attr is SupportsEventValidationAttribute)
-				return true;
-		return false;
-	}
-#endif	
 	void RaisePostBackEvents ()
 	{
 #if NET_2_0
@@ -1728,9 +1723,12 @@ public partial class Page : TemplateControl, IHttpHandler
 
 		string eventTarget = postdata [postEventSourceID];
 		if (eventTarget == null || eventTarget.Length == 0) {
-			Validate ();
+			if (formPostedRequiresRaiseEvent != null)
+				RaisePostBackEvent (formPostedRequiresRaiseEvent, null);
+			else
+				Validate ();
 			return;
-                }
+		}
 
 #if NET_2_0
 		targetControl = FindControl (eventTarget, true);
@@ -1760,11 +1758,6 @@ public partial class Page : TemplateControl, IHttpHandler
 	[EditorBrowsable (EditorBrowsableState.Advanced)]
 	protected virtual void RaisePostBackEvent (IPostBackEventHandler sourceControl, string eventArgument)
 	{
-#if NET_2_0
-		Control targetControl = sourceControl as Control;
-		if (targetControl != null && CheckForValidationSupport (targetControl))
-			scriptManager.ValidateEvent (targetControl.UniqueID, eventArgument);
-#endif
 		sourceControl.RaisePostBackEvent (eventArgument);
 	}
 	
@@ -1879,6 +1872,7 @@ public partial class Page : TemplateControl, IHttpHandler
 				return null;
 			return view_state;
 		}
+		
 		set { _savedViewState = value; }
 	}
 
@@ -1909,11 +1903,15 @@ public partial class Page : TemplateControl, IHttpHandler
 		return new Pair (persister.ViewState, persister.ControlState);
 	}
 
-	internal void LoadPageViewState()
+	internal void LoadPageViewState ()
 	{
 		Pair sState = LoadPageStateFromPersistenceMedium () as Pair;
 		if (sState != null) {
-			if (allow_load) {
+			if (allow_load
+#if NET_2_0
+			    || isCrossPagePostBack
+#endif
+			) {
 #if NET_2_0
 				LoadPageControlState (sState.Second);
 #endif
@@ -1935,14 +1933,17 @@ public partial class Page : TemplateControl, IHttpHandler
 		object controlState = SavePageControlState ();
 #endif
 
-		object viewState = SaveViewStateRecursive ();
-		object reqPostback = (_requiresPostBack != null && _requiresPostBack.Count > 0) ? _requiresPostBack : null;
 		Pair vsr = null;
 
-		if (viewState != null || reqPostback != null)
-			vsr = new Pair (viewState, reqPostback);
-		Pair pair = new Pair ();
+		if (EnableViewState) {
+			object viewState = SaveViewStateRecursive ();
+			object reqPostback = (_requiresPostBack != null && _requiresPostBack.Count > 0) ? _requiresPostBack : null;
 
+			if (viewState != null || reqPostback != null)
+				vsr = new Pair (viewState, reqPostback);
+		}
+
+		Pair pair = new Pair ();
 		pair.First = vsr;
 #if NET_2_0
 		pair.Second = controlState;
@@ -1952,7 +1953,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		if (pair.First == null && pair.Second == null)
 			SavePageStateToPersistenceMedium (null);
 		else
-			SavePageStateToPersistenceMedium (pair);		
+			SavePageStateToPersistenceMedium (pair);
 
 	}
 
@@ -1963,7 +1964,8 @@ public partial class Page : TemplateControl, IHttpHandler
 	}
 
 #if NET_2_0
-	internal bool AreValidatorsUplevel () {
+	internal bool AreValidatorsUplevel ()
+	{
 		return AreValidatorsUplevel (String.Empty);
 	}
 
@@ -2031,14 +2033,14 @@ public partial class Page : TemplateControl, IHttpHandler
 #endif
 	}
 
-	#endregion
+#endregion
 	
-	#if NET_2_0
+#if NET_2_0
 	public
-	#else
+#else
 	internal
-	#endif
-		ClientScriptManager ClientScript {
+#endif
+	ClientScriptManager ClientScript {
 		get { return scriptManager; }
 	}
 
@@ -2250,7 +2252,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		return ProcessGetCallbackResult (target, callbackEventError);
 	}
 
-	ICallbackEventHandler GetCallbackTarget () {
+	ICallbackEventHandler GetCallbackTarget ()
+	{
 		string callbackTarget = _requestValueCollection [CallbackSourceID];
 		if (callbackTarget == null || callbackTarget.Length == 0)
 			throw new HttpException ("Callback target not provided.");
@@ -2262,7 +2265,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		return target;
 	}
 
-	void ProcessRaiseCallbackEvent (ICallbackEventHandler target, ref string callbackEventError) {
+	void ProcessRaiseCallbackEvent (ICallbackEventHandler target, ref string callbackEventError)
+	{
 		string callbackArgument = _requestValueCollection [CallbackArgumentID];
 
 		try {
@@ -2273,7 +2277,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		
 	}
 
-	string ProcessGetCallbackResult (ICallbackEventHandler target, string callbackEventError) {
+	string ProcessGetCallbackResult (ICallbackEventHandler target, string callbackEventError)
+	{
 		string callBackResult;
 		try {
 			callBackResult = target.GetCallbackResult ();
@@ -2313,23 +2318,20 @@ public partial class Page : TemplateControl, IHttpHandler
 
 	public bool IsAsync {
 		get { return AsyncMode; }
-	}
-	
-	[MonoTODO ("Not Implemented")]
+	}	
+
 	protected internal virtual string UniqueFilePathSuffix {
 		get {
-			throw new NotImplementedException ();
+			if (String.IsNullOrEmpty (uniqueFilePathSuffix))
+				uniqueFilePathSuffix = "__ufps=" + AppRelativeVirtualPath.GetHashCode ().ToString ("x");
+			return uniqueFilePathSuffix;
 		}
 	}
 
-	[MonoTODO ("Not Implemented")]
+	[MonoTODO ("Actually use the value in code.")]
 	public int MaxPageStateFieldLength {
-		get {
-			throw new NotImplementedException ();
-		}
-		set {
-			throw new NotImplementedException ();
-		}
+		get { return maxPageStateFieldLength; }
+		set { maxPageStateFieldLength = value; }
 	}
 
 	public void AddOnPreRenderCompleteAsync (BeginEventHandler beginHandler, EndEventHandler endHandler)
@@ -2358,36 +2360,31 @@ public partial class Page : TemplateControl, IHttpHandler
 		RegisterAsyncTask (new PageAsyncTask (beginHandler, endHandler, null, state, false));
 	}
 
-	private List<PageAsyncTask> ParallelTasks {
+	List<PageAsyncTask> ParallelTasks {
 		get {
-			if (parallelTasks == null) {
+			if (parallelTasks == null)
 				parallelTasks = new List<PageAsyncTask>();
-			}
 			return parallelTasks;
 		}
 	}
 
-	private List<PageAsyncTask> SerialTasks {
+	List<PageAsyncTask> SerialTasks {
 		get {
-			if (serialTasks == null) {
+			if (serialTasks == null)
 				serialTasks = new List<PageAsyncTask> ();
-			}
 			return serialTasks;
 		}
 	}
 
 	public void RegisterAsyncTask (PageAsyncTask task) 
 	{
-		if (task == null) {
+		if (task == null)
 			throw new ArgumentNullException ("task");
-		}
 
-		if (task.ExecuteInParallel) {
+		if (task.ExecuteInParallel)
 			ParallelTasks.Add (task);
-		}
-		else {
+		else
 			SerialTasks.Add (task);
-		}
 	}
 
 	public void ExecuteRegisteredAsyncTasks ()
@@ -2404,12 +2401,10 @@ public partial class Page : TemplateControl, IHttpHandler
 			List<IAsyncResult> asyncResults = new List<IAsyncResult>();
 			foreach (PageAsyncTask parallelTask in localParallelTasks) {
 				IAsyncResult result = parallelTask.BeginHandler (this, EventArgs.Empty, new AsyncCallback (EndAsyncTaskCallback), parallelTask.State);
-				if (result.CompletedSynchronously) {
+				if (result.CompletedSynchronously)
 					parallelTask.EndHandler (result);
-				}
-				else {
+				else
 					asyncResults.Add (result);
-				}
 			}
 
 			if (asyncResults.Count > 0) {
@@ -2429,10 +2424,8 @@ public partial class Page : TemplateControl, IHttpHandler
 						timeout = AsyncTimeout - TimeSpan.FromTicks (t2 - t1);
 						if (timeout.Ticks <= 0)
 							signalled = false;
-					}
-					else {
+					} else
 						localParallelTasks [i].TimeoutHandler (asyncResults [i]);
-					}
 				}
 #else
 				WaitHandle [] waitArray = new WaitHandle [asyncResults.Count];
@@ -2440,6 +2433,7 @@ public partial class Page : TemplateControl, IHttpHandler
 				for (i = 0; i < asyncResults.Count; i++) {
 					waitArray [i] = asyncResults [i].AsyncWaitHandle;
 				}
+				
 				bool allSignalled = WaitHandle.WaitAll (waitArray, AsyncTimeout, false);
 				if (!allSignalled) {
 					for (i = 0; i < asyncResults.Count; i++) {
@@ -2452,12 +2446,10 @@ public partial class Page : TemplateControl, IHttpHandler
 			}
 			DateTime endWait = DateTime.Now;
 			TimeSpan elapsed = endWait - startExecution;
-			if (elapsed <= AsyncTimeout) {
+			if (elapsed <= AsyncTimeout)
 				AsyncTimeout -= elapsed;
-			}
-			else {
+			else
 				AsyncTimeout = TimeSpan.FromTicks(0);
-			}
 		}
 
 		if (serialTasks != null) {
@@ -2467,9 +2459,8 @@ public partial class Page : TemplateControl, IHttpHandler
 				DateTime startExecution = DateTime.Now;
 
 				IAsyncResult result = serialTask.BeginHandler (this, EventArgs.Empty, new AsyncCallback (EndAsyncTaskCallback), serialTask);
-				if (result.CompletedSynchronously) {
+				if (result.CompletedSynchronously)
 					serialTask.EndHandler (result);
-				}
 				else {
 					bool done = result.AsyncWaitHandle.WaitOne (AsyncTimeout, false);
 					if (!done && !result.IsCompleted) {
@@ -2478,12 +2469,10 @@ public partial class Page : TemplateControl, IHttpHandler
 				}
 				DateTime endWait = DateTime.Now;
 				TimeSpan elapsed = endWait - startExecution;
-				if (elapsed <= AsyncTimeout) {
+				if (elapsed <= AsyncTimeout)
 					AsyncTimeout -= elapsed;
-				}
-				else {
+				else
 					AsyncTimeout = TimeSpan.FromTicks (0);
-				}
 			}
 		}
 		AsyncTimeout = TimeSpan.FromSeconds (DefaultAsyncTimeout);
@@ -2521,21 +2510,19 @@ public partial class Page : TemplateControl, IHttpHandler
 		controlRegisteredForViewStateEncryption = true;
 	}
 
-	private static byte [] AES_IV = null;
-	private static byte [] TripleDES_IV = null;
-	private static object locker = new object ();
-	private static bool isEncryptionInitialized = false;
+	static byte [] AES_IV = null;
+	static byte [] TripleDES_IV = null;
+	static object locker = new object ();
+	static bool isEncryptionInitialized = false;
 
-	private static void InitializeEncryption () 
+	static void InitializeEncryption () 
 	{
-		if (isEncryptionInitialized) {
+		if (isEncryptionInitialized)
 			return;
-		}
 
 		lock (locker) {
-			if (isEncryptionInitialized) {
+			if (isEncryptionInitialized)
 				return;
-			}
 
 			string iv_string = "0BA48A9E-736D-40f8-954B-B2F62241F282";
 			AES_IV = new byte [16];
@@ -2670,9 +2657,10 @@ public partial class Page : TemplateControl, IHttpHandler
 			return;
 
 		if (requireStateControls == null)
-			requireStateControls = new ArrayList ();
-		int n = requireStateControls.Add (control);
-
+			requireStateControls = new List <Control> ();
+		requireStateControls.Add (control);
+		int n = requireStateControls.Count - 1;
+		
 		if (_savedControlState == null || n >= _savedControlState.Length) 
 			return;
 
@@ -2687,7 +2675,8 @@ public partial class Page : TemplateControl, IHttpHandler
 	
 	public bool RequiresControlState (Control control)
 	{
-		if (requireStateControls == null) return false;
+		if (requireStateControls == null)
+			return false;
 		return requireStateControls.Contains (control);
 	}
 	
@@ -2714,7 +2703,8 @@ public partial class Page : TemplateControl, IHttpHandler
 		return col;
 	}
 	
-	bool BelongsToGroup(IValidator v, string validationGroup) {
+	bool BelongsToGroup(IValidator v, string validationGroup)
+	{
 		BaseValidator validator = v as BaseValidator;
 		if (validationGroup == null)
 			return validator == null || String.IsNullOrEmpty (validator.ValidationGroup); 
@@ -2730,25 +2720,38 @@ public partial class Page : TemplateControl, IHttpHandler
 
 	object SavePageControlState ()
 	{
-		if (requireStateControls == null) return null;
-		object[] state = new object [requireStateControls.Count];
-		object[] adapterState = new object [requireStateControls.Count];
+		int count = requireStateControls == null ? 0 : requireStateControls.Count;
+		if (count == 0)
+			return null;
+		
+		object state;
+		object[] controlStates = new object [count];
+		object[] adapterState = new object [count];
+		Control control;
+		ControlAdapter adapter;
 		bool allNull = true;
-		for (int n=0; n<requireStateControls.Count; n++) {
-			state [n] = ((Control) requireStateControls [n]).SaveControlState ();
-			if (state [n] != null) allNull = false;
+		TraceContext trace = (Context != null && Context.Trace.IsEnabled) ? Context.Trace : null;
+		
+		for (int n = 0; n < count; n++) {
+			control = requireStateControls [n];
+			state = controlStates [n] = control.SaveControlState ();
+			if (state != null)
+				allNull = false;
 			
-			TraceContext trace = (Context != null && Context.Trace.IsEnabled) ? Context.Trace : null;
 			if (trace != null)
-				trace.SaveControlState ((Control) requireStateControls [n], state [n]);
+				trace.SaveControlState (control, state);
 
-			ControlAdapter adapter = ((Control) requireStateControls [n]).Adapter;
-			if (adapter != null)
+			adapter = control.Adapter;
+			if (adapter != null) {
 				adapterState [n] = adapter.SaveAdapterControlState ();
-			if (adapterState [n] != null) allNull = false;
+				if (adapterState [n] != null) allNull = false;
+			}
 		}
-		if (allNull) return null;
-		else return new Pair (state, adapterState);
+		
+		if (allNull)
+			return null;
+		else
+			return new Pair (controlStates, adapterState);
 	}
 	
 	void LoadPageControlState (object data)
@@ -2851,6 +2854,7 @@ public partial class Page : TemplateControl, IHttpHandler
 
 		if (StyleSheetPageTheme != null && StyleSheetPageTheme.GetStyleSheets () != null)
 			themes.AddRange (StyleSheetPageTheme.GetStyleSheets ());
+		
 		if (PageTheme != null && PageTheme.GetStyleSheets () != null)
 			themes.AddRange (PageTheme.GetStyleSheets ());
 

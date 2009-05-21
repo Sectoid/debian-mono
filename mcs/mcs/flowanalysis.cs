@@ -314,6 +314,10 @@ namespace Mono.CSharp
 
 				locals |= child.locals;
 
+				// throw away un-necessary information about variables in child blocks
+				if (locals.Count != CountLocals)
+					locals = new MyBitVector (locals, CountLocals);
+
 				if (overwrite)
 					is_unreachable = new_isunr;
 				else
@@ -638,7 +642,7 @@ namespace Mono.CSharp
 
 		public override bool AddResumePoint (ResumableStatement stmt, Location loc, out int pc)
 		{
-			pc = iterator.AddResumePoint (stmt, loc);
+			pc = iterator.AddResumePoint (stmt);
 			return false;
 		}
 	}
@@ -660,9 +664,7 @@ namespace Mono.CSharp
 
 		public override bool AddResumePoint (ResumableStatement stmt, Location loc, out int pc)
 		{
-			pc = -1;
-			Report.Error (-6, loc, "Internal Error: A yield in a non-iterator");
-			return false;
+			throw new InternalErrorException ("A yield in a non-iterator block");
 		}
 
 		public override bool AddBreakOrigin (UsageVector vector, Location loc)
@@ -785,10 +787,10 @@ namespace Mono.CSharp
 		UsageVector finally_vector;
 
 		abstract class SavedOrigin {
-			public SavedOrigin Next;
-			public UsageVector Vector;
+			public readonly SavedOrigin Next;
+			public readonly UsageVector Vector;
 
-			public SavedOrigin (SavedOrigin next, UsageVector vector)
+			protected SavedOrigin (SavedOrigin next, UsageVector vector)
 			{
 				Next = next;
 				Vector = vector.Clone ();
@@ -906,7 +908,7 @@ namespace Mono.CSharp
 			Parent.AddResumePoint (this.stmt, loc, out pc);
 			if (errors == Report.Errors) {
 				if (finally_vector == null)
-					this.stmt.AddResumePoint (stmt, loc, pc);
+					this.stmt.AddResumePoint (stmt, pc);
 				else
 					Report.Error (1625, loc, "Cannot yield in the body of a finally clause");
 			}
@@ -1184,15 +1186,17 @@ namespace Mono.CSharp
 
 				field_type_hash.Add (type, this);
 
-				if (type is TypeBuilder) {
-					TypeContainer tc = TypeManager.LookupTypeContainer (type);
-
-					ArrayList fields = null;
-					if (tc != null)
-						fields = tc.Fields;
+				if (type.Module == CodeGen.Module.Builder) {
+					TypeContainer tc = TypeManager.LookupTypeContainer (TypeManager.DropGenericTypeArguments (type));
 
 					ArrayList public_fields = new ArrayList ();
 					ArrayList non_public_fields = new ArrayList ();
+
+					//
+					// TODO: tc != null is needed because FixedBuffers are not cached
+					//
+					if (tc != null) {					
+					ArrayList fields = tc.Fields;
 
 					if (fields != null) {
 						foreach (FieldBase field in fields) {
@@ -1203,6 +1207,23 @@ namespace Mono.CSharp
 							else
 								non_public_fields.Add (field.FieldBuilder);
 						}
+					}
+
+					if (tc.Events != null) {
+						foreach (Event e in tc.Events) {
+							if ((e.ModFlags & Modifiers.STATIC) != 0)
+								continue;
+
+							EventField ef = e as EventField;
+							if (ef == null)
+								continue;
+
+							if ((ef.ModFlags & Modifiers.PUBLIC) != 0)
+								public_fields.Add (ef.FieldBuilder);
+							else
+								non_public_fields.Add (ef.FieldBuilder);
+						}
+					}
 					}
 
 					CountPublic = public_fields.Count;
@@ -1294,6 +1315,9 @@ namespace Mono.CSharp
 			{
 				if (!TypeManager.IsValueType (type) || TypeManager.IsEnumType (type) ||
 				    TypeManager.IsBuiltinType (type))
+					return null;
+
+				if (TypeManager.IsGenericParameter (type))
 					return null;
 
 				StructInfo info = (StructInfo) field_type_hash [type];
@@ -1397,7 +1421,7 @@ namespace Mono.CSharp
 		}
 
 		public VariableInfo (Parameters ip, int i, int offset)
-			: this (ip.ParameterName (i), TypeManager.GetElementType (ip.ParameterType (i)), offset)
+			: this (ip.FixedParameters [i].Name, ip.Types [i], offset)
 		{
 			this.IsParameter = true;
 		}
@@ -1557,21 +1581,27 @@ namespace Mono.CSharp
 		public MyBitVector (MyBitVector InheritsFrom, int Count)
 		{
 			if (InheritsFrom != null)
-				shared = InheritsFrom.Shared;
+				shared = InheritsFrom.MakeShared (Count);
 
 			this.Count = Count;
 		}
 
-		// Use this accessor to get a shareable copy of the underlying BitArray representation
-		BitArray Shared {
-			get {
-				// Post-condition: vector == null
-				if (shared == null) {
-					shared = vector;
-					vector = null;
-				}
-				return shared;
+		BitArray MakeShared (int new_count)
+		{
+			// Post-condition: vector == null
+
+			// ensure we don't leak out dirty bits from the BitVector we inherited from
+			if (new_count > Count &&
+			    ((shared != null && shared.Count > Count) ||
+			     (shared == null && vector == null)))
+				initialize_vector ();
+
+			if (vector != null) {
+				shared = vector;
+				vector = null;
 			}
+
+			return shared;
 		}
 
 		// <summary>
@@ -1580,7 +1610,9 @@ namespace Mono.CSharp
 		public bool this [int index] {
 			get {
 				if (index >= Count)
-					throw new ArgumentOutOfRangeException ();
+					// FIXME: Disabled due to missing anonymous method flow analysis
+					// throw new ArgumentOutOfRangeException ();
+					return true; 
 
 				if (vector != null)
 					return vector [index];
@@ -1670,7 +1702,7 @@ namespace Mono.CSharp
 			if (Count == o.Count) {
 				if (vector == null) {
 					if (shared == null) {
-						shared = new_vector.Shared;
+						shared = new_vector.MakeShared (Count);
 						return this;
 					}
 					initialize_vector ();
@@ -1756,7 +1788,7 @@ namespace Mono.CSharp
 			// Don't clobber Empty
 			if (Count == 0)
 				return;
-			shared = value ? null : Empty.Shared;
+			shared = value ? null : Empty.MakeShared (Count);
 			vector = null;
 		}
 

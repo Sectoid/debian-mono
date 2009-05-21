@@ -1,11 +1,340 @@
-2008-09-24  Zoltan Varga  <vargaz@gmail.com>
+2009-03-09  Mark Probst  <mark.probst@gmail.com>
 
-	* Makefile.am (PLATFORM_DISABLED_TESTS): Disable winx64structs.exe
-	on ia64 for the release.
+	* bug-479763.2.cs: New test.
+
+	* Makefile.am: Test added.
+
+	Backport of r128723.
+
+2009-03-04  Mark Probst  <mark.probst@gmail.com>
+
+	* bug-481403.il: New test.
+
+	* Makefile.am: Test added.
+
+	Backport of r128552.
+
+2009-02-11  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r126631.
+
+	* bug-473999.2.cs: New test.
+
+	* Makefile.am: Test added.
+
+2009-02-10  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r126467.
+
+	* bug-473482.2.cs: New test.
+
+	* Makefile.am: Test added.
+
+2009-02-05  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125887.
+
+	* bug-472692.2.cs: New test.
+
+	* Makefile.am: Test added.
+
+2009-02-05  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125839.
+
+	* bug-472600.2.cs: New test.
+
+	* Makefile.am: Test added.
+
+2009-01-27  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124712.
+
+	* bug469742.2.il: New test.
+
+	* Makefile.am: Test added.
+
+2009-01-22  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124246.
+
+	* generic-stack-traces2.2.cs: Another generic sharing test for
+	stack traces.
+
+	* Makefile.am: Test added.
+
+2009-01-21 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r124059.
+
+	* appdomain-unload-callback.cs: New test for the AppDomain::DomainUnload
+	deadlock.
+
+	* Makefile.am: Test added.
+
+2009-01-21  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124028.
+
+	* bug-467456.cs: New test case.
+
+	* Makefile.am: Test added.
+
+2009-01-21  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124022.
+
+	* generic-unloading.2.cs, generic-unloading-sub.2.cs: Test case
+	for unloading images whose MonoGenericInst's are still in use.
+
+	* Makefile.am: Test added.
+
+2009-01-20  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r123917.
+
+	* generic-stack-traces.2.cs: Generic sharing test for stack
+	traces.
+
+	* Makefile.am: Test added.
+
+2009-01-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* test-runner.cs: Avoid closing a stream which is still being written to.
+
+2009-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal9.cs: Change a test to be compatible with MS.NET.
+
+2009-01-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-459094.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2009-01-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-462592.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2009-01-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs: Add another test for generic structures.
+
+2009-01-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-463303.il: New regression test.
+
+	* Makefile.am: Test added.
+
+2009-01-03 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-400716.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-461261.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-24  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-sealed-virtual.2.cs: Test case for final generic
+	methods.
+
+	* Makefile.am: Test added.
+
+2008-12-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-461941.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-23  Mark Probst  <mark.probst@gmail.com>
+
+	* bug-461198.2.cs: New generic sharing test.
+
+	* Makefile.am: Test added.
+
+2008-12-23  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-461867.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-19  Mark Probst  <mark.probst@gmail.com>
+
+	* bug-459285.2.cs: New generic sharing test.
+
+	* Makefile.am: Test added.
+
+2008-12-12  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-389886-sre-generic-interface-instances.cs: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-11  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-marshalbyref.2.cs: Test for calls to marshal-by-ref
+	objects.
+
+	* Makefile.am: Test added.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug445361.il: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug457574.il: New regression test.
+
+	* Makefile.am: Test added.
+
+2008-12-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* stack-overflow.cs (foo): Prevent the large local variable from being
+	optimized away.
+
+2008-12-03  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-typedef.2.cs: New test for ldtoken of open generic
+	types.
+
+	* Makefile.am: Test added.
+
+2008-11-26  Mark Probst  <mark.probst@gmail.com>
+
+	* vararg2.cs: Forgot to add at last commit.
+
+2008-11-26  Mark Probst  <mark.probst@gmail.com>
+
+	* vararg2.cs: Test for sub-word sized variable arguments.
+
+	* Makefile.am: Test added.
+
+2008-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs: Add a test for passing/receiving generic struct instances.
+
+	* stackframes-async.2.cs: Add a test for #444383.
+
+2008-11-13  Mark Probst  <mark.probst@gmail.com>
+
+	* filter-stack.cs: Test whether method calls with large arguments
+	work in filter clauses.
+
+	* Makefile.am: Test added.
+
+2008-11-06  Jonathan Chambers  <joncham@gmail.com>
+
+	* async_read.cs: Open file with Read access to avoid
+	file access exception on Windows.
+
+	* bug-349190.2.cs: Use different name for dynamic executable
+	to avoid file access exception on Windows.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-03  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-virtual-invoke.2.cs: Use different instantiations and
+	iterate the test.
+
+2008-10-03  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-virtual.2.cs: Iterate the test to make the generic
+	virtual method chunks kick in.
+
+2008-10-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* invoke.cs: Fix this test after the ConstructorInfo changes.
+
+	* stack-overflow.cs: Fix warnings. Add unmanaged tests.
+
+2008-10-03  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-virtual-invoke.2.cs: Test for runtime invoking generic
+	virtual methods.
+
+	* Makefile.am: Test added.
+
+2008-10-02  Mark Probst  <mark.probst@gmail.com>
+
+	* bug-431413.2.cs: Test for bug #431413 (multidimensional generic
+	arrays).
+
+	* Makefile.am: Test added.
+
+2008-10-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke3.cs libtest.c: Add test for byref string marshalling.
+
+2008-09-30  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-constrained.2.il: Test case for the constrained. prefix
+	with generic interfaces.
+
+	* Makefile.am: Test added.
+
+2008-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (PLATFORM_DISABLED_TESTS): Disable some tests on ia64.
+
+2008-09-26  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-delegate-ctor.2.cs: Test case for delegate ctor icall
+	wrappers.
+
+	* Makefile.am: Test added.
+
+2008-09-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* delegate9.cs: New test.
+
+2008-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-synchronized.2.cs: Test case for synchronized generic
+	methods.
+
+	* Makefile.am: Test added.
+
+2008-09-21  Mark Probst  <mark.probst@gmail.com>
+
+	* exception17.cs: New test case for throwing an exception from
+	within a finally block.
+
+	* Makefile.am: Test added.
+
+2008-09-19  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-type-builder.2.cs: Test case for a generic sharing issue
+	with dynamic methods.
+
+	* Makefile.am: Test added.
+
+2008-09-17  Robert Jordan  <robertj@gmx.net>
+
+	* Makefile.am: Add test for #415577.
+
+2008-09-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* bug-426309.2.il: New test.
+
+2008-09-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal9.cs: Add test for #425001.
+
+2008-09-07  Mark Probst  <mark.probst@gmail.com>
+
+	* libtest.c: Darwin structure alignment also applies to PPC.
 
 2008-09-06  Zoltan Varga  <vargaz@gmail.com>
-
-	* pinvoke2.cs: Remove a stray Console.WriteLine.
 
 	* libtest.c pinvoke2.cs: Add float tests.
 
@@ -13,13 +342,79 @@
 
 	* libtest.c (mono_xr_as_handle): Initialize ref before returning it.
 
-2008-07-22  Bill Holmes  <billholmes54@gmail.com>
+2008-08-26  Zoltan Varga  <vargaz@gmail.com>
 
+	* generics-sharing.2.cs: Fix invalid generic construct permitted by older
+	versions of gmcs.
+
+2008-08-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Add AOT+gshared tests.
+
+	* synchronized.cs: Test synchronized state using Monitor.Pulse since
+	Monitor.Exit no longer throws an exception.
+
+2008-08-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs libtest.c: Add test for out marshalling of delegates. 
+	Fix warnings.
+
+2008-08-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* jmpTest.il: Removed, there is already a test for this in mini/iltests.il.
+
+2008-08-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (DISABLED_TESTS): Remove appdomain-unload.exe, it seems to
+	work now, also it is too important to stay disabled.
+
+2008-08-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke3.cs: Add test for #416078.
+
+2008-08-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* nullable_boxing.2.cs: Add test for #415621.
+
+2008-08-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs libtest.c: Extend the ia64 single HFA test so it also checks for
+	#109511.
+
+2008-07-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Use custom-modifiers.2.cs instead of custom-modifiers.cs
+	to fix make dist.
+
+2008-07-28  Bill Holmes  <billholmes54@gmail.com>
 	* libtest.c, winx64structs.cs :
 	  Adding tests to exercise calling managed code from native with struct
 	  arguments on Winx64.
 
 	Contributed under MIT/X11 license.
+
+2008-07-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* test-runner.cs: Cleanup terminated processes on the main thread to prevent
+	races.
+
+	* Makefile.am (runtest-managed): Make this depend on test-runner.exe.
+	
+	* Makefile.am: Make most tests which had a separate execution rule use the
+	normal test runner, make the output less verbose.
+
+	* Makefile.am (runtest-managed): New experimental target which uses the
+	new test runner.
+
+	* test-runner.cs: New managed test driver with support for parallel 
+	execution.
+
+2008-07-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* appdomain-unload.cs: Disable the timeout test as there is no timeout in
+	the runtime any more.
+
+	* Makefile.am: Unify the different 'test' targets somewhat.
 
 2008-07-21  Mark Probst  <mark.probst@gmail.com>
 
@@ -28,7 +423,9 @@
 
 	* Makefile.am: Test added.
 
-	Backported from trunk.
+2008-07-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* generics-sharing.2.cs: Fix the build.
 
 2008-07-10  Raja R Harinath  <harinath@hurrynot.org>
 

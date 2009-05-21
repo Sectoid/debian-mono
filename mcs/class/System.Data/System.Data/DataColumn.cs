@@ -25,10 +25,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -48,8 +48,8 @@ using System.Globalization;
 using Mono.Data.SqlExpressions;
 
 namespace System.Data {
-	internal delegate void DelegateColumnValueChange(DataColumn column, DataRow row, object proposedValue);
-	
+	internal delegate void DelegateColumnValueChange (DataColumn column, DataRow row, object proposedValue);
+
 	/// <summary>
 	/// Summary description for DataColumn.
 	/// </summary>
@@ -59,28 +59,27 @@ namespace System.Data {
 	[ToolboxItem (false)]
 	[DefaultProperty ("ColumnName")]
 	[DesignTimeVisible (false)]
-	public class DataColumn : MarshalByValueComponent
-	{
+	public class DataColumn : MarshalByValueComponent {
 #region Events
 		EventHandlerList _eventHandlers = new EventHandlerList ();
-		
+
 		//used for constraint validation
-		//if an exception is fired during this event the change should be canceled	
-		[MonoTODO]
-		internal event DelegateColumnValueChange ValidateColumnValueChange;
+		//if an exception is fired during this event the change should be canceled
+		//[MonoTODO]
+		//internal event DelegateColumnValueChange ValidateColumnValueChange;
 
 		//used for FK Constraint Cascading rules
-		[MonoTODO]
-		internal event DelegateColumnValueChange ColumnValueChanging;
+		//[MonoTODO]
+		//internal event DelegateColumnValueChange ColumnValueChanging;
 
 		static readonly object _propertyChangedKey = new object ();
 		internal event PropertyChangedEventHandler PropertyChanged {
 			add { _eventHandlers.AddHandler (_propertyChangedKey, value); }
 			remove { _eventHandlers.RemoveHandler (_propertyChangedKey, value); }
 		}
-		
+
 		#endregion //Events
-		
+
 		#region Fields
 
 		private bool _allowDBNull = true;
@@ -102,38 +101,40 @@ namespace System.Data {
 		private bool _readOnly;
 		private DataTable _table;
 		private bool _unique;
-		private AbstractDataContainer _dataContainer;
+		private DataContainer _dataContainer;
 
 		#endregion // Fields
 
 		#region Constructors
 
-		public DataColumn() : this(String.Empty, typeof (string), String.Empty, MappingType.Element)
+		public DataColumn ()
+			: this (String.Empty, typeof (string), String.Empty, MappingType.Element)
 		{
 		}
 
 		//TODO: Ctor init vars directly
-		public DataColumn(string columnName): this(columnName, typeof (string), String.Empty, MappingType.Element)
+		public DataColumn (string columnName)
+			: this (columnName, typeof (string), String.Empty, MappingType.Element)
 		{
 		}
 
-		public DataColumn(string columnName, Type dataType): this(columnName, dataType, String.Empty, MappingType.Element)
+		public DataColumn (string columnName, Type dataType)
+			: this (columnName, dataType, String.Empty, MappingType.Element)
 		{
 		}
 
-		public DataColumn( string columnName, Type dataType, 
-			string expr): this(columnName, dataType, expr, MappingType.Element)
+		public DataColumn (string columnName, Type dataType, string expr)
+			: this (columnName, dataType, expr, MappingType.Element)
 		{
 		}
 
-		public DataColumn(string columnName, Type dataType, 
-			string expr, MappingType type)
+		public DataColumn (string columnName, Type dataType, string expr, MappingType type)
 		{
-			ColumnName = (columnName == null ? String.Empty : columnName);
-			
+			ColumnName = columnName == null ? String.Empty : columnName;
+
 			if (dataType == null)
-				throw new ArgumentNullException("dataType");
-			
+				throw new ArgumentNullException ("dataType");
+
 			DataType = dataType;
 			Expression = expr == null ? String.Empty : expr;
 			ColumnMapping = type;
@@ -142,24 +143,24 @@ namespace System.Data {
 
 		#region Properties
 
-		internal object this[int index] {
-			get {
-				return DataContainer[index];
-			}
+		internal object this [int index] {
+			get { return DataContainer [index]; }
 			set {
-				if ( !(value == null && AutoIncrement) ) {
+				if (!(value == null && AutoIncrement)) {
 					try {
-						DataContainer[index] = value;
-					}
-					catch(Exception e) {
-						throw new ArgumentException(String.Format("{0}. Couldn't store <{1}> in Column named '{2}'. Expected type is {3}.",
-							e.Message, value, ColumnName, DataType.Name), e);
+						DataContainer [index] = value;
+					} catch(Exception e) {
+						throw new ArgumentException (
+							String.Format (
+								"{0}. Couldn't store <{1}> in Column named '{2}'. Expected type is {3}.",
+								e.Message, value, ColumnName, DataType.Name),
+							e);
 					}
 				}
 
-				if ( AutoIncrement && !DataContainer.IsNull(index) ) {
-					long value64 = Convert.ToInt64(value);
-					UpdateAutoIncrementValue(value64);
+				if (AutoIncrement && !DataContainer.IsNull (index)) {
+					long value64 = Convert.ToInt64 (value);
+					UpdateAutoIncrementValue (value64);
 				}
 			}
 		}
@@ -173,12 +174,12 @@ namespace System.Data {
 			set {
 				if (DataType != typeof (DateTime))
 					throw new InvalidOperationException ("The DateTimeMode can be set only on DataColumns of type DateTime.");
-				
+
 				if (!Enum.IsDefined (typeof (DataSetDateTime), value))
 					throw new InvalidEnumArgumentException (
-						string.Format (CultureInfo.InvariantCulture,
-						"The {0} enumeration value, {1}, is invalid",
-						typeof (DataSetDateTime).Name, value));
+						string.Format (
+							CultureInfo.InvariantCulture, "The {0} enumeration value, {1}, is invalid",
+							typeof (DataSetDateTime).Name, value));
 
 				if (_datetimeMode == value)
 					return;
@@ -192,9 +193,9 @@ namespace System.Data {
 					return;
 				}
 
-				throw new InvalidOperationException ( String.Format (
-									"Cannot change DateTimeMode from '{0}' to '{1}' " +
-									"once the table has data.",_datetimeMode, value));
+				throw new InvalidOperationException (
+					String.Format ("Cannot change DateTimeMode from '{0}' to '{1}' once the table has data.",
+						       _datetimeMode, value));
 			}
 		}
 #endif
@@ -204,44 +205,20 @@ namespace System.Data {
 		[DataSysDescription ("Indicates whether null values are allowed in this column.")]
 #endif
 		[DefaultValue (true)]
-		public bool AllowDBNull
-		{
-			get {
-				return _allowDBNull;
-			}
+		public bool AllowDBNull {
+			get { return _allowDBNull; }
 			set {
-				//TODO: If we are a part of the table and this value changes
-				//we need to validate that all the existing values conform to the new setting
-
-				if (true == value)
-				{
-					_allowDBNull = true;
-					return;
-				}
-				
-				//if Value == false case
-				if (null != _table)
-				{
-					if (_table.Rows.Count > 0)
-					{
-						bool nullsFound = false;
-						for(int r = 0; r < _table.Rows.Count; r++) {
-							DataRow row = _table.Rows[r];
-							DataRowVersion version = row.HasVersion (DataRowVersion.Default) ?
-								DataRowVersion.Default : DataRowVersion.Original;
-							if(row.IsNull(this, version)) {
-								nullsFound = true;
-								break;
-							}
-						}
-						
-						if (nullsFound)
-							throw new DataException("Column '" + ColumnName + "' has null values in it.");
-						//TODO: Validate no null values exist
-						//do we also check different versions of the row??
+				if (!value && null != _table) {
+					for (int r = 0; r < _table.Rows.Count; r++) {
+						DataRow row = _table.Rows [r];
+						DataRowVersion version = row.HasVersion (DataRowVersion.Default) ?
+							DataRowVersion.Default : DataRowVersion.Original;
+						if (row.IsNull (this, version))
+							throw new DataException ("Column '" + ColumnName + "' has null values in it.");
+						//TODO: do we also check different versions of the row??
 					}
 				}
-					
+
 				_allowDBNull = value;
 			}
 		}
@@ -250,9 +227,9 @@ namespace System.Data {
 		/// Gets or sets a value indicating whether the column automatically increments the value of the column for new rows added to the table.
 		/// </summary>
 		/// <remarks>
-		///		If the type of this column is not Int16, Int32, or Int64 when this property is set, 
-		///		the DataType property is coerced to Int32. An exception is generated if this is a computed column 
-		///		(that is, the Expression property is set.) The incremented value is used only if the row's value for this column, 
+		///		If the type of this column is not Int16, Int32, or Int64 when this property is set,
+		///		the DataType property is coerced to Int32. An exception is generated if this is a computed column
+		///		(that is, the Expression property is set.) The incremented value is used only if the row's value for this column,
 		///		when added to the columns collection, is equal to the default value.
 		///	</remarks>
 		[DataCategory ("Data")]
@@ -261,38 +238,23 @@ namespace System.Data {
 #endif
 		[DefaultValue (false)]
 		[RefreshProperties (RefreshProperties.All)]
-		public bool AutoIncrement
-		{
-			get {
-				return _autoIncrement;
-			}
+		public bool AutoIncrement {
+			get { return _autoIncrement; }
 			set {
-				if(value == true)
-				{
+				if (value) {
 					//Can't be true if this is a computed column
 					if (Expression != string.Empty)
-					{
-						throw new ArgumentException("Can not Auto Increment a computed column."); 
-					}
+						throw new ArgumentException ("Can not Auto Increment a computed column.");
 
-					if ( DefaultValue != DBNull.Value ) {
-						throw new ArgumentException("Can not set AutoIncrement while" +
-							" default value exists for this column.");
-					}
+					if (DefaultValue != DBNull.Value)
+						throw new ArgumentException ("Can not set AutoIncrement while default value exists for this column.");
 
-					if(!CanAutoIncrement(DataType))
-					{
-						DataType = typeof(Int32); 
-					}
-
-					if (_table != null)
-						_table.Columns.UpdateAutoIncrement(this,true);
+					if (!CanAutoIncrement (DataType))
+						DataType = typeof (Int32);
 				}
-				else
-				{
-					if (_table != null)
-						_table.Columns.UpdateAutoIncrement(this,false);
-				}
+
+				if (_table != null)
+					_table.Columns.UpdateAutoIncrement (this, value);
 				_autoIncrement = value;
 			}
 		}
@@ -302,11 +264,8 @@ namespace System.Data {
 		[DataSysDescription ("Indicates the starting value for an AutoIncrement column.")]
 #endif
 		[DefaultValue (0)]
-		public long AutoIncrementSeed
-		{
-			get {
-				return _autoIncrementSeed;
-			}
+		public long AutoIncrementSeed {
+			get { return _autoIncrementSeed; }
 			set {
 				_autoIncrementSeed = value;
 				_nextAutoIncrementValue = _autoIncrementSeed;
@@ -318,30 +277,24 @@ namespace System.Data {
 		[DataSysDescription ("Indicates the increment used by an AutoIncrement column.")]
 #endif
 		[DefaultValue (1)]
-		public long AutoIncrementStep
-		{
-			get {
-				return _autoIncrementStep;
-			}
-			set {
-				_autoIncrementStep = value;
-			}
+		public long AutoIncrementStep {
+			get { return _autoIncrementStep; }
+			set { _autoIncrementStep = value; }
 		}
 
-		internal void UpdateAutoIncrementValue(long value64)
+		internal void UpdateAutoIncrementValue (long value64)
 		{
-			if (_autoIncrementStep > 0 ) {
+			if (_autoIncrementStep > 0) {
 				if (value64 >= _nextAutoIncrementValue) {
 					_nextAutoIncrementValue = value64;
 					AutoIncrementValue ();
 				}
-			}
-			else if (value64 <= _nextAutoIncrementValue) {
+			} else if (value64 <= _nextAutoIncrementValue) {
 				AutoIncrementValue ();
 			}
 		}
 
-		internal long AutoIncrementValue () 
+		internal long AutoIncrementValue ()
 		{
 			long currentValue = _nextAutoIncrementValue;
 			_nextAutoIncrementValue += AutoIncrementStep;
@@ -353,45 +306,30 @@ namespace System.Data {
 			return _nextAutoIncrementValue;
 		}
 
-		internal void SetDefaultValue(int index) {
+		internal void SetDefaultValue (int index)
+		{
 			if (AutoIncrement)
-				this[index] = _nextAutoIncrementValue;
+				this [index] = _nextAutoIncrementValue;
 			else
-				DataContainer.CopyValue(Table.DefaultValuesRowIndex, index);
+				DataContainer.CopyValue (Table.DefaultValuesRowIndex, index);
 		}
 
 		[DataCategory ("Data")]
 #if !NET_2_0
 		[DataSysDescription ("Indicates the default user-interface caption for this column.")]
 #endif
-		public string Caption 
-		{
-			get {
-				if(_caption == null)
-					return ColumnName;
-				else
-					return _caption;
-			}
-			set {
-				if (value == null)
-					value = String.Empty;
-					
-				_caption = value;
-			}
+		public string Caption {
+			get { return _caption == null ? ColumnName : _caption; }
+			set { _caption = value == null ? String.Empty : value; }
 		}
 
 #if !NET_2_0
 		[DataSysDescription ("Indicates how this column persists in XML: as an attribute, element, simple content node, or nothing.")]
 #endif
 		[DefaultValue (MappingType.Element)]
-		public virtual MappingType ColumnMapping
-		{
-			get {
-				return _columnMapping;
-			}
-			set {
-				_columnMapping = value;
-			}
+		public virtual MappingType ColumnMapping {
+			get { return _columnMapping; }
+			set { _columnMapping = value; }
 		}
 
 		[DataCategory ("Data")]
@@ -400,38 +338,34 @@ namespace System.Data {
 #endif
 		[RefreshProperties (RefreshProperties.All)]
 		[DefaultValue ("")]
-		public string ColumnName
-		{
-			get {
-				return _columnName;
-			}
+		public string ColumnName {
+			get { return _columnName; }
 			set {
 				if (value == null)
 					value = String.Empty;
 
 				CultureInfo info = Table != null ? Table.Locale : CultureInfo.CurrentCulture;
-				if (String.Compare(value, _columnName, true, info) != 0) {
+				if (String.Compare (value, _columnName, true, info) != 0) {
 					if (Table != null) {
 						if (value.Length == 0)
-							throw new ArgumentException("ColumnName is required when it is part of a DataTable.");
+							throw new ArgumentException ("ColumnName is required when it is part of a DataTable.");
 
-						Table.Columns.RegisterName(value, this);
+						Table.Columns.RegisterName (value, this);
 						if (_columnName.Length > 0)
-							Table.Columns.UnregisterName(_columnName);
+							Table.Columns.UnregisterName (_columnName);
 					}
 
-					RaisePropertyChanging("ColumnName");
+					RaisePropertyChanging ("ColumnName");
 					_columnName = value;
 
 					if (Table != null)
-						Table.ResetPropertyDescriptorsCache();
-				}
-				else if (String.Compare(value, _columnName, false, info) != 0) {
-					RaisePropertyChanging("ColumnName");
+						Table.ResetPropertyDescriptorsCache ();
+				} else if (String.Compare (value, _columnName, false, info) != 0) {
+					RaisePropertyChanging ("ColumnName");
 					_columnName = value;
 
 					if (Table != null)
-						Table.ResetPropertyDescriptorsCache();
+						Table.ResetPropertyDescriptorsCache ();
 				}
 			}
 		}
@@ -442,61 +376,55 @@ namespace System.Data {
 #endif
 		[DefaultValue (typeof (string))]
 		[RefreshProperties (RefreshProperties.All)]
-		[TypeConverterAttribute (typeof (ColumnTypeConverter))] 
-		public Type DataType
-		{
-			get {
-				return DataContainer.Type;
-			}
+		[TypeConverterAttribute (typeof (ColumnTypeConverter))]
+		public Type DataType {
+			get { return DataContainer.Type; }
 			set {
+				if (value == null)
+					return;
 
-                                if ( value == null ) 
-                                        return;
-
-				if ( _dataContainer != null ) {
-					if ( value == _dataContainer.Type ) 
+				if (_dataContainer != null) {
+					if (value == _dataContainer.Type)
 						return;
 
 					// check if data already exists can we change the datatype
-					if ( _dataContainer.Capacity > 0 )
-						throw new ArgumentException("The column already has data stored.");
+					if (_dataContainer.Capacity > 0)
+						throw new ArgumentException ("The column already has data stored.");
 				}
 
-                                if (null != GetParentRelation () || null != GetChildRelation ())
-                                        throw new InvalidConstraintException ("Cannot change datatype, " + 
-                                                                              "when column is part of a relation");
-                                
+				if (null != GetParentRelation () || null != GetChildRelation ())
+					throw new InvalidConstraintException ("Cannot change datatype when column is part of a relation");
+
 				Type prevType = _dataContainer != null ? _dataContainer.Type : null; // current
 
 #if NET_2_0
 				if (_dataContainer != null && _dataContainer.Type == typeof (DateTime))
 					_datetimeMode = DataSetDateTime.UnspecifiedLocal;
 #endif
-                                _dataContainer = AbstractDataContainer.CreateInstance(value, this);
+				_dataContainer = DataContainer.Create (value, this);
 
 				//Check AutoIncrement status, make compatible datatype
 				if(AutoIncrement == true) {
 					// we want to check that the datatype is supported?
+					// TODO: Is this the same as CanAutoIncrement or was the omission of Decimal intended?
 					TypeCode typeCode = Type.GetTypeCode(value);
-					
-					if(typeCode != TypeCode.Int16 &&
-					   typeCode != TypeCode.Int32 &&
-					   typeCode != TypeCode.Int64) {
+
+					if (typeCode != TypeCode.Int16 &&
+					    typeCode != TypeCode.Int32 &&
+					    typeCode != TypeCode.Int64) {
 						AutoIncrement = false;
 					}
 				}
 
 				if (DefaultValue != GetDefaultValueForType (prevType))
 					SetDefaultValue (DefaultValue, true);
-#if NET_2_0
 				else
 					_defaultValue = GetDefaultValueForType (DataType);
-#endif
 			}
 		}
 
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		/// <remarks>When AutoIncrement is set to true, there can be no default value.</remarks>
 		/// <exception cref="System.InvalidCastException"></exception>
@@ -506,59 +434,39 @@ namespace System.Data {
 		[DataSysDescription ("Indicates the default column value used when adding new rows to the table.")]
 #endif
 		[TypeConverterAttribute (typeof (System.Data.DefaultValueTypeConverter))]
-		public object DefaultValue
-		{
-			get {
-				return _defaultValue;
-			}
+		public object DefaultValue {
+			get { return _defaultValue; }
 
 			set {
-				if (AutoIncrement) {
-					throw new ArgumentException("Can not set default value while" +
-						" AutoIncrement is true on this column.");
-				}
+				if (AutoIncrement)
+					throw new ArgumentException ("Can not set default value while AutoIncrement is true on this column.");
 				SetDefaultValue (value, false);
 			}
 		}
 
 		void SetDefaultValue (object value, bool forcedTypeCheck)
 		{
-			{
-				object tmpObj;
-				if (forcedTypeCheck|| !this._defaultValue.Equals(value)) {
-					if (value == null) {
-						tmpObj = DBNull.Value;
-					}
-					else {
-						tmpObj = value;
-					}
-
-					if (!this.DataType.IsInstanceOfType (tmpObj) && tmpObj != DBNull.Value) {
-						try {
-							//Casting to the new type
-							tmpObj= Convert.ChangeType(tmpObj,this.DataType);
-						}
-						catch (InvalidCastException) {
-							string msg = String.Format ("Default Value of type '{0}' is not compatible with column type '{1}'", tmpObj.GetType (), DataType);
+			if (forcedTypeCheck || !this._defaultValue.Equals (value)) {
+				if (value == null || value == DBNull.Value)
+					_defaultValue = GetDefaultValueForType (DataType);
+				else if (DataType.IsInstanceOfType (value))
+					_defaultValue = value;
+				else
+					try {
+						_defaultValue = Convert.ChangeType (value, DataType);
+					} catch (InvalidCastException) {
+						string msg = String.Format ("Default Value of type '{0}' is not compatible with column type '{1}'", value.GetType (), DataType);
 #if NET_2_0
-							throw new DataException(msg);
+						throw new DataException (msg);
 #else
-							throw new ArgumentException(msg);
+						throw new ArgumentException (msg);
 #endif
-						}
 					}
-#if NET_2_0
-					if (tmpObj == DBNull.Value)
-						tmpObj = GetDefaultValueForType (DataType);
-#endif
-					_defaultValue = tmpObj;
-				}
-
-				// store default value in the table if already belongs to
-				if (Table != null && Table.DefaultValuesRowIndex != -1) {
-					DataContainer[Table.DefaultValuesRowIndex] = _defaultValue;
-				}
 			}
+
+			// store default value in the table if already belongs to
+			if (Table != null && Table.DefaultValuesRowIndex != -1)
+				DataContainer [Table.DefaultValuesRowIndex] = _defaultValue;
 		}
 
 		[DataCategory ("Data")]
@@ -567,56 +475,49 @@ namespace System.Data {
 #endif
 		[DefaultValue ("")]
 		[RefreshProperties (RefreshProperties.All)]
-		public string Expression
-		{
-			get {
-				return _expression;
-			}
+		public string Expression {
+			get { return _expression; }
 			set {
 				if (value == null)
 					value = String.Empty;
-					
-				if (value != String.Empty) 
-				{
 
+				if (value != String.Empty) {
 					if (AutoIncrement || Unique)
-						throw new ArgumentException("Cannot create an expression on a column that has AutoIncrement or Unique.");
+						throw new ArgumentException ("Cannot create an expression on a column that has AutoIncrement or Unique.");
 
-					if (Table != null)
-					{
-						for (int i = 0; i < Table.Constraints.Count; i++)
-						{
-							if (Table.Constraints[i].IsColumnContained(this))
-								throw new ArgumentException(String.Format("Cannot set Expression property on column {0}, because it is a part of a constraint.", ColumnName));
+					if (Table != null) {
+						for (int i = 0; i < Table.Constraints.Count; i++) {
+							if (Table.Constraints [i].IsColumnContained (this))
+								throw new ArgumentException (
+									String.Format (
+										"Cannot set Expression property on column {0}, because it is a part of a constraint.",
+										ColumnName));
 						}
 					}
 
 					Parser parser = new Parser ();
 					IExpression compiledExpression = parser.Compile (value);
 
-					if (Table != null)
-					{
-						if (compiledExpression.DependsOn(this))
-							throw new ArgumentException("Cannot set Expression property due to circular reference in the expression.");
-						// Check if expression is ok 
+					if (Table != null) {
+						if (compiledExpression.DependsOn (this))
+							throw new ArgumentException ("Cannot set Expression property due to circular reference in the expression.");
+						// Check if expression is ok
 						if (Table.Rows.Count == 0)
-							compiledExpression.Eval (Table.NewRow());
+							compiledExpression.Eval (Table.NewRow ());
 						else
-							compiledExpression.Eval (Table.Rows[0]);
+							compiledExpression.Eval (Table.Rows [0]);
 					}
 					ReadOnly = true;
 					_compiledExpression = compiledExpression;
-				}
-				else
-				{
+				} else {
 					_compiledExpression = null;
 					if (Table != null) {
 						int defaultValuesRowIndex = Table.DefaultValuesRowIndex;
-						if ( defaultValuesRowIndex != -1) 
-							DataContainer.FillValues(defaultValuesRowIndex);
+						if (defaultValuesRowIndex != -1)
+							DataContainer.FillValues (defaultValuesRowIndex);
 					}
 				}
-				_expression = value;  
+				_expression = value;
 			}
 		}
 
@@ -629,11 +530,8 @@ namespace System.Data {
 #if !NET_2_0
 		[DataSysDescription ("The collection that holds custom user information.")]
 #endif
-		public PropertyCollection ExtendedProperties
-		{
-			get {
-				return _extendedProperties;
-			}
+		public PropertyCollection ExtendedProperties {
+			get { return _extendedProperties; }
 #if NET_2_0
 			internal set { _extendedProperties = value; }
 #endif
@@ -643,17 +541,15 @@ namespace System.Data {
 #if !NET_2_0
 		[DataSysDescription ("Indicates the maximum length of the value this column allows. ")]
 #endif
-		[DefaultValue (-1)]
-		public int MaxLength
-		{
-			get {
-				//Default == -1 no max length
-				return _maxLength;
-			}
+		[DefaultValue (-1)] //Default == -1 no max length
+		public int MaxLength {
+			get { return _maxLength; }
 			set {
-				if (value >= 0 &&
-					_columnMapping == MappingType.SimpleContent)
-					throw new ArgumentException (String.Format ("Cannot set MaxLength property on '{0}' column which is mapped to SimpleContent.", ColumnName));
+				if (value >= 0 && _columnMapping == MappingType.SimpleContent)
+					throw new ArgumentException (
+						String.Format (
+							"Cannot set MaxLength property on '{0}' column which is mapped to SimpleContent.",
+							ColumnName));
 				//only applies to string columns
 				_maxLength = value;
 			}
@@ -663,22 +559,15 @@ namespace System.Data {
 #if !NET_2_0
 		[DataSysDescription ("Indicates the XML uri for elements or attributes stored in this column.")]
 #endif
-		public string Namespace
-		{
+		public string Namespace {
 			get {
 				if (_nameSpace != null)
-				{
 					return _nameSpace;
-				}
-				if ((Table != null) && (_columnMapping != MappingType.Attribute))
-				{
+				if (Table != null && _columnMapping != MappingType.Attribute)
 					return Table.Namespace;
-				}
 				return String.Empty;
 			}
-			set {
-				_nameSpace = value;
-			}
+			set { _nameSpace = value; }
 		}
 
 		//Need a good way to set the Ordinal when the column is added to a columnCollection.
@@ -691,7 +580,7 @@ namespace System.Data {
 		public int Ordinal {
 			get { return _ordinal; }
 #if NET_2_0
-			internal  set { _ordinal = value; }
+			internal set { _ordinal = value; }
 #endif
 		}
 
@@ -715,16 +604,9 @@ namespace System.Data {
 		[DataSysDescription ("Indicates the Prefix used for this DataColumn in xml representation.")]
 #endif
 		[DefaultValue ("")]
-		public string Prefix
-		{
-			get {
-				return _prefix;
-			}
-			set {
-				if (value == null)
-					value = String.Empty;
-				_prefix = value;
-			}
+		public string Prefix {
+			get { return _prefix; }
+			set { _prefix = value == null ? String.Empty : value; }
 		}
 
 		[DataCategory ("Data")]
@@ -732,14 +614,9 @@ namespace System.Data {
 		[DataSysDescription ("Indicates whether this column allows changes once a row has been added to the table.")]
 #endif
 		[DefaultValue (false)]
-		public bool ReadOnly
-		{
-			get {
-				return _readOnly;
-			}
-			set {
-				_readOnly = value;
-			}
+		public bool ReadOnly {
+			get { return _readOnly; }
+			set { _readOnly = value; }
 		}
 
 		[Browsable (false)]
@@ -747,16 +624,11 @@ namespace System.Data {
 #if !NET_2_0
 		[DataSysDescription ("Returns the DataTable to which this column belongs.")]
 #endif
-		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]	
-		public DataTable Table
-		{
-			get {
-				return _table;
-			}
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		public DataTable Table {
+			get { return _table; }
 #if NET_2_0
-			internal set {
-				_table = value;
-			}
+			internal set { _table = value; }
 #endif
 		}
 
@@ -766,13 +638,9 @@ namespace System.Data {
 #endif
 		[DefaultValue (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
-		public bool Unique 
-		{
-			get {
-				return _unique;
-			}
+		public bool Unique {
+			get { return _unique; }
 			set {
-
 				if (_unique == value)
 					return;
 
@@ -786,13 +654,13 @@ namespace System.Data {
 				try {
 					if (value) {
 						if (Expression != null && Expression != String.Empty)
-							throw new ArgumentException("Cannot change Unique property for the expression column.");
+							throw new ArgumentException ("Cannot change Unique property for the expression column.");
 
-						_table.Constraints.Add(null, this, false);
+						_table.Constraints.Add (null, this, false);
 					} else {
 
-						UniqueConstraint uc = UniqueConstraint.GetUniqueConstraintForColumnSet (_table.Constraints,
-												new DataColumn[] {this});
+						UniqueConstraint uc = UniqueConstraint.GetUniqueConstraintForColumnSet (
+							_table.Constraints, new DataColumn[] {this});
 						_table.Constraints.Remove (uc);
 					}
 				} catch (Exception e) {
@@ -802,14 +670,13 @@ namespace System.Data {
 			}
 		}
 
-		internal AbstractDataContainer DataContainer {
-			get {
-				return _dataContainer;
-			}
+		internal DataContainer DataContainer {
+			get { return _dataContainer; }
 		}
 
-		internal static bool CanAutoIncrement(Type type) {
-			switch (Type.GetTypeCode(type)) {
+		internal static bool CanAutoIncrement (Type type)
+		{
+			switch (Type.GetTypeCode (type)) {
 				case TypeCode.Int16:
 				case TypeCode.Int32:
 				case TypeCode.Int64:
@@ -823,9 +690,10 @@ namespace System.Data {
 		#endregion // Properties
 
 		#region Methods
-		
+
 		[MonoTODO]
-		internal DataColumn Clone() {
+		internal DataColumn Clone ()
+		{
 			DataColumn copy = new DataColumn ();
 
 			// Copy all the properties of column
@@ -852,20 +720,20 @@ namespace System.Data {
 			if (DataType == typeof (DateTime))
 				copy.DateTimeMode = _datetimeMode;
 #endif
-			
+
 			return copy;
 		}
 
 		/// <summary>
 		///  Sets unique true whithout creating Constraint
 		/// </summary>
-		internal void SetUnique() 
+		internal void SetUnique ()
 		{
 			_unique = true;
 		}
 
 		[MonoTODO]
-		internal void AssertCanAddToCollection()
+		internal void AssertCanAddToCollection ()
 		{
 			//Check if Default Value is set and AutoInc is set
 		}
@@ -882,15 +750,17 @@ namespace System.Data {
 			throw new NotImplementedException ();
 		}
 
-		protected internal virtual void 
-		OnPropertyChanging (PropertyChangedEventArgs pcevent) {
+		protected internal virtual void
+		OnPropertyChanging (PropertyChangedEventArgs pcevent)
+		{
 			PropertyChangedEventHandler eh = _eventHandlers [_propertyChangedKey] as PropertyChangedEventHandler;
-			
+
 			if (eh != null)
 				eh (this, pcevent);
 		}
 
-		protected internal void RaisePropertyChanging(string name) {
+		protected internal void RaisePropertyChanging (string name)
+		{
 			PropertyChangedEventArgs e = new PropertyChangedEventArgs (name);
 			OnPropertyChanging (e);
 		}
@@ -898,46 +768,47 @@ namespace System.Data {
 		/// <summary>
 		/// Gets the Expression of the column, if one exists.
 		/// </summary>
-		/// <returns>The Expression value, if the property is set; 
+		/// <returns>The Expression value, if the property is set;
 		/// otherwise, the ColumnName property.</returns>
-		public override string ToString()
+		public override string ToString ()
 		{
 			if (_expression != string.Empty)
 				return ColumnName + " + " + _expression;
-			
+
 			return ColumnName;
 		}
 
-		internal void SetTable (DataTable table) {
-			if(_table != null) { // serves as double check while adding to a table
+		internal void SetTable (DataTable table)
+		{
+			if(_table != null)
 				throw new ArgumentException ("The column already belongs to a different table");
-			}
+
 			_table = table;
 			// this will get called by DataTable
 			// and DataColumnCollection
-			if(_unique) {
+			if (_unique) {
 				// if the DataColumn is marked as Unique and then
 				// added to a DataTable , then a UniqueConstraint
 				// should be created
-				UniqueConstraint uc = new UniqueConstraint(this);
+				UniqueConstraint uc = new UniqueConstraint (this);
 				_table.Constraints.Add (uc);
 			}
 
-			// allocate space in the column data container 
+			// allocate space in the column data container
 			DataContainer.Capacity = _table.RecordCache.CurrentCapacity;
-			
+
 			int defaultValuesRowIndex = _table.DefaultValuesRowIndex;
-			if ( defaultValuesRowIndex != -1) {
+			if (defaultValuesRowIndex != -1) {
 				// store default value in the table
-				DataContainer[defaultValuesRowIndex] = _defaultValue;
+				DataContainer [defaultValuesRowIndex] = _defaultValue;
 				// Set all the values in data container to default
 				// it's cheaper that raise event on each row.
-				DataContainer.FillValues(defaultValuesRowIndex);
+				DataContainer.FillValues (defaultValuesRowIndex);
 			}
 		}
-		
+
 		// Returns true if all the same collumns are in columnSet and compareSet
-		internal static bool AreColumnSetsTheSame(DataColumn[] columnSet, DataColumn[] compareSet)
+		internal static bool AreColumnSetsTheSame (DataColumn [] columnSet, DataColumn [] compareSet)
 		{
 			if (null == columnSet && null == compareSet)
 				return true;
@@ -947,7 +818,7 @@ namespace System.Data {
 
 			if (columnSet.Length != compareSet.Length)
 				return false;
-			
+
 			foreach (DataColumn col in columnSet) {
 				bool matchFound = false;
 				foreach (DataColumn compare in compareSet) {
@@ -960,47 +831,46 @@ namespace System.Data {
 			return true;
 		}
 
-		
 		internal int CompareValues (int index1, int index2)
 		{
-			return DataContainer.CompareValues(index1, index2);
+			return DataContainer.CompareValues (index1, index2);
 		}
 
-                /// <summary>
-                ///     Returns the data relation, which contains this column.
-                ///     This searches in current table's parent relations.
-                /// <summary>
-                /// <returns>
-                ///     DataRelation if found otherwise null.
-                /// </returns>
-        private DataRelation GetParentRelation ()
-                {
-                        if (_table == null)
-                                return null;
-                        foreach (DataRelation rel in _table.ParentRelations)
-                                if (rel.Contains (this))
-                                        return rel;
-                        return null;
-                }
-                
+		/// <summary>
+		///     Returns the data relation, which contains this column.
+		///     This searches in current table's parent relations.
+		/// <summary>
+		/// <returns>
+		///     DataRelation if found otherwise null.
+		/// </returns>
+		private DataRelation GetParentRelation ()
+		{
+			if (_table == null)
+				return null;
+			foreach (DataRelation rel in _table.ParentRelations)
+				if (rel.Contains (this))
+					return rel;
+			return null;
+		}
 
-                /// <summary>
-                ///     Returns the data relation, which contains this column.
-                ///     This searches in current table's child relations.
-                /// <summary>
-                /// <returns>
-                ///     DataRelation if found otherwise null.
-                /// </returns>
-        private DataRelation GetChildRelation ()
-                {
-                        if (_table == null)
-                                return null;
-                        foreach (DataRelation rel in _table.ChildRelations)
-                                if (rel.Contains (this))
-                                        return rel;
-                        return null;
-                }
-               
+
+		/// <summary>
+		///     Returns the data relation, which contains this column.
+		///     This searches in current table's child relations.
+		/// <summary>
+		/// <returns>
+		///     DataRelation if found otherwise null.
+		/// </returns>
+		private DataRelation GetChildRelation ()
+		{
+			if (_table == null)
+				return null;
+			foreach (DataRelation rel in _table.ChildRelations)
+				if (rel.Contains (this))
+					return rel;
+			return null;
+		}
+
 		internal void ResetColumnInfo ()
 		{
 			_ordinal = -1;
@@ -1019,7 +889,7 @@ namespace System.Data {
 
 			if (DateTimeMode == col.DateTimeMode)
 				return true;
-			
+
 			if (DateTimeMode == DataSetDateTime.Local || DateTimeMode == DataSetDateTime.Utc)
 				return false;
 

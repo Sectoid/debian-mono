@@ -3,6 +3,7 @@
 //
 // Author:
 //	Umadevi S (sumadevi@novell.com)
+//	Veerapuram Varadhan  (vvaradhan@novell.com>)
 //
 // Copyright (C) 2004 Novell, Inc (http://www.novell.com)
 //
@@ -33,6 +34,7 @@ using System.Xml.Schema;
 using System.Globalization;
 using System.Threading;
 using System.Xml.Serialization;
+using System.Text;
 
 #if NET_2_0
 
@@ -43,29 +45,63 @@ namespace System.Data.SqlTypes
 	public sealed class SqlXml : INullable, IXmlSerializable
 	{
 		bool notNull;
-
-		[MonoTODO]
+		string xmlValue;
+		
 		public SqlXml ()
 		{
 			notNull = false;
+			xmlValue = null;
 		}
 
-		[MonoTODO]
 		public SqlXml (Stream value)
 		{
 			if (value == null) {
 				notNull = false;
+				xmlValue = null;
 			} else {
+				int len = (int) value.Length;
+				
+				if (len < 1) {
+					xmlValue = String.Empty;
+				} else {
+					int bufSize = 8192;
+					StringBuilder sb = new StringBuilder (len);
+		    		
+					value.Position = 0;
+	 				// Now read value into a byte buffer.
+					byte [] bytes = null;
+				
+					if (len < bufSize)
+						bufSize = len;
+					bytes = new byte [bufSize];
+
+					while (len > 0) {
+						// Read may return anything from 0 to bufSize.
+						int n = value.Read(bytes, 0, bufSize);
+						sb.Append (Encoding.Unicode.GetString (bytes, 0, n));
+					
+						// The end of the file is reached.
+						if (n==0)
+						    break;
+						len -= n;
+					}
+					xmlValue = sb.ToString ();
+				}
 				notNull = true;
 			}
 		}
 
-		[MonoTODO]
 		public SqlXml (XmlReader value)
 		{
 			if (value == null) {
 				notNull = false;
+				xmlValue = null;
 			} else {
+				if (value.Read ()) {
+					value.MoveToContent ();
+					xmlValue = value.ReadOuterXml();
+				} else 
+					xmlValue = String.Empty;
 				notNull = true;
 			}
 		}
@@ -80,16 +116,28 @@ namespace System.Data.SqlTypes
 			}
 		}
 
+		public string Value {
+			get {
+				if (notNull)
+					return xmlValue;
+				throw new SqlNullValueException ();
+			}
+		}
+
 		public static XmlQualifiedName GetXsdType (XmlSchemaSet schemaSet)
 		{
 			XmlQualifiedName qualifiedName = new XmlQualifiedName ("anyType", "http://www.w3.org/2001/XMLSchema");
 			return qualifiedName;
 		}
 
-		[MonoNotSupported("")]
 		public XmlReader CreateReader ()
 		{
-			throw new NotImplementedException ();
+			if (notNull) {
+			   	XmlReaderSettings xs = new XmlReaderSettings ();
+				xs.ConformanceLevel = ConformanceLevel.Fragment;
+				return XmlTextReader.Create (new StringReader (xmlValue), xs);
+			} else
+				throw new SqlNullValueException (); 
 		}
 
 		[MonoTODO]

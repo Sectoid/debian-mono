@@ -2,7 +2,6 @@ AssemblyInfo.cs
 anonymous.cs
 assign.cs
 attribute.cs
-driver.cs
 cs-tokenizer.cs
 cfold.cs
 class.cs
@@ -13,8 +12,10 @@ convert.cs
 decl.cs
 delegate.cs
 doc.cs
-enum.cs
+driver.cs
 ecore.cs
+enum.cs
+eval.cs
 expression.cs
 flowanalysis.cs
 generic.cs
@@ -40,3 +41,4 @@ symbolwriter.cs
 ../class/Mono.CompilerServices.SymbolWriter/MonoSymbolWriter.cs
 ../class/corlib/Mono.Security.Cryptography/CryptoConvert.cs
 ../build/common/Consts.cs
+../tools/monop/outline.cs

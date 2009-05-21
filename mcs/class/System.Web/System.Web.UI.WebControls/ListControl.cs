@@ -54,12 +54,12 @@ namespace System.Web.UI.WebControls {
 #endif
 	{
 
-		private static readonly object SelectedIndexChangedEvent = new object ();
+		static readonly object SelectedIndexChangedEvent = new object ();
 #if NET_2_0
-		private static readonly object TextChangedEvent = new object ();
+		static readonly object TextChangedEvent = new object ();
 #endif
 
-		private ListItemCollection items;
+		ListItemCollection items;
 #if NET_2_0
 		int _selectedIndex = -2;
 		string _selectedValue;
@@ -110,7 +110,7 @@ namespace System.Web.UI.WebControls {
 			set { ViewState ["DataMember"] = value; }
 		}
 
-		private object data_source;
+		object data_source;
 
 		[Bindable(true)]
 		[DefaultValue(null)]
@@ -511,11 +511,11 @@ namespace System.Web.UI.WebControls {
 		protected internal override void RenderContents (HtmlTextWriter writer)
 		{
 			bool selected = false;
-			bool havePage = Page != null;
+			Page page = Page;
 			for (int i = 0; i < Items.Count; i++) {
 				ListItem item = Items [i];
-				if (havePage)
-					Page.ClientScript.RegisterForEventValidation (this.UniqueID, item.Value);
+				if (page != null)
+					page.ClientScript.RegisterForEventValidation (UniqueID, item.Value);
 				writer.WriteBeginTag ("option");
 				if (item.Selected) {
 					if (selected)

@@ -20,22 +20,8 @@ namespace Mono.CSharp {
 	//
 	// A container class for all the conversion operations
 	//
-	public class Convert {
+	static class Convert {
 #if GMCS_SOURCE
-		static bool TypeParameter_to_Null (Type target_type)
-		{
-			GenericConstraints gc = TypeManager.GetTypeParameterConstraints (target_type);
-			if (gc == null)
-				return false;
-
-			if (gc.HasReferenceTypeConstraint)
-				return true;
-			if (gc.HasClassConstraint && !TypeManager.IsValueType (gc.ClassConstraint))
-				return true;
-
-			return false;
-		}
-
 		static Type TypeParam_EffectiveBaseType (GenericConstraints gc)
 		{
 			ArrayList list = new ArrayList ();
@@ -53,17 +39,14 @@ namespace Mono.CSharp {
 #endif
 
 		//
-		// From a one-dimensional array-type S[] to System.Collections.IList<S> and base
-		// interfaces of this interface.
-		//
 		// From a one-dimensional array-type S[] to System.Collections.IList<T> and base
 		// interfaces of this interface, provided there is an implicit reference conversion
 		// from S to T.
 		//
-		static bool Array_To_IList (Type array, Type list)
+		static bool Array_To_IList (Type array, Type list, bool isExplicit)
 		{
 #if GMCS_SOURCE
-			if (!array.IsArray || (array.GetArrayRank () != 1) || !list.IsGenericType)
+			if ((array.GetArrayRank () != 1) || !list.IsGenericType)
 				return false;
 
 			Type gt = list.GetGenericTypeDefinition ();
@@ -78,11 +61,14 @@ namespace Mono.CSharp {
 			if (element_type == arg_type)
 				return true;
 
+			if (isExplicit)
+				return ExplicitReferenceConversionExists (element_type, arg_type);
+
 			if (MyEmptyExpr == null)
 				MyEmptyExpr = new EmptyExpression ();
 			MyEmptyExpr.SetType (TypeManager.GetElementType (array));
 
-			return ImplicitReferenceConversionCore (MyEmptyExpr, arg_type);
+			return ImplicitReferenceConversionExists (MyEmptyExpr, arg_type);
 #else
 			return false;
 #endif
@@ -208,31 +194,9 @@ namespace Mono.CSharp {
 			return false;
 		}
 
-		static bool ExplicitTypeParameterConversionExists (Type source_type, Type target_type)
+		static Expression ExplicitTypeParameterConversion (Expression source, Type source_type, Type target_type)
 		{
 #if GMCS_SOURCE
-			if (TypeManager.IsGenericParameter (target_type)) {
-				GenericConstraints gc = TypeManager.GetTypeParameterConstraints (target_type);
-				if (gc == null)
-					return false;
-
-				foreach (Type iface in gc.InterfaceConstraints) {
-					if (!TypeManager.IsGenericParameter (iface))
-						continue;
-
-					if (TypeManager.IsSubclassOf (source_type, iface))
-						return true;
-				}
-			}
-#endif
-			return target_type.IsInterface;
-		}
-
-		static Expression ExplicitTypeParameterConversion (Expression source, Type target_type)
-		{
-#if GMCS_SOURCE
-			Type source_type = source.Type;
-
 			if (TypeManager.IsGenericParameter (target_type)) {
 				GenericConstraints gc = TypeManager.GetTypeParameterConstraints (target_type);
 				if (gc == null)
@@ -243,12 +207,12 @@ namespace Mono.CSharp {
 						continue;
 
 					if (TypeManager.IsSubclassOf (source_type, iface))
-						return new ClassCast (source, target_type);
+						return source == null ? EmptyExpression.Null : new ClassCast (source, target_type, true);
 				}
 			}
 
 			if (target_type.IsInterface)
-				return new ClassCast (source, target_type);
+				return source == null ? EmptyExpression.Null : new ClassCast (source, target_type, true);
 #endif
 			return null;
 		}
@@ -278,7 +242,7 @@ namespace Mono.CSharp {
 				return nl.ConvertImplicitly(target_type);
 			}
 
-			if (ImplicitReferenceConversionCore (expr, target_type)) {
+			if (ImplicitReferenceConversionExists (expr, target_type)) {
 				// 
 				// Reduce implicit reference conversion to object
 				//
@@ -299,9 +263,22 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		static public bool ImplicitReferenceConversionCore (Expression expr, Type target_type)
+		//
+		// 6.1.6 Implicit reference conversions
+		//
+		public static bool ImplicitReferenceConversionExists (Expression expr, Type target_type)
 		{
+			if (target_type.IsValueType)
+				return false;
+
 			Type expr_type = expr.Type;
+
+			// from the null type to any reference-type.
+			if (expr_type == TypeManager.null_type)
+				return target_type != TypeManager.anonymous_method_type;
+
+			if (TypeManager.IsGenericParameter (expr_type))
+				return ImplicitTypeParameterConversion (expr, target_type) != null;
 
 			//
 			// notice that it is possible to write "ValueType v = 1", the ValueType here
@@ -348,36 +325,44 @@ namespace Mono.CSharp {
 				}
 			}
 
-			// from any interface type S to interface-type T.
-			if (expr_type.IsInterface && target_type.IsInterface) {
-				return TypeManager.ImplementsInterface (expr_type, target_type);
-			}
+			if (expr_type.IsArray) {
+				// from an array-type S to an array-type of type T
+				if (target_type.IsArray && expr_type.GetArrayRank () == target_type.GetArrayRank ()) {
 
-			// from an array-type S to an array-type of type T
-			if (expr_type.IsArray && target_type.IsArray) {
-				if (expr_type.GetArrayRank () == target_type.GetArrayRank ()) {
-
+					//
+					// Both SE and TE are reference-types
+					//
 					Type expr_element_type = TypeManager.GetElementType (expr_type);
+					if (!TypeManager.IsReferenceType (expr_element_type))
+						return false;
+
+					Type target_element_type = TypeManager.GetElementType (target_type);
+					if (!TypeManager.IsReferenceType (target_element_type))
+						return false;
 
 					if (MyEmptyExpr == null)
 						MyEmptyExpr = new EmptyExpression ();
 
 					MyEmptyExpr.SetType (expr_element_type);
-					Type target_element_type = TypeManager.GetElementType (target_type);
 
-					if (!expr_element_type.IsValueType && !target_element_type.IsValueType)
-						return ImplicitStandardConversionExists (
-							MyEmptyExpr, target_element_type);
+					return ImplicitStandardConversionExists (MyEmptyExpr, target_element_type);
 				}
+
+				// from an array-type to System.Array
+				if (target_type == TypeManager.array_type)
+					return true;
+
+				// from an array-type of type T to IList<T>
+				if (Array_To_IList (expr_type, target_type, false))
+					return true;
+
+				return false;
 			}
 
-			// from an array-type to System.Array
-			if (expr_type.IsArray && target_type == TypeManager.array_type)
-				return true;
-
-			// from an array-type of type T to IList<T>
-			if (expr_type.IsArray && Array_To_IList (expr_type, target_type))
-				return true;
+			// from any interface type S to interface-type T.
+			if (expr_type.IsInterface && target_type.IsInterface) {
+				return TypeManager.ImplementsInterface (expr_type, target_type);
+			}
 
 			// from any delegate type to System.Delegate
 			if (target_type == TypeManager.delegate_type &&
@@ -391,7 +376,7 @@ namespace Mono.CSharp {
 			return false;
 		}
 
-		static public bool ImplicitBoxingConversionExists (Expression expr, Type target_type,
+		public static bool ImplicitBoxingConversionExists (Expression expr, Type target_type,
 								   out bool use_class_cast)
 		{
 			Type expr_type = expr.Type;
@@ -428,9 +413,12 @@ namespace Mono.CSharp {
 				if (TypeManager.IsNullableType (expr_type))
 					return TypeManager.GetTypeArguments (expr_type) [0].IsEnum;
 			}
-			
+
 			if (TypeManager.IsSubclassOf (expr_type, target_type)) {
-				if (TypeManager.IsGenericParameter (expr_type))
+				//
+				// Don't box same type arguments
+				//
+				if (TypeManager.IsGenericParameter (expr_type) && expr_type != target_type)
 					return true;
 
 				return false;
@@ -455,31 +443,43 @@ namespace Mono.CSharp {
 			return false;
 		}
 
-		//
-		// Tests whether an implicit reference conversion exists between expr_type
-		// and target_type
-		//
-		public static bool ImplicitReferenceConversionExists (Expression expr, Type target_type)
+		static Expression ImplicitNulableConversion (EmitContext ec, Expression expr, Type target_type)
 		{
-			if (target_type.IsValueType)
-				return false;
-
 			Type expr_type = expr.Type;
 
-			// from the null type to any reference-type.
-			if (expr_type == TypeManager.null_type){
-				return target_type != TypeManager.anonymous_method_type;
+			//
+			// From null to any nullable type
+			//
+			if (expr_type == TypeManager.null_type)
+				return ec == null ? EmptyExpression.Null : Nullable.LiftedNull.Create (target_type, expr.Location);
+
+			Type target = TypeManager.GetTypeArguments (target_type)[0];
+			Expression e;
+
+			// S? -> T?
+			if (TypeManager.IsNullableType (expr_type)) {
+				Type etype = TypeManager.GetTypeArguments (expr_type)[0];
+
+				if (ec == null)
+					return ImplicitConversionExists (ec, new EmptyExpression (etype), target) ? EmptyExpression.Null : null;
+
+				Expression unwrap = Nullable.Unwrap.Create (expr);
+				e = ImplicitConversion (ec, unwrap, target, expr.Location);
+				if (e == null)
+					return null;
+
+				return new Nullable.Lifted (e, unwrap, target_type).Resolve (ec);
 			}
 
-			if (TypeManager.IsGenericParameter (expr_type))
-				return ImplicitTypeParameterConversion (expr, target_type) != null;
+			// S -> T?
+			if (ec == null)
+				return ImplicitConversionExists (ec, expr, target) ? EmptyExpression.Null : null;
 
-			bool use_class_cast;
-			if (ImplicitReferenceConversionCore (expr, target_type) ||
-			    ImplicitBoxingConversionExists (expr, target_type, out use_class_cast))
-				return true;
+			e = ImplicitConversion (ec, expr, target, expr.Location);
+			if (e != null)
+				return Nullable.Wrap.Create (e, target_type);
 
-			return false;
+			return null;
 		}
 
 		/// <summary>
@@ -488,149 +488,150 @@ namespace Mono.CSharp {
 		///   expr is the expression to convert, returns a new expression of type
 		///   target_type or null if an implicit conversion is not possible.
 		/// </summary>
-		static public Expression ImplicitNumericConversion (Expression expr,
-								    Type target_type)
+		public static Expression ImplicitNumericConversion (Expression expr, Type target_type)
 		{
-			Type expr_type = expr.Type;
-			Type real_target_type = target_type;
+			return ImplicitNumericConversion (expr, expr.Type, target_type);
+		}
 
+		static Expression ImplicitNumericConversion (Expression expr, Type expr_type, Type target_type)
+		{
 			if (expr_type == TypeManager.sbyte_type){
 				//
 				// From sbyte to short, int, long, float, double, decimal
 				//
-				if (real_target_type == TypeManager.int32_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I4);
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.short_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I2);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.int32_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I4);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.short_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I2);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.byte_type){
 				//
 				// From byte to short, ushort, int, uint, long, ulong, float, double, decimal
 				//
-				if (real_target_type == TypeManager.int32_type || real_target_type == TypeManager.uint32_type ||
-				    real_target_type == TypeManager.short_type || real_target_type == TypeManager.ushort_type)
-					return EmptyCast.Create (expr, target_type);
+				if (target_type == TypeManager.int32_type || target_type == TypeManager.uint32_type ||
+				    target_type == TypeManager.short_type || target_type == TypeManager.ushort_type)
+					return expr == null ? EmptyExpression.Null : EmptyCast.Create (expr, target_type);
 
-				if (real_target_type == TypeManager.uint64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.uint64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 
 			} else if (expr_type == TypeManager.short_type){
 				//
 				// From short to int, long, float, double, decimal
 				//
-				if (real_target_type == TypeManager.int32_type)
-					return EmptyCast.Create (expr, target_type);
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.int32_type)
+					return expr == null ? EmptyExpression.Null : EmptyCast.Create (expr, target_type);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 
 			} else if (expr_type == TypeManager.ushort_type){
 				//
 				// From ushort to int, uint, long, ulong, float, double, decimal
 				//
-				if (real_target_type == TypeManager.int32_type || real_target_type == TypeManager.uint32_type)
-					return EmptyCast.Create (expr, target_type);
+				if (target_type == TypeManager.int32_type || target_type == TypeManager.uint32_type)
+					return expr == null ? EmptyExpression.Null : EmptyCast.Create (expr, target_type);
 				
-				if (real_target_type == TypeManager.uint64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.uint64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.int32_type){
 				//
 				// From int to long, float, double, decimal
 				//
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.uint32_type){
 				//
 				// From uint to long, ulong, float, double, decimal
 				//
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
-				if (real_target_type == TypeManager.uint64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
+				if (target_type == TypeManager.uint64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.int64_type){
 				//
 				// From long/ulong to float, double
 				//
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.uint64_type){
 				//
 				// From ulong to float, double
 				//
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.char_type){
 				//
 				// From char to ushort, int, uint, long, ulong, float, double, decimal
 				//
-				if ((real_target_type == TypeManager.ushort_type) ||
-				    (real_target_type == TypeManager.int32_type) ||
-				    (real_target_type == TypeManager.uint32_type))
-					return EmptyCast.Create (expr, target_type);
-				if (real_target_type == TypeManager.uint64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
-				if (real_target_type == TypeManager.int64_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
-				if (real_target_type == TypeManager.float_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
-				if (real_target_type == TypeManager.decimal_type)
-					return new CastToDecimal (expr);
+				if ((target_type == TypeManager.ushort_type) ||
+				    (target_type == TypeManager.int32_type) ||
+				    (target_type == TypeManager.uint32_type))
+					return expr == null ? EmptyExpression.Null : EmptyCast.Create (expr, target_type);
+				if (target_type == TypeManager.uint64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
+				if (target_type == TypeManager.int64_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_I8);
+				if (target_type == TypeManager.float_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R4);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.decimal_type)
+					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.float_type){
 				//
 				// float to double
 				//
-				if (real_target_type == TypeManager.double_type)
-					return new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
+				if (target_type == TypeManager.double_type)
+					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_R8);
 			}
 
 			return null;
@@ -642,15 +643,6 @@ namespace Mono.CSharp {
 		/// </summary>
 		public static bool ImplicitConversionExists (EmitContext ec, Expression expr, Type target_type)
 		{
-#if GMCS_SOURCE
-			if (expr is NullLiteral) {
-				if (TypeManager.IsGenericParameter (target_type))
-					return TypeParameter_to_Null (target_type);
-
-				if (TypeManager.IsNullableType (target_type))
-					return true;
-			}
-#endif
 			if (ImplicitStandardConversionExists (expr, target_type))
 				return true;
 
@@ -679,141 +671,17 @@ namespace Mono.CSharp {
 		/// </summary>
 		public static bool ImplicitStandardConversionExists (Expression expr, Type target_type)
 		{
-			Type expr_type = expr.Type;
-#if GMCS_SOURCE
-			if (TypeManager.IsNullableType (target_type)) {
-				// if implicit standard conversion S -> T exists, S -> T? and S? -> T? also exists
-				target_type = TypeManager.GetTypeArguments (target_type) [0];
+			if (expr is NullLiteral)
+				return ((NullLiteral) expr).ConvertImplicitly (target_type) != null;
 
-				// S? -> T?
-				if (TypeManager.IsNullableType (expr_type)) {
-					EmptyExpression new_expr = EmptyExpression.Grab ();
-					new_expr.SetType (TypeManager.GetTypeArguments (expr_type) [0]);
-					bool retval = ImplicitStandardConversionExists (new_expr, target_type);
-					EmptyExpression.Release (new_expr);
-					return retval;
-				}
-			}
-#endif
+			Type expr_type = expr.Type;
 			if (expr_type == TypeManager.void_type)
 				return false;
 
-			//Console.WriteLine ("Expr is {0}", expr);
-			//Console.WriteLine ("{0} -> {1} ?", expr_type, target_type);
-			if (TypeManager.IsEqual (expr_type, target_type))
-				return true;
-
-
-			// First numeric conversions
-
-			if (expr_type == TypeManager.sbyte_type){
-				//
-				// From sbyte to short, int, long, float, double, decimal
-				//
-				if ((target_type == TypeManager.int32_type) ||
-				    (target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.float_type)  ||
-				    (target_type == TypeManager.short_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.byte_type){
-				//
-				// From byte to short, ushort, int, uint, long, ulong, float, double, decimal
-				//
-				if ((target_type == TypeManager.short_type) ||
-				    (target_type == TypeManager.ushort_type) ||
-				    (target_type == TypeManager.int32_type) ||
-				    (target_type == TypeManager.uint32_type) ||
-				    (target_type == TypeManager.uint64_type) ||
-				    (target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.short_type){
-				//
-				// From short to int, long, double, float, decimal 
-				//
-				if ((target_type == TypeManager.int32_type) ||
-				    (target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.ushort_type){
-				//
-				// From ushort to int, uint, long, ulong, double, float, decimal
-				//
-				if ((target_type == TypeManager.uint32_type) ||
-				    (target_type == TypeManager.uint64_type) ||
-				    (target_type == TypeManager.int32_type) ||
-				    (target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.int32_type){
-				//
-				// From int to long, double, float, decimal
-				//
-				if ((target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.uint32_type){
-				//
-				// From uint to long, ulong, double, float, decimal
-				//
-				if ((target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.uint64_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if ((expr_type == TypeManager.uint64_type) ||
-				   (expr_type == TypeManager.int64_type)) {
-				//
-				// From long/ulong to double, float, decimal
-				//
-				if ((target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.char_type){
-				//
-				// From char to ushort, int, uint, ulong, long, float, double, decimal
-				//
-				if ((target_type == TypeManager.ushort_type) ||
-				    (target_type == TypeManager.int32_type) ||
-				    (target_type == TypeManager.uint32_type) ||
-				    (target_type == TypeManager.uint64_type) ||
-				    (target_type == TypeManager.int64_type) ||
-				    (target_type == TypeManager.float_type) ||
-				    (target_type == TypeManager.double_type) ||
-				    (target_type == TypeManager.decimal_type))
-					return true;
-
-			} else if (expr_type == TypeManager.float_type){
-				//
-				// float to double
-				//
-				if (target_type == TypeManager.double_type)
-					return true;
-			}
-
-			if (expr.eclass == ExprClass.MethodGroup){
-				if (TypeManager.IsDelegateType (target_type) && RootContext.Version != LanguageVersion.ISO_1){
+			if (expr.eclass == ExprClass.MethodGroup) {
+				if (TypeManager.IsDelegateType (target_type) && RootContext.Version != LanguageVersion.ISO_1) {
 					MethodGroupExpr mg = expr as MethodGroupExpr;
-					if (mg != null){
+					if (mg != null) {
 						return DelegateCreation.ImplicitStandardConversionExists (mg, target_type) != null;
 					}
 				}
@@ -821,7 +689,23 @@ namespace Mono.CSharp {
 				return false;
 			}
 
+			//Console.WriteLine ("Expr is {0}", expr);
+			//Console.WriteLine ("{0} -> {1} ?", expr_type, target_type);
+			if (TypeManager.IsEqual (expr_type, target_type))
+				return true;
+
+			if (TypeManager.IsNullableType (target_type))
+				return ImplicitNulableConversion (null, expr, target_type) != null;
+
+			// First numeric conversions
+			if (ImplicitNumericConversion (null, expr_type, target_type) != null)
+				return true;
+
 			if (ImplicitReferenceConversionExists (expr, target_type))
+				return true;
+
+			bool use_class_cast;
+			if (ImplicitBoxingConversionExists (expr, target_type, out use_class_cast))
 				return true;
 
 			//
@@ -982,8 +866,8 @@ namespace Mono.CSharp {
 			//
 			Type source_type = source.Type;
 			foreach (MethodBase mb in list){
-				ParameterData pd = TypeManager.GetParameterData (mb);
-				Type param_type = pd.ParameterType (0);
+				AParametersCollection pd = TypeManager.GetParameterData (mb);
+				Type param_type = pd.Types [0];
 
 				if (param_type == source_type)
 					return param_type;
@@ -1115,9 +999,9 @@ namespace Mono.CSharp {
 			}
 
 			foreach (MethodInfo m in mg.Methods) {
-				ParameterData pd = TypeManager.GetParameterData (m);
+				AParametersCollection pd = TypeManager.GetParameterData (m);
 				Type return_type = TypeManager.TypeToCoreType (m.ReturnType);
-				Type arg_type = pd.ParameterType (0);
+				Type arg_type = pd.Types [0];
 
 				if (source_type != arg_type) {
 					if (!ImplicitStandardConversionExists (source, arg_type)) {
@@ -1196,7 +1080,7 @@ namespace Mono.CSharp {
 			foreach (MethodInfo m in ops) {
 				if (TypeManager.TypeToCoreType (m.ReturnType) != most_specific_target)
 					continue;
-				if (TypeManager.GetParameterData (m).ParameterType (0) != most_specific_source)
+				if (TypeManager.GetParameterData (m).Types [0] != most_specific_source)
 					continue;
 				// Ambiguous: more than one conversion operator satisfies the signature.
 				if (method != null)
@@ -1221,7 +1105,16 @@ namespace Mono.CSharp {
 			MethodInfo method = null;
 
 			object o;
-			DoubleHash hash = look_for_explicit ? explicit_conv : implicit_conv;
+			DoubleHash hash;
+			if (look_for_explicit) {
+				hash = explicit_conv;
+			} else {
+				// Implicit user operators cannot convert to interfaces
+				if (target.IsInterface)
+					return null;
+
+				hash = implicit_conv;
+			}			
 
 			if (!(source is Constant) && hash.Lookup (source_type, target, out o)) {
 				method = (MethodInfo) o;
@@ -1234,7 +1127,7 @@ namespace Mono.CSharp {
 			if (method == null)
 				return null;
 
-			Type most_specific_source = TypeManager.GetParameterData (method).ParameterType (0);
+			Type most_specific_source = TypeManager.GetParameterData (method).Types [0];
 
 			//
 			// This will do the conversion to the best match that we
@@ -1250,7 +1143,7 @@ namespace Mono.CSharp {
 			if (source == null)
 				return null;
 
-			return new UserCast (method, source, loc);
+			return new UserCast (method, source, loc).DoResolve (ec);
 		}
 
 		/// <summary>
@@ -1296,33 +1189,6 @@ namespace Mono.CSharp {
 
 		static Expression ImplicitConversionStandard (EmitContext ec, Expression expr, Type target_type, Location loc, bool explicit_cast)
 		{
-			Type expr_type = expr.Type;
-			Expression e;
-			
-#if GMCS_SOURCE
-			if (TypeManager.IsNullableType (target_type)) {
-				//
-				// From null to any nullable type
-				//
-				if (expr_type == TypeManager.null_type)
-					return Nullable.LiftedNull.Create (target_type, loc);
-				
-				Type target = TypeManager.GetTypeArguments (target_type) [0];
-
-				if (TypeManager.IsNullableType (expr_type)) {
-					Type etype = TypeManager.GetTypeArguments (expr_type) [0];
-					if (TypeManager.IsEqual (etype, target))
-						return expr;
-
-					return new Nullable.LiftedConversion (
-						expr, target_type, false, false, loc).Resolve (ec);
-				} else {
-					e = ImplicitConversion (ec, expr, target, loc);
-					if (e != null)
-						return Nullable.Wrap.Create (e, target_type);
-				}
-			}
-#endif
 			if (expr.eclass == ExprClass.MethodGroup){
 				if (!TypeManager.IsDelegateType (target_type)){
 					return null;
@@ -1339,8 +1205,17 @@ namespace Mono.CSharp {
 				}
 			}
 
-			if (expr_type.Equals (target_type) && expr_type != TypeManager.null_type)
-				return expr;
+			Type expr_type = expr.Type;
+			Expression e;
+
+			if (expr_type.Equals (target_type)) {
+				if (expr_type != TypeManager.null_type && expr_type != TypeManager.anonymous_method_type)
+					return expr;
+				return null;
+			}
+
+			if (TypeManager.IsNullableType (target_type))
+				return ImplicitNulableConversion (ec, expr, target_type);
 
 			//
 			// Attempt to do the implicit constant expression conversions
@@ -1364,7 +1239,7 @@ namespace Mono.CSharp {
 					return c;
 			}
 
-			e = ImplicitNumericConversion (expr, target_type);
+			e = ImplicitNumericConversion (expr, expr_type, target_type);
 			if (e != null)
 				return e;
 
@@ -1372,11 +1247,17 @@ namespace Mono.CSharp {
 			if (e != null)
 				return e;
 
-			if (TypeManager.IsEnumType (target_type) && expr is IntLiteral){
-				IntLiteral i = (IntLiteral) expr;
-
-				if (i.Value == 0)
-					return new EnumConstant ((Constant) expr, target_type);
+			if (expr is IntConstant && TypeManager.IsEnumType (target_type)){
+				Constant i = (Constant) expr;
+				//
+				// LAMESPEC: Conversion from any 0 constant is allowed
+				//
+				// An implicit enumeration conversion permits the decimal-integer-literal 0
+				// to be converted to any enum-type and to any nullable-type whose underlying
+				// type is an enum-type
+				//
+				if (i.IsDefaultValue)
+					return new EnumConstant (i, target_type);
 			}
 
 			if (ec.InUnsafe) {
@@ -1397,7 +1278,7 @@ namespace Mono.CSharp {
 				}
 
 				if (expr_type == TypeManager.null_type && target_type.IsPointer)
-					return EmptyCast.Create (NullPointer.Null, target_type);
+					return EmptyCast.Create (new NullPointer (loc), target_type);
 			}
 
 			if (expr_type == TypeManager.anonymous_method_type){
@@ -1702,162 +1583,61 @@ namespace Mono.CSharp {
 		/// </summary>
 		public static bool ExplicitReferenceConversionExists (Type source_type, Type target_type)
 		{
-			bool target_is_type_param = TypeManager.IsGenericParameter (target_type);
-			bool target_is_value_type = target_type.IsValueType;
+			Expression e = ExplicitReferenceConversion (null, source_type, target_type);
+			if (e == null)
+				return false;
 
-			if (source_type == target_type)
+			if (e == EmptyExpression.Null)
 				return true;
 
-			//
-			// From generic parameter to any type
-			//
-			if (TypeManager.IsGenericParameter (source_type))
-				return ExplicitTypeParameterConversionExists (source_type, target_type);
-
-			//
-			// From object to a generic parameter
-			//
-			if (source_type == TypeManager.object_type && target_is_type_param)
-				return true;
-
-			//
-			// From object to any reference type
-			//
-			if (source_type == TypeManager.object_type && !target_is_value_type)
-				return true;
-
-			//
-			// From any class S to any class-type T, provided S is a base class of T
-			//
-			if (TypeManager.IsSubclassOf (target_type, source_type))
-				return true;
-
-			//
-			// From any interface type S to any interface T provided S is not derived from T
-			//
-			if (source_type.IsInterface && target_type.IsInterface){
-				if (!TypeManager.IsSubclassOf (target_type, source_type))
-					return true;
-			}
-
-			//
-			// From any class type S to any interface T, provided S is not sealed
-			// and provided S does not implement T.
-			//
-			if (target_type.IsInterface && !source_type.IsSealed &&
-			    !TypeManager.ImplementsInterface (source_type, target_type))
-				return true;
-
-			//
-			// From any interface-type S to to any class type T, provided T is not
-			// sealed, or provided T implements S.
-			//
-			if (source_type.IsInterface &&
-			    (!target_type.IsSealed || TypeManager.ImplementsInterface (target_type, source_type)))
-				return true;
-
-
-			if (source_type.IsInterface && IList_To_Array (source_type, target_type))
-				return true;
-
-			// From an array type S with an element type Se to an array type T with an
-			// element type Te provided all the following are true:
-			//     * S and T differe only in element type, in other words, S and T
-			//       have the same number of dimensions.
-			//     * Both Se and Te are reference types
-			//     * An explicit referenc conversions exist from Se to Te
-			//
-			if (source_type.IsArray && target_type.IsArray) {
-				if (source_type.GetArrayRank () == target_type.GetArrayRank ()) {
-
-					Type source_element_type = TypeManager.GetElementType (source_type);
-					Type target_element_type = TypeManager.GetElementType (target_type);
-
-					if (TypeManager.IsGenericParameter (source_element_type) ||
-					    (!source_element_type.IsValueType && !target_element_type.IsValueType))
-						if (ExplicitReferenceConversionExists (source_element_type,
-										       target_element_type))
-							return true;
-				}
-			}
-
-
-			// From System.Array to any array-type
-			if (source_type == TypeManager.array_type &&
-			    target_type.IsArray){
-				return true;
-			}
-
-			//
-			// From System delegate to any delegate-type
-			//
-			if (source_type == TypeManager.delegate_type &&
-			    TypeManager.IsDelegateType (target_type))
-				return true;
-
-			return false;
+			throw new InternalErrorException ("Invalid probing conversion result");
 		}
 
 		/// <summary>
 		///   Implements Explicit Reference conversions
 		/// </summary>
-		static Expression ExplicitReferenceConversion (Expression source, Type target_type)
+		static Expression ExplicitReferenceConversion (Expression source, Type source_type, Type target_type)
 		{
-			Type source_type = source.Type;
-			bool target_is_type_param = TypeManager.IsGenericParameter (target_type);
 			bool target_is_value_type = target_type.IsValueType;
 
 			//
 			// From object to a generic parameter
 			//
-			if (source_type == TypeManager.object_type && target_is_type_param)
-				return new UnboxCast (source, target_type);
+			if (source_type == TypeManager.object_type && TypeManager.IsGenericParameter (target_type))
+				return source == null ? EmptyExpression.Null : new UnboxCast (source, target_type);
 
 			//
 			// Explicit type parameter conversion.
 			//
-
 			if (TypeManager.IsGenericParameter (source_type))
-				return ExplicitTypeParameterConversion (source, target_type);
+				return ExplicitTypeParameterConversion (source, source_type, target_type);
 
 			//
-			// From object to any reference type
+			// From object to any reference type or value type (unboxing)
 			//
-			if (source_type == TypeManager.object_type && !target_is_value_type)
-				return new ClassCast (source, target_type);
+			if (source_type == TypeManager.object_type)
+				return source == null ? EmptyExpression.Null :
+					target_is_value_type ? (Expression) new UnboxCast (source, target_type) : new ClassCast (source, target_type);
 
 			//
-			// Unboxing conversion.
+			// Unboxing conversion from the types object and System.ValueType to any non-nullable-value-type
 			//
-			if (((source_type == TypeManager.enum_type &&
-				!(source is TypeCast)) ||
-				source_type == TypeManager.value_type) && target_is_value_type)
-				return new UnboxCast (source, target_type);
+			if (source_type == TypeManager.value_type && target_is_value_type)
+				return source == null ? EmptyExpression.Null : new UnboxCast (source, target_type);
 
 			//
 			// From any class S to any class-type T, provided S is a base class of T
 			//
 			if (TypeManager.IsSubclassOf (target_type, source_type))
-				return new ClassCast (source, target_type);
-
-			//
-			// From any interface type S to any interface T provided S is not derived from T
-			//
-			if (source_type.IsInterface && target_type.IsInterface){
-				if (TypeManager.ImplementsInterface (source_type, target_type))
-					return null;
-				else
-					return new ClassCast (source, target_type);
-			}
+				return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 
 			//
 			// From any class type S to any interface T, provides S is not sealed
 			// and provided S does not implement T.
 			//
-			if (target_type.IsInterface &&
-				(!source_type.IsSealed || source_type.IsArray) &&	// SRE: IsSealed does not work with aggregates
+			if (target_type.IsInterface && !source_type.IsSealed &&
 				!TypeManager.ImplementsInterface (source_type, target_type)) {
-				return new ClassCast (source, target_type);
+				return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 			}
 
 			//
@@ -1867,9 +1647,13 @@ namespace Mono.CSharp {
 			if (source_type.IsInterface) {
 				if (!target_type.IsSealed || TypeManager.ImplementsInterface (target_type, source_type)) {
 					if (target_type.IsClass)
-						return new ClassCast (source, target_type);
-					else
-						return new UnboxCast (source, target_type);
+						return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
+
+					//
+					// Unboxing conversion from any interface-type to any non-nullable-value-type that
+					// implements the interface-type
+					//
+					return source == null ? EmptyExpression.Null : new UnboxCast (source, target_type);
 				}
 
 				//
@@ -1877,44 +1661,59 @@ namespace Mono.CSharp {
 				// array type S[], provided there is an implicit or explicit reference conversion from S to T.
 				//
 				if (IList_To_Array (source_type, target_type))
-					return new ClassCast (source, target_type);
+					return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 
 				return null;
 			}
 
-			// From an array type S with an element type Se to an array type T with an
-			// element type Te provided all the following are true:
-			//     * S and T differe only in element type, in other words, S and T
-			//       have the same number of dimensions.
-			//     * Both Se and Te are reference types
-			//     * An explicit referenc conversions exist from Se to Te
-			//
-			if (source_type.IsArray && target_type.IsArray) {
-				if (source_type.GetArrayRank () == target_type.GetArrayRank ()) {
+			if (source_type.IsArray) {
+				if (target_type.IsArray) {
+					//
+					// From System.Array to any array-type
+					//
+					if (source_type == TypeManager.array_type)
+						return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 
-					Type source_element_type = TypeManager.GetElementType (source_type);
-					Type target_element_type = TypeManager.GetElementType (target_type);
+					//
+					// From an array type S with an element type Se to an array type T with an
+					// element type Te provided all the following are true:
+					//     * S and T differe only in element type, in other words, S and T
+					//       have the same number of dimensions.
+					//     * Both Se and Te are reference types
+					//     * An explicit reference conversions exist from Se to Te
+					//
+					if (source_type.GetArrayRank () == target_type.GetArrayRank ()) {
 
-					if (!source_element_type.IsValueType && !target_element_type.IsValueType)
-						if (ExplicitReferenceConversionExists (source_element_type,
-										       target_element_type))
-							return new ClassCast (source, target_type);
+						source_type = TypeManager.GetElementType (source_type);
+						if (!TypeManager.IsReferenceType (source_type))
+							return null;
+
+						Type target_type_element = TypeManager.GetElementType (target_type);
+						if (!TypeManager.IsReferenceType (target_type_element))
+							return null;
+
+						if (ExplicitReferenceConversionExists (source_type, target_type_element))
+							return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
+							
+						return null;
+					}
 				}
-			}
 
+				//
+				// From a single-dimensional array type S[] to System.Collections.Generic.IList<T> and its base interfaces, 
+				// provided that there is an explicit reference conversion from S to T
+				//
+				if (Array_To_IList (source_type, target_type, true))
+					return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 
-			// From System.Array to any array-type
-			if (source_type == TypeManager.array_type &&
-			    target_type.IsArray) {
-				return new ClassCast (source, target_type);
+				return null;
 			}
 
 			//
 			// From System delegate to any delegate-type
 			//
-			if (source_type == TypeManager.delegate_type &&
-			    TypeManager.IsDelegateType (target_type))
-				return new ClassCast (source, target_type);
+			if (source_type == TypeManager.delegate_type && TypeManager.IsDelegateType (target_type))
+				return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 
 			return null;
 		}
@@ -1933,12 +1732,6 @@ namespace Mono.CSharp {
 			if (ne != null)
 				return ne;
 
-			//
-			// Unboxing conversions; only object types can be convertible to enum
-			//
-			if (expr_type == TypeManager.object_type && target_type.IsValueType)
-				return new UnboxCast (expr, target_type);
-
 			if (TypeManager.IsEnumType (expr_type)) {
 				Expression underlying = EmptyCast.Create (expr, TypeManager.GetEnumUnderlyingType (expr_type));
 				expr = ExplicitConversionCore (ec, underlying, target_type, loc);
@@ -1949,6 +1742,9 @@ namespace Mono.CSharp {
 			}
 
 			if (TypeManager.IsEnumType (target_type)){
+				//
+				// Type System.Enum can be unboxed to any enum-type
+				//
 				if (expr_type == TypeManager.enum_type)
 					return new UnboxCast (expr, target_type);
 
@@ -1959,11 +1755,11 @@ namespace Mono.CSharp {
 				//
 				// LAMESPEC: IntPtr and UIntPtr conversion to any Enum is allowed
 				//
-                if (expr_type == TypeManager.intptr_type || expr_type == TypeManager.uintptr_type) {
+				if (expr_type == TypeManager.intptr_type || expr_type == TypeManager.uintptr_type) {
 					ne = ExplicitUserConversion (ec, expr, TypeManager.GetEnumUnderlyingType (target_type), loc);
 					if (ne != null)
 						return ExplicitConversionCore (ec, ne, target_type, loc);
-                }
+				}
 				
 				return null;
 			}
@@ -1978,7 +1774,7 @@ namespace Mono.CSharp {
 			// null literal explicitly
 			//
 			if (expr_type != TypeManager.null_type){
-				ne = ExplicitReferenceConversion (expr, target_type);
+				ne = ExplicitReferenceConversion (expr, expr_type, target_type);
 				if (ne != null)
 					return ne;
 			}
@@ -2049,7 +1845,7 @@ namespace Mono.CSharp {
 			if (ne != null)
 				return ne;
 
-			ne = ExplicitReferenceConversion (expr, target_type);
+			ne = ExplicitReferenceConversion (expr, expr.Type, target_type);
 			if (ne != null)
 				return ne;
 
@@ -2067,15 +1863,21 @@ namespace Mono.CSharp {
 		static public Expression ExplicitConversion (EmitContext ec, Expression expr,
 			Type target_type, Location loc)
 		{
-			Expression e;
+			Expression e = ExplicitConversionCore (ec, expr, target_type, loc);
+			if (e != null)
+				return e;
+
 #if GMCS_SOURCE
 			Type expr_type = expr.Type;
 			if (TypeManager.IsNullableType (target_type)) {
 				if (TypeManager.IsNullableType (expr_type)) {
-					e = new Nullable.LiftedConversion (
-						expr, target_type, false, true, loc).Resolve (ec);
-					if (e != null)
-						return e;
+					Type target = TypeManager.GetTypeArguments (target_type)[0];
+					Expression unwrap = Nullable.Unwrap.Create (expr);
+					e = ExplicitConversion (ec, unwrap, target, expr.Location);
+					if (e == null)
+						return null;
+
+					return new Nullable.Lifted (e, unwrap, target_type).Resolve (ec);
 				} else if (expr_type == TypeManager.object_type) {
 					return new UnboxCast (expr, target_type);
 				} else {
@@ -2098,9 +1900,6 @@ namespace Mono.CSharp {
 				return e;
 			}
 #endif
-			e = ExplicitConversionCore (ec, expr, target_type, loc);
-			if (e != null)
-				return e;
 			
 			e = ExplicitUserConversion (ec, expr, target_type, loc);
 			if (e != null)

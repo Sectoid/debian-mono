@@ -142,15 +142,20 @@ namespace System.IO.IsolatedStorage {
 			Demand (scope);
 			IsolatedStorageFile storageFile = new IsolatedStorageFile (scope);
 			if ((scope & IsolatedStorageScope.Domain) != 0) {
+				if (domainEvidenceType == null)
+					domainEvidenceType = typeof (Url);
 				storageFile._domainIdentity = GetTypeFromEvidence (AppDomain.CurrentDomain.Evidence, domainEvidenceType);
 			}
 			if ((scope & IsolatedStorageScope.Assembly) != 0) {
 				Evidence e = Assembly.GetCallingAssembly ().UnprotectedGetEvidence ();
 				storageFile._fullEvidences = e;
-				if ((scope & IsolatedStorageScope.Domain) != 0)
+				if ((scope & IsolatedStorageScope.Domain) != 0) {
+					if (assemblyEvidenceType == null)
+						assemblyEvidenceType = typeof (Url);
 					storageFile._assemblyIdentity = GetTypeFromEvidence (e, assemblyEvidenceType);
-				else
+				} else {
 					storageFile._assemblyIdentity = GetAssemblyIdentityFromEvidence (e);
+				}
 			}
 			storageFile.PostInit ();
 			return storageFile;
@@ -634,7 +639,7 @@ namespace System.IO.IsolatedStorage {
 				Domain = domain;
 			}
 		}
-
+/*
 		[SecurityPermission (SecurityAction.Assert, SerializationFormatter = true)]
 		private void LoadIdentities (string root)
 		{
@@ -651,7 +656,7 @@ namespace System.IO.IsolatedStorage {
 				_domainIdentity = identities.Domain;
 			}
 		}
-
+*/
 		[SecurityPermission (SecurityAction.Assert, SerializationFormatter = true)]
 		private void SaveIdentities (string root)
 		{

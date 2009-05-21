@@ -57,6 +57,7 @@ namespace System.Windows.Forms {
 		private Image	initial_image;
 		private bool	wait_on_load;
 		private WebClient image_download;
+		private bool image_from_url;
 #endif
 		private int	no_update;
 		#endregion	// Fields
@@ -67,6 +68,7 @@ namespace System.Windows.Forms {
 		public PictureBox ()
 		{
 			//recalc = true;
+			no_update = 0;
 #if NET_2_0
 			SetStyle (ControlStyles.OptimizedDoubleBuffer, true);
 #else
@@ -120,22 +122,7 @@ namespace System.Windows.Forms {
 		[Localizable(true)]
 		public Image Image {
 			get { return image; }
-			set {
-				StopAnimation ();
-
-				image = value;
-
-				if (IsHandleCreated) {
-					UpdateSize ();
-					if (image != null && ImageAnimator.CanAnimate (image)) {
-						frame_handler = new EventHandler (OnAnimateImage);
-						ImageAnimator.Animate (image, frame_handler);
-					}
-					if (no_update == 0) {
-						Invalidate ();
-					}
-				}
-			}
+			set { ChangeImage (value, false); }
 		}
 
 		[DefaultValue(BorderStyle.None)]
@@ -175,8 +162,13 @@ namespace System.Windows.Forms {
 			set {
 				image_location = value;
 
-				if (!string.IsNullOrEmpty (value))
-					Load (value);
+				if (!string.IsNullOrEmpty (value)) {
+					if (WaitOnLoad)
+						Load (value);
+					else
+						LoadAsync (value);
+				} else if (image_from_url)
+					ChangeImage (null, true);
 			}
 		}
 		
@@ -276,7 +268,7 @@ namespace System.Windows.Forms {
 
 		protected override void OnPaint (PaintEventArgs pe)
 		{
-                        ThemeEngine.Current.DrawPictureBox (pe.Graphics, pe.ClipRectangle, this);
+			ThemeEngine.Current.DrawPictureBox (pe.Graphics, pe.ClipRectangle, this);
 			base.OnPaint (pe);
 		}
 
@@ -387,7 +379,29 @@ namespace System.Windows.Forms {
 #endif
 		#endregion
 		
-		#region	Private Methods
+		#region Private Methods
+
+		private void ChangeImage (Image value, bool from_url)
+		{
+			StopAnimation ();
+
+#if NET_2_0
+			image_from_url = from_url;
+#endif
+			image = value;
+
+			if (IsHandleCreated) {
+				UpdateSize ();
+				if (image != null && ImageAnimator.CanAnimate (image)) {
+					frame_handler = new EventHandler (OnAnimateImage);
+					ImageAnimator.Animate (image, frame_handler);
+				}
+				if (no_update == 0) {
+					Invalidate ();
+				}
+			}
+		}
+
 		private void StopAnimation ()
 		{
 			if (frame_handler == null)
@@ -443,7 +457,7 @@ namespace System.Windows.Forms {
 				Invalidate ();
 			}
 		}
-		
+
 #if NET_2_0
 		void ImageDownload_DownloadDataCompleted (object sender, DownloadDataCompletedEventArgs e)
 		{
@@ -489,9 +503,9 @@ namespace System.Windows.Forms {
 			
 			if (url.Contains ("://"))
 				using (Stream s = ImageDownload.OpenRead (url))
-					Image = Image.FromStream (s);
+					ChangeImage (Image.FromStream (s), true);
 			else
-				Image = Image.FromFile (url);
+				ChangeImage (Image.FromFile (url), true);
 		}
 		
 		public void LoadAsync ()
@@ -506,17 +520,29 @@ namespace System.Windows.Forms {
 				Load (url);
 				return;
 			}
+
+			if (string.IsNullOrEmpty (url))
+				throw new InvalidOperationException ("ImageLocation not specified.");
+
 			image_location = url;
-			Image = InitialImage;
+			ChangeImage (InitialImage, true);
 			
 			if (ImageDownload.IsBusy)
 				ImageDownload.CancelAsync ();
 
+			Uri uri = null;
+			try {
+				uri = new Uri (url);
+			} catch (UriFormatException) {
+				uri = new Uri (Path.GetFullPath (url));
+			}
+
 			ImageDownload.DownloadProgressChanged += new DownloadProgressChangedEventHandler (ImageDownload_DownloadProgressChanged);
 			ImageDownload.DownloadDataCompleted += new DownloadDataCompletedEventHandler (ImageDownload_DownloadDataCompleted);
-			ImageDownload.DownloadDataAsync (new Uri (url));
+			ImageDownload.DownloadDataAsync (uri);
 		}
 #endif
+
 		public override string ToString() {
 			return String.Format("{0}, SizeMode: {1}", base.ToString (), SizeMode);
 		}

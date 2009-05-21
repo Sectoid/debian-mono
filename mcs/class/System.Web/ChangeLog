@@ -1,3 +1,110 @@
+2009-02-05  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/LoginDisplayRememberMe.aspx
+
+2009-01-27  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added System.Web.Util/SearchPattern.cs
+
+2009-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added System.Web.UI.WebControls/Substitution.cs
+
+2008-12-23  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added Test/mainsoft/NunitWebResources/CustomSectionEmptyCollection.aspx
+
+	* System.Web_test.dll.sources: added mainsoft/NunitWeb/NunitWeb/CustomSection.cs
+
+2008-12-12  Dean Brettle  <dean@brettle.com>
+
+	* System.Web.dll.sources: deleted
+	System.Web.Configuration_2.0/CapabilitiesChecksum.cs
+	
+	* Makefile (RESOURCE_FILES_2): deleted
+	System.Web.Configuration_2.0/RandomRoboBotKeywords.txt
+
+2008-12-10  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/MissingMasterFile.aspx
+
+	* System.Web_test.dll.sources: added System.Web.UI/PageParserTest.cs
+
+2008-12-03  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web_test.dll.sources: added System.Web.UI/DataBinderTest.cs
+
+2008-12-02  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/Web.mono.config.1.1
+
+2008-12-01  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/ContentPlaceHolderInTemplate.aspx
+	Test/mainsoft/NunitWebResources/ContentPlaceHolderInTemplate.master 
+	(TEST_MCS_FLAGS): added reference to System.Web.Extensions
+
+2008-11-25  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added
+	System.Web.Compilation/AspComponent.cs
+
+2008-11-21  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind1.aspx
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind2.aspx
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind3.aspx
+	Test/mainsoft/NunitWebResources/InvalidPropertyBind4.aspx
+	Test/mainsoft/NunitWebResources/ValidPropertyBind1.aspx
+	Test/mainsoft/NunitWebResources/ValidPropertyBind2.aspx
+	Test/mainsoft/NunitWebResources/ValidPropertyBind3.aspx
+	Test/mainsoft/NunitWebResources/ValidPropertyBind4.aspx
+	Test/mainsoft/NunitWebResources/ReadWritePropertyControl.ascx
+
+	* Test/tools/web.config: disabled batch compilation and enabled
+	debugging.
+
+2008-11-15  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added System.Web.UI/INonBindingContainer.cs
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* Test/Makefile: Add doc-update target support.
+
+2008-10-09  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added System.Web.Configuration_2.0/MonoSettingsSection.cs
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Web.dll.sources: added System.Web.UI/IAutoFieldGenerator.cs
+	  and System.Web.UI.WebControls/IPersistedSelector.cs.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Web.dll.sources: added
+	  System.Web.UI/CssClassPropertyAttribute.cs.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Web.dll.sources: added System.Web.UI/IBindableControl.cs.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Web.dll.sources: added
+	  System.Web.UI.WebControls/DataBoundControlMode.cs.
+
+2008-08-14  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile: allow compiling with the DEBUG, TRACE and MONO_TRACE
+	preprocessor symbols defined.
+
 2008-06-18  Marek Habersack  <mhabersack@novell.com>
 
 	* System.Web.dll.sources: added

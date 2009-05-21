@@ -1,27 +1,178 @@
+2009-02-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* io.c: EXDEV when moving directories fails now without creating a
+	file in the destination.
+	Fixes bug #326983.
+
+2009-02-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r126290.
+
+	* wait.c (WaitForMultipleObjectsEx): Initialize poll variable.
+
+2009-02-05  Miguel De Icaza  <miguel@novell.com>
+
+	* sockets.c (_wapi_setsockopt): SO_REUSEPORT is needed also on
+	MacOS X.  Fixes bug #471292
+
+2009-01-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* threads.c: Add wapi_current_thread_desc that produces
+	a string representation of the current thread state.
+
+	* threads.h: Export wapi_current_thread_desc.
+
+2009-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* io.c (GetDiskFreeSpaceEx): Applied patch from Koushik Dutta
+	(koush@koushikdutta.com). Disable this on android.
+
+2009-01-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* handles.c (_wapi_handle_timedwait_signal_handle): Don't use the
+	set_wait_handle/clear_wait_handle machinery for alertable waits in
+	case of non-alertable waits.
+
+	Non-alertable waits must continue and wait on the cond as this will
+	release the lock. Otherwise this will cause a deadlock as anyone trying
+	to pulse the cond will block trying to acquire the said lock because
+	the thread in non-alertable wait will be busy looping in WaitForSingleObjectEx
+	or similar function, never releasing the lock.
+
+	Thou this fixes quite a few of the hangs introduced by non-pooling alertable
+	waits, the long term plan is to verify if all non-alertable waits really need
+	to be as such.
+
+2009-01-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* handles-private.h (_wapi_handle_set_signal_state): Set the signalled state
+	of the handle while locking the global signal cond mutex.
+
+	* wait.c (WaitForMultipleObjectsEx): Check the signalled state of handles
+	inside the critical section before waiting, otherwise we could go to waiting
+	even when the handles are already signalled.
+
+2009-01-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Reapply r122913, this time handling processes by falling back to polling.
+	
+	* handles.c: Rework the way the global signal stuff is handled: instead of
+	allocating a separate mutex/condvar pair for it, allocate a normal handle.
+	This way, it can reuse the alertable waiting code, allowing 
+	WaitForMultipleObject to work without polling.
+
+2009-01-09  Miguel de Icaza  <miguel@novell.com>
+
+	Incorporate a few patches from Paolo, slightly modified:	
+
+	* handles.c (_wapi_handle_check_share): On non-Linux systems, do
+	not even compile in the code that scans for /proc/fd, and go
+	directly to the fallback function.
+
+2009-01-09  Paolo Molaro (lupus@ximian.com)
+
+	* handles.c: Do not include some header files in platforms that
+	lack it.
+
+2009-01-09  Miguel de Icaza  <miguel@novell.com>
+
+	* messages.c: Eliminate a warning.
+	
+2009-01-09  Paolo Molaro (lupus@ximian.com)
+
+	* error.c: On some platforms that do not define these variables,
+	do not use them.
+
+	* security.c, io-private.h: Only include some headers if they
+	exist on the system
+
+	* sockets.c, sockets.h: do not import on this header files that
+	are only consumed internally in sockets.c.
+
+2009-01-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c (_wapi_thread_apc_pending): Check for thread->wait_handle ==
+	INTERRUPTION_REQUESTED_HANDLE too.
+	(wapi_interrupt_thread): Rework the comments, the thread is no longer
+	required to call QueueUserAPC to make the wait functions return.
+
+	* threads.c handles.c threads-internal.h: Implement alertable waits without
+	polling.
+
+2009-01-08  Geoff Norton  <gnorton@novell.com>
+
+	* processes.c: Fix the osx version check to properly detect 10.5 v 10.4
+
+2009-01-08  Christian Prochnow  <cproch@seculogix.de>
+
+	* types.h: added WapiULargeInteger.
+
+	* uglify.h: added ULARGE_INTEGER, PULARGE_INTEGER.
+
+	* io.h: added WapiDriveType, added method declarations
+	for GetDiskFreeSpaceEx and GetDriveType
+
+	* io.c: added GetDiskFreeSpaceEx() to query disk size
+	and free space via statvfs or statfs system call.
+	added GetDriveType to query drive type via /etc/mtab or /etc/mnttab.
+
+2009-01-07  Geoff Norton  <gnorton@novell.com>
+
+	* processes.c: Properly implement support for Process.Modules on OSX.
+	Fixes OSX on nunit 2.4
+
+2009-01-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* io.c (GetCurrentDirectory): Avoid calling g_get_current_dir straight
+	away as it doesn't handle ENAMETOOLONG correctly. As a bonus we avoid
+	allocating memory in the common path.
+
+2009-01-07  Geoff Norton  <gnorton@novell.com>
+
+        * processes.c: Only use open -W on OSX 10.5+.  Patch from
+        Miguel
+
+2008-12-19  Bill Holmes  <billholmes54@gmail.com>
+
+	* processes.c (get_module_name) : adjust size for unicode characters.
+
+	Code is contributed under MIT/X11 license.
+
+2008-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* atomic.h: Applied patch from Mihai Chelaru <kefren@ngnetworks.ro>. Add
+	netbsd support.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* atomic.h: InterlockedExchangePointer and
+	InterlockedCompareExchangePointer for PPC64.
+
+	Code submitted by andreas.faerber@web.de at
+	https://bugzilla.novell.com/show_bug.cgi?id=324134 under the
+	X11/MIT license.
+
+2008-11-13  Bill Holmes  <billholmes54@gmail.com>
+
+	* wait.h : Adding method declaration for WaitForInputIdle.
+	  
+	* wait.c : Adding implementation for WaitForInputIdle.
+	  
+	Code is contributed under MIT/X11 license.
 
 Fri Oct 17 15:23:00 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 	* processes.c: patch from Geoff Norton (gnorton@novell.com) to
 	strdup the open program on OSX (bug #431811).
 
-2008-09-25  Dick Porter  <dick@ximian.com>
+2008-10-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-	* events.c (event_create): Revert previous kludge as it's no
-	longer needed.
+	* versioninfo.c: remove the use of g_strdown.
+
+2008-09-25  Dick Porter  <dick@ximian.com>
 
 	* wait.c: Make sure we keep references to handles we're waiting
 	for.  Fixes bug 424851.
-
-2008-09-18  Dick Porter  <dick@ximian.com>
-
-	* events.c (event_create): Start event handles with a reference
-	count of 2, to work around a bug causing banshee to hang at exit.
-	Temporary kludge for bug 424851.
-
-2008-07-28  Dick Porter  <dick@ximian.com>
-
-	* handles.c (_wapi_handle_count_signalled_handles): Remove an
-	unmatched _wapi_handle_ref().  Fixes bug 410743.
 
 2008-07-29  Dick Porter  <dick@ximian.com>
 
@@ -29,9 +180,14 @@ Fri Oct 17 15:23:00 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	figure out the process name.  Fixes bug 413723, patch by Casey
 	Marshall <casey.s.marshall@gmail.com>
 
-2008-07-18  Rodrigo Kumpera  <rkumpera@novell.com>
+2008-07-28  Dick Porter  <dick@ximian.com>
 
-	* versioninfo.c (map_pe_file): Fix memory leak. Backported from trunk.
+	* handles.c (_wapi_handle_count_signalled_handles): Remove an
+	unmatched _wapi_handle_ref().  Fixes bug 410743.
+
+2008-07-15  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* versioninfo.c (map_pe_file): Fix memory leak.
 
 2008-07-01  Zoltan Varga  <vargaz@gmail.com>
 

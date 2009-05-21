@@ -10,27 +10,17 @@ cs0165-10.cs
 cs0165-11.cs
 cs0187-2.cs
 cs0197.cs
-cs0214-10.cs NO ERROR
-cs0266-11.cs
 cs0266-15.cs
 cs0266-3.cs
-cs0266-9.cs
 cs0419-2.cs NO ERROR
 cs0419-3.cs NO ERROR
 cs0419-4.cs NO ERROR
 cs0419.cs NO ERROR
 cs0457-2.cs
 cs0457.cs
-cs0525.cs
-cs0526.cs
-cs0536.cs
-cs0547-2.cs # new in GMCS; grammar issue
-cs0547.cs
-cs0548-4.cs
-cs0548.cs
-cs0567.cs
 cs0610.cs
 cs0611.cs
+cs0619-42.cs
 cs0647-14.cs
 cs0647-3.cs
 cs0647-4.cs
@@ -39,11 +29,10 @@ cs0647-6.cs
 cs0647-7.cs
 cs0647-9.cs
 cs0714-2.cs
+cs0737-2.cs
+cs0737.cs
 cs1041.cs # new in GMCS; grammar issue
 cs1502-2.cs
-cs1521-3.cs
-cs1525.cs
-cs1528.cs
 cs1533.cs IGNORE
 cs1570-10.cs NO ERROR
 cs1570-11.cs NO ERROR
@@ -77,7 +66,6 @@ cs1584-2.cs NO ERROR
 cs1584-3.cs NO ERROR
 cs1584-4.cs NO ERROR
 cs1584.cs NO ERROR
-cs1586.cs
 cs1589.cs NO ERROR
 cs1590-2.cs NO ERROR
 cs1590-3.cs NO ERROR
@@ -106,7 +94,6 @@ cs1599-2.cs
 cs1599-3.cs
 cs1601-2.cs
 cs1608.cs
-cs1618-2.cs NO ERROR
 cs1624.cs
 cs1690-2.cs
 cs1690-3.cs
@@ -120,7 +107,7 @@ cs3008-7.cs
 cs3009-2.cs
 cs3010.cs
 gcs0030.cs
-gcs0133.cs NO ERROR
+gcs0306-3.cs
 gcs0729.cs
 gcs0730.cs
 gcs0733.cs
@@ -129,8 +116,8 @@ gcs0735.cs
 gcs0739.cs
 gcs0747-2.cs
 gcs0747.cs
-gcs0820.cs # temporary disabled
-gcs1644-10.cs NO ERROR
+gcs1061-6.cs
+gcs1686.cs
 gcs1708.cs
 gcs1908-2.cs
 gcs1908-3.cs
@@ -141,3 +128,5 @@ gcs1909.cs
 gcs1910-2.cs
 gcs1910.cs
 gcs1922-2.cs
+cs1540-6.cs
+cs1540-9.cs

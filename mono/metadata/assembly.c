@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include "assembly.h"
 #include "image.h"
-#include "rawbuffer.h"
 #include "object-internals.h"
 #include <mono/metadata/loader.h>
 #include <mono/metadata/tabledefs.h>
@@ -1129,8 +1128,12 @@ absolute_dir (const gchar *filename)
 	gchar *res;
 	gint i;
 
-	if (g_path_is_absolute (filename))
-		return g_path_get_dirname (filename);
+	if (g_path_is_absolute (filename)) {
+		part = g_path_get_dirname (filename);
+		res = g_strconcat (part, G_DIR_SEPARATOR_S, NULL);
+		g_free (part);
+		return res;
+	}
 
 	cwd = g_get_current_dir ();
 	mixed = g_build_filename (cwd, filename, NULL);
@@ -1309,8 +1312,14 @@ mono_assembly_open_full (const char *filename, MonoImageOpenStatus *status, gboo
 	return ass;
 }
 
+static void
+free_item (gpointer val, gpointer user_data)
+{
+	g_free (val);
+}
+
 /*
- * mono_load_friend_assemblies:
+ * mono_assembly_load_friends:
  * @ass: an assembly
  *
  * Load the list of friend assemblies that are allowed to access
@@ -1328,13 +1337,16 @@ mono_assembly_load_friends (MonoAssembly* ass)
 {
 	int i;
 	MonoCustomAttrInfo* attrs;
+	GSList *list;
 
 	if (ass->friend_assembly_names_inited)
 		return;
 
 	attrs = mono_custom_attrs_from_assembly (ass);
 	if (!attrs) {
+		mono_assemblies_lock ();
 		ass->friend_assembly_names_inited = TRUE;
+		mono_assemblies_unlock ();
 		return;
 	}
 
@@ -1343,10 +1355,12 @@ mono_assembly_load_friends (MonoAssembly* ass)
 		mono_assemblies_unlock ();
 		return;
 	}
+	mono_assemblies_unlock ();
 
+	list = NULL;
 	/* 
-	 * assemblies_lock () is a low level lock so the code below should not take 
-	 * any locks.
+	 * We build the list outside the assemblies lock, the worse that can happen
+	 * is that we'll need to free the allocated list.
 	 */
 	for (i = 0; i < attrs->num_attrs; ++i) {
 		MonoCustomAttrEntry *attr = &attrs->attrs [i];
@@ -1366,12 +1380,21 @@ mono_assembly_load_friends (MonoAssembly* ass)
 		aname = g_new0 (MonoAssemblyName, 1);
 		/*g_print ("friend ass: %s\n", data);*/
 		if (mono_assembly_name_parse_full (data, aname, TRUE, NULL, NULL)) {
-			ass->friend_assembly_names = g_slist_prepend (ass->friend_assembly_names, aname);
+			list = g_slist_prepend (list, aname);
 		} else {
 			g_free (aname);
 		}
 	}
 	mono_custom_attrs_free (attrs);
+
+	mono_assemblies_lock ();
+	if (ass->friend_assembly_names_inited) {
+		mono_assemblies_unlock ();
+		g_slist_foreach (list, free_item, NULL);
+		g_slist_free (list);
+		return;
+	}
+	ass->friend_assembly_names = list;
 
 	/* Because of the double checked locking pattern above */
 	mono_memory_barrier ();
@@ -1980,10 +2003,9 @@ mono_assembly_load_publisher_policy (MonoAssemblyName *aname)
 	} else
 		name = g_strdup (aname->name);
 	
-	if (aname->culture) {
-		culture = g_strdup (aname->culture);
-		g_strdown (culture);
-	} else
+	if (aname->culture)
+		culture = g_utf8_strdown (aname->culture, -1);
+	else
 		culture = g_strdup ("");
 	
 	pname = g_strdup_printf ("policy.%d.%d.%s", aname->major, aname->minor, name);
@@ -2135,8 +2157,7 @@ mono_assembly_load_from_gac (MonoAssemblyName *aname,  gchar *filename, MonoImag
 	}
 
 	if (aname->culture) {
-		culture = g_strdup (aname->culture);
-		g_strdown (culture);
+		culture = g_utf8_strdown (aname->culture, -1);
 	} else {
 		culture = g_strdup ("");
 	}

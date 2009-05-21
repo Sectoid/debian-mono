@@ -130,7 +130,6 @@ namespace System.Data
 
 			// No need to check DataSetName. In fact, it is ignored.
 
-			bool ambiguous = false;
 			DataTable dt = dataset.Tables [local];
 			if (dt == null)
 				return true;
@@ -309,24 +308,20 @@ namespace System.Data
 						// If the obj implements IXmlSerializable, let obj's ReadXml do the reading
 						IXmlSerializable obj = (IXmlSerializable) Activator.CreateInstance (col.DataType, new object [0]);
 						if (!reader.IsEmptyElement) {
-   							reader.ReadStartElement ();
-   							reader.MoveToContent ();
-   							obj.ReadXml (reader);
+							obj.ReadXml (reader);
    							reader.ReadEndElement ();
 						} else {
    							reader.Skip ();
 						}						
 						row [col] = obj;
-						
 					} catch (XmlException e) {
 #endif
 						// XML is not in accordance to expected standards, try reading the content as an xml doc
 						row [col] = reader.ReadInnerXml ();
 #if NET_2_0
 					} catch (InvalidOperationException e) {
-#endif
+
 						row [col] = reader.ReadInnerXml ();
-#if NET_2_0						
 					}
 #endif
 				} else {

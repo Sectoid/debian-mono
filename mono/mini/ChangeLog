@@ -1,34 +1,2816 @@
+2009-03-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (mono_arch_output_basic_block): Fix % 1. Fixes #484323.
+
+	* basic.cs: Add a test.
+
+2009-03-11  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-x86.c (mono_arch_output_basic_block): Use different
+	registers in case the ones we want to overwrite are used by the
+	other operand.  Fixes regression in #480807.
+
+	Backport of r129058.
+
+2009-03-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r128924.
+	
+	* mini-s390x.c: Fix support for vtypes whose addresses are passed on the
+	stack.
+
+2009-03-09  Mark Probst  <mark.probst@gmail.com>
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* mini-ppc.c: Correct handling of OP_LOADI4_MEMINDEX for ppc64.
+	Fixes #483462.
+
+	Backport of r128904.
+
+2009-03-09  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-trampolines.c (mono_create_jump_trampoline): If the method
+	is shared generic code, return the trampoline, even if the method
+	has already been compiled.  Fixes #479763.
+
+	* mini.c, mini.h: New function
+	mono_jit_find_compiled_method_with_jit_info() which is the same as
+	mono_jit_find_compiled_method() but also returns the jit info.
+
+	Backport of r128723.
+
+2009-03-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r128749.
+	
+	* method-to-ir.c (mini_emit_memset): Fix the handling of size '3'. Fixes
+	#481458.
+
+	* iltests.il.in: Add a test.
+
+2009-03-05  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Only force the vtable var
+	for methods which actually have one.  For all other methods, make
+	sure the this argument var is live the whole method.
+
+	* mini.c (mini_method_compile): Every shared method has a
+	this/vtable/mrgctx info.  Fixes #480807.
+
+	Backport of r128720.
+
+2009-03-05  Mark Probst  <mark.probst@gmail.com>
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* mini-ppc.c, mini-ppc.h: Implement TLS for PPC64.
+
+	Backport of r127060.
+
+2009-03-04  Mark Probst  <mark.probst@gmail.com>
+
+	* exceptions-x86.c: Include debug-mini.h - fixes build.
+
+2009-03-04  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c: Clean up the exception API and add documentation.
+	(mono_debugger_handle_exception): New public method; this is
+	called when throwing an exception or encountering an unhandled one.
+	(mono_debugger_call_exception_handler): Formerly known as
+	mono_debugger_handle_exception(); this is used to tell the
+	debugger that we're about to invoke an exception handler.
+
+2009-03-04  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c (mono_debugger_runtime_invoke): Moved here from
+	../metadata/mono-debug-debugger.c; save and reset exception state.
+
+2009-03-02  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c: Moved the debugger exception handling here from
+	../metadata/mono-debug-debugger.c.
+
+	* debug-mini.h
+	(MonoDebuggerExceptionAction): New exception typedef.
+
+	* debug-mini.c
+	(MonoDebuggerThreadInfo): Added `MonoObject *last_exception'.
+
+	* exceptions-amd64.c
+	(mono_amd64_throw_exception): Use the new debugger exception
+	handling code.
+
+	* mini-exceptions.c
+	(mono_handle_exception_internal): Don't call
+	mono_debugger_unhandled_exception() here.
+
+2009-03-04  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: Don't inline methods that use JMP.  Fixes
+	#481403.
+
+	Backport of r128552.
+
+2009-02-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_get_this_arg_from_call): Avoid expensive calls
+	to  get_generic_context_from_code () + get_call_info () if possible.
+
+2009-02-22  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r127665.
+
+	* tramp-ppc.c (mono_arch_create_trampoline_code): Store the
+	correct frame pointer in the LMF.  Should fix #478394.
+
+2009-02-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Don't assert if string ctors
+	are called from runtime invoke wrappers.
+
+2009-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* cpu-ppc.md (store_memindex): Increase the size of this.
+
+2009-02-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r126983 + r127069.
+
+	* ssa.c (visit_inst): Fix a crash if the instruction following a switch
+	was optimized away.
+
+	Backport of r126980.
+
+	* mini-x86.c (mono_arch_get_vcall_slot): Handle yet another
+	code sequence which matches a non-virtual call. Fixes #472654.
+
+	Backport of r124419.
+
+	* mini-amd64.c (mono_arch_get_vcall_slot): Handle yet another
+	code sequence which matches a non-virtual call.
+
+2009-01-23  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125679.
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* mini-ppc.c (mono_arch_output_basic_block): Generate better code
+	for LOADI4_MEMBASE.  Use addi instead of addic if it's not
+	necessary.
+
+2009-02-16  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125676.
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* exceptions-ppc.c (mono_arch_get_restore_context): Code size
+	comparison fix.
+
+	* tramp-ppc.c (mono_arch_create_generic_class_init_trampoline):
+	The trampoline can be longer on PPC64.
+
+2009-02-16  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125672.
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* mini-ppc.c: Compiler warning fixes and trivial code
+	simplifications.
+
+2009-02-16  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125443.
+
+	Contributed under the terms of the MIT/X11 license by Steven
+	Munroe <munroesj@us.ibm.com>.
+
+	* exceptions-ppc.c (restore_regs_from_context): Correct operand
+	order (offset then base reg) for ppc_load_multiple_regs.
+	(emit_save_saved_regs) Correct operand order for
+	ppc_store_multiple_regs.
+	(mono_arch_get_call_filter): Correct operand order for
+	ppc_load_multiple_regs.
+
+	* mini-ppc.c (emit_memcpy): Fix operand order for
+	ppc_load_reg_update and ppc_store_reg_update.
+	(mono_arch_output_basic_block): Correct operand order for ppc_lha.
+	(mono_arch_emit_epilog): Correct operand order for
+	ppc_load_multiple_regs.
+
+	* tramp-ppc.c (mono_arch_create_trampoline_code): Correct operand
+	order for ppc_store_multiple_regs and ppc_load_multiple_regs.
+
+2009-02-16  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125430.
+
+	* cpu-ppc64.md: Fixed storer4_memindex length.
+
+2009-02-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r126897.
+	
+	* method-to-ir.c (mini_emit_ldelema_1_ins): If the array index is a long,
+	convert it to an in32. Fixes #475859.
+
+	* arrays.cs: Add a test.
+
+2009-02-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r126717.
+
+	* mini-amd64.c (mono_arch_build_imt_thunk): Fix size calculation after
+	the fail_tramp changes. Hopefully fixes #475132.
+
+2009-02-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r126737.
+
+	* mini-s390x.c (mono_arch_output_basic_block): Fix the shift amounts in 
+	OP_LCONV_TO_U2.
+
+	* basic-long.cs: Add a test.
+
+2009-02-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r126668.
+	
+	* ssa.c (fold_ins): Use MONO_IS_JUMP_TABLE () and MONO_JUMP_TABLE_FROM_INS ()
+	for processing jump tables. Fixes #473787.
+
+2009-02-11  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r126631.
+
+	* mini-generic-sharing.c: mini_method_get_context() just calls
+	mono_method_get_context_general() now.
+
+	* mini.c, mini.h: Moved get_object_generic_inst(),
+	construct_object_context_for_method() and
+	mono_domain_lookup_shared_generic() to metadata/generic-sharing.c.
+
+2009-02-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of 126604.
+
+	* branch-opts.c (mono_if_conversion): Handle the case where the merged 
+	basic block fell through to its successor bblock without a branch. Fixes
+	#474718.
+
+	* iltests.il.in: Add a test.
+
+2009-02-10  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r126467.
+
+	* mini-x86.c (mono_arch_context_get_int_reg): Handle all registers
+	individually.  Fixes #473482.
+
+2009-02-09  Geoff Norton  <gnorton@novell.com>
+
+	* mini-s390.c: Fix the signature of emit_sig_cookie.
+
+2009-02-05  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125887.
+
+	* jit-icalls.c (mono_helper_compile_generic_method): Don't inflate
+	the method we get from mono_object_get_virtual_method() because
+	that function does it properly, now.
+
+2009-02-05  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r125839.
+
+	* mini-exceptions.c (ves_icall_get_frame_info): Account for the
+	fact that mono_find_jit_info() sometimes returns the context
+	corresponding to the jit info in new_ctx.  Fixes #472600.
+
+2009-02-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of 125697.
+
+	* mini-exceptions.c (mono_setup_altstack): Use a more reasonable altstack
+	size on systems with 64k pages. Fixes #471389.
+
+2009-02-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r125459.
+
+	* arrays.cs: Test for Get/SetValue of array with negate lower bounds.
+	
+2009-01-31  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r125172, r125205 and r125206 
+
+	* basic-calls.cs: Test for the weird crash found on arm.
+	
+	* cpu-arm.md: Increase the size of storer8_membase_reg and
+	loadr8_membase_reg to 24 bytes to accomodate the extra add.
+
+	* mini-arm.c (mono_arch_output_basic_block): Under FPA, when emitting
+	OP_STORER8_MEMBASE_REG and OP_LOADR8_MEMBASE_REG, add the original
+	reg to LR otherwise we'll be loading/storing from just the offset.
+
+	* cpu-arm.md: Increase the size of storer8_membase_reg to 20 bytes
+	as it might use decomposed ops.
+
+2009-01-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r125077-79
+	* exceptions-arm.c (mono_arch_find_jit_info): The frame layout on arm have
+	separate frame and stack pointers, so we must use FP to find the register
+	spill area.
+	The FP reg is retrieved from the MonoContext::regs array.
+
+
+	* mini-arm.c (mono_arch_output_basic_block): Emit two cond ops for OP_FBGE
+	as FPA requires it.
+
+	* mini-arm.c (mono_arch_emit_setret): Emit OP_FMOVE for methods that
+	return R4 and R8 when not running under softfloat.
+
+	Fixes basic-calls.exe
+
+2009-01-27  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124712.
+
+	* method-to-ir.c (emit_stloc_ir): Only apply the reg-reg move
+	optimization if the top of stack is the last instruction in the
+	bblock.  Otherwise it might have been used after its definition.
+	Fixes #469742.
+
+2009-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* Backport of r123987.
+
+	* method-to-ir.c (method-to-ir.c): Add support for the constrained prefix
+	on type variables in AOTed code.
+
+2009-01-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r124582.
+
+	* mini-s390x.c: Remove a stray declaration of emit_sig_cookie () to fix
+	the s390x build.
+
+2009-01-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r124456.
+
+	* exceptions-amd64.c (mono_arch_exceptions_init): Call 
+	get_throw_pending_exception () to avoid initialization races.
+
+	* mini-exceptions.c (mono_exceptions_init): Call an arch specific
+	mono_arch_exceptions_init () function.
+
+2009-01-23  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124339.
+
+	* mini-ppc.c (mono_arch_context_get_int_reg): Allow access to the
+	stack pointer (r1).
+
+2009-01-22  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124246.
+
+	* mini-exceptions.c (ves_icall_get_frame_info): Fetch the generic
+	info from the (correct) context.
+
+2009-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r124092.
+	
+	* method-to-ir.c (handle_alloc): Avoid generic instances in the
+	out_of_line optimization.
+
+2009-01-21  Martin Baulig  <martin@ximian.com>
+
+	Backport or r124060.
+
+	* mini.h
+	(MonoCompile): Added `disable_deadce_vars' to disable removing
+	unused variables.
+
+	* mini.c
+	(mini_method_compile): Set `cfg->disable_deadce_vars' when running
+	inside the debugger.
+
+	* liveness.c (mono_analyze_liveness): Don't remove any unused
+	variables if `cfg->disable_deadce_vars' is set.
+
+2009-01-21  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r124028.
+
+	* method-to-ir.c: Only apply exception constructor optimization if
+	the the method actually belongs to an exception class.  Fixes
+	#467456.
+
+2009-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r123989.
+	
+	* mini-trampolines.c (mono_delegate_trampoline): Put back the previous
+	change inside a #ifdef __mono_ppc64__.
+
+2009-01-20  Mark Probst  <mark.probst@gmail.com>
+
+	Backport of r123917.
+
+	* method-to-ir.c: Force the vtable variable in shared generic code
+	for the case that they might show up on a stack trace where they
+	are needed.
+
+	* mini-exceptions.c: Save and use generic sharing info as well as
+	IP in stack traces to resolve shared generic instantiations.
+
+2009-01-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r123914.
+	
+	* mini-trampolines.c (mono_delegate_trampoline): Revert the change which
+	added a mono_get_addr_from_ftnptr () as it breaks the ia64 build.
+
+2009-01-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-exceptions.c (mono_print_thread_dump): Add information
+	about the thread state using wapi_current_thread_desc.
+
+2009-01-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for the new constructors. 
+
+2009-01-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_EXPAND_*
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+	
+	* simd-intrinsics.c (simd_intrinsic_emit_setter): Add support for single element constructors.
+
+2009-01-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* iltests.il.in: Add a test for #467385.
+
+2009-01-18  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini.c (mini_thread_cleanup): Don't cleanup TLS storage if the
+	thread been cleaned up is not the same currently in execution.
+
+	Fixes appdomain-unload crashes on windows, osx and linux variants
+	without the __thread keyword.
+
+2009-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.c (mono_arch_flush_icache): Applied patch from Koushik Dutta
+	(koush@koushikdutta.com). Implement this for android.
+
+	* helpers.c (mono_disassemble_code): Avoid assembler errors if the id
+	begins with a digit.
+
+	* method-to-ir.c: Call mono_gc_get_write_barrier () instead of
+	mono_marshal_get_write_barrier ().
+
+2009-01-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* decompose.c (mono_decompose_vtype_opts): Fix the decomposition
+	of OP_VCALL_* ops for 8 bytes vtypes on 32 bits archs and platorms
+	that pass them on a register pair.
+
+	This affects windows, OSX and FreeBSD. The mono/tests/handleref.exe
+	test was crashing due to that.
+
+Fri Jan 16 15:21:21 CET 2009 Paolo Molaro <lupus@ximian.com>
+
+	* exceptions-ppc.c: tweaks from malc (OV-Soft) to fix the size of the
+	trampoline code. Include ucontext.h only if available.
+
+2009-01-15  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c: mono_domain_lookup_shared_generic() takes an open method
+	and doesn't check whether it's sharable, like it was before
+	removing the shared generics hash.  This brings IronPython
+	performance back to what it was before that change.
+
+2009-01-14  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: Handle delegate invocation optimization earlier,
+	otherwise it would be handled (much more slowly) by the
+	final/sealed optimization.
+
+2009-01-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (SIG_HANDLER_SIGNATURE): Avoid crashes when the current thread or
+	domain is not set. Fixes #465864.
+
+2009-01-12  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: Don't stop sharing of generic methods with catch
+	clauses - we already handle those.
+
+2009-01-12  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c, mini.h: lookup_generic_method() is now
+	mono_domain_lookup_shared_generic() and uses the jit_code_hash,
+	making the shared_generics_hash obsolete.
+
+2009-01-12  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c, exceptions-ppc.c, cpu-ppc.md, cpu-ppc64.md: Don't
+	use the red zone.  Make room on the stack first and then use it,
+	not the other way around.
+
+2009-01-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_init): Call mono_xdebug_init ().
+
+	* aot-compiler.c (mono_xdebug_init): Make this non-static.
+
+2009-01-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* TestDriver.cs: Add an --iter argument to run tests multiple times.
+
+	* tramp-amd64.c (mono_arch_create_trampoline_code_full): Emit debug info for
+	trampolines.
+
+	* aot-compiler.c (mono_save_trampoline_xdebug_info): New function to emit
+	debug+unwind info for trampolines.
+
+	* mini.c (mono_create_unwind_op): New helper function.
+
+	* unwind.h: Add macros for emitting unwind ops without a MonoCompile.
+
+2009-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Fix the build.
+
+2009-01-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Update dtrace-prelink.sh location.
+
+2009-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Fix the check for the mscorlib ldstr 
+	optimization. Fixes #464520.
+
+2009-01-07  Bill Holmes  <billholmes54@gmail.com>
+
+	* mini-amd64.c : Adding code to save/restore non-volatile registers
+	   on Winx64.
+
+	* exceptions-amd64.c : Adding code to save/restore non-volatile 
+	  registers on Winx64.
+
+	Contributed under MIT/X11 license.
+
+2009-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.c (mono_arch_flush_icache): Use __GNUC_PREREQ instead of checking
+	__GNUC_MINOR__ which can break when the major version changes.
+
+2009-01-07  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for usage of the sizeof opcode.
+
+2009-01-07  Geoff Norton  <gnorton@novell.com>
+
+	* helpers.c:  Allow mono -v -v -v to work on darwin.
+
+2009-01-05  Bill Holmes  <billholmes54@gmail.com>
+
+	* mini-amd64.c (mono_arch_get_vcall_slot) : Handle an additional instruction
+	  pattern. 
+
+	Contributed under MIT/X11 license.
+
+2009-01-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_allocate_stack_slots_full2): Use mono_class_from_mono_type
+	instead of directly accessing type->data.klass. Fixes #462016.
+	(mono_allocate_stack_slots_full): Ditto.
+
+	* mini-arm.c (mono_arch_flush_icache): Applied patch from Riku Voipio 
+	<novell@kos.to>. Fix cache flush on kernels without OLDABI compat option.
+
+	* aot-compiler.c (emit_plt): Fix ARM build.
+
+2009-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* branch-opts.c (mono_if_conversion): Optimize this using ins->prev.
+	
+	* branch-opts.c (mono_if_conversion): Fix an assert introduced by the last
+	change.
+
+	* branch-opts.c (mono_if_conversion): Use branch->inst_true_bb/inst_false_bb
+	instead of bblock->out_bb [0]/[1], the two might not be the same. Fixes
+	#463357.
+
+	* iltests.il.in: Add a regression test.
+
+2009-01-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c (mono_print_ins_index): Pretty print XPHI and VPHI.
+
+2009-01-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add a regression test for #462457.
+
+2009-01-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add a definition of XPHI.
+
+	* mini.h (MONO_IS_PHI): Make is aware of simd instrincs. 
+
+	* ssa.c (op_phi_to_move): Handle XPHI.
+
+	* ssa.c (mono_ssa_compute): Generate a XPHI for simd intrinsics instead of VPHI.
+
+	Fixes #462457
+
+2009-01-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c (mono_emit_rgctx_calli): Fix a warning.
+
+2008-12-31  Geoff Norton  <gnorton@novell.com>
+
+	* mini-ppc.c: The prolog size allocated can be too small for darwin
+	ppc32 under certain circumstances.  Also fix a small logic bug.
+
+2008-12-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_jit_compile_method_inner): Avoid holding the domain lock
+	while loading AOT methods.
+
+	* mini-exceptions.c: Check jit_tls->class_cast_from instead of class_cast_to
+	since only the former is nulled out after a successful cast. This prevents
+	crashes with rethrown exceptions when using --debug=casts.
+
+2008-12-24  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.h: New macro for checking whether a method is final,
+	i.e. whether the method or its class is marked final.
+
+	* method-to-ir.c: Use the new macro for all final-checks
+	consistently.  Fixes the crash in the System.ServiceModel tests.
+
+2008-12-23  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-exceptions.c (get_exception_catch_class): Corrected another
+	overly strict assertion.
+
+2008-12-23  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c (mono_arch_build_imt_thunk): Save and restore r11.
+	Clobbering it is not allowed because the caller might use it as
+	the vtable register in the interface call.
+
+2008-12-19  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-exceptions.c (get_exception_catch_class): Corrected an
+	overly strict assertion.
+
+2008-12-18  Mark Mason	<mmason@upwardaccess.com>
+	
+	* method-to-ir.c: use SIZEOF_REGISTER instead of SIZEOF_VOID_P or sizeof(gpointer) when appropriate.
+
+	* mini.h: Move typedef to mgreg_t up above include of mini-arch.h
+
+	* local-propogation.c: use SIZEOF_REGISTER instead of SIZEOF_VOID_P when appropriate
+
+	* cpu-mips.md: correct lengths for certain long_ opcodes.
+
+	* mini-mips.h: Only emulate long operations when SIZEOF_REGISTER==4. Add missing func decl.
+
+	* mini-mips.c: Add support for more long operations. Fix issues with stack frame layout for n32 (still not perfect yet). Add mips_emit_load_const().
+	
+2008-12-17  Mark Mason	<mmason@upwardaccess.com>
+
+	* exceptions-mips.c (mono_arch_find_jit_info): decode sd instructions as well when looking for registers.
+	
+2008-12-17  Mark Mason	<mmason@upwardaccess.com>
+	
+	* mini-mips.c (mono_arch_output_basic_block): OP_JUMP_TABLE stores patch type in inst_c1, not inst_i1.
+	
+2008-12-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* branch-opts.c (remove_block_if_useless): Even if BB0 falls through, don't add a br to the
+	next basic block.
+	
+2008-12-16  Mark Mason	<mmason@upwardaccess.com>
+
+	* mini.h: Allow MonoInst 'p' field to alias with the low-order bits of the 'const_val' fields correctly on big-endian systems when SIZEOF_VOID_P < SIZEOF_REGISTER
+
+	* ir-emit.h: Change SIZEOF_VOID_P to SIZEOF_REGISTER, init instruction through inst_c* fields instead of inst_p* fields in case sizeof(inst_p) < sizeof(inst_c)
+	
+2008-12-15  Mark Mason	<mmason@upwardaccess.com>
+	
+	* trace.c (mono_trace_enter_method): correctly handle arguments smaller than the stack slot size on big endian systems.
+	
+2008-12-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* liveness.c (mono_analyze_liveness): Avoid eliminating the 'this' var in
+	gshared code. Fixes #458947.
+
+	* generics.cs: Add a test.
+
+2008-12-12  Mark Mason	<mmason@upwardaccess.com>
+	
+	* method-to-ir.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+	
+	* mini-mips.c: first pass n32 code generation.
+
+	* mini-mips.h: datatypes and defines for n32 support.
+
+	* exceptions-mips.c: first pass n32 code generation.
+	
+	* tramp-mips.c: first pass n32 code generation.
+	
+	* cpu-mips.md: add long_ opcodes.
+	
+2008-12-12  Mark Mason	<mmason@upwardaccess.com>
+
+	* liveness.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+
+	* cfold.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+	
+	* local-propogation.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+	
+	* regalloc2.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+
+	* mini.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+
+	* mini-codegen.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+
+	* ssa.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+
+	* decompose.c: replace SIZEOF_VOID_P with SIZEOF_REGISTER where needed.
+
+	* helpers.c: for mips/n32, don't pass -mips32 to objdump
+
+2008-12-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.c tramp-arm.c: Fix calls to mono_arch_flush_icache.
+
+2008-12-12  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* driver.c: Sync --help-trace with man page (EXPR,EXPR).
+
+2008-12-12  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.h, exceptions-ppc.c, tramp-ppc.c: Create function
+	descriptors for helper functions directly in front of the code.
+
+2008-12-11  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: Removed an unnecessary assertion.
+
+2008-12-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c: Merge SGEN changes from the old JIT.
+
+2008-12-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* driver.c (compile_all_methods_thread_main): Handle failure of
+	mono_get_method ().
+
+2008-12-10  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Merged with mini-ppc64.c.
+
+	* mini-ppc.h: Define PPC_MINIMAL_PARAM_AREA_SIZE on all targets.
+
+	* Makefile.am: Use the same sources for PPC and PPC64.
+
+	* mini-ppc64.c: Removed.
+
+2008-12-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* branch-opts.c (remove_block_if_useless): Extract fall through detection
+	code to mono_bb_is_fall_through.
+	
+	* branch-opts.c (mono_remove_critical_edges): Same.
+
+2008-12-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ssa.c (fold_ins): branch opt can kill dummy switch ops so we can't
+	expect that an OP_BR_REG will be there.
+
+2008-12-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* branch-opts.c (remove_block_if_useless): Use MONO_IS_BRANCH_OP instead of checking
+	for the many branch ops. The original check miss OP_BR_REG.
+
+	Fixes #457574.
+	
+2008-12-09  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.h mini-mips.c exceptions-mips.c tramp-mips.c: first round of changes necessary to eventually support n32.
+
+2008-12-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (load_method): Avoid calling decode_exception_debug_info
+	while holding the aot lock.
+
+2008-12-09  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_output_basic_block): use mfc1/lwc1 instead of mfc1d/ldc1
+	
+2008-12-09  Bill Holmes  <billholmes54@gmail.com>
+
+	* mini.c (mini_cleanup) : Adding a call to cominterop_release_all_rcws 
+	  to release all runtime callable wrappers held by the runtime.
+
+	Contributed under MIT/X11 license.
+
+2008-12-09  Bill Holmes  <billholmes54@gmail.com>
+
+	* tramp-amd64.c (mono_arch_create_trampoline_code_full) : Increase the code size for
+	  for Winx64.
+
+	Contributed under MIT/X11 license.
+
+2008-12-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (decode_exception_debug_info): Acquire the domain
+	lock when calling mono_domain_alloc (). Hopefully fixes #415608.
+
+2008-12-09  Mark Mason   <mmason@upwardaccess.com>
+
+	* cpu-mips.md: fix ckfinite length
+
+	* mini-mips.c: at least recognize n32 ABI when used (not yet supported)
+	(mono_arch_lowering_pass): cleanup, rearrange for clarity
+	(mono_arch_output_basic_block): implement OP_CKFINITE, add more asserts
+	
+2008-12-08  Mark Mason   <mmason@upwardaccess.com>
+
+	* exceptions-mips.c (mono_arch_find_jit_info): init new_ctx with ctx, dont' call setup_context.
+	
+2008-12-08  Geoff Norton  <gnorton@novell.com>
+
+	* tramp-amd64.c: r120895 stores RAX, so we need to increase the window
+	size by 8 bytes as well.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector16b.
+	
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector16sb.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector8us.
+	
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector8s.
+	
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector4ui.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector2l.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector2d.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (mono_emit_simd_intrinsics): Add support for intrinsics
+	that are extension methods.
+
+2008-12-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix method names for Vector4f.
+
+2008-12-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c (mono_print_thread_dump): Mark threadpool threads
+	as such. Fixes #456669.
+
+2008-12-07  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_emit_call): narrow float arguments when passing as args.
+	
+2008-12-07  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_lowering_pass): don't handle OP_ICONV_TO_R* or OP_R*CONST
+	(mono_arch_emit_setret): use OP_MIPS_CVTSD to return SP floats
+	(mono_arch_output_basic_block): simplify FP load/store, handle OP_MIPS_FBLT_UN
+	(mips_adjust_stackframe): handle FP spills
+		
+	* mini-ops.h: add mips_mtc1_s2
+	
+	* cpu-mips.md: add mips_mtc1_s2
+	
+2008-12-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* unwind.c: New file, move the unwind info encoding functions here from
+	aot-compiler.c, so they could be used at runtime too.
+
+2008-12-05  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_lowering_pass): handle OP_IMUL_IMM as well
+	(mono_arch_output_basic_block): fix OP_LOCALLOC code generation
+	
+2008-12-05  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c: cleanup warnings
+	(mono_arch_lowering_pass): handle OP_LOCALLOC_IMM
+	(mips_adjust_stackframe): handle case of taking the address of stack locals
+	
+2008-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Implement a few functions missing from the asm writer.
+	(emit_method_code): Only write symbols for methods when using the bin
+	writer, since the assembler can't deal with the characters in our method
+	names.
+
+	* aot-compiler.c (is_plt_patch): ICALL_ADDR is also a plt patch.
+
+	* method-to-ir.c (mono_method_to_ir): Transform aotconst+calli into a direct
+	call.
+
+	* tramp-amd64.c (mono_arch_create_trampoline_code_full): Rework the code
+	a bit to also restore %rax.
+
+2008-12-05  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Some simple merges from mini-ppc64.c.
+
+2008-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* ssa.c (mono_ssa_compute): Only add an implicit reference at start for
+	arguments.
+
+2008-12-05  Mark Probst  <mark.probst@gmail.com>
+
+	* exceptions-ppc.c: Merged with exceptions-ppc64.c.
+
+	* mini-ppc.c, mini-ppc.h: Remove PPC_STACK_ALIGNMENT and use
+	MONO_ARCH_FRAME_ALIGNMENT.  Struct for PPC64 function descriptors.
+
+	* exceptions-ppc64.c: Removed.
+
+	* Makefile.am: Use exceptions-ppc.c instead of exceptions-ppc64.c.
+
+2008-12-05  Mark Probst  <mark.probst@gmail.com>
+
+	* tramp-ppc.c, mini-ppc.c, mini-ppc.h: Merged tramp-ppc.c with
+	tramp-ppc64.c.
+
+	* Makefile.am: Use tramp-ppc.c instead of tramp-ppc64.c.
+
+	* tramp-ppc64.c: Removed.
+
+2008-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (add_generic_instances): Skip non-generic classes in
+	the TYPESPEC table.
+
+2008-12-05  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.h: Merged mini-ppc64.h with mini-ppc.h.
+
+	* exceptions-ppc64.c, tramp-ppc64.c, mini-arch.h, Makefile.am: Use
+	mini-ppc.h instead of mini-ppc64.h.
+
+	* mini-ppc64.h: Removed.
+
+2008-12-04  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c: introduce USE_LDC_SDC: use ldc1/sdc1 to load/store doubles, disabled by default
+	
+	* mini-mips.c (mono_arch_emit_outarg_vt): fix offset calculation for memcpy in structure passing.
+	
+2008-12-05  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, exceptions-ppc64.c, tramp-ppc64.c:
+	Removed FIRST/LAST_[GF]REG macros, to make merging PPC64 with PPC
+	code easier.
+
+2008-12-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for operator == and != on  Vector8us and Vector16b.
+
+2008-12-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Add support for operator == and != to Vector8(u)s and Vector16(s)b.
+
+2008-12-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for operator == and != on Vector4f.
+
+2008-12-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (simd_intrinsic_emit_equality): Adapt to support Vector4f.
+
+	* simd-intrinsics.c: Kill useless enum.
+
+2008-12-04  Mark Mason   <mmason@upwardaccess.com>
+
+	* cpu-mips.md: add long_conv_to_ovf_i4_2
+	* mini-mips.c: update/add various _OVF_ opcodes to fix test failures
+
+2008-12-04  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c: ifdef protect automatic promotions of R4 to R8.
+	
+	* mini-mips.c (mono_arch_emit_setret): handle R4 case with FCONV_TO_R4 instead of FMOVE
+
+2008-12-04  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_output_basic_block): fix codegen for OP_OR_IMM/OP_IOR_IMM
+	
+2008-12-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for new methods.
+
+2008-12-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Add support for operator == and !=
+	on Vector4(u)i.
+
+	* simd-methods.h: Add SN_op_Inequality and SN_op_Equality.
+
+2008-12-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Remove ExtractByteMask intrinsics.
+
+2008-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (add_wrappers): Add pinvoke wrappers.
+
+	* mini.c (mono_resolve_patch_target): Allow pinvoke methods in 
+	MONO_PATCH_INFO_ICALL_ADDR.
+
+	* aot-runtime.c (MonoAotFileInfo): Correct order of fields.
+
+	* aot-compiler.c: Resurrect full-aot support.
+
+2008-12-04  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_lowering_pass): handle OP_COMPARE and OP_ICOMPARE
+	
+2008-12-04  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_output_basic_block): fix OP_IREM_UN code generation
+	
+2008-12-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix tests to work under ppc.
+	Remove tests for methods that will be removed.
+
+2008-12-03  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Handle ldtoken of an open
+	generic type (via a typedef or typeref) correctly.
+
+2008-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_magic_trampoline): Add some debugging code to help
+	diagnose an assertion failure.
+
+2008-12-02  Mark Probst  <mark.probst@gmail.com>
+
+	* tramp-ppc64.c (mono_arch_create_rgctx_lazy_fetch_trampoline):
+	Fix trampoline size.
+
+	* mini-ppc64.c, mini-ppc64.h, cpu-ppc64.md: A few floating point
+	conversion opcodes are implemented natively instead via emulation.
+
+2008-12-01  Mark Mason   <mmason@upwardaccess.com>
+
+	* cpu-mips.md: remove mips_xori
+
+	* mini-ops.h:  remove mips_xori
+
+	* mini-mips.h: replace OP_MIPS_XORI with OP_IXOR
+
+	* mini-mips.c (mono_arch_decompose_long_opts): Add ladd_imm, lsub, lsub_imm, lneg, lsub_ovf, lsub_ovf_un.
+	
+	* mini-mips.c (mono_arch_lowering_pass, mono_arch_output_basic_block): fix IXOR handling
+	
+2008-12-01  Mark Mason   <mmason@upwardaccess.com>
+
+	* cpu-mips.md: fix instruction lengths.
+
+	* mini-mips.h: define MONO_ARCH_NO_IOV_CHECK
+
+	* mini-mips.c: move most instruction rewriting into decompose_ops. Implement conditional branches and exceptions. Fix jump table patch handling. Implement add/sub OVF.
+
+	* mini-ops.h: fix slti / sltiu op profiles.
+	
+2008-12-02  Martin Baulig  <martin@ximian.com>
+
+	* method-to-ir.c (mono_method_to_ir): Disable debugging
+	information for the init locals block to make the debugger stop
+	after all locals have been initalized.
+
+2008-12-02  Martin Baulig  <martin@ximian.com>
+
+	* mini.c (mini_method_compile): Disable MONO_OPT_DEADCE when
+	running inside the debugger.
+
+2008-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_method_compile): Only run local deadce if MONO_OPT_DEADCE
+	is enabled.
+
+	* method-to-ir.c (mono_method_to_ir): Fix invalid code generated by the 
+	alu->alu imm optimization which only shows if deadce is disabled.
+
+	* aot-compiler.c: Rename the function names for the binary and asm writers
+	so they can coexist in the same process. Rework the xdebug code to use the
+	asm writer. This avoids the need to call into the runtime to dump the
+	debugging info. Add more debugging info for types.
+
+	* mini-<ARCH>.h: Kill MONO_ARCH_HAVE_NORMALIZE_OPCODES define.
+
+	* genmdesc.c genmdesc.pl mini.h: Don't put the CEE_ opcodes into the
+	cpu description tables, they can't occur in cpu-<ARCH>.md.
+
+	* method-to-ir.c (mono_method_to_ir): Set the type of the value pushed on
+	the stack in CEE_LDFLDA. Fixes #450542.
+
+	* generics.cs: Add a new test.
+
+2008-12-01  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-ops.h: updated MIPS opcodes
+	* mini-mips.c: decompose long opts
+	* mini-mips.h: decompose long opts
+	
+2008-11-29  Mark Mason   <mmason@upwardaccess.com>
+
+	* cpu-mips.md: fix length on int_rem_un
+	* mini-mips.c (mips_stackframe_adjust): fix insertion of spillvars region in MIPS stackframes.
+	
+2008-11-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.h aot-runtime.c: Fix building with DISABLE_AOT.
+
+	* mini-codegen.c (mono_print_ins_index): Handle OP_VOIDCALL_MEMBASE.
+
+2008-11-29  Martin Baulig  <martin@ximian.com>
+
+	* mini-exceptions.c (mono_handle_native_sigsegv): Check
+	mono_debug_using_mono_debugger() in addition to the
+	`no_gdb_backtrace' flag in the `MonoDebugOptions'.
+
+2008-11-28  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-ops.h: updated more MIPS opcodes
+	* mini-mips.c: FP compare/branch working again, clean up last of CEE_ -> OP_ mappings
+	* cpu-mips.md: Added MIPS versions of new FP compare/branch opcodes.
+	
+2008-11-28  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c: Patch the RGCTX fetch trampoline correctly.
+
+2008-11-28  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c (mono_arch_emit_call): adding missing conversion to fp single when passing in integer arg register.
+	* mini-mips.c (mips_adjust_stackframe): compensate for spill-down logic.
+	* mini-ops.h: correct selected mips opcode entries
+	
+2008-11-28  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h: Enable generalized IMT thunks and
+	make them work.
+
+2008-11-28  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.h, tramp-ppc64.c: Make generic code sharing work.
+
+2008-11-28  Mark Mason   <mmason@upwardaccess.com>
+
+	* method-to-ir.c, mini-trampolines.c: protect IMG code with #ifdef MONO_ARCH_HAVE_IMT to fix compile errors.
+	* mini-mips.c: Fixup stackframe assignments after allocation of spillvars.
+	* mini-mips.h: disable IMT
+	* tramp-mips.c (mono_arch_get_vcall_slot): fix offset extraction
+	
+2008-11-28  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h: Don't emulate long ops.
+
+2008-11-28  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, exceptions-ppc64.c: Several fixes.
+
+2008-11-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (handle_isinst): Use PCONST instead of ICONST for
+	consistency.
+
+2008-11-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (emit_array_extension_intrinsics): Add support
+	for Set/GetVector aligned versions.
+
+2008-11-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for Get/SetVector.
+
+2008-11-27  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c: Removed g_slist_append_mempool().  Now in
+	metadata/mempool.c.
+
+2008-11-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (mono_emit_vector_ldelema): Extract the element
+	size properly and make the bounds check optional.
+
+	* simd-intrinsics.c (emit_array_extension_intrinsics): Add support
+	for SetVector and IsAligned.
+
+2008-11-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c: Remove unused mono_normalize_opcodes () function.
+
+2008-11-26  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mini_emit_inst_for_method): Small fix: we're
+	using the new atomic add ops now.
+
+	* mini-ppc64.c, mini-ppc64.h, cpu-ppc64.md: Implemented atomic
+	add.
+
+2008-11-26  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c: Several fixes.
+
+2008-11-25  Mark Mason   <mmason@upwardaccess.com>
+
+	* cpu-mips.md: added jump_table
+	* mini-mips.c: added jump_table. Eliminate compare-imm when lowering. Remove dead function.		
+
+2008-11-25  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-mips.c, mini-mips.h, tramp-mips.c, cpu-mips.md: Initial upgrade of MIPS port to new IR.
+
+2008-11-25  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-ops.h: corrected a handful of MIPS opcodes.
+
+2008-11-25  Mark Mason   <mmason@upwardaccess.com>
+
+	* aot-compiler.c: MIPS to use ELF writer
+
+2008-11-25  Mark Mason   <mmason@upwardaccess.com>
+
+	* mini-codegen.c: remove MIPS specific assert.
+
+2008-11-25  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, tramp-ppc64.c, cpu-ppc64.md: Several
+	fixes.  PPC64 now passes most of the runtime regressions.
+
+2008-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* regalloc2.c: Distinguish between use/def positions. Optimize the creation of
+	volatile intervals a bit.
+
+2008-11-24  Mark Probst  <mark.probst@gmail.com>
+
+	* basic-long.cs: New test case.
+
+2008-11-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_method_compile): Disable globalra for large methods for 
+	now.
+
+	* regalloc2.c (order_moves): Add fp support.
+
+	* branch-opts.c (mono_remove_critical_edges): Split non-critical edges whose
+	source bblock ends with an OP_BR_REG.
+
+	* ratests.cs: Add a new test.
+
+2008-11-23  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, tramp-ppc64.c: Disable generic code
+	sharing.  PPC64 now passes generics.exe.
+
+2008-11-23  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c: Several fixes.  PPC64 now runs iltests.exe.
+
+2008-11-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* exceptions-x86.c (mono_arch_find_jit_info): Avoid reading uninitialized
+	memory when mono_jit_info_table_find () can't find the method in the
+	LMF case.
+
+	* aot-compiler.c (mono_save_xdebug_info): Emit complete debug info for
+	AOTed code too.
+	
+	* aot-compiler.c (mono_save_xdebug_info): Make this work with the assembly
+	writer too.
+
+2008-11-23  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, exceptions-ppc64.c, cpu-ppc64.md:
+	Several fixes.  PPC64 now runs exceptions.exe and
+	devirtualization.exe.
+
+2008-11-22  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, tramp-ppc64.c: Small fixes.  PPC64 now runs
+	arrays.exe and basic-math.exe.
+
+2008-11-22  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, exceptions-ppc64.c, tramp-ppc64.c,
+	cpu-ppc64.md: Several fixes.  PPC64 now runs objects.exe.
+
+2008-11-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Add support ArrayExtension intrinsics.
+
+2008-11-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c: Move bounds checking macros to ir-emit.h
+
+	* ir-emit.h: Move macros from method-to-ir.c to here.
+
+2008-11-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Correct the long simd ops to use LREG.
+
+2008-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ops.h: Correct the dreg type of OP_LOADI8_MEMBASE.
+	
+	* mini-ops.h: Correct the dreg type of a few long opcodes.
+
+	* mini-amd64.h: Applied patch from Mihai Chelaru <kefren@ngnetworks.ro>.
+	Add netbsd support.
+
+Fri Nov 21 12:52:23 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-ppc.c: remove negative stack references in epilog
+	for platforms that don't support the red zone.
+
+2008-11-21  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.h, cpu-ppc64.md: Fixed caller/callee saved floating
+	point regs.  Now PPC64 passes basic-calls.exe.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for accessors of Vector2l.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_INSERTX_I8_SLOW,.
+
+	* mini-x86.c (mono_arch_decompose_long_opts): Decompose OP_INSERTX_I8_SLOW.
+	
+	* simd-intrinsics.c: Add support for Vector2l and Vector2ul.
+
+2008-11-21  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, cpu-ppc64.md: Several fixes.  Now
+	PPC64 passes basic-long.exe.
+
+2008-11-20  Mark Probst  <mark.probst@gmail.com>
+
+	* decompose.c: Decompose carry and overflow add on PPC64 like on
+	other 64 bit archs.  Don't decompose sub at all on PPC64.
+
+	* mini-ppc64.c, exceptions-ppc64.c, tramp-ppc64.c, cpu-ppc64.md:
+	Several fixes and new opcodes.  Now PPC64 runs (but doesn't pass)
+	basic-long.exe.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for accessors of Vector2d.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_INSERTX_R8_SLOW,.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+	
+	* simd-intrinsics.c (simd_intrinsic_emit_setter): Add support for Vector2d.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for accessors of Vector4f.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_INSERTX_R4_SLOW,.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+	
+	* simd-intrinsics.c (simd_intrinsic_emit_setter): Add support for Vector4f.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add tests for accessors of Vector4i and Vector4ui.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_INSERTX_I4_SLOW,.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+	
+	* simd-intrinsics.c (simd_intrinsic_emit_setter): Add support for Vector4i and Vector4ui.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Use reasonable sizes for extractx_u2 and insertx_u1_slow.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Enable setters for Vector16sb.
+
+2008-11-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_EXTRACTX_U2, OP_INSERTX_U1_SLOW.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+	
+	* simd-intrinsics.c (simd_intrinsic_emit_setter): Add support for Vector16b.
+
+2008-11-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Implement setter for Vector8us.
+
+2008-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (mono_save_xdebug_info): Emit correct location info
+	for dead variables.
+
+Wed Nov 19 18:27:41 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-ppc.c: remove references to the red zone in the prolog
+	(for systems that don't support it).
+
+2008-11-19  Mark Probst  <mark.probst@gmail.com>
+
+	* cpu-ppc64.md: Fixed a few instruction lengths.
+
+	* mini-ppc64.c: Don't emit SETLRET.  PPC64 passes basic-float.exe,
+	now.
+
+2008-11-19  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, cpu-ppc64.md: Fixed some opcodes.  PPC64 passes
+	basic.exe now.
+
+2008-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (mono_save_xdebug_info): Add more parameter types.
+
+2008-11-18  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_INSERT_I2.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+	
+	* simd-intrinsics.c: Implement setter for Vector8s.
+
+	* simd-methods.h: Add the names of get setters of Vector8s.
+
+2008-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (mono_save_xdebug_info): Add support for parameters.
+	
+	* aot-compiler.c (mono_save_xdebug_info): Add preliminary support for
+	parameters.
+
+	* unwind.h (MonoUnwindOp): Change the 'val' to a signed type.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, tramp-ppc64.c, cpu-ppc64.md: Changes
+	for PPC64.  An empty program runs now.
+
+2008-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* unwind.h (MonoUnwindOp): Change the 'val' to a signed type.
+
+	* aot-compiler.c mini.c mini.h: Add a JIT debugging mode modelled after
+	a similar mode in Kaffe: When the the MONO_XDEBUG env var is set, debugging
+	info for JITted code is emitted into a shared library, loadable into gdb.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* Makefile.am: Changes to build PPC64.
+
+	* mini-arch.h: Include mini-ppc64.h on PPC64.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, cpu-ppc64.md: Updated with changes
+	in PPC code up to r119147.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, tramp-ppc64.c, exceptions-ppc64.c,
+	cpu-ppc64.md: Changes for PPC64.
+
+	Based on code submitted by andreas.faerber@web.de at
+	https://bugzilla.novell.com/show_bug.cgi?id=324134 under the
+	X11/MIT license.
+
+2008-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc64.c, mini-ppc64.h, tramp-ppc64.c, exceptions-ppc64.c,
+	cpu-ppc64.md: Copied from the corresponding PPC files from
+	r118846.
+
+2008-11-18  Scott Peterson  <lunchtimemama@novell.com>
+
+	* mini-ops.h: Added OP_ROUND.
+
+	* cpu-x86.md: Added round.
+
+	* mini-x86.c: Added support for intrinsicing Math.Round (double).
+
+	* basic-math.cs: Added test_0_round to test rounding.
+
+	Contributed under MIT/X11 license.
+
+2008-11-17  Bill Holmes  <billholmes54@gmail.com>
+
+	* aot-compiler.c : Fix the Winx64 build.
+
+	Contributed under MIT/X11 license.
+
+2008-11-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-x86.c (mono_arch_output_basic_block): Use movsd instead of monvups
+	in OP_EXTRACT_R8 to avoid possible stack corruption.
+
+2008-11-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added OP_EXTRACT_R8/I8.
+
+	* cpu-x86.md: Added extract_r8.
+
+	* mini-x86.c (mono_arch_output_basic_block): Emmit OP_EXTRACT_R8.
+	
+	* mini-x86.c: Added mono_arch_decompose_long_opts to break OP_EXTRACT_I8 into
+	a couple of OP_EXTRACT_I4.
+
+	* mini-x86.h: Define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS if simd is enabled.
+
+	* simd-intrinsics.c: Implement getters for Vector2l/2ul/2d.
+
+2008-11-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (vector2l_intrinsics): CompareGreaterThan requires sse 4.2
+	and not 4.1. 
+
+2008-11-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (handle_delegate_ctor): Emit the address of the delegate
+	trampoline as an AOT const of the proper type instead of MONO_PATCH_INFO_ABS.
+
+	* mini.c (mono_codegen): Remove the handling of delegate trampolines, they
+	are not needed any more.
+
+	* mini.h: Remove the unused INS_LIST macros.
+
+	* mini.c (mini_method_compile): Remove a disable globalra case which is no
+	longer needed.
+
+	* *.h *.c: Remove duplicate MonoInst emission macros, use the ones in
+	ir-emit.h.
+
+	* regalloc.h *.c: Remove references to mono_regstate_next_int (), use
+	mono_alloc_ireg () instead.
+
+	* mini-<ARCH>.c: Include ir-emit.h. Remove duplicate MonoInst emission
+	macros.
+
+	* mini-amd64.c (emit_load_volatile_arguments): Removed, not needed
+	on amd64.
+
+	* aot-runtime.c (load_aot_module): Disable AOT when running under
+	CAS.
+
+	* mini-amd64.h: Change the monitor fastpath defines to check for
+	!PLATFORM_WIN32 so they work on *bsd too.
+
+	* mini.h mini.c mini-hhpa.c: Remove more unused code.
+
+	* mini-s390.c mini-s390x.c: Remove !cfg->new_ir code.
+
+	* mini.h (MonoCompile): Remove new_ir flag.
+
+	* regalloc.h regalloc.c: Remove unused code.
+
+	* cpu-*.md: Remove more unused opcodes.
+
+	* simple-cee-ops.h simple-mini-ops.h: Removed.
+
+	* mini-ops.h *.c cpu-<ARCH>.md: Remove more unused opcodes.
+	
+2008-11-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* aliasing.h: Removed.
+
+	* *.c: Remove references to aliasing.h and inssel.h.
+
+	* mini.c: Remove additional unused functions.
+
+	* mini-ops.h cpu-*.md: Remove unused opcodes.
+
+2008-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the old JIT code.
+
+	* inssel*.brg: Removed.
+
+	* ssa.c abcremoval.c aliasing.c: Removed.
+
+	* ssa2.c: Renamed to ssa.c.
+
+	* abcremoval2.c: Renamed to abcremoval.c.
+
+	* *.c: Removed all !cfg->new_ir code.
+
+	* mini-<ARCH>.c: Removed mono_arch_call_opcode (), 
+	mono_arch_emit_this_vret_args (), and mono_arch_get_inst_for_method ().
+
+	* mini.c: Removed the old mono_method_to_ir () and all the code used by it.
+	
+2008-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c aot-runtime.c: Emit most of the non-table data in a structure
+	to simplify the code and cut back on the number of global symbols in the AOT
+	file.
+	
+	* aot-compiler.c aot-runtime.c: Get rid of the unused plt_jump_table.
+
+2008-11-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c aot-compiler.c: Unify the plt_jump_table/plt_info tables
+	with the got/got_info tables.
+
+	* mini.h: Bump AOT file format version.
+	
+	* unwind.h: New file, contains definitions for stack unwinding.
+
+	* mini.c (mono_emit_unwind_op): New helper function to append an unwind op
+	to cfg->unwind_ops.
+	
+	* aot-compiler.c: Generalize the emitting of unwind information to use the
+	information in cfg->unwind_ops.
+
+	* mini-amd64.c (mono_arch_emit_prolog): Emit unwind info.
+
+	* aot-compiler.c: Emit dwarf unwind information so gdb can unwind through
+	AOT method frames. Enable writing symbols for methods by default.
+
+2008-11-14  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (simd_intrinsic_emit_getter): Generalize this code
+	and make it work with vectors of element sizes 1, 2 and 4.
+
+	* simd-intrinsics.c: Enable getter for all vectors with element size
+	1, 2 or 4.
+
+	* simd-methods.h: Add the names of other getters.
+
+	* mini-ops.h: Added OP_EXTRACT_I2/U2/I1/U1.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c: Same.
+
+Fri Nov 14 15:54:18 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-ppc.h: portability fix.
+
+Fri Nov 14 15:39:50 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-ppc.h, mini-ppc.c: avoid using the red zone as some kernels are
+	buggy and will overwrite it.
+
+2008-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Add functionality to emit local symbols to the elf writer.
+	Use it to emit local symbols for all methods so AOTed methods show up with
+	their full name in gdb/valgrind output.
+
+Fri Nov 14 12:56:27 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-ppc.c: portability fixes.
+
+2008-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_magic_trampoline): Move the patching of plt
+	entries out of the if (!generic_shared...) code so it is always done.
+	(mono_class_init_trampoline): Do the patching when running under valgrind
+	too, newer versions of valgrind have no problems with it.
+
+2008-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_writeout): Rework this to make it easier to add
+	further sections.
+
+2008-11-13  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c, cpu-ppc.md: Reserve space for the parameter area in
+	filters.
+
+2008-11-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Add getter support for Vector4i and Vector4ui. 
+
+2008-11-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Kill diplicated ops OP_SHUFLEPS.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c: Same.
+
+	* simd-intrinsics.c: Same.
+
+2008-11-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Enable constructor intrinsics for all types.
+
+2008-11-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (simd_intrinsic_emit_ctor): Generalize this method
+	to work with more Vector types.
+
+2008-11-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (simd_intrinsic_emit_ctor): If the target is already a pointer
+	store the elemens directly instead of using and intermediate.
+
+2008-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (emit_call_body): Avoid aligning call sites in AOTed code.
+
+	* tramp-x86.c (mono_arch_create_trampoline_code): Rework the return sequence
+	to preserve %eax for aot plt trampolines.
+
+	* aot-compiler.c (compile_method): Don't skip synchronized methods.
+	(encode_method_ref): Flag synchronized methods so they won't go through
+	the AOT trampoline.
+
+	* aot-compiler.c: Additional work to support AOTing synchronized methods/
+	wrappers.
+
+	* cpu-ia64.md (jmp): Increase max length.
+
+2008-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (load_method): Avoid calling runtime_class_init () for
+	open generic classes.
+
+	* aot-compiler.c: Enable the ELF writer on ELF platforms.
+
+	* method-to-ir.c (mono_method_to_ir2): Revert the last change to the
+	box+brtrue optimization since it causes test failures on x86.
+
+2008-11-12  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Remove OP_PUSH_R4 and OP_LOADX_STACK.
+
+	* cpu-x86.md: Same.
+
+	* mini-x86.c: Same.
+
+	* mini.h (struct MonoCompile): Add simd_ctor_var to be used as storage
+	for simd ctor values. 
+
+	* simd-intrinsics.c (simd_intrinsic_emit_ctor): Use simd_ctor_var for the constructor
+	instead of directly pushing the values on stack. This saves about 15 bytes of generated code.
+
+2008-11-12  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-methods.h: Rename SubWithSaturation, ArithmeticRightShift and
+	LogicalRightShift.
+
+	* simd-instrincs.c: Same.
+
+	* basic-simd.cs: Same.
+
+2008-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* ratests.cs: Add more tests.
+
+	* regalloc2.c (add_spill_code): Handle more corner cases.
+
+2008-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* regalloc2.c (INS_POS_INTERVAL): Decrease this to 8 to avoid overflows.
+	(update_liveness): Avoid holes in the liveness ranges of hregs if they are
+	both the source an destination of an instruction.
+
+Tue Nov 11 19:30:50 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* jit-icalls.c, local-propagation.c, mini.c, ssa.c, ssapre.c, trace.c,
+	wapihandles.c: more portability changes.
+
+Tue Nov 11 18:56:33 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* aot-compiler.c, aliasing.c, abcremoval.c: portability changes.
+	* mini.c mini.h, aot-runtime.c: the aot segfault-handling code is not
+	safe to execute in a signal handler and the kernel provides better
+	the info in /proc/self/smaps. Avoid the assert on sigaction during
+	cleanup.
+
+2008-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): In the box+brtrue optimization, only
+	do the bblock linking hack if it is actually needed.
+
+	* Makefile.am (patch-libtool): New helper target to patch libtool to speed
+	up linking.
+
+	* liveness.c (ENABLE_LIVENESS2): Reenable this for 64 bit archs as the
+	crash problem is fixed.
+
+	* branch-opts.c (mono_remove_critical_edges): Link up newly added
+	bblocks.
+
+	* mini.c (mini_method_compile): Compute unreachable bblocks properly even
+	for catch clauses.
+	(mini_method_compile): Set the starting value of next_vreg to 
+	MAX_IREGS + MAX_FREGS when using globalra.
+
+	* method-to-ir.c (mono_method_to_ir2): Mark bblocks starting
+	filter clauses with BB_EXCEPTION_HANDLER.
+
+	* regalloc2.c (assign_spill_slots): Set cfg->rgctx_var.
+
+2008-11-10  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-x86.c (mono_arch_get_argument_info): Don't align argument
+	space for stdcall.  Fixes regressions on Win32.
+
+2008-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* regalloc2.c (handle_reg_constraints): Avoid adding code to unreachable
+	bblocks.
+	(linear_scan): Remove an assert which doesn't seem to be needed.
+
+	* local-propagation.c (mono_local_deadce): Avoid a call to
+	MONO_DELETE_INS which would screw up the instruction linking.
+
+	* mini.c (mono_decompose_op_imm): Make this work with globalra.
+
+	* regalloc2.c: Upgrade to work the current JIT code.
+
+2008-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (inline_method): Merge more basic blocks to help the AOT
+	case.
+
+	* aot-runtime.c: Remove some dead code.
+
+	* tramp-arm.c: Use 'code' as the runnning pointer in code generation for
+	consistency.
+	(mono_arch_create_rgctx_lazy_fetch_trampoline_full): Implement aot support.
+
+	* aot-runtime.c (load_named_code): Decode the offset of lazy fetch
+	trampolines using sscanf since atoi doesn't work on large unsigned values.
+
+	* tramp-amd64.c (mono_arch_create_rgctx_lazy_fetch_trampoline_full): 
+	Initialize code_size.
+
+2008-11-08  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mini_emit_inst_for_method): Make
+	Interlocked.CompareExchange work for Int arguments on 32 bit
+	archs, as well.
+
+2008-11-07  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Fixed a funny commit error.
+
+2008-11-06  Bill Holmes  <billholmes54@gmail.com>
+
+	* main.c Fix MSVC build.
+
+	Contributed under MIT/X11 license.
+
+2008-11-06  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-x86.c (mono_arch_allocate_vars): Make sure locals that need
+	alignment larger than 8 bytes are aligned correctly, too.
+
+	* mini.c: Honor the min_align field of MonoClass when laying out
+	the stack.
+
+2008-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Fix AOT support for CEE_SWITCH on arm.
+
+	* aot-compiler.c (emit_plt): Fix a warning.
+	
+	* aot-compiler.c: Implement ARM support in the binary writer.
+
+2008-11-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add test for getter with byref arg.
+	Fix the naming of a few tests.
+	Add missing checks to a test.
+
+2008-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_plt): Make the arm code work with the binary writer.
+
+	* aot-compiler.c aot-runtime.c mini-trampolines.c tramp-amd64.c: Implement
+	most of the full-aot support for monitor enter/exit trampolines.
+
+	* tramp-x86.c tramp_amd64.c: Add AOT compatible variants of the monitor
+	enter/exit trampoline creation functions.
+
+	* Makefile.am: Fix the generation of buildver.h so it is not invoked during
+	make dist.
+
+Wed Nov 5 16:28:53 CET 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini.h, aot-compiler.c, method-to-ir.c, aot-runtime.c: remove the
+	incorrectly added MONO_WRAPPER_MONITOR_* (in r117651-r117652) and
+	implement the needed functionality without adding crap to the runtime.
+
+2008-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_create_monitor_enter_trampoline): Fix the
+	non-x86 builds.
+
+	* mini.c (mono_build_date): New global version holding the build date in
+	string format.
+	
+	* Makefile.am (buildver.c): Generate a file containing the build date.
+
+	* main.c: Set the build date from the generated file.
+
+	* mini.c (mono_get_runtime_build_info): New helper function returning build
+	information in a string format.
+	
+	* driver.c (mono_main): Print the build date in --version.
+
+	* aot-compiler.c aot-runtime.c: Embed the build information into the AOT
+	file when the bind-to-runtime-version option is used.
+
+2008-11-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Fix bug when using getters and byref args.	
+
+2008-11-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-methods.h: Rename prefetch methods.
+
+	* simd-intrinsics.c: Same.	
+
+2008-11-05  Mark Probst  <mark.probst@gmail.com>
+
+	* tramp-amd64.c: Enlarge the Monitor.Enter/Exit trampoline code
+	sizes.
+
+2008-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Use the bundled elf header files instead of depending on
+	the system one.
+	
+	* aot-compiler.c (emit_symbol_diff): Allocate memory from the acfg
+	mempool.
+
+	* method-to-ir.c (mono_method_check_inlining): Avoid a getenv () call
+	on every call.
+
+2008-11-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Add store nta ops.
+
+	* mini-ops.h: Same.
+
+	* mini-x86.c: Same.
+
+	* mini.h: Add an enum for simd prefetch modes.
+
+	* simd-methods.h: Refactor the store_aligned code to handle multiple kinds
+	of store. Use the changed code to support store nta.
+
+	* simd-intrinsics.c: Add prefetch ops for all vector types.
+
+2008-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Add an option for JIT compiling the methods by multiple 
+	threads.
+	
+	* aot-compiler.c: Use statically allocated buffers for constructing symbol 
+	names.
+
+	* aot-runtime.c aot-compiler.c: Add support for the MONITOR_ENTER/EXIT
+	trampolines.
+
+2008-11-04  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-x86.c: Fixed commit.
+
+2008-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_plt): Align the plt section only on x86.
+
+2008-11-04  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-trampolines.c, mini.h: Two new trampolines: MONITOR_ENTER
+	and MONITOR_EXIT, for the ASM fastpaths.
+
+	* method-to-ir.c: Use the ASM fastpath for Monitor.Enter/Exit if
+	available.
+
+	* mini.c, patch-info.h: Signature and patch infos for
+	Monitor.Enter/Exit trampolines.
+
+	* mini-amd64.c, mini-x86.c: Make emit_tls_get() non-static.
+
+	* tramp-amd64.c, tramp-x86.c, mini-amd64.h, mini-amd64.h:
+	Monitor.Enter/Exit ASM fastpath for Linux.
+
+2008-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_method_to_ir): Fix soft-float support in Array.Get/Set.
+
+	* objects.cs: Add a new test.
+	
+	* aot-compiler.c: Use mono_100ns_ticks () for computing the profiling info.
+
+	* aot-runtime.c (load_method): Run class initialization in the PLT case even
+	if MONO_LOG_LEVEL is set.
+
+	* debug-mini.c (serialize_variable): Fix the encoding of dead variables.
+
+	* aot-runtime.c (mono_aot_get_method): Skip out-of-date AOT modules.
+
+	* aot-compiler.c (emit_and_reloc_code): Speed this up a little.
+	
+	* aot-compiler.c: Change the relocation code to use virtual addresses instead
+	of file offsets. Align the sections belonging to the data segment to 
+	PAGESIZE.
+
+2008-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Simplify the elf writer by depending on the definitions in
+	elf.h. Port it to amd64.
+
+2008-11-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* driver.c: Enable SIMD by default.
+
+2008-11-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Add prefetch op.
+
+	* mini-ops.h: Same.
+
+	* mini-x86.c: Same.
+
+	* mini.h: Add an enum for simd prefetch modes.
+
+	* simd-methods.h: Add prefetch function names.
+
+	* simd-intrinsics.c: Add prefetch ops for all vector types.
+
+2008-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_bytes): Speed this up a little.
+
+2008-11-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Add JIT time etc. statistics.
+	
+	* aot-compiler.c (compile_method): Fix the copying of the cfgs array.
+
+	* mini.h (MonoCompile): Add 'got_offset' field.
+
+	* aot-compiler.c: Store the got offset in MonoCompile, get rid of the
+	method_got_offsets array.
+
+	* aot-compiler.c aot-runtime.c: Add support for the monitor enter/exit
+	wrappers.
+
+	* aot-compiler.c (compile_method): Add generic method instances referenced
+	by the method to the list of methods to be compiled, this is required so if
+	A<T> references B<T>, and another assembly references A<int>, then it will
+	also get a copy of B<int>.
+
+	* method-to-ir.c (mini_emit_inst_for_method): Use the proper wrapper type
+	when checking for monitor enter/exit.
+
+2008-10-30  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mini_emit_inst_for_method): Use the IL fastpaths
+	for Monitor.Enter and Monitor.Exit if enabled.
+
+	* mini-x86.h, mini-amd64.h: Enable the IL fastpaths for Linux and
+	Solaris.
+
+2008-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (type_from_op): Convert CEE_CONV_U on OP_ICONV_TO_U instead
+	of an OP_MOVE. Fixes #440046.
+
+	* basic-long.cs: Add a new test.
+
+2008-10-29  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini.h: Add synchronization note for the managed counter-part.
+
+	* simd-intrinsics.c: Add SimdRuntime.get_AccelMode intrinsic that
+	returns the simd caps of the current cpu.
+
+2008-10-29  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Remove Console.WriteLine.
+
+2008-10-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: New tests for Vector2ul.
+
+2008-10-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Add new vector type Vector2ul.
+
+2008-10-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: New tests for Vector2l.
+
+2008-10-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Add long version of most packed int ops.
+
+	* mini-ops.h: Same.
+
+	* mini-x86.h: Same.
+
+	* simd-intrinsics.c: Add new vector type Vector2l.
+
+2008-10-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Replace SN_op_BitwiseXor with SN_op_ExclusiveOr.
+
+	* simd-methods.h: Remove SN_op_BitwiseXor.
+
+2008-10-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_allocate_stack_slots_full): Align the size of vtypes to their
+	alignment.
+
+2008-10-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Test for Vector2d.
+
+	* basic-simd.cs (test_vector8s_pack_signed_sat): Fixed broken
+	value.
+
+2008-10-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Add double version of all packed float ops.
+
+	* mini-ops.h: Same.
+
+	* mini-x86.h: Same.
+
+	* simd-intrinsics.c: Add new vector type Vector2d.
+
+	* simd-intrinsics.c (vector4f_intrinsics): Fix ordering.
+
+	* simd-methods.h: Add Duplicate.
+
+2008-10-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Test for packing with signed saturation.
+
+2008-10-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (add_generic_instances): Add all methods of generic instances
+	found in the TYPESPEC table.
+
+2008-10-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (mono_aot_get_method): Log not found methods for extra methods
+	too.
+
+	* mini.h (MONO_AOT_FILE_VERSION): Bump AOT file format version.
+
+	* mini.c (mono_method_to_ir): For MONO_PATCH_INFO_RVA, save field the token
+	instead of the RVA, since the RVA can be changed by tools like the cil 
+	stripper.
+
+	* method-to-ir.c (mono_method_to_ir2): Ditto.
+
+	* debug-mini.c (serialize_variable): Handle ADDRESS_MODE_DEAD.
+	(deserialize_variable): Ditto.
+
+2008-10-25  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c (write_variable): Use
+	`MONO_DEBUG_VAR_ADDRESS_MODE_DEAD' for dead variables.
+
+2008-10-24  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Add unsigned variants of packd and packw.
+
+	* mini-ops.h: Same.
+
+	* mini-x86.h: Emit the right instruction for packd and packw.
+	Add unsigned variants of packd and packw.
+
+	* simd-intrinsics.c: Packd and packw were used in place of their
+	unsigned variants. Change that.
+	Add intrinsics for (Signed)PackWithSignedSaturation.
+
+	* simd-methods.h: Add (Signed)PackWithSignedSaturation.
+
+2008-10-24  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (vector4i_intrinsics): New table of intrinsic type.
+
+2008-10-24  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Remove dword packed add/sub with saturation ops.
+
+	* cpu-x86.md: Remove dword packed add/sub with saturation ops.
+
+	* simd-intrinsics.c (vector4ui_intrinsics): Remove methods without
+	sse instructions.
+
+	* simd-intrinsics.c (vector8s_intrinsics): Fix ordering.
+
+2008-10-24  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c, mini.c: Special casing for the synchronized
+	wrapper for the ldtoken+GetTypeFromHandle case.
+
+2008-10-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_replace_ins): Move this to branch-opts.c.
+
+	* mini.c (mono_replace_ins): Propagate has_array_access flag to the newly
+	created/split bblocks.
+
+2008-10-24  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add packed signed mul high.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* simd-methods.h: Add PackWithUnsignedSaturation and ShiftRightLogic.
+
+	* simd-intrinsics.c (vector8s_intrinsics): New table of intrinsic type.
+
+2008-10-24  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for Vector16sb.
+
+2008-10-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* inssel.brg (stmt): Fix OP_HARD_NOP rule.
+
+2008-10-23  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add packed signed min, max and compare greater.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same. Add packed add/sub with
+	saturation.
+
+	* simd-methods.h: Add CompareGreaterThan.
+
+	* simd-methods.h: Remove CompareEquals.
+
+	* simd-intrinsics.c: Add new TODO entry and some cosmetic changes.
+
+	* simd-intrinsics.c (vector16sb_intrinsics): New table of intrinsic type.
+
+	* simd-intrinsics.c (vector4f_intrinsics): Rename CompareEquals to
+	CompareEqual.
+
+2008-10-23  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix tests due to change in the API.
+
+2008-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c method-to-ir.c: Use mono_field_get_name () for accessing field->name.
+
+2008-10-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Fix name change in Vector4f::CompareEqual.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_store_aligned): Don't use
+	inst_offset as this has invalid values for LDADDR.
+
+2008-10-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Test for SignedPackWithUnsignedSaturation.
+
+	* simd-intrinsics.c (vector4ui_intrinsics): Add SignedPackWithUnsignedSaturation.
+
+2008-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (initialize_array_data): Use mono_field_get_data ()
+	for accessing field->data.
+
+2008-10-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Test for SignedPackWithUnsignedSaturation.
+
+2008-10-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-methods.h: Add SignedPackWithUnsignedSaturation.
+
+	* simd-intrinsics.c (vector8us_intrinsics): Add SignedPackWithUnsignedSaturation.
+
+2008-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* dominators.c (mono_compute_natural_loops): Allocate GList enties
+	from the cfg mempool.
+
+2008-10-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for new methods in Vector8us.
+
+2008-10-20  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add multiply and store high.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* simd-methods.h: Same.
+
+	* simd-intrinsics.c (vector8us_intrinsics): Add MultiplyStoreHigh
+	and CompareEqual.
+
+2008-10-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_emit_method_call_full): Remove a needless call to
+	mono_class_setup_vtable ().
+
+	* mini-trampolines.c (mono_convert_imt_slot_to_vtable_slot): Use
+	mono_class_get_vtable_entry () for accessing klass->vtable.
+
+	* aot-runtime.c (load_method): Avoid a crash when using MONO_LOG_LEVEL.
+
+	* aot-compiler.c (add_generic_instances): Avoid a crash if a class is not
+	found.
+
+	* method-to-ir.c (mono_save_token_info): Don't save references made from
+	wrappers.
+
+	* aot-compiler.c (add_generic_instances): Add static rgctx wrappers for cctors
+	of generic instances.
+
+	* aot-runtime.c (find_extra_method): Search in all loaded AOT images.
+
+2008-10-19  Mark Probst  <mark.probst@gmail.com>
+
+	* cpu-ppc.md, mini-ppc.c: The length of the code generated for
+	OP_JMP depends on the method signature.  Calculate it properly.
+
+2008-10-19  Zoltan Varga  <vargaz@gmail.com>
+	
+	* aot-runtime.c (mono_aot_find_jit_info): Handle extra methods which are
+	called directly.
+
+	* aot-compiler.c (emit_and_reloc_code): Allow direct calling of generic
+	instances.
+	(emit_extra_methods): Add another table mapping method indexes to 
+	offsets in the extra_method_info table.
+
+	* mini.h: Bump AOT file format version.
+	
+	* aot-runtime.c: Merge most of the code from mono_aot_get_method
+	and mono_aot_get_method_from_token () into one function.
+
+2008-10-19  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c (emit_load_volatile_arguments): Inner loop needs a
+	separate counter.
+
+2008-10-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c aot-runtime.c: Fix the hash function used for the extra
+	methods.
+
+	* method-to-ir.c (mono_method_to_ir2): Change a !compile_aot assert to
+	disable_aot.
+
+	* mini.c (mono_patch_info_equal): Compare the generic context as well.
+
+	* mini.h: Bump aot file format version.
+
+	* aot-compiler.c aot-runtime.c: Generalize the wrapper handling code so the
+	AOT file can contain native code for methods which are not in the METHOD
+	table. Generate code for non-sharable generic instances of generic methods
+	found in the METHODSPEC table.
+	
+	* method-to-ir.c (mono_method_to_ir2): Remove the aot restriction when
+	encoding generic type handles.
+
+	* ir-emit.h (NEW_AOTCONST_TOKEN): Add a generic_context argument.
+	(NEW_TYPE_FROM_HANDLE_CONST): Add a generic_context argument.
+
+	* ir-emit.h: Rewrite the EMIT_NEW_XXXCONST macros to use the NEW_XXXCONST
+	macros + MONO_ADD_INS.
+
+	* mini.c (mono_jump_info_token_new2): New function which takes a generic
+	context as well.
+
+	* mini.h (MonoJumpInfoToken): Include fields for a generic context.
+
+	* mini.h: Bump aot file format version.
+
+	* aot-compiler.c aot-runtime.c: Update after changes to MonoJumpInfoToken.
+
+2008-10-17  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-x86.h, mini-x86.c, exceptions-x86.c: Align stack on all
+	platforms, with definable stack alignment value.  Set to 16 now
+	for all platforms.
+
+	* mini.c, mini.h, driver.c: Command line option for disabling
+	stack alignment.
+
+2008-10-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for new methods in Vector4ui.
+
+2008-10-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add packed int shuffle.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* simd-intrinsics.c (vector4ui_intrinsics): Add compare equal,
+	extract mask, max, min, shuffle.
+
+	* simd-intrinsics.c (vector8us_intrinsics): Add max and min.
+
+2008-10-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for new methods in Vector8us.
+
+2008-10-17  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): "refanytype" produces a
+	RuntimeTypeHandle, not a TypedReference.
+
+Fri Oct 17 14:40:50 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* simd-intrinsics.c: remove relocations.
+
+2008-10-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (mono_arch_output_basic_block): Port the IREM_IMM 
+	optimizations from the x86 backend.
+
+Fri Oct 17 12:00:51 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* simd-methods.h, simd-intrinsics.c: debloat method names and
+	prepare for no relocations.
+
+2008-10-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add packed min/equal and sum of absolute differences.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* simd-intrinsics.c (vector16b_intrinsics): Add average, compare equal,
+	extract mask, max, min and sum of absolute differences.
+
+	* simd-intrinsics.c: Increase SIMD_INTRINSIC_NAME_MAX due to new huge
+	method name.
+
+2008-10-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Test for the other mono_simd_simplify_indirection bug.
+	Renamed one test for consistency.
+
+2008-10-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (mono_simd_simplify_indirection): Apply the previous
+	fix to the code that deal with other blocks.
+
+2008-10-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Test for the mono_simd_simplify_indirection bug.
+
+2008-10-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (mono_simd_simplify_indirection): Simplify the code
+	that deals with vreg interference. Explicitly check for OP_LDADDR to be
+	able to process the source reg.
+
+2008-10-16  Martin Baulig  <martin@ximian.com>
+
+	* mini-ops.h, cpu-amd64.md, cpu-x86.md: Added new `hard_nop' opcode.
+
+	* inssel.brg: Add `OP_HARD_NOP'.
+
+	* mini.h (MonoCompile): Added `keep_cil_nops' flag.
+
+	* mini.c (mono_method_to_ir): In `CEE_NOP': generate a
+	`OP_HARD_NOP' instruction when running inside the debugger.
+
+	* method-to-ir.c (mono_method_to_ir2): In `CEE_NOP': generate a
+	`OP_HARD_NOP' instruction when running inside the debugger.
+
+2008-10-15  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (get_simd_vreg): Using sreg1 of OP_XMOVE
+	now works. The issue with the regalloc tripping up no longer
+	happens.
+
+	* simd-intrinsics.c (load_simd_vreg): Same.
+
+2008-10-15  Rodrigo Kumpera  <rkumpera@novell.com>
+	
+	* basic-simd.cs: Tests for new Vector8ui methods.
+
+2008-10-15  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (get_simd_vreg): Simplify code and test
+	only for type. This fixes crashes where MonoInst::klass is checked
+	for ops of type != VTYPE or OBJ.
+
+	* simd-intrinsics.c (load_simd_vreg): Same.
+
+2008-10-15  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add ops for packed shuffle/max/avg and
+	extract mask.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* simd-intrinsics.c (vector8us_intrinsics): Add avg, shuffle and
+	extract mask.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_extract_mask): New function
+	to emit extract mask op.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_shuffle): Retrofic this function
+	to emit word shuffles.
+
+2008-10-15  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c (mono_allocate_stack_slots_full): Align stack frame to
+	the largest alignment needed by a variable, but at least
+	sizeof(gpointer).
+
+2008-10-14  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for the fixes in the last commit.
+
+2008-10-14  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (get_simd_vreg): Drop the is_this_ptr, this function
+	no longer handles STACK_PTR input.
+
+	* simd-intrinsics.c (get_simd_vreg): Don't crash when MonoInst::klass == -1.
+
+	* simd-intrinsics.c (load_simd_vreg): New function that works like 
+	get_simd_vreg 	but handles STACK_PTR input.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_getter): Use load_simd_vreg
+	as the input can be an arbitrary pointer.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_ctor): Try the
+	LDADDR local optimization directly otherwise use a store op.
+
+2008-10-14  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for dup low and dup high.
+
+2008-10-14  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add dup low and dup high ops.
+	
+	* cpu-x86.md: Same.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* simd-intrinsics.c (vector4f_intrinsics): Same.
+
+2008-10-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Tests for recently added functionality.
+
+2008-10-13  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Add remaining sse1 fp ops.
+	
+	* cpu-x86.md: Add remaining sse1 fp ops.
+
+	* mini-x86.c (mono_arch_output_basic_block): Same.
+
+	* mini.h: Add enum for simd FP compare conditions.
+
+	* simd-intrinsics.c (vector4f_intrinsics): Add all new ops.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_binary): Set inst_c0 to flags
+	so the backed can generate the appropriate op.
+
+2008-10-13  Rodrigo Kumpera  <rkumpera@novell.com>
+	This patch squeese one more byte from the SimdIntrinsc struct.
+
+	* mini-x86.c (mono_arch_cpu_enumerate_simd_versions: Use the version number
+	a a shift amount intead of simply or'ing it.
+
+	* mini.h: Change SIMD_VERSION_* values to be sequential intead of masks.
+
+	* simd-intrinsics.c (struct SimdIntrinsc): Squeese simd_version and simd_emit_mode into a single
+	byte so we can have an aditional flags field without increasing struct size.
+
+	* simd-intrinsics.c (emit_intrinsics): Use the value of simd_version as a shift amount before checking
+	against the simd_supported_versions bitmask.
+
+	* simd-intrinsics.c: Set SIMD_INTRINSIC_NAME_MAX to an appropriate value.
+
+Mon Oct 13 10:58:10 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini.c: remove rawbuffer code (the only use here is unsafe because
+	it takes locks during signal handling and the kernel now provides much
+	better info in proc/pid/smaps these days).
+
 2008-10-13  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r115632.
-	
 	* mini-amd64.c (mono_arch_output_basic_block): Fix the changes to
 	OP_X86_PUSH_OBJ. Fixes #434620.
 
 	* objects.cs: Add a test.
-
-2008-10-12  Zoltan Varga  <vargaz@gmail.com>
-
-	Backport of r115495.
 	
+2008-10-12  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Remove PackWithUnsignedSaturation tests as it turns out
+	that the packuswb/packusdw don't work with unsigned numbers for what
+	would be negative numbers in signed format.
+
+	* cpu-x86.md: Add doubleword forms of many ops and packing ones.
+	Fix the len of fconv_to_r8_x and xconv_r8_to_i4.
+
+	* mini-ops.h: Add doubleword forms of many ops and packing ones.
+
+	* mini-x86.c: Emit doubleword forms of many ops and packing ones.
+
+	* simd-intrinsics.c (SimdIntrinsc): Rename the flags field to simd_version.
+
+	* simd-intrinsics.c (vector4f_intrinsics): Use simd_version field for sse3 ops.
+
+	* simd-intrinsics.c (vector4u_intrinsics): Rename to vector4ui_intrinsics and
+	add more ops.
+
+	* simd-intrinsics.c (simd_version_name): New function, returns the name of the
+	version as the enum in mini.h.
+
+	* simd-intrinsics.c (emit_intrinsics): Instead of having a special emit mode
+	for sse3 ops, check the simd_version field if present. This way the code
+	works with all versions of sse.
+
+2008-10-10  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c: Fixed intrinsic name typo.
+
+  	* mini.h: Added missing simd exported function.
+
+	* basic-simd.cs: Added tests for Vector4ui.
+	Fixed broken test for Vector16b.
+
+2008-10-10  Zoltan Varga  <vargaz@gmail.com>
+
 	* tramp-amd64.c (mono_arch_create_rgctx_lazy_fetch_trampoline_full): Increase
 	the max length to 64.
 
-2008-10-11  Zoltan Varga  <vargaz@gmail.com>
+2008-10-10  Mark Probst  <mark.probst@gmail.com>
 
-	Backport of r113918.
-	
-	* inssel.brg (mini_emit_castclass): Avoid the szarray!=array checks for
-	arrays of arrays. Fixes #428406.
+	* method-to-ir.c: Only do the fast virtual generic method call for
+	non-wrapper methods.
 
-	Backport of r111722. Fixes #434544.
+	* mini.h, mini-trampolines.c: The new generic virtual remoting
+	trampoline handles virtual method calls via the vtable (as done by
+	the fast virtual generic method calls) to remoting proxies.
 
-	2008-08-27  Bill Holmes  <billholmes54 at gmail.com>
+	* mini.c (mono_jit_create_remoting_trampoline): For generic
+	methods reate a generic virtual remoting trampoline.
 
-	* mini-amd64.c (mono_arch_output_basic_block) : Fix the OP_X86_PUSH_OBJ
-	  case to keep the stack aligned to 8.
+	* mini-amd64.h: Enable fast virtual generic method calls again.
 
-	Contributed under MIT/X11 license.
+2008-10-10  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Use SP (r1), not frame_reg (which might be r31) to
+	restore registers when doing tail calls.
+
+2008-10-10  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (emit_intrinsics): Vector4u was renamed to
+	Vector4ui.
+
+2008-10-10  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Add test for Vecto16b.PackWithUnsignedSaturation.
+
+2008-10-10  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (emit_intrinsics): Retrofit to new type names.
+
+2008-10-10  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Retrofit for API changes.
+
+2008-10-10  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Handle integer stack arguments for tail calls.
+
+2008-10-10  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* optflags-def.h: Removed sse3 optimization.
+
+	* driver.c: Same.
+
+	* mini-x86.c (mono_arch_cpu_optimizazions): Remove detection of
+	sse3.
+
+	* mini-x86.c: Added mono_arch_cpu_enumerate_simd_versions.
+
+	* mini.h: Added enumeration with simd versions.
+
+	* simd-intrinsics.c (emit_intrinsics): Use the new static var
+	for detecting SSE3.
+
+	* simd-intrinsics.c: Added mono_simd_intrinsics_init.
+
+	* mini.c (mini_init): Call mono_simd_intrinsics_init.
+
+2008-10-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: Added tests for Vector8u and Vector16u.
+
+	* basic-simd.cs: Fixed test naming.
+
+2008-10-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-ops.h: Added ops for packed and saturated math, shifts
+	and packing/unpacking.
+
+	* cpu-x86.md: Added descriptors for the above ops.
+
+	* mini-x86.c: Added code to emmit the above ops.
+
+	* simd-intrinsics.c: Added support for Vector16u and Vector8u.
+
+2008-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (compile_method): Enable AOT for generic code.
+
+	* ir-emit.h (NEW_DOMAINCONST): Use domainvars in AOT code as well.
 
 Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
@@ -37,68 +2819,715 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 2008-10-07  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r115144.
-	
-	* mini.c (mono_method_to_ir): Clear ins_flag on all code paths
+	* method-to-ir.c (mono_method_to_ir2): Clear ins_flag on all code paths
 	in the LDFLD/STFLD opcodes. Fixes #432673.
+
+	* iltests.il.in: Add a new test.
+
+Tue Oct 7 19:59:07 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-arm.c: attach the thread in unmanaged->managed transitions
+	using delegates (bug #433148).
+
+2008-10-07  Rodrigo Kumpera  <rkumpera@novell.com>
+
+       * basic-simd.cs: Use new ShuffleSel constants.
+
+2008-10-07  Rodrigo Kumpera  <rkumpera@novell.com>
+
+        * driver.c (opt_sets): Added combinations of simd, sse2 and sse3.
+
+        * mini-x86.c (mono_arch_cpu_optimizazions): Detect sse3 and now
+        only disable simd intrinsics if no sse2 is detected.
+
+        * optflags-def.h: Added sse3.
+
+        * simd-intrinsics.c: Avoid generated sse3 intrinsics if the optimization
+        is disabled.
 
 2008-10-07  Zoltan Varga  <vargaz@gmail.com>
 
 	* aot-compiler.c (add_wrappers): Fix Delegate/MulticastDelegate classes
 	when adding delegate-invoke wrappers.
 
+2008-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Reenable the simd tests.
+
+2008-10-07  Bill Holmes  <billholmes54@gmail.com>
+
+	* mini-amd64.c (mono_arch_emit_outarg_vt) : In the ArgValuetypeAddrInIReg case,
+	  add a call to mono_call_inst_add_outarg_reg for the arg->dreg to make sure that no
+	  other vreg is allocated to that hreg.
+
+	Contributed under MIT/X11 license.
+
+2008-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Disable the simd tests for now as Mono.Simd is not
+	yet checked in.
+
+2008-10-06  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* basic-simd.cs: New test suite for SIMD intrinsics.
+
+	* Makefile.am: Added new tests.
+
+2008-10-06  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* cpu-x86.md: Added new instructions to handle float to int using SSE regs.
+
+	* mini-ops.h: Same.
+
+	* mini-x86.h: Enable mono_arch_decompose_opts if simd intrinsics are enabled.
+
+	* mini-x86.c (mono_arch_decompose_opts): Decompose float to int conversion
+	using SSE2 aware opcodes.
+
+	* mini-x86.c (emit_float_to_int): Disable the SSE2 optimization if OPT_SIMD
+	is enabled, this code path is only reachable if conversion ops are emmited after
+	mono_method_to_ir.
+
+	* mini.h: Added MonoCompile::fconv_to_r8_x_var to hold the float to int var.
+
+	This optimization saves 6 bytes per conversion against the old version.
+
 2008-10-06  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r114307.
+	* aot-compiler.c (compile_method): Don't skip methods referencing 
+	generic methods without a corresponding entry in token_info_hash, since
+	encode_method_ref () can handle all generic methods now.
+
+	* method-to-ir.c (mono_save_token_info): Don't save the token info if a 
+	generic context is set.
 	
-	* driver.c (mono_main): Add a workaround for shutdown crashes seen on
-	amd64, where the libc stack unwinder encounters stack frames referring to
-	native code in unmapped memory.
+	* method-to-ir.c (mono_method_to_ir2): Put back a disable_aot for
+	generic sharing of LDTOKEN.
+
+2008-10-06  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-amd64.h: Temporarily disabled fast virtual generic method
+	calls because it breaks the System.Runtime.Remoting tests.
+
+2008-10-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (add_wrappers): Add delegate-invoke wrappers.
+
+	* method-to-ir.c (check_inline_called_method_name_limit): Return TRUE
+	so inlining actually works.
+	(check_inline_caller_method_name_limit): Ditto.
+
+Mon Oct 6 11:04:38 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-ppc.c: mono_arch_flush_icache () cast pointer using gsize for
+	64 bit safety (from Olaf Hering and Andreas Färber).
+
+2008-10-06  Zoltan Varga  <vargaz@gmail.com>
 	
-	Backport of r114416.
+	* mini-trampolines.c (mono_aot_trampoline): Delegate processing to
+	mono_magic_trampoline () if aot_get_method_from_token () fails. Remove
+	unused virtual call support code.
+
+	* aot-runtime.c (decode_method_ref): Add a 'no_aot_trampoline' out argument.
 	
+	* aot-runtime.c (mono_aot_get_method_from_vt_slot): Return NULL for methods
+	which can't use aot trampolines.
+	(decode_patch): Don't create aot trampolines for methods which can't use
+	them.
+
+	* aot-compiler.c (encode_method_ref): Add a marker for methods which can't
+	use aot trampolines.
+
+	* mini.h: Bump AOT image format version.
+	
+2008-10-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Pass cil_method instead of cmethod
+	to save_token_info () since cmethod is inflated for constrained calls.
+
+	* mini-<ARCH>.h mini-x86.c: Remove some unused defines.
+
+2008-10-04  Andreas Färber  <andreas.faerber@web.de>
+
+	* Makefile.am: Add build rules for ppc64.
+	This avoids the build failing at pedump with unresolved symbols
+	due to lack of arch_sources. Instead it will now fail earlier
+	due to lack of cpu-ppc64.md.
+
+	Contributed under MIT/X11 license.
+
+2008-10-04  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-amd64.c (mono_arch_emit_call): Support stack arguments for
+	tail calls.
+
+	* iltests.il.in: Add test case for tail call with many arguments.
+
+2008-10-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Add an !cfg->compile_aot assert
+	to the fast virtual generic method code until the aot case is fixed.
+
+2008-10-03  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c, mini-ppc.h: Implement generic virtual method thunks.
+
+2008-10-03  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-amd64.c, mini-amd64.h: Implement generic virtual method
+	thunks.
+
+2008-10-03  Rodrigo Kumpera  <rkumpera@novell.com>
+	
+	* simd-intrinsics.c: Forgot to add this one.
+
+	* mini-codegen.c: Fix macro in case SIMD is not supported.
+
+2008-10-03  Rodrigo Kumpera  <rkumpera@novell.com>
+	
+	This patch land initial JIT support for simd intrinsics.
+
+	* mini-x86.h: Added new define to make --enable_minimal work on x86.
+
+	* Makefile.am: Added simd-intrinsics.c
+
+	* simd-intrinsics.c: New file with simd instrinsic related
+	code.
+
+	* cfold.c (mono_constant_fold_ins2): Fold XZERO.
+
+	* cpu-x86.md: Add simd related instructions.
+
+	* driver.c: Added MONO_OPT_SIMD to the default set of optimizations.
+
+	* driver.c: Added two new --regression variants.
+
+	* ir-emit.h (MONO_EMIT_NEW_VZERO): Emit XZERO if the type is a simd intrinsic.
+
+	* local-propagation.c (mono_local_cprop2): Eliminate useless XMOVE.
+
+	* local-propagation.c (mono_local_deadce): Use new macro MONO_IS_NON_FP_MOVE and
+	extract some complicated logic to helper functions.
+
+	* method-to-ir.c (mono_type_to_regmove): Handle simd intrinsics.
+
+	* method-to-ir.c (mini_emit_inst_for_method): Emit simd intrinsics.
+
+	* method-to-ir.c (mono_handle_global_vregs): If a simd intrinsic was found, apply
+	the specialized simplification pass.
+
+	* method-to-ir.c (mono_spill_global_vars): Use new macro.
+
+	* mini-codegen.c: Added SIMD constants to all regbanks arrays.
+
+	* mini-codegen.c: Added reg_bank_table_init to initialize the reg desc -> bank
+	table.
+
+	* mini-codegen.c: Define a version of the reg_bank macro that uses desc_to_reg_type
+	if MONO_ARCH_NEED_SIMD_BANK is defined.
+
+	* mini-ops.h: Added the new simd ops.
+
+	* mini-x86.c: Added mono_arch_xregname.
+
+	* mini-x86.c (mono_arch_cpu_optimizazions): Disable MONO_OPT_SIMD if SSE3 is not detected.
+
+	* mini-x86.c (mono_arch_output_basic_block): Add simd related opcodes.
+
+	* mini-x86.h: Define simd related MONO_ARCH macros.
+
+	* mini.c (mono_type_to_load_membase): Handle simd intrinsics.
+
+	* mini.c (mono_type_to_store_membase): Handle simd intrinsics.
+
+	* mini.h: Added new macros MONO_IS_NON_FP_MOVE, MONO_IS_REAL_MOVE, MONO_IS_ZERO and
+	MONO_CLASS_IS_SIMD to deal with simd related IR.
+
+	* mini.h (MonoInst): Added spill_var to the backend union.
+
+	* mini.h (MonoCompile): Added uses_simd_intrinsics and iconv_raw_var.
+
+	* mini.h: Added forward declarations of the new simd fuctions.
+
+	* optflags-def.h: Added new optimization names SIMD.
+
+	* regalloc.c (mono_regstate_reset): Set next vreg to be the max value of the 3 reg banks.
+
+	* regalloc.h: Added support for working with 3 register banks.
+
+	* regalloc.h (MonoRegState): Added xsymbolic field if a third regbank is required.
+
+	* ssa2.c (mono_ssa_deadce2): Use new MONO_IS_ZERO macro.
+
+Fri Oct 3 16:03:22 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-exceptions.c: remove 64 bit related ifdef clutter.
+
+2008-10-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c (mono_handle_soft_stack_ovf): Unprotect two pages
+	instead of one on 64 bit systems.
+
+	* method-to-ir.c: Remove unused includes.
+
+2008-10-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_exception_debug_info): Use jinfo->used_regs instead of
+	cfg->used_int_regs, since the two are different on arm.
+
+2008-10-02  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c, inssel.brg, mini-trampolines.c: Use
+	mono_method_get_vtable_index() to get the vtable index.
+
+2008-10-02  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Don't create native
+	wrappers for array methods, because they're never called (and if
+	they were called they wouldn't work).
+
+2008-10-02  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Array methods are
+	special-cased and must not be invoked indirectly via the (M)RGCTX
+	when generic sharing is turned on.  Fixes #431413.
+
+2008-10-01  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: When generic sharing is active, call
+	non-interface virtual generic methods via the standard trampoline.
+
+	* mini-trampolines.c: Handle virtual generic shared methods.
+
+	* mini.h, mini-x86.c, mini-x86.h: New argument for
+	mono_arch_build_imt_thunk() which is non-NULL for virtual generic
+	method thunks and which is the trampoline to call if the lookup
+	fails.  Enable the virtual generic method thunk for x86.
+
+	* mini-amd64.c, mini-arm.c, mini-ia64.c, mini-sparc.c,
+	mini-ppc.c (mono_arch_build_imt_thunk): Add the additional
+	argument but assert that it's NULL, because these archs don't yet
+	implement the virtual generic method thunk.  Changes in the IMT
+	thunk data structures.
+
+2008-10-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_globals): Avoid invalid characters in
+	the static linking symbol.
+
+	* objects.cs: Add a test for the range check optimization. Fix warnings.
+
+	* branch-opts.c (mono_if_conversion): Add back the 'optimize range checks'
+	optimization from the current JIT.
+
+	* method-to-ir.c (mini_emit_inst_for_method): Decompose String.Length
+	later in decompose_array_access_opts () to allow more optimizations.
+
+	* method-to-ir.c (mono_handle_soft_float): Rename this to 
+	mono_decompose_soft_float () for consistency.
+
+	* mini-ops.h: Fix arguments of OP_STRLEN.
+
+	* method-to-ir.c (save_cast_details): Extract the cast details saving code
+	into a separate function.
+	(reset_cast_details): Ditto.
+	(handle_unbox): Save cast details. Fixes #431254.
+
+	* method-to-ir.c: Remove some obsolete FIXMEs.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ir-emit.h (alloc_dreg): Write a warning before crashing.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c: More work on macros to make them
+	ready for multiple regbanks.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to.ir.c (mono_type_to_regmove): Remove static modifier.
+
+	* mini.h: Export mono_type_to_regmove. Fix signature of mono_regname_full.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c (mono_spillvar_offset): Proper support for
+	multiple regbanks.
+
+2008-09-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (mono_arch_emit_epilog): Remove some duplicated code from
+	the stack overflow changes.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c: Make all bank macros depend on reg_bank.
+
+	* mini-codegen.c (mono_local_regalloc): Make free mask
+	initialization regbank aware.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c (mono_local_regalloc): Extract callee
+	mask selection to a function and make it regbank aware.
+
+2008-09-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c (mono_local_regalloc): Changed the cloberring
+	code to deal with many regbanks.
+
+2008-09-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-codegen.c: More fp->regbank changes.
+
+2008-09-29  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini-codegen.c: Change asserts to use MONO_NUM_REGBANKS instead
+	of a hardcoded constant.
+
+2008-09-29  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c (type_from_stack_type): Fix typo.
+
+2008-09-29  Zoltan Varga  <vargaz@gmail.com>
+
 	* mini-ia64.c (emit_move_return_value): Convert float return values to
 	double.
 
 	* objects.cs: Add a new test.
 	
-	Backport of r114401.
-	
 	* mini-ia64.c (mono_arch_allocate_vars): Disable fp elimination for
 	VARARG methods to fix an assert later.
 
-	Backport of r114973.
-	
-	* aot-compiler.c (add_wrappers): Add delegate-invoke wrappers.
-	
-	Backport of r114617.
-	
-	* aot-compiler.c (emit_globals): Avoid invalid characters in
-	the static linking symbol.
-	
-	Backport of r114713.
-	
-	* aot-compiler.c (emit_exception_debug_info): Use jinfo->used_regs instead of
-	cfg->used_int_regs, since the two are different on arm.
+	* mini-mips.h mini-mips.c mini-ops.h cpu-mips.md: Update the mips back
+	end so it at least compiles.
 
-	Backport of r114299.
-	
+2008-09-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (emit_optimized_ldloca_ir): Fix this.
+
+2008-09-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Extract the ldloca + initobj
+	optimization to a new function (emit_optimized_ldloca_ir) and enable
+	it for both ldloca and ldloca_s.
+
+2008-09-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Remove an unnecessary assert in the
+	gshared CASTCLASS code.
+
+	* driver.c (mono_main): Add a workaround for shutdown crashes seen on
+	amd64, where the libc stack unwinder encounters stack frames referring to
+	native code in unmapped memory.
+
+	* method-to-ir.c (mini_emit_check_array_type): Add support for generic
+	sharing.
+
+	* generics.cs: Add new test.
+
+2008-09-27  Zoltan Varga  <vargaz@gmail.com>
+
 	* mini-arm.h driver.c: Print the fp model when using --version on arm. Also,
 	add a check that one of the ARM_FPU_ constants is defined.
-	
-	* mini.c cfold.c graph.c ssa.c aot-runtime.c local-propagation.c
-	driver.c mini-codegen.c mini-amd64.c mini-arm.c: Add support for removing
-	the JIT using the --enable-minimal=jit configure option.
 
-	* inssel-sparc.brg: Remove an incorrect reg: CEE_LDIND_I8 (OP_REGVAR) rule.
-	Fixes #426264.
+	* mini-exceptions.c (mono_handle_soft_stack_ovf): Really fix the build.
+	
+	* mini-exceptions.c: Fix build on non-altstack platforms.
+
+	* method-to-ir.c (mono_method_to_ir2): Fix aot support for the
+	sharing of vtypes.
+
+	* ir-emit.h: Add a comment to NEW_PCONST.
+
+	* mini-exceptions.c (mono_altstack_restore_prot): Fix a warning.
+
+	* mini.h (MonoJitDomainInfo): Move some fields here from MonoDomain.
+
+	* mini.c aot-runtime.c method-to-ir.c driver.c mini-trampolines.c: Update
+	after the changes to MonoJitDomainInfo.
+
+2008-09-27  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c, tramp-ppc.c, mini-ppc.h: Implement generic code sharing.
+
+2008-09-27  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Compiler warning fixes.
+
+2008-09-27  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Special handling for 1/2 byte structs on Darwin only
+	for pinvokes.
+
+2008-09-27  Mark Probst  <mark.probst@gmail.com>
+
+	* exceptions-ppc.c, mini-ppc.h: Compile
+	mono_arch_handle_altstack_exception() on Darwin, too.
+
+2008-09-27  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_emit_rgctx_method_call_full): Must also
+	work on archs which don't have generic sharing implemented, only
+	without the vtable_arg.
+
+2008-09-26  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c: Added comment explaining why delegate ctor icall
+	wrappers are compiled.
+
+2008-09-26  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c: Don't produce trampolines to delegate ctor icall
+	wrappers but compile them upfront.
+
+Fri Sep 26 17:00:46 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-amd64.c, mini-amd64.h, tramp-amd64.c: amd64 support code for calling a
+	runtime-set function when going back to managed code. Currently this
+	is used to set back the protection on the soft ovf pages and/or to
+	throw the stack overflow exception that happened in unmanaged code.
+
+Fri Sep 26 16:46:23 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* tramp-x86.c, mini-x86.h, mini-x86.c: x86 support code for calling a
+	runtime-set function when going back to managed code. Currently this
+	is used to set back the protection on the soft ovf pages and/or to
+	throw the stack overflow exception that happened in unmanaged code.
+
+Fri Sep 26 16:34:37 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini.h, mini.c, mini-trampolines.c, mini-exceptions.c: added
+	the support code for restoring stack protection after stack overflows
+	that happen in unmanaged code. Don't set the exec permission on the
+	soft overflow area.
 
 2008-09-26  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r114163.
-	
 	* mini-trampolines.c (mono_delegate_trampoline): Add wrappers even if
 	delegate->method_ptr is set. Fixes #428054.
+
+2008-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* tests.cs: Rename to ratests.cs.
+
+	* method-to-ir.c: Merge the emit_get_rgctx () calls into the 
+	emit_get_rgctx_... functions.
+
+2008-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: Eliminated macro EMIT_GET_RGCTX.
+
+2008-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-trampolines.c (mono_magic_trampoline): Unwrap wrappers
+	before asserting that method is sharable.
+
+2008-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c, mini.c, jit-icalls.c: New function for checking
+	whether method needs a static RGCTX wrapper used instead of
+	complex conditions.
+
+	* generic-sharing.c, mini.h: A few functions moved to
+	metadata/generic-sharing.c.
+
+2008-09-25  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c, mini.c, mini-exceptions.c, mini-trampolines.c:
+	Generic code sharing for value types, which essentially means
+	treating value type methods like static methods.  The RGCTX is
+	passed in the same way.
+
+2008-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Avoid an assert in the NEWOBJ
+	opcode when creating multi-dimensional arrays of open types.
+
+	* generic-sharing.c (mono_method_check_context_used): Handle arrays of
+	open generic types.
+
+	* generics.cs: Add a test.
+
+	* mini-codegen.c: Use macros everywhere for checking floats instead of == 'f'.
+
+2008-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.h (MonoCompile): Add 'disable_vreg_to_lvreg' flag.
+
+	* mini.c (mini_method_compile): Set it when running under the debugger.	
+
+	* method-to-ir.c (mono_handle_global_vregs): Disable global->local
+	vreg optimization if the flag is set.
+
+	* driver.c (mono_main): Add --attach= option to pass options to
+	the attach agent.
+
+	* mini.c (sigquit_signal_handler): Start the attach agent.
+
+	* ssapre.c: Disable this to save space since it is not yet ported to
+	linear IR.
+
+	* regalloc2.c: Disable this to save space.
+
+	* mini.h (MonoJitStats): Remove unused analyze_stack_repeat.
+
+Wed Sep 24 16:01:49 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* decompose.c, method-to-ir.c, mini-codegen.c, regalloc2.c: make
+	the -v option useful again.
+
+2008-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (mono_arch_output_basic_block): Add support for
+	--break-at-bb.
+
+	* inssel.brg (mini_emit_castclass): Avoid the szarray!=array checks for
+	arrays of arrays. Fixes #428406.
+
+	* method-to-ir.c (mini_emit_castclass): Ditto.
+
+	* objects.cs: Add new test.
+	
+2008-09-23  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c (type_to_eval_stack_type): The code path for the new JIT
+	was wrong at it choked against target_type_is_incompatible for byref types.
+
+2008-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-codegen.c: Use 'bank' macros instead of 'is_fp' macros in most 
+	places.
+
+Tue Sep 23 15:31:45 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-exceptions.c: update a few more exceptions-related counters.
+
+Tue Sep 23 15:28:29 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* aot-runtime.c, method-to-ir.c, mini.c, mini-trampolines.c: use the
+	new functions to allocate from persistent mempools.
+
+2008-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.h regalloc.h mini-codegen.c: Generalize the regalloc code to allow 
+	multiple register banks in the future.
+
+	* mini-codegen.c (mono_local_regalloc): Fix a warning.
+
+2008-09-22  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini.c (type_to_eval_stack_type): Remove duplicated function.
+
+	* method-to-ir.c (type_to_eval_stack_type): Make this version compatible with both JIT.
+
+	* mini.h: Export type_to_eval_stack_type.
+
+	This function was nearly duplicated in method-to-ir.c and mini.c. The difference
+	is only ins->klass of byref types.
+
+2008-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mini_emit_memset): Use a default alignment of 4.
+	(mini_emit_memcpy2): Ditto.
+
+	* mini-amd64.c: Fix a warning.
+
+2008-09-21  Mark Probst  <mark.probst@gmail.com>
+
+	* exceptions-ppc.c (mono_arch_get_call_filter): Fixed stack frame
+	linking.
+
+2008-09-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c: Extract stloc micro-optimization to a
+	function and apply it to all cases.
+
+2008-09-19  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: Don't fail generic code sharing in cases we
+	already support.
+
+2008-09-18  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Handle structs in tailcalls on Darwin.
+
+Tue Sep 16 21:07:11 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* *.c, *.md, mini-ops.h: introduced relaxed_nop opcode for spin wait
+	implementation.
+
+Tue Sep 16 16:39:16 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* trace.c: make tracing more useful and correct, with per-thread
+	id and indent info.
+
+2008-09-15  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c (mono_arch_emit_call): Convert floats to R4 when
+	doing a method call and the argument is an R4.
+
+2008-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (add_wrappers): Do not generate runtime invoke wrappers for
+	generic methods.
+
+2008-09-13  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Convert result to single for OP_ICONV_TO_R4.
+
+2008-09-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.h (MONO_IS_JUMP_TABLE): Handle GOT_ENTRY.
+	(MONO_JUMP_TABLE_FROM_INS): Ditto.
+
+2008-09-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* driver.c: Add a --agent argument (not supported yet) to load managed
+	agent assemblies before loading the main assembly, similarly to how the
+	Java VM handles agents.
+
+2008-09-11  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c (mono_arch_allocate_vars): Use arch-independent
+	function to do stack layout of local variables.
+
+2008-09-11  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c (calculate_sizes): Bugfix in sigcookie position
+	calculation.
+
+2008-09-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c ssa2.c mini.c mini-amd64.c decompose.c ssa.c abcremoval.c
+	abcremoval2.c branch-opts.c driver.c dominators.c: Disable parts of the
+	JIT if DISABLE_JIT is defined.
+
+	* Makefile.am: Avoid compiling/linking in inssel.c if DISABLE_JIT is
+	defined.
+
+2008-09-10  Mark Probst  <mark.probst@gmail.com>
+
+	* iltests.il.in: Disable the fconv test on PPC (the result is
+	undefined according to ECMA).
+
+2008-09-10  Mark Probst  <mark.probst@gmail.com>
+
+	* iltests.il.in: Enable tail call tests for PPC.
+
+	* mini.h: Add variable for storing incoming valuetype argument
+	addresses for tail calls.
+
+	* mini-ppc.c: Implement valuetype arguments and return values for
+	tailcalls on Linux.
+
+2008-09-09  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-ppc.c: Partially implement tail calls (struct arguments and
+	return values not supported).
+
+	* method-to-ir.c: Enable tail calls on PPC.
 
 2008-09-08  Zoltan Varga  <vargaz@gmail.com>
 
@@ -107,17 +3536,47 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	assigned to a random class.
 
 	* aot-runtime.c (mono_aot_get_method): Ditto.
+	
+2008-09-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c mini-mips.h mini-s390.h exceptions-mips.c: Kill
+	the CUSTOM_EXCEPTION_HANDLING and CUSTOM_STACK_WALK defines.
+
+2008-09-07  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Disable tail calls for PPC
+	until they're implemented properly.
+
+	* exceptions-ppc.c: Use arch-independent exception-handling code
+	instead of custom one.
+
+	* exceptions-ppc.c, mini-ppc.c, mini-ppc.h: Bug fixes and changes
+	for Linear IR.
+
+	* tramp-ppc.c, mini-ppc.c: Fixed warnings.
+
+	* decompose.c, aot-runtime.c, aot-compiler.c: PPC code also
+	applies when __powerpc__ is defined.
 
 2008-09-06  Zoltan Varga  <vargaz@gmail.com>
-	
-	* mini.h (MONO_AOT_FILE_VERSION): Bump this because of the arm AOT
-	changes.
-
-	* mini.c (mono_spill_call): Handle pinvoke+soft float on arm.
 
 	* aot-runtime.c (mono_aot_get_method): Add another cache mapping wrapper
 	methods to their code to avoid computing the full name of wrappers and
 	doing a lookup in a string hash table.
+
+2008-09-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c: Remove the CHECK_BBLOCK () stuff it is not needed since
+	we identify bblocks before method_to_ir () is ran.
+
+	* branch-opts.c (mono_optimize_branches): Avoid nullifying the exit bblock.
+	Also avoid optimizing branches pointing to themselves.
+
+	* mini.c (mini_method_compile): Ditto. Fixes #422947.
+
+2008-09-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* driver.c (mono_main): Enable the new verifier under core-clr and cas.
 
 2008-09-05  Zoltan Varga  <vargaz@gmail.com>
 
@@ -133,13 +3592,18 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 	* method-to-ir.c (initialize_array_data): Handle field with RVA from
 	dynamic images.
-	(Ported from trunk)
+
+2008-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (handle_isinst): Do the assignment at the beginning, so the
+	other assignment can be if converted. Saves 1.5% on corlib size and fixes
+	#421807.
 
 2008-08-29  Geoff Norton  <gnorton@novell.com>
 
-	* aot-compiler.c: The Mach/ARM compiler doesn't understand the bss
-	segment, and doesn't properly handle .space as .text.  Fixes
-	AOT Mach/ARM
+        * aot-compiler.c: The Mach/ARM compiler doesn't understand the bss
+        segment, and doesn't properly handle .space as .text.  Fixes
+        AOT Mach/ARM
 
 2008-08-29  Geoff Norton  <gnorton@novell.com>
 
@@ -157,15 +3621,17 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	since too many things depend on it. Instead, call 
 	mono_runtime_set_no_exec ().
 	
+	* mini.c (mono_create_tls_get): Call mono_alloc_preg (cfg) when running with
+	the new JIT.
+
 	* aot-compiler.c: Add an 'asm-only' AOT option.
 
 	* mini.c: Avoid initializing the runtime when doing AOT compilation.
-	(mini_method_compile): Don't add the method to the jit_info table when
-	during AOT compilation.
+		
+	* aot-compiler.c (compile_method): Disable gshared support for now as it
+	doesn't yet work.
 
 2008-08-27  Bill Holmes  <billholmes54@gmail.com>
-
-	Backport of r111724.
 
 	* mini-amd64.h : Fix a compiler warning.
 
@@ -182,8 +3648,6 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 2008-08-27  Bill Holmes  <billholmes54@gmail.com>
 
-	Backport of r111722.
-
 	* mini-amd64.c (mono_arch_output_basic_block) : Fix the OP_X86_PUSH_OBJ
 	  case to keep the stack aligned to 8.
 
@@ -196,15 +3660,30 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 2008-08-25  Zoltan Varga  <vargaz@gmail.com>
 
+	* aot-compiler.c (add_wrappers): Avoid calling get_runtime_invoke with
+	methods it can't handle.
+	
 	* aot-compiler.c (add_method): Avoid adding a method twice.
 	(add_wrappers): Add runtime invoke wrappers for all methods.
 
-	* mini.c (mono_method_to_ir): Handle the !aot case in CEE_MONO_ICALL_ADDR.
+	* tramp-amd64.c (mono_arch_create_rgctx_lazy_fetch_trampoline_full): New
+	function to create an aot-compatible version of this trampoline.
+
+	* aot-compiler.c aot-runtime.c: Add support for AOT rgctx fetch trampolines.
 
 2008-08-24  Zoltan Varga  <vargaz@gmail.com>
 
-	* mini.c (mono_method_to_ir2): Rethrow the correct exception in
+	* aot-compiler.c (compile_method): Skip wrappers of generic icalls.
+
+	* method-to-ir.c (mono_method_to_ir2): Replace an assert in UNBOX_ANY
+	with a generic sharing failure.
+
+	* aot-compiler.c (emit_klass_info): Call mono_class_get_nested_types ().
+
+	* method-to-ir.c (mono_method_to_ir2): Rethrow the correct exception in
 	CEE_RETHROW. Fixes #419634.
+
+	* mini.c (mono_method_to_ir): Ditto.
 
 	* exceptions.cs: Add a new test.
 	
@@ -215,14 +3694,116 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	* mini-x86.c (mono_arch_emit_prolog): Store the rgctx before calling
 	instrument_prolog. Fixes #419878.
 
+	* mini.c (mono_compile_create_var_for_vreg): Make the lvars representing
+	doubles in soft float mode volatile.
+
+2008-08-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* ir-emit.h (NEW_ARGSTORE): Use cfg->args and cfg->arg_types to fix the build.
+
+	* method-to-ir.c (mono_save_args): Use ARGSTORE instead of TEMPSTORE
+	to handle soft float correctly.
+
+	* tramp-arm.c (mono_arch_create_rgctx_lazy_fetch_trampoline): Implement
+	the fast path.
+
+	* mini.h (struct MonoCallInst): Add dynamic_imt_arg boolean field.
+
+	* exceptions-arm.c (mono_arch_find_jit_info): Set ctx->regs [ARMREG_R11]
+	to sp, since the generics catch code requires it.
+
+	* mini-arm.h (MONO_ARCH_VTABLE_REG): Use R0 for this to avoid needless
+	copying.
+
+	* method-to-ir.c (emit_imt_argument): Pass imt_arg to 
+	mono_arch_emit_imt_argument ().
+
+	* mini-<ARCH>.c (mono_arch_emit_imt_argument): Add an 'imt_arg' argument.
+
+	* mini-arm.c tramp-arm.c: Generic sharing updates.
+
 2008-08-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.c: Fix the arm build.
+
+	* generic-sharing.c (mini_type_get_underlying_type): New helper function
+	handling enums, generic instances and generic sharing.
+	(mini_type_stack_size_full): Ditto.
+
+	* mini-amd64.c mini-x86.c mini-arm.c: Use the new functions.
+	
+	* mini.h (struct): Add 'uses_rgctx_reg' and 'uses_vtable_reg' fields.
+
+	* method-to-ir.c: Set the new fields when using RGCTX_REG/VTABLE_REG.
+
+	* tramp-arm.c: Implement the rgctx fetch and the generic class init 
+	trampolines.
+
+	* mini-arm.c: Various small generic sharing changes.
+
+	* tramp-x86.c (mono_arch_create_generic_class_init_trampoline): Implement
+	this for x86.
+	(mono_arch_create_trampoline_code): Remove most of the GENERIC_CLASS_INIT
+	custom code.
+
+	* mini-trampolines.c (mono_create_generic_class_init_trampoline): New
+	helper function to return a generic class init trampoline.
+
+	* method-to-ir.c mini.c: Use it.
+	
+	* tramp-amd64.c (mono_arch_create_generic_class_init_trampoline): New
+	arch-specfic function to return a generic class init trampoline.
+
+	* tramp-amd64.c (mono_arch_create_trampoline_code_full): Remove most of
+	the GENERIC_CLASS_INIT custom code.
+
+	* method-to-ir.c (mono_method_to_ir2): If RGCTX_REG is not defined, that is
+	a fatal error, not a sharing failure.
+
+	* tramp-<ARCH>.c (mono_arch_get_rgctx_lazy_fetch_offset): Removed, no longer
+	needed.
+
+	* mini-trampolines.c (mono_rgctx_lazy_fetch_trampoline): Get the additional
+	trampoline argument from MONO_ARCH_VTABLE_REG.
+
+	* tramp-x86.c (mono_arch_create_rgctx_lazy_fetch_trampoline): Change the
+	order of the arguments to the C trampoline: pass 'slot' as the trampoline
+	argument, and pass the vtable in VTABLE_REG.
+
+	* tramp-amd64.c (mono_arch_create_rgctx_lazy_fetch_trampoline): Change the
+	order of the arguments to the C trampoline: pass 'slot' as the trampoline
+	argument, and pass the vtable in VTABLE_REG.
+	(mono_arch_create_trampoline_code_full): Remove some special casing for
+	the rgctx fetch trampoline.
 
 	* mini.c (mono_method_to_ir): Fix the STELEM_ANY+null value optimization.
 	Fixes #419273.
 
-2008-08-20  Bill Holmes  <billholmes54@gmail.com>
+	* iltests.il: Add a test for it.
 
-	Backport of r111197
+2008-08-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (compile_method): Enable AOT support for generics sharing.
+
+	* method-to-ir.c (mono_method_to_ir2): Remove an aot restriction which is
+	no longer needed.
+
+	* mini-trampolines.c (mono_magic_trampoline): Add a sync wrapper here,
+	use mono_jit_info_table_find () to avoid recursion.
+	(mono_delegate_trampoline): Add a sync wrapper here.
+
+	* method-to-ir.c (mono_method_to_ir2): Don't call mono_ldftn_nosyc
+	here.
+
+	* mini.c (mono_method_to_ir): Ditto.
+	
+	* mini-trampolines.c (mono_create_jit_trampoline_in_domain): Remove
+	add_sync_wrapper argument. Don't add a sync wrapper here.
+	(mono_create_jump_trampoline): Don't add a sync wrapper here.
+
+	* jit-icalls.c (mono_ldftn_nosync): Removed, no longer needed.
+	
+2008-08-20  Bill Holmes  <billholmes54@gmail.com>
 
 	* exceptions-amd64.c (seh_handler):  For Winx64 adding missing copy 
 	  of nonvolatile registers back from MonoContext to CONTEXT.
@@ -231,26 +3812,319 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 2008-08-20  Bill Holmes  <billholmes54@gmail.com>
 
-	Backport of r111194
-
 	* mini-amd64.c (mono_arch_get_delegate_invoke_impl):  When shifting the
 	  arguments on Winx64 there are only 4 argument registers.  For this
 	  logic to work the last argument must be pulled from the stack.  
 
 	Contributed under MIT/X11 license.
 
+2008-08-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.h (MONO_AOT_FILE_VERSION): Bump aot file format version.
+
+	* aot-runtime.c aot-compiler.c patch-info.h mini.c: Get rid of
+	MONO_PATCH_INFO_WRAPPER, encode/decode wrapper methods like the others in
+	encode/decode_method_ref ().
+
+	* aot-compiler.c (encode_patch): Handle STATIC_RGCTX_INVOKE wrappers.
+
+	* aot-runtime.c (decode_patch): Ditto.	
+
+	* mini.c (mono_resolve_patch_target): Handle RGCTX_FETCH sub-patches of type
+	MONO_PATCH_INFO_METHOD.
+
+	* aot-runtime.c (decode_exception_debug_info): Decode the contents of
+	MonoGenericJitInfo.
+
+	* aot-compiler.c (emit_exception_debug_info): Emit the contents of
+	MonoGenericJitInfo.
+
+	* method-to-ir.c (emit_imt_argument): Fix AOT+gshared support.
+
+	* mini-amd64.c (add_valuetype): Use a dummy gsctx if we didn't receive
+	one from the caller.
+
+	* aot-runtime.c (decode_generic_inst): New function to decode and
+	return a interned generic inst.
+	(decode_klass_ref): Use it.
+	(decode_method_ref): Ditto.
+
+	* aot-compiler.c (emit_exception_debug_info): Save 
+	jinfo->has_generic_jit_info too.
+
 2008-08-19  Zoltan Varga  <vargaz@gmail.com>
 
 	* mini-ia64.c (mono_arch_output_basic_block): Add OP_FCONV_TO_I.
-	Fixes #418381.
+
+	* iltests.il.in: Add a test for fconv_to_i.
+
+	* liveness.c: Disable the liveness2 pass for now to save space.
+
+	* regalloc2.c: Include mempool-internals.h to fix warnings.
+
+	* aot-compiler.c (encode_method_ref): Encode the context of generic
+	instance methods.
+
+	* aot-runtime.c (decode_method_ref): Inflate generic methods using
+	the context saved in the aot file.
+
+	* mini.h (MONO_AOT_FILE_VERSION): Bump aot file format version.
+
+	* mini-x86.c (mono_arch_output_basic_block): Disable AOT for OP_JMP.
+
+	* method-to-ir.c (mono_method_to_ir2): When using CEE_JMP, make arguments
+	volatile so they won't be optimized away.
+
+2008-08-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ssa.c:
+	* ssa2.c:
+	* mini.c:
+	* regalloc2.c:
+	* dominators.c: Remove duplicated functions that now are in
+	mempool-internals.h.
+
+2008-08-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Fix warnings.
+
+	* aot-runtime.c (decode_klass_ref): Add support for VARs/MVARs.
+
+	* aot-compiler.c (encode_klass_ref): Encode is_method too for VARs/MVARs.
+
+	* method-to-ir.c (emit_get_rgctx_method): Use MONO_PATCH_INFO_METHODCONST
+	as the patch type.
+
+	* mini.c (mono_resolve_patch_target): Ditto.
+	
+	* aot-compiler.c (encode_patch): Add support for RGCTX_FETCH.
+	(encode_klass_ref): Add support for encoding VARs/MVARs.
+
+	* mini.c (mono_patch_info_dup_mp): Handle RGCTX_FETCH.
+
+	* aot-runtime.c (decode_patch_info): Rename to 'decode_patch'. Split out
+	the handling of the got entries into a separate 'decode_got_entry' function.
+	Add support for RGCTX_FETCH.
+
+	* tramp-amd64.c mini-amd64.h: Change the VTABLE_REG to RDI since RAX is
+	clobbered by the trampoline code.
+
+	* tramp-amd64.c mini-amd64.h: Change the VTABLE_REG to RAX since that is
+	not clobbered by the indirect calling code.
+
+2008-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_patch_code): Handle RGCTX_FETCH/GENERIC_CLASS_INIT
+	to fix the build.
+
+2008-08-18  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c (mono_emit_method_call_full): Alloc the constructor
+	signature using the compilation mempool otherwise we would leak it.
+
+2008-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Emit the generic class inits using
+	mono_emit_abs_call ().
+
+	* patch-info.h: Add GENERIC_CLASS_INIT.
+
+	* mini.c (mono_resolve_patch_target): Handle GENERIC_CLASS_INIT.
+
+	* mini-amd64.c (emit_call_body): Treat abs calls which have a patch info
+	as their target as a near call.
+
+	* mini.c (mono_codegen): Handle patches stored in cfg->abs_patches in the
+	ABS handling code.
+	(mono_resolve_patch_target): Add support for MONO_PATCH_INFO_RGCTX_FETCH.
+
+	* method-to-ir.c (mono_emit_abs_call): New helper function which emits a
+	call to a runtime function described by a patch.
+
+	* method-to-ir.c: Emit rgctx entry fetches and class init trampolines using
+	mono_emit_abs_call, this has the advantage that the ABS handling code in
+	mono_codegen () can handle them both, and can handle other stuff in the
+	future without additional code.
+
+	* mini.h (struct MonoJumpInfoRgctxEntry): New structure describing an rgctx
+	entry.
+	(MonoCompile): Add 'abs_patches' hashtable, which contains patches describing
+	abs addresses.
+
+	* mini.h: Add missing bblock related prototypes.
+
+	* mini.h (MonoCompile): Remove unused reverse_inst_list and
+	reverse_inst_list_len fields.
+
+	* mini.c: Refactor this file a bit by moving branch optimizations to 
+	branch-opts.c.
+
+	* method-to-ir.c: Merge generic sharing changes missed earlier.
+
+	* aot-compiler.c (is_shared_got_patch): Add MONO_PATCH_INFO_METHODCONST.
+
+	* aot-runtime.c (decode_patch_info): Refactor the code dealing with the
+	shared patches. Process METHODCONST as a shared patch.
+
+	* liveness.c (mono_analyze_liveness): Disable the liveness2 code for now
+	as it crashes on the 2.0 mscorlib.
+
+	* aot-compiler.c (is_shared_got_patch): Revert the last change as it seems
+	to cause crashes.
+	
+	* aot-compiler.c: Use is_plt_patch () in a few additional places.
+	(is_shared_got_patch): Add MONO_PATCH_INFO_METHODCONST, which is generated
+	by IMT.
+
+	* aot-compiler.c: Reorganize the got handling code to be a bit more
+	understandable.
+
+2008-08-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Make the patch_to_plt_offset hash table use 
+	mono_patch_info_equals/hash, and use it to massively simplify
+	get_plt_index ().
+
+	* mini.c (mono_patch_info_hash): Simplify this and add support for
+	more patch types.
+
+	* patch-info.h: Rename RGCTX_LAZY_FETCH_TRAMPOLINE to just RGCTX_FETCH.
+
+	* mini.c aot-compiler.c aot-runtime.c: Revert the LAZY_FETCH_TRAMPOLINE
+	handling code, since an offset is not enough to identify a trampoline.
+
+	* method-to-ir.c: Remove some g_assert (!cfg->compile_aot) lines.
+
+2008-08-17  Mark Probst  <mark.probst@gmail.com>
+
+	* mini.c (mono_op_imm_to_op): Add case for OP_IMUL_IMM.
+
+	* method-to-ir.c (mono_method_to_ir2): Decompose OP_CKFINITE.
+
+	* mini-ops.h: Argument and result types for OVF_CARRY ops.
+
+	* decompose.c: PPC decompositions for various ops.
+
+	* cpu-ppc.md, inssel-ppc.brg, mini-ppc.c: PPC changes for Linear IL.
+
+2008-08-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* tramp-amd64.c (mono_arch_create_rgctx_lazy_fetch_trampoline): Make this
+	call the generic trampoline code using a call, instead of a jump, to
+	remove some special casing from the generic trampoline code.
+
+	* mini.c (mono_resolve_patch_target): Handle LAZY_FETCH_TRAMPOLINE.
+	(mono_codegen): Ditto.
+
+	* aot-compiler.c aot-runtime.c: Ditto.
+
+	* patch-info.h: Add MONO_PATCH_INFO_RGCTX_LAZY_FETCH_TRAMPOLINE.
+
+	* mini-trampolines.c (mono_find_rgctx_lazy_fetch_trampoline_by_addr): New
+	helper function to find the offset corresponding to a lazy fetch trampoline.
+
+	* mini.h (MonoCompile): Add 'orig_method' field to hold the original method
+	when doing generic sharing.
+
+	* aot-compiler.c: Use cfg->orig_method instead of cfg->method in a lot of
+	places.
+	
+	* mini.c (mono_create_rgctx_lazy_fetch_trampoline): Move this to
+	mini-trampolines.c to be with the other trampoline creation functions.
+
+	* method-to-ir.c (mono_emit_method_call): Remove the 'signature' argument
+	as it is equal to method->signature in most cases, add a 
+	mono_emit_method_call_full variant which takes a signature and an imt
+	argument as well.
 
 2008-08-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* jit-icalls.c (mono_helper_compile_generic_method): Don't pass the context
+	to this function, since it could be computed easily from the method 
+	argument.
+	(mono_helper_compile_generic_method_wo_context): Removed, not needed any
+	more.
+
+	* method-to-ir.c mini.c: Remove references to 
+	compile_generic_method_wo_context.
+
+	* method-to-ir.c (mono_method_to_ir2): Enable AOT for virtual
+	generic method calls.
+	
+	* method-to-ir.c (mono_method_to_ir2): Use mono_array_new_1 for 1
+	dimensional non-szarrays.
+
+	* mini.c (mini_init): Register mono_array_new_1.
+
+	* jit-icalls.c (mono_array_new_1): New jit icall.
+
+	* mini-trampolines.c (mono_magic_trampoline): For jumps, patch the GOT entries
+	pointing to the method.
+
+	* aot-runtime.c (mono_aot_get_method_from_token): Register GOT slots holding
+	method addresses belonging to METHOD_JUMP patches in the 
+	jump_target_got_slot_hash.
+	(mono_aot_load_method): Ditto.
+
+	* aot-compiler.c (compile_method): Allow AOT compilation of methods with
+	METHOD_JUMP patches.
+
+	* mini.c (mini_create_jit_domain_info): New helper function which 
+	initializes/frees domain->runtime_info.
+	(mini_free_jit_domain_info): Ditto.
+	(mini_init): Install the domain hook functions with the runtime.
+
+	* mini.h (MonoJitDomainInfo): New structure which stores the domain specific
+	information maintained by the JIT.
 
 	* mini.c (mono_resolve_patch_target): For PATCH_INFO_METHOD_JUMP, move the
 	insertion into jump_table_hash into mono_codegen (), also implement proper
 	locking.
 
+	* method-to-ir.c (mono_method_to_ir2): Don't disable AOT for CEE_JMP and
+	tail calls, it is already done by the aot code.
+	
+	* method-to-ir.c (mono_method_to_ir2): Handle CEE_JMP using the tail call
+	mechanism on amd64.
+
+	* iltests.il.in: Make the jmp test a bit more complex.
+
+	* aot-compiler.c (encode_method_ref): Handle references to normal methods of
+	generic instances which doesn't have a token.
+
+	* aot-runtime.c (decode_method_ref): Ditto.
+	
+	* method-to-ir.c (handle_unbox_nullable): Don't disable AOT, the aot code
+	can handle this case now.
+	(handle_box): Ditto.
+
+2008-08-15  Geoff Norton  <gnorton@novell.com>
+
+	* mini-x86.c: Fix alignment on Apple x86, and re-disable the alignment
+	debugging check.
+
+2008-08-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Allow AOT compilation of methods
+	calling generic methods.
+
+	* aot-compiler.c (encode_patch): Handle MONO_PATCH_INFO_METHOD_RGCTX.
+
+	* aot-runtime.c (decode_patch_info): Ditto.
+
+	* mini.c (mono_resolve_patch_target): Ditto.
+	
+	* patch-info.h: Add METHOD_RGCTX.
+
+	* mini-amd64.c (mono_arch_output_basic_block): Optimize LOCALLOC_IMM.
+
 2008-08-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (mono_arch_emit_call): Nullify call->vret_var if returning
+	arguments in registers.
+
+	* decompose.c (mono_decompose_vtype_opts): Create a var for the vreg in
+	OP_VCALL too, don't depend on OP_OUTARG_VTRETADDR doing it.
 
 	* mini.c (mini_method_compile): Abort aot compilation for generic
 	methods if generic sharing is disabled.
@@ -258,7 +4132,40 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	* mini.c (mono_method_to_ir): Disable AOT for virtual calls requiring
 	an mrgctx.
 
-2008-08-13  Bill Holmes  <billholmes54@gmail.com>
+	* method-to-ir.c (mono_method_to_ir2): Disable AOT for virtual calls 
+	requiring an mrgctx.
+
+	* decompose.c (mono_decompose_vtype_opts): Emit the correct sized
+	store instructions when converting a vcall to a normal call.
+
+	* mini.c (sigprof_signal_handler): Call mono_find_jit_info instead of
+	mono_arch_find_jit_info.
+
+2008-08-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (check_inline_called_method_name_limit): Optimize this to
+	avoid calling mono_method_full_name () for every method even if the
+	env var is not set.
+	(check_inline_caller_method_name_limit): Ditto.
+
+2008-08-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* driver.c (main_thread_handler): Allow AOT compilation of multiple 
+	assemblies in one run.
+
+	* aot-compiler.c (mono_compile_assembly): Only print out a count of
+	skipped methods if it is not 0.
+
+	* Makefile.am (aotcheck): AOT compile all test assemblies in one run.
+
+2008-08-12  Bill Holmes  <billholmes54@gmail.com>
+
+	* mini.c (mono_codegen):  Changing a preprocessor check from WIN64 to
+	  MONO_ARCH_HAVE_UNWIND_TABLE.
+
+	Contributed under MIT/X11 license.
+
+2008-08-12  Bill Holmes  <billholmes54@gmail.com>
 
 	* mini-amd64.c (mono_arch_cpu_optimizazions):  Remove peephole and branch
 	  from default optimizaton list on Winx64.
@@ -274,13 +4181,7 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 2008-08-12  Zoltan Varga  <vargaz@gmail.com>
 
-	* driver.c (main_thread_handler): Allow AOT compilation of multiple 
-	assemblies in one run.
-
-	* aot-compiler.c (mono_compile_assembly): Only print out a count of
-	skipped methods if it is not 0.
-
-2008-08-12  Zoltan Varga  <vargaz@gmail.com>
+	* mini.c (sigsegv_signal_handler): Fix the build.
 
 	* mini-amd64.c (emit_call_body): Use image->aot_module instead of 
 	assembly->aot_module.
@@ -289,94 +4190,327 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	hash table. This simplifies and speeds up a lot of code, and fixes support
 	for .netmodules.
 
-2008-08-12  Zoltan Varga  <vargaz@gmail.com>
-
 	* mini.c (SIG_HANDLER_SIGNATURE): Avoid crashes if the thread is not registered
 	with the runtime.
 
 	* mini-exceptions.c: Ditto.
+	
+	* exceptions-*c.c (mono_arch_find_jit_info): Remove unused 'trace' and
+	'native_offset' argument, since these are computed in the 
+	mono_find_jit_info () function.
+
+	* mini-exceptions.c (mono_find_jit_info): Make this non-static, as it
+	is used by exceptions-ppc.c.
+
+	* exceptions-ppc.c: Call mono_find_jit_info () instead of 
+	mono_arch_find_jit_info ().
+	
+	* mini-ppc.h exceptions-ppc.c mini-mips.h mini-mips.c exceptions-mips.c
+	mini-exceptions.c: Get rid of the CUSTOM_STACK_WALK stuff, use the
+	generic code in mini-exceptions.c.
 
 2008-08-11  Zoltan Varga  <vargaz@gmail.com>
 
+	* mini-ppc.c (mono_arch_flush_register_windows): Add this for ppc.
+
+	* aot-runtime.c (mono_aot_get_plt_info_offset): Fix a warning.
+	
 	* aot-runtime.c (mono_aot_get_method): Avoid doing all the loading inside
 	the aot lock, to avoid deadlocks when mono_aot_get_class_from_name () is
 	called while holding the loader lock. Fixes #415608.
 	(mono_aot_get_method_from_token_inner): Ditto.
 
+2008-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* exceptions-ppc.c (mono_jit_walk_stack): Use MONO_INIT_CONTEXT_FROM_CURRENT
+	to reduce differences between this and the generic implementation in
+	mini-exceptions.c.
+	(ves_icall_get_frame_info): Ditto.
+
+	* mini-ppc.h (MONO_INIT_CONTEXT_FROM_CURRENT): Define this for ppc too.
+
+	* mini-exceptions.c (mono_exceptions_init): Remove an #ifdef which is no
+	longer neccesarry.
+
+	* exceptions-ppc.c (arch_get_call_filter): Rename this to 
+	mono_arch_get_call_filter () and make it non-static, for consistency with the
+	other architectures.
+
+2008-08-09  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mini.c:
+	* local-propagation.c:
+	* mini-x86.c: Correct the name of arch defines.
+
+2008-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_op_to_op_imm_noemul): Correct name of
+	NO_EMULATE_LONG_SHIFT_OPS define.
+
 2008-08-08  Zoltan Varga  <vargaz@gmail.com>
 
-	* aot-compiler.c (mono_aot_parse_options): Disable no-dlsym option for now.
-	
-	* mini.c (mono_resolve_patch_target): Don't error out on missing icalls
-	while aot compiling.
-	
-	* mini.c driver.c aot-compiler.c: Update after
-	mono_marshal_get_native_wrapper () signature changes.
+	* method-to-ir.c (mono_method_to_ir2): Remove some code from CEE_MONO_LDPTR
+	now that aot-ed icall wrappers use CEE_MONO_ICALL_ADDR.
+
+	* aot-compiler.c aot-runtime.c: Add support for static aot compilation.
+	MACH fixes. Merged from the 2.0 branch.
+
+	* method-to-ir.c (mono_method_to_ir2): Handle CEE_MONO_ICALL_ADDR.
 
 	* mini.c (mono_resolve_patch_target): Error out if an icall is not found.
-	(mono_method_to_ir): Handle new CEE_MONO_ICALL_ADDR opcode.
+	(mono_method_to_ir): Handle CEE_MONO_ICALL_ADDR.
 
-2008-08-07  Zoltan Varga  <vargaz@gmail.com>
+	* exceptions-arm.c (mono_arch_get_throw_exception_generic): Add AOT support.
 
-	* aot-runtime.c (load_named_code): Pass the sofile to find_symbol, not the
-	MonoAotModule.
+	* method-to-ir.c mini.c driver.c aot-compiler.c: Update after
+	mono_marshal_get_native_wrapper () signature changes.
 
-	* exceptions-arm.c (mono_arch_get_throw_exception_generic): Add aot
-	support.
+2008-08-07  Rodrigo Kumpera  <rkumpera@novell.com>
 
-	* aot-runtime.c (load_named_code): Handle 'mono_arm_throw_exception'.
+	* jit-icalls.c (mono_fconv_ovf_u8): Work around soft-float double to long
+	conversion bug under arm.
 
-	* mini-arm.c (mono_arch_register_lowlevel_calls): Register 
-	mono_arm_throw_exception as a jit icall.
+2008-08-06  Rodrigo Kumpera  <rkumpera@novell.com>
 
-2008-08-06  Zoltan Varga  <vargaz@gmail.com>
+	* cpu-arm.md: Increase long_conv_to_ovf_i4_2 max length to 36.
 
-	* aot-compiler.c (mono_compile_assembly): Correct the computation of 
-	acfg->nmethods.
-	(add_wrappers): Don't emit jit icall wrappers etc. into every image.
+	* mini-arm.c (mono_arch_output_basic_block): Implement long to int conversion
+	with overflow checking.
+
+2008-08-05  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile.am (GENMDESC_PRG): when cross-compiling use full path
+	to the genmdesc.pl file
+
+2008-08-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* ir-emit.h (EMIT_NEW_ARGSTORE): Fix the usage of param_types and
+	arg_array in the soft-float versions of the LOAD/STORE macros.
+
+	* method-to-ir.c (mono_method_to_ir2): Fix a warning in the arm switch
+	implementation.
+
+	* ir-emit.h (NEW_VARLOADA): Handle SOFT_FLOAT correctly.
 
 2008-08-02  Zoltan Varga  <vargaz@gmail.com>
 
 	* mini-ia64.c (add_valuetype): Only reserve half parameter slot for each member of
 	a float HFA. Fixes #413621.
 
-2008-07-31  Zoltan Varga  <vargaz@gmail.com>
+2008-08-02  Gert Driesen  <drieseng@users.sourceforge.net>
 
-	* mini.h: Add a declaration for mono_aot_register_module ().
+	* mini-x86.c (mono_arg_get_argument_info): Rename last occurrence of
+	frame_size to args_size. Fixes build.
 
-	* aot-compiler.c aot-runtime.c: Merge some mach changes from Renaldas Zioma.
+2008-08-02  Zoltan Varga  <vargaz@gmail.com>
 
-	* debug-debugger.c (MONO_DEBUGGER__debugger_info): Fix a warning.
+	* mini-x86.c (mono_arch_get_argument_info): Rename frame_size to args_size,
+	and don't align it to MONO_ARCH_FRAME_ALIGNMENT.
 
-	* aot-compiler.c aot-runtime.c: Add a 'static' option to generate aot files
-	which can be statically linked into an executable.
+	* mini-x86.h: Change MONO_ARCH_FRAME_ALIGNMENT to 8 so doubles stored on
+	the stack are not unaligned. Fixes #413247.
+	
+Fri Aug 1 18:46:42 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
-2008-07-31  Bill Holmes  <billholmes54@gmail.com>
+	* mini.c: update jitted methods performance counters.
 
-	* aot-compiler.c : Backport of r108759.  Fix win32 build.
+Fri Aug 1 16:30:37 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* mini-exceptions.c: increase the exceptions thrown performance
+	counter in mono_handle_exception ().
+
+2008-07-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c: Use MonoImage's as keys in the aot_modules hash so the aot
+	can work with netmodules.
+
+2008-07-28  Geoff Norton  <gnorton@novell.com>
+
+	* mini-x86.h: Correct the frame alignment on OSX.  Fixes the jit 
+	regression tests.
+
+2008-07-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_emit_call): Emi the osx stack alignment at the
+	correct place.
+
+2008-07-28  Bill Holmes  <billholmes54@gmail.com>
+
+	* mini-amd64.c (get_call_info): Winx64 fix for passing floats.
+	  The float param registers and other param registers must be the 
+	  same index on Windows x64.
+
+	* mini-amd64.c (mono_arch_allocate_vars) : Implementing the 
+	  ArgValuetypeAddrInIReg argument case.  Setting the argument
+	  op to OP_VTARG_ADDR (OP_REGOFFSET)).
+
+	* mini-amd64.c (mono_arch_call_opcode) : Winx64 fix.  Use the size
+	  variable computed above as the copy length for arguments of storage
+	  type ArgValuetypeAddrInIReg.
+
+	* mini-amd64.c (mono_arch_emit_call) :  Implementing the 
+	  ArgValuetypeAddrInIReg argument case.  This case will rely on
+	  mono_arch_emit_outarg_vt to emit the correct code later in the process.
+
+	* mini-amd64.c (mono_arch_emit_call) :  On Winx64 there always needs to be
+	  a 32 byte stack allocation for all calls.  We will omit the adjustment for
+	  jump and tail call instructoins as they do not follow the typical call behavior.
+
+	* mini-amd64.c (mono_arch_emit_outarg_vt) :  Implementing the case for
+	  ArgValuetypeAddrInIReg.  The code emitted will copy the argument to a 
+	  local variable and pass the local variable by reference to the called method.
+
+	* mini-amd64.c (mono_arch_emit_prolog, emit_load_volatile_arguments) :
+ 	  Implementing the ArgValuetypeAddrInIReg argument case.  When the address
+ 	  of a struct is passed in a register it must be saved with the other
+ 	  volatile argument on the stack.
+
+	* mini-amd64.c (mono_arch_emit_prolog) : Winx64 fix.  When omitting the
+	  frame pointer the stack adjustment value must be saved to the unwind 
+	  info structure.
 
 	Contributed under MIT/X11 license.
 
-2008-07-29  Massimiliano Mantione  <massi@ximian.com>
-	* mini.c (sigprof_signal_handler): call the new "runtime initialized"
-	profiler hook.
+2008-07-28  Zoltan Varga  <vargaz@gmail.com>
 
-	Backported from trunk (r108631).
+	* inssel-x86.brg (stmt): Add missing OP_X86_OUTARG_ALIGN_STACK rule
+	which got lost in the merge.
 
 2008-07-27  Zoltan Varga  <vargaz@gmail.com>
 
-	* debug-mini.c (mono_debug_close_method): Avoid a crash if jit->this_var
-	is not set.
+	* method-to-ir.c: Make the helper_sig variables extern to fix the ppc
+	build.
 
-2008-07-25  Martin Baulig  <martin@ximian.com>
+	* mini-amd64.c (emit_call_body): Add a no_patch case missed earlier.
+	
+	* mini-amd64.c (emit_call_body): Avoid aligning the call instruction on
+	icalls, since they won't be patched.
 
-	* debug-debugger.c
-	(debugger_get_boxed_object): GC-protect the last 16 objects.
-	(debugger_runtime_invoke): Likewise.
+	* exceptions-amd64.c (mono_arch_get_restore_context_full): Use a slightly
+	different code sequence when running under valgrind to prevent some valgrind
+	errors.
+
+	* iltests.il.in: Add new regression test.
+
+	* method-to-ir.c (mono_method_to_ir2): Fix handling of inlined methods which
+	end with a throw.
+
+	* method-to-ir.c (mono_method_to_ir2): Use get_vreg_to_inst () instead of
+	accessing cfg->vreg_to_inst directly to prevent a crash in LDFLD.
+
+	* iltests.il.in: Add new test.
+
+	* aot-compiler.c: Fix some warnings.
+
+	* decompose.c (mono_decompose_long_opts): Implement OP_ICONV_TO_OVF_I8_UN.
+	Fixes #412494.
+
+2008-07-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* driver.c (mono_main): Fix the --gc=none build. Fixes #412482.
+	(mini_usage_jitdeveloper): Add a missing --wapi option.
+
+2008-07-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-codegen.c: Simplify the is_fp macros.
+	(free_up_ireg): Remove, use free_up_reg instead.
+	(free_up_reg): Fix the fp case.
+
+2008-07-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* cpu-arm.md (loadr8_membase): Increase the length of this as this is not
+	lowered earlier.
+
+	* exceptions-x86.c: Merge some changes which seemed to have got lost
+	in the linear-ir merge.
+
+	* liveness.c: Disable the liveness2 pass on 32 bit platforms.
+
+	* method-to-ir.c (mono_handle_global_vregs): Make the component vregs of a
+	long vreg volatile even if the variable was already created.
+
+	* liveness.c (update_liveness2): Avoid eliminating dead definitions of
+	volatile variables.
+
+2008-07-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* cpu-x86.md (fcall_membase): Increase the size of the fcall opcodes.
+
+	* mini.c (mono_jit_compile_method_inner): Add support for 
+	MONO_EXCEPTION_BAD_IMAGE.
+
+	* method-to-ir.c (mono_method_to_ir2): Avoid a crash if 
+	mini_method_get_context () returns NULL. Fixes #356531.
+
+	* mini.c (mono_method_to_ir): Ditto.
+	
+	* method-to-ir.c (mono_method_to_ir2): Create a variable if needed when
+	accessing a field of a valuetype in LDFLD/STFLD. Fixes #412399.
+
+2008-07-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): Initialize an uninitialized variable
+	in the LDFTN implementation.
+
+2008-07-25  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-trampolines.c (mono_magic_trampoline): When sharing generic
+	code, patch calls to icalls, too, even if they're not in the
+	shared generic code hash.  Fixes #411962.
+
+2008-07-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* cpu-x86.md: Increase the length of the fcall opcodes.
+
+	* mini-x86.c (emit_move_return_value): Avoid some precision issues for
+	calls returning floats.
+
+	* method-to-ir.c (mono_method_to_ir2): Remove the generic sharing restrictions
+	on NEWARR.
+	
+	* method-to-ir.c (mono_method_to_ir2): Merge some LDFTN gsharing changes
+	missed earlier.
+
+	* method-to-ir.c (handle_delegate_ctor): Avoid putting dynamic methods
+	into the domain->method_code_hash.
+
+	* aot-compiler.c: Fix win32 build.
+
+	* method-to-ir.c (EMIT_GET_RGCTX): Call EMIT_NEW_LDARG in emit_get_rgctx ().
+	
+	* method-to-ir.c (mono_method_to_ir2): Use mono_array_new_specific in the
+	gshared NEWARR implementation.
+
+	* cpu-sparc.md: Remove duplicate localloc_imm opcode.
+
+	* ir-emit.h (NEW_ARGLOAD): Use cfg->args and cfg->arg_types so this macro
+	can be used outside of method_to_ir.
+
+	* mini.h (MonoCompile): Add arg_types field.
+
+	* method-to-ir.c (inline_method): Save/Restore cfg->args and cfg->arg_types.
+	
+	* method-to-ir.c (mono_method_to_ir2): Set cfg->args and cfg->arg_types to
+	the values of the local arg_array and param_types array.
 
 2008-07-24  Zoltan Varga  <vargaz@gmail.com>
 
-	* aot-runtime.c aot-compiler.c: Merge with the version in HEAD.
+	* method-to-ir.c (mono_method_to_ir2): Allocate a GOT var for NEWOBJ, since
+	got accesses might only get generated later when NEWOBJ is decomposed.
+	
+	* method-to-ir.c (handle_delegate_ctor): Add an optimization to avoid
+	looking up the native code of the target method when a delegate is called
+	for the first time.
+
+	* mini-trampolines.c (mono_delegate_trampoline): Add the other half of the
+	optimization.
+
+	* debug-debugger.c (MONO_DEBUGGER__debugger_info): Fix a warning.
+
+	* aot-runtime.c aot-compiler.c: Add a new option 'no-dlsym' which makes
+	AOT work on platforms without a working dlsym implementation.
+
+	* mini.h: Bump AOT image format version.
 	
 2008-07-24  Mark Probst  <mark.probst@gmail.com>
 
@@ -385,43 +4519,79 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 	* aot-runtime.c: Free a MonoType.
 
-	Backported from trunk.
+2008-07-24  Zoltan Varga  <vargaz@gmail.com>
 
-2008-07-24  Bill Holmes  <billholmes54@gmail.com>
+	* method-to-ir.c (mono_method_to_ir2): Add a comment for the box+brtrue
+	optimization.
 
-	* mini-amd64.c (mono_arch_call_opcode) : Winx64 fix.  Use the size
-	  variable computed above as the copy length for arguments of storage
-	  type ArgValuetypeAddrInIReg.
+	* mini-codegen.c (mono_local_regalloc): Remove the remaining items from the
+	fp stack on x86.
 
-	Contributed under MIT/X11 license.
+2008-07-23  Massimiliano Mantione  <massi@ximian.com>
+	* mini.c (sigprof_signal_handler): call the new "runtime initialized"
+	profiler hook.
 
-2008-07-24  Bill Holmes  <billholmes54@gmail.com>
+2008-07-23  Zoltan Varga  <vargaz@gmail.com>
 
-	* mini-amd64.c (mono_arch_emit_prolog) : Winx64 fix.  When omitting the
-	  frame pointer the stack adjustment value must be saved to the unwind 
-	  info structure.
+	* method-to-ir.c (mono_method_to_ir2): Set the stack type properly for
+	NEWOBJ calls on valuetypes.
 
-	Contributed under MIT/X11 license.
+	* iltests.il.in: Add new test.
 
-2008-07-23  Martin Baulig  <martin@ximian.com>
+	* mini-x86.c (mono_arch_emit_call): Use mini_type_stack_size ().
 
-	* debug-mini.c (mono_debug_close_method): Check
-	`MONO_INST_IS_DEAD' for `this'.
+2008-07-22  Zoltan Varga  <vargaz@gmail.com>
 
-2008-07-22  Bill Holmes  <billholmes54@gmail.com>
+	* mini-exceptions.c: Fix some warnings. Remove one ia64 special case as it
+	is no longer needed.
 
-	* inssel-amd64.brg :  Adding rules for OP_VTARG_ADDR that are used for
-	  Winx64 struct arguments.
+	* mini-ia64.c (mono_arch_emit_prolog): In native-to-managed wrappers, widen
+	non register sized integer arguments.
+	(mono_arch_call_opcode): Add support for ArgInFloatRegR4.
+	(mono_arch_emit_outarg_vt): Pass a more reasonable alignment to 
+	emit_memcpy2 ().
 
-	* mini-amd64.c (mono_arch_allocate_vars) : Implementing the ArgValuetypeAddrInIReg
-	  argument case.  Setting the argument op to OP_VTARG_ADDR (OP_REGOFFSET)).
+	* method-to-ir.c (mono_method_to_ir2): Handle the ret_var_is_local case in
+	CEE_MONO_RETOBJ.
+	
+	* method-to-ir.c (ADD_WIDEN_OP): New macro to insert a widening op when
+	two a binop with different sized arguments is emitted.
 
-	* mini-amd64.c (mono_arch_emit_prolog, emit_load_volatile_arguments) :
- 	  Implementing the ArgValuetypeAddrInIReg argument case.  When the address
- 	  of a struct is passed in a register it must be saved with the other
- 	  volatile argument on the stack.
+	* mini.c (mono_bblock_insert_after_ins): Properly link up with the next
+	instruction in the ins==NULL case.
 
-	Contributed under MIT/X11 license.
+2008-07-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ops.h: Add OP_X86_OUTARG_ALIGN_STACK.
+
+	* mini-x86.c: Fix osx build.
+
+	* mini-amd64.c (mono_arch_output_basic_block): Handle varargs in the CALL_REG
+	opcodes as well.
+
+	* method-to-ir.c (mono_spill_global_vars): Avoid fusing a load+store into the
+	instruction for non int sized variables.
+
+	* method-to-ir.c (mono_method_to_ir2): Fix an assert in the LDFLD
+	implementation.
+
+2008-07-23  Robert Jordan  <robertj@gmx.net>
+
+	* method-to-ir.c: Fix MSVC build.
+
+2008-07-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir2): When calling native code which returns
+	a non int sized type, widen it to an int since newer versions of gcc seem to
+	generate code which needs this.
+
+	* ssa2.c abcremoval2.c: Fix warnings.
+
+	* *: Merge the Linear IR branch.
+
+	The original branch is at trunk/branches/vargaz/mini-linear-il, and
+	the ChangeLog file there describes all the changes done over the years. 
+	Further documentation can be found at www.mono-project.com/Linear_IL.
 
 2008-07-21  Bill Holmes  <billholmes54@gmail.com>
 
@@ -434,11 +4604,12 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 2008-07-21  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* mini.c: Make the previous fix GC safe.
-	Backported from trunk.
+
+2008-07-21  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile.am (version.h): Allow a trailing '/' in the repository URL.
 
 2008-07-21  Bill Holmes  <billholmes54@gmail.com>
-
-	Back port from trunk.  r108343
 
 	* mini-amd64.c (get_call_info): Correcting the case for MONO_TYPE_TYPEDBYREF
 	  on Winx64.  This type will not be passed on the stack (ArgOnStack), but 
@@ -446,15 +4617,24 @@ Wed Oct 8 16:35:43 CEST 2008 Paolo Molaro <lupus@ximian.com>
 
 	Contributed under MIT/X11 license.
 
-2008-07-21  Raja R Harinath  <harinath@hurrynot.org>
+2008-07-21  Zoltan Varga  <vargaz@gmail.com>
 
-	* Makefile.am (version.h): Allow a trailing '/' in the repository URL.
+	* mini-codegen.c (get_register_spilling): Fix a warning.
 
-2008-07-18  Rodrigo Kumpera  <rkumpera@novell.com>
+2008-07-17  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* mini.c: Use mono_runtime_class_init_full to avoid leaking memory
 	for types which the initialization fails. Raises the provided exception
-	at the right stop after cleanup. Backported from trunk.
+	at the right stop after cleanup.
+
+2008-07-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Free most of the memory allocated during compilation.
+
+	* mini.c (mini_parse_debug_options): Fix a leak.
+	
+	* mini.c (mini_method_compile): Don't add the method to the jit info tables
+	during aot compilation.
 
 2008-07-14  Zoltan Varga  <vargaz@gmail.com>
 
@@ -1351,7 +5531,7 @@ Tue Jun 3 13:07:03 CEST 2008 Paolo Molaro <lupus@ximian.com>
 	* mini.c (mini_get_method): Disable the check for open generic classes when
 	using generic sharing.
 
-	* generics.cs: Add a test #387034.
+	* generics.cs: Add a test for #387034.
 
 	* mini.c (mini_get_method): Check whenever the method class is an open generic
 	type, and return NULL in that case, causing a verification error. Fixes
@@ -14723,6 +18903,7 @@ Mon Apr 7 16:31:34 CEST 2003 Paolo Molaro <lupus@ximian.com>
 	belongs.
 
 	* mini.pc.in: Call this package `mini' for the moment.
+
 
 
 

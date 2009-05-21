@@ -1,15 +1,258 @@
+2009-02-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: append the QueryString in DownloadData.
+	Fixes bug #323788.
+
+2009-02-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebResponse.cs: return a Null stream when there's no response to
+	be read.
+	* FtpWebRequest.cs: provide the error returned by the server in the
+	exception.
+	* WebClient.cs: set the correct method when doing a FTP upload.
+	Fixes bug #478451.
+
+2009-02-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: avoid errors when creating a temporary Uri to get
+	the local path.
+	* WebClient.cs: when setting up the request for downloading, use the
+	default method. Fixes bug #477611.
+
+2009-02-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebConnectionStream.cs : use request only after it is set.
+
+2009-02-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: implemente (Read|Write)Timeout.
+	Fixes bug #348159.
+
+2009-02-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* CookieContainer.cs: separate cookies with "; " instead of just ';'.
+	Fixes bug #386727.
+
+2009-02-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: lock SetResponseError.
+
+2009-02-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Dns.cs: BeginGetHostAddresses - renamed argument to match MS,
+	reject "any" IP addresses. BeginGetHostEntry - renamed argument
+	to match MS, reject "any" IP addresses. GetHostEntry - reject
+	"any" IP addresses. GetHostAddresses - reject "any" IP addresses.
+	GetHostByName - use "hostName" as paramname in ANE.
+
+2009-02-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Dns.cs: empty string for host (also 0.0.0.0) is just passed to the
+	runtime, which will then retrieve the local IP addresses. Fixes bug
+	#386637 part 2/2.
+
+2009-02-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: some servers have a comment after the directory
+	name. Fixes bugs #471149 and #471216.
+
+2009-02-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: set the content length to 0 when the
+	response is not supposed to have any content.
+
+2009-02-05  Miguel de Icaza  <miguel@novell.com>
+
+	* WebConnectionStream.cs: Prevent a nullref here.   This might
+	have to be backported to 2.2 and 2.4
+
+2009-02-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs:
+	* HttpWebRequest.cs: calling Abort is safe now if the request has been
+	read entirely.
+
+2009-02-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebProxy.cs: use TryParse when checking for a localhost IP.
+
+2009-01-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebResponse.cs: avoid throwing an exception when
+	Content-Length is not present.
+
+2009-01-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: added locking in SetResponseData for the case
+	when we get an error response before BeginGetResponse has been
+	called.
+
+2009-01-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* IPAddress.cs: handle sign extension for the high byte when using the
+	byte[] ctor for an IPv4 address.
+	Fixes bug #467472.
+
+2009-01-19  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpWebRequest.cs: implemented the UseDefaultCredentials
+	property, patch from Florian Maetschke <f.maetschke@tu-bs.de>,
+	thanks!
+
+2009-01-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: adjust to the correct directory when listing too.
+	Fixes bug #466530.
+
+2009-01-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListenerRequest.cs: always initialize 'version'.
+	* HttpConnection.cs: the socket might already be disconnected when
+	shutting down.
+
+2009-01-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: if the buffer has been killed, return -1 for
+	its length. Fixes regression in System.Runtime.Remoting.
+
+2009-01-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: create a result from the response when
+	*GetResponse() has not been called yet and we have already received
+	all the data.
+	Fixes bug #464013.
+
+2009-01-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: keepAlive is of no use here.
+	Fixes bug #465613.
+
+2009-01-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpConnection.cs: we were not writing the headers for 0-length
+	responses.
+	* WebConnectionStream.cs: for 204/304 responses with an explicit
+	content-length of 0, release the socket only once.
+	Fixes bug #465638.
+
+2009-01-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: now deleting a file works when we're not in the
+	root directory.
+
+2008-12-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* IPAddress.cs: avoid throwing when parsing a subnet.
+
+2008-11-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpConnection.cs: remove CWL. When reusing, BeginReadRequest might
+	throw if the client closes.
+	* HttpListenerResponse.cs: close the connection for 1.0 clients.
+
+2008-11-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpDataStream.cs: use the socket for reading until the end of a
+	stream that wasn't read entirely. Remove unused ManualResetEvent.
+	* FtpWebRequest.cs: set the file_name when downloading. Update the
+	response status after every SendCommand. Send a "OPTS utf8 on" as MS
+	does (the control cnc reader should do something with UTF8)
+
+2008-11-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebRequest.cs: if the cache level is NoCacheNoStore, don't throw
+	when setting the CachePolicy.
+
+2008-11-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: take the server current directory into account
+	when uploading files. Set the data connection type before every
+	transmission.
+	Bug 333985 fixed.
+
+2008-10-31 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: disable keep-alive connections as the current code 
+	does not deal with keep-alive connections.
+	Workaround for bug #380262.
+
+2008-10-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: when there's a NTLM authentication in
+	progress, don't let the connection be used by the next request if we
+	have the entire response in the input buffer.
+
+2008-10-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListenerResponse.cs: removed obsolete comment.
+	* ResponseStream.cs: don't read response.SendChunked until after
+	getting the response headers.
+
+2008-10-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServicePointManager.cs: set the default limit of connections from
+	the configuration file(s) on startup.
+	Bug #339422 fixed.
+
+2008-10-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: don't call ProxyRequest twice.
+	* WebConnectionData.cs: remove unused fields.
+
+	* WebConnection.cs:
+	* WebConnectionStream.cs: when setting the input buffer, check to see
+	if the entire response is already there and free up the request slot.
+	Fixes bug #423156.
+
+	* ResponseStream.cs:
+	* HttpListenerResponse.cs: buffer the headers so that they are sent
+	together with the data on the first Write (if any). The fix above
+	didn't work with our HttpListener without this.
+
+2008-10-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs:
+	* ServicePoint.cs:
+	* WebConnectionGroup.cs:
+	* HttpWebRequest.cs:
+	* WebConnectionStream.cs: reuse the same connection when doing NTLM
+	authentication. Fixes bug #323375.
+	Implemented support for UnsafeAuthenticatedConnectionSharing.
+
+2008-10-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpConnection.cs:
+	* HttpListenerResponse.cs: fix typo that caused the "connection close"
+	header to be sent. Do not close the socket when the encoding is not
+	chunked and reuse is possible.
+	Fixes bug #433371.
+
+2008-10-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: if GetRequestStream has already been called,
+	return the same stream that we returned in the first call.
+	Fixes bug #429200.
+
+2008-10-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServicePointManager.cs: better handling of possible collisions of the
+	hash for schema/host/port. Fixes bug #417891.
+
+2008-10-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ChunkStream.cs: (ReadTrailer) make sure the array access is not out
+	of bounds. Fixes bug #322715.
+
 2008-09-19 Gonzalo Paniagua Javier <gonzalo.mono@gmail.com>
 
 	* WebConnectionStream.cs: when receiving a 0 content-length, free up
 	the slot for the next request immediately.
 	Fixes bug #427974.
-	
-2008-09-17  Michael Hutchinson  <mhutchinson@novell.com>
 
-	* HttpListenerPrefixCollection.cs:
-	* EndPointListener.cs:
-	* WebHeaderCollection.cs:
-	* HttpConnection.cs: Fixes for EMBEDDED_IN_1_0.
+2008-09-16  Miguel de Icaza  <miguel@novell.com>
+
+	* IPv6Address.cs: On the 2.0 profile, avoid throwing/catching
+	exceptions inside TryParse.
 
 2008-09-12  Miguel de Icaza  <miguel@novell.com>
 
@@ -17,7 +260,66 @@
 	HttpListener.cs, EndPointManager.cs, HttpConnection.cs: Remove
 	generics support where necessary to allow this code to be reused
 	in the 1.0 profile.
-	
+
+2008-09-08  Miguel de Icaza  <miguel@novell.com>
+
+	* EndPointListener.cs (SearchListener): Cope with the raw_url not
+	being merely a path, but potentially a full URI (see the proxy
+	case). 
+
+	* HttpListenerRequest.cs: Cope with raw_url not being merely a
+	path, but potentially a full Uri.   Also uses TryCreate, hoping
+	that one day it will be faster.
+
+2008-08-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* WebConnectionStream.cs (WriteRequest): Fix the copying in the
+	previous patch, when bytes.Length != length.
+
+2008-08-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* WebConnectionStream.cs (WriteRequest): For small requests,
+	cluster together the header + body in a single write call, avoids
+	the latency problems observed in an TLS application that makes
+	many web service calls. 
+
+2008-08-22  Geoff Norton  <gnorton@novell.com>
+
+	* WebConnection.cs: Set NoDelay
+
+2008-08-21  Stephane Delcroix  <sdelcroix@novell.com>
+
+	* OpenReadCompletedEventArgs.cs: new Address property for 2.1
+
+2008-08-06  Miguel de Icaza  <miguel@novell.com>
+
+	* IPAddress.cs (ParseIPV6): Use an exception-less parser for ipv6
+	addresses.
+
+	* IPv6Address.cs: Rewrite most of the parsing code to not use that
+	incredibly fragile, hacky and hacky implementation.
+
+	(TryParse): Provide a exception-less parsing path.
+
+2008-07-25  Gert Driesen  <drieseng@users.sourceforge.net>µ
+
+2008-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IPAddress.cs : several IPv4 parsing fix exposed by bug #411920.
+
+2008-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebClient.cs : it should not invoke delegate directly, but should
+	  call overridable OnDownloadProgressChanged.
+
+2008-07-25  Gert Driesen  <drieseng@users.sourceforge.net>μ
+
+	* HttpWebResponse.cs: Initialize contentLength in ctor, as it must
+	remain accessible after the response is disposed (and the headers are
+	no longer available). Adding missing disposed checks in properties
+	(except for StatusCode) and GetResponseHeader. On the 2.0 profile,
+	headers must remain accessible after the HttpWebResponse is disposed.
+
 2008-06-10  Stephane Delcroix  <sdelcroix@novell.com>
 
 	* IPAddress.cs: allow usage on 2.1 as smcs knows nothing about

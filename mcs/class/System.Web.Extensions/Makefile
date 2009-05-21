@@ -25,14 +25,24 @@ RESOURCE_FILES_DIST= \
 	../MicrosoftAjaxLibrary/System.Web.Extensions/1.0.61025.0/MicrosoftAjaxTimer.js		\
 	../MicrosoftAjaxLibrary/System.Web.Extensions/1.0.61025.0/MicrosoftAjaxWebForms.debug.js\
 	../MicrosoftAjaxLibrary/System.Web.Extensions/1.0.61025.0/MicrosoftAjaxWebForms.js
-	
+
+NUNIT_RESOURCE_FILES= \
+	Test/resources/Web.mono.config \
+	$(wildcard Test/resources/*.as?x) \
+	$(wildcard ../System.Web/Test/mainsoft/NunitWeb/NunitWeb/Resources/*.cs) \
+	$(wildcard ../System.Web/Test/mainsoft/NunitWeb/NunitWeb/Resources/*.as?x) \
+	$(wildcard ../System.Web/Test/mainsoft/NunitWeb/NunitWeb/Resources/*.master)
+
 LIB_MCS_FLAGS = \
 	-unsafe \
+	-define:NET_3_5			\
 	-define:SYSTEM_WEB_EXTENSIONS	\
 	-r:$(corlib)	 		\
 	-r:System.dll 			\
+	-r:System.Core.dll		\
 	-r:System.Drawing.dll 		\
 	-r:System.Data.dll		\
+	-r:System.Data.Linq.dll		\
 	-r:System.Xml.dll		\
 	-r:System.Web.dll		\
 	-r:System.Web.Services.dll	\
@@ -41,9 +51,9 @@ LIB_MCS_FLAGS = \
 	$(OTHER_LIB_MCS_FLAGS) 		\
 	$(RESOURCE_FILES:%=/resource:%)
 
-TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -doc:$(test_lib:.dll=.xml)  -nowarn:219 -nowarn:169 $(NUNIT_RESOURCE_FILES:%=/resource:%)
+TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -doc:$(test_lib:.dll=.xml) -nowarn:219,169,1591 $(NUNIT_RESOURCE_FILES:%=/resource:%)
 
-EXTRA_DISTFILES = $(RESOURCE_FILES_DIST) 
+EXTRA_DISTFILES = $(RESOURCE_FILES_DIST) $(NUNIT_RESOURCE_FILES)
 
 include ../../build/library.make
 

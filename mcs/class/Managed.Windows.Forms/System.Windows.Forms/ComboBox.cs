@@ -59,6 +59,7 @@ namespace System.Windows.Forms
 		private ComboListBox listbox_ctrl;
 		private ComboTextBox textbox_ctrl;
 		private bool process_textchanged_event = true;
+		private bool process_texchanged_autoscroll = true;
 		private bool item_height_specified;
 		private int item_height;
 		private int requested_height = -1;
@@ -509,7 +510,7 @@ namespace System.Windows.Forms
 				if (value) 
 					DropDownListBox ();
 				else
-					listbox_ctrl.Hide ();
+					listbox_ctrl.HideWindow ();
 			}
 		}
 
@@ -666,29 +667,7 @@ namespace System.Windows.Forms
 		public override int SelectedIndex {
 			get { return selected_index; }
 			set {
-				if (selected_index == value)
-					return;
-
-				if (value <= -2 || value >= Items.Count)
-					throw new ArgumentOutOfRangeException ("SelectedIndex");
-				selected_index = value;
-
-				if (dropdown_style != ComboBoxStyle.DropDownList) {
-					if (value == -1)
-						SetControlText("");
-					else
-						SetControlText (GetItemText (Items [value]));
-				}
-
-				if (DropDownStyle == ComboBoxStyle.DropDownList)
-					Invalidate ();
-
-				if (listbox_ctrl != null)
-					listbox_ctrl.HighlightedIndex = value;
-
-				OnSelectedValueChanged (new EventArgs ());
-				OnSelectedIndexChanged (new EventArgs ());
-				OnSelectedItemChanged (new EventArgs ());
+				SetSelectedIndex (value, false);
 			}
 		}
 
@@ -701,7 +680,11 @@ namespace System.Windows.Forms
 				object item = selected_index == -1 ? null : Items [selected_index];
 				if (item == value)
 					return;
-				SelectedIndex = Items.IndexOf (value);
+
+				if (value == null)
+					SelectedIndex = -1;
+				else
+					SelectedIndex = Items.IndexOf (value);
 			}
 		}
 		
@@ -799,7 +782,7 @@ namespace System.Windows.Forms
 				if (value == null) {
 					if (SelectedIndex == -1) {
 						if (dropdown_style != ComboBoxStyle.DropDownList)
-							SetControlText ("");
+							SetControlText (string.Empty, false);
 					} else {
 						SelectedIndex = -1;
 					}
@@ -837,6 +820,18 @@ namespace System.Windows.Forms
 			get { return text_area; }
 		}
 		#endregion
+
+		#region UIA Framework Properties
+
+		internal TextBox UIATextBox {
+			get { return textbox_ctrl; }
+		}
+
+		internal ComboListBox UIAComboListBox {
+			get { return listbox_ctrl; }
+		}
+
+		#endregion UIA Framework Properties
 
 		#region Public Methods
 #if NET_2_0
@@ -1027,28 +1022,35 @@ namespace System.Windows.Forms
 			if (DataManager == null)
 				return;
 
+			SelectedIndex = DataManager.Position;
+
 			if (selected_index != -1 && DropDownStyle != ComboBoxStyle.DropDownList)
-				SetControlText (GetItemText (Items [selected_index]));
+				SetControlText (GetItemText (Items [selected_index]), true);
 
 			if (!IsHandleCreated)
 				return;
 
-			SelectedIndex = DataManager.Position;
 			Invalidate ();
 		}
 
 		protected virtual void OnDrawItem (DrawItemEventArgs e)
 		{
+			DrawItemEventHandler eh = (DrawItemEventHandler)(Events [DrawItemEvent]);
+			if (eh != null)
+				eh (this, e);
+		}
+
+		internal void HandleDrawItem (DrawItemEventArgs e)
+		{
+			// Only raise OnDrawItem if we are in an OwnerDraw mode
 			switch (DrawMode) {
-			case DrawMode.OwnerDrawFixed:
-			case DrawMode.OwnerDrawVariable:
-				DrawItemEventHandler eh = (DrawItemEventHandler)(Events [DrawItemEvent]);
-				if (eh != null)
-					eh (this, e);
-				break;
-			default:
-				ThemeEngine.Current.DrawComboBoxItem (this, e);
-				break;
+				case DrawMode.OwnerDrawFixed:
+				case DrawMode.OwnerDrawVariable:
+					OnDrawItem (e);
+					break;
+				default:
+					ThemeEngine.Current.DrawComboBoxItem (this, e);
+					break;
 			}
 		}
 
@@ -1082,10 +1084,8 @@ namespace System.Windows.Forms
 			if (textbox_ctrl != null)
 				textbox_ctrl.Font = Font;
 			
-			if (!item_height_specified) {
-				SizeF sz = TextRenderer.MeasureString ("The quick brown Fox", Font);
-				item_height = (int) sz.Height;
-			}
+			if (!item_height_specified)
+				item_height = Font.Height + 2;
 
 			if (IntegralHeight)
 				UpdateComboBoxBounds ();
@@ -1238,6 +1238,12 @@ namespace System.Windows.Forms
 			for (int i = 0; i < Items.Count; i++) {
 				RefreshItem (i);
 			}
+
+			LayoutComboBox ();
+			Refresh ();
+
+			if (selected_index != -1 && DropDownStyle != ComboBoxStyle.DropDownList)
+				SetControlText (GetItemText (Items [selected_index]), false);
 		}
 
 		public override void ResetText ()
@@ -1372,6 +1378,13 @@ namespace System.Windows.Forms
 			case Msg.WM_KEYUP:
 			case Msg.WM_KEYDOWN:
 				Keys keys = (Keys) m.WParam.ToInt32 ();
+#if NET_2_0
+				// Don't pass the message to base if auto complete is being used and available.
+				if (textbox_ctrl != null && textbox_ctrl.CanNavigateAutoCompleteList) {
+					XplatUI.SendMessage (textbox_ctrl.Handle, (Msg) m.Msg, m.WParam, m.LParam);
+					return;
+				}
+#endif
 				if (keys == Keys.Up || keys == Keys.Down)
 					break;
 				goto case Msg.WM_CHAR;
@@ -1493,7 +1506,7 @@ namespace System.Windows.Forms
 				}
 				
 				state |= DrawItemState.ComboBoxEdit;
-				OnDrawItem (new DrawItemEventArgs (dc, Font, item_rect, SelectedIndex, state, ForeColor, BackColor));
+				HandleDrawItem (new DrawItemEventArgs (dc, Font, item_rect, SelectedIndex, state, ForeColor, BackColor));
 			}
 			
 			if (show_dropdown_button) {
@@ -1538,6 +1551,11 @@ namespace System.Windows.Forms
 			listbox_ctrl.Location = PointToScreen (new Point (text_area.X, text_area.Y + text_area.Height));
 
 			FindMatchOrSetIndex(SelectedIndex);
+
+#if NET_2_0
+			if (textbox_ctrl != null)
+				textbox_ctrl.HideAutoCompleteList ();
+#endif
 
 			if (listbox_ctrl.ShowWindow ())
 				dropped_down = true;
@@ -1634,6 +1652,10 @@ namespace System.Windows.Forms
 			if (Items.Count == 0)
 				return;
 
+			// for keyboard navigation, we have to do our own scroll, since
+			// the default behaviour for the SelectedIndex property is a little different,
+			// setting the selected index in the top always
+
 			int offset;
 			switch (e.KeyCode) 
 			{
@@ -1661,7 +1683,7 @@ namespace System.Windows.Forms
 					if (offset < 1)
 						offset = 1;
 
-					SelectedIndex = Math.Max (SelectedIndex - offset, 0);
+					SetSelectedIndex (Math.Max (SelectedIndex - offset, 0), true);
 
 					if (DroppedDown)
 						if (SelectedIndex < listbox_ctrl.FirstVisibleItem ())
@@ -1679,7 +1701,7 @@ namespace System.Windows.Forms
 					if (offset < 1)
 						offset = 1;
 
-					SelectedIndex = Math.Min (SelectedIndex + offset, Items.Count - 1);
+					SetSelectedIndex (Math.Min (SelectedIndex + offset, Items.Count - 1), true);
 
 					if (DroppedDown)
 						if (SelectedIndex >= listbox_ctrl.LastVisibleItem ())
@@ -1703,7 +1725,7 @@ namespace System.Windows.Forms
 					break;
 				case Keys.End:
 					if (dropdown_style == ComboBoxStyle.DropDownList) {
-						SelectedIndex = Items.Count - 1;
+						SetSelectedIndex (Items.Count - 1, true);
 
 						if (DroppedDown)
 							if (SelectedIndex >= listbox_ctrl.LastVisibleItem ())
@@ -1716,6 +1738,34 @@ namespace System.Windows.Forms
 			}
 		}
 
+		void SetSelectedIndex (int value, bool supressAutoScroll)
+		{
+			if (selected_index == value)
+				return;
+
+			if (value <= -2 || value >= Items.Count)
+				throw new ArgumentOutOfRangeException ("SelectedIndex");
+
+			selected_index = value;
+
+			if (dropdown_style != ComboBoxStyle.DropDownList) {
+				if (value == -1)
+					SetControlText (string.Empty, false, supressAutoScroll);
+				else
+					SetControlText (GetItemText (Items [value]), false, supressAutoScroll);
+			}
+
+			if (DropDownStyle == ComboBoxStyle.DropDownList)
+				Invalidate ();
+
+			if (listbox_ctrl != null)
+				listbox_ctrl.HighlightedIndex = value;
+
+			OnSelectedValueChanged (EventArgs.Empty);
+			OnSelectedIndexChanged (EventArgs.Empty);
+			OnSelectedItemChanged (EventArgs.Empty);
+		}
+
 		// If no item is currently selected, and an item is found matching the text 
 		// in the textbox, then selected that item.  Otherwise the item at the given 
 		// index is selected.
@@ -1725,9 +1775,9 @@ namespace System.Windows.Forms
 			if (SelectedIndex == -1 && Text.Length != 0)
 				match = FindStringCaseInsensitive(Text);
 			if (match != -1)
-				SelectedIndex = match;
+				SetSelectedIndex (match, true);
 			else
-				SelectedIndex = index;
+				SetSelectedIndex (index, true);
 		}
 		
 		void OnMouseDownCB (object sender, MouseEventArgs e)
@@ -1834,20 +1884,19 @@ namespace System.Windows.Forms
 			if (process_textchanged_event == false)
 				return; 
 
-			OnTextChanged (EventArgs.Empty);
-
 			int item = FindStringCaseInsensitive (textbox_ctrl.Text);
 			
-			if (item == -1)
+			if (item == -1) {
+				// Setting base.Text below will raise this event
+				// if we found something
+				OnTextChanged (EventArgs.Empty);
 				return;
-
-			// TODO:  THIS IS BROKEN-ISH
-			// I don't think we should hilight, and setting the top item does weirdness
-			// when there is no scrollbar
+			}
 			
 			if (listbox_ctrl != null) {
-				listbox_ctrl.SetTopItem (item);
-				listbox_ctrl.HighlightedIndex = item;
+				// Set as top item
+				if (process_texchanged_autoscroll)
+					listbox_ctrl.EnsureTop (item);
 			}
 
 			base.Text = textbox_ctrl.Text;
@@ -1856,14 +1905,26 @@ namespace System.Windows.Forms
 		private void OnTextKeyPress (object sender, KeyPressEventArgs e)
 		{
 			selected_index = -1;
+			if (listbox_ctrl != null)
+				listbox_ctrl.HighlightedIndex = -1;
 		}
 
-		internal void SetControlText (string s)
+		internal void SetControlText (string s, bool suppressTextChanged)
 		{
-			process_textchanged_event = false;
+			SetControlText (s, suppressTextChanged, false);
+		}
+
+		internal void SetControlText (string s, bool suppressTextChanged, bool supressAutoScroll)
+		{
+			if (suppressTextChanged)
+				process_textchanged_event = false;
+			if (supressAutoScroll)
+				process_texchanged_autoscroll = false;
+				
 			textbox_ctrl.Text = s;
 			textbox_ctrl.SelectAll ();
 			process_textchanged_event = true;
+			process_texchanged_autoscroll = true;
 		}
 		
 		void UpdateComboBoxBounds ()
@@ -1913,6 +1974,32 @@ namespace System.Windows.Forms
 
 			private ComboBox owner;
 			internal ArrayList object_items = new ArrayList ();
+			
+			#region UIA Framework Events
+
+#if NET_2_0
+			//NOTE:
+			//	We are using Reflection to add/remove internal events.
+			//	Class ListProvider uses the events.
+			//
+			//Event used to generate UIA StructureChangedEvent
+			static object UIACollectionChangedEvent = new object ();
+
+			internal event CollectionChangeEventHandler UIACollectionChanged {
+				add { owner.Events.AddHandler (UIACollectionChangedEvent, value); }
+				remove { owner.Events.RemoveHandler (UIACollectionChangedEvent, value); }
+			}
+			
+			internal void OnUIACollectionChangedEvent (CollectionChangeEventArgs args)
+			{
+				CollectionChangeEventHandler eh
+					= (CollectionChangeEventHandler) owner.Events [UIACollectionChangedEvent];
+				if (eh != null)
+					eh (owner, args);
+			}
+#endif
+
+			#endregion UIA Framework Events
 
 			public ObjectCollection (ComboBox owner)
 			{
@@ -1943,7 +2030,18 @@ namespace System.Windows.Forms
 					if (value == null)
 						throw new ArgumentNullException ("value");
 
+#if NET_2_0
+					//UIA Framework event: Item Removed
+					OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, object_items [index]));
+#endif
+
 					object_items[index] = value;
+					
+#if NET_2_0
+					//UIA Framework event: Item Added
+					OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, value));
+#endif
+
 					if (owner.listbox_ctrl != null)
 						owner.listbox_ctrl.InvalidateItem (index);
 					if (index == owner.SelectedIndex) {
@@ -1996,6 +2094,11 @@ namespace System.Windows.Forms
 				object_items.Clear ();
 				owner.UpdatedItems ();
 				owner.Refresh ();
+				
+#if NET_2_0
+				//UIA Framework event: Items list cleared
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Refresh, null));
+#endif
 			}
 			
 			public bool Contains (object value)
@@ -2057,8 +2160,13 @@ namespace System.Windows.Forms
 				
 				if (owner.Sorted)
 					AddItem (item);
-				else
+				else {
 					object_items.Insert (index, item);
+#if NET_2_0
+					//UIA Framework event: Item added
+					OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, item));
+#endif					
+				}
 				
 				owner.EndUpdate ();	// Calls UpdatedItems
 			}
@@ -2082,8 +2190,18 @@ namespace System.Windows.Forms
 				if (index == owner.SelectedIndex)
 					owner.SelectedIndex = -1;
 
+#if NET_2_0
+				object removed = object_items [index];
+#endif
+
+
 				object_items.RemoveAt (index);
 				owner.UpdatedItems ();
+				
+#if NET_2_0
+				//UIA Framework event: Item removed
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, removed));
+#endif
 			}
 			#endregion Public Methods
 
@@ -2105,12 +2223,23 @@ namespace System.Windows.Forms
 							if (index <= owner.selected_index && owner.IsHandleCreated)
 								owner.selected_index++;
 								
+#if NET_2_0
+							//UIA Framework event: Item added
+							OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, item));
+#endif
+
 							return index;
 						}
 						index++;
 					}
 				}
 				object_items.Add (item);
+				
+#if NET_2_0
+				//UIA Framework event: Item added
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, item));
+#endif
+				
 				return object_items.Count - 1;
 			}
 			
@@ -2124,9 +2253,30 @@ namespace System.Windows.Forms
 
 			internal void Sort ()
 			{
-				object_items.Sort ();
+				// If the objects the user put here don't have their own comparer,
+				// use one that compares based on the object's ToString
+				if (object_items.Count > 0 && object_items[0] is IComparer)
+					object_items.Sort ();
+				else
+					object_items.Sort (new ObjectComparer (owner));
 			}
 
+			private class ObjectComparer : IComparer
+			{
+				private ListControl owner;
+				
+				public ObjectComparer (ListControl owner)
+				{
+					this.owner = owner;
+				}
+				
+				#region IComparer Members
+				public int Compare (object x, object y)
+				{
+					return string.Compare (owner.GetItemText (x), owner.GetItemText (y));
+				}
+				#endregion
+			}
 			#endregion Private Methods
 		}
 
@@ -2199,6 +2349,22 @@ namespace System.Windows.Forms
 				NextPage,
 				PreviousPage,
 			}
+
+			#region UIA Framework: Properties
+
+			internal int UIATopItem {
+				get { return top_item; }
+			}
+			
+			internal int UIALastItem {
+				get { return last_item; }
+			}
+
+			internal ScrollBar UIAVScrollBar {
+				get { return vscrollbar_ctrl; }
+			}
+
+			#endregion
 			
 			class VScrollBarLB : VScrollBar
 			{
@@ -2401,8 +2567,8 @@ namespace System.Windows.Forms
 								state |= DrawItemState.Focus;
 							}
 						}
-						
-						owner.OnDrawItem (new DrawItemEventArgs (dc, owner.Font, item_rect,
+
+						owner.HandleDrawItem (new DrawItemEventArgs (dc, owner.Font, item_rect,
 							i, state, owner.ForeColor, owner.BackColor));
 					}
 				}
@@ -2499,7 +2665,23 @@ namespace System.Windows.Forms
 			{
 				return top_item;
 			}
-			
+
+			public void EnsureTop (int item)
+			{
+				if (owner.Items.Count == 0)
+					return;
+				if (vscrollbar_ctrl == null || !vscrollbar_ctrl.Visible)
+					return;
+
+				int max = vscrollbar_ctrl.Maximum - page_size + 1;
+				if (item > max)
+					item = max;
+				else if (item < vscrollbar_ctrl.Minimum)
+					item = vscrollbar_ctrl.Minimum;
+
+				vscrollbar_ctrl.Value = item;
+			}
+
 			bool scrollbar_grabbed = false;
 
 			bool InScrollBar {
@@ -2553,8 +2735,18 @@ namespace System.Windows.Forms
 					return;
 				}
 
-				owner.SelectedIndex = index;
+				bool is_change = owner.SelectedIndex != index;
+				
+				owner.SetSelectedIndex (index, true);
 				owner.OnSelectionChangeCommitted (new EventArgs ());
+				
+				// If the user selected the already selected item, SelectedIndex
+				// won't fire these events, but .Net does, so we do it here
+				if (!is_change) {
+					owner.OnSelectedValueChanged (EventArgs.Empty);
+					owner.OnSelectedIndexChanged (EventArgs.Empty);
+				}
+				
 				HideWindow ();
 			}
 

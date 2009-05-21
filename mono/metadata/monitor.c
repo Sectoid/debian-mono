@@ -9,6 +9,7 @@
 
 #include <config.h>
 #include <glib.h>
+#include <string.h>
 
 #include <mono/metadata/monitor.h>
 #include <mono/metadata/threads-types.h>
@@ -16,8 +17,25 @@
 #include <mono/metadata/threads.h>
 #include <mono/io-layer/io-layer.h>
 #include <mono/metadata/object-internals.h>
+#include <mono/metadata/class-internals.h>
 #include <mono/metadata/gc-internal.h>
+#include <mono/metadata/method-builder.h>
+#include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/tabledefs.h>
+#include <mono/metadata/marshal.h>
 #include <mono/utils/mono-time.h>
+
+/*
+ * Pull the list of opcodes
+ */
+#define OPDEF(a,b,c,d,e,f,g,h,i,j) \
+	a = i,
+
+enum {
+#include "mono/cil/opcode.def"
+	LAST = 0xff
+};
+#undef OPDEF
 
 /*#define LOCK_DEBUG(a) do { a; } while (0)*/
 #define LOCK_DEBUG(a)
@@ -199,6 +217,7 @@ mon_finalize (MonoThreadsSync *mon)
 
 	mon->data = monitor_freelist;
 	monitor_freelist = mon;
+	mono_perfcounters->gc_sync_blocks--;
 }
 
 /* LOCKING: this is called with monitor_mutex held */
@@ -257,6 +276,7 @@ mon_new (gsize id)
 	new->owner = id;
 	new->nest = 1;
 	
+	mono_perfcounters->gc_sync_blocks++;
 	return new;
 }
 
@@ -483,6 +503,7 @@ retry:
 	}
 
 	/* The object must be locked by someone else... */
+	mono_perfcounters->thread_contentions++;
 
 	/* If ms is 0 we don't block, but just fail straight away */
 	if (ms == 0) {
@@ -527,6 +548,8 @@ retry:
 	
 	InterlockedIncrement (&mon->entry_count);
 
+	mono_perfcounters->thread_queue_len++;
+	mono_perfcounters->thread_queue_max++;
 	thread = mono_thread_current ();
 
 	mono_thread_set_state (thread, ThreadState_WaitSleepJoin);
@@ -540,6 +563,7 @@ retry:
 	mono_thread_clr_state (thread, ThreadState_WaitSleepJoin);
 	
 	InterlockedDecrement (&mon->entry_count);
+	mono_perfcounters->thread_queue_len--;
 
 	if (ms != INFINITE) {
 		now = mono_msec_ticks ();
@@ -664,6 +688,377 @@ mono_monitor_exit (MonoObject *obj)
 			  ": (%d) Object %p is now locked %d times", GetCurrentThreadId (), obj, nest));
 		mon->nest = nest;
 	}
+}
+
+static void
+emit_obj_syncp_check (MonoMethodBuilder *mb, int syncp_loc, int *obj_null_branch, int *syncp_true_false_branch,
+	gboolean branch_on_true)
+{
+	/*
+	  ldarg		0							obj
+	  brfalse.s	obj_null
+	*/
+
+	mono_mb_emit_byte (mb, CEE_LDARG_0);
+	*obj_null_branch = mono_mb_emit_short_branch (mb, CEE_BRFALSE_S);
+
+	/*
+	  ldarg		0							obj
+	  conv.i								objp
+	  ldc.i4	G_STRUCT_OFFSET(MonoObject, synchronisation)		objp off
+	  add									&syncp
+	  ldind.i								syncp
+	  stloc		syncp
+	  ldloc		syncp							syncp
+	  brtrue/false.s	syncp_true_false
+	*/
+
+	mono_mb_emit_byte (mb, CEE_LDARG_0);
+	mono_mb_emit_byte (mb, CEE_CONV_I);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoObject, synchronisation));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDIND_I);
+	mono_mb_emit_stloc (mb, syncp_loc);
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	*syncp_true_false_branch = mono_mb_emit_short_branch (mb, branch_on_true ? CEE_BRTRUE_S : CEE_BRFALSE_S);
+}
+
+static MonoMethod*
+mono_monitor_get_fast_enter_method (MonoMethod *monitor_enter_method)
+{
+	static MonoMethod *fast_monitor_enter;
+	static MonoMethod *compare_exchange_method;
+
+	MonoMethodBuilder *mb;
+	int obj_null_branch, syncp_null_branch, has_owner_branch, other_owner_branch, tid_branch;
+	int tid_loc, syncp_loc, owner_loc;
+	int thread_tls_offset;
+
+#ifdef HAVE_MOVING_COLLECTOR
+	return NULL;
+#endif
+
+	thread_tls_offset = mono_thread_get_tls_offset ();
+	if (thread_tls_offset == -1)
+		return NULL;
+
+	if (fast_monitor_enter)
+		return fast_monitor_enter;
+
+	if (!compare_exchange_method) {
+		MonoMethodDesc *desc;
+		MonoClass *class;
+
+		desc = mono_method_desc_new ("Interlocked:CompareExchange(intptr&,intptr,intptr)", FALSE);
+		class = mono_class_from_name (mono_defaults.corlib, "System.Threading", "Interlocked");
+		compare_exchange_method = mono_method_desc_search_in_class (desc, class);
+		mono_method_desc_free (desc);
+
+		if (!compare_exchange_method)
+			return NULL;
+	}
+
+	mb = mono_mb_new (mono_defaults.monitor_class, "FastMonitorEnter", MONO_WRAPPER_UNKNOWN);
+
+	mb->method->slot = -1;
+	mb->method->flags = METHOD_ATTRIBUTE_PUBLIC | METHOD_ATTRIBUTE_STATIC |
+		METHOD_ATTRIBUTE_HIDE_BY_SIG | METHOD_ATTRIBUTE_FINAL;
+
+	tid_loc = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
+	syncp_loc = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
+	owner_loc = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
+
+	emit_obj_syncp_check (mb, syncp_loc, &obj_null_branch, &syncp_null_branch, FALSE);
+
+	/*
+	  mono. tls	thread_tls_offset					threadp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThread, tid)			threadp off
+	  add									&tid
+	  ldind.i								tid
+	  stloc		tid
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, owner)			syncp off
+	  add									&owner
+	  ldind.i								owner
+	  stloc		owner
+	  ldloc		owner							owner
+	  brtrue.s	tid
+	*/
+
+	mono_mb_emit_byte (mb, MONO_CUSTOM_PREFIX);
+	mono_mb_emit_byte (mb, CEE_MONO_TLS);
+	mono_mb_emit_i4 (mb, thread_tls_offset);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThread, tid));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDIND_I);
+	mono_mb_emit_stloc (mb, tid_loc);
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, owner));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDIND_I);
+	mono_mb_emit_stloc (mb, owner_loc);
+	mono_mb_emit_ldloc (mb, owner_loc);
+	tid_branch = mono_mb_emit_short_branch (mb, CEE_BRTRUE_S);
+
+	/*
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, owner)			syncp off
+	  add									&owner
+	  ldloc		tid							&owner tid
+	  ldc.i4	0							&owner tid 0
+	  call		System.Threading.Interlocked.CompareExchange		oldowner
+	  brtrue.s	has_owner
+	  ret
+	*/
+
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, owner));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_ldloc (mb, tid_loc);
+	mono_mb_emit_byte (mb, CEE_LDC_I4_0);
+	mono_mb_emit_managed_call (mb, compare_exchange_method, NULL);
+	has_owner_branch = mono_mb_emit_short_branch (mb, CEE_BRTRUE_S);
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	/*
+	 tid:
+	  ldloc		owner							owner
+	  ldloc		tid							owner tid
+	  brne.s	other_owner
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, nest)			syncp off
+	  add									&nest
+	  dup									&nest &nest
+	  ldind.i4								&nest nest
+	  ldc.i4	1							&nest nest 1
+	  add									&nest nest+
+	  stind.i4
+	  ret
+	*/
+
+	mono_mb_patch_short_branch (mb, tid_branch);
+	mono_mb_emit_ldloc (mb, owner_loc);
+	mono_mb_emit_ldloc (mb, tid_loc);
+	other_owner_branch = mono_mb_emit_short_branch (mb, CEE_BNE_UN_S);
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, nest));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_DUP);
+	mono_mb_emit_byte (mb, CEE_LDIND_I4);
+	mono_mb_emit_byte (mb, CEE_LDC_I4_1);
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_STIND_I4);
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	/*
+	 obj_null, syncp_null, has_owner, other_owner:
+	  ldarg		0							obj
+	  call		System.Threading.Monitor.Enter
+	  ret
+	*/
+
+	mono_mb_patch_short_branch (mb, obj_null_branch);
+	mono_mb_patch_short_branch (mb, syncp_null_branch);
+	mono_mb_patch_short_branch (mb, has_owner_branch);
+	mono_mb_patch_short_branch (mb, other_owner_branch);
+	mono_mb_emit_byte (mb, CEE_LDARG_0);
+	mono_mb_emit_managed_call (mb, monitor_enter_method, NULL);
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	fast_monitor_enter = mono_mb_create_method (mb, mono_signature_no_pinvoke (monitor_enter_method), 5);
+	mono_mb_free (mb);
+
+	return fast_monitor_enter;
+}
+
+static MonoMethod*
+mono_monitor_get_fast_exit_method (MonoMethod *monitor_exit_method)
+{
+	static MonoMethod *fast_monitor_exit;
+
+	MonoMethodBuilder *mb;
+	int obj_null_branch, has_waiting_branch, has_syncp_branch, owned_branch, nested_branch;
+	int thread_tls_offset;
+	int syncp_loc;
+
+#ifdef HAVE_MOVING_COLLECTOR
+	return NULL;
+#endif
+
+	thread_tls_offset = mono_thread_get_tls_offset ();
+	if (thread_tls_offset == -1)
+		return NULL;
+
+	if (fast_monitor_exit)
+		return fast_monitor_exit;
+
+	mb = mono_mb_new (mono_defaults.monitor_class, "FastMonitorExit", MONO_WRAPPER_UNKNOWN);
+
+	mb->method->slot = -1;
+	mb->method->flags = METHOD_ATTRIBUTE_PUBLIC | METHOD_ATTRIBUTE_STATIC |
+		METHOD_ATTRIBUTE_HIDE_BY_SIG | METHOD_ATTRIBUTE_FINAL;
+
+	syncp_loc = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
+
+	emit_obj_syncp_check (mb, syncp_loc, &obj_null_branch, &has_syncp_branch, TRUE);
+
+	/*
+	  ret
+	*/
+
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	/*
+	 has_syncp:
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, owner)			syncp off
+	  add									&owner
+	  ldind.i								owner
+	  mono. tls	thread_tls_offset					owner threadp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThread, tid)			owner threadp off
+	  add									owner &tid
+	  ldind.i								owner tid
+	  beq.s		owned
+	*/
+
+	mono_mb_patch_short_branch (mb, has_syncp_branch);
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, owner));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDIND_I);
+	mono_mb_emit_byte (mb, MONO_CUSTOM_PREFIX);
+	mono_mb_emit_byte (mb, CEE_MONO_TLS);
+	mono_mb_emit_i4 (mb, thread_tls_offset);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThread, tid));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDIND_I);
+	owned_branch = mono_mb_emit_short_branch (mb, CEE_BEQ_S);
+
+	/*
+	  ret
+	*/
+
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	/*
+	 owned:
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, nest)			syncp off
+	  add									&nest
+	  dup									&nest &nest
+	  ldind.i4								&nest nest
+	  dup									&nest nest nest
+	  ldc.i4	1							&nest nest nest 1
+	  bgt.un.s	nested							&nest nest
+	*/
+
+	mono_mb_patch_short_branch (mb, owned_branch);
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, nest));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_DUP);
+	mono_mb_emit_byte (mb, CEE_LDIND_I4);
+	mono_mb_emit_byte (mb, CEE_DUP);
+	mono_mb_emit_byte (mb, CEE_LDC_I4_1);
+	nested_branch = mono_mb_emit_short_branch (mb, CEE_BGT_UN_S);
+
+	/*
+	  pop									&nest
+	  pop
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, entry_count)		syncp off
+	  add									&count
+	  ldind.i4								count
+	  brtrue.s	has_waiting
+	*/
+
+	mono_mb_emit_byte (mb, CEE_POP);
+	mono_mb_emit_byte (mb, CEE_POP);
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, entry_count));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDIND_I4);
+	has_waiting_branch = mono_mb_emit_short_branch (mb, CEE_BRTRUE_S);
+
+	/*
+	  ldloc		syncp							syncp
+	  ldc.i4	G_STRUCT_OFFSET(MonoThreadsSync, owner)			syncp off
+	  add									&owner
+	  ldnull								&owner 0
+	  stind.i
+	  ret
+	*/
+
+	mono_mb_emit_ldloc (mb, syncp_loc);
+	mono_mb_emit_icon (mb, G_STRUCT_OFFSET (MonoThreadsSync, owner));
+	mono_mb_emit_byte (mb, CEE_ADD);
+	mono_mb_emit_byte (mb, CEE_LDNULL);
+	mono_mb_emit_byte (mb, CEE_STIND_I);
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	/*
+	 nested:
+	  ldc.i4	1							&nest nest 1
+	  sub									&nest nest-
+	  stind.i4
+	  ret
+	*/
+
+	mono_mb_patch_short_branch (mb, nested_branch);
+	mono_mb_emit_byte (mb, CEE_LDC_I4_1);
+	mono_mb_emit_byte (mb, CEE_SUB);
+	mono_mb_emit_byte (mb, CEE_STIND_I4);
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	/*
+	 obj_null, has_waiting:
+	  ldarg		0							obj
+	  call		System.Threading.Monitor.Exit
+	  ret
+	 */
+
+	mono_mb_patch_short_branch (mb, obj_null_branch);
+	mono_mb_patch_short_branch (mb, has_waiting_branch);
+	mono_mb_emit_byte (mb, CEE_LDARG_0);
+	mono_mb_emit_managed_call (mb, monitor_exit_method, NULL);
+	mono_mb_emit_byte (mb, CEE_RET);
+
+	fast_monitor_exit = mono_mb_create_method (mb, mono_signature_no_pinvoke (monitor_exit_method), 5);
+	mono_mb_free (mb);
+
+	return fast_monitor_exit;
+}
+
+MonoMethod*
+mono_monitor_get_fast_path (MonoMethod *enter_or_exit)
+{
+	if (strcmp (enter_or_exit->name, "Enter") == 0)
+		return mono_monitor_get_fast_enter_method (enter_or_exit);
+	if (strcmp (enter_or_exit->name, "Exit") == 0)
+		return mono_monitor_get_fast_exit_method (enter_or_exit);
+	g_assert_not_reached ();
+	return NULL;
+}
+
+/*
+ * mono_monitor_threads_sync_member_offset:
+ * @owner_offset: returns size and offset of the "owner" member
+ * @nest_offset: returns size and offset of the "nest" member
+ * @entry_count_offset: returns size and offset of the "entry_count" member
+ *
+ * Returns the offsets and sizes of three members of the
+ * MonoThreadsSync struct.  The Monitor ASM fastpaths need this.
+ */
+void
+mono_monitor_threads_sync_members_offset (int *owner_offset, int *nest_offset, int *entry_count_offset)
+{
+	MonoThreadsSync ts;
+
+#define ENCODE_OFF_SIZE(o,s)	(((o) << 8) | ((s) & 0xff))
+
+	*owner_offset = ENCODE_OFF_SIZE (G_STRUCT_OFFSET (MonoThreadsSync, owner), sizeof (ts.owner));
+	*nest_offset = ENCODE_OFF_SIZE (G_STRUCT_OFFSET (MonoThreadsSync, nest), sizeof (ts.nest));
+	*entry_count_offset = ENCODE_OFF_SIZE (G_STRUCT_OFFSET (MonoThreadsSync, entry_count), sizeof (ts.entry_count));
 }
 
 gboolean 

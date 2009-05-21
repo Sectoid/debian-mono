@@ -281,6 +281,7 @@ namespace System.Windows.Forms
 					return;
 
 				base.Padding = value;
+				CreateLinkPieces ();
 			}
 		}
 #endif
@@ -675,11 +676,15 @@ namespace System.Windows.Forms
 
 			Region[] regions = TextRenderer.MeasureCharacterRanges (Text,
 										 ThemeEngine.Current.GetLinkFont (this),
-										 ClientRectangle,
+										 PaddingClientRectangle,
 										 string_format);
 
-			for (int i = 0; i < pieces.Length; i ++)
+			for (int i = 0; i < pieces.Length; i ++) {
 				pieces[i].region = regions[i];
+#if NET_2_0
+				pieces[i].region.Translate (Padding.Left, Padding.Top);
+#endif
+			}
 
 			Invalidate ();
 		}
@@ -920,7 +925,9 @@ namespace System.Windows.Forms
 		public class LinkCollection :  IList, ICollection, IEnumerable
 		{
 			private LinkLabel owner;
-			private bool links_added = false;
+#if NET_2_0			
+			private bool links_added;
+#endif			
 
 			public LinkCollection (LinkLabel owner)
 			{
@@ -982,7 +989,9 @@ namespace System.Windows.Forms
 				}
 
 				int idx = owner.links.Add (value);
+#if NET_2_0				
 				links_added = true;
+#endif				
 
 				owner.sorted_links = null;
 				owner.CheckLinks ();

@@ -24,9 +24,304 @@ using CategoryAttribute = NUnit.Framework.CategoryAttribute;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class ControlTest
+	public class ControlTest : TestHelper
 	{
-		
+		[Test] // .ctor ()
+		public void Constructor1 ()
+		{
+			MockControl c = new MockControl ();
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "Height");
+			Assert.AreEqual (0, c.Left, "Left");
+			Assert.AreEqual (string.Empty, c.Name, "Name");
+			Assert.IsNull (c.Parent, "Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#A:Text");
+			Assert.AreEqual (0, c.Top, "Top");
+			Assert.AreEqual (0, c.Width, "Width");
+		}
+
+		[Test] // .ctor (String)
+		public void Constructor2 ()
+		{
+			MockControl c = new MockControl ((string) null);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#A:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#A:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#A:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#A:Height");
+			Assert.AreEqual (0, c.Left, "#A:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#A:Name");
+			Assert.IsNull (c.Parent, "#A:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#A:Text");
+			Assert.AreEqual (0, c.Top, "#A:Top");
+			Assert.AreEqual (0, c.Width, "#A:Width");
+
+			c = new MockControl ("child");
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#B:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#B:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#B:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#B:Height");
+			Assert.AreEqual (0, c.Left, "#B:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#B:Name");
+			Assert.IsNull (c.Parent, "#B:Parent");
+			Assert.AreEqual ("child", c.Text, "#B:Text");
+			Assert.AreEqual (0, c.Top, "#B:Top");
+			Assert.AreEqual (0, c.Width, "#B:Width");
+		}
+
+		[Test] // .ctor (Control, String)
+		public void Constructor3 ()
+		{
+			Control parent = new Control ("parent");
+			MockControl c = new MockControl ((Control) null, (string) null);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#A:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#A:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#A:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#A:Height");
+			Assert.AreEqual (0, c.Left, "#A:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#A:Name");
+			Assert.IsNull (c.Parent, "#A:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#A:Text");
+			Assert.AreEqual (0, c.Top, "#A:Top");
+			Assert.AreEqual (0, c.Width, "#A:Width");
+
+			c = new MockControl ((Control) null, "child");
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#B:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#B:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#B:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#B:Height");
+			Assert.AreEqual (0, c.Left, "#B:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#B:Name");
+			Assert.IsNull (c.Parent, "#B:Parent");
+			Assert.AreEqual ("child", c.Text, "#B:Text");
+			Assert.AreEqual (0, c.Top, "#B:Top");
+			Assert.AreEqual (0, c.Width, "#B:Width");
+
+			c = new MockControl (parent, (string) null);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#C:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#C:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#C:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#C:Height");
+			Assert.AreEqual (0, c.Left, "#C:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#C:Name");
+			Assert.AreSame (parent, c.Parent, "#C:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#C:Text");
+			Assert.AreEqual (0, c.Top, "#C:Top");
+			Assert.AreEqual (0, c.Width, "#C:Width");
+
+			c = new MockControl (parent, "child");
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#D:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#D:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#D:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#D:Height");
+			Assert.AreEqual (0, c.Left, "#D:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#D:Name");
+			Assert.AreSame (parent, c.Parent, "#D:Parent");
+			Assert.AreEqual ("child", c.Text, "#D:Text");
+			Assert.AreEqual (0, c.Top, "#D:Top");
+			Assert.AreEqual (0, c.Width, "#D:Width");
+		}
+
+		[Test] // .ctor (String, Int32, Int32, Int32, Int32)
+		public void Constructor4 ()
+		{
+			MockControl c = new MockControl ((string) null, 0, 0, 0, 0);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#A:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#A:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#A:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#A:Height");
+			Assert.AreEqual (0, c.Left, "#A:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#A:Name");
+			Assert.IsNull (c.Parent, "#A:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#A:Text");
+			Assert.AreEqual (0, c.Top, "#A:Top");
+			Assert.AreEqual (0, c.Width, "#A:Width");
+
+			c = new MockControl ((string) null, 1, 0, 0, 0);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#B:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#B:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#B:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#B:Height");
+			Assert.AreEqual (1, c.Left, "#B:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#B:Name");
+			Assert.IsNull (c.Parent, "#B:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#B:Text");
+			Assert.AreEqual (0, c.Top, "#B:Top");
+			Assert.AreEqual (0, c.Width, "#B:Width");
+
+			c = new MockControl ("child", 0, 1, 0, 0);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#C:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#C:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#C:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#C:Height");
+			Assert.AreEqual (0, c.Left, "#C:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#C:Name");
+			Assert.IsNull (c.Parent, "#C:Parent");
+			Assert.AreEqual ("child", c.Text, "#C:Text");
+			Assert.AreEqual (1, c.Top, "#C:Top");
+			Assert.AreEqual (0, c.Width, "#C:Width");
+
+			c = new MockControl ("child", 0, 0, 1, 0);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#D:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#D:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#D:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#D:Height");
+			Assert.AreEqual (0, c.Left, "#D:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#D:Name");
+			Assert.IsNull (c.Parent, "#D:Parent");
+			Assert.AreEqual ("child", c.Text, "#D:Text");
+			Assert.AreEqual (0, c.Top, "#D:Top");
+			Assert.AreEqual (1, c.Width, "#D:Width");
+
+			c = new MockControl ("child", 0, 0, 0, 1);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#E:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#E:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#E:OnSizeChangedCount");
+			Assert.AreEqual (1, c.Height, "#E:Height");
+			Assert.AreEqual (0, c.Left, "#E:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#E:Name");
+			Assert.IsNull (c.Parent, "#E:Parent");
+			Assert.AreEqual ("child", c.Text, "#E:Text");
+			Assert.AreEqual (0, c.Top, "#E:Top");
+			Assert.AreEqual (0, c.Width, "#E:Width");
+
+			c = new MockControl ("child", 1, 0, 1, 0);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#F:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#F:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#F:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#F:Height");
+			Assert.AreEqual (1, c.Left, "#F:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#F:Name");
+			Assert.IsNull (c.Parent, "#F:Parent");
+			Assert.AreEqual ("child", c.Text, "#F:Text");
+			Assert.AreEqual (0, c.Top, "#F:Top");
+			Assert.AreEqual (1, c.Width, "#F:Width");
+
+			c = new MockControl ("child", 0, 1, 0, 1);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#G:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#G:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#G:OnSizeChangedCount");
+			Assert.AreEqual (1, c.Height, "#G:Height");
+			Assert.AreEqual (0, c.Left, "#G:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#G:Name");
+			Assert.IsNull (c.Parent, "#G:Parent");
+			Assert.AreEqual ("child", c.Text, "#G:Text");
+			Assert.AreEqual (1, c.Top, "#G:Top");
+			Assert.AreEqual (0, c.Width, "#G:Width");
+		}
+
+		[Test] // .ctor (Control, String, Int32, Int32, Int32, Int32)
+		public void Constructor5 ()
+		{
+			Control parent = new Control ("parent");
+			MockControl c = new MockControl ((Control) null,
+				(string) null, 0, 0, 0, 0);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#A:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#A:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#A:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#A:Height");
+			Assert.AreEqual (0, c.Left, "#A:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#A:Name");
+			Assert.IsNull (c.Parent, "#A:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#A:Text");
+			Assert.AreEqual (0, c.Top, "#A:Top");
+			Assert.AreEqual (0, c.Width, "#A:Width");
+
+			c = new MockControl (parent, (string) null, 1, 0, 0, 0);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#B:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#B:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#B:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#B:Height");
+			Assert.AreEqual (1, c.Left, "#B:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#B:Name");
+			Assert.AreSame (parent, c.Parent, "#B:Parent");
+			Assert.AreEqual (string.Empty, c.Text, "#B:Text");
+			Assert.AreEqual (0, c.Top, "#B:Top");
+			Assert.AreEqual (0, c.Width, "#B:Width");
+
+			c = new MockControl ((Control) null, "child", 0, 1, 0, 0);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#C:OnLocationChangedCount");
+			Assert.AreEqual (0, c.OnResizeCount, "#C:OnResizeCount");
+			Assert.AreEqual (0, c.OnSizeChangedCount, "#C:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#C:Height");
+			Assert.AreEqual (0, c.Left, "#C:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#C:Name");
+			Assert.IsNull (c.Parent, "#C:Parent");
+			Assert.AreEqual ("child", c.Text, "#C:Text");
+			Assert.AreEqual (1, c.Top, "#C:Top");
+			Assert.AreEqual (0, c.Width, "#C:Width");
+
+			c = new MockControl (parent, "child", 0, 0, 1, 0);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#D:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#D:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#D:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#D:Height");
+			Assert.AreEqual (0, c.Left, "#D:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#D:Name");
+			Assert.AreSame (parent, c.Parent, "#D:Parent");
+			Assert.AreEqual ("child", c.Text, "#D:Text");
+			Assert.AreEqual (0, c.Top, "#D:Top");
+			Assert.AreEqual (1, c.Width, "#D:Width");
+
+			c = new MockControl (parent, "child", 0, 0, 0, 1);
+
+			Assert.AreEqual (0, c.OnLocationChangedCount, "#E:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#E:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#E:OnSizeChangedCount");
+			Assert.AreEqual (1, c.Height, "#E:Height");
+			Assert.AreEqual (0, c.Left, "#E:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#E:Name");
+			Assert.AreSame (parent, c.Parent, "#E:Parent");
+			Assert.AreEqual ("child", c.Text, "#E:Text");
+			Assert.AreEqual (0, c.Top, "#E:Top");
+			Assert.AreEqual (0, c.Width, "#E:Width");
+
+			c = new MockControl (parent, "child", 1, 0, 1, 0);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#F:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#F:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#F:OnSizeChangedCount");
+			Assert.AreEqual (0, c.Height, "#F:Height");
+			Assert.AreEqual (1, c.Left, "#F:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#F:Name");
+			Assert.AreSame (parent, c.Parent, "#F:Parent");
+			Assert.AreEqual ("child", c.Text, "#F:Text");
+			Assert.AreEqual (0, c.Top, "#F:Top");
+			Assert.AreEqual (1, c.Width, "#F:Width");
+
+			c = new MockControl (parent, "child", 0, 1, 0, 1);
+
+			Assert.AreEqual (1, c.OnLocationChangedCount, "#G:OnLocationChangedCount");
+			Assert.AreEqual (1, c.OnResizeCount, "#G:OnResizeCount");
+			Assert.AreEqual (1, c.OnSizeChangedCount, "#G:OnSizeChangedCount");
+			Assert.AreEqual (1, c.Height, "#G:Height");
+			Assert.AreEqual (0, c.Left, "#G:Left");
+			Assert.AreEqual (string.Empty, c.Name, "#G:Name");
+			Assert.AreSame (parent, c.Parent, "#G:Parent");
+			Assert.AreEqual ("child", c.Text, "#G:Text");
+			Assert.AreEqual (1, c.Top, "#G:Top");
+			Assert.AreEqual (0, c.Width, "#G:Width");
+		}
+
 		[Test]
 		public void DisposeTest ()
 		{
@@ -49,7 +344,7 @@ namespace MonoTests.System.Windows.Forms
 				control.InvokeCreateHandle ();
 				Assert.Fail ("#4");
 			} catch (ObjectDisposedException ex) {
-				Console.WriteLine (ex);
+				//Console.WriteLine (ex);
 			}
 		}
 
@@ -360,6 +655,9 @@ namespace MonoTests.System.Windows.Forms
 			Control.ControlCollection c = new Control.ControlCollection (frm);
 			child.MdiParent = frm;
 			c.Add (child);
+			
+			child.Dispose ();
+			frm.Dispose ();
 		}
 
 		[Test]
@@ -372,6 +670,9 @@ namespace MonoTests.System.Windows.Forms
 			Control.ControlCollection c = new Control.ControlCollection (frm);
 			//child.MdiParent = frm;
 			c.Add (child);
+			
+			child.Dispose ();
+			frm.Dispose ();			
 		}
 		
 		[Test]
@@ -718,20 +1019,69 @@ namespace MonoTests.System.Windows.Forms
 			Assert.IsFalse (c.Created, "A1");
 		}
 
+		class CustomA11yEnabledControl : Control {
+			public CustomA11yEnabledControl () : base() { }
+			protected override AccessibleObject CreateAccessibilityInstance () { return new CustomAccessibleObject (this); }
+
+			class CustomAccessibleObject : ControlAccessibleObject {
+				public CustomAccessibleObject (CustomA11yEnabledControl control) : base(control) { }
+				public override string Name { get { return "custom name"; } }
+				public override string DefaultAction { get { return "custom default action"; } }
+				public override string Description { get { return "custom description"; } }
+				public override AccessibleRole Role { get { return AccessibleRole.Alert; } }
+			}
+		}
+
 		[Test]
-		[Category ("NotWorking")]
 		public void CreatedAccessibilityTest ()
 		{
-			Control c = new Control ();
-			Assert.IsFalse (c.Created, "A1");
+			CustomA11yEnabledControl c = new CustomA11yEnabledControl ();
+			Assert.IsFalse(c.Created, "A1");
 
-			Helper.TestAccessibility(c, null, null, null, AccessibleRole.Default);
+			// Tests default values
 
-			Assert.IsTrue (c.Created, "A2");
+			Assert.AreEqual (null, c.AccessibleDefaultActionDescription, "A2.0");
+			Assert.IsFalse(c.IsHandleCreated, "A2.1");
+
+			Assert.AreEqual (null, c.AccessibleDescription, "A3.0");
+			Assert.IsFalse(c.IsHandleCreated, "A3.1");
+
+			Assert.AreEqual (null, c.AccessibleName, "A4.0");
+			Assert.IsFalse(c.IsHandleCreated, "A4.1");
+
+			Assert.AreEqual (AccessibleRole.Default, c.AccessibleRole, "A5.0");
+			Assert.IsFalse(c.IsHandleCreated, "A5.1");
+
+			object o = c.AccessibilityObject;
+			Assert.IsTrue(c.IsHandleCreated, "A6");
+
+			// Tests to confirm that:
+			// - calling Control.AccessibleXXXXX is not returning AccessibleObject.XXXXX
+			// - Handle is not Created when calling Control.AccessibleXXXXX
+			c = new CustomA11yEnabledControl ();
+
+ 			string accessibleDefaultActionDescription = "default action description";
+			c.AccessibleDefaultActionDescription = accessibleDefaultActionDescription;
+			Assert.IsFalse (c.IsHandleCreated, "A7.0");
+			Assert.AreEqual (accessibleDefaultActionDescription, c.AccessibleDefaultActionDescription, "A7.1");
+
+			string accessibleDescription = "accessible description";
+			c.AccessibleDescription = accessibleDescription;
+			Assert.IsFalse (c.IsHandleCreated, "A8.0");
+			Assert.AreEqual (accessibleDescription, c.AccessibleDescription, "A8.1");
+
+			string accessibleName = "accessible name";
+			c.AccessibleName = accessibleName;
+			Assert.IsFalse (c.IsHandleCreated, "A9.0");
+			Assert.AreEqual (accessibleName, c.AccessibleName, "A9.1");
+
+			AccessibleRole accessibleRole = AccessibleRole.Diagram;
+			c.AccessibleRole = accessibleRole;
+			Assert.AreEqual (accessibleRole, c.AccessibleRole, "A10.0");
+			Assert.IsFalse (c.IsHandleCreated, "A10.1");
 
 			c.Dispose ();
-
-			Assert.IsFalse (c.Created, "A3");
+			Assert.IsFalse (c.Created, "A11");
 		}
 
 		[Test]
@@ -946,6 +1296,8 @@ namespace MonoTests.System.Windows.Forms
 
 			Assert.AreEqual (f, c.TopLevelControl, "T3");
 			Assert.AreEqual (f, f.TopLevelControl, "T4");
+			
+			f.Dispose ();
 		}
 
 		[Test]
@@ -1978,9 +2330,9 @@ namespace MonoTests.System.Windows.Forms
 			f.ShowInTaskbar = false;
 
 			f.Show ();
-			Assert.AreEqual (0, control.ValidatingCount, "#A1");
+			Assert.AreEqual (0, control.OnValidatingCount, "#A1");
 			f.Close ();
-			Assert.AreEqual (1, control.ValidatingCount, "#A2");
+			Assert.AreEqual (1, control.OnValidatingCount, "#A2");
 			f.Dispose ();
 		}
 
@@ -2032,6 +2384,8 @@ namespace MonoTests.System.Windows.Forms
 			form.Controls.Add (l);
 			Assert.AreEqual (0, l.Left, "#A3");
 			Assert.AreEqual (0, l.Top, "#A4");
+			
+			form.Dispose ();
 		}
 
 #if NET_2_0
@@ -2102,16 +2456,62 @@ namespace MonoTests.System.Windows.Forms
 
 		public class MockControl : Control
 		{
-			public int font_height {
+			public int OnValidatingCount;
+			public int OnSizeChangedCount;
+			public int OnResizeCount;
+			public int OnLocationChangedCount;
+
+			public MockControl ()
+			{
+			}
+
+			public MockControl (string text)
+				: base (text)
+			{
+			}
+
+			public MockControl (Control parent, string text)
+				: base (parent, text)
+			{
+			}
+
+			public MockControl (string text, int left, int top, int width, int height)
+				: base (text, left, top, width, height)
+			{
+			}
+
+			public MockControl (Control parent, string text, int left, int top, int width, int height)
+				: base (parent, text, left, top, width, height)
+			{
+			}
+
+			public int font_height
+			{
 				get { return base.FontHeight; }
 				set { base.FontHeight = value; }
 			}
 
-			public int ValidatingCount;
+			protected override void OnLocationChanged (EventArgs e)
+			{
+				OnLocationChangedCount++;
+				base.OnLocationChanged (e);
+			}
+
+			protected override void OnSizeChanged (EventArgs e)
+			{
+				OnSizeChangedCount++;
+				base.OnSizeChanged (e);
+			}
+
+			protected override void OnResize (EventArgs e)
+			{
+				OnResizeCount++;
+				base.OnResize (e);
+			}
 
 			protected override void OnValidating (CancelEventArgs e)
 			{
-				ValidatingCount++;
+				OnValidatingCount++;
 			}
 		}
 
@@ -2469,6 +2869,8 @@ namespace MonoTests.System.Windows.Forms
 			c.Visible = true;
 			
 			Assert.AreEqual (f.ClientSize.Width, c.Width, "L1");
+			
+			f.Dispose ();
 		}
 		
 		[Test]
@@ -2524,10 +2926,32 @@ namespace MonoTests.System.Windows.Forms
 
 			Assert.AreEqual (new Rectangle (50, 60, 30, 40), myControl.Bounds, "A1");
 		}
+		
+		[Test]
+		public void Bug386450 ()
+		{
+			// Should not crash.  We have to check for the font object
+			// being different, not just if they represent the same font.
+			Form f = new Form ();
+			Label l = new Label ();
+			l.Text = "Hello";
+
+			Font f1 = new Font ("Arial", 12);
+			Font f2 = new Font ("Arial", 12);
+
+			l.Font = f1;
+			l.Font = f2;
+
+			f1.Dispose ();
+
+			f.Controls.Add (l);
+			f.Show ();
+			f.Dispose ();
+		}
 	}
 
 	[TestFixture]
-	public class ControlSetTopLevelTest
+	public class ControlSetTopLevelTest : TestHelper
 	{
 		class ControlPoker : Control {
 			public void DoSetTopLevel ()
@@ -2577,11 +3001,13 @@ namespace MonoTests.System.Windows.Forms
 			Assert.IsFalse (f.Visible, "3");
 			f.TopLevel = true;
 			Assert.IsFalse (f.Visible, "4");
+			
+			f.Dispose ();
 		}
 	}
 
 	[TestFixture]
-	public class ControlResizeLayoutTest
+	public class ControlResizeLayoutTest : TestHelper
 	{
 		class ControlPoker : Control {
 			public void DoOnResize ()
@@ -2631,7 +3057,17 @@ namespace MonoTests.System.Windows.Forms
 
 	[TestFixture]
 	[Category ("NotWorking")]
-	public class ControlInvokeTest {
+	public class ControlInvokeTest  : TestHelper {
+
+		[TearDown]
+		protected override void TearDown ()
+		{
+			if (f != null && !f.IsDisposed)			
+				f.Dispose ();
+			base.TearDown ();
+		}
+
+		
 		public delegate void TestDelegate ();
 
 		Form f;
@@ -2713,7 +3149,7 @@ namespace MonoTests.System.Windows.Forms
 	}
 
 	[TestFixture]
-	public class ControlWMTest
+	public class ControlWMTest : TestHelper
 	{
 		[Test]
 		public void WM_PARENTNOTIFY_Test ()
@@ -2818,12 +3254,13 @@ namespace MonoTests.System.Windows.Forms
 
 #if NET_2_0
 	[TestFixture]
-	public class ControlLayoutTest
+	public class ControlLayoutTest : TestHelper
 	{
-		[Test]
-		public void SetUp ()
+		[SetUp]
+		protected override void SetUp ()
 		{
 			_layoutCount = 0;
+			base.SetUp ();
 		}
 
 		[Test] // bug #80456

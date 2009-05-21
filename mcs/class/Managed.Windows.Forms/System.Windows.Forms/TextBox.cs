@@ -60,6 +60,8 @@ namespace System.Windows.Forms {
 		private AutoCompleteSource auto_complete_source = AutoCompleteSource.None;
 		private AutoCompleteListBox auto_complete_listbox;
 		private string auto_complete_original_text;
+		private int auto_complete_selected_index = -1;
+		private List<string> auto_complete_matches;
 		private ComboBox auto_complete_cb_source;
 #endif
 		#endregion	// Variables
@@ -131,17 +133,11 @@ namespace System.Windows.Forms {
 			auto_complete_listbox.Scroll (-lines);
 		}
 
-		private void ShowAutoCompleteListBox ()
+		private void ShowAutoCompleteListBox (bool is_backspace)
 		{
-			if (auto_complete_mode == AutoCompleteMode.None || auto_complete_source == AutoCompleteSource.None)
-				return;
-
 			// 
-			// We only support CustomSource *and* Suggest mode by now
+			// We only support CustomSource by now
 			//
-
-			if (auto_complete_mode != AutoCompleteMode.Suggest)
-				return;
 
 			IList source;
 			if (auto_complete_cb_source == null)
@@ -149,9 +145,11 @@ namespace System.Windows.Forms {
 			else
 				source = auto_complete_cb_source.Items;
 
-			if (auto_complete_source != AutoCompleteSource.CustomSource ||
-				source == null || source.Count == 0)
+			if (source == null || source.Count == 0)
 				return;
+
+			bool append = auto_complete_mode == AutoCompleteMode.Append || auto_complete_mode == AutoCompleteMode.SuggestAppend;
+			bool suggest = auto_complete_mode == AutoCompleteMode.Suggest || auto_complete_mode == AutoCompleteMode.SuggestAppend;
 
 			if (Text.Length == 0) {
 				if (auto_complete_listbox != null)
@@ -159,31 +157,65 @@ namespace System.Windows.Forms {
 				return;
 			}
 
-			if (auto_complete_listbox == null)
-				auto_complete_listbox = new AutoCompleteListBox (this);
+			if (auto_complete_matches == null)
+				auto_complete_matches = new List<string> ();
 
 			string text = Text;
-			auto_complete_listbox.Items.Clear ();
+			auto_complete_matches.Clear ();
 
 			for (int i = 0; i < source.Count; i++) {
 				string item_text = auto_complete_cb_source == null ? auto_complete_custom_source [i] :
 					auto_complete_cb_source.GetItemText (auto_complete_cb_source.Items [i]);
 				if (item_text.StartsWith (text, StringComparison.CurrentCultureIgnoreCase))
-					auto_complete_listbox.Items.Add (item_text);
+					auto_complete_matches.Add (item_text);
 			}
 
-			IList<string> matches = auto_complete_listbox.Items;
-			if ((matches.Count == 0) ||
-				(matches.Count == 1 && matches [0].Equals (text, StringComparison.CurrentCultureIgnoreCase))) { // Exact single match
+			auto_complete_matches.Sort ();
 
-				if (auto_complete_listbox.Visible)
+			// Return if we have a single exact match
+			if ((auto_complete_matches.Count == 0) || (auto_complete_matches.Count == 1 && 
+						auto_complete_matches [0].Equals (text, StringComparison.CurrentCultureIgnoreCase))) {
+
+				if (auto_complete_listbox != null && auto_complete_listbox.Visible)
 					auto_complete_listbox.HideListBox (false);
 				return;
 			}
 
-			// Show or update auto complete listbox contents
-			auto_complete_listbox.Location = PointToScreen (new Point (0, Height));
-			auto_complete_listbox.ShowListBox ();
+			auto_complete_selected_index = suggest ? -1 : 0;
+
+			if (suggest) {
+				if (auto_complete_listbox == null)
+					auto_complete_listbox = new AutoCompleteListBox (this);
+
+				// Show or update auto complete listbox contents
+				auto_complete_listbox.Location = PointToScreen (new Point (0, Height));
+				auto_complete_listbox.ShowListBox ();
+			}
+
+			if (append && !is_backspace)
+				AppendAutoCompleteMatch (0);
+
+			document.MoveCaret (CaretDirection.End);
+		}
+
+		internal void HideAutoCompleteList ()
+		{
+			if (auto_complete_listbox != null)
+				auto_complete_listbox.HideListBox (false);
+		}
+
+		bool IsAutoCompleteAvailable {
+			get {
+				if (auto_complete_source == AutoCompleteSource.None || auto_complete_mode == AutoCompleteMode.None)
+					return false;
+
+				// We only support CustomSource by now
+				if (auto_complete_source != AutoCompleteSource.CustomSource || auto_complete_custom_source == null ||
+						auto_complete_custom_source.Count == 0)
+					return false;
+
+				return true;
+			}
 		}
 
 		internal ComboBox AutoCompleteInternalSource {
@@ -195,26 +227,49 @@ namespace System.Windows.Forms {
 			}
 		}
 
-		void NavigateAutoCompleteList (Keys key)
+		internal bool CanNavigateAutoCompleteList {
+			get {
+				if (auto_complete_mode == AutoCompleteMode.None)
+					return false;
+				if (auto_complete_matches == null || auto_complete_matches.Count == 0)
+					return false;
+
+				bool suggest_window_visible = auto_complete_listbox != null && auto_complete_listbox.Visible;
+				if (auto_complete_mode == AutoCompleteMode.Suggest && !suggest_window_visible)
+					return false;
+
+				return true;
+			}
+		}
+
+		bool NavigateAutoCompleteList (Keys key)
 		{
-			int index = auto_complete_listbox.HighlightedIndex;
-			if (index == -1)
-				auto_complete_original_text = Text;
+			if (auto_complete_matches == null || auto_complete_matches.Count == 0)
+				return false;
+
+			bool suggest_window_visible = auto_complete_listbox != null && auto_complete_listbox.Visible;
+			if (!suggest_window_visible && auto_complete_mode == AutoCompleteMode.Suggest)
+				return false;
+
+			int index = auto_complete_selected_index;
 
 			switch (key) {
 				case Keys.Up:
 					index -= 1;
 					if (index < -1)
-						index = auto_complete_listbox.Items.Count - 1;
+						index = auto_complete_matches.Count - 1;
 					break;
 				case Keys.Down:
 					index += 1;
-					if (index >= auto_complete_listbox.Items.Count)
+					if (index >= auto_complete_matches.Count)
 						index = -1;
 					break;
 				case Keys.PageUp:
+					if (auto_complete_mode == AutoCompleteMode.Append || !suggest_window_visible)
+						goto case Keys.Up;
+
 					if (index == -1)
-						index = auto_complete_listbox.Items.Count - 1;
+						index = auto_complete_matches.Count - 1;
 					else if (index == 0)
 						index = -1;
 					else {
@@ -224,23 +279,45 @@ namespace System.Windows.Forms {
 					}
 					break;
 				case Keys.PageDown:
+					if (auto_complete_mode == AutoCompleteMode.Append || !suggest_window_visible)
+						goto case Keys.Down;
+
 					if (index == -1)
 						index = 0;
-					else if (index == auto_complete_listbox.Items.Count - 1)
+					else if (index == auto_complete_matches.Count - 1)
 						index = -1;
 					else {
 						index += auto_complete_listbox.page_size - 1;
-						if (index >= auto_complete_listbox.Items.Count)
-							index = auto_complete_listbox.Items.Count - 1;
+						if (index >= auto_complete_matches.Count)
+							index = auto_complete_matches.Count - 1;
 					}
 					break;
 				default:
 					break;
 			}
 
-			auto_complete_listbox.HighlightedIndex = index;
-			Text = index == -1 ? auto_complete_original_text : auto_complete_listbox.Items [index];
+			// In SuggestAppend mode the navigation mode depends on the visibility of the suggest lb.
+			bool suggest = auto_complete_mode == AutoCompleteMode.Suggest || auto_complete_mode == AutoCompleteMode.SuggestAppend;
+			if (suggest && suggest_window_visible) {
+				Text = index == -1 ? auto_complete_original_text : auto_complete_matches [index];
+				auto_complete_listbox.HighlightedIndex = index;
+			} else
+				// Append only, not suggest at all
+				AppendAutoCompleteMatch (index < 0 ? 0 : index);
+				
+			auto_complete_selected_index = index;
+			document.MoveCaret (CaretDirection.End);
+
+			return true;
 		}
+
+		void AppendAutoCompleteMatch (int index)
+		{
+			Text = auto_complete_original_text + auto_complete_matches [index].Substring (auto_complete_original_text.Length);
+			SelectionStart = auto_complete_original_text.Length;
+			SelectionLength = auto_complete_matches [index].Length - auto_complete_original_text.Length;
+		}
+
 #endif
 
 		private void UpdateAlignment ()
@@ -572,7 +649,7 @@ namespace System.Windows.Forms {
 			switch ((Msg)m.Msg) {
 #if NET_2_0
 				case Msg.WM_KEYDOWN:
-					if (auto_complete_listbox == null || !auto_complete_listbox.Visible)
+					if (!IsAutoCompleteAvailable)
 						break;
 
 					Keys key_data = (Keys)m.WParam.ToInt32 ();
@@ -581,18 +658,42 @@ namespace System.Windows.Forms {
 						case Keys.Up:
 						case Keys.PageDown:
 						case Keys.PageUp:
-							NavigateAutoCompleteList (key_data);
-							m.Result = IntPtr.Zero;
-							return;
+							if (NavigateAutoCompleteList (key_data)) {
+								m.Result = IntPtr.Zero;
+								return;
+							}
+							break;
+						case Keys.Enter:
+							if (auto_complete_listbox != null && auto_complete_listbox.Visible)
+								auto_complete_listbox.HideListBox (false);
+							SelectAll ();
+							break;
+						case Keys.Escape:
+							if (auto_complete_listbox != null && auto_complete_listbox.Visible)
+								auto_complete_listbox.HideListBox (false);
+							break;
 						default:
 							break;
 					}
 					break;
 				case Msg.WM_CHAR:
+					if (!IsAutoCompleteAvailable)
+						break;
+
+					bool is_backspace = m.WParam.ToInt32 () == 8;
+					if (!Char.IsLetterOrDigit ((char)m.WParam) && !is_backspace)
+						break;
+					
+					if (!is_backspace)
+						Text = auto_complete_original_text;
+
+					document.MoveCaret (CaretDirection.End);
+
 					// Need to call base.WndProc before to have access to
 					// the updated Text property value
 					base.WndProc (ref m);
-					ShowAutoCompleteListBox ();
+					auto_complete_original_text = Text;
+					ShowAutoCompleteListBox (is_backspace);
 					return;
 #endif
 				case Msg.WM_LBUTTONDOWN:
@@ -716,7 +817,6 @@ namespace System.Windows.Forms {
 		{
 			TextBox owner;
 			VScrollBar vscroll;
-			List<string> items;
 			int top_item;
 			int last_item;
 			internal int page_size;
@@ -731,7 +831,6 @@ namespace System.Windows.Forms {
 			public AutoCompleteListBox (TextBox tb)
 			{
 				owner = tb;
-				items = new List<string> ();
 				item_height = FontHeight + 2;
 
 				vscroll = new VScrollBar ();
@@ -751,12 +850,6 @@ namespace System.Windows.Forms {
 					cp.Style |= (int)WindowStyles.WS_POPUP;
 					cp.ExStyle |= (int)WindowExStyles.WS_EX_TOPMOST | (int)WindowExStyles.WS_EX_TOOLWINDOW;
 					return cp;
-				}
-			}
-
-			public IList<string> Items {
-				get {
-					return items;
 				}
 			}
 
@@ -825,13 +918,13 @@ namespace System.Windows.Forms {
 			{
 				int top_y = Height;
 
-				for (int i = top_item; i < items.Count; i++) {
+				for (int i = top_item; i < owner.auto_complete_matches.Count; i++) {
 					int pos = i - top_item; // relative to visible area
 					if ((pos * item_height) + item_height >= top_y)
 						return i;
 				}
 
-				return items.Count - 1;
+				return owner.auto_complete_matches.Count - 1;
 			}
 
 			Rectangle GetItemBounds (int index)
@@ -857,13 +950,13 @@ namespace System.Windows.Forms {
 
 			void LayoutListBox ()
 			{
-				int total_height = items.Count * item_height;
+				int total_height = owner.auto_complete_matches.Count * item_height;
 				page_size = Math.Max (Height / item_height, 1);
 				last_item = GetLastVisibleItem ();
 
 				if (Height < total_height) {
 					vscroll.Visible = true;
-					vscroll.Maximum = items.Count - 1;
+					vscroll.Maximum = owner.auto_complete_matches.Count - 1;
 					vscroll.LargeChange = page_size;
 					vscroll.Location = new Point (Width - vscroll.Width, 0);
 					vscroll.Height = Height - item_height;
@@ -876,10 +969,8 @@ namespace System.Windows.Forms {
 
 			public void HideListBox (bool set_text)
 			{
-				if (set_text) {
-					owner.Text = items [HighlightedIndex];
-					owner.SelectAll ();
-				}
+				if (set_text)
+					owner.Text = owner.auto_complete_matches [HighlightedIndex];
 
 				Capture = false;
 				Hide ();
@@ -889,8 +980,8 @@ namespace System.Windows.Forms {
 			{
 				if (!user_defined_size) {
 					// This should call the Layout routine for us
-					int height = items.Count > DefaultDropDownItems ? DefaultDropDownItems * item_height : 
-						(items.Count + 1) * item_height;
+					int height = owner.auto_complete_matches.Count > DefaultDropDownItems ? 
+						DefaultDropDownItems * item_height : (owner.auto_complete_matches.Count + 1) * item_height;
 					Size = new Size (owner.Width, height);
 				} else
 					LayoutListBox ();
@@ -975,9 +1066,9 @@ namespace System.Windows.Forms {
 
 					if (i == highlighted_idx) {
 						g.FillRectangle (SystemBrushes.Highlight, item_bounds);
-						g.DrawString (items [i], Font, SystemBrushes.HighlightText, item_bounds);
+						g.DrawString (owner.auto_complete_matches [i], Font, SystemBrushes.HighlightText, item_bounds);
 					} else 
-						g.DrawString (items [i], Font, brush, item_bounds);
+						g.DrawString (owner.auto_complete_matches [i], Font, brush, item_bounds);
 
 					y += item_height;
 				}

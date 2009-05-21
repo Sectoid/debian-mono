@@ -19,23 +19,23 @@
 #define MSGSTRFIELD(line) MSGSTRFIELD1(line)
 #define MSGSTRFIELD1(line) str##line
 static const struct msgstr_t {
-#define MINI_OP(a,b) char MSGSTRFIELD(__LINE__) [sizeof (b)];
+#define MINI_OP(a,b,dest,src1,src2) char MSGSTRFIELD(__LINE__) [sizeof (b)];
 #include "mini-ops.h"
 #undef MINI_OP
 } opstr = {
-#define MINI_OP(a,b) b,
+#define MINI_OP(a,b,dest,src1,src2) b,
 #include "mini-ops.h"
 #undef MINI_OP
 };
 static const gint16 opidx [] = {
-#define MINI_OP(a,b) [a - OP_LOAD] = offsetof (struct msgstr_t, MSGSTRFIELD(__LINE__)),
+#define MINI_OP(a,b,dest,src1,src2) [a - OP_LOAD] = offsetof (struct msgstr_t, MSGSTRFIELD(__LINE__)),
 #include "mini-ops.h"
 #undef MINI_OP
 };
 
 #else
 
-#define MINI_OP(a,b) b,
+#define MINI_OP(a,b,dest,src1,src2) b,
 /* keep in sync with the enum in mini.h */
 static const char* const
 opnames[] = {
@@ -120,7 +120,9 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 #endif
 
 	for (i = 0; id [i]; ++i) {
-		if (!isalnum (id [i]))
+		if (i == 0 && isdigit (id [i]))
+			fprintf (ofd, "_");
+		else if (!isalnum (id [i]))
 			fprintf (ofd, "_");
 		else
 			fprintf (ofd, "%c", id [i]);
@@ -160,6 +162,7 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 	}
 	fprintf (ofd, "\n");
 	fclose (ofd);
+
 #ifdef __APPLE__
 #ifdef __ppc64__
 #define DIS_CMD "otool64 -v -t"
@@ -179,8 +182,12 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 #if defined(sparc)
 #define AS_CMD "as -xarch=v9"
 #elif defined(__i386__) || defined(__x86_64__)
-#define AS_CMD "as -gstabs"
-#elif defined(__mips__)
+#  if defined(__APPLE__)
+#    define AS_CMD "as"
+#  else
+#    define AS_CMD "as -gstabs"
+#endif
+#elif defined(__mips__) && (_MIPS_SIM == _ABIO32)
 #define AS_CMD "as -mips32"
 #elif defined(__ppc64__)
 #define AS_CMD "as -arch ppc64"

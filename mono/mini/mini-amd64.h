@@ -76,11 +76,15 @@ struct sigcontext {
 
 #define MONO_ARCH_SIGNAL_STACK_SIZE (16 * 1024)
 
+#define MONO_ARCH_HAVE_RESTORE_STACK_SUPPORT 1
+
 #define MONO_ARCH_CPU_SPEC amd64_desc
 
 #define MONO_MAX_IREGS 16
 
 #define MONO_MAX_FREGS AMD64_XMM_NREG
+
+#define MONO_ARCH_FP_RETURN_REG AMD64_XMM0
 
 /* xmm15 is reserved for use by some opcodes */
 #define MONO_ARCH_CALLEE_FREGS 0xef
@@ -106,18 +110,8 @@ struct sigcontext {
  * reproduceable results for benchmarks */
 #define MONO_ARCH_CODE_ALIGNMENT 32
 
-#define MONO_ARCH_BASEREG X86_EBP
 #define MONO_ARCH_RETREG1 X86_EAX
 #define MONO_ARCH_RETREG2 X86_EDX
-
-#define MONO_ARCH_ENCODE_LREG(r1,r2) (r1 | (r2<<3))
-
-#define inst_dreg_low dreg&7 
-#define inst_dreg_high dreg>>3
-#define inst_sreg1_low sreg1&7 
-#define inst_sreg1_high sreg1>>3
-#define inst_sreg2_low sreg2&7 
-#define inst_sreg2_high sreg2>>3
 
 struct MonoLMF {
 	/* 
@@ -229,7 +223,29 @@ typedef struct {
 
 #endif /* PLATFORM_WIN32 */
 
-#ifdef __FreeBSD__
+#if defined (__NetBSD__)
+
+#define REG_RAX 14
+#define REG_RCX 3
+#define REG_RDX 2
+#define REG_RBX 13
+#define REG_RSP 24
+#define REG_RBP 12
+#define REG_RSI 1
+#define REG_RDI 0
+#define REG_R8 4
+#define REG_R9 5
+#define REG_R10 6
+#define REG_R11 7
+#define REG_R12 8
+#define REG_R13 9
+#define REG_R14 10
+#define REG_R15 11
+#define REG_RIP 21
+
+#define MONO_ARCH_NOMAP32BIT
+
+#elif defined (__FreeBSD__)
 
 #define REG_RAX 7
 #define REG_RCX 4
@@ -257,6 +273,14 @@ typedef struct {
 
 #endif /* __FreeBSD__ */
 
+#ifdef PLATFORM_WIN32
+#define MONO_AMD64_ARG_REG1 AMD64_RCX
+#define MONO_AMD64_ARG_REG2 AMD64_RDX
+#else
+#define MONO_AMD64_ARG_REG1 AMD64_RDI
+#define MONO_AMD64_ARG_REG2 AMD64_RSI
+#endif
+
 #define MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS
 #define MONO_ARCH_NO_EMULATE_LONG_MUL_OPTS
 
@@ -278,7 +302,7 @@ typedef struct {
 #define MONO_ARCH_HAVE_IMT 1
 #define MONO_ARCH_HAVE_TLS_GET 1
 #define MONO_ARCH_IMT_REG AMD64_R11
-#define MONO_ARCH_VTABLE_REG AMD64_R11
+#define MONO_ARCH_VTABLE_REG MONO_AMD64_ARG_REG1
 /*
  * We use r10 for the rgctx register rather than r11 because r11 is
  * used by the trampoline as a scratch register and hence might be
@@ -286,10 +310,33 @@ typedef struct {
  */
 #define MONO_ARCH_RGCTX_REG AMD64_R10
 #define MONO_ARCH_COMMON_VTABLE_TRAMPOLINE 1
+#define MONO_ARCH_HAVE_CMOV_OPS 1
 #define MONO_ARCH_HAVE_NOTIFY_PENDING_EXC 1
-#define MONO_ARCH_ENABLE_NORMALIZE_OPCODES 1
+#define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
+#define MONO_ARCH_ENABLE_GLOBAL_RA 1
+#define MONO_ARCH_HAVE_GENERALIZED_IMT_THUNK 1
+#if !defined(PLATFORM_WIN32) && !defined(HAVE_MOVING_COLLECTOR)
+#define MONO_ARCH_MONITOR_OBJECT_REG AMD64_RDI
+#endif
 
 #define MONO_ARCH_AOT_SUPPORTED 1
+
+#if !defined(PLATFORM_WIN32) || defined(__sun)
+#define MONO_ARCH_ENABLE_MONITOR_IL_FASTPATH 1
+#endif
+
+/* Used for optimization, not complete */
+#define MONO_ARCH_IS_OP_MEMBASE(opcode) ((opcode) == OP_X86_PUSH_MEMBASE)
+
+#define MONO_ARCH_EMIT_BOUNDS_CHECK(cfg, array_reg, offset, index_reg) do { \
+            MonoInst *inst; \
+            MONO_INST_NEW ((cfg), inst, OP_AMD64_ICOMPARE_MEMBASE_REG); \
+            inst->inst_basereg = array_reg; \
+            inst->inst_offset = offset; \
+            inst->sreg2 = index_reg; \
+            MONO_ADD_INS ((cfg)->cbb, inst); \
+            MONO_EMIT_NEW_COND_EXC (cfg, LE_UN, "IndexOutOfRangeException"); \
+       } while (0)
 
 void 
 mono_amd64_patch (unsigned char* code, gpointer target) MONO_INTERNAL;
@@ -302,6 +349,9 @@ mono_amd64_throw_exception (guint64 dummy1, guint64 dummy2, guint64 dummy3, guin
 							guint64 r14, guint64 r15, guint64 rdi, guint64 rsi, 
 							guint64 rax, guint64 rcx, guint64 rdx,
 							guint64 rethrow);
+
+guint8*
+mono_amd64_emit_tls_get (guint8* code, int dreg, int tls_offset) MONO_INTERNAL;
 
 typedef struct {
 	guint8 *address;

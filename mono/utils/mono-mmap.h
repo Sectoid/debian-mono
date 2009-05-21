@@ -26,5 +26,11 @@ void* mono_file_map   (size_t length, int flags, int fd, guint64 offset, void **
 int   mono_file_unmap (void *addr, void *handle);
 int   mono_mprotect   (void *addr, size_t length, int flags);
 
+void* mono_shared_area         (void);
+void  mono_shared_area_remove  (void);
+void* mono_shared_area_for_pid (void *pid);
+void  mono_shared_area_unload  (void *area);
+int   mono_shared_area_instances (void **array, int count);
+
 #endif /* __MONO_UTILS_MMAP_H__ */
 

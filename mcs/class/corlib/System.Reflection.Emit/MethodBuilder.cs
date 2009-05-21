@@ -49,9 +49,10 @@ namespace System.Reflection.Emit
 	[ClassInterface (ClassInterfaceType.None)]
 	public sealed class MethodBuilder : MethodInfo, _MethodBuilder
 	{
+#pragma warning disable 169, 414
 		private RuntimeMethodHandle mhandle;
 		private Type rtype;
-		private Type[] parameters;
+		internal Type[] parameters;
 		private MethodAttributes attrs;	/* It's used directly by MCS */
 		private MethodImplAttributes iattrs;
 		private string name;
@@ -59,7 +60,7 @@ namespace System.Reflection.Emit
 		private byte[] code;
 		private ILGenerator ilgen;
 		private TypeBuilder type;
-		private ParameterBuilder[] pinfo;
+		internal ParameterBuilder[] pinfo;
 		private CustomAttributeBuilder[] cattrs;
 		private MethodInfo override_method;
 		private string pi_dll;
@@ -80,6 +81,7 @@ namespace System.Reflection.Emit
 		private Type[][] paramModReq;
 		private Type[][] paramModOpt;
 		private RefEmitPermissionSet[] permissions;
+#pragma warning restore 169, 414
 
 		internal MethodBuilder (TypeBuilder tb, string name, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] returnModReq, Type[] returnModOpt, Type[] parameterTypes, Type[][] paramModReq, Type[][] paramModOpt)
 		{
@@ -345,7 +347,7 @@ namespace System.Reflection.Emit
 #endif
 					throw new InvalidOperationException (
 									     String.Format ("Method '{0}.{1}' does not have a method body.",
-											    DeclaringType.Name, Name));
+											    DeclaringType.FullName, Name));
 			}
 			if (ilgen != null)
 				ilgen.label_fixup ();

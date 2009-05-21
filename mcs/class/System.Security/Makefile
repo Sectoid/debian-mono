@@ -4,8 +4,7 @@ include ../../build/rules.make
 
 LIBRARY = System.Security.dll
 LIB_MCS_FLAGS = -nowarn:618 \
-	-r:$(corlib) -r:System.dll -r:System.Xml.dll \
-	-debug+
+	-r:$(corlib) -r:System.dll -r:System.Xml.dll
 
 TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -nowarn:169,219,1595
 
@@ -26,7 +25,7 @@ include ../../build/library.make
 ifeq (net_2_0, $(PROFILE))
 pkits_files := $(wildcard ../System/Test/System.Security.Cryptography.X509Certificates/pkits/hint)
 ifndef pkits_files
-TEST_HARNESS_EXCLUDES = /exclude:NotWorking,ValueAdd,CAS,InetAccess,PKITS
-TEST_HARNESS_EXCLUDES_ONDOTNET = /exclude:NotDotNet,CAS,PKITS
+TEST_HARNESS_EXCLUDES = -exclude:NotWorking,ValueAdd,CAS,InetAccess,PKITS
+TEST_HARNESS_EXCLUDES_ONDOTNET = -exclude:NotDotNet,CAS,PKITS
 endif
 endif

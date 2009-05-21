@@ -1,3 +1,81 @@
+2009-01-06  Jb Evain  <jbevain@novell.com>
+
+	* transform.cs
+	* cormissing.xsl
+	* mono-api.xsl
+	* mono-api-diff.cs:
+		remove deprecated code.
+
+2009-01-06  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: only build mono-api-info, as mono-api-diff and transform
+	are not used anymore.
+
+2009-01-05  Jb Evain  <jbevain@novell.com>
+
+	* mono-api-info.cs: output custom attributes for generic parameters
+	as well.
+
+2009-01-05  Jb Evain  <jbevain@novell.com>
+
+	* mono-api-info.cs: specify an `enumtype` attribute to describe
+	enumeration underlyin types.
+
+2009-01-05  Jb Evain  <jbevain@novell.com>
+
+	* mono-api-info.cs: don't emit empty attributes on properties.
+
+2008-12-17  Jb Evain  <jbevain@novell.com>
+
+	* mono-api-info.cs: don't add Finalizers to the api definition.
+
+2008-12-08  Jb Evain  <jbevain@novell.com>
+
+	* Util.cs
+	* WellFormedXmlWriter.cs
+	* mono-api-diff.cs
+	* AssemblyResolver.cs
+	* mono-api-info.cs: normalize namespaces.
+
+2008-12-08  Jb Evain  <jbevain@novell.com>
+
+	* Metadata.cs
+	* CecilMetadata.cs
+	* CompareContext.cs
+	* MasterMetadata.cs
+	* Masterinfo.cs
+	* Comparison.cs: add the gui-compare backend as source for now.
+
+2008-12-04  Jb Evain  <jbevain@novell.com>
+
+	* Remove CorCompare.exe sources.
+
+2008-12-04  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: don't build CorCompare.exe anymore as it's not even
+	used.
+
+2008-12-04  Jb Evain  <jbevain@novell.com>
+
+	* mono-api-diff.cs: update mono-api-diff wrt to the format changes.
+
+2008-11-25  Atsushi Enomoto  <atsushi@ximian.com>
+            Jb Evain  <jbevain@novell.com>
+
+	* WellFormedXmlWriter.cs : new file to escape invalid XML
+	  characters.
+	* mono-api-info.cs mono-api-diff.cs : don't use XmlTextWriter
+	  directly when you don't know what you are going to write.
+	  escape invalid characters as \xXX or \uUUUU.
+
+2008-11-21  Jb Evain  <jbevain@novell.com>
+
+	*.*: update to the cecil/corcompare version.
+
+2008-10-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile: Add doc-update target support.
+
 2008-05-21  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* mono-api.xsl: Added support for event accessors.
@@ -48,7 +126,7 @@
 2007-08-12  Marek Safar <marek.safar@gmail.com>
 
 	* Makefile: Build transform too.
-	
+
 2007-06-29  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* mono-api.xsl: Added support for nested classes.
@@ -191,13 +269,13 @@
 
 	* mono-api-diff.cs (XmlParameter): Revert type of defaultValue
 	from object to string, since the value is read from XML.
-	
+
 2005-04-12 Ankit Jain <ankit@corewars.org>
 
 	* mono-api-diff.cs: Handle null default values correctly.
 	* mono-api-info.cs: -do-
 	System.DBNull.Value means no default value.
-	
+
 2005-04-01 Gonzalo Paniagua Javier <gonzalo@ximian.com>
 
 	* transform.cs:
@@ -205,8 +283,8 @@
 
 2005-03-11  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* mono-api-info.exe: Don't process attributes inheriting from 
-	SecurityAttribute as we won't ever match them 100% (at least from a 
+	* mono-api-info.exe: Don't process attributes inheriting from
+	SecurityAttribute as we won't ever match them 100% (at least from a
 	syntaxic point of view). The tool permview.exe can be used to extract
 	and compare them if/when required.
 
@@ -253,23 +331,23 @@
 
 2004-06-14  Gert Driesen <drieseng@users.sourceforge.net>
 
-	* mono-api-diff.cs: now also check charset, layout and 
+	* mono-api-diff.cs: now also check charset, layout and
 	serializability of types
 	* mono-api-info.cs: output charset, layout and flag indicating
 	whether type is serializable
 
 2004-06-12  Gert Driesen <drieseng@users.sourceforge.net>
 
-	* mono-api-diff.cs: 
+	* mono-api-diff.cs:
 	  - check method/ctor parameters
-	  - use target attribute for attributes in key for attributes 
-	    (if available). This allows us to differentiate between method 
+	  - use target attribute for attributes in key for attributes
+	    (if available). This allows us to differentiate between method
 	    and return type attributes for methods
 	  - check field values (for literal fields)
 	  - LoadExtraData was not always called, causing certain signature
 	    mismatches not to be reported
 
-	* mono-api-info.cs: 
+	* mono-api-info.cs:
 	  - check field values of literal fields
 	  - document parameters of method/ctors
 	  - also output attribute applied to return type of methods
@@ -357,7 +435,7 @@
 2003-11-11  Gonzalo Paniagua Javier <gonzalo@ximian.com>
 
 	* CorCompare.exe.sources: not needed now.
-	 
+
 	* Makefile: updated to build the 3 exes we have now.
 
 	* mono-api-info.cs: new program. Given an assembly name, it generates
@@ -385,7 +463,7 @@
 
 2002-02-25  Nick Drochak  <ndrochak@gol.com>
 
-	* ToDoAssembly.cs: remove unused code 
+	* ToDoAssembly.cs: remove unused code
 	* ToDoNamespace.cs: using BindingFlags for GetMembers
 	* ToDoType.cs: throw exception if we encounter a member type
 	that we didn't expect. Also remove unused property.

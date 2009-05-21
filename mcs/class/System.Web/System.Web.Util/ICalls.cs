@@ -28,12 +28,13 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+using System.Reflection;
 using System.Runtime.CompilerServices;
 namespace System.Web.Util
 {
 	class ICalls
 	{
-		private ICalls () {}
+		ICalls () {}
 
 #if TARGET_DOTNET
 		static public string GetMachineConfigPath () {
@@ -46,6 +47,9 @@ namespace System.Web.Util
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		extern static public string GetMachineInstallDirectory ();
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		extern static public bool GetUnmanagedResourcesPtr (Assembly assembly, out IntPtr ptr, out int length);
 	}
 }
 

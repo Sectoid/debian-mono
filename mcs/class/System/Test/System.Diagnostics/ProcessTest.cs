@@ -13,6 +13,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading;
 
 using NUnit.Framework;
 
@@ -715,15 +716,65 @@ namespace MonoTests.System.Diagnostics
 
 		static bool RunningOnUnix {
 			get {
-				PlatformID platform = Environment.OSVersion.Platform;
-#if NET_2_0
-				return platform == PlatformID.Unix;
-#else
-				return ((int) platform) == 128;
-#endif
+				int p = (int)Environment.OSVersion.Platform;
+				return ((p == 128) || (p == 4) || (p == 6));
 			}
 		}
 
 		int bytesRead = -1;
+
+#if NET_2_0
+// Not technically a 2.0 only test, but I use lambdas, so I need gmcs
+
+		[Test]
+		// This was for bug #459450
+		public void TestEventRaising ()
+		{
+			EventWaitHandle errorClosed = new ManualResetEvent(false);
+			EventWaitHandle outClosed = new ManualResetEvent(false);
+			EventWaitHandle exited = new ManualResetEvent(false);
+
+			Process p = new Process();
+			p.StartInfo.UseShellExecute = false;
+			p.StartInfo.RedirectStandardOutput = true;
+			p.StartInfo.RedirectStandardError = true;
+			p.StartInfo.RedirectStandardInput = false;
+			p.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
+				if (e.Data == null) {
+					outClosed.Set();
+				}
+			};
+			
+			p.ErrorDataReceived += (object sender, DataReceivedEventArgs e) => {
+				if (e.Data == null) {
+					errorClosed.Set();
+				}
+			};
+			
+			p.Exited += (object sender, EventArgs e) => {
+				exited.Set ();
+			};
+			
+			p.EnableRaisingEvents = true;
+
+			if (RunningOnUnix){
+				p.StartInfo.FileName = "/bin/ls";
+				p.StartInfo.Arguments = "/";
+			} else {
+				p.StartInfo.FileName = "help";
+				p.StartInfo.Arguments = "";
+			}
+
+			p.Start();
+
+			p.BeginErrorReadLine();
+			p.BeginOutputReadLine();
+
+			Console.WriteLine("started, waiting for handles");
+			bool r = WaitHandle.WaitAll(new WaitHandle[] { errorClosed, outClosed, exited }, 10000, false);
+
+			Assert.AreEqual (true, r, "Null Argument Events Raised");
+		}
+#endif
 	}
 }

@@ -73,10 +73,6 @@ icompare_imm: src1:i len:64
 fcompare: src1:f src2:f len:64
 lcompare: src1:i src2:i len:4
 setfret: dest:f src1:f len:8
-outarg: src1:i len:1
-outarg_imm: len:5
-setret: dest:a src1:i len:4
-sparc_setfreg_float: dest:f src1:f len:4 clob:r
 checkthis: src1:b len:4
 oparglist: src1:i len:64
 call: dest:o clob:c len:40
@@ -288,3 +284,35 @@ sparc_cond_exc_ltz: src1:i len:64
 sparc_cond_exc_gtz: src1:i len:64
 sparc_cond_exc_gez: src1:i len:64
 sparc_cond_exc_lez: src1:i len:64
+
+relaxed_nop: len:0
+
+# Linear IR opcodes
+nop: len:0
+dummy_use: len:0
+dummy_store: len:0
+not_reached: len:0
+not_null: src1:i len:0
+
+jump_table: dest:i len:64
+
+cond_exc_ieq: len:64
+cond_exc_ine_un: len:64
+cond_exc_ilt: len:64
+cond_exc_ilt_un: len:64
+cond_exc_igt: len:64
+cond_exc_igt_un: len:64
+cond_exc_ige: len:64
+cond_exc_ige_un: len:64
+cond_exc_ile: len:64
+cond_exc_ile_un: len:64
+cond_exc_iov: len:64
+cond_exc_ino: len:64
+cond_exc_ic: len:64
+cond_exc_inc: len:64
+
+long_conv_to_ovf_i4_2: dest:i src1:i src2:i len:48
+
+vcall2: len:40 clob:c
+vcall2_reg: src1:i len:64 clob:c
+vcall2_membase: src1:b len:64 clob:c

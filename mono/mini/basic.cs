@@ -190,6 +190,11 @@ class Tests {
 		return b % 8;
 	}
 
+	public static int test_0_rem_imm_0 () {
+		int b = 12;
+		return b % 1;
+	}
+
 	public static int test_4_rem_big_imm () {
 		int b = 10004;
 		return b % 10000;
@@ -675,7 +680,21 @@ class Tests {
 			return 1;
 		else
 			return 0;
-	}		
+	}
+
+	public static int test_127_iconv_to_i1 () {
+		int i = 0x100017f;
+		sbyte s = (sbyte)i;
+
+		return s;
+	}
+
+	public static int test_384_iconv_to_i2 () {
+		int i = 0x1000180;
+		short s = (short)i;
+
+		return s;
+	}
 	
 	public static int test_15_for_loop () {
 		int i;

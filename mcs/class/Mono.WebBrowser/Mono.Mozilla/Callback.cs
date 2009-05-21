@@ -39,6 +39,7 @@ namespace Mono.Mozilla {
 	{
 		WebBrowser owner;
 		string currentUri;
+		bool calledLoadStarted;
 		
 		public Callback (WebBrowser owner) 
 		{
@@ -57,7 +58,10 @@ namespace Mono.Mozilla {
 
 
 		public void OnStateChange (nsIWebProgress progress, nsIRequest request, Int32 status, UInt32 state)
-		{			
+		{
+			if (!owner.created)
+				owner.created = true;
+
 #if debug
 			//OnGeneric ("OnStateChange");
 
@@ -92,45 +96,96 @@ namespace Mono.Mozilla {
 			Console.Error.WriteLine (s.ToString ());
 #endif
 
-		
-			if ((state & (uint) StateFlags.Start) != 0 && 
-				(state & (uint) StateFlags.IsRequest) != 0 &&
-				(state & (uint) StateFlags.IsDocument) != 0 &&
-			    (state & (uint) StateFlags.IsNetwork) != 0 && 
-			    (state & (uint) StateFlags.IsWindow) != 0 
-			    )
-			{
-				owner.documents.Clear ();
+			bool _start = (state & (uint) StateFlags.Start) != 0;
+			bool _negotiating = (state & (uint) StateFlags.Negotiating) != 0;
+			bool _transferring = (state & (uint) StateFlags.Transferring) != 0;
+			bool _redirecting = (state & (uint) StateFlags.Redirecting) != 0;
+			bool _stop = (state & (uint) StateFlags.Stop) != 0;
+			bool _request = (state & (uint) StateFlags.IsRequest) != 0;
+			bool _document = (state & (uint) StateFlags.IsDocument) != 0;
+			bool _network = (state & (uint) StateFlags.IsNetwork) != 0;
+			bool _window = (state & (uint) StateFlags.IsWindow) != 0;
+
+			if (_start && _request && _document && !calledLoadStarted) {
+				nsIDOMWindow win;
+				progress.getDOMWindow (out win);
 				nsIChannel channel = (nsIChannel) request;
 				nsIURI uri;
 				channel.getURI (out uri);
 				if (uri == null)
 					currentUri = "about:blank";
 				else {
-					AsciiString spec = new AsciiString(String.Empty);
+					AsciiString spec = new AsciiString (String.Empty);
 					uri.getSpec (spec.Handle);
 					currentUri = spec.ToString ();
 				}
-				
-				LoadStartedEventHandler eh = (LoadStartedEventHandler) (owner.Events[WebBrowser.LoadStartedEvent]);
+
+				calledLoadStarted = true;
+				LoadStartedEventHandler eh = (LoadStartedEventHandler) (owner.Events [WebBrowser.LoadStartedEvent]);
 				if (eh != null) {
-					nsIDOMWindow win;
-					progress.getDOMWindow (out win);
+
 					AsciiString name = new AsciiString (String.Empty);
 					win.getName (name.Handle);
-					
+
 					LoadStartedEventArgs e = new LoadStartedEventArgs (currentUri, name.ToString ());
 					eh (this, e);
 					if (e.Cancel)
-						request.cancel (0);
+						request.cancel (2152398850); //NS_BINDING_ABORTED
 				}
+				return;
+
 			}
-				
-			if ((state & (uint) StateFlags.Stop) != 0 && 
-				(state & (uint) StateFlags.IsNetwork) != 0 &&
-				(state & (uint) StateFlags.IsWindow) != 0
-				)
-			{
+
+			if (_document && _request && _transferring) {
+				nsIDOMWindow win;
+				progress.getDOMWindow (out win);
+				nsIChannel channel = (nsIChannel) request;
+				nsIURI uri;
+				channel.getURI (out uri);
+				if (uri == null)
+					currentUri = "about:blank";
+				else {
+					AsciiString spec = new AsciiString (String.Empty);
+					uri.getSpec (spec.Handle);
+					currentUri = spec.ToString ();
+				}
+
+				nsIDOMWindow topWin;
+				win.getTop (out topWin);
+				if (topWin == null || topWin.GetHashCode () == win.GetHashCode ()) {
+					owner.Reset ();
+					nsIDOMDocument doc;
+					win.getDocument (out doc);
+					if (doc != null)
+						owner.document = new Mono.Mozilla.DOM.Document (owner, doc);
+				}
+
+				LoadCommitedEventHandler eh = (LoadCommitedEventHandler) (owner.Events[WebBrowser.LoadCommitedEvent]);
+				if (eh != null) {
+					LoadCommitedEventArgs e = new LoadCommitedEventArgs (currentUri);
+					eh (this, e);
+				}
+				return;
+			}
+
+			if (_document && _request && _redirecting) {
+				nsIDOMWindow win;
+				progress.getDOMWindow (out win);
+				nsIChannel channel = (nsIChannel) request;
+				nsIURI uri;
+				channel.getURI (out uri);
+				if (uri == null)
+					currentUri = "about:blank";
+				else {
+					AsciiString spec = new AsciiString (String.Empty);
+					uri.getSpec (spec.Handle);
+					currentUri = spec.ToString ();
+				}
+				return;
+			}
+
+			if (_stop && !_request && !_document && _network && _window) {
+				calledLoadStarted = false;
 			    LoadFinishedEventHandler eh1 = (LoadFinishedEventHandler) (owner.Events[WebBrowser.LoadFinishedEvent]);
 			    if (eh1 != null) {
 
@@ -140,10 +195,10 @@ namespace Mono.Mozilla {
 			        eh1 (this, e);
 
 			    }
+				return;
 			}
-			else if ((state & (uint) StateFlags.Stop) != 0 && 
-				(state & (uint) StateFlags.IsDocument) != 0)
-			{
+
+			if (_stop && !_request && _document && !_network && !_window) {
 				nsIDOMWindow win;
 				progress.getDOMWindow (out win);
 				nsIDOMDocument doc;
@@ -158,6 +213,8 @@ namespace Mono.Mozilla {
 							eh1 (this, null);
 				    }
 				}
+				calledLoadStarted = false;
+				return;
 			} 
 #if debug
 			Console.Error.WriteLine ("{0} completed", s.ToString ());
@@ -181,11 +238,6 @@ namespace Mono.Mozilla {
 #if debug
 			OnGeneric ("OnLocationChanged");
 #endif
-			LoadCommitedEventHandler eh = (LoadCommitedEventHandler) (owner.Events[WebBrowser.LoadCommitedEvent]);
-			if (eh != null) {
-				LoadCommitedEventArgs e = new LoadCommitedEventArgs (currentUri);
-				eh (this, e);
-			}
 		}
 
 		public void OnStatusChange (nsIWebProgress progress, nsIRequest request, string message, Int32 status)
@@ -386,7 +438,8 @@ namespace Mono.Mozilla {
 			OnGeneric ("OnClientMouseOver");
 			Console.Error.WriteLine ("OnClientMouseOver");
 #endif
-			INode node = new Mono.Mozilla.DOM.Node (owner, target);
+			DOM.DOMObject helper = new DOM.DOMObject(this.owner);
+			INode node = helper.GetTypedNode  (target);
 			string key = String.Intern (node.GetHashCode () + ":mouseover");
 			EventHandler eh1 = (EventHandler) owner.DomEvents[key];
 			if (eh1 != null) {
@@ -397,7 +450,7 @@ namespace Mono.Mozilla {
 			NodeEventHandler eh = (NodeEventHandler) (owner.Events[WebBrowser.MouseEnterEvent]);
 			if (eh != null) {
 				NodeEventArgs e = new NodeEventArgs (node);
-				eh (this, e);
+				eh (node, e);
 				return true;
 			}
 			return false;

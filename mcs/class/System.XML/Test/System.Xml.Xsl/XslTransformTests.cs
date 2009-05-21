@@ -2243,6 +2243,7 @@ World";
 
 		[Test] // reverse case of #349375
 		[Category ("NotWorking")]
+//		[Category ("NotDotNet")]
 		public void PreserveWhitespace2 ()
 		{
 			XslCompiledTransform xslt = new XslCompiledTransform ();
@@ -2291,7 +2292,8 @@ World";
     </p>
   </l0>
 </root>")), null, sw);
-			Assert.AreEqual (@"<y><t yes-one-node="""">1</t><t not-node=""""></t></y>", sw.ToString ());
+//			Assert.AreEqual (@"<y><t yes-one-node="""">1</t><t not-node=""""></t></y>", sw.ToString ());
+			Assert.AreEqual ("\r\n  \r\n    <y><t yes-one-node=\"\">1</t><t not-node=\"\"></t></y>\r\n  \r\n", sw.ToString ());
 		}
 
 		[Test]
@@ -2304,6 +2306,24 @@ World";
 			StringWriter sw = new StringWriter ();
 			xslTransform.Transform (new XPathDocument ("Test/XmlFiles/xsl/391424.xml", XmlSpace.Preserve), null, sw);
 			Assert.AreEqual ("<?xml version=\"1.0\" encoding=\"utf-16\"?>Document found", sw.ToString ());
+		}
+
+		[Test]
+		public void XslTextElement_PreservesWhitespace () // bug 450797
+		{
+			XslCompiledTransform xslt = new XslCompiledTransform ();
+			xslt.Load (new XmlTextReader (new StringReader (@"
+<xsl:stylesheet
+  xmlns:xsl=""http://www.w3.org/1999/XSL/Transform""
+  version=""1.0"">
+  <xsl:output method='text' omit-xml-declaration='yes'/>
+  <xsl:template match='foo'>
+    <xsl:text> </xsl:text>
+  </xsl:template>
+</xsl:stylesheet>")));
+			StringWriter sw = new StringWriter ();
+			xslt.Transform (new XmlTextReader (new StringReader (@"<foo>bar</foo>")), null, sw);
+			Assert.AreEqual (" ", sw.ToString ());
 		}
 #endif
 	}

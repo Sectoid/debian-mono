@@ -1,3 +1,31 @@
+2008-08-27  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* SqlSharpCli.cs: fixes for using DbConnectionStringBuilder,
+	do not allow changing of provider or opening when the
+	connection is already open
+
+2008-08-27  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* SqlSharpcli.cs: use foreach to get keys
+	in DbConnectionStringBuilder
+
+	* ChangeLog: fix previous entry of mine
+
+2008-08-27  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* SqlSharpcli.cs: start using ADO.NET 2.0 features 
+	such as provider factories and connection string builders
+	but still be backwards compatible with prior ADO.NET providers.
+
+	Added new commands:
+		\bcs for building your connection string for you by prompting
+		\cs short for \connectionstring
+		\p short for \provider
+		\listp or \listproviders to list DbProviderFactories
+		    listed in the machine.config file.
+
+	Building with gmcs now which means the NET_2_0 profile.	
+
 2005-12-25  Daniel Morgan <danielmorgan@verizon.net>
 
 	* SqlSharpCli.cs: make the MySQL Connector/Net the default mysql provider.  

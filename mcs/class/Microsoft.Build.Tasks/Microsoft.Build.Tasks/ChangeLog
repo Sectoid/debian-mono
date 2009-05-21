@@ -1,3 +1,58 @@
+2009-01-06  Ankit Jain  <jankit@novell.com>
+
+	* CreateManifestResourceName.cs (Execute): Use full path, also helps
+	with debugging.
+
+2008-12-17  Ankit Jain  <jankit@novell.com>
+
+	* Copy.cs: Always overwrite destination files.
+
+2008-12-17  Ankit Jain  <jankit@novell.com>
+
+	* GenerateResource.cs (Execute): Items in 'OutputResources' correspond to
+	items in 'Sources', handle correctly.
+
+2008-12-12  Ankit Jain  <jankit@novell.com>
+
+	* CreateManifestResourceName.cs: Implement.
+	* CreateCSharpManifestResourceName.cs: Implement.
+
+2008-11-27  Ankit Jain  <jankit@novell.com>
+
+	* AssignCulture.cs (Execute): Emit "Culture" metadata also.
+
+2008-11-23  Ankit Jain  <jankit@novell.com>
+
+	* AssignCulture.cs (Execute): Implement.
+
+2008-11-22  Ankit Jain  <jankit@novell.com>
+
+	* AssignTargetPath.cs (Execute): Implement.
+
+2008-11-21  Ankit Jain  <jankit@novell.com>
+
+	* GenerateResource.cs (Execute): Use for loop instead of manually
+	using enumerators.
+
+2008-11-21  Ankit Jain  <jankit@novell.com>
+
+	* CreateItem (Execute): AdditionalMetadata can be null.
+	Trim metadata values.
+	(IsExcluded): 'exclude' can be null.
+
+2008-10-09  Ankit Jain  <jankit@novell.com>
+
+	* CreateItem.cs (Execute): Implement.
+
+2008-10-01  Ankit Jain  <jankit@novell.com>
+
+	* CallTarget.cs (Execute): Implement.
+
+2008-08-06  Ankit Jain  <jankit@novell.com>
+
+	* Csc.cs (AddResponseFileCommands): Don't quote DefineConstants.
+	Correctly handle response filenames and win32 resource switch.
+
 2008-06-02  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* AssemblyResolver.cs : do not crash when there is no mono installed.

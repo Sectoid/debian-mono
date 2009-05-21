@@ -40,7 +40,7 @@ using System.Resources;
 namespace System.Web {
 	public class SiteMapNode : IHierarchyData, INavigateUIData, ICloneable {
 	
-		private SiteMapNode () {}
+		SiteMapNode () {}
 		
 		public SiteMapNode (SiteMapProvider provider, string key)
 			: this (provider, key, null, null, null, null, null, null, null) {}
@@ -172,7 +172,15 @@ namespace System.Web {
 				parent = value;
 			}
 		}
-		
+
+		internal SiteMapNodeCollection ChildNodesInternal {
+			get {
+				if (childNodes == null)
+					childNodes = new SiteMapNodeCollection ();
+				return childNodes;
+			}
+		}
+
 		public virtual SiteMapNodeCollection ChildNodes {
 			get {
 				if (childNodes != null) return childNodes;

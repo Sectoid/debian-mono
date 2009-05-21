@@ -63,7 +63,7 @@ namespace System {
 		 * Changes which are already detected at runtime, like the addition
 		 * of icalls, do not require an increment.
 		 */
-		private const int mono_corlib_version = 68;
+		private const int mono_corlib_version = 69;
 
 #if NET_2_0
 		[ComVisible (true)]
@@ -187,10 +187,6 @@ namespace System {
 				if (os == null) {
 					Version v = Version.CreateFromString (GetOSVersionString ());
 					PlatformID p = Platform;
-#if NET_2_0
-					if ((int) p == 128)
-						p = PlatformID.Unix;
-#endif
 					os = new OperatingSystem (p, v);
 				}
 				return os;
@@ -561,6 +557,9 @@ namespace System {
 			return GetLogicalDrivesInternal ();
 		}
 
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		private static extern void internalBroadcastSettingChange ();
+
 #if NET_2_0
 		public static string GetEnvironmentVariable (string variable, EnvironmentVariableTarget target)
 		{
@@ -572,14 +571,16 @@ namespace System {
 				if (!IsRunningOnWindows)
 					return null;
 				using (Microsoft.Win32.RegistryKey env = Microsoft.Win32.Registry.LocalMachine.OpenSubKey (@"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")) {
-					return env.GetValue (variable).ToString ();
+					object regvalue = env.GetValue (variable);
+					return (regvalue == null) ? null : regvalue.ToString ();
 				}
 			case EnvironmentVariableTarget.User:
 				new EnvironmentPermission (PermissionState.Unrestricted).Demand ();
 				if (!IsRunningOnWindows)
 					return null;
 				using (Microsoft.Win32.RegistryKey env = Microsoft.Win32.Registry.CurrentUser.OpenSubKey ("Environment", false)) {
-					return env.GetValue (variable).ToString ();
+					object regvalue = env.GetValue (variable);
+					return (regvalue == null) ? null : regvalue.ToString ();
 				}
 			default:
 				throw new ArgumentException ("target");
@@ -649,6 +650,7 @@ namespace System {
 						env.DeleteValue (variable, false);
 					else
 						env.SetValue (variable, value);
+					internalBroadcastSettingChange ();
 				}
 				break;
 			case EnvironmentVariableTarget.User:
@@ -659,6 +661,7 @@ namespace System {
 						env.DeleteValue (variable, false);
 					else
 						env.SetValue (variable, value);
+					internalBroadcastSettingChange ();
 				}
 				break;
 			default:
@@ -686,9 +689,13 @@ namespace System {
 		// private methods
 
 		internal static bool IsRunningOnWindows {
-			get { return ((int) Platform != 128); }
+			get { return ((int) Platform < 4); }
 		}
 
+		//
+		// Used by gacutil.exe
+		//
+#pragma warning disable 169		
 		private static string GacPath {
 			get {
 				if (Environment.IsRunningOnWindows) {
@@ -700,6 +707,7 @@ namespace System {
 				return Path.Combine (Path.Combine (internalGetGacPath (), "mono"), "gac");
 			}
 		}
+#pragma warning restore 169
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern static string [] GetLogicalDrivesInternal ();

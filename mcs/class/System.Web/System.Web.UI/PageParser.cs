@@ -34,6 +34,7 @@ using System.Security.Permissions;
 using System.Text;
 using System.Web.Compilation;
 using System.Web.Configuration;
+using System.Web.Hosting;
 using System.Web.Util;
 using System.IO;
 
@@ -65,14 +66,15 @@ namespace System.Web.UI
 		int asyncTimeout = -1;
 		string masterPage;
 		Type masterType;
+		string masterVirtualPath;
 		string title;
 		string theme;
 		string styleSheetTheme;
 		bool enable_event_validation;
 		bool maintainScrollPositionOnPostBack;
 		int maxPageStateFieldLength = -1;
-		string pageParserFilter = String.Empty;
 		Type previousPageType;
+		string previousPageVirtualPath;
 #endif
 
 		public PageParser ()
@@ -82,15 +84,16 @@ namespace System.Web.UI
 		
 		internal PageParser (string virtualPath, string inputFile, HttpContext context)
 		{
+#if NET_2_0
+			this.VirtualPath = new VirtualPath (virtualPath);
+#endif
+
 			Context = context;
-			BaseVirtualDir = UrlUtils.GetDirectory (virtualPath);
+			BaseVirtualDir = VirtualPathUtility.GetDirectory (virtualPath, false);
 			InputFile = inputFile;
 			SetBaseType (null);
 			AddApplicationAssembly ();
 			LoadConfigDefaults ();
-#if NET_2_0
-			this.VirtualPath = new VirtualPath (virtualPath);
-#endif
 		}
 
 #if NET_2_0
@@ -101,8 +104,9 @@ namespace System.Web.UI
 		
 		internal PageParser (string virtualPath, string inputFile, TextReader reader, HttpContext context)
 		{
+			this.VirtualPath = new VirtualPath (virtualPath);
 			Context = context;
-			BaseVirtualDir = UrlUtils.GetDirectory (virtualPath);
+			BaseVirtualDir = VirtualPathUtility.GetDirectory (virtualPath, false);
 			Reader = reader;
 			if (String.IsNullOrEmpty (inputFile)) {
 				HttpRequest req = context != null ? context.Request : null;
@@ -113,9 +117,6 @@ namespace System.Web.UI
 			SetBaseType (null);
 			AddApplicationAssembly ();
 			LoadConfigDefaults ();
-#if NET_2_0
-			this.VirtualPath = new VirtualPath (virtualPath);
-#endif
 		}
 #endif
 
@@ -137,10 +138,8 @@ namespace System.Web.UI
 			masterPage = ps.MasterPageFile;
 			if (masterPage.Length == 0)
 				masterPage = null;
-			
 			enable_event_validation = ps.EnableEventValidation;
 			maxPageStateFieldLength = ps.MaxPageStateFieldLength;
-			pageParserFilter = ps.PageParserFilterType;
 			theme = ps.Theme;
 			if (theme.Length == 0)
 				theme = null;
@@ -319,7 +318,7 @@ namespace System.Web.UI
 			if (clientTarget != null) {
 				clientTarget = clientTarget.Trim ();
 #if NET_2_0
-				ClientTargetSection sec = (ClientTargetSection)WebConfigurationManager.GetSection ("system.web/clientTarget");
+				ClientTargetSection sec = (ClientTargetSection)WebConfigurationManager.GetWebApplicationSection ("system.web/clientTarget");
 				ClientTarget ct = null;
 				
 				if ((ct = sec.ClientTargets [clientTarget]) == null)
@@ -334,7 +333,7 @@ namespace System.Web.UI
 				clientTarget = ct.UserAgent;
 #else
 				NameValueCollection coll;
-				coll = (NameValueCollection) Context.GetConfig ("system.web/clientTarget");
+				coll = (NameValueCollection) HttpContext.GetAppConfig ("system.web/clientTarget");
 				object ct = null;
 				
 				if (coll != null) {
@@ -368,9 +367,9 @@ namespace System.Web.UI
 			
 			masterPage = GetString (atts, "MasterPageFile", masterPage);
 			
-			// Make sure the page exists
 			if (!String.IsNullOrEmpty (masterPage)) {
-				BuildManager.GetCompiledType (masterPage);
+				if (!HostingEnvironment.VirtualPathProvider.FileExists (masterPage))
+					ThrowParseFileNotFound (masterPage);
 				AddDependency (masterPage);
 			}
 			
@@ -400,6 +399,10 @@ namespace System.Web.UI
 			Type type = null;
 			
 			if (isMasterType || isPreviousPageType) {
+				PageParserFilter pfilter = PageParserFilter;
+				if (pfilter != null)
+					pfilter.PreprocessDirective (directive.ToLower (CultureInfo.InvariantCulture), atts);
+				
 				typeName = GetString (atts, "TypeName", null);
 				virtualPath = GetString (atts, "VirtualPath", null);
 
@@ -410,18 +413,24 @@ namespace System.Web.UI
 					type = LoadType (typeName);
 					if (type == null)
 						ThrowParseException (String.Format ("Could not load type '{0}'.", typeName));
-				} else if (virtualPath != null) {
-					string mappedPath = MapPath (virtualPath);
 					if (isMasterType)
-						type = masterType = BuildManager.GetCompiledType (virtualPath);
+						masterType = type;
 					else
-						type = previousPageType = GetCompiledPageType (virtualPath, mappedPath,
-											       HttpContext.Current);
-				} else
-					ThrowParseException (
-						String.Format ("The {0} directive must have either a TypeName or a VirtualPath attribute.", directive));
+						previousPageType = type;
+				} else if (!String.IsNullOrEmpty (virtualPath)) {
+					if (!HostingEnvironment.VirtualPathProvider.FileExists (virtualPath))
+						ThrowParseFileNotFound (virtualPath);
 
-				AddAssembly (type.Assembly, true);
+					AddDependency (virtualPath);
+					if (isMasterType)
+						masterVirtualPath = virtualPath;
+					else
+						previousPageVirtualPath = virtualPath;
+				} else
+					ThrowParseException (String.Format ("The {0} directive must have either a TypeName or a VirtualPath attribute.", directive));
+
+				if (type != null)
+					AddAssembly (type.Assembly, true);
 			} else
 				base.AddDirective (directive, atts);
 		}
@@ -562,7 +571,12 @@ namespace System.Web.UI
 		}
 		
 		internal Type MasterType {
-			get { return masterType; }
+			get {
+				if (masterType == null && !String.IsNullOrEmpty (masterVirtualPath))
+					masterType = BuildManager.GetCompiledType (masterVirtualPath);
+				
+				return masterType;
+			}
 		}
 
 		internal string Title {
@@ -581,12 +595,15 @@ namespace System.Web.UI
 			get { return maxPageStateFieldLength; }
 		}
 
-		internal string PageParserFilterType {
-			get { return pageParserFilter; }
-		}
-
 		internal Type PreviousPageType {
-			get { return previousPageType; }
+			get {
+				if (previousPageType == null && !String.IsNullOrEmpty (previousPageVirtualPath)) {
+					string mappedPath = MapPath (previousPageVirtualPath);
+					previousPageType = GetCompiledPageType (previousPageVirtualPath, mappedPath, HttpContext.Current);
+				}
+				
+				return previousPageType;
+			}
 		}
 #endif
 	}

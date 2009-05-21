@@ -265,16 +265,13 @@ namespace System {
 		internal static extern int InternalKeyAvailable (int ms_timeout);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern bool TtySetup (string keypadXmit, string teardown, out byte verase, out byte vsusp, out byte intr);
+		unsafe internal static extern bool TtySetup (string keypadXmit, string teardown, out byte verase, out byte vsusp, out byte intr, out int *address);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal static extern bool SetEcho (bool wantEcho);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal static extern bool SetBreak (bool wantBreak);
-
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern bool GetTtySize (IntPtr handle, out int width, out int height);
 	}
 }
 #endif

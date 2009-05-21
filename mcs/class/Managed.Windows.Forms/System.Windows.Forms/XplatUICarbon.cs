@@ -87,6 +87,7 @@ namespace System.Windows.Forms {
 
 		// Timers
 		private ArrayList TimerList;
+		private static bool in_doevents;
 		
 		static readonly object instancelock = new object ();
 		static readonly object queuelock = new object ();
@@ -100,6 +101,7 @@ namespace System.Windows.Forms {
 
 			RefCount = 0;
 			TimerList = new ArrayList ();
+			in_doevents = false;
 			MessageQueue = new Queue ();
 			
 			Initialize ();
@@ -486,8 +488,17 @@ namespace System.Windows.Forms {
 				for (int i = 0; i < TimerList.Count; i++) {
 					Timer timer = (Timer) TimerList [i];
 					if (timer.Enabled && timer.Expires <= now) {
-						timer.FireTick ();
-						timer.Update (now);
+						// Timer ticks:
+						//  - Before MainForm.OnLoad if DoEvents () is called.
+						//  - After MainForm.OnLoad if not.
+						//
+						if (in_doevents ||
+						    (Application.MWFThread.Current.Context != null && 
+						     Application.MWFThread.Current.Context.MainForm != null && 
+						     Application.MWFThread.Current.Context.MainForm.IsLoaded)) {
+							timer.FireTick ();
+							timer.Update (now);
+						}
 					}
 				}
 			}
@@ -1237,10 +1248,12 @@ namespace System.Windows.Forms {
 		internal override void DoEvents() {
                         MSG     msg = new MSG ();
 
+			in_doevents = true;
 			while (PeekMessage (null, ref msg, IntPtr.Zero, 0, 0, (uint)PeekMessageFlags.PM_REMOVE)) {
                                 TranslateMessage (ref msg);
                                 DispatchMessage (ref msg);
                         }
+			in_doevents = false;
 
 		}
 
@@ -1592,7 +1605,6 @@ namespace System.Windows.Forms {
 					return true;
 				}
 			}
-			return false;
 		}
 
 		internal override bool PostMessage (IntPtr hwnd, Msg message, IntPtr wParam, IntPtr lParam) {

@@ -5,6 +5,7 @@
 //   Rodrigo Moya (rodrigo@ximian.com)
 //   Tim Coleman (tim@timcoleman.com)
 //   Atsushi Enomoto (atsushi@ximian.com)
+//   Ivan N. Zlatev (contact@i-nz.net)
 //
 // (C) Ximian, Inc. 2002
 // Copyright (C) Tim Coleman, 2002
@@ -113,13 +114,11 @@ namespace System.Data
 		}
 
 		bool ICollection.IsSynchronized {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 
 		object ICollection.SyncRoot {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return this; }
 		}
 
 		bool IList.IsFixedSize {
@@ -142,48 +141,39 @@ namespace System.Data
 		}
 
 		bool IBindingList.AllowEdit {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 
 		bool IBindingList.AllowNew {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 
 		bool IBindingList.AllowRemove {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 
 		bool IBindingList.IsSorted {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { throw new NotSupportedException (); }
 		}
 
 		ListSortDirection IBindingList.SortDirection {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { throw new NotSupportedException (); }
 		}
 
 		PropertyDescriptor IBindingList.SortProperty {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { throw new NotSupportedException (); }
 		}
 
 		bool IBindingList.SupportsChangeNotification {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return true; }
 		}
 
 		bool IBindingList.SupportsSearching {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 
 		bool IBindingList.SupportsSorting {
-			[MonoTODO]
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 
 		#endregion // Properties
@@ -192,9 +182,19 @@ namespace System.Data
 
 		private void SetDataSet (DataSet ds)
 		{
+			if (dataSet != null) {
+				dataSet.Tables.CollectionChanged -= new CollectionChangeEventHandler (TableCollectionChanged);
+				dataSet.Relations.CollectionChanged -= new CollectionChangeEventHandler (RelationCollectionChanged);
+			}
+
 			dataSet = ds;
 			settings = new DataViewSettingCollection (this);
 			xml = BuildSettingString ();
+
+			if (dataSet != null) {
+				dataSet.Tables.CollectionChanged += new CollectionChangeEventHandler (TableCollectionChanged);
+				dataSet.Relations.CollectionChanged += new CollectionChangeEventHandler (RelationCollectionChanged);
+			}
 		}
 
 		private void ParseSettingString (string source)
@@ -209,7 +209,6 @@ namespace System.Data
 			if (xtr.IsEmptyElement)
 				return; // MS does not change the value.
 
-			ArrayList result = new ArrayList ();
 			xtr.Read ();
 			do {
 				xtr.MoveToContent ();
@@ -295,94 +294,81 @@ namespace System.Data
 			}
 		}
 
-		[MonoTODO]
 		void IBindingList.AddIndex (PropertyDescriptor property)
 		{
-			throw new NotImplementedException ();
 		}
 	
-		[MonoTODO]
 		object IBindingList.AddNew ()
 		{
-			throw new NotImplementedException ();
+			throw new NotSupportedException ();
 		}
 	
-		[MonoTODO]
 		void IBindingList.ApplySort (PropertyDescriptor property, ListSortDirection direction)
 		{
-			throw new NotImplementedException ();
+			throw new NotSupportedException ();
 		}
 	
-		[MonoTODO]
 		int IBindingList.Find (PropertyDescriptor property, object key)
 		{
-			throw new NotImplementedException ();
+			throw new NotSupportedException ();
 		}
 	
-		[MonoTODO]
 		void IBindingList.RemoveIndex (PropertyDescriptor property)
 		{
-			throw new NotImplementedException ();
 		}
 	
-		[MonoTODO]
 		void IBindingList.RemoveSort ()
 		{
-			throw new NotImplementedException ();
+			throw new NotSupportedException ();
 		}
 	
-		[MonoTODO]
 		void ICollection.CopyTo (Array array, int index)
 		{
-			throw new NotImplementedException ();
+			array.SetValue (descriptor, index);
 		}
 	
-		[MonoTODO]
 		IEnumerator IEnumerable.GetEnumerator ()
 		{
-			throw new NotImplementedException ();
+			DataViewManagerListItemTypeDescriptor[] array = new DataViewManagerListItemTypeDescriptor[((ICollection)this).Count];
+			((ICollection)this).CopyTo (array, 0);
+			return array.GetEnumerator ();
 		}
 	
-		[MonoTODO]
 		int IList.Add (object value)
 		{
-			throw new NotImplementedException ();
+			throw new ArgumentException ("Not modifiable");
 		}
 	
-		[MonoTODO]
 		void IList.Clear ()
 		{
-			throw new NotImplementedException ();
+			throw new ArgumentException ("Not modifiable");
 		}
 	
-		[MonoTODO]
 		bool IList.Contains (object value)
 		{
-			throw new NotImplementedException ();
+			return value == descriptor;
 		}
 	
-		[MonoTODO]
 		int IList.IndexOf (object value)
 		{
-			throw new NotImplementedException ();
+			if (value == descriptor)
+				return 0;
+			return -1;
 		}
 	
-		[MonoTODO]
 		void IList.Insert (int index, object value)
 		{
-			throw new NotImplementedException ();
+			throw new ArgumentException ("Not modifiable");
 		}
 	
-		[MonoTODO]
 		void IList.Remove (object value)
 		{
-			throw new NotImplementedException ();
+			throw new ArgumentException ("Not modifiable");
 		}
 	
-		[MonoTODO]
 		void IList.RemoveAt (int index)
 		{
-			throw new NotImplementedException ();
+			throw new ArgumentException ("Not modifiable");
 		}
 	
 		[MonoLimitation("Supported only empty list of listAccessors")]
@@ -417,23 +403,28 @@ namespace System.Data
 
 		protected virtual void RelationCollectionChanged (object sender, CollectionChangeEventArgs e)
 		{
-			ListChangedEventArgs args;
-
-			if (e.Action == CollectionChangeAction.Remove) {
-				args = null;
-			} else if (e.Action == CollectionChangeAction.Refresh) {
-				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorChanged, null);
-			} else if (e.Action == CollectionChangeAction.Add) {
-				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorAdded, new DataRelationPropertyDescriptor(((DataRelation) e.Element)));
-			} else {
-				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorDeleted, new DataRelationPropertyDescriptor(((DataRelation) e.Element)));
-			}
-
-			this.OnListChanged(args);
+			this.OnListChanged (CollectionToListChangeEventArgs (e));
 		}
 
 		protected virtual void TableCollectionChanged (object sender, CollectionChangeEventArgs e)
 		{
+			this.OnListChanged (CollectionToListChangeEventArgs (e));
+		}
+
+		private ListChangedEventArgs CollectionToListChangeEventArgs (CollectionChangeEventArgs e)
+		{
+			ListChangedEventArgs args;
+
+			if (e.Action == CollectionChangeAction.Remove)
+				args = null;
+			else if (e.Action == CollectionChangeAction.Refresh)
+				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorChanged, null);
+			else if (e.Action == CollectionChangeAction.Add)
+				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorAdded, new DataRelationPropertyDescriptor(((DataRelation) e.Element)));
+			else
+				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorDeleted, new DataRelationPropertyDescriptor(((DataRelation) e.Element)));
+
+			return args;
 		}
 
 		#endregion // Methods

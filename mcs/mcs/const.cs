@@ -74,16 +74,12 @@ namespace Mono.CSharp {
 			Type ttype = MemberType;
 			if (!IsConstantTypeValid (ttype)) {
 				Error_InvalidConstantType (ttype, Location);
-				return false;
 			}
 
 			// If the constant is private then we don't need any field the
 			// value is already inlined and cannot be referenced
 			//if ((ModFlags & Modifiers.PRIVATE) != 0 && RootContext.Optimize)
 			//	return true;
-
-			while (ttype.IsArray)
-				ttype = TypeManager.GetElementType (ttype);
 
 			FieldAttributes field_attr = FieldAttributes.Static | Modifiers.FieldAttr (ModFlags);
 			// Decimals cannot be emitted into the constant blob.  So, convert to 'readonly'.
@@ -97,9 +93,9 @@ namespace Mono.CSharp {
 			TypeManager.RegisterConstant (FieldBuilder, this);
 			Parent.MemberCache.AddMember (FieldBuilder, this);
 
-			if (ttype == TypeManager.decimal_type)
+			if ((field_attr & FieldAttributes.InitOnly) != 0)
 				Parent.PartialContainer.RegisterFieldForInitialization (this,
-					new FieldInitializer (FieldBuilder, initializer));
+					new FieldInitializer (FieldBuilder, initializer, this));
 
 			return true;
 		}
@@ -183,10 +179,10 @@ namespace Mono.CSharp {
 				mc.GetSignatureForError ());
 		}
 
-		public static void Error_ConstantCanBeInitializedWithNullOnly (Location loc, string name)
+		public static void Error_ConstantCanBeInitializedWithNullOnly (Type type, Location loc, string name)
 		{
-			Report.Error (134, loc, "`{0}': the constant of reference type other than string can only be initialized with null",
-				name);
+			Report.Error (134, loc, "A constant `{0}' of reference type `{1}' can only be initialized with null",
+				name, TypeManager.CSharpName (type));
 		}
 
 		public static void Error_InvalidConstantType (Type t, Location loc)
@@ -230,10 +226,10 @@ namespace Mono.CSharp {
 
 			Constant c = value.ConvertImplicitly (MemberType);
 			if (c == null) {
-				if (!MemberType.IsValueType && MemberType != TypeManager.string_type && !value.IsDefaultValue)
-					Error_ConstantCanBeInitializedWithNullOnly (Location, GetSignatureForError ());
+				if (TypeManager.IsReferenceType (MemberType))
+					Error_ConstantCanBeInitializedWithNullOnly (MemberType, Location, GetSignatureForError ());
 				else
-					value.Error_ValueCannotBeConverted (null, Location, MemberType, false);
+					value.Error_ValueCannotBeConverted (ec, Location, MemberType, false);
 			}
 
 			return c;

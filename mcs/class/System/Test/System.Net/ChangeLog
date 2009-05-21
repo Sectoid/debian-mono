@@ -1,3 +1,71 @@
+2009-02-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* DnsTest.cs: Use Assert syntax, and spaces to tabs. Added tests
+	for argument checks.
+
+2009-01-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* IPAddressTest.cs: tests for bug #467472.
+
+2009-01-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequestTest.cs: add directory listing test when the $HOME is
+	not /.
+
+2009-01-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequestTest.cs: test deleting a file.
+
+2008-11-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListener2Test.cs: make sure we dispose the listener.
+
+2008-11-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListener2Test.cs: (CreateNS) set a default read/write timeout
+	of 5s.
+
+2008-11-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequestTest.cs: the upload test now passes with the MS
+	runtime. Added another test for download.
+
+2008-11-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListener2Test.cs: Fixed Test7.
+
+2008-11-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequestTest.cs: add test for bug 333985.
+
+2008-10-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebResponseTest.cs:
+	* SocketResponder.cs:
+	* HttpWebRequestTest.cs: don't pretend to be a 1.1 server or the
+	socket will stay open. Timeout for Ntlm test is 5s now.
+
+2008-10-19  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpWebRequestTest.cs: Fixed test for bug #429200.
+
+2008-10-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpWebRequestTest.cs: Added test for bug #429200.
+
+2008-10-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequestTest.cs: mini-test case for NTLM auth.
+
+2008-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IPAddressTest.cs : added test strings for bug #411920 as well as
+	  enabling some ipv4ParseOK strings.
+
+2008-07-25  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpWebResponseTest.cs: Enabled tests.
+
 2008-07-03  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* HttpListener2Test.cs: Added test for multiple responses.

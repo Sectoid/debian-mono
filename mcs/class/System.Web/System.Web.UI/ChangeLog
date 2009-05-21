@@ -1,7 +1,386 @@
+2009-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* XPathBinder.cs: use the pased namespace manager
+
+	* ControlBuilder.cs: BindingContainerType - if control type of the
+	containing builder is null, return typeof (Control)
+
+2009-02-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BaseParser.cs:
+	* PageParser.cs:
+	* ControlBuilder.cs:
+	* TemplateParser.cs:
+	* Page.cs:
+	* SimpleWebHandlerParser.cs: settings that have to be in
+	machine.config or the root level web.config now call
+	GetWebApplicationSection.
+
+2009-02-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ObjectStateFormatter.cs: use GetWebApplication
+	instead of GetSection for application level configuration.
+
+2009-02-28  Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Control.cs: Avoid double OnInit in scenarios with two master
+	pages.
+
+2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TemplateControl.cs: implement the other ReadStringResource method.
+	Patch from Kornel Pal.
+
+2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceBasedLiteralControl.cs: new Control. It's just
+	like a LiteralControl but will render itself from the bytes pointed to
+	by an IntPtr and not create any string from the underlying data unless
+	needed.
+
+	* TemplateControl.cs: implemented a bunch of methods
+	that are used from the precompiled assemblies for a web project. The
+	most notable change needed is to be able to read a win32 resource from
+	the dll of the control. The resource is a concatenation of literals
+	with plain text for the control and a specialized LiteralControl is
+	generated from different chunks of the resource.
+
+	* HtmlTextWriter.cs: new method that returns the
+	HttpWriter in use.
+
+2009-02-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TemplateControl.cs: ReadStringResource returns null now.
+
+2009-02-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* MasterPage.cs: the items in ContentPlaceHolders are lowercase.
+
+2009-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateParser.cs: don't initialize PageParserFilter in
+	LoadConfigDefaults, postpone it till the first time the
+	PageParserFilter property is accessed.
+
+	* ApplicationFileParser.cs, UserControlParser.cs: make sure
+	VirtualPath is set in the constructors.
+
+2009-02-13  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateParser.cs: PageParserFilter handling moved to here.
+	PagesConfig must use the current virtual path when retrieving the
+	section, or otherwise we'll miss the lower level web.configs.
+	Added the AddControl method, used by PageParserFilter.
+	Implementing filtering of: parsed directives and the base type, if
+	a page parser filter is present.
+
+	* PageParserFilter.cs: added missing 3.5 members and implemented
+	everything.
+
+	* PageParser.cs: moved PageParserFilter processing to
+	TemplateParser.
+	VirtualPath must be set before anything else.
+	Call page parser filter's directive preprocessing code from
+	AddDirective if a filter is present and a mastertype or
+	previouspagetype directive is parsed.
+
+	* MasterPageParser.cs: when PageParserFilter is present use it to
+	preprocess the MasterType directive.
+
+2009-02-12  Marek Safar  <marek.safar@gmail.com>
+
+	* ControlBuilder.cs, PageParserFilter.cs, CodeConstructType.cs:
+	Add few missing members.
+
+2009-02-06  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Control.cs: Make IsViewStateEnabled available on 1.0 profile
+	and use it to determine if viewstate needs to be saved instead of
+	the newly introduced ViewStateShouldBeSaved. Remove
+	ViewStateShouldBeSaved.
+
+2009-02-05  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: if a control has been added to the controls
+	collection, removed and added again do not call OnInit (). At the
+	same time OnInit() should be called more than once if a control is
+	added to a container which, in turn, is then added to another
+	control. To achieve that a new state mask flag has been added -
+	REMOVED. Fixes bug #471305
+
+2009-02-04  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: update of the fix for bug #470993 - view state of
+	the child controls isn't saved when any of their parents has it
+	disabled.
+
+2009-01-30  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: don't save the control's state if it's
+	disabled. Fixes bug #470993
+
+2009-01-23  Marek Habersack  <mhabersack@novell.com>
+
+	* HtmlTextWriter.cs: if OnTagRender returns false when called from
+	RenderBeginTag, push the tag to the stack regardless, and ignore
+	it in DoBeginTag and RenderEndTag. Fixes bug #463634
+
+2009-01-13  Marek Habersack  <mhabersack@novell.com>
+
+	* CodeBuilder.cs, RootBuilder.cs, CollectionBuilder.cs: updates
+	related to ControlBuilder cleanup.
+
+	* ControlBuilder.cs: code cleanup - no field should be visible
+	outside the class unless it's a constant or a read-only field.
+
+2009-01-12  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateParser.cs: line pragmas are on by default. Fixes bug
+	#460479
+
+2009-01-09  Marek Habersack  <mhabersack@novell.com>
+
+	* BaseParser.cs, PageParser.cs, UserControlParser.cs: use
+	VirtualPathUtility.GetDirectory instead of UrlUtils.GetDirectory.
+
+2008-12-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TemplateControl.cs: use IndexOf (char).
+
+2008-12-18  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlBuilder.cs: BindingContainerType returns typeof (Page)
+	only when the current object is a RootBuilder and it's been
+	created for a page parser. Otherwise it returns typeof
+	(Control). Fixes bug #456305
+
+2008-12-11  Marek Habersack  <mhabersack@novell.com>
+
+	* MasterPageParser.cs: check if masterType is null before using it
+	in AddDirective.
+
+	* TemplateParser.cs: in the 2.0 profile when a custom control is
+	registered, do not compile it right away but store the tag name in
+	a registry to be compiled at a later stage.
+
+2008-12-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* XhtmlTextWriter.cs: don't recreate the Hashtables every time, but
+	Clone the defaults.
+
+2008-12-10  Marek Habersack  <mhabersack@novell.com>
+
+	* MasterPageParser.cs: do not compile anything while
+	parsing. MasterType virtual path is not compiled, but stored for
+	later. It is compiled when the MasterType property is requested
+	from within MasterPageCompiler.
+
+	* PageParser.cs: do not compile anything while
+	parsing. MasterPageFile, MasterType and PreviousPageType virtual
+	paths aren't compiled but checked for existence and stored for
+	later. Actual compilation happens when the MasterType and
+	PreviousPageType are requested from within PageCompiler.
+
+	* BaseParser.cs: added a new helper method, ThrowParseFileNotFound.
+
+2008-12-03  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBinder.cs: clean up Eval for good this time.
+	GetIndexedPropertyValue should throw an exception when a string
+	indexer expression is used and the container is an IList.
+
+2008-12-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Page.cs: make sure we don't return null in Title.
+
+2008-12-02  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBinder.cs: when Eval attempts to find Items [] in the
+	container, catch and ignore all exceptions - the null returned
+	from GetPropertyValue may be a legitimate return value.
+
+	* StateManagedCollection.cs: adding an item to the collection does
+	not call SetDirty as an item is added, thus not affecting the
+	indexes of its predecessors. Fixes bug #443100
+	Insert doesn't call SetDirtyObject as all objects are made dirty
+	in SetDirty which is called from here. Same applies to this [int]
+	indexer.
+
+2008-12-01  Marek Habersack  <mhabersack@novell.com>
+
+	* MasterPage.cs: use List <string> for ContentPlaceHolders instead
+	of ArrayList.
+	CreateMasterPage now directly accesses the ContentPlaceHolders as
+	it is now a list of strings.
+
+2008-11-28  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBinder.cs: do the proper thing in Eval when a non-indexed
+	property is requested on an object and not found. In that case try
+	to use the Items property.
+
+2008-11-25  Marek Habersack  <mhabersack@novell.com>
+
+	* RootBuilder.cs: use new API in AspComponentFoundry to retrieve
+	registered control type.
+
+	* TemplateControlParser.cs: AddControlImports () removed. Its
+	functionality is now implemented in ControlBuilder.AddChild in a
+	more elegant, fine grained and correct way.
+
+	* TemplateParser.cs: replaced some "" with String.Empty
+
+	* ControlBuilder.cs: AddChild now adds an import for child's
+	namespace if the control being added has been registered in the
+	web.config file. Possible fix for #447896 and #447898
+
+	* PageParser.cs, MasterPageParser.cs: do not call
+	AddControlImports, it no longer exists.
+
+2008-11-21  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlBuilder.cs: in BindingContainerType if builder is a
+	RootBuilder and no naming container is found, return typeof
+	(Page). In the TemplateBuilder case return cb.ControlType, not
+	this.ControlType.
+
+2008-11-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ControlBuilder.cs: make sure the binding container container is a
+	naming container.
+
+2008-11-18  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlBuilder.cs: make sure no control implementing the
+	INonBindingContainer can be returned from BindingContainerType.
+
+2008-11-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ControlBuilder.cs: find the correct naming container even inside
+	user controls. A corner case of bug #445889.
+
+2008-11-15  Marek Habersack  <mhabersack@novell.com>
+
+	* INonBindingContainer.cs: added
+
+	* Control.cs: BindingContainer now checks if a control implements
+	INonBindingContainer interface in addition to the
+	BINDING_CONTAINER mask check.
+
+	* UserControl.cs: implements INonBindingContainer
+
+	* ControlBuilder.cs: use the new INonBindingContainer interface to
+	determine the binding container type in the BindingContainerType
+	property. If TemplateBuilder's ContainerType implements that
+	interface, the NamingContainer is queried for the binding
+	container type. If ContainerType is null, we return our own
+	ControlType (if we're TemplateBuilder)
+
+2008-11-14  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBinder.cs: if Eval doesn't find the indicated property, try
+	to find an indexer property on the object and use the expression
+	value as its parameter. Fixes #444725
+
+2008-11-13  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: added ability to reset child names to a specific
+	value, not only to 0.
+
+2008-10-29  Marek Habersack  <mhabersack@novell.com>
+
+	* StateManagedCollection.cs: IList.Remove should call this.IndexOf
+	instead of items.IndexOf
+
+2008-10-24  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControl.cs: pass content hash to
+	UserControlParser.GetCompiledType when compiling a control in
+	ParseControl.
+
+	* UserControlParser.cs: when compiling a control using a text
+	reader, append a unique suffix to the "file path" - that way
+	controls compiled from different input streams won't conflict with
+	each other in the compilation cache.
+
+2008-10-23  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlParser.cs: added internal method
+	AddControlImports which adds namespaces named in the
+	pages/controls section of web.config
+
+	* MasterPageParser.cs: unconditionally add namespaces named in the
+	pages/controls section of web.config.
+
+	* PageParser.cs: add namespaces named in the pages/controls
+	section of web.config to the page whenever it uses a master page.
+
+	* StateManagedCollection.cs: modified {Load,Save}ViewState to
+	properly store/recreate the collection of controls and to use a
+	more consistent structure for the state.
+
+2008-10-17  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: added the ValidateEvent internal method, used by
+	classes descending from Control to automatically trigger event
+	validation.
+
+	* Page.cs: removed the CheckForValidationSupport method. It moved
+	to Control.cs
+	RaisePostBackEvent no longer validates the events, this
+	functionality has been moved to Control.ValidateEvent.
+
 2008-10-15  Marek Habersack  <mhabersack@novell.com>
 
 	* Page.cs: Response caching is switched on only when output
 	caching is configured for this page instance. Fixes bug #435549.
+
+2008-10-14  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: SaveViewStateRecursive must return view state even
+	if EnableViewState is false. This is apparently what .NET does, as
+	some commercial ASP.NET controls take advantage of that via
+	reflection.
+
+2008-10-08  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBinder.cs: in Eval expression needs to be trimmed before
+	checking whether it's an empty string.
+	GetIndexedPropertyValue must explicitly look for the "Item"
+	property, the lack of the DefaultMember attribute on type must not
+	throw exceptions.
+
+2008-10-03  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateParser.cs: make sure the generated class name is a valid
+	language independent identifier. Fixes bug #431622
+
+2008-09-29  Marek Habersack  <mhabersack@novell.com>
+
+	* Page.cs: EnableViewState is initialized from the web
+	configuration. 
+	ViewState is saved only if EnableViewState is true for the page.
+	Optimized SavePageControlState implementation.
+	Implemented the UniqueFilePathSuffix and MaxPageStateFieldLength
+	properties.
+	Some coding style changes.
+
+2008-09-25  Marek Habersack  <mhabersack@novell.com>
+
+	* Page.cs: make sure view state is loaded for PreviousPage during
+	cross-page postback.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IAutoFieldGenerator.cs : new in 3.5 SP1.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CssClassPropertyAttribute.cs : new in 3.5 SP1.
+
+2008-09-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IBindableControl.cs : new in 3.5 SP1.
 
 2008-09-01  Marek Habersack  <mhabersack@novell.com>
 
@@ -40,6 +419,11 @@
 	* TemplateBuilder.cs: use a generic List to store the bindings on
 	2.0+
 
+2008-08-08  Marek Habersack  <mhabersack@novell.com>
+
+	* StateManagedCollection.cs: set all the contained objects state
+	to dirty in SetDirty.
+
 2008-07-28  Marek Habersack  <mhabersack@novell.com>
 
 	* MasterPage.cs: decouple processing of content templates in
@@ -48,13 +432,15 @@
 
 2008-07-22  Gert Driesen  <drieseng@users.sourceforge.net>
 
-	* LosFormatter.cs: Avoid using Position when stream is unseekable.
-	Do not invoke Length property twice for seekable MemoryStream. 
+	* LosFormatter.cs (Deserialize): When stream is non-seekable, do not
+	attempt to use properties that require a seekable stream. Based on
+	patch provided by Dean Brettle (dean@brettle.com). Fixes bug #411115.
 
-2008-07-22  Dean Brettle <dean@brettle.com>
+2008-07-16  Rodrigo Kumpera  <rkumpera@novell.com>
+	* DataBoundLiteralControl.cs: Lazily create staticLiterals.
 
-	* LosFormatter.cs: fixed bug 411115 where passing an unseekable 
-	stream to LosFormatter.Deserialize() causes an exception.
+	* DataBoundLiteralControl.cs (Render): Don't generate
+	an intermediate string, write the content directly.
 
 2008-07-14  Marek Habersack  <mhabersack@novell.com>
 

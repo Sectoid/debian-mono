@@ -124,13 +124,15 @@ namespace System.Runtime.Remoting.Channels.Tcp
 	{
 		public ReusableTcpClient (string host, int port): base (host, port)
 		{
-			// Avoid excessive waiting for data by the tcp stack in linux
-#if NET_2_0			
+			// Avoid excessive waiting for data by the tcp stack in linux.
+			// We can't safely use SetSocketOption for both runtimes because
+			// it would break 2.0 TcpClient's property cache.
+#if NET_2_0
 			Client.NoDelay = true;
 #else
 			Client.SetSocketOption (SocketOptionLevel.Tcp,
 						SocketOptionName.NoDelay, 1);
-#endif			
+#endif
 		}
 		
 		public bool IsAlive

@@ -61,6 +61,8 @@ namespace Mono.WebBrowser
 		void Render (byte[] data);
 		void Render (string html);
 		void Render (string html, string uri, string contentType);
+
+		void ExecuteScript (string script);
 			
 		bool Initialized { get; }
 		IWindow Window { get; }
@@ -96,6 +98,8 @@ namespace Mono.WebBrowser
 		event SecurityChangedEventHandler SecurityChanged;
 		
 		event ContextMenuEventHandler ContextMenuShown;
+		
+		event NavigationRequestedEventHandler NavigationRequested;
 	}
 
 	public enum ReloadOption : uint
@@ -408,6 +412,17 @@ namespace Mono.WebBrowser
 		{
 			this.x = x;
 			this.y = y;
+		}
+	}	
+	
+	public delegate void NavigationRequestedEventHandler (object sender, NavigationRequestedEventArgs e);
+	public class NavigationRequestedEventArgs : System.ComponentModel.CancelEventArgs {
+		private string uri;
+		public string Uri {
+			get {return uri;}
+		}
+		public NavigationRequestedEventArgs (string uri) {
+			this.uri = uri;
 		}
 	}	
 #endregion

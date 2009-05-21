@@ -17,7 +17,7 @@
 #include <mono/metadata/exception.h>
 #include <mono/io-layer/io-layer.h>
 
-#ifndef PLATFORM_WIN32
+#if !defined(PLATFORM_WIN32) && defined(HAVE_SYS_UTSNAME_H)
 #include <sys/utsname.h>
 #endif
 
@@ -65,9 +65,3 @@ ves_icall_System_Environment_GetOSVersionString (void)
 	return mono_string_new (mono_domain_get (), "0.0.0.0");
 }
 
-gint32 ves_icall_System_Environment_get_ProcessorCount(void)
-{
-	SYSTEM_INFO sys_info;
-	GetSystemInfo(&sys_info);
-	return sys_info.dwNumberOfProcessors;
-}

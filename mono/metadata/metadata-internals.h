@@ -79,6 +79,7 @@ struct _MonoImage {
 	 * this image between calls of mono_image_open () and mono_image_close ().
 	 */
 	int   ref_count;
+	void *raw_data_handle;
 	char *raw_data;
 	guint32 raw_data_len;
 	guint8 raw_buffer_used    : 1;
@@ -300,6 +301,7 @@ struct _MonoDynamicImage {
 	GHashTable *handleref;
 	MonoGHashTable *tokens;
 	GHashTable *blob_cache;
+	GHashTable *standalonesig_cache;
 	GList *array_methods;
 	GPtrArray *gen_params;
 	MonoGHashTable *token_fixups;
@@ -361,6 +363,18 @@ guint mono_aligned_addr_hash (gconstpointer ptr) MONO_INTERNAL;
 
 void
 mono_image_check_for_module_cctor (MonoImage *image) MONO_INTERNAL;
+
+gpointer
+mono_image_alloc  (MonoImage *image, guint size) MONO_INTERNAL;
+
+gpointer
+mono_image_alloc0 (MonoImage *image, guint size) MONO_INTERNAL;
+
+char*
+mono_image_strdup (MonoImage *image, const char *s) MONO_INTERNAL;
+
+MonoType*
+mono_metadata_get_shared_type (MonoType *type) MONO_INTERNAL;
 
 void
 mono_metadata_clean_for_image (MonoImage *image) MONO_INTERNAL;

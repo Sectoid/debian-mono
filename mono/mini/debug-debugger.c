@@ -26,8 +26,6 @@
 #error "Some clown #defined MONO_DEBUGGER_SUPPORTED without USE_INCLUDED_GC - fix configure.in!"
 #endif
 
-static MonoObject *debugger_runtime_invoke (MonoMethod *method, void *obj, void **params,
-					    MonoObject **exc);
 static guint64 debugger_compile_method (guint64 method_arg);
 static guint64 debugger_get_virtual_method (guint64 class_arg, guint64 method_arg);
 static guint64 debugger_get_boxed_object (guint64 klass_arg, guint64 val_arg);
@@ -54,10 +52,6 @@ static guint64 debugger_get_method_signature (guint64 argument1, G_GNUC_UNUSED g
 
 #define EXECUTABLE_CODE_BUFFER_SIZE 4096
 static guint8 *debugger_executable_code_buffer = NULL;
-
-#define LAST_OBJECT_CACHE_SIZE 4
-static gpointer last_object_cache [1 << LAST_OBJECT_CACHE_SIZE];
-static int last_object_cache_idx = 0;
 
 static GCThreadFunctions debugger_thread_vtable;
 
@@ -139,7 +133,7 @@ MonoDebuggerInfo MONO_DEBUGGER__debugger_info = {
 	&debugger_compile_method,
 	&debugger_get_virtual_method,
 	&debugger_get_boxed_object,
-	&debugger_runtime_invoke,
+	&mono_debugger_runtime_invoke,
 	&debugger_class_get_static_field_data,
 	&debugger_run_finally,
 	&debugger_initialize,
@@ -176,13 +170,6 @@ MonoDebuggerInfo MONO_DEBUGGER__debugger_info = {
 	(gint32*)&_mono_debugger_interruption_request
 };
 
-static void
-cache_object (gpointer object)
-{
-	last_object_cache [last_object_cache_idx++] = object;
-	last_object_cache_idx &= ((1 << LAST_OBJECT_CACHE_SIZE) - 1);
-}
-
 static guint64
 debugger_compile_method (guint64 method_arg)
 {
@@ -211,6 +198,7 @@ debugger_get_virtual_method (guint64 object_arg, guint64 method_arg)
 static guint64
 debugger_get_boxed_object (guint64 klass_arg, guint64 val_arg)
 {
+	static MonoObject *last_boxed_object = NULL;
 	MonoClass *klass = (MonoClass *) GUINT_TO_POINTER ((gsize) klass_arg);
 	gpointer val = (gpointer) GUINT_TO_POINTER ((gsize) val_arg);
 	MonoObject *boxed;
@@ -219,20 +207,9 @@ debugger_get_boxed_object (guint64 klass_arg, guint64 val_arg)
 		return val_arg;
 
 	boxed = mono_value_box (mono_domain_get (), klass, val);
-	cache_object (boxed); // Protect the object from being garbage collected
+	last_boxed_object = boxed; // Protect the object from being garbage collected
 
 	return (guint64) (gsize) boxed;
-}
-
-static MonoObject *
-debugger_runtime_invoke (MonoMethod *method, void *obj, void **params, MonoObject **exc)
-{
-	MonoObject *retval = mono_debugger_runtime_invoke (method, obj, params, exc);
-	if (retval)
-		cache_object (retval);
-	if (exc && *exc)
-		cache_object (*exc);
-	return retval;
 }
 
 static guint64

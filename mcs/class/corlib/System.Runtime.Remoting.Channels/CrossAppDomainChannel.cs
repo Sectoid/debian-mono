@@ -49,12 +49,14 @@ namespace System.Runtime.Remoting.Channels
 	internal class CrossAppDomainData 
 	{
 		// TODO: Add context support
-		private int _ContextID;
+		// Required for .NET compatibility
+		private object _ContextID;
 		private int _DomainID;
 		private string _processGuid;
 
 		internal CrossAppDomainData(int domainId) 
 		{
+			_ContextID = (int) 0;
 			_DomainID = domainId;
 			_processGuid = RemotingConfiguration.ProcessId;
 		}
@@ -184,6 +186,7 @@ namespace System.Runtime.Remoting.Channels
 			public CADMethodReturnMessage cadMrm;
 		}
 
+#pragma warning disable 169
 		private static ProcessMessageRes ProcessMessageInDomain (
 			byte[] arrRequest,
 			CADMethodCallMessage cadMsg)
@@ -201,6 +204,7 @@ namespace System.Runtime.Remoting.Channels
 			}
 			return res;
 		}
+#pragma warning restore 169
 
 		public virtual IMessage SyncProcessMessage(IMessage msgRequest) 
 		{

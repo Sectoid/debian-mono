@@ -6,12 +6,15 @@
 //
 // (c) 2004 Novell, Inc. (http://www.ximian.com)
 //
-using NUnit.Framework;
+
 using System;
 using System.Collections;
 using System.ComponentModel;
+using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 using System.ComponentModel.Design;
 using System.Globalization;
+
+using NUnit.Framework;
 
 namespace MonoTests.System.ComponentModel
 {
@@ -611,6 +614,13 @@ namespace MonoTests.System.ComponentModel
 			Assert.AreEqual ("TestName", TypeDescriptor.GetComponentName (sitedcom), "#7");
 			Assert.AreEqual ("TestName", TypeDescriptor.GetComponentName (sitedcom), "#8");
 		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentNullException))]
+		public void TestGetConverterNullParam ()
+		{
+			TypeDescriptor.GetConverter (null);
+		}
 		
 		[Test]
 		public void TestGetConverter ()
@@ -652,6 +662,10 @@ namespace MonoTests.System.ComponentModel
 #endif
 			Assert.IsTrue (TypeDescriptor.GetConverter (typeof (Component)) is ComponentConverter, "#29");
 			Assert.IsTrue (TypeDescriptor.GetConverter (new Component()) is ComponentConverter, "#30");
+
+#if NET_2_0
+			Assert.AreEqual (typeof (NullableConverter), TypeDescriptor.GetConverter (typeof (int?)).GetType (), "#31");
+#endif
 		}
 		
 		[Test]

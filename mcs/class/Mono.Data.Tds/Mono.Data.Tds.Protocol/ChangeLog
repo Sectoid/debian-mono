@@ -1,3 +1,96 @@
+2009-01-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Tds70.cs: fix for output parameters and '@'.
+	Fixes bug #470579. Patch from Varadhan.
+
+2009-01-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TdsConnectionPool.cs: made getting/releasing connections thread safe.
+	If we have a release connection available, we return that without locking
+
+2009-01-21 Christian Hergert <christian.hergert@gmail.com>
+
+	* TdsComm.cs: optimize Append(byte[],int,byte) for adding data to
+	the buffer in the largest size of chunks possible.  also optimize
+	other Append overloads to use this rather than lots of Append(byte).
+
+2009-01-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TdsComm.cs: no need for the ManualResetEvent or the timeout instance
+	variables.
+
+2009-01-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Tds70.cs: fix my mistake in the previous patch.
+
+2009-01-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Tds70.cs: more '@' handling.
+
+2009-01-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Tds70.cs: send the leading '@' for parameters that do not have one.
+	Fixes bug #466071.
+	Thanks to William Shallum.
+
+2009-01-04  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Tds.cs: Support detecting NULL value when sequentially reading
+	text/ntext/image column. Fixed typo in exception message in
+	GetSequentialColumnValue. Support reading zero-length binary data.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Tds.cs: Added IsWideType method.
+	* Tds70.cs: Fixed columnsize for unicode columns. Set precision
+	and scale for non-decimal/numeric column.
+	* TdsColumnType.cs: Adds tds names as comment.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Tds.cs (LoadData): Improve exception message when attempting to
+	read before the current position. Update the remaining length of the
+	stream when skipping bytes.
+
+2008-12-05 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Tds70.cs: support parameter names with or without a leading '@'.
+
+2008-11-13  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsComm.cs (ResetConnection, IsConnected): Added a property and
+	method.  IsConnected will check for any connection-reset occurrance
+	from other end-point of the underlying socket.  ResetConnection
+	adds the "reset" bit in the Status flag field of packet header.
+	Set socket option to keep alive, whereever supported and also, let
+	the socket close along with the underlying stream.
+
+	* Tds70.cs (Reset): Use the new ResetConnection property instead
+	of executing sp_reset_connection.  Saves a round-trip.
+	
+2008-11-11  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Tds70.cs: Support writing negative (small)money values. Added 
+	overflow check for smallmoney values. Fixes bug #428139.
+	* Tds.cs: Fixed reading negative (small)money values.
+
+2008-11-09  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* TdsConnectionPool.cs: Added TdsConnectionPoolManager.GetConnection
+	overload that can be used to retrieve an existing connection pool.
+	Modified ResetConnectionPool () to skip free slots in the pool and to
+	close pooled connections that are not in use. Pooled connections that
+	are in use are now marked as non-pooled so that they are no longer
+	returned to the pool when they are closed. Fixes bug #443131.
+
+2008-09-16  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	Patch from Christian Hergert <christian.hergert@gmail.com>
+	* TdsComm.cs: Expose the stream to be internally used by other
+	classes
+	* Tds70.cs (Reset): Validate whether the connection is available
+	or not.
+	
 2008-07-09  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* TdsComm.cs:  Cleanup stray Console.WriteLine that got in during last commit

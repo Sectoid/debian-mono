@@ -1,3 +1,42 @@
+2008-11-14  Jb Evain  <jbevain@novell.com>
+
+	* Dictionary.cs (ICollection.CopyTo): fix the different possible
+	copying cases depending on the actual type of destination array,
+	be it an array of KeyValuePair, DictionaryEntry, or object.
+	Fixes #444778.
+
+2008-11-14  Jb Evain  <jbevain@novell.com>
+
+	* Dictionary.cs: fix ICollection<KeyValuePair<T>>.Remove and .Contains
+	to not only check if the key exists but if the associated value is the
+	good one as well. Fixes #444768.
+
+2008-10-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* Dictionary.cs (Clear): Clear the linkSlots array as well, as 
+	Enumerator.MoveNext () depends on it. Fixes #432441.
+
+Fri Oct 3 23:08:06 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* Dictionary.cs: by popular demand, return keys/values in insertion
+	order when possible.
+
+2008-09-29  Jb Evain  <jbevain@novell.com>
+
+	* Dictionary.cs: check for null argument in ContainsKey.
+	Patch by Jonathan Anderson  <jonathan.l.anderson@gmail.com>
+
+2008-09-24  Jb Evain  <jbevain@novell.com>
+
+	* Dictionary.cs: properly reset all compounds enumerators.
+	Fixes #429530.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Dictionary.cs: (ToTValue) allow null values to be added for non
+	value types TValues to the dictionary when using the
+	non generic IDictionary. Fixes #425693.
+
 2008-06-16  Andreas Nahr <ClassDevelopment@A-SoftTech.com>
 
 	* String.cs: Dictionary: Do not change the index data when using the indexer for

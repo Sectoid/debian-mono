@@ -105,7 +105,6 @@ namespace System.Net
 				throw GetMustImplement ();
 			}
 			set {
-				throw GetMustImplement ();
 			}
 		}
 #endif
@@ -188,7 +187,7 @@ namespace System.Net
 			}
 		}
 		
-		volatile static IWebProxy proxy;
+//		volatile static IWebProxy proxy;
 		static readonly object lockobj = new object ();
 		
 		public static IWebProxy DefaultWebProxy {

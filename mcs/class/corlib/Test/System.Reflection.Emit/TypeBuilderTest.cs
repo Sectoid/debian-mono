@@ -23,6 +23,7 @@ using System.Security;
 using System.Security.Permissions;
 using System.Runtime.InteropServices;
 using NUnit.Framework;
+using System.Runtime.CompilerServices;
 
 #if NET_2_0
 using System.Collections.Generic;
@@ -45,6 +46,12 @@ namespace MonoTests.System.Reflection.Emit
 	public class EmptyIfaceImpl : EmptyInterface
 	{
 	}
+
+#if NET_2_0
+	public class Gen<T> {
+		public static T field = default(T);
+	}
+#endif
 
 	[TestFixture]
 	public class TypeBuilderTest
@@ -88,7 +95,6 @@ namespace MonoTests.System.Reflection.Emit
 		public interface IDestroyable
 		{
 		}
-
 #if NET_2_0
 
 		public class Tuple <A,B> {
@@ -200,6 +206,23 @@ namespace MonoTests.System.Reflection.Emit
 			TypeBuilder tb3 = tb2.DefineNestedType (name3, attrs);
 
 			Assert.AreEqual (name + "+" + name2 + "+" + name3, tb3.FullName, "#2");
+		}
+
+		[Test]
+		public void DefineCtorUsingDefineMethod ()
+		{
+			TypeBuilder tb = module.DefineType (genTypeName (), TypeAttributes.Public | TypeAttributes.Class);
+			MethodBuilder mb = tb.DefineMethod(
+				".ctor", MethodAttributes.Public | MethodAttributes.RTSpecialName | MethodAttributes.SpecialName,
+				null, null);
+			ILGenerator ilgen = mb.GetILGenerator();
+			ilgen.Emit(OpCodes.Ldarg_0);
+			ilgen.Emit(OpCodes.Call,
+					   typeof(object).GetConstructor(Type.EmptyTypes));
+			ilgen.Emit(OpCodes.Ret);
+			Type t = tb.CreateType();
+
+			Assert.AreEqual (1, t.GetConstructors ().Length);
 		}
 
 		[Test]
@@ -2040,6 +2063,66 @@ namespace MonoTests.System.Reflection.Emit
 		}
 
 #if NET_2_0
+		[Test]
+		public void GetMethod_RejectMethodFromInflatedTypeBuilder () {
+			TypeBuilder tb = module.DefineType (genTypeName ());
+			tb.DefineGenericParameters ("T");
+			MethodBuilder mb = tb.DefineMethod ("create", MethodAttributes.Public, typeof (void), Type.EmptyTypes);
+
+			Type ginst = tb.MakeGenericType (typeof (int));
+			
+			MethodInfo mi = TypeBuilder.GetMethod (ginst, mb);
+			try {
+				TypeBuilder.GetMethod (ginst, mi);
+				Assert.Fail ("#1");
+			} catch (ArgumentException ex) {
+				Assert.AreEqual ("method", ex.ParamName, "#5");
+			}
+		}
+
+		[Test]
+		public void GetMethod_WorkWithInstancesOfCreatedTypeBuilder () {
+			TypeBuilder tb = module.DefineType (genTypeName ());
+			tb.DefineGenericParameters ("T");
+			MethodBuilder mb = tb.DefineMethod ("create", MethodAttributes.Public, typeof (void), Type.EmptyTypes);
+			ILGenerator ig = mb.GetILGenerator ();
+			ig.Emit (OpCodes.Ret);
+			
+			tb.CreateType ();
+			
+			MethodInfo mi = TypeBuilder.GetMethod (tb.MakeGenericType (typeof (int)), mb);
+			Assert.IsNotNull (mi);
+		}
+
+		[Test]
+		[Category ("NotDotNet")]
+		[Category ("NotWorking")]
+		public void GetMethod_AcceptMethodFromInflatedTypeBuilder_UnderCompilerContext () {
+			AssemblyName assemblyName = new AssemblyName ();
+			assemblyName.Name = ASSEMBLY_NAME;
+
+			assembly =
+				Thread.GetDomain ().DefineDynamicAssembly (
+					assemblyName, AssemblyBuilderAccess.RunAndSave | (AssemblyBuilderAccess)0x800, Path.GetTempPath ());
+
+			module = assembly.DefineDynamicModule ("module1");
+			
+			TypeBuilder tb = module.DefineType (genTypeName ());
+			tb.DefineGenericParameters ("T");
+			MethodBuilder mb = tb.DefineMethod ("create", MethodAttributes.Public, typeof (void), Type.EmptyTypes);
+
+			Type ginst = tb.MakeGenericType (typeof (int));
+			
+			MethodInfo mi = TypeBuilder.GetMethod (ginst, mb);
+
+			try {
+				TypeBuilder.GetMethod (ginst, mi);
+			} catch (ArgumentException ex) {
+				Assert.Fail ("#1");
+			}
+		}
+
+
 		[Test]
 		// Test that changes made to the method builder after a call to GetMethod ()
 		// are visible
@@ -9014,6 +9097,19 @@ namespace MonoTests.System.Reflection.Emit
 				tb3.FullName + "[]")), "#R2");
 			Assert.IsFalse (typeof (Baz []).IsAssignableFrom (module.GetType (
 				tb3.FullName + "[]")), "#R3");
+
+#if NET_2_0
+			TypeBuilder tb4 = module.DefineType (genTypeName (),
+				TypeAttributes.Public, null,
+				new Type [] { typeof (IWater) });
+			tb4.DefineGenericParameters ("T");
+
+			Type inst = tb4.MakeGenericType (typeof (int));
+			Type emitted_type4 = tb4.CreateType ();
+			Assert.IsFalse (typeof (IComparable).IsAssignableFrom (inst));
+			// This returns True if CreateType () is called _before_ MakeGenericType...
+			//Assert.IsFalse (typeof (IWater).IsAssignableFrom (inst));
+#endif
 		}
 
 		[Test]
@@ -9807,6 +9903,31 @@ namespace MonoTests.System.Reflection.Emit
 				Thread.GetDomain ().ExecuteAssembly(Path.GetTempPath () + Path.DirectorySeparatorChar + "Instance.exe");
 		}
 
+		[Test]
+		public void FieldWithInitializedDataWorksWithCompilerRuntimeHelpers ()
+		{
+			TypeBuilder tb = module.DefineType ("Type1", TypeAttributes.Public);
+			FieldBuilder fb = tb.DefineInitializedData ("Foo", new byte [] {1,2,3,4}, FieldAttributes.Static|FieldAttributes.Public);
+			tb.CreateType ();
+
+			assembly = Thread.GetDomain ().DefineDynamicAssembly (new AssemblyName (ASSEMBLY_NAME+"2"), AssemblyBuilderAccess.RunAndSave, Path.GetTempPath ());
+			module = assembly.DefineDynamicModule ("Instance.exe");
+
+			TypeBuilder tb2 = module.DefineType ("Type2", TypeAttributes.Public);
+			MethodBuilder mb = tb2.DefineMethod ("Test", MethodAttributes.Public | MethodAttributes.Static, typeof (object), new Type [0]);
+			ILGenerator il = mb.GetILGenerator ();
+
+			il.Emit (OpCodes.Ldc_I4_1);
+			il.Emit (OpCodes.Newarr, typeof (int));
+			il.Emit (OpCodes.Dup);
+			il.Emit (OpCodes.Ldtoken, fb);
+			il.Emit (OpCodes.Call, typeof (RuntimeHelpers).GetMethod ("InitializeArray"));
+			il.Emit (OpCodes.Ret);
+
+			Type t = tb2.CreateType ();
+			int[] res = (int[])t.GetMethod ("Test").Invoke (null, new object[0]);
+			Console.WriteLine (res[0]);
+		}
 #endif
 
 		public interface IDelegateFactory
@@ -9870,6 +9991,7 @@ namespace MonoTests.System.Reflection.Emit
 		}
 
 #if NET_2_0
+
 		[Test] //bug #430508
 		public void MakeGenericTypeRespectBaseType ()
 		{
@@ -9889,7 +10011,6 @@ namespace MonoTests.System.Reflection.Emit
 		
 			Assert.AreEqual (c.GetMethod ("Test").ReturnType.GetGenericArguments ()[1], e, "#1");
 		}
-
 
 		[Test]
 		public void GetCustomAttrOnFieldOfInflatedType ()
@@ -9983,6 +10104,67 @@ namespace MonoTests.System.Reflection.Emit
 			
 			t.MakeGenericType (typeof (int)).GetMethods ();
 			t.MakeGenericType (typeof (double)).GetMethods ();
+		}
+
+		[Test]
+		public void TestGenericFieldAccess () // bug #467415
+		{
+			AssemblyName asmName = new AssemblyName("DemoMethodBuilder1");
+			AppDomain domain = AppDomain.CurrentDomain;
+			AssemblyBuilder demoAssembly =
+				domain.DefineDynamicAssembly(asmName,
+						AssemblyBuilderAccess.RunAndSave);
+
+			// Define the module that contains the code. For an
+			// assembly with one module, the module name is the
+			// assembly name plus a file extension.
+			ModuleBuilder demoModule =
+				demoAssembly.DefineDynamicModule(asmName.Name,
+						asmName.Name+".dll");
+
+			TypeBuilder demoType =
+				demoModule.DefineType("DemoType", TypeAttributes.Public);
+
+			MethodBuilder factory =
+				demoType.DefineMethod("Factory",
+						MethodAttributes.Public | MethodAttributes.Static);
+
+			string[] typeParameterNames = {"T"};
+			GenericTypeParameterBuilder[] typeParameters =
+				factory.DefineGenericParameters(typeParameterNames);
+
+			GenericTypeParameterBuilder T = typeParameters[0];
+
+			Type[] parms = {};
+			factory.SetParameters(parms);
+
+			factory.SetReturnType(T);
+
+			ILGenerator ilgen = factory.GetILGenerator();
+
+			Type G = typeof(Gen<>);
+			Type GT = G.MakeGenericType (T);
+			FieldInfo GF = G.GetField("field");
+			FieldInfo GTF = TypeBuilder.GetField(GT, GF);
+
+			ilgen.Emit(OpCodes.Ldsfld, GTF);
+			ilgen.Emit(OpCodes.Ret);
+
+			// Complete the type.
+			Type dt = demoType.CreateType();
+			// Save the assembly, so it can be examined with Ildasm.exe.
+			//demoAssembly.Save(asmName.Name+".dll");
+
+			MethodInfo m = dt.GetMethod("Factory");
+			MethodInfo bound = m.MakeGenericMethod(typeof(int));
+
+			// Display a string representing the bound method.
+			//Console.WriteLine(bound);
+
+			object[] parameters = {};
+			int result = (int)(bound.Invoke(null, parameters));
+
+			Assert.AreEqual (0, result, "#1");
 		}
 #endif
 

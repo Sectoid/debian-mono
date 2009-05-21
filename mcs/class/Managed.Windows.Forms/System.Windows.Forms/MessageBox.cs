@@ -42,7 +42,11 @@ namespace System.Windows.Forms
 	public class MessageBox
 	{
 		#region Private MessageBoxForm class
+#if NET_2_0 // UIA Framework
+		internal class MessageBoxForm : Form
+#else
 		private class MessageBoxForm : Form
+#endif
 		{
 			#region MessageBoxFrom Local Variables
 			const int space_border = 10;
@@ -53,7 +57,7 @@ namespace System.Windows.Forms
 
 			string			msgbox_text;
 			bool			size_known	= false;
-			Image			icon_image;
+			Icon			icon_image;
 			RectangleF		text_rect;
 			MessageBoxButtons	msgbox_buttons;
 			MessageBoxDefaultButton	msgbox_default;
@@ -81,22 +85,22 @@ namespace System.Windows.Forms
 					}
 
 					case MessageBoxIcon.Error: {		// Same as MessageBoxIcon.Hand and MessageBoxIcon.Stop
-						icon_image = ThemeEngine.Current.Images(UIIcon.MessageBoxError);
+						icon_image = SystemIcons.Error;
 						break;
 					}
 
 					case MessageBoxIcon.Question: {
- 						icon_image = ThemeEngine.Current.Images(UIIcon.MessageBoxQuestion);
+ 						icon_image = SystemIcons.Question;
 						break;
 					}
 
 					case MessageBoxIcon.Asterisk: {		// Same as MessageBoxIcon.Information
-						icon_image = ThemeEngine.Current.Images(UIIcon.MessageBoxInfo);
+						icon_image = SystemIcons.Information;
 						break;
 					}
 
 					case MessageBoxIcon.Warning: {		// Same as MessageBoxIcon.Exclamation:
-						icon_image = ThemeEngine.Current.Images(UIIcon.MessageBoxWarning);
+						icon_image = SystemIcons.Warning;
 						break;
 					}
 				}
@@ -195,7 +199,7 @@ namespace System.Windows.Forms
 			{
 				e.Graphics.DrawString (msgbox_text, this.Font, ThemeEngine.Current.ResPool.GetSolidBrush (Color.Black), text_rect);
 				if (icon_image != null) {
-					e.Graphics.DrawImage(icon_image, new Point(space_border, space_border));
+					e.Graphics.DrawIcon(icon_image, space_border, space_border);
 				}
 			}
 
@@ -314,6 +318,23 @@ namespace System.Windows.Forms
 				return base.ProcessDialogKey (keyData);
 			}
 
+			protected override bool ProcessDialogChar (char charCode)
+			{
+				// Shortcut keys, kinda like mnemonics, except you don't have to press Alt
+				if ((charCode == 'N' || charCode == 'n') && (CancelButton as Button).Text == "No")
+					CancelButton.PerformClick ();
+				else if ((charCode == 'Y' || charCode == 'y') && (AcceptButton as Button).Text == "Yes")
+					AcceptButton.PerformClick ();
+				else if ((charCode == 'A' || charCode == 'a') && (CancelButton as Button).Text == "Abort")
+					CancelButton.PerformClick ();
+				else if ((charCode == 'R' || charCode == 'r') && (AcceptButton as Button).Text == "Retry")
+					AcceptButton.PerformClick ();
+				else if ((charCode == 'I' || charCode == 'i') && buttons.Length >= 3 && buttons[2].Text == "Ignore")
+					buttons[2].PerformClick ();
+				
+				return base.ProcessDialogChar (charCode);
+			}
+			
 			private void Copy ()
 			{
 				string separator = "---------------------------" + Environment.NewLine;
@@ -508,6 +529,36 @@ namespace System.Windows.Forms
 				this.Close ();
 			}
 			#endregion
+
+#if NET_2_0
+		
+			#region UIA Framework: Methods, Properties and Events
+
+			internal string UIAMessage {
+				get { return msgbox_text; }
+			}
+
+			internal Rectangle UIAMessageRectangle {
+				get { 
+					return new Rectangle ((int) text_rect.X,
+					                      (int) text_rect.Y, 
+					                      (int) text_rect.Width, 
+					                      (int) text_rect.Height); 
+				}
+			}
+
+			internal Rectangle UIAIconRectangle {
+				get { 
+					return new Rectangle (space_border, 
+					                      space_border, 
+							      icon_image == null ? -1 : icon_image.Width, 
+							      icon_image == null ? -1 : icon_image.Height);
+				}
+			}
+
+			#endregion
+
+#endif
 		}
 		#endregion	// Private MessageBoxForm class
 

@@ -35,10 +35,13 @@ namespace Mono.Mozilla.DOM
 {
 	internal class Node: DOMObject, INode
 	{
+		internal nsIDOMNode nodeNoProxy;
 		private nsIDOMNode _node;
 		internal nsIDOMNode node {
 			get { return _node; }
 			set {
+				hashcode = value.GetHashCode ();
+				nodeNoProxy = _node;
 				if (!(value is nsIDOMHTMLDocument) && control.platform != control.enginePlatform)
 					_node = nsDOMNode.GetProxy (control, value);
 				else
@@ -52,7 +55,6 @@ namespace Mono.Mozilla.DOM
 			
 		public Node (WebBrowser control, nsIDOMNode domNode) : base (control)
 		{
-			hashcode = domNode.GetHashCode ();
 			this.control = control;
 			this.node = domNode;
 		}
@@ -70,6 +72,14 @@ namespace Mono.Mozilla.DOM
 		}		
 		#endregion
 
+
+		#region Internal
+		internal virtual nsIDOMNode XPComObject
+		{
+			get { return node; }
+		}
+		#endregion
+		
 		#region INode Members
 		public virtual IAttributeCollection Attributes
 		{
@@ -100,10 +110,10 @@ namespace Mono.Mozilla.DOM
 
 		public virtual INode FirstChild {
 			get {
-				if (!resources.Contains ("FirstChild")) {
+				if (!resources.Contains ("FirstChild")) {					
 					nsIDOMNode child;
-					this.node.getFirstChild (out child);
-					resources.Add ("FirstChild", new Node (control, child));
+					node.getFirstChild (out child);
+					resources.Add ("FirstChild", GetTypedNode (child));
 				}
 				return resources["FirstChild"] as INode;
 			}
@@ -114,7 +124,7 @@ namespace Mono.Mozilla.DOM
 				if (!resources.Contains ("LastChild")) {
 					nsIDOMNode child;
 					this.node.getLastChild (out child);
-					resources.Add ("LastChild", new Node (control, child));
+					resources.Add ("LastChild", GetTypedNode (child));
 				}
 				return resources["LastChild"] as INode;
 			}
@@ -125,7 +135,7 @@ namespace Mono.Mozilla.DOM
 				if (!resources.Contains ("Parent")) {
 					nsIDOMNode parent;
 					this.node.getParentNode (out parent);
-					resources.Add ("Parent", new Node (control, parent));
+					resources.Add ("Parent", GetTypedNode (parent));
 				}
 				return resources["Parent"] as INode;
 			}
@@ -136,7 +146,7 @@ namespace Mono.Mozilla.DOM
 				if (!resources.Contains ("Previous")) {
 					nsIDOMNode child;
 					this.node.getPreviousSibling (out child);
-					resources.Add ("Previous", new Node (control, child));
+					resources.Add ("Previous", GetTypedNode (child));
 				}
 				return resources["Previous"] as INode;
 			}
@@ -147,7 +157,7 @@ namespace Mono.Mozilla.DOM
 				if (!resources.Contains ("Next")) {
 					nsIDOMNode child;
 					this.node.getNextSibling (out child);
-					resources.Add ("Next", new Node (control, child));
+					resources.Add ("Next", GetTypedNode (child));
 				}
 				return resources["Next"] as INode;
 			}
@@ -183,6 +193,8 @@ namespace Mono.Mozilla.DOM
 				nsIDOMCSSStyleDeclaration styleDecl;
 				AsciiString s = new Mono.Mozilla.AsciiString(String.Empty);
 				viewCss.getComputedStyle (this.node as Mono.Mozilla.nsIDOMElement, s.Handle, out styleDecl);
+				if (styleDecl == null)
+					return "";
 				styleDecl.getCssText (storage);
 				return Base.StringGet (storage);
 			}
@@ -218,6 +230,38 @@ namespace Mono.Mozilla.DOM
 			set {
 				Base.StringSet (storage, value);
 				node.setNodeValue (storage);
+			}
+		}
+
+		public virtual IntPtr AccessibleObject {
+			get {
+				nsIAccessible access = null;
+				try {
+					nsIAccessibilityService serv = control.AccessibilityService;
+					nsIDOMDocument doc;
+					this.node.getOwnerDocument (out doc);
+					serv.getAccessibleFor (doc, out access);
+				} catch (Mono.WebBrowser.Exception ex) {
+					Console.Error.WriteLine (ex.Message);
+					goto no_accessibility;
+				} catch (System.Exception ex) {
+					Console.Error.WriteLine (ex.Message);
+					goto no_accessibility;
+				}
+
+				if (access == null) {
+					goto no_accessibility;				
+				}
+				IntPtr ptr = IntPtr.Zero;
+				if (access.getNativeInterface (out ptr) != 0) {
+					goto no_accessibility;
+				}
+				return ptr;
+
+				no_accessibility: {
+					Console.Error.WriteLine ("Accessibility not available");
+					return IntPtr.Zero;
+				}			
 			}
 		}
 		
@@ -331,8 +375,27 @@ namespace Mono.Mozilla.DOM
 		
 		#endregion
 
-		
-		
+		public override bool Equals (object obj)
+		{
+			return this == obj as Node;
+		}
+
+		public static bool operator == (Node left, Node right)
+		{
+			if ((object)left == (object)right)
+				return true;
+
+			if ((object)left == null || (object)right == null)
+				return false;
+
+			return left.hashcode == right.hashcode; 
+		}
+
+		public static bool operator != (Node left, Node right)
+		{
+			return !(left == right);
+		}		
+
 		public override int GetHashCode () 
 		{
 			return this.hashcode;
@@ -447,5 +510,6 @@ namespace Mono.Mozilla.DOM
 		}		
 
 		#endregion
+		
 	}
 }

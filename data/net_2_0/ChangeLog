@@ -1,7 +1,57 @@
+2009-01-07  Kornél Pál  <kornelpal@gmail.com>
+
+	* DefaultWsdlHelpGenerator.aspx: Move <script> at the end of <head> that
+	  will make Visual Studio recognize the web service disco reference.
+
+	Contributed under MIT/X11 license.
+
+2008-12-03  Marek Habersack  <mhabersack@novell.com>
+
+	* machine.config: rename serviceModelHostingEnvironment to
+	serviceHostingEnvironment.
+
+2008-11-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* machine.config: in 2.0, there's no <connectionManagement> section
+	here. Bug #445991 fixed.
+
+2008-11-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* DefaultWsdlHelpGenerator.aspx: use javascript instead of
+	HttpWebRequest to avoid a deadlock if the web service uses Session.
+	Bug #444343 fixed.
+
 2008-10-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* web.config: default values for httpRuntime are different in 2.0
 
+2008-10-09  Marek Habersack  <mhabersack@novell.com>
+
+	* web.config: added the default monoSettings section which works around
+	an incompatibility between mcs and csc, mentioned in bug #433806
+
+	* machine.config: added definition of the monoSettings section to 
+	the system.web group
+
+2008-10-06  Marek Habersack  <mhabersack@novell.com>
+
+	* machine.config: added entries to ignore the mobileControls and
+	deviceFilters sections.
+
+2008-09-02  Marek Habersack  <mhabersack@novell.com>
+
+	* web.config: removed System.Web.Extensions.dll from the assemblies
+	(reverting r112073) - it would break all the ASP.NET applications
+	which use System.Web.Extensions other than 3.5.0.0
+
+2008-09-06  Daniel Morgan  <monodanmorg@yahoo.com>
+
+	* machine.config: added Mono.Data.SybaseClient
+	to DbProviderFactories section.
+
+2008-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* web.config: added System.Web.Extensions.dll to assemblies.
 
 2008-08-28  Zoltan Varga  <vargaz@gmail.com>
 

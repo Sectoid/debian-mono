@@ -96,9 +96,6 @@ mono_marshal_asany (MonoObject *obj, MonoMarshalNative string_encoding, int para
 void
 mono_marshal_free_asany (MonoObject *o, gpointer ptr, MonoMarshalNative string_encoding, int param_attrs) MONO_INTERNAL;
 
-MonoMethod*
-mono_marshal_get_write_barrier (void) MONO_INTERNAL;
-
 guint
 mono_type_to_ldind (MonoType *type) MONO_INTERNAL;
 
@@ -201,6 +198,9 @@ mono_marshal_get_generic_array_helper (MonoClass *class, MonoClass *iface,
 MonoMethod *
 mono_marshal_get_thunk_invoke_wrapper (MonoMethod *method) MONO_INTERNAL;
 
+void
+mono_marshal_free_dynamic_wrappers (MonoMethod *method) MONO_INTERNAL;
+
 /* marshaling internal calls */
 
 void * 
@@ -214,6 +214,11 @@ mono_marshal_free_array (gpointer *ptr, int size) MONO_INTERNAL;
 
 gboolean 
 mono_marshal_free_ccw (MonoObject* obj) MONO_INTERNAL;
+
+#ifndef DISABLE_COM
+void
+cominterop_release_all_rcws (void) MONO_INTERNAL; 
+#endif
 
 void
 ves_icall_System_Runtime_InteropServices_Marshal_copy_to_unmanaged (MonoArray *src, gint32 start_index,
@@ -385,7 +390,11 @@ mono_win32_compat_ZeroMemory (gpointer dest, gsize length);
 void
 mono_marshal_find_nonzero_bit_offset (guint8 *buf, int len, int *byte_offset, guint8 *bitmask) MONO_INTERNAL;
 
+MonoMethodSignature*
+mono_signature_no_pinvoke (MonoMethod *method) MONO_INTERNAL;
+
 G_END_DECLS
 
 #endif /* __MONO_MARSHAL_H__ */
+
 

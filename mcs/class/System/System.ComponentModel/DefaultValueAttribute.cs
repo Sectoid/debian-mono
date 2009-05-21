@@ -93,10 +93,14 @@ namespace System.ComponentModel
 
 		public DefaultValueAttribute (Type type, string value)
 		{
+#if NET_2_1
+			throw new NotImplementedException ();
+#else
 			try {
 				TypeConverter converter = TypeDescriptor.GetConverter (type);
 				DefaultValue = converter.ConvertFromString (null, CultureInfo.InvariantCulture, value);
 			} catch { }
+#endif
 		}
 
 #if NET_2_0
@@ -116,15 +120,20 @@ namespace System.ComponentModel
 
 		public override bool Equals (object obj)
 		{
-			if (!(obj is DefaultValueAttribute))
+			DefaultValueAttribute dva = (obj as DefaultValueAttribute);
+			if (dva == null)
 				return false;
-			if (obj == this)
-				return true;
-			return ((DefaultValueAttribute) obj).Value == DefaultValue;
+
+			if (DefaultValue == null)
+				return (dva.Value == null);
+
+			return DefaultValue.Equals (dva.Value);
 		}
 
 		public override int GetHashCode()
 		{
+			if (DefaultValue == null)
+				return base.GetHashCode ();
 			return DefaultValue.GetHashCode();
 		}
 	}

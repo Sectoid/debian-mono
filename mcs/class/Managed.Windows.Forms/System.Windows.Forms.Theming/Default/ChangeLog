@@ -1,3 +1,32 @@
+2008-10-20  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ToolStripPainter.cs: Don't paint over a set BackgroundImage.
+
+2008-10-09  Everaldo Canuto  <ecanuto@novell.com>
+
+	* LinkLabelPainter.cs: Take Padding into account when drawing the linklabel
+	text.
+
+2008-10-08  Everaldo Canuto  <ecanuto@novell.com>
+
+	* LabelPainter.cs: Use control.PaddingClientRectangle instead of calculate
+	rectangle with padding. Also break some lines that theres more than 120
+	characters.
+
+2008-09-24  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TabControlPainter.cs: Add 1 pixel to the tab text rectangle
+	to keep the text from getting cut off on XP.
+	[Fixes bug #428116]
+
+2008-09-16  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TabControlPainter.cs: Hook tab painting into ShowFocusCues.
+
+2008-07-31  George Giolfan  <georgegiolfan@yahoo.com>
+
+	* TabControlPainter.cs: Added DrawScrollButton, GetButtonState.
+
 2008-06-09  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* TabControlPainter.cs: When calculating the display rectangle for

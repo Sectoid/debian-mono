@@ -64,11 +64,12 @@ namespace System.Net.Mail {
 		int port;
 		int timeout = 100000;
 		ICredentialsByHost credentials;
-		bool useDefaultCredentials = false;
 		string pickupDirectoryLocation;
 		SmtpDeliveryMethod deliveryMethod;
 		bool enableSsl;
+#if SECURITY_DEP		
 		X509CertificateCollection clientCertificates;
+#endif		
 
 		TcpClient client;
 		Stream stream;
@@ -99,8 +100,6 @@ namespace System.Net.Mail {
 		}
 
 		AuthMechs authMechs = AuthMechs.None;
-		bool canStartTLS = false;
-
 		Mutex mutex = new Mutex ();
 
 		#endregion // Fields
@@ -150,7 +149,7 @@ namespace System.Net.Mail {
 		#region Properties
 
 #if SECURITY_DEP
-		[MonoTODO("STARTTLS is not supported yet")]
+		[MonoTODO("Client certificates not used")]
 		public X509CertificateCollection ClientCertificates {
 			get {
 				if (clientCertificates == null)
@@ -176,9 +175,7 @@ namespace System.Net.Mail {
 			}
 		}
 
-		[MonoTODO("STARTTLS is not supported yet")]
 		public bool EnableSsl {
-			// FIXME: So... is this supposed to enable SSL port functionality? or STARTTLS? Or both?
 			get { return enableSsl; }
 			set {
 				CheckState ();
@@ -190,9 +187,9 @@ namespace System.Net.Mail {
 			get { return host; }
 			set {
 				if (value == null)
-					throw new ArgumentNullException ();
+					throw new ArgumentNullException ("value");
 				if (value.Length == 0)
-					throw new ArgumentException ();
+					throw new ArgumentException ("An empty string is not allowed.", "value");
 				CheckState ();
 				host = value;
 			}
@@ -206,8 +203,8 @@ namespace System.Net.Mail {
 		public int Port {
 			get { return port; }
 			set { 
-				if (value <= 0 || value > 65535)
-					throw new ArgumentOutOfRangeException ();
+				if (value <= 0)
+					throw new ArgumentOutOfRangeException ("value");
 				CheckState ();
 				port = value;
 			}
@@ -222,14 +219,14 @@ namespace System.Net.Mail {
 			get { return timeout; }
 			set { 
 				if (value < 0)
-					throw new ArgumentOutOfRangeException ();
+					throw new ArgumentOutOfRangeException ("value");
 				CheckState ();
 				timeout = value; 
 			}
 		}
 
 		public bool UseDefaultCredentials {
-			get { return useDefaultCredentials; }
+			get { return false; }
 			[MonoNotSupported ("no DefaultCredential support in Mono")]
 			set {
 				if (value)
@@ -252,6 +249,26 @@ namespace System.Net.Mail {
 		{
 			if (messageInProcess != null)
 				throw new InvalidOperationException ("Cannot set Timeout while Sending a message");
+		}
+		
+		private static string EncodeAddress(MailAddress address)
+		{
+			string encodedDisplayName = ContentType.EncodeSubjectRFC2047 (address.DisplayName, Encoding.UTF8);
+			return "\"" + encodedDisplayName + "\" <" + address.Address + ">";
+		}
+
+		private static string EncodeAddresses(MailAddressCollection addresses)
+		{
+			StringBuilder sb = new StringBuilder();
+			bool first = true;
+			foreach (MailAddress address in addresses) {
+				if (!first) {
+					sb.Append(", ");
+				}
+				sb.Append(EncodeAddress(address));
+				first = false;
+			}
+			return sb.ToString();
 		}
 
 		private string EncodeSubjectRFC2047 (MailMessage message)
@@ -383,7 +400,6 @@ namespace System.Net.Mail {
 
 		void ResetExtensions()
 		{
-			canStartTLS = false;
 			authMechs = AuthMechs.None;
 		}
 
@@ -422,8 +438,6 @@ namespace System.Net.Mail {
 							break;
 						}
 					}
-				} else if (start.StartsWith ("STARTTLS", StringComparison.Ordinal)) {
-					canStartTLS = true;
 				}
 			}
 		}
@@ -433,9 +447,11 @@ namespace System.Net.Mail {
 			if (message == null)
 				throw new ArgumentNullException ("message");
 
-			if (String.IsNullOrEmpty (Host))
+			if (deliveryMethod == SmtpDeliveryMethod.Network && (Host == null || Host.Trim ().Length == 0))
 				throw new InvalidOperationException ("The SMTP host was not specified");
-			
+			else if (deliveryMethod == SmtpDeliveryMethod.PickupDirectoryFromIis)
+				throw new NotSupportedException("IIS delivery is not supported");
+
 			if (port == 0)
 				port = 25;
 			
@@ -443,9 +459,16 @@ namespace System.Net.Mail {
 			mutex.WaitOne ();
 			try {
 				messageInProcess = message;
-				SendCore (message);
+				if (deliveryMethod == SmtpDeliveryMethod.SpecifiedPickupDirectory)
+					SendToFile (message);
+				else
+					SendInternal (message);
 			} catch (CancellationException) {
 				// This exception is introduced for convenient cancellation process.
+			} catch (SmtpException) {
+				throw;
+			} catch (Exception ex) {
+				throw new SmtpException ("Message could not be sent.", ex);
 			} finally {
 				// Release the mutex to allow other threads access
 				mutex.ReleaseMutex ();
@@ -453,19 +476,76 @@ namespace System.Net.Mail {
 			}
 		}
 
+		private void SendInternal (MailMessage message)
+		{
+			CheckCancellation ();
+
+			try {
+				client = new TcpClient (host, port);
+				stream = client.GetStream ();
+				// FIXME: this StreamWriter creation is bogus.
+				// It expects as if a Stream were able to switch to SSL
+				// mode (such behavior is only in Mainsoft Socket API).
+				writer = new StreamWriter (stream);
+				reader = new StreamReader (stream);
+
+				SendCore (message);
+			} finally {
+				if (writer != null)
+					writer.Close ();
+				if (reader != null)
+					reader.Close ();
+				if (stream != null)
+					stream.Close ();
+				if (client != null)
+					client.Close ();
+			}
+		}
+ 
+		// FIXME: simple implementation, could be brushed up.
+		private void SendToFile (MailMessage message)
+		{
+			if (!Path.IsPathRooted (pickupDirectoryLocation))
+				throw new SmtpException("Only absolute directories are allowed for pickup directory.");
+
+			string filename = Path.Combine (pickupDirectoryLocation,
+				Guid.NewGuid() + ".eml");
+
+			try {
+				writer = new StreamWriter(filename);
+
+				MailAddress from = message.From;
+
+				if (from == null)
+					from = defaultFrom;
+				
+				SendHeader (HeaderName.Date, DateTime.Now.ToString ("ddd, dd MMM yyyy HH':'mm':'ss zzz", DateTimeFormatInfo.InvariantInfo));
+				SendHeader (HeaderName.From, from.ToString ());
+				SendHeader (HeaderName.To, message.To.ToString ());
+				if (message.CC.Count > 0)
+					SendHeader (HeaderName.Cc, message.CC.ToString ());
+				SendHeader (HeaderName.Subject, EncodeSubjectRFC2047 (message));
+
+				foreach (string s in message.Headers.AllKeys)
+					SendHeader (s, message.Headers [s]);
+
+				AddPriorityHeader (message);
+
+				boundaryIndex = 0;
+				if (message.Attachments.Count > 0)
+					SendWithAttachments (message);
+				else
+					SendWithoutAttachments (message, null, false);
+
+
+			} finally {
+				if (writer != null) writer.Close(); writer = null;
+			}
+		}
+
 		private void SendCore (MailMessage message)
 		{
 			SmtpResponse status;
-
-			CheckCancellation ();
-
-			client = new TcpClient (host, port);
-			stream = client.GetStream ();
-			// FIXME: this StreamWriter creation is bogus.
-			// It expects as if a Stream were able to switch to SSL
-			// mode (such behavior is only in Mainsoft Socket API).
-			writer = new StreamWriter (stream);
-			reader = new StreamReader (stream);
 
 			status = Read ();
 			if (IsError (status))
@@ -491,18 +571,6 @@ namespace System.Net.Mail {
 			}
 			
 			if (enableSsl) {
-#if old_comment
-				// FIXME: I get the feeling from the docs that EnableSsl is meant
-				// for using the SSL-port and not STARTTLS (or, if it includes
-				// STARTTLS... only use STARTTLS if the SSL-type in the certificate
-				// is TLS and not SSLv2 or SSLv3)
-				
-				// FIXME: even tho we have a canStartTLS flag... ignore it for now
-				// so that the STARTTLS command can throw the appropriate
-				// SmtpException if STARTTLS is unavailable
-#else
-				// SmtpClient implements STARTTLS support.
-#endif
 				InitiateSecureConnection ();
 				ResetExtensions();
 				writer = new StreamWriter (stream);
@@ -577,12 +645,33 @@ namespace System.Net.Mail {
 			dt = dt.Remove (dt.Length - 3, 1);
 			SendHeader (HeaderName.Date, dt);
 
-			SendHeader (HeaderName.From, from.ToString ());
-			SendHeader (HeaderName.To, message.To.ToString ());
+			SendHeader (HeaderName.From, EncodeAddress (from));
+			SendHeader (HeaderName.To, EncodeAddresses (message.To));
 			if (message.CC.Count > 0)
-				SendHeader (HeaderName.Cc, message.CC.ToString ());
+				SendHeader (HeaderName.Cc, EncodeAddresses (message.CC));
 			SendHeader (HeaderName.Subject, EncodeSubjectRFC2047 (message));
 
+			string v = "normal";
+				
+			switch (message.Priority){
+			case MailPriority.Normal:
+				v = "normal";
+				break;
+				
+			case MailPriority.Low:
+				v = "non-urgent";
+				break;
+				
+			case MailPriority.High:
+				v = "urgent";
+				break;
+			}
+			SendHeader ("Priority", v);
+			if (message.Sender != null)
+				SendHeader ("Sender", EncodeAddress (message.Sender));
+			if (message.ReplyTo != null)
+				SendHeader ("ReplyTo", EncodeAddress (message.ReplyTo));
+			
 			foreach (string s in message.Headers.AllKeys)
 				SendHeader (s, message.Headers [s]);
 
@@ -605,11 +694,6 @@ namespace System.Net.Mail {
 			} catch (System.IO.IOException) {
 				// We excuse server for the rude connection closing as a response to QUIT
 			}
-
-			writer.Close ();
-			reader.Close ();
-			stream.Close ();
-			client.Close ();
 		}
 
 		public void Send (string from, string to, string subject, string body)
@@ -799,6 +883,7 @@ try {
 				case TransferEncoding.SevenBit:
 				case TransferEncoding.Unknown:
 					content = new byte [av.ContentStream.Length];
+					av.ContentStream.Read (content, 0, content.Length);
 					SendData (Encoding.ASCII.GetString (content));
 					break;
 				}
@@ -843,6 +928,7 @@ try {
 				case TransferEncoding.SevenBit:
 				case TransferEncoding.Unknown:
 					content = new byte [lr.ContentStream.Length];
+					lr.ContentStream.Read (content, 0, content.Length);
 					SendData (Encoding.ASCII.GetString (content));
 					break;
 				}
@@ -860,10 +946,10 @@ try {
 				}
 				StartSection (boundary, contentType, att.TransferEncoding, att == body ? null : att.ContentDisposition);
 
+				byte [] content = new byte [att.ContentStream.Length];
+				att.ContentStream.Read (content, 0, content.Length);
 				switch (att.TransferEncoding) {
 				case TransferEncoding.Base64:
-					byte [] content = new byte [att.ContentStream.Length];
-					att.ContentStream.Read (content, 0, content.Length);
 #if TARGET_JVM
 					SendData (Convert.ToBase64String (content));
 #else
@@ -871,13 +957,10 @@ try {
 #endif
 					break;
 				case TransferEncoding.QuotedPrintable:
-					byte [] bytes = new byte [att.ContentStream.Length];
-					att.ContentStream.Read (bytes, 0, bytes.Length);
-					SendData (ToQuotedPrintable (bytes));
+					SendData (ToQuotedPrintable (content));
 					break;
 				case TransferEncoding.SevenBit:
 				case TransferEncoding.Unknown:
-					content = new byte [att.ContentStream.Length];
 					SendData (Encoding.ASCII.GetString (content));
 					break;
 				}

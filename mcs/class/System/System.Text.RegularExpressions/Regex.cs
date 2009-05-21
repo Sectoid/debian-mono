@@ -177,20 +177,22 @@ namespace System.Text.RegularExpressions {
 		}
 
 #if NET_2_0
-		[MonoTODO ("should be used somewhere ? FactoryCache ?")]
+		static FactoryCache cache = new FactoryCache (15);
 		public static int CacheSize {
-			get { return cache_size; }
+			get { return cache.Capacity; }
 			set {
 				if (value < 0)
 					throw new ArgumentOutOfRangeException ("CacheSize");
-				cache_size = value;
+
+				cache.Capacity = value;	
 			}
 		}
+#else
+		static FactoryCache cache = new FactoryCache (200);
 #endif
 
 		// private
 
-		private static FactoryCache cache = new FactoryCache (200);	// TODO put some meaningful number here
 
 		// constructors
 
@@ -228,10 +230,22 @@ namespace System.Text.RegularExpressions {
 		private void InitNewRegex () 
 		{
 			this.machineFactory = CreateMachineFactory (this.pattern, this.roptions);
+			cache.Add (this.pattern, this.roptions, this.machineFactory);
 			this.group_count = machineFactory.GroupCount;
 			this.mapping = machineFactory.Mapping;
 			this._groupNumberToNameMap = this.machineFactory.NamesMapping;
 		}
+
+		// The new rx engine has blocking bugs like
+		// https://bugzilla.novell.com/show_bug.cgi?id=470827
+		static readonly bool old_rx = true;
+#if FALSE
+#if !NET_2_1
+			Environment.GetEnvironmentVariable ("MONO_OLD_RX") != null;
+#else
+			false;
+#endif
+#endif
 
 		private static IMachineFactory CreateMachineFactory (string pattern, RegexOptions options) 
 		{
@@ -239,11 +253,14 @@ namespace System.Text.RegularExpressions {
 			RegularExpression re = psr.ParseRegularExpression (pattern, options);
 
 			ICompiler cmp;
-			//if ((options & RegexOptions.Compiled) != 0)
-			//	//throw new Exception ("Not implemented.");
-			//	cmp = new CILCompiler ();
-			//else
-			cmp = new PatternCompiler ();
+			if (!old_rx) {
+				if ((options & RegexOptions.Compiled) != 0)
+					cmp = new CILCompiler ();
+				else
+					cmp = new RxCompiler ();
+			} else {
+				cmp = new PatternCompiler ();
+			}
 
 			re.Compile (cmp, (options & RegexOptions.RightToLeft) != 0);
 

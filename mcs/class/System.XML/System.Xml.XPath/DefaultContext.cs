@@ -52,9 +52,9 @@ namespace System.Xml.XPath
 			}
 			if (arg is string)
 				return ((string) arg).Length != 0;
-			if (arg is BaseIterator)
+			if (arg is XPathNodeIterator)
 			{
-				BaseIterator iter = (BaseIterator) arg;
+				XPathNodeIterator iter = (XPathNodeIterator) arg;
 				return iter.MoveNext ();
 			}
 			if (arg is XPathNavigator)
@@ -94,9 +94,9 @@ namespace System.Xml.XPath
 				return ((bool) arg) ? "true" : "false";
 			if (arg is double)
 				return ToString ((double) arg);
-			if (arg is BaseIterator)
+			if (arg is XPathNodeIterator)
 			{
-				BaseIterator iter = (BaseIterator) arg;
+				XPathNodeIterator iter = (XPathNodeIterator) arg;
 				if (!iter.MoveNext ())
 					return "";
 				return iter.Current.Value;
@@ -282,7 +282,7 @@ namespace System.Xml.XPath
 			String strArgs;
 			object val = arg0.Evaluate (iter);
 			
-			BaseIterator valItr = val as BaseIterator;
+			XPathNodeIterator valItr = val as XPathNodeIterator;
 			if (valItr != null)
 			{
 				strArgs = "";

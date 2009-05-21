@@ -1,8 +1,126 @@
+2008-02-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoProperty.cs (GetValue): Don't use the delegate optimization for valuetypes.
+
+2008-02-26  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoProperty.cs (GetValue): Optimize getters for properties without arguments.
+
+2008-02-26  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoProperty.cs (GetValue): Optimize getters for properties without arguments.
+	The optimization is to create a pair of chained delegates that duplicate the workings
+	on MethodBase::Invoke without all the aditional overhead and without doing two
+	managed/native transitions.
+
+	Simple Getter performance is up to 17x faster.
+
+	This patch reduces contention on domain and domain jit code hash locks, which
+	can be very hot on asp.net applications.
+
+2008-02-21  Jb Evain  <jbevain@novell.com>
+
+	* Module.cs: add a new virtual GetModuleVersionId method,
+	and make the properties .MvId and ModuleVersionId call it.
+	This way, we can override it in ModuleBuilder.
+	Part of the fix for #471302.
+
+2008-02-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoMethod.cs (ToString): Fix the 1.1 build.
+
+2008-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r125415.
+
+	* MonoMethod.cs (ToString): Fix the representation of non primitive structs.
+
+2008-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r125409.
+
+	* MonoMethod.cs (ToString): Fix representation of pointer types.
+
+	Fixes #409583.
+
+2009-01-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Assembly.cs: add new LoadSatelliteAssemblyNoThrow method and use the
+	new LoadSatellite() in AppDomain.
+
+2009-01-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeData.cs (ToString): Applied patch from Leszek Ciesielski
+	<skolima@gmail.com>. Use DeclaringType.FullName instead of DeclaringType.Name.
+	Fixes #464830.
+
+2008-11-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoField.cs (GetValue): Don't check for open generic types if the field
+	is a constant.
+
+2008-11-11  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Module.cs (ResolveMethod): Use internal method 
+	GetMethodFromHandleNoGenericCheck to avoid the generic type
+	limitation of GetMethodFromHandle.
+
+	Fixes #443763.
+
+2008-10-02 Gonzalo Paniagua Javier <gonzalo.mono@gmail.com>
+
+	* MonoMethod.cs: throw a MemberAccessException when
+	trying to invoke a constructor creating an instance of an abstract
+	class. Return null when an instance of an object was passed as a
+	parameter when invoking a .ctor. Fixes bug #324185.
+
+2008-09-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* MonoField.cs: Add check to GetValue/SetValue () to avoid crashes when it is
+	called on fields of open types. Fixes #424077.
+
+2008-08-12  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ReflectionSerializationHolder.cs: Removed.
+	* common.src: Removed.
+
+2008-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Assembly.cs : return UnmanagedMemoryStream from 
+	  GetManifestResourceStream(). Fixed bug #322241.
+
+2008-07-30  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (InflateType): Guard against null types.
+	Fixes #412965.
+
+2008-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	* MethodBase.cs (GetMethodFromHandle): Needed for bootraping.
+
+2008-07-22  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (GetMethod): Under compiler mode allow
+	MethodOnTypeBuilderInst to be used..
+
+2008-07-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (GetMethod): Revert to old code
+	path as the new one broke System.Core.
+
+2008-07-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClass.cs (GetMethod): Use the new codepath for compiler
+	context.
+
+	* MonoGenericClass.cs: New InflateType method, used to inflate
+	managed types.
+
 2008-07-11  Marek Safar  <marek.safar@gmail.com>
 
 	* MonoGenericClass.cs (GetField): Put back removed code.
 
-2008-07-04  Rodrigo Kumpera  <rkumpera@n ovell.com>
+2008-07-04  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* MethodBase.cs (GetMethodFromHandle): Fix a warning in
 	the 1.0 build.
@@ -24,7 +142,7 @@
 	* MonoGenericClass.cs (GetConstructor): Put back removed code due to obscure
 	System.Reflection.MonoGenericCMethod.
 
-2008-06-19  Kornél Pál  <kornelpal@gmail.com>
+2008-06-19  Kornel Pal  <kornelpal@gmail.com>
 
 	* Module.cs: Add internal GetHINSTANCE.
 
@@ -63,7 +181,7 @@
 	* Binder.cs: Applied patch from Yves Bastide (doc.formatique@gmail.com). Add 
 	support for converting integers to enums. Fixes #380361.
 
-﻿2008-04-02  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
+?2008-04-02  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 
 	* IReflect.cs
 	* MethodInfo.cs: Fix parameter names
@@ -392,7 +510,7 @@ Tue Dec 12 19:45:26 CET 2006 Paolo Molaro <lupus@ximian.com>
 	absolute path before passing it to Assembly.InternalGetAssemblyName
 	as the CodeBase is not set in that case.
 
-2006-10-17  Kornél Pál  <kornelpal@gmail.com>
+2006-10-17  Kornel Pal  <kornelpal@gmail.com>
 
 	* FieldInfo.cs: Added GetRawConstantValue (). Note that throwing a
 	  NotSupportedException is the proper implementation.
@@ -1578,7 +1696,7 @@ Sat Jul 10 15:48:34 CEST 2004 Paolo Molaro <lupus@ximian.com>
 	abstract; use an interncall in MonoMethod and a custom
 	implementation in MethodBuilder.	
 
-2003-10-17  Pedro Martínez Juliá  <yoros@wanadoo.es>
+2003-10-17  Pedro Martinez Julia  <yoros@wanadoo.es>
 
 	* MonoEvent.cs: implement ToString method as in MS.NET.
 

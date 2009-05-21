@@ -1,11 +1,26 @@
+2009-01-21  Marek Habersack  <mhabersack@novell.com>
+
+	* XhtmlTextWriterTest.cs: temporarily disabled the
+	RemoveRecognizedAttribute test (Nunit 2.4 issue).
+
+2008-12-10  Marek Habersack  <mhabersack@novell.com>
+
+	* PageParserTest.cs: added
+
+2008-12-03  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBinderTest.cs: added
+
+2008-10-17  Marek Habersack  <mhabersack@novell.com>
+
+	* PageTest.cs: use a custom version of HtmlInputHidden control to
+	work around the new event validation code which doesn't work in
+	this instance.
+
 2008-07-22  Gert Driesen <drieseng@users.sourceforge.net>
 
-	* LosFormatterTest.cs: Improved test for bug #411115.
-
-2008-07-22  Dean Brettle <dean@brettle.com>
-
-	* LosFormatterTest.cs: added test for bug 411115 where passing an
-	unseekable stream to LosFormatter.Deserialize() causes an exception.
+	* LosFormatterTest.cs: Added test for Deserialize using non-seekable
+	stream.
 
 2008-06-14  Gert Driesen <drieseng@users.sourceforge.net>
 

@@ -31,7 +31,7 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-	[StructLayout(LayoutKind.Explicit, Size = 16)]
+	[StructLayout(LayoutKind.Explicit)]
 	internal unsafe struct Variant
 	{
 		[FieldOffset(0)]
@@ -88,8 +88,11 @@ namespace System
 		[FieldOffset(8)]
 		public uint uintVal;
 
-        [FieldOffset(8)]
-        public IntPtr pdispVal;
+		[FieldOffset(8)]
+		public IntPtr pdispVal;
+
+		[FieldOffset(8)]
+		public BRECORD bRecord;
 
 		public void SetValue(object obj) {
 			vt = (short)VarEnum.VT_EMPTY;
@@ -97,6 +100,9 @@ namespace System
 				return;
 
 			Type t = obj.GetType();
+			if (t.IsEnum)
+				t = Enum.GetUnderlyingType (t);
+
 			if (t == typeof(sbyte))
 			{
 				vt = (short)VarEnum.VT_I1;
@@ -151,23 +157,47 @@ namespace System
 			{
 				vt = (short)VarEnum.VT_BSTR;
 				bstrVal = Marshal.StringToBSTR((string)obj);
-            }
-            else if (t == typeof(bool))
-            {
-                vt = (short)VarEnum.VT_BOOL;
-                lVal = ((bool)obj) ? -1 : 0;
-            }
-            else
-            {
-                try 
-                {
-                    vt = (short)VarEnum.VT_DISPATCH;
-                    pdispVal = Marshal.GetIUnknownForObject(obj);
-                }
-                catch (Exception ex)
-                {
-                    throw new NotImplementedException(string.Format("Variant couldn't handle object of type {0}", obj.GetType()), ex);
-                }
+			}
+			else if (t == typeof(bool))
+			{
+				vt = (short)VarEnum.VT_BOOL;
+				lVal = ((bool)obj) ? -1 : 0;
+			}
+#if NET_2_0
+			else if (t == typeof (BStrWrapper))
+			{
+				vt = (short)VarEnum.VT_BSTR;
+				bstrVal = Marshal.StringToBSTR(((BStrWrapper)obj).WrappedObject);
+			}
+			else if (t == typeof (UnknownWrapper))
+			{
+				vt = (short)VarEnum.VT_UNKNOWN;
+				pdispVal = Marshal.GetIUnknownForObject(((UnknownWrapper)obj).WrappedObject);
+			}
+			else if (t == typeof (DispatchWrapper))
+			{
+				vt = (short)VarEnum.VT_DISPATCH;
+				pdispVal = Marshal.GetIDispatchForObject(((DispatchWrapper)obj).WrappedObject);
+			}
+#endif
+			else
+			{
+				try 
+				{
+					pdispVal = Marshal.GetIDispatchForObject(obj);
+					vt = (short)VarEnum.VT_DISPATCH;
+					return;
+				}
+				catch { }
+				try 
+				{
+					vt = (short)VarEnum.VT_UNKNOWN;
+					pdispVal = Marshal.GetIUnknownForObject(obj);
+				}
+				catch (Exception ex)
+				{
+					throw new NotImplementedException(string.Format("Variant couldn't handle object of type {0}", obj.GetType()), ex);
+				}
 			}
 		}
 
@@ -211,10 +241,11 @@ namespace System
 			case VarEnum.VT_BSTR:
 				obj = Marshal.PtrToStringBSTR(bstrVal);
 				break;
-            case VarEnum.VT_UNKNOWN:
-            case VarEnum.VT_DISPATCH:
-                obj = Marshal.GetObjectForIUnknown(pdispVal);
-                break;
+			case VarEnum.VT_UNKNOWN:
+			case VarEnum.VT_DISPATCH:
+				if (pdispVal != IntPtr.Zero)
+					obj = Marshal.GetObjectForIUnknown(pdispVal);
+				break;
 			}
 			return obj;
 		}
@@ -227,7 +258,14 @@ namespace System
 			else if ((VarEnum)vt == VarEnum.VT_DISPATCH || (VarEnum)vt == VarEnum.VT_UNKNOWN) {
 				if (pdispVal != IntPtr.Zero)
 					Marshal.Release (pdispVal);
-            }
+			}
 		}
+	}
+
+	[StructLayout(LayoutKind.Sequential)]
+	internal unsafe struct BRECORD
+	{
+		IntPtr pvRecord;
+		IntPtr pRecInfo;
 	}
 }

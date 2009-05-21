@@ -1,4 +1,4 @@
-// Permission is hereby granted, free of charge, to any person obtaining
+/// Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
 // "Software"), to deal in the Software without restriction, including
 // without limitation the rights to use, copy, modify, merge, publish,
@@ -225,6 +225,44 @@ namespace System.Windows.Forms
 			remove { base.TextChanged -= value; }
 		}
 		#endregion // Events
+
+		#region UIA Framework Events 
+#if NET_2_0
+		//NOTE:
+		//	We are using Reflection to add/remove internal events.
+		//	Class ListProvider uses the events.
+		//
+		//Event used to generate UIA Selection Pattern 
+		static object UIASelectionModeChangedEvent = new object ();
+
+		internal event EventHandler UIASelectionModeChanged {
+			add { Events.AddHandler (UIASelectionModeChangedEvent, value); }
+			remove { Events.RemoveHandler (UIASelectionModeChangedEvent, value); }
+		}
+
+		internal void OnUIASelectionModeChangedEvent ()
+		{
+			EventHandler eh = (EventHandler) Events [UIASelectionModeChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		static object UIAFocusedItemChangedEvent = new object ();
+
+		internal event EventHandler UIAFocusedItemChanged {
+			add { Events.AddHandler (UIAFocusedItemChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAFocusedItemChangedEvent, value); }
+		}
+
+		internal void OnUIAFocusedItemChangedEvent ()
+		{
+			EventHandler eh = (EventHandler) Events [UIAFocusedItemChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+#endif
+		#endregion UIA Framework Events 
 
 		#region Public Properties
 		public override Color BackColor {
@@ -576,6 +614,11 @@ namespace System.Windows.Forms
 				default:
 					break;
 				}
+
+#if NET_2_0
+				// UIA Framework: Generates SelectionModeChanged event.
+				OnUIASelectionModeChangedEvent ();
+#endif
 			}
 		}
 
@@ -697,6 +740,18 @@ namespace System.Windows.Forms
 
 		#endregion Private Properties
 
+		#region UIA Framework Properties
+
+		internal ScrollBar UIAHScrollBar {
+			get { return hscrollbar; }
+		}
+
+		internal ScrollBar UIAVScrollBar {
+			get { return vscrollbar; }
+		}
+
+		#endregion UIA Framework Properties
+
 		#region Public Methods
 #if NET_2_0
 		[Obsolete ("this method has been deprecated")]
@@ -815,8 +870,11 @@ namespace System.Windows.Forms
 
 			if (MultiColumn) {
 				int col = index / RowCount;
-				rect.Y = ((index - top_index) % RowCount) * ItemHeight;
-				rect.X = col * ColumnWidthInternal;
+				int y = index;
+				if (y < 0) // We convert it to valid positive value 
+					y += RowCount * (top_index / RowCount);
+				rect.Y = (y % RowCount) * ItemHeight;
+				rect.X = (col - (top_index / RowCount)) * ColumnWidthInternal;
 				rect.Height = ItemHeight;
 				rect.Width = ColumnWidthInternal;
 			} else {
@@ -1025,6 +1083,9 @@ namespace System.Windows.Forms
 			for (int i = 0; i < Items.Count; i++) {
 				RefreshItem (i);
 			}
+
+			LayoutListBox ();
+			Refresh ();
 		}
 
 		public override void ResetBackColor ()
@@ -1093,7 +1154,7 @@ namespace System.Windows.Forms
 			BeginUpdate ();
 			try {
 				Items.Clear ();
-				Items.AddRange (value);
+				Items.AddItems (value);
 			} finally {
 				EndUpdate ();
 			}
@@ -1380,14 +1441,11 @@ namespace System.Windows.Forms
 				else
 					hscrollbar.Value = col;
 			} else {
-				int val = vscrollbar.Value;
 				if (top_index > vscrollbar.Maximum)
 					vscrollbar.Value = vscrollbar.Maximum;
 				else
 					vscrollbar.Value = top_index;
 				Scroll (vscrollbar, vscrollbar.Value - top_index);
-				if (IsHandleCreated)
-					XplatUI.ScrollWindow (Handle, items_area, 0, ItemHeight * (val - vscrollbar.Value), false);
 			}
 		}
 		
@@ -2020,6 +2078,11 @@ namespace System.Windows.Forms
 			
 				if (value != -1)
 					InvalidateItem (value);
+
+#if NET_2_0
+				// UIA Framework: Generates FocusedItemChanged event.
+				OnUIAFocusedItemChangedEvent ();
+#endif
 			}
 		}
 
@@ -2244,22 +2307,26 @@ namespace System.Windows.Forms
 			
 			public void AddRange (int[] items)
 			{
-				foreach (int i in items)
-					if (!list.Contains (i))
-						list.Add (i);
-						
-				list.Sort ();
+				AddItems (items);
 			}
 			
 			public void AddRange (IntegerCollection value)
 			{
-				foreach (int i in value)
+				AddItems (value);
+			}
+
+			void AddItems (IList items)
+			{
+				if (items == null)
+					throw new ArgumentNullException ("items");
+
+				foreach (int i in items)
 					if (!list.Contains (i))
 						list.Add (i);
 
 				list.Sort ();
 			}
-			
+
 			public void Clear ()
 			{
 				list.Clear ();
@@ -2273,8 +2340,8 @@ namespace System.Windows.Forms
 			
 			public void CopyTo (Array destination, int index)
 			{
-				for (int i = index; i < list.Count; i++)
-					destination.SetValue (list[i], i);
+				for (int i = 0; i < list.Count; i++)
+					destination.SetValue (list[i], index++);
 			}
 			
 			public int IndexOf (int item)
@@ -2291,6 +2358,9 @@ namespace System.Windows.Forms
 			
 			public void RemoveAt (int index)
 			{
+				if (index < 0)
+					throw new IndexOutOfRangeException ();
+
 				list.RemoveAt (index);
 				list.Sort ();
 				owner.CalculateTabStops ();
@@ -2307,7 +2377,10 @@ namespace System.Windows.Forms
 			#region IList Members
 			int IList.Add (object item)
 			{
-				return Add ((int) item);
+				int? intValue = item as int?;
+				if (!intValue.HasValue)
+					throw new ArgumentException ("item");
+				return Add (intValue.Value);
 			}
 
 			void IList.Clear ()
@@ -2317,17 +2390,26 @@ namespace System.Windows.Forms
 
 			bool IList.Contains (object item)
 			{
-				return Contains ((int) item);
+				int? intValue = item as int?;
+				if (!intValue.HasValue)
+					return false;
+				return Contains (intValue.Value);
 			}
 
 			int IList.IndexOf (object item)
 			{
-				return IndexOf ((int) item);
+				int? intValue = item as int?;
+				if (!intValue.HasValue)
+					return -1;
+				return IndexOf (intValue.Value);
 			}
 
 			void IList.Insert (int index, object value)
 			{
-				throw new Exception ("The method or operation is not implemented.");
+				throw new NotSupportedException (string.Format (
+					CultureInfo.InvariantCulture, "No items "
+					+ "can be inserted into {0}, since it is"
+					+ " a sorted collection.", this.GetType ()));
 			}
 
 			bool IList.IsFixedSize
@@ -2342,7 +2424,11 @@ namespace System.Windows.Forms
 
 			void IList.Remove (object value)
 			{
-				Remove ((int)value);
+				int? intValue = value as int?;
+				if (!intValue.HasValue)
+					throw new ArgumentException ("value");
+
+				Remove (intValue.Value);
 			}
 
 			void IList.RemoveAt (int index)
@@ -2357,14 +2443,12 @@ namespace System.Windows.Forms
 			#endregion
 
 			#region ICollection Members
-			bool ICollection.IsSynchronized
-			{
-				get { throw new Exception ("The method or operation is not implemented."); }
+			bool ICollection.IsSynchronized {
+				get { return true; }
 			}
 
-			object ICollection.SyncRoot
-			{
-				get { throw new Exception ("The method or operation is not implemented."); }
+			object ICollection.SyncRoot {
+				get { return this; }
 			}
 			#endregion
 		}
@@ -2385,6 +2469,31 @@ namespace System.Windows.Forms
 
 			private ListBox owner;
 			internal ArrayList object_items = new ArrayList ();
+			
+			#region UIA Framework Events 
+#if NET_2_0
+			//NOTE:
+			//	We are using Reflection to add/remove internal events.
+			//	Class ListProvider uses the events.
+			//
+			//Event used to generate UIA StructureChangedEvent
+			static object UIACollectionChangedEvent = new object ();
+
+			internal event CollectionChangeEventHandler UIACollectionChanged {
+				add { owner.Events.AddHandler (UIACollectionChangedEvent, value); }
+				remove { owner.Events.RemoveHandler (UIACollectionChangedEvent, value); }
+			}
+
+			internal void OnUIACollectionChangedEvent (CollectionChangeEventArgs args)
+			{
+				CollectionChangeEventHandler eh
+					= (CollectionChangeEventHandler) owner.Events [UIACollectionChangedEvent];
+				if (eh != null)
+					eh (owner, args);
+			}
+
+#endif
+			#endregion UIA Framework Events 
 
 			public ObjectCollection (ListBox owner)
 			{
@@ -2426,8 +2535,19 @@ namespace System.Windows.Forms
 						throw new ArgumentOutOfRangeException ("Index of out range");
 					if (value == null)
 						throw new ArgumentNullException ("value");
+						
+#if NET_2_0
+					//UIA Framework event: Item Removed
+					OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, object_items [index]));
+#endif
 
 					object_items[index] = value;
+					
+#if NET_2_0
+					//UIA Framework event: Item Added
+					OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, value));
+#endif					
+
 					owner.CollectionChanged ();
 				}
 			}
@@ -2453,13 +2573,34 @@ namespace System.Windows.Forms
 
 				idx = AddItem (item);
 				owner.CollectionChanged ();
+				
+				// If we are sorted, the item probably moved indexes, get the real one
+				if (owner.sorted)
+					return this.IndexOf (item);
+					
 				return idx;
 			}
 
 			public void AddRange (object[] items)
 			{
+				AddItems (items);
+			}
+
+			public void AddRange (ObjectCollection value)
+			{
+				AddItems (value);
+			}
+
+			internal void AddItems (IList items)
+			{
 				if (items == null)
 					throw new ArgumentNullException ("items");
+
+#if ONLY_1_1
+				foreach (object mi in items)
+					if (mi == null)
+						throw new ArgumentNullException ("item");
+#endif
 
 				foreach (object mi in items)
 					AddItem (mi);
@@ -2467,31 +2608,18 @@ namespace System.Windows.Forms
 				owner.CollectionChanged ();
 			}
 
-			public void AddRange (ObjectCollection value)
-			{
-				if (value == null)
-					throw new ArgumentNullException ("value");
-
-				foreach (object mi in value)
-					AddItem (mi);
-
-				owner.CollectionChanged ();
-			}
-
-			internal void AddRange (IList list)
-			{
-				foreach (object mi in list)
-					AddItem (mi);
-
-				owner.CollectionChanged ();
-			}
-
 			public virtual void Clear ()
 			{
-				owner.selected_indices.Clear ();
+				owner.selected_indices.ClearCore ();
 				object_items.Clear ();
 				owner.CollectionChanged ();
+
+#if NET_2_0
+				//UIA Framework event: Items list cleared
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Refresh, null));
+#endif
 			}
+
 			public bool Contains (object value)
 			{
 				if (value == null)
@@ -2551,6 +2679,11 @@ namespace System.Windows.Forms
 				object_items.Insert (index, item);
 				owner.CollectionChanged ();
 				owner.EndUpdate ();
+				
+#if NET_2_0
+				//UIA Framework event: Item Added
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, item));
+#endif
 			}
 
 			public void Remove (object value)
@@ -2558,7 +2691,9 @@ namespace System.Windows.Forms
 				if (value == null)
 					return;
 
-				RemoveAt (IndexOf (value));
+				int index = IndexOf (value);
+				if (index != -1)
+					RemoveAt (index);
 			}
 
 			public void RemoveAt (int index)
@@ -2566,9 +2701,19 @@ namespace System.Windows.Forms
 				if (index < 0 || index >= Count)
 					throw new ArgumentOutOfRangeException ("Index of out range");
 
-				owner.selected_indices.Remove (index);
+
+#if NET_2_0
+				//UIA Framework element removed
+				object removed = object_items [index];
+#endif
+				UpdateSelection (index);
 				object_items.RemoveAt (index);
 				owner.CollectionChanged ();
+				
+#if NET_2_0
+				//UIA Framework event: Item Removed
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, removed));
+#endif
 			}
 			#endregion Public Methods
 
@@ -2580,7 +2725,35 @@ namespace System.Windows.Forms
 
 				int cnt = object_items.Count;
 				object_items.Add (item);
+
+#if NET_2_0
+				//UIA Framework event: Item Added
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, item));
+#endif
+
 				return cnt;
+			}
+
+			// we receive the index to be removed
+			void UpdateSelection (int removed_index)
+			{
+				owner.selected_indices.Remove (removed_index);
+
+				if (owner.selection_mode != SelectionMode.None) {
+					int last_idx = object_items.Count - 1;
+
+					// if the last item was selected, remove it from selection,
+					// since it will become invalid after the removal
+					if (owner.selected_indices.Contains (last_idx)) {
+						owner.selected_indices.Remove (last_idx);
+
+						// in SelectionMode.One try to put the selection on the new last item
+						int new_idx = last_idx - 1;
+						if (owner.selection_mode == SelectionMode.One && new_idx > -1)
+							owner.selected_indices.Add (new_idx);
+					}
+				}
+
 			}
 
 			internal void Sort ()
@@ -2596,6 +2769,32 @@ namespace System.Windows.Forms
 			private ListBox owner;
 			ArrayList selection;
 			bool sorting_needed; // Selection state retrieval is done sorted - we do it lazyly
+
+			#region UIA Framework Events 
+#if NET_2_0
+			//NOTE:
+			//	We are using Reflection to add/remove internal events.
+			//	Class ListProvider uses the events.
+			//
+			//Event used to generate UIA StructureChangedEvent
+			static object UIACollectionChangedEvent = new object ();
+
+			internal event CollectionChangeEventHandler UIACollectionChanged {
+				add { owner.Events.AddHandler (UIACollectionChangedEvent, value); }
+				remove { owner.Events.RemoveHandler (UIACollectionChangedEvent, value); }
+			}
+
+			internal void OnUIACollectionChangedEvent (CollectionChangeEventArgs args)
+			{
+				CollectionChangeEventHandler eh
+					= (CollectionChangeEventHandler) owner.Events [UIACollectionChangedEvent];
+				if (eh != null)
+					eh (owner, args);
+			}
+
+#endif
+			#endregion UIA Framework Events 
+
 
 			public SelectedIndexCollection (ListBox owner)
 			{
@@ -2673,6 +2872,10 @@ namespace System.Windows.Forms
 				owner.EnsureVisible (index);
 				owner.FocusedItem = index;
 				owner.InvalidateItem (index);
+#if NET_2_0
+				// UIA Framework event: Selected item added
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, index));
+#endif 
 
 				return true;
 			}
@@ -2699,6 +2902,10 @@ namespace System.Windows.Forms
 					owner.InvalidateItem (index);
 
 				selection.Clear ();
+#if NET_2_0
+				// UIA Framework event: Selected items list updated
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Refresh, -1));
+#endif 
 				return true;
 			}
 
@@ -2753,6 +2960,12 @@ namespace System.Windows.Forms
 
 				selection.RemoveAt (idx);
 				owner.InvalidateItem (index);
+
+#if NET_2_0
+				// UIA Framework event: Selected item removed from selection
+				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Remove, index));
+#endif 
+
 
 				return true;
 			}

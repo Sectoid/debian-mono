@@ -96,6 +96,7 @@ namespace System.Reflection.Emit
 #endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public sealed class AssemblyBuilder : Assembly, _AssemblyBuilder {
+#pragma warning disable 169, 414
 		#region Sync with object-internals.h
 		private UIntPtr dynamic_assembly; /* GC-tracked */
 		private MethodInfo entry_point;
@@ -122,6 +123,8 @@ namespace System.Reflection.Emit
 		bool corlib_internal;
 		Type[] type_forwarders;
 		#endregion
+#pragma warning restore 169, 414
+		
 		internal Type corlib_object_type = typeof (System.Object);
 		internal Type corlib_value_type = typeof (System.ValueType);
 		internal Type corlib_enum_type = typeof (System.Enum);
@@ -183,14 +186,16 @@ namespace System.Reflection.Emit
 			if (n.KeyPair != null) {
 				// full keypair is available (for signing)
 				sn = n.KeyPair.StrongName ();
-			}
-			else {
+			} else {
 				// public key is available (for delay-signing)
 				byte[] pk = n.GetPublicKey ();
 				if ((pk != null) && (pk.Length > 0)) {
 					sn = new Mono.Security.StrongName (pk);
 				}
 			}
+
+			if (sn != null)
+				flags |= (uint) AssemblyNameFlags.PublicKey;
 
 			this.corlib_internal = corlib_internal;
 
@@ -349,6 +354,7 @@ namespace System.Reflection.Emit
 			} else {
 				Type[] arr = new Type [type_forwarders.Length + 1];
 				Array.Copy (type_forwarders, arr, type_forwarders.Length);
+				arr [type_forwarders.Length] = t;
 				type_forwarders = arr;
 			}
 		}
@@ -375,8 +381,7 @@ namespace System.Reflection.Emit
 			return DefineDynamicModule (name, fileName, emitSymbolInfo, false);
 		}
 
-		private ModuleBuilder DefineDynamicModule (string name, string fileName,
-												   bool emitSymbolInfo, bool transient)
+		private ModuleBuilder DefineDynamicModule (string name, string fileName, bool emitSymbolInfo, bool transient)
 		{
 			check_name_and_filename (name, fileName, false);
 
@@ -882,10 +887,16 @@ namespace System.Reflection.Emit
 				} else if (attrname == "System.Reflection.AssemblyFlagsAttribute") {
 					data = customBuilder.Data;
 					pos = 2;
-					flags = (uint) data [pos];
+					flags |= (uint) data [pos];
 					flags |= ((uint) data [pos + 1]) << 8;
 					flags |= ((uint) data [pos + 2]) << 16;
 					flags |= ((uint) data [pos + 3]) << 24;
+
+#if NET_2_0
+					// ignore PublicKey flag if assembly is not strongnamed
+					if (sn == null)
+						flags &= ~(uint) AssemblyNameFlags.PublicKey;
+#endif
 				}
 			}
 

@@ -495,6 +495,15 @@ class Tester
 		Assert<MyEnum> (0, e3.Compile ().Invoke (MyEnum.Value_1, MyEnum.Value_2));
 		Assert (MyEnum.Value_2, e3.Compile ().Invoke (MyEnum.Value_2, MyEnum.Value_2));
 	}
+	
+	void AndTest_4 ()
+	{
+		Expression<Func<int, int>> e = (a) => a & 0;
+		AssertNodeType (e, ExpressionType.And);
+		var c = e.Compile ();
+		
+		Assert (0, c (1));
+	}
 
 	void AndNullableTest ()
 	{
@@ -730,6 +739,15 @@ class Tester
 		Assert (4, r4.Invoke (new InverseLogicalOperator (false), 3, 4));
 	}
 	
+	void ConditionTest_5 ()
+	{
+		// CSC bug ?
+		Expression<Func<int>> e = () => false ? 1 : 4;
+		AssertNodeType (e, ExpressionType.Conditional);
+		var r = e.Compile ();
+		Assert (4, r.Invoke ());
+	}
+	
 	void ConstantTest ()
 	{
 		Expression<Func<int>> e1 = () => default (int);
@@ -755,8 +773,7 @@ class Tester
 	void ConstantTest_4 ()
 	{
 		Expression<Func<object>> e4 = () => null;
-		// TODO: Extra Convert
-		//AssertNodeType (e4, ExpressionType.Constant);
+		AssertNodeType (e4, ExpressionType.Constant);
 		Assert (null, e4.Compile ().Invoke ());
 	}
 	
@@ -807,13 +824,6 @@ class Tester
 		Expression<Func<MyEnum>> e11 = () => MyEnum.Value_2;
 		AssertNodeType (e11, ExpressionType.Constant);
 		Assert (MyEnum.Value_2, e11.Compile ().Invoke ());
-	}
-	
-	void ConstantTest_12 ()
-	{
-		Expression<Func<MyEnum>> e12 = () => new MyEnum ();
-		AssertNodeType (e12, ExpressionType.Constant);
-		Assert<MyEnum> (0, e12.Compile ().Invoke ());
 	}
 	
 	void ConstantTest_13 ()
@@ -1132,6 +1142,13 @@ class Tester
 		AssertNodeType (e13, ExpressionType.Equal);
 		Assert (true, e13.Compile ().Invoke (MyEnum.Value_2));
 		Assert (false, e13.Compile ().Invoke (0));
+	}
+	
+	void EqualTest_14 ()
+	{
+		Expression<Func<MyEnum, bool>> e = (a) => a == null;
+		AssertNodeType (e, ExpressionType.Equal);
+		Assert (false, e.Compile ().Invoke (MyEnum.Value_1));
 	}
 
 	void EqualTestDelegate ()
@@ -1651,6 +1668,15 @@ class Tester
 		AssertNodeType (e3, ExpressionType.MemberInit);
 		var r3 = e3.Compile ().Invoke (33);
 		Assert (33, r3.ShortProp);
+	}
+	
+	void MemberInitTest_4 ()
+	{
+		Expression<Func<int>> e = () => new int { };
+		
+		AssertNodeType (e, ExpressionType.MemberInit);
+		var r = e.Compile ().Invoke ();
+		Assert (0, r);
 	}	
 
 	void ModuloTest ()
@@ -1943,6 +1969,13 @@ class Tester
 		Assert (new char [] { 'a' }, e3.Compile ().Invoke () [0]);
 	}
 	
+	void NewArrayInitTest_5 ()
+	{
+		Expression<Func<int?[]>> e = () => new int?[] { null, 3, 4 };	
+		AssertNodeType (e, ExpressionType.NewArrayInit);
+		Assert (3, e.Compile ().Invoke ().Length);
+	}
+	
 	void NewArrayBoundsTest ()
 	{
 		Expression<Func<int [,]>> e = () => new int [2,3];
@@ -1991,6 +2024,14 @@ class Tester
 		AssertNodeType (e5, ExpressionType.New);
 		Assert (new { A = 9, Value = "a" }, e5.Compile ().Invoke ());
 	}	
+
+	// CSC bug: emits new MyEnum as a constant	
+	void NewTest_6 ()
+	{
+		Expression<Func<MyEnum>> e = () => new MyEnum ();
+		AssertNodeType (e, ExpressionType.New);
+		Assert<MyEnum> (0, e.Compile ().Invoke ());
+	}
 
 	void NotTest ()
 	{

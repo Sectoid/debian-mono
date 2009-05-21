@@ -1,3 +1,43 @@
+2008-11-24  Geoff Norton  <gnorton@novell.com>
+
+	* gdipFunctions.cs: Ensure that System.Drawing works on the mac as 
+	well as unix.
+
+2008-11-21  Andreia Gaita  <shana@jitted.com>
+
+	* Image.cs: On win32, when cloning images initialized from
+	resources, also clone the underlying stream, since it needs to stay
+	around for the life of the image (gdi doesn't clone the underlying
+	stream when cloning images, so when the gc disposes the original, it
+	will also dispose the stream, which invalidates the clone).
+
+	* Bitmap.cs: Save the underlying stream when creating bitmaps from a
+	clone under win32
+	[fixes #438886]
+
+2008-11-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Font.cs: Add comment on .ctor(Font,FontStyle) about the lack of
+	null check (compatibility). Add proper (yet compatible ;-) null check
+	to GetHeight(Graphics)
+
+2008-10-06  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* Color.cs: Fix Color serialization by changing 'value' visibility
+	to private and make everyone access it thru an internal property. 
+	This also simplify the A, R, G and B properties and probably covers 
+	a few other cases where a similar hack would have been required.
+	[Fix bug #410693]
+	* KnownColors.cs: Assign Color.Value property and not the value field.
+	* RectangleF.cs: Fix edge intersection. Path by Brian Browning.
+	[Fix bug #431587]
+
+2008-08-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Icon.cs (InitFromStreamWithSize): Use temp ArrayList for IconDirEntry
+	to avoid empty slots in array. Use actual index of IconDirEntry in
+	array when entries have been skipped. Fixes bug #415581.
+
 2008-08-06  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* Icon.cs (InitFromStreamWithSize): Move init of iconDir.idCount

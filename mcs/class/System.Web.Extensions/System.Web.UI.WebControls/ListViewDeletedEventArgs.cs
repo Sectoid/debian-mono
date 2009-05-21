@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2008 Novell, Inc
 //
 
 //
@@ -35,29 +35,52 @@ namespace System.Web.UI.WebControls
 {
 	public class ListViewDeletedEventArgs : EventArgs
 	{
+		IOrderedDictionary _keys;
+		IOrderedDictionary _values;
+
+		internal ListViewDeletedEventArgs (int affectedRows, Exception exception, IOrderedDictionary keys, IOrderedDictionary values)
+			: this (affectedRows, exception)
+		{
+			_keys = keys;
+			_values = values;
+		}
+		
 		public ListViewDeletedEventArgs (int affectedRows, Exception exception)
 		{
+			AffectedRows = affectedRows;
+			Exception = exception;
+			ExceptionHandled = false;
 		}
 		
 		public int AffectedRows {
-			get { throw new NotImplementedException (); }
+			get;
+			private set;
 		}
 		
 		public Exception Exception {
-			get { throw new NotImplementedException (); }
+			get;
+			private set;
 		}
 		
 		public bool ExceptionHandled {
-			get { throw new NotImplementedException (); }
-			set { }
+			get;
+			set;
 		}
 		
 		public IOrderedDictionary Keys {
-			get { throw new NotImplementedException (); }
+			get {
+				if (_keys == null)
+					_keys = new OrderedDictionary ();
+				return _keys;
+			}
 		}
 		
 		public IOrderedDictionary Values {
-			get { throw new NotImplementedException (); }
+			get {
+				if (_values == null)
+					_values = new OrderedDictionary ();
+				return _values;
+			}
 		}
 	}
 }

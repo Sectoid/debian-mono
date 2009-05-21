@@ -36,7 +36,7 @@ using CategoryAttribute = NUnit.Framework.CategoryAttribute;
 namespace MonoTests.System.Windows.Forms.DataBinding {
 
 	[TestFixture]
-	public class BindingSourceTest
+	public class BindingSourceTest : TestHelper
 	{
 		[Test]
 		public void DefaultDataSource ()
@@ -381,9 +381,7 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 			}
 		}
 
-		// Not working by now due to a bug in DataView
 		[Test]
-		[Category ("NotWorking")]
 		public void Sort_IBindingListView ()
 		{
 			BindingSource source = new BindingSource ();
@@ -1802,7 +1800,6 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void ListChanged_DataSourceSet ()
 		{
 			IBindingList bindinglist = new BindingList<string> ();

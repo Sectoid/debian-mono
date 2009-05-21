@@ -87,8 +87,9 @@ namespace System.Net
 		Uri baseAddress;
 		string baseString;
 		NameValueCollection queryString;
-		bool is_busy, async;
+		bool is_busy;
 #if NET_2_0
+		bool async;
 		Thread async_thread;
 		Encoding encoding = Encoding.Default;
 		IWebProxy proxy;
@@ -256,7 +257,9 @@ namespace System.Net
 
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
+#endif				
 				return DownloadDataCore (address, null);
 			} finally {
 				is_busy = false;
@@ -268,7 +271,7 @@ namespace System.Net
 			WebRequest request = null;
 			
 			try {
-				request = SetupRequest (address, "GET");
+				request = SetupRequest (address);
 				WebResponse response = request.GetResponse ();
 				Stream st = ProcessResponse (response);
 				return ReadAll (st, (int) response.ContentLength, userToken);
@@ -308,7 +311,9 @@ namespace System.Net
 
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
+#endif				
 				DownloadFileCore (address, fileName, null);
 			} catch (Exception ex) {
 				throw new WebException ("An error occurred " +
@@ -338,10 +343,9 @@ namespace System.Net
 #endif					
 					while ((nread = st.Read (buffer, 0, length)) != 0){
 #if NET_2_0
-						if (async && DownloadProgressChanged != null){
+						if (async){
 							notify_total += nread;
-							DownloadProgressChanged (
-								this,
+							OnDownloadProgressChanged (
 								new DownloadProgressChangedEventArgs (notify_total, response.ContentLength, userToken));
 												      
 						}
@@ -381,7 +385,9 @@ namespace System.Net
 			WebRequest request = null;
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
+#endif				
 				request = SetupRequest (address);
 				WebResponse response = request.GetResponse ();
 				return ProcessResponse (response);
@@ -435,8 +441,10 @@ namespace System.Net
 
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
-				WebRequest request = SetupRequest (address, method);
+#endif				
+				WebRequest request = SetupRequest (address, method, true);
 				return request.GetRequestStream ();
 			} catch (Exception ex) {
 				throw new WebException ("An error occurred " +
@@ -446,16 +454,16 @@ namespace System.Net
 			}
 		}
 
-		private string DetermineMethod (Uri address, string method)
+		private string DetermineMethod (Uri address, string method, bool is_upload)
 		{
 			if (method != null)
 				return method;
 
 #if NET_2_0
 			if (address.Scheme == Uri.UriSchemeFtp)
-				return "RETR";
+				return (is_upload) ? "STOR" : "RETR";
 #endif
-			return "POST";
+			return (is_upload) ? "POST" : "GET";
 		}
 
 		//   UploadData
@@ -502,8 +510,12 @@ namespace System.Net
 
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
+#endif				
 				return UploadDataCore (address, method, data, null);
+			} catch (WebException) {
+				throw;
 			} catch (Exception ex) {
 				throw new WebException ("An error occurred " +
 					"performing a WebClient request.", ex);
@@ -521,7 +533,7 @@ namespace System.Net
 				throw new ArgumentNullException ("data");
 #endif
 
-			WebRequest request = SetupRequest (address, method);
+			WebRequest request = SetupRequest (address, method, true);
 			try {
 				int contentLength = data.Length;
 				request.ContentLength = contentLength;
@@ -578,7 +590,9 @@ namespace System.Net
 
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
+#endif				
 				return UploadFileCore (address, method, fileName, null);
 			} catch (Exception ex) {
 				throw new WebException ("An error occurred " +
@@ -616,7 +630,7 @@ namespace System.Net
 			WebRequest request = null;
 			try {
 				fStream = File.OpenRead (fileName);
-				request = SetupRequest (address, method);
+				request = SetupRequest (address, method, true);
 				reqStream = request.GetRequestStream ();
 				byte [] realBoundary = Encoding.ASCII.GetBytes ("--" + boundary + "\r\n");
 				reqStream.Write (realBoundary, 0, realBoundary.Length);
@@ -697,7 +711,9 @@ namespace System.Net
 
 			try {
 				SetBusy ();
+#if NET_2_0				
 				async = false;
+#endif				
 				return UploadValuesCore (address, method, data, null);
 			} catch (Exception ex) {
 				throw new WebException ("An error occurred " +
@@ -720,7 +736,7 @@ namespace System.Net
 							"value for this request.");
 
 			Headers ["Content-Type"] = urlEncodedCType;
-			WebRequest request = SetupRequest (uri, method);
+			WebRequest request = SetupRequest (uri, method, true);
 			try {
 				Stream rqStream = request.GetRequestStream ();
 				MemoryStream tmpStream = new MemoryStream ();
@@ -754,12 +770,18 @@ namespace System.Net
 #if NET_2_0
 		public string DownloadString (string address)
 		{
-			return encoding.GetString (DownloadData (address));
+			if (address == null)
+				throw new ArgumentNullException ("address");
+
+			return encoding.GetString (DownloadData (CreateUri (address)));
 		}
 
 		public string DownloadString (Uri address)
 		{
-			return encoding.GetString (DownloadData (address));
+			if (address == null)
+				throw new ArgumentNullException ("address");
+
+			return encoding.GetString (DownloadData (CreateUri (address)));
 		}
 
 		public string UploadString (string address, string data)
@@ -833,23 +855,51 @@ namespace System.Net
 #endif
 		}
 
+#if NET_2_0
+		Uri CreateUri (Uri address)
+		{
+			string query = address.Query;
+			if (String.IsNullOrEmpty (query))
+				query = GetQueryString (true);
+
+			if (baseAddress == null && query == null)
+				return address;
+
+			if (baseAddress == null)
+				return new Uri (address.ToString () + query, (query != null));
+
+			if (query == null)
+				return new Uri (baseAddress, address.ToString ());
+
+			return new Uri (baseAddress, address.ToString () + query, (query != null));
+
+		}
+#endif
+
+		string GetQueryString (bool add_qmark)
+		{
+			if (queryString == null || queryString.Count == 0)
+				return null;
+
+			StringBuilder sb = new StringBuilder ();
+			if (add_qmark)
+				sb.Append ('?');
+
+			foreach (string key in queryString)
+				sb.AppendFormat ("{0}={1}&", key, UrlEncode (queryString [key]));
+
+			if (sb.Length != 0)
+				sb.Length--; // removes last '&' or the '?' if empty.
+
+			if (sb.Length == 0)
+				return null;
+
+			return sb.ToString ();
+		}
+
 		Uri MakeUri (string path)
 		{
-			string query = null;
-			if (queryString != null && queryString.Count != 0) {
-				// This is not the same as UploadValues, because these 'keys' are not
-				// urlencoded here.
-				StringBuilder sb = new StringBuilder ();
-				sb.Append ('?');
-				foreach (string key in queryString)
-					sb.AppendFormat ("{0}={1}&", key, UrlEncode (queryString [key]));
-
-				if (sb.Length != 0) {
-					sb.Length--; // remove trailing '&'
-					query = sb.ToString ();
-				}
-			}
-
+			string query = GetQueryString (true);
 			if (baseAddress == null && query == null) {
 				try {
 					return new Uri (path);
@@ -923,10 +973,10 @@ namespace System.Net
 			return request;
 		}
 
-		WebRequest SetupRequest (Uri uri, string method)
+		WebRequest SetupRequest (Uri uri, string method, bool is_upload)
 		{
 			WebRequest request = SetupRequest (uri);
-			request.Method = DetermineMethod (uri, method);
+			request.Method = DetermineMethod (uri, method, is_upload);
 			return request;
 		}
 
@@ -957,9 +1007,9 @@ namespace System.Net
 					size -= nread;
 				}
 #if NET_2_0
-				if (async && DownloadProgressChanged != null){
+				if (async){
 //					total += nread;
-					DownloadProgressChanged (this, new DownloadProgressChangedEventArgs (nread, length, userToken));
+					OnDownloadProgressChanged (new DownloadProgressChangedEventArgs (nread, length, userToken));
 				}
 #endif
 			}
@@ -1220,7 +1270,7 @@ namespace System.Net
 					object [] args = (object []) state;
 					WebRequest request = null;
 					try {
-						request = SetupRequest ((Uri) args [0], (string) args [1]);
+						request = SetupRequest ((Uri) args [0], (string) args [1], true);
 						Stream stream = request.GetRequestStream ();
 						OnOpenWriteCompleted (
 							new OpenWriteCompletedEventArgs (stream, null, false, args [2]));
@@ -1501,5 +1551,3 @@ namespace System.Net
 #endif
 	}
 }
-
-

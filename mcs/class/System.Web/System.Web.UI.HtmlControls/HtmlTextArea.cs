@@ -42,10 +42,9 @@ namespace System.Web.UI.HtmlControls {
 #if NET_2_0
 	[SupportsEventValidation]
 #endif
-	public class HtmlTextArea : HtmlContainerControl, IPostBackDataHandler {
-
-		private static readonly object serverChangeEvent = new object ();
-
+	public class HtmlTextArea : HtmlContainerControl, IPostBackDataHandler 
+	{
+		static readonly object serverChangeEvent = new object ();
 
 		public HtmlTextArea ()
 			: base ("textarea")
@@ -142,7 +141,7 @@ namespace System.Web.UI.HtmlControls {
 		{
 #if NET_2_0
 			if (Page != null)
-				Page.ClientScript.RegisterForEventValidation (this.UniqueID);
+				Page.ClientScript.RegisterForEventValidation (UniqueID);
 #endif
 			if (Attributes ["name"] == null) {
 				writer.WriteAttribute ("name", Name);
@@ -158,6 +157,7 @@ namespace System.Web.UI.HtmlControls {
 
 		protected virtual void RaisePostDataChangedEvent ()
 		{
+			ValidateEvent (UniqueID, String.Empty);
 			OnServerChange (EventArgs.Empty);
 		}
 #endif

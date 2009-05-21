@@ -4,7 +4,7 @@
 // Authors:
 //	Sebastien Pouliot  <sebastien@ximian.com>
 //
-// Copyright (C) 2006 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2006, 2008 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -70,12 +70,12 @@ namespace MonoTests.System.Drawing.Drawing2D {
 		private void CheckDefaultMatrix (Matrix matrix)
 		{
 			float[] elements = matrix.Elements;
-			Assert.AreEqual (1, elements[0], 0.1, "matrix.0");
-			Assert.AreEqual (1, elements[1], 0.1, "matrix.1");
-			Assert.AreEqual (-1, elements[2], 0.1, "matrix.2");
-			Assert.AreEqual (1, elements[3], 0.1, "matrix.3");
-			Assert.AreEqual (16, elements[4], "matrix.4");
-			Assert.AreEqual (-16, elements[5], "matrix.5");
+			Assert.AreEqual (1.0f, elements[0], 0.1, "matrix.0");
+			Assert.AreEqual (1.0f, elements[1], 0.1, "matrix.1");
+			Assert.AreEqual (-1.0f, elements[2], 0.1, "matrix.2");
+			Assert.AreEqual (1.0f, elements[3], 0.1, "matrix.3");
+			Assert.AreEqual (16.0f, elements[4], 0.1, "matrix.4");
+			Assert.AreEqual (-16.0f, elements[5], 0.1, "matrix.5");
 		}
 
 		private void CheckBrushAt45 (LinearGradientBrush lgb)
@@ -872,6 +872,27 @@ namespace MonoTests.System.Drawing.Drawing2D {
 			CheckMatrixForScalableAngle (new RectangleF (30, 60, 90, 150), 150, new float[] { -1.183013f, 1.138354f, -0.4098077f, -1.183013f, 219.05f, 209.3301f });
 			CheckMatrixForScalableAngle (new RectangleF (30, 60, 90, 150), 215, new float[] { -1.140856f, -1.331394f, 0.4793016f, -1.140856f, 95.85849f, 388.8701f });
 			CheckMatrixForScalableAngle (new RectangleF (30, 60, 90, 150), 300, new float[] { 0.6830127f, -1.971688f, 0.7098075f, 0.6830125f, -72.04998f, 190.6699f });
+		}
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void LinearColors_Null ()
+		{
+			default_brush.LinearColors = null;
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void InterpolationColors_Null ()
+		{
+			default_brush.InterpolationColors = null;
+		}
+
+		[Test]
+		[ExpectedException (typeof (NullReferenceException))]
+		public void Blend_Null ()
+		{
+			default_brush.Blend = null;
 		}
 	}
 }

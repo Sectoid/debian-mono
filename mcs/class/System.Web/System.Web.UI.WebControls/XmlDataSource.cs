@@ -56,15 +56,15 @@ namespace System.Web.UI.WebControls {
 //	[WebSysDisplayName ("XML file")]
 	public class XmlDataSource : HierarchicalDataSourceControl, IDataSource, IListSource {
 
-		private string _data = string.Empty;
-		private string _transform = string.Empty;
-		private string _xpath = string.Empty;
-		private string _dataFile = string.Empty;
-		private string _transformFile = string.Empty;
-		private string _cacheKeyDependency = string.Empty;
-		private bool _enableCaching = true;
-		private int _cacheDuration = 0;
-		private DataSourceCacheExpiry _cacheExpirationPolicy = DataSourceCacheExpiry.Absolute;
+		string _data = string.Empty;
+		string _transform = string.Empty;
+		string _xpath = string.Empty;
+		string _dataFile = string.Empty;
+		string _transformFile = string.Empty;
+		string _cacheKeyDependency = string.Empty;
+		bool _enableCaching = true;
+		int _cacheDuration = 0;
+		DataSourceCacheExpiry _cacheExpirationPolicy = DataSourceCacheExpiry.Absolute;
 		static readonly string [] emptyNames = new string [] { "DefaultView" };
 		
 		event EventHandler IDataSource.DataSourceChanged {
@@ -103,8 +103,7 @@ namespace System.Web.UI.WebControls {
 		XmlDocument LoadXmlDocument ()
 		{
 			XmlDocument document = LoadFileOrData (DataFile, Data);
-
-			if (TransformFile == "" && Transform == "")
+			if (String.IsNullOrEmpty (TransformFile) && String.IsNullOrEmpty (Transform))
 				return document;
 
 			XslTransform xslTransform = new XslTransform ();
@@ -122,9 +121,13 @@ namespace System.Web.UI.WebControls {
 		XmlDocument LoadFileOrData (string filename, string data)
 		{
 			XmlDocument document = new XmlDocument ();
-			if (filename != "")
-				document.Load (MapPathSecure (filename));
-			else
+			if (!String.IsNullOrEmpty (filename)) {
+				Uri uri;
+				if (Uri.TryCreate (filename, UriKind.Absolute, out uri))
+					document.Load (filename);
+				else
+					document.Load (MapPathSecure (filename));
+			} else
 				document.LoadXml (data);
 
 			return document;
@@ -175,7 +178,7 @@ namespace System.Web.UI.WebControls {
 				if (CacheExpirationPolicy == DataSourceCacheExpiry.Absolute)
 					absoluteExpiration = DateTime.Now.AddSeconds (CacheDuration);
 				else
-					slidindExpiraion = new TimeSpan (CacheDuration * 10000);
+					slidindExpiraion = new TimeSpan (CacheDuration * 10000L);
 			}
 
 			CacheDependency dependency = null;

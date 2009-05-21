@@ -36,7 +36,7 @@ using CategoryAttribute = NUnit.Framework.CategoryAttribute;
 namespace MonoTests.System.Windows.Forms.DataBinding {
 
 	[TestFixture]
-	public class BindingContextTest {
+	public class BindingContextTest : TestHelper {
 
 		private class BindingContextPoker : BindingContext {
 
@@ -77,16 +77,6 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 				collection_changed = (int) ce.Action;
 				base.OnCollectionChanged (ce);
 			}
-		}
-
-		[SetUp]
-		protected virtual void SetUp ()
-		{
-		}
-
-		[TearDown]
-		protected virtual void TearDown ()
-		{
 		}
 
 		[Test]
@@ -147,7 +137,7 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 		{
 			BindingContext bc = new BindingContext ();
 			ArrayList data_source = new ArrayList ();
-			BindingManagerBase a, b, c;
+			BindingManagerBase a, b, c, d;
 			
 			data_source.AddRange (new string [] { "1", "2", "3", "4", "5" });
 
@@ -164,6 +154,21 @@ namespace MonoTests.System.Windows.Forms.DataBinding {
 			
 			b = bc [data_source, "Length"];
 			Assert.AreSame (a, b, "INWM4");
+
+			// Non List type
+			MockItem item = new MockItem ("Mono", -1);
+			MockContainer container = new MockContainer ();
+			container.Item = item;
+
+			d = bc [container, "Item.Text"];
+			Assert.AreEqual ("Mono", d.Current, "INWM5");
+			Assert.AreEqual (1, d.Count, "INWM6");
+			Assert.AreEqual (0, d.Position, "INWM7");
+
+			d = bc [container, "Item.Text.Length"];
+			Assert.AreEqual (4, d.Current, "INWM8");
+			Assert.AreEqual (1, d.Count, "INWM9");
+			Assert.AreEqual (0, d.Position, "INWM10");
 		}
 
 #if NET_2_0

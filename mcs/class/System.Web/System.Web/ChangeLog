@@ -1,3 +1,149 @@
+2009-03-04  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRuntime.cs: do not clean the dynamic base directory in
+	DoUnload, it can cause race conditions.
+
+2009-02-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpResponseHeader.cs:
+	* HttpResponse.cs:
+	* QueueManager.cs:
+	* HttpRequest.cs:
+	* TraceManager.cs:
+	* HttpServerUtility.cs:
+	* HttpApplication.cs: use GetWebApplication
+	instead of GetSection for application level configuration.
+
+2009-02-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpServerUtility.cs: allow Transfer to static files too.
+
+2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWriter.cs: new Response property and WriteUTF8Ptr method.
+	* HttpResponseStream.cs: added support for writing from an
+	IntPtr. copied the memcpy method from String.cs.
+
+2009-02-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpApplicationFactory.cs: check of global.asax was precompiled.
+
+2009-01-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpApplicationFactory.cs: fix check that avoids lock. Keep one
+	HttpApplication instance ready to be returned in an instance variable
+	to avoid a few locks.
+
+2009-01-29  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplicationFactory.cs: optimize lock usage.
+
+2009-01-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpResponse.cs: make sure config is not null here.
+	* HttpApplication.cs: add a timer (-d:PIPELINE_TIMER) for the pipeline.
+	Handle timeouts for OutputPage() too.
+
+2009-01-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpApplicationFactory.cs: set/reset the context for the application
+	when creating/disposing. Dispose() out of the lock.
+
+2009-01-24  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlSiteMapProvider.cs: if a nested sitemap is used (via the
+	siteMapFile node attribute) watch the named file for
+	changes. Fixes bug #465693
+
+2009-01-19  Christian Hergert  <christian.hergert@gmail.com>
+
+	* QueueManager.cs: Implement requests queued performance counter.
+	* HttpRuntime.cs: Implement requests total counter.
+	* HttpApplication.cs: Implement requests total counter.
+
+2009-01-13  Dean Brettle  <dean@brettle.com>
+
+	* HttpApplicationFactory.cs: if there are any *.browser files in
+	App_Data/Mono_Machine_Browsers/, use those instead of the default
+	machine browser files.  This allows app developers to workaround
+	limitations with Mono's default browser files without causing
+	incompatibilities with MS's implementation.
+
+2009-01-09  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpContext.cs: RewritePath now treats relative and absolute
+	file paths with more care. If a path is of the ~/file.aspx form,
+	then the ~/ part is removed and the rest is combined with the base
+	virtual path. If the file path is of the ~ or /file.aspx forms,
+	then it is combined verbatim with the base virtual path. Fixes bug
+	#463964
+	Make sure the path returned from HttpRequest.BaseVirtualPath
+	contains the trailing slash before combining. Fixes bug #463964
+
+2008-12-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServerVariablesCollection.cs: use IndexOf (char).
+
+2008-12-24  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplicationFactory.cs: watch for changes to web.config also
+	in the subdirectories.
+
+2008-12-20  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpResponse.cs: the code in TransmitFile (VirtualFile, bool)
+	was an abomination - dear children, don't do this at home (never,
+	ever, allocate a buffer to load entire file). I will wear a brown
+	paper bag every 2nd Sunday in the next 6 months for writing the
+	old version of this code.
+	New code optimizes the write when DefaultVirtualFile is used (as
+	it refers to a physical file on disk) and reads/writes other
+	virtual files in chunks.
+
+2008-12-16  Marek Habersack  <mhabersack@novell.com>
+
+	* StaticFileHandler.cs: use HttpRuntime.RunningOnWindows instead
+	of checking the platform directly.
+
+2008-12-09  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpServerUtility.cs: when Execute finishes, clear
+	Request.QueryStringRaw. Backport of r121010 by Vladimir Krasnov.
+
+2008-12-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* NoParamsInvoker.cs:
+	* HttpApplicationFactory.cs: Fixed support for static eventhandlers.
+
+2008-11-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpContext.cs: MS does not throw. They just return null.
+
+2008-11-24  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRuntime.cs: take PlatformID.MacOSX into account when
+	determining whether we're running on Windows or not. Possible fix
+	for #447874
+
+2008-11-21  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpParseException.cs, HtmlizedException.cs: added
+	deserialization constructor.
+
+2008-10-31  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpContext.cs: RewritePath correctly rewrites paths for cases
+	when application is running under a virtual directory different to
+	'/'. Fixes bug #371581
+	RewritePath checks the passed virtual path for validity.
+
+	* HttpRequest.cs: MapPath now uses
+	VirtualPathUtility.IsValidVirtualPath.
+
+	* VirtualPathUtility.cs: made Canonize () internal.
+	Added a new method - IsValidVirtualPath () which checks whether a
+	passed path contains only characters allowed for virtual paths.
+
 2008-10-22  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpApplicationFactory.cs: use only the first matching method in
@@ -8,6 +154,10 @@
 
 	* HttpApplication.cs: if context.Session is null in get_Session,
 	throw an exception. Fixes bug #437289
+
+	* CapabilitiesLoader.cs: seal BrowserData.
+	Seal CapabilitiesLoader.
+	Do not lock on typeof (CapabilitiesLoader) in GetCapabilities ().
 
 2008-10-16  Marek Habersack  <mhabersack@novell.com>
 
@@ -26,11 +176,43 @@
 	removed all the traces of it. SetCacheability should not switch
 	output caching on.
 
+2008-10-12  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpResponse.cs: Simplify code for outputting ASP.NET version, as
+	version header cannot be configured. MS corrected this documenation
+	error in .NET 2.0 SDK.
+
 2008-10-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* HttpApplication.cs: make sure we release the resources used by the
 	request and/or the response at the end of the request.
 	Fixes bug #430040.
+
+2008-10-01  Marek Habersack  <mhabersack@novell.com>
+
+	* BrowserCapabilities.cs: IsBrowser needs to compare browser names
+	case insensitively.
+
+2008-09-29  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpApplication.cs: do not assume the passed IAsyncResult is a
+	is a valid object in async_handler_complete_cb. Fixes bug #430488
+
+2008-09-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* HttpRequest.cs: Make sure the result of the multiplications are
+	longs (not integers casted into longs since they could overflow).
+	[Found using Gendarme's ReviewCastOnIntegerMultiplicationRule]
+
+2008-09-23  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpWorkerRequest.cs: implemented a SendCalculatedContentLength
+	overload. This method apparently does nothing in MS.NET.
+
+2008-09-16  Juraj Skripsky  <js@hotfeet.ch>
+
+	* HttpServerUtility.cs (UrlDecode, UrlEncode): Respect request/response
+	encoding. Fixes bug #426539.
 
 2008-08-29  Marek Habersack  <mhabersack@novell.com>
 
@@ -68,6 +250,11 @@
 	Do not add the root node retrieved from BuildSiteMapRecursive in
 	BuildMap, if the node is already the current root node. Fixes bug
 	#412495
+
+2008-07-26  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpCachePolicy.cs: Only add Expires header if expire date is
+	actually set. Removed extra tabs and regions. Code formatting.
 
 2008-07-23  Marek Habersack  <mhabersack@novell.com>
 

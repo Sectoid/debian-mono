@@ -56,7 +56,6 @@
 
 #define MONO_ARCH_CODE_ALIGNMENT 32
 
-#define MONO_ARCH_BASEREG sparc_fp
 #define MONO_ARCH_RETREG1 sparc_i0
 
 #ifdef SPARCV9
@@ -127,7 +126,6 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_HAVE_IMT 1
 #define MONO_ARCH_IMT_REG sparc_g1
 #define MONO_ARCH_COMMON_VTABLE_TRAMPOLINE 1
-#define MONO_ARCH_ENABLE_NORMALIZE_OPCODES 1
 
 #ifdef SPARCV9
 #define MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS

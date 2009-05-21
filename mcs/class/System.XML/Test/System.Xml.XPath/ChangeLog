@@ -1,3 +1,20 @@
+2009-01-20  Atsushi Enomoto <atsushi@ximian.com>
+
+	* SelectNodesTests.cs : added test for bug #443490.
+
+2009-01-20  Atsushi Enomoto <atsushi@ximian.com>
+
+	* SelectNodesTests.cs : added test for bug #458245.
+
+2008-12-09  Atsushi Enomoto <atsushi@ximian.com>
+
+	* XPathNavigatorTests.cs : added test fo bug #456103.
+
+2008-10-02  Atsushi Enomoto <atsushi@ximian.com>
+
+	* XPathNavigatorEvaluateTests.cs : corrected couple of misconception
+	  in the tests.
+
 2008-04-02  Atsushi Enomoto <atsushi@ximian.com>
 
 	* XPathEditableNavigatorTests.cs : added test for bug #376210.

@@ -260,9 +260,9 @@ namespace Mono.Data.Tds.Protocol
 		public long GetSequentialColumnValue (int colIndex, long fieldIndex, byte[] buffer, int bufferIndex, int size) 
 		{
 			if (colIndex < StreamColumnIndex)
-				throw new InvalidOperationException ("Invalid attempt tp read from column ordinal" + colIndex); 
+				throw new InvalidOperationException ("Invalid attempt to read from column ordinal" + colIndex);
 			try {
-				if (colIndex != StreamColumnIndex) 
+				if (colIndex != StreamColumnIndex)
 					SkipToColumnIndex (colIndex);
 
 				if (!LoadInProgress) {
@@ -272,10 +272,9 @@ namespace Mono.Data.Tds.Protocol
 					BeginLoad ((TdsColumnType)Columns[colIndex]["ColumnType"]);
 #endif
 				}
-				
-				if (buffer == null) {
+
+				if (buffer == null)
 					return StreamLength;
-				}
 				return LoadData (fieldIndex, buffer, bufferIndex, size);
 			} catch (IOException ex) {
 				connected = false;
@@ -300,6 +299,7 @@ namespace Mono.Data.Tds.Protocol
 			if (colType == null)
 				throw new ArgumentNullException ("colType");
 #endif
+
 			switch (colType) {
 			case TdsColumnType.Text :
 			case TdsColumnType.NText:
@@ -307,6 +307,10 @@ namespace Mono.Data.Tds.Protocol
 				if (Comm.GetByte () != 0) {
 					Comm.Skip (24);
 					StreamLength = Comm.GetTdsInt ();
+				} else {
+					// use -2 to indicate that we're dealing
+					// with a NULL value
+					StreamLength = -2;
 				}
 				break;
 			case TdsColumnType.BigVarChar:
@@ -349,16 +353,26 @@ namespace Mono.Data.Tds.Protocol
 				return StreamLength;
 
 			if (fieldIndex < StreamIndex)
-				throw new InvalidOperationException ("field index less than stream pos");
+				throw new InvalidOperationException (string.Format (
+					"Attempting to read at dataIndex '{0}' is " +
+					"not allowed as this is less than the " +
+					"current position. You must read from " +
+					"dataIndex '{1}' or greater.",
+					fieldIndex, StreamIndex));
 
 			if (fieldIndex >= (StreamLength + StreamIndex))
 				return 0;
 
-			// Skip to the index
-			Comm.Skip ((int) (fieldIndex - StreamIndex));
+			// determine number of bytes to skip
+			int skip = (int) (fieldIndex - StreamIndex);
+			// skip bytes
+			Comm.Skip (skip);
+			// update the current position
 			StreamIndex += (fieldIndex - StreamIndex);
+			// update the remaining length
+			StreamLength -= skip;
 
-			// Load the reqd amt of bytes	
+			// Load the reqd amt of bytes
 			int loadlen = (int) ((size > StreamLength) ? StreamLength : size);
 			byte[] arr = Comm.GetBytes (loadlen, true);
 
@@ -396,7 +410,7 @@ namespace Mono.Data.Tds.Protocol
 
 		internal protected void InitExec () 
 		{
-			// clean up 
+			// clean up
 			moreResults = true;
 			doneProc = false;
 			messages.Clear ();
@@ -431,7 +445,7 @@ namespace Mono.Data.Tds.Protocol
 		{
 			comm.StartPacket (TdsPacketType.Logoff);
 			comm.Append ((byte) 0);
-			comm.SendPacket ();	
+			comm.SendPacket ();
 			comm.Close ();
 			connected = false;
 		}
@@ -696,7 +710,7 @@ namespace Mono.Data.Tds.Protocol
 			if (colType == null)
 				throw new ArgumentNullException ("colType");
 #endif
-			switch (colType) {				
+			switch (colType) {
 			case TdsColumnType.IntN :
 				if (outParam)
 					comm.Skip (1);
@@ -878,7 +892,7 @@ namespace Mono.Data.Tds.Protocol
 
 			if (tdsVersion == TdsVersion.tds70) {
 				len = comm.GetTdsShort ();
-				if (len != 0xffff && len > 0)
+				if (len != 0xffff && len >= 0)
 					result = comm.GetBytes (len, true);
 			} else {
 				len = (comm.GetByte () & 0xff);
@@ -1139,12 +1153,23 @@ namespace Mono.Data.Tds.Protocol
 			}
 
 			switch (len) {
-			case 4:
-				return new Decimal (Comm.GetTdsInt (), 0, 0, false, 4);
+			case 4: {
+				int val = Comm.GetTdsInt ();
+				bool negative = val < 0;
+				if (negative)
+					val = ~(val - 1);
+				return new Decimal (val, 0, 0, negative, 4);
+			}
 			case 8:
 				int hi = Comm.GetTdsInt ();
 				int lo = Comm.GetTdsInt ();
-				return new Decimal (lo, hi, 0, false, 4);
+				bool negative = hi < 0;
+
+				if (negative) {
+					hi = ~hi;
+					lo = ~(lo - 1);
+				}
+				return new Decimal (lo, hi, 0, negative, 4);
 			default:
 				return DBNull.Value;
 			}
@@ -1215,6 +1240,18 @@ namespace Mono.Data.Tds.Protocol
 		internal bool IsLargeType (TdsColumnType columnType)
 		{
 			return ((byte) columnType > 128);
+		}
+
+		protected bool IsWideType (TdsColumnType columnType)
+		{
+			switch (columnType) {
+			case TdsColumnType.NChar:
+			case TdsColumnType.NText:
+			case TdsColumnType.NVarChar:
+				return true;
+			default:
+				return false;
+			}
 		}
 
 		internal static bool IsFixedSizeColumn (TdsColumnType columnType)

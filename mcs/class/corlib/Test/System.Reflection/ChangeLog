@@ -1,3 +1,36 @@
+2008-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r125410.
+
+	* MethodInfoTest.cs: Test for #409583.
+
+2008-11-17  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldInfoTest.cs: Test FieldInfo::GetValue on a constant of an open
+	generic type. 
+
+2008-11-11  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleTest.cs : Add test for ResolveMethod with a methodspec
+	token.
+
+2008-10-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* AssemblyTest.cs (LoadWithPartialName): Fix this test after the
+	'default' -> 'net_1_1' profile change.
+
+2008-10-02 Gonzalo Paniagua Javier <gonzalo.mono@gmail.com>
+
+	* ConstructorInfoTest.cs: enable abstract class test.
+
+2008-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* FieldInfoTest.cs (SetValueOpenGeneric): Fix copy-paste error.
+
+2008-09-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* FieldInfoTest.cs: Add tests for #424077.
+
 2008-06-30  Rodrigo Kumpera <rkumpera@novell.com>
 
 	* MethodBase.cs: Fix the 1.0 build.

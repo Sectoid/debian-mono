@@ -16,7 +16,7 @@ using NUnit.Framework;
 namespace MonoTests.System.Text.RegularExpressions
 {
 	[TestFixture]
-	public class RegexBugsn
+	public class RegexBugs
 	{
 		[Test] // bug #51146
 		public void SplitGroup ()
@@ -118,6 +118,14 @@ namespace MonoTests.System.Text.RegularExpressions
 			Assert.IsTrue (r.Match(" \0").Success);
 		}
 
+		[Test] // bug #432172
+		public void NoBitmap ()
+		{
+			Regex rx =
+				new Regex ("([^a-zA-Z_0-9])+", RegexOptions.Compiled);
+			Assert.AreEqual ("--", rx.Match ("A--B-").Value);
+		}
+		
 		[Test]
 		public void MultipleMatches()
 		{
@@ -385,6 +393,42 @@ namespace MonoTests.System.Text.RegularExpressions
 		}
 
 		[Test]
+		public void Bug439947 ()
+		{
+			Regex r;
+			r = new Regex ("(?<=^|/)[^/]*\\.cs$", RegexOptions.None);
+			Assert.IsTrue (r.IsMatch ("z/text2.cs"));
+
+			r = new Regex ("(?<=^|/)[^/]*\\.cs$", RegexOptions.Compiled);
+			Assert.IsTrue (r.IsMatch ("z/text2.cs"));
+		}
+
+		[Test]
+		public void bug443841 ()
+		{
+			string numberString = @"[0-9]+";
+			string doubleString = string.Format (@" *[+-]? *{0}(\.{0})?([eE][+-]?{0})? *",
+				numberString);
+			string vector1To3String = string.Format (@"{0}(,{0}(,{0})?)?",
+				doubleString);
+			Regex r;
+			MatchCollection matches;
+			
+			r = new Regex (string.Format ("^{0}$", vector1To3String));
+			Assert.IsTrue (r.IsMatch ("1"), "#A1");
+			matches = r.Matches ("1");
+			Assert.AreEqual (1, matches.Count, "#A2");
+			Assert.AreEqual ("1", matches [0].Value, "#A3");
+
+			r = new Regex (string.Format ("^{0}$", vector1To3String),
+				RegexOptions.Compiled);
+			Assert.IsTrue (r.IsMatch ("1"), "#B1");
+			matches = r.Matches ("1");
+			Assert.AreEqual (1, matches.Count, "#B2");
+			Assert.AreEqual ("1", matches [0].Value, "#B3");
+		}
+
+		[Test]
 		public void CharClassWithIgnoreCase ()
 		{
 			string str = "Foobar qux";
@@ -418,6 +462,13 @@ namespace MonoTests.System.Text.RegularExpressions
 		}
 
 		[Test]
+		public void Trials ()
+		{
+			foreach (RegexTrial trial in trials)
+				trial.Execute ();
+		}
+
+		[Test]
 		public void Bug80554_0 ()
 		{
 			bug80554_trials [0].Execute ();
@@ -439,6 +490,12 @@ namespace MonoTests.System.Text.RegularExpressions
 		public void Bug80554_3 ()
 		{
 			bug80554_trials [3].Execute ();
+		}
+
+		[Test]
+		public void Bug432172 ()
+		{
+			new Regex ("^(else|elif|except|finally)([^a-zA-Z_0-9]).*", RegexOptions.Compiled);
 		}
 
 		void Kill65535_1 (int length)
@@ -491,5 +548,10 @@ namespace MonoTests.System.Text.RegularExpressions
 			new RegexTrial (bug80554_s, RegexOptions.None, "statics", "Pass. Group[0]=(0,6) Group[1]= Group[2]=(0,6)"),
 			new RegexTrial (bug80554_s, RegexOptions.None, "dynamic", "Fail.")
 		};
+
+		static RegexTrial[] trials = {
+			new RegexTrial (@"^[^.\d]*(\d+)(?:\D+(\d+))?", RegexOptions.None, "MD 9.18", "Pass. Group[0]=(0,7) Group[1]=(3,1) Group[2]=(5,2)"),
+            new RegexTrial (@"(.*:|.*)(DirName)", RegexOptions.Compiled, "/home/homedir/DirName", "Pass. Group[0]=(0,21) Group[1]=(0,14) Group[2]=(14,7)")
+	    };
 	}
 }

@@ -391,17 +391,25 @@ ves_icall_System_IO_MonoIO_GetCurrentDirectory (gint32 *error)
 {
 	MonoString *result;
 	gunichar2 *buf;
-	int len;
+	int len, res_len;
 
 	MONO_ARCH_SAVE_REGS;
 
-	len = MAX_PATH + 1;
+	len = MAX_PATH + 1; /*FIXME this is too smal under most unix systems.*/
 	buf = g_new (gunichar2, len);
 	
 	*error=ERROR_SUCCESS;
 	result = NULL;
 
-	if (GetCurrentDirectory (len, buf) > 0) {
+	res_len = GetCurrentDirectory (len, buf);
+	if (res_len > len) { /*buf is too small.*/
+		int old_res_len = res_len;
+		g_free (buf);
+		buf = g_new (gunichar2, res_len);
+		res_len = GetCurrentDirectory (res_len, buf) == old_res_len;
+	}
+	
+	if (res_len) {
 		len = 0;
 		while (buf [len])
 			++ len;
@@ -912,6 +920,24 @@ ves_icall_System_IO_MonoIO_CreatePipe (HANDLE *read_handle,
 	attr.lpSecurityDescriptor=NULL;
 	
 	ret=CreatePipe (read_handle, write_handle, &attr, 0);
+	if(ret==FALSE) {
+		/* FIXME: throw an exception? */
+		return(FALSE);
+	}
+	
+	return(TRUE);
+}
+
+MonoBoolean ves_icall_System_IO_MonoIO_DuplicateHandle (HANDLE source_process_handle, 
+						HANDLE source_handle, HANDLE target_process_handle, HANDLE *target_handle, 
+						gint32 access, gint32 inherit, gint32 options)
+{
+	/* This is only used on Windows */
+	gboolean ret;
+	
+	MONO_ARCH_SAVE_REGS;
+	
+	ret=DuplicateHandle (source_process_handle, source_handle, target_process_handle, target_handle, access, inherit, options);
 	if(ret==FALSE) {
 		/* FIXME: throw an exception? */
 		return(FALSE);

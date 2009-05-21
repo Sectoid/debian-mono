@@ -143,18 +143,6 @@ namespace System.Data.Common
 		IDbCommand SelectCommand {
 			get { return ((IDbDataAdapter) this).SelectCommand; }
 		}
-
-		IDbCommand UpdateCommand {
-			get { return ((IDbDataAdapter) this).UpdateCommand; }
-		}
-
-		IDbCommand DeleteCommand {
-			get { return ((IDbDataAdapter) this).DeleteCommand; }
-		}
-
-		IDbCommand InsertCommand {
-			get { return ((IDbDataAdapter) this).InsertCommand; }
-		}
 #endif
 
 		#endregion // Properties
@@ -749,7 +737,8 @@ namespace System.Data.Common
 					// if the execute does not effect any rows we throw an exception.
 					if (tmp == 0)
 						throw new DBConcurrencyException("Concurrency violation: the " + 
-							commandName +"Command affected 0 records.");
+							commandName +"Command affected 0 records.", null,
+							new DataRow [] { row });
 					updateCount += tmp;
 
 					if (command.UpdatedRowSource == UpdateRowSource.Both ||

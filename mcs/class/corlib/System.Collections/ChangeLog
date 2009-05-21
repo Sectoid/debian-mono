@@ -3,6 +3,21 @@
 	* BitArray.cs (CopyTo): Allow an index equal to the array length if
 	the bit array has no elements. Fixes #421803.
 
+2008-08-05  Jb Evain  <jbevain@novell.com>
+
+	* CaseInsensitiveHashCodeProvider.cs: refactor CultureInfo
+	comparison to also work for SL2.
+
+2008-08-04  Jb Evain  <jbevain@novell.com>
+
+	* Hashtable.cs: cleanup internal KeyMarker type for NET_2_1.
+
+2008-08-04  Jb Evain  <jbevain@novell.com>
+
+	* ArrayList.cs: introduce a helper method to throw
+	ArgumentOutOfRangeExceptions correctly as SL miss some
+	constructors.
+
 2008-05-29  Juraj Skripsky  <js@hotfeet.ch>
 
 	* ArrayList.cs: Create the empty array only once and reuse it.

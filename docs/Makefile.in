@@ -13,6 +13,7 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -33,17 +34,28 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 subdir = docs
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	ChangeLog TODO
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 SOURCES =
 DIST_SOURCES =
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+am__installdirs = "$(DESTDIR)$(sourcesdir)"
+sourcesDATA_INSTALL = $(INSTALL_DATA)
+DATA = $(sources_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -91,12 +103,16 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
+GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GMODULE_CFLAGS = @GMODULE_CFLAGS@
 GMODULE_LIBS = @GMODULE_LIBS@
+GMSGFMT = @GMSGFMT@
+GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
 HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
+HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -120,6 +136,9 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MSGFMT = @MSGFMT@
+MSGFMT_015 = @MSGFMT_015@
+MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
@@ -140,9 +159,13 @@ SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
 STRIP = @STRIP@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 X11 = @X11@
 XATTR_LIB = @XATTR_LIB@
+XGETTEXT = @XGETTEXT@
+XGETTEXT_015 = @XGETTEXT_015@
+XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
 XMKMF = @XMKMF@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -215,17 +238,40 @@ target_os = @target_os@
 target_vendor = @target_vendor@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+sourcesdir = $(prefix)/lib/monodoc/sources
+sources_DATA = \
+	mono-file-formats.source \
+	mono-tools.source \
+	monoapi.source \
+	$(ASSEMBLED_DOCS)
+
+ASSEMBLED_DOCS = \
+	mono-file-formats.tree mono-file-formats.zip  \
+	mono-tools.tree mono-tools.zip                \
+	monoapi.tree monoapi.zip
+
 EXTRA_DIST = \
 	abc-removal.txt		\
+	AgilityPack.dll		\
 	aot-compiler.txt	\
+	api-style.css		\
 	assembly-bundle		\
+	check-exports		\
+	check-coverage		\
+	convert.cs		\
+	current-api		\
+	deploy			\
+	docs.make		\
+	documented		\
 	embedded-api		\
 	exception-handling.txt	\
 	exceptions		\
+	exdoc			\
 	file-share-modes	\
 	gc-issues		\
 	gc-variables-in-c	\
 	glossary.txt		\
+	ignore			\
 	internal-calls		\
 	ir-desc			\
 	jit-imt			\
@@ -236,18 +282,30 @@ EXTRA_DIST = \
 	magic.diff		\
 	mini-doc.txt		\
 	mini-porting.txt	\
+	mono-api-metadata.html	\
+	mono-file-formats.config\
+	mono-file-formats.source\
 	mono_handle_d		\
+	mono-tools.config       \
+	mono-tools.source       \
+	monoapi.source		\
 	new-regalloc		\
 	object-layout		\
 	opcode-decomp.txt	\
 	precise-gc		\
+	produce-lists		\
+	public			\
+	public-api		\
+	README			\
 	release-notes-1.0.html	\
 	remoting		\
 	ssapre.txt		\
 	stack-alignment		\
 	stack-overflow.txt	\
-	threading		\
 	thread-safety.txt	\
+	threading		\
+	toc.xml			\
+	TODO			\
 	tree-mover.txt		\
 	unmanaged-calls	
 
@@ -289,6 +347,23 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
+install-sourcesDATA: $(sources_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(sourcesdir)" || $(MKDIR_P) "$(DESTDIR)$(sourcesdir)"
+	@list='$(sources_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(sourcesDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(sourcesdir)/$$f'"; \
+	  $(sourcesDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(sourcesdir)/$$f"; \
+	done
+
+uninstall-sourcesDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(sources_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(sourcesdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(sourcesdir)/$$f"; \
+	done
 tags: TAGS
 TAGS:
 
@@ -322,10 +397,16 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 check-am: all-am
 check: check-am
-all-am: Makefile
+all-am: Makefile $(DATA)
 installdirs:
+	for dir in "$(DESTDIR)$(sourcesdir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -352,7 +433,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool mostlyclean-am
+clean-am: clean-generic clean-libtool clean-local mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
@@ -368,7 +449,7 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-sourcesDATA
 
 install-dvi: install-dvi-am
 
@@ -402,21 +483,60 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-sourcesDATA
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am check check-am clean clean-generic clean-libtool \
-	distclean distclean-generic distclean-libtool distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am uninstall uninstall-am
+	clean-local dist-hook distclean distclean-generic \
+	distclean-libtool distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-sourcesDATA install-strip installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-generic mostlyclean-libtool pdf pdf-am \
+	ps ps-am uninstall uninstall-am uninstall-sourcesDATA
 
+
+dist-hook:
+	$(mkdir_p)  $(distdir)/sources
+	$(mkdir_p)  $(distdir)/svgs
+	cp sources/*  $(distdir)/sources
+	cp svgs/*     $(distdir)/svgs
+
+clean-local:
+	-rm -Rf $(srcdir)/html
+	-rm -f $(srcdir)/deploy/* $(srcdir)/convert.exe*
+	-cd $(srcdir) && rm -f $(ASSEMBLED_DOCS)
+
+monoapi.zip: monoapi.tree
+	@test -f $@ || { rm -f $(srcdir)/monoapi.tree && $(MAKE) monoapi.tree; }
+monoapi.tree: docs.make Makefile.am toc.xml $(srcdir)/deploy/.stamp
+	cd $(srcdir) && cp api-style.css deploy
+	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) $@
+
+mono-tools.zip: mono-tools.tree
+	@test -f $@ || { rm -f $(srcdir)/mono-tools.tree && $(MAKE) mono-tools.tree; }
+mono-tools.tree: docs.make Makefile.am $(srcdir)/deploy/.stamp
+	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) $@
+
+mono-file-formats.zip: mono-file-formats.tree
+	@test -f $@ || { rm -f $(srcdir)/mono-file-formats.tree && $(MAKE) mono-file-formats.tree; }
+mono-file-formats.tree: docs.make Makefile.am $(srcdir)/deploy/.stamp
+	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) $@
+
+$(srcdir)/deploy/.stamp: convert.exe Makefile.am
+	$(mkdir_p) $(srcdir)/html
+	runtimedir=`cd ../runtime && pwd`; export runtimedir; \
+	cd $(srcdir) && MONO_PATH=$(mcs_topdir_from_srcdir)/class/lib/net_2_0 perl ./exdoc -h . ../mono/*/*.c
+	touch $@
+
+extract: $(srcdir)/deploy/.stamp
+
+convert.exe: convert.cs AgilityPack.dll
+	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) convert.exe
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

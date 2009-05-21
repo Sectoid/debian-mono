@@ -1,3 +1,64 @@
+2008-12-22  Ankit Jain  <jankit@novell.com>
+
+	* TestMessageLogger.cs: Emit debug messages to stderr.
+	* CreateCSharpManifestResourceNameTest.cs: Likewise.
+	Revert last patch, don't emit to stderr, monobuild emits
+	the log contents now.
+
+2008-12-22  Ankit Jain  <jankit@novell.com>
+
+	* TestMessageLogger.cs: Emit debug messages to stderr.
+	* CreateCSharpManifestResourceNameTest.cs: Likewise.
+
+2008-12-22  Ankit Jain  <jankit@novell.com>
+
+	* TestMessageLogger.cs: Listen for errors and warnings also.
+	* CreateCSharpManifestResourceNameTest.cs: Emit helpful info when tests
+	fail.
+
+2008-12-12  Ankit Jain  <jankit@novell.com>
+
+	* CreateCSharpManifestResourceNameTest.cs: New.
+
+2008-11-27  Ankit Jain  <jankit@novell.com>
+
+	* AssignCultureTest.cs: Add tests for "Culture" metadata.
+
+2008-11-23  Ankit Jain  <jankit@novell.com>
+
+	* AssignCultureTest.cs: New.
+
+2008-11-22  Ankit Jain  <jankit@novell.com>
+
+	* AssignTargetPathTest.cs: New.
+
+2008-11-21  Ankit Jain  <jankit@novell.com>
+
+	* CreateItemTest.cs (CheckBuildItem): Make public.
+	* TestMessageLogger.cs:
+	* TaskBatchingTests.cs: Fix file mode.
+
+2008-11-21  Ankit Jain  <jankit@novell.com>
+
+	* CreateItemTest.cs (TestNullFields): New.
+	(CheckBuildItem): Make public, used by batching tests.
+	* MessageTest.cs (TestDefaultValues): New.
+	(TestMessageLogger): Move to ..
+	* TestMessageLogger.cs: .. here.
+	* TaskBatchingTests.cs: New. Tests for batching implementation.
+
+2008-11-11  Jonathan Chambers  <joncham@gmail.com>
+
+	* DeleteTest.cs: Added tests for Delete task.
+
+2008-10-09  Ankit Jain  <jankit@novell.com>
+
+	* CreateItemTest.cs (TestExcludeAndCondition): New. NotWorking.
+
+2008-08-06  Ankit Jain  <jankit@novell.com>
+
+	* CscTest.cs: Alter tests to checking for quoting in various switches.
+
 2008-06-02  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ResolveAssemblyReferenceTest.cs: marked some failing tests as

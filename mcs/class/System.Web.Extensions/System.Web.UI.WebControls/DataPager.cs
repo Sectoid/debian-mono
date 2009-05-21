@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2008 Novell, Inc
 //
 
 //
@@ -36,9 +36,13 @@ using System.Web.UI;
 
 namespace System.Web.UI.WebControls
 {
-	[ThemeableAttribute(true)]
-	[AspNetHostingPermissionAttribute(SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	[AspNetHostingPermissionAttribute(SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
+//	[ToolboxBitmap (typeof (System.Web.UI.WebControls.DataPager), "DataPager.ico")]
+	[ToolboxItemFilter ("System.Web.Extensions, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35", ToolboxItemFilterType.Require)]
+	[SupportsEventValidation]
+	[Themeable (true)]
+	[ParseChildren (true)]
+	[Designer ("System.Web.UI.Design.WebControls.DataPagerDesigner, System.Web.Extensions.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35")]
+	[PersistChildren (false)]
 	public class DataPager : Control, IAttributeAccessor, INamingContainer, ICompositeControlDesignerAccessor
 	{
 		const int NO_PAGEABLE_ITEM_CONTAINER = 0;
@@ -47,10 +51,11 @@ namespace System.Web.UI.WebControls
 		const int CONTROL_NOT_PAGEABLE = 3;
 		const int NO_NAMING_CONTAINER = 4;
 
-		const int STATE_BASE_STATE = 0;
-		const int STATE_TOTAL_ROW_COUNT = 1;
-		const int STATE_MAXIMUM_ROWS = 2;
-		const int STATE_START_ROW_INDEX = 3;
+		const int CSTATE_BASE_STATE = 0;
+		const int CSTATE_TOTAL_ROW_COUNT = 1;
+		const int CSTATE_MAXIMUM_ROWS = 2;
+		const int CSTATE_START_ROW_INDEX = 3;
+		const int CSTATE_COUNT = 4;
 		
 		string[] _exceptionMessages = {
 			"No IPageableItemContainer was found. Verify that either the DataPager is inside an IPageableItemContainer or PagedControlID is set to the control ID of an IPageableItemContainer",
@@ -70,6 +75,7 @@ namespace System.Web.UI.WebControls
 		
 		bool _initDone;
 		bool _needNewContainerSetup = true;
+		bool _needSetPageProperties = true;
 		bool _createPagerFieldsRunning;
 		
 		public DataPager()
@@ -112,17 +118,17 @@ namespace System.Web.UI.WebControls
 			
 			foreach (DataPagerField dpf in _fields) {
 				control = new DataPagerFieldItem (dpf, this);
+				controls.Add (control);
 				if (dpf.Visible) {
 					dpf.CreateDataPagers (control, _startRowIndex, _maximumRows, _totalRowCount, _fields.IndexOf (dpf));
 					control.DataBind ();
 				}
-				controls.Add (control);
 			}
 
 			_createPagerFieldsRunning = false;
 		}
 
-		public override void DataBind()
+		public override void DataBind ()
 		{
 			OnDataBinding (EventArgs.Empty);
 			EnsureChildControls ();
@@ -133,10 +139,25 @@ namespace System.Web.UI.WebControls
 		{
 			string pagedControlID = PagedControlID;
 			IPageableItemContainer ret = null;
+			Page page = Page;
+			Control container;
 			
-			if (!String.IsNullOrEmpty (pagedControlID)) {
-				Control ctl = FindControl (pagedControlID, 0);
-				if (ret == null)
+			if (page != null && !String.IsNullOrEmpty (pagedControlID)) {
+				Control ctl = null;
+				container = NamingContainer;
+				while (container != null) {
+					ctl = container.FindControl (pagedControlID);
+					if (ctl != null)
+						break;
+					if (container == page)
+						break;
+					container = container.NamingContainer;
+				}
+
+				if (container == null)
+					throw new InvalidOperationException (_exceptionMessages [NO_NAMING_CONTAINER]);
+				
+				if (ctl == null)
 					throw new InvalidOperationException (String.Format (_exceptionMessages [NO_PAGED_CONTAINER_ID], pagedControlID));
 
 				ret = ctl as IPageableItemContainer;
@@ -147,9 +168,7 @@ namespace System.Web.UI.WebControls
 			}
 
 			// No ID set, try to find a container that's pageable
-			Control container = NamingContainer;
-			Page page = Page;
-
+			container = NamingContainer;
 			while (container != page) {
 				if (container == null)
 					throw new InvalidOperationException (_exceptionMessages [NO_NAMING_CONTAINER]);
@@ -169,16 +188,16 @@ namespace System.Web.UI.WebControls
 			object[] state = savedState as object[];
 			object tmp;
 			
-			if (state != null) {
-				base.LoadControlState (state [STATE_BASE_STATE]);
+			if (state != null && state.Length == CSTATE_COUNT) {
+				base.LoadControlState (state [CSTATE_BASE_STATE]);
 
-				if ((tmp = state [STATE_TOTAL_ROW_COUNT]) != null)
+				if ((tmp = state [CSTATE_TOTAL_ROW_COUNT]) != null)
 					_totalRowCount = (int) tmp;
 
-				if ((tmp = state [STATE_MAXIMUM_ROWS]) != null)
+				if ((tmp = state [CSTATE_MAXIMUM_ROWS]) != null)
 					_maximumRows = (int) tmp;
 
-				if ((tmp = state [STATE_START_ROW_INDEX]) != null)
+				if ((tmp = state [CSTATE_START_ROW_INDEX]) != null)
 					_startRowIndex = (int) tmp;
 			}
 
@@ -189,18 +208,18 @@ namespace System.Web.UI.WebControls
 				ConnectToEvents (_pageableContainer);
 			}
 			
-			SetUpForNewContainer (false);
+			SetUpForNewContainer (false, false);
 		}
 
 		protected override void LoadViewState (object savedState)
 		{
-			Pair state = savedState as Pair;
+			var state = savedState as object[];
 
-			if (state == null)
+			if (state == null || state.Length != 2)
 				return;
 
-			base.LoadViewState (state.First);
-			object myState = state.Second;
+			base.LoadViewState (state [0]);
+			object myState = state [1];
 			if (myState != null)
 				((IStateManager) Fields).LoadViewState (myState);
 		}
@@ -222,14 +241,17 @@ namespace System.Web.UI.WebControls
 			return false;
 		}
 
-		void SetUpForNewContainer (bool dataBind)
+		void SetUpForNewContainer (bool dataBind, bool needSetPageProperties)
 		{
-			if (!_needNewContainerSetup)
-				return;
-			
-			ConnectToEvents (_pageableContainer);
-			_pageableContainer.SetPageProperties (_startRowIndex, _maximumRows, false);
-			_needNewContainerSetup = false;
+ 			if (_needNewContainerSetup) {
+				ConnectToEvents (_pageableContainer);
+				_needNewContainerSetup = false;
+			}
+
+			if (_needSetPageProperties) {
+				_pageableContainer.SetPageProperties (_startRowIndex, _maximumRows, dataBind);
+				_needSetPageProperties = needSetPageProperties;
+			}
 		}
 		
 		protected internal override void OnInit (EventArgs e)
@@ -247,7 +269,7 @@ namespace System.Web.UI.WebControls
 			if (_pageableContainer != null)
 				// Do not re-bind the data here - not all the controls might be
 				// initialized (that includes the container may be bound to)
-				SetUpForNewContainer (false);
+				SetUpForNewContainer (false, true);
 
 			_initDone = true;
 		}
@@ -260,7 +282,8 @@ namespace System.Web.UI.WebControls
 			if (_pageableContainer == null)
 				throw new InvalidOperationException (_exceptionMessages [NO_PAGEABLE_ITEM_CONTAINER]);
 
-			SetUpForNewContainer (false);
+			SetUpForNewContainer (false, false);
+			
 			base.OnLoad (e);
 		}
 
@@ -269,7 +292,7 @@ namespace System.Web.UI.WebControls
 			_totalRowCount = e.TotalRowCount;
 			_maximumRows = e.MaximumRows;
 			_startRowIndex = e.StartRowIndex;
-
+			
 			// Sanity checks: if the total row count is less than the current start row
 			// index, we must adjust and rebind the associated container control
 			if (_totalRowCount > 0 && (_totalRowCount <= _startRowIndex)) {
@@ -315,22 +338,22 @@ namespace System.Web.UI.WebControls
 
 		protected internal override object SaveControlState ()
 		{
-			object[] ret = new object [4];
+			object[] ret = new object [CSTATE_COUNT];
 
-			ret [STATE_BASE_STATE] = base.SaveControlState ();
-			ret [STATE_TOTAL_ROW_COUNT] = _totalRowCount <= 0 ? 0 : _totalRowCount;
-			ret [STATE_MAXIMUM_ROWS] = _maximumRows <= 0 ? 0 : _maximumRows;
-			ret [STATE_START_ROW_INDEX] = _startRowIndex <= 0 ? 0 : _startRowIndex;
+			ret [CSTATE_BASE_STATE] = base.SaveControlState ();
+			ret [CSTATE_TOTAL_ROW_COUNT] = _totalRowCount <= 0 ? 0 : _totalRowCount;
+			ret [CSTATE_MAXIMUM_ROWS] = _maximumRows <= 0 ? 0 : _maximumRows;
+			ret [CSTATE_START_ROW_INDEX] = _startRowIndex <= 0 ? 0 : _startRowIndex;
 
 			return ret;
 		}
 
 		protected override object SaveViewState ()
 		{
-			Pair ret = new Pair ();
-
-			ret.First = base.SaveViewState ();
-			ret.Second = _fields != null ? ((IStateManager) _fields).SaveViewState () : null;
+			var ret = new object [2];
+			
+			ret [0] = base.SaveViewState ();
+			ret [1] = _fields != null ? ((IStateManager) _fields).SaveViewState () : null;
 
 			return ret;
 		}
@@ -342,7 +365,8 @@ namespace System.Web.UI.WebControls
 
 			_startRowIndex = startRowIndex;
 			_maximumRows = maximumRows;
-
+			_needSetPageProperties = false;
+			
 			_pageableContainer.SetPageProperties (startRowIndex, maximumRows, databind);
 		}
 
@@ -353,7 +377,8 @@ namespace System.Web.UI.WebControls
 				((IStateManager) _fields).TrackViewState ();
 		}
 
-		[BrowsableAttribute(false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public AttributeCollection Attributes {
 			get {
 				if (_attributes == null)
@@ -370,17 +395,25 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-		[PersistenceModeAttribute(PersistenceMode.InnerProperty)]
+		[Category ("Default")]
+		[PersistenceMode (PersistenceMode.InnerProperty)]
+		[DefaultValue ("")]
+		[Editor ("System.Web.UI.Design.WebControls.DataPagerFieldTypeEditor, System.Web.Extensions.Design, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35", typeof (System.Drawing.Design.UITypeEditor))]
+		[MergableProperty (false)]
 		public virtual DataPagerFieldCollection Fields {
 			get { return _fields; }
 		}
 
-		[BrowsableAttribute(false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public int MaximumRows {
 			get { return _maximumRows; }
 		}
 
-		[ThemeableAttribute(false)]
+		[WebCategory ("Paging")]
+		[IDReferenceProperty (typeof (System.Web.UI.WebControls.IPageableItemContainer))]
+		[DefaultValue ("")]
+		[Themeable (false)]
 		public virtual string PagedControlID {
 			get {
 				string ret = ViewState ["PagedControlID"] as string;
@@ -393,6 +426,8 @@ namespace System.Web.UI.WebControls
 			set { ViewState ["PagedControlID"] = value; }
 		}
 
+		[DefaultValue (10)]
+		[WebCategory ("Paging")]
 		public int PageSize {
 			get { return _maximumRows; }
 			set {
@@ -414,7 +449,9 @@ namespace System.Web.UI.WebControls
 				}
 			}
 		}
-
+		
+		[DefaultValue ("")]
+		[WebCategory ("Paging")]
 		public string QueryStringField {
 			get {
 				string ret = ViewState ["QueryStringField"] as string;
@@ -427,17 +464,20 @@ namespace System.Web.UI.WebControls
 			set { ViewState ["QueryStringField"] = value; }
 		}
 
-		[BrowsableAttribute(false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public int StartRowIndex {
 			get { return _startRowIndex; }
 		}
 
-		[BrowsableAttribute(false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		protected virtual HtmlTextWriterTag TagKey {
 			get { return HtmlTextWriterTag.Span; }
 		}
 
-		[BrowsableAttribute(false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[Browsable (false)]
 		public int TotalRowCount {
 			get { return _totalRowCount; }
 		}

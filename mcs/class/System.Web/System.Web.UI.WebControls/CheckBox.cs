@@ -204,7 +204,7 @@ namespace System.Web.UI.WebControls {
 		}
 #endif		
 
-		private static readonly object EventCheckedChanged = new object ();
+		static readonly object EventCheckedChanged = new object ();
 		[WebSysDescription ("")]
 		[WebCategory ("Action")]
 		public event EventHandler CheckedChanged 
@@ -297,13 +297,15 @@ namespace System.Web.UI.WebControls {
 		override void OnPreRender (EventArgs e)
 		{
 			base.OnPreRender (e);
-
-			if (Page != null && Enabled) {
-				Page.RegisterRequiresPostBack (this);
+			Page page = Page;
+			bool enabled = Enabled;
+			
+			if (page != null && enabled) {
+				page.RegisterRequiresPostBack (this);
 			}
 #if NET_2_0
-			if (Page != null && Enabled)
-				Page.RegisterEnabledControl (this);
+			if (Page != null && enabled)
+				page.RegisterEnabledControl (this);
 #endif
 		}
 
@@ -369,8 +371,13 @@ namespace System.Web.UI.WebControls {
 #endif		
 		override void Render (HtmlTextWriter w)
 		{
-			if (Page != null)
-				Page.VerifyRenderingInServerForm (this);
+			Page page = Page;
+			if (page != null) {
+				page.VerifyRenderingInServerForm (this);
+#if NET_2_0
+				page.ClientScript.RegisterForEventValidation (UniqueID);
+#endif
+			}
 			
 			bool need_span = ControlStyleCreated && !ControlStyle.IsEmpty;
 			if (need_span) {
@@ -386,7 +393,7 @@ namespace System.Web.UI.WebControls {
 			}
 
 			string tt = ToolTip;
-			if (tt != ""){
+			if (tt != null && tt.Length > 0){
 				w.AddAttribute ("title", tt);
 				need_span = true;
 			}
@@ -415,7 +422,7 @@ namespace System.Web.UI.WebControls {
 				w.RenderEndTag ();
 		}
 
-		private void RenderInput (HtmlTextWriter w) {
+		void RenderInput (HtmlTextWriter w) {
 
 			if (ClientID != null && ClientID.Length > 0)
 				w.AddAttribute (HtmlTextWriterAttribute.Id, ClientID);
@@ -457,7 +464,7 @@ namespace System.Web.UI.WebControls {
 			w.RenderEndTag ();
 		}
 
-		private void RenderLabel (HtmlTextWriter w) {
+		void RenderLabel (HtmlTextWriter w) {
 			string text = Text;
 			if (text.Length > 0) {
 #if NET_2_0
@@ -497,6 +504,7 @@ namespace System.Web.UI.WebControls {
 		void RaisePostDataChangedEvent ()
 		{
 #if NET_2_0
+			ValidateEvent (UniqueID, String.Empty);
 			if (CausesValidation)
 				Page.Validate (ValidationGroup);
 #endif
@@ -518,7 +526,7 @@ namespace System.Web.UI.WebControls {
 			PostBackOptions options = new PostBackOptions (this);
 			options.ActionUrl = null;
 			options.ValidationGroup = null;
-			options.Argument = "";
+			options.Argument = String.Empty;
 			options.RequiresJavaScriptProtocol = false;
 			options.ClientSubmit = true;
 			options.PerformValidation = CausesValidation && Page != null && Page.AreValidatorsUplevel (ValidationGroup);

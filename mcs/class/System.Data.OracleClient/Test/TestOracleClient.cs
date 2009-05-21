@@ -15,9 +15,9 @@
 // mcs TestOracleClient.cs /r:System.Data.dll /r:System.Data.OracleClient.dll /nowarn:0168
 //
 // Author: 
-//     Daniel Morgan <danielmorgan@verizon.net>
+//     Daniel Morgan <monodanmorg@yahoo.com>
 //         
-// Copyright (C) Daniel Morgan, 2002, 2004-2005
+// Copyright (C) Daniel Morgan, 2002, 2004-2005, 2008
 // 
 
 using System;
@@ -49,7 +49,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE MONO_ORACLE_TEST";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch (OracleException oe1) {
+			catch (OracleException) {
 				// ignore if table already exists
 			}
 
@@ -374,7 +374,7 @@ namespace Test.OracleClient
 		{
 			Console.WriteLine("  Create select command...");
 			OracleCommand command = connection.CreateCommand ();
-			command.CommandText = "SELECT * FROM EMP";
+			command.CommandText = "SELECT * FROM SCOTT.EMP";
 
 			Console.WriteLine("  Create data adapter...");
 			OracleDataAdapter adapter = new OracleDataAdapter (command);
@@ -465,12 +465,11 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE mono_adapter_test";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch (OracleException oe1) {
+			catch (OracleException) {
 				// ignore if table already exists
 			}
 
 			OracleCommand cmd = null;
-			int rowsAffected = 0;
 
 			Console.WriteLine("  Creating table mono_adapter_test...");
 			cmd = new OracleCommand ();
@@ -499,7 +498,7 @@ namespace Test.OracleClient
 				" blob_value Blob ) ";
 			*/
 
-			rowsAffected = cmd.ExecuteNonQuery();
+			cmd.ExecuteNonQuery();
 
 			Console.WriteLine("  Begin Trans for table mono_adapter_test...");
 			OracleTransaction trans = con.BeginTransaction ();
@@ -554,7 +553,7 @@ namespace Test.OracleClient
 						"  EMPTY_BLOB() " +
 						")";
 			*/
-			rowsAffected = cmd.ExecuteNonQuery();
+			cmd.ExecuteNonQuery();
 
 			Console.WriteLine("  Select/Update CLOB columns on table mono_adapter_test...");
 		
@@ -633,6 +632,9 @@ namespace Test.OracleClient
 			da.Update(ds, "mono_adapter_test");
 
 			transaction.Commit();
+
+			mycb.Dispose();
+			mycb = null;
 		}
 
 		public static void DataAdapterTest2_Update (OracleConnection con) 
@@ -688,6 +690,9 @@ namespace Test.OracleClient
 			da.Update(ds, "mono_adapter_test");
 
 			transaction.Commit();
+
+			mycb.Dispose();
+			mycb = null;
 		}
 
 		public static void DataAdapterTest2_Delete (OracleConnection con) 
@@ -718,6 +723,9 @@ namespace Test.OracleClient
 
 			Console.WriteLine("Commit...");
 			transaction.Commit();
+
+			mycb.Dispose();
+			mycb = null;
 		}
 
 		static void TestNonQueryUsingExecuteReader(OracleConnection con) 
@@ -823,14 +831,14 @@ namespace Test.OracleClient
 
 			OracleCommand insert = connection.CreateCommand ();
 			insert.Transaction = transaction;
-			insert.CommandText = "INSERT INTO EMP (EMPNO, ENAME, JOB) VALUES (8787, 'T Coleman', 'Monoist')";
+			insert.CommandText = "INSERT INTO SCOTT.EMP (EMPNO, ENAME, JOB) VALUES (8787, 'T Coleman', 'Monoist')";
 
 			Console.WriteLine ("  Inserting record ...");
 
 			insert.ExecuteNonQuery ();
 
 			OracleCommand select = connection.CreateCommand ();
-			select.CommandText = "SELECT COUNT(*) FROM EMP WHERE EMPNO = 8787";
+			select.CommandText = "SELECT COUNT(*) FROM SCOTT.EMP WHERE EMPNO = 8787";
 			select.Transaction = transaction;
 			OracleDataReader reader = select.ExecuteReader ();
 			reader.Read ();
@@ -843,7 +851,7 @@ namespace Test.OracleClient
 			transaction.Rollback ();
 
 			select = connection.CreateCommand ();
-			select.CommandText = "SELECT COUNT(*) FROM EMP WHERE EMPNO = 8787";
+			select.CommandText = "SELECT COUNT(*) FROM SCOTT.EMP WHERE EMPNO = 8787";
 
 			reader = select.ExecuteReader ();
 			reader.Read ();
@@ -857,14 +865,14 @@ namespace Test.OracleClient
 
 			OracleCommand insert = connection.CreateCommand ();
 			insert.Transaction = transaction;
-			insert.CommandText = "INSERT INTO EMP (EMPNO, ENAME, JOB) VALUES (8787, 'T Coleman', 'Monoist')";
+			insert.CommandText = "INSERT INTO SCOTT.EMP (EMPNO, ENAME, JOB) VALUES (8787, 'T Coleman', 'Monoist')";
 
 			Console.WriteLine ("  Inserting record ...");
 
 			insert.ExecuteNonQuery ();
 
 			OracleCommand select = connection.CreateCommand ();
-			select.CommandText = "SELECT COUNT(*) FROM EMP WHERE EMPNO = 8787";
+			select.CommandText = "SELECT COUNT(*) FROM SCOTT.EMP WHERE EMPNO = 8787";
 			select.Transaction = transaction;
 
 			Console.WriteLine ("  Row count SHOULD BE 1, VALUE IS {0}", select.ExecuteScalar ());
@@ -874,13 +882,13 @@ namespace Test.OracleClient
 			transaction.Commit ();
 
 			select = connection.CreateCommand ();
-			select.CommandText = "SELECT COUNT(*) FROM EMP WHERE EMPNO = 8787";
+			select.CommandText = "SELECT COUNT(*) FROM SCOTT.EMP WHERE EMPNO = 8787";
 
 			Console.WriteLine ("Row count SHOULD BE 1, VALUE IS {0}", select.ExecuteScalar ());
 			transaction = connection.BeginTransaction ();
 			OracleCommand delete = connection.CreateCommand ();
 			delete.Transaction = transaction;
-			delete.CommandText = "DELETE FROM EMP WHERE EMPNO = 8787";
+			delete.CommandText = "DELETE FROM SCOTT.EMP WHERE EMPNO = 8787";
 			delete.ExecuteNonQuery ();
 			transaction.Commit ();
 		}
@@ -899,7 +907,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE MONO_TEST_TABLE7";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
+			catch(OracleException) {
 				// ignore if table already exists
 			}
 
@@ -998,7 +1006,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE MONO_TEST_TABLE7";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
+			catch(OracleException) {
 				// ignore if table already exists
 			}
 
@@ -1096,7 +1104,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE CLOBTEST";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch (OracleException oe1) {
+			catch (OracleException) {
 				// ignore if table already exists
 			}
 
@@ -1169,7 +1177,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE BLOBTEST";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch (OracleException oe1) {
+			catch (OracleException) {
 				// ignore if table already exists
 			}
 
@@ -1255,6 +1263,8 @@ namespace Test.OracleClient
 			StringBuilder sb2 = new StringBuilder();
 			for (int z = 0; z < bytes.Length; z++) {
 				byte byt = bytes[z];
+				if (byt < 0x10)
+					sb2.Append ("0");
 				sb2.Append (byt.ToString("x"));
 			}
 			if (sb2.Length > 0)
@@ -1275,7 +1285,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE MONO_TEST_TABLE1";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
+			catch(OracleException) {
 				// ignore if table did not exist
 			}
 
@@ -1284,7 +1294,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP PROCEDURE SP_TEST1";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
+			catch(OracleException) {
 				// ignore if procedure did not exist
 			}
 
@@ -1325,7 +1335,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE MONO_TEST_TABLE2";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
+			catch(OracleException) {
 				// ignore if table already exists
 			}
 
@@ -1334,8 +1344,8 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP PROCEDURE SP_TEST2";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
-				// ignore if table already exists
+			catch(OracleException) {
+				// ignore if procedure does not exists
 			}
 
 			Console.WriteLine("  Create table MONO_TEST_TABLE2...");
@@ -1379,173 +1389,911 @@ namespace Test.OracleClient
 			cmd3.ExecuteNonQuery ();
 		}
 
-		static void OutParmTest1 (OracleConnection con) 
+		static void OutParmTest1(OracleConnection con)
 		{
-			// test stored procedure with 2 parameters
-			// 1. input varchar2
-			// 2. output varchar
+		    // test stored fuctions with 4 parameters
+		    // 1. input varchar2
+		    // 2. output varchar2
+		    // 3. input output varchar2
+		    // 4. return varchar2
 
-			OracleCommand cmd2 = null;
-			Console.WriteLine("  Drop procedure SP_OUTPUTPARMTEST1...");
-			try {
-				cmd2 = con.CreateCommand ();
-				cmd2.CommandText = "DROP PROCEDURE SP_OUTPUTPARMTEST1";
-				cmd2.ExecuteNonQuery ();
-			}
-			catch(OracleException oe1) {
-				// ignore if table already exists
-			}
-			
-			Console.WriteLine("  Create stored procedure SP_OUTPUTPARMTEST1...");
-			// stored procedure concatenates strings
-			cmd2.CommandText = 
-				"CREATE OR REPLACE PROCEDURE SP_TESTOUTPARM1(parm1 IN VARCHAR2,parm2 OUT VARCHAR2) " +
-				"IS " +
-				"BEGIN " +
-				"	parm2 := 'one' || parm1 || 'three';" +
-				"END;";
+		    Console.WriteLine("  Create stored function SP_OUTPUTPARMTEST1 for testing VARCHAR2 Input, Output, InputOutput, Return parameters...");
+		    
+		    OracleCommand cmd2 = con.CreateCommand();
+		    cmd2.CommandText =
+		        "CREATE OR REPLACE FUNCTION SF_TESTOUTPARM1(parm1 IN VARCHAR2, parm2 OUT VARCHAR2, parm3 IN OUT VARCHAR2) RETURN VARCHAR2 " +
+		        "IS " +
+		        "    returnValue VARCHAR2(32) := 'Anywhere';" +
+		        "BEGIN " +
+		        "   IF parm1 IS NULL THEN " +
+		        "        parm2 := 'parm1 is null'; " +
+		        "   ELSE " +
+		        "	     parm2 := 'One' || parm1 || 'Three'; " +
+		        "   END IF; " +
+		        "   IF parm3 IS NOT NULL THEN " +
+		        "       parm3 := parm2 || parm3 || 'Five'; " +
+		        "   ELSE " +
+		        "       parm3 := 'parm3 in was NULL'; " +
+		        "   END IF; " +
+		        "   IF parm1 IS NOT NULL THEN " +
+		        "       IF parm1 = '999' THEN " +
+		        "          parm2 := NULL; " +
+		        "          parm3 := NULL; " +
+		        "          returnValue := NULL; " +
+		        "       END IF; " +
+		        "   END IF; " +
+		        "   RETURN returnValue; " +
+		        "END;";
 
-			cmd2.ExecuteNonQuery ();
+		    cmd2.ExecuteNonQuery();
 
-			Console.WriteLine("  COMMIT...");
-			cmd2.CommandText = "COMMIT";
-			cmd2.ExecuteNonQuery ();
+		    Console.WriteLine("  COMMIT...");
+		    cmd2.CommandText = "COMMIT";
+		    cmd2.ExecuteNonQuery();
 
-			Console.WriteLine("  Call stored procedure SP_TESTOUTPARM1 with two parameters...");
-			OracleCommand cmd3 = con.CreateCommand ();
-			cmd3.CommandType = CommandType.Text;
-			cmd3.CommandText = 
-				"BEGIN " +
-				"	SP_TESTOUTPARM1(:p1, :p2);" +
-				"END;";
-			OracleParameter myParameter1 = new OracleParameter("p1", OracleType.VarChar);
-			myParameter1.Value = "two";
-			myParameter1.Size = 4;
-			myParameter1.Direction = ParameterDirection.Input;
-		
-			OracleParameter myParameter2 = new OracleParameter("p2", OracleType.VarChar);
-			myParameter2.Size = 12;
-			myParameter2.Direction = ParameterDirection.Output;
+		    Console.WriteLine("  Call stored function SF_TESTOUTPARM1 with 4 parameters...");
+		    OracleCommand cmd3 = con.CreateCommand();
+		    cmd3.CommandType = CommandType.Text;
+		    cmd3.CommandText =
+		        "BEGIN " +
+		        "	:ReturnValue := SF_TESTOUTPARM1(:p1, :p2, :p3); " +
+		        "END;";
+		    OracleParameter myParameter1 = new OracleParameter("p1", OracleType.VarChar);
+		    myParameter1.Value = "Two";
+		    myParameter1.Size = 32;
+		    myParameter1.Direction = ParameterDirection.Input;
 
-			cmd3.Parameters.Add (myParameter1);
-			cmd3.Parameters.Add (myParameter2);
+		    OracleParameter myParameter2 = new OracleParameter("p2", OracleType.VarChar);
+		    myParameter2.Size = 32;
+		    myParameter2.Direction = ParameterDirection.Output;
 
-			cmd3.ExecuteNonQuery ();
-			string outValue = (string) myParameter2.Value;
-			Console.WriteLine ("    Out Value should be: onetwothree");
-			Console.WriteLine ("    Out Value: " + outValue);
+		    OracleParameter myParameter3 = new OracleParameter("p3", OracleType.VarChar);
+		    myParameter3.Value = "Four";
+		    myParameter3.Size = 32;
+		    myParameter3.Direction = ParameterDirection.InputOutput;
+
+		    OracleParameter myParameter4 = new OracleParameter("ReturnValue", OracleType.VarChar);
+		    myParameter4.Size = 32;
+		    myParameter4.Direction = ParameterDirection.ReturnValue;
+
+		    cmd3.Parameters.Add(myParameter1);
+		    cmd3.Parameters.Add(myParameter2);
+		    cmd3.Parameters.Add(myParameter3);
+		    cmd3.Parameters.Add(myParameter4);
+
+		    cmd3.ExecuteNonQuery();
+		    string outValue = (string)myParameter2.Value;
+		    string inOutValue = (string)myParameter3.Value;
+		    string returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    1Out Value should be: OneTwoThree");
+		    Console.WriteLine("    1Out Value: " + outValue);
+		    Console.WriteLine("    1InOut Value should be: OneTwoThreeFourFive");
+		    Console.WriteLine("    1InOut Value: " + inOutValue);
+		    Console.WriteLine("    1Return Value should be: Anywhere");
+		    Console.WriteLine("    1Return Value: " + returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = DBNull.Value;
+		    myParameter3.Value = "Hello";
+		    cmd3.ExecuteNonQuery();
+		    outValue = (string)myParameter2.Value;
+		    inOutValue = (string)myParameter3.Value;
+		    returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    2Out Value should be: parm1 is null");
+		    Console.WriteLine("    2Out Value: " + outValue);
+		    Console.WriteLine("    2InOut Value should be: parm1 is nullHelloFive");
+		    Console.WriteLine("    2InOut Value: " + inOutValue);
+		    Console.WriteLine("    2Return Value should be: Anywhere");
+		    Console.WriteLine("    2Return Value: " + returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = "999";
+		    myParameter3.Value = "Bye";
+		    cmd3.ExecuteNonQuery();
+		    if (myParameter2.Value == DBNull.Value)
+		        outValue = "Value is DBNull.Value";
+		    else
+		        outValue = (string)myParameter2.Value;
+		    if( myParameter3.Value == DBNull.Value)
+		        inOutValue = "Value is DBNull.Value";
+		    else
+		        inOutValue = (string)myParameter3.Value;
+		    if (myParameter4.Value == DBNull.Value)
+		        returnValue = "Value is DBNull.Value";
+		    else
+		        returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    3Out Value should be: Value is DBNull.Value");
+		    Console.WriteLine("    3Out Value: " + outValue);
+		    Console.WriteLine("    3InOut Value should be: Value is DBNull.Value");
+		    Console.WriteLine("    3InOut Value: " + inOutValue);
+		    Console.WriteLine("    3Return Value should be: Value is DBNull.Value");
+		    Console.WriteLine("    3Return Value: " + returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = "***";
+		    myParameter3.Value = DBNull.Value;
+		    cmd3.ExecuteNonQuery();
+		    outValue = (string)myParameter2.Value;
+		    inOutValue = (string)myParameter3.Value;
+		    returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    4Out Value should be: One***Three");
+		    Console.WriteLine("    4Out Value: " + outValue);
+		    Console.WriteLine("    4InOut Value should be: parm3 in was NULL");
+		    Console.WriteLine("    4InOut Value: " + inOutValue);
+		    Console.WriteLine("    4Return Value should be: Anywhere");
+		    Console.WriteLine("    4Return Value: " + returnValue);
+		    Console.WriteLine();
 		}
 
 		static void OutParmTest2 (OracleConnection con) 
 		{
-			// test stored procedure with 2 parameters
-			// 1. input number(18,2)
-			// 2. output number(18,2)
+		    // test stored function with 4 parameters
+		    // 1. input number(18,2)
+		    // 2. output number(18,2)
+		    // 3. input output number (18,2)
+		    // 4. return number (18,2)
 
-			OracleCommand cmd2 = null;
-			Console.WriteLine("  Drop procedure SP_OUTPUTPARMTEST2...");
-			try {
-				cmd2 = con.CreateCommand ();
-				cmd2.CommandText = "DROP PROCEDURE SP_OUTPUTPARMTEST2";
-				cmd2.ExecuteNonQuery ();
-			}
-			catch(OracleException oe1) {
-				// ignore if table already exists
-			}
-			
-			Console.WriteLine("  Create stored procedure SP_OUTPUTPARMTEST2...");
+		    Console.WriteLine("  Create stored function SF_TESTOUTPARM2 to test NUMBER parameters...");
 
-			// stored procedure addes two numbers
-			cmd2.CommandText = 
-				"CREATE OR REPLACE PROCEDURE SP_TESTOUTPARM2(parm1 IN NUMBER,parm2 OUT NUMBER) " +
-				"IS " +
-				"BEGIN " +
-				"	parm2 := parm1 + 3; " +
-				"END;";
+		    // stored procedure addes two numbers
+		    OracleCommand cmd2 = con.CreateCommand();
+		    cmd2.CommandText =
+		        "CREATE OR REPLACE FUNCTION SF_TESTOUTPARM2(parm1 IN NUMBER, parm2 OUT NUMBER, parm3 IN OUT NUMBER) RETURN NUMBER " +
+		        "IS " +
+		        "   returnValue NUMBER := 123.45; " +
+		        "BEGIN " +
+		        "   IF parm1 IS NULL THEN " +
+		        "      parm2 := 18; " +
+		        "	   parm3 := parm3 + 8000; " +
+		        "      returnValue := 78; " +
+		        "   ELSIF parm1 = 999 THEN " +
+		        "         parm2 := NULL;" +
+		        "         parm3 := NULL;" +
+		        "         returnValue := NULL;" +
+		        "   ELSIF parm3 IS NULL THEN " +
+		        "         parm2 := 0; " +
+		        "         parm3 := 1234567890123.12345678; " +
+		        "   ELSE " +
+		        "	   parm2 := parm1 + 3; " +
+		        "      parm3 := parm3 + 70; " +
+		        "   END IF;" +
+		        "   RETURN returnValue;" +
+		        "END;";
 
-			cmd2.ExecuteNonQuery ();
+		    cmd2.ExecuteNonQuery();
 
-			Console.WriteLine("  COMMIT...");
-			cmd2.CommandText = "COMMIT";
-			cmd2.ExecuteNonQuery ();
+		    Console.WriteLine("  COMMIT...");
+		    cmd2.CommandText = "COMMIT";
+		    cmd2.ExecuteNonQuery();
 
-			Console.WriteLine("  Call stored procedure SP_TESTOUTPARM2 with two parameters...");
-			OracleCommand cmd3 = con.CreateCommand ();
-			cmd3.CommandType = CommandType.Text;
-			cmd3.CommandText = 
-				"BEGIN " +
-				"	SP_TESTOUTPARM2(:p1, :p2);" +
-				"END;";
-			OracleParameter myParameter1 = new OracleParameter("p1", OracleType.Number);
-			myParameter1.Value = 2;
-			myParameter1.Direction = ParameterDirection.Input;
-		
-			OracleParameter myParameter2 = new OracleParameter("p2", OracleType.Number);
-			myParameter2.Direction = ParameterDirection.Output;
+		    Console.WriteLine("  Call stored function SP_TESTOUTPARM2 with 4 parameters...");
+		    OracleCommand cmd3 = con.CreateCommand();
+		    cmd3.CommandType = CommandType.Text;
+		    cmd3.CommandText =
+		        "BEGIN " +
+		        "	:returnValue := SF_TESTOUTPARM2(:p1, :p2, :p3);" +
+		        "END;";
+		    OracleParameter myParameter1 = new OracleParameter("p1", OracleType.Number);
+		    myParameter1.Value = 2.2;
+		    myParameter1.Direction = ParameterDirection.Input;
 
-			cmd3.Parameters.Add (myParameter1);
-			cmd3.Parameters.Add (myParameter2);
+		    OracleParameter myParameter2 = new OracleParameter("p2", OracleType.Number);
+		    myParameter2.Direction = ParameterDirection.Output;
 
-			cmd3.ExecuteNonQuery ();
-			decimal outValue = (decimal) myParameter2.Value;
-			Console.WriteLine ("    Out Value should be: 5");
-			Console.WriteLine ("    Out Value: {0}", outValue);
+		    OracleParameter myParameter3 = new OracleParameter("p3", OracleType.Number);
+		    myParameter3.Value = 33.4;
+		    myParameter3.Direction = ParameterDirection.InputOutput;
+
+		    OracleParameter myParameter4 = new OracleParameter("returnValue", OracleType.Number);
+		    myParameter4.Direction = ParameterDirection.ReturnValue;
+
+		    cmd3.Parameters.Add(myParameter1);
+		    cmd3.Parameters.Add(myParameter2);
+		    cmd3.Parameters.Add(myParameter3);
+		    cmd3.Parameters.Add(myParameter4);
+
+		    cmd3.ExecuteNonQuery();
+		    decimal outValue = (decimal)myParameter2.Value;
+		    decimal inOutValue = (decimal)myParameter3.Value;
+		    decimal returnValue = (decimal)myParameter4.Value;
+		    Console.WriteLine("    1Out Value should be: 5.20");
+		    Console.WriteLine("    1Out Value: {0}", outValue);
+		    Console.WriteLine("    1InOut Value should be: 103.40");
+		    Console.WriteLine("    1InOut Value: {0}", inOutValue);
+		    Console.WriteLine("    1Return Value should be: 123.45");
+		    Console.WriteLine("    1Return Value: {0}", returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = DBNull.Value;
+		    myParameter3.Value = 23;
+		    cmd3.ExecuteNonQuery();
+		    outValue = (decimal)myParameter2.Value;
+		    inOutValue = (decimal)myParameter3.Value;
+		    returnValue = (decimal)myParameter4.Value;
+		    Console.WriteLine("    2Out Value should be: 18");
+		    Console.WriteLine("    2Out Value: {0}", outValue);
+		    Console.WriteLine("    2InOut Value should be: 8023");
+		    Console.WriteLine("    2InOut Value: {0}", inOutValue);
+		    Console.WriteLine("    2Return Value should be: 78");
+		    Console.WriteLine("    2Return Value: {0}", returnValue);
+		    Console.WriteLine();
+
+		    string soutValue = "";
+		    string sinOutValue = "";
+		    string sreturnValue = "";
+		    myParameter1.Value = 999;
+		    myParameter3.Value = 66;
+		    cmd3.ExecuteNonQuery();
+		    if (myParameter2.Value == DBNull.Value)
+		        soutValue = "DBNull.Value";
+		    else
+		        soutValue = myParameter2.Value.ToString();
+		    if (myParameter3.Value == DBNull.Value)
+		        sinOutValue = "DBNull.Value";
+		    else
+		        sinOutValue = myParameter3.Value.ToString();
+		    if (myParameter4.Value == DBNull.Value)
+		        sreturnValue = "DBNull.Value";
+		    else
+		        sreturnValue = myParameter4.Value.ToString();
+		    Console.WriteLine("    3Out Value should be: DBNull.Value");
+		    Console.WriteLine("    3Out Value: {0}", soutValue);
+		    Console.WriteLine("    3InOut Value should be: DBNull.Value");
+		    Console.WriteLine("    3InOut Value: {0}", sinOutValue);
+		    Console.WriteLine("    3Return Value should be: DBNull.Value");
+		    Console.WriteLine("    3Return Value: {0}", sreturnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = 111;
+		    myParameter3.Value = DBNull.Value;
+		    cmd3.ExecuteNonQuery();
+		    outValue = (decimal)myParameter2.Value;
+		    inOutValue = (decimal)myParameter3.Value;
+		    returnValue = (decimal)myParameter4.Value;
+		    Console.WriteLine("    4Out Value should be: 0 (as in digit zero)");
+		    Console.WriteLine("    4Out Value: {0}", outValue);
+		    Console.WriteLine("    4InOut Value should be: 1234567890123.12345678");
+		    Console.WriteLine("    4InOut Value: {0}", inOutValue);
+		    Console.WriteLine("    4Return Value should be: 123.45");
+		    Console.WriteLine("    4Return Value: {0}", returnValue);
+		    Console.WriteLine();
+
 		}
 
 		static void OutParmTest3 (OracleConnection con) 
 		{
-			// test stored procedure with 2 parameters
-			// 1. input date
-			// 2. output date
+		    // test stored function with 4 parameters
+		    // 1. input date
+		    // 2. output date
+		    // 3. input output date
+		    // 4. return dae
 
-			OracleCommand cmd2 = null;
-			Console.WriteLine("  Drop procedure SP_OUTPUTPARMTEST3...");
-			try {
-				cmd2 = con.CreateCommand ();
-				cmd2.CommandText = "DROP PROCEDURE SP_OUTPUTPARMTEST3";
-				cmd2.ExecuteNonQuery ();
-			}
-			catch(OracleException oe1) {
-				// ignore if table already exists
-			}
-			
-			Console.WriteLine("  Create stored procedure SP_OUTPUTPARMTEST3...");
+		    // a DATE type in Oracle has Date and Time          
 
-			// stored procedure adds 3 days to date 
-			cmd2.CommandText = 
-				"CREATE OR REPLACE PROCEDURE SP_TESTOUTPARM3(parm1 IN DATE,parm2 OUT DATE) " +
-				"IS " +
-				"BEGIN " +
-				"	parm2 := parm1 + 3; " +
-				"END;";
+		    Console.WriteLine("  Create stored function SF_TESTOUTPARM3 to test Date parameters...");
 
-			cmd2.ExecuteNonQuery ();
+		    OracleCommand cmd2 = con.CreateCommand();
+		    cmd2.CommandText =
+		        "CREATE OR REPLACE FUNCTION SF_TESTOUTPARM3(parm1 IN DATE, parm2 OUT DATE, parm3 IN OUT DATE) RETURN DATE " +
+		        "IS " +
+		        "   returnValue DATE := TO_DATE('2001-07-01 15:32:52', 'YYYY-MM-DD HH24:MI:SS');" +
+		        "BEGIN " +
+		        "   IF parm1 IS NULL THEN " +
+		        "      parm2 := TO_DATE('1900-12-31', 'YYYY-MM-DD'); " +
+		        "      parm3 := TO_DATE('1900-12-31', 'YYYY-MM-DD'); " +
+		        "   ELSIF parm1 = TO_DATE('1979-11-25','YYYY-MM-DD') THEN " +
+		        "      parm2 := NULL;" +
+		        "      parm3 := NULL;" +
+		        "      returnValue := NULL;"+
+		        "   ELSIF parm3 IS NULL THEN " +
+		        "      parm2 := TO_DATE('2008-08-08', 'YYYY-MM-DD');" +
+		        "      parm3 := TO_DATE('2000-01-01', 'YYYY-MM-DD');" +
+		        "   ELSE " +
+		        "      -- add 3 days to date\n " +
+		        "	   parm2 := parm1 + 3; " +
+		        "      parm3 := parm3 + 5; " +
+		        "   END IF; " +
+		        "   RETURN returnValue;" +
+		        "END;";
+
+		    cmd2.ExecuteNonQuery();
+
+		    Console.WriteLine("  COMMIT...");
+		    cmd2.CommandText = "COMMIT";
+		    cmd2.ExecuteNonQuery();
+
+		    Console.WriteLine("  Call stored function SF_TESTOUTPARM3 with 4 parameters...");
+		    OracleCommand cmd3 = con.CreateCommand();
+		    cmd3.CommandType = CommandType.Text;
+		    cmd3.CommandText =
+		        "BEGIN " +
+		        "	:returnValue := SF_TESTOUTPARM3(:p1, :p2, :p3);" +
+		        "END;";
+		    OracleParameter myParameter1 = new OracleParameter("p1", OracleType.DateTime);
+		    myParameter1.Value = new DateTime(2004, 12, 15);
+		    myParameter1.Direction = ParameterDirection.Input;
+
+		    OracleParameter myParameter2 = new OracleParameter("p2", OracleType.DateTime);
+		    myParameter2.Direction = ParameterDirection.Output;
+
+		    OracleParameter myParameter3 = new OracleParameter("p3", OracleType.DateTime);
+		    myParameter3.Value = new DateTime(2008, 10, 14, 20, 21, 22);
+		    myParameter3.Direction = ParameterDirection.InputOutput;
+
+		    OracleParameter myParameter4 = new OracleParameter("returnValue", OracleType.DateTime);
+		    myParameter4.Direction = ParameterDirection.ReturnValue;
+
+		    cmd3.Parameters.Add(myParameter1);
+		    cmd3.Parameters.Add(myParameter2);
+		    cmd3.Parameters.Add(myParameter3);
+		    cmd3.Parameters.Add(myParameter4);
+
+		    cmd3.ExecuteNonQuery();
+		    DateTime outValue = (DateTime)myParameter2.Value;
+		    DateTime inOutValue = (DateTime)myParameter3.Value;
+		    DateTime returnValue = (DateTime)myParameter4.Value;
+		    Console.WriteLine("    1Out Value should be: 2004-12-18 00:00:00");
+		    Console.WriteLine("    1Out Value: {0}", outValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    1InOut Value should be: 2008-10-19 20:21:22");
+		    Console.WriteLine("    1InOut Value: {0}", inOutValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    1Return Value should be: 2001-07-01 15:32:52");
+		    Console.WriteLine("    1Return Value: {0}", returnValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine();
+
+		    myParameter1.Value = DBNull.Value;
+		    myParameter3.Value = new DateTime(1980, 11, 22);
+		    cmd3.ExecuteNonQuery();
+		    outValue = (DateTime)myParameter2.Value;
+		    inOutValue = (DateTime)myParameter3.Value;
+		    returnValue = (DateTime)myParameter4.Value;
+		    Console.WriteLine("    2Out Value should be: 1900-12-31 00:00:00");
+		    Console.WriteLine("    2Out Value: {0}", outValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    2InOut Value should be: 1900-12-31 00:00:00");
+		    Console.WriteLine("    2InOut Value: {0}", inOutValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    2Return Value should be: 2001-07-01 15:32:52");
+		    Console.WriteLine("    2Return Value: {0}", returnValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine();
+
+		    myParameter1.Value = new DateTime(1979, 11, 25);
+		    myParameter3.Value = new DateTime(1981, 12, 14);
+		    cmd3.ExecuteNonQuery();
+		    string soutValue = "";
+		    string sinOutValue = "";
+		    string sreturnValue = "";
+		    if (myParameter2.Value == DBNull.Value) 
+		        soutValue = "DBNull.Value";
+		    else {
+		        outValue = (DateTime)myParameter2.Value;
+		        soutValue = outValue.ToString("yyyy-MM-dd HH:mm:ss");
+		    }
+		    if (myParameter3.Value == DBNull.Value) 
+		        sinOutValue = "DBNull.Value";
+		    else {
+		        inOutValue = (DateTime)myParameter3.Value;
+		        sinOutValue = inOutValue.ToString("yyyy-MM-dd HH:mm:ss");
+		    }
+		    if (myParameter4.Value == DBNull.Value) 
+		        sreturnValue = "DBNull.Value";
+		    else {
+		        returnValue = (DateTime)myParameter4.Value;
+		        sreturnValue = returnValue.ToString("yyyy-MM-dd HH:mm:ss");
+		    }
+		    Console.WriteLine("    3Out Value should be: DBNull.Value");
+		    Console.WriteLine("    3Out Value: {0}", soutValue);
+		    Console.WriteLine("    3InOut Value should be: DBNull.Value");
+		    Console.WriteLine("    3InOut Value: {0}", sinOutValue);
+		    Console.WriteLine("    3Return Value should be: DBNull.Value");
+		    Console.WriteLine("    3Return Value: {0}", sreturnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = new DateTime(1976, 7, 4);
+		    myParameter3.Value = DBNull.Value;
+		    cmd3.ExecuteNonQuery();
+		    outValue = (DateTime)myParameter2.Value;
+		    inOutValue = (DateTime)myParameter3.Value;
+		    returnValue = (DateTime)myParameter4.Value;
+		    Console.WriteLine("    4Out Value should be: 2008-08-08 00:00:00");
+		    Console.WriteLine("    4Out Value: {0}", outValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    4InOut Value should be: 2000-01-01 00:00:00");
+		    Console.WriteLine("    4InOut Value: {0}", inOutValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    4Return Value should be: 2001-07-01 15:32:52");
+		    Console.WriteLine("    4Return Value: {0}", returnValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine();
+
+		}
+
+		static void OutParmTest4(OracleConnection con)
+		{
+		    // test stored fuctions with 4 parameters
+		    // 1. input long
+		    // 2. output long
+		    // 3. input output long
+		    // 4. return long
+
+		    Console.WriteLine("  Create stored function SP_OUTPUTPARMTEST4 for testing LONG VARCHAR Input, Output, InputOutput, Return parameters...");
+
+		    OracleCommand cmd2 = con.CreateCommand();
+		    cmd2.CommandText =
+			"CREATE OR REPLACE FUNCTION SP_OUTPUTPARMTEST4(parm1 IN LONG, parm2 OUT LONG, parm3 IN OUT LONG) RETURN LONG " +
+			"IS " +
+			"    returnValue LONG := 'A very, very, very long value in a far away memory space.'; " +
+			"BEGIN " +
+			"   IF parm1 IS NULL THEN " +
+			"        parm2 := 'parm1 is null'; " +
+			"        returnValue := 'Another one bytes the dust.'; " +
+			"   ELSE " +
+			"	     parm2 := 'One' || parm1 || 'Three'; " +
+			"   END IF; " +
+			"   IF parm3 IS NOT NULL THEN " +
+			"       parm3 := parm2 || parm3 || 'Five'; " +
+			"   ELSE " +
+			"       parm3 := 'parm3 in was NULL'; " +
+			"   END IF; " +
+			"   IF parm1 IS NOT NULL THEN " +
+			"       IF parm1 = '999' THEN " +
+			"          parm2 := NULL; " +
+			"          parm3 := NULL; " +
+			"          returnValue := NULL; " +
+			"       END IF; " +
+			"   END IF; " +
+			"   RETURN returnValue; " +
+			"END;";
+
+		    cmd2.ExecuteNonQuery();
+
+		    Console.WriteLine("  COMMIT...");
+		    cmd2.CommandText = "COMMIT";
+		    cmd2.ExecuteNonQuery();
+
+		    Console.WriteLine("  Call stored procedure SP_OUTPUTPARMTEST4 with 4 parameters...");
+		    OracleCommand cmd3 = con.CreateCommand();
+		    cmd3.CommandType = CommandType.Text;
+		    cmd3.CommandText =
+			"BEGIN " +
+			"	:ReturnValue := SP_OUTPUTPARMTEST4(:p1, :p2, :p3); " +
+			"END;";
+		    OracleParameter myParameter1 = new OracleParameter("p1", OracleType.LongVarChar);
+		    myParameter1.Size = 1000;
+		    myParameter1.Direction = ParameterDirection.Input;
+		    myParameter1.Value = "Two";
+
+		    OracleParameter myParameter2 = new OracleParameter("p2", OracleType.LongVarChar);
+		    myParameter2.Size = 1000;
+		    myParameter2.Direction = ParameterDirection.Output;
+
+		    OracleParameter myParameter3 = new OracleParameter("p3", OracleType.LongVarChar);
+		    myParameter3.Value = "Four";
+		    myParameter3.Size = 1000;
+		    myParameter3.Direction = ParameterDirection.InputOutput;
+
+		    OracleParameter myParameter4 = new OracleParameter("ReturnValue", OracleType.LongVarChar);
+		    myParameter4.Size = 1000;
+		    myParameter4.Direction = ParameterDirection.ReturnValue;
+
+		    cmd3.Parameters.Add(myParameter1);
+		    cmd3.Parameters.Add(myParameter2);
+		    cmd3.Parameters.Add(myParameter3);
+		    cmd3.Parameters.Add(myParameter4);
+
+		    cmd3.ExecuteNonQuery();
+		    string outValue = (string)myParameter2.Value;
+		    string inOutValue = (string)myParameter3.Value;
+		    string returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    1Out Value should be: OneTwoThree");
+		    Console.WriteLine("    1Out Value: " + outValue);
+		    Console.WriteLine("    1InOut Value should be: OneTwoThreeFourFive");
+		    Console.WriteLine("    1InOut Value: " + inOutValue);
+		    Console.WriteLine("    1Return Value should be: A very, very, very long value in a far away memory space.");
+		    Console.WriteLine("    1Return Value: " + returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = DBNull.Value;
+		    myParameter3.Value = "Hello";
+		    cmd3.ExecuteNonQuery();
+		    outValue = (string)myParameter2.Value;
+		    inOutValue = (string)myParameter3.Value;
+		    returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    2Out Value should be: parm1 is null");
+		    Console.WriteLine("    2Out Value: " + outValue);
+		    Console.WriteLine("    2InOut Value should be: parm1 is nullHelloFive");
+		    Console.WriteLine("    2InOut Value: " + inOutValue);
+		    Console.WriteLine("    2Return Value should be: Another one bytes the dust.");
+		    Console.WriteLine("    2Return Value: " + returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = "999";
+		    myParameter3.Value = "Bye";
+		    cmd3.ExecuteNonQuery();
+		    if (myParameter2.Value == DBNull.Value)
+			outValue = "Value is DBNull.Value";
+		    else
+			outValue = (string)myParameter2.Value;
+		    if (myParameter3.Value == DBNull.Value)
+			inOutValue = "Value is DBNullValue";
+		    else
+			inOutValue = (string)myParameter3.Value;
+		    if (myParameter4.Value == DBNull.Value)
+			returnValue = "Value is DBNull.Value";
+		    else
+			returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    3Out Value should be: Value is DBNull.Value");
+		    Console.WriteLine("    3Out Value: " + outValue);
+		    Console.WriteLine("    3InOut Value should be: Value is DBNull.Value");
+		    Console.WriteLine("    3InOut Value: " + inOutValue);
+		    Console.WriteLine("    3Return Value should be: Value is DBNull.Value");
+		    Console.WriteLine("    3Return Value: " + returnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = "***";
+		    myParameter3.Value = DBNull.Value;
+		    cmd3.ExecuteNonQuery();
+		    outValue = (string)myParameter2.Value;
+		    inOutValue = (string)myParameter3.Value;
+		    returnValue = (string)myParameter4.Value;
+		    Console.WriteLine("    4Out Value should be: One***Three");
+		    Console.WriteLine("    4Out Value: " + outValue);
+		    Console.WriteLine("    4InOut Value should be: parm3 in was NULL");
+		    Console.WriteLine("    4InOut Value: " + inOutValue);
+		    Console.WriteLine("    4Return Value should be: A very, very, very long value in a far away memory space.");
+		    Console.WriteLine("    4Return Value: " + returnValue);
+		    Console.WriteLine();
+		}
+
+		static void OutParmTest5(OracleConnection con)
+		{
+			// test stored fuctions with 4 parameters
+			// 1. input CLOB
+			// 2. output CLOB
+			// 3. input output CLOB
+			// 4. return CLOB
+
+			Console.WriteLine("  Create stored function SP_OUTPUTPARMTEST5 for testing CLOB Input, Output, InputOutput, Return parameters...");
+
+			OracleCommand cmd2 = con.CreateCommand();
+			cmd2.CommandText =
+			    "CREATE OR REPLACE FUNCTION SP_OUTPUTPARMTEST5(parm1 IN CLOB, parm2 OUT CLOB, parm3 IN OUT CLOB) RETURN CLOB " +
+			    " IS " +
+			    "    returnValue CLOB := 'Clobber'; " +
+			    " BEGIN " +
+			    "   IF parm1 IS NULL THEN " +
+			    "        parm2 := 'parm1 is null'; " +
+			    "   ELSE " +
+			    "	     parm2 := 'One' || parm1 || 'Three'; " +
+			    "   END IF; " +
+			    "   IF parm3 IS NOT NULL THEN " +
+			    "       parm3 := parm2 || parm3 || 'Five'; " +
+			    "   ELSE " +
+			    "       parm3 := 'parm3 in was NULL'; " +
+			    "   END IF; " +
+			    "   IF parm1 IS NOT NULL THEN " +
+			    "       IF parm1 = '999' THEN " +
+			    "          parm2 := NULL; " +
+			    "          parm3 := NULL; " +
+			    "          returnValue := NULL; " +
+			    "       ELSIF LENGTH(parm1) = 0 THEN " +
+			    "          parm2 := 'parm1 is zero length'; " +
+			    "          IF LENGTH(parm3) = 0 THEN " +
+			    "              parm3 := 'parm3 is zero length';" +
+			    "          ELSE " +
+			    "              parm3 := 'Uh oh, parm3 is not zero length like we thought'; " +
+			    "          END IF; " +
+			    "          returnValue := 'parm1 is zero length'; " +
+			    "       ELSIF parm1 = '888' THEN " +
+			    "          parm2 := EMPTY_CLOB(); " +
+			    "          parm3 := EMPTY_CLOB(); " +
+			    "          returnValue := EMPTY_CLOB(); " +
+			    "       END IF; " +
+			    "   END IF; " +
+			    "   RETURN returnValue; " +
+			    "END;";
+
+			cmd2.ExecuteNonQuery();
 
 			Console.WriteLine("  COMMIT...");
 			cmd2.CommandText = "COMMIT";
-			cmd2.ExecuteNonQuery ();
+			cmd2.ExecuteNonQuery();
 
-			Console.WriteLine("  Call stored procedure SP_TESTOUTPARM3 with two parameters...");
-			OracleCommand cmd3 = con.CreateCommand ();
+			Console.WriteLine("  Call stored procedure SP_OUTPUTPARMTEST5 with 4 parameters...");
+			//OracleTransaction trans = con.BeginTransaction();
+			//OracleCommand cmd4 = con.CreateCommand();
+			//cmd4.Transaction = trans;
+			//OracleLob lob = CreateTemporaryLobLocator(cmd4, OracleType.Clob);
+
+			OracleCommand cmd3 = con.CreateCommand();
+			//cmd3.Transaction = trans;
 			cmd3.CommandType = CommandType.Text;
-			cmd3.CommandText = 
-				"BEGIN " +
-				"	SP_TESTOUTPARM3(:p1, :p2);" +
-				"END;";
-			OracleParameter myParameter1 = new OracleParameter("p1", OracleType.DateTime);
-			myParameter1.Value = new DateTime(2004,12,15);
+			cmd3.CommandText =
+			    "DECLARE " +
+			    "       tempP3 CLOB; " +
+			    "BEGIN " +
+			    "	tempP3 := :inp3; " +
+			    "	:ReturnValue := SP_OUTPUTPARMTEST5(:p1, :p2, tempP3); " +
+			    "	:outp3 := tempP3;" +
+			    "END;";
+			OracleParameter myParameter1 = new OracleParameter("p1", OracleType.Clob);
+			myParameter1.Size = 1000;
 			myParameter1.Direction = ParameterDirection.Input;
-		
-			OracleParameter myParameter2 = new OracleParameter("p2", OracleType.DateTime);
+			myParameter1.Value = "Two";
+
+			OracleParameter myParameter2 = new OracleParameter("p2", OracleType.Clob);
+			myParameter2.Size = 1000;
 			myParameter2.Direction = ParameterDirection.Output;
 
-			cmd3.Parameters.Add (myParameter1);
-			cmd3.Parameters.Add (myParameter2);
+			// impossible to use one OracleParameter for an CLOB IN OUT parameter?
+			// I had to create two parameters for the 3rd parameter: in3 as input and out3 as output
+			// and in the anonymous PL/SQL block, get and set the 3rd parameter appropriately
 
-			cmd3.ExecuteNonQuery ();
-			DateTime outValue = (DateTime) myParameter2.Value;
-			Console.WriteLine ("    Out Value should be: 2004-12-18");
-			Console.WriteLine ("    Out Value: {0}", outValue.ToString ("yyyy-mm-dd"));
+			OracleParameter myParameterIn3 = new OracleParameter("inp3", OracleType.Clob);
+			myParameterIn3.Size = 1000;
+			myParameterIn3.Direction = ParameterDirection.Input;
+			string s = "Everything";
+			myParameterIn3.Value = s;
+
+			OracleParameter myParameterOut3 = new OracleParameter("outp3", OracleType.Clob);
+			myParameterOut3.Size = 1000;
+			myParameterOut3.Direction = ParameterDirection.Output;
+
+			OracleParameter myParameter4 = new OracleParameter("ReturnValue", OracleType.Clob);
+			myParameter4.Size = 1000;
+			myParameter4.Direction = ParameterDirection.ReturnValue;
+
+			cmd3.Parameters.Add(myParameter1);
+			cmd3.Parameters.Add(myParameter2);
+			cmd3.Parameters.Add(myParameterIn3);
+			cmd3.Parameters.Add(myParameterOut3);
+			cmd3.Parameters.Add(myParameter4);
+
+			cmd3.ExecuteNonQuery();
+
+			string outValue = GetOracleClobValue(myParameter2); 
+			string inOutValue = GetOracleClobValue(myParameterOut3);
+			string returnValue = GetOracleClobValue(myParameter4);
+			Console.WriteLine("    1Out Value should be: OneTwoThree");
+			Console.WriteLine("    1Out Value: " + outValue);
+			Console.WriteLine("    1InOut Value should be: OneTwoThreeEverythingFive");
+			Console.WriteLine("    1InOut Value: " + inOutValue);
+			Console.WriteLine("    1Return Value should be: Clobber");
+			Console.WriteLine("    1Return Value: " + returnValue);
+			Console.WriteLine();
+
+			myParameter1.Value = DBNull.Value;
+			myParameterIn3.Value = "Hello";
+			cmd3.ExecuteNonQuery();
+			outValue = GetOracleClobValue(myParameter2);
+			inOutValue = GetOracleClobValue(myParameterOut3);
+			returnValue = GetOracleClobValue(myParameter4);
+			Console.WriteLine("    2Out Value should be: parm1 is null");
+			Console.WriteLine("    2Out Value: " + outValue);
+			Console.WriteLine("    2InOut Value should be: parm1 is nullHelloFive");
+			Console.WriteLine("    2InOut Value: " + inOutValue);
+			Console.WriteLine("    2Return Value should be: Clobber");
+			Console.WriteLine("    2Return Value: " + returnValue);
+			Console.WriteLine();
+
+			myParameter1.Value = "999";
+			myParameterIn3.Value = "Bye";
+			cmd3.ExecuteNonQuery();
+			outValue = GetOracleClobValue(myParameter2);
+			inOutValue = GetOracleClobValue(myParameterOut3);
+			returnValue = GetOracleClobValue(myParameter4);
+			Console.WriteLine("    3Out Value should be: Value is DBNull.Value");
+			Console.WriteLine("    3Out Value: " + outValue);
+			Console.WriteLine("    3InOut Value should be: Value is DBNull.Value");
+			Console.WriteLine("    3InOut Value: " + inOutValue);
+			Console.WriteLine("    3Return Value should be: Value is DBNull.Value");
+			Console.WriteLine("    3Return Value: " + returnValue);
+			Console.WriteLine();
+
+			myParameter1.Value = "***";
+			myParameterIn3.Value = DBNull.Value;
+			cmd3.ExecuteNonQuery();
+			outValue = GetOracleClobValue(myParameter2);
+			inOutValue = GetOracleClobValue(myParameterOut3);
+			returnValue = GetOracleClobValue(myParameter4);
+			Console.WriteLine("    4Out Value should be: One***Three");
+			Console.WriteLine("    4Out Value: " + outValue);
+			Console.WriteLine("    4InOut Value should be: parm3 in was NULL");
+			Console.WriteLine("    4InOut Value: " + inOutValue);
+			Console.WriteLine("    4Return Value should be: Clobber");
+			Console.WriteLine("    4Return Value: " + returnValue);
+			Console.WriteLine();
+			
+			myParameter1.Value = OracleLob.Null;
+			myParameterIn3.Value = "bass";
+			cmd3.ExecuteNonQuery();
+			outValue = GetOracleClobValue(myParameter2);
+			inOutValue = GetOracleClobValue(myParameterOut3);
+			returnValue = GetOracleClobValue(myParameter4);
+			Console.WriteLine("    5Out Value should be: parm1 is null");
+			Console.WriteLine("    5Out Value: " + outValue);
+			Console.WriteLine("    5InOut Value should be: parm1 is nullbassFive");
+			Console.WriteLine("    5InOut Value: " + inOutValue);
+			Console.WriteLine("    5Return Value should be: Clobber");
+			Console.WriteLine("    5Return Value: " + returnValue);
+			Console.WriteLine();
+			
+			myParameter1.Value = "888";
+			myParameterIn3.Value = "777";
+			cmd3.ExecuteNonQuery();
+			outValue = GetOracleClobValue(myParameter2);
+			inOutValue = GetOracleClobValue(myParameterOut3);
+			returnValue = GetOracleClobValue(myParameter4);
+			Console.WriteLine("    6Out Value should be: Zero Length");
+			Console.WriteLine("    6Out Value: " + outValue);
+			Console.WriteLine("    6InOut Value should be: Zero Length");
+			Console.WriteLine("    6InOut Value: " + inOutValue);
+			Console.WriteLine("    6Return Value should be: Zero Length");
+			Console.WriteLine("    6Return Value: " + returnValue);
+			Console.WriteLine();		
+		}
+
+		public static string GetOracleClobValue (OracleParameter parm)
+		{
+			if (parm.Value.Equals (DBNull.Value))
+				return "Clob is DBNull.Value";
+			OracleLob lob = (OracleLob) parm.Value;
+			if (lob.Length == 0)
+				return "Zero Length";
+			return lob.Value.ToString ();
+		}
+
+		public static OracleLob CreateTemporaryLobLocator (OracleCommand cmd, OracleType lobType)
+		{
+			cmd.CommandText =
+				"DECLARE TEMP_LOB " + lobType.ToString () + "; " +
+				"   BEGIN " +
+				"       SYS.DBMS_LOB.CREATETEMPORARY (TEMP_LOB, FALSE); " +
+				"       :TempLobLocator := TEMP_LOB; " +
+				" END;";
+
+			OracleParameter parm = cmd.Parameters.Add ("TempLobLocator", lobType);
+			parm.Direction = ParameterDirection.Output;
+
+			cmd.ExecuteNonQuery ();
+
+			return (OracleLob)parm.Value;
+		}
+
+		static void OutParmTest6 (OracleConnection con) 
+		{
+		    // test stored function with 4 parameters
+		    // 1. input timestamp
+		    // 2. output timestamp
+		    // 3. input output timestamp
+		    // 4. return timestamp
+
+		    // a TIMESTAMP type in Oracle has Date and Time          
+
+		    Console.WriteLine("  Create stored function SF_TESTOUTPARM6 to test Date parameters...");
+
+		    OracleCommand cmd2 = con.CreateCommand();
+		    cmd2.CommandText =
+		        "CREATE OR REPLACE FUNCTION SF_TESTOUTPARM6(parm1 IN TIMESTAMP, parm2 OUT TIMESTAMP, parm3 IN OUT TIMESTAMP) RETURN TIMESTAMP " +
+		        "IS " +
+		        "   returnValue TIMESTAMP := TO_TIMESTAMP('2001-07-01 15:32:52', 'YYYY-MM-DD HH24:MI:SS');" +
+		        "BEGIN " +
+		        "   IF parm1 IS NULL THEN " +
+		        "      parm2 := TO_TIMESTAMP('1900-12-31', 'YYYY-MM-DD'); " +
+		        "      parm3 := TO_TIMESTAMP('1900-12-31', 'YYYY-MM-DD'); " +
+		        "   ELSIF parm1 = TO_TIMESTAMP('1979-11-25','YYYY-MM-DD') THEN " +
+		        "      parm2 := NULL;" +
+		        "      parm3 := NULL;" +
+		        "      returnValue := NULL;"+
+		        "   ELSIF parm3 IS NULL THEN " +
+		        "      parm2 := TO_TIMESTAMP('2008-08-08', 'YYYY-MM-DD');" +
+		        "      parm3 := TO_TIMESTAMP('2000-01-01', 'YYYY-MM-DD');" +
+		        "   ELSE " +
+		        "      -- add 3 days to date\n " +
+		        "	   parm2 := parm1 + 3; " +
+		        "      parm3 := parm3 + 5; " +
+		        "   END IF; " +
+		        "   RETURN returnValue;" +
+		        "END;";
+
+		    cmd2.ExecuteNonQuery();
+
+		    Console.WriteLine("  COMMIT...");
+		    cmd2.CommandText = "COMMIT";
+		    cmd2.ExecuteNonQuery();
+
+		    Console.WriteLine("  Call stored function SF_TESTOUTPARM6 with 4 parameters...");
+		    OracleCommand cmd3 = con.CreateCommand();
+		    cmd3.CommandType = CommandType.Text;
+		    cmd3.CommandText =
+		        "BEGIN " +
+		        "	:returnValue := SF_TESTOUTPARM6(:p1, :p2, :p3);" +
+		        "END;";
+		    OracleParameter myParameter1 = new OracleParameter("p1", OracleType.Timestamp);
+		    myParameter1.Value = new DateTime(2004, 12, 15);
+		    myParameter1.Direction = ParameterDirection.Input;
+
+		    OracleParameter myParameter2 = new OracleParameter("p2", OracleType.Timestamp);
+		    myParameter2.Direction = ParameterDirection.Output;
+
+		    OracleParameter myParameter3 = new OracleParameter("p3", OracleType.Timestamp);
+		    myParameter3.Value = new DateTime(2008, 10, 14, 20, 21, 22);
+		    myParameter3.Direction = ParameterDirection.InputOutput;
+
+		    OracleParameter myParameter4 = new OracleParameter("returnValue", OracleType.Timestamp);
+		    myParameter4.Direction = ParameterDirection.ReturnValue;
+
+		    cmd3.Parameters.Add(myParameter1);
+		    cmd3.Parameters.Add(myParameter2);
+		    cmd3.Parameters.Add(myParameter3);
+		    cmd3.Parameters.Add(myParameter4);
+
+		    cmd3.ExecuteNonQuery();
+		    DateTime outValue = (DateTime)myParameter2.Value;
+		    DateTime inOutValue = (DateTime)myParameter3.Value;
+		    DateTime returnValue = (DateTime)myParameter4.Value;
+		    Console.WriteLine("    1Out Value should be: 2004-12-18 00:00:00");
+		    Console.WriteLine("    1Out Value: {0}", outValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    1InOut Value should be: 2008-10-19 20:21:22");
+		    Console.WriteLine("    1InOut Value: {0}", inOutValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    1Return Value should be: 2001-07-01 15:32:52");
+		    Console.WriteLine("    1Return Value: {0}", returnValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine();
+
+		    myParameter1.Value = DBNull.Value;
+		    myParameter3.Value = new DateTime(1980, 11, 22);
+		    cmd3.ExecuteNonQuery();
+		    outValue = (DateTime)myParameter2.Value;
+		    inOutValue = (DateTime)myParameter3.Value;
+		    returnValue = (DateTime)myParameter4.Value;
+		    Console.WriteLine("    2Out Value should be: 1900-12-31 00:00:00");
+		    Console.WriteLine("    2Out Value: {0}", outValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    2InOut Value should be: 1900-12-31 00:00:00");
+		    Console.WriteLine("    2InOut Value: {0}", inOutValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    2Return Value should be: 2001-07-01 15:32:52");
+		    Console.WriteLine("    2Return Value: {0}", returnValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine();
+
+		    myParameter1.Value = new DateTime(1979, 11, 25);
+		    myParameter3.Value = new DateTime(1981, 12, 14);
+		    cmd3.ExecuteNonQuery();
+		    string soutValue = "";
+		    string sinOutValue = "";
+		    string sreturnValue = "";
+		    if (myParameter2.Value == DBNull.Value) 
+		        soutValue = "DBNull.Value";
+		    else {
+		        outValue = (DateTime)myParameter2.Value;
+		        soutValue = outValue.ToString("yyyy-MM-dd HH:mm:ss");
+		    }
+		    if (myParameter3.Value == DBNull.Value) 
+		        sinOutValue = "DBNull.Value";
+		    else {
+		        inOutValue = (DateTime)myParameter3.Value;
+		        sinOutValue = inOutValue.ToString("yyyy-MM-dd HH:mm:ss");
+		    }
+		    if (myParameter4.Value == DBNull.Value) 
+		        sreturnValue = "DBNull.Value";
+		    else {
+		        returnValue = (DateTime)myParameter4.Value;
+		        sreturnValue = returnValue.ToString("yyyy-MM-dd HH:mm:ss");
+		    }
+		    Console.WriteLine("    3Out Value should be: DBNull.Value");
+		    Console.WriteLine("    3Out Value: {0}", soutValue);
+		    Console.WriteLine("    3InOut Value should be: DBNull.Value");
+		    Console.WriteLine("    3InOut Value: {0}", sinOutValue);
+		    Console.WriteLine("    3Return Value should be: DBNull.Value");
+		    Console.WriteLine("    3Return Value: {0}", sreturnValue);
+		    Console.WriteLine();
+
+		    myParameter1.Value = new DateTime(1976, 7, 4);
+		    myParameter3.Value = DBNull.Value;
+		    cmd3.ExecuteNonQuery();
+		    outValue = (DateTime)myParameter2.Value;
+		    inOutValue = (DateTime)myParameter3.Value;
+		    returnValue = (DateTime)myParameter4.Value;
+		    Console.WriteLine("    4Out Value should be: 2008-08-08 00:00:00");
+		    Console.WriteLine("    4Out Value: {0}", outValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    4InOut Value should be: 2000-01-01 00:00:00");
+		    Console.WriteLine("    4InOut Value: {0}", inOutValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine("    4Return Value should be: 2001-07-01 15:32:52");
+		    Console.WriteLine("    4Return Value: {0}", returnValue.ToString("yyyy-MM-dd HH:mm:ss"));
+		    Console.WriteLine();
+
 		}
 
 		static void ShowConnectionProperties (OracleConnection con) 
@@ -1569,7 +2317,7 @@ namespace Test.OracleClient
 				cmd2.CommandText = "DROP TABLE MONO_TEST_TABLE3";
 				cmd2.ExecuteNonQuery ();
 			}
-			catch(OracleException oe1) {
+			catch(OracleException) {
 				// ignore if table already exists
 			}
 
@@ -1643,12 +2391,15 @@ namespace Test.OracleClient
 		
 			OracleCommand cmd = con.CreateCommand();
 
+			Console.Error.WriteLine("    create or replace package curspkg_join...");
 			cmd.CommandText = 
 				"CREATE OR REPLACE PACKAGE curspkg_join AS\n" +
 				"TYPE t_cursor IS REF CURSOR;\n" +
 				"Procedure open_join_cursor1 (n_EMPNO IN NUMBER, io_cursor IN OUT t_cursor);\n" +
 				"END curspkg_join;";
+			cmd.ExecuteNonQuery();
 
+			Console.Error.WriteLine("    create or replace package body curspkg_join...");			
 			cmd.CommandText = 
 				"CREATE OR REPLACE PACKAGE BODY curspkg_join AS\n" +
 				"   Procedure open_join_cursor1 (n_EMPNO IN NUMBER, io_cursor IN OUT t_cursor)\n" +
@@ -1658,14 +2409,14 @@ namespace Test.OracleClient
 				"        IF n_EMPNO <> 0 THEN\n" +
 				"             OPEN v_cursor FOR\n" +
 				"             SELECT EMP.EMPNO, EMP.ENAME, DEPT.DEPTNO, DEPT.DNAME\n" +
-				"                  FROM EMP, DEPT\n" +
+				"                  FROM SCOTT.EMP, SCOTT.DEPT\n" +
 				"                  WHERE EMP.DEPTNO = DEPT.DEPTNO\n" +
 				"                  AND EMP.EMPNO = n_EMPNO;\n" +
 				"\n" +
 				"        ELSE\n" +
 				"             OPEN v_cursor FOR\n" +
 				"             SELECT EMP.EMPNO, EMP.ENAME, DEPT.DEPTNO, DEPT.DNAME\n" +
-				"                  FROM EMP, DEPT\n" +
+				"                  FROM SCOTT.EMP, SCOTT.DEPT\n" +
 				"                  WHERE EMP.DEPTNO = DEPT.DEPTNO;\n" +
 				"\n" +
 				"        END IF;\n" +
@@ -1673,11 +2424,14 @@ namespace Test.OracleClient
 				"   END open_join_cursor1;\n" +
 				"END curspkg_join;";
 			cmd.ExecuteNonQuery();
+
+			cmd.CommandText = "commit";
+			cmd.ExecuteNonQuery();
 		}
 
 		public static void RefCursorTest4(OracleConnection connection) 
 		{
-			Console.WriteLine("Setup test package and data...");
+			Console.WriteLine("Setup test package and data for RefCursorTest4...");
 			OracleCommand cmddrop = connection.CreateCommand();
 
 			cmddrop.CommandText = "DROP TABLE TESTTABLE";
@@ -1696,7 +2450,7 @@ namespace Test.OracleClient
 			cmd.CommandText = 
 				"create table TESTTABLE (\n" +
 				" col1 numeric(18,0),\n" +
-				" col2 varchar(32),\n" +
+				" col2 char(32),\n" +
 				" col3 date)";
 			cmd.ExecuteNonQuery();
 
@@ -1767,7 +2521,7 @@ namespace Test.OracleClient
 				Console.WriteLine("Row {0}", r);
 				for (int f = 0; f < reader.FieldCount; f ++) {
 					object val = reader.GetValue(f);
-					Console.WriteLine("    Field {0} Value: {1}", f, val);
+					Console.WriteLine("    Field {0} Value: {1}", f, val.ToString());
 				}
 				r ++;
 			}
@@ -2157,6 +2911,279 @@ namespace Test.OracleClient
 			System.Environment.Exit (0);
 		}
 
+		private static void SetParameterOracleType (OracleConnection con) 
+		{
+			Console.WriteLine();
+			OracleParameter p = con.CreateCommand().CreateParameter();
+			Console.WriteLine("p.OracleType [VarChar]: " + p.OracleType.ToString());
+			p.OracleType = OracleType.Clob;
+			Console.WriteLine("p.OracleType [Clob]: " + p.OracleType.ToString());
+			p.Value = "SomeString";
+			Console.WriteLine("p.OracleType [Clob]: " + p.OracleType.ToString());
+			Console.WriteLine();
+
+			OracleParameter p2 = con.CreateCommand().CreateParameter();
+			Console.WriteLine("p2.OracleType [VarChar]: " + p2.OracleType.ToString());
+			p2.Value = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+			Console.WriteLine("p2.OracleType [VarChar]: " + p2.OracleType.ToString());
+			p2.OracleType = OracleType.Blob;
+			Console.WriteLine("p2.OracleType [Blob]: " + p2.OracleType.ToString());
+			Console.WriteLine();
+
+			OracleParameter p3 = new OracleParameter("test", OracleType.Clob);
+			Console.WriteLine("p3.OracleType [Clob]: " + p3.OracleType.ToString());
+			p3.Value = "blah";
+			Console.WriteLine("p3.OracleType [Clob]: " + p3.OracleType.ToString());
+			Console.WriteLine();
+
+			OracleParameter p4 = new OracleParameter("test", "blah");
+			Console.WriteLine("p4.OracleType [VarChar]: " + p4.OracleType.ToString());
+			p4.OracleType = OracleType.Clob;
+			Console.WriteLine("p4.OracleType [Clob]: " + p4.OracleType.ToString());
+			Console.WriteLine();
+
+			OracleParameter p5 = new OracleParameter ((string) null, new DateTime (2005, 3, 8));
+			Console.WriteLine("p5.OracleType [DateTime]: " + p5.OracleType.ToString());
+		}
+
+                public static void InsertBlobTest(OracleConnection con)
+                {
+			checkTNS();
+			SetupMyPackage(con);
+                        InsertBlob(con);
+                }
+
+		public static void checkTNS()
+		{
+			//string tnsAdmin = System.Environment.GetEnvironmentVariable("TNS_ADMIN");
+			//if ( (tnsAdmin == null)|| (string.Empty.Equals(tnsAdmin)) )
+			//{
+			//	System.Environment.SetEnvironmentVariable("TNS_ADMIN", "~/instantclient");
+			//}
+		}
+
+		public static decimal InsertBlob(OracleConnection con)
+		{
+			byte[] ByteArray = new byte[2000]; // test Blob data
+			byte j = 0;
+			for (int i = 0; i < ByteArray.Length; i++) {
+				ByteArray[i] = j;
+				if (j > 255)
+					j = 0;
+				j++;
+			}
+			Console.WriteLine("Test Blob Data beginning: " + GetHexString (ByteArray));
+
+			decimal retVal = -1;
+
+			string sproc = "MyPackage" + ".InsertBlob";
+
+			OracleCommand cmd = new OracleCommand();
+			cmd.CommandText = sproc;
+			cmd.CommandType = CommandType.StoredProcedure;
+			cmd.Connection = con;
+			//cmd.Connection.Open();
+			cmd.Transaction = cmd.Connection.BeginTransaction();
+
+			try {
+				OracleParameter p1 = new OracleParameter("i_Sig_File", OracleType.Blob);
+				p1.Direction = ParameterDirection.Input;
+
+				//EXCEPTION thrown here
+				//p1.Value = GetOracleLob(cmd.Transaction, ByteArray);
+				OracleLob lob2 = GetOracleLob(cmd.Transaction, ByteArray);
+				byte[] b2 = (byte[]) lob2.Value;
+				Console.WriteLine("Test Blob Data here: " + GetHexString (b2));
+				p1.Value = lob2.Value;
+				//p1.Value = ByteArray;
+
+				cmd.Parameters.Add(p1);
+
+				cmd.ExecuteNonQuery();
+
+				cmd.Transaction.Commit();
+			
+				OracleCommand select = con.CreateCommand ();
+				//select.Transaction = transaction;
+				select.CommandText = "SELECT BLOB_COLUMN FROM BLOBTEST2";
+				Console.WriteLine ("  SELECTING A BLOB (Binary) VALUE FROM BLOBTEST2");
+
+				OracleDataReader reader = select.ExecuteReader ();
+				if (!reader.Read ())
+					Console.WriteLine ("ERROR: RECORD NOT FOUND");
+
+				Console.WriteLine ("  TESTING OracleLob OBJECT ...");
+				if (reader.IsDBNull(0))
+					Console.WriteLine("Lob IsNull");
+				else {
+					OracleLob lob = reader.GetOracleLob (0);
+					if (lob == OracleLob.Null)
+						Console.WriteLine("Lob is OracleLob.Null");
+					else {
+						byte[] blob = (byte[]) lob.Value;
+						string result = GetHexString(blob);
+						Console.WriteLine("Blob result: " + result);
+						if (ByteArrayCompare (ByteArray, blob))
+							Console.WriteLine("ByteArray and blob are the same: good");
+						else
+							Console.WriteLine("ByteArray and blob are not the same: bad");
+					}
+				}
+		    }
+		    catch(Exception ex) {
+		        Console.WriteLine("I exploded:" + ex.ToString());
+		        cmd.Transaction.Rollback();
+
+		    }
+
+		    return retVal;
+
+		}
+
+		private static OracleLob GetOracleLob(OracleTransaction transaction, byte[] blob)
+		{
+		    string BLOB_CREATE = "DECLARE dpBlob BLOB; "	
+		    + "BEGIN "
+		    + "   DBMS_LOB.CREATETEMPORARY(dpBlob , False, 0); " 
+		    + "  :tempBlob := dpBlob; "
+		    + "END;";
+
+		    OracleLob tempLob = OracleLob.Null;
+		    if (blob != null)
+		    {
+		        // Create a new command using the same connection
+		        OracleCommand command = transaction.Connection.CreateCommand();
+
+		        // Assign the transaction to the command
+		        command.Transaction = transaction;
+
+		        // Create blob storage on the Oracle server
+		        command.CommandText = BLOB_CREATE;
+
+		        // Add a new output paramter to accept the blob storage	reference
+			OracleParameter parm = new OracleParameter("tempBlob", OracleType.Blob);
+			parm.Direction = ParameterDirection.Output;
+			command.Parameters.Add(parm);
+//		        command.Parameters.Add( 
+//				new OracleParameter("tempBlob", OracleType.Blob)).Direction =
+//			        	ParameterDirection.Output;
+
+		        // Fire as your guns bear...
+		        command.ExecuteNonQuery();
+
+		        // Retrieve the blob stream from the OracleLob parameter 
+		        //tempLob = (OracleLob)command.Parameters[0].Value;
+			tempLob = (OracleLob) parm.Value;
+
+		        // Prevent server side events from firing while we write to the	stream
+		        tempLob.BeginBatch(OracleLobOpenMode.ReadWrite);
+
+		        // Write bytes to the stream
+		        tempLob.Write(blob, 0, blob.Length);
+			
+		        // Resume firing server events
+		        tempLob.EndBatch();
+		    }
+
+		    return tempLob;
+		}
+
+		static void SetupMyPackage(OracleConnection con) 
+		{
+			Console.WriteLine("Setup Oracle package curspkg_join...");
+		
+			Console.WriteLine ("  Drop table BLOBTEST2 ...");
+			try {
+				OracleCommand cmd2 = con.CreateCommand ();
+				//cmd2.Transaction = transaction;
+				cmd2.CommandText = "DROP TABLE BLOBTEST2";
+				cmd2.ExecuteNonQuery ();
+			}
+			catch (OracleException) {
+				// ignore if table already exists
+			}
+
+			Console.WriteLine ("  CREATE TABLE ...");
+
+			OracleCommand create = con.CreateCommand ();
+			//create.Transaction = transaction;
+			create.CommandText = "CREATE TABLE BLOBTEST2 (BLOB_COLUMN BLOB)";
+			create.ExecuteNonQuery ();
+
+			create.CommandText = "commit";
+			create.ExecuteNonQuery();
+
+			Console.Error.WriteLine("    create or replace package MyPackage...");
+			OracleCommand cmd = con.CreateCommand();
+			cmd.CommandText = 
+				"CREATE OR REPLACE PACKAGE MyPackage AS\n" +
+				" Procedure InsertBlob (i_Sig_File blob);\n" +
+				"END MyPackage;";
+			cmd.ExecuteNonQuery();
+
+			Console.Error.WriteLine("    create or replace package body MyPackage...");			
+			cmd.CommandText = 
+				"CREATE OR REPLACE PACKAGE BODY MyPackage AS\n" +
+				"   Procedure InsertBlob (i_Sig_File blob)\n" +
+				"   IS\n" +
+				"   BEGIN\n" +
+				"	INSERT INTO BLOBTEST2 (BLOB_COLUMN) VALUES(i_Sig_File); " +
+				"   END InsertBlob; " +
+				"END MyPackage;";
+			cmd.ExecuteNonQuery();
+
+			cmd.CommandText = "commit";
+			cmd.ExecuteNonQuery();
+		}
+
+		static byte[] ByteArrayCombine (byte[] b1, byte[] b2) 
+		{
+			if (b1 == null)
+				b1 = new byte[0];
+			if (b2 == null)
+				b2 = new byte[0];
+		
+			byte[] bytes = new byte[b1.Length + b2.Length];
+			int i = 0;
+			for (int j = 0; j < b1.Length; j++) {
+				bytes[i] = b1[j];
+				i++;
+			}
+			for (int k = 0; k < b2.Length; k++) {
+				bytes[i] = b2[k];
+				i++;
+			}
+			return bytes;
+		}
+
+		static bool ByteArrayCompare(byte[] ba1, byte[] ba2)
+		{
+		    if (ba1 == null && ba2 == null)
+		        return true;
+
+		    if (ba1 == null)
+		        return false;
+
+		    if (ba2 == null)
+		        return false;
+
+		    if (ba1.Length != ba2.Length)
+		        return false;
+
+		   // for (int i = 0; i < ba1.Length; i++)
+		   // {
+			//Console.WriteLine("i: " + i.ToString() + " ba1: " + ba1[i].ToString() + " ba2: " + ba2[i].ToString());
+		    //}
+
+		    for (int i = 0; i < ba1.Length; i++)
+		    {
+		        if (ba1[i] != ba2[i])
+		            return false;
+		    }
+
+		    return true;
+		}
+
 		[STAThread]
 		static void Main(string[] args) 
 		{ 	
@@ -2181,11 +3208,14 @@ namespace Test.OracleClient
 
 			con1.InfoMessage += new OracleInfoMessageEventHandler (OnInfoMessage);
 			con1.StateChange += new StateChangeEventHandler (OnStateChange);
+
 			Console.WriteLine("Opening...");
 			con1.Open ();
 			Console.WriteLine("Opened.");
 
 			ShowConnectionProperties (con1);
+
+			InsertBlobTest (con1);
 
 			Console.WriteLine ("Mono Oracle Test BEGIN ...");
 			MonoTest (con1);
@@ -2248,6 +3278,8 @@ namespace Test.OracleClient
 			ReadSimpleTest(con1, "SELECT * FROM MONO_TEST_TABLE2");
 			Console.WriteLine ("Stored Proc Test 2 END...");
 
+			SetParameterOracleType (con1);
+
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 1 BEGIN...");
 			OutParmTest1 (con1); 
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 1 END...");
@@ -2259,6 +3291,18 @@ namespace Test.OracleClient
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 3 BEGIN...");
 			OutParmTest3 (con1); 
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 3 END...");
+
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 4 BEGIN...");
+			OutParmTest4 (con1); 
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 4 END...");
+
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 5 BEGIN...");
+			OutParmTest5 (con1); 
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 5 END...");
+
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 6 BEGIN...");
+			OutParmTest6 (con1); 
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 6 END...");
 
 			Wait ("");
 
@@ -2280,7 +3324,12 @@ namespace Test.OracleClient
 			con1.Close ();
 			Console.WriteLine("Closed.");
 
-			ExternalAuthenticationTest();
+			conStr = conStr + ";pooling=true;min pool size=4;max pool size=" + MAX_CONNECTIONS.ToString ();
+			ConnectionPoolingTest1 ();			ConnectionPoolingTest2 ();
+
+			// Need to have an external authentication user setup in Linux and oracle
+			// before running this test
+			//ExternalAuthenticationTest();
 
 			TestPersistSucurityInfo1();
 			TestPersistSucurityInfo2();
@@ -2288,11 +3337,7 @@ namespace Test.OracleClient
 			TestPersistSucurityInfo4();
 			TestPersistSucurityInfo5();
 			TestPersistSucurityInfo6();
-
-			//conStr = conStr + ";pooling=true;min pool size=4;max pool size=" + MAX_CONNECTIONS.ToString ();
-			//ConnectionPoolingTest1 ();
-			//ConnectionPoolingTest2 ();
-
+			
 			Console.WriteLine("Done.");
 		}
 	}

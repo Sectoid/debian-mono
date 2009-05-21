@@ -150,7 +150,9 @@ namespace System.Windows.Forms
 		}
 
 		public HtmlElement FirstChild {
-			get { return new HtmlElement (owner, webHost, (IElement)element.FirstChild); }
+			get {
+				return new HtmlElement (owner, webHost, (IElement)element.FirstChild); 
+			}
 		}
 
 		public HtmlElement NextSibling {
@@ -229,6 +231,8 @@ namespace System.Windows.Forms
 		
 		public override int GetHashCode ()
 		{
+			if (element == null)
+				return 0;
 			return element.GetHashCode ();
 		}
 
@@ -299,7 +303,7 @@ namespace System.Windows.Forms
 				return true;
 			if ((object)left == null || (object)right == null)
 				return false;
-			return left.Equals (right); 
+			return left.element.Equals (right.element); 
 		}
 
 		public static bool operator != (HtmlElement left, HtmlElement right)

@@ -120,7 +120,9 @@ namespace System.Windows.Forms
 		}
 
 		public override int GetHashCode () 
-		{ 
+		{
+			if (document == null)
+				return 0;			
 			return document.GetHashCode (); 
 		}
 
@@ -147,7 +149,7 @@ namespace System.Windows.Forms
 				return false;
 			}
 
-			return left.Equals (right); 
+			return left.document.Equals (right.document); 
 		}
 
 		public static bool operator !=(HtmlDocument left, HtmlDocument right) {
@@ -270,7 +272,11 @@ namespace System.Windows.Forms
 		}
 		
 		public string Title {
-			get { return document.Title; }
+			get {
+				if (document == null)
+					return String.Empty;
+				return document.Title; 
+			}
 			set { document.Title = value; }
 		}
 		
@@ -516,7 +522,13 @@ namespace System.Windows.Forms
 		}
 		
 		internal string DocType {
-			get { return this.document.DocType.Name; }
+			get { 
+				if (this.document == null)
+					return String.Empty;
+				if (this.document.DocType != null)
+					return this.document.DocType.Name;
+				return String.Empty;
+			}
 		}
 		#endregion
 	}

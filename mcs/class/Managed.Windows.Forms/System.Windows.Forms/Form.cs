@@ -95,10 +95,10 @@ namespace System.Windows.Forms {
 		internal bool			suppress_closing_events;
 		internal bool			waiting_showwindow; // for XplatUIX11
 		private bool                    is_minimizing;
+		private bool			show_icon = true;
 
 #if NET_2_0
 		private MenuStrip		main_menu_strip;
-		private bool			show_icon = true;
 		private bool			right_to_left_layout;
 		private Rectangle		restore_bounds;
 		private bool			autoscale_base_size_set;
@@ -109,6 +109,10 @@ namespace System.Windows.Forms {
 		static Form ()
 		{
 			default_icon = ResourceImageLoader.GetIcon ("mono.ico");
+		}
+
+		internal bool IsLoaded {
+			get { return is_loaded; }
 		}
 
 		internal bool IsActive {
@@ -885,6 +889,15 @@ namespace System.Windows.Forms {
 			set {
 				if (maximum_size != value) {
 					maximum_size = value;
+
+					// If this is smaller than the min, adjust the min
+					if (!minimum_size.IsEmpty) {
+						if (maximum_size.Width <= minimum_size.Width)
+							minimum_size.Width = maximum_size.Width;
+						if (maximum_size.Height <= minimum_size.Height)
+							minimum_size.Height = maximum_size.Height;
+					}
+						
 					OnMaximumSizeChanged(EventArgs.Empty);
 					if (IsHandleCreated) {
 						XplatUI.SetWindowMinMax(Handle, maximized_bounds, minimum_size, maximum_size);
@@ -986,6 +999,10 @@ namespace System.Windows.Forms {
 						}
 					} else
 						UpdateBounds ();
+#if NET_2_0
+					// UIA Framework Event: Menu Changed
+					OnUIAMenuChanged (EventArgs.Empty);
+#endif
 				}
 			}
 		}
@@ -1065,6 +1082,14 @@ namespace System.Windows.Forms {
 				if (minimum_size != value) {
 					minimum_size = value;
 
+					// If this is bigger than the max, adjust the max
+					if (!maximum_size.IsEmpty) {
+						if (minimum_size.Width >= maximum_size.Width)
+							maximum_size.Width = minimum_size.Width;
+						if (minimum_size.Height >= maximum_size.Height)
+							maximum_size.Height = minimum_size.Height;
+					}
+					
 					if ((Size.Width < value.Width) || (Size.Height < value.Height)) {
 						Size = new Size(Math.Max(Size.Width, value.Width), Math.Max(Size.Height, value.Height));
 					}
@@ -1290,6 +1315,11 @@ namespace System.Windows.Forms {
 					topmost = value;
 					if (IsHandleCreated)
 						XplatUI.SetTopmost(window.Handle, value);
+
+#if NET_2_0
+					// UIA Framework: Raises internal event
+					OnUIATopMostChanged ();
+#endif
 				}
 			}
 		}
@@ -1345,6 +1375,12 @@ namespace System.Windows.Forms {
 
 					XplatUI.SetWindowState(Handle, value);
 				}
+
+#if NET_2_0
+				// UIA Framework: Raises internal event
+				if (old_state != window_state) 
+					OnUIAWindowStateChanged ();
+#endif
 			}
 		}
 
@@ -1524,7 +1560,8 @@ namespace System.Windows.Forms {
 				//only do this when on Windows, since X behaves weirdly otherwise
 				//modal windows appear below their parent/owner/ancestor.
 				//(confirmed on several window managers, so it's not a wm bug).
-				bool is_unix = ((int) Environment.OSVersion.Platform) == 128 || ((int) Environment.OSVersion.Platform == 4);
+				int p = (int) Environment.OSVersion.Platform;
+				bool is_unix = (p == 128) || (p == 4) || (p == 6);
 				if ((VisibleInternal && (is_changing_visible_state == 0 || is_unix)) || this.IsRecreating)
 					cp.Style |= (int)WindowStyles.WS_VISIBLE;
 
@@ -1625,8 +1662,12 @@ namespace System.Windows.Forms {
 			if (IsDisposed)
 				return;
 
-			if (!IsHandleCreated)
+			if (!IsHandleCreated) {
+#if NET_2_0
+				base.Dispose ();
+#endif
 				return;
+			}
  
 			if (Menu != null)
 				XplatUI.SetMenu (window.Handle, null);
@@ -1728,6 +1769,10 @@ namespace System.Windows.Forms {
 
 			if (owner_to_be != null)
 				this.owner = owner_to_be;
+				
+			// If our owner is topmost, we better be too, or else we'll show up under our owner
+			if (this.owner != null && this.owner.TopMost)
+				this.TopMost = true;
 				
 			#if broken
 			// Can't do this, will screw us in the modal loop
@@ -1957,7 +2002,8 @@ namespace System.Windows.Forms {
 			}
 
 			XplatUI.SetWindowMinMax(window.Handle, maximized_bounds, minimum_size, maximum_size);
-			if ((FormBorderStyle != FormBorderStyle.FixedDialog) && (icon != null)) {
+			
+			if (show_icon && (FormBorderStyle != FormBorderStyle.FixedDialog) && (icon != null)) {
 				XplatUI.SetIcon(window.Handle, icon);
 			}
 
@@ -2437,6 +2483,15 @@ namespace System.Windows.Forms {
 #endif
 				shown_raised = true;
 			}
+			
+			if (value && !IsMdiChild) {
+				if (ActiveControl == null)
+					SelectNextControl (null, true, true, true, false);
+				if (ActiveControl != null)
+					SendControlFocus (ActiveControl);
+				else
+					this.Focus ();
+			}
 		}
 
 		protected override void UpdateDefaultButton() {
@@ -2915,8 +2970,17 @@ namespace System.Windows.Forms {
 
 			if (!IsDisposed) {
 				OnSizeInitializedOrChanged ();
-				OnLoad (e);
 				
+				// We do this here because when we load the MainForm,
+				// it happens before the exception catcher in NativeWindow,
+				// so the user can error in handling Load and we wouldn't catch it.
+				try {
+					OnLoad (e);
+				}
+				catch (Exception ex) {
+					Application.OnThreadException (ex);
+				}
+
 				if (!IsDisposed)
 					is_visible = true;
 			}
@@ -3235,6 +3299,50 @@ namespace System.Windows.Forms {
 				eh (this, e);
 		}
 #endif
+
+		#region UIA Framework Events
+#if NET_2_0
+		static object UIAMenuChangedEvent = new object ();
+		static object UIATopMostChangedEvent = new object ();
+		static object UIAWindowStateChangedEvent = new object ();
+
+		internal event EventHandler UIAMenuChanged {
+			add { Events.AddHandler (UIAMenuChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAMenuChangedEvent, value); }
+		}
+
+		internal event EventHandler UIATopMostChanged {
+			add { Events.AddHandler (UIATopMostChangedEvent, value); }
+			remove { Events.RemoveHandler (UIATopMostChangedEvent, value); }
+		}
+
+		internal event EventHandler UIAWindowStateChanged {
+			add { Events.AddHandler (UIAWindowStateChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAWindowStateChangedEvent, value); }
+		}
+
+		internal void OnUIAMenuChanged (EventArgs e)
+		{
+			EventHandler eh = (EventHandler) Events [UIAMenuChangedEvent];
+			if (eh != null)
+				eh (this, e);
+		}
+
+		internal void OnUIATopMostChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIATopMostChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIAWindowStateChanged ()
+		{
+			EventHandler eh = (EventHandler) Events [UIAWindowStateChangedEvent];
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+#endif
+		#endregion	// UIA Framework Events
 		#endregion	// Events
 	}
 }

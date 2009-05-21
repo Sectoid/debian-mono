@@ -80,6 +80,8 @@ namespace System.Net.NetworkInformation {
 				if (!canSendPrivileged && WindowsIdentity.GetCurrent ().Name == "root")
 					canSendPrivileged = true;
 			}
+			else
+				canSendPrivileged = true;
 		}
 		
 		public Ping ()
@@ -163,7 +165,7 @@ namespace System.Net.NetworkInformation {
 			return Send (address, timeout, buffer, options);
 		}
 
-		IPAddress GetNonLoopbackIP ()
+		static IPAddress GetNonLoopbackIP ()
 		{
 			foreach (IPAddress addr in Dns.GetHostByName (Dns.GetHostName ()).AddressList)
 				if (!IPAddress.IsLoopback (addr))
@@ -179,12 +181,13 @@ namespace System.Net.NetworkInformation {
 				throw new ArgumentOutOfRangeException ("timeout", "timeout must be non-negative integer");
 			if (buffer == null)
 				throw new ArgumentNullException ("buffer");
+			if (buffer.Length > 65500)
+				throw new ArgumentException ("buffer");
 			// options can be null.
 
 			if (canSendPrivileged)
 				return SendPrivileged (address, timeout, buffer, options);
-			else
-				return SendUnprivileged (address, timeout, buffer, options);
+			return SendUnprivileged (address, timeout, buffer, options);
 		}
 
 		private PingReply SendPrivileged (IPAddress address, int timeout, byte [] buffer, PingOptions options)
@@ -193,27 +196,35 @@ namespace System.Net.NetworkInformation {
 			IPEndPoint client = new IPEndPoint (GetNonLoopbackIP (), 0);
 
 			// FIXME: support IPv6
-			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.Icmp);
-			if (options != null) {
-				s.DontFragment = options.DontFragment;
-				s.Ttl = (short) options.Ttl;
-			}
-			s.SendTimeout = timeout;
-			s.ReceiveTimeout = timeout;
-			// not sure why Identifier = 0 is unacceptable ...
-			IcmpMessage send = new IcmpMessage (8, 0, identifier, 0, buffer);
-			byte [] bytes = send.GetBytes ();
-			s.SendBufferSize = bytes.Length;
-			s.SendTo (bytes, bytes.Length, SocketFlags.None, target);
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.Icmp)) {
+				if (options != null) {
+					s.DontFragment = options.DontFragment;
+					s.Ttl = (short) options.Ttl;
+				}
+				s.SendTimeout = timeout;
+				s.ReceiveTimeout = timeout;
+				// not sure why Identifier = 0 is unacceptable ...
+				IcmpMessage send = new IcmpMessage (8, 0, identifier, 0, buffer);
+				byte [] bytes = send.GetBytes ();
+				s.SendBufferSize = bytes.Length;
+				s.SendTo (bytes, bytes.Length, SocketFlags.None, target);
 
-			DateTime sentTime = DateTime.Now;
+				DateTime sentTime = DateTime.Now;
 
-			// receive
-			bytes = new byte [100];
-			do {
-				try {
+				// receive
+				bytes = new byte [100];
+				do {
 					EndPoint endpoint = client;
-					int rc = s.ReceiveFrom (bytes, 100, SocketFlags.None, ref endpoint);
+					int error = 0;
+					int rc = s.ReceiveFrom_nochecks_exc (bytes, 0, 100, SocketFlags.None,
+							ref endpoint, false, out error);
+
+					if (error != 0) {
+						if (error == (int) SocketError.TimedOut) {
+							return new PingReply (null, new byte [0], options, 0, IPStatus.TimedOut);
+						}
+						throw new NotSupportedException (String.Format ("Unexpected socket error during ping request: {0}", error));
+					}
 					long rtt = (long) (DateTime.Now - sentTime).TotalMilliseconds;
 					int headerLength = (bytes [0] & 0xF) << 2;
 					int bodyLength = rc - headerLength;
@@ -222,22 +233,14 @@ namespace System.Net.NetworkInformation {
 						continue;
 
 					IcmpMessage recv = new IcmpMessage (bytes, headerLength, bodyLength);
-					if (recv.Identifier != identifier)
-						continue; // ping reply to different request. discard it.
+
+					/* discard ping reply to different request or echo requests if running on same host. */
+					if (recv.Identifier != identifier || recv.Type == 8)
+						continue; 
 
 					return new PingReply (address, recv.Data, options, rtt, recv.IPStatus);
-				} catch (SocketException ex) {
-					IPStatus stat;
-					switch (ex.SocketErrorCode) {
-					case SocketError.TimedOut:
-						stat = IPStatus.TimedOut;
-						break;
-					default:
-						throw new NotSupportedException (String.Format ("Unexpected socket error during ping request: {0}", ex.SocketErrorCode));
-					}
-					return new PingReply (null, new byte [0], options, 0, stat);
-				}
-			} while (true);
+				} while (true);
+			}
 		}
 
 		private PingReply SendUnprivileged (IPAddress address, int timeout, byte [] buffer, PingOptions options)
@@ -257,12 +260,14 @@ namespace System.Net.NetworkInformation {
 			ping.StartInfo.RedirectStandardOutput = true;
 			ping.StartInfo.RedirectStandardError = true;
 
+			DateTime start = DateTime.UtcNow;
 			try {
 				ping.Start ();
 
 #pragma warning disable 219
-				string stdout = ping.StandardOutput.ReadToEnd ();
-				string stderr = ping.StandardError.ReadToEnd ();
+			// No need to read stdout or stderr as long as the output is less than 4k on linux <= 2.6.11 and 65k after that
+			//	string stdout = ping.StandardOutput.ReadToEnd ();
+			//	string stderr = ping.StandardError.ReadToEnd ();
 #pragma warning restore 219
 				
 				trip_time = (long) (DateTime.Now - sentTime).TotalMilliseconds;
@@ -363,7 +368,7 @@ namespace System.Net.NetworkInformation {
 			public IcmpMessage (byte [] bytes, int offset, int size)
 			{
 				this.bytes = new byte [size];
-				Array.Copy (bytes, offset, this.bytes, 0, size);
+				Buffer.BlockCopy (bytes, offset, this.bytes, 0, size);
 			}
 
 			// to be sent
@@ -376,7 +381,7 @@ namespace System.Net.NetworkInformation {
 				bytes [5] = (byte) ((int) identifier >> 8);
 				bytes [6] = (byte) (sequence & 0xFF);
 				bytes [7] = (byte) ((int) sequence >> 8);
-				Array.Copy (data, 0, bytes, 8, data.Length);
+				Buffer.BlockCopy (data, 0, bytes, 8, data.Length);
 
 				ushort checksum = ComputeChecksum (bytes);
 				bytes [2] = (byte) (checksum & 0xFF);
@@ -402,7 +407,7 @@ namespace System.Net.NetworkInformation {
 			public byte [] Data {
 				get {
 					byte [] data = new byte [bytes.Length - 8];
-					Array.Copy (bytes, 0, data, 0, data.Length);
+					Buffer.BlockCopy (bytes, 0, data, 0, data.Length);
 					return data;
 				}
 			}
@@ -458,26 +463,26 @@ namespace System.Net.NetworkInformation {
 						return IPStatus.ParameterProblem;
 					case 4:
 						return IPStatus.SourceQuench;
+					case 8:
+						return IPStatus.Success;
 					}
-					throw new NotSupportedException (String.Format ("Unexpected pair of ICMP message type and code: type is {0} and code is {1}", Type, Code));
+					return IPStatus.Unknown;
+					//throw new NotSupportedException (String.Format ("Unexpected pair of ICMP message type and code: type is {0} and code is {1}", Type, Code));
 				}
 			}
 		}
 
 		private string BuildPingArgs (IPAddress address, int timeout, PingOptions options)
 		{
+			CultureInfo culture = CultureInfo.InvariantCulture;
 			StringBuilder args = new StringBuilder ();
-
-			args.AppendFormat ("-c {0} ", DefaultCount, CultureInfo.InvariantCulture);
-			args.AppendFormat ("-w {0} ", (double)timeout / 1000.0, CultureInfo.InvariantCulture);
-			args.AppendFormat ("-t {0} ", options.Ttl, CultureInfo.InvariantCulture);
-			args.Append ("-M ");
+			uint t = Convert.ToUInt32 (Math.Floor ((timeout + 1000) / 1000.0));
+			args.AppendFormat (culture, "-q -n -c {0} -w {1} -t {2} -M ", DefaultCount, t, options.Ttl);
 			args.Append (options.DontFragment ? "do " : "dont ");
 
 			args.Append (address.ToString ());
 
 			return args.ToString ();
-		
 		}
 
 	}

@@ -41,6 +41,10 @@ namespace System
 {
 	[ComVisible (true)]
 	public static class Nullable {
+
+#if NET_2_1
+		[ComVisible (false)]
+#endif
 		public static int Compare<T> (T? value1, T? value2) where T: struct
 		{
 			if (value1.has_value) {
@@ -53,6 +57,9 @@ namespace System
 			return value2.has_value ? -1 : 0;
 		}
 
+#if NET_2_1
+		[ComVisible (false)]
+#endif
 		public static bool Equals<T> (T? value1, T? value2) where T: struct
 		{
 			if (value1.has_value != value2.has_value)
@@ -165,7 +172,7 @@ namespace System
 		//
 		// These are called by the JIT
 		//
-		
+#pragma warning disable 169
 		//
 		// JIT implementation of box valuetype System.Nullable`1<T>
 		//
@@ -183,6 +190,7 @@ namespace System
 				return null;
 			return (T) o;
 		}
+#pragma warning restore 169
 	}
 }
 #endif

@@ -40,11 +40,12 @@ namespace System.Web.UI.WebControls
 	[DefaultEvent ("Click")]
 	[AspNetHostingPermissionAttribute (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermissionAttribute (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
+	[SupportsEventValidation]
 	public class ImageMap: Image, IPostBackEventHandler
 	{
 		HotSpotCollection spots;
 		
-		private static readonly object ClickEvent = new object();
+		static readonly object ClickEvent = new object();
 		
 		[Category ("Action")]
 		public event ImageMapEventHandler Click
@@ -61,7 +62,7 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-	    [DefaultValueAttribute (HotSpotMode.NotSet)]
+		[DefaultValueAttribute (HotSpotMode.NotSet)]
 		public virtual HotSpotMode HotSpotMode {
 			get {
 				object o = ViewState ["HotSpotMode"];
@@ -72,7 +73,7 @@ namespace System.Web.UI.WebControls
 			}
 		}
 		
-	    [DefaultValueAttribute ("")]
+		[DefaultValueAttribute ("")]
 		public virtual string Target {
 			get {
 				object o = ViewState ["Target"];
@@ -83,9 +84,9 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-	    [NotifyParentPropertyAttribute (true)]
-	    [PersistenceModeAttribute (PersistenceMode.InnerDefaultProperty)]
-	    [DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Content)]
+		[NotifyParentPropertyAttribute (true)]
+		[PersistenceModeAttribute (PersistenceMode.InnerDefaultProperty)]
+		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Content)]
 		public HotSpotCollection HotSpots {
 			get {
 				if (spots == null) {
@@ -128,6 +129,7 @@ namespace System.Web.UI.WebControls
 		
 		public void RaisePostBackEvent (string eventArgument)
 		{
+			ValidateEvent (UniqueID, eventArgument);
 			HotSpot spot = HotSpots [int.Parse (eventArgument)];
 			OnClick (new ImageMapEventArgs (spot.PostBackValue));
 		}
@@ -174,7 +176,7 @@ namespace System.Web.UI.WebControls
 							writer.AddAttribute (HtmlTextWriterAttribute.Href, navUrl);
 							break;
 						case HotSpotMode.PostBack:
-							writer.AddAttribute (HtmlTextWriterAttribute.Href, Page.ClientScript.GetPostBackClientHyperlink (this, n.ToString()));
+							writer.AddAttribute (HtmlTextWriterAttribute.Href, Page.ClientScript.GetPostBackClientHyperlink (this, n.ToString(), true));
 							break;
 					}
 						

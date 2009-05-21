@@ -15,7 +15,7 @@ using System.Drawing;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class LinkLabelTest
+	public class LinkLabelTest : TestHelper
 	{
 		[Test]
 		public void LinkLabelAccessibility ()
@@ -71,12 +71,36 @@ namespace MonoTests.System.Windows.Forms
 			form.Show ();
 			form.Dispose ();
 		}
+		
+		[Test]	// bug 410709
+		public void LinkAreaSetter ()
+		{
+			// Basically this test is to show that setting LinkArea erased
+			// any previous links
+			LinkLabel l = new LinkLabel ();
+			
+			l.Text = "Really long text";
+			
+			Assert.AreEqual (1, l.Links.Count, "A1");
+			
+			l.Links.Clear ();
+			l.Links.Add (0, 3);
+			l.Links.Add (5, 3);
+
+			Assert.AreEqual (2, l.Links.Count, "A2");
+		
+			l.LinkArea = new LinkArea (1, 7);
+
+			Assert.AreEqual (1, l.Links.Count, "A3");
+			Assert.AreEqual (1, l.LinkArea.Start, "A4");
+			Assert.AreEqual (7, l.LinkArea.Length, "A5");
+		}
 	}
 
 
 #if NET_2_0
 	[TestFixture]
-	public class LinkTest
+	public class LinkTest : TestHelper
 	{
 		[Test]
 		public void Constructor ()
@@ -118,7 +142,7 @@ namespace MonoTests.System.Windows.Forms
 #endif
 
 	[TestFixture]
-	public class LinkCollectionTest
+	public class LinkCollectionTest : TestHelper
 	{
 		[Test] // ctor (LinkLabel)
 		public void Constructor1 ()

@@ -68,7 +68,6 @@ namespace System.Drawing.Printing
 		internal NameValueCollection printer_capabilities; // this stores a list of all the printer options. Used only in cups, but might come in handy on win too.
 		public PrinterSettings() : this (SysPrn.CreatePrintingService ())
 		{			
-			print_tofile = false;
 		}
 		
 		internal PrinterSettings (PrintingServices printing_services)
@@ -569,10 +568,11 @@ namespace System.Drawing.Printing
 		}
 		
 		#endregion
-
+/*
 		void GetPrintDialogInfo (string printer_name, ref string port, ref string type, ref string status, ref string comment)
 		{
 			printing_services.GetPrintDialogInfo (printer_name, ref port, ref type, ref status, ref comment);
 		}
+*/
 	}
 }

@@ -34,43 +34,39 @@
 
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using System.Text;
 
 namespace System.Data.Common {
 	public abstract class DbCommandBuilder : Component
 	{
-		bool _setAllValues = false;
-		bool _disposed = false;
+		bool _setAllValues;
+		bool _disposed;
 
 		DataTable _dbSchemaTable;
-		DbDataAdapter _dbDataAdapter = null;
+		DbDataAdapter _dbDataAdapter;
 		private CatalogLocation _catalogLocation = CatalogLocation.Start;
-		private ConflictOption _conflictOption;
+		private ConflictOption _conflictOption = ConflictOption.CompareAllSearchableValues;
 
 		private string _tableName;
-		private string _catalogSeperator = ".";
+		private string _catalogSeparator;
 		private string _quotePrefix;
 		private string _quoteSuffix;
-		private string _schemaSeperator = ".";
-		private DbCommand _dbCommand = null;
-
-		// Used to construct WHERE clauses
-		static readonly string clause1 = "({0} = 1 AND {1} IS NULL)";
-		static readonly string clause2 = "({0} = {1})";
+		private string _schemaSeparator;
+		private DbCommand _dbCommand;
 
 		DbCommand _deleteCommand;
 		DbCommand _insertCommand;
 		DbCommand _updateCommand;
 
-		#region Constructors
+		static readonly string SEPARATOR_DEFAULT = ".";
+		// Used to construct WHERE clauses
+		static readonly string clause1 = "({0} = 1 AND {1} IS NULL)";
+		static readonly string clause2 = "({0} = {1})";
 
 		protected DbCommandBuilder ()
 		{
 		}
-
-		#endregion // Constructors
-
-		#region Properties
 
 		private void BuildCache (bool closeConnection)
 		{
@@ -100,13 +96,23 @@ namespace System.Data.Common {
 			get { return GetQuotedString (_tableName); }
 		}
 
+		bool IsCommandGenerated {
+			get {
+				return (_insertCommand != null || _updateCommand != null || _deleteCommand != null);
+			}
+		}
+
 		private string GetQuotedString (string value)
 		{
 			if (value == String.Empty || value == null)
 				return value;
-			if (_quotePrefix == String.Empty && _quoteSuffix == String.Empty)
+
+			string prefix = QuotePrefix;
+			string suffix = QuoteSuffix;
+
+			if (prefix.Length == 0 && suffix.Length == 0)
 				return value;
-			return String.Format ("{0}{1}{2}", _quotePrefix, value, _quoteSuffix);
+			return String.Format ("{0}{1}{2}", prefix, value, suffix);
 		}
 
 		private void BuildInformation (DataTable schemaTable)
@@ -179,14 +185,12 @@ namespace System.Data.Common {
 			CreateNewCommand (ref _deleteCommand);
 
 			string command = String.Format ("DELETE FROM {0}", QuotedTableName);
-			StringBuilder columns = new StringBuilder ();
 			StringBuilder whereClause = new StringBuilder ();
-			string dsColumnName = String.Empty;
 			bool keyFound = false;
 			int parmIndex = 1;
 
 			foreach (DataRow schemaRow in _dbSchemaTable.Rows) {
-				if ((bool)schemaRow["IsExpression"] == true)
+				if (!schemaRow.IsNull ("IsExpression") && (bool)schemaRow["IsExpression"] == true)
 					continue;
 				if (!IncludedInWhereClause (schemaRow)) 
 					continue;
@@ -221,13 +225,7 @@ namespace System.Data.Common {
 					whereClause.Append (" OR ");
 				}
 
-				int index = 0;
-				if (option) {
-					index = CreateParameter (_deleteCommand, schemaRow);
-				} else {
-					index = CreateParameter (_deleteCommand, parmIndex++, schemaRow);
-				}
-				parameter = _deleteCommand.Parameters [index];
+				parameter = CreateParameter (_deleteCommand, String.Format ("@{0}", option ? schemaRow ["BaseColumnName"] : "p" + parmIndex++), schemaRow);
 				parameter.SourceVersion = DataRowVersion.Original;
 
 				whereClause.Append (String.Format (clause2, GetQuotedString (parameter.SourceColumn), parameter.ParameterName));
@@ -256,25 +254,18 @@ namespace System.Data.Common {
 			string sql;
 			StringBuilder columns = new StringBuilder ();
 			StringBuilder values = new StringBuilder ();
-			string dsColumnName = String.Empty;
 
 			int parmIndex = 1;
 			foreach (DataRow schemaRow in _dbSchemaTable.Rows) {
 				if (!IncludedInInsert (schemaRow))
 					continue;
 
-				if (parmIndex > 1) {
+				if (columns.Length > 0) {
 					columns.Append (", ");
 					values.Append (", ");
 				}
 
-				int index = -1;
-				if (option) {
-					index = CreateParameter (_insertCommand, schemaRow);
-				} else {
-					index = CreateParameter (_insertCommand, parmIndex++, schemaRow);
-				}
-				DbParameter parameter = _insertCommand.Parameters [index];
+				DbParameter parameter = CreateParameter (_insertCommand, String.Format ("@{0}", option ? schemaRow ["BaseColumnName"] : "p" + parmIndex++), schemaRow);
 				parameter.SourceVersion = DataRowVersion.Current;
 
 				columns.Append (GetQuotedString (parameter.SourceColumn));
@@ -312,7 +303,6 @@ namespace System.Data.Common {
 			StringBuilder columns = new StringBuilder ();
 			StringBuilder whereClause = new StringBuilder ();
 			int parmIndex = 1;
-			string dsColumnName = String.Empty;
 			bool keyFound = false;
 
 			// First, create the X=Y list for UPDATE
@@ -322,14 +312,7 @@ namespace System.Data.Common {
 				if (columns.Length > 0) 
 					columns.Append (", ");
 
-
-				int index = -1;
-				if (option) {
-					index = CreateParameter (_updateCommand, schemaRow);
-				} else {
-					index = CreateParameter (_updateCommand, parmIndex++, schemaRow);
-				}
-				DbParameter parameter = _updateCommand.Parameters [index];
+				DbParameter parameter = CreateParameter (_updateCommand, String.Format ("@{0}", option ? schemaRow ["BaseColumnName"] : "p" + parmIndex++), schemaRow);
 				parameter.SourceVersion = DataRowVersion.Current;
 
 				columns.Append (String.Format ("{0} = {1}", GetQuotedString (parameter.SourceColumn), parameter.ParameterName));
@@ -338,7 +321,7 @@ namespace System.Data.Common {
 			// Now, create the WHERE clause.  This may be optimizable, but it would be ugly to incorporate
 			// into the loop above.  "Premature optimization is the root of all evil." -- Knuth
 			foreach (DataRow schemaRow in _dbSchemaTable.Rows) {
-				if ((bool) schemaRow ["IsExpression"] == true)
+				if (!schemaRow.IsNull ("IsExpression") && (bool) schemaRow ["IsExpression"] == true)
 					continue;
 
 				if (!IncludedInWhereClause (schemaRow)) 
@@ -357,11 +340,10 @@ namespace System.Data.Common {
 				//while ms.net 2.0 does not. Anyways, since both forms are logically equivalent
 				//following the 2.0 approach
 				bool allowNull = (bool) schemaRow ["AllowDBNull"];
-				int index;
 				if (!isKey && allowNull) {
 					parameter = _updateCommand.CreateParameter ();
 					if (option) {
-						parameter.ParameterName = String.Format ("@{0}",
+						parameter.ParameterName = String.Format ("@{0} IS NULL",
 											 schemaRow ["BaseColumnName"]);
 					} else {
 						parameter.ParameterName = String.Format ("@p{0}", parmIndex++);
@@ -373,12 +355,10 @@ namespace System.Data.Common {
 					whereClause.Append (" OR ");
 				}
 
-				if (option) {
-					index = CreateParameter (_updateCommand, schemaRow);
-				} else {
-					index = CreateParameter (_updateCommand, parmIndex++, schemaRow);
-				}
-				parameter = _updateCommand.Parameters [index];
+				if (option)
+					parameter = CreateParameter (_updateCommand, String.Format ("@Original_{0}", schemaRow ["BaseColumnName"]), schemaRow);
+				else
+					parameter = CreateParameter (_updateCommand, String.Format ("@p{0}", parmIndex++), schemaRow);
 				parameter.SourceVersion = DataRowVersion.Original;
 
 				whereClause.Append (String.Format (clause2, GetQuotedString (parameter.SourceColumn), parameter.ParameterName));
@@ -396,41 +376,44 @@ namespace System.Data.Common {
 			return _updateCommand;
 		}
 
-		private int CreateParameter (DbCommand _dbCommand, int parmIndex, DataRow schemaRow)
+		private DbParameter CreateParameter (DbCommand _dbCommand, string parameterName, DataRow schemaRow)
 		{
 			DbParameter parameter = _dbCommand.CreateParameter ();
-			parameter.ParameterName = String.Format ("@p{0}", parmIndex);
+			parameter.ParameterName = parameterName;
 			parameter.SourceColumn = (string) schemaRow ["BaseColumnName"];
 			parameter.Size = (int) schemaRow ["ColumnSize"];
-			return _dbCommand.Parameters.Add (parameter);
-		}
-
-		private int CreateParameter (DbCommand _dbCommand, DataRow schemaRow)
-		{
-			DbParameter parameter = _dbCommand.CreateParameter ();
-			parameter.ParameterName = String.Format ("@{0}",
-								 schemaRow ["BaseColumnName"]);
-			parameter.SourceColumn = (string) schemaRow ["BaseColumnName"];
-			parameter.Size = (int) schemaRow ["ColumnSize"];
-			return _dbCommand.Parameters.Add (parameter);
+			_dbCommand.Parameters.Add (parameter);
+			return parameter;
 		}
 
 		[DefaultValue (CatalogLocation.Start)]
 		public virtual CatalogLocation CatalogLocation {
 			get { return _catalogLocation; }
-			set { _catalogLocation = value; }
+			set {
+				CheckEnumValue (typeof (CatalogLocation),
+					(int) value);
+				_catalogLocation = value;
+			}
 		}
 
 		[DefaultValue (".")]
 		public virtual string CatalogSeparator {
-			get { return _catalogSeperator; }
-			set { if (value != null) _catalogSeperator = value; }
+			get {
+				if (_catalogSeparator == null || _catalogSeparator.Length == 0)
+					return SEPARATOR_DEFAULT;
+				return _catalogSeparator;
+			}
+			set { _catalogSeparator = value; }
 		}
 
 		[DefaultValue (ConflictOption.CompareAllSearchableValues)]
 		public virtual ConflictOption ConflictOption {
 			get { return _conflictOption; }
-			set { _conflictOption = value; }
+			set {
+				CheckEnumValue (typeof (ConflictOption),
+					(int) value);
+				_conflictOption = value;
+			}
 		}
 
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
@@ -442,27 +425,53 @@ namespace System.Data.Common {
 
 		[DefaultValue ("")]
 		public virtual string QuotePrefix {
-			get { return _quotePrefix; }
-			set { if (value != null) _quotePrefix = value; }
+			get {
+				if (_quotePrefix == null)
+					return string.Empty;
+				return _quotePrefix;
+			}
+			set {
+				if (IsCommandGenerated)
+					throw new InvalidOperationException (
+						"QuotePrefix cannot be set after " +
+						"an Insert, Update or Delete command " +
+						"has been generated.");
+				_quotePrefix = value;
+			}
 		}
 
 		[DefaultValue ("")]
 		public virtual string QuoteSuffix {
-			get { return _quoteSuffix; }
-			set {  if (value != null) _quoteSuffix = value; }
+			get {
+				if (_quoteSuffix == null)
+					return string.Empty;
+				return _quoteSuffix;
+			}
+			set {
+				if (IsCommandGenerated)
+					throw new InvalidOperationException (
+						"QuoteSuffix cannot be set after " +
+						"an Insert, Update or Delete command " +
+						"has been generated.");
+				_quoteSuffix = value;
+			}
 		}
 
 		[DefaultValue (".")]
 		public virtual string SchemaSeparator {
-			get { return _schemaSeperator; }
-			set {  if (value != null) _schemaSeperator = value; }
+			get {
+				if (_schemaSeparator == null || _schemaSeparator.Length == 0)
+					return SEPARATOR_DEFAULT;
+				return _schemaSeparator;
+			}
+			set { _schemaSeparator = value; }
 		}
 
 		[DefaultValue (false)]
 		public bool SetAllValues {
 			get { return _setAllValues; }
 			set { _setAllValues = value; }
-		}		
+		}
 
 		private DbCommand SourceCommand {
 			get {
@@ -471,9 +480,6 @@ namespace System.Data.Common {
 				return null;
 			}
 		}
-		#endregion // Properties
-
-		#region Methods
 
 		protected abstract void ApplyParameterInfo (DbParameter parameter, 
 							    DataRow row, 
@@ -561,10 +567,7 @@ namespace System.Data.Common {
 
 		public virtual string QuoteIdentifier (string unquotedIdentifier)
 		{
-			if (unquotedIdentifier == null) {
-				throw new ArgumentNullException("Unquoted identifier parameter cannot be null");
-			}
-			return String.Format ("{0}{1}{2}", this.QuotePrefix, unquotedIdentifier, this.QuoteSuffix);
+			throw new NotSupportedException ();
 		}
 
 		public virtual string UnquoteIdentifier (string quotedIdentifier)
@@ -586,9 +589,9 @@ namespace System.Data.Common {
 		{
 			_tableName = String.Empty;
 			_dbSchemaTable = null;
-			CreateNewCommand (ref _deleteCommand);
-			CreateNewCommand (ref _updateCommand);
-			CreateNewCommand (ref _insertCommand);
+			_deleteCommand = null;
+			_updateCommand = null;
+			_insertCommand = null;
 		}
 
 		protected void RowUpdatingHandler (RowUpdatingEventArgs args)
@@ -625,7 +628,17 @@ namespace System.Data.Common {
 				return rdr.GetSchemaTable ();
 		}
 
-		#endregion // Methods
+		static void CheckEnumValue (Type type, int value)
+		{
+			if (Enum.IsDefined (type, value))
+				return;
+
+			string typename = type.Name;
+			string msg = string.Format (CultureInfo.CurrentCulture,
+				"Value {0} is not valid for {1}.", value,
+				typename);
+			throw new ArgumentOutOfRangeException (typename, msg);
+		}
 	}
 }
 

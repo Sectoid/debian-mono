@@ -4,9 +4,10 @@
 // Authors:
 //	Duncan Mak (duncan@ximian.com)
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
+//      Marek Habersack (mhabersack@novell.com)
 //
 // (C) 2002,2003 Ximian, Inc. (http://www.ximian.com)
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2008 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -35,6 +36,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Security.Permissions;
+using System.Text;
 using System.Threading;
 using System.Web.Compilation;
 using System.Web.Configuration;
@@ -80,9 +82,9 @@ namespace System.Web.UI {
 		string compilerOptions;
 		string language;
 		bool implicitLanguage;
-		bool strictOn = false;
-		bool explicitOn = false;
-		bool linePragmasOn = false;
+		bool strictOn ;
+		bool explicitOn;
+		bool linePragmasOn = true;
 		bool output_cache;
 		int oc_duration;
 		string oc_header, oc_custom, oc_param, oc_controls;
@@ -100,14 +102,19 @@ namespace System.Web.UI {
 		string codeFileBaseClass;
 		string metaResourceKey;
 		Type codeFileBaseClassType;
+		string pageParserFilterTypeName;
+		Type pageParserFilterType;
+		PageParserFilter pageParserFilter;
+		
 		List <UnknownAttributeDescriptor> unknownMainAttributes;
 		Stack <string> includeDirs;
+		List <string> registeredTagNames;
 #else
 		Stack includeDirs;
+		Assembly srcAssembly;		
 #endif
 		ILocation directiveLocation;
 		
-		Assembly srcAssembly;
 		int appAssemblyIndex = -1;
 
 		internal TemplateParser ()
@@ -166,6 +173,9 @@ namespace System.Web.UI {
 		internal virtual void LoadConfigDefaults ()
 		{
 			debug = CompilationConfig.Debug;
+#if NET_2_0
+			pageParserFilterTypeName = PagesConfig.PageParserFilterType;
+#endif
 		}
 		
 		internal void AddApplicationAssembly ()
@@ -182,12 +192,20 @@ namespace System.Web.UI {
 		protected abstract Type CompileIntoType ();
 
 #if NET_2_0
+		internal void AddControl (Type type, IDictionary attributes)
+		{
+			AspGenerator generator = AspGenerator;
+			if (generator == null)
+				return;
+			generator.AddControl (type, attributes);
+		}
+		
 		void AddNamespaces (ArrayList imports)
 		{
 			if (BuildManager.HaveResources)
 				imports.Add ("System.Resources");
 			
-			PagesSection pages = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+			PagesSection pages = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
 			if (pages == null)
 				return;
 
@@ -222,7 +240,7 @@ namespace System.Web.UI {
 			fileExists = File.Exists (realpath);
 #endif
 			if (!fileExists)
-				throw new ParseException (Location, "Could not find file \"" + src + "\".");
+				ThrowParseFileNotFound (src);
 
 			if (String.Compare (realpath, inputFile, false, invariantCulture) == 0)
                                 return;
@@ -234,31 +252,26 @@ namespace System.Web.UI {
 			if (VirtualPathUtility.IsAbsolute (vpath))
 				vpath = VirtualPathUtility.ToAppRelative (vpath);
 #endif
-			
-                        Type type = null;
-                        AddDependency (vpath);
+                        
                         try {
 #if NET_2_0
-				type = BuildManager.GetCompiledType (vpath);
-				if (type == null)
-					throw new ParseException (Location, "Error compiling user control '" + vpath + "'.");
-
-				if (!(typeof (UserControl).IsAssignableFrom (type)))
-					throw new ParseException (Location, "Type '" + type.ToString () + "' does not derive from 'System.Web.UI.UserControl'.");
+				RegisterTagName (tagPrefix + ":" + tagName);
+				RootBuilder.Foundry.RegisterFoundry (tagPrefix, tagName, vpath);
 #else
+				Type type = null;
 				ArrayList other_deps = new ArrayList ();
                                 type = UserControlParser.GetCompiledType (vpath, realpath, other_deps, Context);
 				foreach (string s in other_deps)
                                         AddDependency (s);
+				AddAssembly (type.Assembly, true);
+				RootBuilder.Foundry.RegisterFoundry (tagPrefix, tagName, type);
 #endif
+				AddDependency (vpath);
                         } catch (ParseException pe) {
                                 if (this is UserControlParser)
                                         throw new ParseException (Location, pe.Message, pe);
                                 throw;
                         }
-
-                        AddAssembly (type.Assembly, true);
-                        RootBuilder.Foundry.RegisterFoundry (tagPrefix, tagName, type);
                 }
 
                 internal void RegisterNamespace (string tagPrefix, string ns, string assembly)
@@ -286,6 +299,11 @@ namespace System.Web.UI {
 		
 		internal virtual void AddDirective (string directive, Hashtable atts)
 		{
+#if NET_2_0
+			var pageParserFilter = PageParserFilter;
+			if (pageParserFilter != null)
+				pageParserFilter.PreprocessDirective (directive.ToLower (CultureInfo.InvariantCulture), atts);
+#endif
 			if (String.Compare (directive, DefaultDirectiveName, true) == 0) {
 				if (mainAttributes != null)
 					ThrowParseException ("Only 1 " + DefaultDirectiveName + " is allowed");
@@ -485,7 +503,7 @@ namespace System.Web.UI {
 
 		internal virtual void AddDependency (string filename)
 		{
-			if (filename == "")
+			if (filename == null || filename == String.Empty)
 				return;
 
 			if (dependencies == null)
@@ -497,7 +515,7 @@ namespace System.Web.UI {
 		
 		internal virtual void AddAssembly (Assembly assembly, bool fullPath)
 		{
-			if (assembly.Location == "")
+			if (assembly == null || assembly.Location == String.Empty)
 				return;
 
 			if (anames == null)
@@ -598,9 +616,7 @@ namespace System.Web.UI {
 			strictOn = GetBool (atts, "Strict", compConfig.Strict);
 			explicitOn = GetBool (atts, "Explicit", compConfig.Explicit);
 			if (atts.ContainsKey ("LinePragmas"))
-				linePragmasOn = GetBool (atts, "LinePragmas", false);
-			else
-				linePragmasOn = true;
+				linePragmasOn = GetBool (atts, "LinePragmas", true);
 			
 			string inherits = GetString (atts, "Inherits", null);
 #if NET_2_0
@@ -723,6 +739,17 @@ namespace System.Web.UI {
 		}
 
 #if NET_2_0
+		void RegisterTagName (string tagName)
+		{
+			if (registeredTagNames == null)
+				registeredTagNames = new List <string> ();
+
+			if (registeredTagNames.Contains (tagName))
+				return;
+
+			registeredTagNames.Add (tagName);
+		}
+		
 		void CheckUnknownAttribute (string name, string val, string inherits)
 		{
 			MemberInfo mi = null;
@@ -798,24 +825,37 @@ namespace System.Web.UI {
 		
 		internal void SetBaseType (string type)
 		{
-			if (type == null || type == DefaultBaseTypeName) {
-				baseType = DefaultBaseType;
-				return;
-			}
-			
-			Type parent = null;
-			if (srcAssembly != null)
-				parent = srcAssembly.GetType (type);
+			Type parent;			
+			if (type == null || type == DefaultBaseTypeName)
+				parent = DefaultBaseType;
+			else
+				parent = null;
 
-			if (parent == null)
+			if (parent == null) {
+#if NET_2_0			
 				parent = LoadType (type);
+#else
+				parent = null;
+				if (srcAssembly != null)
+					parent = srcAssembly.GetType (type);
 
-			if (parent == null)
-				ThrowParseException ("Cannot find type " + type);
+				if (parent == null)
+					parent = LoadType (type);
+#endif				
 
-			if (!DefaultBaseType.IsAssignableFrom (parent))
-				ThrowParseException ("The parent type '" + type + "' does not derive from " + DefaultBaseType);
+				if (parent == null)
+					ThrowParseException ("Cannot find type " + type);
 
+				if (!DefaultBaseType.IsAssignableFrom (parent))
+					ThrowParseException ("The parent type '" + type + "' does not derive from " + DefaultBaseType);
+			}
+
+#if NET_2_0
+			var pageParserFilter = PageParserFilter;
+			if (pageParserFilter != null && !pageParserFilter.AllowBaseType (parent))
+				throw new HttpException ("Base type '" + parent + "' is not allowed.");
+#endif
+			
 			baseType = parent;
 		}
 
@@ -893,6 +933,34 @@ namespace System.Web.UI {
 		internal byte[] MD5Checksum {
 			get { return md5checksum; }
 			set { md5checksum = value; }
+		}
+
+		internal string PageParserFilterTypeName {
+			get { return pageParserFilterTypeName; }
+		}
+
+		internal PageParserFilter PageParserFilter {
+			get {
+				if (pageParserFilter != null)
+					return pageParserFilter;
+				
+				if (String.IsNullOrEmpty (pageParserFilterTypeName))
+					return null;
+
+				pageParserFilter = Activator.CreateInstance (PageParserFilterType) as PageParserFilter;
+				pageParserFilter.Initialize (VirtualPath, this);
+				
+				return pageParserFilter;
+			}
+		}
+		
+		internal Type PageParserFilterType {
+			get {
+				if (pageParserFilterType == null)
+					pageParserFilterType = Type.GetType (PageParserFilterTypeName, true);
+
+				return pageParserFilterType;
+			}
 		}
 #endif
 		
@@ -989,6 +1057,61 @@ namespace System.Web.UI {
 #if NET_2_0
 		static long autoClassCounter = 0;
 #endif
+
+		internal string EncodeIdentifier (string value)
+		{
+			if (value == null || value.Length == 0 || CodeGenerator.IsValidLanguageIndependentIdentifier (value))
+				return value;
+
+			StringBuilder ret = new StringBuilder ();
+
+			char ch = value [0];
+			switch (Char.GetUnicodeCategory (ch)) {
+				case UnicodeCategory.LetterNumber:
+				case UnicodeCategory.LowercaseLetter:
+				case UnicodeCategory.TitlecaseLetter:
+				case UnicodeCategory.UppercaseLetter:
+				case UnicodeCategory.OtherLetter:
+				case UnicodeCategory.ModifierLetter:
+				case UnicodeCategory.ConnectorPunctuation:
+					ret.Append (ch);
+					break;
+
+				case UnicodeCategory.DecimalDigitNumber:
+					ret.Append ('_');
+					ret.Append (ch);
+					break;
+					
+				default:
+					ret.Append ('_');
+					break;
+			}
+
+			for (int i = 1; i < value.Length; i++) {
+				ch = value [i];
+				switch (Char.GetUnicodeCategory (ch)) {
+					case UnicodeCategory.LetterNumber:
+					case UnicodeCategory.LowercaseLetter:
+					case UnicodeCategory.TitlecaseLetter:
+					case UnicodeCategory.UppercaseLetter:
+					case UnicodeCategory.OtherLetter:
+					case UnicodeCategory.ModifierLetter:
+					case UnicodeCategory.ConnectorPunctuation:
+					case UnicodeCategory.DecimalDigitNumber:
+					case UnicodeCategory.NonSpacingMark:
+					case UnicodeCategory.SpacingCombiningMark:
+					case UnicodeCategory.Format:
+						ret.Append (ch);
+						break;
+						
+					default:
+						ret.Append ('_');
+						break;
+				}
+			}
+
+			return ret.ToString ();
+		}
 		
 		internal string ClassName {
 			get {
@@ -1019,20 +1142,12 @@ namespace System.Web.UI {
 					return className;
 				}
 				
-				if (StrUtils.StartsWith (inFile, physPath)) {
+				if (StrUtils.StartsWith (inFile, physPath))
 					className = inputFile.Substring (physPath.Length).ToLower (CultureInfo.InvariantCulture);
-					className = className.Replace ('.', '_');
-					className = className.Replace ('/', '_').Replace ('\\', '_');
-				} else
+				else
 #endif
-				className = Path.GetFileName (inputFile).Replace ('.', '_');
-				className = className.Replace ('-', '_'); 
-				className = className.Replace (' ', '_');
-
-				if (Char.IsDigit(className[0])) {
-					className = "_" + className;
-				}
-
+					className = Path.GetFileName (inputFile);
+				className = EncodeIdentifier (className);
 				return className;
 			}
 		}
@@ -1145,10 +1260,19 @@ namespace System.Web.UI {
 		}
 
 #if NET_2_0
+		internal List <string> RegisteredTagNames {
+			get { return registeredTagNames; }
+		}
+		
 		internal PagesSection PagesConfig {
 			get {
-				return WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+				return WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
 			}
+		}
+
+		internal AspGenerator AspGenerator {
+			get;
+			set;
 		}
 #else
 		internal PagesConfiguration PagesConfig {

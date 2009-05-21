@@ -1,3 +1,69 @@
+2009-01-26  Christian Prochnow <cproch@seculogix.de>
+
+	* Ping.cs: ignore ICMP echo request packet in case we ping
+	  localhost.
+
+2009-01-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetworkInformationPermission.cs,
+	  NetworkInformationPermissionAttribute.cs : implement some,
+	  otherwise it blocks compilation.
+
+2008-12-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Ping.cs: use the new internal method in Socket to avoid having to
+	throw exceptions when there's a timeout.
+
+2008-12-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Ping.cs: close the socket in SendPrivileged. Use Buffer.BlockCopy
+	instead of Array.Copy. Return IPStatus.Unknown instead of throwing an
+	exception for unknown status codes received.
+
+2008-11-29  Miguel De Icaza  <miguel@novell.com>
+
+	* NetworkInterface.cs: Do not throw an exception when scanning
+	external kernel information that might cause problems.   The
+	application should not crash just trying to fetch interfaces from
+	the system. 
+
+2008-11-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Ping.cs: the time for the arguments of 'ping' is in seconds. Don't
+	read the output of running the command, since we trust the return
+	code.
+
+2008-10-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Ping.cs : use privileged mode for non-unix. On Windows there is
+	  no /usr/bin/ping.
+
+2008-10-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* NetworkInterface.cs: detect wireless 802.11 on linux.
+
+2008-09-28 Gonzalo Paniagua Javier <gonzalo.mono@gmail.com>
+
+	* NetworkInterface.cs: special case for loopback interfaces so that
+	their a physical interface address is PhysicalInterfaceAddress.None.
+	Fixes bug #422118.
+
+2008-08-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IPInterfaceProperties.cs, UnicastIPAddressInformation.cs,
+	  UnicastIPAddressInformationCollection.cs : fixed bug #416526, based
+	  on the patch by Fredrik Kling. support UnicastIPAddressInformation
+	  on win32.
+
+2008-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IPGlobalProperties.cs : fixed ToEndPoint() to not bork at 
+	  parsing IPv6 string. Fixed bug #410006.
+
+2008-07-31  Jb Evain  <jbevain@novell.com>
+
+	* NetworkInformationException.cs: cleanup for NET_2_1.
+
 2008-07-17  Marek Habersack  <mhabersack@novell.com>
 
 	* IPInterfaceProperties.cs: implemented UnicastAddresses

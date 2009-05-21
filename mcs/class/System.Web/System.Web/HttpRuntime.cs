@@ -84,7 +84,7 @@ namespace System.Web {
 			_internalCache.DependencyCache = _cache;
 		}
 
-		static private HttpRuntime _runtimeInstance {
+		static HttpRuntime _runtimeInstance {
 			get {
 				HttpRuntime runtime = (HttpRuntime) AppDomain.CurrentDomain.GetData ("HttpRuntime");
 				if (runtime == null)
@@ -98,7 +98,7 @@ namespace System.Web {
 				return runtime;
 			}
 		}
-		static private HttpRuntime _runtime
+		static HttpRuntime _runtime
 		{
 			get
 			{
@@ -135,7 +135,11 @@ namespace System.Web {
 		static HttpRuntime ()
 		{
 			PlatformID pid = Environment.OSVersion.Platform;
-			runningOnWindows = ((int) pid != 128 && (int) pid != 4);
+			runningOnWindows = ((int) pid != 128
+#if NET_2_0
+					    && pid != PlatformID.Unix && pid != PlatformID.MacOSX
+#endif
+			);
 
 			if (runningOnWindows) {
 				caseInsensitive = true;
@@ -355,6 +359,7 @@ namespace System.Web {
 			context.Request.ReleaseResources ();
 			context.Response.ReleaseResources ();
 			HttpContext.Current = null;
+			HttpApplication.requests_total_counter.Increment ();
 			
 			return true;
 		}
@@ -600,10 +605,6 @@ namespace System.Web {
 
 		static void DoUnload (object state)
 		{
-			if (Environment.GetEnvironmentVariable ("MONO_ASPNET_NODELETE") == null)
-				System.Web.Hosting.ApplicationHost.ClearDynamicBaseDirectory (
-					AppDomain.CurrentDomain.SetupInformation.DynamicBase
-				);
 #if TARGET_J2EE
 			// No unload support for appdomains under Grasshopper
 #else
@@ -629,6 +630,7 @@ namespace System.Web {
 			wr.SendResponseFromMemory (contentBytes, contentBytes.Length);
 			wr.FlushResponse (true);
 			wr.CloseConnection ();
+			HttpApplication.requests_total_counter.Increment ();
 		}
 
 		//
@@ -647,6 +649,7 @@ namespace System.Web {
 			wr.SendResponseFromMemory (contentBytes, contentBytes.Length);
 			wr.FlushResponse (true);
 			wr.CloseConnection ();
+			HttpApplication.requests_total_counter.Increment ();
 		}
 
 #if NET_2_0 

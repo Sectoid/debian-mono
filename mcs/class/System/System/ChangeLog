@@ -1,3 +1,69 @@
+2009-01-28  Bill Holmes  <billholmes54@gmail.com>
+
+	Backport of r124869.
+
+	* Uri.cs (IsWellFormedUriString):  Changing IsWellFormedUriString
+	  to not throw an exception but return false instead. 
+
+	Contributed under MIT/X11 license.
+
+2009-15-01  Leeszek Ciesielski <skolima@gmail.com>
+
+	* Uri.cs: Use registered UriParser when a custom schema is passed
+	Fixes 464235, but is a bit of a hack
+
+2009-01-13  Stephane Delcroix  <sdelcroix@novell.com>
+
+	* Uri.cs: Fix the previous patch for 1.0 profile
+
+2009-01-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Uri.cs: avoid throwing exceptions when checking for the host name
+	type.
+
+2009-01-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* UriTypeConverter.cs: Customize for NET_2_1 since this type is 
+	not part of System.Windows.dll anymore
+
+2008-12-20  Miguel de Icaza  <miguel@novell.com>
+
+	* GenericUriParserOptions.cs: Idn and IriParsing are now part of
+	.NET 
+
+2008-09-16  Miguel de Icaza  <miguel@novell.com>
+
+	* Uri.cs (TryCreate): Implement one of the TryCreate methods
+	without throwing exceptions.   Still two more to go, the hardest
+	ones. 
+
+	Part of a fix for #424192.
+
+2008-09-08  Miguel de Icaza  <miguel@novell.com>
+
+	* Uri.cs (MaybeUri): A helper routine for methods in other classes
+	to quickly determine if something might be a Uri, before calling
+	the more expensive Uri.TryCreate (see bug 424192).
+
+2008-08-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* UriTypeConverter.cs: Fix cp typo found when cp (of course ;-) 
+	code into Silverlight's System.Windows.dll
+
+2008-08-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GenericUriParserOptions.cs: Add new values for SL2 (NET_2_1)
+	* UriFormatException.cs: Add ctor(string,Exception) for SL2 (NET_2_1)
+	* UriIdnScope.cs: Fix values
+
+2008-08-06  Miguel de Icaza  <miguel@novell.com>
+
+	* Uri.cs: Use exception-less operations.
+
+2008-07-31  Jb Evain  <jbevain@novell.com>
+
+	* Uri.cs: cleanup for NET_2_1.
+
 2008-05-29  Marek Habersack  <mhabersack@novell.com>
 
 	* UriParser.cs: use the lock in CreateDefaults in the way that it

@@ -53,15 +53,15 @@ namespace System.Web.UI {
 #endif
 	public class UserControl : TemplateControl, IAttributeAccessor, IUserControlDesignerAccessor
 #if NET_2_0
-	, INamingContainer, IFilterResolutionService
+		, INamingContainer, IFilterResolutionService, INonBindingContainer
 #endif
 	{
 #if NET_2_0
 		ControlCachePolicy cachePolicy;
 #endif
-		private bool initialized;
-		private AttributeCollection attributes;
-		private StateBag attrBag;
+		bool initialized;
+		AttributeCollection attributes;
+		StateBag attrBag;
 
 		public UserControl ()
 		{
@@ -79,7 +79,7 @@ namespace System.Web.UI {
 			}
 		}
 
-		private void EnsureAttributes ()
+		void EnsureAttributes ()
 		{
 			if (attributes == null) {
 				attrBag = new StateBag (true);

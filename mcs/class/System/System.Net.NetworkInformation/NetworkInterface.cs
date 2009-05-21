@@ -180,8 +180,11 @@ namespace System.Net.NetworkInformation {
 							address = new IPAddress (sockaddr.sin_addr);
 						} else if (sockaddr.sin_family == AF_PACKET) {
 							sockaddr_ll sockaddrll = (sockaddr_ll) Marshal.PtrToStructure (addr.ifa_addr, typeof (sockaddr_ll));
-							if (((int)sockaddrll.sll_halen) > sockaddrll.sll_addr.Length)
-								throw new SystemException("Bad hardware address length");
+							if (((int)sockaddrll.sll_halen) > sockaddrll.sll_addr.Length){
+								Console.Error.WriteLine ("Got a bad hardware address length for an AF_PACKET {0} {1}",
+											 sockaddrll.sll_halen, sockaddrll.sll_addr.Length);
+								continue;
+							}
 							
 							macAddress = new byte [(int) sockaddrll.sll_halen];
 							Array.Copy (sockaddrll.sll_addr, 0, macAddress, 0, macAddress.Length);
@@ -215,6 +218,7 @@ namespace System.Net.NetworkInformation {
 									
 									case LinuxArpHardware.LOOPBACK:
 										type = NetworkInterfaceType.Loopback;
+										macAddress = null;
 										break;
 
 									case LinuxArpHardware.FDDI:
@@ -242,7 +246,7 @@ namespace System.Net.NetworkInformation {
 					if (!address.Equals (IPAddress.None))
 						iface.AddAddress (address);
 
-					if (macAddress != null)
+					if (macAddress != null || type == NetworkInterfaceType.Loopback)
 						iface.SetLinkLayerInfo (index, macAddress, type);
 
 					next = addr.ifa_next;
@@ -278,6 +282,11 @@ namespace System.Net.NetworkInformation {
 		{
 			this.index = index;
 			this.macAddress = macAddress;
+			if (type == NetworkInterfaceType.Ethernet) {
+				if (Directory.Exists(iface_path + "wireless")) {
+					type = NetworkInterfaceType.Wireless80211;
+				}
+			}
 			this.type = type;
 		}
 
@@ -375,11 +384,11 @@ namespace System.Net.NetworkInformation {
 			}
 		}
 
+		[MonoTODO ("Parse dmesg?")]
 		public override long Speed {
 			get {
-				// What are the units?
-				// In Linux there is no information about the device speed, maybe only for modems?
-				throw new NotImplementedException ();
+				// Bits/s
+				return 1000000;
 			}
 		}
 		

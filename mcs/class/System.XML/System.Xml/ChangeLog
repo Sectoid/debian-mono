@@ -1,3 +1,81 @@
+2009-01-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDocumentNavigator.cs : in some corner cases an attribute
+	  may have null OwnerElement. Fixed bug #458245.
+
+2009-01-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReaderBinarySupport.cs : do not hang in the middle of reading
+	  byte chunk at some node types. Fixed bug #464229.
+
+2009-01-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* NamespaceHandling.cs: New. Enum for Silverlight 2. Microsoft's 
+	System.Xml.Linq.dll (often bundled in XAP files) needs it (or we 
+	throw a TypeLoadException).
+	* XmlWriterSettings.cs: Add SL2 specific NamespaceHandling property
+
+2009-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReader.cs : ReadContentAsString() does not reject non-elements.
+	  ReadElementContentAsString() rejects non-content nodes.
+
+2008-12-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlNamespaceManager.cs : namespace lookup failed for non-atomic
+	  string in 1.1 profile. Fixed 1.0 part of #379139.
+
+2008-12-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DTDValidatingReader.cs : remove unused file.
+
+2008-11-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextReader.cs : simply call ClearValueBuffer() on each Read().
+
+2008-10-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDocumentNavigator.cs : added some overriden methods (to be
+	  implemented).
+
+2008-09-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDocument.cs : it returns non-null Schemas by default (and
+	  returns non-empty set after being set null).
+
+2008-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReader.cs : detailed error location in ReadSubtree().
+
+2008-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReader.cs : ReadSubtree() is valid only on an element.
+
+2008-09-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDocument.cs, XmlDocumentNavigator.cs :
+	  reduce navigator fields.
+
+2008-08-21  Stephane Delcroix  <sdelcroix@novell.com>
+
+	* EnityResolvingXmlReader.cs:
+	* XmlReader.cs:
+	* XmlTextReader.cs:
+	* XmlTextReader2.cs: re-enable ResolveEntity for 2.1
+
+2008-08-21  Stephane Delcroix  <sdelcroix@novell.com>
+
+	* XmlReaderSettings.cs: adding DtdProcessing and
+	MaxCharactersFromEntities properties for 2.1
+
+2008-08-21  Stephane Delcroix  <sdelcroix@novell.com>
+
+	* DtdProcessing: adding this enum on the 2.1 build
+
+2008-08-05  Jb Evain  <jbevain@novell.com>
+
+	* XmlConvert.cs (ToChar): add a specific SL2 version.
+
 2008-07-28  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlNamespaceManager.cs : check null arg.

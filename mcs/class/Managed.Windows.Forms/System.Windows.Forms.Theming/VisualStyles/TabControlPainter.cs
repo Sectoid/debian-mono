@@ -70,7 +70,7 @@ namespace System.Windows.Forms.Theming.VisualStyles
 			}
 			if (page.Text != null)
 				dc.DrawString (page.Text, page.Font, SystemBrushes.ControlText, text_area, DefaultFormatting);
-			if (tab.Focused && is_selected)
+			if (tab.Focused && is_selected && tab.ShowFocusCues)
 				ControlPaint.DrawFocusRectangle (dc, bounds);
 			return 0;
 		}
@@ -197,6 +197,69 @@ namespace System.Windows.Forms.Theming.VisualStyles
 			if (!ShouldPaint (tabControl))
 				return base.HasHotElementStyles (tabControl);
 			return true;
+		}
+		protected override void DrawScrollButton (Graphics dc, Rectangle bounds, Rectangle clippingArea, ScrollButton button, PushButtonState state)
+		{
+			if (!ThemeVisualStyles.RenderClientAreas) {
+				base.DrawScrollButton (dc, bounds, clippingArea, button, state);
+				return;
+			}
+			VisualStyleElement element;
+			if (button == ScrollButton.Left)
+				switch (state) {
+				case PushButtonState.Hot:
+					element = VisualStyleElement.Spin.DownHorizontal.Hot;
+					break;
+				case PushButtonState.Pressed:
+					element = VisualStyleElement.Spin.DownHorizontal.Pressed;
+					break;
+				default:
+					element = VisualStyleElement.Spin.DownHorizontal.Normal;
+					break;
+				}
+			else
+				switch (state) {
+				case PushButtonState.Hot:
+					element = VisualStyleElement.Spin.UpHorizontal.Hot;
+					break;
+				case PushButtonState.Pressed:
+					element = VisualStyleElement.Spin.UpHorizontal.Pressed;
+					break;
+				default:
+					element = VisualStyleElement.Spin.UpHorizontal.Normal;
+					break;
+				}
+			if (!VisualStyleRenderer.IsElementDefined (element)) {
+				if (button == ScrollButton.Left)
+					switch (state) {
+					case PushButtonState.Hot:
+						element = VisualStyleElement.ScrollBar.ArrowButton.LeftHot;
+						break;
+					case PushButtonState.Pressed:
+						element = VisualStyleElement.ScrollBar.ArrowButton.LeftPressed;
+						break;
+					default:
+						element = VisualStyleElement.ScrollBar.ArrowButton.LeftNormal;
+						break;
+					}
+				else
+					switch (state) {
+					case PushButtonState.Hot:
+						element = VisualStyleElement.ScrollBar.ArrowButton.RightHot;
+						break;
+					case PushButtonState.Pressed:
+						element = VisualStyleElement.ScrollBar.ArrowButton.RightPressed;
+						break;
+					default:
+						element = VisualStyleElement.ScrollBar.ArrowButton.RightNormal;
+						break;
+					}
+				if (!VisualStyleRenderer.IsElementDefined (element)) {
+					base.DrawScrollButton (dc, bounds, clippingArea, button, state);
+					return;
+				}
+			}
+			new VisualStyleRenderer (element).DrawBackground (dc, bounds, clippingArea);
 		}
 	}
 }

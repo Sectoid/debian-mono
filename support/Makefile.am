@@ -57,6 +57,15 @@ MPH_SOURCE = $(MPH_C_SOURCE) $(MPH_UNIX_SOURCE)
 MPH_LIBS   = $(GLIB_LIBS)
 endif
 
+MINIZIP_SOURCE = \
+	minizip/crypt.h \
+	minizip/ioapi.c	\
+	minizip/ioapi.h \
+	minizip/unzip.c	\
+	minizip/unzip.h	\
+	minizip/zip.c	\
+	minizip/zip.h
+
 ZLIB_SOURCES = \
 	adler32.c	\
 	compress.c	\
@@ -91,7 +100,8 @@ endif
 
 libMonoPosixHelper_la_SOURCES =			\
 	$(MPH_SOURCE)				\
-	$(Z_SOURCE)
+	$(Z_SOURCE)				\
+	$(MINIZIP_SOURCE)
 
 libMonoPosixHelper_la_LIBADD =			\
 	$(MPH_LIBS)				\
@@ -123,21 +133,22 @@ refresh:
 	--impl-macro=_GNU_SOURCE --impl-macro=_XOPEN_SOURCE   \
 	--impl-header="<sys/types.h>"                         \
 	--impl-header="<sys/stat.h>"                          \
-	--impl-header="<sys/time.h>"                          \
+	--autoconf-header="<sys/time.h>"                      \
 	--autoconf-header="<sys/poll.h>"                      \
 	--autoconf-header="<sys/wait.h>"                      \
 	--autoconf-header="<sys/statvfs.h>"                   \
 	--autoconf-header="<sys/xattr.h>"                     \
 	--autoconf-header="<sys/mman.h>"                      \
-	--impl-header="<unistd.h>"                            \
+	--autoconf-header="<unistd.h>"                        \
 	--impl-header="<fcntl.h>"                             \
 	--impl-header="<signal.h>"                            \
 	--autoconf-header="<poll.h>"                          \
 	--autoconf-header="<grp.h>"                           \
 	--impl-header="<errno.h>"                             \
 	--autoconf-header="<syslog.h>"                        \
-	--impl-header="<dirent.h>"                            \
-	--impl-header="<utime.h>"                             \
+	--autoconf-header="<dirent.h>"                        \
+	--autoconf-header="<utime.h>"                         \
+	--impl-header="<time.h>"                              \
 	--impl-header="\"mph.h\""                             \
 	--rename-member=st_atime=st_atime_                    \
 	--rename-member=st_ctime=st_ctime_                    \
@@ -146,3 +157,9 @@ refresh:
 	--library=MonoPosixHelper                             \
 	$(mcs_topdir)/class/lib/net_2_0/Mono.Posix.dll map
 
+# Useful if mono is compiled with --enable-shared=no
+patch-libtool:
+	cp "../libtool" .
+	sed -e 's,build_libtool_libs=no,build_libtool_libs=yes,g' libtool > 2; mv 2 libtool
+	sed -e 's,LIBTOOL =,LIBTOOL2 =,g' Makefile > 2 && echo "LIBTOOL = bash ./libtool" > 1 && cat 1 2 > Makefile
+	touch *.c

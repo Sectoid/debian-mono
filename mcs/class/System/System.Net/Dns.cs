@@ -85,34 +85,44 @@ namespace System.Net {
 		}
 
 #if NET_2_0
-		public static IAsyncResult BeginGetHostAddresses (string hostName,
+		public static IAsyncResult BeginGetHostAddresses (string hostNameOrAddress,
 			AsyncCallback requestCallback, object stateObject)
 		{
-			if (hostName == null)
+			if (hostNameOrAddress == null)
 				throw new ArgumentNullException ("hostName");
+			if (hostNameOrAddress == "0.0.0.0" || hostNameOrAddress == "::0")
+				throw new ArgumentException ("Addresses 0.0.0.0 (IPv4) " +
+					"and ::0 (IPv6) are unspecified addresses. You " +
+					"cannot use them as target address.",
+					"hostNameOrAddress");
 
 			GetHostAddressesCallback c = new GetHostAddressesCallback (GetHostAddresses);
-			return c.BeginInvoke (hostName, requestCallback, stateObject);
+			return c.BeginInvoke (hostNameOrAddress, requestCallback, stateObject);
 		}
 
 		public static IAsyncResult BeginGetHostEntry (string hostNameOrAddress,
 			AsyncCallback requestCallback, object stateObject)
 		{
 			if (hostNameOrAddress == null)
-				throw new ArgumentNullException ("hostNameOrAddress");
+				throw new ArgumentNullException ("hostName");
+			if (hostNameOrAddress == "0.0.0.0" || hostNameOrAddress == "::0")
+				throw new ArgumentException ("Addresses 0.0.0.0 (IPv4) " +
+					"and ::0 (IPv6) are unspecified addresses. You " +
+					"cannot use them as target address.",
+					"hostNameOrAddress");
 
 			GetHostEntryNameCallback c = new GetHostEntryNameCallback (GetHostEntry);
 			return c.BeginInvoke (hostNameOrAddress, requestCallback, stateObject);
 		}
 
-		public static IAsyncResult BeginGetHostEntry (IPAddress hostAddress,
+		public static IAsyncResult BeginGetHostEntry (IPAddress address,
 			AsyncCallback requestCallback, object stateObject)
 		{
-			if (hostAddress == null)
-				throw new ArgumentNullException ("hostAddress");
+			if (address == null)
+				throw new ArgumentNullException ("address");
 
 			GetHostEntryIPCallback c = new GetHostEntryIPCallback (GetHostEntry);
-			return c.BeginInvoke (hostAddress, requestCallback, stateObject);
+			return c.BeginInvoke (address, requestCallback, stateObject);
 		}
 #endif
 
@@ -279,14 +289,17 @@ namespace System.Net {
 		{
 			if (hostNameOrAddress == null)
 				throw new ArgumentNullException ("hostNameOrAddress");
+			if (hostNameOrAddress == "0.0.0.0" || hostNameOrAddress == "::0")
+				throw new ArgumentException ("Addresses 0.0.0.0 (IPv4) " +
+					"and ::0 (IPv6) are unspecified addresses. You " +
+					"cannot use them as target address.",
+					"hostNameOrAddress");
 
-			if (hostNameOrAddress == "0.0.0.0" || hostNameOrAddress == "")
-				hostNameOrAddress = "127.0.0.1";
 			IPAddress addr;
-			if (IPAddress.TryParse (hostNameOrAddress, out addr))
+			if (hostNameOrAddress.Length > 0 && IPAddress.TryParse (hostNameOrAddress, out addr))
 				return GetHostEntry (addr);
-			else
-				return GetHostByName (hostNameOrAddress);
+
+			return GetHostByName (hostNameOrAddress);
 		}
 
 		public static IPHostEntry GetHostEntry (IPAddress address)
@@ -302,19 +315,17 @@ namespace System.Net {
 			if (hostNameOrAddress == null)
 				throw new ArgumentNullException ("hostNameOrAddress");
 
-			if (hostNameOrAddress == "0.0.0.0" || hostNameOrAddress == "")
-				hostNameOrAddress = "127.0.0.1";
+			if (hostNameOrAddress == "0.0.0.0" || hostNameOrAddress == "::0")
+				throw new ArgumentException ("Addresses 0.0.0.0 (IPv4) " +
+					"and ::0 (IPv6) are unspecified addresses. You " +
+					"cannot use them as target address.",
+					"hostNameOrAddress");
 
 			IPAddress addr;
-			if (IPAddress.TryParse (hostNameOrAddress, out addr))
-			{
+			if (hostNameOrAddress.Length > 0 && IPAddress.TryParse (hostNameOrAddress, out addr))
 				return new IPAddress[1] { addr };
-			}
-			else
-			{
-			  
-				return GetHostEntry (hostNameOrAddress).AddressList;
-			}
+
+			return GetHostEntry (hostNameOrAddress).AddressList;
 		}
 #endif
 
@@ -324,7 +335,7 @@ namespace System.Net {
 		public static IPHostEntry GetHostByName (string hostName)
 		{
 			if (hostName == null)
-				throw new ArgumentNullException ();
+				throw new ArgumentNullException ("hostName");
 #if TARGET_JVM
 			if (hostName.Length == 0)
 				hostName = "localhost";
@@ -348,14 +359,11 @@ namespace System.Net {
 			string h_name;
 			string[] h_aliases, h_addrlist;
 
-			bool ret = GetHostByName_internal(hostName, out h_name,
-				out h_aliases,
-				out h_addrlist);
+			bool ret = GetHostByName_internal(hostName, out h_name, out h_aliases, out h_addrlist);
 			if (ret == false)
 				throw new SocketException(11001);
 
-			return(hostent_to_IPHostEntry(h_name, h_aliases,
-				h_addrlist));
+			return(hostent_to_IPHostEntry(h_name, h_aliases, h_addrlist));
 #endif
 		}
 

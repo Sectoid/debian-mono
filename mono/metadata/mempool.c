@@ -15,6 +15,11 @@
 #include <string.h>
 
 #include "mempool.h"
+#include "mempool-internals.h"
+
+#if USE_MALLOC_FOR_MEMPOOLS
+#define MALLOC_ALLOCATION
+#endif
 
 /*
  * MonoMemPool is for fast allocation of memory. We free
@@ -31,6 +36,17 @@
 #define G_UNLIKELY(a) (a)
 #endif
 
+#ifdef MALLOC_ALLOCATION
+typedef struct _Chunk {
+	struct _Chunk *next;
+	guint32 size;
+} Chunk;
+
+struct _MonoMemPool {
+	Chunk *chunks;
+	guint32 allocated;
+};
+#else
 struct _MonoMemPool {
 	MonoMemPool *next;
 	gint rest;
@@ -41,6 +57,7 @@ struct _MonoMemPool {
 		guint32 allocated;
 	} d;
 };
+#endif
 
 /**
  * mono_mempool_new:
@@ -56,6 +73,9 @@ mono_mempool_new (void)
 MonoMemPool *
 mono_mempool_new_size (int initial_size)
 {
+#ifdef MALLOC_ALLOCATION
+	return g_new0 (MonoMemPool, 1);
+#else
 	MonoMemPool *pool;
 	if (initial_size < MONO_MEMPOOL_MINSIZE)
 		initial_size = MONO_MEMPOOL_MINSIZE;
@@ -66,6 +86,7 @@ mono_mempool_new_size (int initial_size)
 	pool->end = pool->pos + initial_size - sizeof (MonoMemPool);
 	pool->d.allocated = pool->size = initial_size;
 	return pool;
+#endif
 }
 
 /**
@@ -77,6 +98,11 @@ mono_mempool_new_size (int initial_size)
 void
 mono_mempool_destroy (MonoMemPool *pool)
 {
+#ifdef MALLOC_ALLOCATION
+	mono_mempool_empty (pool);
+
+	g_free (pool);
+#else
 	MonoMemPool *p, *n;
 
 	p = pool;
@@ -85,6 +111,7 @@ mono_mempool_destroy (MonoMemPool *pool)
 		g_free (p);
 		p = n;
 	}
+#endif
 }
 
 /**
@@ -96,6 +123,9 @@ mono_mempool_destroy (MonoMemPool *pool)
 void
 mono_mempool_invalidate (MonoMemPool *pool)
 {
+#ifdef MALLOC_ALLOCATION
+	g_assert_not_reached ();
+#else
 	MonoMemPool *p, *n;
 
 	p = pool;
@@ -104,13 +134,28 @@ mono_mempool_invalidate (MonoMemPool *pool)
 		memset (p, 42, p->size);
 		p = n;
 	}
+#endif
 }
 
 void
 mono_mempool_empty (MonoMemPool *pool)
 {
+#ifdef MALLOC_ALLOCATION
+	Chunk *p, *n;
+
+	p = pool->chunks;
+	pool->chunks = NULL;
+	while (p) {
+		n = p->next;
+		g_free (p);
+		p = n;
+	}
+
+	pool->allocated = 0;
+#else
 	pool->pos = (guint8*)pool + sizeof (MonoMemPool);
 	pool->end = pool->pos + pool->size - sizeof (MonoMemPool);
+#endif
 }
 
 /**
@@ -122,6 +167,9 @@ mono_mempool_empty (MonoMemPool *pool)
 void
 mono_mempool_stats (MonoMemPool *pool)
 {
+#ifdef MALLOC_ALLOCATION
+	g_assert_not_reached ();
+#else
 	MonoMemPool *p;
 	int count = 0;
 	guint32 still_free = 0;
@@ -138,25 +186,39 @@ mono_mempool_stats (MonoMemPool *pool)
 		g_print ("Num chunks: %d\n", count);
 		g_print ("Free memory: %d\n", still_free);
 	}
+#endif
 }
 
+#ifndef MALLOC_ALLOCATION
 #ifdef TRACE_ALLOCATIONS
 #include <execinfo.h>
 #include "metadata/appdomain.h"
 #include "metadata/metadata-internals.h"
 
+static CRITICAL_SECTION mempool_tracing_lock;
+#define BACKTRACE_DEPTH 7
 static void
-mono_backtrace (int limit)
+mono_backtrace (int size)
 {
-        void *array[limit];
+        void *array[BACKTRACE_DEPTH];
         char **names;
-        int i;
-        backtrace (array, limit);
-        names = backtrace_symbols (array, limit);
-        for (i = 1; i < limit; ++i) {
+        int i, symbols;
+        static gboolean inited;
+
+        if (!inited) {
+            InitializeCriticalSection (&mempool_tracing_lock);
+            inited = TRUE;
+        }
+
+        EnterCriticalSection (&mempool_tracing_lock);
+        g_print ("Allocating %d bytes\n", size);
+        symbols = backtrace (array, BACKTRACE_DEPTH);
+        names = backtrace_symbols (array, symbols);
+        for (i = 1; i < symbols; ++i) {
                 g_print ("\t%s\n", names [i]);
         }
-        g_free (names);
+        free (names);
+        LeaveCriticalSection (&mempool_tracing_lock);
 }
 
 #endif
@@ -177,10 +239,11 @@ get_next_size (MonoMemPool *pool, int size)
 	g_assert (size <= MONO_MEMPOOL_PAGESIZE);
 	return target;
 }
+#endif
 
 /**
  * mono_mempool_alloc:
- * @pool: the momory pool to destroy
+ * @pool: the momory pool to use
  * @size: size of the momory block
  *
  * Allocates a new block of memory in @pool.
@@ -194,13 +257,25 @@ mono_mempool_alloc (MonoMemPool *pool, guint size)
 	
 	size = (size + MEM_ALIGN - 1) & ~(MEM_ALIGN - 1);
 
+#ifdef MALLOC_ALLOCATION
+	{
+		Chunk *c = g_malloc (sizeof (Chunk) + size);
+
+		c->next = pool->chunks;
+		pool->chunks = c;
+		c->size = size;
+
+		pool->allocated += size;
+
+		rval = ((guint8*)c) + sizeof (Chunk);
+	}
+#else
 	rval = pool->pos;
 	pool->pos = (guint8*)rval + size;
 
 #ifdef TRACE_ALLOCATIONS
 	if (pool == mono_get_corlib ()->mempool) {
-		g_print ("Allocating %d bytes\n", size);
-		mono_backtrace (7);
+		mono_backtrace (size);
 	}
 #endif
 	if (G_UNLIKELY (pool->pos >= pool->end)) {
@@ -232,6 +307,7 @@ mono_mempool_alloc (MonoMemPool *pool, guint size)
 	}
 
 	return rval;
+#endif
 }
 
 /**
@@ -243,7 +319,10 @@ gpointer
 mono_mempool_alloc0 (MonoMemPool *pool, guint size)
 {
 	gpointer rval;
-	
+
+#ifdef MALLOC_ALLOCATION
+	rval = mono_mempool_alloc (pool, size);
+#else
 	size = (size + MEM_ALIGN - 1) & ~(MEM_ALIGN - 1);
 
 	rval = pool->pos;
@@ -252,6 +331,12 @@ mono_mempool_alloc0 (MonoMemPool *pool, guint size)
 	if (G_UNLIKELY (pool->pos >= pool->end)) {
 		rval = mono_mempool_alloc (pool, size);
 	}
+#ifdef TRACE_ALLOCATIONS
+	else if (pool == mono_get_corlib ()->mempool) {
+		mono_backtrace (size);
+	}
+#endif
+#endif
 
 	memset (rval, 0, size);
 	return rval;
@@ -266,6 +351,19 @@ gboolean
 mono_mempool_contains_addr (MonoMemPool *pool,
 							gpointer addr)
 {
+#ifdef MALLOC_ALLOCATION
+	Chunk *c;
+
+	c = pool->chunks;
+	while (c) {
+		guint8 *p = ((guint8*)c) + sizeof (Chunk);
+
+		if (addr >= (gpointer)p && addr < (gpointer)(p + c->size))
+			return TRUE;
+
+		c = c->next;
+	}
+#else
 	MonoMemPool *p;
 
 	p = pool;
@@ -274,6 +372,7 @@ mono_mempool_contains_addr (MonoMemPool *pool,
 			return TRUE;
 		p = p->next;
 	}
+#endif
 
 	return FALSE;
 }
@@ -309,5 +408,60 @@ mono_mempool_strdup (MonoMemPool *pool,
 guint32
 mono_mempool_get_allocated (MonoMemPool *pool)
 {
+#ifdef MALLOC_ALLOCATION
+	return pool->allocated;
+#else
 	return pool->d.allocated;
+#endif
+}
+
+GList*
+g_list_prepend_mempool (MonoMemPool *mp, GList *list, gpointer data)
+{
+	GList *new_list;
+	
+	new_list = mono_mempool_alloc (mp, sizeof (GList));
+	new_list->data = data;
+	new_list->prev = list ? list->prev : NULL;
+    new_list->next = list;
+
+    if (new_list->prev)
+            new_list->prev->next = new_list;
+    if (list)
+            list->prev = new_list;
+
+	return new_list;
+}
+
+GSList*
+g_slist_prepend_mempool (MonoMemPool *mp, GSList *list, gpointer  data)
+{
+	GSList *new_list;
+	
+	new_list = mono_mempool_alloc (mp, sizeof (GSList));
+	new_list->data = data;
+	new_list->next = list;
+
+	return new_list;
+}
+
+GSList*
+g_slist_append_mempool (MonoMemPool *mp, GSList *list, gpointer data)
+{
+	GSList *new_list;
+	GSList *last;
+
+	new_list = mono_mempool_alloc (mp, sizeof (GSList));
+	new_list->data = data;
+	new_list->next = NULL;
+
+	if (list) {
+		last = list;
+		while (last->next)
+			last = last->next;
+		last->next = new_list;
+
+		return list;
+	} else
+		return new_list;
 }

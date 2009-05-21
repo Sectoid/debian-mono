@@ -1,3 +1,36 @@
+
+2008-11-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ConfigHelper.cs: allow xmlns attribute.
+
+2008-11-15  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SettingsPropertyValue.cs: Do not return null for zero-length String
+	value.
+
+2008-11-11  Atsushi Enomoto  <atsushi@xiiman.com>
+
+	Fix for bug 439943.
+	* SettingValueElement.cs : do not write value element twice.
+	* CustomizableFileSettingsProvider.cs : create "value" element
+	  instead of a document fragment so that the output from
+	  SettingValueElement could become consistent.
+	  Null binary value caused crash. Set appropriate
+	  SerializedValue for each serialization type.
+	* SettingsPropertyValue.cs : output only when the value is
+	  non-null.
+
+2008-11-05  Atsushi Enomoto  <atsushi@xiiman.com>
+
+	* SettingValueElement.cs, CustomizableFileSettingsProvider.cs :
+	  revert previous regressive change.
+
+2008-11-05  Atsushi Enomoto  <atsushi@xiiman.com>
+
+	* SettingValueElement.cs, CustomizableFileSettingsProvider.cs :
+	  Fixed bug #439943. Xml deserialization for complex content was
+	  not done correctly.
+
 2008-10-05  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* CustomizableFileSettingsProvider.cs (LoadPropertyValue): Do not
@@ -27,6 +60,14 @@
 	* ApplicationSettingsBase.cs: honor the IsSynchronized value in the
 	indexer.
 
+2008-09-15  Raja R Harinath  <harinath@hurrynot.org>
+
+	* ConfigXmlDocument.cs (Load): Fix build break in 1.1 profile.
+	Open code the 'using' with try/finally/Close.
+
+2008-09-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ConfigXmlDocument.cs: Dispose XmlTextReader in Load (String).
 
 2008-09-01  Ivan N. Zlatev  <contact@i-nz.net>
 

@@ -21,6 +21,15 @@ mono_debugger_extended_notification (MonoDebuggerEvent event, guint64 data, guin
 void
 mono_debugger_trampoline_compiled (MonoMethod *method, const guint8 *code);
 
+void
+mono_debugger_call_exception_handler (gpointer addr, gpointer stack, MonoObject *exc);
+
+gboolean
+mono_debugger_handle_exception (MonoContext *ctx, MonoObject *obj);
+
+MonoObject *
+mono_debugger_runtime_invoke (MonoMethod *method, void *obj, void **params, MonoObject **exc);
+
 /*
  * This is the old breakpoint interface.
  * It isn't used by the debugger anymore, but still when using the `--break' command

@@ -1,8 +1,34 @@
+2009-01-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommandTest.cs: Added tests for CommandTimeout,
+	UpdatedRowSource, Dispose and ResetCommandTimeout. Added
+	ExecuteNonQuery/ExecuteReader/ExecuteScalar tests for a connection
+	that is not initialized or closed.
+
+2009-01-03  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommandBuilderTest.cs: Enabled test for QuoteIdentifier.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommandBuilderTest.cs: Added tests for properties.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommandBuilder.cs: Added test for ConflictOption default value.
+
+2008-12-29  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* OdbcCommandBuilderTest.cs: Added tests for QuotePrefix and
+	QuoteSuffix. Added tests for QuoteIdentifier (some still marked
+	NotWorking).
+	* OdbcConnectionStringBuilderTest.cs: Moved from ProviderTests.
+	Added and improved tests.
+
 2008-08-26  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	Patch provided by Ernesto <equistango@gmail.com>
-	* OdbcParameterTest.cs (OdbcTypeTest): Add case for testing Binary
-	type.
+	* OdbcParameterTest.cs (OdbcTypeTest): Added test case for Binary
+	type check. 
 	
 2008-07-03  Gert Driesen  <drieseng@users.sourceforge.net>
 

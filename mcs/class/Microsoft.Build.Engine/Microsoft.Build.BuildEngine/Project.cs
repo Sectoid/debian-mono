@@ -58,7 +58,7 @@ namespace Microsoft.Build.BuildEngine {
 		bool				isValidated;
 		BuildItemGroupCollection	itemGroups;
 		ImportCollection		imports;
-		string				initialTargets;
+		string[]			initialTargets;
 		Dictionary <string, BuildItemGroup> last_item_group_containing;
 		bool				needToReevaluate;
 		Engine				parentEngine;
@@ -70,6 +70,7 @@ namespace Microsoft.Build.BuildEngine {
 		UsingTaskCollection		usingTasks;
 		XmlDocument			xmlDocument;
 		bool				unloaded;
+		bool				initialTargetsBuilt;
 
 		static XmlNamespaceManager	manager;
 		static string ns = "http://schemas.microsoft.com/developer/msbuild/2003";
@@ -226,7 +227,10 @@ namespace Microsoft.Build.BuildEngine {
 		[MonoTODO ("Not tested")]
 		public bool Build (string targetName)
 		{
-			return Build (new string [1] { targetName });
+			if (targetName == null)
+				return Build ((string[]) null);
+			else
+				return Build (new string [1] { targetName });
 		}
 		
 		[MonoTODO ("Not tested")]
@@ -252,7 +256,7 @@ namespace Microsoft.Build.BuildEngine {
 			ParentEngine.StartBuild ();
 			NeedToReevaluate ();
 			
-			if (targetNames.Length == 0) {
+			if (targetNames == null || targetNames.Length == 0) {
 				if (defaultTargets != null && defaultTargets.Length != 0)
 					targetNames = defaultTargets;
 				else if (firstTargetName != null)
@@ -260,19 +264,39 @@ namespace Microsoft.Build.BuildEngine {
 				else
 					return false;
 			}
-			
-			foreach (string target in targetNames) {
-				if (!targets.Exists (target))
-					// FIXME: test if it's logged
-					return false;
-				
-				if (!targets [target].Build ())
-					return false;
 
-				if (targetOutputs != null)
-					targetOutputs.Add (target, targets [target].Outputs);
+			if (!initialTargetsBuilt && initialTargets != null && initialTargets.Length > 0) {
+				foreach (string target in initialTargets) {
+					if (!BuildTarget (target.Trim (), targetOutputs))
+						return false;
+				}
+				initialTargetsBuilt = true;
 			}
+
+			foreach (string target in targetNames)
+				if (!BuildTarget (target.Trim (), targetOutputs))
+					return false;
 				
+			return true;
+		}
+
+		bool BuildTarget (string target, IDictionary targetOutputs)
+		{
+			if (target == null)
+				throw new ArgumentException ("targetNames cannot contain null strings");
+
+			if (!targets.Exists (target)) {
+				//FIXME: Log this!
+				Console.WriteLine ("Target named '{0}' not found in the project.", target);
+				return false;
+			}
+
+			if (!targets [target].Build ())
+				return false;
+
+			if (targetOutputs != null)
+				targetOutputs.Add (target, targets [target].Outputs);
+
 			return true;
 		}
 
@@ -637,9 +661,11 @@ namespace Microsoft.Build.BuildEngine {
 				ProcessXml ();
 				ParentEngine.AddLoadedProject (this);
 			} catch (Exception e) {
-				throw new InvalidProjectFileException (e.Message, e);
+				throw new InvalidProjectFileException (String.Format ("{0}: {1}",
+							fullFileName, e.Message), e);
 			} finally {
-				textReader.Close ();
+				if (textReader != null)
+					textReader.Close ();
 			}
 		}
 
@@ -667,12 +693,29 @@ namespace Microsoft.Build.BuildEngine {
 			else
 				defaultTargets = new string [0];
 			
+			ProcessProjectAttributes (xmlDocument.DocumentElement.Attributes);
 			ProcessElements (xmlDocument.DocumentElement, null);
 			
 			isDirty = false;
 			Evaluate ();
 		}
-		
+
+		void ProcessProjectAttributes (XmlAttributeCollection attributes)
+		{
+			foreach (XmlAttribute attr in attributes) {
+				switch (attr.Name) {
+				case "InitialTargets":
+					initialTargets = attr.Value.Split (new char [] {';'},
+							StringSplitOptions.RemoveEmptyEntries);
+					break;
+				case "DefaultTargets":
+					defaultTargets = attr.Value.Split (new char [] {';'},
+							StringSplitOptions.RemoveEmptyEntries);
+					break;
+				}
+			}
+		}
+
 		internal void ProcessElements (XmlElement rootElement, ImportedProject ip)
 		{
 			foreach (XmlNode xn in rootElement.ChildNodes) {
@@ -831,7 +874,7 @@ namespace Microsoft.Build.BuildEngine {
 			}
 			set {
 				xmlDocument.DocumentElement.SetAttribute ("DefaultTargets", value);
-				defaultTargets = value.Split (';');
+				defaultTargets = value.Split (new char [] {';'}, StringSplitOptions.RemoveEmptyEntries);
 			}
 		}
 
@@ -875,6 +918,81 @@ namespace Microsoft.Build.BuildEngine {
 				}
 				return evaluatedItemsByNameIgnoringCondition;
 			}
+		}
+
+		// For batching implementation
+		Dictionary<string, BuildItemGroup> perBatchItemsByName;
+		Dictionary<string, BuildItemGroup> commonItemsByName;
+
+		internal void SetBatchedItems (Dictionary<string, BuildItemGroup> perBatchItemsByName, Dictionary<string, BuildItemGroup> commonItemsByName)
+		{
+			this.perBatchItemsByName = perBatchItemsByName;
+			this.commonItemsByName = commonItemsByName;
+		}
+
+		// Honors batching
+		internal bool TryGetEvaluatedItemByNameBatched (string itemName, out BuildItemGroup group)
+		{
+			if (perBatchItemsByName == null && commonItemsByName == null)
+				return EvaluatedItemsByName.TryGetValue (itemName, out group);
+
+			if (perBatchItemsByName != null)
+				return perBatchItemsByName.TryGetValue (itemName, out group);
+
+			if (commonItemsByName != null)
+				return commonItemsByName.TryGetValue (itemName, out group);
+
+			group = null;
+			return false;
+		}
+
+		internal string GetMetadataBatched (string itemName, string metadataName)
+		{
+			BuildItemGroup group = null;
+			if (itemName == null) {
+				//unqualified, all items in a batch(bucket) have the
+				//same metadata values
+				group = GetFirst<BuildItemGroup> (perBatchItemsByName.Values);
+				if (group == null)
+					group = GetFirst<BuildItemGroup> (commonItemsByName.Values);
+			} else {
+				//qualified
+				TryGetEvaluatedItemByNameBatched (itemName, out group);
+			}
+
+			if (group != null) {
+				foreach (BuildItem item in group) {
+					if (item.HasMetadata (metadataName))
+						return item.GetMetadata (metadataName);
+				}
+			}
+			return String.Empty;
+		}
+
+		internal IEnumerable<BuildItemGroup> GetAllItemGroups ()
+		{
+			if (perBatchItemsByName == null && commonItemsByName == null)
+				foreach (BuildItemGroup group in EvaluatedItemsByName.Values)
+					yield return group;
+
+			if (perBatchItemsByName != null)
+				foreach (BuildItemGroup group in perBatchItemsByName.Values)
+					yield return group;
+
+			if (commonItemsByName != null)
+				foreach (BuildItemGroup group in commonItemsByName.Values)
+					yield return group;
+		}
+
+		T GetFirst<T> (ICollection<T> list)
+		{
+			if (list == null)
+				return default (T);
+
+			foreach (T t in list)
+				return t;
+
+			return default (T);
 		}
 
 		public BuildPropertyGroup EvaluatedProperties {
@@ -924,8 +1042,13 @@ namespace Microsoft.Build.BuildEngine {
 		}
 		
 		public string InitialTargets {
-			get { return initialTargets; }
-			set { initialTargets = value; }
+			get {
+				return xmlDocument.DocumentElement.GetAttribute ("InitialTargets");
+			}
+			set {
+				xmlDocument.DocumentElement.SetAttribute ("InitialTargets", value);
+				initialTargets = value.Split (new char [] {';'}, StringSplitOptions.RemoveEmptyEntries);
+			}
 		}
 
 		public Engine ParentEngine {

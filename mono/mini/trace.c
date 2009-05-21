@@ -10,6 +10,9 @@
 
 #include <config.h>
 #include <signal.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -17,6 +20,7 @@
 #include "mini.h"
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/assembly.h>
+#include <mono/utils/mono-time.h>
 #include "trace.h"
 
 static MonoTraceSpec trace_spec;
@@ -255,16 +259,27 @@ mono_trace_set_assembly (MonoAssembly *assembly)
 	trace_spec.assembly = assembly;
 }
 
-static int indent_level = 0;
+static
+#ifdef HAVE_KW_THREAD
+__thread 
+#endif
+int indent_level = 0;
+static guint64 start_time = 0;
+
+static double seconds_since_start (void)
+{
+	guint64 diff = mono_100ns_ticks () - start_time;
+	return diff/10000000.0;
+}
 
 static void indent (int diff) {
 	int v;
 	if (diff < 0)
 		indent_level += diff;
 	v = indent_level;
-	while (v-- > 0) {
-		printf (". ");
-	}
+	if (start_time == 0)
+		start_time = mono_100ns_ticks ();
+	printf ("[%p: %.5f %d] ", (void*)GetCurrentThreadId (), seconds_since_start (), indent_level);
 	if (diff > 0)
 		indent_level += diff;
 }
@@ -289,6 +304,22 @@ string_to_utf8 (MonoString *s)
 	else
 		return as;
 }
+
+/*
+ * cpos (ebp + arg_info[n].offset) points to the beginning of the
+ * stack slot for this argument.  On little-endian systems, we can
+ * simply dereference it. On big-endian systems, we need to adjust
+ * cpos upward first if the datatype we're referencing is smaller than
+ * a stack slot. Also - one can't assume that gpointer is also the
+ * size of a stack slot - use SIZEOF_REGISTER instead. The following
+ * helper macro tries to keep down the mess of all the pointer
+ * calculations.
+ */
+#if (G_BYTE_ORDER == G_LITTLE_ENDIAN)
+#define arg_in_stack_slot(cpos, type) ((type *)(cpos))
+#else
+#define arg_in_stack_slot(cpos, type) ((type *)((sizeof(type) < SIZEOF_REGISTER) ? (((gssize)(cpos)) + SIZEOF_REGISTER - sizeof(type)) : (gssize)(cpos)))
+#endif
 
 void
 mono_trace_enter_method (MonoMethod *method, char *ebp)
@@ -328,9 +359,9 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 	if (mono_method_signature (method)->hasthis) {
 		gpointer *this = (gpointer *)(ebp + arg_info [0].offset);
 		if (method->klass->valuetype) {
-			printf ("value:%p, ", *this);
+			printf ("value:%p, ", *arg_in_stack_slot(this, gpointer *));
 		} else {
-			o = *((MonoObject **)this);
+			o = *arg_in_stack_slot(this, MonoObject *);
 
 			if (o) {
 				class = o->vtable->klass;
@@ -356,29 +387,29 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 		MonoType *type = mono_method_signature (method)->params [i];
 		
 		if (type->byref) {
-			printf ("[BYREF:%p], ", *cpos); 
+			printf ("[BYREF:%p], ", *arg_in_stack_slot(cpos, gpointer *));
 		} else switch (mono_type_get_underlying_type (type)->type) {
 			
 		case MONO_TYPE_I:
 		case MONO_TYPE_U:
-			printf ("%p, ", *((gpointer **)(cpos)));
+			printf ("%p, ", *arg_in_stack_slot(cpos, gpointer *));
 			break;
 		case MONO_TYPE_BOOLEAN:
 		case MONO_TYPE_CHAR:
 		case MONO_TYPE_I1:
 		case MONO_TYPE_U1:
-			printf ("%d, ", *((gint8 *)(cpos)));
+			printf ("%d, ", *arg_in_stack_slot(cpos, gint8));
 			break;
 		case MONO_TYPE_I2:
 		case MONO_TYPE_U2:
-			printf ("%d, ", *((gint16 *)(cpos)));
+			printf ("%d, ", *arg_in_stack_slot(cpos, gint16));
 			break;
 		case MONO_TYPE_I4:
 		case MONO_TYPE_U4:
-			printf ("%d, ", *((int *)(cpos)));
+			printf ("%d, ", *arg_in_stack_slot(cpos, int));
 			break;
 		case MONO_TYPE_STRING: {
-			MonoString *s = *((MonoString **)cpos);
+			MonoString *s = *arg_in_stack_slot(cpos, MonoString *);
 			if (s) {
 				char *as;
 
@@ -393,7 +424,7 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 		}
 		case MONO_TYPE_CLASS:
 		case MONO_TYPE_OBJECT: {
-			o = *((MonoObject **)cpos);
+			o = *arg_in_stack_slot(cpos, MonoObject *);
 			if (o) {
 				class = o->vtable->klass;
 		    
@@ -409,7 +440,7 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 				} else
 					printf ("[%s.%s:%p], ", class->name_space, class->name, o);
 			} else {
-				printf ("%p, ", *((gpointer *)(cpos)));				
+				printf ("%p, ", *arg_in_stack_slot(cpos, gpointer));
 			}
 			break;
 		}
@@ -417,17 +448,17 @@ mono_trace_enter_method (MonoMethod *method, char *ebp)
 		case MONO_TYPE_FNPTR:
 		case MONO_TYPE_ARRAY:
 		case MONO_TYPE_SZARRAY:
-			printf ("%p, ", *((gpointer *)(cpos)));
+			printf ("%p, ", *arg_in_stack_slot(cpos, gpointer));
 			break;
 		case MONO_TYPE_I8:
 		case MONO_TYPE_U8:
-			printf ("0x%016llx, ", (long long)*((gint64 *)(cpos)));
+			printf ("0x%016llx, ", (long long)*arg_in_stack_slot(cpos, gint64));
 			break;
 		case MONO_TYPE_R4:
-			printf ("%f, ", *((float *)(cpos)));
+			printf ("%f, ", *arg_in_stack_slot(cpos, float));
 			break;
 		case MONO_TYPE_R8:
-			printf ("%f, ", *((double *)(cpos)));
+			printf ("%f, ", *arg_in_stack_slot(cpos, double));
 			break;
 		case MONO_TYPE_VALUETYPE: 
 			printf ("[");

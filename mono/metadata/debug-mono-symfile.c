@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 #include <mono/metadata/metadata.h>
 #include <mono/metadata/tabledefs.h>
-#include <mono/metadata/rawbuffer.h>
 #include <mono/metadata/tokentype.h>
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/exception.h>
@@ -21,6 +20,7 @@
 #include <mono/metadata/mono-endian.h>
 #include <mono/metadata/metadata-internals.h>
 #include <mono/metadata/class-internals.h>
+#include <mono/utils/mono-mmap.h>
 
 #include <fcntl.h>
 #ifdef HAVE_UNISTD_H
@@ -36,23 +36,6 @@ static void
 free_method_info (MonoDebugMethodInfo *minfo)
 {
 	g_free (minfo);
-}
-
-static gchar *
-get_class_name (MonoClass *klass)
-{
-	MonoClass *nested_in = mono_class_get_nesting_type (klass);
-	const char *name_space;
-	if (nested_in) {
-		gchar *parent_name = get_class_name (nested_in);
-		gchar *name = g_strdup_printf ("%s.%s", parent_name, mono_class_get_name (klass));
-		g_free (parent_name);
-		return name;
-	}
-
-	name_space = mono_class_get_namespace (klass);
-	return g_strdup_printf ("%s%s%s", name_space,
-				name_space [0] ? "." : "", mono_class_get_name (klass));
 }
 
 static int
@@ -145,7 +128,7 @@ mono_debug_open_mono_symbols (MonoDebugHandle *handle, const guint8 *raw_content
 						   symfile->filename,  g_strerror (errno));
 			} else {
 				symfile->raw_contents_size = stat_buf.st_size;
-				symfile->raw_contents = mono_raw_buffer_load (fileno (f), FALSE, 0, stat_buf.st_size);
+				symfile->raw_contents = mono_file_map (stat_buf.st_size, MONO_MMAP_READ|MONO_MMAP_PRIVATE, fileno (f), 0, &symfile->raw_contents_handle);
 			}
 
 			fclose (f);
@@ -176,7 +159,7 @@ mono_debug_close_mono_symbol_file (MonoSymbolFile *symfile)
 		g_hash_table_destroy (symfile->method_hash);
 
 	if (symfile->raw_contents)
-		mono_raw_buffer_free ((gpointer) symfile->raw_contents);
+		mono_file_unmap ((gpointer) symfile->raw_contents, symfile->raw_contents_handle);
 
 	if (symfile->filename)
 		g_free (symfile->filename);
@@ -278,9 +261,9 @@ mono_debug_symfile_lookup_location (MonoDebugMethodInfo *minfo, guint32 offset)
 	if ((symfile = minfo->handle->symfile) == NULL)
 		return NULL;
 
-	stm.line_base = symfile->offset_table->_line_number_table_line_base;
-	stm.line_range = symfile->offset_table->_line_number_table_line_range;
-	stm.opcode_base = (guint8) symfile->offset_table->_line_number_table_opcode_base;
+	stm.line_base = read32 (&symfile->offset_table->_line_number_table_line_base);
+	stm.line_range = read32 (&symfile->offset_table->_line_number_table_line_range);
+	stm.opcode_base = (guint8) read32 (&symfile->offset_table->_line_number_table_opcode_base);
 	stm.max_address_incr = (255 - stm.opcode_base) / stm.line_range;
 
 	mono_debugger_lock ();

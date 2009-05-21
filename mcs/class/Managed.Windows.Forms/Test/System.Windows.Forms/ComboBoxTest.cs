@@ -45,20 +45,22 @@ using CategoryAttribute=NUnit.Framework.CategoryAttribute;
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class ComboBoxTest
+	public class ComboBoxTest : TestHelper
 	{
 		private CultureInfo _originalCulture;
 
 		[SetUp]
-		public void SetUp ()
+		protected override void SetUp ()
 		{
 			_originalCulture = Thread.CurrentThread.CurrentCulture;
+			base.SetUp ();
 		}
 
 		[TearDown]
-		public void TearDown ()
+		protected override void TearDown ()
 		{
 			Thread.CurrentThread.CurrentCulture = _originalCulture;
+			base.TearDown ();
 		}
 
 		[Test] // bug #331144
@@ -776,8 +778,9 @@ namespace MonoTests.System.Windows.Forms
 			try {
 				cmbbox.DropDownWidth = 0;
 				Assert.Fail ("#B1");
+			}
 #if NET_2_0
-			} catch (ArgumentOutOfRangeException ex) {
+			catch (ArgumentOutOfRangeException ex) {
 				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#B2");
 				Assert.IsNotNull (ex.Message, "#B3");
 				Assert.IsNotNull (ex.ParamName, "#B4");
@@ -785,7 +788,7 @@ namespace MonoTests.System.Windows.Forms
 				Assert.IsNull (ex.InnerException, "#B6");
 			}
 #else
-			} catch (ArgumentException ex) {
+			catch (ArgumentException ex) {
 				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#B2");
 				Assert.IsNotNull (ex.Message, "#B3");
 				Assert.IsNull (ex.ParamName, "#B4");
@@ -805,8 +808,9 @@ namespace MonoTests.System.Windows.Forms
 			try {
 				cmbbox.ItemHeight = 0;
 				Assert.Fail ("#B1");
+			}
 #if NET_2_0
-			} catch (ArgumentOutOfRangeException ex) {
+			catch (ArgumentOutOfRangeException ex) {
 				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#B2");
 				Assert.IsNotNull (ex.Message, "#B3");
 				Assert.IsNotNull (ex.ParamName, "#B4");
@@ -814,7 +818,7 @@ namespace MonoTests.System.Windows.Forms
 				Assert.IsNull (ex.InnerException, "#B6");
 			}
 #else
-			} catch (ArgumentException ex) {
+			catch (ArgumentException ex) {
 				Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#B2");
 				Assert.IsNotNull (ex.Message, "#B3");
 				Assert.IsNull (ex.ParamName, "#B4");
@@ -1164,6 +1168,23 @@ namespace MonoTests.System.Windows.Forms
 			Assert.IsTrue (cb.Height > original, string.Format ("ComboBox height ({0}) should be bigger than original ({1})", cb.Height, original));
 		}
 		
+		[Test]
+		public void Bug424270 ()
+		{
+			ComboBox cb = new ComboBox ();
+			cb.Items.Add ("ab");
+			
+			cb.SelectedIndex = 0;
+
+			Assert.AreEqual (0, cb.SelectedIndex, "A1");
+			Assert.AreEqual ("ab", cb.SelectedItem, "A2");
+			
+			cb.SelectedItem = null;
+			
+			Assert.AreEqual (-1, cb.SelectedIndex, "A3");
+			Assert.AreEqual (null, cb.SelectedItem, "A4");
+		}
+		
 #if NET_2_0
 		[Test]
 		public void BehaviorAutoSize ()
@@ -1308,10 +1329,37 @@ namespace MonoTests.System.Windows.Forms
 			}
 		}
 #endif
+
+		private struct ComboVal
+		{
+			public string text;
+
+			public ComboVal (string t)
+			{
+				text = t;
+			}
+
+			public override string ToString ()
+			{
+				return text;
+			}
+		}
+		
+		[Test]
+		public void SortTest ()
+		{
+			// Test sorting of objects with no IComparer
+			// should not crash
+
+			ComboBox cmb = new ComboBox ();
+			cmb.Items.Add (new ComboVal ("B"));
+			cmb.Items.Add (new ComboVal ("A"));
+			cmb.Sorted = true;
+		}
 	}
 
 	[TestFixture]
-	public class ComboBoxObjectCollectionTest
+	public class ComboBoxObjectCollectionTest : TestHelper
 	{
 		[Test]
 		public void ComboBoxObjectCollectionPropertyTest ()
@@ -1487,19 +1535,19 @@ namespace MonoTests.System.Windows.Forms
 		}
 	}
 	[TestFixture]
-	public class ComboBoxTests
+	public class ComboBoxTests : TestHelper
 	{
 		ComboBox comboBox;
 		bool textChanged, layoutUpdated;
 
 		[SetUp]
-		public void SetUp ()
-		{
+		protected override void SetUp () {
 			comboBox = new ComboBox ();
 			textChanged = false;
 			layoutUpdated = false;
 			comboBox.TextChanged += new EventHandler (textChangedEventHandler);
 			comboBox.Layout += new LayoutEventHandler (layoutEventHandler);
+			base.SetUp ();
 		}
 
 		private void textChangedEventHandler (object sender, EventArgs e)

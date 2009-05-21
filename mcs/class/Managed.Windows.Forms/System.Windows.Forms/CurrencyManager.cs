@@ -21,6 +21,7 @@
 //
 // Authors:
 //	Jackson Harper (jackson@ximian.com)
+// 	Ivan N. Zlatev (contact@i-nz.net)
 //
 
 using System;
@@ -77,7 +78,7 @@ namespace System.Windows.Forms {
 			set {
 				if (value < 0)
 					value = 0;
-				if (value == list.Count)
+				if (value >= list.Count)
 					value = list.Count - 1;
 				if (listposition == value)
 					return;
@@ -166,17 +167,35 @@ namespace System.Windows.Forms {
 			}
                 }
 
-                // XXX this needs re-addressing once DataViewManager.AllowNew is implemented
-                internal bool CanAddRows {
+                internal bool AllowNew {
                 	get {
 				/* if we're readonly, don't even bother checking if we can add new rows */
 				if (list.IsReadOnly)
 					return false;
 
-				if (list is IBindingList) {
-					return true;
-					//return ((IBindingList)list).AllowNew;
-				}
+				if (list is IBindingList)
+					return ((IBindingList)list).AllowNew;
+
+				return false;
+			}
+		}
+
+		internal bool AllowRemove {
+			get {
+				if (list.IsReadOnly)
+					return false;
+
+				if (list is IBindingList)
+					return ((IBindingList)list).AllowRemove;
+
+				return false;
+			}
+		}
+
+		internal bool AllowEdit {
+			get {
+				if (list is IBindingList)
+					return ((IBindingList)list).AllowEdit;
 
 				return false;
 			}
@@ -191,7 +210,8 @@ namespace System.Windows.Forms {
 
 			ibl.AddNew ();
 
-			ChangeRecordState (list.Count - 1, true, true, true, true);
+			bool validate = (Position != (list.Count - 1));
+			ChangeRecordState (list.Count - 1, validate, validate, true, true);
 		}
 
 
@@ -361,12 +381,8 @@ namespace System.Windows.Forms {
 		private void UpdateItem ()
 		{
 			// Probably should be validating or something here
-			if (listposition != -1) {
-			}
-			else if (list.Count > 0) {
-
+			if (!transfering_data && listposition == -1 && list.Count > 0) {
 				listposition = 0;
-				
 				BeginEdit ();
 			}
 		}
@@ -397,11 +413,12 @@ namespace System.Windows.Forms {
 		{
 			switch (e.ListChangedType) {
 			case ListChangedType.PropertyDescriptorAdded:
-				OnMetaDataChanged (EventArgs.Empty);
-				break;
 			case ListChangedType.PropertyDescriptorDeleted:
 			case ListChangedType.PropertyDescriptorChanged:
 				OnMetaDataChanged (EventArgs.Empty);
+#if NET_2_0
+				OnListChanged (e);
+#endif
 				break;
 			case ListChangedType.ItemDeleted:
 				if (list.Count == 0) {
@@ -426,6 +443,9 @@ namespace System.Windows.Forms {
 				}
 
 				OnItemChanged (new ItemChangedEventArgs (-1));
+#if NET_2_0
+				OnListChanged (e);
+#endif
 				break;
 			case ListChangedType.ItemAdded:
 				if (list.Count == 1) {
@@ -437,7 +457,8 @@ namespace System.Windows.Forms {
 					UpdateIsBinding ();
 #else
 					OnItemChanged (new ItemChangedEventArgs (-1));
-#endif
+					OnListChanged (e);
+#endif					 	
 				}
 				else {
 #if NET_2_0
@@ -466,16 +487,23 @@ namespace System.Windows.Forms {
 #endif
 					OnItemChanged (new ItemChangedEventArgs (e.NewIndex));
 				}
+#if NET_2_0
+				OnListChanged (e);
+#endif					 	
+				break;
+			case ListChangedType.Reset:
+				PushData();
+				UpdateIsBinding();
+#if NET_2_0	
+				OnListChanged (e);
+#endif
 				break;
 			default:
-				PushData ();
-				OnItemChanged (new ItemChangedEventArgs (-1));
-				//				UpdateIsBinding ();
+#if NET_2_0
+				OnListChanged (e);
+#endif
 				break;
 			}
-#if NET_2_0
-			OnListChanged (e);
-#endif
 		}
 
 #if NET_2_0

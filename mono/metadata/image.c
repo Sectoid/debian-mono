@@ -17,7 +17,6 @@
 #include <string.h>
 #include "image.h"
 #include "cil-coff.h"
-#include "rawbuffer.h"
 #include "mono-endian.h"
 #include "tabledefs.h"
 #include "tokentype.h"
@@ -29,6 +28,7 @@
 #include <mono/io-layer/io-layer.h>
 #include <mono/utils/mono-logger.h>
 #include <mono/utils/mono-path.h>
+#include <mono/utils/mono-mmap.h>
 #include <mono/utils/mono-io-portability.h>
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/assembly.h>
@@ -460,7 +460,7 @@ mono_image_check_for_module_cctor (MonoImage *image)
 	MonoTableInfo *t, *mt;
 	t = &image->tables [MONO_TABLE_TYPEDEF];
 	mt = &image->tables [MONO_TABLE_METHOD];
-	if (mono_get_runtime_info ()->framework_version [0] == '1') {
+	if (mono_framework_version () == 1) {
 		image->checked_module_cctor = TRUE;
 		return;
 	}
@@ -607,35 +607,7 @@ mono_image_init (MonoImage *image)
 				       class_next_value);
 	image->field_cache = g_hash_table_new (NULL, NULL);
 
-	image->delegate_begin_invoke_cache = 
-		g_hash_table_new ((GHashFunc)mono_signature_hash, 
-				  (GCompareFunc)mono_metadata_signature_equal);
-	image->delegate_end_invoke_cache = 
-		g_hash_table_new ((GHashFunc)mono_signature_hash, 
-				  (GCompareFunc)mono_metadata_signature_equal);
-	image->delegate_invoke_cache = 
-		g_hash_table_new ((GHashFunc)mono_signature_hash, 
-				  (GCompareFunc)mono_metadata_signature_equal);
-	image->runtime_invoke_cache  = 
-		g_hash_table_new ((GHashFunc)mono_signature_hash, 
-				  (GCompareFunc)mono_metadata_signature_equal);
-	
-	image->runtime_invoke_direct_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->managed_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
 	image->native_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->remoting_invoke_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->cominterop_invoke_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->cominterop_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->synchronized_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->unbox_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-
-	image->ldfld_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->ldflda_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->stfld_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->isinst_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->castclass_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->proxy_isinst_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-	image->thunk_invoke_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
 
 	image->typespec_cache = g_hash_table_new (NULL, NULL);
 	image->memberref_signatures = g_hash_table_new (NULL, NULL);
@@ -932,7 +904,14 @@ do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
 	image = g_new0 (MonoImage, 1);
 	image->raw_buffer_used = TRUE;
 	image->raw_data_len = stat_buf.st_size;
-	image->raw_data = mono_raw_buffer_load (fileno (filed), FALSE, 0, stat_buf.st_size);
+	image->raw_data = mono_file_map (stat_buf.st_size, MONO_MMAP_READ|MONO_MMAP_PRIVATE, fileno (filed), 0, &image->raw_data_handle);
+	if (!image->raw_data) {
+		fclose (filed);
+		g_free (image);
+		if (status)
+			*status = MONO_IMAGE_IMAGE_INVALID;
+		return NULL;
+	}
 	iinfo = g_new0 (MonoCLIImageInfo, 1);
 	image->image_info = iinfo;
 	image->name = mono_path_resolve_symlinks (fname);
@@ -1340,6 +1319,13 @@ mono_dynamic_stream_reset (MonoDynamicStream* stream)
 	}
 }
 
+static inline void
+free_hash (GHashTable *hash)
+{
+	if (hash)
+		g_hash_table_destroy (hash);
+}
+
 /**
  * mono_image_close:
  * @image: The image file we wish to close
@@ -1383,10 +1369,11 @@ mono_image_close (MonoImage *image)
 	 * assemblies, so we can't release these references in mono_assembly_close () since the
 	 * MonoImage might outlive its associated MonoAssembly.
 	 */
-	if (image->references) {
+	if (image->references && !image->dynamic) {
+		MonoTableInfo *t = &image->tables [MONO_TABLE_ASSEMBLYREF];
 		int i;
 
-		for (i = 0; image->references [i]; i++) {
+		for (i = 0; i < t->rows; i++) {
 			if (image->references [i])
 				mono_assembly_close (image->references [i]);
 		}
@@ -1414,7 +1401,7 @@ mono_image_close (MonoImage *image)
 
 	if (image->raw_buffer_used) {
 		if (image->raw_data != NULL)
-			mono_raw_buffer_free (image->raw_data);
+			mono_file_unmap (image->raw_data, image->raw_data_handle);
 	}
 	
 	if (image->raw_data_allocated) {
@@ -1459,31 +1446,31 @@ mono_image_close (MonoImage *image)
 		g_hash_table_foreach (image->name_cache, free_hash_table, NULL);
 		g_hash_table_destroy (image->name_cache);
 	}
-	g_hash_table_destroy (image->native_wrapper_cache);
-	g_hash_table_destroy (image->managed_wrapper_cache);
-	g_hash_table_destroy (image->delegate_begin_invoke_cache);
-	g_hash_table_destroy (image->delegate_end_invoke_cache);
-	g_hash_table_destroy (image->delegate_invoke_cache);
-	if (image->delegate_abstract_invoke_cache)
-		g_hash_table_destroy (image->delegate_abstract_invoke_cache);
-	g_hash_table_foreach (image->remoting_invoke_cache, free_remoting_wrappers, NULL);
-	g_hash_table_destroy (image->remoting_invoke_cache);
-	g_hash_table_destroy (image->runtime_invoke_cache);
-	g_hash_table_destroy (image->runtime_invoke_direct_cache);
-	g_hash_table_destroy (image->synchronized_cache);
-	g_hash_table_destroy (image->unbox_wrapper_cache);
-	g_hash_table_destroy (image->cominterop_invoke_cache);
-	g_hash_table_destroy (image->cominterop_wrapper_cache);
-	g_hash_table_destroy (image->typespec_cache);
-	g_hash_table_destroy (image->ldfld_wrapper_cache);
-	g_hash_table_destroy (image->ldflda_wrapper_cache);
-	g_hash_table_destroy (image->stfld_wrapper_cache);
-	g_hash_table_destroy (image->isinst_cache);
-	g_hash_table_destroy (image->castclass_cache);
-	g_hash_table_destroy (image->proxy_isinst_cache);
-	g_hash_table_destroy (image->thunk_invoke_cache);
-	if (image->static_rgctx_invoke_cache)
-		g_hash_table_destroy (image->static_rgctx_invoke_cache);
+
+	free_hash (image->native_wrapper_cache);
+	free_hash (image->managed_wrapper_cache);
+	free_hash (image->delegate_begin_invoke_cache);
+	free_hash (image->delegate_end_invoke_cache);
+	free_hash (image->delegate_invoke_cache);
+	free_hash (image->delegate_abstract_invoke_cache);
+	if (image->remoting_invoke_cache)
+		g_hash_table_foreach (image->remoting_invoke_cache, free_remoting_wrappers, NULL);
+	free_hash (image->remoting_invoke_cache);
+	free_hash (image->runtime_invoke_cache);
+	free_hash (image->runtime_invoke_direct_cache);
+	free_hash (image->synchronized_cache);
+	free_hash (image->unbox_wrapper_cache);
+	free_hash (image->cominterop_invoke_cache);
+	free_hash (image->cominterop_wrapper_cache);
+	free_hash (image->typespec_cache);
+	free_hash (image->ldfld_wrapper_cache);
+	free_hash (image->ldflda_wrapper_cache);
+	free_hash (image->stfld_wrapper_cache);
+	free_hash (image->isinst_cache);
+	free_hash (image->castclass_cache);
+	free_hash (image->proxy_isinst_cache);
+	free_hash (image->thunk_invoke_cache);
+	free_hash (image->static_rgctx_invoke_cache);
 
 	/* The ownership of signatures is not well defined */
 	//g_hash_table_foreach (image->memberref_signatures, free_mr_signatures, NULL);
@@ -1525,6 +1512,7 @@ mono_image_close (MonoImage *image)
 		g_free (image->modules_loaded);
 	if (image->references)
 		g_free (image->references);
+	mono_perfcounters->loader_bytes -= mono_mempool_get_allocated (image->mempool);
 	/*g_print ("destroy image %p (dynamic: %d)\n", image, image->dynamic);*/
 	if (!image->dynamic) {
 		if (debug_assembly_unload)
@@ -1584,23 +1572,18 @@ mono_image_walk_resource_tree (MonoCLIImageInfo *info, guint32 res_id,
 	 * Level 2 holds a directory entry for each language pointing to
 	 * the actual data.
 	 */
-	name_offset = GUINT32_FROM_LE (entry->name_offset) & 0x7fffffff;
-	dir_offset = GUINT32_FROM_LE (entry->dir_offset) & 0x7fffffff;
+	is_string = MONO_PE_RES_DIR_ENTRY_NAME_IS_STRING (*entry);
+	name_offset = MONO_PE_RES_DIR_ENTRY_NAME_OFFSET (*entry);
 
-#if G_BYTE_ORDER != G_LITTLE_ENDIAN
-	is_string = (GUINT32_FROM_LE (entry->name_offset) & 0x80000000) != 0;
-	is_dir = (GUINT32_FROM_LE (entry->dir_offset) & 0x80000000) != 0;
-#else
-	is_string = entry->name_is_string;
-	is_dir = entry->is_dir;
-#endif
+	is_dir = MONO_PE_RES_DIR_ENTRY_IS_DIR (*entry);
+	dir_offset = MONO_PE_RES_DIR_ENTRY_DIR_OFFSET (*entry);
 
 	if(level==0) {
-		if((is_string==FALSE && name_offset!=res_id) ||
-		   (is_string==TRUE)) {
-			return(NULL);
-		}
+		if (is_string)
+			return NULL;
 	} else if (level==1) {
+		if (res_id != name_offset)
+			return NULL;
 #if 0
 		if(name!=NULL &&
 		   is_string==TRUE && name!=lookup (name_offset)) {
@@ -1608,12 +1591,8 @@ mono_image_walk_resource_tree (MonoCLIImageInfo *info, guint32 res_id,
 		}
 #endif
 	} else if (level==2) {
-		if ((is_string == FALSE &&
-		    name_offset != lang_id &&
-		    lang_id != 0) ||
-		   (is_string == TRUE)) {
-			return(NULL);
-		}
+		if (is_string == TRUE || (is_string == FALSE && lang_id != 0 && name_offset != lang_id))
+			return NULL;
 	} else {
 		g_assert_not_reached ();
 	}
@@ -1679,6 +1658,8 @@ mono_image_lookup_resource (MonoImage *image, guint32 res_id, guint32 lang_id, g
 	if(image==NULL) {
 		return(NULL);
 	}
+
+	mono_image_ensure_section_idx (image, MONO_SECTION_RSRC);
 
 	info=image->image_info;
 	if(info==NULL) {
@@ -2009,3 +1990,25 @@ mono_image_has_authenticode_entry (MonoImage *image)
 	// the Authenticode "pre" (non ASN.1) header is 8 bytes long
 	return ((de->rva != 0) && (de->size > 8));
 }
+
+gpointer
+mono_image_alloc (MonoImage *image, guint size)
+{
+	mono_perfcounters->loader_bytes += size;
+	return mono_mempool_alloc (image->mempool, size);
+}
+
+gpointer
+mono_image_alloc0 (MonoImage *image, guint size)
+{
+	mono_perfcounters->loader_bytes += size;
+	return mono_mempool_alloc0 (image->mempool, size);
+}
+
+char*
+mono_image_strdup (MonoImage *image, const char *s)
+{
+	mono_perfcounters->loader_bytes += strlen (s);
+	return mono_mempool_strdup (image->mempool, s);
+}
+

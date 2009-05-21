@@ -35,11 +35,12 @@ target_triplet = @target@
 subdir = man
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in ChangeLog
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 SOURCES =
@@ -96,12 +97,16 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
+GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GMODULE_CFLAGS = @GMODULE_CFLAGS@
 GMODULE_LIBS = @GMODULE_LIBS@
+GMSGFMT = @GMSGFMT@
+GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
 HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
+HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -125,6 +130,9 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MSGFMT = @MSGFMT@
+MSGFMT_015 = @MSGFMT_015@
+MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
@@ -145,9 +153,13 @@ SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
 STRIP = @STRIP@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 X11 = @X11@
 XATTR_LIB = @XATTR_LIB@
+XGETTEXT = @XGETTEXT@
+XGETTEXT_015 = @XGETTEXT_015@
+XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
 XMKMF = @XMKMF@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -220,11 +232,58 @@ target_os = @target_os@
 target_vendor = @target_vendor@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-man_MANS = mcs.1 mono.1 monostyle.1 mono-config.5 sqlsharp.1 oldmono.1 ilasm.1 \
-	   cert2spc.1 cilc.1 genxs.1 wsdl.1 disco.1 soapsuds.1 makecert.1 \
-	   chktrust.1 setreg.1 sn.1 secutil.1 signcode.1 certmgr.1 monop.1 xsd.1 gacutil.1 \
-	   macpack.1 mkbundle.1 dtd2xsd.1 permview.1 prj2make.1 mono-service.1 mono-shlib-cop.1 \
-	   al.1 mozroots.1 mono-xmltool.1 sgen.1 httpcfg.1 vbnc.1 resgen.1 monolinker.1 mconfig.1
+man_MANS = \
+	al.1                  \
+	cert2spc.1            \
+	certmgr.1             \
+	chktrust.1            \
+	cilc.1                \
+	csharp.1              \
+	disco.1               \
+	dtd2xsd.1             \
+	gacutil.1             \
+	genxs.1               \
+	httpcfg.1             \
+	ilasm.1               \
+	macpack.1             \
+	makecert.1            \
+	mconfig.1             \
+	mcs.1                 \
+	mdassembler.1         \
+	mdoc.1                \
+	mdoc.5                \
+	mdoc-assemble.1       \
+	mdoc-export-html.1    \
+	mdoc-export-msxdoc.1  \
+	mdoc-update.1         \
+	mdoc-validate.1       \
+	mdvalidater.1         \
+	mkbundle.1            \
+	mono.1                \
+	mono-cil-strip.1      \
+	mono-config.5         \
+	monodocer.1           \
+	monodocs2html.1       \
+	monolinker.1          \
+	monop.1               \
+	mono-service.1        \
+	mono-shlib-cop.1      \
+	monostyle.1           \
+	mono-xmltool.1        \
+	mozroots.1            \
+	oldmono.1             \
+	permview.1            \
+	prj2make.1            \
+	resgen.1              \
+	secutil.1             \
+	setreg.1              \
+	sgen.1                \
+	signcode.1            \
+	sn.1                  \
+	soapsuds.1            \
+	sqlsharp.1            \
+	wsdl.1                \
+	xsd.1
 
 EXTRA_DIST = $(man_MANS)
 all: all-am

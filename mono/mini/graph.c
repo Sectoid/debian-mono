@@ -149,6 +149,8 @@ mono_draw_cfg (MonoCompile *cfg, FILE *fp)
 	fprintf (fp, "}\n");
 }
 
+#if 0
+
 static void
 mono_print_label (FILE *fp, MonoInst *tree) {
 	int arity;
@@ -217,8 +219,6 @@ mono_print_label (FILE *fp, MonoInst *tree) {
 		fprintf (fp, ")]");
 		break;
 	}
-	case OP_RENAME:
-	case OP_RETARG:
 	case OP_NOP:
 	case OP_JMP:
 	case OP_BREAK:
@@ -229,28 +229,11 @@ mono_print_label (FILE *fp, MonoInst *tree) {
 	case OP_SWITCH:
 	case CEE_ISINST:
 	case CEE_CASTCLASS:
-	case OP_OUTARG:
 	case OP_CALL_REG:
 	case OP_FCALL_REG:
 	case OP_LCALL_REG:
 	case OP_VCALL_REG:
 	case OP_VOIDCALL_REG:
-	case OP_TRAMPCALL_VTABLE:
-	case OP_CALL_RGCTX:
-	case OP_FCALL_RGCTX:
-	case OP_VOIDCALL_RGCTX:
-	case OP_LCALL_RGCTX:
-	case OP_VCALL_RGCTX:
-	case OP_CALL_REG_RGCTX:
-	case OP_FCALL_REG_RGCTX:
-	case OP_VOIDCALL_REG_RGCTX:
-	case OP_LCALL_REG_RGCTX:
-	case OP_VCALL_REG_RGCTX:
-	case OP_CALLVIRT_IMT:
-	case OP_VOIDCALLVIRT_IMT:
-	case OP_FCALLVIRT_IMT:
-	case OP_LCALLVIRT_IMT:
-	case OP_VCALLVIRT_IMT:
 		mono_print_label (fp, tree->inst_left);
 		break;
 	case CEE_BNE_UN:
@@ -279,6 +262,8 @@ mono_print_label (FILE *fp, MonoInst *tree) {
 		fprintf (fp, ")");
 }
 
+#endif
+
 static void
 mono_draw_code_cfg (MonoCompile *cfg, FILE *fp)
 {
@@ -306,7 +291,7 @@ mono_draw_code_cfg (MonoCompile *cfg, FILE *fp)
 		fprintf (fp, "BB%d [%sshape=record,labeljust=l,label=\"{BB%d|", bb->block_num, color, bb->block_num);
 			
 		MONO_BB_FOR_EACH_INS (bb, inst) {
-			mono_print_label (fp, inst);
+			//mono_print_label (fp, inst);
 			fprintf (fp, "\\n");			
 		}
 
@@ -350,3 +335,4 @@ mono_draw_graph (MonoCompile *cfg, MonoGraphOptions draw_options)
 	system (com);
 	g_free (com);
 }
+

@@ -27,6 +27,9 @@
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/marshal.h>
 #include <mono/io-layer/io-layer.h>
+#ifndef PLATFORM_WIN32
+#include <mono/io-layer/threads.h>
+#endif
 #include <mono/metadata/object-internals.h>
 #include <mono/metadata/mono-debug-debugger.h>
 #include <mono/utils/mono-compiler.h>
@@ -419,9 +422,8 @@ static void
 try_free_delayed_free_item (int index)
 {
 	if (delayed_free_table->len > index) {
-		DelayedFreeItem item;
+		DelayedFreeItem item = { NULL, NULL };
 
-		item.p = NULL;
 		EnterCriticalSection (&delayed_free_table_mutex);
 		/* We have to check the length again because another
 		   thread might have freed an item before we acquired
@@ -593,7 +595,7 @@ static guint32 WINAPI start_wrapper(void *data)
 
 	/* On 2.0 profile (and higher), set explicitly since state might have been
 	   Unknown */
-	if (mono_get_runtime_info ()->framework_version [0] != '1') {
+	if (mono_framework_version () != 1) {
 		if (thread->apartment_state == ThreadApartmentState_Unknown)
 			thread->apartment_state = ThreadApartmentState_MTA;
 	}
@@ -733,6 +735,8 @@ void mono_thread_create_internal (MonoDomain *domain, gpointer func, gpointer ar
 	InitializeCriticalSection (thread->synch_cs);
 
 	thread->threadpool_thread = threadpool_thread;
+	if (threadpool_thread)
+		mono_thread_set_state (thread, ThreadState_Background);
 
 	if (handle_store (thread))
 		ResumeThread (thread_handle);
@@ -1054,16 +1058,8 @@ void ves_icall_System_Threading_Thread_Sleep_internal(gint32 ms)
 	mono_thread_clr_state (thread, ThreadState_WaitSleepJoin);
 }
 
-void ves_icall_System_Threading_Thread_SpinWait_internal (gint32 iterations)
+void ves_icall_System_Threading_Thread_SpinWait_nop (void)
 {
-	gint32 i;
-	
-	for(i = 0; i < iterations; i++) {
-		/* We're busy waiting, but at least we can tell the
-		 * scheduler to let someone else have a go...
-		 */
-		Sleep (0);
-	}
 }
 
 gint32
@@ -1277,8 +1273,9 @@ ves_icall_System_Threading_Thread_SetSerializedCurrentUICulture (MonoThread *thi
 MonoThread *
 mono_thread_current (void)
 {
-	THREAD_DEBUG (g_message ("%s: returning %p", __func__, GET_CURRENT_OBJECT ()));
-	return GET_CURRENT_OBJECT ();
+	MonoThread *res = GET_CURRENT_OBJECT ()
+	THREAD_DEBUG (g_message ("%s: returning %p", __func__, res));
+	return res;
 }
 
 gboolean ves_icall_System_Threading_Thread_Join_internal(MonoThread *this,
@@ -2036,6 +2033,15 @@ static void signal_thread_state_change (MonoThread *thread)
 #else
 	pthread_kill (thread->tid, mono_thread_get_abort_signal ());
 #endif
+
+	/* 
+	 * This will cause waits to be broken.
+	 * It will also prevent the thread from entering a wait, so if the thread returns
+	 * from the wait before it receives the abort signal, it will just spin in the wait
+	 * functions in the io-layer until the signal handler calls QueueUserAPC which will
+	 * make it return.
+	 */
+	wapi_interrupt_thread (thread->handle);
 #endif /* PLATFORM_WIN32 */
 }
 
@@ -3000,7 +3006,7 @@ typedef struct abort_appdomain_data {
 } abort_appdomain_data;
 
 static void
-abort_appdomain_thread (gpointer key, gpointer value, gpointer user_data)
+collect_appdomain_thread (gpointer key, gpointer value, gpointer user_data)
 {
 	MonoThread *thread = (MonoThread*)value;
 	abort_appdomain_data *data = (abort_appdomain_data*)user_data;
@@ -3008,8 +3014,6 @@ abort_appdomain_thread (gpointer key, gpointer value, gpointer user_data)
 
 	if (mono_thread_has_appdomain_ref (thread, domain)) {
 		/* printf ("ABORTING THREAD %p BECAUSE IT REFERENCES DOMAIN %s.\n", thread->tid, domain->friendly_name); */
-
-		ves_icall_System_Threading_Thread_Abort (thread, NULL);
 
 		if(data->wait.num<MAXIMUM_WAIT_OBJECTS) {
 			HANDLE handle = OpenThread (THREAD_ALL_ACCESS, TRUE, thread->tid);
@@ -3037,6 +3041,7 @@ mono_threads_abort_appdomain_threads (MonoDomain *domain, int timeout)
 	abort_appdomain_data user_data;
 	guint32 start_time;
 	int orig_timeout = timeout;
+	int i;
 
 	THREAD_DEBUG (g_message ("%s: starting abort", __func__));
 
@@ -3046,15 +3051,21 @@ mono_threads_abort_appdomain_threads (MonoDomain *domain, int timeout)
 
 		user_data.domain = domain;
 		user_data.wait.num = 0;
-		mono_g_hash_table_foreach (threads, abort_appdomain_thread, &user_data);
+		/* This shouldn't take any locks */
+		mono_g_hash_table_foreach (threads, collect_appdomain_thread, &user_data);
 		mono_threads_unlock ();
 
-		if (user_data.wait.num > 0)
+		if (user_data.wait.num > 0) {
+			/* Abort the threads outside the threads lock */
+			for (i = 0; i < user_data.wait.num; ++i)
+				ves_icall_System_Threading_Thread_Abort (user_data.wait.threads [i], NULL);
+
 			/*
 			 * We should wait for the threads either to abort, or to leave the
 			 * domain. We can't do the latter, so we wait with a timeout.
 			 */
 			wait_for_tids (&user_data.wait, 100);
+		}
 
 		/* Update remaining time */
 		timeout -= mono_msec_ticks () - start_time;
@@ -3464,6 +3475,10 @@ static MonoException* mono_thread_execute_interruption (MonoThread *thread)
 		WaitForSingleObjectEx (GetCurrentThread(), 0, TRUE);
 		InterlockedDecrement (&thread_interruption_requested);
 		thread->interruption_requested = FALSE;
+#ifndef PLATFORM_WIN32
+		/* Clear the interrupted flag of the thread so it can wait again */
+		wapi_clear_interruption ();
+#endif
 	}
 
 	if ((thread->state & ThreadState_AbortRequested) != 0) {

@@ -41,14 +41,13 @@ namespace System.Windows.Forms {
 		IList, ISupportInitializeNotification, ICollection,
 		IComponent, ICurrencyManagerProvider, IEnumerable 
 	{
-		ISite site;
 		bool is_initialized = true;
 
 		IList list;
 		CurrencyManager currency_manager;
 		Dictionary<string,CurrencyManager> related_currency_managers = new Dictionary<string,CurrencyManager> ();
 		//bool list_defaulted;
-		Type item_type;
+		internal Type item_type;
 		bool item_has_default_ctor;
 		bool list_is_ibinding;
 
@@ -191,9 +190,8 @@ namespace System.Windows.Forms {
 				if (list is IBindingListView)
 					((IBindingListView)list).Filter = filter;
 			}
-
-			if (raise_list_changed_events)
-				OnListChanged (new ListChangedEventArgs (ListChangedType.Reset, -1));
+			
+			ResetBindings (true);
 		}
 
 		void IBindingListChangedHandler (object o, ListChangedEventArgs args)
@@ -285,7 +283,9 @@ namespace System.Windows.Forms {
 		[Browsable (false)]
 		public object Current {
 			get {
-				return currency_manager.Current;
+				if (currency_manager.Count > 0)
+					return currency_manager.Current;
+				return null;
 			}
 		}
 
@@ -624,10 +624,8 @@ namespace System.Windows.Forms {
 		{
 			if (!AllowEdit)
 				throw new InvalidOperationException ("Item cannot be added to a read-only or fixed-size list.");
-			if (!AllowNew || (!item_has_default_ctor && !IsAddingNewHandled)) 
-				throw new InvalidOperationException ("AddNew cannot be called on '" + item_type.Name +
-						", since it does not have a public default ctor. Set AllowNew to true " +
-						", handling AddingNew and creating the appropriate object.");
+			if (!AllowNew) 
+				throw new InvalidOperationException ("AddNew is set to false.");
 
 			EndEdit ();
 
@@ -638,9 +636,12 @@ namespace System.Windows.Forms {
 			if (new_object != null) {
 				if (!item_type.IsAssignableFrom (new_object.GetType ()))
 					throw new InvalidOperationException ("Objects added to the list must all be of the same type.");
-			} else if (list is IBindingList)
-				return ((IBindingList)list).AddNew ();
-			else if (!item_has_default_ctor)
+			} else if (list is IBindingList) {
+				object newObj = ((IBindingList)list).AddNew ();
+				add_pending = true;
+				pending_add_index = list.IndexOf (newObj);
+				return newObj;
+			} else if (!item_has_default_ctor)
 				throw new InvalidOperationException ("AddNew cannot be called on '" + item_type.Name +
 						", since it does not have a public default ctor. Set AllowNew to true " +
 						", handling AddingNew and creating the appropriate object.");

@@ -1,4 +1,96 @@
-2008-08-13  Bill Holmes  <billholmes54@gmail.com>
+2009-03-05  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono.def : Removing missing methods to remove link errors for
+	  MSVC build.  
+
+	Code is contributed under MIT/X11 license.
+
+2009-02-18  Bill Holmes  <billholmes54@gmail.com>
+
+	backport of r127338
+
+	* mono.def : Adding mono_jit_set_trace_options
+
+	Code is contributed under MIT/X11 license.
+
+2008-12-09  Bill Holmes  <billholmes54@gmail.com>
+
+	* libmono.vcproj : Adding unwind.c to the project.
+
+	Code is contributed under MIT/X11 license.
+
+2008-12-04  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono.sln : Removing monoburg from the solution.
+
+	* libmono.vcproj : Removing files deleted from svn.
+
+	* mono.def : Removing mono_burg* exports that no longer exist.
+
+	Code is contributed under MIT/X11 license.
+
+2008-11-10  Bill Holmes  <billholmes54@gmail.com>
+
+	* genmdesc.vcproj, monoburg.vcproj : Adding quotes to paths in the
+	  post build steps.
+
+	Code is contributed under MIT/X11 license.
+
+2008-11-07  Bill Holmes  <billholmes54@gmail.com>
+
+	* monoposixhelper.def, monoposixhelper.vcproj : added.
+
+	* mono.sln : Adding the monoposixhelper project.
+
+	Code is contributed under MIT/X11 license.
+
+2008-11-07  Bill Holmes  <billholmes54@gmail.com>
+
+	* test_eglib.vcproj : Adding unicode.c to the project.
+
+	* mono.sln : Adding the correct dependencies for e-glib.
+
+	* *.vcproj : Setting LinkLibraryDependencies=false for all
+	  projects and all configurations.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-17  Bill Holmes  <billholmes54@gmail.com>
+
+	* eglib.vcproj : Adding src\gtimer-win32.c to the VC project.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-13  Bill Holmes  <billholmes54@gmail.com>
+
+	* libmono.vcproj : Removing metadata\rawbuffer.c from the VC project.
+
+	* eglib.vcproj : Adding gdate-win32.c, gdir-win32.c, gfile-posix.c,
+	  gfile-win32.c, gmisc-win32.c, and gmodule-win32.c to the VC project.
+
+	Code is contributed under MIT/X11 license.
+
+2008-10-07  Bill Holmes  <billholmes54@gmail.com>
+
+	* libmono.vcproj : Adding simd-intrinsics.c to the VC project.
+
+	Code is contributed under MIT/X11 license.
+
+2008-09-26  Bill Holmes  <billholmes54@gmail.com>
+
+	* libmono.vcproj : Adding attach.c to the VC project.
+
+	Code is contributed under MIT/X11 license.
+
+2008-09-16  Bill Holmes  <billholmes54@gmail.com>
+
+	* eglib.vcproj, genmdesc.vcproj, libgc.vcproj, libmono.vcproj,
+	  mono.vcproj, monoburg.vcproj:  Adding i386 preprocessor definition
+	  to the Win32 build targets.
+
+	Contributed under MIT/X11 license.
+
+2008-08-12  Bill Holmes  <billholmes54@gmail.com>
 
 	* eglib.vcproj, genmdesc.vcproj, libgc.vcproj, libmono.vcproj, libtest.vcproj,
 	  mono.vcproj, monoburg.vcproj, monodiet.vcproj, monodis.vcproj, monograph.vcproj,
@@ -7,6 +99,11 @@
 	  match the gcc build in Cygwin.
 
 	Contributed under MIT/X11 license.
+
+2008-07-23  Robert Jordan  <robertj@gmx.net>
+
+	* libmono.vcproj: Reflect Linear IL changes.
+	* ../winconfig.h: Bump Mono version.
 
 2008-06-02  Bill Holmes  <billholmes54@gmail.com>
 	* mono.sln, libtest.vcproj:  Adding libtest to the VS solution.

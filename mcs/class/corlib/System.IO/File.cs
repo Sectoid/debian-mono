@@ -241,7 +241,7 @@ namespace System.IO
 			if (!MonoIO.GetFileStat (path, out stat, out error)) {
 #if NET_2_0
 				if (error == MonoIOError.ERROR_PATH_NOT_FOUND || error == MonoIOError.ERROR_FILE_NOT_FOUND)
-					return _defaultLocalFileTime;
+					return DefaultLocalFileTime;
 				else
 					throw new IOException (path);
 #else
@@ -265,7 +265,7 @@ namespace System.IO
 			if (!MonoIO.GetFileStat (path, out stat, out error)) {
 #if NET_2_0
 				if (error == MonoIOError.ERROR_PATH_NOT_FOUND || error == MonoIOError.ERROR_FILE_NOT_FOUND)
-					return _defaultLocalFileTime;
+					return DefaultLocalFileTime;
 				else
 					throw new IOException (path);
 #else
@@ -289,7 +289,7 @@ namespace System.IO
 			if (!MonoIO.GetFileStat (path, out stat, out error)) {
 #if NET_2_0
 				if (error == MonoIOError.ERROR_PATH_NOT_FOUND || error == MonoIOError.ERROR_FILE_NOT_FOUND)
-					return _defaultLocalFileTime;
+					return DefaultLocalFileTime;
 				else
 					throw new IOException (path);
 #else
@@ -519,21 +519,17 @@ namespace System.IO
 				throw new ArgumentException (Locale.GetText ("Path contains invalid chars"));
 		}
 
+#if !NET_2_0
 		private static IOException CreatePartOfPathNotFoundException (string path)
 		{
 			string msg = Locale.GetText ("Part of the path \"{0}\" could not be found.", path);
 			return new IOException (msg);
 		}
+#endif		
 
 		#endregion
 
 #if NET_2_0
-		static File ()
-		{
-			_defaultLocalFileTime = new DateTime (1601, 1, 1);
-			_defaultLocalFileTime = _defaultLocalFileTime.ToLocalTime ();
-		}
-
 		//
 		// The documentation for this method is most likely wrong, it
 		// talks about doing a "binary read", but the remarks say
@@ -634,7 +630,16 @@ namespace System.IO
 			}
 		}
 
-		private static readonly DateTime _defaultLocalFileTime;
+		static DateTime? defaultLocalFileTime;
+		static DateTime DefaultLocalFileTime {
+			get {
+				if (defaultLocalFileTime == null)
+					defaultLocalFileTime = new DateTime (1601, 1, 1).ToLocalTime ();
+					
+				return defaultLocalFileTime.Value;
+			}
+		}
+
 
 		[MonoLimitation ("File encryption isn't supported (even on NTFS).")]
 		public static void Encrypt (string path)

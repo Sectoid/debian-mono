@@ -45,6 +45,8 @@ namespace Mono.WebBrowser
 			messages.Insert ((int) ErrorCodes.PrefService, String.Intern ("Error obtaining a handle to the preferences service."));
 			messages.Insert ((int) ErrorCodes.StreamNotOpen, String.Intern ("Stream is not open for writing. Call OpenStream before appending."));
 			messages.Insert ((int) ErrorCodes.Navigation, String.Intern ("An error occurred while initializing the navigation object."));
+			messages.Insert ((int) ErrorCodes.AccessibilityService, String.Intern ("Error obtaining a handle to the accessibility service."));
+			messages.Insert ((int) ErrorCodes.DocumentEncoderService, String.Intern ("Error obtaining a handle to the document encoder service."));
 		}
 
 
@@ -93,7 +95,9 @@ namespace Mono.WebBrowser
 			DirectoryService,
 			PrefService,
 			StreamNotOpen,
-			Navigation
+			Navigation,
+			AccessibilityService,
+			DocumentEncoderService
 		}
 	}
 }

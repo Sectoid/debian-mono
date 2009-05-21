@@ -60,11 +60,18 @@ namespace System.Collections {
 		}
 
 		[Serializable]
-		internal class KeyMarker: IObjectReference
+		internal class KeyMarker
+#if !NET_2_1
+			: IObjectReference
+#endif
 		{
 			public readonly static KeyMarker Removed = new KeyMarker();
+#if !NET_2_1
 			public object GetRealObject (StreamingContext context)
-			{ return KeyMarker.Removed; }
+			{
+				return KeyMarker.Removed;
+			}
+#endif
 		}
 
 		//
@@ -91,7 +98,7 @@ namespace System.Collections {
 		private IComparer comparerRef;
 		private SerializationInfo serializationInfo;
 
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 		private IEqualityComparer equalityComparer;
 #endif
 
@@ -189,7 +196,7 @@ namespace System.Collections {
 			hcpRef = source.hcpRef;
 			comparerRef = source.comparerRef;
 
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 			equalityComparer = source.equalityComparer;
 #endif
 		}
@@ -254,7 +261,7 @@ namespace System.Collections {
 			serializationInfo = info;
 		}
 
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 		public Hashtable (IDictionary d, IEqualityComparer equalityComparer) : this (d, 1.0f, equalityComparer)
 		{
 		}
@@ -306,7 +313,7 @@ namespace System.Collections {
 			}
 		}
 
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 		protected IEqualityComparer EqualityComparer {
 			get {
 				return equalityComparer;
@@ -636,7 +643,7 @@ namespace System.Collections {
 		/// <summary>Returns the hash code for the specified key.</summary>
 		protected virtual int GetHash (Object key)
 		{
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 			if (equalityComparer != null)
 				return equalityComparer.GetHashCode (key);
 #endif
@@ -654,7 +661,7 @@ namespace System.Collections {
 		{
 			if (key == KeyMarker.Removed)
 				return false;
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 			if (equalityComparer != null)
 				return equalityComparer.Equals (item, key);
 #endif

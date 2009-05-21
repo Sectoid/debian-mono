@@ -978,7 +978,10 @@ namespace System.Windows.Forms {
 				hscrollbar.Value = 0;
 			}
 
+			/* Manually setting the size of the thumb should be done before
+			 * the other assignments */
 			if (hscroll_visible) {
+				hscrollbar.manual_thumb_size = right_edge;
 				hscrollbar.LargeChange = right_edge;
 				hscrollbar.SmallChange = 5;
 				hscrollbar.Maximum = canvas.Width - 1;
@@ -990,6 +993,7 @@ namespace System.Windows.Forms {
 			}
 
 			if (vscroll_visible) {
+				vscrollbar.manual_thumb_size = bottom_edge;
 				vscrollbar.LargeChange = bottom_edge;
 				vscrollbar.SmallChange = 5;
 				vscrollbar.Maximum = canvas.Height - 1;
@@ -1069,6 +1073,13 @@ namespace System.Windows.Forms {
 			}
 		}
 
+#if NET_2_0
+		private void HandleScrollEvent (object sender, ScrollEventArgs args)
+		{
+			OnScroll (args);
+		}
+#endif
+
 		private void AddScrollbars (object o, EventArgs e)
 		{
 			Controls.AddRangeImplicit (new Control[] {hscrollbar, vscrollbar, sizegrip});
@@ -1081,11 +1092,19 @@ namespace System.Windows.Forms {
 			hscrollbar.Visible = false;
 			hscrollbar.ValueChanged += new EventHandler (HandleScrollBar);
 			hscrollbar.Height = SystemInformation.HorizontalScrollBarHeight;
+			hscrollbar.use_manual_thumb_size = true;
+#if NET_2_0
+			hscrollbar.Scroll += new ScrollEventHandler (HandleScrollEvent);
+#endif
 
 			vscrollbar = new ImplicitVScrollBar ();
 			vscrollbar.Visible = false;
 			vscrollbar.ValueChanged += new EventHandler (HandleScrollBar);
 			vscrollbar.Width = SystemInformation.VerticalScrollBarWidth;
+			vscrollbar.use_manual_thumb_size = true;
+#if NET_2_0
+			vscrollbar.Scroll += new ScrollEventHandler (HandleScrollEvent);
+#endif
 
 			sizegrip = new SizeGrip (this);
 			sizegrip.Visible = false;
@@ -1112,9 +1131,7 @@ namespace System.Windows.Forms {
 			scroll_position.X += XOffset;
 			scroll_position.Y += YOffset;
 
-			// Should we call XplatUI.ScrollWindow??? If so, we need to position our windows by other means above
-			// Since we're already causing a redraw above
-			Invalidate(false);
+			XplatUI.ScrollWindow (Handle, ClientRectangle, -XOffset, -YOffset, false);
 			ResumeLayout(false);
 		}
 		#endregion	// Internal & Private Methods
@@ -1124,7 +1141,7 @@ namespace System.Windows.Forms {
 		
 		protected virtual void OnScroll (ScrollEventArgs se)
 		{
-			EventHandler eh = (EventHandler) (Events [OnScrollEvent]);
+			ScrollEventHandler eh = (ScrollEventHandler) (Events [OnScrollEvent]);
 			if (eh != null)
 				eh (this, se);
 		}

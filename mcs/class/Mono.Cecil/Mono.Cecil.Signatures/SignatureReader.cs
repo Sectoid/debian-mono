@@ -370,18 +370,28 @@ namespace Mono.Cecil.Signatures {
 			case ElementType.ByRef :
 				rt.TypedByRef = rt.Void = false;
 				rt.ByRef = true;
-
-				if (rt.CustomMods == null || rt.CustomMods.Length == 0)
-					rt.CustomMods = ReadCustomMods (data, start, out start);
-
+				rt.CustomMods = CombineCustomMods(rt.CustomMods, ReadCustomMods (data, start, out start));
 				rt.Type = ReadType (data, start, out start);
 				break;
 			default :
 				rt.TypedByRef = rt.Void = rt.ByRef = false;
+				rt.CustomMods = CombineCustomMods (rt.CustomMods, ReadCustomMods (data, start, out start));
 				rt.Type = ReadType (data, curs, out start);
 				break;
 			}
+
 			return rt;
+		}
+
+		static CustomMod [] CombineCustomMods (CustomMod [] original, CustomMod [] next)
+		{
+			if (next == null || next.Length == 0)
+				return original;
+
+			CustomMod [] mods = new CustomMod [original.Length + next.Length];
+			Array.Copy (original, mods, original.Length);
+			Array.Copy (next, 0, mods, original.Length, next.Length);
+			return mods;
 		}
 
 		Param [] ReadParameters (int length, byte [] data, int pos, out int start)
@@ -439,7 +449,13 @@ namespace Mono.Cecil.Signatures {
 			default :
 				p.TypedByRef = false;
 				p.ByRef = false;
-				p.Type = ReadType (data, curs, out start);
+
+				start = curs;
+
+				if (p.CustomMods == null || p.CustomMods.Length == 0)
+					p.CustomMods = ReadCustomMods (data, start, out start);
+
+				p.Type = ReadType (data, start, out start);
 				break;
 			}
 			return p;
@@ -452,7 +468,7 @@ namespace Mono.Cecil.Signatures {
 			switch (element) {
 			case ElementType.ValueType :
 				VALUETYPE vt = new VALUETYPE ();
-				vt.Type = Utilities.GetMetadataToken(CodedIndex.TypeDefOrRef,
+				vt.Type = Utilities.GetMetadataToken (CodedIndex.TypeDefOrRef,
 					(uint) Utilities.ReadCompressedInteger (data, start, out start));
 				return vt;
 			case ElementType.Class :
@@ -552,6 +568,9 @@ namespace Mono.Cecil.Signatures {
 			start = pos;
 			while (true) {
 				int buf = start;
+				if (buf >= data.Length - 1)
+					break;
+
 				ElementType flag = (ElementType) Utilities.ReadCompressedInteger (data, start, out start);
 				start = buf;
 				if (!((flag == ElementType.CModOpt) || (flag == ElementType.CModReqD)))
@@ -601,8 +620,8 @@ namespace Mono.Cecil.Signatures {
 		{
 			CustomAttrib ca = new CustomAttrib (ctor);
 			if (data.Length == 0) {
-				ca.FixedArgs = new CustomAttrib.FixedArg [0];
-				ca.NamedArgs = new CustomAttrib.NamedArg [0];
+				ca.FixedArgs = CustomAttrib.FixedArg.Empty;
+				ca.NamedArgs = CustomAttrib.NamedArg.Empty;
 				return ca;
 			}
 
@@ -612,10 +631,14 @@ namespace Mono.Cecil.Signatures {
 			if (ca.Prolog != CustomAttrib.StdProlog)
 				throw new MetadataFormatException ("Non standard prolog for custom attribute");
 
-			ca.FixedArgs = new CustomAttrib.FixedArg [ctor.Parameters.Count];
-			for (int i = 0; i < ca.FixedArgs.Length && read; i++)
-				ca.FixedArgs [i] = ReadFixedArg (data, br,
-					ctor.Parameters [i].ParameterType, ref read, resolve);
+			if (ctor.HasParameters) {
+				ca.FixedArgs = new CustomAttrib.FixedArg [ctor.Parameters.Count];
+				for (int i = 0; i < ca.FixedArgs.Length && read; i++)
+					ca.FixedArgs [i] = ReadFixedArg (data, br,
+						ctor.Parameters [i].ParameterType, ref read, resolve);
+			} else {
+				ca.FixedArgs = CustomAttrib.FixedArg.Empty;
+			}
 
 			if (br.BaseStream.Position == br.BaseStream.Length)
 				read = false;
@@ -626,9 +649,13 @@ namespace Mono.Cecil.Signatures {
 			}
 
 			ca.NumNamed = br.ReadUInt16 ();
-			ca.NamedArgs = new CustomAttrib.NamedArg [ca.NumNamed];
-			for (int i = 0; i < ca.NumNamed && read; i++)
-				ca.NamedArgs [i] = ReadNamedArg (data, br, ref read, resolve);
+			if (ca.NumNamed > 0) {
+				ca.NamedArgs = new CustomAttrib.NamedArg [ca.NumNamed];
+				for (int i = 0; i < ca.NumNamed && read; i++)
+					ca.NamedArgs [i] = ReadNamedArg (data, br, ref read, resolve);
+			} else {
+				ca.NamedArgs = CustomAttrib.NamedArg.Empty;
+			}
 
 			ca.Read = read;
 			return ca;
@@ -689,9 +716,11 @@ namespace Mono.Cecil.Signatures {
 			TypeReference decType = new TypeReference (name, ns, asm);
 			for (int i = 1; i < outers.Length; i++) {
 				TypeReference t = new TypeReference (outers [i], null, asm);
+				t.Module = m_reflectReader.Module;
 				t.DeclaringType = decType;
 				decType = t;
 			}
+			decType.Module = m_reflectReader.Module;
 			decType.IsValueType = true;
 
 			return decType;
@@ -845,7 +874,9 @@ namespace Mono.Cecil.Signatures {
 
 				AssemblyDefinition asm = AssemblyResolver.Resolve (
 					((AssemblyNameReference) enumType.Scope).FullName);
-				type = asm.MainModule.Types [enumType.FullName];
+
+				if (asm != null)
+					type = asm.MainModule.Types [enumType.FullName];
 			}
 
 			if (type != null && type.IsEnum)

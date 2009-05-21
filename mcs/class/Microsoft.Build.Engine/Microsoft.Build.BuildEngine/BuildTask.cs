@@ -92,7 +92,8 @@ namespace Microsoft.Build.BuildEngine {
 				taskEngine = new TaskEngine (parentTarget.Project);		
 				taskEngine.Prepare (InitializeTask (), this.taskElement, GetParameters (), this.Type);
 				result = taskEngine.Execute ();
-				taskEngine.PublishOutput ();
+				if (result)
+					taskEngine.PublishOutput ();
 			// FIXME: it should be logged (exception)
 			} catch (Exception e) {
 				Console.Error.WriteLine (e);
@@ -163,8 +164,7 @@ namespace Microsoft.Build.BuildEngine {
 			ITask task;
 			
 			task = (ITask)Activator.CreateInstance (this.Type);
-			task.BuildEngine = new BuildEngine (parentTarget.Project.ParentEngine, 0, 0, ContinueOnError,
-				parentTarget.Project.FullFileName);
+			task.BuildEngine = new BuildEngine (parentTarget.Project.ParentEngine, parentTarget.Project, 0, 0, ContinueOnError);
 			
 			return task;
 		}

@@ -1,3 +1,26 @@
+2009-01-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* UnixSignal.cs: Check if realtime signal install failed with 
+	EADDRINUSE due to the signal been used by outside of Mono.Posix.
+
+2008-12-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* UnixSignal.cs: Allow RealTimeSignums to be used in addition to
+	  Signum, so that real time signals can be used.  Patch thanks to 
+	  tim.jenks@realtimeworlds.com.
+
+2008-11-04  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* UnixStream.cs: Do not check offset against int.MaxValue 
+	(System.IO doesn't have it). Reviewed by Jonathan Pryor.
+	Bug reported by Siro Blanco <siro.blanco@gmail.com>.
+
+2008-11-03  Miguel de Icaza  <miguel@novell.com>
+
+	* UnixClient.cs (Client): Make this property public when using the
+	Mono 2.0 profile, based on a discussion with Vlad Hociota and Joe
+	Shaw. 
+
 2008-02-11  Jonathan Pryor  <jpryor@novell.com>
 
 	* UnixSignal.cs: Improve argument checking to match docs.

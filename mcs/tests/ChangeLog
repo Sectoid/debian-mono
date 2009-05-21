@@ -1,3 +1,38 @@
+2008-11-23  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* test-695.cs:
+	* test-695-2-lib.cs:
+	* test-695-3.lib.cs: Added test for bug #432423.
+
+2008-09-25  Miguel de Icaza  <miguel@novell.com>
+
+	* eval-test.cs: Update tasty test, to prevent future generations
+	from wandering alone the bisecting space to track down a
+	feature regression. 
+
+2008-09-24  Miguel de Icaza  <miguel@novell.com>
+
+	* eval-test.cs: Add an evaluation test, to test the basic
+	primitives of the expression evaluator.
+
+2008-09-16  Jb Evain  <jbevain@novell.com>
+
+	* gtest-278.cs, gtest-278-3-lib.cs, gtest-278-2-lib.cs: complete
+	test for forwarded types with more than only one type forwarded.
+
+2008-08-29  Raja R Harinath  <harinath@hurrynot.org>
+
+	* test-xml-052.cs: Fix unrelated warning.
+
+2008-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	* test-668.cs: New test distilled from
+	System.Web/Test/System.Web.UI.WebControls/CustomValidatorTest.cs.
+
+2008-07-24 Marek Safar <marek.safar@gmail.com>
+
+	* Makefile: Added IL verification for 2.0 profile.
+
 2008-07-14 Marek Safar <marek.safar@gmail.com>
 
 	* Makefile: Added IL verification for 1.1 profile.

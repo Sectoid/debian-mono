@@ -46,6 +46,8 @@ namespace System.Resources
 #endif
 	public class ResourceManager
 	{
+		static Hashtable ResourceCache = new Hashtable (); 
+		static Hashtable NonExistent = Hashtable.Synchronized (new Hashtable ());
 		public static readonly int HeaderVersionNumber = 1;
 		public static readonly int MagicNumber = unchecked ((int) 0xBEEFCACE);
 
@@ -60,7 +62,6 @@ namespace System.Resources
 		private String resourceDir;
 
 		// Contains cultures which have no resource sets
-		private Hashtable nonExistentResourceSets;
 		
 		/* Recursing through culture parents stops here */
 		private CultureInfo neutral_culture;
@@ -69,6 +70,29 @@ namespace System.Resources
 		private UltimateResourceFallbackLocation fallbackLocation;
 #endif
 		
+		static Hashtable GetResourceSets (Assembly assembly, string basename)
+		{
+			lock (ResourceCache) {
+				string key = String.Empty;
+				if (assembly != null) {
+					key = assembly.FullName;
+				} else {
+					key = basename.GetHashCode ().ToString () + "@@";
+				}
+				if (basename != null && basename != String.Empty) {
+					key += "!" + basename;
+				} else {
+					key += "!" + key.GetHashCode ();
+				}
+				Hashtable tbl = ResourceCache [key] as Hashtable;
+				if (tbl == null) {
+					tbl = Hashtable.Synchronized (new Hashtable ());
+					ResourceCache [key] = tbl;
+				}
+				return tbl;
+			}
+		}
+
 		// constructors
 		protected ResourceManager ()
 		{
@@ -80,9 +104,9 @@ namespace System.Resources
 				throw new ArgumentNullException ("resourceSource");
 
 			this.resourceSource = resourceSource;
-			ResourceSets = new Hashtable();
 			BaseNameField = resourceSource.Name;
 			MainAssembly = resourceSource.Assembly;
+			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
 			neutral_culture = GetNeutralResourcesLanguage (MainAssembly);
 		}
 
@@ -93,9 +117,9 @@ namespace System.Resources
 			if (assembly == null)
 				throw new ArgumentNullException ("assembly");
 			
-			ResourceSets = new Hashtable ();
 			BaseNameField = baseName;
 			MainAssembly = assembly;
+			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
 #if ONLY_1_1
 			CheckBaseName ();
 #endif
@@ -121,9 +145,9 @@ namespace System.Resources
 			if (assembly == null)
 				throw new ArgumentNullException ("assembly");
 
-			ResourceSets = new Hashtable ();
 			BaseNameField = baseName;
 			MainAssembly = assembly;
+			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
 #if ONLY_1_1
 			CheckBaseName ();
 #endif
@@ -139,13 +163,13 @@ namespace System.Resources
 			if (resourceDir == null)
 				throw new ArgumentNullException("resourceDir");
 
-			ResourceSets = new Hashtable ();
 			BaseNameField = baseName;
 			this.resourceDir = resourceDir;
 #if ONLY_1_1
 			CheckBaseName ();
 #endif
 			resourceSetType = CheckResourceSetType (usingResourceSet, false);
+			ResourceSets = GetResourceSets (MainAssembly, BaseNameField);
 		}
 		
 		public static ResourceManager CreateFileBasedResourceManager (string baseName,
@@ -308,6 +332,9 @@ namespace System.Resources
 #endif
 		protected virtual ResourceSet InternalGetResourceSet (CultureInfo culture, bool createIfNotExists, bool tryParents)
 		{
+			if (culture == null)
+				throw new ArgumentNullException ("key"); // 'key' instead of 'culture' to make a test pass
+
 			ResourceSet set;
 			
 			/* if we already have this resource set, return it */
@@ -315,11 +342,7 @@ namespace System.Resources
 			if (set != null)
 				return set;
 
-			// Cache lookup failures
-			if (nonExistentResourceSets == null)
-				nonExistentResourceSets = new Hashtable();
-
-			if (nonExistentResourceSets.Contains (culture))
+			if (NonExistent.Contains (culture))
 				return null;
 
 			if (MainAssembly != null) {
@@ -338,7 +361,7 @@ namespace System.Resources
 					/* Try a satellite assembly */
 					Version sat_version = GetSatelliteContractVersion (MainAssembly);
 					try {
-						Assembly a = MainAssembly.GetSatelliteAssembly (
+						Assembly a = MainAssembly.GetSatelliteAssemblyNoThrow (
 							resourceCulture, sat_version);
 						if (a != null){
 							stream = a.GetManifestResourceStream (filename);
@@ -400,9 +423,9 @@ namespace System.Resources
 			}
 
 			if (set != null)
-				ResourceSets.Add (culture, set);
+				ResourceSets [culture] = set;
 			else
-				nonExistentResourceSets [culture] = culture;
+				NonExistent [culture] = culture;
 
 			return set;
 		}

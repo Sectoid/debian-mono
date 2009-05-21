@@ -1,3 +1,32 @@
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlXmlTest.cs: Minor improvements to tests. Marked tests as
+	NotWorking/NotDotNet to fix test failures on MS.
+
+2008-12-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlDecimalTest.cs
+	* SqlInt32Test.cs
+	* SqlCharsTest.cs
+	* SqlInt16Test.cs
+	* SqlInt64Test.cs
+	* SqlDoubleTest.cs: Change spaces to tabs, and remove extra tabs.
+	Restore original culture on teardown. Removed CWLs.
+
+2008-12-29  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlStringTest.cs: Change spaces to tabs. Restore original culture
+	on teardown. Enable commented-out tests. Removed CWLs.
+	* SqlGuidTest.cs: Fixed line endings.
+
+2008-12-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlXmlTest.cs:  Available only in 2.0 and above
+	
+2008-12-21  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlXmlTest.cs:  Tests for SqlXml type.  New addition.
+	
 2008-06-12  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SqlBooleanTest.cs : oops, was running wrong test harness. Fixed it.

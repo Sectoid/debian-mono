@@ -209,19 +209,14 @@ namespace Mono.CSharp
 		}
 	}
 
-	public class ConstructedType : TypeExpr
+	public class GenericTypeExpr : TypeExpr
 	{
-		public ConstructedType (FullNamedExpression fname, TypeArguments args, Location l)
+		public GenericTypeExpr (DeclSpace t, Location l)
 		{
 			throw new NotImplementedException ();
 		}
 
-		public ConstructedType (Type t, TypeParameter[] type_params, Location l)
-		{
-			throw new NotImplementedException ();
-		}
-
-		public ConstructedType (Type t, TypeArguments args, Location l)
+		public GenericTypeExpr (Type t, TypeArguments args, Location l)
 		{
 			throw new NotImplementedException ();
 		}
@@ -267,11 +262,6 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		public override bool DefineMembers ()
-		{
-			throw new NotImplementedException ();
-		}
-		
 		internal static void Error_ParameterNameCollision (Location loc, string name, string collisionWith)
 		{
 		}
@@ -298,31 +288,18 @@ namespace Mono.CSharp
 
 	public class TypeArguments
 	{
-		public readonly Location Location;
 		ArrayList args;
-		//Type[] atypes;
-		int dimension;
-		//bool has_type_args;
-		//bool created;
 		
-		public TypeArguments (Location loc)
+		public TypeArguments ()
 		{
 			args = new ArrayList ();
-			this.Location = loc;
 		}
 
-		public TypeArguments (Location loc, params Expression[] types)
+		public TypeArguments (params Expression[] types)
 		{
-			this.Location = loc;
-			this.args = new ArrayList (types);
+			args = new ArrayList (types);
 		}
 		
-		public TypeArguments (int dimension, Location loc)
-		{
-			this.dimension = dimension;
-			this.Location = loc;
-		}
-
 		public void Add (Expression type)
 		{
 		}
@@ -342,15 +319,8 @@ namespace Mono.CSharp
 
 		public int Count {
 			get {
-				if (dimension > 0)
-					return dimension;
-				else
-					return args.Count;
+				return args.Count;
 			}
-		}
-
-		public bool IsUnbound {
-			get { throw new NotImplementedException (); }
 		}
 
 		public TypeParameterName[] GetDeclarations ()

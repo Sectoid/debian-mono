@@ -189,12 +189,13 @@ namespace System.Diagnostics {
 		{
 			object d = null;
 
-			if (listeners == null) {
+			if (initLock != null) {
 				lock (initLock) {
 					if (listeners == null) {
 						listeners = new TraceListenerCollection (false);
 						listeners.Add (new DefaultTraceListener ());
 						d = DiagnosticsConfiguration.Settings;
+						initLock = null;
 					}
 				}
 			}

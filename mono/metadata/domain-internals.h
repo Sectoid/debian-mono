@@ -12,6 +12,7 @@
 #include <mono/io-layer/io-layer.h>
 
 extern CRITICAL_SECTION mono_delegate_section;
+extern CRITICAL_SECTION mono_strtod_mutex;
 
 /*
  * If this is set, the memory belonging to appdomains is not freed when a domain is
@@ -123,11 +124,6 @@ struct _MonoJitInfo {
 	/* There is an optional MonoGenericJitInfo after the clauses */
 };
 
-typedef struct {
-	MonoJitInfo *ji;
-	MonoCodeManager *code_mp;
-} MonoJitDynamicMethodInfo;
-
 struct _MonoAppContext {
 	MonoObject obj;
 	gint32 domain_id;
@@ -135,15 +131,34 @@ struct _MonoAppContext {
 	gpointer *static_data;
 };
 
+/*
+ * We have two unloading states because the domain
+ * must remain fully functional while AppDomain::DomainUnload is
+ * processed.
+ * After that unloading began and all domain facilities are teared down
+ * such as execution of new threadpool jobs.  
+ */
 typedef enum {
 	MONO_APPDOMAIN_CREATED,
+	MONO_APPDOMAIN_UNLOADING_START,
 	MONO_APPDOMAIN_UNLOADING,
 	MONO_APPDOMAIN_UNLOADED
 } MonoAppDomainState;
 
+typedef struct _MonoThunkFreeList {
+	guint32 size;
+	int length;		/* only valid for the wait list */
+	struct _MonoThunkFreeList *next;
+} MonoThunkFreeList;
+
 typedef struct _MonoJitCodeHash MonoJitCodeHash;
 
 struct _MonoDomain {
+	/*
+	 * This lock must never be taken before the loader lock,
+	 * i.e. if both are taken by the same thread, the loader lock
+	 * must taken first.
+	 */
 	CRITICAL_SECTION    lock;
 	MonoMemPool        *mp;
 	MonoCodeManager    *code_mp;
@@ -170,7 +185,9 @@ struct _MonoDomain {
 	MonoGHashTable    *type_init_exception_hash;
 	/* maps delegate trampoline addr -> delegate object */
 	MonoGHashTable     *delegate_hash_table;
-#define MONO_DOMAIN_LAST_GC_TRACKED delegate_hash_table
+	/* typeof (void) */
+	MonoObject         *typeof_void;
+#define MONO_DOMAIN_LAST_GC_TRACKED typeof_void
 	guint32            state;
 	/* Needed by Thread:GetDomainID() */
 	gint32             domain_id;
@@ -185,8 +202,6 @@ struct _MonoDomain {
 	/* Protected by 'jit_code_hash_lock' */
 	MonoInternalHashTable jit_code_hash;
 	CRITICAL_SECTION    jit_code_hash_lock;
-	/* maps MonoMethod -> MonoJitDynamicMethodInfo */
-	GHashTable         *dynamic_code_hash;
 	int		    num_jit_info_tables;
 	MonoJitInfoTable * 
 	  volatile          jit_info_table;
@@ -200,11 +215,6 @@ struct _MonoDomain {
 	MonoMethod         *private_invoke_method;
 	/* Used to store offsets of thread and context static fields */
 	GHashTable         *special_static_fields;
-	GHashTable         *jump_target_hash;
-	GHashTable         *class_init_trampoline_hash;
-	GHashTable         *jump_trampoline_hash;
-	GHashTable         *jit_trampoline_hash;
-	GHashTable         *delegate_trampoline_hash;
 	/* 
 	 * This must be a GHashTable, since these objects can't be finalized
 	 * if the hashtable contains a GC visible reference to them.
@@ -213,8 +223,17 @@ struct _MonoDomain {
 	/* Used when accessing 'domain_assemblies' */
 	CRITICAL_SECTION    assemblies_lock;
 
-	GHashTable	   *shared_generics_hash;
 	GHashTable	   *method_rgctx_hash;
+
+	GHashTable	   *generic_virtual_cases;
+	MonoThunkFreeList **thunk_free_lists;
+
+	/* Information maintained by the JIT engine */
+	gpointer runtime_info;
+
+	/*thread pool jobs, used to coordinate shutdown.*/
+	int					threadpool_jobs;
+	HANDLE				cleanup_semaphore;
 };
 
 typedef struct  {
@@ -242,6 +261,16 @@ mono_install_runtime_load  (MonoLoadFunc func) MONO_INTERNAL;
 
 MonoDomain*
 mono_runtime_load (const char *filename, const char *runtime_version) MONO_INTERNAL;
+
+typedef void (*MonoCreateDomainFunc) (MonoDomain *domain);
+
+void
+mono_install_create_domain_hook (MonoCreateDomainFunc func) MONO_INTERNAL;
+
+typedef void (*MonoFreeDomainFunc) (MonoDomain *domain);
+
+void
+mono_install_free_domain_hook (MonoFreeDomainFunc func) MONO_INTERNAL;
 
 void 
 mono_init_com_types (void) MONO_INTERNAL;
@@ -273,11 +302,17 @@ mono_jit_info_set_generic_sharing_context (MonoJitInfo *ji, MonoGenericSharingCo
 MonoJitInfo*
 mono_domain_lookup_shared_generic (MonoDomain *domain, MonoMethod *method) MONO_INTERNAL;
 
-void
-mono_domain_register_shared_generic (MonoDomain *domain, MonoMethod *method, MonoJitInfo *jit_info) MONO_INTERNAL;
-
 char *
-mono_make_shadow_copy (const char *filename);
+mono_make_shadow_copy (const char *filename) MONO_INTERNAL;
+
+gboolean
+mono_is_shadow_copy_enabled (MonoDomain *domain, const gchar *dir_name) MONO_INTERNAL;
+
+gpointer
+mono_domain_alloc  (MonoDomain *domain, guint size) MONO_INTERNAL;
+
+gpointer
+mono_domain_alloc0 (MonoDomain *domain, guint size) MONO_INTERNAL;
 
 /* 
  * Installs a new function which is used to return a MonoJitInfo for a method inside
@@ -408,5 +443,9 @@ MonoAssembly* mono_assembly_load_full_nosearch (MonoAssemblyName *aname,
 						const char       *basedir, 
 						MonoImageOpenStatus *status,
 						gboolean refonly) MONO_INTERNAL;
+
+void mono_set_private_bin_path_from_config (MonoDomain *domain) MONO_INTERNAL;
+
+int mono_framework_version (void) MONO_INTERNAL;
 
 #endif /* __MONO_METADATA_DOMAIN_INTERNALS_H__ */

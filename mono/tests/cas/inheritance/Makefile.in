@@ -36,11 +36,12 @@ subdir = mono/tests/cas/inheritance
 DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	ChangeLog
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 SOURCES =
@@ -92,12 +93,16 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
+GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GMODULE_CFLAGS = @GMODULE_CFLAGS@
 GMODULE_LIBS = @GMODULE_LIBS@
+GMSGFMT = @GMSGFMT@
+GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
 HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
+HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -121,6 +126,9 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MSGFMT = @MSGFMT@
+MSGFMT_015 = @MSGFMT_015@
+MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
@@ -141,9 +149,13 @@ SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
 STRIP = @STRIP@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 X11 = @X11@
 XATTR_LIB = @XATTR_LIB@
+XGETTEXT = @XGETTEXT@
+XGETTEXT_015 = @XGETTEXT_015@
+XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
 XMKMF = @XMKMF@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -216,11 +228,13 @@ target_os = @target_os@
 target_vendor = @target_vendor@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/default
+with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/net_1_1
 with_mono_path2 = MONO_PATH=$(mcs_topdir)/class/lib/net_2_0
-RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper --debug --security
-RUNTIME2 = $(with_mono_path2) $(top_builddir)/runtime/mono-wrapper --debug --security
-CSCOMPILE = $(RUNTIME) $(mcs_topdir)/class/lib/default/mcs.exe -debug
+RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper --debug
+RUNTIME2 = $(with_mono_path2) $(top_builddir)/runtime/mono-wrapper --debug
+CAS_RUNTIME = $(RUNTIME) --security
+CAS_RUNTIME2 = $(RUNTIME2) --security
+CSCOMPILE = $(RUNTIME) $(mcs_topdir)/class/lib/net_1_1/mcs.exe -debug
 PROFILE = net_1_1
 EXTRA_DIST = notused.cs cas1.cs cas2.cs cas3.cs \
 	noncas1.cs noncas2.cs noncas3.cs noncas4.cs \
@@ -415,17 +429,17 @@ aot:	notused.exe.so cas1a.exe.so cas2a.exe.so cas3a.exe.so \
 
 run: tests
 	@for i in $(FULLTRUST_TEST_FILES); do	\
-		$(RUNTIME) $$i.exe;	\
+		$(CAS_RUNTIME) $$i.exe;	\
 	done;
 	@for i in $(INTERNET_TEST_FILES); do	\
-		MONO_CAS_ZONE=Internet $(RUNTIME) $$i.exe;	\
+		MONO_CAS_ZONE=Internet $(CAS_RUNTIME) $$i.exe;	\
 	done;
 
 test: tests
 	@failed=0; \
 	passed=0; \
 	for i in $(FULLTRUST_TEST_FILES); do	\
-		$(RUNTIME) $$i.exe > /dev/null;	\
+		$(CAS_RUNTIME) $$i.exe > /dev/null;	\
 		if [ "$$?" = "0" ]; then	\
 			echo -e "fulltrust-$$i\tpass";	\
 			passed=`expr $${passed} + 1`; \
@@ -436,7 +450,7 @@ test: tests
 		fi;	\
 	done;	\
 	for i in $(UNHANDLED_TEST_FILES); do	\
-		$(RUNTIME) $$i.exe > /dev/null;	\
+		$(CAS_RUNTIME) $$i.exe > /dev/null;	\
 		if [ "$$?" = "0" ]; then	\
 			echo -e "unhandled-$$i\tFAIL ($$?)";	\
 			failed=`expr $${failed} + 1`; \

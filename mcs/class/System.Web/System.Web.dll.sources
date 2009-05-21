@@ -8,7 +8,6 @@ Assembly/AssemblyInfo.cs
 ../Managed.Windows.Forms/System.Resources/ResXDataNode.cs
 ../Managed.Windows.Forms/System.Resources/ResXNullRef.cs
 System.Web.Configuration_2.0/CapabilitiesBuild.cs
-System.Web.Configuration_2.0/CapabilitiesChecksum.cs
 System.Web.Configuration_2.0/CapabilitiesResult.cs
 System.Web.Configuration_2.0/ICapabilitiesProcess.cs
 System.Web.Configuration_2.0/nBrowser/Result.cs
@@ -34,6 +33,7 @@ System.Web/CapabilitiesLoader.cs
 System.Web/BrowserCapabilities.cs
 System.Web.Compilation/ApplicationFileBuildProvider.cs
 System.Web.Compilation/AppSettingsExpressionBuilder.cs
+System.Web.Compilation/AspComponent.cs
 System.Web.Compilation/AspComponentFoundry.cs
 System.Web.Compilation/AppCodeCompiler.cs
 System.Web.Compilation/AppResourceFileInfo.cs
@@ -48,6 +48,7 @@ System.Web.Compilation/AssemblyBuilder.cs
 System.Web.Compilation/BaseCompiler.cs
 System.Web.Compilation/BuildDependencySet.cs
 System.Web.Compilation/BuildManager.cs
+System.Web.Compilation/BuildManagerRemoveEntryEventHandler.cs
 System.Web.Compilation/BuildManagerHostUnloadEventArgs.cs
 System.Web.Compilation/BuildManagerHostUnloadEventHandler.cs
 System.Web.Compilation/BuildProviderAppliesToAttribute.cs
@@ -194,6 +195,7 @@ System.Web.Configuration_2.0/MachineKeySection.cs
 System.Web.Configuration_2.0/MachineKeySectionUtils.cs
 System.Web.Configuration_2.0/MachineKeyValidationConverter.cs
 System.Web.Configuration_2.0/MembershipSection.cs
+System.Web.Configuration_2.0/MonoSettingsSection.cs
 System.Web.Configuration_2.0/NamespaceCollection.cs
 System.Web.Configuration_2.0/NamespaceInfo.cs
 System.Web.Configuration_2.0/NullableStringValidator.cs
@@ -507,16 +509,19 @@ System.Web.UI/BaseParser.cs
 System.Web.UI/BasePartialCachingControl.cs
 System.Web.UI/BaseTemplateParser.cs
 System.Web.UI/BoundPropertyEntry.cs
+System.Web.UI/BuilderPropertyEntry.cs
 System.Web.UI/BuildMethod.cs
 System.Web.UI/BuildTemplateMethod.cs
 System.Web.UI/ClientScriptManager.cs
 System.Web.UI/ChtmlTextWriter.cs
 System.Web.UI/CodeBuilder.cs
+System.Web.UI/CodeConstructType.cs
 System.Web.UI/CodeRenderBuilder.cs
 System.Web.UI/CollectionBuilder.cs
 System.Web.UI/CompilationMode.cs
 System.Web.UI/CompiledBindableTemplateBuilder.cs
 System.Web.UI/CompiledTemplateBuilder.cs
+System.Web.UI/ComplexPropertyEntry.cs
 System.Web.UI/ConflictOptions.cs
 System.Web.UI/ConstructorNeedsTagAttribute.cs
 System.Web.UI/ControlBuilderAttribute.cs
@@ -527,6 +532,7 @@ System.Web.UI/Control.cs
 System.Web.UI/ControlSkin.cs
 System.Web.UI/ControlSkinDelegate.cs
 System.Web.UI/ControlValuePropertyAttribute.cs
+System.Web.UI/CssClassPropertyAttribute.cs
 System.Web.UI/CssStyleCollection.cs
 System.Web.UI/DataBinder.cs
 System.Web.UI/DataBindingBuilder.cs
@@ -534,6 +540,7 @@ System.Web.UI/DataBindingCollection.cs
 System.Web.UI/DataBinding.cs
 System.Web.UI/DataBindingHandlerAttribute.cs
 System.Web.UI/DataBoundLiteralControl.cs
+System.Web.UI/DataSourceCacheDurationConverter.cs
 System.Web.UI/DataSourceCacheExpiry.cs
 System.Web.UI/DataSourceCapabilities.cs
 System.Web.UI/DataSourceControl.cs
@@ -547,9 +554,13 @@ System.Web.UI/DesignerDataBoundLiteralControl.cs
 System.Web.UI/DesignTimeParseData.cs
 System.Web.UI/DesignTimeTemplateParser.cs
 System.Web.UI/EmptyControlCollection.cs
+System.Web.UI/EventEntry.cs
 System.Web.UI/ExpressionBindingCollection.cs
 System.Web.UI/ExpressionBinding.cs
 System.Web.UI/ExtractTemplateValuesMethod.cs
+System.Web.UI/FileLevelUserControlBuilder.cs
+System.Web.UI/FileLevelControlBuilderAttribute.cs
+System.Web.UI/FileLevelPageControlBuilder.cs
 System.Web.UI/FilterableAttribute.cs
 System.Web.UI/HiddenFieldPageStatePersister.cs
 System.Web.UI/HierarchicalDataSourceControl.cs
@@ -594,6 +605,8 @@ System.Web.UI/HtmlTextWriter.cs
 System.Web.UI/HtmlTextWriterStyle.cs
 System.Web.UI/HtmlTextWriterTag.cs
 System.Web.UI/IAttributeAccessor.cs
+System.Web.UI/IAutoFieldGenerator.cs
+System.Web.UI/IBindableControl.cs
 System.Web.UI/IBindableTemplate.cs
 System.Web.UI/ICallbackEventHandler.cs
 System.Web.UI/ICheckBoxControl.cs
@@ -613,7 +626,9 @@ System.Web.UI/IHierarchicalEnumerable.cs
 System.Web.UI/IHierarchyData.cs
 System.Web.UI/ImageClickEventArgs.cs
 System.Web.UI/ImageClickEventHandler.cs
+System.Web.UI/IndexedString.cs
 System.Web.UI/INamingContainer.cs
+System.Web.UI/INonBindingContainer.cs
 System.Web.UI/INavigateUIData.cs
 System.Web.UI/IParserAccessor.cs
 System.Web.UI/IPostBackDataHandler.cs
@@ -642,6 +657,7 @@ System.Web.UI/MasterPageParser.cs
 System.Web.UI/MinimizableAttributeTypeConverter.cs
 System.Web.UI/NonVisualControlAttribute.cs
 System.Web.UI/ObjectConverter.cs
+System.Web.UI/ObjectPersistData.cs
 System.Web.UI/ObjectStateFormatter.cs
 System.Web.UI/ObjectTagBuilder.cs
 System.Web.UI/ObjectTag.cs
@@ -652,6 +668,7 @@ System.Web.UI/PageAsyncTask.cs
 System.Web.UI/PageHandlerFactory.cs
 System.Web.UI/PageLifeCycle.cs
 System.Web.UI/PageParser.cs
+System.Web.UI/PageParserFilter.cs
 System.Web.UI/PageStatePersister.cs
 System.Web.UI/PageTheme.cs
 System.Web.UI/PageThemeBuilder.cs
@@ -669,7 +686,9 @@ System.Web.UI/PropertyConverter.cs
 System.Web.UI/PropertyEntry.cs
 System.Web.UI/ReadOnlyDataSourceView.cs
 System.Web.UI/RenderMethod.cs
+System.Web.UI/ResourceBasedLiteralControl.cs
 System.Web.UI/RootBuilder.cs
+System.Web.UI/SessionPageStatePersister.cs
 System.Web.UI/SimpleHandlerFactory.cs
 System.Web.UI/SimplePropertyEntry.cs
 System.Web.UI/SimpleWebHandlerParser.cs
@@ -688,6 +707,7 @@ System.Web.UI/TemplateControlParser.cs
 System.Web.UI/TemplateInstance.cs
 System.Web.UI/TemplateInstanceAttribute.cs
 System.Web.UI/TemplateParser.cs
+System.Web.UI/TemplatePropertyEntry.cs
 System.Web.UI/ThemeableAttribute.cs
 System.Web.UI/ThemeProvider.cs
 System.Web.UI/ToolboxDataAttribute.cs
@@ -699,10 +719,13 @@ System.Web.UI/UserControl.cs
 System.Web.UI/UserControlParser.cs
 System.Web.UI/ValidationPropertyAttribute.cs
 System.Web.UI/ValidatorCollection.cs
+System.Web.UI/VerificationAttribute.cs
 System.Web.UI/VerificationConditionalOperator.cs
 System.Web.UI/VerificationReportLevel.cs
 System.Web.UI/VerificationRule.cs
 System.Web.UI/ViewStateEncryptionMode.cs
+System.Web.UI/ViewStateException.cs
+System.Web.UI/ViewStateModeByIdAttribute.cs
 System.Web.UI/VirtualReferenceType.cs
 System.Web.UI.WebControls.Adapters/DataBoundControlAdapter.cs
 System.Web.UI.WebControls.Adapters/HideDisabledControlAdapter.cs
@@ -771,6 +794,7 @@ System.Web.UI.WebControls/CreateUserWizard.cs
 System.Web.UI.WebControls/CreateUserWizardStep.cs
 System.Web.UI.WebControls/CustomValidator.cs
 System.Web.UI.WebControls/DataBoundControl.cs
+System.Web.UI.WebControls/DataBoundControlMode.cs
 System.Web.UI.WebControls/DataControlButton.cs
 System.Web.UI.WebControls/DataControlCellType.cs
 System.Web.UI.WebControls/DataControlCommands.cs
@@ -912,6 +936,7 @@ System.Web.UI.WebControls/ImageField.cs
 System.Web.UI.WebControls/ImageMap.cs
 System.Web.UI.WebControls/ImageMapEventArgs.cs
 System.Web.UI.WebControls/ImageMapEventHandler.cs
+System.Web.UI.WebControls/IPersistedSelector.cs
 System.Web.UI.WebControls/IPostBackContainer.cs
 System.Web.UI.WebControls/IRepeatInfoUser.cs
 System.Web.UI.WebControls/LabelControlBuilder.cs
@@ -1036,6 +1061,7 @@ System.Web.UI.WebControls/StringArrayConverter.cs
 System.Web.UI.WebControls/Style.cs
 System.Web.UI.WebControls/SubMenuStyleCollection.cs
 System.Web.UI.WebControls/SubMenuStyle.cs
+System.Web.UI.WebControls/Substitution.cs
 System.Web.UI.WebControls/TableCaptionAlign.cs
 System.Web.UI.WebControls/TableCellCollection.cs
 System.Web.UI.WebControls/TableCellControlBuilder.cs
@@ -1157,6 +1183,7 @@ System.Web.Util/FileUtils.cs
 System.Web.Util/ICalls.cs
 System.Web.Util/IWebObjectFactory.cs
 System.Web.Util/IWebPropertyAccessor.cs
+System.Web.Util/SearchPattern.cs
 System.Web.Util/SerializationHelper.cs
 System.Web.Util/StrUtils.cs
 System.Web.Util/TimeUtil.cs

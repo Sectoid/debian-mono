@@ -1,3 +1,20 @@
+2009-01-13  Jb Evain  <jbevain@novell.com>
+
+	* Encoding.cs: when creating a ForwardingEncoder or a
+	ForwardingDecoder, don't crash if the Encoding doesn't
+	provide an EncoderFallback or a DecoderFallback.
+
+Mon Oct 6 09:46:09 CEST 2008 Paolo Molaro <lupus@ximian.com>
+
+	* UTF8Encoding.cs: rewritten InternalGetByteCount () and
+	InternalGetBytes (): among other things this versions are
+	10% to 60% faster, depending on input type and size.
+
+2008-09-28  Juraj Skripsky  <js@hotfeet.ch>
+
+	* StringBuilder.cs (Replace): Return early when no oldValue was 
+	found. Avoid extra string allocations.
+
 2008-07-03  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 
 	* UTF8Encoding.cs: Fix parameter names, Remove unfounded TODO

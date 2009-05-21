@@ -22,6 +22,9 @@
 // Authors:
 //	Jackson Harper (jackson@ximian.com)
 //
+// NOTE: We have some tests in Test/System.Windows.Forms/DragAndDropTest.cs, which I *highly* recommend
+// to run after any change made here, since those tests are interactive, and thus are not part of
+// the common tests.
 //
 
 
@@ -345,6 +348,7 @@ namespace System.Windows.Forms {
 
 		private bool tracking = false;
 		private bool dropped = false;
+		private int motion_poll;
 		//private X11Keyboard keyboard;
 
 		public X11Dnd (IntPtr display, X11Keyboard keyboard)
@@ -408,8 +412,7 @@ namespace System.Windows.Forms {
 
 			Timer timer = new Timer ();
 			timer.Tick += new EventHandler (DndTickHandler);
-			timer.Interval = 50;
-			timer.Start ();
+			timer.Interval = 100;
 
 			int suc;
 			drag_data.State = DragState.Dragging;
@@ -425,8 +428,15 @@ namespace System.Windows.Forms {
 
 			drag_data.State = DragState.Dragging;
 			drag_data.CurMousePos = new Point ();
+			source = toplevel = target = IntPtr.Zero;
 			dropped = false;
 			tracking = true;
+			motion_poll = -1;
+			timer.Start ();
+
+			// Send Enter to the window initializing the dnd operation - which initializes the data
+			SendEnter (drag_data.Window, drag_data.Window, drag_data.SupportedTypes);
+			drag_data.LastTopLevel = toplevel;
 
 			while (tracking && XplatUI.GetMessage (queue_id, ref msg, IntPtr.Zero, 0, 0)) {
 
@@ -451,6 +461,8 @@ namespace System.Windows.Forms {
 						RemoveCapture (msg.hwnd);
 						continue;
 					case Msg.WM_MOUSEMOVE:
+						motion_poll = 0;
+
 						drag_data.CurMousePos.X = Control.LowOrder ((int) msg.lParam.ToInt32 ());
 						drag_data.CurMousePos.Y = Control.HighOrder ((int) msg.lParam.ToInt32 ());
 
@@ -464,6 +476,11 @@ namespace System.Windows.Forms {
 			}
 
 			timer.Stop ();
+
+			// If the target is a mwf control, return until DragEnter/DragLeave has been fired,
+			// which means the respective -already sent- dnd ClientMessages have been received and handled.
+			if (control != null)
+				Application.DoEvents ();
 
 			if (!dropped)
 				return DragDropEffects.None;
@@ -486,7 +503,38 @@ namespace System.Windows.Forms {
 					t.Interval = 500;
 			}
 
-			HandleMouseOver ();
+
+			// If motion_poll is -1, there hasn't been motion at all, so don't simulate motion yet.
+			// Otherwise if more than 100 milliseconds have lapsed, we assume the pointer is not
+			// in motion anymore, and we simulate the mouse over operation, like .Net does.
+			if (motion_poll > 1)
+				HandleMouseOver ();
+			else if (motion_poll > -1)
+				motion_poll++;
+		}
+
+		// This routines helps us to have a DndEnter/DndLeave fallback when there wasn't any mouse movement
+		// as .Net does
+		private void DefaultEnterLeave (object user_data)
+		{
+			IntPtr toplevel, window;
+			int x_root, y_root;
+
+			// The window generating the operation could be a different than the one under pointer
+			GetWindowsUnderPointer (out window, out toplevel, out x_root, out y_root);
+			Control source_control = Control.FromHandle (window);
+			if (source_control == null || !source_control.AllowDrop)
+				return;
+
+			// `data' and other members are already available
+			Point pos = Control.MousePosition;
+			DragEventArgs drag_args = new DragEventArgs (data, 0, pos.X, pos.Y, drag_data.AllowedEffects, DragDropEffects.None);
+
+			source_control.DndEnter (drag_args);
+			if ((drag_args.Effect & drag_data.AllowedEffects) != 0)
+				source_control.DndDrop (drag_args);
+			else
+				source_control.DndLeave (EventArgs.Empty);
 		}
 
 		public void HandleButtonUpMsg ()
@@ -503,6 +551,10 @@ namespace System.Windows.Forms {
 
 					if (QueryContinue (false, DragAction.Cancel))
 						return;
+
+					// fallback if no movement was detected, as .net does.
+					if (motion_poll == -1)
+						DefaultEnterLeave (drag_data.Data);
 				}
 
 				drag_data.State = DragState.None;
@@ -523,34 +575,10 @@ namespace System.Windows.Forms {
 
 		public bool HandleMouseOver ()
 		{
-			bool dnd_aware = false;
-			IntPtr toplevel = IntPtr.Zero;
-			IntPtr window = XplatUIX11.RootWindowHandle;
-
-			IntPtr root, child;
-			int x_temp, y_temp;
+			IntPtr toplevel, window;
 			int x_root, y_root;
-			int mask_return;
-			int x = x_root = drag_data.CurMousePos.X;
-			int y = y_root = drag_data.CurMousePos.Y;
 
-			while (XplatUIX11.XQueryPointer (display, window, out root, out child,
-					       out x_temp, out y_temp, out x, out y, out mask_return)) {
-					
-				if (!dnd_aware) {
-					dnd_aware = IsWindowDndAware (window);
-					if (dnd_aware) {
-						toplevel = window;
-						x_root = x_temp;
-						y_root = y_temp;
-					}
-				}
-
-				if (child == IntPtr.Zero)
-					break;
-					
-				window = child;
-			}
+			GetWindowsUnderPointer (out window, out toplevel, out x_root, out y_root);
 
 			if (window != drag_data.LastWindow && drag_data.State == DragState.Entered) {
 				drag_data.State = DragState.Dragging;
@@ -576,6 +604,37 @@ namespace System.Windows.Forms {
 			drag_data.LastTopLevel = toplevel;
 			drag_data.LastWindow = window;
 			return true;
+		}
+
+		void GetWindowsUnderPointer (out IntPtr window, out IntPtr toplevel, out int x_root, out int y_root)
+		{
+			toplevel = IntPtr.Zero;
+			window = XplatUIX11.RootWindowHandle;
+
+			IntPtr root, child;
+			bool dnd_aware = false;
+			int x_temp, y_temp;
+			int mask_return;
+			int x = x_root = drag_data.CurMousePos.X;
+			int y = y_root = drag_data.CurMousePos.Y;
+
+			while (XplatUIX11.XQueryPointer (display, window, out root, out child,
+					       out x_temp, out y_temp, out x, out y, out mask_return)) {
+					
+				if (!dnd_aware) {
+					dnd_aware = IsWindowDndAware (window);
+					if (dnd_aware) {
+						toplevel = window;
+						x_root = x_temp;
+						y_root = y_temp;
+					}
+				}
+
+				if (child == IntPtr.Zero)
+					break;
+					
+				window = child;
+			}
 		}
 
 		public void HandleKeyMessage (MSG msg)
@@ -607,9 +666,6 @@ namespace System.Windows.Forms {
 
 		public bool HandleSelectionNotifyEvent (ref XEvent xevent)
 		{
-			if (source != XplatUIX11.XGetSelectionOwner (display, XdndSelection))
-				return false;
-
 			MimeHandler handler = FindHandler ((IntPtr) xevent.SelectionEvent.target);
 			if (handler == null)
 				return false;
@@ -892,7 +948,6 @@ namespace System.Windows.Forms {
 
 		private bool HandleStatusEvent (ref XEvent xevent)
 		{
-			
 			if (drag_data != null && drag_data.State == DragState.Entered) {
 
 				if (!QueryContinue (false, DragAction.Continue))
@@ -942,10 +997,6 @@ namespace System.Windows.Forms {
 		private bool ConvertData (ref XEvent xevent)
 		{
 			bool match = false;
-
-			if (source != XplatUIX11.XGetSelectionOwner (display, XdndSelection)) {
-				return false;
-			}
 
 			Control mwfcontrol = MwfWindow (source);
 

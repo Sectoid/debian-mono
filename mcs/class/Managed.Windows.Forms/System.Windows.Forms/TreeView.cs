@@ -123,6 +123,7 @@ namespace System.Windows.Forms {
 			InternalBorderStyle = BorderStyle.Fixed3D;
 			base.background_color = ThemeEngine.Current.ColorWindow;
 			base.foreground_color = ThemeEngine.Current.ColorWindowText;
+			draw_mode = TreeViewDrawMode.Normal;
 
 			root_node = new TreeNode (this);
 			root_node.Text = "ROOT NODE";
@@ -203,6 +204,10 @@ namespace System.Windows.Forms {
 					root_node.CollapseAllUncheck ();
 
 				Invalidate ();
+#if NET_2_0
+				// UIA Framework Event: CheckBoxes Changed
+				OnUIACheckBoxesChanged (EventArgs.Empty);
+#endif
 			}
 		}
 
@@ -322,7 +327,13 @@ namespace System.Windows.Forms {
 		[DefaultValue(false)]
 		public bool LabelEdit {
 			get { return label_edit; }
-			set { label_edit = value; }
+			set {
+				label_edit = value;
+#if NET_2_0
+				// UIA Framework Event: LabelEdit Changed
+				OnUIALabelEditChanged (EventArgs.Empty);
+#endif
+			}
 		}
 
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
@@ -687,6 +698,19 @@ namespace System.Windows.Forms {
 #endif
 		#endregion	// Public Instance Properties
 
+		#region UIA Framework Properties
+
+#if NET_2_0
+		internal ScrollBar UIAHScrollBar {
+			get { return hbar; }
+		}
+		
+		internal ScrollBar UIAVScrollBar {
+			get { return vbar; }
+		}
+#endif
+		#endregion	// UIA Framework Properties
+
 		#region Protected Instance Properties
 		protected override CreateParams CreateParams {
 			get {
@@ -770,27 +794,24 @@ namespace System.Windows.Forms {
 			} else {
 				RecalculateVisibleOrder (root_node);
 				UpdateScrollBars (true);
-				SetTop (Nodes [Nodes.Count - 1]);
-				SelectedNode = Nodes [Nodes.Count - 1];
+				
+				// Only move the top node if we now have a scrollbar
+				if (vbar.VisibleInternal) {
+					SetTop (Nodes [Nodes.Count - 1]);
+					SelectedNode = Nodes [Nodes.Count - 1];
+				}
 			}
 		}
 
 		
 		public void CollapseAll ()
 		{
-			TreeNode walk = TopNode;
-			
-			if (walk == null)
-				return;
-				
-			while (walk.parent != root_node)
-				walk = walk.parent;
-
 			BeginUpdate ();
 			root_node.CollapseAll ();
 			EndUpdate ();
 
-			SetTop (walk);
+			if (IsHandleCreated && vbar.VisibleInternal)
+				vbar.Value = vbar.Maximum - VisibleCount + 1;
 		}
 
 		public TreeNode GetNodeAt (Point pt) {
@@ -1579,59 +1600,13 @@ namespace System.Windows.Forms {
 
 		private void DrawNodeImage (TreeNode node, Graphics dc, Rectangle clip, int x, int y)
 		{
-			// Rectangle r = new Rectangle (x, y + 2, ImageList.ImageSize.Width, ImageList.ImageSize.Height);
-
 			if (!RectsIntersect (clip, x, y, ImageList.ImageSize.Width, ImageList.ImageSize.Height))
 				return;
 
-			if (ImageList == null)
-				return;
+			int use_index = node.Image;
 
-			int use_index = -1;
-
-			if (!node.IsSelected) {
-				if (node.ImageIndex > -1 && node.ImageIndex < ImageList.Images.Count) {
-					use_index = node.ImageIndex;
-				} else if (ImageIndex > -1 && ImageIndex < ImageList.Images.Count) {
-					use_index = ImageIndex;
-				}
-			} else {
-				if (node.SelectedImageIndex > -1 && node.SelectedImageIndex < ImageList.Images.Count) {
-					use_index = node.SelectedImageIndex;
-				} else if (SelectedImageIndex > -1 && SelectedImageIndex < ImageList.Images.Count) {
-					use_index = SelectedImageIndex;
-				}
-			}
-
-#if NET_2_0
-
-			if (!node.IsSelected) {
-				if (use_index == -1 && !String.IsNullOrEmpty (node.ImageKey)) {
-					use_index = image_list.Images.IndexOfKey (node.ImageKey);
-				}
-
-				if (use_index == -1 && !String.IsNullOrEmpty (ImageKey)) {
-					use_index = image_list.Images.IndexOfKey (ImageKey);
-				}
-			} else {
-				if (use_index == -1 && !String.IsNullOrEmpty (node.SelectedImageKey)) {
-					use_index = image_list.Images.IndexOfKey (node.SelectedImageKey);
-				}
-
-				if (use_index == -1 && !String.IsNullOrEmpty (SelectedImageKey)) {
-					use_index = image_list.Images.IndexOfKey (SelectedImageKey);
-				}
-			}
-#endif
-
-			if (use_index == -1 && ImageList.Images.Count > 0) {
-				use_index = 0;
-			}
-
-			if (use_index != -1) {
-				ImageList.Draw (dc, x, y, ImageList.ImageSize.Width, 
-						ImageList.ImageSize.Height, use_index);
-			}
+			if (use_index != -1)
+				ImageList.Draw (dc, x, y, ImageList.ImageSize.Width, ImageList.ImageSize.Height, use_index);
 		}
 
 		private void LabelEditFinished (object sender, EventArgs e)
@@ -1853,25 +1828,22 @@ namespace System.Windows.Forms {
 
 			bool vert = false;
 			bool horz = false;
-			int height = -1;
+			int height = 0;
 			int width = -1;
 
+			int item_height = ActualItemHeight;
 			if (scrollable) {
 				OpenTreeNodeEnumerator walk = new OpenTreeNodeEnumerator (root_node);
 				
 				while (walk.MoveNext ()) {
 					int r = walk.CurrentNode.Bounds.Right;
-					int b = walk.CurrentNode.Bounds.Bottom;
-
 					if (r > width)
 						width = r;
-					if (b > height)
-						height = b;
+
+					height += item_height;
 				}
 
-				// Remove scroll adjustments
-				if (nodes.Count > 0)
-					height -= nodes [0].Bounds.Top;
+				height -= item_height; // root_node adjustment
 				width += hbar_offset;
 
 				if (height > ClientRectangle.Height) {
@@ -1917,6 +1889,7 @@ namespace System.Windows.Forms {
 				skipped_nodes = 0;
 				RecalculateVisibleOrder (root_node);
 				vbar.Visible = false;
+				vbar.Value = 0;
 				vbar_bounds_set = false;
 			}
 
@@ -1969,6 +1942,9 @@ namespace System.Windows.Forms {
 
 		private void SetVScrollPos (int pos, TreeNode new_top)
 		{
+			if (!vbar.VisibleInternal)
+				return;
+
 			if (pos < 0)
 				pos = 0;
 
@@ -2117,10 +2093,10 @@ namespace System.Windows.Forms {
 			mouse_click_node = node;
 #endif
 
-			if (show_plus_minus && IsPlusMinusArea (node, e.X)) {
+			if (show_plus_minus && IsPlusMinusArea (node, e.X) && e.Button == MouseButtons.Left) {
 				node.Toggle ();
 				return;
-			} else if (checkboxes && IsCheckboxArea (node, e.X)) {
+			} else if (checkboxes && IsCheckboxArea (node, e.X) && e.Button == MouseButtons.Left) {
 				node.check_reason = TreeViewAction.ByMouse;
 				node.Checked = !node.Checked;
 				UpdateNode(node);
@@ -2128,7 +2104,7 @@ namespace System.Windows.Forms {
 			} else if (IsSelectableArea (node, e.X) || full_row_select) {
 				TreeNode old_highlighted = highlighted_node;
 				highlighted_node = node;
-				if (label_edit && e.Clicks == 1 && highlighted_node == old_highlighted) {
+				if (label_edit && e.Clicks == 1 && highlighted_node == old_highlighted && e.Button == MouseButtons.Left) {
 					BeginEdit (node);
 				} else if (highlighted_node != focused_node) {
 					Size ds = SystemInformation.DragSize;
@@ -2187,20 +2163,24 @@ namespace System.Windows.Forms {
 				focused_node = highlighted_node;
 				OnAfterSelect (new TreeViewEventArgs (selected_node, TreeViewAction.ByMouse));
 
-				if (prev_focused_node != null) {
-					invalid = Rectangle.Union (Bloat (prev_focused_node.Bounds),
-							Bloat (prev_highlighted_node.Bounds));
-				} else {
-					invalid = Bloat (prev_highlighted_node.Bounds);
-				}
+				if (prev_highlighted_node != null) {
+					if (prev_focused_node != null) {
+						invalid = Rectangle.Union (Bloat (prev_focused_node.Bounds),
+								Bloat (prev_highlighted_node.Bounds));
+					} else {
+						invalid = Bloat (prev_highlighted_node.Bounds);
+					}
 
-				if (full_row_select || draw_mode != TreeViewDrawMode.Normal) {
 					invalid.X = 0;
 					invalid.Width = ViewportRectangle.Width;
+
+					Invalidate (invalid);
 				}
 
-				Invalidate (invalid);
 			} else {
+				if (highlighted_node != null)
+					Invalidate (highlighted_node.Bounds);
+
 				highlighted_node = focused_node;
 				selected_node = focused_node;
 			}
@@ -2483,6 +2463,71 @@ namespace System.Windows.Forms {
 			add { base.TextChanged += value; }
 			remove { base.TextChanged -= value; }
 		}
+
+		#region UIA Framework Events
+#if NET_2_0
+		static object UIACheckBoxesChangedEvent = new object ();
+
+		internal event EventHandler UIACheckBoxesChanged {
+			add { Events.AddHandler (UIACheckBoxesChangedEvent, value); }
+			remove { Events.RemoveHandler (UIACheckBoxesChangedEvent, value); }
+		}
+
+		internal void OnUIACheckBoxesChanged (EventArgs e)
+		{
+			EventHandler eh = (EventHandler) Events [UIACheckBoxesChangedEvent];
+			if (eh != null)
+				eh (this, e);
+		}
+
+		static object UIALabelEditChangedEvent = new object ();
+
+		internal event EventHandler UIALabelEditChanged {
+			add { Events.AddHandler (UIALabelEditChangedEvent, value); }
+			remove { Events.RemoveHandler (UIALabelEditChangedEvent, value); }
+		}
+
+		internal void OnUIALabelEditChanged (EventArgs e)
+		{
+			EventHandler eh = (EventHandler) Events [UIALabelEditChangedEvent];
+			if (eh != null)
+				eh (this, e);
+		}
+		
+		static object UIANodeTextChangedEvent = new object ();
+
+		internal event TreeViewEventHandler UIANodeTextChanged {
+			add { Events.AddHandler (UIANodeTextChangedEvent, value); }
+			remove { Events.RemoveHandler (UIANodeTextChangedEvent, value); }
+		}
+
+		internal void OnUIANodeTextChanged (TreeViewEventArgs e)
+		{
+			TreeViewEventHandler eh =
+				(TreeViewEventHandler) Events [UIANodeTextChangedEvent];
+			if (eh != null)
+				eh (this, e);
+		}
+		
+		static object UIACollectionChangedEvent = new object ();
+
+		internal event CollectionChangeEventHandler UIACollectionChanged {
+			add { Events.AddHandler (UIACollectionChangedEvent, value); }
+			remove { Events.RemoveHandler (UIACollectionChangedEvent, value); }
+		}
+
+		internal void OnUIACollectionChanged (object sender, CollectionChangeEventArgs e)
+		{
+			CollectionChangeEventHandler eh =
+				(CollectionChangeEventHandler) Events [UIACollectionChangedEvent];
+			if (eh != null) {
+				if (sender == root_node)
+					sender = this;
+				eh (sender, e);
+			}
+		}
+#endif
+		#endregion	// UIA Framework Events
 		#endregion	// Events
 	}
 }

@@ -1,3 +1,37 @@
+2009-03-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceSet.cs: for custom resource sets without a reader, pretende
+	that's we've already read the stream.
+
+2009-02-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceSet.cs: populating the resource should be locked because the
+	resourceset could be shared.
+
+2009-01-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceManager.cs: don't throw every time we try to load a resource
+	satellite assembly that does not exist.
+
+2008-12-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceManager.cs: cache negative results too.
+
+2008-12-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceManager.cs: avoid duplication of keys if more than one
+	thread is creating the ResourceSet.
+
+2008-12-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ResourceManager.cs: cache ResourceSets instead of loading them from
+	their assembly every time they are needed.
+
+2008-08-11  Larry Ewing  <lewing@novell.com>
+
+	* ResourceReader.cs: fix reading/writing beyond the end of the
+	current resource when the resource is larger than 1024 bytes.
+
 2008-06-30  Marek Safar  <marek.safar@gmail.com>
 
 	* ResourceReader.cs: Cache resources enumerator in ResourceReader.

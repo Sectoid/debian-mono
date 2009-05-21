@@ -37,7 +37,7 @@ using System.Xml;
 
 namespace System.Web.UI {
 	public sealed class XPathBinder {
-		private XPathBinder ()
+		XPathBinder ()
 		{
 		}
 
@@ -76,7 +76,7 @@ namespace System.Web.UI {
 
 		public static string Eval (object container, string xpath, string format, IXmlNamespaceResolver resolver)
 		{
-			object result = Eval (container, xpath, (IXmlNamespaceResolver)null);
+			object result = Eval (container, xpath, resolver);
 			
 			if (result == null)
 				return String.Empty;

@@ -251,6 +251,19 @@ namespace MonoTests.System.Collections.Generic {
 			Assert.AreEqual (0, _dictionary.Count, "Clear method failed!");
 			Assert.IsFalse (_dictionary.ContainsKey ("key2"));
 		}
+	
+		[Test] // bug 432441
+		public void Clear_Iterators ()
+		{
+			Dictionary<object, object> d = new Dictionary <object, object> ();
+
+			d [new object ()] = new object ();
+			d.Clear ();
+			int hash = 0;
+			foreach (object o in d) {
+				hash += o.GetHashCode ();
+			}
+		}
 
 		[Test]
 		[Category ("NotWorking")]
@@ -286,6 +299,12 @@ namespace MonoTests.System.Collections.Generic {
 			Assert.IsTrue (contains, "ContainsKey does not return correct value!");
 			contains = _dictionary.ContainsKey ("key5");
 			Assert.IsFalse (contains, "ContainsKey for non existant does not return correct value!");
+		}
+
+		[Test, ExpectedException (typeof (ArgumentNullException))]
+		public void ContainsKeyTest2 ()
+		{
+			_dictionary.ContainsKey (null);
 		}
 	
 		[Test]
@@ -712,6 +731,25 @@ namespace MonoTests.System.Collections.Generic {
 		}
 
 		[Test]
+		public void IDictionary_Add_Null ()
+		{
+			IDictionary d = new Dictionary<int, string> ();
+			d.Add (1, null);
+			d [2] = null;
+
+			Assert.IsNull (d [1]);
+			Assert.IsNull (d [2]);
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void IDictionary_Add_Null_2 ()
+		{
+			IDictionary d = new Dictionary<int, int> ();
+			d.Add (1, null);
+		}
+
+		[Test]
 		public void IDictionary_Remove1 ()
 		{
 			IDictionary d = new Dictionary<int, int> ();
@@ -777,6 +815,176 @@ namespace MonoTests.System.Collections.Generic {
 			foreach (String s in d.Keys)
 				comp = s;
 			Assert.IsTrue (Object.ReferenceEquals (s1, comp));
+		}
+
+		[Test]
+		public void ResetKeysEnumerator ()
+		{
+			Dictionary<string, string> test = new Dictionary<string, string> ();
+			test.Add ("monkey", "singe");
+			test.Add ("singe", "mono");
+			test.Add ("mono", "monkey");
+
+			IEnumerator enumerator = test.Keys.GetEnumerator ();
+
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+
+			enumerator.Reset ();
+
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsFalse (enumerator.MoveNext ());
+		}
+
+		[Test]
+		public void ResetValuesEnumerator ()
+		{
+			Dictionary<string, string> test = new Dictionary<string, string> ();
+			test.Add ("monkey", "singe");
+			test.Add ("singe", "mono");
+			test.Add ("mono", "monkey");
+
+			IEnumerator enumerator = test.Values.GetEnumerator ();
+
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+
+			enumerator.Reset ();
+
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsFalse (enumerator.MoveNext ());
+		}
+
+		[Test]
+		public void ResetShimEnumerator ()
+		{
+			IDictionary test = new Dictionary<string, string> ();
+			test.Add ("monkey", "singe");
+			test.Add ("singe", "mono");
+			test.Add ("mono", "monkey");
+
+			IEnumerator enumerator = test.GetEnumerator ();
+
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+
+			enumerator.Reset ();
+
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsTrue (enumerator.MoveNext ());
+			Assert.IsFalse (enumerator.MoveNext ());
+		}
+
+		[Test]
+		public void ICollectionOfKeyValuePairContains ()
+		{
+			var dictionary = new Dictionary<string, int> ();
+			dictionary.Add ("foo", 42);
+			dictionary.Add ("bar", 12);
+
+			var collection = dictionary as ICollection<KeyValuePair<string, int>>;
+
+			Assert.AreEqual (2, collection.Count);
+
+			Assert.IsFalse (collection.Contains (new KeyValuePair<string, int> ("baz", 13)));
+			Assert.IsFalse (collection.Contains (new KeyValuePair<string, int> ("foo", 13)));
+			Assert.IsTrue (collection.Contains (new KeyValuePair<string, int> ("foo", 42)));
+		}
+
+		[Test]
+		public void ICollectionOfKeyValuePairRemove ()
+		{
+			var dictionary = new Dictionary<string, int> ();
+			dictionary.Add ("foo", 42);
+			dictionary.Add ("bar", 12);
+
+			var collection = dictionary as ICollection<KeyValuePair<string, int>>;
+
+			Assert.AreEqual (2, collection.Count);
+
+			Assert.IsFalse (collection.Remove (new KeyValuePair<string, int> ("baz", 13)));
+			Assert.IsFalse (collection.Remove (new KeyValuePair<string, int> ("foo", 13)));
+			Assert.IsTrue (collection.Remove (new KeyValuePair<string, int> ("foo", 42)));
+
+			Assert.AreEqual (12, dictionary ["bar"]);
+			Assert.IsFalse (dictionary.ContainsKey ("foo"));
+		}
+
+		[Test]
+		public void ICollectionCopyToKeyValuePairArray ()
+		{
+			var dictionary = new Dictionary<string, int> ();
+			dictionary.Add ("foo", 42);
+
+			var collection = dictionary as ICollection;
+
+			Assert.AreEqual (1, collection.Count);
+
+			var pairs = new KeyValuePair<string, int> [1];
+
+			collection.CopyTo (pairs, 0);
+
+			Assert.AreEqual ("foo", pairs [0].Key);
+			Assert.AreEqual (42, pairs [0].Value);
+		}
+
+		[Test]
+		public void ICollectionCopyToDictionaryEntryArray ()
+		{
+			var dictionary = new Dictionary<string, int> ();
+			dictionary.Add ("foo", 42);
+
+			var collection = dictionary as ICollection;
+
+			Assert.AreEqual (1, collection.Count);
+
+			var entries = new DictionaryEntry [1];
+
+			collection.CopyTo (entries, 0);
+
+			Assert.AreEqual ("foo", (string) entries [0].Key);
+			Assert.AreEqual (42, (int) entries [0].Value);
+		}
+
+		[Test]
+		public void ICollectionCopyToObjectArray ()
+		{
+			var dictionary = new Dictionary<string, int> ();
+			dictionary.Add ("foo", 42);
+
+			var collection = dictionary as ICollection;
+
+			Assert.AreEqual (1, collection.Count);
+
+			var array = new object [1];
+
+			collection.CopyTo (array, 0);
+
+			var pair = (KeyValuePair<string, int>) array [0];
+
+			Assert.AreEqual ("foo", pair.Key);
+			Assert.AreEqual (42, pair.Value);
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void ICollectionCopyToInvalidArray ()
+		{
+			var dictionary = new Dictionary<string, int> ();
+			dictionary.Add ("foo", 42);
+
+			var collection = dictionary as ICollection;
+
+			Assert.AreEqual (1, collection.Count);
+
+			var array = new int [1];
+
+			collection.CopyTo (array, 0);
 		}
 	}
 }

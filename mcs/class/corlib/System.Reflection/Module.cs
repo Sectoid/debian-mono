@@ -53,6 +53,7 @@ namespace System.Reflection {
 		public static readonly TypeFilter FilterTypeName;
 		public static readonly TypeFilter FilterTypeNameIgnoreCase;
 	
+#pragma warning disable 649	
 		private IntPtr _impl; /* a pointer to a MonoImage */
 		internal Assembly assembly;
 		internal string fqname;
@@ -60,6 +61,7 @@ namespace System.Reflection {
 		internal string scopename;
 		internal bool is_resource;
 		internal int token;
+#pragma warning restore 649		
 	
 		const BindingFlags defaultBindingFlags = 
 			BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance;
@@ -295,14 +297,14 @@ namespace System.Reflection {
 
 		internal Guid MvId {
 			get {
-				return Mono_GetGuid (this);
+				return GetModuleVersionId ();
 			}
 		}
 
 #if NET_2_0
 		public Guid ModuleVersionId {
 			get {
-				return Mono_GetGuid (this);
+				return GetModuleVersionId ();
 			}
 		}
 
@@ -374,7 +376,7 @@ namespace System.Reflection {
 			if (handle == IntPtr.Zero)
 				throw resolve_token_exception (metadataToken, error, "MethodBase");
 			else
-				return MethodBase.GetMethodFromHandle (new RuntimeMethodHandle (handle));
+				return MethodBase.GetMethodFromHandleNoGenericCheck (new RuntimeMethodHandle (handle));
 		}
 
 		public string ResolveString (int metadataToken) {
@@ -423,10 +425,15 @@ namespace System.Reflection {
 				return Type.GetTypeFromHandle (new RuntimeTypeHandle (handle));
 		}
 
-		// Mono Extension: returns the GUID of this module
+		// Used by mcs, the symbol writer, and mdb through reflection
 		internal static Guid Mono_GetGuid (Module module)
 		{
-			return new Guid (module.GetGuidInternal ());
+			return module.GetModuleVersionId ();
+		}
+
+		internal virtual Guid GetModuleVersionId ()
+		{
+			return new Guid (GetGuidInternal ());
 		}
 
 		private static bool filter_by_type_name (Type m, object filterCriteria) {

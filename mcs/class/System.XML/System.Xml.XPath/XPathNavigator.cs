@@ -31,8 +31,8 @@
 //
 
 using System;
-#if NET_2_0
 using System.Collections;
+#if NET_2_0
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -57,6 +57,43 @@ namespace System.Xml.XPath
 	public abstract class XPathNavigator : ICloneable
 #endif
 	{
+		class EnumerableIterator : XPathNodeIterator
+		{
+			IEnumerable source;
+			IEnumerator e;
+			int pos;
+
+			public EnumerableIterator (IEnumerable source, int pos)
+			{
+				this.source = source;
+				for (int i = 0; i < pos; i++)
+					MoveNext ();
+			}
+
+			public override XPathNodeIterator Clone ()
+			{
+				return new EnumerableIterator (source, pos);
+			}
+
+			public override bool MoveNext ()
+			{
+				if (e == null)
+					e = source.GetEnumerator ();
+				if (!e.MoveNext ())
+					return false;
+				pos++;
+				return true;
+			}
+
+			public override int CurrentPosition {
+				get { return pos; }
+			}
+
+			public override XPathNavigator Current {
+				get { return pos == 0 ? null : (XPathNavigator) e.Current; }
+			}
+		}
+
 		#region Static members
 #if NET_2_0
 		public static IEqualityComparer NavigatorComparer {
@@ -253,8 +290,16 @@ namespace System.Xml.XPath
 		{
 			return Evaluate (expr, context, null);
 		}
-		
-		internal virtual object Evaluate (XPathExpression expr, XPathNodeIterator context, NSResolver ctx)
+
+		BaseIterator ToBaseIterator (XPathNodeIterator iter, NSResolver ctx)
+		{
+			BaseIterator i = iter as BaseIterator;
+			if (i == null)
+				i = new WrapperIterator (iter, ctx);
+			return i;
+		}
+
+		object Evaluate (XPathExpression expr, XPathNodeIterator context, NSResolver ctx)
 		{
 			CompiledExpression cexpr = (CompiledExpression) expr;
 			if (ctx == null)
@@ -262,7 +307,7 @@ namespace System.Xml.XPath
 			
 			if (context == null)
 				context = new NullIterator (this, ctx);
-			BaseIterator iterContext = (BaseIterator) context;
+			BaseIterator iterContext = ToBaseIterator (context, ctx);
 			iterContext.NamespaceManager = ctx;
 			return cexpr.Evaluate (iterContext);
 		}
@@ -275,7 +320,7 @@ namespace System.Xml.XPath
 			
 			if (context == null)
 				context = new NullIterator (this, cexpr.NamespaceManager);
-			BaseIterator iterContext = (BaseIterator) context;
+			BaseIterator iterContext = ToBaseIterator (context, ctx);
 			iterContext.NamespaceManager = ctx;
 			return cexpr.EvaluateNodeSet (iterContext);
 		}
@@ -288,8 +333,7 @@ namespace System.Xml.XPath
 			
 			if (context == null)
 				context = new NullIterator (this, cexpr.NamespaceManager);
-			BaseIterator iterContext = (BaseIterator) context;
-			iterContext.NamespaceManager = ctx;
+			BaseIterator iterContext = ToBaseIterator (context, ctx);
 			return cexpr.EvaluateString (iterContext);
 		}
 
@@ -301,7 +345,7 @@ namespace System.Xml.XPath
 			
 			if (context == null)
 				context = new NullIterator (this, cexpr.NamespaceManager);
-			BaseIterator iterContext = (BaseIterator) context;
+			BaseIterator iterContext = ToBaseIterator (context, ctx);
 			iterContext.NamespaceManager = ctx;
 			return cexpr.EvaluateNumber (iterContext);
 		}
@@ -314,7 +358,7 @@ namespace System.Xml.XPath
 			
 			if (context == null)
 				context = new NullIterator (this, cexpr.NamespaceManager);
-			BaseIterator iterContext = (BaseIterator) context;
+			BaseIterator iterContext = ToBaseIterator (context, ctx);
 			iterContext.NamespaceManager = ctx;
 			return cexpr.EvaluateBoolean (iterContext);
 		}
@@ -550,7 +594,7 @@ namespace System.Xml.XPath
 			return Select (expr, null);
 		}
 		
-		internal virtual XPathNodeIterator Select (XPathExpression expr, NSResolver ctx)
+		internal XPathNodeIterator Select (XPathExpression expr, NSResolver ctx)
 		{
 			CompiledExpression cexpr = (CompiledExpression) expr;
 			if (ctx == null)
@@ -578,9 +622,50 @@ namespace System.Xml.XPath
 			return SelectTest (new NodeNameTest (axis, qname, true));
 		}
 
+		static IEnumerable EnumerateChildren (XPathNavigator n, XPathNodeType type)
+		{
+			if (!n.MoveToFirstChild ())
+				yield break;
+			n.MoveToParent ();
+			XPathNavigator nav = n.Clone ();
+			nav.MoveToFirstChild ();
+			XPathNavigator nav2 = null;
+			do {
+				if (type == XPathNodeType.All || nav.NodeType == type) {
+					if (nav2 == null)
+						nav2 = nav.Clone ();
+					else
+						nav2.MoveTo (nav);
+					yield return nav2;
+				}
+			} while (nav.MoveToNext ());
+		}
+
 		public virtual XPathNodeIterator SelectChildren (XPathNodeType type)
 		{
+#if false
 			return SelectTest (new NodeTypeTest (Axes.Child, type));
+#else
+			return new WrapperIterator (new EnumerableIterator (EnumerateChildren (this, type), 0), null);
+			// FIXME: make it work i.e. remove dependency on BaseIterator
+//			return new EnumerableIterator (EnumerateChildren (this, type), 0);
+#endif
+		}
+
+		static IEnumerable EnumerateChildren (XPathNavigator n, string name, string ns)
+		{
+			if (!n.MoveToFirstChild ())
+				yield break;
+			n.MoveToParent ();
+			XPathNavigator nav = n.Clone ();
+			nav.MoveToFirstChild ();
+			XPathNavigator nav2 = nav.Clone ();
+			do {
+				if (nav.LocalName == name && nav.NamespaceURI == ns) {
+					nav2.MoveTo (nav);
+					yield return nav2;
+				}
+			} while (nav.MoveToNext ());
 		}
 
 		public virtual XPathNodeIterator SelectChildren (string name, string namespaceURI)
@@ -590,9 +675,13 @@ namespace System.Xml.XPath
 			if (namespaceURI == null)
 				throw new ArgumentNullException ("namespaceURI");
 
+#if false
 			Axes axis = Axes.Child;
 			XmlQualifiedName qname = new XmlQualifiedName (name, namespaceURI);
 			return SelectTest (new NodeNameTest (axis, qname, true));
+#else
+			return new WrapperIterator (new EnumerableIterator (EnumerateChildren (this, name, namespaceURI), 0), null);
+#endif
 		}
 
 		public virtual XPathNodeIterator SelectDescendants (XPathNodeType type, bool matchSelf)
@@ -675,8 +764,14 @@ namespace System.Xml.XPath
 			} while (nav.MoveToNextNamespace (xpscope));
 			return table;
 		}
+#endif
 
-		public virtual string LookupNamespace (string prefix)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual string LookupNamespace (string prefix)
 		{
 			XPathNavigator nav = Clone ();
 			if (nav.NodeType != XPathNodeType.Element)
@@ -686,7 +781,12 @@ namespace System.Xml.XPath
 			return null;
 		}
 
-		public virtual string LookupPrefix (string namespaceUri)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual string LookupPrefix (string namespaceUri)
 		{
 			XPathNavigator nav = Clone ();
 			if (nav.NodeType != XPathNodeType.Element)
@@ -710,17 +810,32 @@ namespace System.Xml.XPath
 				return false;
 		}
 
-		public virtual bool MoveToChild (XPathNodeType type)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToChild (XPathNodeType type)
 		{
 			return MoveTo (SelectChildren (type));
 		}
 
-		public virtual bool MoveToChild (string localName, string namespaceURI)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToChild (string localName, string namespaceURI)
 		{
 			return MoveTo (SelectChildren (localName, namespaceURI));
 		}
 
-		public virtual bool MoveToNext (string localName, string namespaceURI)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToNext (string localName, string namespaceURI)
 		{
 			XPathNavigator nav = Clone ();
 			while (nav.MoveToNext ()) {
@@ -733,7 +848,12 @@ namespace System.Xml.XPath
 			return false;
 		}
 
-		public virtual bool MoveToNext (XPathNodeType type)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToNext (XPathNodeType type)
 		{
 			XPathNavigator nav = Clone ();
 			while (nav.MoveToNext ()) {
@@ -745,13 +865,23 @@ namespace System.Xml.XPath
 			return false;
 		}
 
-		public virtual bool MoveToFollowing (string localName,
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToFollowing (string localName,
 			string namespaceURI)
 		{
 			return MoveToFollowing (localName, namespaceURI, null);
 		}
 
-		public virtual bool MoveToFollowing (string localName,
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToFollowing (string localName,
 			string namespaceURI, XPathNavigator end)
 		{
 			if (localName == null)
@@ -793,12 +923,22 @@ namespace System.Xml.XPath
 			} while (true);
 		}
 
-		public virtual bool MoveToFollowing (XPathNodeType type)
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToFollowing (XPathNodeType type)
 		{
 			return MoveToFollowing (type, null);
 		}
 
-		public virtual bool MoveToFollowing (XPathNodeType type,
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		virtual bool MoveToFollowing (XPathNodeType type,
 			XPathNavigator end)
 		{
 			if (type == XPathNodeType.Root)
@@ -830,6 +970,7 @@ namespace System.Xml.XPath
 			} while (true);
 		}
 
+#if NET_2_0
 		public virtual XmlReader ReadSubtree ()
 		{
 			switch (NodeType) {
@@ -965,7 +1106,6 @@ namespace System.Xml.XPath
 						"=\"",
 						EscapeString (Value, true),
 						"\"");
-					break;
 				case XPathNodeType.Namespace:
 					return String.Concat (
 						"xmlns",
@@ -974,7 +1114,6 @@ namespace System.Xml.XPath
 						"=\"",
 						EscapeString (Value, true),
 						"\"");
-					break;
 				case XPathNodeType.Text:
 					return EscapeString (Value, false);
 				case XPathNodeType.Whitespace:

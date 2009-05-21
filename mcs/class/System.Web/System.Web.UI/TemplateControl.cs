@@ -37,6 +37,8 @@ using System.Web.Compilation;
 using System.Web.Util;
 using System.Xml;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace System.Web.UI {
 
@@ -77,6 +79,7 @@ namespace System.Web.UI {
 #if NET_2_0
 		string _appRelativeVirtualPath;
 #endif
+		StringResourceData resource_data;
 		
 		#region Constructor
 		protected TemplateControl ()
@@ -119,12 +122,16 @@ namespace System.Web.UI {
 		{
 		}
 
-		[MonoTODO ("Not implemented")]
-		protected LiteralControl CreateResourceBasedLiteralControl (int offset,
-										    int size,
-										    bool fAsciiOnly)
+		protected LiteralControl CreateResourceBasedLiteralControl (int offset, int size, bool fAsciiOnly)
 		{
-			return null;
+			if (resource_data == null)
+				return null;
+
+			if (offset > resource_data.MaxOffset - size)
+				throw new ArgumentOutOfRangeException ("size");
+
+			IntPtr ptr = AddOffset (resource_data.Ptr, offset);
+			return new ResourceBasedLiteralControl (ptr, size);
 		}
 
 		class EvtInfo {
@@ -171,7 +178,7 @@ namespace System.Web.UI {
 			}
 		}
 
-		private ArrayList CollectAutomaticEventInfo () {
+		ArrayList CollectAutomaticEventInfo () {
 			ArrayList events = new ArrayList ();
 
 			foreach (string methodName in methodNames) {
@@ -202,7 +209,7 @@ namespace System.Web.UI {
 				    parms [1].ParameterType != typeof (EventArgs)))
 				    continue;
 
-				int pos = methodName.IndexOf ("_");
+				int pos = methodName.IndexOf ('_');
 				string eventName = methodName.Substring (pos + 1);
 				EventInfo evt = type.GetEvent (eventName);
 				if (evt == null) {
@@ -325,7 +332,7 @@ namespace System.Web.UI {
 			// UserControlParser.GetCompiledType, but instead resort to some other way
 			// of creating the content (template instantiation? BuildManager? TBD)
 			TextReader reader = new StringReader (content);
-			Type control = UserControlParser.GetCompiledType (reader, HttpContext.Current);
+			Type control = UserControlParser.GetCompiledType (reader, content.GetHashCode (), HttpContext.Current);
 			if (control == null)
 				return null;
 
@@ -360,14 +367,18 @@ namespace System.Web.UI {
 		}
 #endif
 	
+#if NET_2_0
 		[EditorBrowsable (EditorBrowsableState.Never)]
-		public 
-#if !NET_2_0
-		static
-#endif
-		object ReadStringResource ()
+		public object ReadStringResource ()
 		{
-			throw new NotSupportedException ();
+			return ReadStringResource (GetType ());
+		}
+#endif
+
+		class StringResourceData {
+			public IntPtr Ptr;
+			public int Length;
+			public int MaxOffset;
 		}
 
 #if NET_2_0
@@ -423,21 +434,67 @@ namespace System.Web.UI {
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		public static object ReadStringResource (Type t)
 		{
-			throw new NotSupportedException ();
+			StringResourceData data = new StringResourceData ();
+			if (ICalls.GetUnmanagedResourcesPtr (t.Assembly, out data.Ptr, out data.Length))
+				return data;
+
+			throw new HttpException ("Unable to load the string resources.");
 		}
 
-		[MonoTODO ("Not implemented, does nothing")]
 		[EditorBrowsable (EditorBrowsableState.Never)]
 		protected void SetStringResourcePointer (object stringResourcePointer,
 							 int maxResourceOffset)
 		{
+			StringResourceData rd = stringResourcePointer as StringResourceData;
+			if (rd == null)
+				return;
+
+			if (maxResourceOffset < 0 || maxResourceOffset > rd.Length)
+				throw new ArgumentOutOfRangeException ("maxResourceOffset");
+
+			resource_data = new StringResourceData ();
+			resource_data.Ptr = rd.Ptr;
+			resource_data.Length = rd.Length;
+			resource_data.MaxOffset = maxResourceOffset > 0 ? Math.Min (maxResourceOffset, rd.Length) : rd.Length;
 		}
 
-		[MonoTODO ("Not implemented, does nothing")]
-		[EditorBrowsable (EditorBrowsableState.Never)]
-		protected void WriteUTF8ResourceString (HtmlTextWriter output, int offset,
-							int size, bool fAsciiOnly)
+		static IntPtr AddOffset (IntPtr ptr, int offset)
 		{
+			if (offset == 0)
+				return ptr;
+
+			if (IntPtr.Size == 4) {
+				int p = ptr.ToInt32 () + offset;
+				ptr = new IntPtr (p);
+			} else {
+				long p = ptr.ToInt64 () + offset;
+				ptr = new IntPtr (p);
+			}
+			return ptr;
+		}
+
+		[EditorBrowsable (EditorBrowsableState.Never)]
+		protected void WriteUTF8ResourceString (HtmlTextWriter output, int offset, int size, bool fAsciiOnly)
+		{
+			if (resource_data == null)
+				return; // throw?
+			if (output == null)
+				throw new ArgumentNullException ("output");
+			if (offset > resource_data.MaxOffset - size)
+				throw new ArgumentOutOfRangeException ("size");
+
+			//TODO: fAsciiOnly?
+			IntPtr ptr = AddOffset (resource_data.Ptr, offset);
+			HttpWriter writer = output.GetHttpWriter ();
+			if (writer == null || writer.Response.ContentEncoding.CodePage != 65001) {
+				byte [] bytes = new byte [size];
+				Marshal.Copy (ptr, bytes, 0, size);
+				writer.Write (Encoding.UTF8.GetString (bytes));
+				bytes = null;
+				return;
+			}
+
+			writer.WriteUTF8Ptr (ptr, size);
 		}
 
 		#endregion

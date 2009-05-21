@@ -47,6 +47,9 @@
 #undef DriverDebugThreads
 #undef DriverDebugXEmbed
 
+//#define TRACE
+//#define DEBUG
+
 using System;
 using System.ComponentModel;
 using System.Collections;
@@ -133,6 +136,9 @@ namespace System.Windows.Forms {
 		// Caret
 		private static CaretStruct	Caret;			//
 
+		// Last window containing the pointer
+		private static IntPtr		LastPointerWindow;	// The last window containing the pointer
+
 		// Our atoms
 		private static IntPtr WM_PROTOCOLS;
 		private static IntPtr WM_DELETE_WINDOW;
@@ -193,13 +199,15 @@ namespace System.Windows.Forms {
 		//private static IntPtr _NET_WM_WINDOW_TYPE_MENU;
 		private static IntPtr _NET_WM_WINDOW_TYPE_UTILITY;
 		//private static IntPtr _NET_WM_WINDOW_TYPE_SPLASH;
-		private static IntPtr _NET_WM_WINDOW_TYPE_DIALOG;
+		// private static IntPtr _NET_WM_WINDOW_TYPE_DIALOG;
 		private static IntPtr _NET_WM_WINDOW_TYPE_NORMAL;
 		private static IntPtr CLIPBOARD;
 		private static IntPtr PRIMARY;
 		//private static IntPtr DIB;
 		private static IntPtr OEMTEXT;
-		private static IntPtr UNICODETEXT;
+		private static IntPtr UTF8_STRING;
+		private static IntPtr UTF16_STRING;
+		private static IntPtr RICHTEXTFORMAT;
 		private static IntPtr TARGETS;
 
 		// mouse hover message generation
@@ -214,7 +222,7 @@ namespace System.Windows.Forms {
 		// State
 		Point		mouse_position;		// Last position of mouse, in screen coords
 		internal static MouseButtons	MouseState;		// Last state of mouse buttons
-
+		internal static bool in_doevents;
 		// 'Constants'
 		private static int		DoubleClickInterval;	// msec; max interval between clicks to count as double click
 
@@ -232,17 +240,22 @@ namespace System.Windows.Forms {
 
 		static readonly object lockobj = new object ();
 
+		// messages WaitForHwndMwssage is waiting on
+		static Hashtable	messageHold;
+
 		#endregion	// Local Variables
 		#region Constructors
 		private XplatUIX11() {
 			// Handle singleton stuff first
 			RefCount = 0;
+			in_doevents = false;
 
 			// Now regular initialization
 			XlibLock = new object ();
 			X11Keyboard.XlibLock = XlibLock;
 			MessageQueues = Hashtable.Synchronized (new Hashtable(7));
 			unattached_timer_list = ArrayList.Synchronized (new ArrayList (3));
+			messageHold = Hashtable.Synchronized (new Hashtable(3));
 			XInitThreads();
 
 			ErrorExceptions = false;
@@ -341,6 +354,14 @@ namespace System.Windows.Forms {
 				CustomColormap = value;
 			}
 		}
+
+#if DEBUG_shana
+		internal static IntPtr DefaultColorMap {
+			get {
+				return DefaultColormap;
+			}
+		}
+#endif
 		#endregion
 
 		#region XExceptionClass
@@ -386,7 +407,7 @@ namespace System.Windows.Forms {
 					if (c != null) {
 						control_text = c.ToString();
 					} else {
-						control_text = String.Format("<handle {0:X} non-existant>", hwnd.Handle);
+						control_text = String.Format("<handle {0:X} non-existant>", hwnd.Handle.ToInt32());
 					}
 				} else {
 					hwnd_text = "<null>";
@@ -448,6 +469,8 @@ namespace System.Windows.Forms {
 				if (FosterParent==IntPtr.Zero) {
 					Console.WriteLine("XplatUIX11 Constructor failed to create FosterParent");
 				}
+
+				DebugHelper.WriteLine ("FosterParent created 0x{0:x}", FosterParent.ToInt32());
 
 				hwnd = new Hwnd();
 				hwnd.Queue = ThreadQueue(Thread.CurrentThread);
@@ -590,13 +613,15 @@ namespace System.Windows.Forms {
 				//"_NET_WM_WINDOW_TYPE_TOOLBAR",
 				//"_NET_WM_WINDOW_TYPE_MENU",
 				"_NET_WM_WINDOW_TYPE_UTILITY",
-				"_NET_WM_WINDOW_TYPE_DIALOG",
+				// "_NET_WM_WINDOW_TYPE_DIALOG",
 				//"_NET_WM_WINDOW_TYPE_SPLASH",
 				"_NET_WM_WINDOW_TYPE_NORMAL",
 				"CLIPBOARD",
 				"PRIMARY",
 				"COMPOUND_TEXT",
 				"UTF8_STRING",
+				"UTF16_STRING",
+				"RICHTEXTFORMAT",
 				"TARGETS",
 				"_SWF_AsyncAtom",
 				"_SWF_PostMessageAtom",
@@ -664,13 +689,15 @@ namespace System.Windows.Forms {
 			//_NET_WM_WINDOW_TYPE_TOOLBAR = atoms [off++];
 			//_NET_WM_WINDOW_TYPE_MENU = atoms [off++];
 			_NET_WM_WINDOW_TYPE_UTILITY = atoms [off++];
-			_NET_WM_WINDOW_TYPE_DIALOG = atoms [off++];
+			// _NET_WM_WINDOW_TYPE_DIALOG = atoms [off++];
 			//_NET_WM_WINDOW_TYPE_SPLASH = atoms [off++];
 			_NET_WM_WINDOW_TYPE_NORMAL = atoms [off++];
 			CLIPBOARD = atoms [off++];
 			PRIMARY = atoms [off++];
 			OEMTEXT = atoms [off++];
-			UNICODETEXT = atoms [off++];
+			UTF8_STRING = atoms [off++];
+			UTF16_STRING = atoms [off++];
+			RICHTEXTFORMAT = atoms [off++];
 			TARGETS = atoms [off++];
 			AsyncAtom = atoms [off++];
 			PostAtom = atoms [off++];
@@ -999,7 +1026,8 @@ namespace System.Windows.Forms {
 				   is ignored by metacity. */
 				functions |= MotifFunctions.Move | MotifFunctions.Resize | MotifFunctions.Minimize | MotifFunctions.Maximize;
 			} else if (form != null && form.FormBorderStyle == FormBorderStyle.None) {
-				functions |= MotifFunctions.All;
+				/* allow borderless window to be maximized */
+				functions |= MotifFunctions.All | MotifFunctions.Resize;
 			} else {
 				if (StyleSet (cp.Style, WindowStyles.WS_CAPTION)) {
 					functions |= MotifFunctions.Move;
@@ -1070,8 +1098,6 @@ namespace System.Windows.Forms {
 				// needed! map toolwindows to _NET_WM_WINDOW_TYPE_UTILITY to make newer metacity versions happy
 				// and get those windows in front of their parents
 				window_type = _NET_WM_WINDOW_TYPE_UTILITY;
-			} else if (form != null && form.Modal) {
-				window_type = _NET_WM_WINDOW_TYPE_DIALOG;
 			} else {
 				window_type = _NET_WM_WINDOW_TYPE_NORMAL;
 			}
@@ -1225,9 +1251,15 @@ namespace System.Windows.Forms {
 					// FIXME - convert pixmap to image
 				} else if (property == OEMTEXT) {
 					Clipboard.Item = Marshal.PtrToStringAnsi(prop);
-				} else if (property == UNICODETEXT) {
+				} else if (property == UTF8_STRING) {
+					byte [] buffer = new byte [(int)nitems];
+					for (int i = 0; i < (int)nitems; i++)
+						buffer [i] = Marshal.ReadByte (prop, i);
+					Clipboard.Item = Encoding.UTF8.GetString (buffer);
+				} else if (property == UTF16_STRING) {
+					Clipboard.Item = Marshal.PtrToStringUni (prop, Encoding.Unicode.GetMaxCharCount ((int)nitems));
+				} else if (property == RICHTEXTFORMAT)
 					Clipboard.Item = Marshal.PtrToStringAnsi(prop);
-				}
 
 				XFree(prop);
 			}
@@ -1392,15 +1424,29 @@ namespace System.Windows.Forms {
 				timer = (Timer) timers [i];
 
 				if (timer.Enabled && timer.Expires <= now && !timer.Busy) {
-					timer.Busy = true;
-					timer.Update (now);
-					timer.FireTick ();
-					timer.Busy = false;
+					// Timer ticks:
+					//  - Before MainForm.OnLoad if DoEvents () is called.
+					//  - After MainForm.OnLoad if not.
+					//
+					if (in_doevents ||
+					    (Application.MWFThread.Current.Context != null && 
+					     (Application.MWFThread.Current.Context.MainForm == null || 
+					      Application.MWFThread.Current.Context.MainForm.IsLoaded))) {
+						timer.Busy = true;
+						timer.Update (now);
+						timer.FireTick ();
+						timer.Busy = false;
+					}
 				}
 			}
 		}
 
 		private void WaitForHwndMessage (Hwnd hwnd, Msg message) {
+			WaitForHwndMessage (hwnd, message, false);
+
+		}
+
+		private void WaitForHwndMessage (Hwnd hwnd, Msg message, bool process) {
 			MSG msg = new MSG ();
 			XEventQueue queue;
 
@@ -1409,16 +1455,35 @@ namespace System.Windows.Forms {
 			queue.DispatchIdle = false;
 
 			bool done = false;
+			string key = hwnd.Handle + ":" + message;
+			if (!messageHold.ContainsKey (key))	
+				messageHold.Add (key, 1);
+			else
+				messageHold[key] = ((int)messageHold[key]) + 1;
+			
+					
 			do {
+
+				DebugHelper.WriteLine  ("Waiting for message " + message + " on hwnd " + String.Format("0x{0:x}", hwnd.Handle.ToInt32 ()));
+				DebugHelper.Indent ();
+				
 				if (PeekMessage(queue, ref msg, IntPtr.Zero, 0, 0, (uint)PeekMessageFlags.PM_REMOVE)) {
 					if ((Msg)msg.message == Msg.WM_QUIT) {
 						PostQuitMessage (0);
 						done = true;
 					}
 					else {
+						
+						DebugHelper.WriteLine  ("PeekMessage got " + msg);
+						
 						if (msg.hwnd == hwnd.Handle) {
-							if ((Msg)msg.message == message)
+							if ((Msg)msg.message == message) {
+								if (process) {
+									TranslateMessage (ref msg);
+									DispatchMessage (ref msg);
+								}
 								break;
+							}
 							else if ((Msg)msg.message == Msg.WM_DESTROY)
 								done = true;
 						}
@@ -1427,7 +1492,14 @@ namespace System.Windows.Forms {
 						DispatchMessage (ref msg);
 					}
 				}
+				
+				done = !messageHold.ContainsKey (key) || ((int)messageHold[key] < 1) || done;
 			} while (!done);
+						
+			messageHold.Remove (key);
+
+			DebugHelper.Unindent ();
+			DebugHelper.WriteLine  ("Finished waiting for " + key);			
 
 			queue.DispatchIdle = true;
 
@@ -1458,8 +1530,16 @@ namespace System.Windows.Forms {
 
 				hwnd.mapped = true;
 
-				if (f != null && f.waiting_showwindow)
-					WaitForHwndMessage (hwnd, Msg.WM_SHOWWINDOW);
+				if (f != null) {
+					if (f.waiting_showwindow) {
+						WaitForHwndMessage (hwnd, Msg.WM_SHOWWINDOW);
+						CreateParams cp = f.GetCreateParams();
+						if (!ExStyleSet (cp.ExStyle, WindowExStyles.WS_EX_MDICHILD) &&
+						    !StyleSet (cp.Style, WindowStyles.WS_CHILD)) {
+							WaitForHwndMessage (hwnd, Msg.WM_ACTIVATE, true);
+						}
+					}
+				}
 			}
 		}
 
@@ -1490,8 +1570,16 @@ namespace System.Windows.Forms {
 
 				hwnd.mapped = false;
 
-				if (f != null && f.waiting_showwindow)
-					WaitForHwndMessage (hwnd, Msg.WM_SHOWWINDOW);
+				if (f != null) {
+					if (f.waiting_showwindow) {
+						WaitForHwndMessage (hwnd, Msg.WM_SHOWWINDOW);
+						CreateParams cp = f.GetCreateParams();
+						if (!ExStyleSet (cp.ExStyle, WindowExStyles.WS_EX_MDICHILD) &&
+						    !StyleSet (cp.Style, WindowStyles.WS_CHILD)) {
+							WaitForHwndMessage (hwnd, Msg.WM_ACTIVATE, true);
+						}
+					}
+				}
 			}
 		}
 
@@ -1582,8 +1670,10 @@ namespace System.Windows.Forms {
 				if (hwnd == null)
 					continue;
 
-#if debug
+#if debug				
 				Console.WriteLine ("UpdateMessageQueue (), got Event: {0}", xevent.ToString ());
+#else
+				DebugHelper.WriteLine  ("UpdateMessageQueue got Event: " + xevent.ToString ());
 #endif
 				switch (xevent.type) {
 				case XEventName.Expose:
@@ -1621,7 +1711,9 @@ namespace System.Windows.Forms {
 						if (Clipboard.Item is String) {
 							atoms[atom_count++] = (int)Atom.XA_STRING;
 							atoms[atom_count++] = (int)OEMTEXT;
-							atoms[atom_count++] = (int)UNICODETEXT;
+							atoms[atom_count++] = (int)UTF8_STRING;
+							atoms[atom_count++] = (int)UTF16_STRING;
+							atoms[atom_count++] = (int)RICHTEXTFORMAT;
 						} else if (Clipboard.Item is Image) {
 							atoms[atom_count++] = (int)Atom.XA_PIXMAP;
 							atoms[atom_count++] = (int)Atom.XA_BITMAP;
@@ -1636,10 +1728,12 @@ namespace System.Windows.Forms {
 
 						buflen = 0;
 
-						if (xevent.SelectionRequestEvent.target == (IntPtr)Atom.XA_STRING) {
+						// The RTF spec mentions that ascii is enough to contain it
+						if (xevent.SelectionRequestEvent.target == (IntPtr)Atom.XA_STRING ||
+								xevent.SelectionRequestEvent.target == (IntPtr)RICHTEXTFORMAT) {
 							Byte[] bytes;
 
-							bytes = new ASCIIEncoding().GetBytes((string)Clipboard.Item);
+							bytes = new ASCIIEncoding().GetBytes((string)Clipboard.Source);
 							buffer = Marshal.AllocHGlobal(bytes.Length);
 							buflen = bytes.Length;
 
@@ -1648,14 +1742,19 @@ namespace System.Windows.Forms {
 							}
 						} else if (xevent.SelectionRequestEvent.target == OEMTEXT) {
 							// FIXME - this should encode into ISO2022
-							buffer = Marshal.StringToHGlobalAnsi((string)Clipboard.Item);
+							buffer = Marshal.StringToHGlobalAnsi((string)Clipboard.Source);
 							while (Marshal.ReadByte(buffer, buflen) != 0) {
 								buflen++;
 							}
-						} else if (xevent.SelectionRequestEvent.target == UNICODETEXT) {
-							buffer = Marshal.StringToHGlobalAnsi((string)Clipboard.Item);
-							while (Marshal.ReadByte(buffer, buflen) != 0) {
-								buflen++;
+						} else if (xevent.SelectionRequestEvent.target == UTF16_STRING) {
+							Byte [] bytes;
+
+							bytes = Encoding.Unicode.GetBytes ((string)Clipboard.Source);
+							buffer = Marshal.AllocHGlobal (bytes.Length);
+							buflen = bytes.Length;
+
+							for (int i = 0; i < buflen; i++) {
+								Marshal.WriteByte (buffer, i, bytes [i]);
 							}
 						} else {
 							buffer = IntPtr.Zero;
@@ -1696,6 +1795,7 @@ namespace System.Windows.Forms {
 							TranslatePropertyToClipboard(xevent.SelectionEvent.property);
 						} else {
 							Clipboard.Item = null;
+							Clipboard.Source = null;
 						}
 					} else {
 						Dnd.HandleSelectionNotifyEvent (ref xevent);
@@ -1769,9 +1869,11 @@ namespace System.Windows.Forms {
 						prev_active = ActiveWindow;
 						XGetWindowProperty(DisplayHandle, RootWindow, _NET_ACTIVE_WINDOW, IntPtr.Zero, new IntPtr (1), false, (IntPtr)Atom.XA_WINDOW, out actual_atom, out actual_format, out nitems, out bytes_after, ref prop);
 						if (((long)nitems > 0) && (prop != IntPtr.Zero)) {
-							ActiveWindow = Hwnd.GetHandleFromWindow((IntPtr)Marshal.ReadInt32(prop));
+							ActiveWindow = Hwnd.GetHandleFromWindow((IntPtr)Marshal.ReadInt32(prop));							
 							XFree(prop);
 
+							DebugHelper.WriteLine ("PropertyNotify: _NET_ACTIVE_WINDOW: previous = 0x{0:x}, new = 0x{1:x}", prev_active.ToInt32 (), ActiveWindow.ToInt32 ());
+							
 							if (prev_active != ActiveWindow) {
 								if (prev_active != IntPtr.Zero) {
 									PostMessage(prev_active, Msg.WM_ACTIVATE, (IntPtr)WindowActiveFlags.WA_INACTIVE, IntPtr.Zero);
@@ -1783,11 +1885,23 @@ namespace System.Windows.Forms {
 							if (ModalWindows.Count == 0) {
 								break;
 							} else {
-								// Modality handling, if we are modal and the new active window is one
-								// of ours but not the modal one, switch back to the modal window
+								// Modality Handling
+								// 
+								// If there is a modal window on the stack and the new active 
+								// window is MWF window, but not the modal one and not a non-modal 
+								// child of the modal one, switch back to the modal window.
+								//
+								// To identify if a non-modal form is child of a modal form 
+								// we match their ApplicationContexts, which will be the same.
+								// This is because each modal form runs the loop with a 
+								// new ApplicationContext, which is inherited by the non-modal 
+								// forms.
 
-								if (NativeWindow.FromHandle(ActiveWindow) != null) {
-									if (ActiveWindow != (IntPtr)ModalWindows.Peek()) {
+								Form activeForm = Control.FromHandle (ActiveWindow) as Form;
+								if (activeForm != null) {
+									Form modalForm = Control.FromHandle ((IntPtr)ModalWindows.Peek()) as Form;
+									if (ActiveWindow != (IntPtr)ModalWindows.Peek() && 
+									    (modalForm == null || activeForm.context == modalForm.context)) {
 										Activate((IntPtr)ModalWindows.Peek());
 									}
 								}
@@ -1881,8 +1995,12 @@ namespace System.Windows.Forms {
 
 		private void AccumulateDestroyedHandles (Control c, ArrayList list)
 		{
+			DebugHelper.Enter ();
 			if (c != null) {
+				
 				Control[] controls = c.Controls.GetAllControls ();
+				
+				DebugHelper.WriteLine  ("Checking control:0x{0:x}", c.IsHandleCreated ? c.Handle.ToInt32() : 0);
 
 				if (c.IsHandleCreated && !c.IsDisposed) {
 					Hwnd hwnd = Hwnd.ObjectFromHandle(c.Handle);
@@ -1898,9 +2016,9 @@ namespace System.Windows.Forms {
 
 				for (int  i = 0; i < controls.Length; i ++) {
 					AccumulateDestroyedHandles (controls[i], list);
-				}
+				}				 
 			}
-			
+			DebugHelper.Leave ();
 		}
 
 		void CleanupCachedWindows (Hwnd hwnd)
@@ -2503,10 +2621,11 @@ namespace System.Windows.Forms {
 			//else if (format == "PenData" ) return 10;
 			//else if (format == "RiffAudio" ) return 11;
 			//else if (format == "WaveAudio" ) return 12;
-			else if (format == "UnicodeText" ) return UNICODETEXT.ToInt32();
+			else if (format == "UnicodeText" ) return UTF16_STRING.ToInt32();
 			//else if (format == "EnhancedMetafile" ) return 14;
 			//else if (format == "FileDrop" ) return 15;
 			//else if (format == "Locale" ) return 16;
+			else if (format == "Rich Text Format") return RICHTEXTFORMAT.ToInt32 ();
 
 			return XInternAtom(DisplayHandle, format, false).ToInt32();
 		}
@@ -2531,6 +2650,7 @@ namespace System.Windows.Forms {
 		}
 
 		internal override void ClipboardStore(IntPtr handle, object obj, int type, XplatUI.ObjectToClipboard converter) {
+			Clipboard.Source = obj;
 			Clipboard.Item = obj;
 			Clipboard.Type = type;
 			Clipboard.Converter = converter;
@@ -3251,10 +3371,12 @@ namespace System.Windows.Forms {
 
 		internal override void DestroyWindow(IntPtr handle) {
 			Hwnd	hwnd;
-
 			hwnd = Hwnd.ObjectFromHandle(handle);
-
-			if (hwnd == null) {
+			
+			// The window should never ever be a zombie here, since we should
+			// wait until it's completely dead before returning from 
+			// "destroying" calls, but just in case....
+			if (hwnd == null || hwnd.zombie) {
 				#if DriverDebug || DriverDebugDestroy
 					Console.WriteLine("window {0:X} already destroyed", handle.ToInt32());
 				#endif
@@ -3276,7 +3398,7 @@ namespace System.Windows.Forms {
 
 			foreach (Hwnd h in windows) {
 				SendMessage (h.Handle, Msg.WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
-				h.zombie = true;
+				h.zombie = true;				
 			}
 
 			lock (XlibLock) {
@@ -3464,6 +3586,8 @@ namespace System.Windows.Forms {
 		}
 
 		internal override void DoEvents() {
+			DebugHelper.Enter ();
+
 			MSG	msg = new MSG ();
 			XEventQueue queue;
 
@@ -3474,13 +3598,23 @@ namespace System.Windows.Forms {
 			queue = ThreadQueue(Thread.CurrentThread);
 
 			queue.DispatchIdle = false;
+			in_doevents = true;
 
 			while (PeekMessage(queue, ref msg, IntPtr.Zero, 0, 0, (uint)PeekMessageFlags.PM_REMOVE)) {
 				TranslateMessage (ref msg);
 				DispatchMessage (ref msg);
+
+				string key = msg.hwnd + ":" + msg.message;				
+				if (messageHold[key] != null) {
+					messageHold[key] = ((int)messageHold[key]) - 1;
+					DebugHelper.WriteLine  ("Got " + msg + " for " + key);
+				}
 			}
 
+			in_doevents = false;
 			queue.DispatchIdle = true;
+
+			DebugHelper.Leave ();
 		}
 
 		internal override void EnableWindow(IntPtr handle, bool Enable) {
@@ -3657,6 +3791,13 @@ namespace System.Windows.Forms {
 
 			hwnd = Hwnd.GetObjectFromWindow(xevent.AnyEvent.window);
 
+#if DriverDebugDestroy			
+			if (hwnd != null)
+				if (hwnd.zombie)
+					Console.WriteLine ( "GetMessage zombie, got Event: " + xevent.ToString () + " for 0x{0:x}", hwnd.Handle.ToInt32());
+				else	
+					Console.WriteLine ( "GetMessage, got Event: " + xevent.ToString () + " for 0x{0:x}", hwnd.Handle.ToInt32());
+#endif
 			// Handle messages for windows that are already or are about to be destroyed.
 
 			// we need a special block for this because unless we remove the hwnd from the paint
@@ -3677,6 +3818,15 @@ namespace System.Windows.Forms {
 					Console.WriteLine("GetMessage(): Got message {0} for non-existent or already destroyed window {1:X}", xevent.type, xevent.AnyEvent.window.ToInt32());
 				#endif
 				goto ProcessNextMessage;
+			}
+
+
+			// If we get here, that means the window is no more but there are Client Messages
+			// to be processed, probably a Posted message (for instance, an WM_ACTIVATE message) 
+			// We don't want anything else to run but the ClientMessage block, so reset all hwnd
+			// properties that might cause other processing to occur.
+			if (hwnd.zombie) {
+				hwnd.resizing_or_moving = false;
 			}
 
 			if (hwnd.client_window == xevent.AnyEvent.window) {
@@ -3723,6 +3873,22 @@ namespace System.Windows.Forms {
 			switch(xevent.type) {
 				case XEventName.KeyPress: {
 					Keyboard.KeyEvent (FocusWindow, xevent, ref msg);
+
+					// F1 key special case - WM_HELP sending
+					if (msg.wParam == (IntPtr)VirtualKeys.VK_F1 || msg.wParam == (IntPtr)VirtualKeys.VK_HELP) {
+						// Send the keypress message first
+						NativeWindow.WndProc (FocusWindow, msg.message, msg.wParam, msg.lParam);
+
+						// Send wM_HELP
+						HELPINFO helpInfo = new HELPINFO ();
+						GetCursorPos (IntPtr.Zero, out helpInfo.MousePos.x, out helpInfo.MousePos.y);
+						IntPtr helpInfoPtr = Marshal.AllocHGlobal (Marshal.SizeOf (helpInfo));
+						Marshal.StructureToPtr (helpInfo, helpInfoPtr, true);
+						NativeWindow.WndProc (FocusWindow, Msg.WM_HELP, IntPtr.Zero, helpInfoPtr);
+						Marshal.FreeHGlobal (helpInfoPtr);
+
+						goto ProcessNextMessage;
+					}
 					break;
 				}
 
@@ -3834,17 +4000,6 @@ namespace System.Windows.Forms {
 					
 					if (msg.message == Msg.WM_LBUTTONDOWN || msg.message == Msg.WM_MBUTTONDOWN || msg.message == Msg.WM_RBUTTONDOWN) {
 						SendParentNotify(msg.hwnd, msg.message, mouse_position.X, mouse_position.Y);
-
-						// Win32 splurts MouseMove events all over the place, regardless of whether the mouse is actually moving or
-						// not, especially after mousedown and mouseup. To support apps relying on mousemove events between and after 
-						// mouse clicks to repaint or whatever, we generate a mousemove event here. *sigh*
-						XEvent motionEvent = new XEvent ();
-						motionEvent.type = XEventName.MotionNotify;
-						motionEvent.MotionEvent.display = DisplayHandle;
-						motionEvent.MotionEvent.window = xevent.ButtonEvent.window;
-						motionEvent.MotionEvent.x = xevent.ButtonEvent.x;
-						motionEvent.MotionEvent.y = xevent.ButtonEvent.y;
-						hwnd.Queue.EnqueueLocked (motionEvent);
 					}
 					
 					break;
@@ -3987,8 +4142,6 @@ namespace System.Windows.Forms {
 					} else {
 						HitTest	ht;
 						IntPtr dummy;
-						int screen_x;
-						int screen_y;
 
 						#if DriverDebugExtra
 							Console.WriteLine("GetMessage(): non-client area {0:X} MotionNotify x={1} y={2}", client ? hwnd.client_window.ToInt32() : hwnd.whole_window.ToInt32(), xevent.MotionEvent.x, xevent.MotionEvent.y);
@@ -4015,9 +4168,44 @@ namespace System.Windows.Forms {
 					if (!hwnd.Enabled) {
 						goto ProcessNextMessage;
 					}
-					if (xevent.CrossingEvent.mode != NotifyMode.NotifyNormal) {
+					if (xevent.CrossingEvent.mode == NotifyMode.NotifyGrab || xevent.AnyEvent.window != hwnd.client_window) {
 						goto ProcessNextMessage;
 					}
+					if (xevent.CrossingEvent.mode == NotifyMode.NotifyUngrab) { // Pseudo motion caused by grabbing
+						if (LastPointerWindow == xevent.AnyEvent.window)
+							goto ProcessNextMessage;
+
+						if (LastPointerWindow != IntPtr.Zero) {
+							Point enter_loc = new Point (xevent.ButtonEvent.x, xevent.ButtonEvent.y);
+
+							// We need this due to EnterNotify being fired on all the parent controls
+							// of the Control being grabbed, and obviously in that scenario we are not
+							// actuallty entering them
+							Control ctrl = Control.FromHandle (hwnd.client_window);
+							foreach (Control child_control in ctrl.Controls.GetAllControls ())
+								if (child_control.Bounds.Contains (enter_loc))
+									goto ProcessNextMessage;
+
+							// A MouseLeave/LeaveNotify event is sent to the previous window
+							// until the mouse is ungrabbed, not when actually leaving its bounds
+							int x = xevent.CrossingEvent.x_root;
+							int y = xevent.CrossingEvent.y_root;
+							ScreenToClient (LastPointerWindow, ref x, ref y);
+
+							XEvent leaveEvent = new XEvent ();
+							leaveEvent.type = XEventName.LeaveNotify;
+							leaveEvent.CrossingEvent.display = DisplayHandle;
+							leaveEvent.CrossingEvent.window = LastPointerWindow;
+							leaveEvent.CrossingEvent.x = x;
+							leaveEvent.CrossingEvent.y = y;
+							leaveEvent.CrossingEvent.mode = NotifyMode.NotifyNormal;
+							Hwnd last_pointer_hwnd = Hwnd.ObjectFromHandle (LastPointerWindow);
+							last_pointer_hwnd.Queue.EnqueueLocked (leaveEvent);
+						}
+					}
+
+					LastPointerWindow = xevent.AnyEvent.window;
+
 					msg.message = Msg.WM_MOUSE_ENTER;
 					HoverState.X = xevent.CrossingEvent.x;
 					HoverState.Y = xevent.CrossingEvent.y;
@@ -4046,6 +4234,9 @@ namespace System.Windows.Forms {
 					if ((xevent.CrossingEvent.mode != NotifyMode.NotifyNormal) || (xevent.CrossingEvent.window != hwnd.client_window)) {
 						goto ProcessNextMessage;
 					}
+					// If a grab is taking place, ignore it - we handle it in EnterNotify
+					if (Grab.Hwnd != IntPtr.Zero)
+						goto ProcessNextMessage;
 
 					// Reset the cursor explicitly on X11.
 					// X11 remembers the last set cursor for the window and in cases where 
@@ -4140,13 +4331,16 @@ namespace System.Windows.Forms {
 						goto ProcessNextMessage;
 					}
 
+					
 					if (FocusWindow == IntPtr.Zero) {
 						Control c = Control.FromHandle (hwnd.client_window);
+
 						if (c == null)
-							goto ProcessNextMessage;
+							goto ProcessNextMessage;						
 						Form form = c.FindForm ();
 						if (form == null)
 							goto ProcessNextMessage;
+					
 						if (ActiveWindow != form.Handle) {
 							ActiveWindow = form.Handle;
 							SendMessage (ActiveWindow, Msg.WM_ACTIVATE, (IntPtr) WindowActiveFlags.WA_ACTIVE, IntPtr.Zero);
@@ -4304,7 +4498,10 @@ namespace System.Windows.Forms {
 						return true;
 					}
 
-					if (xevent.ClientMessageEvent.message_type == (IntPtr)PostAtom) {
+					if (xevent.ClientMessageEvent.message_type == (IntPtr)PostAtom) {						
+						DebugHelper.Indent ();
+						DebugHelper.WriteLine (String.Format ("Posted message:" + (Msg) xevent.ClientMessageEvent.ptr2.ToInt32 () + " for 0x{0:x}", xevent.ClientMessageEvent.ptr1.ToInt32 ()));
+						DebugHelper.Unindent ();
 						msg.hwnd = xevent.ClientMessageEvent.ptr1;
 						msg.message = (Msg) xevent.ClientMessageEvent.ptr2.ToInt32 ();
 						msg.wParam = xevent.ClientMessageEvent.ptr3;
@@ -4377,7 +4574,7 @@ namespace System.Windows.Forms {
 
 				XGetWindowProperty(DisplayHandle, handle,
 						   _NET_WM_NAME, IntPtr.Zero, new IntPtr (1), false,
-						   UNICODETEXT, out actual_atom, out actual_format, out nitems, out bytes_after, ref prop);
+						   UTF8_STRING, out actual_atom, out actual_format, out nitems, out bytes_after, ref prop);
 
 				if ((long)nitems > 0 && prop != IntPtr.Zero) {
 					text = Marshal.PtrToStringUni (prop, (int)nitems);
@@ -5049,6 +5246,9 @@ namespace System.Windows.Forms {
 
 				return IntPtr.Zero;
 			}
+			string key = hwnd + ":" + message;
+			if (messageHold[key] != null)
+				messageHold[key] = ((int)messageHold[key]) - 1;
 			return NativeWindow.WndProc(hwnd, message, wParam, lParam);
 		}
 
@@ -5366,13 +5566,20 @@ namespace System.Windows.Forms {
 
 			if (enabled) {
 				lock (XlibLock) {
-					int[] atoms = new int[8];
-					atoms[0] = _NET_WM_STATE_ABOVE.ToInt32();
-					XChangeProperty(DisplayHandle, hwnd.whole_window, _NET_WM_STATE, (IntPtr)Atom.XA_ATOM, 32, PropertyMode.Replace, atoms, 1);
+					if (hwnd.Mapped) {
+						SendNetWMMessage(hwnd.WholeWindow, _NET_WM_STATE, (IntPtr) NetWmStateRequest._NET_WM_STATE_ADD, _NET_WM_STATE_ABOVE, IntPtr.Zero);
+					} else {
+						int[] atoms = new int[8];
+						atoms[0] = _NET_WM_STATE_ABOVE.ToInt32();
+						XChangeProperty(DisplayHandle, hwnd.whole_window, _NET_WM_STATE, (IntPtr)Atom.XA_ATOM, 32, PropertyMode.Replace, atoms, 1);
+					}
 				}
 			} else {
 				lock (XlibLock) {
-					XDeleteProperty(DisplayHandle, hwnd.whole_window, _NET_WM_STATE);
+					if (hwnd.Mapped)
+						SendNetWMMessage(hwnd.WholeWindow, _NET_WM_STATE, (IntPtr) NetWmStateRequest._NET_WM_STATE_REMOVE, _NET_WM_STATE_ABOVE, IntPtr.Zero);
+					else
+						XDeleteProperty(DisplayHandle, hwnd.whole_window, _NET_WM_STATE);
 				}
 			}
 			return true;
@@ -5820,7 +6027,7 @@ namespace System.Windows.Forms {
 			hwnd = Hwnd.ObjectFromHandle(handle);
 
 			lock (XlibLock) {
-				XChangeProperty(DisplayHandle, hwnd.whole_window, _NET_WM_NAME, UNICODETEXT, 8,
+				XChangeProperty(DisplayHandle, hwnd.whole_window, _NET_WM_NAME, UTF8_STRING, 8,
 						PropertyMode.Replace, text, Encoding.UTF8.GetByteCount (text));
 
 				// XXX this has problems with UTF8.
@@ -5904,6 +6111,769 @@ namespace System.Windows.Forms {
 		internal override event EventHandler Idle;
 		#endregion	// Events
 
+		
+#if TRACE
+		
+#region Xcursor imports
+		[DllImport ("libXcursor", EntryPoint = "XcursorLibraryLoadCursor")]
+		internal extern static IntPtr XcursorLibraryLoadCursor (IntPtr display, [MarshalAs (UnmanagedType.LPStr)] string name);
+
+		[DllImport ("libXcursor", EntryPoint = "XcursorLibraryLoadImages")]
+		internal extern static IntPtr XcursorLibraryLoadImages ([MarshalAs (UnmanagedType.LPStr)] string file, IntPtr theme, int size);
+		
+		[DllImport ("libXcursor", EntryPoint = "XcursorImagesDestroy")]
+		internal extern static void XcursorImagesDestroy (IntPtr images);
+		
+		[DllImport ("libXcursor", EntryPoint = "XcursorGetDefaultSize")]
+		internal extern static int XcursorGetDefaultSize (IntPtr display);
+
+		[DllImport ("libXcursor", EntryPoint = "XcursorImageLoadCursor")]
+		internal extern static IntPtr XcursorImageLoadCursor (IntPtr display, IntPtr image);
+
+		[DllImport ("libXcursor", EntryPoint = "XcursorGetTheme")]
+		internal extern static IntPtr XcursorGetTheme (IntPtr display);
+#endregion
+#region X11 Imports
+		[DllImport ("libX11", EntryPoint="XOpenDisplay")]
+		internal extern static IntPtr XOpenDisplay(IntPtr display);
+		[DllImport ("libX11", EntryPoint="XCloseDisplay")]
+		internal extern static int XCloseDisplay(IntPtr display);						    
+		[DllImport ("libX11", EntryPoint="XSynchronize")]
+		internal extern static IntPtr XSynchronize(IntPtr display, bool onoff);
+
+		[DllImport ("libX11", EntryPoint="XCreateWindow")]
+		internal extern static IntPtr _XCreateWindow(IntPtr display, IntPtr parent, int x, int y, int width, int height, int border_width, int depth, int xclass, IntPtr visual, UIntPtr valuemask, ref XSetWindowAttributes attributes);
+		internal static IntPtr XCreateWindow(IntPtr display, IntPtr parent, int x, int y, int width, int height, int border_width, int depth, int xclass, IntPtr visual, UIntPtr valuemask, ref XSetWindowAttributes attributes) {
+			DebugHelper.TraceWriteLine ("XCreateWindow");
+			return _XCreateWindow(display, parent, x, y, width, height, 
+			               border_width, depth, xclass, visual, valuemask, ref attributes);
+		}
+		[DllImport ("libX11", EntryPoint="XCreateSimpleWindow")]
+		internal extern static IntPtr _XCreateSimpleWindow(IntPtr display, IntPtr parent, int x, int y, int width, int height, int border_width, UIntPtr border, UIntPtr background);
+		internal static IntPtr XCreateSimpleWindow(IntPtr display, IntPtr parent, int x, int y, int width, int height, int border_width, UIntPtr border, UIntPtr background) {
+			DebugHelper.TraceWriteLine ("XCreateSimpleWindow");
+			return _XCreateSimpleWindow(display, parent, x, y, width, height, border_width, border, background);
+		}
+		[DllImport ("libX11", EntryPoint="XMapWindow")]
+		internal extern static int _XMapWindow(IntPtr display, IntPtr window);
+		internal static int XMapWindow(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XMapWindow");
+			return _XMapWindow(display, window);
+		}
+		[DllImport ("libX11", EntryPoint="XUnmapWindow")]
+		internal extern static int _XUnmapWindow(IntPtr display, IntPtr window);
+		internal static int XUnmapWindow(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XUnmapWindow");
+			return _XUnmapWindow(display, window);
+		}
+		[DllImport ("libX11", EntryPoint="XMapSubwindows")]
+		internal extern static int _XMapSubindows(IntPtr display, IntPtr window);
+		internal static int XMapSubindows(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XMapSubindows");
+			return _XMapSubindows(display, window);
+		}
+		[DllImport ("libX11", EntryPoint="XUnmapSubwindows")]
+		internal extern static int _XUnmapSubwindows(IntPtr display, IntPtr window);
+		internal static int XUnmapSubwindows(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XUnmapSubwindows");
+			return _XUnmapSubwindows(display, window);
+		}
+		[DllImport ("libX11", EntryPoint="XRootWindow")]
+		internal extern static IntPtr _XRootWindow(IntPtr display, int screen_number);
+		internal static IntPtr XRootWindow(IntPtr display, int screen_number) {
+			DebugHelper.TraceWriteLine ("XRootWindow");
+			return _XRootWindow(display, screen_number);
+		}
+		[DllImport ("libX11", EntryPoint="XNextEvent")]
+		internal extern static IntPtr _XNextEvent(IntPtr display, ref XEvent xevent);
+		internal static IntPtr XNextEvent(IntPtr display, ref XEvent xevent) {
+			DebugHelper.TraceWriteLine ("XNextEvent");
+			return _XNextEvent(display, ref xevent);
+		}
+		[DllImport ("libX11", EntryPoint="XConnectionNumber")]
+		internal extern static int _XConnectionNumber (IntPtr display);
+		internal static int XConnectionNumber (IntPtr display) {
+			DebugHelper.TraceWriteLine ("XConnectionNumber");
+			return _XConnectionNumber (display);
+		}
+		[DllImport ("libX11", EntryPoint="XPending")]
+		internal extern static int _XPending (IntPtr display);
+		internal static int XPending (IntPtr display) {
+			DebugHelper.TraceWriteLine ("XPending");
+			DebugHelper.DumpCallers (3);
+			return _XPending (display);
+		}
+		[DllImport ("libX11", EntryPoint="XSelectInput")]
+		internal extern static IntPtr _XSelectInput(IntPtr display, IntPtr window, IntPtr mask);
+		internal static IntPtr XSelectInput(IntPtr display, IntPtr window, IntPtr mask) {
+			DebugHelper.TraceWriteLine ("XSelectInput");
+			return _XSelectInput(display, window, mask);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDestroyWindow")]
+		internal extern static int _XDestroyWindow(IntPtr display, IntPtr window);
+		internal static int XDestroyWindow(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XDestroyWindow 0x{0:x}", window.ToInt32());
+			return _XDestroyWindow(display, window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XReparentWindow")]
+		internal extern static int _XReparentWindow(IntPtr display, IntPtr window, IntPtr parent, int x, int y);
+		internal static int XReparentWindow(IntPtr display, IntPtr window, IntPtr parent, int x, int y) {
+			DebugHelper.TraceWriteLine ("XReparentWindow");
+			return _XReparentWindow(display, window, parent, x, y);
+		}
+		
+		[DllImport ("libX11", EntryPoint="XMoveResizeWindow")]
+		private extern static int _XMoveResizeWindow(IntPtr display, IntPtr window, int x, int y, int width, int height);
+		private static int XMoveResizeWindow(IntPtr display, IntPtr window, int x, int y, int width, int height) {
+			DebugHelper.TraceWriteLine ("XMoveResizeWindow");
+			return _XMoveResizeWindow(display, window, x, y, width, height);
+		}
+
+		internal static int MoveResizeWindow(IntPtr display, IntPtr window, int x, int y, int width, int height)
+		{
+			int ret = XMoveResizeWindow (display, window, x, y, width, height);
+			Keyboard.MoveCurrentCaretPos ();
+			return ret;
+		}
+
+		[DllImport ("libX11", EntryPoint="XResizeWindow")]
+		internal extern static int _XResizeWindow(IntPtr display, IntPtr window, int width, int height);
+		internal static int XResizeWindow(IntPtr display, IntPtr window, int width, int height) {
+			DebugHelper.TraceWriteLine ("XResizeWindow");
+			return _XResizeWindow(display, window, width, height);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetWindowAttributes")]
+		internal extern static int _XGetWindowAttributes(IntPtr display, IntPtr window, ref XWindowAttributes attributes);
+		internal static int XGetWindowAttributes(IntPtr display, IntPtr window, ref XWindowAttributes attributes) {
+			DebugHelper.TraceWriteLine ("XGetWindowAttributes");
+			return _XGetWindowAttributes(display, window, ref attributes);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFlush")]
+		internal extern static int _XFlush(IntPtr display);
+		internal static int XFlush(IntPtr display) {
+			DebugHelper.TraceWriteLine ("XFlush");
+			return _XFlush(display);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetWMName")]
+		internal extern static int _XSetWMName(IntPtr display, IntPtr window, ref XTextProperty text_prop);
+		internal static int XSetWMName(IntPtr display, IntPtr window, ref XTextProperty text_prop) {
+			DebugHelper.TraceWriteLine ("XSetWMName");
+			return _XSetWMName(display, window, ref text_prop);
+		}
+
+		[DllImport ("libX11", EntryPoint="XStoreName")]
+		internal extern static int _XStoreName(IntPtr display, IntPtr window, string window_name);
+		internal static int XStoreName(IntPtr display, IntPtr window, string window_name) {
+			DebugHelper.TraceWriteLine ("XStoreName");
+			return _XStoreName(display, window, window_name);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFetchName")]
+		internal extern static int _XFetchName(IntPtr display, IntPtr window, ref IntPtr window_name);
+		internal static int XFetchName(IntPtr display, IntPtr window, ref IntPtr window_name) {
+			DebugHelper.TraceWriteLine ("XFetchName");
+			return _XFetchName(display, window, ref window_name);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSendEvent")]
+		internal extern static int _XSendEvent(IntPtr display, IntPtr window, bool propagate, IntPtr event_mask, ref XEvent send_event);
+		internal static int XSendEvent(IntPtr display, IntPtr window, bool propagate, IntPtr event_mask, ref XEvent send_event) {
+			DebugHelper.TraceWriteLine ("XSendEvent");
+			return _XSendEvent(display, window, propagate, event_mask, ref send_event);
+		}
+
+		[DllImport ("libX11", EntryPoint="XQueryTree")]
+		internal extern static int _XQueryTree(IntPtr display, IntPtr window, out IntPtr root_return, out IntPtr parent_return, out IntPtr children_return, out int nchildren_return);
+		internal static int XQueryTree(IntPtr display, IntPtr window, out IntPtr root_return, out IntPtr parent_return, out IntPtr children_return, out int nchildren_return) {
+			DebugHelper.TraceWriteLine ("XQueryTree");
+			return _XQueryTree(display, window, out root_return, out parent_return, out children_return, out nchildren_return);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFree")]
+		internal extern static int _XFree(IntPtr data);
+		internal static int XFree(IntPtr data) {
+			DebugHelper.TraceWriteLine ("XFree");
+			return _XFree(data);
+		}
+
+		[DllImport ("libX11", EntryPoint="XRaiseWindow")]
+		internal extern static int _XRaiseWindow(IntPtr display, IntPtr window);
+		internal static int XRaiseWindow(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XRaiseWindow");
+			return _XRaiseWindow(display, window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XLowerWindow")]
+		internal extern static uint _XLowerWindow(IntPtr display, IntPtr window);
+		internal static uint XLowerWindow(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XLowerWindow");
+			return _XLowerWindow(display, window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XConfigureWindow")]
+		internal extern static uint _XConfigureWindow(IntPtr display, IntPtr window, ChangeWindowFlags value_mask, ref XWindowChanges values);
+		internal static uint XConfigureWindow(IntPtr display, IntPtr window, ChangeWindowFlags value_mask, ref XWindowChanges values) {
+			DebugHelper.TraceWriteLine ("XConfigureWindow");
+			return _XConfigureWindow(display, window, value_mask, ref values);
+		}
+
+		[DllImport ("libX11", EntryPoint="XInternAtom")]
+		internal extern static IntPtr _XInternAtom(IntPtr display, string atom_name, bool only_if_exists);
+		internal static IntPtr XInternAtom(IntPtr display, string atom_name, bool only_if_exists) {
+			DebugHelper.TraceWriteLine ("XInternAtom");
+			return _XInternAtom(display, atom_name, only_if_exists);
+		}
+
+		[DllImport ("libX11", EntryPoint="XInternAtoms")]
+		internal extern static int _XInternAtoms(IntPtr display, string[] atom_names, int atom_count, bool only_if_exists, IntPtr[] atoms);
+		internal static int XInternAtoms(IntPtr display, string[] atom_names, int atom_count, bool only_if_exists, IntPtr[] atoms) {
+			DebugHelper.TraceWriteLine ("XInternAtoms");
+			return _XInternAtoms(display, atom_names, atom_count, only_if_exists, atoms);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetWMProtocols")]
+		internal extern static int _XSetWMProtocols(IntPtr display, IntPtr window, IntPtr[] protocols, int count);
+		internal static int XSetWMProtocols(IntPtr display, IntPtr window, IntPtr[] protocols, int count) {
+			DebugHelper.TraceWriteLine ("XSetWMProtocols");
+			return _XSetWMProtocols(display, window, protocols, count);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGrabPointer")]
+		internal extern static int _XGrabPointer(IntPtr display, IntPtr window, bool owner_events, EventMask event_mask, GrabMode pointer_mode, GrabMode keyboard_mode, IntPtr confine_to, IntPtr cursor, IntPtr timestamp);
+		internal static int XGrabPointer(IntPtr display, IntPtr window, bool owner_events, EventMask event_mask, GrabMode pointer_mode, GrabMode keyboard_mode, IntPtr confine_to, IntPtr cursor, IntPtr timestamp) {
+			DebugHelper.TraceWriteLine ("XGrabPointer");
+			return _XGrabPointer(display, window, owner_events, event_mask, pointer_mode, keyboard_mode, confine_to, cursor, timestamp);
+		}
+
+		[DllImport ("libX11", EntryPoint="XUngrabPointer")]
+		internal extern static int _XUngrabPointer(IntPtr display, IntPtr timestamp);
+		internal static int XUngrabPointer(IntPtr display, IntPtr timestamp) {
+			DebugHelper.TraceWriteLine ("XUngrabPointer");
+			return _XUngrabPointer(display, timestamp);
+		}
+
+		[DllImport ("libX11", EntryPoint="XQueryPointer")]
+		internal extern static bool _XQueryPointer(IntPtr display, IntPtr window, out IntPtr root, out IntPtr child, out int root_x, out int root_y, out int win_x, out int win_y, out int keys_buttons);
+		internal static bool XQueryPointer(IntPtr display, IntPtr window, out IntPtr root, out IntPtr child, out int root_x, out int root_y, out int win_x, out int win_y, out int keys_buttons) {
+			DebugHelper.TraceWriteLine ("XQueryPointer");
+			return _XQueryPointer(display, window, out root, out child, out root_x, out root_y, out win_x, out win_y, out keys_buttons);
+		}
+
+		[DllImport ("libX11", EntryPoint="XTranslateCoordinates")]
+		internal extern static bool _XTranslateCoordinates (IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, out int intdest_x_return, out int dest_y_return, out IntPtr child_return);
+		internal static bool XTranslateCoordinates (IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, out int intdest_x_return,	 out int dest_y_return, out IntPtr child_return) {
+			DebugHelper.TraceWriteLine ("XTranslateCoordinates");
+			return _XTranslateCoordinates (display, src_w, dest_w, src_x, src_y, out intdest_x_return, out dest_y_return, out child_return);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetGeometry")]
+		internal extern static bool _XGetGeometry(IntPtr display, IntPtr window, out IntPtr root, out int x, out int y, out int width, out int height, out int border_width, out int depth);
+		internal static bool XGetGeometry(IntPtr display, IntPtr window, out IntPtr root, out int x, out int y, out int width, out int height, out int border_width, out int depth) {
+			DebugHelper.TraceWriteLine ("XGetGeometry");
+			return _XGetGeometry(display, window, out root, out x, out y, out width, out height, out border_width, out depth);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetGeometry")]
+		internal extern static bool _XGetGeometry(IntPtr display, IntPtr window, IntPtr root, out int x, out int y, out int width, out int height, IntPtr border_width, IntPtr depth);
+		internal static bool XGetGeometry(IntPtr display, IntPtr window, IntPtr root, out int x, out int y, out int width, out int height, IntPtr border_width, IntPtr depth) {
+			DebugHelper.TraceWriteLine ("XGetGeometry");
+			return _XGetGeometry(display, window, root, out x, out y, out width, out height, border_width, depth);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetGeometry")]
+		internal extern static bool _XGetGeometry(IntPtr display, IntPtr window, IntPtr root, out int x, out int y, IntPtr width, IntPtr height, IntPtr border_width, IntPtr depth);
+		internal static bool XGetGeometry(IntPtr display, IntPtr window, IntPtr root, out int x, out int y, IntPtr width, IntPtr height, IntPtr border_width, IntPtr depth) {
+			DebugHelper.TraceWriteLine ("XGetGeometry");
+			return _XGetGeometry(display, window, root, out x, out y, width, height, border_width, depth);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetGeometry")]
+		internal extern static bool _XGetGeometry(IntPtr display, IntPtr window, IntPtr root, IntPtr x, IntPtr y, out int width, out int height, IntPtr border_width, IntPtr depth);
+		internal static bool XGetGeometry(IntPtr display, IntPtr window, IntPtr root, IntPtr x, IntPtr y, out int width, out int height, IntPtr border_width, IntPtr depth) {
+			DebugHelper.TraceWriteLine ("XGetGeometry");
+			return _XGetGeometry(display, window, root, x, y, out width, out height, border_width, depth);
+		}
+
+		[DllImport ("libX11", EntryPoint="XWarpPointer")]
+		internal extern static uint _XWarpPointer(IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, uint src_width, uint src_height, int dest_x, int dest_y);
+		internal static uint XWarpPointer(IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, uint src_width, uint src_height, int dest_x, int dest_y) {
+			DebugHelper.TraceWriteLine ("XWarpPointer");
+			return _XWarpPointer(display, src_w, dest_w, src_x, src_y, src_width, src_height, dest_x, dest_y);
+		}
+
+		[DllImport ("libX11", EntryPoint="XClearWindow")]
+		internal extern static int _XClearWindow(IntPtr display, IntPtr window);
+		internal static int XClearWindow(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XClearWindow");
+			return _XClearWindow(display, window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XClearArea")]
+		internal extern static int _XClearArea(IntPtr display, IntPtr window, int x, int y, int width, int height, bool exposures);
+		internal static int XClearArea(IntPtr display, IntPtr window, int x, int y, int width, int height, bool exposures) {
+			DebugHelper.TraceWriteLine ("XClearArea");
+			return _XClearArea(display, window, x, y, width, height, exposures);
+		}
+
+		// Colormaps
+		[DllImport ("libX11", EntryPoint="XDefaultScreenOfDisplay")]
+		internal extern static IntPtr _XDefaultScreenOfDisplay(IntPtr display);
+		internal static IntPtr XDefaultScreenOfDisplay(IntPtr display) {
+			DebugHelper.TraceWriteLine ("XDefaultScreenOfDisplay");
+			return _XDefaultScreenOfDisplay(display);
+		}
+
+		[DllImport ("libX11", EntryPoint="XScreenNumberOfScreen")]
+		internal extern static int _XScreenNumberOfScreen(IntPtr display, IntPtr Screen);
+		internal static int XDefaultScreenOfDisplay(IntPtr display, IntPtr Screen) {
+			DebugHelper.TraceWriteLine ("XDefaultScreenOfDisplay");
+			return _XScreenNumberOfScreen(display, Screen);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDefaultVisual")]
+		internal extern static IntPtr _XDefaultVisual(IntPtr display, int screen_number);
+		internal static IntPtr XDefaultScreenOfDisplay(IntPtr display, int screen_number) {
+			DebugHelper.TraceWriteLine ("XDefaultScreenOfDisplay");
+			return _XDefaultVisual(display, screen_number);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDefaultDepth")]
+		internal extern static uint _XDefaultDepth(IntPtr display, int screen_number);
+		internal static uint XDefaultDepth(IntPtr display, int screen_number) {
+			DebugHelper.TraceWriteLine ("XDefaultDepth");
+			return _XDefaultDepth(display, screen_number);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDefaultScreen")]
+		internal extern static int _XDefaultScreen(IntPtr display);
+		internal static int XDefaultScreen(IntPtr display) {
+			DebugHelper.TraceWriteLine ("XDefaultScreen");
+			return _XDefaultScreen(display);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDefaultColormap")]
+		internal extern static IntPtr _XDefaultColormap(IntPtr display, int screen_number);
+		internal static IntPtr XDefaultColormap(IntPtr display, int screen_number) {
+			DebugHelper.TraceWriteLine ("XDefaultColormap");
+			return _XDefaultColormap(display, screen_number);
+		}
+
+		[DllImport ("libX11", EntryPoint="XLookupColor")]
+		internal extern static int _XLookupColor(IntPtr display, IntPtr Colormap, string Coloranem, ref XColor exact_def_color, ref XColor screen_def_color);
+		internal static int XLookupColor(IntPtr display, IntPtr Colormap, string Coloranem, ref XColor exact_def_color, ref XColor screen_def_color) {
+			DebugHelper.TraceWriteLine ("XLookupColor");
+			return _XLookupColor(display, Colormap, Coloranem, ref exact_def_color, ref screen_def_color);
+		}
+
+		[DllImport ("libX11", EntryPoint="XAllocColor")]
+		internal extern static int _XAllocColor(IntPtr display, IntPtr Colormap, ref XColor colorcell_def);
+		internal static int XAllocColor(IntPtr display, IntPtr Colormap, ref XColor colorcell_def) {
+			DebugHelper.TraceWriteLine ("XAllocColor");
+			return _XAllocColor(display, Colormap, ref colorcell_def);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetTransientForHint")]
+		internal extern static int _XSetTransientForHint(IntPtr display, IntPtr window, IntPtr prop_window);
+		internal static int XSetTransientForHint(IntPtr display, IntPtr window, IntPtr prop_window) {
+			DebugHelper.TraceWriteLine ("XSetTransientForHint");
+			return _XSetTransientForHint(display, window, prop_window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, ref MotifWmHints data, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, ref MotifWmHints data, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, ref data, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, ref uint value, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, ref uint value, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, ref value, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, ref IntPtr value, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, ref IntPtr value, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, ref value, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, uint[] data, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, uint[] data, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, data, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, int[] data, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, int[] data, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, data, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, IntPtr[] data, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, IntPtr[] data, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, data, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty")]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, IntPtr atoms, int nelements);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, IntPtr atoms, int nelements) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, atoms, nelements);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeProperty", CharSet=CharSet.Ansi)]
+		internal extern static int _XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, string text, int text_length);
+		internal static int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, PropertyMode mode, string text, int text_length) {
+			DebugHelper.TraceWriteLine ("XChangeProperty");
+			return _XChangeProperty(display, window, property, type, format, mode, text, text_length);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDeleteProperty")]
+		internal extern static int _XDeleteProperty(IntPtr display, IntPtr window, IntPtr property);
+		internal static int XDeleteProperty(IntPtr display, IntPtr window, IntPtr property) {
+			DebugHelper.TraceWriteLine ("XDeleteProperty");
+			return _XDeleteProperty(display, window, property);
+		}
+
+		// Drawing
+		[DllImport ("libX11", EntryPoint="XCreateGC")]
+		internal extern static IntPtr _XCreateGC(IntPtr display, IntPtr window, IntPtr valuemask, ref XGCValues values);
+		internal static IntPtr XCreateGC(IntPtr display, IntPtr window, IntPtr valuemask, ref XGCValues values) {
+			DebugHelper.TraceWriteLine ("XCreateGC");
+			return _XCreateGC(display, window, valuemask, ref values);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFreeGC")]
+		internal extern static int _XFreeGC(IntPtr display, IntPtr gc);
+		internal static int XFreeGC(IntPtr display, IntPtr gc) {
+			DebugHelper.TraceWriteLine ("XFreeGC");
+			return _XFreeGC(display, gc);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetFunction")]
+		internal extern static int _XSetFunction(IntPtr display, IntPtr gc, GXFunction function);
+		internal static int XSetFunction(IntPtr display, IntPtr gc, GXFunction function) {
+			DebugHelper.TraceWriteLine ("XSetFunction");
+			return _XSetFunction(display, gc, function);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetLineAttributes")]
+		internal extern static int _XSetLineAttributes(IntPtr display, IntPtr gc, int line_width, GCLineStyle line_style, GCCapStyle cap_style, GCJoinStyle join_style);
+		internal static int XSetLineAttributes(IntPtr display, IntPtr gc, int line_width, GCLineStyle line_style, GCCapStyle cap_style, GCJoinStyle join_style) {
+			DebugHelper.TraceWriteLine ("XSetLineAttributes");
+			return _XSetLineAttributes(display, gc, line_width, line_style, cap_style, join_style);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDrawLine")]
+		internal extern static int _XDrawLine(IntPtr display, IntPtr drawable, IntPtr gc, int x1, int y1, int x2, int y2);
+		internal static int XDrawLine(IntPtr display, IntPtr drawable, IntPtr gc, int x1, int y1, int x2, int y2) {
+			DebugHelper.TraceWriteLine ("XDrawLine");
+			return _XDrawLine(display, drawable, gc, x1, y1, x2, y2);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDrawRectangle")]
+		internal extern static int _XDrawRectangle(IntPtr display, IntPtr drawable, IntPtr gc, int x1, int y1, int width, int height);
+		internal static int XDrawRectangle(IntPtr display, IntPtr drawable, IntPtr gc, int x1, int y1, int width, int height) {
+			DebugHelper.TraceWriteLine ("XDrawRectangle");
+			return _XDrawRectangle(display, drawable, gc, x1, y1, width, height);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFillRectangle")]
+		internal extern static int _XFillRectangle(IntPtr display, IntPtr drawable, IntPtr gc, int x1, int y1, int width, int height);
+		internal static int XFillRectangle(IntPtr display, IntPtr drawable, IntPtr gc, int x1, int y1, int width, int height) {
+			DebugHelper.TraceWriteLine ("XFillRectangle");
+			return _XFillRectangle(display, drawable, gc, x1, y1, width, height);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetWindowBackground")]
+		internal extern static int _XSetWindowBackground(IntPtr display, IntPtr window, IntPtr background);
+		internal static int XSetWindowBackground(IntPtr display, IntPtr window, IntPtr background) {
+			DebugHelper.TraceWriteLine ("XSetWindowBackground");
+			return _XSetWindowBackground(display, window, background);
+		}
+
+		[DllImport ("libX11", EntryPoint="XCopyArea")]
+		internal extern static int _XCopyArea(IntPtr display, IntPtr src, IntPtr dest, IntPtr gc, int src_x, int src_y, int width, int height, int dest_x, int dest_y);
+		internal static int XCopyArea(IntPtr display, IntPtr src, IntPtr dest, IntPtr gc, int src_x, int src_y, int width, int height, int dest_x, int dest_y) {
+			DebugHelper.TraceWriteLine ("XCopyArea");
+			return _XCopyArea(display, src, dest, gc, src_x, src_y, width, height, dest_x, dest_y);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetWindowProperty")]
+		internal extern static int _XGetWindowProperty(IntPtr display, IntPtr window, IntPtr atom, IntPtr long_offset, IntPtr long_length, bool delete, IntPtr req_type, out IntPtr actual_type, out int actual_format, out IntPtr nitems, out IntPtr bytes_after, ref IntPtr prop);
+		internal static int XGetWindowProperty(IntPtr display, IntPtr window, IntPtr atom, IntPtr long_offset, IntPtr long_length, bool delete, IntPtr req_type, out IntPtr actual_type, out int actual_format, out IntPtr nitems, out IntPtr bytes_after, ref IntPtr prop) {
+			DebugHelper.TraceWriteLine ("XGetWindowProperty");
+			return _XGetWindowProperty(display, window, atom, long_offset, long_length, delete, req_type, out actual_type, out actual_format, out nitems, out bytes_after, ref prop);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetInputFocus")]
+		internal extern static int _XSetInputFocus(IntPtr display, IntPtr window, RevertTo revert_to, IntPtr time);
+		internal static int XSetInputFocus(IntPtr display, IntPtr window, RevertTo revert_to, IntPtr time) {
+			DebugHelper.TraceWriteLine ("XSetInputFocus");
+			return _XSetInputFocus(display, window, revert_to, time);
+		}
+
+		[DllImport ("libX11", EntryPoint="XIconifyWindow")]
+		internal extern static int _XIconifyWindow(IntPtr display, IntPtr window, int screen_number);
+		internal static int XIconifyWindow(IntPtr display, IntPtr window, int screen_number) {
+			DebugHelper.TraceWriteLine ("XIconifyWindow");
+			return _XIconifyWindow(display, window, screen_number);
+		}
+
+		[DllImport ("libX11", EntryPoint="XDefineCursor")]
+		internal extern static int _XDefineCursor(IntPtr display, IntPtr window, IntPtr cursor);
+		internal static int XDefineCursor(IntPtr display, IntPtr window, IntPtr cursor) {
+			DebugHelper.TraceWriteLine ("XDefineCursor");
+			return _XDefineCursor(display, window, cursor);
+		}
+
+		[DllImport ("libX11", EntryPoint="XUndefineCursor")]
+		internal extern static int _XUndefineCursor(IntPtr display, IntPtr window);
+		internal static int XUndefineCursor(IntPtr display, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XUndefineCursor");
+			return _XUndefineCursor(display, window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFreeCursor")]
+		internal extern static int _XFreeCursor(IntPtr display, IntPtr cursor);
+		internal static int XFreeCursor(IntPtr display, IntPtr cursor) {
+			DebugHelper.TraceWriteLine ("XFreeCursor");
+			return _XFreeCursor(display, cursor);
+		}
+
+		[DllImport ("libX11", EntryPoint="XCreateFontCursor")]
+		internal extern static IntPtr _XCreateFontCursor(IntPtr display, CursorFontShape shape);
+		internal static IntPtr XCreateFontCursor(IntPtr display, CursorFontShape shape) {
+			DebugHelper.TraceWriteLine ("XCreateFontCursor");
+			return _XCreateFontCursor(display, shape);
+		}
+
+		[DllImport ("libX11", EntryPoint="XCreatePixmapCursor")]
+		internal extern static IntPtr _XCreatePixmapCursor(IntPtr display, IntPtr source, IntPtr mask, ref XColor foreground_color, ref XColor background_color, int x_hot, int y_hot);
+		internal static IntPtr XCreatePixmapCursor(IntPtr display, IntPtr source, IntPtr mask, ref XColor foreground_color, ref XColor background_color, int x_hot, int y_hot) {
+			DebugHelper.TraceWriteLine ("XCreatePixmapCursor");
+			return _XCreatePixmapCursor(display, source, mask, ref foreground_color, ref background_color, x_hot, y_hot);
+		}
+
+		[DllImport ("libX11", EntryPoint="XCreatePixmapFromBitmapData")]
+		internal extern static IntPtr _XCreatePixmapFromBitmapData(IntPtr display, IntPtr drawable, byte[] data, int width, int height, IntPtr fg, IntPtr bg, int depth);
+		internal static IntPtr XCreatePixmapFromBitmapData(IntPtr display, IntPtr drawable, byte[] data, int width, int height, IntPtr fg, IntPtr bg, int depth) {
+			DebugHelper.TraceWriteLine ("XCreatePixmapFromBitmapData");
+			return _XCreatePixmapFromBitmapData(display, drawable, data, width, height, fg, bg, depth);
+		}
+
+		[DllImport ("libX11", EntryPoint="XCreatePixmap")]
+		internal extern static IntPtr _XCreatePixmap(IntPtr display, IntPtr d, int width, int height, int depth);
+		internal static IntPtr XCreatePixmap(IntPtr display, IntPtr d, int width, int height, int depth) {
+			DebugHelper.TraceWriteLine ("XCreatePixmap");
+			return _XCreatePixmap(display, d, width, height, depth);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFreePixmap")]
+		internal extern static IntPtr _XFreePixmap(IntPtr display, IntPtr pixmap);
+		internal static IntPtr XFreePixmap(IntPtr display, IntPtr pixmap) {
+			DebugHelper.TraceWriteLine ("XFreePixmap");
+			return _XFreePixmap(display, pixmap);
+		}
+
+		[DllImport ("libX11", EntryPoint="XQueryBestCursor")]
+		internal extern static int _XQueryBestCursor(IntPtr display, IntPtr drawable, int width, int height, out int best_width, out int best_height);
+		internal static int XQueryBestCursor(IntPtr display, IntPtr drawable, int width, int height, out int best_width, out int best_height) {
+			DebugHelper.TraceWriteLine ("XQueryBestCursor");
+			return _XQueryBestCursor(display, drawable, width, height, out best_width, out best_height);
+		}
+
+		[DllImport ("libX11", EntryPoint="XQueryExtension")]
+		internal extern static int _XQueryExtension(IntPtr display, string extension_name, ref int major, ref int first_event, ref int first_error);
+		internal static int XQueryExtension(IntPtr display, string extension_name, ref int major, ref int first_event, ref int first_error) {
+			DebugHelper.TraceWriteLine ("XQueryExtension");
+			return _XQueryExtension(display, extension_name, ref major, ref first_event, ref first_error);
+		}
+
+		[DllImport ("libX11", EntryPoint="XWhitePixel")]
+		internal extern static IntPtr _XWhitePixel(IntPtr display, int screen_no);
+		internal static IntPtr XWhitePixel(IntPtr display, int screen_no) {
+			DebugHelper.TraceWriteLine ("XWhitePixel");
+			return _XWhitePixel(display, screen_no);
+		}
+
+		[DllImport ("libX11", EntryPoint="XBlackPixel")]
+		internal extern static IntPtr _XBlackPixel(IntPtr display, int screen_no);
+		internal static IntPtr XBlackPixel(IntPtr display, int screen_no) {
+			DebugHelper.TraceWriteLine ("XBlackPixel");
+			return _XBlackPixel(display, screen_no);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGrabServer")]
+		internal extern static void _XGrabServer(IntPtr display);
+		internal static void XGrabServer(IntPtr display) {
+			DebugHelper.TraceWriteLine ("XGrabServer");
+			_XGrabServer(display);
+		}
+
+		[DllImport ("libX11", EntryPoint="XUngrabServer")]
+		internal extern static void _XUngrabServer(IntPtr display);
+		internal static void XUngrabServer(IntPtr display) {
+			DebugHelper.TraceWriteLine ("XUngrabServer");
+			_XUngrabServer(display);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetWMNormalHints")]
+		internal extern static void _XGetWMNormalHints(IntPtr display, IntPtr window, ref XSizeHints hints, out IntPtr supplied_return);
+		internal static void XGetWMNormalHints(IntPtr display, IntPtr window, ref XSizeHints hints, out IntPtr supplied_return) {
+			DebugHelper.TraceWriteLine ("XGetWMNormalHints");
+			_XGetWMNormalHints(display, window, ref hints, out supplied_return);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetWMNormalHints")]
+		internal extern static void _XSetWMNormalHints(IntPtr display, IntPtr window, ref XSizeHints hints);
+		internal static void XSetWMNormalHints(IntPtr display, IntPtr window, ref XSizeHints hints) {
+			DebugHelper.TraceWriteLine ("XSetWMNormalHints");
+			_XSetWMNormalHints(display, window, ref hints);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetZoomHints")]
+		internal extern static void _XSetZoomHints(IntPtr display, IntPtr window, ref XSizeHints hints);
+		internal static void XSetZoomHints(IntPtr display, IntPtr window, ref XSizeHints hints) {
+			DebugHelper.TraceWriteLine ("XSetZoomHints");
+			_XSetZoomHints(display, window, ref hints);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetWMHints")]
+		internal extern static void _XSetWMHints(IntPtr display, IntPtr window, ref XWMHints wmhints);
+		internal static void XSetWMHints(IntPtr display, IntPtr window, ref XWMHints wmhints) {
+			DebugHelper.TraceWriteLine ("XSetWMHints");
+			_XSetWMHints(display, window, ref wmhints);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetIconSizes")]
+		internal extern static int _XGetIconSizes(IntPtr display, IntPtr window, out IntPtr size_list, out int count);
+		internal static int XGetIconSizes(IntPtr display, IntPtr window, out IntPtr size_list, out int count) {
+			DebugHelper.TraceWriteLine ("XGetIconSizes");
+			return _XGetIconSizes(display, window, out size_list, out count);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetErrorHandler")]
+		internal extern static IntPtr _XSetErrorHandler(XErrorHandler error_handler);
+		internal static IntPtr XSetErrorHandler(XErrorHandler error_handler) {
+			DebugHelper.TraceWriteLine ("XSetErrorHandler");
+			return _XSetErrorHandler(error_handler);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetErrorText")]
+		internal extern static IntPtr _XGetErrorText(IntPtr display, byte code, StringBuilder buffer, int length);
+		internal static IntPtr XGetErrorText(IntPtr display, byte code, StringBuilder buffer, int length) {
+			DebugHelper.TraceWriteLine ("XGetErrorText");
+			return _XGetErrorText(display, code, buffer, length);
+		}
+
+		[DllImport ("libX11", EntryPoint="XInitThreads")]
+		internal extern static int _XInitThreads();
+		internal static int XInitThreads() {
+			DebugHelper.TraceWriteLine ("XInitThreads");
+			return _XInitThreads();
+		}
+
+		[DllImport ("libX11", EntryPoint="XConvertSelection")]
+		internal extern static int _XConvertSelection(IntPtr display, IntPtr selection, IntPtr target, IntPtr property, IntPtr requestor, IntPtr time);
+		internal static int XConvertSelection(IntPtr display, IntPtr selection, IntPtr target, IntPtr property, IntPtr requestor, IntPtr time) {
+			DebugHelper.TraceWriteLine ("XConvertSelection");
+			return _XConvertSelection(display, selection, target, property, requestor, time);
+		}
+
+		[DllImport ("libX11", EntryPoint="XGetSelectionOwner")]
+		internal extern static IntPtr _XGetSelectionOwner(IntPtr display, IntPtr selection);
+		internal static IntPtr XGetSelectionOwner(IntPtr display, IntPtr selection) {
+			DebugHelper.TraceWriteLine ("XGetSelectionOwner");
+			return _XGetSelectionOwner(display, selection);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetSelectionOwner")]
+		internal extern static int _XSetSelectionOwner(IntPtr display, IntPtr selection, IntPtr owner, IntPtr time);
+		internal static int XSetSelectionOwner(IntPtr display, IntPtr selection, IntPtr owner, IntPtr time) {
+			DebugHelper.TraceWriteLine ("XSetSelectionOwner");
+			return _XSetSelectionOwner(display, selection, owner, time);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetPlaneMask")]
+		internal extern static int _XSetPlaneMask(IntPtr display, IntPtr gc, IntPtr mask);
+		internal static int XSetPlaneMask(IntPtr display, IntPtr gc, IntPtr mask) {
+			DebugHelper.TraceWriteLine ("XSetPlaneMask");
+			return _XSetPlaneMask(display, gc, mask);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetForeground")]
+		internal extern static int _XSetForeground(IntPtr display, IntPtr gc, UIntPtr foreground);
+		internal static int XSetForeground(IntPtr display, IntPtr gc, UIntPtr foreground) {
+			DebugHelper.TraceWriteLine ("XSetForeground");
+			return _XSetForeground(display, gc, foreground);
+		}
+
+		[DllImport ("libX11", EntryPoint="XSetBackground")]
+		internal extern static int _XSetBackground(IntPtr display, IntPtr gc, UIntPtr background);
+		internal static int XSetBackground(IntPtr display, IntPtr gc, UIntPtr background) {
+			DebugHelper.TraceWriteLine ("XSetBackground");
+			return _XSetBackground(display, gc, background);
+		}
+
+		[DllImport ("libX11", EntryPoint="XBell")]
+		internal extern static int _XBell(IntPtr display, int percent);
+		internal static int XBell(IntPtr display, int percent) {
+			DebugHelper.TraceWriteLine ("XBell");
+			return _XBell(display, percent);
+		}
+
+		[DllImport ("libX11", EntryPoint="XChangeActivePointerGrab")]
+		internal extern static int _XChangeActivePointerGrab (IntPtr display, EventMask event_mask, IntPtr cursor, IntPtr time);
+		internal static int XChangeActivePointerGrab (IntPtr display, EventMask event_mask, IntPtr cursor, IntPtr time) {
+			DebugHelper.TraceWriteLine ("XChangeActivePointerGrab");
+			return _XChangeActivePointerGrab (display, event_mask, cursor, time);
+		}
+
+		[DllImport ("libX11", EntryPoint="XFilterEvent")]
+		internal extern static bool _XFilterEvent(ref XEvent xevent, IntPtr window);
+		internal static bool XFilterEvent(ref XEvent xevent, IntPtr window) {
+			DebugHelper.TraceWriteLine ("XFilterEvent");
+			return _XFilterEvent(ref xevent, window);
+		}
+
+		[DllImport ("libX11", EntryPoint="XkbSetDetectableAutoRepeat")]
+		internal extern static void _XkbSetDetectableAutoRepeat (IntPtr display, bool detectable, IntPtr supported);
+		internal static void XkbSetDetectableAutoRepeat (IntPtr display, bool detectable, IntPtr supported) {
+			DebugHelper.TraceWriteLine ("XkbSetDetectableAutoRepeat");
+			_XkbSetDetectableAutoRepeat (display, detectable, supported);
+		}
+
+		[DllImport ("libX11", EntryPoint="XPeekEvent")]
+		internal extern static void _XPeekEvent (IntPtr display, ref XEvent xevent);
+		internal static void XPeekEvent (IntPtr display, ref XEvent xevent) {
+			DebugHelper.TraceWriteLine ("XPeekEvent");
+			_XPeekEvent (display, ref xevent);
+		}
+
+		[DllImport ("libX11", EntryPoint="XIfEvent")]
+		internal extern static void _XIfEvent (IntPtr display, ref XEvent xevent, Delegate event_predicate, IntPtr arg);
+		internal static void XIfEvent (IntPtr display, ref XEvent xevent, Delegate event_predicate, IntPtr arg) {
+			DebugHelper.TraceWriteLine ("XIfEvent");
+			_XIfEvent (display, ref xevent, event_predicate, arg);
+		}
+#endregion
+
+
+#else //no TRACE defined
+
 #region Xcursor imports
 		[DllImport ("libXcursor", EntryPoint = "XcursorLibraryLoadCursor")]
 		internal extern static IntPtr XcursorLibraryLoadCursor (IntPtr display, [MarshalAs (UnmanagedType.LPStr)] string name);
@@ -5933,35 +6903,45 @@ namespace System.Windows.Forms {
 
 		[DllImport ("libX11", EntryPoint="XCreateWindow")]
 		internal extern static IntPtr XCreateWindow(IntPtr display, IntPtr parent, int x, int y, int width, int height, int border_width, int depth, int xclass, IntPtr visual, UIntPtr valuemask, ref XSetWindowAttributes attributes);
+		
 		[DllImport ("libX11", EntryPoint="XCreateSimpleWindow")]
 		internal extern static IntPtr XCreateSimpleWindow(IntPtr display, IntPtr parent, int x, int y, int width, int height, int border_width, UIntPtr border, UIntPtr background);
+		
 		[DllImport ("libX11", EntryPoint="XMapWindow")]
 		internal extern static int XMapWindow(IntPtr display, IntPtr window);
+		
 		[DllImport ("libX11", EntryPoint="XUnmapWindow")]
 		internal extern static int XUnmapWindow(IntPtr display, IntPtr window);
+		
 		[DllImport ("libX11", EntryPoint="XMapSubwindows")]
 		internal extern static int XMapSubindows(IntPtr display, IntPtr window);
+		
 		[DllImport ("libX11", EntryPoint="XUnmapSubwindows")]
 		internal extern static int XUnmapSubwindows(IntPtr display, IntPtr window);
+		
 		[DllImport ("libX11", EntryPoint="XRootWindow")]
 		internal extern static IntPtr XRootWindow(IntPtr display, int screen_number);
+		
 		[DllImport ("libX11", EntryPoint="XNextEvent")]
 		internal extern static IntPtr XNextEvent(IntPtr display, ref XEvent xevent);
-		[DllImport ("libX11")]
-		internal extern static int XConnectionNumber (IntPtr diplay);
-		[DllImport ("libX11")]
-		internal extern static int XPending (IntPtr diplay);
+
+		[DllImport ("libX11", EntryPoint="XConnectionNumber")]
+		internal extern static int XConnectionNumber (IntPtr display);
+		
+		[DllImport ("libX11", EntryPoint="XPending")]
+		internal extern static int XPending (IntPtr display);
+		
 		[DllImport ("libX11", EntryPoint="XSelectInput")]
 		internal extern static IntPtr XSelectInput(IntPtr display, IntPtr window, IntPtr mask);
-
+		
 		[DllImport ("libX11", EntryPoint="XDestroyWindow")]
 		internal extern static int XDestroyWindow(IntPtr display, IntPtr window);
-
+		
 		[DllImport ("libX11", EntryPoint="XReparentWindow")]
 		internal extern static int XReparentWindow(IntPtr display, IntPtr window, IntPtr parent, int x, int y);
+		
 		[DllImport ("libX11", EntryPoint="XMoveResizeWindow")]
 		private extern static int XMoveResizeWindow(IntPtr display, IntPtr window, int x, int y, int width, int height);
-
 		internal static int MoveResizeWindow(IntPtr display, IntPtr window, int x, int y, int width, int height)
 		{
 			int ret = XMoveResizeWindow (display, window, x, y, width, height);
@@ -6024,7 +7004,7 @@ namespace System.Windows.Forms {
 		internal extern static bool XQueryPointer(IntPtr display, IntPtr window, out IntPtr root, out IntPtr child, out int root_x, out int root_y, out int win_x, out int win_y, out int keys_buttons);
 
 		[DllImport ("libX11", EntryPoint="XTranslateCoordinates")]
-		internal extern static bool XTranslateCoordinates (IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, out int intdest_x_return,	 out int dest_y_return, out IntPtr child_return);
+		internal extern static bool XTranslateCoordinates (IntPtr display, IntPtr src_w, IntPtr dest_w, int src_x, int src_y, out int intdest_x_return, out int dest_y_return, out IntPtr child_return);
 
 		[DllImport ("libX11", EntryPoint="XGetGeometry")]
 		internal extern static bool XGetGeometry(IntPtr display, IntPtr window, out IntPtr root, out int x, out int y, out int width, out int height, out int border_width, out int depth);
@@ -6232,14 +7212,15 @@ namespace System.Windows.Forms {
 		[DllImport ("libX11", EntryPoint="XFilterEvent")]
 		internal extern static bool XFilterEvent(ref XEvent xevent, IntPtr window);
 
-		[DllImport ("libX11")]
+		[DllImport ("libX11", EntryPoint="XkbSetDetectableAutoRepeat")]
 		internal extern static void XkbSetDetectableAutoRepeat (IntPtr display, bool detectable, IntPtr supported);
 
-		[DllImport ("libX11")]
+		[DllImport ("libX11", EntryPoint="XPeekEvent")]
 		internal extern static void XPeekEvent (IntPtr display, ref XEvent xevent);
 
-		[DllImport ("libX11")]
+		[DllImport ("libX11", EntryPoint="XIfEvent")]
 		internal extern static void XIfEvent (IntPtr display, ref XEvent xevent, Delegate event_predicate, IntPtr arg);
 		#endregion
+#endif
 	}
 }

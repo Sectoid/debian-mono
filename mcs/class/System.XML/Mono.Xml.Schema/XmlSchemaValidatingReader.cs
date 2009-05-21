@@ -77,7 +77,7 @@ using ValException = System.Xml.Schema.XmlSchemaValidationException;
 namespace Mono.Xml.Schema
 {
 	internal class XmlSchemaValidatingReader : XmlReader, IXmlLineInfo,
-		IXmlSchemaInfo
+		IXmlSchemaInfo, IXmlNamespaceResolver
 	{
 		static readonly XsAttr [] emptyAttributeArray =
 			new XsAttr [0];
@@ -92,15 +92,13 @@ namespace Mono.Xml.Schema
 		IXmlLineInfo readerLineInfo;
 		ValidationType validationType;
 		IXmlNamespaceResolver nsResolver;
-		int startDepth;
-
-		StringBuilder tmpBuilder = new StringBuilder ();
 
 		XsAttr [] defaultAttributes = emptyAttributeArray;
 		int currentDefaultAttribute = -1;
 		ArrayList defaultAttributesCache = new ArrayList ();
 		bool defaultAttributeConsumed;
 		XmlSchemaType currentAttrType;
+		bool validationDone;
 
 		// Extra for XmlSchemaValidtingReader
 		// (not in XsdValidatingReader)
@@ -127,10 +125,16 @@ namespace Mono.Xml.Schema
 				schemas,
 				nsResolver,
 				options);
+			if (reader.BaseURI != String.Empty)
+				v.SourceUri = new Uri (reader.BaseURI);
 
 			readerLineInfo = reader as IXmlLineInfo;
-			startDepth = reader.Depth;
-			getter = delegate () { return Value; };
+			getter = delegate () {
+				if (v.CurrentAttributeType != null)
+					return v.CurrentAttributeType.ParseValue (Value, NameTable, this);
+				else
+					return Value; 
+				};
 			xsinfo = new XmlSchemaInfo (); // transition cache
 			v.LineInfoProvider = this;
 			v.ValidationEventSender = reader;
@@ -168,6 +172,7 @@ namespace Mono.Xml.Schema
 			defaultAttributeConsumed = false;
 			currentAttrType = null;
 			defaultAttributes = emptyAttributeArray;
+			v.CurrentAttributeType = null;
 		}
 
 		#region Properties
@@ -677,7 +682,10 @@ namespace Mono.Xml.Schema
 		public override bool Read ()
 		{
 			if (!reader.Read ()) {
-				v.EndValidation ();
+				if (!validationDone) {
+					v.EndValidation ();
+					validationDone = true;
+				}
 				return false;
 			}
 

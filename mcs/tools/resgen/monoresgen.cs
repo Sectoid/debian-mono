@@ -15,6 +15,9 @@ using System.IO;
 using System.Collections;
 using System.Resources;
 using System.Reflection;
+#if NET_2_0
+using System.Xml;
+#endif
 
 class ResGen {
 
@@ -154,6 +157,16 @@ the output file name (if not set).";
 		} catch (Exception e) {
 			Console.WriteLine ("Error: {0}", e.Message);
 			Exception inner = e.InnerException;
+#if NET_2_0
+			// under 2.0 ResXResourceReader can wrap an exception into an XmlException
+			// and this hides some helpful message from the original exception
+			XmlException xex = (inner as XmlException);
+			if (xex != null) {
+				// message is identical to the inner exception (from MWF ResXResourceReader)
+				Console.WriteLine ("Position: Line {0}, Column {1}.", xex.LineNumber, xex.LinePosition);
+				inner = inner.InnerException;
+			}
+#endif
 			if (inner is TargetInvocationException && inner.InnerException != null)
 				inner = inner.InnerException;
 			if (inner != null)
@@ -281,7 +294,7 @@ the output file name (if not set).";
 			// check for Unix platforms - see FAQ for more details
 			// http://www.mono-project.com/FAQ:_Technical#How_to_detect_the_execution_platform_.3F
 			int platform = (int) Environment.OSVersion.Platform;
-			return ((platform == 4) || (platform == 128));
+			return ((platform == 4) || (platform == 128) || (platform == 6));
 		}
 	}
 

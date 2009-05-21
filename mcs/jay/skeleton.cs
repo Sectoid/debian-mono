@@ -23,6 +23,9 @@
 .    yyerror(message, null);
 .  }
 .
+.  /* An EOF token */
+.  public int eof_token;
+.
 .  /** (syntax) error message.
 .      Can be overwritten to control message format.
 .      @param message text to be displayed.
@@ -56,14 +59,14 @@ t    if ((name = yyNames[token]) != null) return name;
 t    return "[unknown]";
 t  }
 .
+.  int yyExpectingState;
 .  /** computes list of expected tokens on error by tracing the tables.
 .      @param state for which to compute the list.
 .      @return list of token names.
 .    */
-.  protected string[] yyExpecting (int state) {
+.  protected int [] yyExpectingTokens (int state){
 .    int token, n, len = 0;
 .    bool[] ok = new bool[yyNames.Length];
-.
 .    if ((n = yySindex[state]) != 0)
 .      for (token = n < 0 ? -n : 0;
 .           (token < yyNames.Length) && (n+token < yyTable.Length); ++ token)
@@ -78,10 +81,16 @@ t  }
 .          ++ len;
 .          ok[token] = true;
 .        }
-.
-.    string [] result = new string[len];
+.    int [] result = new int [len];
 .    for (n = token = 0; n < len;  ++ token)
-.      if (ok[token]) result[n++] = yyNames[token];
+.      if (ok[token]) result[n++] = token;
+.    return result;
+.  }
+.  protected string[] yyExpecting (int state) {
+.    int [] tokens = yyExpectingTokens (state);
+.    string [] result = new string[tokens.Length];
+.    for (int n = 0; n < tokens.Length;  n++)
+.      result[n++] = yyNames[tokens [n]];
 .    return result;
 .  }
 .
@@ -171,8 +180,10 @@ t              debug.shift(yyState, yyTable[yyN], yyErrorFlag-1);
 .            switch (yyErrorFlag) {
 .  
 .            case 0:
+.              yyExpectingState = yyState;
 .              // yyerror(String.Format ("syntax error, got token `{0}'", yyname (yyToken)), yyExpecting(yyState));
 t              if (debug != null) debug.error("syntax error");
+.              if (yyToken == 0 /*eof*/ || yyToken == eof_token) throw new yyParser.yyUnexpectedEof ();
 .              goto case 1;
 .            case 1: case 2:
 .              yyErrorFlag = 3;
@@ -330,6 +341,12 @@ t        if (debug != null) debug.shift(yyStates[yyTop], yyState);
 .    */
 .  internal class yyException : System.Exception {
 .    public yyException (string message) : base (message) {
+.    }
+.  }
+.  internal class yyUnexpectedEof : yyException {
+.    public yyUnexpectedEof (string message) : base (message) {
+.    }
+.    public yyUnexpectedEof () : base ("") {
 .    }
 .  }
 .

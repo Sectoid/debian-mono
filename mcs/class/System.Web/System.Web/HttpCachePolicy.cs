@@ -36,18 +36,16 @@ using System.Text;
 using System.Web.UI;
 using System.Web.Util;
 
-namespace System.Web {
+namespace System.Web
+{
 	// CAS - no InheritanceDemand here as the class is sealed
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public sealed class HttpCachePolicy {
-		static readonly object cacheabilityUpdatedEvent = new object ();
-		
+	public sealed class HttpCachePolicy
+	{
 		internal HttpCachePolicy ()
 		{
 		}
 
-#region Fields
-		
 #if NET_2_0
 		HttpCacheVaryByContentEncodings vary_by_content_encodings = new HttpCacheVaryByContentEncodings ();
 #endif
@@ -59,7 +57,7 @@ namespace System.Web {
 		string etag;
 		bool etag_from_file_dependencies;
 		bool last_modified_from_file_dependencies;
-		
+
 		//
 		// Used externally
 		//
@@ -67,7 +65,7 @@ namespace System.Web {
 		internal DateTime expire_date;
 		internal bool have_last_modified;
 		internal DateTime last_modified;
-		
+
 		//bool LastModifiedFromFileDependencies;
 		HttpCacheRevalidation revalidation;
 		string vary_by_custom;
@@ -79,23 +77,20 @@ namespace System.Web {
 		bool sliding_expiration;
 		int duration;
 		bool allow_response_in_browser_history;
-                bool allow_server_caching = true;
-		bool set_no_store = false;
-		bool set_no_transform = false;
-		bool valid_until_expires = false;
-		
-		// always false in 1.x
-		bool omit_vary_star = false;
-#endregion
+		bool allow_server_caching = true;
+		bool set_no_store;
+		bool set_no_transform;
+		bool valid_until_expires;
 
-#region Properties
+		// always false in 1.x
+		bool omit_vary_star;
 
 #if NET_2_0
 		public HttpCacheVaryByContentEncodings VaryByContentEncodings {
 			get { return vary_by_content_encodings; }
 		}
 #endif
-		
+
 		public HttpCacheVaryByHeaders VaryByHeaders {
 			get { return vary_by_headers; }
 		}
@@ -107,7 +102,7 @@ namespace System.Web {
 		internal bool AllowServerCaching {
 			get { return allow_server_caching; }
 		}
-		
+
 		internal int Duration {
 			get { return duration; }
 			set { duration = value; }
@@ -116,10 +111,10 @@ namespace System.Web {
 		internal bool Sliding {
 			get { return sliding_expiration; }
 		}
-		
-                internal DateTime Expires {
-                        get { return expire_date; }
-                }
+
+		internal DateTime Expires {
+			get { return expire_date; }
+		}
 
 		internal ArrayList ValidationCallbacks {
 			get { return validation_callbacks; }
@@ -133,19 +128,15 @@ namespace System.Web {
 		internal bool ValidUntilExpires {
 			get { return valid_until_expires; }
 		}
-		
-#endregion // Properties
-
-#region Methods
 
 		internal int ExpireMinutes ()
 		{
 			if (!have_expire_date)
 				return 0;
-			
+
 			return (expire_date - DateTime.Now).Minutes;
 		}
-		
+
 		public void AddValidationCallback (HttpCacheValidateHandler handler, object data)
 		{
 			if (handler == null)
@@ -178,7 +169,7 @@ namespace System.Web {
 
 			if (Cacheability > 0 && cacheability > Cacheability)
 				return;
-			
+
 			Cacheability = cacheability;
 		}
 
@@ -248,7 +239,7 @@ namespace System.Web {
 		{
 			if (date < TimeSpan.Zero)
 				throw new ArgumentOutOfRangeException ("date");
-			
+
 			if (HaveMaxAge && MaxAge < date)
 				return;
 
@@ -357,20 +348,22 @@ namespace System.Web {
 				if (MaxAge.TotalSeconds != 0)
 					cc = String.Concat (cc, ", max-age=", ((long) MaxAge.TotalSeconds).ToString ());
 
-				string expires = TimeUtil.ToUtcTimeString (expire_date);
-				headers.Add (new UnknownResponseHeader ("Expires", expires));
+				if (have_expire_date) {
+					string expires = TimeUtil.ToUtcTimeString (expire_date);
+					headers.Add (new UnknownResponseHeader ("Expires", expires));
+				}
 			}
 
 			if (set_no_store)
 				cc = String.Concat (cc, ", no-store");
 			if (set_no_transform)
 				cc = String.Concat (cc, ", no-transform");
-			
+
 			headers.Add (new UnknownResponseHeader ("Cache-Control", cc));
 
 			if (last_modified_from_file_dependencies || etag_from_file_dependencies)
 				HeadersFromFileDependencies (response);
-			
+
 			if (etag != null)
 				headers.Add (new UnknownResponseHeader ("ETag", etag));
 
@@ -383,13 +376,12 @@ namespace System.Web {
 				if (vb != null)
 					headers.Add (vb);
 			}
-
 		}
 
 		void HeadersFromFileDependencies (HttpResponse response)
 		{
 			string [] fileDeps = response.FileDependencies;
-			
+
 			if (fileDeps == null || fileDeps.Length == 0)
 				return;
 
@@ -424,15 +416,12 @@ namespace System.Web {
 			if (doEtag && etagsb.Length > 0)
 				etag = etagsb.ToString ();
 		}
-		
+
 #if NET_2_0
 		public void SetOmitVaryStar (bool omit)
 		{
 			omit_vary_star = omit;
 		}
 #endif
-		
-#endregion // Methods
 	}
 }
-

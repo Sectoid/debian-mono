@@ -57,7 +57,7 @@ namespace System.Net {
 
 		public static WebRequest Create (Uri uri)
 		{
-			if (!uri.Scheme.StartsWith ("http"))
+			if (uri.IsAbsoluteUri && !uri.Scheme.StartsWith ("http"))
 				throw new NotSupportedException (string.Format ("Scheme {0} not supported", uri.Scheme));
 
 			return CreateBrowserHttpRequest (uri);
@@ -88,6 +88,15 @@ namespace System.Net {
 		{
 			throw new NotSupportedException ();
 		}
+
+		internal void SetupProgressDelegate (Delegate progress_delegate)
+		{
+			if (browser_http_request == null)
+				browser_http_request = GetBrowserHttpFromMoonlight ();
+
+			this.GetType ().GetField ("progress_delegate", BindingFlags.Instance | BindingFlags.NonPublic).SetValue (this, progress_delegate);
+		}
+		
 	}
 }
 

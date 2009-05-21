@@ -87,7 +87,7 @@ namespace Mono.CSharp {
 					p.GenerateDocComment (t);
 
 			if (t.Methods != null)
-				foreach (Method m in t.Methods)
+				foreach (MethodOrOperator m in t.Methods)
 					m.GenerateDocComment (t);
 
 			if (t.Operators != null)
@@ -366,8 +366,8 @@ namespace Mono.CSharp {
 			if (!MethodGroupExpr.IsAncestralType (base_prop.DeclaringType, deriv_prop.DeclaringType))
 				return false;
 
-			Type [] deriv_pd = TypeManager.GetArgumentTypes (deriv_prop);
-			Type [] base_pd = TypeManager.GetArgumentTypes (base_prop);
+			Type [] deriv_pd = TypeManager.GetParameterData (deriv_prop).Types;
+			Type [] base_pd = TypeManager.GetParameterData (base_prop).Types;
 		
 			if (deriv_pd.Length != base_pd.Length)
 				return false;
@@ -750,7 +750,7 @@ namespace Mono.CSharp {
 			if (mb == null)
 				return String.Empty;
 
-			ParameterData parameters = TypeManager.GetParameterData (mb);
+			AParametersCollection parameters = TypeManager.GetParameterData (mb);
 			if (parameters == null || parameters.Count == 0)
 				return String.Empty;
 
@@ -761,7 +761,7 @@ namespace Mono.CSharp {
 					break; // skip "value".
 				if (i > 0)
 					sb.Append (',');
-				Type t = parameters.ParameterType (i);
+				Type t = parameters.Types [i];
 				sb.Append (GetSignatureForDoc (t));
 			}
 			sb.Append (')');
@@ -822,13 +822,14 @@ namespace Mono.CSharp {
 		//
 		public static string GetMethodDocCommentName (MemberCore mc, Parameters parameters, DeclSpace ds)
 		{
-			Parameter [] plist = parameters.FixedParameters;
+			IParameterData [] plist = parameters.FixedParameters;
 			string paramSpec = String.Empty;
 			if (plist != null) {
 				StringBuilder psb = new StringBuilder ();
+				int i = 0;
 				foreach (Parameter p in plist) {
 					psb.Append (psb.Length != 0 ? "," : "(");
-					psb.Append (GetSignatureForDoc (p.ParameterType));
+					psb.Append (GetSignatureForDoc (parameters.Types [i++]));
 					if ((p.ModFlags & Parameter.Modifier.ISBYREF) != 0)
 						psb.Append ('@');
 				}
@@ -892,11 +893,10 @@ namespace Mono.CSharp {
 		{
 			Hashtable paramTags = new Hashtable ();
 			foreach (XmlElement pelem in el.SelectNodes ("param")) {
-				int i;
 				string xname = pelem.GetAttribute ("name");
 				if (xname.Length == 0)
 					continue; // really? but MS looks doing so
-				if (xname != "" && mc.Parameters.GetParameterByName (xname, out i) == null)
+				if (xname != "" && mc.Parameters.GetParameterIndexByName (xname) < 0)
 					Report.Warning (1572, 2, mc.Location, "XML comment on `{0}' has a param tag for `{1}', but there is no parameter by that name",
 						mc.GetSignatureForError (), xname);
 				else if (paramTags [xname] != null)
@@ -904,7 +904,7 @@ namespace Mono.CSharp {
 						mc.GetSignatureForError (), xname);
 				paramTags [xname] = xname;
 			}
-			Parameter [] plist = mc.Parameters.FixedParameters;
+			IParameterData [] plist = mc.Parameters.FixedParameters;
 			foreach (Parameter p in plist) {
 				if (paramTags.Count > 0 && paramTags [p.Name] == null)
 					Report.Warning (1573, 4, mc.Location, "Parameter `{0}' has no matching param tag in the XML comment for `{1}'",

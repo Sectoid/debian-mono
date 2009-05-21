@@ -14,7 +14,7 @@ SN_SOURCES = sn.cs StrongNameManager.cs $(HELPER_SOURCES)
 
 SECURITY_SOURCES = $(HELPER_SOURCES) $(SN_SOURCES) $(SECURITY_PROGRAMS:.exe=.cs) $(SECURITY_PROGRAMS_2_0:.exe=.cs)
 
-ifeq (default, $(PROFILE))
+ifeq (net_1_1, $(PROFILE))
 SECURITY_TARGETS = $(SECURITY_PROGRAMS)
 else
 SECURITY_TARGETS = $(SECURITY_PROGRAMS_2_0)
@@ -29,6 +29,8 @@ all-local: $(topdir)/class/lib/$(PROFILE)/sn.exe
 else
 all-local: $(SECURITY_TARGETS)
 endif
+
+doc-update-local:
 
 install-local: all-local
 uninstall-local:

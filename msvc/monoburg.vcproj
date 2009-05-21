@@ -45,7 +45,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\libgc\include;..\;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0\glib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib\glib-2.0\include&quot;;..\mono\"
-				PreprocessorDefinitions="_DEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
+				PreprocessorDefinitions="_DEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -68,6 +68,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="glib-2.0.lib ws2_32.lib gthread-2.0.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
@@ -98,7 +99,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -152,6 +153,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="glib-2.0.lib ws2_32.lib gthread-2.0.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
@@ -182,7 +184,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -212,7 +214,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				AdditionalIncludeDirectories="..\libgc\include;..\;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\include\glib-2.0\glib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib\glib-2.0\include&quot;;..\mono\"
-				PreprocessorDefinitions="NDEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
+				PreprocessorDefinitions="NDEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="true"
 				UsePrecompiledHeader="0"
@@ -232,6 +234,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="glib-2.0.lib ws2_32.lib gthread-2.0.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
@@ -264,7 +267,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -315,6 +318,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="glib-2.0.lib ws2_32.lib gthread-2.0.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;;&quot;$(MONO_DEPENDENCIES_PREFIX)\lib&quot;"
@@ -347,7 +351,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -377,7 +381,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\libgc\include;..\;..\mono\;..\mono\eglib\src;..\..\mono\eglib\src"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_DEPRECATE"
+				PreprocessorDefinitions="_DEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -400,6 +404,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="eglib.lib ws2_32.lib "
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
@@ -430,7 +435,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -484,6 +489,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="eglib.lib ws2_32.lib "
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
@@ -514,7 +520,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -544,7 +550,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="1"
 				AdditionalIncludeDirectories="..\libgc\include;..\;..\mono\;..\mono\eglib\src;..\..\mono\eglib\src"
-				PreprocessorDefinitions="NDEBUG;__i386__;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
+				PreprocessorDefinitions="NDEBUG;__i386__;i386;WIN32;_WIN32;__WIN32__;_WINDOWS;WINDOWS;PLATFORM_WIN32;_CRT_SECURE_NO_DEPRECATE;_CONSOLE"
 				RuntimeLibrary="2"
 				BufferSecurityCheck="true"
 				UsePrecompiledHeader="0"
@@ -564,6 +570,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="eglib.lib ws2_32.lib "
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
@@ -596,7 +603,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 		<Configuration
@@ -647,6 +654,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				LinkLibraryDependencies="false"
 				AdditionalDependencies="eglib.lib ws2_32.lib "
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(PlatformName)_$(ConfigurationName)/lib&quot;"
@@ -679,7 +687,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="runburg.bat $(TargetPath) $(PlatformName)"
+				CommandLine="runburg.bat &quot;$(TargetPath)&quot; $(PlatformName)"
 			/>
 		</Configuration>
 	</Configurations>

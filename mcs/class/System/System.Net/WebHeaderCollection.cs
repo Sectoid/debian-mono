@@ -568,9 +568,6 @@ namespace System.Net
 			}
 		}
 
-
-#endif
-#if NET_2_0 && !EMBEDDED_IN_1_0
 		public override void Clear ()
 		{
 			base.Clear ();

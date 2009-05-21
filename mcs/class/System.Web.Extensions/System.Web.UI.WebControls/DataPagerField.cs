@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2008 Novell, Inc
 //
 
 //
@@ -43,13 +43,21 @@ namespace System.Web.UI.WebControls
 	[AspNetHostingPermissionAttribute(SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public abstract class DataPagerField : IStateManager
 	{
+		static readonly object FieldChangedEvent = new object ();
+		
+		EventHandlerList events;
 		StateBag _state = new StateBag ();
 		DataPager _dataPager;
 
 		bool _queryStringHandled;
 		bool _isTrackingViewState;
 		string _queryStringNavigateUrl;
-		
+
+		internal event EventHandler FieldChanged {
+			add { AddEventHandler (FieldChangedEvent, value); }
+			remove { RemoveEventHandler (FieldChangedEvent, value); }
+		}
+				
 		protected DataPagerField ()
 		{
 		}
@@ -111,8 +119,7 @@ namespace System.Web.UI.WebControls
 		
 		protected virtual void OnFieldChanged ()
 		{
-			if (FieldChanged != null)
-				FieldChanged (this, EventArgs.Empty);
+			InvokeEvent (FieldChangedEvent, EventArgs.Empty);
 		}
 
 		protected virtual object SaveViewState ()
@@ -171,13 +178,17 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
+		protected bool IsTrackingViewState {
+			get { return _isTrackingViewState; }
+		}
+		
 		void IStateManager.TrackViewState ()
 		{
 			TrackViewState ();
 		}
 
 		bool IStateManager.IsTrackingViewState {
-			get { return _isTrackingViewState; }
+			get { return IsTrackingViewState; }
 		}
 
 		object IStateManager.SaveViewState ()
@@ -190,7 +201,70 @@ namespace System.Web.UI.WebControls
 			LoadViewState (state);
 		}
 
-		internal event EventHandler FieldChanged;
+		internal void SetDataPager (DataPager pager)
+		{
+			_dataPager = pager;
+		}
+
+		internal bool GetQueryModeStartRowIndex (int totalRowCount, int maximumRows, ref int startRowIndex, ref bool setPagePropertiesNeeded)
+		{
+			bool queryMode = !String.IsNullOrEmpty (DataPager.QueryStringField);
+			if (!queryMode || QueryStringHandled)
+				return false;
+
+			QueryStringHandled = true;
+
+			// We need to calculate the new start index since it is probably out
+			// of date because the GET parameter with the page number hasn't
+			// been processed yet
+			int pageNumber;
+			try {
+				pageNumber = Int32.Parse (QueryStringValue);
+			} catch {
+				// ignore
+				pageNumber = -1;
+			}
+
+			if (pageNumber >= 0) {
+				pageNumber--; // we're zero-based since we're calculating
+				// the offset/index
+				if (pageNumber >= 0) {
+					// zero-based calculation again
+					int pageCount = (totalRowCount - 1) / maximumRows; 
+					if (pageNumber <= pageCount) {
+						startRowIndex = pageNumber * maximumRows;
+						setPagePropertiesNeeded = true;
+					}
+				}
+			}
+
+			return true;
+		}
+		
+		void AddEventHandler (object key, EventHandler handler)
+		{
+			if (events == null)
+				events = new EventHandlerList ();
+			events.AddHandler (key, handler);
+		}
+
+		void RemoveEventHandler (object key, EventHandler handler)
+		{
+			if (events == null)
+				return;
+			events.RemoveHandler (key, handler);
+		}
+
+		void InvokeEvent (object key, EventArgs args)
+		{
+			if (events == null)
+				return;
+
+			EventHandler eh = events [key] as EventHandler;
+			if (eh == null)
+				return;
+			eh (this, args);
+		}
 	}
 }
 #endif

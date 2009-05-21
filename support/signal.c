@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 typedef void (*mph_sighandler_t)(int);
 typedef struct Mono_Unix_UnixSignal_SignalInfo signal_info;
 
+static int count_handlers (int signum);
+
 void*
 Mono_Posix_Stdlib_SIG_DFL (void)
 {
@@ -52,6 +54,46 @@ Mono_Posix_Stdlib_InvokeSignalHandler (int signum, void *handler)
 {
 	mph_sighandler_t _h = (mph_sighandler_t) handler;
 	_h (signum);
+}
+
+int Mono_Posix_SIGRTMIN (void)
+{
+#ifdef SIGRTMIN
+	return SIGRTMIN;
+#else /* def SIGRTMIN */
+	return -1;
+#endif /* ndef SIGRTMIN */
+}
+
+int Mono_Posix_SIGRTMAX (void)
+{
+#ifdef SIGRTMAX
+	return SIGRTMAX;
+#else /* def SIGRTMAX */
+	return -1;
+#endif /* ndef SIGRTMAX */
+}
+
+int Mono_Posix_FromRealTimeSignum (int offset, int *r)
+{
+	if (NULL == r) {
+		errno = EINVAL;
+		return -1;
+	}
+	*r = 0;
+#if defined (SIGRTMIN) && defined (SIGRTMAX)
+	if ((offset < 0) || (SIGRTMIN > SIGRTMAX - offset)) {
+		errno = EINVAL;
+		return -1;
+	}
+	*r = SIGRTMIN+offset;
+	return 0;
+#else /* defined (SIGRTMIN) && defined (SIGRTMAX) */
+# ifdef ENOSYS
+	errno = ENOSYS;
+# endif /* ENOSYS */
+	return -1;
+#endif /* defined (SIGRTMIN) && defined (SIGRTMAX) */
 }
 
 #ifndef PLATFORM_WIN32
@@ -109,13 +151,26 @@ Mono_Unix_UnixSignal_install (int sig)
 	int i, mr;
 	signal_info* h = NULL; 
 	int have_handler = 0;
-	void* handler;
+	void* handler = NULL;
 
 	mr = pthread_mutex_lock (&signals_mutex);
 	if (mr != 0) {
 		errno = mr;
 		return NULL;
 	}
+
+#if defined (SIGRTMIN) && defined (SIGRTMAX)
+	/*The runtime uses some rt signals for itself so it's important to not override them.*/
+	if (sig >= SIGRTMIN && sig <= SIGRTMAX && count_handlers (sig) == 0) {
+		struct sigaction sinfo;
+		sigaction (sig, NULL, &sinfo);
+		if (sinfo.sa_handler != SIG_DFL || (void*)sinfo.sa_sigaction != (void*)SIG_DFL) {
+			pthread_mutex_unlock (&signals_mutex);
+			errno = EADDRINUSE;
+			return NULL;
+		}
+	}
+#endif /*defined (SIGRTMIN) && defined (SIGRTMAX)*/
 
 	for (i = 0; i < NUM_SIGNALS; ++i) {
 		if (h == NULL && signals [i].signum == 0) {

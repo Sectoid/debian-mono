@@ -35,6 +35,7 @@ namespace System.Windows.Forms {
 		When writing this code the Wine project was of great help to
 		understand the logic behind some Win32 issues. Thanks to them. Jordi,
 	*/
+	// UIA Framework Note: This class used by UIA for its mouse action methods.
 	internal class MenuTracker {
 
 		internal bool active;
@@ -136,6 +137,7 @@ namespace System.Windows.Forms {
 			return item;
 		}
 
+		// UIA Framework Note: Used to expand/collapse MenuItems
 		public bool OnMouseDown (MouseEventArgs args)
 		{
 			MenuItem item = GetItemAtXY (args.X, args.Y);
@@ -167,6 +169,7 @@ namespace System.Windows.Forms {
 			return true;
 		}
 
+		// UIA Framework Note: Used to select MenuItems
 		public void OnMotion (MouseEventArgs args)
 		{
 			// Windows helpfully sends us MOUSEMOVE messages when any key is pressed.
@@ -214,6 +217,7 @@ namespace System.Windows.Forms {
 			}
 		}
 
+		// UIA Framework Note: Used to expand/collapse MenuItems
 		public void OnMouseUp (MouseEventArgs args)
 		{
 			/* mouse down dont comes from menu */
@@ -665,7 +669,7 @@ namespace System.Windows.Forms {
 		bool ProcessShortcut (Keys keyData)
 		{
 			MenuItem item = shortcuts [(int)keyData] as MenuItem;
-			if (item == null)
+			if (item == null || !item.Enabled)
 				return false;
 
 			if (active)
@@ -679,7 +683,9 @@ namespace System.Windows.Forms {
 			// If we get Alt-F4, Windows will ignore it because we have a capture,
 			// release the capture and the program will exit.  (X11 doesn't care.)
 			if ((keyData & Keys.Alt) == Keys.Alt && (keyData & Keys.F4) == Keys.F4) {
-				GrabControl.ActiveTracker = null;
+				if (GrabControl != null)
+					GrabControl.ActiveTracker = null;
+					
 				return false;
 			}
 			
@@ -738,7 +744,7 @@ namespace System.Windows.Forms {
 						SelectItem (item, item.MenuItems [0], false);
 						CurrentMenu = item;
 					}
-				} else if (CurrentMenu.SelectedItem.IsPopup) {
+				} else if (CurrentMenu.SelectedItem != null && CurrentMenu.SelectedItem.IsPopup) {
 					item = CurrentMenu.SelectedItem;
 					ShowSubPopup (CurrentMenu, item);
 					SelectItem (item, item.MenuItems [0], false);
@@ -780,25 +786,23 @@ namespace System.Windows.Forms {
 					}
 				} else {
 					HideSubPopups (CurrentMenu, TopMenu);
-					CurrentMenu = CurrentMenu.parent_menu;
+					if (CurrentMenu.parent_menu != null)
+						CurrentMenu = CurrentMenu.parent_menu;
 				}
 				break;
 
 			case Keys.Return:
-				if (CurrentMenu is MainMenu) {
-					if (CurrentMenu.SelectedItem != null && CurrentMenu.SelectedItem.IsPopup) {
-						keynav_state = KeyNavState.Navigating;
-						item = CurrentMenu.SelectedItem;
-						ShowSubPopup (CurrentMenu, item);
-						SelectItem (item, item.MenuItems [0], false);
-						CurrentMenu = item;
-						active = true;
-						GrabControl.ActiveTracker = this;
-					}
-					return true;
+				if (CurrentMenu.SelectedItem != null && CurrentMenu.SelectedItem.IsPopup) {
+					keynav_state = KeyNavState.Navigating;
+					item = CurrentMenu.SelectedItem;
+					ShowSubPopup (CurrentMenu, item);
+					SelectItem (item, item.MenuItems [0], false);
+					CurrentMenu = item;
+					active = true;
+					GrabControl.ActiveTracker = this;
+				} else {
+					ExecFocusedItem (CurrentMenu, CurrentMenu.SelectedItem);
 				}
-			
-				ExecFocusedItem (CurrentMenu, CurrentMenu.SelectedItem);
 				break;
 				
 			case Keys.Escape:

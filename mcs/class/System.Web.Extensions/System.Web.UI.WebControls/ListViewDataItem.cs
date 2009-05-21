@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2008 Novell, Inc
 //
 
 //
@@ -43,6 +43,12 @@ namespace System.Web.UI.WebControls
 		
 		protected override bool OnBubbleEvent (object source, EventArgs e)
 		{
+			CommandEventArgs args = e as CommandEventArgs;
+			if (args != null) {
+				RaiseBubbleEvent (this, new ListViewCommandEventArgs (this, this, args));
+				return true;
+			}
+			
 			return base.OnBubbleEvent (source, e);
 		}
 		

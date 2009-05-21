@@ -37,11 +37,12 @@ subdir = runtime
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(srcdir)/mono-wrapper.in $(srcdir)/monodis-wrapper.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES = mono-wrapper monodis-wrapper
 SCRIPTS = $(noinst_SCRIPTS)
@@ -94,12 +95,16 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
+GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GMODULE_CFLAGS = @GMODULE_CFLAGS@
 GMODULE_LIBS = @GMODULE_LIBS@
+GMSGFMT = @GMSGFMT@
+GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
 HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
+HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -123,6 +128,9 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MSGFMT = @MSGFMT@
+MSGFMT_015 = @MSGFMT_015@
+MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
@@ -143,9 +151,13 @@ SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
 STRIP = @STRIP@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 X11 = @X11@
 XATTR_LIB = @XATTR_LIB@
+XGETTEXT = @XGETTEXT@
+XGETTEXT_015 = @XGETTEXT_015@
+XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
 XMKMF = @XMKMF@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -226,18 +238,20 @@ noinst_SCRIPTS = mono-wrapper monodis-wrapper
 etctmp = etc
 symlinks = etc/mono/1.0/machine.config etc/mono/2.0/machine.config etc/mono/2.0/web.config etc/mono/browscap.ini etc/mono/2.0/Browsers/Compat.browser
 SUPPORT_FILES = $(symlinks) mono-wrapper etc/mono/config
-@INSTALL_2_0_FALSE@build_profiles = default
-@INSTALL_2_0_TRUE@@INSTALL_2_1_FALSE@build_profiles = default net_2_0 net_3_5
-@INSTALL_2_0_TRUE@@INSTALL_2_1_TRUE@build_profiles = default net_2_0 net_3_5 net_2_1
+@INSTALL_2_0_FALSE@build_profiles = net_1_1
+@INSTALL_2_0_TRUE@@INSTALL_2_1_FALSE@build_profiles = net_1_1 net_2_0 net_3_5
+@INSTALL_2_0_TRUE@@INSTALL_2_1_TRUE@build_profiles = net_1_1 net_2_0 net_3_5 net_2_1
 TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/mcs $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs
 @ENABLE_NUNIT_TESTS_FALSE@test_select = ONLY_CENTUM_TESTS=yes
 
 # now a misnomer, but it'll go away soon enough.
 @ENABLE_NUNIT_TESTS_TRUE@test_select = 
+@CROSS_COMPILING_FALSE@@PLATFORM_WIN32_TRUE@cur_dir_cmd = cygpath -w -a .
+@CROSS_COMPILING_TRUE@@PLATFORM_WIN32_TRUE@cur_dir_cmd = pwd
 @PLATFORM_WIN32_FALSE@cur_dir_cmd = pwd
-@PLATFORM_WIN32_TRUE@cur_dir_cmd = cygpath -w -a .
+@CROSS_COMPILING_FALSE@@PLATFORM_WIN32_TRUE@PLATFORM_PATH_SEPARATOR = ;
+@CROSS_COMPILING_TRUE@@PLATFORM_WIN32_TRUE@PLATFORM_PATH_SEPARATOR = :
 @PLATFORM_WIN32_FALSE@PLATFORM_PATH_SEPARATOR = :
-@PLATFORM_WIN32_TRUE@PLATFORM_PATH_SEPARATOR = ;
 CLEANFILES = etc/mono/config
 
 # the 'cygnus' option also disables the default 'distdir:' target, which we _do_ want
@@ -476,7 +490,7 @@ $(tmpinst)/bin/mono: mono-wrapper etc/mono/config
 $(tmpinst)/bin/mcs: $(tmpinst)/bin/mono Makefile
 	echo '#! /bin/sh' > $@ ; \
 	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
-	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/default/mcs.exe"'" "$$@"' >> $@ ; \
+	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_1_1/mcs.exe"'" "$$@"' >> $@ ; \
 	chmod +x $@
 
 $(tmpinst)/bin/gmcs: $(tmpinst)/bin/mono Makefile

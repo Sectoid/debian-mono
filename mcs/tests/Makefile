@@ -6,12 +6,12 @@ thisdir = tests
 SUBDIRS =
 include ../build/rules.make
 
-DISTFILES = README.tests
+DISTFILES = README.tests $(wildcard dlls/**/*.cs)
 DISTFILES += $(wildcard *.cs) $(wildcard *.il) $(wildcard *.xml) $(wildcard *.inc) $(wildcard known-issues-*) $(wildcard *.snk)
 
 with_mono_path = MONO_PATH="$(topdir)/class/lib/$(PROFILE)$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH"
 
-ifeq (default, $(PROFILE))
+ifeq (net_1_1, $(PROFILE))
 # force this, we don't case if CSC is broken. This also
 # means we can use --options, yay.
 MCS = $(with_mono_path) $(INTERNAL_MCS)
@@ -28,7 +28,7 @@ USE_MCS_FLAGS :=
 # mention all targets
 all-local $(STD_TARGETS:=-local):
 
-VALID_PROFILE := $(filter default net_2_0 net_2_1, $(PROFILE))
+VALID_PROFILE := $(filter net_1_1 net_2_0 net_2_1, $(PROFILE))
 ifdef VALID_PROFILE
 # casts
 bootstrap-cast.exe: gen-cast-test.cs
@@ -54,6 +54,8 @@ test-casts: boot-casts.out mcs-casts.out
 
 test-local: casts-boot.exe
 
+eval.exe: eval-tests.cs
+	
 ifeq (net_2_1, $(PROFILE))
 COMPILER_NAME = smcs
 TEST_PATTERN = '*test-*.cs'
@@ -62,13 +64,13 @@ endif
 ifeq (net_2_0, $(PROFILE))
 COMPILER_NAME = gmcs
 TEST_PATTERN = '*test-*.cs'
-# LOCAL_RUNTIME_FLAGS = --security=validil
+LOCAL_RUNTIME_FLAGS = --security=validil --verify-all
 TOPTIONS += '-il:ver-il-gmcs.xml'
 endif
-ifeq (default, $(PROFILE))
+ifeq (net_1_1, $(PROFILE))
 COMPILER_NAME = mcs
 TEST_PATTERN = 'test-*.cs'
-LOCAL_RUNTIME_FLAGS = --security=validil
+LOCAL_RUNTIME_FLAGS = --security=validil --verify-all
 endif
 
 COMPILER = $(topdir)/class/lib/$(PROFILE)/$(COMPILER_NAME).exe
@@ -76,13 +78,21 @@ TESTER = MONO_RUNTIME='$(RUNTIME)' $(TEST_RUNTIME) $(RUNTIME_FLAGS) $(LOCAL_RUNT
 
 TEST_ILS := $(wildcard *-lib.il)
 
+ifeq (net_2_0, $(PROFILE))
+eval-test: 
+	$(CSCOMPILE) eval-test.cs -r:$(COMPILER)
+	$(with_mono_path) $(RUNTIME) $(RUNTIME_FLAGS) eval-test.exe
+else
+eval-test:
+endif
+
 check: run-test
 
-run-test-local: $(TEST_ILS:.il=.dll)
+run-test-local: $(TEST_ILS:.il=.dll) eval-test
 	$(TESTER) -mode:pos -files:$(TEST_PATTERN) -compiler:$(COMPILER) -issues:known-issues-$(COMPILER_NAME) -log:$(COMPILER_NAME).log $(TOPTIONS)
 
 test-everything:
-	$(MAKE) PROFILE=default run-test
+	$(MAKE) PROFILE=net_1_1 run-test
 	$(MAKE) PROFILE=net_2_0 run-test
 
 test-generics:
@@ -102,12 +112,15 @@ dist-local: dist-default
 %-lib.dll: %-lib.il
 	$(ILASM) /dll /out:$@ $<
 
-ifeq (default, $(PROFILE))
+ifeq (net_1_1, $(PROFILE))
 run-test-local: ilasm
 ilasm:
 	$(ILASM) /dll property-il.il
 	$(CSCOMPILE) /r:property-il.dll property-main.cs /out:property-main.exe
 	$(TEST_RUNTIME) property-main.exe
+
+	$(CSCOMPILE) -t:library dlls/test-679-2/test-679-lib-2.cs
+	$(CSCOMPILE) -t:library dlls/test-679-1/test-679-lib.cs -r:dlls/test-679-2/test-679-lib-2.dll
 endif
 
 endif

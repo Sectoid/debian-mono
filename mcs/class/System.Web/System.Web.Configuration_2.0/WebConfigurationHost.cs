@@ -216,6 +216,11 @@ namespace System.Web.Configuration
 		
 		public string MapPath (string virtualPath)
 		{
+			if (!String.IsNullOrEmpty (virtualPath)) {
+				if (virtualPath.StartsWith (System.Web.Compilation.BuildManager.FAKE_VIRTUAL_PATH_PREFIX, StringComparison.Ordinal))
+					return HttpRuntime.AppDomainAppPath;
+			}
+			
 			if (map != null)
 				return MapPathFromMapper (virtualPath);
 			else if (HttpContext.Current != null && HttpContext.Current.Request != null)
@@ -275,7 +280,7 @@ namespace System.Web.Configuration
 			throw new HttpException ("Invalid virtual directory: " + virtualPath);
 		}
 
-		string GetWebConfigFileName (string dir)
+		internal static string GetWebConfigFileName (string dir)
 		{
 #if TARGET_J2EE
 			DirectoryInfo d = GetCaseSensitiveExistingDirectory (new DirectoryInfo (dir));
@@ -355,8 +360,11 @@ namespace System.Web.Configuration
 					return configPath == MachinePath || configPath == MachineWebPath;
 				case ConfigurationAllowDefinition.MachineToWebRoot:
 				case ConfigurationAllowDefinition.MachineToApplication:
-					return configPath == MachinePath || configPath == MachineWebPath || configPath == "/" ||
-						configPath == HttpRuntime.AppDomainAppVirtualPath;
+					return (String.Compare (configPath, MachinePath, StringComparison.Ordinal) == 0) ||
+						(String.Compare (configPath, MachineWebPath, StringComparison.Ordinal) == 0) ||
+						(String.Compare (configPath, "/", StringComparison.Ordinal) == 0) ||
+						(String.Compare (configPath, "~", StringComparison.Ordinal) == 0) ||
+						(String.Compare (configPath, HttpRuntime.AppDomainAppVirtualPath) == 0);
 				default:
 					return true;
 			}

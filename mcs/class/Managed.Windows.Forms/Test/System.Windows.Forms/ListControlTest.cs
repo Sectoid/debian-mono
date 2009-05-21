@@ -33,20 +33,21 @@ using System.ComponentModel;
 #endif
 using System.IO;
 using System.Data;
+using System.Globalization;
 using System.Windows.Forms;
 using NUnit.Framework;
 
 namespace MonoTests.System.Windows.Forms
 {
 	[TestFixture]
-	public class ListControlTest
+	public class ListControlTest : TestHelper
 	{
 		private int dataSourceChanged;
 
 		[SetUp]
-		public void SetUp ()
-		{
+		protected override void SetUp () {
 			dataSourceChanged = 0;
+			base.SetUp ();
 		}
 
 		[Test]
@@ -417,6 +418,29 @@ namespace MonoTests.System.Windows.Forms
 		{
 			e.Value = "Monkey!";
 		}
+
+		[Test]
+		public void FormattingChanges ()
+		{
+			bool refresh_items_called = false;
+
+			ListControlChild lc = new ListControlChild ();
+			lc.RefreshingItems += delegate
+			{
+				refresh_items_called = true;
+			};
+
+			lc.FormattingEnabled = !lc.FormattingEnabled;
+			Assert.AreEqual (true, refresh_items_called, "A1");
+
+			refresh_items_called = false;
+			lc.FormatInfo = CultureInfo.CurrentCulture;
+			Assert.AreEqual (true, refresh_items_called, "B1");
+
+			refresh_items_called = false;
+			lc.FormatString = CultureInfo.CurrentCulture.NumberFormat.ToString ();
+			Assert.AreEqual (true, refresh_items_called, "C1");
+		}
 #endif
 
 		void ListControl_DataSourceChanged (object sender, EventArgs e)
@@ -451,6 +475,18 @@ namespace MonoTests.System.Windows.Forms
 			protected override void RefreshItem (int index)
 			{
 			}
+
+#if NET_2_0
+			protected override void RefreshItems ()
+			{
+				base.RefreshItems ();
+
+				if (RefreshingItems != null)
+					RefreshingItems (this, EventArgs.Empty);
+			}
+
+			public event EventHandler RefreshingItems;
+#endif
 
 			protected override void SetItemsCore (IList items)
 			{
@@ -511,5 +547,22 @@ namespace MonoTests.System.Windows.Forms
 
 		private string _text;
 		private int _value;
+	}
+
+	public class MockContainer
+	{
+		MockItem item;
+
+		public MockItem Item
+		{
+			get
+			{
+				return item;
+			}
+			set
+			{
+				item = value;
+			}
+		}
 	}
 }

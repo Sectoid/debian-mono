@@ -77,7 +77,6 @@ namespace MonoTests.System.Data.OracleClient
 		}
 
 		[Test]
-		[Ignore ("what")]
 		public void SimpleValue()
 		{
 			try

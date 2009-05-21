@@ -1,3 +1,19 @@
+2008-12-30  Raja R Harinath  <harinath@hurrynot.org>
+
+	* ProcessTest.cs: Import System.Threading namespace.
+
+2008-12-25  Miguel de Icaza  <miguel@novell.com>
+
+	* ProcessTest.cs: Created a test case from bug 459450.
+
+2008-10-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* EventLogTest.cs: Fixed compiler warning.
+
+2008-08-02  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* TraceListenerTest.cs: Added test for GetSupportedAttributes.
+
 2008-06-21  Robert Jordan  <robertj@gmx.net>
 
 	* ProcessTest.cs (Start_UseShellExecuteWithEmptyUserName):

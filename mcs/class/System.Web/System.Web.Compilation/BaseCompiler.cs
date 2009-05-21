@@ -72,6 +72,17 @@ namespace System.Web.Compilation
 			this.parser = parser;
 		}
 
+		protected void AddReferencedAssembly (Assembly asm)
+		{
+			if (unit == null || asm == null)
+				return;
+
+			StringCollection refAsm = unit.ReferencedAssemblies;
+			string asmLocation = asm.Location;
+			if (!refAsm.Contains (asmLocation))
+				refAsm.Add (asmLocation);
+		}
+		
 		internal CodeStatement AddLinePragma (CodeExpression expression, ControlBuilder builder)
 		{
 			return AddLinePragma (new CodeExpressionStatement (expression), builder);
@@ -85,12 +96,12 @@ namespace System.Web.Compilation
 			ILocation location = null;
 
 			if (!(builder is CodeRenderBuilder))
-				location = builder.location;
+				location = builder.Location;
 			
 			if (location != null)
 				return AddLinePragma (statement, location);
 			else
-				return AddLinePragma (statement, builder.line, builder.fileName);
+				return AddLinePragma (statement, builder.Line, builder.FileName);
 		}
 
 		internal CodeStatement AddLinePragma (CodeStatement statement, ILocation location)
@@ -129,12 +140,12 @@ namespace System.Web.Compilation
 			if (builder == null || member == null)
 				return member;
 
-			ILocation location = builder.location;
+			ILocation location = builder.Location;
 			
 			if (location != null)
 				return AddLinePragma (member, location);
 			else
-				return AddLinePragma (member, builder.line, builder.fileName);
+				return AddLinePragma (member, builder.Line, builder.FileName);
 		}
 		
 		internal CodeTypeMember AddLinePragma (CodeTypeMember member, ILocation location)
@@ -270,7 +281,8 @@ namespace System.Web.Compilation
 			// Late-bound generators specifics (as for MonoBASIC/VB.NET)
 			unit.UserData["RequireVariableDeclaration"] = parser.ExplicitOn;
 			unit.UserData["AllowLateBound"] = !parser.StrictOn;
-			
+
+			InitializeType ();
 			AddInterfaces ();
 			AddClassAttributes ();
 			CreateStaticFields ();
@@ -291,6 +303,9 @@ namespace System.Web.Compilation
 			return new CodeFieldReferenceExpression (
 				new CodeTypeReferenceExpression (mainClassTypeRef), fieldName);
 		}
+
+		protected virtual void InitializeType ()
+		{}
 		
 		protected virtual void CreateStaticFields ()
 		{
@@ -361,8 +376,12 @@ namespace System.Web.Compilation
 			if (trueStmt != null)
 				cond.TrueStatements.AddRange (trueStmt);
 			cond.TrueStatements.Add (assign);
-			
 			ctor.Statements.Add (cond);
+			AddStatementsToConstructor (ctor);
+		}
+
+		protected virtual void AddStatementsToConstructor (CodeConstructor ctor)
+		{
 		}
 		
 		void AddScripts ()
@@ -415,7 +434,7 @@ namespace System.Web.Compilation
 		protected void CreateProfileProperty ()
 		{
 			string retType;
-			if (AppCodeCompiler.HaveCustomProfile (WebConfigurationManager.GetSection ("system.web/profile") as ProfileSection))
+			if (AppCodeCompiler.HaveCustomProfile (WebConfigurationManager.GetWebApplicationSection ("system.web/profile") as ProfileSection))
 				retType = "ProfileCommon";
 			else
 				retType = "System.Web.Profile.DefaultProfile";
@@ -616,7 +635,7 @@ namespace System.Web.Compilation
 			par = null;
 			
 #if NET_2_0
-			CompilationSection config = (CompilationSection) WebConfigurationManager.GetSection ("system.web/compilation");
+			CompilationSection config = (CompilationSection) WebConfigurationManager.GetWebApplicationSection ("system.web/compilation");
 			Compiler comp = config.Compilers[lang];
 			
 			if (comp == null) {

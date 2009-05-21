@@ -124,12 +124,11 @@ ICALL_TYPE(INTCFGHOST, "System.Configuration.InternalConfigurationHost", INTCFGH
 ICALL(INTCFGHOST_1, "get_bundled_machine_config", get_bundled_machine_config)
 
 ICALL_TYPE(CONSOLE, "System.ConsoleDriver", CONSOLE_1)
-ICALL(CONSOLE_1, "GetTtySize", ves_icall_System_ConsoleDriver_GetTtySize )
-ICALL(CONSOLE_2, "InternalKeyAvailable", ves_icall_System_ConsoleDriver_InternalKeyAvailable )
-ICALL(CONSOLE_3, "Isatty", ves_icall_System_ConsoleDriver_Isatty )
-ICALL(CONSOLE_4, "SetBreak", ves_icall_System_ConsoleDriver_SetBreak )
-ICALL(CONSOLE_5, "SetEcho", ves_icall_System_ConsoleDriver_SetEcho )
-ICALL(CONSOLE_6, "TtySetup", ves_icall_System_ConsoleDriver_TtySetup )
+ICALL(CONSOLE_1, "InternalKeyAvailable", ves_icall_System_ConsoleDriver_InternalKeyAvailable )
+ICALL(CONSOLE_2, "Isatty", ves_icall_System_ConsoleDriver_Isatty )
+ICALL(CONSOLE_3, "SetBreak", ves_icall_System_ConsoleDriver_SetBreak )
+ICALL(CONSOLE_4, "SetEcho", ves_icall_System_ConsoleDriver_SetEcho )
+ICALL(CONSOLE_5, "TtySetup", ves_icall_System_ConsoleDriver_TtySetup )
 
 ICALL_TYPE(CONVERT, "System.Convert", CONVERT_1)
 ICALL(CONVERT_1, "InternalFromBase64CharArray", InternalFromBase64CharArray )
@@ -164,6 +163,9 @@ ICALL_TYPE(DELEGATE, "System.Delegate", DELEGATE_1)
 ICALL(DELEGATE_1, "CreateDelegate_internal", ves_icall_System_Delegate_CreateDelegate_internal)
 ICALL(DELEGATE_2, "SetMulticastInvoke", ves_icall_System_Delegate_SetMulticastInvoke)
 
+ICALL_TYPE(DEBUGR, "System.Diagnostics.Debugger", DEBUGR_1)
+ICALL(DEBUGR_1, "IsAttached_internal", ves_icall_System_Diagnostics_Debugger_IsAttached_internal)
+
 ICALL_TYPE(TRACEL, "System.Diagnostics.DefaultTraceListener", TRACEL_1)
 ICALL(TRACEL_1, "WriteWindowsDebugString", ves_icall_System_Diagnostics_DefaultTraceListener_WriteWindowsDebugString)
 
@@ -183,8 +185,8 @@ ICALL(PERFCTRCAT_3, "CounterCategoryExists", mono_perfcounter_category_exists)
 ICALL(PERFCTRCAT_4, "Create",         mono_perfcounter_create)
 ICALL(PERFCTRCAT_5, "GetCategoryNames", mono_perfcounter_category_names)
 ICALL(PERFCTRCAT_6, "GetCounterNames", mono_perfcounter_counter_names)
-ICALL(PERFCTRCAT_8, "GetInstanceNames", mono_perfcounter_instance_names)
-ICALL(PERFCTRCAT_7, "InstanceExistsInternal", mono_perfcounter_instance_exists)
+ICALL(PERFCTRCAT_7, "GetInstanceNames", mono_perfcounter_instance_names)
+ICALL(PERFCTRCAT_8, "InstanceExistsInternal", mono_perfcounter_instance_exists)
 
 ICALL_TYPE(PROCESS, "System.Diagnostics.Process", PROCESS_1)
 ICALL(PROCESS_1, "CreateProcess_internal(System.Diagnostics.ProcessStartInfo,intptr,intptr,intptr,System.Diagnostics.Process/ProcInfo&)", ves_icall_System_Diagnostics_Process_CreateProcess_internal)
@@ -193,6 +195,7 @@ ICALL(PROCESS_3, "ExitTime_internal(intptr)", ves_icall_System_Diagnostics_Proce
 ICALL(PROCESS_4, "GetModules_internal(intptr)", ves_icall_System_Diagnostics_Process_GetModules_internal)
 ICALL(PROCESS_5, "GetPid_internal()", ves_icall_System_Diagnostics_Process_GetPid_internal)
 ICALL(PROCESS_5B, "GetPriorityClass(intptr,int&)", ves_icall_System_Diagnostics_Process_GetPriorityClass)
+ICALL(PROCESS_5H, "GetProcessData", ves_icall_System_Diagnostics_Process_GetProcessData)
 ICALL(PROCESS_6, "GetProcess_internal(int)", ves_icall_System_Diagnostics_Process_GetProcess_internal)
 ICALL(PROCESS_7, "GetProcesses_internal()", ves_icall_System_Diagnostics_Process_GetProcesses_internal)
 ICALL(PROCESS_8, "GetWorkingSet_internal(intptr,int&,int&)", ves_icall_System_Diagnostics_Process_GetWorkingSet_internal)
@@ -205,6 +208,7 @@ ICALL(PROCESS_13, "ShellExecuteEx_internal(System.Diagnostics.ProcessStartInfo,S
 ICALL(PROCESS_14, "StartTime_internal(intptr)", ves_icall_System_Diagnostics_Process_StartTime_internal)
 ICALL(PROCESS_14M, "Times", ves_icall_System_Diagnostics_Process_Times)
 ICALL(PROCESS_15, "WaitForExit_internal(intptr,int)", ves_icall_System_Diagnostics_Process_WaitForExit_internal)
+ICALL(PROCESS_16, "WaitForInputIdle_internal(intptr,int)", ves_icall_System_Diagnostics_Process_WaitForInputIdle_internal)
 
 ICALL_TYPE (PROCESSHANDLE, "System.Diagnostics.Process/ProcessWaitHandle", PROCESSHANDLE_1)
 ICALL (PROCESSHANDLE_1, "ProcessHandle_close(intptr)", ves_icall_System_Diagnostics_Process_ProcessHandle_close)
@@ -218,6 +222,7 @@ ICALL(DOUBLE_1, "ParseImpl",    mono_double_ParseImpl)
 
 ICALL_TYPE(ENUM, "System.Enum", ENUM_1)
 ICALL(ENUM_1, "ToObject", ves_icall_System_Enum_ToObject)
+ICALL(ENUM_4, "get_hashcode", ves_icall_System_Enum_get_hashcode)
 ICALL(ENUM_3, "get_underlying_type", ves_icall_System_Enum_get_underlying_type)
 ICALL(ENUM_2, "get_value", ves_icall_System_Enum_get_value)
 
@@ -235,9 +240,10 @@ ICALL(ENV_10, "get_HasShutdownStarted", ves_icall_System_Environment_get_HasShut
 ICALL(ENV_11, "get_MachineName", ves_icall_System_Environment_get_MachineName)
 ICALL(ENV_12, "get_NewLine", ves_icall_System_Environment_get_NewLine)
 ICALL(ENV_13, "get_Platform", ves_icall_System_Environment_get_Platform)
-ICALL(ENV_14, "get_ProcessorCount", ves_icall_System_Environment_get_ProcessorCount)
+ICALL(ENV_14, "get_ProcessorCount", mono_cpu_count)
 ICALL(ENV_15, "get_TickCount", mono_msec_ticks)
 ICALL(ENV_16, "get_UserName", ves_icall_System_Environment_get_UserName)
+ICALL(ENV_16m, "internalBroadcastSettingChange", ves_icall_System_Environment_BroadcastSettingChange)
 ICALL(ENV_17, "internalGetEnvironmentVariable", ves_icall_System_Environment_GetEnvironmentVariable)
 ICALL(ENV_18, "internalGetGacPath", ves_icall_System_Environment_GetGacPath)
 ICALL(ENV_19, "internalGetHome", ves_icall_System_Environment_InternalGetHome)
@@ -277,6 +283,10 @@ ICALL_TYPE(REGINF, "System.Globalization.RegionInfo", REGINF_1)
 ICALL(REGINF_1, "construct_internal_region_from_lcid", ves_icall_System_Globalization_RegionInfo_construct_internal_region_from_lcid)
 ICALL(REGINF_2, "construct_internal_region_from_name", ves_icall_System_Globalization_RegionInfo_construct_internal_region_from_name)
 
+ICALL_TYPE(IODRIVEINFO, "System.IO.DriveInfo", IODRIVEINFO_1)
+ICALL(IODRIVEINFO_1, "GetDiskFreeSpaceInternal", ves_icall_System_IO_DriveInfo_GetDiskFreeSpace)
+ICALL(IODRIVEINFO_2, "GetDriveTypeInternal", ves_icall_System_IO_DriveInfo_GetDriveType)
+
 ICALL_TYPE(FAMW, "System.IO.FAMWatcher", FAMW_1)
 ICALL(FAMW_1, "InternalFAMNextEvent", ves_icall_System_IO_FAMW_InternalFAMNextEvent)
 
@@ -294,6 +304,7 @@ ICALL(MONOIO_2, "CopyFile(string,string,bool,System.IO.MonoIOError&)", ves_icall
 ICALL(MONOIO_3, "CreateDirectory(string,System.IO.MonoIOError&)", ves_icall_System_IO_MonoIO_CreateDirectory)
 ICALL(MONOIO_4, "CreatePipe(intptr&,intptr&)", ves_icall_System_IO_MonoIO_CreatePipe)
 ICALL(MONOIO_5, "DeleteFile(string,System.IO.MonoIOError&)", ves_icall_System_IO_MonoIO_DeleteFile)
+ICALL(MONOIO_34, "DuplicateHandle", ves_icall_System_IO_MonoIO_DuplicateHandle)
 ICALL(MONOIO_6, "Flush(intptr,System.IO.MonoIOError&)", ves_icall_System_IO_MonoIO_Flush)
 ICALL(MONOIO_7, "GetCurrentDirectory(System.IO.MonoIOError&)", ves_icall_System_IO_MonoIO_GetCurrentDirectory)
 ICALL(MONOIO_8, "GetFileAttributes(string,System.IO.MonoIOError&)", ves_icall_System_IO_MonoIO_GetFileAttributes)
@@ -395,7 +406,7 @@ ICALL(NDNS_2, "GetHostByName_internal(string,string&,string[]&,string[]&)", ves_
 ICALL(NDNS_3, "GetHostName_internal(string&)", ves_icall_System_Net_Dns_GetHostName_internal)
 
 ICALL_TYPE(SOCK, "System.Net.Sockets.Socket", SOCK_1)
-ICALL(SOCK_1, "Accept_internal(intptr,int&)", ves_icall_System_Net_Sockets_Socket_Accept_internal)
+ICALL(SOCK_1, "Accept_internal(intptr,int&,bool)", ves_icall_System_Net_Sockets_Socket_Accept_internal)
 ICALL(SOCK_2, "Available_internal(intptr,int&)", ves_icall_System_Net_Sockets_Socket_Available_internal)
 ICALL(SOCK_3, "Bind_internal(intptr,System.Net.SocketAddress,int&)", ves_icall_System_Net_Sockets_Socket_Bind_internal)
 ICALL(SOCK_4, "Blocking_internal(intptr,bool,int&)", ves_icall_System_Net_Sockets_Socket_Blocking_internal)
@@ -570,6 +581,7 @@ ICALL(MGENCL_7, "GetInterfaces_internal", ves_icall_MonoGenericClass_GetInterfac
 ICALL(MGENCL_8, "GetMethods_internal", ves_icall_MonoGenericClass_GetMethods)
 ICALL(MGENCL_9, "GetParentType", ves_icall_MonoGenericClass_GetParentType)
 ICALL(MGENCL_10, "GetProperties_internal", ves_icall_MonoGenericClass_GetProperties)
+ICALL(MGENCL_12, "InflateType_internal", ves_icall_MonoGenericClass_InflateType)
 ICALL(MGENCL_11, "initialize", mono_reflection_generic_class_initialize)
 
 /* note this is the same as above: unify */
@@ -824,7 +836,7 @@ ICALL(THREAD_19, "SetSerializedCurrentCulture", ves_icall_System_Threading_Threa
 ICALL(THREAD_20, "SetSerializedCurrentUICulture", ves_icall_System_Threading_Thread_SetSerializedCurrentUICulture)
 ICALL(THREAD_21, "SetState", ves_icall_System_Threading_Thread_SetState)
 ICALL(THREAD_22, "Sleep_internal", ves_icall_System_Threading_Thread_Sleep_internal)
-ICALL(THREAD_54, "SpinWait_internal", ves_icall_System_Threading_Thread_SpinWait_internal)
+ICALL(THREAD_54, "SpinWait_nop", ves_icall_System_Threading_Thread_SpinWait_nop)
 ICALL(THREAD_23, "Suspend_internal", ves_icall_System_Threading_Thread_Suspend)
 ICALL(THREAD_24, "Thread_free_internal", ves_icall_System_Threading_Thread_Thread_free_internal)
 ICALL(THREAD_24a, "Thread_init", ves_icall_System_Threading_Thread_Thread_init)
@@ -904,6 +916,7 @@ ICALL(VALUET_2, "InternalGetHashCode", ves_icall_System_ValueType_InternalGetHas
 ICALL_TYPE(WEBIC, "System.Web.Util.ICalls", WEBIC_1)
 ICALL(WEBIC_1, "GetMachineConfigPath", ves_icall_System_Configuration_DefaultConfig_get_machine_config_path)
 ICALL(WEBIC_2, "GetMachineInstallDirectory", ves_icall_System_Web_Util_ICalls_get_machine_install_dir)
+ICALL(WEBIC_3, "GetUnmanagedResourcesPtr", ves_icall_get_resources_ptr)
 
 ICALL_TYPE(COMOBJ, "System.__ComObject", COMOBJ_1)
 ICALL(COMOBJ_1, "CreateRCW", ves_icall_System_ComObject_CreateRCW)

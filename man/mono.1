@@ -5,11 +5,7 @@
 .\" Author:
 .\"   Miguel de Icaza (miguel@gnu.org)
 .\"
-.de Sp \" Vertical space (when we can't use .PP)
-.if t .sp .5v
-.if n .sp
-..
-.TH Mono "Mono 2.0"
+.TH Mono "Mono 2.2"
 .SH NAME
 mono \- Mono's ECMA-CLI native code generator (Just-in-Time and Ahead-of-Time)
 .SH SYNOPSIS
@@ -120,14 +116,20 @@ be registered with the embedded runtime using the mono_aot_register_module funct
 which takes as its argument the mono_aot_module_<ASSEMBLY NAME>_info global symbol 
 from the object file:
 
+.nf
 extern void *mono_aot_module_hello_info;
 
 mono_aot_register_module (mono_aot_module_hello_info);
-
+.fi
 .ne
-.RE
-.Sp
+
+.PP
 For more information about AOT, see: http://www.mono-project.com/AOT
+.RE
+.TP
+\fB--attach=[options]\fR
+Currently the only option supported by this command line argument is
+\fBdisable\fR which disables the attach functionality.
 .TP
 \fB--full-aot\fR
 This is an experimental flag that instructs the Mono runtime to not
@@ -248,12 +250,24 @@ Unsafe code is not allowed but P/Invoke is.  This mode should
 not allow managed code to crash mono.  The verification is not as
 strict as ECMA 335 standard in order to stay compatible with the MS
 runtime.
+.PP
+The security system acts on user code: code contained in mscorlib or
+the global assembly cache is always trusted.
 .ne
 .RE
 .TP
 \fB--server\fR
 Configures the virtual machine to be better suited for server
 operations (currently, a no-op).
+.TP
+\fB--verify-all\fR 
+Verifies mscorlib and assemblies in the global
+assembly cache for valid IL, and all user code for IL
+verifiability. 
+
+This is different from \fB--security\fR's verifiable
+or validil in that these options only check user code and skip
+mscorlib and assemblies located on the global assembly cache.
 .TP
 \fB-V\fR, \fB--version\fR
 Prints JIT version information (system configuration, release number
@@ -277,7 +291,9 @@ much larger and slower code at runtime.
 The following options are supported:
 .TP
 .I casts
-Produces a detailed error when throwing a InvalidCastException.
+Produces a detailed error when throwing a InvalidCastException.   This
+option needs to be enabled as this generates more verbose code at
+execution time. 
 .TP
 .I mdb-optimizations
 Disable some JIT optimizations which are usually only disabled when
@@ -346,6 +362,13 @@ Finally, namespaces can be specified using the N: prefix:
 	mono --trace=N:System.Xml
 
 .fi
+.TP
+\fB--no-x86-stack-align\fR
+Don't align stack frames on the x86 architecture.  By default, Mono
+aligns stack frames to 16 bytes on x86, so that local floating point
+and SIMD variables can be properly aligned.  This option turns off the
+alignment, which usually saves one intruction per call, but might
+result in significantly lower floating point and SIMD performance.
 .SH JIT MAINTAINER OPTIONS
 The maintainer options are only used by those developing the runtime
 itself, and not typically of interest to runtime users or developers.
@@ -406,6 +429,22 @@ hps will list the currently used handles.
 Increases the verbosity level, each time it is listed, increases the
 verbosity level to include more information (including, for example, 
 a disassembly of the native code produced, code selector info etc.).
+.SH ATTACH SUPPORT
+The Mono runtime allows external processes to attach to a running
+process and load assemblies into the running program.   To attach to
+the process, a special protocol is implemented in the Mono.Management
+assembly. 
+.PP
+With this support it is possible to load assemblies that have an entry
+point (they are created with -target:exe or -target:winexe) to be
+loaded and executed in the Mono process.
+.PP
+The code is loaded into the root domain, and it starts execution on
+the special runtime attach thread.    The attached program should
+create its own threads and return after invocation.
+.PP
+This support allows for example debugging applications by having the
+csharp shell attach to running processes.
 .SH PROFILING
 The mono runtime includes a profiler that can be used to explore
 various performance related problems in your application.  The
@@ -509,7 +548,7 @@ repository.
 .PP
 This profiler is activated passing the \fB--profile=logging\fR option to
 the mono runtime, and is controlled attaching further options, like
-\fB--profile=logging:stat\fR for doing statistical profiling (multiple
+\fB--profile=logging:statistical\fR for doing statistical profiling (multiple
 options are separated by commas).
 .PP
 As a quick primer, here are a few examples of the most common usage modes:
@@ -518,32 +557,70 @@ To write the resulting data to "mydata.mprof" (defaults to statistical
 profiling):
 .nf
 
-	mono --profile=logging:o=mydata.mprof program.exe
+	mono --profile=logging:output=mydata.mprof program.exe
 .fi
 .PP
 To perform statistical profiling, inspecting call chains up to depth 8:
 .nf
 
-	mono --profile=logging:s=8 program.exe
+	mono --profile=logging:statistical=8 program.exe
 .fi
 .PP
-To profile allocations with caller method attribution:
+To profile allocations (by default the call stack will be analized for
+each allocation, producing detailed caller method attribution infornation):
 .nf
 
-	mono --profile=logging:a,ts program.exe
+	mono --profile=logging:allocations program.exe
 .fi
 .PP
-To profile garbage collection activity (collection time and objects freed
-at each collection):
+To profile garbage collection activity at a high level (collection time and objects freed
+at each collection for each class are reported, but heap snapshots are not saved to disk):
 .nf
 
-	mono --profile=logging:g,as program.exe
+	mono --profile=logging:allocations-summary program.exe
 .fi
+.PP
+To perform heap profiling taking heap snapshots:
+.nf
+
+	mono --profile=logging:heap=all program.exe
+	mono --profile=logging:heap=<signal> program.exe
+.fi
+
+If "all" is specified, a heap snapshot is taken at each collection.
+If, instead, a signal name or number is given (one of SIGUSR1, SIGUSR2 and
+SIGPROF, remembering that SIGPROF is not compatible with the statistical
+profiler), a garbage collection is forced and a snapshot is taken every
+time the signal is received.
+Heap profiling also enables full allocation profiling (with call stacks),
+and each allocation can be related to its corresponding object in the
+snapshots, enabling investigations like "find all objects of a given class
+allocated by a given method and still live at a given collection, and then
+find all objects referencing them".
+
 .PP
 Then you would need to invoke the decoder \fImprof-decoder(1)\fR
-on the output file to see the profiling results.
+on the output file to see the profiling results, or to examine heap
+snapshots and allocations in detail \fImprof-heap-viewer(1)\fR.
+
 .PP
-These are all the available oprions, organized by category:
+The operating modes described above are the default ones, and are sufficient
+to use the profiler.
+.PP
+To further customize the profiler behavior there are more options, described
+below.
+These options can be individually enabled and disabled prefixing them with
+an (optional) '+' character or a '-' character.
+For instance, the "allocations" option by default records also the full call
+stack at each allocation.
+If only the caller is wanted, one should use "allocations,-save-allocation-stack",
+or to disable call tracking completely (making the profiler less intrusive)
+"allocations,-save-allocation-caller,-save-allocation-stack".
+In practice the "allocation" option by default behaves like
+"allocations,save-allocation-caller,save-allocation-stack", but the user can
+tune this to his needs.
+.PP
+These are all the available options, organized by category:
 .PP
 \fBExecution profiling modes\fR
 .RS
@@ -565,11 +642,6 @@ This can be a time consuming operation.
 \fIjit\fR, \fIj\fR
 Collect information about time spent by the JIT engine compiling
 methods. 
-.TP
-\fItrack-stack\fR, \fIts\fR
-Track the execution stack. By itself this option does nothing, but it
-enables more detailed reporting in other options (because the profiler
-will use the stack data).
 .ne
 .RE
 .PP
@@ -579,11 +651,22 @@ will use the stack data).
 .TP
 \fIallocations\fR, \fIalloc\fR or \fIa\fR
 Collect information about each allocation (object class and size).
-If combined with the "ts" option, for each allocation the profiler will
-also show the responsible method (and also correctly dintinguish allocations
-performed during JIT time).
-These information are also available when combining  the "a" and "c" options,
-but since "c" is much more intrusive "ts" should be preferred.
+By default this also implies "+save-allocation-caller" and
+"+save-allocation-stack".
+.TP
+\fIsave-allocation-caller\fR, \fIsac\fR
+Save the direct caller of each allocation. The profiler filters out wrapper
+methods, and also recognizes if the allocation has been performed by the
+runtime while jitting a method.
+.TP
+\fIsave-allocation-stack\fR, \fIsas\fR
+Save the full managed execution stack at each allocation.
+While the "sac" option saves the direct caller, this one records the whole
+stack trace.
+Note that in the call stack the wrapper methods are not filtered out.
+Anyway the "sac" and "sas" options can be combined, and the decoder will
+attribute the allocation to the correct method even if the wrapper is at the
+top of the stack trace.
 .TP
 \fIallocations-summary\fR or \fIas\fR
 At each collection dump a summary
@@ -714,7 +797,7 @@ profiler.
 To install you must download the profiler
 from Mono's SVN:
 .nf
-	svn co svn://svn.myrealbox.com/source/trunk/heap-shot
+	svn co svn://anonsvn.mono-project.com/source/trunk/heap-shot
 	cd heap-shot
 	./autogen
 	make
@@ -727,7 +810,7 @@ The Live Type profiler shows at every GC iteration all of the live
 objects of a given type.   To install you must download the profiler
 from Mono's SVN:
 .nf
-	svn co svn://svn.myrealbox.com/source/trunk/heap-prof
+	svn co svn://anonsvn.mono-project.com/source/trunk/heap-prof
 	cd heap-prof
 	./autogen
 	make
@@ -844,7 +927,11 @@ The offsets displayed are IL offsets.
 .PP
 A more powerful coverage tool is available in the module `monocov'.
 See the monocov(1) man page for details.
-.SH DEBUGGING
+.SH DEBUGGING AIDS
+To debug managed applications, you can use the 
+.B mdb
+command, a command line debugger.  
+.PP
 It is possible to obtain a stack trace of all the active threads in
 Mono by sending the QUIT signal to Mono, you can do this from the
 command line, like this:
@@ -863,6 +950,10 @@ not be used to monitor or probe a production application.  The
 integrity of the runtime after sending this signal is not guaranteed
 and the application might crash or terminate at any given point
 afterwards.   
+.PP
+The \fB--debug=casts\FR option can be used to get more detailed
+information for Invalid Cast operations, it will provide information
+about the types involved.   
 .PP
 You can use the MONO_LOG_LEVEL and MONO_LOG_MASK environment variables
 to get verbose debugging output about the execution of your
@@ -1199,7 +1290,7 @@ The default is 180 seconds.
 \fBMONO_THREADS_PER_CPU\fR
 The maximum number of threads in the general threadpool will be
 20 + (MONO_THREADS_PER_CPU * number of CPUs). The default value for this
-variable is 5.
+variable is 10.
 .TP
 \fBMONO_XMLSERIALIZER_THS\fR
 Controls the threshold for the XmlSerializer to produce a custom
@@ -1308,6 +1399,16 @@ No generic code sharing will be performed.
 .Sp
 Generic code sharing by default only applies to collections.   The
 Mono JIT by default turns this on.
+.TP
+\fBMONO_XDEBUG\fR
+When the the MONO_XDEBUG env var is set, debugging info for JITted
+code is emitted into a shared library, loadable into gdb. This enables,
+for example, to see managed frame names on gdb backtraces.
+.TP
+\fBMONO_VERBOSE_METHOD\fR
+Enables the maximum JIT verbosity for the specified method. This is
+very helpfull to diagnose a miscompilation problems of a specific
+method.
 .SH VALGRIND
 If you want to use Valgrind, you will find the file `mono.supp'
 useful, it contains the suppressions for the GC which trigger
@@ -1399,7 +1500,7 @@ http://www.mono-project.com/Mailing_Lists
 http://www.mono-project.com
 .SH SEE ALSO
 .PP
-certmgr(1), mcs(1), monocov(1), monodis(1), mono-config(5), mozroots(1), xsp(1).
+certmgr(1), csharp(1), mcs(1), mdb(1), monocov(1), monodis(1), mono-config(5), mozroots(1), xsp(1).
 .PP
 For more information on AOT:
 http://www.mono-project.com/AOT

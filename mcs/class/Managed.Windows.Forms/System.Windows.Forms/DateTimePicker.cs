@@ -195,6 +195,7 @@ namespace System.Windows.Forms {
 			updown_timer.Tick += new EventHandler (UpDownTimerTick);
 			KeyPress += new KeyPressEventHandler (KeyPressHandler);
 			KeyDown += new KeyEventHandler (KeyDownHandler);
+			GotFocus += new EventHandler (GotFocusHandler);
 			LostFocus += new EventHandler (LostFocusHandler);
 			MouseDown += new MouseEventHandler (MouseDownHandler);			
 			MouseUp += new MouseEventHandler (MouseUpHandler);
@@ -317,6 +318,8 @@ namespace System.Windows.Forms {
 						for (int i = 0; i < part_data.Length; i++)
 							part_data [i].Selected = false;
 						Invalidate (date_area_rect);
+						OnUIAChecked ();
+						OnUIASelectionChanged ();
 					}
 				}
 			}
@@ -430,6 +433,7 @@ namespace System.Windows.Forms {
 						// invalidate the value inside this control
 						this.Invalidate (date_area_rect);
 					}
+					OnUIAMaximumChanged ();
 				}
 			}
 			get {
@@ -485,6 +489,7 @@ namespace System.Windows.Forms {
 						// invalidate the value inside this control
 						this.Invalidate (date_area_rect);
 					}
+					OnUIAMinimumChanged ();
 				}
 			}
 			get {
@@ -542,6 +547,7 @@ namespace System.Windows.Forms {
 					show_check_box = value;
 					// invalidate the value inside this control
 					this.Invalidate (date_area_rect);
+					OnUIAShowCheckBoxChanged ();
 				}
 			}
 			get {
@@ -557,6 +563,7 @@ namespace System.Windows.Forms {
 					show_up_down = value;
 					// need to invalidate the whole control
 					this.Invalidate ();
+					OnUIAShowUpDownChanged ();
 				}
 			}
 			get {
@@ -1269,14 +1276,16 @@ namespace System.Windows.Forms {
 			return -1;
 		}
 
-		private void IncrementSelectedPart(int delta)
+		internal void IncrementSelectedPart(int delta)
 		{
 			int selected_index = GetSelectedPartIndex();
 
 			if (selected_index == -1) {
 				return;
 			}
-			
+
+			EndDateEdit (false);
+
 			DateTimePart dt_part = part_data [selected_index].date_time_part;
 			switch (dt_part)
 			{
@@ -1296,6 +1305,7 @@ namespace System.Windows.Forms {
 				case DateTimePart.DayName:
 					Value = Value.AddDays(delta);
 					break;
+				case DateTimePart.AMPMHour:
 				case DateTimePart.Hour:
 					SetPart(Value.Hour + delta, dt_part);
 					break;
@@ -1303,21 +1313,35 @@ namespace System.Windows.Forms {
 					SetPart(Value.Minute + delta, dt_part);
 					break;
 				case DateTimePart.Month:
-					SetPart(Value.Month + delta, dt_part);
+					SetPart (Value.Month + delta, dt_part, true);
 					break;
 				case DateTimePart.Seconds:
 					SetPart(Value.Second + delta, dt_part);
 					break;
 				case DateTimePart.AMPMSpecifier:
-					SetPart(Value.Hour + delta * 12, dt_part);
+					int hour = Value.Hour;
+					hour = hour >= 0 && hour <= 11 ? hour + 12 : hour - 12;
+					SetPart (hour, DateTimePart.Hour);
 					break;
 				case DateTimePart.Year:
 					SetPart(Value.Year + delta, dt_part);
 					break;
 			}
 		}
+		
+		internal void SelectPart (int index)
+		{
+			is_checkbox_selected = false;
+			for (int i = 0; i < part_data.Length; i++)
+			{
+				part_data[i].Selected = (i == index);
+			}
 
-		private void SelectNextPart()
+			Invalidate ();
+			OnUIASelectionChanged ();
+		}
+
+		internal void SelectNextPart()
 		{
 			int selected_index;
 			if (is_checkbox_selected) {
@@ -1367,9 +1391,10 @@ namespace System.Windows.Forms {
 				}
 			}
 
+			OnUIASelectionChanged ();
 		}
 
-		private void SelectPreviousPart()
+		internal void SelectPreviousPart()
 		{
 			if (is_checkbox_selected)
 			{
@@ -1421,6 +1446,8 @@ namespace System.Windows.Forms {
 					}
 				}
 			}
+
+			OnUIASelectionChanged ();
 		}
 
 		// raised by key down events.
@@ -1477,10 +1504,8 @@ namespace System.Windows.Forms {
 		{
 			switch (e.KeyChar) {
 				case ' ':
-					if (is_checkbox_selected)
-					{
+					if (show_check_box && is_checkbox_selected)
 						Checked = !Checked;
-					}
 					break;
 				case '0':
 				case '1':
@@ -1514,6 +1539,7 @@ namespace System.Windows.Forms {
 						case DateTimePart.Month:
 						case DateTimePart.Seconds:
 						case DateTimePart.Minutes:
+						case DateTimePart.AMPMHour:
 						case DateTimePart.Hour:
 							date_part_max_length = 2;
 							break;
@@ -1539,11 +1565,7 @@ namespace System.Windows.Forms {
 			if (editing_part_index == -1)
 				return;
 
-			int prev_selected_idx = GetSelectedPartIndex ();
-			if (prev_selected_idx == -1)
-				return;
-
-			PartData part = part_data [prev_selected_idx];
+			PartData part = part_data [editing_part_index];
 			if (part.date_time_part == DateTimePart.Year) { // Special case
 				// Infer, like .Net does
 				if (editing_number > 0 && editing_number < 30)
@@ -1560,8 +1582,13 @@ namespace System.Windows.Forms {
 				Invalidate (date_area_rect);
 		}
 
+		internal void SetPart (int value, DateTimePart dt_part)
+		{
+			SetPart (value, dt_part, false);
+		}
+
 		// set the specified part of the date to the specified value
-		private void SetPart (int value, DateTimePart dt_part)
+		internal void SetPart (int value, DateTimePart dt_part, bool adjust)
 		{
 			switch (dt_part)
 			{
@@ -1577,6 +1604,16 @@ namespace System.Windows.Forms {
 					if (value >= 0 && value <= 59)
 						Value = new DateTime(Value.Year, Value.Month, Value.Day, Value.Hour, value, Value.Second, Value.Millisecond);
 					break;
+				case DateTimePart.AMPMHour:
+					if (value == -1)
+						value = 23;
+					if (value >= 0 && value <= 23) {
+						int prev_hour = Value.Hour;
+						if ((prev_hour >= 12 && prev_hour <= 23) && value < 12) // Adjust to p.m.
+							value += 12;
+						Value = new DateTime (Value.Year, Value.Month, Value.Day, value, Value.Minute, Value.Second, Value.Millisecond);
+					}
+					break;
 				case DateTimePart.Hour:
 					if (value == -1)
 						value = 23;
@@ -1589,18 +1626,27 @@ namespace System.Windows.Forms {
 						Value = new DateTime(Value.Year, Value.Month, value, Value.Hour, Value.Minute, Value.Second, Value.Millisecond);
 					break;
 				case DateTimePart.Month:
-					if (value == 0)
-						value = 12;
-						
+					DateTime date = Value;
+
+					if (adjust) {
+						if (value == 0) {
+							date = date.AddYears (-1);
+							value = 12;
+						} else if (value == 13) {
+							date = date.AddYears (1);
+							value = 1;
+						}
+					}
+
 					if (value >= 1 && value <= 12) {
 						// if we move from say december to november with days on 31, we must
 						// remap to the maximum number of days
-						int days_in_new_month = DateTime.DaysInMonth (Value.Year, value);
+						int days_in_new_month = DateTime.DaysInMonth (date.Year, value);
 						
-						if (Value.Day > days_in_new_month)
-							Value = new DateTime (Value.Year, value, days_in_new_month, Value.Hour, Value.Minute, Value.Second, Value.Millisecond);
+						if (date.Day > days_in_new_month)
+							Value = new DateTime (date.Year, value, days_in_new_month, date.Hour, date.Minute, date.Second, date.Millisecond);
 						else
-							Value = new DateTime (Value.Year, value, Value.Day, Value.Hour, Value.Minute, Value.Second, Value.Millisecond);
+							Value = new DateTime (date.Year, value, date.Day, date.Hour, date.Minute, date.Second, date.Millisecond);
 					}
 					break;
 				case DateTimePart.Year:
@@ -1617,6 +1663,14 @@ namespace System.Windows.Forms {
 			}
 		}
 
+		private void GotFocusHandler (object sender, EventArgs e)
+		{
+			if (ShowCheckBox) {
+				is_checkbox_selected = true;
+				Invalidate (CheckBoxRect);
+			}
+		}
+
 		// if we loose focus deselect any selected parts.
 		private void LostFocusHandler (object sender, EventArgs e) 
 		{
@@ -1627,6 +1681,7 @@ namespace System.Windows.Forms {
 				Rectangle invalidate_rect = Rectangle.Ceiling (part_data [selected_index].drawing_rectangle);
 				invalidate_rect.Inflate (2, 2);
 				Invalidate (invalidate_rect);
+				OnUIASelectionChanged ();
 			}
 			else if (is_checkbox_selected)
 			{
@@ -1682,8 +1737,6 @@ namespace System.Windows.Forms {
 			if (e.Button != MouseButtons.Left)
 				return;
 
-			is_checkbox_selected = false;
-
 			if (ShowCheckBox && CheckBoxRect.Contains(e.X, e.Y))
 			{
 				is_checkbox_selected = true;
@@ -1691,6 +1744,10 @@ namespace System.Windows.Forms {
 				return;
 			}
 
+			// Deselect the checkbox only if the pointer is not on it
+			// *and* the other parts are enabled (Checked as true)
+			if (Checked)
+				is_checkbox_selected = false;
 
 			if (ShowUpDown && drop_down_arrow_rect.Contains (e.X, e.Y))
 			{
@@ -1710,11 +1767,7 @@ namespace System.Windows.Forms {
 					updown_timer.Enabled = true;
 				}
 			} else if (is_drop_down_visible == false && drop_down_arrow_rect.Contains (e.X, e.Y)) {
-				is_drop_down_visible = true;
-				if (!Checked)
-					Checked = true;
-				Invalidate (drop_down_arrow_rect);
-				DropDownMonthCalendar ();
+				DropDownButtonClicked ();
     			} else {
     				// mouse down on this control anywhere else collapses it
     				if (is_drop_down_visible) {    				
@@ -1739,13 +1792,28 @@ namespace System.Windows.Forms {
 						if (old != part_data [i].Selected) 
 							invalidate_afterwards = true;
 					}
-					if (invalidate_afterwards)
+					if (invalidate_afterwards) {
 						Invalidate ();
+						OnUIASelectionChanged ();
+					}
 				}
 				
 			}
 		}
 		
+		internal void DropDownButtonClicked ()
+		{
+			if (!is_drop_down_visible) {
+				is_drop_down_visible = true;
+				if (!Checked)
+					Checked = true;
+				Invalidate (drop_down_arrow_rect);
+				DropDownMonthCalendar ();
+			} else {
+				HideMonthCalendar ();
+				this.Focus ();
+			}
+		}
 		
 		// paint this control now
 		private void PaintHandler (object sender, PaintEventArgs pe) {
@@ -1783,6 +1851,7 @@ namespace System.Windows.Forms {
 		internal enum DateTimePart {
 			Seconds,
 			Minutes,
+			AMPMHour,
 			Hour,
 			Day,
 			DayName,
@@ -1849,9 +1918,7 @@ namespace System.Windows.Forms {
 					if (value == is_selected)
 						return;
 
-					if (is_selected)
-						owner.EndDateEdit (false);
-
+					owner.EndDateEdit (false);
 					is_selected = value;
 				}
 			}
@@ -1877,6 +1944,7 @@ namespace System.Windows.Forms {
 						return DateTimePart.Minutes;
 					case "h":
 					case "hh":
+						return DateTimePart.AMPMHour;
 					case "H":
 					case "HH":
 						return DateTimePart.Hour;
@@ -1888,6 +1956,7 @@ namespace System.Windows.Forms {
 						return DateTimePart.DayName;
 					case "M":
 					case "MM":
+					case "MMMM":
 						return DateTimePart.Month;
 					case "y":
 					case "yy":
@@ -1918,5 +1987,89 @@ namespace System.Windows.Forms {
 		}
 		
 		#endregion		
+
+	
+		#region UIA Framework: Methods, Properties and Events
+
+		static object UIAMinimumChangedEvent = new object ();
+		static object UIAMaximumChangedEvent = new object ();
+		static object UIASelectionChangedEvent = new object ();
+		static object UIACheckedEvent = new object ();
+		static object UIAShowCheckBoxChangedEvent = new object ();
+		static object UIAShowUpDownChangedEvent = new object ();
+
+		internal event EventHandler UIAMinimumChanged {
+			add { Events.AddHandler (UIAMinimumChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAMinimumChangedEvent, value); }
+		}
+
+		internal event EventHandler UIAMaximumChanged {
+			add { Events.AddHandler (UIAMinimumChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAMinimumChangedEvent, value); }
+		}
+
+		internal event EventHandler UIASelectionChanged {
+			add { Events.AddHandler (UIASelectionChangedEvent, value); }
+			remove { Events.RemoveHandler (UIASelectionChangedEvent, value); }
+		}
+
+		internal event EventHandler UIAChecked {
+			add { Events.AddHandler (UIACheckedEvent, value); }
+			remove { Events.RemoveHandler (UIACheckedEvent, value); }
+		}
+
+		internal event EventHandler UIAShowCheckBoxChanged {
+			add { Events.AddHandler (UIAShowCheckBoxChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAShowCheckBoxChangedEvent, value); }
+		}
+
+		internal event EventHandler UIAShowUpDownChanged {
+			add { Events.AddHandler (UIAShowUpDownChangedEvent, value); }
+			remove { Events.RemoveHandler (UIAShowUpDownChangedEvent, value); }
+		}
+
+		internal void OnUIAMinimumChanged ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIAMinimumChangedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIAMaximumChanged ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIAMaximumChangedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIASelectionChanged ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIASelectionChangedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIAChecked ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIACheckedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIAShowCheckBoxChanged ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIAShowCheckBoxChangedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+
+		internal void OnUIAShowUpDownChanged ()
+		{
+			EventHandler eh = (EventHandler)(Events [UIAShowUpDownChangedEvent]);
+			if (eh != null)
+				eh (this, EventArgs.Empty);
+		}
+		
+		#endregion
 	}
 }

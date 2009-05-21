@@ -1,3 +1,43 @@
+2009-01-02  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* TestBitmap.cs: Add test cases for SetResolution
+
+2009-01-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* PenTest.cs: Fix test case not to use a color that is "destroyed" 
+	by another unit test. The nunit update changed the order in which 
+	the test cases are executed.
+
+2008-12-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* GDIPlusTest.cs: Add MeasureCharacterRanges test cases around bug
+	#449971 and add a few delta for FP comparison.
+	* TestGraphics.cs: Add a few delta for FP comparison.
+
+2008-12-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TestGraphics.cs, GDIPlusTest.cs : fix tests wrt rounding that
+	  were failing on .NET too (exposed by nunit24).
+
+2008-11-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* TestFont.cs: Add test cases for null checks to ensure we match
+	MS behavior.
+
+2008-10-06  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* TestColor.cs: Add test case, from Gert Driesen, for bug #410693
+	* TestRectangleF.cs: Add test case, from Imie Nazwisko, for bug #431587
+
+2008-08-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* TestIcon.cs: Add test case for bug #415581.
+
+2008-08-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* TestIcon.cs: Modified test for bug #410608 to work around bug
+	#415809.
+
 2008-08-07  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* TestIcon.cs: Ignore test for bug #410608 on Unix, since it depends

@@ -25,15 +25,13 @@ namespace Mono.CSharp {
 		public const int EXTERN    = 0x0800;
 		public const int VOLATILE  = 0x1000;
 		public const int UNSAFE    = 0x2000;
-		private const int TOP      = 0x2000;
+		private const int TOP      = 0x4000;
 
 		public const int PROPERTY_CUSTOM = 0x4000; // Custom property modifier
 
 		//
-		// We use this internally to flag that the method contains an iterator
+		// Compiler specific flags
 		//
-		public const int METHOD_YIELDS			= 0x8000;
-		public const int METHOD_GENERIC			= 0x10000;
 		public const int PARTIAL				= 0x20000;
 		public const int DEFAULT_ACCESS_MODIFER	= 0x40000;
 		public const int METHOD_EXTENSION		= 0x80000;

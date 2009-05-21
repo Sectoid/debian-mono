@@ -23,6 +23,7 @@
 //
 //  Alexander Olk	alex.olk@googlemail.com
 //  Gert Driesen (drieseng@users.sourceforge.net)
+//  Eric Petit (surfzoid2002@yahoo.fr)
 //
 // TODO:
 // Keyboard shortcuts (DEL, F5, F2)
@@ -88,6 +89,7 @@ namespace System.Windows.Forms
 		private ComboBox fileNameComboBox;
 		private Label fileNameLabel;
 		private MWFFileView mwfFileView;
+		private MwfFileViewItemComparer file_view_comparer;
 		private Label searchSaveLabel;
 		private ToolBarButton newdirToolBarButton;
 		private ToolBarButton backToolBarButton;
@@ -161,7 +163,6 @@ namespace System.Windows.Forms
 			menueToolBarButton = new ToolBarButton ();
 			fileTypeLabel = new Label ();
 			openSaveButton = new Button ();
-			form.AcceptButton = openSaveButton;
 			helpButton = new Button ();
 			popupButtonPanel = new PopupButtonPanel ();
 			upToolBarButton = new ToolBarButton ();
@@ -184,15 +185,15 @@ namespace System.Windows.Forms
 			
 			// searchLabel
 			searchSaveLabel.FlatStyle = FlatStyle.System;
-			searchSaveLabel.Location = new Point (7, 8);
-			searchSaveLabel.Size = new Size (72, 21);
+			searchSaveLabel.Location = new Point (6, 6);
+			searchSaveLabel.Size = new Size (86, 22);
 			searchSaveLabel.TextAlign = ContentAlignment.MiddleRight;
 			
 			// dirComboBox
 			dirComboBox.Anchor = ((AnchorStyles)(((AnchorStyles.Top | AnchorStyles.Left) | AnchorStyles.Right)));
 			dirComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-			dirComboBox.Location = new Point (99, 8);
-			dirComboBox.Size = new Size (260, 21);
+			dirComboBox.Location = new Point (99, 6);
+			dirComboBox.Size = new Size (261, 22);
 			dirComboBox.TabIndex = 7;
 			
 			// smallButtonToolBar
@@ -217,13 +218,15 @@ namespace System.Windows.Forms
 			
 			// buttonPanel
 			popupButtonPanel.Dock = DockStyle.None;
-			popupButtonPanel.Location = new Point (7, 37);
+			popupButtonPanel.Anchor = ((AnchorStyles)((((AnchorStyles.Top | AnchorStyles.Bottom) | AnchorStyles.Left))));
+			popupButtonPanel.Location = new Point (6, 35);
+			popupButtonPanel.Size = new Size (87, 338);
 			popupButtonPanel.TabIndex = 9;
 			
 			// mwfFileView
 			mwfFileView.Anchor = ((AnchorStyles)((((AnchorStyles.Top | AnchorStyles.Bottom) | AnchorStyles.Left) | AnchorStyles.Right)));
-			mwfFileView.Location = new Point (99, 37);
-			mwfFileView.Size = new Size (449, 282);
+			mwfFileView.Location = new Point (99, 35);
+			mwfFileView.Size = new Size (450, 283);
 			mwfFileView.MultiSelect = false;
 			mwfFileView.TabIndex = 10;
 			mwfFileView.RegisterSender (dirComboBox);
@@ -232,15 +235,15 @@ namespace System.Windows.Forms
 			// fileNameLabel
 			fileNameLabel.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Left)));
 			fileNameLabel.FlatStyle = FlatStyle.System;
-			fileNameLabel.Location = new Point (102, 330);
+			fileNameLabel.Location = new Point (101, 326);
 			fileNameLabel.Size = new Size (70, 21);
 			fileNameLabel.Text = "File name:";
 			fileNameLabel.TextAlign = ContentAlignment.MiddleLeft;
 			
 			// fileNameComboBox
 			fileNameComboBox.Anchor = ((AnchorStyles)(((AnchorStyles.Bottom | AnchorStyles.Left) | AnchorStyles.Right)));
-			fileNameComboBox.Location = new Point (195, 330);
-			fileNameComboBox.Size = new Size (245, 21);
+			fileNameComboBox.Location = new Point (195, 326);
+			fileNameComboBox.Size = new Size (246, 22);
 			fileNameComboBox.TabIndex = 1;
 			fileNameComboBox.MaxDropDownItems = MaxFileNameItems;
 			fileNameComboBox.RestoreContextMenu ();
@@ -249,7 +252,7 @@ namespace System.Windows.Forms
 			// fileTypeLabel
 			fileTypeLabel.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Left)));
 			fileTypeLabel.FlatStyle = FlatStyle.System;
-			fileTypeLabel.Location = new Point (102, 356);
+			fileTypeLabel.Location = new Point (101, 355);
 			fileTypeLabel.Size = new Size (90, 21);
 			fileTypeLabel.Text = "Files of type:";
 			fileTypeLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -257,8 +260,8 @@ namespace System.Windows.Forms
 			// fileTypeComboBox
 			fileTypeComboBox.Anchor = ((AnchorStyles)(((AnchorStyles.Bottom | AnchorStyles.Left) | AnchorStyles.Right)));
 			fileTypeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-			fileTypeComboBox.Location = new Point (195, 356);
-			fileTypeComboBox.Size = new Size (245, 21);
+			fileTypeComboBox.Location = new Point (195, 355);
+			fileTypeComboBox.Size = new Size (246, 22);
 			fileTypeComboBox.TabIndex = 2;
 			
 			// backToolBarButton
@@ -287,16 +290,16 @@ namespace System.Windows.Forms
 			// openSaveButton
 			openSaveButton.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Right)));
 			openSaveButton.FlatStyle = FlatStyle.System;
-			openSaveButton.Location = new Point (475, 330);
-			openSaveButton.Size = new Size (72, 21);
+			openSaveButton.Location = new Point (474, 326);
+			openSaveButton.Size = new Size (75, 23);
 			openSaveButton.TabIndex = 4;
 			openSaveButton.FlatStyle = FlatStyle.System;
 			
 			// cancelButton
 			cancelButton.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Right)));
 			cancelButton.FlatStyle = FlatStyle.System;
-			cancelButton.Location = new Point (475, 356);
-			cancelButton.Size = new Size (72, 21);
+			cancelButton.Location = new Point (474, 353);
+			cancelButton.Size = new Size (75, 23);
 			cancelButton.TabIndex = 5;
 			cancelButton.Text = "Cancel";
 			cancelButton.FlatStyle = FlatStyle.System;
@@ -304,11 +307,12 @@ namespace System.Windows.Forms
 			// helpButton
 			helpButton.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Right)));
 			helpButton.FlatStyle = FlatStyle.System;
-			helpButton.Location = new Point (475, 350);
-			helpButton.Size = new Size (72, 21);
+			helpButton.Location = new Point (474, 353);
+			helpButton.Size = new Size (75, 23);
 			helpButton.TabIndex = 6;
 			helpButton.Text = "Help";
 			helpButton.FlatStyle = FlatStyle.System;
+			helpButton.Visible = false;
 			
 			// checkBox
 			readonlyCheckBox.Anchor = ((AnchorStyles)(((AnchorStyles.Bottom | AnchorStyles.Left) | AnchorStyles.Right)));
@@ -317,16 +321,16 @@ namespace System.Windows.Forms
 			readonlyCheckBox.Size = new Size (245, 21);
 			readonlyCheckBox.TabIndex = 3;
 			readonlyCheckBox.FlatStyle = FlatStyle.System;
+			readonlyCheckBox.Visible = false;
 			
 			form.SizeGripStyle = SizeGripStyle.Show;
-			
+			form.AcceptButton = openSaveButton;
 			form.MaximizeBox = true;
 			form.MinimizeBox = true;
 			form.FormBorderStyle = FormBorderStyle.Sizable;
-			form.MinimumSize = new Size (554, 405);
-			
-			form.ClientSize =  new Size (554, 405); // 384
-			
+			form.ClientSize =  new Size (555, 385);
+			form.MinimumSize = form.Size;
+
 			form.Controls.Add (smallButtonToolBar);
 			form.Controls.Add (cancelButton);
 			form.Controls.Add (openSaveButton);
@@ -338,11 +342,13 @@ namespace System.Windows.Forms
 			form.Controls.Add (dirComboBox);
 			form.Controls.Add (searchSaveLabel);
 			form.Controls.Add (popupButtonPanel);
+			form.Controls.Add (helpButton);
+			form.Controls.Add (readonlyCheckBox);
 			
-			form.ResumeLayout (false);
-			
+			form.ResumeLayout (true);
+
 			if (formConfigSize != Size.Empty) {
-				form.Size = formConfigSize;
+				form.ClientSize = formConfigSize;
 			}
 			
 			if (formConfigLocation != Point.Empty) {
@@ -360,10 +366,11 @@ namespace System.Windows.Forms
 			mwfFileView.SelectedFileChanged += new EventHandler (OnSelectedFileChangedFileView);
 			mwfFileView.ForceDialogEnd += new EventHandler (OnForceDialogEndFileView);
 			mwfFileView.SelectedFilesChanged += new EventHandler (OnSelectedFilesChangedFileView);
+			mwfFileView.ColumnClick += new ColumnClickEventHandler(OnColumnClickFileView);
 			
 			dirComboBox.DirectoryChanged += new EventHandler (OnDirectoryChangedDirComboBox);
 			popupButtonPanel.DirectoryChanged += new EventHandler (OnDirectoryChangedPopupButtonPanel);
-			
+
 			readonlyCheckBox.CheckedChanged += new EventHandler (OnCheckCheckChanged);
 #if NET_2_0
 			form.FormClosed += new FormClosedEventHandler (OnFileDialogFormClosed);
@@ -940,7 +947,7 @@ namespace System.Windows.Forms
 
 				if (checkFileExists) {
 					if (!File.Exists (internalfullfilename)) {
-						string message = "\"" + internalfullfilename + "\" doesn't exist. Please verify that you have entered the correct file name.";
+						string message = "\"" + internalfullfilename + "\" does not exist. Please verify that you have entered the correct file name.";
 						MessageBox.Show (message, openSaveButton.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
 						return;
 					}
@@ -949,7 +956,7 @@ namespace System.Windows.Forms
 				if (fileDialogType == FileDialogType.SaveFileDialog) {
 					if (overwritePrompt) {
 						if (File.Exists (internalfullfilename)) {
-							string message = "\"" + internalfullfilename + "\" exists. Overwrite ?";
+							string message = "\"" + internalfullfilename + "\" already exists. Do you want to overwrite it?";
 							DialogResult dr = MessageBox.Show (message, openSaveButton.Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
 							if (dr == DialogResult.Cancel)
 								return;
@@ -958,7 +965,7 @@ namespace System.Windows.Forms
 
 					if (createPrompt) {
 						if (!File.Exists (internalfullfilename)) {
-							string message = "\"" + internalfullfilename + "\" doesn't exist. Create ?";
+							string message = "\"" + internalfullfilename + "\" does not exist. Do you want to create it?";
 							DialogResult dr = MessageBox.Show (message, openSaveButton.Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
 							if (dr == DialogResult.Cancel)
 								return;
@@ -989,12 +996,22 @@ namespace System.Windows.Forms
 				while (fileNameComboBox.Items.Count > MaxFileNameItems)
 					fileNameComboBox.Items.RemoveAt (MaxFileNameItems);
 			} else {
+				// If a directory is selected, navigate into it
+				foreach (FileViewListViewItem item in mwfFileView.SelectedItems) {
+					FSEntry fsEntry = item.FSEntry;
+					
+					if ((fsEntry.Attributes & FileAttributes.Directory) == FileAttributes.Directory) {
+						mwfFileView.ChangeDirectory (null, fsEntry.FullName, CustomFilter);
+						return;
+					}
+				}
+
 				return;
 			}
 
 			if (checkPathExists && mwfFileView.CurrentRealFolder != null) {
 				if (!Directory.Exists (mwfFileView.CurrentRealFolder)) {
-					string message = "\"" + mwfFileView.CurrentRealFolder + "\" doesn't exist. Please verify that you have entered the correct directory name.";
+					string message = "\"" + mwfFileView.CurrentRealFolder + "\" does not exist. Please verify that you have entered the correct directory name.";
 					MessageBox.Show (message, openSaveButton.Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
 					if (InitialDirectory.Length == 0 || !Directory.Exists (InitialDirectory))
@@ -1197,7 +1214,21 @@ namespace System.Windows.Forms
 			HandleFormClosedEvent (sender);
 		}
 #endif
-		
+
+		private void OnColumnClickFileView (object sender, ColumnClickEventArgs e)
+		{
+			if (file_view_comparer == null)
+				file_view_comparer = new MwfFileViewItemComparer (true);
+
+			file_view_comparer.ColumnIndex = e.Column;
+			file_view_comparer.Ascendent = !file_view_comparer.Ascendent;
+
+			if (mwfFileView.ListViewItemSorter == null)
+				mwfFileView.ListViewItemSorter = file_view_comparer;
+			else
+				mwfFileView.Sort ();
+		}
+
 		void HandleFormClosedEvent (object sender)
 		{
 			if (!disable_form_closed_event)
@@ -1244,33 +1275,26 @@ namespace System.Windows.Forms
 		private void ResizeAndRelocateForHelpOrReadOnly ()
 		{
 			form.SuspendLayout ();
-			if (ShowHelp || ShowReadOnly) {
-				mwfFileView.Size = new Size (449, 250); 
-				fileNameLabel.Location = new Point (102, 298);
-				fileNameComboBox.Location = new Point (195, 298);
-				fileTypeLabel.Location = new Point (102, 324);
-				fileTypeComboBox.Location = new Point (195, 324);
-				openSaveButton.Location = new Point (475, 298);
-				cancelButton.Location = new Point (475, 324);
-			} else {
-				mwfFileView.Size = new Size (449, 282);
-				fileNameLabel.Location = new Point (102, 330);
-				fileNameComboBox.Location = new Point (195, 330);
-				fileTypeLabel.Location = new Point (102, 356);
-				fileTypeComboBox.Location = new Point (195, 356);
-				openSaveButton.Location = new Point (475, 330);
-				cancelButton.Location = new Point (475, 356);
-			}
+
+			int fx = form.Size.Width - form.MinimumSize.Width;
+			int fy = form.Size.Height - form.MinimumSize.Height;
+
+			if (!ShowHelp && !ShowReadOnly)
+				fy += 29;
+
+			mwfFileView.Size = new Size (450 + fx, 254 + fy);
+			fileNameLabel.Location = new Point (101, 298 + fy);
+			fileNameComboBox.Location = new Point (195, 298 + fy);
+			fileTypeLabel.Location = new Point (101, 326 + fy);
+			fileTypeComboBox.Location = new Point (195, 326 + fy);
+			openSaveButton.Location = new Point (474 + fx, 298 + fy);
+			cancelButton.Location = new Point (474 + fx, 324 + fy);
+			helpButton.Location = new Point (474 + fx, 353 + fy);
+			readonlyCheckBox.Location = new Point (195, 350 + fy);
+
+			helpButton.Visible = ShowHelp;
+			readonlyCheckBox.Visible = ShowReadOnly;
 			
-			if (ShowHelp)
-				form.Controls.Add (helpButton);
-			else
-				form.Controls.Remove (helpButton);
-			
-			if (ShowReadOnly)
-				form.Controls.Add (readonlyCheckBox);
-			else
-				form.Controls.Remove (readonlyCheckBox);
 			form.ResumeLayout ();
 		}
 		
@@ -1461,7 +1485,14 @@ namespace System.Windows.Forms
 					return popupButtonState;
 				}
 			}
-			
+#if NET_2_0
+			#region UIA Framework Members
+			internal void PerformClick ()
+			{
+				OnClick (EventArgs.Empty);
+			}
+			#endregion
+#endif
 			protected override void OnPaint (PaintEventArgs pe)
 			{
 				Draw (pe);
@@ -1557,6 +1588,7 @@ namespace System.Windows.Forms
 			
 			BackColor = Color.FromArgb (128, 128, 128);
 			Size = new Size (85, 336);
+			InternalBorderStyle = BorderStyle.Fixed3D;
 			
 			recentlyusedButton = new PopupButton ();
 			desktopButton = new PopupButton ();
@@ -1698,12 +1730,6 @@ namespace System.Windows.Forms
 			}
 		}
 		
-		protected override void OnPaint (PaintEventArgs e)
-		{
-			ControlPaint.DrawBorder3D (e.Graphics, ClientRectangle, Border3DStyle.Sunken);
-			base.OnPaint (e);
-		}
-		
 		protected override void OnGotFocus (EventArgs e)
 		{
 			if (lastPopupButton != recentlyusedButton) {
@@ -1835,6 +1861,14 @@ namespace System.Windows.Forms
 					return imageList;
 				}
 			}
+#if NET_2_0
+			#region UIA Framework Members
+			public override string ToString ()
+			{
+				return name;
+			}
+			#endregion
+#endif
 		}
 		#endregion
 		
@@ -2867,7 +2901,11 @@ namespace System.Windows.Forms
 					View = View.SmallIcon;
 					break;
 				case 1:
+#if NET_2_0
+					View = View.Tile;
+#else
 					View = View.LargeIcon;
+#endif
 					break;
 				case 2:
 					View = View.LargeIcon;
@@ -2884,8 +2922,10 @@ namespace System.Windows.Forms
 
 			if (View == View.Details)
 				Columns.AddRange (columns);
-			else
+			else {
+				ListViewItemSorter = null;
 				Columns.Clear ();
+			}
 
 			EndUpdate ();
 		}
@@ -3047,8 +3087,56 @@ namespace System.Windows.Forms
 			}
 		}
 	}
+
 	#endregion
 	
+	#region MwfFileViewItemComparer
+	class MwfFileViewItemComparer : IComparer
+	{
+		int column_index;
+		bool asc;
+
+		public MwfFileViewItemComparer (bool asc)
+		{
+			this.asc = asc;
+		}
+
+		public int ColumnIndex {
+			get {
+				return column_index;
+			}
+			set {
+				column_index = value;
+			}
+		}
+
+		public bool Ascendent {
+			get {
+				return asc;
+			}
+			set {
+				asc = value;
+			}
+		}
+
+		public int Compare (object a, object b)
+		{
+			ListViewItem item_a = (ListViewItem)a;
+			ListViewItem item_b = (ListViewItem)b;
+
+			int retval;
+			if (asc)
+				retval = String.Compare (item_a.SubItems [column_index].Text, 
+						item_b.SubItems [column_index].Text);
+			else
+				retval = String.Compare (item_b.SubItems [column_index].Text,
+						item_a.SubItems [column_index].Text);
+
+			return retval;
+		}
+	}
+	#endregion
+
 	#region IUpdateFolder
 	internal interface IUpdateFolder
 	{
@@ -3339,7 +3427,7 @@ namespace System.Windows.Forms
 				} else
 					File.Move (sourceFileName, destFileName);
 			} catch (Exception e) {
-				MessageBox.Show (e.Message, "Error Renaming Folder",
+				MessageBox.Show (e.Message, "Error Renaming File",
 					MessageBoxButtons.OK, MessageBoxIcon.Error);
 				return false;
 			}

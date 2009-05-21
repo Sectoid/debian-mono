@@ -1,13 +1,209 @@
-2008-09-17  Andreia Gaita <avidigal@novell.com> 
+2008-11-23  Andreia Gaita <shana@jitted.com>
+
+	* Mono.Mozilla/Callback.cs: Catch redirecting and update url accordingly. 
+	Ignore OnLocationChanged, it's not always called, use OnStateChange instead.
+
+2008-11-23  Andreia Gaita <shana@jitted.com>
+
+	* Mono.Mozilla/WebBrowser.cs: Do delayed resizing, when the resize happens 
+	before a window is created. Fix the window getter so it gets the top content
+	window if no window is focused.
+
+2008-11-23  Andreia Gaita <shana@jitted.com>
+
+	* Mono.Mozilla/Callback.cs: Send NS_BINDING_ABORTED code for a cancelled request.
+	* Mono.Mozilla/interfaces/nsIRequest.cs: Fix status type
+	[Fixes #445498]
+
+2008-11-23  Andreia Gaita <shana@jitted.com>
+
+	* Mono.Mozilla/WebBrowser.cs: create the browser window when the control gets
+	activated so focus works properly
+
+2008-11-23  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.Mozilla/Callback.cs,
+	  Mono.Mozilla/DOM/DocumentEncoder.cs,
+	  Mono.Mozilla/DOM/HTMLElement.cs,
+	  Mono.Mozilla/WebBrowser.cs,
+	  Mono.Mozilla/interfaces/nsIServiceManager.cs:
+	  Fix ContentStream for xulrunner 1.8.
+	  Fix Document and Uri setting when loading new pages
+
+2008-11-23  Andreia Gaita <shana@jitted.com>
+
+	* Mono.Mozilla/Base.cs, Mono.Mozilla/WebBrowser.cs: Separate initialization 
+	in 3 stages so events can be registered before the window is actually created. 
+	The creation of the window is now done only when a user requests something
+	from the binding (like opening a window, or rendering content)
+
+2008-11-19  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.Mozilla/DOM/Node.cs, Mono.Mozilla/DOM/Window.cs: Fix comparison operators
+
+2008-11-13  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.Mozilla/Callback.cs, Mono.WebBrowser/DOM/EventArgs.cs: strong typing
+	  for node event arguments
+
+2008-11-13  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.WebBrowser/IWebBrowser.cs, Mono.Mozilla/WebBrowser.cs: Support script
+	  execution directly in the browser object
+
+2008-11-13  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.Mozilla/DOM/Node.cs, Mono.Mozilla/DOM/Window.cs: Fix equality
+	  operators
+
+2008-11-12  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.WebBrowser.dll.sources, Mono.WebBrowser2K5.csproj,
+	  Mono.Mozilla/interfaces/nsIURIContentListener.cs,
+	  Mono.Mozilla/DOM/ContentListener.cs: New class added to listen for load
+	  requests and handle content types
+	* Mono.WebBrowser/IWebBrowser.cs, Mono.Mozilla/WebBrowser.cs: New
+	  NavigationRequested event to catch load requests
+
+2008-11-08  Andreia Gaita <shana@jitted.com> 
+
+	* Mono.WebBrowser/Manager.cs: Use new webkit backend if requested. If it
+	  doesn't load or blows up, revert to default gecko backend.
+
+2008-10-23  Andreia Gaita  <shana@jitted.com>
+
+	* Mono.Mozilla/DOM/Node.cs,
+	* Mono.Mozilla/DOM/Window.cs: Fix yet more equality operators
+
+2008-10-23  Andreia Gaita  <shana@jitted.com>
+
+	* Mono.Mozilla/DOM/Document.cs,
+	* Mono.Mozilla/DOM/Node.cs,
+	* Mono.Mozilla/DOM/NodeList.cs,
+	* Mono.Mozilla/DOM/Stylesheet.cs:
+	  Use GetTypedNode to properly the right wrappers for nodes (fixes #428712)
+	
+2008-10-23  Andreia Gaita  <shana@jitted.com>
+
+	* Mono.Mozilla/DOM/Element.cs,
+	  Mono.Mozilla/DOM/DocumentEncoder.cs,
+	  Mono.Mozilla/DOM/HTMLElement.cs,
+	  Mono.Mozilla/DOM/Stream.cs,
+	  Mono.Mozilla/WebBrowser.cs,
+	  Mono.Mozilla/interfaces/nsIInputStream.cs,
+	  Mono.WebBrowser.dll.sources,
+	  Mono.WebBrowser/DOM/IElement.cs,
+	  Mono.WebBrowser2K5.csproj:
+
+	  Separated the DocumentEncoder service in a separate class so
+	  it's easier to invoke, and added stream encoding (partial fix
+	  for bug #377863)
+	  
+	* Mono.Mozilla/DOM/DOMObject.cs: Element wrapper creation now goes
+	  through a common method that properly creates a wrapper according
+	  to the node type (partial fix for #428712)
+
+2008-10-22  Andreia Gaita  <shana@jitted.com>
+
+	* Mono.Mozilla/DOM/Node.cs,
+	  Mono.Mozilla/DOM/Window.cs: Fix overrides
+
+2008-10-22  Andreia Gaita  <shana@jitted.com>
+
+	* Mono.Mozilla/DOM/Document.cs,
+	  Mono.Mozilla/DOM/Element.cs,
+	  Mono.Mozilla/DOM/Node.cs,
+	  Mono.Mozilla/DOM/Window.cs,
+	  Mono.WebBrowser/DOM/IDocument.cs,
+	  Mono.WebBrowser/DOM/IElement.cs,
+	  Mono.WebBrowser/DOM/INode.cs,
+	  Mono.WebBrowser/DOM/IWindow.cs: Fix equality operators (fixes #428173)
+
+2008-10-14  Andreia Gaita  <avidigal@novell.com>
+
+	* Mono.WebBrowser2K5.csproj:
+	* Mono.WebBrowser.dll.sources:
+	* Mono.Mozilla/interfaces/nsIDocumentEncoder.cs:
+	* Mono.Mozilla/interfaces/extras/DocumentEncoderFlags.cs:
+	* Mono.Mozilla/interfaces/nsIDocumentEncoderNodeFixup.cs:
+	  Added new interfaces to support retrieving node contents (OuterHTML and probably
+	  others)
+
+	* Mono.WebBrowser/Exception.cs: New exception for the
+	  DocumentEncoder service
+
+	* Mono.Mozilla/DOM/HTMLElement.cs: Rewrite OuterHTML,
+	  looks like the old approach doesn't work on 1.9, but DocumentRange is
+	  not working properly when I use selectNode directly, so the silliness
+	  of recreating the current tag's html by going through all the
+	  properties is ongoing.
+
+	* Mono.Mozilla/DOM/Element.cs:
+	* Mono.Mozilla/DOM/Document.cs: 
+	* Mono.Mozilla/DOM/Node.cs:
+	* Mono.Mozilla/DOM/HTMLElement.cs: The Node class now
+	  always stores retrieved unmanaged nodes, regardless of type, and
+	  child classes only cast from it for easier access.
+
+	* Mono.Mozilla/DOM/Node.cs: The Node class now always
+	  stores retrieved unmanaged nodes, regardless of type, and child
+	  classes only cast from it for easier access. Added a reference to the
+	  original unmanaged object prior to proxying (Documentencoder only
+	  works with non-proxies objects, apparently)
+
+	* Mono.Mozilla/DOM/Window.cs: Expose the unmanaged
+	  window object internally, the selection api needs it.
+
+	* Mono.Mozilla/Base.cs:
+	* Mono.Mozilla/WebBrowser.cs: Get the service manager
+	  from the proper thread
+
+2008-09-23  Andreia Gaita <avidigal@novell.com> 
+
+	* Mono.Mozilla/interfaces/nsIServiceManager.cs: change signature to
+	  return the object immediately
+
+2008-09-23  Andreia Gaita <avidigal@novell.com> 
+
+	* Mono.Mozilla/DOM/Node.cs, Mono.WebBrowser/DOM/INode.cs,
+	  Mono.Mozilla/WebBrowser.cs: Expose native accessibility object
+	* Mono.WebBrowser/Exception.cs, Mono.WebBrowser2K5.csproj,
+	  Mono.WebBrowser.dll.sources,
+	  Mono.Mozilla/interfaces/nsIErrorService.cs: Add error service for
+	  error lookups
+
+2008-09-23  Andreia Gaita <avidigal@novell.com> 
+
+	* Mono.Mozilla/interfaces/nsIDOMRGBColor.cs,
+	  Mono.Mozilla/interfaces/nsITimer.cs,
+	  Mono.Mozilla/interfaces/nsIAccessible.cs,
+	  Mono.Mozilla/interfaces/nsIDOMDOMStringList.cs,
+	  Mono.Mozilla/interfaces/nsIAccessibleRetrieval.cs,
+	  Mono.Mozilla/interfaces/nsIAccessibleRelation.cs,
+	  Mono.Mozilla/interfaces/nsITimerCallback.cs,
+	  Mono.Mozilla/interfaces/nsIAccessibilityService.cs,
+	  Mono.Mozilla/interfaces/nsIOutputStream.cs,
+	  Mono.Mozilla/interfaces/nsIPersistentProperties.cs,
+	  Mono.Mozilla/interfaces/nsIDOMCSSPrimitiveValue.cs,
+	  Mono.Mozilla/interfaces/nsIDOMCounter.cs,
+	  Mono.Mozilla/interfaces/nsIObserver.cs,
+	  Mono.Mozilla/interfaces/extras/nsIReadSegmentFun.cs,
+	  Mono.Mozilla/interfaces/extras/nsITimerCallbackDelegate.cs,
+	  Mono.Mozilla/interfaces/nsIProperties.cs,
+	  Mono.Mozilla/interfaces/nsIDOMRect.cs,
+	  Mono.Mozilla/interfaces/nsIAccessNode.cs,
+	  Mono.Mozilla/interfaces/nsIArray.cs,
+	  Mono.Mozilla/interfaces/nsIAccessibleDocument.cs,
+	  Mono.WebBrowser.dll.sources, Mono.WebBrowser2K5.csproj: Added
+	  Accessibility interfaces
+
+2008-09-16  Andreia Gaita <avidigal@novell.com> 
 
 	* Mono.Mozilla/AsciiString.cs: Change marshalling to ansi - auto is no
-	  good on windows. Fixes #414146.
-	  [backport of r113117]
+	  good on windows. Fixes #414146
 
-2008-09-10  Andreia Gaita <avidigal@novell.com> 
+2008-09-08  Andreia Gaita <avidigal@novell.com> 
 
-	* Mono.Mozilla/WebBrowser.cs: Update the loaded flag so users can now
-	  if the engine is actually running properly.
 	* Mono.Mozilla/Base.cs: Create cache directory with a version specific
 	  name so there's no conflict when the user has both xulrunner
 	  runtime 1.8 and 1.9 installed. Get rid of gluezillaInstalled flag,
@@ -16,9 +212,66 @@
 	  value of createBrowserWindow and bail out if no valid pointer is
 	  returned. Protect the string functions with a check so they don't
 	  get called if the engine is not initialized.
+	* Mono.Mozilla/WebBrowser.cs: Update the loaded flag so users can now
+	  if the engine is actually running properly.
 
-	Fixes: segfaults when two xulrunner engines are installed. 
-	segfaults when engine gets initialized but doesn't load properly afterwards
+2008-08-19  Andreia Gaita <avidigal@novell.com> 
+
+	* Mono.Mozilla/Base.cs: Clean up list of webcontrol objects when
+	  shutting down, and switch the initialized flag when there are no
+	  more controls loaded. Lock initialization and shutdown.
+
+2008-08-19  Andreia Gaita <avidigal@novell.com> 
+
+	* Assembly/AssemblyInfo.cs, ChangeLog,
+	  Mono.WebBrowser/DOM/IAttribute.cs,
+	  Mono.WebBrowser/DOM/IElementCollection.cs,
+	  Mono.WebBrowser/DOM/IWindow.cs, Mono.WebBrowser/DOM/IDocument.cs,
+	  Mono.WebBrowser/DOM/IAttributeCollection.cs,
+	  Mono.WebBrowser/DOM/INodeList.cs,
+	  Mono.WebBrowser/DOM/IWindowCollection.cs,
+	  Mono.WebBrowser/DOM/INode.cs, Mono.WebBrowser/DOM/IElement.cs,
+	  Mono.WebBrowser/DOM/INavigation.cs,
+	  Mono.WebBrowser/DOM/IHistory.cs, Mono.WebBrowser/Exception.cs,
+	  Mono.WebBrowser/IWebBrowser.cs, Mono.Mozilla/DOM/Document.cs,
+	  Mono.Mozilla/DOM/HTMLElement.cs,
+	  Mono.Mozilla/DOM/AttributeCollection.cs,
+	  Mono.Mozilla/DOM/DocumentType.cs, Mono.Mozilla/DOM/NodeList.cs,
+	  Mono.Mozilla/DOM/WindowCollection.cs, Mono.Mozilla/DOM/Node.cs,
+	  Mono.Mozilla/DOM/NamedNodeMap.cs, Mono.Mozilla/DOM/Element.cs,
+	  Mono.Mozilla/DOM/HTMLElementCollection.cs,
+	  Mono.Mozilla/DOM/Navigation.cs, Mono.Mozilla/DOM/History.cs,
+	  Mono.Mozilla/DOM/Attribute.cs, Mono.Mozilla/DOM/DOMObject.cs,
+	  Mono.Mozilla/DOM/Window.cs, Mono.Mozilla/Callback.cs,
+	  Mono.Mozilla/AsciiString.cs, Mono.Mozilla/WebBrowser.cs,
+	  Mono.Mozilla/UniString.cs, Mono.Mozilla/Base.cs:  Fix inconsistent
+	  newlines. Add eol-style property.
+
+2008-08-19  Andreia Gaita <avidigal@novell.com> 
+
+	* Assembly/AssemblyInfo.cs, ChangeLog,
+	  Mono.WebBrowser/DOM/IAttribute.cs,
+	  Mono.WebBrowser/DOM/IElementCollection.cs,
+	  Mono.WebBrowser/DOM/IWindow.cs, Mono.WebBrowser/DOM/IDocument.cs,
+	  Mono.WebBrowser/DOM/IAttributeCollection.cs,
+	  Mono.WebBrowser/DOM/INodeList.cs,
+	  Mono.WebBrowser/DOM/IWindowCollection.cs,
+	  Mono.WebBrowser/DOM/INode.cs, Mono.WebBrowser/DOM/IElement.cs,
+	  Mono.WebBrowser/DOM/INavigation.cs,
+	  Mono.WebBrowser/DOM/IHistory.cs, Mono.WebBrowser/Exception.cs,
+	  Mono.WebBrowser/IWebBrowser.cs, Mono.Mozilla/DOM/Document.cs,
+	  Mono.Mozilla/DOM/HTMLElement.cs,
+	  Mono.Mozilla/DOM/AttributeCollection.cs,
+	  Mono.Mozilla/DOM/DocumentType.cs, Mono.Mozilla/DOM/NodeList.cs,
+	  Mono.Mozilla/DOM/WindowCollection.cs, Mono.Mozilla/DOM/Node.cs,
+	  Mono.Mozilla/DOM/NamedNodeMap.cs, Mono.Mozilla/DOM/Element.cs,
+	  Mono.Mozilla/DOM/HTMLElementCollection.cs,
+	  Mono.Mozilla/DOM/Navigation.cs, Mono.Mozilla/DOM/History.cs,
+	  Mono.Mozilla/DOM/Attribute.cs, Mono.Mozilla/DOM/DOMObject.cs,
+	  Mono.Mozilla/DOM/Window.cs, Mono.Mozilla/Callback.cs,
+	  Mono.Mozilla/AsciiString.cs, Mono.Mozilla/WebBrowser.cs,
+	  Mono.Mozilla/UniString.cs, Mono.Mozilla/Base.cs: Fix inconsistent
+	  newlines. Add eol-style property
 
 2008-06-11  Andreia Gaita <avidigal@novell.com> 
 

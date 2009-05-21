@@ -1,3 +1,39 @@
+2008-12-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: build monolinker.exe in the profile directory instead of
+	the current one.
+
+2008-12-02  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker/AssemblyResolver.cs (AreSame(TypeReference,TypeReference):
+	fix the case where we compare two GenericInstanceType of the same
+	element type with different generic arguments.
+
+2008-11-24  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker.Steps/ResolveFromAssemblyStep.cs
+	* Mono.Linker.Steps/ResolveFromXmlStep.cs
+	* Mono.Linker.Steps/MarkStep.cs:
+		generalize the use of the new Has* pattern in Cecil
+		to avoid unecessary allocations. Also cache delegates.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker/Pipeline.cs: add a RemoveStep method.
+	* Mono.Linker/Driver.cs: make the linker generate new
+	module guids by default.
+
+2008-09-12  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker.Steps/RegenerateGuidStep.cs: new step that is used
+	to regenerate the Mvid identifier of each linked module.
+
+	* monolinker.exe.sources:
+	* Mono.Linker.csproj: add RegeneratedGuidStep to the build.
+
+	* Mono.Linker/Driver.cs: add a -g option to control whether to
+	regenerate the modules identifier or not.
+
 2008-09-01  Jb Evain  <jbevain@novell.com>
 
 	* Mono.Linker/AssemblyResolver.cs: properly cache .exes.

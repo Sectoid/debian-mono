@@ -27,7 +27,9 @@
  */
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
+#endif /* ndef HAVE_SYS_TIME_H */
 #ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
 #endif /* ndef HAVE_SYS_POLL_H */
@@ -43,7 +45,9 @@
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif /* ndef HAVE_SYS_MMAN_H */
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif /* ndef HAVE_UNISTD_H */
 #include <fcntl.h>
 #include <signal.h>
 #ifdef HAVE_POLL_H
@@ -56,8 +60,13 @@
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 #endif /* ndef HAVE_SYSLOG_H */
+#ifdef HAVE_DIRENT_H
 #include <dirent.h>
+#endif /* ndef HAVE_DIRENT_H */
+#ifdef HAVE_UTIME_H
 #include <utime.h>
+#endif /* ndef HAVE_UTIME_H */
+#include <time.h>
 #include "mph.h"
 
 #include "map.h"
@@ -2522,6 +2531,56 @@ int Mono_Posix_ToFilePermissions (unsigned int x, unsigned int *r)
 #endif /* ndef S_IXUSR */
 	return 0;
 }
+
+#ifdef HAVE_STRUCT_FLOCK
+int
+Mono_Posix_FromFlock (struct Mono_Posix_Flock *from, struct flock *to)
+{
+	_cnm_return_val_if_overflow (off_t, from->l_start, -1);
+	_cnm_return_val_if_overflow (off_t, from->l_len, -1);
+	_cnm_return_val_if_overflow (pid_t, from->l_pid, -1);
+
+	memset (to, 0, sizeof(*to));
+
+	if (Mono_Posix_FromLockType (from->l_type, &to->l_type) != 0) {
+		return -1;
+	}
+	if (Mono_Posix_FromSeekFlags (from->l_whence, &to->l_whence) != 0) {
+		return -1;
+	}
+	to->l_start  = from->l_start;
+	to->l_len    = from->l_len;
+	to->l_pid    = from->l_pid;
+
+	return 0;
+}
+#endif /* ndef HAVE_STRUCT_FLOCK */
+
+
+#ifdef HAVE_STRUCT_FLOCK
+int
+Mono_Posix_ToFlock (struct flock *from, struct Mono_Posix_Flock *to)
+{
+	_cnm_return_val_if_overflow (gint64, from->l_start, -1);
+	_cnm_return_val_if_overflow (gint64, from->l_len, -1);
+	_cnm_return_val_if_overflow (int, from->l_pid, -1);
+
+	memset (to, 0, sizeof(*to));
+
+	if (Mono_Posix_ToLockType (from->l_type, &to->l_type) != 0) {
+		return -1;
+	}
+	if (Mono_Posix_ToSeekFlags (from->l_whence, &to->l_whence) != 0) {
+		return -1;
+	}
+	to->l_start  = from->l_start;
+	to->l_len    = from->l_len;
+	to->l_pid    = from->l_pid;
+
+	return 0;
+}
+#endif /* ndef HAVE_STRUCT_FLOCK */
+
 
 int Mono_Posix_FromLockType (short x, short *r)
 {
@@ -6738,6 +6797,40 @@ int Mono_Posix_ToSyslogOptions (int x, int *r)
 #endif /* ndef LOG_PID */
 	return 0;
 }
+
+#ifdef HAVE_STRUCT_TIMESPEC
+int
+Mono_Posix_FromTimespec (struct Mono_Posix_Timespec *from, struct timespec *to)
+{
+	_cnm_return_val_if_overflow (time_t, from->tv_sec, -1);
+	_cnm_return_val_if_overflow (gint64, from->tv_nsec, -1);
+
+	memset (to, 0, sizeof(*to));
+
+	to->tv_sec  = from->tv_sec;
+	to->tv_nsec = from->tv_nsec;
+
+	return 0;
+}
+#endif /* ndef HAVE_STRUCT_TIMESPEC */
+
+
+#ifdef HAVE_STRUCT_TIMESPEC
+int
+Mono_Posix_ToTimespec (struct timespec *from, struct Mono_Posix_Timespec *to)
+{
+	_cnm_return_val_if_overflow (gint64, from->tv_sec, -1);
+	_cnm_return_val_if_overflow (gint64, from->tv_nsec, -1);
+
+	memset (to, 0, sizeof(*to));
+
+	to->tv_sec  = from->tv_sec;
+	to->tv_nsec = from->tv_nsec;
+
+	return 0;
+}
+#endif /* ndef HAVE_STRUCT_TIMESPEC */
+
 
 #ifdef HAVE_STRUCT_TIMEVAL
 int

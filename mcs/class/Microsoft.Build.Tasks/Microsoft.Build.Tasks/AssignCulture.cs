@@ -3,8 +3,10 @@
 //
 // Author:
 //   Marek Sieradzki (marek.sieradzki@gmail.com)
+//   Ankit Jain (jankit@novell.com)
 //
 // (C) 2006 Marek Sieradzki
+// Copyright 2008 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -28,8 +30,11 @@
 #if NET_2_0
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
 
 namespace Microsoft.Build.Tasks {
 	public class AssignCulture : TaskExtension {
@@ -44,10 +49,45 @@ namespace Microsoft.Build.Tasks {
 		{
 		}
 		
-		[MonoTODO]
 		public override bool Execute ()
 		{
-			return false;
+			List<ITaskItem> all_files = new List<ITaskItem> ();
+			List<ITaskItem> with_culture = new List<ITaskItem> ();
+			List<ITaskItem> no_culture = new List<ITaskItem> ();
+			List<ITaskItem> culture_neutral = new List<ITaskItem> ();
+
+			foreach (ITaskItem item in files) {
+				string only_filename, culture, extn;
+
+				if (TrySplitResourceName (item.ItemSpec, out only_filename, out culture, out extn)) {
+					//valid culture found
+					ITaskItem new_item = new TaskItem (item);
+					new_item.SetMetadata ("Culture", culture);
+					all_files.Add (new_item);
+
+					new_item = new TaskItem (item);
+					new_item.SetMetadata ("Culture", culture);
+					with_culture.Add (new_item);
+
+					new_item = new TaskItem (item);
+					new_item.SetMetadata ("Culture", culture);
+					new_item.ItemSpec = only_filename + "." + extn;
+					culture_neutral.Add (new_item);
+				} else {
+					//No valid culture
+
+					all_files.Add (item);
+					no_culture.Add (item);
+					culture_neutral.Add (item);
+				}
+			}
+
+			assignedFiles = all_files.ToArray ();
+			assignedFilesWithCulture = with_culture.ToArray ();
+			assignedFilesWithNoCulture = no_culture.ToArray ();
+			cultureNeutralAssignedFiles = culture_neutral.ToArray ();
+
+			return true;
 		}
 		
 		[Output]
@@ -75,6 +115,60 @@ namespace Microsoft.Build.Tasks {
 			get { return files; }
 			set { files = value; }
 		}
+
+		//Given a filename like foo.it.resx, splits it into - foo, it, resx
+		//Returns true only if a valid culture is found
+		//Note: hand-written as this can get called lotsa times
+		internal static bool TrySplitResourceName (string fname, out string only_filename, out string culture, out string extn)
+		{
+			only_filename = culture = extn = null;
+
+			int last_dot = -1;
+			int culture_dot = -1;
+			int i = fname.Length - 1;
+			while (i >= 0) {
+				if (fname [i] == '.') {
+					last_dot = i;
+					break;
+				}
+				i --;
+			}
+			if (i < 0)
+				return false;
+
+			i--;
+			while (i >= 0) {
+				if (fname [i] == '.') {
+					culture_dot = i;
+					break;
+				}
+				i --;
+			}
+			if (culture_dot < 0)
+				return false;
+
+			culture = fname.Substring (culture_dot + 1, last_dot - culture_dot - 1);
+			if (!CultureNamesTable.ContainsKey (culture))
+				return false;
+
+			only_filename = fname.Substring (0, culture_dot);
+			extn = fname.Substring (last_dot + 1);
+			return true;
+		}
+
+		static Dictionary<string, string> cultureNamesTable;
+		static Dictionary<string, string> CultureNamesTable {
+			get {
+				if (cultureNamesTable == null) {
+					cultureNamesTable = new Dictionary<string, string> ();
+					foreach (CultureInfo ci in CultureInfo.GetCultures (CultureTypes.AllCultures))
+						cultureNamesTable [ci.Name] = ci.Name;
+				}
+
+				return cultureNamesTable;
+			}
+		}
+
 	}
 }
 

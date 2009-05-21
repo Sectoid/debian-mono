@@ -66,11 +66,23 @@ namespace System.Web.Compilation
 		internal static CodeVariableReferenceExpression ctrlVar = new CodeVariableReferenceExpression ("__ctrl");
 		
 #if NET_2_0
-		static Regex bindRegex = new Regex (@"Bind\s*\([""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\)\s*%>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-		static Regex bindRegexInValue = new Regex (@"Bind\s*\([""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+		List <string> masterPageContentPlaceHolders;
+		// When modifying those, make sure to look at the SanitizeBindCall to make sure it
+		// picks up correct groups.
+		static Regex bindRegex = new Regex (@"Bind\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)\s*%>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+		static Regex bindRegexInValue = new Regex (@"Bind\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 #endif
-		static Regex evalRegexInValue = new Regex (@"Eval\s*\([""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-		
+		static Regex evalRegexInValue = new Regex (@"(.*)Eval\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+#if NET_2_0
+		List <string> MasterPageContentPlaceHolders {
+			get {
+				if (masterPageContentPlaceHolders == null)
+					masterPageContentPlaceHolders = new List <string> ();
+				return masterPageContentPlaceHolders;
+			}
+		}
+#endif
 		public TemplateControlCompiler (TemplateControlParser parser)
 			: base (parser)
 		{
@@ -93,7 +105,7 @@ namespace System.Web.Compilation
 #endif
 
 			MemberAttributes ma = MemberAttributes.Family;
-			currentLocation = builder.location;
+			currentLocation = builder.Location;
 			if (check && CheckBaseFieldOrProperty (builder.ID, builder.ControlType, ref ma))
 				return; // The field or property already exists in a base class and is accesible.
 
@@ -146,29 +158,29 @@ namespace System.Web.Compilation
 		
 		void AddParsedSubObjectStmt (ControlBuilder builder, CodeExpression expr) 
 		{
-			if (!builder.haveParserVariable) {
+			if (!builder.HaveParserVariable) {
 				CodeVariableDeclarationStatement p = new CodeVariableDeclarationStatement();
 				p.Name = "__parser";
 				p.Type = new CodeTypeReference (typeof (IParserAccessor));
 				p.InitExpression = new CodeCastExpression (typeof (IParserAccessor), ctrlVar);
-				builder.methodStatements.Add (p);
-				builder.haveParserVariable = true;
+				builder.MethodStatements.Add (p);
+				builder.HaveParserVariable = true;
 			}
 
 			CodeVariableReferenceExpression var = new CodeVariableReferenceExpression ("__parser");
 			CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression (var, "AddParsedSubObject");
 			invoke.Parameters.Add (expr);
-			builder.methodStatements.Add (AddLinePragma (invoke, builder));
+			builder.MethodStatements.Add (AddLinePragma (invoke, builder));
 		}
 		
 		void InitMethod (ControlBuilder builder, bool isTemplate, bool childrenAsProperties)
 		{
-			currentLocation = builder.location;
+			currentLocation = builder.Location;
 			
 			string tailname = ((builder is RootBuilder) ? "Tree" : ("_" + builder.ID));
 			CodeMemberMethod method = new CodeMemberMethod ();
-			builder.method = method;
-			builder.methodStatements = method.Statements;
+			builder.Method = method;
+			builder.MethodStatements = method.Statements;
 
 			method.Name = "__BuildControl" + tailname;
 			method.Attributes = MemberAttributes.Private | MemberAttributes.Final;
@@ -186,7 +198,7 @@ namespace System.Web.Compilation
 			
 			if (builder.HasAspCode) {
 				CodeMemberMethod renderMethod = new CodeMemberMethod ();
-				builder.renderMethod = renderMethod;
+				builder.RenderMethod = renderMethod;
 				renderMethod.Name = "__Render" + tailname;
 				renderMethod.Attributes = MemberAttributes.Private | MemberAttributes.Final;
 				CodeParameterDeclarationExpression arg1 = new CodeParameterDeclarationExpression ();
@@ -205,11 +217,12 @@ namespace System.Web.Compilation
 				if (builder is RootBuilder)
 					typeString = parser.ClassName;
 				else {
-					if (builder.ControlType != null && builder.isProperty &&
+					if (builder.ControlType != null && builder.IsProperty &&
 					    !typeof (ITemplate).IsAssignableFrom (builder.ControlType))
 						typeString = builder.ControlType.FullName;
 					else 
 						typeString = "System.Web.UI.Control";
+					ProcessTemplateChildren (builder);
 				}
 
 				method.Parameters.Add (new CodeParameterDeclarationExpression (typeString, "__ctrl"));
@@ -286,11 +299,10 @@ namespace System.Web.Compilation
 				// CreateAssignStatementsFromAttributes
 				// below.
 				// 
-				if (builder.attribs != null) {
-					string skinid = builder.attribs ["skinid"] as string;
-					if (skinid != null)
-						CreateAssignStatementFromAttribute (builder, "skinid");
-				}
+				string skinid = builder.GetAttribute ("skinid");
+				if (!String.IsNullOrEmpty (skinid))
+					CreateAssignStatementFromAttribute (builder, "skinid");
+
 				if (typeof (WebControl).IsAssignableFrom (type)) {
 					CodeMethodInvokeExpression applyStyleSheetSkin = new CodeMethodInvokeExpression (ctrlVar, "ApplyStyleSheetSkin");
 					if (typeof (Page).IsAssignableFrom (parser.BaseType))
@@ -302,48 +314,38 @@ namespace System.Web.Compilation
 #endif
 
 				// Process template children before anything else
-				ArrayList templates = builder.TemplateChildren;
-				if (templates != null && templates.Count > 0) {
-					foreach (TemplateBuilder tb in templates) {
-						CreateControlTree (tb, true, false);
-#if NET_2_0
-						if (tb.BindingDirection == BindingDirection.TwoWay) {
-							string extractMethod = CreateExtractValuesMethod (tb);
-							AddBindableTemplateInvocation (builder, tb.TagName, tb.method.Name, extractMethod);
-						} else
-#endif
-							AddTemplateInvocation (builder, tb.TagName, tb.method.Name);
-					}
-				}
+				ProcessTemplateChildren (builder);
 
 				// process ID here. It should be set before any other attributes are
 				// assigned, since the control code may rely on ID being set. We
 				// skip ID in CreateAssignStatementsFromAttributes
-				if (builder.attribs != null) {
-					string ctl_id = builder.attribs ["id"] as string;
-					if (ctl_id != null && ctl_id != String.Empty)
-						CreateAssignStatementFromAttribute (builder, "id");
-				}
+				string ctl_id = builder.GetAttribute ("id");
+				if (ctl_id != null && ctl_id.Length != 0)
+					CreateAssignStatementFromAttribute (builder, "id");
+
 				
 #if NET_2_0
 				if (typeof (ContentPlaceHolder).IsAssignableFrom (type)) {
-					CodePropertyReferenceExpression prop = new CodePropertyReferenceExpression (thisRef, "ContentPlaceHolders");
-					CodeMethodInvokeExpression addPlaceholder = new CodeMethodInvokeExpression (prop, "Add");
-					addPlaceholder.Parameters.Add (ctrlVar);
-					method.Statements.Add (addPlaceholder);
-
+					List <string> placeHolderIds = MasterPageContentPlaceHolders;
+					string cphID = builder.ID;
+					
+					if (!placeHolderIds.Contains (cphID))
+						placeHolderIds.Add (cphID);
 
 					CodeConditionStatement condStatement;
 
 					// Add the __Template_* field
-					CodeMemberField fld = new CodeMemberField (typeof (ITemplate), "__Template_" + builder.ID);
+					string templateField = "__Template_" + cphID;
+					CodeMemberField fld = new CodeMemberField (typeof (ITemplate), templateField);
 					fld.Attributes = MemberAttributes.Private;
 					mainClass.Members.Add (fld);
 
 					CodeFieldReferenceExpression templateID = new CodeFieldReferenceExpression ();
 					templateID.TargetObject = thisRef;
-					templateID.FieldName = "__Template_" + builder.ID;
+					templateID.FieldName = templateField;
 
+					CreateContentPlaceHolderTemplateProperty (templateField, "Template_" + cphID);
+					
 					// if ((this.ContentTemplates != null)) {
 					// 	this.__Template_$builder.ID = ((System.Web.UI.ITemplate)(this.ContentTemplates["$builder.ID"]));
 					// }
@@ -354,7 +356,7 @@ namespace System.Web.Compilation
 
 					CodeIndexerExpression indexer = new CodeIndexerExpression ();
 					indexer.TargetObject = new CodePropertyReferenceExpression (thisRef, "ContentTemplates");
-					indexer.Indices.Add (new CodePrimitiveExpression (builder.ID));
+					indexer.Indices.Add (new CodePrimitiveExpression (cphID));
 
 					assign = new CodeAssignStatement ();
 					assign.Left = templateID;
@@ -389,7 +391,7 @@ namespace System.Web.Compilation
 					method.Statements.Add (condStatement);
 
 					// this is the bit that causes the following stuff to end up in the else { }
-					builder.methodStatements = condStatement.FalseStatements;
+					builder.MethodStatements = condStatement.FalseStatements;
 				}
 #endif
 			}
@@ -397,6 +399,23 @@ namespace System.Web.Compilation
 			mainClass.Members.Add (method);
 		}
 
+		void ProcessTemplateChildren (ControlBuilder builder)
+		{
+			ArrayList templates = builder.TemplateChildren;
+			if (templates != null && templates.Count > 0) {
+				foreach (TemplateBuilder tb in templates) {
+					CreateControlTree (tb, true, false);
+#if NET_2_0
+					if (tb.BindingDirection == BindingDirection.TwoWay) {
+						string extractMethod = CreateExtractValuesMethod (tb);
+						AddBindableTemplateInvocation (builder, tb.TagName, tb.Method.Name, extractMethod);
+					} else
+#endif
+						AddTemplateInvocation (builder, tb.TagName, tb.Method.Name);
+				}
+			}
+		}
+		
 #if NET_2_0
 		void SetCustomAttribute (CodeMemberMethod method, UnknownAttributeDescriptor uad)
 		{
@@ -441,7 +460,7 @@ namespace System.Web.Compilation
 
 				CodeMethodInvokeExpression expr;
 				expr = new CodeMethodInvokeExpression (methodRef, new CodePrimitiveExpression (str));
-				builder.renderMethod.Statements.Add (AddLinePragma (expr, builder));
+				builder.RenderMethod.Statements.Add (expr);
 			}
 		}
 
@@ -458,42 +477,59 @@ namespace System.Web.Compilation
 			return str.Substring (idx, len - idx).Trim ();
 		}
 
-		CodeMethodInvokeExpression CreateEvalInvokeExpression (Regex regex, string value, int first, int second)
+		CodeExpression CreateEvalInvokeExpression (Regex regex, string value, bool isBind)
 		{
 			Match match = regex.Match (value);
-			if (!match.Success)
+			if (!match.Success) {
+#if NET_2_0
+				if (isBind)
+					throw new HttpParseException ("Bind invocation wasn't formatted properly.");
+#endif
 				return null;
-
-			Group secondGroup = match.Groups [second];
-			CodeMethodInvokeExpression ret = new CodeMethodInvokeExpression ();
-
-			ret.Method = new CodeMethodReferenceExpression (thisRef, "Eval");
-			ret.Parameters.Add (new CodePrimitiveExpression (match.Groups [first].Value));
-
-			if (secondGroup.Success)
-				ret.Parameters.Add (new CodePrimitiveExpression (secondGroup.Value));
-
-			return ret;
+			}
+			
+			string sanitizedSnippet;
+			if (isBind)
+				sanitizedSnippet = SanitizeBindCall (match);
+			else
+				sanitizedSnippet = value;
+			
+			return new CodeSnippetExpression (sanitizedSnippet);
 		}
 
+		string SanitizeBindCall (Match match)
+		{
+			GroupCollection groups = match.Groups;
+			StringBuilder sb = new StringBuilder ("Eval(\"" + groups [1] + "\"");
+			Group second = groups [4];
+			if (second != null) {
+				string v = second.Value;
+				if (v != null && v.Length > 0)
+					sb.Append (",\"" + second + "\"");
+			}
+			
+			sb.Append (")");
+			return sb.ToString ();
+		}
+		
 		string DataBoundProperty (ControlBuilder builder, Type type, string varName, string value)
 		{
 			value = TrimDB (value, true);
 			CodeMemberMethod method;
-			string dbMethodName = builder.method.Name + "_DB_" + dataBoundAtts++;
+			string dbMethodName = builder.Method.Name + "_DB_" + dataBoundAtts++;
 			CodeExpression valueExpression = null;
 			value = value.Trim ();
 			
 #if NET_2_0
 			bool need_if = false;
 			if (StrUtils.StartsWith (value, "Bind", true)) {
-				valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, 1, 4);
+				valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, true);
 				if (valueExpression != null)
 					need_if = true;
 			} else
 #endif
-			if (StrUtils.StartsWith (value, "Eval", true))
-				valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, 1, 4);
+				if (StrUtils.StartsWith (value, "Eval", true))
+					valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, false);
 			
 			if (valueExpression == null)
 				valueExpression = new CodeSnippetExpression (value);
@@ -534,7 +570,7 @@ namespace System.Web.Compilation
 
 		void AddCodeForPropertyOrField (ControlBuilder builder, Type type, string var_name, string att, MemberInfo member, bool isDataBound, bool isExpression)
 		{
-			CodeMemberMethod method = builder.method;
+			CodeMemberMethod method = builder.Method;
 			bool isWritable = IsWritablePropertyOrField (member);
 			
 			if (isDataBound && isWritable) {
@@ -551,7 +587,7 @@ namespace System.Web.Compilation
 
 			CodeAssignStatement assign = new CodeAssignStatement ();
 			assign.Left = new CodePropertyReferenceExpression (ctrlVar, var_name);
-			currentLocation = builder.location;
+			currentLocation = builder.Location;
 			assign.Right = GetExpressionFromString (type, att, member);
 
 			method.Statements.Add (AddLinePragma (assign, builder));
@@ -602,11 +638,15 @@ namespace System.Web.Compilation
 				if (match.Success) {
 					string bindingName = match.Groups [1].Value;
 					TemplateBuilder templateBuilder = builder.ParentTemplateBuilder;
-					if (templateBuilder == null || templateBuilder.BindingDirection == BindingDirection.OneWay)
+					
+					if (templateBuilder == null)
 						throw new HttpException ("Bind expression not allowed in this context.");
-						
-					string id = builder.attribs ["ID"] as string;
-					if (id == null)
+
+					if (templateBuilder.BindingDirection == BindingDirection.OneWay)
+						return;
+					
+					string id = builder.GetAttribute ("ID");
+					if (String.IsNullOrEmpty (id))
 						throw new HttpException ("Control of type '" + builder.ControlType + "' using two-way binding on property '" + propName + "' must have an ID.");
 					
 					templateBuilder.RegisterBoundProperty (builder.ControlType, propName, id, bindingName);
@@ -689,7 +729,7 @@ namespace System.Web.Compilation
 			if (hyphen == -1)
 				return false;
 
-			string prop_field = id.Replace ("-", ".");
+			string prop_field = id.Replace ('-', '.');
 			string [] parts = prop_field.Split (new char [] {'.'});
 			int length = parts.Length;
 			
@@ -743,11 +783,7 @@ namespace System.Web.Compilation
 			string prefix = value.Substring (0, colon).Trim ();
 			string expr = value.Substring (colon + 1).Trim ();
 			
-			System.Configuration.Configuration config = WebConfigurationManager.OpenWebConfiguration ("");
-			if (config == null)
-				return null;
-			
-			CompilationSection cs = (CompilationSection)config.GetSection ("system.web/compilation");
+			CompilationSection cs = (CompilationSection)WebConfigurationManager.GetWebApplicationSection ("system.web/compilation");
 			if (cs == null)
 				return null;
 			
@@ -797,7 +833,7 @@ namespace System.Web.Compilation
 			assign.Left = new CodePropertyReferenceExpression (ctrlVar, name);
 			assign.Right = expr;
 			
-			builder.method.Statements.Add (AddLinePragma (assign, builder));
+			builder.Method.Statements.Add (AddLinePragma (assign, builder));
 		}
 
 		BoundPropertyEntry CreateBoundPropertyEntry (PropertyInfo pi, string prefix, string expr, bool useSetAttribute)
@@ -852,7 +888,7 @@ namespace System.Web.Compilation
 			assign.Left = new CodePropertyReferenceExpression (ctrlVar, memberName);
 			assign.Right = ResourceExpressionBuilder.CreateGetLocalResourceObject (mi, resname);
 			
-			builder.method.Statements.Add (AddLinePragma (assign, builder));
+			builder.Method.Statements.Add (AddLinePragma (assign, builder));
 		}
 
 		void AssignPropertiesFromResources (ControlBuilder builder, Type controlType, string attvalue)
@@ -902,7 +938,7 @@ namespace System.Web.Compilation
 			EventInfo [] ev_info = null;
 			Type type = builder.ControlType;
 			
-			string attvalue = builder.attribs [id] as string;
+			string attvalue = builder.GetAttribute (id);
 			if (id.Length > 2 && id.Substring (0, 2).ToUpper () == "ON"){
 				if (ev_info == null)
 					ev_info = type.GetEvents ();
@@ -910,7 +946,7 @@ namespace System.Web.Compilation
 				string id_as_event = id.Substring (2);
 				foreach (EventInfo ev in ev_info){
 					if (InvariantCompareNoCase (ev.Name, id_as_event)){
-						AddEventAssign (builder.method,
+						AddEventAssign (builder.Method,
 								builder,
 								ev.Name,
 								ev.EventHandlerType,
@@ -941,9 +977,9 @@ namespace System.Web.Compilation
 			}
 
 			if (!typeof (IAttributeAccessor).IsAssignableFrom (type))
-				throw new ParseException (builder.location, "Unrecognized attribute: " + id);
+				throw new ParseException (builder.Location, "Unrecognized attribute: " + id);
 
-			CodeMemberMethod method = builder.method;
+			CodeMemberMethod method = builder.Method;
 			bool isDatabound = IsDataBound (attvalue);
 #if NET_2_0
 			bool isExpression = !isDatabound && IsExpression (attvalue);
@@ -954,11 +990,11 @@ namespace System.Web.Compilation
 				CodeExpression valueExpression = null;
 #if NET_2_0
 				if (StrUtils.StartsWith (value, "Bind", true))
-					valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, 1, 4);
+					valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, true);
 				else
 #endif
 				if (StrUtils.StartsWith (value, "Eval", true))
-					valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, 1, 4);
+					valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, false);
 				
 				if (valueExpression == null && value != null && value.Trim () != String.Empty)
 					valueExpression = new CodeSnippetExpression (value);
@@ -991,7 +1027,7 @@ namespace System.Web.Compilation
 		protected void CreateAssignStatementsFromAttributes (ControlBuilder builder)
 		{
 			this.dataBoundAtts = 0;
-			IDictionary atts = builder.attribs;
+			IDictionary atts = builder.Attributes;
 			if (atts == null || atts.Count == 0)
 				return;
 			
@@ -1021,7 +1057,7 @@ namespace System.Web.Compilation
 
 			string id = builder.GetNextID (null);
 			string dbMethodName = "__DataBind_" + id;
-			CodeMemberMethod method = builder.method;
+			CodeMemberMethod method = builder.Method;
 			AddEventAssign (method, builder, "DataBinding", typeof (EventHandler), dbMethodName);
 
 			method = CreateDBMethod (builder, dbMethodName, GetContainerType (builder), builder.ControlType);
@@ -1051,12 +1087,12 @@ namespace System.Web.Compilation
 							new CodeArgumentReferenceExpression ("parameterContainer"),
 							"Controls");
 							
-			indexer.Indices.Add (new CodePrimitiveExpression (builder.renderIndex));
+			indexer.Indices.Add (new CodePrimitiveExpression (builder.RenderIndex));
 			
 			CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression (indexer, "RenderControl");
 			invoke.Parameters.Add (new CodeArgumentReferenceExpression ("__output"));
-			builder.renderMethod.Statements.Add (invoke);
-			builder.renderIndex++;
+			builder.RenderMethod.Statements.Add (invoke);
+			builder.IncreaseRenderIndex ();
 		}
 
 		protected void AddChildCall (ControlBuilder parent, ControlBuilder child)
@@ -1064,7 +1100,7 @@ namespace System.Web.Compilation
 			if (parent == null || child == null)
 				return;
 			
-			CodeMethodReferenceExpression m = new CodeMethodReferenceExpression (thisRef, child.method.Name);
+			CodeMethodReferenceExpression m = new CodeMethodReferenceExpression (thisRef, child.Method.Name);
 			CodeMethodInvokeExpression expr = new CodeMethodInvokeExpression (m);
 
 			object [] atts = null;
@@ -1091,28 +1127,28 @@ namespace System.Web.Compilation
 				build.Parameters.Add (new CodePrimitiveExpression (pca.VaryByCustom));
 				build.Parameters.Add (new CodeDelegateCreateExpression (
 							      new CodeTypeReference (typeof (System.Web.UI.BuildMethod)),
-							      thisRef, child.method.Name));
+							      thisRef, child.Method.Name));
 
-				parent.methodStatements.Add (AddLinePragma (build, parent));
+				parent.MethodStatements.Add (AddLinePragma (build, parent));
 				if (parent.HasAspCode)
 					AddRenderControl (parent);
 				return;
 			}
                                 
-			if (child.isProperty || parent.ChildrenAsProperties) {
+			if (child.IsProperty || parent.ChildrenAsProperties) {
 				expr.Parameters.Add (new CodeFieldReferenceExpression (ctrlVar, child.TagName));
-				parent.methodStatements.Add (AddLinePragma (expr, parent));
+				parent.MethodStatements.Add (AddLinePragma (expr, parent));
 				return;
 			}
 
-			parent.methodStatements.Add (AddLinePragma (expr, parent));
+			parent.MethodStatements.Add (AddLinePragma (expr, parent));
 			CodeFieldReferenceExpression field = new CodeFieldReferenceExpression (thisRef, child.ID);
 			if (parent.ControlType == null || typeof (IParserAccessor).IsAssignableFrom (parent.ControlType))
 				AddParsedSubObjectStmt (parent, field);
 			else {
 				CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression (ctrlVar, "Add");
 				invoke.Parameters.Add (field);
-				parent.methodStatements.Add (AddLinePragma (invoke, parent));
+				parent.MethodStatements.Add (AddLinePragma (invoke, parent));
 			}
 				
 			if (parent.HasAspCode)
@@ -1130,7 +1166,7 @@ namespace System.Web.Compilation
 			newCompiled.Parameters.Add (newBuild);
 
 			CodeAssignStatement assign = new CodeAssignStatement (prop, newCompiled);
-			builder.method.Statements.Add (AddLinePragma (assign, builder));
+			builder.Method.Statements.Add (AddLinePragma (assign, builder));
 		}
 
 #if NET_2_0
@@ -1149,7 +1185,7 @@ namespace System.Web.Compilation
 			newCompiled.Parameters.Add (newExtract);
 			
 			CodeAssignStatement assign = new CodeAssignStatement (prop, newCompiled);
-			builder.method.Statements.Add (AddLinePragma (assign, builder));
+			builder.Method.Statements.Add (AddLinePragma (assign, builder));
 		}
 		
 		string CreateExtractValuesMethod (TemplateBuilder builder)
@@ -1235,7 +1271,7 @@ namespace System.Web.Compilation
 
 			if (!cr.IsAssign) {
 				CodeSnippetStatement code = new CodeSnippetStatement (cr.Code);
-				parent.renderMethod.Statements.Add (AddLinePragma (code, cr));
+				parent.RenderMethod.Statements.Add (AddLinePragma (code, cr));
 				return;
 			}
 
@@ -1245,7 +1281,7 @@ namespace System.Web.Compilation
 							"Write");
 
 			expr.Parameters.Add (new CodeSnippetExpression (cr.Code));
-			parent.renderMethod.Statements.Add (AddLinePragma (expr, cr));
+			parent.RenderMethod.Statements.Add (AddLinePragma (expr, cr));
 		}
 
 		static PropertyInfo GetContainerProperty (Type type, string[] propNames)
@@ -1336,7 +1372,7 @@ namespace System.Web.Compilation
 			string dbMethodName = "__DataBind_" + db.ID;
 			// Add the method that builds the DataBoundLiteralControl
 			InitMethod (db, false, false);
-			CodeMemberMethod method = db.method;
+			CodeMemberMethod method = db.Method;
 			AddEventAssign (method, builder, "DataBinding", typeof (EventHandler), dbMethodName);
 			method.Statements.Add (new CodeMethodReturnStatement (ctrlVar));
 
@@ -1381,12 +1417,12 @@ namespace System.Web.Compilation
 				
 #if NET_2_0
 				bool singleInstance = false;
-				ControlBuilder pb = builder.parentBuilder;
+				ControlBuilder pb = builder.ParentBuilder;
 				TemplateBuilder tpb;
 				while (pb != null) {
 					tpb = pb as TemplateBuilder;
 					if (tpb == null) {
-						pb = pb.parentBuilder;
+						pb = pb.ParentBuilder;
 						continue;
 					}
 					
@@ -1429,7 +1465,7 @@ namespace System.Web.Compilation
 							StringBuilder asb = new StringBuilder ();
 							foreach (string s in pb.Children)
 								asb.Append (s);
-							CodeMemberMethod method = builder.method;
+							CodeMemberMethod method = builder.Method;
 							CodeAssignStatement assign = new CodeAssignStatement ();
 							assign.Left = new CodePropertyReferenceExpression (ctrlVar, pb.PropertyName);
 							assign.Right = new CodePrimitiveExpression (asb.ToString ());
@@ -1442,7 +1478,7 @@ namespace System.Web.Compilation
 					if (b is ContentBuilderInternal) {
 						ContentBuilderInternal cb = (ContentBuilderInternal) b;
 						CreateControlTree (cb, false, true);
-						AddContentTemplateInvocation (cb, builder.method, cb.method.Name);
+						AddContentTemplateInvocation (cb, builder.Method, cb.Method.Name);
 						continue;
 					}
 #endif
@@ -1473,27 +1509,29 @@ namespace System.Web.Compilation
 				FlushText (builder, sb);
 			}
 
-			if (builder.defaultPropertyBuilder != null) {
-				ControlBuilder b = builder.defaultPropertyBuilder;
-				CreateControlTree (b, false, true);
-				AddChildCall (builder, b);
-			}
 
+			ControlBuilder defaultPropertyBuilder = builder.DefaultPropertyBuilder;
+			if (defaultPropertyBuilder != null) {
+				CreateControlTree (defaultPropertyBuilder, false, true);
+				AddChildCall (builder, defaultPropertyBuilder);
+			}
+			
 			if (builder.HasAspCode) {
+				CodeMemberMethod renderMethod = builder.RenderMethod;
 				CodeMethodReferenceExpression m = new CodeMethodReferenceExpression ();
 				m.TargetObject = thisRef;
-				m.MethodName = builder.renderMethod.Name;
+				m.MethodName = renderMethod.Name;
 
 				CodeDelegateCreateExpression create = new CodeDelegateCreateExpression ();
 				create.DelegateType = new CodeTypeReference (typeof (RenderMethod));
 				create.TargetObject = thisRef;
-				create.MethodName = builder.renderMethod.Name;
+				create.MethodName = renderMethod.Name;
 
 				CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression ();
 				invoke.Method = new CodeMethodReferenceExpression (ctrlVar, "SetRenderMethodDelegate");
 				invoke.Parameters.Add (create);
 
-				builder.methodStatements.Add (invoke);
+				builder.MethodStatements.Add (invoke);
 			}
 
 #if NET_2_0
@@ -1501,13 +1539,37 @@ namespace System.Web.Compilation
 				if (!String.IsNullOrEmpty (parser.MetaResourceKey))
 					AssignPropertiesFromResources (builder, parser.BaseType, parser.MetaResourceKey);
 			
-			if ((!isTemplate || builder is RootBuilder) && builder.attribs != null && builder.attribs ["meta:resourcekey"] != null)
+			if ((!isTemplate || builder is RootBuilder) && !String.IsNullOrEmpty (builder.GetAttribute ("meta:resourcekey")))
 				CreateAssignStatementFromAttribute (builder, "meta:resourcekey");
 #endif
 
 			if (!childrenAsProperties && typeof (Control).IsAssignableFrom (builder.ControlType))
-				builder.method.Statements.Add (new CodeMethodReturnStatement (ctrlVar));
+				builder.Method.Statements.Add (new CodeMethodReturnStatement (ctrlVar));
 		}
+
+#if NET_2_0
+		protected override void AddStatementsToConstructor (CodeConstructor ctor)
+		{
+			if (masterPageContentPlaceHolders == null || masterPageContentPlaceHolders.Count == 0)
+				return;
+			
+			var ilist = new CodeVariableDeclarationStatement ();
+			ilist.Name = "__contentPlaceHolders";
+			ilist.Type = new CodeTypeReference (typeof (IList));
+			ilist.InitExpression = new CodePropertyReferenceExpression (thisRef, "ContentPlaceHolders");
+			
+			var ilistRef = new CodeVariableReferenceExpression ("__contentPlaceHolders");
+			CodeStatementCollection statements = ctor.Statements;
+			statements.Add (ilist);
+
+			CodeMethodInvokeExpression mcall;
+			foreach (string id in masterPageContentPlaceHolders) {
+				mcall = new CodeMethodInvokeExpression (ilistRef, "Add");
+				mcall.Parameters.Add (new CodePrimitiveExpression (id.ToLowerInvariant ()));
+				statements.Add (mcall);
+			}
+		}
+#endif
 		
 		protected internal override void CreateMethods ()
 		{
@@ -1519,6 +1581,24 @@ namespace System.Web.Compilation
 		}
 
 #if NET_2_0
+		protected override void InitializeType ()
+		{
+			List <string> registeredTagNames = parser.RegisteredTagNames;
+			RootBuilder rb = parser.RootBuilder;
+			if (rb == null || registeredTagNames == null || registeredTagNames.Count == 0)
+				return;
+
+			AspComponent component;
+			foreach (string tagName in registeredTagNames) {
+				component = rb.Foundry.GetComponent (tagName);
+				if (component == null || component.Type == null) // unlikely
+					throw new HttpException ("Custom control '" + tagName + "' cannot be found.");
+				if (!(typeof (UserControl).IsAssignableFrom (component.Type)))
+					throw new ParseException (parser.Location, "Type '" + component.Type.ToString () + "' does not derive from 'System.Web.UI.UserControl'.");
+				AddReferencedAssembly (component.Type.Assembly);
+			}
+		}
+		
 		void CallBaseFrameworkInitialize (CodeMemberMethod method)
 		{
 			CodeBaseReferenceExpression baseRef = new CodeBaseReferenceExpression ();
@@ -1632,6 +1712,37 @@ namespace System.Web.Compilation
 			mainClass.Members.Add (prop);
 		}
 
+#if NET_2_0
+		void CreateContentPlaceHolderTemplateProperty (string backingField, string name)
+		{
+			CodeMemberProperty prop = new CodeMemberProperty ();
+			prop.Type = new CodeTypeReference (typeof (ITemplate));
+			prop.Name = name;
+			prop.Attributes = MemberAttributes.Public;
+
+			var ret = new CodeMethodReturnStatement ();
+			var fldRef = new CodeFieldReferenceExpression (thisRef, backingField);
+			ret.Expression = fldRef;
+			prop.GetStatements.Add (ret);
+			prop.SetStatements.Add (new CodeAssignStatement (fldRef, new CodePropertySetValueReferenceExpression ()));
+
+			prop.CustomAttributes.Add (new CodeAttributeDeclaration ("TemplateContainer", new CodeAttributeArgument [] {
+						new CodeAttributeArgument (new CodeTypeOfExpression (new CodeTypeReference (typeof (MasterPage))))
+					}
+				)
+			);
+
+			var enumValueRef = new CodeFieldReferenceExpression (new CodeTypeReferenceExpression (typeof (TemplateInstance)), "Single");
+			prop.CustomAttributes.Add (new CodeAttributeDeclaration ("TemplateInstanceAttribute", new CodeAttributeArgument [] {
+						new CodeAttributeArgument (enumValueRef)
+					}
+				)
+			);
+
+			mainClass.Members.Add (prop);
+		}
+#endif
+		
 		void CreateAutoHandlers ()
 		{
 			// Create AutoHandlers property

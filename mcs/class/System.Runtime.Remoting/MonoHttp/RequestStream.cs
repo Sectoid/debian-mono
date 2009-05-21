@@ -79,7 +79,7 @@ using System; using System.Net; namespace MonoHttp {
 
 		public override void Close ()
 		{
-			// TODO: What do we close?
+			disposed = true;
 		}
 
 		public override void Flush ()

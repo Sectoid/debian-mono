@@ -48,6 +48,8 @@ namespace System.Reflection.Emit {
 #endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public class ModuleBuilder : Module, _ModuleBuilder {
+
+#pragma warning disable 169, 414
 		#region Sync with object-internals.h
 		private UIntPtr dynamic_image; /* GC-tracked */
 		private int num_types;
@@ -61,6 +63,8 @@ namespace System.Reflection.Emit {
 		bool is_main;
 		private MonoResource[] resources;
 		#endregion
+#pragma warning restore 169, 414
+		
 		private TypeBuilder global_type;
 		private Type global_type_created;
 		Hashtable name_cache;
@@ -91,14 +95,18 @@ namespace System.Reflection.Emit {
 			
 			if (emitSymbolInfo) {
 				Assembly asm = Assembly.LoadWithPartialName ("Mono.CompilerServices.SymbolWriter");
+				if (asm == null)
+					throw new ExecutionEngineException ("The assembly for default symbol writer cannot be loaded");
+
 				Type t = asm.GetType ("Mono.CompilerServices.SymbolWriter.SymbolWriterImpl");
-				if (t != null) {
-					symbolWriter = (ISymbolWriter) Activator.CreateInstance (t, new object[] { this });
-					string fileName = fqname;
-					if (assemblyb.AssemblyDir != null)
-						fileName = Path.Combine (assemblyb.AssemblyDir, fileName);
-					symbolWriter.Initialize (IntPtr.Zero, fileName, true);
-				}
+				if (t == null)
+					throw new ExecutionEngineException ("The type that implements the default symbol writer interface cannot be found");
+
+				symbolWriter = (ISymbolWriter) Activator.CreateInstance (t, new object[] { this });
+				string fileName = fqname;
+				if (assemblyb.AssemblyDir != null)
+					fileName = Path.Combine (assemblyb.AssemblyDir, fileName);
+				symbolWriter.Initialize (IntPtr.Zero, fileName, true);
 			}
 		}
 
@@ -782,9 +790,15 @@ namespace System.Reflection.Emit {
 				global_type = new TypeBuilder (this, 0);
 		}
 
+		internal override Guid GetModuleVersionId ()
+		{
+			return new Guid (guid);
+		}
+
+		// Used by mcs, the symbol writer, and mdb through reflection
 		internal static Guid Mono_GetGuid (ModuleBuilder mb)
 		{
-			return new Guid (mb.guid);
+			return mb.GetModuleVersionId ();
 		}
 
 		void _ModuleBuilder.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)

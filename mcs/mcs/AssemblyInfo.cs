@@ -31,7 +31,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle ("Mono C# Compiler")]
 [assembly: AssemblyProduct ("Mono C# Compiler")]
-[assembly: AssemblyCopyright ("2001 - 2007 Novell, Inc.")]
+[assembly: AssemblyCopyright ("2001 - 2008 Novell, Inc.")]
 [assembly: AssemblyCompany ("Novell, Inc.")]
 [assembly: AssemblyCulture ("")]
 [assembly: AssemblyConfiguration ("")]
@@ -44,3 +44,4 @@ using System.Runtime.CompilerServices;
 #else
 [assembly: AssemblyDescription ("Mono C# Compiler")]
 #endif
+

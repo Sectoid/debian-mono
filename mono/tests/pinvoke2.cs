@@ -31,6 +31,16 @@ public class Tests {
 	}
 
 	[StructLayout (LayoutKind.Sequential)]
+	public struct SimpleStructGen<T> {
+		public bool a;
+		public bool b;
+		public bool c;
+		public string d;
+		[MarshalAs(UnmanagedType.LPWStr)]
+		public string d2;
+	}
+
+	[StructLayout (LayoutKind.Sequential)]
 	public struct SimpleStruct2 {
 		public bool a;
 		public bool b;
@@ -201,6 +211,9 @@ public class Tests {
 	
 	[DllImport ("libtest", EntryPoint="mono_test_marshal_struct")]
 	public static extern int mono_test_marshal_struct (SimpleStruct ss);
+	
+	[DllImport ("libtest", EntryPoint="mono_test_marshal_struct")]
+	public static extern int mono_test_marshal_struct_gen (SimpleStructGen<string> ss);
 
 	[DllImport ("libtest", EntryPoint="mono_test_marshal_struct2")]
 	public static extern int mono_test_marshal_struct2 (SimpleStruct2 ss);
@@ -384,6 +397,14 @@ public class Tests {
 		return mono_test_marshal_struct (ss);
 	}
 
+	public static int test_0_marshal_struct_gen () {
+		SimpleStructGen<string> ss = new  SimpleStructGen<string> ();
+		ss.b = true;
+		ss.d = "TEST";
+		
+		return mono_test_marshal_struct_gen (ss);
+	}
+
 	public static int test_0_marshal_struct2 () {
 		SimpleStruct2 ss2 = new  SimpleStruct2 ();
 		ss2.b = true;
@@ -558,6 +579,17 @@ public class Tests {
 			return 3;
 
 		return 0;
+	}
+
+	[DllImport ("libtest", EntryPoint="mono_test_marshal_out_delegate")]
+	public static extern int mono_test_marshal_out_delegate (out SimpleDelegate d);
+
+	public static int test_3_marshal_out_delegate () {
+		SimpleDelegate d = null;
+
+		mono_test_marshal_out_delegate (out d);
+
+		return d (2);
 	}
 
 	public static int test_0_marshal_byref_struct () {
@@ -1058,16 +1090,16 @@ public class Tests {
 	}
 	
 	[DllImport ("libtest", EntryPoint="mono_test_marshal_ia64_pass_return_struct5")]
-	public static extern TestStruct5 mono_test_marshal_ia64_pass_return_struct5 (double d1, double d2, TestStruct5 s, double f3, double f4);
+	public static extern TestStruct5 mono_test_marshal_ia64_pass_return_struct5 (double d1, double d2, TestStruct5 s, int i, double f3, double f4);
 
 	public static int test_0_ia64_struct5 () {
 		TestStruct5 s = new TestStruct5 ();
 		s.d1 = 5.0f;
 		s.d2 = -5.0f;
 
-		TestStruct5 s2 = mono_test_marshal_ia64_pass_return_struct5 (1.0, 2.0, s, 3.0, 4.0);
+		TestStruct5 s2 = mono_test_marshal_ia64_pass_return_struct5 (1.0, 2.0, s, 5, 3.0, 4.0);
 
-		return (s2.d1 == 8.0 && s2.d2 == 2.0) ? 0 : 1;
+		return (s2.d1 == 13.0 && s2.d2 == 7.0) ? 0 : 1;
 	}
 
 	/* Test 6: Double HFA */
@@ -1114,6 +1146,37 @@ public class Tests {
 		
 		return 0;
 	}
+
+	/*
+	 * Generic structures
+	 */
+
+	[StructLayout(LayoutKind.Sequential)]
+	public struct Amd64Struct1Gen<T> {
+		public T i;
+		public T j;
+		public T k;
+		public T l;
+	}
+	
+	[DllImport ("libtest", EntryPoint="mono_test_marshal_amd64_pass_return_struct1")]
+	public static extern Amd64Struct1Gen<int> mono_test_marshal_amd64_pass_return_struct1_gen (Amd64Struct1Gen<int> s);
+
+	public static int test_0_amd64_struct1_gen () {
+		Amd64Struct1Gen<int> s = new Amd64Struct1Gen<int> ();
+		s.i = 5;
+		s.j = -5;
+		s.k = 0xffffff;
+		s.l = 0xfffffff;
+
+		Amd64Struct1Gen<int> s2 = mono_test_marshal_amd64_pass_return_struct1_gen (s);
+
+		return ((s2.i == 6) && (s2.j == -4) && (s2.k == 0x1000000) && (s2.l == 0x10000000)) ? 0 : 1;
+	}
+
+	/*
+	 * Other tests
+	 */
 
 	public static int test_0_marshal_byval_class () {
 		SimpleObj obj0 = new SimpleObj ();

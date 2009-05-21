@@ -92,6 +92,9 @@ static guint g_hash_table_foreach_remove_or_steal (MonoGHashTable     *hash_tabl
                                                    gpointer	   user_data,
                                                    gboolean        notify);
 
+#ifdef HAVE_SGEN_GC
+static void mono_g_hash_mark (void *addr, MonoGCCopyFunc mark_func);
+#endif
 
 G_LOCK_DEFINE_STATIC (g_hash_global);
 
@@ -99,10 +102,31 @@ G_LOCK_DEFINE_STATIC (g_hash_global);
 static GMemChunk *node_mem_chunk = NULL;
 #endif
 #if defined(HAVE_SGEN_GC)
-static void *node_gc_descs [4] = {NULL};
 static MonoGHashNode *node_free_lists [4] = {NULL};
+static void *hash_descr = NULL;
+static GMemChunk *node_mem_chunk = NULL;
 #else
 static MonoGHashNode *node_free_list = NULL;
+#endif
+
+#ifdef HAVE_SGEN_GC
+#define SET_NODE_KEY(node, gc_type, val) do { \
+	gpointer __val = (val); \
+	if (gc_type == MONO_HASH_KEY_GC || gc_type == MONO_HASH_KEY_VALUE_GC) \
+		MONO_ROOT_SETREF ((node), key, __val); \
+	else \
+	  (node)->key = __val; \
+	} while (0)
+#define SET_NODE_VALUE(node, gc_type, val) do { \
+	gpointer __val = (val); \
+	if (gc_type == MONO_HASH_VALUE_GC || gc_type == MONO_HASH_KEY_VALUE_GC) \
+		MONO_ROOT_SETREF ((node), value, __val); \
+	else \
+	  (node)->value = __val; \
+	} while (0)
+#else
+#define SET_NODE_KEY(node, gc_type, val) do { (node)->key = (val); } while (0)
+#define SET_NODE_VALUE(node, gc_type, val) do { (node)->value = (val); } while (0)
 #endif
 
 /**
@@ -140,14 +164,14 @@ mono_g_hash_table_new_type (GHashFunc    hash_func,
 #if defined(HAVE_SGEN_GC)
   if (type < 0 || type > MONO_HASH_KEY_VALUE_GC)
 	  g_error ("wrong type for gc hashtable");
-  if (!node_gc_descs [type] && type > MONO_HASH_CONSERVATIVE_GC) {
-	  gsize bmap = 0;
-	  if (type & MONO_HASH_KEY_GC)
-		  bmap |= 1; /* the first field in the node is the key */
-	  if (type & MONO_HASH_VALUE_GC)
-		  bmap |= 2; /* the second is the value */
-	  node_gc_descs [type] = mono_gc_make_descr_from_bitmap (&bmap, 2);
-  }
+  /* 
+   * We use a user defined marking function to avoid having to register a GC root for
+   * each hash node.
+   */
+  if (!hash_descr)
+	  hash_descr = mono_gc_make_root_descr_user (mono_g_hash_mark);
+  if (type != MONO_HASH_CONSERVATIVE_GC)
+	  mono_gc_register_root_wbarrier ((char*)table, sizeof (MonoGHashTable), hash_descr);
 #endif
   return table;
 }
@@ -229,6 +253,9 @@ mono_g_hash_table_destroy (MonoGHashTable *hash_table)
 
 #if HAVE_BOEHM_GC
 #else
+#if HAVE_SGEN_GC
+  mono_gc_deregister_root ((char*)hash_table);
+#endif
   g_free (hash_table->nodes);
   g_free (hash_table);
 #endif
@@ -347,8 +374,21 @@ g_hash_node_new (gpointer key,
 	  }
 	  G_UNLOCK (g_hash_global);
   }
-  if (!hash_node)
-      hash_node = mono_gc_alloc_fixed (sizeof (MonoGHashNode), node_gc_descs [gc_type]);
+  if (!hash_node) {
+	  if (gc_type != MONO_HASH_CONSERVATIVE_GC) {
+		  /* 
+		   * Marking is handled by the marker function, no need to allocate GC visible
+		   * memory.
+		   */
+		  if (!node_mem_chunk)
+			  node_mem_chunk = g_mem_chunk_new ("hash node mem chunk",
+												sizeof (MonoGHashNode),
+												1024, G_ALLOC_ONLY);
+		  hash_node = g_chunk_new (MonoGHashNode, node_mem_chunk);
+	  } else {
+		  hash_node = mono_gc_alloc_fixed (sizeof (MonoGHashNode), NULL);
+	  }
+  }
 #else
   G_LOCK (g_hash_global);
   if (node_free_list)
@@ -367,9 +407,9 @@ g_hash_node_new (gpointer key,
     }
   G_UNLOCK (g_hash_global);
 #endif
-  
-  hash_node->key = key;
-  hash_node->value = value;
+
+  SET_NODE_KEY (hash_node, gc_type, key);
+  SET_NODE_VALUE (hash_node, gc_type, value);
   hash_node->next = NULL;
   
   return hash_node;
@@ -414,7 +454,7 @@ mono_g_hash_table_insert (MonoGHashTable *hash_table,
       if (hash_table->value_destroy_func)
 	hash_table->value_destroy_func ((*node)->value);
 
-      (*node)->value = value;
+	  SET_NODE_VALUE ((*node), hash_table->gc_type, value);
     }
   else
     {
@@ -456,8 +496,8 @@ mono_g_hash_table_replace (MonoGHashTable *hash_table,
       if (hash_table->value_destroy_func)
 	hash_table->value_destroy_func ((*node)->value);
 
-      (*node)->key   = key;
-      (*node)->value = value;
+	  SET_NODE_KEY ((*node), hash_table->gc_type, key);
+	  SET_NODE_VALUE ((*node), hash_table->gc_type, value);
     }
   else
     {
@@ -703,8 +743,10 @@ mono_g_hash_table_remap (MonoGHashTable *hash_table,
   g_return_if_fail (func != NULL);
   
   for (i = 0; i < hash_table->size; i++)
-    for (node = hash_table->nodes[i]; node; node = node->next)
-      node->value = (* func) (node->key, node->value, user_data);
+	  for (node = hash_table->nodes[i]; node; node = node->next) {
+		  gpointer new_val = (* func) (node->key, node->value, user_data);
+		  SET_NODE_VALUE (node, hash_table->gc_type, new_val);
+	  }
 }
 
 static void
@@ -812,3 +854,41 @@ g_hash_nodes_destroy (MonoGHashNode *hash_node,
       G_UNLOCK (g_hash_global);
     }
 }
+
+#ifdef HAVE_SGEN_GC
+
+/* GC marker function */
+static void
+mono_g_hash_mark (void *addr, MonoGCCopyFunc mark_func)
+{
+	MonoGHashTable *table = (MonoGHashTable*)addr;
+	MonoGHashNode *node;
+	int i;
+
+	if (table->gc_type == MONO_HASH_KEY_GC) {
+		for (i = 0; i < table->size; i++) {
+			for (node = table->nodes [i]; node; node = node->next) {
+				if (node->key)
+					SET_NODE_KEY (node, table->gc_type, mark_func (node->key));
+			}
+		}
+	} else if (table->gc_type == MONO_HASH_VALUE_GC) {
+		for (i = 0; i < table->size; i++) {
+			for (node = table->nodes [i]; node; node = node->next) {
+				if (node->value)
+					SET_NODE_VALUE (node, table->gc_type, mark_func (node->value));
+			}
+		}
+	} else if (table->gc_type == MONO_HASH_KEY_VALUE_GC) {
+		for (i = 0; i < table->size; i++) {
+			for (node = table->nodes [i]; node; node = node->next) {
+				if (node->key)
+					SET_NODE_KEY (node, table->gc_type, mark_func (node->key));
+				if (node->value)
+					SET_NODE_VALUE (node, table->gc_type, mark_func (node->value));
+			}
+		}
+	}
+}
+
+#endif

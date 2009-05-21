@@ -1,6 +1,11 @@
-// CS0031: Constant value `42' cannot be converted to a `string'
-// Line: 5
+// CS0031: Constant value `1000M' cannot be converted to a `byte'
+// Line: 8
 
-class A {
-  public static implicit operator string (A a) { return 42; }
+class C
+{
+	public static void Main ()
+	{
+		const byte c = unchecked ((byte) 1000M);
+	}
 }
+

@@ -47,7 +47,9 @@ using System.Text;
 #if NET_2_0
 using System.Collections.Generic;
 using System.Net.NetworkInformation;
+#if !NET_2_1
 using System.Timers;
+#endif
 #endif
 
 namespace System.Net.Sockets 
@@ -136,11 +138,14 @@ namespace System.Net.Sockets
 			public void CheckIfThrowDelayedException ()
 			{
 				if (delayedException != null) {
+					Sock.connected = false;
 					throw delayedException;
 				}
 
-				if (error != 0)
+				if (error != 0) {
+					Sock.connected = false;
 					throw new SocketException (error);
+				}
 			}
 
 			void CompleteAllOnDispose (Queue queue)
@@ -366,18 +371,24 @@ namespace System.Net.Sockets
 					return;
 				}
 
+				/* It seems the MS runtime
+				 * special-cases 0-length requested
+				 * receive data.  See bug 464201.
+				 */
 				int total = 0;
-				try {
-					SocketError error;
+				if (result.Size > 0) {
+					try {
+						SocketError error;
 					
-					total = acc_socket.Receive_nochecks (result.Buffer,
-									     result.Offset,
-									     result.Size,
-									     result.SockFlags,
-									     out error);
-				} catch (Exception e) {
-					result.Complete (e);
-					return;
+						total = acc_socket.Receive_nochecks (result.Buffer,
+										     result.Offset,
+										     result.Size,
+										     result.SockFlags,
+										     out error);
+					} catch (Exception e) {
+						result.Complete (e);
+						return;
+					}
 				}
 
 				result.Complete (acc_socket, total);
@@ -673,38 +684,47 @@ namespace System.Net.Sockets
 			if (error != 0)
 				throw new SocketException (error);
 
-			if (checkRead != null)
-				checkRead.Clear ();
-
-			if (checkWrite != null)
-				checkWrite.Clear ();
-
-			if (checkError != null)
-				checkError.Clear ();
-
-			if (sockets == null)
+			if (sockets == null) {
+				if (checkRead != null)
+					checkRead.Clear ();
+				if (checkWrite != null)
+					checkWrite.Clear ();
+				if (checkError != null)
+					checkError.Clear ();
 				return;
+			}
 
 			int mode = 0;
 			int count = sockets.Length;
 			IList currentList = checkRead;
+			int currentIdx = 0;
 			for (int i = 0; i < count; i++) {
+				Socket cur_sock;
 				Socket sock = sockets [i];
 				if (sock == null) { // separator
+					if (currentList != null) {
+						// Remove non-signaled sockets after the current one
+						int to_remove = currentList.Count - currentIdx;
+						for (int k = 0; k < to_remove; k++)
+							currentList.RemoveAt (currentIdx);
+					}
 					currentList = (mode == 0) ? checkWrite : checkError;
+					currentIdx = 0;
 					mode++;
 					continue;
 				}
 
-				if (currentList != null) {
-					if (currentList == checkWrite && !sock.connected) {
-						if ((int) sock.GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error) == 0) {
-							sock.connected = true;
-						}
-					}
-					
-					currentList.Add (sock);
+				if (mode == 1 && currentList == checkWrite && !sock.connected) {
+					if ((int) sock.GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error) == 0)
+						sock.connected = true;
 				}
+
+				// Remove non-signaled sockets before the current one
+				int max = currentList.Count;
+				while ((cur_sock = (Socket) currentList [currentIdx]) != sock) {
+					currentList.RemoveAt (currentIdx);
+				}
+				currentIdx++;
 			}
 		}
 
@@ -1323,7 +1343,7 @@ namespace System.Net.Sockets
 				if (config != null)
 					ipv6Supported = config.Ipv6.Enabled ? -1 : 0;
 #else
-				NetConfig config = (NetConfig)System.Configuration.ConfigurationSettings.GetConfig("system.net/settings");
+				NetConfig config = System.Configuration.ConfigurationSettings.GetConfig("system.net/settings") as NetConfig;
 				if (config != null)
 					ipv6Supported = config.ipv6Enabled ? -1 : 0;
 #endif
@@ -1334,7 +1354,9 @@ namespace System.Net.Sockets
 						tmp.Close();
 
 						ipv6Supported = 1;
-					} catch { }
+					} catch {
+						ipv6Supported = 0;
+					}
 				}
 			}
 		}
@@ -1376,7 +1398,7 @@ namespace System.Net.Sockets
 		
 		// Creates a new system socket, returning the handle
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		private extern static IntPtr Accept_internal(IntPtr sock, out int error);
+		private extern static IntPtr Accept_internal(IntPtr sock, out int error, bool blocking);
 
 		Thread blocking_thread;
 		public Socket Accept() {
@@ -1387,10 +1409,12 @@ namespace System.Net.Sockets
 			IntPtr sock = (IntPtr) (-1);
 			blocking_thread = Thread.CurrentThread;
 			try {
-				sock = Accept_internal(socket, out error);
+				sock = Accept_internal(socket, out error, blocking);
 			} catch (ThreadAbortException) {
 				if (disposed) {
+#if !NET_2_1
 					Thread.ResetAbort ();
+#endif
 					error = (int) SocketError.Interrupted;
 				}
 			} finally {
@@ -1418,10 +1442,12 @@ namespace System.Net.Sockets
 			blocking_thread = Thread.CurrentThread;
 			
 			try {
-				sock = Accept_internal (socket, out error);
+				sock = Accept_internal (socket, out error, blocking);
 			} catch (ThreadAbortException) {
 				if (disposed) {
+#if !NET_2_1
 					Thread.ResetAbort ();
+#endif
 					error = (int)SocketError.Interrupted;
 				}
 			} finally {
@@ -2046,7 +2072,7 @@ namespace System.Net.Sockets
 			((IDisposable) this).Dispose ();
 		}
 
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		public void Close (int timeout) 
 		{
 			System.Timers.Timer close_timer = new System.Timers.Timer ();
@@ -3030,19 +3056,29 @@ namespace System.Net.Sockets
 		internal int ReceiveFrom_nochecks (byte [] buf, int offset, int size, SocketFlags flags,
 						   ref EndPoint remote_end)
 		{
+			int error;
+			return ReceiveFrom_nochecks_exc (buf, offset, size, flags, ref remote_end, true, out error);
+		}
+
+		internal int ReceiveFrom_nochecks_exc (byte [] buf, int offset, int size, SocketFlags flags,
+						   ref EndPoint remote_end, bool throwOnError, out int error)
+		{
 			SocketAddress sockaddr = remote_end.Serialize();
-			int cnt, error;
-
-			cnt = RecvFrom_internal (socket, buf, offset, size, flags, ref sockaddr, out error);
-
+			int cnt = RecvFrom_internal (socket, buf, offset, size, flags, ref sockaddr, out error);
 			SocketError err = (SocketError) error;
 			if (err != 0) {
 				if (err != SocketError.WouldBlock && err != SocketError.InProgress)
 					connected = false;
-				else if (err == SocketError.WouldBlock && blocking) // This might happen when ReceiveTimeout is set
-					throw new SocketException (error, "Operation timed out.");
+				else if (err == SocketError.WouldBlock && blocking) { // This might happen when ReceiveTimeout is set
+					if (throwOnError)	
+						throw new SocketException ((int) SocketError.TimedOut, "Operation timed out");
+					error = (int) SocketError.TimedOut;
+					return 0;
+				}
 
-				throw new SocketException (error);
+				if (throwOnError)
+					throw new SocketException (error);
+				return 0;
 			}
 
 			connected = true;

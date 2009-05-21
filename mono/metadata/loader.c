@@ -35,6 +35,7 @@
 #include <mono/metadata/profiler.h>
 #include <mono/metadata/profiler-private.h>
 #include <mono/metadata/exception.h>
+#include <mono/metadata/marshal.h>
 #include <mono/utils/mono-logger.h>
 #include <mono/utils/mono-dl.h>
 #include <mono/utils/mono-membar.h>
@@ -44,6 +45,9 @@ MonoDefaults mono_defaults;
 /*
  * This lock protects the hash tables inside MonoImage used by the metadata 
  * loading functions in class.c and loader.c.
+ *
+ * See domain-internals.h for locking policy in combination with the
+ * domain lock.
  */
 static CRITICAL_SECTION loader_mutex;
 
@@ -503,14 +507,38 @@ mono_metadata_signature_vararg_match (MonoMethodSignature *sig1, MonoMethodSigna
 }
 
 static MonoMethod *
-find_method_in_class (MonoClass *in_class, const char *name, const char *qname, const char *fqname,
+find_method_in_class (MonoClass *klass, const char *name, const char *qname, const char *fqname,
 		      MonoMethodSignature *sig, MonoClass *from_class)
 {
-	int i;
+ 	int i;
 
-	mono_class_setup_methods (in_class);
-	for (i = 0; i < in_class->method.count; ++i) {
-		MonoMethod *m = in_class->methods [i];
+	/* Search directly in the metadata to avoid calling setup_methods () */
+
+	/* FIXME: !from_class->generic_class condition causes test failures. */
+	if (klass->type_token && !klass->image->dynamic && !klass->methods && !klass->rank && klass == from_class && !from_class->generic_class) {
+		for (i = 0; i < klass->method.count; ++i) {
+			guint32 cols [MONO_METHOD_SIZE];
+			MonoMethod *method;
+			const char *m_name;
+
+			mono_metadata_decode_table_row (klass->image, MONO_TABLE_METHOD, klass->method.first + i, cols, MONO_METHOD_SIZE);
+
+			m_name = mono_metadata_string_heap (klass->image, cols [MONO_METHOD_NAME]);
+
+			if (!((fqname && !strcmp (m_name, fqname)) ||
+				  (qname && !strcmp (m_name, qname)) ||
+				  (name && !strcmp (m_name, name))))
+				continue;
+
+			method = mono_get_method (klass->image, MONO_TOKEN_METHOD_DEF | (klass->method.first + i + 1), klass);
+			if (method && (sig->call_convention != MONO_CALL_VARARG) && mono_metadata_signature_equal (sig, mono_method_signature (method)))
+				return method;
+		}
+	}
+
+	mono_class_setup_methods (klass);
+	for (i = 0; i < klass->method.count; ++i) {
+		MonoMethod *m = klass->methods [i];
 
 		if (!((fqname && !strcmp (m->name, fqname)) ||
 		      (qname && !strcmp (m->name, qname)) ||
@@ -526,7 +554,7 @@ find_method_in_class (MonoClass *in_class, const char *name, const char *qname, 
 		}
 	}
 
-	if (i < in_class->method.count)
+	if (i < klass->method.count)
 		return mono_class_get_method_by_index (from_class, i);
 	return NULL;
 }
@@ -561,10 +589,10 @@ find_method (MonoClass *in_class, MonoClass *ic, const char* name, MonoMethodSig
 		if (name [0] == '.' && (!strcmp (name, ".ctor") || !strcmp (name, ".cctor")))
 			break;
 
-		g_assert (from_class->interface_count == in_class->interface_count);
-		for (i = 0; i < in_class->interface_count; i++) {
-			MonoClass *in_ic = in_class->interfaces [i];
-			MonoClass *from_ic = from_class->interfaces [i];
+		g_assert (from_class->interface_offsets_count == in_class->interface_offsets_count);
+		for (i = 0; i < in_class->interface_offsets_count; i++) {
+			MonoClass *in_ic = in_class->interfaces_packed [i];
+			MonoClass *from_ic = from_class->interfaces_packed [i];
 			char *ic_qname, *ic_fqname, *ic_class_name;
 			
 			ic_class_name = mono_type_get_name_full (&in_ic->byval_arg, MONO_TYPE_NAME_FORMAT_IL);
@@ -735,6 +763,9 @@ static MonoMethod*
 search_in_array_class (MonoClass *klass, const char *name, MonoMethodSignature *sig)
 {
 	int i;
+
+	mono_class_setup_methods (klass);
+
 	for (i = 0; i < klass->method.count; ++i) {
 		MonoMethod *method = klass->methods [i];
 		if (strcmp (method->name, name) == 0 && sig->param_count == method->signature->param_count)
@@ -836,7 +867,6 @@ method_from_memberref (MonoImage *image, guint32 idx, MonoGenericContext *typesp
 
 	case MONO_MEMBERREF_PARENT_TYPESPEC: {
 		MonoType *type;
-		MonoMethod *result;
 
 		type = &klass->byval_arg;
 
@@ -847,11 +877,7 @@ method_from_memberref (MonoImage *image, guint32 idx, MonoGenericContext *typesp
 		}
 
 		/* we're an array and we created these methods already in klass in mono_class_init () */
-		result = search_in_array_class (klass, mname, sig);
-		if (result)
-			return result;
-
-		g_assert_not_reached ();
+		method = search_in_array_class (klass, mname, sig);
 		break;
 	}
 	default:
@@ -1017,12 +1043,11 @@ mono_dllmap_insert (MonoImage *assembly, const char *dll, const char *func, cons
 		entry->next = global_dll_map;
 		global_dll_map = entry;
 	} else {
-		MonoMemPool *mpool = assembly->mempool;
-		entry = mono_mempool_alloc0 (mpool, sizeof (MonoDllMap));
-		entry->dll = dll? mono_mempool_strdup (mpool, dll): NULL;
-		entry->target = tdll? mono_mempool_strdup (mpool, tdll): NULL;
-		entry->func = func? mono_mempool_strdup (mpool, func): NULL;
-		entry->target_func = tfunc? mono_mempool_strdup (mpool, tfunc): NULL;
+		entry = mono_image_alloc0 (assembly, sizeof (MonoDllMap));
+		entry->dll = dll? mono_image_strdup (assembly, dll): NULL;
+		entry->target = tdll? mono_image_strdup (assembly, tdll): NULL;
+		entry->func = func? mono_image_strdup (assembly, func): NULL;
+		entry->target_func = tfunc? mono_image_strdup (assembly, tfunc): NULL;
 		entry->next = assembly->dll_map;
 		assembly->dll_map = entry;
 	}
@@ -1370,9 +1395,9 @@ mono_get_method_from_token (MonoImage *image, guint32 token, MonoClass *klass,
 
 	if ((cols [2] & METHOD_ATTRIBUTE_PINVOKE_IMPL) ||
 	    (cols [1] & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL))
-		result = (MonoMethod *)mono_mempool_alloc0 (image->mempool, sizeof (MonoMethodPInvoke));
+		result = (MonoMethod *)mono_image_alloc0 (image, sizeof (MonoMethodPInvoke));
 	else
-		result = (MonoMethod *)mono_mempool_alloc0 (image->mempool, sizeof (MonoMethodNormal));
+		result = (MonoMethod *)mono_image_alloc0 (image, sizeof (MonoMethodNormal));
 
 	mono_stats.method_count ++;
 
@@ -1515,7 +1540,7 @@ mono_get_method_constrained (MonoImage *image, guint32 token, MonoClass *constra
 {
 	MonoMethod *method, *result;
 	MonoClass *ic = NULL;
-	MonoGenericContext *class_context = NULL, *method_context = NULL;
+	MonoGenericContext *method_context = NULL;
 	MonoMethodSignature *sig, *original_sig;
 
 	mono_loader_lock ();
@@ -1550,11 +1575,8 @@ mono_get_method_constrained (MonoImage *image, guint32 token, MonoClass *constra
 		}
 	}
 
-	if ((constrained_class != method->klass) && (method->klass->interface_id != 0))
+	if ((constrained_class != method->klass) && (MONO_CLASS_IS_INTERFACE (method->klass)))
 		ic = method->klass;
-
-	if (constrained_class->generic_class)
-		class_context = mono_class_get_context (constrained_class);
 
 	result = find_method (constrained_class, ic, method->name, sig, constrained_class);
 	if (sig != original_sig)
@@ -1567,8 +1589,6 @@ mono_get_method_constrained (MonoImage *image, guint32 token, MonoClass *constra
 		return NULL;
 	}
 
-	if (class_context)
-		result = mono_class_inflate_generic_method (result, class_context);
 	if (method_context)
 		result = mono_class_inflate_generic_method (result, method_context);
 
@@ -1598,6 +1618,8 @@ mono_free_method  (MonoMethod *method)
 	if (method->dynamic) {
 		MonoMethodWrapper *mw = (MonoMethodWrapper*)method;
 		int i;
+
+		mono_marshal_free_dynamic_wrappers (method);
 
 		mono_loader_lock ();
 		mono_property_hash_remove_object (method->klass->image->property_hash, method);
@@ -2029,6 +2051,7 @@ mono_method_get_header (MonoMethod *method)
 	MonoImage* img;
 	gpointer loc;
 	MonoMethodNormal* mn = (MonoMethodNormal*) method;
+	MonoMethodHeader *header;
 
 	if ((method->flags & METHOD_ATTRIBUTE_ABSTRACT) || (method->iflags & METHOD_IMPL_ATTRIBUTE_RUNTIME) || (method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) || (method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL))
 		return NULL;
@@ -2040,23 +2063,28 @@ mono_method_get_header (MonoMethod *method)
 #endif
 		return mn->header;
 
-	mono_loader_lock ();
-
-	if (mn->header) {
-		mono_loader_unlock ();
-		return mn->header;
-	}
-
 	if (method->is_inflated) {
 		MonoMethodInflated *imethod = (MonoMethodInflated *) method;
 		MonoMethodHeader *header;
-		/* the lock is recursive */
+
 		header = mono_method_get_header (imethod->declaring);
+
+		mono_loader_lock ();
+
+		if (mn->header) {
+			mono_loader_unlock ();
+			return mn->header;
+		}
+
 		mn->header = inflate_generic_header (header, mono_method_get_context (method));
 		mono_loader_unlock ();
 		return mn->header;
 	}
 
+	/* 
+	 * Do most of the work outside the loader lock, to avoid assembly loader hook
+	 * deadlocks.
+	 */
 	g_assert (mono_metadata_token_table (method->token) == MONO_TABLE_METHOD);
 	idx = mono_metadata_token_index (method->token);
 	img = method->klass->image;
@@ -2065,7 +2093,19 @@ mono_method_get_header (MonoMethod *method)
 
 	g_assert (loc);
 
-	mn->header = mono_metadata_parse_mh_full (img, mono_method_get_generic_container (method), loc);
+	header = mono_metadata_parse_mh_full (img, mono_method_get_generic_container (method), loc);
+
+	mono_loader_lock ();
+
+	if (mn->header) {
+		/* header is allocated from the image mempool, no need to free it */
+		mono_loader_unlock ();
+		return mn->header;
+	}
+
+	mono_memory_barrier ();
+
+	mn->header = header;
 
 	mono_loader_unlock ();
 	return mn->header;

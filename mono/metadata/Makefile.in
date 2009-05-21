@@ -40,11 +40,12 @@ subdir = mono/metadata
 DIST_COMMON = $(libmonoruntimeinclude_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in ChangeLog TODO
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
-mkinstalldirs = $(install_sh) -d
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
@@ -54,13 +55,13 @@ am__objects_1 = reflection.lo object.lo icall.lo decimal.lo \
 	marshal.lo mono-mlist.lo monitor.lo threads.lo threadpool.lo \
 	file-io.lo socket-io.lo exception.lo appdomain.lo \
 	debug-mono-symfile.lo mono-debug.lo mono-debug-debugger.lo \
-	profiler.lo rand.lo security.lo security-core-clr.lo \
+	profiler.lo attach.lo rand.lo security.lo security-core-clr.lo \
 	string-icalls.lo sysmath.lo process.lo environment.lo \
 	locales.lo filewatcher.lo security-manager.lo console-io.lo \
 	assembly.lo coree.lo domain.lo opcodes.lo image.lo metadata.lo \
-	verify.lo mono-endian.lo mono-config.lo rawbuffer.lo loader.lo \
-	class.lo mempool.lo mono-perfcounters.lo debug-helpers.lo \
-	generic-sharing.lo
+	verify.lo mono-endian.lo mono-config.lo loader.lo class.lo \
+	mempool.lo mono-perfcounters.lo debug-helpers.lo \
+	generic-sharing.lo metadata-verify.lo
 am_libmonoruntime_static_la_OBJECTS = $(am__objects_1)
 libmonoruntime_static_la_OBJECTS =  \
 	$(am_libmonoruntime_static_la_OBJECTS)
@@ -73,13 +74,14 @@ am_libmonoruntime_la_OBJECTS = reflection.lo object.lo icall.lo \
 	method-builder.lo marshal.lo mono-mlist.lo monitor.lo \
 	threads.lo threadpool.lo file-io.lo socket-io.lo exception.lo \
 	appdomain.lo debug-mono-symfile.lo mono-debug.lo \
-	mono-debug-debugger.lo profiler.lo rand.lo security.lo \
-	security-core-clr.lo string-icalls.lo sysmath.lo process.lo \
-	environment.lo locales.lo filewatcher.lo security-manager.lo \
-	console-io.lo assembly.lo coree.lo domain.lo opcodes.lo \
-	image.lo metadata.lo verify.lo mono-endian.lo mono-config.lo \
-	rawbuffer.lo loader.lo class.lo mempool.lo \
-	mono-perfcounters.lo debug-helpers.lo generic-sharing.lo
+	mono-debug-debugger.lo profiler.lo attach.lo rand.lo \
+	security.lo security-core-clr.lo string-icalls.lo sysmath.lo \
+	process.lo environment.lo locales.lo filewatcher.lo \
+	security-manager.lo console-io.lo assembly.lo coree.lo \
+	domain.lo opcodes.lo image.lo metadata.lo verify.lo \
+	mono-endian.lo mono-config.lo loader.lo class.lo mempool.lo \
+	mono-perfcounters.lo debug-helpers.lo generic-sharing.lo \
+	metadata-verify.lo
 libmonoruntime_la_OBJECTS = $(am_libmonoruntime_la_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(libmonoruntimeincludedir)"
@@ -162,12 +164,16 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
+GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
 GMODULE_CFLAGS = @GMODULE_CFLAGS@
 GMODULE_LIBS = @GMODULE_LIBS@
+GMSGFMT = @GMSGFMT@
+GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
 HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
+HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -191,6 +197,9 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MSGFMT = @MSGFMT@
+MSGFMT_015 = @MSGFMT_015@
+MSGMERGE = @MSGMERGE@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
@@ -211,9 +220,13 @@ SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
 STRIP = @STRIP@
+USE_NLS = @USE_NLS@
 VERSION = @VERSION@
 X11 = @X11@
 XATTR_LIB = @XATTR_LIB@
+XGETTEXT = @XGETTEXT@
+XGETTEXT_015 = @XGETTEXT_015@
+XGETTEXT_EXTRA_OPTIONS = @XGETTEXT_EXTRA_OPTIONS@
 XMKMF = @XMKMF@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -286,13 +299,15 @@ target_os = @target_os@
 target_vendor = @target_vendor@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@PLATFORM_WIN32_FALSE@assembliesdir = $(exec_prefix)/lib
+@CROSS_COMPILING_FALSE@@PLATFORM_WIN32_TRUE@assembliesdir = `cygpath -m "${libdir}"`
 # Use -m here. This will use / as directory separator (C:/WINNT).
 # The files that use MONO_ASSEMBLIES and/or MONO_CFG_DIR replace the
 # / by \ if running under WIN32.
-@PLATFORM_WIN32_TRUE@assembliesdir = `cygpath -m "${libdir}"`
+@CROSS_COMPILING_TRUE@@PLATFORM_WIN32_TRUE@assembliesdir = ${libdir}
+@PLATFORM_WIN32_FALSE@assembliesdir = $(exec_prefix)/lib
+@CROSS_COMPILING_FALSE@@PLATFORM_WIN32_TRUE@confdir = `cygpath -m "${sysconfdir}"`
+@CROSS_COMPILING_TRUE@@PLATFORM_WIN32_TRUE@confdir = ${sysconfdir}
 @PLATFORM_WIN32_FALSE@confdir = $(sysconfdir)
-@PLATFORM_WIN32_TRUE@confdir = `cygpath -m "${sysconfdir}"`
 # The mingw math.h has "extern inline" functions that dont appear in libs, so
 # optimisation is required to actually inline them
 @PLATFORM_WIN32_TRUE@AM_CFLAGS = -O
@@ -349,6 +364,8 @@ libmonoruntime_la_SOURCES = \
 	mono-debug-debugger.c	\
 	profiler.c	\
 	profiler-private.h	\
+	attach.h	\
+	attach.c	\
 	rand.h		\
 	rand.c		\
 	security.c	\
@@ -390,8 +407,6 @@ libmonoruntime_la_SOURCES = \
 	mono-endian.c	\
 	mono-endian.h	\
 	mono-config.c	\
-	rawbuffer.c	\
-	rawbuffer.h	\
 	loader.c	\
 	class.c		\
 	class-internals.h		\
@@ -401,7 +416,9 @@ libmonoruntime_la_SOURCES = \
 	mono-perfcounters.h	\
 	mono-perfcounters-def.h	\
 	debug-helpers.c	\
-	generic-sharing.c
+	generic-sharing.c	\
+	mempool-internals.h	\
+	metadata-verify.c
 
 libmonoruntime_static_la_SOURCES = $(libmonoruntime_la_SOURCES)
 libmonoruntime_static_la_LDFLAGS = -static
@@ -528,6 +545,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/appdomain.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/assembly.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/attach.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/boehm-gc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/class.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/console-io.Plo@am__quote@
@@ -548,6 +566,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/locales.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/marshal.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mempool.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/metadata-verify.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/metadata.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/method-builder.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/monitor.Plo@am__quote@
@@ -564,7 +583,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/process.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/profiler.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rand.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rawbuffer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/reflection.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/security-core-clr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/security-manager.Plo@am__quote@
@@ -818,7 +836,7 @@ uninstall-am: uninstall-binPROGRAMS \
 assembly.lo mono-config.lo: Makefile
 
 @DTRACE_G_REQUIRED_TRUE@pedump-dtrace.$(OBJEXT): $(top_srcdir)/data/mono.d libmonoruntime.la ../io-layer/libwapi.la ../utils/libmonoutils.la
-@DTRACE_G_REQUIRED_TRUE@	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/dtrace-prelink.sh \
+@DTRACE_G_REQUIRED_TRUE@	DTRACE="$(DTRACE)" DTRACEFLAGS="$(DTRACEFLAGS)" AR="$(AR)" $(SHELL) $(top_srcdir)/data/dtrace-prelink.sh \
 @DTRACE_G_REQUIRED_TRUE@	--pic pedump-dtrace.$(OBJEXT) $(top_srcdir)/data/mono.d libmonoruntime.la ../io-layer/libwapi.la ../utils/libmonoutils.la
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

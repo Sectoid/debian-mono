@@ -119,10 +119,7 @@ namespace System.Web.Compilation {
 			units = new List <CodeCompileUnit> ();
 
 			CompilationSection section;
-			if (virtualPath != null)
-				section = (CompilationSection) WebConfigurationManager.GetSection ("system.web/compilation", virtualPath.Absolute);
-			else
-				section = (CompilationSection) WebConfigurationManager.GetSection ("system.web/compilation");
+			section = (CompilationSection) WebConfigurationManager.GetWebApplicationSection ("system.web/compilation");
 			string tempdir = section.TempDirectory;
 			if (String.IsNullOrEmpty (tempdir))
 				tempdir = AppDomain.CurrentDomain.SetupInformation.DynamicBase;
@@ -571,9 +568,12 @@ namespace System.Web.Compilation {
 
 			foreach (KeyValuePair <string, string> de in resources)
 				options.EmbeddedResources.Add (de.Value);
+
 			AddAssemblyReference (BuildManager.GetReferencedAssemblies ());
-			foreach (Assembly refasm in ReferencedAssemblies)
-				options.ReferencedAssemblies.Add (refasm.Location);
+			foreach (Assembly refasm in ReferencedAssemblies) {
+				string path = new Uri (refasm.CodeBase).LocalPath;
+				options.ReferencedAssemblies.Add (path);
+			}
 			
 			results = provider.CompileAssemblyFromFile (options, files.ToArray ());
 

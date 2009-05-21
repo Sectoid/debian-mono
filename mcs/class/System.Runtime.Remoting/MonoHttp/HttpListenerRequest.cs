@@ -40,7 +40,8 @@ using System; using System.Net; namespace MonoHttp {
 	internal class HttpListenerRequest
 	{
 		string [] accept_types;
-		int client_cert_error;
+//		int client_cert_error;
+//		bool no_get_certificate;
 		Encoding content_encoding;
 		long content_length;
 		bool cl_set;
@@ -48,7 +49,6 @@ using System; using System.Net; namespace MonoHttp {
 		WebHeaderCollection headers;
 		string method;
 		Stream input_stream;
-		bool is_authenticated;
 		Version version;
 		NameValueCollection query_string; // check if null is ok, check if read-only, check case-sensitiveness
 		string raw_url;
@@ -56,7 +56,6 @@ using System; using System.Net; namespace MonoHttp {
 		Uri url;
 		Uri referrer;
 		string [] user_languages;
-		bool no_get_certificate;
 		HttpListenerContext context;
 		bool is_chunked;
 		static byte [] _100continue = Encoding.ASCII.GetBytes ("HTTP/1.1 100 Continue\r\n\r\n");
@@ -68,6 +67,7 @@ using System; using System.Net; namespace MonoHttp {
 			this.context = context;
 			headers = new WebHeaderCollection ();
 			input_stream = Stream.Null;
+			version = HttpVersion.Version10;
 		}
 
 		static char [] separators = new char [] { ' ' };
@@ -141,9 +141,24 @@ using System; using System.Net; namespace MonoHttp {
 				return;
 			}
 
-			if (host == null || host.Length == 0)
+			string path;
+			Uri raw_uri;
+			#if NET_2_0
+if (MonoHttp.Utility.MaybeUri (raw_url) && Uri.TryCreate (raw_url, UriKind.Absolute, out raw_uri))
+#else
+try { raw_uri = new Uri (raw_url); } catch { raw_uri = null; } if (url != raw_uri && (raw_uri.Host == null || raw_uri.Host.Length == 0)) raw_uri = null; if (raw_uri != null)
+#endif
+
+				path = raw_uri.PathAndQuery;
+			else
+				path = raw_url;
+
+			if ((host == null || host.Length == 0))
 				host = UserHostAddress;
 
+			if (raw_uri != null)
+				host = raw_uri.Host;
+	
 			int colon = host.IndexOf (':');
 			if (colon >= 0)
 				host = host.Substring (0, colon);
@@ -152,10 +167,14 @@ using System; using System.Net; namespace MonoHttp {
 								(IsSecureConnection) ? "https" : "http",
 								host,
 								LocalEndPoint.Port);
-			try {
-				url = new Uri (base_uri + raw_url);
-			} catch {
-				context.ErrorMessage = "Invalid url";
+
+			#if NET_2_0
+if (!Uri.TryCreate (base_uri + path, UriKind.Absolute, out url)){
+#else
+try { url = new Uri (base_uri + path); } catch {}; if (url != null && (url.Host == null || url.Host.Length == 0)) url = null;  if (url == null) {
+#endif
+
+				context.ErrorMessage = "Invalid url: " + base_uri + path;
 				return;
 			}
 
@@ -287,12 +306,16 @@ using System; using System.Net; namespace MonoHttp {
 			get { return accept_types; }
 		}
 
+		[MonoTODO ("Always returns 0")]
 		public int ClientCertificateError {
 			get {
+/*				
 				if (no_get_certificate)
 					throw new InvalidOperationException (
 						"Call GetClientCertificate() before calling this method.");
 				return client_cert_error;
+*/
+				return 0;
 			}
 		}
 
@@ -337,8 +360,9 @@ using System; using System.Net; namespace MonoHttp {
 			get { return input_stream; }
 		}
 
+		[MonoTODO ("Always returns false")]
 		public bool IsAuthenticated {
-			get { return is_authenticated; }
+			get { return false; }
 		}
 
 		public bool IsLocal {

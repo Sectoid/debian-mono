@@ -38,10 +38,12 @@ using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Xml;
 using System.Web;
 using System.Web.Caching;
 using System.Web.Configuration;
@@ -50,7 +52,7 @@ using System.Web.Util;
 
 namespace System.Web.Compilation {
 	public sealed class BuildManager {
-		class BuildItem
+		sealed class BuildItem
 		{
 			public BuildProvider buildProvider;
 			public AssemblyBuilder assemblyBuilder;
@@ -196,21 +198,15 @@ namespace System.Web.Compilation {
 			}
 		}
 
-		class BuildCacheItem
+		sealed class BuildCacheItem
 		{
 			public string compiledCustomString;
 			public Assembly assembly;
 			public Type type;
 			public string virtualPath;
 
-			public bool ValidBuild {
-				get;
-				private set;
-			}
-
 			public BuildCacheItem ()
 			{
-				ValidBuild = false;
 			}
 			
 			public BuildCacheItem (Assembly assembly, BuildProvider bp, CompilerResults results)
@@ -219,7 +215,6 @@ namespace System.Web.Compilation {
 				this.compiledCustomString = bp.GetCustomString (results);
 				this.type = bp.GetGeneratedType (results);
 				this.virtualPath = bp.VirtualPath;
-				ValidBuild = true;
 			}
 			
 			public override string ToString ()
@@ -266,6 +261,8 @@ namespace System.Web.Compilation {
 		const string BUILD_MANAGER_VIRTUAL_PATH_CACHE_PREFIX = "Build_Manager";
 		static int BUILD_MANAGER_VIRTUAL_PATH_CACHE_PREFIX_LENGTH = BUILD_MANAGER_VIRTUAL_PATH_CACHE_PREFIX.Length;
 		static bool hosted;
+		static IEqualityComparer <string> comparer;
+
 		
 		static object buildCacheLock = new object ();
 
@@ -276,6 +273,8 @@ namespace System.Web.Compilation {
 		//
 		// static object buildCountLock = new object ();
 		// static int buildCount = 0;
+		static bool is_precompiled;
+		static Dictionary<string, PreCompilationData> precompiled;
 		
 		static List<Assembly> AppCode_Assemblies = new List<Assembly>();
 		static List<Assembly> TopLevel_Assemblies = new List<Assembly>();
@@ -288,6 +287,11 @@ namespace System.Web.Compilation {
 		// Maps the virtual path of a non-page build to the assembly that contains the
 		// compiled type.
 		static Dictionary <string, Assembly> nonPagesCache;
+
+		// Keeps the cache dependencies of each item currently stored in the
+		// HttpRuntime.InternalCache. It is used to build a hierarchy of dependencies (for
+		// nested controls)
+		static Dictionary <string, List <string>> dependencyCache;
 		
 		static List <Assembly> referencedAssemblies = new List <Assembly> ();
 		
@@ -306,11 +310,17 @@ namespace System.Web.Compilation {
 
 		static Dictionary <string, bool> virtualPathsToIgnore;
 		static bool haveVirtualPathsToIgnore;
+
+		static EventHandlerList events = new EventHandlerList ();
+		static object buildManagerRemoveEntryEvent = new object ();
+		
+		internal static event BuildManagerRemoveEntryEventHandler RemoveEntry {
+			add { events.AddHandler (buildManagerRemoveEntryEvent, value); }
+			remove { events.RemoveHandler (buildManagerRemoveEntryEvent, value); }
+		}
 		
 		static BuildManager ()
 		{
-			IEqualityComparer <string> comparer;
-
 			if (HttpRuntime.CaseInsensitive)
 				comparer = StringComparer.CurrentCultureIgnoreCase;
 			else
@@ -318,10 +328,14 @@ namespace System.Web.Compilation {
 
 			buildCache = new Dictionary <string, BuildCacheItem> (comparer);
 			nonPagesCache = new Dictionary <string, Assembly> (comparer);
+			dependencyCache = new Dictionary <string, List <string>> (comparer);
 			compilationTickets = new Dictionary <string, object> (comparer);
+			hosted = (AppDomain.CurrentDomain.GetData (ApplicationHost.MonoHostedDataKey) as string) == "yes";
 
-			AppDomain domain = AppDomain.CurrentDomain;
-			hosted = (domain.GetData (ApplicationHost.MonoHostedDataKey) as string) == "yes";
+			is_precompiled = File.Exists (Path.Combine (HttpRuntime.AppDomainAppPath, "PrecompiledApp.config"));
+			if (is_precompiled) {
+				LoadPrecompilationInfo ();
+			}
 		}
 		
 		internal static void ThrowNoProviderException (string extension)
@@ -356,7 +370,7 @@ namespace System.Web.Compilation {
 		{
 			List <Assembly> al = new List <Assembly> ();
 			
-			CompilationSection compConfig = WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection;
+			CompilationSection compConfig = WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
                         if (compConfig == null)
 				return al;
 			
@@ -405,6 +419,57 @@ namespace System.Web.Compilation {
 			AddAssembly (Assembly.Load (info.Assembly), al);
 		}
 
+		static void LoadPrecompilationInfo ()
+		{
+			string [] compiled = Directory.GetFiles (HttpRuntime.BinDirectory, "*.compiled");
+			foreach (string str in compiled) {
+				LoadCompiled (str);
+			}
+		}
+
+		static void LoadCompiled (string filename)
+		{
+			using (XmlTextReader reader = new XmlTextReader (filename)) {
+				reader.MoveToContent ();
+				if (reader.Name == "preserve" && reader.HasAttributes) {
+					reader.MoveToNextAttribute ();
+					string val = reader.Value;
+					// 2 -> ashx
+					// 3 -> ascx, aspx
+					// 6 -> app_code - nothing to do here
+					// 8 -> global.asax
+					// 9 -> App_GlobalResources - nothing to do?
+					if (reader.Name == "resultType" && (val == "2" || val == "3" || val == "8"))
+						LoadPageData (reader);
+				}
+			}
+		}
+
+		class PreCompilationData {
+			public string VirtualPath;
+			public string AssemblyFileName;
+			public string TypeName;
+			public Type Type;
+		}
+
+		static void LoadPageData (XmlTextReader reader)
+		{
+			PreCompilationData pc_data = new PreCompilationData ();
+
+			while (reader.MoveToNextAttribute ()) {
+				string name = reader.Name;
+				if (name == "virtualPath")
+					pc_data.VirtualPath = reader.Value;
+				else if (name == "assembly")
+					pc_data.AssemblyFileName = reader.Value;
+				else if (name == "type")
+					pc_data.TypeName = reader.Value;
+			}
+			if (precompiled == null)
+				precompiled = new Dictionary<string, PreCompilationData> (comparer);
+			precompiled.Add (pc_data.VirtualPath, pc_data);
+		}
+
 		static void AddAssembly (Assembly asm, List <Assembly> al)
 		{
 			if (al.Contains (asm))
@@ -430,7 +495,7 @@ namespace System.Web.Compilation {
 			CompilationSection c = section;
 
 			if (c == null)
-				c = WebConfigurationManager.GetSection ("system.web/compilation", virtualPath.Original) as CompilationSection;
+				c = WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
 			
 			if (c == null)
 				if (throwOnMissing)
@@ -482,10 +547,39 @@ namespace System.Web.Compilation {
 
 			return null;
 		}
-		
+
+		static Type GetPrecompiledType (string virtualPath)
+		{
+			PreCompilationData pc_data;
+			if (precompiled.TryGetValue (virtualPath, out pc_data)) {
+				if (pc_data.Type == null) {
+					pc_data.Type = Type.GetType (pc_data.TypeName + ", " + pc_data.AssemblyFileName, true);
+				}
+				return pc_data.Type;
+			}
+			//Console.WriteLine ("VPath not precompiled: {0}", virtualPath);
+			return null;
+		}
+
+		internal static Type GetPrecompiledApplicationType ()
+		{
+			if (!is_precompiled)
+				return null;
+
+			Type apptype = GetPrecompiledType (HttpRuntime.AppDomainAppVirtualPath + "/Global.asax");
+			if (apptype == null)
+				apptype = GetPrecompiledType (HttpRuntime.AppDomainAppVirtualPath + "/global.asax");
+			return apptype;
+		}
+
 		public static Assembly GetCompiledAssembly (string virtualPath)
 		{
 			VirtualPath vp = GetAbsoluteVirtualPath (virtualPath);
+			if (is_precompiled) {
+				Type type = GetPrecompiledType (vp.Absolute);
+				if (type != null)
+					return type.Assembly;
+			}
 			BuildCacheItem ret = GetCachedItem (vp);
 			if (ret != null)
 				return ret.assembly;
@@ -501,11 +595,17 @@ namespace System.Web.Compilation {
 		public static Type GetCompiledType (string virtualPath)
 		{
 			VirtualPath vp = GetAbsoluteVirtualPath (virtualPath);
+			if (is_precompiled) {
+				Type type = GetPrecompiledType (vp.Absolute);
+				if (type != null)
+					return type;
+				//TODO: What do we do here? Throw?
+			}
 			BuildCacheItem ret = GetCachedItem (vp);
 			
 			if (ret != null)
 				return ret.type;
-			
+				
 			BuildAssembly (vp);
 			ret = GetCachedItem (vp);
 			if (ret != null)
@@ -587,9 +687,22 @@ namespace System.Web.Compilation {
 			return ret;
 		}
 
-		static void SetCommonParameters (CompilationSection config, CompilerParameters p)
+		static void SetCommonParameters (CompilationSection config, CompilerParameters p, Type compilerType, string language)
 		{
 			p.IncludeDebugInformation = config.Debug;
+			MonoSettingsSection mss = WebConfigurationManager.GetSection ("system.web/monoSettings") as MonoSettingsSection;
+			if (mss == null || !mss.UseCompilersCompatibility)
+				return;
+
+			Compiler compiler = mss.CompilersCompatibility.Get (language);
+			if (compiler == null)
+				return;
+
+			Type type = HttpApplication.LoadType (compiler.Type, false);
+			if (type != compilerType)
+				return;
+
+			p.CompilerOptions = String.Concat (p.CompilerOptions, " ", compiler.CompilerOptions);
 		}
 		
 		internal static CompilerType GetDefaultCompilerTypeForLanguage (string language, CompilationSection configSection)
@@ -600,28 +713,31 @@ namespace System.Web.Compilation {
 				
 			CompilationSection config;
 			if (configSection == null)
-				config = WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection;
+				config = WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
 			else
 				config = configSection;
 			
 			Compiler compiler = config.Compilers.Get (language);
 			CompilerParameters p;
+			Type type;
+			
 			if (compiler != null) {
-				Type type = HttpApplication.LoadType (compiler.Type, true);
+				type = HttpApplication.LoadType (compiler.Type, true);
 				p = new CompilerParameters ();
 				p.CompilerOptions = compiler.CompilerOptions;
 				p.WarningLevel = compiler.WarningLevel;
-				SetCommonParameters (config, p);
+				SetCommonParameters (config, p, type, language);
 				return new CompilerType (type, p);
 			}
 
 			if (CodeDomProvider.IsDefinedLanguage (language)) {
 				CompilerInfo info = CodeDomProvider.GetCompilerInfo (language);
-				CompilerParameters par = info.CreateDefaultCompilerParameters ();
-				SetCommonParameters (config, par);
-				return new CompilerType (info.CodeDomProviderType, par);
+				p = info.CreateDefaultCompilerParameters ();
+				type = info.CodeDomProviderType;
+				SetCommonParameters (config, p, type, language);
+				return new CompilerType (type, p);
 			}
-			
+
 			throw new HttpException (String.Concat ("No compiler for language '", language, "'."));
 		}
 		
@@ -649,8 +765,7 @@ namespace System.Web.Compilation {
 			if (req == null)
 				throw new HttpException ("No context available, cannot build.");
 
-			string vpAbsolute = virtualPath.Absolute;
-			CompilationSection section = WebConfigurationManager.GetSection ("system.web/compilation", vpAbsolute) as CompilationSection;
+			CompilationSection section = WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
 			List <VirtualFile> files;
 			
 			try {
@@ -932,7 +1047,7 @@ namespace System.Web.Compilation {
 		}
 		
 		static void AssignToAssemblyBuilder (string assemblyBaseName, VirtualPath virtualPath, BuildItem buildItem,
-						     Dictionary <Type, List <AssemblyBuilder>> assemblyBuilders)
+						     Dictionary <Type, List <AssemblyBuilder>> assemblyBuilders, bool forceOwnAssembly)
 		{
 			if (!buildItem.codeGenerated) {
 				buildItem.GenerateCode ();
@@ -947,18 +1062,22 @@ namespace System.Web.Compilation {
 				assemblyBuilders.Add (buildItem.codeDomProviderType, builders);
 			}
 
-			// Put it in the first assembly builder that doesn't have conflicting
-			// partial types
-			foreach (AssemblyBuilder assemblyBuilder in builders) {
-				if (CanAcceptCode (assemblyBuilder, buildItem)) {
-					buildItem.assemblyBuilder = assemblyBuilder;
-					buildItem.StoreCodeUnit ();
-					return;
+			if (!forceOwnAssembly) {
+				// Put it in the first assembly builder that doesn't have conflicting
+				// partial types
+				foreach (AssemblyBuilder assemblyBuilder in builders) {
+					if (CanAcceptCode (assemblyBuilder, buildItem)) {
+						buildItem.assemblyBuilder = assemblyBuilder;
+						buildItem.StoreCodeUnit ();
+						return;
+					}
 				}
 			}
-
+			
 			// None of the existing builders can accept this unit, get it a new builder
-			builders.Add (CreateAssemblyBuilder (assemblyBaseName, virtualPath, buildItem));
+			AssemblyBuilder builder = CreateAssemblyBuilder (assemblyBaseName, virtualPath, buildItem);
+			if (!forceOwnAssembly)
+				builders.Add (builder);
 			buildItem.StoreCodeUnit ();
 		}
 
@@ -982,7 +1101,9 @@ namespace System.Web.Compilation {
 			if (dothrow)
 				throw new HttpException (404, "The file '" + virtualPath + "' does not exist.");
 		}
-		
+
+		const int ticketLockTimeout = 20000;
+		const int ticketLockAttempts = 3;
 		static void BuildAssembly (VirtualPath virtualPath)
 		{
 			AssertVirtualPathExists (virtualPath);
@@ -990,6 +1111,7 @@ namespace System.Web.Compilation {
 			
 			object ticket;
 			bool acquired;
+			bool locked = false;
 			string virtualDir = virtualPath.Directory;
 			BuildKind buildKind = BuildKind.Unknown;
 			bool kindPushed = false;
@@ -997,7 +1119,16 @@ namespace System.Web.Compilation {
 			
 			acquired = AcquireCompilationTicket (virtualDir, out ticket);
 			try {
-				Monitor.Enter (ticket);
+				int attempts = ticketLockAttempts;
+				while (attempts-- > 0) {
+					if (Monitor.TryEnter (ticket, ticketLockTimeout)) {
+						locked = true;
+						break;
+					}
+				}
+				if (!locked)
+					throw new HttpException (500, "Failed to acquire compilation lock for virtual path '" + virtualPath + "'.");
+				
 				lock (buildCacheLock) {
 					if (buildCache.ContainsKey (vpAbsolute))
 						return;
@@ -1014,6 +1145,9 @@ namespace System.Web.Compilation {
 				Dictionary <Type, List <AssemblyBuilder>> assemblyBuilders = new Dictionary <Type, List <AssemblyBuilder>> ();
 				bool checkForRecursion = buildKind == BuildKind.NonPages;
 				string buildItemVp;
+				BuildItem requestBuildItem = null;
+				AssemblyBuilder originalRequestAssemblyBuilder = null;
+				bool isRequestAssemblyBuilder = false;
 				
 				foreach (BuildItem buildItem in buildItems) {
 					buildItemVp = buildItem.VirtualPath;
@@ -1021,6 +1155,8 @@ namespace System.Web.Compilation {
 					if (buildItemVp == vpAbsolute) {
 						if (!buildItem.ProcessedFine)
 							throw buildItem.ProcessingException;
+						requestBuildItem = buildItem;
+						isRequestAssemblyBuilder = true;
 					} else if (!buildItem.ProcessedFine)
 						continue;
 
@@ -1035,8 +1171,8 @@ namespace System.Web.Compilation {
 					}
 
 					if (buildItem.assemblyBuilder == null)
-						AssignToAssemblyBuilder (assemblyBaseName, virtualPath, buildItem, assemblyBuilders);
-
+						AssignToAssemblyBuilder (assemblyBaseName, virtualPath, buildItem, assemblyBuilders, false);
+					
 					if (buildItem.assemblyBuilder == null && buildItemVp == vpAbsolute) {
 						Exception ex = buildItem.ProcessingException;
 						if (ex is HttpException)
@@ -1044,51 +1180,31 @@ namespace System.Web.Compilation {
 						else
 							throw new HttpException ("Error processing file at virtual path '" + virtualPath.Original + "'", ex);
 					}
-				}
-				CompilerResults results;
-				Assembly compiledAssembly;
-				string vp;
-				BuildProvider bp;
 
+					if (isRequestAssemblyBuilder) {
+						isRequestAssemblyBuilder = false;
+						originalRequestAssemblyBuilder = buildItem.assemblyBuilder;
+					}
+				}
+
+				bool needToBuildRequestItemAlone = false;
 				foreach (List <AssemblyBuilder> abuilders in assemblyBuilders.Values) {
 					foreach (AssemblyBuilder abuilder in abuilders) {
-						abuilder.AddAssemblyReference (GetReferencedAssemblies () as List <Assembly>);
-						results = abuilder.BuildAssembly (virtualPath);
-						
-						// No results is not an error - it is possible that the assembly builder contained only .asmx and
-						// .ashx files which had no body, just the directive. In such case, no code unit or code file is added
-						// to the assembly builder and, in effect, no assembly is produced but there are STILL types that need
-						// to be added to the cache.
-						compiledAssembly = results != null ? results.CompiledAssembly : null;
-						
-						lock (buildCacheLock) {
-							switch (buildKind) {
-								case BuildKind.NonPages:
-									if (compiledAssembly != null)
-										AddToReferencedAssemblies (compiledAssembly);
-									break;
+						try {
+							GenerateAssembly (abuilder, buildItems, virtualPath, buildKind);
+						} catch (Exception ex) {
+							if (requestBuildItem == null || abuilder != originalRequestAssemblyBuilder)
+								throw;
+							// There will be another assembly containing
+							// just the requested virtual path, let's
+							// give it a chance
+							needToBuildRequestItemAlone = true;
+						}
 
- 								case BuildKind.Application:
- 									globalAsaxAssembly = compiledAssembly;
- 									break;
-							}
-							
-							foreach (BuildItem buildItem in buildItems) {
-								if (!buildItem.ProcessedFine || buildItem.assemblyBuilder != abuilder)
-									continue;
-								
-								vp = buildItem.VirtualPath;
-								bp = buildItem.buildProvider;
-								buildItem.SetCompiledAssembly (abuilder, compiledAssembly);
-								
-								if (!buildCache.ContainsKey (vp)) {
-									AddToCache (vp, bp);
-									buildCache.Add (vp, new BuildCacheItem (compiledAssembly, bp, results));
-								}
-
-								if (compiledAssembly != null && !nonPagesCache.ContainsKey (vp))
-									nonPagesCache.Add (vp, compiledAssembly);
-							}
+						if (needToBuildRequestItemAlone) {
+							AssignToAssemblyBuilder (assemblyBaseName, virtualPath, requestBuildItem, assemblyBuilders, true);
+							GenerateAssembly (requestBuildItem.assemblyBuilder, buildItems, virtualPath, buildKind);
+							needToBuildRequestItemAlone = false;
 						}
 					}
 				}
@@ -1107,13 +1223,62 @@ namespace System.Web.Compilation {
 						recursiveBuilds.Pop ();
 					}
 				}
-				
-				Monitor.Exit (ticket);
-				if (acquired)
-					ReleaseCompilationTicket (virtualDir);
+
+				if (locked) {
+					Monitor.Exit (ticket);
+					if (acquired)
+						ReleaseCompilationTicket (virtualDir);
+				}
 			}
 		}
 
+		static void GenerateAssembly (AssemblyBuilder abuilder, List <BuildItem> buildItems, VirtualPath virtualPath, BuildKind buildKind)
+		{
+			CompilerResults results;
+			Assembly compiledAssembly;
+			string vp;
+			BuildProvider bp;
+			
+			abuilder.AddAssemblyReference (GetReferencedAssemblies () as List <Assembly>);
+			results = abuilder.BuildAssembly (virtualPath);
+						
+			// No results is not an error - it is possible that the assembly builder contained only .asmx and
+			// .ashx files which had no body, just the directive. In such case, no code unit or code file is added
+			// to the assembly builder and, in effect, no assembly is produced but there are STILL types that need
+			// to be added to the cache.
+			compiledAssembly = results != null ? results.CompiledAssembly : null;
+						
+			lock (buildCacheLock) {
+				switch (buildKind) {
+					case BuildKind.NonPages:
+						if (compiledAssembly != null)
+							AddToReferencedAssemblies (compiledAssembly);
+						break;
+
+					case BuildKind.Application:
+						globalAsaxAssembly = compiledAssembly;
+						break;
+				}
+							
+				foreach (BuildItem buildItem in buildItems) {
+					if (!buildItem.ProcessedFine || buildItem.assemblyBuilder != abuilder)
+						continue;
+								
+					vp = buildItem.VirtualPath;
+					bp = buildItem.buildProvider;
+					buildItem.SetCompiledAssembly (abuilder, compiledAssembly);
+								
+					if (!buildCache.ContainsKey (vp)) {
+						AddToCache (vp, bp);
+						buildCache.Add (vp, new BuildCacheItem (compiledAssembly, bp, results));
+					}
+
+					if (compiledAssembly != null && !nonPagesCache.ContainsKey (vp))
+						nonPagesCache.Add (vp, compiledAssembly);
+				}
+			}
+		}
+		
 		internal static void AddToReferencedAssemblies (Assembly asm)
 		{
 			lock (buildCacheLock) {
@@ -1138,18 +1303,27 @@ namespace System.Web.Compilation {
 			int count;
 			
 			if (col != null && (count = col.Count) > 0) {
-				string[] files = new string [count];
-				int fileCount = 0;
+				List <string> files = new List <string> (), innerDeps;
 				string file;
 				
 				foreach (object o in col) {
 					file = o as string;
 					if (String.IsNullOrEmpty (file))
 						continue;
-					files [fileCount++] = req.MapPath (file);
+					
+					files.Add (req.MapPath (file));
+					if (dependencyCache.TryGetValue (file, out innerDeps)) {
+						foreach (string f in innerDeps)
+							if (!files.Contains (f))
+								files.Add (f);
+					}
 				}
 
-				dep = new CacheDependency (files);
+				dep = new CacheDependency (files.ToArray ());
+				if (dependencyCache.ContainsKey (virtualPath))
+					dependencyCache [virtualPath] = files;
+				else
+					dependencyCache.Add (virtualPath, files);
 			} else
 				dep = null;
 			
@@ -1163,6 +1337,14 @@ namespace System.Web.Compilation {
 						       
 		}
 
+		static void OnEntryRemoved (string vp)
+		{
+			BuildManagerRemoveEntryEventHandler eh = events [buildManagerRemoveEntryEvent] as BuildManagerRemoveEntryEventHandler;
+
+			if (eh != null)
+				eh (new BuildManagerRemoveEntryEventArgs (vp, HttpContext.Current));
+		}
+		
 		static int RemoveVirtualPathFromCaches (VirtualPath virtualPath)
 		{
 			lock (buildCacheLock) {
@@ -1175,8 +1357,13 @@ namespace System.Web.Compilation {
 					return 0;
 
 				string vpAbsolute = virtualPath.Absolute;
-				if (buildCache.ContainsKey (vpAbsolute))
+				if (buildCache.ContainsKey (vpAbsolute)) {
 					buildCache.Remove (vpAbsolute);
+					OnEntryRemoved (vpAbsolute);
+				}
+				
+				if (dependencyCache.ContainsKey (vpAbsolute))
+					dependencyCache.Remove (vpAbsolute);
 				
 				Assembly asm;
 				
@@ -1197,11 +1384,16 @@ namespace System.Web.Compilation {
 					foreach (string key in keysToRemove) {
 						nonPagesCache.Remove (key);
 
-						if (buildCache.ContainsKey (key))
+						if (buildCache.ContainsKey (key)) {
 							buildCache.Remove (key);
+							OnEntryRemoved (key);
+						}
+						
+						if (dependencyCache.ContainsKey (key))
+							dependencyCache.Remove (key);
 					}
 				}
-				
+
 				return 1;
 			}
 		}
@@ -1299,7 +1491,7 @@ namespace System.Web.Compilation {
 		}
 
 		internal static CompilationSection CompilationConfig {
-			get { return WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection; }
+			get { return WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection; }
 		}
 			
 	}

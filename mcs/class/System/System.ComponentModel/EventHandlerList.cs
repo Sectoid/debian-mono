@@ -32,6 +32,10 @@
 using System;
 using System.Collections;
 
+#if NET_2_0
+using System.Collections.Generic;
+#endif
+
 namespace System.ComponentModel {
 
 	// <summary>
@@ -41,16 +45,24 @@ namespace System.ComponentModel {
 	// <remarks>
 	//   Longer description
 	// </remarks>
-	public sealed class EventHandlerList : IDisposable {
+	public sealed class EventHandlerList : IDisposable
+	{
+#if NET_2_0
+		Dictionary <object, Delegate> handlers;
+#else
+		Hashtable handlers;
+#endif
+		Delegate null_entry;
+
 		public EventHandlerList ()
 		{
-			head = null;
 		}
 
 		public Delegate this [object key] {
 			get {
-				ListNode entry = FindEntry (key);
-				return entry == null ? null : entry.value;
+				if (key == null)
+					return null_entry;
+				return FindEntry (key);
 			}
 
 			set {
@@ -60,64 +72,68 @@ namespace System.ComponentModel {
 
 		public void AddHandler (object key, Delegate value)
 		{
-			ListNode entry = FindEntry (key);
-			if (entry == null) {
-				head = new ListNode (key, value, head);
+			if (key == null) {
+				null_entry = Delegate.Combine (null_entry, value);
 				return;
 			}
-			entry.value = Delegate.Combine (entry.value, value);
+
+			Delegate prev = FindEntry (key);
+			if (prev == null) {
+				if (handlers == null) {
+#if NET_2_0
+					handlers = new Dictionary <object, Delegate> ();
+#else
+					handlers = new Hashtable ();
+#endif
+				}
+			}
+			handlers [key] = Delegate.Combine (prev, value);
 		}
 
 #if NET_2_0
 		public void AddHandlers (EventHandlerList listToAddFrom)
 		{
-			if (listToAddFrom == null) {
+			if (listToAddFrom == null)
 				return;
-			}
 
-			for (ListNode entry = listToAddFrom.head; entry != null; entry = entry.next) {
-				AddHandler (entry.key, entry.value);
-			}
+			foreach (KeyValuePair <object, Delegate> kvp in listToAddFrom.handlers)
+				AddHandler (kvp.Key, kvp.Value);
 		}
 #endif
 
 		public void RemoveHandler (object key, Delegate value)
 		{
-			ListNode entry = FindEntry (key);
+			if (key == null) {
+				null_entry = Delegate.Remove (null_entry, value);
+				return;
+			}
+
+			Delegate entry = FindEntry (key);
 			if (entry == null)
 				return;
 
-			entry.value = Delegate.Remove (entry.value, value);
+			handlers [key] = Delegate.Remove (entry, value);
 		}
 
 		public void Dispose ()
 		{
-			head = null;
+			handlers = null;
 		}
-		private ListNode FindEntry (object key)
+		
+		private Delegate FindEntry (object key)
 		{
-			for (ListNode entry = head; entry != null; entry = entry.next)
-				if (key == entry.key)
-					return entry;
+			if (handlers == null)
+				return null;
+#if NET_2_0
+			Delegate entry;
+			if (handlers.TryGetValue (key, out entry))
+				return entry;
+
 			return null;
+#else
+			return handlers [key] as Delegate;
+#endif
 		}
-
-		[Serializable]
-		private class ListNode
-		{
-			public object key;
-			public Delegate value;
-			public ListNode next;
-			public ListNode (object key, Delegate value, ListNode next)
-			{
-				this.key = key;
-				this.value = value;
-				this.next = next;
-			}
-		}
-
-		private ListNode head;
-
 	}
-	
 }
+

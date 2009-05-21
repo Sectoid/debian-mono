@@ -37,20 +37,20 @@ namespace System.Runtime.Remoting.Channels.Tcp
 	public class TcpChannel : IChannelReceiver, IChannel, IChannelSender
 	{
 		private TcpClientChannel _clientChannel;
-		private TcpServerChannel _serverChannel = null;
+		private TcpServerChannel _serverChannel;
 		private string _name = "tcp";
 		private int _priority = 1;
 	
 		public TcpChannel ()
-        {
+		{
 			Init (new Hashtable(), null, null);
 		}
 
 		public TcpChannel (int port)
 		{
 			Hashtable ht = new Hashtable();
-			ht["port"] = port.ToString();
-			Init(ht, null, null);
+			ht ["port"] = port.ToString();
+			Init (ht, null, null);
 		}
 
 		void Init (IDictionary properties, IClientChannelSinkProvider clientSink, IServerChannelSinkProvider serverSink)
@@ -62,10 +62,12 @@ namespace System.Runtime.Remoting.Channels.Tcp
 					_serverChannel = new TcpServerChannel(properties, serverSink);
 
 				object val = properties ["name"];
-				if (val != null) _name = val as string;
+				if (val != null)
+					_name = val as string;
 			
 				val = properties ["priority"];
-				if (val != null) _priority = Convert.ToInt32 (val);
+				if (val != null)
+					_priority = Convert.ToInt32 (val);
 			}
 		}
 
@@ -79,42 +81,43 @@ namespace System.Runtime.Remoting.Channels.Tcp
 
 		public IMessageSink CreateMessageSink(string url, object remoteChannelData, out string objectURI)
 		{
-			return _clientChannel.CreateMessageSink(url, remoteChannelData, out objectURI);
+			return _clientChannel.CreateMessageSink(url,
+				remoteChannelData, out objectURI);
 		}
 
-		public string ChannelName
-		{
+		public string ChannelName {
 			get { return _name; }
 		}
 
-		public int ChannelPriority
-		{
+		public int ChannelPriority {
 			get { return _priority; }
 		}
 
 		public void StartListening (object data)
 		{
-			if (_serverChannel != null) _serverChannel.StartListening (data);
+			if (_serverChannel != null)
+				_serverChannel.StartListening (data);
 		}
 		
 		public void StopListening (object data)
 		{
-			if (_serverChannel != null) _serverChannel.StopListening(data);
+			if (_serverChannel != null)
+				_serverChannel.StopListening(data);
 			TcpConnectionPool.Shutdown ();
 		}
 
-		public string[] GetUrlsForUri (string uri)
+		public string [] GetUrlsForUri (string objectURI)
 		{
-			if (_serverChannel != null) return _serverChannel.GetUrlsForUri(uri);
-			else return null;
+			if (_serverChannel != null)
+				return _serverChannel.GetUrlsForUri (objectURI);
+			return null;
 		}
 
-		public object ChannelData
-		{
-			get 
-			{
-				if (_serverChannel != null) return _serverChannel.ChannelData;
-				else return null;
+		public object ChannelData {
+			get {
+				if (_serverChannel != null)
+					return _serverChannel.ChannelData;
+				return null;
 			}
 		}
 
@@ -125,46 +128,66 @@ namespace System.Runtime.Remoting.Channels.Tcp
 
 		internal static string ParseChannelUrl (string url, out string objectURI)
 		{
-			if (url == null) throw new ArgumentNullException ("url");
+			if (url == null)
+				throw new ArgumentNullException ("url");
 			
-			int port;
+			string host, port;
 			
-			string host = ParseTcpURL (url, out objectURI, out port);
-			if (host != null)
-				return "tcp://" + host + ":" + port;
-			else
-				return null;
+			return ParseTcpURL (url, out host, out port, out objectURI);
 		}
 
-		internal static string ParseTcpURL (string url, out string objectURI, out int port)
+		internal static string ParseTcpURL (string url, out string host, out string port, out string objectURI)
 		{
 			// format: "tcp://host:port/path/to/object"
-			
 			objectURI = null;
-			port = 0;
+			host = null;
+			port = null;
 			
-			if (!url.StartsWith ("tcp://")) return null;
-			int colon = url.IndexOf (':', 6);
-			if (colon == -1) return null;
-			string host = url.Substring (6, colon - 6);
-
-			int slash = url.IndexOf ('/', colon + 1);
-			if (slash == -1) slash = url.Length;
-			string port_str = url.Substring (colon + 1, slash - colon - 1);
-			
-			if (slash < url.Length)
-				objectURI = url.Substring (slash + 1);
-
-			try {
-				port = Convert.ToInt32 (port_str);
-			} catch {
+			// url needs to be at least "tcp:"
+			if (url.Length < 4 || url[3] != ':' ||
+			    (url[0] != 'T' && url[0] != 't') ||
+			    (url[1] != 'C' && url[1] != 'c') ||
+			    (url[2] != 'P' && url[2] != 'p'))
 				return null;
+			
+			// "tcp:" is acceptable
+			if (url.Length == 4)
+				return url;
+			
+			// must be of the form "tcp://"
+			if (url.Length <= 5 || url[4] != '/' || url[5] != '/')
+				return null;
+			
+			// "tcp://" is acceptable
+			if (url.Length == 6)
+				return url;
+			
+			int i;
+			for (i = 6; i < url.Length; i++) {
+				if (url[i] == ':' || url[i] == '/')
+					break;
 			}
-
-			if (objectURI == string.Empty)
-				objectURI = null;
+			
+			host = url.Substring (6, i - 6);
+			
+			if (i + 1 < url.Length && url[i] == ':') {
+				int start = i + 1;
 				
-			return host;
+				for (i++; i < url.Length; i++) {
+					if (url[i] == '/')
+						break;
+				}
+				
+				if (i > start)
+					port = url.Substring (start, i - start);
+			}
+			
+			if (i >= url.Length || url[i] != '/')
+				return url;
+			
+			objectURI = url.Substring (i);
+			
+			return url.Substring (0, i);
 		}
 	}
 }

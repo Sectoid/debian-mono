@@ -17,7 +17,7 @@ using NUnit.Framework;
 namespace MonoTests.System.Windows.Forms {
 
 	[TestFixture]
-	public class FocusTest {
+	public class FocusTest  : TestHelper {
 
 		public class ControlPoker : Button {
 
@@ -84,8 +84,7 @@ namespace MonoTests.System.Windows.Forms {
 		}
 
 		[SetUp]
-		protected virtual void SetUp ()
-		{
+		protected override void SetUp () {
 			flat_controls = null;
 
 			flat_controls = new ControlPoker [] {
@@ -94,14 +93,15 @@ namespace MonoTests.System.Windows.Forms {
 
 			for (int i = 0; i < flat_controls.Length; i++)
 				flat_controls [i].Text = i.ToString ();
+			base.SetUp ();
 		}
 
 		[Test]
 		public void ControlSelectNextFlatTest ()
 		{
-			if (TestHelper.RunningOnUnix) {
-				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
-			}
+//			if (TestHelper.RunningOnUnix) {
+//				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
+//			}
 
 			Form form = new Form ();
 			form.ShowInTaskbar = false;
@@ -827,9 +827,9 @@ namespace MonoTests.System.Windows.Forms {
 		[Test]
 		public void ActiveControl ()
 		{
-			if (TestHelper.RunningOnUnix) {
-				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
-			}
+//			if (TestHelper.RunningOnUnix) {
+//				Assert.Ignore ("Relies on form.Show() synchronously generating WM_ACTIVATE");
+//			}
 
 			Form form = new Form ();
 			form.ShowInTaskbar = false;

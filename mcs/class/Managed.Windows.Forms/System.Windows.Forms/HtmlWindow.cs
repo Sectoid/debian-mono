@@ -140,7 +140,7 @@ namespace System.Windows.Forms
 		public string Prompt (string message, string defaultInputValue)
 		{
 			WebBrowserDialogs.Prompt prompt = new WebBrowserDialogs.Prompt ("Prompt", message, defaultInputValue);
-			DialogResult ret = prompt.Show ();
+			prompt.Show ();
 			return prompt.Text;
 		}
 		
@@ -402,9 +402,11 @@ namespace System.Windows.Forms
 #region Standard stuff
 		public override int GetHashCode ()
 		{
+			if (window == null)
+				return 0;						
 			return window.GetHashCode ();
 		}
-	
+
 		public override bool Equals (object obj)
 		{
 			return this == (HtmlWindow) obj;
@@ -418,7 +420,7 @@ namespace System.Windows.Forms
 			if ((object)left == null || (object)right == null)
 				return false;
 
-			return left.Equals (right);
+			return left.window.Equals (right.window);
 		}
 
 		public static bool operator != (HtmlWindow left, HtmlWindow right)

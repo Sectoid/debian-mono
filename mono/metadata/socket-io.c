@@ -5,8 +5,8 @@
  *	Dick Porter (dick@ximian.com)
  *	Gonzalo Paniagua Javier (gonzalo@ximian.com)
  *
- * (C) 2001 Ximian, Inc.
- * Copyright (c) 2005-2006 Novell, Inc. (http://www.novell.com)
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
@@ -18,6 +18,16 @@
 #include <unistd.h>
 #endif
 #include <errno.h>
+
+#include <sys/types.h>
+#ifndef PLATFORM_WIN32 
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#endif
 
 #include <mono/metadata/object.h>
 #include <mono/io-layer/io-layer.h>
@@ -65,6 +75,11 @@
  * inet_ntop() is missing), but the libws2_32 library is missing the
  * actual implementations of these functions.
  */
+#undef AF_INET6
+#endif
+
+#ifdef PLATFORM_ANDROID
+// not yet actually implemented...
 #undef AF_INET6
 #endif
 
@@ -387,11 +402,23 @@ static gint32 convert_sockopt_level_and_name(MonoSocketOptionLevel mono_level,
 			break;
 #endif
 		case SocketOptionName_ExclusiveAddressUse:
+#ifdef SO_EXCLUSIVEADDRUSE
+			*system_name = SO_EXCLUSIVEADDRUSE;
+			break;
+#endif
 		case SocketOptionName_UseLoopback:
+#ifdef SO_USELOOPBACK
+			*system_name = SO_USELOOPBACK;
+			break;
+#endif
 		case SocketOptionName_MaxConnections:
-			/* Can't figure out how to map these, so fall
-			 * through
-			 */
+#ifdef SO_MAXCONN
+			*system_name = SO_MAXCONN;
+			break;
+#elif defined(SOMAXCONN)
+			*system_name = SOMAXCONN;
+			break;
+#endif
 		default:
 			g_warning("System.Net.Sockets.SocketOptionName 0x%x is not supported at Socket level", mono_name);
 			return(-1);
@@ -773,13 +800,20 @@ gint32 ves_icall_System_Net_Sockets_Socket_Available_internal(SOCKET sock,
 							      gint32 *error)
 {
 	int ret;
-	gulong amount;
+	int amount;
 	
 	MONO_ARCH_SAVE_REGS;
 
 	*error = 0;
 	
+#if defined(PLATFORM_MACOSX)
+	{
+		socklen_t optlen = sizeof (amount);
+		ret=getsockopt (sock, SOL_SOCKET, SO_NREAD, &amount, &optlen);
+	}
+#else
 	ret=ioctlsocket(sock, FIONREAD, &amount);
+#endif
 	if(ret==SOCKET_ERROR) {
 		*error = WSAGetLastError ();
 		return(0);
@@ -811,13 +845,51 @@ void ves_icall_System_Net_Sockets_Socket_Blocking_internal(SOCKET sock,
 }
 
 gpointer ves_icall_System_Net_Sockets_Socket_Accept_internal(SOCKET sock,
-							     gint32 *error)
+							     gint32 *error,
+							     gboolean blocking)
 {
 	SOCKET newsock;
 	
 	MONO_ARCH_SAVE_REGS;
 
 	*error = 0;
+
+#ifdef PLATFORM_WIN32
+	/* Several applications are getting stuck during shutdown on Windows 
+	 * when an accept call is on a background thread.
+	 * 
+	 */
+	if (blocking) {
+		MonoThread* curthread = mono_thread_current ();
+
+		if (curthread) {
+			for (;;) {
+				int selectret;
+				int optlen = sizeof (gint);
+				TIMEVAL timeout; 
+				fd_set readfds;
+				FD_ZERO (&readfds);
+				FD_SET(sock, &readfds);
+				timeout.tv_sec = 0;
+				timeout.tv_usec = 1000;
+				selectret = select (0, &readfds, NULL, NULL, &timeout);
+				if (selectret > 0)
+					break;
+				if (curthread->state & ThreadState_StopRequested)
+					return NULL;
+				/* A negative return from select means that an error has occurred.
+				 * Let _wapi_accept handle that.*/
+				if (selectret != 0)
+					break;
+				/* The socket's state may have changed.  If it is no longer listening, stop.*/
+				if (!getsockopt (sock, SOL_SOCKET, SO_ACCEPTCONN, (char*)&selectret, &optlen)) {
+					if (!selectret)
+						break;
+				}
+			}
+		}
+	}
+#endif
 	
 	newsock = _wapi_accept (sock, NULL, 0);
 	if(newsock==INVALID_SOCKET) {
@@ -1583,7 +1655,7 @@ static SOCKET Socket_to_SOCKET(MonoObject *sockobj)
 	MonoClassField *field;
 	
 	field=mono_class_get_field_from_name(sockobj->vtable->klass, "socket");
-	sock=*(SOCKET *)(((char *)sockobj)+field->offset);
+	sock=GPOINTER_TO_INT (*(gpointer *)(((char *)sockobj)+field->offset));
 
 	return(sock);
 }
@@ -1624,7 +1696,7 @@ void ves_icall_System_Net_Sockets_Socket_Select_internal(MonoArray **sockets, gi
 			return;
 		}
 
-		pfds [idx].fd = GPOINTER_TO_INT (Socket_to_SOCKET (obj));
+		pfds [idx].fd = Socket_to_SOCKET (obj);
 		pfds [idx].events = (mode == 0) ? MONO_POLLIN : (mode == 1) ? MONO_POLLOUT : POLL_ERRORS;
 		idx++;
 	}
@@ -2284,29 +2356,32 @@ static gboolean hostent_to_IPHostEntry(struct hostent *he, MonoString **h_name,
 				       gboolean add_local_ips)
 {
 	MonoDomain *domain = mono_domain_get ();
-	int i;
+	int i = 0;
 	struct in_addr *local_in = NULL;
 	int nlocal_in = 0;
 
-	if(he->h_length!=4 || he->h_addrtype!=AF_INET) {
-		return(FALSE);
-	}
+	if (he != NULL) {
+		if(he->h_length!=4 || he->h_addrtype!=AF_INET) {
+			return(FALSE);
+		}
 
-	*h_name=mono_string_new(domain, he->h_name);
+		*h_name=mono_string_new(domain, he->h_name);
 
-	i=0;
-	while(he->h_aliases[i]!=NULL) {
-		i++;
-	}
-	
-	*h_aliases=mono_array_new(domain, mono_get_string_class (), i);
-	i=0;
-	while(he->h_aliases[i]!=NULL) {
-		MonoString *alias;
+		while(he->h_aliases[i]!=NULL) {
+			i++;
+		}
 		
-		alias=mono_string_new(domain, he->h_aliases[i]);
-		mono_array_setref (*h_aliases, i, alias);
-		i++;
+		*h_aliases=mono_array_new(domain, mono_get_string_class (), i);
+		i=0;
+		while(he->h_aliases[i]!=NULL) {
+			MonoString *alias;
+			
+			alias=mono_string_new(domain, he->h_aliases[i]);
+			mono_array_setref (*h_aliases, i, alias);
+			i++;
+		}
+	} else if (!add_local_ips) {
+		return FALSE;
 	}
 
 	if (add_local_ips) {
@@ -2330,10 +2405,15 @@ static gboolean hostent_to_IPHostEntry(struct hostent *he, MonoString **h_name,
 			}
 
 			g_free (local_in);
+		} else if (he == NULL) {
+			/* If requesting "" and there are no other interfaces up, MS returns 127.0.0.1 */
+			*h_addr_list = mono_array_new(domain, mono_get_string_class (), 1);
+			mono_array_setref (*h_addr_list, 0, mono_string_new (domain, "127.0.0.1"));
+			return TRUE;
 		}
 	}
 	
-	if (nlocal_in == 0) {
+	if (nlocal_in == 0 && he != NULL) {
 		i = 0;
 		while (he->h_addr_list[i]!=NULL) {
 			i++;
@@ -2389,10 +2469,6 @@ static gboolean hostent_to_IPHostEntry2(struct hostent *he1,struct hostent *he2,
 
 	family_hint = get_family_hint ();
 
-	if(he1 == NULL && he2 == NULL) {
-		return(FALSE);
-	}
-
 	/*
 	 * Check if address length and family are correct
 	 */
@@ -2446,7 +2522,7 @@ static gboolean hostent_to_IPHostEntry2(struct hostent *he1,struct hostent *he2,
 			mono_array_setref (*h_aliases, i, alias);
 			i++;
 		}
-	} else {
+	} else if (!add_local_ips) {
 		return(FALSE);
 	}
 
@@ -2521,6 +2597,13 @@ static gboolean hostent_to_IPHostEntry2(struct hostent *he1,struct hostent *he2,
 					}
 				}
 			}
+			g_free (local_in);
+			g_free (local_in6);
+			return TRUE;
+		} else if (he1 == NULL && he2 == NULL) {
+			/* If requesting "" and there are no other interfaces up, MS returns 127.0.0.1 */
+			*h_addr_list = mono_array_new(domain, mono_get_string_class (), 1);
+			mono_array_setref (*h_addr_list, 0, mono_string_new (domain, "127.0.0.1"));
 			g_free (local_in);
 			g_free (local_in6);
 			return TRUE;
@@ -2673,8 +2756,12 @@ addrinfo_to_IPHostEntry(struct addrinfo *info, MonoString **h_name,
 
 		mono_array_setref (*h_addr_list, addr_index, addr_string);
 
-		if(!i && ai->ai_canonname != NULL) {
-			*h_name=mono_string_new(domain, ai->ai_canonname);
+		if(!i) {
+			if (ai->ai_canonname != NULL) {
+				*h_name=mono_string_new(domain, ai->ai_canonname);
+			} else {
+				*h_name=mono_string_new(domain, buffer);
+			}
 		}
 
 		addr_index++;
@@ -2702,8 +2789,10 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	MONO_ARCH_SAVE_REGS;
 	
 	hostname=mono_string_to_utf8 (host);
+	if (*hostname == '\0')
+		add_local_ips = TRUE;
 #ifdef HAVE_SIOCGIFCONF
-	if (gethostname (this_hostname, sizeof (this_hostname)) != -1) {
+	if (!add_local_ips && gethostname (this_hostname, sizeof (this_hostname)) != -1) {
 		if (!strcmp (hostname, this_hostname))
 			add_local_ips = TRUE;
 	}
@@ -2714,7 +2803,7 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_CANONNAME;
 
-	if (getaddrinfo(hostname, NULL, &hints, &info) == -1) {
+	if (*hostname && getaddrinfo(hostname, NULL, &hints, &info) == -1) {
 		return(FALSE);
 	}
 	
@@ -2732,9 +2821,11 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	MONO_ARCH_SAVE_REGS;
 	
 	hostname=mono_string_to_utf8 (host);
+	if (*hostname == '\0')
+		add_local_ips = TRUE;
 
 #ifdef HAVE_SIOCGIFCONF
-	if (gethostname (this_hostname, sizeof (this_hostname)) != -1) {
+	if (!add_local_ips && gethostname (this_hostname, sizeof (this_hostname)) != -1) {
 		if (!strcmp (hostname, this_hostname))
 			add_local_ips = TRUE;
 	}
@@ -2745,13 +2836,15 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	buffer1 = g_malloc0(buffer_size1);
 	buffer2 = g_malloc0(buffer_size2);
 
-	while (gethostbyname2_r(hostname, AF_INET, &he1, buffer1, buffer_size1,
+	hp1 = NULL;
+	hp2 = NULL;
+	while (*hostname && gethostbyname2_r(hostname, AF_INET, &he1, buffer1, buffer_size1,
 				&hp1, &herr) == ERANGE) {
 		buffer_size1 *= 2;
 		buffer1 = g_realloc(buffer1, buffer_size1);
 	}
 
-	if (hp1 == NULL)
+	if (*hostname && hp1 == NULL)
 	{
 		while (gethostbyname2_r(hostname, AF_INET6, &he2, buffer2,
 					buffer_size2, &hp2, &herr) == ERANGE) {
@@ -2759,8 +2852,6 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 			buffer2 = g_realloc(buffer2, buffer_size2);
 		}
 	}
-	else
-		hp2 = NULL;
 
 	return_value = hostent_to_IPHostEntry2(hp1, hp2, h_name, h_aliases,
 					       h_addr_list, add_local_ips);
@@ -2785,19 +2876,22 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	MONO_ARCH_SAVE_REGS;
 
 	hostname=mono_string_to_utf8(host);
+	if (*hostname == '\0')
+		add_local_ips = TRUE;
 #ifdef HAVE_SIOCGIFCONF
-	if (gethostname (this_hostname, sizeof (this_hostname)) != -1) {
+	if (!add_local_ips && gethostname (this_hostname, sizeof (this_hostname)) != -1) {
 		if (!strcmp (hostname, this_hostname))
 			add_local_ips = TRUE;
 	}
 #endif
 
-	he = _wapi_gethostbyname (hostname);
+	he = NULL;
+	if (*hostname)
+		he = _wapi_gethostbyname (hostname);
 	g_free(hostname);
 
-	if(he==NULL) {
+	if (*hostname && he==NULL)
 		return(FALSE);
-	}
 
 	return(hostent_to_IPHostEntry(he, h_name, h_aliases, h_addr_list, add_local_ips));
 }
@@ -2845,7 +2939,6 @@ inet_pton (int family, const char *address, void *inaddrp)
 extern MonoBoolean ves_icall_System_Net_Dns_GetHostByAddr_internal(MonoString *addr, MonoString **h_name, MonoArray **h_aliases, MonoArray **h_addr_list)
 {
 	char *address;
-	const char *version;
 	gboolean v1;
 	
 #ifdef AF_INET6
@@ -2861,10 +2954,7 @@ extern MonoBoolean ves_icall_System_Net_Dns_GetHostByAddr_internal(MonoString *a
 	gboolean ret;
 #endif
 
-	MONO_ARCH_SAVE_REGS;
-
-	version = mono_get_runtime_info ()->framework_version;
-	v1 = (version[0] == '1');
+	v1 = mono_framework_version () == 1;
 
 	address = mono_string_to_utf8 (addr);
 

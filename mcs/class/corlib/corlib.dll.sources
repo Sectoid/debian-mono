@@ -487,7 +487,6 @@ System.Reflection/PropertyInfo.cs
 System.Reflection/ReflectionTypeLoadException.cs
 System.Reflection/ResourceAttributes.cs
 System.Reflection/ResourceLocation.cs
-System.Reflection/ReflectionSerializationHolder.cs
 System.Reflection/StrongNameKeyPair.cs
 System.Reflection/TargetException.cs
 System.Reflection/TargetInvocationException.cs
@@ -641,6 +640,7 @@ System.Runtime.InteropServices/_SignatureHelper.cs
 System.Runtime.InteropServices/_Thread.cs
 System.Runtime.InteropServices/_Type.cs
 System.Runtime.InteropServices/_TypeBuilder.cs
+System.Runtime.InteropServices/AllowReversePInvokeCallsAttribute.cs
 System.Runtime.InteropServices/ArrayWithOffset.cs
 System.Runtime.InteropServices/AssemblyRegistrationFlags.cs
 System.Runtime.InteropServices/AutomationProxyAttribute.cs
@@ -1082,6 +1082,7 @@ System.Security/SecurityFrame.cs
 System.Security/SecurityException.cs
 System.Security/SecurityManager.cs
 System.Security/SecuritySafeCriticalAttribute.cs
+System.Security/SecurityState.cs
 System.Security/SecurityTransparentAttribute.cs
 System.Security/SecurityTreatAsSafeAttribute.cs
 System.Security/SecurityZone.cs

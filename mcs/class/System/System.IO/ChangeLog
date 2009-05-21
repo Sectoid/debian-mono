@@ -1,8 +1,31 @@
+2009-03-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* InotifyWatcher.cs: don't send events when a directory is created
+	unless it matches the pattern.  Fixes bug #484082.
+
+2009-01-26  Marek Habersack  <mhabersack@novell.com>
+
+	* SearchPattern.cs: make IsMatch work for situations when there is
+	no wildcard in the pattern, but a subdirectory match is being
+	tested, e.g. pattern == "file.txt" and text ==
+	"subdir/file.txt". Lack of support for this has been causing
+	watching for changes to ASP.NET's web.config in subdirectories to
+	fail.
+
+2008-11-06  Jonathan Chambers  <joncham@gmail.com>
+
+	* MonoIO.cs : Add DuplicateHandle.
+
+2008-10-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* InotifyWatcher.cs: IN_CLOSE_WRITE is triggered when a writable file is
+	closed, but that does not mean that the file was actually modified.
+	Fixes bug #323188.
+
 2008-09-08  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* InotifyWatcher.cs: Really fix #359181.
-	(Ported from trunk)
-	
+
 2008-09-01  Dick Porter  <dick@ximian.com>
 
 	* InotifyWatcher.cs: Revert fix for bug 322330, as it is somehow

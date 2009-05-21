@@ -1,3 +1,31 @@
+2009-02-23  Jb Evain  <jbevain@novell.com>
+
+	backport of 127784.
+
+	* XUtil.cs (ToString): properly stringify datetimes.
+
+2009-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XElement.cs : oops, experimental code remained and caused test
+	  failure.
+
+2009-01-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XElement.cs : iterate all attributes and see if there is
+	  applicable ns prefix for current element. Fixed bug #466423.
+
+2009-01-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XDocument.cs : fix wrong indentation handling.
+
+2008-11-19  Jb Evain  <jbevain@novell.com>
+
+	* XNodeReader: build on NET_2_1.
+
+2008-10-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XContainer.cs (AddFirst): Avoid stackoverflow (infinite recursion).
+
 2008-06-18  Nestor Salceda  <nestor.salceda@gmail.com>
 
 	* XUtil.cs: Support XText in Clone (). Fixes bug #401325.

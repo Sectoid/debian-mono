@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!-- RELAX NG for RELAX NG -->
-<!-- $Id: relaxng.rng 46569 2005-06-27 16:09:53Z benm $ -->
+<!-- $Id: relaxng.rng 118483 2008-11-11 11:06:01Z atsushi $ -->
 <grammar datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
          ns="http://relaxng.org/ns/structure/1.0"
          xmlns="http://relaxng.org/ns/structure/1.0">

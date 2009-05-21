@@ -179,7 +179,7 @@ namespace Mono.CSharp {
 	///   The `is_address' stuff is really just a hack. We need to come up with a better
 	///   way to handle it.
 	/// </remarks>
-	public class LocalTemporary : Expression, IMemoryLocation {
+	public class LocalTemporary : Expression, IMemoryLocation, IAssignMethod {
 		LocalBuilder builder;
 		bool is_address;
 
@@ -218,6 +218,11 @@ namespace Mono.CSharp {
 			return this;
 		}
 
+		public override Expression DoResolveLValue (EmitContext ec, Expression right_side)
+		{
+			return this;
+		}
+
 		public override void Emit (EmitContext ec)
 		{
 			ILGenerator ig = ec.ig;
@@ -229,6 +234,35 @@ namespace Mono.CSharp {
 			// we need to copy from the pointer
 			if (is_address)
 				LoadFromPtr (ig, type);
+		}
+
+		#region IAssignMethod Members
+
+		public void Emit (EmitContext ec, bool leave_copy)
+		{
+			Emit (ec);
+
+			if (leave_copy)
+				Emit (ec);
+		}
+
+		public void EmitAssign (EmitContext ec, Expression source, bool leave_copy, bool prepare_for_load)
+		{
+			if (prepare_for_load)
+				throw new NotImplementedException ();
+
+			source.Emit (ec);
+
+			Store (ec);
+
+			if (leave_copy)
+				Emit (ec);
+		}
+
+		#endregion
+
+		public LocalBuilder Builder {
+			get { return builder; }
 		}
 
 		// NB: if you have `is_address' on the stack there must
@@ -256,6 +290,11 @@ namespace Mono.CSharp {
 				ig.Emit (OpCodes.Ldloc, builder);
 			else
 				ig.Emit (OpCodes.Ldloca, builder);
+		}
+
+		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
+		{
+			type = storey.MutateType (type);
 		}
 
 		public bool PointsToAddress {
@@ -328,24 +367,14 @@ namespace Mono.CSharp {
 				return null;
 			}
 
-			if (TypeManager.IsEqual (target_type, source_type)) {
-				if (target.eclass == ExprClass.Variable) {
-					New n = source as New;
-					if (n == null)
-						return this;
+			if (!TypeManager.IsEqual (target_type, source_type)){
+				Expression resolved = ResolveConversions (ec);
 
-					if (n.HasInitializer) {
-						n.SetTargetVariable (target);
-					} else if (target_type.IsValueType) {
-						n.SetTargetVariable (target);
-						return n;
-					}
-				}
-
-				return this;
+				if (resolved != this)
+					return resolved;
 			}
 
-			return ResolveConversions (ec);
+			return this;
 		}
 
 		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
@@ -366,7 +395,8 @@ namespace Mono.CSharp {
 
 		void Emit (EmitContext ec, bool is_statement)
 		{
-			((IAssignMethod) target).EmitAssign (ec, source, !is_statement, this is CompoundAssign);
+			IAssignMethod t = (IAssignMethod) target;
+			t.EmitAssign (ec, source, !is_statement, this is CompoundAssign);
 		}
 
 		public override void Emit (EmitContext ec)
@@ -430,10 +460,12 @@ namespace Mono.CSharp {
 		// Keep resolved value because field initializers have their own rules
 		//
 		ExpressionStatement resolved;
+		IResolveContext rc;
 
-		public FieldInitializer (FieldBuilder field, Expression expression)
-			: base (new FieldExpr (field, expression.Location, true), expression, expression.Location)
+		public FieldInitializer (FieldBuilder field, Expression expression, IResolveContext rc)
+			: base (new FieldExpr (field, expression.Location), expression, expression.Location)
 		{
+			this.rc = rc;
 			if (!field.IsStatic)
 				((FieldExpr)target).InstanceExpression = CompilerGeneratedThis.Instance;
 		}
@@ -444,8 +476,25 @@ namespace Mono.CSharp {
 			if (source == null)
 				return null;
 
-			if (resolved == null)
-				resolved = base.DoResolve (ec) as ExpressionStatement;
+			if (resolved == null) {
+				//
+				// Field initializers are tricky for partial classes. They have to
+				// share same costructor (block) but they have they own resolve scope.
+				//
+
+				// TODO: Use ResolveContext only
+				EmitContext f_ec = new EmitContext (rc, rc.DeclContainer, loc, null, TypeManager.void_type, 0, true);
+				f_ec.IsStatic = ec.IsStatic;
+				f_ec.CurrentBlock = ec.CurrentBlock;
+
+				EmitContext.Flags flags = EmitContext.Flags.InFieldInitializer;
+				if (ec.IsInUnsafeScope)
+					flags |= EmitContext.Flags.InUnsafe;
+
+				f_ec.Set (flags);
+
+				resolved = base.DoResolve (f_ec) as ExpressionStatement;
+			}
 
 			return resolved;
 		}
@@ -512,7 +561,10 @@ namespace Mono.CSharp {
 
 		public override void Emit (EmitContext ec)
 		{
-			throw new InternalErrorException ("don't know what to emit");
+			if (RootContext.EvalMode)
+				EmitStatement (ec);
+			else
+				throw new InternalErrorException ("don't know what to emit");				
 		}
 
 		public override void EmitStatement (EmitContext ec)
@@ -535,10 +587,9 @@ namespace Mono.CSharp {
 			this.op = op;
 		}
 
-		// !!! What a stupid name
-		public class Helper : Expression {
+		public sealed class TargetExpression : Expression {
 			Expression child;
-			public Helper (Expression child)
+			public TargetExpression (Expression child)
 			{
 				this.child = child;
 				this.loc = child.Location;
@@ -591,44 +642,39 @@ namespace Mono.CSharp {
 			// into a tree, to guarantee that we do not have side
 			// effects.
 			//
-			source = new Binary (op, new Helper (target), original_source, true);
+			source = new Binary (op, new TargetExpression (target), original_source, true);
 			return base.DoResolve (ec);
 		}
 
 		protected override Expression ResolveConversions (EmitContext ec)
 		{
-			// source might have changed to BinaryDelegate
 			Type target_type = target.Type;
-			Type source_type = source.Type;
-			Binary b = source as Binary;
-			if (b == null)
-				return base.ResolveConversions (ec);
-
-			// FIXME: Restrict only to predefined operators
 
 			//
-			// 1. if the source is explicitly convertible to the
-			//    target_type
+			// 1. the return type is implicitly convertible to the type of target
 			//
-			source = Convert.ExplicitConversion (ec, source, target_type, loc);
-			if (source == null){
-				original_source.Error_ValueCannotBeConverted (ec, loc, target_type, true);
-				return null;
+			if (Convert.ImplicitConversionExists (ec, source, target_type)) {
+				source = Convert.ImplicitConversion (ec, source, target_type, loc);
+				return this;
 			}
 
 			//
-			// 2. and the original right side is implicitly convertible to
-			// the type of target
+			// Otherwise, if the selected operator is a predefined operator
 			//
-			if (Convert.ImplicitConversionExists (ec, original_source, target_type))
-				return this;
-
-			//
-			// In the spec 2.4 they added: or if type of the target is int
-			// and the operator is a shift operator...
-			//
-			if (source_type == TypeManager.int32_type && (b.Oper & Binary.Operator.ShiftMask) != 0)
-				return this;
+			Binary b = source as Binary;
+			if (b != null) {
+				//
+				// 2a. the operator is a shift operator
+				//
+				// 2b. the return type is explicitly convertible to the type of x, and
+				// y is implicitly convertible to the type of x
+				//
+				if ((b.Oper & Binary.Operator.ShiftMask) != 0 ||
+					Convert.ImplicitConversionExists (ec, original_source, target_type)) {
+					source = Convert.ExplicitConversion (ec, source, target_type, loc);
+					return this;
+				}
+			}
 
 			original_source.Error_ValueCannotBeConverted (ec, loc, target_type, false);
 			return null;

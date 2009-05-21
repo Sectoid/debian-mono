@@ -124,7 +124,7 @@ namespace System.Web {
 			bool cookieless = false;
 			
 #if NET_2_0
-			SessionStateSection config = WebConfigurationManager.GetSection ("system.web/sessionState") as SessionStateSection;
+			SessionStateSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/sessionState") as SessionStateSection;
 			cookieless = SessionStateModule.IsCookieLess (context, config);
 #else
 			SessionConfig config = HttpContext.GetAppConfig ("system.web/sessionState") as SessionConfig;
@@ -141,8 +141,9 @@ namespace System.Web {
 #if NET_2_0 && !TARGET_J2EE
 			// If the target handler is not Page, the transfer must not occur.
 			// InTransit == true means we're being called from Transfer
-			if (isTransfer && !(handler is Page))
-				throw new HttpException ("Transfer is possible only to .aspx files");
+			bool is_static = (handler is StaticFileHandler);
+			if (isTransfer && !(handler is Page) && !is_static)
+				throw new HttpException ("Transfer is only allowed to .aspx and static files");
 #endif
 
 			HttpRequest request = context.Request;
@@ -169,6 +170,8 @@ namespace System.Web {
 			try {
 #if NET_2_0
 				context.PushHandler (handler);
+				if (is_static) // Not sure if this should apply to Page too
+					request.SetFilePath (exePath);
 #endif
 				request.SetCurrentExePath (exePath);
 				context.IsProcessingInclude = isInclude;
@@ -182,10 +185,14 @@ namespace System.Web {
 					asyncHandler.EndProcessRequest (ar);
 				}
 			} finally {
-				if (oldQuery != null && oldQuery != "" && oldQuery != request.QueryStringRaw) {
-					oldQuery = oldQuery.Substring (1); // Ignore initial '?'
-					request.QueryStringRaw = oldQuery; // which is added here.
+				if (oldQuery != request.QueryStringRaw) {
+					if (oldQuery != null && oldQuery.Length > 0) {
+						oldQuery = oldQuery.Substring (1); // Ignore initial '?'
+						request.QueryStringRaw = oldQuery; // which is added here.
+					} else
+						request.QueryStringRaw = String.Empty;
 				}
+				
 				response.SetTextWriter (previous);
 				if (!preserveForm)
 					request.SetForm (oldForm);
@@ -342,24 +349,32 @@ namespace System.Web {
 
 		public string UrlDecode (string s)
 		{
-			return HttpUtility.UrlDecode (s);
+			HttpRequest request = context.Request;
+			if(request != null)
+				return HttpUtility.UrlDecode (s, request.ContentEncoding);
+			else
+				return HttpUtility.UrlDecode (s);
 		}
 
 		public void UrlDecode (string s, TextWriter output)
 		{
 			if (s != null)
-				output.Write (HttpUtility.UrlDecode (s));
+				output.Write (UrlDecode (s));
 		}
 
 		public string UrlEncode (string s)
 		{
-			return HttpUtility.UrlEncode (s);
+			HttpResponse response = context.Response;
+			if (response != null)
+				return HttpUtility.UrlEncode (s, response.ContentEncoding);
+			else
+				return HttpUtility.UrlEncode (s);
 		}
 
 		public void UrlEncode (string s, TextWriter output)
 		{
 			if (s != null)
-				output.Write (HttpUtility.UrlEncode (s));
+				output.Write (UrlEncode (s));
 		}
 
 		public string UrlPathEncode (string s)
@@ -367,7 +382,7 @@ namespace System.Web {
 			if (s == null)
 				return null;
 
-			int idx = s.IndexOf ("?");
+			int idx = s.IndexOf ('?');
 			string s2 = null;
 			if (idx != -1) {
 				s2 = s.Substring (0, idx);

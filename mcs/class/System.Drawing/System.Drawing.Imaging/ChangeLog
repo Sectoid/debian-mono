@@ -1,3 +1,19 @@
+2008-11-21  Andreia Gaita  <shana@jitted.com>
+
+	* Metafile.cs: Save the underlying stream when creating from a
+	clone under win32 (fixes #438886)
+
+2008-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ColorPalette.cs, ImageFormat.cs: Remove unneeded field 
+	initialization to their default values.
+	[Found using Gendarme AvoidUnneededFieldInitializationRule]
+
+2008-08-06  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* FrameDimension.cs: Fix double-cast in Equals (found using Gendarme).
+	Then fixed a lot of other things while creating unit tests for it.
+
 2008-07-14  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* ImageAttributes.cs: Fix GetAdjustedPalette using new (and correct)

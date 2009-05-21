@@ -1,18 +1,71 @@
 thisdir = tools
-SUBDIRS = \
-	al cilc corcompare culevel ictool mono-xsd security wsdl genxs sqlsharp		\
-	disco soapsuds browsercaps-updater monop gacutil linker	tuner \
-	resgen macpack mkbundle dtd2rng dtd2xsd mjs prj2make mono-service \
-	mono-shlib-cop compiler-tester mono-xmltool installvst  installutil
+
+net_1_1_dirs := \
+	al			\
+	cilc		\
+	culevel		\
+	ictool		\
+	mono-xsd	\
+	security	\
+	wsdl		\
+	genxs		\
+	disco		\
+	soapsuds	\
+	browsercaps-updater	\
+	monop		\
+	gacutil		\
+	linker		\
+	tuner		\
+	cil-strip	\
+	resgen		\
+	macpack		\
+	mkbundle	\
+	dtd2rng		\
+	dtd2xsd		\
+	mjs			\
+	prj2make	\
+	mono-service	\
+	monodoc		\
+	mod		\
+	compiler-tester	\
+	mono-xmltool	\
+	installvst		\
+	installutil
+
+net_2_0_dirs := \
+	al			\
+	corcompare	\
+	csharp		\
+	mono-xsd	\
+	wsdl		\
+	compiler-tester	\
+	monop		\
+	xbuild		\
+	resgen		\
+	mdoc		\
+	mono-service	\
+	mono-shlib-cop	\
+	mkbundle	\
+	sgen		\
+	security	\
+	mconfig		\
+	installutil	\
+	nunitreport	\
+	sqlsharp	\
+	gacutil		\
+	csharplib
+
+net_2_1_dirs := \
+	compiler-tester
 
 net_1_1_bootstrap_SUBDIRS = gacutil security resgen culevel
+net_1_1_SUBDIRS := $(net_1_1_dirs)
 net_2_0_bootstrap_SUBDIRS = resgen
+net_2_0_SUBDIRS := $(net_2_0_dirs)
+net_2_1_raw_SUBDIRS := $(net_2_1_dirs)
+net_2_1_SUBDIRS := $(net_2_1_dirs) moon
 
-net_2_0_SUBDIRS = al corcompare mono-xsd wsdl compiler-tester monop xbuild resgen mono-service mkbundle sgen security mconfig installutil nunitreport gacutil
-net_2_1_raw_SUBDIRS = compiler-tester
-net_2_1_SUBDIRS = compiler-tester tuner
-
-DIST_ONLY_SUBDIRS = xbuild sgen mconfig nunitreport
+SUBDIRS = $(net_1_1_SUBDIRS) $(net_2_0_SUBDIRS) $(net_2_1_SUBDIRS)
 
 include ../build/rules.make
 
@@ -27,7 +80,7 @@ DISTFILES = \
 	gensources.sh			\
 	removecomments.sh
 
-test-local run-test-local run-test-ondotnet-local all-local install-local uninstall-local:
+test-local run-test-local run-test-ondotnet-local all-local install-local uninstall-local doc-update-local:
 	@:
 
 dist-local: dist-default

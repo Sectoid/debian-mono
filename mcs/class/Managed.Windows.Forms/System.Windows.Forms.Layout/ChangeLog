@@ -1,3 +1,30 @@
+2008-11-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DefaultLayout.cs: Apply patch from Jonathan Anderson that keeps
+	undocked autosize controls from moving when resized.
+	[Fixes bug #439479]
+
+2008-11-06  Jonathan Pobst  <monkey@jpobst.com>
+
+	* DefaultLayout.cs: Apply patch from Jonathan Anderson that better
+	handles AutoSize controls when docked.
+	[Fixes bug #439443]
+
+2008-10-13  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TableLayout.cs: My previous fix broke a test, tweak it a bit.
+
+2008-10-08  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TableLayout.cs: If multiple controls are set to the same cell,
+	flow the additional ones to other empty cells.  [Fixes bug #433531]
+
+2008-09-12  Jonathan Pobst  <monkey@jpobst.com>
+
+	* TableLayoutSettingsTypeConverter.cs: Don't create an instance of 
+	TableLayoutPanel in ConvertFrom.
+	[Fixes bug #425647]
+
 2008-07-28  Ivan N. Zlatev  <contact@i-nz.net>
 
 	* TableLayout.cs: MS adds rows instead of columns even when 

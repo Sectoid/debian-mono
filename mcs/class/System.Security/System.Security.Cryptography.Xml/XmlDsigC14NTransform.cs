@@ -48,14 +48,16 @@ namespace System.Security.Cryptography.Xml {
 		private XmlCanonicalizer canonicalizer;
 		private Stream s;
 		
-		public XmlDsigC14NTransform () 
+		public XmlDsigC14NTransform () : this (false)
 		{
-			Algorithm = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
-			canonicalizer = new XmlCanonicalizer (false, false, PropagatedNamespaces);
 		}
 
 		public XmlDsigC14NTransform (bool includeComments) 
 		{
+			if (includeComments)
+				Algorithm = XmlSignature.AlgorithmNamespaces.XmlDsigC14NWithCommentsTransform;
+			else
+				Algorithm = XmlSignature.AlgorithmNamespaces.XmlDsigC14NTransform;
 			canonicalizer = new XmlCanonicalizer (includeComments, false, PropagatedNamespaces);
 		}
 
@@ -90,6 +92,7 @@ namespace System.Security.Cryptography.Xml {
 		[ComVisible (false)]
 		public override byte[] GetDigestedOutput (HashAlgorithm hash)
 		{
+			// no null check, MS throws a NullReferenceException here
 			return hash.ComputeHash ((Stream) GetOutput ());
 		}
 #endif
@@ -113,21 +116,30 @@ namespace System.Security.Cryptography.Xml {
 
 		public override void LoadInput (object obj) 
 		{
-			if (obj is Stream) {
-				s = (obj as Stream);
+			// possible input: Stream, XmlDocument, and XmlNodeList
+			Stream stream = (obj as Stream);
+			if (stream != null) {
 				XmlDocument doc = new XmlDocument ();
 				doc.PreserveWhitespace = true;	// REALLY IMPORTANT
 #if NET_1_1
 				doc.XmlResolver = GetResolver ();
 #endif
-				doc.Load (new XmlSignatureStreamReader (
-					new StreamReader ((Stream) obj)));
+				doc.Load (new XmlSignatureStreamReader (new StreamReader (stream)));
 //				doc.Load ((Stream) obj);
 				s = canonicalizer.Canonicalize (doc);
-			} else if (obj is XmlDocument)
-				s = canonicalizer.Canonicalize ((obj as XmlDocument));
-			else if (obj is XmlNodeList)
-				s = canonicalizer.Canonicalize ((obj as XmlNodeList));
+				return;
+			}
+
+			XmlDocument xd = (obj as XmlDocument);
+			if (xd != null) {
+				s = canonicalizer.Canonicalize (xd);
+				return;
+			}
+
+			XmlNodeList nl = (obj as XmlNodeList);
+			if (nl != null) {
+				s = canonicalizer.Canonicalize (nl);
+			}
 #if NET_2_0
 			else
 				throw new ArgumentException ("obj");

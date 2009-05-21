@@ -58,20 +58,21 @@ namespace System.Web.UI {
 		
 		public static object Eval (object container, string expression)
 		{
-			if ((expression == null) || (expression.Length == 0))
+			expression = expression != null ? expression.Trim () : null;
+			if (expression == null || expression.Length == 0)
 				throw new ArgumentNullException ("expression");
 
 			object current = container;
-
 			while (current != null) {
 				int dot = expression.IndexOf ('.');
 				int size = (dot == -1) ? expression.Length : dot;
 				string prop = expression.Substring (0, size);
+				
 				if (prop.IndexOf ('[') != -1)
 					current = GetIndexedPropertyValue (current, prop);
 				else
 					current = GetPropertyValue (current, prop);
-
+				
 				if (dot == -1)
 					break;
 				
@@ -131,7 +132,7 @@ namespace System.Web.UI {
 			string property = null;
 			if (openIdx > 0) {
 				property = expr.Substring (0, openIdx);
-				if (property != null && property != String.Empty)
+				if (property != null && property.Length > 0)
 					container = GetPropertyValue (container, property);
 			}
 
@@ -139,17 +140,20 @@ namespace System.Web.UI {
                                 return null;
 
 			if (container is System.Collections.IList) {
+				if (is_string)
+					throw new ArgumentException (expr + " cannot be indexed with a string.");
 				IList l = (IList) container;
 				return l [intVal];
 			}
 
 			Type t = container.GetType ();
+
 			// MS does not seem to look for any other than "Item"!!!
 			object [] atts = t.GetCustomAttributes (typeof (DefaultMemberAttribute), false);
 			if (atts.Length != 1)
-				throw new ArgumentException (expr + " indexer not found.");
-
-			property = ((DefaultMemberAttribute) atts [0]).MemberName;
+				property = "Item";
+			else
+				property = ((DefaultMemberAttribute) atts [0]).MemberName;
 
 			Type [] argTypes = new Type [] { (is_string) ? typeof (string) : typeof (int) };
 			PropertyInfo prop = t.GetProperty (property, argTypes);

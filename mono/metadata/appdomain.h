@@ -65,6 +65,9 @@ MonoDomain *
 mono_domain_create         (void);
 
 MonoDomain *
+mono_domain_create_appdomain (char *friendly_name, char *configuration_file);
+
+MonoDomain *
 mono_domain_get            (void);
 
 MonoDomain *
@@ -78,6 +81,9 @@ mono_domain_set            (MonoDomain *domain, gboolean force);
 
 void
 mono_domain_set_internal   (MonoDomain *domain);
+
+void
+mono_domain_unload (MonoDomain *domain);
 
 gboolean
 mono_domain_is_unloading   (MonoDomain *domain);

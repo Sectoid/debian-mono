@@ -306,8 +306,14 @@ mono_dl_open (const char *name, int flags, char **error_msg)
 	if (!lib) {
 		char *lname;
 		char *llname;
-		const char *suff = ".la";
-		const char *ext = strrchr (name, '.');
+		const char *suff;
+		const char *ext;
+		/* This platform does not support dlopen */
+		if (name == NULL)
+			return NULL;
+		
+		suff = ".la";
+		ext = strrchr (name, '.');
 		if (ext && strcmp (ext, ".la") == 0)
 			suff = "";
 		lname = g_strconcat (name, suff, NULL);

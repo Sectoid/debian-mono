@@ -46,36 +46,37 @@ namespace System.Web.UI {
 	[AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public class ControlBuilder
 	{
-		internal static BindingFlags flagsNoCase = BindingFlags.Public |
+		internal static readonly BindingFlags FlagsNoCase = BindingFlags.Public |
 			BindingFlags.Instance |
 			BindingFlags.Static |
 			BindingFlags.IgnoreCase;
 
 		ControlBuilder myNamingContainer;
 		TemplateParser parser;
-		internal ControlBuilder parentBuilder;
+		Type parserType;
+		ControlBuilder parentBuilder;
 		Type type;	       
 		string tagName;
 		string originalTagName;
 		string id;
-		internal IDictionary attribs;
-		internal int line;
-		internal string fileName;
+		IDictionary attribs;
+		int line;
+		string fileName;
 		bool childrenAsProperties;
 		bool isIParserAccessor = true;
 		bool hasAspCode;
-		internal ControlBuilder defaultPropertyBuilder;
+		ControlBuilder defaultPropertyBuilder;
 		ArrayList children;
 		ArrayList templateChildren;
 		static int nextID;
 
-		internal bool haveParserVariable;
-		internal CodeMemberMethod method;
-		internal CodeStatementCollection methodStatements;
-		internal CodeMemberMethod renderMethod;
-		internal int renderIndex;
-		internal bool isProperty;
-		internal ILocation location;
+		bool haveParserVariable;
+		CodeMemberMethod method;
+		CodeStatementCollection methodStatements;
+		CodeMemberMethod renderMethod;
+		int renderIndex;
+		bool isProperty;
+		ILocation location;
 		ArrayList otherTags;
 		
 		public ControlBuilder ()
@@ -93,6 +94,7 @@ namespace System.Web.UI {
 
 		{
 			this.parser = parser;
+			this.parserType = parser != null ? parser.GetType () : null;
 			this.parentBuilder = parentBuilder;
 			this.type = type;
 			this.tagName = tagName;
@@ -107,7 +109,62 @@ namespace System.Web.UI {
 			if (otherTags == null)
 				otherTags = new ArrayList ();
 		}
-		
+
+		internal ControlBuilder ParentBuilder {
+			get { return parentBuilder; }
+		}
+
+		internal IDictionary Attributes {
+			get { return attribs; }
+		}
+
+		internal int Line {
+			get { return line; }
+			set { line = value; }
+		}
+
+		internal string FileName {
+			get { return fileName; }
+			set { fileName = value; }
+		}
+
+		internal ControlBuilder DefaultPropertyBuilder {
+			get { return defaultPropertyBuilder; }
+		}
+
+		internal bool HaveParserVariable {
+			get { return haveParserVariable; }
+			set { haveParserVariable = value; }
+		}
+
+		internal CodeMemberMethod Method {
+			get { return method; }
+			set { method = value; }
+		}
+
+		internal CodeStatementCollection MethodStatements {
+			get { return methodStatements; }
+			set { methodStatements = value; }
+		}
+
+		internal CodeMemberMethod RenderMethod {
+			get { return renderMethod; }
+			set { renderMethod = value; }
+		}
+
+		internal int RenderIndex {
+			get { return renderIndex; }
+		}
+
+		internal bool IsProperty {
+			get { return isProperty; }
+		}
+
+		internal ILocation Location {
+			get { return location; }
+			set { location = value; }
+		}
+	
 		internal ArrayList OtherTags {
 			get { return otherTags; }
 		}
@@ -187,22 +244,46 @@ namespace System.Web.UI {
 #endif
 		Type BindingContainerType {
 			get {
-				ControlBuilder cb = (this is TemplateBuilder) ? this : MyNamingContainer;
-				if (cb == null)
+				ControlBuilder cb = (this is TemplateBuilder && !(this is RootBuilder)) ? this : MyNamingContainer;
+				
+				if (cb == null) {
+					if (this is RootBuilder && parserType == typeof (PageParser)) 
+						return typeof (Page);
+					
 					return typeof (Control);
+				}
 
 #if NET_2_0
-				if (cb != this && cb is ContentBuilderInternal)
+				if (cb != this && cb is ContentBuilderInternal && !typeof (INonBindingContainer).IsAssignableFrom (cb.BindingContainerType))
 					return cb.BindingContainerType;
 #endif
 
+				Type ct;
 				if (cb is TemplateBuilder) {
-					Type ct =((TemplateBuilder) cb).ContainerType;
+					ct = ((TemplateBuilder) cb).ContainerType;
+					if (typeof (INonBindingContainer).IsAssignableFrom (ct))
+						return MyNamingContainer.BindingContainerType;
+					
+					if (ct != null)
+						return ct;
+
+					ct = cb.ControlType;
 					if (ct == null)
 						return typeof (Control);
+					
+					if (typeof (INonBindingContainer).IsAssignableFrom (ct) || !typeof (INamingContainer).IsAssignableFrom (ct))
+						return MyNamingContainer.BindingContainerType;
+
 					return ct;
 				}
 
+				ct = cb.ControlType;
+				if (ct == null)
+					return typeof (Control);
+				
+				if (typeof (INonBindingContainer).IsAssignableFrom (ct) || !typeof (INamingContainer).IsAssignableFrom (ct))
+					return MyNamingContainer.BindingContainerType;
+				
 				return cb.ControlType;
 			}
 		}
@@ -247,17 +328,51 @@ namespace System.Web.UI {
 			get { return childrenAsProperties; }
 		}
 
+		internal string GetAttribute (string name)
+		{
+			if (attribs == null)
+				return null;
+
+			return attribs [name] as string;
+		}
+
+		internal void IncreaseRenderIndex ()
+		{
+			renderIndex++;
+		}
+		
 		void AddChild (object child)
 		{
 			if (children == null)
 				children = new ArrayList ();
-			
+
 			children.Add (child);
-			if (child is TemplateBuilder) {
+			ControlBuilder cb = child as ControlBuilder;
+			if (cb != null && cb is TemplateBuilder) {
 				if (templateChildren == null)
 					templateChildren = new ArrayList ();
 				templateChildren.Add (child);
 			}
+
+#if NET_2_0
+			if (parser == null)
+				return;
+			
+			string tag = cb != null ? cb.TagName : null;
+			if (String.IsNullOrEmpty (tag))
+				return;
+
+			RootBuilder rb = Root;
+			AspComponentFoundry foundry = rb != null ? rb.Foundry : null;
+			if (foundry == null)
+				return;
+			AspComponent component = foundry.GetComponent (tag);
+			if (component == null || !component.FromConfig)
+				return;
+			
+			parser.AddImport (component.Namespace);
+			parser.AddDependency (component.Source);
+#endif
 		}
 		
 		public virtual bool AllowWhitespaceLiterals ()
@@ -342,7 +457,7 @@ namespace System.Web.UI {
 			if (tagType == null)
 				return null;
 			
-			PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+			PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
 			if (ps == null)
 				return tagType;
 
@@ -462,7 +577,7 @@ namespace System.Web.UI {
 			else
 				propertyName = propName;
 			
-			PropertyInfo prop = type.GetProperty (propertyName, flagsNoCase);
+			PropertyInfo prop = type.GetProperty (propertyName, FlagsNoCase);
 			if (prop == null) {
 				string msg = String.Format ("Property {0} not found in type {1}", propertyName, type);
 				throw new HttpException (msg);
@@ -637,6 +752,16 @@ namespace System.Web.UI {
 		public virtual object BuildObject ()
 		{
 			return CreateInstance ();
+		}
+		
+		[MonoTODO]
+		public virtual void ProcessGeneratedCode(CodeCompileUnit codeCompileUnit,
+			CodeTypeDeclaration baseType,
+			CodeTypeDeclaration derivedType,
+			CodeMemberMethod buildMethod,
+			CodeMemberMethod dataBindingMethod)
+		{
+			throw new NotImplementedException ();
 		}
 
 		internal void ResetState()
