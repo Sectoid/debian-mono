@@ -2,7 +2,7 @@ thisdir = tools/csharplib
 SUBDIRS = 
 include ../../build/rules.make
 
-LINKER = $(topdir)/class/lib/net_1_1/monolinker.exe
+LINKER = $(topdir)/class/lib/net_2_0/monolinker.exe
 
 LOCAL_MCS_FLAGS = -d:GMCS_SOURCE -d:NET_1_1 -d:NET_2_0 -r:System -r:System.Xml
 

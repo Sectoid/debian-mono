@@ -14,9 +14,6 @@ net_1_1_dirs := \
 	browsercaps-updater	\
 	monop		\
 	gacutil		\
-	linker		\
-	tuner		\
-	cil-strip	\
 	resgen		\
 	macpack		\
 	mkbundle	\
@@ -39,6 +36,7 @@ net_2_0_dirs := \
 	lc		\
 	mono-xsd	\
 	wsdl		\
+	genxs		\
 	compiler-tester	\
 	monop		\
 	xbuild		\
@@ -54,6 +52,9 @@ net_2_0_dirs := \
 	nunitreport	\
 	sqlsharp	\
 	gacutil		\
+	linker		\
+	tuner		\
+	cil-strip	\
 	csharplib
 
 net_2_1_dirs := \
