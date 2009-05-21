@@ -25,6 +25,11 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Added missing non-stamp/files targets to .PHONY.
     + Only pass mono/2.0 to MONO_PATH in RUN_MONO variable, else gmcs.exe
       picks up the 1.0 corlib.
+    + Bumped clilibs of libmono-cairo{1.0,2.0}-cil, libmono-data{1.0,2.0}-cil,
+      libmono-data-tds{1.0,2.0}-cil, libmono-oracle2.0-cil,
+      libmono-posix{1.0,2.0}-cil, libmono-relaxng{1.0,2.0}-cil,
+      libmono-system2.0-cil, libmono-system-runtime2.0-cil, libmono-web2.0-cil,
+      libmono-winforms2.0-cil and libmono-webbrowser0.5-cil.
   * debian/cli-wrapper.c
     + Dropped as this wrapper is obsolete since mono 1.1.6-1.
   * debian/patches/kfreebsd_support.dpatch
