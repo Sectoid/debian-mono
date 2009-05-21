@@ -289,7 +289,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	
 	dh_link -i
-	dh_installchangelogs -i -Xchangelog
+	dh_installchangelogs -i -X ChangeLog
 	dh_installdocs -i
 	dh_installman -i
 	debian/dh_clistrip -i --dbg-package=mono-dbg
@@ -355,7 +355,7 @@ binary-arch: build-arch install-arch
 
 	dh_install -s
 	dh_link -s
-	dh_installchangelogs -s -Xchangelog
+	dh_installchangelogs -s -X ChangeLog
 	dh_installchangelogs -pmono-runtime
 	dh_installchangelogs -pmono-jay $(CURDIR)/mcs/jay/ChangeLog
 	dh_installdocs -s
