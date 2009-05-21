@@ -11,7 +11,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Made get-orig-source policy conform (by using . as output path).
     + Dropped --with-oprofile from configure call as debian doesn't ship the
       needed header files for it.
-    + Dropped--with-moonlight from configure call as the moon source package
+    + Pass --with-moonlight=no to configure call as the moon source package
       will ship the assemblies with the release containing Silverlight 2.0
       support.
     + Build MonoGetAssemblyName using gmcs instead of mcs.

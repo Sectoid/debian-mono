@@ -63,6 +63,7 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 		  --with-libgdiplus=installed --with-x=yes \
+		  --with-moonlight=no \
 		  --enable-quiet-build=no
 
 # Mono's build system doesn't like -j > 1
@@ -172,7 +173,6 @@ install-indep-stamp:
 	cd mcs && \
 	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp && \
 	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0 && \
-	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_1 && \
 	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_3_5
 
 	# upstream forgot to remove this one
