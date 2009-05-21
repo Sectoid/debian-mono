@@ -41,25 +41,3 @@ diff -urNad mono-2.4+dfsg~/mcs/class/Mono.Cecil/Makefile mono-2.4+dfsg/mcs/class
 +ifneq (net_2_0, $(PROFILE))
  NO_INSTALL = yes
  endif
- 
-diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
---- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-20 00:07:08.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-20 00:13:03.000000000 +0200
-@@ -15,7 +15,6 @@
- 	monop		\
- 	gacutil		\
- 	linker		\
--	tuner		\
- 	cil-strip	\
- 	resgen		\
- 	macpack		\
-@@ -53,7 +52,8 @@
- 	nunitreport	\
- 	sqlsharp	\
- 	gacutil		\
--	csharplib
-+	csharplib	\
-+	tuner
- 
- net_2_1_dirs := \
- 	compiler-tester

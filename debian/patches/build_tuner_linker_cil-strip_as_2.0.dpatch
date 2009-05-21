@@ -1,28 +1,30 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## build_cil-strip_as_2.0.dpatch by Mirco Bauer <meebey@debian.org>
+## build_tuner_as_2.0.dpatch by Mirco Bauer <meebey@debian.org>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
 ## DP: No description.
 
 @DPATCH@
 diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
---- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 02:39:52.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 02:47:38.000000000 +0200
-@@ -15,7 +15,6 @@
+--- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 13:40:48.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 13:47:59.000000000 +0200
+@@ -14,9 +14,6 @@
+ 	browsercaps-updater	\
  	monop		\
  	gacutil		\
- 	linker		\
+-	linker		\
+-	tuner		\
 -	cil-strip	\
  	resgen		\
  	macpack		\
  	mkbundle	\
-@@ -54,7 +53,8 @@
+@@ -53,6 +50,9 @@
+ 	nunitreport	\
  	sqlsharp	\
  	gacutil		\
- 	csharplib	\
--	tuner
 +	tuner		\
-+	cil-strip
++	linker		\
++	cil-strip	\
+ 	csharplib
  
  net_2_1_dirs := \
- 	compiler-tester

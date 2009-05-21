@@ -6,9 +6,9 @@
 
 @DPATCH@
 diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
---- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-20 00:22:24.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-20 00:23:59.000000000 +0200
-@@ -37,6 +37,7 @@
+--- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 13:52:09.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 13:52:35.000000000 +0200
+@@ -35,6 +35,7 @@
  	csharp		\
  	mono-xsd	\
  	wsdl		\
@@ -17,8 +17,8 @@ diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
  	monop		\
  	xbuild		\
 diff -urNad mono-2.4+dfsg~/mcs/tools/genxs/Makefile mono-2.4+dfsg/mcs/tools/genxs/Makefile
---- mono-2.4+dfsg~/mcs/tools/genxs/Makefile	2009-05-20 00:16:56.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/genxs/Makefile	2009-05-20 00:22:38.000000000 +0200
+--- mono-2.4+dfsg~/mcs/tools/genxs/Makefile	2009-05-21 13:52:08.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/genxs/Makefile	2009-05-21 13:52:35.000000000 +0200
 @@ -5,4 +5,6 @@
  LOCAL_MCS_FLAGS = -r:System.Xml.dll
  PROGRAM = $(topdir)/class/lib/$(PROFILE)/genxs.exe
@@ -26,3 +26,14 @@ diff -urNad mono-2.4+dfsg~/mcs/tools/genxs/Makefile mono-2.4+dfsg/mcs/tools/genx
 +CLEAN_FILES = *.exe *.mdb
 +
  include ../../build/executable.make
+diff -urNad mono-2.4+dfsg~/scripts/Makefile.am mono-2.4+dfsg/scripts/Makefile.am
+--- mono-2.4+dfsg~/scripts/Makefile.am	2009-02-14 00:32:38.000000000 +0100
++++ mono-2.4+dfsg/scripts/Makefile.am	2009-05-21 13:54:16.000000000 +0200
+@@ -83,6 +83,7 @@
+ 
+ scripts_2_0 = \
+ 	al2$(SCRIPT_SUFFIX)			\
++	genxs2$(SCRIPT_SUFFIX)			\
+ 	csharp$(SCRIPT_SUFFIX)			\
+ 	gacutil2$(SCRIPT_SUFFIX)		\
+ 	gmcs$(SCRIPT_SUFFIX)			\

@@ -18,7 +18,6 @@ disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
 build_cecil_as_2.0
 build_firebirdsql_as_2.0
+build_tuner_linker_cil-strip_as_2.0
 build_permview_as_2.0
 build_genxs_2.0
-build_cil-strip_as_2.0
-build_monolinker_as_2.0
