@@ -1,0 +1,28 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## build_monolinker_as_2.0.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
+--- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 02:05:25.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 02:06:31.000000000 +0200
+@@ -14,7 +14,6 @@
+ 	browsercaps-updater	\
+ 	monop		\
+ 	gacutil		\
+-	linker		\
+ 	cil-strip	\
+ 	resgen		\
+ 	macpack		\
+@@ -54,7 +53,8 @@
+ 	sqlsharp	\
+ 	gacutil		\
+ 	csharplib	\
+-	tuner
++	tuner		\
++	linker
+ 
+ net_2_1_dirs := \
+ 	compiler-tester
