@@ -3,10 +3,15 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * NOT RELEASED YET
   * New upstream release.
     + For release highlights see the NEWS.Debian file
+  * debian/NEWS:
+    + Updated for Mono 2.4, Mono 2.2 and Mono 2.0.
   * DFSG edition of Mono 2.4 as the source taball contained a binary that is
     not part of the bootstrapping process (docs/AgilityPack.dll) and is CC
     Share-alike 2.5 licensed (non-free). Also it contained non-free
     specification files needed by the RabbitMQ.Client library.
+  * debian/README.source:
+    + Mention which files we removed and how to create the tarball we use.
+    + Document which binaries are required to bootstrap the C# compiler.
   * debian/rules:
     + Made get-orig-source policy conform (by using . as output path).
     + Dropped --with-oprofile from configure call as debian doesn't ship the
@@ -22,11 +27,6 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       picks up the 1.0 corlib.
   * debian/cli-wrapper.c
     + Dropped as this wrapper is obsolete since mono 1.1.6-1.
-  * debian/README.source:
-    + Mention which files we removed and how to create the tarball we use.
-    + Document which binaries are required to bootstrap the C# compiler.
-  * debian/NEWS:
-    + Updated for Mono 2.4, Mono 2.2 and Mono 2.0.
   * debian/patches/kfreebsd_support.dpatch
     debian/patches/build_genxs_2.0.dpatch:
     + Updated to cleanly apply again.
@@ -68,6 +68,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       non-Debian applications happy.
     + Changed Section of all packages to cli-mono except *-dbg to match
       archive overrides.
+    + Added automake to build-deps needed for autoreconf.
   * debian/libmono-cairo1.0-cil.install
     debian/libmono-cairo2.0-cil.install
     debian/patches/fix-mono-cairo.pc.in.dpatch:

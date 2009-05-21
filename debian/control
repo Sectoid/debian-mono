@@ -15,7 +15,8 @@ Build-Depends: debhelper (>= 7),
 	libx11-dev,
 	libxt-dev,
 	zlib1g-dev,
-	autoconf
+	autoconf,
+	automake
 Standards-Version: 3.8.0
 Homepage: http://www.mono-project.com/
 Vcs-Git: git://git.debian.org/git/pkg-mono/packages/mono.git
