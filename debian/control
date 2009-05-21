@@ -1438,6 +1438,7 @@ Provides: c-sharp-compiler,
  assembly-linker,
  strong-name-tool
 Replaces: mono-1.0-devel (<< 2.0),
+          mono-2.0-devel (<< 2.4),
           mono-mcs (<< 2.0),
           mono-gmcs (<< 2.0)
 Recommends: mono-csharp-shell

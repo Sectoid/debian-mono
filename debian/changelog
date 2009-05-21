@@ -120,6 +120,12 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/compat
     debian/control:
     + Bumped debhelper to 7.
+  * debian/control
+    debian/mono-1.0-devel.install
+    debian/mono-2.0-devel.install
+    debian/mono-devel.install:
+    + Removed mono-api-info1 as dropped by upstream and moved
+      2.0/mono-api-info.exe from mono-2.0-devel to mono-devel.
 
  -- Mirco Bauer <meebey@debian.org>  Thu, 21 May 2009 01:04:54 +0200
 

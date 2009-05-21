@@ -5,7 +5,6 @@ debian/tmp/usr/bin/httpcfg
 debian/tmp/usr/bin/ilasm2 
 debian/tmp/usr/bin/mconfig
 debian/tmp/usr/bin/mkbundle2
-debian/tmp/usr/bin/mono-api-info2
 debian/tmp/usr/bin/monop2
 debian/tmp/usr/bin/resgen2
 debian/tmp/usr/bin/sgen
@@ -17,7 +16,6 @@ debian/tmp/usr/lib/mono/2.0/httpcfg.exe
 debian/tmp/usr/lib/mono/2.0/ilasm.exe
 debian/tmp/usr/lib/mono/2.0/mconfig.exe
 debian/tmp/usr/lib/mono/2.0/mkbundle.exe
-debian/tmp/usr/lib/mono/2.0/mono-api-info.exe
 debian/tmp/usr/lib/mono/2.0/monop.exe
 debian/tmp/usr/lib/mono/2.0/resgen.exe
 debian/tmp/usr/lib/mono/2.0/sgen.exe

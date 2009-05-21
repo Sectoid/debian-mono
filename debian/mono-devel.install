@@ -54,6 +54,7 @@ debian/tmp/usr/lib/mono/1.0/sn.exe
 debian/tmp/usr/lib/mono/1.0/soapsuds.exe
 debian/tmp/usr/lib/mono/2.0/permview.exe
 debian/tmp/usr/lib/mono/2.0/monolinker.exe
+debian/tmp/usr/lib/mono/2.0/mono-api-info.exe
 debian/tmp/usr/lib/mono/2.0/mono-cil-strip.exe
 debian/tmp/usr/lib/mono/2.0/mono-shlib-cop.exe*
 debian/tmp/usr/lib/mono/2.0/sqlsharp.exe
