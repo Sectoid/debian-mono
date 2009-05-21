@@ -18,6 +18,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
     + Don't allow dh_clideps to add mono-runtime dependencies to
       mono-1.0/2.0-gac to prevent circular dependency hell. (Closes: #528090)
     + Added missing non-stamp/files targets to .PHONY.
+    + Only pass mono/2.0 to MONO_PATH in RUN_MONO variable, else gmcs.exe
+      picks up the 1.0 corlib.
   * debian/cli-wrapper.c
     + Dropped as this wrapper is obsolete since mono 1.1.6-1.
   * debian/README.source:
