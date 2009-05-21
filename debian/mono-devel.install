@@ -14,7 +14,6 @@ debian/tmp/usr/bin/installvst
 debian/tmp/usr/bin/macpack
 debian/tmp/usr/bin/mcs
 debian/tmp/usr/bin/mkbundle
-debian/tmp/usr/bin/mono-api-diff
 debian/tmp/usr/bin/mono-api-info
 debian/tmp/usr/bin/mono-cil-strip
 debian/tmp/usr/bin/mono-shlib-cop
@@ -46,7 +45,6 @@ debian/tmp/usr/lib/mono/1.0/ictool.exe
 debian/tmp/usr/lib/mono/1.0/installvst.exe
 debian/tmp/usr/lib/mono/1.0/macpack.exe
 debian/tmp/usr/lib/mono/1.0/makecert.exe
-debian/tmp/usr/lib/mono/1.0/mono-api-diff.exe
 debian/tmp/usr/lib/mono/1.0/mono-xmltool.exe
 debian/tmp/usr/lib/mono/1.0/mozroots.exe
 debian/tmp/usr/lib/mono/1.0/secutil.exe

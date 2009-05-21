@@ -72,7 +72,7 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/mono-devel.install:
     + Added mono-cil-strip
     + Added getline.cs, mono-lineeditor.pc, Options.cs and mono-options.pc
-    + Removed CorCompare.exe
+    + Removed CorCompare.exe and mono-api-diff(.exe) as dropped by upstream.
     + Updated mono-shlib-cop and sqlsharp as they are now CLI 2.0
   * debian/patches/fix_recursive_unmanaged_types.dpatch:
     + Fixes recursive structs regression as seen with OpenOffice.org.
