@@ -6,8 +6,8 @@
 
 @DPATCH@
 diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
---- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 02:49:26.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 02:50:17.000000000 +0200
+--- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 04:30:00.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 04:31:57.000000000 +0200
 @@ -14,7 +14,6 @@
  	browsercaps-updater	\
  	monop		\
@@ -16,13 +16,11 @@ diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
  	resgen		\
  	macpack		\
  	mkbundle	\
-@@ -54,7 +53,8 @@
+@@ -52,6 +51,7 @@
+ 	nunitreport	\
+ 	sqlsharp	\
  	gacutil		\
++	linker		\
  	csharplib	\
  	tuner		\
--	cil-strip
-+	cil-strip	\
-+	linker
- 
- net_2_1_dirs := \
- 	compiler-tester
+ 	cil-strip
