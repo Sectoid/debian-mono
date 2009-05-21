@@ -3,7 +3,7 @@ Section: interpreters
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Mirco Bauer <meebey@debian.org>, Sebastian Dröge <slomo@debian.org>, Jo Shields <directhex@apebox.org>
-Build-Depends: debhelper (>= 5),
+Build-Depends: debhelper (>= 7),
 	dpkg-dev (>= 1.13.19),
 	libglib2.0-dev (>= 2.4),
 	bison,
@@ -284,7 +284,7 @@ Description: Mono.GetOptions library (for CLI 2.0)
  This package contains the Mono.GetOptions library for CLI 2.0 that allows to
  parse command line options and arguments easily.
 
-Package: libmono-cecil0.6.8-cil
+Package: libmono-cecil-private-cil
 Section: libs
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.4)
@@ -296,8 +296,8 @@ Description: Mono.Cecil library
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
  .
- This package contains the Mono.Cecil library that allows to generate and
- inspect programs and libraries in the ECMA CIL format.
+ This package contains the private Mono.Cecil library that allows to generate
+ and inspect programs and libraries in the ECMA CIL format.
 
 Package: libmono-data1.0-cil
 Section: libs
