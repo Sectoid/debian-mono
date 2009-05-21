@@ -6,7 +6,7 @@ debian/tmp/usr/lib/mono/gac/System.Web.Extensions.Design/3.5.0.0__*/
 debian/tmp/usr/lib/mono/gac/System.Web.Services/2.0.0.0__*/
 debian/tmp/usr/lib/mono/gac/System.ComponentModel.DataAnnotations/3.5.0.0__*/
 debian/tmp/usr/lib/mono/gac/System.Web.Abstractions/3.5.0.0__*/
-debian/tmp/usr/lib/mono/gac/System.Web.DynamicData/3.5.0.0__*/__
+debian/tmp/usr/lib/mono/gac/System.Web.DynamicData/3.5.0.0__*/
 debian/tmp/usr/lib/mono/gac/System.Web.Routing/3.5.0.0__*/
 debian/tmp/usr/lib/mono/2.0/System.Web.dll
 debian/tmp/usr/lib/mono/2.0/System.Web.Extensions.dll
