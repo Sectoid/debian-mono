@@ -103,6 +103,7 @@ Depends: mono-runtime (= ${binary:Version}),
          libmono-messaging2.0-cil (= ${source:Version}),
          libmono-simd2.0-cil (= ${source:Version}),
          libmono-i18n2.0-cil (= ${source:Version}),
+         libmono-i18n-western2.0-cil (= ${source:Version}),
          libmono-system2.0-cil (= ${source:Version}),
          libmono-system-messaging2.0-cil (= ${source:Version}),
          libmono-security2.0-cil (= ${source:Version}),
@@ -453,7 +454,8 @@ Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Conflicts: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
-Recommends: libmono-i18n1.0-cil
+Recommends: libmono-i18n-west1.0-cil
+Suggests: libmono-i18n1.0-cil
 Description: Mono core library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -463,6 +465,11 @@ Description: Mono core library (for CLI 1.0)
  .
  This package contains the Core Library (mscorlib.dll) of Mono for CLI 1.0, 
  which is the glue between the BCL (Base Class Libraries) and the JIT.
+ .
+ You should install libmono-i18n-west1.0-cil if you are using
+ ISO 8859-15 (Latin 9) or other common Western European code pages.
+ US-ASCII, ISO 8859-1 (Latin 1) and UTF-8 users don't need any extra I18N
+ packages.
 
 Package: libmono-corlib2.0-cil
 Section: libs
@@ -470,7 +477,8 @@ Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Conflicts: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion})
-Recommends: libmono-i18n2.0-cil
+Recommends: libmono-i18n-west2.0-cil
+Suggests: libmono-i18n2.0-cil
 Description: Mono core library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -480,12 +488,55 @@ Description: Mono core library (for CLI 2.0)
  .
  This package contains the Core Library (mscorlib.dll) of Mono for CLI 2.0, 
  which is the glue between the BCL (Base Class Libraries) and the JIT.
+ .
+ You should install libmono-i18n-west2.0-cil if you are using
+ ISO 8859-15 (Latin 9) or other common Western European code pages.
+ US-ASCII, ISO 8859-1 (Latin 1) and UTF-8 users don't need any extra I18N
+ packages.
+
+Package: libmono-i18n-west1.0-cil
+Section: libs
+Architecture: all
+Replaces: libmono-corlib1.0-cil (<< 1.2.6-1), libmono-i18n1.0-cil (<< 2.4)
+Depends: ${cli:Depends}
+Description: Mono I18N.West library (for CLI 1.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the I18N.West library for CLI 1.0, containing Central
+ and Western European code pages such as ISO 8859-3 (Latin 3),
+ ISO 8859-15 (Latin 9) and others.
+ .
+ This package also includes the base I18N library used by all I18N
+ libraries.
+
+Package: libmono-i18n-west2.0-cil
+Section: libs
+Architecture: all
+Replaces: libmono-corlib2.0-cil (<< 1.2.6-1), libmono-i18n2.0-cil (<< 2.4)
+Depends: ${cli:Depends}
+Description: Mono I18N.West library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the I18N.West library for CLI 2.0, containing Central
+ and Western European code pages such as ISO 8859-3 (Latin 3),
+ ISO 8859-15 (Latin 9) and others.
+ .
+ This package also includes the base I18N library used by all I18N
+ libraries.
 
 Package: libmono-i18n1.0-cil
 Section: libs
 Architecture: all
 Replaces: libmono-corlib1.0-cil (<< 1.2.6-1)
-Depends: ${cli:Depends}
+Suggests: libmono-i18n-west1.0-cil
 Description: Mono I18N libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -493,8 +544,8 @@ Description: Mono I18N libraries (for CLI 1.0)
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
  .
- This package contains I18N libraries for CLI 1.0, containing code pages 
- definitions.
+ This package contains I18N libraries for CLI 1.0, containing various code
+ pages definitions.
 
 Package: libmono-i18n2.0-cil
 Section: libs
@@ -508,8 +559,8 @@ Description: Mono I18N libraries (for CLI 2.0)
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
  .
- This package contains I18N libraries for CLI 2.0, containing code pages 
- definitions.
+ This package contains I18N libraries for CLI 2.0, containing various code
+ pages definitions.
 
 Package: libmono-system1.0-cil
 Section: libs

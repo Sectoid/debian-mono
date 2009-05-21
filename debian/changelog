@@ -109,6 +109,14 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
   * debian/libmono-system-web2.0-cil.install:
     + Added System.ComponentModel.DataAnnotations, System.Web.Abstractions,
       System.Web.DynamicData and System.Web.Routing.
+  * debian/control
+    debian/libmono-i18n1.0-cil.install
+    debian/libmono-i18n2.0-cil.install
+    debian/libmono-i18n-west1.0-cil.install
+    debian/libmono-i18n-west2.0-cil.install:
+    + Moved I18N.dll and I18N.West.dll from libmono-i18nX.Y-cil to
+      libmono-i18n-westX.Y-cil, as this is the only code page that is really
+      needed in 90% of the cases.
 
  -- Mirco Bauer <meebey@debian.org>  Thu, 21 May 2009 01:04:54 +0200
 
