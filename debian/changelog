@@ -66,6 +66,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       symlink to nunit.pc with a binary dependency on libnunit2.4-cil.
     + Added mono-complete metapackage to make ISVs and users installing
       non-Debian applications happy.
+    + Changed Section of all packages to cli-mono except *-dbg to match
+      archive overrides.
   * debian/libmono-cairo1.0-cil.install
     debian/libmono-cairo2.0-cil.install
     debian/patches/fix-mono-cairo.pc.in.dpatch:

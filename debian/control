@@ -1,5 +1,5 @@
 Source: mono
-Section: interpreters
+Section: cli-mono
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
 Uploaders: Mirco Bauer <meebey@debian.org>, Sebastian Dröge <slomo@debian.org>, Jo Shields <directhex@apebox.org>
@@ -46,6 +46,7 @@ Description: Mono runtime
 
 Package: mono-runtime-dbg
 Priority: extra
+Section: debug
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: mono-jit-dbg (<< 2.4)
 Conflicts: mono-jit-dbg (<< 2.4)
@@ -62,7 +63,6 @@ Description: Mono runtime, debugging symbols
 
 Package: mono-utils
 Provides: cil-disassembler
-Section: devel
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: mono-mcs (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}, libmono0 (= ${binary:Version}), libmono-corlib2.0-cil (= ${source:Version}) | libmono-corlib1.0-cil (= ${source:Version})
@@ -180,7 +180,6 @@ Description: complete Mono runtime, development tools and all libraries
  You should build-depend on cli-common-dev and the needed libraries instead.
 
 Package: libmono0
-Section: libs
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: libmono-dev (<= 1.1.6-4)
 Conflicts: mono-utils (<< 1.2.3.1-4)
@@ -196,7 +195,7 @@ Description: Mono JIT library
 
 Package: libmono0-dbg
 Priority: extra
-Section: libdevel
+Section: debug
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: libmono0 (= ${binary:Version})
 Recommends: gdb
@@ -210,7 +209,6 @@ Description: Mono JIT library, debugging symbols
  bytecode (aka assemblies), and a class library.
 
 Package: libmono-dev
-Section: libdevel
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: libmono0 (= ${binary:Version}), libglib2.0-dev
 Description: Mono JIT library - Development files
@@ -223,7 +221,6 @@ Description: Mono JIT library - Development files
  bytecode (aka assemblies), and a class library.
 
 Package: libmono1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -240,7 +237,6 @@ Description: Mono libraries (for CLI 1.0)
   - OpenSystem.C
 
 Package: libmono2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -258,7 +254,6 @@ Description: Mono libraries (for CLI 2.0)
   - OpenSystem.C
 
 Package: libmono-posix1.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
 Depends: ${cli:Depends}
@@ -273,7 +268,6 @@ Description: Mono.Posix library (for CLI 1.0)
  found in glibc or intl.
 
 Package: libmono-posix2.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono2.0-cil (<< 2.0)
 Depends: ${cli:Depends}
@@ -288,7 +282,6 @@ Description: Mono.Posix library (for CLI 2.0)
  found in glibc or intl.
 
 Package: libmono-getoptions1.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
 Depends: ${cli:Depends}
@@ -303,7 +296,6 @@ Description: Mono.GetOptions library (for CLI 1.0)
  parse command line options and arguments easily.
 
 Package: libmono-getoptions2.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono2.0-cil (<< 2.0)
 Depends: ${cli:Depends}
@@ -318,7 +310,6 @@ Description: Mono.GetOptions library (for CLI 2.0)
  parse command line options and arguments easily.
 
 Package: libmono-cecil-private-cil
-Section: libs
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.4)
 Depends: ${cli:Depends}
@@ -333,7 +324,6 @@ Description: Mono.Cecil library
  and inspect programs and libraries in the ECMA CIL format.
 
 Package: libmono-data1.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
 Depends: ${cli:Depends}
@@ -361,7 +351,6 @@ Description: Mono.Data.* libraries (for CLI 1.0)
  http://www.mono-project.com/TDS_Providers
 
 Package: libmono-data2.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono2.0-cil (<< 2.0)
 Depends: ${cli:Depends}
@@ -389,7 +378,6 @@ Description: Mono.Data.* libraries (for CLI 2.0)
  http://www.mono-project.com/TDS_Providers
 
 Package: libmono-c5-1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -403,7 +391,6 @@ Description: Mono C5 library
  This package contains the Mono C5 library.
 
 Package: libmono-webbrowser0.5-cil
-Section: libs
 Architecture: all
 Depends: ${cli:Depends}
 Recommends: libgluezilla
@@ -418,7 +405,6 @@ Description: Mono Web Browser library
  Mozilla engine using libgluezilla.
 
 Package: libmono-nunit2.4-cil
-Section: libs
 Architecture: all
 Conflicts: libnunit2.2-cil, libmono-nunit2.2-cil
 Replaces: libmono-nunit2.2-cil
@@ -435,7 +421,6 @@ Description: Mono Unit test framework for CLI
  testing for exceptions and writing test results in plain text or XML.
 
 Package: libmono-management2.0-cil
-Section: libs
 Architecture: all
 Depends: ${cli:Depends}
 Description: Mono Management library (for CLI 2.0)
@@ -450,7 +435,6 @@ Description: Mono Management library (for CLI 2.0)
  into a Mono process to debug or augment code live.
 
 Package: libmono-messaging2.0-cil
-Section: libs
 Architecture: all
 Depends: ${cli:Depends}
 Homepage: http://mono-project.com/SystemMessaging
@@ -466,7 +450,6 @@ Description: Mono Messaging library (for CLI 2.0)
  does not provide a System.Messaging implementation.
 
 Package: libmono-simd2.0-cil
-Section: libs
 Architecture: all
 Depends: ${cli:Depends}
 Homepage: http://go-mono.com/docs/index.aspx?tlink=0@N%3aMono.Simd
@@ -482,7 +465,6 @@ Description: Mono SIMDy (for CLI 2.0)
  the actual operations to native SIMD instructions on a processor.
 
 Package: libmono-corlib1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Conflicts: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
@@ -505,7 +487,6 @@ Description: Mono core library (for CLI 1.0)
  packages.
 
 Package: libmono-corlib2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Conflicts: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
@@ -528,7 +509,6 @@ Description: Mono core library (for CLI 2.0)
  packages.
 
 Package: libmono-i18n-west1.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono-corlib1.0-cil (<< 1.2.6-1), libmono-i18n1.0-cil (<< 2.4)
 Depends: ${cli:Depends}
@@ -547,7 +527,6 @@ Description: Mono I18N.West library (for CLI 1.0)
  libraries.
 
 Package: libmono-i18n-west2.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono-corlib2.0-cil (<< 1.2.6-1), libmono-i18n2.0-cil (<< 2.4)
 Depends: ${cli:Depends}
@@ -566,7 +545,6 @@ Description: Mono I18N.West library (for CLI 2.0)
  libraries.
 
 Package: libmono-i18n1.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono-corlib1.0-cil (<< 1.2.6-1)
 Suggests: libmono-i18n-west1.0-cil
@@ -581,7 +559,6 @@ Description: Mono I18N libraries (for CLI 1.0)
  pages definitions.
 
 Package: libmono-i18n2.0-cil
-Section: libs
 Architecture: all
 Replaces: libmono-corlib2.0-cil (<< 1.2.6-1)
 Depends: ${cli:Depends}
@@ -596,7 +573,6 @@ Description: Mono I18N libraries (for CLI 2.0)
  pages definitions.
 
 Package: libmono-system1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
@@ -611,7 +587,6 @@ Description: Mono System libraries (for CLI 1.0)
  This package contains the BCL (Base Class Libraries) of Mono for CLI 1.0.
 
 Package: libmono-system2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
@@ -626,7 +601,6 @@ Description: Mono System libraries (for CLI 2.0)
  This package contains the BCL (Base Class Libraries) of Mono for CLI 2.0.
 
 Package: libmono-system-messaging1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
@@ -641,7 +615,6 @@ Description: Mono System.Messaging library (for CLI 1.0)
  This package contains the Mono System.Messaging library for CLI 1.0.
 
 Package: libmono-system-messaging2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
@@ -656,7 +629,6 @@ Description: Mono System.Messaging Library (for CLI 2.0)
  This package contains the Mono System.Messaging library for CLI 2.0.
 
 Package: libmono-security1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -670,7 +642,6 @@ Description: Mono Security library (for CLI 1.0)
  This package contains the Mono Security library for CLI 1.0.
 
 Package: libmono-security2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -684,7 +655,6 @@ Description: Mono Security library (for CLI 2.0)
  This package contains the Mono Security library for CLI 2.0.
 
 Package: libmono-data-tds1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -698,7 +668,6 @@ Description: Mono Data library (for CLI 1.0)
  This package contains the Mono Data library for CLI 1.0.
 
 Package: libmono-data-tds2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -712,7 +681,6 @@ Description: Mono Data Library (for CLI 2.0)
  This package contains the Mono Data library for CLI 2.0.
 
 Package: libmono-system-data1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
@@ -727,7 +695,6 @@ Description: Mono System.Data library (for CLI 1.0)
  This package contains the Mono System.Data library for CLI 1.0.
 
 Package: libmono-system-data2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
@@ -742,7 +709,6 @@ Description: Mono System.Data Library (for CLI 2.0)
  This package contains the Mono System.Data library for CLI 2.0.
 
 Package: libmono-system-web1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion}), libgdiplus
@@ -756,7 +722,6 @@ Description: Mono System.Web library (for CLI 1.0)
  This package contains the Mono System.Web library for CLI 1.0.
 
 Package: libmono-system-web2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}, mono-jit (>= ${mono:upversion}), mono-jit (<< ${mono:next-upversion}), libgdiplus
@@ -771,7 +736,6 @@ Description: Mono System.Web Library (for CLI 2.0)
  This package contains the Mono System.Web library for CLI 2.0.
 
 Package: libmono-wcf3.0-cil
-Section: libs
 Architecture: all
 Depends: ${cli:Depends}
 Homepage: http://mono-project.com/WCF
@@ -791,7 +755,6 @@ Description: Mono WCF libraries (for CLI 2.0)
  complete.
 
 Package: libmono-system-runtime1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -805,7 +768,6 @@ Description: Mono System.Runtime library (for CLI 1.0)
  This package contains the Mono System.Runtime library for CLI 1.0.
 
 Package: libmono-system-runtime2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -819,7 +781,6 @@ Description: Mono System.Runtime Library (for CLI 2.0)
  This package contains the Mono System.Runtime library for CLI 2.0.
 
 Package: libmono-system-ldap1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -833,7 +794,6 @@ Description: Mono System.DirectoryServices library (for CLI 1.0)
  This package contains the Mono System.DirectoryServices library for CLI 1.0.
 
 Package: libmono-system-ldap2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -847,7 +807,6 @@ Description: Mono System.DirectoryServices library (for CLI 2.0)
  This package contains the Mono System.DirectoryServices library for CLI 2.0.
 
 Package: libmono-winforms1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}, shared-mime-info
@@ -862,7 +821,6 @@ Description: Mono System.Windows.Forms library (for CLI 1.0)
  This package contains the Mono System.Windows.Forms library for CLI 1.0.
 
 Package: libmono-winforms2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}, shared-mime-info
@@ -877,7 +835,6 @@ Description: Mono System.Windows.Forms library (for CLI 2.0)
  This package contains the Mono System.Windows.Forms library for CLI 2.0.
 
 Package: libmono-cairo1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -891,7 +848,6 @@ Description: Mono Cairo library (for CLI 1.0)
  This package contains the Mono Cairo library for CLI 1.0.
 
 Package: libmono-cairo2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -905,7 +861,6 @@ Description: Mono Cairo library (for CLI 2.0)
  This package contains the Mono Cairo library for CLI 2.0.
 
 Package: libmono-sharpzip0.6-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -919,7 +874,6 @@ Description: Mono SharpZipLib library (for CLI 1.0)
  This package contains the Mono SharpZipLib library version 0.6, for CLI 1.0.
 
 Package: libmono-sharpzip0.84-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -933,7 +887,6 @@ Description: Mono SharpZipLib library (for CLI 1.0)
  This package contains the Mono SharpZipLib library version 0.84, for CLI 1.0.
 
 Package: libmono-sharpzip2.6-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -947,7 +900,6 @@ Description: Mono SharpZipLib library (for CLI 2.0)
  This package contains the Mono SharpZipLib library version 2.6, for CLI 2.0.
 
 Package: libmono-sharpzip2.84-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -961,7 +913,6 @@ Description: Mono SharpZipLib library (for CLI 2.0)
  This package contains the Mono SharpZipLib library version 2.84, for CLI 2.0.
 
 Package: libmono-npgsql1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -975,7 +926,6 @@ Description: Mono Npgsql library (for CLI 1.0)
  This package contains the Mono Npgsql library for CLI 1.0.
 
 Package: libmono-npgsql2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -989,7 +939,6 @@ Description: Mono Npgsql library (for CLI 2.0)
  This package contains the Mono Npgsql library for CLI 2.0.
 
 Package: libmono-bytefx0.7.6.1-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -1004,7 +953,6 @@ Description: Mono ByteFX.Data library (for CLI 1.0)
  1.0.
 
 Package: libmono-bytefx0.7.6.2-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -1019,7 +967,6 @@ Description: Mono ByteFX.Data library (for CLI 2.0)
  2.0.
 
 Package: libmono-firebirdsql1.7-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -1033,7 +980,6 @@ Description: Mono FirebirdSql library
  This package contains the Mono FirebirdSql library.
 
 Package: libmono-db2-1.0-cil
-Section: libs
 Architecture: all
 Depends: ${cli:Depends}
 Description: Mono DB2 library
@@ -1046,7 +992,6 @@ Description: Mono DB2 library
  This package contains the Mono DB2 library.
 
 Package: libmono-oracle1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1060,7 +1005,6 @@ Description: Mono Oracle library (for CLI 1.0)
  This package contains the Mono Oracle library for CLI 1.0.
 
 Package: libmono-oracle2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1074,7 +1018,6 @@ Description: Mono Oracle library (for CLI 2.0)
  This package contains the Mono Oracle library for CLI 2.0.
 
 Package: libmono-sqlite1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -1088,7 +1031,6 @@ Description: Mono Sqlite library (for CLI 1.0)
  This package contains the Mono Sqlite library for CLI 1.0.
 
 Package: libmono-sqlite2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Depends: ${cli:Depends}
@@ -1102,7 +1044,6 @@ Description: Mono Sqlite library (for CLI 2.0)
  This package contains the Mono Sqlite library for CLI 2.0.
 
 Package: libmono-accessibility1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1116,7 +1057,6 @@ Description: Mono Accessibility library (for CLI 1.0)
  This package contains the Mono Accessibility library for CLI 1.0.
 
 Package: libmono-accessibility2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1130,7 +1070,6 @@ Description: Mono Accessibility library (for CLI 2.0)
  This package contains the Mono Accessibility library for CLI 2.0.
 
 Package: libmono-cscompmgd7.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1144,7 +1083,6 @@ Description: Mono cscompmgd library (for CLI 1.0)
  This package contains the Mono cscompmgd library version 7.0, for CLI 1.0.
 
 Package: libmono-cscompmgd8.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1158,7 +1096,6 @@ Description: Mono cscompmgd library (for CLI 2.0)
  This package contains the Mono cscompmgd library version 8.0, for CLI 2.0.
 
 Package: libmono-ldap1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1172,7 +1109,6 @@ Description: Mono LDAP library (for CLI 1.0)
  This package contains the Mono LDAP library for CLI 1.0.
 
 Package: libmono-ldap2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1186,7 +1122,6 @@ Description: Mono LDAP library (for CLI 2.0)
  This package contains the Mono LDAP library for CLI 2.0.
 
 Package: libmono-microsoft-build2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1200,7 +1135,6 @@ Description: Mono Microsoft.Build libraries
  This package contains the Mono Microsoft.Build libraries version 2.0.
 
 Package: libmono-microsoft7.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1214,7 +1148,6 @@ Description: Mono Microsoft libraries (for CLI 1.0)
  This package contains the Mono Microsoft libraries version 7.0, for CLI 1.0.
 
 Package: libmono-microsoft8.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1228,7 +1161,6 @@ Description: Mono Microsoft libraries (for CLI 2.0)
  This package contains the Mono Microsoft libraries version 8.0, for CLI 2.0.
 
 Package: libmono-peapi1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1242,7 +1174,6 @@ Description: Mono PEAPI library (for CLI 1.0)
  This package contains the Mono PEAPI library for CLI 1.0.
 
 Package: libmono-peapi2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1256,7 +1187,6 @@ Description: Mono PEAPI library (for CLI 2.0)
  This package contains the Mono PEAPI library for CLI 2.0.
 
 Package: libmono-relaxng1.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1270,7 +1200,6 @@ Description: Mono Relaxng library (for CLI 1.0)
  This package contains the Mono Relaxng library for CLI 1.0.
 
 Package: libmono-relaxng2.0-cil
-Section: libs
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Depends: ${cli:Depends}
@@ -1285,7 +1214,7 @@ Description: Mono Relaxng library (for CLI 2.0)
 
 Package: mono-dbg
 Priority: extra
-Section: devel
+Section: debug
 Architecture: all
 Recommends: mono-debugger
 Replaces: libmono1.0-cil (<< 1.2.4-1),
@@ -1354,7 +1283,6 @@ Description: Mono debugging symbols
  bytecode (aka assemblies), and a class library.
 
 Package: mono-mjs
-Section: devel
 Architecture: all
 Depends: ${cli:Depends}
 Replaces: mono-mcs (<< 1.2.5-1)
@@ -1369,7 +1297,6 @@ Description: Mono JScript compiler
  bytecode (aka assemblies), and a class library.
 
 Package: mono-mcs
-Section: devel
 Architecture: all
 Depends: ${cli:Depends},
          libmono-corlib1.0-cil (>= ${mono:upversion}),
@@ -1387,7 +1314,6 @@ Description: Mono C# 1.0 compiler for CLI 1.1
  bytecode (aka assemblies), and a class library.
 
 Package: mono-gmcs
-Section: devel
 Architecture: all
 Depends: ${cli:Depends},
          libmono-corlib2.0-cil (>= ${mono:upversion}),
@@ -1429,7 +1355,6 @@ Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
  bytecode (aka assemblies), and a class library.
 
 Package: mono-devel
-Section: devel
 Architecture: all
 Provides: c-sharp-compiler,
  c-sharp-2.0-compiler,
@@ -1456,7 +1381,6 @@ Description: Mono development tools
  development stack for Mono (which is 2.0 currently).
 
 Package: mono-1.0-devel
-Section: devel
 Architecture: all
 Depends: ${cli:Depends},
          mono-mcs (= ${source:Version}),
@@ -1475,7 +1399,6 @@ Description: Mono development tools for CLI 1.0
  development stack for Mono targeting CLI 1.0.
 
 Package: mono-2.0-devel
-Section: devel
 Architecture: all
 Depends: ${cli:Depends},
          mono-gmcs (= ${source:Version}),
@@ -1494,7 +1417,6 @@ Description: Mono development tools for CLI 2.0
  development stack for Mono targeting CLI 2.0.
 
 Package: mono-1.0-service
-Section: devel
 Architecture: all
 Depends: ${cli:Depends}
 Replaces: mono-mcs (<< 1.2.6-1)
@@ -1509,7 +1431,6 @@ Description: Mono service manager for CLI 1.0
  services based on the System.ServiceProcess API.
 
 Package: mono-2.0-service
-Section: devel
 Architecture: all
 Depends: ${cli:Depends}
 Replaces: mono-gmcs (<< 1.2.6-1)
@@ -1524,7 +1445,6 @@ Description: Mono service manager for CLI 2.0
  2.0 services based on the System.ServiceProcess API.
 
 Package: mono-xbuild
-Section: devel
 Architecture: all
 Depends: ${cli:Depends}
 Replaces: mono-gmcs (<< 1.2.6-1)
@@ -1545,7 +1465,6 @@ Description: MSBuild-compatible build system for Mono
  http://www.mono-project.com/Microsoft.Build
 
 Package: mono-gac
-Section: devel
 Architecture: all
 Depends: mono-2.0-gac (= ${source:Version})
 Provides: global-assembly-cache-tool
@@ -1560,7 +1479,6 @@ Description: Mono GAC tool
  used by Mono to store shared CIL (Common Intermediate Language) libraries.
 
 Package: mono-1.0-gac
-Section: devel
 Architecture: all
 Replaces: mono-gac (<< 2.0)
 Depends: mono-jit (>= 1.0), ${cli:Depends}
@@ -1577,7 +1495,6 @@ Description: Mono GAC tool (for CLI 1.0)
  libraries, for CLI 1.0
 
 Package: mono-2.0-gac
-Section: devel
 Architecture: all
 Depends: mono-jit (>= 1.0), ${cli:Depends}
 Recommends: cli-common (>= 0.4.0)
@@ -1593,7 +1510,6 @@ Description: Mono GAC tool (for CLI 2.0)
  libraries, for CLI 2.0
 
 Package: mono-jay
-Section: devel
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: LALR(1) parser generator oriented to Java/CLI
@@ -1610,7 +1526,6 @@ Description: LALR(1) parser generator oriented to Java/CLI
  corresponding phrases are recognized.
 
 Package: prj2make-sharp
-Section: devel
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, pkg-config, libmono-dev
 Description: Convert VS.NET solution files to Makefiles
