@@ -83,6 +83,7 @@ scripts_1_0_umask = \
 
 scripts_2_0 = \
 	al2$(SCRIPT_SUFFIX)			\
+	genxs2$(SCRIPT_SUFFIX)			\
 	csharp$(SCRIPT_SUFFIX)			\
 	gacutil2$(SCRIPT_SUFFIX)		\
 	gmcs$(SCRIPT_SUFFIX)			\

@@ -88,12 +88,9 @@ common_dirs := \
 	Microsoft.JScript		\
 	CustomMarshalers		\
 	OpenSystem.C			\
-	Mono.Cecil			\
-	Mono.Cecil.Mdb			\
 	SystemWebTestShim
 
-net_1_1_dirs :=		\
-	FirebirdSql.Data.Firebird
+net_1_1_dirs :=
 
 net_2_0_dirs := \
 	Microsoft.Build.Framework	\
@@ -123,7 +120,10 @@ net_2_0_dirs := \
 	Mono.Tasklets       		\
 	WindowsBase			\
 	Mono.Debugger.Soft	\
-	System.Data.Services
+	System.Data.Services    \
+	Mono.Cecil			\
+	Mono.Cecil.Mdb			\
+	FirebirdSql.Data.Firebird
 
 net_2_0_only_dirs := \
 	System.Web.Extensions_1.0	\

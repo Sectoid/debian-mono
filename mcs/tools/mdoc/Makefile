@@ -15,7 +15,7 @@ LOCAL_MCS_FLAGS = \
 	/r:System.Xml.Linq.dll                                                      \
 	/r:ICSharpCode.SharpZipLib.dll                                              \
 	/r:$(topdir)/class/lib/net_1_1/monodoc.dll                                  \
-	/r:$(topdir)/class/lib/net_1_1/Mono.Cecil.dll
+	/r:$(topdir)/class/lib/net_2_0/Mono.Cecil.dll
 
 MONODOC_RESOURCES = \
 	../monodoc/Resources/mdoc-html-utils.xsl    \
