@@ -30,6 +30,8 @@ mono (2.4+dfsg-1~pre1) unstable; urgency=low
       libmono-posix{1.0,2.0}-cil, libmono-relaxng{1.0,2.0}-cil,
       libmono-system2.0-cil, libmono-system-runtime2.0-cil, libmono-web2.0-cil,
       libmono-winforms2.0-cil and libmono-webbrowser0.5-cil.
+    + Install upstream changelog and debian news only in the mono-runtime
+      package.
   * debian/cli-wrapper.c
     + Dropped as this wrapper is obsolete since mono 1.1.6-1.
   * debian/patches/kfreebsd_support.dpatch

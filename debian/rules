@@ -355,7 +355,7 @@ binary-arch: build-arch install-arch
 
 	dh_install -s
 	dh_link -s
-	dh_installchangelogs -s
+	dh_installchangelogs -pmono-runtime
 	dh_installchangelogs -pmono-jay $(CURDIR)/mcs/jay/ChangeLog
 	dh_installdocs -s
 	dh_installman -s
