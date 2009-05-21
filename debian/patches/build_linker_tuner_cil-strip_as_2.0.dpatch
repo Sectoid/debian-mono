@@ -6,8 +6,8 @@
 
 @DPATCH@
 diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
---- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 13:40:48.000000000 +0200
-+++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 13:47:59.000000000 +0200
+--- mono-2.4+dfsg~/mcs/tools/Makefile	2009-05-21 14:56:19.000000000 +0200
++++ mono-2.4+dfsg/mcs/tools/Makefile	2009-05-21 14:57:08.000000000 +0200
 @@ -14,9 +14,6 @@
  	browsercaps-updater	\
  	monop		\
@@ -22,8 +22,8 @@ diff -urNad mono-2.4+dfsg~/mcs/tools/Makefile mono-2.4+dfsg/mcs/tools/Makefile
  	nunitreport	\
  	sqlsharp	\
  	gacutil		\
-+	tuner		\
 +	linker		\
++	tuner		\
 +	cil-strip	\
  	csharplib
  
