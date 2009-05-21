@@ -10,6 +10,8 @@ fix_implicit_pointer_conversions
 fix_NetworkInterface_endless_loop
 fix_null_funcptr_marshalling_r127347
 fix_recursive_unmanaged_types
+fix_mono-api-info_build
+fix_mdoc_build
 disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
 build_cecil_as_2.0
