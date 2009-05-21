@@ -1,3 +1,5 @@
 tmp/
 patched/
+files
 *.debhelper.log
+*.substvars
