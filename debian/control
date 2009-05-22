@@ -548,7 +548,7 @@ Description: Mono I18N.West library (for CLI 2.0)
 Package: libmono-i18n1.0-cil
 Architecture: all
 Replaces: libmono-corlib1.0-cil (<< 1.2.6-1)
-Suggests: libmono-i18n-west1.0-cil
+Depends: ${cli:Depends}
 Description: Mono I18N libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
