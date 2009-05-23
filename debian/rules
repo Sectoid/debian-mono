@@ -3,6 +3,9 @@
 #export DH_VERBOSE=1
 export MONO_SHARED_DIR=$(CURDIR)
 
+# Assume Debian behaviour by default.
+DISTRO = $(shell lsb_release -si)
+
 MAKEFILE = $(firstword $(MAKEFILE_LIST))
 DEBIAN_DIR = $(dir $(MAKEFILE))
 SOURCE_DIR = $(DEBIAN_DIR)/..
@@ -121,6 +124,7 @@ build-indep-stamp:
 
 clean: clean-patched unpatch
 clean-patched:
+	echo "distro is $(DISTRO)"
 	dh_testdir
 	dh_testroot
 	[ ! -f Makefile ] || $(MAKE) distclean
@@ -294,6 +298,14 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_installman -i
 	debian/dh_clistrip -i --dbg-package=mono-dbg
 	dh_compress -i
+	
+	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)
+	if [ "$(DISTRO)" = "Ubuntu" ]; then \
+	  for p in $$(dh_listpackages -i); do \
+	    sed "s/#PACKAGENAME#/$$p/g" $(CURDIR)/debian/preinst.ubuntu >> debian/$$p.preinst.debhelper; \
+	  done; \
+	fi
+
 	dh_fixperms -i
 	debian/dh_clifixperms -i
 	dh_installdeb -i
@@ -366,6 +378,14 @@ binary-arch: build-arch install-arch
 	dh_strip -plibmono0 --dbg-package=libmono0-dbg
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
+
+	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)
+	if [ "$(DISTRO)" = "Ubuntu" ]; then \
+	  for p in $$(dh_listpackages -a); do \
+	    sed "s/#PACKAGENAME#/$$p/g" $(CURDIR)/debian/preinst.ubuntu >> debian/$$p.preinst.debhelper; \
+	  done; \
+	fi
+
 	dh_fixperms -s
 	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
 	dh_installdeb -s
