@@ -1,6 +1,5 @@
-mono (2.4+dfsg-1~pre2) unstable; urgency=low
+mono (2.4+dfsg-1) experimental; urgency=low
 
-  * NOT RELEASED YET
   * New upstream release.
     + For release highlights see the NEWS.Debian file
   * debian/NEWS:
