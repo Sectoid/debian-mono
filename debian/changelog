@@ -1,5 +1,6 @@
-mono (2.4+dfsg-2) UNRELEASED; urgency=low
+mono (2.4+dfsg-2~pre1) UNRELEASED; urgency=low
 
+  * NOT RELEASED YET
   [ Jo Shields ]
   * debian/rules:
     + Implement workaround to force removal of /usr/share/doc symlinks
@@ -12,6 +13,8 @@ mono (2.4+dfsg-2) UNRELEASED; urgency=low
     + Fixed shlibs line of libMonoPosixHelper, was causing incorrect
       dependencies on libmono0 instead of mono-runtime.
     + Added shlibs line for libMonoSupportW.
+  * debian/monodoc-base.install:
+    + Added missing monodoc.dll symlink.
 
  -- Mirco Bauer <meebey@debian.org>  Sun, 24 May 2009 15:23:14 +0200
 
