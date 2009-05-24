@@ -20,6 +20,8 @@ mono (2.4+dfsg-2~pre1) UNRELEASED; urgency=low
     + Added installutil.exe.
   * debian/mono-csharp-shell.install:
     + Added missing Mono.CSharp development symlink.
+  * debian/libmono-messaging2.0-cil.install:
+    + Really install library and development symlink of Mono.Messaging.
 
  -- Mirco Bauer <meebey@debian.org>  Sun, 24 May 2009 15:23:14 +0200
 
