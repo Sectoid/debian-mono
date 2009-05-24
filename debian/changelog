@@ -14,10 +14,12 @@ mono (2.4+dfsg-2~pre1) UNRELEASED; urgency=low
       dependencies on libmono0 instead of mono-runtime.
     + Added shlibs line for libMonoSupportW.
   * debian/monodoc-base.install:
-    + Added missing monodoc.dll symlink.
+    + Added missing monodoc development symlink.
   * debian/mono-1.0-devel.install
     debian/mono-2.0-devel.install:
     + Added installutil.exe.
+  * debian/mono-csharp-shell.install:
+    + Added missing Mono.CSharp development symlink.
 
  -- Mirco Bauer <meebey@debian.org>  Sun, 24 May 2009 15:23:14 +0200
 
