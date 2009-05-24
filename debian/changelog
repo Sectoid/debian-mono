@@ -1,12 +1,19 @@
 mono (2.4+dfsg-2) UNRELEASED; urgency=low
 
+  [ Jo Shields ]
   * debian/rules:
     + Implement workaround to force removal of /usr/share/doc symlinks
       on Ubuntu systems when upgrading from pre-2.4 packages
   * debian/control:
     + Add dependency on lsb-release to allow distro detection
 
- -- Jo Shields <directhex@apebox.org>  Sat, 09 May 2009 02:14:29 +0100
+  [ Mirco Bauer ]
+  * debian/update-shlibs.local.sh:
+    + Fixed shlibs line of libMonoPosixHelper, was causing incorrect
+      dependencies on libmono0 instead of mono-runtime.
+    + Added shlibs line for libMonoSupportW.
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 24 May 2009 15:23:14 +0200
 
 mono (2.4+dfsg-1) experimental; urgency=low
 

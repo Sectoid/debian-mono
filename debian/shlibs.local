@@ -1,4 +1,5 @@
-libMonoPosixHelper 0 libmono0 (>= 2.4)
+libMonoPosixHelper 0 mono-runtime (>= 2.4)
+libMonoSupportW 0 mono-runtime (>= 2.4)
 libgdiplus 0 libgdiplus (>= 2.4)
 libgluezilla 0 libgluezilla (>= 2.4)
 libcairo 2 libcairo2 (>= 1.8.0-2)

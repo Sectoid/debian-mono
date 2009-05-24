@@ -24,7 +24,8 @@ cp debian/shlibs.local debian/shlibs.local.backup
 rm -f debian/shlibs.local.new
 
 # libs that don't ship shlibs
-echo "libMonoPosixHelper 0 libmono0 (>= $MAJOR_MINOR_UPVERSION)"	>> debian/shlibs.local.new
+echo "libMonoPosixHelper 0 mono-runtime (>= $MAJOR_MINOR_UPVERSION)"	>> debian/shlibs.local.new
+echo "libMonoSupportW 0 mono-runtime (>= $MAJOR_MINOR_UPVERSION)"	>> debian/shlibs.local.new
 echo "libgdiplus 0 libgdiplus (>= $MAJOR_MINOR_UPVERSION)"		>> debian/shlibs.local.new
 echo "libgluezilla 0 libgluezilla (>= $MAJOR_MINOR_UPVERSION)"		>> debian/shlibs.local.new
 
