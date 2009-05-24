@@ -15,6 +15,9 @@ mono (2.4+dfsg-2~pre1) UNRELEASED; urgency=low
     + Added shlibs line for libMonoSupportW.
   * debian/monodoc-base.install:
     + Added missing monodoc.dll symlink.
+  * debian/mono-1.0-devel.install
+    debian/mono-2.0-devel.install:
+    + Added installutil.exe.
 
  -- Mirco Bauer <meebey@debian.org>  Sun, 24 May 2009 15:23:14 +0200
 

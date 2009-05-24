@@ -9,6 +9,7 @@ debian/tmp/usr/bin/xsd1
 debian/tmp/usr/lib/mono/1.0/al.exe
 debian/tmp/usr/lib/mono/1.0/genxs.exe
 debian/tmp/usr/lib/mono/1.0/ilasm.exe
+debian/tmp/usr/lib/mono/1.0/installutil.exe
 debian/tmp/usr/lib/mono/1.0/mkbundle.exe
 debian/tmp/usr/lib/mono/1.0/monop.exe
 debian/tmp/usr/lib/mono/1.0/resgen.exe

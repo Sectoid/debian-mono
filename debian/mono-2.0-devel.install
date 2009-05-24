@@ -14,6 +14,7 @@ debian/tmp/usr/lib/mono/2.0/al.exe
 debian/tmp/usr/lib/mono/2.0/genxs.exe
 debian/tmp/usr/lib/mono/2.0/httpcfg.exe
 debian/tmp/usr/lib/mono/2.0/ilasm.exe
+debian/tmp/usr/lib/mono/2.0/installutil.exe
 debian/tmp/usr/lib/mono/2.0/mconfig.exe
 debian/tmp/usr/lib/mono/2.0/mkbundle.exe
 debian/tmp/usr/lib/mono/2.0/monop.exe
