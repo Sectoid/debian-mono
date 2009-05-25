@@ -1529,6 +1529,7 @@ Description: LALR(1) parser generator oriented to Java/CLI
  corresponding phrases are recognized.
 
 Package: prj2make-sharp
+Section: devel
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, pkg-config, libmono-dev
 Description: Convert VS.NET solution files to Makefiles
