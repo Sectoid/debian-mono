@@ -10,7 +10,6 @@ dpkg-checkbuilddeps -d "\
 	libsqlite0-dev, \
 	libsqlite3-dev, \
 	libasound2-dev, \
-	libgda2-dev, \
 	libgamin-dev, \
 	libcups2-dev, \
 	librsvg2-dev, \
@@ -35,7 +34,6 @@ for SONAME in \
 	"^libsqlite 0" \
 	"^libsqlite3 0" \
 	"^libasound 2" \
-	"^libgda-2 3" \
 	"^libgamin-1 0" \
 	"^libcups 2" \
 	"^librsvg-2 2" \

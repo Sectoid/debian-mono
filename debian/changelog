@@ -8,6 +8,10 @@ mono (2.4+dfsg-3) unstable; urgency=low
   * debian/libmono-wcf3.0-cil.install:
     + Added missing System.IdentityModel development symlink.
       (Closes: #531496)
+  * debian/shlibs.local
+    debian/update-shlibs.local.sh:
+    + Removed libgda-2 entry for the benefit of dh_clideps not picking that as
+      Suggests for libmono-system-data{1,2}.0-cil up. (Closes: #531870)
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 25 May 2009 20:46:12 +0200
 
