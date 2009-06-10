@@ -5,6 +5,8 @@ mono (2.4+dfsg-3) unstable; urgency=low
     + Change Section of prj2make-sharp to devel to match archive overrides.
     + Added replaces libmono-cairo1.0-cil to libmono-cairo2.0-cil, as the
       pkg-config file was moved from that. (Closes: #531006)
+    + Added conflicts mono-{1,2}.0-runtime to mono-runtime to ensure
+      aptitude is proposing a happy upgrade path.
   * debian/libmono-wcf3.0-cil.install:
     + Added missing System.IdentityModel development symlink.
       (Closes: #531496)

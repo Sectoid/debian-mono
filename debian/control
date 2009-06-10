@@ -27,7 +27,10 @@ Package: mono-runtime
 Provides: cli-runtime, cli-virtual-machine
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: mono-common (<< 2.4), mono-jit (<< 2.4), libmono0 (<< 2.4)
-Conflicts: mono-common (<< 2.4), mono-jit (<< 2.4)
+Conflicts: mono-common (<< 2.4),
+           mono-jit (<< 2.4),
+           mono-1.0-runtime (<< 2.4),
+           mono-2.0-runtime (<< 2.4)
 Suggests: xdg-utils | libgnome2-0 | konqueror
 Recommends: binfmt-support (>= 1.1.2)
 Depends: ${shlibs:Depends},
