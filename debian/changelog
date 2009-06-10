@@ -3,6 +3,8 @@ mono (2.4+dfsg-3) unstable; urgency=low
   * NOT RELEASED YET
   * debian/control:
     + Change Section of prj2make-sharp to devel to match archive overrides.
+    + Added replaces libmono-cairo1.0-cil to libmono-cairo2.0-cil, as the
+      pkg-config file was moved from that. (Closes: #531006)
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 25 May 2009 20:46:12 +0200
 
