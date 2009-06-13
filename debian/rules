@@ -158,6 +158,8 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
 	# ilasm needs PEAPI
+	# PEAPI needs mscorlib
+	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0
 	# build ilasm
 	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
