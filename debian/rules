@@ -60,6 +60,12 @@ else
 	CFLAGS += -O2 -g
 endif
 
+ifneq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
+	TEST = true
+else
+	TEST = cd mono/tests && make test
+endif
+
 CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		./configure $(CONF_FLAGS) --prefix=/usr \
 		  --mandir=\$${prefix}/share/man \
@@ -120,6 +126,12 @@ build-indep-stamp:
 	         debian/dh_clistrip \
 	         debian/dh_clifixperms \
 	         debian/dh_monoaot
+	touch $@
+
+test: test-arch
+test-arch: test-arch-stamp
+test-arch-stamp: build-arch-stamp
+	-$(TEST)
 	touch $@
 
 clean: clean-patched unpatch
@@ -356,7 +368,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_md5sums -i
 	dh_builddeb -i
 
-binary-arch: build-arch install-arch
+binary-arch: build-arch install-arch test-arch-stamp
 	dh_testdir
 	dh_testroot
 	
@@ -424,5 +436,5 @@ get-orig-source:
 	tar -czf $(DEB_SOURCE_NAME)_$(UPVERSION)+dfsg.orig.tar.gz $(TARBALL_DIR)+dfsg
 	rm -r $(TARBALL_DIR)+dfsg
 
-.PHONY: autoreconf configure-arch configure-indep clean clean-patched build build-all build-arch build-indep binary-indep binary-arch install install-all install-arch install-indep binary binary-arch binary-indep patch unpatch get-orig-source
+.PHONY: autoreconf configure-arch configure-indep clean clean-patched build build-all build-arch build-indep test test-arch binary-indep binary-arch install install-all install-arch install-indep binary binary-arch binary-indep patch unpatch get-orig-source
 .NOTPARALLEL:
