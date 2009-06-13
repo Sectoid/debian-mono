@@ -134,9 +134,9 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
 	
 	# bootstrap 1.1 and 2.0 as needed to build gmcs
-	cd mcs && LC_ALL=C $(MAKE) PROFILE=basic
-	cd mcs && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
-	cd mcs && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
+	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
+	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
+	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
 	
 	# build gmcs
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
