@@ -150,6 +150,7 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_1_1
+	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
 
