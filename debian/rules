@@ -171,6 +171,9 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	# build ilasm
 	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
+	# mkbundle needs Mono.Posix and ICSharpCode.SharpZipLib
+	cd mcs/class/Mono.Posix && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	cd mcs/class/ICSharpCode.SharpZipLib && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	# build mkbundle
 	cd mcs/tools/mkbundle && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
