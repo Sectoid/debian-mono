@@ -16,6 +16,9 @@ mono (2.4+dfsg-3) unstable; urgency=low
       Suggests for libmono-system-data{1,2}.0-cil up. (Closes: #531870)
   * debian/patches/fix_ppc_build_using_gcc-4.4_r131472.dpatch:
     + Fixes the build on PPC when using GCC 4.4.
+  * debian/patches/disable_unavailable_cpu_optimizations_r133647.dpatch:
+    + Disable CPU optimizations which might be unavailable (like SSE2 on
+      Pentium 3).
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 25 May 2009 20:46:12 +0200
 
