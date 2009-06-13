@@ -156,14 +156,14 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 
 	# gmcs needs bootstrap 2.0, 
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
+	# build gmcs
+	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
-	# gmcs need mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
+	# PEAPI need mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
 	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	# build gmcs
-	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
 	# ilasm needs PEAPI
 	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0
