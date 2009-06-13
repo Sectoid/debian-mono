@@ -132,26 +132,38 @@ test: test-arch
 test-arch: test-arch-stamp
 test-arch-stamp: configure-arch-stamp build-arch-stamp
 	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
-	
+
+	# when --disable-mcs-build is passed to configure, it will not set
+	# the RUNTIME variable which is needed by the make files in mcs/
+	# so generate one with the needed variable when needed (config.make
+	# overrides configu-default.make variables)
+	if [ ! -f mcs/build/config.make ]; then \
+		echo "RUNTIME = $(CURDIR)/runtime/mono-wrapper" >> mcs/build/config.make; \
+		echo "MONO_VERSION = $(UPVERSION)" >> mcs/build/config.make; \
+	fi
+
 	# bootstrap 1.1 and 2.0 as needed to build gmcs
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
+
+	# net_2_0_bootstrap needs mcs
+	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
-	
+
 	# build gmcs
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	
+
 	# ilasm needs PEAPI
 	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0
 	# build ilasm
 	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	
+
 	# build mkbundle
 	cd mcs/tools/mkbundle && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
 	# show time baby: run all tests
 	-$(TEST)
-	
+
 	touch $@
 
 clean: clean-patched unpatch
