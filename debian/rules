@@ -142,24 +142,30 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 		echo "MONO_VERSION = $(UPVERSION)" >> mcs/build/config.make; \
 	fi
 
-	# bootstrap 1.1 and 2.0 as needed to build gmcs
+	# mcs needs bootstrap 1.1
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
 
-	# net_2_0_bootstrap needs mcs (and that mscorlib, System and System.Xml)
+	# mcs needs mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
 	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_1_1
+	# build mcs
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_1_1
+
+	# gmcs needs bootstrap 2.0, 
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
 
+	# gmcs need mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
+	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	# build gmcs
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
 	# ilasm needs PEAPI
-	# PEAPI needs mscorlib
-	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0
 	# build ilasm
 	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
