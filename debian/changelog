@@ -1,6 +1,5 @@
 mono (2.4+dfsg-3) unstable; urgency=low
 
-  * NOT RELEASED YET
   * debian/control:
     + Change Section of prj2make-sharp to devel to match archive overrides.
     + Added replaces libmono-cairo1.0-cil to libmono-cairo2.0-cil, as the
@@ -26,7 +25,7 @@ mono (2.4+dfsg-3) unstable; urgency=low
     + Implemented test target and run basic runtime tests as part of the build
       if nocheck wasn't passed via DEB_BUILD_OPTIONS.
 
- -- Mirco Bauer <meebey@debian.org>  Mon, 25 May 2009 20:46:12 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sat, 13 Jun 2009 16:56:43 +0200
 
 mono (2.4+dfsg-2) unstable; urgency=low
 
