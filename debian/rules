@@ -146,9 +146,10 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
 
-	# net_2_0_bootstrap needs mcs (and that mscorlib and System)
+	# net_2_0_bootstrap needs mcs (and that mscorlib, System and System.Xml)
 	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_1_1
+	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_1_1
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
 
