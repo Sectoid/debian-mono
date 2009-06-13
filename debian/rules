@@ -165,8 +165,9 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
-	# ilasm needs PEAPI
-	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0
+	# ilasm needs PEAPI and Mono.Security
+	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	cd mcs/class/Mono.Security && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	# build ilasm
 	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
