@@ -23,8 +23,8 @@ mono (2.4+dfsg-3) unstable; urgency=low
     + Fixes the hang for all applications when running on SPARC.
       (Closes: #531566)
   * debian/rules:
-    + Added test target and run basic runtime tests if nocheck wasn't passed via
-      DEB_BUILD_OPTIONS as part of the build.
+    + Implemented test target and run basic runtime tests as part of the build
+      if nocheck wasn't passed via DEB_BUILD_OPTIONS.
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 25 May 2009 20:46:12 +0200
 

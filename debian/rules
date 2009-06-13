@@ -130,8 +130,28 @@ build-indep-stamp:
 
 test: test-arch
 test-arch: test-arch-stamp
-test-arch-stamp: build-arch-stamp
+test-arch-stamp: configure-arch-stamp build-arch-stamp
+	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
+	
+	# bootstrap 1.1 and 2.0 as needed to build gmcs
+	cd mcs && LC_ALL=C $(MAKE) PROFILE=basic
+	cd mcs && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
+	cd mcs && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
+	
+	# build gmcs
+	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	
+	# ilasm needs PEAPI
+	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) NO_DIR_CHECK=1 PROFILE=net_2_0
+	# build ilasm
+	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
+	
+	# build mkbundle
+	cd mcs/tools/mkbundle && LC_ALL=C $(MAKE) PROFILE=net_2_0
+
+	# show time baby: run all tests
 	-$(TEST)
+	
 	touch $@
 
 clean: clean-patched unpatch
