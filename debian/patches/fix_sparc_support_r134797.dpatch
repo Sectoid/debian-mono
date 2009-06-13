@@ -1,0 +1,25 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_sparc_support_r134797.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Patch taken from upstream's SVN, revision: r134797
+## DP: 2009-05-26  Zoltan Varga  <vargaz@gmail.com>
+## DP: * mini-sparc.c (add_outarg_load): Fix the sparc build.
+
+@DPATCH@
+diff -urNad mono-2.4+dfsg~/mono/mini/mini-sparc.c mono-2.4+dfsg/mono/mini/mini-sparc.c
+--- mono-2.4+dfsg~/mono/mini/mini-sparc.c	2009-02-14 00:34:26.000000000 +0100
++++ mono-2.4+dfsg/mono/mini/mini-sparc.c	2009-06-13 14:33:43.000000000 +0200
+@@ -1080,11 +1080,9 @@
+ static void
+ add_outarg_load (MonoCompile *cfg, MonoCallInst *call, int opcode, int basereg, int offset, int reg)
+ {
+-	MonoInst *arg;
+ 	int dreg = mono_alloc_ireg (cfg);
+ 
+-	EMIT_NEW_LOAD_MEMBASE (cfg, arg, OP_LOAD_MEMBASE, dreg, sparc_sp, offset);
+-	MONO_ADD_INS (cfg->cbb, arg);
++    MONO_EMIT_NEW_LOAD_MEMBASE (cfg, dreg, sparc_sp, offset);
+ 
+ 	mono_call_inst_add_outarg_reg (cfg, call, dreg, reg, FALSE);
+ }

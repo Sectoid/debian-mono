@@ -19,6 +19,9 @@ mono (2.4+dfsg-3) unstable; urgency=low
   * debian/patches/disable_unavailable_cpu_optimizations_r133647.dpatch:
     + Disable CPU optimizations which might be unavailable (like SSE2 on
       Pentium 3).
+  * debian/patches/fix_sparc_support_r134797.patch:
+    + Fixes the hang for all applications when running on SPARC.
+      (Closes: #531566)
 
  -- Mirco Bauer <meebey@debian.org>  Mon, 25 May 2009 20:46:12 +0200
 

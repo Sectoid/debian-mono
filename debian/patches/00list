@@ -11,6 +11,7 @@ fix_NetworkInterface_endless_loop
 fix_null_funcptr_marshalling_r127347
 fix_recursive_unmanaged_types
 fix_ppc_build_using_gcc-4.4_r131472
+fix_sparc_support_r134797
 disable_unavailable_cpu_optimizations_r133647
 fix_mono-api-info_build
 fix_csharplib_build
