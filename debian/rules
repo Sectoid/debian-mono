@@ -142,8 +142,10 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 		echo "MONO_VERSION = $(UPVERSION)" >> mcs/build/config.make; \
 	fi
 
-	# mcs needs bootstrap 1.1
+	# bootstrap 1.1 needs basic
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
+
+	# mcs needs bootstrap 1.1
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
 
 	# mcs needs mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
@@ -176,6 +178,9 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	cd mcs/class/ICSharpCode.SharpZipLib && LC_ALL=C $(MAKE) PROFILE=net_2_0
 	# build mkbundle
 	cd mcs/tools/mkbundle && LC_ALL=C $(MAKE) PROFILE=net_2_0
+
+	# some tests need System.Core
+	cd mcs/class/System.Core && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
 	# show time baby: run all tests
 	-$(TEST)
