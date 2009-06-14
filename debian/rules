@@ -185,6 +185,12 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	# show time baby: run all tests
 	-$(TEST)
 
+	# clean up
+	cd mono/test && $(MAKE) clean
+	# funny bug-459094.cs creates too long directory names which
+	# pbuilder is unable to remove, eh
+	cd mono/test && rm -rf "abcde12345abcde12345abcde12345abcde12345*"
+
 	touch $@
 
 clean: clean-patched unpatch
