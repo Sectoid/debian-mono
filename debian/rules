@@ -130,17 +130,13 @@ build-indep-stamp:
 
 test: test-arch
 test-arch: test-arch-stamp
-test-arch-stamp: configure-arch-stamp build-arch-stamp
-	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
+test-arch-stamp: configure-indep
+	# we have to depend on configure-indep here because configure-arch
+	# passes --disable-mcs-build to ./configure which skips generating
+	# mcs/build/config.make which is required when we wan't to build
+	# assemblies here as thats where RUNTIME etc is defined.
 
-	# when --disable-mcs-build is passed to configure, it will not set
-	# the RUNTIME variable which is needed by the make files in mcs/
-	# so generate one with the needed variable when needed (config.make
-	# overrides configu-default.make variables)
-	if [ ! -f mcs/build/config.make ]; then \
-		echo "RUNTIME = $(CURDIR)/runtime/mono-wrapper" >> mcs/build/config.make; \
-		echo "MONO_VERSION = $(UPVERSION)" >> mcs/build/config.make; \
-	fi
+	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
 
 	# bootstrap 1.1 needs basic
 	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
@@ -190,6 +186,8 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
 	cd mono/tests && rm -rf abcde12345abcde12345abcde12345abcde12345*
+	# delete the assemblies we built here, to make sure they get cleanly
+	# rebuild in the build-indep target
 	rm -rf \
 		mcs/class/lib/basic \
 		mcs/class/lib/net_1_1 \
