@@ -186,10 +186,10 @@ test-arch-stamp: configure-arch-stamp build-arch-stamp
 	-$(TEST)
 
 	# clean up
-	cd mono/test && $(MAKE) clean
+	cd mono/tests && $(MAKE) clean
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
-	cd mono/test && rm -rf "abcde12345abcde12345abcde12345abcde12345*"
+	cd mono/tests && rm -rf "abcde12345abcde12345abcde12345abcde12345*"
 
 	touch $@
 
