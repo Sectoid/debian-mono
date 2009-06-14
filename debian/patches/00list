@@ -19,6 +19,7 @@ fix_mdoc_build
 fix_tuner_build
 disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
+disable_bug-80307_test
 build_cecil_as_2.0
 build_firebirdsql_as_2.0
 build_linker_tuner_cil-strip_as_2.0
