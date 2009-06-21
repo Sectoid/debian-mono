@@ -4,6 +4,7 @@ mono (2.4+dfsg-5) unstable; urgency=low
     + Let the build system decide if sigaltstack() will be used and which TLS
       instead of passing explicitly --with-sigaltstack and --with-tls to
       the ./configure script.
+    + Run also the JIT (mono/mini) tests.
   * debian/patches/fix_disabling_aot_r131940.dpatch:
     + Fixes the build of kfreebsd-amd64 and kfreebsd-i386.
 
