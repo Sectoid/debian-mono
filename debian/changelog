@@ -1,13 +1,21 @@
+mono (2.4+dfsg-5) unstable; urgency=low
+
+  * debian/rules:
+    + Let the build system decide if sigaltstack() will be used and which TLS
+      instead of passing explicitly --with-sigaltstack and --with-tls to
+      the ./configure script.
+  * debian/patches/fix_disabling_aot_r131940.dpatch:
+    + Fixes the build of kfreebsd-amd64 and kfreebsd-i386.
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 22 Jun 2009 00:08:35 +0200
+
 mono (2.4+dfsg-4) unstable; urgency=low
 
   * debian/rules:
     + Removed the config.make hack as that broke AMD64 builds and instead let
       the ./configure script from the configure-indep target create that file.
-    + Let the build system decide if sigaltstack() will be used and which TLS
-      instead of passing explicitly --with-sigaltstack and --with-tls to
-      the ./configure script.
 
- -- Mirco Bauer <meebey@debian.org>  Mon, 22 Jun 2009 00:08:35 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 14 Jun 2009 16:52:28 +0200 
 
 mono (2.4+dfsg-3) unstable; urgency=low
 

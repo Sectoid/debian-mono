@@ -1,0 +1,23 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix_disabling_aot_r131940.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Patch taken from upstream's SVN repository revision: 131940
+## DP: 2009-04-16  Zoltan Varga  <vargaz@gmail.com>
+## DP: * aot-compiler.c (mono_xdebug_init): Fix the DISABLE_AOT build.
+
+diff -urNad git~/mono/mini/aot-compiler.c git/mono/mini/aot-compiler.c
+--- git~/mono/mini/aot-compiler.c	2009-05-25 19:46:20.000000000 +0200
++++ git/mono/mini/aot-compiler.c	2009-06-22 00:53:34.000000000 +0200
+@@ -6247,6 +6247,11 @@
+ }
+ 
+ void
++mono_xdebug_init (void)
++{
++}
++
++void
+ mono_save_xdebug_info (MonoMethod *method, guint8 *code, guint32 code_size, MonoInst **args, GSList *unwind_info)
+ {
+ }
