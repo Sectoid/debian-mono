@@ -175,7 +175,7 @@ test-arch-stamp: configure-indep
 	cd mono/tests && $(MAKE) clean
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
-	cd mono/tests && rm -rf abcde12345abcde12345abcde12345abcde12345*
+	rm -rf mono/tests/abcde12345abcde12345abcde12345abcde12345/
 	# delete the assemblies we built here, to make sure they get cleanly
 	# rebuild in the build-indep target
 	rm -rf \
