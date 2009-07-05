@@ -38,6 +38,9 @@ endif
 
 ifeq ($(DEB_BUILD_ARCH), armel)
 	CONF_FLAGS += --with-fpu=NONE
+	# the build-system picks __thread for armel which is not working,
+	# thus we have to explicitly pick pthread
+	CONF_FLAGS += --with-tls=pthread
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
@@ -165,6 +168,9 @@ test-arch-stamp: configure-indep
 
 	# some tests need System.Core
 	cd mcs/class/System.Core && LC_ALL=C $(MAKE) PROFILE=net_2_0
+
+	# mono/mini tests need Mono.Simd
+	cd mcs/class/Mono.Simd && LC_ALL=C $(MAKE) PROFILE=net_2_0
 
 	# show time baby: run all tests
 	-$(MINI_TEST)

@@ -18,7 +18,7 @@ Build-Depends: debhelper (>= 7),
 	zlib1g-dev,
 	autoconf,
 	automake
-Standards-Version: 3.8.0
+Standards-Version: 3.8.2
 Homepage: http://www.mono-project.com/
 Vcs-Git: git://git.debian.org/git/pkg-mono/packages/mono.git
 Vcs-Browser: http://git.debian.org/?p=pkg-mono/packages/mono.git
@@ -79,7 +79,7 @@ Description: Mono utilities
  bytecode (aka assemblies), and a class library.
  .
  This package includes various tools useful for CLI developers, like
- dh_installxsp, pedump, monodiet, monodis and monograph.
+ pedump, monodis and monograph.
 
 Package: mono-complete
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
