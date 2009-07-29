@@ -1,3 +1,9 @@
+mono (2.4.2+dfsg-1~pre1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 29 Jul 2009 16:34:12 +0200
+
 mono (2.4+dfsg-6) unstable; urgency=low
 
   * debian/rules:
