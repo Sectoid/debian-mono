@@ -1,6 +1,8 @@
 mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
 
   * New upstream release.
+    + Shipping the RabbitMQ.Client library now the non-free bits were
+      removed.
 
  -- Mirco Bauer <meebey@debian.org>  Wed, 29 Jul 2009 16:34:12 +0200
 

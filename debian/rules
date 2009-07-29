@@ -486,11 +486,8 @@ get-orig-source:
 	fi
 	tar -xzf $(DEB_SOURCE_NAME)_$(UPVERSION).orig.tar.gz
 	rm $(DEB_SOURCE_NAME)_$(UPVERSION).orig.tar.gz
-	rm -rf $(TARBALL_DIR)/mcs/class/RabbitMQ.Client/docs/specs/
-	find $(TARBALL_DIR) -name "*.dll" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*"
-	find $(TARBALL_DIR) -name "*.dll" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -delete
-	find $(TARBALL_DIR) -name "*.exe" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*"
-	find $(TARBALL_DIR) -name "*.exe" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -delete
+	find $(TARBALL_DIR) -name "*.dll" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -print -delete
+	find $(TARBALL_DIR) -name "*.exe" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -print -delete
 	mv $(TARBALL_DIR) $(TARBALL_DIR)+dfsg
 	tar -czf $(DEB_SOURCE_NAME)_$(UPVERSION)+dfsg.orig.tar.gz $(TARBALL_DIR)+dfsg
 	rm -r $(TARBALL_DIR)+dfsg
