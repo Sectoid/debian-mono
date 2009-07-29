@@ -1,3 +1,206 @@
+2009-06-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* metadata.c (free_inflated_method): Call 
+	mono_marshal_free_inflated_wrappers (), which was missed earlier.
+
+2009-06-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Revert previous commit to threads.c until the race condition
+	is fixed.
+
+2009-06-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of 135171.
+
+	* threads.c (ves_icall_System_Threading_Thread_Sleep_internal):
+	Check if the thread was interrupted and proccess it straight away.
+	Makes abortion much more responsive.
+
+	Backport of 135170.
+
+	* threads.c (mono_thread_execute_interruption): Use atomic cas with
+	MonoThread::interruption_requested to match it's counterpart.
+
+	Fixes a hang in abort-stress-1 on a 2 core x86.
+
+2009-06-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* marshal.c (mono_marshal_get_runtime_invoke): Emit the right kind
+	of ldind opcode for generic instances so we don't fail for direct wrappers.
+
+	Fixes #508538.
+
+2009-06-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c metadata.c: Applied patch from Ulrich Weigand 
+	<uweigand@de.ibm.com>: Free the wrappers of inflated generic methods when
+	the inflated method is freed. Fixes #508389.
+
+	The code is contributed under the MIT/X11 license.
+	
+2009-05-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r134810.
+
+	* icall.c (ves_icall_Type_GetMethodsByName): Virtual methods should be
+	discarded based on their most specific definition so we set the method_slots
+	array before checking if the method is acceptable or not.
+
+	Fixes #506757.
+
+2009-05-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r134723.
+
+	* class.c (mono_class_setup_fields): Don't mark simd types as having
+	16 bytes alignment as the whole runtime doesn't support.
+
+2009-05-05 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* icall-def.h:
+	* threads-types.h:
+	* threads.c: added internal call for WaitHandle.SignalAndWait.
+
+2009-05-03  Martin Baulig  <martin@ximian.com>
+
+	* mono-debug-debugger.c
+	(mono_debugger_check_breakpoints): Check class init handlers even
+	if we don't have any method load handers.
+
+2009-04-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* appdomain.c (ves_icall_System_AppDomain_GetAssemblies): Avoid 
+	returning refonly assemblies if refonly is FALSE. Fixes #499013.
+
+2009-04-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* image.c (mono_image_fixup_vtable): Avoid casting an lvalue. Fixes 
+	part of #498692.
+
+2009-04-23 Tom Hindle <tom_hindle@sil.org>
+
+	* cominterop.c (ves_icall_System_Runtime_InteropServices_Marshal_ReleaseComObjectInternal):
+	changed to match .Net behaviour of not aborting on additional calls to ReleaseComObject.
+
+2009-03-31  Martin Baulig  <martin@ximian.com>
+
+	Backport of r130659.
+
+	* mono-debug-debugger.h (MonoDebuggerEvent): Add
+	`MONO_DEBUGGER_EVENT_CREATE_APPDOMAIN' and
+	`MONO_DEBUGGER_EVENT_UNLOAD_APPDOMAIN'.
+	(mono_debugger_event_create_appdomain): New function.
+	(mono_debugger_event_unload_appdomain): New function.
+
+	* appdomain.c (mono_domain_create_appdomain_internal): Call
+	mono_debugger_event_create_appdomain().
+
+2009-03-31  Martin Baulig  <martin@ximian.com>
+
+	Backport of r130658.
+
+	* mono-debug-debugger.c
+	(mono_debugger_register_class_init_callback): Also register the
+	class init callback if the class is already initialized to make
+	things work with shadow copied assemblies.
+
+2009-04-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* assembly.c: assemblies in the GAC should never be shadow-copied.
+
+2009-02-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c (mono_thread_suspend_all_other_threads): Handle the case when
+	the a thread does not suspend within 100ms.
+
+	* monitor.c (mono_monitor_try_enter_internal): Handle SuspendRequested
+	in addition to StopRequested as well.
+
+	* mono-debug.c: Call _mono_debug_get_image () while holding the debug lock.
+
+	* debug-mono-symfile.c (mono_debug_symfile_lookup_method): Actually
+	search the method_hash before inserting a new entry, to avoid crashes when
+	the same method is inserted multiple times, causing the old 
+	MonoDebugMethodInfo structure to be freed by the value dtor function.
+
+2009-04-15  Martin Baulig  <martin@ximian.com>
+
+	* debug-mono-symfile.c
+	(mono_debug_symfile_lookup_location): Don't print a warning for
+	unknown extended opcodes if they're within 0x40 and 0x7f.
+
+2009-03-31 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* socket-io.c: don't fail if the SocketOptionsFlag has Partial or
+	* MaxIOVectorLength enabled, just ignore them.
+	Fixes bug #349688.
+
+2009-01-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_marshal_load_type_info): Fill out info->min_align.
+	(mono_class_native_size): Use klass->marshal_info->min_align instead of
+	klass->min_align, since klass->min_align contains the managed alignment,
+	while the native alignment can be different, like for longs on x86.
+	Fixes #469135.
+
+	* class-internals.h (MonoMarshalType): Add a min_align field.
+
+2009-03-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* appdomain.c:
+	* console-io.[ch]: added new mono_console_init() to make sure that
+	file descriptors 0, 1 and 2 are opened.
+	Bug #489019 fixed.
+
+2009-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (emit_marshal_object): Generate code to throw an exception
+	instead of throwing it. Fixes #488670.
+
+2009-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_delegate_to_ftnptr): For delegates wrapping pinvoke
+	methods, return the native function address itself. Fixes
+	#487758.
+
+2009-03-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r129798.
+
+	* locales.c (get_current_locale_name): Use g_malloc instead of malloc.
+
+2009-03-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* icall.c: Handle user types in many Type icalls. Fixes #486303.
+
+2009-03-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* appdomain.c: if the assembly name is a shadow-copied file, return
+	TRUE from mono_is_shadow_copy_enabled but don't actually do anything
+	in mono_make_shadow_copy.
+	* icall.c: if the assembly name is a shadow-copied file, replace it
+	with the original assembly path.
+
+	Bug #484244 fixed. NUnit tests for corlib can be run without
+	--noshadow now.
+
+2009-03-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r128849 + r128490.
+
+	* domain-internals.h (struct _MonoDomain): Add new hash tables mapping
+	between GCHandles of type WeakTrackResurrection and the objects they
+	point to.
+
+	* gc.c: Partly implement the sematics of GCHandles of type 
+	WeakTrackResurrection: these handles should only be cleared after the
+	finalizer of the object they are pointing to has ran.
+
+	* domain-internals.h (struct _MonoDomain): Add a separate lock for the
+	finalize_objects_hash.
+
+	* gc.c: Use the separate lock to access the finalize_objects_hash field.
+	
 2009-03-10  Zoltan Varga  <vargaz@gmail.com>
 
 	Backport of r129009.

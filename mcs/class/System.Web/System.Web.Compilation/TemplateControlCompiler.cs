@@ -47,6 +47,7 @@ using System.Configuration;
 using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Web.Configuration;
+using System.Resources;
 #endif
 
 namespace System.Web.Compilation
@@ -67,6 +68,7 @@ namespace System.Web.Compilation
 		
 #if NET_2_0
 		List <string> masterPageContentPlaceHolders;
+		static Regex startsWithBindRegex = new Regex (@"^Bind\s*\(", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		// When modifying those, make sure to look at the SanitizeBindCall to make sure it
 		// picks up correct groups.
 		static Regex bindRegex = new Regex (@"Bind\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)\s*%>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -522,7 +524,7 @@ namespace System.Web.Compilation
 			
 #if NET_2_0
 			bool need_if = false;
-			if (StrUtils.StartsWith (value, "Bind", true)) {
+			if (startsWithBindRegex.Match (value).Success) {
 				valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, true);
 				if (valueExpression != null)
 					need_if = true;
@@ -535,7 +537,6 @@ namespace System.Web.Compilation
 				valueExpression = new CodeSnippetExpression (value);
 			
 			method = CreateDBMethod (builder, dbMethodName, GetContainerType (builder), builder.ControlType);
-			
 			CodeVariableReferenceExpression targetExpr = new CodeVariableReferenceExpression ("target");
 
 			// This should be a CodePropertyReferenceExpression for properties... but it works anyway
@@ -851,6 +852,32 @@ namespace System.Web.Compilation
 			
 			return ret;
 		}
+
+		bool ResourceProviderHasObject (string key)
+		{
+			IResourceProvider rp = HttpContext.GetResourceProvider (key, true);
+			if (rp == null)
+				return false;
+
+			IResourceReader rr = rp.ResourceReader;
+			if (rr == null)
+				return false;
+
+			IDictionaryEnumerator ide = rr.GetEnumerator ();
+			if (ide == null)
+				return false;
+			
+			string dictKey;
+			while (ide.MoveNext ()) {
+				dictKey = ide.Key as string;
+				if (String.IsNullOrEmpty (dictKey))
+					continue;
+				if (String.Compare (key, dictKey, StringComparison.Ordinal) == 0)
+					return true;
+			}
+
+			return false;
+		}
 		
 		void AssignPropertyFromResources (ControlBuilder builder, MemberInfo mi, string attvalue)
 		{
@@ -860,9 +887,16 @@ namespace System.Web.Compilation
 			if (!isProperty && !isField || !IsWritablePropertyOrField (mi))
 				return;			
 
+			object[] attrs = mi.GetCustomAttributes (typeof (LocalizableAttribute), true);
+			if (attrs == null || attrs.Length == 0 || !((LocalizableAttribute)attrs [0]).IsLocalizable)
+				return;
+			
 			string memberName = mi.Name;
 			string resname = String.Concat (attvalue, ".", memberName);
 
+			if (!ResourceProviderHasObject (resname))
+				return;
+			
 			// __ctrl.Text = System.Convert.ToString(HttpContext.GetLocalResourceObject("ButtonResource1.Text"));
 			string inputFile = parser.InputFile;
 			string physPath = HttpContext.Current.Request.PhysicalApplicationPath;
@@ -989,7 +1023,7 @@ namespace System.Web.Compilation
 				string value = attvalue.Substring (3, attvalue.Length - 5).Trim ();
 				CodeExpression valueExpression = null;
 #if NET_2_0
-				if (StrUtils.StartsWith (value, "Bind", true))
+				if (startsWithBindRegex.Match (value).Success)
 					valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, true);
 				else
 #endif
@@ -1061,6 +1095,9 @@ namespace System.Web.Compilation
 			AddEventAssign (method, builder, "DataBinding", typeof (EventHandler), dbMethodName);
 
 			method = CreateDBMethod (builder, dbMethodName, GetContainerType (builder), builder.ControlType);
+#if NET_2_0
+			builder.DataBindingMethod = method;
+#endif
 			CodeCastExpression cast;
 			CodeMethodReferenceExpression methodExpr;
 			CodeMethodInvokeExpression expr;
@@ -1378,7 +1415,9 @@ namespace System.Web.Compilation
 
 			// Add the DataBind handler
 			method = CreateDBMethod (builder, dbMethodName, GetContainerType (builder), typeof (DataBoundLiteralControl));
-
+#if NET_2_0
+			builder.DataBindingMethod = method;
+#endif
 			CodeVariableReferenceExpression targetExpr = new CodeVariableReferenceExpression ("target");
 			CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression ();
 			invoke.Method = new CodeMethodReferenceExpression (targetExpr, "SetDataBoundString");
@@ -1393,7 +1432,7 @@ namespace System.Web.Compilation
 			method.Statements.Add (AddLinePragma (invoke, builder));
 			
 			mainClass.Members.Add (method);
-
+			
 			AddChildCall (builder, db);
 		}
 
@@ -1456,11 +1495,8 @@ namespace System.Web.Compilation
 					FlushText (builder, sb);
 					if (b is ObjectTagBuilder) {
 						ProcessObjectTag ((ObjectTagBuilder) b);
-						continue;
-					}
-
-					StringPropertyBuilder pb = b as StringPropertyBuilder;
-					if (pb != null){
+					} else if (b is StringPropertyBuilder) {
+						StringPropertyBuilder pb = b as StringPropertyBuilder;
 						if (pb.Children != null && pb.Children.Count > 0) {
 							StringBuilder asb = new StringBuilder ();
 							foreach (string s in pb.Children)
@@ -1471,11 +1507,9 @@ namespace System.Web.Compilation
 							assign.Right = new CodePrimitiveExpression (asb.ToString ());
 							method.Statements.Add (AddLinePragma (assign, builder));
 						}
-						continue;
 					}
-
 #if NET_2_0
-					if (b is ContentBuilderInternal) {
+					else if (b is ContentBuilderInternal) {
 						ContentBuilderInternal cb = (ContentBuilderInternal) b;
 						CreateControlTree (cb, false, true);
 						AddContentTemplateInvocation (cb, builder.Method, cb.Method.Name);
@@ -1483,32 +1517,27 @@ namespace System.Web.Compilation
 					}
 #endif
 					// Ignore TemplateBuilders - they are processed in InitMethod
-					if (b is TemplateBuilder)
-						continue;
-
-					if (b is CodeRenderBuilder) {
+					else if (b is TemplateBuilder) {
+					} else if (b is CodeRenderBuilder) {
 						AddCodeRender (builder, (CodeRenderBuilder) b);
-						continue;
-					}
-
-					if (b is DataBindingBuilder) {
+					} else if (b is DataBindingBuilder) {
 						AddDataBindingLiteral (builder, (DataBindingBuilder) b);
-						continue;
-					}
-					
-					if (b is ControlBuilder) {
+					} else if (b is ControlBuilder) {
 						ControlBuilder child = (ControlBuilder) b;
 						CreateControlTree (child, inTemplate, builder.ChildrenAsProperties);
 						AddChildCall (builder, child);
 						continue;
-					}
+					} else
+						throw new Exception ("???");
 
-					throw new Exception ("???");
+#if NET_2_0
+					ControlBuilder bldr = b as ControlBuilder;
+					bldr.ProcessGeneratedCode (CompileUnit, BaseType, DerivedType, bldr.Method, bldr.DataBindingMethod);
+#endif
 				}
 
 				FlushText (builder, sb);
 			}
-
 
 			ControlBuilder defaultPropertyBuilder = builder.DefaultPropertyBuilder;
 			if (defaultPropertyBuilder != null) {
@@ -1545,6 +1574,10 @@ namespace System.Web.Compilation
 
 			if (!childrenAsProperties && typeof (Control).IsAssignableFrom (builder.ControlType))
 				builder.Method.Statements.Add (new CodeMethodReturnStatement (ctrlVar));
+
+#if NET_2_0
+			builder.ProcessGeneratedCode (CompileUnit, BaseType, DerivedType, builder.Method, builder.DataBindingMethod);
+#endif
 		}
 
 #if NET_2_0
@@ -1809,6 +1842,9 @@ namespace System.Web.Compilation
 			}
 #endif
 
+			if (tca == TypeConverterAttribute.Default)
+				tca = null;
+			
 			if (tca == null)
 				return null;
 
@@ -2012,10 +2048,34 @@ namespace System.Web.Compilation
 				}
 			}
 
-			TypeConverter converter = preConverted ? cvt :
-				wasNullable ? TypeDescriptor.GetConverter (type) :
-				TypeDescriptor.GetProperties (member.DeclaringType) [member.Name].Converter;
+			TypeConverter converter = preConverted ? cvt : wasNullable ? TypeDescriptor.GetConverter (type) : null;
+			if (converter == null) {
+				PropertyDescriptor pdesc = TypeDescriptor.GetProperties (member.DeclaringType) [member.Name];
+				if (pdesc != null)
+					converter = pdesc.Converter;
+				else {
+					Type memberType;
+					switch (member.MemberType) {
+						case MemberTypes.Field:
+							memberType = ((FieldInfo)member).FieldType;
+							break;
 
+						case MemberTypes.Property:
+							memberType = ((PropertyInfo)member).PropertyType;
+							break;
+
+						default:
+							memberType = null;
+							break;
+					}
+
+					if (memberType == null)
+						return null;
+
+					converter = TypeDescriptor.GetConverter (memberType);
+				}
+			}
+			
 			if (preConverted || (converter != null && SafeCanConvertFrom (typeof (string), converter))) {
 				object value = preConverted ? convertedFromAttr : converter.ConvertFromInvariantString (str);
 

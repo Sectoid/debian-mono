@@ -537,7 +537,7 @@ namespace System.Web.UI
 				}
 
 				StringBuilder sb = new StringBuilder ();
-				sb.AppendLine ("if (typeof(Sys) === 'undefined') throw new Error('ASP.NET Ajax client-side framework failed to load.');");
+   				sb.AppendLine ("if (typeof(Sys) === 'undefined') throw new Error('ASP.NET Ajax client-side framework failed to load.');");
 
 				ScriptingProfileServiceSection profileService = (ScriptingProfileServiceSection) WebConfigurationManager.GetSection ("system.web.extensions/scripting/webServices/profileService");
 				if (profileService != null && profileService.Enabled)
@@ -562,12 +562,6 @@ namespace System.Web.UI
 
 				if (IsMultiForm)
 					RegisterScriptReference (this, ajaxWebFormsExtensionScript, true);
-			}
-
-			if (!String.IsNullOrEmpty (_panelToRefreshID)) {
-				UpdatePanel panel = FindPanelWithId (_panelToRefreshID);
-				if (panel != null)
-					RegisterPanelForRefresh (panel);
 			}
 			
 			// Register Scripts
@@ -690,14 +684,23 @@ namespace System.Web.UI
 		}
 #endif
 
-		static bool HasBeenRendered (Control control) {
+		bool PanelRequiresUpdate (UpdatePanel panel)
+		{
+			if (panel == null || _panelsToRefresh == null || _panelsToRefresh.Count == 0)
+				return false;
+
+			return _panelsToRefresh.Contains (panel);
+		}
+		
+		bool HasBeenRendered (Control control)
+		{
 			if (control == null)
 				return false;
 
 			UpdatePanel panel = control as UpdatePanel;
-			if (panel != null && panel.RequiresUpdate)
-					return true;
-			
+			if (PanelRequiresUpdate (panel))
+				return true;
+
 			return HasBeenRendered (control.Parent);
 		}
 
@@ -740,10 +743,9 @@ namespace System.Web.UI
 				ResolveScriptReference (this, e);
 		}
 
-		protected virtual void RaisePostDataChangedEvent () {
-			UpdatePanel up = Page.FindControl (_panelToRefreshID) as UpdatePanel;
-			if (up != null && up.ChildrenAsTriggers)
-				up.Update ();
+		protected virtual void RaisePostDataChangedEvent ()
+		{
+			// Why override?
 		}
 
 		public static void RegisterArrayDeclaration (Page page, string arrayName, string arrayValue) {
@@ -813,7 +815,6 @@ namespace System.Web.UI
 		}
 
 		void RegisterScriptReference (Control control, ScriptReference script, bool loadScriptsBeforeUI) {
-
 			bool isDebugMode = IsDeploymentRetail ? false : (script.ScriptModeInternal == ScriptMode.Inherit ? IsDebuggingEnabled : (script.ScriptModeInternal == ScriptMode.Debug));
 			string url;
 			if (!String.IsNullOrEmpty (script.Path)) {
@@ -1205,12 +1206,11 @@ namespace System.Web.UI
 			else if (_panelsToRefresh.Contains (panel))
 				return;
 
-			panel.Update ();
 			_panelsToRefresh.Add (panel);
 		}
 		
-		internal void WriteCallbackPanel (TextWriter output, UpdatePanel panel, StringBuilder panelOutput) {
-			RegisterPanelForRefresh (panel);
+		internal void WriteCallbackPanel (TextWriter output, UpdatePanel panel, StringBuilder panelOutput)
+		{
 			WriteCallbackOutput (output, updatePanel, panel.ClientID, panelOutput);
 		}
 
@@ -1244,9 +1244,75 @@ namespace System.Web.UI
 			output.Write ('|');
 		}
 
-		void RenderPageCallback (HtmlTextWriter output, Control container) {
+		void RenderPageCallback (HtmlTextWriter output, Control container)
+		{
 			Page page = (Page) container;
 
+			// MSDN: http://msdn.microsoft.com/en-us/library/system.web.ui.updatepanel.aspx
+			//
+			// Refreshing UpdatePanel Content
+			//
+			// When partial-page rendering is enabled, a control can perform a postback
+			// that updates the whole page or an asynchronous postback that updates the
+			// content of one or more UpdatePanel controls. Whether a control causes an
+			// asynchronous postback and updates an UpdatePanel control depends on the
+			// following:
+			//
+			// * If the UpdateMode property of the UpdatePanel control is set to Always,
+			//   the UpdatePanel control's content is updated on every postback that
+			//   originates from the page. This includes asynchronous postbacks from
+			//   controls that are inside other UpdatePanel controls and postbacks from
+			//   controls that are not inside UpdatePanel controls.
+			//
+			// * If the UpdateMode property is set to Conditional, the UpdatePanel
+			//   control's content is updated in the following circumstances:
+			//
+			//       o When you call the Update method of the UpdatePanel control
+			//         explicitly.
+			//       o When the UpdatePanel control is nested inside another UpdatePanel
+			//         control, and the parent panel is updated.
+			//       o When a postback is caused by a control that is defined as a
+			//         trigger by using the Triggers property of the UpdatePanel
+			//         control. In this scenario, the control explicitly triggers an
+			//         update of the panel content. The control can be either inside or
+			//         outside the UpdatePanel control that the trigger is associated
+			//         with.
+			//       o When the ChildrenAsTriggers property is set to true and a child
+			//         control of the UpdatePanel control causes a postback. Child
+			//         controls of nested UpdatePanel controls do not cause an update to
+			//         the outer UpdatePanel control unless they are explicitly defined
+			//         as triggers.
+			//
+			if (_updatePanels != null && _updatePanels.Count > 0) {
+				bool needsUpdate;
+				
+				foreach (UpdatePanel panel in _updatePanels) {
+					if (panel.RequiresUpdate || (!String.IsNullOrEmpty (_panelToRefreshID) && String.Compare (_panelToRefreshID, panel.UniqueID, StringComparison.Ordinal) == 0))
+						needsUpdate = true;
+					else
+						needsUpdate = false;
+
+					if (needsUpdate == false) {
+						Control parent = panel.Parent;
+						UpdatePanel parentPanel;
+						
+						bool havePanelsToRefresh = _panelsToRefresh != null ? _panelsToRefresh.Count > 0 : false;
+						while (parent != null) {
+							parentPanel = parent as UpdatePanel;
+							if (havePanelsToRefresh && parentPanel != null && _panelsToRefresh.Contains (parentPanel)) {
+								needsUpdate = true;
+								break;
+							}
+							parent = parent.Parent;
+						}
+					}
+
+					panel.SetInPartialRendering (needsUpdate);
+					if (needsUpdate)
+						RegisterPanelForRefresh (panel);
+				}
+			}
+			
 			page.Form.SetRenderMethodDelegate (RenderFormCallback);
 			HtmlTextParser parser = new HtmlTextParser (output);
 			page.Form.RenderControl (parser);
@@ -1323,6 +1389,7 @@ namespace System.Web.UI
 				return;
 			var registeredScripts = new Dictionary <string, RegisteredScript> ();
 			Control control;
+			Page page = Page;
 			
 			for (int i = 0; i < scriptList.Count; i++) {
 				RegisteredScript scriptEntry = scriptList [i];
@@ -1330,27 +1397,27 @@ namespace System.Web.UI
 					continue;
 
  				control = scriptEntry.Control;
-				if (Page == control || HasBeenRendered (control)) {
+				if (page == control || HasBeenRendered (control)) {
 					registeredScripts.Add (scriptEntry.Key, scriptEntry);
 					switch (scriptEntry.ScriptType) {
-					case RegisteredScriptType.ClientScriptBlock:
-						if (scriptEntry.AddScriptTags)
-							WriteCallbackOutput (output, scriptBlock, scriptContentNoTags, scriptEntry.Script);
-						else
-							WriteCallbackOutput (output, scriptBlock, scriptContentWithTags, SerializeScriptBlock (scriptEntry));
-						break;
-					case RegisteredScriptType.ClientStartupScript:
-						if (scriptEntry.AddScriptTags)
-							WriteCallbackOutput (output, scriptStartupBlock, scriptContentNoTags, scriptEntry.Script);
-						else
-							WriteCallbackOutput (output, scriptStartupBlock, scriptContentWithTags, SerializeScriptBlock (scriptEntry));
-						break;
-					case RegisteredScriptType.ClientScriptInclude:
-						WriteCallbackOutput (output, scriptBlock, scriptPath, scriptEntry.Url);
-						break;
-					case RegisteredScriptType.OnSubmitStatement:
-						WriteCallbackOutput (output, onSubmit, null, scriptEntry.Script);
-						break;
+						case RegisteredScriptType.ClientScriptBlock:
+							if (scriptEntry.AddScriptTags)
+								WriteCallbackOutput (output, scriptBlock, scriptContentNoTags, scriptEntry.Script);
+							else
+								WriteCallbackOutput (output, scriptBlock, scriptContentWithTags, SerializeScriptBlock (scriptEntry));
+							break;
+						case RegisteredScriptType.ClientStartupScript:
+							if (scriptEntry.AddScriptTags)
+								WriteCallbackOutput (output, scriptStartupBlock, scriptContentNoTags, scriptEntry.Script);
+							else
+								WriteCallbackOutput (output, scriptStartupBlock, scriptContentWithTags, SerializeScriptBlock (scriptEntry));
+							break;
+						case RegisteredScriptType.ClientScriptInclude:
+							WriteCallbackOutput (output, scriptBlock, scriptPath, scriptEntry.Url);
+							break;
+						case RegisteredScriptType.OnSubmitStatement:
+							WriteCallbackOutput (output, onSubmit, null, scriptEntry.Script);
+							break;
 					}
 				}
 			}
@@ -1397,7 +1464,8 @@ namespace System.Web.UI
 			throw new InvalidOperationException (String.Format ("The script tag registered for type '{0}' and key '{1}' has invalid characters outside of the script tags: {2}. Only properly formatted script tags can be registered.", scriptEntry.Type, scriptEntry.Key, scriptEntry.Script));
 		}
 
-		void RenderFormCallback (HtmlTextWriter output, Control container) {
+		void RenderFormCallback (HtmlTextWriter output, Control container)
+		{
 			output = ((HtmlTextParser) output).ResponseOutput;
 			HtmlForm form = (HtmlForm) container;
 			HtmlTextWriter writer = new HtmlDropWriter (output);

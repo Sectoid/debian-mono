@@ -327,6 +327,9 @@ namespace System.Collections.Generic
 
 		void ICollection<KeyValuePair<TKey, TValue>>.CopyTo (KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
+			if (Count == 0)
+				return;
+			
 			if (null == array)
 				throw new ArgumentNullException();
 
@@ -421,6 +424,9 @@ namespace System.Collections.Generic
 
 		void ICollection.CopyTo (Array array, int arrayIndex)
 		{
+			if (Count == 0)
+				return;
+			
 			if (null == array)
 				throw new ArgumentNullException();
 
@@ -637,10 +643,10 @@ namespace System.Collections.Generic
 			while (left <= right) {
 				int guess = (left + right) >> 1;
 
-				int cmp = comparer.Compare (key, table[guess].Key);
+				int cmp = comparer.Compare (table[guess].Key, key);
 				if (cmp == 0) return guess;
 
-				if (cmp >  0) left = guess+1;
+				if (cmp <  0) left = guess+1;
 				else right = guess-1;
 			}
 

@@ -11,6 +11,7 @@
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/object-internals.h>
 #include <mono/metadata/class-internals.h>
+#include <mono/metadata/domain-internals.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/mono-debug.h>
 #include <mono/metadata/mono-debug-debugger.h>
@@ -38,6 +39,14 @@ typedef struct {
 	gchar *name_space;
 	gchar *name;
 } ClassInitCallback;
+
+typedef struct {
+	guint32 id;
+	guint32 shadow_path_len;
+	gchar *shadow_path;
+	MonoDomain *domain;
+	MonoAppDomainSetup *setup;
+} AppDomainSetupInfo;
 
 static GPtrArray *class_init_callbacks = NULL;
 
@@ -76,6 +85,28 @@ mono_debugger_event (MonoDebuggerEvent event, guint64 data, guint64 arg)
 {
 	if (mono_debugger_event_handler)
 		(* mono_debugger_event_handler) (event, data, arg);
+}
+
+void
+mono_debugger_event_create_appdomain (MonoDomain *domain, gchar *shadow_path)
+{
+	AppDomainSetupInfo info;
+
+	info.id = mono_domain_get_id (domain);
+	info.shadow_path_len = shadow_path ? strlen (shadow_path) : 0;
+	info.shadow_path = shadow_path;
+
+	info.domain = domain;
+	info.setup = domain->setup;
+
+	mono_debugger_event (MONO_DEBUGGER_EVENT_CREATE_APPDOMAIN, (guint64) (gsize) &info, 0);
+}
+
+void
+mono_debugger_event_unload_appdomain (MonoDomain *domain)
+{
+	mono_debugger_event (MONO_DEBUGGER_EVENT_UNLOAD_APPDOMAIN,
+			     (guint64) (gsize) domain, (guint64) mono_domain_get_id (domain));
 }
 
 void
@@ -153,33 +184,31 @@ mono_debugger_check_breakpoints (MonoMethod *method, MonoDebugMethodAddress *deb
 {
 	int i;
 
-	if (!method_breakpoints)
-		return;
-
 	if (method->is_inflated)
 		method = ((MonoMethodInflated *) method)->declaring;
 
-	for (i = 0; i < method_breakpoints->len; i++) {
-		MethodBreakpointInfo *info = g_ptr_array_index (method_breakpoints, i);
+	if (method_breakpoints) {
+		for (i = 0; i < method_breakpoints->len; i++) {
+			MethodBreakpointInfo *info = g_ptr_array_index (method_breakpoints, i);
 
-		if (method != info->method)
-			continue;
+			if (method != info->method)
+				continue;
 
-		mono_debugger_event (MONO_DEBUGGER_EVENT_JIT_BREAKPOINT,
-				     (guint64) (gsize) debug_info, info->index);
+			mono_debugger_event (MONO_DEBUGGER_EVENT_JIT_BREAKPOINT,
+					     (guint64) (gsize) debug_info, info->index);
+		}
 	}
 
-	if (!class_init_callbacks)
-		return;
+	if (class_init_callbacks) {
+		for (i = 0; i < class_init_callbacks->len; i++) {
+			ClassInitCallback *info = g_ptr_array_index (class_init_callbacks, i);
 
-	for (i = 0; i < class_init_callbacks->len; i++) {
-		ClassInitCallback *info = g_ptr_array_index (class_init_callbacks, i);
+			if ((method->token != info->token) || (method->klass->image != info->image))
+				continue;
 
-		if ((method->token != info->token) || (method->klass->image != info->image))
-			continue;
-
-		mono_debugger_event (MONO_DEBUGGER_EVENT_JIT_BREAKPOINT,
-				     (guint64) (gsize) debug_info, info->index);
+			mono_debugger_event (MONO_DEBUGGER_EVENT_JIT_BREAKPOINT,
+					     (guint64) (gsize) debug_info, info->index);
+		}
 	}
 }
 
@@ -205,10 +234,6 @@ mono_debugger_register_class_init_callback (MonoImage *image, const gchar *full_
 	mono_loader_lock ();
 
 	klass = mono_class_from_name (image, name_space ? name_space : "", name);
-	if (klass && klass->inited && klass->methods) {
-		mono_loader_unlock ();
-		return klass;
-	}
 
 	info = g_new0 (ClassInitCallback, 1);
 	info->image = image;
@@ -222,7 +247,7 @@ mono_debugger_register_class_init_callback (MonoImage *image, const gchar *full_
 
 	g_ptr_array_add (class_init_callbacks, info);
 	mono_loader_unlock ();
-	return NULL;
+	return klass;
 }
 
 void

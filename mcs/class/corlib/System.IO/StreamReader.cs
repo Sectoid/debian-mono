@@ -362,12 +362,21 @@ namespace System.IO {
 		{
 			if (base_stream == null)
 				throw new ObjectDisposedException ("StreamReader", "Cannot read from a closed StreamReader");
-			if (pos >= decoded_count && (mayBlock || ReadBuffer () == 0))
+			if (pos >= decoded_count && ReadBuffer () == 0)
 				return -1;
 
 			return decoded_buffer [pos];
 		}
 
+		//
+		// Used internally by our console, as it previously depended on Peek() being a
+		// routine that would not block.
+		//
+		internal bool DataAvailable ()
+		{
+			return pos < decoded_count;
+		}
+		
 		public override int Read ()
 		{
 			if (base_stream == null)

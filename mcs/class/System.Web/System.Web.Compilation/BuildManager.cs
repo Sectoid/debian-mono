@@ -377,7 +377,7 @@ namespace System.Web.Compilation {
                         bool addAssembliesInBin = false;
                         foreach (AssemblyInfo info in compConfig.Assemblies) {
                                 if (info.Assembly == "*")
-                                        addAssembliesInBin = true;
+                                        addAssembliesInBin = is_precompiled ? false : true;
                                 else
                                         LoadAssembly (info, al);
                         }
@@ -387,8 +387,11 @@ namespace System.Web.Compilation {
 
 			foreach (string assLocation in WebConfigurationManager.ExtraAssemblies)
 				LoadAssembly (assLocation, al);
-			
-                        if (addAssembliesInBin)
+
+
+			// Precompiled sites unconditionally load all assemblies from bin/ (fix for
+			// bug #502016)
+			if (is_precompiled || addAssembliesInBin) {
 				foreach (string s in HttpApplication.BinDirectoryAssemblies) {
 					try {
 						LoadAssembly (s, al);
@@ -396,7 +399,8 @@ namespace System.Web.Compilation {
 						// ignore silently
 					}
 				}
-			
+			}
+
 			lock (buildCacheLock) {
 				foreach (Assembly asm in referencedAssemblies)
 					if (!al.Contains (asm))
@@ -419,12 +423,49 @@ namespace System.Web.Compilation {
 			AddAssembly (Assembly.Load (info.Assembly), al);
 		}
 
+		// Deal with precompiled sites deployed in a different virtual path
+		static void FixVirtualPaths ()
+ 		{
+			string [] parts;
+			int skip = -1;
+			foreach (string vpath in precompiled.Keys) {
+				parts = vpath.Split ('/');
+				for (int i = 0; i < parts.Length; i++) {
+					string test_path = String.Join ("/", parts, i, parts.Length - i);
+					VirtualPath result = GetAbsoluteVirtualPath (test_path);
+					if (result != null && File.Exists (result.PhysicalPath)) {
+						skip = i;
+						break;
+					}
+				}
+			}
+			string app_vpath = HttpRuntime.AppDomainAppVirtualPath;
+			if (skip == -1 || (skip == 0 && app_vpath == "/"))
+				return;
+
+			if (!app_vpath.EndsWith ("/"))
+				app_vpath = app_vpath + "/";
+			Dictionary<string, PreCompilationData> copy = new Dictionary<string, PreCompilationData> (precompiled);
+			precompiled.Clear ();
+			foreach (KeyValuePair<string,PreCompilationData> entry in copy) {
+				parts = entry.Key.Split ('/');
+				string new_path;
+				if (String.IsNullOrEmpty (parts [0]))
+					new_path = app_vpath + String.Join ("/", parts, skip + 1, parts.Length - skip - 1);
+				else
+					new_path = app_vpath + String.Join ("/", parts, skip, parts.Length - skip);
+				entry.Value.VirtualPath = new_path;
+				precompiled.Add (new_path, entry.Value);
+			}
+		}
+
 		static void LoadPrecompilationInfo ()
 		{
 			string [] compiled = Directory.GetFiles (HttpRuntime.BinDirectory, "*.compiled");
 			foreach (string str in compiled) {
 				LoadCompiled (str);
 			}
+			FixVirtualPaths ();
 		}
 
 		static void LoadCompiled (string filename)
@@ -551,7 +592,7 @@ namespace System.Web.Compilation {
 		static Type GetPrecompiledType (string virtualPath)
 		{
 			PreCompilationData pc_data;
-			if (precompiled.TryGetValue (virtualPath, out pc_data)) {
+			if (precompiled != null && precompiled.TryGetValue (virtualPath, out pc_data)) {
 				if (pc_data.Type == null) {
 					pc_data.Type = Type.GetType (pc_data.TypeName + ", " + pc_data.AssemblyFileName, true);
 				}
@@ -566,9 +607,9 @@ namespace System.Web.Compilation {
 			if (!is_precompiled)
 				return null;
 
-			Type apptype = GetPrecompiledType (HttpRuntime.AppDomainAppVirtualPath + "/Global.asax");
+			Type apptype = GetPrecompiledType (VirtualPathUtility.Combine (HttpRuntime.AppDomainAppVirtualPath, "Global.asax"));
 			if (apptype == null)
-				apptype = GetPrecompiledType (HttpRuntime.AppDomainAppVirtualPath + "/global.asax");
+				apptype = GetPrecompiledType (VirtualPathUtility.Combine (HttpRuntime.AppDomainAppVirtualPath, "global.asax"));
 			return apptype;
 		}
 
@@ -635,7 +676,7 @@ namespace System.Web.Compilation {
 			string extension = virtualPath.Extension;
 			var ret = new List <VirtualFile> ();
 			
-			if (virtualPath.StartsWith (FAKE_VIRTUAL_PATH_PREFIX)) {
+			if (virtualPath.IsFake) {
 				kind = BuildKind.Fake;
 				return ret;
 			}
@@ -1086,8 +1127,8 @@ namespace System.Web.Compilation {
 			string realpath;
 			bool dothrow = false;
 			
-			if (virtualPath.StartsWith (FAKE_VIRTUAL_PATH_PREFIX)) {
-				realpath = virtualPath.Original.Substring (FAKE_VIRTUAL_PATH_PREFIX.Length);
+			if (virtualPath.IsFake) {
+				realpath = virtualPath.PhysicalPath;
 				if (!File.Exists (realpath) && !Directory.Exists (realpath))
 					dothrow = true;
 			} else {
@@ -1099,7 +1140,7 @@ namespace System.Web.Compilation {
 			}
 
 			if (dothrow)
-				throw new HttpException (404, "The file '" + virtualPath + "' does not exist.");
+				throw new HttpException (404, "The file '" + virtualPath + "' does not exist.", virtualPath.Absolute);
 		}
 
 		const int ticketLockTimeout = 20000;
@@ -1143,11 +1184,12 @@ namespace System.Web.Compilation {
 					return;
 				
 				Dictionary <Type, List <AssemblyBuilder>> assemblyBuilders = new Dictionary <Type, List <AssemblyBuilder>> ();
-				bool checkForRecursion = buildKind == BuildKind.NonPages;
+				bool checkForRecursion = buildKind == BuildKind.NonPages || buildKind == BuildKind.Pages;
 				string buildItemVp;
 				BuildItem requestBuildItem = null;
 				AssemblyBuilder originalRequestAssemblyBuilder = null;
 				bool isRequestAssemblyBuilder = false;
+				var skippedItemsAssemblies = new List <Assembly> ();
 				
 				foreach (BuildItem buildItem in buildItems) {
 					buildItemVp = buildItem.VirtualPath;
@@ -1165,8 +1207,14 @@ namespace System.Web.Compilation {
 						// our list might've been put into a different
 						// assembly in a recursive call.
 						lock (buildCacheLock) {
-							if (buildCache.ContainsKey (buildItem.VirtualPath))
+							BuildCacheItem bci;
+							
+							if (buildCache.TryGetValue (buildItem.VirtualPath, out bci)) {
+								Assembly asm = bci.assembly;
+								if (asm != null && !skippedItemsAssemblies.Contains (asm))
+									skippedItemsAssemblies.Add (asm);
 								continue;
+							}
 						}
 					}
 
@@ -1190,6 +1238,8 @@ namespace System.Web.Compilation {
 				bool needToBuildRequestItemAlone = false;
 				foreach (List <AssemblyBuilder> abuilders in assemblyBuilders.Values) {
 					foreach (AssemblyBuilder abuilder in abuilders) {
+						abuilder.AddAssemblyReference (skippedItemsAssemblies);
+						
 						try {
 							GenerateAssembly (abuilder, buildItems, virtualPath, buildKind);
 						} catch (Exception ex) {
@@ -1259,11 +1309,11 @@ namespace System.Web.Compilation {
 						globalAsaxAssembly = compiledAssembly;
 						break;
 				}
-							
+
 				foreach (BuildItem buildItem in buildItems) {
 					if (!buildItem.ProcessedFine || buildItem.assemblyBuilder != abuilder)
 						continue;
-								
+					
 					vp = buildItem.VirtualPath;
 					bp = buildItem.buildProvider;
 					buildItem.SetCompiledAssembly (abuilder, compiledAssembly);

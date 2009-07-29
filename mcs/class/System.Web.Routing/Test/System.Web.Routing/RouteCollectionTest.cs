@@ -32,6 +32,8 @@ using System.Web;
 using System.Web.Routing;
 using NUnit.Framework;
 
+using MonoTests.Common;
+
 namespace MonoTests.System.Web.Routing
 {
 	[TestFixture]
@@ -236,9 +238,291 @@ namespace MonoTests.System.Web.Routing
 			// it tries to get HttpContextBase.Response, so set it.
 			hc.SetResponse (new HttpResponseStub (2));
 			var rd = c.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			
 			var vpd = c.GetVirtualPath (new RequestContext (hc, rd), rd.Values);
-			Assert.AreEqual ("apppath/x/y_modified", vpd.VirtualPath, "#1");
-			Assert.AreEqual (0, vpd.DataTokens.Count, "#2");
+			Assert.IsNotNull (vpd, "#2");
+			Assert.AreEqual ("apppath/x/y_modified", vpd.VirtualPath, "#3");
+			Assert.AreEqual (0, vpd.DataTokens.Count, "#4");
+		}
+
+		[Test (Description = "Bug #502555")]
+		public void GetVirtualPath2 ()
+		{
+			var c = new RouteCollection ();
+			
+			c.Add ("Summary",
+			       new MyRoute ("summary/{action}-{type}/{page}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Summary", action = "Index", page = 1}) }
+			);
+			       
+			c.Add ("Apis",
+			       new MyRoute ("apis/{apiname}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Apis", action = "Index" }) }
+			);
+							    
+			c.Add ("Single Report",
+			       new MyRoute ("report/{guid}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Reports", action = "SingleReport" }) }
+			);
+			
+			c.Add ("Reports",
+			       new MyRoute ("reports/{page}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Reports", action = "Index", page = 1 }) }
+			);
+
+			c.Add ("Default",
+			       new MyRoute ("{controller}/{action}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Home", action = "Index"}) }
+			);
+
+			var hc = new HttpContextStub2 ("~/Home/About", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (2));
+			var rd = c.GetRouteData (hc);
+			var vpd = c.GetVirtualPath (new RequestContext (hc, rd), rd.Values);
+			Assert.IsNotNull (vpd, "#A1");
+			Assert.AreEqual ("/Home/About_modified", vpd.VirtualPath, "#A2");
+			Assert.AreEqual (0, vpd.DataTokens.Count, "#A3");
+
+			hc = new HttpContextStub2 ("~/Home/Index", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (2));
+			rd = c.GetRouteData (hc);
+			vpd = c.GetVirtualPath (new RequestContext (hc, rd), rd.Values);
+			Assert.IsNotNull (vpd, "#B1");
+			Assert.AreEqual ("/_modified", vpd.VirtualPath, "#B2");
+			Assert.AreEqual (0, vpd.DataTokens.Count, "#B3");
+
+			hc = new HttpContextStub2 ("~/Account/LogOn", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (2));
+			rd = c.GetRouteData (hc);
+			vpd = c.GetVirtualPath (new RequestContext (hc, rd), rd.Values);
+			Assert.IsNotNull (vpd, "#C1");
+			Assert.AreEqual ("/Account/LogOn_modified", vpd.VirtualPath, "#C2");
+			Assert.AreEqual (0, vpd.DataTokens.Count, "#C3");
+
+			hc = new HttpContextStub2 ("~/", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			rd = c.GetRouteData (hc);
+			vpd = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary (new { controller = "home" }) );
+			Assert.IsNotNull (vpd, "#D1");
+			Assert.AreEqual ("/", vpd.VirtualPath, "#D2");
+			Assert.AreEqual (0, vpd.DataTokens.Count, "#D3");
+
+			hc = new HttpContextStub2 ("~/", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			rd = c.GetRouteData (hc);
+			vpd = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary (new { controller = "Home" }) );
+			Assert.IsNotNull (vpd, "#E1");
+			Assert.AreEqual ("/", vpd.VirtualPath, "#E2");
+			Assert.AreEqual (0, vpd.DataTokens.Count, "#E3");
+		}
+
+		[Test]
+		public void GetVirtualPath3 ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add ("todo-route",
+			       new MyRoute ("todo/{action}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new {controller = "todo", action="list", page=0}) }
+			);
+
+			c.Add ("another-route",
+			       new MyRoute ("{controller}/{action}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new {controller = "home", action="list", page=0}) }
+			);
+
+			var hc = new HttpContextStub2 ("~/home/list", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			var rd = c.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (3, rd.Values.Count, "#1-1");
+			Assert.AreEqual ("home", rd.Values["controller"], "#1-2");
+			Assert.AreEqual ("list", rd.Values["action"], "#1-3");
+			Assert.AreEqual (0, rd.Values["page"], "#1-4");
+			
+			var vp = c.GetVirtualPath (new RequestContext (hc, rd), "todo-route", new RouteValueDictionary ());
+			Assert.IsNotNull (vp, "#2");
+			Assert.AreEqual ("/todo", vp.VirtualPath, "#2-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary ());
+			Assert.IsNotNull (vp, "#3");
+			Assert.AreEqual ("/todo", vp.VirtualPath, "#3-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary (new { controller = "home" }));
+			Assert.IsNotNull (vp, "#4");
+			Assert.AreEqual ("/", vp.VirtualPath, "#4-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary (new { controller = "home", extra="stuff" }));
+			Assert.IsNotNull (vp, "#5");
+			Assert.AreEqual ("/?extra=stuff", vp.VirtualPath, "#5-1");
+		}
+
+		[Test]
+		public void GetVirtualPath4 ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add (new MyRoute ("blog/{user}/{action}", new MyRouteHandler ()) {
+					Defaults = new RouteValueDictionary {
+							{ "controller", "blog" },
+							{ "user", "admin" }
+						}
+				}
+			);
+
+			c.Add (new MyRoute ("forum/{user}/{action}", new MyRouteHandler ()) {
+					Defaults = new RouteValueDictionary {
+							{ "controller", "forum" },
+							{ "user", "admin" }
+						}
+				}
+			);
+
+			var hc = new HttpContextStub2 ("~/forum/admin/Index", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			var rd = c.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+
+			var vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary (new { action="Index", controller="forum"}));
+			Assert.IsNotNull (vp, "#2");
+			Assert.AreEqual ("/forum/admin/Index", vp.VirtualPath, "#2-1");
+			
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary (new { action="Index", controller="blah"}));
+			Assert.IsNull (vp, "#3");
+		}
+
+		[Test]
+		public void GetVirtualPath5 ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add (new MyRoute ("reports/{year}/{month}/{day}", new MyRouteHandler ()) {
+					Defaults = new RouteValueDictionary {
+							{ "day", 1 }
+						}
+				}
+			);
+
+			var hc = new HttpContextStub2 ("~/reports/2009/05", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			var rd = c.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+
+			var vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+					{ "month", 1 },
+					{ "day", 12 },
+				}
+			);
+			Assert.IsNotNull (vp, "#2");
+			Assert.AreEqual ("/reports/2007/1/12", vp.VirtualPath, "#2-1");
+			
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+					{ "month", 1 }
+				}
+			);
+			Assert.IsNotNull (vp, "#3");
+			Assert.AreEqual ("/reports/2007/1", vp.VirtualPath, "#3-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+					{ "month", 1 },
+					{ "day", 12 },
+					{ "category", 123 }
+				}
+			);
+			Assert.IsNotNull (vp, "#4");
+			Assert.AreEqual ("/reports/2007/1/12?category=123", vp.VirtualPath, "#4-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+				}
+			);
+			Assert.IsNull (vp, "#5");
+		}
+
+		[Test]
+		public void GetVirtualPath6 ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add (new MyRoute ("reports/{year}/{month}/{day}", new MyRouteHandler ()) {
+					Defaults = new RouteValueDictionary {
+							{ "day", 1 }
+						}
+				}
+			);
+
+			var hc = new HttpContextStub2 ("~/reports/2009/05", String.Empty, "/myapp");
+			hc.SetResponse (new HttpResponseStub (3));
+			var rd = c.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+
+			var vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+					{ "month", 1 },
+					{ "day", 12 },
+				}
+			);
+			Assert.IsNotNull (vp, "#2");
+			Assert.AreEqual ("/myapp/reports/2007/1/12", vp.VirtualPath, "#2-1");
+			
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+					{ "month", 1 }
+				}
+			);
+			Assert.IsNotNull (vp, "#3");
+			Assert.AreEqual ("/myapp/reports/2007/1", vp.VirtualPath, "#3-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+					{ "month", 1 },
+					{ "day", 12 },
+					{ "category", 123 }
+				}
+			);
+			Assert.IsNotNull (vp, "#4");
+			Assert.AreEqual ("/myapp/reports/2007/1/12?category=123", vp.VirtualPath, "#4-1");
+			
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+					{ "year", 2007 },
+				}
+			);
+			Assert.IsNull (vp, "#5");
+		}
+
+		[Test]
+		public void GetVirtualPath7 ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add (new MyRoute ("{table}/{action}.aspx", new MyRouteHandler ()) {
+				Constraints = new RouteValueDictionary (new { action = "List|Details|Edit|Insert" }),
+			});
+
+			var req = new FakeHttpWorkerRequest ();
+			var ctx = new HttpContext (req);
+			HttpContext.Current = ctx;
+			var rd = new RouteData ();
+			var hc = new HttpContextWrapper (ctx);
+
+			var vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+				{"Table", "FooTable"},
+				{"Action", "Details"}
+			});
+
+			Assert.IsNotNull (vp, "#A1");
+			Assert.AreEqual ("/FooTable/Details.aspx", vp.VirtualPath, "#A1-1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+				{"Table", "FooTable"},
+				{"Action", String.Empty}
+			});
+
+			Assert.IsNull (vp, "#B1");
+
+			vp = c.GetVirtualPath (new RequestContext (hc, rd), new RouteValueDictionary {
+				{"Table", "FooTable"},
+				{"Action", null}
+			});
+
+			Assert.IsNull (vp, "#C1");
 		}
 
 		[Test]
@@ -254,6 +538,46 @@ namespace MonoTests.System.Web.Routing
 			var vpd = c.GetVirtualPath (new RequestContext (hc, rd), rd.Values);
 			Assert.AreEqual ("./Test/test.html", vpd.VirtualPath, "#1");
 			Assert.AreEqual (0, vpd.DataTokens.Count, "#2");
+		}
+
+		[Test (Description="Routes from NerdDinner")]
+		public void GetRouteDataNerdDinner ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add ("UpcomingDiners",
+			       new MyRoute ("Dinners/Page/{page}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Dinners", action = "Index" }) }
+			);
+
+			c.Add ("Default",
+			       new MyRoute ("{controller}/{action}/{id}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Home", action = "Index", id = "" })}
+			);
+
+			var hc = new HttpContextStub2 ("~/", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			var rd = c.GetRouteData (hc);
+			
+			Assert.IsNotNull (rd, "#A1");
+		}
+
+		[Test (Description="Routes from NerdDinner")]
+		public void GetRouteDataNerdDinner2 ()
+		{
+			var c = new RouteCollection ();
+
+			c.Add ("UpcomingDiners",
+			       new MyRoute ("Dinners/Page/{page}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Dinners", action = "Index" }) }
+			);
+
+			c.Add ("Default",
+			       new MyRoute ("{controller}/{action}/{id}", new MyRouteHandler ()) { Defaults = new RouteValueDictionary (new { controller = "Home", action = "Index", id = "" })}
+			);
+
+			var hc = new HttpContextStub2 ("~/Home/Index", String.Empty, String.Empty);
+			hc.SetResponse (new HttpResponseStub (3));
+			var rd = c.GetRouteData (hc);
+			
+			Assert.IsNotNull (rd, "#A1");
 		}
 	}
 }

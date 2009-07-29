@@ -123,9 +123,17 @@ namespace System.Data.OracleClient
 		{
 			this.name = name;
 			this.value = value;
+			InferOracleType (value);			
 			srcColumn = string.Empty;
 			SourceVersion = DataRowVersion.Current;
-			InferOracleType (value);
+
+#if NET_2_0
+			// Find the OciType before inferring for the size
+			if (value != null && value != DBNull.Value) {
+				this.sizeSet = true;
+				this.size = InferSize ();
+			}
+#endif
 		}
 
 		public OracleParameter (string name, OracleType oracleType)
@@ -149,8 +157,13 @@ namespace System.Data.OracleClient
 			this.name = name;
 			if (size < 0)
 				throw new ArgumentException("Size must be not be negative.");
-			this.size = size;
+			
 			this.value = value;
+			this.size = size;
+			// set sizeSet to true iff value is not-null or non-zero size value
+			if (value != null && value != DBNull.Value && size > 0)
+				this.sizeSet = true;
+
 			SourceColumnNullMapping = sourceColumnNullMapping;
 			OracleType = oracleType;
 			Direction = direction;
@@ -164,8 +177,14 @@ namespace System.Data.OracleClient
 			this.name = name;
 			if (size < 0)
 				throw new ArgumentException("Size must be not be negative.");
-			this.size = size;
+			
 			this.value = value;
+			this.size = size;
+			
+			// set sizeSet to true iff value is not-null or non-zero size value
+			if (value != null && value != DBNull.Value && size > 0)
+				this.sizeSet = true;
+
 			this.isNullable = isNullable;
 			this.precision = precision;
 			this.scale = scale;
@@ -353,6 +372,12 @@ namespace System.Data.OracleClient
 				this.value = value;
 				if (!oracleTypeSet)
 					InferOracleType (value);
+#if NET_2_0
+				if (value != null && value != DBNull.Value) {
+					this.size = InferSize ();
+					this.sizeSet = true;
+				}
+#endif
 			}
 		}
 
@@ -865,6 +890,10 @@ namespace System.Data.OracleClient
 
 		private void InferOracleType (object value)
 		{
+			// Should we throw an exception here?
+			if (value == null || value == DBNull.Value)
+				return;
+			
 			Type type = value.GetType ();
 			string exception = String.Format ("The parameter data type of {0} is invalid.", type.FullName);
 			switch (type.FullName) {

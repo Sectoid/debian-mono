@@ -223,7 +223,7 @@ restart:
 					}
 					else {
 						/* Special cases */
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
 						if ((ins->opcode == OP_X86_LEA) && (srcindex == 1)) {
 #if SIZEOF_REGISTER == 8
 							/* FIXME: Use OP_PADD_IMM when the new JIT is done */
@@ -253,10 +253,10 @@ restart:
 						ins->inst_basereg = def->sreg1;
 						ins->inst_offset += def->inst_imm;
 					}
-				} else if ((ins->opcode == OP_ISUB_IMM) && (def->opcode == OP_IADD_IMM) && (def->next == ins)) {
+				} else if ((ins->opcode == OP_ISUB_IMM) && (def->opcode == OP_IADD_IMM) && (def->next == ins) && (def->dreg != def->sreg1)) {
 					ins->sreg1 = def->sreg1;
 					ins->inst_imm -= def->inst_imm;
-				} else if ((ins->opcode == OP_IADD_IMM) && (def->opcode == OP_ISUB_IMM) && (def->next == ins)) {
+				} else if ((ins->opcode == OP_IADD_IMM) && (def->opcode == OP_ISUB_IMM) && (def->next == ins) && (def->dreg != def->sreg1)) {
 					ins->sreg1 = def->sreg1;
 					ins->inst_imm -= def->inst_imm;
 				} else if (ins->opcode == OP_STOREI1_MEMBASE_REG &&

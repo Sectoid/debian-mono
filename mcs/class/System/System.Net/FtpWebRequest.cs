@@ -635,7 +635,7 @@ namespace System.Net
 			FtpStatus status;
 			
 			if (method == WebRequestMethods.Ftp.PrintWorkingDirectory)
-				method = ChangeDir;
+				method = "PWD";
 
 			if (method == WebRequestMethods.Ftp.Rename)
 				method = RenameFromCommand;
@@ -718,14 +718,6 @@ namespace System.Net
 		void DownloadData ()
 		{
 			State = RequestState.OpeningData;
-
-			// Handle content offset
-			if (offset > 0) {
-				FtpStatus status = SendCommand (RestCommand, offset.ToString ());
-
-				if (status.StatusCode != FtpStatusCode.FileCommandPending)
-					throw CreateExceptionFromResponse (status);
-			}
 
 			OpenDataConnection ();
 
@@ -936,6 +928,13 @@ namespace System.Net
 			FtpStatus status;
 			
 			Socket s = InitDataConnection ();
+
+			// Handle content offset
+			if (offset > 0) {
+				status = SendCommand (RestCommand, offset.ToString ());
+				if (status.StatusCode != FtpStatusCode.FileCommandPending)
+					throw CreateExceptionFromResponse (status);
+			}
 
 			if (method != WebRequestMethods.Ftp.ListDirectory && method != WebRequestMethods.Ftp.ListDirectoryDetails &&
 			    method != WebRequestMethods.Ftp.UploadFileWithUniqueName) {

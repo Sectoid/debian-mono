@@ -624,6 +624,15 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
+/* ... */
+#undef TARGET_AMD64
+
+/* ... */
+#undef TARGET_ARM
+
+/* ... */
+#undef TARGET_X86
+
 /* GC description */
 #undef USED_GC_NAME
 

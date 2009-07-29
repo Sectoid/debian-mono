@@ -90,8 +90,6 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BASE_DEPENDENCIES_CFLAGS = @BASE_DEPENDENCIES_CFLAGS@
-BASE_DEPENDENCIES_LIBS = @BASE_DEPENDENCIES_LIBS@
 BISON = @BISON@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
@@ -594,6 +592,7 @@ BASE_TEST_CS_SRC = \
 	generic-unloading-sub.2.cs	\
 	bug-467456.cs	\
 	appdomain-unload-callback.cs	\
+	bug-508538.cs	\
 	bug-472692.2.cs
 
 @AMD64_FALSE@@X86_FALSE@TEST_CS_SRC = $(BASE_TEST_CS_SRC) \
@@ -1103,7 +1102,7 @@ aotcheck: testaot gshared-aot
 	$(MCS) -r:TestDriver.dll -out:$@ $<
 
 # mkbundle works on ppc, but the pkg-config POC doesn't when run with make test
-@POWERPC_TRUE@test_platform:
+@POWERPC_TRUE@test_platform:	testbundle
 # Can't use mkbundle on win32 since there is no static build there
 # Can't run test-unhandled-exception on Windows because of all the debug popups...
 @PLATFORM_WIN32_TRUE@@POWERPC_FALSE@test_platform:

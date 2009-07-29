@@ -31,6 +31,7 @@ using System;
 using System.IO;
 using System.Collections;
 using System.Text;
+using System.Reflection;
 using Microsoft.Build.BuildEngine;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
@@ -68,7 +69,9 @@ namespace Mono.XBuild.CommandLine {
 			properties = new BuildPropertyGroup ();
 			targets = new string [0];
 			
-			responseFile = Path.Combine (binPath, "xbuild.rsp");
+			responseFile = Path.Combine (
+					Path.GetDirectoryName (Assembly.GetExecutingAssembly ().Location),
+					"xbuild.rsp");
 		}
 		
 		public void ParseArguments (string[] args)
@@ -97,9 +100,7 @@ namespace Mono.XBuild.CommandLine {
 				LoadResponseFile (responseFile);
 			}
 			foreach (string s in flatArguments) {
-				if (s [0] == '/') {
-					ParseFlatArgument (s);
-				} else
+				if (s [0] != '/' || !ParseFlatArgument (s))
 					remainingArguments.Add (s);
 			}
 			if (remainingArguments.Count == 0) {
@@ -128,6 +129,10 @@ namespace Mono.XBuild.CommandLine {
 
                                         for (int i = 0; i < t; i++) {
                                                 char c = line [i];
+
+						if (c == '#')
+							// comment, ignore rest of the line
+							break;
 
                                                 if (c == '"' || c == '\'') {
                                                         char end = c;
@@ -161,7 +166,7 @@ namespace Mono.XBuild.CommandLine {
                         }
 		}
 		
-		private void ParseFlatArgument (string s)
+		private bool ParseFlatArgument (string s)
 		{
 			switch (s) {
 			case "/help":
@@ -187,24 +192,23 @@ namespace Mono.XBuild.CommandLine {
 			default:
 				if (s.StartsWith ("/target:") || s.StartsWith ("/t:")) {
 					ProcessTarget (s);
-				}
-				if (s.StartsWith ("/property:") || s.StartsWith ("/p:")) {
-					ProcessProperty (s);
-				}
-				if (s.StartsWith ("/logger:") || s.StartsWith ("/l:")) {
+				} else if (s.StartsWith ("/property:") || s.StartsWith ("/p:")) {
+					if (!ProcessProperty (s))
+						return false;
+				} else  if (s.StartsWith ("/logger:") || s.StartsWith ("/l:")) {
 					ProcessLogger (s);
-				}
-				if (s.StartsWith ("/verbosity:") || s.StartsWith ("/v:")) {
+				} else if (s.StartsWith ("/verbosity:") || s.StartsWith ("/v:")) {
 					ProcessVerbosity (s);
-				}
-				if (s.StartsWith ("/consoleloggerparameters:") || s.StartsWith ("/clp:")) {
+				} else if (s.StartsWith ("/consoleloggerparameters:") || s.StartsWith ("/clp:")) {
 					ProcessConsoleLoggerParameters (s);
-				}
-				if (s.StartsWith ("/validate:") || s.StartsWith ("/val:")) {
+				} else if (s.StartsWith ("/validate:") || s.StartsWith ("/val:")) {
 					ProcessValidate (s);
-				}
+				} else
+					return false;
 				break;
 			}
+
+			return true;
 		}
 		
 		internal void ProcessTarget (string s)
@@ -213,15 +217,28 @@ namespace Mono.XBuild.CommandLine {
 			targets = temp [1].Split (';');
 		}
 		
-		internal void ProcessProperty (string s)
+		internal bool ProcessProperty (string s)
 		{
 			string[] parameter, splittedProperties, property;
 			parameter = s.Split (':');
+			if (parameter.Length != 2) {
+				ErrorUtilities.ReportError (5, "Property name and value expected as /p:<prop name>=<prop value>");
+				return false;
+			}
+
 			splittedProperties = parameter [1].Split (';');
 			foreach (string st in splittedProperties) {
+				if (st.IndexOf ('=') < 0) {
+					ErrorUtilities.ReportError (5,
+							"Invalid syntax. Property name and value expected as " +
+							"<prop name>=[<prop value>]");
+					return false;
+				}
 				property = st.Split ('=');
-				properties.SetProperty (property [0], property [1]);
+				properties.SetProperty (property [0], property.Length == 2 ? property [1] : "");
 			}
+
+			return true;
 		}
 		
 		internal void ProcessLogger (string s)

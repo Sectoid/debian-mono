@@ -1,3 +1,23 @@
+2009-06-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-508538.cs: New regression test.
+
+2009-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs: Add a test for #488670.
+
+2009-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke-2.2.cs libtest.c: Add a test for #487758.
+
+2009-03-15  Steven Munroe  <munroesj@us.ibm.com>
+
+	Backport of r129461.
+	
+	This patch is contributed under the terms of the MIT/X11 license
+
+	* Makefile.am (test_platform): Enable testbundle for ppc.
+
 2009-03-09  Mark Probst  <mark.probst@gmail.com>
 
 	* bug-479763.2.cs: New test.

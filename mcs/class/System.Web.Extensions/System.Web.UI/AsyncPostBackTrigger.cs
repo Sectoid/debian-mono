@@ -63,8 +63,16 @@ namespace System.Web.UI
 			}
 		}
 
-		protected internal override bool HasTriggered () {
-			throw new NotImplementedException ();
+		protected internal override bool HasTriggered ()
+		{
+			Control ctrl = Owner.FindControl (ControlID);
+			string ctrlUniqueID = ctrl != null ? ctrl.UniqueID : null;
+			if (ctrlUniqueID == null)
+				return false;
+			
+			if (String.Compare (Owner.ScriptManager.AsyncPostBackSourceElementID, ctrlUniqueID, StringComparison.Ordinal) == 0)
+				return true;
+			return false;
 		}
 
 		// LAME SPEC: it seems DefaultEventAttribute is never queried for the event name.

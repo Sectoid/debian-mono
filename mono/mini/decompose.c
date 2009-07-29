@@ -739,14 +739,14 @@ mono_decompose_long_opts (MonoCompile *cfg)
 				 * on x86, and the x86 version might not work on other archs ?
 				 */
 				/* FIXME: Move these to mono_arch_decompose_long_opts () */
-#if defined(__i386__)
+#if defined(TARGET_X86)
 				MONO_EMIT_NEW_UNALU (cfg, OP_INEG, tree->dreg + 1, tree->sreg1 + 1);
 				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ADC_IMM, tree->dreg + 2, tree->sreg1 + 2, 0);
 				MONO_EMIT_NEW_UNALU (cfg, OP_INEG, tree->dreg + 2, tree->dreg + 2);
 #elif defined(__sparc__)
 				MONO_EMIT_NEW_BIALU (cfg, OP_SUBCC, tree->dreg + 1, 0, tree->sreg1 + 1);
 				MONO_EMIT_NEW_BIALU (cfg, OP_SBB, tree->dreg + 2, 0, tree->sreg1 + 2);
-#elif defined(__arm__)
+#elif defined(TARGET_ARM)
 				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ARM_RSBS_IMM, tree->dreg + 1, tree->sreg1 + 1, 0);
 				MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ARM_RSC_IMM, tree->dreg + 2, tree->sreg1 + 2, 0);
 #elif defined(__ppc__) || defined(__powerpc__)
@@ -1200,7 +1200,7 @@ mono_decompose_vtype_opts (MonoCompile *cfg)
 						case 8:
 #if SIZEOF_REGISTER == 4
 							/*
-							FIXME It would be nice to fix the operding of OP_CALL to make it possible to use numbering voodoo
+							FIXME Other ABIs might return in different regs than the ones used for LCALL.
 							FIXME It would be even nicer to be able to leverage the long decompose stuff.
 							*/
 							switch (call2->inst.opcode) {

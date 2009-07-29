@@ -234,5 +234,141 @@ namespace MonoTests.Microsoft.Build.BuildEngine {
 			project.Targets.CopyTo (t, 0);
 			t [0].RemoveTask (null);
 		}
+
+		[Test]
+		public void TestTargetOutputs1 ()
+		{
+			Engine engine;
+			Project project;
+
+			string documentString = @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+			<ItemGroup>
+				<fruit Include=""apple""/>
+				<fruit Include=""rhubarb""/>
+				<fruit Include=""apricot""/>
+			</ItemGroup>
+
+			<Target Name=""Main"">
+				<CallTarget Targets=""foo"">
+					<Output TaskParameter=""TargetOutputs"" ItemName=""AllOut""/>
+				</CallTarget>
+
+				<CallTarget Targets=""foo"">
+					<Output TaskParameter=""TargetOutputs"" ItemName=""AllOut""/>
+				</CallTarget>
+				<Message Text=""AllOut: @(AllOut)""/>
+			</Target>
+
+			<Target Name=""foo"" Outputs=""@(FooItem)"">
+				<Message Text=""foo called""/>
+				<CreateItem Include=""%(fruit.Identity)"">
+					<Output TaskParameter=""Include"" ItemName=""FooItem""/>
+				</CreateItem>
+				<Message Text=""FooItem: @(FooItem)""/>
+			</Target>
+		</Project>";
+
+			engine = new Engine (Consts.BinPath);
+			project = engine.CreateNewProject ();
+			project.LoadXml (documentString);
+
+			MonoTests.Microsoft.Build.Tasks.TestMessageLogger logger =
+				new MonoTests.Microsoft.Build.Tasks.TestMessageLogger ();
+			engine.RegisterLogger (logger);
+
+			bool result = project.Build ("Main");
+			if (!result) {
+				logger.DumpMessages ();
+				Assert.Fail ("Build failed");
+			}
+
+			try {
+				Assert.AreEqual (3, logger.NormalMessageCount, "Expected number of messages");
+				logger.CheckLoggedMessageHead ("foo called", "A1");
+				logger.CheckLoggedMessageHead ("FooItem: apple;rhubarb;apricot", "A2");
+				logger.CheckLoggedMessageHead ("AllOut: apple;rhubarb;apricot;apple;rhubarb;apricot", "A3");
+				Assert.AreEqual (0, logger.NormalMessageCount, "Extra messages found");
+
+				Assert.AreEqual (2, logger.TargetStarted, "TargetStarted count");
+				Assert.AreEqual (2, logger.TargetFinished, "TargetFinished count");
+				Assert.AreEqual (8, logger.TaskStarted, "TaskStarted count");
+				Assert.AreEqual (8, logger.TaskFinished, "TaskFinished count");
+
+			} catch (AssertionException) {
+				logger.DumpMessages ();
+				throw;
+			}
+		}
+
+		[Test]
+		public void TestTargetOutputsIncludingMetadata ()
+		{
+			Engine engine;
+			Project project;
+
+			string documentString = @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+			<ItemGroup>
+				<fruit Include=""apple""><md>a</md></fruit>
+				<fruit Include=""rhubarb""><md>b</md></fruit>
+				<fruit Include=""apricot""><md>c</md></fruit>
+			</ItemGroup>
+
+			<Target Name=""Main"">
+				<CallTarget Targets=""foo"">
+					<Output TaskParameter=""TargetOutputs"" ItemName=""AllOut""/>
+				</CallTarget>
+
+				<CallTarget Targets=""foo"">
+					<Output TaskParameter=""TargetOutputs"" ItemName=""AllOut""/>
+				</CallTarget>
+				<Message Text=""AllOut: @(AllOut) metadata: %(AllOut.md)""/>
+			</Target>
+
+			<Target Name=""foo"" Outputs=""@(FooItem)"">
+				<Message Text=""foo called""/>
+				<CreateItem Include=""@(fruit)"">
+					<Output TaskParameter=""Include"" ItemName=""FooItem""/>
+				</CreateItem>
+				<Message Text=""FooItem: @(FooItem) metadata: %(FooItem.md)""/>
+			</Target>
+		</Project>";
+
+			engine = new Engine (Consts.BinPath);
+			project = engine.CreateNewProject ();
+			project.LoadXml (documentString);
+
+			MonoTests.Microsoft.Build.Tasks.TestMessageLogger logger =
+				new MonoTests.Microsoft.Build.Tasks.TestMessageLogger ();
+			engine.RegisterLogger (logger);
+
+			bool result = project.Build ("Main");
+			if (!result) {
+				logger.DumpMessages ();
+				Assert.Fail ("Build failed");
+			}
+
+			try {
+				logger.CheckLoggedMessageHead ("foo called", "A1");
+				logger.CheckLoggedMessageHead ("FooItem: apple metadata: a", "A2");
+				logger.CheckLoggedMessageHead ("FooItem: rhubarb metadata: b", "A3");
+				logger.CheckLoggedMessageHead ("FooItem: apricot metadata: c", "A4");
+
+				logger.CheckLoggedMessageHead ("AllOut: apple;apple metadata: a", "A5");
+				logger.CheckLoggedMessageHead ("AllOut: rhubarb;rhubarb metadata: b", "A6");
+				logger.CheckLoggedMessageHead ("AllOut: apricot;apricot metadata: c", "A7");
+
+				Assert.AreEqual (0, logger.NormalMessageCount, "Extra messages found");
+
+				Assert.AreEqual (2, logger.TargetStarted, "TargetStarted count");
+				Assert.AreEqual (2, logger.TargetFinished, "TargetFinished count");
+				Assert.AreEqual (10, logger.TaskStarted, "TaskStarted count");
+				Assert.AreEqual (10, logger.TaskFinished, "TaskFinished count");
+
+			} catch (AssertionException) {
+				logger.DumpMessages ();
+				throw;
+			}
+		}
+
 	}
 }

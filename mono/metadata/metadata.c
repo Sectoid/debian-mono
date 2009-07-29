@@ -21,6 +21,7 @@
 #include "metadata-internals.h"
 #include "class-internals.h"
 #include "class.h"
+#include "marshal.h"
 
 static gboolean do_mono_metadata_parse_type (MonoType *type, MonoImage *m, MonoGenericContainer *container,
 					 const char *ptr, const char **rptr);
@@ -2244,6 +2245,8 @@ free_inflated_method (MonoMethodInflated *imethod)
 {
 	int i;
 	MonoMethod *method = (MonoMethod*)imethod;
+
+	mono_marshal_free_inflated_wrappers (method);
 
 	if (method->signature)
 		mono_metadata_free_inflated_signature (method->signature);

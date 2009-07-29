@@ -41,6 +41,19 @@ namespace Microsoft.Build.BuildEngine {
 	internal class ExpressionCollection {
 	
 		IList objects;
+		static Dictionary<string, bool> boolValues;
+
+		static ExpressionCollection ()
+		{
+			string[] trueValuesArray = new string[] {"true", "on", "yes"};
+			string[] falseValuesArray = new string[] {"false", "off", "no"};
+
+			boolValues = new Dictionary<string, bool> (StringComparer.InvariantCultureIgnoreCase);
+			foreach (string s in trueValuesArray)
+				boolValues.Add (s, true);
+			foreach (string s in falseValuesArray)
+				boolValues.Add (s, false);
+		}
 	
 		public ExpressionCollection ()
 		{
@@ -100,9 +113,15 @@ namespace Microsoft.Build.BuildEngine {
 
 		object ConvertToObject (string raw, Type type)
 		{
-			if (type == typeof (bool))
-				return Boolean.Parse (raw);
-			else if (type == typeof (string))
+			if (type == typeof (bool)) {
+				bool value;
+				if (boolValues.TryGetValue (raw, out value))
+					return value;
+				else
+					return false;
+			}
+
+			if (type == typeof (string))
 				return raw;
 			else if (type == typeof (int))
 				return Int32.Parse (raw);
@@ -168,10 +187,18 @@ namespace Microsoft.Build.BuildEngine {
 
 				string str = o as string;
 				if (str != null) {
-					if (str != ";" && prev != null && prev is ItemReference)
+					string trimmed_str = str.Trim ();
+					if (!IsSemicolon (str) && trimmed_str.Length > 0 && prev != null && prev is ItemReference)
+						// non-empty, non-semicolon string after item ref
 						ThrowCantConcatError (prev, str);
 
-					prev_can_concat = !(str.Length > 0 && str [str.Length - 1] == ';') && str.Trim ().Length > 0;
+					if (trimmed_str.Length == 0 && prev is string && IsSemicolon ((string) prev)) {
+						// empty string after a ';', ignore it
+						continue;
+					}
+
+					// empty string _after_ a itemref, not an error
+					prev_can_concat = !(str.Length > 0 && str [str.Length - 1] == ';') && trimmed_str.Length > 0;
 					AddItemsToArray (finalItems,
 							ConvertToITaskItemArrayFromString (str),
 							can_concat);
@@ -248,6 +275,11 @@ namespace Microsoft.Build.BuildEngine {
 				items.Add (new TaskItem (s));
 
 			return items.ToArray ();
+		}
+
+		bool IsSemicolon (string str)
+		{
+			return str != null && str.Length == 1 && str [0] == ';';
 		}
 
 		void ThrowCantConcatError (object first, object second)

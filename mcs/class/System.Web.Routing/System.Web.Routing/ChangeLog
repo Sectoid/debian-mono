@@ -1,3 +1,73 @@
+2009-06-25  Marek Habersack  <mhabersack@novell.com>
+
+	* PatternParser.cs: parameter name lookups must be
+	case-insensitive.
+	Null and empty (string) parameters are skipped when building query
+	part of the action path.
+
+2009-06-04  Marek Habersack  <mhabersack@novell.com>
+
+	* RouteValueDictionaryExtensions.cs: if both values are strings in
+	Has (string, value), compare them case-insensitively. Fixes bug
+	#502555
+
+2009-05-27  Marek Habersack  <mhabersack@novell.com>
+
+	* PatternParser.cs: if Match is passed an empty path, do not
+	attempt to match the Url segments, skip to defaults matching right
+	away.
+
+2009-05-25  Marek Habersack  <mhabersack@novell.com>
+
+	* UrlPattern.cs: removed - replaced by PatternParser below.
+	
+	* RouteValueDictionaryExtensions.cs: added - some shortcuts for
+	using RouteValueDictionary in PatternParser
+
+	* Route.cs: use the new PatternParser.
+	Factored out ProcessConstraint into ProcessConstraintInternal so
+	that the latter can be used by the PatternParser class.
+	Added parameter checks in ProcessConstraint.
+
+	* PatternTokenType.cs: added
+
+	* PatternToken.cs: added a helper class for the pattern parser.
+
+	* PatternParser.cs: added. New implementation of url
+	parser/matcher/generator which fixes all URL isues known so
+	far. Fixes bug #504378
+
+2009-05-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UrlPattern.cs: if the pattern is line {a}/{b} and {b} is substituted
+	by an empty string, remove the '/' too.
+
+2009-05-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UrlPattern.cs: non-string default arguments work now.
+
+2009-05-12  Marek Habersack  <mhabersack@novell.com>
+
+	* UrlPattern.cs: TrySubstitute performs substitution trimming. If
+	a segment would be set to a default value and all of its following
+	segments as well, it will be omitted from the generated URL. The
+	value comparison is done case-insensitively when the dictionary
+	values are strings. Fixes bug #502555
+
+2009-05-11  Marek Habersack  <mhabersack@novell.com>
+
+	* UrlPattern.cs: TrySubstitute treats defaults differently
+	now. They are not consulted when checking if the passed values
+	match the pattern, but only when substituting the values. Fixes
+	bug #502555
+
+2009-05-05  Marek Habersack  <mhabersack@novell.com>
+
+	* UrlPattern.cs: Match adds defaults values should some keys be
+	missing from the url. Fixes bug #500739
+
+	* Route.cs: a small GetRouteData loop optimization
+
 2009-02-18  Marek Habersack  <mhabersack@novell.com>
 
 	* UrlPattern.cs: TrySubstitute now gets the collection of default

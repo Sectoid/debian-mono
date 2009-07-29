@@ -226,7 +226,32 @@ namespace System.Windows.Forms
 
 		protected override void OnKeyDown (KeyEventArgs e)
 		{
-			base.OnKeyDown (e);
+			// Only handle Delete or Insert here
+
+			if (e.KeyCode == Keys.Insert && insert_key_mode == InsertKeyMode.Default) {
+				// switch the internal overwriting mode, not the public one
+				insert_key_overwriting = !insert_key_overwriting;
+				OnIsOverwriteModeChanged (EventArgs.Empty);
+				e.Handled = true;
+				return;
+			}
+
+			if (e.KeyCode != Keys.Delete || is_empty_mask) {
+				base.OnKeyDown (e);
+				return;
+			}
+
+			int testPosition, endSelection;
+			MaskedTextResultHint resultHint;
+			bool result;
+
+			// Use a slightly different approach than the one used for backspace
+			endSelection = SelectionLength == 0 ? SelectionStart : SelectionStart + SelectionLength - 1;
+			result = provider.RemoveAt (SelectionStart, endSelection, out testPosition, out resultHint);
+
+			PostprocessKeyboardInput (result, testPosition, testPosition, resultHint);
+
+			e.Handled = true;
 		}
 
 		protected override void OnKeyPress (KeyPressEventArgs e)
@@ -236,31 +261,43 @@ namespace System.Windows.Forms
 				return;
 			}
 			
-			int testPosition;
+			int testPosition, editPosition;
 			MaskedTextResultHint resultHint;
 			bool result;
 			
-			if (IsOverwriteMode) {
-				result = provider.InsertAt (e.KeyChar, SelectionStart, out testPosition, out resultHint);
-			} else {
-				result = provider.Replace (e.KeyChar, SelectionStart, SelectionStart, out testPosition, out resultHint);
-			}
-			
-			if (!result) {
-				OnMaskInputRejected (new MaskInputRejectedEventArgs (testPosition, resultHint));
-			} else {
-				int iIndex = provider.FindEditPositionFrom (SelectionStart+1, true);
+			if (e.KeyChar == '\b') {
+				if (SelectionLength == 0)
+					result = provider.RemoveAt (SelectionStart - 1, SelectionStart - 1, out testPosition, out resultHint);
+				else
+					result = provider.RemoveAt (SelectionStart, SelectionStart + SelectionLength - 1, out testPosition, out resultHint);
 
-				if (iIndex != MaskedTextProvider.InvalidIndex) {
-					SelectionStart = iIndex;
-				} else {
+				editPosition = testPosition;
+			} else if (IsOverwriteMode) {
+				int start = provider.FindEditPositionFrom (SelectionStart, true);
+				result = provider.Replace (e.KeyChar, start, start, out testPosition, out resultHint);
+				editPosition = testPosition + 1;
+			} else {
+				result = provider.InsertAt (e.KeyChar, SelectionStart, out testPosition, out resultHint);
+				editPosition = testPosition + 1;
+			}
+
+			PostprocessKeyboardInput (result, editPosition, testPosition, resultHint);
+			
+			e.Handled = true;
+		}
+
+		void PostprocessKeyboardInput (bool result, int newPosition, int testPosition, MaskedTextResultHint resultHint)
+		{
+			if (!result)
+				OnMaskInputRejected (new MaskInputRejectedEventArgs (testPosition, resultHint));
+			else {
+				if (newPosition != MaskedTextProvider.InvalidIndex)
+					SelectionStart = newPosition;
+				else
 					SelectionStart = provider.Length;
-				}
 
 				UpdateVisibleText ();
 			}
-			
-			e.Handled = true;
 		}
 
 		protected override void OnKeyUp (KeyEventArgs e)
@@ -695,7 +732,8 @@ namespace System.Windows.Forms
 					base.Text = value;
 					setting_text = false;
 				} else {
-					InputText (value, true, true);
+					SelectionStart = 0;
+					InputText (value, true);
 				}
 				UpdateVisibleText ();
 			}
@@ -839,7 +877,7 @@ namespace System.Windows.Forms
 			setting_text = false;
 		}
 		
-		private void InputText (string text, bool overwrite, bool clear)
+		private void InputText (string text, bool clear)
 		{
 			string input = text;
 			
@@ -849,27 +887,24 @@ namespace System.Windows.Forms
 
 			int testPosition;
 			MaskedTextResultHint resultHint;
-			bool result = false;
+			bool result;
 			
 			if (RejectInputOnFirstFailure) {
-				if (overwrite) {
-					provider.Replace (input, SelectionStart, SelectionStart + input.Length - 1, out testPosition, out resultHint);
-				} else {
-					provider.InsertAt (input, SelectionStart);
-				}
+				result = provider.Replace (input, SelectionStart, SelectionStart + input.Length - 1, out testPosition, out resultHint);
+				if (!result)
+					OnMaskInputRejected (new MaskInputRejectedEventArgs (testPosition, resultHint));
 			} else {
-				while (!result && input.Length > 0) {
-					if (overwrite) {
-						result = provider.Replace (input, SelectionStart, SelectionStart + input.Length - 1, out testPosition, out resultHint);
-					} else {
-						result = provider.InsertAt (input, SelectionStart, out testPosition, out resultHint);
-					}
-					
-					if (result) {
-						break;
-					}
-					
-					input = input.Substring (0, Math.Min(testPosition - SelectionStart - 1, input.Length - 1));
+				// Unfortunately we can't break if we reach the end of the mask, since
+				// .net iterates over _all_ the chars in the input
+				testPosition = SelectionStart;
+				for (int i = 0; i < input.Length; i++) {
+					char c = input [i];
+
+					result = provider.InsertAt (c, testPosition, out testPosition, out resultHint);
+					if (result)
+						testPosition++; // Move to the next free position
+					else
+						OnMaskInputRejected (new MaskInputRejectedEventArgs (testPosition, resultHint));
 				}
 			}
 		}

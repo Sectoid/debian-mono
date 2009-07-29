@@ -87,12 +87,17 @@ namespace System.Web
 		}
 		
 #if NET_2_0
-		protected HttpException (SerializationInfo info, StreamingContext context)
+		protected
+#else
+		internal
+#endif
+		HttpException (SerializationInfo info, StreamingContext context)
 			: base (info, context)
 		{
 			http_code = info.GetInt32 ("_httpCode");
 		}
 
+#if NET_2_0
 		[SecurityPermission (SecurityAction.Demand, SerializationFormatter = true)]
 		public override void GetObjectData (SerializationInfo info, StreamingContext context)
 		{
@@ -128,11 +133,15 @@ namespace System.Web
 		{
 			try {
 				HttpContext ctx = HttpContext.Current;
-				if (ctx != null && ctx.IsCustomErrorEnabled)
-					return GetCustomErrorDefaultMessage ();
+				if (ctx != null && ctx.IsCustomErrorEnabled) {
+					if (http_code != 404 && http_code != 403)
+						return GetCustomErrorDefaultMessage ();
+					else
+						return GetDefaultErrorMessage (false);
+				}
 				
 				if (!(this.InnerException is HtmlizedException))
-					return GetDefaultErrorMessage ();
+					return GetDefaultErrorMessage (true);
 				
 				return GetHtmlizedErrorMessage ();
 			} catch (Exception ex) {
@@ -206,33 +215,35 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 		
 		void WriteFileBottom (StringBuilder builder, bool showTrace)
 		{
-			builder.Append ("<hr style=\"color: silver\"/>");
-			builder.AppendFormat ("<strong>Version information: </strong> Mono Version: {0}; ASP.NET Version: {0}</body></html>\r\n<!--", Environment.Version);
-			if (!showTrace)
-				return;
+			if (showTrace) {
+				builder.Append ("<hr style=\"color: silver\"/>");
+				builder.AppendFormat ("<strong>Version information: </strong> Mono Version: {0}; ASP.NET Version: {0}</body></html>\r\n", Environment.Version);
 			
-			string trace, message;
-			bool haveTrace;
-			Exception ex = this;
-			
-			while (ex != null) {
-				trace = ex.StackTrace;
-				message = ex.Message;
-				haveTrace = (trace != null && trace.Length > 0);
-				
-				if (!haveTrace && (message == null || message.Length == 0)) {
-					ex = ex.InnerException;
-					continue;
-				}
+				string trace, message;
+				bool haveTrace;
+				Exception ex = this;
 
-				builder.Append ("\r\n[" + ex.GetType () + "]: " + HtmlEncode (message) + "\r\n");
-				if (haveTrace)
-					builder.Append (ex.StackTrace);
+				builder.Append ("\r\n<!--");
+				while (ex != null) {
+					trace = ex.StackTrace;
+					message = ex.Message;
+					haveTrace = (trace != null && trace.Length > 0);
 				
-				ex = ex.InnerException;
-			}
+					if (!haveTrace && (message == null || message.Length == 0)) {
+						ex = ex.InnerException;
+						continue;
+					}
+
+					builder.Append ("\r\n[" + ex.GetType () + "]: " + HtmlEncode (message) + "\r\n");
+					if (haveTrace)
+						builder.Append (ex.StackTrace);
+				
+					ex = ex.InnerException;
+				}
 			
-			builder.Append ("\r\n-->");
+				builder.Append ("\r\n-->");
+			} else
+				builder.Append ("</body></html>\r\n");
 		}
 
 		string GetCustomErrorDefaultMessage ()
@@ -287,7 +298,7 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 			return builder.ToString ();
 		}
 		
-		string GetDefaultErrorMessage ()
+		string GetDefaultErrorMessage (bool showTrace)
 		{
 			Exception ex, baseEx;
 			ex = baseEx = GetBaseException ();
@@ -309,15 +320,15 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 			builder.Append ("</p>\r\n");
 
 			if (resource_name != null && resource_name.Length > 0)
-				builder.AppendFormat ("<p><strong>Resource URL: </strong>{0}</p>\r\n", resource_name);
+				builder.AppendFormat ("<p><strong>Requested URL: </strong>{0}</p>\r\n", resource_name);
 			
-			if (baseEx != null && http_code != 404) {
+			if (showTrace && baseEx != null && http_code != 404 && http_code != 403) {
 				builder.Append ("<p><strong>Stack Trace: </strong></p>");
 				builder.Append ("<table summary=\"Stack Trace\" class=\"sampleCode\">\r\n<tr><td>");
 				WriteTextAsCode (builder, baseEx.ToString ());
 				builder.Append ("</td></tr>\r\n</table>\r\n");
 			}
-			WriteFileBottom (builder, true);
+			WriteFileBottom (builder, showTrace);
 			
 			return builder.ToString ();
 		}
@@ -331,6 +342,17 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 			return res.Replace ("\r\n", "<br />");
 		}
 
+		string FormatSourceFile (string filename)
+		{
+			if (filename == null || filename.Length == 0)
+				return String.Empty;
+
+			if (filename.StartsWith ("@@"))
+				return "[internal] <!-- " + filename + " -->";
+
+			return filename;
+		}
+		
 		string GetHtmlizedErrorMessage ()
 		{
 			StringBuilder builder = new StringBuilder ();
@@ -380,9 +402,9 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 
 				builder.Append ("<br/><p><strong>Source File: </strong>");
 				if (exc.SourceFile != exc.FileName)
-					builder.Append (exc.SourceFile);
+					builder.Append (FormatSourceFile (exc.SourceFile));
 				else
-					builder.Append (exc.FileName);
+					builder.Append (FormatSourceFile (exc.FileName));
 
 				if ((isParseException || isCompileException) && exc.ErrorLines.Length > 0) {
 					builder.Append ("&nbsp;&nbsp;<strong>Line: </strong>");

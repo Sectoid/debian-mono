@@ -1,3 +1,14 @@
+2009-04-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* CSharpCodeCompiler.cs: better error when there's a problem running
+	the specified exec.
+
+2009-04-17  Marek Habersack  <mhabersack@novell.com>
+
+	* CSharpCodeCompiler.cs: pass current application's domain
+	PrivateBinPath to gmcs using its /lib parameter and put the same
+	value in the MONO_PATH environment variable. Fixes bug #493874
+
 2008-10-28  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* CSharpCodeGenerator.cs : escape #pragma checksum argument literal

@@ -3,8 +3,10 @@
 //
 // Author:
 //   Marek Sieradzki (marek.sieradzki@gmail.com)
+//   Ankit Jain (jankit@novell.com)
 // 
 // (C) 2006 Marek Sieradzki
+// Copyright 2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,14 +41,26 @@ namespace Microsoft.Build.Tasks {
 	internal class AssemblyResolver {
 
 		// name -> (version -> assemblypath)
-		Dictionary <string, Dictionary <Version, string>> gac;
+		Dictionary<string, TargetFrameworkAssemblies> target_framework_cache;
+		Dictionary<string, Dictionary<Version, string>> gac;
 		TaskLoggingHelper log;
+		StringWriter sw;
 
 		public AssemblyResolver ()
 		{
-			gac = new Dictionary <string, Dictionary <Version, string>> ();
+			gac = new Dictionary<string, Dictionary<Version, string>> ();
+			target_framework_cache = new Dictionary <string, TargetFrameworkAssemblies> ();
 
 			GatherGacAssemblies ();
+		}
+
+		public StringWriter SearchLogger {
+			get { return sw; }
+		}
+
+		public void ResetSearchLogger ()
+		{
+			sw = new StringWriter ();
 		}
 
 		string GetGacPath ()
@@ -80,79 +94,167 @@ namespace Microsoft.Build.Tasks {
 						version = new Version (version_info.Name.Split (
 							new char [] {'_'}, StringSplitOptions.RemoveEmptyEntries) [0]);
 
-						if (!gac.ContainsKey (assembly_info.Name))
-							gac.Add (assembly_info.Name, new Dictionary <Version, string> ());
-						gac [assembly_info.Name].Add (version, file);
+						Dictionary<Version, string> assembliesByVersion = new Dictionary <Version, string> ();
+						if (!gac.TryGetValue (assembly_info.Name, out assembliesByVersion)) {
+							assembliesByVersion = new Dictionary <Version, string> ();
+							gac.Add (assembly_info.Name, assembliesByVersion);
+						}
+
+						string found_file;
+						if (assembliesByVersion.TryGetValue (version, out found_file) &&
+							File.GetLastWriteTime (file) <= File.GetLastWriteTime (found_file))
+								// Duplicate found, take the newer file
+								continue;
+
+						assembliesByVersion [version] = file;
 					}
 				}
 			}
 		}
 
-		public string ResolveAssemblyReference (ITaskItem reference)
+		public ResolvedReference FindInTargetFramework (ITaskItem reference, string framework_dir, bool specific_version)
 		{
-			AssemblyName name = null;
-			string resolved = null;
+			AssemblyName key_aname = new AssemblyName (reference.ItemSpec);
+			TargetFrameworkAssemblies gac_asm;
+			if (!target_framework_cache.TryGetValue (framework_dir, out gac_asm)) {
+				// fill gac_asm
+				gac_asm = target_framework_cache [framework_dir] = PopulateTargetFrameworkAssemblies (framework_dir);
+			}
 
-			name = new AssemblyName (reference.ItemSpec);
-
-			if (reference.GetMetadata ("HintPath") != String.Empty) {
-
-				bool specificVersion;
-
-				if (reference.GetMetadata ("SpecificVersion") != String.Empty) {
-					specificVersion = Boolean.Parse (reference.GetMetadata ("SpecificVersion"));
-				} else {
-					specificVersion = IsStrongNamed (name);
+			KeyValuePair<AssemblyName, string> pair;
+			if (gac_asm.NameToAssemblyNameCache.TryGetValue (key_aname.Name, out pair)) {
+				if (AssemblyNamesCompatible (key_aname, pair.Key, specific_version)) {
+					// gac and tgt frmwk refs are not copied private
+					return GetResolvedReference (reference, pair.Value, false,
+							SearchPath.TargetFrameworkDirectory);
 				}
 
-				resolved = ResolveHintPathReference (name, reference.GetMetadata ("HintPath"), specificVersion);
+				SearchLogger.WriteLine ("Considered target framework dir {0}, assembly name '{1}' did not " +
+						"match the expected '{2}' (SpecificVersion={3})",
+						framework_dir, pair.Key, key_aname, specific_version);
+			} else {
+				SearchLogger.WriteLine ("Considered target framework dir {0}, assembly named '{1}' not found.",
+						framework_dir, key_aname.Name);
 			}
-			
-			if (resolved == null)
-				resolved = ResolveGacReference (name, gac);
+			return null;
+		}
+
+		public ResolvedReference FindInDirectory (ITaskItem reference, string directory, string [] file_extensions)
+		{
+			if (reference.ItemSpec.IndexOf (',') > 0) {
+				// Probably an assembly name
+				AssemblyName key_aname = new AssemblyName (reference.ItemSpec);
+				foreach (string extn in file_extensions) {
+					foreach (string file in Directory.GetFiles (directory, "*" + extn)) {
+						AssemblyName found = AssemblyName.GetAssemblyName (file);
+
+						//FIXME: Extract 'name' and look only for name.dll name.exe ?
+						if (AssemblyNamesCompatible (key_aname, found, false))
+							return GetResolvedReference (reference, file, true, SearchPath.Directory);
+
+						SearchLogger.WriteLine ("Considered {0}, but assembly name wasn't compatible.", file);
+					}
+				}
+			} else {
+				// Try as a filename
+				string path = Path.Combine (directory, reference.ItemSpec);
+				if (GetAssemblyNameFromFile (path) != null)
+					return GetResolvedReference (reference, path, true, SearchPath.Directory);
+			}
+
+			return null;
+		}
+
+		TargetFrameworkAssemblies PopulateTargetFrameworkAssemblies (string directory)
+		{
+			TargetFrameworkAssemblies gac_asm = new TargetFrameworkAssemblies (directory);
+			foreach (string file in Directory.GetFiles (directory, "*.dll")) {
+				AssemblyName aname = AssemblyName.GetAssemblyName (file);
+				gac_asm.NameToAssemblyNameCache [aname.Name] =
+					new KeyValuePair<AssemblyName, string> (aname, file);
+			}
+
+			return gac_asm;
+		}
+
+		public ResolvedReference ResolveGacReference (ITaskItem reference, bool specific_version)
+		{
+			AssemblyName name = new AssemblyName (reference.ItemSpec);
+			if (!gac.ContainsKey (name.Name)) {
+				SearchLogger.WriteLine ("Considered {0}, but could not find in the GAC.",
+						reference.ItemSpec);
+				return null;
+			}
+
+			if (name.Version != null) {
+				string ret;
+				if (gac [name.Name].TryGetValue (name.Version, out ret))
+					return GetResolvedReference (reference, ret, false, SearchPath.Gac);
+
+				// not found
+				if (specific_version) {
+					SearchLogger.WriteLine ("Considered '{0}', but an assembly with the specific version not found.",
+							reference.ItemSpec);
+					return null;
+				}
+			}
+
+			Version [] versions = new Version [gac [name.Name].Keys.Count];
+			gac [name.Name].Keys.CopyTo (versions, 0);
+			Array.Sort (versions, (IComparer <Version>) null);
+			Version highest = versions [versions.Length - 1];
+			return GetResolvedReference (reference, gac [name.Name] [highest], false, SearchPath.Gac);
+		}
+
+		public ResolvedReference ResolveHintPathReference (ITaskItem reference, bool specific_version)
+		{
+			AssemblyName name = new AssemblyName (reference.ItemSpec);
+			ResolvedReference resolved = null;
+
+			string hintpath = reference.GetMetadata ("HintPath");
+			if (String.IsNullOrEmpty (hintpath)) {
+				SearchLogger.WriteLine ("HintPath attribute not found");
+				return null;
+			}
+
+			if (!File.Exists (hintpath)) {
+				log.LogMessage (MessageImportance.Low, "HintPath {0} does not exist.", hintpath);
+				SearchLogger.WriteLine ("Considered {0}, but it does not exist.", hintpath);
+				return null;
+			}
+
+			AssemblyName found = GetAssemblyNameFromFile (hintpath);
+			if (found == null) {
+				log.LogMessage (MessageImportance.Low, "File at HintPath {0}, is either an invalid assembly or the file does not exist.", hintpath);
+				return null;
+			}
+
+			if (AssemblyNamesCompatible (name, found, specific_version)) {
+				resolved = GetResolvedReference (reference, hintpath, true, SearchPath.HintPath);
+			} else {
+				SearchLogger.WriteLine ("Considered {0}, but assembly name '{1}' did not match the " +
+						"expected '{2}' (SpecificVersion={3})", hintpath, found, name, specific_version);
+				log.LogMessage (MessageImportance.Low, "Assembly names are not compatible.");
+			}
 
 			return resolved;
 		}
 
-		string ResolveGacReference (AssemblyName name, Dictionary <string, Dictionary <Version, string>> dic)
+		public AssemblyName GetAssemblyNameFromFile (string filename)
 		{
-			// FIXME: deal with SpecificVersion=False
-
-			if (!dic.ContainsKey (name.Name))
-				return null;
-
-			if (name.Version != null) {
-				if (!dic [name.Name].ContainsKey (name.Version))
-					return null;
-				else
-					return dic [name.Name] [name.Version];
-			}
-
-			Version [] versions = new Version [dic [name.Name].Keys.Count];
-			dic [name.Name].Keys.CopyTo (versions, 0);
-			Array.Sort (versions, (IComparer <Version>) null);
-			Version highest = versions [versions.Length - 1];
-			return dic [name.Name] [highest];
-		}
-
-		string ResolveHintPathReference (AssemblyName name, string hintpath, bool specificVersion)
-		{
-			AssemblyName found;
-			string ret = null;
-
-			if (!File.Exists (hintpath))
-				log.LogMessage (MessageImportance.Low, "HintPath {0} does not exist.", hintpath);
-
+			AssemblyName aname = null;
 			try {
-				found = AssemblyName.GetAssemblyName (hintpath);
-				if (AssemblyNamesCompatible (name, found, specificVersion))
-					ret = hintpath;
-				else
-					log.LogMessage (MessageImportance.Low, "Assembly names are not compatible.");
-			} catch {
+				aname = AssemblyName.GetAssemblyName (filename);
+			} catch (FileNotFoundException) {
+			} catch (BadImageFormatException) {
 			}
 
-			return ret;
+			if (aname != null)
+				return aname;
+
+			SearchLogger.WriteLine ("Considered '{0}' as a file, but it is either an invalid assembly " +
+					"or file does not exist.", Path.GetFullPath (filename));
+			return null;
 		}
 
 		static bool AssemblyNamesCompatible (AssemblyName a, AssemblyName b, bool specificVersion)
@@ -160,10 +262,10 @@ namespace Microsoft.Build.Tasks {
 			if (a.Name != b.Name)
 				return false;
 
-			if (a.CultureInfo != null && a.CultureInfo != b.CultureInfo)
+			if (a.CultureInfo != null && !a.CultureInfo.Equals (b.CultureInfo))
 				return false;
 
-			if (specificVersion && a.Version != null && a.Version > b.Version)
+			if (specificVersion && a.Version != null && a.Version != b.Version)
 				return false;
 
 			byte [] a_bytes = a.GetPublicKeyToken ();
@@ -183,15 +285,59 @@ namespace Microsoft.Build.Tasks {
 			return true;
 		}
 
-		static bool IsStrongNamed (AssemblyName name)
+		public bool IsStrongNamed (AssemblyName name)
 		{
-			return (name.Version != null && name.GetPublicKeyToken ().Length != 0);
+			return (name.Version != null &&
+					name.GetPublicKeyToken () != null &&
+					name.GetPublicKeyToken ().Length != 0);
+		}
+
+		// FIXME: to get default values of CopyLocal, compare with TargetFrameworkDirectories
+
+		// If metadata 'Private' is present then use that or use @default_value
+		// as the value for CopyLocal
+		internal ResolvedReference GetResolvedReference (ITaskItem reference, string filename,
+				bool default_value, SearchPath search_path)
+		{
+			string pvt = reference.GetMetadata ("Private");
+
+			bool copy_local = default_value;
+			if (!String.IsNullOrEmpty (pvt))
+				//FIXME: log a warning for invalid value
+				Boolean.TryParse (pvt, out copy_local);
+
+			return new ResolvedReference (filename, copy_local, search_path);
 		}
 
 		public TaskLoggingHelper Log {
 			set { log = value; }
 		}
 	}
+
+	class TargetFrameworkAssemblies {
+		public string Path;
+
+		// assembly (simple) name -> (AssemblyName, file path)
+		public Dictionary <string, KeyValuePair<AssemblyName, string>> NameToAssemblyNameCache;
+
+		public TargetFrameworkAssemblies (string path)
+		{
+			this.Path = path;
+			NameToAssemblyNameCache = new Dictionary<string, KeyValuePair<AssemblyName, string>> ();
+		}
+	}
+
+	enum SearchPath
+	{
+		Gac,
+		TargetFrameworkDirectory,
+		CandidateAssemblies,
+		HintPath,
+		Directory,
+		RawFileName
+	}
 }
+
+
 
 #endif

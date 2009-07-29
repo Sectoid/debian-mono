@@ -3,8 +3,10 @@
 //
 // Authors:
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
+//      Marek Habersack <mhabersack@novell.com>
 //
 // (C) 2002,2003 Ximian, Inc (http://www.ximian.com)
+// (C) 2004-2009 Novell, Inc (http://novell.com)
 //
 
 //
@@ -52,17 +54,18 @@ namespace System.Web.Compilation
 		static readonly object textParsedEvent = new object ();
 #if NET_2_0
 		static readonly object parsingCompleteEvent = new object();
-		
-		byte[] md5checksum;
+
+		MD5 checksum;
 #endif
 		AspTokenizer tokenizer;
 		int beginLine, endLine;
 		int beginColumn, endColumn;
 		int beginPosition, endPosition;
 		string filename;
-		string fileText;
 		string verbatimID;
-
+		string fileText;
+		StringReader fileReader;
+		
 		EventHandlerList events = new EventHandlerList ();
 		
 		public event ParseErrorHandler Error {
@@ -90,18 +93,19 @@ namespace System.Web.Compilation
 		public AspParser (string filename, TextReader input)
 		{
 			this.filename = filename;
-			fileText = input.ReadToEnd ();
-#if NET_2_0
-			MD5 md5 = MD5.Create ();
-			md5checksum = md5.ComputeHash (Encoding.UTF8.GetBytes (fileText));
-#endif
-			StringReader reader = new StringReader (fileText);
-			tokenizer = new AspTokenizer (reader);
+			this.fileText = input.ReadToEnd ();
+			this.fileReader = new StringReader (this.fileText);
+			tokenizer = new AspTokenizer (this.fileReader);
 		}
 
 #if NET_2_0
 		public byte[] MD5Checksum {
-			get { return md5checksum; }
+			get {
+				if (checksum == null)
+					return new byte[0];
+				
+				return checksum.Hash;
+			}
 		}
 #endif
 		
@@ -122,12 +126,17 @@ namespace System.Web.Compilation
 		}
 
 		public string FileText {
-			get { return fileText; }
+			get {
+				if (fileText != null)
+					return fileText;
+				
+				return null;
+			}
 		}
 		
 		public string PlainText {
 			get {
-				if (beginPosition >= endPosition)
+				if (beginPosition >= endPosition || fileText == null)
 					return null;
 
 				return fileText.Substring (beginPosition, endPosition - beginPosition);
@@ -144,10 +153,11 @@ namespace System.Web.Compilation
 				verbatimID = value;
 			}
 		}
-		
+
 		bool Eat (int expected_token)
 		{
-			if (tokenizer.get_token () != expected_token) {
+			int token = tokenizer.get_token ();
+			if (token != expected_token) {
 				tokenizer.put_back ();
 				return false;
 			}
@@ -173,60 +183,76 @@ namespace System.Web.Compilation
 
 		public void Parse ()
 		{
+			if (tokenizer == null) {
+				OnError ("AspParser not initialized properly.");
+				return;
+			}
+			
 			int token;
 			string id;
 			TagAttributes attributes;
 			TagType tagtype = TagType.Text;
 			StringBuilder text =  new StringBuilder ();
 
-			while ((token = tokenizer.get_token ()) != Token.EOF) {
-				BeginElement ();
+			try {
+				while ((token = tokenizer.get_token ()) != Token.EOF) {
+					BeginElement ();
 
-				if (tokenizer.Verbatim){
-					string end_verbatim = "</" + verbatimID + ">";
-					string verbatim_text = GetVerbatim (token, end_verbatim);
+					if (tokenizer.Verbatim){
+						string end_verbatim = "</" + verbatimID + ">";
+						string verbatim_text = GetVerbatim (token, end_verbatim);
 
-					if (verbatim_text == null)
-						OnError ("Unexpected EOF processing " + verbatimID);
+						if (verbatim_text == null)
+							OnError ("Unexpected EOF processing " + verbatimID);
 
-					tokenizer.Verbatim = false;
+						tokenizer.Verbatim = false;
 
-					EndElement ();
-					endPosition -= end_verbatim.Length;
-					OnTextParsed (verbatim_text);
-					beginPosition = endPosition;
-					endPosition += end_verbatim.Length;
-					OnTagParsed (TagType.Close, verbatimID, null);
-					continue;
-				}
-				
-				if (token == '<') {
-					GetTag (out tagtype, out id, out attributes);
-					EndElement ();
-					if (tagtype == TagType.ServerComment)
+						EndElement ();
+						endPosition -= end_verbatim.Length;
+						OnTextParsed (verbatim_text);
+						beginPosition = endPosition;
+						endPosition += end_verbatim.Length;
+						OnTagParsed (TagType.Close, verbatimID, null);
 						continue;
+					}
+				
+					if (token == '<') {
+						GetTag (out tagtype, out id, out attributes);
+						EndElement ();
+						if (tagtype == TagType.ServerComment)
+							continue;
 
-					if (tagtype == TagType.Text)
-						OnTextParsed (id);
-					else
-						OnTagParsed (tagtype, id, attributes);
+						if (tagtype == TagType.Text)
+							OnTextParsed (id);
+						else
+							OnTagParsed (tagtype, id, attributes);
 
-					continue;
+						continue;
+					}
+
+					if (tokenizer.Value.Trim ().Length == 0 && tagtype == TagType.Directive) {
+						continue;
+					}
+
+					text.Length = 0;
+					do {
+						text.Append (tokenizer.Value);
+						token = tokenizer.get_token ();
+					} while (token != '<' && token != Token.EOF);
+
+					tokenizer.put_back ();
+					EndElement ();
+					OnTextParsed (text.ToString ());
 				}
-
-				if (tokenizer.Value.Trim () == "" && tagtype == TagType.Directive) {
-					continue;
+			} finally {
+				if (fileReader != null) {
+					fileReader.Close ();
+					fileReader = null;
 				}
-
-				text.Length = 0;
-				do {
-					text.Append (tokenizer.Value);
-					token = tokenizer.get_token ();
-				} while (token != '<' && token != Token.EOF);
-
-				tokenizer.put_back ();
-				EndElement ();
-				OnTextParsed (text.ToString ());
+#if NET_2_0
+				checksum = tokenizer.Checksum;
+#endif
+				tokenizer = null;
 			}
 
 #if NET_2_0
@@ -358,9 +384,24 @@ namespace System.Web.Compilation
 
 				break;
 			default:
+				string idvalue = null;
+				// This is to handle code like:
+				//
+				//  <asp:ListItem runat="server"> < </asp:ListItem>
+				//
+				if ((char)token == '<') {
+					string odds = tokenizer.Odds;
+					if (odds != null && odds.Length > 0 && Char.IsWhiteSpace (odds [0])) {
+						tokenizer.put_back ();
+						idvalue = odds;
+					} else
+						idvalue = tokenizer.Value;
+				} else
+					idvalue = tokenizer.Value;
+				
 				tagtype = TagType.Text;
 				tokenizer.InTag = false;
-				id = "<" + tokenizer.Value;
+				id = "<" + idvalue;
 				break;
 			}
 		}

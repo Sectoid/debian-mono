@@ -181,7 +181,7 @@ namespace System.Net.Sockets
 			if (port < IPEndPoint.MinPort || port > IPEndPoint.MaxPort)
 				throw new ArgumentOutOfRangeException ("port");
 
-			IPAddress[] addresses = Dns.Resolve (hostname).AddressList;
+			IPAddress[] addresses = Dns.GetHostAddresses (hostname);
 			for(int i=0; i<addresses.Length; i++) {
 				try {
 					this.family = addresses[i].AddressFamily;
@@ -380,7 +380,7 @@ namespace System.Net.Sockets
 		public int Send (byte [] dgram, int bytes, string hostname, int port)
 		{
 			return Send (dgram, bytes, 
-				     new IPEndPoint (Dns.Resolve (hostname).AddressList [0], port));
+				     new IPEndPoint (Dns.GetHostAddresses (hostname) [0], port));
 		}
 
 		private byte [] CutArray (byte [] orig, int length)
@@ -449,7 +449,7 @@ namespace System.Net.Sockets
 					       AsyncCallback requestCallback,
 					       object state)
 		{
-			return(BeginSend (datagram, bytes, new IPEndPoint (Dns.Resolve (hostname).AddressList[0], port), requestCallback, state));
+			return(BeginSend (datagram, bytes, new IPEndPoint (Dns.GetHostAddresses (hostname) [0], port), requestCallback, state));
 		}
 		
 		public int EndSend (IAsyncResult asyncResult)

@@ -146,7 +146,7 @@ namespace Mono.Data.Tds.Protocol
 		}
 
 		public bool IsConnected {
-			get { return connected; }
+			get { return connected && comm != null && comm.IsConnected (); }
 			set { connected = value; }
 		}
 
@@ -196,6 +196,20 @@ namespace Mono.Data.Tds.Protocol
 			set { sequentialAccess = value; }
 		}
 
+		public TdsVersion ServerTdsVersion {
+			get { 
+				switch (databaseMajorVersion) {
+				case 4: return TdsVersion.tds42;
+				case 5: return TdsVersion.tds50;
+				case 7: return TdsVersion.tds70;
+				case 8: return TdsVersion.tds80;
+				case 9: return TdsVersion.tds90;
+				case 10: return TdsVersion.tds100;
+				default: return tdsVersion; // return client's version
+				}
+			}
+		}
+		
 		private void SkipRow ()
 		{
 			SkipToColumnIndex (Columns.Count);
@@ -413,6 +427,21 @@ namespace Mono.Data.Tds.Protocol
 			// clean up
 			moreResults = true;
 			doneProc = false;
+
+			// Reset "read" status variables  - used in case of SequentialAccess
+			isResultRead = false;
+			isRowRead = false;
+			StreamLength = 0;
+			StreamIndex = 0;
+			StreamColumnIndex = 0;
+			LoadInProgress = false;
+			
+			// Reset more variables
+			queryInProgress = false;
+			cancelsRequested = 0;
+			cancelsProcessed = 0;
+			recordsAffected = -1;
+			
 			messages.Clear ();
 			outputParameters.Clear ();
 		}
@@ -443,11 +472,15 @@ namespace Mono.Data.Tds.Protocol
 
 		public void Disconnect ()
 		{
-			comm.StartPacket (TdsPacketType.Logoff);
-			comm.Append ((byte) 0);
-			comm.SendPacket ();
-			comm.Close ();
+			try {
+				comm.StartPacket (TdsPacketType.Logoff);
+				comm.Append ((byte) 0);
+				comm.SendPacket ();
+			} catch {
+				// We're closing the socket anyway
+			}
 			connected = false;
+			comm.Close ();
 		}
 		
 		public virtual bool Reset ()

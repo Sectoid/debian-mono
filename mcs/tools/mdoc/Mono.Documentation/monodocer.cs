@@ -47,6 +47,7 @@ class MDocUpdater : MDocCommand
 	
 	static string srcPath;
 	static List<AssemblyDefinition> assemblies;
+	static DefaultAssemblyResolver assemblyResolver = new DefaultAssemblyResolver();
 	
 	static bool nooverrides = true, delete = false, ignoremembers = false;
 	static bool pretty = false;
@@ -109,9 +110,16 @@ class MDocUpdater : MDocCommand
 			{ "i|import=", 
 				"Import documentation from {FILE}.",
 				v => opts.import = v },
+			{ "L|lib=",
+				"Check for assembly references in {DIRECTORY}.",
+				v => assemblyResolver.AddSearchDirectory (v) },
 			{ "o|out=",
 				"Root {DIRECTORY} to generate/update documentation.",
 				v => opts.path = v },
+			{ "r=",
+				"Search for dependent assemblies in the directory containing {ASSEMBLY}.\n" +
+				"(Equivalent to '-L `dirname ASSEMBLY`'.)",
+				v => assemblyResolver.AddSearchDirectory (Path.GetDirectoryName (v)) },
 			{ "since=",
 				"Manually specify the assembly {VERSION} that new members were added in.",
 				v => opts.since = v },
@@ -126,6 +134,11 @@ class MDocUpdater : MDocCommand
 			return;
 		if (opts.assembly.Count == 0)
 			base.Error ("No assemblies specified.");
+
+		foreach (var dir in opts.assembly
+				.Where (a => a.Contains (Path.DirectorySeparatorChar))
+				.Select (a => Path.GetDirectoryName (a)))
+			assemblyResolver.AddSearchDirectory (dir);
 
 		Run (opts);
 		opts.name = ""; // remove warning about unused member
@@ -231,10 +244,7 @@ class MDocUpdater : MDocCommand
 		if (assembly == null)
 			throw new InvalidOperationException("Assembly " + name + " not found.");
 
-		var r = assembly.Resolver as BaseAssemblyResolver;
-		if (r != null && name.Contains (Path.DirectorySeparatorChar)) {
-			r.AddSearchDirectory (Path.GetDirectoryName (name));
-		}
+		assembly.Resolver = assemblyResolver;
 		return assembly;
 	}
 

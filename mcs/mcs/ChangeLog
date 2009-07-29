@@ -1,3 +1,47 @@
+2009-05-21  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #504667
+	* class.cs: Check for static class using parent container instead of
+	parent type.
+
+2009-04-28  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #495112
+	* class.cs (IsUnmanagedType): Handle recursive unmanaged types using
+	local cache.
+
+2009-04-17  Miguel de Icaza  <miguel@novell.com>
+ 
+	* eval.cs: Introduce an entry point that allows for initialization
+	to return a list of the files passed on the command line.
+ 
+2009-04-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #493887
+	* statement.cs: Don't skip string multi-section with default or
+	null label when populating string hashtable.
+
+2009-04-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #492329
+	* expression.cs (New): Workaround broken TypeManager.IsValueType.
+
+2009-04-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #492329
+	* expression.cs (New): Load variable when assigning type parameter
+	to ref variable.
+
+2009-04-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #488960
+	* decl.cs: Compare MVAR types using non-null values.
+
+2009-03-23  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #487625
+	* namespace.cs: Use a warning for all predefined type conflicts.
+
 2009-03-08  Marek Safar  <marek.safar@gmail.com>
 
 	* class.cs: Use correct common base type for unmanaged delayed
