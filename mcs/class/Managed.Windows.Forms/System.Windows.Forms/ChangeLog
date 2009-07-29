@@ -1,3 +1,96 @@
+2009-05-20  Dick Porter  <dick@acm.org>
+
+	* XplatUICarbon.cs: Add more locking around MessageQueue
+	manipulations.
+
+2009-05-08  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* ToolStripItem.cs: Prevent NRE when our holder is a
+	ToolStripDropDownButton and we get Select()ed.
+
+2009-05-08  Brad Taylor  <brad@getcoded.net>
+
+	* DateTimePicker.cs: Add a UIA-specific property to ensure that if
+	is_checkbox_checked is changed, we won't break.
+
+2009-05-08  Brad Taylor  <brad@getcoded.net>
+
+	* DateTimePicker.cs: Wrap UIA specific code in NET_2_0 wrappers.  Send
+	OnUIASelectionChanged when ShowCheckbox is true and the checkbox
+	recieves focus.  Part of fix for #502029.
+
+2009-05-06  Mike Gorse  <mgorse@novell.com>
+
+	* FileDialog.cs: Add UIAFocusedItemChanged to PopupButtonPanel.
+	Add PerformClick and PerformDoubleClick to PopupButton.
+	Fixes #499851.
+
+2009-05-04  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ToolStripDropDown.cs: In OnVisibleChanged, if we have an OwnerItem,
+	fire OnDropDownOpened/OnDropDownClosed depending on the new
+	visibility. This also ensures that any direct access to this instance
+	will fire the mentioned events for the OwnerItem.
+	* ToolStripDropDownItem.cs: Remove the invocations to
+	OnDropDownOpened/OnDropDownClosed, since they are handled in
+	ToolStripDropDown, as well as updating the
+	OnDropDownHide/OnDropDownShow calls to be in the right order.
+	Fixes #496139.
+
+2009-05-04  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* MaskedTextBox.cs: If Insert is pressed, change the internal
+	overwrite mode for our default value.
+	Fixes some bits of #477395.
+
+2009-05-04  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MaskedTextBox.cs: When setting Text use the very precise algorithm
+	that .net uses: iterate over every char of the new value, trying to
+	use every char, and use a normal call to MaskedTextProvider.Replace
+	call if RejectInputOnFirstFailure is true. Fire OnMaskInputRejected 
+	in case of error in both cases, as well.
+	Fixes #477408.
+
+2009-05-04  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* MaskedTextBox.cs: Handle OnKeyDown to properly process the Delete
+	key. Also create a new method to avoid code duplication between
+	OnKeyDown and OnKeyPress.
+	Fixes #477388.
+
+2009-05-04  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MaskedTextBox.cs: In OnKeyPress the IsOverwriteMode check is
+	actually inversed, so put it the right way. Also, don't automatically
+	look for the next editable item after adding a new one, but way for
+	the next insertion (this is what .net does) - this is not needed when
+	MaskedTextProvider.InsertAt is called however, since it already looks for the
+	next editable position.
+	Fixes the remaining bits of #477383.
+
+2009-05-04  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+	
+	* MaskedTextBox.cs: In OnKeyPress handle backspace by calling
+	MaskedTextProvider.RemoveAt method. Also for setting the SelectionStart
+	property after the text was modified, adjust the testPosition value
+	depending on what method was called.
+	Fixes part of #477383.
+
+2009-05-04  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* TabControl.cs: call Focus() to emit GotFocus event at the
+	proper time when SelectionIndex changes. Fixes #499887.
+
+2009-04-27  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* ListView.cs: Make OnColumnClick +internal to be used by a11y.
+
+2009-04-27  Brad Taylor  <brad@getcoded.net>
+
+	* ToolStripButton.cs: Emit an internal event when CheckOnClick is
+	changed.
+
 2009-02-24  Ivan N. Zlatev  <contact@i-nz.net>
 
 	* DataGridViewCell.cs: Invalidate the datagrid when the cell is selected 

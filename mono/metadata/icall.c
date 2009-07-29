@@ -2294,6 +2294,9 @@ ves_icall_Type_get_IsGenericTypeDefinition (MonoReflectionType *type)
 	MonoClass *klass;
 	MONO_ARCH_SAVE_REGS;
 
+	if (!IS_MONOTYPE (type))
+		return FALSE;
+
 	if (type->type->byref)
 		return FALSE;
 
@@ -2369,6 +2372,9 @@ ves_icall_Type_get_IsGenericType (MonoReflectionType *type)
 	MonoClass *klass;
 	MONO_ARCH_SAVE_REGS;
 
+	if (!IS_MONOTYPE (type))
+		return FALSE;
+
 	if (type->type->byref)
 		return FALSE;
 
@@ -2381,6 +2387,9 @@ ves_icall_Type_GetGenericParameterPosition (MonoReflectionType *type)
 {
 	MONO_ARCH_SAVE_REGS;
 
+	if (!IS_MONOTYPE (type))
+		return -1;
+
 	if (is_generic_parameter (type->type))
 		return type->type->data.generic_param->num;
 	return -1;
@@ -2390,6 +2399,8 @@ static GenericParameterAttributes
 ves_icall_Type_GetGenericParameterAttributes (MonoReflectionType *type)
 {
 	MONO_ARCH_SAVE_REGS;
+
+	g_assert (IS_MONOTYPE (type));
 	g_assert (is_generic_parameter (type->type));
 	return type->type->data.generic_param->flags;
 }
@@ -2404,6 +2415,8 @@ ves_icall_Type_GetGenericParameterConstraints (MonoReflectionType *type)
 	int i, count;
 
 	MONO_ARCH_SAVE_REGS;
+
+	g_assert (IS_MONOTYPE (type));
 
 	domain = mono_object_domain (type);
 	param = type->type->data.generic_param;
@@ -3656,6 +3669,7 @@ ves_icall_Type_GetMethodsByName (MonoReflectionType *type, MonoString *name, gui
 	gpointer iter;
 	MonoObject *member;
 	int i, len, match, nslots;
+	/*FIXME, use MonoBitSet*/
 	guint32 method_slots_default [8];
 	guint32 *method_slots;
 	gchar *mname = NULL;
@@ -3705,6 +3719,13 @@ handle_parent:
 	iter = NULL;
 	while ((method = mono_class_get_methods (klass, &iter))) {
 		match = 0;
+		if (method->slot != -1) {
+			g_assert (method->slot < nslots);
+			if (method_slots [method->slot >> 5] & (1 << (method->slot & 0x1f)))
+				continue;
+			method_slots [method->slot >> 5] |= 1 << (method->slot & 0x1f);
+		}
+
 		if (method->name [0] == '.' && (strcmp (method->name, ".ctor") == 0 || strcmp (method->name, ".cctor") == 0))
 			continue;
 		if ((method->flags & METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK) == METHOD_ATTRIBUTE_PUBLIC) {
@@ -3734,12 +3755,6 @@ handle_parent:
 		}
 		
 		match = 0;
-		if (method->slot != -1) {
-			g_assert (method->slot < nslots);
-			if (method_slots [method->slot >> 5] & (1 << (method->slot & 0x1f)))
-				continue;
-			method_slots [method->slot >> 5] |= 1 << (method->slot & 0x1f);
-		}
 		
 		member = (MonoObject*)mono_method_get_object (domain, method, refklass);
 		
@@ -4390,28 +4405,12 @@ ves_icall_System_Reflection_Assembly_InternalGetType (MonoReflectionAssembly *as
 	return mono_type_get_object (mono_object_domain (assembly), type);
 }
 
-static MonoString *
-ves_icall_System_Reflection_Assembly_get_code_base (MonoReflectionAssembly *assembly, MonoBoolean escaped)
+static gboolean
+replace_shadow_path (MonoDomain *domain, gchar *dirname, gchar **filename)
 {
-	MonoDomain *domain = mono_object_domain (assembly); 
-	MonoAssembly *mass = assembly->assembly;
-	MonoString *res = NULL;
-	gchar *uri;
-	gchar *absolute;
 	gchar *content;
 	gchar *shadow_ini_file;
 	gsize len;
-	gchar *dirname;
-	
-	MONO_ARCH_SAVE_REGS;
-
-	if (g_path_is_absolute (mass->image->name)) {
-		absolute = g_strdup (mass->image->name);
-		dirname = g_path_get_dirname (absolute);
-	} else {
-		absolute = g_build_filename (mass->basedir, mass->image->name, NULL);
-		dirname = g_strdup (mass->basedir);
-	}
 
 	/* Check for shadow-copied assembly */
 	if (mono_is_shadow_copy_enabled (domain, dirname)) {
@@ -4426,12 +4425,37 @@ ves_icall_System_Reflection_Assembly_get_code_base (MonoReflectionAssembly *asse
 		}
 		g_free (shadow_ini_file);
 		if (content != NULL) {
-			g_free (absolute);
-			absolute = content;
+			if (*filename)
+				g_free (*filename);
+			*filename = content;
+			return TRUE;
 		}
 	}
-	g_free (dirname);
+	return FALSE;
+}
 
+static MonoString *
+ves_icall_System_Reflection_Assembly_get_code_base (MonoReflectionAssembly *assembly, MonoBoolean escaped)
+{
+	MonoDomain *domain = mono_object_domain (assembly); 
+	MonoAssembly *mass = assembly->assembly;
+	MonoString *res = NULL;
+	gchar *uri;
+	gchar *absolute;
+	gchar *dirname;
+	
+	MONO_ARCH_SAVE_REGS;
+
+	if (g_path_is_absolute (mass->image->name)) {
+		absolute = g_strdup (mass->image->name);
+		dirname = g_path_get_dirname (absolute);
+	} else {
+		absolute = g_build_filename (mass->basedir, mass->image->name, NULL);
+		dirname = g_strdup (mass->basedir);
+	}
+
+	replace_shadow_path (domain, dirname, &absolute);
+	g_free (dirname);
 #if PLATFORM_WIN32
 	{
 		gint i;
@@ -5227,10 +5251,15 @@ ves_icall_System_Reflection_Assembly_InternalGetAssemblyName (MonoString *fname,
 	gboolean res;
 	MonoImage *image;
 	MonoAssemblyName name;
+	char *dirname
 
 	MONO_ARCH_SAVE_REGS;
 
 	filename = mono_string_to_utf8 (fname);
+
+	dirname = g_path_get_dirname (filename);
+	replace_shadow_path (mono_domain_get (), dirname, &filename);
+	g_free (dirname);
 
 	image = mono_image_open (filename, &status);
 

@@ -1,3 +1,195 @@
+2009-06-08  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c
+	(MonoDebuggerExceptionAction): Moved into debug-mini.h.
+	(_mono_debugger_throw_exception): Don't make this static.
+	(_mono_debugger_unhandled_exception): Likewise.
+	(mono_debugger_handle_exception): Moved to mini-exceptions.c
+
+	* debug-mini.c
+	(MonoDebuggerExceptionAction): Moved here from debug-mini.c.
+	(_mono_debugger_throw_exception): Add function prototype.
+	(_mono_debugger_unhandled_exception): Likewise.
+
+	* mini-exceptions.c
+	(mono_handle_exception_internal): Added `MonoJitInfo **out_ji'
+	arg; return the first exception handler if the exception is caught
+	and we're running inside the debugger.
+	(mono_debugger_handle_exception): Moved here from debug-mini.c;
+	improve exception handle inside runtime-invoke, check whether the
+	exception is actually caught in the method being invoked and not
+	by the runtime-invoke-wrapper.
+
+2009-05-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-sparc.c (add_outarg_load): Fix the sparc build.
+
+2009-05-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r134713/134715.
+
+	* basic.cs: Add regression test for #506915.
+
+	* method-to-ir.c (mono_method_to_ir): When doing the ldobj+stobj
+	optimization we must check the bb of the first byte of stobj as
+	it's the only one set in cil_offset_to_bb.
+
+	Fixes #506915.	
+
+2009-05-21 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r134536.
+
+	* mini-x86.c (mono_arch_emit_call): The decompose code now supports
+	decomposing 8 bytes structs into a LCALL.
+
+	* mini-x86.c (emit_move_return_value): We no longer push the vtype
+	pointer for where to store the returned regs.
+
+	* decompose.c (mono_decompose_vtype_opts): Fix the comment to properly
+	state the concern.
+
+	Fixes #471747, #471751 and #4734530 (in fact, it's a bunch of dups).
+
+2009-05-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r134470.
+
+	* local-propagation.c (mono_local_cprop): Avoid local propagation
+	across paired add/sub if the first instruction dest reg is it's
+	source reg. For example:
+
+	int_add_imm R12 <- R12 [1] clobbers: 1
+	int_sub_imm R42 <- R12 [1] clobbers: 1
+
+	The cprop pass would wrongly const prop + 1 to int_sub_imm which doesn't
+	maintain the math identify.
+
+	Fixes #505375.
+
+2009-04-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_output_basic_block): Add a few nops before
+	indirect calls to simplify get_vcall_slot_addr (). Fixes #494567.
+	(mono_arch_get_vcall_slot): Simplify this.
+
+2009-05-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (add_wrappers): Add remoting-invoke-with-check wrappers
+	for virtual methods too.
+
+2009-06-08  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c
+	(MonoDebuggerExceptionAction): Moved into debug-mini.h.
+	(_mono_debugger_throw_exception): Don't make this static.
+	(_mono_debugger_unhandled_exception): Likewise.
+	(mono_debugger_handle_exception): Moved to mini-exceptions.c
+
+	* debug-mini.c
+	(MonoDebuggerExceptionAction): Moved here from debug-mini.c.
+	(_mono_debugger_throw_exception): Add function prototype.
+	(_mono_debugger_unhandled_exception): Likewise.
+
+	* mini-exceptions.c
+	(mono_handle_exception_internal): Added `MonoJitInfo **out_ji'
+	arg; return the first exception handler if the exception is caught
+	and we're running inside the debugger.
+	(mono_debugger_handle_exception): Moved here from debug-mini.c;
+	improve exception handle inside runtime-invoke, check whether the
+	exception is actually caught in the method being invoked and not
+	by the runtime-invoke-wrapper.
+
+2009-05-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r133651.
+	
+	* aot-compiler.c aot-runtime.c: Use our own hash function instead of
+	g_str_hash () which can change.
+	
+	* driver.c (mini_regression): Disable optimizations not supported by
+	the cpu. Fixes #500019.
+
+2009-05-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* genmdesc.pl (load_opcodes): Fix this after the TARGET_... changes.
+
+2009-05-03  Martin Baulig  <martin@ximian.com>
+
+	* debug-debugger.c (debugger_insert_source_breakpoint): Don't call
+	mono_debugger_insert_method_breakpoint() since the class init
+	handler we're inserting at the top of the method already gives us
+	a notification.
+
+2009-04-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (asm_writer_emit_writeout): Strip 'mapping symbols'
+	when compiling for ARM.
+
+2009-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (inline_method): Save/Restore cfg->ret_var_set too.
+
+	* mini.c (mini_method_compile): Use TARGET_<ARCH> defines instead of 
+	__<arch>__ defines in the JIT code.
+
+	* *.h *.c: Use TARGET_<ARCH> defines instead of __<arch>__ defines in 
+	the JIT code.
+
+2009-03-31  Martin Baulig  <martin@ximian.com>
+
+	Backport of r130658.
+
+	* debug-debugger.c (debugger_remove_breakpoint): Call
+	mono_debugger_remove_class_init_callback ().
+
+2009-04-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Force init_locals to be TRUE
+	to prevent asserts in various passes. Fixes #497220.
+
+2009-04-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_generic_class_init_trampoline): Remove
+	a racy assert.
+
+2009-04-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (mono_xdebug_init): Fix the DISABLE_AOT build.
+
+2009-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.h: Error out if VFP support is requested, since its not
+	complete in 2.4.
+
+2009-03-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c (get_generic_info_from_stack_frame): Avoid returning
+	a managed object which is later put into a GList. Return its class instead.
+
+	* mini.c (mono_allocate_stack_slots_full): Avoid sharing ref and non-ref
+	stack slots when using sgen.
+
+2009-03-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Disable tail calls for calls which
+	return a valuetype. Fixes #487518.
+
+	* iltests.il: Add a test.
+	
+2009-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (decode_method_ref): Fix a warning.
+
+	* unwind.c (mono_unwind_frame): Ditto.	
+
+2009-03-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Backport of r129824.
+
+	* mini-amd64.c (mono_arch_compute_omit_fp): Add another check to avoid hitting
+	the stack_alloc_size < (1 << 16) assertion in emit_prolog ().
+
 2009-03-11  Zoltan Varga  <vargaz@gmail.com>
 
 	* mini-amd64.c (mono_arch_output_basic_block): Fix % 1. Fixes #484323.

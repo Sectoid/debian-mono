@@ -1585,7 +1585,7 @@ namespace System.Web {
 			cache.Clear ();
 		}
 		
-		object LocateHandler (string verb, string url)
+		object LocateHandler (HttpRequest req, string verb, string url)
 		{
 			Hashtable cache = GetHandlerCache ();
 			string id = String.Concat (verb, url);
@@ -1593,17 +1593,19 @@ namespace System.Web {
 
 			if (ret != null)
 				return ret;
-			
+
+			bool allowCache;
 #if NET_2_0
-			HttpHandlersSection httpHandlersSection = (HttpHandlersSection) WebConfigurationManager.GetWebApplicationSection ("system.web/httpHandlers");
-			ret = httpHandlersSection.LocateHandler (verb, url);
+			global::System.Configuration.Configuration cfg = WebConfigurationManager.OpenWebConfiguration (req.Path, null, req.FilePath);
+			HttpHandlersSection httpHandlersSection = cfg.GetSection ("system.web/httpHandlers") as HttpHandlersSection;
+			ret = httpHandlersSection.LocateHandler (verb, url, out allowCache);
 #else
 			HandlerFactoryConfiguration factory_config = (HandlerFactoryConfiguration) HttpContext.GetAppConfig ("system.web/httpHandlers");
-			ret = factory_config.LocateHandler (verb, url);
+			ret = factory_config.LocateHandler (verb, url, out allowCache);
 #endif
 
 			IHttpHandler handler = ret as IHttpHandler;
-			if (handler != null && handler.IsReusable)
+			if (allowCache && handler != null && handler.IsReusable)
 				cache [id] = ret;
 			
 			return ret;
@@ -1624,10 +1626,9 @@ namespace System.Web {
 			string verb = request.RequestType;
 			
 			IHttpHandler handler = null;
-			object o = LocateHandler (verb, url);
+			object o = LocateHandler (request, verb, url);
 			
 			factory = o as IHttpHandlerFactory;
-			
 			if (factory == null) {
 				handler = (IHttpHandler) o;
 			} else {
@@ -1839,12 +1840,19 @@ namespace System.Web {
 			}
 #endif
 
-			type = LoadTypeFromBin (typeName);
+			Exception loadException = null;
+			try {
+				type = null;
+				type = LoadTypeFromBin (typeName);
+			} catch (Exception ex) {
+				loadException = ex;
+			}
+			
 			if (type != null)
 				return type;
 #endif
 			if (throwOnMissing)
-				throw new TypeLoadException (String.Format ("Type '{0}' cannot be found", typeName));
+				throw new TypeLoadException (String.Format ("Type '{0}' cannot be found", typeName), loadException);
 			
 			return null;
 		}
@@ -1854,7 +1862,18 @@ namespace System.Web {
 			Type type = null;
 			
 			foreach (string s in BinDirectoryAssemblies) {
-				Assembly binA = Assembly.LoadFrom (s);
+				Assembly binA = null;
+				
+				try {
+					binA = Assembly.LoadFrom (s);
+				} catch (FileLoadException) {
+					// ignore
+					continue;
+				} catch (BadImageFormatException) {
+					// ignore
+					continue;
+				}
+				
 				type = binA.GetType (typeName, false);
 				if (type == null)
 					continue;

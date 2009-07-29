@@ -266,7 +266,7 @@ mono_print_bb (MonoBasicBlock *bb, const char *msg)
 		} \
 	} while (0)
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
 #define EMIT_NEW_X86_LEA(cfg,dest,sr1,sr2,shift,imm) do { \
 		MONO_INST_NEW (cfg, dest, OP_X86_LEA); \
 		(dest)->dreg = alloc_preg ((cfg)); \
@@ -3448,7 +3448,7 @@ mini_emit_ldelema_1_ins (MonoCompile *cfg, MonoClass *klass, MonoInst *arr, Mono
 
 	MONO_EMIT_BOUNDS_CHECK (cfg, array_reg, MonoArray, max_length, index2_reg);
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
 	if (size == 1 || size == 2 || size == 4 || size == 8) {
 		static const int fast_log2 [] = { 1, 0, 1, -1, 2, -1, -1, -1, 3 };
 
@@ -3581,7 +3581,7 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 #endif	
 			MONO_EMIT_BOUNDS_CHECK (cfg, args [0]->dreg, MonoString, length, index_reg);
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
 			EMIT_NEW_X86_LEA (cfg, ins, args [0]->dreg, index_reg, 1, G_STRUCT_OFFSET (MonoString, chars));
 			add_reg = ins->dreg;
 			/* Avoid a warning */
@@ -4056,6 +4056,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	guint32 prev_cil_offset_to_bb_len;
 	MonoMethod *prev_current_method;
 	MonoGenericContext *prev_generic_context;
+	gboolean ret_var_set, prev_ret_var_set;
 
 	g_assert (cfg->exception_type == MONO_EXCEPTION_NONE);
 
@@ -4109,8 +4110,11 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	prev_cbb = cfg->cbb;
 	prev_current_method = cfg->current_method;
 	prev_generic_context = cfg->generic_context;
+	prev_ret_var_set = cfg->ret_var_set;
 
 	costs = mono_method_to_ir (cfg, cmethod, sbblock, ebblock, rvar, dont_inline, sp, real_offset, *ip == CEE_CALLVIRT);
+
+	ret_var_set = cfg->ret_var_set;
 
 	cfg->inlined_method = prev_inlined_method;
 	cfg->real_offset = prev_real_offset;
@@ -4123,6 +4127,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	cfg->arg_types = prev_arg_types;
 	cfg->current_method = prev_current_method;
 	cfg->generic_context = prev_generic_context;
+	cfg->ret_var_set = prev_ret_var_set;
 
 	if ((costs >= 0 && costs < 60) || inline_allways) {
 		if (cfg->verbose_level > 2)
@@ -4163,7 +4168,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 			 * If the inlined method contains only a throw, then the ret var is not 
 			 * set, so set it to a dummy value.
 			 */
-			if (!cfg->ret_var_set) {
+			if (!ret_var_set) {
 				static double r8_0 = 0.0;
 
 				switch (rvar->type) {
@@ -5085,6 +5090,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 	GSList *class_inits = NULL;
 	gboolean dont_verify, dont_verify_stloc, readonly = FALSE;
 	int context_used;
+	gboolean init_locals;
 
 	/* serialization and xdomain stuff may need access to private fields and methods */
 	dont_verify = method->klass->image->assembly->corlib_internal? TRUE: FALSE;
@@ -5110,6 +5116,13 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 	cfg->cil_start = ip;
 	end = ip + header->code_size;
 	mono_jit_stats.cil_code_size += header->code_size;
+	init_locals = header->init_locals;
+
+	/* 
+	 * Methods without init_locals set could cause asserts in various passes
+	 * (#497220).
+	 */
+	init_locals = TRUE;
 
 	method_definition = method;
 	while (method_definition->is_inflated) {
@@ -5342,7 +5355,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		}
 	}
 	
-	if ((header->init_locals || (cfg->method == method && (cfg->opt & MONO_OPT_SHARED))) || cfg->compile_aot || security || pinvoke) {
+	if ((init_locals || (cfg->method == method && (cfg->opt & MONO_OPT_SHARED))) || cfg->compile_aot || security || pinvoke) {
 		/* we use a separate basic block for the initialization code */
 		NEW_BBLOCK (cfg, init_localsbb);
 		cfg->bb_init = init_localsbb;
@@ -5516,7 +5529,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			cfg->coverage_info->data [cil_offset].cil_code = ip;
 
 			/* TODO: Use an increment here */
-#if defined(__i386__)
+#if defined(TARGET_X86)
 			MONO_INST_NEW (cfg, ins, OP_STORE_MEM_IMM);
 			ins->inst_p0 = &(cfg->coverage_info->data [cil_offset].count);
 			ins->inst_imm = 1;
@@ -5767,7 +5780,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			ip++;
 			--sp;
 
-#ifdef __i386__
+#ifdef TARGET_X86
 			if (sp [0]->type == STACK_R8)
 				/* we need to pop the value from the x86 FP stack */
 				MONO_EMIT_NEW_UNALU (cfg, OP_X86_FPOP, -1, sp [0]->dreg);
@@ -5794,7 +5807,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			if (mono_security_get_mode () == MONO_SECURITY_MODE_CAS)
 				CHECK_CFG_EXCEPTION;
 
-#ifdef __x86_64__
+#ifdef TARGET_AMD64
 			{
 				MonoMethodSignature *fsig = mono_method_signature (cmethod);
 				int i, n;
@@ -6158,7 +6171,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			/* FIXME: runtime generic context pointer for jumps? */
 			/* FIXME: handle this for generic sharing eventually */
 			if ((ins_flag & MONO_INST_TAILCALL) && !cfg->generic_sharing_context && !vtable_arg && cmethod && (*ip == CEE_CALL) &&
-				 (mono_metadata_signature_equal (mono_method_signature (method), mono_method_signature (cmethod)))) {
+				(mono_metadata_signature_equal (mono_method_signature (method), mono_method_signature (cmethod))) && !MONO_TYPE_ISSTRUCT (mono_method_signature (cmethod)->ret)) {
 				MonoCallInst *call;
 
 				/* Prevent inlining of methods with tail calls (the call stack would be altered) */
@@ -6169,7 +6182,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				call->method = cmethod;
 				call->signature = mono_method_signature (cmethod);
 
-#ifdef __x86_64__
+#ifdef TARGET_AMD64
 				/* Handle tail calls similarly to calls */
 				call->inst.opcode = OP_TAILCALL;
 				call->args = sp;
@@ -6719,7 +6732,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			table->table_size = n;
 
 			use_op_switch = FALSE;
-#ifdef __arm__
+#ifdef TARGET_ARM
 			/* ARM implements SWITCH statements differently */
 			/* FIXME: Make it use the generic implementation */
 			if (!cfg->compile_aot)
@@ -7070,7 +7083,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 
 			/* Optimize the ldobj+stobj combination */
 			/* The reference case ends up being a load+store anyway */
-			if (((ip [5] == CEE_STOBJ) && ip_in_bb (cfg, bblock, ip + 9) && read32 (ip + 6) == token) && !generic_class_is_reference_type (cfg, klass)) {
+			if (((ip [5] == CEE_STOBJ) && ip_in_bb (cfg, bblock, ip + 5) && read32 (ip + 6) == token) && !generic_class_is_reference_type (cfg, klass)) {
 				CHECK_STACK (1);
 
 				sp --;
@@ -9211,7 +9224,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				MONO_ADD_INS (cfg->cbb, ins);
 
 				cfg->flags |= MONO_CFG_HAS_ALLOCA;
-				if (header->init_locals)
+				if (init_locals)
 					ins->flags |= MONO_INST_INIT;
 
 				*sp++ = ins;
@@ -9426,7 +9439,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 	if (cfg->method == method && cfg->got_var)
 		mono_emit_load_got_addr (cfg);
 
-	if (header->init_locals) {
+	if (init_locals) {
 		MonoInst *store;
 
 		cfg->cbb = init_localsbb;
@@ -9603,13 +9616,13 @@ mono_op_to_op_imm (int opcode)
 	case OP_STOREI4_MEMBASE_REG:
 		return OP_STOREI4_MEMBASE_IMM;
 
-#if defined(__i386__) || defined (__x86_64__)
+#if defined(TARGET_X86) || defined (TARGET_AMD64)
 	case OP_X86_PUSH:
 		return OP_X86_PUSH_IMM;
 	case OP_X86_COMPARE_MEMBASE_REG:
 		return OP_X86_COMPARE_MEMBASE_IMM;
 #endif
-#if defined(__x86_64__)
+#if defined(TARGET_AMD64)
 	case OP_AMD64_ICOMPARE_MEMBASE_REG:
 		return OP_AMD64_ICOMPARE_MEMBASE_IMM;
 #endif
@@ -9691,7 +9704,7 @@ int
 mono_load_membase_to_load_mem (int opcode)
 {
 	// FIXME: Add a MONO_ARCH_HAVE_LOAD_MEM macro
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
 	switch (opcode) {
 	case OP_LOAD_MEMBASE:
 		return OP_LOAD_MEM;
@@ -9716,7 +9729,7 @@ mono_load_membase_to_load_mem (int opcode)
 static inline int
 op_to_op_dest_membase (int store_opcode, int opcode)
 {
-#if defined(__i386__)
+#if defined(TARGET_X86)
 	if (!((store_opcode == OP_STORE_MEMBASE_REG) || (store_opcode == OP_STOREI4_MEMBASE_REG)))
 		return -1;
 
@@ -9751,7 +9764,7 @@ op_to_op_dest_membase (int store_opcode, int opcode)
 	}
 #endif
 
-#if defined(__x86_64__)
+#if defined(TARGET_AMD64)
 	if (!((store_opcode == OP_STORE_MEMBASE_REG) || (store_opcode == OP_STOREI4_MEMBASE_REG) || (store_opcode == OP_STOREI8_MEMBASE_REG)))
 		return -1;
 
@@ -9812,7 +9825,7 @@ op_to_op_dest_membase (int store_opcode, int opcode)
 static inline int
 op_to_op_store_membase (int store_opcode, int opcode)
 {
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
 	switch (opcode) {
 	case OP_ICEQ:
 		if (store_opcode == OP_STOREI1_MEMBASE_REG)
@@ -9829,7 +9842,7 @@ op_to_op_store_membase (int store_opcode, int opcode)
 static inline int
 op_to_op_src1_membase (int load_opcode, int opcode)
 {
-#ifdef __i386__
+#ifdef TARGET_X86
 	/* FIXME: This has sign extension issues */
 	/*
 	if ((opcode == OP_ICOMPARE_IMM) && (load_opcode == OP_LOADU1_MEMBASE))
@@ -9851,7 +9864,7 @@ op_to_op_src1_membase (int load_opcode, int opcode)
 	}
 #endif
 
-#ifdef __x86_64__
+#ifdef TARGET_AMD64
 	/* FIXME: This has sign extension issues */
 	/*
 	if ((opcode == OP_ICOMPARE_IMM) && (load_opcode == OP_LOADU1_MEMBASE))
@@ -9891,7 +9904,7 @@ op_to_op_src1_membase (int load_opcode, int opcode)
 static inline int
 op_to_op_src2_membase (int load_opcode, int opcode)
 {
-#ifdef __i386__
+#ifdef TARGET_X86
 	if (!((load_opcode == OP_LOAD_MEMBASE) || (load_opcode == OP_LOADI4_MEMBASE) || (load_opcode == OP_LOADU4_MEMBASE)))
 		return -1;
 	
@@ -9912,7 +9925,7 @@ op_to_op_src2_membase (int load_opcode, int opcode)
 	}
 #endif
 
-#ifdef __x86_64__
+#ifdef TARGET_AMD64
 	switch (opcode) {
 	case OP_ICOMPARE:
 		if ((load_opcode == OP_LOADI4_MEMBASE) || (load_opcode == OP_LOADU4_MEMBASE))
@@ -10114,7 +10127,7 @@ mono_handle_global_vregs (MonoCompile *cfg)
 #if SIZEOF_REGISTER == 8
 		case STACK_I8:
 #endif
-#if !defined(__i386__) && !defined(MONO_ARCH_SOFT_FLOAT)
+#if !defined(TARGET_X86) && !defined(MONO_ARCH_SOFT_FLOAT)
 		/* Enabling this screws up the fp stack on x86 */
 		case STACK_R8:
 #endif

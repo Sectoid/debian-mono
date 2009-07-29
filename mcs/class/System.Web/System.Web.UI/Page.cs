@@ -636,7 +636,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	void InitializeTheme ()
 	{
 		if (_theme == null) {
-			PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
+			PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
 			if (ps != null)
 				_theme = ps.Theme;
 		}
@@ -963,16 +963,22 @@ public partial class Page : TemplateControl, IHttpHandler
 	}
 
 #if NET_2_0
-	[MonoTODO("The following properties of OutputCacheParameters are silently ignored: CacheProfile, NoStore, SqlDependency")]
+	[MonoTODO("The following properties of OutputCacheParameters are silently ignored: CacheProfile, SqlDependency")]
 	protected internal virtual void InitOutputCache(OutputCacheParameters cacheSettings)
 	{
-		if (cacheSettings.Enabled)
+		if (cacheSettings.Enabled) {
 			InitOutputCache(cacheSettings.Duration,
 					cacheSettings.VaryByContentEncoding,
 					cacheSettings.VaryByHeader,
 					cacheSettings.VaryByCustom,
 					cacheSettings.Location,
 					cacheSettings.VaryByParam);
+
+			HttpResponse response = Response;
+			HttpCachePolicy cache = response != null ? response.Cache : null;
+			if (cache != null && cacheSettings.NoStore)
+				cache.SetNoStore ();
+		}
 	}
 #endif
 
@@ -1934,14 +1940,14 @@ public partial class Page : TemplateControl, IHttpHandler
 #endif
 
 		Pair vsr = null;
-
-		if (EnableViewState) {
-			object viewState = SaveViewStateRecursive ();
-			object reqPostback = (_requiresPostBack != null && _requiresPostBack.Count > 0) ? _requiresPostBack : null;
-
-			if (viewState != null || reqPostback != null)
-				vsr = new Pair (viewState, reqPostback);
-		}
+		object viewState = null;
+		
+		if (EnableViewState)
+			viewState = SaveViewStateRecursive ();
+		
+		object reqPostback = (_requiresPostBack != null && _requiresPostBack.Count > 0) ? _requiresPostBack : null;
+		if (viewState != null || reqPostback != null)
+			vsr = new Pair (viewState, reqPostback);
 
 		Pair pair = new Pair ();
 		pair.First = vsr;

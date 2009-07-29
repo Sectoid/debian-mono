@@ -1,3 +1,22 @@
+2009-05-18  Jb Evain  <jbevain@novell.com>
+
+	backport of 134333.
+
+	* Enumerable.cs (Max, Min): fix generic versions.
+
+2009-04-03  Jb Evain  <jbevain@novell.com>
+
+	backport of 130961.
+
+	* Enumerable.cs (Cast): fix for when casted enumerator is already
+	of the appropriate type.
+
+2009-03-28  Jb Evain  <jbevain@novell.com>
+
+	backport of r130478.
+
+	* Enumerable.cs: fix Intersect.
+
 2009-02-23  Jb Evain  <jbevain@novell.com>
 
 	backport of 127772.

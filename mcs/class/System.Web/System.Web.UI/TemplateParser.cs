@@ -65,15 +65,38 @@ namespace System.Web.UI {
 	[AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public abstract class TemplateParser : BaseParser
 	{
+#if NET_2_0
+		[Flags]
+		internal enum OutputCacheParsedParams
+		{
+			Location               = 0x0001,
+			CacheProfile           = 0x0002,
+			NoStore                = 0x0004,
+			SqlDependency          = 0x0008,
+			VaryByCustom           = 0x0010,
+			VaryByHeader           = 0x0020,
+			VaryByControl          = 0x0040,
+			VaryByContentEncodings = 0x0080
+		}
+#endif
+		
 		string inputFile;
 		string text;
 		Hashtable mainAttributes;
 		ArrayList dependencies;
 		ArrayList assemblies;
 		Hashtable anames;
+#if NET_2_0
+		string[] binDirAssemblies;
+		Dictionary <string, bool> namespacesCache;
+		List <string> imports;
+		List <string> interfaces;
+		List <ServerSideScript> scripts;
+#else
 		ArrayList imports;
 		ArrayList interfaces;
 		ArrayList scripts;
+#endif
 		Type baseType;
 		bool baseTypeIsGlobal = true;
 		string className;
@@ -89,12 +112,18 @@ namespace System.Web.UI {
 		int oc_duration;
 		string oc_header, oc_custom, oc_param, oc_controls;
 #if NET_2_0
-		string oc_content_encodings;
+		string oc_content_encodings, oc_cacheprofile, oc_sqldependency;
+		bool oc_nostore;
+		OutputCacheParsedParams oc_parsed_params = 0;
 #endif
 		bool oc_shared;
 		OutputCacheLocation oc_location;
 		CultureInfo invariantCulture = CultureInfo.InvariantCulture;
 #if NET_2_0
+		// Kludge needed to support pre-parsing of the main directive (see
+		// AspNetGenerator.GetRootBuilderType)
+		internal int allowedMainDirectives = 0;
+		
 		byte[] md5checksum;
 		string src;
 		bool srcIsLegacy;
@@ -102,7 +131,6 @@ namespace System.Web.UI {
 		string codeFileBaseClass;
 		string metaResourceKey;
 		Type codeFileBaseClassType;
-		string pageParserFilterTypeName;
 		Type pageParserFilterType;
 		PageParserFilter pageParserFilter;
 		
@@ -120,11 +148,11 @@ namespace System.Web.UI {
 		internal TemplateParser ()
 		{
 			LoadConfigDefaults ();
-			
-			imports = new ArrayList ();
 #if NET_2_0
+			imports = new List <string> ();
 			AddNamespaces (imports);
 #else
+			imports = new ArrayList ();
 			imports.Add ("System");
 			imports.Add ("System.Collections");
 			imports.Add ("System.Collections.Specialized");
@@ -143,16 +171,10 @@ namespace System.Web.UI {
 			assemblies = new ArrayList ();
 #if NET_2_0
 			CompilationSection compConfig = CompilationConfig;
-			
-			bool addAssembliesInBin = false;
 			foreach (AssemblyInfo info in compConfig.Assemblies) {
-				if (info.Assembly == "*")
-					addAssembliesInBin = true;
-				else
+				if (info.Assembly != "*")
 					AddAssemblyByName (info.Assembly);
 			}
-			if (addAssembliesInBin)
-				AddAssembliesInBin ();
 
 			foreach (NamespaceInfo info in PagesConfig.Namespaces) {
 				imports.Add (info.Namespace);
@@ -173,9 +195,6 @@ namespace System.Web.UI {
 		internal virtual void LoadConfigDefaults ()
 		{
 			debug = CompilationConfig.Debug;
-#if NET_2_0
-			pageParserFilterTypeName = PagesConfig.PageParserFilterType;
-#endif
 		}
 		
 		internal void AddApplicationAssembly ()
@@ -200,12 +219,12 @@ namespace System.Web.UI {
 			generator.AddControl (type, attributes);
 		}
 		
-		void AddNamespaces (ArrayList imports)
+		void AddNamespaces (List <string> imports)
 		{
 			if (BuildManager.HaveResources)
 				imports.Add ("System.Resources");
 			
-			PagesSection pages = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
+			PagesSection pages = PagesConfig;
 			if (pages == null)
 				return;
 
@@ -301,18 +320,33 @@ namespace System.Web.UI {
 		{
 #if NET_2_0
 			var pageParserFilter = PageParserFilter;
-			if (pageParserFilter != null)
-				pageParserFilter.PreprocessDirective (directive.ToLower (CultureInfo.InvariantCulture), atts);
 #endif
 			if (String.Compare (directive, DefaultDirectiveName, true) == 0) {
-				if (mainAttributes != null)
+#if NET_2_0
+				bool allowMainDirective = allowedMainDirectives > 0;
+#else
+				bool allowMainDirective = false;
+#endif
+				if (mainAttributes != null && !allowMainDirective)
 					ThrowParseException ("Only 1 " + DefaultDirectiveName + " is allowed");
-
+#if NET_2_0
+				allowedMainDirectives--;
+				if (mainAttributes != null)
+					return;
+				
+				if (pageParserFilter != null)
+					pageParserFilter.PreprocessDirective (directive.ToLower (CultureInfo.InvariantCulture), atts);
+#endif
+				
 				mainAttributes = atts;
 				ProcessMainAttributes (mainAttributes);
 				return;
 			}
-
+#if NET_2_0
+			else if (pageParserFilter != null)
+				pageParserFilter.PreprocessDirective (directive.ToLower (CultureInfo.InvariantCulture), atts);
+#endif
+				
 			int cmp = String.Compare ("Assembly", directive, true);
 			if (cmp == 0) {
 				string name = GetString (atts, "Name", null);
@@ -342,8 +376,7 @@ namespace System.Web.UI {
 				if (atts.Count > 0)
 					ThrowParseException ("Attribute " + GetOneKey (atts) + " unknown.");
 				
-				if (namesp != null && namesp != "")
-					AddImport (namesp);
+				AddImport (namesp);
 				return;
 			}
 
@@ -390,8 +423,28 @@ namespace System.Web.UI {
 										     "to a positive integer value");
 							break;
 #if NET_2_0
+						case "sqldependency":
+							oc_sqldependency = (string) entry.Value;
+							break;
+							
+						case "nostore":
+							try {
+								oc_nostore = Boolean.Parse ((string) entry.Value);
+								oc_parsed_params |= OutputCacheParsedParams.NoStore;
+							} catch {
+								ThrowParseException ("The 'NoStore' attribute is case sensitive" +
+										     " and must be set to 'true' or 'false'.");
+							}
+							break;
+
+						case "cacheprofile":
+							oc_cacheprofile = (string) entry.Value;
+							oc_parsed_params |= OutputCacheParsedParams.CacheProfile;
+							break;
+							
 						case "varybycontentencodings":
 							oc_content_encodings = (string) entry.Value;
+							oc_parsed_params |= OutputCacheParsedParams.VaryByContentEncodings;
 							break;
 #endif
 						case "varybyparam":
@@ -401,9 +454,15 @@ namespace System.Web.UI {
 							break;
 						case "varybyheader":
 							oc_header = (string) entry.Value;
+#if NET_2_0
+							oc_parsed_params |= OutputCacheParsedParams.VaryByHeader;
+#endif
 							break;
 						case "varybycustom":
 							oc_custom = (string) entry.Value;
+#if NET_2_0
+							oc_parsed_params |= OutputCacheParsedParams.VaryByCustom;
+#endif
 							break;
 						case "location":
 							if (!(this is PageParser))
@@ -412,6 +471,9 @@ namespace System.Web.UI {
 							try {
 								oc_location = (OutputCacheLocation) Enum.Parse (
 									typeof (OutputCacheLocation), (string) entry.Value, true);
+#if NET_2_0
+								oc_parsed_params |= OutputCacheParsedParams.Location;
+#endif
 							} catch {
 								ThrowParseException ("The 'location' attribute is case sensitive and " +
 										     "must be one of the following values: Any, Client, " +
@@ -424,6 +486,9 @@ namespace System.Web.UI {
 								goto default;
 #endif
 							oc_controls = (string) entry.Value;
+#if NET_2_0
+							oc_parsed_params |= OutputCacheParsedParams.VaryByControl;
+#endif
 							break;
 						case "shared":
 							if (this is PageParser)
@@ -471,14 +536,26 @@ namespace System.Web.UI {
 
 		void AddAssembliesInBin ()
 		{
-			foreach (string s in HttpApplication.BinDirectoryAssemblies)
-				assemblies.Add (s);
+			Assembly asm;
+			foreach (string s in HttpApplication.BinDirectoryAssemblies) {
+				try {
+					asm = Assembly.LoadFrom (s);
+					assemblies.Add (asm.Location);
+				} catch (BadImageFormatException) {
+					// ignore silently
+				}
+			}
 		}
 		
 		internal virtual void AddInterface (string iface)
 		{
-			if (interfaces == null)
+			if (interfaces == null) {
+#if NET_2_0
+				interfaces = new List <string> ();
+#else
 				interfaces = new ArrayList ();
+#endif
+			}
 
 			if (!interfaces.Contains (iface))
 				interfaces.Add (iface);
@@ -486,13 +563,73 @@ namespace System.Web.UI {
 		
 		internal virtual void AddImport (string namesp)
 		{
-			if (imports == null)
+			if (namesp == null || namesp.Length == 0)
+				return;
+			
+			if (imports == null) {
+#if NET_2_0
+				imports = new List <string> ();
+#else
 				imports = new ArrayList ();
-
-			if (!imports.Contains (namesp))
-				imports.Add (namesp);
+#endif
+			}
+			
+			if (imports.Contains (namesp))
+				return;
+			
+			imports.Add (namesp);
+#if NET_2_0
+			AddAssemblyForNamespace (namesp);
+#endif
 		}
 
+#if NET_2_0
+		void AddAssemblyForNamespace (string namesp)
+		{
+			if (binDirAssemblies == null)
+				binDirAssemblies = HttpApplication.BinDirectoryAssemblies;
+			if (binDirAssemblies.Length == 0)
+				return;
+
+			if (namespacesCache == null)
+				namespacesCache = new Dictionary <string, bool> ();
+			else if (namespacesCache.ContainsKey (namesp))
+				return;
+			
+			foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies ())
+				if (FindNamespaceInAssembly (asm, namesp))
+					return;
+			
+			IList tla = BuildManager.TopLevelAssemblies;
+			if (tla != null && tla.Count > 0) {
+				foreach (Assembly asm in tla) {
+					if (FindNamespaceInAssembly (asm, namesp))
+						return;
+				}
+			}
+
+			Assembly a;
+			foreach (string s in binDirAssemblies) {
+				a = Assembly.LoadFrom (s);
+				if (FindNamespaceInAssembly (a, namesp))
+					return;
+			}
+		}
+
+		bool FindNamespaceInAssembly (Assembly asm, string namesp)
+		{
+			foreach (Type type in asm.GetTypes ()) {
+				if (String.Compare (type.Namespace, namesp, StringComparison.Ordinal) == 0) {
+					namespacesCache.Add (namesp, true);
+					AddAssembly (asm, true);
+					return true;
+				}
+			}
+
+			return false;
+		}
+#endif
+		
 		internal virtual void AddSourceDependency (string filename)
 		{
 			if (dependencies != null && dependencies.Contains (filename))
@@ -617,7 +754,7 @@ namespace System.Web.UI {
 			explicitOn = GetBool (atts, "Explicit", compConfig.Explicit);
 			if (atts.ContainsKey ("LinePragmas"))
 				linePragmasOn = GetBool (atts, "LinePragmas", true);
-			
+
 			string inherits = GetString (atts, "Inherits", null);
 #if NET_2_0
 			string srcRealPath = null;
@@ -935,30 +1072,32 @@ namespace System.Web.UI {
 			set { md5checksum = value; }
 		}
 
-		internal string PageParserFilterTypeName {
-			get { return pageParserFilterTypeName; }
-		}
-
 		internal PageParserFilter PageParserFilter {
 			get {
 				if (pageParserFilter != null)
 					return pageParserFilter;
-				
-				if (String.IsNullOrEmpty (pageParserFilterTypeName))
-					return null;
 
-				pageParserFilter = Activator.CreateInstance (PageParserFilterType) as PageParserFilter;
-				pageParserFilter.Initialize (VirtualPath, this);
+				Type t = PageParserFilterType;
+				if (t == null)
+					return null;
 				
+				pageParserFilter = Activator.CreateInstance (t) as PageParserFilter;
+				pageParserFilter.Initialize (this);
+
 				return pageParserFilter;
 			}
 		}
 		
 		internal Type PageParserFilterType {
 			get {
-				if (pageParserFilterType == null)
-					pageParserFilterType = Type.GetType (PageParserFilterTypeName, true);
-
+				if (pageParserFilterType == null) {
+					string typeName = PagesConfig.PageParserFilterType;
+					if (String.IsNullOrEmpty (typeName))
+						return null;
+					
+					pageParserFilterType = HttpApplication.LoadType (typeName, true);
+				}
+				
 				return pageParserFilterType;
 			}
 		}
@@ -975,14 +1114,7 @@ namespace System.Web.UI {
 		internal ILocation DirectiveLocation {
 			get { return directiveLocation; }
 		}
-
-#if NET_2_0
-		internal VirtualPath VirtualPath {
-			get;
-			set;
-		}
-#endif
-
+		
 		internal string ParserDir {
 			get {
 				if (includeDirs == null || includeDirs.Count == 0)
@@ -1152,6 +1284,24 @@ namespace System.Web.UI {
 			}
 		}
 
+#if NET_2_0
+		internal List <ServerSideScript> Scripts {
+			get {
+				if (scripts == null)
+					scripts = new List <ServerSideScript> ();
+
+				return scripts;
+			}
+		}
+
+		internal List <string> Imports {
+			get { return imports; }
+		}
+
+		internal List <string> Interfaces {
+			get { return interfaces; }
+		}
+#else
 		internal ArrayList Scripts {
 			get {
 				if (scripts == null)
@@ -1165,6 +1315,11 @@ namespace System.Web.UI {
 			get { return imports; }
 		}
 
+		internal ArrayList Interfaces {
+			get { return interfaces; }
+		}
+#endif
+		
 		internal ArrayList Assemblies {
 			get {
 				if (appAssemblyIndex != -1) {
@@ -1178,12 +1333,17 @@ namespace System.Web.UI {
 			}
 		}
 
-		internal ArrayList Interfaces {
-			get { return interfaces; }
-		}
-
 		internal RootBuilder RootBuilder {
-			get { return rootBuilder; }
+			get {
+#if NET_2_0
+				if (rootBuilder != null)
+					return rootBuilder;
+				AspGenerator generator = AspGenerator;
+				if (generator != null)
+					rootBuilder = generator.RootBuilder;
+#endif
+				return rootBuilder;
+			}
 			set { rootBuilder = value; }
 		}
 
@@ -1225,10 +1385,26 @@ namespace System.Web.UI {
 		}
 
 #if NET_2_0
+		internal OutputCacheParsedParams OutputCacheParsedParameters {
+			get { return oc_parsed_params; }
+		}
+
+		internal string OutputCacheSqlDependency {
+			get { return oc_sqldependency; }
+		}
+		
+		internal string OutputCacheCacheProfile {
+			get { return oc_cacheprofile; }
+		}
+		
 		internal string OutputCacheVaryByContentEncodings {
 			get { return oc_content_encodings; }
 		}
 
+		internal bool OutputCacheNoStore {
+			get { return oc_nostore; }
+		}
+		
 		internal virtual TextReader Reader {
 			get { return null; }
 			set { /* no-op */ }
@@ -1265,9 +1441,7 @@ namespace System.Web.UI {
 		}
 		
 		internal PagesSection PagesConfig {
-			get {
-				return WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
-			}
+			get { return GetConfigSection <PagesSection> ("system.web/pages") as PagesSection; }
 		}
 
 		internal AspGenerator AspGenerator {
@@ -1281,4 +1455,3 @@ namespace System.Web.UI {
 #endif
 	}
 }
-

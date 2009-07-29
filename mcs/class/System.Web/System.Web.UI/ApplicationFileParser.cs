@@ -50,28 +50,28 @@ namespace System.Web.UI
 #if NET_2_0
 			VirtualPath = new VirtualPath ("/" + Path.GetFileName (fname));
 #endif
+			LoadConfigDefaults ();
 		}
 
 #if NET_2_0
-		internal ApplicationFileParser (string virtualPath, TextReader reader, HttpContext context)
+		internal ApplicationFileParser (VirtualPath virtualPath, TextReader reader, HttpContext context)
 			: this (virtualPath, null, reader, context)
 		{
 		}
 		
-		internal ApplicationFileParser (string virtualPath, string inputFile, TextReader reader, HttpContext context)
+		internal ApplicationFileParser (VirtualPath virtualPath, string inputFile, TextReader reader, HttpContext context)
 		{
-			VirtualPath = new VirtualPath (virtualPath);
+			VirtualPath = virtualPath;
 			Context = context;
 			Reader = reader;
 
-			if (String.IsNullOrEmpty (inputFile)) {
-				HttpRequest req = context != null ? context.Request : null;
-				if (req != null)
-					InputFile = req.MapPath (virtualPath);
-			} else
+			if (String.IsNullOrEmpty (inputFile))
+				InputFile = virtualPath.PhysicalPath;
+			else
 				InputFile = inputFile;
 			
 			SetBaseType (null);
+			LoadConfigDefaults ();
 		}
 #endif
 		

@@ -1,3 +1,11 @@
+2009-05-08  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+        * ToolStripMenuItemTest.cs: Add a test for a NRE bug.
+
+2009-05-04  Andrés G. Aragoneses <aaragoneses@novell.com>
+
+	* TabControlTest.cs: Added test for bug#499887.
+
 2009-01-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* ListBoxTest.cs: New test for RemoveAt and selection.

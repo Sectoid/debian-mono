@@ -243,8 +243,6 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BASE_DEPENDENCIES_CFLAGS = @BASE_DEPENDENCIES_CFLAGS@
-BASE_DEPENDENCIES_LIBS = @BASE_DEPENDENCIES_LIBS@
 BISON = @BISON@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
@@ -446,7 +444,8 @@ ILASM = $(RUNTIME) $(CLASS)/ilasm.exe
 AM_CFLAGS = \
 	-I$(top_srcdir) 	\
 	$(LIBGC_CFLAGS)		\
-	$(GLIB_CFLAGS)
+	$(GLIB_CFLAGS)		\
+	$(PLATFORM_CFLAGS) $(ARCH_CFLAGS)
 
 # The mingw math.h has "extern inline" functions that dont appear in libs, so
 # optimisation is required to actually inline them
@@ -1184,7 +1183,6 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 	uninstall-am uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 	uninstall-libmonoincludeHEADERS
 
-	$(PLATFORM_CFLAGS) $(ARCH_CFLAGS)
 
 @PLATFORM_WIN32_TRUE@export HOST_CC
 

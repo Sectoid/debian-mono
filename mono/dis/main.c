@@ -718,7 +718,8 @@ dis_code (MonoImage *m, guint32 token, guint32 rva, MonoGenericContainer *contai
 	}
 
 	mh = mono_metadata_parse_mh_full (m, container, ptr);
-	if ((entry_point = mono_image_get_entry_point (m)) && mono_metadata_token_index (entry_point)){
+	entry_point = mono_image_get_entry_point (m);
+	if (entry_point && mono_metadata_token_index (entry_point) && mono_metadata_token_table (entry_point) == MONO_TABLE_METHOD) {
 		loc = mono_metadata_locate_token (m, entry_point);
 		if (rva == read32 (loc))
 			fprintf (output, "\t.entrypoint\n");
@@ -1204,8 +1205,12 @@ dis_type (MonoImage *m, int n, int is_nested, int forward)
 
 	name = mono_metadata_string_heap (m, cols [MONO_TYPEDEF_NAME]);
 	nspace = mono_metadata_string_heap (m, cols [MONO_TYPEDEF_NAMESPACE]);
-	if (*nspace && !is_nested) 
-		fprintf (output, ".namespace %s\n{\n", nspace);
+	if (*nspace && !is_nested) {
+		char *esnspace;
+		esnspace = get_escaped_name (nspace);
+		fprintf (output, ".namespace %s\n{\n", esnspace);
+		g_free (esnspace);
+	}
 
 	container = mono_metadata_load_generic_params (m, MONO_TOKEN_TYPE_DEF | (n + 1), NULL);
 	if (container)

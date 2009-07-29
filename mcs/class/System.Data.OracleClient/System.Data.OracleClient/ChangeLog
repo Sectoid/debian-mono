@@ -1,3 +1,39 @@
+2009-06-04  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* OracleParameter.cs: Infer size only for 2.0 profile when only 
+	value is passed.  Fixes test failure under 1.1 profile.
+	
+2009-06-03  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* OracleParameter.cs:  Infer the ocitype before inferring the size
+	
+2009-06-03  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	* OracleParameter.cs:  If a non-zero size is passed, update 
+	the size member but sizeSet is updated only when a non-null 
+	value is passed.
+	
+2009-05-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* OracleParameter.cs: Consider DBNull.Value as null and 
+	update size and sizeSet accordingly.
+	
+2009-05-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #424908
+	* OracleParameter.cs:  Make sure size and sizeSet are properly 
+	updated whenever value changes.
+	
+2009-03-29  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* Fixes #480377
+	* OracleDataReader.cs: Implement MonthSpan and TimeSpan.
+	
+2009-03-20  Daniel Morgan <monodanmorg@yahoo.com>
+
+	* OracleCommand.cs: fix suggested by Thracx <SpamMonkey01+Mono@gmail.com>
+	where the parameter was always item zero for an out parameter.
+
 2009-02-23  Veerapuram Varadhan  <vvaradhan@novell.com>
 
         * OracleException:  2.0 changes - patch submitted by 

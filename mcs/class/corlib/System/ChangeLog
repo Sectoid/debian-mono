@@ -1,9 +1,44 @@
+2009-05-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* AppDomain.cs (DoAssemblyResolve): Fix recursion detection. Fixes #507003.
+
+2009-05-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Type.cs: (GetInterfaceMap) 'this' can't be an interface itself.
+	Fixed bug #503728.
+
+2009-05-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Convert.cs: backport from HEAD.
+
+2009-05-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TermInfoDriver.cs: replace Peek with DataAvailable.
+
+2009-04-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Enum.cs: return the value as an enum of the right type.
+
+2009-04-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Enum.cs: avoid exceptions from ToObject and use Try* instead.
+
+2009-04-25  Miguel de Icaza  <miguel@novell.com>
+
+	* TermInfoDriver.cs: Use the new StreamReader.DataAvailable to
+	load all the data that was added into the `stdin' stream when we
+	did the `Read'.
+	
+2009-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* String.cs (LastIndexOf): Handle empty strings correctly. Fixes #486234.
+
 2009-03-06  Miguel de Icaza  <miguel@novell.com>
- 
+
 	* Convert.cs: Apply patch from Tom Hindle that uses
 	IConvertible.ToType if there are no other possible conversions
 	defined. 
- 
+
 	Fixes: #481687
 	
 2009-02-28  Zoltan Varga  <vargaz@gmail.com>

@@ -1,3 +1,279 @@
+2009-07-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BuildManager.cs: precompilation setup failed if the precompiled
+	virtual directory was / and it was deployed somewhere else.
+
+2009-07-13  Marek Habersack  <mhabersack@novell.com>
+
+	* AppCodeCompiler.cs: wrap HttpApplication.LoadTypeFromBin call in
+	try/catch, so that we can wrap the possible exception in
+	HttpException.
+
+2009-07-21  Marek Habersack  <mhabersack@novell.com>
+
+	* AspTokenizer.cs: in put_back, store inTag value as well.
+
+	* AspParser.cs: correctly parse code like "<asp:tag> < </asp:tag>"
+
+	* BuildManager.cs: GetReferencedAssemblies unconditionally
+	includes all assemblies from bin/ for precompiled sites. Fixes bug
+	#502016
+
+2009-06-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BuildManager.cs: backport r131138.
+
+2009-06-15  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: CreateRootBuilder quits when root builder
+	already exist. This can happen when recursively parsing an include
+	file. Fixes bug #512028
+
+2009-06-11  Marek Habersack  <mhabersack@novell.com>
+
+	* PageCompiler.cs: if generating code to assign output cache
+	parameters, use special case for generating OutputCacheLocation
+	enum reference. Fixes bug #512037
+
+2009-06-04  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: if plain text is parsed and it contains
+	server-side controls, parse and process them. Fixes bug #508888
+
+2009-06-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BuildManager.cs: allow deployment of precompiled applications under
+	any virtual path, not just the default one used when precompiling.
+	Fixes bug #483268.
+
+2009-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: when throwing a 404 exception, pass the virtual
+	path to the exception constructor.
+
+	* AspGenerator.cs: fix mapping of our tag types into
+	CodeConstructType. Fixes bug #508570
+
+2009-05-26  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: before including a file specified with the
+	<!--#include file="" --> directive, check if it's within the
+	current application's root.
+
+2009-05-18  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: GetPrecompiledApplicationType () uses
+	VirtualPathUtility.Combine to build global.asax virtual
+	path. Patch from Robert Jordan <robertj@gmx.net>, thanks! Fixes
+	bug #504615
+
+2009-05-10  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: keep processing the tag if it is not a server
+	one and contains expressions and no code render blocks.
+
+2009-05-05  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: create a Location and pass it to the parser
+	before calling AddDirective from GetInheritedType, so that we get
+	meaningful exception messages with source, line information etc.
+
+2009-05-04  Marek Habersack  <mhabersack@novell.com>
+
+	* ThemeDirectoryBuildProvider.cs: use new AspGenerator constructor
+	which takes AspComponentFoundery as its
+	parameter. AspGenerator.RootBuilder isn't initialized until after
+	the parser is initialized.
+
+	* TemplateControlCompiler.cs: make sure to call
+	ProcessGeneratedCode on each instance of ControlBuilder after it's
+	fully generated. Fixes bug #500075
+
+	* BaseCompiler.cs: added two internal properties, BaseType and
+	DerivedType, which are used in calls to
+	ControlBuilder.ProcessGeneratedCode. Fixes bug #500075
+
+	* AspGenerator.cs: implemented a work around for our parser
+	limitation which is unable to extract the page/control's base type
+	before parsing the actual file contents. This is necessary to
+	support ASP.NET MVC's "generic" Inherits attribute. The reason we
+	need to find out what the base type is before parsing the file is
+	that we need to look at the type's custom attributes to see if a
+	root control builder type is specified (which is what ASP.NET MVC
+	does) and, if yes, use it instead of the default type. Fixes bug
+	#500075
+
+2009-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: ProcessTag doesn't process a tag which is not
+	server-side and which has declarative expressions embedded. Fixes
+	bug #498637
+
+2009-04-24  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: ProcessCode should _not_ stop processing the
+	passed code string if the filter's ProcessCodeConstruct returns
+	false. Fixes bug #497775
+
+2009-04-21  Marek Habersack  <mhabersack@novell.com>
+
+	* PageCompiler.cs: implemented new way of setting output cache
+	parameters in the 2.0 profile. The generated code is now the same
+	as on .NET and uses the OutputCacheParameters class to pass
+	settings to InitOutputCache.
+
+2009-04-17  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: if thead/tbody are parsed as children of a
+	server-side table control, ignore them. Fixes bug #481622
+
+2009-04-16  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: using a regexp to check whether an
+	expression is a Bind one. Fixes bug #493639
+	AssignPropertyFromResources now checks whether the field/property
+	passed to it is decorated with the Localizable custom attribute
+	and whether the resource provider contains an entry for that
+	property.
+
+2009-04-15  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: do not add all assemblies in bin/ when serving
+	a precompiled site. Fixes bug #493873
+	When serving a precompiled site, check if the bin/ directory
+	contains certain well-known assemblies and load them if present.
+
+2009-04-10  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: enabled recursion checking for page
+	targets. Also, if a built item is skipped because it has been
+	compiled recursively, add its assembly to the list of referenced
+	assemblies for the batch being currently compiled.
+
+2009-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: GenerateExpressionFromString doesn't
+	assume that the passed member is a property anymore. Fixes bug
+	#492252
+
+2009-04-03  Marek Habersack  <mhabersack@novell.com>
+
+	* AspParser.cs: local copy of checksum generated by the tokenizer
+	is made right after parsing is done.
+
+	* AspGenerator.cs: set tparser.MD5Checksum in Parse instead of in
+	InitParser. Avoids empty checksums in #pragma checksum.
+
+2009-04-01  Marek Habersack  <mhabersack@novell.com>
+
+	* AssemblyBuilder.cs: CSharpCodePragmaGenerator.ReserveSpace:
+	added the 2 extra chars to pragmaChecksumStaticCount constant (the
+	ones added by Gonzalo below) and removed one NewLine to account
+	for Martin's change below.
+	VBCodePragmaGenerator.ReserveSpace - one newline follows
+	#ExternalSource.
+	VBCodePragmaGenerator.DecorateFile - one newline follows
+	#ExternalSource.
+
+2009-04-01  Martin Baulig  <martin@ximian.com>
+
+	* AssemblyBuilder.cs: Don't emit a blank line after the #line as
+	thid'd cause all line numbers to be off by 1.
+
+2009-03-31 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AssemblyBuilder.cs: the guid has to be quoted.
+
+2009-03-31  Marek Habersack  <mhabersack@novell.com>
+
+	* All of the below are part of the fix for bug #489687
+
+	* ThemeDirectoryCompiler.cs: pass VirtualPath instances to parser
+	constructors.
+
+	* BuildProvider.cs: associated virtual path is stored internally
+	as an instance of VirtualPath, accessible via new
+	VirtualPathInternal property.
+
+	* BuildManagerDirectoryBuilder.cs: VirtualPath.IsFake is used to
+	detect fake virtual paths.
+	GetBuildProvider now takes a VirtualPath instead of string for the
+	virtualPath parameter. The passed VirtualPath instance is passed
+	unchanged to BuildProvider.
+
+	* BuildManager.cs: AssertVirtualPathExists now uses
+	VirtualPath.IsFake to check for fake virtual paths.
+
+	* ApplicationFileBuildProvider.cs, GenericBuildProvider.cs,
+	MasterPageBuildProvider.cs, PageBuildProvider.cs,
+	ThemeBuildProvider.cs, UserControlBuildProvider.cs,
+	WebHandlerBuildProvider.cs, WebServiceBuildProvider.cs:
+	CreateParser overloads now take a VirtualPath instead of a string
+	for the virtualPath parameter.
+
+	* ThemeBuildProvider.cs: use new parser constructors which take
+	VirtualPath instances instead of strings.
+
+2009-03-30  Marek Habersack  <mhabersack@novell.com>
+
+	* AspTokenizer.cs: UpdateChecksum - fixed off-by-one bug when
+	processing the checksum buffer.
+
+	* AssemblyBuilder.cs: introduced a kludge to add #pragma checksum
+	and #pragma lines (or its vb equivalent - #ExternalSource) to
+	code-behind files named in the CodeFile/Src directives while
+	copying them to the dynamic directory for compilation. The kludge
+	works by recognizing the .cs and .vb extensions and wrapping the
+	file contents in the appropriate directives. This is done in this
+	way because the other possible way, using the
+	CodeSnippetCompileUnit, requires the entire file to be read in
+	memory and then passed to CodeDOM. We fall back to this way when
+	the file being copied is neither C# or VB.
+
+2009-03-25  Marek Habersack  <mhabersack@novell.com>
+
+	* AspTokenizer.cs: MD5 checksum calculation happens here. It's
+	done incrementally as characters are read.
+
+	* AspParser.cs: the MD5 checksum is no longer computed here. Moved
+	to AspTokenizer.
+	After parsing, both the tokenizer and the string reader are
+	disposed of.
+
+	* AssemblyBuilder.cs: renamed CopyFile to CopyFileWithChecksum, in
+	prepration for future inclusion of checksum and line pragmas in
+	the file being copied.
+	Files are copied chunk by chunk, not by reading the entire
+	contents.
+
+2009-03-23  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateBuildProvider.cs: add values of the CodeFile and Src
+	page/master/control directives to the list of file dependencies.
+	Extract language also for master/page, not only for controls.
+
+2009-03-16  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: when parsing nested tags (includes tags inside
+	client-side javascript script blocks) pass the closing tag up to
+	the containing parser.
+	Instead of parsing the whole plain text contents, plus the two
+	constructs we're interested in from it using regexs. This is
+	necessary as we might be passed JavaScript code and without
+	understanding its syntax we'll confuse the '<' character for the
+	start of a tag.
+	TagParsed now better handles <script> tags. For both server and
+	client tags ProcessScript is called and the input text, in case of
+	client tags, is read verbatim to be processed when ProcessScript
+	is called to close the tag. At this point the verbatim text is
+	checked whether it contains server-side tags and/or expressions.
+
+2009-03-16  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: when parsing nested tags (includes tags inside
+	client-side javascript script blocks) pass the closing tag up to
+	the containing parser.
+
 2009-02-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* AppResourcesAssemblyBuilder.cs:

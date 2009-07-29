@@ -372,6 +372,7 @@ namespace Mono.Data.Tds.Protocol
 			// Set "reset-connection" bit for the next message packet
 			Comm.ResetConnection = true;
 
+			base.Reset ();
 			return true;
 		}
 
@@ -432,7 +433,12 @@ namespace Mono.Data.Tds.Protocol
 			TdsColumnType colType = param.GetMetaType ();
 			param.IsNullable = false;
 
-			Comm.Append ((byte)colType); // type
+			if (ServerTdsVersion > TdsVersion.tds70 
+			           && colType == TdsColumnType.Decimal) {
+				Comm.Append ((byte)TdsColumnType.Numeric);
+			} else {
+				Comm.Append ((byte)colType);
+			}
 
 			int size = param.Size;
 			if (size == 0)
@@ -453,7 +459,7 @@ namespace Mono.Data.Tds.Protocol
 
 			// Precision and Scale are non-zero for only decimal/numeric
 			if ( param.TypeName == "decimal" || param.TypeName == "numeric") {
-				Comm.Append ((param.Precision !=0 ) ? param.Precision : (byte) 28);
+				Comm.Append ((param.Precision !=0 ) ? param.Precision : (byte) 29);
 				Comm.Append (param.Scale);
 			}
 

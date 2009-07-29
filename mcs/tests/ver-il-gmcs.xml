@@ -1259,7 +1259,7 @@
         <size>7</size>
       </method>
       <method name="T Create()">
-        <size>39</size>
+        <size>36</size>
       </method>
     </type>
     <type name="X">
@@ -3282,10 +3282,10 @@
         <size>78</size>
       </method>
       <method name="Polynomial`1[E] Mul(Polynomial`1[E])">
-        <size>222</size>
+        <size>219</size>
       </method>
       <method name="E Eval(E)">
-        <size>109</size>
+        <size>106</size>
       </method>
     </type>
     <type name="TestPolynomial">
@@ -3962,7 +3962,7 @@
   <test name="gtest-151.cs">
     <type name="Test`1[T]">
       <method name="Void .ctor()">
-        <size>46</size>
+        <size>45</size>
       </method>
     </type>
     <type name="X">
@@ -4011,7 +4011,7 @@
   <test name="gtest-153.cs">
     <type name="MyClass`1[T]">
       <method name="Void .ctor()">
-        <size>59</size>
+        <size>56</size>
       </method>
     </type>
     <type name="X">
@@ -4069,7 +4069,7 @@
   <test name="gtest-155.cs">
     <type name="MyClass`1[T]">
       <method name="Void .ctor()">
-        <size>59</size>
+        <size>56</size>
       </method>
     </type>
     <type name="X">
@@ -8853,7 +8853,7 @@
         <size>7</size>
       </method>
       <method name="Void Foo()">
-        <size>40</size>
+        <size>37</size>
       </method>
     </type>
     <type name="Foo">
@@ -8886,7 +8886,7 @@
         <size>7</size>
       </method>
       <method name="Void Do()">
-        <size>53</size>
+        <size>50</size>
       </method>
     </type>
     <type name="Reference">
@@ -9540,11 +9540,11 @@
       <method name="Void CopyTo(Bug.xxx*)">
         <size>99</size>
       </method>
-      <method name="Void Convert(Bug.xxx*, System.UInt64*)">
-        <size>93</size>
-      </method>
       <method name="Void Main()">
         <size>1</size>
+      </method>
+      <method name="Void Convert(Bug.xxx*, UInt64*)">
+        <size>93</size>
       </method>
     </type>
   </test>
@@ -15350,6 +15350,50 @@
       </method>
       <method name="Int32 Value()">
         <size>2</size>
+      </method>
+    </type>
+  </test>
+  <test name="gtest-etree-07.cs">
+    <type name="C">
+      <method name="Void .ctor()">
+        <size>7</size>
+      </method>
+      <method name="Void Test()">
+        <size>14</size>
+      </method>
+      <method name="Int32* Foo()">
+        <size>3</size>
+      </method>
+      <method name="Int32 Main()">
+        <size>594</size>
+      </method>
+    </type>
+    <type name="EmptyDelegate">
+      <method name="Void .ctor(Object, IntPtr)">
+        <size>0</size>
+      </method>
+      <method name="Void Invoke()">
+        <size>0</size>
+      </method>
+      <method name="IAsyncResult BeginInvoke(System.AsyncCallback, System.Object)">
+        <size>0</size>
+      </method>
+      <method name="Void EndInvoke(IAsyncResult)">
+        <size>0</size>
+      </method>
+    </type>
+    <type name="UnsafeDelegate">
+      <method name="Void .ctor(Object, IntPtr)">
+        <size>0</size>
+      </method>
+      <method name="Int32* Invoke()">
+        <size>0</size>
+      </method>
+      <method name="IAsyncResult BeginInvoke(System.AsyncCallback, System.Object)">
+        <size>0</size>
+      </method>
+      <method name="Int32* EndInvoke(IAsyncResult)">
+        <size>0</size>
       </method>
     </type>
   </test>
@@ -25448,9 +25492,6 @@
       <method name="Int32 CreateFromString(Int32)">
         <size>10</size>
       </method>
-      <method name="System.Double* GetValue(Double)">
-        <size>5</size>
-      </method>
       <method name="Void Main()">
         <size>1</size>
       </method>
@@ -25461,6 +25502,11 @@
       </method>
       <method name="Void EventInterface.remove_Event(System.EventHandler)">
         <size>1</size>
+      </method>
+    </type>
+    <type name="C">
+      <method name="Double* GetValue(Double)">
+        <size>5</size>
       </method>
     </type>
   </test>
@@ -25710,14 +25756,14 @@
       <method name="Void .ctor()">
         <size>7</size>
       </method>
-      <method name="System.Byte* get_Ptr()">
-        <size>7</size>
-      </method>
-      <method name="Void set_Ptr(System.Byte*)">
-        <size>8</size>
-      </method>
       <method name="Void Main()">
         <size>1</size>
+      </method>
+      <method name="Byte* get_Ptr()">
+        <size>7</size>
+      </method>
+      <method name="Void set_Ptr(Byte*)">
+        <size>8</size>
       </method>
     </type>
   </test>
@@ -26666,7 +26712,7 @@
         <size>7</size>
       </method>
       <method name="Int32 ParseType(System.String)">
-        <size>164</size>
+        <size>168</size>
       </method>
       <method name="Void Main()">
         <size>12</size>
@@ -27584,11 +27630,11 @@
       <method name="Void .ctor()">
         <size>7</size>
       </method>
-      <method name="System.Int32* get_v()">
-        <size>20</size>
-      </method>
       <method name="Int32 Main()">
         <size>48</size>
+      </method>
+      <method name="Int32* get_v()">
+        <size>20</size>
       </method>
     </type>
   </test>
@@ -27618,10 +27664,10 @@
       <method name="Int32 Main(System.String[])">
         <size>180</size>
       </method>
-      <method name="UInt32 DoOp(System.UInt32*)">
+      <method name="UInt32 DoOp(UInt32*)">
         <size>11</size>
       </method>
-      <method name="UInt32 DoOp2(System.UInt32*)">
+      <method name="UInt32 DoOp2(UInt32*)">
         <size>10</size>
       </method>
     </type>
@@ -27940,14 +27986,14 @@
       <method name="Void .ctor()">
         <size>7</size>
       </method>
-      <method name="Void lowLevelCall(System.Int32*)">
-        <size>1</size>
-      </method>
       <method name="Void Func(Int32 ByRef)">
         <size>13</size>
       </method>
       <method name="Void Main()">
         <size>10</size>
+      </method>
+      <method name="Void lowLevelCall(Int32*)">
+        <size>1</size>
       </method>
     </type>
   </test>
@@ -29383,13 +29429,13 @@
         <size>124</size>
       </method>
       <method name="Void test_76590(System.String)">
-        <size>100</size>
+        <size>107</size>
       </method>
       <method name="Void test_77964()">
         <size>37</size>
       </method>
       <method name="Boolean bug_78860()">
-        <size>107</size>
+        <size>114</size>
       </method>
       <method name="Int32 Main()">
         <size>1037</size>
@@ -32904,16 +32950,16 @@
       <method name="Int32 Main()">
         <size>130</size>
       </method>
-      <method name="System.Int32* Conversions(Int64)">
+      <method name="Int32* Conversions(Int64)">
         <size>3</size>
       </method>
-      <method name="Int32 CheckAdd(System.Byte*, Int32)">
+      <method name="Int32 CheckAdd(Byte*, Int32)">
         <size>14</size>
       </method>
-      <method name="Int32 CheckSub(System.Int16*, Int32)">
+      <method name="Int32 CheckSub(Int16*, Int32)">
         <size>16</size>
       </method>
-      <method name="Int32 CheckSub2(System.Int16*, Int32)">
+      <method name="Int32 CheckSub2(Int16*, Int32)">
         <size>23</size>
       </method>
     </type>
@@ -33153,7 +33199,7 @@
       <method name="Int32 Main()">
         <size>8</size>
       </method>
-      <method name="Int32 Test(System.SByte*)">
+      <method name="Int32 Test(SByte*)">
         <size>33</size>
       </method>
     </type>
@@ -33366,7 +33412,7 @@
         <size>7</size>
       </method>
       <method name="Boolean Test(System.String)">
-        <size>137</size>
+        <size>148</size>
       </method>
       <method name="Int32 Main()">
         <size>49</size>
@@ -33467,14 +33513,14 @@
       <method name="Void .ctor()">
         <size>7</size>
       </method>
-      <method name="System.Int32* get_Foo()">
-        <size>3</size>
-      </method>
       <method name="S* get_Foo2()">
         <size>3</size>
       </method>
       <method name="Void Main()">
         <size>1</size>
+      </method>
+      <method name="Int32* get_Foo()">
+        <size>3</size>
       </method>
     </type>
   </test>
@@ -33795,24 +33841,24 @@
       <method name="Void .ctor()">
         <size>7</size>
       </method>
-      <method name="System.Byte* GetFoo()">
-        <size>7</size>
-      </method>
-      <method name="System.Byte* GetFoo2()">
-        <size>7</size>
-      </method>
       <method name="Int32 Main()">
         <size>46</size>
+      </method>
+      <method name="Byte* GetFoo()">
+        <size>7</size>
+      </method>
+      <method name="Byte* GetFoo2()">
+        <size>7</size>
       </method>
     </type>
   </test>
   <test name="test-689.cs">
     <type name="Sample">
-      <method name="Void Foo(System.Byte*, System.Byte*)">
-        <size>46</size>
-      </method>
       <method name="Void Main()">
         <size>3</size>
+      </method>
+      <method name="Void Foo(Byte*, Byte*)">
+        <size>46</size>
       </method>
     </type>
   </test>
@@ -37628,9 +37674,6 @@
       <method name="Void .ctor()">
         <size>7</size>
       </method>
-      <method name="System.Int32* GetUnsafeValue()">
-        <size>3</size>
-      </method>
     </type>
     <type name="C">
       <method name="Void UnsafeTests()">
@@ -37659,6 +37702,11 @@
     <type name="C">
       <method name="Void &lt;Main&gt;m__3()">
         <size>16</size>
+      </method>
+    </type>
+    <type name="UnsafeClass">
+      <method name="Int32* GetUnsafeValue()">
+        <size>3</size>
       </method>
     </type>
   </test>

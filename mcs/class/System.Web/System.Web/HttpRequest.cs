@@ -96,10 +96,26 @@ namespace System.Web {
 		bool validate_cookies, validate_query_string, validate_form;
 		bool checked_cookies, checked_query_string, checked_form;
 
+#if NET_2_0
+		static readonly UrlMappingCollection urlMappings;
+#endif
+		
 		readonly static char [] queryTrimChars = {'?'};
 		
 		static HttpRequest ()
 		{
+#if NET_2_0
+			try {
+				UrlMappingsSection ums = WebConfigurationManager.GetWebApplicationSection ("system.web/urlMappings") as UrlMappingsSection;
+				if (ums != null && ums.IsEnabled) {
+					urlMappings = ums.UrlMappings;
+					if (urlMappings.Count == 0)
+						urlMappings = null;
+				}
+			} catch {
+				// unlikely to happen
+			}
+#endif
 			host_addresses = GetLocalHostAddresses ();
 		}
 		
@@ -163,19 +179,13 @@ namespace System.Web {
 #if NET_2_0
 		internal string ApplyUrlMapping (string url)
 		{
-			if (WebConfigurationManager.HasConfigErrors)
-				return url;
-			
-			UrlMappingsSection ums = WebConfigurationManager.GetSection ("system.web/urlMappings", ApplicationPath) as UrlMappingsSection;
-			UrlMappingCollection umc;
-
-			if (ums == null || !ums.IsEnabled || (umc = ums.UrlMappings).Count == 0)
+			if (urlMappings == null)
 				return url;
 
 			string relUrl = VirtualPathUtility.ToAppRelative (url);
 			UrlMapping um = null;
 			
-			foreach (UrlMapping u in umc) {
+			foreach (UrlMapping u in urlMappings) {
 				if (u == null)
 					continue;
 				if (String.Compare (relUrl, u.Url, StringComparison.Ordinal) == 0) {
