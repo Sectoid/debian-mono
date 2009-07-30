@@ -116,6 +116,8 @@ Depends: mono-runtime (= ${binary:Version}),
          libmono-nunit2.4-cil (= ${source:Version}),
          libmono-management2.0-cil (= ${source:Version}),
          libmono-messaging2.0-cil (= ${source:Version}),
+         libmono-messaging-rabbitmq2.0-cil (= ${source:Version}),
+         libmono-rabbitmq2.0-cil (= ${source:Version}),
          libmono-simd2.0-cil (= ${source:Version}),
          libmono-i18n1.0-cil (= ${source:Version}),
          libmono-i18n2.0-cil (= ${source:Version}),
@@ -455,11 +457,37 @@ Description: Mono Messaging library (for CLI 2.0)
  messaging functionality using different implementations. At this time Mono
  does not provide a System.Messaging implementation.
 
+Package: libmono-messaging-rabbitmq2.0-cil
+Architecture: all
+Depends: ${cli:Depends}
+Homepage: http://mono-project.com/SystemMessaging
+Description: Mono Messaging RabbitMQ library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono.Messaging.RabbitMQ library for CLI 2.0.
+
+Package: libmono-rabbitmq2.0-cil
+Architecture: all
+Depends: ${cli:Depends}
+Homepage: http://mono-project.com/SystemMessaging
+Description: Mono RabbitMQ.Client library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the RabbitMQ.Client library for CLI 2.0.
+
 Package: libmono-simd2.0-cil
 Architecture: all
 Depends: ${cli:Depends}
 Homepage: http://go-mono.com/docs/index.aspx?tlink=0@N%3aMono.Simd
-Description: Mono SIMDy (for CLI 2.0)
+Description: Mono SIMD (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
  Mono provides a complete CLR (Common Language Runtime) including compiler and
