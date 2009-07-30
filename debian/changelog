@@ -1,10 +1,15 @@
 mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
 
   * New upstream release.
-    + Shipping the RabbitMQ.Client library now the non-free bits were
+    + Shipping the RabbitMQ.Client library now as the non-free bits were
       removed.
+  * debian/rules
+    debian/mono-devel.install
+    debian/mono-api-diff.cs:
+    + As mono-api-diff was dropped from Mono 2.4 and we need it to track API
+      changes we bundle it now in the source package.
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 29 Jul 2009 16:34:12 +0200
+ -- Mirco Bauer <meebey@debian.org>  Thu, 30 Jul 2009 15:43:43 +0200
 
 mono (2.4+dfsg-6) unstable; urgency=low
 

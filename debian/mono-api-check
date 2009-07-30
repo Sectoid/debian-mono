@@ -3,12 +3,12 @@
 NAME=$(basename $0)
 MONO_API_INFO1="/usr/lib/mono/1.0/mono-api-info.exe"
 MONO_API_INFO2="/usr/lib/mono/2.0/mono-api-info.exe"
-MONO_API_DIFF="/usr/lib/mono/1.0/mono-api-diff.exe"
+MONO_API_DIFF="/usr/lib/mono/2.0/mono-api-diff.exe"
 
-RUNTIME_VERSION=1
+RUNTIME_VERSION=2
 if [ "$1" = "-2" ]; then
 	if [ ! -x $MONO_API_INFO2 ]; then
-		echo "Error: $MONO_API_INFO2 does not exist, you need to install the mono-gmcs package"
+		echo "Error: $MONO_API_INFO2 does not exist, you need to install the mono-devel package"
 		exit 1
 	fi
 	MONO_API_INFO=$MONO_API_INFO2
@@ -25,7 +25,7 @@ if [ "$1" = "-k" ]; then
 fi
 
 if [ $# -lt 2 ]; then
-	echo "usage: $NAME [-2] [-k] old.dll new.dll"
+	echo "usage: $NAME [-2] [-k] old.dll|deb|changes new.dll|deb|changes"
 	exit 1
 fi
 

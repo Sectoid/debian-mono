@@ -349,6 +349,12 @@ binary-indep: build-arch install-arch build-indep install-indep
 	  -out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
 
+	# Build mono-api-diff
+	$(RUN_MONO) mcs/class/lib/net_2_0/gmcs.exe \
+	  -target:exe \
+	  -out:debian/mono-api-diff.exe \
+	  debian/mono-api-diff.cs
+
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data1.0-cil/usr/lib/mono/gac/System.Data/1.0.*/
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data2.0-cil/usr/lib/mono/gac/System.Data/2.0.*/
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing/1.0.*/
