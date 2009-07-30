@@ -85,6 +85,8 @@ Package: mono-complete
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
 Depends: mono-runtime (= ${binary:Version}),
+         libmono0 (= ${binary:Version}),
+         libmono-profiler (= ${binary:Version}),
          mono-utils (= ${binary:Version}),
          mono-jay (= ${binary:Version}),
          mono-devel (= ${source:Version}),
@@ -221,6 +223,20 @@ Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm arme
 Depends: libmono0 (= ${binary:Version}), libglib2.0-dev
 Description: Mono JIT library - Development files
  Header files and static libraries for libmono.
+ .
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+
+Package: libmono-profiler
+Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Replaces: mono-runtime (<< 2.4.2.3)
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Mono profiler libraries
+ Profiler libraries for Mono, used for profiling applications running on Mono.
+ For details how to use them, please take a look at the mono manpage.
  .
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

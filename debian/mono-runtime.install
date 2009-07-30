@@ -4,6 +4,5 @@
 /etc/mono/1.0/
 /etc/mono/2.0/
 /usr/share/mono-1.0/mono/cil/cil-opcodes.xml
-/usr/lib/libmono-*.so.*
 /usr/lib/libMonoPosixHelper.so
 /usr/lib/libMonoSupportW.so
