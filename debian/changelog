@@ -1,8 +1,10 @@
 mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
 
-  * New upstream release.
+  * New upstream release:
     + Shipping the RabbitMQ.Client library now as the non-free bits were
       removed.
+    + Includes ASP.NET MVC.
+    + Updated xbuild.
   * debian/rules
     debian/mono-devel.install
     debian/mono-api-diff.cs:
