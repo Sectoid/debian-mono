@@ -21,6 +21,9 @@ mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
       changes we bundle it now in the source package.
   * debian/copyright:
     + Updated for ASP.NET MVC.
+  * debian/control:
+    + Moved libmono-firebirdsql1.7-cil from Depends to Recommends of
+      mono-complete, as libfbclient2 as not available on s390.
 
  -- Mirco Bauer <meebey@debian.org>  Thu, 30 Jul 2009 15:43:43 +0200
 

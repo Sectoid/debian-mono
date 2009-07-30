@@ -83,6 +83,7 @@ Description: Mono utilities
 
 Package: mono-complete
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
 Depends: mono-runtime (= ${binary:Version}),
          mono-utils (= ${binary:Version}),
          mono-jay (= ${binary:Version}),
@@ -132,6 +133,7 @@ Depends: mono-runtime (= ${binary:Version}),
          libmono-system-data2.0-cil (= ${source:Version}),
          libmono-system-web1.0-cil (= ${source:Version}),
          libmono-system-web2.0-cil (= ${source:Version}),
+         libmono-system-web-mvc1.0-cil (= ${source:Version}),
          libmono-wcf3.0-cil (= ${source:Version}),
          libmono-system-runtime1.0-cil (= ${source:Version}),
          libmono-system-runtime2.0-cil (= ${source:Version}),
@@ -149,7 +151,6 @@ Depends: mono-runtime (= ${binary:Version}),
          libmono-npgsql2.0-cil (= ${source:Version}),
          libmono-bytefx0.7.6.1-cil (= ${source:Version}),
          libmono-bytefx0.7.6.2-cil (= ${source:Version}),
-         libmono-firebirdsql1.7-cil (= ${source:Version}),
          libmono-db2-1.0-cil (= ${source:Version}),
          libmono-oracle1.0-cil (= ${source:Version}),
          libmono-oracle2.0-cil (= ${source:Version}),
