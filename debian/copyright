@@ -95,6 +95,9 @@ their code.
 -------------------------------------------------------------------------------
 
 mcs/class/MicrosoftAjaxLibrary/*
+mcs/class/System.Web.Mvc/*
+
+Copyright (c) Microsoft Corporation. All rights reserved.
 
 Microsoft Permissive License (Ms-PL)
 
