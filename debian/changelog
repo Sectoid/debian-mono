@@ -7,6 +7,13 @@ mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
       removed.
     + Includes ASP.NET MVC.
     + Updated xbuild.
+  * debian/patches/disable_unavailable_cpu_optimizations_r133647.dpatch
+    debian/patches/fix_disabling_aot_r131940.dpatch
+    debian/patches/fix_null_funcptr_marshalling_r127347.dpatch
+    debian/patches/fix_ppc_build_using_gcc-4.4_r131472.dpatch
+    debian/patches/fix_recursive_unmanaged_types.dpatch
+    debian/patches/fix_sparc_support_r134797.dpatch:
+    + Dropped, as already applied upstream.
   * debian/rules
     debian/mono-devel.install
     debian/mono-api-diff.cs:
