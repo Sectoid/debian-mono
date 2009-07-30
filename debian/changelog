@@ -41,7 +41,7 @@ mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
     debian/mono-mcs.install
     debian/mono-gmcs.install:
     + Moved mcs to mono-mcs and gmcs to mono-gmcs from mono-devel, as that
-      caused a lot of confusion. (closes: #525279)
+      caused a lot of confusion. (closes: #525279 and #537081)
     + Added mono-csc to mono-devel in preparation to drop csc in the future as
       it conflicts with the chicken compiler, see #509367.
 
