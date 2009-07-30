@@ -275,8 +275,6 @@ install-indep-stamp:
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/gmcs.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/gmcs2.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/smcs.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service2.1
@@ -303,8 +301,6 @@ install-indep-stamp:
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/genxs1.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/mcs1.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle1.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/monop.1 \
@@ -318,9 +314,6 @@ install-indep-stamp:
 	# copy missing default scripts
 	cp $(CURDIR)/debian/tmp/usr/bin/xsd \
 	   $(CURDIR)/debian/tmp/usr/bin/xsd1
-	# copy missing 2.0 scripts
-	cp $(CURDIR)/debian/tmp/usr/bin/gmcs \
-	   $(CURDIR)/debian/tmp/usr/bin/gmcs2
 	# gacutil should be 2.0 by default (like all other development tools)
 	mv $(CURDIR)/debian/tmp/usr/bin/gacutil \
 	   $(CURDIR)/debian/tmp/usr/bin/gacutil1

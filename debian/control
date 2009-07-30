@@ -1367,6 +1367,7 @@ Depends: ${cli:Depends},
          libmono-corlib1.0-cil (>= ${mono:upversion}),
          libmono-corlib1.0-cil (<< ${mono:next-upversion})
 Recommends: pkg-config
+Replaces: mono-devel (<< 2.4.2.3)
 Description: Mono C# 1.0 compiler for CLI 1.1
  This is the Mono C# (C-Sharp) 1.0 compiler, a platform-independent compiler
  which produces CIL (Common Intermediate Language) binary executables.
@@ -1384,7 +1385,7 @@ Depends: ${cli:Depends},
          libmono-corlib2.0-cil (>= ${mono:upversion}),
          libmono-corlib2.0-cil (<< ${mono:next-upversion})
 Recommends: pkg-config
-Replaces: mono-mcs (>= 1.1.10), mono-mcs (<= 1.1.13)
+Replaces: mono-mcs (>= 1.1.10), mono-mcs (<= 1.1.13), mono-devel (<< 2.4.2.3)
 Description: Mono C# 2.0 and C# 3.0 compiler for CLI 2.0
  This is the Mono C# (C-Sharp) 2.0 and C# 3.0 compiler, a platform-independent
  compiler which produces CIL (Common Intermediate Language) binary executables.

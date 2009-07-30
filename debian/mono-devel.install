@@ -8,11 +8,9 @@ debian/tmp/usr/bin/disco
 debian/tmp/usr/bin/dtd2xsd
 debian/tmp/usr/bin/dtd2rng
 debian/tmp/usr/bin/genxs
-debian/tmp/usr/bin/gmcs
 debian/tmp/usr/bin/ilasm
 debian/tmp/usr/bin/installvst
 debian/tmp/usr/bin/macpack
-debian/tmp/usr/bin/mcs
 debian/tmp/usr/bin/mkbundle
 debian/tmp/usr/bin/mono-api-info
 debian/tmp/usr/bin/mono-cil-strip

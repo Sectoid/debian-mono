@@ -7,11 +7,9 @@ debian/tmp/usr/share/man/man1/cilc.1
 debian/tmp/usr/share/man/man1/disco.1
 debian/tmp/usr/share/man/man1/dtd2xsd.1
 debian/tmp/usr/share/man/man1/genxs.1
-debian/tmp/usr/share/man/man1/gmcs.1
 debian/tmp/usr/share/man/man1/ilasm.1
 debian/tmp/usr/share/man/man1/macpack.1
 debian/tmp/usr/share/man/man1/makecert.1
-debian/tmp/usr/share/man/man1/mcs.1
 debian/tmp/usr/share/man/man1/mkbundle.1
 debian/tmp/usr/share/man/man1/mono-cil-strip.1
 debian/tmp/usr/share/man/man1/mono-shlib-cop.1

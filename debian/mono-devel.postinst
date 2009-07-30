@@ -2,7 +2,7 @@
 set -e
 
 update-alternatives \
-	--install /usr/bin/cli-csc c-sharp-compiler /usr/bin/csc 10 \
+	--install /usr/bin/cli-csc c-sharp-compiler /usr/bin/mono-csc 10 \
 	--slave /usr/share/man/man1/cli-csc.1.gz cli-csc.1.gz /usr/share/man/man1/csc.1.gz
 
 update-alternatives \
