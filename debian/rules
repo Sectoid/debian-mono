@@ -70,9 +70,9 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 MAKE_FLAGS += -j1
 export MAKEFLAGS=$(MAKE_FLAGS)
 
-ifeq ($(DEB_BUILD_ARCH), i386)
+#ifeq ($(DEB_BUILD_ARCH), i386)
 #	MAKE_FLAGS += RUNTIME=$(CURDIR)/debian/mono-aot-wrapper
-endif
+#endif
 
 # Include dpatch stuff.
 include /usr/share/dpatch/dpatch.make
@@ -204,7 +204,8 @@ clean-patched:
 	# AOT stuff we created using mono-aot-wrapper/mono-aot-bootstrap
 	find mcs/class/lib -name "*.so" -delete
 	-cd debian/detector && $(MAKE) clean
-	rm -f debian/MonoGetAssemblyName.exe
+	rm -f debian/MonoGetAssemblyName.exe \
+	      debian/mono-api-diff.exe
 	rm -rf $(MONO_SHARED_DIR)/.wapi
 
 	rm -f mcs/class/lib/default/mono-api-info.exe               \
@@ -334,19 +335,12 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_testdir
 	dh_testroot
 
-	# that exclude list are programs for arch-dep packages
-	dh_install -i -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
-
-	# Late GAC
-	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
-
 	# Build the late-GAC tool,
 	# using the built Mono runtime from debian/tmp
 	# (thus the install-arch target dependency!)
-	mkdir -p debian/mono-gac/usr/share/mono
 	$(RUN_MONO) mcs/class/lib/net_2_0/gmcs.exe \
 	  -target:exe \
-	  -out:debian/mono-gac/usr/share/mono/MonoGetAssemblyName.exe \
+	  -out:debian/MonoGetAssemblyName.exe \
 	  debian/MonoGetAssemblyName.cs
 
 	# Build mono-api-diff
@@ -354,6 +348,12 @@ binary-indep: build-arch install-arch build-indep install-indep
 	  -target:exe \
 	  -out:debian/mono-api-diff.exe \
 	  debian/mono-api-diff.cs
+
+	# that exclude list are programs for arch-dep packages
+	dh_install -i -Xbin/monodis -Xbin/monograph -Xbin/mono-find-provides -Xbin/mono-find-requires -Xbin/pedump -Xbin/jay
+
+	# Late GAC
+	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
 
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data1.0-cil/usr/lib/mono/gac/System.Data/1.0.*/
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data2.0-cil/usr/lib/mono/gac/System.Data/2.0.*/
