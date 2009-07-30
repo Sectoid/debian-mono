@@ -7,6 +7,7 @@ fix-mono.pc.in
 fix-mono-cairo.pc.in
 fix_BigInteger_overflow_CVE-2007-5197
 fix_implicit_pointer_conversions
+fix_array_compare
 fix_NetworkInterface_endless_loop
 fix_mono-api-info_build
 fix_csharplib_build
