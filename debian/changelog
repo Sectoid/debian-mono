@@ -1,3 +1,14 @@
+mono (2.4.2.3+dfsg-2~pre1) unstable; urgency=low
+
+  * debian/control:
+    + Add missing cli:Suggests to libmono-bytefx0.7.6.1-cil and
+      libmono-bytefx0.7.6.2-cil.
+  * debian/rules:
+    + Removed mono:upversion and mono:next-version from dh_gencontrol -s
+      call as those are unused for arch:any packages.
+
+ -- Mirco Bauer <meebey@debian.org>  Fri, 31 Jul 2009 03:03:16 +0200
+
 mono (2.4.2.3+dfsg-1) unstable; urgency=low
 
   * New upstream release:

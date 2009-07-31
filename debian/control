@@ -774,8 +774,8 @@ Description: Mono System.Web library (for CLI 1.0)
 Package: libmono-system-web2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion}), libgdiplus
 Suggests: ${cli:Suggests}
+Depends: ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion}), libgdiplus
 Description: Mono System.Web Library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1006,6 +1006,7 @@ Description: Mono Npgsql library (for CLI 2.0)
 Package: libmono-bytefx0.7.6.1-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
+Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono ByteFX.Data library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
@@ -1020,6 +1021,7 @@ Description: Mono ByteFX.Data library (for CLI 1.0)
 Package: libmono-bytefx0.7.6.2-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
+Suggests: ${cli:Suggests}
 Depends: ${cli:Depends}
 Description: Mono ByteFX.Data library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
