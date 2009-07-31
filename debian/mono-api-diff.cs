@@ -740,6 +740,12 @@ namespace Mono.AssemblyCompare
 				child = child.NextSibling;
 			}
 
+			if (child != null && child.Name == "generic-parameters") {
+				// HACK: ignore this tag as it doesn't seem to
+				// add any value when checking for differences
+				return;
+			}
+
 			if (child == null)
 				return;
 
