@@ -1,4 +1,4 @@
-mono (2.4.2.3+dfsg-1~pre1) unstable; urgency=low
+mono (2.4.2.3+dfsg-1) unstable; urgency=low
 
   * New upstream release:
     + Fixes XML signature HMAC truncation authentication bypass.
