@@ -1,4 +1,4 @@
-mono (2.4.2.3+dfsg-2~pre1) unstable; urgency=low
+mono (2.4.2.3+dfsg-2) unstable; urgency=medium
 
   * debian/control:
     + Add missing cli:Suggests to libmono-bytefx0.7.6.1-cil and
@@ -6,8 +6,14 @@ mono (2.4.2.3+dfsg-2~pre1) unstable; urgency=low
   * debian/rules:
     + Removed mono:upversion and mono:next-version from dh_gencontrol -s
       call as those are unused for arch:any packages.
+  * debian/patches/fix_metadata_dup.dpatch:
+    + Remove duplicate appdomain.h, fixing FTBFS.
+      (thanks to Stefan Siegl for the investigation, Closes: #543010)
+  * debian/patches/fix_CreateDelegate_ArgumentException.dpatch:
+    + Fixed ArgumentException in System.Delegate.CreateDelegate() which broke
+      IronPython 2.6 Beta 2.
 
- -- Mirco Bauer <meebey@debian.org>  Fri, 31 Jul 2009 03:03:16 +0200
+ -- Mirco Bauer <meebey@debian.org>  Mon, 07 Sep 2009 22:00:21 +0200
 
 mono (2.4.2.3+dfsg-1) unstable; urgency=low
 
