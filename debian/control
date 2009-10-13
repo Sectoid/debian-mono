@@ -1338,7 +1338,9 @@ Replaces: libmono1.0-cil (<< 1.2.4-1),
  mono-mcs (<< 1.2.4-1),
  mono-mjs (<< 1.2.4-1),
  mono-gmcs (<< 1.2.4-1),
- mono-gac (<< 1.2.4-1)
+ mono-gac (<< 1.2.4-1),
+ monodoc-base (<< 2.0)
+Conflicts: monodoc-base (<< 2.0)
 Description: Mono debugging symbols
  This package contains the debugging symbols of various libmono-* and mono-*
  packages.

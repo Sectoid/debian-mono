@@ -1,3 +1,10 @@
+mono (2.4.2.3+dfsg-3) UNRELEASED; urgency=low
+
+  * Add missing Conflicts/Replaces on monodoc-base from pre-Squeeze due
+    to monodoc.dll.mdb conflict
+
+ -- Jo Shields <directhex@apebox.org>  Tue, 13 Oct 2009 16:43:04 +0100
+
 mono (2.4.2.3+dfsg-2) unstable; urgency=medium
 
   * debian/control:
