@@ -1608,7 +1608,7 @@ Package: mono-csharp-shell
 Section: shells
 Architecture: all
 Homepage: http://www.mono-project.com/CsharpRepl
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, mono-gmcs (= ${source:Version})
 Description: interactive C# shell
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
