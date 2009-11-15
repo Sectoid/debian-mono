@@ -1,14 +1,35 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## fix-mono-cairo.pc.in.dpatch by Jo Shields <directhex@debian.org>
+## debian/patches/fix_gridview_r146128_r146133.dpatch by Jo Shields <directhex@debian.org>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
 ## DP: No description.
 
 @DPATCH@
-Index: mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollection.cs
+Index: mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs
 ===================================================================
---- mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollection.cs	(revision 146127)
-+++ mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollection.cs	(revision 146128)
+--- mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs	(revision 146127)
++++ mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs	(revision 146128)
+@@ -47,6 +47,8 @@
+ 		TableCellCollection cells;
+ #if NET_2_0
+ 		bool tableRowSectionSet;
++
++		internal TableRowCollection Container { get; set; }
+ #endif
+ 		
+ 		public TableRow ()
+@@ -129,6 +131,9 @@
+ 					throw new ArgumentOutOfRangeException ("TableSection");
+ 				ViewState ["TableSection"] = (int) value;
+ 				tableRowSectionSet = true;
++				TableRowCollection container = Container;
++				if (container != null)
++					container.RowTableSectionSet ();
+ 			}
+ 		}
+ #endif
+--- mono-2.4.2.3+dfsg~/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollection.cs	2009-07-15 19:51:29.000000000 +0100
++++ mono-2.4.2.3+dfsg/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollection.cs	2009-11-15 18:39:14.000000000 +0000
 @@ -43,6 +43,9 @@
  		
  		internal TableRowCollection (Table table)
@@ -62,7 +83,7 @@ Index: mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollectio
  #endif
  					cc.Add (tr);
  				}
-@@ -128,13 +142,25 @@
+@@ -128,13 +142,30 @@
  			return cc.IndexOf (row);
  		}
  
@@ -75,20 +96,25 @@ Index: mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollectio
 +		
  		public void Remove (TableRow row)
  		{
-+			row.Container = null;
++#if NET_2_0
++			if (row != null)
++				row.Container = null;
++#endif
  			cc.Remove (row);
  		}
  
  		public void RemoveAt (int index)
  		{
++#if NET_2_0
 +			TableRow row = this [index] as TableRow;
 +			if (row != null)
 +				row.Container = null;
++#endif
 +			
  			cc.RemoveAt (index);
  		}
  
-@@ -156,28 +182,27 @@
+@@ -156,28 +187,27 @@
  
  		int IList.Add (object value)
  		{
@@ -122,26 +148,3 @@ Index: mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollectio
  		}
  	}
  }
-Index: mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs
-===================================================================
---- mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs	(revision 146127)
-+++ mono-2-4/mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs	(revision 146128)
-@@ -47,6 +47,8 @@
- 		TableCellCollection cells;
- #if NET_2_0
- 		bool tableRowSectionSet;
-+
-+		internal TableRowCollection Container { get; set; }
- #endif
- 		
- 		public TableRow ()
-@@ -129,6 +131,9 @@
- 					throw new ArgumentOutOfRangeException ("TableSection");
- 				ViewState ["TableSection"] = (int) value;
- 				tableRowSectionSet = true;
-+				TableRowCollection container = Container;
-+				if (container != null)
-+					container.RowTableSectionSet ();
- 			}
- 		}
- #endif
