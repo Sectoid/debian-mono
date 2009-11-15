@@ -3,6 +3,8 @@ mono (2.4.2.3+dfsg-3) UNRELEASED; urgency=low
   [ Jo Shields ]
   * Add missing Conflicts/Replaces on monodoc-base from pre-Squeeze due
     to monodoc.dll.mdb conflict
+  * debian/patches/fix_gridview_r146128.dpatch:
+    + Add fix from Mono SVN for TableRowCollection in ASP.NET
 
   [ Mirco Bauer ]
   * Added mono-gmcs to mono-csharp-shell dependencies as it links gmcs.exe
