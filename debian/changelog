@@ -1,4 +1,4 @@
-mono (2.4.2.3+dfsg-3) UNRELEASED; urgency=low
+mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
   [ Jo Shields ]
   * Add missing Conflicts/Replaces on monodoc-base from pre-Squeeze due
