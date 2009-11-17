@@ -459,6 +459,7 @@ binary-arch: build-arch install-arch test-arch-stamp
 	fi
 
 	dh_fixperms -s
+	dh_makeshlibs -s -V
 	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
 	dh_installdeb -s
 	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono0/usr/lib
