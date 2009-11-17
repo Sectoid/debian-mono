@@ -9,8 +9,14 @@ mono (2.4.2.3+dfsg-3) UNRELEASED; urgency=low
   [ Mirco Bauer ]
   * Added mono-gmcs to mono-csharp-shell dependencies as it links gmcs.exe
     (Closes: #552211)
+  * debian/rules:
+    + Add dh_makeshlibs call for all remaining libraries. This adds missing
+      ldconfig calls to the maintainer scripts for libMonoSupportW.so,
+      libMonoPosixHelper.so and libmono-profiler-*.so.
+      (Closes: #553008, #553104)
+      (Obsoletes NMU by Matt Kraai <kraai@ftbfs.org>, Closes: #556662)
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 24 Oct 2009 14:00:36 +0200
+ -- Mirco Bauer <meebey@debian.org>  Tue, 17 Nov 2009 23:26:36 +0100
 
 mono (2.4.2.3+dfsg-2) unstable; urgency=medium
 
