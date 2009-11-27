@@ -15,3 +15,4 @@
 /usr/lib/mono/gac/monodoc/
 /usr/lib/mono/monodoc/monodoc.dll
 /usr/lib/pkgconfig/monodoc.pc
+debian/update-monodoc		/usr/bin/

@@ -1,3 +1,13 @@
+mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
+
+  * debian/monodoc-base.postinst,
+    debian/monodoc-base.triggers,
+    debian/monodoc-base.install,
+    debian/update-monodoc:
+    + Add a trigger to handle installation of documentation into monodoc
+
+ -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
+
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
   [ Jo Shields ]
