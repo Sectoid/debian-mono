@@ -1,10 +1,16 @@
 mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
 
+  [ Jo Shields ]
   * debian/monodoc-base.postinst,
     debian/monodoc-base.triggers,
     debian/monodoc-base.install,
     debian/update-monodoc:
     + Add a trigger to handle installation of documentation into monodoc
+
+  [ Iain Lane ]
+  * debian/monodoc-base.postinst: Only update the monodoc index when we need
+    to - i.e. when we are being triggered or upon upgrading from a
+    pre-2.4.2.3+dfsg-4 version
 
  -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
 

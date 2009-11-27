@@ -1,5 +1,21 @@
-#!/bin/sh -e
+#!/bin/sh
+set -e
 
-/usr/bin/update-monodoc
+case "$1" in
+    configure)
+        
+        if dpkg --compare-versions "$2" lt-nl "2.4.2.3+dfsg-4"; then
+            /usr/bin/update-monodoc
+        fi
+
+        ;;
+
+    triggered)
+
+        /usr/bin/update-monodoc
+
+        ;;
+
+esac
 
 #DEBHELPER#
