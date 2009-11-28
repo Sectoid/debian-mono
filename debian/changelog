@@ -12,6 +12,10 @@ mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
     to - i.e. when we are being triggered (by a lib installing new docs) or
     upon a new install of monodoc-base (to generate the initial index)
 
+  [ Mirco Bauer ]
+  * debian/update-monodoc:
+    + Handle search index too.
+
  -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low

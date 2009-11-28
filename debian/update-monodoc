@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
-if [ -x /usr/lib/monodoc/browser.exe ]; then
-	echo "generating monodoc search index..."
-	exec monodoc --make-index > /dev/null
+if [ ! -x /usr/lib/monodoc/browser.exe ]; then
+	# nothing to do
+	exit 0
 fi
+
+echo "generating monodoc search index..."
+monodoc --make-index > /dev/null
+
+echo "generating monodoc search index... (this can take a while)"
+monodoc --make-search-index > /dev/null
