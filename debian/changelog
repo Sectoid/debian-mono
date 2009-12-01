@@ -15,6 +15,8 @@ mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
   [ Mirco Bauer ]
   * debian/update-monodoc:
     + Handle search index too.
+  * debian/libmono-profiler.install:
+    + Install .so symlinks too, bloody pseudo versioned shared libraries.
 
  -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
 
