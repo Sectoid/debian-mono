@@ -17,6 +17,8 @@ mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
     + Handle search index too.
   * debian/libmono-profiler.install:
     + Install .so symlinks too, bloody pseudo versioned shared libraries.
+  * debian/libmono-simd2.0-cil.install:
+    + Added missing compile time symlink.
 
  -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
 
