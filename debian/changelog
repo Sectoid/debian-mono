@@ -22,6 +22,8 @@ mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
   * debian/control:
     + Promote monodoc-viewer from Recommends to Depends for monodoc-manual.
       (Closes: #551909)
+    + Fixed typo in monodoc-base and monodoc-manual package description.
+      (Closes: #557355, #557379)
 
  -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
 

@@ -1630,7 +1630,7 @@ Description: shared MonoDoc binaries
  provides detailed API documentation for all Mono components and the Mono CLI
  implementation.
  .
- This packages contains the shared binaries which are used by the monodoc
+ This package contains the shared binaries which are used by the monodoc
  programs like the documentation file compiler (assembler.exe aka "monodoc").
 
 Package: monodoc-manual
@@ -1645,4 +1645,4 @@ Description: compiled XML documentation from the Mono project
  provides detailed API documentation for all Mono components and the Mono CLI
  implementation.
  .
- This packages contains the compiled XML documentation of MonoDoc.
+ This package contains the compiled XML documentation of MonoDoc.
