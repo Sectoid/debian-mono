@@ -213,7 +213,8 @@ enum {
 	MONO_RGCTX_INFO_GENERIC_METHOD_CODE,
 	MONO_RGCTX_INFO_CLASS_FIELD,
 	MONO_RGCTX_INFO_METHOD_RGCTX,
-	MONO_RGCTX_INFO_METHOD_CONTEXT
+	MONO_RGCTX_INFO_METHOD_CONTEXT,
+	MONO_RGCTX_INFO_REMOTING_INVOKE_WITH_CHECK
 };
 
 typedef struct _MonoRuntimeGenericContextOtherInfoTemplate {
@@ -910,7 +911,7 @@ typedef struct {
 	MonoClass *delegate_class;
 	MonoClass *multicastdelegate_class;
 	MonoClass *asyncresult_class;
-	MonoClass *waithandle_class;
+	MonoClass *manualresetevent_class;
 	MonoClass *typehandle_class;
 	MonoClass *fieldhandle_class;
 	MonoClass *methodhandle_class;
@@ -1149,5 +1150,8 @@ mono_method_get_vtable_index (MonoMethod *method) MONO_INTERNAL;
 
 void
 mono_class_setup_interface_id (MonoClass *class) MONO_INTERNAL;
+
+MonoClassField*
+mono_class_get_field_from_name_full (MonoClass *klass, const char *name, MonoType *signature) MONO_INTERNAL;
 
 #endif /* __MONO_METADATA_CLASS_INTERBALS_H__ */

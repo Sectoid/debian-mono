@@ -3,8 +3,10 @@
 //
 // Author:
 //   Marek Sieradzki (marek.sieradzki@gmail.com)
+//   Ankit Jain (jankit@novell.com)
 // 
 // (C) 2005 Marek Sieradzki
+// Copyright 2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,41 +41,47 @@ namespace Microsoft.Build.BuildEngine {
 		Expression	separator;
 		int		start;
 		int		length;
+		string		original_string;
 		
-		public ItemReference (string itemName, string transform, string separator, int start, int length)
+		public ItemReference (string original_string, string itemName, string transform, string separator, int start, int length)
 		{
 			this.itemName = itemName;
 			this.start = start;
 			this.length = length;
+			this.original_string = original_string;
 
+			// Transform and separator are never expanded for item refs
 			if (transform != null) {
 				this.transform = new Expression ();
-				this.transform.Parse (transform, false);
+				this.transform.Parse (transform, ParseOptions.AllowMetadata | ParseOptions.Split);
 			}
 
 			if (separator != null) {
 				this.separator = new Expression ();
-				this.separator.Parse (separator, false);
+				this.separator.Parse (separator, ParseOptions.Split);
 			}
 		}
 		
-		public string ConvertToString (Project project)
+		// when evaluating property, allowItems=false, so,
+		// ItemRef will _not_ get created, so this wont get hit
+		// when evaluating items, expand: true
+		// other cases, expand: true
+		public string ConvertToString (Project project, ExpressionOptions options)
 		{
 			BuildItemGroup group;
 			if (project.TryGetEvaluatedItemByNameBatched (itemName, out group))
-				return group.ConvertToString (transform, separator);
+				return group.ConvertToString (transform, separator, options);
 			else
 				return String.Empty;
 		}
 		
-		public ITaskItem [] ConvertToITaskItemArray (Project project)
+		public ITaskItem [] ConvertToITaskItemArray (Project project, ExpressionOptions options)
 		{
 			BuildItemGroup group;
 			if (project.TryGetEvaluatedItemByNameBatched (itemName, out group))
-				return group.ConvertToITaskItemArray (transform);
+				return group.ConvertToITaskItemArray (transform, separator, options);
 			else
 				return null;
-
 		}
 
 		public string ItemName {
@@ -88,6 +96,10 @@ namespace Microsoft.Build.BuildEngine {
 			get { return separator; }
 		}
 
+		public string OriginalString {
+			get { return original_string; }
+		}
+
 		public int Start {
 			get { return start; }
 		}
@@ -98,8 +110,7 @@ namespace Microsoft.Build.BuildEngine {
 
 		public override string ToString ()
 		{
-			//FIXME: transform
-			return "@" + itemName;
+			return original_string;
 		}
 	}
 }

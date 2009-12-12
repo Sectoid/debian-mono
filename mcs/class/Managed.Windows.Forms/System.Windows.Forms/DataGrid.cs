@@ -268,8 +268,10 @@ namespace System.Windows.Forms
 		/* editing state */
 		bool cursor_in_add_row;
 		bool add_row_changed;
-		bool is_editing;		// Current cell is edit mode
+		internal bool is_editing;		// Current cell is edit mode
 		bool is_changing;
+		bool commit_row_changes = true;		// Whether to commit current edit or cancel it
+		bool adding_new_row;			// Used to temporary ignore the new row added by CurrencyManager.AddNew in CurrentCell
 
 		internal Stack data_source_stack;
 
@@ -513,7 +515,10 @@ namespace System.Windows.Forms
 				if (value.RowNumber != current_cell.RowNumber) {
 					if (!from_positionchanged_handler) {
 						try {
-							ListManager.EndCurrentEdit ();
+							if (commit_row_changes)
+								ListManager.EndCurrentEdit ();
+							else
+								ListManager.CancelCurrentEdit ();
 						}
 						catch (Exception e) {
 							DialogResult r = MessageBox.Show (String.Format ("{0} Do you wish to correct the value?", e.Message),
@@ -541,13 +546,20 @@ namespace System.Windows.Forms
 
 				EnsureCellVisibility (value);
 
+				// by default, edition in existing rows is commited, and for new ones is discarded, unless
+				// we receive actual input data from the user
 				if (CurrentRow == RowsCount && ListManager.AllowNew) {
+					commit_row_changes = false;
 					cursor_in_add_row = true;
 					add_row_changed = false;
+
+					adding_new_row = true;
 					AddNewRow ();
+					adding_new_row = false;
 				}
 				else {
 					cursor_in_add_row = false;
+					commit_row_changes = true;
 				}
 
 				InvalidateRowHeader (old_row);
@@ -561,6 +573,16 @@ namespace System.Windows.Forms
 					Edit ();
 
 				setting_current_cell = false;
+			}
+		}
+
+		internal void EditRowChanged (DataGridColumnStyle column_style)
+		{
+			if (cursor_in_add_row) {
+				if (!commit_row_changes) { // first change in add row, time to show another row in the ui
+					commit_row_changes = true;
+					RecreateDataGridRows (true);
+				}
 			}
 		}
 
@@ -977,7 +999,6 @@ namespace System.Windows.Forms
 			}
 		}
 
-		[MonoTODO]
 		public bool BeginEdit (DataGridColumnStyle gridColumn, int rowNumber)
 		{
 			if (is_changing)
@@ -1020,7 +1041,6 @@ namespace System.Windows.Forms
 			is_editing = false;
 		}
 
-		[MonoTODO]
 		public void Collapse (int row)
 		{
 			if (!rows[row].IsExpanded)
@@ -1068,6 +1088,7 @@ namespace System.Windows.Forms
 			return CreateGridColumn (prop, false);
 		}
 
+		[MonoTODO ("Not implemented, will throw NotImplementedException")]
 		protected virtual DataGridColumnStyle CreateGridColumn (PropertyDescriptor prop, bool isDefault)
 		{
 			throw new NotImplementedException();
@@ -1288,7 +1309,6 @@ namespace System.Windows.Forms
 			return rows[row].IsSelected;
 		}
 
-		[MonoTODO]
 		public void NavigateBack ()
 		{
 			if (data_source_stack.Count == 0)
@@ -1304,7 +1324,6 @@ namespace System.Windows.Forms
 			CurrentCell = source.current;
 		}
 
-		[MonoTODO]
 		public void NavigateTo (int rowNumber, string relationName)
 		{
 			if (allow_navigation == false)
@@ -1421,20 +1440,24 @@ namespace System.Windows.Forms
 			base.OnHandleDestroyed (e);
 		}
 
+		// It seems we have repeated code with ProcessKeyPreview, specifically
+		// the call to ProcessGridKey. In practice it seems this event is *never* fired
+		// since the key events are handled by the current column's textbox. 
+		// We are keeping commented anyway, in case we need to actually call it.
 		protected override void OnKeyDown (KeyEventArgs ke)
 		{
 			base.OnKeyDown (ke);
 			
-			if (ProcessGridKey (ke) == true)
+			/*if (ProcessGridKey (ke) == true)
 				ke.Handled = true;
 
-			/* TODO: we probably don't need this check,
-			 * since current_cell wouldn't have been set
-			 * to something invalid */
+			// TODO: we probably don't need this check,
+			// since current_cell wouldn't have been set
+			// to something invalid
 			if (CurrentTableStyle.GridColumnStyles.Count > 0) {
 				CurrentTableStyle.GridColumnStyles[current_cell.ColumnNumber].OnKeyDown
 					(ke, current_cell.RowNumber, current_cell.ColumnNumber);
-			}
+			}*/
 		}
 
 		protected override void OnKeyPress (KeyPressEventArgs kpe)
@@ -1487,6 +1510,7 @@ namespace System.Windows.Forms
 				DataGridCell new_cell = new DataGridCell (testinfo.Row, testinfo.Column);
 
 				if ((new_cell.Equals (current_cell) == false) || (!is_editing)) {
+					ResetSelection ();
 					CurrentCell = new_cell;
 					Edit ();
 				} else {
@@ -1536,6 +1560,10 @@ namespace System.Windows.Forms
 
 				if (ListManager.List is IBindingList == false)
 					break;
+
+				// Don't do any sort if we are empty, as .net does
+				if (ListManager.Count == 0)
+					return;
 			
 				ListSortDirection direction = ListSortDirection.Ascending;
 				PropertyDescriptor prop = CurrentTableStyle.GridColumnStyles[testinfo.Column].PropertyDescriptor;
@@ -1676,6 +1704,12 @@ namespace System.Windows.Forms
 							break;
 						}
 					}
+
+					Cursor = Cursors.Default;
+					break;
+				case HitTestType.RowHeader:
+					if (e.Button == MouseButtons.Left)
+						ShiftSelection (testinfo.Row);
 
 					Cursor = Cursors.Default;
 					break;
@@ -1858,8 +1892,13 @@ namespace System.Windows.Forms
 			case Keys.Escape:
 				if (is_changing)
 					AbortEditing ();
-				else
+				else {
 					CancelEditing ();
+
+					if (cursor_in_add_row && CurrentRow > 0)
+						CurrentRow--;
+				}
+
 				Edit ();
 				return true;
 				
@@ -1992,9 +2031,15 @@ namespace System.Windows.Forms
 				if (is_editing)
 					return false;
 				else if (selected_rows.Keys.Count > 0) {
-					foreach (int row in selected_rows.Keys)
-						ListManager.RemoveAt (row);
-					selected_rows.Clear ();
+					// the removal of the items in the source will cause to
+					// reset the selection, so we need a copy of it.
+					int [] rows = new int [selected_rows.Keys.Count];
+					selected_rows.Keys.CopyTo (rows, 0);
+
+					// reverse order to keep index sanity
+					for (int i = rows.Length - 1; i >= 0; i--)
+						ListManager.RemoveAt (rows [i]);
+
 					CalcAreasAndInvalidate ();
 				}
 
@@ -2011,6 +2056,14 @@ namespace System.Windows.Forms
 				KeyEventArgs ke = new KeyEventArgs (key);
 				if (ProcessGridKey (ke))
 					return true;
+
+				// if we receive a key event, make sure that input is actually
+				// taken into account.
+				if (!is_editing) {
+					Edit ();
+					InvalidateRow (current_cell.RowNumber);
+					return true;
+				}
 			}
 
 			return base.ProcessKeyPreview (ref m);
@@ -2448,8 +2501,10 @@ namespace System.Windows.Forms
 				} else if (CurrentTableStyle == grid_style ||
 					 CurrentTableStyle.MappingName != list_name) {
 					// If the style has been defined by the user, use it
+					// Also, if the user provided style is empty,
+					// force a bind for it
 					CurrentTableStyle = styles_collection[list_name];
-					current_style.CreateColumnsForTable (true);
+					current_style.CreateColumnsForTable (current_style.GridColumnStyles.Count > 0);
 				} else {
 					current_style.CreateColumnsForTable (true);
 				}
@@ -2459,12 +2514,8 @@ namespace System.Windows.Forms
 
 		private void OnListManagerMetaDataChanged (object sender, EventArgs e)
 		{
-			// XXX
-
-			//we need to rethink this, as in 2.0 we get this event when a column is added to a table.
-			// forcing a rebind of columns means that we fail bug #80422.  disable this for now.
-			//
-			// BindColumns ();
+			BindColumns ();
+			CalcAreasAndInvalidate ();
 		}
 
 		private void OnListManagerPositionChanged (object sender, EventArgs e)
@@ -2476,6 +2527,10 @@ namespace System.Windows.Forms
 
 		private void OnListManagerItemChanged (object sender, ItemChangedEventArgs e)
 		{
+			// if it was us who created the new row in CurrentCell, ignore it and don't recreate the rows yet.
+			if (adding_new_row)
+				return;
+
 			if (e.Index == -1) {
 				ResetSelection ();
 				if (rows == null || RowsCount != rows.Length - (ShowEditRow ? 1 : 0))
@@ -2495,7 +2550,8 @@ namespace System.Windows.Forms
 			case CollectionChangeAction.Add:
 				if (e.Element != null && String.Compare (list_name, ((DataGridTableStyle)e.Element).MappingName, true) == 0) {
 					CurrentTableStyle = (DataGridTableStyle)e.Element;
-					((DataGridTableStyle) e.Element).CreateColumnsForTable (false);
+					// force to auto detect columns in case the new style is completely empty
+					((DataGridTableStyle) e.Element).CreateColumnsForTable (CurrentTableStyle.GridColumnStyles.Count > 0);
 				}
 				break;
 			case CollectionChangeAction.Remove:
@@ -2535,6 +2591,9 @@ namespace System.Windows.Forms
 				return;
 
 			if (!CurrentTableStyle.GridColumnStyles[CurrentColumn].bound)
+				return;
+
+			if (ListManager != null && ListManager.Count == 0)
 				return;
 
 			is_editing = true;
@@ -2627,8 +2686,6 @@ namespace System.Windows.Forms
 
 			if (pixels == 0)
 				return;
-
-			EndEdit ();
 
 			Rectangle rows_area = cells_area; // Cells area - partial rows space
 
@@ -3287,7 +3344,10 @@ namespace System.Windows.Forms
 		}
 
 		int VLargeChange {
-			get { return VisibleRowCount; }
+			get { 
+				// the possible number of visible rows
+				return cells_area.Height / RowHeight;
+			}
 		}
 
 		#endregion Instance Properties

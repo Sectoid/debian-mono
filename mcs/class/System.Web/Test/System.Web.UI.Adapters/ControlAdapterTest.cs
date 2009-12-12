@@ -46,6 +46,14 @@ namespace MonoTests.System.Web.UI.Adapters
 	[TestFixture]
 	public class ControlAdapterTest
 	{
+		[Test (Description="Bug #517172")]
+		public void CreateChildControls ()
+		{
+			MyControl c = new MyControl ();
+			c.AdapterCallCreateChildControls ();
+			Assert.IsTrue (c.create_child_controls_called, "CreateChildControls #1");
+		}
+		
 		[Test]
 		public void BeginRender ()
 		{
@@ -214,6 +222,12 @@ namespace MonoTests.System.Web.UI.Adapters
 
 		class MyControl : Control
 		{
+			internal bool create_child_controls_called;
+			protected override void CreateChildControls ()
+			{
+				create_child_controls_called = true;
+			}
+			
 			internal bool render_called = false;
 			protected override void Render (HtmlTextWriter w)
 			{
@@ -266,6 +280,11 @@ namespace MonoTests.System.Web.UI.Adapters
 				((MyControlAdapter)Adapter).CallRenderChildren (w);
 			}
 
+			internal void AdapterCallCreateChildControls ()
+			{
+				((MyControlAdapter)Adapter).CallCreateChildControls ();
+			}
+			
 			internal void AdapterCallOnInit (EventArgs e)
 			{
 				((MyControlAdapter)Adapter).CallOnInit (e);
@@ -306,6 +325,11 @@ namespace MonoTests.System.Web.UI.Adapters
 		{
 			internal MyControlAdapter () : base ()
 			{
+			}
+
+			internal void CallCreateChildControls ()
+			{
+				CreateChildControls ();
 			}
 			
 			internal void CallBeginRender (HtmlTextWriter w)

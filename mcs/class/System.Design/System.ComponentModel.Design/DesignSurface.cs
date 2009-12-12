@@ -144,6 +144,9 @@ namespace System.ComponentModel.Design
 			_serviceContainer.AddService (typeof (IExtenderProviderService), (IExtenderProviderService) extenderService);
 			_serviceContainer.AddService (typeof (IExtenderListService), (IExtenderListService) extenderService);
 			_serviceContainer.AddService (typeof (DesignSurface), this);
+
+			SelectionService selectionService = new SelectionService (_serviceContainer);
+			_serviceContainer.AddService (typeof (ISelectionService), (ISelectionService) selectionService);
 		}
 		
 		protected ServiceContainer ServiceContainer {
@@ -183,21 +186,22 @@ namespace System.ComponentModel.Design
 			get {
 				if (_designerHost == null)
 					throw new ObjectDisposedException ("DesignSurface");
-				if (this.LoadErrors.Count > 0 || !_isLoaded)
-					throw new InvalidOperationException ("DesignSurface isn't loaded.");
 				
-				
+				if (_designerHost.RootComponent == null || this.LoadErrors.Count > 0)
+					throw new InvalidOperationException ("The DesignSurface isn't loaded.");
+
 				IRootDesigner designer = _designerHost.GetDesigner (_designerHost.RootComponent) as IRootDesigner;
+				if (designer == null)
+					throw new InvalidOperationException ("The DesignSurface isn't loaded.");
+
 				ViewTechnology[] viewTech = designer.SupportedTechnologies;
-				
 				for (int i = 0; i < viewTech.Length; i++) {
 					try { 
 						return designer.GetView (viewTech[i]); 
 					} catch {}
 				}
-				// if this code is reached - there is no supported view technology
-				//
-				throw new NotSupportedException ();
+
+				throw new NotSupportedException ("No supported View Technology found.");
 			}
 		}
 
@@ -272,7 +276,8 @@ namespace System.ComponentModel.Design
 		
 		public void Flush ()
 		{	   
-			_designerLoader.Flush ();
+			if (_designerLoader != null)
+				_designerLoader.Flush ();
 
 			if (Flushed != null)
 				Flushed (this, EventArgs.Empty);

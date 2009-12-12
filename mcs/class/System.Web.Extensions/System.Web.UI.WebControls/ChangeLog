@@ -1,3 +1,17 @@
+2009-09-08  Marek Habersack  <mhabersack@novell.com>
+
+	* ListView.cs: if total row count has been retrieved from the
+	view, don't reset it to the number of items returned from the data
+	source. Fixes bug #535701
+
+2009-09-01  Marek Habersack  <mhabersack@novell.com>
+
+	* ListView.cs: LoadControlState must call OnTotalRowCountAvailable
+	after restoring the state, so that all parties subscribed to that
+	event are given chance to react accordingly.
+	SetPageProperties should use values stored in
+	PagePropertiesChangingEventArgs arguments after handler returns.
+
 2009-03-03  Marek Habersack  <mhabersack@novell.com>
 
 	* ListView.cs: SetPageProperties invoked the

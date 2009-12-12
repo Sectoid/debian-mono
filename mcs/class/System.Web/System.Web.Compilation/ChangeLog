@@ -1,13 +1,133 @@
+2009-11-10  Marek Habersack  <mhabersack@novell.com>
+
+	* BaseCompiler.cs: parser.Imports is a Dictionary <>/Hashtable
+	now.
+
+	* AspComponentFoundry.cs: system.web/pages section is not confined
+	to the top-level web.config
+
+2009-11-03  Marek Habersack  <mhabersack@novell.com>
+
+	* AppResourcesCompiler.cs: put default culture resources in a
+	separate collection, exposed by the DefaultCultureFiles property.
+
+	* AppResourcesAssemblyBuilder.cs: compile the default assembly
+	before the satellite ones. Use the default assembly as template
+	for generation of the satellite ones.
+
+2009-10-22  Marek Habersack  <mhabersack@novell.com>
+
+	* WsdlBuildProvider.cs: a different way to generate code from
+	wsdl. Code is generated in the top-level namespace to match .NET
+
+2009-10-12  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: make sure to construct correct physical path
+	for every precompiled key in FixVirtualPaths. Fixes bug #546053
+
+2009-09-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BuildManager.cs: load/set the global resources assembly for
+	precompiled and merged sites correctly.
+
+2009-09-30  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: if precompilation file contains virtual path
+	with trailing slash (e.g. for themes), remove the slash. Fixes bug
+	#541271
+
+2009-09-28  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: ResourceProviderHasObject calls
+	HttpContext.GetResourceProvider with the current file's path, not
+	current request's. Fixes situations when localized control lives
+	in a master page or user control. Fixes bug #542484
+
+	* BaseCompiler.cs: introduced a helper property InputVirtualPath
+	which returns a VirtualPath object for the current control's
+	virtual path.
+
+2009-09-22  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: ResourceProviderHasObject needs to
+	close ResourceReader instance obtained from resource provider.
+
+	* DefaultResourceProvider.cs: implemented the ResourceReader
+	property. Fixes bug #520397
+
+2009-09-08  Marek Habersack  <mhabersack@novell.com>
+
+	* AppCodeCompiler.cs: HaveCustomProfile returns true for profiles
+	which don't contain top-level properties. Fixes bug #535655
+
+	* BuildManager.cs: added IsPrecompiled internal property.
+
+	* AppResourcesCompiler.cs: load precompiled site local and global
+	resource assemblies from static constructor. Fixes bugs #536138
+	and #536143
+
+2009-09-03  Marek Habersack  <mhabersack@novell.com>
+
+	* AppResourcesCompiler.cs: SanitizeResourceName uses VB/C# rules
+	to attempt to create valid identifiers from resource
+	names. Identifier is also escaped by the CodeDOM provider before
+	returning. Possible fix for bug #536364
+
+2009-08-27  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: when HttpRequest.FilePath is '/' in
+	GetAbsoluteVirtualPath, don't try to use
+	VirtualPathUtility.GetDirectory on it. Fixes bug #532679
+
+2009-08-25  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: correctly parse server-side tags nested in
+	client-side ones. Fixes bug #323719
+
+2009-08-18  Marek Habersack  <mhabersack@novell.com>
+
+	* AspParser.cs: added a constructor which creates an internal
+	parser, nested within the outer one, and adjusts its ILocation
+	members to report correct locations in the outer parser for better
+	error reporting. Inner parser also returns the outer's FileText,
+	if available.
+
+	* AspGenerator.cs: restored part of r138474 reverted in r138657,
+	r138658 and r138659 to fix bug #525104
+	BuilderLocation creates a copy of Location for its own use (since
+	the ILocation passed is actually AspParser, the line numbers
+	change between creating a BuilderLocation and using its Location
+	member).
+	The end of tag, expression and client comment regular expressions
+	now use lazy quantifiers. This fixes bugs #525104 and #517656
+	Client side comment blocks aren't ignored anymore, they are parsed
+	just as the other parts of the document. Fixes bug #524358
+	
+2009-08-15  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: CodeRenderParser.DoParseExpressions - match
+	newline characters inside expressions. Fixes bug #526449
+
+2009-08-14  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: when VirtualPathProvider reports a virtual
+	directory doesn't exist, try to get the requested virtual path
+	using VirtualPathProvider.GetFile. Fixes #525974
+
+2009-08-12  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: show source code when an error occurs while
+	compiling a page. Fixes bug #518987
+
+2009-07-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* BuildManager.cs: path fixup should work now for /foo running on
+	/foo. Fixes bug #526563.
+
 2009-07-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* BuildManager.cs: precompilation setup failed if the precompiled
 	virtual directory was / and it was deployed somewhere else.
-
-2009-07-13  Marek Habersack  <mhabersack@novell.com>
-
-	* AppCodeCompiler.cs: wrap HttpApplication.LoadTypeFromBin call in
-	try/catch, so that we can wrap the possible exception in
-	HttpException.
 
 2009-07-21  Marek Habersack  <mhabersack@novell.com>
 
@@ -19,6 +139,36 @@
 	includes all assemblies from bin/ for precompiled sites. Fixes bug
 	#502016
 
+2009-07-18  Marek Habersack  <mhabersack@novell.com>
+
+	* DefaultResourceProvider.cs: if GetResourceObject is passed a
+	null or empty classKey it just returns null.
+
+	* AppResourcesAssemblyBuilder.cs: satellite assemblies are now
+	built using al instead of gmcs - makes the build slightly faster.
+
+2009-07-13  Marek Habersack  <mhabersack@novell.com>
+
+	* AppCodeCompiler.cs: wrap HttpApplication.LoadTypeFromBin call in
+	try/catch, so that we can wrap the possible exception in
+	HttpException.
+
+2009-07-09  Marek Habersack  <mhabersack@novell.com>
+
+	* DefaultResourceProvider.cs, DefaultResourceProviderFactory.cs:
+	added
+
+2009-06-30  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs: TextParsed must remove client-side comments
+	from the passed text before attempting to parse the text for
+	server side controls and expressions. Fixes bug #517656
+
+2009-06-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TemplateControlCompiler.cs: use the 'Empty' field for Unit and
+	FontUnit.
+
 2009-06-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* BuildManager.cs: backport r131138.
@@ -28,6 +178,10 @@
 	* AspGenerator.cs: CreateRootBuilder quits when root builder
 	already exist. This can happen when recursively parsing an include
 	file. Fixes bug #512028
+
+2009-06-12  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: avoid a NREX in FixVirtualPath
 
 2009-06-11  Marek Habersack  <mhabersack@novell.com>
 

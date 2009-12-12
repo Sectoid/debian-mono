@@ -1,3 +1,114 @@
+2009-11-16  Marek Habersack  <mhabersack@novell.com>
+
+	* TreeNodeCollection.cs: whenever a node is added, let the owner
+	know about it.
+
+	* TreeNode.cs: added internal property HadChildrenBeforePopulating
+	which is used to let TreeView know about an error condition where
+	a populate-on-demand node contains children added outside the
+	OnTreeNodePopulate event
+
+	* TreeView.cs: if a node has any child nodes and PopulatOnDemand
+	is set, throw an exception from RenderNode. This is the behavior
+	of .NET
+
+2009-11-13  Marek Habersack  <mhabersack@novell.com>
+
+	* TableRowCollection.cs: added .NET compatibility NREX throws to
+	several methods.
+	Whenever a row is added/removed, its Container property is
+	set. Fixes bug #551666
+
+	* TableRow.cs: introduced an internal property, Container, which
+	is set by TableRowCollection whenever this row is added/removed
+	to/from the collection. This allows the row to notify the
+	collectio and, in consequence, collection owner that TableSection
+	has been set and thead/tbody/tfoot elements need to be
+	generated. Fixes bug #551666
+
+2009-11-10  Marek Habersack  <mhabersack@novell.com>
+
+	* PasswordRecovery.cs:
+	{Question,Success,UserName}TemplateContainer must all be populated
+	the first time the property is accessed, so that calling
+	FindControl on the container returns valid and expected
+	results. If the associated template is not defined, though,
+	populating is postponed till CreateChildControls is called -
+	that's where default, empty, template will be created. This is
+	required to fix YetAnotherForum's password recovery control.
+	Mail template used in SendPasswordByMail must match the one used
+	in .NET (it has to end with a newline) as YAF parses the message
+	to retrieve user name and password and breaks if the last line
+	doesn't end with a newline character.
+
+2009-10-30  Marek Habersack  <mhabersack@novell.com>
+
+	* PasswordRecovery.cs: mail message replacements should include <%
+	Password %> and <% UserName %> and matching should be
+	case-insensitive. Fixes bug #545370
+
+2009-10-28  Marek Habersack  <mhabersack@novell.com>
+
+	* ListControl.cs: OnDataBinding must call base implementation
+	before performing the binding, so that DataSource can be assigned
+	from within the handler.
+
+2009-10-13  Marek Safar  <marek.safar@novell.com>
+
+	* WebColorConverter.cs: Delegate ConvertFrom to
+	ColorTranslator.FromHtml, it is correctly implemented and knows
+	many more tricks.
+
+2009-10-13  Marek Habersack  <mhabersack@novell.com>
+
+	* WebColorConverter.cs: don't use a dictionary to check for valid
+	color names, use Color.IsKnownColor instead. Update for bug
+	#546173 fix.
+	Added more CSS2 color name mappings.
+
+2009-10-12  Marek Habersack  <mhabersack@novell.com>
+
+	* WebColorConverter.cs: when converting from color name, check if
+	the returned color's name is a member of the
+	System.Drawing.KnownColor enumeration to test for error condition,
+	as some colors might be #000000. Preserve the old error check as a
+	fallback only. 
+	Map "captiontext" and "background" color names to
+	"ActiveCaptionText" and "Desktop", respectively, before passing
+	them to Color.FromName (). Fixes bug #546173
+
+2009-09-28  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBoundControl.cs: Initialize sets RequiresDataBinding
+	properly, only when we're not data-bound already, when we aren't
+	in postback or when we are in postback, but with viewstate
+	enabled. Fixes bug #542076
+
+2009-09-01  Marek Habersack  <mhabersack@novell.com>
+
+	* ObjectDataSourceView.cs: ExecuteSelect must call
+	QueryTotalRowCount after executing the select method (that's what
+	.NET does)
+
+2009-08-21  Marek Habersack  <mhabersack@novell.com>
+
+	* Menu.cs: separator image is rendered next to the item in
+	horizontal layout and is preceeded by 3px spacer (unless
+	itemSpacing is set) to make output match .NET. Fixes bug #474716
+
+	* TreeNodeCollection.cs: {Save,Load}ViewState now store/load the
+	type of the node, if node is a of a custom type. Fixes bug #475997
+
+2009-06-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Parameter.cs: add new DbType property.
+
+2009-06-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ContentControlBuilderInternal.cs: detect missing
+	ContentPlaceHolderID attribute when parsing instead of throwing a
+	nullref later on.
+
 2009-05-29  Marek Habersack  <mhabersack@novell.com>
 
 	* ListItem.cs: when tracking view state is turned on after

@@ -487,7 +487,12 @@ namespace System.Windows.Forms
 		[EditorBrowsable(EditorBrowsableState.Advanced)]
 		public int PreferredHeight {
 			get {
-				return Font.Height + (BorderStyle == BorderStyle.None ? 0 : 7);
+				if (BorderStyle != BorderStyle.None)
+					return Font.Height + 7;
+
+				// usually in borderless mode the top margin is 0, but
+				// try to access it, in case it was set manually, as ToolStrip* controls do
+				return Font.Height + TopMargin;
 			}
 		}
 
@@ -665,8 +670,6 @@ namespace System.Windows.Forms
 						CalculateDocument ();
 				}
 
-				// set the var so OnModifiedChanged is not raised
-				modified = false;
 				OnTextChanged(EventArgs.Empty);
 			}
 		}
@@ -779,11 +782,13 @@ namespace System.Windows.Forms
 			//
 			has_been_focused = true;
 
+			Modified = false;
 			OnTextChanged(EventArgs.Empty);
 		}
 
 		public void Clear ()
 		{
+			Modified = false;
 			Text = string.Empty;
 		}
 
@@ -815,6 +820,7 @@ namespace System.Windows.Forms
 			document.ReplaceSelection (String.Empty, false);
 			document.undo.EndUserAction ();
 
+			Modified = true;
 			OnTextChanged (EventArgs.Empty);
 		}
 
@@ -868,11 +874,13 @@ namespace System.Windows.Forms
 			return String.Concat (base.ToString (), ", Text: ", Text);
 		}
 
-		[MonoTODO("Deleting is classed as Typing, instead of its own Undo event")]
+		[MonoInternalNote ("Deleting is classed as Typing, instead of its own Undo event")]
 		public void Undo ()
 		{
-			if (document.undo.Undo ())
+			if (document.undo.Undo ()) {
+				Modified = true;
 				OnTextChanged (EventArgs.Empty);
+			}
 		}
 
 #if NET_2_0
@@ -1224,6 +1232,8 @@ namespace System.Windows.Forms
 					document.AlignCaret();
 					document.UpdateCaret();
 					CaretMoved(this, null);
+
+					Modified = true;
 					OnTextChanged (EventArgs.Empty);
 		
 					return true;
@@ -1377,6 +1387,7 @@ namespace System.Windows.Forms
 						document.InsertCharAtCaret ('\t', true);
 
 						CaretMoved(this, null);
+						Modified = true;
 						OnTextChanged (EventArgs.Empty);
 
 						return true;
@@ -1479,8 +1490,10 @@ namespace System.Windows.Forms
 
 			CaretMoved (this, null);
 
-			if (fire_changed)
+			if (fire_changed) {
+				Modified = true;
 				OnTextChanged(EventArgs.Empty);
+			}
 		}
 
 		private void HandleEnter ()
@@ -1500,6 +1513,7 @@ namespace System.Windows.Forms
 				
 				document.UpdateView (line, document.Lines - line.line_no, 0);
 				CaretMoved (this, null);
+				Modified = true;
 				OnTextChanged (EventArgs.Empty);
 			}
 		}
@@ -1579,6 +1593,7 @@ namespace System.Windows.Forms
 						OnTextUpdate ();
 #endif
 						CaretMoved (this, null);
+						Modified = true;
 						OnTextChanged(EventArgs.Empty);
 
 					} else {
@@ -1767,6 +1782,15 @@ namespace System.Windows.Forms
 				show_selection = value;
 				// Currently InvalidateSelectionArea is commented out so do a full invalidate
 				document.InvalidateSelectionArea();
+			}
+		}
+
+		internal int TopMargin {
+			get {
+				return document.top_margin;
+			}
+			set {
+				document.top_margin = value;
 			}
 		}
 
@@ -2433,6 +2457,7 @@ namespace System.Windows.Forms
 				document.undo.BeginUserAction (Locale.GetText ("Paste"));
 				((RichTextBox)this).SelectedRtf = (string)clip.GetData(DataFormats.Rtf);
 				document.undo.EndUserAction ();
+				Modified = true;
 				return true;
 			} else if (format.Name == DataFormats.Bitmap) {
 				document.undo.BeginUserAction (Locale.GetText ("Paste"));
@@ -2464,6 +2489,7 @@ namespace System.Windows.Forms
 				}
 			}
 
+			Modified = true;
 			return true;
 		}
 

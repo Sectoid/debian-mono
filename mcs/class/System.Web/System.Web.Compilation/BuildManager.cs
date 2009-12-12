@@ -319,6 +319,10 @@ namespace System.Web.Compilation {
 			remove { events.RemoveHandler (buildManagerRemoveEntryEvent, value); }
 		}
 		
+		internal static bool IsPrecompiled {
+			get { return is_precompiled; }
+		}
+		
 		static BuildManager ()
 		{
 			if (HttpRuntime.CaseInsensitive)
@@ -426,19 +430,28 @@ namespace System.Web.Compilation {
 		// Deal with precompiled sites deployed in a different virtual path
 		static void FixVirtualPaths ()
  		{
+ 			if (precompiled == null)
+ 				return;
+ 
 			string [] parts;
 			int skip = -1;
 			foreach (string vpath in precompiled.Keys) {
 				parts = vpath.Split ('/');
 				for (int i = 0; i < parts.Length; i++) {
-					string test_path = String.Join ("/", parts, i, parts.Length - i);
+					if (String.IsNullOrEmpty (parts [i]))
+						continue;
+					// The path must be rooted, otherwise PhysicalPath returned
+					// below will be relative to the current request path and
+					// File.Exists will return a false negative. See bug #546053
+					string test_path = "/" + String.Join ("/", parts, i, parts.Length - i);
 					VirtualPath result = GetAbsoluteVirtualPath (test_path);
 					if (result != null && File.Exists (result.PhysicalPath)) {
-						skip = i;
+						skip = i - 1;
 						break;
 					}
 				}
 			}
+			
 			string app_vpath = HttpRuntime.AppDomainAppVirtualPath;
 			if (skip == -1 || (skip == 0 && app_vpath == "/"))
 				return;
@@ -479,9 +492,13 @@ namespace System.Web.Compilation {
 					// 3 -> ascx, aspx
 					// 6 -> app_code - nothing to do here
 					// 8 -> global.asax
-					// 9 -> App_GlobalResources - nothing to do?
+					// 9 -> App_GlobalResources - set the assembly for HttpContext
 					if (reader.Name == "resultType" && (val == "2" || val == "3" || val == "8"))
-						LoadPageData (reader);
+						LoadPageData (reader, true);
+					else if (val == "9") {
+						PreCompilationData pd = LoadPageData (reader, false);
+						HttpContext.AppGlobalResourcesAssembly = Assembly.Load (pd.AssemblyFileName);
+					}
 				}
 			}
 		}
@@ -493,22 +510,25 @@ namespace System.Web.Compilation {
 			public Type Type;
 		}
 
-		static void LoadPageData (XmlTextReader reader)
+		static PreCompilationData LoadPageData (XmlTextReader reader, bool store)
 		{
 			PreCompilationData pc_data = new PreCompilationData ();
 
 			while (reader.MoveToNextAttribute ()) {
 				string name = reader.Name;
 				if (name == "virtualPath")
-					pc_data.VirtualPath = reader.Value;
+					pc_data.VirtualPath = VirtualPathUtility.RemoveTrailingSlash (reader.Value);
 				else if (name == "assembly")
 					pc_data.AssemblyFileName = reader.Value;
 				else if (name == "type")
 					pc_data.TypeName = reader.Value;
 			}
-			if (precompiled == null)
-				precompiled = new Dictionary<string, PreCompilationData> (comparer);
-			precompiled.Add (pc_data.VirtualPath, pc_data);
+			if (store) {
+				if (precompiled == null)
+					precompiled = new Dictionary<string, PreCompilationData> (comparer);
+				precompiled.Add (pc_data.VirtualPath, pc_data);
+			}
+			return pc_data;
 		}
 
 		static void AddAssembly (Assembly asm, List <Assembly> al)
@@ -566,10 +586,16 @@ namespace System.Web.Compilation {
 			if (!VirtualPathUtility.IsRooted (virtualPath)) {
 				HttpContext ctx = HttpContext.Current;
 				HttpRequest req = ctx != null ? ctx.Request : null;
+				
+				if (req != null) {
+					string fileDir = req.FilePath;
+					if (!String.IsNullOrEmpty (fileDir) && String.Compare (fileDir, "/", StringComparison.Ordinal) != 0)
+						fileDir = VirtualPathUtility.GetDirectory (fileDir);
+					else
+						fileDir = "/";
 
-				if (req != null)
-					vp = VirtualPathUtility.Combine (VirtualPathUtility.GetDirectory (req.FilePath), virtualPath);
-				else
+					vp = VirtualPathUtility.Combine (fileDir, virtualPath);
+				} else
 					throw new HttpException ("No context, cannot map paths.");
 			} else
 				vp = virtualPath;
@@ -598,7 +624,6 @@ namespace System.Web.Compilation {
 				}
 				return pc_data.Type;
 			}
-			//Console.WriteLine ("VPath not precompiled: {0}", virtualPath);
 			return null;
 		}
 
@@ -707,16 +732,21 @@ namespace System.Web.Compilation {
 				doBatch = false;
 			
 			if (doBatch) {
-				if (dir == null)
-					throw new HttpException (404, "Virtual directory '" + virtualPath.Directory + "' does not exist.");
-				
 				BuildKind fileKind;
-				foreach (VirtualFile file in dir.Files) {
-					if (!knownFileTypes.TryGetValue (VirtualPathUtility.GetExtension (file.Name), out fileKind))
-						continue;
+				if (dir == null) {
+					VirtualFile vf = vpp.GetFile (vpAbsolute);
+					if (vf == null)
+						throw new HttpException (404, "Virtual directory '" + virtualPath.Directory + "' does not exist. Virtual file '" + vpAbsolute + "' does not exist.");
+					if (knownFileTypes.TryGetValue (VirtualPathUtility.GetExtension (vpAbsolute), out fileKind) && fileKind == fileKind)
+						ret.Add (vf);
+				} else {
+					foreach (VirtualFile file in dir.Files) {
+						if (!knownFileTypes.TryGetValue (VirtualPathUtility.GetExtension (file.Name), out fileKind))
+							continue;
 
-					if (kind == fileKind)
-						ret.Add (file);
+						if (kind == fileKind)
+							ret.Add (file);
+					}
 				}
 			} else {
 				VirtualFile vf = vpp.GetFile (vpAbsolute);
@@ -1243,8 +1273,13 @@ namespace System.Web.Compilation {
 						try {
 							GenerateAssembly (abuilder, buildItems, virtualPath, buildKind);
 						} catch (Exception ex) {
-							if (requestBuildItem == null || abuilder != originalRequestAssemblyBuilder)
-								throw;
+							if (requestBuildItem == null || abuilder != originalRequestAssemblyBuilder) {
+								if (ex.GetType () == typeof (HttpException))
+									throw;
+								
+								throw new HttpException ("Compilation failed.", ex);
+							}
+							
 							// There will be another assembly containing
 							// just the requested virtual path, let's
 							// give it a chance
@@ -1253,7 +1288,15 @@ namespace System.Web.Compilation {
 
 						if (needToBuildRequestItemAlone) {
 							AssignToAssemblyBuilder (assemblyBaseName, virtualPath, requestBuildItem, assemblyBuilders, true);
-							GenerateAssembly (requestBuildItem.assemblyBuilder, buildItems, virtualPath, buildKind);
+							try {
+								GenerateAssembly (requestBuildItem.assemblyBuilder, buildItems, virtualPath, buildKind);
+							} catch (Exception ex) {
+								if (ex.GetType () == typeof (HttpException))
+									throw;
+								
+								throw new HttpException ("Compilation failed.", ex);
+							}
+							
 							needToBuildRequestItemAlone = false;
 						}
 					}

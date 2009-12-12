@@ -35,6 +35,7 @@
 #include <mono/metadata/exception.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/appdomain.h>
+#include <mono/metadata/file-io.h>
 #include <mono/metadata/threads.h>
 #include <mono/metadata/threads-types.h>
 #include <mono/utils/mono-poll.h>
@@ -2002,6 +2003,7 @@ static struct in6_addr ipaddress_to_struct_in6_addr(MonoObject *ipaddr)
 
 void ves_icall_System_Net_Sockets_Socket_SetSocketOption_internal(SOCKET sock, gint32 level, gint32 name, MonoObject *obj_val, MonoArray *byte_val, gint32 int_val, gint32 *error)
 {
+	struct linger linger;
 	int system_level;
 	int system_name;
 	int ret;
@@ -2047,18 +2049,9 @@ void ves_icall_System_Net_Sockets_Socket_SetSocketOption_internal(SOCKET sock, g
 	/* Only one of obj_val, byte_val or int_val has data */
 	if(obj_val!=NULL) {
 		MonoClassField *field;
-		struct linger linger;
 		int valsize;
 		
 		switch(name) {
-		case SocketOptionName_DontLinger:
-			linger.l_onoff=0;
-			linger.l_linger=0;
-			valsize=sizeof(linger);
-			ret = _wapi_setsockopt (sock, system_level,
-						system_name, &linger, valsize);
-			break;
-			
 		case SocketOptionName_Linger:
 			/* Dig out "bool enabled" and "int seconds"
 			 * fields
@@ -2146,17 +2139,31 @@ void ves_icall_System_Net_Sockets_Socket_SetSocketOption_internal(SOCKET sock, g
 			return;
 		}
 	} else if (byte_val!=NULL) {
-		int valsize=mono_array_length(byte_val);
-		guchar *buf=mono_array_addr(byte_val, guchar, 0);
-	
-		ret = _wapi_setsockopt (sock, system_level, system_name, buf, valsize);
-		if(ret==SOCKET_ERROR) {
-			*error = WSAGetLastError ();
-			return;
+		int valsize = mono_array_length (byte_val);
+		guchar *buf = mono_array_addr (byte_val, guchar, 0);
+		
+		switch(name) {
+		case SocketOptionName_DontLinger:
+			if (valsize == 1) {
+				linger.l_onoff = (*buf) ? 0 : 1;
+				linger.l_linger = 0;
+				ret = _wapi_setsockopt (sock, system_level, system_name, &linger, sizeof (linger));
+			} else {
+				*error = WSAEINVAL;
+			}
+			break;
+		default:
+			ret = _wapi_setsockopt (sock, system_level, system_name, buf, valsize);
+			break;
 		}
 	} else {
 		/* ReceiveTimeout/SendTimeout get here */
 		switch(name) {
+		case SocketOptionName_DontLinger:
+			linger.l_onoff = !int_val;
+			linger.l_linger = 0;
+			ret = _wapi_setsockopt (sock, system_level, system_name, &linger, sizeof (linger));
+			break;
 		case SocketOptionName_DontFragment:
 #ifdef HAVE_IP_MTU_DISCOVER
 			/* Fiddle with the value slightly if we're
@@ -3046,6 +3053,43 @@ extern MonoBoolean ves_icall_System_Net_Dns_GetHostName_internal(MonoString **h_
 	*h_name=mono_string_new(mono_domain_get (), hostname);
 
 	return(TRUE);
+}
+
+gboolean
+ves_icall_System_Net_Sockets_Socket_SendFile (SOCKET sock, MonoString *filename, MonoArray *pre_buffer, MonoArray *post_buffer, gint flags)
+{
+	HANDLE file;
+	gint32 error;
+	TRANSMIT_FILE_BUFFERS buffers;
+
+	MONO_ARCH_SAVE_REGS;
+
+	if (filename == NULL)
+		return FALSE;
+
+	file = ves_icall_System_IO_MonoIO_Open (filename, FileMode_Open, FileAccess_Read, FileShare_Read, 0, &error);
+	if (file == INVALID_HANDLE_VALUE) {
+		SetLastError (error);
+		return FALSE;
+	}
+
+	memset (&buffers, 0, sizeof (buffers));
+	if (pre_buffer != NULL) {
+		buffers.Head = mono_array_addr (pre_buffer, guchar, 0);
+		buffers.HeadLength = mono_array_length (pre_buffer);
+	}
+	if (post_buffer != NULL) {
+		buffers.Tail = mono_array_addr (post_buffer, guchar, 0);
+		buffers.TailLength = mono_array_length (post_buffer);
+	}
+
+	if (!TransmitFile (sock, file, 0, 0, NULL, &buffers, flags)) {
+		CloseHandle (file);
+		return FALSE;
+	}
+
+	CloseHandle (file);
+	return TRUE;
 }
 
 void mono_network_init(void)

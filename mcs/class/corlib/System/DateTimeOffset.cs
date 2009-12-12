@@ -282,13 +282,21 @@ namespace System
 			return Parse (input, formatProvider, DateTimeStyles.AllowWhiteSpaces);
 		}
 
-		[MonoTODO]
 		public static DateTimeOffset Parse (string input, IFormatProvider formatProvider, DateTimeStyles styles)
 		{
 			if (input == null)
 				throw new ArgumentNullException ("input");
 
-			throw new NotImplementedException ();
+			DateTime d;
+			DateTimeOffset dto;
+			Exception exception = null;
+			if (!DateTime.CoreParse (input, formatProvider, styles, out d, out dto, true, ref exception))
+				throw exception;
+
+			if (d.Ticks != 0 && dto.Ticks == 0)
+				throw new ArgumentOutOfRangeException ("The UTC representation falls outside the 1-9999 year range");
+
+			return dto;
 		}
 
 		public static DateTimeOffset ParseExact (string input, string format, IFormatProvider formatProvider)
@@ -326,7 +334,7 @@ namespace System
 
 			DateTimeOffset result;
 			if (!ParseExact (input, formats, DateTimeFormatInfo.GetInstance (formatProvider), styles, out result))
-				throw new FormatException ();
+				throw new FormatException ("Invalid format string");
 
 			return result;
 		}
@@ -337,7 +345,7 @@ namespace System
 			foreach (string format in formats)
 			{
 				if (format == null || format == String.Empty)
-					throw new FormatException ("Invlid Format Sting");
+					throw new FormatException ("Invalid format string");
 
 				DateTimeOffset result;
 				if (DoParse (input, format, false, out result, dfi, styles)) {

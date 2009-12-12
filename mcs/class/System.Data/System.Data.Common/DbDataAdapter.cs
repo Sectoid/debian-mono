@@ -5,13 +5,14 @@
 //   Rodrigo Moya (rodrigo@ximian.com)
 //   Tim Coleman (tim@timcoleman.com)
 //   Sureshkumar T <tsureshkumar@novell.com>
+//   Veerapuram Varadhan  <vvaradhan@novell.com>
 //
 // (C) Ximian, Inc
 // Copyright (C) Tim Coleman, 2002-2003
 //
 
 //
-// Copyright (C) 2004 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004, 2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -106,29 +107,29 @@ namespace System.Data.Common
 		[Browsable (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public DbCommand SelectCommand {
-			get { return (DbCommand) ((IDbDataAdapter) this).SelectCommand; }
-			set { ((IDbDataAdapter) this).SelectCommand = value; }
+			get { return (DbCommand) _selectCommand; }
+			set { _selectCommand = value; }
 		}
 
 		[Browsable (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public DbCommand DeleteCommand {
-			get { return (DbCommand) ((IDbDataAdapter) this).DeleteCommand; }
-			set { ((IDbDataAdapter) this).DeleteCommand = value; }
+			get { return (DbCommand) _deleteCommand; }
+			set { _deleteCommand = value; }
 		}
 
 		[Browsable (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public DbCommand InsertCommand {
-			get { return (DbCommand) ((IDbDataAdapter) this).InsertCommand; }
-			set { ((IDbDataAdapter) this).InsertCommand = value; }
+			get { return (DbCommand)_insertCommand; }
+			set { _insertCommand = value; }
 		}
 
 		[Browsable (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public DbCommand UpdateCommand {
-			get { return (DbCommand) ((IDbDataAdapter) this).UpdateCommand; }
-			set { ((IDbDataAdapter) this).UpdateCommand = value; }
+			get { return (DbCommand)_updateCommand; }
+			set { _updateCommand = value; }
 		}
 
 		[DefaultValue (1)]
@@ -138,10 +139,6 @@ namespace System.Data.Common
 				if (value != 1)
 					throw new NotSupportedException ();
 			}
-		}
-#else
-		IDbCommand SelectCommand {
-			get { return ((IDbDataAdapter) this).SelectCommand; }
 		}
 #endif
 
@@ -477,8 +474,9 @@ namespace System.Data.Common
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
 		public override IDataParameter[] GetFillParameters ()
 		{
-			IDataParameter[] parameters = new IDataParameter [SelectCommand.Parameters.Count];
-			SelectCommand.Parameters.CopyTo (parameters, 0);
+			IDbCommand selectCmd = ((IDbDataAdapter) this).SelectCommand;
+			IDataParameter[] parameters = new IDataParameter [selectCmd.Parameters.Count];
+			selectCmd.Parameters.CopyTo (parameters, 0);
 			return parameters;
 		}
 		
@@ -654,28 +652,48 @@ namespace System.Data.Common
 				try {
 					if (command != null) {
 						DataColumnMappingCollection columnMappings = tableMapping.ColumnMappings;
+#if ONLY_1_1
 						IDataParameter nullCheckParam = null;
+#endif
 						foreach (IDataParameter parameter in command.Parameters) {
-							if ((parameter.Direction & ParameterDirection.Input) != 0) {
-								string dsColumnName = parameter.SourceColumn;
-								if (columnMappings.Contains(parameter.SourceColumn))
-									dsColumnName = columnMappings [parameter.SourceColumn].DataSetColumn;
-								if (dsColumnName == null || dsColumnName.Length <= 0) {
-									nullCheckParam = parameter;
-									continue;
-								}
+							if ((parameter.Direction & ParameterDirection.Input) == 0)
+								continue;
 
-								DataRowVersion rowVersion = parameter.SourceVersion;
-								// Parameter version is ignored for non-update commands
-								if (statementType == StatementType.Delete) 
-									rowVersion = DataRowVersion.Original;
+							DataRowVersion rowVersion = parameter.SourceVersion;
+							// Parameter version is ignored for non-update commands
+							if (statementType == StatementType.Delete)
+								rowVersion = DataRowVersion.Original;
 
+							string dsColumnName = parameter.SourceColumn;
+#if NET_2_0
+							if (columnMappings.Contains(dsColumnName)) {
+								dsColumnName = columnMappings [dsColumnName].DataSetColumn;
 								parameter.Value = row [dsColumnName, rowVersion];
-								if (nullCheckParam != null && (parameter.Value != null
-									&& parameter.Value != DBNull.Value)) {
+							} else {
+								parameter.Value = null;
+							}
+
+							DbParameter nullCheckParam = parameter as DbParameter;
+#else
+							if (columnMappings.Contains(dsColumnName))
+								dsColumnName = columnMappings [dsColumnName].DataSetColumn;
+							if (dsColumnName == null || dsColumnName.Length == 0) {
+								nullCheckParam = parameter;
+								continue;
+							}
+							parameter.Value = row [dsColumnName, rowVersion];
+#endif
+
+#if NET_2_0
+							if (nullCheckParam != null && nullCheckParam.SourceColumnNullMapping) {
+#else
+							if (nullCheckParam != null) {
+#endif
+								if (parameter.Value != null && parameter.Value != DBNull.Value)
 									nullCheckParam.Value = 0;
-									nullCheckParam = null;
-								}
+								else
+									nullCheckParam.Value = 1;
+								nullCheckParam = null;
 							}
 						}
 					}

@@ -1,3 +1,34 @@
+2009-10-29  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #550580	
+	* convert.cs: Don't eliminate explicit precission casts.
+
+2009-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #542959
+	* delegate.cs: Emit correct delegate instance variable when there
+	are static and non-static overloads.
+
+2009-08-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* statement.cs: avoid nullref when the return value of GetEnumerator()
+	does not contain any MoveNext() method.
+
+2009-07-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #522789
+	* expression.cs: Mutate invocation return type.
+
+2009-07-16  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #521671
+	* statement.cs: Fixed crash when checking missing type.
+
+2009-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #514096
+	* class.cs: Allow IntPtr/UIntPtr fields to be volatile.
+
 2009-05-21  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #504667

@@ -1,3 +1,46 @@
+2009-10-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: stop trying to decompress when we get Z_STREAM_END.
+	Patch by Ives Bastide. Fixes bug #549942.
+
+2009-09-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* zlib-helper.c: support reverse callbacks within MonoTouch.
+
+2009-08-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* deflate.c:
+	* gzio.c:
+	* deflate.h:
+	* zutil.h:
+	* crc32.c:
+	* trees.c:
+	* zconf.h:
+	* inffast.c:
+	* compress.c:
+	* zlib.h:
+	* inftrees.c:
+	* inflate.c:
+	* inflate.h:
+	* adler32.c:
+	* infback.c: updated to 1.2.3.3
+
+2009-07-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: use glib for malloc/free.
+
+2009-07-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: don't try to finish the z_stream if it has not been
+	used. This fixes all the tests after the latest change.
+
+2009-07-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Makefile.am: replaced zlib_macros.c with zlib-helper.c
+	* zlib_macros.c: Removed file.
+	* zlib-helper.c: new interface for DeflateStream. Flush() actually
+	does something.
+
 2009-03-20  Jonathan Pryor  <jpryor@novell.com>
 
 	* x-struct-str.c: It's possible for struct members to be NULL, so make 

@@ -1,7 +1,264 @@
+2009-12-01  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* metadata.c (inflated_method_in_image): Avoid calling
+	mono_method_signature () if the method does not already have a signature.
+
+	Backport of r125724.
+
+2009-11-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* boehm-gc.c (mono_gc_base_init): Applied patch from DKoushik K. Dutta (
+	koush@koushikdutta.com). Disable GC_no_dls on android.
+
+2009-11-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* debug-helpers.c: avoid g_strdup() in mono_type_full_name().
+
+2009-11-04  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* reflection.c (fieldref_encode_signature): If field_image is NULL then
+	the token is already properly encoded. Fixs 4.0 build.
+
+	Backport of r145396.
+
+2009-11-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* reflection.c (fieldref_encode_signature): Add new field_image parameter
+	to indicate which assembly to use when resolving a custom-mod.
+
+	Fixes handling of volatile fields used across assemblies as reported in #551513.
+
+	Backport of r145337.
+
+2009-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-perfcounters.c (predef_writable_update): Fix the 2.4 build.
+
+	* appdomain.c (mono_domain_try_unload): Applied patch from Romain Tartière.
+	Fix returning when WaitForSingleObjectEx returns WAIT_IO_COMPLETION.
+
+2009-10-31 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-perfcounters.c: add the "_Total" instance for CPU counters.
+	Until now, we only had the per-cpu(core) counters.
+
+2009-01-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (emit_marshal_ptr): Allow pointers to blittable structures.
+	Fixes #469217.
+
+2009-10-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	marshal.c: BeginInvoke cannot be called on multicast delegates with
+	multiple targets. Fixes bug #574426.
+	Backported from trunk.
+
+2009-10-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* appdomain.c: do not test the st_mode field for shadow-copies.
+	Fixes bug #545276.
+
+2009-10-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-config.c: ignore UTF-8 BOM and report parser errors.
+	Fixes bug #549108.
+
+2009-10-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* class.c: fix typo.
+
+2009-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_string_builder_to_utf16): Applied patch from
+	Hib Eris  <hib@hiberis.nl>. Return empty string for empty string builders.
+	Fixes #549173.
+
+2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* socket-io.[ch]: fix VS build.
+
+2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* icall-def.h:
+	* socket-io.[ch]: implemented SendFile.
+
+2009-10-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* class.c (mono_class_create_from_typedef): Initialize class->element_class
+	before the interfaces to avoid crashes later if class initialization fails.
+	Fixes #548417.
+
+2009-10-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* assembly.c (mono_assembly_load_reference): Fix leak when 'status'
+	code is known. (parse_public_key) Remove duplicate (unneeded) NULL
+	check since 'pubkey' can't be NULL at this stage
+	* icall.c (ves_icall_System_Array_FastCopy): Add comment about
+	the check. (ves_icall_Type_GetInterfaceMapData) Remove duplicate
+	initialization of 'iter'
+	[Backport r144403 + part of r141170 (assembly.c)]
+
+2009-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* image.c (mono_image_close): Atomically decrement the reference count and
+	remove the image from the hash tables, to prevent another thread from seeing a
+	dying MonoImage. Fixes #541194.
+
+2009-10-13  Martin Baulig  <martin@ximian.com>
+
+	* mono-debug-debugger.h (MonoDebuggerEvent): Renamed
+	`MONO_DEBUGGER_EVENT_TRAMPOLINE' into
+	`MONO_DEBUGGER_EVENT_OLD_TRAMPOLINE' and added a new
+	`MONO_DEBUGGER_EVENT_TRAMPOLINE'.
+
+	* mono-debug.h (MONO_DEBUGGER_MINOR_VERSION): Bump to 4.
+
+2009-07-09  Mark Probst  <mark.probst@gmail.com>
+
+	* class-internals.h, generic-sharing.c: New RGCTX info type for
+	getting a remoting invoke with check wrapper.
+
+	Backport of r137640.
+
+2009-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (emit_marshal_vtype): Emit marshalling of DateTime to OLE DATE.
+	Fixes #322934.
+
+2009-10-06  Mark Probst  <mark.probst@gmail.com>
+
+	* object.c (mono_method_return_message_restore): Handle the case
+	where the argument is an instance of a generic type.  Fixes
+	#544446.
+
+	Backport of r143506.
+
+2009-09-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (emit_marshal_object): Emit out marshalling of stringbuilders.
+	Fixes #543133.
+
+2009-02-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_marshal_get_runtime_invoke): Add support for byref
+	nullable arguments.
+
+	* object.c (mono_runtime_invoke_array): Ditto.
+
+2009-09-17 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r127430.
+
+	* appdomain.c:
+	* generic-sharing.c:
+	* object.c:
+	* reflection.c:  Adjust locking order to the new semantics where the loader lock
+	comes first.
+
+	Backport of r126758/126783.
+
+	* reflection.c (mono_reflection_lookup_dynamic_token): This function might be called without
+	the loader lock which is required to guard MonoImage:tokens.
+
+2009-09-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* domain.c:
+	* object.c:
+	* class-internals.h: renamed waithandle_class to
+	manualresetevent_class.
+	* marshal.c: propagate the exception if a remoting BeginInvoke call
+	fails.
+
+2009-09-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* threadpool.c: make the Sleep() alertable to prevent delays exiting
+	applications that take less than 2s to execute.
+	Bug #524984 fixed.
+
+2009-09-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (emit_marshal_array): Call conv.ovf.i on the array parameter
+	argument, since NEWARR expects a native int. Fixes #481559.
+
+2009-08-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (cominterop_get_ccw): Applied patch from tom hindle
+	<tom_hindle@sil.org>. Add locking around hash table accesses.
+
+2009-08-19  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-sharing.c: Replace the templates lock with the loader
+	lock because of very hard to resolve deadlock issues.
+
+	Backport of r139118.
+
+2009-08-12  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r139815.
+
+	* class.c: Add mono_class_get_field_from_name_full which does
+	the same as mono_class_get_field_from_name but does check field
+	signature as well.
+
+	* class-internals.h: Export mono_class_get_field_from_name_full as
+	part of the internal API.
+
+	* loader.c (field_from_memberref): Search fields by name and signature
+	as it's valid to have two fields with same name but different types.
+
+	Fixes #528055.
+
+2009-08-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c (thread_cleanup): Free serialized_ui_culture_info. Fixes
+	#527902.
+
+2009-07-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* icall.c (ves_icall_System_Reflection_FieldInfo_internal_from_handle_type): Fix the second argument, its a MonoType* not a MonoClass*.
+
+2009-06-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c: Store the thread start argument in a hash table instead of
+	registering it as a root, as libgc doesn't support unregistering roots
+	under windows, leading to 'too many root sets' errors when many threads
+	are created.
+
+	* gc.c (mono_gc_run_finalize): Avoid finalizing dynamic methods during
+	shutdown, they can still be referenced by the other dying objects.
+	Fixes #514506.
+
+2009-06-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* socket-io.c: DontLinger does not allow LingerOptions.
+
+2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* socket-io.c: DontLinger can take an int or a boolean too.
+
+2009-06-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* threads.c: fix missing colon when DEBUG is defined.
+
 2009-06-09  Zoltan Varga  <vargaz@gmail.com>
 
 	* metadata.c (free_inflated_method): Call 
 	mono_marshal_free_inflated_wrappers (), which was missed earlier.
+
+2009-06-15 Rodrigo Kumpera  <rkumpera@novell.com>
+	Backport of r136134.
+
+	* class.c (mono_class_from_typeref): If the enclosing type is not
+	found return null instead of crashing. Fixes #508487.
+
+2009-06-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (libmonoruntimeinclude_HEADERS): Remove duplicate
+	appdomain.h file.
+
+2009-06-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* reflection.c (add_custom_modifiers): Avoid reading invalid memory.
 
 2009-06-09 Rodrigo Kumpera  <rkumpera@novell.com>
 

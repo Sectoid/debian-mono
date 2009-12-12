@@ -303,14 +303,20 @@ get_generic_context_from_stack_frame (MonoJitInfo *ji, gpointer generic_info)
 		class = generic_info;
 	}
 
-	if (class->generic_class || class->generic_container)
-		context.class_inst = mini_class_get_context (class)->class_inst;
-
 	g_assert (!ji->method->klass->generic_container);
 	if (ji->method->klass->generic_class)
 		method_container_class = ji->method->klass->generic_class->container_class;
 	else
 		method_container_class = ji->method->klass;
+
+	/* class might refer to a subclass of ji->method's class */
+	while (class->generic_class && class->generic_class->container_class != method_container_class) {
+		class = class->parent;
+		g_assert (class);
+	}
+
+	if (class->generic_class || class->generic_container)
+		context.class_inst = mini_class_get_context (class)->class_inst;
 
 	if (class->generic_class)
 		g_assert (mono_class_has_parent_and_ignore_generics (class->generic_class->container_class, method_container_class));
@@ -325,7 +331,7 @@ get_method_from_stack_frame (MonoJitInfo *ji, gpointer generic_info)
 {
 	MonoGenericContext context;
 	MonoMethod *method;
-
+	
 	if (!ji->has_generic_jit_info || !mono_jit_info_get_generic_jit_info (ji)->has_this)
 		return ji->method;
 	context = get_generic_context_from_stack_frame (ji, generic_info);
@@ -841,6 +847,34 @@ get_exception_catch_class (MonoJitExceptionInfo *ei, MonoJitInfo *ji, MonoContex
 	return catch_class;
 }
 
+/*
+ * mini_jit_info_table_find:
+ *
+ *   Same as mono_jit_info_table_find, but search all the domains of the current thread
+ * if ADDR is not found in DOMAIN.
+ */
+MonoJitInfo*
+mini_jit_info_table_find (MonoDomain *domain, char *addr)
+{
+	MonoJitInfo *ji;
+	MonoThread *t = mono_thread_current ();
+	GSList *l;
+
+	ji = mono_jit_info_table_find (domain, addr);
+	if (ji)
+		return ji;
+
+	for (l = t->appdomain_refs; l; l = l->next) {
+		if (l->data != domain) {
+			ji = mono_jit_info_table_find ((MonoDomain*)l->data, addr);
+			if (ji)
+				return ji;
+		}
+	}
+
+	return NULL;
+}
+
 /**
  * mono_handle_exception_internal:
  * @ctx: saved processor state
@@ -1078,6 +1112,7 @@ mono_handle_exception_internal (MonoContext *ctx, gpointer obj, gpointer origina
 							mono_profiler_exception_clause_handler (ji->method, ei->flags, i);
 							mono_debugger_call_exception_handler (ei->handler_start, MONO_CONTEXT_GET_SP (ctx), obj);
 							mono_perfcounters->exceptions_finallys++;
+							*(mono_get_lmf_addr ()) = lmf;
 							call_filter (ctx, ei->handler_start);
 						}
 						

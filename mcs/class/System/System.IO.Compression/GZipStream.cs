@@ -50,11 +50,9 @@ namespace System.IO.Compression {
 
 		protected override void Dispose (bool disposing)
 		{
-			try {
-				base.Dispose (disposing);
-			} finally {
+			if (disposing)
 				deflateStream.Dispose ();
-			}
+			base.Dispose (disposing);
 		}
 
 		public override int Read (byte[] dest, int dest_offset, int count)

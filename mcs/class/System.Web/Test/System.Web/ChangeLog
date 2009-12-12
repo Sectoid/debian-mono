@@ -1,3 +1,19 @@
+2009-11-16  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpContext.cs: added some tests for RewritePath
+
+2009-11-09  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpCookieTest.cs: added test for bug #553063
+
+	* HttpCookieCollectionTest.cs: added test for bug #553150
+
+2009-09-07  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlSiteMapProviderTest.cs: added
+
+	* StaticSiteMapProviderTest.cs: added test for FindSiteMapNode
+
 2009-05-28  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpUtilityTest.cs: added test for bug #507666

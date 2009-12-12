@@ -44,14 +44,16 @@ namespace System.CodeDom
 	public class CodeNamespaceImportCollection
 		: IList, ICollection, IEnumerable
 	{
-		private ArrayList namespaceImports;
+		private Hashtable keys;
+		private ArrayList data;
 
 		//
 		// Constructors
 		//
 		public CodeNamespaceImportCollection ()
 		{
-			namespaceImports = new ArrayList();
+			data = new ArrayList ();
+			keys = new Hashtable (CaseInsensitiveHashCodeProvider.Default, CaseInsensitiveComparer.Default);
 		}
 
 		//
@@ -59,22 +61,26 @@ namespace System.CodeDom
 		//
 		int ICollection.Count {
 			get {
-				return namespaceImports.Count;
+				return data.Count;
 			}
 		}
 		
 		public int Count {
 			get {
-				return namespaceImports.Count;
+				return data.Count;
 			}
 		}
 
 		public CodeNamespaceImport this [int index] {
 			get {
-				return (CodeNamespaceImport)namespaceImports[index];
+				return (CodeNamespaceImport)data[index];
 			}
 			set {
-				namespaceImports[index] = value;
+				CodeNamespaceImport oldImport = (CodeNamespaceImport) data [index];
+				CodeNamespaceImport newImport = (CodeNamespaceImport) value;
+				keys.Remove (oldImport.Namespace);
+				data[index] = value;
+				keys [newImport.Namespace] = newImport;
 			}
 		}
 
@@ -87,16 +93,10 @@ namespace System.CodeDom
 				throw new NullReferenceException ();
 			}
 
-			// perform case-insensitive check to see if the namespace of the 
-			// entry to add is not already in the collection
-			foreach (CodeNamespaceImport import in this) {
-				if (string.Compare(import.Namespace, value.Namespace, true) == 0) {
-					// skip duplicate namespaces
-					return;
-				}
+			if (!keys.ContainsKey (value.Namespace)) {
+				keys [value.Namespace] = value;
+				data.Add (value);
 			}
-
-			namespaceImports.Add (value);
 		}
 
 		public void AddRange (CodeNamespaceImport [] value)
@@ -112,12 +112,13 @@ namespace System.CodeDom
 
 		void IList.Clear ()
 		{
-			namespaceImports.Clear ();
+			Clear ();
 		}
 		
 		public void Clear ()
 		{
-			namespaceImports.Clear ();
+			data.Clear ();
+			keys.Clear ();
 		}
 
 		// IList implementation
@@ -135,41 +136,60 @@ namespace System.CodeDom
 
 		object IList.this[int index] {
 			get {
-				return namespaceImports[index];
+				return data[index];
 			}
 			set {
-				namespaceImports[index] = value;
+				this [index] = (CodeNamespaceImport) value;
 			}
 		}
 
 		int IList.Add( object value )
 		{
-			return namespaceImports.Add( value );
+			Add ((CodeNamespaceImport) value);
+			return data.Count - 1;
 		}
 		
 		bool IList.Contains( object value )
 		{
-			return namespaceImports.Contains( value );
+			return data.Contains( value );
 		}
 		
 		int IList.IndexOf( object value )
 		{
-			return namespaceImports.IndexOf( value );
+			return data.IndexOf( value );
 		}
 
 		void IList.Insert( int index, object value )
 		{
-			namespaceImports.Insert( index, value );
+			data.Insert( index, value );
+			CodeNamespaceImport import = (CodeNamespaceImport) value;
+			keys [import.Namespace] = import;
 		}
 
 		void IList.Remove( object value )
 		{
-			namespaceImports.Remove( value );
+			string ns = ((CodeNamespaceImport)value).Namespace;
+			data.Remove( value );
+			foreach (CodeNamespaceImport import in data) {
+				if (import.Namespace == ns) {
+					keys [ns] = import;
+					return;
+				}
+			}
+			keys.Remove (ns);
 		}
 		
 		void IList.RemoveAt( int index )
 		{
-			namespaceImports.RemoveAt( index );
+			string ns = this [index].Namespace;
+			data.RemoveAt( index );
+			foreach (CodeNamespaceImport import in data) {
+				if (import.Namespace == ns) {
+					keys [ns] = import;
+					return;
+				}
+			}
+			keys.Remove (ns);
 		}
 
 		// ICollection implementation
@@ -181,25 +201,25 @@ namespace System.CodeDom
 
 		bool ICollection.IsSynchronized {
 			get {
-				return namespaceImports.IsSynchronized;
+				return data.IsSynchronized;
 			}
 		}
 
 		void ICollection.CopyTo( Array array, int index )
 		{
-			namespaceImports.CopyTo( array, index );
+			data.CopyTo( array, index );
 		}
 
 		// IEnumerable implementation
 		IEnumerator IEnumerable.GetEnumerator ()
 		{
-			return namespaceImports.GetEnumerator();
+			return data.GetEnumerator();
 		}
 		
 		// IEnumerable implementation
 		public IEnumerator GetEnumerator ()
 		{
-			return namespaceImports.GetEnumerator();
+			return data.GetEnumerator();
 		}
 	}
 }

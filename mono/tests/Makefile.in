@@ -38,7 +38,10 @@ subdir = mono/tests
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/tests-config.in ChangeLog
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/libtool.m4 \
+	$(top_srcdir)/ltoptions.m4 $(top_srcdir)/ltsugar.m4 \
+	$(top_srcdir)/ltversion.m4 $(top_srcdir)/lt~obsolete.m4 \
+	$(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
 	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -104,10 +107,6 @@ CFLAGS = @CFLAGS@
 CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CXX = @CXX@
-CXXCPP = @CXXCPP@
-CXXDEPMODE = @CXXDEPMODE@
-CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -117,14 +116,13 @@ DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DTRACE = @DTRACE@
 DTRACEFLAGS = @DTRACEFLAGS@
-ECHO = @ECHO@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-F77 = @F77@
-FFLAGS = @FFLAGS@
+FGREP = @FGREP@
 GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
@@ -142,6 +140,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTL = @INTL@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBC = @LIBC@
 LIBGC_CFLAGS = @LIBGC_CFLAGS@
@@ -150,6 +149,7 @@ LIBGC_STATIC_LIBS = @LIBGC_STATIC_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTCOMPILE = @LTCOMPILE@
 LTCXXCOMPILE = @LTCXXCOMPILE@
@@ -161,11 +161,14 @@ MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
+NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPROFILE_CFLAGS = @OPROFILE_CFLAGS@
 OPROFILE_LIBS = @OPROFILE_LIBS@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -194,8 +197,7 @@ abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
-ac_ct_CXX = @ac_ct_CXX@
-ac_ct_F77 = @ac_ct_F77@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -235,6 +237,7 @@ libmono_ldflags = @libmono_ldflags@
 libsuffix = @libsuffix@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mcs_topdir = @mcs_topdir@
 mcs_topdir_from_srcdir = @mcs_topdir_from_srcdir@
@@ -258,6 +261,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = cas assemblyresolve
@@ -536,6 +540,7 @@ BASE_TEST_CS_SRC = \
 	generic-array-iface-set.2.cs	\
 	generic-typedef.2.cs	\
 	generic-marshalbyref.2.cs	\
+	generic-xdomain.2.cs	\
 	bug-431413.2.cs	\
 	bug-459285.2.cs	\
 	generic-virtual-invoke.2.cs	\
@@ -550,6 +555,7 @@ BASE_TEST_CS_SRC = \
 	bug-479763.2.cs	\
 	bug-80392.2.cs		\
 	dynamic-method-access.2.cs	\
+	dynamic-method-finalize.2.cs	\
 	bug-82194.2.cs	\
 	anonarray.2.cs	\
 	ienumerator-interfaces.2.cs	\
@@ -593,7 +599,8 @@ BASE_TEST_CS_SRC = \
 	bug-467456.cs	\
 	appdomain-unload-callback.cs	\
 	bug-508538.cs	\
-	bug-472692.2.cs
+	bug-472692.2.cs	\
+	bug-544446.cs
 
 @AMD64_FALSE@@X86_FALSE@TEST_CS_SRC = $(BASE_TEST_CS_SRC) \
 @AMD64_FALSE@@X86_FALSE@	$(am__append_1)
@@ -1335,7 +1342,7 @@ test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
 		generic-marshalbyref.2.exe bug-459285.2.exe bug-461198.2.exe	\
 		generic-sealed-virtual.2.exe generic-stack-traces.2.exe		\
 		generic-stack-traces2.2.exe bug-472600.2.exe bug-473482.2.exe	\
-		bug-473999.2.exe bug-479763.2.exe
+		bug-473999.2.exe bug-479763.2.exe generic-xdomain.2.exe
 	@for fn in $+ ; do	\
 		echo "Testing $$fn ...";	\
 		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared                $$fn > $$fn.stdout || exit 1;	\

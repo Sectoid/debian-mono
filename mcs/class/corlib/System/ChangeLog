@@ -1,3 +1,77 @@
+2009-10-28  Lluis Sanchez Gual  <lluis@novell.com>
+
+	* MarshalByRefObject.cs: In InitializeLifetimeService, if a lease
+	exists for the object return it, instead of always creating
+	a new one. Fixes bug #544357.
+
+2009-10-06  Jonathan Chambers  <joncham@gmail.com>
+
+	* String.cs (Contains): Use CompareOptions.Ordinal. Fixes bug
+	#535425.
+
+2009-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* Type.cs: Initialize the Missing field.
+
+2009-09-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Console.cs: mark methods/properties that only work on windows.
+	Fixes bug #540593.
+
+2009-09-04  Miguel de Icaza  <miguel@novell.com>
+
+	* TermInfoDriver.cs: Handle a few more key combinations.
+
+2009-07-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Array.cs: empty arrays just return -1 in LastIndexOf().
+
+2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* DateTime.cs: if the DateTimeOffset is out of bounds, let Parse
+	report the error. Fix stupid harmless typo.
+	* DateTimeOffset.cs: report error if the UTC date/time is out of
+	bounds.
+
+2009-06-25  Miguel de Icaza  <miguel@novell.com>
+
+	* Array.cs: IList.this needs to throw IndexOutOfRangeException
+	when the index is invalid, not ArgumentOutOfRangeException.
+
+	* Int32.cs: Do not crash if the FormatProvider returns a null
+	value on the call to GetFormat (Type).
+
+	Validate the NumberStyles, passes Int/Int32Parse2.exe
+
+	Fix regression introduced in 2005, we need to throw
+	ArgumentNullException on Parse.
+
+2009-06-25  Miguel de Icaza  <miguel@novell.com>
+
+	* Int32.cs: Fix regression introduced in 2005, we need to throw
+	ArgumentNullException on Parse.
+	
+2009-06-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* DateTime.cs: ignore MinValue to avoid DateTimeOffset ctor throwing
+	when adjusting for TZ.
+
+2009-06-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* DateTime.cs: quick fix for the 1.x build.
+
+2009-06-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AppDomainSetup.cs: update attribute.
+	* TermInfoDriver.cs: ensure we are initialized in CheckWindowDimensions().
+	* DateTimeOffset.cs: Implement Parse().
+	* DateTime.cs: add 'zzz' to the list of default time formats. Return a
+	DateTimeOffset from _DoParse. Fixed the offset minutes when the
+	timezone is specified as a negative one.
+	* Console.cs: updates for MoveBufferArea().
+	* AppDomainManager.cs: implement EntryAssembly.
+	* AppDomain.cs: update attribute.
+
 2009-05-27  Zoltan Varga  <vargaz@gmail.com>
 
 	* AppDomain.cs (DoAssemblyResolve): Fix recursion detection. Fixes #507003.

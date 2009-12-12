@@ -298,6 +298,20 @@ public class ArrayTest : Assertion
 		AssertEquals("#D07", d1[0], d2[0]);
 	}
 
+	[Test] public void TestIndexer ()
+	{
+		int [] a = new int [10];
+		IList b = a;
+		try {
+			object c = b [-1];
+			Fail ("IList.this [-1] should throw");
+		} catch (IndexOutOfRangeException) {
+			// Good
+		} catch (Exception){
+			Fail ("Should have thrown an IndexOutOfRangeException");
+		}
+	}
+		
 	[Test]
 	public void TestCopy() {
 		{
@@ -1559,6 +1573,35 @@ public class ArrayTest : Assertion
 		// legal - no exception
 		byte[] array = new byte [16];
 		Array.LastIndexOf (array, this, 1, Int32.MaxValue);
+	}
+
+	[Test]
+	public void LastIndexOf_0LengthArray ()
+	{
+		Array array = Array.CreateInstance (typeof (char), 0);
+		int idx = Array.LastIndexOf (array, (object) null, -1, 0);
+		NUnit.Framework.Assert.IsTrue (idx == -1, "#01");
+		idx = Array.LastIndexOf (array, (object) null, -1, 10);
+		NUnit.Framework.Assert.IsTrue (idx == -1, "#02");
+		idx = Array.LastIndexOf (array, (object) null, -100, 10);
+		NUnit.Framework.Assert.IsTrue (idx == -1, "#02");
+
+		array = Array.CreateInstance (typeof (char), 1);
+		try {
+			Array.LastIndexOf (array, (object) null, -1, 0);
+			NUnit.Framework.Assert.Fail ("#04");
+		} catch (ArgumentOutOfRangeException e) {
+		}
+		try {
+			Array.LastIndexOf (array, (object) null, -1, 10);
+			NUnit.Framework.Assert.Fail ("#05");
+		} catch (ArgumentOutOfRangeException e) {
+		}
+		try {
+			Array.LastIndexOf (array, (object) null, -100, 10);
+			NUnit.Framework.Assert.Fail ("#06");
+		} catch (ArgumentOutOfRangeException e) {
+		}
 	}
 
 	[Test]

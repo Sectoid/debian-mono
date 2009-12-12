@@ -1,3 +1,225 @@
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* ResolveAssemblyReference.cs: Remove unnecessary tab in the warning
+	messages.
+
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* MSBuild.cs (Execute): Handle build errors.
+
+2009-10-09  Ankit Jain  <jankit@novell.com>
+
+	* Exec.cs (AddCommandLineCommands): Add '/q' for cmd.exe, to
+	turn 'echo off'. And make sure the script file on windows, has
+	a '.bat' extension, otherwise cmd.exe opens it in a text editor.
+
+2009-10-09  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #545703.
+	* Exec.cs (Command): On unix, change CRLF to CR.
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* ResolveAssemblyReference.cs: Don't resolve any dependencies for
+	assemblies resolved from {PkgConfig}. Honor parent's CopyLocal for
+	dependencies.
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* MSBuild.cs (Execute): Don't share target output items,
+	always create a copy.
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* RemoveDuplicates.cs: Use item's ItemSpec as the key.
+
+2009-10-07  Ankit Jain  <jankit@novell.com>
+
+	* ManagedCompiler.cs (HandleTaskExecutionErrors): Log error if
+	required.
+
+2009-10-06  Ankit Jain  <jankit@novell.com>
+
+	* Exec.cs (ExecuteTool): Use DeleteTempFile instead of File.Delete
+	(HandleTaskExecutionErrors): Log error, if required.
+	* MSBuild.cs: Don't log error.
+	* Warning.cs: Don't log if @text is empty.
+
+2009-09-29  Ankit Jain  <jankit@novell.com>
+
+	* Exec.cs: Write the commands, which can be multiline,
+	to a temporary file, and execute that with "cmd.exe /c"
+	on windows and "sh" on non-windows.
+	(LogToolCommand): Override, and emit the commands instead
+	of the actual args passed to the shell.
+
+2009-09-28  Ankit Jain  <jankit@novell.com>
+
+	* WriteLinesToFiles.cs (Execute): Handle empty list of
+	lines.
+
+2009-09-25  Ankit Jain  <jankit@novell.com>
+
+	* FindAppConfigFile.cs: New.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* ReadLinesFromFile.cs (Execute): Don't do anything, if
+	file is non-existant.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* ToolTaskExtension.cs (HasLoggedErrors): Override.
+
+2009-09-23  Ankit Jain  <jankit@novell.com>
+
+	* MSBuild.cs (BuildInParallel): Add missing property.
+
+2009-09-10  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs: Move the SearchLogger to be a list of
+	strings, so that it can be emitted with correct indentation.
+	(SearchLogger): Remove.
+	(LogSearchMessage): New.
+	(LogSearchLoggerMessages): New.
+	* ResolveAssemblyReference.cs: Track api changes.
+
+2009-09-01  Ankit Jain  <jankit@novell.com>
+
+	* ResolveAssemblyReference.cs (ResolveReference): targetFrameworkDirectories
+	can be null.
+
+2009-08-28  Ankit Jain  <jankit@novell.com>
+
+	* AssignCulture.cs, AssignTargetPath.cs,
+	CallTarget.cs, CombinePath.cs, Copy.cs,
+	CreateItem.cs, CreateManifestResourceName.cs,
+	Delete.cs, Error.cs, FindUnderPath.cs,
+	GenerateResource.cs, MSBuild.cs, MakeDir.cs,
+	Message.cs, RemoveDir.cs, RemoveDuplicates.cs,
+	ResolveAssemblyReference.cs, Touch.cs,
+	WriteLinesToFiles.cs: Add null checks and array
+	length checks.
+
+2009-08-24  Ankit Jain  <jankit@novell.com>
+
+	* LibraryPcFileCache.cs: New. From monodevelop.
+	* PcFileCache.cs: Update from monodevelop, see r140528.
+	* AssemblyResolver.cs: Track api changes.
+
+2009-08-24  Ankit Jain  <jankit@novell.com>
+
+	* CreateManifestResourceName.cs (GetResourceIdFromFileName): Spaces
+	in folder names should be converted to '_'.
+
+2009-08-18  Ankit Jain  <jankit@novell.com>
+
+	* TaskLoggingHelperExtensios.cs (.ctor): Mark internal.
+
+2009-08-18  Ankit Jain  <jankit@novell.com>
+
+	* PcFileCache.cs (PackageInfo): Mark internal.
+
+2009-08-18  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs (FindInTargetFramework): Perform case insensitive
+	assembly name comparison. Use the new AssemblyNamesCompatible api.
+	(AssemblyNamesCompatible): Add new overload with a 'ignoreCase' param.
+
+2009-08-17  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs (TargetFrameworkAssemblies..ctor): Make assembly
+	name lookups for target framework assemblies, case insensitive. Helps
+	with cases like "System.configuration", which vs.net is known to emit.
+
+2009-08-14  Ankit Jain  <jankit@novell.com>
+
+	* PcFileCache.cs: New. From monodevelop.
+	* AssemblyResolver.cs (ResolvePkgConfigReference): New. Use PcFileCache
+	to resolve assembly references.
+	(AssemblyNamesCompatible): If SpecificVersion is false, then compare
+	only simple names.
+	(GetResolvedReference): Rename default_value to default_copy_local_value.
+	(Cache): New.
+	(PcFileCacheContext): New.
+	(SearchPath): Add 'PkgConfig' to the enum.
+	* ResolveAssemblyReference.cs: Add support for '{PkgConfig}'. Update
+	messages.
+	* ResolvedReference.cs (FoundInSearchPathToString): Create from ..
+	(FoundInSearchPathAsString): .. this. Change this to a property to
+	allow custom "found in .. " messages.
+
+2009-07-31  Ankit Jain  <jankit@novell.com>
+
+	* MSBuild.cs (Execute): Log error if the file doesn't exist.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* ResolvedReference.cs (.ctor): Set 'OriginalItemSpec' and 'ResolvedFrom',
+	required for IDE integration.
+	* AssemblyResolver.cs (GetResolvedReference): All the original metadata
+	should be retained. Track api changes.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* ReadLinesFromFile.cs (Execute): Log a warning instead of an error
+	if unable to read from the file. Fix a null check. Always return
+	true.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* Delete.cs (Execute): Log a message when deleting a file.
+
+2009-07-28  Ankit Jain  <jankit@novell.com>
+
+	* Exec.cs (AddCommandLineCommands): First word from @command is treated
+	as exec name, and rest as arguments. Extract arguments here.
+	(ExecuteTool): Don't ignore params.
+	(GenerateFullPathToTool): Extract first word as tool name.
+	(HandleTaskExecutionErrors): Honor IgnoreExitCode property.
+	(LogEventsFromTextOutput): Log as messages.
+	* ManagedCompiler.cs (HandleTaskExecutionErrors): Implement.
+
+2009-07-23  Ankit Jain  <jankit@novell.com>
+
+	* AssignProjectConfiguration.cs (Execute): Implement.
+
+2009-07-22  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #517974.
+	* ResolvedReference.cs (AssemblyName): New.
+	(IsPrimary): New. Primary (eg. specified in the project file) or
+	dependent reference.
+	(FoundInSearchPathAsString): New.
+	* AssemblyResolver.cs (GetResolvedReference): Add a 'assembly name'
+	param for the new field in ResolvedReference.
+	(AssemblyNamesCompatible): Fix the check for public key token.
+	Track api changes.
+
+	* ResolveAssemblyReference.cs: Keep track of resolved assemblies,
+	prevent duplicate references and other files.
+	Process dependencies after resolving all the primary references.
+	Search for dependencies in parent assembly's dir first and then
+	the specified search paths.
+	Detect assembly version conflicts and try to resolve.
+	Improve logged messages.
+	(PrimaryReference): New.
+	(ResolveAssemblyReferenceHelper.AddUniqueFile): New extension method.
+
+2009-07-16  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #519922.
+
+	* AssemblyResolver.cs (FindInDirectory): Try the @reference as a
+	filename as it is, or with different @file_extensions.
+	If @reference is a assembly name, then look for *.@file_extensions
+	for target assembly.
+	(GetAssemblyNameFromFile): Log FileNotFoundException and BadImageFormatException
+	separately, instead of a single unclear message.
+
+	Change all uses of Assembly.GetAssemblyName with GetAssemblyNameFromFile
+	which does the required error checking and logging.
+
 2009-06-12  Ankit Jain  <jankit@novell.com>
 
 	* Utilities.cs: New.

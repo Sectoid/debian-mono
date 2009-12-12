@@ -58,7 +58,10 @@ namespace MonoTests.System.Web.Compilation {
 			WebTest.CopyResource (GetType (), "UnquotedAngleBrackets.aspx", "UnquotedAngleBrackets.aspx");
 			WebTest.CopyResource (GetType (), "FullTagsInText.aspx", "FullTagsInText.aspx");
 			WebTest.CopyResource (GetType (), "TagsExpressionsAndCommentsInText.aspx", "TagsExpressionsAndCommentsInText.aspx");
+			WebTest.CopyResource (GetType (), "NewlineInCodeExpression.aspx", "NewlineInCodeExpression.aspx");
+			WebTest.CopyResource (GetType (), "TagsNestedInClientTag.aspx", "TagsNestedInClientTag.aspx");
 #if NET_2_0
+			WebTest.CopyResource (GetType (), "DuplicateControlsInClientComment.aspx", "DuplicateControlsInClientComment.aspx");
 			WebTest.CopyResource (GetType (), "InvalidPropertyBind1.aspx", "InvalidPropertyBind1.aspx");
 			WebTest.CopyResource (GetType (), "InvalidPropertyBind2.aspx", "InvalidPropertyBind2.aspx");
 			WebTest.CopyResource (GetType (), "InvalidPropertyBind3.aspx", "InvalidPropertyBind3.aspx");
@@ -195,13 +198,45 @@ namespace MonoTests.System.Web.Compilation {
 			string originalHtml = @"<script type=""text/javascript"">alert (escape(""reporting/location?report=ViewsByDate&minDate=minDate&maxDate=maxDate""));</script>";
 			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
 		}
+
+		[Test (Description="Bug #526449")]
+		public void NewlineInCodeExpression ()
+		{
+			string pageHtml = new WebTest ("NewlineInCodeExpression.aspx").Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+			string originalHtml = "<a href=\"test\">bla</a>";
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
+		}
+
+		[Test (Description="Bug #524358")]
+		[ExpectedException ("System.Web.Compilation.ParseException")]
+		public void DuplicateControlsInClientComment ()
+		{
+			// Just test if it throws an exception
+			new WebTest ("DuplicateControlsInClientComment.aspx").Run ();
+		}
 #endif
 
+		[Test (Description="Bug #323719")]
+		public void TagsNestedInClientTag ()
+		{
+			string pageHtml = new WebTest ("TagsNestedInClientTag.aspx").Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+			string originalHtml = @"<script language=""javascript"" src=""/js/test.js"" type=""text/javascript""></script>
+<sometag language=""javascript"" src=""/js/test.js"" type=""text/javascript""></sometag>";
+
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
+		}
+		
 		[Test (Description="Bug #517656")]
 		public void ServerControlInClientSideComment ()
 		{
-			// We just test if it doesn't throw an exception
-			new WebTest ("ServerControlInClientSideComment.aspx").Run ();
+			string pageHtml = new WebTest ("ServerControlInClientSideComment.aspx").Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+			string originalHtml = @"<!-- comment start
+  <input id=""testBox"" type=""checkbox"" name=""testBox"" />
+comment end -->";
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
 		}
 
 		[Test]

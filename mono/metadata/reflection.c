@@ -1613,11 +1613,12 @@ type_get_qualified_name (MonoType *type, MonoAssembly *ass) {
 	return mono_type_get_name_full (type, MONO_TYPE_NAME_FORMAT_ASSEMBLY_QUALIFIED);
 }
 
+/*field_image is the image to which the eventual custom mods have been encoded against*/
 static guint32
-fieldref_encode_signature (MonoDynamicImage *assembly, MonoType *type)
+fieldref_encode_signature (MonoDynamicImage *assembly, MonoImage *field_image, MonoType *type)
 {
 	SigBuffer buf;
-	guint32 idx, i;
+	guint32 idx, i, token;
 
 	if (!assembly->save)
 		return 0;
@@ -1626,14 +1627,22 @@ fieldref_encode_signature (MonoDynamicImage *assembly, MonoType *type)
 	
 	sigbuffer_add_value (&buf, 0x06);
 	/* encode custom attributes before the type */
-	/* FIXME: This should probably go in encode_type () */
 	if (type->num_mods) {
 		for (i = 0; i < type->num_mods; ++i) {
+			if (field_image) {
+				MonoClass *class = mono_class_get (field_image, type->modifiers [i].token);
+				g_assert (class);
+				token = mono_image_typedef_or_ref (assembly, &class->byval_arg);
+			} else {
+				token = type->modifiers [i].token;
+			}
+
 			if (type->modifiers [i].required)
 				sigbuffer_add_byte (&buf, MONO_TYPE_CMOD_REQD);
 			else
 				sigbuffer_add_byte (&buf, MONO_TYPE_CMOD_OPT);
-			sigbuffer_add_value (&buf, type->modifiers [i].token);
+
+			sigbuffer_add_value (&buf, token);
 		}
 	}
 	encode_type (assembly, type, &buf);
@@ -2612,7 +2621,7 @@ mono_image_get_fieldref_token (MonoDynamicImage *assembly, MonoReflectionField *
 	}
 	token = mono_image_get_memberref_token (assembly, &f->field->parent->byval_arg, 
 											mono_field_get_name (f->field),  
-											fieldref_encode_signature (assembly, type));
+											fieldref_encode_signature (assembly, field->parent->image, type));
 	g_hash_table_insert (assembly->handleref, f, GUINT_TO_POINTER(token));
 	return token;
 }
@@ -2902,7 +2911,7 @@ add_custom_modifiers (MonoDynamicImage *assembly, MonoType *type, MonoArray *mod
 
 	len = sizeof (MonoType) + ((gint32)count - MONO_ZERO_LEN_ARRAY) * sizeof (MonoCustomMod);
 	t = g_malloc (len);
-	memcpy (t, type, len);
+	memcpy (t, type, sizeof (MonoType));
 
 	t->num_mods = count;
 	pos = 0;
@@ -2947,10 +2956,10 @@ mono_image_get_generic_field_token (MonoDynamicImage *assembly, MonoReflectionFi
 	/* FIXME: We should do this in one place when a fieldbuilder is created */
 	if (fb->modreq || fb->modopt) {
 		custom = add_custom_modifiers (assembly, fb->type->type, fb->modreq, fb->modopt);
-		sig = fieldref_encode_signature (assembly, custom);
+		sig = fieldref_encode_signature (assembly, NULL, custom);
 		g_free (custom);
 	} else {
-		sig = fieldref_encode_signature (assembly, fb->type->type);
+		sig = fieldref_encode_signature (assembly, NULL, fb->type->type);
 	}
 
 	parent = create_generic_typespec (assembly, (MonoReflectionTypeBuilder *) fb->typeb);
@@ -6118,12 +6127,14 @@ mono_type_get_object (MonoDomain *domain, MonoType *type)
 			return vtable->type;
 	}
 
+	mono_loader_lock (); /*FIXME mono_class_init and mono_class_vtable acquire it*/
 	mono_domain_lock (domain);
 	if (!domain->type_hash)
 		domain->type_hash = mono_g_hash_table_new_type ((GHashFunc)mymono_metadata_type_hash, 
 				(GCompareFunc)mymono_metadata_type_equal, MONO_HASH_VALUE_GC);
 	if ((res = mono_g_hash_table_lookup (domain->type_hash, type))) {
 		mono_domain_unlock (domain);
+		mono_loader_unlock ();
 		return res;
 	}
 	/* Create a MonoGenericClass object for instantiations of not finished TypeBuilders */
@@ -6131,11 +6142,13 @@ mono_type_get_object (MonoDomain *domain, MonoType *type)
 		res = (MonoReflectionType *)mono_generic_class_get_object (domain, type);
 		mono_g_hash_table_insert (domain->type_hash, type, res);
 		mono_domain_unlock (domain);
+		mono_loader_unlock ();
 		return res;
 	}
 
 	if (!verify_safe_for_managed_space (type)) {
 		mono_domain_unlock (domain);
+		mono_loader_unlock ();
 		mono_raise_exception (mono_get_exception_invalid_operation ("This type cannot be propagated to managed space"));
 	}
 
@@ -6144,6 +6157,7 @@ mono_type_get_object (MonoDomain *domain, MonoType *type)
 		/* should this be considered an error condition? */
 		if (!type->byref) {
 			mono_domain_unlock (domain);
+			mono_loader_unlock ();
 			return klass->reflection_info;
 		}
 	}
@@ -6161,6 +6175,7 @@ mono_type_get_object (MonoDomain *domain, MonoType *type)
 		MONO_OBJECT_SETREF (domain, typeof_void, res);
 
 	mono_domain_unlock (domain);
+	mono_loader_unlock ();
 	return res;
 }
 
@@ -10202,11 +10217,11 @@ mono_reflection_create_runtime_class (MonoReflectionTypeBuilder *tb)
 	 * we need to lock the domain because the lock will be taken inside
 	 * So, we need to keep the locking order correct.
 	 */
-	mono_domain_lock (domain);
 	mono_loader_lock ();
+	mono_domain_lock (domain);
 	if (klass->wastypebuilder) {
-		mono_loader_unlock ();
 		mono_domain_unlock (domain);
+		mono_loader_unlock ();
 		return mono_type_get_object (mono_object_domain (tb), &klass->byval_arg);
 	}
 	/*
@@ -10275,8 +10290,8 @@ mono_reflection_create_runtime_class (MonoReflectionTypeBuilder *tb)
 	if (domain->type_hash && klass->generic_container)
 		mono_g_hash_table_foreach_remove (domain->type_hash, remove_instantiations_of, klass);
 
-	mono_loader_unlock ();
 	mono_domain_unlock (domain);
+	mono_loader_unlock ();
 
 	if (klass->enumtype && !mono_class_is_valid_enum (klass)) {
 		mono_class_set_failure (klass, MONO_EXCEPTION_TYPE_LOAD, NULL);
@@ -10496,6 +10511,8 @@ mono_reflection_is_valid_dynamic_token (MonoDynamicImage *image, guint32 token)
  * runtime structure. If HANDLE_CLASS is not NULL, it is set to the class required by 
  * mono_ldtoken. If valid_token is TRUE, assert if it is not found in the token->object
  * mapping table.
+ * 
+ * LOCKING: Take the loader lock
  */
 gpointer
 mono_reflection_lookup_dynamic_token (MonoImage *image, guint32 token, gboolean valid_token, MonoClass **handle_class, MonoGenericContext *context)
@@ -10504,7 +10521,10 @@ mono_reflection_lookup_dynamic_token (MonoImage *image, guint32 token, gboolean 
 	MonoObject *obj;
 	MonoClass *klass;
 
+	mono_loader_lock ();
 	obj = mono_g_hash_table_lookup (assembly->tokens, GUINT_TO_POINTER (token));
+	mono_loader_unlock ();
+
 	if (!obj) {
 		if (valid_token)
 			g_assert_not_reached ();

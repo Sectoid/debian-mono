@@ -20,10 +20,12 @@ mainsoft/NunitWeb/NunitWeb/BaseWorkerRequest.cs
 mainsoft/NunitWeb/NunitWeb/CustomSection.cs
 mainsoft/NunitWeb/NunitWeb/FakeMembershipProvider.cs
 mainsoft/NunitWeb/NunitWeb/FormRequest.cs
+mainsoft/NunitWeb/NunitWeb/Global.asax.cs
 mainsoft/NunitWeb/NunitWeb/IForeignData.cs
 mainsoft/NunitWeb/NunitWeb/HandlerInvoker.cs
 mainsoft/NunitWeb/NunitWeb/MyHandler.cs
 mainsoft/NunitWeb/NunitWeb/MyHost.cs
+mainsoft/NunitWeb/NunitWeb/MyPage_1.1.cs
 mainsoft/NunitWeb/NunitWeb/MyPageHandlerFactory.cs
 mainsoft/NunitWeb/NunitWeb/MyTemplateControls.cs
 mainsoft/NunitWeb/NunitWeb/PageDelegates.cs
@@ -33,6 +35,8 @@ mainsoft/NunitWeb/NunitWeb/PostableWorkerRequest.cs
 mainsoft/NunitWeb/NunitWeb/Response.cs
 mainsoft/NunitWeb/NunitWeb/StandardUrl.cs
 mainsoft/NunitWeb/NunitWeb/WebTest.cs
+mainsoft/NunitWeb/NunitWeb/Tests/TagsNestedInClientTag.cs
+mainsoft/NunitWeb/NunitWeb/Tests/TestSiteMapProvider.cs
 System.Web/AppBrowsersTest.cs
 System.Web/HttpBrowserCapabilitiesTest.cs
 System.Web/HttpCacheVaryByContentEncodingsTest.cs
@@ -54,6 +58,7 @@ System.Web/TraceContextRecordTest.cs
 System.Web.Compilation/ClientBuildManagerParameterTest.cs
 System.Web.Compilation/TemplateControlCompilerTest.cs
 System.Web.Compilation/AppSettingsExpressionBuilderTest.cs
+System.Web.Compilation/AppResourcesCompilerTest.cs
 System.Web.Configuration/AnonymousIdentificationSectionTest.cs
 System.Web.Configuration/AssemblyCollectionTest.cs
 System.Web.Configuration/AssemblyInfoTest.cs
@@ -515,3 +520,4 @@ System.Web.UI.WebControls/XmlDataSourceCas.cs
 System.Web.Util/TransactionsCas.cs
 System.Web.Util/UrlUtilsTest.cs
 System.Web.Util/WorkItemCas.cs
+System.Web/XmlSiteMapProviderTest.cs

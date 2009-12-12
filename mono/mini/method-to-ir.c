@@ -2195,11 +2195,16 @@ mono_emit_rgctx_calli (MonoCompile *cfg, MonoMethodSignature *sig, MonoInst **ar
 }
 
 static MonoInst*
+emit_get_rgctx_method (MonoCompile *cfg, int context_used, MonoMethod *cmethod, int rgctx_type);
+
+static MonoInst*
 mono_emit_method_call_full (MonoCompile *cfg, MonoMethod *method, MonoMethodSignature *sig,
 							MonoInst **args, MonoInst *this, MonoInst *imt_arg)
 {
+	gboolean might_be_remote;
 	gboolean virtual = this != NULL;
 	gboolean enable_for_aot = TRUE;
+	int context_used;
 	MonoCallInst *call;
 
 	if (method->string_ctor) {
@@ -2211,11 +2216,28 @@ mono_emit_method_call_full (MonoCompile *cfg, MonoMethod *method, MonoMethodSign
 		sig = ctor_sig;
 	}
 
+	might_be_remote = this && sig->hasthis &&
+		(method->klass->marshalbyref || method->klass == mono_defaults.object_class) &&
+		!(method->flags & METHOD_ATTRIBUTE_VIRTUAL) && !MONO_CHECK_THIS (this);
+
+	context_used = mono_method_check_context_used (method);
+	if (might_be_remote && context_used) {
+		MonoInst *addr;
+
+		g_assert (cfg->generic_sharing_context);
+
+		addr = emit_get_rgctx_method (cfg, context_used, method, MONO_RGCTX_INFO_REMOTING_INVOKE_WITH_CHECK);
+
+		return mono_emit_calli (cfg, sig, args, addr);
+	}
+
 	call = mono_emit_call_args (cfg, sig, args, FALSE, virtual);
 
-	if (this && sig->hasthis && 
-	    (method->klass->marshalbyref || method->klass == mono_defaults.object_class) && 
-	    !(method->flags & METHOD_ATTRIBUTE_VIRTUAL) && !MONO_CHECK_THIS (this)) {
+	if (might_be_remote) {
+		if (mono_method_check_context_used (method)) {
+			g_assert (cfg->generic_sharing_context);
+			return NULL;
+		}
 		call->method = mono_marshal_get_remoting_invoke_with_check (method);
 	} else {
 		call->method = method;
@@ -2338,6 +2360,8 @@ mono_emit_rgctx_method_call_full (MonoCompile *cfg, MonoMethod *method, MonoMeth
 #endif
 	}
 	ins = mono_emit_method_call_full (cfg, method, sig, args, this, imt_arg);
+	if (!ins)
+		return NULL;
 
 	call = (MonoCallInst*)ins;
 	if (vtable_arg) {
@@ -2607,6 +2631,36 @@ emit_get_rgctx_field (MonoCompile *cfg, int context_used,
 	MonoInst *rgctx = emit_get_rgctx (cfg, cfg->current_method, context_used);
 
 	return emit_rgctx_fetch (cfg, rgctx, entry);
+}
+
+static void
+emit_generic_class_init (MonoCompile *cfg, MonoClass *klass)
+{
+	MonoInst *vtable_arg;
+	MonoCallInst *call;
+	int context_used = 0;
+
+	if (cfg->generic_sharing_context)
+		context_used = mono_class_check_context_used (klass);
+
+	if (context_used) {
+		vtable_arg = emit_get_rgctx_klass (cfg, context_used,
+										   klass, MONO_RGCTX_INFO_VTABLE);
+	} else {
+		MonoVTable *vtable = mono_class_vtable (cfg->domain, klass);
+
+		if (!vtable)
+			return;
+		EMIT_NEW_VTABLECONST (cfg, vtable_arg, vtable);
+	}
+
+	call = (MonoCallInst*)mono_emit_abs_call (cfg, MONO_PATCH_INFO_GENERIC_CLASS_INIT, NULL, helper_sig_generic_class_init_trampoline, &vtable_arg);
+#ifdef MONO_ARCH_VTABLE_REG
+	mono_call_inst_add_outarg_reg (cfg, call, vtable_arg->dreg, MONO_ARCH_VTABLE_REG, FALSE);
+	cfg->uses_vtable_reg = TRUE;
+#else
+	NOT_IMPLEMENTED;
+#endif
 }
 
 static void
@@ -5966,15 +6020,12 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				 * We have the `constrained.' prefix opcode.
 				 */
 				if (constrained_call->valuetype && !cmethod->klass->valuetype) {
-					int dreg;
-
 					/*
 					 * The type parameter is instantiated as a valuetype,
 					 * but that type doesn't override the method we're
 					 * calling, so we need to box `this'.
 					 */
-					dreg = alloc_dreg (cfg, STACK_VTYPE);
-					EMIT_NEW_LOAD_MEMBASE (cfg, ins, OP_LOADV_MEMBASE, dreg, sp [0]->dreg, 0);
+					EMIT_NEW_LOAD_MEMBASE_TYPE (cfg, ins, &constrained_call->byval_arg, sp [0]->dreg, 0);
 					ins->klass = constrained_call;
 					sp [0] = handle_box (cfg, ins, constrained_call);
 				} else if (!constrained_call->valuetype) {
@@ -5996,6 +6047,13 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			if (*ip != CEE_CALLI && check_call_signature (cfg, fsig, sp))
 				UNVERIFIED;
 
+			/* 
+			 * If the callee is a shared method, then its static cctor
+			 * might not get called after the call was patched.
+			 */
+			if (cfg->generic_sharing_context && cmethod && cmethod->klass != method->klass && cmethod->klass->generic_class && mono_method_is_generic_sharable_impl (cmethod, TRUE) && mono_class_needs_cctor_run (cmethod->klass, method)) {
+				emit_generic_class_init (cfg, cmethod->klass);
+			}
 
 			if (cmethod && ((cmethod->flags & METHOD_ATTRIBUTE_STATIC) || cmethod->klass->valuetype) &&
 					(cmethod->klass->generic_class || cmethod->klass->generic_container)) {
@@ -6131,6 +6189,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 							((MonoMethodInflated*)cmethod)->context.method_inst);
 					}
 					ins = mono_emit_method_call_full (cfg, cmethod, fsig, sp, sp [0], imt_arg);
+					if (!ins)
+						GENERIC_SHARING_FAILURE (*ip);
 				} else
 #endif
 				{
@@ -6457,6 +6517,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			} else {
 				ins = (MonoInst*)mono_emit_method_call_full (cfg, cmethod, fsig, sp, virtual ? sp [0] : NULL, NULL);
 			}
+			if (!ins)
+				GENERIC_SHARING_FAILURE (*ip);
 
 			if (!MONO_TYPE_IS_VOID (fsig->ret))
 				*sp++ = ins;
@@ -7363,7 +7425,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 						inline_costs += costs - 5;
 					} else {
 						INLINE_FAILURE;
-						mono_emit_method_call_full (cfg, cmethod, fsig, sp, callvirt_this_arg, NULL);
+						if (!mono_emit_method_call_full (cfg, cmethod, fsig, sp, callvirt_this_arg, NULL))
+							GENERIC_SHARING_FAILURE (*ip);
 					}
 				} else if (context_used &&
 						(!mono_method_is_generic_sharable_impl (cmethod, TRUE) ||
@@ -8130,6 +8193,16 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 
 			if (cfg->generic_sharing_context)
 				context_used = mono_class_check_context_used (klass);
+
+			if (sp [0]->type == STACK_I8 || (SIZEOF_VOID_P == 8 && sp [0]->type == STACK_PTR)) {
+				MONO_INST_NEW (cfg, ins, OP_LCONV_TO_I4);
+				ins->sreg1 = sp [0]->dreg;
+				ins->type = STACK_I4;
+				ins->dreg = alloc_ireg (cfg);
+				MONO_ADD_INS (cfg->cbb, ins);
+				mono_decompose_opcode (cfg, ins);
+				*sp = ins;
+			}
 
 			if (context_used) {
 				MonoInst *args [2];

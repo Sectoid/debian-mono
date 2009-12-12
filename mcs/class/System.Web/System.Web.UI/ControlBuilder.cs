@@ -38,6 +38,9 @@ using System.Web.Compilation;
 using System.Web.Configuration;
 using System.IO;
 using System.Web.UI.WebControls;
+using System.Web.Util;
+
+using _Location = System.Web.Compilation.Location;
 
 namespace System.Web.UI {
 
@@ -169,7 +172,7 @@ namespace System.Web.UI {
 
 		internal ILocation Location {
 			get { return location; }
-			set { location = value; }
+			set { location = new _Location (value); }
 		}
 	
 		internal ArrayList OtherTags {
@@ -473,7 +476,7 @@ namespace System.Web.UI {
 			if (tagType == null)
 				return null;
 			
-			PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
+			PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
 			if (ps == null)
 				return tagType;
 
@@ -634,7 +637,7 @@ namespace System.Web.UI {
 		{
 			this.parser = parser;
 			if (parser != null)
-				this.location = parser.Location;
+				this.Location = parser.Location;
 
 			this.parentBuilder = parentBuilder;
 			this.type = type;
@@ -704,22 +707,29 @@ namespace System.Web.UI {
 				if (defaultPropertyBuilder == null)
 					childBuilder = CreatePropertyBuilder (tagid, parser, atts);
 				else {
-					if (String.Compare (defaultPropertyBuilder.TagName, tagid, true, CultureInfo.InvariantCulture) == 0) {
+					if (String.Compare (defaultPropertyBuilder.TagName, tagid, true, Helpers.InvariantCulture) == 0) {
 						// The child tag is the same what our default property name. Act as if there was
 						// no default property builder, or otherwise we'll end up with invalid nested
 						// builder call.
 						defaultPropertyBuilder = null;
 						childBuilder = CreatePropertyBuilder (tagid, parser, atts);
-					} else
-						childBuilder = defaultPropertyBuilder.CreateSubBuilder (tagid, atts,
-													null, parser,
-													location);
+					} else {
+						Type ct = ControlType;
+						MemberInfo[] mems = ct != null ? ct.GetMember (tagid, MemberTypes.Property, FlagsNoCase) : null;
+						PropertyInfo prop = mems != null && mems.Length > 0 ? mems [0] as PropertyInfo : null;
+
+						if (prop != null && typeof (ITemplate).IsAssignableFrom (prop.PropertyType)) {
+							childBuilder = CreatePropertyBuilder (tagid, parser, atts);
+							defaultPropertyBuilder = null;
+						} else
+							childBuilder = defaultPropertyBuilder.CreateSubBuilder (tagid, atts, null, parser, location);
+					}
 				}
 
 				return childBuilder;
 			}
 
-			if (String.Compare (tagName, tagid, true, CultureInfo.InvariantCulture) == 0)
+			if (String.Compare (tagName, tagid, true, Helpers.InvariantCulture) == 0)
 				return null;
 			
 			childType = GetChildControlType (tagid, atts);

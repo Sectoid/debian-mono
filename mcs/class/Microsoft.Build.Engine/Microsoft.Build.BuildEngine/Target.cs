@@ -109,29 +109,59 @@ namespace Microsoft.Build.BuildEngine {
 				throw new ArgumentNullException ("buildTask");
 			buildTasks.Remove (buildTask);
 		}
-		
-		// FIXME: log errors instead of throwing exceptions
-		internal bool Build ()
-		{
-			bool deps;
-			bool result;
 
-			// log that target is being skipped
-			if (!ConditionParser.ParseAndEvaluate (Condition, Project))
+		bool Build ()
+		{
+			return Build (null);
+		}
+
+		internal bool Build (string built_targets_key)
+		{
+			bool executeOnErrors;
+			return Build (built_targets_key, out executeOnErrors);
+		}
+
+		bool Build (string built_targets_key, out bool executeOnErrors)
+		{
+			bool result = false;
+			executeOnErrors = false;
+
+			// built targets are keyed by the particular set of global
+			// properties. So, a different set could allow a target
+			// to run again
+			built_targets_key = project.GetKeyForTarget (Name);
+			ITaskItem[] outputs;
+			if (project.ParentEngine.BuiltTargetsOutputByName.ContainsKey (built_targets_key)) {
+				LogTargetSkipped ();
 				return true;
+			}
+
+			if (!ConditionParser.ParseAndEvaluate (Condition, Project)) {
+				LogMessage (MessageImportance.Low,
+						"Target {0} skipped due to false condition: {1}",
+						Name, Condition);
+				return true;
+			}
 
 			try {
 				buildState = BuildState.Started;
-				deps = BuildDependencies (GetDependencies ());
+				result = BuildDependencies (GetDependencies (), out executeOnErrors);
 
-				result = deps ? DoBuild () : false;
+				if (!result && executeOnErrors)
+					ExecuteOnErrors ();
+
+				if (result)
+					// deps built fine, do main build
+					result = DoBuild (out executeOnErrors);
 
 				buildState = BuildState.Finished;
-			// FIXME: log it 
 			} catch (Exception e) {
 				LogError ("Error building target {0}: {1}", Name, e.ToString ());
 				return false;
 			}
+
+			project.ParentEngine.BuiltTargetsOutputByName [built_targets_key] = (ITaskItem[]) Outputs.Clone ();
+			project.BuiltTargetKeys.Add (built_targets_key);
 
 			return result;
 		}
@@ -145,23 +175,26 @@ namespace Microsoft.Build.BuildEngine {
 
 			if (DependsOnTargets != String.Empty) {
 				deps = new Expression ();
-				deps.Parse (DependsOnTargets, true);
+				deps.Parse (DependsOnTargets, ParseOptions.AllowItemsNoMetadataAndSplit);
 				targetNames = (string []) deps.ConvertTo (Project, typeof (string []));
-				foreach (string name in targetNames) {
-					t = project.Targets [name.Trim ()];
+				foreach (string dep_name in targetNames) {
+					t = project.Targets [dep_name.Trim ()];
 					if (t == null)
-						throw new InvalidProjectFileException (String.Format ("Target '{0}' not found.", name.Trim ()));
+						throw new InvalidProjectFileException (String.Format (
+								"Target '{0}', a dependency of target '{1}', not found.",
+								dep_name.Trim (), Name));
 					list.Add (t);
 				}
 			}
 			return list;
 		}
 
-		bool BuildDependencies (List <Target> deps)
+		bool BuildDependencies (List <Target> deps, out bool executeOnErrors)
 		{
+			executeOnErrors = false;
 			foreach (Target t in deps) {
 				if (t.BuildState == BuildState.NotStarted)
-					if (!t.Build ())
+					if (!t.Build (null, out executeOnErrors))
 						return false;
 				if (t.BuildState == BuildState.Started)
 					throw new InvalidProjectFileException ("Cycle in target dependencies detected");
@@ -170,9 +203,9 @@ namespace Microsoft.Build.BuildEngine {
 			return true;
 		}
 		
-		bool DoBuild ()
+		bool DoBuild (out bool executeOnErrors)
 		{
-			bool executeOnErrors;
+			executeOnErrors = false;
 			bool result = true;
 
 			if (BuildTasks.Count == 0)
@@ -182,8 +215,9 @@ namespace Microsoft.Build.BuildEngine {
 			try {
 				result = batchingImpl.Build (this, out executeOnErrors);
 			} catch (Exception e) {
-				LogError ("Error building target {0}: {1}", Name, e.ToString ());
-				throw;
+				LogError ("Error building target {0}: {1}", Name, e.Message);
+				LogMessage (MessageImportance.Low, "Error building target {0}: {1}", Name, e.ToString ());
+				return false;
 			}
 
 			if (executeOnErrors == true)
@@ -195,13 +229,31 @@ namespace Microsoft.Build.BuildEngine {
 		void ExecuteOnErrors ()
 		{
 			foreach (XmlElement onError in onErrorElements) {
-				// FIXME: add condition
 				if (onError.GetAttribute ("ExecuteTargets") == String.Empty)
 					throw new InvalidProjectFileException ("ExecuteTargets attribute is required in OnError element.");
+
+				string on_error_condition = onError.GetAttribute ("Condition");
+				if (!ConditionParser.ParseAndEvaluate (on_error_condition, Project)) {
+					LogMessage (MessageImportance.Low,
+						"OnError for target {0} skipped due to false condition: {1}",
+						Name, on_error_condition);
+					continue;
+				}
+
 				string[] targetsToExecute = onError.GetAttribute ("ExecuteTargets").Split (';');
 				foreach (string t in targetsToExecute)
 					this.project.Targets [t].Build ();
 			}
+		}
+
+		void LogTargetSkipped ()
+		{
+			BuildMessageEventArgs bmea;
+			bmea = new BuildMessageEventArgs (String.Format (
+						"Target {0} skipped, as it has already been built.", Name),
+					null, null, MessageImportance.Low);
+
+			project.ParentEngine.EventSource.FireMessageRaised (this, bmea);
 		}
 
 		void LogError (string message, params object [] messageArgs)
@@ -213,6 +265,17 @@ namespace Microsoft.Build.BuildEngine {
 				null, null, null, 0, 0, 0, 0, String.Format (message, messageArgs),
 				null, null);
 			engine.EventSource.FireErrorRaised (this, beea);
+		}
+
+		void LogMessage (MessageImportance importance, string message, params object [] messageArgs)
+		{
+			if (message == null)
+				throw new ArgumentNullException ("message");
+
+			BuildMessageEventArgs bmea = new BuildMessageEventArgs (
+				String.Format (message, messageArgs), null,
+				null, importance);
+			engine.EventSource.FireMessageRaised (this, bmea);
 		}
 	
 		public string Condition {
@@ -237,6 +300,14 @@ namespace Microsoft.Build.BuildEngine {
 			get { return project; }
 		}
 
+		internal string TargetFile {
+			get {
+				if (importedProject != null)
+					return importedProject.FullFileName;
+				return project != null ? project.FullFileName : String.Empty;
+			}
+		}
+
 		internal List<BuildTask> BuildTasks {
 			get { return buildTasks; }
 		}
@@ -256,7 +327,7 @@ namespace Microsoft.Build.BuildEngine {
 					return new ITaskItem [0];
 
 				Expression e = new Expression ();
-				e.Parse (outputs, true);
+				e.Parse (outputs, ParseOptions.AllowItemsNoMetadataAndSplit);
 
 				return (ITaskItem []) e.ConvertTo (project, typeof (ITaskItem []));
 			}

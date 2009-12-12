@@ -1293,8 +1293,7 @@ private_file_needs_copying (const char *src, struct stat *sbuf_src, char *dest)
 	if (stat (src, sbuf_src) == -1 || stat (dest, &sbuf_dest) == -1)
 		return TRUE;
 
-	if (sbuf_src->st_mode == sbuf_dest.st_mode &&
-	    sbuf_src->st_size == sbuf_dest.st_size &&
+	if (sbuf_src->st_size == sbuf_dest.st_size &&
 	    sbuf_src->st_mtime == sbuf_dest.st_mtime)
 		return FALSE;
 
@@ -1972,11 +1971,12 @@ unload_thread_main (void *arg)
 	 * We also hold the loader lock because we're going to change
 	 * class->runtime_info.
 	 */
-	mono_domain_lock (domain);
+
 	mono_loader_lock ();
+	mono_domain_lock (domain);
 	g_hash_table_foreach (domain->class_vtable_hash, clear_cached_vtable, domain);
-	mono_loader_unlock ();
 	mono_domain_unlock (domain);
+	mono_loader_unlock ();
 
 	mono_threads_clear_cached_culture (domain);
 
@@ -2080,11 +2080,12 @@ mono_domain_unload (MonoDomain *domain)
 
 	/* Wait for the thread */	
 	while ((res = WaitForSingleObjectEx (thread_handle, INFINITE, TRUE) == WAIT_IO_COMPLETION)) {
-		if (mono_thread_has_appdomain_ref (mono_thread_current (), domain) && (mono_thread_interruption_requested ()))
+		if (mono_thread_has_appdomain_ref (mono_thread_current (), domain) && (mono_thread_interruption_requested ())) {
 			/* The unload thread tries to abort us */
 			/* The icall wrapper will execute the abort */
 			CloseHandle (thread_handle);
 			return;
+		}
 	}
 	CloseHandle (thread_handle);
 

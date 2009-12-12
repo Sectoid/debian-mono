@@ -659,13 +659,13 @@ namespace System.Web.Compilation
 		/*
 		static bool InvariantCompare (string a, string b)
 		{
-			return (0 == String.Compare (a, b, false, CultureInfo.InvariantCulture));
+			return (0 == String.Compare (a, b, false, Helpers.InvariantCulture));
 		}
 		*/
 
 		static bool InvariantCompareNoCase (string a, string b)
 		{
-			return (0 == String.Compare (a, b, true, CultureInfo.InvariantCulture));
+			return (0 == String.Compare (a, b, true, Helpers.InvariantCulture));
 		}
 
 		static MemberInfo GetFieldOrProperty (Type type, string name)
@@ -855,7 +855,7 @@ namespace System.Web.Compilation
 
 		bool ResourceProviderHasObject (string key)
 		{
-			IResourceProvider rp = HttpContext.GetResourceProvider (key, true);
+			IResourceProvider rp = HttpContext.GetResourceProvider (InputVirtualPath.Absolute, true);
 			if (rp == null)
 				return false;
 
@@ -863,19 +863,23 @@ namespace System.Web.Compilation
 			if (rr == null)
 				return false;
 
-			IDictionaryEnumerator ide = rr.GetEnumerator ();
-			if (ide == null)
-				return false;
+			try {
+				IDictionaryEnumerator ide = rr.GetEnumerator ();
+				if (ide == null)
+					return false;
 			
-			string dictKey;
-			while (ide.MoveNext ()) {
-				dictKey = ide.Key as string;
-				if (String.IsNullOrEmpty (dictKey))
-					continue;
-				if (String.Compare (key, dictKey, StringComparison.Ordinal) == 0)
-					return true;
+				string dictKey;
+				while (ide.MoveNext ()) {
+					dictKey = ide.Key as string;
+					if (String.IsNullOrEmpty (dictKey))
+						continue;
+					if (String.Compare (key, dictKey, StringComparison.Ordinal) == 0)
+						return true;
+				}
+			} finally {
+				rr.Close ();
 			}
-
+			
 			return false;
 		}
 		
@@ -973,7 +977,7 @@ namespace System.Web.Compilation
 			Type type = builder.ControlType;
 			
 			string attvalue = builder.GetAttribute (id);
-			if (id.Length > 2 && id.Substring (0, 2).ToUpper () == "ON"){
+			if (id.Length > 2 && String.Compare (id.Substring (0, 2), "ON", true, Helpers.InvariantCulture) == 0){
 				if (ev_info == null)
 					ev_info = type.GetEvents ();
 
@@ -993,7 +997,7 @@ namespace System.Web.Compilation
 			}
 
 #if NET_2_0
-			if (id.ToLower () == "meta:resourcekey") {
+			if (String.Compare (id, "meta:resourcekey", StringComparison.OrdinalIgnoreCase) == 0) {
 				AssignPropertiesFromResources (builder, attvalue);
 				return;
 			}
@@ -1963,7 +1967,7 @@ namespace System.Web.Compilation
 				return CreateNullableExpression (originalType,
 								 new CodePrimitiveExpression (
 									 Convert.ChangeType (preConverted ? convertedFromAttr : str,
-											     type, CultureInfo.InvariantCulture)),
+											     type, Helpers.InvariantCulture)),
 								 wasNullable);
 
 			if (type == typeof (string [])) {
@@ -2188,6 +2192,10 @@ namespace System.Web.Compilation
 		{
 			if (value is System.Web.UI.WebControls.Unit) {
 				System.Web.UI.WebControls.Unit s = (System.Web.UI.WebControls.Unit) value;
+				if (s.IsEmpty) {
+					FieldInfo f = typeof (Unit).GetField ("Empty");
+					return new InstanceDescriptor (f, null);
+				}
 				ConstructorInfo c = typeof(System.Web.UI.WebControls.Unit).GetConstructor (
 					BindingFlags.Instance | BindingFlags.Public,
 					null,
@@ -2199,6 +2207,10 @@ namespace System.Web.Compilation
 			
 			if (value is System.Web.UI.WebControls.FontUnit) {
 				System.Web.UI.WebControls.FontUnit s = (System.Web.UI.WebControls.FontUnit) value;
+				if (s.IsEmpty) {
+					FieldInfo f = typeof (FontUnit).GetField ("Empty");
+					return new InstanceDescriptor (f, null);
+				}
 
 				Type cParamType = null;
 				object cParam = null;

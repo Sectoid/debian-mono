@@ -374,7 +374,7 @@ throw_exception (unsigned long eax, unsigned long ecx, unsigned long edx, unsign
 		restore_context = mono_arch_get_restore_context ();
 
 	/* Pop argument and return address */
-	ctx.esp = esp + (2 * sizeof (gpointer));
+	ctx.esp = esp + (3 * sizeof (gpointer));
 	ctx.eip = eip;
 	ctx.ebp = ebp;
 	ctx.edi = edi;
@@ -423,9 +423,14 @@ get_throw_exception (gboolean rethrow)
 
 	start = code = mono_global_codeman_reserve (64);
 
+	/* 
+	 * Align the stack on apple, since we push 10 args + the return address, and the
+	 * caller pushed 8 bytes.
+	 */
+	x86_alu_reg_imm (code, X86_SUB, X86_ESP, 4);
 	x86_push_reg (code, X86_ESP);
-	x86_push_membase (code, X86_ESP, 4); /* IP */
-	x86_push_membase (code, X86_ESP, 12); /* exception */
+	x86_push_membase (code, X86_ESP, 8); /* IP */
+	x86_push_membase (code, X86_ESP, 16); /* exception */
 	x86_push_reg (code, X86_EBP);
 	x86_push_reg (code, X86_EDI);
 	x86_push_reg (code, X86_ESI);
@@ -592,7 +597,7 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 	if (prev_ji && (ip > prev_ji->code_start && ((guint8*)ip < ((guint8*)prev_ji->code_start) + prev_ji->code_size)))
 		ji = prev_ji;
 	else
-		ji = mono_jit_info_table_find (domain, ip);
+		ji = mini_jit_info_table_find (domain, ip);
 
 	if (managed)
 		*managed = FALSE;
@@ -662,7 +667,7 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 		
 		*new_ctx = *ctx;
 
-		if ((ji = mono_jit_info_table_find (domain, (gpointer)(*lmf)->eip))) {
+		if ((ji = mini_jit_info_table_find (domain, (gpointer)(*lmf)->eip))) {
 		} else {
 			if (!((guint32)((*lmf)->previous_lmf) & 1))
 				/* Top LMF entry */
@@ -861,7 +866,7 @@ mono_arch_handle_altstack_exception (void *sigctx, gpointer fault_addr, gboolean
 #ifdef MONO_ARCH_USE_SIGACTION
 	MonoException *exc = NULL;
 	ucontext_t *ctx = (ucontext_t*)sigctx;
-	MonoJitInfo *ji = mono_jit_info_table_find (mono_domain_get (), (gpointer)UCONTEXT_REG_EIP (ctx));
+	MonoJitInfo *ji = mini_jit_info_table_find (mono_domain_get (), (gpointer)UCONTEXT_REG_EIP (ctx));
 	gpointer *sp;
 	int frame_size;
 
@@ -871,7 +876,7 @@ mono_arch_handle_altstack_exception (void *sigctx, gpointer fault_addr, gboolean
 	 */
 	if (!ji && fault_addr == (gpointer)UCONTEXT_REG_EIP (ctx)) {
 		glong *sp = (gpointer)UCONTEXT_REG_ESP (ctx);
-		ji = mono_jit_info_table_find (mono_domain_get (), (gpointer)sp [0]);
+		ji = mini_jit_info_table_find (mono_domain_get (), (gpointer)sp [0]);
 		if (ji)
 			UCONTEXT_REG_EIP (ctx) = sp [0];
 	}

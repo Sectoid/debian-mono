@@ -672,6 +672,7 @@ ves_icall_System_Array_FastCopy (MonoArray *source, int source_idx, MonoArray* d
 	if (source->bounds || dest->bounds)
 		return FALSE;
 
+	/* there's no integer overflow since mono_array_length returns an unsigned integer */
 	if ((dest_idx + length > mono_array_length (dest)) ||
 		(source_idx + length > mono_array_length (source)))
 		return FALSE;
@@ -1532,12 +1533,17 @@ ves_icall_System_Reflection_FieldInfo_GetUnmanagedMarshal (MonoReflectionField *
 }
 
 static MonoReflectionField*
-ves_icall_System_Reflection_FieldInfo_internal_from_handle_type (MonoClassField *handle, MonoClass *klass)
+ves_icall_System_Reflection_FieldInfo_internal_from_handle_type (MonoClassField *handle, MonoType *type)
 {
+	MonoClass *klass;
+
 	g_assert (handle);
 
-	if (!klass)
+	if (!type) {
 		klass = handle->parent;
+	} else {
+		klass = mono_class_from_mono_type (type);
+	}
 
 	/* FIXME: check that handle is a field of klass or of a parent: return null
 	 * and throw the exception in managed code.
@@ -2068,7 +2074,6 @@ ves_icall_Type_GetInterfaceMapData (MonoReflectionType *type, MonoReflectionType
 	domain = mono_object_domain (type);
 	*targets = mono_array_new (domain, mono_defaults.method_info_class, len);
 	*methods = mono_array_new (domain, mono_defaults.method_info_class, len);
-	iter = NULL;
 	iter = NULL;
 	while ((method = mono_class_get_methods (iclass, &iter))) {
 		member = mono_method_get_object (domain, method, iclass);

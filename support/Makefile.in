@@ -36,7 +36,10 @@ target_triplet = @target@
 subdir = support
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in ChangeLog
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/libtool.m4 \
+	$(top_srcdir)/ltoptions.m4 $(top_srcdir)/ltsugar.m4 \
+	$(top_srcdir)/ltversion.m4 $(top_srcdir)/lt~obsolete.m4 \
+	$(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
 	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -55,6 +58,7 @@ libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 @PLATFORM_WIN32_FALSE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+@PLATFORM_WIN32_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 libMonoPosixHelper_la_DEPENDENCIES = $(am__DEPENDENCIES_2) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am__libMonoPosixHelper_la_SOURCES_DIST = errno.c map.c map.h mph.h \
@@ -62,7 +66,7 @@ am__libMonoPosixHelper_la_SOURCES_DIST = errno.c map.c map.h mph.h \
 	grp.c macros.c old-map.c old-map.h pwd.c serial.c sys-mman.c \
 	sys-sendfile.c sys-stat.c sys-statvfs.c sys-time.c \
 	sys-utsname.c sys-wait.c sys-xattr.c syslog.c time.c unistd.c \
-	utime.c x-struct-str.c zlib_macros.c adler32.c compress.c \
+	utime.c x-struct-str.c zlib-helper.c adler32.c compress.c \
 	crc32.c gzio.c uncompr.c deflate.c trees.c zutil.c inflate.c \
 	infback.c inftrees.c inffast.c crc32.h deflate.h inffast.h \
 	inffixed.h inflate.h inftrees.h trees.h zconf.h zlib.h zutil.h \
@@ -80,8 +84,8 @@ am__objects_2 = dirent.lo fcntl.lo fstab.lo grp.lo macros.lo \
 am__objects_4 = adler32.lo compress.lo crc32.lo gzio.lo uncompr.lo \
 	deflate.lo trees.lo zutil.lo inflate.lo infback.lo inftrees.lo \
 	inffast.lo
-@HAVE_ZLIB_FALSE@am__objects_5 = zlib_macros.lo $(am__objects_4)
-@HAVE_ZLIB_TRUE@am__objects_5 = zlib_macros.lo
+@HAVE_ZLIB_FALSE@am__objects_5 = zlib-helper.lo $(am__objects_4)
+@HAVE_ZLIB_TRUE@am__objects_5 = zlib-helper.lo
 am__objects_6 = ioapi.lo unzip.lo zip.lo
 am_libMonoPosixHelper_la_OBJECTS = $(am__objects_3) $(am__objects_5) \
 	$(am__objects_6)
@@ -135,10 +139,6 @@ CFLAGS = @CFLAGS@
 CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CXX = @CXX@
-CXXCPP = @CXXCPP@
-CXXDEPMODE = @CXXDEPMODE@
-CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -148,14 +148,13 @@ DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DTRACE = @DTRACE@
 DTRACEFLAGS = @DTRACEFLAGS@
-ECHO = @ECHO@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-F77 = @F77@
-FFLAGS = @FFLAGS@
+FGREP = @FGREP@
 GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
@@ -173,6 +172,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTL = @INTL@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBC = @LIBC@
 LIBGC_CFLAGS = @LIBGC_CFLAGS@
@@ -181,6 +181,7 @@ LIBGC_STATIC_LIBS = @LIBGC_STATIC_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTCOMPILE = @LTCOMPILE@
 LTCXXCOMPILE = @LTCXXCOMPILE@
@@ -192,11 +193,14 @@ MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
+NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPROFILE_CFLAGS = @OPROFILE_CFLAGS@
 OPROFILE_LIBS = @OPROFILE_LIBS@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -225,8 +229,7 @@ abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
-ac_ct_CXX = @ac_ct_CXX@
-ac_ct_F77 = @ac_ct_F77@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -266,6 +269,7 @@ libmono_ldflags = @libmono_ldflags@
 libsuffix = @libsuffix@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mcs_topdir = @mcs_topdir@
 mcs_topdir_from_srcdir = @mcs_topdir_from_srcdir@
@@ -289,6 +293,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 @PLATFORM_WIN32_FALSE@SUPPORT = libMonoSupportW.la
@@ -344,7 +349,7 @@ MPH_UNIX_SOURCE = \
 @PLATFORM_WIN32_FALSE@MPH_SOURCE = $(MPH_C_SOURCE) $(MPH_UNIX_SOURCE)
 @PLATFORM_WIN32_TRUE@MPH_SOURCE = $(MPH_C_SOURCE)
 @PLATFORM_WIN32_FALSE@MPH_LIBS = $(GLIB_LIBS)
-@PLATFORM_WIN32_TRUE@MPH_LIBS = 
+@PLATFORM_WIN32_TRUE@MPH_LIBS = $(GLIB_LIBS)
 MINIZIP_SOURCE = \
 	minizip/crypt.h \
 	minizip/ioapi.c	\
@@ -378,8 +383,8 @@ ZLIB_SOURCES = \
 	zlib.h  	\
 	zutil.h
 
-@HAVE_ZLIB_FALSE@Z_SOURCE = zlib_macros.c $(ZLIB_SOURCES)
-@HAVE_ZLIB_TRUE@Z_SOURCE = zlib_macros.c 
+@HAVE_ZLIB_FALSE@Z_SOURCE = zlib-helper.c $(ZLIB_SOURCES)
+@HAVE_ZLIB_TRUE@Z_SOURCE = zlib-helper.c
 @HAVE_ZLIB_FALSE@Z_LIBS = 
 @HAVE_ZLIB_TRUE@Z_LIBS = -lz
 libMonoPosixHelper_la_SOURCES = \
@@ -518,7 +523,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utime.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x-struct-str.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zip.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zlib_macros.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zlib-helper.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zutil.Plo@am__quote@
 
 .c.o:

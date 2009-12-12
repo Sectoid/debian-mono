@@ -1,3 +1,12 @@
+2009-09-28  Marek Habersack  <mhabersack@novell.com>
+
+	* UpdatePanel.cs: RenderChildren stores the alternative writer in
+	a private property, for the benefit of nested child panels. Fixes
+	bug #542441
+
+	* ScriptManager.cs: don't render invisible panel IDs during async
+	request. Fixes bug #542533
+
 2009-04-23  Marek Habersack  <mhabersack@novell.com>
 
 	* AsyncPostBackTrigger.cs: HasTriggered () must look up the

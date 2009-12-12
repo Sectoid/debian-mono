@@ -1,3 +1,26 @@
+2009-10-27  Marek Habersack  <mhabersack@novell.com>
+
+	* ProfileBase.cs: CreateSettingsProperty sets the returned
+	property's DefaultValue to String.Empty if no default is specified
+	through the DefaultSettingValue attribute and the associated
+	property type is String.
+
+2009-10-22  Marek Habersack  <mhabersack@novell.com>
+
+	* ProfileBase.cs: put named entries into SettingProperty's
+	Attributes collection based on custom attributes decorating the
+	associated profile property.
+
+	* CustomProviderDataAttribute.cs: implemented IsDefaultAttribute
+
+2009-09-08  Marek Habersack  <mhabersack@novell.com>
+
+	* ProfileParser.cs: GetProfileGroupType creates type name with
+	"ProfileGroup" prefix instead of "ProfileCommon". Fixes bug
+	#535655
+
+	* ProfileBase.cs: typo fix - renamed CreateSettingsPropery to
+	CreateSettingsProperty
 
 2008-12-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

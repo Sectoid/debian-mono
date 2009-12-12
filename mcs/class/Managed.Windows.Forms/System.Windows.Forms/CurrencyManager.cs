@@ -116,30 +116,7 @@ namespace System.Windows.Forms {
 
 		public override PropertyDescriptorCollection GetItemProperties ()
 		{
-			if (list is Array) {
-				Type element = list.GetType ().GetElementType ();
-				return TypeDescriptor.GetProperties (element);
-			}
-
-			if (list is ITypedList) {
-				return ((ITypedList)list).GetItemProperties (null);
-			}
-
-			PropertyInfo [] props = data_source.GetType().GetProperties ();
-			for (int i = 0; i < props.Length; i++) {
-				if (props [i].Name == "Item") {
-					Type t = props [i].PropertyType;
-					if (t == typeof (object))
-						continue;
-					return GetBrowsableProperties (t);
-				}
-			}
-
-			if (list.Count > 0) {
-				return GetBrowsableProperties (list [0].GetType ());
-			}
-			
-			return new PropertyDescriptorCollection (null);
+			return ListBindingHelper.GetListItemProperties (list);
 		}
 
 		public override void RemoveAt (int index)
@@ -169,12 +146,11 @@ namespace System.Windows.Forms {
 
                 internal bool AllowNew {
                 	get {
-				/* if we're readonly, don't even bother checking if we can add new rows */
-				if (list.IsReadOnly)
-					return false;
-
 				if (list is IBindingList)
 					return ((IBindingList)list).AllowNew;
+
+				if (list.IsReadOnly)
+					return false;
 
 				return false;
 			}
@@ -350,7 +326,9 @@ namespace System.Windows.Forms {
 			foreach (Binding binding in Bindings)
 				binding.UpdateIsBinding ();
 
+			//Console.WriteLine ("UpdateIsBinding BEFORE count = " + Count);
 			ChangeRecordState (listposition, false, false, true, false);
+			//Console.WriteLine ("UpdateIsBinding AFTER count = " + Count);
 
 			OnItemChanged (new ItemChangedEventArgs (-1));
 		}
@@ -374,8 +352,10 @@ namespace System.Windows.Forms {
 			if (old_index != -1 && listposition != -1)
 				OnCurrentChanged (EventArgs.Empty);
 
+			//Console.WriteLine ("Change record state, BEFORE new pos = " + newPosition);
 			if (firePositionChanged)
 				OnPositionChanged (EventArgs.Empty);
+			//Console.WriteLine ("Change record state, AFTER new pos = " + newPosition);
 		}
 
 		private void UpdateItem ()
@@ -422,6 +402,7 @@ namespace System.Windows.Forms {
 				break;
 			case ListChangedType.ItemDeleted:
 				if (list.Count == 0) {
+					// THIS IS OUR FAULTY CODE
 					/* the last row was deleted */
 					listposition = -1;
 					UpdateIsBinding ();

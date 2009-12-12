@@ -34,6 +34,7 @@ using System.Configuration;
 using System.Globalization;
 using System.Text;
 using System.Xml;
+using System.Web.Util;
 
 #if NET_2_0
 
@@ -209,7 +210,7 @@ namespace System.Web.Configuration {
 				auto = true;
 				if (culture.Length > 5 && culture[4] == ':')
 					return new CultureInfo (culture.Substring (5));
-				return CultureInfo.InvariantCulture;// (0x007f);
+				return Helpers.InvariantCulture;// (0x007f);
 			}
 
 			return new CultureInfo (culture);
@@ -217,12 +218,15 @@ namespace System.Web.Configuration {
 				
 		internal CultureInfo GetUICulture ()
 		{
-			if (cached_uiculture != UICulture) {
+			string uiculture = UICulture;
+			if (cached_uiculture != uiculture) {
 				try {
-					cached_uicultureinfo = GetSanitizedCulture (UICulture, ref autoUICulture);
+					cached_uicultureinfo = GetSanitizedCulture (uiculture, ref autoUICulture);
+					cached_uiculture = uiculture;
 				} catch {
-					CultureFailed ("UICulture", UICulture);
+					CultureFailed ("UICulture", uiculture);
 					cached_uicultureinfo = new CultureInfo (0x007f); // Invariant
+					cached_uiculture = null;
 				}
 			}
 
@@ -231,12 +235,15 @@ namespace System.Web.Configuration {
 
 		internal CultureInfo GetCulture ()
 		{
-			if (cached_culture != Culture) {
+			string culture = Culture;
+			if (cached_culture != culture) {
 				try {
-					cached_cultureinfo = GetSanitizedCulture (Culture, ref autoCulture);
+					cached_cultureinfo = GetSanitizedCulture (culture, ref autoCulture);
+					cached_culture = culture;
 				} catch {
-					CultureFailed ("Culture", Culture);
+					CultureFailed ("Culture", culture);
 					cached_cultureinfo = new CultureInfo (0x007f); // Invariant
+					cached_culture = null;
 				}
 			}
 
@@ -252,7 +259,7 @@ namespace System.Web.Configuration {
 			Encoding encoding = (Encoding)encodingHash [prop];
 			if (encoding == null || encoding.EncodingName != cached_encoding_name) {
 				try {
-					switch (cached_encoding_name.ToLower (CultureInfo.InvariantCulture)) {
+					switch (cached_encoding_name.ToLower (Helpers.InvariantCulture)) {
 					case "utf-16le":
 					case "utf-16":
 					case "ucs-2":

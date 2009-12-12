@@ -1961,7 +1961,43 @@ namespace System.Net.Sockets
 			return (BeginSend (buffers, socketFlags, callback, state));
 		}
 
-		[MonoTODO ("Not implemented")]
+		delegate void SendFileHandler (string fileName, byte [] preBuffer, byte [] postBuffer, TransmitFileOptions flags);
+
+		sealed class SendFileAsyncResult : IAsyncResult {
+			IAsyncResult ares;
+			SendFileHandler d;
+
+			public SendFileAsyncResult (SendFileHandler d, IAsyncResult ares)
+			{
+				this.d = d;
+				this.ares = ares;
+			}
+
+			public object AsyncState {
+				get { return ares.AsyncState; }
+			}
+
+			public WaitHandle AsyncWaitHandle {
+				get { return ares.AsyncWaitHandle; }
+			}
+
+			public bool CompletedSynchronously {
+				get { return ares.CompletedSynchronously; }
+			}
+
+			public bool IsCompleted {
+				get { return ares.IsCompleted; }
+			}
+
+			public SendFileHandler Delegate {
+				get { return d; }
+			}
+
+			public IAsyncResult Original {
+				get { return ares; }
+			}
+		}
+
 		public IAsyncResult BeginSendFile (string fileName,
 						   AsyncCallback callback,
 						   object state)
@@ -1975,10 +2011,9 @@ namespace System.Net.Sockets
 			if (!File.Exists (fileName))
 				throw new FileNotFoundException ();
 
-			throw new NotImplementedException ();
+			return BeginSendFile (fileName, null, null, 0, callback, state);
 		}
 
-		[MonoTODO ("Not implemented")]
 		public IAsyncResult BeginSendFile (string fileName,
 						   byte[] preBuffer,
 						   byte[] postBuffer,
@@ -1995,7 +2030,8 @@ namespace System.Net.Sockets
 			if (!File.Exists (fileName))
 				throw new FileNotFoundException ();
 
-			throw new NotImplementedException ();
+			SendFileHandler d = new SendFileHandler (SendFile);
+			return new SendFileAsyncResult (d, d.BeginInvoke (fileName, preBuffer, postBuffer, flags, callback, state));
 		}
 #endif
 
@@ -2502,7 +2538,6 @@ namespace System.Net.Sockets
 		}
 
 #if NET_2_0
-		[MonoTODO]
 		public void EndSendFile (IAsyncResult asyncResult)
 		{
 			if (disposed && closed)
@@ -2511,13 +2546,11 @@ namespace System.Net.Sockets
 			if (asyncResult == null)
 				throw new ArgumentNullException ("asyncResult");
 
-			SocketAsyncResult req = asyncResult as SocketAsyncResult;
-			if (req == null)
+			SendFileAsyncResult ares = asyncResult as SendFileAsyncResult;
+			if (ares == null)
 				throw new ArgumentException ("Invalid IAsyncResult", "asyncResult");
 
-			if (Interlocked.CompareExchange (ref req.EndCalled, 1, 0) == 1)
-				throw InvalidAsyncOp ("EndSendFile");
-			throw new NotImplementedException ();
+			ares.Delegate.EndInvoke (ares.Original);
 		}
 #endif
 
@@ -3402,7 +3435,9 @@ namespace System.Net.Sockets
 		}
 
 #if NET_2_0
-		[MonoTODO ("Not implemented")]
+ 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+ 		private extern static bool SendFile (IntPtr sock, string filename, byte [] pre_buffer, byte [] post_buffer, TransmitFileOptions flags);
+ 
 		public void SendFile (string fileName)
 		{
 			if (disposed && closed)
@@ -3414,14 +3449,9 @@ namespace System.Net.Sockets
 			if (!blocking)
 				throw new InvalidOperationException ();
 
-			if (!File.Exists (fileName))
-				throw new FileNotFoundException ();
-
-			/* FIXME: Implement TransmitFile */
-			throw new NotImplementedException ();
+			SendFile (fileName, null, null, 0);
 		}
 
-		[MonoTODO ("Not implemented")]
 		public void SendFile (string fileName, byte[] preBuffer, byte[] postBuffer, TransmitFileOptions flags)
 		{
 			if (disposed && closed)
@@ -3433,11 +3463,12 @@ namespace System.Net.Sockets
 			if (!blocking)
 				throw new InvalidOperationException ();
 
-			if (!File.Exists (fileName))
-				throw new FileNotFoundException ();
-
-			/* FIXME: Implement TransmitFile */
-			throw new NotImplementedException ();
+			if (!SendFile (socket, fileName, preBuffer, postBuffer, flags)) {
+				SocketException exc = new SocketException ();
+				if (exc.ErrorCode == 2 || exc.ErrorCode == 3)
+					throw new FileNotFoundException ();
+				throw exc;
+			}
 		}
 
 		public bool SendToAsync (SocketAsyncEventArgs e)
@@ -3570,13 +3601,20 @@ namespace System.Net.Sockets
 			if (disposed && closed)
 				throw new ObjectDisposedException (GetType ().ToString ());
 
+			// I'd throw an ArgumentNullException, but this is what MS does.
+			if (opt_value == null)
+				throw new SocketException (10014, "Error trying to dereference an invalid pointer");
+			
 			int error;
 			
 			SetSocketOption_internal(socket, level, name, null,
 						 opt_value, 0, out error);
 
-			if (error != 0)
+			if (error != 0) {
+				if (error == 10022) // WSAEINVAL
+					throw new ArgumentException ();
 				throw new SocketException (error);
+			}
 		}
 
 		public void SetSocketOption (SocketOptionLevel level, SocketOptionName name, int opt_value)
@@ -3599,6 +3637,7 @@ namespace System.Net.Sockets
 			if (disposed && closed)
 				throw new ObjectDisposedException (GetType ().ToString ());
 
+			// NOTE: if a null is passed, the byte[] overload is used instead...
 			if (opt_value == null)
 				throw new ArgumentNullException("opt_value");
 			
@@ -3623,8 +3662,11 @@ namespace System.Net.Sockets
 				SetSocketOption_internal (socket, level, name, opt_value, null, 0, out error);
 			}
 
-			if (error != 0)
+			if (error != 0) {
+				if (error == 10022) // WSAEINVAL
+					throw new ArgumentException ();
 				throw new SocketException (error);
+			}
 		}
 
 #if NET_2_0
@@ -3636,8 +3678,11 @@ namespace System.Net.Sockets
 			int error;
 			int int_val = (optionValue) ? 1 : 0;
 			SetSocketOption_internal (socket, level, name, null, null, int_val, out error);
-			if (error != 0)
+			if (error != 0) {
+				if (error == 10022) // WSAEINVAL
+					throw new ArgumentException ();
 				throw new SocketException (error);
+			}
 		}
 #endif
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -3679,12 +3724,13 @@ namespace System.Net.Sockets
 				closed = true;
 				IntPtr x = socket;
 				socket = (IntPtr) (-1);
-				Close_internal (x, out error);
-				if (blocking_thread != null) {
-					blocking_thread.Abort ();
+				Thread th = blocking_thread;
+				if (th != null) {
+					th.Abort ();
 					blocking_thread = null;
 				}
 
+				Close_internal (x, out error);
 				if (error != 0)
 					throw new SocketException (error);
 			}

@@ -28,6 +28,7 @@
 //
 #if NET_2_0
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
@@ -53,27 +54,20 @@ namespace System.Net.NetworkInformation {
 		public abstract IPAddressCollection WinsServersAddresses { get; }
 	}
 
-	class LinuxIPInterfaceProperties : IPInterfaceProperties
+	abstract class UnixIPInterfaceProperties : IPInterfaceProperties
 	{
-		IPv4InterfaceProperties ipv4iface_properties;
-		LinuxNetworkInterface iface;
+		protected IPv4InterfaceProperties ipv4iface_properties;
+		protected UnixNetworkInterface iface;
 		List <IPAddress> addresses;
 		IPAddressCollection dns_servers;
+		IPAddressCollection gateways;
 		string dns_suffix;
 		DateTime last_parse;
 		
-		public LinuxIPInterfaceProperties (LinuxNetworkInterface iface, List <IPAddress> addresses)
+		public UnixIPInterfaceProperties (UnixNetworkInterface iface, List <IPAddress> addresses)
 		{
 			this.iface = iface;
 			this.addresses = addresses;
-		}
-
-		public override IPv4InterfaceProperties GetIPv4Properties ()
-		{
-			if (ipv4iface_properties == null)
-				ipv4iface_properties = new LinuxIPv4InterfaceProperties (iface);
-			
-			return ipv4iface_properties;
 		}
 
 		public override IPv6InterfaceProperties GetIPv6Properties ()
@@ -81,6 +75,38 @@ namespace System.Net.NetworkInformation {
 			throw new NotImplementedException ();
 		}
 
+		void ParseRouteInfo (string iface)
+		{
+			try {
+				gateways = new IPAddressCollection ();
+				using (StreamReader reader = new StreamReader ("/proc/net/route")) {
+					string str;
+					string line;
+					reader.ReadLine (); // Ignore first line
+					while ((line = reader.ReadLine ()) != null) {
+						line = line.Trim ();
+						if (line.Length == 0)
+							continue;
+
+						string [] parts = line.Split ('\t');
+						if (parts.Length < 3)
+							continue;
+						string gw_address = parts [2].Trim ();
+						byte [] ipbytes = new byte [4];  
+						if (gw_address.Length == 8 && iface.Equals (parts [0], StringComparison.OrdinalIgnoreCase)) {
+							for (int i = 0; i < 4; i++) {
+								if (!Byte.TryParse (gw_address.Substring (i * 2, 2), NumberStyles.HexNumber, null, out ipbytes [3 - i]))
+									continue;
+							}
+							IPAddress ip = new IPAddress (ipbytes);
+							if (!ip.Equals (IPAddress.Any))
+								gateways.Add (ip);
+						}
+					}
+				}
+			} catch {
+			}
+		}
 
 		static Regex ns = new Regex (@"\s*nameserver\s+(?<address>.*)");
 		static Regex search = new Regex (@"\s*search\s+(?<domain>.*)");
@@ -151,7 +177,6 @@ namespace System.Net.NetworkInformation {
 			}
 		}
 
-		[MonoTODO ("Always returns an empty collection.")]
 		public override IPAddressCollection DnsAddresses {
 			get {
 				ParseResolvConf ();
@@ -159,19 +184,20 @@ namespace System.Net.NetworkInformation {
 			}
 		}
 
-		[MonoTODO ("Does not return anything.")]
 		public override string DnsSuffix {
 			get {
 				ParseResolvConf ();
 				return dns_suffix;
 			}
 		}
-
-		[MonoTODO ("Always returns an empty collection.")]
+     
 		public override GatewayIPAddressInformationCollection GatewayAddresses {
 			get {
-				// XXX: Pull information from route table.
-				return LinuxGatewayIPAddressInformationCollection.Empty;
+				ParseRouteInfo (this.iface.Name.ToString());
+				if (gateways.Count > 0)
+					return new LinuxGatewayIPAddressInformationCollection (gateways);
+				else
+					return LinuxGatewayIPAddressInformationCollection.Empty;
 			}
 		}
 
@@ -231,6 +257,38 @@ namespace System.Net.NetworkInformation {
 				// I do SUPPOSE we could scrape /etc/samba/smb.conf, but.. yeesh.
 				return new IPAddressCollection ();
 			}
+		}
+	}
+
+	class LinuxIPInterfaceProperties : UnixIPInterfaceProperties
+	{
+		public LinuxIPInterfaceProperties (LinuxNetworkInterface iface, List <IPAddress> addresses)
+			: base (iface, addresses)
+		{
+		}
+
+		public override IPv4InterfaceProperties GetIPv4Properties ()
+		{
+			if (ipv4iface_properties == null)
+				ipv4iface_properties = new LinuxIPv4InterfaceProperties (iface as LinuxNetworkInterface);
+			
+			return ipv4iface_properties;
+		}
+	}
+
+	class MacOsIPInterfaceProperties : UnixIPInterfaceProperties
+	{
+		public MacOsIPInterfaceProperties (MacOsNetworkInterface iface, List <IPAddress> addresses)
+			: base (iface, addresses)
+		{
+		}
+
+		public override IPv4InterfaceProperties GetIPv4Properties ()
+		{
+			if (ipv4iface_properties == null)
+				ipv4iface_properties = new MacOsIPv4InterfaceProperties (iface as MacOsNetworkInterface);
+			
+			return ipv4iface_properties;
 		}
 	}
 

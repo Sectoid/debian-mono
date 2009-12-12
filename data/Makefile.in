@@ -43,9 +43,13 @@ DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/mono.web.pc.in $(srcdir)/monodoc.pc.in \
 	$(srcdir)/smcs.pc.in \
 	$(srcdir)/system.web.extensions.design_1.0.pc.in \
-	$(srcdir)/system.web.extensions_1.0.pc.in $(srcdir)/wcf.pc.in
+	$(srcdir)/system.web.extensions_1.0.pc.in \
+	$(srcdir)/system.web.mvc.pc.in $(srcdir)/wcf.pc.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/libtool.m4 \
+	$(top_srcdir)/ltoptions.m4 $(top_srcdir)/ltsugar.m4 \
+	$(top_srcdir)/ltversion.m4 $(top_srcdir)/lt~obsolete.m4 \
+	$(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
 	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -56,7 +60,7 @@ CONFIG_CLEAN_FILES = mint.pc mono.pc mono-cairo.pc mono-nunit.pc \
 	mono-options.pc mono-lineeditor.pc monodoc.pc mono.web.pc \
 	dotnet.pc dotnet35.pc wcf.pc cecil.pc smcs.pc \
 	system.web.extensions_1.0.pc \
-	system.web.extensions.design_1.0.pc config
+	system.web.extensions.design_1.0.pc system.web.mvc.pc config
 SOURCES =
 DIST_SOURCES =
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
@@ -105,10 +109,6 @@ CFLAGS = @CFLAGS@
 CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CXX = @CXX@
-CXXCPP = @CXXCPP@
-CXXDEPMODE = @CXXDEPMODE@
-CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -118,14 +118,13 @@ DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DTRACE = @DTRACE@
 DTRACEFLAGS = @DTRACEFLAGS@
-ECHO = @ECHO@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-F77 = @F77@
-FFLAGS = @FFLAGS@
+FGREP = @FGREP@
 GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
@@ -143,6 +142,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTL = @INTL@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBC = @LIBC@
 LIBGC_CFLAGS = @LIBGC_CFLAGS@
@@ -151,6 +151,7 @@ LIBGC_STATIC_LIBS = @LIBGC_STATIC_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTCOMPILE = @LTCOMPILE@
 LTCXXCOMPILE = @LTCXXCOMPILE@
@@ -162,11 +163,14 @@ MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
+NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPROFILE_CFLAGS = @OPROFILE_CFLAGS@
 OPROFILE_LIBS = @OPROFILE_LIBS@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -195,8 +199,7 @@ abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
-ac_ct_CXX = @ac_ct_CXX@
-ac_ct_F77 = @ac_ct_F77@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -236,6 +239,7 @@ libmono_ldflags = @libmono_ldflags@
 libsuffix = @libsuffix@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mcs_topdir = @mcs_topdir@
 mcs_topdir_from_srcdir = @mcs_topdir_from_srcdir@
@@ -259,6 +263,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = net_1_1 net_2_0
@@ -269,18 +274,18 @@ EXTRA_DIST = \
 	mono.pc.in mint.pc.in dotnet.pc.in dotnet35.pc.in wcf.pc.in monodoc.pc.in \
 	mono-nunit.pc.in mono-cairo.pc.in mono-options.pc.in cecil.pc.in smcs.pc.in \
 	mono-lineeditor.pc.in system.web.extensions_1.0.pc.in system.web.extensions.design_1.0.pc.in\
-	dtrace-prelink.sh mono.web.pc.in
+	dtrace-prelink.sh mono.web.pc.in system.web.mvc.pc.in
 
 pkgconfigdir = $(libdir)/pkgconfig
 @INTERP_SUPPORTED_FALSE@@JIT_SUPPORTED_TRUE@pkgconfig_DATA = mono.pc dotnet.pc dotnet35.pc wcf.pc mono-nunit.pc mono-cairo.pc mono-options.pc cecil.pc smcs.pc monodoc.pc mono-lineeditor.pc system.web.extensions_1.0.pc \
-@INTERP_SUPPORTED_FALSE@@JIT_SUPPORTED_TRUE@		system.web.extensions.design_1.0.pc mono.web.pc
+@INTERP_SUPPORTED_FALSE@@JIT_SUPPORTED_TRUE@		system.web.extensions.design_1.0.pc mono.web.pc system.web.mvc.pc
 
 @INTERP_SUPPORTED_TRUE@@JIT_SUPPORTED_TRUE@pkgconfig_DATA = mono.pc mint.pc dotnet.pc dotnet35.pc wcf.pc mono-nunit.pc mono-cairo.pc mono-options.pc cecil.pc smcs.pc monodoc.pc mono-lineeditor.pc system.web.extensions_1.0.pc \
-@INTERP_SUPPORTED_TRUE@@JIT_SUPPORTED_TRUE@		system.web.extensions.design_1.0.pc mono.web.pc
+@INTERP_SUPPORTED_TRUE@@JIT_SUPPORTED_TRUE@		system.web.extensions.design_1.0.pc mono.web.pc system.web.mvc.pc
 
 @JIT_SUPPORTED_FALSE@pkgconfig_DATA = mint.pc mono-nunit.pc mono-cairo.pc mono-options.pc cecil.pc smcs.pc monodoc.pc mono-lineeditor.pc
 DISTCLEANFILES = mono.pc mint.pc dotnet.pc dotnet35.pc wcf.pc mono-nunit.pc mono-cairo.pc mono-options.pc cecil.pc smcs.pc monodoc.pc mono-lineeditor.pc system.web.extensions_1.0.pc \
-		system.web.extensions.design_1.0.pc mono.web.pc
+		system.web.extensions.design_1.0.pc mono.web.pc system.web.mvc.pc
 
 mono_DATA = config \
 	     browscap.ini
@@ -346,6 +351,8 @@ smcs.pc: $(top_builddir)/config.status $(srcdir)/smcs.pc.in
 system.web.extensions_1.0.pc: $(top_builddir)/config.status $(srcdir)/system.web.extensions_1.0.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 system.web.extensions.design_1.0.pc: $(top_builddir)/config.status $(srcdir)/system.web.extensions.design_1.0.pc.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+system.web.mvc.pc: $(top_builddir)/config.status $(srcdir)/system.web.mvc.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 config: $(top_builddir)/config.status $(srcdir)/config.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@

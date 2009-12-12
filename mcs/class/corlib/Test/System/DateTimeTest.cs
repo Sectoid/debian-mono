@@ -563,6 +563,18 @@ namespace MonoTests.System
 		}
 
 		[Test]
+		public void TestParseExact5 ()
+		{
+			DateTime dt = DateTime.ParseExact ("Wed, 12 May 2004 20:51:09 -02:30",
+							@"ddd, d MMM yyyy H:m:s zzz",
+							CultureInfo.CreateSpecificCulture("en-us"),
+							DateTimeStyles.AllowInnerWhite);
+			dt = dt.ToUniversalTime ();
+			Assert.AreEqual (23, dt.Hour, "Hour");
+			Assert.AreEqual (21, dt.Minute, "Minute");
+		}
+
+		[Test]
 		public void TestParseExact ()
 		{
 			// Standard patterns

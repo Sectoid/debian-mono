@@ -30,6 +30,15 @@
 #include <mono/io-layer/shared.h>
 #include <mono/io-layer/handles-private.h>
 
+/*
+ * Use POSIX shared memory if possible, it is simpler, and it has the advantage that 
+ * writes to the shared area does not need to be written to disk, avoiding spinning up 
+ * the disk every x secs on laptops.
+ */
+#ifdef HAVE_SHM_OPEN
+#define USE_SHM 1
+#endif
+
 #undef DEBUG
 
 #ifdef DISABLE_SHARED_HANDLES
@@ -38,10 +47,10 @@ gboolean _wapi_shm_disabled = TRUE;
 gboolean _wapi_shm_disabled = FALSE;
 #endif
 
-static gchar *_wapi_shm_file (_wapi_shm_t type)
+static gchar *
+_wapi_shm_base_name (_wapi_shm_t type)
 {
-	static gchar file[_POSIX_PATH_MAX];
-	gchar *name = NULL, *filename, *dir, *wapi_dir;
+	gchar *name = NULL;
 	gchar machine_name[256];
 	const gchar *fake_name;
 	struct utsname ubuf;
@@ -85,6 +94,45 @@ static gchar *_wapi_shm_file (_wapi_shm_t type)
 		break;
 	}
 
+	return name;
+}
+
+#ifdef USE_SHM
+
+static gchar *_wapi_shm_shm_name (_wapi_shm_t type)
+{
+	char *base_name = _wapi_shm_base_name (type);
+
+	/* Also add the uid to avoid permission problems */
+	return g_strdup_printf ("/mono-shared-%d-%s", getuid (), base_name);
+}
+
+static int
+_wapi_shm_open (const char *filename, int size)
+{
+	int fd;
+
+	fd = shm_open (filename, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR|S_IRGRP);
+	if (fd == -1)
+		/* Maybe /dev/shm is not mounted */
+		return -1;
+	if (ftruncate (fd, size) != 0) {
+		perror ("_wapi_shm_open (): ftruncate ()");
+		g_assert_not_reached ();
+	}
+
+	return fd;
+}
+
+#endif
+
+static gchar *_wapi_shm_file (_wapi_shm_t type)
+{
+	static gchar file[_POSIX_PATH_MAX];
+	gchar *name = NULL, *filename, *wapi_dir;
+
+	name = _wapi_shm_base_name (type);
+
 	/* I don't know how nfs affects mmap.  If mmap() of files on
 	 * nfs mounts breaks, then there should be an option to set
 	 * the directory.
@@ -100,14 +148,6 @@ static gchar *_wapi_shm_file (_wapi_shm_t type)
 
 	g_snprintf (file, _POSIX_PATH_MAX, "%s", filename);
 	g_free (filename);
-		
-	/* No need to check if the dir already exists or check
-	 * mkdir() errors, because on any error the open() call will
-	 * report the problem.
-	 */
-	dir = g_path_get_dirname (file);
-	mkdir (dir, 0755);
-	g_free (dir);
 	
 	return(file);
 }
@@ -119,6 +159,15 @@ static int _wapi_shm_file_open (const gchar *filename, guint32 wanted_size)
 	int ret, tries = 0;
 	gboolean created = FALSE;
 	mode_t oldmask;
+	gchar *dir;
+		
+	/* No need to check if the dir already exists or check
+	 * mkdir() errors, because on any error the open() call will
+	 * report the problem.
+	 */
+	dir = g_path_get_dirname (filename);
+	mkdir (dir, 0755);
+	g_free (dir);
 
 try_again:
 	if (tries++ > 10) {
@@ -214,12 +263,7 @@ try_again:
 	if (statbuf.st_size < wanted_size) {
 		close (fd);
 		if (created == TRUE) {
-#ifdef HAVE_LARGE_FILE_SUPPORT
-			/* Keep gcc quiet... */
-			g_critical ("%s: shared file [%s] is not big enough! (found %lld, need %d bytes)", __func__, filename, statbuf.st_size, wanted_size);
-#else
-			g_critical ("%s: shared file [%s] is not big enough! (found %ld, need %d bytes)", __func__, filename, statbuf.st_size, wanted_size);
-#endif
+			g_critical ("%s: shared file [%s] is not big enough! (found %ld, need %d bytes)", __func__, filename, (long)statbuf.st_size, wanted_size);
 			unlink (filename);
 			return(-1);
 		} else {
@@ -256,9 +300,9 @@ gpointer _wapi_shm_attach (_wapi_shm_t type)
 	gpointer shm_seg;
 	int fd;
 	struct stat statbuf;
-	gchar *filename=_wapi_shm_file (type);
+	gchar *filename = _wapi_shm_file (type);
 	guint32 size;
-	
+
 	switch(type) {
 	case WAPI_SHM_DATA:
 		size = sizeof(struct _WapiHandleSharedLayout);
@@ -276,13 +320,21 @@ gpointer _wapi_shm_attach (_wapi_shm_t type)
 		return g_malloc0 (size);
 	}
 
-	fd = _wapi_shm_file_open (filename, size);
+#ifdef USE_SHM
+	fd = _wapi_shm_open (_wapi_shm_shm_name (type), size);
+#else
+	fd = -1;
+#endif
+
+	/* Fall back to files if POSIX shm fails (for example, because /dev/shm is not mounted */
+	if (fd == -1)
+		fd = _wapi_shm_file_open (filename, size);
 	if (fd == -1) {
 		g_critical ("%s: shared file [%s] open error", __func__,
 			    filename);
 		return(NULL);
 	}
-	
+
 	if (fstat (fd, &statbuf)==-1) {
 		g_critical ("%s: fstat error: %s", __func__,
 			    g_strerror (errno));
@@ -500,6 +552,10 @@ static void shm_semaphores_remove (void)
 #endif
 
 		semctl (_wapi_sem_id, 0, IPC_RMID);
+#ifdef USE_SHM
+		shm_unlink (_wapi_shm_shm_name (WAPI_SHM_DATA));
+		shm_unlink (_wapi_shm_shm_name (WAPI_SHM_FILESHARE));
+#endif
 		unlink (_wapi_shm_file (WAPI_SHM_DATA));
 		unlink (_wapi_shm_file (WAPI_SHM_FILESHARE));
 	} else {

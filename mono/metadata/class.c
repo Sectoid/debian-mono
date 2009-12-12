@@ -115,6 +115,9 @@ mono_class_from_typeref (MonoImage *image, guint32 type_token)
 		MonoClass *enclosing = mono_class_from_typeref (image, MONO_TOKEN_TYPE_REF | idx);
 		GList *tmp;
 
+		if (!enclosing)
+			return NULL;
+
 		if (enclosing->nested_classes_inited) {
 			/* Micro-optimization: don't scan the metadata tables if enclosing is already inited */
 			for (tmp = enclosing->nested_classes; tmp; tmp = tmp->next) {
@@ -4259,6 +4262,16 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token)
 	/* uses ->valuetype, which is initialized by mono_class_setup_parent above */
 	mono_class_setup_mono_type (class);
 
+	if ((class->flags & TYPE_ATTRIBUTE_STRING_FORMAT_MASK) == TYPE_ATTRIBUTE_UNICODE_CLASS)
+		class->unicode = 1;
+
+#ifdef PLATFORM_WIN32
+	if ((class->flags & TYPE_ATTRIBUTE_STRING_FORMAT_MASK) == TYPE_ATTRIBUTE_AUTO_CLASS)
+		class->unicode = 1;
+#endif
+
+	class->cast_class = class->element_class = class;
+
 	if (!class->enumtype) {
 		if (!mono_metadata_interfaces_from_typedef_full (
 			    image, type_token, &interfaces, &icount, context)){
@@ -4270,16 +4283,6 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token)
 		class->interfaces = interfaces;
 		class->interface_count = icount;
 	}
-
-	if ((class->flags & TYPE_ATTRIBUTE_STRING_FORMAT_MASK) == TYPE_ATTRIBUTE_UNICODE_CLASS)
-		class->unicode = 1;
-
-#if PLATFORM_WIN32
-	if ((class->flags & TYPE_ATTRIBUTE_STRING_FORMAT_MASK) == TYPE_ATTRIBUTE_AUTO_CLASS)
-		class->unicode = 1;
-#endif
-
-	class->cast_class = class->element_class = class;
 
 	/*g_print ("Load class %s\n", name);*/
 
@@ -5103,13 +5106,28 @@ mono_class_get_field (MonoClass *class, guint32 field_token)
 MonoClassField *
 mono_class_get_field_from_name (MonoClass *klass, const char *name)
 {
+	return mono_class_get_field_from_name_full (klass, name, NULL);
+}
+
+MonoClassField *
+mono_class_get_field_from_name_full (MonoClass *klass, const char *name, MonoType *signature)
+{
 	int i;
 
 	mono_class_setup_fields_locking (klass);
 	while (klass) {
 		for (i = 0; i < klass->field.count; ++i) {
-			if (strcmp (name, mono_field_get_name (&klass->fields [i])) == 0)
-				return &klass->fields [i];
+			MonoClassField *field = &klass->fields [i];
+
+			if (strcmp (name, mono_field_get_name (field)) != 0)
+				continue;
+
+			if (signature) {
+				MonoType *field_type = mono_metadata_get_corresponding_field_from_generic_type_definition (field)->type;
+				if (!mono_metadata_type_equal_full (signature, field_type, TRUE))
+					continue;
+			}
+			return field;
 		}
 		klass = klass->parent;
 	}
