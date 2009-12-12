@@ -133,20 +133,24 @@ namespace System.Windows.Forms {
 			auto_complete_listbox.Scroll (-lines);
 		}
 
-		private void ShowAutoCompleteListBox (bool is_backspace)
+		// Receives either WM_KEYDOWN or WM_CHAR that will likely need the generation/lookup
+		// of new matches
+		private void ProcessAutoCompleteInput (ref Message m, bool deleting_chars)
+		{
+			// Need to call base.WndProc before to have access to
+			// the updated Text property value
+			base.WndProc (ref m);
+			auto_complete_original_text = Text;
+			ShowAutoCompleteListBox (deleting_chars);
+		}
+
+		private void ShowAutoCompleteListBox (bool deleting_chars)
 		{
 			// 
 			// We only support CustomSource by now
 			//
 
-			IList source;
-			if (auto_complete_cb_source == null)
-				source = auto_complete_custom_source;
-			else
-				source = auto_complete_cb_source.Items;
-
-			if (source == null || source.Count == 0)
-				return;
+			IList source = auto_complete_cb_source == null ? auto_complete_custom_source : (IList)auto_complete_cb_source.Items;
 
 			bool append = auto_complete_mode == AutoCompleteMode.Append || auto_complete_mode == AutoCompleteMode.SuggestAppend;
 			bool suggest = auto_complete_mode == AutoCompleteMode.Suggest || auto_complete_mode == AutoCompleteMode.SuggestAppend;
@@ -192,7 +196,7 @@ namespace System.Windows.Forms {
 				auto_complete_listbox.ShowListBox ();
 			}
 
-			if (append && !is_backspace)
+			if (append && !deleting_chars)
 				AppendAutoCompleteMatch (0);
 
 			document.MoveCaret (CaretDirection.End);
@@ -204,14 +208,16 @@ namespace System.Windows.Forms {
 				auto_complete_listbox.HideListBox (false);
 		}
 
-		bool IsAutoCompleteAvailable {
+		internal bool IsAutoCompleteAvailable {
 			get {
 				if (auto_complete_source == AutoCompleteSource.None || auto_complete_mode == AutoCompleteMode.None)
 					return false;
 
-				// We only support CustomSource by now
-				if (auto_complete_source != AutoCompleteSource.CustomSource || auto_complete_custom_source == null ||
-						auto_complete_custom_source.Count == 0)
+				// We only support CustomSource by now, as well as an internal custom source used by ComboBox
+				if (auto_complete_source != AutoCompleteSource.CustomSource)
+					return false;
+				IList custom_source = auto_complete_cb_source == null ? auto_complete_custom_source : (IList)auto_complete_cb_source.Items;
+				if (custom_source == null || custom_source.Count == 0)
 					return false;
 
 				return true;
@@ -318,6 +324,11 @@ namespace System.Windows.Forms {
 			SelectionLength = auto_complete_matches [index].Length - auto_complete_original_text.Length;
 		}
 
+		// this is called when the user selects a value from the autocomplete list
+		// *with* the mouse
+		internal virtual void OnAutoCompleteValueSelected (EventArgs args)
+		{
+		}
 #endif
 
 		private void UpdateAlignment ()
@@ -672,6 +683,9 @@ namespace System.Windows.Forms {
 							if (auto_complete_listbox != null && auto_complete_listbox.Visible)
 								auto_complete_listbox.HideListBox (false);
 							break;
+						case Keys.Delete:
+							ProcessAutoCompleteInput (ref m, true);
+							return;
 						default:
 							break;
 					}
@@ -680,20 +694,12 @@ namespace System.Windows.Forms {
 					if (!IsAutoCompleteAvailable)
 						break;
 
-					bool is_backspace = m.WParam.ToInt32 () == 8;
-					if (!Char.IsLetterOrDigit ((char)m.WParam) && !is_backspace)
+					// Don't handle either Enter or Esc - they are handled in the WM_KEYDOWN case
+					int char_value = m.WParam.ToInt32 ();
+					if (char_value == 13 || char_value == 27)
 						break;
-					
-					if (!is_backspace)
-						Text = auto_complete_original_text;
 
-					document.MoveCaret (CaretDirection.End);
-
-					// Need to call base.WndProc before to have access to
-					// the updated Text property value
-					base.WndProc (ref m);
-					auto_complete_original_text = Text;
-					ShowAutoCompleteListBox (is_backspace);
+					ProcessAutoCompleteInput (ref m, char_value == 8);
 					return;
 #endif
 				case Msg.WM_LBUTTONDOWN:
@@ -1046,6 +1052,7 @@ namespace System.Windows.Forms {
 				if (item_idx != -1 && !resizing)
 					HideListBox (true);
 
+				owner.OnAutoCompleteValueSelected (EventArgs.Empty); // internal
 				resizing = false;
 				Capture = false;
 			}

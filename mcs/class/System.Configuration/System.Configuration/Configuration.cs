@@ -30,15 +30,16 @@
 using System;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Configuration.Internal;
+using System.ComponentModel;
 using System.Reflection;
 using System.Xml;
 using System.IO;
-using System.Configuration.Internal;
 
 namespace System.Configuration {
 
 	public sealed class Configuration
-	{
+	{		
 		Configuration parent;
 		Hashtable elementData = new Hashtable ();
 		string streamName;
@@ -53,6 +54,9 @@ namespace System.Configuration {
 		string locationConfigPath;
 		string locationSubPath;
 
+		internal static event ConfigurationSaveEventHandler SaveStart;
+		internal static event ConfigurationSaveEventHandler SaveEnd;
+		
 		internal Configuration (Configuration parent, string locationSubPath)
 		{
 			this.parent = parent;
@@ -370,16 +374,26 @@ namespace System.Configuration {
 		
 		public void Save (ConfigurationSaveMode mode, bool forceUpdateAll)
 		{
+			ConfigurationSaveEventHandler saveStart = SaveStart;
+			ConfigurationSaveEventHandler saveEnd = SaveEnd;
+			
 			object ctx = null;
+			Exception saveEx = null;
 			Stream stream = system.Host.OpenStreamForWrite (streamName, null, ref ctx);
 			try {
+				if (saveStart != null)
+					saveStart (this, new ConfigurationSaveEventArgs (streamName, true, null, ctx));
+				
 				Save (stream, mode, forceUpdateAll);
 				system.Host.WriteCompleted (streamName, true, ctx);
-			} catch (Exception) {
+			} catch (Exception ex) {
+				saveEx = ex;
 				system.Host.WriteCompleted (streamName, false, ctx);
 				throw;
 			} finally {
 				stream.Close ();
+				if (saveEnd != null)
+					saveEnd (this, new ConfigurationSaveEventArgs (streamName, false, saveEx, ctx));
 			}
 		}
 		
@@ -435,6 +449,7 @@ namespace System.Configuration {
 				tw.WriteEndElement ();
 			}
 			finally {
+				tw.Flush ();
 				tw.Close ();
 			}
 		}
@@ -449,10 +464,13 @@ namespace System.Configuration {
 			if (String.IsNullOrEmpty (streamName))
 				return true;
 
-			if (!File.Exists (streamName))
+			Stream stream = null;
+			try {
+				stream = stream = system.Host.OpenStreamForRead (streamName);
+			} catch {
 				return false;
+			}
 
-			Stream stream = stream = system.Host.OpenStreamForRead (streamName);
 			using (XmlTextReader reader = new ConfigXmlTextReader (stream, streamName)) {
 				ReadConfigFile (reader, streamName);
 			}

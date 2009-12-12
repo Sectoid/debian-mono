@@ -564,6 +564,10 @@
 /* Have system zlib */
 #undef HAVE_ZLIB
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* Architecture uses registers for Parameters */
 #undef MONO_ARCH_REGPARMS
 

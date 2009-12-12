@@ -131,7 +131,7 @@ get_pid_status_item_buf (int pid, const char *item, char *rbuf, int blen, MonoPr
 		fclose (f);
 		len = strlen (s);
 		strncpy (rbuf, s, MIN (len, blen));
-		rbuf [blen - 1] = 0;
+		rbuf [MIN (len, blen) - 1] = 0;
 		if (error)
 			*error = MONO_PROCESS_ERROR_NONE;
 		return rbuf;
@@ -279,8 +279,8 @@ static gint64
 get_process_stat_time (int pid, int pos, int sum, MonoProcessError *error)
 {
 	gint64 val = get_process_stat_item (pid, pos, sum, error);
-	/* return milliseconds */
-	return (val * 1000) / get_user_hz ();
+	/* return 100ns ticks */
+	return (val * 10000000) / get_user_hz ();
 }
 
 static gint64
@@ -316,11 +316,11 @@ mono_process_get_data_with_error (gpointer pid, MonoProcessData data, MonoProces
 	case MONO_PROCESS_NUM_THREADS:
 		return get_pid_status_item (rpid, "Threads", error);
 	case MONO_PROCESS_USER_TIME:
-		return get_process_stat_time (rpid, 12, FALSE, error);
+		return get_process_stat_time (rpid, 10, FALSE, error);
 	case MONO_PROCESS_SYSTEM_TIME:
-		return get_process_stat_time (rpid, 13, FALSE, error);
+		return get_process_stat_time (rpid, 11, FALSE, error);
 	case MONO_PROCESS_TOTAL_TIME:
-		return get_process_stat_time (rpid, 12, TRUE, error);
+		return get_process_stat_time (rpid, 10, TRUE, error);
 	case MONO_PROCESS_WORKING_SET:
 		return get_pid_status_item (rpid, "VmRSS", error) * 1024;
 	case MONO_PROCESS_WORKING_SET_PEAK:
@@ -399,7 +399,8 @@ get_cpu_times (int cpu_id, gint64 *user, gint64 *systemt, gint64 *irq, gint64 *s
 	FILE *f = fopen ("/proc/stat", "r");
 	if (!f)
 		return;
-	hz *= mono_cpu_count ();
+	if (cpu_id < 0)
+		hz *= mono_cpu_count ();
 	while ((s = fgets (buf, sizeof (buf), f))) {
 		char *data = NULL;
 		if (cpu_id < 0 && strncmp (s, "cpu", 3) == 0 && g_ascii_isspace (s [3])) {

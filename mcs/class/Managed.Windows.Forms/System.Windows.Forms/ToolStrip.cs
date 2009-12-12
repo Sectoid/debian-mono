@@ -127,13 +127,13 @@ namespace System.Windows.Forms
 		#endregion
 
 		#region Public Properties
-		[MonoTODO ()]
+		[MonoTODO ("Stub, does nothing")]
 		public override bool AllowDrop {
 			get { return base.AllowDrop; }
 			set { base.AllowDrop = value; }
 		}
-		
-		[MonoTODO ()]
+
+		[MonoTODO ("Stub, does nothing")]
 		[DefaultValue (false)]
 		public bool AllowItemReorder {
 			get { return this.allow_item_reorder; }
@@ -723,8 +723,10 @@ namespace System.Windows.Forms
 		protected override void Dispose (bool disposing)
 		{
 			if (!IsDisposed) {
-				foreach (ToolStripItem tsi in Items)
-					tsi.Dispose ();
+				// ToolStripItem.Dispose modifes the collection,
+				// so we iterate it in reverse order
+				for (int i = Items.Count - 1; i >= 0; i--)
+					Items [i].Dispose ();
 					
 				if (this.overflow_button != null && this.overflow_button.drop_down != null)
 					this.overflow_button.drop_down.Dispose ();
@@ -734,7 +736,7 @@ namespace System.Windows.Forms
 			}
 		}
 
-		[MonoTODO ("Not called")]
+		[MonoTODO ("Stub, never called")]
 		protected virtual void OnBeginDrag (EventArgs e)
 		{
 			EventHandler eh = (EventHandler)(Events[BeginDragEvent]);
@@ -747,7 +749,7 @@ namespace System.Windows.Forms
 			base.OnDockChanged (e);
 		}
 
-		[MonoTODO ("Not called")]
+		[MonoTODO ("Stub, never called")]
 		protected virtual void OnEndDrag (EventArgs e)
 		{
 			EventHandler eh = (EventHandler)(Events[EndDragEvent]);
@@ -882,8 +884,7 @@ namespace System.Windows.Forms
 				if (this is MenuStrip && mouse_currently_over is ToolStripMenuItem && !(mouse_currently_over as ToolStripMenuItem).HasDropDownItems)
 					return;
 			} else {
-				if (this is MenuStrip)
-					this.HideMenus (true, ToolStripDropDownCloseReason.AppClicked);
+				this.HideMenus (true, ToolStripDropDownCloseReason.AppClicked);
 			}
 			
 			if (this is MenuStrip)
@@ -1132,21 +1133,20 @@ namespace System.Windows.Forms
 			string code = Char.ToUpper (charCode).ToString ();
 			
 			// If any item's text starts with our letter, it gets the message
-			if (this is ToolStripDropDownMenu)
+			if ((Control.ModifierKeys & Keys.Alt) != 0 || this is ToolStripDropDownMenu)
 				foreach (ToolStripItem tsi in this.Items)
 					if (tsi.Enabled && tsi.Visible && !string.IsNullOrEmpty (tsi.Text) && tsi.Text.ToUpper ().StartsWith (code) && !(tsi is ToolStripControlHost))
 						return tsi.ProcessMnemonic (charCode);
 
 			return base.ProcessMnemonic (charCode);
 		}
-		
-		[MonoTODO ()]
+
+		[MonoTODO ("Stub, does nothing")]
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
 		protected virtual void RestoreFocus ()
 		{
 		}
 
-		[MonoTODO ()]
 		protected override void Select (bool directed, bool forward)
 		{
 			foreach (ToolStripItem tsi in this.DisplayedItems)
@@ -1230,7 +1230,7 @@ namespace System.Windows.Forms
 			remove { base.AutoSizeChanged -= value; }
 		}
 
-		[MonoTODO ()]
+		[MonoTODO ("Event never raised")]
 		public event EventHandler BeginDrag {
 			add { Events.AddHandler (BeginDragEvent, value); }
 			remove { Events.RemoveHandler (BeginDragEvent, value); }
@@ -1262,7 +1262,7 @@ namespace System.Windows.Forms
 			remove { base.CursorChanged -= value; }
 		}
 
-		[MonoTODO ()]
+		[MonoTODO ("Event never raised")]
 		public event EventHandler EndDrag {
 			add { Events.AddHandler (EndDragEvent, value); }
 			remove { Events.RemoveHandler (EndDragEvent, value); }

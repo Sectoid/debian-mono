@@ -187,7 +187,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		ID = "__Page";
 		
 #if NET_2_0
-		PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
+		PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
 		if (ps != null) {
 			asyncTimeout = ps.AsyncTimeout;
 			viewStateEncryptionMode = ps.ViewStateEncryptionMode;
@@ -618,7 +618,7 @@ public partial class Page : TemplateControl, IHttpHandler
 	void InitializeStyleSheet ()
 	{
 		if (_styleSheetTheme == null) {
-			PagesSection ps = WebConfigurationManager.GetWebApplicationSection ("system.web/pages") as PagesSection;
+			PagesSection ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
 			if (ps != null)
 				_styleSheetTheme = ps.StyleSheetTheme;
 		}
@@ -855,7 +855,7 @@ public partial class Page : TemplateControl, IHttpHandler
 			return null;
 
 		NameValueCollection coll = null;
-		if (0 == String.Compare (Request.HttpMethod, "POST", true, CultureInfo.InvariantCulture)
+		if (0 == String.Compare (Request.HttpMethod, "POST", true, Helpers.InvariantCulture)
 #if TARGET_J2EE
 			|| !_context.IsServletRequest
 #endif

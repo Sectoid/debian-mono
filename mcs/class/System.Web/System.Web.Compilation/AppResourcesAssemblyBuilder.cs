@@ -4,7 +4,7 @@
 // Authors:
 //   Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2007 Novell, Inc
+// (C) 2007-2009 Novell, Inc (http://novell.com/)
 //
 
 //
@@ -32,14 +32,19 @@ using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
+using System.Threading;
 using System.Web;
 using System.Web.Configuration;
 
 namespace System.Web.Compilation
 {
-	internal class AppResourcesAssemblyBuilder
+	class AppResourcesAssemblyBuilder
 	{
 		CompilationSection config;
 		CompilerInfo ci;
@@ -90,22 +95,23 @@ namespace System.Web.Compilation
 		public void Build (CodeCompileUnit unit)
 		{
 			Dictionary <string, List <string>> cultures = appResourcesCompiler.CultureFiles;
-			string defaultAssemblyKey = AppResourcesCompiler.DefaultCultureKey;
+			List <string> defaultCultureFiles = appResourcesCompiler.DefaultCultureFiles;
+			
+			if (defaultCultureFiles != null)
+				BuildDefaultAssembly (defaultCultureFiles, unit);
 			
 			foreach (KeyValuePair <string, List <string>> kvp in cultures)
-				BuildAssembly (kvp.Key, kvp.Value, defaultAssemblyKey, unit);
+				BuildSatelliteAssembly (kvp.Key, kvp.Value);
 		}
 
-		void BuildAssembly (string cultureName, List <string> files, string defaultAssemblyKey, CodeCompileUnit unit)
+		void BuildDefaultAssembly (List <string> files, CodeCompileUnit unit)
 		{
-			bool defaultAssembly = cultureName == defaultAssemblyKey;			
 			AssemblyBuilder abuilder = new AssemblyBuilder (Provider);
-			if (unit != null && defaultAssembly)
+			if (unit != null)
 				abuilder.AddCodeCompileUnit (unit);
 			
-			string assemblyPath = defaultAssembly ? baseAssemblyPath : BuildAssemblyPath (cultureName, abuilder);
 			CompilerParameters cp = ci.CreateDefaultCompilerParameters ();
-			cp.OutputAssembly = assemblyPath;
+			cp.OutputAssembly = baseAssemblyPath;
 			cp.GenerateExecutable = false;
 			cp.TreatWarningsAsErrors = true;
 			cp.IncludeDebugInformation = config.Debug;
@@ -117,27 +123,145 @@ namespace System.Web.Compilation
 			if (results == null)
 				return;
 			
-			Assembly ret = null;
-			
 			if (results.NativeCompilerReturnValue == 0) {
-				ret = results.CompiledAssembly;
-				if (defaultAssembly) {
-					BuildManager.TopLevelAssemblies.Add (ret);
-					mainAssembly = ret;
-				}
+				mainAssembly = results.CompiledAssembly;
+				BuildManager.TopLevelAssemblies.Add (mainAssembly);
 			} else {
 				if (HttpContext.Current.IsCustomErrorEnabled)
 					throw new ApplicationException ("An error occurred while compiling global resources.");
 				throw new CompilationException (null, results.Errors, null);
 			}
 			
-			if (defaultAssembly) {
-				HttpRuntime.WritePreservationFile (ret, canonicAssemblyName);
-				HttpRuntime.EnableAssemblyMapping (true);
+			HttpRuntime.WritePreservationFile (mainAssembly, canonicAssemblyName);
+			HttpRuntime.EnableAssemblyMapping (true);
+		}
+
+		void BuildSatelliteAssembly (string cultureName, List <string> files)
+		{
+			string assemblyPath = BuildAssemblyPath (cultureName);
+			var info = new ProcessStartInfo ();
+			var al = new Process ();
+
+			string arguments = SetAlPath (info);
+			var sb = new StringBuilder (arguments);
+
+			sb.Append ("/c:\"" + cultureName + "\" ");
+			sb.Append ("/t:lib ");
+			sb.Append ("/out:\"" + assemblyPath + "\" ");
+			if (mainAssembly != null)
+				sb.Append ("/template:\"" + mainAssembly.Location + "\" ");
+			
+			string responseFilePath = assemblyPath + ".response";
+			using (FileStream fs = File.OpenWrite (responseFilePath)) {
+				using (StreamWriter sw = new StreamWriter (fs)) {
+					foreach (string f in files) 
+						sw.WriteLine ("/embed:\"" + f + "\" ");
+				}
+			}
+			sb.Append ("@\"" + responseFilePath + "\"");
+			
+			info.Arguments = sb.ToString ();
+			info.CreateNoWindow = true;
+			info.UseShellExecute = false;
+			info.RedirectStandardOutput = true;
+			info.RedirectStandardError = true;
+			
+			al.StartInfo = info;
+
+			var alOutput = new StringCollection ();
+			var alMutex = new Mutex ();
+			DataReceivedEventHandler outputHandler = (object sender, DataReceivedEventArgs args) => {
+				if (args.Data != null) {
+					alMutex.WaitOne ();
+					alOutput.Add (args.Data);
+					alMutex.ReleaseMutex ();
+				}
+			};
+			
+			al.ErrorDataReceived += outputHandler;
+			al.OutputDataReceived += outputHandler;
+
+			// TODO: consider using asynchronous processes
+			try {
+				al.Start ();
+			} catch (Exception ex) {
+				throw new HttpException (String.Format ("Error running {0}", al.StartInfo.FileName), ex);
+			}
+
+			Exception alException = null;
+			int exitCode = 0;
+			try {
+				al.BeginOutputReadLine ();
+				al.BeginErrorReadLine ();
+				al.WaitForExit ();
+				exitCode = al.ExitCode;
+			} catch (Exception ex) {
+				alException = ex;
+			} finally {
+				al.CancelErrorRead ();
+				al.CancelOutputRead ();
+				al.Close ();
+			}
+
+			if (exitCode != 0 || alException != null) {
+				// TODO: consider adding a new type of compilation exception,
+				// tailored for al
+				CompilerErrorCollection errors = null;
+				
+				if (alOutput.Count != 0) {
+					foreach (string line in alOutput) {
+						Console.WriteLine (line);
+						if (!line.StartsWith ("ALINK: error ", StringComparison.Ordinal))
+							continue;
+						if (errors == null)
+							errors = new CompilerErrorCollection ();
+
+						int colon = line.IndexOf (':', 13);
+						string errorNumber = colon != -1 ? line.Substring (13, colon - 13) : "Unknown";
+						string errorText = colon != -1 ? line.Substring (colon + 1) : line.Substring (13);
+						
+						errors.Add (new CompilerError (Path.GetFileName (assemblyPath), 0, 0, errorNumber, errorText));
+					}
+				}
+				
+				throw new CompilationException (Path.GetFileName (assemblyPath), errors, null);
 			}
 		}
 
-		string BuildAssemblyPath (string cultureName, AssemblyBuilder abuilder)
+		string SetAlPath (ProcessStartInfo info)
+		{			
+			if (HttpRuntime.RunningOnWindows) {
+				string alPath;
+				string monoPath;
+				PropertyInfo gac = typeof (Environment).GetProperty ("GacPath", BindingFlags.Static|BindingFlags.NonPublic);
+                                MethodInfo get_gac = gac.GetGetMethod (true);
+                                string p = Path.GetDirectoryName ((string) get_gac.Invoke (null, null));
+				monoPath = Path.Combine (Path.GetDirectoryName (Path.GetDirectoryName (p)), "bin\\mono.bat");
+                                if (!File.Exists (monoPath)) {
+                                        monoPath = Path.Combine (Path.GetDirectoryName (Path.GetDirectoryName (p)), "bin\\mono.exe");
+					if (!File.Exists (monoPath)) {
+						monoPath = Path.Combine (Path.GetDirectoryName (Path.GetDirectoryName (Path.GetDirectoryName (p))), "mono\\mono\\mini\\mono.exe");
+						if (!File.Exists (monoPath))
+							throw new FileNotFoundException ("Windows mono path not found: " + monoPath);
+					}
+				}
+				
+                                alPath = Path.Combine (p, "2.0\\al.exe");
+                                if (!File.Exists (alPath)) {
+                                        alPath = Path.Combine(Path.GetDirectoryName (p), "lib\\net_2_0\\al.exe");
+					if (!File.Exists (alPath))
+						throw new FileNotFoundException ("Windows al path not found: " + alPath);
+				}
+
+				info.FileName = monoPath;
+				return alPath;
+			} else {
+				info.FileName = "al2";
+				return String.Empty;
+			}
+		}
+		
+		string BuildAssemblyPath (string cultureName)
 		{
 			string baseDir = Path.Combine (baseAssemblyDirectory, cultureName);
 			if (!Directory.Exists (baseDir))
@@ -146,10 +270,6 @@ namespace System.Web.Compilation
 			string baseFileName = Path.GetFileNameWithoutExtension (baseAssemblyPath);
 			string fileName = String.Concat (baseFileName, ".resources.dll");
 			fileName = Path.Combine (baseDir, fileName);
-
-			CodeCompileUnit assemblyInfo = GenerateAssemblyInfo (cultureName);
-			if (assemblyInfo != null)
-				abuilder.AddCodeCompileUnit (assemblyInfo);
 
 			return fileName;
 		}

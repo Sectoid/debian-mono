@@ -1,3 +1,77 @@
+2009-10-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* DataTable.cs: Reuse old utility methods for raising DataTable 
+	clearing/cleared events.
+	* DataRowCollection.cs (Clear): Raise DataTable clearing/cleared 
+	events only for non 1.x profiles.  Fixes broken 1.x build.
+	
+2009-10-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes 448296
+	* DataTable.cs (Clear): Do not raise TableClearing/Cleared events as 
+	they will be raised from DataRowCollection.Clear().  New utility methods 
+	for raising TableClearing/TableCleared events from outside DataTable.  
+	Don't manually reset indexes as ResetIndexes is called from 
+	DataRowCollection.Clear
+	* DataRowCollection.cs (Clear): Raise TableClearing/Cleared events accordingly.
+	
+2009-10-29  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+ 	** Fixes 332875 - based on analysis by Ben Martin <ben@trustorm.com.au>
+ 	* XmlSchemaDataImporter.cs (AddParentKeyColumn): If a table already has a 
+ 	PrimaryKey column defined, when called again, fill the PKCol data into the 
+ 	passed DataColumn and return.
+
+2009-10-29  Veerapuram Varadhan  <vvaradhan@novell.com>
+ 
+ 	** Fixes #550960 - Patch by Stefano <stefano.sapienti@apsystems.it>
+ 	* DataTable.cs (BinarySerialize): Use datatype from DataColumn 
+ 	instead of value of the column.
+
+2009-10-13  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #537229
+	* XmlDiffLoader (LoadColumnAttributes/Children): Decode column names in 
+	case if they are encoded.
+	
+2009-09-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes part of #427769 - Patch by John Lenz <jlenz2@math.uiuc.edu>
+	* DataSet.cs: XML serialization improvements to be compatible with MS impl.
+	
+2009-09-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	** Fixes #536194 - Patch by Andrew Kurochk <aaki.viper@gmail.com>
+	* MergeManager.cs (Merge*): Do nothing when source and target 
+	datasets are same.
+	
+2009-09-10  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+        ** Fixes #510176
+        * DataView.cs (OnRowChanged/OnRowDeleted): Raise appropriate events iff
+        view is affected. This silence of the numerous Add/Change events that were
+        getting raised from DataView.
+        (ToTable): Use appropriate index to generated DataTable in case of
+        RowFilter / Sort conditions.
+
+        * DataRow.cs (AcceptChanges/RejectChanges): Raise appropriate Changing events.
+        	
+2009-09-03  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataColumnPropertyDescriptor.cs, DataView.cs: Not browsable if Hidden.
+	[Fixes the second part of bug #536547]
+
+2009-08-25  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* DataViewManager.cs (CollectionToListChangeEventArgs) : Use IsAssignableFrom 
+	instead of type comparison.
+		
+2009-08-25  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #521951
+	* DataViewManager.cs (CollectionToListChangeEventArgs) : Use a corresponding 
+	DataTable/DataRelation obj instead of only DataRelation.
+	
 2009-05-16  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #325464 - ToolItems.xsd

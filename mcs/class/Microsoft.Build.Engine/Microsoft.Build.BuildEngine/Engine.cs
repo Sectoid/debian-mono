@@ -32,6 +32,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
 using Mono.XBuild.Utilities;
 
 namespace Microsoft.Build.BuildEngine {
@@ -63,7 +64,7 @@ namespace Microsoft.Build.BuildEngine {
 		}
 		
 		public Engine ()
-			: this (null)
+			: this (ToolLocationHelper.GetPathToDotNetFramework (TargetDotNetFrameworkVersion.Version20))
 		{
 		}
 
@@ -319,8 +320,7 @@ namespace Microsoft.Build.BuildEngine {
 				LogProjectFinished (top_project, succeeded);
 
 			if (currentlyBuildingProjectsStack.Count == 0) {
-				//FIXME: build result
-				LogBuildFinished (true);
+				LogBuildFinished (succeeded);
 				buildStarted = false;
 			}
 		}
@@ -328,15 +328,12 @@ namespace Microsoft.Build.BuildEngine {
 		void LogProjectStarted (Project project, string [] target_names)
 		{
 			ProjectStartedEventArgs psea;
-			if (target_names == null || target_names.Length == 0) {
-				if (project.DefaultTargets != String.Empty)
-					psea = new ProjectStartedEventArgs ("Project started.", null, project.FullFileName,
-						project.DefaultTargets, null, null);
-				else
-					psea = new ProjectStartedEventArgs ("Project started.", null, project.FullFileName, "default", null, null);
-			} else
-			psea = new ProjectStartedEventArgs ("Project started.", null, project.FullFileName, String.Join (";",
-				target_names), null, null);
+			if (target_names == null || target_names.Length == 0)
+				psea = new ProjectStartedEventArgs ("Project started.", null, project.FullFileName,
+						String.Empty, null, null);
+			else
+				psea = new ProjectStartedEventArgs ("Project started.", null, project.FullFileName,
+						String.Join (";", target_names), null, null);
 			eventSource.FireProjectStarted (this, psea);
 		}
 

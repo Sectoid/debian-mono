@@ -35,6 +35,23 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Microsoft.Build.BuildEngine {
+
+	// Properties and items are processed in two ways
+	// 1. Evaluate, Project calls evaluate on all the item and property groups.
+	//    At this time, the items are fully expanded, all item and property
+	//    references are expanded to get the item's value.
+	//    Properties on the other hand, expand property refs, but _not_
+	//    item references.
+	//
+	// 2. After the 'evaluation' phase, this could be when executing a target/task,
+	//    - Items : no expansion required, as they are already at final value
+	//    - Properties: Item references get expanded now, in the context of the
+	//      batching
+	//
+	// The enum ExpressionOptions is for specifying this expansion of item references.
+	//
+	// GroupingCollection.Evaluate, evaluates all properties and then items
+
 	internal class Expression {
 	
 		ExpressionCollection expressionCollection;
@@ -48,16 +65,19 @@ namespace Microsoft.Build.BuildEngine {
 			this.expressionCollection = new ExpressionCollection ();
 		}
 
-		public void Parse (string expression, bool allowItems)
-		{
-			Parse (expression, allowItems, true);
-		}
-
-		// @split: Split on ';'
+		// Split: Split on ';'
 		//	   Eg. Property values don't need to be split
-		public void Parse (string expression, bool allowItems, bool split)
+		//
+		// AllowItems: if false, item refs should not be treated as item refs!
+		//	        it converts them to strings in the final expressionCollection
+		//
+		// AllowMetadata: same as AllowItems, for metadata
+		public void Parse (string expression, ParseOptions options)
 		{
-			expression = expression.Replace ('/', Path.DirectorySeparatorChar);
+			bool split = (options & ParseOptions.Split) == ParseOptions.Split;
+			bool allowItems = (options & ParseOptions.AllowItems) == ParseOptions.AllowItems;
+			bool allowMd = (options & ParseOptions.AllowMetadata) == ParseOptions.AllowMetadata;
+
 			expression = expression.Replace ('\\', Path.DirectorySeparatorChar);
 		
 			string [] parts;
@@ -97,7 +117,7 @@ namespace Microsoft.Build.BuildEngine {
 				}
 			}
 
-			CopyToExpressionCollection (p3);
+			CopyToExpressionCollection (p3, allowItems, allowMd);
 		}
 
 		void Prepare (List <ArrayList> l, int length)
@@ -106,12 +126,17 @@ namespace Microsoft.Build.BuildEngine {
 				l.Add (null);
 		}
 		
-		void CopyToExpressionCollection (List <ArrayList> lists)
+		void CopyToExpressionCollection (List <ArrayList> lists, bool allowItems, bool allowMd)
 		{
 			for (int i = 0; i < lists.Count; i++) {
 				foreach (object o in lists [i]) {
 					if (o is string)
 						expressionCollection.Add (Utilities.Unescape ((string) o));
+					else if (!allowItems && o is ItemReference)
+						expressionCollection.Add (((ItemReference) o).OriginalString);
+					else if (!allowMd && o is MetadataReference) {
+						expressionCollection.Add (((MetadataReference) o).OriginalString);
+					}
 					else if (o is IReference)
 						expressionCollection.Add ((IReference) o);
 				}
@@ -122,13 +147,6 @@ namespace Microsoft.Build.BuildEngine {
 
 		ArrayList SplitItems (string text, bool allowItems)
 		{
-			if (!allowItems) {
-				// FIXME: it's probably larger than 1
-				ArrayList l = new ArrayList ();
-				l.Add (text);
-				return l;
-			}
-
 			ArrayList phase1 = new ArrayList ();
 			Match m;
 			m = ItemRegex.Match (text);
@@ -145,7 +163,8 @@ namespace Microsoft.Build.BuildEngine {
 				if (m.Groups [ItemRegex.GroupNumberFromName ("has_separator")].Success)
 					separator = m.Groups [ItemRegex.GroupNumberFromName ("separator")].Value;
 
-				ir = new ItemReference (name, transform, separator, m.Groups [0].Index, m.Groups [0].Length);
+				ir = new ItemReference (text.Substring (m.Groups [0].Index, m.Groups [0].Length),
+						name, transform, separator, m.Groups [0].Index, m.Groups [0].Length);
 				phase1.Add (ir);
 				m = m.NextMatch ();
 			}
@@ -230,7 +249,8 @@ namespace Microsoft.Build.BuildEngine {
 				
 				meta = m.Groups [MetadataRegex.GroupNumberFromName ("meta")].Value;
 				
-				mr = new MetadataReference (name, meta, m.Groups [0].Index, m.Groups [0].Length);
+				mr = new MetadataReference (text.Substring (m.Groups [0].Index, m.Groups [0].Length),
+								name, meta, m.Groups [0].Index, m.Groups [0].Length);
 				phase1.Add (mr);
 				m = m.NextMatch ();
 			}
@@ -258,10 +278,15 @@ namespace Microsoft.Build.BuildEngine {
 
 			return phase2;
 		}
-		
+
 		public object ConvertTo (Project project, Type type)
 		{
-			return expressionCollection.ConvertTo (project, type);
+			return ConvertTo (project, type, ExpressionOptions.ExpandItemRefs);
+		}
+
+		public object ConvertTo (Project project, Type type, ExpressionOptions options)
+		{
+			return expressionCollection.ConvertTo (project, type, options);
 		}
 
 		public ExpressionCollection Collection {
@@ -273,7 +298,7 @@ namespace Microsoft.Build.BuildEngine {
 				if (item_regex == null)
 					item_regex = new Regex (
 						@"@\(\s*"
-						+ @"(?<itemname>[_A-Za-z][_0-9a-zA-Z]*)"
+						+ @"(?<itemname>[_A-Za-z][_\-0-9a-zA-Z]*)"
 						+ @"(?<has_transform>\s*->\s*'(?<transform>[^']*)')?"
 						+ @"(?<has_separator>\s*,\s*'(?<separator>[^']*)')?"
 						+ @"\s*\)");
@@ -286,7 +311,7 @@ namespace Microsoft.Build.BuildEngine {
 				if (property_regex == null)
 					property_regex = new Regex (
 						@"\$\(\s*"
-						+ @"(?<name>[_a-zA-Z][_0-9a-zA-Z]*)"
+						+ @"(?<name>[_a-zA-Z][_\-0-9a-zA-Z]*)"
 						+ @"\s*\)");
 				return property_regex;
 			}
@@ -297,12 +322,32 @@ namespace Microsoft.Build.BuildEngine {
 				if (metadata_regex == null)
 					metadata_regex = new Regex (
 						@"%\(\s*"
-						+ @"((?<name>[_a-zA-Z][_0-9a-zA-Z]*)\.)?"
-						+ @"(?<meta>[_a-zA-Z][_0-9a-zA-Z]*)"
+						+ @"((?<name>[_a-zA-Z][_\-0-9a-zA-Z]*)\.)?"
+						+ @"(?<meta>[_a-zA-Z][_\-0-9a-zA-Z]*)"
 						+ @"\s*\)");
 				return metadata_regex;
 			}
 		}
+	}
+
+	[Flags]
+	enum ParseOptions {
+		// absence of one of these flags, means
+		// false for that option
+		AllowItems = 0x1,
+		Split = 0x2,
+		AllowMetadata = 0x4,
+
+		None = 0x8, // == no items, no metadata, and no split
+
+		// commonly used options
+		AllowItemsMetadataAndSplit = AllowItems | Split | AllowMetadata,
+		AllowItemsNoMetadataAndSplit = AllowItems | Split
+	}
+
+	enum ExpressionOptions {
+		ExpandItemRefs,
+		DoNotExpandItemRefs
 	}
 }
 

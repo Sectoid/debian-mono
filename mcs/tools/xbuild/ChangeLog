@@ -1,3 +1,245 @@
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: For referenced projects,
+	when trying to get the deploy items, ensure that the split
+	lists of project references are available.
+	(SplitProjectReferencesByExistent): New.
+	Set DependsOnTargets appropriately.
+
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* SolutionParser.cs: Handle non-existing project files, and
+	project file load errors. Raise warnings instead of failing.
+	* xbuild/Microsoft.Common.targets: Handle non-existant
+	Project references, skip instead of failing.
+
+2009-10-11  Ankit Jain  <jankit@novell.com>
+
+	* Main.cs: Add support for emitting messages in color.
+	Taking relevant code from mcs/report.cs . Using ANSI
+	color codes here instead of Console.ForegroundColor
+	because of a bug in Console.
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Don't get list of files
+	to deploy, for 'Private' project references.
+	Fix target named for *CopyDeploy*.
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.tasks: Add RemoveDuplicates task.
+
+2009-10-03  Ankit Jain  <jankit@novell.com>
+
+	Fix bug#542461.
+	* xbuild/Microsoft.Common.targets (KeyOriginatorFile): Set to
+	$(AssemblyOriginatorKeyFile), if SignAssembly is true.
+	Use it for satellite assemblies also.
+
+2009-09-29  Ankit Jain  <jankit@novell.com>
+
+	* SolutionParser.cs (Insert): Show project name in case of a cyclic
+	dependency.
+
+2009-09-27  Ankit Jain  <jankit@novell.com>
+
+	* SolutionParser.cs: Implement support for WebSite projects. These
+	projects lack a project file, so properties like references are read
+	from the .sln file, and targets are generated for build/clean etc.
+
+2009-09-26  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Remove _ValidateEssentialProperties
+	from BuildDependsOn, which was a hack. It will get invoked from the
+	InitialTargets now.
+
+2009-09-25  Ankit Jain  <jankit@novell.com>
+
+	* Makefile(EXTRA_DISTFILES): Add Microsoft.WebApplication.targets
+
+2009-09-25  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Emit list of files written
+	during the build, even if the build fails.
+
+2009-09-25  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #534992.
+	* xbuild/Microsoft.Common.targets: Add support for copying
+	app.config to AssemblyName.config
+	* xbuild/Microsoft.Common.tasks: Add FindAppConfigFile task.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* Parameters.cs (ParseArguments): If no project file is specified,
+	then look for a .sln or *proj file in the current directory.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* Makefile: Create dir for WebApplication.targets .
+	* Microsoft.Common.targets (_ValidateEssentialProperties): New.
+	(BuildDependsOn): Add _ValidateEssentialProperties, temporary.
+	This should actually work via InitialTargets, which will be fixed
+	in a subsequent commit. Add PrepareForRun.
+	(PrepareForRun): New.
+	* xbuild/Microsoft.WebApplication.targets: New.
+
+2009-09-23  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Add 'Rebuild' target.
+	Also, set DefaultTargets to "Build".
+
+2009-08-26  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Remove dummy
+	@(_TargetPathItem), since we support item refs with transforms
+	as a property value.
+
+2009-08-26  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #533903.
+	* xbuild/Microsoft.Common.targets: Support building projects
+	directly from command line. Builds referenced projects. Honors
+	$(BuildingSolutionFile) and $(BuildingInsideVisualStudio) now.
+	Also, clean referenced projects.
+
+2009-08-21  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #531926
+	* xbuild/Microsoft.Common.targets: Add $(ConfigurationName)
+	and $(PlatformName) default values.
+	Move CoreCompile to a Compile target with corresponding
+	Before/After hooks and *DependsOn.
+	Add Pre/PostBuildEvents handling.
+
+2009-08-20  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #532264.
+	* Main.cs: Dont generate .sln.proj, project.Load can handle
+	.sln directly now. Show stack trace for exceptions if logger
+	verbosity is > normal
+	* SolutionParser.cs (ParseSolution): Add a param for a raise
+	warning delegate. Use Dictionary.TryGetValue, key might not
+	be present.
+
+2009-08-20  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets (ResolveReferences*): Add
+	a *DependsOn property and Before/After hooks. Change output
+	of ResolvedFiles to @(ReferencePath).
+	* xbuild/Microsoft.CSharp.targets (Csc): Use @(ReferencePath)
+	for references.
+
+2009-08-19  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets (ResolveAssemblyReference):
+	Make SearchPaths get value from a property (AssemblySearchPaths)
+	to allow it to be overridden.
+
+2009-08-18  Ankit Jain  <jankit@novell.com>
+
+	* SolutionParser.cs (ParseSolution): Project reference in a project
+	file, but not found in .sln file is ignored. Also, add dependencies
+	specified in the .sln file.
+
+2009-08-14  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #530368.
+	* SolutionParser.cs (AddProjectTargets): If a project name matches one
+	of the targets that we emit (Build/Clean etc), then rename to
+	"Solution:<project name>".
+
+2009-08-14  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets (AllowUnsafeBlocks): Don't set any
+	default value.
+	(OutputPath): Set a default value.
+	(DeployOutputFiles): Copy only if something available to copy.
+
+2009-08-14  Ankit Jain  <jankit@novell.com>
+
+	* SolutionParser.cs (ProjectInfo.Dependencies): Change to a dictionary
+	to keep track of corresponding ProjectInfo objects.
+	(ParseSolution): Refactor to populate the ProjectInfo.Dependencies
+	dictionary. Use AddBuildLevels to emit build levels to allow
+	parallel builds.
+	(AddProjectTargets): Dependency's projectInfo is directly available now.
+	(AddBuildLevels): New. Emit items named BuildLevelN, where each level
+	has projects that can be built in parallel. Lower levels represent
+	dependencies for higher levels.
+	(AddSolutionTargets): Instead of using CallTarget, directly use MSBuild
+	task with the new BuildLevelN stuff. Also tell the user about disabled
+	projects or missing project configs.
+	(TopologicalSort): New.
+	(Insert): New. Based on code from monodevelop.
+
+2009-08-14  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets (ResolveAssemblyReference): Add
+	'{PkgConfig}' to SearchPaths.
+
+2009-07-31  Ankit Jain  <jankit@novell.com>
+
+	* ErrorUtilities.cs (ShowUsage): Implement.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #484771.
+	* xbuild/Microsoft.Common.targets (ResolveAssemblyReference): Add support
+	for $(OutDir).
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* ErrorUtilities.cs: Set version to Consts.MonoVersion .
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets (ResolveAssemblyReference): Output
+	ResolvedFiles to @(ReferencePath), required for IDE integration.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Implement 'Clean' target. Currently
+	just handles clean for a full build.
+
+2009-07-28  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Add missing 'SkipUnchangedFiles=true'
+	for the Copy tasks.
+	(CopyDeployFiles*): Fix typos, Add inputs/outputs for the
+	PreserveNewest case and remove for copy always case.
+
+2009-07-23  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets: Oops, forgot to remove some
+	debug stuff.
+
+2009-07-23  Ankit Jain  <jankit@novell.com>
+
+	* Makefile: Create a lib/mono/xbuild directory for xbuild
+	extensions.
+
+2009-07-23  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Common.targets (AssignProjectConfigurations): New.
+	(ResolveProjectReferences): Add dependency on AssignProjectConfigurations
+	target. Also, set the config and platform properties for the msbuild task
+	being invoked.
+	* xbuild/Microsoft.Common.tasks: Add AssignProjectConfiguration .
+
+2009-07-22  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.VisualBasic.targets (Vbc.References): Remove
+	"@(ChildProjectReferences)" as it gets resolved earlier
+	and is part of @(ResolvedFiles).
+
+2009-07-22  Ankit Jain  <jankit@novell.com>
+
+	* xbuild.Microsoft.CSharp.targets (Csc.References): Remove
+	"@(ChildProjectReferences)" as it gets resolved earlier
+	and is part of @(ResolvedFiles).
+
 2009-06-12  Ankit Jain  <jankit@novell.com>
 
 	* xbuild/Microsoft.Common.targets (ProjectDir): Fix typo.

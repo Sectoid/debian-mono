@@ -32,6 +32,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Reflection;
 #if MONOWEB_DEP
@@ -42,18 +43,26 @@ using System.Configuration;
 using System.Configuration.Internal;
 using _Configuration = System.Configuration.Configuration;
 using System.Web.Util;
+using System.Threading;
 
 namespace System.Web.Configuration {
 
 	public static class WebConfigurationManager
 	{
+		const int SAVE_LOCATIONS_CHECK_INTERVAL = 6000; // milliseconds
+		
+		static readonly object suppressAppReloadLock = new object ();
+		static readonly object saveLocationsCacheLock = new object ();
+		
 #if !TARGET_J2EE
 		static IInternalConfigConfigurationFactory configFactory;
 		static Hashtable configurations = Hashtable.Synchronized (new Hashtable ());
-		static Hashtable sectionCache = new Hashtable ();
+		static Dictionary <int, object> sectionCache = new Dictionary <int, object> ();
 		static Hashtable configPaths = Hashtable.Synchronized (new Hashtable ());
+		static bool suppressAppReload;
 #else
 		const string AppSettingsKey = "WebConfigurationManager.AppSettings";
+		
 		static internal IInternalConfigConfigurationFactory configFactory
 		{
 			get{
@@ -100,13 +109,13 @@ namespace System.Web.Configuration {
 			}
 		}
 
-		static Hashtable sectionCache
+		static Dictionary <int, object> sectionCache
 		{
 			get
 			{
-				Hashtable sectionCache = (Hashtable) AppDomain.CurrentDomain.GetData ("sectionCache");
+				Dictionary <int, object> sectionCache = AppDomain.CurrentDomain.GetData ("sectionCache") as Dictionary <int, object>;
 				if (sectionCache == null) {
-					sectionCache = new Hashtable (StringComparer.OrdinalIgnoreCase);
+					sectionCache = new Dictionary <int, object> ();
 					AppDomain.CurrentDomain.SetData ("sectionCache", sectionCache);
 				}
 				return sectionCache;
@@ -139,7 +148,9 @@ namespace System.Web.Configuration {
 			}
 		}
 #endif
-
+		static Dictionary <string, DateTime> saveLocationsCache;
+		static Timer saveLocationsTimer;
+		
 		static ArrayList extra_assemblies = null;
 		static internal ArrayList ExtraAssemblies {
 			get {
@@ -161,10 +172,10 @@ namespace System.Web.Configuration {
 		
 		static WebConfigurationManager ()
 		{
-			PropertyInfo prop = typeof(ConfigurationManager).GetProperty ("ConfigurationFactory", BindingFlags.Static | BindingFlags.NonPublic);
-			if (prop != null)
-				configFactory = prop.GetValue (null, null) as IInternalConfigConfigurationFactory;
-
+			configFactory = ConfigurationManager.ConfigurationFactory;
+			_Configuration.SaveStart += ConfigurationSaveHandler;
+			_Configuration.SaveEnd += ConfigurationSaveHandler;
+			
 			// Part of fix for bug #491531
 			Type type = Type.GetType ("System.Configuration.CustomizableFileSettingsProvider, System", false);
 			if (type != null) {
@@ -174,6 +185,55 @@ namespace System.Web.Configuration {
 			}
 		}
 
+		static void ReenableWatcherOnConfigLocation (object state)
+		{
+			string path = state as string;
+			if (String.IsNullOrEmpty (path))
+				return;
+
+			DateTime lastWrite;
+			lock (saveLocationsCacheLock) {
+				if (!saveLocationsCache.TryGetValue (path, out lastWrite))
+					lastWrite = DateTime.MinValue;
+			}
+
+			DateTime now = DateTime.Now;
+			if (lastWrite == DateTime.MinValue || now.Subtract (lastWrite).TotalMilliseconds >= SAVE_LOCATIONS_CHECK_INTERVAL) {
+				saveLocationsTimer.Dispose ();
+				saveLocationsTimer = null;
+				HttpApplicationFactory.EnableWatcher (VirtualPathUtility.RemoveTrailingSlash (HttpRuntime.AppDomainAppPath), "?eb.?onfig");
+			} else
+				saveLocationsTimer.Change (SAVE_LOCATIONS_CHECK_INTERVAL, SAVE_LOCATIONS_CHECK_INTERVAL);
+		}
+		
+		static void ConfigurationSaveHandler (_Configuration sender, ConfigurationSaveEventArgs args)
+		{
+			lock (suppressAppReloadLock) {
+				string rootConfigPath = WebConfigurationHost.GetWebConfigFileName (HttpRuntime.AppDomainAppPath);
+				if (String.Compare (args.StreamPath, rootConfigPath, StringComparison.OrdinalIgnoreCase) == 0) {
+					SuppressAppReload (args.Start);
+					if (args.Start) {
+						HttpApplicationFactory.DisableWatcher (VirtualPathUtility.RemoveTrailingSlash (HttpRuntime.AppDomainAppPath), "?eb.?onfig");
+
+						lock (saveLocationsCacheLock) {
+							if (saveLocationsCache == null)
+								saveLocationsCache = new Dictionary <string, DateTime> (StringComparer.Ordinal);
+							if (saveLocationsCache.ContainsKey (rootConfigPath))
+								saveLocationsCache [rootConfigPath] = DateTime.Now;
+							else
+								saveLocationsCache.Add (rootConfigPath, DateTime.Now);
+
+							if (saveLocationsTimer == null)
+								saveLocationsTimer = new Timer (ReenableWatcherOnConfigLocation,
+												rootConfigPath,
+												SAVE_LOCATIONS_CHECK_INTERVAL,
+												SAVE_LOCATIONS_CHECK_INTERVAL);
+						}
+					}
+				}
+			}
+		}
+		
 		public static _Configuration OpenMachineConfiguration ()
 		{
 			return ConfigurationManager.OpenMachineConfiguration ();
@@ -243,8 +303,16 @@ namespace System.Web.Configuration {
 		
 		public static _Configuration OpenWebConfiguration (string path, string site, string locationSubPath, string server, string userName, string password)
 		{
-			if (path == null || path.Length == 0)
+			return OpenWebConfiguration (path, site, locationSubPath, server, null, null, false);
+		}
+
+		static _Configuration OpenWebConfiguration (string path, string site, string locationSubPath, string server, string userName, string password, bool fweb)
+		{
+			if (String.IsNullOrEmpty (path))
 				path = "/";
+
+			if (!fweb && !String.IsNullOrEmpty (path))
+				path = FindWebConfig (path);
 
 			string confKey = path + site + locationSubPath + server + userName + password;
 			_Configuration conf = null;
@@ -324,20 +392,30 @@ namespace System.Web.Configuration {
 
 		internal static object GetSection (string sectionName, string path, HttpContext context)
 		{
-			object cachedSection = sectionCache [GetSectionCacheKey (sectionName, path)];
-			if (cachedSection != null)
+			// FindWebConfig must not be used here with its result being passed to
+			// OpenWebConfiguration below. The reason is that if we have a request for
+			// ~/somepath/, but FindWebConfig returns ~/ and the ~/web.config contains
+			// <location path="somepath"> then OpenWebConfiguration will NOT return the
+			// contents of <location>, thus leading to bugs (ignored authorization
+			// section for instance)
+			string config_vdir = FindWebConfig (path);
+			if (String.IsNullOrEmpty (config_vdir))
+				config_vdir = "/";
+
+			int sectionCacheKey = GetSectionCacheKey (sectionName, config_vdir);
+			object cachedSection;
+			if (sectionCache.TryGetValue (sectionCacheKey, out cachedSection) && cachedSection != null)
 				return cachedSection;
 
-			
 			HttpRequest req = context != null ? context.Request : null;
 			_Configuration c = OpenWebConfiguration (path, /* path */
 								 null, /* site */
 					 			 req != null ? VirtualPathUtility.GetDirectory (req.Path) : null, /* locationSubPath */
 								 null, /* server */
 								 null, /* userName */
-								 null  /* password */);
+								 null, /* password */
+								 false  /* path from FindWebConfig */);
 			ConfigurationSection section = c.GetSection (sectionName);
-
 			if (section == null)
 				return null;
 
@@ -349,7 +427,7 @@ namespace System.Web.Configuration {
 				value = collection;
 			}
 
-			AddSectionToCache (GetSectionCacheKey (sectionName, path), value);
+			AddSectionToCache (sectionCacheKey, value);
 			return value;
 #else
 #if MONOWEB_DEP
@@ -357,7 +435,7 @@ namespace System.Web.Configuration {
 #else
 			object value = null;
 #endif
-			AddSectionToCache (GetSectionCacheKey (sectionName, path), value);
+			AddSectionToCache (sectionCacheKey, value);
 			return value;
 #endif
 		}
@@ -434,7 +512,7 @@ namespace System.Web.Configuration {
 					break;
 				
 				curPath = GetParentDir (rootPath, curPath);
-				if (curPath == null) {
+				if (curPath == null || curPath == "~") {
 					curPath = rootPath;
 					break;
 				}
@@ -449,7 +527,19 @@ namespace System.Web.Configuration {
 			HttpRequest req = ctx != null ? ctx.Request : null;
 			return req != null ? req.Path : HttpRuntime.AppDomainAppVirtualPath;
 		}
+		
+		internal static bool SuppressAppReload (bool newValue)
+		{
+			bool ret;
+			
+			lock (suppressAppReloadLock) {
+				ret = suppressAppReload;
+				suppressAppReload = newValue;
+			}
 
+			return ret;
+		}
+		
 		internal static void RemoveConfigurationFromCache (HttpContext ctx)
 		{
 			configurations.Remove (GetCurrentPath (ctx));
@@ -481,20 +571,23 @@ namespace System.Web.Configuration {
 
 		static void AddSectionToCache (int key, object section)
 		{
-			if (sectionCache [key] != null)
+			object cachedSection;
+			if (sectionCache.TryGetValue (key, out cachedSection) && cachedSection != null)
 				return;
 
-			Hashtable tmpTable = (Hashtable) sectionCache.Clone ();
-			if (tmpTable.Contains (key))
+			// Not sure if it wouldn't be better to just use a lock here
+			var tmpTable = new Dictionary <int, object> (sectionCache);
+			if (tmpTable.ContainsKey (key))
 				return;
 
 			tmpTable.Add (key, section);
 			sectionCache = tmpTable;
 		}
 
-		static int GetSectionCacheKey (string sectionName, string path)
+		static int GetSectionCacheKey (string sectionName, string vdir)
 		{
-			return (sectionName != null ? sectionName.GetHashCode () : 0) ^ ((path != null ? path.GetHashCode () : 0) + 37);
+			return (sectionName != null ? sectionName.GetHashCode () : 0) ^
+				((vdir != null ? vdir.GetHashCode () : 0) + 37);
 		}
 
 		
@@ -631,7 +724,6 @@ namespace System.Web.Configuration {
 			// nothing. We need a context.
 		}
 	}
-
 #endregion
 }
 

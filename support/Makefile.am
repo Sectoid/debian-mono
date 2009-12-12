@@ -51,7 +51,7 @@ MPH_UNIX_SOURCE =				\
 
 if PLATFORM_WIN32
 MPH_SOURCE = $(MPH_C_SOURCE)
-MPH_LIBS   =
+MPH_LIBS   = $(GLIB_LIBS)
 else
 MPH_SOURCE = $(MPH_C_SOURCE) $(MPH_UNIX_SOURCE)
 MPH_LIBS   = $(GLIB_LIBS)
@@ -91,10 +91,10 @@ ZLIB_SOURCES = \
 	zutil.h
 
 if HAVE_ZLIB
-Z_SOURCE = zlib_macros.c 
+Z_SOURCE = zlib-helper.c
 Z_LIBS= -lz
 else
-Z_SOURCE = zlib_macros.c $(ZLIB_SOURCES)
+Z_SOURCE = zlib-helper.c $(ZLIB_SOURCES)
 Z_LIBS=
 endif
 

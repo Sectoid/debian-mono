@@ -1,3 +1,190 @@
+2009-10-23  Alexandre Gomes  <alexmipego@gmail.com>
+
+	* WebClient.cs: Fixed GetWebRequest overriding problems, bug: 
+	  https://bugzilla.novell.com/show_bug.cgi?id=549580
+	  
+2009-10-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: add 3 missing DoCallback() calls in
+	EndRead/EndWrite.
+
+2009-09-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* EndPointListener.cs: fix matching a listener in presence of a query
+	string or anchor.
+
+2009-09-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebRequest.cs: handle upper and lowercase HTTP_PROXY and
+	the Any address.  Fixes bug #537283.
+
+2009-09-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: if the request has already finished reading, don't
+	throw ObjectDisposedException here, just return as if nothing
+	happened. Fixes bug #312968.
+
+2009-08-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: HEAD response does not have a body even if the
+	response is an error. Fixes buf #535102.
+
+2009-08-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs:
+	* WebConnectionStream.cs: if there's an error writing the headers from
+	a buffered request, propagate the error instead of hiding it and
+	causing a different one later (ie, ObjectDisposedException instead of
+	the original WebException). This happened when posting without
+	Content-Length set to an HTTPS url without validating the server
+	certificate.
+
+2009-07-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: rethrow WebExceptions instead of creating a new one
+	with less information on the actual error.
+	Fixes bug #526069.
+
+2009-07-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebHeaderCollection.cs: check the validity of the characters in the
+	header names.
+
+2009-07-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebHeaderCollection.cs: implemente the 2.0 IsRestricted().
+
+2009-07-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: when sending a 0-length POST, ignore further
+	writes instead of throwing.
+	Fixes bug #524049.
+
+2009-07-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: implement GetWebRequest and GetWebResponse. Use them
+	instead of SetupRequest and ProcessResponse.
+
+2009-07-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: set the content length when uploading values. This
+	allows reusing the connection.
+	* WebConnectionStream.cs: SetHeaders() takes ownership of the buffer
+	and does not need to copy it any more. WriteRequest() wasn't always
+	setting 'requestWritten' to true.
+	* HttpWebRequest.cs: change in SetHeaders call.
+
+2009-07-06  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* WebConnectionStream.cs: Move and improve argument checks to match MS.
+	Modified CanRead and CanWrite to return false when instance is disposed.
+
+2009-07-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: provide better error message when there's an error
+	writing.
+	* WebConnectionStream.cs: don't nullify the buffer until
+	CheckFinalStatus() decides that there are no more authentication
+	retries or redirects.
+
+2009-07-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServicePointManager.cs: implement ServerCertificateValidationCallback.
+	* DefaultCertificatePolicy.cs: if there's a SCVC registered, don't do
+	normal error checking.a
+
+2009-07-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: avoid duplicating Accept-Encoding if GetHeaders()
+	is called twice.
+	* WebConnectionStream.cs: don't send a 0 content length for non-write
+	requests.
+
+2009-07-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: must use the 'int' version in 1.1.
+
+2009-07-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs:
+	* ServicePoint.cs: UseNagleAlgorithm determines NoDelay value.
+
+2009-06-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: fix 1.1 only test.
+
+2009-06-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: when buffering the response, we have to set
+	the internal length and regenerate the headers.
+
+2009-06-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: backported from HEAD.
+
+2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: don't send Content-Length header when SendChunked
+	is enabled.
+	* WebConnectionStream.cs: send the headers immediately when possible.
+	When writing the request before a Close(), if there was an exception
+	it was lost.
+
+2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpConnection.cs:
+	* HttpListenerResponse.cs: force closing the socket when the response
+	is aborted.
+
+2009-06-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebAsyncResult.cs: new field that tells us if the request is being
+	written automatically because we reached the content length.
+	* WebConnection.cs:
+	* WebConnectionStream.cs: make sure we only access the NetworkStream
+	while we own it. Automatically write the request when we reach
+	ContentLength number of bytes. Kill the write buffer as soon as
+	possible. Don't use the buffer at all when chunked encoding is
+	enabled.
+
+	Fixes bugs #515931 and #510642.
+
+2009-06-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: 'socket' and 'Data' where being changed by 2
+	threads at the same time when there were queued requests and the
+	current one was aborted in Connect().
+	* HttpWebRequest.cs: 'aborted' is now an int and we use Interlocked to
+	access it. Added WebConnection field used when aborting the request.
+
+	Fixes bug #514591 for good.
+
+2009-06-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: check for an aborted request in Begin* before
+	proceeding. Fixes bug #511851.
+
+2009-06-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: close the underlying socket if there's an
+	exception when closing the stream. Fixes bug #514996.
+
+2009-06-20  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* WebConnectionStream.cs: Keep count of all bytes written, and perform
+	write overflow check in both buffered and non-buffered writing (if
+	not using chunked transfer encoding). Fixes bug #510642.
+
+2009-06-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: make sure we don't open a new socket if the
+	request is aborted before we establish the connection. Fixes bug
+	#514591.
+
+	* HttpWebRequest.cs: new property to return abort status. Invoke the
+	abort handler before doing anything else when Abort() is called for
+	the first time.
+
 2009-06-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* EndPointListener.cs: call CheckIfRemove() after removing a regular
@@ -7,6 +194,38 @@
 	prefixes.
 	Clear the ip_to_endpoints hashtable if there are no more prefixes
 	listening on that address.
+
+2009-06-16 Andrés G. Aragoneses <aaragoneses@novell.com>
+
+	* WebConnection.cs: propagate the exception to the request.
+	* WebException.cs: new internal ctor.
+	* HttpWebRequest.cs: use new ctor to encapsulate the innerException.
+	Fixes #323452.
+
+2009-06-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: for unknown methods, always send the request once
+	we are connected even if there's no writeStream. Fixes bug #513087.
+
+2009-06-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: ProtocolViolationException is not thrown in
+	certain cases since 2.0. Fixes bug #508027.
+
+2009-06-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: follow MS docs when throwing
+	ProtocolViolationException at the beginning of an asynchronous
+	operation. Fixes bug #465613.
+
+2009-06-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionStream.cs: throw a WebException instead of an IOException.
+
+2009-06-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebRequest.cs: avoid exception when the reply from the server
+	contains just response code. Fixes bug #510852.
 
 2009-06-05  Robert Jordan  <robertj@gmx.net>
 

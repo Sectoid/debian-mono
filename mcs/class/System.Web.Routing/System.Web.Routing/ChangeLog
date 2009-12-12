@@ -1,3 +1,28 @@
+2009-11-09  Marek Habersack  <mhabersack@novell.com>
+
+	* RouteCollection.cs: GetVirtualPath doesn't append trailing slash
+	to application path blindly anymore. Fixes bug #553022
+
+2009-09-09  Marek Habersack  <mhabersack@novell.com>
+
+	* Route.cs: when Url is set to null, create a parser for empty
+	string. Fixes bug #537751
+
+	* PatternParser.cs: Parse allows for null/empty URLs. Fixes bug
+	#537751
+
+2009-09-08  Marek Habersack  <mhabersack@novell.com>
+
+	* UrlRoutingModule.cs: store original request path in
+	PostResolveRequestCache and restore it in
+	PostMapRequestHandler. Fixes bug #537089
+
+2009-08-19  Marek Habersack  <mhabersack@novell.com>
+
+	* Route.cs: GetRouteData adds contents of its DataTokens
+	dictionary to the returned RouteData.DataTokens dictionary. Fixes
+	bug #523330. Patch from Dax@daxxfiles.net, thanks!
+
 2009-06-25  Marek Habersack  <mhabersack@novell.com>
 
 	* PatternParser.cs: parameter name lookups must be

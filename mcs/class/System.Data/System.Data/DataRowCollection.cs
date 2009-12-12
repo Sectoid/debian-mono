@@ -163,11 +163,16 @@ namespace System.Data
 				}
 			}
 
+#if NET_2_0
+			table.DataTableClearing ();
+#endif	
 			List.Clear ();
 
 			// Remove from indexes
 			table.ResetIndexes ();
-
+#if NET_2_0
+			table.DataTableCleared ();
+#endif
 			OnListChanged (this, new ListChangedEventArgs (ListChangedType.Reset, -1, -1));
 		}
 

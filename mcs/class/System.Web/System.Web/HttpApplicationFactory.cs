@@ -28,6 +28,7 @@
 //
 using System;
 using System.Collections;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Web.UI;
@@ -109,7 +110,7 @@ namespace System.Web {
 				return false;
 
 			if (pi [0].ParameterType != typeof (object) ||
-			    pi [1].ParameterType != typeof (EventArgs))
+			    !typeof (EventArgs).IsAssignableFrom (pi [1].ParameterType))
 				return false;
 			
 			return true;
@@ -701,6 +702,34 @@ namespace System.Web {
 			}
 		}
 
+		internal static void DisableWatcher (string virtualPath, string filter)
+		{
+			EnableWatcherEvents (virtualPath, filter, false);
+		}
+
+		internal static void EnableWatcher (string virtualPath, string filter)
+		{
+			EnableWatcherEvents (virtualPath, filter, true);
+		}
+		
+		static void EnableWatcherEvents (string virtualPath, string filter, bool enable)
+		{
+			lock (watchers_lock) {
+				foreach (FileSystemWatcher watcher in watchers) {
+					if (
+#if NET_2_0
+						String.Compare (watcher.Path, virtualPath, StringComparison.Ordinal) != 0 || String.Compare (watcher.Filter, filter, StringComparison.Ordinal) != 0
+#else
+						String.Compare (watcher.Path, virtualPath) != 0 || String.Compare (watcher.Filter, filter) != 0
+#endif
+					)
+						continue;
+					
+					watcher.EnableRaisingEvents = enable;
+				}
+			}
+		}
+		
 		internal static void EnableWatchers ()
 		{
 			lock (watchers_lock) {
@@ -717,10 +746,13 @@ namespace System.Web {
 	        static void OnFileChanged(object sender, FileSystemEventArgs args)
 	        {
 			string name = args.Name;
+			bool isConfig = false;
+			
 			if (StrUtils.EndsWith (name, "onfig", true)) {
-				if (String.Compare (Path.GetFileName (name), "web.config", true) != 0)
+				if (String.Compare (Path.GetFileName (name), "web.config", true, Helpers.InvariantCulture) != 0)
 					return;
-			} else if (StrUtils.EndsWith (name, "lobal.asax", true) && String.Compare (name, "global.asax", true) != 0)
+				isConfig = true;
+			} else if (StrUtils.EndsWith (name, "lobal.asax", true) && String.Compare (name, "global.asax", true, Helpers.InvariantCulture) != 0)
 				return;
 
 			// {Inotify,FAM}Watcher will notify about events for a directory regardless
@@ -729,8 +761,19 @@ namespace System.Web {
 			// not removing it and instead working around the issue here. Fix for bug
 			// #495011
 			FileSystemWatcher watcher = sender as FileSystemWatcher;
-			if (watcher != null && String.Compare (watcher.Filter, "?eb.?onfig", true) == 0 && Directory.Exists (name))
+			if (watcher != null && String.Compare (watcher.Filter, "?eb.?onfig", true, Helpers.InvariantCulture) == 0 && Directory.Exists (name))
 				return;
+
+#if NET_2_0
+			// We re-enable suppression here since WebConfigurationManager will disable
+			// it after save is done. WebConfigurationManager is called twice by
+			// Configuration - just after opening the target file and just after closing
+			// it. For that reason we will receive two change notifications and if we
+			// disabled suppression here, it would reload the application on the second
+			// change notification.
+			if (isConfig && WebConfigurationManager.SuppressAppReload (true))
+				return;
+#endif
 			
 	        	lock (watchers_lock) {
 				if(app_shutdown)

@@ -39,6 +39,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Resources;
+using System.Text;
 using System.Web;
 using System.Web.Caching;
 using System.Web.Configuration;
@@ -208,13 +209,13 @@ namespace System.Web.Compilation
 		}
 		
 		const string cachePrefix = "@@LocalResourcesAssemblies";
-		public const string DefaultCultureKey = ".:!DefaultCulture!:.";
 		
 		bool isGlobal;
 		AppResourceFilesCollection files;
 		string tempDirectory;
 		string virtualPath;
 		Dictionary <string, List <string>> cultureFiles;
+		List <string> defaultCultureFiles;
 		
 		string TempDirectory {
 			get {
@@ -226,6 +227,50 @@ namespace System.Web.Compilation
 
 		public Dictionary <string, List <string>> CultureFiles {
 			get { return cultureFiles; }
+		}
+
+		public List <string> DefaultCultureFiles {
+			get { return defaultCultureFiles; }
+		}
+		
+		static AppResourcesCompiler ()
+		{
+			if (!BuildManager.IsPrecompiled)
+				return;
+
+			string[] binDirAssemblies = HttpApplication.BinDirectoryAssemblies;
+			if (binDirAssemblies == null || binDirAssemblies.Length == 0)
+				return;
+
+			string name;
+			Assembly asm;
+			foreach (string asmPath in binDirAssemblies) {
+				if (String.IsNullOrEmpty (asmPath))
+					continue;
+				
+				name = Path.GetFileName (asmPath);
+				if (name.StartsWith ("App_LocalResources.", StringComparison.OrdinalIgnoreCase)) {
+					string virtualPath = GetPrecompiledVirtualPath (asmPath);
+					if (String.IsNullOrEmpty (virtualPath))
+						continue;
+
+					asm = LoadAssembly (asmPath);
+					if (asm == null)
+						continue;
+					
+					AddAssemblyToCache (virtualPath, asm);
+					continue;
+				}
+
+				if (String.Compare (name, "App_GlobalResources.dll", StringComparison.OrdinalIgnoreCase) != 0)
+					continue;
+
+				asm = LoadAssembly (asmPath);
+				if (asm == null)
+					continue;
+
+				HttpContext.AppGlobalResourcesAssembly = asm;
+			}
 		}
 		
 		public AppResourcesCompiler (HttpContext context)
@@ -242,6 +287,34 @@ namespace System.Web.Compilation
 			this.isGlobal = false;
 			this.files = new AppResourceFilesCollection (HttpContext.Current.Request.MapPath (virtualPath));
 			this.cultureFiles = new Dictionary <string, List <string>> ();
+		}
+
+		static Assembly LoadAssembly (string asmPath)
+		{
+			try {
+				return Assembly.LoadFrom (asmPath);
+			} catch (BadImageFormatException) {
+				// ignore
+				return null;
+			}
+		}
+		
+		static string GetPrecompiledVirtualPath (string asmPath)
+		{
+			string compiledFile = Path.ChangeExtension (asmPath, ".compiled");
+			
+			if (!File.Exists (compiledFile))
+				return null;
+
+			var pfile = new PreservationFile (compiledFile);
+			string virtualPath = pfile.VirtualPath;
+			if (String.IsNullOrEmpty (virtualPath))
+				return "/";
+
+			if (virtualPath.EndsWith ("/App_LocalResources/", StringComparison.OrdinalIgnoreCase))
+				virtualPath = virtualPath.Substring (0, virtualPath.Length - 19);
+			
+			return virtualPath;
 		}
 		
 		public Assembly Compile ()
@@ -341,7 +414,7 @@ namespace System.Web.Compilation
 			return cache [path];
 		}
 		
-		void AddAssemblyToCache (string path, Assembly asm)
+		static void AddAssemblyToCache (string path, Assembly asm)
 		{
 			Cache runtimeCache = HttpRuntime.InternalCache;
 			Dictionary <string, Assembly> cache;
@@ -388,16 +461,20 @@ namespace System.Web.Compilation
 				resfile = arfi.Info.FullName;
 			if (!String.IsNullOrEmpty (resfile)) {
 				string culture = IsFileCultureValid (resfile);
-				if (culture == null)
-					culture = DefaultCultureKey;
-				
 				List <string> cfiles;
-				if (cultureFiles.ContainsKey (culture))
-					cfiles = cultureFiles [culture];
-				else {
-					cfiles = new List <string> (1);
-					cultureFiles [culture] = cfiles;
+				if (culture != null) {
+					if (cultureFiles.ContainsKey (culture))
+						cfiles = cultureFiles [culture];
+					else {
+						cfiles = new List <string> (1);
+						cultureFiles [culture] = cfiles;
+					}
+				} else {
+					if (defaultCultureFiles == null)
+						defaultCultureFiles = new List <string> ();
+					cfiles = defaultCultureFiles;
 				}
+				
 				cfiles.Add (resfile);
 			}
 				
@@ -589,7 +666,7 @@ namespace System.Web.Compilation
 					
 					cmp = new CodeMemberProperty ();
 					cmp.Attributes = MemberAttributes.Public | MemberAttributes.Final | MemberAttributes.Static;
-					cmp.Name = SanitizeResourceName ((string)de.Key);
+					cmp.Name = SanitizeResourceName (provider, (string)de.Key);
 					cmp.HasGet = true;
 					CodePropertyResourceGet (cmp.GetStatements, (string)de.Key, type, classname);
 					cmp.Type = new CodeTypeReference (type);
@@ -605,9 +682,52 @@ namespace System.Web.Compilation
 			unit.Namespaces.Add (ns);
 		}
 
-		string SanitizeResourceName (string name)
+		static bool is_identifier_start_character (int c)
 		{
-			return name.Replace (' ', '_').Replace ('-', '_').Replace ('.', '_');
+			return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || Char.IsLetter ((char)c);
+		}
+
+		static bool is_identifier_part_character (char c)
+		{
+			if (c >= 'a' && c <= 'z')
+				return true;
+
+			if (c >= 'A' && c <= 'Z')
+				return true;
+
+			if (c == '_' || (c >= '0' && c <= '9'))
+				return true;
+
+			if (c < 0x80)
+				return false;
+
+			return Char.IsLetter (c) || Char.GetUnicodeCategory (c) == UnicodeCategory.ConnectorPunctuation;
+		}
+		
+		string SanitizeResourceName (CodeDomProvider provider, string name)
+		{
+			if (provider.IsValidIdentifier (name))
+				return provider.CreateEscapedIdentifier (name);
+
+			var sb = new StringBuilder ();
+			char ch = name [0];
+			if (is_identifier_start_character (ch))
+				sb.Append (ch);
+			else {
+				sb.Append ('_');
+				if (ch >= '0' && ch <= '9')
+					sb.Append (ch);
+			}
+			
+			for (int i = 1; i < name.Length; i++) {
+				ch = name [i];
+				if (is_identifier_part_character (ch))
+					sb.Append (ch);
+				else
+					sb.Append ('_');
+			}
+			
+			return provider.CreateEscapedIdentifier (sb.ToString ());
 		}
 		
 		CodeObjectCreateExpression NewResourceManager (string name, string typename)

@@ -1,3 +1,339 @@
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* Target.cs (TargetFile): New. Gives the name of the file
+	containing the target definition.
+	* BuildEngine.cs (.ctor): Add a 'taskfile' parameters, and
+	return this for ProjectFileOfTaskNode.
+	* BuildTask.cs (LogTaskStarted):
+	(LogTaskFinished): Use parentTarget.ProjectFileOfTaskNode for
+	the event.
+	(InitializeTask): Set BuildEngine's task file to parent target's
+	TargetFile.
+	* Engine.cs (LogProjectStarted): Incase of default targets, set
+	TargetNames to String.Empty .
+	* TargetBatchingImpl.cs (LogTargetStarted):
+	(LogTargetFinished): Use target.TargetFile for the event.
+
+	* ConsoleLogger.cs: Keep a stack of project/target/task being
+	executed. And corresponding list of errors and warnings.
+	(EventsToString): Stringifies the current "stack", to be used
+	as key to the table of errors/warnings and for show messages
+	at the end of the build.
+
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (Load): Add argument checks.
+
+2009-10-11  Ankit Jain  <jankit@novell.com>
+
+	* ConsoleLogger.cs (no_colors): Rename to ..
+	(use_colors): .. this. Fix the case when XBUILD_COLORS
+	is not set.
+
+2009-10-11  Ankit Jain  <jankit@novell.com>
+
+	* ConsoleLogger.cs: Use ColorSetter and ColorResetter .
+	Support 'XBUILD_COLORS' to set colors for errors, warnings,
+	events and messages.
+
+2009-10-10  Ankit Jain  <jankit@novell.com>
+
+	* ConsoleLogger.cs (ProjectFinishedHandler): Once projectFailed
+	becomes true, don't reset it. We are looking for "atleast one
+	project failed".
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* DirectoryScanner.cs: Use Path.GetPathRoot, instead of
+	directly using DirectoryInfo ("z:"), that doesn't return
+	a dir info for "z:".
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* DirectoryScanner.cs: Handle absolute paths. Fix to work
+	correctly on windows. Change order of adding paths to match
+	msbuild, useful to have.
+
+2009-10-08  Ankit Jain  <jankit@novell.com>
+
+	* TaskBatchingImpl.cs (ParseTaskAttributes): Parse attributes
+	of the 'Output' element also.
+	* TaskEngine.cs (PublishOutput): Honor condition on 'Output' also.
+
+2009-10-07  Ankit Jain  <jankit@novell.com>
+
+	* ConsoleLogger.cs: Mark build as failed, if any project failed.
+
+2009-10-06  Ankit Jain  <jankit@novell.com>
+
+	* ConsoleLogger: Improve error reporting. Don't count failed task,
+	target or project as another error. Show "errors" after "warnings",
+	more useful to the user.
+	* Project.cs (BuildTarget): Log error instead of using CWL.
+
+2009-10-03  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (OS): New.
+	(InitializeProperties): Set 'OS' as a pre-defined property, set to
+	'Windows_NT', 'Unix' or 'OSX' depending on the platform.
+
+2009-10-02  Ankit Jain  <jankit@novell.com>
+
+	* Expression.cs (Parse): Don't change '/' to '\\', not required.
+
+2009-10-01  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (AddImport): Show the correct source file name, when
+	the import is in the main project file.
+
+2009-10-01  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #543299.
+	* Import.cs (.ctor): Evaluate and set EvaluatedProjectPath to
+	the full path of the imported project here itself, instead of ..
+	(Evaluate): .. here.
+	* ImportCollection.cs (Add): Use import.EvaluatedProjectPath .
+	(Contains): New.
+	* Project.cs (AddImport): Don't process if condition is false.
+	Warn if a circular reference is detected, and ignore the import.
+
+2009-09-29  Ankit Jain  <jankit@novell.com>
+
+	* GroupingCollection.cs (Evaluate): Mark internal.
+	* Project.cs (AddImport): Only evaluate the properties,
+	till before the import.
+
+2009-09-29  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (DoLoad): Don't use XmlReader.Create, for loading
+	the project xml, as returned Xml*Reader normalizes the newlines.
+	Instead directly use the TextReader with XmlDocument.Load ().
+
+2009-09-27  Ankit Jain  <jankit@novell.com>
+
+	* ConditionParser.cs: Show the condition being parsed in the
+	exception message.
+
+2009-09-26  Ankit Jain  <jankit@novell.com>
+
+	* Expression.cs: Allow '-' in item, property and metadata names.
+
+2009-09-26  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (Evaluate): Split into this and ..
+	(PrepareForEvaluate): .. this.
+	(AddImport): Evaluate the current set of properties/items etc,
+	before processing the imported project. Honor the Condition
+	for the Import.
+	(ProcessProjectAttributes): Update MSBuildProjectDefaultTargets
+	property.
+	* GroupingCollection.cs (Evaluate): Don't evaluate Imports here.
+	* BuildItemGroup.cs (Evaluate): Evaluate only once.
+	* BuildPropertyGroup.cs (Evaluate): Evaluate only once.
+
+2009-09-26  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs: Get InitialTargets from the imported projects also.
+	The combined list of targets are executed, in the order they were
+	found.
+	DefaultTargets are also read in from imported projects, and the first
+	non-empty DefaultTargets found is used.
+
+2009-09-25  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (BuildTarget): Handle skipped targets.
+
+2009-09-25  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (DoLoad): If a VS2003 project is detected, then throw
+	InvalidProjectFileException with useful error.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (Load): Emit the .sln.proj file only if env var
+	XBUILD_EMIT_SOLUTION is set.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (GetKeyForTarget): Make target name, case insensitive.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (InitializeProperties): Set 'MSBuildProjectDefaultTargets'
+	reserved property.
+
+2009-09-10  Ankit Jain  <jankit@novell.com>
+
+	* BuildItem.cs (Evaluate): Metadata from "Include" should be,
+	preserved, so use ConvertTo ITaskItem, rather than string.
+	Ensure that the new items have the metadata from references _in_
+	Include, and the metadata of _this_ builditem.
+	* DirectoryScanner.cs (Includes): Change to a array of ITaskItem.
+	(MatchedFilenames): Rename to ..
+	(MatchedItems): .. this, and change type of array of ITaskItem.
+	Ensure that metadata of items in Includes are retained in the
+	final matched items.
+
+	* BuildItemGroup.cs (ConvertoToITaskItemArray): Add 'separator'
+	param. If separator is present, then just return a "Join'ed"
+	string as the single task item.
+	* ItemReference.cs: Track api changes.
+
+	* BuildProperty.cs (ConvertToITaskItemArray): Split the value,
+	as we need separate task items.
+
+2009-09-01  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #534965.
+	* Project.cs (BuildTarget): Move caching of target outputs to ..
+	* Target.cs: .. here. Move LogTargetSkipped also here.
+	Ensure that caching happens for target dependencies also.
+
+2009-09-01  Ankit Jain  <jankit@novell.com>
+
+	* DirectoryScanner.cs (Scan): Ignore empty entries in includes and
+	excludes.
+
+2009-09-01  Ankit Jain  <jankit@novell.com>
+
+	* Expression.cs (ParseOptions): New enum. Replace the bool params
+	of exression.Parse with this. Add option to control expansion of
+	metadata references.
+	(CopyToExpressionCollection): Track api changes.
+	
+	Update all expr.Parse calls to use the new enum.
+	* BuildItem.cs, BuildProperty.cs, BuildTask.cs, Import.cs,
+	Target.cs, TargetBatchingImpl.cs, UsingTask.cs: Track api changes.
+
+	* BatchingImplBase.cs: Track api changes. Allow metadata refs
+	in task attributes.
+	* ConditionFactorExpression.cs: Allow metadata refs in conditions.
+	* ItemReference.cs: Allow metadata in transforms.
+	* TaskEngine.cs: Allow metadata refs.
+
+	* MetadataReference.cs (.ctor): Add a 'original string' param.
+
+2009-08-29  Ankit Jain  <jankit@novell.com>
+
+	* Expression.cs (ExpressionOptions): New.
+
+	Introduce a ExpressionOptions argument to all ConvertTo*
+	methods. Implement the rule: in evaluation phase, expand
+	all items completely, but dont expand item refs in properties.
+	At other times, expand the item refs in the properties.
+	See comments in Expression.cs, for a full explanation.
+	* BuildItem.cs: Track api changes.
+	* BuildItemGroup.cs: Likewise.
+	* BuildProperty.cs: Track api changes. Handle self-references.
+	* BuildTask.cs: Track api changes.
+	* IReference.cs: Add ExpressionOptions param.
+	* ItemReference.cs: Track api changes.
+	* PropertyReference.cs: Likewise.
+	* MetadataReference.cs: Likewise.
+	* ExpressionCollection.cs: Track api changes. Add support for
+	converting all primitive types and DateTime, instead of a fixed
+	few.
+	* Project.cs (GetMetadataBatched): Use the evaluated metadata.
+	* TaskBatchingImpl.cs: Handle the case when batching is required,
+	but no items are available.
+
+	* TaskEngine.cs: Throw on unsupported types. Correctly handle
+	properties in case of empty values.
+
+2009-08-26  Ankit Jain  <jankit@novell.com>
+
+	* Expression.cs: Correctly handle a item reference with transform
+	when allowItems is false. If item ref is ignored, then the transform
+	will get incorrectly matched as a metadata ref.
+	* ItemReference.cs (.ctor): Add a @original_string param.
+
+2009-08-26  Ankit Jain  <jankit@novell.com>
+
+	* Utilities.cs (UnescapeFromXml): New. From md.
+	* BuildProperty.cs (.ctor): Unescape xml codes from the InnerXml
+	of the property element.
+
+2009-08-26  Ankit Jain  <jankit@novell.com>
+
+	* BuildProperty.cs (ConvertToString): New.
+	(ConvertoToITaskItemArray): New. Parse the property value.
+	* PropertyReference.cs (ConvertToString): Use BuildProperty's
+	ConvertToString.
+	(ConvertoToITaskItemArray): Likewise.	
+
+2009-08-21  Ankit Jain  <jankit@novell.com>
+
+	* Engine.cs (EndProjectBuild): Use the @succeeded argument
+	instead of hardcoding 'true'.
+	* Target.cs (Build): Add an overload to return executeOnErrors
+	value for the target executed. If building dependencies fails,
+	and executeOnErrors is true, then execute OnError tasks.
+	Add the new param to ..
+	(BuildDependencies): this, ..
+	(DoBuild): and this.
+	(GetDependencies): Improve error message and variable name.
+	(ExecuteOnErrors): Honor OnError tag's Condition also.
+	* TaskBatchingImpl.cs (Run): Correctly set executeOnErrors param.
+
+2009-08-20  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #532264
+	* Project.cs (Load): Add support for loading .sln files.
+
+2009-08-20  Ankit Jain  <jankit@novell.com>
+
+	* BuildTask.cs (Execute): Use task_logger only after the task
+	has been initialized. Catch and report task loading errors.
+	* Target.cs (DoBuild): Dont rethrow the exception, and emit
+	the stacktrace as a low importance message.
+
+2009-08-18  Ankit Jain  <jankit@novell.com>
+
+	* BatchingImplBase.cs: Make the item name lookups and metadata be case
+	insensitive.
+	* TaskDatabase.cs: Likewise.
+	* TaskEngine.cs: Make property name looks, case insensitive.
+
+2009-08-09  Miguel de Icaza  <miguel@novell.com>
+
+	* ConsoleLogger.cs: Change the format of the error and warnings
+	strings to work when invoked inside Emacs by not rendering the
+	column if available, by using lowercase "error"/"warning" strings
+	instead of camelcased versions and to not have unnecessary padding.
+
+2009-07-31  Ankit Jain  <jankit@novell.com>
+
+	* ConsoleLogger.cs: Keep track of all the errors and warnings
+	and show them at the end.
+
+2009-07-31  Ankit Jain  <jankit@novell.com>
+
+	* Target.cs (Build): Log a message if a target is skipped.
+	(LogMessage): New.
+	* BuildTask.cs (Execute): Log error if task execution fails.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* Engine.cs (.ctor): Set default BinPath. Currently this assumes
+	v2.0, this will change when multi-targeting lands.
+
+2009-07-30  Ankit Jain  <jankit@novell.com>
+
+	* Project.cs (InitializeProperties) Set 'MSBuildProjectFile' and
+	'MSBuildProjectName' properties.
+
+2009-07-28  Ankit Jain  <jankit@novell.com>
+
+	* TaskEngine.cs (Prepare): Fix formatting mistake.
+	* ConsoleLogger.cs: Emit "-- FAILED" also when project/target building
+	fails. Also, emit result of project at Normal verbosity level.
+
+2009-07-23  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #511370.
+	* Project.cs (ExtensionsPath): New.
+	(InitializeProperties): Set "MSBuildExtensionsPath" property.
+
 2009-06-12  Ankit Jain  <jankit@novell.com>
 
 	Fix bug #512535.

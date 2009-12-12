@@ -161,7 +161,6 @@ namespace System.Windows.Forms
 			return true;
 		}
 
-		[MonoTODO]
 		protected internal override void ConcedeFocus ()
 		{
 			HideEditBox ();
@@ -208,6 +207,7 @@ namespace System.Windows.Forms
 		void textbox_TextChanged (object o, EventArgs e)
 		{
 			textbox.IsInEditOrNavigateMode = false;
+			grid.EditRowChanged (this);
 		}
 
 		protected void EndEdit ()
@@ -242,7 +242,6 @@ namespace System.Windows.Forms
 			return s;
 		}
 
-		[MonoTODO]
 		protected void HideEditBox ()
 		{
 			if (!textbox.Visible)

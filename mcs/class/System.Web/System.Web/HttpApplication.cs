@@ -76,6 +76,7 @@ using System.Web.Caching;
 using System.Web.Configuration;
 using System.Web.SessionState;
 using System.Web.UI;
+using System.Web.Util;
 
 #if TARGET_J2EE
 using Mainsoft.Web;
@@ -856,7 +857,7 @@ namespace System.Web {
 			if (custom == null) // Sigh
 				throw new NullReferenceException ();
 
-			if (0 == String.Compare (custom, "browser", true, CultureInfo.InvariantCulture))
+			if (0 == String.Compare (custom, "browser", true, Helpers.InvariantCulture))
 				return context.Request.Browser.Type;
 
 			return null;
@@ -1177,6 +1178,9 @@ namespace System.Web {
 			if (stop_processing)
 				yield return true;
 
+#if NET_2_0
+			context.MapRequestHandlerDone = false;
+#endif
 			StartTimer ("BeginRequest");
 			eventHandler = Events [BeginRequestEvent];
 			if (eventHandler != null) {
@@ -1243,6 +1247,7 @@ namespace System.Web {
 				foreach (bool stop in RunHooks (eventHandler))
 					yield return stop;
 			StopTimer ();
+			context.MapRequestHandlerDone = true;
 #endif
 			
 			StartTimer ("GetHandler");
@@ -1481,7 +1486,9 @@ namespace System.Web {
 			cfg = GlobalizationConfiguration.GetInstance (null);
 			if (cfg != null) {
 				app_culture = cfg.Culture;
+				autoCulture = false; // to hush the warning
 				appui_culture = cfg.UICulture;
+				autoUICulture = false; // to hush the warning
 			}
 #endif
 
@@ -1492,14 +1499,14 @@ namespace System.Web {
 			if (app_culture != null) {
 				prev_app_culture = th.CurrentCulture;
 				CultureInfo new_app_culture = GetThreadCulture (Request, app_culture, autoCulture);
-				if (!new_app_culture.Equals (CultureInfo.InvariantCulture))
+				if (!new_app_culture.Equals (Helpers.InvariantCulture))
 					th.CurrentCulture = new_app_culture;
 			}
 
 			if (appui_culture != null) {
 				prev_appui_culture = th.CurrentUICulture;
 				CultureInfo new_app_culture = GetThreadCulture (Request, appui_culture, autoUICulture);
-				if (!new_app_culture.Equals (CultureInfo.InvariantCulture))
+				if (!new_app_culture.Equals (Helpers.InvariantCulture))
 					th.CurrentUICulture = new_app_culture;
 			}
 
@@ -1596,8 +1603,7 @@ namespace System.Web {
 
 			bool allowCache;
 #if NET_2_0
-			global::System.Configuration.Configuration cfg = WebConfigurationManager.OpenWebConfiguration (req.Path, null, req.FilePath);
-			HttpHandlersSection httpHandlersSection = cfg.GetSection ("system.web/httpHandlers") as HttpHandlersSection;
+			HttpHandlersSection httpHandlersSection = WebConfigurationManager.GetSection ("system.web/httpHandlers", req.Path, req.Context) as HttpHandlersSection;
 			ret = httpHandlersSection.LocateHandler (verb, url, out allowCache);
 #else
 			HandlerFactoryConfiguration factory_config = (HandlerFactoryConfiguration) HttpContext.GetAppConfig ("system.web/httpHandlers");

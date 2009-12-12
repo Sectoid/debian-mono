@@ -45,6 +45,9 @@ namespace Microsoft.Build.Tasks {
 		
 		public override bool Execute ()
 		{
+			if (resourceFiles.Length == 0)
+				return true;
+
 			manifestResourceNames = new ITaskItem [resourceFiles.Length];
 			for (int i = 0; i < resourceFiles.Length; i ++) {
 				ITaskItem item = resourceFiles [i];
@@ -103,7 +106,10 @@ namespace Microsoft.Build.Tasks {
 				}
 			}
 
-			//FIXME: path char!
+			// spaces in folder name are changed to _, those in filename remain
+			string dirname = Path.GetDirectoryName (fileName) ?? String.Empty;
+			dirname = dirname.Replace (' ', '_');
+			fileName = Path.Combine (dirname, Path.GetFileName (fileName));
 			string rname = fileName.Replace ('/', '.').Replace ('\\', '.');
 
 			if (!String.IsNullOrEmpty (rootNamespace))

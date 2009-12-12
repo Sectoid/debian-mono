@@ -229,6 +229,10 @@ namespace System {
 							"are permitted.");
 					return false;
 				}
+			} else if ((uint) style > (uint) NumberStyles.Any){
+				if (!tryParse)
+					exc = new ArgumentException ("Not a valid number style");
+				return false;
 			}
 
 			return true;
@@ -329,12 +333,6 @@ namespace System {
 
 			if (s == null) {
 				if (!tryParse)
-					exc = GetFormatException ();
-				return false;
-			}
-			
-			if (s == null) {
-				if (!tryParse)
 					exc = new ArgumentNullException ();
 				return false;
 			}
@@ -345,12 +343,12 @@ namespace System {
 				return false;
 			}
 
-			NumberFormatInfo nfi;
+			NumberFormatInfo nfi = null;
 			if (fp != null) {
 				Type typeNFI = typeof (System.Globalization.NumberFormatInfo);
 				nfi = (NumberFormatInfo) fp.GetFormat (typeNFI);
 			}
-			else
+			if (nfi == null)
 				nfi = Thread.CurrentThread.CurrentCulture.NumberFormat;
 
 			if (!CheckStyle (style, tryParse, ref exc))

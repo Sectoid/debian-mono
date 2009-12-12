@@ -55,7 +55,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 
 		[Test]
-		[Ignore ("Bug #75158")]
+		[Ignore ("Bug #75158")] // Looks like MS fails after the .ctor, when you try to use the socket
 		public void IncompatibleAddress ()
 		{
 			IPEndPoint epIPv6 = new IPEndPoint (IPAddress.IPv6Any,
@@ -2828,6 +2828,35 @@ namespace MonoTests.System.Net.Sockets
 			}
 		}
 #endif
+		[Test]
+		public void SetSocketOption_DontLinger ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+#if NET_2_0
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, false);
+#endif
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, 0);
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, 5);
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (SocketException))]
+		public void SetSocketOption_Null_DontLinger ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, null);
+			}
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void SetSocketOption_LingerOption_DontLinger ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, new LingerOption (true, 1000));
+			}
+		}
 	}
 }
 

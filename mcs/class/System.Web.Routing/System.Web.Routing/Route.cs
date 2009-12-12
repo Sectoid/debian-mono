@@ -50,7 +50,7 @@ namespace System.Web.Routing
 
 		public string Url {
 			get { return url != null ? url.Url : String.Empty; }
-			set { url = value != null ? new PatternParser (value) : null; }
+			set { url = value != null ? new PatternParser (value) : new PatternParser (String.Empty); }
 		}
 
 		public Route (string url, IRouteHandler routeHandler)
@@ -105,6 +105,13 @@ namespace System.Web.Routing
 			
 			foreach (var p in values)
 				rdValues.Add (p.Key, p.Value);
+
+			RouteValueDictionary dataTokens = DataTokens;
+			if (dataTokens != null) {
+				RouteValueDictionary rdDataTokens = rd.DataTokens;
+				foreach (var token in dataTokens)
+					rdDataTokens.Add (token.Key, token.Value);
+			}
 			
 			return rd;
 		}

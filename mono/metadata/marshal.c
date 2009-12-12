@@ -113,6 +113,9 @@ mono_free_bstr (gpointer bstr);
 static MonoStringBuilder *
 mono_string_utf8_to_builder2 (char *text);
 
+static MonoStringBuilder *
+mono_string_utf16_to_builder2 (gunichar2 *text);
+
 static void
 mono_byvalarray_to_array (MonoArray *arr, gpointer native_arr, MonoClass *eltype, guint32 elnum);
 
@@ -638,6 +641,7 @@ mono_marshal_init (void)
 		register_icall (mono_string_utf8_to_builder, "mono_string_utf8_to_builder", "void ptr ptr", FALSE);
 		register_icall (mono_string_utf8_to_builder2, "mono_string_utf8_to_builder2", "object ptr", FALSE);
 		register_icall (mono_string_utf16_to_builder, "mono_string_utf16_to_builder", "void ptr ptr", FALSE);
+		register_icall (mono_string_utf16_to_builder2, "mono_string_utf16_to_builder2", "object ptr", FALSE);
 		register_icall (mono_marshal_free_array, "mono_marshal_free_array", "void ptr int32", FALSE);
 		register_icall (mono_string_to_byvalstr, "mono_string_to_byvalstr", "void ptr ptr int32", FALSE);
 		register_icall (mono_string_to_byvalwstr, "mono_string_to_byvalwstr", "void ptr ptr int32", FALSE);
@@ -1071,6 +1075,45 @@ mono_string_utf16_to_builder (MonoStringBuilder *sb, gunichar2 *text)
 	sb->length = len;
 }
 
+MonoStringBuilder *
+mono_string_utf16_to_builder2 (gunichar2 *text)
+{
+	int len;
+	MonoStringBuilder *sb;
+	static MonoClass *string_builder_class;
+	static MonoMethod *sb_ctor;
+	void *args [1];
+	MonoObject *exc;
+
+	if (!text)
+		return NULL;
+
+	if (!string_builder_class) {
+		MonoMethodDesc *desc;
+
+		string_builder_class = mono_class_from_name (mono_defaults.corlib, "System.Text", "StringBuilder");
+		g_assert (string_builder_class);
+		desc = mono_method_desc_new (":.ctor(int)", FALSE);
+		sb_ctor = mono_method_desc_search_in_class (desc, string_builder_class);
+		g_assert (sb_ctor);
+		mono_method_desc_free (desc);
+	}
+
+	for (len = 0; text [len] != 0; ++len)
+		;
+
+	sb = (MonoStringBuilder*)mono_object_new (mono_domain_get (), string_builder_class);
+	g_assert (sb);
+	args [0] = &len;
+	mono_runtime_invoke (sb_ctor, sb, args, &exc);
+	g_assert (!exc);
+
+	sb->length = len;
+	memcpy (mono_string_chars (sb->str), text, len * 2);
+
+	return sb;
+}
+
 /**
  * mono_string_builder_to_utf8:
  * @sb: the string builder
@@ -1147,6 +1190,9 @@ mono_string_builder_to_utf16 (MonoStringBuilder *sb)
 		sb->cached_str = NULL;
 	}
 	
+	if (sb->length == 0)
+		*(mono_string_chars (sb->str)) = '\0';
+
 	return mono_string_chars (sb->str);
 }
 
@@ -2343,6 +2389,15 @@ emit_struct_conv (MonoMethodBuilder *mb, MonoClass *klass, gboolean to_object)
 		return;
 	}
 
+	if (klass != mono_defaults.safehandle_class) {
+		if ((klass->flags & TYPE_ATTRIBUTE_LAYOUT_MASK) == TYPE_ATTRIBUTE_AUTO_LAYOUT) {
+			char *msg = g_strdup_printf ("Type %s which is passed to unmanaged code must have a StructLayout attribute.",
+										 mono_type_full_name (&klass->byval_arg));
+			mono_mb_emit_exception_marshal_directive (mb, msg);
+			return;
+		}
+	}
+
 	for (i = 0; i < info->num_fields; i++) {
 		MonoMarshalNative ntype;
 		MonoMarshalConv conv;
@@ -2377,11 +2432,6 @@ emit_struct_conv (MonoMethodBuilder *mb, MonoClass *klass, gboolean to_object)
 						 "reference field at the same offset as another field.",
 						 mono_type_full_name (&klass->byval_arg));
 			}
-			
-			if ((klass->flags & TYPE_ATTRIBUTE_LAYOUT_MASK) == TYPE_ATTRIBUTE_AUTO_LAYOUT)
-				g_error ("Type %s which is passed to unmanaged code must have a StructLayout attribute",
-					 mono_type_full_name (&klass->byval_arg));
-			
 		}
 		
 		switch (conv) {
@@ -2569,12 +2619,16 @@ mono_delegate_begin_invoke (MonoDelegate *delegate, gpointer *params)
 {
 	MonoMethodMessage *msg;
 	MonoDelegate *async_callback;
+	MonoMulticastDelegate *mcast_delegate;
 	MonoObject *state;
 	MonoMethod *im;
 	MonoClass *klass;
 	MonoMethod *method = NULL, *method2 = NULL;
 
 	g_assert (delegate);
+	mcast_delegate = (MonoMulticastDelegate *) delegate;
+	if (mcast_delegate->prev != NULL)
+		mono_raise_exception (mono_get_exception_argument (NULL, "The delegate must have only one target"));
 
 	if (delegate->target && mono_object_class (delegate->target) == mono_defaults.transparent_proxy_class) {
 
@@ -2599,7 +2653,10 @@ mono_delegate_begin_invoke (MonoDelegate *delegate, gpointer *params)
 			MONO_OBJECT_SETREF (msg, async_result, ares);
 			msg->call_type = CallType_BeginInvoke;
 
+			exc = NULL;
 			mono_remoting_invoke ((MonoObject *)tp->rp, msg, &exc, &out_args);
+			if (exc)
+				mono_raise_exception ((MonoException *) exc);
 			return ares;
 		}
 	}
@@ -4886,6 +4943,7 @@ mono_marshal_get_runtime_invoke (MonoMethod *method)
 	int i, pos, posna;
 	char *name;
 	gboolean need_direct_wrapper = FALSE;
+	int *tmp_nullable_locals;
 
 	g_assert (method);
 
@@ -4907,7 +4965,7 @@ mono_marshal_get_runtime_invoke (MonoMethod *method)
 	res = mono_marshal_find_in_cache (cache, method);
 	if (res)
 		return res;
-
+		
 	if (method->klass->rank && (method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) &&
 		(method->iflags & METHOD_IMPL_ATTRIBUTE_NATIVE)) {
 		/* 
@@ -5045,6 +5103,8 @@ mono_marshal_get_runtime_invoke (MonoMethod *method)
 		}
 	}
 
+	tmp_nullable_locals = g_new0 (int, sig->param_count);
+
 	for (i = 0; i < sig->param_count; i++) {
 		MonoType *t = sig->params [i];
 		int type;
@@ -5061,11 +5121,11 @@ mono_marshal_get_runtime_invoke (MonoMethod *method)
 			 * So to make this work we unbox it to a local variablee and push a reference to that.
 			 */
 			if (t->type == MONO_TYPE_GENERICINST && mono_class_is_nullable (mono_class_from_mono_type (t))) {
-				int tmp_nullable_local = mono_mb_add_local (mb, &mono_class_from_mono_type (t)->byval_arg);
+				tmp_nullable_locals [i] = mono_mb_add_local (mb, &mono_class_from_mono_type (t)->byval_arg);
 
 				mono_mb_emit_op (mb, CEE_UNBOX_ANY, mono_class_from_mono_type (t));
-				mono_mb_emit_stloc (mb, tmp_nullable_local);
-				mono_mb_emit_ldloc_addr (mb, tmp_nullable_local);
+				mono_mb_emit_stloc (mb, tmp_nullable_locals [i]);
+				mono_mb_emit_ldloc_addr (mb, tmp_nullable_locals [i]);
 			}
 			continue;
 		}
@@ -5175,6 +5235,26 @@ handle_enum:
 	}
 
 	mono_mb_emit_stloc (mb, 0);
+
+	/* Convert back nullable-byref arguments */
+	for (i = 0; i < sig->param_count; i++) {
+		MonoType *t = sig->params [i];
+
+		/* 
+		 * Box the result and put it back into the array, the caller will have
+		 * to obtain it from there.
+		 */
+		if (t->byref && t->type == MONO_TYPE_GENERICINST && mono_class_is_nullable (mono_class_from_mono_type (t))) {
+			mono_mb_emit_ldarg (mb, 1);			
+			mono_mb_emit_icon (mb, sizeof (gpointer) * i);
+			mono_mb_emit_byte (mb, CEE_ADD);
+
+			mono_mb_emit_ldloc (mb, tmp_nullable_locals [i]);
+			mono_mb_emit_op (mb, CEE_BOX, mono_class_from_mono_type (t));
+
+			mono_mb_emit_byte (mb, CEE_STIND_REF);
+		}
+	}
        		
 	pos = mono_mb_emit_branch (mb, CEE_LEAVE);
 
@@ -6313,15 +6393,39 @@ emit_marshal_vtype (EmitMarshalContext *m, int argnum, MonoType *t,
 {
 	MonoMethodBuilder *mb = m->mb;
 	MonoClass *klass;
+	static MonoClass *date_time_class;
 	int pos = 0, pos2;
 
 	klass = mono_class_from_mono_type (t);
+
+	if (!date_time_class)
+		date_time_class = mono_class_from_name (mono_defaults.corlib, "System", "DateTime");
+	g_assert (date_time_class);
 
 	switch (action) {
 	case MARSHAL_ACTION_CONV_IN:
 		if (((klass->flags & TYPE_ATTRIBUTE_LAYOUT_MASK) == TYPE_ATTRIBUTE_EXPLICIT_LAYOUT) ||
 			klass->blittable || klass->enumtype)
 			break;
+
+		if (klass == date_time_class) {
+			/* Convert it to an OLE DATE type */
+			static MonoMethod *to_oadate;
+
+			if (!to_oadate)
+				to_oadate = mono_class_get_method_from_name (date_time_class, "ToOADate", 0);
+			g_assert (to_oadate);
+
+			if (t->byref)
+				g_assert_not_reached ();
+
+			conv_arg = mono_mb_add_local (mb, &mono_defaults.double_class->byval_arg);
+
+			mono_mb_emit_ldarg_addr (mb, argnum);
+			mono_mb_emit_managed_call (mb, to_oadate, NULL);
+			mono_mb_emit_stloc (mb, conv_arg);
+			break;
+		}
 
 		conv_arg = mono_mb_add_local (mb, &mono_defaults.int_class->byval_arg);
 			
@@ -6374,6 +6478,11 @@ emit_marshal_vtype (EmitMarshalContext *m, int argnum, MonoType *t,
 			break;
 		}
 
+		if (klass == date_time_class) {
+			mono_mb_emit_ldloc (mb, conv_arg);
+			break;
+		}
+
 		if (((klass->flags & TYPE_ATTRIBUTE_LAYOUT_MASK) == TYPE_ATTRIBUTE_EXPLICIT_LAYOUT) ||
 			klass->blittable || klass->enumtype) {
 			mono_mb_emit_ldarg (mb, argnum);
@@ -6421,6 +6530,7 @@ emit_marshal_vtype (EmitMarshalContext *m, int argnum, MonoType *t,
 			mono_mb_emit_stloc (mb, 3);
 			break;
 		}
+
 		/* load pointer to returned value type */
 		mono_mb_emit_byte (mb, MONO_CUSTOM_PREFIX);
 		mono_mb_emit_byte (mb, CEE_MONO_VTADDR);
@@ -6926,7 +7036,14 @@ emit_marshal_object (EmitMarshalContext *m, int argnum, MonoType *t,
 			MonoMarshalNative encoding = mono_marshal_get_string_encoding (m->piinfo, spec);
 			MonoMarshalConv conv = mono_marshal_get_stringbuilder_to_ptr_conv (m->piinfo, spec);
 			
-			g_assert (!t->byref);
+			if (t->byref) {
+				if (!(t->attrs & PARAM_ATTRIBUTE_OUT)) {
+					char *msg = g_strdup_printf ("Byref marshalling of stringbuilders is not implemented.");
+					mono_mb_emit_exception_marshal_directive (mb, msg);
+				}
+				break;
+			}
+
 			mono_mb_emit_ldarg (mb, argnum);
 
 			if (conv != -1)
@@ -7014,13 +7131,34 @@ emit_marshal_object (EmitMarshalContext *m, int argnum, MonoType *t,
 			encoding = mono_marshal_get_string_encoding (m->piinfo, spec);
 			conv = mono_marshal_get_ptr_to_stringbuilder_conv (m->piinfo, spec, &need_free);
 
-			g_assert (!t->byref);
 			g_assert (encoding != -1);
 
-			mono_mb_emit_ldarg (mb, argnum);
-			mono_mb_emit_ldloc (mb, conv_arg);
+			if (t->byref) {
+				g_assert ((t->attrs & PARAM_ATTRIBUTE_OUT));
 
-			mono_mb_emit_icall (mb, conv_to_icall (conv));
+				need_free = TRUE;
+
+				mono_mb_emit_ldarg (mb, argnum);
+				mono_mb_emit_ldloc (mb, conv_arg);
+
+				switch (encoding) {
+				case MONO_NATIVE_LPWSTR:
+					mono_mb_emit_icall (mb, mono_string_utf16_to_builder2);
+					break;
+				case MONO_NATIVE_LPSTR:
+					mono_mb_emit_icall (mb, mono_string_utf8_to_builder2);
+					break;
+				default:
+					g_assert_not_reached ();
+				}
+
+				mono_mb_emit_byte (mb, CEE_STIND_REF);
+			} else {
+				mono_mb_emit_ldarg (mb, argnum);
+				mono_mb_emit_ldloc (mb, conv_arg);
+
+				mono_mb_emit_icall (mb, conv_to_icall (conv));
+			}
 
 			if (need_free) {
 				mono_mb_emit_ldloc (mb, conv_arg);
@@ -8153,15 +8291,15 @@ emit_marshal_array (EmitMarshalContext *m, int argnum, MonoType *t,
 		 * from 0.
 		 */
 
-		if (param_num == -1)
+		if (param_num == -1) {
 			mono_mb_emit_icon (mb, num_elem);
-		else {
-			/* FIXME: Add the two together */
+		} else {
 			mono_mb_emit_ldarg (mb, param_num);
 			if (num_elem > 0) {
 				mono_mb_emit_icon (mb, num_elem);
 				mono_mb_emit_byte (mb, CEE_ADD);
 			}
+			mono_mb_emit_byte (mb, CEE_CONV_OVF_I);
 		}
 
 		mono_mb_emit_op (mb, CEE_NEWARR, eklass);
@@ -8601,7 +8739,7 @@ emit_marshal_ptr (EmitMarshalContext *m, int argnum, MonoType *t,
 
 	switch (action) {
 	case MARSHAL_ACTION_CONV_IN:
-		if (MONO_TYPE_ISSTRUCT (t->data.type)) {
+		if (MONO_TYPE_ISSTRUCT (t->data.type) && !mono_class_from_mono_type (t->data.type)->blittable) {
 			char *msg = g_strdup_printf ("Can not marshal 'parameter #%d': Pointers can not reference marshaled structures. Use byref instead.", argnum + 1);
 			mono_mb_emit_exception_marshal_directive (m->mb, msg);
 		}
@@ -12163,12 +12301,14 @@ cominterop_get_ccw (MonoObject* object, MonoClass* itf)
 
 	klass = mono_object_get_class (object);
 
+	mono_cominterop_lock ();
 	if (!ccw_hash)
 		ccw_hash = g_hash_table_new (mono_aligned_addr_hash, NULL);
 	if (!ccw_interface_hash)
 		ccw_interface_hash = g_hash_table_new (mono_aligned_addr_hash, NULL);
 
 	ccw_list = g_hash_table_lookup (ccw_hash, GINT_TO_POINTER (mono_object_hash (object)));
+	mono_cominterop_unlock ();
 
 	ccw_list_item = ccw_list;
 	while (ccw_list_item) {
@@ -12209,7 +12349,9 @@ cominterop_get_ccw (MonoObject* object, MonoClass* itf)
 		}
 		else
 			ccw_list = g_list_append (ccw_list, ccw);
+		mono_cominterop_lock ();
 		g_hash_table_insert (ccw_hash, GINT_TO_POINTER (mono_object_hash (object)), ccw_list);
+		mono_cominterop_unlock ();
 		/* register for finalization to clean up ccw */
 		mono_object_register_finalizer (object);
 	}

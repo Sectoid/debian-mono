@@ -120,7 +120,12 @@ namespace System.Windows.Forms
 		[DefaultValue (false)]
 		public bool CheckOnClick {
 			get { return this.check_on_click; }
-			set { this.check_on_click = value; }
+			set {
+				if (this.check_on_click != value) {
+					this.check_on_click = value;
+					OnUIACheckOnClickChangedEvent (EventArgs.Empty);
+				}
+			}
 		}
 
 		[Bindable (true)]
@@ -396,12 +401,33 @@ namespace System.Windows.Forms
 
 		protected internal override bool ProcessCmdKey (ref Message m, Keys keyData)
 		{
-			if (this.Enabled && keyData == this.shortcut_keys) {
+			Control source = Control.FromHandle (m.HWnd);
+			Form f = source == null ? null : (Form)source.TopLevelControl;
+
+			if (this.Enabled && keyData == this.shortcut_keys && GetTopLevelControl () == f) {
 				this.FireEvent (EventArgs.Empty, ToolStripItemEventType.Click);
 				return true;
 			}
 				
 			return base.ProcessCmdKey (ref m, keyData);
+		}
+
+		Control GetTopLevelControl ()
+		{
+			ToolStripItem item = this;
+			while (item.OwnerItem != null)
+				item = item.OwnerItem;
+
+			if (item.Owner == null)
+				return null;
+
+			if (item.Owner is ContextMenuStrip) {
+				Control container = ((ContextMenuStrip)item.Owner).container;
+				return container == null ? null : container.TopLevelControl;
+			}
+
+			// MainMenuStrip
+			return item.Owner.TopLevelControl;
 		}
 
 		protected internal override bool ProcessMnemonic (char charCode)
@@ -437,6 +463,23 @@ namespace System.Windows.Forms
 		public event EventHandler CheckStateChanged {
 			add { Events.AddHandler (CheckStateChangedEvent, value); }
 			remove {Events.RemoveHandler (CheckStateChangedEvent, value); }
+		}
+		#endregion
+
+		#region UIA Framework Events
+		static object UIACheckOnClickChangedEvent = new object ();
+		
+		internal event EventHandler UIACheckOnClickChanged {
+			add { Events.AddHandler (UIACheckOnClickChangedEvent, value); }
+			remove { Events.RemoveHandler (UIACheckOnClickChangedEvent, value); }
+		}
+
+		internal void OnUIACheckOnClickChangedEvent (EventArgs args)
+		{
+			EventHandler eh
+				= (EventHandler) Events [UIACheckOnClickChangedEvent];
+			if (eh != null)
+				eh (this, args);
 		}
 		#endregion
 

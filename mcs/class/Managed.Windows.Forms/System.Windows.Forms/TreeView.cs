@@ -1605,7 +1605,7 @@ namespace System.Windows.Forms {
 
 			int use_index = node.Image;
 
-			if (use_index != -1)
+			if (use_index > -1 && use_index < ImageList.Images.Count)
 				ImageList.Draw (dc, x, y, ImageList.ImageSize.Width, ImageList.ImageSize.Height, use_index);
 		}
 
@@ -2183,6 +2183,8 @@ namespace System.Windows.Forms {
 
 				highlighted_node = focused_node;
 				selected_node = focused_node;
+				if (selected_node != null)
+					Invalidate (selected_node.Bounds);
 			}
 		}
 
@@ -2227,8 +2229,10 @@ namespace System.Windows.Forms {
 				return;
 
 			Invalidate (highlighted_node.Bounds);
-			Invalidate (selected_node.Bounds);
-			Invalidate (focused_node.Bounds);
+			if (selected_node != null)
+				Invalidate (selected_node.Bounds);
+			if (focused_node != null)
+				Invalidate (focused_node.Bounds);
 
 			highlighted_node = selected_node;
 			focused_node = selected_node;

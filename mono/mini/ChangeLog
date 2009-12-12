@@ -1,3 +1,165 @@
+2009-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.c (handle_thunk): Add a domain argument to control the domain
+	where the thunk memory should be allocated from. Fixes appdomain unloading
+	on arm.
+
+2009-11-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* simd-intrinsics.c (load_simd_vreg): Add extra argument to signal if
+	the value was loaded from memory.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_setter): Store back to memory if
+	the value was loader from there.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_shuffle): Fail correctly for Shuffle
+	without constant swizzle.
+
+	Backport of r145283.
+
+2009-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_cleanup): Call profiler shutdown before shutting down the
+	runtime. Fixes #551228.
+
+2009-10-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_output_basic_block): Fix % 1. Fixes #550970.
+
+	* basic.cs: Add a test.
+
+	* method-to-ir.c (mono_method_to_ir): Use EMIT_NEW_LOAD_MEMBASE_TYPE to
+	load vtypes instead if OP_LOADV_MEMBASE in the implementation of
+	CONSTRAINED. Fixes #550964.
+
+	* generics.cs: Add a test.
+
+2009-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c (mini_jit_info_table_find): New helper function which
+	searches all the domains of the current thread.
+
+	* exceptions-<ARCH>.c: Use it. Fixes #539394.
+
+2009-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_op_imm_to_op): Handle OP_AND/OR/XOR_IMM.
+
+2009-10-13  Martin Baulig  <martin@ximian.com>
+
+	* debug-mini.c (mono_debugger_trampoline_compiled): Add
+	`const guint8 *trampoline' argument; send both the old and the new
+	notification.
+
+2009-07-09  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: When doing a call which might be remote from
+	shared generic code to other shared code with open type arguments,
+	get the remoting invoke wrapper from the RGCTX and do an indirect
+	call to it.
+
+	Backport of r137640.
+
+2009-10-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-sparc.c (mono_arch_emit_setret): Emit long return values using OP_LMOVE.
+	(mono_arch_create_vars): Instead of allocating a stack slot by hand, allocate
+	a variable to hold the stack slot used by the int<->float conversion opcodes.
+
+	* mini-sparc.c (mono_arch_build_imt_thunk): Implement support for fail_tramp.
+
+2009-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-sparc.c: Fix the handling of enums with base type long.
+
+	* mini-sparc.c (mono_arch_output_basic_block): Fix IREM_UN_IMM.
+
+	* mini-sparc.c (mono_arch_allocate_vars): Use mono_class_from_mono_type ()
+	instead of using type->data.klass as the later doesn't work with generics.
+
+2009-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-sparc.c (mono_arch_create_vars): Make the component vars of a long ret
+	variable volatile. Fixes #541577.
+
+	* basic-calls.cs: Add a new test.
+
+	* basic-long.cs: Remove tests which are now in basic-calls.cs.
+
+2009-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* decompose.c (mono_decompose_vtype_opts): Avoid reading uninitialized memory
+	in the VCALL decomposition code.
+
+2009-09-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c: Fix the previous change on 64 bit platforms.
+	
+	* method-to-ir.c: Applied patch from Rodrigo Kumpera. Allow an i8 argument
+	to NEWARR.
+
+	* iltests.il.in: Add a new test.
+
+2009-09-17 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	Backport of r127430.
+
+	* mini.c: Adjust locking order to the new semantics where the loader lock
+	comes first.
+	
+2009-09-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c (mono_handle_exception_internal): Store the computed
+	lmf before calling filter clauses as well. Fixes #539550.
+
+	* exceptions.cs: Add a test.
+	
+2009-09-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* exceptions-x86.c (throw_exception): Fix the previous change by substracting
+	the alignment for the value of sp.
+
+2009-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* exceptions-x86.c (get_throw_exception): Align the stack on osx.
+
+2009-07-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): When calling a gshared method,
+	call a generic class init trampoline if needed. Fixes #519336.
+
+	* generics.cs: Add a test.
+
+2009-07-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-sparc.c (mono_arch_output_basic_block): Implement OP_IREM_UN_IMM.
+
+2009-07-09  Mark Probst  <mark.probst@gmail.com>
+
+	* method-to-ir.c: When doing a call which might be remote from
+	shared generic code to other shared code with open type arguments,
+	abort generic code sharing for that method.
+
+2009-06-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-exceptions.c (get_generic_context_from_stack_frame): Fix the case
+	when the generic instance is an instantiation of a subclass of the
+	methods class. Fixes #517166.
+
+
+Fri Apr 24 16:44:08 CEST 2009 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile.am, genmdesc.c, genmdesc.pl: tiny refactor to allow
+	multiple machine description files to be specified.
+	* mini-ops.h: fixes for cross-compilation.
+
+2009-06-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* branch-opts.c (mono_merge_basic_blocks): Fix the case when bbn
+	falls through to its next bblock. Fixes #513931.
+
+	* iltests.il: Add a test.
+
 2009-06-08  Martin Baulig  <martin@ximian.com>
 
 	* debug-mini.c

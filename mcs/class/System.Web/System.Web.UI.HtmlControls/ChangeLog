@@ -1,3 +1,26 @@
+2009-11-13  Marek Habersack  <mhabersack@novell.com>
+
+	* HtmlForm.cs: reverted part of the previous patch - action is not
+	set to the result of calling ResolveClientUrl(action)
+	anymore. Fixes bug #554324
+
+2009-10-30  Marek Habersack  <mhabersack@novell.com>
+
+	* HtmlForm.cs: action is built using Request.ClientFilePath
+	(instead of Request.FilePath) and ResolveClientUrl, so that it's
+	correct even if url rewriting is being used.
+
+2009-09-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HtmlSelectBuilder.cs: <option> allows the value of the 'selected'
+	attribute to be a boolean or the string "selected", which is treated
+	as "true".
+
+2009-06-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HtmlTitle.cs: HtmlTitle allows children that are not
+	LiteralControls. Fixes bug #511882.
+
 2009-05-15  Marek Habersack  <mhabersack@novell.com>
 
 	* HtmlForm.cs: if application isn't running on /, make sure we

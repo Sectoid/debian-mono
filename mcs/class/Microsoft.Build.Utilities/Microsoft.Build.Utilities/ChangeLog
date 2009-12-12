@@ -1,3 +1,74 @@
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* TaskLoggingHelper.cs: Use the buildEngine.ProjectFileOfTaskNode
+	in the event args.
+
+2009-10-12  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (ExecuteTool): Don't set toolOutput to null.
+	(HandleTaskExecutionErrors): toolOutput can be null.
+	Set toolOutput to null here.
+
+2009-10-06  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (Execute): HandleTaskExecutionErrors is called only
+	if exitCode != 0.
+	(ExecuteTool): Move logging of exitcode to HandleTaskExecutionErrors.
+	Remove MonoTODOs.
+	* TaskLoggingHelper.cs (LogMessageFromText): New.
+	(LogMessage): Refactor to use above.
+
+2009-10-02  Ankit Jain  <jankit@novell.com>
+
+	* AppDomainIsolatedTask.cs (BuildEngine): Init 'log'.
+
+2009-09-29  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (ExecuteTool): Use LogToolCommand, instead of
+	directly logging.
+	(LogToolCommand): Implement.
+
+2009-09-28  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (ProcessOuputTool): Move logging of tool
+	output from here to ..
+	(ExecuteTool): .. here. As, ProcessOuputTool can be
+	overridden.
+
+2009-09-24  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (HasLoggedErrors): Add missing property.
+
+2009-09-23  Ankit Jain  <jankit@novell.com>
+
+	* TaskLoggingHelper.cs (LogErrorFromException): Add missing overload.
+
+2009-09-10  Ankit Jain  <jankit@novell.com>
+
+	* TaskLoggingHelper.cs (FormatString): Use the unformatted string
+	even if the args array was empty.
+
+2009-09-08  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (LogEventsFromTextOutput): Log message even if its not
+	identified as an error or a warning.
+
+2009-07-28  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask (.ctor): Initialize Timeout value.
+	(Execute): Use HandleTaskExecutionErrors to determine task result. Set
+	exitCode to the result of ExecuteTool and let HandleTaskExecutionErrors
+	determine final result of the task.
+	(RealExecute): Rename to ..
+	(ExecuteTool): .. this. @responseFileCommands could be empty.
+	Use specified timeout value for the executing tool.
+	Rename 'compilerOutput' to 'toolOutput'. Cleanup resources in the
+	finally block. Move processing of stdout/stderr output to ..
+	(ProcessOutputFile): .. here and ..
+	(LogEventsFromTextOutput): .. here.
+	(HandleTaskExecutionErrors): Implement.
+	(DeleteTempFile): Implement.
+
 2009-04-24  Ankit Jain  <jankit@novell.com>
 
 	* ToolTask.cs (RealExecute): Handle TypeLoadExceptions, compiler

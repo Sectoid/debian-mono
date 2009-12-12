@@ -21,103 +21,32 @@
 //
 // Authors:
 //	Peter Bartok	(pbartok@novell.com)
+//	Marek Safar     (marek.safar@gmail.com) 
 //
 //
 
+using System.Collections;
 using System.Drawing;
 using System.Globalization;
 using System.ComponentModel;
 using System.Security.Permissions;
+using System.Web.Util;
 
 namespace System.Web.UI.WebControls {
 
 	// CAS
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public class WebColorConverter : ColorConverter {
-
+	public class WebColorConverter : ColorConverter
+	{
 		// Converts from string to Color
 		public override object ConvertFrom (ITypeDescriptorContext context, CultureInfo culture, object value) 
 		{
-			if (value is string) 
-			{
-				string	s;
-
-				s = ((string)value).Trim();
-				if (s.Length == 0) 
-				{
-					return Color.Empty;
-				}
-
-				if (culture == null) {
-					culture = CultureInfo.InvariantCulture;
-				}
-
-				if (s[0] == '#') 
-				{
-					// Hex
-
-					// MS throws a generic exception, wrapping the specific exception, who knows why...
-					try 
-					{
-						if (s.Length == 7) 
-						{
-							int	v;
-							v = Int32.Parse(s.Substring(1), NumberStyles.HexNumber, culture);
-
-							return Color.FromArgb(255, (v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff);
-						} 
-						else 
-						{
-							return Color.FromArgb(Int32.Parse(s.Substring(1), NumberStyles.HexNumber, culture));
-						}
-					}
-
-					catch (FormatException e) 
-					{
-						throw new Exception(s + "is not a valid color value", e);
-					}
-					catch (System.OverflowException e) 
-					{
-						throw new Exception(s + " is not a valid color value", e);
-					}
-				} 
-				else 
-				{
-					// Name or decimal
-					int	n = 0;
-
-					try 
-					{
-						n = Int32.Parse(s, NumberStyles.Integer, culture);
-					}
-
-					catch (FormatException e) 
-					{
-						Color c;
-
-						c = Color.FromName(s);
-						if ((c.A != 0) || (c.R != 0) || (c.G != 0) || (c.B != 0)) 
-						{
-							return c;
-						}
-
-						throw new Exception(s + " is not a valid color value", e);
-					}
-
-					catch (System.OverflowException e) 
-					{
-						throw new Exception(s + " is not a valid color value", e);
-					}
-
-					catch 
-					{
-						throw;
-					}
-
-					return Color.FromArgb(n);
-				}
+			if (value is string) {
+				string	s = ((string)value).Trim();
+				return ColorTranslator.FromHtml (s);
 			}
+			
 			return base.ConvertFrom (context, culture, value);
 		}
 
@@ -130,7 +59,7 @@ namespace System.Web.UI.WebControls {
 			Color c = (Color) value;
 
 			if (culture == null)
-				culture = CultureInfo.InvariantCulture;
+				culture = Helpers.InvariantCulture;
 
 			string s = c.ToKnownColor ().ToString ();
 			if (s != "0")

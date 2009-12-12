@@ -11,6 +11,7 @@ man_MANS = \
 	genxs.1               \
 	httpcfg.1             \
 	ilasm.1               \
+	lc.1                  \
 	macpack.1             \
 	makecert.1            \
 	mconfig.1             \
@@ -49,6 +50,7 @@ man_MANS = \
 	soapsuds.1            \
 	sqlsharp.1            \
 	wsdl.1                \
+	xbuild.1	      \
 	xsd.1
 
 EXTRA_DIST = $(man_MANS)

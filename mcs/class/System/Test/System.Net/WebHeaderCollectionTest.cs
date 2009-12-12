@@ -5,6 +5,7 @@
 //   Lawrence Pit (loz@cable.a2000.nl)
 //   Martin Willemoes Hansen (mwh@sysrq.dk)
 //   Gert Driesen (drieseng@users.sourceforge.net)
+//   Gonzalo Paniagua Javier (gonzalo@novell.com)
 //
 // (C) 2003 Martin Willemoes Hansen
 //
@@ -40,44 +41,44 @@ namespace MonoTests.System.Net
 		{
 			try {
 				col.Add (null);
-				Assertion.Fail ("#1");
+				Assert.Fail ("#1");
 			} catch (ArgumentNullException) { }
 			try {
 				col.Add ("");
-				Assertion.Fail ("#2");
+				Assert.Fail ("#2");
 			} catch (ArgumentException) { }
 			try {
 				col.Add ("  ");
-				Assertion.Fail ("#3");
+				Assert.Fail ("#3");
 			} catch (ArgumentException) { }
 			try {
 				col.Add (":");
-				Assertion.Fail ("#4");
+				Assert.Fail ("#4");
 			} catch (ArgumentException) { }
 			try {
 				col.Add (" : ");
-				Assertion.Fail ("#5");
+				Assert.Fail ("#5");
 			} catch (ArgumentException) { }
 
 			try {
 				col.Add ("XHost: foo");
 			} catch (ArgumentException) {
-				Assertion.Fail ("#7");
+				Assert.Fail ("#7");
 			}
 
 			// invalid values
 			try {
 				col.Add ("XHost" + ((char) 0xa9) + ": foo");
-				Assertion.Fail ("#8");
+				Assert.Fail ("#8");
 			} catch (ArgumentException) { }
 			try {
 				col.Add ("XHost: foo" + (char) 0xa9);
 			} catch (ArgumentException) {
-				Assertion.Fail ("#9");
+				Assert.Fail ("#9");
 			}
 			try {
 				col.Add ("XHost: foo" + (char) 0x7f);
-				Assertion.Fail ("#10");
+				Assert.Fail ("#10");
 			} catch (ArgumentException) {
 
 			}
@@ -85,12 +86,12 @@ namespace MonoTests.System.Net
 			try {
 				col.Add ("XHost", null);
 			} catch (ArgumentException) {
-				Assertion.Fail ("#11");
+				Assert.Fail ("#11");
 			}
 			try {
 				col.Add ("XHost:");
 			} catch (ArgumentException) {
-				Assertion.Fail ("#12");
+				Assert.Fail ("#12");
 			}
 
 			// restricted
@@ -99,7 +100,7 @@ namespace MonoTests.System.Net
 			try {
 				WebHeaderCollection col2 = new WebHeaderCollection (true);
 				col2.Add ("Host: foo");
-				Assertion.Fail ("#13: should fail according to spec");
+				Assert.Fail ("#13: should fail according to spec");
 			} catch (ArgumentException) {}		
 			*/
 		}
@@ -114,61 +115,61 @@ namespace MonoTests.System.Net
 			w.Add ("Hello", "H3,H4");
 
 			string [] sa = w.GetValues ("Hello");
-			Assertion.AssertEquals ("#1", 3, sa.Length);
-			Assertion.AssertEquals ("#2", "H1,H2,H3,H4", w.Get ("Hello"));
+			Assert.AreEqual (3, sa.Length, "#1");
+			Assert.AreEqual ("H1, H2,H3,H4", w.Get ("Hello"), "#2");
 
 			w = new WebHeaderCollection ();
 			w.Add ("Accept", "H1");
 			w.Add ("Accept", "H2");
 			w.Add ("Accept", "H3,H4");
-			Assertion.AssertEquals ("#3a", 3, w.GetValues (0).Length);
-			Assertion.AssertEquals ("#3b", 4, w.GetValues ("Accept").Length);
-			Assertion.AssertEquals ("#4", "H1,H2,H3,H4", w.Get ("Accept"));
+			Assert.AreEqual (3, w.GetValues (0).Length, "#3a");
+			Assert.AreEqual (4, w.GetValues ("Accept").Length, "#3b");
+			Assert.AreEqual ("H1, H2,H3,H4", w.Get ("Accept"), "#4");
 
 			w = new WebHeaderCollection ();
 			w.Add ("Allow", "H1");
 			w.Add ("Allow", "H2");
 			w.Add ("Allow", "H3,H4");
 			sa = w.GetValues ("Allow");
-			Assertion.AssertEquals ("#5", 4, sa.Length);
-			Assertion.AssertEquals ("#6", "H1,H2,H3,H4", w.Get ("Allow"));
+			Assert.AreEqual (4, sa.Length, "#5");
+			Assert.AreEqual ("H1, H2,H3,H4", w.Get ("Allow"), "#6");
 
 			w = new WebHeaderCollection ();
 			w.Add ("AUTHorization", "H1, H2, H3");
 			sa = w.GetValues ("authorization");
-			Assertion.AssertEquals ("#9", 3, sa.Length);
+			Assert.AreEqual (3, sa.Length, "#9");
 
 			w = new WebHeaderCollection ();
 			w.Add ("proxy-authenticate", "H1, H2, H3");
 			sa = w.GetValues ("Proxy-Authenticate");
-			Assertion.AssertEquals ("#9", 3, sa.Length);
+			Assert.AreEqual (3, sa.Length, "#9");
 
 			w = new WebHeaderCollection ();
 			w.Add ("expect", "H1,\tH2,   H3  ");
 			sa = w.GetValues ("EXPECT");
-			Assertion.AssertEquals ("#10", 3, sa.Length);
-			Assertion.AssertEquals ("#11", "H2", sa [1]);
-			Assertion.AssertEquals ("#12", "H3", sa [2]);
+			Assert.AreEqual (3, sa.Length, "#10");
+			Assert.AreEqual ("H2", sa [1], "#11");
+			Assert.AreEqual ("H3", sa [2], "#12");
 
 			try {
 				w.GetValues (null);
-				Assertion.Fail ("#13");
+				Assert.Fail ("#13");
 			} catch (ArgumentNullException) { }
-			Assertion.AssertEquals ("#14", null, w.GetValues (""));
-			Assertion.AssertEquals ("#15", null, w.GetValues ("NotExistent"));
+			Assert.AreEqual (null, w.GetValues (""), "#14");
+			Assert.AreEqual (null, w.GetValues ("NotExistent"), "#15");
 		}
 
 		[Test]
 		public void Indexers ()
 		{
 #if NET_2_0
-		Assertion.AssertEquals ("#1.1", "Value1", ((NameValueCollection)col)[0]);
+		Assert.AreEqual ("Value1", ((NameValueCollection)col)[0], "#1.1");
 		//FIXME: test also HttpRequestHeader and HttpResponseHeader
 #else
-			Assertion.AssertEquals ("#1", "Value1", col [0]);
+			Assert.AreEqual ("Value1", col [0], "#1");
 #endif
-			Assertion.AssertEquals ("#2", "Value1", col ["Name1"]);
-			Assertion.AssertEquals ("#3", "Value1", col ["NAME1"]);
+			Assert.AreEqual ("Value1", col ["Name1"], "#2");
+			Assert.AreEqual ("Value1", col ["NAME1"], "#3");
 		}
 
 		[Test]
@@ -176,7 +177,7 @@ namespace MonoTests.System.Net
 		{
 			col.Remove ("Name1");
 			col.Remove ("NameNotExist");
-			Assertion.AssertEquals ("#1", 1, col.Count);
+			Assert.AreEqual (1, col.Count, "#1");
 
 			/*
 			// this can only be tested in namespace System.Net
@@ -184,7 +185,7 @@ namespace MonoTests.System.Net
 				WebHeaderCollection col2 = new WebHeaderCollection (true);
 				col2.Add ("Host", "foo");
 				col2.Remove ("Host");
-				Assertion.Fail ("#2: should fail according to spec");
+				Assert.Fail ("#2: should fail according to spec");
 			} catch (ArgumentException) {}
 			*/
 		}
@@ -194,19 +195,19 @@ namespace MonoTests.System.Net
 		{
 			col.Add ("Name1", "Value1b");
 			col.Set ("Name1", "\t  X  \t");
-			Assertion.AssertEquals ("#1", "X", col.Get ("Name1"));
+			Assert.AreEqual ("X", col.Get ("Name1"), "#1");
 		}
 
 		[Test]
 		public void IsRestricted ()
 		{
-			Assertion.Assert ("#1", !WebHeaderCollection.IsRestricted ("Xhost"));
-			Assertion.Assert ("#2", WebHeaderCollection.IsRestricted ("Host"));
-			Assertion.Assert ("#3", WebHeaderCollection.IsRestricted ("HOST"));
-			Assertion.Assert ("#4", WebHeaderCollection.IsRestricted ("Transfer-Encoding"));
-			Assertion.Assert ("#5", WebHeaderCollection.IsRestricted ("user-agent"));
-			Assertion.Assert ("#6", WebHeaderCollection.IsRestricted ("accept"));
-			Assertion.Assert ("#7", !WebHeaderCollection.IsRestricted ("accept-charset"));
+			Assert.IsTrue (!WebHeaderCollection.IsRestricted ("Xhost"), "#1");
+			Assert.IsTrue (WebHeaderCollection.IsRestricted ("Host"), "#2");
+			Assert.IsTrue (WebHeaderCollection.IsRestricted ("HOST"), "#3");
+			Assert.IsTrue (WebHeaderCollection.IsRestricted ("Transfer-Encoding"), "#4");
+			Assert.IsTrue (WebHeaderCollection.IsRestricted ("user-agent"), "#5");
+			Assert.IsTrue (WebHeaderCollection.IsRestricted ("accept"), "#6");
+			Assert.IsTrue (!WebHeaderCollection.IsRestricted ("accept-charset"), "#7");
 		}
 
 		[Test]
@@ -215,7 +216,7 @@ namespace MonoTests.System.Net
 			col.Add ("Name1", "Value1b");
 			col.Add ("Name3", "Value3a\r\n Value3b");
 			col.Add ("Name4", "   Value4   ");
-			Assertion.AssertEquals ("#1", "Name1: Value1,Value1b\r\nName2: Value2\r\nName3: Value3a\r\n Value3b\r\nName4: Value4\r\n\r\n", col.ToString ());
+			Assert.AreEqual ("Name1: Value1,Value1b\r\nName2: Value2\r\nName3: Value3a\r\n Value3b\r\nName4: Value4\r\n\r\n", col.ToString (), "#1");
 		}
 
 		[Test]
@@ -375,5 +376,246 @@ namespace MonoTests.System.Net
 			0x74, 0x74, 0x61, 0x63, 0x68, 0x0b
 #endif
 		};
+
+		[Test]
+		public void IsRestricted_InvalidChars_1 ()
+		{
+			// Not allowed:
+			//	0-32
+			//	34
+			//	39-41
+			//	44
+			//	47
+			//	91-93
+			//	123
+			//	125
+			//	>= 127
+			int [] singles = new int [] { 34, 44, 47, 123, 125 };
+			foreach (int single in singles) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) single, 1));
+					Assert.Fail (String.Format ("{0}: {1}", single, (char) single));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 0; i <= 32; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1));
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 39; i <= 41; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1));
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 91; i <= 93; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1));
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 127; i <= 255; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1));
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+		}
+#if NET_2_0
+		[Test]
+		public void IsRestricted_InvalidChars_Request_2 ()
+		{
+			// Not allowed:
+			//	0-32
+			//	34
+			//	39-41
+			//	44
+			//	47
+			//	91-93
+			//	123
+			//	125
+			//	>= 127
+			int [] singles = new int [] { 34, 44, 47, 123, 125 };
+			foreach (int single in singles) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) single, 1), false);
+					Assert.Fail (String.Format ("{0}: {1}", single, (char) single));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 0; i <= 32; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), false);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 39; i <= 41; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), false);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 91; i <= 93; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), false);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 127; i <= 255; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), false);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+		}
+
+		[Test]
+		public void IsRestricted_InvalidChars_Response_2 ()
+		{
+			// Not allowed:
+			//	0-32
+			//	34
+			//	39-41
+			//	44
+			//	47
+			//	91-93
+			//	123
+			//	125
+			//	>= 127
+			int [] singles = new int [] { 34, 44, 47, 123, 125 };
+			foreach (int single in singles) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) single, 1), true);
+					Assert.Fail (String.Format ("{0}: {1}", single, (char) single));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 0; i <= 32; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), true);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 39; i <= 41; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), true);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 91; i <= 93; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), true);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+			for (int i = 127; i <= 255; i++) {
+				try {
+					WebHeaderCollection.IsRestricted (new string ((char) i, 1), true);
+					Assert.Fail (String.Format ("{0}: {1}", i, (char) i));
+				} catch (ArgumentException) {
+				}
+			}
+		}
+
+		static string [] request_headers = new string [] {
+			"Accept", "Accept-Charset", "Accept-Encoding", "Accept-Language", "Accept-Ranges", "Authorization", 
+			"Cache-Control", "Connection", "Cookie", "Content-Length", "Content-Type", "Date", 
+			"Expect", "From", "Host", "If-Match", "If-Modified-Since", "If-None-Match", 
+			"If-Range", "If-Unmodified-Since", "Max-Forwards", "Pragma", "Proxy-Authorization", 
+			"Range", "Referer", "TE", "Upgrade", "User-Agent", "Via", "Warn" };
+
+		static string [] response_headers = new string [] {
+			"Accept-Ranges", "Age", "Allow", "Cache-Control", "Content-Encoding", "Content-Language", 
+			"Content-Length", "Content-Location", "Content-Disposition", "Content-MD5", "Content-Range", 
+			"Content-Type", "Date", "ETag", "Expires", "Last-Modified", "Location", "Pragma", 
+			"Proxy-Authenticate", "Retry-After", "Server", "Set-Cookie", "Trailer", 
+			"Transfer-Encoding", "Vary", "Via", "Warn", "WWW-Authenticate" };
+
+		static string [] restricted_request_request = new string [] {
+			"Accept", "Connection", "Content-Length", "Content-Type", "Date",
+			"Expect", "Host", "If-Modified-Since", "Range", "Referer",
+			"User-Agent" };
+		static string [] restricted_response_request = new string [] {
+			"Content-Length", "Content-Type", "Date", "Transfer-Encoding" };
+
+		static string [] restricted_request_response = new string [] {
+			 "Content-Length" };
+		static string [] restricted_response_response = new string [] {
+			 "Content-Length", "Transfer-Encoding", "WWW-Authenticate" };
+
+		[Test]
+		public void IsRestricted_2_0_RequestRequest ()
+		{
+			int count = 0;
+			foreach (string str in request_headers) {
+				if (WebHeaderCollection.IsRestricted (str, false)) {
+					Assert.IsTrue (Array.IndexOf (restricted_request_request, str) != -1, "restricted " + str);
+					count++;
+				} else {
+					Assert.IsTrue (Array.IndexOf (restricted_request_request, str) == -1, str);
+				}
+			}
+			Assert.IsTrue (count == restricted_request_request.Length, "req-req length");
+		}
+
+		[Test]
+		public void IsRestricted_2_0_ResponseRequest ()
+		{
+			int count = 0;
+			foreach (string str in response_headers) {
+				if (WebHeaderCollection.IsRestricted (str, false)) {
+					Assert.IsTrue (Array.IndexOf (restricted_response_request, str) != -1, "restricted " + str);
+					count++;
+				} else {
+					Assert.IsTrue (Array.IndexOf (restricted_response_request, str) == -1, str);
+				}
+			}
+			Assert.IsTrue (count == restricted_response_request.Length, "length");
+		}
+
+		[Test]
+		public void IsRestricted_2_0_RequestResponse ()
+		{
+			int count = 0;
+			foreach (string str in request_headers) {
+				if (WebHeaderCollection.IsRestricted (str, true)) {
+					Assert.IsTrue (Array.IndexOf (restricted_request_response, str) != -1, "restricted " + str);
+					count++;
+				} else {
+					Assert.IsTrue (Array.IndexOf (restricted_request_response, str) == -1, str);
+				}
+			}
+			Assert.IsTrue (count == restricted_request_response.Length, "length");
+		}
+
+		[Test]
+		public void IsRestricted_2_0_ResponseResponse ()
+		{
+			int count = 0;
+			foreach (string str in response_headers) {
+				if (WebHeaderCollection.IsRestricted (str, true)) {
+					Assert.IsTrue (Array.IndexOf (restricted_response_response, str) != -1, "restricted " + str);
+					count++;
+				} else {
+					Assert.IsTrue (Array.IndexOf (restricted_response_response, str) == -1, str);
+				}
+			}
+			Assert.IsTrue (count == restricted_response_response.Length, "length");
+		}
+#endif
 	}
 }
+

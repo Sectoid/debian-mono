@@ -1,3 +1,29 @@
+2009-10-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ApplicationHost.cs: set the shadow copy options calling the methods
+	in AppDomain, instead of setting them in a copy of the setup
+	information.
+
+2009-10-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ApplicationHost.cs: use shadowCopyBinAssemblies from
+	<hostingEnvironment>.
+
+2009-09-07  Marek Habersack  <mhabersack@novell.com>
+
+	* HostingEnvironment.cs: MapPath checks if HttpContext.Request
+	actually exists before using it.
+
+2009-07-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SimpleWorkerRequest.cs: move this back to an instance property.
+	Cache works now.
+
+2009-07-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SimpleWorkerRequest.cs: store the root web configuration path in a
+	static variable.
+
 2008-10-29  Marek Habersack  <mhabersack@novell.com>
 
 	* ApplicationHost.cs: set domain setup CachePath to the same value

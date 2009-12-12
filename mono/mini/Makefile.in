@@ -44,7 +44,10 @@ subdir = mono/mini
 DIST_COMMON = README $(libmonoinclude_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in ChangeLog TODO
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/libtool.m4 \
+	$(top_srcdir)/ltoptions.m4 $(top_srcdir)/ltsugar.m4 \
+	$(top_srcdir)/ltversion.m4 $(top_srcdir)/lt~obsolete.m4 \
+	$(top_srcdir)/nls.m4 $(top_srcdir)/po.m4 \
 	$(top_srcdir)/progtest.m4 $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -257,10 +260,6 @@ CFLAGS = @CFLAGS@
 CFLAGS_FOR_BUILD = @CFLAGS_FOR_BUILD@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CXX = @CXX@
-CXXCPP = @CXXCPP@
-CXXDEPMODE = @CXXDEPMODE@
-CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -270,14 +269,13 @@ DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DTRACE = @DTRACE@
 DTRACEFLAGS = @DTRACEFLAGS@
-ECHO = @ECHO@
+DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-F77 = @F77@
-FFLAGS = @FFLAGS@
+FGREP = @FGREP@
 GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GLIB_CFLAGS = @GLIB_CFLAGS@
 GLIB_LIBS = @GLIB_LIBS@
@@ -295,6 +293,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 INTL = @INTL@
+LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBC = @LIBC@
 LIBGC_CFLAGS = @LIBGC_CFLAGS@
@@ -303,6 +302,7 @@ LIBGC_STATIC_LIBS = @LIBGC_STATIC_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
+LIPO = @LIPO@
 LN_S = @LN_S@
 LTCOMPILE = @LTCOMPILE@
 LTCXXCOMPILE = @LTCXXCOMPILE@
@@ -314,11 +314,14 @@ MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
+NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OPROFILE_CFLAGS = @OPROFILE_CFLAGS@
 OPROFILE_LIBS = @OPROFILE_LIBS@
+OTOOL = @OTOOL@
+OTOOL64 = @OTOOL64@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -347,8 +350,7 @@ abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
-ac_ct_CXX = @ac_ct_CXX@
-ac_ct_F77 = @ac_ct_F77@
+ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -388,6 +390,7 @@ libmono_ldflags = @libmono_ldflags@
 libsuffix = @libsuffix@
 localedir = @localedir@
 localstatedir = @localstatedir@
+lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mcs_topdir = @mcs_topdir@
 mcs_topdir_from_srcdir = @mcs_topdir_from_srcdir@
@@ -411,6 +414,7 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
+top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 count = 100000
@@ -1224,40 +1228,40 @@ generics-variant-types.dll: generics-variant-types.il
 	$(ILASM) -dll -output=$@ $<
 
 cpu-x86.h: cpu-x86.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-x86.md cpu-x86.h x86_desc
+	$(GENMDESC_PRG) cpu-x86.h x86_desc $(srcdir)/cpu-x86.md
 
 cpu-amd64.h: cpu-amd64.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-amd64.md cpu-amd64.h amd64_desc
+	$(GENMDESC_PRG) cpu-amd64.h amd64_desc $(srcdir)/cpu-amd64.md
 
 cpu-ppc.h: cpu-ppc.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-ppc.md cpu-ppc.h ppcg4
+	$(GENMDESC_PRG) cpu-ppc.h ppcg4 $(srcdir)/cpu-ppc.md
 
 cpu-ppc64.h: cpu-ppc64.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-ppc64.md cpu-ppc64.h ppc64_cpu_desc
+	$(GENMDESC_PRG) cpu-ppc64.h ppc64_cpu_desc $(srcdir)/cpu-ppc64.md
 
 cpu-arm.h: cpu-arm.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-arm.md cpu-arm.h arm_cpu_desc
+	$(GENMDESC_PRG) cpu-arm.h arm_cpu_desc $(srcdir)/cpu-arm.md
 
 cpu-sparc.h: cpu-sparc.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-sparc.md cpu-sparc.h sparc_desc
+	$(GENMDESC_PRG) cpu-sparc.h sparc_desc $(srcdir)/cpu-sparc.md
 
 cpu-s390.h: cpu-s390.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-s390.md cpu-s390.h s390_cpu_desc
+	$(GENMDESC_PRG) cpu-s390.h s390_cpu_desc $(srcdir)/cpu-s390.md
 
 cpu-s390x.h: cpu-s390x.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-s390x.md cpu-s390x.h s390x_cpu_desc
+	$(GENMDESC_PRG) cpu-s390x.h s390x_cpu_desc $(srcdir)/cpu-s390x.md
 
 cpu-ia64.h: cpu-ia64.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-ia64.md cpu-ia64.h ia64_desc
+	$(GENMDESC_PRG) cpu-ia64.h ia64_desc $(srcdir)/cpu-ia64.md
 
 cpu-alpha.h: cpu-alpha.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-alpha.md cpu-alpha.h alpha_desc
+	$(GENMDESC_PRG) cpu-alpha.h alpha_desc $(srcdir)/cpu-alpha.md
 
 cpu-hppa.h: cpu-hppa.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-hppa.md cpu-hppa.h hppa_desc
+	$(GENMDESC_PRG) cpu-hppa.h hppa_desc $(srcdir)/cpu-hppa.md
 
 cpu-mips.h: cpu-mips.md genmdesc$(EXEEXT)
-	$(GENMDESC_PRG) $(srcdir)/cpu-mips.md cpu-mips.h mips_desc
+	$(GENMDESC_PRG) cpu-mips.h mips_desc $(srcdir)/cpu-mips.md
 
 testi: mono test.exe
 	$(RUNTIME) -v -v --ncompile 1 --compile Test:$(mtest) test.exe

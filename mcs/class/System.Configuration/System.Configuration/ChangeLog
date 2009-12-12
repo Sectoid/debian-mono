@@ -1,3 +1,32 @@
+2009-10-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Configuration.cs: make this work again with bundled configuration
+	files. Fixes bug #495957. Patch from Tor Lillqvist.
+
+2009-07-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ConfigurationElement.cs: don't skip xml nodes when reading 2
+	ConfigurationElement in a row. Patch by Greg Smolyn that fixes bug
+	#521231.
+
+2009-07-15  Marek Habersack  <mhabersack@novell.com>
+
+	* Configuration.cs: explicitly flush the stream when writing XML
+	data. Part of fix for bug #522017
+
+2009-07-14  Marek Habersack  <mhabersack@novell.com>
+
+	* ConfigurationSaveEventArgs.cs, ConfigurationSaveEventHandler.cs:
+	added
+
+	* Configuration.cs: added two internal events - SaveStart and
+	SaveEnd. They are used by System.Web's configuration system to
+	suppress application reloads when configuration is modified and
+	saved from within a web application. It is necessary to use events
+	since there is no guarantee the web application will use
+	WebConfigurationManager (and thus WebConfigurationHost) for
+	writing.
+
 2009-06-08  Marek Habersack  <mhabersack@novell.com>
 
 	* ConfigurationLocation.cs: if the path passed to constructor

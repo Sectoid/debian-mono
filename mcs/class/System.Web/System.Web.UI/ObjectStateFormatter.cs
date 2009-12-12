@@ -432,11 +432,15 @@ namespace System.Web.UI {
 										t,
 										converter != null ? converter.CanConvertFrom (t) : false));
 #endif
-						if (converter == null ||
-						    !converter.CanConvertTo (typeof (string)) ||
-						    !converter.CanConvertFrom (t)) {
+						// Do not use the converter if it's an instance of
+						// TypeConverter itself - it reports it is able to
+						// convert to string, but it's only a conversion
+						// consisting of a call to ToString() with no
+						// reverse conversion supported. This leads to
+						// problems when deserializing the object.
+						if (converter == null || converter.GetType () == typeof (TypeConverter) || !converter.CanConvertTo (typeof (string)))
 							fmt = binaryObjectFormatter;
-						} else {
+						else {
 							typeConverterFormatter.Converter = converter;
 							fmt = typeConverterFormatter;
 						}
@@ -1001,7 +1005,7 @@ namespace System.Web.UI {
 			{
 				w.Write (PrimaryId);
 				ObjectFormatter.WriteObject (w, o.GetType (), ctx);
-				string v = (string) converter.ConvertTo (null, CultureInfo.InvariantCulture,
+				string v = (string) converter.ConvertTo (null, Helpers.InvariantCulture,
 									 o, typeof (string));
 				base.Write (w, v, ctx);
 			}
@@ -1012,7 +1016,7 @@ namespace System.Web.UI {
 				converter = TypeDescriptor.GetConverter (t);
 				token = r.ReadByte ();
 				string v = (string) base.Read (token, r, ctx);
-				return converter.ConvertFrom (null, CultureInfo.InvariantCulture, v);
+				return converter.ConvertFrom (null, Helpers.InvariantCulture, v);
 			}
 			
 			protected override Type Type {

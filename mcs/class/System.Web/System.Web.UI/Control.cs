@@ -160,7 +160,7 @@ namespace System.Web.UI
 				if (!did_adapter_lookup) {
 					adapter = ResolveAdapter ();
 					if (adapter != null)
-						adapter.Control = this;
+						adapter.control = this;
 					did_adapter_lookup = true;
 				}
 				return adapter;
@@ -1406,12 +1406,13 @@ namespace System.Web.UI
 				return relativeUrl;
 
 			HttpContext context = Context;
-			if (context != null && context.Request != null) {
+			HttpRequest req = context != null ? context.Request : null;
+			if (req != null) {
 				string templateSourceDirectory = TemplateSourceDirectory;
 				if (templateSourceDirectory == null || templateSourceDirectory.Length == 0)
 					return relativeUrl;
 
-				string basePath = context.Request.FilePath;
+				string basePath = req.ClientFilePath;
 
 				if (basePath.Length > 1 && basePath [basePath.Length - 1] != '/')
 					basePath = VirtualPathUtility.GetDirectory (basePath, false);

@@ -1099,11 +1099,11 @@ namespace System.Windows.Forms {
 				case "y":
 				case "yy":
 				case "yyyy":
-					for (int i = 1; i <= 10; i++) {
-						text = PartData.GetText (Value.AddYears (i), format);
-						size = gr.MeasureString (text, font, int.MaxValue, string_format);
-						result = Math.Max (result, size.Width);
-					}
+					// Actually all the allowed year values are between MinDateTime and MaxDateTime,
+					// which are 4 digits always
+					text = PartData.GetText (Value, format);
+					size = gr.MeasureString (text, font, int.MaxValue, string_format);
+					result = Math.Max (result, size.Width);
 					return result;
 				default:
 					return gr.MeasureString (format, font, int.MaxValue, string_format).Width;
@@ -1274,7 +1274,8 @@ namespace System.Windows.Forms {
 			if (month_calendar.Visible) {
 				month_calendar.Hide ();
 			}
-	}
+			Focus ();
+		}
 
 		private int GetSelectedPartIndex()
 		{
@@ -1737,7 +1738,6 @@ namespace System.Windows.Forms {
 		private void MonthCalendarDateSelectedHandler (object sender, DateRangeEventArgs e)
 		{
 			this.HideMonthCalendar ();	
-			this.Focus ();			
 		} 
 
 		private void MouseUpHandler(object sender, MouseEventArgs e)
@@ -1803,7 +1803,6 @@ namespace System.Windows.Forms {
     				// mouse down on this control anywhere else collapses it
     				if (is_drop_down_visible) {    				
     					HideMonthCalendar ();
-					this.Focus ();
     				}
 				if (!(ShowCheckBox && Checked == false))
 				{
@@ -1844,7 +1843,6 @@ namespace System.Windows.Forms {
 				DropDownMonthCalendar ();
 			} else {
 				HideMonthCalendar ();
-				this.Focus ();
 			}
 		}
 		

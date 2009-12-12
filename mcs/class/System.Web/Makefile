@@ -72,14 +72,26 @@ RESOURCE_FILES_2 = \
 OTHER_RES = $(RESOURCE_FILES_1)
 TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/Global.asax \
-	Test/mainsoft/NunitWeb/NunitWeb/Resources/Global.asax.cs \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/My.ashx \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/My.master \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/MyPage.aspx \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/MyPage_1.1.aspx \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/MyPage.aspx.cs \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/MyPageWithMaster.aspx \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/Web.mono.config \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/Web.mono.config.1.1 \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/sub_map_01.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_01.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_02.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_03.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_04.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_05.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_06.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_07.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_08.sitemap \
+	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_09.sitemap \
+	Test/mainsoft/NunitWebResources/App_GlobalResources/Common.resx \
+	Test/mainsoft/NunitWebResources/App_GlobalResources/Common.fr-FR.resx \
 	Test/mainsoft/NunitWebResources/menuclass.aspx \
 	Test/mainsoft/NunitWebResources/FormView.aspx \
 	Test/mainsoft/NunitWebResources/PostBackMenuTest.aspx \
@@ -167,7 +179,13 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWebResources/ServerControlInClientSideComment.aspx \
 	Test/mainsoft/NunitWebResources/UnquotedAngleBrackets.aspx \
 	Test/mainsoft/NunitWebResources/FullTagsInText.aspx \
-	Test/mainsoft/NunitWebResources/TagsExpressionsAndCommentsInText.aspx
+	Test/mainsoft/NunitWebResources/TagsExpressionsAndCommentsInText.aspx \
+	Test/mainsoft/NunitWebResources/NewlineInCodeExpression.aspx \
+	Test/mainsoft/NunitWebResources/DuplicateControlsInClientComment.aspx \
+	Test/mainsoft/NunitWebResources/TagsNestedInClientTag.aspx \
+	Test/mainsoft/NunitWebResources/GlobalResourcesLocalization.aspx \
+	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx \
+	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx.cs
 
 RESX_DIST =  resources/TranslationResources.resx
 ifeq (net_2_0, $(PROFILE))
@@ -238,7 +256,7 @@ ifdef MONO_TRACE
 LIB_MCS_FLAGS += -define:TRACE -define:MONO_TRACE
 endif
 
-$(the_lib): $(RESX_RES) $(RESOURCE_FILES2) $(RESOURCE_FILES_1)
+$(the_lib): $(RESX_RES) $(RESOURCE_FILES_2) $(RESOURCE_FILES_1)
 
 $(RESX_RES): %.resources: %.resx
 	$(RESGEN) `echo $< | $(PLATFORM_CHANGE_SEPARATOR_CMD)`

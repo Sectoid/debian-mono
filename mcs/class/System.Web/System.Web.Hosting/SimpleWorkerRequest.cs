@@ -57,7 +57,7 @@ namespace System.Web.Hosting {
 			
 		// computed
 		string raw_url;
-		
+
 		//
 		// Constructor used when the target application domain
 		// was created with ApplicationHost.CreateApplicationHost

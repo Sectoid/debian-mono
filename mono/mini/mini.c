@@ -703,6 +703,18 @@ mono_op_imm_to_op (int opcode)
 #else
 		return OP_LAND;
 #endif
+	case OP_OR_IMM:
+#if SIZEOF_REGISTER == 4
+		return OP_IOR;
+#else
+		return OP_LOR;
+#endif
+	case OP_XOR_IMM:
+#if SIZEOF_REGISTER == 4
+		return OP_IXOR;
+#else
+		return OP_LXOR;
+#endif
 	case OP_IAND_IMM:
 		return OP_IAND;
 	case OP_LAND_IMM:
@@ -1242,10 +1254,12 @@ mono_icall_get_wrapper_full (MonoJitICallInfo* callinfo, gboolean do_compile)
 	 * We use the lock on the root domain instead of the JIT lock to protect 
 	 * callinfo->trampoline, since we do a lot of stuff inside the critical section.
 	 */
+	mono_loader_lock (); /*FIXME mono_compile_method requires the loader lock, by large.*/
 	mono_domain_lock (domain);
 
 	if (callinfo->trampoline) {
 		mono_domain_unlock (domain);
+		mono_loader_unlock ();
 		return callinfo->trampoline;
 	}
 
@@ -1262,6 +1276,7 @@ mono_icall_get_wrapper_full (MonoJitICallInfo* callinfo, gboolean do_compile)
 	callinfo->trampoline = trampoline;
 
 	mono_domain_unlock (domain);
+	mono_loader_unlock ();
 	
 	return callinfo->trampoline;
 }
@@ -3735,9 +3750,11 @@ lookup_method (MonoDomain *domain, MonoMethod *method)
 {
 	MonoJitInfo *info;
 
+	mono_loader_lock (); /*FIXME lookup_method_inner acquired it*/
 	mono_domain_jit_code_hash_lock (domain);
 	info = lookup_method_inner (domain, method);
 	mono_domain_jit_code_hash_unlock (domain);
+	mono_loader_unlock ();
 
 	return info;
 }
@@ -3915,6 +3932,7 @@ mono_jit_compile_method_inner (MonoMethod *method, MonoDomain *target_domain, in
 		g_assert_not_reached ();
 	}
 
+	mono_loader_lock (); /*FIXME lookup_method_inner requires the loader lock*/
 	mono_domain_lock (target_domain);
 
 	/* Check if some other thread already did the job. In this case, we can
@@ -3961,6 +3979,7 @@ mono_jit_compile_method_inner (MonoMethod *method, MonoDomain *target_domain, in
 	}
 
 	mono_domain_unlock (target_domain);
+	mono_loader_unlock ();
 
 	vtable = mono_class_vtable (target_domain, method->klass);
 	if (!vtable) {
@@ -5411,9 +5430,9 @@ mini_cleanup (MonoDomain *domain)
 	/* This accesses metadata so needs to be called before runtime shutdown */
 	print_jit_stats ();
 
-	mono_runtime_cleanup (domain);
-
 	mono_profiler_shutdown ();
+
+	mono_runtime_cleanup (domain);
 
 	mono_icall_cleanup ();
 

@@ -44,6 +44,7 @@ namespace Microsoft.Build.BuildEngine {
 		GroupingCollection	parentCollection;
 		Project			parentProject;
 		bool			read_only;
+		bool evaluated;
 
 		public BuildItemGroup ()
 			: this (null, null, null, false)
@@ -185,29 +186,45 @@ namespace Microsoft.Build.BuildEngine {
 			buildItems.Add (buildItem);
 		}
 
+		// In eval phase, any ref'ed item would've already been expanded
+		// or it doesnt exist, so dont expand again
+		// In non-eval, items have _already_ been expanded, so dont expand again
+		// So, ignore @options
 		internal string ConvertToString (Expression transform,
-						 Expression separator)
+						 Expression separator, ExpressionOptions options)
 		{
 			string separatorString;
 			
+			// Item refs are not expanded for separator or transform
 			if (separator == null)
 				separatorString = ";";
 			else
-				separatorString = (string) separator.ConvertTo (parentProject, typeof (string));
+				separatorString = (string) separator.ConvertTo (parentProject, typeof (string),
+								ExpressionOptions.DoNotExpandItemRefs);
 		
 			string[] items = new string [buildItems.Count];
 			int i = 0;
 			foreach (BuildItem bi in  buildItems)
-				items [i++] = bi.ConvertToString (transform);
+				items [i++] = bi.ConvertToString (transform, ExpressionOptions.DoNotExpandItemRefs);
 			return String.Join (separatorString, items);
 		}
 
-		internal ITaskItem[] ConvertToITaskItemArray (Expression transform)
+		// In eval phase, any ref'ed item would've already been expanded
+		// or it doesnt exist, so dont expand again
+		// In non-eval, items have _already_ been expanded, so dont expand again
+		// So, ignore @options
+		internal ITaskItem[] ConvertToITaskItemArray (Expression transform, Expression separator, ExpressionOptions options)
 		{
+			if (separator != null)
+				// separator present, so return as a single "join'ed" string
+				return new ITaskItem [] {
+					new TaskItem (ConvertToString (transform, separator, options))
+				};
+
 			ITaskItem[] array = new ITaskItem [buildItems.Count];
 			int i = 0;
 			foreach (BuildItem item in buildItems)
-				array [i++] = item.ConvertToITaskItem (transform);
+				array [i++] = item.ConvertToITaskItem (transform, ExpressionOptions.DoNotExpandItemRefs);
 			return array;
 		}
 
@@ -221,6 +238,8 @@ namespace Microsoft.Build.BuildEngine {
 
 		internal void Evaluate ()
 		{
+			if (evaluated)
+				return;
 			foreach (BuildItem bi in buildItems) {
 				if (bi.Condition == String.Empty)
 					bi.Evaluate (parentProject, true);
@@ -229,6 +248,7 @@ namespace Microsoft.Build.BuildEngine {
 					bi.Evaluate (parentProject, ce.BoolEvaluate (parentProject));
 				}
 			}
+			evaluated = true;
 		}		
 
 		internal void ReplaceWith (BuildItem item, List <BuildItem> list)

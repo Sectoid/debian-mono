@@ -33,6 +33,9 @@
 
 using System;
 using System.Collections;
+#if NET_2_0
+using System.Collections.Generic;
+#endif
 using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -48,6 +51,9 @@ namespace System.Net
 	{
 		private static readonly Hashtable restricted;
 		private static readonly Hashtable multiValue;
+#if NET_2_0
+		static readonly Dictionary<string, bool> restricted_response;
+#endif
 		private bool internallyCreated = false;
 		
 		// Static Initializer
@@ -71,7 +77,15 @@ namespace System.Net
 			restricted.Add ("referer", true);
 			restricted.Add ("transfer-encoding", true);
 			restricted.Add ("user-agent", true);			
-			
+			restricted.Add ("proxy-connection", true);			
+
+			//
+#if NET_2_0
+			restricted_response = new Dictionary<string, bool> (StringComparer.InvariantCultureIgnoreCase);
+			restricted_response.Add ("Content-Length", true);
+			restricted_response.Add ("Transfer-Encoding", true);
+			restricted_response.Add ("WWW-Authenticate", true);
+#endif
 			// see par 14 of RFC 2068 to see which header names
 			// accept multiple values each separated by a comma
 			multiValue = new Hashtable (CaseInsensitiveHashCodeProvider.DefaultInvariant,
@@ -243,14 +257,25 @@ namespace System.Net
 			if (headerName == "") // MS throw nullexception here!
 				throw new ArgumentException ("empty string", "headerName");
 
+			if (!IsHeaderName (headerName))
+				throw new ArgumentException ("Invalid character in header");
+
 			return restricted.ContainsKey (headerName);
 		}
 
 #if NET_2_0
-		[MonoNotSupported("")]
 		public static bool IsRestricted (string headerName, bool response)
 		{
-			throw new NotImplementedException ();
+			if (String.IsNullOrEmpty (headerName))
+				throw new ArgumentNullException ("headerName");
+
+			if (!IsHeaderName (headerName))
+				throw new ArgumentException ("Invalid character in header");
+
+
+			if (response)
+				return restricted_response.ContainsKey (headerName);
+			return restricted.ContainsKey (headerName);
 		}
 #endif
 
@@ -663,31 +688,30 @@ namespace System.Net
 		
 		internal static bool IsHeaderName (string name)
 		{
-			// token          = 1*<any CHAR except CTLs or tspecials>
-			// tspecials      = "(" | ")" | "<" | ">" | "@"
-			//                | "," | ";" | ":" | "\" | <">
-			//                | "/" | "[" | "]" | "?" | "="
-			//                | "{" | "}" | SP | HT
-			
 			if (name == null || name.Length == 0)
 				return false;
 
 			int len = name.Length;
 			for (int i = 0; i < len; i++) {			
 				char c = name [i];
-				if (c < 0x20 || c >= 0x7f)
+				if (c > 126 || !allowed_chars [(int) c])
 					return false;
 			}
 			
-			return name.IndexOfAny (tspecials) == -1;
+			return true;
 		}
 
-		private static char [] tspecials = 
-				new char [] {'(', ')', '<', '>', '@',
-					     ',', ';', ':', '\\', '"',
-					     '/', '[', ']', '?', '=',
-					     '{', '}', ' ', '\t'};
-							
+		static bool [] allowed_chars = new bool [126] {
+			false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+			false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+			false, false, false, false, false, true, false, true, true, true, true, false, false, false, true,
+			true, false, true, true, false, true, true, true, true, true, true, true, true, true, true, false,
+			false, false, false, false, false, false, true, true, true, true, true, true, true, true, true,
+			true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+			false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true,
+			true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+			false, true, false
+			};
 	}
 }
 

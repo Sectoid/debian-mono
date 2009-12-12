@@ -1,3 +1,64 @@
+2009-11-14  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControl.cs: if writer is null in
+	WriteUTF8ResourceString, use output.Write, not writer.Write. Fixes
+	bug #547015
+
+2009-11-10  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateParser.cs: AddImports is called from LoadConfigDefaults
+	so that it reads configuration from the correct .config file (it
+	needs to be called after this.VirtualPath has been
+	initialized). Fixes an issue with MVC apps which put configuration
+	in Views/web.config etc. Fixes bug #552457
+
+	* ControlBuilder.cs, Page.cs: system.web/pages section is not
+	confined to the top-level web.config
+
+2009-10-30  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: ResolveClientUrl takes base path from
+	Request.ClientFilePath, so that it works correctly for rewritten
+	urls.
+
+2009-10-27  Marek Habersack  <mhabersack@novell.com>
+
+	* ObjectStateFormatter.cs: do not use a type converter to
+	serialize an object if the converter is an instance of
+	TypeConverter itself - its reported capability of converting to
+	string is not useful here.
+
+2009-10-12  Marek Habersack  <mhabersack@novell.com>
+
+	* ObjectStateFormatter.cs: if a type is associated with a type
+	converter, do not check if the converter can convert FROM the type
+	in question, as this is implied. Fixes bug #545979
+
+2009-09-22  Marek Habersack  <mhabersack@novell.com>
+
+	* WebServiceParser.cs: GetCompiledType uses BuildManager on the
+	2.0 profile. Fixes bug #533166
+
+2009-09-15  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateParser.cs: FindNamespaceInAssembly must catch
+	ReflectionTypeLoadException so that it doesn't break on invalid
+	assemblies.
+
+2009-08-18  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlBuilder.cs: Location property makes a copy of assigned
+	ILocation now.
+
+2009-08-14  Marek Habersack  <mhabersack@novell.com>
+
+	* ControlBuilder.cs: when CreateSubBuilder is called on a builder
+	which is supposed to treat its children as properties and the
+	default property builder is defined, first check if the tag which
+	has just been parsed isn't a template property. If it is, don't
+	use the default property builder, instead create a template
+	property builder directly. Fixes bug #527753
+
 2009-07-23  Marek Habersack  <mhabersack@novell.com>
 
 	* ControlBuilder.cs: added an internal helper property

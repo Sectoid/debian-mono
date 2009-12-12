@@ -278,6 +278,12 @@ public class Tests {
 	[DllImport ("libtest", EntryPoint="mono_test_marshal_stringbuilder_unicode", CharSet=CharSet.Unicode)]
 	public static extern void mono_test_marshal_stringbuilder_unicode (StringBuilder sb, int len);
 
+	[DllImport ("libtest", EntryPoint="mono_test_marshal_stringbuilder_out")]
+	public static extern void mono_test_marshal_stringbuilder_out (out StringBuilder sb);
+
+	[DllImport ("libtest", EntryPoint="mono_test_marshal_stringbuilder_out_unicode", CharSet=CharSet.Unicode)]
+	public static extern void mono_test_marshal_stringbuilder_out_unicode (out StringBuilder sb);
+
 	[DllImport ("libtest", EntryPoint="mono_test_last_error", SetLastError=true)]
 	public static extern void mono_test_last_error (int err);
 
@@ -766,6 +772,24 @@ public class Tests {
 		if (sb2.ToString () != "This is my messa")
 			return 2;
 		
+		return 0;
+	}
+
+	public static int test_0_marshal_stringbuilder_out () {
+		StringBuilder sb;
+		mono_test_marshal_stringbuilder_out (out sb);
+		
+		if (sb.ToString () != "This is my message.  Isn't it nice?")
+			return 1;  
+		return 0;
+	}
+
+	public static int test_0_marshal_stringbuilder_out_unicode () {
+		StringBuilder sb;
+		mono_test_marshal_stringbuilder_out_unicode (out sb);
+
+		if (sb.ToString () != "This is my message.  Isn't it nice?")
+			return 1;  
 		return 0;
 	}
 
@@ -1469,6 +1493,18 @@ public class Tests {
 		} catch (Exception) {
 			return 0;
 		}
+	}
+
+	/*
+	 * Marshalling of DateTime to OLE DATE (double)
+	 */
+	[DllImport ("libtest", EntryPoint="mono_test_marshal_date_time")]
+	public static extern double mono_test_marshal_date_time (DateTime d);
+
+	public static int test_0_marshal_date_time () {
+		DateTime d = new DateTime (2009, 12, 6);
+		double d2 = mono_test_marshal_date_time (new DateTime (2009, 12, 6));
+		return  (d2 == 40153.0) ? 0 : 1;
 	}
 }
 

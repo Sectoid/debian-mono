@@ -94,7 +94,9 @@ namespace System.Web
 		HttpException (SerializationInfo info, StreamingContext context)
 			: base (info, context)
 		{
+#if NET_2_0
 			http_code = info.GetInt32 ("_httpCode");
+#endif
 		}
 
 #if NET_2_0
@@ -217,7 +219,8 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 		{
 			if (showTrace) {
 				builder.Append ("<hr style=\"color: silver\"/>");
-				builder.AppendFormat ("<strong>Version information: </strong> Mono Version: {0}; ASP.NET Version: {0}</body></html>\r\n", Environment.Version);
+				builder.AppendFormat ("<strong>Version information: </strong> Runtime: <tt>{0}</tt>; ASP.NET Version: <tt>{1}</tt></body></html>\r\n",
+						      HttpRuntime.MonoVersion, Environment.Version);
 			
 				string trace, message;
 				bool haveTrace;

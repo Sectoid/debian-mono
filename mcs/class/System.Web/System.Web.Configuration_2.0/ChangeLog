@@ -1,8 +1,76 @@
+2009-11-10  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: path passed to OpenWebConfiguration
+	from GetSection does not come from FindWebConfig.
+
+2009-11-09  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: there's no need to cache sections by
+	_file_ path - using section name and web.config path is more than
+	enough and it reduces the number of cache entries
+	considerably. Fixes bug #550730
+
+2009-10-07  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: GetSection doesn't perform string +
+	char + string concatenation to generate section cache key (by
+	Gonzalo Paniagua Javier) which gives an enormous performance boost
+	(processing time for mojoportal's default.aspx went down from
+	2.65s to 107ms on average). The key generation is performed
+	without any kind of string operation right now (except for
+	GetHashCode on 3 strings).
+	GetSectionCacheKey is called only once and sectionCache became a
+	dictionary.
+
+2009-08-20  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: GetSection does not use
+	FindWebConfig to get the virtual path to open configuration for -
+	doing so would make the configuration system ignore <location>
+	sections. Fixes bug #482181
+
+2009-07-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConfigurationManager.cs: avoid possible infinite loop when the
+	path starts with ~ and 1 file check.
+
+2009-07-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* AuthorizationSection.cs:
+	* HttpHandlerAction.cs:
+	* GlobalizationSection.cs: synch with HEAD.
+
+2009-07-15  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: another approach to suppressing
+	application reloads after the app writes to its root web.config
+	file. Leaving the previous code in place to get more
+	protection. It's a kludge, but it's the best option to avoid
+	all the races caused by System.Configuration+FileSystemWatcher
+	without rewriting large parts of System.Configuration (and
+	System.Web.Configuration). Fixes bug #522017
+
+2009-07-14  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: added support for suppressing
+	application reload when the main config file is written to from
+	application.
+
+	* WebConfigurationHost.cs: added minimal implementation of
+	WriteCompleted, which checks if there's need to suppress
+	application reload.
+
 2009-07-13  Marek Habersack  <mhabersack@novell.com>
 
 	* ProvidersHelper.cs: InstantiateProvider doesn't have to
 	explicitly look for types in App_Code assemblies - this is done in
 	HttpApplication.LoadType.
+
+2009-07-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConfigurationManager.cs: when caching configuration and sections,
+	use the configuration file directory instead of the incoming request
+	path.
 
 2009-06-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

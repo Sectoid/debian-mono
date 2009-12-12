@@ -1,3 +1,23 @@
+2009-10-22 Lluis Sanchez Gual <lluis@novell.com>
+
+	* CodeNamespaceImportCollection.cs: Properly update the internal
+	keys hashtable when there are changes in the items.
+
+2009-09-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* CodeNamespace.cs:
+	* CodeTypeReference.cs:
+	* CodeMemberMethod.cs:
+	* CodeCompileUnit.cs:
+	* CodeNamespaceImportCollection.cs:
+	* CodeTypeDeclaration.cs: renamed/added fields so that we're
+	compatible with MS serialization.
+
+2009-08-13  Marek Habersack  <mhabersack@novell.com>
+
+	* CodeTypeReference.cs: generic types specialized on arrays must
+	not be treated as array declarations. Fixes bug #523341
+
 2008-02-10  Juraj Skripsky  <js@hotfeet.ch>
 
 	* CodeObject.cs: Add empty Visit method implementation.

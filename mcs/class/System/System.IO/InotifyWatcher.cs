@@ -465,7 +465,6 @@ namespace System.IO {
 			ArrayList newdirs = null;
 			InotifyEvent evt;
 			int nread = 0;
-			bool new_name_needed = false;
 			RenamedEventArgs renamed = null;
 			while (length > nread) {
 				int bytes_read = ReadEvent (buffer, nread, length, out evt);
@@ -500,6 +499,10 @@ namespace System.IO {
 					} else if ((mask & InotifyMask.Delete) != 0) {
 						action = FileAction.Removed;
 					} else if ((mask & InotifyMask.DeleteSelf) != 0) {
+						if (data.Watch != parent.data.Watch) {
+							// To avoid duplicate events handle DeleteSelf only for the top level directory.
+							continue;
+						}
 						action = FileAction.Removed;
 					} else if ((mask & InotifyMask.MoveSelf) != 0) {
 						//action = FileAction.Removed;
@@ -507,7 +510,7 @@ namespace System.IO {
 					} else if ((mask & InotifyMask.MovedFrom) != 0) {
 						InotifyEvent to;
 						int i = ReadEvent (buffer, nread, length, out to);
-						if (i == -1 || (to.Mask & InotifyMask.MovedTo) == 0) {
+						if (i == -1 || (to.Mask & InotifyMask.MovedTo) == 0 || evt.WatchDescriptor != to.WatchDescriptor) {
 							action = FileAction.Removed;
 						} else {
 							nread += i;
@@ -517,10 +520,8 @@ namespace System.IO {
 								filename = to.Name;
 						}
 					} else if ((mask & InotifyMask.MovedTo) != 0) {
-						action = (new_name_needed) ? FileAction.RenamedNewName : FileAction.Added;
-						new_name_needed = false;
+						action = FileAction.Added;
 					}
-
 					if (fsw.IncludeSubdirectories) {
 						string full = fsw.FullPath;
 						string datadir = data.Directory;
@@ -544,6 +545,34 @@ namespace System.IO {
 							fd.FSW = fsw;
 							fd.Directory = datadir;
 							newdirs.Add (fd);
+						}
+
+						if (action == FileAction.RenamedNewName && is_directory) {
+							string renamedOldFullPath = renamed.OldFullPath;
+							string renamedFullPath = renamed.FullPath;
+							int renamedOldFullPathLength = renamedOldFullPath.Length;
+							
+							foreach (InotifyData child in parent.children) {
+									
+								if (child.Directory.StartsWith (renamedOldFullPath
+#if NET_2_0
+												, StringComparison.Ordinal
+#endif
+								    )) {
+									child.Directory = renamedFullPath +
+										child.Directory.Substring (renamedOldFullPathLength);
+								}
+							}
+						}
+					}
+
+					if (action == FileAction.Removed && filename == data.Directory) {
+						int idx = parent.children.IndexOf (data);
+						if (idx != -1) {
+							parent.children.RemoveAt (idx);
+							if (!fsw.Pattern.IsMatch (Path.GetFileName (filename))) {
+								continue;
+							}
 						}
 					}
 

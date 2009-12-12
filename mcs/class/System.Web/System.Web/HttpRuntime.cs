@@ -62,6 +62,8 @@ namespace System.Web {
 		static bool caseInsensitive;
 		static bool runningOnWindows;
 		static bool isunc;
+		static string monoVersion;
+		
 #if TARGET_J2EE
 		static QueueManager queue_manager { get { return _runtime._queue_manager; } }
 		static TraceManager trace_manager { get { return _runtime._trace_manager; } }
@@ -143,7 +145,8 @@ namespace System.Web {
 
 			if (runningOnWindows) {
 				caseInsensitive = true;
-				isunc = new Uri (AppDomainAppPath).IsUnc;
+				if (AppDomainAppPath != null)
+					isunc = new Uri (AppDomainAppPath).IsUnc;
 			} else {
 				string mono_iomap = Environment.GetEnvironmentVariable ("MONO_IOMAP");
 				if (mono_iomap != null) {
@@ -160,6 +163,17 @@ namespace System.Web {
 					}
 				}
 			}
+
+			Type monoRuntime = Type.GetType ("Mono.Runtime", false);
+			monoVersion = null;
+			if (monoRuntime != null) {
+				MethodInfo mi = monoRuntime.GetMethod ("GetDisplayName", BindingFlags.Static | BindingFlags.NonPublic);
+				if (mi != null)
+					monoVersion = mi.Invoke (null, new object [0]) as string;
+			}
+
+			if (monoVersion == null)
+				monoVersion = Environment.Version.ToString ();
 			
 #if !TARGET_J2EE
 			firstRun = true;
@@ -731,10 +745,15 @@ namespace System.Web {
 					AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler (ResolveAssemblyHandler);
 				else
 					AppDomain.CurrentDomain.AssemblyResolve -= new ResolveEventHandler (ResolveAssemblyHandler);
+				assemblyMappingEnabled = enable;
 			}
 		}
 #endif // #if !TARGET_J2EE
 #endif
+		internal static string MonoVersion {
+			get { return monoVersion; }
+		}
+		
 		internal static bool RunningOnWindows {
 			get { return runningOnWindows; }
 		}
@@ -743,7 +762,24 @@ namespace System.Web {
 			get { return caseInsensitive; }
 		}
 
-        
+		internal static bool IsDebuggingEnabled {
+			get {
+#if NET_2_0
+				CompilationSection cs = WebConfigurationManager.GetSection ("system.web/compilation") as CompilationSection;
+				if (cs != null)
+					return cs.Debug;
+
+				return false;
+#else
+				try {
+					return CompilationConfiguration.GetInstance (HttpContext.Current).Debug;
+				} catch {
+					return false;
+				}
+#endif
+			}
+		}
+		
 		internal static TraceManager TraceManager {
 			get {
 				return trace_manager;

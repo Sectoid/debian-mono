@@ -1,3 +1,30 @@
+2009-11-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket_2_1.cs: stop any blocking thread before closing the socket.
+
+2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket.cs: implement *SendFile().
+
+2009-09-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* NetworkStream.cs: after disposing the stream, CanRead/CanWrite
+	return false.
+
+2009-09-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SocketAsyncEventArgs.cs: fix check for non-null.
+	Fixes bug #516455.
+
+2009-06-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket.cs: turn WSAEINVAL into ArgumentException.
+
+2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket.cs: MS throws a SocketException in the byte[] overload when
+	the value is null.
+
 2009-05-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* TcpClient.cs:
