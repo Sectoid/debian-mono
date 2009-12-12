@@ -1,4 +1,4 @@
-mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
+mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
 
   [ Jo Shields ]
   * debian/monodoc-base.postinst,
@@ -13,6 +13,13 @@ mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
     upon a new install of monodoc-base (to generate the initial index)
 
   [ Mirco Bauer ]
+  * New upstream release
+  * debian/control
+    debian/rules
+    debian/copyright:
+    + Dropped the RabbitMQ library with spec sources again, as the
+      auto-generated API source files without DFSG-free sources for the
+      generator are not good enough. (Closes: #560151)
   * debian/update-monodoc:
     + Handle search index too.
   * debian/libmono-profiler.install:
@@ -25,7 +32,7 @@ mono (2.4.2.3+dfsg-4) UNRELEASED; urgency=low
     + Fixed typo in monodoc-base and monodoc-manual package description.
       (Closes: #557355, #557379)
 
- -- Jo Shields <directhex@apebox.org>  Fri, 27 Nov 2009 13:34:49 +0000
+ -- Mirco Bauer <meebey@debian.org>  Sat, 12 Dec 2009 19:30:46 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
