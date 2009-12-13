@@ -31,10 +31,11 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
       (Closes: #551909)
     + Fixed typo in monodoc-base and monodoc-manual package description.
       (Closes: #557355, #557379)
-  * debian/patches/fix_metadata_dup.dpatch:
-    + Dropped, applied upstream.
+  * debian/patches/fix_metadata_dup.dpatch
+  * debian/patches/fix_gridview_r146128_r146133.dpatch:
+    + Dropped, already applied upstream.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 01:56:40 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 01:59:11 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
