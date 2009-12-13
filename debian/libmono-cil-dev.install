@@ -2,6 +2,7 @@
 /usr/lib/pkgconfig/cecil.pc
 /usr/lib/pkgconfig/system.web.extensions_1.0.pc
 /usr/lib/pkgconfig/system.web.extensions.design_1.0.pc
+/usr/lib/pkgconfig/system.web.mvc.pc
 /usr/lib/pkgconfig/wcf.pc
 /usr/lib/pkgconfig/mono.web.pc
 /usr/lib/pkgconfig/dotnet.pc
