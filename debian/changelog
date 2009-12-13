@@ -44,8 +44,12 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
       compiler from the chicken-bin package. Most source packages were
       transitioned to use /usr/bin/mono-csc or /usr/bin/cli-csc instead.
       (Closes: #509367, #518106)
+  * debian/patches/fix_DynamicMethod_restrictedSkipVisibility_r138886.dpatch:
+    + Pass restrictedSkipVisibility parameter correctly to the called
+      constructor as needed by the DbLinq library. (Closes: #551964)
+      (thanks goes to Silviu Paragina for the investigation and the patch)
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 15:33:04 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 15:56:14 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
