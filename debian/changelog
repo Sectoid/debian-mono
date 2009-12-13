@@ -17,6 +17,7 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
   * debian/control
     debian/rules
     debian/copyright:
+    debian/patches/disable_building_RabbitMQ.Client.dll.dpatch:
     + Dropped the RabbitMQ library with spec sources again, as the
       auto-generated API source files without DFSG-free sources for the
       generator are not good enough. (Closes: #560151)

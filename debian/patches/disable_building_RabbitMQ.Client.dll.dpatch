@@ -1,0 +1,21 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## disable_building_RabbitMQ.Client.dll.dpatch by Mirco Bauer <meebey@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad git~/mcs/class/Makefile git/mcs/class/Makefile
+--- git~/mcs/class/Makefile	2009-12-13 16:02:58.000000000 +0100
++++ git/mcs/class/Makefile	2009-12-13 16:14:55.000000000 +0100
+@@ -77,10 +77,8 @@
+ 	Novell.Directory.Ldap		\
+ 	Mono.Security.Win32		\
+ 	System.DirectoryServices	\
+-	RabbitMQ.Client			\
+ 	Mono.Messaging			\
+ 	System.Messaging	        \
+-	Mono.Messaging.RabbitMQ		\
+ 	System.ServiceProcess           \
+ 	System.Drawing.Design		\
+ 	System.Design			\
