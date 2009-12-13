@@ -28,6 +28,10 @@ mono (2.4.3+dfsg-1) unstable; urgency=medium
       generator are not good enough. (Closes: #560151)
   * debian/copyright:
     + Updated for the new license compiler tool.
+  * debian/rules:
+    + Bumped clilibs of libmono-system2.0-cil, libmono-security{1,2}.0-cil,
+      libmono-data-tds{1,2}.0-cil and libmono-microsoft-build2.0-cil
+      to >= 2.4.3.
   * debian/update-monodoc:
     + Handle search index too.
   * debian/libmono-profiler.install:
@@ -70,7 +74,7 @@ mono (2.4.3+dfsg-1) unstable; urgency=medium
   * debian/fix_large_ranges_in_random_generator_r146995.dpatch:
     + Fix random numbers in large ranges.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 22:21:36 +0100
+ -- Mirco Bauer <meebey@debian.org>  Mon, 14 Dec 2009 00:01:59 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
