@@ -1,4 +1,4 @@
-mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
+mono (2.4.3+dfsg-1) unstable; urgency=medium
 
   [ Jo Shields ]
   * debian/monodoc-base.postinst,
@@ -26,6 +26,8 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
     + Dropped the RabbitMQ library with spec sources again, as the
       auto-generated API source files without DFSG-free sources for the
       generator are not good enough. (Closes: #560151)
+  * debian/copyright:
+    + Updated for the new license compiler tool.
   * debian/update-monodoc:
     + Handle search index too.
   * debian/libmono-profiler.install:
@@ -68,7 +70,7 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
   * debian/fix_large_ranges_in_random_generator_r146995.dpatch:
     + Fix random numbers in large ranges.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 19:50:09 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 22:21:36 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
