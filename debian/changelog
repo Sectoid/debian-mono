@@ -49,8 +49,11 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
     + Pass restrictedSkipVisibility parameter correctly to the called
       constructor as needed by the DbLinq library. (Closes: #551964)
       (thanks goes to Silviu Paragina for the investigation and the patch)
+  * debian/mono-xbuild.install
+    debian/man/xbuild.1:
+    + Replaced xbuild manpage place holder with new upstream manpage.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 15:56:14 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 17:13:37 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
