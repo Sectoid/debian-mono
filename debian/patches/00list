@@ -13,7 +13,6 @@ fix_mono-api-info_build
 fix_csharplib_build
 fix_mdoc_build
 fix_tuner_build
-fix_metadata_dup
 fix_CreateDelegate_ArgumentException
 fix_gridview_r146128_r146133
 disable_building_convert.exe
