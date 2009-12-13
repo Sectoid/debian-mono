@@ -57,8 +57,10 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
   * debian/mono-devel.install
     debian/mono-devel.manpages:
     + Added lc tool.
+  * debian/libmono-system-web2.0-cil.install:
+    + Added new development symlinks.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 17:54:16 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 18:38:42 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
