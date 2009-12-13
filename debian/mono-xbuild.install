@@ -7,3 +7,4 @@ debian/tmp/usr/lib/mono/2.0/Microsoft.Common.tasks
 debian/tmp/usr/lib/mono/2.0/Microsoft.Common.targets
 debian/tmp/usr/lib/mono/2.0/Microsoft.VisualBasic.targets
 debian/tmp/usr/lib/mono/2.0/MSBuild/
+debian/tmp/usr/lib/mono/xbuild/

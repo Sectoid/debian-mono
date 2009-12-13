@@ -48,6 +48,7 @@ debian/tmp/usr/lib/mono/1.0/mozroots.exe
 debian/tmp/usr/lib/mono/1.0/secutil.exe
 debian/tmp/usr/lib/mono/1.0/setreg.exe
 debian/tmp/usr/lib/mono/1.0/signcode.exe
+debian/tmp/usr/lib/mono/2.0/lc.exe
 debian/tmp/usr/lib/mono/1.0/sn.exe
 debian/tmp/usr/lib/mono/1.0/soapsuds.exe
 debian/tmp/usr/lib/mono/2.0/permview.exe

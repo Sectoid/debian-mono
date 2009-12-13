@@ -52,8 +52,13 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
   * debian/mono-xbuild.install
     debian/man/xbuild.1:
     + Replaced xbuild manpage place holder with new upstream manpage.
+  * debian/mono-xbuild.install:
+    + Addded new target files.
+  * debian/mono-devel.install
+    debian/mono-devel.manpages:
+    + Added lc tool.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 17:13:37 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 17:54:16 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
