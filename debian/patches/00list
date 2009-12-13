@@ -14,7 +14,6 @@ fix_csharplib_build
 fix_mdoc_build
 fix_tuner_build
 fix_CreateDelegate_ArgumentException
-fix_gridview_r146128_r146133
 disable_building_convert.exe
 disable_bug-80307_test
 build_cecil_as_2.0
