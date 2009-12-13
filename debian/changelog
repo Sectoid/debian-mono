@@ -39,8 +39,13 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
     debian/*.install:
     + Added new libmono-cil-dev package which ships now all pkg-config files
       and depends on all Mono CLI library packages.
+  * debian/mono-devel.links:
+    + Dropped /usr/bin/csc as it was causing a file conflict with the chicken
+      compiler from the chicken-bin package. Most source packages were
+      transitioned to use /usr/bin/mono-csc or /usr/bin/cli-csc instead.
+      (Closes: #509367, #518106)
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 02:55:56 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 15:33:04 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
