@@ -35,10 +35,12 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
   * debian/patches/fix_gridview_r146128_r146133.dpatch:
     + Dropped, already applied upstream.
   * debian/control:
-    + Added new libmono-cil-dev package which ships all pkg-config files and
-      depends on all Mono CLI library packages.
+    debian/libmono-cil-dev.install
+    debian/*.install:
+    + Added new libmono-cil-dev package which ships now all pkg-config files
+      and depends on all Mono CLI library packages.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 02:43:19 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 02:55:56 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 

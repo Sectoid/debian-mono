@@ -175,6 +175,13 @@ Description: Mono profiler libraries
 
 Package: libmono-cil-dev
 Architecture: all
+Replaces: libmono-nunit2.4-cil (<< 2.4.3),
+          libmono-cairo2.0-cil (<< 2.4.3),
+          libmono-cecil-private-cil (<< 2.4.3),
+          libmono-system-web2.0-cil (<< 2.4.3),
+          libmono-wcf3.0-cil (<< 2.4.3),
+          libmono2.0-cil (<< 2.4.3),
+          mono-devel (<< 2.4.3)
 Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
 Depends: libmono1.0-cil (= ${source:Version}),
          libmono2.0-cil (= ${source:Version}),
@@ -1423,7 +1430,8 @@ Replaces: mono-1.0-devel (<< 2.0),
 Recommends: mono-csharp-shell
 Depends: ${cli:Depends},
          mono-2.0-devel (= ${source:Version}),
-         mono-gac (= ${source:Version})
+         mono-gac (= ${source:Version}),
+         libmono-cil-dev (= ${source:Version})
 Description: Mono development tools
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.

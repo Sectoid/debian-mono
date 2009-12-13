@@ -16,5 +16,3 @@ debian/tmp/usr/lib/mono/2.0/System.ComponentModel.DataAnnotations.dll
 debian/tmp/usr/lib/mono/2.0/System.Web.Abstractions.dll
 debian/tmp/usr/lib/mono/2.0/System.Web.DynamicData.dll
 debian/tmp/usr/lib/mono/2.0/System.Web.Routing.dll
-debian/tmp/usr/lib/pkgconfig/system.web.extensions_1.0.pc
-debian/tmp/usr/lib/pkgconfig/system.web.extensions.design_1.0.pc
