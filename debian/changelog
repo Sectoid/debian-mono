@@ -13,7 +13,12 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
     upon a new install of monodoc-base (to generate the initial index)
 
   [ Mirco Bauer ]
-  * New upstream release
+  * The "mince pies for all" release
+  * New upstream (bugfix) release:
+    + New license compiler (lc) tool.
+    + Improved memory usage and performance for ASP.NET.
+    + Updated xbuild.
+    + Many bugfixes.
   * debian/control
     debian/rules
     debian/copyright:
@@ -32,6 +37,7 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
       (Closes: #551909)
     + Fixed typo in monodoc-base and monodoc-manual package description.
       (Closes: #557355, #557379)
+    + Bumped Standards-Version to 3.8.3 (no changes needed)
   * debian/patches/fix_metadata_dup.dpatch
   * debian/patches/fix_gridview_r146128_r146133.dpatch:
     + Dropped, already applied upstream.
@@ -60,7 +66,7 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
   * debian/libmono-system-web2.0-cil.install:
     + Added new development symlinks.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 18:38:42 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 18:53:19 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 
