@@ -65,8 +65,10 @@ mono (2.4.3+dfsg-1~pre1) UNRELEASED; urgency=medium
     + Added lc tool.
   * debian/libmono-system-web2.0-cil.install:
     + Added new development symlinks.
+  * debian/fix_large_ranges_in_random_generator_r146995.dpatch:
+    + Fix random numbers in large ranges.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 18:53:19 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sun, 13 Dec 2009 19:50:09 +0100
 
 mono (2.4.2.3+dfsg-3) unstable; urgency=low
 

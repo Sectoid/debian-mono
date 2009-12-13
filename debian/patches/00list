@@ -15,6 +15,7 @@ fix_mdoc_build
 fix_tuner_build
 fix_CreateDelegate_ArgumentException
 fix_DynamicMethod_restrictedSkipVisibility_r138886
+fix_large_ranges_in_random_generator_r146995
 disable_building_convert.exe
 disable_building_RabbitMQ.Client.dll
 disable_bug-80307_test
