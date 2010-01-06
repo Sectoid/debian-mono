@@ -1,8 +1,11 @@
 mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
 
-  * debian/patches:dont_assert_on_empty_DGC_field_r146984.dpatch:
+  * debian/patches/dont_assert_on_empty_DGC_field_r146984.dpatch:
     + Backport fix from upstream which causes IKVM to fail to build
       (Closes: #562393)
+  * debian/patches/escape_Lucene.Net_search_string_r148946.dpatch:
+    + Backport fix from upsrream which causes Monodoc to crash when
+      searching for "()" and other characters (Closes: #516597)
 
  -- Jo Shields <directhex@apebox.org>  Wed, 06 Jan 2010 17:56:22 +0000
 
