@@ -1,3 +1,11 @@
+mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
+
+  * debian/patches:dont_assert_on_empty_DGC_field_r146984.dpatch:
+    + Backport fix from upstream which causes IKVM to fail to build
+      (Closes: #562393)
+
+ -- Jo Shields <directhex@apebox.org>  Wed, 06 Jan 2010 17:56:22 +0000
+
 mono (2.4.3+dfsg-1) unstable; urgency=medium
 
   [ Jo Shields ]
