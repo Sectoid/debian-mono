@@ -1,8 +1,9 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## 99-unnamed.dpatch by  <directhex@desire>
+## dont_assert_on_empty_DGC_field_r146984.dpatch by Jo Shields <directhex@apebox.org>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
-## DP: No description.
+## DP: Backport of upstream SVN revision r146984. Stops IKVM from crashing
+## DP: during compilation. This was a regression between 2.4 and 2.4.2
 
 @DPATCH@
 diff -urNad mono-2.4.2.3+dfsg~/mono/metadata/reflection.c mono-2.4.2.3+dfsg/mono/metadata/reflection.c
