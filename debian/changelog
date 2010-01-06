@@ -1,5 +1,6 @@
 mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
 
+  [ Jo Shields ]
   * debian/patches/dont_assert_on_empty_DGC_field_r146984.dpatch:
     + Backport fix from upstream which causes IKVM to fail to build
       (Closes: #562393)
@@ -7,7 +8,11 @@ mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
     + Backport fix from upsrream which causes Monodoc to crash when
       searching for "()" and other characters (Closes: #516597)
 
- -- Jo Shields <directhex@apebox.org>  Wed, 06 Jan 2010 17:56:22 +0000
+  [ Mirco Bauer ]
+  * debian/watch:
+    + We are only watching the 2.4 series for now (until squeeze is released)
+
+ -- Mirco Bauer <meebey@debian.org>  Wed, 06 Jan 2010 19:41:56 +0100
 
 mono (2.4.3+dfsg-1) unstable; urgency=medium
 
