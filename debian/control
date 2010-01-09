@@ -182,6 +182,7 @@ Replaces: libmono-nunit2.4-cil (<< 2.4.3),
           libmono-wcf3.0-cil (<< 2.4.3),
           libmono2.0-cil (<< 2.4.3),
           mono-devel (<< 2.4.3)
+Conflicts: libmono-nunit2.4-cil
 Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
 Depends: libmono1.0-cil (= ${source:Version}),
          libmono2.0-cil (= ${source:Version}),
@@ -196,7 +197,6 @@ Depends: libmono1.0-cil (= ${source:Version}),
          libmono-c5-1.0-cil (= ${source:Version}),
          libmono-cecil-private-cil (= ${source:Version}),
          libmono-webbrowser0.5-cil (= ${source:Version}),
-         libmono-nunit2.4-cil (= ${source:Version}),
          libmono-management2.0-cil (= ${source:Version}),
          libmono-messaging2.0-cil (= ${source:Version}),
          libmono-simd2.0-cil (= ${source:Version}),
@@ -251,7 +251,8 @@ Depends: libmono1.0-cil (= ${source:Version}),
          libmono-peapi1.0-cil (= ${source:Version}),
          libmono-peapi2.0-cil (= ${source:Version}),
          libmono-relaxng1.0-cil (= ${source:Version}),
-         libmono-relaxng2.0-cil (= ${source:Version})
+         libmono-relaxng2.0-cil (= ${source:Version}),
+         libnunit-cil-dev (>= 2.4)
 Description: Mono Base Class Libraries - Development files
  This package contains development headers for the Mono Base Class Libraries (BCL).
  .
@@ -444,22 +445,6 @@ Description: Mono Web Browser library
  .
  This package contains the implementation of the WebControl class based on the
  Mozilla engine using libgluezilla.
-
-Package: libmono-nunit2.4-cil
-Architecture: all
-Conflicts: libnunit2.2-cil, libmono-nunit2.2-cil
-Replaces: libmono-nunit2.2-cil
-Depends: ${cli:Depends}, libnunit2.4-cil
-Description: Mono Unit test framework for CLI
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- This package contains NUnit which is a unit testing framework. It serves the
- same purpose as JUnit does in the Java world. It supports test categories,
- testing for exceptions and writing test results in plain text or XML.
 
 Package: libmono-management2.0-cil
 Architecture: all

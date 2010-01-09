@@ -11,8 +11,15 @@ mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
   [ Mirco Bauer ]
   * debian/watch:
     + We are only watching the 2.4 series for now (until squeeze is released)
+  * debian/control:
+    + Added libnunit-cil-dev to Depends of libmono-cil-dev as that one
+      contains the symlink to the nunit.pc file which is no longer present in
+      libnunit2.4-cil but libnunit-cil-dev.
+    + Dropped purpose less libmono-nunit2.4-cil package as libmono-cil-dev
+      does the job now.
+    + Added conflicts libmono-nunit2.4-cil to libmono-cil-dev for cleaning up.
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 06 Jan 2010 19:41:56 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sat, 09 Jan 2010 14:07:57 +0100
 
 mono (2.4.3+dfsg-1) unstable; urgency=medium
 
