@@ -22,3 +22,4 @@ build_linker_tuner_cil-strip_as_2.0
 build_permview_as_2.0
 build_genxs_2.0
 dont_assert_on_empty_DGC_field_r146984
+skip_docs_build

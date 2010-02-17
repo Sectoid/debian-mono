@@ -55,7 +55,7 @@ Section: debug
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Replaces: mono-jit-dbg (<< 2.4)
 Conflicts: mono-jit-dbg (<< 2.4)
-Depends: mono-runtime (= ${binary:Version})
+Depends: ${misc:Depends}, mono-runtime (= ${binary:Version})
 Recommends: gdb
 Description: Mono runtime, debugging symbols
  Mono is a platform for running and developing applications based on the
@@ -83,7 +83,8 @@ Description: Mono utilities
 
 Package: mono-complete
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
-Depends: mono-runtime (= ${binary:Version}),
+Depends: ${misc:Depends},
+         mono-runtime (= ${binary:Version}),
          libmono0 (= ${binary:Version}),
          libmono-profiler (= ${binary:Version}),
          mono-utils (= ${binary:Version}),
@@ -136,7 +137,7 @@ Package: libmono0-dbg
 Priority: extra
 Section: debug
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
-Depends: libmono0 (= ${binary:Version})
+Depends: ${misc:Depends}, libmono0 (= ${binary:Version})
 Recommends: gdb
 Description: Mono JIT library, debugging symbols
  This package contains the debugging symbols of the Mono JIT library.
@@ -148,8 +149,9 @@ Description: Mono JIT library, debugging symbols
  bytecode (aka assemblies), and a class library.
 
 Package: libmono-dev
+Section: libdevel
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
-Depends: libmono0 (= ${binary:Version}), libglib2.0-dev
+Depends: ${misc:Depends}, libmono0 (= ${binary:Version}), libglib2.0-dev
 Description: Mono JIT library - Development files
  Header files and static libraries for libmono.
  .
@@ -184,7 +186,8 @@ Replaces: libmono-nunit2.4-cil (<< 2.4.3),
           mono-devel (<< 2.4.3)
 Conflicts: libmono-nunit2.4-cil
 Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
-Depends: libmono1.0-cil (= ${source:Version}),
+Depends: ${misc:Depends},
+         libmono1.0-cil (= ${source:Version}),
          libmono2.0-cil (= ${source:Version}),
          libmono-corlib1.0-cil (= ${source:Version}),
          libmono-corlib2.0-cil (= ${source:Version}),
@@ -199,6 +202,8 @@ Depends: libmono1.0-cil (= ${source:Version}),
          libmono-webbrowser0.5-cil (= ${source:Version}),
          libmono-management2.0-cil (= ${source:Version}),
          libmono-messaging2.0-cil (= ${source:Version}),
+         libmono-messaging-rabbitmq2.0-cil (= ${source:Version}),
+         libmono-rabbitmq2.0-cil (= ${source:Version}),
          libmono-simd2.0-cil (= ${source:Version}),
          libmono-i18n1.0-cil (= ${source:Version}),
          libmono-i18n2.0-cil (= ${source:Version}),
@@ -253,8 +258,8 @@ Depends: libmono1.0-cil (= ${source:Version}),
          libmono-relaxng1.0-cil (= ${source:Version}),
          libmono-relaxng2.0-cil (= ${source:Version}),
          libnunit-cil-dev (>= 2.4)
-Description: Mono Base Class Libraries - Development files
- This package contains development headers for the Mono Base Class Libraries (BCL).
+Description: Mono Base Class Libraries (BCL) - Development files
+ This package contains development headers for the Mono Base Class Libraries.
  .
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -265,7 +270,7 @@ Description: Mono Base Class Libraries - Development files
 Package: libmono1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -281,7 +286,7 @@ Description: Mono libraries (for CLI 1.0)
 Package: libmono2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -298,7 +303,7 @@ Description: Mono libraries (for CLI 2.0)
 Package: libmono-posix1.0-cil
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.Posix library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -312,7 +317,7 @@ Description: Mono.Posix library (for CLI 1.0)
 Package: libmono-posix2.0-cil
 Architecture: all
 Replaces: libmono2.0-cil (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.Posix library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -326,7 +331,7 @@ Description: Mono.Posix library (for CLI 2.0)
 Package: libmono-getoptions1.0-cil
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.GetOptions library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -340,7 +345,7 @@ Description: Mono.GetOptions library (for CLI 1.0)
 Package: libmono-getoptions2.0-cil
 Architecture: all
 Replaces: libmono2.0-cil (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.GetOptions library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -354,7 +359,7 @@ Description: Mono.GetOptions library (for CLI 2.0)
 Package: libmono-cecil-private-cil
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.4)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.Cecil library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -368,7 +373,7 @@ Description: Mono.Cecil library
 Package: libmono-data1.0-cil
 Architecture: all
 Replaces: libmono1.0-cil (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.Data.* libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -395,7 +400,7 @@ Description: Mono.Data.* libraries (for CLI 1.0)
 Package: libmono-data2.0-cil
 Architecture: all
 Replaces: libmono2.0-cil (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono.Data.* libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -422,7 +427,7 @@ Description: Mono.Data.* libraries (for CLI 2.0)
 Package: libmono-c5-1.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono C5 library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -434,7 +439,7 @@ Description: Mono C5 library
 
 Package: libmono-webbrowser0.5-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Recommends: libgluezilla
 Description: Mono Web Browser library
  Mono is a platform for running and developing applications based on the
@@ -448,7 +453,7 @@ Description: Mono Web Browser library
 
 Package: libmono-management2.0-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Management library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -462,7 +467,7 @@ Description: Mono Management library (for CLI 2.0)
 
 Package: libmono-messaging2.0-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Homepage: http://mono-project.com/SystemMessaging
 Description: Mono Messaging library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
@@ -475,9 +480,37 @@ Description: Mono Messaging library (for CLI 2.0)
  messaging functionality using different implementations. At this time Mono
  does not provide a System.Messaging implementation.
 
+Package: libmono-messaging-rabbitmq2.0-cil
+Architecture: all
+Depends: ${misc:Depends}, ${cli:Depends}
+Homepage: http://mono-project.com/SystemMessaging
+Description: Mono Messaging RabbitMQ library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler
+ and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono.Messaging.RabbitMQ library for CLI 2.0.
+
+Package: libmono-rabbitmq2.0-cil
+Architecture: all
+Depends: ${misc:Depends}, ${cli:Depends}
+Homepage: http://mono-project.com/SystemMessaging
+Description: Mono RabbitMQ.Client library (for CLI 2.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler
+ and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the RabbitMQ.Client library for CLI 2.0.
+
 Package: libmono-simd2.0-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Homepage: http://go-mono.com/docs/index.aspx?tlink=0@N%3aMono.Simd
 Description: Mono SIMD (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
@@ -494,7 +527,7 @@ Package: libmono-corlib1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Conflicts: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
+Depends: ${misc:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
 Recommends: libmono-i18n-west1.0-cil
 Suggests: libmono-i18n1.0-cil
 Description: Mono core library (for CLI 1.0)
@@ -516,7 +549,7 @@ Package: libmono-corlib2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Conflicts: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
+Depends: ${misc:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
 Recommends: libmono-i18n-west2.0-cil
 Suggests: libmono-i18n2.0-cil
 Description: Mono core library (for CLI 2.0)
@@ -537,7 +570,7 @@ Description: Mono core library (for CLI 2.0)
 Package: libmono-i18n-west1.0-cil
 Architecture: all
 Replaces: libmono-corlib1.0-cil (<< 1.2.6-1), libmono-i18n1.0-cil (<< 2.4)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono I18N.West library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -555,7 +588,7 @@ Description: Mono I18N.West library (for CLI 1.0)
 Package: libmono-i18n-west2.0-cil
 Architecture: all
 Replaces: libmono-corlib2.0-cil (<< 1.2.6-1), libmono-i18n2.0-cil (<< 2.4)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono I18N.West library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -573,7 +606,7 @@ Description: Mono I18N.West library (for CLI 2.0)
 Package: libmono-i18n1.0-cil
 Architecture: all
 Replaces: libmono-corlib1.0-cil (<< 1.2.6-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono I18N libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -587,7 +620,7 @@ Description: Mono I18N libraries (for CLI 1.0)
 Package: libmono-i18n2.0-cil
 Architecture: all
 Replaces: libmono-corlib2.0-cil (<< 1.2.6-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono I18N libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -602,7 +635,7 @@ Package: libmono-system1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
+Depends: ${misc:Depends}, ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
 Description: Mono System libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -616,7 +649,7 @@ Package: libmono-system2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
+Depends: ${misc:Depends}, ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
 Description: Mono System libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -630,7 +663,7 @@ Package: libmono-system-messaging1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.Messaging library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -644,7 +677,7 @@ Package: libmono-system-messaging2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.Messaging Library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -657,7 +690,7 @@ Description: Mono System.Messaging Library (for CLI 2.0)
 Package: libmono-security1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Security library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -670,7 +703,7 @@ Description: Mono Security library (for CLI 1.0)
 Package: libmono-security2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Security library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -683,7 +716,7 @@ Description: Mono Security library (for CLI 2.0)
 Package: libmono-data-tds1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Data library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -696,7 +729,7 @@ Description: Mono Data library (for CLI 1.0)
 Package: libmono-data-tds2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Data Library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -710,7 +743,7 @@ Package: libmono-system-data1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.Data library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -724,7 +757,7 @@ Package: libmono-system-data2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.Data Library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -737,7 +770,7 @@ Description: Mono System.Data Library (for CLI 2.0)
 Package: libmono-system-web1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion}), libgdiplus
+Depends: ${misc:Depends}, ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion}), libgdiplus
 Description: Mono System.Web library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -751,7 +784,7 @@ Package: libmono-system-web2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion}), libgdiplus
+Depends: ${misc:Depends}, ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion}), libgdiplus
 Description: Mono System.Web Library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -763,7 +796,7 @@ Description: Mono System.Web Library (for CLI 2.0)
 
 Package: libmono-system-web-mvc1.0-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono ASP.NET MVC Library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -776,7 +809,7 @@ Description: Mono ASP.NET MVC Library
 
 Package: libmono-wcf3.0-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Homepage: http://mono-project.com/WCF
 Description: Mono WCF libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
@@ -796,7 +829,7 @@ Description: Mono WCF libraries (for CLI 2.0)
 Package: libmono-system-runtime1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.Runtime library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -809,7 +842,7 @@ Description: Mono System.Runtime library (for CLI 1.0)
 Package: libmono-system-runtime2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.Runtime Library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -822,7 +855,7 @@ Description: Mono System.Runtime Library (for CLI 2.0)
 Package: libmono-system-ldap1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.DirectoryServices library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -835,7 +868,7 @@ Description: Mono System.DirectoryServices library (for CLI 1.0)
 Package: libmono-system-ldap2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono System.DirectoryServices library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -849,7 +882,7 @@ Package: libmono-winforms1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}, shared-mime-info
-Depends: ${cli:Depends}, libgdiplus
+Depends: ${misc:Depends}, ${cli:Depends}, libgdiplus
 Description: Mono System.Windows.Forms library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -863,7 +896,7 @@ Package: libmono-winforms2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
 Suggests: ${cli:Suggests}, shared-mime-info
-Depends: ${cli:Depends}, libgdiplus
+Depends: ${misc:Depends}, ${cli:Depends}, libgdiplus
 Description: Mono System.Windows.Forms library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -876,7 +909,7 @@ Description: Mono System.Windows.Forms library (for CLI 2.0)
 Package: libmono-cairo1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Cairo library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -891,7 +924,7 @@ Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1),
           mono-classlib-2.0-dbg (<< 1.1.13.4-1),
           libmono-cairo1.0-cil (<< 2.4)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Cairo library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -904,7 +937,7 @@ Description: Mono Cairo library (for CLI 2.0)
 Package: libmono-sharpzip0.6-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono SharpZipLib library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -917,7 +950,7 @@ Description: Mono SharpZipLib library (for CLI 1.0)
 Package: libmono-sharpzip0.84-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono SharpZipLib library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -930,7 +963,7 @@ Description: Mono SharpZipLib library (for CLI 1.0)
 Package: libmono-sharpzip2.6-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono SharpZipLib library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -943,7 +976,7 @@ Description: Mono SharpZipLib library (for CLI 2.0)
 Package: libmono-sharpzip2.84-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono SharpZipLib library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -956,7 +989,7 @@ Description: Mono SharpZipLib library (for CLI 2.0)
 Package: libmono-npgsql1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Npgsql library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -969,7 +1002,7 @@ Description: Mono Npgsql library (for CLI 1.0)
 Package: libmono-npgsql2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Npgsql library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -983,7 +1016,7 @@ Package: libmono-bytefx0.7.6.1-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono ByteFX.Data library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -998,7 +1031,7 @@ Package: libmono-bytefx0.7.6.2-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
 Suggests: ${cli:Suggests}
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono ByteFX.Data library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1012,7 +1045,7 @@ Description: Mono ByteFX.Data library (for CLI 2.0)
 Package: libmono-firebirdsql1.7-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono FirebirdSql library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1024,7 +1057,7 @@ Description: Mono FirebirdSql library
 
 Package: libmono-db2-1.0-cil
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono DB2 library
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1037,7 +1070,7 @@ Description: Mono DB2 library
 Package: libmono-oracle1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Oracle library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1050,7 +1083,7 @@ Description: Mono Oracle library (for CLI 1.0)
 Package: libmono-oracle2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Oracle library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1063,7 +1096,7 @@ Description: Mono Oracle library (for CLI 2.0)
 Package: libmono-sqlite1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-1.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Sqlite library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1076,7 +1109,7 @@ Description: Mono Sqlite library (for CLI 1.0)
 Package: libmono-sqlite2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Sqlite library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1089,7 +1122,7 @@ Description: Mono Sqlite library (for CLI 2.0)
 Package: libmono-accessibility1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Accessibility library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1102,7 +1135,7 @@ Description: Mono Accessibility library (for CLI 1.0)
 Package: libmono-accessibility2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Accessibility library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1115,7 +1148,7 @@ Description: Mono Accessibility library (for CLI 2.0)
 Package: libmono-cscompmgd7.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono cscompmgd library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1128,7 +1161,7 @@ Description: Mono cscompmgd library (for CLI 1.0)
 Package: libmono-cscompmgd8.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono cscompmgd library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1141,7 +1174,7 @@ Description: Mono cscompmgd library (for CLI 2.0)
 Package: libmono-ldap1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono LDAP library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1154,7 +1187,7 @@ Description: Mono LDAP library (for CLI 1.0)
 Package: libmono-ldap2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono LDAP library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1167,7 +1200,7 @@ Description: Mono LDAP library (for CLI 2.0)
 Package: libmono-microsoft-build2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Microsoft.Build libraries
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1180,7 +1213,7 @@ Description: Mono Microsoft.Build libraries
 Package: libmono-microsoft7.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Microsoft libraries (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1193,7 +1226,7 @@ Description: Mono Microsoft libraries (for CLI 1.0)
 Package: libmono-microsoft8.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Microsoft libraries (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1206,7 +1239,7 @@ Description: Mono Microsoft libraries (for CLI 2.0)
 Package: libmono-peapi1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono PEAPI library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1219,7 +1252,7 @@ Description: Mono PEAPI library (for CLI 1.0)
 Package: libmono-peapi2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono PEAPI library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1232,7 +1265,7 @@ Description: Mono PEAPI library (for CLI 2.0)
 Package: libmono-relaxng1.0-cil
 Architecture: all
 Replaces: mono-classlib-1.0 (<< 1.1.13.6), mono-classlib-1.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Relaxng library (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1245,7 +1278,7 @@ Description: Mono Relaxng library (for CLI 1.0)
 Package: libmono-relaxng2.0-cil
 Architecture: all
 Replaces: mono-classlib-2.0 (<< 1.1.13.6), mono-classlib-2.0-dbg (<< 1.1.13.6)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: Mono Relaxng library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1328,7 +1361,7 @@ Description: Mono debugging symbols
 
 Package: mono-mjs
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Replaces: mono-mcs (<< 1.2.5-1)
 Description: Mono JScript compiler
  This is the Mono JScript compiler, a platform-independent compiler which
@@ -1342,7 +1375,8 @@ Description: Mono JScript compiler
 
 Package: mono-mcs
 Architecture: all
-Depends: ${cli:Depends},
+Depends: ${misc:Depends},
+         ${cli:Depends},
          libmono-corlib1.0-cil (>= ${mono:upversion}),
          libmono-corlib1.0-cil (<< ${mono:next-upversion})
 Recommends: pkg-config
@@ -1360,7 +1394,8 @@ Description: Mono C# 1.0 compiler for CLI 1.1
 
 Package: mono-gmcs
 Architecture: all
-Depends: ${cli:Depends},
+Depends: ${misc:Depends}, 
+         ${cli:Depends},
          libmono-corlib2.0-cil (>= ${mono:upversion}),
          libmono-corlib2.0-cil (<< ${mono:next-upversion})
 Recommends: pkg-config
@@ -1413,7 +1448,8 @@ Replaces: mono-1.0-devel (<< 2.0),
           mono-gmcs (<< 2.0),
           libmono-dev (<< 2.4)
 Recommends: mono-csharp-shell
-Depends: ${cli:Depends},
+Depends: ${misc:Depends},
+         ${cli:Depends},
          mono-2.0-devel (= ${source:Version}),
          mono-gac (= ${source:Version}),
          libmono-cil-dev (= ${source:Version})
@@ -1429,7 +1465,8 @@ Description: Mono development tools
 
 Package: mono-1.0-devel
 Architecture: all
-Depends: ${cli:Depends},
+Depends: ${misc:Depends},
+         ${cli:Depends},
          mono-mcs (= ${source:Version}),
          mono-1.0-gac (= ${source:Version}),
          libmono-dev (>= ${source:Version}),
@@ -1447,7 +1484,8 @@ Description: Mono development tools for CLI 1.0
 
 Package: mono-2.0-devel
 Architecture: all
-Depends: ${cli:Depends},
+Depends: ${misc:Depends},
+         ${cli:Depends},
          mono-gmcs (= ${source:Version}),
          mono-2.0-gac (= ${source:Version}),
          libmono-dev (>= ${source:Version}),
@@ -1465,7 +1503,7 @@ Description: Mono development tools for CLI 2.0
 
 Package: mono-1.0-service
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Replaces: mono-mcs (<< 1.2.6-1)
 Description: Mono service manager for CLI 1.0
  Mono is a platform for running and developing applications based on the
@@ -1479,7 +1517,7 @@ Description: Mono service manager for CLI 1.0
 
 Package: mono-2.0-service
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Replaces: mono-gmcs (<< 1.2.6-1)
 Description: Mono service manager for CLI 2.0
  Mono is a platform for running and developing applications based on the
@@ -1493,7 +1531,7 @@ Description: Mono service manager for CLI 2.0
 
 Package: mono-xbuild
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Replaces: mono-gmcs (<< 1.2.6-1)
 Description: MSBuild-compatible build system for Mono
  Mono is a platform for running and developing applications based on the
@@ -1513,7 +1551,7 @@ Description: MSBuild-compatible build system for Mono
 
 Package: mono-gac
 Architecture: all
-Depends: mono-2.0-gac (= ${source:Version})
+Depends: ${misc:Depends}, mono-2.0-gac (= ${source:Version})
 Provides: global-assembly-cache-tool
 Description: Mono GAC tool
  Mono is a platform for running and developing applications based on the
@@ -1528,7 +1566,7 @@ Description: Mono GAC tool
 Package: mono-1.0-gac
 Architecture: all
 Replaces: mono-gac (<< 2.0)
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Recommends: cli-common (>= 0.4.0)
 Description: Mono GAC tool (for CLI 1.0)
  Mono is a platform for running and developing applications based on the
@@ -1543,7 +1581,7 @@ Description: Mono GAC tool (for CLI 1.0)
 
 Package: mono-2.0-gac
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Recommends: cli-common (>= 0.4.0)
 Description: Mono GAC tool (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
@@ -1601,7 +1639,7 @@ Description: interactive C# shell
 
 Package: monodoc-base
 Architecture: all
-Depends: ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}
 Description: shared MonoDoc binaries
  The MonoDoc Project is the documentation framework of the Mono project which
  provides detailed API documentation for all Mono components and the Mono CLI
@@ -1613,7 +1651,7 @@ Description: shared MonoDoc binaries
 Package: monodoc-manual
 Architecture: all
 Section: doc
-Depends: monodoc-browser | monodoc-http | monodoc-viewer
+Depends: ${misc:Depends}, monodoc-browser | monodoc-http | monodoc-viewer
 Suggests: monodoc-gtk-manual,
  monodoc-gecko-manual,
  monodoc-nunit-manual
