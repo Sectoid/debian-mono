@@ -1629,9 +1629,10 @@ fieldref_encode_signature (MonoDynamicImage *assembly, MonoImage *field_image, M
 	/* encode custom attributes before the type */
 	if (type->num_mods) {
 		for (i = 0; i < type->num_mods; ++i) {
-			if (field_image) {
+			if (field_image && (type->modifiers [i].token & 0xff000000)) {
 				MonoClass *class = mono_class_get (field_image, type->modifiers [i].token);
-				g_assert (class);
+				if (!class)
+					g_error ("Can't lookup custom mod token %08x", type->modifiers [i].token);
 				token = mono_image_typedef_or_ref (assembly, &class->byval_arg);
 			} else {
 				token = type->modifiers [i].token;
@@ -6153,9 +6154,28 @@ mono_type_get_object (MonoDomain *domain, MonoType *type)
 	}
 
 	if (klass->reflection_info && !klass->wastypebuilder) {
+		gboolean is_type_done = TRUE;
+		/* Generic parameters have reflection_info set but they are not finished together with their enclosing type.
+		 * We must ensure that once a type is finished we don't return a GenericTypeParameterBuilder.
+		 * We can't simply close the types as this will interfere with other parts of the generics machinery.
+		*/
+		if (klass->byval_arg.type == MONO_TYPE_MVAR || klass->byval_arg.type == MONO_TYPE_VAR) {
+			MonoGenericParam *gparam = klass->byval_arg.data.generic_param;
+
+			if (gparam->owner && gparam->owner->is_method) {
+				MonoMethod *method = gparam->owner->owner.method;
+				if (method && mono_class_get_generic_type_definition (method->klass)->wastypebuilder)
+					is_type_done = FALSE;
+			} else if (gparam->owner && !gparam->owner->is_method) {
+				MonoClass *klass = gparam->owner->owner.klass;
+				if (klass && mono_class_get_generic_type_definition (klass)->wastypebuilder)
+					is_type_done = FALSE;
+			}
+		} 
+
 		/* g_assert_not_reached (); */
 		/* should this be considered an error condition? */
-		if (!type->byref) {
+		if (is_type_done && !type->byref) {
 			mono_domain_unlock (domain);
 			mono_loader_unlock ();
 			return klass->reflection_info;
@@ -8187,6 +8207,8 @@ mono_custom_attrs_from_param (MonoMethod *method, guint32 param)
 
 		/* Need to copy since it will be freed later */
 		ainfo = aux->param_cattr [param];
+		if (!ainfo)
+			return NULL;
 		size = sizeof (MonoCustomAttrInfo) + sizeof (MonoCustomAttrEntry) * (ainfo->num_attrs - MONO_ZERO_LEN_ARRAY);
 		res = g_malloc0 (size);
 		memcpy (res, ainfo, size);
@@ -10700,13 +10722,14 @@ resolve_object (MonoImage *image, MonoObject *obj, MonoClass **handle_class, Mon
 		sig->explicit_this = helper->call_conv & 64 ? 1 : 0;
 		sig->hasthis = helper->call_conv & 32 ? 1 : 0;
 
-		if (helper->call_conv == 0) /* unmanaged */
+		if (helper->unmanaged_call_conv) { /* unmanaged */
 			sig->call_convention = helper->unmanaged_call_conv - 1;
-		else
-			if (helper->call_conv & 0x02)
-				sig->call_convention = MONO_CALL_VARARG;
-		else
+			sig->pinvoke = TRUE;
+		} else if (helper->call_conv & 0x02) {
+			sig->call_convention = MONO_CALL_VARARG;
+		} else {
 			sig->call_convention = MONO_CALL_DEFAULT;
+		}
 
 		sig->param_count = nargs;
 		/* TODO: Copy type ? */
@@ -10767,6 +10790,33 @@ resolve_object (MonoImage *image, MonoObject *obj, MonoClass **handle_class, Mon
 		result = inflate_mono_method (inflated_klass, m->mb->mhandle, (MonoObject*)m->mb);
 		*handle_class = mono_defaults.methodhandle_class;
 		mono_metadata_free_type (type);
+	} else if (strcmp (obj->vtable->klass->name, "MonoArrayMethod") == 0) {
+		MonoReflectionArrayMethod *m = (MonoReflectionArrayMethod*)obj;
+		MonoType *mtype;
+		MonoClass *klass;
+		MonoMethod *method;
+		gpointer iter;
+		char *name;
+
+		mtype = mono_reflection_type_get_handle (m->parent);
+		klass = mono_class_from_mono_type (mtype);
+
+		/* Find the method */
+
+		name = mono_string_to_utf8 (m->name);
+		iter = NULL;
+		while ((method = mono_class_get_methods (klass, &iter))) {
+			if (!strcmp (method->name, name))
+				break;
+		}
+		g_free (name);
+
+		// FIXME:
+		g_assert (method);
+		// FIXME: Check parameters/return value etc. match
+
+		result = method;
+		*handle_class = mono_defaults.methodhandle_class;
 	} else {
 		g_print (obj->vtable->klass->name);
 		g_assert_not_reached ();

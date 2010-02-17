@@ -1,0 +1,227 @@
+﻿<?xml version="1.0" encoding="utf-8"?><span>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+   <title>mono-api-embedding.html</title>
+   <style type="text/css">
+
+
+   h3 { 
+       font-size: 18px;
+       padding-bottom: 4pt;
+       border-bottom: 2px solid #dddddd;
+   }
+       
+   .api {
+     border: 1px solid;
+     padding: 10pt;
+     margin: 10pt;
+   } 
+
+   .api-entry { 
+       border-bottom: none;
+       font-size: 18px;
+   }
+
+   .prototype {
+     border: 1px solid;
+     background-color: #f2f2f2;
+     padding: 5pt;
+     margin-top: 5pt;
+     margin-bottom: 5pt;  
+   } 
+
+   .header {
+     border: 1px solid;
+     padding: 0 0 5pt 5pt;
+     margin: 10pt;
+     white-space: pre;
+       font-family: monospace;
+   }
+    
+   .code {
+     border: 1px solid;
+     padding: 0 0 5pt 5pt;
+     margin: 10pt;
+     white-space: pre;
+       font-family: monospace;
+   }
+   
+
+</style>
+</head>
+<body>
+<h2>Embedding Mono</h2>
+
+ <a name="api:mono_jit_init"></a>
+ <div class="api">
+    <div class="api-entry">mono_jit_init</div>
+
+    <div class="prototype">Prototype: mono_jit_init</div>
+<p />
+
+</div> <a name="api:mono_set_dirs"></a>
+ <div class="api">
+    <div class="api-entry">mono_set_dirs</div>
+
+    <div class="prototype">void
+mono_set_dirs (const char *assembly_dir, const char *config_dir)
+
+</div>
+<p />
+<b>Parameters</b>
+<blockquote><dt><i>assembly_dir:</i></dt><dd> the base directory for assemblies</dd><dt><i>config_dir:</i></dt><dd> the base directory for configuration files</dd></blockquote>
+<b>Remarks</b>
+<p />	 
+	 This routine is used internally and by developers embedding
+	 the runtime into their own applications.
+	
+	 There are a number of cases to consider: Mono as a system-installed
+	 package that is available on the location preconfigured or Mono in
+	 a relocated location.
+	
+	 If you are using a system-installed Mono, you can pass NULL
+	 to both parameters.  If you are not, you should compute both
+	 directory values and call this routine.
+	
+	 The values for a given PREFIX are:
+	
+	    assembly_dir: PREFIX/lib
+	    config_dir:   PREFIX/etc
+	
+	 Notice that embedders that use Mono in a relocated way must
+	 compute the location at runtime, as they will be in control
+	 of where Mono is installed.
+
+</div> <a name="api:mono_runtime_exec_main"></a>
+ <div class="api">
+    <div class="api-entry">mono_runtime_exec_main</div>
+
+    <div class="prototype">Prototype: mono_runtime_exec_main</div>
+<p />
+
+</div> <a name="api:mono_runtime_exec_managed_code"></a>
+ <div class="api">
+    <div class="api-entry">mono_runtime_exec_managed_code</div>
+
+    <div class="prototype">Prototype: mono_runtime_exec_managed_code</div>
+<p />
+
+
+</div> <a name="api:mono_jit_cleanup"></a>
+ <div class="api">
+    <div class="api-entry">mono_jit_cleanup</div>
+
+    <div class="prototype">Prototype: mono_jit_cleanup</div>
+<p />
+
+</div> <a name="api:mono_set_defaults"></a>
+ <div class="api">
+    <div class="api-entry">mono_set_defaults</div>
+
+    <div class="prototype">Prototype: mono_set_defaults</div>
+<p />
+
+
+</div><h3>Internal Calls</h3>
+
+	<p />The Mono runtime provides two mechanisms to expose C code
+	to the CIL universe: internal calls and native C
+	code. Internal calls are tightly integrated with the runtime,
+	and have the least overhead, as they use the same data types
+	that the runtime uses.
+
+	<p />The other option is to use the Platform Invoke (P/Invoke)
+	to call C code from the CIL universe, using the standard
+	P/Invoke mechanisms.
+
+	<p />To register an internal call, use this call you use the
+	<tt>mono_add_internal_call</tt> routine.
+
+<h4>Data Marshalling</h4>
+
+	<p />Managed objects are represented as <tt>MonoObject*</tt>
+	types.  Those objects that the runtime consumes directly have
+	more specific C definitions (for example strings are of type
+	<tt>MonoString *</tt>, delegates are of type
+	<tt>MonoDelegate*</tt> but they are still <tt>MonoObject
+	*</tt>s).
+
+	<p />As of Mono 1.2.x types defined in mscorlib.dll do not have
+	their fields reordered in any way.   But other libraries might
+	have their fields reordered.   In these cases, Managed
+	structures and objects have the same layout in the C# code as
+	they do in the unmanaged world.
+
+	<p />Structures defined outside corlib must have a specific
+	StructLayout definition, and have it set as sequential if you
+	plan on accessing these fields directly from C code.
+
+	<p /><b>Important</b> Internal calls do not provide support for
+	marshalling structures.  This means that any API calls that
+	take a structure (excluding the system types like int32,
+	int64, etc) must be passed as a pointer, in C# this means
+	passing the value as a &quot;ref&quot; or &quot;out&quot; parameter.
+
+ <a name="api:mono_add_internal_call"></a>
+ <div class="api">
+    <div class="api-entry">mono_add_internal_call</div>
+
+    <div class="prototype">Prototype: mono_add_internal_call</div>
+<p />
+
+
+</div><h3>Mono Runtime Configuration</h3>
+
+	<p />Certain features of the Mono runtime, like DLL mapping, are
+	available through a configuration file that is loaded at
+	runtime.   The default Mono implementation loads the
+	configuration file from <tt>$sysconfig/mono/config</tt>
+	(typically this is <tt>/etc/mono/config</tt>).
+
+	<p />See the <tt>mono-config(5)</tt> man page for more details
+	on what goes in this file.
+
+	<p />The following APIs expose this functionality:
+	
+ <a name="api:mono_config_parse"></a>
+ <div class="api">
+    <div class="api-entry">mono_config_parse</div>
+
+    <div class="prototype">void
+mono_config_parse (const char *filename)
+</div>
+<p />
+<b>Parameters</b>
+<blockquote><dt><i>filename:</i></dt><dd> the filename to load the configuration variables from.</dd></blockquote>
+<b>Remarks</b>
+<p />	 
+	 Pass a NULL filename to parse the default config files
+	 (or the file in the MONO_CONFIG env var).
+
+</div> <a name="api:mono_config_parse_memory"></a>
+ <div class="api">
+    <div class="api-entry">mono_config_parse_memory</div>
+
+    <div class="prototype">void
+mono_config_parse_memory (const char *buffer)
+
+</div>
+<p />
+<b>Parameters</b>
+<blockquote><dt><i>buffer:</i></dt><dd> a pointer to an string XML representation of the configuration</dd></blockquote>
+<b>Remarks</b>
+<p />	 
+	 Parses the configuration from a buffer
+
+
+</div><h3>Function Pointers</h3>
+
+	<p />To wrap a function pointer into something that the Mono
+	runtime can consume, you should use the mono_create_ftnptr.
+	This is only important if you plan on running on the IA64
+	architecture.   Otherwise you can just use the function
+	pointer address.
+	
+</body>
+</html>
+</span>

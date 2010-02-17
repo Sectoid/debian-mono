@@ -2480,5 +2480,44 @@ class Tests {
         catch {
         }
     }
+
+	private static void do_raise () {
+		throw new System.Exception ();
+	}
+
+	private static int int_func (int i) {
+		return i;
+	}
+
+	// #559876
+	public static int test_8_local_deadce_causes () {
+      int myb = 4;
+  
+      try {
+        myb = int_func (8);
+        do_raise();
+        myb = int_func (2);
+      } catch (System.Exception) {
+		  return myb;
+	  }
+	  return 0;
+	}
+
+	public static int test_0_except_opt_two_clauses () {
+		int size;
+		size = -1;
+		uint ui = (uint)size;
+		try {
+			checked {
+				uint v = ui * (uint)4;
+			}
+		} catch (OverflowException e) {
+			return 0;
+		} catch (Exception) {
+			return 1;
+		}
+
+		return 2;
+	}
 }
 

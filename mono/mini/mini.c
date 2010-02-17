@@ -3252,6 +3252,20 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 	mono_jit_stats.basic_blocks += cfg->num_bblocks;
 	mono_jit_stats.max_basic_blocks = MAX (cfg->num_bblocks, mono_jit_stats.max_basic_blocks);
 
+	/* todo: remove code when we have verified that the liveness for try/catch blocks
+	 * works perfectly 
+	 */
+	/* 
+	 * Currently, this can't be commented out since exception blocks are not
+	 * processed during liveness analysis.
+	 * It is also needed, because otherwise the local optimization passes would
+	 * delete assignments in cases like this:
+	 * r1 <- 1
+	 * <something which throws>
+	 * r1 <- 2
+	 */
+	mono_liveness_handle_exception_clauses (cfg);
+
 	/*g_print ("numblocks = %d\n", cfg->num_bblocks);*/
 
 	mono_decompose_long_opts (cfg);
@@ -3444,12 +3458,8 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 		g_list_free (regs);
 	}
 
-	/* todo: remove code when we have verified that the liveness for try/catch blocks
-	 * works perfectly 
-	 */
-	/* 
-	 * Currently, this can't be commented out since exception blocks are not
-	 * processed during liveness analysis.
+	/*
+	 * Have to call this again to process variables added since the first call.
 	 */
 	mono_liveness_handle_exception_clauses (cfg);
 
@@ -5289,6 +5299,7 @@ mini_init (const char *filename, const char *runtime_version)
 	register_icall (mono_create_corlib_exception_2, "mono_create_corlib_exception_2", "object int object object", TRUE);
 	register_icall (mono_array_new_1, "mono_array_new_1", "object ptr int", FALSE);
 	register_icall (mono_array_new_2, "mono_array_new_2", "object ptr int int", FALSE);
+	register_icall (mono_get_native_calli_wrapper, "mono_get_native_calli_wrapper", "ptr ptr ptr ptr", FALSE);
 #endif
 
 	mono_generic_sharing_init ();

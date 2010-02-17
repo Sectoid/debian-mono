@@ -6,7 +6,7 @@ AC_CANONICAL_SYSTEM
 m4_ifdef([_A][M_PROG_TAR],[_A][M_SET_OPTION([tar-ustar])])
 
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(mono,2.4.3)
+AM_INIT_AUTOMAKE(mono,2.4.4)
 AM_MAINTAINER_MODE
 
 API_VER=1.0
@@ -836,6 +836,31 @@ if test x$platform_win32 = xno; then
 	AC_CHECK_FUNCS(setpriority)
 
 	AC_CHECK_FUNCS(sched_setaffinity)
+
+	dnl ****************************************************************
+	dnl *** Check for sched_setaffinity from glibc versions before   ***
+	dnl *** 2.3.4. The older versions of the function only take 2    ***
+	dnl *** parameters, not 3.                                       ***
+	dnl ***                                                          ***
+	dnl *** Because the interface change was not made in a minor     ***
+	dnl *** version rev, the __GLIBC__ and __GLIBC_MINOR__ macros    ***
+	dnl *** won't always indicate the interface sched_affinity has.  ***
+	dnl ****************************************************************
+	AC_MSG_CHECKING(for sched_setaffinity from glibc < 2.3.4)
+	AC_TRY_COMPILE([#include <sched.h>], [
+		int main() {
+            int mask = 1; 
+            sched_setaffinity(0, &mask);
+        }
+	], [
+		# Yes, we have it...
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY, 1, [Have GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY])
+	], [
+		# We have the new, three-parameter version
+		AC_MSG_RESULT(no)
+	])
+
 
 	dnl ******************************************************************
 	dnl *** Check for large file support                               ***
@@ -2266,7 +2291,7 @@ if test x$platform_win32 = xyes; then
   if test "x$cross_compiling" = "xno"; then
     mono_cfg_dir=`cygpath -w -a $mono_cfg_root`\\etc
   else
-    mono_cfg_dir=`echo $mono_cfg_root | tr '/' '\\\'`\\etc
+    mono_cfg_dir=`echo $mono_cfg_root | tr '/' '\\'`\\etc
   fi
 else
   mono_cfg_dir=$mono_cfg_root/etc
@@ -2545,4 +2570,3 @@ if test x$gc = xsgen; then
 	echo IMPORTANT:
 	echo IMPORTANT: There are known problems with it, use at your own risk.
 fi
-

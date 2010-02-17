@@ -57,6 +57,9 @@
 /* Enable DTrace probes */
 #undef ENABLE_DTRACE
 
+/* Have GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY */
+#undef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY
+
 /* Has the 'aintl' function */
 #undef HAVE_AINTL
 
@@ -384,13 +387,13 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if `d_off' is member of `struct dirent'. */
+/* Define to 1 if `struct dirent' is a member of `d_off'. */
 #undef HAVE_STRUCT_DIRENT_D_OFF
 
-/* Define to 1 if `d_reclen' is member of `struct dirent'. */
+/* Define to 1 if `struct dirent' is a member of `d_reclen'. */
 #undef HAVE_STRUCT_DIRENT_D_RECLEN
 
-/* Define to 1 if `d_type' is member of `struct dirent'. */
+/* Define to 1 if `struct dirent' is a member of `d_type'. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
 
 /* Define to 1 if the system has the type `struct flock'. */
@@ -402,7 +405,7 @@
 /* Have struct ip_mreqn */
 #undef HAVE_STRUCT_IP_MREQN
 
-/* Define to 1 if `kp_proc' is member of `struct kinfo_proc'. */
+/* Define to 1 if `struct kinfo_proc' is a member of `kp_proc'. */
 #undef HAVE_STRUCT_KINFO_PROC_KP_PROC
 
 /* Define to 1 if the system has the type `struct pollfd'. */
@@ -606,6 +609,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION

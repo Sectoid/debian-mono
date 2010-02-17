@@ -303,6 +303,11 @@ public class Int64Test : Assertion
 	} catch (Exception e) {
 		Assert("#20", typeof(OverflowException) == e.GetType());
 	}
+
+	Assert (734561 == Int64.Parse ("734561\0"));
+	Assert (734561 == Int64.Parse ("734561\0\0\0    \0"));
+	Assert (734561 == Int64.Parse ("734561\0\0\0    "));
+	Assert (734561 == Int64.Parse ("734561\0\0\0"));
     }
 
     public void TestToString() 

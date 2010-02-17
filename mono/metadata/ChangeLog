@@ -1,9 +1,155 @@
+2010-02-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* threadpool.c: Fixes for SetMinThreads and SetMaxThreads.
+	Closes bug #566057.
+
+	* exception.c: fix typo in comment.
+
+2010-02-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* reflection.c (resolve_object): Handle MonoArrayMethod. Fixes #575955.
+
+2010-01-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* class.c (make_generic_param_class): Initialize interface offsets since we
+	set klass->inited. Fixes #574819.
+
+2010-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* object.c (mono_field_get_value_object): Handle nullable types correctly.
+	Fixes #572874.
+
+2010-01-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* icall.c (ves_icall_System_Array_SetValueImpl): Handle nullable types correctly.
+	Fixes #573322.
+
+2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* culture-info-table.h : regenerated.
+
+2010-01-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* icall.c (ves_icall_MonoMethod_GetGenericMethodDefinition): Handle inflated generic methods
+	on a GTD.
+
+	Backport of r149808.
+
+2010-01-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* socket-io.c (AI_ADDRCONFIG): Applied patch from John Lightsey (jd@cpanel.net).
+	Fixes build on rh 7.3.
+
+2009-12-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* class.c (mono_bounded_array_class_get): Make these classes PUBLIC. Fixes
+	#565120.
+
+2009-12-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* monitor.c (ves_icall_System_Threading_Monitor_Monitor_wait): Don't close the
+	wait handle if the wait is interrupted, since it is still in mon->wait_list, and
+	we can't remove it from it since we don't hold the lock.
+	(mon_new): Free the orphaned events here when a mon structure is added to the
+	freelist. Fixes #561239. Thanks to Mike Rieker <wmrieker@nii.net> for tracking
+	this down.
+
+2009-12-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* generic-sharing.c (instantiate_other_info): Avoid creating jump trampolines since
+	they cannot be patched. Partly fixes #564408.
+
+2010-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_marshal_get_runtime_invoke): Fix a memory leak.
+
+2010-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* locales.c (construct_culture_from_specific_name): Applied patch from
+	José Antonio Sánchez Lázaro <jasl@darcysoft.es>. Fix a crash if a culture was
+	not found. Fixes #567900.
+
+2009-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* reflection.c (resolve_object): Fix the encoding of unmanaged calling
+	conventions.
+
+2009-12-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* reflection.c (mono_type_get_object): Guard against NULL generic param owner.
+
+2009-12-16  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* reflection.c (mono_type_get_object): If the type is VAR or MVAR check
+	if the owner class has not been finished before returning reflection_info.	
+
+	Fixes #565127.
+
+	Backport of r148575.
+
+2009-12-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* reflection.c (mono_custom_attrs_from_param): Avoid a crash if a dynamic
+	param doesn't have custom attributes. Fixes #565117.
+
+Fri Dec 11 18:24:04 CET 2009 Paolo Molaro <lupus@ximian.com>
+
+	* boehm-gc.c: fixed race condition while getting the target of a
+	disappearing link (bug #522233).
+
+2009-12-15  Marek Habersack  <mhabersack@novell.com>
+
+	* appdomain.c (mono_make_shadow_copy): make sure access mode of
+	the target files is reset to writable by owner and readable by
+	everyone else to prevent problems when updating shadow copies of
+	files whose source is read-only. Fixes bug #556884
+
+Fri Dec 11 18:24:04 CET 2009 Paolo Molaro <lupus@ximian.com>
+
+	* boehm-gc.c: fixed race condition while getting the target of a
+	disappearing link (bug #522233).
+
+2009-12-01  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* reflection.c (fieldref_encode_signature): For some reason 2.4 doesn't
+	behave like 2.8 on this part. So add an extra guard for the token kind.
+
+	Fixes #563909.
+
+2009-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Applied patch from Laurent Etiemble (laurent.etiemble@gmail.com).
+
+	* mono/metadata/assembly.c: When opening an assembly image, pass the real
+	names in addition to the runtime generated one.
+
+	* mono/metadata/image.h: Add a function to take the real name of the assembly
+	image.
+
+	* mono/metadata/image.c: If a real name has been passed to load an assembly,
+	use it instead of the runtime generated one.
+
+	Code is contributed under MIT/X11 license.
+
+2009-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (emit_marshal_vtype): Do the klass == date_time_class checks
+	before the other checks to prevent problems if the DateTime class is blittable.
+	Hopefully fixes #559600.
+
 2009-12-01  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* metadata.c (inflated_method_in_image): Avoid calling
 	mono_method_signature () if the method does not already have a signature.
 
 	Backport of r125724.
+
+2009-11-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* appdomain.c (create_exceptions): New helper function extracted from
+	mono_runtime_init () to precreate objects used during exception handling.
+	(mono_runtime_init): Call it.
+	(mono_domain_create_appdomain_internal): Ditto. Fixes #555264.
 
 2009-11-15  Zoltan Varga  <vargaz@gmail.com>
 

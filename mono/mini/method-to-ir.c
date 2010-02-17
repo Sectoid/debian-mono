@@ -2265,12 +2265,17 @@ mono_emit_method_call_full (MonoCompile *cfg, MonoMethod *method, MonoMethodSign
 		if ((!cfg->compile_aot || enable_for_aot) && 
 			(!(method->flags & METHOD_ATTRIBUTE_VIRTUAL) || 
 			 (MONO_METHOD_IS_FINAL (method) &&
-			  method->wrapper_type != MONO_WRAPPER_REMOTING_INVOKE_WITH_CHECK))) {
+			  method->wrapper_type != MONO_WRAPPER_REMOTING_INVOKE_WITH_CHECK)) &&
+			!(method->klass->marshalbyref && context_used)) {
 			/* 
 			 * the method is not virtual, we just need to ensure this is not null
 			 * and then we can call the method directly.
 			 */
 			if (method->klass->marshalbyref || method->klass == mono_defaults.object_class) {
+				/* 
+				 * The check above ensures method is not gshared, this is needed since
+				 * gshared methods can't have wrappers.
+				 */
 				method = call->method = mono_marshal_get_remoting_invoke_with_check (method);
 			}
 
@@ -2347,7 +2352,7 @@ static MonoInst*
 mono_emit_rgctx_method_call_full (MonoCompile *cfg, MonoMethod *method, MonoMethodSignature *sig,
 		MonoInst **args, MonoInst *this, MonoInst *imt_arg, MonoInst *vtable_arg)
 {
-	int rgctx_reg;
+	int rgctx_reg = -1;
 	MonoInst *ins;
 	MonoCallInst *call;
 
@@ -3365,6 +3370,9 @@ mono_method_check_inlining (MonoCompile *cfg, MonoMethod *method)
 	if (cfg->generic_sharing_context)
 		return FALSE;
 
+	if (cfg->inline_depth > 10)
+		return FALSE;
+
 #ifdef MONO_ARCH_HAVE_LMF_OPS
 	if (((method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) ||
 		 (method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL)) &&
@@ -4156,6 +4164,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	prev_inlined_method = cfg->inlined_method;
 	cfg->inlined_method = cmethod;
 	cfg->ret_var_set = FALSE;
+	cfg->inline_depth ++;
 	prev_real_offset = cfg->real_offset;
 	prev_cbb_hash = cfg->cbb_hash;
 	prev_cil_offset_to_bb = cfg->cil_offset_to_bb;
@@ -4182,6 +4191,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	cfg->current_method = prev_current_method;
 	cfg->generic_context = prev_generic_context;
 	cfg->ret_var_set = prev_ret_var_set;
+	cfg->inline_depth --;
 
 	if ((costs >= 0 && costs < 60) || inline_allways) {
 		if (cfg->verbose_level > 2)
@@ -5925,6 +5935,21 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					fsig = mono_metadata_parse_signature (image, token);
 
 				n = fsig->param_count + fsig->hasthis;
+
+				if (method->dynamic && fsig->pinvoke) {
+					MonoInst *args [3];
+
+					/*
+					 * This is a call through a function pointer using a pinvoke
+					 * signature. Have to create a wrapper and call that instead.
+					 * FIXME: This is very slow, need to create a wrapper at JIT time
+					 * instead based on the signature.
+					 */
+					EMIT_NEW_IMAGECONST (cfg, args [0], method->klass->image);
+					EMIT_NEW_PCONST (cfg, args [1], fsig);
+					args [2] = addr;
+					addr = mono_emit_jit_icall (cfg, mono_get_native_calli_wrapper, args);
+				}
 			} else {
 				MonoMethod *cil_method;
 				

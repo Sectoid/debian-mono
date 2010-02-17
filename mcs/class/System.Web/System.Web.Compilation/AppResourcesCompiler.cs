@@ -277,7 +277,7 @@ namespace System.Web.Compilation
 		{
 			this.isGlobal = true;
 			this.files = new AppResourceFilesCollection (context);
-			this.cultureFiles = new Dictionary <string, List <string>> ();
+			this.cultureFiles = new Dictionary <string, List <string>> (StringComparer.OrdinalIgnoreCase);
 		}
 
 		public AppResourcesCompiler (string virtualPath)
@@ -286,7 +286,7 @@ namespace System.Web.Compilation
 			this.virtualPath = virtualPath;
 			this.isGlobal = false;
 			this.files = new AppResourceFilesCollection (HttpContext.Current.Request.MapPath (virtualPath));
-			this.cultureFiles = new Dictionary <string, List <string>> ();
+			this.cultureFiles = new Dictionary <string, List <string>> (StringComparer.OrdinalIgnoreCase);
 		}
 
 		static Assembly LoadAssembly (string asmPath)
@@ -835,13 +835,13 @@ namespace System.Web.Compilation
 				throw new HttpException ("Failed to compile resource file", ex);
 			} finally {
 				if (reader != null)
-					reader.Close ();
-				else if (source != null)
-					source.Close ();
+					reader.Dispose ();
+				if (source != null)
+					source.Dispose ();
 				if (writer != null)
-					writer.Close ();
-				else if (destination != null)
-					destination.Close ();
+					writer.Dispose ();
+				if (destination != null)
+					destination.Dispose ();
 			}
 			
 			return resource;

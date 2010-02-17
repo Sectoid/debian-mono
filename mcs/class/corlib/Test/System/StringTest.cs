@@ -1848,6 +1848,14 @@ public class StringTest : TestCase
 		AssertEquals ("#J10", -1, string.Empty.IndexOf ("abc", 0, 0));
 	}
 
+#if NET_2_0
+       [Test]
+       public void IndexOf7_Empty () {
+		   AssertEquals (1, "FOO".IndexOf ("", 1, 2, StringComparison.Ordinal));
+		   AssertEquals (1, "FOO".IndexOf ("", 1, 2, StringComparison.OrdinalIgnoreCase));
+       }
+#endif
+
 	[Test] // IndexOf (String, Int32, Int32)
 	public void IndexOf7_Count_Negative ()
 	{
