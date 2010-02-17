@@ -1,4 +1,4 @@
-mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
+mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
 
   [ Jo Shields ]
   * debian/patches/dont_assert_on_empty_DGC_field_r146984.dpatch:
@@ -9,6 +9,11 @@ mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
       searching for "()" and other characters (Closes: #516597)
 
   [ Mirco Bauer ]
+  * New upstream SVN snapshot of the mono-2-4 branch
+    + Fixed assertion failed in fieldref_encode_signature which caused
+      SIGABRT. (Closes: #565548)
+  * debian/fix_large_ranges_in_random_generator_r146995.dpatch:
+    + Dropped, already applied upstream.
   * debian/watch:
     + We are only watching the 2.4 series for now (until squeeze is released)
   * debian/control:
@@ -18,8 +23,12 @@ mono (2.4.3+dfsg-2) UNRELEASED; urgency=low
     + Dropped purpose less libmono-nunit2.4-cil package as libmono-cil-dev
       does the job now.
     + Added conflicts libmono-nunit2.4-cil to libmono-cil-dev for cleaning up.
+  * debian/cli.binfmt:
+    + Replaced mono-common with mono-runtime. (Closes: #565490)
+  * debian/mono-runtime.postinst:
+    + Removed obsolete mono-common / mono-jit traces.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 09 Jan 2010 14:07:57 +0100
+ -- Mirco Bauer <meebey@debian.org>  Wed, 17 Feb 2010 21:43:42 +0100
 
 mono (2.4.3+dfsg-1) unstable; urgency=medium
 
