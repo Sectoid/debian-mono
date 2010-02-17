@@ -12,6 +12,12 @@ mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
   * New upstream SVN snapshot of the mono-2-4 branch
     + Fixed assertion failed in fieldref_encode_signature which caused
       SIGABRT. (Closes: #565548)
+    + Mono is now DFSG complaint again by default, the binary-only shipped
+      files were replaced with source code.
+  * debian/patches/disable_building_convert.exe.dpatch
+    debian/patches/disable_building_RabbitMQ.Client.dll.dpatch:
+    + Dropped, we can build the RabbitMQ client library and convert.exe again,
+      as the source is provided now (see above).
   * debian/fix_large_ranges_in_random_generator_r146995.dpatch:
     + Dropped, already applied upstream.
   * debian/watch:
@@ -28,7 +34,7 @@ mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
   * debian/mono-runtime.postinst:
     + Removed obsolete mono-common / mono-jit traces.
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 17 Feb 2010 21:43:42 +0100
+ -- Mirco Bauer <meebey@debian.org>  Wed, 17 Feb 2010 21:51:40 +0100
 
 mono (2.4.3+dfsg-1) unstable; urgency=medium
 
