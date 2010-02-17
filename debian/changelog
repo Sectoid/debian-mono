@@ -1,4 +1,4 @@
-mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
+mono (2.4.4~svn151842-1) unstable; urgency=medium
 
   [ Jo Shields ]
   * debian/patches/dont_assert_on_empty_DGC_field_r146984.dpatch:
@@ -9,11 +9,14 @@ mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
       searching for "()" and other characters (Closes: #516597)
 
   [ Mirco Bauer ]
+  * The "Mono 2.4.4 FREE LUV for squeeze & lucid" release
   * New upstream SVN snapshot of the mono-2-4 branch
     + Fixed assertion failed in fieldref_encode_signature which caused
       SIGABRT. (Closes: #565548)
-    + Mono is now DFSG complaint again by default, the binary-only shipped
-      files were replaced with source code.
+    + Mono is now DFSG complaint again by default as the binary-only shipped
+      files were replaced with source code. Also the non-free XML
+      specification files were replaced and thus we can ship the RabbitMQ
+      library again.
   * debian/patches/disable_building_convert.exe.dpatch
     debian/patches/disable_building_RabbitMQ.Client.dll.dpatch:
     + Dropped, we can build the RabbitMQ client library and convert.exe again,
@@ -33,6 +36,8 @@ mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
     + Changed section of libmono-dev to libdevel.
     + Added ${misc:Depends} to Depends of all packages.
     + Bumped Standards-Version to 3.8.4 (no changes needed).
+    + Re-added libmono-messaging-rabbitmq2.0-cil and libmono-rabbitmq2.0-cil
+      packages.
   * debian/cli.binfmt:
     + Replaced mono-common with mono-runtime. (Closes: #565490)
   * debian/mono-runtime.postinst:
