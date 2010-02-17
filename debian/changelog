@@ -32,6 +32,7 @@ mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
     + Shortened too long line in the long descroption of libmono-cil-dev.
     + Changed section of libmono-dev to libdevel.
     + Added ${misc:Depends} to Depends of all packages.
+    + Bumped Standards-Version to 3.8.4 (no changes needed).
   * debian/cli.binfmt:
     + Replaced mono-common with mono-runtime. (Closes: #565490)
   * debian/mono-runtime.postinst:
@@ -41,7 +42,7 @@ mono (2.4.4~svn151842-1~pre1) UNRELEASED; urgency=medium
     + Updated license information of RabbitMQ XML specification files.
     + Added license information of docs/HtmlAgilityPack.
 
- -- Mirco Bauer <meebey@debian.org>  Wed, 17 Feb 2010 23:14:42 +0100
+ -- Mirco Bauer <meebey@debian.org>  Wed, 17 Feb 2010 23:17:44 +0100
 
 mono (2.4.3+dfsg-1) unstable; urgency=medium
 
