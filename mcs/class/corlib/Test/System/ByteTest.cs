@@ -187,6 +187,11 @@ public class ByteTest : Assertion
 		catch (Exception e) {
 			Assert(NumberFormatInfo.CurrentInfo.CurrencySymbol+"42, NumberStyles.Integer, Nfi", typeof(FormatException) == e.GetType());
 		}
+
+		Assert (734 == Int64.Parse ("734\0"));
+		Assert (734 == Int64.Parse ("734\0\0\0    \0"));
+		Assert (734 == Int64.Parse ("734\0\0\0    "));
+		Assert (734 == Int64.Parse ("734\0\0\0"));
 	}
 
 	[Test]

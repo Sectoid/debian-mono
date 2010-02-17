@@ -210,6 +210,11 @@ ves_icall_System_Array_SetValueImpl (MonoArray *this, MonoObject *value, guint32
 	ea = (gpointer*)((char*)this->vector + (pos * esize));
 	va = (gpointer*)((char*)value + sizeof (MonoObject));
 
+	if (mono_class_is_nullable (ec)) {
+		mono_nullable_init ((guint8*)ea, value, ec);
+		return;
+	}
+
 	if (!value) {
 		memset (ea, 0,  esize);
 		return;
@@ -2942,7 +2947,9 @@ ves_icall_MonoMethod_GetGenericMethodDefinition (MonoReflectionMethod *method)
 
 	if (imethod->context.class_inst) {
 		MonoClass *klass = ((MonoMethod *) imethod)->klass;
-		result = mono_class_inflate_generic_method_full (result, klass, mono_class_get_context (klass));
+		/*Generic methods gets the context of the GTD.*/
+		if (mono_class_get_context (klass))
+			result = mono_class_inflate_generic_method_full (result, klass, mono_class_get_context (klass));
 	}
 
 	return mono_method_get_object (mono_object_domain (method), result, NULL);

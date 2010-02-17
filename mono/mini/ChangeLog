@@ -1,3 +1,111 @@
+2010-02-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_magic_trampoline): Fix a problem where the callsite
+	was not patched if the callee needed an rgctx trampoline.
+
+2010-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* exceptions-amd64.c (mono_arch_notify_pending_exc): Avoid a crash if the
+	thread has not fully started yet.
+
+2010-01-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* branch-opts.c (mono_branch_optimize_exception_target): Stop the optimization
+	if a clause is skipped because it uses the exception object, since it could
+	have caught the exception.
+
+	* exceptions.cs: Add a test.
+
+2010-01-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (emit_call_body): Always use near calls when AOTing even if
+	NOMAP32BIT or optimize_for_xen is set.
+
+2010-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_emit_method_call_full): Avoid the virt->nonvirt
+	optimization if the called method is gshared and marshalbyref, since gshared
+	methods can' have wrappers. Fixes #569390.
+
+	* generics.cs: Add a test.
+
+2010-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_convert_imt_slot_to_vtable_slot): Call
+	mono_method_get_vtable_slot () instead of accessing imt_method->slot directly,
+	to fix an AOT case.
+
+2009-12-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (decode_klass_ref): Avoid a crash if a decode_klass_ref () call
+	fails. Fixes #566689.
+
+2009-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Add support for CALLI with unmanaged
+	signatures. Fixes #565143.
+
+	* jit-icalls.c (mono_get_native_calli_wrapper): New JIT icall.
+
+2009-12-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* driver.c: Applied patch from Matt McClellan (matt@mc-c.net). Add a check
+	for 2 parameter sched_setaffinity in older glibc versions. Fixes
+	#564000.
+
+2009-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_method_compile): Call handle_exception_clauses () in the same
+	place it was called before too.
+
+2009-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_method_compile): Call handle_exception_clauses earlier so
+	the local optimization passes can take its result into account. Fixes
+	#559876.
+
+	* exceptions.cs: Add a test.
+
+2009-01-24  Steven Munroe  <munroesj@us.ibm.com>
+
+	This patch is contributed under the terms of the MIT/X11 license
+
+        * cpu-ppc64.md (load_memindex): Add loadi8_memindex.
+
+2009-11-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-arm.c (mono_arch_lowering_pass): Fix an assert which is hit when
+	the instruction following an OP_FCOMPARE is optimized away.
+
+2009-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Avoid infinite recursion when generic virtual recursion is
+	encountered.
+
+2009-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* cfold.c (mono_constant_fold_ins): Fix a problem in the previous change,
+	OP_SHL_IMM is not 32 bit.
+
+2009-11-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (inline_method): Prevent infinite recursion. Fixes
+	#557606.
+
+	* generics.cs: Add a test.
+
+2009-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* cfold.c (mono_constant_fold_ins): Fix constant folding of shr_imm. Fixes
+	#557262.
+
+	* basic.cs: Add a test.
+
+2009-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* tramp-ppc.c (mono_arch_create_generic_class_init_trampoline_full): These
+	receive their argument in MONO_ARCH_VTABLE_REG, not in the first argument reg.
+
 2009-11-06  Zoltan Varga  <vargaz@gmail.com>
 
 	* mini-arm.c (handle_thunk): Add a domain argument to control the domain

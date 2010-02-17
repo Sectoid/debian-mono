@@ -1231,7 +1231,11 @@ mono_main (int argc, char* argv[])
 #if HAVE_SCHED_SETAFFINITY
 	if (getenv ("MONO_NO_SMP")) {
 		unsigned long proc_mask = 1;
+#ifdef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY
+		sched_setaffinity (getpid(), (gpointer)&proc_mask);
+#else
 		sched_setaffinity (getpid(), sizeof (unsigned long), (gpointer)&proc_mask);
+#endif
 	}
 #endif
 	if (!g_thread_supported ())
@@ -1267,7 +1271,7 @@ mono_main (int argc, char* argv[])
 			mini_verbose++;
 		} else if (strcmp (argv [i], "--version") == 0 || strcmp (argv [i], "-V") == 0) {
 			char *build = mono_get_runtime_build_info ();
-			g_print ("Mono JIT compiler version %s (%s)\nCopyright (C) 2002-2008 Novell, Inc and Contributors. www.mono-project.com\n", VERSION, build);
+			g_print ("Mono JIT compiler version %s (%s)\nCopyright (C) 2002-2010 Novell, Inc and Contributors. www.mono-project.com\n", VERSION, build);
 			g_free (build);
 			g_print (info);
 			if (mini_verbose) {

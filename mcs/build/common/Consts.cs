@@ -46,7 +46,7 @@ internal
 	// Use these assembly version constants to make code more maintainable.
 	//
 
-	public const string MonoVersion = "2.4.3.0";
+	public const string MonoVersion = "2.4.4.0";
 	public const string MonoCompany = "MONO development team";
 	public const string MonoProduct = "MONO Common language infrastructure";
 	public const string MonoCopyright = "(c) various MONO Authors";

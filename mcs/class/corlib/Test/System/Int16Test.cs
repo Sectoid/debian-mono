@@ -152,6 +152,11 @@ public class Int16Test : Assertion
 		catch (Exception e) {
 			Assert(typeof(FormatException) == e.GetType());
 		}
+
+		Assert (7345 == Int64.Parse ("7345\0"));
+		Assert (7345 == Int64.Parse ("7345\0\0\0    \0"));
+		Assert (7345 == Int64.Parse ("7345\0\0\0    "));
+		Assert (7345 == Int64.Parse ("7345\0\0\0"));
 	}
 	
 	public void TestToString()

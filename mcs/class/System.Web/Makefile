@@ -16,6 +16,8 @@ WEBSERVICES_DEP := System.Web.Services.dll
 WEBSERVICES_DEP_FILE := $(wildcard ../lib/$(PROFILE)/$(WEBSERVICES_DEP))
 MONOWEB_DEP := Mono.Web.dll
 MONOWEB_DEP_FILE := $(wildcard ../lib/$(PROFILE)/$(MONOWEB_DEP))
+SYSTEMCORE_DEP := System.Core.dll
+SYSTEMCORE_DEP_FILE := $(wildcard ../lib/$(PROFILE)/$(SYSTEMCORE_DEP))
 CYCLIC_DEPS := $(WEBSERVICES_DEP) $(MONOWEB_DEP)
 CYCLIC_DEP_FILES := $(WEBSERVICES_DEP_FILE) $(MONOWEB_DEP_FILE)
 endif
@@ -92,6 +94,7 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_09.sitemap \
 	Test/mainsoft/NunitWebResources/App_GlobalResources/Common.resx \
 	Test/mainsoft/NunitWebResources/App_GlobalResources/Common.fr-FR.resx \
+	Test/mainsoft/NunitWebResources/App_GlobalResources/Resource1.resx \
 	Test/mainsoft/NunitWebResources/menuclass.aspx \
 	Test/mainsoft/NunitWebResources/FormView.aspx \
 	Test/mainsoft/NunitWebResources/PostBackMenuTest.aspx \
@@ -185,7 +188,13 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWebResources/TagsNestedInClientTag.aspx \
 	Test/mainsoft/NunitWebResources/GlobalResourcesLocalization.aspx \
 	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx \
-	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx.cs
+	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx.cs \
+	Test/mainsoft/NunitWebResources/NestedParserFileText.aspx \
+	Test/mainsoft/NunitWebResources/StateFormatter_CorrectConverter.aspx \
+	Test/mainsoft/NunitWebResources/StateFormatter_CollectionConverter.aspx \
+	Test/mainsoft/NunitWebResources/StateFormatter_CollectionConverter.aspx.cs \
+	Test/mainsoft/NunitWebResources/ChangePasswordContainer_FindControl.aspx \
+	Test/mainsoft/NunitWebResources/TagWithExpressionWithinAttribute.aspx
 
 RESX_DIST =  resources/TranslationResources.resx
 ifeq (net_2_0, $(PROFILE))
@@ -242,6 +251,11 @@ endif
 ifdef MONOWEB_DEP_FILE
 LIB_MCS_FLAGS += -define:MONOWEB_DEP -r:$(MONOWEB_DEP)
 $(the_lib): $(MONOWEB_DEP_FILE)
+endif
+
+ifdef SYSTEMCORE_DEP_FILE
+LIB_MCS_FLAGS += -define:SYSTEMCORE_DEP -r:$(SYSTEMCORE_DEP)
+$(build_lib): $(SYSTEMCORE_DEP_FILE)
 endif
 
 ifdef DEBUG

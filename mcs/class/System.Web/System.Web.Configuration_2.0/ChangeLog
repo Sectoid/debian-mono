@@ -1,3 +1,31 @@
+2010-02-12  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationHost.cs: implemented {Encrypt,Decrypt}Section
+
+2010-01-09  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: GetSection properly handles looking
+	up and caching of <location> instances. Part of fix for bug
+	#568441
+
+	* WebConfigurationHost.cs: GetConfigPathFromLocationSubPath
+	calculatesthe path relative to the current config file path. Part
+	of fix for bug #568441
+
+2009-12-02  Marek Habersack  <mhabersack@novell.com>
+
+	* CompilationSection.cs: added new property - 
+	OptimizeCompilations (3.5+)
+
+2009-11-19  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationHost.cs: IsDefinitionAllowed now normalizes the
+	passed configuration path, so that MachineToApplication sections
+
+	* WebConfigurationManager.cs: use an rw lock to protect access to
+	sectionCache. This is now necessary as the save handler clears the
+	cache.
+
 2009-11-10  Marek Habersack  <mhabersack@novell.com>
 
 	* WebConfigurationManager.cs: path passed to OpenWebConfiguration

@@ -150,6 +150,33 @@ mono_runtime_get_no_exec (void)
 	return no_exec;
 }
 
+static void
+create_exceptions (MonoDomain *domain)
+{
+	MonoString *arg;
+
+	/*
+	 * Create an instance early since we can't do it when there is no memory.
+	 */
+	arg = mono_string_new (domain, "Out of memory");
+	domain->out_of_memory_ex = mono_exception_from_name_two_strings (mono_defaults.corlib, "System", "OutOfMemoryException", arg, NULL);
+	
+	/* 
+	 * These two are needed because the signal handlers might be executing on
+	 * an alternate stack, and Boehm GC can't handle that.
+	 */
+	arg = mono_string_new (domain, "A null value was found where an object instance was required");
+	domain->null_reference_ex = mono_exception_from_name_two_strings (mono_defaults.corlib, "System", "NullReferenceException", arg, NULL);
+	arg = mono_string_new (domain, "The requested operation caused a stack overflow.");
+	domain->stack_overflow_ex = mono_exception_from_name_two_strings (mono_defaults.corlib, "System", "StackOverflowException", arg, NULL);
+
+	/* 
+	 * This class is used during exception handling, so initialize it here, to prevent
+	 * stack overflows while handling stack overflows.
+	 */
+	mono_class_init (mono_array_class_get (mono_defaults.int_class, 1));
+}
+
 /**
  * mono_runtime_init:
  * @domain: domain returned by mono_init ()
@@ -169,7 +196,6 @@ mono_runtime_init (MonoDomain *domain, MonoThreadStartCB start_cb,
 	MonoAppDomainSetup *setup;
 	MonoAppDomain *ad;
 	MonoClass *class;
-	MonoString *arg;
 
 	mono_portability_helpers_init ();
 	
@@ -211,22 +237,8 @@ mono_runtime_init (MonoDomain *domain, MonoThreadStartCB start_cb,
 
 	mono_type_initialization_init ();
 
-	if (!mono_runtime_get_no_exec ()) {
-		/*
-		 * Create an instance early since we can't do it when there is no memory.
-		 */
-		arg = mono_string_new (domain, "Out of memory");
-		domain->out_of_memory_ex = mono_exception_from_name_two_strings (mono_defaults.corlib, "System", "OutOfMemoryException", arg, NULL);
-	
-		/* 
-		 * These two are needed because the signal handlers might be executing on
-		 * an alternate stack, and Boehm GC can't handle that.
-		 */
-		arg = mono_string_new (domain, "A null value was found where an object instance was required");
-		domain->null_reference_ex = mono_exception_from_name_two_strings (mono_defaults.corlib, "System", "NullReferenceException", arg, NULL);
-		arg = mono_string_new (domain, "The requested operation caused a stack overflow.");
-		domain->stack_overflow_ex = mono_exception_from_name_two_strings (mono_defaults.corlib, "System", "StackOverflowException", arg, NULL);
-	}
+	if (!mono_runtime_get_no_exec ())
+		create_exceptions (domain);
 
 	/* GC init has to happen after thread init */
 	mono_gc_init ();
@@ -419,6 +431,8 @@ mono_domain_create_appdomain_internal (char *friendly_name, MonoAppDomainSetup *
 	add_assemblies_to_domain (data, mono_defaults.corlib->assembly, NULL);
 
 	mono_debugger_event_create_appdomain (data, get_shadow_assembly_location_base (data));
+
+	create_exceptions (data);
 
 	return ad;
 }
@@ -1113,6 +1127,12 @@ shadow_copy_sibling (gchar *src, gint srclen, const char *extension, gchar *targ
 	
 	DeleteFile (dest);
 	copy_result = CopyFile (orig, dest, FALSE);
+
+	/* Fix for bug #556884 - make sure the files have the correct mode so that they can be
+	 * overwritten when updated in their original locations. */
+	if (copy_result)
+		copy_result = SetFileAttributes (dest, FILE_ATTRIBUTE_NORMAL);
+
 	g_free (orig);
 	g_free (dest);
 	
@@ -1437,6 +1457,12 @@ mono_make_shadow_copy (const char *filename)
 	dest = g_utf8_to_utf16 (shadow, strlen (shadow), NULL, NULL, NULL);
 	DeleteFile (dest);
 	copy_result = CopyFile (orig, dest, FALSE);
+
+	/* Fix for bug #556884 - make sure the files have the correct mode so that they can be
+	 * overwritten when updated in their original locations. */
+	if (copy_result)
+		copy_result = SetFileAttributes (dest, FILE_ATTRIBUTE_NORMAL);
+
 	g_free (dest);
 	g_free (orig);
 

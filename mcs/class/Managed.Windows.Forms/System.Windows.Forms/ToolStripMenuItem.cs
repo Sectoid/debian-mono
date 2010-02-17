@@ -109,11 +109,7 @@ namespace System.Windows.Forms
 				}
 			}
 			set {
-				if (this.checked_state != (value ? CheckState.Checked : CheckState.Unchecked)) {
-					this.checked_state = value ? CheckState.Checked : CheckState.Unchecked;
-					this.Invalidate ();
-					this.OnCheckedChanged (EventArgs.Empty);
-				}
+				CheckState = value ? CheckState.Checked : CheckState.Unchecked;
 			}
 		}
 
@@ -138,8 +134,12 @@ namespace System.Windows.Forms
 				if (!Enum.IsDefined (typeof (CheckState), value))
 					throw new InvalidEnumArgumentException (string.Format ("Enum argument value '{0}' is not valid for CheckState", value));
 
+				if (value == checked_state)
+					return;
+
 				this.checked_state = value;
 				this.Invalidate ();
+				this.OnCheckedChanged (EventArgs.Empty);
 				this.OnCheckStateChanged (EventArgs.Empty);
 			}
 		}
@@ -344,8 +344,9 @@ namespace System.Windows.Forms
 			// If DropDown.ShowImageMargin is false, we don't display the image
 			Image draw_image = this.UseImageMargin ? this.Image : null;
 			
-			// Figure out our text color
-			Color font_color = this.ForeColor == SystemColors.ControlText ? SystemColors.MenuText : this.ForeColor;
+			// Disable this color detection until we do the color detection for ToolStrip *completely*
+			// Color font_color = this.ForeColor == SystemColors.ControlText ? SystemColors.MenuText : this.ForeColor;
+			Color font_color = ForeColor;
 			
 			if ((this.Selected || this.Pressed) && this.IsOnDropDown && font_color == SystemColors.MenuText)
 				font_color = SystemColors.HighlightText;

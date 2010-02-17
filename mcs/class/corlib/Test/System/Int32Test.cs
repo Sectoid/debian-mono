@@ -228,6 +228,11 @@ public class Int32Test : Assertion
 		// numbers, but we should not crash
 		
 		Int32.Parse ("123", new DateTimeFormatInfo ());
+
+		Assert (734561 == Int32.Parse ("734561\0"));
+		Assert (734561 == Int32.Parse ("734561\0\0\0    \0"));
+		Assert (734561 == Int32.Parse ("734561\0\0\0    "));
+		Assert (734561 == Int32.Parse ("734561\0\0\0"));
 	}
 
 #if NET_2_0	
