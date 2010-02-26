@@ -28,8 +28,12 @@
 #define mono_mini_arch_unlock() LeaveCriticalSection (&mini_arch_mutex)
 static CRITICAL_SECTION mini_arch_mutex;
 
-static int v5_supported = 0;
-static int thumb_supported = 0;
+#define MAYBE 2
+
+/* Assume v5 and Thumb are supported unless cpuinfo says otherwise (ARMv4
+ * without Thumb) */
+static int v5_supported = MAYBE;
+static int thumb_supported = MAYBE;
 
 /*
  * TODO:
@@ -150,11 +154,11 @@ emit_memcpy (guint8 *code, int size, int dreg, int doffset, int sreg, int soffse
 static guint8*
 emit_call_reg (guint8 *code, int reg)
 {
-	if (v5_supported) {
+	if (v5_supported != FALSE) {
 		ARM_BLX_REG (code, reg);
 	} else {
 		ARM_MOV_REG_REG (code, ARMREG_LR, ARMREG_PC);
-		if (thumb_supported)
+		if (thumb_supported != FALSE)
 			ARM_BX (code, reg);
 		else
 			ARM_MOV_REG_REG (code, ARMREG_PC, reg);
@@ -461,19 +465,33 @@ mono_arch_cpu_optimizazions (guint32 *exclude_mask)
 		while ((line = fgets (buf, 512, file))) {
 			if (strncmp (line, "Processor", 9) == 0) {
 				char *ver = strstr (line, "(v");
-				if (ver && (ver [2] == '5' || ver [2] == '6' || ver [2] == '7')) {
-					v5_supported = TRUE;
+				if (!ver) {
+					/* invalid cpuinfo; perhaps running withing qemu-arm; skip */
+					break;
 				}
-				continue;
+				if (ver [2] == '5' || ver [2] == '6' || ver [2] == '7') {
+					v5_supported = TRUE;
+					/* present since ARMv5 for mono's practical purposes */
+					thumb_supported = TRUE;
+					break;
+				} else if (ver [2] == '4') {
+					v5_supported = FALSE;
+					/* continue scanning for Features */
+					continue;
+				}
+				/* new or very old ARM architecture? */
+				g_assert_not_reached ();
 			}
 			if (strncmp (line, "Features", 8) == 0) {
+				/* Assume we already parsed Processor and it was v4 */
+				g_assert (v5_supported == FALSE);
 				char *th = strstr (line, "thumb");
 				if (th) {
 					thumb_supported = TRUE;
-					if (v5_supported)
-						break;
+				} else {
+					thumb_supported = FALSE;
 				}
-				continue;
+				break;
 			}
 		}
 		fclose (file);
@@ -2000,7 +2018,7 @@ search_thunk_slot (void *data, int csize, int bsize, void *user_data) {
 				 */
 				code = (guchar*)thunks;
 				ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 0);
-				if (thumb_supported)
+				if (thumb_supported != FALSE)
 					ARM_BX (code, ARMREG_IP);
 				else
 					ARM_MOV_REG_REG (code, ARMREG_PC, ARMREG_IP);
@@ -2065,7 +2083,7 @@ arm_patch_general (MonoDomain *domain, guchar *code, const guchar *target)
 		gint tmask = 0xffffffff;
 		if (tval & 1) { /* entering thumb mode */
 			diff = target - 1 - code - 8;
-			g_assert (thumb_supported);
+			g_assert (thumb_supported != FALSE);
 			tbits = 0xf << 28; /* bl->blx bit pattern */
 			g_assert ((ins & (1 << 24))); /* it must be a bl, not b instruction */
 			/* this low bit of the displacement is moved to bit 24 in the instruction encoding */
