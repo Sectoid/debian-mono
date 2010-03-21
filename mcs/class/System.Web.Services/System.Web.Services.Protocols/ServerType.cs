@@ -201,7 +201,32 @@ namespace System.Web.Services.Protocols
 		{
 			get { return logicalMethods; }
 		}
-		
+
+#if MONOTOUCH
+		internal TypeStubInfo GetTypeStub (string protocolName)
+		{
+			lock (this)
+			{
+				switch (protocolName)
+				{
+				case "Soap": 
+					if (soapProtocol == null){
+						soapProtocol = new SoapTypeStubInfo (this);
+						soapProtocol.Initialize ();
+					}
+					return soapProtocol;
+					
+				case "Soap12": 
+					if (soap12Protocol == null){
+						soap12Protocol = new Soap12TypeStubInfo (this);
+						soap12Protocol.Initialize ();
+					}
+					return soap12Protocol;
+				}
+				throw new InvalidOperationException ("Protocol " + protocolName + " not supported");
+			}
+		}
+#else
 		internal TypeStubInfo GetTypeStub (string protocolName)
 		{
 			lock (this)
@@ -226,7 +251,8 @@ namespace System.Web.Services.Protocols
 			}
 			throw new InvalidOperationException ("Protocol " + protocolName + " not supported");
 		}
-		
+#endif
+
 		TypeStubInfo CreateTypeStubInfo (Type type)
 		{
 			TypeStubInfo tsi = (TypeStubInfo) Activator.CreateInstance (type, new object[] {this});

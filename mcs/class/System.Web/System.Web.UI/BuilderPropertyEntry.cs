@@ -1,5 +1,5 @@
 //
-// System.Web.UI.FileLevelControlBuilderAttribute.cs
+// System.Web.UI.BuilderPropertyEntry.cs
 //
 // Authors:
 //     Arina Itkes (arinai@mainsoft.com)

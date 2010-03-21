@@ -535,6 +535,13 @@ mono_if_conversion (MonoCompile *cfg)
 			if (cfg->ret && ins1->dreg == cfg->ret->dreg)
 				continue;
 
+			if (!(cfg->opt & MONO_OPT_DEADCE))
+				/* 
+				 * It is possible that dreg is never set before, so we can't use
+				 * it as an sreg of the cmov instruction (#582322).
+				 */
+				continue;
+
 			if (cfg->verbose_level > 2) {
 				printf ("\tBranch -> CMove optimization (2) in BB%d on\n", bb->block_num);
 				printf ("\t\t"); mono_print_ins (compare);
@@ -748,7 +755,8 @@ mono_if_conversion (MonoCompile *cfg)
 		mono_handle_global_vregs (cfg);
 		if (cfg->opt & (MONO_OPT_CONSPROP | MONO_OPT_COPYPROP))
 			mono_local_cprop (cfg);
-		mono_local_deadce (cfg);
+		if (cfg->opt & MONO_OPT_DEADCE)
+			mono_local_deadce (cfg);
 	}
 #endif
 }
@@ -961,21 +969,27 @@ mono_merge_basic_blocks (MonoCompile *cfg, MonoBasicBlock *bb, MonoBasicBlock *b
 		mono_unlink_bblock (cfg, bbn, bbn->out_bb [0]);
 
 	/* Handle the branch at the end of the bb */
-	for (inst = bb->code; inst != NULL; inst = inst->next) {
-		if (inst->opcode == OP_CALL_HANDLER) {
-			g_assert (inst->inst_target_bb == bbn);
-			NULLIFY_INS (inst);
-		}
-		if (MONO_IS_JUMP_TABLE (inst)) {
-			int i;
-			MonoJumpInfoBBTable *table = MONO_JUMP_TABLE_FROM_INS (inst);
-			for (i = 0; i < table->table_size; i++ ) {
-				/* Might be already NULL from a previous merge */
-				if (table->table [i])
-					g_assert (table->table [i] == bbn);
-				table->table [i] = NULL;
+	if (bb->has_call_handler) {
+		for (inst = bb->code; inst != NULL; inst = inst->next) {
+			if (inst->opcode == OP_CALL_HANDLER) {
+				g_assert (inst->inst_target_bb == bbn);
+				NULLIFY_INS (inst);
 			}
-			/* Can't nullify this as later instructions depend on it */
+		}
+	}
+	if (bb->has_jump_table) {
+		for (inst = bb->code; inst != NULL; inst = inst->next) {
+			if (MONO_IS_JUMP_TABLE (inst)) {
+				int i;
+				MonoJumpInfoBBTable *table = MONO_JUMP_TABLE_FROM_INS (inst);
+				for (i = 0; i < table->table_size; i++ ) {
+					/* Might be already NULL from a previous merge */
+					if (table->table [i])
+						g_assert (table->table [i] == bbn);
+					table->table [i] = NULL;
+				}
+				/* Can't nullify this as later instructions depend on it */
+			}
 		}
 	}
 	if (bb->last_ins && MONO_IS_COND_BRANCH_OP (bb->last_ins)) {
@@ -985,6 +999,9 @@ mono_merge_basic_blocks (MonoCompile *cfg, MonoBasicBlock *bb, MonoBasicBlock *b
 	} else if (bb->last_ins && MONO_IS_BRANCH_OP (bb->last_ins)) {
 		NULLIFY_INS (bb->last_ins);
 	}
+
+	bb->has_call_handler |= bbn->has_call_handler;
+	bb->has_jump_table |= bbn->has_jump_table;
 
 	if (bb->last_ins) {
 		if (bbn->code) {
@@ -1413,7 +1430,7 @@ mono_optimize_branches (MonoCompile *cfg)
 				}
 
 				if (bb->last_ins && MONO_IS_COND_BRANCH_NOFP (bb->last_ins)) {
-					if (bb->last_ins->inst_false_bb && bb->last_ins->inst_false_bb->out_of_line && (bb->region == bb->last_ins->inst_false_bb->region)) {
+					if (bb->last_ins->inst_false_bb && bb->last_ins->inst_false_bb->out_of_line && (bb->region == bb->last_ins->inst_false_bb->region) && !cfg->disable_out_of_line_bblocks) {
 						/* Reverse the branch */
 						bb->last_ins->opcode = mono_reverse_branch_op (bb->last_ins->opcode);
 						bbn = bb->last_ins->inst_false_bb;

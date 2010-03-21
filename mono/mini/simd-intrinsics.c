@@ -201,6 +201,7 @@ static const SimdIntrinsc vector2d_intrinsics[] = {
 	{ SN_PrefetchTemporal1stLevelCache, 0, SIMD_EMIT_PREFETCH, SIMD_VERSION_SSE1, SIMD_PREFETCH_MODE_1 },
 	{ SN_PrefetchTemporal2ndLevelCache, 0, SIMD_EMIT_PREFETCH, SIMD_VERSION_SSE1, SIMD_PREFETCH_MODE_2 },
 	{ SN_PrefetchNonTemporal, 0, SIMD_EMIT_PREFETCH, SIMD_VERSION_SSE1, SIMD_PREFETCH_MODE_NTA },
+	{ SN_Sqrt, OP_SQRTPD, SIMD_EMIT_UNARY },
 	{ SN_StoreAligned, OP_STOREX_ALIGNED_MEMBASE_REG, SIMD_EMIT_STORE },
 	{ SN_get_X, 0, SIMD_EMIT_GETTER_QWORD },
 	{ SN_get_Y, 1, SIMD_EMIT_GETTER_QWORD },
@@ -676,6 +677,9 @@ mono_simd_simplify_indirection (MonoCompile *cfg)
 
 	/*Scan the first basic block looking xzeros not used*/
 	for (ins = first_bb->code; ins; ins = ins->next) {
+		int num_sregs;
+		int sregs [MONO_MAX_SRC_REGS];
+
 		if (ins->opcode == OP_XZERO) {
 			if (!(vreg_flags [ins->dreg] & VREG_HAS_OTHER_OP_BB0)) {
 				DEBUG (printf ("[simd-simplify] R%d has vzero: ", ins->dreg); mono_print_ins(ins));
@@ -685,13 +689,13 @@ mono_simd_simplify_indirection (MonoCompile *cfg)
 		}
 		if (ins->opcode == OP_LDADDR && apply_vreg_first_block_interference (cfg, ins, ((MonoInst*)ins->inst_p0)->dreg, max_vreg, vreg_flags))
 			continue;
-		
 		if (apply_vreg_first_block_interference (cfg, ins, ins->dreg, max_vreg, vreg_flags))
 			continue;
-		if (apply_vreg_first_block_interference (cfg, ins, ins->sreg1, max_vreg, vreg_flags))
-			continue;
-		if (apply_vreg_first_block_interference (cfg, ins, ins->sreg2, max_vreg, vreg_flags))
-			continue;
+		num_sregs = mono_inst_get_src_registers (ins, sregs);
+		for (i = 0; i < num_sregs; ++i) {
+			if (apply_vreg_first_block_interference (cfg, ins, sregs [i], max_vreg, vreg_flags))
+				break;
+		}
 	}
 
 	if (IS_DEBUG_ON (cfg)) {
@@ -721,15 +725,19 @@ mono_simd_simplify_indirection (MonoCompile *cfg)
 
 	for (bb = first_bb->next_bb; bb; bb = bb->next_bb) {
 		for (ins = bb->code; ins; ins = ins->next) {
-			
+			int num_sregs;
+			int sregs [MONO_MAX_SRC_REGS];
+
 			if (ins->opcode == OP_LDADDR && apply_vreg_following_block_interference (cfg, ins, ((MonoInst*)ins->inst_p0)->dreg, bb, max_vreg, vreg_flags, target_bb))
 				continue;
 			if (apply_vreg_following_block_interference (cfg, ins, ins->dreg, bb, max_vreg, vreg_flags, target_bb))
 				continue;
-			if (apply_vreg_following_block_interference (cfg, ins, ins->sreg1, bb, max_vreg, vreg_flags, target_bb))
-				continue;
-			if (apply_vreg_following_block_interference (cfg, ins, ins->sreg2, bb, max_vreg, vreg_flags, target_bb))
-				continue;
+			num_sregs = mono_inst_get_src_registers (ins, sregs);
+			for (i = 0; i < num_sregs; ++i) {
+				if (apply_vreg_following_block_interference (cfg, ins, sregs [i], bb,
+						max_vreg, vreg_flags, target_bb))
+					continue;
+			}
 		}
 	}
 
@@ -745,10 +753,19 @@ mono_simd_simplify_indirection (MonoCompile *cfg)
 		if (!(vreg_flags [var->dreg] & VREG_SINGLE_BB_USE))
 			continue;
 		for (ins = target_bb [var->dreg]->code; ins; ins = ins->next) {
+			int num_sregs, j;
+			int sregs [MONO_MAX_SRC_REGS];
+			gboolean found = FALSE;
+
+			num_sregs = mono_inst_get_src_registers (ins, sregs);
+			for (j = 0; j < num_sregs; ++j) {
+				if (sregs [i] == var->dreg)
+					found = TRUE;
+			}
 			/*We can avoid inserting the XZERO if the first use doesn't depend on the zero'ed value.*/
-			if (ins->dreg == var->dreg && ins->sreg1 != var->dreg && ins->sreg2 != var->dreg) {
+			if (ins->dreg == var->dreg && !found) {
 				break;
-			} else if (ins->sreg1 == var->dreg || ins->sreg2 == var->dreg) {
+			} else if (found) {
 				MonoInst *tmp;
 				MONO_INST_NEW (cfg, tmp, OP_XZERO);
 				tmp->dreg = var->dreg;

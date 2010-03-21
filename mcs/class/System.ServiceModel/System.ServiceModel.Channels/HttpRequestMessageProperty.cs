@@ -37,7 +37,7 @@ namespace System.ServiceModel.Channels
 		}
 
 		WebHeaderCollection headers = new WebHeaderCollection ();
-		string method, query_string;
+		string method = "POST", query_string = String.Empty;
 		bool suppress_entity;
 
 		public HttpRequestMessageProperty ()

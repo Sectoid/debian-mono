@@ -11,7 +11,7 @@
 //    Tim Coleman <tim@timcoleman.com>
 //    Daniel Moragn <monodanmorg@yahoo.com>
 //    Hubert FONGARNAND <informatique.internet@fiducial.fr>
-//    Veerapuram Varadhan  <vvaradhan@novell.com>	
+//	  Veerapuram Varadhan  <vvaradhan@novell.com>	
 //
 // Copyright (C) Tim Coleman , 2003
 // Copyright (C) Daniel Morgan, 2005, 2008
@@ -125,10 +125,10 @@ namespace System.Data.OracleClient
 		{
 			this.name = name;
 			this.value = value;
-			InferOracleType (value);			
+
 			srcColumn = string.Empty;
 			SourceVersion = DataRowVersion.Current;
-
+			InferOracleType (value);			
 #if NET_2_0
 			// Find the OciType before inferring for the size
 			if (value != null && value != DBNull.Value) {

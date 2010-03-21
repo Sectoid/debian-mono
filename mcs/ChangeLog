@@ -1,3 +1,25 @@
+2009-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: add some WCF assemblies to centum_tests.
+
+2009-07-21  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: specify bootstrap and SUBDIRS for the monotouch profile.
+
+2009-07-16  Raja R Harinath  <harinath@hurrynot.org>
+
+	Improve coarse-grain parallelism in the build
+	* Makefile (_boot_:net_2_0_bootstrap): Depend on
+	'net_1_1_bootstrap' profile, rather than 'net_1_1'.
+
+2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* nunit20 : removed old framework.
+
+2009-06-07  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add net_4_0* profiles.
+
 2009-02-24  Jonathan Pryor  <jpryor@novell.com>
 
 	* docs/Makefile: Remove and don't install nunit-docs.source.  As
@@ -5,6 +27,21 @@
 	  only, and installing nunit-docs.source causes an warning message
 	  during monodoc startup.
 	* docs/nunit-docs.source: Remove.
+
+2009-02-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* docs/Makefile: Fix install-local and uninstall-local if
+	DISABLE_MCS_DOCS is defined.
+
+2009-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* docs/Makefile: Don't build build-documentation if DISABLE_MCS_DOCS
+	is defined.
+
+2009-01-31  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* docs/Makefile: use -f with rm on the clean target so
+	rm doesn't complain about missing files.
 
 2008-12-10  Atsushi Enomoto  <atsushi@ximian.com>
 

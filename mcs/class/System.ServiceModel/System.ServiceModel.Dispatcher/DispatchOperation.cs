@@ -52,14 +52,14 @@ namespace System.ServiceModel.Dispatcher
 		bool serialize_reply = true, deserialize_request = true,
 			is_oneway, is_terminating,
 			release_after_call, release_before_call,
-			tx_auto_complete, tx_required;
+			tx_auto_complete, tx_required,
+			auto_dispose_params = true;
 		ImpersonationOption impersonation;
 		IDispatchMessageFormatter formatter, actual_formatter;
 		IOperationInvoker invoker;
 		SynchronizedCollection<IParameterInspector> inspectors
 			= new SynchronizedCollection<IParameterInspector> ();
-		SynchronizedCollection<FaultContractInfo> fault_contract_infos
-			= new SynchronizedCollection<FaultContractInfo> ();
+		SynchronizedCollection<FaultContractInfo> fault_contract_infos;
 		SynchronizedCollection<ICallContextInitializer> ctx_initializers
 			= new SynchronizedCollection<ICallContextInitializer> ();
 
@@ -95,13 +95,26 @@ namespace System.ServiceModel.Dispatcher
 			get { return ctx_initializers; }
 		}
 
+		public bool AutoDisposeParameters {
+			get { return auto_dispose_params; }
+			set { auto_dispose_params = value; }
+		}
+
 		public bool DeserializeRequest {
 			get { return deserialize_request; }
 			set { deserialize_request = value; }
 		}
 
 		public SynchronizedCollection<FaultContractInfo> FaultContractInfos {
-			get { return fault_contract_infos; }
+			get {
+				if (fault_contract_infos == null) {
+					var l = new SynchronizedCollection<FaultContractInfo> ();
+					foreach (var f in Description.Faults)
+						l.Add (new FaultContractInfo (f.Action, f.DetailType));
+					fault_contract_infos = l;
+				}
+				return fault_contract_infos;
+			}
 		}
 
 		public IDispatchMessageFormatter Formatter {
@@ -174,6 +187,32 @@ namespace System.ServiceModel.Dispatcher
 
 		MessageVersion MessageVersion {
 			get { return Parent.ChannelDispatcher.MessageVersion; }
+		}
+
+		OperationDescription Description {
+			get {
+				// FIXME: ContractDescription should be acquired from elsewhere.
+				ContractDescription cd = ContractDescription.GetContract (Parent.Type);
+				OperationDescription od = cd.Operations.Find (Name);
+				if (od == null) {
+					if (Name == "*")
+						throw new Exception (String.Format ("INTERNAL ERROR: Contract {0} in namespace {1} does not contain Operations.", Parent.EndpointDispatcher.ContractName, Parent.EndpointDispatcher.ContractNamespace));
+					else
+						throw new Exception (String.Format ("INTERNAL ERROR: Operation {0} was not found.", Name));
+				}
+				return od;
+			}
+		}
+
+		internal IDispatchMessageFormatter GetFormatter ()
+		{
+			if (actual_formatter == null) {
+				if (Formatter != null)
+					actual_formatter = Formatter;
+				else
+					actual_formatter = BaseMessagesFormatter.Create (Description);
+			}
+			return actual_formatter;
 		}
 	}
 }

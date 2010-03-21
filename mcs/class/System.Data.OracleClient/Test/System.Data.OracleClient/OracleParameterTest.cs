@@ -441,6 +441,7 @@ namespace MonoTests.System.Data.OracleClient
 		}
 
 		[Test]
+		[Category("NotWorking")]
 		public void ParamSize_424908_ConstructorSizeSetTest ()
 		{
 		    //OracleConnection conn = new OracleConnection (connection_string);
@@ -459,6 +460,7 @@ namespace MonoTests.System.Data.OracleClient
 			OracleParameter text = new OracleParameter ("text", OracleType.NVarChar, 64);
 			text.Direction = ParameterDirection.Output;
 			text.Value = string.Empty;
+			text.Size = 64;
 			command.Parameters.Add (text);
 
 			command.CommandType = CommandType.StoredProcedure;

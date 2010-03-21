@@ -210,6 +210,24 @@ namespace MonoTests.System.Linq.Expressions
 		}
 
 		[Test]
+		public void EmitDateTimeConstant ()
+		{
+			var date = new DateTime (1983, 2, 6);
+
+			var lambda = Expression.Lambda<Func<DateTime>> (Expression.Constant (date)).Compile ();
+
+			Assert.AreEqual (date, lambda ());
+		}
+
+		[Test]
+		public void EmitDBNullConstant ()
+		{
+			var lambda = Expression.Lambda<Func<DBNull>> (Expression.Constant (DBNull.Value)).Compile ();
+
+			Assert.AreEqual (DBNull.Value, lambda ());
+		}
+
+		[Test]
 		public void EmitNullString ()
 		{
 			var n = Expression.Lambda<Func<string>> (

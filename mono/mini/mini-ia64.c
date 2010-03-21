@@ -28,9 +28,6 @@
 #include "jit-icalls.h"
 #include "ir-emit.h"
 
-static gint appdomain_tls_offset = -1;
-static gint thread_tls_offset = -1;
-
 #define ALIGN_TO(val,align) ((((guint64)val) + ((align) - 1)) & ~((align) - 1))
 
 #define IS_IMM32(val) ((((guint64)val) >> 32) == 0)
@@ -404,7 +401,7 @@ get_call_info (MonoCompile *cfg, MonoMemPool *mp, MonoMethodSignature *sig, gboo
 			cinfo->ret.reg = 8;
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->ret)) {
+			if (!mono_type_generic_inst_is_valuetype (ret_type)) {
 				cinfo->ret.storage = ArgInIReg;
 				cinfo->ret.reg = IA64_R8;
 				break;
@@ -497,7 +494,7 @@ get_call_info (MonoCompile *cfg, MonoMemPool *mp, MonoMethodSignature *sig, gboo
 			add_general (&gr, &stack_size, ainfo);
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->params [i])) {
+			if (!mono_type_generic_inst_is_valuetype (ptype)) {
 				add_general (&gr, &stack_size, ainfo);
 				break;
 			}
@@ -1594,7 +1591,7 @@ mono_arch_lowering_pass (MonoCompile *cfg, MonoBasicBlock *bb)
 
 			/* Branch opts can eliminate the branch */
 			if (!next || (!(MONO_IS_COND_BRANCH_OP (next) || MONO_IS_COND_EXC (next) || MONO_IS_SETCC (next)))) {
-				ins->opcode = OP_NOP;
+				NULLIFY_INS (ins);
 				break;
 			}
 
@@ -1630,8 +1627,7 @@ mono_arch_lowering_pass (MonoCompile *cfg, MonoBasicBlock *bb)
 
 			if (MONO_IS_COND_BRANCH_OP (next)) {
 				next->opcode = OP_IA64_BR_COND;
-				if (! (next->flags & MONO_INST_BRLABEL))
-					next->inst_target_bb = next->inst_true_bb;
+				next->inst_target_bb = next->inst_true_bb;
 			} else if (MONO_IS_COND_EXC (next)) {
 				next->opcode = OP_IA64_COND_EXC;
 			} else if (MONO_IS_SETCC (next)) {
@@ -1653,7 +1649,7 @@ mono_arch_lowering_pass (MonoCompile *cfg, MonoBasicBlock *bb)
 
 			/* Branch opts can eliminate the branch */
 			if (!next || (!(MONO_IS_COND_BRANCH_OP (next) || MONO_IS_COND_EXC (next) || MONO_IS_SETCC (next)))) {
-				ins->opcode = OP_NOP;
+				NULLIFY_INS (ins);
 				break;
 			}
 
@@ -1661,8 +1657,7 @@ mono_arch_lowering_pass (MonoCompile *cfg, MonoBasicBlock *bb)
 
 			if (MONO_IS_COND_BRANCH_OP (next)) {
 				next->opcode = OP_IA64_BR_COND;
-				if (! (next->flags & MONO_INST_BRLABEL))
-					next->inst_target_bb = next->inst_true_bb;
+				next->inst_target_bb = next->inst_true_bb;
 			} else if (MONO_IS_COND_EXC (next)) {
 				next->opcode = OP_IA64_COND_EXC;
 			} else if (MONO_IS_SETCC (next)) {
@@ -1685,6 +1680,7 @@ mono_arch_lowering_pass (MonoCompile *cfg, MonoBasicBlock *bb)
 			temp->sreg2 = ins->sreg2;
 			
 			ins->opcode = OP_IA64_CSET;
+			MONO_INST_NULLIFY_SREGS (ins);
 			break;
 		case OP_MUL_IMM:
 		case OP_LMUL_IMM:
@@ -2072,25 +2068,16 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			int pred = 0;
 			if (ins->opcode == OP_IA64_BR_COND)
 				pred = 6;
-			if (ins->flags & MONO_INST_BRLABEL) {
-				if (ins->inst_i0->inst_c0) {
-					NOT_IMPLEMENTED;
-				} else {
-					add_patch_info (cfg, code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-					ia64_br_cond_pred (code, pred, 0);
-				}
-			} else {
-				if (ins->inst_target_bb->native_offset) {
-					guint8 *pos = code.buf + code.nins;
+			if (ins->inst_target_bb->native_offset) {
+				guint8 *pos = code.buf + code.nins;
 
-					ia64_br_cond_pred (code, pred, 0);
-					ia64_begin_bundle (code);
-					ia64_patch (pos, cfg->native_code + ins->inst_target_bb->native_offset);
-				} else {
-					add_patch_info (cfg, code, MONO_PATCH_INFO_BB, ins->inst_target_bb);
-					ia64_br_cond_pred (code, pred, 0);
-				} 
-			}
+				ia64_br_cond_pred (code, pred, 0);
+				ia64_begin_bundle (code);
+				ia64_patch (pos, cfg->native_code + ins->inst_target_bb->native_offset);
+			} else {
+				add_patch_info (cfg, code, MONO_PATCH_INFO_BB, ins->inst_target_bb);
+				ia64_br_cond_pred (code, pred, 0);
+			} 
 			break;
 		}
 		case OP_LABEL:
@@ -2141,6 +2128,9 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			ia64_shl (code, ins->dreg, ins->sreg1, ins->sreg2);
 			break;
 		case OP_ISHR:
+			ia64_sxt4 (code, GP_SCRATCH_REG, ins->sreg1);
+			ia64_shr (code, ins->dreg, GP_SCRATCH_REG, ins->sreg2);
+			break;
 		case OP_LSHR:
 			ia64_shr (code, ins->dreg, ins->sreg1, ins->sreg2);
 			break;
@@ -2240,9 +2230,12 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			ia64_shl_imm (code, ins->dreg, ins->sreg1, ins->inst_imm);
 			break;
 		case OP_SHR_IMM:
-		case OP_ISHR_IMM:
 		case OP_LSHR_IMM:
 			ia64_shr_imm (code, ins->dreg, ins->sreg1, ins->inst_imm);
+			break;
+		case OP_ISHR_IMM:
+			g_assert (ins->inst_imm <= 64);
+			ia64_extr (code, ins->dreg, ins->sreg1, ins->inst_imm, 32 - ins->inst_imm);
 			break;
 		case OP_ISHR_UN_IMM:
 			ia64_zxt4 (code, GP_SCRATCH_REG, ins->sreg1);
@@ -4365,7 +4358,7 @@ mono_arch_instrument_prolog (MonoCompile *cfg, void *func, void *p, gboolean ena
 }
 
 void*
-mono_arch_instrument_epilog (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments)
+mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments, gboolean preserve_argument_registers)
 {
 	Ia64CodegenState code;
 	CallInfo *cinfo = NULL;
@@ -4513,7 +4506,7 @@ mono_arch_get_patch_offset (guint8 *code)
 }
 
 gpointer
-mono_arch_get_vcall_slot (guint8* code, gpointer *regs, int *displacement)
+mono_arch_get_vcall_slot (guint8* code, mgreg_t *regs, int *displacement)
 {
 	guint8 *bundle2 = code - 48;
 	guint8 *bundle3 = code - 32;
@@ -4564,42 +4557,23 @@ mono_arch_get_vcall_slot (guint8* code, gpointer *regs, int *displacement)
 
 		*displacement = (gssize)regs [IA64_R8] - (gssize)regs [IA64_R11];
 
-		return regs [IA64_R11];
+		return (gpointer)regs [IA64_R11];
 	}
 
 	return NULL;
 }
 
 gpointer*
-mono_arch_get_vcall_slot_addr (guint8* code, gpointer *regs)
-{
-	gpointer vt;
-	int displacement;
-	vt = mono_arch_get_vcall_slot (code, regs, &displacement);
-	if (!vt)
-		return NULL;
-	return (gpointer*)(gpointer)((char*)vt + displacement);
-}
-
-gpointer*
-mono_arch_get_delegate_method_ptr_addr (guint8* code, gpointer *regs)
+mono_arch_get_delegate_method_ptr_addr (guint8* code, mgreg_t *regs)
 {
 	NOT_IMPLEMENTED;
 
 	return NULL;
 }
 
-static gboolean tls_offset_inited = FALSE;
-
 void
 mono_arch_setup_jit_tls_data (MonoJitTlsData *tls)
 {
-	if (!tls_offset_inited) {
-		tls_offset_inited = TRUE;
-
-		appdomain_tls_offset = mono_domain_get_tls_offset ();
-		thread_tls_offset = mono_thread_get_tls_offset ();
-	}		
 }
 
 void
@@ -4621,8 +4595,6 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 	guint8 *start, *buf;
 	Ia64CodegenState code;
 
-	g_assert (!fail_tramp);
-
 	size = count * 256;
 	buf = g_malloc0 (size);
 	ia64_codegen_init (code, buf);
@@ -4634,8 +4606,10 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 		ia64_begin_bundle (code);
 		item->code_target = (guint8*)code.buf + code.nins;
 		if (item->is_equals) {
-			if (item->check_target_idx) {
-				if (!item->compare_done) {
+			gboolean fail_case = !item->check_target_idx && fail_tramp;
+
+			if (item->check_target_idx || fail_case) {
+				if (!item->compare_done || fail_case) {
 					ia64_movl (code, GP_SCRATCH_REG, item->key);
 					ia64_cmp_eq (code, 6, 7, IA64_R9, GP_SCRATCH_REG);
 				}
@@ -4646,6 +4620,15 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 				ia64_ld8 (code, GP_SCRATCH_REG, GP_SCRATCH_REG);
 				ia64_mov_to_br (code, IA64_B6, GP_SCRATCH_REG);
 				ia64_br_cond_reg (code, IA64_B6);
+
+				if (fail_case) {
+					ia64_patch (item->jmp_code, (guint8*)code.buf + code.nins);
+					ia64_movl (code, GP_SCRATCH_REG, fail_tramp);
+					ia64_ld8 (code, GP_SCRATCH_REG, GP_SCRATCH_REG);
+					ia64_mov_to_br (code, IA64_B6, GP_SCRATCH_REG);
+					ia64_br_cond_reg (code, IA64_B6);
+					item->jmp_code = NULL;
+				}
 			} else {
 				/* enable the commented code to assert on wrong method */
 #if ENABLE_WRONG_METHOD_CHECK
@@ -4680,7 +4663,12 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 	g_assert (code.buf - buf <= size);
 
 	size = code.buf - buf;
-	start = mono_code_manager_reserve (domain->code_mp, size);
+	if (fail_tramp) {
+		start = mono_method_alloc_generic_virtual_thunk (domain, size + 16);
+		start = (gpointer)ALIGN_TO (start, 16);
+	} else {
+		start = mono_domain_code_reserve (domain, size);
+	}
 	memcpy (start, buf, size);
 
 	mono_arch_flush_icache (start, size);
@@ -4691,9 +4679,9 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 }
 
 MonoMethod*
-mono_arch_find_imt_method (gpointer *regs, guint8 *code)
+mono_arch_find_imt_method (mgreg_t *regs, guint8 *code)
 {
-	return regs [IA64_R9];
+	return (MonoMethod*)regs [IA64_R9];
 }
 
 void
@@ -4704,15 +4692,15 @@ mono_arch_emit_imt_argument (MonoCompile *cfg, MonoCallInst *call, MonoInst *imt
 #endif
 
 gpointer
-mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, gssize *regs, guint8 *code)
+mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, mgreg_t *regs, guint8 *code)
 {
 	return (gpointer)regs [IA64_R10];
 }
 
 MonoObject*
-mono_arch_find_this_argument (gpointer *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
+mono_arch_find_this_argument (mgreg_t *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
 {
-	return mono_arch_get_this_arg_from_call (gsctx, mono_method_signature (method), (gssize*)regs, NULL);
+	return mono_arch_get_this_arg_from_call (gsctx, mono_method_signature (method), regs, NULL);
 }
 
 gpointer
@@ -4817,28 +4805,16 @@ mono_arch_print_tree (MonoInst *tree, int arity)
 	return 0;
 }
 
-MonoInst* mono_arch_get_domain_intrinsic (MonoCompile* cfg)
+MonoInst*
+mono_arch_get_domain_intrinsic (MonoCompile* cfg)
 {
-	MonoInst* ins;
-	
-	if (appdomain_tls_offset == -1)
-		return NULL;
-	
-	MONO_INST_NEW (cfg, ins, OP_TLS_GET);
-	ins->inst_offset = appdomain_tls_offset;
-	return ins;
+	return mono_get_domain_intrinsic (cfg);
 }
 
-MonoInst* mono_arch_get_thread_intrinsic (MonoCompile* cfg)
+MonoInst*
+mono_arch_get_thread_intrinsic (MonoCompile* cfg)
 {
-	MonoInst* ins;
-	
-	if (thread_tls_offset == -1)
-		return NULL;
-	
-	MONO_INST_NEW (cfg, ins, OP_TLS_GET);
-	ins->inst_offset = thread_tls_offset;
-	return ins;
+	return mono_get_thread_intrinsic (cfg);
 }
 
 gpointer

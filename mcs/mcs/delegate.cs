@@ -9,7 +9,7 @@
 // Dual licensed under the terms of the MIT X11 or GNU GPL
 //
 // Copyright 2001 Ximian, Inc (http://www.ximian.com)
-// Copyright 2003-2008 Novell, Inc (http://www.ximian.com)
+// Copyright 2003-2009 Novell, Inc (http://www.novell.com)
 //
 
 using System;
@@ -20,13 +20,13 @@ using System.Text;
 
 namespace Mono.CSharp {
 
-	/// <summary>
-	///   Holds Delegates
-	/// </summary>
-	public class Delegate : DeclSpace, IMemberContainer
+	//
+	// Delegate container implementation
+	//
+	public class Delegate : TypeContainer
 	{
  		FullNamedExpression ReturnType;
-		public Parameters      Parameters;
+		public ParametersCompiled      Parameters;
 
 		public ConstructorBuilder ConstructorBuilder;
 		public MethodBuilder      InvokeBuilder;
@@ -41,8 +41,6 @@ namespace Mono.CSharp {
 		MethodBase delegate_method;
 		ReturnParameter return_attributes;
 
-		MemberCache member_cache;
-
 		const MethodAttributes mattr = MethodAttributes.Public | MethodAttributes.HideBySig |
 			MethodAttributes.Virtual | MethodAttributes.NewSlot;
 
@@ -51,92 +49,43 @@ namespace Mono.CSharp {
 			Modifiers.PUBLIC |
 			Modifiers.PROTECTED |
 			Modifiers.INTERNAL |
-		        Modifiers.UNSAFE |
+			Modifiers.UNSAFE |
 			Modifiers.PRIVATE;
 
  		public Delegate (NamespaceEntry ns, DeclSpace parent, FullNamedExpression type,
-				 int mod_flags, MemberName name, Parameters param_list,
+				 int mod_flags, MemberName name, ParametersCompiled param_list,
 				 Attributes attrs)
-			: base (ns, parent, name, attrs)
+			: base (ns, parent, name, attrs, Kind.Delegate)
 
 		{
 			this.ReturnType = type;
 			ModFlags        = Modifiers.Check (AllowedModifiers, mod_flags,
 							   IsTopLevel ? Modifiers.INTERNAL :
-							   Modifiers.PRIVATE, name.Location);
+							   Modifiers.PRIVATE, name.Location, Report);
 			Parameters      = param_list;
 		}
 
-		public override void ApplyAttributeBuilder(Attribute a, CustomAttributeBuilder cb)
+		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb, PredefinedAttributes pa)
 		{
 			if (a.Target == AttributeTargets.ReturnValue) {
 				if (return_attributes == null)
 					return_attributes = new ReturnParameter (InvokeBuilder, Location);
 
-				return_attributes.ApplyAttributeBuilder (a, cb);
+				return_attributes.ApplyAttributeBuilder (a, cb, pa);
 				return;
 			}
 
-			base.ApplyAttributeBuilder (a, cb);
+			base.ApplyAttributeBuilder (a, cb, pa);
 		}
 
-		public override TypeBuilder DefineType ()
-		{
-			if (TypeBuilder != null)
-				return TypeBuilder;
-
-			if (IsTopLevel) {
-				if (TypeManager.NamespaceClash (Name, Location))
-					return null;
-				
-				ModuleBuilder builder = CodeGen.Module.Builder;
-
-				TypeBuilder = builder.DefineType (
-					Name, TypeAttr, TypeManager.multicast_delegate_type);
-			} else {
-				TypeBuilder builder = Parent.TypeBuilder;
-
-				string name = Name.Substring (1 + Name.LastIndexOf ('.'));
-				TypeBuilder = builder.DefineNestedType (
-					name, TypeAttr, TypeManager.multicast_delegate_type);
+		public override AttributeTargets AttributeTargets {
+			get {
+				return AttributeTargets.Delegate;
 			}
-
-			TypeManager.AddUserType (this);
-
-#if GMCS_SOURCE
-			if (IsGeneric) {
-				string[] param_names = new string [TypeParameters.Length];
-				for (int i = 0; i < TypeParameters.Length; i++)
-					param_names [i] = TypeParameters [i].Name;
-
-				GenericTypeParameterBuilder[] gen_params;
-				gen_params = TypeBuilder.DefineGenericParameters (param_names);
-
-				int offset = CountTypeParameters - CurrentTypeParameters.Length;
-				for (int i = offset; i < gen_params.Length; i++)
-					CurrentTypeParameters [i - offset].Define (gen_params [i]);
-
-				foreach (TypeParameter type_param in CurrentTypeParameters) {
-					if (!type_param.Resolve (this))
-						return null;
-				}
-
-				Expression current = new SimpleName (
-					MemberName.Basename, TypeParameters, Location);
-				current = current.ResolveAsTypeTerminal (this, false);
-				if (current == null)
-					return null;
-
-				CurrentType = current.Type;
-			}
-#endif
-
-			return TypeBuilder;
 		}
 
  		public override bool Define ()
 		{
-#if GMCS_SOURCE
 			if (IsGeneric) {
 				foreach (TypeParameter type_param in TypeParameters) {
 					if (!type_param.Resolve (this))
@@ -148,7 +97,7 @@ namespace Mono.CSharp {
 						return false;
 				}
 			}
-#endif
+
 			member_cache = new MemberCache (TypeManager.multicast_delegate_type, this);
 
 			// FIXME: POSSIBLY make this static, as it is always constant
@@ -174,7 +123,7 @@ namespace Mono.CSharp {
 				new ParameterData ("method", Parameter.Modifier.NONE)
 			};
 
-			AParametersCollection const_parameters = new ParametersCollection (
+			AParametersCollection const_parameters = new ParametersImported (
 				fixed_pars,
 				new Type[] { TypeManager.object_type, TypeManager.intptr_type });
 			
@@ -226,9 +175,11 @@ namespace Mono.CSharp {
 			CheckProtectedModifier ();
 
 			if (RootContext.StdLib && TypeManager.IsSpecialType (ret_type)) {
-				Method.Error1599 (Location, ret_type);
+				Method.Error1599 (Location, ret_type, Report);
 				return false;
 			}
+
+			TypeManager.CheckTypeVariance (ret_type, Variance.Covariant, this);
 
 			//
 			// We don't have to check any others because they are all
@@ -248,7 +199,10 @@ namespace Mono.CSharp {
 			TypeManager.RegisterMethod (InvokeBuilder, Parameters);
 			member_cache.AddMember (InvokeBuilder, this);
 
-			if (TypeManager.iasyncresult_type != null && TypeManager.asynccallback_type != null) {
+			//
+			// Don't emit async method for compiler generated delegates (e.g. dynamic site containers)
+			//
+			if (TypeManager.iasyncresult_type != null && TypeManager.asynccallback_type != null && !IsCompilerGenerated) {
 				DefineAsyncMethods (cc);
 			}
 
@@ -260,7 +214,7 @@ namespace Mono.CSharp {
 			//
 			// BeginInvoke
 			//
-			Parameters async_parameters = Parameters.MergeGenerated (Parameters, false,
+			ParametersCompiled async_parameters = ParametersCompiled.MergeGenerated (Parameters, false,
 				new Parameter [] {
 					new Parameter (null, "callback", Parameter.Modifier.NONE, null, Location),
 					new Parameter (null, "object", Parameter.Modifier.NONE, null, Location)
@@ -286,7 +240,7 @@ namespace Mono.CSharp {
 			//
 			// Define parameters, and count out/ref parameters
 			//
-			Parameters end_parameters;
+			ParametersCompiled end_parameters;
 			int out_params = 0;
 
 			foreach (Parameter p in Parameters.FixedParameters) {
@@ -308,12 +262,12 @@ namespace Mono.CSharp {
 					end_params [param] = p;
 					++param;
 				}
-				end_parameters = Parameters.CreateFullyResolved (end_params, end_param_types);
+				end_parameters = ParametersCompiled.CreateFullyResolved (end_params, end_param_types);
 			} else {
-				end_parameters = Parameters.EmptyReadOnlyParameters;
+				end_parameters = ParametersCompiled.EmptyReadOnlyParameters;
 			}
 
-			end_parameters = Parameters.MergeGenerated (end_parameters, false,
+			end_parameters = ParametersCompiled.MergeGenerated (end_parameters, false,
 				new Parameter (null, "result", Parameter.Modifier.NONE, null, Location), TypeManager.iasyncresult_type);
 
 			//
@@ -329,10 +283,15 @@ namespace Mono.CSharp {
 
 		public override void Emit ()
 		{
+			if (TypeManager.IsDynamicType (ret_type)) {
+				return_attributes = new ReturnParameter (InvokeBuilder, Location);
+				return_attributes.EmitPredefined (PredefinedAttributes.Get.Dynamic, Location);
+			}
+
 			Parameters.ApplyAttributes (InvokeBuilder);
 
 			if (BeginInvokeBuilder != null) {
-				Parameters p = (Parameters) TypeManager.GetParameterData (BeginInvokeBuilder);
+				ParametersCompiled p = (ParametersCompiled) TypeManager.GetParameterData (BeginInvokeBuilder);
 				p.ApplyAttributes (BeginInvokeBuilder);
 			}
 
@@ -374,16 +333,14 @@ namespace Mono.CSharp {
 		}
 
 
-		public static ConstructorInfo GetConstructor (Type container_type, Type delegate_type)
+		public static ConstructorInfo GetConstructor (CompilerContext ctx, Type container_type, Type delegate_type)
 		{
 			Type dt = delegate_type;
-#if GMCS_SOURCE
 			Type[] g_args = null;
-			if (delegate_type.IsGenericType) {
-				g_args = delegate_type.GetGenericArguments ();
-				delegate_type = delegate_type.GetGenericTypeDefinition ();
+			if (TypeManager.IsGenericType (delegate_type)) {
+				g_args = TypeManager.GetTypeArguments (delegate_type);
+				delegate_type = TypeManager.DropGenericTypeArguments (delegate_type);
 			}
-#endif
 
 			Delegate d = TypeManager.LookupDelegate (delegate_type);
 			if (d != null) {
@@ -394,13 +351,13 @@ namespace Mono.CSharp {
 				return d.ConstructorBuilder;
 			}
 
-			Expression ml = Expression.MemberLookup (container_type,
+			Expression ml = Expression.MemberLookup (ctx, container_type,
 				null, dt, ConstructorInfo.ConstructorName, MemberTypes.Constructor,
 				BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly, Location.Null);
 
 			MethodGroupExpr mg = ml as MethodGroupExpr;
 			if (mg == null) {
-				Report.Error (-100, Location.Null, "Internal error: could not find delegate constructor!");
+				ctx.Report.Error (-100, Location.Null, "Internal error: could not find delegate constructor!");
 				// FIXME: null will cause a crash later
 				return null;
 			}
@@ -412,16 +369,16 @@ namespace Mono.CSharp {
 		// Returns the MethodBase for "Invoke" from a delegate type, this is used
 		// to extract the signature of a delegate.
 		//
-		public static MethodInfo GetInvokeMethod (Type container_type, Type delegate_type)
+		public static MethodInfo GetInvokeMethod (CompilerContext ctx, Type container_type, Type delegate_type)
 		{
 			Type dt = delegate_type;
-#if GMCS_SOURCE
+
 			Type[] g_args = null;
-			if (delegate_type.IsGenericType) {
-				g_args = delegate_type.GetGenericArguments ();
-				delegate_type = delegate_type.GetGenericTypeDefinition ();
+			if (TypeManager.IsGenericType (delegate_type)) {
+				g_args = TypeManager.GetTypeArguments (delegate_type);
+				delegate_type = TypeManager.DropGenericTypeArguments (delegate_type);
 			}
-#endif
+
 			Delegate d = TypeManager.LookupDelegate (delegate_type);
 			MethodInfo invoke;
 			if (d != null) {
@@ -429,7 +386,7 @@ namespace Mono.CSharp {
 				if (g_args != null) {
 					invoke = TypeBuilder.GetMethod (dt, d.InvokeBuilder);
 #if MS_COMPATIBLE
-					Parameters p = (Parameters) d.Parameters.InflateTypes (g_args, g_args);
+					ParametersCompiled p = (ParametersCompiled) d.Parameters.InflateTypes (g_args, g_args);
 					TypeManager.RegisterMethod (invoke, p);
 #endif
 					return invoke;
@@ -438,12 +395,12 @@ namespace Mono.CSharp {
 				return d.InvokeBuilder;
 			}
 
-			Expression ml = Expression.MemberLookup (container_type, null, dt,
+			Expression ml = Expression.MemberLookup (ctx, container_type, null, dt,
 				"Invoke", Location.Null);
 
 			MethodGroupExpr mg = ml as MethodGroupExpr;
 			if (mg == null) {
-				Report.Error (-100, Location.Null, "Internal error: could not find Invoke method!");
+				ctx.Report.Error (-100, Location.Null, "Internal error: could not find Invoke method!");
 				// FIXME: null will cause a crash later
 				return null;
 			}
@@ -479,78 +436,12 @@ namespace Mono.CSharp {
 
 			return Convert.ImplicitReferenceConversionExists (a, b);
 		}
-		
-		/// <summary>
-		///  Verifies whether the method in question is compatible with the delegate
-		///  Returns the method itself if okay and null if not.
-		/// </summary>
-		public static MethodBase VerifyMethod (Type container_type, Type delegate_type,
-						       MethodGroupExpr old_mg, MethodBase mb)
-		{
-			bool is_method_definition = TypeManager.IsGenericMethodDefinition (mb);
-			
-			MethodInfo invoke_mb = GetInvokeMethod (container_type, delegate_type);
-			if (invoke_mb == null)
-				return null;
-				
-			if (is_method_definition)
-				invoke_mb = (MethodInfo) TypeManager.DropGenericMethodArguments (invoke_mb);
-
-			AParametersCollection invoke_pd = TypeManager.GetParameterData (invoke_mb);
-
-#if GMCS_SOURCE
-			if (!is_method_definition && old_mg.type_arguments == null &&
-			    !TypeManager.InferTypeArguments (invoke_pd, ref mb))
-				return null;
-#endif
-			AParametersCollection pd = TypeManager.GetParameterData (mb);
-
-			if (invoke_pd.Count != pd.Count)
-				return null;
-
-			for (int i = pd.Count; i > 0; ) {
-				i--;
-
-				Type invoke_pd_type = invoke_pd.Types [i];
-				Type pd_type = pd.Types [i];
-				Parameter.Modifier invoke_pd_type_mod = invoke_pd.FixedParameters [i].ModFlags;
-				Parameter.Modifier pd_type_mod = pd.FixedParameters [i].ModFlags;
-
-				invoke_pd_type_mod &= ~Parameter.Modifier.PARAMS;
-				pd_type_mod &= ~Parameter.Modifier.PARAMS;
-
-				if (invoke_pd_type_mod != pd_type_mod)
-					return null;
-
-				if (TypeManager.IsEqual (invoke_pd_type, pd_type))
-					continue;
-
-				if (IsTypeCovariant (new EmptyExpression (invoke_pd_type), pd_type))
-					continue;
-
-				return null;
-			}
-
-			Type invoke_mb_retval = ((MethodInfo) invoke_mb).ReturnType;
-			Type mb_retval = ((MethodInfo) mb).ReturnType;
-			if (TypeManager.TypeToCoreType (invoke_mb_retval) == TypeManager.TypeToCoreType (mb_retval))
-				return mb;
-
-			//if (!IsTypeCovariant (mb_retval, invoke_mb_retval))
-			//	return null;
-
-			if (RootContext.Version == LanguageVersion.ISO_1) 
-				return null;
-
-			return mb;
-		}
 
 		// <summary>
 		//  Verifies whether the invocation arguments are compatible with the
 		//  delegate's target method
 		// </summary>
-		public static bool VerifyApplicability (EmitContext ec, Type delegate_type,
-							ArrayList args, Location loc)
+		public static bool VerifyApplicability (ResolveContext ec, Type delegate_type, ref Arguments args, Location loc)
 		{
 			int arg_count;
 
@@ -559,26 +450,21 @@ namespace Mono.CSharp {
 			else
 				arg_count = args.Count;
 
-			Expression ml = Expression.MemberLookup (
-				ec.ContainerType, delegate_type, "Invoke", loc);
-
-			MethodGroupExpr me = ml as MethodGroupExpr;
-			if (me == null) {
-				Report.Error (-100, loc, "Internal error: could not find Invoke method!" + delegate_type);
-				return false;
-			}
+			MethodBase mb = GetInvokeMethod (ec.Compiler, ec.CurrentType, delegate_type);
+			MethodGroupExpr me = new MethodGroupExpr (new MemberInfo [] { mb }, delegate_type, loc);
 			
-			MethodBase mb = GetInvokeMethod (ec.ContainerType, delegate_type);
 			AParametersCollection pd = TypeManager.GetParameterData (mb);
 
 			int pd_count = pd.Count;
 
 			bool params_method = pd.HasParams;
 			bool is_params_applicable = false;
-			bool is_applicable = me.IsApplicable (ec, args, arg_count, ref mb, ref is_params_applicable) == 0;
+			bool is_applicable = me.IsApplicable (ec, ref args, arg_count, ref mb, ref is_params_applicable) == 0;
+			if (args != null)
+				arg_count = args.Count;
 
 			if (!is_applicable && !params_method && arg_count != pd_count) {
-				Report.Error (1593, loc, "Delegate `{0}' does not take `{1}' arguments",
+				ec.Report.Error (1593, loc, "Delegate `{0}' does not take `{1}' arguments",
 					TypeManager.CSharpName (delegate_type), arg_count.ToString ());
 				return false;
 			}
@@ -594,12 +480,6 @@ namespace Mono.CSharp {
 			return TypeManager.GetFullNameSignature (invoke_method).Replace (".Invoke", "");
 		}
 		
-		public override MemberCache MemberCache {
-			get {
-				return member_cache;
-			}
-		}
-
 		public Expression InstanceExpression {
 			get {
 				return instance_expr;
@@ -623,49 +503,6 @@ namespace Mono.CSharp {
 				return ret_type;
 			}
 		}
-
-		public override AttributeTargets AttributeTargets {
-			get {
-				return AttributeTargets.Delegate;
-			}
-		}
-
-		//
-		//   Represents header string for documentation comment.
-		//
-		public override string DocCommentHeader {
-			get { return "T:"; }
-		}
-
-		#region IMemberContainer Members
-
-		string IMemberContainer.Name
-		{
-			get { throw new NotImplementedException (); }
-		}
-
-		Type IMemberContainer.Type
-		{
-			get { throw new NotImplementedException (); }
-		}
-
-		MemberCache IMemberContainer.BaseCache
-		{
-			get { throw new NotImplementedException (); }
-		}
-
-		bool IMemberContainer.IsInterface {
-			get {
-				return false;
-			}
-		}
-
-		MemberList IMemberContainer.GetMembers (MemberTypes mt, BindingFlags bf)
-		{
-			throw new NotImplementedException ();
-		}
-
-		#endregion
 	}
 
 	//
@@ -679,10 +516,10 @@ namespace Mono.CSharp {
 		protected MethodGroupExpr method_group;
 		protected Expression delegate_instance_expression;
 
-		public static ArrayList CreateDelegateMethodArguments (MethodInfo invoke_method, Location loc)
+		// TODO: Should either cache it or use interface to abstract it
+		public static Arguments CreateDelegateMethodArguments (AParametersCollection pd, Location loc)
 		{
-			AParametersCollection pd = TypeManager.GetParameterData (invoke_method);
-			ArrayList delegate_arguments = new ArrayList (pd.Count);
+			Arguments delegate_arguments = new Arguments (pd.Count);
 			for (int i = 0; i < pd.Count; ++i) {
 				Argument.AType atype_modifier;
 				Type atype = pd.Types [i];
@@ -695,11 +532,8 @@ namespace Mono.CSharp {
 					atype_modifier = Argument.AType.Out;
 					//atype = atype.GetElementType ();
 					break;
-				case Parameter.Modifier.ARGLIST:
-					// __arglist is not valid
-					throw new InternalErrorException ("__arglist modifier");
 				default:
-					atype_modifier = Argument.AType.Expression;
+					atype_modifier = 0;
 					break;
 				}
 				delegate_arguments.Add (new Argument (new TypeExpression (atype, loc), atype_modifier));
@@ -707,14 +541,14 @@ namespace Mono.CSharp {
 			return delegate_arguments;
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
 			MemberAccess ma = new MemberAccess (new MemberAccess (new QualifiedAliasMember ("global", "System", loc), "Delegate", loc), "CreateDelegate", loc);
 
-			ArrayList args = new ArrayList (3);
+			Arguments args = new Arguments (3);
 			args.Add (new Argument (new TypeOf (new TypeExpression (type, loc), loc)));
 			args.Add (new Argument (new NullLiteral (loc)));
-			args.Add (new Argument (new TypeOfMethodInfo (delegate_method, loc)));
+			args.Add (new Argument (new TypeOfMethod (delegate_method, loc)));
 			Expression e = new Invocation (ma, args).Resolve (ec);
 			if (e == null)
 				return null;
@@ -726,15 +560,15 @@ namespace Mono.CSharp {
 			return e.CreateExpressionTree (ec);
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
-			constructor_method = Delegate.GetConstructor (ec.ContainerType, type);
+			constructor_method = Delegate.GetConstructor (ec.Compiler, ec.CurrentType, type);
 
-			MethodInfo invoke_method = Delegate.GetInvokeMethod (ec.ContainerType, type);
+			MethodInfo invoke_method = Delegate.GetInvokeMethod (ec.Compiler, ec.CurrentType, type);
 			method_group.DelegateType = type;
 			method_group.CustomErrorHandler = this;
 
-			ArrayList arguments = CreateDelegateMethodArguments (invoke_method, loc);
+			Arguments arguments = CreateDelegateMethodArguments (TypeManager.GetParameterData (invoke_method), loc);
 			method_group = method_group.OverloadResolve (ec, ref arguments, false, loc);
 			if (method_group == null)
 				return null;
@@ -742,19 +576,19 @@ namespace Mono.CSharp {
 			delegate_method = (MethodInfo) method_group;
 			
 			if (TypeManager.IsNullableType (delegate_method.DeclaringType)) {
-				Report.Error (1728, loc, "Cannot create delegate from method `{0}' because it is a member of System.Nullable<T> type",
+				ec.Report.Error (1728, loc, "Cannot create delegate from method `{0}' because it is a member of System.Nullable<T> type",
 					TypeManager.GetFullNameSignature (delegate_method));
 				return null;
 			}		
 			
-			Invocation.IsSpecialMethodInvocation (delegate_method, loc);
+			Invocation.IsSpecialMethodInvocation (ec, delegate_method, loc);
 
 			ExtensionMethodGroupExpr emg = method_group as ExtensionMethodGroupExpr;
 			if (emg != null) {
 				delegate_instance_expression = emg.ExtensionExpression;
 				Type e_type = delegate_instance_expression.Type;
 				if (TypeManager.IsValueType (e_type)) {
-					Report.Error (1113, loc, "Extension method `{0}' of value type `{1}' cannot be used to create delegates",
+					ec.Report.Error (1113, loc, "Extension method `{0}' of value type `{1}' cannot be used to create delegates",
 						TypeManager.CSharpSignature (delegate_method), TypeManager.CSharpName (e_type));
 				}
 			}
@@ -766,13 +600,13 @@ namespace Mono.CSharp {
 			}
 
 			if (Invocation.IsMethodExcluded (delegate_method, loc)) {
-				Report.SymbolRelatedToPreviousError (delegate_method);
+				ec.Report.SymbolRelatedToPreviousError (delegate_method);
 				MethodOrOperator m = TypeManager.GetMethod (delegate_method) as MethodOrOperator;
 				if (m != null && m.IsPartialDefinition) {
-					Report.Error (762, loc, "Cannot create delegate from partial method declaration `{0}'",
+					ec.Report.Error (762, loc, "Cannot create delegate from partial method declaration `{0}'",
 						TypeManager.CSharpSignature (delegate_method));
 				} else {
-					Report.Error (1618, loc, "Cannot create delegate with `{0}' because it has a Conditional attribute",
+					ec.Report.Error (1618, loc, "Cannot create delegate with `{0}' because it has a Conditional attribute",
 						TypeManager.CSharpSignature (delegate_method));
 				}
 			}
@@ -782,7 +616,7 @@ namespace Mono.CSharp {
 			return this;
 		}
 
-		void DoResolveInstanceExpression (EmitContext ec)
+		void DoResolveInstanceExpression (ResolveContext ec)
 		{
 			//
 			// Argument is another delegate
@@ -825,43 +659,42 @@ namespace Mono.CSharp {
 			ec.ig.Emit (OpCodes.Newobj, constructor_method);
 		}
 
-		void Error_ConversionFailed (EmitContext ec, MethodBase method, Expression return_type)
+		void Error_ConversionFailed (ResolveContext ec, MethodBase method, Expression return_type)
 		{
-			MethodInfo invoke_method = Delegate.GetInvokeMethod (ec.ContainerType, type);
+			MethodInfo invoke_method = Delegate.GetInvokeMethod (ec.Compiler, ec.CurrentType, type);
 			string member_name = delegate_instance_expression != null ?
 				Delegate.FullDelegateDesc (method) :
 				TypeManager.GetFullNameSignature (method);
 
-			Report.SymbolRelatedToPreviousError (type);
-			Report.SymbolRelatedToPreviousError (method);
+			ec.Report.SymbolRelatedToPreviousError (type);
+			ec.Report.SymbolRelatedToPreviousError (method);
 			if (RootContext.Version == LanguageVersion.ISO_1) {
-				Report.Error (410, loc, "A method or delegate `{0} {1}' parameters and return type must be same as delegate `{2} {3}' parameters and return type",
+				ec.Report.Error (410, loc, "A method or delegate `{0} {1}' parameters and return type must be same as delegate `{2} {3}' parameters and return type",
 					TypeManager.CSharpName (((MethodInfo) method).ReturnType), member_name,
 					TypeManager.CSharpName (invoke_method.ReturnType), Delegate.FullDelegateDesc (invoke_method));
 				return;
 			}
 			if (return_type == null) {
-				Report.Error (123, loc, "A method or delegate `{0}' parameters do not match delegate `{1}' parameters",
+				ec.Report.Error (123, loc, "A method or delegate `{0}' parameters do not match delegate `{1}' parameters",
 					member_name, Delegate.FullDelegateDesc (invoke_method));
 				return;
 			}
 
-			Report.Error (407, loc, "A method or delegate `{0} {1}' return type does not match delegate `{2} {3}' return type",
+			ec.Report.Error (407, loc, "A method or delegate `{0} {1}' return type does not match delegate `{2} {3}' return type",
 				return_type.GetSignatureForError (), member_name,
 				TypeManager.CSharpName (invoke_method.ReturnType), Delegate.FullDelegateDesc (invoke_method));
 		}
 
-		public static MethodBase ImplicitStandardConversionExists (MethodGroupExpr mg, Type target_type)
+		public static bool ImplicitStandardConversionExists (ResolveContext ec, MethodGroupExpr mg, Type target_type)
 		{
 			if (target_type == TypeManager.delegate_type || target_type == TypeManager.multicast_delegate_type)
-				return null;
+				return false;
 
-			foreach (MethodInfo mi in mg.Methods){
-				MethodBase mb = Delegate.VerifyMethod (mg.DeclaringType, target_type, mg, mi);
-				if (mb != null)
-					return mb;
-			}
-			return null;
+			mg.DelegateType = target_type;
+			MethodInfo invoke = Delegate.GetInvokeMethod (ec.Compiler, null, target_type);
+
+			Arguments arguments = CreateDelegateMethodArguments (TypeManager.GetParameterData (invoke), mg.Location);
+			return mg.OverloadResolve (ec, ref arguments, true, mg.Location) != null;
 		}
 
 		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
@@ -875,7 +708,7 @@ namespace Mono.CSharp {
 
 		#region IErrorHandler Members
 
-		public bool NoExactMatch (EmitContext ec, MethodBase method)
+		public bool NoExactMatch (ResolveContext ec, MethodBase method)
 		{
 			if (TypeManager.IsGenericMethod (method))
 				return false;
@@ -884,7 +717,7 @@ namespace Mono.CSharp {
 			return true;
 		}
 
-		public bool AmbiguousCall (MethodBase ambiguous)
+		public bool AmbiguousCall (ResolveContext ec, MethodBase ambiguous)
 		{
 			return false;
 		}
@@ -904,7 +737,7 @@ namespace Mono.CSharp {
 			loc = l;
 		}
 
-		static public Expression Create (EmitContext ec, MethodGroupExpr mge,
+		static public Expression Create (ResolveContext ec, MethodGroupExpr mge,
 						 Type target_type, Location loc)
 		{
 			ImplicitDelegateCreation d = new ImplicitDelegateCreation (target_type, mge, loc);
@@ -917,26 +750,26 @@ namespace Mono.CSharp {
 	//
 	public class NewDelegate : DelegateCreation
 	{
-		public ArrayList Arguments;
+		public Arguments Arguments;
 
 		//
 		// This constructor is invoked from the `New' expression
 		//
-		public NewDelegate (Type type, ArrayList Arguments, Location loc)
+		public NewDelegate (Type type, Arguments Arguments, Location loc)
 		{
 			this.type = type;
 			this.Arguments = Arguments;
 			this.loc  = loc; 
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			if (Arguments == null || Arguments.Count != 1) {
-				Error_InvalidDelegateArgument ();
+				ec.Report.Error (149, loc, "Method name expected");
 				return null;
 			}
 
-			Argument a = (Argument) Arguments [0];
+			Argument a = Arguments [0];
 			if (!a.ResolveMethodGroup (ec))
 				return null;
 
@@ -954,7 +787,7 @@ namespace Mono.CSharp {
 			method_group = e as MethodGroupExpr;
 			if (method_group == null) {
 				if (!TypeManager.IsDelegateType (e.Type)) {
-					e.Error_UnexpectedKind (ResolveFlags.MethodGroup | ResolveFlags.Type, loc);
+					e.Error_UnexpectedKind (ec, ResolveFlags.MethodGroup | ResolveFlags.Type, loc);
 					return null;
 				}
 
@@ -963,53 +796,38 @@ namespace Mono.CSharp {
 				//
 				delegate_instance_expression = e;
 				method_group = new MethodGroupExpr (new MemberInfo [] { 
-					Delegate.GetInvokeMethod (ec.ContainerType, e.Type) }, e.Type, loc);
+					Delegate.GetInvokeMethod (ec.Compiler, ec.CurrentType, e.Type) }, e.Type, loc);
 			}
 
 			return base.DoResolve (ec);
-		}
-
-		void Error_InvalidDelegateArgument ()
-		{
-			Report.Error (149, loc, "Method name expected");
 		}
 	}
 
 	public class DelegateInvocation : ExpressionStatement {
 
 		readonly Expression InstanceExpr;
-		readonly ArrayList  Arguments;
-
+		Arguments  Arguments;
 		MethodInfo method;
 		
-		public DelegateInvocation (Expression instance_expr, ArrayList args, Location loc)
+		public DelegateInvocation (Expression instance_expr, Arguments args, Location loc)
 		{
 			this.InstanceExpr = instance_expr;
 			this.Arguments = args;
 			this.loc = loc;
 		}
 		
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			ArrayList args;
-			if (Arguments == null)
-				args = new ArrayList (1);
-			else
-				args = new ArrayList (Arguments.Count + 1);
+			Arguments args = Arguments.CreateForExpressionTree (ec, Arguments,
+				InstanceExpr.CreateExpressionTree (ec));
 
-			args.Add (new Argument (InstanceExpr.CreateExpressionTree (ec)));
-			if (Arguments != null) {
-				foreach (Argument a in Arguments)
-					args.Add (new Argument (a.Expr.CreateExpressionTree (ec)));
-			}
-
-			return CreateExpressionFactoryCall ("Invoke", args);
+			return CreateExpressionFactoryCall (ec, "Invoke", args);
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			if (InstanceExpr is EventExpr) {
-				((EventExpr) InstanceExpr).Error_CannotAssign ();
+				((EventExpr) InstanceExpr).Error_CannotAssign (ec);
 				return null;
 			}
 			
@@ -1017,17 +835,10 @@ namespace Mono.CSharp {
 			if (del_type == null)
 				return null;
 			
-			if (Arguments != null){
-				foreach (Argument a in Arguments){
-					if (!a.Resolve (ec, loc))
-						return null;
-				}
-			}
-			
-			if (!Delegate.VerifyApplicability (ec, del_type, Arguments, loc))
+			if (!Delegate.VerifyApplicability (ec, del_type, ref Arguments, loc))
 				return null;
 
-			method = Delegate.GetInvokeMethod (ec.ContainerType, del_type);
+			method = Delegate.GetInvokeMethod (ec.Compiler, ec.CurrentType, del_type);
 			type = TypeManager.TypeToCoreType (method.ReturnType);
 			eclass = ExprClass.Value;
 			
@@ -1058,11 +869,8 @@ namespace Mono.CSharp {
 			method = storey.MutateGenericMethod (method);
 			type = storey.MutateType (type);
 
-			if (Arguments != null) {
-				foreach (Argument a in Arguments) {
-					a.Expr.MutateHoistedGenericType (storey);
-				}
-			}
+			if (Arguments != null)
+				Arguments.MutateHoistedGenericType (storey);
 
 			InstanceExpr.MutateHoistedGenericType (storey);
 		}

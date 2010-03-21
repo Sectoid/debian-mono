@@ -54,7 +54,7 @@
 # endif
 
 # include <stdio.h>
-# if defined(MSWINCE)
+# if defined(MSWINCE) || defined (SN_TARGET_PS3)
 #   define SIGSEGV 0 /* value is irrelevant */
 # else
 #   include <signal.h>
@@ -336,6 +336,13 @@ char *GC_parse_map_entry(char *buf_ptr, word *start, word *end,
   {
     extern ptr_t GC_find_limit();
 
+	if (GC_no_dls)
+		/* 
+		 * Not needed, avoids the SIGSEGV caused by GC_find_limit which
+		 * complicates debugging.
+		 */
+		return;
+
 #   ifdef LINUX
       /* Try the easy approaches first:	*/
       if ((ptr_t)__data_start != 0) {
@@ -504,7 +511,7 @@ void GC_enable_signals(void)
 #  if !defined(PCR) && !defined(AMIGA) && !defined(MSWIN32) \
       && !defined(MSWINCE) \
       && !defined(MACOS) && !defined(DJGPP) && !defined(DOS4GW) \
-      && !defined(NOSYS) && !defined(ECOS)
+      && !defined(NOSYS) && !defined(ECOS) && !defined(SN_TARGET_PS3)
 
 #   if defined(sigmask) && !defined(UTS4) && !defined(HURD)
 	/* Use the traditional BSD interface */
@@ -1449,8 +1456,10 @@ void GC_register_data_segments()
 	/* hanging from it.  We're on thin ice here ...			*/
         extern caddr_t sbrk();
 
+	GC_ASSERT(DATASTART);
 	GC_add_roots_inner(DATASTART, (char *)sbrk(0), FALSE);
 #     else
+	GC_ASSERT(DATASTART);
 	GC_add_roots_inner(DATASTART, (char *)(DATAEND), FALSE);
 #       if defined(DATASTART2)
          GC_add_roots_inner(DATASTART2, (char *)(DATAEND2), FALSE);
@@ -1505,7 +1514,7 @@ void GC_register_data_segments()
 
 # if !defined(OS2) && !defined(PCR) && !defined(AMIGA) \
 	&& !defined(MSWIN32) && !defined(MSWINCE) \
-	&& !defined(MACOS) && !defined(DOS4GW)
+	&& !defined(MACOS) && !defined(DOS4GW) && !defined(SN_TARGET_PS3)
 
 # ifdef SUNOS4
     extern caddr_t sbrk();

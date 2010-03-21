@@ -615,11 +615,11 @@ namespace System.Windows.Forms
 				else
 					height = 22;
 
-				tsi.SetBounds (new Rectangle (x, y, widest, height));
+				tsi.SetBounds (new Rectangle (x, y, preferred_size.Width, height));
 				y += height + tsi.Margin.Bottom;
 			}
 
-			this.Size = new Size (widest + this.Padding.Horizontal, y + this.Padding.Bottom);// + 2);
+			this.Size = new Size (widest, y + this.Padding.Bottom);
 			this.SetDisplayedItems ();
 			this.OnLayoutCompleted (EventArgs.Empty);
 			this.Invalidate ();
@@ -956,6 +956,10 @@ namespace System.Windows.Forms
 				case Keys.Escape:
 					this.Dismiss (ToolStripDropDownCloseReason.Keyboard);
 					
+					// ContextMenuStrip won't have a parent
+					if (this.OwnerItem == null)
+						return true;
+						
 					ToolStrip parent_strip = this.OwnerItem.Parent;
 					ToolStripManager.SetActiveToolStrip (parent_strip, true);
 					

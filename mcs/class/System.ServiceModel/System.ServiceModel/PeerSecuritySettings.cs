@@ -15,13 +15,22 @@ namespace System.ServiceModel
 	{
 		SecurityMode mode;
 		
-		public PeerSecuritySettings()
+		public PeerSecuritySettings ()
 		{
+			Transport = new PeerTransportSecuritySettings ();
 		}
 		
 		public SecurityMode Mode {
 			get { return mode; }
 			set { mode = value; }
+		}
+
+		public PeerTransportSecuritySettings Transport { get; private set; }
+
+		internal void CopyTo (PeerSecuritySettings other)
+		{
+			other.mode = mode;
+			other.Transport.CredentialType = Transport.CredentialType;
 		}
 	}
 }

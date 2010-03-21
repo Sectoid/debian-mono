@@ -26,11 +26,14 @@
 //
 
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace System.Collections 
 {
 #if NET_2_0
 	[ComVisible(true)]
+	[DebuggerDisplay ("Count={Count}")]
+	[DebuggerTypeProxy (typeof (CollectionDebuggerView))]
 #endif
 	[Serializable]
 #if INSIDE_CORLIB

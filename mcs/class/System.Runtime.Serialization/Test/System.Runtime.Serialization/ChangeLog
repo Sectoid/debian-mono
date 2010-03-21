@@ -1,3 +1,133 @@
+2010-02-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporterTest.cs : added a bunch of tests for new
+	  implementation. Disable yet.
+
+2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporterTest.cs : add test that it gives
+	  appropriate code namespaces.
+
+2010-02-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporterTest.cs : add test that ArrayOfxxx type
+	  is not added.
+
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added test for bug #560155.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added test for bug #568763.
+
+2009-09-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractExporterTest.cs : disable some tests that started
+	  to fail due to correctly sorted fields while xsd exporter has
+	  some bugs that emits duplicate fields (hence ambiguity occurs).
+
+2009-09-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : Test nested type serialization type
+	  initialization.
+
+2009-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : fix (here too) bad serialization-
+	  compatibility-dependent test.
+
+2009-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : fixed wrong EOLs that resulted in
+	  failure in .NET.
+	* XsdDataContractExporterTest.cs : fix test that failed on .NET,
+	  and marked as NotWorking (no proceeding wsdl work yet).
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : add test for [IgnoreDataMember].
+
+2009-07-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XmlObjectSerializerTest.cs: Add test cases with a generic
+	dictionary (empty, broken with r138386, and with one element) 
+	that both works on MS.NET and for which Moonlight depends on.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs :
+	  Add test for bug #524086 by Rolf Bjarne Kvinge.
+	  Add enum flags test, which should not raise an error.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : add test for bug #524083, by
+	  Rolf Bjarne Kvinge.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : now we can make xml indented as
+	  originally done in #524088.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added test for bug #524088 by
+	  Rolf Bjarne Kvinge (a bit modified).
+
+2009-06-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : enable interface collection test and
+	  add some more test lines.
+
+2009-05-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added serialization test for
+	  interface collection.
+
+2009-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added test for dictionary with
+	  CollectionDataContractAttribute.
+
+2009-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added tests for IDictionary
+	  serialization (both generic and non-generic).
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : test for generic IList of
+	  DictionaryEntry. (no Hashtable serialization yet.)
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : test for generic IList of KeyValuePair
+	  (it is still different from full IDictionary support...!).
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : test for generic IList serialization.
+
+2009-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : test for generic type serialization.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : fixed non-contract serialization
+	  tests and remove some NotWorking.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : fixed collection contract test and
+	  added some notes.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added couple of test fixes in
+	  collection serialization tests.
+
 2008-11-23  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlObjectSerializerTest.cs : added test for IsReference = true.

@@ -42,15 +42,17 @@ namespace System.ServiceModel.Channels
 			unsafe_ntlm_auth;
 		bool use_default_proxy = true, keep_alive_enabled = true;
 		int max_buffer_size = 0x10000;
-		AuthenticationSchemes auth_scheme =
-			AuthenticationSchemes.Anonymous;
-		AuthenticationSchemes proxy_auth_scheme =
-			AuthenticationSchemes.Anonymous;
 		HostNameComparisonMode host_cmp_mode;
 		Uri proxy_address;
 		string realm = String.Empty;
 		TransferMode transfer_mode;
 		IDefaultCommunicationTimeouts timeouts;
+#if !NET_2_1 || MONOTOUCH
+		AuthenticationSchemes auth_scheme =
+			AuthenticationSchemes.Anonymous;
+		AuthenticationSchemes proxy_auth_scheme =
+			AuthenticationSchemes.Anonymous;
+#endif
 		// If you add fields, do not forget them in copy constructor.
 
 		public HttpTransportBindingElement ()
@@ -67,24 +69,33 @@ namespace System.ServiceModel.Channels
 			use_default_proxy = other.use_default_proxy;
 			keep_alive_enabled = other.keep_alive_enabled;
 			max_buffer_size = other.max_buffer_size;
-			auth_scheme = other.auth_scheme;
-			proxy_auth_scheme = other.proxy_auth_scheme;
 			host_cmp_mode = other.host_cmp_mode;
 			proxy_address = other.proxy_address;
 			realm = other.realm;
 			transfer_mode = other.transfer_mode;
 			// FIXME: it does not look safe
 			timeouts = other.timeouts;
+#if !NET_2_1 || MONOTOUCH
+			auth_scheme = other.auth_scheme;
+			proxy_auth_scheme = other.proxy_auth_scheme;
+#endif
 		}
+
+#if !NET_2_1 || MONOTOUCH
+		public AuthenticationSchemes AuthenticationScheme {
+			get { return auth_scheme; }
+			set { auth_scheme = value; }
+		}
+
+		public AuthenticationSchemes ProxyAuthenticationScheme {
+			get { return proxy_auth_scheme; }
+			set { proxy_auth_scheme = value; }
+		}
+#endif
 
 		public bool AllowCookies {
 			get { return allow_cookies; }
 			set { allow_cookies = value; }
-		}
-
-		public AuthenticationSchemes AuthenticationScheme {
-			get { return auth_scheme; }
-			set { auth_scheme = value; }
 		}
 
 		public bool BypassProxyOnLocal {
@@ -110,11 +121,6 @@ namespace System.ServiceModel.Channels
 		public Uri ProxyAddress {
 			get { return proxy_address; }
 			set { proxy_address = value; }
-		}
-
-		public AuthenticationSchemes ProxyAuthenticationScheme {
-			get { return proxy_auth_scheme; }
-			set { proxy_auth_scheme = value; }
 		}
 
 		public string Realm {
@@ -169,7 +175,10 @@ namespace System.ServiceModel.Channels
 		{
 			// remaining contexts are ignored ... e.g. such binding
 			// element that always causes an error is ignored.
-			return new HttpChannelListener<TChannel> (this, context);
+			if (ServiceHostingEnvironment.InAspNet)
+				return new AspNetChannelListener<TChannel> (this, context);
+			else
+				return new HttpSimpleChannelListener<TChannel> (this, context);
 		}
 #endif
 
@@ -178,9 +187,17 @@ namespace System.ServiceModel.Channels
 			return new HttpTransportBindingElement (this);
 		}
 
-		[MonoTODO]
 		public override T GetProperty<T> (BindingContext context)
 		{
+			// http://blogs.msdn.com/drnick/archive/2007/04/10/interfaces-for-getproperty-part-1.aspx
+#if !NET_2_1
+			if (typeof (T) == typeof (ISecurityCapabilities))
+				return (T) (object) new HttpBindingProperties (this);
+			if (typeof (T) == typeof (IBindingDeliveryCapabilities))
+				return (T) (object) new HttpBindingProperties (this);
+#endif
+			if (typeof (T) == typeof (TransferMode))
+				return (T) (object) TransferMode;
 			return base.GetProperty<T> (context);
 		}
 
@@ -205,6 +222,61 @@ namespace System.ServiceModel.Channels
 			WsdlEndpointConversionContext context)
 		{
 			throw new NotImplementedException ();
+		}
+
+		class HttpBindingProperties : ISecurityCapabilities, IBindingDeliveryCapabilities
+		{
+			HttpTransportBindingElement source;
+
+			public HttpBindingProperties (HttpTransportBindingElement source)
+			{
+				this.source = source;
+			}
+
+			public bool AssuresOrderedDelivery {
+				get { return false; }
+			}
+
+			public bool QueuedDelivery {
+				get { return false; }
+			}
+
+			public ProtectionLevel SupportedRequestProtectionLevel {
+				get { return ProtectionLevel.None; }
+			}
+
+			public ProtectionLevel SupportedResponseProtectionLevel {
+				get { return ProtectionLevel.None; }
+			}
+
+			public bool SupportsClientAuthentication {
+				get { return source.AuthenticationScheme != AuthenticationSchemes.Anonymous; }
+			}
+
+			public bool SupportsServerAuthentication {
+				get {
+					switch (source.AuthenticationScheme) {
+					case AuthenticationSchemes.Negotiate:
+						return true;
+					default:
+						return false;
+					}
+				}
+			}
+
+			public bool SupportsClientWindowsIdentity {
+				get {
+					switch (source.AuthenticationScheme) {
+					case AuthenticationSchemes.Basic:
+					case AuthenticationSchemes.Digest: // hmm... why? but they return true on .NET
+					case AuthenticationSchemes.Negotiate:
+					case AuthenticationSchemes.Ntlm:
+						return true;
+					default:
+						return false;
+					}
+				}
+			}
 		}
 #endif
 	}

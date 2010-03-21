@@ -1,4 +1,3 @@
-
 using System;
 using System.Reflection;
 
@@ -16,7 +15,6 @@ public class OMetaParser {
 }
 
 public class Driver {
-
 	static int Main () {
 		var f = new OMetaParser ();
 		var m = typeof (OMetaParser).GetMethod ("NameFirst");

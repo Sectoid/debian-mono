@@ -55,6 +55,7 @@ namespace System.Runtime.Serialization
 
 		int max_items = 0x10000; // FIXME: could be from config.
 
+		bool names_filled;
 		XmlDictionaryString root_name, root_ns;
 
 		public DataContractSerializer (Type type)
@@ -70,11 +71,12 @@ namespace System.Runtime.Serialization
 				throw new ArgumentNullException ("type");
 			this.type = type;
 			known_types = new KnownTypeCollection ();
+			PopulateTypes (knownTypes);
+			known_types.TryRegister (type);
 			QName qname = known_types.GetQName (type);
 
 			FillDictionaryString (qname.Name, qname.Namespace);
 			
-			PopulateTypes (knownTypes);
 		}
 
 		public DataContractSerializer (Type type, string rootName,
@@ -196,6 +198,7 @@ namespace System.Runtime.Serialization
 			XmlDictionary d = new XmlDictionary ();
 			root_name = d.Add (name);
 			root_ns = d.Add (ns);
+			names_filled = true;
 		}
 
 		void Initialize (
@@ -250,6 +253,11 @@ namespace System.Runtime.Serialization
 		public override object ReadObject (XmlReader reader)
 		{
 			return ReadObject (XmlDictionaryReader.CreateDictionaryReader (reader));
+		}
+
+		public override object ReadObject (XmlReader reader, bool verifyObjectName)
+		{
+			return ReadObject (XmlDictionaryReader.CreateDictionaryReader (reader), verifyObjectName);
 		}
 
 		[MonoTODO]
@@ -320,6 +328,12 @@ namespace System.Runtime.Serialization
 				known_types.RemoveAt (startTypeCount);
 		}
 
+		public override void WriteObjectContent (XmlWriter writer, object graph)
+		{
+			XmlDictionaryWriter w = XmlDictionaryWriter.CreateDictionaryWriter (writer);
+			WriteObjectContent (w, graph);
+		}
+
 		// SP1
 		public override void WriteStartObject (
 			XmlWriter writer, object graph)
@@ -338,10 +352,11 @@ namespace System.Runtime.Serialization
 
 
 			if (graph == null) {
-				writer.WriteStartElement (root_name.Value, root_ns.Value);
+				if (names_filled)
+					writer.WriteStartElement (root_name.Value, root_ns.Value);
+				else
+					writer.WriteStartElement (root_name, root_ns);
 				writer.WriteAttributeString ("i", "nil", XmlSchema.InstanceNamespace, "true");
-				writer.WriteAttributeString ("xmlns", xmlns, root_ns.Value);
-
 				return;
 			}
 
@@ -351,7 +366,10 @@ namespace System.Runtime.Serialization
 
 			known_types.Add (graph.GetType ());
 
-			writer.WriteStartElement (root_name.Value, root_ns.Value);
+			if (names_filled)
+				writer.WriteStartElement (root_name.Value, root_ns.Value);
+			else
+				writer.WriteStartElement (root_name, root_ns);
 			if (root_ns.Value != root_qname.Namespace)
 				if (root_qname.Namespace != KnownTypeCollection.MSSimpleNamespace)
 					writer.WriteXmlnsAttribute (null, root_qname.Namespace);

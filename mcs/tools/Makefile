@@ -14,8 +14,6 @@ net_1_1_dirs := \
 	browsercaps-updater	\
 	monop		\
 	gacutil		\
-	linker		\
-	tuner		\
 	cil-strip	\
 	resgen		\
 	macpack		\
@@ -28,17 +26,19 @@ net_1_1_dirs := \
 	monodoc		\
 	mod		\
 	compiler-tester	\
-	mono-xmltool	\
 	installvst		\
 	installutil
 
 net_2_0_dirs := \
 	al			\
 	corcompare	\
+	linker		\
+	tuner		\
+	csharplib	\
 	csharp		\
-	lc		\
 	mono-xsd	\
 	wsdl		\
+	mono-xmltool	\
 	compiler-tester	\
 	monop		\
 	xbuild		\
@@ -52,19 +52,24 @@ net_2_0_dirs := \
 	mconfig		\
 	installutil	\
 	nunitreport	\
+	pdb2mdb		\
 	sqlsharp	\
+	sqlmetal	\
 	gacutil		\
-	csharplib
+	svcutil		\
+	lc
 
 net_2_1_dirs := \
 	compiler-tester
-
+	
 net_1_1_bootstrap_SUBDIRS = gacutil security resgen culevel
 net_1_1_SUBDIRS := $(net_1_1_dirs)
 net_2_0_bootstrap_SUBDIRS = resgen
 net_2_0_SUBDIRS := $(net_2_0_dirs)
 net_2_1_raw_SUBDIRS := $(net_2_1_dirs)
-net_2_1_SUBDIRS := $(net_2_1_dirs) moon
+net_2_1_SUBDIRS := $(net_2_1_dirs)
+net_4_0_bootstrap_SUBDIRS = resgen
+net_4_0_SUBDIRS := $(net_2_0_dirs)
 
 SUBDIRS = $(net_1_1_SUBDIRS) $(net_2_0_SUBDIRS) $(net_2_1_SUBDIRS)
 

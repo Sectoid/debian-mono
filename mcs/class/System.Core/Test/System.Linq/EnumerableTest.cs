@@ -86,6 +86,38 @@ namespace MonoTests.System.Linq {
 			AssertAreSame (result, foos.Cast<Bar> ());
 		}
 
+		class Bingo : IEnumerable<int>, IEnumerable<string> {
+
+			IEnumerator<int> IEnumerable<int>.GetEnumerator ()
+			{
+				yield return 42;
+				yield return 12;
+			}
+
+			IEnumerator<string> IEnumerable<string>.GetEnumerator ()
+			{
+				yield return "foo";
+				yield return "bar";
+			}
+
+			public IEnumerator GetEnumerator ()
+			{
+				return (this as IEnumerable<int>).GetEnumerator ();
+			}
+		}
+
+		[Test]
+		public void TestCastToImplementedType ()
+		{
+			var ints = new int [] { 42, 12 };
+			var strs = new string [] { "foo", "bar" };
+
+			var bingo = new Bingo ();
+
+			AssertAreSame (ints, bingo.Cast<int> ());
+			AssertAreSame (strs, bingo.Cast<string> ());
+		}
+
 		[Test]
 		public void TestLast ()
 		{
@@ -209,11 +241,47 @@ namespace MonoTests.System.Linq {
 		}
 
 		[Test]
+		public void TestMaxNullableInt32 ()
+		{
+			int? [] data = { null, null, null };
+
+			Assert.IsNull (data.Max (x => -x));
+
+			data = new int? [] { null, 1, 2 };
+
+			Assert.AreEqual (-1, data.Max (x => -x));
+		}
+
+		[Test]
 		public void TestMin ()
 		{
 			int [] data = {3, 5, 2, 6, 1, 7};
 
 			Assert.AreEqual (1, data.Min ());
+		}
+
+		[Test]
+		public void TestMinNullableInt32 ()
+		{
+			int? [] data = { null, null, null };
+
+			Assert.IsNull (data.Min(x => -x));
+
+			data = new int? [] { null, 1, 2 };
+
+			Assert.AreEqual (-2, data.Min (x => -x));
+		}
+
+		[Test]
+		public void TestMinStringEmpty ()
+		{
+			Assert.IsNull ((new string [0]).Min ());
+		}
+
+		[Test]
+		public void TestMaxStringEmpty ()
+		{
+			Assert.IsNull ((new string [0]).Max ());
 		}
 
 		[Test]
@@ -243,6 +311,15 @@ namespace MonoTests.System.Linq {
 			AssertAreSame (result, array);
 
 			Assert.AreEqual (typeof (int []), array.GetType ());
+		}
+
+		[Test]
+		public void TestIntersect ()
+		{
+			int [] left = { 1, 1 }, right = { 1, 1 };
+			int [] result = { 1 };
+
+			AssertAreSame (result, left.Intersect (right));
 		}
 
 		[Test]

@@ -1,7 +1,34 @@
+2009-11-25  Jb Evain  <jbevain@novell.com>
+
+	* QueueTest.cs: add test for a specific combination of
+	calls that make the queue crash when enqueuing an item.
+
+	backport 146925.
+
+2009-11-25  Jb Evain  <jbevain@novell.com>
+
+	* QueueTest.cs: add tests for ICollection.CopyTo.
+
+	backport r146914.
+
+2009-07-31  Raja R Harinath  <harinath@hurrynot.org>
+
+	* SortedDictionaryTest.cs (Enumerator_Current): New test.
+	(KeyEnumerator_Current, ValueEnumerator_Current): Likewise.
+
 2009-07-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SortedListTest.cs: new tests for bug #521750 provided by
 	Kevin Fitzgerald.
+
+2009-05-10  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* LinkedListTest.cs: Added test for #481621,
+	converted from example code by Andy Hume <andyhume32@yahoo.co.uk>.
+
+2009-03-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* SortedListTest.cs: Add tests for #483985.
 
 2009-05-06  Pia Eriksson  <pe@hallerud.se>
 
@@ -12,7 +39,7 @@
 	* StackTest.cs: Test for CopyTo extended w. case when Count == 0
 	* SortedDictionaryTest.cs: Added test for CopyTo on SortedDictionary,
 	SortedDictionary.Keys and SortedDictionary.Values
-	
+
 2007-08-20  Jb Evain  <jbevain@novell.com>
 
 	* SortedListTest.cs: Tests for #82492.

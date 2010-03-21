@@ -47,6 +47,7 @@ namespace System.Xml.Schema
 		internal static XmlSchemaDerivationMethod FinalAllowed;
 		internal static XmlSchemaDerivationMethod ElementBlockAllowed;
 		internal static XmlSchemaDerivationMethod ComplexTypeBlockAllowed;
+		internal static readonly bool StrictMsCompliant = Environment.GetEnvironmentVariable ("MONO_STRICT_MS_COMPLIANT") == "yes";
 
 
 		public static void AddToTable (XmlSchemaObjectTable table, XmlSchemaObject obj,
@@ -71,8 +72,12 @@ namespace System.Xml.Schema
 						table [qname].redefinedObject = obj;
 					return;	// never add to the table.
 				}
+				else if (StrictMsCompliant) {
+					table.Set (qname, obj);
+				}
 				else
-					obj.error (h, String.Format ("Named item {0} was already contained in the schema object table.", qname));
+					obj.error (h, String.Format ("Named item {0} was already contained in the schema object table. {1}",
+					                             qname, "Consider setting MONO_STRICT_MS_COMPLIANT to 'yes' to mimic MS implementation."));
 			}
 			else
 				table.Set (qname, obj);
@@ -167,6 +172,21 @@ namespace System.Xml.Schema
 				return true;
 			}
 			return false;
+		}
+
+		public static bool AreSchemaDatatypeEqual (XmlSchemaSimpleType st1, object v1, XmlSchemaSimpleType st2, object v2)
+		{
+			if (st1.Datatype is XsdAnySimpleType)
+				return AreSchemaDatatypeEqual (st1.Datatype as XsdAnySimpleType, v1, st2.Datatype as XsdAnySimpleType, v2);
+			// otherwise the types are lists of strings.
+			string [] a1 = v1 as string [];
+			string [] a2 = v2 as string [];
+			if (st1 != st2 || a1 == null || a2 == null || a1.Length != a2.Length)
+				return false;
+			for (int i = 0; i < a1.Length; i++)
+				if (a1 [i] != a2 [i])
+					return false;
+			return true;
 		}
 
 		public static bool AreSchemaDatatypeEqual (XsdAnySimpleType st1, object v1,
@@ -537,10 +557,10 @@ namespace System.Xml.Schema
 					}
 					foreach (DictionaryEntry entry in grp.AttributeUses) {
 						XmlSchemaAttribute attr = (XmlSchemaAttribute) entry.Value;
-#if BUGGY_MS_COMPLIANT
-						if (attr.Use == XmlSchemaUse.Prohibited)
+
+						if (StrictMsCompliant && attr.Use == XmlSchemaUse.Prohibited)
 							continue;
-#endif
+
 						if (attr.RefName != null && attr.RefName != XmlQualifiedName.Empty && (!skipEquivalent || !AreAttributesEqual (attr, attributesResolved [attr.RefName] as XmlSchemaAttribute)))
 							AddToTable (attributesResolved, attr, attr.RefName, h);
 						else if (!skipEquivalent || !AreAttributesEqual (attr, attributesResolved [attr.QualifiedName] as XmlSchemaAttribute))
@@ -555,10 +575,10 @@ namespace System.Xml.Schema
 							attr.error (h, String.Format ("Duplicate attributes was found for '{0}'", attr.QualifiedName));
 						newAttrNames.Add (attr.QualifiedName);
 
-#if BUGGY_MS_COMPLIANT
-						if (attr.Use == XmlSchemaUse.Prohibited)
+
+						if (StrictMsCompliant && attr.Use == XmlSchemaUse.Prohibited)
 							continue;
-#endif
+
 						if (attr.RefName != null && attr.RefName != XmlQualifiedName.Empty && (!skipEquivalent || !AreAttributesEqual (attr, attributesResolved [attr.RefName] as XmlSchemaAttribute)))
 							AddToTable (attributesResolved, attr, attr.RefName, h);
 						else if (!skipEquivalent || !AreAttributesEqual (attr, attributesResolved [attr.QualifiedName] as XmlSchemaAttribute))

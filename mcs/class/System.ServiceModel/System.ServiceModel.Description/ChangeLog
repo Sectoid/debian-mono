@@ -1,3 +1,302 @@
+2010-02-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs : handle duration
+	  and guid which s.w.svc does not handle. Fix part of bug #579011.
+
+2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs,
+	  ServiceContractGenerator.cs: ArrayOfXxx does not exist in the type
+	  definition code. Use Xxx[] directly instead.
+
+2010-02-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataBundle.cs, MetadataSet.cs : rename former to latter.
+
+2010-02-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	*  ClientCredentials.cs, ContractDescription.cs,
+	  IEndpointBehavior.cs, IOperationBehavior.cs : add monotouch support
+	  for client behavior.
+
+2010-01-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : when Options.AsynchronousMethods is
+	  specified, generate async methods *as well as* sync methods (i.e.
+	  not exclusively).
+
+	  In moonlight proxy generator (svcutil -moonlight) mode, sync
+	  methods will be removed at svcutil itself.
+	  This fix brings sync proxy methods back to monotouch.
+
+2010-01-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceAuthorizationBehavior.cs : implement (it does almost
+	  nothing though).
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : fill Operation.Faults.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : fix GetCallbackContract() to
+	  correctly retrieve ServiceContractAttribute from the service type,
+	  not the callback type. This ended up to get the bug #567672 sample
+	  working (but it will break at some stage as it involves some
+	  non-implemented classes).
+
+2009-12-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs :
+	  EventArgs are not nested classes.
+	  Result property of EventArgs is not IAsyncResult. It should be
+	  pulled from EndXxx() method, not from BeginXxx().
+
+2009-12-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs :
+	  add support for EventBasedAsynchronousMethods (3.5 SP1 / 2.1).
+
+2009-12-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : added a couple of FIXME comments.
+
+2009-12-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentials.cs : more SL3 changes.
+
+2009-11-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentials.cs : it is part of SL3 API, so adjusted for it.
+
+2009-10-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : channelDispatchers is keyed by URL,
+	  so it might have been skipped when the URLs are the same for wsdl
+	  and help. So, differentiate flags for mex and help, not to be
+	  exclusive. This fixes random-ish EndpointNotFound for WSDLs.
+
+2009-10-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : A few fixes for no-wsdl case: fix
+	  wrong html template, and do not throw NRE for the lack of WsdlUrl.
+
+2009-10-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : restructure internal channel property
+	  so that http channels can cope with it.
+
+2009-10-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : Handle all predefined mex bindings.
+	  Use DispatcherBuilder directly. Add mex listener property to
+	  distinguish the listener from http channel listeners later.
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : when serviceDebug and serviceMetadata
+	  shares the same URL, both of them must be set, not being skipped.
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehavior.cs, ServiceMetadataBehavior.cs,
+	  ServiceMetadataExtension.cs : Now HelpPage is differentiated from
+	  wsdl page. The help page now outputs correct URL (for WSDL).
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehavior.cs, ServiceMetadataBehavior.cs,
+	  ServiceMetadataExtension.cs : reduce extra args, static isn't
+	  required here. Add FIXME comments.
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : before fixing lots of wrong code,
+	  add primitive help page support to make sure base_uri is bogus.
+
+2009-10-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : fixed sync client generator that
+	  incorrectly exited in the middle of proxy generator.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : when its url is requested without
+	  any parameters, it simply returns the WSDL, not the help page.
+
+2009-09-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebServiceHelper.cs : remove old code.
+
+2009-09-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : reflect ServiceHostBase change.
+
+2009-09-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehavior.cs : help page enabling properties are true
+	  by default (fix regressions).
+
+2009-09-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : default action name is prepended
+	  "urn:", and on the other hand do not add extra '/' in such case.
+
+2009-09-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : end method lookup should be
+	  done against the type that defines begin method.
+
+2009-09-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MustUnderstandBehavior.cs : fix build.
+
+2009-09-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentials.cs, ClientViaBehavior.cs,
+	  MustUnderstandBehavior.cs : implement most of the methods.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs:
+	  some dependent changes to ServiceHostBase.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerOperationBehavior.cs : add missing members.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeClient.cs : add missing async methods.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataResolver.cs : added remaining methods.
+	* MetadataExchangeClient.cs : a bit of required changes for above.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehavior.cs, ServiceMetadataBehavior.cs :
+	  add Binding properties. Properties are now auto.
+	* ServiceMetadataExtension.cs : take Binding too to build dispatcher.
+
+2009-08-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : removed ChannelBase proxy stuff,
+	  which will be moved to svcutil source.
+	  The targets for extension should be the interface, not the client
+	  class.
+
+2009-08-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs,
+	  OperationContractGenerationContext.cs : support extensions i.e.
+	  IServiceContractGenerationExtension and IOperation...(ditto) .
+
+2009-08-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : first step to add moonlight-based
+	  client proxy generator (it is not supported in 3.5. needs to be
+	  enabled by some hook, such as reflection-based hack).
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescription.cs : wcf & 2.1 is specially annoying land :(
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : add new contract getter to
+	  create callback contract type (which does not demand
+	  ServiceContractAttribute).
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceEndpoint.cs, ContractDescription.cs : moved client runtime
+	  creator from former to latter.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceEndpoint.cs : follow ClientRuntime change.
+
+2009-07-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceEndpoint.cs : ListenUri defaults to Address.Uri.
+
+2009-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : actually it had to fill all of
+	  the interface methods (and implementation methods).
+
+2009-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : do not reject derived service
+	  contract from another service contract type.
+
+2009-06-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceThrottlingBehavior.cs : implement Validate() (nothing to do
+	  here).
+
+2009-06-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceThrottlingBehavior.cs : implement.
+
+2009-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : fill ProtectionLevel by
+	  OperationContractAttribute.
+
+2009-05-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceCredentials.cs : IServiceBehavior.Validate() should not
+	  throw NIE. No check so far.
+
+2009-03-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MessageBodyDescription.cs, MessagePartDescription.cs,
+	  OperationDescription.cs, MessageDescriptionCollection.cs:
+	  clean up extra todos.
+
+2009-03-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : fill service known types.
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : ClientBase<> argument type must be
+	  class (the class itself is to be fixed soon as well).
+
+2009-02-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceEndpoint.cs : moved CreateRuntime() from ChannelFactory<T>.
+
+2009-02-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : do not write body wrapper element
+	  when IsWrapped = false.
+
+2009-02-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : add async operation support (might
+	  be hacky under some condition).
+
+2009-01-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : async begin method with
+	  [MessageContract] has 3 parameters, not 1.
+
+2009-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs :
+	  for such an element that does not contain schema type but has a
+	  type reference, use ImportSchemaType().
+
+2009-01-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs :
+	  some refactoring. Process all schemas, including those in WSDLs.
+
 2009-01-07  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ContractDescription.cs : fix by corcompare.

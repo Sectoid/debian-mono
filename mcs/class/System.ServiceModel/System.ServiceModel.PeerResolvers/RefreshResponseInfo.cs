@@ -14,8 +14,7 @@ namespace System.ServiceModel.PeerResolvers
 	[MessageContract (IsWrapped = false)]
 	public class RefreshResponseInfo
 	{
-		// FIXME: I'm not 100% sure its Name is "Update", I need to take some more long period traces.
-		[MessageBodyMember (Name = "Update", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
+		[MessageBodyMember (Name = "RefreshResponse", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
 		RefreshResponseInfoDC body;
 		
 		public RefreshResponseInfo ()
@@ -40,14 +39,13 @@ namespace System.ServiceModel.PeerResolvers
 			set { body.Result = value; }
 		}
 		
-		[MonoTODO]
 		public bool HasBody ()
 		{
-			throw new NotImplementedException ();
+			return true; // FIXME: I have no idea when it returns false
 		}
 	}
 	
-	[DataContract]
+	[DataContract (Name = "RefreshResponse", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
 	internal class RefreshResponseInfoDC
 	{
 		TimeSpan registration_lifetime;

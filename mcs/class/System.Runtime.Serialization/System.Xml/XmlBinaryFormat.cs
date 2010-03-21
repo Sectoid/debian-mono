@@ -35,6 +35,7 @@ namespace System.Xml
 	{
 		public const byte EndElement = 0x01;
 		public const byte Comment = 0x02;
+		public const byte Array = 0x03;
 		public const byte AttrString = 0x04;
 		public const byte AttrStringPrefix = 0x05;
 		public const byte AttrIndex = 0x06;
@@ -43,13 +44,18 @@ namespace System.Xml
 		public const byte PrefixNSString = 0x09;
 		public const byte DefaultNSIndex = 0x0A;
 		public const byte PrefixNSIndex = 0x0B;
-		public const byte GlobalAttrIndex = 0x0C;
-		public const byte GlobalAttrIndexInElemNS = 0x0D;
-
+		public const byte PrefixNAttrIndexStart = 0x0C;
+		public const byte PrefixNAttrIndexEnd = 0x0C + 26 - 1;
+		public const byte PrefixNAttrStringStart = 0x26;
+		public const byte PrefixNAttrStringEnd = 0x26 + 26 - 1;
 		public const byte ElemString = 0x40;
 		public const byte ElemStringPrefix = 0x41;
 		public const byte ElemIndex = 0x42;
 		public const byte ElemIndexPrefix = 0x43;
+		public const byte PrefixNElemIndexStart = 0x44;
+		public const byte PrefixNElemIndexEnd = 0x44 + 26 - 1;
+		public const byte PrefixNElemStringStart = 0x5E;
+		public const byte PrefixNElemStringEnd = 0x5E + 26 - 1;
 
 		public const byte Zero = 0x80;
 		public const byte One = 0x82;
@@ -63,15 +69,24 @@ namespace System.Xml
 		public const byte Double = 0x92;
 		public const byte Decimal = 0x94;
 		public const byte DateTime = 0x96;
-		public const byte Base64 = 0x9E;
-		public const byte Base64Fixed = 0xA0;
+		public const byte Chars8 = 0x98;
+		public const byte Chars16 = 0x9A;
+		public const byte Chars32 = 0x9C;
+		public const byte Bytes8 = 0x9E;
+		public const byte Bytes16 = 0xA0;
+		public const byte Bytes32 = 0xA2;
 
-		public const byte Text = 0x98;
 		public const byte EmptyText = 0xA8;
-
-		public const byte UniqueIdFromGuid = 0xAC;
+		public const byte TextIndex = 0xAA;
+		public const byte UniqueId = 0xAC;
 		public const byte TimeSpan = 0xAE;
 		public const byte Guid = 0xB0;
+		public const byte UInt64 = 0xB2;
+		public const byte Bool = 0xB4; // e.g. for typed array
+		public const byte Utf16_8 = 0xB6;
+		public const byte Utf16_16 = 0xB8;
+		public const byte Utf16_32 = 0xBA;
+		public const byte QNameIndex = 0xBC;
 	}
 
 	/* Binary Format (incomplete):
@@ -96,8 +111,13 @@ namespace System.Xml
 		$string is length-prefixed string. @index is index as
 		described above. [value] is length-prefixed raw array.
 
+		// 2009-03-25: now that the binary format is open under OSP
+		// [MC-NBFX], I have added some notes beyond current
+		// implementation status (marked as TODO).
+
 		01			: EndElement
 		02 $value		: Comment
+		03			: array
 		04 $name		: local attribute by string
 		05 $prefix $name	: global attribute by string
 		06 @name		: local attribute by index
@@ -106,13 +126,16 @@ namespace System.Xml
 		09 $prefix $name	: prefixed namespace by string
 		0A @name		: default namespace by index
 		0B $prefix @name	: prefixed namespace by index
-		0C @name		: global attribute by index
-		0D @name		: global attribute by index,
-					: in current element's namespace
+		0C @name		: global attribute by index,
+		... 0x25		: in current element's namespace
+		26 ... 0x3F		: attributes with prefix
 		40 $name		: element w/o namespace by string
 		41 $prefix $name	: element with namespace by string
 		42 @name		: element w/o namespace by index
 		43 $prefix @name	: element with namespace by index
+		44 @name		: global element by index,
+		... 0x5D		: in current element's namespace
+		5E ... 0x77		: elements with prefix
 		98 $value		: text/cdata/chars
 		99 $value		: text/cdata/chars + EndElement
 
@@ -132,12 +155,25 @@ namespace System.Xml
 		92 : double
 		94 : decimal
 		96 : DateTime
-		98 : UniqueId
-		9E : base64Binary
-		A0 : base64Binary fixed length?
-		AC : UniqueId whose IsGuid = true
+		98 : chars8
+		9A : chars16
+		9C : chars32
+		9E : bytes8 (base64)
+		A0 : bytes16 (base64)
+		A2 : bytes32 (base64)
+		A4 : TODO: start of list
+		A6 : TODO: end of list
+		A8 : empty text
+		AA : text index
+		AC : UniqueId (IsGuid = true)
 		AE : TimeSpan
-		B0 : Guid
+		B0 : UUID
+		B2 : UInt64
+		B4 : bool text
+		B6 : utf16_8
+		B8 : utf16_16
+		BA : utf16_32
+		BC : QName index
 
 		Error: PIs, doctype
 		Ignored: XMLdecl

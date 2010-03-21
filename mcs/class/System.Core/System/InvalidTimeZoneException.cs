@@ -1,5 +1,5 @@
 /*
- * System.InvalidimeZoneException
+ * System.InvalidTimeZoneException
  *
  * Author(s)
  * 	Stephane Delcroix <stephane@delcroix.org>
@@ -24,6 +24,14 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#if NET_4_0 || BOOTSTRAP_NET_4_0
+
+using System;
+using System.Runtime.CompilerServices;
+
+[assembly:TypeForwardedTo (typeof(InvalidTimeZoneException))]
+
+#else
 
 namespace System
 {
@@ -43,3 +51,5 @@ namespace System
 		{}
 	}
 }
+
+#endif

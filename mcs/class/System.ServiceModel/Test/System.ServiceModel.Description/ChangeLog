@@ -1,3 +1,60 @@
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlImporterTest.cs : ignore whatever make dist broke.
+
+	  Until make dist gets fixed I won't enable any of new external-
+	  source-dependent tests.
+
+2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlImporterTest.cs : added test for processing ArrayOfXxx types.
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataBehaviorTest.cs : check name constant (MSDN is
+	  wrong here).
+
+2010-01-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceAuthorizationBehaviorTest.cs : it's updated and enabled.
+	  Added some more tests.
+
+2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehaviorTest.cs : make sure to close hosts.
+
+2009-10-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGeneratorTest.cs : new test.
+
+2009-09-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehaviorTest.cs : it still seems there are some port-
+	  blocking tests that blocks here, so change the port and make sure
+	  it is available. 8080 is anyways likely to interfere with others.
+
+2009-07-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceEndpointTest.cs : new.
+
+2009-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionTest.cs : make sure the contract actually
+	  contains operations from the base types.
+
+2009-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionTest.cs : added test for derived contract type.
+
+2009-06-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceThrottlingBehaviorTest.cs : new.
+
+2009-02-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlExporterTest.cs:
+	  Ignore all failing-under-dotnet tests
+
 2008-05-22  Roei Erez  <roeie@mainsoft.com>
 	* fix ContractDescription.GetContract implementation
 	* Refactor Request processing
