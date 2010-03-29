@@ -1,0 +1,152 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## mono-arm-thumb2-ftbfs.dpatch by  <asac@ubuntu.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad mono-2.4.3+dfsg~/libgc/include/private/gc_locks.h mono-2.4.3+dfsg/libgc/include/private/gc_locks.h
+--- mono-2.4.3+dfsg~/libgc/include/private/gc_locks.h	2009-10-26 21:44:09.000000000 +0100
++++ mono-2.4.3+dfsg/libgc/include/private/gc_locks.h	2010-01-29 16:08:49.000000000 +0100
+@@ -218,16 +218,20 @@
+ #    endif /* ALPHA */
+ #    ifdef ARM32
+         inline static int GC_test_and_set(volatile unsigned int *addr) {
+-          int oldval;
+-          /* SWP on ARM is very similar to XCHG on x86.  Doesn't lock the
+-           * bus because there are no SMP ARM machines.  If/when there are,
+-           * this code will likely need to be updated. */
+-          /* See linuxthreads/sysdeps/arm/pt-machine.h in glibc-2.1 */
+-          __asm__ __volatile__("swp %0, %1, [%2]"
+-      		  	     : "=&r"(oldval)
+-      			     : "r"(1), "r"(addr)
+-			     : "memory");
+-          return oldval;
++#         ifdef __thumb__
++               return __sync_lock_test_and_set (addr, 1);
++#         else
++               int oldval;
++               /* SWP on ARM is very similar to XCHG on x86.  Doesn't lock the
++                * bus because there are no SMP ARM machines.  If/when there are,
++                * this code will likely need to be updated. */
++               /* See linuxthreads/sysdeps/arm/pt-machine.h in glibc-2.1 */
++               __asm__ __volatile__("swp %0, %1, [%2]"
++           		  	     : "=&r"(oldval)
++           			     : "r"(1), "r"(addr)
++     			     : "memory");
++               return oldval;
++#         endif
+         }
+ #       define GC_TEST_AND_SET_DEFINED
+ #    endif /* ARM32 */
+diff -urNad mono-2.4.3+dfsg~/mono/io-layer/atomic.h mono-2.4.3+dfsg/mono/io-layer/atomic.h
+--- mono-2.4.3+dfsg~/mono/io-layer/atomic.h	2009-10-26 21:44:10.000000000 +0100
++++ mono-2.4.3+dfsg/mono/io-layer/atomic.h	2010-01-29 16:06:55.000000000 +0100
+@@ -746,6 +746,9 @@
+ 
+ static inline gint32 InterlockedCompareExchange(volatile gint32 *dest, gint32 exch, gint32 comp)
+ {
++#ifdef __thumb__
++	return __sync_val_compare_and_swap (dest, comp, exch);
++#else
+ 	int a, b;
+ 
+ 	__asm__ __volatile__ (    "0:\n\t"
+@@ -763,10 +766,14 @@
+ 				  : "cc", "memory");
+ 
+ 	return a;
++#endif /* !__thumb__ */
+ }
+ 
+ static inline gpointer InterlockedCompareExchangePointer(volatile gpointer *dest, gpointer exch, gpointer comp)
+ {
++#ifdef __thumb__
++	return __sync_val_compare_and_swap (dest, comp, exch);
++#else
+ 	gpointer a, b;
+ 
+ 	__asm__ __volatile__ (    "0:\n\t"
+@@ -784,10 +791,14 @@
+ 				  : "cc", "memory");
+ 
+ 	return a;
++#endif
+ }
+ 
+ static inline gint32 InterlockedIncrement(volatile gint32 *dest)
+ {
++#ifdef __thumb__
++	return __sync_add_and_fetch (dest, 1);
++#else
+ 	int a, b, c;
+ 
+ 	__asm__ __volatile__ (  "0:\n\t"
+@@ -802,10 +813,14 @@
+ 				: "cc", "memory");
+ 
+ 	return b;
++#endif
+ }
+ 
+ static inline gint32 InterlockedDecrement(volatile gint32 *dest)
+ {
++#ifdef __thumb__
++	return __sync_sub_and_fetch (dest, 1);
++#else
+ 	int a, b, c;
+ 
+ 	__asm__ __volatile__ (  "0:\n\t"
+@@ -820,10 +835,14 @@
+ 				: "cc", "memory");
+ 
+ 	return b;
++#endif
+ }
+ 
+ static inline gint32 InterlockedExchange(volatile gint32 *dest, gint32 exch)
+ {
++#ifdef __thumb__
++	return __sync_lock_test_and_set (dest, exch);
++#else
+ 	int a;
+ 
+ 	__asm__ __volatile__ (  "swp %0, %2, [%1]"
+@@ -831,10 +850,14 @@
+ 				: "r" (dest), "r" (exch));
+ 
+ 	return a;
++#endif
+ }
+ 
+ static inline gpointer InterlockedExchangePointer(volatile gpointer *dest, gpointer exch)
+ {
++#ifdef __thumb__
++	return __sync_lock_test_and_set (dest, exch);
++#else
+ 	gpointer a;
+ 
+ 	__asm__ __volatile__ (	"swp %0, %2, [%1]"
+@@ -842,10 +865,14 @@
+ 				: "r" (dest), "r" (exch));
+ 
+ 	return a;
++#endif
+ }
+ 
+ static inline gint32 InterlockedExchangeAdd(volatile gint32 *dest, gint32 add)
+ {
++#ifdef __thumb__
++	return __sync_fetch_and_add (dest, add);
++#else
+ 	int a, b, c;
+ 
+ 	__asm__ __volatile__ (  "0:\n\t"
+@@ -860,6 +887,7 @@
+ 				: "cc", "memory");
+ 
+ 	return a;
++#endif
+ }
+ 
+ #elif defined(__ia64__)
