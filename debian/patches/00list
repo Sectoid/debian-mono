@@ -25,3 +25,4 @@ dont_assert_on_empty_DGC_field_r146984
 skip_docs_build
 mono-arm-thumb2-ftbfs
 mono-thumb2-jit-blx
+arm-cpuinfo-parsing

@@ -17,6 +17,9 @@ mono (2.4.4~svn151842-2) UNRELEASED; urgency=low
       Alexander Sack <asac@ubuntu.com>)
   * debian/patches/mono-thumb2-jit-blx.dpatch:
     + Assorted JIT fixes for ARM (Thanks to Alexander Sack <asac@ubuntu.com>)
+  * debian/patches/arm-cpuinfo-parsing.dpatch:
+    + Smarter CPU detection, to allow Mono to run properly under QEMU without
+      asserting and dying (Thanks to Loïc Minier <loic.minier@ubuntu.com>)
 
  -- Mirco Bauer <meebey@debian.org>  Sat, 20 Feb 2010 12:13:59 +0100
 
