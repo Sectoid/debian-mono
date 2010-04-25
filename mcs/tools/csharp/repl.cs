@@ -199,7 +199,7 @@ namespace Mono {
 
 		public int ReadEvalPrintLoop ()
 		{
-			if (startup_files != null && startup_files.Length == 0)
+			if (startup_files == null || startup_files.Length == 0)
 				InitTerminal ();
 
 			InitializeUsing ();
@@ -209,7 +209,7 @@ namespace Mono {
 			//
 			// Interactive or startup files provided?
 			//
-			if (startup_files.Length != 0)
+			if (startup_files != null && startup_files.Length != 0)
 				ExecuteSources (startup_files, false);
 			else
 				ReadEvalPrintLoopWith (GetLine);
