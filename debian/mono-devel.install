@@ -11,6 +11,7 @@ debian/tmp/usr/bin/genxs
 debian/tmp/usr/bin/ilasm
 debian/tmp/usr/bin/installvst
 debian/tmp/usr/bin/macpack
+debian/tmp/usr/bin/makecert
 debian/tmp/usr/bin/mkbundle
 debian/tmp/usr/bin/mono-api-info
 debian/tmp/usr/bin/mono-cil-strip
