@@ -23,3 +23,6 @@ build_permview_as_2.0
 build_genxs_2.0
 dont_assert_on_empty_DGC_field_r146984
 skip_docs_build
+mono-arm-thumb2-ftbfs
+mono-thumb2-jit-blx
+arm-cpuinfo-parsing
