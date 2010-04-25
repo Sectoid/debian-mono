@@ -3,8 +3,11 @@ mono (2.4.4~svn151842-2~pre1) unstable; urgency=low
   * NOT RELEASED YET
   * debian/control:
     + Changed section of libmono-dev back to cli-mono.
+  * mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs
+    mcs/class/System.Web/System.Web.UI.WebControls/TableRowCollection.cs:
+    + Reverted dpatch changes that were done accidentally.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 20 Feb 2010 12:13:59 +0100
+ -- Mirco Bauer <meebey@debian.org>  Sat, 24 Apr 2010 20:57:36 +0200
 
 mono (2.4.4~svn151842-1) unstable; urgency=medium
 
