@@ -1,9 +1,9 @@
-mono (2.4.4~svn151842-2~pre1) UNRELEASED; urgency=low
+mono (2.4.4~svn151842-2) unstable; urgency=low
 
-  * NOT RELEASED YET
   [ Mirco Bauer ]
   * debian/control:
     + Changed section of libmono-dev back to cli-mono.
+    + Added misc:Depends to mono-dbg to please lintian.
   * debian/mono-devel.install:
     + Added makecert.
   * mcs/class/System.Web/System.Web.UI.WebControls/TableRow.cs
@@ -29,7 +29,7 @@ mono (2.4.4~svn151842-2~pre1) UNRELEASED; urgency=low
     + Smarter CPU detection, to allow Mono to run properly under QEMU without
       asserting and dying (Thanks to Loïc Minier <loic.minier@ubuntu.com>)
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 25 Apr 2010 14:50:53 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 25 Apr 2010 14:56:28 +0200
 
 mono (2.4.4~svn151842-1) unstable; urgency=medium
 
