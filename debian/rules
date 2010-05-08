@@ -74,10 +74,7 @@ export MAKEFLAGS=$(MAKE_FLAGS)
 #	MAKE_FLAGS += RUNTIME=$(CURDIR)/debian/mono-aot-wrapper
 #endif
 
-# Include dpatch stuff.
-include /usr/share/dpatch/dpatch.make
-
-autoreconf: patch autoreconf-stamp
+autoreconf: autoreconf-stamp
 autoreconf-stamp:
 	autoreconf -f -i -s
 	touch $@
@@ -88,7 +85,7 @@ configure-arch-stamp: autoreconf
 	$(CONFIGURE) --disable-mcs-build
 	touch $@
 
-configure-indep: patch configure-indep-stamp
+configure-indep: configure-indep-stamp
 configure-indep-stamp: autoreconf
 	dh_testdir
 	$(CONFIGURE)
@@ -194,8 +191,7 @@ test-arch-stamp: configure-indep
 
 	touch $@
 
-clean: clean-patched unpatch
-clean-patched:
+clean:
 	echo "distro is $(DISTRO)"
 	dh_testdir
 	dh_testroot
@@ -498,12 +494,11 @@ get-orig-source:
 
 .PHONY: autoreconf \
         configure-arch configure-indep \
-        clean clean-patched \
+        clean \
         build build-all build-arch build-indep \
         test test-arch \
         install install-all install-arch install-indep \
         binary binary-arch binary-indep \
-        patch unpatch \
         get-orig-source
 
 .NOTPARALLEL:
