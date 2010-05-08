@@ -92,10 +92,7 @@ common_dirs := \
 	CustomMarshalers		\
 	OpenSystem.C
 
-net_1_1_dirs :=		\
-	FirebirdSql.Data.Firebird	\
-	Mono.Cecil			\
-	Mono.Cecil.Mdb		\
+net_1_1_dirs :=
 
 net_2_0_dirs := \
 	Microsoft.Build.Framework	\
@@ -122,7 +119,10 @@ net_2_0_dirs := \
 	System.Web.Mvc			\
 	Mono.Management			\
 	Mono.Options 			\
-	Mono.Simd
+	Mono.Simd			\
+	Mono.Cecil			\
+	Mono.Cecil.Mdb			\
+	FirebirdSql.Data.Firebird
 
 net_2_1_dirs := \
 	corlib			\

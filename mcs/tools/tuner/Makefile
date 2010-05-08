@@ -2,7 +2,7 @@ thisdir = tools/tuner
 SUBDIRS =
 include ../../build/rules.make
 
-LINKER = $(topdir)/class/lib/net_1_1/monolinker.exe
+LINKER = $(topdir)/class/lib/net_2_0/monolinker.exe
 
 LOCAL_MCS_FLAGS = -r:System.Xml.dll -r:$(LINKER) -r:Mono.Cecil.dll
 
