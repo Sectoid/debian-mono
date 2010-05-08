@@ -8,7 +8,7 @@ LIBRARY_SNK = FirebirdSql.Data.Firebird.snk
 LIB_DEFINE_FLAGS = 
 
 ifeq ($(PLATFORM), linux)
-LIB_DEFINE_FLAGS = /d:LINUX
+LIB_DEFINE_FLAGS = /d:LINUX /d:FBCLIENT
 endif
 
 LIB_MCS_FLAGS = \
