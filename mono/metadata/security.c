@@ -13,6 +13,7 @@
 
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/appdomain.h>
+#include <mono/metadata/assembly.h>
 #include <mono/metadata/image.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/object-internals.h>
