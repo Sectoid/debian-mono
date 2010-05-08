@@ -4888,6 +4888,7 @@ namespace Mono.CSharp {
 		}
 	}
 
+	// FIXME: Why is it almost exact copy of Using ??
 	public class UsingTemporary : ExceptionStatement {
 		TemporaryVariable local_copy;
 		public Statement Statement;
@@ -5012,7 +5013,6 @@ namespace Mono.CSharp {
 		Expression var;
 		Expression init;
 
-		Expression converted_var;
 		ExpressionStatement assign;
 
 		public Using (Expression var, Expression init, Statement stmt, Location l)
@@ -5021,31 +5021,6 @@ namespace Mono.CSharp {
 			this.init = init;
 			this.stmt = stmt;
 			loc = l;
-		}
-
-		bool ResolveVariable (EmitContext ec)
-		{
-			ExpressionStatement a = new SimpleAssign (var, init, loc);
-			a = a.ResolveStatement (ec);
-			if (a == null)
-				return false;
-
-			assign = a;
-
-			if (TypeManager.ImplementsInterface (a.Type, TypeManager.idisposable_type)) {
-				converted_var = var;
-				return true;
-			}
-
-			Expression e = Convert.ImplicitConversionStandard (ec, a, TypeManager.idisposable_type, var.Location);
-			if (e == null) {
-				Error_IsNotConvertibleToIDisposable (var);
-				return false;
-			}
-
-			converted_var = e;
-
-			return true;
 		}
 
 		static public void Error_IsNotConvertibleToIDisposable (Expression expr)
@@ -5068,42 +5043,18 @@ namespace Mono.CSharp {
 		protected override void EmitFinallyBody (EmitContext ec)
 		{
 			ILGenerator ig = ec.ig;
+			Label skip = ig.DefineLabel ();
 
-			if (!var.Type.IsValueType) {
-				Label skip = ig.DefineLabel ();
+			bool emit_null_check = TypeManager.IsReferenceType (var.Type);
+			if (emit_null_check) {
 				var.Emit (ec);
 				ig.Emit (OpCodes.Brfalse, skip);
-				converted_var.Emit (ec);
-				ig.Emit (OpCodes.Callvirt, TypeManager.void_dispose_void);
-				ig.MarkLabel (skip);
-			} else {
-				Expression ml = Expression.MemberLookup(ec.ContainerType, TypeManager.idisposable_type, var.Type, "Dispose", Mono.CSharp.Location.Null);
-
-				if (!(ml is MethodGroupExpr)) {
-					var.Emit (ec);
-					ig.Emit (OpCodes.Box, var.Type);
-					ig.Emit (OpCodes.Callvirt, TypeManager.void_dispose_void);
-				} else {
-					MethodInfo mi = null;
-
-					foreach (MethodInfo mk in ((MethodGroupExpr) ml).Methods) {
-						if (TypeManager.GetParameterData (mk).Count == 0) {
-							mi = mk;
-							break;
-						}
-					}
-
-					if (mi == null) {
-						Report.Error(-100, Mono.CSharp.Location.Null, "Internal error: No Dispose method which takes 0 parameters.");
-						return;
-					}
-
-					IMemoryLocation mloc = (IMemoryLocation) var;
-
-					mloc.AddressOf (ec, AddressOp.Load);
-					ig.Emit (OpCodes.Call, mi);
-				}
 			}
+
+			Invocation.EmitCall (ec, false, var, TypeManager.void_dispose_void, null, loc);
+
+			if (emit_null_check)
+				ig.MarkLabel (skip);
 		}
 
 		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
@@ -5132,6 +5083,27 @@ namespace Mono.CSharp {
 			}
 
 			return ok;
+		}
+
+		bool ResolveVariable (EmitContext ec)
+		{
+			assign = new SimpleAssign (var, init, loc);
+			assign = assign.ResolveStatement (ec);
+			if (assign == null)
+				return false;
+
+			if (assign.Type == TypeManager.idisposable_type ||
+				TypeManager.ImplementsInterface (assign.Type, TypeManager.idisposable_type)) {
+				return true;
+			}
+
+			Expression e = Convert.ImplicitConversionStandard (ec, assign, TypeManager.idisposable_type, var.Location);
+			if (e == null) {
+				Error_IsNotConvertibleToIDisposable (var);
+				return false;
+			}
+
+			throw new NotImplementedException ("covariance?");
 		}
 
 		protected override void CloneTo (CloneContext clonectx, Statement t)
