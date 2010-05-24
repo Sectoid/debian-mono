@@ -746,6 +746,9 @@ static inline gint32 InterlockedExchangeAdd(volatile gint32 *dest, gint32 add)
 
 static inline gint32 InterlockedCompareExchange(volatile gint32 *dest, gint32 exch, gint32 comp)
 {
+#ifdef __thumb__
+	return __sync_val_compare_and_swap (dest, comp, exch);
+#else
 	int a, b;
 
 	__asm__ __volatile__ (    "0:\n\t"
@@ -763,10 +766,14 @@ static inline gint32 InterlockedCompareExchange(volatile gint32 *dest, gint32 ex
 				  : "cc", "memory");
 
 	return a;
+#endif /* !__thumb__ */
 }
 
 static inline gpointer InterlockedCompareExchangePointer(volatile gpointer *dest, gpointer exch, gpointer comp)
 {
+#ifdef __thumb__
+	return __sync_val_compare_and_swap (dest, comp, exch);
+#else
 	gpointer a, b;
 
 	__asm__ __volatile__ (    "0:\n\t"
@@ -784,10 +791,14 @@ static inline gpointer InterlockedCompareExchangePointer(volatile gpointer *dest
 				  : "cc", "memory");
 
 	return a;
+#endif
 }
 
 static inline gint32 InterlockedIncrement(volatile gint32 *dest)
 {
+#ifdef __thumb__
+	return __sync_add_and_fetch (dest, 1);
+#else
 	int a, b, c;
 
 	__asm__ __volatile__ (  "0:\n\t"
@@ -802,10 +813,14 @@ static inline gint32 InterlockedIncrement(volatile gint32 *dest)
 				: "cc", "memory");
 
 	return b;
+#endif
 }
 
 static inline gint32 InterlockedDecrement(volatile gint32 *dest)
 {
+#ifdef __thumb__
+	return __sync_sub_and_fetch (dest, 1);
+#else
 	int a, b, c;
 
 	__asm__ __volatile__ (  "0:\n\t"
@@ -820,10 +835,14 @@ static inline gint32 InterlockedDecrement(volatile gint32 *dest)
 				: "cc", "memory");
 
 	return b;
+#endif
 }
 
 static inline gint32 InterlockedExchange(volatile gint32 *dest, gint32 exch)
 {
+#ifdef __thumb__
+	return __sync_lock_test_and_set (dest, exch);
+#else
 	int a;
 
 	__asm__ __volatile__ (  "swp %0, %2, [%1]"
@@ -831,10 +850,14 @@ static inline gint32 InterlockedExchange(volatile gint32 *dest, gint32 exch)
 				: "r" (dest), "r" (exch));
 
 	return a;
+#endif
 }
 
 static inline gpointer InterlockedExchangePointer(volatile gpointer *dest, gpointer exch)
 {
+#ifdef __thumb__
+	return __sync_lock_test_and_set (dest, exch);
+#else
 	gpointer a;
 
 	__asm__ __volatile__ (	"swp %0, %2, [%1]"
@@ -842,10 +865,14 @@ static inline gpointer InterlockedExchangePointer(volatile gpointer *dest, gpoin
 				: "r" (dest), "r" (exch));
 
 	return a;
+#endif
 }
 
 static inline gint32 InterlockedExchangeAdd(volatile gint32 *dest, gint32 add)
 {
+#ifdef __thumb__
+	return __sync_fetch_and_add (dest, add);
+#else
 	int a, b, c;
 
 	__asm__ __volatile__ (  "0:\n\t"
@@ -860,6 +887,7 @@ static inline gint32 InterlockedExchangeAdd(volatile gint32 *dest, gint32 add)
 				: "cc", "memory");
 
 	return a;
+#endif
 }
 
 #elif defined(__ia64__)
