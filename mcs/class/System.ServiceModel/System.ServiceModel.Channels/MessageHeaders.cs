@@ -127,8 +127,8 @@ namespace System.ServiceModel.Channels
 				MessageHeaderInfo info = l [i];
 
 				if (info.Name == name && info.Namespace == ns) {
-					if (found > 1)
-						throw new ArgumentException ("Found multiple matching headers.");
+					if (found > 0)
+						throw new MessageHeaderException ("Found multiple matching headers.");
 					// When no actors are passed, it never
 					// matches such header that has an
 					// Actor.
@@ -148,21 +148,26 @@ namespace System.ServiceModel.Channels
 			return l.GetEnumerator ();
 		}
 
-		XmlObjectSerializer GetSerializer<T> ()
+		XmlObjectSerializer GetSerializer<T> (int headerIndex)
 		{
 			if (!serializers.ContainsKey (typeof (T)))
-				serializers [typeof (T)] = new DataContractSerializer (typeof (T));
+				serializers [typeof (T)] = new DataContractSerializer (typeof (T), this [headerIndex].Name, this [headerIndex].Namespace);
 			return serializers [typeof (T)];
 		}
 
 		public T GetHeader<T> (int index)
 		{
+			if (l.Count <= index)
+				throw new ArgumentOutOfRangeException ("index");
+			var dmh = l [index] as MessageHeader.DefaultMessageHeader;
+			if (dmh != null && dmh.Value != null && typeof (T).IsAssignableFrom (dmh.Value.GetType ()))
+				return (T) dmh.Value;
 			if (typeof (T) == typeof (EndpointAddress)) {
 				XmlDictionaryReader r = GetReaderAtHeader (index);
-				return (T) (object) new EndpointAddress (r.ReadElementContentAsString ());
+				return r.NodeType != XmlNodeType.Element ? default (T) : (T) (object) EndpointAddress.ReadFrom (r);
 			}
 			else
-				return GetHeader<T> (index, GetSerializer<T> ());
+				return GetHeader<T> (index, GetSerializer<T> (index));
 		}
 
 		public T GetHeader<T> (int index, XmlObjectSerializer serializer)
@@ -207,10 +212,8 @@ namespace System.ServiceModel.Channels
 			MessageHeader item = (MessageHeader) l [index];
 
 			XmlReader reader =
-#if !NET_2_1 // FIXME: implement RawMessageHeader
 				item is MessageHeader.RawMessageHeader ?
 				((MessageHeader.RawMessageHeader) item).CreateReader () :
-#endif
 				XmlReader.Create (
 					new StringReader (item.ToString ()),
 					reader_settings);
@@ -237,9 +240,17 @@ namespace System.ServiceModel.Channels
 
 		public void RemoveAll (string name, string ns)
 		{
-			l.RemoveAll (delegate (MessageHeaderInfo info) {
-						return info.Name == name && info.Namespace == ns;
-					});
+			// Shuffle all the ones we want to keep to the start of the list
+			int j = 0;
+			for (int i = 0; i < l.Count; i++) {
+				if (l[i].Name != name || l[i].Namespace != ns) {
+					l [j++] = l[i];
+				}
+			}
+			// Trim the extra elements off the end of the list.
+			int count = l.Count - j;
+			for (int i = 0; i < count; i++)
+				l.RemoveAt (l.Count - 1);
 		}
 
 		public void RemoveAt (int index)
@@ -312,7 +323,8 @@ namespace System.ServiceModel.Channels
 			}
 			set {
 				RemoveAll ("Action", version.Addressing.Namespace);
-				Add (MessageHeader.CreateHeader ("Action", version.Addressing.Namespace, value, true));
+				if (value != null)
+					Add (MessageHeader.CreateHeader ("Action", version.Addressing.Namespace, value, true));
 			}
 		}
 
@@ -320,22 +332,27 @@ namespace System.ServiceModel.Channels
 			get { return l.Count; }
 		}
 
+		void AddEndpointAddressHeader (string name, string ns, EndpointAddress address)
+		{
+			RemoveAll ("FaultTo", Constants.WsaNamespace);
+			if (address == null)
+				return;
+			if (MessageVersion.Addressing.Equals (AddressingVersion.WSAddressing10))
+				Add (MessageHeader.CreateHeader (name, ns, EndpointAddress10.FromEndpointAddress (address)));
 #if !NET_2_1
+			else if (MessageVersion.Addressing.Equals (AddressingVersion.WSAddressingAugust2004))
+				Add (MessageHeader.CreateHeader (name, ns, EndpointAddressAugust2004.FromEndpointAddress (address)));
+#endif
+			else
+				throw new InvalidOperationException ("WS-Addressing header is not allowed for AddressingVersion.None");
+		}
+
 		public EndpointAddress FaultTo {
 			get {
-				int idx = FindHeader ("FaultTo", Constants.WSA1);
+				int idx = FindHeader ("FaultTo", Constants.WsaNamespace);
 				return idx < 0 ? null : GetHeader<EndpointAddress> (idx);
 			}
-			set {
-				if (version.Addressing == AddressingVersion.None)
-					throw new InvalidOperationException ("WS-Addressing header is not allowed for AddressingVersion.None");
-
-				RemoveAll ("FaultTo", Constants.WSA1);
-				Add (MessageHeader.CreateHeader (
-						"FaultTo", 
-						Constants.WSA1,
-						EndpointAddress10.FromEndpointAddress (value)));
-			}
+			set { AddEndpointAddressHeader ("FaultTo", Constants.WsaNamespace, value); }
 		}
 
 		public EndpointAddress From {
@@ -343,18 +360,8 @@ namespace System.ServiceModel.Channels
 				int idx = FindHeader ("From", version.Addressing.Namespace);
 				return idx < 0 ? null : GetHeader<EndpointAddress> (idx);
 			}
-			set { 
-				if (version.Addressing == AddressingVersion.None)
-					throw new InvalidOperationException ("WS-Addressing header is not allowed for AddressingVersion.None");
-
-				RemoveAll ("From", Constants.WSA1);
-				Add (MessageHeader.CreateHeader (
-						"From", 
-						Constants.WSA1,
-						EndpointAddress10.FromEndpointAddress (value)));
-			}
+			set { AddEndpointAddressHeader ("From", Constants.WsaNamespace, value); }
 		}
-#endif
 
 		public MessageHeaderInfo this [int index] {
 			get { return l [index]; }
@@ -362,18 +369,16 @@ namespace System.ServiceModel.Channels
 
 		public UniqueId MessageId {
 			get { 
-				int idx = FindHeader ("MessageID", Constants.WSA1);
+				int idx = FindHeader ("MessageID", Constants.WsaNamespace);
 				return idx < 0 ? null : new UniqueId (GetHeader<string> (idx));
 			}
 			set {
-				if (version.Addressing == AddressingVersion.None)
+				if (version.Addressing == AddressingVersion.None && value != null)
 					throw new InvalidOperationException ("WS-Addressing header is not allowed for AddressingVersion.None");
 
-				RemoveAll ("MessageID", Constants.WSA1);
-				Add (MessageHeader.CreateHeader (
-						"MessageID", 
-						Constants.WSA1,
-						value.ToString ()));
+				RemoveAll ("MessageID", Constants.WsaNamespace);
+				if (value != null)
+					Add (MessageHeader.CreateHeader ("MessageID", Constants.WsaNamespace, value));
 			}
 		}
 
@@ -381,40 +386,27 @@ namespace System.ServiceModel.Channels
 
 		public UniqueId RelatesTo {
 			get { 
-				int idx = FindHeader ("RelatesTo", Constants.WSA1);
+				int idx = FindHeader ("RelatesTo", Constants.WsaNamespace);
 				return idx < 0 ? null : new UniqueId (GetHeader<string> (idx));
 			}
 			set {
-				if (version.Addressing == AddressingVersion.None)
+				if (version.Addressing == AddressingVersion.None && value != null)
 					throw new InvalidOperationException ("WS-Addressing header is not allowed for AddressingVersion.None");
 
-				RemoveAll ("MessageID", Constants.WSA1);
-				Add (MessageHeader.CreateHeader (
-						"RelatesTo", 
-						Constants.WSA1,
-						value.ToString ()));
+				RemoveAll ("MessageID", Constants.WsaNamespace);
+				if (value != null)
+					Add (MessageHeader.CreateHeader ("RelatesTo", Constants.WsaNamespace, value));
 			}
 
 		}
 
-#if !NET_2_1
 		public EndpointAddress ReplyTo {
 			get {
-				int idx = FindHeader ("ReplyTo", Constants.WSA1);
+				int idx = FindHeader ("ReplyTo", Constants.WsaNamespace);
 				return idx < 0 ? null : GetHeader<EndpointAddress> (idx);
 			}
-			set {
-				if (version.Addressing == AddressingVersion.None)
-					throw new InvalidOperationException ("WS-Addressing header is not allowed for AddressingVersion.None");
-
-				RemoveAll ("ReplyTo", Constants.WSA1);
-				Add (MessageHeader.CreateHeader (
-						"ReplyTo", 
-						Constants.WSA1,
-						EndpointAddress10.FromEndpointAddress (value)));
-			}
+			set { AddEndpointAddressHeader ("ReplyTo", Constants.WsaNamespace, value); }
 		}
-#endif
 
 		public Uri To {
 			get {
@@ -424,17 +416,22 @@ namespace System.ServiceModel.Channels
 			}
 			set { 
 				RemoveAll ("To", version.Addressing.Namespace);
-				Add (MessageHeader.CreateHeader (
-						"To", 
-						version.Addressing.Namespace, 
-						value.AbsoluteUri,
-						true));
+				if (value != null)
+					Add (MessageHeader.CreateHeader ("To", version.Addressing.Namespace, value.AbsoluteUri, true));
 			}
 		}
 
 		[MonoTODO]
 		public UnderstoodHeaders UnderstoodHeaders {
 			get { throw new NotImplementedException (); }
+		}
+
+		public void SetAction (XmlDictionaryString action)
+		{
+			if (action == null)
+				Action = null;
+			else
+				Action = action.Value;
 		}
 	}
 }

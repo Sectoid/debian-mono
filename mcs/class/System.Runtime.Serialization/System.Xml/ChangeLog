@@ -1,3 +1,259 @@
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryWriter.cs : try to lookup dictionary string in
+	  WriteNode(). This is part of #577139 fix (probably).
+
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriter.cs : for text '0' and '1', write 0x80 and
+	  0x82 instead of 0x99 [0x30|0x31]. This cosmetic fix gives identical
+	  writer output for #577139 (and yet it still doesn't work).
+
+2009-12-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : slightly more descriptive errmsg.
+
+2009-12-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XmlDictionaryReader.cs: Fix ReadValueAsBase64 return value and
+	remove NET_2_1 (gui-compare shows this in our 3.0 SP1 profile)
+
+2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XmlDictionaryWriter.cs: Remove usage of XmlMtomDictionaryWriter
+	for NET_2_1
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryReader.cs : ReadValueAsBase64(byte[],int,int) is only
+	  in SL2.
+
+2009-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : read false (0x84) and true (0x86).
+
+2009-07-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSimpleDictionaryWriter.cs : fix bogus import of
+	  XmlWriter.WriteNode() to handle more than two elements.
+
+2009-06-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : fix GetAttribute() that returns
+	  attributes from cache that are *not* in current element.
+
+2009-06-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : there was wrong reusage of nodes
+	  when the node was at the top of the stack. It was added twice and
+	  call to reset resulted in end element with empty names.
+
+2009-05-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriter.cs : allow mapping an identical prefix
+	  to different xmlns in different element level.
+
+2009-05-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriter.cs : allow writing xml/xmlns attributes
+	  without specifying their corresponding namespaces.
+
+2009-05-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : fix regression on stream consumption
+	  excess.
+
+2009-05-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : ReadContentString() returned
+	  doubled string result.
+
+2009-05-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : fix utf16 array on getting its
+	  length. Report correct length (since BinaryReader is directly used
+	  it makes no sense to incompletely keep track of position in Source).
+
+2009-05-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : support reader quotas.
+
+2009-05-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* UniqueId.cs: Fix attributes for v3.5 (and later 2.0 SP) and remove
+	them (in particular [SecurityTreatAsSafe]) from the NET_2_1 build.
+
+2009-04-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : several fixes;
+	  - Name property was always empty.
+	  - Value property was always empty for attributes.
+	  - TextIndex node type was not supported.
+	  - node reset at Read() was incomplete.
+	  - attribute Prefix for single character had wrong value.
+	  - namespace nodes did not appear as attribute nodes.
+	  - attribute value node must be always single. Another text node
+	    means a text child of the element, not the following attr value.
+	  tests will go in sys.servicemodel.
+
+2009-04-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlMtomDictionaryReader.cs : new.
+	* XmlDictionaryReader.cs : implemented CreateMtomReader().
+
+2009-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlMtomDictionaryWriter.cs : new.
+	* XmlDictionaryWriter.cs : implement CreateMtomWriter().
+
+2009-04-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryReader.cs : add ReadStartElement() overload.
+
+2009-04-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UniqueId.cs : add missing security attributes.
+	* XmlDictionaryReader.cs : cleanup extra TODOs.
+	* XmlBinaryDictionaryReader.cs : iplement IsArray.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlDictionaryWriter.cs :
+	  a couple of fixes to reflect correct values for node properties
+	  on each read step.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlBinaryFormat.cs :
+	  support array operation (0x03) on reader too.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs : removed lots of unused part.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterAutoGen.cs : generated code.
+	* XmlBinaryFormat.cs, XmlBinaryDictionaryWriter.cs :
+	  support array operation (0x03) and a bunch of WriteArray() methods.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlBinaryDictionaryWriter.cs
+	  XmlBinaryFormat.cs : implemented element with short prefix.
+
+2009-03-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryFormat.cs, XmlBinaryDictionaryWriter.cs :
+	  resolved all namespace and QName issues.
+
+2009-03-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriter.cs : further namespace refactory.
+	  namespaces are managed by its own (to work fine for both string
+	  and dictionary string).
+
+2009-03-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryFormat.cs, XmlBinaryDictionaryReader.cs,
+	  XmlBinaryDictionaryWriter.cs : improved shorthanded prefix
+	  support. Not only autocreated prefixes but also explicitly-
+	  specified 'a' .. 'z' prefixes are mapped as shorthand.
+	  Some significant (and ongoing) namespace support changes.
+
+2009-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryFormat.cs, XmlBinaryDictionaryWriter.cs :
+	  added some incomplete code for QName support.
+
+2009-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlBinaryFormat.cs :
+	  handle utf16 typed nodes. (not sure if it is used in writer.)
+
+2009-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriter.cs : oops, fix build.
+
+2009-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriter.cs, XmlBinaryDictionaryReader.cs,
+	  XmlBinaryFormat.cs, : reverted Uuid change (UniqueId is different).
+	  Updated TODO status. Removed extra BinaryReader type.
+
+2009-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlBinaryDictionaryWriter.cs,
+	  XmlBinaryFormat.cs : fixed couple of issues regarding text and
+	  base64 fixed-length buffers (their sizes are not variant).
+	  Some ongoing changes on reading dummy-prefixed attributes.
+
+2009-03-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlBinaryFormat.cs,
+	  XmlBinaryDictionaryWriter.cs : couple of enhancements to support
+	  missing types, Dictionary string lookups and indexing fixes.
+	  Also reflect some correction by [MC-NBFX] (MS OSPed document).
+	* XmlBinaryReaderSession.cs : implemented.
+
+2009-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryReader.cs : more not-understandable bits.
+
+2009-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryReader.cs : implemented ReadFullStartElement (full??).
+
+2009-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlDictionaryReader.cs : implemented missing && understandable
+	  members.
+
+2009-03-02  Chris Toshok  <toshok@ximian.com>
+
+	* XmlBinaryDictionaryReader.cs, XmlSimpleDictionaryReader.cs: 2.1
+	has HasValue.
+
+2009-02-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* UniqueId.cs: Remove most [MonoTODO]s and NotImplementedExceptions.
+	  Revert the 2009-02-12 UniqueId.IsGuid "fix", as .NET says that 
+	  new UniqueId(new Guid()).IsGuid==false (which makes no sense, as
+	  .ToString() on the same instance includes the "urn:uuid:" prefix,
+	  which is used by Guids...).
+
+2009-02-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriter.cs: Implement WriteValue(IStreamProvider).
+
+2009-02-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriter.cs: Implement
+	  WriteTextNode(XmlDictionaryReader,bool).  This requires changes to
+	  WriteNode(), as testing had determined that WriteTextNode() is used
+	  instead of WriteString() for Text nodes and attribute values when
+	  called via WriteNode().
+
+2009-02-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriter.cs: Implement WriteValue(Guid),
+	  WriteValue(TimeSpan), WriteValue(UniqueId).
+	* UniqueId.cs: Fix UniqueId.IsGuid, as `new UniqueId(new Guid())` was
+	  previously being detected as a string value, not a Guid value.
+
+2009-02-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriter.cs (WriteStartElement): Add parameter checking
+	  and default arguments to avoid NullReferenceExceptions.
+
+2009-02-11  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryString.cs: Add constructor argument checking.
+
+2009-02-10  Jonathan Pryor  <jpryor@novell.com>
+
+	* IFragmentCapableXmlDictionaryWriter.cs: Added.
+
 2008-09-09  Atsushi Enomoto  <atsushi@ximian.com>
 			Jb Evain  <jbevain@novell.com>
 

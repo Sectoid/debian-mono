@@ -18,6 +18,11 @@
 	once that item is bubbled to the top of the priority queue. Fixes
 	bug #544171
 
+2009-03-03  Marek Habersack  <mhabersack@novell.com>
+
+	* CachedRawResponse.cs: headers are stored in NameValueCollection
+	now.
+
 2009-01-09  Marek Habersack  <mhabersack@novell.com>
 
 	* Cache.cs: System.Threading.Timer.Change takes a long, not an

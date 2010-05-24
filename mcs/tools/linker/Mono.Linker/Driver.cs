@@ -76,6 +76,7 @@ namespace Mono.Linker {
 			Pipeline p = GetStandardPipeline ();
 			LinkContext context = GetDefaultContext (p);
 			I18nAssemblies assemblies = I18nAssemblies.All;
+			ArrayList custom_steps = new ArrayList ();
 
 			bool resolver = false;
 			while (HaveMoreTokens ()) {
@@ -121,7 +122,7 @@ namespace Mono.Linker {
 					context.Actions [GetParam ()] = action;
 					break;
 				case 's':
-					AddCustomStep (p, GetParam ());
+					custom_steps.Add (GetParam ());
 					break;
 				case 'x':
 					foreach (string file in GetFiles (GetParam ()))
@@ -135,7 +136,7 @@ namespace Mono.Linker {
 					break;
 				case 'i':
 					foreach (string file in GetFiles (GetParam ()))
-						p.PrependStep (new ResolveFromXApiStep (XApiService.GetApiInfoFromFile (file)));
+						p.PrependStep (new ResolveFromXApiStep (new XPathDocument (file)));
 					resolver = true;
 					break;
 				case 'l':
@@ -159,6 +160,9 @@ namespace Mono.Linker {
 
 			if (!resolver)
 				Usage ("No resolver was created (use -x, -a or -i)");
+
+			foreach (string custom_step in custom_steps)
+				AddCustomStep (p, custom_step);
 
 			p.AddStepAfter (typeof (LoadReferencesStep), new LoadI18nAssemblies (assemblies));
 
@@ -198,7 +202,11 @@ namespace Mono.Linker {
 
 		static IStep ResolveStep (string type)
 		{
-			Type step = Type.GetType (type, true);
+			Type step = Type.GetType (type, false);
+			if (step == null)
+				Usage (String.Format ("Step type '{0}' not found.", type));
+			if (!typeof (IStep).IsAssignableFrom (step))
+				Usage (String.Format ("Step type '{0}' does not implement IStep interface.", type));
 			return (IStep) Activator.CreateInstance (step);
 		}
 
@@ -302,6 +310,7 @@ namespace Mono.Linker {
 			Pipeline p = new Pipeline ();
 			p.AppendStep (new LoadReferencesStep ());
 			p.AppendStep (new BlacklistStep ());
+			p.AppendStep (new TypeMapStep ());
 			p.AppendStep (new MarkStep ());
 			p.AppendStep (new SweepStep ());
 			p.AppendStep (new CleanStep ());

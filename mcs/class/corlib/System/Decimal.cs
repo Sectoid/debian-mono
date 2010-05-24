@@ -141,6 +141,7 @@ namespace System
 		public Decimal (uint value) 
 		{
 			lo = value;
+			flags = hi = mid = 0;
 		}
 
 		public Decimal (long value) 
@@ -480,27 +481,27 @@ namespace System
 
 		public static bool operator > (Decimal d1, Decimal d2) 
 		{
-			return decimalCompare (ref d1, ref d2) > 0;
+			return Compare (d1, d2) > 0;
 		}
 
 		public static bool operator >= (Decimal d1, Decimal d2) 
 		{
-			return decimalCompare (ref d1, ref d2) >= 0;
+			return Compare (d1, d2) >= 0;
 		}
 
 		public static bool operator < (Decimal d1, Decimal d2) 
 		{
-			return decimalCompare (ref d1, ref d2) < 0;
+			return Compare (d1, d2) < 0;
 		}
 
 		public static bool operator <= (Decimal d1, Decimal d2) 
 		{
-			return decimalCompare (ref d1, ref d2) <= 0;
+			return Compare (d1, d2) <= 0;
 		}
 
 		public static bool Equals (Decimal d1, Decimal d2) 
 		{
-			return decimalCompare (ref d1, ref d2) == 0;
+			return Compare (d1, d2) == 0;
 		}
 
 		public override bool Equals (object value) 
@@ -657,8 +658,9 @@ namespace System
 				result = d1;
 			}
 			else {
-				if (decimalIntDiv (out result, ref d1, ref d2) != 0)
+				if (decimalDiv (out result, ref d1, ref d2) != 0)
 					throw new OverflowException ();
+				result = Decimal.Truncate (result);
 
 				// FIXME: not really performant here
 				result = d1 - result * d2;
@@ -685,14 +687,13 @@ namespace System
 			if (!(value is Decimal))
 				throw new ArgumentException (Locale.GetText ("Value is not a System.Decimal"));
 
-			Decimal d2 = (Decimal)value;
-			return decimalCompare (ref this, ref d2);
+			return Compare (this, (Decimal)value);
 		}
 
 #if NET_2_0
 		public int CompareTo (Decimal value)
 		{
-			return decimalCompare (ref this, ref value);
+			return Compare (this, value);
 		}
 
 		public bool Equals (Decimal value) 
@@ -1237,9 +1238,11 @@ namespace System
 			return (UInt64)(Decimal.Truncate (d));
 		}
 
-		object IConvertible.ToType (Type type, IFormatProvider provider)
+		object IConvertible.ToType (Type targetType, IFormatProvider provider)
 		{
-			return Convert.ToType (this, type, provider, false);
+			if (targetType == null)
+				throw new ArgumentNullException ("targetType");
+			return Convert.ToType (this, targetType, provider, false);
 		}
 
 		bool IConvertible.ToBoolean (IFormatProvider provider)

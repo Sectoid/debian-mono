@@ -1043,7 +1043,7 @@ namespace System.Linq.Expressions {
 			if (method == null)
 				return null;
 
-			if (!method.IsGenericMethod && args == null)
+			if (!method.IsGenericMethod && (args == null || args.Length == 0))
 				return method;
 
 			if (args.Length == method.GetGenericArguments ().Length)
@@ -1083,13 +1083,23 @@ namespace System.Linq.Expressions {
 					return false;
 
 				return MethodMatch (closed, name, parameterTypes, argumentTypes);
+			} else if (!method.IsGenericMethod && (argumentTypes != null && argumentTypes.Length > 0))
+				return false;
+
+			for (int i = 0; i < parameters.Length; i++) {
+				var type = parameterTypes [i];
+				var parameter = parameters [i];
+				if (!IsAssignableToParameterType (type, parameter)
+					&& !IsExpressionOfParameter (type, parameter.ParameterType))
+					return false;
 			}
 
-			for (int i = 0; i < parameters.Length; i++)
-				if (!IsAssignableToParameterType (parameterTypes [i], parameters [i]))
-					return false;
-
 			return true;
+		}
+
+		static bool IsExpressionOfParameter (Type type, Type ptype)
+		{
+			return ptype.IsGenericInstanceOf (typeof (Expression<>)) && ptype.GetFirstGenericArgument () == type;
 		}
 
 		static MethodInfo TryGetMethod (Type type, string methodName, BindingFlags flags, Type [] parameterTypes, Type [] argumentTypes)
@@ -1099,7 +1109,7 @@ namespace System.Linq.Expressions {
 						  select meth;
 
 			if (methods.Count () > 1)
-				throw new InvalidOperationException ("Too much method candidates");
+				throw new InvalidOperationException ("Too many method candidates");
 
 			var method = TryMakeGeneric (methods.FirstOrDefault (), argumentTypes);
 			if (method != null)
@@ -2087,8 +2097,12 @@ namespace System.Linq.Expressions {
 					throw new ArgumentNullException ("expression");
 				if (!expression.Type.IsAssignableTo (propertyAccessor.DeclaringType))
 					throw new ArgumentException ("expression");
-			} else if (expression != null)
-				throw new ArgumentException ("expression");
+			}
+			//
+			// .NET does not mandate that if the property is static, that the expression must be null
+			// fixes a bug exposed by Orchard's ContentItemRecordAlteration.Alteration
+			// else if (expression != null)
+			//		throw new ArgumentException ("expression");
 
 			var prop = GetAssociatedProperty (propertyAccessor);
 			if (prop == null)

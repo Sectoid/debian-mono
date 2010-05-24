@@ -3,8 +3,9 @@
 //
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
+//      Marek Habersack <mhabersack@novell.com>
 //
-// Copyright (C) 2008 Novell Inc. http://novell.com
+// Copyright (C) 2008-2009 Novell Inc. http://novell.com
 //
 
 //
@@ -32,6 +33,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Security.Permissions;
 using System.Security.Principal;
@@ -44,9 +46,12 @@ namespace System.Web.DynamicData
 	[AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public class ContextConfiguration
 	{
-		[MonoTODO]
+		public ContextConfiguration ()
+		{
+			MetadataProviderFactory = (Type t) => new AssociatedMetadataTypeTypeDescriptionProvider (t);
+		}
+		
 		public Func<Type, TypeDescriptionProvider> MetadataProviderFactory { get; set; }
-		[MonoTODO]
 		public bool ScaffoldAllTables { get; set; }
 	}
 }

@@ -1,3 +1,33 @@
+2009-05-29  Steven Munroe  <munroesj@us.ibm.com>
+
+	This patch is contributed under the terms of the MIT/X11 license
+
+       * template_main.c: Include string.h to define strchr, memcpy,
+       and strdup.
+	
+2009-05-12  Tor Lillqvist  <tml@novell.com>
+
+	* template_main.c: Some small improvements on Windows: No need to
+	include <shellapi.h>, <windows.h> does it already. Don't use the
+	argc value as passed to main(), instead just let
+	CommandLineToArgvW() overwrite it. Free the buffer returned by
+	CommandLineToArgvW().
+
+2009-05-12  Kornél Pál  <kornelpal@gmail.com>
+
+	* TODO: Added notices about linking Mono statically.
+
+2009-05-11  Tor Lillqvist  <tml@novell.com>
+
+	* template_main.c: Enable passing options to the bundled Mono
+	interpreter through a MONO_BUNDLED_OPTIONS environment
+	variable. Requested in bug #495858.
+
+	Enable non-ASCII (arbitraty Unicode in fact) command-line
+	parameters to a mkbundled executable on Windows. Use
+	GetCommandLineW(), CommandLineToArgvW(), and then
+	g_utf16_to_utf8(). From bug #446172.
+
 2009-03-15  Steven Munroe  <munroesj@us.ibm.com>
 
 	This patch is contributed under the terms of the MIT/X11 license

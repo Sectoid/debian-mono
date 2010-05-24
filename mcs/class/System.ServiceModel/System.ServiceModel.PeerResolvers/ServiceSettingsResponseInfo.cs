@@ -33,14 +33,13 @@ namespace System.ServiceModel.PeerResolvers
 			set { body.ControlMeshShape = value; }
 		}
 		
-		[MonoTODO]
 		public bool HasBody ()
 		{
-			throw new NotImplementedException ();
+			return true; // FIXME: I have no idea when it returns false
 		}
 	}
 	
-	[DataContract]
+	[DataContract (Name = "ServiceSettings", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
 	internal class ServiceSettingsResponseInfoDC
 	{
 		bool control_mesh_shape;

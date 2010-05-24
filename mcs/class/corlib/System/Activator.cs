@@ -31,14 +31,16 @@
 
 using System.Globalization;
 using System.Reflection;
-using System.Runtime.Remoting;
-using System.Runtime.Remoting.Activation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Security.Policy;
 using System.Configuration.Assemblies;
 using System.Text;
+#if !NET_2_1 || MONOTOUCH
+using System.Runtime.Remoting;
+using System.Runtime.Remoting.Activation;
+#endif
 
 namespace System 
 {
@@ -58,6 +60,7 @@ namespace System
 		{
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		[MonoTODO ("No COM support")]
 		public static ObjectHandle CreateComInstanceFrom (string assemblyName, string typeName)
 		{
@@ -201,7 +204,10 @@ namespace System
 				throw new ArgumentNullException ("domain");
 			return domain.CreateInstance (assemblyName, typeName, ignoreCase, bindingAttr, binder, args, culture, activationAttributes, securityAttributes);
 		}
+#endif
+#endif // !NET_2_1
 
+#if NET_2_0
 		public static T CreateInstance <T> ()
 		{
 			return (T) CreateInstance (typeof (T));
@@ -280,7 +286,7 @@ namespace System
 			}
 
 			CheckAbstractType (type);
-
+#if !NET_2_1 || MONOTOUCH
 			if (activationAttributes != null && activationAttributes.Length > 0) {
 				if (!type.IsMarshalByRef) {
 					string msg = Locale.GetText ("Type '{0}' doesn't derive from MarshalByRefObject.", type.FullName);
@@ -293,7 +299,7 @@ namespace System
 					return newOb;
 				}
 			}
-
+#endif
 			return ctor.Invoke (bindingAttr, binder, args, culture);
 		}
 
@@ -306,11 +312,19 @@ namespace System
 #endif
 			CheckAbstractType (type);
 
-			BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
-			if (nonPublic)
-				flags |= BindingFlags.NonPublic;
+			ConstructorInfo ctor;
+			MonoType monoType = type as MonoType;
 
-			ConstructorInfo ctor = type.GetConstructor (flags, null, CallingConventions.Any, Type.EmptyTypes, null);
+			if (monoType != null) {
+				ctor = monoType.GetDefaultConstructor ();
+				if (!nonPublic && ctor != null && !ctor.IsPublic)
+					ctor = null;
+			} else {
+				BindingFlags flags = BindingFlags.Public | BindingFlags.Instance;
+				if (nonPublic)
+					flags |= BindingFlags.NonPublic;
+				ctor = type.GetConstructor (flags, null, CallingConventions.Any, Type.EmptyTypes, null);
+			}
 
 			if (ctor == null) {
 				if (type.IsValueType)
@@ -347,6 +361,7 @@ namespace System
 			}
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		[SecurityPermission (SecurityAction.LinkDemand, RemotingConfiguration = true)]
 		public static object GetObject (Type type, string url)
 		{
@@ -364,7 +379,7 @@ namespace System
 
 			return RemotingServices.Connect (type, url, state);
 		}
-
+#endif
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal static extern object CreateInstanceInternal (Type type);
 

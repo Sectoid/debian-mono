@@ -15,7 +15,7 @@
 //
 // Only remove it if you need to debug locally on your tree.
 //
-#define PRODUCTION
+//#define PRODUCTION
 
 using System;
 using System.IO;
@@ -40,7 +40,6 @@ namespace Mono.CSharp {
 		static AppDomain current_domain;
 
 		public static AssemblyClass Assembly;
-		public static ModuleClass Module;
 
 		static CodeGen ()
 		{
@@ -50,7 +49,6 @@ namespace Mono.CSharp {
 		public static void Reset ()
 		{
 			Assembly = new AssemblyClass ();
-			Module = new ModuleClass (RootContext.Unsafe);
 		}
 
 		public static string Basename (string name)
@@ -93,22 +91,21 @@ namespace Mono.CSharp {
 		//
 		// Initializes the code generator variables for interactive use (repl)
 		//
-		static public void InitDynamic (string name)
+		static public void InitDynamic (CompilerContext ctx, string name)
 		{
 			current_domain = AppDomain.CurrentDomain;
 			AssemblyName an = Assembly.GetAssemblyName (name, name);
 			
 			Assembly.Builder = current_domain.DefineDynamicAssembly (an, AssemblyBuilderAccess.Run | COMPILER_ACCESS);
-			Module.Builder = Assembly.Builder.DefineDynamicModule (Basename (name), false);
-#if GMCS_SOURCE
+			RootContext.ToplevelTypes = new ModuleContainer (ctx, true);
+			RootContext.ToplevelTypes.Builder = Assembly.Builder.DefineDynamicModule (Basename (name), false);
 			Assembly.Name = Assembly.Builder.GetName ();
-#endif
 		}
 		
 		//
 		// Initializes the code generator variables
 		//
-		static public bool Init (string name, string output, bool want_debugging_support)
+		static public bool Init (string name, string output, bool want_debugging_support, CompilerContext ctx)
 		{
 			FileName = output;
 			AssemblyName an = Assembly.GetAssemblyName (name, output);
@@ -118,11 +115,11 @@ namespace Mono.CSharp {
 			if (an.KeyPair != null) {
 				// If we are going to strong name our assembly make
 				// sure all its refs are strong named
-				foreach (Assembly a in RootNamespace.Global.Assemblies) {
+				foreach (Assembly a in GlobalRootNamespace.Instance.Assemblies) {
 					AssemblyName ref_name = a.GetName ();
 					byte [] b = ref_name.GetPublicKeyToken ();
 					if (b == null || b.Length == 0) {
-						Report.Error (1577, "Assembly generation failed " +
+						ctx.Report.Error (1577, "Assembly generation failed " +
 								"-- Referenced assembly '" +
 								ref_name.Name +
 								"' does not have a strong name.");
@@ -140,7 +137,7 @@ namespace Mono.CSharp {
 			catch (ArgumentException) {
 				// specified key may not be exportable outside it's container
 				if (RootContext.StrongNameKeyContainer != null) {
-					Report.Error (1548, "Could not access the key inside the container `" +
+					ctx.Report.Error (1548, "Could not access the key inside the container `" +
 						RootContext.StrongNameKeyContainer + "'.");
 					Environment.Exit (1);
 				}
@@ -148,17 +145,15 @@ namespace Mono.CSharp {
 			}
 			catch (CryptographicException) {
 				if ((RootContext.StrongNameKeyContainer != null) || (RootContext.StrongNameKeyFile != null)) {
-					Report.Error (1548, "Could not use the specified key to strongname the assembly.");
+					ctx.Report.Error (1548, "Could not use the specified key to strongname the assembly.");
 					Environment.Exit (1);
 				}
 				return false;
 			}
 
-#if GMCS_SOURCE
 			// Get the complete AssemblyName from the builder
 			// (We need to get the public key and token)
 			Assembly.Name = Assembly.Builder.GetName ();
-#endif
 
 			//
 			// Pass a path-less name to DefineDynamicModule.  Wonder how
@@ -169,19 +164,19 @@ namespace Mono.CSharp {
 			// load the default symbol writer.
 			//
 			try {
-				Module.Builder = Assembly.Builder.DefineDynamicModule (
+				RootContext.ToplevelTypes.Builder = Assembly.Builder.DefineDynamicModule (
 					Basename (name), Basename (output), want_debugging_support);
 
 #if !MS_COMPATIBLE
 				// TODO: We should use SymbolWriter from DefineDynamicModule
-				if (want_debugging_support && !SymbolWriter.Initialize (Module.Builder, output)) {
-					Report.Error (40, "Unexpected debug information initialization error `{0}'",
+				if (want_debugging_support && !SymbolWriter.Initialize (RootContext.ToplevelTypes.Builder, output)) {
+					ctx.Report.Error (40, "Unexpected debug information initialization error `{0}'",
 						"Could not find the symbol writer assembly (Mono.CompilerServices.SymbolWriter.dll)");
 					return false;
 				}
 #endif
 			} catch (ExecutionEngineException e) {
-				Report.Error (40, "Unexpected debug information initialization error `{0}'",
+				ctx.Report.Error (40, "Unexpected debug information initialization error `{0}'",
 					e.Message);
 				return false;
 			}
@@ -189,10 +184,38 @@ namespace Mono.CSharp {
 			return true;
 		}
 
-		static public void Save (string name, bool saveDebugInfo)
+		static public void Save (string name, bool saveDebugInfo, Report Report)
 		{
+#if GMCS_SOURCE
+			PortableExecutableKinds pekind;
+			ImageFileMachine machine;
+
+			switch (RootContext.Platform) {
+			case Platform.X86:
+				pekind = PortableExecutableKinds.Required32Bit;
+				machine = ImageFileMachine.I386;
+				break;
+			case Platform.X64:
+				pekind = PortableExecutableKinds.PE32Plus;
+				machine = ImageFileMachine.AMD64;
+				break;
+			case Platform.IA64:
+				pekind = PortableExecutableKinds.PE32Plus;
+				machine = ImageFileMachine.IA64;
+				break;
+			case Platform.AnyCPU:
+			default:
+				pekind = PortableExecutableKinds.ILOnly;
+				machine = ImageFileMachine.I386;
+				break;
+			}
+#endif
 			try {
+#if GMCS_SOURCE
+				Assembly.Builder.Save (Basename (name), pekind, machine);
+#else
 				Assembly.Builder.Save (Basename (name));
+#endif
 			}
 			catch (COMException) {
 				if ((RootContext.StrongNameKeyFile == null) || (!RootContext.StrongNameDelaySign))
@@ -211,6 +234,10 @@ namespace Mono.CSharp {
 				Report.Error (16, "Could not write to file `"+name+"', cause: " + ua.Message);
 				return;
 			}
+			catch (System.NotImplementedException nie) {
+				Report.RuntimeMissingSupport (Location.Null, nie.Message);
+				return;
+			}
 
 			//
 			// Write debuger symbol file
@@ -220,116 +247,13 @@ namespace Mono.CSharp {
 			}
 	}
 
-
-	/// <summary>
-	/// An interface to hold all the information needed in the resolving phase.
-	/// </summary>
-	public interface IResolveContext
-	{
-		DeclSpace DeclContainer { get; }
-		bool IsInObsoleteScope { get; }
-		bool IsInUnsafeScope { get; }
-
-		// the declcontainer to lookup for type-parameters.  Should only use LookupGeneric on it.
-		//
-		// FIXME: This is somewhat of a hack.  We don't need a full DeclSpace for this.  We just need the
-		//        current type parameters in scope. IUIC, that will require us to rewrite GenericMethod.
-		//        Maybe we can replace this with a 'LookupGeneric (string)' instead, but we'll have to 
-		//        handle generic method overrides differently
-		DeclSpace GenericDeclContainer { get; }
-	}
-
 	/// <summary>
 	///   An Emit Context is created for each body of code (from methods,
 	///   properties bodies, indexer bodies or constructor bodies)
 	/// </summary>
-	public class EmitContext : IResolveContext {
-
-		//
-		// Holds a varible used during collection or object initialization.
-		//
-		public Expression CurrentInitializerVariable;
-
-		DeclSpace decl_space;
-		
-		public DeclSpace TypeContainer;
+	public class EmitContext : BuilderContext
+	{
 		public ILGenerator ig;
-
-		[Flags]
-		public enum Flags : int {
-			/// <summary>
-			///   This flag tracks the `checked' state of the compilation,
-			///   it controls whether we should generate code that does overflow
-			///   checking, or if we generate code that ignores overflows.
-			///
-			///   The default setting comes from the command line option to generate
-			///   checked or unchecked code plus any source code changes using the
-			///   checked/unchecked statements or expressions.   Contrast this with
-			///   the ConstantCheckState flag.
-			/// </summary>
-			CheckState = 1 << 0,
-
-			/// <summary>
-			///   The constant check state is always set to `true' and cant be changed
-			///   from the command line.  The source code can change this setting with
-			///   the `checked' and `unchecked' statements and expressions. 
-			/// </summary>
-			ConstantCheckState = 1 << 1,
-
-			AllCheckStateFlags = CheckState | ConstantCheckState,
-
-			/// <summary>
-			///  Whether we are inside an unsafe block
-			/// </summary>
-			InUnsafe = 1 << 2,
-
-			InCatch = 1 << 3,
-			InFinally = 1 << 4,
-
-			/// <summary>
-			///   Whether control flow analysis is enabled
-			/// </summary>
-			DoFlowAnalysis = 1 << 5,
-
-			/// <summary>
-			///   Whether control flow analysis is disabled on structs
-			///   (only meaningful when DoFlowAnalysis is set)
-			/// </summary>
-			OmitStructFlowAnalysis = 1 << 6,
-
-			///
-			/// Indicates the current context is in probing mode, no errors are reported. 
-			///
-			ProbingMode = 1	<<	7,
-
-			//
-			// Inside field intializer expression
-			//
-			InFieldInitializer = 1 << 8,
-			
-			InferReturnType = 1 << 9,
-			
-			InCompoundAssignment = 1 << 10,
-
-			OmitDebuggingInfo = 1 << 11
-		}
-
-		Flags flags;
-
-		/// <summary>
-		///   Whether we are emitting code inside a static or instance method
-		/// </summary>
-		public bool IsStatic;
-
-		/// <summary>
-		///   Whether the actual created method is static or instance method.
-		///   Althoug the method might be declared as `static', if an anonymous
-		///   method is involved, we might turn this into an instance method.
-		///
-		///   So this reflects the low-level staticness of the method, while
-		///   IsStatic represents the semantic, high-level staticness.
-		/// </summary>
-		//public bool MethodIsStatic;
 
 		/// <summary>
 		///   The value that is allowed to be returned or NULL if there is no
@@ -338,31 +262,16 @@ namespace Mono.CSharp {
 		Type return_type;
 
 		/// <summary>
-		///   Points to the Type (extracted from the TypeContainer) that
-		///   declares this body of code
-		/// </summary>
-		public readonly Type ContainerType;
-		
-		/// <summary>
-		///   Whether this is generating code for a constructor
-		/// </summary>
-		public bool IsConstructor;
-
-		/// <summary>
 		///   Keeps track of the Type to LocalBuilder temporary storage created
 		///   to store structures (used to compute the address of the structure
 		///   value on structure method invocations)
 		/// </summary>
-		public Hashtable temporary_storage;
-
-		public Block CurrentBlock;
-
-		public int CurrentFile;
+		Hashtable temporary_storage;
 
 		/// <summary>
 		///   The location where we store the return value.
 		/// </summary>
-		LocalBuilder return_value;
+		public LocalBuilder return_value;
 
 		/// <summary>
 		///   The location where return has to jump to return the
@@ -376,504 +285,39 @@ namespace Mono.CSharp {
 		public bool HasReturnLabel;
 
 		/// <summary>
-		///  Whether we are in a `fixed' initialization
-		/// </summary>
-		public bool InFixedInitializer;
-
-		/// <summary>
 		///  Whether we are inside an anonymous method.
 		/// </summary>
 		public AnonymousExpression CurrentAnonymousMethod;
 		
-		/// <summary>
-		///   Location for this EmitContext
-		/// </summary>
-		public Location loc;
+		public readonly IMemberContext MemberContext;
 
-		/// <summary>
-		///   Inside an enum definition, we do not resolve enumeration values
-		///   to their enumerations, but rather to the underlying type/value
-		///   This is so EnumVal + EnumValB can be evaluated.
-		///
-		///   There is no "E operator + (E x, E y)", so during an enum evaluation
-		///   we relax the rules
-		/// </summary>
-		public bool InEnumContext;
-
-		public readonly IResolveContext ResolveContext;
-
-		/// <summary>
-		///    The current iterator
-		/// </summary>
-		public Iterator CurrentIterator {
-			get { return CurrentAnonymousMethod as Iterator; }
-		}
-
-		/// <summary>
-		///    Whether we are in the resolving stage or not
-		/// </summary>
-		enum Phase {
-			Created,
-			Resolving,
-			Emitting
-		}
-
-		bool isAnonymousMethodAllowed = true;
-
-		Phase current_phase;
-		FlowBranching current_flow_branching;
-
-		static int next_id = 0;
-		int id = ++next_id;
-
-		public override string ToString ()
+		public EmitContext (IMemberContext rc, ILGenerator ig, Type return_type)
 		{
-			return String.Format ("EmitContext ({0}:{1})", id,
-					      CurrentAnonymousMethod, loc);
-		}
-		
-		public EmitContext (IResolveContext rc, DeclSpace parent, DeclSpace ds, Location l, ILGenerator ig,
-				    Type return_type, int code_flags, bool is_constructor)
-		{
-			this.ResolveContext = rc;
+			this.MemberContext = rc;
 			this.ig = ig;
 
-			TypeContainer = parent;
-			this.decl_space = ds;
-			if (RootContext.Checked)
-				flags |= Flags.CheckState;
-			flags |= Flags.ConstantCheckState;
-
-			if (return_type == null)
-				throw new ArgumentNullException ("return_type");
-#if GMCS_SOURCE
-			if ((return_type is TypeBuilder) && return_type.IsGenericTypeDefinition)
-				throw new InternalErrorException ();
-#endif
-
-			IsStatic = (code_flags & Modifiers.STATIC) != 0;
-			ReturnType = return_type;
-			IsConstructor = is_constructor;
-			CurrentBlock = null;
-			CurrentFile = 0;
-			current_phase = Phase.Created;
-
-			if (parent != null){
-				// Can only be null for the ResolveType contexts.
-				ContainerType = parent.TypeBuilder;
-				if (rc.IsInUnsafeScope)
-					flags |= Flags.InUnsafe;
-			}
-			loc = l;
+			this.return_type = return_type;
 		}
 
-		public EmitContext (IResolveContext rc, DeclSpace ds, Location l, ILGenerator ig,
-				    Type return_type, int code_flags, bool is_constructor)
-			: this (rc, ds, ds, l, ig, return_type, code_flags, is_constructor)
-		{
+		public Type CurrentType {
+			get { return MemberContext.CurrentType; }
 		}
 
-		public EmitContext (IResolveContext rc, DeclSpace ds, Location l, ILGenerator ig,
-				    Type return_type, int code_flags)
-			: this (rc, ds, ds, l, ig, return_type, code_flags, false)
-		{
+		public TypeParameter[] CurrentTypeParameters {
+			get { return MemberContext.CurrentTypeParameters; }
 		}
 
-		// IResolveContext.DeclContainer
-		public DeclSpace DeclContainer { 
-			get { return decl_space; }
-			set { decl_space = value; }
+		public TypeContainer CurrentTypeDefinition {
+			get { return MemberContext.CurrentTypeDefinition; }
 		}
 
-		// IResolveContext.GenericDeclContainer
-		public DeclSpace GenericDeclContainer {
-			get { return DeclContainer; }
-		}
-
-		public bool CheckState {
-			get { return (flags & Flags.CheckState) != 0; }
-		}
-
-		public bool ConstantCheckState {
-			get { return (flags & Flags.ConstantCheckState) != 0; }
-		}
-
-		public bool InUnsafe {
-			get { return (flags & Flags.InUnsafe) != 0; }
-		}
-
-		public bool InCatch {
-			get { return (flags & Flags.InCatch) != 0; }
-		}
-
-		public bool InFinally {
-			get { return (flags & Flags.InFinally) != 0; }
-		}
-
-		public bool DoFlowAnalysis {
-			get { return (flags & Flags.DoFlowAnalysis) != 0; }
-		}
-
-		public bool OmitStructFlowAnalysis {
-			get { return (flags & Flags.OmitStructFlowAnalysis) != 0; }
-		}
-
-		// utility helper for CheckExpr, UnCheckExpr, Checked and Unchecked statements
-		// it's public so that we can use a struct at the callsite
-		public struct FlagsHandle : IDisposable
-		{
-			EmitContext ec;
-			readonly Flags invmask, oldval;
-
-			public FlagsHandle (EmitContext ec, Flags flagsToSet)
-				: this (ec, flagsToSet, flagsToSet)
-			{
-			}
-
-			internal FlagsHandle (EmitContext ec, Flags mask, Flags val)
-			{
-				this.ec = ec;
-				invmask = ~mask;
-				oldval = ec.flags & mask;
-				ec.flags = (ec.flags & invmask) | (val & mask);
-
-				if ((mask & Flags.ProbingMode) != 0)
-					Report.DisableReporting ();
-			}
-
-			public void Dispose ()
-			{
-				if ((invmask & Flags.ProbingMode) == 0)
-					Report.EnableReporting ();
-
-				ec.flags = (ec.flags & invmask) | oldval;
-			}
-		}
-
-		// Temporarily set all the given flags to the given value.  Should be used in an 'using' statement
-		public FlagsHandle Set (Flags flagsToSet)
-		{
-			return new FlagsHandle (this, flagsToSet);
-		}
-
-		public FlagsHandle With (Flags bits, bool enable)
-		{
-			return new FlagsHandle (this, bits, enable ? bits : 0);
-		}
-
-		public FlagsHandle WithFlowAnalysis (bool do_flow_analysis, bool omit_struct_analysis)
-		{
-			Flags newflags = 
-				(do_flow_analysis ? Flags.DoFlowAnalysis : 0) |
-				(omit_struct_analysis ? Flags.OmitStructFlowAnalysis : 0);
-			return new FlagsHandle (this, Flags.DoFlowAnalysis | Flags.OmitStructFlowAnalysis, newflags);
-		}
-		
-		/// <summary>
-		///   If this is true, then Return and ContextualReturn statements
-		///   will set the ReturnType value based on the expression types
-		///   of each return statement instead of the method return type
-		///   (which is initially null).
-		/// </summary>
-		public bool InferReturnType {
-			get { return (flags & Flags.InferReturnType) != 0; }
-		}
-
-		// IResolveContext.IsInObsoleteScope
-		public bool IsInObsoleteScope {
-			get {
-				// Disables obsolete checks when probing is on
-				return IsInProbingMode || ResolveContext.IsInObsoleteScope;
-			}
-		}
-
-		public bool IsInProbingMode {
-			get { return (flags & Flags.ProbingMode) != 0; }
-		}
-
-		// IResolveContext.IsInUnsafeScope
-		public bool IsInUnsafeScope {
-			get { return InUnsafe || ResolveContext.IsInUnsafeScope; }
-		}
-
-		public bool IsAnonymousMethodAllowed {
-			get { return isAnonymousMethodAllowed; }
-			set { isAnonymousMethodAllowed = value; }
-		}
-
-		public bool IsInFieldInitializer {
-			get { return (flags & Flags.InFieldInitializer) != 0; }
-		}
-		
-		public bool IsInCompoundAssignment {
-			get { return (flags & Flags.InCompoundAssignment) != 0; }
-		}
-
-		public bool IsVariableCapturingRequired {
-			get {
-				return !IsInProbingMode && (CurrentBranching == null || !CurrentBranching.CurrentUsageVector.IsUnreachable);
-			}
-		}
-
-		public FlowBranching CurrentBranching {
-			get { return current_flow_branching; }
-		}
-
-		public bool OmitDebuggingInfo {
-			get { return (flags & Flags.OmitDebuggingInfo) != 0; }
-			set {
-				if (value)
-					flags |= Flags.OmitDebuggingInfo;
-				else
-					flags &= ~Flags.OmitDebuggingInfo;
-			}
-		}
-
-		// <summary>
-		//   Starts a new code branching.  This inherits the state of all local
-		//   variables and parameters from the current branching.
-		// </summary>
-		public FlowBranching StartFlowBranching (FlowBranching.BranchingType type, Location loc)
-		{
-			current_flow_branching = FlowBranching.CreateBranching (CurrentBranching, type, null, loc);
-			return current_flow_branching;
-		}
-
-		// <summary>
-		//   Starts a new code branching for block `block'.
-		// </summary>
-		public FlowBranching StartFlowBranching (Block block)
-		{
-			flags |= Flags.DoFlowAnalysis;
-
-			current_flow_branching = FlowBranching.CreateBranching (
-				CurrentBranching, FlowBranching.BranchingType.Block, block, block.StartLocation);
-			return current_flow_branching;
-		}
-
-		public FlowBranchingTryCatch StartFlowBranching (TryCatch stmt)
-		{
-			FlowBranchingTryCatch branching = new FlowBranchingTryCatch (CurrentBranching, stmt);
-			current_flow_branching = branching;
-			return branching;
-		}
-
-		public FlowBranchingException StartFlowBranching (ExceptionStatement stmt)
-		{
-			FlowBranchingException branching = new FlowBranchingException (CurrentBranching, stmt);
-			current_flow_branching = branching;
-			return branching;
-		}
-
-		public FlowBranchingLabeled StartFlowBranching (LabeledStatement stmt)
-		{
-			FlowBranchingLabeled branching = new FlowBranchingLabeled (CurrentBranching, stmt);
-			current_flow_branching = branching;
-			return branching;
-		}
-
-		public FlowBranchingIterator StartFlowBranching (Iterator iterator)
-		{
-			FlowBranchingIterator branching = new FlowBranchingIterator (CurrentBranching, iterator);
-			current_flow_branching = branching;
-			return branching;
-		}
-
-		public FlowBranchingToplevel StartFlowBranching (ToplevelBlock stmt)
-		{
-			FlowBranchingToplevel branching = new FlowBranchingToplevel (CurrentBranching, stmt);
-			current_flow_branching = branching;
-			return branching;
-		}
-
-		// <summary>
-		//   Ends a code branching.  Merges the state of locals and parameters
-		//   from all the children of the ending branching.
-		// </summary>
-		public bool EndFlowBranching ()
-		{
-			FlowBranching old = current_flow_branching;
-			current_flow_branching = current_flow_branching.Parent;
-
-			FlowBranching.UsageVector vector = current_flow_branching.MergeChild (old);
-			return vector.IsUnreachable;
-		}
-
-		// <summary>
-		//   Kills the current code branching.  This throws away any changed state
-		//   information and should only be used in case of an error.
-		// </summary>
-		// FIXME: this is evil
-		public void KillFlowBranching ()
-		{
-			current_flow_branching = current_flow_branching.Parent;
-		}
-
-		public bool MustCaptureVariable (LocalInfo local)
-		{
-			if (CurrentAnonymousMethod == null)
-				return false;
-
-			// FIXME: IsIterator is too aggressive, we should capture only if child
-			// block contains yield
-			if (CurrentAnonymousMethod.IsIterator)
-				return true;
-
-			return local.Block.Toplevel != CurrentBlock.Toplevel;
-		}
-		
-		public void EmitMeta (ToplevelBlock b)
-		{
-			b.EmitMeta (this);
-
-			if (HasReturnLabel)
-				ReturnLabel = ig.DefineLabel ();
-		}
-
-		//
-		// Here until we can fix the problem with Mono.CSharp.Switch, which
-		// currently can not cope with ig == null during resolve (which must
-		// be fixed for switch statements to work on anonymous methods).
-		//
-		public void EmitTopBlock (IMethodData md, ToplevelBlock block)
-		{
-			if (block == null)
-				return;
-			
-			bool unreachable;
-			
-			if (ResolveTopBlock (null, block, md.ParameterInfo, md, out unreachable)){
-				if (Report.Errors > 0)
-					return;
-
-				EmitMeta (block);
-
-				current_phase = Phase.Emitting;
-#if PRODUCTION
-				try {
-#endif
-				EmitResolvedTopBlock (block, unreachable);
-#if PRODUCTION
-				} catch (Exception e){
-					Console.WriteLine ("Exception caught by the compiler while emitting:");
-					Console.WriteLine ("   Block that caused the problem begin at: " + block.loc);
-					
-					Console.WriteLine (e.GetType ().FullName + ": " + e.Message);
-					throw;
-				}
-#endif
-			}
-		}
-
-		bool resolved;
-		bool unreachable;
-
-		public bool ResolveTopBlock (EmitContext anonymous_method_host, ToplevelBlock block,
-					     Parameters ip, IMethodData md, out bool unreachable)
-		{
-			if (resolved) {
-				unreachable = this.unreachable;
-				return true;
-			}
-
-			current_phase = Phase.Resolving;
-			unreachable = false;
-
-			if (!loc.IsNull)
-				CurrentFile = loc.File;
-
-#if PRODUCTION
-			try {
-#endif
-				if (!block.ResolveMeta (this, ip))
-					return false;
-
-				using (this.With (EmitContext.Flags.DoFlowAnalysis, true)) {
-					FlowBranchingToplevel top_level;
-					if (anonymous_method_host != null)
-						top_level = new FlowBranchingToplevel (anonymous_method_host.CurrentBranching, block);
-					else 
-						top_level = block.TopLevelBranching;
-
-					current_flow_branching = top_level;
-					bool ok = block.Resolve (this);
-					current_flow_branching = null;
-
-					if (!ok)
-						return false;
-
-					bool flow_unreachable = top_level.End ();
-					if (flow_unreachable)
-						this.unreachable = unreachable = true;
-				}
-#if PRODUCTION
-			} catch (Exception e) {
-				Console.WriteLine ("Exception caught by the compiler while compiling:");
-				Console.WriteLine ("   Block that caused the problem begin at: " + loc);
-
-				if (CurrentBlock != null){
-					Console.WriteLine ("                     Block being compiled: [{0},{1}]",
-							   CurrentBlock.StartLocation, CurrentBlock.EndLocation);
-				}
-				Console.WriteLine (e.GetType ().FullName + ": " + e.Message);
-				throw;
-			}
-#endif
-
-			if (return_type != TypeManager.void_type && !unreachable) {
-				if (CurrentAnonymousMethod == null) {
-					Report.Error (161, md.Location, "`{0}': not all code paths return a value", md.GetSignatureForError ());
-					return false;
-				} else if (!CurrentAnonymousMethod.IsIterator) {
-					Report.Error (1643, CurrentAnonymousMethod.Location, "Not all code paths return a value in anonymous method of type `{0}'",
-						      CurrentAnonymousMethod.GetSignatureForError ());
-					return false;
-				}
-			}
-
-			resolved = true;
-			return true;
+		public bool IsStatic {
+			get { return MemberContext.IsStatic; }
 		}
 
 		public Type ReturnType {
-			set {
-				return_type = value;
-			}
 			get {
 				return return_type;
-			}
-		}
-
-		public void EmitResolvedTopBlock (ToplevelBlock block, bool unreachable)
-		{
-			if (block != null)
-				block.Emit (this);
-
-			if (HasReturnLabel)
-				ig.MarkLabel (ReturnLabel);
-
-			if (return_value != null){
-				ig.Emit (OpCodes.Ldloc, return_value);
-				ig.Emit (OpCodes.Ret);
-			} else {
-				//
-				// If `HasReturnLabel' is set, then we already emitted a
-				// jump to the end of the method, so we must emit a `ret'
-				// there.
-				//
-				// Unfortunately, System.Reflection.Emit automatically emits
-				// a leave to the end of a finally block.  This is a problem
-				// if no code is following the try/finally block since we may
-				// jump to a point after the end of the method.
-				// As a workaround, we're always creating a return label in
-				// this case.
-				//
-
-				if (HasReturnLabel || !unreachable) {
-					if (return_type != TypeManager.void_type)
-						ig.Emit (OpCodes.Ldloc, TemporaryReturn ());
-					ig.Emit (OpCodes.Ret);
-				}
 			}
 		}
 
@@ -883,7 +327,7 @@ namespace Mono.CSharp {
 		/// </summary>
 		public void Mark (Location loc)
 		{
-			if (!SymbolWriter.HasSymbolWriter || OmitDebuggingInfo || loc.IsNull)
+			if (!SymbolWriter.HasSymbolWriter || HasSet (Options.OmitDebugInfo) || loc.IsNull)
 				return;
 
 			SymbolWriter.MarkSequencePoint (ig, loc);
@@ -989,53 +433,14 @@ namespace Mono.CSharp {
 
 			return return_value;
 		}
-
-		/// <summary>
-		///   This method is used during the Resolution phase to flag the
-		///   need to define the ReturnLabel
-		/// </summary>
-		public void NeedReturnLabel ()
-		{
-			if (current_phase != Phase.Resolving){
-				//
-				// The reason is that the `ReturnLabel' is declared between
-				// resolution and emission
-				// 
-				throw new Exception ("NeedReturnLabel called from Emit phase, should only be called during Resolve");
-			}
-			
-			if (!HasReturnLabel)
-				HasReturnLabel = true;
-		}
-
-
-		public Expression GetThis (Location loc)
-		{
-			This my_this;
-			if (CurrentBlock != null)
-				my_this = new This (CurrentBlock, loc);
-			else
-				my_this = new This (loc);
-
-			if (!my_this.ResolveBase (this))
-				my_this = null;
-
-			return my_this;
-		}
 	}
 
-
-	public abstract class CommonAssemblyModulClass : Attributable, IResolveContext {
-
-		protected CommonAssemblyModulClass ():
-			base (null)
-		{
-		}
-
-		public void AddAttributes (ArrayList attrs)
+	public abstract class CommonAssemblyModulClass : Attributable, IMemberContext
+	{
+		public void AddAttributes (ArrayList attrs, IMemberContext context)
 		{
 			foreach (Attribute a in attrs)
-				a.AttachTo (this);
+				a.AttachTo (this, context);
 
 			if (attributes == null) {
 				attributes = new Attributes (attrs);
@@ -1052,7 +457,7 @@ namespace Mono.CSharp {
 			OptAttributes.Emit ();
 		}
 
-		protected Attribute ResolveAttribute (Type a_type)
+		protected Attribute ResolveAttribute (PredefinedAttribute a_type)
 		{
 			Attribute a = OptAttributes.Search (a_type);
 			if (a != null) {
@@ -1061,26 +466,54 @@ namespace Mono.CSharp {
 			return a;
 		}
 
-		public override IResolveContext ResolveContext {
-			get { return this; }
+		#region IMemberContext Members
+
+		public CompilerContext Compiler {
+			get { return RootContext.ToplevelTypes.Compiler; }
 		}
 
-		#region IResolveContext Members
+		public Type CurrentType {
+			get { return null; }
+		}
 
-		public DeclSpace DeclContainer {
+		public TypeParameter[] CurrentTypeParameters {
+			get { return null; }
+		}
+
+		public TypeContainer CurrentTypeDefinition {
 			get { return RootContext.ToplevelTypes; }
 		}
 
-		public DeclSpace GenericDeclContainer {
-			get { return DeclContainer; }
+		public string GetSignatureForError ()
+		{
+			return "<module>";
 		}
 
-		public bool IsInObsoleteScope {
+		public bool IsObsolete {
 			get { return false; }
 		}
 
-		public bool IsInUnsafeScope {
+		public bool IsUnsafe {
 			get { return false; }
+		}
+
+		public bool IsStatic {
+			get { return false; }
+		}
+
+		public ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, string name, Location loc)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public FullNamedExpression LookupNamespaceOrType (string name, Location loc, bool ignore_cs0104)
+		{
+			return RootContext.ToplevelTypes.LookupNamespaceOrType (name, loc, ignore_cs0104);
+		}
+
+		public FullNamedExpression LookupNamespaceAlias (string name)
+		{
+			return null;
 		}
 
 		#endregion
@@ -1091,33 +524,26 @@ namespace Mono.CSharp {
 		public AssemblyBuilder Builder;
 		bool is_cls_compliant;
 		bool wrap_non_exception_throws;
-		Type runtime_compatibility_attr_type;
 
 		public Attribute ClsCompliantAttribute;
 
 		ListDictionary declarative_security;
-#if GMCS_SOURCE
 		bool has_extension_method;		
 		public AssemblyName Name;
 		MethodInfo add_type_forwarder;
 		ListDictionary emitted_forwarders;
-#endif
 
 		// Module is here just because of error messages
 		static string[] attribute_targets = new string [] { "assembly", "module" };
 
-		public AssemblyClass (): base ()
+		public AssemblyClass ()
 		{
-#if GMCS_SOURCE
 			wrap_non_exception_throws = true;
-#endif
 		}
 
 		public bool HasExtensionMethods {
 			set {
-#if GMCS_SOURCE				
 				has_extension_method = value;
-#endif
 			}
 		}
 
@@ -1144,11 +570,12 @@ namespace Mono.CSharp {
 			return is_cls_compliant;
 		}
 
+		Report Report {
+			get { return Compiler.Report; }
+		}
+
 		public void Resolve ()
 		{
-			runtime_compatibility_attr_type = TypeManager.CoreLookupType (
-				"System.Runtime.CompilerServices", "RuntimeCompatibilityAttribute", Kind.Class, false);
-
 			if (RootContext.Unsafe) {
 				//
 				// Emits [assembly: SecurityPermissionAttribute (SecurityAction.RequestMinimum, SkipVerification = true)]
@@ -1160,15 +587,16 @@ namespace Mono.CSharp {
 				MemberAccess system_security_permissions = new MemberAccess (new MemberAccess (
 					new QualifiedAliasMember (QualifiedAliasMember.GlobalAlias, "System", loc), "Security", loc), "Permissions", loc);
 
-				ArrayList pos = new ArrayList (1);
+				Arguments pos = new Arguments (1);
 				pos.Add (new Argument (new MemberAccess (new MemberAccess (system_security_permissions, "SecurityAction", loc), "RequestMinimum")));
 
-				ArrayList named = new ArrayList (1);
-				named.Add (new DictionaryEntry ("SkipVerification", new Argument (new BoolLiteral (true, loc))));
+				Arguments named = new Arguments (1);
+				named.Add (new NamedArgument (new LocatedToken (loc, "SkipVerification"), (new BoolLiteral (true, loc))));
 
-				GlobalAttribute g = new GlobalAttribute (new NamespaceEntry (null, null, null), "assembly", system_security_permissions,
-					"SecurityPermissionAttribute", new object[] { pos, named }, loc, false);
-				g.AttachTo (this);
+				GlobalAttribute g = new GlobalAttribute (new NamespaceEntry (null, null, null), "assembly",
+					new MemberAccess (system_security_permissions, "SecurityPermissionAttribute"),
+					new Arguments[] { pos, named }, loc, false);
+				g.AttachTo (this, this);
 
 				if (g.Resolve () != null) {
 					declarative_security = new ListDictionary ();
@@ -1183,20 +611,17 @@ namespace Mono.CSharp {
 			if (!OptAttributes.CheckTargets())
 				return;
 
-			if (TypeManager.cls_compliant_attribute_type != null)
-				ClsCompliantAttribute = ResolveAttribute (TypeManager.cls_compliant_attribute_type);
+			ClsCompliantAttribute = ResolveAttribute (PredefinedAttributes.Get.CLSCompliant);
 
 			if (ClsCompliantAttribute != null) {
 				is_cls_compliant = ClsCompliantAttribute.GetClsCompliantAttributeValue ();
 			}
 
-			if (runtime_compatibility_attr_type != null) {
-				Attribute a = ResolveAttribute (runtime_compatibility_attr_type);
-				if (a != null) {
-					object val = a.GetPropertyValue ("WrapNonExceptionThrows");
-					if (val != null)
-						wrap_non_exception_throws = (bool) val;
-				}
+			Attribute a = ResolveAttribute (PredefinedAttributes.Get.RuntimeCompatibility);
+			if (a != null) {
+				object val = a.GetPropertyValue ("WrapNonExceptionThrows");
+				if (val != null)
+					wrap_non_exception_throws = (bool) val;
 			}
 		}
 
@@ -1248,12 +673,12 @@ namespace Mono.CSharp {
 					case "AssemblyKeyFileAttribute":
 					case "System.Reflection.AssemblyKeyFileAttribute":
 						if (RootContext.StrongNameKeyFile != null) {
-							Report.SymbolRelatedToPreviousError (a.Location, a.Name);
+							Report.SymbolRelatedToPreviousError (a.Location, a.GetSignatureForError ());
 							Report.Warning (1616, 1, "Option `{0}' overrides attribute `{1}' given in a source file or added module",
 									"keyfile", "System.Reflection.AssemblyKeyFileAttribute");
 						} else {
 							string value = a.GetString ();
-							if (value.Length != 0)
+							if (value != null && value.Length != 0)
 								RootContext.StrongNameKeyFile = value;
 						}
 						break;
@@ -1261,12 +686,12 @@ namespace Mono.CSharp {
 					case "AssemblyKeyNameAttribute":
 					case "System.Reflection.AssemblyKeyNameAttribute":
 						if (RootContext.StrongNameKeyContainer != null) {
-							Report.SymbolRelatedToPreviousError (a.Location, a.Name);
+							Report.SymbolRelatedToPreviousError (a.Location, a.GetSignatureForError ());
 							Report.Warning (1616, 1, "Option `{0}' overrides attribute `{1}' given in a source file or added module",
 									"keycontainer", "System.Reflection.AssemblyKeyNameAttribute");
 						} else {
 							string value = a.GetString ();
-							if (value.Length != 0)
+							if (value != null && value.Length != 0)
 								RootContext.StrongNameKeyContainer = value;
 						}
 						break;
@@ -1348,7 +773,6 @@ namespace Mono.CSharp {
 			Report.Error (1548, "Error during assembly signing. " + text);
 		}
 
-#if GMCS_SOURCE
 		bool CheckInternalsVisibleAttribute (Attribute a)
 		{
 			string assembly_name = a.GetString ();
@@ -1357,7 +781,11 @@ namespace Mono.CSharp {
 				
 			AssemblyName aname = null;
 			try {
+#if GMCS_SOURCE
 				aname = new AssemblyName (assembly_name);
+#else
+				throw new NotSupportedException ();
+#endif
 			} catch (FileLoadException) {
 			} catch (ArgumentException) {
 			}
@@ -1377,7 +805,6 @@ namespace Mono.CSharp {
 
 			return true;
 		}
-#endif
 
 		static bool IsValidAssemblyVersion (string version)
 		{
@@ -1401,7 +828,7 @@ namespace Mono.CSharp {
 			return true;
 		}
 
-		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder customBuilder)
+		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb, PredefinedAttributes pa)
 		{
 			if (a.IsValidSecurityAttribute ()) {
 				if (declarative_security == null)
@@ -1411,7 +838,7 @@ namespace Mono.CSharp {
 				return;
 			}
 
-			if (a.Type == TypeManager.assembly_culture_attribute_type) {
+			if (a.Type == pa.AssemblyCulture) {
 				string value = a.GetString ();
 				if (value == null || value.Length == 0)
 					return;
@@ -1422,7 +849,7 @@ namespace Mono.CSharp {
 				}
 			}
 
-			if (a.Type == TypeManager.assembly_version_attribute_type) {
+			if (a.Type == pa.AssemblyVersion) {
 				string value = a.GetString ();
 				if (value == null || value.Length == 0)
 					return;
@@ -1435,17 +862,17 @@ namespace Mono.CSharp {
 				}
 			}
 
-#if GMCS_SOURCE
-			if (a.Type == TypeManager.internals_visible_attr_type && !CheckInternalsVisibleAttribute (a))
+			if (a.Type == pa.InternalsVisibleTo && !CheckInternalsVisibleAttribute (a))
 				return;
 
-			if (a.Type == TypeManager.type_forwarder_attr_type) {
+			if (a.Type == pa.TypeForwarder) {
 				Type t = a.GetArgumentType ();
 				if (t == null || TypeManager.HasElementType (t)) {
 					Report.Error (735, a.Location, "Invalid type specified as an argument for TypeForwardedTo attribute");
 					return;
 				}
 
+				t = TypeManager.DropGenericTypeArguments (t);
 				if (emitted_forwarders == null) {
 					emitted_forwarders = new ListDictionary();
 				} else if (emitted_forwarders.Contains(t)) {
@@ -1464,14 +891,9 @@ namespace Mono.CSharp {
 					return;
 				}
 
-				if (t.IsNested) {
+				if (t.DeclaringType != null) {
 					Report.Error (730, a.Location, "Cannot forward type `{0}' because it is a nested type",
 						TypeManager.CSharpName (t));
-					return;
-				}
-
-				if (t.IsGenericType) {
-					Report.Error (733, a.Location, "Cannot forward generic type `{0}'", TypeManager.CSharpName (t));
 					return;
 				}
 
@@ -1489,35 +911,32 @@ namespace Mono.CSharp {
 				return;
 			}
 			
-			if (a.Type == TypeManager.extension_attribute_type) {
+			if (a.Type == pa.Extension) {
 				a.Error_MisusedExtensionAttribute ();
 				return;
 			}
-#endif
-			Builder.SetCustomAttribute (customBuilder);
+
+			Builder.SetCustomAttribute (cb);
 		}
 
 		public override void Emit (TypeContainer tc)
 		{
 			base.Emit (tc);
 
-#if GMCS_SOURCE
 			if (has_extension_method)
-				Builder.SetCustomAttribute (TypeManager.extension_attribute_attr);
-#endif
+				PredefinedAttributes.Get.Extension.EmitAttribute (Builder);
 
-			if (runtime_compatibility_attr_type != null) {
-				// FIXME: Does this belong inside SRE.AssemblyBuilder instead?
-				if (OptAttributes == null || !OptAttributes.Contains (runtime_compatibility_attr_type)) {
-					ConstructorInfo ci = TypeManager.GetPredefinedConstructor (
-						runtime_compatibility_attr_type, Location.Null, Type.EmptyTypes);
-					PropertyInfo [] pis = new PropertyInfo [1];
-					pis [0] = TypeManager.GetPredefinedProperty (runtime_compatibility_attr_type,
-						"WrapNonExceptionThrows", Location.Null, TypeManager.bool_type);
-					object [] pargs = new object [1];
-					pargs [0] = true;
-					Builder.SetCustomAttribute (new CustomAttributeBuilder (ci, new object [0], pis, pargs));
-				}
+			// FIXME: Does this belong inside SRE.AssemblyBuilder instead?
+			PredefinedAttribute pa = PredefinedAttributes.Get.RuntimeCompatibility;
+			if (pa.IsDefined && (OptAttributes == null || !OptAttributes.Contains (pa))) {
+				ConstructorInfo ci = TypeManager.GetPredefinedConstructor (
+					pa.Type, Location.Null, Type.EmptyTypes);
+				PropertyInfo [] pis = new PropertyInfo [1];
+				pis [0] = TypeManager.GetPredefinedProperty (pa.Type,
+					"WrapNonExceptionThrows", Location.Null, TypeManager.bool_type);
+				object [] pargs = new object [1];
+				pargs [0] = true;
+				Builder.SetCustomAttribute (new CustomAttributeBuilder (ci, new object [0], pis, pargs));
 			}
 
 			if (declarative_security != null) {
@@ -1575,118 +994,5 @@ namespace Mono.CSharp {
 				throw ex.InnerException;
 			}
 		}		
-	}
-
-	public class ModuleClass : CommonAssemblyModulClass {
-		// TODO: make it private and move all builder based methods here
-		public ModuleBuilder Builder;
-		bool m_module_is_unsafe;
-#if GMCS_SOURCE		
-		bool has_default_charset;
-#endif		
-
-		public CharSet DefaultCharSet = CharSet.Ansi;
-		public TypeAttributes DefaultCharSetType = TypeAttributes.AnsiClass;
-
-		static string[] attribute_targets = new string [] { "module" };
-
-		public ModuleClass (bool is_unsafe)
-		{
-			m_module_is_unsafe = is_unsafe;
-		}
-
- 		public override AttributeTargets AttributeTargets {
- 			get {
- 				return AttributeTargets.Module;
- 			}
-		}
-
-		public override bool IsClsComplianceRequired ()
-		{
-			return CodeGen.Assembly.IsClsCompliant;
-		}
-
-		public override void Emit (TypeContainer tc) 
-		{
-			base.Emit (tc);
-
-			if (m_module_is_unsafe) {
-				Type t = TypeManager.CoreLookupType ("System.Security", "UnverifiableCodeAttribute", Kind.Class, true);
-				if (t != null) {
-					ConstructorInfo unverifiable_code_ctor = TypeManager.GetPredefinedConstructor (t, Location.Null, Type.EmptyTypes);
-					if (unverifiable_code_ctor != null)
-						Builder.SetCustomAttribute (new CustomAttributeBuilder (unverifiable_code_ctor, new object [0]));
-				}
-			}
-		}
-                
-		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder customBuilder)
-		{
-			if (a.Type == TypeManager.cls_compliant_attribute_type) {
-				if (CodeGen.Assembly.ClsCompliantAttribute == null) {
-					Report.Warning (3012, 1, a.Location, "You must specify the CLSCompliant attribute on the assembly, not the module, to enable CLS compliance checking");
-				}
-				else if (CodeGen.Assembly.IsClsCompliant != a.GetBoolean ()) {
-					Report.SymbolRelatedToPreviousError (CodeGen.Assembly.ClsCompliantAttribute.Location, CodeGen.Assembly.ClsCompliantAttribute.GetSignatureForError ());
-					Report.Warning (3017, 1, a.Location, "You cannot specify the CLSCompliant attribute on a module that differs from the CLSCompliant attribute on the assembly");
-					return;
-				}
-			}
-
-			Builder.SetCustomAttribute (customBuilder);
-		}
-
-		public bool HasDefaultCharSet {
-			get {
-#if GMCS_SOURCE		
-				return has_default_charset;
-#else
-				return false;
-#endif								
-			}
-		}
-
-		/// <summary>
-		/// It is called very early therefore can resolve only predefined attributes
-		/// </summary>
-		public void Resolve ()
-		{
-#if GMCS_SOURCE
-			if (OptAttributes == null)
-				return;
-
-			if (!OptAttributes.CheckTargets())
-				return;
-
-			if (TypeManager.default_charset_type == null)
-				return;
-
-			Attribute a = ResolveAttribute (TypeManager.default_charset_type);
-			if (a != null) {
-				has_default_charset = true;
-				DefaultCharSet = a.GetCharSetValue ();
-				switch (DefaultCharSet) {
-				case CharSet.Ansi:
-				case CharSet.None:
-					break;
-				case CharSet.Auto:
-					DefaultCharSetType = TypeAttributes.AutoClass;
-					break;
-				case CharSet.Unicode:
-					DefaultCharSetType = TypeAttributes.UnicodeClass;
-					break;
-				default:
-					Report.Error (1724, a.Location, "Value specified for the argument to 'System.Runtime.InteropServices.DefaultCharSetAttribute' is not valid");
-					break;
-				}
-			}
-#endif
-		}
-
-		public override string[] ValidAttributeTargets {
-			get {
-				return attribute_targets;
-			}
-		}
 	}
 }

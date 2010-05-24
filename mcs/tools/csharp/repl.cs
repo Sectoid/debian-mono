@@ -46,11 +46,42 @@ namespace Mono {
 				string [] startup_files;
 				try {
 					startup_files = Evaluator.InitAndGetStartupFiles (args);
+					Evaluator.InteractiveBaseClass = typeof (InteractiveBaseShell);
 				} catch {
 					return 1;
 				}
 
 				return new CSharpShell ().Run (startup_files);
+			}
+		}
+	}
+
+	public class InteractiveBaseShell : InteractiveBase {
+		static bool tab_at_start_completes;
+		
+		static InteractiveBaseShell ()
+		{
+			tab_at_start_completes = false;
+		}
+
+		internal static Mono.Terminal.LineEditor Editor;
+		
+		public static bool TabAtStartCompletes {
+			get {
+				return tab_at_start_completes;
+			}
+
+			set {
+				tab_at_start_completes = value;
+				if (Editor != null)
+					Editor.TabAtStartCompletes = value;
+			}
+		}
+
+		public static new string help {
+			get {
+				return InteractiveBase.help +
+					"  TabAtStartCompletes - Whether tab will complete even on emtpy lines\n";
 			}
 		}
 	}
@@ -76,6 +107,18 @@ namespace Mono {
 			dumb = term == "dumb" || term == null || isatty == false;
 			
 			editor = new Mono.Terminal.LineEditor ("csharp", 300);
+			InteractiveBaseShell.Editor = editor;
+
+			editor.AutoCompleteEvent += delegate (string s, int pos){
+				string prefix = null;
+
+				string complete = s.Substring (0, pos);
+				
+				string [] completions = Evaluator.GetCompletions (complete, out prefix);
+				
+				return new Mono.Terminal.LineEditor.Completion (prefix, completions);
+			};
+			
 #if false
 			//
 			// This is a sample of how completions sould be implemented.
@@ -127,7 +170,7 @@ namespace Mono {
 			// cursor position when writing to Stderr.  It also
 			// has the undesirable side effect of making
 			// errors plain, with no coloring.
-			Report.Stderr = Console.Out;
+//			Report.Stderr = Console.Out;
 			SetupConsole ();
 
 			if (isatty)
@@ -575,7 +618,7 @@ namespace Mono {
 				try {
 					string error_string;
 					StringWriter error_output = new StringWriter ();
-					Report.Stderr = error_output;
+//					Report.Stderr = error_output;
 					
 					string line = s.GetString ();
 	
@@ -621,6 +664,20 @@ namespace Mono {
 				} catch (Exception e){
 					Console.WriteLine (e);
 				}
+			}
+		}
+	}
+
+	public class UnixUtils {
+		[System.Runtime.InteropServices.DllImport ("libc", EntryPoint="isatty")]
+		extern static int _isatty (int fd);
+			
+		public static bool isatty (int fd)
+		{
+			try {
+				return _isatty (fd) == 1;
+			} catch {
+				return false;
 			}
 		}
 	}

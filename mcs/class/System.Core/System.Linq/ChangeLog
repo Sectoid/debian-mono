@@ -1,6 +1,18 @@
-2009-07-20  Jb Evain  <jbevain@novell.com>
+2009-11-14  Jb Evain  <jbevain@novell.com>
 
-	backport of 138194.
+	* QueryableTransformer: adjust to latest ExpressionTransformer
+	changes.
+
+2009-11-12  Eric Maupin  <me@ermau.com>
+
+	* Enumerable.cs (ToLookup): Accept null keys.
+	* Lookup.cs: Accept null keys.
+	
+2009-08-07  Marek Safar  <marek.safar@gmail.com>
+
+	* Enumerable.cs (Skip): Optimized and fixed int.MaxValue overflow.
+
+2009-07-20  Jb Evain  <jbevain@novell.com>
 
 	* Lookup.cs: avoid a double dictionary lookup on the indexer.
 
@@ -11,26 +23,22 @@
 
 2009-05-18  Jb Evain  <jbevain@novell.com>
 
-	backport of 134333.
-
 	* Enumerable.cs (Max, Min): fix generic versions.
 
 2009-04-03  Jb Evain  <jbevain@novell.com>
-
-	backport of 130961.
 
 	* Enumerable.cs (Cast): fix for when casted enumerator is already
 	of the appropriate type.
 
 2009-03-28  Jb Evain  <jbevain@novell.com>
 
-	backport of r130478.
-
 	* Enumerable.cs: fix Intersect.
 
-2009-02-23  Jb Evain  <jbevain@novell.com>
+2009-02-23  Marek Safar  <marek.safar@gmail.com>
 
-	backport of 127772.
+	* Enumerable.cs (IterateNullable): Compare unwrapped values.
+
+2009-02-23  Jb Evain  <jbevain@novell.com>
 
 	* Enumerable.cs (IterateNullable): fix initial value
 	for nullables.

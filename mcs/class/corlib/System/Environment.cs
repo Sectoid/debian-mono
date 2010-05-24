@@ -63,7 +63,7 @@ namespace System {
 		 * Changes which are already detected at runtime, like the addition
 		 * of icalls, do not require an increment.
 		 */
-		private const int mono_corlib_version = 69;
+		private const int mono_corlib_version = 82;
 
 #if NET_2_0
 		[ComVisible (true)]
@@ -203,7 +203,7 @@ namespace System {
 				return trace.ToString ();
 			}
 		}
-
+#if !NET_2_1
 		/// <summary>
 		/// Get a fully qualified path to the system directory
 		/// </summary>
@@ -212,7 +212,7 @@ namespace System {
 				return GetFolderPath (SpecialFolder.System);
 			}
 		}
-
+#endif
 		/// <summary>
 		/// Get the number of milliseconds that have elapsed since the system was booted
 		/// </summary>
@@ -355,9 +355,11 @@ namespace System {
 		/// </summary>
 		public static string GetEnvironmentVariable (string variable)
 		{
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
 				new EnvironmentPermission (EnvironmentPermissionAccess.Read, variable).Demand ();
 			}
+#endif
 			return internalGetEnvironmentVariable (variable);
 		}
 
@@ -376,7 +378,7 @@ namespace System {
 		/// <summary>
 		/// Return a set of all environment variables and their values
 		/// </summary>
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		public static IDictionary GetEnvironmentVariables ()
 		{
 			StringBuilder sb = null;
@@ -429,10 +431,11 @@ namespace System {
 			} else {
 				dir = InternalGetFolderPath (folder);
 			}
-
+#if !NET_2_1
 			if ((dir != null) && (dir.Length > 0) && SecurityManager.SecurityEnabled) {
 				new FileIOPermission (FileIOPermissionAccess.PathDiscovery, dir).Demand ();
 			}
+#endif
 			return dir;
 		}
 
@@ -507,7 +510,11 @@ namespace System {
 #endif
 			// personal == ~
 			case SpecialFolder.Personal:
+#if MONOTOUCH
+				return Path.Combine (home, "Documents");
+#else
 				return home;
+#endif
 			// use FDO's CONFIG_HOME. This data will be synced across a network like the windows counterpart.
 			case SpecialFolder.ApplicationData:
 				return config;
@@ -557,10 +564,10 @@ namespace System {
 			return GetLogicalDrivesInternal ();
 		}
 
+#if NET_2_0 && !NET_2_1
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private static extern void internalBroadcastSettingChange ();
 
-#if NET_2_0
 		public static string GetEnvironmentVariable (string variable, EnvironmentVariableTarget target)
 		{
 			switch (target) {
@@ -672,12 +679,6 @@ namespace System {
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal static extern void InternalSetEnvironmentVariable (string variable, string value);
 
-		public static extern int ProcessorCount {
-			[EnvironmentPermission (SecurityAction.Demand, Read="NUMBER_OF_PROCESSORS")]
-			[MethodImplAttribute (MethodImplOptions.InternalCall)]
-			get;			
-		}
-
 		[MonoTODO ("Not implemented")]
 		[SecurityPermission (SecurityAction.LinkDemand, UnmanagedCode=true)]
 		public static void FailFast (string message)
@@ -685,13 +686,19 @@ namespace System {
 			throw new NotImplementedException ();
 		}
 #endif
-
+#if NET_2_0
+		public static extern int ProcessorCount {
+			[EnvironmentPermission (SecurityAction.Demand, Read="NUMBER_OF_PROCESSORS")]
+			[MethodImplAttribute (MethodImplOptions.InternalCall)]
+			get;			
+		}
+#endif
 		// private methods
 
 		internal static bool IsRunningOnWindows {
 			get { return ((int) Platform < 4); }
 		}
-
+#if !NET_2_1
 		//
 		// Used by gacutil.exe
 		//
@@ -708,7 +715,9 @@ namespace System {
 			}
 		}
 #pragma warning restore 169
-
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		internal extern static string internalGetGacPath ();
+#endif
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern static string [] GetLogicalDrivesInternal ();
 
@@ -717,9 +726,6 @@ namespace System {
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal extern static string GetMachineConfigPath ();
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		internal extern static string internalGetGacPath ();
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal extern static string internalGetHome ();

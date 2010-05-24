@@ -851,6 +851,79 @@ namespace MonoTests.System
 			d (null);
 		}
 
+		static object Box (object o)
+		{
+			return o;
+		}
+
+		delegate object Boxer ();
+
+		[Test]
+		public void BoxingCovariance ()
+		{
+			var boxer = (Boxer) Delegate.CreateDelegate (
+				typeof (Boxer),
+				42,
+				GetType ().GetMethod ("Box", BindingFlags.NonPublic | BindingFlags.Static));
+
+			Assert.IsNotNull (boxer);
+			Assert.AreEqual (42, boxer ());
+		}
+
+		static object Nada (int o)
+		{
+			return (int) o;
+		}
+
+		delegate int WrongDelegate ();
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void WrongReturnTypeContravariance ()
+		{
+			Delegate.CreateDelegate (
+				typeof (WrongDelegate),
+				42,
+				GetType ().GetMethod ("Nada", BindingFlags.NonPublic | BindingFlags.Static));
+		}
+
+		static int Identity (int i)
+		{
+			return i;
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void WrongReturnTypeContravariance_2 ()
+		{
+			Delegate.CreateDelegate (
+				typeof (Boxer),
+				42,
+				GetType ().GetMethod ("Identity", BindingFlags.NonPublic | BindingFlags.Static));
+		}
+
+		delegate object CallTarget ();
+
+		class Closure {}
+
+		static object Target (Closure c)
+		{
+			return c;
+		}
+
+		[Test]
+		public void NullFirstArgumentOnStaticMethod ()
+		{
+			CallTarget call = (CallTarget) Delegate.CreateDelegate (
+				typeof (CallTarget),
+				null,
+				GetType ().GetMethod ("Target", BindingFlags.NonPublic | BindingFlags.Static));
+
+			Assert.IsNotNull (call);
+			Assert.IsNull (call.Target);
+			Assert.IsNull (call ());
+		}
+
 		[Test]
 		public void Virtual ()
 		{

@@ -29,42 +29,42 @@ namespace Mono.CSharp {
 	///   Base class for objects that can have Attributes applied to them.
 	/// </summary>
 	public abstract class Attributable {
-		/// <summary>
-		///   Attributes for this type
-		/// </summary>
+		//
+		// Holds all attributes attached to this element
+		//
  		protected Attributes attributes;
 
-		public Attributable (Attributes attrs)
+		public void AddAttributes (Attributes attrs, IMemberContext context)
 		{
-			if (attrs != null)
-				OptAttributes = attrs;
+			if (attrs == null)
+				return;
+
+			if (attributes == null)
+				attributes = attrs;
+			else
+				throw new NotImplementedException ();
+
+			attributes.AttachTo (this, context);
 		}
 
-		public Attributes OptAttributes 
-		{
+		public Attributes OptAttributes {
 			get {
 				return attributes;
 			}
 			set {
 				attributes = value;
-
-				if (attributes != null) {
-					attributes.AttachTo (this);
-				}
 			}
 		}
 
 		/// <summary>
 		/// Use member-specific procedure to apply attribute @a in @cb to the entity being built in @builder
 		/// </summary>
-		public abstract void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb);
+		public abstract void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb, PredefinedAttributes pa);
 
 		/// <summary>
 		/// Returns one AttributeTarget for this element.
 		/// </summary>
 		public abstract AttributeTargets AttributeTargets { get; }
-
-		public abstract IResolveContext ResolveContext { get; }
 
 		public abstract bool IsClsComplianceRequired ();
 
@@ -79,20 +79,24 @@ namespace Mono.CSharp {
 	{
 		public readonly string ExplicitTarget;
 		public AttributeTargets Target;
+		readonly ATypeNameExpression expression;
 
-		// TODO: remove this member
-		public readonly string    Name;
-		public readonly Expression LeftExpr;
-		public readonly string Identifier;
-
-		ArrayList PosArguments;
-		ArrayList NamedArguments;
+		Arguments PosArguments;
+		Arguments NamedArguments;
 
 		bool resolve_error;
 		readonly bool nameEscaped;
 
-		// It can contain more onwers when the attribute is applied to multiple fiels.
-		protected Attributable[] owners;
+		//
+		// An attribute can be attached to multiple targets (e.g. multiple fields)
+		//
+		protected Attributable[] targets;
+
+		//
+		// A member context for the attribute, it's much easier to hold it here
+		// than trying to pull it during resolve
+		//
+		IMemberContext context;
 
 		static readonly AttributeUsageAttribute DefaultUsageAttribute = new AttributeUsageAttribute (AttributeTargets.All);
 		static Assembly orig_sec_assembly;
@@ -108,15 +112,13 @@ namespace Mono.CSharp {
 		static PtrHashtable usage_attr_cache;
 		// Cache for parameter-less attributes
 		static PtrHashtable att_cache;
-		
-		public Attribute (string target, Expression left_expr, string identifier, object[] args, Location loc, bool nameEscaped)
+
+		public Attribute (string target, ATypeNameExpression expr, Arguments[] args, Location loc, bool nameEscaped)
 		{
-			LeftExpr = left_expr;
-			Identifier = identifier;
-			Name = LeftExpr == null ? identifier : LeftExpr + "." + identifier;
+			this.expression = expr;
 			if (args != null) {
-				PosArguments = (ArrayList)args [0];
-				NamedArguments = (ArrayList)args [1];				
+				PosArguments = args [0];
+				NamedArguments = args [1];				
 			}
 			this.loc = loc;
 			ExplicitTarget = target;
@@ -125,7 +127,7 @@ namespace Mono.CSharp {
 
 		public Attribute Clone ()
 		{
-			Attribute a = new Attribute (ExplicitTarget, LeftExpr, Identifier, null, loc, nameEscaped);
+			Attribute a = new Attribute (ExplicitTarget, expression, null, loc, nameEscaped);
 			a.PosArguments = PosArguments;
 			a.NamedArguments = NamedArguments;
 			return a;
@@ -142,51 +144,54 @@ namespace Mono.CSharp {
 			att_cache = new PtrHashtable ();
 		}
 
-		public virtual void AttachTo (Attributable owner)
+		//
+		// When the same attribute is attached to multiple fiels
+		// we use @target field as a list of targets. The attribute
+		// has to be resolved only once but emitted for each target.
+		//
+		public virtual void AttachTo (Attributable target, IMemberContext context)
 		{
-			if (this.owners == null) {
-				this.owners = new Attributable[1] { owner };
+			if (this.targets == null) {
+				this.targets = new Attributable[] { target };
+				this.context = context;
 				return;
 			}
 
-			// When the same attribute is attached to multiple fiels
-			// we use this extra_owners as a list of owners. The attribute
-			// then can be removed because will be emitted when first owner
-			// is served
-			Attributable[] new_array = new Attributable [this.owners.Length + 1];
-			owners.CopyTo (new_array, 0);
-			new_array [owners.Length] = owner;
-			this.owners = new_array;
-			owner.OptAttributes = null;
+			// Resize target array
+			Attributable[] new_array = new Attributable [this.targets.Length + 1];
+			targets.CopyTo (new_array, 0);
+			new_array [targets.Length] = target;
+			this.targets = new_array;
+
+			// No need to update context, different targets cannot have
+			// different contexts, it's enough to remove same attributes
+			// from secondary members.
+
+			target.OptAttributes = null;
 		}
 
-		void Error_InvalidNamedArgument (string name)
+		static void Error_InvalidNamedArgument (ResolveContext rc, NamedArgument name)
 		{
-			Report.Error (617, Location, "`{0}' is not a valid named attribute argument. Named attribute arguments " +
+			rc.Report.Error (617, name.Name.Location, "`{0}' is not a valid named attribute argument. Named attribute arguments " +
 				      "must be fields which are not readonly, static, const or read-write properties which are " +
 				      "public and not static",
-			      name);
+			      name.Name.Value);
 		}
 
-		void Error_InvalidNamedAgrumentType (string name)
+		static void Error_InvalidNamedArgumentType (ResolveContext rc, NamedArgument name)
 		{
-			Report.Error (655, Location, "`{0}' is not a valid named attribute argument because it is not a valid " +
-				      "attribute parameter type", name);
+			rc.Report.Error (655, name.Name.Location,
+				"`{0}' is not a valid named attribute argument because it is not a valid attribute parameter type",
+				name.Name.Value);
 		}
 
-		public static void Error_AttributeArgumentNotValid (Location loc)
+		public static void Error_AttributeArgumentNotValid (ResolveContext rc, Location loc)
 		{
-			Report.Error (182, loc,
+			rc.Report.Error (182, loc,
 				      "An attribute argument must be a constant expression, typeof " +
 				      "expression or array creation expression");
 		}
 		
-		static void Error_TypeParameterInAttribute (Location loc)
-		{
-			Report.Error (
-				-202, loc, "Can not use a type parameter in an attribute");
-		}
-
 		public void Error_MissingGuidAttribute ()
 		{
 			Report.Error (596, Location, "The Guid attribute must be specified with the ComImport attribute");
@@ -214,33 +219,25 @@ namespace Mono.CSharp {
 
 		Attributable Owner {
 			get {
-				return owners [0];
+				return targets [0];
 			}
 		}
 
-		protected virtual TypeExpr ResolveAsTypeTerminal (Expression expr, IResolveContext ec, bool silent)
+		protected virtual TypeExpr ResolveAsTypeTerminal (Expression expr, IMemberContext ec)
 		{
-			return expr.ResolveAsTypeTerminal (ec, silent);
+			return expr.ResolveAsTypeTerminal (ec, false);
 		}
 
-		Type ResolvePossibleAttributeType (string name, bool silent, ref bool is_attr)
+		Type ResolvePossibleAttributeType (ATypeNameExpression expr, ref bool is_attr)
 		{
-			IResolveContext rc = Owner.ResolveContext;
-
-			TypeExpr te;
-			if (LeftExpr == null) {
-				te = ResolveAsTypeTerminal (new SimpleName (name, Location), rc, silent);
-			} else {
-				te = ResolveAsTypeTerminal (new MemberAccess (LeftExpr, name), rc, silent);
-			}
-
+			TypeExpr te = ResolveAsTypeTerminal (expr, context);
 			if (te == null)
 				return null;
 
 			Type t = te.Type;
 			if (TypeManager.IsSubclassOf (t, TypeManager.attribute_type)) {
 				is_attr = true;
-			} else if (!silent) {
+			} else {
 				Report.SymbolRelatedToPreviousError (t);
 				Report.Error (616, Location, "`{0}': is not an attribute class", TypeManager.CSharpName (t));
 			}
@@ -252,16 +249,34 @@ namespace Mono.CSharp {
 		/// </summary>
 		void ResolveAttributeType ()
 		{
-			bool t1_is_attr = false;
-			Type t1 = ResolvePossibleAttributeType (Identifier, true, ref t1_is_attr);
+			SessionReportPrinter resolve_printer = new SessionReportPrinter ();
+			ReportPrinter prev_recorder = context.Compiler.Report.SetPrinter (resolve_printer);
 
+			bool t1_is_attr = false;
 			bool t2_is_attr = false;
-			Type t2 = nameEscaped ? null :
-				ResolvePossibleAttributeType (Identifier + "Attribute", true, ref t2_is_attr);
+			Type t1, t2;
+			ATypeNameExpression expanded = null;
+
+			try {
+				t1 = ResolvePossibleAttributeType (expression, ref t1_is_attr);
+
+				if (nameEscaped) {
+					t2 = null;
+				} else {
+					expanded = (ATypeNameExpression) expression.Clone (null);
+					expanded.Name += "Attribute";
+
+					t2 = ResolvePossibleAttributeType (expanded, ref t2_is_attr);
+				}
+
+				resolve_printer.EndSession ();
+			} finally {
+				context.Compiler.Report.SetPrinter (prev_recorder);
+			}
 
 			if (t1_is_attr && t2_is_attr) {
-				Report.Error (1614, Location, "`{0}' is ambiguous between `{0}' and `{0}Attribute'. " +
-					      "Use either `@{0}' or `{0}Attribute'", GetSignatureForError ());
+				Report.Error (1614, Location, "`{0}' is ambiguous between `{1}' and `{2}'. Use either `@{0}' or `{0}Attribute'",
+					GetSignatureForError (), expression.GetSignatureForError (), expanded.GetSignatureForError ());
 				resolve_error = true;
 				return;
 			}
@@ -276,13 +291,7 @@ namespace Mono.CSharp {
 				return;
 			}
 
-			if (t1 == null && t2 == null)
-				ResolvePossibleAttributeType (Identifier, false, ref t1_is_attr);
-			if (t1 != null)
-				ResolvePossibleAttributeType (Identifier, false, ref t1_is_attr);
-			if (t2 != null)
-				ResolvePossibleAttributeType (Identifier + "Attribute", false, ref t2_is_attr);
-
+			resolve_printer.Merge (prev_recorder);
 			resolve_error = true;
 		}
 
@@ -298,13 +307,13 @@ namespace Mono.CSharp {
 			if (Type != null)
 				return TypeManager.CSharpName (Type);
 
-			return LeftExpr == null ? Identifier : LeftExpr.GetSignatureForError () + "." + Identifier;
+			return expression.GetSignatureForError ();
 		}
 
 		public bool HasSecurityAttribute {
 			get {
-				return TypeManager.security_attr_type != null &&
-				TypeManager.IsSubclassOf (type, TypeManager.security_attr_type);
+				PredefinedAttribute pa = PredefinedAttributes.Get.Security;
+				return pa.IsDefined && TypeManager.IsSubclassOf (type, pa.Type);
 			}
 		}
 
@@ -325,28 +334,36 @@ namespace Mono.CSharp {
 				t == TypeManager.type_type;
 		}
 
-		[Conditional ("GMCS_SOURCE")]
+		// TODO: Don't use this ambiguous value
+		public string Name {
+			get { return expression.Name; }
+		}
+
 		void ApplyModuleCharSet ()
 		{
-			if (Type != TypeManager.dllimport_type)
+			if (Type != PredefinedAttributes.Get.DllImport)
 				return;
 
-			if (!CodeGen.Module.HasDefaultCharSet)
+			if (!RootContext.ToplevelTypes.HasDefaultCharSet)
 				return;
 
 			const string CharSetEnumMember = "CharSet";
 			if (NamedArguments == null) {
-				NamedArguments = new ArrayList (1);
+				NamedArguments = new Arguments (1);
 			} else {
-				foreach (DictionaryEntry de in NamedArguments) {
-					if ((string)de.Key == CharSetEnumMember)
+				foreach (NamedArgument a in NamedArguments) {
+					if (a.Name.Value == CharSetEnumMember)
 						return;
 				}
 			}
 			
-			NamedArguments.Add (new DictionaryEntry (CharSetEnumMember,
-				new Argument (Constant.CreateConstant (typeof (CharSet), CodeGen.Module.DefaultCharSet, Location))));
+			NamedArguments.Add (new NamedArgument (new LocatedToken (loc, CharSetEnumMember),
+				Constant.CreateConstant (typeof (CharSet), RootContext.ToplevelTypes.DefaultCharSet, Location)));
  		}
+
+		Report Report {
+			get { return context.Compiler.Report; }
+		}
 
 		public CustomAttributeBuilder Resolve ()
 		{
@@ -368,7 +385,7 @@ namespace Mono.CSharp {
 
 			ObsoleteAttribute obsolete_attr = AttributeTester.GetObsoleteAttribute (Type);
 			if (obsolete_attr != null) {
-				AttributeTester.Report_ObsoleteMessage (obsolete_attr, TypeManager.CSharpName (Type), Location);
+				AttributeTester.Report_ObsoleteMessage (obsolete_attr, TypeManager.CSharpName (Type), Location, Report);
 			}
 
 			if (PosArguments == null && NamedArguments == null) {
@@ -379,16 +396,8 @@ namespace Mono.CSharp {
 				}
 			}
 
-			Attributable owner = Owner;
-			DeclSpace ds = owner.ResolveContext as DeclSpace;
-			if (ds == null)
-				ds = owner.ResolveContext.DeclContainer;
-			
-			EmitContext ec = new EmitContext (owner.ResolveContext, ds, ds,
-				Location, null, typeof (Attribute), ds.ModFlags, false);
-			ec.IsAnonymousMethodAllowed = false;
-
-			ConstructorInfo ctor = ResolveConstructor (ec);
+			ResolveContext rc = new ResolveContext (context, ResolveContext.Options.ConstantScope);
+			ConstructorInfo ctor = ResolveConstructor (rc);
 			if (ctor == null) {
 				if (Type is TypeBuilder && 
 				    TypeManager.LookupDeclSpace (Type).MemberCache == null)
@@ -416,7 +425,7 @@ namespace Mono.CSharp {
 					return cb;
 				}
 
-				if (!ResolveNamedArguments (ec)) {
+				if (!ResolveNamedArguments (rc)) {
 					return null;
 				}
 
@@ -428,29 +437,27 @@ namespace Mono.CSharp {
 				return cb;
 			}
 			catch (Exception) {
-				Error_AttributeArgumentNotValid (Location);
+				Error_AttributeArgumentNotValid (rc, Location);
 				return null;
 			}
 		}
 
-		protected virtual ConstructorInfo ResolveConstructor (EmitContext ec)
+		protected virtual ConstructorInfo ResolveConstructor (ResolveContext ec)
 		{
 			if (PosArguments != null) {
-				for (int i = 0; i < PosArguments.Count; i++) {
-					Argument a = (Argument) PosArguments [i];
-
-					if (!a.Resolve (ec, Location))
-						return null;
-				}
+				bool dynamic;
+				PosArguments.Resolve (ec, out dynamic);
+				if (dynamic)
+					throw new NotImplementedException ("dynamic");
 			}
-			
-			MethodGroupExpr mg = MemberLookupFinal (ec, ec.ContainerType,
-				Type, ".ctor", MemberTypes.Constructor,
+
+			MethodGroupExpr mg = MemberLookupFinal (ec, ec.CurrentType,
+				Type, ConstructorInfo.ConstructorName, MemberTypes.Constructor,
 				BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly,
 				Location) as MethodGroupExpr;
 
 			if (mg == null)
-				return null;
+				throw new NotImplementedException ();
 
 			mg = mg.OverloadResolve (ec, ref PosArguments, false, Location);
 			if (mg == null)
@@ -464,19 +471,13 @@ namespace Mono.CSharp {
 
 			AParametersCollection pd = TypeManager.GetParameterData (constructor);
 
-			int pos_arg_count = PosArguments.Count;
-			pos_values = new object [pos_arg_count];
-			for (int j = 0; j < pos_arg_count; ++j) {
-				Argument a = (Argument) PosArguments [j];
-
-				if (!a.Expr.GetAttributableValue (ec, a.Type, out pos_values [j]))
-					return null;
-			}
+			if (!PosArguments.GetAttributableValue (ec, out pos_values))
+				return null;
 
 			// Here we do the checks which should be done by corlib or by runtime.
 			// However Zoltan doesn't like it and every Mono compiler has to do it again.
-			
-			if (Type == TypeManager.guid_attr_type) {
+			PredefinedAttributes pa = PredefinedAttributes.Get;
+			if (Type == pa.Guid) {
 				try {
 					new Guid ((string)pos_values [0]);
 				}
@@ -486,21 +487,21 @@ namespace Mono.CSharp {
 				}
 			}
 
-			if (Type == TypeManager.attribute_usage_type && (int)pos_values [0] == 0) {
-				Report.Error (591, Location, "Invalid value for argument to `System.AttributeUsage' attribute");
+			if (Type == pa.AttributeUsage && (int)pos_values [0] == 0) {
+				ec.Report.Error (591, Location, "Invalid value for argument to `System.AttributeUsage' attribute");
 				return null;
 			}
 
-			if (Type == TypeManager.indexer_name_type || Type == TypeManager.conditional_attribute_type) {
+			if (Type == pa.IndexerName || Type == pa.Conditional) {
 				string v = pos_values [0] as string;
 				if (!Tokenizer.IsValidIdentifier (v) || Tokenizer.IsKeyword (v)) {
-					Report.Error (633, ((Argument)PosArguments[0]).Expr.Location,
+					ec.Report.Error (633, PosArguments [0].Expr.Location,
 						"The argument to the `{0}' attribute must be a valid identifier", GetSignatureForError ());
 					return null;
 				}
 			}
 
-			if (Type == TypeManager.methodimpl_attr_type && pos_values.Length == 1 &&
+			if (Type == pa.MethodImpl && pos_values.Length == 1 &&
 				pd.Types [0] == TypeManager.short_type &&
 				!System.Enum.IsDefined (typeof (MethodImplOptions), pos_values [0].ToString ())) {
 				Error_AttributeEmitError ("Incorrect argument value.");
@@ -510,7 +511,7 @@ namespace Mono.CSharp {
 			return constructor;
 		}
 
-		protected virtual bool ResolveNamedArguments (EmitContext ec)
+		protected virtual bool ResolveNamedArguments (ResolveContext ec)
 		{
 			int named_arg_count = NamedArguments.Count;
 
@@ -519,51 +520,44 @@ namespace Mono.CSharp {
 			ArrayList field_values = new ArrayList (named_arg_count);
 			ArrayList prop_values = new ArrayList (named_arg_count);
 
-			ArrayList seen_names = new ArrayList(named_arg_count);
+			ArrayList seen_names = new ArrayList (named_arg_count);
 			
-			foreach (DictionaryEntry de in NamedArguments) {
-				string member_name = (string) de.Key;
+			foreach (NamedArgument a in NamedArguments) {
+				string name = a.Name.Value;
+				if (seen_names.Contains (name)) {
+					ec.Report.Error (643, a.Name.Location, "Duplicate named attribute `{0}' argument", name);
+					continue;
+				}			
+	
+				seen_names.Add (name);
 
-				if (seen_names.Contains(member_name)) {
-					Report.Error(643, Location, "'{0}' duplicate named attribute argument", member_name);
-					return false;
-				}				
-				seen_names.Add(member_name);
+				a.Resolve (ec);
 
-				Argument a = (Argument) de.Value;
-				if (!a.Resolve (ec, Location))
-					return false;
-
-				Expression member = Expression.MemberLookup (
-					ec.ContainerType, Type, member_name,
-					MemberTypes.Field | MemberTypes.Property,
-					BindingFlags.Public | BindingFlags.Instance,
+				Expression member = Expression.MemberLookup (ec.Compiler,
+					ec.CurrentType, Type, name,
+					MemberTypes.All,
+					BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static,
 					Location);
 
 				if (member == null) {
-					member = Expression.MemberLookup (ec.ContainerType, Type, member_name,
-						MemberTypes.Field | MemberTypes.Property, BindingFlags.NonPublic | BindingFlags.Instance,
+					member = Expression.MemberLookup (ec.Compiler, ec.CurrentType, Type, name,
+						MemberTypes.All, BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static,
 						Location);
 
 					if (member != null) {
-						Report.SymbolRelatedToPreviousError (member.Type);
-						Expression.ErrorIsInaccesible (Location, member.GetSignatureForError ());
+						ec.Report.SymbolRelatedToPreviousError (member.Type);
+						Expression.ErrorIsInaccesible (Location, member.GetSignatureForError (), ec.Report);
 						return false;
 					}
 				}
 
 				if (member == null){
-					Expression.Error_TypeDoesNotContainDefinition (Location, Type, member_name);
+					Expression.Error_TypeDoesNotContainDefinition (ec, Location, Type, name);
 					return false;
 				}
 				
 				if (!(member is PropertyExpr || member is FieldExpr)) {
-					Error_InvalidNamedArgument (member_name);
-					return false;
-				}
-
-				if (a.Expr is TypeParameterExpr){
-					Error_TypeParameterInAttribute (Location);
+					Error_InvalidNamedArgument (ec, a);
 					return false;
 				}
 
@@ -572,15 +566,15 @@ namespace Mono.CSharp {
 				if (member is PropertyExpr) {
 					PropertyInfo pi = ((PropertyExpr) member).PropertyInfo;
 
-					if (!pi.CanWrite || !pi.CanRead) {
-						Report.SymbolRelatedToPreviousError (pi);
-						Error_InvalidNamedArgument (member_name);
+					if (!pi.CanWrite || !pi.CanRead || pi.GetGetMethod ().IsStatic) {
+						ec.Report.SymbolRelatedToPreviousError (pi);
+						Error_InvalidNamedArgument (ec, a);
 						return false;
 					}
 
 					if (!IsValidArgumentType (member.Type)) {
-						Report.SymbolRelatedToPreviousError (pi);
-						Error_InvalidNamedAgrumentType (member_name);
+						ec.Report.SymbolRelatedToPreviousError (pi);
+						Error_InvalidNamedArgumentType (ec, a);
 						return false;
 					}
 
@@ -600,14 +594,14 @@ namespace Mono.CSharp {
 				} else {
 					FieldInfo fi = ((FieldExpr) member).FieldInfo;
 
-					if (fi.IsInitOnly) {
-						Error_InvalidNamedArgument (member_name);
+					if (fi.IsInitOnly || fi.IsStatic) {
+						Error_InvalidNamedArgument (ec, a);
 						return false;
 					}
 
 					if (!IsValidArgumentType (member.Type)) {
-						Report.SymbolRelatedToPreviousError (fi);
-						Error_InvalidNamedAgrumentType (member_name);
+						ec.Report.SymbolRelatedToPreviousError (fi);
+						Error_InvalidNamedArgumentType (ec, a);
 						return false;
 					}
 
@@ -625,8 +619,8 @@ namespace Mono.CSharp {
 					field_infos.Add (fi);
 				}
 
-				if (obsolete_attr != null && !Owner.ResolveContext.IsInObsoleteScope)
-					AttributeTester.Report_ObsoleteMessage (obsolete_attr, member.GetSignatureForError (), member.Location);
+				if (obsolete_attr != null && !context.IsObsolete)
+					AttributeTester.Report_ObsoleteMessage (obsolete_attr, member.GetSignatureForError (), member.Location, Report);
 			}
 
 			prop_info_arr = new PropertyInfo [prop_infos.Count];
@@ -710,9 +704,13 @@ namespace Mono.CSharp {
 				return ua;
 
 			Class attr_class = TypeManager.LookupClass (type);
+			PredefinedAttribute pa = PredefinedAttributes.Get.AttributeUsage;
 
 			if (attr_class == null) {
-				object[] usage_attr = type.GetCustomAttributes (TypeManager.attribute_usage_type, true);
+				if (!pa.IsDefined)
+					return new AttributeUsageAttribute (0);
+
+				object[] usage_attr = type.GetCustomAttributes (pa.Type, true);
 				ua = (AttributeUsageAttribute)usage_attr [0];
 				usage_attr_cache.Add (type, ua);
 				return ua;
@@ -720,7 +718,7 @@ namespace Mono.CSharp {
 
 			Attribute a = null;
 			if (attr_class.OptAttributes != null)
-				a = attr_class.OptAttributes.Search (TypeManager.attribute_usage_type);
+				a = attr_class.OptAttributes.Search (pa);
 
 			if (a == null) {
 				if (attr_class.TypeBuilder.BaseType != TypeManager.attribute_type)
@@ -966,7 +964,7 @@ namespace Mono.CSharp {
 						// TODO: pi can be null
 						PropertyInfo pi = orig_assembly_type.GetProperty (emited_pi.Name);
 
-						object old_instance = pi.PropertyType.IsEnum ?
+						object old_instance = TypeManager.IsEnumType (pi.PropertyType) ?
 							System.Enum.ToObject (pi.PropertyType, prop_values_arr [i]) :
 							prop_values_arr [i];
 
@@ -1145,7 +1143,7 @@ namespace Mono.CSharp {
 
 		public bool IsInternalMethodImplAttribute {
 			get {
-				if (Type != TypeManager.methodimpl_attr_type)
+				if (Type != PredefinedAttributes.Get.MethodImpl)
 					return false;
 
 				MethodImplOptions options;
@@ -1203,10 +1201,9 @@ namespace Mono.CSharp {
 			}
 
 			try {
-				foreach (Attributable owner in owners)
-					owner.ApplyAttributeBuilder (this, cb);
-			}
-			catch (Exception e) {
+				foreach (Attributable target in targets)
+					target.ApplyAttributeBuilder (this, cb, PredefinedAttributes.Get);
+			} catch (Exception e) {
 				Error_AttributeEmitError (e.Message);
 				return;
 			}
@@ -1229,34 +1226,13 @@ namespace Mono.CSharp {
 
 			// Here we are testing attribute arguments for array usage (error 3016)
 			if (Owner.IsClsComplianceRequired ()) {
-				if (PosArguments != null) {
-					foreach (Argument arg in PosArguments) { 
-						// Type is undefined (was error 246)
-						if (arg.Type == null)
-							return;
-
-						if (arg.Type.IsArray) {
-							Report.Warning (3016, 1, Location, "Arrays as attribute arguments are not CLS-compliant");
-							return;
-						}
-					}
-				}
+				if (PosArguments != null)
+					PosArguments.CheckArrayAsAttribute (context.Compiler);
 			
 				if (NamedArguments == null)
 					return;
-			
-				foreach (DictionaryEntry de in NamedArguments) {
-					Argument arg  = (Argument) de.Value;
 
-					// Type is undefined (was error 246)
-					if (arg.Type == null)
-						return;
-
-					if (arg.Type.IsArray) {
-						Report.Warning (3016, 1, Location, "Arrays as attribute arguments are not CLS-compliant");
-						return;
-					}
-				}
+				NamedArguments.CheckArrayAsAttribute (context.Compiler);
 			}
 		}
 
@@ -1265,7 +1241,7 @@ namespace Mono.CSharp {
 			if (PosArguments == null || PosArguments.Count < 1)
 				return null;
 
-			return ((Argument) PosArguments [0]).Expr;
+			return PosArguments [0].Expr;
 		}
 
 		public string GetString () 
@@ -1292,12 +1268,12 @@ namespace Mono.CSharp {
 			return e.TypeArgument;
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
 			throw new NotSupportedException ("ET");
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			throw new NotImplementedException ();
 		}
@@ -1317,24 +1293,25 @@ namespace Mono.CSharp {
 	{
 		public readonly NamespaceEntry ns;
 
-		public GlobalAttribute (NamespaceEntry ns, string target, 
-					Expression left_expr, string identifier, object[] args, Location loc, bool nameEscaped):
-			base (target, left_expr, identifier, args, loc, nameEscaped)
+		public GlobalAttribute (NamespaceEntry ns, string target, ATypeNameExpression expression,
+					Arguments[] args, Location loc, bool nameEscaped):
+			base (target, expression, args, loc, nameEscaped)
 		{
 			this.ns = ns;
-			this.owners = new Attributable[1];
 		}
 		
-		public override void AttachTo (Attributable owner)
+		public override void AttachTo (Attributable target, IMemberContext context)
 		{
 			if (ExplicitTarget == "assembly") {
-				owners [0] = CodeGen.Assembly;
+				base.AttachTo (CodeGen.Assembly, context);
 				return;
 			}
+
 			if (ExplicitTarget == "module") {
-				owners [0] = CodeGen.Module;
+				base.AttachTo (RootContext.ToplevelTypes, context);
 				return;
 			}
+
 			throw new NotImplementedException ("Unknown global explicit target " + ExplicitTarget);
 		}
 
@@ -1363,18 +1340,18 @@ namespace Mono.CSharp {
 			RootContext.ToplevelTypes.NamespaceEntry = null;
 		}
 
-		protected override TypeExpr ResolveAsTypeTerminal (Expression expr, IResolveContext ec, bool silent)
+		protected override TypeExpr ResolveAsTypeTerminal (Expression expr, IMemberContext ec)
 		{
 			try {
 				Enter ();
-				return base.ResolveAsTypeTerminal (expr, ec, silent);
+				return base.ResolveAsTypeTerminal (expr, ec);
 			}
 			finally {
 				Leave ();
 			}
 		}
 
-		protected override ConstructorInfo ResolveConstructor (EmitContext ec)
+		protected override ConstructorInfo ResolveConstructor (ResolveContext ec)
 		{
 			try {
 				Enter ();
@@ -1385,7 +1362,7 @@ namespace Mono.CSharp {
 			}
 		}
 
-		protected override bool ResolveNamedArguments (EmitContext ec)
+		protected override bool ResolveNamedArguments (ResolveContext ec)
 		{
 			try {
 				Enter ();
@@ -1416,10 +1393,10 @@ namespace Mono.CSharp {
 			Attrs.AddRange (attrs);
 		}
 
-		public void AttachTo (Attributable attributable)
+		public void AttachTo (Attributable attributable, IMemberContext context)
 		{
 			foreach (Attribute a in Attrs)
-				a.AttachTo (attributable);
+				a.AttachTo (attributable, context);
 		}
 
 		public Attributes Clone ()
@@ -1443,7 +1420,7 @@ namespace Mono.CSharp {
 			return true;
 		}
 
-		public Attribute Search (Type t)
+		public Attribute Search (PredefinedAttribute t)
 		{
 			foreach (Attribute a in Attrs) {
 				if (a.ResolveType () == t)
@@ -1455,7 +1432,7 @@ namespace Mono.CSharp {
 		/// <summary>
 		/// Returns all attributes of type 't'. Use it when attribute is AllowMultiple = true
 		/// </summary>
-		public Attribute[] SearchMulti (Type t)
+		public Attribute[] SearchMulti (PredefinedAttribute t)
 		{
 			ArrayList ar = null;
 
@@ -1486,16 +1463,17 @@ namespace Mono.CSharp {
 				if (d.Value == null)
 					continue;
 
+				Report report = RootContext.ToplevelTypes.Compiler.Report;
 				foreach (Attribute collision in (ArrayList)d.Value)
-					Report.SymbolRelatedToPreviousError (collision.Location, "");
+					report.SymbolRelatedToPreviousError (collision.Location, "");
 
 				Attribute a = (Attribute)d.Key;
-				Report.Error (579, a.Location, "The attribute `{0}' cannot be applied multiple times",
+				report.Error (579, a.Location, "The attribute `{0}' cannot be applied multiple times",
 					a.GetSignatureForError ());
 			}
 		}
 
-		public bool Contains (Type t)
+		public bool Contains (PredefinedAttribute t)
 		{
 			return Search (t) != null;
 		}
@@ -1559,8 +1537,8 @@ namespace Mono.CSharp {
 				Type bType = types_b [i];
 
 				if (aType.IsArray && bType.IsArray) {
-					Type a_el_type = aType.GetElementType ();
-					Type b_el_type = bType.GetElementType ();
+					Type a_el_type = TypeManager.GetElementType (aType);
+					Type b_el_type = TypeManager.GetElementType (bType);
 					if (aType.GetArrayRank () != bType.GetArrayRank () && a_el_type == b_el_type) {
 						result = Result.RefOutArrayError;
 						continue;
@@ -1575,7 +1553,8 @@ namespace Mono.CSharp {
 				if (aType != bType)
 					return Result.Ok;
 
-				if (pa.FixedParameters [i].ModFlags != pb.FixedParameters [i].ModFlags)
+				const Parameter.Modifier out_ref_mod = (Parameter.Modifier.OUTMASK | Parameter.Modifier.REFMASK);
+				if ((pa.FixedParameters[i].ModFlags & out_ref_mod) != (pb.FixedParameters[i].ModFlags & out_ref_mod))
 					result = Result.RefOutArrayError;
 			}
 			return result;
@@ -1602,7 +1581,7 @@ namespace Mono.CSharp {
 			if (type.IsArray) {
 				result = IsClsCompliant (TypeManager.GetElementType (type));
 			} else if (TypeManager.IsNullableType (type)) {
-				result = IsClsCompliant (TypeManager.GetTypeArguments (type) [0]);
+				result = IsClsCompliant (TypeManager.TypeToCoreType (TypeManager.GetTypeArguments (type) [0]));
 			} else {
 				result = AnalyzeTypeCompliance (type);
 			}
@@ -1616,7 +1595,7 @@ namespace Mono.CSharp {
 		public static IFixedBuffer GetFixedBuffer (FieldInfo fi)
 		{
 			// Fixed buffer helper type is generated as value type
-			if (!fi.FieldType.IsValueType)
+			if (TypeManager.IsReferenceType (fi.FieldType))
 				return null;
 
 			FieldBase fb = TypeManager.GetField (fi);
@@ -1629,10 +1608,11 @@ namespace Mono.CSharp {
 
 			object o = fixed_buffer_cache [fi];
 			if (o == null) {
-				if (TypeManager.fixed_buffer_attr_type == null)
+				PredefinedAttribute pa = PredefinedAttributes.Get.FixedBuffer;
+				if (!pa.IsDefined)
 					return null;
 
-				if (!fi.IsDefined (TypeManager.fixed_buffer_attr_type, false)) {
+				if (!fi.IsDefined (pa.Type, false)) {
 					fixed_buffer_cache.Add (fi, FALSE);
 					return null;
 				}
@@ -1648,9 +1628,9 @@ namespace Mono.CSharp {
 			return (IFixedBuffer)o;
 		}
 
-		public static void VerifyModulesClsCompliance ()
+		public static void VerifyModulesClsCompliance (CompilerContext ctx)
 		{
-			Module[] modules = RootNamespace.Global.Modules;
+			Module[] modules = GlobalRootNamespace.Instance.Modules;
 			if (modules == null)
 				return;
 
@@ -1658,7 +1638,7 @@ namespace Mono.CSharp {
 			for (int i = 1; i < modules.Length; ++i) {
 				Module module = modules [i];
 				if (!GetClsCompliantAttributeValue (module, null)) {
-					Report.Error (3013, "Added modules must be marked with the CLSCompliant attribute " +
+					ctx.Report.Error (3013, "Added modules must be marked with the CLSCompliant attribute " +
 						      "to match the assembly", module.Name);
 					return;
 				}
@@ -1667,7 +1647,7 @@ namespace Mono.CSharp {
 
 		public static Type GetImportedIgnoreCaseClsType (string name)
 		{
-			foreach (Assembly a in RootNamespace.Global.Assemblies) {
+			foreach (Assembly a in GlobalRootNamespace.Instance.Assemblies) {
 				Type t = a.GetType (name, false, true);
 				if (t == null)
 					continue;
@@ -1680,10 +1660,11 @@ namespace Mono.CSharp {
 
 		static bool GetClsCompliantAttributeValue (ICustomAttributeProvider attribute_provider, Assembly a) 
 		{
-			if (TypeManager.cls_compliant_attribute_type == null)
+			PredefinedAttribute pa = PredefinedAttributes.Get.CLSCompliant;
+			if (!pa.IsDefined)
 				return false;
 
-			object[] cls_attr = attribute_provider.GetCustomAttributes (TypeManager.cls_compliant_attribute_type, false);
+			object[] cls_attr = attribute_provider.GetCustomAttributes (pa.Type, false);
 			if (cls_attr.Length == 0) {
 				if (a == null)
 					return false;
@@ -1732,8 +1713,9 @@ namespace Mono.CSharp {
 
 				// Type is external, we can get attribute directly
 				if (type_ds == null) {
-					if (TypeManager.obsolete_attribute_type != null) {
-						object[] attribute = type.GetCustomAttributes (TypeManager.obsolete_attribute_type, false);
+					PredefinedAttribute pa = PredefinedAttributes.Get.Obsolete;
+					if (pa.IsDefined) {
+						object[] attribute = type.GetCustomAttributes (pa.Type, false);
 						if (attribute.Length == 1)
 							result = (ObsoleteAttribute) attribute[0];
 					}
@@ -1786,10 +1768,11 @@ namespace Mono.CSharp {
 			if ((mi.DeclaringType is TypeBuilder) || TypeManager.IsGenericType (mi.DeclaringType))
 				return null;
 
-			if (TypeManager.obsolete_attribute_type == null)
+			PredefinedAttribute pa = PredefinedAttributes.Get.Obsolete;
+			if (!pa.IsDefined)
 				return null;
 
-			ObsoleteAttribute oa = System.Attribute.GetCustomAttribute (mi, TypeManager.obsolete_attribute_type, false)
+			ObsoleteAttribute oa = System.Attribute.GetCustomAttribute (mi, pa.Type, false)
 				as ObsoleteAttribute;
 			analyzed_member_obsolete.Add (mi, oa == null ? FALSE : oa);
 			return oa;
@@ -1798,7 +1781,7 @@ namespace Mono.CSharp {
 		/// <summary>
 		/// Common method for Obsolete error/warning reporting.
 		/// </summary>
-		public static void Report_ObsoleteMessage (ObsoleteAttribute oa, string member, Location loc)
+		public static void Report_ObsoleteMessage (ObsoleteAttribute oa, string member, Location loc, Report Report)
 		{
 			if (oa.IsError) {
 				Report.Error (619, loc, "`{0}' is obsolete: `{1}'", member, oa.Message);
@@ -1818,10 +1801,11 @@ namespace Mono.CSharp {
 			if (excluded != null)
 				return excluded == TRUE ? true : false;
 
-			if (TypeManager.conditional_attribute_type == null)
+			PredefinedAttribute pa = PredefinedAttributes.Get.Conditional;
+			if (!pa.IsDefined)
 				return false;
 
-			ConditionalAttribute[] attrs = mb.GetCustomAttributes (TypeManager.conditional_attribute_type, true)
+			ConditionalAttribute[] attrs = mb.GetCustomAttributes (pa.Type, true)
 				as ConditionalAttribute[];
 			if (attrs.Length == 0) {
 				analyzed_method_excluded.Add (mb, FALSE);
@@ -1852,8 +1836,9 @@ namespace Mono.CSharp {
 
 			// TODO: add caching
 			// TODO: merge all Type bases attribute caching to one cache to save memory
-			if (class_decl == null && TypeManager.conditional_attribute_type != null) {
-				object[] attributes = type.GetCustomAttributes (TypeManager.conditional_attribute_type, false);
+			PredefinedAttribute pa = PredefinedAttributes.Get.Conditional;
+			if (class_decl == null && pa.IsDefined) {
+				object[] attributes = type.GetCustomAttributes (pa.Type, false);
 				foreach (ConditionalAttribute ca in attributes) {
 					if (loc.CompilationUnit.IsConditionalDefined (ca.ConditionString))
 						return false;
@@ -1867,24 +1852,270 @@ namespace Mono.CSharp {
 		public static Type GetCoClassAttribute (Type type)
 		{
 			TypeContainer tc = TypeManager.LookupInterface (type);
+			PredefinedAttribute pa = PredefinedAttributes.Get.CoClass;
 			if (tc == null) {
-				if (TypeManager.coclass_attr_type == null)
+				if (!pa.IsDefined)
 					return null;
 
-				object[] o = type.GetCustomAttributes (TypeManager.coclass_attr_type, false);
+				object[] o = type.GetCustomAttributes (pa.Type, false);
 				if (o.Length < 1)
 					return null;
 				return ((System.Runtime.InteropServices.CoClassAttribute)o[0]).CoClass;
 			}
 
-			if (tc.OptAttributes == null || TypeManager.coclass_attr_type == null)
+			if (tc.OptAttributes == null)
 				return null;
 
-			Attribute a = tc.OptAttributes.Search (TypeManager.coclass_attr_type);
+			Attribute a = tc.OptAttributes.Search (pa);
 			if (a == null)
 				return null;
 
 			return a.GetCoClassAttributeValue ();
+		}
+	}
+
+	public class PredefinedAttributes
+	{
+		// Core types
+		public readonly PredefinedAttribute ParamArray;
+		public readonly PredefinedAttribute Out;
+
+		// Optional types
+		public readonly PredefinedAttribute Obsolete;
+		public readonly PredefinedAttribute DllImport;
+		public readonly PredefinedAttribute MethodImpl;
+		public readonly PredefinedAttribute MarshalAs;
+		public readonly PredefinedAttribute In;
+		public readonly PredefinedAttribute IndexerName;
+		public readonly PredefinedAttribute Conditional;
+		public readonly PredefinedAttribute CLSCompliant;
+		public readonly PredefinedAttribute Security;
+		public readonly PredefinedAttribute Required;
+		public readonly PredefinedAttribute Guid;
+		public readonly PredefinedAttribute AssemblyCulture;
+		public readonly PredefinedAttribute AssemblyVersion;
+		public readonly PredefinedAttribute ComImport;
+		public readonly PredefinedAttribute CoClass;
+		public readonly PredefinedAttribute AttributeUsage;
+		public readonly PredefinedAttribute DefaultParameterValue;
+		public readonly PredefinedAttribute OptionalParameter;
+
+		// New in .NET 2.0
+		public readonly PredefinedAttribute DefaultCharset;
+		public readonly PredefinedAttribute TypeForwarder;
+		public readonly PredefinedAttribute FixedBuffer;
+		public readonly PredefinedAttribute CompilerGenerated;
+		public readonly PredefinedAttribute InternalsVisibleTo;
+		public readonly PredefinedAttribute RuntimeCompatibility;
+		public readonly PredefinedAttribute DebuggerHidden;
+		public readonly PredefinedAttribute UnsafeValueType;
+
+		// New in .NET 3.5
+		public readonly PredefinedAttribute Extension;
+
+		// New in .NET 4.0
+		public readonly PredefinedAttribute Dynamic;
+
+		//
+		// Optional types which are used as types and for member lookup
+		//
+		public readonly PredefinedAttribute DefaultMember;
+		public readonly PredefinedAttribute DecimalConstant;
+		public readonly PredefinedAttribute StructLayout;
+		public readonly PredefinedAttribute FieldOffset;
+
+		public static PredefinedAttributes Get = new PredefinedAttributes ();
+
+		private PredefinedAttributes ()
+		{
+			ParamArray = new PredefinedAttribute ("System", "ParamArrayAttribute");
+			Out = new PredefinedAttribute ("System.Runtime.InteropServices", "OutAttribute");
+
+			Obsolete = new PredefinedAttribute ("System", "ObsoleteAttribute");
+			DllImport = new PredefinedAttribute ("System.Runtime.InteropServices", "DllImportAttribute");
+			MethodImpl = new PredefinedAttribute ("System.Runtime.CompilerServices", "MethodImplAttribute");
+			MarshalAs = new PredefinedAttribute ("System.Runtime.InteropServices", "MarshalAsAttribute");
+			In = new PredefinedAttribute ("System.Runtime.InteropServices", "InAttribute");
+			IndexerName = new PredefinedAttribute ("System.Runtime.CompilerServices", "IndexerNameAttribute");
+			Conditional = new PredefinedAttribute ("System.Diagnostics", "ConditionalAttribute");
+			CLSCompliant = new PredefinedAttribute ("System", "CLSCompliantAttribute");
+			Security = new PredefinedAttribute ("System.Security.Permissions", "SecurityAttribute");
+			Required = new PredefinedAttribute ("System.Runtime.CompilerServices", "RequiredAttributeAttribute");
+			Guid = new PredefinedAttribute ("System.Runtime.InteropServices", "GuidAttribute");
+			AssemblyCulture = new PredefinedAttribute ("System.Reflection", "AssemblyCultureAttribute");
+			AssemblyVersion = new PredefinedAttribute ("System.Reflection", "AssemblyVersionAttribute");
+			ComImport = new PredefinedAttribute ("System.Runtime.InteropServices", "ComImportAttribute");
+			CoClass = new PredefinedAttribute ("System.Runtime.InteropServices", "CoClassAttribute");
+			AttributeUsage = new PredefinedAttribute ("System", "AttributeUsageAttribute");
+			DefaultParameterValue = new PredefinedAttribute ("System.Runtime.InteropServices", "DefaultParameterValueAttribute");
+			OptionalParameter = new PredefinedAttribute ("System.Runtime.InteropServices", "OptionalAttribute");
+
+			DefaultCharset = new PredefinedAttribute ("System.Runtime.InteropServices", "DefaultCharSetAttribute");
+			TypeForwarder = new PredefinedAttribute ("System.Runtime.CompilerServices", "TypeForwardedToAttribute");
+			FixedBuffer = new PredefinedAttribute ("System.Runtime.CompilerServices", "FixedBufferAttribute");
+			CompilerGenerated = new PredefinedAttribute ("System.Runtime.CompilerServices", "CompilerGeneratedAttribute");
+			InternalsVisibleTo = new PredefinedAttribute ("System.Runtime.CompilerServices", "InternalsVisibleToAttribute");
+			RuntimeCompatibility = new PredefinedAttribute ("System.Runtime.CompilerServices", "RuntimeCompatibilityAttribute");
+			DebuggerHidden = new PredefinedAttribute ("System.Diagnostics", "DebuggerHiddenAttribute");
+			UnsafeValueType = new PredefinedAttribute ("System.Runtime.CompilerServices", "UnsafeValueTypeAttribute");
+
+			Extension = new PredefinedAttribute ("System.Runtime.CompilerServices", "ExtensionAttribute");
+
+			Dynamic = new PredefinedAttribute ("System.Runtime.CompilerServices", "DynamicAttribute");
+
+			DefaultMember = new PredefinedAttribute ("System.Reflection", "DefaultMemberAttribute");
+			DecimalConstant = new PredefinedAttribute ("System.Runtime.CompilerServices", "DecimalConstantAttribute");
+			StructLayout = new PredefinedAttribute ("System.Runtime.InteropServices", "StructLayoutAttribute");
+			FieldOffset = new PredefinedAttribute ("System.Runtime.InteropServices", "FieldOffsetAttribute");
+		}
+
+		public void Initialize ()
+		{
+			foreach (FieldInfo fi in GetType ().GetFields (BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)) {
+				((PredefinedAttribute) fi.GetValue (this)).Resolve (true);
+			}
+		}
+
+		public static void Reset ()
+		{
+			Get = new PredefinedAttributes ();
+		}
+	}
+
+	public class PredefinedAttribute
+	{
+		Type type;
+		CustomAttributeBuilder cab;
+		ConstructorInfo ctor;
+		readonly string ns, name;
+
+		public PredefinedAttribute (string ns, string name)
+		{
+			this.ns = ns;
+			this.name = name;
+		}
+
+		public static bool operator == (Type type, PredefinedAttribute pa)
+		{
+			return type == pa.type;
+		}
+
+		public static bool operator != (Type type, PredefinedAttribute pa)
+		{
+			return type != pa.type;
+		}
+
+		public ConstructorInfo Constructor {
+			get { return ctor; }
+		}
+
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
+
+		public override bool Equals (object obj)
+		{
+			throw new NotSupportedException ();
+		}
+
+		public void EmitAttribute (ConstructorBuilder builder)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public void EmitAttribute (MethodBuilder builder)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public void EmitAttribute (PropertyBuilder builder)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public void EmitAttribute (FieldBuilder builder)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public void EmitAttribute (TypeBuilder builder)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public void EmitAttribute (AssemblyBuilder builder)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public void EmitAttribute (ParameterBuilder builder, Location loc)
+		{
+			if (ResolveBuilder ())
+				builder.SetCustomAttribute (cab);
+		}
+
+		public bool IsDefined {
+			get { return type != null && type != typeof (PredefinedAttribute); }
+		}
+
+		public bool Resolve (bool canFail)
+		{
+			if (type != null) {
+				if (IsDefined)
+					return true;
+				if (canFail)
+					return false;
+			}
+
+			type = TypeManager.CoreLookupType (RootContext.ToplevelTypes.Compiler, ns, name, Kind.Class, !canFail);
+			if (type == null) {
+				type = typeof (PredefinedAttribute);
+				return false;
+			}
+
+			return true;
+		}
+
+		bool ResolveBuilder ()
+		{
+			if (cab != null)
+				return true;
+
+			//
+			// Handle all parameter-less attributes as optional
+			//
+			if (!Resolve (true))
+				return false;
+
+			ConstructorInfo ci = TypeManager.GetPredefinedConstructor (type, Location.Null, Type.EmptyTypes);
+			if (ci == null)
+				return false;
+
+			cab = new CustomAttributeBuilder (ci, new object[0]);
+			return true;
+		}
+
+		public bool ResolveConstructor (Location loc, params Type[] argType)
+		{
+			if (ctor != null)
+				throw new InternalErrorException ("Predefined ctor redefined");
+
+			if (!Resolve (false))
+				return false;
+
+			ctor = TypeManager.GetPredefinedConstructor (type, loc, argType);
+			return ctor != null;
+		}
+
+		public Type Type {
+			get { return type; }
 		}
 	}
 }

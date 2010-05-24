@@ -19,6 +19,16 @@ enum {
 	MONO_MMAP_32BIT   = 1 << 8
 };
 
+/*
+ * A simple interface to fopen/fstat/fileno
+ */
+typedef struct _MonoFileMap MonoFileMap;
+
+MonoFileMap *mono_file_map_open  (const char* name);
+guint64      mono_file_map_size  (MonoFileMap *fmap);
+int          mono_file_map_fd    (MonoFileMap *fmap);
+int          mono_file_map_close (MonoFileMap *fmap);
+
 int   mono_pagesize   (void);
 void* mono_valloc     (void *addr, size_t length, int flags);
 int   mono_vfree      (void *addr, size_t length);
@@ -32,5 +42,15 @@ void* mono_shared_area_for_pid (void *pid);
 void  mono_shared_area_unload  (void *area);
 int   mono_shared_area_instances (void **array, int count);
 
+/*
+ * On systems where we have to load code into memory instead of mmaping
+ * we allow for the allocator to be set.   This function is only
+ * defined on those platforms.
+ */
+typedef void *(*mono_file_map_alloc_fn)   (size_t length);
+typedef void  (*mono_file_map_release_fn) (void *addr);
+
+void mono_file_map_set_allocator (mono_file_map_alloc_fn alloc, mono_file_map_release_fn release);
+				  
 #endif /* __MONO_UTILS_MMAP_H__ */
 

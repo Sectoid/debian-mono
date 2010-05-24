@@ -1,3 +1,118 @@
+2009-12-14  Sebastien Pouliot  <sebastien at ximian.com>
+
+	* Mono.Cecil/BaseAssemblyResolver.cs: Update to .net fx 4 beta2
+	version number and reduce code duplication.
+
+2009-08-18  Michael Hutchinson  <mhutchinson@novell.com>
+
+	* Mono.Cecil/BaseAssemblyResolver.cs: Search GACs specified in the 
+	  MONO_GAC_PREFIX environment variable.
+
+2009-08-06  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/BaseAssemblyResolver.cs:
+	Do not crash when the GAC folder can't be found.
+
+2009-07-28  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/AssemblyStripper.cs: Make all methods share
+	the same body.
+
+2009-07-16  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/AssemblyFactory.cs
+	* Mono.Cecil.Metadata/MetadataWriter.cs
+	* Mono.Cecil.Binary/ImageWriter.cs:
+		Support for properly writing 4.0 dlls.
+		Patch by Carlo Kok  <ck@remobjects.com>.
+
+2009-06-05  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/BaseAssemblyResolver.cs: properly look for the 4.0 corlib
+	when running on Mono.
+
+2009-06-03  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/MetadataResolver.cs: add support for resolving from
+	a ModuleReference.
+
+2009-06-03  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/BaseAssemblyResolver.cs: look for 4.0.0.0 assemblies.
+
+2009-05-21  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/ReflectionReader.cs: add support for type forwarders.
+
+2009-05-19  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/TargetRuntime.cs
+	* Mono.Cecil/StructureReader.cs
+	* Mono.Cecil.Metadata/MetadataWriter.cs:
+		add support for .net 4.0 detection.
+
+2009-04-30  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil.Signatures/SignatureReader.cs: fix reading out extra mods.
+
+2009-04-21  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil.Cil/SymbolStoreHelper.cs: look for the assembly in the GAC
+	as well if it's not local.
+
+2009-04-03  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil.Metadata/BlobHeap.cs
+	* Mono.Cecil.Metadata/MetadataWriter.cs:
+		do a better job at emitting a blob heap.
+
+2009-04-01  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/ModuleDefinition.cs (Import): add overloads
+	taking a MethodDefinition as a generic context.
+
+2009-04-01  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/ReflectionHelper.cs: throw proper exception
+	when importing in an invalid context.
+
+2009-03-12  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/AssemblyStripper.cs (PatchHeap): don't crash
+	if the assembly doesn't contain a specific metadata heap.
+
+2009-03-04  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/StructureWriter.cs: properly set the metadata tokens
+	of newly emitted modules and assemblies. Fix #480729.
+
+2009-01-28  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/MetadataResolver.cs:
+		Add new MetadataResolver.
+
+	* Mono.Cecil/GenericParameter.cs
+	  Mono.Cecil/FieldDefinition.cs
+	  Mono.Cecil/TypeReference.cs
+	  Mono.Cecil/GenericInstanceMethod.cs
+	  Mono.Cecil/IMemberDefinition.cs
+	  Mono.Cecil/TypeDefinition.cs
+	  Mono.Cecil/PropertyReference.cs
+	  Mono.Cecil/EventReference.cs
+	  Mono.Cecil/MethodDefinition.cs
+	  Mono.Cecil/EventDefinition.cs
+	  Mono.Cecil/ModuleDefinition.cs
+	  Mono.Cecil/MethodReference.cs
+	  Mono.Cecil/FieldReference.cs
+	  Mono.Cecil/ParameterDefinition.cs
+	  Mono.Cecil/PropertyDefinition.cs
+	  Mono.Cecil/ParameterReference.cs
+	  Mono.Cecil.Cil/VariableReference.cs
+	  Mono.Cecil.Cil/VariableDefinition.cs:
+		Add Resolve to Definition methods on References.
+
+	* Mono.Cecil.dll.sources, Mono.Cecil.csproj: add MetadataResolver.cs
+
 2009-01-05  Jb Evain  <jbevain@novell.com>
 
 	* Mono.Cecil/ReflectionHelper.cs

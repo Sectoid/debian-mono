@@ -1,10 +1,41 @@
+2009-11-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MoonIsolatedStorageFile.cs: Add new CheckSearchPattern 
+	validation method. Fix GetDirectoryNames to behave like 
+	GetFileNames wrt searchPattern
+	[Backport r145167]
+
+2009-08-30  Jb Evain  <jbevain@novell.com>
+
+	* IsolatedStorageFileEnumerator.cs
+	* MoonIsolatedStorageFileStream.cs
+	* MoonIsolatedStorageFile.cs
+	* MoonIsolatedStorage.cs
+	* IsolatedStorageScope.cs
+	* IsolatedStorageFileStream.cs
+	* IsolatedStorage.cs
+	* IsolatedStorageFile.cs:
+		Use the traditional net_2_0 version of isolated storage
+		for MonoTouch.
+
+2009-05-27  Jackson Harper  <jackson@ximian.com>
+
+	* MoonIsolatedStorageFile.cs: Allow paths in search patterns.
+
+2009-04-16  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* MoonIsolatedStorage.cs: New. Manage the shared (location, quota)
+	information about Moonlight isolated storage.
+	* MoonIsolatedStorageFile.cs: Adjust with new MoonIsolatedStorage.
+	Implement IncreaseQuotaTo UI.
+	* MoonIsolatedStorageFileStream.cs: Adjust with MoonIsolatedStorage.
+
 2009-04-16  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* IsolatedStorageFile.cs: Fix thread-safety issue at creation time.
 	[Fix bug #431039]
 	* IsolatedStorageFileStream.cs: Fix missing path check in Verify.
 	[Fix bug #487659]
-	[Backport of SVN r131886]
 
 2008-12-23  Sebastien Pouliot  <sebastien@ximian.com>
 

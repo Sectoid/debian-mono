@@ -33,16 +33,27 @@ namespace Mono.Linker.Steps {
 
 	public class ResolveFromAssemblyStep : ResolveStep {
 
-		string _assembly;
+		AssemblyDefinition _assembly;
+		string _file;
 
 		public ResolveFromAssemblyStep (string assembly)
+		{
+			_file = assembly;
+		}
+
+		public ResolveFromAssemblyStep (AssemblyDefinition assembly)
 		{
 			_assembly = assembly;
 		}
 
 		public override void Process (LinkContext context)
 		{
-			AssemblyDefinition assembly = context.Resolve (_assembly);
+			if (_assembly != null) {
+				context.SafeLoadSymbols (_assembly);
+				context.Resolver.CacheAssembly (_assembly);
+			}
+
+			AssemblyDefinition assembly = _assembly ?? context.Resolve (_file);
 
 			switch (assembly.Kind) {
 			case AssemblyKind.Dll:
@@ -54,13 +65,15 @@ namespace Mono.Linker.Steps {
 			}
 		}
 
-		static void ProcessLibrary (AssemblyDefinition assembly)
+		public static void ProcessLibrary (AssemblyDefinition assembly)
 		{
 			Annotations.SetAction (assembly, AssemblyAction.Copy);
 
 			foreach (TypeDefinition type in assembly.MainModule.Types) {
 				Annotations.Mark (type);
 
+				if (type.HasFields)
+					MarkFields (type.Fields);
 				if (type.HasMethods)
 					MarkMethods (type.Methods);
 				if (type.HasConstructors)
@@ -74,6 +87,12 @@ namespace Mono.Linker.Steps {
 
 			Annotations.Mark (assembly.EntryPoint.DeclaringType);
 			MarkMethod (assembly.EntryPoint, MethodAction.Parse);
+		}
+
+		static void MarkFields (ICollection fields)
+		{
+			foreach (FieldDefinition field in fields)
+				Annotations.Mark (field);
 		}
 
 		static void MarkMethods (ICollection methods)

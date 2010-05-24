@@ -20,6 +20,7 @@ System.Runtime.Serialization/ExportOptions.cs
 System.Runtime.Serialization/ExtensionDataObject.cs
 System.Runtime.Serialization/IDataContractSurrogate.cs
 System.Runtime.Serialization/IExtensibleDataObject.cs
+System.Runtime.Serialization/IgnoreDataMemberAttribute.cs
 System.Runtime.Serialization/ImportOptions.cs
 System.Runtime.Serialization/InvalidDataContractException.cs
 System.Runtime.Serialization/KnownTypeAttribute.cs
@@ -32,6 +33,7 @@ System.Runtime.Serialization/XmlObjectSerializer.cs
 System.Runtime.Serialization/XmlSerializableServices.cs
 System.Runtime.Serialization/XsdDataContractExporter.cs
 System.Runtime.Serialization/XsdDataContractImporter.cs
+System.Xml/IFragmentCapableXmlDictionaryWriter.cs
 System.Xml/IStreamProvider.cs
 System.Xml/IXmlBinaryReaderInitializer.cs
 System.Xml/IXmlBinaryWriterInitializer.cs
@@ -44,6 +46,7 @@ System.Xml/OnXmlDictionaryReaderClose.cs
 System.Xml/UniqueId.cs
 System.Xml/XmlBinaryDictionaryReader.cs
 System.Xml/XmlBinaryDictionaryWriter.cs
+System.Xml/XmlBinaryDictionaryWriterAutoGen.cs
 System.Xml/XmlBinaryFormat.cs
 System.Xml/XmlBinaryReaderSession.cs
 System.Xml/XmlBinaryWriterSession.cs
@@ -56,5 +59,7 @@ System.Xml/XmlDictionaryReaderQuotas.cs
 System.Xml/XmlDictionaryString.cs
 System.Xml/XmlDictionaryWriter.cs
 System.Xml/XmlDictionaryWriterAutoGen.cs
+System.Xml/XmlMtomDictionaryReader.cs
+System.Xml/XmlMtomDictionaryWriter.cs
 System.Xml/XmlSimpleDictionaryReader.cs
 System.Xml/XmlSimpleDictionaryWriter.cs

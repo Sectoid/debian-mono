@@ -81,7 +81,6 @@ namespace System.Net {
 			return key;
 		}
 
-
 		void Init ()
 		{
 			context_bound = false;
@@ -158,17 +157,21 @@ namespace System.Net {
 
 		void OnRead (IAsyncResult ares)
 		{
-			// TODO: set a limit on ms length.
 			HttpConnection cnc = (HttpConnection) ares.AsyncState;
 			int nread = -1;
 			try {
 				nread = stream.EndRead (ares);
 				ms.Write (buffer, 0, nread);
-			} catch (Exception e) {
-				//Console.WriteLine (e);
-				if (ms.Length > 0)
+				if (ms.Length > 32768) {
+					SendError ("Bad request", 400);
+					Close (true);
+					return;
+				}
+			} catch {
+				if (ms != null && ms.Length > 0)
 					SendError ();
-				sock.Close ();
+				if (sock != null)
+					sock.Close ();
 				return;
 			}
 
@@ -185,13 +188,13 @@ namespace System.Net {
 
 				if (context.HaveError) {
 					SendError ();
-					Close ();
+					Close (true);
 					return;
 				}
 
 				if (!epl.BindContext (context)) {
 					SendError ("Invalid host", 400);
-					Close ();
+					Close (true);
 				}
 				context_bound = true;
 				return;
@@ -222,8 +225,19 @@ namespace System.Net {
 			int len = (int) ms.Length;
 			int used = 0;
 			string line;
-			while ((line = ReadLine (buffer, position, len - position, ref used)) != null) {
+
+			try {
+				line = ReadLine (buffer, position, len - position, ref used);
 				position += used;
+			} catch (Exception e) {
+				context.ErrorMessage = "Bad request";
+				context.ErrorStatus = 400;
+				return true;
+			}
+
+			do {
+				if (line == null)
+					break;
 				if (line == "") {
 					if (input_state == InputState.RequestLine)
 						continue;
@@ -236,7 +250,13 @@ namespace System.Net {
 					context.Request.SetRequestLine (line);
 					input_state = InputState.Headers;
 				} else {
-					context.Request.AddHeader (line);
+					try {
+						context.Request.AddHeader (line);
+					} catch (Exception e) {
+						context.ErrorMessage = e.Message;
+						context.ErrorStatus = 400;
+						return true;
+					}
 				}
 
 				if (context.HaveError)
@@ -244,7 +264,15 @@ namespace System.Net {
 
 				if (position >= len)
 					break;
-			}
+				try {
+					line = ReadLine (buffer, position, len - position, ref used);
+					position += used;
+				} catch (Exception e) {
+					context.ErrorMessage = "Bad request";
+					context.ErrorStatus = 400;
+					return true;
+				}
+			} while (line != null);
 
 			if (used == len) {
 				ms.SetLength (0);
@@ -283,18 +311,22 @@ namespace System.Net {
 
 		public void SendError (string msg, int status)
 		{
-			HttpListenerResponse response = context.Response;
-			response.StatusCode = status;
-			response.ContentType = "text/html";
-			string description = HttpListenerResponse.GetStatusDescription (status);
-			string str;
-			if (msg != null)
-				str = String.Format ("<h1>{0} ({1})</h1>", description, msg);
-			else
-				str = String.Format ("<h1>{0}</h1>", description);
+			try {
+				HttpListenerResponse response = context.Response;
+				response.StatusCode = status;
+				response.ContentType = "text/html";
+				string description = HttpListenerResponse.GetStatusDescription (status);
+				string str;
+				if (msg != null)
+					str = String.Format ("<h1>{0} ({1})</h1>", description, msg);
+				else
+					str = String.Format ("<h1>{0}</h1>", description);
 
-			byte [] error = context.Response.ContentEncoding.GetBytes (str);
-			response.Close (error, false);
+				byte [] error = context.Response.ContentEncoding.GetBytes (str);
+				response.Close (error, false);
+			} catch {
+				// response was already closed
+			}
 		}
 
 		public void SendError ()
@@ -324,31 +356,42 @@ namespace System.Net {
 			}
 
 			if (sock != null) {
-				if (!force_close && chunked && context.Response.ForceCloseChunked == false) {
-					// Don't close. Keep working.
-					chunked_uses++;
+				force_close |= (context.Request.Headers ["connection"] == "close");
+				if (!force_close) {
+					int status_code = context.Response.StatusCode;
+					bool conn_close = (status_code == 400 || status_code == 408 || status_code == 411 ||
+							status_code == 413 || status_code == 414 || status_code == 500 ||
+							status_code == 503);
+
+					force_close |= (context.Request.ProtocolVersion <= HttpVersion.Version10);
+				}
+
+				if (!force_close && context.Request.FlushInput ()) {
+					if (chunked && context.Response.ForceCloseChunked == false) {
+						// Don't close. Keep working.
+						chunked_uses++;
+						Unbind ();
+						Init ();
+						BeginReadRequest ();
+						return;
+					}
+
 					Unbind ();
 					Init ();
 					BeginReadRequest ();
 					return;
 				}
 
-				if (force_close || context.Response.Headers ["connection"] == "close") {
-					Socket s = sock;
-					sock = null;
-					try {
-						s.Shutdown (SocketShutdown.Both);
-					} catch {
-					} finally {
-						s.Close ();
-					}
-					Unbind ();
-				} else {
-					Unbind ();
-					Init ();
-					BeginReadRequest ();
-					return;
+				Socket s = sock;
+				sock = null;
+				try {
+					s.Shutdown (SocketShutdown.Both);
+				} catch {
+				} finally {
+					s.Close ();
 				}
+				Unbind ();
+				return;
 			}
 		}
 	}

@@ -20,70 +20,38 @@
 
 #define EMIT_COND_BRANCH(ins,cond) 							\
 {											\
-if (ins->flags & MONO_INST_BRLABEL) { 							\
-        if (ins->inst_i0->inst_c0) { 							\
-		int displace;								\
-		displace = ((cfg->native_code + ins->inst_i0->inst_c0) - code) / 2;	\
-		if (s390_is_imm16(displace)) {						\
-			s390_brc (code, cond, displace);				\
-		} else { 								\
-			s390_jcl (code, cond, displace); 				\
-		}									\
-        } else { 									\
-	        mono_add_patch_info (cfg, code - cfg->native_code, 			\
-				     MONO_PATCH_INFO_LABEL, ins->inst_i0); 		\
-		s390_jcl (code, cond, 0);						\
-        } 										\
-} else { 										\
-        if (ins->inst_true_bb->native_offset) { 					\
-		int displace;								\
-		displace = ((cfg->native_code + 					\
-			    ins->inst_true_bb->native_offset) - code) / 2;		\
-		if (s390_is_imm16(displace)) {						\
-			s390_brc (code, cond, displace);				\
-		} else { 								\
-			s390_jcl (code, cond, displace); 				\
-		}									\
-        } else { 									\
-		mono_add_patch_info (cfg, code - cfg->native_code, 			\
-				     MONO_PATCH_INFO_BB, ins->inst_true_bb); 		\
-		s390_jcl (code, cond, 0);						\
-        } 										\
-} 											\
+if (ins->inst_true_bb->native_offset) { 					\
+	int displace;								\
+	displace = ((cfg->native_code + 					\
+		    ins->inst_true_bb->native_offset) - code) / 2;		\
+	if (s390_is_imm16(displace)) {						\
+		s390_brc (code, cond, displace);				\
+	} else { 								\
+		s390_jcl (code, cond, displace); 				\
+	}									\
+} else { 									\
+	mono_add_patch_info (cfg, code - cfg->native_code, 			\
+			     MONO_PATCH_INFO_BB, ins->inst_true_bb); 		\
+	s390_jcl (code, cond, 0);						\
+} 										\
 }
 
 #define EMIT_UNCOND_BRANCH(ins) 							\
 {											\
-if (ins->flags & MONO_INST_BRLABEL) { 							\
-        if (ins->inst_i0->inst_c0) { 							\
-		int displace;								\
-		displace = ((cfg->native_code + ins->inst_i0->inst_c0) - code) / 2;	\
-		if (s390_is_imm16(displace)) {						\
-			s390_brc (code, S390_CC_UN, displace);				\
-		} else { 								\
-			s390_jcl (code, S390_CC_UN, displace); 				\
-		}									\
-        } else { 									\
-	        mono_add_patch_info (cfg, code - cfg->native_code, 			\
-				     MONO_PATCH_INFO_LABEL, ins->inst_i0); 		\
-		s390_jcl (code, S390_CC_UN, 0);						\
-        } 										\
-} else { 										\
-        if (ins->inst_target_bb->native_offset) { 					\
-		int displace;								\
-		displace = ((cfg->native_code + 					\
-			    ins->inst_target_bb->native_offset) - code) / 2;		\
-		if (s390_is_imm16(displace)) {						\
-			s390_brc (code, S390_CC_UN, displace);				\
-		} else { 								\
-			s390_jcl (code, S390_CC_UN, displace); 				\
-		}									\
-        } else { 									\
-		mono_add_patch_info (cfg, code - cfg->native_code, 			\
-				     MONO_PATCH_INFO_BB, ins->inst_target_bb); 		\
-		s390_jcl (code, S390_CC_UN, 0);						\
-        } 										\
-}											\
+if (ins->inst_target_bb->native_offset) { 					\
+	int displace;								\
+	displace = ((cfg->native_code + 					\
+		    ins->inst_target_bb->native_offset) - code) / 2;		\
+	if (s390_is_imm16(displace)) {						\
+		s390_brc (code, S390_CC_UN, displace);				\
+	} else { 								\
+		s390_jcl (code, S390_CC_UN, displace); 				\
+	}									\
+} else { 									\
+	mono_add_patch_info (cfg, code - cfg->native_code, 			\
+			     MONO_PATCH_INFO_BB, ins->inst_target_bb); 		\
+	s390_jcl (code, S390_CC_UN, 0);						\
+} 										\
 }
 
 #define EMIT_COND_SYSTEM_EXCEPTION(cond,exc_name)            		\
@@ -695,7 +663,7 @@ enum_parmtype:
 				MonoMarshalType *info;
 
 				if (type->data.klass->enumtype) {
-					simpleType = type->data.klass->enum_basetype->type;
+					simpleType = mono_class_enum_basetype (type->data.klass)->type;
 					printf("{VALUETYPE} - ");
 					goto enum_parmtype;
 				}
@@ -1000,7 +968,7 @@ handle_enum:
 	case MONO_TYPE_VALUETYPE: {
 		MonoMarshalType *info;
 		if (type->data.klass->enumtype) {
-			type = type->data.klass->enum_basetype;
+			type = mono_class_enum_basetype (type->data.klass);
 			goto handle_enum;
 		} else {
 			guint8 *p = va_arg (ap, gpointer);
@@ -1162,7 +1130,7 @@ is_regsize_var (MonoType *t) {
 		return FALSE;
 	case MONO_TYPE_VALUETYPE:
 		if (t->data.klass->enumtype)
-			return is_regsize_var (t->data.klass->enum_basetype);
+			return is_regsize_var (mono_class_enum_basetype (t->data.klass));
 		return FALSE;
 	}
 	return FALSE;
@@ -1468,7 +1436,7 @@ enum_retvalue:
 			sz->code_size += 4;
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->ret)) {
+			if (!mono_type_generic_inst_is_valuetype (ret_type)) {
 				cinfo->ret.reg = s390_r2;
 				sz->code_size += 4;
 				break;
@@ -1477,7 +1445,7 @@ enum_retvalue:
 		case MONO_TYPE_VALUETYPE: {
 			MonoClass *klass = mono_class_from_mono_type (sig->ret);
 			if (klass->enumtype) {
-				simpletype = klass->enum_basetype->type;
+				simpletype = mono_class_enum_basetype (klass)->type;
 				goto enum_retvalue;
 			}
 			if (sig->pinvoke)
@@ -1592,7 +1560,7 @@ enum_retvalue:
 			nParm++;
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->params [i])) {
+			if (!mono_type_generic_inst_is_valuetype (ptype)) {
 				cinfo->args[nParm].size = sizeof(gpointer);
 				add_general (&gr, sz, cinfo->args+nParm, TRUE);
 				nParm++;
@@ -2413,7 +2381,7 @@ mono_arch_instrument_prolog (MonoCompile *cfg, void *func, void *p,
 /*------------------------------------------------------------------*/
 
 void*
-mono_arch_instrument_epilog (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments)
+mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments, gboolean preserve_argument_registers)
 {
 	guchar 	   *code = p;
 	int   	   save_mode = SAVE_NONE,
@@ -2446,7 +2414,7 @@ handle_enum:
 		break;
 	case MONO_TYPE_VALUETYPE:
 		if (mono_method_signature (method)->ret->data.klass->enumtype) {
-			rtype = mono_method_signature (method)->ret->data.klass->enum_basetype->type;
+			rtype = mono_class_enum_basetype (mono_method_signature (method)->ret->data.klass)->type;
 			goto handle_enum;
 		}
 		save_mode = SAVE_STRUCT;
@@ -5010,7 +4978,7 @@ mono_arch_free_jit_tls_data (MonoJitTlsData *tls)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_emit_inst_for_method                        */
+/* Name		- mono_arch_emit_inst_for_method                    */
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
@@ -5021,6 +4989,12 @@ mono_arch_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMetho
 }
 
 /*========================= End of Function ========================*/
+
+/*------------------------------------------------------------------*/
+/*                                                                  */
+/* Name		- mono_arch_decompose_opts 	                    */
+/*                                                                  */
+/*------------------------------------------------------------------*/
 
 void
 mono_arch_decompose_opts (MonoCompile *cfg, MonoInst *ins)
@@ -5047,7 +5021,7 @@ mono_arch_decompose_opts (MonoCompile *cfg, MonoInst *ins)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_decompose_long_opts                         */
+/* Name		- mono_arch_decompose_long_opts                     */
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
@@ -5315,6 +5289,16 @@ mono_arch_get_patch_offset (guint8 *code)
 
 /*========================= End of Function ========================*/
 
+/*------------------------------------------------------------------*/
+/*                                                                  */
+/* Name		- mono_arch_context_get_int_reg.                    */
+/*                                                                  */
+/* Function	- Dummy entry point until s390x supports aot.       */
+/*		                               			    */
+/* Returns	- Pointer to intreg.				    */
+/*                                                                  */
+/*------------------------------------------------------------------*/
+
 gpointer
 mono_arch_context_get_int_reg (MonoContext *ctx, int reg)
 {
@@ -5322,3 +5306,5 @@ mono_arch_context_get_int_reg (MonoContext *ctx, int reg)
 	g_assert_not_reached ();
 	return NULL;
 }
+
+/*========================= End of Function ========================*/
