@@ -550,9 +550,9 @@ get_signature (MonoMethod *method) {
 
 	res = g_string_new ("");
 	if (include_namespace && *(method->klass->name_space))
-		g_string_sprintfa (res, "%s.", method->klass->name_space);
+		g_string_append_printf (res, "%s.", method->klass->name_space);
 	result = mono_signature_get_desc (mono_method_signature (method), include_namespace);
-	g_string_sprintfa (res, "%s:%s(%s)", method->klass->name, method->name, result);
+	g_string_append_printf (res, "%s:%s(%s)", method->klass->name, method->name, result);
 	g_free (result);
 	g_hash_table_insert (hash, method, res->str);
 
@@ -934,9 +934,9 @@ df_visit (MonoBasicBlock *bb, int *dfn, const unsigned char* code)
 		next = tmp->data;
 		if (!next->dfn) {
 			if (!bb->cil_code)
-				fprintf (output, "\t\"DF entry\" -> \"IL_%04x (%d)\"\n", next->cil_code - code, *dfn + 1);
+				fprintf (output, "\t\"DF entry\" -> \"IL_%04x (%d)\"\n", (unsigned int)(next->cil_code - code), *dfn + 1);
 			else
-				fprintf (output, "\t\"IL_%04x (%d)\" -> \"IL_%04x (%d)\"\n", bb->cil_code - code, bb->dfn, next->cil_code - code, *dfn + 1);
+				fprintf (output, "\t\"IL_%04x (%d)\" -> \"IL_%04x (%d)\"\n", (unsigned int)(bb->cil_code - code), bb->dfn, (unsigned int)(next->cil_code - code), *dfn + 1);
 			df_visit (next, dfn, code);
 		}
 	}
@@ -963,7 +963,7 @@ print_method_cfg (MonoMethod *method) {
 			fprintf (output, "\tB%p [shape=record,label=\"end\"]\n", bb);
 		else {
 			code = mono_disasm_code (&graph_dh, method, bb->cil_code, bb->cil_code + bb->cil_length);
-			fprintf (output, "\tB%p [shape=record,label=\"IL_%04x\\n%s\"]\n", bb, bb->cil_code - il_code, code);
+			fprintf (output, "\tB%p [shape=record,label=\"IL_%04x\\n%s\"]\n", bb, (unsigned int)(bb->cil_code - il_code), code);
 			g_free (code);
 		}
 	}
@@ -1147,10 +1147,10 @@ main (int argc, char *argv[]) {
 
 		if (outputfile) {
 			type = strrchr (outputfile, '.');
-			g_string_sprintfa (command, " -o %s", outputfile);
+			g_string_append_printf (command, " -o %s", outputfile);
 		}
 		if (type)
-			g_string_sprintfa (command, " -T%s", type + 1);
+			g_string_append_printf (command, " -T%s", type + 1);
 		output = popen (command->str, "w");
 		if (!output) {
 			g_print ("Cannot run neato: you may need to install the graphviz package.\n");

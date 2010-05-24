@@ -106,9 +106,72 @@ public class CriticalClass {
         }
 }
 
+public class TransparentBaseClass {
+	public virtual void TransparentMethod ()
+	{
+	}
+
+	[SecuritySafeCritical]
+	public virtual void SafeCriticalMethod ()
+	{
+	}
+
+	[SecurityCritical]
+	public virtual void CriticalMethod ()
+	{
+	}
+}
+
+public class BadTransparentOverrideClass : TransparentBaseClass {
+	[SecurityCritical]
+	public override void TransparentMethod ()
+	{
+		Test.error ("this method is critical and cannot override its base (transparent)");
+	}
+}
+
+public class BadSafeCriticalOverrideClass : TransparentBaseClass {
+	[SecurityCritical]
+	public override void SafeCriticalMethod ()
+	{
+		Test.error ("this method is critical and cannot override its base (safe critical)");
+	}
+}
+
+public class BadCriticalOverrideClass : TransparentBaseClass {
+	public override void CriticalMethod ()
+	{
+		Test.error ("this method is NOT critical and cannot override its base (critical)");
+	}
+}
+
 public delegate void MethodDelegate ();
 
 public delegate Object InvokeDelegate (Object obj, Object[] parms);
+
+// the 0.1% case from http://blogs.msdn.com/shawnfa/archive/2007/05/11/silverlight-security-iii-inheritance.aspx
+public class TransparentClassWithSafeCriticalDefaultConstructor {
+
+	[SecuritySafeCritical]
+	public TransparentClassWithSafeCriticalDefaultConstructor ()
+	{
+	}
+}
+
+public class TransparentInheritFromSafeCriticalDefaultConstructor : TransparentClassWithSafeCriticalDefaultConstructor {
+
+	public TransparentInheritFromSafeCriticalDefaultConstructor ()
+	{
+	}
+}
+
+public class SafeInheritFromSafeCriticalDefaultConstructor : TransparentClassWithSafeCriticalDefaultConstructor {
+
+	[SecuritySafeCritical]
+	public SafeInheritFromSafeCriticalDefaultConstructor ()
+	{
+	}
+}
 
 public class Test
 {
@@ -163,6 +226,21 @@ public class Test
 	}
 	*/
 
+	static void doBadTransparentOverrideClass ()
+	{
+		new BadTransparentOverrideClass ();
+	}
+
+	static void doBadSafeCriticalOverrideClass ()
+	{
+		new BadSafeCriticalOverrideClass ();
+	}
+
+	static void doBadCriticalOverrideClass ()
+	{
+		new BadCriticalOverrideClass ();
+	}
+
 	public static void TransparentReflectionCMethod ()
 	{
 	}
@@ -173,8 +251,89 @@ public class Test
 		error ("method called via reflection");
 	}
 
+	[SecurityCriticalAttribute]
+	public static unsafe void StringTest ()
+	{
+		string str = "blabla";
+		char [] arr = str.ToCharArray ();
+		string r;
+
+		fixed (char *tarr = arr) {
+			int ss = 1, l = 3;
+			r = new string (tarr, ss, l - ss);
+		}
+	}
+
+	[SecuritySafeCriticalAttribute]
+	public static void CallStringTest ()
+	{
+		StringTest ();
+	}
+
 	[DllImport ("/lib64/libc.so.6")]
 	static extern int getpid ();
+
+
+	static void ArraysCreatedByTransparentCaller ()
+	{
+		// Transparent creating an array of a Critical type
+		// using Class[] (rank == 1) throws a TypeLoadException on SL2 - but that looks like a bug
+		// reported as https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=490406
+		CClass[] c_array = new CClass [0];
+		// Transparent creating an array of a SafeCritical type
+		SCClass[] sc_array = new SCClass [0];
+
+		// Transparent creating a multidimentional array of a Critical type
+		CClass[,] c_multi = new CClass [0,0];
+		// Transparent creating a multidimentional array of a SafeCritical type
+		SCClass[,] sc_multi = new SCClass [0,0];
+
+		// Transparent creating a jagged array of a Critical type
+		CClass[][] c_jagged = new CClass [0][];
+		// Transparent creating a jagged array of a Critical type
+		SCClass[][] sc_jagged = new SCClass [0][];
+	}
+
+	[SecuritySafeCritical]
+	static void ArraysCreatedBySafeCriticalCaller ()
+	{
+		// SafeCritical creating an array of a Critical type
+		CClass[] c_array = new CClass [0];
+		// SafeCritical creating an array of a SafeCritical type
+		SCClass[] sc_array = new SCClass [0];
+
+		// SafeCritical creating a multidimentional array of a Critical type
+		CClass[,] c_multi = new CClass [0,0];
+		// SafeCritical creating a multidimentional array of a SafeCritical type
+		SCClass[,] sc_multi = new SCClass [0,0];
+
+		// SafeCritical creating a jagged array of a Critical type
+		CClass[][] c_jagged = new CClass [0][];
+		// SafeCritical creating a jagged array of a Critical type
+		SCClass[][] sc_jagged = new SCClass [0][];
+
+		// Transparent Main could not call a critical method by itself
+		ArraysCreatedByCriticalCaller ();
+	}
+
+	[SecurityCritical]
+	static void ArraysCreatedByCriticalCaller ()
+	{
+		// Critical creating an array of a Critical type
+		CClass[] c_array = new CClass [0];
+		// Critical creating an array of a SafeCritical type
+		SCClass[] sc_array = new SCClass [0];
+
+		// Critical creating a multidimentional array of a Critical type
+		CClass[,] c_multi = new CClass [0,0];
+		// Critical creating a multidimentional array of a SafeCritical type
+		SCClass[,] sc_multi = new SCClass [0,0];
+
+		// Critical creating a jagged array of a Critical type
+		CClass[][] c_jagged = new CClass [0][];
+		// Critical creating a jagged array of a Critical type
+		SCClass[][] sc_jagged = new SCClass [0][];
+	}
 
 	public static int Main ()
 	{
@@ -274,11 +433,48 @@ public class Test
 		} catch (MethodAccessException) {
 		}
 
-		//Console.WriteLine ("ok");
+
+		// wrapper 7
+		try {
+			CallStringTest ();
+		} catch (MethodAccessException) {
+			error ("string test failed");
+		}
+
+		try {
+			doBadTransparentOverrideClass ();
+			error ("BadTransparentOverrideClass error");
+		} catch (TypeLoadException) {
+		}
+
+		try {
+			doBadSafeCriticalOverrideClass ();
+			error ("BadSafeCriticalOverrideClass error");
+		} catch (TypeLoadException) {
+		}
+
+		try {
+			doBadCriticalOverrideClass ();
+			error ("BadCriticalOverrideClass error");
+		} catch (TypeLoadException) {
+		}
+
+		new TransparentClassWithSafeCriticalDefaultConstructor ();
+		try {
+			new TransparentInheritFromSafeCriticalDefaultConstructor ();
+		} catch (TypeLoadException) {
+		}
+		new SafeInheritFromSafeCriticalDefaultConstructor ();
+
+		// arrays creation tests
+		ArraysCreatedByTransparentCaller ();
+		ArraysCreatedBySafeCriticalCaller ();
+		// the above also calls ArraysCreatedBySafeCriticalCaller since (Transparent) Main cannot call it directly
 
 		if (haveError)
 			return 1;
 
+//		Console.WriteLine ("ok");
 		return 0;
 	}
 }

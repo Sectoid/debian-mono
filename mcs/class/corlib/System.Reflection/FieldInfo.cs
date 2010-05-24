@@ -158,13 +158,16 @@ namespace System.Reflection {
 			return internal_from_handle_type (handle.Value, IntPtr.Zero);
 		}
 
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 		[ComVisible (false)]
 		public static FieldInfo GetFieldFromHandle (RuntimeFieldHandle handle, RuntimeTypeHandle declaringType)
 		{
 			if (handle.Value == IntPtr.Zero)
 				throw new ArgumentException ("The handle is invalid.");
-			return internal_from_handle_type (handle.Value, declaringType.Value);
+			FieldInfo fi = internal_from_handle_type (handle.Value, declaringType.Value);
+			if (fi == null)
+				throw new ArgumentException ("The field handle and the type handle are incompatible.");
+			return fi;
 		}
 #endif
 

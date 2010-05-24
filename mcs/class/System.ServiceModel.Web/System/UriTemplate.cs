@@ -32,6 +32,10 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.Text;
 
+#if NET_2_1
+using NameValueCollection = System.Object;
+#endif
+
 namespace System
 {
 	public class UriTemplate
@@ -42,12 +46,31 @@ namespace System
 		ReadOnlyCollection<string> path, query;
 		Dictionary<string,string> query_params = new Dictionary<string,string> ();
 
-		[MonoTODO ("It needs some rewrite: template bindings should be available only one per segment")]
 		public UriTemplate (string template)
+			: this (template, false)
+		{
+		}
+
+		public UriTemplate (string template, IDictionary<string,string> additionalDefaults)
+			: this (template, false, additionalDefaults)
+		{
+		}
+
+		public UriTemplate (string template, bool ignoreTrailingSlash)
+			: this (template, ignoreTrailingSlash, null)
+		{
+		}
+
+		public UriTemplate (string template, bool ignoreTrailingSlash, IDictionary<string,string> additionalDefaults)
 		{
 			if (template == null)
 				throw new ArgumentNullException ("template");
 			this.template = template;
+			IgnoreTrailingSlash = ignoreTrailingSlash;
+			Defaults = new Dictionary<string,string> (StringComparer.InvariantCultureIgnoreCase);
+			if (additionalDefaults != null)
+				foreach (var pair in additionalDefaults)
+					Defaults.Add (pair.Key, pair.Value);
 
 			string p = template;
 			// Trim scheme, host name and port if exist.
@@ -64,6 +87,10 @@ namespace System
 				query = empty_strings;
 		}
 
+		public bool IgnoreTrailingSlash { get; private set; }
+
+		public IDictionary<string,string> Defaults { get; private set; }
+
 		public ReadOnlyCollection<string> PathSegmentVariableNames {
 			get { return path; }
 		}
@@ -79,27 +106,59 @@ namespace System
 
 		// Bind
 
+#if !NET_2_1
 		public Uri BindByName (Uri baseAddress, NameValueCollection parameters)
+		{
+			return BindByName (baseAddress, parameters, false);
+		}
+
+		public Uri BindByName (Uri baseAddress, NameValueCollection parameters, bool omitDefaults)
+		{
+			return BindByNameCommon (baseAddress, parameters, null, omitDefaults);
+		}
+#endif
+
+		public Uri BindByName (Uri baseAddress, IDictionary<string,string> parameters)
+		{
+			return BindByName (baseAddress, parameters, false);
+		}
+
+		public Uri BindByName (Uri baseAddress, IDictionary<string,string> parameters, bool omitDefaults)
+		{
+			return BindByNameCommon (baseAddress, null, parameters, omitDefaults);
+		}
+
+		Uri BindByNameCommon (Uri baseAddress, NameValueCollection nvc, IDictionary<string,string> dic, bool omitDefaults)
 		{
 			CheckBaseAddress (baseAddress);
 
+			// take care of case sensitivity.
+			if (dic != null)
+				dic = new Dictionary<string,string> (dic, StringComparer.OrdinalIgnoreCase);
+
 			int src = 0;
 			StringBuilder sb = new StringBuilder (template.Length);
-			BindByName (ref src, sb, path, parameters);
-			BindByName (ref src, sb, query, parameters);
+			BindByName (ref src, sb, path, nvc, dic, omitDefaults);
+			BindByName (ref src, sb, query, nvc, dic, omitDefaults);
 			sb.Append (template.Substring (src));
 			return new Uri (baseAddress.ToString () + sb.ToString ());
 		}
 
-		void BindByName (ref int src, StringBuilder sb, ReadOnlyCollection<string> names, NameValueCollection parameters)
+		void BindByName (ref int src, StringBuilder sb, ReadOnlyCollection<string> names, NameValueCollection nvc, IDictionary<string,string> dic, bool omitDefaults)
 		{
 			foreach (string name in names) {
 				int s = template.IndexOf ('{', src);
 				int e = template.IndexOf ('}', s + 1);
 				sb.Append (template.Substring (src, s - src));
-				string value = parameters [name];
-				if (value == null)
-					throw new FormatException (String.Format ("The argument name value collection does not contain value for '{0}'", name));
+#if NET_2_1
+				string value = null;
+#else
+				string value = nvc != null ? nvc [name] : null;
+#endif
+				if (dic != null)
+					dic.TryGetValue (name, out value);
+				if (value == null && (omitDefaults || !Defaults.TryGetValue (name, out value)))
+					throw new ArgumentException (String.Format ("The argument name value collection does not contain non-null value for '{0}'", name), "parameters");
 				sb.Append (value);
 				src = e + 1;
 			}
@@ -136,15 +195,16 @@ namespace System
 
 		// Compare
 
-		[MonoTODO]
 		public bool IsEquivalentTo (UriTemplate other)
 		{
 			if (other == null)
 				throw new ArgumentNullException ("other");
-			return new UriTemplateEquivalenceComparer ().Equals (this, other);
+			return this.template == other.template;
 		}
 
 		// Match
+
+		static readonly char [] slashSep = {'/'};
 
 		public UriTemplateMatch Match (Uri baseAddress, Uri candidate)
 		{
@@ -152,8 +212,14 @@ namespace System
 			if (candidate == null)
 				throw new ArgumentNullException ("candidate");
 
-			if (!baseAddress.AbsoluteUri.EndsWith ("/"))
-				baseAddress = new Uri (baseAddress.AbsoluteUri + "/");
+			var us = baseAddress.LocalPath;
+			if (us [us.Length - 1] != '/')
+				baseAddress = new Uri (baseAddress.GetComponents (UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.Unescaped) + '/' + baseAddress.Query, baseAddress.IsAbsoluteUri ? UriKind.Absolute : UriKind.RelativeOrAbsolute);
+			if (IgnoreTrailingSlash) {
+				us = candidate.LocalPath;
+				if (us.Length > 0 && us [us.Length - 1] != '/')
+					candidate = new Uri(candidate.GetComponents (UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.Unescaped) + '/' + candidate.Query, candidate.IsAbsoluteUri ? UriKind.Absolute : UriKind.RelativeOrAbsolute);
+			}
 
 			if (Uri.Compare (baseAddress, candidate, UriComponents.StrongAuthority, UriFormat.SafeUnescaped, StringComparison.Ordinal) != 0)
 				return null;
@@ -165,7 +231,10 @@ namespace System
 			m.RequestUri = candidate;
 			var vc = m.BoundVariables;
 
-			string cp = baseAddress.MakeRelativeUri(candidate).ToString();
+			string cp = baseAddress.MakeRelativeUri(candidate).ToString ();
+			if (IgnoreTrailingSlash && cp [cp.Length - 1] == '/')
+				cp = cp.Substring (0, cp.Length - 1);
+
 			int tEndCp = cp.IndexOf ('?');
 			if (tEndCp >= 0)
 				cp = cp.Substring (0, tEndCp);
@@ -185,6 +254,8 @@ namespace System
 				if (ce < 0)
 					ce = cp.Length;
 				string value = cp.Substring (c, ce - c);
+				if (value.Length == 0)
+					return null; // empty => mismatch
 				vc [name] = value;
 				m.RelativePathSegments.Add (value);
 				c += value.Length;
@@ -192,10 +263,17 @@ namespace System
 			int tEnd = template.IndexOf ('?');
 			if (tEnd < 0)
 				tEnd = template.Length;
-			if ((cp.Length - c) != (tEnd - i) ||
+			bool wild = (template [tEnd - 1] == '*');
+			if (wild)
+				tEnd--;
+			if (!wild && (cp.Length - c) != (tEnd - i) ||
 			    String.CompareOrdinal (cp, c, template, i, tEnd - i) != 0)
 				return null; // suffix doesn't match
-			
+			if (wild) {
+				c += tEnd - i;
+				foreach (var pe in cp.Substring (c).Split (slashSep, StringSplitOptions.RemoveEmptyEntries))
+					m.WildcardPathSegments.Add (pe);
+			}
 			if (candidate.Query.Length == 0)
 				return m;
 
@@ -234,14 +312,21 @@ namespace System
 
 		ReadOnlyCollection<string> ParsePathTemplate (string template, int index, int end)
 		{
+			int widx = template.IndexOf ('*', index, end);
+			if (widx >= 0 && widx != end - 1)
+				throw new FormatException (String.Format ("Wildcard in UriTemplate is valid only if it is placed at the last part of the path: '{0}'", template));
 			List<string> list = null;
+			int prevEnd = -2;
 			for (int i = index; i <= end; ) {
 				i = template.IndexOf ('{', i);
 				if (i < 0 || i > end)
 					break;
+				if (i == prevEnd + 1)
+					throw new ArgumentException (String.Format ("The UriTemplate '{0}' contains adjacent templated segments, which is invalid.", template));
 				int e = template.IndexOf ('}', i + 1);
 				if (e < 0 || i > end)
-					break;
+					throw new FormatException (String.Format ("Missing '}' in URI template '{0}'", template));
+				prevEnd = e;
 				if (list == null)
 					list = new List<string> ();
 				i++;
@@ -267,7 +352,7 @@ namespace System
 				string pname = pair [0];
 				string pvalue = pair [1];
 				if (pvalue.Length >= 2 && pvalue [0] == '{' && pvalue [pvalue.Length - 1] == '}') {
-					string ptemplate = pvalue.Substring (1, pvalue.Length - 2).ToUpperInvariant ();
+					string ptemplate = pvalue.Substring (1, pvalue.Length - 2).ToUpper (CultureInfo.InvariantCulture);
 					query_params.Add (pname, ptemplate);
 					if (list == null)
 						list = new List<string> ();

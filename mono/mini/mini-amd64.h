@@ -2,6 +2,7 @@
 #define __MONO_MINI_AMD64_H__
 
 #include <mono/arch/amd64/amd64-codegen.h>
+#include <mono/utils/mono-sigcontext.h>
 #include <glib.h>
 
 #ifdef PLATFORM_WIN32
@@ -10,6 +11,7 @@
 #ifdef HAVE_SIGNAL_H
 #include <signal.h>
 #endif
+
 
 /* sigcontext surrogate */
 struct sigcontext {
@@ -24,7 +26,7 @@ struct sigcontext {
 	guint64 eip;
 };
 
-typedef void (* MonoW32ExceptionHandler) (int);
+typedef void (* MonoW32ExceptionHandler) (int _dummy, EXCEPTION_RECORD *info, void *context);
 void win32_seh_init(void);
 void win32_seh_cleanup(void);
 void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler);
@@ -74,6 +76,16 @@ struct sigcontext {
 };
 #endif  // sun, Solaris x86
 
+#define MONO_ARCH_SUPPORT_SIMD_INTRINSICS 1
+
+#ifndef DISABLE_SIMD
+#define MONO_ARCH_SIMD_INTRINSICS 1
+#define MONO_ARCH_NEED_SIMD_BANK 1
+#define MONO_ARCH_USE_SHARED_FP_SIMD_BANK 1
+#endif
+
+
+
 #define MONO_ARCH_SIGNAL_STACK_SIZE (16 * 1024)
 
 #define MONO_ARCH_HAVE_RESTORE_STACK_SUPPORT 1
@@ -87,8 +99,14 @@ struct sigcontext {
 #define MONO_ARCH_FP_RETURN_REG AMD64_XMM0
 
 /* xmm15 is reserved for use by some opcodes */
-#define MONO_ARCH_CALLEE_FREGS 0xef
+#define MONO_ARCH_CALLEE_FREGS 0x7fff
 #define MONO_ARCH_CALLEE_SAVED_FREGS 0
+
+#define MONO_MAX_XREGS MONO_MAX_FREGS
+
+#define MONO_ARCH_CALLEE_XREGS 0x7fff
+#define MONO_ARCH_CALLEE_SAVED_XREGS 0
+
 
 #define MONO_ARCH_CALLEE_REGS AMD64_CALLEE_REGS
 #define MONO_ARCH_CALLEE_SAVED_REGS AMD64_CALLEE_SAVED_REGS
@@ -113,11 +131,16 @@ struct sigcontext {
 #define MONO_ARCH_RETREG1 X86_EAX
 #define MONO_ARCH_RETREG2 X86_EDX
 
+/*This is the max size of the locals area of a given frame. I think 1MB is a safe default for now*/
+#define MONO_ARCH_MAX_FRAME_SIZE 0x100000
+
 struct MonoLMF {
 	/* 
 	 * If the lowest bit is set to 1, then this LMF has the rip field set. Otherwise,
 	 * the rip field is not set, and the rsp field points to the stack location where
 	 * the caller ip is saved.
+	 * If the second lowest bit is set to 1, then this is a MonoLMFExt structure, and
+	 * the other fields are not valid.
 	 */
 	gpointer    previous_lmf;
 	gpointer    lmf_addr;
@@ -142,13 +165,14 @@ typedef struct MonoCompileArch {
 	gint32 localloc_offset;
 	gint32 reg_save_area_offset;
 	gint32 stack_alloc_size;
-	gboolean omit_fp, omit_fp_computed;
+	gboolean omit_fp, omit_fp_computed, no_pushes;
 	gpointer cinfo;
 	gint32 async_point_count;
 	gpointer vret_addr_loc;
 #ifdef PLATFORM_WIN32
 	gpointer	unwindinfo;
 #endif
+	gpointer ss_trigger_page_var;
 } MonoCompileArch;
 
 typedef struct {
@@ -206,6 +230,15 @@ typedef struct {
 #endif
 
 /*
+ * This structure is an extension of MonoLMF and contains extra information.
+ */
+typedef struct {
+	struct MonoLMF lmf;
+	gboolean debugger_invoke;
+	MonoContext ctx; /* if debugger_invoke is TRUE */
+} MonoLMFExt;
+
+/*
  * some icalls like mono_array_new_va needs to be called using a different 
  * calling convention.
  */
@@ -219,6 +252,10 @@ typedef struct {
 
 #define MONO_ARCH_SIGSEGV_ON_ALTSTACK
 
+#endif
+
+#ifdef __OpenBSD__
+#undef MONO_ARCH_USE_SIGACTION
 #endif
 
 #endif /* PLATFORM_WIN32 */
@@ -245,7 +282,7 @@ typedef struct {
 
 #define MONO_ARCH_NOMAP32BIT
 
-#elif defined (__FreeBSD__)
+#elif defined (__FreeBSD__) || defined (__OpenBSD__)
 
 #define REG_RAX 7
 #define REG_RCX 4
@@ -288,16 +325,14 @@ typedef struct {
 #define MONO_ARCH_EMULATE_FREM 1
 #define MONO_ARCH_HAVE_IS_INT_OVERFLOW 1
 
-#define MONO_ARCH_ENABLE_EMIT_STATE_OPT 1
 #define MONO_ARCH_ENABLE_REGALLOC_IN_EH_BLOCKS 1
 #define MONO_ARCH_ENABLE_MONO_LMF_VAR 1
 #define MONO_ARCH_HAVE_INVALIDATE_METHOD 1
 #define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION 1
-#define MONO_ARCH_HAVE_CREATE_TRAMPOLINE_FROM_TOKEN 1
 #define MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_ATOMIC_ADD 1
 #define MONO_ARCH_HAVE_ATOMIC_EXCHANGE 1
-#define MONO_ARCH_HAVE_ATOMIC_CAS_IMM 1
+#define MONO_ARCH_HAVE_ATOMIC_CAS 1
 #define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
 #define MONO_ARCH_HAVE_IMT 1
 #define MONO_ARCH_HAVE_TLS_GET 1
@@ -309,21 +344,40 @@ typedef struct {
  * clobbered across method call boundaries.
  */
 #define MONO_ARCH_RGCTX_REG AMD64_R10
-#define MONO_ARCH_COMMON_VTABLE_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_CMOV_OPS 1
 #define MONO_ARCH_HAVE_NOTIFY_PENDING_EXC 1
 #define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
 #define MONO_ARCH_ENABLE_GLOBAL_RA 1
 #define MONO_ARCH_HAVE_GENERALIZED_IMT_THUNK 1
+#define MONO_ARCH_HAVE_LIVERANGE_OPS 1
+#define MONO_ARCH_HAVE_XP_UNWIND 1
+#define MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX 1
 #if !defined(PLATFORM_WIN32) && !defined(HAVE_MOVING_COLLECTOR)
 #define MONO_ARCH_MONITOR_OBJECT_REG AMD64_RDI
 #endif
+#define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
 
 #define MONO_ARCH_AOT_SUPPORTED 1
+#define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
+#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 
 #if !defined(PLATFORM_WIN32) || defined(__sun)
 #define MONO_ARCH_ENABLE_MONITOR_IL_FASTPATH 1
 #endif
+
+#define MONO_ARCH_SUPPORT_TASKLETS 1
+
+#ifndef PLATFORM_WIN32
+#define MONO_AMD64_NO_PUSHES 1
+#endif
+
+#define MONO_ARCH_GSHARED_SUPPORTED 1
+#define MONO_ARCH_DYN_CALL_SUPPORTED 1
+#define MONO_ARCH_DYN_CALL_PARAM_AREA 0
+
+#define MONO_ARCH_HAVE_LLVM_IMT_TRAMPOLINE 1
+
+#define MONO_ARCH_USE_OP_TAIL_CALL(caller_sig, callee_sig) mono_metadata_signature_equal ((caller_sig), (callee_sig))
 
 /* Used for optimization, not complete */
 #define MONO_ARCH_IS_OP_MEMBASE(opcode) ((opcode) == OP_X86_PUSH_MEMBASE)
@@ -349,6 +403,9 @@ mono_amd64_throw_exception (guint64 dummy1, guint64 dummy2, guint64 dummy3, guin
 							guint64 r14, guint64 r15, guint64 rdi, guint64 rsi, 
 							guint64 rax, guint64 rcx, guint64 rdx,
 							guint64 rethrow);
+
+guint64
+mono_amd64_get_original_ip (void) MONO_INTERNAL;
 
 guint8*
 mono_amd64_emit_tls_get (guint8* code, int dreg, int tls_offset) MONO_INTERNAL;

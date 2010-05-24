@@ -45,7 +45,9 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+#if !MONOTOUCH
 using System.EnterpriseServices;
+#endif // !MONOTOUCH
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
@@ -69,7 +71,7 @@ namespace System.Data.SqlClient
 		bool disposed;
 
 		// The set of SQL connection pools
-		static TdsConnectionPoolManager sqlConnectionPools = new TdsConnectionPoolManager (TdsVersion.tds70);
+		static TdsConnectionPoolManager sqlConnectionPools = new TdsConnectionPoolManager (TdsVersion.tds80);
 #if NET_2_0
 		const int DEFAULT_PACKETSIZE = 8000;
 		const int MAX_PACKETSIZE = 32768;
@@ -480,11 +482,13 @@ namespace System.Data.SqlClient
 			}
 		}
 
+#if !MONOTOUCH
 		[MonoTODO ("Not sure what this means at present.")]
 		public void EnlistDistributedTransaction (ITransaction transaction)
 		{
 			throw new NotImplementedException ();
 		}
+#endif // !MONOTOUCH
 
 		object ICloneable.Clone ()
 		{
@@ -535,7 +539,7 @@ namespace System.Data.SqlClient
 				if (!pooling) {
 					if(!ParseDataSource (dataSource, out port, out serverName))
 						throw new SqlException(20, 0, "SQL Server does not exist or access denied.",  17, "ConnectionOpen (Connect()).", dataSource, parms.ApplicationName, 0);
-					tds = new Tds70 (serverName, port, PacketSize, ConnectionTimeout);
+					tds = new Tds80 (serverName, port, PacketSize, ConnectionTimeout);
 					tds.Pooling = false;
 				}
 				else {

@@ -71,6 +71,7 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
 	default:
 		g_warning ("Unknown stack type %x\n", stack_type);
 		g_assert_not_reached ();
+		return -1;
 	}
 }
 
@@ -86,7 +87,8 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
 		(dest)->opcode = (op);	\
         (dest)->flags = 0; \
         (dest)->type = 0; \
-        (dest)->dreg = (dest)->sreg1 = (dest)->sreg2 = -1;  \
+        (dest)->dreg = -1;  \
+	MONO_INST_NULLIFY_SREGS ((dest));		    \
         (dest)->cil_code = (cfg)->ip;  \
 	} while (0)
 
@@ -355,6 +357,12 @@ alloc_dreg (MonoCompile *cfg, MonoStackType stack_type)
         (dest)->inst_offset = offset; \
 	    type_to_eval_stack_type ((cfg), (ltype), (dest)); \
         (dest)->klass = mono_class_from_mono_type (ltype); \
+	} while (0)
+
+#define NEW_SEQ_POINT(cfg,dest,il_offset,ss_loc) do {	 \
+	MONO_INST_NEW ((cfg), (dest), OP_SEQ_POINT); \
+	(dest)->inst_imm = (il_offset); \
+	(dest)->flags = ss_loc ? MONO_INST_SINGLE_STEP_LOC : 0; \
 	} while (0)
 
 /*

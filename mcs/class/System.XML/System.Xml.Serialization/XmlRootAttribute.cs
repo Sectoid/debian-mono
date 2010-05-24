@@ -29,6 +29,7 @@
 //
 
 using System;
+using System.Text;
 
 namespace System.Xml.Serialization
 {
@@ -42,7 +43,7 @@ namespace System.Xml.Serialization
 	{
 		private string dataType;
 		private string elementName;
-		private bool isNullable = true;
+		private bool isNullable = true, isNullableSpecified;
 		private string ns;
 
 		public XmlRootAttribute ()
@@ -76,14 +77,21 @@ namespace System.Xml.Serialization
 
 		public bool IsNullable {
 			get { return isNullable; }
-			set { isNullable = value; }
+			set {
+				isNullableSpecified = true;
+				isNullable = value;
+			}
+		}
+
+		public bool IsNullableSpecified {
+			get { return isNullableSpecified; }
 		}
 
 		public string Namespace {
 			get { return ns; } 
 			set { ns = value; }
 		}
-#if !NET_2_1		
+
 		internal void AddKeyHash (System.Text.StringBuilder sb)
 		{
 			sb.Append ("XRA ");
@@ -93,6 +101,13 @@ namespace System.Xml.Serialization
 			KeyHelper.AddField (sb, 4, isNullable);
 			sb.Append ('|');
 		}
-#endif
+
+		internal string Key {
+			get {
+				var sb = new StringBuilder ();
+				AddKeyHash (sb);
+				return sb.ToString ();
+			}
+		}
 	}
 }

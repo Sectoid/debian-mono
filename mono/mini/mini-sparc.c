@@ -571,7 +571,7 @@ get_call_info (MonoCompile *cfg, MonoMethodSignature *sig, gboolean is_pinvoke)
 			add_general (&gr, &stack_size, ainfo, FALSE);
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->params [i])) {
+			if (!mono_type_generic_inst_is_valuetype (ptype)) {
 				add_general (&gr, &stack_size, ainfo, FALSE);
 				break;
 			}
@@ -670,7 +670,7 @@ get_call_info (MonoCompile *cfg, MonoMethodSignature *sig, gboolean is_pinvoke)
 		cinfo->ret.reg = sparc_f0;
 		break;
 	case MONO_TYPE_GENERICINST:
-		if (!mono_type_generic_inst_is_valuetype (sig->ret)) {
+		if (!mono_type_generic_inst_is_valuetype (ret_type)) {
 			cinfo->ret.storage = ArgInIReg;
 			cinfo->ret.reg = sparc_i0;
 			if (gr < 1)
@@ -1419,20 +1419,11 @@ opcode_to_sparc_cond (int opcode)
 }
 
 #define COMPUTE_DISP(ins) \
-if (ins->flags & MONO_INST_BRLABEL) { \
-        if (ins->inst_i0->inst_c0) \
-           disp = (ins->inst_i0->inst_c0 - ((guint8*)code - cfg->native_code)) >> 2; \
-        else { \
-            disp = 0; \
-	        mono_add_patch_info (cfg, (guint8*)code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0); \
-        } \
-} else { \
-        if (ins->inst_true_bb->native_offset) \
-           disp = (ins->inst_true_bb->native_offset - ((guint8*)code - cfg->native_code)) >> 2; \
-        else { \
-            disp = 0; \
-	        mono_add_patch_info (cfg, (guint8*)code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb); \
-        } \
+if (ins->inst_true_bb->native_offset) \
+   disp = (ins->inst_true_bb->native_offset - ((guint8*)code - cfg->native_code)) >> 2; \
+else { \
+    disp = 0; \
+	mono_add_patch_info (cfg, (guint8*)code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb); \
 }
 
 #ifdef SPARCV9
@@ -1837,6 +1828,20 @@ mono_arch_peephole_pass_2 (MonoCompile *cfg, MonoBasicBlock *bb)
 		ins = ins->next;
 	}
 	bb->last_ins = last_ins;
+}
+
+void
+mono_arch_decompose_long_opts (MonoCompile *cfg, MonoInst *ins)
+{
+	switch (ins->opcode) {
+	case OP_LNEG:
+		MONO_EMIT_NEW_BIALU (cfg, OP_SUBCC, ins->dreg + 1, 0, ins->sreg1 + 1);
+		MONO_EMIT_NEW_BIALU (cfg, OP_SBB, ins->dreg + 2, 0, ins->sreg1 + 2);
+		NULLIFY_INS (ins);
+		break;
+	default:
+		break;
+	}
 }
 
 void
@@ -2258,7 +2263,7 @@ mono_sparc_is_virtual_call (guint32 *code)
  *  Determine the vtable slot used by a virtual call.
  */
 gpointer
-mono_arch_get_vcall_slot (guint8 *code8, gpointer *regs, int *displacement)
+mono_arch_get_vcall_slot (guint8 *code8, mgreg_t *regs, int *displacement)
 {
 	guint32 *code = (guint32*)(gpointer)code8;
 	guint32 ins = code [0];
@@ -2330,17 +2335,6 @@ mono_arch_get_vcall_slot (guint8 *code8, gpointer *regs, int *displacement)
 	return NULL;
 }
 
-gpointer*
-mono_arch_get_vcall_slot_addr (guint8 *code, gpointer *regs)
-{
-	gpointer vt;
-	int displacement;
-	vt = mono_arch_get_vcall_slot (code, regs, &displacement);
-	if (!vt)
-		return NULL;
-	return (gpointer*)((char*)vt + displacement);
-}
-
 #define CMP_SIZE 3
 #define BR_SMALL_SIZE 2
 #define BR_LARGE_SIZE 2
@@ -2382,7 +2376,7 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 	if (fail_tramp)
 		code = mono_method_alloc_generic_virtual_thunk (domain, size * 4);
 	else
-		code = mono_code_manager_reserve (domain->code_mp, size * 4);
+		code = mono_domain_code_reserve (domain, size * 4);
 	start = code;
 	for (i = 0; i < count; ++i) {
 		MonoIMTCheckItem *item = imt_entries [i];
@@ -2449,7 +2443,7 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 }
 
 MonoMethod*
-mono_arch_find_imt_method (gpointer *regs, guint8 *code)
+mono_arch_find_imt_method (mgreg_t *regs, guint8 *code)
 {
 #ifdef SPARCV9
 	g_assert_not_reached ();
@@ -2459,7 +2453,7 @@ mono_arch_find_imt_method (gpointer *regs, guint8 *code)
 }
 
 MonoObject*
-mono_arch_find_this_argument (gpointer *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
+mono_arch_find_this_argument (mgreg_t *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
 {
 	mono_sparc_flushw ();
 
@@ -3235,24 +3229,13 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			//g_print ("target: %p, next: %p, curr: %p, last: %p\n", ins->inst_target_bb, bb->next_bb, ins, bb->last_ins);
 			if ((ins->inst_target_bb == bb->next_bb) && ins == bb->last_ins)
 				break;
-			if (ins->flags & MONO_INST_BRLABEL) {
-				if (ins->inst_i0->inst_c0) {
-					gint32 disp = (ins->inst_i0->inst_c0 - ((guint8*)code - cfg->native_code)) >> 2;
-					g_assert (sparc_is_imm22 (disp));
-					sparc_branch (code, 1, sparc_ba, disp);
-				} else {
-					mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-					sparc_branch (code, 1, sparc_ba, 0);
-				}
+			if (ins->inst_target_bb->native_offset) {
+				gint32 disp = (ins->inst_target_bb->native_offset - ((guint8*)code - cfg->native_code)) >> 2;
+				g_assert (sparc_is_imm22 (disp));
+				sparc_branch (code, 1, sparc_ba, disp);
 			} else {
-				if (ins->inst_target_bb->native_offset) {
-					gint32 disp = (ins->inst_target_bb->native_offset - ((guint8*)code - cfg->native_code)) >> 2;
-					g_assert (sparc_is_imm22 (disp));
-					sparc_branch (code, 1, sparc_ba, disp);
-				} else {
-					mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_BB, ins->inst_target_bb);
-					sparc_branch (code, 1, sparc_ba, 0);
-				} 
+				mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_BB, ins->inst_target_bb);
+				sparc_branch (code, 1, sparc_ba, 0);
 			}
 			sparc_nop (code);
 			break;
@@ -3876,7 +3859,7 @@ enum {
 };
 
 void*
-mono_arch_instrument_epilog (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments)
+mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments, gboolean preserve_argument_registers)
 {
 	guint32 *code = (guint32*)p;
 	int save_mode = SAVE_NONE;

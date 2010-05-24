@@ -41,6 +41,8 @@ namespace System.Net {
 		public abstract string ContentType { get; }
 		public abstract Uri ResponseUri { get; }
 
+		public virtual WebHeaderCollection Headers { get; internal set; }
+
 		protected WebResponse ()
 		{
 		}

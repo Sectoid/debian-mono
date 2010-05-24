@@ -40,7 +40,7 @@ namespace Mono.CSharp {
 			return this.GetType ().Name + " (" + AsString () + ")";
 		}
 
-		public override bool GetAttributableValue (EmitContext ec, Type value_type, out object value)
+		public override bool GetAttributableValue (ResolveContext ec, Type value_type, out object value)
 		{
 			if (value_type == TypeManager.object_type) {
 				value = GetTypedValue ();
@@ -71,24 +71,24 @@ namespace Mono.CSharp {
 		/// <summary>
 		///   Constants are always born in a fully resolved state
 		/// </summary>
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			return this;
 		}
 
-		public override void Error_ValueCannotBeConverted (EmitContext ec, Location loc, Type target, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type target, bool expl)
 		{
 			if (!expl && IsLiteral && 
 				(TypeManager.IsPrimitiveType (target) || type == TypeManager.decimal_type) &&
 				(TypeManager.IsPrimitiveType (type) || type == TypeManager.decimal_type)) {
-				Report.Error (31, loc, "Constant value `{0}' cannot be converted to a `{1}'",
+				ec.Report.Error (31, loc, "Constant value `{0}' cannot be converted to a `{1}'",
 					AsString (), TypeManager.CSharpName (target));
 			} else {
 				base.Error_ValueCannotBeConverted (ec, loc, target, expl);
 			}
 		}
 
-		public Constant ImplicitConversionRequired (EmitContext ec, Type type, Location loc)
+		public Constant ImplicitConversionRequired (ResolveContext ec, Type type, Location loc)
 		{
 			Constant c = ConvertImplicitly (type);
 			if (c == null)
@@ -153,7 +153,7 @@ namespace Mono.CSharp {
 			if (TypeManager.IsEnumType (t)) {
 				Type real_type = TypeManager.GetEnumUnderlyingType (t);
 				return new EnumConstant (CreateConstant (real_type, v, loc), t);
-			} 
+			}
 			if (v == null && !TypeManager.IsValueType (t))
 				return new EmptyConstantCast (new NullLiteral (loc), t);
 
@@ -161,14 +161,13 @@ namespace Mono.CSharp {
 					"), details: " + v);
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			ArrayList args = new ArrayList (2);
+			Arguments args = new Arguments (2);
 			args.Add (new Argument (this));
-			args.Add (new Argument (
-				new TypeOf (new TypeExpression (type, loc), loc)));
+			args.Add (new Argument (new TypeOf (new TypeExpression (type, loc), loc)));
 
-			return CreateExpressionFactoryCall ("Constant", args);
+			return CreateExpressionFactoryCall (ec, "Constant", args);
 		}
 
 
@@ -182,14 +181,14 @@ namespace Mono.CSharp {
 		/// <summary>
 		///   Attempts to do a compile-time folding of a constant cast.
 		/// </summary>
-		public Constant TryReduce (EmitContext ec, Type target_type, Location loc)
+		public Constant TryReduce (ResolveContext ec, Type target_type, Location loc)
 		{
 			try {
 				return TryReduce (ec, target_type);
 			}
 			catch (OverflowException) {
 				if (ec.ConstantCheckState) {				
-					Report.Error (221, loc, "Constant value `{0}' cannot be converted to a `{1}' (use `unchecked' syntax to override)",
+					ec.Report.Error (221, loc, "Constant value `{0}' cannot be converted to a `{1}' (use `unchecked' syntax to override)",
 						GetValue ().ToString (), TypeManager.CSharpName (target_type));
 				} else {
 					Error_ValueCannotBeConverted (ec, loc, target_type, false);
@@ -199,7 +198,7 @@ namespace Mono.CSharp {
 			}
 		}
 
-		Constant TryReduce (EmitContext ec, Type target_type)
+		Constant TryReduce (ResolveContext ec, Type target_type)
 		{
 			if (Type == target_type)
 				return this;
@@ -226,7 +225,7 @@ namespace Mono.CSharp {
 			if (type == Type)
 				return IsDefaultValue;
 
-			return Type == TypeManager.null_type;
+			return this is NullLiteral;
 		}
 
 		public abstract bool IsDefaultValue {
@@ -262,6 +261,13 @@ namespace Mono.CSharp {
 			// CloneTo: Nothing, we do not keep any state on this expression
 		}
 
+#if NET_4_0
+		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
+		{
+			return System.Linq.Expressions.Expression.Constant (GetValue ());
+		}
+#endif
+
 		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
 		{
 			// A constant cannot be of generic type
@@ -274,7 +280,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override void Error_ValueCannotBeConverted (EmitContext ec, Location loc, Type target, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type target, bool expl)
 		{
 			try {
 				ConvertExplicitly (true, target);
@@ -282,7 +288,7 @@ namespace Mono.CSharp {
 			}
 			catch
 			{
-				Report.Error (31, loc, "Constant value `{0}' cannot be converted to a `{1}'",
+				ec.Report.Error (31, loc, "Constant value `{0}' cannot be converted to a `{1}'",
 					GetValue ().ToString (), TypeManager.CSharpName (target));
 			}
 		}
@@ -1790,7 +1796,7 @@ namespace Mono.CSharp {
 			// Use string.Empty for both literals and constants even if
 			// it's not allowed at language level
 			//
-			if (Value.Length == 0 && RootContext.Optimize && ec.TypeContainer.TypeBuilder != TypeManager.string_type) {			
+			if (Value.Length == 0 && RootContext.Optimize && !TypeManager.IsEqual (ec.CurrentType, TypeManager.string_type)) {
 				if (TypeManager.string_empty == null)
 					TypeManager.string_empty = TypeManager.GetPredefinedField (TypeManager.string_type, "Empty", loc);
 

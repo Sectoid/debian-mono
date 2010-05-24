@@ -11,8 +11,8 @@
 #include <glib.h>
 #include <signal.h>
 #include <string.h>
-#ifndef PLATFORM_WIN32
-#include <sys/ucontext.h>
+#ifdef HAVE_UCONTEXT_H
+#include <ucontext.h>
 #endif
 
 #include <mono/arch/amd64/amd64-codegen.h>
@@ -28,6 +28,7 @@
 
 #include "mini.h"
 #include "mini-amd64.h"
+#include "tasklets.h"
 #include "debug-mini.h"
 
 #define ALIGN_TO(val,align) (((val) + ((align) - 1)) & ~((align) - 1))
@@ -40,7 +41,7 @@ static MonoW32ExceptionHandler segv_handler;
 static LPTOP_LEVEL_EXCEPTION_FILTER old_handler;
 
 #define W32_SEH_HANDLE_EX(_ex) \
-	if (_ex##_handler) _ex##_handler((int)sctx)
+	if (_ex##_handler) _ex##_handler(0, er, sctx)
 
 /*
  * Unhandled Exception Filter
@@ -527,138 +528,90 @@ mono_arch_get_throw_corlib_exception_full (guint32 *code_size, MonoJumpInfo **ji
 	return start;
 }
 
-/* mono_arch_find_jit_info:
+/*
+ * mono_arch_find_jit_info_ext:
  *
- * This function is used to gather information from @ctx. It return the 
- * MonoJitInfo of the corresponding function, unwinds one stack frame and
- * stores the resulting context into @new_ctx. It also stores a string 
- * describing the stack location into @trace (if not NULL), and modifies
- * the @lmf if necessary. @native_offset return the IP offset from the 
- * start of the function or -1 if that info is not available.
+ * This function is used to gather information from @ctx, and store it in @frame_info.
+ * It unwinds one stack frame, and stores the resulting context into @new_ctx. @lmf
+ * is modified if needed.
+ * Returns TRUE on success, FALSE otherwise.
+ * This function is a version of mono_arch_find_jit_info () where all the results are
+ * returned in a StackFrameInfo structure.
  */
-MonoJitInfo *
-mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *res, MonoJitInfo *prev_ji, MonoContext *ctx, 
-			 MonoContext *new_ctx, MonoLMF **lmf, gboolean *managed)
+gboolean
+mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls, 
+							 MonoJitInfo *ji, MonoContext *ctx, 
+							 MonoContext *new_ctx, MonoLMF **lmf, 
+							 StackFrameInfo *frame)
 {
-	MonoJitInfo *ji;
-	int i;
 	gpointer ip = MONO_CONTEXT_GET_IP (ctx);
 
-	/* Avoid costly table lookup during stack overflow */
-	if (prev_ji && (ip > prev_ji->code_start && ((guint8*)ip < ((guint8*)prev_ji->code_start) + prev_ji->code_size)))
-		ji = prev_ji;
-	else
-		ji = mini_jit_info_table_find (domain, ip);
-
-	if (managed)
-		*managed = FALSE;
+	memset (frame, 0, sizeof (StackFrameInfo));
+	frame->ji = ji;
+	frame->managed = FALSE;
 
 	*new_ctx = *ctx;
 
 	if (ji != NULL) {
-		int offset;
-		gboolean omit_fp = (ji->used_regs & (1 << 31)) > 0;
+		gssize regs [MONO_MAX_IREGS + 1];
+		guint8 *cfa;
+		guint32 unwind_info_len;
+		guint8 *unwind_info;
 
-		if (managed)
-			if (!ji->method->wrapper_type)
-				*managed = TRUE;
+		frame->type = FRAME_TYPE_MANAGED;
 
-		/*
-		 * If a method has save_lmf set, then register save/restore code is not generated 
-		 * by the JIT, so we have to restore callee saved registers from the lmf.
-		 */
-		if (ji->method->save_lmf) {
-			MonoLMF *lmf_addr;
+		if (!ji->method->wrapper_type || ji->method->wrapper_type == MONO_WRAPPER_DYNAMIC_METHOD)
+			frame->managed = TRUE;
 
-			/* 
-			 * *lmf might not point to the LMF pushed by this method, so compute the LMF
-			 * address instead.
-			 */
-			if (omit_fp)
-				lmf_addr = (MonoLMF*)ctx->rsp;
-			else
-				lmf_addr = (MonoLMF*)(ctx->rbp - sizeof (MonoLMF));
+		if (ji->from_aot)
+			unwind_info = mono_aot_get_unwind_info (ji, &unwind_info_len);
+		else
+			unwind_info = mono_get_cached_unwind_info (ji->used_regs, &unwind_info_len);
+ 
+		regs [AMD64_RAX] = new_ctx->rax;
+		regs [AMD64_RBX] = new_ctx->rbx;
+		regs [AMD64_RCX] = new_ctx->rcx;
+		regs [AMD64_RDX] = new_ctx->rdx;
+		regs [AMD64_RBP] = new_ctx->rbp;
+		regs [AMD64_RSP] = new_ctx->rsp;
+		regs [AMD64_RSI] = new_ctx->rsi;
+		regs [AMD64_RDI] = new_ctx->rdi;
+		regs [AMD64_RIP] = new_ctx->rip;
+		regs [AMD64_R12] = new_ctx->r12;
+		regs [AMD64_R13] = new_ctx->r13;
+		regs [AMD64_R14] = new_ctx->r14;
+		regs [AMD64_R15] = new_ctx->r15;
 
-			new_ctx->rbp = lmf_addr->rbp;
-			new_ctx->rbx = lmf_addr->rbx;
-			new_ctx->r12 = lmf_addr->r12;
-			new_ctx->r13 = lmf_addr->r13;
-			new_ctx->r14 = lmf_addr->r14;
-			new_ctx->r15 = lmf_addr->r15;
-#ifdef PLATFORM_WIN32
-			new_ctx->rdi = lmf_addr->rdi;
-			new_ctx->rsi = lmf_addr->rsi;
-#endif
-		}
-		else {
-			offset = omit_fp ? 0 : -1;
-			/* restore caller saved registers */
-			for (i = 0; i < AMD64_NREG; i ++)
-				if (AMD64_IS_CALLEE_SAVED_REG (i) && (ji->used_regs & (1 << i))) {
-					guint64 reg;
+		mono_unwind_frame (unwind_info, unwind_info_len, ji->code_start, 
+						   (guint8*)ji->code_start + ji->code_size,
+						   ip, regs, MONO_MAX_IREGS + 1, &cfa);
 
-					if (omit_fp) {
-						reg = *((guint64*)ctx->rsp + offset);
-						offset ++;
-					}
-					else {
-						reg = *((guint64 *)ctx->rbp + offset);
-						offset --;
-					}
+		new_ctx->rax = regs [AMD64_RAX];
+		new_ctx->rbx = regs [AMD64_RBX];
+		new_ctx->rcx = regs [AMD64_RCX];
+		new_ctx->rdx = regs [AMD64_RDX];
+		new_ctx->rbp = regs [AMD64_RBP];
+		new_ctx->rsp = regs [AMD64_RSP];
+		new_ctx->rsi = regs [AMD64_RSI];
+		new_ctx->rdi = regs [AMD64_RDI];
+		new_ctx->rip = regs [AMD64_RIP];
+		new_ctx->r12 = regs [AMD64_R12];
+		new_ctx->r13 = regs [AMD64_R13];
+		new_ctx->r14 = regs [AMD64_R14];
+		new_ctx->r15 = regs [AMD64_R15];
+ 
+		/* The CFA becomes the new SP value */
+		new_ctx->rsp = (gssize)cfa;
 
-					switch (i) {
-					case AMD64_RBX:
-						new_ctx->rbx = reg;
-						break;
-					case AMD64_R12:
-						new_ctx->r12 = reg;
-						break;
-					case AMD64_R13:
-						new_ctx->r13 = reg;
-						break;
-					case AMD64_R14:
-						new_ctx->r14 = reg;
-						break;
-					case AMD64_R15:
-						new_ctx->r15 = reg;
-						break;
-					case AMD64_RBP:
-						new_ctx->rbp = reg;
-						break;
-#ifdef PLATFORM_WIN32
-					case AMD64_RDI:
-						new_ctx->rdi = reg;
-						break;
-					case AMD64_RSI:
-						new_ctx->rsi = reg;
-						break;
-#endif
-					default:
-						g_assert_not_reached ();
-					}
-				}
-		}
+		/* Adjust IP */
+		new_ctx->rip --;
 
 		if (*lmf && ((*lmf) != jit_tls->first_lmf) && (MONO_CONTEXT_GET_SP (ctx) >= (gpointer)(*lmf)->rsp)) {
 			/* remove any unused lmf */
-			*lmf = (gpointer)(((guint64)(*lmf)->previous_lmf) & ~1);
+			*lmf = (gpointer)(((guint64)(*lmf)->previous_lmf) & ~3);
 		}
 
-		if (omit_fp) {
-			/* Pop frame */
-			new_ctx->rsp += (ji->used_regs >> 16) & (0x7fff);
-			new_ctx->rip = *((guint64 *)new_ctx->rsp) - 1;
-			/* Pop return address */
-			new_ctx->rsp += 8;
-		}
-		else {
-			/* Pop EBP and the return address */
-			new_ctx->rsp = ctx->rbp + (2 * sizeof (gpointer));
-			/* we substract 1, so that the IP points into the call instruction */
-			new_ctx->rip = *((guint64 *)ctx->rbp + 1) - 1;
-			new_ctx->rbp = *((guint64 *)ctx->rbp);
-		}
-
+#ifndef MONO_AMD64_NO_PUSHES
 		/* Pop arguments off the stack */
 		{
 			MonoJitArgumentInfo *arg_info = g_newa (MonoJitArgumentInfo, mono_method_signature (ji->method)->param_count + 1);
@@ -666,17 +619,36 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 			guint32 stack_to_pop = mono_arch_get_argument_info (mono_method_signature (ji->method), mono_method_signature (ji->method)->param_count, arg_info);
 			new_ctx->rsp += stack_to_pop;
 		}
+#endif
 
-		return ji;
+		return TRUE;
 	} else if (*lmf) {
 		guint64 rip;
+
+		if (((guint64)(*lmf)->previous_lmf) & 2) {
+			/* 
+			 * This LMF entry is created by the soft debug code to mark transitions to
+			 * managed code done during invokes.
+			 */
+			MonoLMFExt *ext = (MonoLMFExt*)(*lmf);
+
+			g_assert (ext->debugger_invoke);
+
+			memcpy (new_ctx, &ext->ctx, sizeof (MonoContext));
+
+			*lmf = (gpointer)(((guint64)(*lmf)->previous_lmf) & ~3);
+
+			frame->type = FRAME_TYPE_DEBUGGER_INVOKE;
+
+			return TRUE;
+		}
 
 		if (((guint64)(*lmf)->previous_lmf) & 1) {
 			/* This LMF has the rip field set */
 			rip = (*lmf)->rip;
 		} else if ((*lmf)->rsp == 0) {
 			/* Top LMF entry */
-			return (gpointer)-1;
+			return FALSE;
 		} else {
 			/* 
 			 * The rsp field is set just before the call which transitioned to native 
@@ -685,11 +657,14 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 			rip = *(guint64*)((*lmf)->rsp - sizeof (gpointer));
 		}
 
-		ji = mini_jit_info_table_find (domain, (gpointer)rip);
+		ji = mini_jit_info_table_find (domain, (gpointer)rip, NULL);
 		if (!ji) {
 			// FIXME: This can happen with multiple appdomains (bug #444383)
-			return (gpointer)-1;
+			return FALSE;
 		}
+
+		frame->ji = ji;
+		frame->type = FRAME_TYPE_MANAGED_TO_NATIVE;
 
 		new_ctx->rip = rip;
 		new_ctx->rbp = (*lmf)->rbp;
@@ -705,12 +680,12 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 		new_ctx->rsi = (*lmf)->rsi;
 #endif
 
-		*lmf = (gpointer)(((guint64)(*lmf)->previous_lmf) & ~1);
+		*lmf = (gpointer)(((guint64)(*lmf)->previous_lmf) & ~3);
 
-		return ji ? ji : res;
+		return TRUE;
 	}
 
-	return NULL;
+	return FALSE;
 }
 
 /**
@@ -740,13 +715,7 @@ mono_arch_handle_exception (void *sigctx, gpointer obj, gboolean test_only)
 static inline guint64*
 gregs_from_ucontext (ucontext_t *ctx)
 {
-#ifdef __FreeBSD__
-    guint64 *gregs = (guint64 *) &ctx->uc_mcontext;
-#else
-    guint64 *gregs = (guint64 *) &ctx->uc_mcontext.gregs;
-#endif
-
-	return gregs;
+	return (guint64 *) UCONTEXT_GREGS (ctx);
 }
 #endif
 void
@@ -900,7 +869,7 @@ mono_arch_handle_altstack_exception (void *sigctx, gpointer fault_addr, gboolean
 	MonoException *exc = NULL;
 	ucontext_t *ctx = (ucontext_t*)sigctx;
 	guint64 *gregs = gregs_from_ucontext (ctx);
-	MonoJitInfo *ji = mini_jit_info_table_find (mono_domain_get (), (gpointer)gregs [REG_RIP]);
+	MonoJitInfo *ji = mini_jit_info_table_find (mono_domain_get (), (gpointer)gregs [REG_RIP], NULL);
 	gpointer *sp;
 	int frame_size;
 
@@ -935,8 +904,8 @@ mono_arch_handle_altstack_exception (void *sigctx, gpointer fault_addr, gboolean
 #endif
 }
 
-static guint64
-get_original_ip (void)
+guint64
+mono_amd64_get_original_ip (void)
 {
 	MonoLMF *lmf = mono_get_lmf ();
 
@@ -948,17 +917,14 @@ get_original_ip (void)
 	return lmf->rip;
 }
 
-static gpointer 
-get_throw_pending_exception (void)
+gpointer
+mono_arch_get_throw_pending_exception_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
 {
-	static guint8* start;
-	static gboolean inited = FALSE;
-	guint8 *code;
+	guint8 *code, *start;
 	guint8 *br[1];
 	gpointer throw_trampoline;
 
-	if (inited)
-		return start;
+	*ji = NULL;
 
 	start = code = mono_global_codeman_reserve (128);
 
@@ -979,7 +945,12 @@ get_throw_pending_exception (void)
 	amd64_alu_reg_imm (code, X86_SUB, AMD64_RSP, 8);
 
 	/* Obtain the pending exception */
-	amd64_mov_reg_imm (code, AMD64_R11, mono_thread_get_and_clear_pending_exception);
+	if (aot) {
+		*ji = mono_patch_info_list_prepend (*ji, code - start, MONO_PATCH_INFO_JIT_ICALL_ADDR, "mono_thread_get_and_clear_pending_exception");
+		amd64_mov_reg_membase (code, AMD64_R11, AMD64_RIP, 0, 8);
+	} else {
+		amd64_mov_reg_imm (code, AMD64_R11, mono_thread_get_and_clear_pending_exception);
+	}
 	amd64_call_reg (code, AMD64_R11);
 
 	/* Check if it is NULL, and branch */
@@ -994,7 +965,12 @@ get_throw_pending_exception (void)
 	amd64_alu_reg_imm (code, X86_SUB, AMD64_RSP, 8);
 
 	/* Obtain the original ip and clear the flag in previous_lmf */
-	amd64_mov_reg_imm (code, AMD64_R11, get_original_ip);
+	if (aot) {
+		*ji = mono_patch_info_list_prepend (*ji, code - start, MONO_PATCH_INFO_JIT_ICALL_ADDR, "mono_amd64_get_original_ip");
+		amd64_mov_reg_membase (code, AMD64_R11, AMD64_RIP, 0, 8);
+	} else {
+		amd64_mov_reg_imm (code, AMD64_R11, mono_amd64_get_original_ip);
+	}
 	amd64_call_reg (code, AMD64_R11);	
 
 	/* Load exc */
@@ -1010,8 +986,13 @@ get_throw_pending_exception (void)
 	amd64_push_reg (code, AMD64_RAX);
 
 	/* Call the throw trampoline */
-	throw_trampoline = mono_get_throw_exception ();
-	amd64_mov_reg_imm (code, AMD64_R11, throw_trampoline);
+	if (aot) {
+		*ji = mono_patch_info_list_prepend (*ji, code - start, MONO_PATCH_INFO_JIT_ICALL_ADDR, "mono_amd64_throw_exception");
+		amd64_mov_reg_membase (code, AMD64_R11, AMD64_RIP, 0, 8);
+	} else {
+		throw_trampoline = mono_get_throw_exception ();
+		amd64_mov_reg_imm (code, AMD64_R11, throw_trampoline);
+	}
 	/* We use a jump instead of a call so we can push the original ip on the stack */
 	amd64_jump_reg (code, AMD64_R11);
 
@@ -1019,7 +1000,12 @@ get_throw_pending_exception (void)
 	mono_amd64_patch (br [0], code);
 
 	/* Obtain the original ip and clear the flag in previous_lmf */
-	amd64_mov_reg_imm (code, AMD64_R11, get_original_ip);
+	if (aot) {
+		*ji = mono_patch_info_list_prepend (*ji, code - start, MONO_PATCH_INFO_JIT_ICALL_ADDR, "mono_amd64_get_original_ip");
+		amd64_mov_reg_membase (code, AMD64_R11, AMD64_RIP, 0, 8);
+	} else {
+		amd64_mov_reg_imm (code, AMD64_R11, mono_amd64_get_original_ip);
+	}
 	amd64_call_reg (code, AMD64_R11);	
 	amd64_mov_reg_reg (code, AMD64_R11, AMD64_RAX, 8);
 
@@ -1035,10 +1021,12 @@ get_throw_pending_exception (void)
 
 	g_assert ((code - start) < 128);
 
-	inited = TRUE;
+	*code_size = code - start;
 
 	return start;
 }
+
+static gpointer throw_pending_exception;
 
 /*
  * Called when a thread receives an async exception while executing unmanaged code.
@@ -1068,14 +1056,21 @@ mono_arch_notify_pending_exc (void)
 	/* Signal that lmf->rip is set */
 	lmf->previous_lmf = (gpointer)((guint64)lmf->previous_lmf | 1);
 
-	*(gpointer*)(lmf->rsp - 8) = get_throw_pending_exception ();
+	*(gpointer*)(lmf->rsp - 8) = throw_pending_exception;
 }
 
 void
 mono_arch_exceptions_init (void)
 {
-	/* Call this to avoid initialization races */
-	get_throw_pending_exception ();
+	guint32 code_size;
+	MonoJumpInfo *ji;
+
+	if (mono_aot_only) {
+		throw_pending_exception = mono_aot_get_named_code ("throw_pending_exception");
+	} else {
+		/* Call this to avoid initialization races */
+		throw_pending_exception = mono_arch_get_throw_pending_exception_full (&code_size, &ji, FALSE);
+	}
 }
 
 #ifdef PLATFORM_WIN32
@@ -1275,7 +1270,7 @@ MONO_GET_RUNTIME_FUNCTION_CALLBACK ( DWORD64 ControlPc, IN PVOID Context )
 	PMonoUnwindInfo targetinfo;
 	MonoDomain *domain = mono_domain_get ();
 
-	ji = mini_jit_info_table_find (domain, (char*)ControlPc);
+	ji = mini_jit_info_table_find (domain, (char*)ControlPc, NULL);
 	if (!ji)
 		return 0;
 
@@ -1320,5 +1315,58 @@ mono_arch_unwindinfo_install_unwind_info (gpointer* monoui, gpointer code, guint
 
 #endif
 
+#if MONO_SUPPORT_TASKLETS
+MonoContinuationRestore
+mono_tasklets_arch_restore (void)
+{
+	static guint8* saved = NULL;
+	guint8 *code, *start;
+	int cont_reg = AMD64_R9; /* register usable on both call conventions */
 
+	if (saved)
+		return (MonoContinuationRestore)saved;
+	code = start = mono_global_codeman_reserve (64);
+	/* the signature is: restore (MonoContinuation *cont, int state, MonoLMF **lmf_addr) */
+	/* cont is in AMD64_ARG_REG1 ($rcx or $rdi)
+	 * state is in AMD64_ARG_REG2 ($rdx or $rsi)
+	 * lmf_addr is in AMD64_ARG_REG3 ($r8 or $rdx)
+	 * We move cont to cont_reg since we need both rcx and rdi for the copy
+	 * state is moved to $rax so it's setup as the return value and we can overwrite $rsi
+ 	 */
+	amd64_mov_reg_reg (code, cont_reg, MONO_AMD64_ARG_REG1, 8);
+	amd64_mov_reg_reg (code, AMD64_RAX, MONO_AMD64_ARG_REG2, 8);
+	/* setup the copy of the stack */
+	amd64_mov_reg_membase (code, AMD64_RCX, cont_reg, G_STRUCT_OFFSET (MonoContinuation, stack_used_size), sizeof (int));
+	amd64_shift_reg_imm (code, X86_SHR, AMD64_RCX, 3);
+	x86_cld (code);
+	amd64_mov_reg_membase (code, AMD64_RSI, cont_reg, G_STRUCT_OFFSET (MonoContinuation, saved_stack), sizeof (gpointer));
+	amd64_mov_reg_membase (code, AMD64_RDI, cont_reg, G_STRUCT_OFFSET (MonoContinuation, return_sp), sizeof (gpointer));
+	amd64_prefix (code, X86_REP_PREFIX);
+	amd64_movsl (code);
+
+	/* now restore the registers from the LMF */
+	amd64_mov_reg_membase (code, AMD64_RCX, cont_reg, G_STRUCT_OFFSET (MonoContinuation, lmf), 8);
+	amd64_mov_reg_membase (code, AMD64_RBX, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, rbx), 8);
+	amd64_mov_reg_membase (code, AMD64_RBP, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, rbp), 8);
+	amd64_mov_reg_membase (code, AMD64_R12, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, r12), 8);
+	amd64_mov_reg_membase (code, AMD64_R13, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, r13), 8);
+	amd64_mov_reg_membase (code, AMD64_R14, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, r14), 8);
+	amd64_mov_reg_membase (code, AMD64_R15, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, r15), 8);
+#ifdef PLATFORM_WIN32
+	amd64_mov_reg_membase (code, AMD64_RDI, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, rdi), 8);
+	amd64_mov_reg_membase (code, AMD64_RSI, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, rsi), 8);
+#endif
+	amd64_mov_reg_membase (code, AMD64_RSP, AMD64_RCX, G_STRUCT_OFFSET (MonoLMF, rsp), 8);
+
+	/* restore the lmf chain */
+	/*x86_mov_reg_membase (code, X86_ECX, X86_ESP, 12, 4);
+	x86_mov_membase_reg (code, X86_ECX, 0, X86_EDX, 4);*/
+
+	/* state is already in rax */
+	amd64_jump_membase (code, cont_reg, G_STRUCT_OFFSET (MonoContinuation, return_ip));
+	g_assert ((code - start) <= 64);
+	saved = start;
+	return (MonoContinuationRestore)saved;
+}
+#endif
 

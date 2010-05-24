@@ -3,7 +3,8 @@
  *
  * Author: Paolo Molaro <lupus@ximian.com>
  *
- * (C) 2002 Ximian, Inc.
+ * Copyright 2002-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
@@ -21,20 +22,12 @@
 #include <mono/metadata/metadata-internals.h>
 #include <mono/metadata/mono-mlist.h>
 #include <mono/metadata/threadpool.h>
+#include <mono/metadata/threads-types.h>
 #include <mono/utils/mono-logger.h>
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/marshal.h> /* for mono_delegate_free_ftnptr () */
 #include <mono/metadata/attach.h>
-#if HAVE_SEMAPHORE_H
-#include <semaphore.h>
-/* we do this only for known working systems (OSX for example
- * has the header and functions, but they don't work at all): in other cases
- * we fall back to the io-layer slightly slower and signal-unsafe Event.
- */
-#ifdef __linux__
-#define USE_POSIX_SEM 1
-#endif
-#endif
+#include <mono/utils/mono-semaphore.h>
 
 #ifndef PLATFORM_WIN32
 #include <pthread.h>
@@ -72,11 +65,7 @@ static void mono_gchandle_set_target (guint32 gchandle, MonoObject *obj);
 #ifndef HAVE_NULL_GC
 static HANDLE pending_done_event;
 static HANDLE shutdown_event;
-static HANDLE thread_started_event;
 #endif
-
-#define domain_finalizers_lock(domain) EnterCriticalSection (&(domain)->finalizable_objects_hash_lock);
-#define domain_finalizers_unlock(domain) LeaveCriticalSection (&(domain)->finalizable_objects_hash_lock);
 
 static void
 add_thread_to_finalize (MonoThread *thread)
@@ -93,8 +82,8 @@ static gboolean suspend_finalizers = FALSE;
  * actually, we might want to queue the finalize requests in a separate thread,
  * but we need to be careful about the execution domain of the thread...
  */
-static void
-run_finalize (void *obj, void *data)
+void
+mono_gc_run_finalize (void *obj, void *data)
 {
 	MonoObject *exc = NULL;
 	MonoObject *o;
@@ -102,7 +91,9 @@ run_finalize (void *obj, void *data)
 	MonoObject *o2;
 #endif
 	MonoMethod* finalizer = NULL;
+	MonoDomain *caller_domain = mono_domain_get ();
 	MonoDomain *domain;
+	RuntimeInvokeFunction runtime_invoke;
 	GSList *l, *refs = NULL;
 
 	o = (MonoObject*)((char*)obj + GPOINTER_TO_UINT (data));
@@ -110,25 +101,16 @@ run_finalize (void *obj, void *data)
 	if (suspend_finalizers)
 		return;
 
-	domain = mono_object_domain (o);
+	domain = o->vtable->domain;
 
 #ifndef HAVE_SGEN_GC
-	domain_finalizers_lock (domain);
+	mono_domain_finalizers_lock (domain);
 
 	o2 = g_hash_table_lookup (domain->finalizable_objects_hash, o);
 
-	if (domain->track_resurrection_objects_hash) {
-		refs = g_hash_table_lookup (domain->track_resurrection_objects_hash, o);
+	refs = mono_gc_remove_weak_track_object (domain, o);
 
-		if (refs)
-			/* 
-			 * Since we don't run finalizers again for resurrected objects, 
-			 * no need to keep these around.
-			 */
-			g_hash_table_remove (domain->track_resurrection_objects_hash, o);
-	}
-
-	domain_finalizers_unlock (domain);
+	mono_domain_finalizers_unlock (domain);
 
 	if (!o2)
 		/* Already finalized somehow */
@@ -189,7 +171,7 @@ run_finalize (void *obj, void *data)
 	/* g_print ("Finalize run on %p %s.%s\n", o, mono_object_class (o)->name_space, mono_object_class (o)->name); */
 
 	/* Use _internal here, since this thread can enter a doomed appdomain */
-	mono_domain_set_internal (mono_object_domain (o));		
+	mono_domain_set_internal (mono_object_domain (o));
 
 	/* delegates that have a native function pointer allocated are
 	 * registered for finalization, but they don't have a Finalize
@@ -199,25 +181,47 @@ run_finalize (void *obj, void *data)
 		MonoDelegate* del = (MonoDelegate*)o;
 		if (del->delegate_trampoline)
 			mono_delegate_free_ftnptr ((MonoDelegate*)o);
+		mono_domain_set_internal (caller_domain);
 		return;
 	}
 
 	finalizer = mono_class_get_finalizer (o->vtable->klass);
 
+#ifndef DISABLE_COM
 	/* If object has a CCW but has no finalizer, it was only
 	 * registered for finalization in order to free the CCW.
 	 * Else it needs the regular finalizer run.
 	 * FIXME: what to do about ressurection and suppression
 	 * of finalizer on object with CCW.
 	 */
-	if (mono_marshal_free_ccw (o) && !finalizer)
+	if (mono_marshal_free_ccw (o) && !finalizer) {
+		mono_domain_set_internal (caller_domain);
 		return;
+	}
+#endif
 
-	mono_runtime_invoke (finalizer, o, NULL, &exc);
+	/* 
+	 * To avoid the locking plus the other overhead of mono_runtime_invoke (),
+	 * create and precompile a wrapper which calls the finalize method using
+	 * a CALLVIRT.
+	 */
+	if (!domain->finalize_runtime_invoke) {
+		MonoMethod *invoke = mono_marshal_get_runtime_invoke (mono_class_get_method_from_name_flags (mono_defaults.object_class, "Finalize", 0, 0), TRUE);
+
+		domain->finalize_runtime_invoke = mono_compile_method (invoke);
+	}
+
+	runtime_invoke = domain->finalize_runtime_invoke;
+
+	mono_runtime_class_init (o->vtable);
+
+	runtime_invoke (o, NULL, &exc, NULL);
 
 	if (exc) {
 		/* fixme: do something useful */
 	}
+
+	mono_domain_set_internal (caller_domain);
 }
 
 void
@@ -230,7 +234,7 @@ mono_gc_finalize_threadpool_threads (void)
 		thread->threadpool_thread = FALSE;
 		mono_object_register_finalizer ((MonoObject*)thread);
 
-		run_finalize (thread, NULL);
+		mono_gc_run_finalize (thread, NULL);
 
 		threads_to_finalize = mono_mlist_next (threads_to_finalize);
 	}
@@ -262,7 +266,12 @@ object_register_finalizer (MonoObject *obj, void (*callback)(void *, void*))
 {
 #if HAVE_BOEHM_GC
 	guint offset = 0;
-	MonoDomain *domain = obj->vtable->domain;
+	MonoDomain *domain;
+
+	if (obj == NULL)
+		mono_raise_exception (mono_get_exception_argument_null ("obj"));
+	
+	domain = obj->vtable->domain;
 
 #ifndef GC_DEBUG
 	/* This assertion is not valid when GC_DEBUG is defined */
@@ -276,17 +285,20 @@ object_register_finalizer (MonoObject *obj, void (*callback)(void *, void*))
 		 */
 		return;
 
-	domain_finalizers_lock (domain);
+	mono_domain_finalizers_lock (domain);
 
 	if (callback)
 		g_hash_table_insert (domain->finalizable_objects_hash, obj, obj);
 	else
 		g_hash_table_remove (domain->finalizable_objects_hash, obj);
 
-	domain_finalizers_unlock (domain);
+	mono_domain_finalizers_unlock (domain);
 
 	GC_REGISTER_FINALIZER_NO_ORDER ((char*)obj - offset, callback, GUINT_TO_POINTER (offset), NULL, NULL);
 #elif defined(HAVE_SGEN_GC)
+	if (obj == NULL)
+		mono_raise_exception (mono_get_exception_argument_null ("obj"));
+				      
 	mono_gc_register_for_finalization (obj, callback);
 #endif
 }
@@ -303,7 +315,7 @@ void
 mono_object_register_finalizer (MonoObject *obj)
 {
 	/* g_print ("Registered finalizer on %p %s.%s\n", obj, mono_object_class (obj)->name_space, mono_object_class (obj)->name); */
-	object_register_finalizer (obj, run_finalize);
+	object_register_finalizer (obj, mono_gc_run_finalize);
 }
 
 /**
@@ -414,15 +426,17 @@ ves_icall_System_GC_KeepAlive (MonoObject *obj)
 void
 ves_icall_System_GC_ReRegisterForFinalize (MonoObject *obj)
 {
-	MONO_ARCH_SAVE_REGS;
+	if (!obj)
+		mono_raise_exception (mono_get_exception_argument_null ("obj"));
 
-	object_register_finalizer (obj, run_finalize);
+	object_register_finalizer (obj, mono_gc_run_finalize);
 }
 
 void
 ves_icall_System_GC_SuppressFinalize (MonoObject *obj)
 {
-	MONO_ARCH_SAVE_REGS;
+	if (!obj)
+		mono_raise_exception (mono_get_exception_argument_null ("obj"));
 
 	/* delegates have no finalizers, but we register them to deal with the
 	 * unmanaged->managed trampoline. We don't let the user suppress it
@@ -569,7 +583,7 @@ find_first_unset (guint32 bitmap)
 }
 
 static guint32
-alloc_handle (HandleData *handles, MonoObject *obj)
+alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 {
 	gint slot, i;
 	lock_handles (handles);
@@ -632,7 +646,7 @@ alloc_handle (HandleData *handles, MonoObject *obj)
 					mono_gc_weak_link_remove (&(handles->entries [i]));
 				/*g_print ("reg/unreg entry %d of type %d at %p to object %p (%p), was: %p\n", i, handles->type, &(entries [i]), obj, entries [i], handles->entries [i]);*/
 				if (obj) {
-					mono_gc_weak_link_add (&(entries [i]), obj);
+					mono_gc_weak_link_add (&(entries [i]), obj, track);
 				}
 			}
 			g_free (handles->entries);
@@ -653,7 +667,7 @@ alloc_handle (HandleData *handles, MonoObject *obj)
 	handles->entries [slot] = obj;
 	if (handles->type <= HANDLE_WEAK_TRACK) {
 		if (obj)
-			mono_gc_weak_link_add (&(handles->entries [slot]), obj);
+			mono_gc_weak_link_add (&(handles->entries [slot]), obj, track);
 	}
 
 	mono_perfcounters->gc_num_handles++;
@@ -682,39 +696,7 @@ alloc_handle (HandleData *handles, MonoObject *obj)
 guint32
 mono_gchandle_new (MonoObject *obj, gboolean pinned)
 {
-	return alloc_handle (&gc_handles [pinned? HANDLE_PINNED: HANDLE_NORMAL], obj);
-}
-
-/*
- * LOCKING: Assumes the domain_finalizers lock is held.
- */
-static void
-add_weak_track_handle (MonoDomain *domain, MonoObject *obj, guint32 gchandle)
-{
-	GSList *refs;
-
-	if (!domain->track_resurrection_objects_hash)
-		domain->track_resurrection_objects_hash = g_hash_table_new (mono_aligned_addr_hash, NULL);
-
-	refs = g_hash_table_lookup (domain->track_resurrection_objects_hash, obj);
-	refs = g_slist_prepend (refs, GUINT_TO_POINTER (gchandle));
-	g_hash_table_insert (domain->track_resurrection_objects_hash, obj, refs);
-}
-
-/*
- * LOCKING: Assumes the domain_finalizers lock is held.
- */
-static void
-remove_weak_track_handle (MonoDomain *domain, MonoObject *obj, guint32 gchandle)
-{
-	GSList *refs;
-
-	if (!domain->track_resurrection_objects_hash)
-		return;
-
-	refs = g_hash_table_lookup (domain->track_resurrection_objects_hash, obj);
-	refs = g_slist_remove (refs, GUINT_TO_POINTER (gchandle));
-	g_hash_table_insert (domain->track_resurrection_objects_hash, obj, refs);
+	return alloc_handle (&gc_handles [pinned? HANDLE_PINNED: HANDLE_NORMAL], obj, FALSE);
 }
 
 /**
@@ -739,24 +721,12 @@ remove_weak_track_handle (MonoDomain *domain, MonoObject *obj, guint32 gchandle)
 guint32
 mono_gchandle_new_weakref (MonoObject *obj, gboolean track_resurrection)
 {
-	guint32 handle = alloc_handle (&gc_handles [track_resurrection? HANDLE_WEAK_TRACK: HANDLE_WEAK], obj);
+	guint32 handle = alloc_handle (&gc_handles [track_resurrection? HANDLE_WEAK_TRACK: HANDLE_WEAK], obj, track_resurrection);
 
-	if (track_resurrection) {
-		MonoDomain *domain = mono_domain_get ();
-
-		domain_finalizers_lock (domain);
-
-		add_weak_track_handle (domain, obj, handle);
-
-		g_hash_table_insert (domain->track_resurrection_handles_hash, GUINT_TO_POINTER (handle), obj);
-
-		domain_finalizers_unlock (domain);
-
-#ifdef HAVE_SGEN_GC
-		// FIXME: The hash table entries need to be remapped during GC
-		g_assert_not_reached ();
+#ifndef HAVE_SGEN_GC
+	if (track_resurrection)
+		mono_gc_add_weak_track_handle (obj, handle);
 #endif
-	}
 
 	return handle;
 }
@@ -820,7 +790,7 @@ mono_gchandle_set_target (guint32 gchandle, MonoObject *obj)
 			if (handles->entries [slot])
 				mono_gc_weak_link_remove (&handles->entries [slot]);
 			if (obj)
-				mono_gc_weak_link_add (&handles->entries [slot], obj);
+				mono_gc_weak_link_add (&handles->entries [slot], obj, handles->type == HANDLE_WEAK_TRACK);
 		} else {
 			handles->entries [slot] = obj;
 		}
@@ -830,18 +800,10 @@ mono_gchandle_set_target (guint32 gchandle, MonoObject *obj)
 	/*g_print ("changed entry %d of type %d to object %p (in slot: %p)\n", slot, handles->type, obj, handles->entries [slot]);*/
 	unlock_handles (handles);
 
-	if (type == HANDLE_WEAK_TRACK) {
-		MonoDomain *domain = mono_domain_get ();
-
-		domain_finalizers_lock (domain);
-
-		if (old_obj)
-			remove_weak_track_handle (domain, old_obj, gchandle);
-		if (obj)
-			add_weak_track_handle (domain, obj, gchandle);
-
-		domain_finalizers_unlock (domain);
-	}
+#ifndef HAVE_SGEN_GC
+	if (type == HANDLE_WEAK_TRACK)
+		mono_gc_change_weak_track_handle (old_obj, obj, gchandle);
+#endif
 }
 
 /**
@@ -895,24 +857,10 @@ mono_gchandle_free (guint32 gchandle)
 	HandleData *handles = &gc_handles [type];
 	if (type > 3)
 		return;
-	if (type == HANDLE_WEAK_TRACK) {
-		MonoDomain *domain = mono_domain_get ();
-		MonoObject *obj;
-
-		/* Clean our entries in the two hashes in MonoDomain */
-
-		domain_finalizers_lock (domain);
-
-		/* Get the original object this handle pointed to */
-		obj = g_hash_table_lookup (domain->track_resurrection_handles_hash, GUINT_TO_POINTER (gchandle));
-		if (obj) {
-			g_hash_table_remove (domain->track_resurrection_handles_hash, GUINT_TO_POINTER (gchandle));
-
-			remove_weak_track_handle (domain, obj, gchandle);
-		}
-
-		domain_finalizers_unlock (domain);
-	}
+#ifndef HAVE_SGEN_GC
+	if (type == HANDLE_WEAK_TRACK)
+		mono_gc_remove_weak_track_handle (gchandle);
+#endif
 
 	lock_handles (handles);
 	if (slot < handles->size && (handles->bitmap [slot / 32] & (1 << (slot % 32)))) {
@@ -968,10 +916,16 @@ mono_gchandle_free_domain (MonoDomain *domain)
 
 }
 
+MonoBoolean
+GCHandle_CheckCurrentDomain (guint32 gchandle)
+{
+	return mono_gchandle_is_in_domain (gchandle, mono_domain_get ());
+}
+
 #ifndef HAVE_NULL_GC
 
-#if USE_POSIX_SEM
-static sem_t finalizer_sem;
+#ifdef MONO_HAS_SEMAPHORES
+static MonoSemType finalizer_sem;
 #endif
 static HANDLE finalizer_event;
 static volatile gboolean finished=FALSE;
@@ -980,11 +934,11 @@ void
 mono_gc_finalize_notify (void)
 {
 #ifdef DEBUG
-	g_message (G_GNUC_PRETTY_FUNCTION ": prodding finalizer");
+	g_message ( "%s: prodding finalizer", __func__);
 #endif
 
-#if USE_POSIX_SEM
-	sem_post (&finalizer_sem);
+#ifdef MONO_HAS_SEMAPHORES
+	MONO_SEM_POST (&finalizer_sem);
 #else
 	SetEvent (finalizer_event);
 #endif
@@ -1027,7 +981,7 @@ finalize_domain_objects (DomainFinalizationReq *req)
 		for (i = 0; i < objs->len; ++i) {
 			MonoObject *o = (MonoObject*)g_ptr_array_index (objs, i);
 			/* FIXME: Avoid finalizing threads, etc */
-			run_finalize (o, 0);
+			mono_gc_run_finalize (o, 0);
 		}
 
 		g_ptr_array_free (objs, TRUE);
@@ -1039,7 +993,7 @@ finalize_domain_objects (DomainFinalizationReq *req)
 	while ((count = mono_gc_finalizers_for_domain (domain, to_finalize, NUM_FOBJECTS))) {
 		int i;
 		for (i = 0; i < count; ++i) {
-			run_finalize (to_finalize [i], 0);
+			mono_gc_run_finalize (to_finalize [i], 0);
 		}
 	}
 #endif
@@ -1057,16 +1011,15 @@ finalize_domain_objects (DomainFinalizationReq *req)
 static guint32
 finalizer_thread (gpointer unused)
 {
-	gc_thread = mono_thread_current ();
-
-	SetEvent (thread_started_event);
-
 	while (!finished) {
 		/* Wait to be notified that there's at least one
 		 * finaliser to run
 		 */
-#if USE_POSIX_SEM
-		sem_wait (&finalizer_sem);
+
+		g_assert (mono_domain_get () == mono_get_root_domain ());
+
+#ifdef MONO_HAS_SEMAPHORES
+		MONO_SEM_WAIT (&finalizer_sem);
 #else
 		/* Use alertable=FALSE since we will be asked to exit using the event too */
 		WaitForSingleObjectEx (finalizer_event, INFINITE, FALSE);
@@ -1101,6 +1054,10 @@ finalizer_thread (gpointer unused)
 	return 0;
 }
 
+#ifdef HAVE_SGEN_GC
+#define GC_dont_gc 0
+#endif
+
 void
 mono_gc_init (void)
 {
@@ -1114,7 +1071,7 @@ mono_gc_init (void)
 
 	mono_gc_base_init ();
 
-	if (g_getenv ("GC_DONT_GC")) {
+	if (GC_dont_gc || g_getenv ("GC_DONT_GC")) {
 		gc_disabled = TRUE;
 		return;
 	}
@@ -1122,33 +1079,21 @@ mono_gc_init (void)
 	finalizer_event = CreateEvent (NULL, FALSE, FALSE, NULL);
 	pending_done_event = CreateEvent (NULL, TRUE, FALSE, NULL);
 	shutdown_event = CreateEvent (NULL, TRUE, FALSE, NULL);
-	thread_started_event = CreateEvent (NULL, TRUE, FALSE, NULL);
-	if (finalizer_event == NULL || pending_done_event == NULL || shutdown_event == NULL || thread_started_event == NULL) {
+	if (finalizer_event == NULL || pending_done_event == NULL || shutdown_event == NULL) {
 		g_assert_not_reached ();
 	}
-#if USE_POSIX_SEM
-	sem_init (&finalizer_sem, 0, 0);
+#ifdef MONO_HAS_SEMAPHORES
+	MONO_SEM_INIT (&finalizer_sem, 0);
 #endif
 
-	mono_thread_create (mono_domain_get (), finalizer_thread, NULL);
-
-	/*
-	 * Wait until the finalizer thread sets gc_thread since its value is needed
-	 * by mono_thread_attach ()
-	 *
-	 * FIXME: Eliminate this as to avoid some deadlocks on windows. 
-	 * Waiting for a new thread should result in a deadlock when the runtime is
-	 * initialized from _CorDllMain that is called while the OS loader lock is
-	 * held by LoadLibrary.
-	 */
-	WaitForSingleObjectEx (thread_started_event, INFINITE, FALSE);
+	gc_thread = mono_thread_create_internal (mono_domain_get (), finalizer_thread, NULL, FALSE);
 }
 
 void
 mono_gc_cleanup (void)
 {
 #ifdef DEBUG
-	g_message (G_GNUC_PRETTY_FUNCTION ": cleaning up finalizer");
+	g_message ("%s: cleaning up finalizer", __func__);
 #endif
 
 	if (!gc_disabled) {
@@ -1232,5 +1177,3 @@ mono_gc_is_finalizer_thread (MonoThread *thread)
 {
 	return thread == gc_thread;
 }
-
-

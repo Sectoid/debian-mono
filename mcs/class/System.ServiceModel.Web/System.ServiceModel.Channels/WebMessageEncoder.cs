@@ -37,6 +37,8 @@ namespace System.ServiceModel.Channels
 {
 	internal class WebMessageEncoder : MessageEncoder
 	{
+		internal const string ScriptPropertyName = "618BC2B0-38AA-21A3-DB4A-404FC87B9B11"; // randomly generated
+
 		WebMessageEncodingBindingElement source;
 
 		public WebMessageEncoder (WebMessageEncodingBindingElement source)
@@ -45,7 +47,11 @@ namespace System.ServiceModel.Channels
 		}
 
 		public override string ContentType {
+#if NET_2_1
+			get { return MediaType; }
+#else
 			get { return MediaType + "; charset=" + source.WriteEncoding.HeaderName; }
+#endif
 		}
 
 		// FIXME: find out how it can be customized.
@@ -101,7 +107,11 @@ namespace System.ServiceModel.Channels
 				break;
 			case WebContentFormat.Json:
 				// FIXME: is it safe/unsafe/required to keep XmlReader open?
+#if NET_2_1
+				msg = Message.CreateMessage (MessageVersion.None, null, JsonReaderWriterFactory.CreateJsonReader (stream, source.ReaderQuotas));
+#else
 				msg = Message.CreateMessage (MessageVersion.None, null, JsonReaderWriterFactory.CreateJsonReader (stream, enc, source.ReaderQuotas, null));
+#endif
 				wp = new WebBodyFormatMessageProperty (WebContentFormat.Json);
 				break;
 			case WebContentFormat.Raw:
@@ -138,6 +148,15 @@ namespace System.ServiceModel.Channels
 		{
 			if (message == null)
 				throw new ArgumentNullException ("message");
+
+			// Handle /js and /jsdebug as the special cases.
+			var script = message.Properties [ScriptPropertyName] as string;
+			if (script != null) {
+				var bytes = source.WriteEncoding.GetBytes (script);
+				stream.Write (bytes, 0, bytes.Length);
+				return;
+			}
+
 			if (!MessageVersion.Equals (message.Version))
 				throw new ProtocolException (String.Format ("MessageVersion {0} is not supported", message.Version));
 			if (stream == null)
@@ -145,8 +164,13 @@ namespace System.ServiceModel.Channels
 
 			switch (GetContentFormat (message)) {
 			case WebContentFormat.Xml:
+#if NET_2_1
+				using (XmlWriter w = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (new StreamWriter (stream, source.WriteEncoding))))
+					message.WriteMessage (w);
+#else
 				using (XmlWriter w = XmlDictionaryWriter.CreateTextWriter (stream, source.WriteEncoding))
 					message.WriteMessage (w);
+#endif
 				break;
 			case WebContentFormat.Json:
 				using (XmlWriter w = JsonReaderWriterFactory.CreateJsonWriter (stream, source.WriteEncoding))

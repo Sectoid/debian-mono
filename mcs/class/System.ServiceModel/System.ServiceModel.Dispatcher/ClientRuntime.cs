@@ -35,14 +35,10 @@ namespace System.ServiceModel.Dispatcher
 {
 	public sealed class ClientRuntime
 	{
-		Type callback, contract;
 		SynchronizedCollection<IChannelInitializer> channel_initializers
 			= new SynchronizedCollection<IChannelInitializer> ();
 		SynchronizedCollection<IInteractiveChannelInitializer> interactive_channel_initializers
 			= new SynchronizedCollection<IInteractiveChannelInitializer> ();
-#if !NET_2_1
-		DispatchRuntime dispatch;
-#endif
 		SynchronizedCollection<IClientMessageInspector> inspectors
 			= new SynchronizedCollection<IClientMessageInspector> ();
 		ClientOperation.ClientOperationCollection operations
@@ -53,28 +49,14 @@ namespace System.ServiceModel.Dispatcher
 		string contract_name, contract_ns;
 		int max_fault_size = 0x10000; // FIXME: not verified.
 
-#if !NET_2_1
-		// .ctor() for DispatchRuntime.CallbackClientRuntime
-		internal ClientRuntime (DispatchRuntime parent)
-		{
-			// maybe it could be null, for non-duplex channels.
-			this.dispatch = parent;
-			contract_name = dispatch.EndpointDispatcher.ContractName;
-			contract_ns = dispatch.EndpointDispatcher.ContractNamespace;
-		}
-#endif
-
 		// .ctor() for Clients
-		internal ClientRuntime (ServiceEndpoint endpoint)
+		internal ClientRuntime (string name, string ns)
 		{
-			contract_name = endpoint.Contract.Name;
-			contract_ns = endpoint.Contract.Namespace;
+			contract_name = name;
+			contract_ns = ns;
 		}
 
-		public Type CallbackClientType {
-			get { return callback; }
-			set { callback = value; }
-		}
+		public Type CallbackClientType { get; set; }
 
 		public SynchronizedCollection<IChannelInitializer> ChannelInitializers {
 			get { return channel_initializers; }
@@ -93,24 +75,25 @@ namespace System.ServiceModel.Dispatcher
 		}
 
 		
-		public Type ContractClientType {
-			get { return contract; }
-			set { contract = value; }
-		}
+		public Type ContractClientType { get; set; }
 
 #if !NET_2_1
-		public DispatchRuntime CallbackDispatchRuntime {
-			get { return dispatch; }
-		}
+		public DispatchRuntime CallbackDispatchRuntime { get; internal set; }
 #endif
 
 		public SynchronizedCollection<IClientMessageInspector> MessageInspectors {
 			get { return inspectors; }
 		}
 
+#if NET_2_1
+		public KeyedCollection<string,ClientOperation> Operations {
+			get { return operations; }
+		}
+#else
 		public SynchronizedKeyedCollection<string,ClientOperation> Operations {
 			get { return operations; }
 		}
+#endif
 
 		public bool ManualAddressing {
 			get { return manual_addressing; }

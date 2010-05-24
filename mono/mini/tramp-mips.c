@@ -44,9 +44,7 @@ mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *m,
 	if (MONO_TYPE_ISSTRUCT (mono_method_signature (m)->ret))
 		this_pos = mips_a1;
 	    
-	mono_domain_lock (domain);
-	start = code = mono_code_manager_reserve (domain->code_mp, 20);
-	mono_domain_unlock (domain);
+	start = code = mono_domain_code_reserve (domain, 20);
 
 	mips_load (code, mips_t9, addr);
 	mips_addiu (code, this_pos, this_pos, sizeof (MonoObject));
@@ -101,7 +99,7 @@ mono_arch_patch_callsite (guint8 *method_start, guint8 *orig_code, guint8 *addr)
 }
 
 void
-mono_arch_patch_plt_entry (guint8 *code, guint8 *addr)
+mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr)
 {
 	g_assert_not_reached ();
 }
@@ -117,7 +115,7 @@ mono_arch_patch_plt_entry (guint8 *code, guint8 *addr)
 
 
 gpointer
-mono_arch_get_vcall_slot (guint8 *code_ptr, gpointer *regs, int *displacement)
+mono_arch_get_vcall_slot (guint8 *code_ptr, mgreg_t *regs, int *displacement)
 {
 	char *o = NULL;
 	char *vtable = NULL;
@@ -178,25 +176,14 @@ mono_arch_get_vcall_slot (guint8 *code_ptr, gpointer *regs, int *displacement)
 	return o;
 }
 
-gpointer*
-mono_arch_get_vcall_slot_addr (guint8 *code, gpointer *regs)
-{
-	gpointer vt;
-	int displacement;
-	vt = mono_arch_get_vcall_slot (code, regs, &displacement);
-	if (!vt)
-		return NULL;
-	return (gpointer*)((char*)vt + displacement);
-}
-
 void
-mono_arch_nullify_plt_entry (guint8 *code)
+mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 {
 	g_assert_not_reached ();
 }
 
 void
-mono_arch_nullify_class_init_trampoline (guint8 *code, gssize *regs)
+mono_arch_nullify_class_init_trampoline (guint8 *code, mgreg_t *regs)
 {
 	guint32 *code32 = (guint32*)code;
 
@@ -368,9 +355,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 
 	tramp = mono_get_trampoline_code (tramp_type);
 
-	mono_domain_lock (domain);
-	code = buf = mono_code_manager_reserve (domain->code_mp, 32);
-	mono_domain_unlock (domain);
+	code = buf = mono_domain_code_reserve (domain, 32);
 
 	/* Prepare the jump to the generic trampoline code
 	 * mono_arch_create_trampoline_code() knows we're putting this in t8
