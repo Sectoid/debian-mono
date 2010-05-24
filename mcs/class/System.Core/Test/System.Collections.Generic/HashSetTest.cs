@@ -335,6 +335,16 @@ namespace MonoTests.System.Collections.Generic {
 			Assert.AreEqual (42, dest [6]);
 		}
 
+		[Test]
+		public void TestICollection ()
+		{
+			var set = new HashSet<int> () as ICollection<int>;
+			set.Add (42);
+			set.Add (42);
+
+			Assert.AreEqual (1, set.Count);
+		}
+
 		static void AssertContainsOnly<T> (IEnumerable<T> result, IEnumerable<T> data)
 		{
 			Assert.AreEqual (result.Count (), data.Count ());
@@ -351,6 +361,93 @@ namespace MonoTests.System.Collections.Generic {
 		static void AssertIsEmpty<T> (IEnumerable<T> source)
 		{
 			Assert.AreEqual (0, source.Count ());
+		}
+
+
+		delegate void D ();
+		bool Throws (D d)
+		{
+			try {
+				d ();
+				return false;
+			} catch {
+				return true;
+			}
+		}
+
+		[Test]
+		// based on #491858, #517415
+		public void Enumerator_Current ()
+		{
+#pragma warning disable 0168
+			var e1 = new HashSet<int>.Enumerator ();
+			Assert.IsFalse (Throws (delegate { var x = e1.Current; }));
+
+			var d = new HashSet<int> ();
+			var e2 = d.GetEnumerator ();
+			Assert.IsFalse (Throws (delegate { var x = e2.Current; }));
+			e2.MoveNext ();
+			Assert.IsFalse (Throws (delegate { var x = e2.Current; }));
+			e2.Dispose ();
+			Assert.IsFalse (Throws (delegate { var x = e2.Current; }));
+
+			var e3 = ((IEnumerable<int>) d).GetEnumerator ();
+			Assert.IsFalse (Throws (delegate { var x = e3.Current; }));
+			e3.MoveNext ();
+			Assert.IsFalse (Throws (delegate { var x = e3.Current; }));
+			e3.Dispose ();
+			Assert.IsFalse (Throws (delegate { var x = e3.Current; }));
+
+			var e4 = ((IEnumerable) d).GetEnumerator ();
+			Assert.IsTrue (Throws (delegate { var x = e4.Current; }));
+			e4.MoveNext ();
+			Assert.IsTrue (Throws (delegate { var x = e4.Current; }));
+			((IDisposable) e4).Dispose ();
+			Assert.IsTrue (Throws (delegate { var x = e4.Current; }));
+#pragma warning restore 0168
+		}
+
+		[Test]
+		public void TestNullsWithComparerThrowingException ()
+		{
+			// NOTE: We should get the same errors when using StringComparer.Ordinal on Mono 2.6.1, but the look-alike gives us more control over this test case
+			var set = new HashSet<string> (new StringComparerOrdinalLookAlike ());
+			Assert.IsTrue (set.Add (string.Empty), "#1a");
+			Assert.IsFalse (set.Contains (null), "#2a");
+			Assert.IsTrue (set.Add (null), "#2b");
+			Assert.IsTrue (set.Contains (null), "#2c");
+			Assert.AreEqual (2, set.Count, "#3");
+			Assert.IsTrue (set.Add ("a"), "#4");
+			AssertContainsOnly (new string [] { string.Empty, null, "a" }, set);
+			Assert.IsFalse (set.Add (null), "#5");
+			Assert.IsTrue (set.Add ("b"), "#6");
+			Assert.IsFalse (set.Add ("b"), "#7");
+			Assert.IsFalse (set.Add (string.Empty), "#8");
+			Assert.IsFalse (set.Add ("a"), "#9");
+			Assert.IsFalse (set.Add (null), "#10");
+			Assert.IsTrue (set.Add ("c"), "#11");
+			Assert.IsFalse (set.Add ("c"), "#12");
+			Assert.AreEqual (5, set.Count, "#13");
+			Assert.IsTrue (set.Remove (null), "#14");
+			Assert.IsTrue (set.Remove ("b"), "#15");
+			Assert.IsFalse (set.Remove (null), "#16");
+			Assert.AreEqual (3, set.Count, "#17");
+			AssertContainsOnly (new string [] { string.Empty, "a", "c" }, set);
+		}
+
+		private class StringComparerOrdinalLookAlike : IEqualityComparer<string>
+		{
+			public bool Equals(string x, string y)
+			{
+				return string.CompareOrdinal(x, y) == 0;
+			}
+
+			public int GetHashCode(string str)
+			{
+				if (str != null)
+					return str.GetHashCode();
+				throw new ArgumentNullException ();  // Important aspect for test (same as what StringComparer.Ordinal does, and different from GenericEqualityComparer<string>)
+			}
 		}
 	}
 }

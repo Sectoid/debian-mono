@@ -13,19 +13,53 @@ using System.Collections;
 
 namespace Mono.CSharp
 {
+	public enum Variance
+	{
+		None,
+		Covariant,
+		Contravariant
+	}
+
 	public enum SpecialConstraint
 	{
 		Constructor,
 		ReferenceType,
 		ValueType
 	}
+
+	public abstract class GenericTypeParameterBuilder : Type
+	{
+	}
+
+	public class InternalsVisibleToAttribute
+	{
+		public string AssemblyName;
+	}
+
+	class ConstraintChecker
+	{
+		public static bool CheckConstraints (ResolveContext ec, MethodBase a, MethodBase b, Location loc)
+		{
+			throw new NotSupportedException ();
+		}
+	}
 	
 	public abstract class GenericConstraints
 	{
+		public bool HasConstructorConstraint {
+			get { throw new NotImplementedException (); }
+		}
+
 		public bool HasValueTypeConstraint {
-			get {
-				throw new NotImplementedException ();
-			}
+			get { throw new NotImplementedException (); }
+		}
+
+		public bool HasClassConstraint {
+			get { throw new NotImplementedException (); }
+		}
+
+		public bool HasReferenceTypeConstraint {
+			get { throw new NotImplementedException (); }
 		}
 			
 		public abstract string TypeParameter {
@@ -33,6 +67,22 @@ namespace Mono.CSharp
 		}
 
 		public bool IsReferenceType { 
+			get { throw new NotSupportedException (); }
+		}
+		
+		public bool IsValueType { 
+			get { throw new NotSupportedException (); }
+		}
+
+		public Type[] InterfaceConstraints {
+			get { throw new NotSupportedException (); }
+		}
+
+		public Type ClassConstraint {
+			get { throw new NotSupportedException (); }
+		}
+
+		public Type EffectiveBaseClass {
 			get { throw new NotSupportedException (); }
 		}
 	}
@@ -56,7 +106,7 @@ namespace Mono.CSharp
 			get { throw new NotImplementedException (); }
 		}		
 
-		public void VerifyClsCompliance ()
+		public void VerifyClsCompliance (Report r)
 		{
 		}
 	}
@@ -64,13 +114,22 @@ namespace Mono.CSharp
 	public class TypeParameter : MemberCore, IMemberContainer
 	{
 		public TypeParameter (DeclSpace parent, DeclSpace decl, string name,
-				      Constraints constraints, Attributes attrs, Location loc)
+				      Constraints constraints, Attributes attrs, Variance variance, Location loc)
 			: base (parent, new MemberName (name, loc), attrs)
 		{
 			throw new NotImplementedException ();
 		}
 
 		public static string GetSignatureForError (TypeParameter[] tp)
+		{
+			throw new NotImplementedException ();
+		}
+		
+		public void ErrorInvalidVariance (MemberCore mc, Variance v)
+		{
+		}
+		
+		public static TypeParameter FindTypeParameter (TypeParameter[] all, string name)
 		{
 			throw new NotImplementedException ();
 		}
@@ -84,8 +143,11 @@ namespace Mono.CSharp
 			return true;
 		}
 
-		public override void ApplyAttributeBuilder (Attribute a,
-							    CustomAttributeBuilder cb)
+		public void Define (Type t)
+		{
+		}
+
+		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb, PredefinedAttributes pa)
 		{
 			throw new NotImplementedException ();
 		}
@@ -115,12 +177,12 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		public bool DefineType (IResolveContext ec)
+		public bool DefineType (IMemberContext ec)
 		{
 			throw new NotImplementedException ();
 		}
 
-		public bool DefineType (IResolveContext ec, MethodBuilder builder,
+		public bool DefineType (IMemberContext ec, MethodBuilder builder,
 					MethodInfo implementing, bool is_override)
 		{
 			throw new NotImplementedException ();
@@ -131,7 +193,7 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		public bool UpdateConstraints (IResolveContext ec, Constraints new_constraints)
+		public bool UpdateConstraints (IMemberContext ec, Constraints new_constraints)
 		{
 			throw new NotImplementedException ();
 		}
@@ -145,6 +207,10 @@ namespace Mono.CSharp
 		}
 
 		string IMemberContainer.Name {
+			get { throw new NotImplementedException (); }
+		}
+
+		public Variance Variance {
 			get { throw new NotImplementedException (); }
 		}
 
@@ -171,6 +237,11 @@ namespace Mono.CSharp
 		{
 			throw new NotImplementedException ();
 		}
+
+		public void SetConstraints (GenericTypeParameterBuilder type)
+		{
+			throw new NotImplementedException ();
+		}
 	}
 
 	public class TypeParameterExpr : TypeExpr
@@ -180,7 +251,7 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		protected override TypeExpr DoResolveAsTypeStep (IResolveContext ec)
+		protected override TypeExpr DoResolveAsTypeStep (IMemberContext ec)
 		{
 			return null;
 		}
@@ -195,16 +266,29 @@ namespace Mono.CSharp
 	public class TypeParameterName : SimpleName
 	{
 		Attributes attributes;
+		Variance variance;
 
 		public TypeParameterName (string name, Attributes attrs, Location loc)
+			: this (name, attrs, Variance.None, loc)
+		{
+		}
+
+		public TypeParameterName (string name, Attributes attrs, Variance variance, Location loc)
 			: base (name, loc)
 		{
 			attributes = attrs;
+			this.variance = variance;
 		}
 
 		public Attributes OptAttributes {
 			get {
 				return attributes;
+			}
+		}
+
+		public Variance Variance {
+			get {
+				return variance;
 			}
 		}
 	}
@@ -221,12 +305,21 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		protected override TypeExpr DoResolveAsTypeStep (IResolveContext ec)
+		protected override TypeExpr DoResolveAsTypeStep (IMemberContext ec)
 		{
 			throw new NotImplementedException ();
 		}
 
-		public bool CheckConstraints (IResolveContext ec)
+		public bool CheckConstraints (IMemberContext ec)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public TypeArguments TypeArguments {
+			get { throw new NotImplementedException (); }
+		}
+
+		public bool VerifyVariantTypeParameters (IMemberContext rc)
 		{
 			throw new NotImplementedException ();
 		}
@@ -235,7 +328,7 @@ namespace Mono.CSharp
 	public class GenericMethod : DeclSpace
 	{
 		public GenericMethod (NamespaceEntry ns, DeclSpace parent, MemberName name,
-				      Expression return_type, Parameters parameters)
+				      Expression return_type, ParametersCompiled parameters)
 			: base (ns, parent, name, null)
 		{
 			throw new NotImplementedException ();
@@ -251,7 +344,7 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		public bool DefineType (EmitContext ec, MethodBuilder mb,
+		public bool DefineType (IMemberContext ec, MethodBuilder mb,
 					MethodInfo implementing, bool is_override)
 		{
 			throw new NotImplementedException ();
@@ -308,7 +401,7 @@ namespace Mono.CSharp
 		{
 		}
 
-		public bool Resolve (IResolveContext ec)
+		public bool Resolve (IMemberContext ec)
 		{
 			throw new NotImplementedException ();
 		}
@@ -341,6 +434,13 @@ namespace Mono.CSharp
 
 	public class TypeInferenceContext
 	{
+		public Type[] InferredTypeArguments;
+		
+		public void AddCommonTypeBound (Type type)
+		{
+			throw new NotImplementedException ();
+		}
+		
 		public void ExactInference (Type u, Type v)
 		{
 			throw new NotImplementedException ();
@@ -349,6 +449,29 @@ namespace Mono.CSharp
 		public Type InflateGenericArgument (Type t)
 		{
 			throw new NotImplementedException ();		
+		}
+		
+		public bool FixAllTypes (ResolveContext ec)
+		{
+			return false;
+		}
+	}
+	
+	partial class TypeManager
+	{
+		public static Variance CheckTypeVariance (Type type, Variance v, IMemberContext mc)
+		{
+			return v;
+		}
+		
+		public static bool IsVariantOf (Type a, Type b)
+		{
+			return false;
+		}
+		
+		public static TypeContainer LookupGenericTypeContainer (Type t)
+		{
+			throw new NotImplementedException ();
 		}
 	}
 }

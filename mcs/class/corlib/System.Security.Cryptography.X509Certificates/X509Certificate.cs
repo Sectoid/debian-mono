@@ -33,11 +33,13 @@ using System.Security.Permissions;
 using System.Text;
 
 using Mono.Security;
-using Mono.Security.Authenticode;
 using Mono.Security.X509;
 
 #if NET_2_0
 using System.Runtime.Serialization;
+#endif
+#if !NET_2_1 || MONOTOUCH
+using Mono.Security.Authenticode;
 #endif
 
 namespace System.Security.Cryptography.X509Certificates {
@@ -101,7 +103,8 @@ namespace System.Security.Cryptography.X509Certificates {
 			byte[] data = Load (filename);
 			return new X509Certificate (data);
 		}
-	
+
+#if !NET_2_1 || MONOTOUCH
 		[MonoTODO ("Incomplete - minimal validation in this version")]
 		public static X509Certificate CreateFromSignedFile (string filename)
 		{
@@ -142,7 +145,9 @@ namespace System.Security.Cryptography.X509Certificates {
 			return new X509Certificate (cert);
 #endif
 		}
-	
+
+#endif // NET_2_1
+
 		// constructors
 	
 		// special constructor for Publisher (and related classes).
@@ -169,9 +174,16 @@ namespace System.Security.Cryptography.X509Certificates {
 			if (handle == IntPtr.Zero)
 				throw new ArgumentException ("Invalid handle.");
 #endif
+#if NET_2_1
+			// this works on Windows-only so it's of no use for Moonlight
+			// even more since this ctor is [SecurityCritical]
+			throw new NotSupportedException ();
+#else
 			InitFromHandle (handle);
+#endif
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		[SecurityPermission (SecurityAction.Demand, UnmanagedCode = true)]
 		private void InitFromHandle (IntPtr handle)
 		{
@@ -184,6 +196,7 @@ namespace System.Security.Cryptography.X509Certificates {
 			}
 			// for 1.x IntPtr.Zero results in an "empty" certificate instance
 		}
+#endif
 	
 		public X509Certificate (System.Security.Cryptography.X509Certificates.X509Certificate cert) 
 		{

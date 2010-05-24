@@ -1,8 +1,12 @@
 2010-01-18  Marek Habersack  <mhabersack@novell.com>
 
-	* LogicalTypeInfo.cs: partial revert of r146546. The 'd' wrapper
+	* LogicalTypeInfo.cs: partial revert of r146547. The 'd' wrapper
 	(and thus the JsonResult class) is needed after all. Fixes bug
 	#571365
+
+2009-11-19  Marek Habersack  <mhabersack@novell.com>
+
+	* LogicalTypeInfo.cs: removed the JsonResult class - it has no use
 
 2009-11-19  Marek Habersack  <mhabersack@novell.com>
 
@@ -17,6 +21,10 @@
 2009-06-14  Robert Jordan  <robertj@gmx.net>
 
 	* ScriptHandlerFactory.cs: handle precompiled web services.
+
+2009-04-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ClientProxyHandler.cs: set cacheability to public.
 
 2009-04-03  Marek Habersack  <mhabersack@novell.com>
 

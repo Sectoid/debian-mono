@@ -1,7 +1,16 @@
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* RuntimeHelpers.cs: Add missing validations
-	[Backport up to r144208]
+	* RuntimeHelpersTest.cs: Add more test cases for validations
+	[Backport r144208]
+
+2009-06-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Convert all tests to new-style nunit classes/methods.
+
+2009-06-10  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* InternalVisibleToAttributeTest.cs: Added test for .ctor and
+	AllInternalsVisible property.
 
 2006-11-01  Sebastien Pouliot  <sebastien@ximian.com>
 

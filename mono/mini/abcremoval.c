@@ -13,6 +13,8 @@
 #include <mono/metadata/mempool.h>
 #include <mono/metadata/opcodes.h>
 
+#include <config.h>
+
 #ifndef DISABLE_JIT
 
 #include "abcremoval.h"
@@ -25,7 +27,7 @@
 
 
 #define TRACE_ABC_REMOVAL (verbose_level > 2)
-#define REPORT_ABC_REMOVAL (verbose_level > 0)
+#define REPORT_ABC_REMOVAL (verbose_level > 1)
 
 /*
  * A little hack for the verbosity level.

@@ -125,12 +125,12 @@ stringify_array (guint32 rank, guint32 num_sizes, guint32 num_lo_bounds, gint32 
 		if (i)
 			g_string_append_c (res, ',');
 		if (i < num_lo_bounds)
-			g_string_sprintfa (res, "%d...", lo_bounds [i]);
+			g_string_append_printf (res, "%d...", lo_bounds [i]);
 		if (i < num_sizes) {
 			if (i < num_lo_bounds)
-				g_string_sprintfa (res, "%d", lo_bounds [i] + sizes [i] - 1);
+				g_string_append_printf (res, "%d", lo_bounds [i] + sizes [i] - 1);
 			else
-				g_string_sprintfa (res, "%d", sizes [i]);
+				g_string_append_printf (res, "%d", sizes [i]);
 		}
 
 	}
@@ -511,8 +511,8 @@ dis_stringify_modifiers (MonoImage *m, int n, MonoCustomMod *mod)
 	for (i = 0; i < n; ++i) {
 		char *tok = dis_stringify_token (m, mod[i].token);
 		if (i > 0)
-			g_string_sprintfa (s, " ");
-		g_string_sprintfa (s, " %s (%s)", mod[i].required ? "modreq": "modopt", tok);
+			g_string_append_printf (s, " ");
+		g_string_append_printf (s, " %s (%s)", mod[i].required ? "modreq": "modopt", tok);
 		g_free (tok);
 	}
 	g_string_append_c (s, ' ');
@@ -787,7 +787,8 @@ get_generic_param (MonoImage *m, MonoGenericContainer *container)
 
 	g_string_append_c (result, '<');
 	for (i = 0; i < container->type_argc; i++) {
-		MonoGenericParam *param = &container->type_params [i];
+		MonoGenericParam *param = mono_generic_container_get_param (container, i);
+		MonoGenericParamInfo *param_info = mono_generic_param_info (param);
 		MonoClass **constr;
 		int first = 1;
 		guint16 flags;
@@ -796,13 +797,13 @@ get_generic_param (MonoImage *m, MonoGenericContainer *container)
 		if (i > 0)
 			g_string_append (result, ",");
 		
-		flags = param->flags & GENERIC_PARAMETER_ATTRIBUTE_VARIANCE_MASK;
+		flags = param_info->flags & GENERIC_PARAMETER_ATTRIBUTE_VARIANCE_MASK;
 		if ((flags & GENERIC_PARAMETER_ATTRIBUTE_COVARIANT) == GENERIC_PARAMETER_ATTRIBUTE_COVARIANT)
 			g_string_append (result, "+ ");
 		if ((flags & GENERIC_PARAMETER_ATTRIBUTE_CONTRAVARIANT) == GENERIC_PARAMETER_ATTRIBUTE_CONTRAVARIANT)
 			g_string_append (result, "- ");
 
-		flags = param->flags & GENERIC_PARAMETER_ATTRIBUTE_SPECIAL_CONSTRAINTS_MASK;
+		flags = param_info->flags & GENERIC_PARAMETER_ATTRIBUTE_SPECIAL_CONSTRAINTS_MASK;
 		if ((flags & GENERIC_PARAMETER_ATTRIBUTE_REFERENCE_TYPE_CONSTRAINT) == GENERIC_PARAMETER_ATTRIBUTE_REFERENCE_TYPE_CONSTRAINT)
 			g_string_append (result, "class ");
 		if ((flags & GENERIC_PARAMETER_ATTRIBUTE_VALUE_TYPE_CONSTRAINT) == GENERIC_PARAMETER_ATTRIBUTE_VALUE_TYPE_CONSTRAINT)
@@ -810,7 +811,7 @@ get_generic_param (MonoImage *m, MonoGenericContainer *container)
 		if ((flags & GENERIC_PARAMETER_ATTRIBUTE_CONSTRUCTOR_CONSTRAINT) == GENERIC_PARAMETER_ATTRIBUTE_CONSTRUCTOR_CONSTRAINT)
 			g_string_append (result, ".ctor ");
 
-		for (constr = param->constraints; constr && *constr; constr++) {
+		for (constr = param_info->constraints; constr && *constr; constr++) {
 			char *sig;
 
 			if (first) {
@@ -826,7 +827,7 @@ get_generic_param (MonoImage *m, MonoGenericContainer *container)
 		if (!first)
 			g_string_append (result, ") ");
 
-		esname = get_escaped_name (param->name);
+		esname = get_escaped_name (mono_generic_param_info (param)->name);
 		g_string_append (result, esname);
 		g_free (esname);
 	}
@@ -877,8 +878,13 @@ dis_stringify_method_signature_full (MonoImage *m, MonoMethodSignature *method, 
 
 	if (methoddef_row) {
 		mono_metadata_decode_row (&m->tables [MONO_TABLE_METHOD], methoddef_row -1, cols, MONO_METHOD_SIZE);
-		if (fully_qualified)
-			type = get_typedef (m, mono_metadata_typedef_from_method (m, methoddef_row));
+		if (fully_qualified) {
+			guint32 type_idx = mono_metadata_typedef_from_method (m, methoddef_row);
+			if (type_idx)
+				type = get_typedef (m, type_idx);
+			else
+				type = g_strdup ("<invalid>");
+		}
 		method_name = mono_metadata_string_heap (m, cols [MONO_METHOD_NAME]);
 		param_index = cols [MONO_METHOD_PARAMLIST];
 		if (!method) {
@@ -926,13 +932,19 @@ dis_stringify_method_signature_full (MonoImage *m, MonoMethodSignature *method, 
 				const char *tp;
 				MonoMarshalSpec *spec;
 				tp = mono_metadata_get_marshal_info (m, param_index - 1, FALSE);
-				g_assert (tp);
-				spec = mono_metadata_parse_marshal_spec (m, tp);
-
-				if (i)
-					marshal_info = dis_stringify_marshal_spec (spec);
-				else
-					ret_marshal_info = dis_stringify_marshal_spec (spec);
+				if (tp) {
+					spec = mono_metadata_parse_marshal_spec (m, tp);
+	
+					if (i)
+						marshal_info = dis_stringify_marshal_spec (spec);
+					else
+						ret_marshal_info = dis_stringify_marshal_spec (spec);
+				} else {
+					if (i)
+						marshal_info = g_strdup ("(missing)");
+					else
+						ret_marshal_info = g_strdup ("(missing)");
+				}
 			}
 			param_index ++;
 		} else {
@@ -961,11 +973,11 @@ dis_stringify_method_signature_full (MonoImage *m, MonoMethodSignature *method, 
 	if (method->hasthis)
 		g_string_append (result_ret, "instance ");
 	g_string_append (result_ret, map (method->call_convention, call_conv_type_map));
-	g_string_sprintfa (result_ret, " %s%s ", retval, ret_marshal_info ? ret_marshal_info :"");
+	g_string_append_printf (result_ret, " %s%s ", retval, ret_marshal_info ? ret_marshal_info :"");
 	g_free (ret_marshal_info);
 	if (type) {
 		char *estype = get_escaped_name (type);
-		g_string_sprintfa (result_ret, "%s::", estype);
+		g_string_append_printf (result_ret, "%s::", estype);
 		g_free (estype);
 		g_free (type);
 	}
@@ -1006,7 +1018,7 @@ dis_stringify_function_ptr (MonoImage *m, MonoMethodSignature *method)
 	g_string_append (result, map (method->call_convention, call_conv_type_map));
 
 	retval = dis_stringify_param (m, method->ret);
-	g_string_sprintfa (result, " %s ", retval);
+	g_string_append_printf (result, " %s ", retval);
 	g_free (retval);
 
 	g_string_append (result, " *(");
@@ -1185,15 +1197,15 @@ dis_stringify_type (MonoImage *m, MonoType *type, gboolean is_def)
 		break;
 	case MONO_TYPE_MVAR:
 		if (is_def && !cant_print_generic_param_name (type->data.generic_param))
-			bare = g_strdup_printf ("!!%s", get_escaped_name (type->data.generic_param->name));
+			bare = g_strdup_printf ("!!%s", get_escaped_name (mono_generic_param_info (type->data.generic_param)->name));
 		else
-			bare = g_strdup_printf ("!!%d", type->data.generic_param->num);
+			bare = g_strdup_printf ("!!%d", mono_type_get_generic_param_num (type));
 		break;
 	case MONO_TYPE_VAR:
 		if (is_def && !cant_print_generic_param_name (type->data.generic_param))
-			bare = g_strdup_printf ("!%s", get_escaped_name (type->data.generic_param->name));
+			bare = g_strdup_printf ("!%s", get_escaped_name (mono_generic_param_info (type->data.generic_param)->name));
 		else
-			bare = g_strdup_printf ("!%d", type->data.generic_param->num);
+			bare = g_strdup_printf ("!%d", mono_type_get_generic_param_num (type));
 		break;
 	case MONO_TYPE_GENERICINST: {
 		GString *str = g_string_new ("");
@@ -1301,7 +1313,24 @@ get_type (MonoImage *m, const char *ptr, char **result, gboolean is_def, MonoGen
 
 	default:
 		t = mono_metadata_parse_type_full (m, container, MONO_PARSE_TYPE, 0, start, &ptr);
-		*result = dis_stringify_type (m, t, is_def);
+		if (t) {
+			*result = dis_stringify_type (m, t, is_def);
+		} else {
+			GString *err = g_string_new ("@!#$<InvalidType>$#!@");
+			if (container)
+				t = mono_metadata_parse_type_full (m, NULL, MONO_PARSE_TYPE, 0, start, &ptr);
+			if (t) {
+				char *name = dis_stringify_type (m, t, is_def);
+				g_warning ("Encountered a generic type inappropriate for its context");
+				g_string_append (err, " // ");
+				g_string_append (err, name);
+				g_free (name);
+			} else {
+				g_warning ("Encountered an invalid type");
+			}
+			*result = g_string_free (err, FALSE);
+		}
+
 		break;
 	}
 
@@ -1763,6 +1792,11 @@ get_field (MonoImage *m, guint32 token, MonoGenericContainer *container)
 	 * the TypeDef table.  LAME!
 	 */
 	type_idx = mono_metadata_typedef_from_field (m, idx);
+	if (!type_idx) {
+		res = g_strdup_printf ("<invalid> %s", sig);
+		g_free (sig);
+		return res;
+	}
 
 	type = get_typedef (m, type_idx);
 	estype = get_escaped_name (type);
@@ -2331,6 +2365,7 @@ get_token (MonoImage *m, guint32 token, MonoGenericContainer *container)
 		g_free (temp);
 		return result;
 	case MONO_TOKEN_METHOD_DEF:
+	case MONO_TOKEN_METHOD_SPEC:
 		temp = get_method (m, token, container);
 		result = g_strdup_printf ("method %s", temp);
 		g_free (temp);
@@ -2502,7 +2537,7 @@ dis_get_custom_attrs (MonoImage *m, guint32 token)
 		len = mono_metadata_decode_value (val, &val);
 		attr = g_string_new (".custom ");
 		dump = data_dump (val, len, "\t\t");
-		g_string_sprintfa (attr, "%s = %s", method, dump);
+		g_string_append_printf (attr, "%s = %s", method, dump);
 		g_free (dump);
 		list = g_list_append (list, attr->str);
 		g_string_free (attr, FALSE);
@@ -3082,12 +3117,12 @@ check_ambiguous_genparams (MonoGenericContainer *container)
 
 	table = g_hash_table_new (g_str_hash, g_str_equal);
 	for (i = 0; i < container->type_argc; i++) {
-		MonoGenericParam *param = &container->type_params [i];
+		MonoGenericParam *param = mono_generic_container_get_param (container, i);
 
-		if ((p = g_hash_table_lookup (table, param->name)))
+		if ((p = g_hash_table_lookup (table, mono_generic_param_info (param)->name)))
 			dup_list = g_slist_prepend (g_slist_prepend (dup_list, GUINT_TO_POINTER (i + 1)), p);
 		else
-			g_hash_table_insert (table, (char*)param->name, GUINT_TO_POINTER (i + 1));
+			g_hash_table_insert (table, (char*)mono_generic_param_info (param)->name, GUINT_TO_POINTER (i + 1));
 	}
 
 	if (dup_list) {
@@ -3096,8 +3131,8 @@ check_ambiguous_genparams (MonoGenericContainer *container)
 		for (l = dup_list; l; l = l->next) {
 			int param = GPOINTER_TO_UINT (l->data);
 			g_hash_table_insert (mono_generic_params_with_ambiguous_names,
-				 &container->type_params [param-1],
-				 &container->type_params [param-1]);
+				mono_generic_container_get_param (container, param-1),
+				mono_generic_container_get_param (container, param-1));
 		}
 		g_slist_free (dup_list);
 	}
@@ -3112,10 +3147,12 @@ check_ambiguous_genparams (MonoGenericContainer *container)
 static gboolean
 cant_print_generic_param_name (MonoGenericParam *gparam)
 {
+	MonoGenericContainer *container;
 	g_assert (gparam);
 
-	check_ambiguous_genparams (gparam->owner);
-	return (!gparam->owner || (mono_generic_params_with_ambiguous_names && 
+	container = mono_generic_param_owner (gparam);
+	check_ambiguous_genparams (container);
+	return (!container || (mono_generic_params_with_ambiguous_names &&
 			g_hash_table_lookup (mono_generic_params_with_ambiguous_names, gparam)));
 }
 

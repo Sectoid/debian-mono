@@ -1056,38 +1056,38 @@ namespace System.Linq
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static long? Max (this IEnumerable<long?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static double? Max (this IEnumerable<double?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static float? Max (this IEnumerable<float?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static decimal? Max (this IEnumerable<decimal?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
-		static T? IterateNullable<T> (IEnumerable<T?> source, Func<T?, T?, bool> selector) where T : struct
+		static T? IterateNullable<T> (IEnumerable<T?> source, Func<T, T, T> selector) where T : struct
 		{
 			bool empty = true;
 			T? value = null;
@@ -1097,8 +1097,8 @@ namespace System.Linq
 
 				if (!value.HasValue)
 					value = element.Value;
-				else if (selector (element.Value, value))
-					value = element;
+				else
+					value = selector (element.Value, value.Value);
 
 				empty = false;
 			}
@@ -1316,35 +1316,35 @@ namespace System.Linq
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static long? Min (this IEnumerable<long?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static double? Min (this IEnumerable<double?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static float? Min (this IEnumerable<float?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static decimal? Min (this IEnumerable<decimal?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static TSource Min<TSource> (this IEnumerable<TSource> source)
@@ -1726,12 +1726,17 @@ namespace System.Linq
 
 		static IEnumerable<TSource> CreateSkipIterator<TSource> (IEnumerable<TSource> source, int count)
 		{
-			int i = 0;
-			foreach (var element in source) {
-				if (i++ < count)
-					continue;
+			var enumerator = source.GetEnumerator ();
+			try {
+				while (count-- > 0)
+					if (!enumerator.MoveNext ())
+						yield break;
 
-				yield return element;
+				while (enumerator.MoveNext ())
+					yield return enumerator.Current;
+
+			} finally {
+				enumerator.Dispose ();
 			}
 		}
 
@@ -2155,14 +2160,20 @@ namespace System.Linq
 		{
 			Check.SourceAndKeyElementSelectors (source, keySelector, elementSelector);
 
+			List<TElement> nullKeyElements = null;
+			
 			var dictionary = new Dictionary<TKey, List<TElement>> (comparer ?? EqualityComparer<TKey>.Default);
 			foreach (var element in source) {
 				var key = keySelector (element);
-				if (key == null)
-					throw new ArgumentNullException ("key");
 
 				List<TElement> list;
-				if (!dictionary.TryGetValue (key, out list)) {
+				
+				if (key == null) {
+					if (nullKeyElements == null)
+						nullKeyElements = new List<TElement> ();
+					
+					list = nullKeyElements;
+				} else if (!dictionary.TryGetValue (key, out list)) {
 					list = new List<TElement> ();
 					dictionary.Add (key, list);
 				}
@@ -2170,7 +2181,7 @@ namespace System.Linq
 				list.Add (elementSelector (element));
 			}
 
-			return new Lookup<TKey, TElement> (dictionary);
+			return new Lookup<TKey, TElement> (dictionary, nullKeyElements);
 		}
 
 		#endregion

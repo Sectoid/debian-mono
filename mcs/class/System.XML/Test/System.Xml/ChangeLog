@@ -1,3 +1,136 @@
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTest.cs : test convert TimeSpan.MinValue to string.
+	  Patch by Tiaan Geldenhuys.
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : add test for ToString(TimeSpan) with small
+	  ticks.
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : add test for ToTimeSpan() with spaces.
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : add test for ToDateTimeOffset() with date
+	  string with spaces.
+
+2010-01-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : added commented-out tests for the remaining
+	  parse tests by Tiaan Geldenhuys for XLinq, with the reason why.
+
+2010-01-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : float parse should do the same. Fix NaN test.
+
+2010-01-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : another double parse test for string with
+	  spaces, for string constants such as NaN.
+
+2010-01-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : add double parse test for string with spaces.
+
+2010-01-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlWriterTests.cs : added a corner case test for empty string handling
+	  difference between XmlTextWriter and XmlWriter.Create().
+
+2009-11-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlConvertTests.cs : add test for DateTimeOffset roundtrip.
+
+2009-11-13  Andreia Gaita  <avidigal@novell.com>
+
+	* XmlTextReaderTests.cs: Added ParsingWithNSMgrSubclass test to check
+	r146175 fix (chained namespace lookups using XmlNamespaceManager
+	subclasses)
+
+2009-11-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlNodeReaderTests.cs : added test for bug #550379.
+
+2009-09-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlAttributeCollectionTests.cs : add test for bug #508296 by
+	  Tom Hindle.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextReaderTests.cs : added test for null nametable in parser
+	  context.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlNamespaceManagerTests.cs : add test for bug #514015.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextReaderTests.cs : added test for bug #523971 by Hib Eris.
+
+2009-06-26  Robert Jordan  <robertj@gmx.net>
+
+	* *.cs: Upgrade to new NUnit style.
+
+2009-05-22  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* XmlResolverTest.cs: Fix ResolveUri test on Windows when current
+	directory is not on C drive.
+
+2009-05-12  Jonas Larsson  <jonas.larsson@manodo.se>
+
+	* XmlValidatingReaderTests.cs : test for bug #502168
+
+2009-05-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlValidatingReaderTests.cs : test for bug #501814 by Jonas
+	  Larsson.
+
+2009-05-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdValidatingReaderTest.cs : test for bug #501763 by Jonas Larsson.
+
+2009-04-28  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* XmlReaderCommonTests.cs: Add test case for an empty string url
+
+2009-04-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XmlResolverTest.cs: New. Unit tests for base features.
+
+2009-04-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlAttributeCollectionTests.cs : added test for bug #496022.
+
+2009-03-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlParserContextTests.cs : added test for bug #484519.
+
+2009-03-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlReaderCommonTests.cs : added test for bug #480066.
+
+2009-03-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlWriterTests.cs : only bogus XmlTextWriter ignores null namespace
+	  for namespae conflict check.
+
+2009-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextWriterTests.cs : added test for bug #474091.
+
+2009-02-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlElementTests.cs : added test for bug #464394.
+
+2009-02-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlTextWriterTests.cs : added test for bug #472634.
+
 2009-01-20  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlReaderCommonTests.cs : added test for bug #464229.

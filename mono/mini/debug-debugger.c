@@ -50,6 +50,8 @@ static guint64 debugger_register_class_init_callback (guint64 image_argument, gu
 static void debugger_remove_class_init_callback (guint64 index, G_GNUC_UNUSED guint64 dummy);
 static guint64 debugger_get_method_signature (guint64 argument1, G_GNUC_UNUSED guint64 argument2);
 
+static guint64 debugger_abort_runtime_invoke (G_GNUC_UNUSED guint64 dummy1, G_GNUC_UNUSED guint64 dummy2);
+
 #define EXECUTABLE_CODE_BUFFER_SIZE 4096
 static guint8 *debugger_executable_code_buffer = NULL;
 
@@ -59,7 +61,7 @@ static MonoDebuggerMetadataInfo debugger_metadata_info = {
 	sizeof (MonoDebuggerMetadataInfo),
 	sizeof (MonoDefaults),
 	&mono_defaults,
-	sizeof (MonoType),
+	MONO_SIZEOF_TYPE,
 	sizeof (MonoArrayType),
 	sizeof (MonoClass),
 	sizeof (MonoThread),
@@ -120,7 +122,7 @@ MonoDebuggerInfo MONO_DEBUGGER__debugger_info = {
 	MONO_DEBUGGER_MAGIC,
 	MONO_DEBUGGER_MAJOR_VERSION,
 	MONO_DEBUGGER_MINOR_VERSION,
-	0, /* dummy */
+	0, /* runtime_flags */
 	sizeof (MonoDebuggerInfo),
 	sizeof (MonoSymbolTable),
 	MONO_TRAMPOLINE_NUM,
@@ -167,8 +169,16 @@ MonoDebuggerInfo MONO_DEBUGGER__debugger_info = {
 	debugger_event_handler,
 
 	&_mono_debug_using_mono_debugger,
-	(gint32*)&_mono_debugger_interruption_request
+	(gint32*)&_mono_debugger_interruption_request,
+
+	&debugger_abort_runtime_invoke
 };
+
+static guint64
+debugger_abort_runtime_invoke (G_GNUC_UNUSED guint64 dummy1, G_GNUC_UNUSED guint64 dummy2)
+{
+	return mono_debugger_abort_runtime_invoke ();
+}
 
 static guint64
 debugger_compile_method (guint64 method_arg)
@@ -456,15 +466,44 @@ debugger_init_code_buffer (void)
 }
 
 extern MonoDebuggerInfo *MONO_DEBUGGER__debugger_info_ptr;
+extern long MONO_DEBUGGER__using_debugger;
 
 static void
 debugger_initialize (void)
 {
 }
 
-void
-mono_debugger_init (void)
+/**
+ * Check whether we're running inside the debugger.
+ *
+ * There seems to be a bug in some versions of glibc which causes _dl_debug_state() being called with
+ * RT_CONSISTENT before relocations are done.
+ *
+ * If that happens, the debugger cannot read the `MONO_DEBUGGER__debugger_info' structure at the time
+ * the `libmono.so' library is loaded.
+ *
+ * As a workaround, the `mdb_debug_info' now also contains a global variable called
+ * `MONO_DEBUGGER__using_debugger' which may we set to 1 by the debugger to tell us that we're running
+ * inside the debugger.
+ *
+ * mini_init() checks this and calls mini_debugger_init() if necessary.
+ *
+ */
+
+gboolean
+mini_debug_running_inside_mdb (void)
 {
+	return MONO_DEBUGGER__using_debugger || mono_debug_using_mono_debugger ();
+}
+
+void
+mini_debugger_init (void)
+{
+	if (mono_debugger_event_handler) {
+		g_warning (G_STRLOC ": duplicate call to mono_debugger_init()!");
+		return;
+	}
+
 	debugger_executable_code_buffer = mono_global_codeman_reserve (EXECUTABLE_CODE_BUFFER_SIZE);
 	mono_debugger_event_handler = debugger_event_handler;
 
@@ -484,6 +523,12 @@ mono_debugger_init (void)
 
 	mono_debugger_event (MONO_DEBUGGER_EVENT_INITIALIZE_THREAD_MANAGER,
 			     (guint64) (gssize) MONO_DEBUGGER__debugger_info_ptr, 0);
+}
+
+void
+mini_debugger_set_attach_ok (void)
+{
+	MONO_DEBUGGER__debugger_info.runtime_flags |= DEBUGGER_RUNTIME_FLAGS_ATTACH_OK;
 }
 
 typedef struct 
@@ -509,7 +554,7 @@ main_thread_handler (gpointer user_data)
 }
 
 int
-mono_debugger_main (MonoDomain *domain, MonoAssembly *assembly, int argc, char **argv)
+mini_debugger_main (MonoDomain *domain, MonoAssembly *assembly, int argc, char **argv)
 {
 	MainThreadArgs main_args;
 	MonoImage *image;

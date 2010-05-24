@@ -376,6 +376,16 @@ namespace MonoTests.System.Xml
 			Assert.IsFalse (ms.CanWrite, "#B3");
 		}
 
+		[Test]
+		[ExpectedException (typeof (XmlException))]
+		public void CreateWriter_AttributeNamespacesXmlnsXmlns ()
+		{
+			// Unlike XmlTextWriter, null namespace is not ignored.
+			XmlWriter w = XmlWriter.Create (new StringWriter ());
+			w.WriteStartElement ("foo");
+			w.WriteAttributeString ("xmlns", "xmlns", null, "http://abc.def");
+		}
+
 		XmlWriter CreateWriter (TextWriter tw)
 		{
 			XmlWriterSettings s = new XmlWriterSettings ();
@@ -548,6 +558,21 @@ namespace MonoTests.System.Xml
 			w.WriteNode (nav, false);
 			w.Close ();
 			AssertType.AreEqual ("<hoge />", sw.ToString ());
+		}
+
+		[Test]
+		public void WriteStringDifferentBehavior ()
+		{
+			// Messy implementation difference.
+			// from XmlTextWriter -> <foo />
+			// from XmlWriter.XCreate() -> <foo></foo>
+			var sw = new StringWriter ();
+			var xw = XmlWriter.Create (sw);
+			xw.WriteStartElement ("foo");
+			xw.WriteString ("");
+			xw.WriteEndElement ();
+			xw.Close ();
+			AssertType.AreEqual ("<?xml version='1.0' encoding='utf-16'?><foo></foo>".Replace ('\'', '"'), sw.ToString ());
 		}
 #endif
 

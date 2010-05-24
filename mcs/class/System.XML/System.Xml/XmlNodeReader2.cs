@@ -126,7 +126,7 @@ namespace System.Xml
 			get { return Current.HasAttributes; }
 		}
 
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		public override bool HasValue {
 			get { return Current.HasValue; }
 		}
@@ -360,7 +360,6 @@ namespace System.Xml
 				return source.Read ();
 		}
 
-#if !NET_2_1
 		public override bool ReadAttributeValue ()
 		{
 			if (entity != null && entityInsideAttribute) {
@@ -373,7 +372,6 @@ namespace System.Xml
 			}
 			return Current.ReadAttributeValue ();
 		}
-#endif
 
 #if NET_2_0
 		public override int ReadContentAsBase64 (
@@ -438,7 +436,7 @@ namespace System.Xml
 			return base.ReadString ();
 		}
 
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		public override void ResolveEntity ()
 		{
 			if (entity != null)

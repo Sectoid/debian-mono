@@ -95,9 +95,7 @@ namespace Mono.Xml
 		internal DTDValidatingReader (XmlReader reader,
 			XmlValidatingReader validatingReader)
 		{
-			IHasXmlParserContext container = reader as IHasXmlParserContext;
-			this.reader = new EntityResolvingXmlReader (reader,
-				container != null ? container.ParserContext : null);
+			this.reader = new EntityResolvingXmlReader (reader);
 			this.sourceTextReader = reader as XmlTextReader;
 			elementStack = new Stack ();
 			automataStack = new Stack ();
@@ -968,7 +966,7 @@ namespace Mono.Xml
 			}
 		}
 
-#if NET_2_1
+#if NET_2_1 && !MONOTOUCH
 		internal
 #else
 		public
@@ -990,7 +988,7 @@ namespace Mono.Xml
 				return reader.ReadAttributeValue ();
 		}
 
-#if NET_2_1
+#if NET_2_1 && !MONOTOUCH
 		internal
 #else
 		public
@@ -1033,7 +1031,7 @@ namespace Mono.Xml
 			get { return reader.EOF; }
 		}
 
-#if NET_2_1
+#if NET_2_1 && !MONOTOUCH
 		internal
 #else
 		public

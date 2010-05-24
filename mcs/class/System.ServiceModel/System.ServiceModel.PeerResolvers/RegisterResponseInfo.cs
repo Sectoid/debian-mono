@@ -14,7 +14,7 @@ namespace System.ServiceModel.PeerResolvers
 	[MessageContract (IsWrapped = false)]
 	public class RegisterResponseInfo
 	{
-		[MessageBodyMember (Name = "Update", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
+		[MessageBodyMember (Name = "Update", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")] // .NET indeed returns "Update" element here.
 		RegisterResponseInfoDC body;
 		
 		public RegisterResponseInfo ()
@@ -38,14 +38,13 @@ namespace System.ServiceModel.PeerResolvers
 			set { body.RegistrationLifetime = value; }
 		}
 		
-		[MonoTODO]
 		public bool HasBody ()
 		{
-			throw new NotImplementedException ();
+			return true; // FIXME: I have no idea when it returns false
 		}
 	}
 	
-	[DataContract]
+	[DataContract (Name = "Update", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
 	internal class RegisterResponseInfoDC
 	{
 		Guid registration_id;
@@ -61,7 +60,7 @@ namespace System.ServiceModel.PeerResolvers
 			set { registration_id = value; }
 		}
 		
-		[DataMember]
+		[DataMember (EmitDefaultValue = false)]
 		public TimeSpan RegistrationLifetime {
 			get { return registration_lifetime; }
 			set { registration_lifetime = value; }

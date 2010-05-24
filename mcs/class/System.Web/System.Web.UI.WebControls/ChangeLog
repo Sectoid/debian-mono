@@ -1,3 +1,32 @@
+2010-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlDataSource.cs: reload document when one of Data, DataFile,
+	Transform or TransformFile properties is set. Fixes bug
+	#585968. Fix based on patch from Jeffrey Alvarez
+	<kuritsu@gmail.com>, thanks.
+
+2010-02-19  Marek Habersack  <mhabersack@novell.com>
+
+	* SqlDataSource.cs: call base.OnInit in OnInit. Fixes bug #572781
+
+2010-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* ListItemCollection.cs: ItemsEnabled and associated code removed
+	- there's no need to alter ListItem's Enabled property when
+	loading view state.
+
+	* ListControl.cs: SaveViewState doesn't set the items collection's
+	ItemsEnabled property as it was removed from ListItemCollection
+
+	* CheckBoxList.cs: LoadPostData never unselects any item. A better
+	fix for bug #377703
+	RenderItem renders items as disabled when Enabled is false, but if
+	Enabled is true, item is rendered according to the value of its
+	own Enabled property. Fixes bug #578770
+
+	* TreeView.cs: RegisterStyle must copy CssClass in addition to
+	other style properties. Fixes bug #580692
+
 2010-01-18  Marek Habersack  <mhabersack@novell.com>
 
 	* Parameter.cs: added missing 3.5 APIs - constructors taking
@@ -9,6 +38,17 @@
 	* ChangePassword.cs: BaseChangePasswordContainer forwards
 	EnsureChildControls call to its owner, so that finding controls in
 	the container works correctly.
+
+2009-11-30  Marek Habersack  <mhabersack@novell.com>
+
+	* WebControl.cs: HasAttributes made available as internal for 1.1
+	Avoid calling the Attributes getter many times in
+	CopyBaseAttributes.
+	If TrackViewState is called and attributes state bag already
+	exists, mark all items in the latter as dirty.
+
+	* CheckBox.cs, Button.cs, ImageButton.cs, LinkButton.cs: do not
+	create the Attributes collection if not necessary.
 
 2009-11-16  Marek Habersack  <mhabersack@novell.com>
 
@@ -102,6 +142,12 @@
 	QueryTotalRowCount after executing the select method (that's what
 	.NET does)
 
+2009-08-25  Marek Habersack  <mhabersack@novell.com>
+
+	* WebColorConverter.cs: inform the user that the might need to
+	check if libgdiplus is installed when parsing a color name
+	fails. Fixes bug #533749
+
 2009-08-21  Marek Habersack  <mhabersack@novell.com>
 
 	* Menu.cs: separator image is rendered next to the item in
@@ -114,6 +160,21 @@
 2009-06-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Parameter.cs: add new DbType property.
+
+2009-06-16  Marek Habersack  <mhabersack@novell.com>
+
+	* IPersistedSelector.cs: removed AspNetHostingPermission
+	attributes from the 4.0 profile.
+
+	* IDataBoundControl.cs, IDataBoundItemControl.cs,
+	IDataBoundListControl.cs, IFieldControl.cs: added
+
+	* DetailsView.cs: control implements 4.0 IDataBoundItemControl
+	interface.
+
+	* DataBoundControl.cs: implemented 4.0 property DataSourceObject
+	(internal for 2.0) and made the InternalPerformDataBinding method
+	internal for the 4.0 profile.
 
 2009-06-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -128,6 +189,52 @@
 	begins tracking state and that all of its existing items are
 	marked as dirty. Do the same after loading view state. Fixes bug
 	#507836
+
+2009-04-29  Marek Habersack  <mhabersack@novell.com>
+
+	* DataBoundControl.cs: added InternalGetDataSource method, used by
+	DynamicData
+
+2009-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* GridView.cs: implemented ColumnsGenerator and enabled its use in
+	CreateColumns.
+
+	* DetailsView.cs: implemented the RowsGenerator property and
+	enabled its use in CreateFieldSet.
+
+2009-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* TreeView.js: removed nodeText parameter from the JS calls.
+
+	* TreeView.cs: encode | characters into U+007C, so that
+	RaiseCallbackEvent doesn't get confused.
+	Removed nodeText parameter from the JS calls.
+
+2009-04-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TreeNode.cs: reset the path data for all child nodes too.
+	* TreeView.cs: HtmlAttribute encode the node text. When rebuilding the
+	node tree, set the correct index for the nodes so that the Path is
+	correct.
+
+2009-04-06  Marek Habersack  <mhabersack@novell.com>
+
+	* TreeView.js: TreeView_ToggleExpand now takes more parameters - a
+	full definition of treeview's node contents.
+	Added new function, TreeView_PopulateNode, which partially takes
+	over role of the PopulateNode function generated in
+	TreeView.OnPreRender (see below). Fixes bug #492307
+
+	* TreeView.cs: RaiseCallbackEvent needs to recreate the event
+	target's parental tree all the way from the root to the node and
+	populate only the leaf (requested) node. This avoids calling the
+	TreeNodePopulate handler more times than needed. Fixes bug #492307
+	OnPreRender: moved the script code to constants and the script
+	body is now generated using StringBuilder instead of a series of
+	String.Format calls.
+	GetClientExpandEvent: adjusted code for new TreeView JavaScript
+	API.
 
 2009-03-17  Marek Habersack  <mhabersack@novell.com>
 

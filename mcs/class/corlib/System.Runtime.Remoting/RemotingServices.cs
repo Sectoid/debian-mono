@@ -578,13 +578,13 @@ namespace System.Runtime.Remoting
 			RemotingProxy proxy = new RemotingProxy (type, ChannelServices.CrossContextUrl, activationAttributes);
 			return proxy.GetTransparentProxy();
 		}
-
+#if !NET_2_1
 		internal static object CreateClientProxyForComInterop (Type type)
 		{
-			Mono.Interop.ComInteropProxy proxy = new Mono.Interop.ComInteropProxy (type);
+			Mono.Interop.ComInteropProxy proxy = Mono.Interop.ComInteropProxy.CreateProxy (type);
 			return proxy.GetTransparentProxy ();
 		}
-	
+#endif
 		internal static Identity GetIdentityForUri (string uri)
 		{
 			string normUri = GetNormalizedUri (uri);
@@ -856,7 +856,9 @@ namespace System.Runtime.Remoting
 				AppDomain.InternalSetContext (currentContext);
 			}				
 
-			MemoryStream stream = new MemoryStream (data);
+			byte[] data_copy = new byte [data.Length];
+			data.CopyTo (data_copy, 0);
+			MemoryStream stream = new MemoryStream (data_copy);
 			ObjRef appref = (ObjRef) CADSerializer.DeserializeObject (stream);
 			return (AppDomain) RemotingServices.Unmarshal(appref);
 		}

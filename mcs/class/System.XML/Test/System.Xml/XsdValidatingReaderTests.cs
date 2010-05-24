@@ -17,7 +17,7 @@ using NUnit.Framework;
 namespace MonoTests.System.Xml
 {
 	[TestFixture]
-	public class XsdValidatingReaderTests : Assertion
+	public class XsdValidatingReaderTests
 	{
 		public XsdValidatingReaderTests ()
 		{
@@ -50,14 +50,14 @@ namespace MonoTests.System.Xml
 		{
 			string xml = "<root/>";
 			xvr = PrepareXmlReader (xml);
-			AssertEquals (ValidationType.Auto, xvr.ValidationType);
+			Assert.AreEqual (ValidationType.Auto, xvr.ValidationType);
 			XmlSchema schema = new XmlSchema ();
 			XmlSchemaElement elem = new XmlSchemaElement ();
 			elem.Name = "root";
 			schema.Items.Add (elem);
 			xvr.Schemas.Add (schema);
 			xvr.Read ();	// root
-			AssertEquals (ValidationType.Auto, xvr.ValidationType);
+			Assert.AreEqual (ValidationType.Auto, xvr.ValidationType);
 			xvr.Read ();	// EOF
 
 			xml = "<hoge/>";
@@ -65,7 +65,7 @@ namespace MonoTests.System.Xml
 			xvr.Schemas.Add (schema);
 			try {
 				xvr.Read ();
-				Fail ("element mismatch is incorrectly allowed");
+				Assert.Fail ("element mismatch is incorrectly allowed");
 			} catch (XmlSchemaException) {
 			}
 
@@ -74,7 +74,7 @@ namespace MonoTests.System.Xml
 			xvr.Schemas.Add (schema);
 			try {
 				xvr.Read ();
-				Fail ("Element in different namespace is incorrectly allowed.");
+				Assert.Fail ("Element in different namespace is incorrectly allowed.");
 			} catch (XmlSchemaException) {
 			}
 		}
@@ -95,22 +95,22 @@ namespace MonoTests.System.Xml
 			xvr.Schemas.Add (schema);
 			// Read directly from root.
 			object o = xvr.ReadTypedValue ();
-			AssertEquals (ReadState.Initial, xvr.ReadState);
-			AssertNull (o);
+			Assert.AreEqual (ReadState.Initial, xvr.ReadState);
+			Assert.IsNull (o);
 
 			xvr.Read ();	// element root
-			AssertEquals (XmlNodeType.Element, xvr.NodeType);
-			AssertNotNull (xvr.SchemaType);
-			Assert (xvr.SchemaType is XmlSchemaDatatype);
+			Assert.AreEqual (XmlNodeType.Element, xvr.NodeType);
+			Assert.IsNotNull (xvr.SchemaType);
+			Assert.IsTrue (xvr.SchemaType is XmlSchemaDatatype);
 			o = xvr.ReadTypedValue ();	// read "12"
-			AssertEquals (XmlNodeType.EndElement, xvr.NodeType);
-			AssertNotNull (o);
-			AssertEquals (typeof (decimal), o.GetType ());
+			Assert.AreEqual (XmlNodeType.EndElement, xvr.NodeType);
+			Assert.IsNotNull (o);
+			Assert.AreEqual (typeof (decimal), o.GetType ());
 			decimal n = (decimal) o;
-			AssertEquals (12, n);
-			Assert (!xvr.EOF);
-			AssertEquals ("root", xvr.Name);
-			AssertNull (xvr.SchemaType);	// EndElement's type
+			Assert.AreEqual (12, n);
+			Assert.IsTrue (!xvr.EOF);
+			Assert.AreEqual ("root", xvr.Name);
+			Assert.IsNull (xvr.SchemaType);	// EndElement's type
 
 			// Lap 2:
 
@@ -118,14 +118,14 @@ namespace MonoTests.System.Xml
 			xvr.Schemas.Add (schema);
 			xvr.Read ();	// root
 			XmlSchemaDatatype dt = xvr.SchemaType as XmlSchemaDatatype;
-			AssertNotNull (dt);
-			AssertEquals (typeof (decimal), dt.ValueType);
-			AssertEquals (XmlTokenizedType.None, dt.TokenizedType);
+			Assert.IsNotNull (dt);
+			Assert.AreEqual (typeof (decimal), dt.ValueType);
+			Assert.AreEqual (XmlTokenizedType.None, dt.TokenizedType);
 			xvr.Read ();	// text "12"
-			AssertNull (xvr.SchemaType);
+			Assert.IsNull (xvr.SchemaType);
 			o = xvr.ReadTypedValue ();
 			// ReadTypedValue is different from ReadString().
-			AssertNull (o);
+			Assert.IsNull (o);
 		}
 
 		[Test]
@@ -138,7 +138,7 @@ namespace MonoTests.System.Xml
 			string xml = "<x:root xmlns:x='urn:foo' />";
 			xvr = PrepareXmlReader (xml);
 			xvr.Namespaces = false;
-			AssertEquals (ValidationType.Auto, xvr.ValidationType);
+			Assert.AreEqual (ValidationType.Auto, xvr.ValidationType);
 			XmlSchema schema = new XmlSchema ();
 			schema.TargetNamespace = "urn:foo";
 			XmlSchemaElement elem = new XmlSchemaElement ();
@@ -146,12 +146,12 @@ namespace MonoTests.System.Xml
 			schema.Items.Add (elem);
 			xvr.Schemas.Add (schema);
 			xvr.Read ();	// root
-			Assert (!xvr.Namespaces);
-			AssertEquals ("x:root", xvr.Name);
+			Assert.IsTrue (!xvr.Namespaces);
+			Assert.AreEqual ("x:root", xvr.Name);
 			// LocalName may contain colons.
-			AssertEquals ("x:root", xvr.LocalName);
+			Assert.AreEqual ("x:root", xvr.LocalName);
 			// NamespaceURI is not supplied.
-			AssertEquals ("", xvr.NamespaceURI);
+			Assert.AreEqual ("", xvr.NamespaceURI);
 		}
 
 		[Test]
@@ -172,19 +172,19 @@ namespace MonoTests.System.Xml
 			xvr = PrepareXmlReader (xml);
 			xvr.Schemas.Add (schema);
 			xvr.Read ();
-			AssertEquals ("root", xvr.Name);
-			Assert (xvr.MoveToNextAttribute ());	// attr
-			AssertEquals ("attr", xvr.Name);
+			Assert.AreEqual ("root", xvr.Name);
+			Assert.IsTrue (xvr.MoveToNextAttribute ());	// attr
+			Assert.AreEqual ("attr", xvr.Name);
 			XmlSchemaDatatype dt = xvr.SchemaType as XmlSchemaDatatype;
-			AssertNotNull (dt);
-			AssertEquals (typeof (int), dt.ValueType);
-			AssertEquals (XmlTokenizedType.None, dt.TokenizedType);
+			Assert.IsNotNull (dt);
+			Assert.AreEqual (typeof (int), dt.ValueType);
+			Assert.AreEqual (XmlTokenizedType.None, dt.TokenizedType);
 			object o = xvr.ReadTypedValue ();
-			AssertEquals (XmlNodeType.Attribute, xvr.NodeType);
-			AssertEquals (typeof (int), o.GetType ());
+			Assert.AreEqual (XmlNodeType.Attribute, xvr.NodeType);
+			Assert.AreEqual (typeof (int), o.GetType ());
 			int n = (int) o;
-			AssertEquals (12, n);
-			Assert (xvr.ReadAttributeValue ());	// can read = seems not proceed.
+			Assert.AreEqual (12, n);
+			Assert.IsTrue (xvr.ReadAttributeValue ());	// can read = seems not proceed.
 		}
 
 		[Test]
@@ -220,15 +220,15 @@ namespace MonoTests.System.Xml
 				xml, XmlNodeType.Document, null);
 			vr.Read ();
 			vr.Read (); // whitespace
-			AssertEquals ("#1", String.Empty, vr.NamespaceURI);
+			Assert.AreEqual (String.Empty, vr.NamespaceURI, "#1");
 			vr.Read (); // foo
-			AssertEquals ("#2", "urn:a", vr.NamespaceURI);
+			Assert.AreEqual ("urn:a", vr.NamespaceURI, "#2");
 			vr.Read (); // whitespace
 			vr.Read (); // a:bar
-			AssertEquals ("#3", "urn:a", vr.NamespaceURI);
+			Assert.AreEqual ("urn:a", vr.NamespaceURI, "#3");
 			vr.Read (); // whitespace
 			vr.Read (); // bug
-			AssertEquals ("#4", "urn:a", vr.NamespaceURI);
+			Assert.AreEqual ("urn:a", vr.NamespaceURI, "#4");
 		}
 
 		[Test]
@@ -261,8 +261,8 @@ namespace MonoTests.System.Xml
 			XmlValidatingReader vr = new XmlValidatingReader (xir);
 			vr.Schemas.Add (XmlSchema.Read (xsr, null));
 			vr.Read (); // root
-			AssertEquals ("xx", vr.ReadTypedValue ());
-			AssertEquals (XmlNodeType.EndElement, vr.NodeType);
+			Assert.AreEqual ("xx", vr.ReadTypedValue ());
+			Assert.AreEqual (XmlNodeType.EndElement, vr.NodeType);
 		}
 
 		// If we normalize string before validating with facets,
@@ -289,8 +289,8 @@ namespace MonoTests.System.Xml
 			XmlValidatingReader vr = new XmlValidatingReader (xir);
 			vr.Schemas.Add (XmlSchema.Read (xsr, null));
 			vr.Read (); // root
-			AssertEquals ("  ", vr.ReadTypedValue ());
-			AssertEquals (XmlNodeType.EndElement, vr.NodeType);
+			Assert.AreEqual ("  ", vr.ReadTypedValue ());
+			Assert.AreEqual (XmlNodeType.EndElement, vr.NodeType);
 		}
 
 		[Test] // bug #77241
@@ -402,7 +402,7 @@ namespace MonoTests.System.Xml
 			XmlReader r = XmlReader.Create (new StringReader (xml), s);
 			r.Read ();
 			r.MoveToFirstAttribute (); // default attribute
-			AssertEquals (String.Empty, r.Prefix);
+			Assert.AreEqual (String.Empty, r.Prefix);
 		}
 #endif
 
@@ -574,7 +574,70 @@ namespace MonoTests.System.Xml
 
 			RunValidation (xml, xsd);
 		}
+		
+		[Test]
+		public void Bug501763 ()
+		{
+			string xsd1 = @"
+			<xs:schema id='foo1'
+				targetNamespace='foo1'
+				elementFormDefault='qualified'
+				xmlns='foo1'			  
+				xmlns:xs='http://www.w3.org/2001/XMLSchema'
+				xmlns:f2='foo2'>
 
+				<xs:import namespace='foo2' />
+				<xs:element name='Foo1Element' type='f2:Foo2ExtendedType'/>	
+			</xs:schema>";
+
+			string xsd2 = @"
+			<xs:schema id='foo2'
+				targetNamespace='foo2'
+				elementFormDefault='qualified'
+				xmlns='foo2'    
+				xmlns:xs='http://www.w3.org/2001/XMLSchema' >
+
+				<xs:element name='Foo2Element' type='Foo2Type' />
+	
+				<xs:complexType name='Foo2Type'>
+					<xs:attribute name='foo2Attr' type='xs:string' use='required'/>
+				</xs:complexType>
+	
+				<xs:complexType name='Foo2ExtendedType'>
+					<xs:complexContent>
+						<xs:extension base='Foo2Type'>
+							<xs:attribute name='foo2ExtAttr' type='xs:string' use='required'/>
+						</xs:extension>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:schema>";
+
+			
+			XmlDocument doc = new XmlDocument ();
+			
+			XmlSchema schema1 = XmlSchema.Read (XmlReader.Create (new StringReader (xsd1)), null);
+			XmlSchema schema2 = XmlSchema.Read (XmlReader.Create (new StringReader (xsd2)), null);
+			
+			doc.LoadXml (@"
+				<Foo2Element
+					foo2Attr='dummyvalue1'
+					xmlns='foo2'
+				/>");
+			doc.Schemas.Add (schema2);
+			doc.Validate (null);
+			
+			doc = new XmlDocument();
+			doc.LoadXml(@"
+				<Foo1Element
+					foo2Attr='dummyvalue1'
+					foo2ExtAttr='dummyvalue2'
+					xmlns='foo1'
+				/>");
+			doc.Schemas.Add (schema2);
+			doc.Schemas.Add (schema1);
+			doc.Validate (null);
+		}
+		
 		void RunValidation (string xml, string xsd)
 		{
 			XmlReaderSettings s = new XmlReaderSettings ();
