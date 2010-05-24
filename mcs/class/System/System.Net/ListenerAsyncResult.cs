@@ -41,6 +41,7 @@ namespace System.Net {
 		Exception exception;
 		HttpListenerContext context;
 		object locker = new object ();
+		ListenerAsyncResult forward;
 
 		public ListenerAsyncResult (AsyncCallback cb, object state)
 		{
@@ -50,6 +51,10 @@ namespace System.Net {
 
 		internal void Complete (string error)
 		{
+			if (forward != null) {
+				forward.Complete (error);
+				return;
+			}
 			//FIXME: error_code?
 			exception = new HttpListenerException (0, error);
 			lock (locker) {
@@ -65,6 +70,10 @@ namespace System.Net {
 		static void InvokeCallback (object o)
 		{
 			ListenerAsyncResult ares = (ListenerAsyncResult) o;
+			if (ares.forward != null) {
+				ares.forward.cb (ares);
+				return;
+			}
 			ares.cb (ares);
 		}
 
@@ -75,26 +84,45 @@ namespace System.Net {
 
 		internal void Complete (HttpListenerContext context, bool synch)
 		{
+			if (forward != null) {
+				forward.Complete (context, synch);
+				return;
+			}
 			this.synch = synch;
 			this.context = context;
 			lock (locker) {
-				completed = true;
-				if (handle != null)
-					handle.Set ();
-
-				if ((context.Listener.AuthenticationSchemes == AuthenticationSchemes.Basic || context.Listener.AuthenticationSchemes == AuthenticationSchemes.Negotiate) && context.Request.Headers ["Authorization"] == null) {
-					context.Listener.EndGetContext (this);
+				AuthenticationSchemes schemes = context.Listener.SelectAuthenticationScheme (context);
+				if ((schemes == AuthenticationSchemes.Basic || context.Listener.AuthenticationSchemes == AuthenticationSchemes.Negotiate) && context.Request.Headers ["Authorization"] == null) {
 					context.Response.StatusCode = 401;
-					context.Response.Headers ["WWW-Authenticate"] = AuthenticationSchemes.Basic + " realm=\"\"";
+					context.Response.Headers ["WWW-Authenticate"] = schemes + " realm=\"" + context.Listener.Realm + "\"";
 					context.Response.OutputStream.Close ();
-					context.Listener.BeginGetContext (cb, state);
-				} else if (cb != null)
-					ThreadPool.QueueUserWorkItem (InvokeCallback, this);
+					IAsyncResult ares = context.Listener.BeginGetContext (cb, state);
+					this.forward = (ListenerAsyncResult) ares;
+					lock (forward.locker) {
+						if (handle != null)
+							forward.handle = handle;
+					}
+					ListenerAsyncResult next = forward;
+					for (int i = 0; next.forward != null; i++) {
+						if (i > 20)
+							Complete ("Too many authentication errors");
+						next = next.forward;
+					}
+				} else {
+					completed = true;
+					if (handle != null)
+						handle.Set ();
+
+					if (cb != null)
+						ThreadPool.QueueUserWorkItem (InvokeCallback, this);
+				}
 			}
 		}
 
 		internal HttpListenerContext GetContext ()
 		{
+			if (forward != null)
+				return forward.GetContext ();
 			if (exception != null)
 				throw exception;
 
@@ -102,11 +130,18 @@ namespace System.Net {
 		}
 		
 		public object AsyncState {
-			get { return state; }
+			get {
+				if (forward != null)
+					return forward.AsyncState;
+				return state;
+			}
 		}
 
 		public WaitHandle AsyncWaitHandle {
 			get {
+				if (forward != null)
+					return forward.AsyncWaitHandle;
+
 				lock (locker) {
 					if (handle == null)
 						handle = new ManualResetEvent (completed);
@@ -117,11 +152,19 @@ namespace System.Net {
 		}
 
 		public bool CompletedSynchronously {
-			get { return synch; }
+			get {
+				if (forward != null)
+					return forward.CompletedSynchronously;
+				return synch;
+			}
+
 		}
 
 		public bool IsCompleted {
 			get {
+				if (forward != null)
+					return forward.IsCompleted;
+
 				lock (locker) {
 					return completed;
 				}

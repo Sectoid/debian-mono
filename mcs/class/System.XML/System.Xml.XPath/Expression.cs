@@ -48,26 +48,29 @@ namespace System.Xml.XPath
 	{
 		static readonly Hashtable table_per_ctx = new Hashtable ();
 		static object dummy = new object ();
+		static object cache_lock = new object ();
 
 		public static XPathExpression Get (string xpath, IStaticXsltContext ctx)
 		{
 			object ctxkey = ctx != null ? ctx : dummy;
 
-			WeakReference wr = table_per_ctx [ctxkey] as WeakReference;
-			if (wr == null)
-				return null;
-			if (!wr.IsAlive) {
-				table_per_ctx [ctxkey] = null;
-				return null;
-			}
-			Hashtable table = (Hashtable) wr.Target;
+			lock (cache_lock) {
+				WeakReference wr = table_per_ctx [ctxkey] as WeakReference;
+				if (wr == null)
+					return null;
+				Hashtable table = wr.Target as Hashtable;
+				if (table == null) {
+					table_per_ctx [ctxkey] = null;
+					return null;
+				}
 
-			wr = table [xpath] as WeakReference;
-			if (wr != null) {
-				if (wr.IsAlive)
-					// it may return null (as it might be GC-ed), but we don't have to worrt about it here.
-					return (XPathExpression) wr.Target;
-				table [xpath] = null;
+				wr = table [xpath] as WeakReference;
+				if (wr != null) {
+					XPathExpression e = wr.Target as XPathExpression;
+					if (e != null)
+						return e;
+					table [xpath] = null;
+				}
 			}
 			return null;
 		}
@@ -77,15 +80,16 @@ namespace System.Xml.XPath
 			object ctxkey = ctx != null ? ctx : dummy;
 
 			Hashtable table = null;
-
-			WeakReference wr = table_per_ctx [ctxkey] as WeakReference;
-			if (wr != null && wr.IsAlive)
-				table = (Hashtable) wr.Target;
-			if (table == null) {
-				table = new Hashtable ();
-				table_per_ctx [ctxkey] = new WeakReference (table);
+			lock (cache_lock) {
+				WeakReference wr = table_per_ctx [ctxkey] as WeakReference;
+				if (wr != null && wr.IsAlive)
+					table = (Hashtable) wr.Target;
+				if (table == null) {
+					table = new Hashtable ();
+					table_per_ctx [ctxkey] = new WeakReference (table);
+				}
+				table [xpath] = new WeakReference (exp);
 			}
-			table [xpath] = new WeakReference (exp);
 		}
 	}
 
@@ -518,9 +522,12 @@ namespace System.Xml.XPath
 				}
 				if (iterResult != null)
 					return iterResult;
+				if (o == null)
+					return new NullIterator (iter);
+				type = GetReturnType (o);
 				break;
 			}
-			throw new XPathException ("expected nodeset: "+ToString ());
+			throw new XPathException (String.Format ("expected nodeset but was {1}: {0}", ToString (), type));
 		}
 
 		protected static XPathResultType GetReturnType (object obj)
@@ -569,7 +576,12 @@ namespace System.Xml.XPath
 
 			switch (type) {
 			case XPathResultType.Number:
-				return (double)result;
+				if (result is double)
+					return (double)result;
+				else if (result is IConvertible)
+					return ((IConvertible) result).ToDouble (CultureInfo.InvariantCulture);
+				else
+					return (double) result; // most likely invalid cast
 			case XPathResultType.Boolean:
 				return ((bool) result) ? 1.0 : 0.0;
 			case XPathResultType.NodeSet:
@@ -1231,7 +1243,7 @@ namespace System.Xml.XPath
 			if (left.Peer && right.Subtree)
 				return new SimpleSlashIterator (iterLeft, right);
 			BaseIterator si = new SlashIterator (iterLeft, right);
-			return RequireSorting ? new SortedIterator (si) : si;
+			return new SortedIterator (si);
 		}
 
 		public override bool RequireSorting { get { return left.RequireSorting || right.RequireSorting; } }

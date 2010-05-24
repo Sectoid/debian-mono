@@ -42,68 +42,59 @@ namespace System.ServiceModel
 	{
 		public ServiceBehaviorAttribute ()
 		{
+			AutomaticSessionShutdown = true;
+			ConcurrencyMode = ConcurrencyMode.Single;
+			InstanceContextMode = InstanceContextMode.PerSession;
+			MaxItemsInObjectGraph = 0x10000;
+			SessionMode = SessionMode.Allowed;
+			ReleaseServiceInstanceOnTransactionComplete = true;
+			TransactionIsolationLevel = IsolationLevel.Unspecified;
+			UseSynchronizationContext = true;
+			ValidateMustUnderstand = true;
 		}
 
-		bool auto_session_shutdown, ignore_ext_data,
-			release, inc_fault_details,
-			use_sync_ctx, tx_close, validate_must_understand;
-		ConcurrencyMode concurrency;
-		IsolationLevel tx_level;
 		string tx_timeout;
-		InstanceContextMode context_mode = InstanceContextMode.PerCall;
 		object singleton;
 
 		[MonoTODO]
-		public bool AutomaticSessionShutdown {
-			get { return auto_session_shutdown; }
-			set { auto_session_shutdown = value; }
-		}
+		public string Name { get; set; }
+		[MonoTODO]
+		public string Namespace { get; set; }
+		[MonoTODO]
+		public string ConfigurationName { get; set; }
 
 		[MonoTODO]
-		public ConcurrencyMode ConcurrencyMode {
-			get { return concurrency; }
-			set { concurrency = value; }
-		}
+		public AddressFilterMode AddressFilterMode { get; set; }
 
 		[MonoTODO]
-		public bool IgnoreExtensionDataObject {
-			get { return ignore_ext_data; }
-			set { ignore_ext_data = value; }
-		}
-
-		public InstanceContextMode InstanceContextMode {
-			get { return context_mode; }
-			set { context_mode = value; }
-		}
-
-		public bool ReleaseServiceInstanceOnTransactionComplete {
-			get { return release; }
-			set { release = value; }
-		}
+		public bool AutomaticSessionShutdown { get; set; }
 
 		[MonoTODO]
-		public bool IncludeExceptionDetailInFaults {
-			get { return inc_fault_details; }
-			set { inc_fault_details = value; }
-		}
+		public ConcurrencyMode ConcurrencyMode { get; set; }
 
 		[MonoTODO]
-		public bool UseSynchronizationContext {
-			get { return use_sync_ctx; }
-			set { use_sync_ctx = value; }
-		}
+		public bool IgnoreExtensionDataObject { get; set; }
+
+		public InstanceContextMode InstanceContextMode { get; set; }
+
+		public bool IncludeExceptionDetailInFaults { get; set; }
 
 		[MonoTODO]
-		public bool TransactionAutoCompleteOnSessionClose {
-			get { return tx_close; }
-			set { tx_close = value; }
-		}
+		public int MaxItemsInObjectGraph { get; set; }
 
 		[MonoTODO]
-		public IsolationLevel TransactionIsolationLevel {
-			get { return tx_level; }
-			set { tx_level = value; }
-		}
+		public bool ReleaseServiceInstanceOnTransactionComplete { get; set; }
+
+		[MonoTODO]
+		public SessionMode SessionMode { get; set; }
+
+		public bool UseSynchronizationContext { get; set; }
+
+		[MonoTODO]
+		public IsolationLevel TransactionIsolationLevel { get; set; }
+
+		[MonoTODO]
+		public bool TransactionAutoCompleteOnSessionClose { get; set; }
 
 		[MonoTODO]
 		public string TransactionTimeout {
@@ -116,10 +107,7 @@ namespace System.ServiceModel
 		}
 
 		[MonoTODO]
-		public bool ValidateMustUnderstand {
-			get { return validate_must_understand; }
-			set { validate_must_understand = value; }
-		}
+		public bool ValidateMustUnderstand { get; set; }
 
 		public object GetWellKnownSingleton ()
 		{
@@ -147,8 +135,8 @@ namespace System.ServiceModel
 			ServiceDescription description,
 			ServiceHostBase serviceHostBase)
 		{
-			if (singleton != null && context_mode != InstanceContextMode.Single)
-				throw new InvalidOperationException ("When creating a Service host with a service instance, use InstanceContext.Mode.Single in the ServiceBehaviorAttribute.");
+			if (singleton != null && InstanceContextMode != InstanceContextMode.Single)
+				throw new InvalidOperationException ("When creating a Service host with a service instance, use InstanceContextMode.Single in the ServiceBehaviorAttribute.");
 
 			foreach (ChannelDispatcherBase cdb in serviceHostBase.ChannelDispatchers) {
 				ChannelDispatcher cd = cdb as ChannelDispatcher;
@@ -156,19 +144,26 @@ namespace System.ServiceModel
 					continue;
 				if (IncludeExceptionDetailInFaults) // may be set also in ServiceDebugBehaviorAttribute
 					cd.IncludeExceptionDetailInFaults = true;
-				foreach (EndpointDispatcher ed in cd.Endpoints)
-					ed.DispatchRuntime.InstanceContextProvider = CreateInstanceContextProvider (serviceHostBase);
+				foreach (EndpointDispatcher ed in cd.Endpoints) {
+					if (InstanceContextMode == InstanceContextMode.Single)
+						ed.DispatchRuntime.SingletonInstanceContext = CreateSingletonInstanceContext (serviceHostBase);
+					ed.DispatchRuntime.InstanceContextProvider = CreateInstanceContextProvider (serviceHostBase, ed.DispatchRuntime);
+				}
 			}
 		}
 
-		IInstanceContextProvider CreateInstanceContextProvider (ServiceHostBase host)
+		InstanceContext CreateSingletonInstanceContext (ServiceHostBase host)
+		{
+			return new InstanceContext (host, GetWellKnownSingleton ());
+		}
+
+		IInstanceContextProvider CreateInstanceContextProvider (ServiceHostBase host, DispatchRuntime runtime)
 		{
 			switch (InstanceContextMode) {
 			case InstanceContextMode.Single:
-				return new SingletonInstanceContextProvider (new InstanceContext (host, GetWellKnownSingleton ()));
+				return new SingletonInstanceContextProvider (runtime.SingletonInstanceContext);
 			case InstanceContextMode.PerSession:
-				// FIXME: implement
-				throw new NotImplementedException ();
+				return new SessionInstanceContextProvider (host);
 			//case InstanceContextMode.PerCall:
 			default:
 				return null; // default

@@ -6,8 +6,8 @@
  *      Patrik Torstensson (p@rxc.se)
  *	Sebastien Pouliot (sebastien@ximian.com)
  *
- * (C) 2001 Ximian, Inc.
- * Copyright (C) 2004-2005 Novell, Inc (http://www.novell.com)
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
@@ -17,6 +17,9 @@
 #include <fcntl.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#ifdef HAVE_STRING_H
+#include <string.h>
 #endif
 
 #include <mono/metadata/object.h>

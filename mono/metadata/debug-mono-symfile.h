@@ -119,6 +119,14 @@ _mono_debug_address_from_il_offset (MonoDebugMethodJitInfo   *jit,
 MonoDebugMethodInfo *
 mono_debug_symfile_lookup_method   (MonoDebugHandle          *handle,
 				    MonoMethod               *method);
+
+int
+mono_debug_symfile_lookup_locals (MonoDebugMethodInfo *minfo, char ***names, 
+								  int **indexes);
+
+void
+mono_debug_symfile_get_line_numbers (MonoDebugMethodInfo *minfo, char **source_file, int *n_il_offsets, int **il_offsets, int **line_numbers);
+
 G_END_DECLS
 
 #endif /* __MONO_SYMFILE_H__ */

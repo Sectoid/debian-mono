@@ -81,6 +81,8 @@
 /* dyn_load.c isn't linked in.						*/
 #ifdef DYNAMIC_LOADING
 # define GC_REGISTER_MAIN_STATIC_DATA() GC_register_main_static_data()
+#elif defined(GC_DONT_REGISTER_MAIN_STATIC_DATA)
+# define GC_REGISTER_MAIN_STATIC_DATA() FALSE
 #else
 # define GC_REGISTER_MAIN_STATIC_DATA() TRUE
 #endif
@@ -464,6 +466,15 @@ size_t GC_get_bytes_since_gc GC_PROTO(())
 size_t GC_get_total_bytes GC_PROTO(())
 {
     return ((size_t) WORDS_TO_BYTES(GC_words_allocd+GC_words_allocd_before_gc));
+}
+
+int GC_get_suspend_signal GC_PROTO(())
+{
+#if defined(SIG_SUSPEND) && defined(GC_PTHREADS) && !defined(GC_MACOSX_THREADS)
+	return SIG_SUSPEND;
+#else
+	return -1;
+#endif
 }
 
 GC_bool GC_is_initialized = FALSE;

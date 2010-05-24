@@ -1,6 +1,29 @@
+2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgsTest.cs: New. Unit tests
+	[Backport r142675]
+
+2009-06-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SocketTest.cs: Added tests for argument checks, and improved tests
+	for disposed socket.
+
+2009-06-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* IPv6MulticastOptionTest.cs: Added .ctor and property tests.
+	* MulticastOptionTest.cs: Added .ctor and property tests.
+	* SocketTest.cs: Fixed compiler warnings. Improved tests for
+	closed socket. Added tests fr GetSocketOption, and SetSocketOption
+	overloads (for Linger, DontLinger, AddMembership and DropMembership).
+	* UdpClientTest.cs: Added .ctor and JoinMulticastGroup tests.
+
 2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SocketTest.cs: tests for DontLinger.
+
+2009-06-26  Robert Jordan  <robertj@gmx.net>
+
+	* *.cs: Upgrade to new NUnit style.
 
 2009-01-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

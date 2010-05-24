@@ -711,11 +711,18 @@ namespace System.Data.Common {
 			for (int i = 0; i < length; i++) {
 				command.Parameters [i].Value = restrictionValues [i];
 			}
-			DbProviderFactory dbProvider = DbProviderFactories.GetFactory (this.GetType (). ToString ());
-			DbDataAdapter dataAdapter = dbProvider.CreateDataAdapter ();
+			DbDataAdapter dataAdapter = DbProviderFactory.CreateDataAdapter ();
 			dataAdapter.SelectCommand = command;
 			dataAdapter.Fill (dataTable);
 			return dataTable;
+		}
+
+		protected virtual DbProviderFactory DbProviderFactory {
+#if MONOTOUCH
+			get {throw new NotImplementedException();}
+#else   // MONOTOUCH
+			get { return DbProviderFactories.GetFactory (this.GetType (). ToString ()); }
+#endif  // MONOTOUCH
 		}
 #endif
 

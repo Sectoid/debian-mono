@@ -267,10 +267,12 @@ This is Mono.
 
 		This defaults to `yes'.
 
-	--with-preview=yes,no
+	--with-profile2=yes,no
 
-		Whether you want to build libraries that are still not
-	  	completed (The 2.0 APIs).   It defaults to `yes'.
+		Whether you want to build the 2.x libraries (support
+		for Generics and the 2.0/3.5 APIS).
+
+	  	It defaults to `yes'.
 
 	--with-moonlight=yes,no
 
@@ -279,11 +281,9 @@ This is Mono.
 		(1.1 and 2.0 APIs).
 
 		This will produce the `smcs' compiler which will reference
-		the Silvelright modified assemblies (mscorlib.dll,
+		the Silverlight modified assemblies (mscorlib.dll,
 		System.dll, System.Code.dll and System.Xml.Core.dll) and turn
 	  	on the LINQ extensions for the compiler.
-
-		This option defaults to `no' and it is considered pre-alpha.
 
 	--with-libgdiplus=installed,sibling,<path>
 
@@ -324,6 +324,11 @@ This is Mono.
 			Disables support for the Ahead of Time
 	  		compilation.
 
+		attach:
+			Support for the Mono.Management assembly and the
+			VMAttach API (allowing code to be injected into
+			a target VM)
+
 		com:
 			Disables COM support.
 
@@ -332,6 +337,12 @@ This is Mono.
 
 	 	decimal:
 			Disables support for System.Decimal.
+
+		full_messages:
+			By default Mono comes with a full table
+			of messages for error codes.   This feature
+			turns off uncommon error messages and reduces
+			the runtime size.
 
 		generics:
 			Generics support.  Disabling this will not
@@ -355,6 +366,11 @@ This is Mono.
 			disabling this will drop support for any
 			libraries using DllImport.
 
+		portability:
+			Removes support for MONO_IOMAP, the environment
+			variables for simplifying porting applications that 
+			are case-insensitive and that mix the Unix and Windows path separators.
+
 		profiler:
 			Disables support for the default profiler.
 
@@ -365,6 +381,11 @@ This is Mono.
 			Drop support for saving dynamically created
 			assemblies (AssemblyBuilderAccess.Save) in
 			System.Reflection.Emit.
+
+		shadow_copy:
+			Disables support for AppDomain's shadow copies
+			(you can disable this if you do not plan on 
+			using appdomains).
 
 		simd:
 			Disables support for the Mono.SIMD intrinsics
@@ -501,3 +522,4 @@ This is Mono.
 		independent checkout) from the Mono module, that
 		directory is automatically configured to share the
 		same prefix than this module gets.
+

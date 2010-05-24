@@ -147,15 +147,17 @@ namespace Mono.Linker.Steps {
 
 			switch (preserve) {
 			case TypePreserve.Nothing:
-				if (nav.HasChildren) {
-					MarkSelectedFields (nav, type);
-					MarkSelectedMethods (nav, type);
-				} else
+				if (!nav.HasChildren)
 					Annotations.SetPreserve (type, TypePreserve.All);
 				break;
 			default:
 				Annotations.SetPreserve (type, preserve);
 				break;
+			}
+
+			if (nav.HasChildren) {
+				MarkSelectedFields (nav, type);
+				MarkSelectedMethods (nav, type);
 			}
 		}
 
@@ -193,13 +195,38 @@ namespace Mono.Linker.Steps {
 		void ProcessFields (TypeDefinition type, XPathNodeIterator iterator)
 		{
 			while (iterator.MoveNext ()) {
-				string signature = GetSignature (iterator.Current);
-				FieldDefinition field = GetField (type, signature);
-				if (field != null)
-					Annotations.Mark (field);
-				else
-					AddUnresolveMarker (string.Format ("T: {0}; F: {1}", type, signature));
+				if (GetAttribute (iterator.Current, "signature") != null)
+					ProcessFieldSignature (type, iterator.Current);
+
+				if (GetAttribute (iterator.Current, "name") != null)
+					ProcessFieldName (type, iterator.Current);
 			}
+		}
+
+		void ProcessFieldSignature (TypeDefinition type, XPathNavigator nav)
+		{
+			string signature = GetSignature (nav);
+			FieldDefinition field = GetField (type, signature);
+			MarkField (type, field, signature);
+		}
+
+		void MarkField (TypeDefinition type, FieldDefinition field, string signature)
+		{
+			if (field != null)
+				Annotations.Mark (field);
+			else
+				AddUnresolveMarker (string.Format ("T: {0}; F: {1}", type, signature));
+		}
+
+		void ProcessFieldName (TypeDefinition type, XPathNavigator nav)
+		{
+			if (!type.HasFields)
+				return;
+
+			string name = GetAttribute (nav, "name");
+			foreach (FieldDefinition field in type.Fields)
+				if (field.Name == name)
+					MarkField (type, field, name);
 		}
 
 		static FieldDefinition GetField (TypeDefinition type, string signature)
@@ -222,28 +249,55 @@ namespace Mono.Linker.Steps {
 		void ProcessMethods (TypeDefinition type, XPathNodeIterator iterator)
 		{
 			while (iterator.MoveNext()) {
-				string signature = GetSignature (iterator.Current);
-				MethodDefinition meth = GetMethod (type, signature);
-				if (meth != null) {
-					Annotations.Mark (meth);
-					Annotations.SetAction (meth, MethodAction.Parse);
-				} else
-					AddUnresolveMarker (string.Format ("T: {0}; M: {1}", type, signature));
+				if (GetAttribute (iterator.Current, "signature") != null)
+					ProcessMethodSignature (type, iterator.Current);
+
+				if (GetAttribute (iterator.Current, "name") != null)
+					ProcessMethodName (type, iterator.Current);
 			}
+		}
+
+		void ProcessMethodSignature (TypeDefinition type, XPathNavigator nav)
+		{
+			string signature = GetSignature (nav);
+			MethodDefinition meth = GetMethod (type, signature);
+			MarkMethod (type, meth, signature);
+		}
+
+		void MarkMethod (TypeDefinition type, MethodDefinition method, string signature)
+		{
+			if (method != null) {
+				Annotations.Mark (method);
+				Annotations.SetAction (method, MethodAction.Parse);
+			} else
+				AddUnresolveMarker (string.Format ("T: {0}; M: {1}", type, signature));
+		}
+
+		void ProcessMethodName (TypeDefinition type, XPathNavigator nav)
+		{
+			string name = GetAttribute (nav, "name");
+			if (name == ".ctor" || name == ".cctor" && type.HasConstructors)
+				foreach (MethodDefinition ctor in type.Constructors)
+					if (name == ctor.Name)
+						MarkMethod (type, ctor, name);
+
+			if (type.HasMethods)
+				foreach (MethodDefinition method in type.Methods)
+					if (name == method.Name)
+						MarkMethod (type, method, name);
 		}
 
 		static MethodDefinition GetMethod (TypeDefinition type, string signature)
 		{
-			if (!type.HasMethods)
-				return null;
+			if (type.HasMethods)
+				foreach (MethodDefinition meth in type.Methods)
+					if (signature == GetMethodSignature (meth))
+						return meth;
 
-			foreach (MethodDefinition meth in type.Methods)
-				if (signature == GetMethodSignature (meth))
-					return meth;
-
-			foreach (MethodDefinition ctor in type.Constructors)
-				if (signature == GetMethodSignature (ctor))
-					return ctor;
+			if (type.HasConstructors)
+				foreach (MethodDefinition ctor in type.Constructors)
+					if (signature == GetMethodSignature (ctor))
+						return ctor;
 
 			return null;
 		}

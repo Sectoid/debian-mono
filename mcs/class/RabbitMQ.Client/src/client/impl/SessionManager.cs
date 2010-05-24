@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -78,26 +84,7 @@ namespace RabbitMQ.Client.Impl
             }
             set
             {
-                if ((value < 2) && (value != 0))
-                {
-                    // We currently interpret channel max as
-                    // *including* channel zero. We also think it
-                    // doesn't make sense to forbid opening of any
-                    // real usable channels, so by our ch0-including
-                    // assumption, the minimum *useful* value for
-                    // channel max is 2.
-                    //
-                    // This code is here to work around OpenAMQ
-                    // 1.2c4's channel max setting of 1.
-                    //
-                    // FIXME: warning? or is there something more
-                    // sensible we can do here?
-                    m_channelMax = 2;
-                }
-                else
-                {
-                    m_channelMax = value;
-                }
+                m_channelMax = value;
             }
         }
 
@@ -186,7 +173,7 @@ namespace RabbitMQ.Client.Impl
         public int Allocate()
         {
             ushort maxChannels = (m_channelMax == 0) ? ushort.MaxValue : m_channelMax;
-            for (int candidate = 1; candidate < maxChannels; candidate++)
+            for (int candidate = 1; candidate <= maxChannels; candidate++)
             {
                 if (!m_sessionMap.ContainsKey(candidate))
                 {

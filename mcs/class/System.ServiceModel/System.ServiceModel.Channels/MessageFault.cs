@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2005-2006 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2005-2009 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,10 +39,14 @@ namespace System.ServiceModel.Channels
 
 		public static MessageFault CreateFault (Message message, int maxBufferSize)
 		{
-			if (message.Version.Envelope == EnvelopeVersion.Soap11)
-				return CreateFault11 (message, maxBufferSize);
-			else if (message.Version.Envelope == EnvelopeVersion.Soap12)
-				return CreateFault12 (message, maxBufferSize);
+			try {
+				if (message.Version.Envelope == EnvelopeVersion.Soap11)
+					return CreateFault11 (message, maxBufferSize);
+				else // common to None and SOAP12
+					return CreateFault (message, maxBufferSize, message.Version.Envelope.Namespace);
+			} catch (XmlException ex) {
+				throw new CommunicationException ("Received an invalid SOAP Fault message", ex);
+			}
 			throw new InvalidOperationException ("The input message is not a SOAP envelope.");
 		}
 
@@ -78,31 +82,38 @@ namespace System.ServiceModel.Channels
 			}
 			r.ReadEndElement ();
 
+			if (fr == null)
+				throw new XmlException ("Reason is missing in the Fault message");
+
 			if (details == null)
 				return CreateFault (fc, fr);
 			return CreateFault (fc, fr, details);
 		}
 
-		static MessageFault CreateFault12 (Message message, int maxBufferSize)
+		static MessageFault CreateFault (Message message, int maxBufferSize, string ns)
 		{
 			FaultCode fc = null;
 			FaultReason fr = null;
 			XmlDictionaryReader r = message.GetReaderAtBodyContents ();
-			r.ReadStartElement ("Fault", message.Version.Envelope.Namespace);
+			r.ReadStartElement ("Fault", ns);
 			r.MoveToContent ();
 
 			while (r.NodeType != XmlNodeType.EndElement) {
 				switch (r.LocalName) {
 				case "Code":
-					fc = ReadFaultCode12 (r, message.Version.Envelope.Namespace);
+					fc = ReadFaultCode (r, ns);
 					break;
 				case "Reason":
-					fr = ReadFaultReason12 (r, message.Version.Envelope.Namespace);
+					fr = ReadFaultReason (r, ns);
 					break;
 				default:
-					throw new NotImplementedException ();
+					throw new XmlException (String.Format ("Unexpected node {0} name {1}", r.NodeType, r.Name));
 				}
+				r.MoveToContent ();
 			}
+
+			if (fr == null)
+				throw new XmlException ("Reason is missing in the Fault message");
 
 			r.ReadEndElement ();
 
@@ -131,20 +142,20 @@ namespace System.ServiceModel.Channels
 			return new FaultCode (value.Name, value.Namespace, subcode);
 		}
 
-		static FaultCode ReadFaultCode12 (XmlDictionaryReader r, string ns)
+		static FaultCode ReadFaultCode (XmlDictionaryReader r, string ns)
 		{
 			FaultCode subcode = null;
 			XmlQualifiedName value = XmlQualifiedName.Empty;
 
 			if (r.IsEmptyElement)
-				throw new ArgumentException ("Value element is mandatory in SOAP fault code.");
+				throw new ArgumentException ("either SubCode or Value element is mandatory in SOAP fault code.");
 
-			r.ReadStartElement ("Code", ns);
+			r.ReadStartElement (); // could be either Code or SubCode
 			r.MoveToContent ();
 			while (r.NodeType != XmlNodeType.EndElement) {
 				switch (r.LocalName) {
 				case "Subcode":
-					subcode = ReadFaultCode12 (r, ns);
+					subcode = ReadFaultCode (r, ns);
 					break;
 				case "Value":
 					value = (XmlQualifiedName) r.ReadElementContentAs (typeof (XmlQualifiedName), r as IXmlNamespaceResolver, "Value", ns);
@@ -159,17 +170,19 @@ namespace System.ServiceModel.Channels
 			return new FaultCode (value.Name, value.Namespace, subcode);
 		}
 
-		static FaultReason ReadFaultReason12 (XmlDictionaryReader r, string ns)
+		static FaultReason ReadFaultReason (XmlDictionaryReader r, string ns)
 		{
 			List<FaultReasonText> l = new List<FaultReasonText> ();
 			if (r.IsEmptyElement)
 				throw new ArgumentException ("One or more Text element is mandatory in SOAP fault reason text.");
 
-			r.ReadStartElement ("Code", ns);
+			r.ReadStartElement ("Reason", ns);
 			for (r.MoveToContent ();
 			     r.NodeType != XmlNodeType.EndElement;
 			     r.MoveToContent ()) {
 				string lang = r.GetAttribute ("lang", "http://www.w3.org/XML/1998/namespace");
+				if (lang == null)
+					throw new XmlException ("xml:lang is mandatory on fault reason Text");
 				l.Add (new FaultReasonText (r.ReadElementContentAsString ("Text", ns), lang));
 			}
 			return new FaultReason (l);

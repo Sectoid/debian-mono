@@ -185,9 +185,13 @@ static guint8 *
 mips_emit_exc_by_name(guint8 *code, const char *name)
 {
 	guint32 addr;
+	MonoClass *exc_class;
 
-	mips_load_const (code, mips_a0, name);
-	addr = (guint32) mono_arch_get_throw_exception_by_name ();
+	exc_class = mono_class_from_name (mono_defaults.corlib, "System", name);
+	g_assert (exc_class);
+
+	mips_load_const (code, mips_a0, exc_class->type_token);
+	addr = (guint32) mono_arch_get_throw_corlib_exception ();
 	mips_load_const (code, mips_t9, addr);
 	mips_jalr (code, mips_t9, mips_ra);
 	mips_nop (code);
@@ -264,23 +268,15 @@ mips_emit_cond_branch (MonoCompile *cfg, guint8 *code, int op, MonoInst *ins)
 	default:
 		g_assert_not_reached ();
 	}
-	if (ins->flags & MONO_INST_BRLABEL)
-		mono_add_patch_info (cfg, code - cfg->native_code,
-				     MONO_PATCH_INFO_LABEL, ins->inst_i0);
-	else
-		mono_add_patch_info (cfg, code - cfg->native_code,
-				     MONO_PATCH_INFO_BB, ins->inst_true_bb);
+	mono_add_patch_info (cfg, code - cfg->native_code,
+			     MONO_PATCH_INFO_BB, ins->inst_true_bb);
 	mips_lui (code, mips_at, mips_zero, 0);
 	mips_addiu (code, mips_at, mips_at, 0);
 	mips_jr (code, mips_at);
 	mips_nop (code);
 #else
-	if (ins->flags & MONO_INST_BRLABEL)
-		mono_add_patch_info (cfg, code - cfg->native_code,
-				     MONO_PATCH_INFO_LABEL, ins->inst_i0);
-	else
-		mono_add_patch_info (cfg, code - cfg->native_code,
-				     MONO_PATCH_INFO_BB, ins->inst_true_bb);
+	mono_add_patch_info (cfg, code - cfg->native_code,
+			     MONO_PATCH_INFO_BB, ins->inst_true_bb);
 	switch (op) {
 	case OP_MIPS_BEQ:
 		mips_beq (code, ins->sreg1, ins->sreg2, 0);
@@ -512,7 +508,7 @@ mono_arch_get_argument_info (MonoMethodSignature *csig, int param_count, MonoJit
 
 
 gpointer
-mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, gssize *regs, guint8 *code)
+mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, mgreg_t *regs, guint8 *code)
 {
 	/* FIXME: handle returning a struct */
 	if (MONO_TYPE_ISSTRUCT (sig->ret))
@@ -901,7 +897,7 @@ calculate_sizes (MonoMethodSignature *sig, gboolean is_pinvoke)
 {
 	guint i;
 	int n = sig->hasthis + sig->param_count;
-	guint32 simpletype;
+	MonoType* simpletype;
 	CallInfo *cinfo = g_malloc0 (sizeof (CallInfo) + sizeof (ArgInfo) * n);
 
 	cinfo->fr = MIPS_FIRST_FPARG_REG;
@@ -937,8 +933,8 @@ calculate_sizes (MonoMethodSignature *sig, gboolean is_pinvoke)
 			n++;
 			continue;
 		}
-		simpletype = mono_type_get_underlying_type (sig->params [i])->type;
-		switch (simpletype) {
+		simpletype = mono_type_get_underlying_type (sig->params [i]);
+		switch (simpletype->type) {
 		case MONO_TYPE_BOOLEAN:
 		case MONO_TYPE_I1:
 		case MONO_TYPE_U1:
@@ -976,7 +972,7 @@ calculate_sizes (MonoMethodSignature *sig, gboolean is_pinvoke)
 			n++;
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->params [i])) {
+			if (!mono_type_generic_inst_is_valuetype (simpletype)) {
 				cinfo->args [n].size = sizeof (gpointer);
 				add_int32_arg (cinfo, &cinfo->args[n]);
 				n++;
@@ -1100,8 +1096,8 @@ calculate_sizes (MonoMethodSignature *sig, gboolean is_pinvoke)
 	}
 
 	{
-		simpletype = mono_type_get_underlying_type (sig->ret)->type;
-		switch (simpletype) {
+		simpletype = mono_type_get_underlying_type (sig->ret);
+		switch (simpletype->type) {
 		case MONO_TYPE_BOOLEAN:
 		case MONO_TYPE_I1:
 		case MONO_TYPE_U1:
@@ -1131,7 +1127,7 @@ calculate_sizes (MonoMethodSignature *sig, gboolean is_pinvoke)
 			cinfo->ret.regtype = RegTypeFP;
 			break;
 		case MONO_TYPE_GENERICINST:
-			if (!mono_type_generic_inst_is_valuetype (sig->ret)) {
+			if (!mono_type_generic_inst_is_valuetype (simpletype)) {
 				cinfo->ret.reg = mips_v0;
 				break;
 			}
@@ -3822,11 +3818,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			ins->inst_c0 = code - cfg->native_code;
 			break;
 		case OP_BR:
-			if (ins->flags & MONO_INST_BRLABEL) {
-				mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			} else {
-				mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_BB, ins->inst_target_bb);
-			}
+			mono_add_patch_info (cfg, offset, MONO_PATCH_INFO_BB, ins->inst_target_bb);
 #if LONG_BRANCH
 			mips_lui (code, mips_at, mips_zero, 0);
 			mips_addiu (code, mips_at, mips_at, 0);
@@ -4185,100 +4177,70 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 		case OP_MIPS_FBEQ:
 			mips_fcmpd (code, MIPS_FPU_EQ, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbtrue (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBNE:
 			mips_fcmpd (code, MIPS_FPU_EQ, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbfalse (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBLT:
 			mips_fcmpd (code, MIPS_FPU_LT, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbtrue (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBLT_UN:
 			mips_fcmpd (code, MIPS_FPU_ULT, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbtrue (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBGT:
 			mips_fcmpd (code, MIPS_FPU_LE, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbfalse (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBGT_UN:
 			mips_fcmpd (code, MIPS_FPU_OLE, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbfalse (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBGE:
 			mips_fcmpd (code, MIPS_FPU_LT, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbfalse (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBGE_UN:
 			mips_fcmpd (code, MIPS_FPU_OLT, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbfalse (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBLE:
 			mips_fcmpd (code, MIPS_FPU_OLE, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbtrue (code, 0);
 			mips_nop (code);
 			break;
 		case OP_MIPS_FBLE_UN:
 			mips_fcmpd (code, MIPS_FPU_ULE, ins->sreg1, ins->sreg2);
 			mips_nop (code);
-			if (ins->flags & MONO_INST_BRLABEL)
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_LABEL, ins->inst_i0);
-			else
-				mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
+			mono_add_patch_info (cfg, code - cfg->native_code, MONO_PATCH_INFO_BB, ins->inst_true_bb);
 			mips_fbtrue (code, 0);
 			mips_nop (code);
 			break;
@@ -4919,7 +4881,7 @@ enum {
 };
 
 void*
-mono_arch_instrument_epilog (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments)
+mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments, gboolean preserve_argument_registers)
 {
 	guchar *code = p;
 	int save_mode = SAVE_NONE;
@@ -5523,7 +5485,7 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 	} else {
 		/* the initial load of the vtable address */
 		size += 8;
-		code = mono_code_manager_reserve (domain->code_mp, size);
+		code = mono_domain_code_reserve (domain, size);
 	}
 	start = code;
 	if (!fail_tramp)
@@ -5603,20 +5565,20 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 }
 
 MonoMethod*
-mono_arch_find_imt_method (gpointer *regs, guint8 *code)
+mono_arch_find_imt_method (mgreg_t *regs, guint8 *code)
 {
 	return (MonoMethod*) regs [MONO_ARCH_IMT_REG];
 }
 
 MonoObject*
-mono_arch_find_this_argument (gpointer *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
+mono_arch_find_this_argument (mgreg_t *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
 {
-	return mono_arch_get_this_arg_from_call (gsctx, mono_method_signature (method), (gssize*)regs, NULL);
+	return mono_arch_get_this_arg_from_call (gsctx, mono_method_signature (method), regs, NULL);
 }
 #endif
 
 MonoVTable*
-mono_arch_find_static_call_vtable (gpointer *regs, guint8 *code)
+mono_arch_find_static_call_vtable (mgreg_t *regs, guint8 *code)
 {
 	NOT_IMPLEMENTED;
 	return (MonoVTable*) regs [MONO_ARCH_RGCTX_REG];

@@ -3,7 +3,7 @@
 //
 // Author: Atsushi Enomoto (atsushi@ximian.com)
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005,2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,16 +39,21 @@ namespace System.ServiceModel.Channels
 		{
 		}
 
-		public BinaryMessageEncoder (BinaryMessageEncoderFactory owner)
+		public BinaryMessageEncoder (BinaryMessageEncoderFactory owner, bool session)
 		{
+			this.owner = owner;
+			this.session = session;
 		}
 
+		BinaryMessageEncoderFactory owner;
+		bool session;
+
 		public override string ContentType {
-			get { return "application/soap+msbin1"; }
+			get { return MediaType; }
 		}
 
 		public override string MediaType {
-			get { return "application/soap+msbin1"; }
+			get { return session ? "application/soap+msbinsession1" : "application/soap+msbin1"; }
 		}
 
 		public override MessageVersion MessageVersion {
@@ -59,31 +64,58 @@ namespace System.ServiceModel.Channels
 		public override Message ReadMessage (ArraySegment<byte> buffer,
 			BufferManager bufferManager, string contentType)
 		{
+			if (contentType != ContentType)
+				throw new ProtocolException ("Only content type 'application/soap+msbin1' is allowed.");
+
+			// FIXME: retrieve reader session and message body.
+
+			throw new NotImplementedException ();
+
+/*
 			// FIXME: use bufferManager
-			// FIXME: set quotas properly.
 			return Message.CreateMessage (
 				XmlDictionaryReader.CreateBinaryReader (
 					buffer.Array, buffer.Offset, buffer.Count,
-					new XmlDictionaryReaderQuotas ()),
+					soap_dictionary,
+					owner != null ? owner.Owner.ReaderQuotas : new XmlDictionaryReaderQuotas ()),
 				int.MaxValue, MessageVersion);
+*/
 		}
 
-		[MonoTODO]
+		// It is sort of nasty hack, but there is no other way to provide reader/writer session from TCP stream.
+		internal XmlBinaryReaderSession CurrentReaderSession { get; set; }
+		internal XmlBinaryWriterSession CurrentWriterSession { get; set; }
+
 		public override Message ReadMessage (Stream stream,
 			int maxSizeOfHeaders, string contentType)
 		{
-			// FIXME: set quotas properly.
+			if (contentType != ContentType)
+				throw new ProtocolException ("Only content type 'application/soap+msbin1' is allowed.");
+
+			// FIXME: remove this extraneous buffering. It is somehow required for HTTP + binary encoding binding. The culprit is probably in binary xml reader or writer, but not sure.
+			if (!stream.CanSeek) {
+				var tmpms = new MemoryStream ();
+				var bytes = new byte [4096];
+				int len;
+				do {
+					len = stream.Read (bytes, 0, bytes.Length);
+					tmpms.Write (bytes, 0, len);
+				} while (len > 0);
+				tmpms.Seek (0, SeekOrigin.Begin);
+				stream = tmpms;
+			}
+
 			return Message.CreateMessage (
-				XmlDictionaryReader.CreateBinaryReader (stream, new XmlDictionaryReaderQuotas ()),
+				XmlDictionaryReader.CreateBinaryReader (stream, Constants.SoapDictionary, owner != null ? owner.Owner.ReaderQuotas : new XmlDictionaryReaderQuotas (), session ? CurrentReaderSession : null),
 				maxSizeOfHeaders, MessageVersion);
 		}
 
-		[MonoTODO]
 		public override void WriteMessage (Message message, Stream stream)
 		{
 			VerifyMessageVersion (message);
 
-			throw new NotImplementedException ();
+			using (var xw = XmlDictionaryWriter.CreateBinaryWriter (stream, Constants.SoapDictionary, session ? CurrentWriterSession : null))
+				message.WriteMessage (xw);
 		}
 
 		[MonoTODO]

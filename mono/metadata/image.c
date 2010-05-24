@@ -6,7 +6,8 @@
  *   Miguel de Icaza (miguel@ximian.com)
  *   Paolo Molaro (lupus@ximian.com)
  *
- * (C) 2001-2003 Ximian, Inc.  http://www.ximian.com
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  *
  */
 #include <config.h>
@@ -33,6 +34,8 @@
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/object-internals.h>
+#include <mono/metadata/security-core-clr.h>
+#include <mono/metadata/verify-internals.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_UNISTD_H
@@ -330,6 +333,7 @@ load_metadata_ptrs (MonoImage *image, MonoCLIImageInfo *iinfo)
 		return FALSE;
 	image->raw_metadata = image->raw_data + offset;
 
+	/* 24.2.1: Metadata root starts here */
 	ptr = image->raw_metadata;
 
 	if (strncmp (ptr, "BSJB", 4) == 0){
@@ -337,9 +341,9 @@ load_metadata_ptrs (MonoImage *image, MonoCLIImageInfo *iinfo)
 
 		ptr += 4;
 		image->md_version_major = read16 (ptr);
-		ptr += 4;
+		ptr += 2;
 		image->md_version_minor = read16 (ptr);
-		ptr += 4;
+		ptr += 6;
 
 		version_string_len = read32 (ptr);
 		ptr += 4;
@@ -530,7 +534,8 @@ mono_image_load_module (MonoImage *image, int idx)
 	GList *list_iter, *valid_modules = NULL;
 	MonoImageOpenStatus status;
 
-	g_assert (idx <= image->module_count);
+	if ((image->module_count == 0) || (idx > image->module_count))
+		return NULL;
 	if (image->modules_loaded [idx - 1])
 		return image->modules [idx - 1];
 
@@ -612,14 +617,14 @@ mono_image_init (MonoImage *image)
 				       class_next_value);
 	image->field_cache = g_hash_table_new (NULL, NULL);
 
-	image->native_wrapper_cache = g_hash_table_new (mono_aligned_addr_hash, NULL);
-
 	image->typespec_cache = g_hash_table_new (NULL, NULL);
 	image->memberref_signatures = g_hash_table_new (NULL, NULL);
 	image->helper_signatures = g_hash_table_new (g_str_hash, g_str_equal);
 	image->method_signatures = g_hash_table_new (NULL, NULL);
 
 	image->property_hash = mono_property_hash_new ();
+	InitializeCriticalSection (&image->lock);
+	InitializeCriticalSection (&image->szarray_cache_lock);
 }
 
 #if G_BYTE_ORDER != G_LITTLE_ENDIAN
@@ -771,24 +776,16 @@ do_load_header (MonoImage *image, MonoDotNetHeader *header, int offset)
 	return offset;
 }
 
-static MonoImage *
-do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
-		    gboolean care_about_cli)
+gboolean
+mono_image_load_pe_data (MonoImage *image)
 {
 	MonoCLIImageInfo *iinfo;
 	MonoDotNetHeader *header;
 	MonoMSDOSHeader msdos;
 	gint32 offset = 0;
 
-	mono_profiler_module_event (image, MONO_PROFILE_START_LOAD);
-
-	mono_image_init (image);
-
 	iinfo = image->image_info;
 	header = &iinfo->cli_header;
-		
-	if (status)
-		*status = MONO_IMAGE_IMAGE_INVALID;
 
 #ifdef PLATFORM_WIN32
 	if (!image->is_module_handle)
@@ -837,18 +834,35 @@ do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
 	
 	if (!load_section_tables (image, iinfo, offset))
 		goto invalid_image;
-	
-	if (care_about_cli == FALSE) {
-		goto done;
-	}
-	
+
+	return TRUE;
+
+invalid_image:
+	return FALSE;
+}
+
+gboolean
+mono_image_load_cli_data (MonoImage *image)
+{
+	MonoCLIImageInfo *iinfo;
+	MonoDotNetHeader *header;
+
+	iinfo = image->image_info;
+	header = &iinfo->cli_header;
+
 	/* Load the CLI header */
 	if (!load_cli_header (image, iinfo))
-		goto invalid_image;
+		return FALSE;
 
 	if (!load_metadata (image, iinfo))
-		goto invalid_image;
+		return FALSE;
 
+	return TRUE;
+}
+
+void
+mono_image_load_names (MonoImage *image)
+{
 	/* modules don't have an assembly table row */
 	if (image->tables [MONO_TABLE_ASSEMBLY].rows) {
 		image->assembly_name = mono_metadata_string_heap (image, 
@@ -859,6 +873,48 @@ do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
 	image->module_name = mono_metadata_string_heap (image, 
 			mono_metadata_decode_row_col (&image->tables [MONO_TABLE_MODULE],
 					0, MONO_MODULE_NAME));
+}
+
+static MonoImage *
+do_mono_image_load (MonoImage *image, MonoImageOpenStatus *status,
+		    gboolean care_about_cli, gboolean care_about_pecoff)
+{
+	MonoCLIImageInfo *iinfo;
+	MonoDotNetHeader *header;
+
+	mono_profiler_module_event (image, MONO_PROFILE_START_LOAD);
+
+	mono_image_init (image);
+
+	iinfo = image->image_info;
+	header = &iinfo->cli_header;
+		
+	if (status)
+		*status = MONO_IMAGE_IMAGE_INVALID;
+
+	if (care_about_pecoff == FALSE)
+		goto done;
+
+	if (!mono_verifier_verify_pe_data (image, NULL))
+		goto invalid_image;
+
+	if (!mono_image_load_pe_data (image))
+		goto invalid_image;
+	
+	if (care_about_cli == FALSE) {
+		goto done;
+	}
+
+	if (!mono_verifier_verify_cli_data (image, NULL))
+		goto invalid_image;
+
+	if (!mono_image_load_cli_data (image))
+		goto invalid_image;
+
+	if (!mono_verifier_verify_table_data (image, NULL))
+		goto invalid_image;
+
+	mono_image_load_names (image);
 
 	load_modules (image);
 
@@ -877,18 +933,17 @@ invalid_image:
 
 static MonoImage *
 do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
-		    gboolean care_about_cli, gboolean refonly)
+		    gboolean care_about_cli, gboolean care_about_pecoff, gboolean refonly)
 {
 	MonoCLIImageInfo *iinfo;
 	MonoImage *image;
-	FILE *filed;
-	struct stat stat_buf;
+	MonoFileMap *filed;
 
-	if ((filed = fopen (fname, "rb")) == NULL){
+	if ((filed = mono_file_map_open (fname)) == NULL){
 		if (IS_PORTABILITY_SET) {
 			gchar *ffname = mono_portability_find_file (fname, TRUE);
 			if (ffname) {
-				filed = fopen (ffname, "rb");
+				filed = mono_file_map_open (ffname);
 				g_free (ffname);
 			}
 		}
@@ -900,18 +955,12 @@ do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
 		}
 	}
 
-	if (fstat (fileno (filed), &stat_buf)) {
-		fclose (filed);
-		if (status)
-			*status = MONO_IMAGE_ERROR_ERRNO;
-		return NULL;
-	}
 	image = g_new0 (MonoImage, 1);
 	image->raw_buffer_used = TRUE;
-	image->raw_data_len = stat_buf.st_size;
-	image->raw_data = mono_file_map (stat_buf.st_size, MONO_MMAP_READ|MONO_MMAP_PRIVATE, fileno (filed), 0, &image->raw_data_handle);
+	image->raw_data_len = mono_file_map_size (filed);
+	image->raw_data = mono_file_map (image->raw_data_len, MONO_MMAP_READ|MONO_MMAP_PRIVATE, mono_file_map_fd (filed), 0, &image->raw_data_handle);
 	if (!image->raw_data) {
-		fclose (filed);
+		mono_file_map_close (filed);
 		g_free (image);
 		if (status)
 			*status = MONO_IMAGE_IMAGE_INVALID;
@@ -922,10 +971,11 @@ do_mono_image_open (const char *fname, MonoImageOpenStatus *status,
 	image->name = mono_path_resolve_symlinks (fname);
 	image->ref_only = refonly;
 	image->ref_count = 1;
+	/* if MONO_SECURITY_MODE_CORE_CLR is set then determine if this image is platform code */
+	image->core_clr_platform_code = mono_security_core_clr_determine_platform_image (image);
 
-	fclose (filed);
-
-	return do_mono_image_load (image, status, care_about_cli);
+	mono_file_map_close (filed);
+	return do_mono_image_load (image, status, care_about_cli, care_about_pecoff);
 }
 
 MonoImage *
@@ -1048,7 +1098,7 @@ mono_image_open_from_data_with_name (char *data, guint32 data_len, gboolean need
 	image->image_info = iinfo;
 	image->ref_only = refonly;
 
-	image = do_mono_image_load (image, status, TRUE);
+	image = do_mono_image_load (image, status, TRUE, TRUE);
 	if (image == NULL)
 		return NULL;
 
@@ -1084,7 +1134,7 @@ mono_image_open_from_module_handle (HMODULE module_handle, char* fname, gboolean
 	image->ref_count = has_entry_point ? 0 : 1;
 	image->has_entry_point = has_entry_point;
 
-	image = do_mono_image_load (image, status, TRUE);
+	image = do_mono_image_load (image, status, TRUE, TRUE);
 	if (image == NULL)
 		return NULL;
 
@@ -1187,7 +1237,7 @@ mono_image_open_full (const char *fname, MonoImageOpenStatus *status, gboolean r
 	}
 	mono_images_unlock ();
 
-	image = do_mono_image_open (fname, status, TRUE, refonly);
+	image = do_mono_image_open (fname, status, TRUE, TRUE, refonly);
 	if (image == NULL)
 		return NULL;
 
@@ -1226,7 +1276,24 @@ mono_pe_file_open (const char *fname, MonoImageOpenStatus *status)
 {
 	g_return_val_if_fail (fname != NULL, NULL);
 	
-	return(do_mono_image_open (fname, status, FALSE, FALSE));
+	return(do_mono_image_open (fname, status, FALSE, TRUE, FALSE));
+}
+
+/**
+ * mono_image_open_raw
+ * @fname: filename that points to the module we want to open
+ * @status: An error condition is returned in this field
+ * 
+ * Returns an image without loading neither pe or cli data.
+ * 
+ * Use mono_image_load_pe_data and mono_image_load_cli_data to load them.  
+ */
+MonoImage *
+mono_image_open_raw (const char *fname, MonoImageOpenStatus *status)
+{
+	g_return_val_if_fail (fname != NULL, NULL);
+	
+	return(do_mono_image_open (fname, status, FALSE, FALSE, FALSE));
 }
 
 void
@@ -1451,7 +1518,7 @@ mono_image_close (MonoImage *image)
 	}
 
 	if (image->method_cache)
-		mono_value_hash_table_destroy (image->method_cache);
+		g_hash_table_destroy (image->method_cache);
 	if (image->methodref_cache)
 		g_hash_table_destroy (image->methodref_cache);
 	mono_internal_hash_table_destroy (&image->class_cache);
@@ -1460,6 +1527,8 @@ mono_image_close (MonoImage *image)
 		g_hash_table_foreach (image->array_cache, free_array_cache_entry, NULL);
 		g_hash_table_destroy (image->array_cache);
 	}
+	if (image->szarray_cache)
+		g_hash_table_destroy (image->szarray_cache);
 	if (image->ptr_cache)
 		g_hash_table_destroy (image->ptr_cache);
 	if (image->name_cache) {
@@ -1478,6 +1547,7 @@ mono_image_close (MonoImage *image)
 	free_hash (image->remoting_invoke_cache);
 	free_hash (image->runtime_invoke_cache);
 	free_hash (image->runtime_invoke_direct_cache);
+	free_hash (image->runtime_invoke_vcall_cache);
 	free_hash (image->synchronized_cache);
 	free_hash (image->unbox_wrapper_cache);
 	free_hash (image->cominterop_invoke_cache);
@@ -1490,7 +1560,6 @@ mono_image_close (MonoImage *image)
 	free_hash (image->castclass_cache);
 	free_hash (image->proxy_isinst_cache);
 	free_hash (image->thunk_invoke_cache);
-	free_hash (image->static_rgctx_invoke_cache);
 
 	/* The ownership of signatures is not well defined */
 	//g_hash_table_foreach (image->memberref_signatures, free_mr_signatures, NULL);
@@ -1507,6 +1576,8 @@ mono_image_close (MonoImage *image)
 
 	if (image->property_hash)
 		mono_property_hash_destroy (image->property_hash);
+
+	g_slist_free (image->reflection_info_unregister_classes);
 
 	if (image->interface_bitset) {
 		mono_unload_interface_ids (image->interface_bitset);
@@ -1533,6 +1604,10 @@ mono_image_close (MonoImage *image)
 	if (image->references)
 		g_free (image->references);
 	mono_perfcounters->loader_bytes -= mono_mempool_get_allocated (image->mempool);
+
+	DeleteCriticalSection (&image->szarray_cache_lock);
+	DeleteCriticalSection (&image->lock);
+
 	/*g_print ("destroy image %p (dynamic: %d)\n", image, image->dynamic);*/
 	if (!image->dynamic) {
 		if (debug_assembly_unload)
@@ -1545,7 +1620,10 @@ mono_image_close (MonoImage *image)
 		/* Dynamic images are GC_MALLOCed */
 		g_free ((char*)image->module_name);
 		mono_dynamic_image_free ((MonoDynamicImage*)image);
-		mono_mempool_destroy (image->mempool);
+		if (debug_assembly_unload)
+			mono_mempool_invalidate (image->mempool);
+		else
+			mono_mempool_destroy (image->mempool);
 	}
 
 	mono_profiler_module_event (image, MONO_PROFILE_END_UNLOAD);
@@ -2014,21 +2092,130 @@ mono_image_has_authenticode_entry (MonoImage *image)
 gpointer
 mono_image_alloc (MonoImage *image, guint size)
 {
+	gpointer res;
+
 	mono_perfcounters->loader_bytes += size;
-	return mono_mempool_alloc (image->mempool, size);
+	mono_image_lock (image);
+	res = mono_mempool_alloc (image->mempool, size);
+	mono_image_unlock (image);
+
+	return res;
 }
 
 gpointer
 mono_image_alloc0 (MonoImage *image, guint size)
 {
+	gpointer res;
+
 	mono_perfcounters->loader_bytes += size;
-	return mono_mempool_alloc0 (image->mempool, size);
+	mono_image_lock (image);
+	res = mono_mempool_alloc0 (image->mempool, size);
+	mono_image_unlock (image);
+
+	return res;
 }
 
 char*
 mono_image_strdup (MonoImage *image, const char *s)
 {
+	char *res;
+
 	mono_perfcounters->loader_bytes += strlen (s);
-	return mono_mempool_strdup (image->mempool, s);
+	mono_image_lock (image);
+	res = mono_mempool_strdup (image->mempool, s);
+	mono_image_unlock (image);
+
+	return res;
 }
 
+GList*
+g_list_prepend_image (MonoImage *image, GList *list, gpointer data)
+{
+	GList *new_list;
+	
+	new_list = mono_image_alloc (image, sizeof (GList));
+	new_list->data = data;
+	new_list->prev = list ? list->prev : NULL;
+    new_list->next = list;
+
+    if (new_list->prev)
+            new_list->prev->next = new_list;
+    if (list)
+            list->prev = new_list;
+
+	return new_list;
+}
+
+GSList*
+g_slist_append_image (MonoImage *image, GSList *list, gpointer data)
+{
+	GSList *new_list;
+
+	new_list = mono_image_alloc (image, sizeof (GSList));
+	new_list->data = data;
+	new_list->next = NULL;
+
+	return g_slist_concat (list, new_list);
+}
+
+void
+mono_image_lock (MonoImage *image)
+{
+	mono_locks_acquire (&image->lock, ImageDataLock);
+}
+
+void
+mono_image_unlock (MonoImage *image)
+{
+	mono_locks_release (&image->lock, ImageDataLock);
+}
+
+
+/**
+ * mono_image_property_lookup:
+ *
+ * Lookup a property on @image. Used to store very rare fields of MonoClass and MonoMethod.
+ *
+ * LOCKING: Takes the image lock
+ */
+gpointer 
+mono_image_property_lookup (MonoImage *image, gpointer subject, guint32 property)
+{
+	gpointer res;
+
+	mono_image_lock (image);
+	res = mono_property_hash_lookup (image->property_hash, subject, property);
+ 	mono_image_unlock (image);
+
+	return res;
+}
+
+/**
+ * mono_image_property_insert:
+ *
+ * Insert a new property @property with value @value on @subject in @image. Used to store very rare fields of MonoClass and MonoMethod.
+ *
+ * LOCKING: Takes the image lock
+ */
+void
+mono_image_property_insert (MonoImage *image, gpointer subject, guint32 property, gpointer value)
+{
+	mono_image_lock (image);
+	mono_property_hash_insert (image->property_hash, subject, property, value);
+ 	mono_image_unlock (image);
+}
+
+/**
+ * mono_image_property_remove:
+ *
+ * Remove all properties associated with @subject in @image. Used to store very rare fields of MonoClass and MonoMethod.
+ *
+ * LOCKING: Takes the image lock
+ */
+void
+mono_image_property_remove (MonoImage *image, gpointer subject)
+{
+	mono_image_lock (image);
+	mono_property_hash_remove_object (image->property_hash, subject);
+ 	mono_image_unlock (image);
+}

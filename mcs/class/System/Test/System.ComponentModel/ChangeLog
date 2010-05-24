@@ -1,3 +1,17 @@
+2010-01-15  Alexandre Gomes  <alexmipego@gmail.com>
+
+	* ByteConverterTests.cs:
+	* DoubleConverterTests.cs:
+	* Int32ConverterTests.cs:
+	* Int16ConverterTests.cs:
+	* Int64ConverterTests.cs:
+	* SingleConverterTests.cs:
+	* UInt32ConverterTests.cs:
+	* SByteConverterTests.cs:
+	* UInt16ConverterTests.cs:
+	* UInt64ConverterTests.cs: Added tests to verify CanConvertTo when
+	targeting primitive types.
+	
 2009-09-29  Alan McGovern  <amcgovern@novell.com>
 
 	* CategoryAttributeTest.cs: Added new test file.
@@ -6,6 +20,38 @@
 
 	* EnumConverterTests.cs: Add a test to verify behaviour when converting
 	 a 0 flag value.
+
+2009-07-21  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ContainerTest.cs: Added test for bug #522474.
+
+2009-07-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ContainerTest.cs: Added tests for Remove and RemoveWithoutUnsiting.
+
+2009-07-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ContainerTest.cs: Added tests for Add, Dispose, ValidateName and
+	GetService.
+
+2009-06-26  Robert Jordan  <robertj@gmx.net>
+
+	* EventHandlerListTests.cs, LicenseManagerTests.cs:
+	Upgrade to new NUnit style. Standalone tests (#if !NUNIT)
+	removed.
+
+2009-06-22  Marek Habersack  <mhabersack@novell.com>
+
+	* TypeDescriptorTests.cs: added tests for 2.0+ APIs which deal
+	with adding/removing/getting type description providers.
+
+2009-05-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* ListChangedEventArgsTest.cs: Fix .NET 1.1 compile error.
+
+2009-05-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* ListChangedEventArgsTest.cs: Added; tests for ListChangedEventArgs.
 
 2009-02-19  Marek Habersack  <mhabersack@novell.com>
 

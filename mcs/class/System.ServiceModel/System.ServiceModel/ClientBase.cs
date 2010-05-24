@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
@@ -35,14 +36,34 @@ using System.Threading;
 
 namespace System.ServiceModel
 {
-	[MonoTODO ("It somehow rejects classes, but dunno how we can do that besides our code level.")]
-	public abstract class ClientBase<TChannel>
-		: IDisposable, ICommunicationObject
+	[MonoTODO ("It somehow rejects classes, but dunno how we can do that besides our code wise.")]
+	public abstract class ClientBase<TChannel> :
+#if !NET_2_1 || MONOTOUCH
+		IDisposable,
+#endif
+		ICommunicationObject where TChannel : class
 	{
 		static InstanceContext initialContxt = new InstanceContext (null);
+#if NET_2_1 && !MONOTOUCH
+		static readonly PropertyInfo dispatcher_main_property;
+		static readonly MethodInfo dispatcher_begin_invoke_method;
+
+		static ClientBase ()
+		{
+			Type dispatcher_type = Type.GetType ("System.Windows.Threading.Dispatcher, System.Windows, Version=2.0.5.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e", true);
+
+			dispatcher_main_property = dispatcher_type.GetProperty ("Main", BindingFlags.NonPublic | BindingFlags.Static);
+			if (dispatcher_main_property == null)
+				throw new SystemException ("Dispatcher.Main not found");
+
+			dispatcher_begin_invoke_method = dispatcher_type.GetMethod ("BeginInvoke", new Type [] {typeof (Delegate), typeof (object [])});
+			if (dispatcher_begin_invoke_method == null)
+				throw new SystemException ("Dispatcher.BeginInvoke not found");
+		}
+#endif
 
 		ChannelFactory<TChannel> factory;
-		ClientRuntimeChannel inner_channel;
+		IClientChannel inner_channel;
 		CommunicationState state;
 
 		protected delegate IAsyncResult BeginOperationDelegate (object[] inValues, AsyncCallback asyncCallback, object state);
@@ -53,8 +74,8 @@ namespace System.ServiceModel
 		{
 		}
 
-		protected ClientBase (string configname)
-			: this (initialContxt, configname)
+		protected ClientBase (string endpointConfigurationName)
+			: this (initialContxt, endpointConfigurationName)
 		{
 		}
 
@@ -63,13 +84,13 @@ namespace System.ServiceModel
 		{
 		}
 
-		protected ClientBase (string configname, EndpointAddress remoteAddress)
-			: this (initialContxt, configname, remoteAddress)
+		protected ClientBase (string endpointConfigurationName, EndpointAddress remoteAddress)
+			: this (initialContxt, endpointConfigurationName, remoteAddress)
 		{
 		}
 
-		protected ClientBase (string configname, string remoteAddress)
-			: this (initialContxt, configname, remoteAddress)
+		protected ClientBase (string endpointConfigurationName, string remoteAddress)
+			: this (initialContxt, endpointConfigurationName, remoteAddress)
 		{
 		}
 
@@ -78,40 +99,40 @@ namespace System.ServiceModel
 		{
 		}
 
-		protected ClientBase (InstanceContext instance, string configname)
+		protected ClientBase (InstanceContext instance, string endpointConfigurationName)
 		{
 			if (instance == null)
 				throw new ArgumentNullException ("instanceContext");
-			if (configname == null)
-				throw new ArgumentNullException ("configurationName");
+			if (endpointConfigurationName == null)
+				throw new ArgumentNullException ("endpointConfigurationName");
 
-			Initialize (instance, configname, null);
+			Initialize (instance, endpointConfigurationName, null);
 		}
 
 		protected ClientBase (InstanceContext instance,
-			string configname, EndpointAddress remoteAddress)
+			string endpointConfigurationName, EndpointAddress remoteAddress)
 		{
 			if (instance == null)
 				throw new ArgumentNullException ("instanceContext");
-			if (configname == null)
-				throw new ArgumentNullException ("configurationName");
+			if (endpointConfigurationName == null)
+				throw new ArgumentNullException ("endpointConfigurationName");
 			if (remoteAddress == null)
 				throw new ArgumentNullException ("remoteAddress");
 
-			Initialize (instance, configname, remoteAddress);
+			Initialize (instance, endpointConfigurationName, remoteAddress);
 		}
 
 		protected ClientBase (InstanceContext instance,
-			string configname, string remoteAddress)
+			string endpointConfigurationName, string remoteAddress)
 		{
 			if (instance == null)
 				throw new ArgumentNullException ("instanceContext");
 			if (remoteAddress == null)
 				throw new ArgumentNullException ("endpointAddress");
-			if (configname == null)
-				throw new ArgumentNullException ("configurationname");
+			if (endpointConfigurationName == null)
+				throw new ArgumentNullException ("endpointConfigurationName");
 
-			Initialize (instance, configname, new EndpointAddress (remoteAddress));
+			Initialize (instance, endpointConfigurationName, new EndpointAddress (remoteAddress));
 		}
 
 		protected ClientBase (InstanceContext instance,
@@ -127,27 +148,34 @@ namespace System.ServiceModel
 			Initialize (instance, binding, remoteAddress);
 		}
 
-		void Initialize (InstanceContext instance,
-			string configName, EndpointAddress remoteAddress)
+		internal ClientBase (ChannelFactory<TChannel> factory)
 		{
-			factory = new ChannelFactory<TChannel> (configName, remoteAddress);
+			ChannelFactory = factory;
 		}
 
-		void Initialize (InstanceContext instance,
+		internal virtual void Initialize (InstanceContext instance,
+			string endpointConfigurationName, EndpointAddress remoteAddress)
+		{
+			ChannelFactory = new ChannelFactory<TChannel> (endpointConfigurationName, remoteAddress);
+		}
+
+		internal virtual void Initialize (InstanceContext instance,
 			Binding binding, EndpointAddress remoteAddress)
 		{
-			factory = new ChannelFactory<TChannel> (binding, remoteAddress);
+			ChannelFactory = new ChannelFactory<TChannel> (binding, remoteAddress);
 		}
 
 		public ChannelFactory<TChannel> ChannelFactory {
 			get { return factory; }
+			internal set {
+				factory = value;
+				factory.OwnerClientBase = this;
+			}
 		}
 
-#if !NET_2_1
 		public ClientCredentials ClientCredentials {
 			get { return ChannelFactory.Credentials; }
 		}
-#endif
 
 		public ServiceEndpoint Endpoint {
 			get { return factory.Endpoint; }
@@ -156,7 +184,7 @@ namespace System.ServiceModel
 		public IClientChannel InnerChannel {
 			get {
 				if (inner_channel == null)
-					inner_channel = (ClientRuntimeChannel) (object) factory.CreateChannel ();
+					inner_channel = (IClientChannel) (object) CreateChannel ();
 				return inner_channel;
 			}
 		}
@@ -184,8 +212,35 @@ namespace System.ServiceModel
 			InnerChannel.DisplayInitializationUI ();
 		}
 
-#if NET_2_1
-		IAsyncResult delegate_async;
+		protected T GetDefaultValueForInitialization<T> ()
+		{
+			return default (T);
+		}
+
+		//IAsyncResult delegate_async;
+
+		void RunCompletedCallback (SendOrPostCallback callback, InvokeAsyncCompletedEventArgs args)
+		{
+#if !NET_2_1 || MONOTOUCH
+			callback (args);
+#else
+			object dispatcher = dispatcher_main_property.GetValue (null, null);
+			if (dispatcher == null) {
+				callback (args);
+				return;
+			}
+			EventHandler a = delegate {
+				try {
+					callback (args); 
+					//Console.WriteLine ("ClientBase<TChannel>: operationCompletedCallback is successfully done (unless the callback has further async operations)");
+				} catch (Exception ex) {
+					//Console.WriteLine ("ClientBase<TChannel> caught an error during operationCompletedCallback: " + ex);
+					throw;
+				}
+			};
+			dispatcher_begin_invoke_method.Invoke (dispatcher, new object [] {a, new object [] {this, new EventArgs ()}});
+#endif
+		}
 
 		protected void InvokeAsync (BeginOperationDelegate beginOperationDelegate,
 			object [] inValues, EndOperationDelegate endOperationDelegate,
@@ -195,28 +250,37 @@ namespace System.ServiceModel
 				throw new ArgumentNullException ("beginOperationDelegate");
 			if (endOperationDelegate == null)
 				throw new ArgumentNullException ("endOperationDelegate");
-			if (delegate_async != null)
-				throw new InvalidOperationException ("Another async operation is in progress");
+			//if (delegate_async != null)
+			//	throw new InvalidOperationException ("Another async operation is in progress");
 
-			var bw = new BackgroundWorker ();
-			bw.DoWork += delegate (object o, DoWorkEventArgs e) {
-				delegate_async = beginOperationDelegate (inValues, null, userState);
+			AsyncCallback cb = delegate (IAsyncResult ar) {
+				object [] results = null;
+				Exception error = null;
+				bool cancelled = false; // FIXME: fill it in case it is cancelled
+				try {
+					results = endOperationDelegate (ar);
+				} catch (Exception ex) {
+					error = ex;
+				}
+				try {
+					if (operationCompletedCallback != null)
+						RunCompletedCallback (operationCompletedCallback, new InvokeAsyncCompletedEventArgs (results, error, cancelled, userState));
+				} catch (Exception ex) {
+					//Console.WriteLine ("Exception during operationCompletedCallback" + ex);
+					throw;
+				}
+				//Console.WriteLine ("System.ServiceModel.ClientBase<TChannel>: web service invocation is successfully done (operationCompletedCallback may not be).");
 			};
-			bw.RunWorkerCompleted += delegate (object o, RunWorkerCompletedEventArgs e) {
-				var ret = endOperationDelegate (delegate_async);
-				if (operationCompletedCallback != null)
-					operationCompletedCallback (ret);
-				delegate_async = null;
-			};
-			bw.RunWorkerAsync ();
+			begin_async_result = beginOperationDelegate (inValues, cb, userState);
 		}
-#endif
-		
+		IAsyncResult begin_async_result;
+
+#if !NET_2_1 || MONOTOUCH
 		void IDisposable.Dispose ()
 		{
 			Close ();
 		}
-
+#endif
 		protected virtual TChannel CreateChannel ()
 		{
 			return ChannelFactory.CreateChannel ();
@@ -229,53 +293,45 @@ namespace System.ServiceModel
 
 		#region ICommunicationObject implementation
 
-		[MonoTODO]
 		IAsyncResult ICommunicationObject.BeginOpen (
 			AsyncCallback callback, object state)
 		{
 			return InnerChannel.BeginOpen (callback, state);
 		}
 
-		[MonoTODO]
 		IAsyncResult ICommunicationObject.BeginOpen (
 			TimeSpan timeout, AsyncCallback callback, object state)
 		{
 			return InnerChannel.BeginOpen (timeout, callback, state);
 		}
 
-		[MonoTODO]
 		void ICommunicationObject.EndOpen (IAsyncResult result)
 		{
 			InnerChannel.EndOpen (result);
 		}
 
-		[MonoTODO]
 		IAsyncResult ICommunicationObject.BeginClose (
 			AsyncCallback callback, object state)
 		{
 			return InnerChannel.BeginClose (callback, state);
 		}
 
-		[MonoTODO]
 		IAsyncResult ICommunicationObject.BeginClose (
 			TimeSpan timeout, AsyncCallback callback, object state)
 		{
 			return InnerChannel.BeginClose (timeout, callback, state);
 		}
 
-		[MonoTODO]
 		void ICommunicationObject.EndClose (IAsyncResult result)
 		{
 			InnerChannel.EndClose (result);
 		}
 
-		[MonoTODO]
 		void ICommunicationObject.Close (TimeSpan timeout)
 		{
 			InnerChannel.Close (timeout);
 		}
 
-		[MonoTODO]
 		void ICommunicationObject.Open (TimeSpan timeout)
 		{
 			InnerChannel.Open (timeout);
@@ -304,161 +360,204 @@ namespace System.ServiceModel
 
 		#endregion
 
-#if NET_2_1
-		protected class ChannelBase<T> : IClientChannel, IOutputChannel, IRequestChannel where T : class
+		protected class InvokeAsyncCompletedEventArgs : AsyncCompletedEventArgs
 		{
-			ClientBase<T> client;
+			internal InvokeAsyncCompletedEventArgs (object [] results, Exception error, bool cancelled, object userState)
+				: base (error, cancelled, userState)
+			{
+				Results = results;
+			}
+
+			public object [] Results { get; private set; }
+		}
+
+#if NET_2_1
+		protected internal
+#else
+		internal
+#endif
+		class ChannelBase<T> : IClientChannel, IOutputChannel, IRequestChannel where T : class
+		{
+			ServiceEndpoint endpoint;
+			ChannelFactory factory;
+			ClientRuntimeChannel inner_channel;
 
 			protected ChannelBase (ClientBase<T> client)
+				: this (client.Endpoint, client.ChannelFactory)
 			{
-				this.client = client;
 			}
 
-			[MonoTODO]
+			internal ChannelBase (ServiceEndpoint endpoint, ChannelFactory factory)
+			{
+				this.endpoint = endpoint;
+				this.factory = factory;
+			}
+
+			internal ClientRuntimeChannel Inner {
+				get {
+					if (inner_channel == null)
+						inner_channel = new ClientRuntimeChannel (endpoint, factory, endpoint.Address, null);
+					return inner_channel;
+				}
+			}
+
+#if !NET_2_1 || MONOTOUCH
+			protected object Invoke (string methodName, object [] args)
+			{
+				var cd = endpoint.Contract;
+				var od = cd.Operations.Find (methodName);
+				if (od == null)
+					throw new ArgumentException (String.Format ("Operation '{0}' not found in the service contract '{1}' in namespace '{2}'", methodName, cd.Name, cd.Namespace));
+				return Inner.Process (od.SyncMethod, methodName, args);
+			}
+#endif
+
 			protected IAsyncResult BeginInvoke (string methodName, object [] args, AsyncCallback callback, object state)
 			{
-				throw new NotImplementedException ();
+				var cd = endpoint.Contract;
+				var od = cd.Operations.Find (methodName);
+				if (od == null)
+					throw new ArgumentException (String.Format ("Operation '{0}' not found in the service contract '{1}' in namespace '{2}'", methodName, cd.Name, cd.Namespace));
+				return Inner.BeginProcess (od.BeginMethod, methodName, args, callback, state);
 			}
 
-			[MonoTODO]
 			protected object EndInvoke (string methodName, object [] args, IAsyncResult result)
 			{
-				throw new NotImplementedException ();
+				var cd = endpoint.Contract;
+				var od = cd.Operations.Find (methodName);
+				if (od == null)
+					throw new ArgumentException (String.Format ("Operation '{0}' not found in the service contract '{1}' in namespace '{2}'", methodName, cd.Name, cd.Namespace));
+				return Inner.EndProcess (od.EndMethod, methodName, args, result);
 			}
 
 			#region ICommunicationObject
 
 			IAsyncResult ICommunicationObject.BeginClose (AsyncCallback callback, object state)
 			{
-				return client.InnerChannel.BeginClose (callback, state);
+				return Inner.BeginClose (callback, state);
 			}
 
 			IAsyncResult ICommunicationObject.BeginClose (TimeSpan timeout, AsyncCallback callback, object state)
 			{
-				return client.InnerChannel.BeginClose (timeout, callback, state);
+				return Inner.BeginClose (timeout, callback, state);
 			}
 
 			void ICommunicationObject.Close ()
 			{
-				client.InnerChannel.Close ();
+				Inner.Close ();
 			}
 
 			void ICommunicationObject.Close (TimeSpan timeout)
 			{
-				client.InnerChannel.Close (timeout);
+				Inner.Close (timeout);
 			}
 
 			IAsyncResult ICommunicationObject.BeginOpen (AsyncCallback callback, object state)
 			{
-				return client.InnerChannel.BeginOpen (callback, state);
+				return Inner.BeginOpen (callback, state);
 			}
 
 			IAsyncResult ICommunicationObject.BeginOpen (TimeSpan timeout, AsyncCallback callback, object state)
 			{
-				return client.InnerChannel.BeginOpen (timeout, callback, state);
+				return Inner.BeginOpen (timeout, callback, state);
 			}
 
 			void ICommunicationObject.Open ()
 			{
-				client.InnerChannel.Open ();
+				Inner.Open ();
 			}
 
 			void ICommunicationObject.Open (TimeSpan timeout)
 			{
-				client.InnerChannel.Open (timeout);
+				Inner.Open (timeout);
 			}
 
 			void ICommunicationObject.Abort ()
 			{
-				client.InnerChannel.Abort ();
+				Inner.Abort ();
 			}
 
 			void ICommunicationObject.EndClose (IAsyncResult result)
 			{
-				client.InnerChannel.EndClose (result);
+				Inner.EndClose (result);
 			}
 
 			void ICommunicationObject.EndOpen (IAsyncResult result)
 			{
-				client.InnerChannel.EndOpen (result);
+				Inner.EndOpen (result);
 			}
 
 			CommunicationState ICommunicationObject.State {
-				get { return client.InnerChannel.State; }
+				get { return Inner.State; }
 			}
 
 			event EventHandler ICommunicationObject.Opened {
-				add { client.InnerChannel.Opened += value; }
-				remove { client.InnerChannel.Opened -= value; }
+				add { Inner.Opened += value; }
+				remove { Inner.Opened -= value; }
 			}
 
 			event EventHandler ICommunicationObject.Opening {
-				add { client.InnerChannel.Opening += value; }
-				remove { client.InnerChannel.Opening -= value; }
+				add { Inner.Opening += value; }
+				remove { Inner.Opening -= value; }
 			}
 
 			event EventHandler ICommunicationObject.Closed {
-				add { client.InnerChannel.Closed += value; }
-				remove { client.InnerChannel.Closed -= value; }
+				add { Inner.Closed += value; }
+				remove { Inner.Closed -= value; }
 			}
 
 			event EventHandler ICommunicationObject.Closing {
-				add { client.InnerChannel.Closing += value; }
-				remove { client.InnerChannel.Closing -= value; }
+				add { Inner.Closing += value; }
+				remove { Inner.Closing -= value; }
 			}
 
 			event EventHandler ICommunicationObject.Faulted {
-				add { client.InnerChannel.Faulted += value; }
-				remove { client.InnerChannel.Faulted -= value; }
+				add { Inner.Faulted += value; }
+				remove { Inner.Faulted -= value; }
 			}
 
 			#endregion
 
 			#region IClientChannel
 
-			[MonoTODO]
 			public bool AllowInitializationUI {
-				get { return client.InnerChannel.AllowInitializationUI; }
-				set { client.InnerChannel.AllowInitializationUI = value; }
+				get { return Inner.AllowInitializationUI; }
+				set { Inner.AllowInitializationUI = value; }
 			}
 
-			[MonoTODO]
 			public bool DidInteractiveInitialization {
-				get { return client.InnerChannel.DidInteractiveInitialization; }
+				get { return Inner.DidInteractiveInitialization; }
 			}
 
 			public Uri Via {
-				get { return client.InnerChannel.Via; }
+				get { return Inner.Via; }
 			}
 
-			[MonoTODO]
 			public IAsyncResult BeginDisplayInitializationUI (
 				AsyncCallback callback, object state)
 			{
-				return client.InnerChannel.BeginDisplayInitializationUI (callback, state);
+				return Inner.BeginDisplayInitializationUI (callback, state);
 			}
 
-			[MonoTODO]
 			public void EndDisplayInitializationUI (
 				IAsyncResult result)
 			{
-				client.InnerChannel.EndDisplayInitializationUI (result);
+				Inner.EndDisplayInitializationUI (result);
 			}
 
-			[MonoTODO]
 			public void DisplayInitializationUI ()
 			{
-				client.InnerChannel.DisplayInitializationUI ();
+				Inner.DisplayInitializationUI ();
 			}
 
 			public void Dispose ()
 			{
-				client.InnerChannel.Dispose ();
+				Inner.Dispose ();
 			}
 
 			public event EventHandler<UnknownMessageReceivedEventArgs> UnknownMessageReceived {
-				add { client.InnerChannel.UnknownMessageReceived += value; }
-				remove { client.InnerChannel.UnknownMessageReceived -= value; }
+				add { Inner.UnknownMessageReceived += value; }
+				remove { Inner.UnknownMessageReceived -= value; }
 			}
 
 			#endregion
@@ -467,126 +566,116 @@ namespace System.ServiceModel
 
 			[MonoTODO]
 			public bool AllowOutputBatching {
-				get { return client.InnerChannel.AllowOutputBatching; }
+				get { return Inner.AllowOutputBatching; }
 
-				set { client.InnerChannel.AllowOutputBatching = value; }
+				set { Inner.AllowOutputBatching = value; }
 			}
 
 			[MonoTODO]
 			public IInputSession InputSession {
-				get { return client.InnerChannel.InputSession; }
+				get { return Inner.InputSession; }
 			}
 
-			[MonoTODO]
 			public EndpointAddress LocalAddress {
-				get { return client.InnerChannel.LocalAddress; }
+				get { return Inner.LocalAddress; }
 			}
 
 			[MonoTODO]
 			public TimeSpan OperationTimeout {
-				get { return client.InnerChannel.OperationTimeout; }
-				set { client.InnerChannel.OperationTimeout = value; }
+				get { return Inner.OperationTimeout; }
+				set { Inner.OperationTimeout = value; }
 			}
 
 			[MonoTODO]
 			public IOutputSession OutputSession {
-				get { return client.InnerChannel.OutputSession; }
+				get { return Inner.OutputSession; }
 			}
 
-			[MonoTODO]
 			public EndpointAddress RemoteAddress {
-				get { return client.InnerChannel.RemoteAddress; }
+				get { return Inner.RemoteAddress; }
 			}
 
 			[MonoTODO]
 			public string SessionId {
-				get { return client.InnerChannel.SessionId; }
+				get { return Inner.SessionId; }
 			}
 
 			#endregion
 
+			#region IRequestChannel
 
-			[MonoTODO]
 			IAsyncResult IRequestChannel.BeginRequest (Message message, AsyncCallback callback, object state)
 			{
-				throw new NotImplementedException ();
+				return ((IRequestChannel) this).BeginRequest (message, endpoint.Binding.SendTimeout, callback, state);
 			}
 
-			[MonoTODO]
 			IAsyncResult IRequestChannel.BeginRequest (Message message, TimeSpan timeout, AsyncCallback callback, object state)
 			{
-				throw new NotImplementedException ();
+				return Inner.BeginRequest (message, timeout, callback, state);
 			}
 
-			[MonoTODO]
 			Message IRequestChannel.EndRequest (IAsyncResult result)
 			{
-				throw new NotImplementedException ();
+				return Inner.EndRequest (result);
 			}
 
-			[MonoTODO]
 			Message IRequestChannel.Request (Message message)
 			{
-				throw new NotImplementedException ();
+				return ((IRequestChannel) this).Request (message, endpoint.Binding.SendTimeout);
 			}
 
-			[MonoTODO]
 			Message IRequestChannel.Request (Message message, TimeSpan timeout)
 			{
-				throw new NotImplementedException ();
+				return Inner.Request (message, timeout);
 			}
 
-			[MonoTODO]
 			EndpointAddress IRequestChannel.RemoteAddress {
-				get { throw new NotImplementedException (); }
+				get { return endpoint.Address; }
 			}
 
-			[MonoTODO]
 			Uri IRequestChannel.Via {
-				get { throw new NotImplementedException (); }
+				get { return Via; }
 			}
 
-			[MonoTODO]
+			#endregion
+
+			#region IOutputChannel
+
 			IAsyncResult IOutputChannel.BeginSend (Message message, AsyncCallback callback, object state)
 			{
-				throw new NotImplementedException ();
+				return ((IOutputChannel) this).BeginSend (message, endpoint.Binding.SendTimeout, callback, state);
 			}
 
-			[MonoTODO]
 			IAsyncResult IOutputChannel.BeginSend (Message message, TimeSpan timeout, AsyncCallback callback, object state)
 			{
-				throw new NotImplementedException ();
+				return Inner.BeginSend (message, timeout, callback, state);
 			}
 
-			[MonoTODO]
 			void IOutputChannel.EndSend (IAsyncResult result)
 			{
-				throw new NotImplementedException ();
+				Inner.EndSend (result);
 			}
 
-			[MonoTODO]
 			void IOutputChannel.Send (Message message)
 			{
-				throw new NotImplementedException ();
+				((IOutputChannel) this).Send (message, endpoint.Binding.SendTimeout);
 			}
 
-			[MonoTODO]
 			void IOutputChannel.Send (Message message, TimeSpan timeout)
 			{
-				throw new NotImplementedException ();
+				Inner.Send (message, timeout);
 			}
 
-			[MonoTODO]
+			#endregion
+
 			IExtensionCollection<IContextChannel> IExtensibleObject<IContextChannel>.Extensions {
-				get { return client.InnerChannel.Extensions; }
+				get { return Inner.Extensions; }
 			}
 
-			[MonoTODO]
 			TProperty IChannel.GetProperty<TProperty> ()
 			{
-				return client.InnerChannel.GetProperty<TProperty> ();
+				return Inner.GetProperty<TProperty> ();
 			}
 		}
-#endif
 	}
 }

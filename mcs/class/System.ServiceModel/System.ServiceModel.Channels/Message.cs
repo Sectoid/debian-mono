@@ -137,8 +137,9 @@ namespace System.ServiceModel.Channels
 
 		void WriteXsiNil (XmlDictionaryWriter writer)
 		{
-			writer.WriteStartElement ("z", "anyType", Constants.MSSerialization);
-			writer.WriteAttributeString ("i", "nil", "http://www.w3.org/2001/XMLSchema-instance", "true");
+			var dic = Constants.SoapDictionary;
+			writer.WriteStartElement ("z", dic.Add ("anyType"), dic.Add (Constants.MSSerialization));
+			writer.WriteAttributeString ("i", dic.Add ("nil"), dic.Add ("http://www.w3.org/2001/XMLSchema-instance"), "true");
 			writer.WriteEndElement ();
 		}
 
@@ -162,13 +163,13 @@ namespace System.ServiceModel.Channels
 				OnWriteBodyContents (writer);
 			else if (Version.Envelope == EnvelopeVersion.None)
 				WriteXsiNil (writer);
+			State = MessageState.Written;
 		}
 
 		public void WriteMessage (XmlDictionaryWriter writer)
 		{
 			if (State != MessageState.Created)
 				throw new InvalidOperationException (String.Format ("The message is already at {0} state", State));
-			State = MessageState.Written;
 
 			OnWriteMessage (writer);
 		}
@@ -180,9 +181,8 @@ namespace System.ServiceModel.Channels
 
 		public void WriteStartBody (XmlDictionaryWriter writer)
 		{
-			if (State != MessageState.Created && State != MessageState.Written)
+			if (State != MessageState.Created)
 				throw new InvalidOperationException (String.Format ("The message is already at {0} state", State));
-			State = MessageState.Written;
 
 			OnWriteStartBody (writer);
 		}
@@ -195,9 +195,8 @@ namespace System.ServiceModel.Channels
 
 		public void WriteStartEnvelope (XmlDictionaryWriter writer)
 		{
-			if (State != MessageState.Created && State != MessageState.Written)
+			if (State != MessageState.Created)
 				throw new InvalidOperationException (String.Format ("The message is already at {0} state", State));
-			State = MessageState.Written;
 
 			OnWriteStartEnvelope (writer);
 		}
@@ -213,21 +212,19 @@ namespace System.ServiceModel.Channels
 		{
 		}
 
-		[MonoTODO]
+		[MonoTODO ("use maxBufferSize")]
 		protected virtual MessageBuffer OnCreateBufferedCopy (
 			int maxBufferSize)
 		{
-#if NET_2_1
+			var s = new XmlWriterSettings ();
+			s.OmitXmlDeclaration = true;
+			s.ConformanceLevel = ConformanceLevel.Auto;
 			StringWriter sw = new StringWriter ();
-			XmlDictionaryWriter w = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw));
-			WriteMessage (w);
-			return new DefaultMessageBuffer (Headers, Properties, new XmlReaderBodyWriter (XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (sw.ToString ())))), false);
-#else
-			DTMXPathDocumentWriter2 pw = new DTMXPathDocumentWriter2 (new NameTable (), 100);
-			XmlDictionaryWriter w = XmlDictionaryWriter.CreateDictionaryWriter (pw);
-			WriteMessage (w);
-			return new XPathMessageBuffer (pw.CreateDocument (), Version, Headers.Count, this.Properties);
-#endif
+			using (XmlDictionaryWriter w = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw, s)))
+				WriteBodyContents (w);
+			var headers = new MessageHeaders (Headers);
+			var props = new MessageProperties (Properties);
+			return new DefaultMessageBuffer (maxBufferSize, headers, props, new XmlReaderBodyWriter (sw.ToString ()), false);
 		}
 
 		protected virtual string OnGetBodyAttribute (
@@ -237,30 +234,18 @@ namespace System.ServiceModel.Channels
 			return null;
 		}
 
-		[MonoTODO]
 		protected virtual XmlDictionaryReader OnGetReaderAtBodyContents ()
 		{
-			XmlDictionaryWriter writer = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (TextWriter.Null));
-			if (Version.Envelope != EnvelopeVersion.None) {
-				WriteStartEnvelope (writer);
-				OnWriteStartHeaders (writer);
-				for (int i = 0, count = Headers.Count; i < count; i++)
-					Headers.WriteHeader (i, writer);
-				writer.WriteEndElement ();
-				WriteStartBody (writer);
-			}
-
+			var ws = new XmlWriterSettings ();
+			ws.ConformanceLevel = ConformanceLevel.Auto;
 			StringWriter sw = new StringWriter ();
-			using (XmlDictionaryWriter body = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw))) {
+			using (XmlDictionaryWriter body = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw, ws))) {
 				WriteBodyContents (body);
 			}
 
-			if (Version.Envelope != EnvelopeVersion.None) {
-				writer.WriteEndElement ();
-				writer.WriteEndElement ();
-			}
-
-			return XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (sw.ToString ())));
+			var rs = new XmlReaderSettings ();
+			rs.ConformanceLevel = ConformanceLevel.Auto;
+			return XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (sw.ToString ()), rs));
 		}
 
 		protected abstract void OnWriteBodyContents (
@@ -271,34 +256,37 @@ namespace System.ServiceModel.Channels
 		{
 			if (Version.Envelope != EnvelopeVersion.None) {
 				WriteStartEnvelope (writer);
-				OnWriteStartHeaders (writer);
-				for (int i = 0, count = Headers.Count; i < count; i++)
-					Headers.WriteHeader (i, writer);
-				writer.WriteEndElement ();
+				if (Headers.Count > 0) {
+					OnWriteStartHeaders (writer);
+					for (int i = 0, count = Headers.Count; i < count; i++)
+						Headers.WriteHeader (i, writer);
+					writer.WriteEndElement ();
+				}
 			}
 			WriteBody (writer);
 			if (Version.Envelope != EnvelopeVersion.None)
 				writer.WriteEndElement ();
 		}
 
-		[MonoTODO]
 		protected virtual void OnWriteStartBody (
 			XmlDictionaryWriter writer)
 		{
-			writer.WriteStartElement ("s", "Body", Version.Envelope.Namespace);
+			var dic = Constants.SoapDictionary;
+			writer.WriteStartElement ("s", dic.Add ("Body"), dic.Add (Version.Envelope.Namespace));
 			if (BodyId != null)
-				writer.WriteAttributeString ("u", "Id", Constants.WsuNamespace, BodyId);
+				writer.WriteAttributeString ("u", dic.Add ("Id"), dic.Add (Constants.WsuNamespace), BodyId);
 		}
 
 		protected virtual void OnWriteStartEnvelope (
 			XmlDictionaryWriter writer)
 		{
-			writer.WriteStartElement ("s", "Envelope", Version.Envelope.Namespace);
+			var dic = Constants.SoapDictionary;
+			writer.WriteStartElement ("s", dic.Add ("Envelope"), dic.Add (Version.Envelope.Namespace));
 			if (Headers.Action != null && Version.Addressing.Namespace != MessageVersion.None.Addressing.Namespace)
-				writer.WriteXmlnsAttribute ("a", Version.Addressing.Namespace);
+				writer.WriteXmlnsAttribute ("a", dic.Add (Version.Addressing.Namespace));
 			foreach (MessageHeaderInfo h in Headers)
 				if (h.Id != null) {
-					writer.WriteXmlnsAttribute ("u", Constants.WsuNamespace);
+					writer.WriteXmlnsAttribute ("u", dic.Add (Constants.WsuNamespace));
 					break;
 				}
 		}
@@ -306,7 +294,8 @@ namespace System.ServiceModel.Channels
 		protected virtual void OnWriteStartHeaders (
 			XmlDictionaryWriter writer)
 		{
-			writer.WriteStartElement ("s", "Header", Version.Envelope.Namespace);
+			var dic = Constants.SoapDictionary;
+			writer.WriteStartElement ("s", dic.Add ("Header"), dic.Add (Version.Envelope.Namespace));
 		}
 
 		#region factory methods

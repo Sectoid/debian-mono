@@ -28,6 +28,8 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#if !NET_2_1 || MONOTOUCH
+
 using System.Collections;
 using System.Globalization;
 using System.Reflection;
@@ -210,4 +212,6 @@ namespace System.Security.Policy {
 #endif
 	}
 }
+
+#endif
 

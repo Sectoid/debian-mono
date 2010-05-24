@@ -66,13 +66,13 @@ namespace System.Xml.Schema
 			get {
 				if (anyType == null) {
 					anyType = new XmlSchemaComplexType ();
-					anyType.Name = "";	// In MS.NET, it is not "anyType"
-					anyType.QNameInternal = XmlQualifiedName.Empty;	// Not xs:anyType as well.
-#if BUGGY_MS_COMPLIANT
-					anyType.validatableParticle = XmlSchemaParticle.Empty; // This code makes validator handles these schemas incorrectly: particlesIb001, mgM013, mgH014, ctE004, ctD004
-#else
-					anyType.validatableParticle = XmlSchemaAny.AnyTypeContent;
-#endif
+					anyType.Name = "anyType";
+					anyType.QNameInternal = new XmlQualifiedName ("anyType", XmlSchema.Namespace);
+					if (XmlSchemaUtil.StrictMsCompliant)
+						anyType.validatableParticle = XmlSchemaParticle.Empty; // This code makes validator handles these schemas incorrectly: particlesIb001, mgM013, mgH014, ctE004, ctD004
+					else
+						anyType.validatableParticle = XmlSchemaAny.AnyTypeContent;
+
 					anyType.contentTypeParticle = anyType.validatableParticle;
 					anyType.DatatypeInternal = XmlSchemaSimpleType.AnySimpleType;
 					anyType.isMixed = true;
@@ -223,6 +223,7 @@ namespace System.Xml.Schema
 				return errorCount;
 
 			ValidatedIsAbstract = isAbstract;
+			attributeUses.Clear();
 
 			if (isRedefinedComponent) {
 				if (Annotation != null)
@@ -496,6 +497,9 @@ namespace System.Xml.Schema
 				} else {
 					validatableParticle = baseComplexType.ValidatableParticle;
 					resolvedContentType = baseComplexType.resolvedContentType;
+					// Bug #501814
+					if (resolvedContentType == XmlSchemaContentType.Empty)
+						resolvedContentType = GetComplexContentType (contentModel);
 				}
 			} else if (baseComplexType.validatableParticle == XmlSchemaParticle.Empty
 				|| baseComplexType == XmlSchemaComplexType.AnyType) {

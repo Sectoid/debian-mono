@@ -29,9 +29,12 @@ void mono_profiler_method_leave    (MonoMethod *method) MONO_INTERNAL;
 void mono_profiler_method_jit      (MonoMethod *method) MONO_INTERNAL;
 void mono_profiler_method_end_jit  (MonoMethod *method, MonoJitInfo* jinfo, int result) MONO_INTERNAL;
 void mono_profiler_method_free     (MonoMethod *method) MONO_INTERNAL;
+void mono_profiler_method_start_invoke (MonoMethod *method) MONO_INTERNAL;
+void mono_profiler_method_end_invoke   (MonoMethod *method) MONO_INTERNAL;
 
 void mono_profiler_code_transition (MonoMethod *method, int result) MONO_INTERNAL;
 void mono_profiler_allocation      (MonoObject *obj, MonoClass *klass) MONO_INTERNAL;
+void mono_profiler_monitor_event   (MonoObject *obj, MonoProfilerMonitorEvent event) MONO_INTERNAL;
 void mono_profiler_stat_hit        (guchar *ip, void *context) MONO_INTERNAL;
 void mono_profiler_stat_call_chain (int call_chain_depth, guchar **ips, void *context) MONO_INTERNAL;
 #define MONO_PROFILER_MAX_STAT_CALL_CHAIN_DEPTH 16
@@ -60,6 +63,10 @@ void                     mono_profiler_coverage_free  (MonoMethod *method) MONO_
 
 void mono_profiler_gc_event       (MonoGCEvent e, int generation) MONO_INTERNAL;
 void mono_profiler_gc_heap_resize (gint64 new_size) MONO_INTERNAL;
+
+void mono_profiler_code_chunk_new (gpointer chunk, int size) MONO_INTERNAL;
+void mono_profiler_code_chunk_destroy (gpointer chunk) MONO_INTERNAL;
+void mono_profiler_code_buffer_new (gpointer buffer, int size, MonoProfilerCodeBufferType type, void *data) MONO_INTERNAL;
 
 void mono_profiler_runtime_initialized (void) MONO_INTERNAL;
 

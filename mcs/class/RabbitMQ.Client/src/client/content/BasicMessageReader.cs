@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -55,14 +61,16 @@ using System.Collections;
 using RabbitMQ.Client;
 using RabbitMQ.Util;
 
-namespace RabbitMQ.Client.Content {
+namespace RabbitMQ.Client.Content
+{
     ///<summary>Framework for analyzing various types of AMQP
     ///Basic-class application messages.</summary>
-    public class BasicMessageReader: IMessageReader {
+    public class BasicMessageReader : IMessageReader
+    {
         protected IBasicProperties m_properties;
         protected byte[] m_body;
 
-	protected MemoryStream m_stream = null;
+        protected MemoryStream m_stream = null;
         protected NetworkBinaryReader m_reader = null;
 
         ///<summary>Retrieve this instance's NetworkBinaryReader reading from BodyBytes.</summary>
@@ -72,9 +80,12 @@ namespace RabbitMQ.Client.Content {
         /// exists, the existing instance is returned. The instance is
         /// not reset.
         ///</remarks>
-        public NetworkBinaryReader Reader {
-            get {
-                if (m_reader == null) {
+        public NetworkBinaryReader Reader
+        {
+            get
+            {
+                if (m_reader == null)
+                {
                     m_reader = new NetworkBinaryReader(BodyStream);
                 }
                 return m_reader;
@@ -82,53 +93,66 @@ namespace RabbitMQ.Client.Content {
         }
 
         ///<summary>Construct an instance ready for reading.</summary>
-        public BasicMessageReader(IBasicProperties properties, byte[] body) {
+        public BasicMessageReader(IBasicProperties properties, byte[] body)
+        {
             m_properties = properties;
             m_body = body;
         }
 
-	///<summary>Implement IMessageReader.Headers</summary>
-	public IDictionary Headers {
-	    get {
-		if (Properties.Headers == null) {
-		    Properties.Headers = new Hashtable();
-		}
-		return Properties.Headers;
-	    }
-	}
+        ///<summary>Implement IMessageReader.Headers</summary>
+        public IDictionary Headers
+        {
+            get
+            {
+                if (Properties.Headers == null)
+                {
+                    Properties.Headers = new Hashtable();
+                }
+                return Properties.Headers;
+            }
+        }
 
         ///<summary>Retrieve the IBasicProperties associated with this instance.</summary>
-        public IBasicProperties Properties {
-	    get {
-		return m_properties;
-	    }
-	}
+        public IBasicProperties Properties
+        {
+            get
+            {
+                return m_properties;
+            }
+        }
 
-	///<summary>Implement IMessageReader.BodyBytes</summary>
-        public byte[] BodyBytes {
-            get {
+        ///<summary>Implement IMessageReader.BodyBytes</summary>
+        public byte[] BodyBytes
+        {
+            get
+            {
                 return m_body;
             }
         }
 
-	///<summary>Implement IMessageReader.BodyStream</summary>
-	public Stream BodyStream {
-	    get {
-		if (m_stream == null) {
-		    m_stream = new MemoryStream(m_body);
-		}
-		return m_stream;
-	    }
-	}
+        ///<summary>Implement IMessageReader.BodyStream</summary>
+        public Stream BodyStream
+        {
+            get
+            {
+                if (m_stream == null)
+                {
+                    m_stream = new MemoryStream(m_body);
+                }
+                return m_stream;
+            }
+        }
 
-	///<summary>Implement IMessageReader.RawRead</summary>
-	public int RawRead() {
-	    return BodyStream.ReadByte();
-	}
+        ///<summary>Implement IMessageReader.RawRead</summary>
+        public int RawRead()
+        {
+            return BodyStream.ReadByte();
+        }
 
-	///<summary>Implement IMessageReader.RawRead</summary>
-	public int RawRead(byte[] target, int offset, int length) {
-	    return BodyStream.Read(target, offset, length);
-	}
+        ///<summary>Implement IMessageReader.RawRead</summary>
+        public int RawRead(byte[] target, int offset, int length)
+        {
+            return BodyStream.Read(target, offset, length);
+        }
     }
 }

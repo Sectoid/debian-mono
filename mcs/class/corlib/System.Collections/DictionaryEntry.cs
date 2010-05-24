@@ -38,6 +38,7 @@ namespace System.Collections {
 
 #if NET_2_0
 	[ComVisible(true)]
+	[System.Diagnostics.DebuggerDisplay ("{_value}", Name="[{_key}]")]
 #endif
 	[Serializable]
 	public struct DictionaryEntry {

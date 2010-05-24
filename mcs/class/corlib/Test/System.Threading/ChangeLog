@@ -1,3 +1,76 @@
+2009-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelTests.cs: Added unit test for Bug #536919, cleaned up.
+
+2009-10-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* InterlockedTest.cs: Add test case for generic methods
+	CompareExchange and Exchange
+	[Backport r144840]
+
+2009-10-25  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ThreadTest.cs: Add test cases for Current[UI]Culture (not 
+	working), Name, Join, Sleep and SpinWait
+	[Backport r144824]
+
+2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* EventWaitHandleTest.cs: New. Test case for EventResetMode 
+	validation
+	[Backport r144681]
+
+2009-10-22  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* MonitorTest.cs: Mark existing tests as "NotWorking" since they
+	fail in MS FX2 (maybe they worked in 1.x?). Add more test cases
+	to validate the TryEnter and Wait overloaded methods.
+	[Backport r144627]
+
+2009-10-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* WaitHandleTest.cs: New. Add test cases for Wait[One|All|Any]
+	methods overloads (at least the one present in Silverlight 2)
+	[Backport r144529]
+
+2009-10-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* TimerTest.cs: Add more validation tests
+	[Backport r144466]
+
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelTests.cs: Remove While test case.
+	* AggregateExceptionTests.cs: Moved file.
+
+2009-07-30 Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* System.Threading.Tasks/TaskTest.cs:
+	* FutureTests.cs:
+	* ParallelConcurrentStackTests.cs:
+	* ConcurrentSkipListTests.cs:
+	* ConcurrentQueueTests.cs:
+	* ConcurrentBagTests.cs:
+	* ConcurrentStackTests.cs:
+	* BlockingCollectionTests.cs:
+	* ConcurrentDictionaryTests.cs:
+	* CollectionStressTestHelper.cs:
+	* ParallelConcurrentQueueTests.cs:
+	* CancellationTokenTests.cs:
+	* ManualResetEventSlimTests.cs:
+	* SnziTests.cs:
+	* SemaphoreSlimTests.cs:
+	* ParallelTests.cs:
+	* CountdownEventTests.cs:
+	* AggregateExceptionTests.cs:
+	* ThreadLazyTests.cs:
+	* ParallelTestHelper.cs: Add ParallelFx unit tests for System.Threading
+	namespace
+
+2009-06-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Convert all tests to new-style nunit classes/methods.
+
 2009-01-05  Zoltan Varga  <vargaz@gmail.com>
 
 	* ExecutionContextTest.cs (Copy_FromThread): Disable this test, it doesn't

@@ -36,7 +36,7 @@ OTHER_H = \
 	uglify.h	\
 	versioninfo.h	\
 	wait.h		\
-	wapi.h	
+	wapi.h
 
 OTHER_SRC = \
 	access.h		\
@@ -63,6 +63,7 @@ OTHER_SRC = \
 	io-portability.h	\
 	io-private.h		\
 	io-layer.h		\
+	locking.c		\
 	macros.h		\
 	messages.c		\
 	messages.h		\
@@ -74,6 +75,7 @@ OTHER_SRC = \
 	mono-mutex.c		\
 	mono-mutex.h		\
 	mono-spinlock.h		\
+	posix.c			\
 	processes.c		\
 	processes.h		\
 	process-private.h	\
@@ -91,7 +93,6 @@ OTHER_SRC = \
 	status.h		\
 	system.c		\
 	system.h		\
-	threads.c		\
 	threads.h		\
 	thread-private.h	\
 	timefuncs.c		\
@@ -106,7 +107,9 @@ OTHER_SRC = \
 	wapi_glob.h		\
 	wapi_glob.c		\
 	wapi.h			\
-	wapi-private.h
+	wapi-private.h		\
+	wthreads.c
+
 
 WINDOWS_H = \
 	io-layer.h
@@ -131,6 +134,12 @@ libwapi_la_SOURCES = $(OTHER_SRC)
 endif
 libwapiinclude_HEADERS = $(OTHER_H)
 endif
+if PLATFORM_DARWIN
+if X86
+libwapi_la_LIBADD = -lproc
+endif
+endif
+
 
 EXTRA_DIST =	\
 	$(WINDOWS_SRC)	\

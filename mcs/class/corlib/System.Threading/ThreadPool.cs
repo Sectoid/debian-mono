@@ -66,10 +66,11 @@ namespace System.Threading {
 			return true;
 		}
 #endif
-		
+
+#if !NET_2_1		
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public static extern void GetAvailableThreads (out int workerThreads, out int completionPortThreads);
-
+#endif
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public static extern void GetMaxThreads (out int workerThreads, out int completionPortThreads);
 			
@@ -90,14 +91,17 @@ namespace System.Threading {
 			
 		public static bool QueueUserWorkItem (WaitCallback callBack)
 		{
-			IAsyncResult ar = callBack.BeginInvoke (null, null, null);
-			if (ar == null)
-				return false;
-			return true;
+			return QueueUserWorkItem (callBack, null);
 		}
 
 		public static bool QueueUserWorkItem (WaitCallback callBack, object state)
 		{
+			if (callBack == null)
+				throw new ArgumentNullException ("callBack");
+
+#if NET_2_1 && !MONOTOUCH
+			callBack = MoonlightHandler (callBack);
+#endif
 			IAsyncResult ar = callBack.BeginInvoke (state, null, null);
 			if (ar == null)
 				return false;
@@ -155,6 +159,8 @@ namespace System.Threading {
 			return RegisterWaitForSingleObject (waitObject, callBack, state,
 							    (long) millisecondsTimeOutInterval, executeOnlyOnce);
 		}
+
+#if !NET_2_1
 
 #if NET_2_0
 		[CLSCompliant (false)]
@@ -218,5 +224,21 @@ namespace System.Threading {
 		{
 			throw new NotImplementedException ();
 		}
+
+#endif
+
+#if NET_2_1 && !MONOTOUCH
+		static WaitCallback MoonlightHandler (WaitCallback callback)
+		{
+			return delegate (object o) {
+				try {
+					callback (o);
+				} 
+				catch (Exception ex) {
+					Thread.MoonlightUnhandledException (ex);
+				} 
+			};
+		}
+#endif
 	}
 }

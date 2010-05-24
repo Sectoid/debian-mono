@@ -22,15 +22,19 @@ namespace Mono.CSharp {
 	public enum LanguageVersion
 	{
 		ISO_1		= 1,
-		Default_MCS	= 2,
-		ISO_2		= 3,
-		LINQ		= 4,
+		ISO_2		= 2,
+		V_3			= 3,
+		V_4			= 4,
+		Future		= 100,
 
-#if GMCS_SOURCE
-		Default		= LINQ
-#else
-		Default		= Default_MCS
-#endif
+		Default		= LanguageVersion.V_4,
+	}
+
+	public enum MetadataVersion
+	{
+		v1,
+		v2,
+		v4
 	}
 
 	public class RootContext {
@@ -39,10 +43,16 @@ namespace Mono.CSharp {
 		// COMPILER OPTIONS CLASS
 		//
 		public static Target Target;
+#if GMCS_SOURCE
+		public static Platform Platform;
+#endif
 		public static string TargetExt;
 		public static bool VerifyClsCompliance = true;
 		public static bool Optimize = true;
 		public static LanguageVersion Version;
+		public static bool EnhancedWarnings;
+
+		public static MetadataVersion MetadataCompatibilityVersion;
 
 		//
 		// We keep strongname related info here because
@@ -101,13 +111,13 @@ namespace Mono.CSharp {
 		//
 		// Contains the parsed tree
 		//
-		static RootTypes root;
+		static ModuleContainer root;
 
 		//
 		// This hashtable contains all of the #definitions across the source code
 		// it is used by the ConditionalAttribute handler.
 		//
-		static ArrayList AllDefines = new ArrayList ();
+		static ArrayList AllDefines;
 		
 		//
 		// This keeps track of the order in which classes were defined
@@ -144,11 +154,10 @@ namespace Mono.CSharp {
 		public static void Reset (bool full)
 		{
 			if (full)
-				root = new RootTypes ();
+				root = null;
 			
 			type_container_resolve_order = new ArrayList ();
 			EntryPoint = null;
-			Report.WarningLevel = 4;
 			Checked = false;
 			Unsafe = false;
 			StdLib = true;
@@ -158,16 +167,25 @@ namespace Mono.CSharp {
 			MainClass = null;
 			Target = Target.Exe;
 			TargetExt = ".exe";
+#if GMCS_SOURCE
+			Platform = Platform.AnyCPU;
+#endif
 			Version = LanguageVersion.Default;
 			Documentation = null;
 			impl_details_class = null;
 			helper_classes = null;
 
+#if GMCS_SOURCE
+			MetadataCompatibilityVersion = MetadataVersion.v2;
+#else
+			MetadataCompatibilityVersion = MetadataVersion.v1;
+#endif
+
 			//
 			// Setup default defines
 			//
-			RootContext.AllDefines = new ArrayList ();
-			RootContext.AddConditional ("__MonoCS__");
+			AllDefines = new ArrayList ();
+			AddConditional ("__MonoCS__");
 		}
 
 		public static void AddConditional (string p)
@@ -182,8 +200,9 @@ namespace Mono.CSharp {
 			return AllDefines.Contains (value);
 		}
 
-		static public RootTypes ToplevelTypes {
+		static public ModuleContainer ToplevelTypes {
 			get { return root; }
+			set { root = value; }
 		}
 
 		public static void RegisterOrder (TypeContainer tc)
@@ -200,6 +219,8 @@ namespace Mono.CSharp {
 		// </remarks>
 		static public void ResolveTree ()
 		{
+			root.Resolve ();
+
 			//
 			// Interfaces are processed next, as classes and
 			// structs might inherit from an object or implement
@@ -256,9 +277,7 @@ namespace Mono.CSharp {
 			//
 			if (helper_classes != null){
 				foreach (TypeBuilder type_builder in helper_classes) {
-#if GMCS_SOURCE
-					type_builder.SetCustomAttribute (TypeManager.GetCompilerGeneratedAttribute (Location.Null));
-#endif
+					PredefinedAttributes.Get.CompilerGenerated.EmitAttribute (type_builder);
 					type_builder.CreateType ();
 				}
 			}
@@ -342,7 +361,7 @@ namespace Mono.CSharp {
 				foreach (TypeContainer tc in type_container_resolve_order)
 					tc.EmitType ();
 
-				if (Report.Errors > 0)
+				if (RootContext.ToplevelTypes.Compiler.Report.Errors > 0)
 					return;
 
 				foreach (TypeContainer tc in type_container_resolve_order)
@@ -355,19 +374,14 @@ namespace Mono.CSharp {
 			}			
 
 			CodeGen.Assembly.Emit (root);
-			CodeGen.Module.Emit (root);
+			root.Emit ();
 		}
 		
 		//
 		// Public Field, used to track which method is the public entry
 		// point.
 		//
-		static public MethodInfo EntryPoint;
-
-                //
-                // Track the location of the entry point.
-                //
-                static public Location EntryPointLocation;
+		static public Method EntryPoint;
 
 		//
 		// These are used to generate unique names on the structs and fields.
@@ -393,7 +407,7 @@ namespace Mono.CSharp {
 			FieldBuilder fb;
 			
 			if (impl_details_class == null){
-				impl_details_class = CodeGen.Module.Builder.DefineType (
+				impl_details_class = ToplevelTypes.Builder.DefineType (
 					"<PrivateImplementationDetails>",
                                         TypeAttributes.NotPublic,
                                         TypeManager.object_type);
@@ -408,7 +422,7 @@ namespace Mono.CSharp {
 			return fb;
 		}
 
-		public static void CheckUnsafeOption (Location loc)
+		public static void CheckUnsafeOption (Location loc, Report Report)
 		{
 			if (!Unsafe) {
 				Report.Error (227, loc, 
@@ -417,5 +431,3 @@ namespace Mono.CSharp {
 		}
 	}
 }
-	      
-

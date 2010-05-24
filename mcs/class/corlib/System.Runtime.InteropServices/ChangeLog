@@ -3,6 +3,37 @@
 	* GCHandle.cs: Add missing validations
 	[Backport r144204]
 
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* _Assembly.cs: Remove Evidence and GlobalAssemblyCache 
+	properties for NET_2_1
+	* Marshal.cs: Avoid depending on SecureString for NET_2_1
+
+2009-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MarshalAsAttribute.cs: Remove VarEnum field for NET_2_1
+
+2009-09-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Marshal.cs: Avoid depending on COM stuff for NET_2_1
+
+2009-09-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* SafeBuffer.cs: Mark specific methods as non-cls compliant instead of
+	the whole class.
+	
+	* SafeBuffer.cs: New net 4.0 class.
+
+2009-04-17 Tom Hindle <tom_hindle@sil.org>
+
+	* Marshal.cs: Improved GetExceptionForHR to return real C# exceptions in 
+	certain cases instead of always COMException.
+
+2009-02-24  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SafeHandle.cs: Add default ctor in 2.1 profile (needed to compile
+	new unit tests in moonlight).
+
 2009-03-05  Tom Hindle <tom_hindle@sil.org>
 	
 	* Marshal.cs: Implemented GenerateGuidForType

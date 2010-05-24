@@ -42,8 +42,10 @@ using System.Collections;
 using System.Security;
 using System.Security.Permissions;
 using System.Text;
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 using System.Security.AccessControl;
+#endif
+#if NET_2_0
 using System.Runtime.InteropServices;
 #endif
 
@@ -92,7 +94,7 @@ namespace System.IO
 			return CreateDirectoriesInternal (path);
 		}
 
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		[MonoTODO ("DirectorySecurity not implemented")]
 		public static DirectoryInfo CreateDirectory (string path, DirectorySecurity directorySecurity)
 		{
@@ -102,10 +104,11 @@ namespace System.IO
 
 		static DirectoryInfo CreateDirectoriesInternal (string path)
 		{
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
 				new FileIOPermission (FileIOPermissionAccess.Read | FileIOPermissionAccess.Write, path).Demand ();
 			}
-
+#endif
 			DirectoryInfo info = new DirectoryInfo (path, true);
 			if (info.Parent != null && !info.Parent.Exists)
 				 info.Parent.Create ();
@@ -211,19 +214,8 @@ namespace System.IO
 			bool exists;
 			
 			exists = MonoIO.ExistsDirectory (path, out error);
-			if (error != MonoIOError.ERROR_SUCCESS &&
-			    error != MonoIOError.ERROR_PATH_NOT_FOUND &&
-			    error != MonoIOError.ERROR_INVALID_HANDLE &&
-			    error != MonoIOError.ERROR_ACCESS_DENIED) {
-
-				// INVALID_HANDLE might happen if the file is moved
-				// while testing for the existence, a kernel issue
-				// according to Larry Ewing.
-				
-				throw MonoIO.GetException (path, error);
-			}
-
-			return(exists);
+			/* This should not throw exceptions */
+			return exists;
 		}
 
 		public static DateTime GetLastAccessTime (string path)
@@ -263,10 +255,11 @@ namespace System.IO
 			string result = MonoIO.GetCurrentDirectory (out error);
 			if (error != MonoIOError.ERROR_SUCCESS)
 				throw MonoIO.GetException (error);
-
+#if !NET_2_1
 			if ((result != null) && (result.Length > 0) && SecurityManager.SecurityEnabled) {
 				new FileIOPermission (FileIOPermissionAccess.PathDiscovery, result).Demand ();
 			}
+#endif
 			return result;
 		}
 		
@@ -280,7 +273,7 @@ namespace System.IO
 			return GetFileSystemEntries (path, searchPattern, FileAttributes.Directory, FileAttributes.Directory);
 		}
 		
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		public static string [] GetDirectories (string path, string searchPattern, SearchOption searchOption)
 		{
 			if (searchOption == SearchOption.TopDirectoryOnly)
@@ -313,7 +306,7 @@ namespace System.IO
 			return GetFileSystemEntries (path, searchPattern, FileAttributes.Directory, 0);
 		}
 
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		public static string[] GetFiles (string path, string searchPattern, SearchOption searchOption)
 		{
 			if (searchOption == SearchOption.TopDirectoryOnly)
@@ -408,7 +401,7 @@ namespace System.IO
 				throw MonoIO.GetException (error);
 		}
 
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		public static void SetAccessControl (string path, DirectorySecurity directorySecurity)
 		{
 			throw new NotImplementedException ();
@@ -530,7 +523,7 @@ namespace System.IO
 			return result;
 		}
 
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		[MonoNotSupported ("DirectorySecurity isn't implemented")]
 		public static DirectorySecurity GetAccessControl (string path, AccessControlSections includeSections)
 		{
