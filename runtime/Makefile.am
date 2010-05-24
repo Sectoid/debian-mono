@@ -8,25 +8,43 @@ noinst_SCRIPTS = mono-wrapper monodis-wrapper
 etctmp = etc
 symlinks = etc/mono/1.0/machine.config etc/mono/2.0/machine.config etc/mono/2.0/web.config etc/mono/browscap.ini etc/mono/2.0/Browsers/Compat.browser
 
+if INSTALL_4_0
+symlinks += etc/mono/4.0/machine.config etc/mono/4.0/web.config
+endif
+
 etc/mono/1.0/machine.config: $(top_srcdir)/data/net_1_1/machine.config
 etc/mono/2.0/machine.config: $(top_srcdir)/data/net_2_0/machine.config
 etc/mono/2.0/web.config: $(top_srcdir)/data/net_2_0/web.config
 etc/mono/browscap.ini: $(top_srcdir)/data/browscap.ini
 etc/mono/2.0/Browsers/Compat.browser: $(top_srcdir)/data/net_2_0/Browsers/Compat.browser
+etc/mono/4.0/machine.config: $(top_srcdir)/data/net_4_0/machine.config
+etc/mono/4.0/web.config: $(top_srcdir)/data/net_4_0/web.config
 
 $(symlinks):
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 SUPPORT_FILES = $(symlinks) mono-wrapper etc/mono/config
 
-if INSTALL_2_0
-if INSTALL_2_1
-build_profiles = net_1_1 net_2_0 net_3_5 net_2_1
-else
-build_profiles = net_1_1 net_2_0 net_3_5
-endif
-else
 build_profiles = net_1_1
+test_profiles = $(build_profiles)
+
+if INSTALL_2_0
+build_profiles += net_2_0 net_3_5
+test_profiles += net_2_0 net_3_5
+endif
+
+if INSTALL_4_0
+build_profiles += net_4_0
+#test_profiles += net_4_0
+endif
+
+if INSTALL_2_1
+build_profiles += net_2_1_raw
+test_profiles += net_2_1_raw
+endif
+
+if INSTALL_MONOTOUCH
+build_profiles += monotouch
 endif
 
 if BUILD_MCS
@@ -59,7 +77,7 @@ clean-local:
 
 endif BUILD_MCS
 
-TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/mcs $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs
+TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/mcs $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs $(tmpinst)/bin/al2
 
 # now a misnomer, but it'll go away soon enough.
 if ENABLE_NUNIT_TESTS
@@ -68,11 +86,19 @@ else
 test_select = ONLY_CENTUM_TESTS=yes
 endif
 
+if INSTALL_2_1
+moon-do-build: test-support-files
+	cd $(top_builddir)/../moon/class && $(MAKE) all
+else
+moon-do-build:
+	@:
+endif
+
 mcs-do-test-profiles:
-	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(build_profiles)' test-profiles
+	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(test_profiles)' test-profiles
 
 mcs-do-run-test-profiles: test-support-files
-	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(build_profiles)' run-test-profiles
+	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='$(test_profiles)' run-test-profiles
 
 if PLATFORM_WIN32
 if CROSS_COMPILING
@@ -92,7 +118,7 @@ endif
 # Skip net 2.1 assemblies for now because of visibility problems
 mcs-compileall: mono-wrapper etc/mono/config
 	save_MONO_PATH=$$MONO_PATH; mcs_topdir=`cd $(mcs_topdir) && $(cur_dir_cmd)`; ok=:; \
-	for profile in $(build_profiles); do \
+	for profile in $(test_profiles); do \
 	  if [ "net_2_1" = "$$profile" ]; then \
           break; \
       fi; \
@@ -106,7 +132,7 @@ mcs-compileall: mono-wrapper etc/mono/config
 		if [ ! -f $$i ] ; then \
 			continue ; \
 		fi ;  \
-	    if ./mono-wrapper --compile-all --security=validil --verify-all $$i; then \
+	    if ./mono-wrapper --compile-all --verify-all --security=validil $$i; then \
 	      echo $$i verified OK; \
 	    else \
 	      echo $$i verification failed; ok=false; \
@@ -147,6 +173,12 @@ $(tmpinst)/bin/ilasm: $(tmpinst)/bin/mono Makefile
 	echo '#! /bin/sh' > $@ ; \
 	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
 	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/ilasm/ilasm.exe"'" "$$@"' >> $@ ; \
+	chmod +x $@
+
+$(tmpinst)/bin/al2: $(tmpinst)/bin/mono Makefile
+	echo '#! /bin/sh' > $@ ; \
+	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
+	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_2_0/al.exe"'" "$$@"' >> $@ ; \
 	chmod +x $@
 
 test-support-files: $(TEST_SUPPORT_FILES)

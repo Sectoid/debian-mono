@@ -334,6 +334,7 @@
 #    define ARM
 #    define mach_type_known
 #    define DARWIN_DONT_PARSE_STACK
+#    define GC_DONT_REGISTER_MAIN_STATIC_DATA
 #   endif
 # endif
 # if defined(NeXT) && defined(mc68000)
@@ -804,6 +805,7 @@
 #     define STACKBOTTOM ((ptr_t) LMGetCurStackBase())
 #     define DATAEND  /* not needed */
 #   endif
+
 #   ifdef LINUX
 #     if defined(__powerpc64__)
 #       define ALIGNMENT 8
@@ -882,6 +884,20 @@
 #     define DATASTART GC_data_start
 #     define DYNAMIC_LOADING
 #   endif
+#   ifdef SN_TARGET_PS3
+#       define NO_GETENV
+#       define CPP_WORDSZ 32
+#       define ALIGNMENT 4
+        extern int _end [];
+//       extern int _dso_handle[];
+		extern int __bss_start;
+
+#       define DATAEND (_end)
+#       define DATASTART (__bss_start)
+#       define STACKBOTTOM ((ptr_t) ps3_get_stack_bottom ())
+#       define USE_GENERIC_PUSHREGS
+#   endif
+
 #   ifdef NOSYS
 #     define ALIGNMENT 4
 #     define OS_TYPE "NOSYS"
@@ -1376,7 +1392,12 @@
 #     define DATAEND (_end)
       extern int __data_start[];
 #     define DATASTART ((ptr_t)(__data_start))
-#     define ALIGNMENT 4
+#     if defined(_MIPS_SZPTR) && (_MIPS_SZPTR == 64)
+#        define ALIGNMENT 8
+#        define CPP_WORDSZ 64
+#     else
+#        define ALIGNMENT 4
+#     endif
 #     define USE_GENERIC_PUSH_REGS
 #     if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 2 || __GLIBC__ > 2
 #        define LINUX_STACKBOTTOM
@@ -2363,8 +2384,13 @@
 			  GC_amiga_get_mem((size_t)bytes + GC_page_size) \
 			  + GC_page_size-1)
 #	      else
+#           if defined(SN_TARGET_PS3)
+	           extern void *ps3_get_mem (size_t size);
+#              define GET_MEM(bytes) (struct hblk*) ps3_get_mem (bytes)
+#           else
 		extern ptr_t GC_unix_get_mem();
 #               define GET_MEM(bytes) (struct hblk *)GC_unix_get_mem(bytes)
+#endif
 #	      endif
 #	    endif
 #	  endif

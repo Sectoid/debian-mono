@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -57,7 +63,7 @@ namespace RabbitMQ.Client.Exceptions
     /// use. </summary>
     public class ChannelAllocationException : Exception
     {
-        private readonly int channel;
+        private readonly int m_channel;
 
         /// <summary>
         /// Indicates that there are no more free channels.
@@ -65,7 +71,7 @@ namespace RabbitMQ.Client.Exceptions
         public ChannelAllocationException()
             : base("The connection cannot support any more channels. Consider creating a new connection") 
         {
-            this.channel = -1;
+            m_channel = -1;
         }
 
         /// <summary>
@@ -75,13 +81,13 @@ namespace RabbitMQ.Client.Exceptions
         public ChannelAllocationException(int channel)
             : base(string.Format("The Requested Channel ({0}) is already in use.", channel))
         {
-            this.channel = channel;
+            m_channel = channel;
         }
 
         ///<summary>Retrieves the channel number concerned; will
         ///return -1 in the case where "no more free channels" is
         ///being signalled, or a non-negative integer when "channel is
         ///in use" is being signalled.</summary>
-        public int Channel { get { return channel; } }
+        public int Channel { get { return m_channel; } }
     }
 }

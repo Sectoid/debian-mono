@@ -121,6 +121,10 @@ namespace System.Web.UI.WebControls
 			path = null;
 			depth = -1;
 			gotBinding = false;
+			if (nodes != null) {
+				foreach (TreeNode node in nodes)
+					node.ResetPathData ();
+			}
 		}
 		
 		internal TreeView Tree {
@@ -152,9 +156,7 @@ namespace System.Web.UI.WebControls
 		[DefaultValue (null)]
 		[Browsable (false)]
 		public object DataItem {
-			get {
-				return dataItem;
-			}
+			get { return dataItem; }
 		}
 		
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
@@ -218,12 +220,11 @@ namespace System.Web.UI.WebControls
 		public string ImageToolTip {
 			get {
 				object o = ViewState ["ImageToolTip"];
-				if (o != null) return (string)o;
-				return "";
+				if (o != null)
+					return (string)o;
+				return String.Empty;
 			}
-			set {
-				ViewState ["ImageToolTip"] = value;
-			}
+			set { ViewState ["ImageToolTip"] = value; }
 		}
 		
 		[DefaultValue ("")]
@@ -232,12 +233,11 @@ namespace System.Web.UI.WebControls
 		public string ImageUrl {
 			get {
 				object o = ViewState ["ImageUrl"];
-				if (o != null) return (string)o;
-				return "";
+				if (o != null)
+					return (string)o;
+				return String.Empty;
 			}
-			set {
-				ViewState ["ImageUrl"] = value;
-			}
+			set { ViewState ["ImageUrl"] = value; }
 		}
 
 		[DefaultValue ("")]
@@ -246,12 +246,11 @@ namespace System.Web.UI.WebControls
 		public string NavigateUrl {
 			get {
 				object o = ViewState ["NavigateUrl"];
-				if (o != null) return (string)o;
-				return "";
+				if (o != null)
+					return (string)o;
+				return String.Empty;
 			}
-			set {
-				ViewState ["NavigateUrl"] = value;
-			}
+			set { ViewState ["NavigateUrl"] = value; }
 		}
 
 		internal bool HadChildrenBeforePopulating {
@@ -268,7 +267,8 @@ namespace System.Web.UI.WebControls
 		public bool PopulateOnDemand {
 			get {
 				object o = ViewState ["PopulateOnDemand"];
-				if (o != null) return (bool)o;
+				if (o != null)
+					return (bool)o;
 				return false;
 			}
 			set {
@@ -284,12 +284,11 @@ namespace System.Web.UI.WebControls
 		public TreeNodeSelectAction SelectAction {
 			get {
 				object o = ViewState ["SelectAction"];
-				if (o != null) return (TreeNodeSelectAction)o;
+				if (o != null)
+					return (TreeNodeSelectAction)o;
 				return TreeNodeSelectAction.Select;
 			}
-			set {
-				ViewState ["SelectAction"] = value;
-			}
+			set { ViewState ["SelectAction"] = value; }
 		}
 
 		[DefaultValue (null)]
@@ -298,9 +297,7 @@ namespace System.Web.UI.WebControls
 				object o = ViewState ["ShowCheckBox"];
 				return (bool?)o;
 			}
-			set {
-				ViewState ["ShowCheckBox"] = value;
-			}
+			set { ViewState ["ShowCheckBox"] = value; }
 		}
 
 		internal bool ShowCheckBoxInternal {
@@ -319,12 +316,11 @@ namespace System.Web.UI.WebControls
 		public string Target {
 			get {
 				object o = ViewState ["Target"];
-				if(o != null) return (string)o;
-				return "";
+				if(o != null)
+					return (string)o;
+				return String.Empty;
 			}
-			set {
-				ViewState ["Target"] = value;
-			}
+			set { ViewState ["Target"] = value; }
 		}
 
 		[Localizable (true)]
@@ -335,12 +331,11 @@ namespace System.Web.UI.WebControls
 				object o = ViewState ["Text"];
 				if (o == null)
 					o = ViewState ["Value"];
-				if (o != null) return (string)o;
+				if (o != null)
+					return (string)o;
 				return String.Empty;
 			}
-			set {
-				ViewState ["Text"] = value;
-			}
+			set { ViewState ["Text"] = value; }
 		}
 
 		[Localizable (true)]
@@ -348,12 +343,11 @@ namespace System.Web.UI.WebControls
 		public string ToolTip {
 			get {
 				object o = ViewState ["ToolTip"];
-				if(o != null) return (string)o;
-				return "";
+				if(o != null)
+					return (string)o;
+				return String.Empty;
 			}
-			set {
-				ViewState ["ToolTip"] = value;
-			}
+			set { ViewState ["ToolTip"] = value; }
 		}
 
 		[Localizable (true)]
@@ -363,19 +357,16 @@ namespace System.Web.UI.WebControls
 				object o = ViewState ["Value"];
 				if (o == null)
 					o = ViewState ["Text"];
-				if(o != null) return (string)o;
+				if(o != null)
+					return (string)o;
 				return String.Empty;
 			}
-			set {
-				ViewState ["Value"] = value;
-			}
+			set { ViewState ["Value"] = value; }
 		}
 		
 		[DefaultValue (false)]
 		public bool Selected {
-			get {
-				return SelectedFlag;
-			}
+			get { return SelectedFlag; }
 			set {
 				SelectedFlag = value;
 				
@@ -391,12 +382,11 @@ namespace System.Web.UI.WebControls
 		internal virtual bool SelectedFlag {
 			get {
 				object o = ViewState ["Selected"];
-				if(o != null) return (bool)o;
+				if(o != null)
+					return (bool)o;
 				return false;
 			}
-			set {
-				ViewState ["Selected"] = value;
-			}
+			set { ViewState ["Selected"] = value; }
 		}
 		
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
@@ -427,14 +417,16 @@ namespace System.Web.UI.WebControls
 			set { index = value; ResetPathData (); }
 		}
 		
-		internal void SetParent (TreeNode node) {
+		internal void SetParent (TreeNode node)
+		{
 			parent = node;
 			ResetPathData ();
 		}
 		
 		internal string Path {
 			get {
-				if (path != null) return path;
+				if (path != null)
+					return path;
 				StringBuilder sb = new StringBuilder (index.ToString());
 				TreeNode node = parent;
 				while (node != null) {
@@ -450,12 +442,11 @@ namespace System.Web.UI.WebControls
 		internal bool Populated {
 			get {
 				object o = ViewState ["Populated"];
-				if (o != null) return (bool) o;
+				if (o != null)
+					return (bool) o;
 				return false;
 			}
-			set {
-				ViewState ["Populated"] = value;
-			}
+			set { ViewState ["Populated"] = value; }
 		}
 
 		internal bool HasChildData {
@@ -501,7 +492,8 @@ namespace System.Web.UI.WebControls
 		void SetExpandedRec (bool expanded, int depth)
 		{
 			Expanded = expanded;
-			if (depth == 0) return;
+			if (depth == 0)
+				return;
 			
 			foreach (TreeNode nod in ChildNodes)
 				nod.SetExpandedRec (expanded, depth - 1);
@@ -579,8 +571,7 @@ namespace System.Web.UI.WebControls
 			get { return IsTrackingViewState; }
 		}
 
-		protected bool IsTrackingViewState
-		{
+		protected bool IsTrackingViewState {
 			get { return marked; }
 		}
 		
@@ -603,7 +594,8 @@ namespace System.Web.UI.WebControls
 			return nod;
 		}
 
-		object ICloneable.Clone () {
+		object ICloneable.Clone ()
+		{
 			return Clone ();
 		}
 		
@@ -623,8 +615,7 @@ namespace System.Web.UI.WebControls
 					ImageToolTip = Convert.ToString (GetBoundPropertyValue (bin.ImageToolTipField));
 					if (ImageToolTip.Length == 0)
 						ImageToolTip = bin.ImageToolTip;
-				}
-				else if (bin.ImageToolTip.Length > 0)
+				} else if (bin.ImageToolTip.Length > 0)
 					ImageToolTip = bin.ImageToolTip;
 					
 				// Bind ImageUrl property
@@ -633,8 +624,7 @@ namespace System.Web.UI.WebControls
 					ImageUrl = Convert.ToString (GetBoundPropertyValue (bin.ImageUrlField));
 					if (ImageUrl.Length == 0)
 						ImageUrl = bin.ImageUrl;
-				}
-				else if (bin.ImageUrl.Length > 0)
+				} else if (bin.ImageUrl.Length > 0)
 					ImageUrl = bin.ImageUrl;
 					
 				// Bind NavigateUrl property
@@ -643,8 +633,7 @@ namespace System.Web.UI.WebControls
 					NavigateUrl = Convert.ToString (GetBoundPropertyValue (bin.NavigateUrlField));
 					if (NavigateUrl.Length == 0)
 						NavigateUrl = bin.NavigateUrl;
-				}
-				else if (bin.NavigateUrl.Length > 0)
+				} else if (bin.NavigateUrl.Length > 0)
 					NavigateUrl = bin.NavigateUrl;
 					
 				// Bind PopulateOnDemand property
@@ -668,8 +657,7 @@ namespace System.Web.UI.WebControls
 					Target = Convert.ToString (GetBoundPropertyValue (bin.TargetField));
 					if (Target.Length == 0)
 						Target = bin.Target;
-				}
-				else if (bin.Target.Length > 0)
+				} else if (bin.Target.Length > 0)
 					Target = bin.Target;
 					
 				// Bind Text property
@@ -694,8 +682,7 @@ namespace System.Web.UI.WebControls
 					ToolTip = Convert.ToString (GetBoundPropertyValue (bin.ToolTipField));
 					if (ToolTip.Length == 0)
 						ToolTip = bin.ToolTip;
-				}
-				else if (bin.ToolTip.Length > 0)
+				} else if (bin.ToolTip.Length > 0)
 					ToolTip = bin.ToolTip;
 					
 				// Bind Value property
@@ -711,8 +698,7 @@ namespace System.Web.UI.WebControls
 				}
 				if (!String.IsNullOrEmpty (value))
 					Value = value;
-			}
-			else {
+			} else {
 				Text = Value = GetDefaultBoundText ();
 			}
 
@@ -742,16 +728,22 @@ namespace System.Web.UI.WebControls
 		
 		string GetDefaultBoundText ()
 		{
-			if (hierarchyData != null) return hierarchyData.ToString ();
-			else if (dataItem != null) return dataItem.ToString ();
-			else return string.Empty;
+			if (hierarchyData != null)
+				return hierarchyData.ToString ();
+			else if (dataItem != null)
+				return dataItem.ToString ();
+			else
+				return string.Empty;
 		}
 		
 		string GetDataItemType ()
 		{
-			if (hierarchyData != null) return hierarchyData.Type;
-			else if (dataItem != null) return dataItem.GetType().ToString ();
-			else return string.Empty;
+			if (hierarchyData != null)
+				return hierarchyData.Type;
+			else if (dataItem != null)
+				return dataItem.GetType().ToString ();
+			else
+				return string.Empty;
 		}
 				
 		internal bool IsParentNode {
@@ -768,8 +760,10 @@ namespace System.Web.UI.WebControls
 		
 		TreeNodeBinding GetBinding ()
 		{
-			if (tree == null) return null;
-			if (gotBinding) return binding;
+			if (tree == null)
+				return null;
+			if (gotBinding)
+				return binding;
 			binding = tree.FindBindingForNode (GetDataItemType (), Depth);
 			gotBinding = true;
 			return binding;
@@ -813,5 +807,4 @@ namespace System.Web.UI.WebControls
 		}
 	}
 }
-
 #endif

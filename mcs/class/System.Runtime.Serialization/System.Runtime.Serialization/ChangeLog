@@ -1,3 +1,295 @@
+2010-02-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter-new.cs : refresh implementation that is
+	  not based on xml serialization. Not enabled yet.
+	* KnownTypeCollection.cs : add cosmetic comment.
+
+2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter.cs : add appropriate code namespaces
+	  imported from xsd namespace.
+
+2010-02-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter.cs : do not add primitive ArrayOfxxx types.
+
+2010-02-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter.cs : some generated attributes are put
+	  on enums too.
+
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : allow readonly field as data member.
+	  Fixed bug #560155.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs : differentiate
+	  [DataContract(Namespace=null)] and [DataContract(Namespace="")].
+	  Fixed bug #568763.
+
+2009-12-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DataContractSerializer.cs: Add two missing methods for FX3.0 
+	and SL2/SL3.
+
+2009-10-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : partly revert previous sorting fix in
+	  Sep.28th. Do not sort and mix members in base and derived types.
+	  Fixed bug #546238.
+
+2009-10-21  Jb Evain  <jbevain@novell.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs: avoid using LINQ
+	on arrays as MonoTouch has issues with them.
+
+2009-09-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs :
+	  There were some places that ignored possible whitespace nodes.
+	  Fixed sorting of ordered members so that it does not give
+	  incomplete sorting among base/derived types. (should fix #539563.)
+	  Give xml error details in some places.
+
+2009-09-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs : (the previous one didn't fix #539563.)
+	  Consider attempts to register the same collection type as it did
+	  before.
+
+2009-09-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs : nested use of type
+	  in its members resulted in infinite loop. This hopefully fixes
+	  bug #539563.
+
+2009-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IgnoreDataMemberAttribute.cs : add missing type.
+	* SerializationMap.cs : support above.
+
+2009-07-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SerializationMap.cs : Ensure Dictionary is still deserialized
+	correctly (wrt previous change). Fix moonlight isolated storage
+	settings.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : for empty element, do not try to consume
+	  children. Fixed bug #524086.
+	  For enum, it is always error when the enum is not flags, and
+	  is always default value for flags.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterDeserializer.cs : when reading empty primitive value,
+	  make sure to consume the reader. Fixed bug #524083.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : call MoveToContent() before examining
+	  the reader node type.
+
+2009-07-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs : Find KnownTypeAttributes in base types
+	  too. Patch by Rolf Bjarne Kvinge. Fixed bug #524088.
+
+2009-07-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializer.cs : it does not write dictionary string
+	  when it was not created with it.
+
+2009-07-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterDeserializer.cs, SerializationMap.cs : IXmlSerializable
+	  were not deserialized correctly as it has mismatch on wrapper
+	  element. This fixes PeerNodeAddress.EndpointAddress deserialization.
+
+2009-06-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterDeserializer.cs : verifyObjectName rather blocked
+	  correct names provided as the root names.
+
+2009-06-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterSerializer.cs, KnownTypeCollection.cs : collection
+	  types does not emit xsi:type when the actual type is different
+	  from the nominal serilaization type. To achieve this, introduced
+	  the idea of the actual serialization type.
+
+2009-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : for default / shared type map, members are
+	  serialized in alphabetical order.
+
+2009-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : generic interface search has to be more
+	  complicated. Give kind error message on setting deserialized value.
+
+2009-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs: collection interface cannot be instantiated,
+	  so create List<T> (generic) or ArrayList (non-generic) instead.
+
+2009-05-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, XmlFormatterSerializer.cs :
+	  collection types should not output xsi:type e.g. IList<T> should
+	  not exposed xsi:type as xsi:type=List`1.
+
+2009-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, XmlFormatterDeserializer.cs,
+	  KnownTypeCollection.cs : Support for array of some primitive types
+	  in the deserializer was missing, which resulted in peer resolver
+	  RegisterInfo deserialization failure.
+
+2009-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterDeserializer.cs : remove type lookup optimization
+	  (since .NET 3.5 introduced system types with DC) and fix
+	  serialization of system types (ISerializable types were not
+	  resolved in previous code).
+
+2009-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : it was only about 2.1. Fix build.
+
+2009-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : It is not possible to get schema without
+	  IXmlSerializable instance.
+
+2009-05-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializer.cs : write dictionary string directly for
+	  root name/ns (root only, so far).
+
+2009-05-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs: interface collection failed to serialize as
+	  it was calling inappropriate GetInterfaceMap().
+
+2009-04-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterDeserializer.cs : more hack to handle empty
+	  element nicely.
+
+2009-03-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, XmlFormatterDeserializer.cs:
+	  empty collection deserialization resulted in extra
+	  consumption of the next xml node.
+
+2009-03-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs, XmlFormatterDeserializer.cs :
+	  to infer type from xml qname, consider DataContractAttribute
+	  names.
+
+2009-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : make generic type parsing sloppy.
+	  because we don't know some cryptic hash algorithm:
+	  http://jeffbarnes.net/portal/blogs/jeff_barnes/archive/2007/05/10/wcf-serialization-and-generics.aspx
+
+2009-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs :
+	  support CollectionDataContract-based dictionary too.
+
+2009-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs :
+	  added support for dictionary serialization (not for
+	  CollectionDataContract-attributed dictionary yet).
+
+2009-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : cosmetic !NET_2_1 fix (no effect).
+	* KnownTypeCollection.cs : use ICollection<> and IList instead of
+	  IEnumerable. This causes confusion for dictionary.
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterSerializer.cs, XmlObjectSerializer.cs,
+	  XmlFormatterDeserializer.cs, KnownTypeCollection.cs :
+	  add more xsi:type to cover collection items.
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs : fix generic argument names in xml.
+	  They should use xmlized names instead of raw type name.
+	* XmlFormatterDeserializer.cs : remove extra Console.WriteLine.
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : eliminate whitespace misuses.
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : actually it could just be ICollection<T>.
+
+2009-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : implemented generic IList deserialization.
+
+2009-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs : fix for generic serialization.
+
+2009-02-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : look for unordered members first, in
+	  different iteration. Got SL OpenStreetMap working.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : remove use of non-2.1 CreateInstance().
+	* XmlFormatterDeserializer.cs : allow empty element.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, DataContractSerializer.cs,
+	  KnownTypeCollection.cs : now .NET 3.5/SP1 supports non-contract
+	  type serialization.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs : couple of refactoring
+	  to simplify code base and handle CollectionDataContract namespace.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : oops, remove debug lines.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializer.cs : remove extra writexmlns.
+	* SerializationMap.cs : allow DataMember of collection contract type
+	  as read-only.
+	* KnownTypeCollection.cs : it was not iterating interfaces to find
+	  IEnumerable<T> correctly.
+
+2009-02-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : a bit more detailed error message.
+
+2009-01-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs : similar fix to the previous one,
+	  on uint16.
+
+2009-01-22  Alan McGovern  <amcgovern@novell.com>
+
+	* KnownTypeCollection.cs : The byte overload doesn't exist in
+	Silverlight, so cast the byte to an int instead.
+
 2008-11-23  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* DataContractAttribute.cs : remove MonoTODO.

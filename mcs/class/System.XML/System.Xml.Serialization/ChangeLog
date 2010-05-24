@@ -1,3 +1,38 @@
+2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationCodeGenerator.cs : enum value identifiers should be
+	  escaped with '@'. Fixed bug #566370.
+
+2009-03-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlRootAttribute.cs : it is also expected to have
+	  internal property for SL2.
+
+2009-03-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlArrayItemAttribute.cs, XmlElementAttribute.cs,
+	  XmlAnyElementAttribute.cs : added more 2.1 obstacles.
+
+2009-03-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlChoiceIdentifierAttribute.cs : added internal MemberInfo
+	  property for SL2.
+
+2009-03-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationSource.cs, KeyHelper.cs : split out KeyHelper from
+	  SerializationSource as the class is going to be used in 2.1 too.
+	* XmlRootAttribute.cs : use KeyHelper above to add internal Key
+	  property that is used in SL2 System.Xml.Serialization.dll.
+
+2009-02-19  Geoff Norton  <gnorton@novell.com>
+
+	* SerializationSource.cs: KeyHelper is needed by
+	the 2.1 profile now.
+
+2009-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaImporter.cs : hack ImportSchemaType().
 
 2008-12-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

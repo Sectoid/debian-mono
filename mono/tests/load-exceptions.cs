@@ -4,6 +4,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 
 class Miss1 : Missing.Foo1 {
 }
@@ -217,21 +218,14 @@ public class Tests : LoadMissing {
 		return check_type_load (new TestDel (missing_assembly_in_newobj));
 	}
 
-	public static void missing_outer () {
-		new Missing.Foo1.InnerFoo ();
-	}
-
-	//Regression test for #508487
-	public static int test_0_missing_outer_type_in_typeref () {
-		return check_type_load (new TestDel (missing_outer));
+	public static int test_0_missing_delegate_ctor_argument () {
+		return check_type_load (new TestDel (missing_delegate_ctor_argument));
 	}
 	
 	//
 	// Missing classes referenced from metadata
 	//
 
-	// FIXME: These do not work yet
-#if FALSE
 	public static int test_0_missing_local () {
 		try {
 			missing_local ();
@@ -243,6 +237,74 @@ public class Tests : LoadMissing {
 		return 0;
 	}
 
+	//Regression test for #508532
+	public static int test_0_assembly_throws_on_loader_error ()
+	{
+		try {
+			Assembly asm = Assembly.Load ("load-missing");
+			asm.GetType ("BrokenClass", false);
+			return 1;
+		} catch (TypeLoadException) {}
+		return 0;
+	}
+
+	public static int test_0_bad_method_override1 ()
+	{
+		try {
+			BadOverridesDriver.bad_override1 ();
+			return 1;
+		} catch (TypeLoadException) {}
+		return 0;
+	}
+
+	public static int test_0_bad_method_override2 ()
+	{
+		try {
+			BadOverridesDriver.bad_override2 ();
+			return 1;
+		} catch (TypeLoadException) {}
+		return 0;
+	}
+
+	public static int test_0_bad_method_override3 ()
+	{
+		try {
+			BadOverridesDriver.bad_override3 ();
+			return 1;
+		} catch (TypeLoadException) {}
+		return 0;
+	}
+
+	public static int test_0_bad_method_override4 ()
+	{
+		try {
+			BadOverridesDriver.bad_override4 ();
+			return 1;
+		} catch (TypeLoadException) {}
+		return 0;
+	}
+
+	public static void missing_outer () {
+		new Missing.Foo1.InnerFoo ();
+	}
+
+	//Regression test for #508487
+	public static int test_0_missing_outer_type_in_typeref () {
+		return check_type_load (new TestDel (missing_outer));
+	}
+
+	// #524498
+	public static int test_0_exception_while_jitting_cctor () {
+		try {
+			CCtorClass.foo ();
+		} catch (TypeInitializationException) {
+			return 0;
+		}
+
+		return 1;
+	}
+
+#if FALSE
 	public static void missing_parent () {
 		new Miss1 ();
 	}

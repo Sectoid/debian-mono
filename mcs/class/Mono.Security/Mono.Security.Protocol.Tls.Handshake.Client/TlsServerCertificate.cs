@@ -1,6 +1,6 @@
 // Transport Security Layer (TLS)
 // Copyright (c) 2003-2004 Carlos Guzman Alvarez
-// Copyright (C) 2004, 2006-2007 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004, 2006-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -182,11 +182,24 @@ namespace Mono.Security.Protocol.Tls.Handshake.Client
 			return true;
 		}
 
+		
+		static private void VerifyOSX (X509CertificateCollection certificates)
+		{
+			
+		}
+		
 		private void validateCertificates(X509CertificateCollection certificates)
 		{
 			ClientContext		context			= (ClientContext)this.Context;
 			AlertDescription	description		= AlertDescription.BadCertificate;
 
+#if NET_2_0
+			if (context.SslStream.HaveRemoteValidation2Callback) {
+				if (context.SslStream.RaiseServerCertificateValidation2 (certificates))
+					return;
+				// Give a chance to the 1.x ICertificatePolicy callback
+			}
+#endif
 			// the leaf is the web server certificate
 			X509Certificate leaf = certificates [0];
 			X509Cert.X509Certificate cert = new X509Cert.X509Certificate (leaf.RawData);
@@ -238,6 +251,22 @@ namespace Mono.Security.Protocol.Tls.Handshake.Client
 				result = false;
 			}
 
+			// Attempt to use OSX certificates
+			//
+			// Ideally we should return the SecTrustResult
+#if !MONOTOUCH
+			if (System.IO.File.Exists (OSX509Certificates.SecurityLibrary)){
+#endif
+				OSX509Certificates.SecTrustResult trustResult =  OSX509Certificates.TrustEvaluateSsl (certificates);
+
+				// We could use the other values of trustResult to pass this extra information to the .NET 2 callback
+				// for values like SecTrustResult.Confirm
+				result = (trustResult == OSX509Certificates.SecTrustResult.Proceed ||
+					  trustResult == OSX509Certificates.SecTrustResult.Unspecified);
+#if !MONOTOUCH
+			}
+#endif
+			
 			if (!result) 
 			{
 				switch (verify.Status) 

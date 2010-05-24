@@ -55,9 +55,7 @@ namespace System {
 
 	[Serializable]
 #if NET_2_0
-#if !NET_2_1
 	[TypeConverter (typeof (UriTypeConverter))]
-#endif
 	public class Uri : ISerializable {
 #else
 	public class Uri : MarshalByRefObject, ISerializable {
@@ -114,10 +112,15 @@ namespace System {
 
 		// Constructors		
 
+#if NET_2_1 && !MONOTOUCH
+		public Uri (string uriString) : this (uriString, UriKind.Absolute) 
+		{
+		}
+#else
 		public Uri (string uriString) : this (uriString, false) 
 		{
 		}
-
+#endif
 		protected Uri (SerializationInfo serializationInfo, 
 			       StreamingContext streamingContext) :
 			this (serializationInfo.GetString ("AbsoluteUri"), true)
@@ -145,7 +148,7 @@ namespace System {
 				break;
 			default:
 				string msg = Locale.GetText ("Invalid UriKind value '{0}'.", uriKind);
-				throw new ArgumentException ("uriKind", msg);
+				throw new ArgumentException (msg);
 			}
 		}
 
@@ -153,11 +156,18 @@ namespace System {
 		// An exception-less constructor, returns success
 		// condition on the out parameter `success'.
 		//
-		internal Uri (string uriString, UriKind uriKind, out bool success)
+		Uri (string uriString, UriKind uriKind, out bool success)
 		{
-			if (uriString == null){
+			if (uriString == null) {
 				success = false;
 				return;
+			}
+
+			if (uriKind != UriKind.RelativeOrAbsolute &&
+				uriKind != UriKind.Absolute &&
+				uriKind != UriKind.Relative) {
+				string msg = Locale.GetText ("Invalid UriKind value '{0}'.", uriKind);
+				throw new ArgumentException (msg);
 			}
 
 			source = uriString;
@@ -185,8 +195,8 @@ namespace System {
 		}
 
 		public Uri (Uri baseUri, Uri relativeUri)
-			: this (baseUri, relativeUri.OriginalString, false)
 		{
+			Merge (baseUri, relativeUri == null ? String.Empty : relativeUri.OriginalString);
 			// FIXME: this should call UriParser.Resolve
 		}
 
@@ -214,8 +224,8 @@ namespace System {
 #endif
 
 		public Uri (Uri baseUri, string relativeUri) 
-			: this (baseUri, relativeUri, false) 
 		{
+			Merge (baseUri, relativeUri);
 			// FIXME: this should call UriParser.Resolve
 		}
 
@@ -224,9 +234,17 @@ namespace System {
 #endif
 		public Uri (Uri baseUri, string relativeUri, bool dontEscape) 
 		{
+			userEscaped = dontEscape;
+			Merge (baseUri, relativeUri);
+		}
+
+		private void Merge (Uri baseUri, string relativeUri)
+		{
 #if NET_2_0
 			if (baseUri == null)
 				throw new ArgumentNullException ("baseUri");
+			if (!baseUri.IsAbsoluteUri)
+				throw new ArgumentOutOfRangeException ("baseUri");
 			if (relativeUri == null)
 				relativeUri = String.Empty;
 #else
@@ -234,8 +252,6 @@ namespace System {
 				throw new NullReferenceException ("baseUri");
 #endif
 			// See RFC 2396 Par 5.2 and Appendix C
-
-			userEscaped = dontEscape;
 
 			// Check Windows UNC (for // it is scheme/host separator)
 			if (relativeUri.Length >= 2 && relativeUri [0] == '\\' && relativeUri [1] == '\\') {
@@ -462,7 +478,7 @@ namespace System {
 				return host; 
 			} 
 		}
-
+#if !NET_2_1 || MONOTOUCH
 		public UriHostNameType HostNameType { 
 			get {
 				EnsureAbsoluteUri ();
@@ -483,6 +499,8 @@ namespace System {
 			} 
 		}
 
+#endif // NET_2_1
+
 		public bool IsDefaultPort { 
 			get {
 				EnsureAbsoluteUri ();
@@ -497,6 +515,7 @@ namespace System {
 			}
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		public bool IsLoopback { 
 			get {
 				EnsureAbsoluteUri ();
@@ -526,6 +545,8 @@ namespace System {
 				return false;
 			} 
 		}
+
+#endif // NET_2_1
 
 		public bool IsUnc {
 			// rule: This should be true only if
@@ -679,16 +700,20 @@ namespace System {
 		public bool IsAbsoluteUri {
 			get { return isAbsoluteUri; }
 		}
-
+#endif
 		// LAMESPEC: source field is supplied in such case that this
 		// property makes sense. For such case that source field is
 		// not supplied (i.e. .ctor(Uri, string), this property
 		// makes no sense. To avoid silly regression it just returns
 		// ToString() value now. See bug #78374.
-		public string OriginalString {
+#if NET_2_0
+		public
+#else
+		internal
+#endif
+		string OriginalString {
 			get { return source != null ? source : ToString (); }
 		}
-#endif
 
 		// Methods		
 
@@ -760,6 +785,7 @@ namespace System {
 			
 			return true;
 		}
+#if !NET_2_1
 
 #if NET_2_0
 		[Obsolete("This method does nothing, it has been obsoleted")]
@@ -771,6 +797,16 @@ namespace System {
 			// internally, no longer in use, and Obsolete.
 			//
 		}
+
+		[MonoTODO ("Find out what this should do")]
+#if NET_2_0
+		[Obsolete]
+#endif
+		protected virtual void CheckSecurity ()
+		{
+		}
+
+#endif // NET_2_1
 
 		// defined in RFC3986 as = ALPHA *( ALPHA / DIGIT / "+" / "-" / ".")
 		public static bool CheckSchemeName (string schemeName) 
@@ -802,14 +838,6 @@ namespace System {
 			// Fx 1.x got this too large
 			return Char.IsLetter (c);
 #endif
-		}
-
-		[MonoTODO ("Find out what this should do")]
-#if NET_2_0
-		[Obsolete]
-#endif
-		protected virtual void CheckSecurity ()
-		{
 		}
 
 		public override bool Equals (object comparant) 
@@ -1112,10 +1140,14 @@ namespace System {
 			path = EscapeString (path);
 		}
 
-#if NET_2_0
+#if NET_2_1 && !MONOTOUCH
+		static string EscapeString (string str)
+#else
+	#if NET_2_0
 		[Obsolete]
-#endif
+	#endif
 		protected static string EscapeString (string str) 
+#endif
 		{
 			return EscapeString (str, false, true, true);
 		}
@@ -1196,10 +1228,14 @@ namespace System {
 			}
 		}
 
-#if NET_2_0
+#if NET_2_1 && !MONOTOUCH
+		string Unescape (string str)
+#else
+	#if NET_2_0
 		[Obsolete]
-#endif
+	#endif
 		protected virtual string Unescape (string str)
+#endif
 		{
 			return Unescape (str, false);
 		}
@@ -1353,8 +1389,12 @@ namespace System {
 				// It must be Unix file path or Windows UNC
 				if (uriString [0] == '/' && Path.DirectorySeparatorChar == '/'){
 					ParseAsUnixAbsoluteFilePath (uriString);
+#if NET_2_1 && !MONOTOUCH
+					isAbsoluteUri = false;
+#else
 					if (kind == UriKind.Relative)
 						isAbsoluteUri = false;
+#endif
 					
 				} else if (uriString.Length >= 2 && uriString [0] == '\\' && uriString [1] == '\\')
 					ParseAsWindowsUNC (uriString);
@@ -1415,6 +1455,7 @@ namespace System {
 			
 			bool startsWithSlashSlash = endpos-startpos >= 2 && uriString [startpos] == '/' && uriString [startpos+1] == '/';
 			bool unixAbsPath = scheme == UriSchemeFile && startsWithSlashSlash && (endpos-startpos == 2 || uriString [startpos+2] == '/');
+			bool windowsFilePath = false;
 			if (startsWithSlashSlash) {
 				if (kind == UriKind.Relative)
 					return "Absolute URI when we expected a relative one";
@@ -1439,8 +1480,10 @@ namespace System {
 					}
 				}
 				
-				if (endpos - startpos > 1 && uriString [startpos + 1] == ':')
+				if (endpos - startpos > 1 && uriString [startpos + 1] == ':') {
 					unixAbsPath = false;
+					windowsFilePath = true;
+				}
 
 			} else if (!IsPredefinedScheme (scheme)) {
 				path = uriString.Substring(startpos, endpos-startpos);
@@ -1449,9 +1492,14 @@ namespace System {
 			}
 
 			// 5 path
-			pos = uriString.IndexOf ('/', startpos, endpos-startpos);
-			if (unixAbsPath)
+			if (unixAbsPath) {
 				pos = -1;
+			} else {
+				pos = uriString.IndexOf ('/', startpos, endpos-startpos);
+				if (pos == -1 && windowsFilePath)
+					pos = uriString.IndexOf ('\\', startpos, endpos-startpos);
+			}
+
 			if (pos == -1) {
 				if ((scheme != Uri.UriSchemeMailto) &&
 #if ONLY_1_1
@@ -1476,9 +1524,10 @@ namespace System {
 
 			// 4.b port
 			port = -1;
-			pos = uriString.LastIndexOf (':', endpos-1, endpos-startpos);
 			if (unixAbsPath)
 				pos = -1;
+			else
+				pos = uriString.LastIndexOf (':', endpos-1, endpos-startpos);
 			if (pos != -1 && pos != endpos - 1) {
 				string portStr = uriString.Substring(pos + 1, endpos - (pos + 1));
 				if (portStr.Length > 0 && portStr[portStr.Length - 1] != ']') {
@@ -1511,7 +1560,7 @@ namespace System {
 			host = uriString;
 
 			if (unixAbsPath) {
-				path = '/' + uriString;
+				path = Reduce ('/' + uriString);
 				host = String.Empty;
 			} else if (host.Length == 2 && host [1] == ':') {
 				// windows filepath
@@ -1568,7 +1617,39 @@ namespace System {
 
 		private static string Reduce (string path)
 		{
-			path = path.Replace ('\\','/');
+			// quick out, allocation-free, for a common case
+			if (path == "/")
+				return path;
+
+			// replace '\', %5C ('\') and %2f ('/') into '/'
+			// other escaped values seems to survive this step
+			StringBuilder res = new StringBuilder();
+			for (int i=0; i < path.Length; i++) {
+				char c = path [i];
+				switch (c) {
+				case '\\':
+					res.Append ('/');
+					break;
+				case '%':
+					if (i < path.Length - 2) {
+						char c1 = path [i + 1];
+						char c2 = Char.ToUpper (path [i + 2]);
+						if (((c1 == '2') && (c2 == 'F')) || ((c1 == '5') && (c2 == 'C'))) {
+							res.Append ('/');
+							i += 2;
+						} else {
+							res.Append (c);
+						}
+					} else {
+						res.Append (c);
+					}
+					break;
+				default:
+					res.Append (c);
+					break;
+				}
+			}
+			path = res.ToString ();
 			ArrayList result = new ArrayList ();
 
 			for (int startpos = 0; startpos < path.Length; ) {
@@ -1607,7 +1688,7 @@ namespace System {
 			if (result.Count == 0)
 				return "/";
 
-			StringBuilder res = new StringBuilder();
+			res.Length = 0;
 			if (path [0] == '/')
 				res.Append ('/');
 
@@ -1863,8 +1944,12 @@ namespace System {
 
 		private UriParser Parser {
 			get {
-				if (parser == null)
+				if (parser == null) {
 					parser = UriParser.GetParser (Scheme);
+					// no specific parser ? then use a default one
+					if (parser == null)
+						parser = new DefaultUriParser ("*");
+				}
 				return parser;
 			}
 			set { parser = value; }
@@ -1996,13 +2081,6 @@ namespace System {
 			if (uriString == null)
 				return false;
 
-			if (uriKind != UriKind.RelativeOrAbsolute &&
-				uriKind != UriKind.Absolute &&
-				uriKind != UriKind.Relative) {
-				string msg = Locale.GetText ("Invalid UriKind value '{0}'.", uriKind);
-                                throw new ArgumentException ("uriKind", msg);
-			}
-
 			Uri uri;
 			if (Uri.TryCreate (uriString, uriKind, out uri))
 				return uri.IsWellFormedOriginalString ();
@@ -2012,8 +2090,9 @@ namespace System {
 		public static bool TryCreate (string uriString, UriKind uriKind, out Uri result)
 		{
 			bool success;
+
 			Uri r = new Uri (uriString, uriKind, out success);
-			if (success){
+			if (success) {
 				result = r;
 				return true;
 			}
@@ -2028,8 +2107,7 @@ namespace System {
 				// FIXME: this should call UriParser.Resolve
 				result = new Uri (baseUri, relativeUri);
 				return true;
-			}
-			catch (UriFormatException) {
+			} catch (UriFormatException) {
 				result = null;
 				return false;
 			}
@@ -2040,10 +2118,9 @@ namespace System {
 		{
 			try {
 				// FIXME: this should call UriParser.Resolve
-				result = new Uri (baseUri, relativeUri);
+				result = new Uri (baseUri, relativeUri.OriginalString);
 				return true;
-			}
-			catch (UriFormatException) {
+			} catch (UriFormatException) {
 				result = null;
 				return false;
 			}

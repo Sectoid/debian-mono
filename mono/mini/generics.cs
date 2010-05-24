@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 class Tests {
 
@@ -31,9 +32,9 @@ class Tests {
 		}
 	}
 
-	static int Main ()
+	static int Main (string[] args)
 	{
-		return TestDriver.RunTests (typeof (Tests));
+		return TestDriver.RunTests (typeof (Tests), args);
 	}
 
 	public static int test_1_nullable_unbox ()
@@ -204,6 +205,7 @@ class Tests {
 		return 0;
 	}
 
+	[Category ("!FULLAOT")]
 	public static int test_0_generic_get_value_optimization_int () {
 		int[] x = new int[] {100, 200};
 
@@ -330,9 +332,11 @@ class Tests {
 		return 0;
 	}
 
+	// FIXME:
+	[Category ("!FULLAOT")]
     public static int test_0_generic_virtual_call_on_vtype_unbox () {
 		object o = new Object ();
-        IMyHandler h = new Handler(o);
+        IFoo h = new Handler(o);
 
         if (h.Bar<object> () != o)
 			return 1;
@@ -413,6 +417,46 @@ class Tests {
 		if(i==42) f<S<T>>(i);
 	}
 
+	// This cannot be made to work with full-aot, since there it is impossible to
+	// statically determine that Foo<string>.Bar <int> is needed, the code only
+	// references IFoo.Bar<int>
+	[Category ("!FULLAOT")]
+	public static int test_0_generic_virtual_on_interfaces () {
+		Foo<string>.count1 = 0;
+		Foo<string>.count2 = 0;
+		Foo<string>.count3 = 0;
+
+		IFoo f = new Foo<string> ("");
+		for (int i = 0; i < 1000; ++i) {
+			f.Bar <int> ();
+			f.Bar <string> ();
+			f.NonGeneric ();
+		}
+
+		if (Foo<string>.count1 != 1000)
+			return 1;
+		if (Foo<string>.count2 != 1000)
+			return 2;
+		if (Foo<string>.count3 != 1000)
+			return 3;
+
+		VirtualInterfaceCallFromGenericMethod<long> (f);
+
+		return 0;
+	}
+
+	//repro for #505375
+	[Category ("!FULLAOT")]
+	public static int test_2_cprop_bug () {
+		int idx = 0;
+		int a = 1;
+		var cmp = System.Collections.Generic.Comparer<int>.Default ;
+		if (cmp.Compare (a, 0) > 0)
+			a = 0;
+		do { idx++; } while (cmp.Compare (idx - 1, a) == 0);
+		return idx;
+	}
+
 	enum MyEnumUlong : ulong {
 		Value_2 = 2
 	}
@@ -428,6 +472,36 @@ class Tests {
     {
         return a.Equals (b);
     }
+
+	public class XElement {
+		public string Value {
+			get; set;
+		}
+	}
+
+	public static int test_0_fullaot_linq () {
+		var allWords = new XElement [] { new XElement { Value = "one" } };
+		var filteredWords = allWords.Where(kw => kw.Value.StartsWith("T"));
+		return filteredWords.Count ();
+	}
+
+	public static int test_0_fullaot_comparer_t () {
+		var l = new SortedList <TimeSpan, int> ();
+		return l.Count;
+	}
+
+	static void enumerate<T> (IEnumerable<T> arr) {
+		foreach (var o in arr)
+			;
+		int c = ((ICollection<T>)arr).Count;
+	}
+
+	/* Test that treating arrays as generic collections works with full-aot */
+	public static int test_0_fullaot_array_wrappers () {
+		Tests[] arr = new Tests [10];
+		enumerate<Tests> (arr);
+		return 0;
+	}
 
 	static int cctor_count = 0;
 
@@ -476,6 +550,10 @@ class Tests {
 		}
 	}
 
+	public static void VirtualInterfaceCallFromGenericMethod <T> (IFoo f) {
+		f.Bar <T> ();
+	}
+
 	public static Type the_type;
 
 	public void ldvirtftn<T> () {
@@ -489,7 +567,12 @@ class Tests {
 		the_type = typeof (T);
 	}
 
-	public class Foo<T1>
+	public interface IFoo {
+		void NonGeneric ();
+		object Bar<T>();
+	}
+
+	public class Foo<T1> : IFoo
 	{
 		public Foo(T1 t1)
 		{
@@ -534,6 +617,19 @@ class Tests {
 			GenericEvent (this);
 		}
 
+		public static int count1, count2, count3;
+
+		public void NonGeneric () {
+			count3 ++;
+		}
+
+		public object Bar <T> () {
+			if (typeof (T) == typeof (int))
+				count1 ++;
+			else if (typeof (T) == typeof (string))
+				count2 ++;
+			return null;
+		}
 	}
 
 	public class SomeClass {
@@ -542,15 +638,14 @@ class Tests {
 		}
 	}		
 
-	public interface IMyHandler {
-		object Bar<T>();
-	}
-
-	struct Handler : IMyHandler {
+	struct Handler : IFoo {
 		object o;
 
 		public Handler(object o) {
 			this.o = o;
+		}
+
+		public void NonGeneric () {
 		}
 
 		public object Bar<T>() {

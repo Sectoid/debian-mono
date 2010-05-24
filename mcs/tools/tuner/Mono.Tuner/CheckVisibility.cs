@@ -28,6 +28,7 @@
 
 using System;
 using System.Collections;
+using System.Text;
 
 using Mono.Linker;
 using Mono.Linker.Steps;
@@ -38,6 +39,22 @@ using Mono.Cecil.Cil;
 namespace Mono.Tuner {
 
 	public class CheckVisibility : BaseStep {
+
+		bool throw_on_error;
+
+		protected override void Process ()
+		{
+			throw_on_error = GetThrowOnVisibilityErrorParameter ();
+		}
+
+		bool GetThrowOnVisibilityErrorParameter ()
+		{
+			try {
+				return bool.Parse (Context.GetParameter ("throw_on_visibility_error"));
+			} catch {
+				return false;
+			}
+		}
 
 		protected override void ProcessAssembly (AssemblyDefinition assembly)
 		{
@@ -57,7 +74,7 @@ namespace Mono.Tuner {
 		void CheckType (TypeDefinition type)
 		{
 			if (!IsVisibleFrom (type, type.BaseType)) {
-				Report ("Base type `{0}` of type `{1}` is not visible",
+				ReportError ("Base type `{0}` of type `{1}` is not visible",
 					type.BaseType, type);
 			}
 
@@ -72,7 +89,7 @@ namespace Mono.Tuner {
 		{
 			foreach (TypeReference iface in type.Interfaces) {
 				if (!IsVisibleFrom (type, iface)) {
-					Report ("Interface `{0}` implemented by `{1}` is not visible",
+					ReportError ("Interface `{0}` implemented by `{1}` is not visible",
 						iface, type);
 				}
 			}
@@ -83,9 +100,61 @@ namespace Mono.Tuner {
 			return (type.DeclaringType == null && type.IsPublic) || type.IsNestedPublic;
 		}
 
-		static bool AreInDifferentAssemblies (TypeDefinition lhs, TypeDefinition rhs)
+		static bool AreInDifferentAssemblies (TypeDefinition type, TypeDefinition target)
 		{
-			return lhs.Module.Assembly.Name.FullName != rhs.Module.Assembly.Name.FullName;
+			if (type.Module.Assembly.Name.FullName == target.Module.Assembly.Name.FullName)
+				return false;
+
+			return !IsInternalVisibleTo (target.Module.Assembly, type.Module.Assembly);
+		}
+
+		static bool IsInternalVisibleTo (AssemblyDefinition assembly, AssemblyDefinition candidate)
+		{
+			foreach (CustomAttribute attribute in assembly.CustomAttributes) {
+				if (!IsInternalsVisibleToAttribute (attribute))
+					continue;
+
+				if (attribute.ConstructorParameters.Count == 0)
+					continue;
+
+				string signature = (string) attribute.ConstructorParameters [0];
+
+				if (InternalsVisibleToSignatureMatch (signature, candidate.Name))
+					return true;
+			}
+
+			return false;
+		}
+
+		static bool InternalsVisibleToSignatureMatch (string signature, AssemblyNameReference reference)
+		{
+			int pos = signature.IndexOf (",");
+			if (pos == -1)
+				return signature == reference.Name;
+
+			string assembly_name = signature.Substring (0, pos);
+
+			pos = signature.IndexOf ("=");
+			if (pos == -1)
+				throw new ArgumentException ();
+
+			string public_key = signature.Substring (pos + 1).ToLower ();
+
+			return assembly_name == reference.Name && public_key == ToPublicKeyString (reference.PublicKey);
+		}
+
+		static string ToPublicKeyString (byte [] public_key)
+		{
+			StringBuilder signature = new StringBuilder (public_key.Length);
+			for (int i = 0; i < public_key.Length; i++)
+				signature.Append (public_key [i].ToString ("x2"));
+
+			return signature.ToString ();
+		}
+
+		static bool IsInternalsVisibleToAttribute (CustomAttribute attribute)
+		{
+			return attribute.Constructor.DeclaringType.FullName == "System.Runtime.CompilerServices.InternalsVisibleToAttribute";
 		}
 
 		bool IsVisibleFrom (TypeDefinition type, TypeReference reference)
@@ -96,7 +165,7 @@ namespace Mono.Tuner {
 			if (reference is GenericParameter || reference.GetOriginalType () is GenericParameter)
 				return true;
 
-			TypeDefinition other = Context.Resolver.Resolve (reference);
+			TypeDefinition other = reference.Resolve ();
 			if (other == null)
 				return true;
 
@@ -114,11 +183,7 @@ namespace Mono.Tuner {
 			if (reference == null)
 				return true;
 
-			MethodDefinition meth = null;
-			try {
-				meth = Context.Resolver.Resolve (reference);
-			} catch (ResolutionException) {}
-
+			MethodDefinition meth = reference.Resolve ();
 			if (meth == null)
 				return true;
 
@@ -129,13 +194,16 @@ namespace Mono.Tuner {
 			if (meth.IsPublic)
 				return true;
 
-			if (type == dec || type.DeclaringType == dec)
+			if (type == dec || IsNestedIn (type, dec))
 				return true;
 
 			if (meth.IsFamily && InHierarchy (type, dec))
 				return true;
 
 			if (meth.IsFamilyOrAssembly && (!AreInDifferentAssemblies (type, dec) || InHierarchy (type, dec)))
+				return true;
+
+			if (meth.IsFamilyAndAssembly && (!AreInDifferentAssemblies (type, dec) && InHierarchy (type, dec)))
 				return true;
 
 			if (!AreInDifferentAssemblies (type, dec) && meth.IsAssembly)
@@ -149,11 +217,7 @@ namespace Mono.Tuner {
 			if (reference == null)
 				return true;
 
-			FieldDefinition field = null;
-			try {
-				field = Context.Resolver.Resolve (reference);
-			} catch (ResolutionException) {}
-
+			FieldDefinition field = reference.Resolve ();
 			if (field == null)
 				return true;
 
@@ -164,7 +228,7 @@ namespace Mono.Tuner {
 			if (field.IsPublic)
 				return true;
 
-			if (type == dec || type.DeclaringType == dec)
+			if (type == dec || IsNestedIn (type, dec))
 				return true;
 
 			if (field.IsFamily && InHierarchy (type, dec))
@@ -173,18 +237,37 @@ namespace Mono.Tuner {
 			if (field.IsFamilyOrAssembly && (!AreInDifferentAssemblies (type, dec) || InHierarchy (type, dec)))
 				return true;
 
+			if (field.IsFamilyAndAssembly && (!AreInDifferentAssemblies (type, dec) && InHierarchy (type, dec)))
+				return true;
+
 			if (!AreInDifferentAssemblies (type, dec) && field.IsAssembly)
 				return true;
 
 			return false;
 		}
 
-		bool InHierarchy (TypeDefinition type, TypeDefinition other)
+		static bool IsNestedIn (TypeDefinition type, TypeDefinition other)
+		{
+			TypeDefinition declaring = type.DeclaringType;
+
+			if (declaring == null)
+				return false;
+
+			if (declaring == other)
+				return true;
+
+			if (declaring.DeclaringType == null)
+				return false;
+
+			return IsNestedIn (declaring, other);
+		}
+
+		static bool InHierarchy (TypeDefinition type, TypeDefinition other)
 		{
 			if (type.BaseType == null)
 				return false;
 
-			TypeDefinition baseType = Context.Resolver.Resolve (type.BaseType);
+			TypeDefinition baseType = type.BaseType.Resolve ();
 
 			if (baseType == other)
 				return true;
@@ -197,11 +280,19 @@ namespace Mono.Tuner {
 			Console.WriteLine ("[check] " + pattern, parameters);
 		}
 
+		void ReportError (string pattern, params object [] parameters)
+		{
+			Report (pattern, parameters);
+
+			if (throw_on_error)
+				throw new VisibilityErrorException (string.Format (pattern, parameters));
+		}
+
 		void CheckFields (TypeDefinition type)
 		{
 			foreach (FieldDefinition field in type.Fields) {
 				if (!IsVisibleFrom (type, field.FieldType)) {
-					Report ("Field `{0}` of type `{1}` is not visible from `{2}`",
+					ReportError ("Field `{0}` of type `{1}` is not visible from `{2}`",
 						field.Name, field.FieldType, type);
 				}
 			}
@@ -221,13 +312,13 @@ namespace Mono.Tuner {
 		{
 			foreach (MethodDefinition method in methods) {
 				if (!IsVisibleFrom (type, method.ReturnType.ReturnType)) {
-					Report ("Method return type `{0}` in method `{1}` is not visible",
+					ReportError ("Method return type `{0}` in method `{1}` is not visible",
 						method.ReturnType.ReturnType, method);
 				}
 
 				foreach (ParameterDefinition parameter in method.Parameters) {
 					if (!IsVisibleFrom (type, parameter.ParameterType)) {
-						Report ("Parameter `{0}` of type `{1}` in method `{2}` is not visible.",
+						ReportError ("Parameter `{0}` of type `{1}` in method `{2}` is not visible.",
 							parameter.Sequence, parameter.ParameterType, method);
 					}
 				}
@@ -243,7 +334,7 @@ namespace Mono.Tuner {
 
 			foreach (VariableDefinition variable in method.Body.Variables) {
 				if (!IsVisibleFrom ((TypeDefinition) method.DeclaringType, variable.VariableType)) {
-					Report ("Variable `{0}` of type `{1}` from method `{2}` is not visible",
+					ReportError ("Variable `{0}` of type `{1}` from method `{2}` is not visible",
 						variable.Index, variable.VariableType, method);
 				}
 			}
@@ -268,7 +359,7 @@ namespace Mono.Tuner {
 						error = !IsVisibleFrom (type, field_ref);
 
 					if (error) {
-						Report ("Operand `{0}` of type {1} at offset 0x{2} in method `{3}` is not visible",
+						ReportError ("Operand `{0}` of type {1} at offset 0x{2} in method `{3}` is not visible",
 							instr.Operand, instr.OpCode.OperandType, instr.Offset.ToString ("x4"), method);
 					}
 
@@ -276,6 +367,14 @@ namespace Mono.Tuner {
 				default:
 					continue;
 				}
+			}
+		}
+
+		class VisibilityErrorException : Exception {
+
+			public VisibilityErrorException (string message)
+				: base (message)
+			{
 			}
 		}
 	}

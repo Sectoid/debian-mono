@@ -7,7 +7,7 @@
  *
  * (C) 2002 Ximian, Inc.
  */
-
+#include <config.h>
 #include <math.h>
 #include <limits.h>
 #ifdef HAVE_ALLOCA_H
@@ -52,8 +52,7 @@ ldvirtfn_internal (MonoObject *obj, MonoMethod *method, gboolean gshared)
 		res = mono_class_inflate_generic_method (res, &context);
 	}
 
-	if (mono_method_needs_static_rgctx_invoke (res, FALSE))
-		res = mono_marshal_get_static_rgctx_invoke (res);
+	/* An rgctx wrapper is added by the trampolines no need to do it here */
 
 	return mono_ldftn (res);
 }
@@ -288,7 +287,7 @@ mono_irem_un (guint32 a, guint32 b)
 
 #endif
 
-#ifdef MONO_ARCH_EMULATE_MUL_DIV
+#if defined(MONO_ARCH_EMULATE_MUL_DIV) || defined(MONO_ARCH_EMULATE_MUL_OVF)
 
 gint32
 mono_imul (gint32 a, gint32 b)
@@ -307,7 +306,7 @@ mono_imul_ovf (gint32 a, gint32 b)
 
 	res = (gint64)a * (gint64)b;
 
-	if ((res > 0x7fffffffL) || (res < -2147483648))
+	if ((res > 0x7fffffffL) || (res < -2147483648LL))
 		mono_raise_exception (mono_get_exception_overflow ());
 
 	return res;
@@ -600,6 +599,17 @@ mono_fclt_un (double a, double b)
 	return isunordered (a, b) || a < b;
 }
 
+gboolean
+mono_isfinite (double a)
+{
+#ifdef HAVE_ISFINITE
+	return isfinite (a);
+#else
+	g_assert_not_reached ();
+	return TRUE;
+#endif
+}
+
 double
 mono_fload_r4 (float *ptr)
 {
@@ -721,6 +731,36 @@ mono_array_new_2 (MonoMethod *cm, guint32 length1, guint32 length2)
 	return mono_array_new_full (domain, cm->klass, lengths, lower_bounds);
 }
 
+MonoArray *
+mono_array_new_3 (MonoMethod *cm, guint32 length1, guint32 length2, guint32 length3)
+{
+	MonoDomain *domain = mono_domain_get ();
+	guint32 lengths [3];
+	guint32 *lower_bounds;
+	int pcount;
+	int rank;
+
+	MONO_ARCH_SAVE_REGS;
+
+	pcount = mono_method_signature (cm)->param_count;
+	rank = cm->klass->rank;
+
+	lengths [0] = length1;
+	lengths [1] = length2;
+	lengths [2] = length3;
+
+	g_assert (rank == pcount);
+
+	if (cm->klass->byval_arg.type == MONO_TYPE_ARRAY) {
+		lower_bounds = alloca (sizeof (guint32) * rank);
+		memset (lower_bounds, 0, sizeof (guint32) * rank);
+	} else {
+		lower_bounds = NULL;
+	}
+
+	return mono_array_new_full (domain, cm->klass, lengths, lower_bounds);
+}
+
 gpointer
 mono_class_static_field_address (MonoDomain *domain, MonoClassField *field)
 {
@@ -733,7 +773,7 @@ mono_class_static_field_address (MonoDomain *domain, MonoClassField *field)
 
 	mono_class_init (field->parent);
 
-	vtable = mono_class_vtable (domain, field->parent);
+	vtable = mono_class_vtable_full (domain, field->parent, TRUE);
 	if (!vtable->initialized)
 		mono_runtime_class_init (vtable);
 
@@ -901,9 +941,11 @@ mono_helper_compile_generic_method (MonoObject *obj, MonoMethod *method, gpointe
 	g_assert (!vmethod->klass->generic_container);
 	g_assert (!vmethod->klass->generic_class || !vmethod->klass->generic_class->context.class_inst->is_open);
 	g_assert (!context->method_inst || !context->method_inst->is_open);
-	if (mono_method_needs_static_rgctx_invoke (vmethod, FALSE))
-		vmethod = mono_marshal_get_static_rgctx_invoke (vmethod);
+
 	addr = mono_compile_method (vmethod);
+
+	if (mono_method_needs_static_rgctx_invoke (vmethod, FALSE))
+		addr = mono_create_static_rgctx_trampoline (vmethod, addr);
 
 	/* Since this is a virtual call, have to unbox vtypes */
 	if (obj->vtable->klass->valuetype)

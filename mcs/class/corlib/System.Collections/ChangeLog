@@ -4,9 +4,24 @@
 	serialized the HashCodeProvider. Ignoring the error when the field
 	is not found.
 
+2009-09-24  Marek Safar  <marek.safar@gmail.com>
+
+	* Queue.cs, DictionaryEntry.cs, Hashtable.cs,
+	CollectionDebuggerView.cs, Stack.cs, ArrayList.cs: Add nicer debug
+	view for tools which support it.
+
+2009-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	* Queue.cs, Hashtable.cs, SortedList.cs, Stack.cs, ArrayList.cs:
+	Add DebuggerDisplay attribute.
+
 2009-07-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SortedList.cs: same issue as bug #521750 in System.
+
+2009-05-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* IStructuralComparable.cs IStructuralEquatable.cs: New files.
 
 2008-08-31  Zoltan Varga  <vargaz@gmail.com>
 

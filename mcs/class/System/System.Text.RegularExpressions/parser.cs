@@ -149,26 +149,22 @@ namespace System.Text.RegularExpressions.Syntax {
 			}
 		}
 
-		public IDictionary GetMapping ()
+		public int GetMapping (Hashtable mapping)
 		{
-			Hashtable mapping = new Hashtable ();
 			int end = caps.Count;
 			mapping.Add ("0", 0);
 			for (int i = 0; i < end; i++) {
 				CapturingGroup group = (CapturingGroup) caps [i];
-				if (group.Name != null) {
-					if (mapping.Contains (group.Name)) {
-						if ((int) mapping [group.Name] != group.Number)
-							throw new SystemException ("invalid state");
-						continue;
-					}
-					mapping.Add (group.Name, group.Number);
-				} else {
-					mapping.Add (group.Number.ToString (), group.Number);
+				string name = group.Name != null ? group.Name : group.Index.ToString ();
+				if (mapping.Contains (name)) {
+					if ((int) mapping [name] != group.Index)
+						throw new SystemException ("invalid state");
+					continue;
 				}
+				mapping.Add (name, group.Index);
 			}
 
-			return mapping;
+			return gap;
 		}
 
 		// private methods
@@ -864,7 +860,7 @@ namespace System.Text.RegularExpressions.Syntax {
 				// FIXME test if number is within number of assigned groups
 				// this may present a problem for right-to-left matching
 
-				Reference reference = new Reference (IsIgnoreCase (options));
+				Reference reference = new BackslashNumber (IsIgnoreCase (options), ecma);
 				refs.Add (reference, n.ToString ());
 				expr = reference;
 				break;
@@ -1060,44 +1056,85 @@ namespace System.Text.RegularExpressions.Syntax {
 			return result.ToString ();
 		}
 
-		private void ResolveReferences () {
+		private void ResolveReferences ()
+		{
 			int gid = 1;
 			Hashtable dict = new Hashtable ();
+			ArrayList explicit_numeric_groups = null;
 
 			// number unnamed groups
 
 			foreach (CapturingGroup group in caps) {
-				if (group.Name == null) {
-					dict.Add (gid.ToString (), group);
-					group.Number = gid ++;
+				if (group.Name != null)
+					continue;
 
-					++ num_groups;
-				}
+				dict.Add (gid.ToString (), group);
+				group.Index = gid ++;
+				++ num_groups;
 			}
 
 			// number named groups
 
 			foreach (CapturingGroup group in caps) {
-				if (group.Name != null) {
-					if (!dict.Contains (group.Name)) {
-						dict.Add (group.Name, group);
-						group.Number = gid ++;
+				if (group.Name == null)
+					continue;
 
+				if (dict.Contains (group.Name)) {
+					CapturingGroup prev = (CapturingGroup) dict [group.Name];
+					group.Index = prev.Index;
+
+					if (group.Index == gid)
+						gid ++;
+					else if (group.Index > gid)
+						explicit_numeric_groups.Add (group);
+					continue;
+				}
+
+				if (Char.IsDigit (group.Name [0])) {
+					int ptr = 0;
+					int group_gid = ParseDecimal (group.Name, ref ptr);
+					if (ptr == group.Name.Length) {
+						group.Index = group_gid;
+						dict.Add (group.Name, group);
 						++ num_groups;
-					}
-					else {
-						CapturingGroup prev = (CapturingGroup)dict[group.Name];
-						group.Number = prev.Number;
+
+						if (group_gid == gid) {
+							gid ++;
+						} else {
+							// all numbers before 'gid' are already in the dictionary.  So, we know group_gid > gid
+							if (explicit_numeric_groups == null)
+								explicit_numeric_groups = new ArrayList (4);
+							explicit_numeric_groups.Add (group);
+						}
+
+						continue;
 					}
 				}
+
+				string gid_s = gid.ToString ();
+				while (dict.Contains (gid_s))
+					gid_s = (++gid).ToString ();
+
+				dict.Add (gid_s, group);
+				dict.Add (group.Name, group);
+				group.Index = gid ++;
+				++ num_groups;
 			}
+
+			gap = gid; // == 1 + num_groups, if explicit_numeric_groups == null
+
+			if (explicit_numeric_groups != null)
+				HandleExplicitNumericGroups (explicit_numeric_groups);
 
 			// resolve references
 
 			foreach (Expression expr in refs.Keys) {
-				string name = (string)refs[expr];
+				string name = (string) refs [expr];
 				if (!dict.Contains (name)) {
 					if (expr is CaptureAssertion && !Char.IsDigit (name [0]))
+						continue;
+					BackslashNumber bn = expr as BackslashNumber;
+					if (bn != null && bn.ResolveReference (name, dict))
 						continue;
 					throw NewParseException ("Reference to undefined group " +
 						(Char.IsDigit (name[0]) ? "number " : "name ") +
@@ -1111,6 +1148,39 @@ namespace System.Text.RegularExpressions.Syntax {
 					((CaptureAssertion)expr).CapturingGroup = group;
 				else if (expr is BalancingGroup)
 					((BalancingGroup)expr).Balance = group;
+			}
+		}
+
+		private void HandleExplicitNumericGroups (ArrayList explicit_numeric_groups)
+		{
+			int gid = gap;
+			int i = 0;
+			int n_explicit = explicit_numeric_groups.Count;
+
+			explicit_numeric_groups.Sort ();
+
+			// move 'gap' forward to skip over all explicit groups that
+			// turn out to match their index
+			for (; i < n_explicit; ++i) {
+				CapturingGroup g = (CapturingGroup) explicit_numeric_groups [i];
+				if (g.Index > gid)
+					break;
+				if (g.Index == gid)
+					gid ++;
+			}
+
+			gap = gid;
+
+			// re-index all further groups so that the indexes are contiguous
+			int prev = gid;
+			for (; i < n_explicit; ++i) {
+				CapturingGroup g = (CapturingGroup) explicit_numeric_groups [i];
+				if (g.Index == prev) {
+					g.Index = gid - 1;
+				} else {
+					prev = g.Index;
+					g.Index = gid ++;
+				}
 			}
 		}
 
@@ -1153,5 +1223,6 @@ namespace System.Text.RegularExpressions.Syntax {
 		private ArrayList caps;
 		private Hashtable refs;
 		private int num_groups;
+		private int gap;
 	}
 }

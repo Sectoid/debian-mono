@@ -58,8 +58,10 @@ namespace System.Reflection.Emit {
 		private Type returnType;
 		private CallingConventions callConv;
 		private CallingConvention unmanagedCallConv;
+#pragma warning disable 649
 		private Type[][] modreqs;
 		private Type[][] modopts;
+#pragma warning restore 649
 
 		internal SignatureHelper (ModuleBuilder module, SignatureHelperType type)
 		{
@@ -371,6 +373,15 @@ namespace System.Reflection.Emit {
 
 			if (returnType == null)
 				returnType = typeof (void);
+
+			if (returnType.IsUserType)
+				throw new NotSupportedException ("User defined subclasses of System.Type are not yet supported.");
+			if (parameters != null) {
+				for (int i = 0; i < parameters.Length; ++i)
+					if (parameters [i].IsUserType)
+						throw new NotSupportedException ("User defined subclasses of System.Type are not yet supported.");
+
+			}
 
 			SignatureHelper helper = 
 				new SignatureHelper ((ModuleBuilder)mod, SignatureHelperType.HELPER_METHOD);

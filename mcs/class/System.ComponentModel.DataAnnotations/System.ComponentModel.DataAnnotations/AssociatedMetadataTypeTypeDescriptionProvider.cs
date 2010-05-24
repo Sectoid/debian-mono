@@ -34,22 +34,31 @@ namespace System.ComponentModel.DataAnnotations
 {
 	public class AssociatedMetadataTypeTypeDescriptionProvider : TypeDescriptionProvider
 	{
-		[MonoTODO]
+		Type type;
+		Type associatedMetadataType;
+		
 		public AssociatedMetadataTypeTypeDescriptionProvider (Type type)
 		{
-			throw new NotImplementedException ();
+			if (type == null)
+				throw new ArgumentNullException ("type");
+			
+			this.type = type;
 		}
 
-		[MonoTODO]
 		public AssociatedMetadataTypeTypeDescriptionProvider (Type type, Type associatedMetadataType)
 		{
-			throw new NotImplementedException ();
+			if (type == null)
+				throw new ArgumentNullException ("type");
+			if (associatedMetadataType == null)
+				throw new ArgumentNullException ("associatedMetadataType");
+			
+			this.type = type;
+			this.associatedMetadataType = associatedMetadataType;
 		}
 
-		[MonoTODO]
 		public override ICustomTypeDescriptor GetTypeDescriptor (Type objectType, object instance)
 		{
-			throw new NotImplementedException ();
+			return new AssociatedMetadataTypeTypeDescriptor (base.GetTypeDescriptor (objectType, instance), type, associatedMetadataType);
 		}
 	}
 }

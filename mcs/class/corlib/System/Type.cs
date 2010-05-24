@@ -211,7 +211,7 @@ namespace System {
 				if (IsInterface)
 					return false;
 
-				return !IsSubclassOf (typeof (ValueType));
+				return !IsValueType;
 			}
 		}
 
@@ -518,25 +518,25 @@ namespace System {
 				return GetTypeCodeInternal (type);
 		}
 
-		[MonoTODO("Mono does not support COM")]
+		[MonoTODO("This operation is currently not supported by Mono")]
 		public static Type GetTypeFromCLSID (Guid clsid)
 		{
 			throw new NotImplementedException ();
 		}
 
-		[MonoTODO("Mono does not support COM")]
+		[MonoTODO("This operation is currently not supported by Mono")]
 		public static Type GetTypeFromCLSID (Guid clsid, bool throwOnError)
 		{
 			throw new NotImplementedException ();
 		}
 
-		[MonoTODO("Mono does not support COM")]
+		[MonoTODO("This operation is currently not supported by Mono")]
 		public static Type GetTypeFromCLSID (Guid clsid, string server)
 		{
 			throw new NotImplementedException ();
 		}
 
-		[MonoTODO("Mono does not support COM")]
+		[MonoTODO("This operation is currently not supported by Mono")]
 		public static Type GetTypeFromCLSID (Guid clsid, string server, bool throwOnError)
 		{
 			throw new NotImplementedException ();
@@ -737,12 +737,15 @@ namespace System {
 		
 		public override int GetHashCode()
 		{
+			Type t = UnderlyingSystemType;
+			if (t != null && t != this)
+				return t.GetHashCode ();
 			return (int)_impl.Value;
 		}
 
 		public MemberInfo[] GetMember (string name)
 		{
-			return GetMember (name, DefaultBindingFlags);
+			return GetMember (name, MemberTypes.All, DefaultBindingFlags);
 		}
 		
 		public virtual MemberInfo[] GetMember (string name, BindingFlags bindingAttr)
@@ -752,6 +755,8 @@ namespace System {
 
 		public virtual MemberInfo[] GetMember (string name, MemberTypes type, BindingFlags bindingAttr)
 		{
+			if (name == null)
+				throw new ArgumentNullException ("name");
 			if ((bindingAttr & BindingFlags.IgnoreCase) != 0)
 				return FindMembers (type, bindingAttr, FilterNameIgnoreCase, name);
 			else
@@ -1031,42 +1036,19 @@ namespace System {
 
 			// Console.WriteLine ("FindMembers for {0} (Type: {1}): {2}",
 			// this.FullName, this.GetType().FullName, this.obj_address());
-
-			if ((memberType & MemberTypes.Constructor) != 0) {
-				ConstructorInfo[] c = GetConstructors (bindingAttr);
-				if (filter != null) {
-					foreach (MemberInfo m in c) {
-						if (filter (m, filterCriteria))
-							l.Add (m);
-					}
-				} else {
-					l.AddRange (c);
-				}
-			}
-			if ((memberType & MemberTypes.Event) != 0) {
-				EventInfo[] c = GetEvents (bindingAttr);
-				if (filter != null) {
-					foreach (MemberInfo m in c) {
-						if (filter (m, filterCriteria))
-							l.Add (m);
-					}
-				} else {
-					l.AddRange (c);
-				}
-			}
-			if ((memberType & MemberTypes.Field) != 0) {
-				FieldInfo[] c = GetFields (bindingAttr);
-				if (filter != null) {
-					foreach (MemberInfo m in c) {
-						if (filter (m, filterCriteria))
-							l.Add (m);
-					}
-				} else {
-					l.AddRange (c);
-				}
-			}
 			if ((memberType & MemberTypes.Method) != 0) {
 				MethodInfo[] c = GetMethods (bindingAttr);
+				if (filter != null) {
+					foreach (MemberInfo m in c) {
+						if (filter (m, filterCriteria))
+							l.Add (m);
+					}
+				} else {
+					l.AddRange (c);
+				}
+			}
+			if ((memberType & MemberTypes.Constructor) != 0) {
+				ConstructorInfo[] c = GetConstructors (bindingAttr);
 				if (filter != null) {
 					foreach (MemberInfo m in c) {
 						if (filter (m, filterCriteria))
@@ -1092,6 +1074,28 @@ namespace System {
 					}
 				} else {
 					c = GetProperties (bindingAttr);
+					l.AddRange (c);
+				}
+			}
+			if ((memberType & MemberTypes.Event) != 0) {
+				EventInfo[] c = GetEvents (bindingAttr);
+				if (filter != null) {
+					foreach (MemberInfo m in c) {
+						if (filter (m, filterCriteria))
+							l.Add (m);
+					}
+				} else {
+					l.AddRange (c);
+				}
+			}
+			if ((memberType & MemberTypes.Field) != 0) {
+				FieldInfo[] c = GetFields (bindingAttr);
+				if (filter != null) {
+					foreach (MemberInfo m in c) {
+						if (filter (m, filterCriteria))
+							l.Add (m);
+					}
+				} else {
 					l.AddRange (c);
 				}
 			}
@@ -1183,15 +1187,11 @@ namespace System {
 		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		extern Type GetGenericTypeDefinition_impl ();
+		internal extern Type GetGenericTypeDefinition_impl ();
 
 		public virtual Type GetGenericTypeDefinition ()
 		{
-			Type res = GetGenericTypeDefinition_impl ();
-			if (res == null)
-				throw new InvalidOperationException ();
-
-			return res;
+			throw new NotSupportedException ("Derived classes must provide an implementation.");
 		}
 
 		public virtual extern bool IsGenericType {
@@ -1296,13 +1296,14 @@ namespace System {
 
 		public virtual Type MakeArrayType ()
 		{
-			return MakeArrayType (1);
+			return make_array_type (0);
 		}
 
 		public virtual Type MakeArrayType (int rank)
 		{
 			if (rank < 1)
 				throw new IndexOutOfRangeException ();
+			
 			return make_array_type (rank);
 		}
 
@@ -1392,6 +1393,28 @@ namespace System {
 		}			
 
 #endif
+
+#if NET_4_0 || BOOTSTRAP_NET_4_0
+		public virtual bool IsEquivalentTo (Type other)
+		{
+			return this == other;
+		}
+#endif
+
+		/* 
+		 * Return whenever this object is an instance of a user defined subclass
+		 * of System.Type or an instance of TypeDelegator.
+		 */
+		internal bool IsUserType {
+			get {
+				/* 
+				 * subclasses cannot modify _impl so if it is zero, it means the
+				 * type is not created by the runtime.
+				 */
+				return _impl.Value == IntPtr.Zero &&
+					(GetType ().Assembly != typeof (Type).Assembly || GetType () == typeof (TypeDelegator));
+			}
+		}
 
 		void _Type.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{

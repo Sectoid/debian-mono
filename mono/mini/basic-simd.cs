@@ -1075,7 +1075,7 @@ public class SimdTests {
 		return 0;
 	}
 
-	public static unsafe int test_vector8s_pack_signed_sat () {
+	public static unsafe int test_0_vector8s_pack_signed_sat () {
 		Vector8s a = new Vector8s (-200, 200, 3, 0, 5, 6, 5, 4);
 		Vector8s b = new Vector8s (9, 2, 1, 2, 3, 6, 5, 6);
 
@@ -1089,7 +1089,7 @@ public class SimdTests {
 		return 0;
 	}
 
-	public static unsafe int test_vector16sb_sub_sat () {
+	public static unsafe int test_0_vector16sb_sub_sat () {
 		Vector16sb a = new Vector16sb (100,-100,11,12,13,14,15,0,1,2,3,4,5,6,7,8);
 		Vector16sb b = new Vector16sb (-100, 100,11,12,4,5,6,7,8,9,10,11,12,13,14,15);
 
@@ -1114,7 +1114,7 @@ public class SimdTests {
 		return 0;
 	}
 
-	public static unsafe int test_vector16sb_add_sat () {
+	public static unsafe int test_0_vector16sb_add_sat () {
 		Vector16sb a = new Vector16sb (100,-100,11,12,13,14,15,0,1,2,3,4,5,6,7,8);
 		Vector16sb b = new Vector16sb (100, -100,11,12,4,5,6,7,8,9,10,11,12,13,14,15);
 
@@ -1139,7 +1139,7 @@ public class SimdTests {
 		return 0;
 	}
 
-	public static unsafe int test_vector16sb_cmp_gt () {
+	public static unsafe int test_0_vector16sb_cmp_gt () {
 		Vector16sb a = new Vector16sb (100,-100,11,12,13,14,15,0,1,2,3,4,5,6,7,8);
 		Vector16sb b = new Vector16sb (-100, 100,11,12,4,5,6,7,8,9,10,11,12,13,14,15);
 
@@ -2852,6 +2852,16 @@ public class SimdTests {
 		return 0;
 	}
 	
+	public static int test_0_double_packed_sqrt () {
+		Vector2d a = new Vector2d (16, 4);
+		a = a.Sqrt ();
+		if (a.X != 4f)
+			return 1;
+		if (a.Y != 2f)
+			return 2;
+		return 0;
+	}
+
 	public static int test_24_regs_pressure_a () {
 		Vector4f a = new Vector4f (1, 2, 3, 4);
 		Vector4f b = a + a;
@@ -2874,6 +2884,152 @@ public class SimdTests {
 		Vector4f j = a + b + c + d + e + f + g + h + i;
 		return (int)j.Z;
 	}
+
+	public static int test_8_regs_pressure_c () {
+		Vector4f a = new Vector4f (1, 2, 3, 4);
+		Vector4f b = a + a;
+		Vector4f c = b - a;
+		Vector4f d = c - a;
+		Vector4f e = a + b + c;
+		Vector4f f = d - b + a - c;
+		Vector4f g = a - d * f - c + b;
+		Vector4f h = a * b - c + e;
+		Vector4f i = h - g - f - e - d - c - b - a;
+		Vector4f j = a + b + c + d + e + f + g + h + i;
+		Vector4f k = j - i - h + e + d - a + b - f + g;
+		Vector4f l = k * c - j * b - i * e + f - g; 
+		Vector4f m = l - k + j - i + e + f;
+		Vector4f n = m - j + g - i + e * b + a * d;
+		Vector4f o = k + j + i * b;
+		Vector4f p = m + j + i + e + l;
+		Vector4f q = l * m + j + k;
+		Vector4f r = p * a + o * b + j * c + m * d + l * e;
+		Vector4f s = a - b - c - d - e - f - g - h - i - j - k - l - m - p - o - q - r;
+		Vector4f t = a + b + c + d + e + f + g + h + i + j + k + l + m + p + o + q + r + s;
+		return (int)t.W;
+	}
+
+	public static int test_0_regs_pressure_fp_and_simd_share_bank_1 () {
+		Vector4f a = new Vector4f (4, 3, 2, 1);
+		float aF = 10f;
+		Vector4f b = a + a;
+		float bF = aF + aF;
+		Vector4f c = b - a;
+		float cF = bF - aF;
+		Vector4f d = c - a;
+		float dF = cF - aF;
+		Vector4f e = a + b + c;
+		float eF = aF + bF + cF;
+		Vector4f f = d - b + a - c;
+		float fF = dF - bF + aF - cF;
+		Vector4f g = a - d * f - c + b;
+		float gF = aF - dF * fF - cF + bF;
+		Vector4f h = a * b - c + e;
+		float hF = aF * bF - cF + eF;
+		Vector4f i = h - g - f - e - d - c - b - a;
+		float iF = hF - gF - fF - eF - dF - cF - bF - aF;
+		Vector4f j = a + b + c + d + e + f + g + h + i;
+		float jF = aF + bF + cF + dF + eF + fF + gF + hF + iF;
+
+		if (j.X != 88f)
+			return 1;
+
+		if(jF != 460f)
+			return 2;
+
+		return 0;
+	}
+
+	public static int test_0_regs_pressure_fp_and_simd_share_bank_2 () {
+		Vector4f a = new Vector4f (4, 3, 2, 1);
+		float aF = 10f;
+		Vector4f b = a + a;
+		float bF = aF + aF;
+		Vector4f c = b - a;
+		float cF = bF - aF;
+		Vector4f d = c - a;
+		float dF = cF - aF;
+		Vector4f e = a + b + c;
+		float eF = aF + bF + cF;
+		Vector4f f = d - b + a - c;
+		float fF = dF - bF + aF - cF;
+		Vector4f g = a - d * f - c + b;
+		float gF = aF - dF * fF - cF + bF;
+		Vector4f h = a * b - c + e;
+		float hF = aF * bF - cF + eF;
+		Vector4f i = h - g - f - e - d - c - b - a;
+		float iF = hF - gF - fF - eF - dF - cF - bF - aF;
+		Vector4f j = a + b + c + d + e + f + g + h + i;
+		float jF = aF + bF + cF + dF + eF + fF + gF + hF + iF;
+		Vector4f k = j - i - h + e + d - a + b - f + g;
+		float kF = jF - iF - hF + eF + dF - aF + bF - fF + gF;
+		Vector4f l = k * c - j * b - i * e + f - g; 
+		float lF = kF * cF - jF * bF - iF * eF + fF - gF;
+		Vector4f m = l - k + j - i + e + f;
+		float mF = lF - kF + jF - iF + eF + fF;
+		Vector4f n = m - j + g - i + e * b + a * d;
+		float nF = mF - jF + gF - iF + eF * bF + aF * dF;
+		Vector4f o = k + j + i * b;
+		float oF = kF + jF + iF * bF;
+		Vector4f p = m + j + i + e + l;
+		float pF = mF + jF + iF + eF + lF;
+		Vector4f q = l * m + j + k;
+		float qF = lF * mF + jF + kF;
+		Vector4f r = p * a + o * b + j * c + m * d + l * e;
+		float rF = pF * aF + oF * bF + jF * cF + mF * dF + lF * eF;
+		Vector4f s = a - b - c - d - e - f - g - h - i - j - k - l - m - p - o - q - r;
+		float sF = aF - bF - cF - dF - eF - fF - gF - hF - iF - jF - kF - lF - mF - pF - oF - qF - rF;
+		Vector4f t = a + b + c + d + e + f + g + h + i + j + k + l + m + p + o + q + r + s;
+		float tF = aF + bF + cF + dF + eF + fF + gF + hF + iF + jF + kF + lF + mF + pF + oF + qF + rF + sF;
+
+		if (t.X != 8f)
+			return 1;
+
+		if(tF != 14f)
+			return 2;
+
+		return 0;
+	}
+
+
+	public static void call_simd_fp () {
+		Vector4f a = new Vector4f (20f, 22f, 23f, 24f);
+		float b = 25f;
+		Vector4f c = new Vector4f (26f, 27f, 28f, 29f);
+		float d = 30f;
+
+		b += d;
+		a += c;
+	}
+	public static int test_0_call_fp_and_simd_share_bank () {
+
+		float a = 1f;
+		Vector4f b = new Vector4f (2f, 3f, 4f, 5f);
+		float c = 6f;
+		Vector4f d = new Vector4f (7f, 8f, 9f, 10f);
+
+		a += c;
+
+		b += d;
+		
+		call_simd_fp ();
+		if (a != 7f)
+			return 1;
+		if (b.X != 9f)
+			return 2;
+		if (c != 6f)
+			return 3;
+		if (d.X != 7f)
+			return 4;
+		if (b.W != 15f)
+			return 5;
+		if (d.W != 10f)
+			return 6;
+		
+
+		return 0;
+	}
+
 
 	static bool ff;
 	public static int test_3_single_block_var_is_properly_promoted () {
@@ -2905,8 +3061,69 @@ public class SimdTests {
 		return 0;
 	}
 
-	public static int Main () {
-		return TestDriver.RunTests (typeof (SimdTests));
+	public static int test_0_sse41_vector8s_min () {
+		Vector8s v = new Vector8s(2);
+		Vector8s v2 = new Vector8s(1);
+		v = v.Min(v2);
+		if (v.V0 != 1 || v.V1 != 1 || v.V2 != 1 || v.V3 != 1 || v.V4 != 1 || v.V5 != 1 || v.V6 != 1 || v.V7 != 1)
+			return 1;
+		return 0;
+	}
+
+	public static int test_0_simd_const_indexer_simple () {
+		Vector4f v = new Vector4f (1, 2, 3, 4);
+		
+		if (v[0] != 1) 
+			return 1;
+		if (v[1] != 2) 
+			return 2;
+		if (v[2] != 3) 
+			return 3;
+		if (v[3] != 4) 
+			return 4;
+		return 0;
+	}
+
+	public static int test_0_simd_var_indexer_simple () {
+		Vector4f v = new Vector4f (1, 2, 3, 4);
+
+		int index = 0;
+		
+		if (v[index++] != 1) 
+			return 1;
+		if (v[index++] != 2) 
+			return 2;
+		if (v[index++] != 3) 
+			return 3;
+		if (v[index] != 4) 
+			return 4;
+		return 0;
+	}
+
+	public static int test_0_simd_const_indexer_double () {
+		Vector2d v = new Vector2d (1, 2);
+		
+		if (v[0] != 1) 
+			return 1;
+		if (v[1] != 2) 
+			return 2;
+		return 0;
+	}
+
+	public static int test_0_simd_var_indexer_double () {
+		Vector2d v = new Vector2d (1, 2);
+
+		int index = 0;
+		
+		if (v[index++] != 1) 
+			return 1;
+		if (v[index] != 2) 
+			return 2;
+		return 0;
+	}
+
+	public static int Main (String[] args) {
+		return TestDriver.RunTests (typeof (SimdTests), args);
 	}
 }
 

@@ -123,6 +123,8 @@ namespace MonoTests.SystemWeb.Framework
 		/// <seealso cref="MonoTests.SystemWeb.Framework.Response.Body"/>
 		public string Run ()
 		{
+			SystemWebTestShim.BuildManager.SuppressDebugModeMessages ();
+
 			if (Request.Url == null)
 				Request.Url = Invoker.GetDefaultUrl ();
 			_unloadHandler.StartingRequest();
@@ -301,50 +303,82 @@ namespace MonoTests.SystemWeb.Framework
 		public static void CopyResource (Type type, string resourceName, string targetUrl)
 		{
 #if !TARGET_JVM
-			EnsureWorkingDirectories ();
-			EnsureDirectoryExists (Path.Combine (baseDir,
-				Path.GetDirectoryName (targetUrl)));
-			string targetFile = Path.Combine (baseDir, targetUrl);
 			using (Stream source = type.Assembly.GetManifestResourceStream (resourceName)) {
 				if (source == null)
 					throw new ArgumentException ("resource not found: " + resourceName, "resourceName");
 				byte[] array = new byte[source.Length];
 				source.Read (array, 0, array.Length);
-
-				if (File.Exists(targetFile)) {
-					using (FileStream existing = File.OpenRead(targetFile)) {
-						bool equal = false;
-						if (array.Length == existing.Length) {
-							byte[] existingArray = new byte[array.Length];
-							existing.Read (existingArray, 0, existingArray.Length);
-							
-							equal = true;
-							for (int i = 0; i < array.Length; i ++) {
-								if (array[i] != existingArray[i]) {
-									equal = false;
-									break;
-								}
-							}
-						}
-						
-						if (equal) {
-							existing.Close ();
-							File.SetLastWriteTime (targetFile, DateTime.Now);
-							return;
-						}
-						
-					}
-					
-					CheckDomainIsDown ();
-				}
-
-				using (FileStream target = new FileStream (targetFile, FileMode.Create)) {
-					target.Write (array, 0, array.Length);
-				}
+				CopyBinary (array, targetUrl);
 			}
 #endif
 		}
 
+		/// <summary>
+		/// Copy a chunk of data as a file into the web application.
+		/// </summary>
+		/// <param name="sourceArray">The array that contains the data to be written.</param>
+		/// <param name="targetUrl">The URL where the data will be available.</param>
+		/// <returns>The target filename where the data was stored.</returns>
+		/// <example><code>CopyBinary (System.Text.Encoding.UTF8.GetBytes ("Hello"), "App_Data/Greeting.txt");</code></example>
+		public static string CopyBinary (byte[] sourceArray, string targetUrl)
+		{
+#if TARGET_JVM
+			return null;
+#else
+			EnsureWorkingDirectories ();
+			EnsureDirectoryExists (Path.Combine (baseDir, Path.GetDirectoryName (targetUrl)));
+			string targetFile = Path.Combine (baseDir, targetUrl);
+
+			if (File.Exists(targetFile)) {
+				using (FileStream existing = File.OpenRead(targetFile)) {
+					bool equal = false;
+					if (sourceArray.Length == existing.Length) {
+						byte[] existingArray = new byte[sourceArray.Length];
+						existing.Read (existingArray, 0, existingArray.Length);
+						
+						equal = true;
+						for (int i = 0; i < sourceArray.Length; i ++) {
+							if (sourceArray[i] != existingArray[i]) {
+								equal = false;
+								break;
+							}
+						}
+					}
+					
+					if (equal) {
+						existing.Close ();
+						File.SetLastWriteTime (targetFile, DateTime.Now);
+						return targetFile;
+					}
+					
+				}
+				
+				CheckDomainIsDown ();
+			}
+
+			using (FileStream target = new FileStream (targetFile, FileMode.Create)) {
+				target.Write (sourceArray, 0, sourceArray.Length);
+			}
+
+			return targetFile;
+#endif
+		}
+
+		static WebTestResourcesSetupAttribute.SetupHandler CheckResourcesSetupHandler ()
+		{
+			// It is assumed WebTest is included in the same assembly which contains the
+			// tests themselves
+			object[] attributes = typeof (WebTest).Assembly.GetCustomAttributes (typeof (WebTestResourcesSetupAttribute), true);
+			if (attributes == null || attributes.Length == 0)
+				return null;
+			
+			WebTestResourcesSetupAttribute attr = attributes [0] as WebTestResourcesSetupAttribute;
+			if (attr == null)
+				return null;
+
+			return attr.Handler;
+		}
+		
 		public static void EnsureHosting ()
 		{
 			if (host != null)
@@ -354,9 +388,35 @@ namespace MonoTests.SystemWeb.Framework
 			return;
 #else
 			host = AppDomain.CurrentDomain.GetData (HOST_INSTANCE_NAME) as MyHost;
+			if (host == null)
+				SetupHosting ();
+#endif
+		}
+		
+		public static void SetupHosting ()
+		{
+			SetupHosting (null);
+		}
+		
+		public static void SetupHosting (WebTestResourcesSetupAttribute.SetupHandler resHandler)
+		{
+#if !TARGET_JVM
+			if (host == null)
+				host = AppDomain.CurrentDomain.GetData (HOST_INSTANCE_NAME) as MyHost;
+#endif
 			if (host != null)
-				return;
-			CopyResources ();
+				CleanApp ();
+#if TARGET_JVM
+			host = new MyHost ();
+			return;
+#else
+			if (resHandler == null)
+				resHandler = CheckResourcesSetupHandler ();
+			if (resHandler == null)
+				CopyResources ();
+			else
+				resHandler ();
+			
 			foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies ())
 				LoadAssemblyRecursive (ass);
 
@@ -421,13 +481,23 @@ namespace MonoTests.SystemWeb.Framework
 		}
 
 		public static event EventHandler AppUnloaded;
-			
+
+		public static string TestBaseDir {
+			get {
+#if !TARGET_JVM
+				return baseDir;
+#else
+				return String.Empty;
+#endif
+			}
+		}
+		
 #if !TARGET_JVM
 		const string VIRTUAL_BASE_DIR = "/NunitWeb";
 		private static string baseDir;
 		private static string binDir;
 		const string HOST_INSTANCE_NAME = "MonoTests/SysWeb/Framework/Host";
-
+		
 		static void LoadAssemblyRecursive (Assembly ass)
 		{
 			if (ass.GlobalAssemblyCache)
@@ -498,7 +568,7 @@ namespace MonoTests.SystemWeb.Framework
 			Directory.CreateDirectory (binDir);
 		}
 
-		private static void CopyResources ()
+		public static void CopyResources ()
 		{
 			CopyResource (typeof (WebTest), "My.ashx", "My.ashx");
 			CopyResource (typeof (WebTest), "Global.asax", "Global.asax");
@@ -524,6 +594,7 @@ namespace MonoTests.SystemWeb.Framework
 			CopyResource (typeof (WebTest), "Common.resx", "App_GlobalResources/Common.resx");
 			CopyResource (typeof (WebTest), "Common.fr-FR.resx", "App_GlobalResources/Common.fr-FR.resx");
 			CopyResource (typeof (WebTest), "Resource1.resx", "App_GlobalResources/Resource1.resx");
+			CopyResource (typeof (WebTest), "EnumConverterControl.cs", "App_Code/EnumConverterControl.cs");
 #endif
 			CopyResource (typeof (WebTest), "Web.mono.config", "Web.config");
 			CopyResource (typeof (WebTest), "MyPage.aspx", "MyPage.aspx");

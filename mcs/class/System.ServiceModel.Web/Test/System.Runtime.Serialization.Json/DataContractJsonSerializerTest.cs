@@ -377,8 +377,9 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		}
 
 		[Test]
-		[ExpectedException (typeof (InvalidDataContractException))]
+		//[ExpectedException (typeof (InvalidDataContractException))]
 		// NonDC is not a DataContract type.
+		// UPDATE: non-DataContract types are became valid in RTM.
 		public void SerializeNonDC ()
 		{
 			DataContractJsonSerializer ser = new DataContractJsonSerializer (typeof (NonDC));
@@ -390,9 +391,10 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		// DCHasNonDC
 
 		[Test]
-		[ExpectedException (typeof (InvalidDataContractException))]
+		//[ExpectedException (typeof (InvalidDataContractException))]
 		// DCHasNonDC itself is a DataContract type whose field is
 		// marked as DataMember but its type is not DataContract.
+		// UPDATE: non-DataContract types are became valid in RTM.
 		public void SerializeDCHasNonDC ()
 		{
 			DataContractJsonSerializer ser = new DataContractJsonSerializer (typeof (DCHasNonDC));
@@ -551,9 +553,8 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			}
 		}
 
-		// CollectionContainer : Items must have a setter.
+		// CollectionContainer : Items must have a setter. (but became valid in RTM).
 		[Test]
-		[ExpectedException (typeof (InvalidDataContractException))]
 		public void SerializeReadOnlyCollectionMember ()
 		{
 			DataContractJsonSerializer ser =
@@ -564,9 +565,8 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			}
 		}
 
-		// DataCollectionContainer : Items must have a setter.
+		// DataCollectionContainer : Items must have a setter. (but became valid in RTM).
 		[Test]
-		[ExpectedException (typeof (InvalidDataContractException))]
 		public void SerializeReadOnlyDataCollectionMember ()
 		{
 			DataContractJsonSerializer ser =
@@ -575,6 +575,24 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			using (XmlWriter w = XmlWriter.Create (sw, settings)) {
 				ser.WriteObject (w, null);
 			}
+		}
+
+		[Test]
+		[Ignore ("https://connect.microsoft.com/VisualStudio/feedback/ViewFeedback.aspx?FeedbackID=409970")]
+		[ExpectedException (typeof (SerializationException))]
+		public void DeserializeReadOnlyDataCollection_NullCollection ()
+		{
+			DataContractJsonSerializer ser =
+				new DataContractJsonSerializer (typeof (CollectionContainer));
+			StringWriter sw = new StringWriter ();
+			var c = new CollectionContainer ();
+			c.Items.Add ("foo");
+			c.Items.Add ("bar");
+			using (XmlWriter w = XmlWriter.Create (sw, settings))
+				ser.WriteObject (w, c);
+			// CollectionContainer.Items is null, so it cannot deserialize non-null collection.
+			using (XmlReader r = XmlReader.Create (new StringReader (sw.ToString ())))
+				c = (CollectionContainer) ser.ReadObject (r);
 		}
 
 		[Test]
@@ -919,7 +937,7 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			StringWriter sw = new StringWriter ();
 			using (XmlWriter xw = XmlWriter.Create (sw, settings)) {
 				SerializeNonDCArrayType obj = new SerializeNonDCArrayType ();
-				obj.IPAddresses = new IPAddress [] {new IPAddress (new byte [] {1, 2, 3, 4})};
+				obj.IPAddresses = new NonDCItem [] {new NonDCItem () { Data = new byte [] {1, 2, 3, 4} } };
 				ser.WriteObject (xw, obj);
 			}
 
@@ -931,10 +949,9 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			nsmgr.AddNamespace ("a", "http://schemas.microsoft.com/2003/10/Serialization/Arrays");
 
 			Assert.AreEqual (1, doc.SelectNodes ("/root/IPAddresses/item", nsmgr).Count, "#1");
-			Assert.AreEqual ("67305985", doc.SelectSingleNode ("/root/IPAddresses/item/m_Address", nsmgr).InnerText, "#2");
-			XmlElement el = doc.SelectSingleNode ("/root/IPAddresses/item/m_Numbers", nsmgr) as XmlElement;
+			XmlElement el = doc.SelectSingleNode ("/root/IPAddresses/item/Data", nsmgr) as XmlElement;
 			Assert.IsNotNull (el, "#3");
-			Assert.AreEqual (8, el.SelectNodes ("item", nsmgr).Count, "#4");
+			Assert.AreEqual (4, el.SelectNodes ("item", nsmgr).Count, "#4");
 		}
 
 		[Test]
@@ -1181,8 +1198,158 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			Assert.IsFalse (s.IsStartObject (XmlReader.Create (new StringReader ("<Foo></Foo>"))), "#3");
 			Assert.IsFalse (s.IsStartObject (XmlReader.Create (new StringReader ("<root xmlns='urn:foo'></root>"))), "#4");
 		}
- 	}
- 
+
+		[Test]
+		public void SerializeNonDC2 ()
+		{
+			var ser = new DataContractJsonSerializer (typeof (TestData));
+			StringWriter sw = new StringWriter ();
+			var obj = new TestData () { Foo = "foo", Bar = "bar", Baz = "baz" };
+
+			// XML
+			using (var xw = XmlWriter.Create (sw))
+				ser.WriteObject (xw, obj);
+			var s = sw.ToString ();
+			// since the order is not preserved, we compare only contents.
+			Assert.IsTrue (s.IndexOf ("<Foo>foo</Foo>") > 0, "#1-1");
+			Assert.IsTrue (s.IndexOf ("<Bar>bar</Bar>") > 0, "#1-2");
+			Assert.IsFalse (s.IndexOf ("<Baz>baz</Baz>") > 0, "#1-3");
+
+			// JSON
+			MemoryStream ms = new MemoryStream ();
+			using (var xw = JsonReaderWriterFactory.CreateJsonWriter (ms))
+				ser.WriteObject (ms, obj);
+			s = new StreamReader (new MemoryStream (ms.ToArray ())).ReadToEnd ().Replace ('"', '/');
+			// since the order is not preserved, we compare only contents.
+			Assert.IsTrue (s.IndexOf ("/Foo/:/foo/") > 0, "#2-1");
+			Assert.IsTrue (s.IndexOf ("/Bar/:/bar/") > 0, "#2-2");
+			Assert.IsFalse (s.IndexOf ("/Baz/:/baz/") > 0, "#2-3");
+		}
+
+		[Test]
+		public void AlwaysEmitTypeInformation ()
+		{
+			var ms = new MemoryStream ();
+			var ds = new DataContractJsonSerializer (typeof (string), "root", null, 10, false, null, true);
+			ds.WriteObject (ms, "foobar");
+			var s = Encoding.UTF8.GetString (ms.ToArray ());
+			Assert.AreEqual ("\"foobar\"", s, "#1");
+		}
+
+		[Test]
+		public void AlwaysEmitTypeInformation2 ()
+		{
+			var ms = new MemoryStream ();
+			var ds = new DataContractJsonSerializer (typeof (TestData), "root", null, 10, false, null, true);
+			ds.WriteObject (ms, new TestData () { Foo = "foo"});
+			var s = Encoding.UTF8.GetString (ms.ToArray ());
+			Assert.AreEqual (@"{""__type"":""TestData:#MonoTests.System.Runtime.Serialization.Json"",""Bar"":null,""Foo"":""foo""}", s, "#1");
+		}
+
+		[Test]
+		public void AlwaysEmitTypeInformation3 ()
+		{
+			var ms = new MemoryStream ();
+			var ds = new DataContractJsonSerializer (typeof (TestData), "root", null, 10, false, null, false);
+			ds.WriteObject (ms, new TestData () { Foo = "foo"});
+			var s = Encoding.UTF8.GetString (ms.ToArray ());
+			Assert.AreEqual (@"{""Bar"":null,""Foo"":""foo""}", s, "#1");
+		}
+
+		[Test]
+		public void TestNonpublicDeserialization ()
+		{
+			string s1= @"{""Bar"":""bar"", ""Foo"":""foo"", ""Baz"":""baz""}";
+			TestData o1 = ((TestData)(new DataContractJsonSerializer (typeof (TestData)).ReadObject (JsonReaderWriterFactory.CreateJsonReader (Encoding.UTF8.GetBytes (s1), new XmlDictionaryReaderQuotas ()))));
+
+			Assert.AreEqual (null, o1.Baz, "#1");
+
+                        string s2 = @"{""TestData"":[{""key"":""key1"",""value"":""value1""}]}";
+                        KeyValueTestData o2 = ((KeyValueTestData)(new DataContractJsonSerializer (typeof (KeyValueTestData)).ReadObject (JsonReaderWriterFactory.CreateJsonReader (Encoding.UTF8.GetBytes (s2), new XmlDictionaryReaderQuotas ()))));
+
+			Assert.AreEqual (1, o2.TestData.Count, "#2");
+			Assert.AreEqual ("key1", o2.TestData[0].Key, "#3");
+			Assert.AreEqual ("value1", o2.TestData[0].Value, "#4");
+		}
+
+		// [Test] use this case if you want to check lame silverlight parser behavior. Seealso #549756
+		public void QuotelessDeserialization ()
+		{
+			string s1 = @"{FooMember:""value""}";
+			var ds = new DataContractJsonSerializer (typeof (DCWithName));
+			ds.ReadObject (new MemoryStream (Encoding.UTF8.GetBytes (s1)));
+
+			string s2 = @"{FooMember:"" \""{dummy:string}\""""}";
+			ds.ReadObject (new MemoryStream (Encoding.UTF8.GetBytes (s2)));
+		}
+
+		[Test]
+		[Category ("NotWorking")]
+		public void TypeIsNotPartsOfKnownTypes ()
+		{
+			DataContractJsonSerializer dcjs = new DataContractJsonSerializer (typeof (string));
+			Assert.AreEqual (0, dcjs.KnownTypes.Count, "KnownTypes");
+		}
+
+		[Test]
+		[Category ("NotWorking")]
+		public void ReadWriteNullObject ()
+		{
+			DataContractJsonSerializer dcjs = new DataContractJsonSerializer (typeof (string));
+			using (MemoryStream ms = new MemoryStream ()) {
+				dcjs.WriteObject (ms, null);
+				ms.Position = 0;
+				using (StreamReader sr = new StreamReader (ms)) {
+					string data = sr.ReadToEnd ();
+					Assert.AreEqual ("null", data, "WriteObject(stream,null)");
+
+					ms.Position = 0;
+					Assert.IsNull (dcjs.ReadObject (ms), "ReadObject(stream)");
+				}
+			};
+		}
+
+		object ReadWriteObject (Type type, object obj, string expected)
+		{
+			using (MemoryStream ms = new MemoryStream ()) {
+				DataContractJsonSerializer dcjs = new DataContractJsonSerializer (type);
+				dcjs.WriteObject (ms, obj);
+				ms.Position = 0;
+				using (StreamReader sr = new StreamReader (ms)) {
+					Assert.AreEqual (expected, sr.ReadToEnd (), "WriteObject");
+
+					ms.Position = 0;
+					return dcjs.ReadObject (ms);
+				}
+			}
+		}
+
+		[Test]
+		[Category ("NotWorking")]
+		public void ReadWriteObject_Single_SpecialCases ()
+		{
+			Assert.IsTrue (Single.IsNaN ((float) ReadWriteObject (typeof (float), Single.NaN, "NaN")));
+			Assert.IsTrue (Single.IsNegativeInfinity ((float) ReadWriteObject (typeof (float), Single.NegativeInfinity, "-INF")));
+			Assert.IsTrue (Single.IsPositiveInfinity ((float) ReadWriteObject (typeof (float), Single.PositiveInfinity, "INF")));
+		}
+
+		[Test]
+		[Category ("NotWorking")]
+		public void ReadWriteObject_Double_SpecialCases ()
+		{
+			Assert.IsTrue (Double.IsNaN ((double) ReadWriteObject (typeof (double), Double.NaN, "NaN")));
+			Assert.IsTrue (Double.IsNegativeInfinity ((double) ReadWriteObject (typeof (double), Double.NegativeInfinity, "-INF")));
+			Assert.IsTrue (Double.IsPositiveInfinity ((double) ReadWriteObject (typeof (double), Double.PositiveInfinity, "INF")));
+		}
+	}
+
+	public class TestData
+	{
+		public string Foo { get; set; }
+		public string Bar { get; set; }
+		internal string Baz { get; set; }
+	}
+
 	public enum Colors {
 		Red, Green, Blue
 	}
@@ -1312,7 +1479,12 @@ namespace MonoTests.System.Runtime.Serialization.Json
 	class SerializeNonDCArrayType
 	{
 		[DataMember]
-		public IPAddress [] IPAddresses = new IPAddress [0];
+		public NonDCItem [] IPAddresses = new NonDCItem [0];
+	}
+
+	public class NonDCItem
+	{
+		public byte [] Data { get; set; }
 	}
 
 	[DataContract]
@@ -1321,6 +1493,12 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		[DataMember]
 		string Member1 = "foo";
 	}
+
+	[Serializable]
+	public class KeyValueTestData {
+		public List<KeyValuePair<string,string>> TestData = new List<KeyValuePair<string,string>>();
+	}
+
 }
 
 [DataContract]

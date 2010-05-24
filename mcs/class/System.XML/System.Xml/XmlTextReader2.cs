@@ -194,11 +194,9 @@ namespace System.Xml
 			get { return source.EOF; }
 		}
 
-#if !NET_2_1
 		public override bool HasValue {
 			get { return Current.HasValue; }
 		}
-#endif
 
 		public override bool IsDefault {
 			get { return Current.IsDefault; }
@@ -574,7 +572,6 @@ namespace System.Xml
 			}
 		}
 
-#if !NET_2_1
 		public override bool ReadAttributeValue ()
 		{
 			if (entity != null && entityInsideAttribute) {
@@ -587,7 +584,6 @@ namespace System.Xml
 			}
 			return Current.ReadAttributeValue ();
 		}
-#endif
 
 		public override string ReadString ()
 		{

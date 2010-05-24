@@ -4,11 +4,14 @@
  * Author:
  *   Mark Probst (mark.probst@gmail.com)
  *
- * (C) 2007-2008 Novell, Inc.
+ * Copyright 2007-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
 #include <string.h>
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #ifdef _MSC_VER
 #include <glib.h>
@@ -127,10 +130,10 @@ get_other_info_templates (MonoRuntimeGenericContextTemplate *template, int type_
 }
 
 /*
- * LOCKING: loader lock and templates lock
+ * LOCKING: loader lock
  */
 static void
-set_other_info_templates (MonoMemPool *mp, MonoRuntimeGenericContextTemplate *template, int type_argc,
+set_other_info_templates (MonoImage *image, MonoRuntimeGenericContextTemplate *template, int type_argc,
 	MonoRuntimeGenericContextOtherInfoTemplate *oti)
 {
 	g_assert (type_argc >= 0);
@@ -142,7 +145,7 @@ set_other_info_templates (MonoMemPool *mp, MonoRuntimeGenericContextTemplate *te
 
 		/* FIXME: quadratic! */
 		while (length < type_argc) {
-			template->method_templates = g_slist_append_mempool (mp, template->method_templates, NULL);
+			template->method_templates = g_slist_append_image (image, template->method_templates, NULL);
 			length++;
 		}
 
@@ -319,9 +322,6 @@ mono_class_unregister_image_generic_subclasses (MonoImage *image)
 	g_hash_table_destroy (old_hash);
 }
 
-/*
- * LOCKING: loader lock
- */
 static MonoRuntimeGenericContextTemplate*
 alloc_template (MonoClass *class)
 {
@@ -343,9 +343,6 @@ alloc_template (MonoClass *class)
 	return mono_image_alloc0 (class->image, size);
 }
 
-/*
- * LOCKING: loader lock
- */
 static MonoRuntimeGenericContextOtherInfoTemplate*
 alloc_oti (MonoImage *image)
 {
@@ -406,7 +403,7 @@ rgctx_template_set_other_slot (MonoImage *image, MonoRuntimeGenericContextTempla
 	(*oti)->data = data;
 	(*oti)->info_type = info_type;
 
-	set_other_info_templates (image->mempool, template, type_argc, list);
+	set_other_info_templates (image, template, type_argc, list);
 
 	if (data == MONO_RGCTX_SLOT_USED_MARKER)
 		++num_markers;
@@ -463,6 +460,8 @@ mono_class_get_method_generic (MonoClass *klass, MonoMethod *method)
 
 	if (!m) {
 		mono_class_setup_methods (klass);
+		if (klass->exception_type)
+			return NULL;
 		for (i = 0; i < klass->method.count; ++i) {
 			m = klass->methods [i];
 			if (m == declaring)
@@ -489,6 +488,8 @@ mono_class_get_method_generic (MonoClass *klass, MonoMethod *method)
 static gpointer
 inflate_other_data (gpointer data, int info_type, MonoGenericContext *context, MonoClass *class, gboolean temporary)
 {
+	MonoError error;
+
 	g_assert (data);
 
 	if (data == MONO_RGCTX_SLOT_USED_MARKER)
@@ -500,9 +501,12 @@ inflate_other_data (gpointer data, int info_type, MonoGenericContext *context, M
 	case MONO_RGCTX_INFO_KLASS:
 	case MONO_RGCTX_INFO_VTABLE:
 	case MONO_RGCTX_INFO_TYPE:
-	case MONO_RGCTX_INFO_REFLECTION_TYPE:
-		return mono_class_inflate_generic_type_with_mempool (temporary ? NULL : class->image->mempool,
-			data, context);
+	case MONO_RGCTX_INFO_REFLECTION_TYPE: {
+		gpointer result = mono_class_inflate_generic_type_with_mempool (temporary ? NULL : class->image,
+			data, context, &error);
+		g_assert (mono_error_ok (&error)); /*FIXME proper error handling*/
+		return result;
+	}
 
 	case MONO_RGCTX_INFO_METHOD:
 	case MONO_RGCTX_INFO_GENERIC_METHOD_CODE:
@@ -518,16 +522,15 @@ inflate_other_data (gpointer data, int info_type, MonoGenericContext *context, M
 
 		mono_class_init (inflated_class);
 
-		if (method->wrapper_type != MONO_WRAPPER_NONE) {
-			g_assert (info_type != MONO_RGCTX_INFO_METHOD_RGCTX);
-			g_assert (method->wrapper_type == MONO_WRAPPER_STATIC_RGCTX_INVOKE);
+		g_assert (!method->wrapper_type);
 
-			method = mono_marshal_method_from_wrapper (method);
-			method = mono_class_inflate_generic_method (method, context);
-			method = mono_marshal_get_static_rgctx_invoke (method);
+		if (inflated_class->byval_arg.type == MONO_TYPE_ARRAY ||
+				inflated_class->byval_arg.type == MONO_TYPE_SZARRAY) {
+			inflated_method = mono_method_search_in_array_class (inflated_class,
+				method->name, method->signature);
+		} else {
+			inflated_method = mono_class_inflate_generic_method (method, context);
 		}
-
-		inflated_method = mono_class_inflate_generic_method (method, context);
 		mono_class_init (inflated_method->klass);
 		g_assert (inflated_method->klass == inflated_class);
 		return inflated_method;
@@ -551,6 +554,8 @@ inflate_other_data (gpointer data, int info_type, MonoGenericContext *context, M
 	default:
 		g_assert_not_reached ();
 	}
+	/* Not reached, quiet compiler */
+	return NULL;
 }
 
 static gpointer
@@ -604,9 +609,9 @@ mono_class_get_runtime_generic_context_template (MonoClass *class)
 	if (template)
 		return template;
 
-	mono_loader_lock ();
-
 	template = alloc_template (class);
+
+	mono_loader_lock ();
 
 	if (class->parent) {
 		if (class->parent->generic_class) {
@@ -724,15 +729,25 @@ static gpointer
 class_type_info (MonoDomain *domain, MonoClass *class, int info_type)
 {
 	switch (info_type) {
-	case MONO_RGCTX_INFO_STATIC_DATA:
-		return mono_class_vtable (domain, class)->data;
+	case MONO_RGCTX_INFO_STATIC_DATA: {
+		MonoVTable *vtable = mono_class_vtable (domain, class);
+		if (!vtable)
+			mono_raise_exception (mono_class_get_exception_for_failure (class));
+		return vtable->data;
+	}
 	case MONO_RGCTX_INFO_KLASS:
 		return class;
-	case MONO_RGCTX_INFO_VTABLE:
-		return mono_class_vtable (domain, class);
+	case MONO_RGCTX_INFO_VTABLE: {
+		MonoVTable *vtable = mono_class_vtable (domain, class);
+		if (!vtable)
+			mono_raise_exception (mono_class_get_exception_for_failure (class));
+		return vtable;
+	}
 	default:
 		g_assert_not_reached ();
 	}
+	/* Not reached */
+	return NULL;
 }
 
 static gpointer
@@ -766,6 +781,12 @@ instantiate_other_info (MonoDomain *domain, MonoRuntimeGenericContextOtherInfoTe
 		free_inflated_info (oti->info_type, data);
 		g_assert (arg_class);
 
+		/* The class might be used as an argument to
+		   mono_value_copy(), which requires that its GC
+		   descriptor has been computed. */
+		if (oti->info_type == MONO_RGCTX_INFO_KLASS)
+			mono_class_compute_gc_descriptor (arg_class);
+
 		return class_type_info (domain, arg_class, oti->info_type);
 	}
 	case MONO_RGCTX_INFO_TYPE:
@@ -778,19 +799,23 @@ instantiate_other_info (MonoDomain *domain, MonoRuntimeGenericContextOtherInfoTe
 		/*
 		 * We can't create a jump trampoline here, as it cannot be patched.
 		 */
-		return mono_create_ftnptr (mono_domain_get (), mono_compile_method (data));
+		return mono_compile_method (data);
 	case MONO_RGCTX_INFO_REMOTING_INVOKE_WITH_CHECK:
-		return mono_create_ftnptr (mono_domain_get (), mono_compile_method (mono_marshal_get_remoting_invoke_with_check (data)));
+		return mono_compile_method (mono_marshal_get_remoting_invoke_with_check (data));
 	case MONO_RGCTX_INFO_CLASS_FIELD:
 		return data;
 	case MONO_RGCTX_INFO_METHOD_RGCTX: {
 		MonoMethodInflated *method = data;
+		MonoVTable *vtable;
 
 		g_assert (method->method.method.is_inflated);
 		g_assert (method->context.method_inst);
 
-		return mono_method_lookup_rgctx (mono_class_vtable (domain, method->method.method.klass),
-			method->context.method_inst);
+		vtable = mono_class_vtable (domain, method->method.method.klass);
+		if (!vtable)
+			mono_raise_exception (mono_class_get_exception_for_failure (method->method.method.klass));
+
+		return mono_method_lookup_rgctx (vtable, method->context.method_inst);
 	}
 	case MONO_RGCTX_INFO_METHOD_CONTEXT: {
 		MonoMethodInflated *method = data;
@@ -803,6 +828,8 @@ instantiate_other_info (MonoDomain *domain, MonoRuntimeGenericContextOtherInfoTe
 	default:
 		g_assert_not_reached ();
 	}
+	/* Not reached */
+	return NULL;
 }
 
 /*
@@ -907,6 +934,8 @@ other_info_equal (gpointer data1, gpointer data2, int info_type)
 	default:
 		g_assert_not_reached ();
 	}
+	/* never reached */
+	return FALSE;
 }
 
 static int
@@ -1076,12 +1105,12 @@ fill_runtime_generic_context (MonoVTable *class_vtable, MonoRuntimeGenericContex
 	first_slot = 0;
 	size = mono_class_rgctx_get_array_size (0, method_inst != NULL);
 	if (method_inst)
-		size -= sizeof (MonoMethodRuntimeGenericContext) / sizeof (gpointer);
+		size -= MONO_SIZEOF_METHOD_RUNTIME_GENERIC_CONTEXT / sizeof (gpointer);
 	for (i = 0; ; ++i) {
 		int offset;
 
 		if (method_inst && i == 0)
-			offset = sizeof (MonoMethodRuntimeGenericContext) / sizeof (gpointer);
+			offset = MONO_SIZEOF_METHOD_RUNTIME_GENERIC_CONTEXT / sizeof (gpointer);
 		else
 			offset = 0;
 
@@ -1181,7 +1210,6 @@ mono_class_fill_runtime_generic_context (MonoVTable *class_vtable, guint32 slot)
 gpointer
 mono_method_fill_runtime_generic_context (MonoMethodRuntimeGenericContext *mrgctx, guint32 slot)
 {
-	MonoDomain *domain = mrgctx->class_vtable->domain;
 	gpointer info;
 
 	info = fill_runtime_generic_context (mrgctx->class_vtable, (MonoRuntimeGenericContext*)mrgctx, slot,
@@ -1332,8 +1360,10 @@ mono_method_is_generic_impl (MonoMethod *method)
 static gboolean
 has_constraints (MonoGenericContainer *container)
 {
-	int i;
+	//int i;
 
+	return FALSE;
+	/*
 	g_assert (container->type_argc > 0);
 	g_assert (container->type_params);
 
@@ -1341,6 +1371,7 @@ has_constraints (MonoGenericContainer *container)
 		if (container->type_params [i].constraints)
 			return TRUE;
 	return FALSE;
+	*/
 }
 
 /*
@@ -1433,7 +1464,6 @@ mono_method_construct_object_context (MonoMethod *method)
 {
 	MonoGenericContext object_context;
 
-	g_assert (method->wrapper_type == MONO_WRAPPER_NONE);
 	g_assert (!method->klass->generic_class);
 	if (method->klass->generic_container) {
 		int type_argc = method->klass->generic_container->type_argc;

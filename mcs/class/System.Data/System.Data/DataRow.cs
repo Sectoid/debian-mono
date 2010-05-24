@@ -8,7 +8,7 @@
 //   Ville Palo <vi64pa@koti.soon.fi>
 //   Alan Tam Siu Lung <Tam@SiuLung.com>
 //   Sureshkumar T <tsureshkumar@novell.com>
-//   Veerapuram Varadhan  <varadhan@novell.com>
+//   Veerapuram Varadhan <vvaradhan@novell.com>
 //
 // (C) Ximian, Inc 2002
 // (C) Daniel Morgan 2002, 2003
@@ -839,6 +839,7 @@ namespace System.Data {
 			Current = Proposed;
 			Proposed = -1;
 
+
 			//FIXME : ideally  indexes shouldnt be maintained during dataload.But this needs to
 			//be implemented at multiple places.For now, just maintain the index.
 			//if (!Table._duringDataLoad) {
@@ -848,13 +849,13 @@ namespace System.Data {
 
 			try {
 				AssertConstraints ();
-
-				// restore previous state to let the cascade update to find the rows
+				
+				// restore previous state to let the cascade update to find the rows 
 				Proposed = Current;
-				Current = oldRecord;
-
+				Current = oldRecord; 
+				
 				CheckChildRows (DataRowAction.Change);
-
+				
 				// apply new state
 				Current = Proposed;
 				Proposed = -1;
@@ -1279,8 +1280,13 @@ namespace System.Data {
 			// If original is null, then nothing has happened since AcceptChanges
 			// was last called.  We have no "original" to go back to.
 
+			// Varadhan: Following if may be un-necessary
+			/*if (_inChangingEvent) {
+				_table.ChangedDataRow (this, DataRowAction.Rollback);
+				CancelEdit ();
+			}*/
+
 			Table.ChangingDataRow (this, DataRowAction.Rollback);
-			
 			//TODO : Need to Verify the constraints..
 			switch (RowState) {
 			case DataRowState.Added:

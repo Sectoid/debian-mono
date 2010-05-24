@@ -1,3 +1,103 @@
+2010-01-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Makefile: For 2.1 build System.Core.dll before System.Net.dll
+
+2009-11-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile (net_2_0_dirs): Add System.Data.Services.
+
+2009-11-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile: Move Mono.Debugger.Soft to net_2_0_dirs for 2.6.
+
+2009-11-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile: Add Mono.Debugger.Soft.
+
+2009-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile: Add Mono.Data.Tds, System.Transactions, System.Data, and
+	  Mono.Data.Sqlite to the MonoTouch build.
+
+2009-10-08  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: build the i18n assemblies on MonoTouch.
+
+2009-09-24  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Removed System.Json from net_4_0 profile.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: move core WCF assemblies before Sys.Web.Extensions,
+	  which will depend on them.
+
+2009-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add System.Core to net_4_0_boostrap.
+
+2009-09-02  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: include System.Json in monotouch.
+
+2009-08-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: add System.Json to net_4_0 profile.
+
+2009-07-20  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: set monotouch_SUBDIRS to the net_2_1 assemblies set.
+
+
+2009-07-18  Michael Barker  <mike@middlesoft.co.uk>
+
+	* Makefile:  Mono.Messaging.RabbitMQ back into all assemblies.
+
+2009-07-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile: Applied patch from Marcus Griep <marcus@griep.us>.
+	Move Mono.C5 to net_2_0_dirs.
+
+2009-07-06  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (common_dirs): Add SystemWebTestShim.
+
+2009-07-06  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (net_1_1_dirs): Move Mono.Cecil ...
+	(common_dirs): ... here.
+
+2009-07-02  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add System.Dynamic.
+
+2009-06-29  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add Microsoft.CSharp.
+
+2009-04-07  Miguel de Icaza  <miguel@novell.com>
+
+	* Mono.Tasklets/Mono.Tasklets/Continuation.cs: Fix the signature
+	for store.
+
+2009-04-25  Jonathan Chambers  <joncham@gmail.com>
+	* Makefile: Add Microsoft.Build.* to 3.5 profile.
+
+Mon Apr 6 14:37:32 CEST 2009 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile, Mono.Tasklets: managed part of continuation support.
+
+2009-03-27  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (net_2_0_dirs): Build System.Runtime.Serialization
+	before System.Data.Linq.
+
+2009-01-22  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (net_2_0_dirs): added System.Web - it now depends on
+	System.Core, so it needs to be recompiled one more time after
+	System.Core is done.
+
 2008-12-08  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* Makefile : revert previous one and retry before I revert everything.
