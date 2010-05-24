@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I .
 
-SUBDIRS = po $(libgc_dir) $(eglib_dir) mono $(ikvm_native_dir) support data runtime scripts man samples web msvc docs
+SUBDIRS = po $(libgc_dir) $(eglib_dir) mono $(ikvm_native_dir) support data runtime scripts man samples web msvc $(docs_dir)
 
 # Keep in sync with SUBDIRS
 ## 'tools' is not normally built
@@ -35,9 +35,7 @@ get-monolite-latest:
 	cd $(mcslib) && { (wget -O- $(monolite_url) || curl $(monolite_url)) | gzip -d | tar xf - ; }
 	cd $(mcslib) && mv -f monolite-* monolite
 
-compiler-tests: mcs-do-clean
-	$(MAKE) all
-	$(MAKE) mcs-do-compiler-tests
+compiler-tests: build-test-mono-mcs-moon
 
 compiler-tests-net_2_0:
 	-rm -f $(mcs_topdir)/build/common/Consts.cs.save
@@ -46,7 +44,7 @@ compiler-tests-net_2_0:
 	cd $(mcs_topdir) && $(MAKE) PROFILE=net_2_0 clean
 	-mv -f $(mcs_topdir)/build/common/Consts.cs.save $(mcs_topdir)/build/common/Consts.cs
 	$(MAKE) all
-	$(MAKE) build_profiles=net_2_0 mcs-do-compiler-tests
+	$(MAKE) test_profiles=net_2_0 mcs-do-compiler-tests
 
 bootstrap-world: compiler-tests
 	$(MAKE) install
@@ -55,6 +53,18 @@ bootstrap-world-net_2_0: compiler-tests-net_2_0
 	$(MAKE) install
 
 # internal targets
+.PHONY: build-test-mono-mcs-moon
+build-test-mono-mcs-moon: do-build-moon-maybe
+	$(MAKE) mcs-do-compiler-tests
+
+.PHONY: do-build-mono-mcs
+do-build-mono-mcs: mcs-do-clean
+	$(MAKE) all
+
+.PHONY: do-build-moon-maybe
+do-build-moon-maybe: do-build-mono-mcs
+	cd runtime && $(MAKE) moon-do-build
+
 mcs-do-clean:
 	cd runtime && $(MAKE) clean-local
 	cd mono/tests && $(MAKE) clean
@@ -86,3 +96,26 @@ bootstrap: all
 patch-quiet:
 	find mono -name Makefile -exec scripts/patch-quiet.sh {} \;
 	find libgc -name Makefile -exec scripts/patch-quiet.sh {} \;
+
+update-csproj:
+	-rm msvc/scripts/order 
+	-mkdir msvc/scripts/inputs
+	(cd runtime; make V=1 extra_targets=csproj-local)
+
+package-inputs:
+	echo '<?xml version="1.0" encoding="utf-8"?>' > msvc/scripts/order.xml
+	echo '<root>' >> msvc/scripts/order.xml
+	for i in `cat msvc/scripts/order`; do \
+		set `echo $$i | sed -e 's/:/ /' -e 's/.input//'`; \
+		cat msvc/scripts/inputs/$$2.input | \
+		(echo "    <project dir=\"$$1\" library=\"$$2\">"; \
+		 read boot;   echo "      <boot>$$boot</boot>"; \
+		 read mcs;    echo "      <mcs>$$mcs</mcs>"; \
+		 read flags;  echo "      <flags>$$flags</flags>"; \
+		 read output; echo "      <output>$$output</output>"; \
+		 read built;  echo "      <built_sources>$$built</built_sources>"; \
+		 read libou;  echo "      <library_output>$$libou</library_output>"; \
+		 read resp;   echo "      <response>$$resp</response>"; \
+		echo "    </project>") >> msvc/scripts/order.xml; \
+	done
+	echo "</root>" >> msvc/scripts/order.xml

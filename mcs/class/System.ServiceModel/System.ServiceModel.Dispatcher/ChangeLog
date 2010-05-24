@@ -1,3 +1,381 @@
+2010-02-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : revert previous change - it could result
+	  in blocking some threads and block nunit completion.
+
+2010-02-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : now I can enable service throttling to
+	  handle more than one concurrent channels as ASP.NET reply channel
+	  got fixed.
+
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : actually instance context provider could be
+	  null through the entire service run.
+
+	  Fixed all current nunit failures!
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : do not try to iterate channel acceptor when
+	  it is being closed.
+
+2010-01-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : another error audit.
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FaultContractInfo.cs : implement.
+	* DispatchOperation.cs, ClientOperation.cs: fill Faults.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs, InputOrReplyRequestProcessor.cs :
+	  Pass service type to correctly retrieve ServiceContractAttribute
+	  from the service type, not callback type.
+
+2010-01-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : make sure to unlock channel acceptor wait
+	  handle when the delegated method resulted in an error.
+
+2009-12-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : close such channels that failed to receive
+	  request or input.
+
+2009-12-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntime.cs : shortened code and scattered monotodos.
+
+2009-12-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : fix async operation handling. Since
+	  the entire handler chain is designed to be in synchronous, one
+	  single handler must not leave its work incomplete (async). Just
+	  wait for the async process completion within the handler.
+
+2009-12-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : fix regression; ServiceBehaviorAttribute
+	  could be set explicitly null.
+
+2009-12-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : handle AddressFilterMode (.Any only yet).
+	* OperationInvokerHandler.cs : fix wrong IAsyncResult use.
+
+2009-12-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InstanceBehavior.cs : allow nonpublic instance.
+	* DefaultOperationInvoker.cs : do use IsSynchronous correctly.
+
+2009-10-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : disable concurrent channel acceptance
+	  until it gets working fine.
+
+2009-10-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : fix warnings.
+
+2009-10-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientOperation.cs, ClientRuntime.cs : another couple of changes
+	  are required to not use non-SL types.
+
+2009-10-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntime.cs : enable Operations property on monotouch.
+	  Hopefully it will enable us to build WebHttpBinding.
+
+2009-10-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	 * ChannelDispatcher.cs : OnOpened/OnOpening constraints related
+	   changes were required here too. Actually it simplified code.
+
+2009-10-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : a bit more explaining message.
+
+2009-10-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : make sure to close, *and* abort channels
+	  in case they failed to close. Also consider close timeouts.
+	  Rename a field to make less confusing.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs, EndpointDispatcher.cs :
+	  when an EndpointDispatcher is added to ChannelDispatcher, its
+	  ChannelDispatcher property is automatically filled. To do this,
+	  create a derived collection type for Endpoints (that's what .NET
+	  does). Remove extra InitializeEndpoint() argument.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : make error message a bit verbose.
+
+2009-09-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : make sure to close the request context,
+	  some channels such as http keeps opening it. Patch by Levi Bard.
+	  Fixed bug #533776.
+
+2009-09-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : do not try to wait for channel closer
+	  handle when the loop is not started yet. This fixes lengthy wait
+	  in the nunit tests.
+
+2009-09-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs : AddressFilter is always non-null.
+	* DispatchRuntime.cs : CallbackClientRuntime seems to be created even
+	  for non-callback dispatchers. Fixing this also results in fixes in
+	  couple of nunit regressions.
+	* InputOrReplyRequestProcessor.cs : the change above required fix
+	  here too (it has null check).
+
+2009-09-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BaseMessagesFormatter.cs, DefaultOperationInvoker.cs:
+	  Fix the crash that ref parameter in contract methods caused.
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs, ReplyHandler.cs :
+	  - Eliminate ReplyHandler use. What is does is simple reply, while
+	    it brings inconsistency between sync and async models.
+	    What reply handler used to do are now integrated.
+	  - Support ErrorHandlers and InputSessionShutdownHandlers.
+	    Actually ErrorHandlers were processed at wrong place and they
+	    weren't called where they are expected.
+	* InputOrReplyRequestProcessor.cs : hence eliminated ReplyHandler.
+	* BaseRequestProcessor.cs : add FIXME notes on ErrorHandlers.
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : remove obsoleted method.
+
+2009-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BaseMessagesFormatter.cs :
+	  implement XmlBodyWriter.OnCreateBufferedCopy().
+
+2009-08-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackInstanceContextProvider.cs : new instance context provider
+	  used by duplex client dispatcher.
+
+2009-08-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SecurityHandler.cs : skip callback duplex blocker.
+
+2009-08-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs, ChannelDispatcher.cs : differentiate
+	  service dispatch and callback client dispatch at initialization.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : also made reference to host optional.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : isolated loop manager class from parent,
+	  as well as moved some code from parent.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcherCollection.cs : remove extra members.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs, EndpointDispatcher.cs :
+	  moved some initialization code from ServiceHostBase, to start
+	  reducing dependencies on ServiceHostBase.
+
+2009-08-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : handle unknown message in host event.
+
+2009-08-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointDispatcher.cs : do not try to create wrong filter.
+
+2009-08-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : EndpointNotFoundException message could
+	  be a bit kindful.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IOperationInvoker.cs : fix interface.
+	* DefaultOperationInvoker.cs : refresh implementation of the above.
+	* BaseMessagesFormatter.cs, OperationInvokerHandler.cs :
+	  dependent changes for above.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InputOrReplyRequestProcessor.cs : now it could return an instance
+	  of dynamically generated proxy over DuplexServiceRuntimeChannel.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntime.cs : oops, it should have been committed at a time.
+	  Change .ctor() args. Make some properties auto.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntime.cs : callback runtime is set later.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntime.cs :
+	  .ctor() just needs contract. Fill some properties.
+
+2009-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ReplyHandler.cs : there is better way to check IsOneWay.
+
+2009-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokerHandler.cs : One way operation has no reply.
+	* ReplyHandler.cs : ditto.
+
+2009-07-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : raise error on multiple endpoint match
+	  (documented at EndpointDispatcher.FilterPriority).
+
+2009-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : move Open() inside acceptor lock, so that
+	  the channel does not have to be fired Receive() before Open().
+
+2009-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntime.cs : add ValidateMustUnderstand.
+	* DispatchOperation.cs : add AutoDisposeParameters.
+
+2009-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : when service instance is provided to the
+	  ServiceHost, do not reject Type-less state.
+
+2009-06-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : do not iterate extra channel acceptance
+	  and hence close channels a bit more gracefully.
+
+2009-06-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : instead of discarding channels, reuse them
+	  unless it is closed by session manager (session manager does not
+	  work, so channels are not actually closed automatically yet).
+
+2009-06-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SessionInstanceContextProvider.cs : new instance context provider.
+
+2009-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntime.cs : do not fill InstanceContextProvider here.
+	* ChannelDispatcher.cs : do it here instead.
+	* ChannelDispatcherCollection.cs : remove TODOs.
+
+2009-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InputOrReplyRequestProcessor.cs : bogus initialization.
+
+2009-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : significant changes:
+	  - simplified Open/Close async.
+	  - implement OnAbort().
+	  - create ServiceThrottle when it is null.
+	  - Channels are accepted as much as the throttle allows, and
+	    process requests when accepted an input (now it holds more than
+	    one channel).
+	  - Support ReceiveSynchronously and use Begin/EndAcceptChannel()
+	    for async pattern.
+	  - Close all channels and the listener when it is closed.
+	  - Cosmetic simplification on channel acceptor delegate creation.
+
+2009-06-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : avoid NRE (actually it should eliminate
+	  Thread.Abort()). Added some comments on throttling.
+
+2009-06-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceThrottle.cs : implement.
+
+2009-06-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs :
+	  Add call to base (see CommunicationObject change).
+
+2009-06-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : handle more errors gracefully.
+
+2009-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ErrorProcessingHandler.cs, InputOrReplyRequestProcessor.cs :
+	  they also premise request-reply channel and broke duplex channels.
+
+2009-05-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : open channel before using it.
+
+2009-05-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ReplyHandler.cs, InputOrReplyRequestProcessor.cs,
+	  MessageProcessingContext.cs : reply processing is also needed by
+	  non-request channels (i.e. duplex). Current code basis lacked
+	  such possibility. Quick fix by adding duplex support in
+	  ReplyHandler so far.
+
+2009-05-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs, SecurityHandler.cs,
+	  InputOrReplyRequestProcessor.cs, MessageProcessingContext.cs :
+	  remove default communication timeouts from several types. They
+	  bring bogus NRE. Instead, fill timeouts in ChannelDispatcher and
+	  use it when required (it was actually *only* request processor).
+
+2009-05-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelDispatcher.cs : wrong channel argument.
+
+2009-04-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchRuntime.cs : some comment.
+	* ChannelDispatcher.cs : ongoing changes to handle listeners and
+	  accepted channels at more precise state. Listeners are opened,
+	  without accepting channels. Some setup code is done at OnOpen(),
+	  while some are done at OnOpened().
+
+2009-04-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DispatchOperation.cs : implement GetFormatter() at service side too.
+
+2009-04-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationInvokeHandler.cs : replace MS copycat exception message.
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntime.cs : fill contractType in .ctor().
+
+2009-02-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BaseMessagesFormatter.cs : do not use non-2.1 CreateInstance().
+
 2008-06-18  Noam Lampert <noaml@mainsoft.com>
 
 	* ChannelDispatcher.cs: Avoid aborting host process on faulty input message.

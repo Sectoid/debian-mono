@@ -1,3 +1,67 @@
+2009-10-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonQueryStringConverter.cs
+	  QueryStringConverter.cs
+	  WebMessageFormatter.cs : add experimental monotouch build.
+
+2009-10-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageEncoder.cs : use alwaysEmitTypeInformation to output
+	  object __type.
+
+2009-10-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonQueryStringConverter.cs : add custom body name support (used.
+	  for AJAX). Handle string value (in very LAMESPEC way).
+	* WebMessageFormatter.cs : add custom body name support.
+	  Slightly changed reply serialization.
+	  Convert deserialized values using QueryStringConverter.
+
+2009-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : revert and fix wrapper name change. XML
+	  and JSON have different serialization.
+
+2009-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : also fix wrapped message deserialization.
+	  It should expect FooResponse (body WrapperName), not FooResult
+	  (ReturnValue part Name).
+
+2009-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : when they serialize Wrapped message, it
+	  first writes "root" and then the wrapper element.
+
+2009-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : JSON writer does not support namespace.
+
+2009-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : it was not returning value with correct
+	  wrapper name/namespace. Fix interop with .NET client.
+
+2009-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : Made the same prohibition for dispatch
+	  formatters too. Support WebMessageBodyStyle on dispatcher side too.
+
+2009-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : override some serialization methods as
+	  prohibited.
+
+2009-09-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebHttpDispatchOperationSelector.cs : use common extension method.
+	* WebMessageFormatter.cs : support WebMessageBodyStyle(.Wrapped*).
+	  Cache serializers.
+
+2009-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : apply OutgoingRequest if available.
+
 2008-04-16  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WebMessageFormatter.cs : now that ReadObject() verifies

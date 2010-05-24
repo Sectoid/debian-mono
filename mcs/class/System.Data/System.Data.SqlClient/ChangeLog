@@ -1,24 +1,63 @@
+2010-03-10  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlDataAdapter: 2.0 profile changes. 
+	
 2009-12-03  Jonathan Pobst  <monkey@jpobst.com>
 
 	* SortOrder.cs: Add enum.
 
-2009-10-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+2009-10-28  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	** As part of fix for #385028
-	* SqlCommandBuilder.cs (RowUpdatingHandler): For 2.0 profile, call the 
-	base version of the handler.
+	* SqlCommandBuilder.cs (RowUpdatingHandler): Call base version for 2.0 profile.
+	
+2009-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* SqlConnection.cs: Remove EnterpriseServices dependency from the
+	  MonoTouch profile.
+
+2009-08-17  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #525306
+	* SqlConnection.cs (Open): Use Tds80 also in case of non-pooling 
+	connections.
+
+2009-08-01  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlParameter.cs (ConvertToFrameworkType): Only wrap FormatException
+	on 2.0 profile.
+
+2009-07-30  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlParameter.cs: Modified ConvertToFrameworkType to only perform
+	conversion if type of value is different from "system type". Make
+	DbTypeMapping hashtable available on 1.0 profile, and add missing
+	mappings. Wrap FormatException adding information on conversion
+	that failed.
 
 2009-07-30  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	** Fixes #526794
-	* SqlParameter.cs (ConvertToFrameworkType): For zero-length strings, 
-	return String.Empty.
+	* SqlDataAdapter.cs (*Command): Build fix for 1.x profile.
+	
+2009-07-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes the issue reported by Scott <Scott.Fluto@cmgl.ca> in Mono-list
+	* SqlParameter.cs (ConvertToFrameworkType): Return String.Empty 
+	in case of zero-length strings.
+	
+2009-07-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlDataAdapter.cs (IDbDataAdapter.*Command): Remove over-engineered 
+	checks as the base implementation is changed.
 	
 2009-07-29  Veerapuram Varadhan  <vvaradhan@novell.com>
 
+	* SqlDataAdapter.cs (IDbDataAdapter.*Command): Revert some of my earlier
+	changes.  Validate the incoming value as we use bases' implementation now.
+	Fixes failing tests.
+
 	* SqlParameter.cs (GetSqlValue): Simplify handling of SqlValue and SqlTypes.
-        (SqlTypeToFramworkType): Added support for SqlChars and SqlBytes types.
-	
+	(SqlTypeToFramworkType): Added support for SqlChars and SqlBytes types.
+
 2009-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* SqlCommand.cs: Ensure connection is closed if CloseConnection
@@ -29,6 +68,20 @@
 	* More clean up of fix for #522624/#507663
 	* SqlCommandBuilder.cs: Appropriately handle rowUpdatingHandler and
 	more cleanup for 2.0 profile.
+
+2009-07-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlParameter.cs (get/set_SqlValue, GetSqlValue): Return the appropriately 
+	SQL-typed param value.  Fixes failing provider tests.
+	
+2009-07-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+       * SqlCommand.cs: Ensure connection is closed if CloseConnection
+       behavior is set, and reader could not be created.
+	
+2009-07-26  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* SqlParameter.cs: Improved support for SqlValue and SqlTypes.
 
 2009-07-25  Veerapuram Varadhan  <vvaradhan@novell.com>
 
@@ -41,17 +94,34 @@
 	* SqlCommandBuilder.cs: From 2.0 onwards, use base's 
 	implementation for handling auto-generated commands.
 	* SqlDataAdapter.cs: -- ditto --
-       
+	
+2009-07-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlParameter.cs: Implement the "internal" FrameworkDbType, 
+	DbTypeMapping and SystemType properties.
+	
 2009-05-08  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	** Fixes #497715
-	* SqlParameter.cs:  Map XML type properly.
+	** Fixes #497715 - based on a patch by Jonas Larsson 
+	<jonas.larsson@manodo.se>
+	
+	* SqlDataReader.cs: (GetSqlXml): Handle Xml types for TDS 8/8.1 
+	clients as well.
+	* SqlParameter.cs: Map XML type properly.
 	
 2009-04-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SqlConnection.cs: if the error causes a disconnection from the
 	server, close the data stream.
 
+2009-03-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlDataReader.cs (GetSchemaRowType): Correctly handle Tds 8 BigInt type.
+	
+2009-02-02  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* SqlConnection.cs: Use TDS 8 instead of TDS 7
+	
 2009-01-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SqlConnection.cs: adapt to changes in TdsConnectionPool.

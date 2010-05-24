@@ -49,6 +49,14 @@ namespace System
 		, IComparable<DateTime>, IEquatable <DateTime>
 #endif
 	{
+#if MONOTOUCH
+		static DateTime () {
+			if (MonoTouchAOTHelper.FalseFlag) {
+				var comparer = new System.Collections.Generic.GenericComparer <DateTime> ();
+				var eqcomparer = new System.Collections.Generic.GenericEqualityComparer <DateTime> ();
+			}
+		}
+#endif
 		private TimeSpan ticks;
 
 #if NET_2_0
@@ -600,7 +608,7 @@ namespace System
 					(value * TimeSpan.TicksPerMillisecond) < long.MinValue) {
 				throw new ArgumentOutOfRangeException();
 			}
-			long msticks = (long) (value * TimeSpan.TicksPerMillisecond);
+			long msticks = (long) Math.Round (value * TimeSpan.TicksPerMillisecond);
 
 			return AddTicks (msticks);
 		}
@@ -921,9 +929,9 @@ namespace System
 		const string formatExceptionMessage = "String was not recognized as a valid DateTime.";
 		
 		internal static bool CoreParse (string s, IFormatProvider provider, DateTimeStyles styles,
- 					      out DateTime result, out DateTimeOffset dto, bool setExceptionOnError, ref Exception exception)
+					      out DateTime result, out DateTimeOffset dto, bool setExceptionOnError, ref Exception exception)
 		{
- 			dto = new DateTimeOffset (0, TimeSpan.Zero);
+			dto = new DateTimeOffset (0, TimeSpan.Zero);
 			if (s == null || s.Length == 0) {
 				if (setExceptionOnError)
 					exception = new FormatException (formatExceptionMessage);
@@ -1244,6 +1252,9 @@ namespace System
 
 			result = new DateTime (0);
 			if (format == null)
+				return false;
+
+			if (s == null)
 				return false;
 
 			if ((style & DateTimeStyles.AllowLeadingWhite) != 0) {
@@ -2233,16 +2244,16 @@ namespace System
 			throw new InvalidCastException();
 		}
 
-		object IConvertible.ToType (Type type, IFormatProvider provider)
+		object IConvertible.ToType (Type targetType, IFormatProvider provider)
 		{
-			if (type == null)
-				throw new ArgumentNullException ("type");
+			if (targetType == null)
+				throw new ArgumentNullException ("targetType");
 
-			if (type == typeof (DateTime))
+			if (targetType == typeof (DateTime))
 				return this;
-			else if (type == typeof (String))
+			else if (targetType == typeof (String))
 				return this.ToString (provider);
-			else if (type == typeof (Object))
+			else if (targetType == typeof (Object))
 				return this;
 			else
 				throw new InvalidCastException();

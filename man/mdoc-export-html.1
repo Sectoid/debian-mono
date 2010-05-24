@@ -18,13 +18,21 @@ mdoc export-html \- Convert \fBmdoc\fR(5) XML to HTML.
 documentation XML files within \fIDIRECTORIES\fR.
 .SH OPTIONS
 .TP
+.B \-\-default\-template
+Writes the default XSLT used to \fIstdout\fR.
+.TP
 \fB\-\-ext\fR=\fIEXTENSION\fR
 The file extension to use for created files.
 .Sp
 This defaults to \fIhtml\fR.
 .TP
-.B \-\-default\-template
-Writes the default XSLT used to \fIstdout\fR.
+\fB\-\-force-update\fR
+Always generate new files.  If not specified, 
+will only generate a new output file if the source 
+documentation file is newer than the target output file.
+.TP
+\fB\-o\fR, \fB\-\-out\fR=\fIDIRECTORY\fR
+Write the created files within directory \fIDIRECTORY\fR.
 .TP
 \fB\-\-template\fR=\fIFILE\fR
 An XSLT file to use to generate the created files.
@@ -33,8 +41,29 @@ If not specified, uses the template produced by \fI\-\-dump\-template\fR.
 .Sp
 See the \fITEMPLATE FORMAT\fR section below for more information.
 .TP
-\fB\-o\fR, \fB\-\-out\fR=\fIDIRECTORY\fR
-Write the created files within directory \fIDIRECTORY\fR.
+\fB\-\-with\-profile\fR=\fIPROFILE\fR
+Only process types and members within the .NET profile \fIPROFILE\fR.  
+May be specified multiple times.  If not specified, all types and members,
+regardless of version, are processed.
+.Sp
+Valid profiles are:
+.nf
+	monotouch
+	net_1_0
+	net_1_1
+	net_2_0
+	net_3_0
+	net_3_5
+	net_4_0
+	silverlight
+.fi
+.TP
+\fB\-\-with\-version\fR=\fIVERSION\fR
+Only process types and members within the assembly version \fIVERSION\fR.
+May be specified multiple times.  If not specified, all types and members,
+regardless of version, are processed.
+.Sp
+\fIVERSION\fR is an assembly version, e.g. 2.0.5.0.
 .TP
 \fB\-h\fR, \fB\-?\fR, \fB\-\-help\fR
 Display a help message and exit.

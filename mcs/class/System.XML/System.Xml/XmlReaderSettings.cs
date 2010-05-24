@@ -35,7 +35,7 @@ using System.IO;
 using System.Net;
 using System.Xml.Schema;
 
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 using XsValidationFlags = System.Xml.Schema.XmlSchemaValidationFlags;
 #endif
 
@@ -53,16 +53,17 @@ namespace System.Xml
 		private int linePositionOffset;
 		private bool prohibitDtd;
 		private XmlNameTable nameTable;
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		private XmlSchemaSet schemas;
 		private bool schemasNeedsInitialization;
 		private XsValidationFlags validationFlags;
 		private ValidationType validationType;
 #endif
 		private XmlResolver xmlResolver;
-#if NET_2_1
+#if NET_2_1 && !MONOTOUCH
 		private DtdProcessing dtdProcessing;
-		private Int64 maxCharactersFromEntities;
+		private long maxCharactersFromEntities;
+		private long maxCharactersInDocument;
 #endif
 
 		public XmlReaderSettings ()
@@ -70,7 +71,7 @@ namespace System.Xml
 			Reset ();
 		}
 
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		public event ValidationEventHandler ValidationEventHandler;
 #endif
 
@@ -90,15 +91,17 @@ namespace System.Xml
 			lineNumberOffset = 0;
 			linePositionOffset = 0;
 			prohibitDtd = true;
-#if !NET_2_1
+#if NET_2_1 && !MONOTOUCH
+			xmlResolver = new XmlXapResolver ();
+#else
 			schemas = null;
 			schemasNeedsInitialization = true;
 			validationFlags =
 				XsValidationFlags.ProcessIdentityConstraints |
 				XsValidationFlags.AllowXmlAttributes;
 			validationType = ValidationType.None;
-#endif
 			xmlResolver = new XmlUrlResolver ();
+#endif
 		}
 
 		public bool CheckCharacters {
@@ -115,15 +118,24 @@ namespace System.Xml
 			get { return conformance; }
 			set { conformance = value; }
 		}
-#if NET_2_1
+#if NET_2_1 && !MONOTOUCH
 		public DtdProcessing DtdProcessing {
 			get { return dtdProcessing; }
-			set { dtdProcessing = value; }
+			set {
+				dtdProcessing = value;
+				prohibitDtd = (value == DtdProcessing.Prohibit);
+			}
 		}
 
-		public Int64 MaxCharactersFromEntities {
+		public long MaxCharactersFromEntities {
 			get { return maxCharactersFromEntities; }
 			set { maxCharactersFromEntities = value; }
+		}
+
+		[MonoTODO ("not used yet")]
+		public long MaxCharactersInDocument {
+			get { return maxCharactersInDocument; }
+			set { maxCharactersInDocument = value; }
 		}
 #endif
 
@@ -165,7 +177,7 @@ namespace System.Xml
 			set { nameTable = value; }
 		}
 
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		public XmlSchemaSet Schemas {
 			get {
 				if (schemasNeedsInitialization) {

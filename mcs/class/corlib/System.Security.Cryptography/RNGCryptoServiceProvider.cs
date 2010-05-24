@@ -43,7 +43,7 @@ namespace System.Security.Cryptography {
 #if NET_1_0
 	public class RNGCryptoServiceProvider : RandomNumberGenerator {
 #else
-	#if NET_2_0
+	#if NET_2_0 && !NET_2_1
 	[ComVisible (true)]
 	#endif
 	public sealed class RNGCryptoServiceProvider : RandomNumberGenerator {
@@ -62,7 +62,7 @@ namespace System.Security.Cryptography {
 			_handle = RngInitialize (null);
 			Check ();
 		}
-		
+#if !NET_2_1
 		public RNGCryptoServiceProvider (byte[] rgb)
 		{
 			_handle = RngInitialize (rgb);
@@ -85,7 +85,7 @@ namespace System.Security.Cryptography {
 				_handle = RngInitialize (Encoding.UTF8.GetBytes (str));
 			Check ();
 		}
-
+#endif
 		private void Check () 
 		{
 			if (_handle == IntPtr.Zero) {

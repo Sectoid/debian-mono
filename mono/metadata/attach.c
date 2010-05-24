@@ -4,7 +4,7 @@
  * Author:
  *   Zoltan Varga (vargaz@gmail.com)
  *
- * (C) 2007-2008 Novell, Inc.
+ * Copyright 2007-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
@@ -480,7 +480,7 @@ transport_start_receive (void)
 	if (!listen_fd)
 		return;
 
-	receiver_thread_handle = CreateThread (NULL, 0, receiver_thread, NULL, 0, &tid);
+	receiver_thread_handle = mono_create_thread (NULL, 0, receiver_thread, NULL, 0, &tid);
 	g_assert (receiver_thread_handle);
 }
 

@@ -605,6 +605,30 @@ class Tester
 		AssertNodeType (e5, ExpressionType.ArrayIndex);
 		Assert (0, e5.Compile ().Invoke ());
 	}
+	
+	void ArrayIndexTest_6 ()
+	{
+		const ulong max = 3;
+		
+		Expression<Func<int[], int>> e = a => a [max];
+		AssertNodeType (e, ExpressionType.ArrayIndex);
+		Assert (4, e.Compile ().Invoke (new int [] { 1, 2, 3, 4, 5 }));
+	}
+	
+	void ArrayIndexTest_7 ()
+	{
+		const ulong max = uint.MaxValue;
+		
+		Expression<Func<int[], int>> e = a => a [max];
+		AssertNodeType (e, ExpressionType.ArrayIndex);
+		
+		try {
+			e.Compile ().Invoke (new int [0]);
+			throw new ApplicationException ("ArrayIndexTest_7");
+		} catch (System.OverflowException) {
+			// Check whether CheckedConversion was generated
+		}
+	}
 
 	void ArrayLengthTest ()
 	{
@@ -762,11 +786,10 @@ class Tester
 		Assert (null, e2.Compile ().Invoke ());
 	}
 
-	// FIXME: Redundant convert, need new expression	
 	void ConstantTest_3 ()
 	{
 		Expression<Func<Tester>> e3 = () => default (Tester);
-		//AssertNodeType (e3, ExpressionType.Constant);
+		AssertNodeType (e3, ExpressionType.Constant);
 		Assert (null, e3.Compile ().Invoke ());
 	}
 	
@@ -977,9 +1000,9 @@ class Tester
 	void ConvertCheckedTest_3 ()
 	{
 		checked {
-//			Expression<Func<float?, float>> e3 = (float? a) => ((float) a);
-//			AssertNodeType (e3, ExpressionType.ConvertChecked);
-//			Assert (-0.456f, e3.Compile ().Invoke (-0.456f));
+			Expression<Func<float?, float>> e3 = (float? a) => ((float) a);
+			AssertNodeType (e3, ExpressionType.ConvertChecked);
+			Assert (-0.456f, e3.Compile ().Invoke (-0.456f));
 		}
 	}
 
@@ -1149,6 +1172,14 @@ class Tester
 		Expression<Func<MyEnum, bool>> e = (a) => a == null;
 		AssertNodeType (e, ExpressionType.Equal);
 		Assert (false, e.Compile ().Invoke (MyEnum.Value_1));
+	}
+
+	void EqualTest_15 ()
+	{
+		Expression<Func<int?, uint, bool>> e = (a, b) => a == b;
+		AssertNodeType (e, ExpressionType.Equal);
+		Assert (false, e.Compile ().Invoke (null, 0));
+		Assert (true, e.Compile ().Invoke (4, 4));
 	}
 
 	void EqualTestDelegate ()
@@ -1371,6 +1402,13 @@ class Tester
 		Expression<Func<Func<int, string>, int, string>> e2 = (a, b) => a (b);
 		AssertNodeType (e2, ExpressionType.Invoke);
 		Assert ("4", e2.Compile ().Invoke ((a) => (a+1).ToString (), 3));
+	}
+	
+	void LambdaTest ()
+	{
+		Expression<Func<string, Func<string>>> e = (string s) => () => s;
+		AssertNodeType (e, ExpressionType.Lambda);
+		Assert ("xx", e.Compile ().Invoke ("xx") ());
 	}
 	
 	void LeftShiftTest ()
@@ -1634,8 +1672,7 @@ class Tester
 	{
 		string s = "localvar";
 		Expression<Func<string>> e9 = () => s;
-		// CSC emits this as MemberAccess
-		AssertNodeType (e9, ExpressionType.Constant);
+		AssertNodeType (e9, ExpressionType.MemberAccess);
 		Assert ("localvar", e9.Compile ().Invoke ());
 	}
 	
@@ -1943,9 +1980,9 @@ class Tester
 	
 	void NewArrayInitTest ()
 	{
-		Expression<Func<int []>> e = () => new int [0];
+		Expression<Func<int []>> e = () => new int [1] { 5 };
 		AssertNodeType (e, ExpressionType.NewArrayInit);
-		Assert (new int [0], e.Compile ().Invoke ());
+		Assert (new int [1] { 5 }, e.Compile ().Invoke ());
 	}	
 	
 	void NewArrayInitTest_2 ()
@@ -1971,9 +2008,16 @@ class Tester
 	
 	void NewArrayInitTest_5 ()
 	{
-		Expression<Func<int?[]>> e = () => new int?[] { null, 3, 4 };	
+		Expression<Func<int?[]>> e = () => new int?[] { null, 3, 4 };
 		AssertNodeType (e, ExpressionType.NewArrayInit);
 		Assert (3, e.Compile ().Invoke ().Length);
+	}
+
+	void NewArrayInitTest_6 ()
+	{
+		Expression<Func<string []>> e = () => new [] { null, "a" };
+		AssertNodeType (e, ExpressionType.NewArrayInit);
+		Assert (2, e.Compile ().Invoke ().Length);
 	}
 	
 	void NewArrayBoundsTest ()
@@ -1988,7 +2032,22 @@ class Tester
 		Expression<Func<int[,]>> e2 = () => new int [0,0];
 		AssertNodeType (e2, ExpressionType.NewArrayBounds);
 		Assert (new int [0, 0].Length, e2.Compile ().Invoke ().Length);
-	}	
+	}
+	
+	void NewArrayBoundsTest_3 ()
+	{
+		Expression<Func<int []>> e = () => new int [0];
+		AssertNodeType (e, ExpressionType.NewArrayBounds);
+		Assert (0, e.Compile ().Invoke ().Length);
+	}
+
+	void NewArrayBoundsTest_4 ()
+	{
+		const ulong max = ulong.MaxValue;
+		
+		Expression<Func<bool[]>> e = () => new bool [max];
+		AssertNodeType (e, ExpressionType.NewArrayBounds);
+	}
 	
 	void NewTest ()
 	{

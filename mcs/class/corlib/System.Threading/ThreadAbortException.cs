@@ -54,10 +54,12 @@ namespace System.Threading
 		{
 		}
 
+#if !NET_2_1
 		public object ExceptionState {
 			get {
-				return Thread.CurrentThread.abort_state;
+				return Thread.CurrentThread.GetAbortExceptionState ();
 			}
 		}
+#endif
 	}
 }

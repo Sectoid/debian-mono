@@ -1,3 +1,34 @@
+2009-07-09  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* XmlSchemaTests.cs: Fixed tests for bug #502115.
+
+2009-07-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaTests.cs : disabled wrong tests. I will revert them
+	  unless it gets better shape.
+
+2009-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaAssertion.cs, XmlSchemaTests.cs : migrate from Assertion
+	  to Assert (it still uses XmlSchemaAssertion as the base class,
+	  but XmlSchemaAssertion is not based on Assertion anymore).
+
+2009-05-21  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* XmlSchemaTests.cs: added tests for bug #502115.
+
+2009-05-07  Jonas Larsson <jonas.larsson@manodo.se> 
+
+	* XmlSchemaValidatorTests.cs : added test for bug #501666.
+
+2009-04-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaValidatorTests.cs : added test for bug #496192 and #496205.
+
+2009-01-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaValidatorTests.cs : added test for bug #469713.
+
 2008-12-15  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlSchemaSetTests.cs : added test for Compile() after "duplicating"

@@ -54,7 +54,10 @@ using System.Runtime.InteropServices;
 [assembly: NeutralResourcesLanguage ("en-US")]
 
 [assembly: ComVisible (false)]
+#if !NET_2_1
+[assembly: ComCompatibleVersion (1, 0, 3300, 0)]
 [assembly: AllowPartiallyTrustedCallers]
+#endif
 
 #if !BOOTSTRAP_WITH_OLDLIB
 	[assembly: SecurityPermission (SecurityAction.RequestMinimum, SkipVerification = true)]
@@ -66,23 +69,24 @@ using System.Runtime.InteropServices;
 #endif
 #endif
 
+#if NET_2_1
+	[assembly: InternalsVisibleTo ("System.Net, PublicKey=00240000048000009400000006020000002400005253413100040000010001008D56C76F9E8649383049F383C44BE0EC204181822A6C31CF5EB7EF486944D032188EA1D3920763712CCB12D75FB77E9811149E6148E5D32FBAAB37611C1878DDC19E20EF135D0CB2CFF2BFEC3D115810C3D9069638FE4BE215DBF795861920E5AB6F7DB2E2CEEF136AC23D5DD2BF031700AEC232F6C6B1C785B4305C123B37AB")]
+#elif NET_2_0
+	[assembly: InternalsVisibleTo ("System.ComponentModel.DataAnnotations, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b5fc90e7027f67871e773a8fde8938c81dd402ba65b9201d60593e96c492651e889cc13f1415ebb53fac1131ae0bd333c5ee6021672d9718ea31a8aebd0da0072f25d87dba6fc90ffd598ed4da35e44c398c454307e8e33b8426143daec9f596836f97c8f74750e5975c64e2189f45def46b2a2b1247adc3652bf5c308055da9")]
+	[assembly: StringFreezing]
+	[assembly: DefaultDependency (LoadHint.Always)]
+#endif
+
 #if NET_2_0
 	[assembly: AssemblyFileVersion (Consts.FxFileVersion)]
 	[assembly: Debuggable (DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
 	[assembly: CompilationRelaxations (CompilationRelaxations.NoStringInterning)]
-	[assembly: StringFreezing]
-	[assembly: ComCompatibleVersion (1, 0, 3300, 0)]
-	[assembly: DefaultDependency (LoadHint.Always)]
 #elif NET_1_1
 	[assembly: AssemblyTrademark ("")]
 	[assembly: AssemblyConfiguration ("")]
-	[assembly: ComCompatibleVersion (1, 0, 3300, 0)]
 	[assembly: TypeLibVersion (1, 10)]
 #elif NET_1_0
 	[assembly: AssemblyTrademark ("")]
 	[assembly: AssemblyConfiguration ("")]
 #endif
 
-#if NET_2_1
-	[assembly: InternalsVisibleTo ("Mono.Moonlight, PublicKey=002400000480000094000000060200000024000052534131000400000100010079159977d2d03a8e6bea7a2e74e8d1afcc93e8851974952bb480a12c9134474d04062447c37e0e68c080536fcf3c3fbe2ff9c979ce998475e506e8ce82dd5b0f350dc10e93bf2eeecf874b24770c5081dbea7447fddafa277b22de47d6ffea449674a4f9fccf84d15069089380284dbdd35f46cdff12a1bd78e4ef0065d016df")]
-#endif

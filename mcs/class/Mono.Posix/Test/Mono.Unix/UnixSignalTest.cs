@@ -47,6 +47,72 @@ namespace MonoTests.Mono.Unix {
 		}
 
 		[Test]
+		public void TestNestedInvocation()
+		{
+			UnixSignal s = new UnixSignal(Signum.SIGINT);
+			Thread a = new Thread(delegate() {
+					bool r = s.WaitOne (1000, false);
+      });
+			Thread b = new Thread(delegate() {
+					bool r = s.WaitOne (500, false);
+      });
+			a.Start();
+			b.Start();
+			a.Join();
+			b.Join();
+		}
+
+		[Test]
+		public void TestWaitAnyFailsWithMore64Signals()
+		{
+			UnixSignal s1 = new UnixSignal(Signum.SIGINT);
+			UnixSignal[] signals = new UnixSignal[65];
+			for (int i=0; i<65; ++i)
+				signals[i] = s1;
+			
+			Assert.That(UnixSignal.WaitAny(signals, new TimeSpan(0,0,1)), Is.EqualTo(-1));
+		}
+
+		[Test]
+		public void TestConcurrentWaitOne()
+		{
+			UnixSignal s1 = new UnixSignal(Signum.SIGINT);
+			UnixSignal s2 = new UnixSignal(Signum.SIGINT);
+			Thread a = CreateWaitSignalThread(s1, 10000);
+			Thread b = CreateWaitSignalThread(s2, 5000);
+			Thread c = new Thread (delegate () {
+					Thread.Sleep (1000);
+					Stdlib.raise (Signum.SIGINT);
+			});
+			a.Start();
+			b.Start();
+			c.Start();
+			a.Join();
+			b.Join();
+			c.Join();
+			Assert.That(s1.Count, Is.EqualTo(1), "Expected 1 signal raised");
+			Assert.That(s2.Count, Is.EqualTo(1), "Expected 1 signal raised");
+		}
+
+		[Test]
+		public void TestConcurrentWaitOneSameInstance()
+		{
+			UnixSignal s1 = new UnixSignal(Signum.SIGINT);
+			Thread a = CreateWaitSignalThread(s1, 10000);
+			Thread b = CreateWaitSignalThread(s1, 10000);
+			Thread c = new Thread (delegate () {
+					Thread.Sleep (500);
+					Stdlib.raise (Signum.SIGINT);
+			});
+			a.Start();
+			b.Start();
+			c.Start();
+			a.Join();
+			b.Join();
+			c.Join();
+		}
+
+		[Test]
 		public void TestSignumProperty ()
 		{
 			UnixSignal signal1 = new UnixSignal (Signum.SIGSEGV);
@@ -54,6 +120,7 @@ namespace MonoTests.Mono.Unix {
 		}
 	
 		[Test]
+		[Category ("NotOnMac")]
 		public void TestRealTimeCstor ()
 		{
 			RealTimeSignum rts = new RealTimeSignum (0);
@@ -66,6 +133,7 @@ namespace MonoTests.Mono.Unix {
 
 		[Test]
 		[ExpectedException]
+		[Category ("NotOnMac")]
 		public void TestSignumPropertyThrows ()
 		{
 			UnixSignal signal1 = new UnixSignal (new RealTimeSignum (0));
@@ -73,6 +141,7 @@ namespace MonoTests.Mono.Unix {
 		}
 
 		[Test]
+		[Category ("NotOnMac")]
 		public void TestRealTimeSignumProperty ()
 		{
 			RealTimeSignum rts = new RealTimeSignum (0);
@@ -82,6 +151,7 @@ namespace MonoTests.Mono.Unix {
 	
 		[Test]
 		[ExpectedException]
+		[Category ("NotOnMac")]
 		public void TestRealTimePropertyThrows ()
 		{
 			UnixSignal signal1 = new UnixSignal (Signum.SIGSEGV);
@@ -89,6 +159,7 @@ namespace MonoTests.Mono.Unix {
 		}
 
 		[Test]
+		[Category ("NotOnMac")]
 		public void TestRaiseRTMINSignal ()
 		{
 			RealTimeSignum rts = new RealTimeSignum (0);
@@ -102,6 +173,7 @@ namespace MonoTests.Mono.Unix {
 		}
 
 		[Test]
+		[Category ("NotOnMac")]
 		public void TestRaiseRTMINPlusOneSignal ()
 		{
 			/*this number is a guestimate, but it's ok*/
@@ -126,6 +198,7 @@ namespace MonoTests.Mono.Unix {
 		}
 
 		[Test]
+		[Category ("NotOnMac")]
 		public void TestCanRegisterRTSignalMultipleTimes ()
 		{
 			/*this number is a guestimate, but it's ok*/

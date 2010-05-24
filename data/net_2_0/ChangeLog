@@ -3,6 +3,15 @@
 	* DefaultWsdlHelpGenerator.aspx: the 'Message Layout' can now handle
 	self-referencing types. Fixes bug #529353.
 
+2009-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* web.config: add WCF assemblies as references at compilation.
+	* machine.config: add some missing WCF sections (new in 3.5).
+
+2009-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* machine.config: fix WCF diagnostics section name.
+
 2009-03-31  Marek Habersack  <mhabersack@novell.com>
 
 	* DefaultWsdlHelpGenerator.aspx: the link element in <head> must
@@ -15,6 +24,10 @@
 	* DefaultWsdlHelpGenerator.aspx: disable the test form
 	when only Soap is supported.
 	Bug #342073 fixed.
+
+2009-01-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* web.config : added .svc handler.
 
 2009-01-07  Kornél Pál  <kornelpal@gmail.com>
 

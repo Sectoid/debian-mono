@@ -1,3 +1,138 @@
+2010-02-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : on unixy filesystems "/foobar"
+	  is parsed as an absolute URI.
+
+2010-02-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : port 808 is not generally available
+	  for non-privileged users.
+
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory_1Test.cs : added a couple of error check tests for
+	  constructors and CreateChannel() overloads.
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostTest.cs : add a few more comments.
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackBehaviorAttributeTest.cs : enable the test again.
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : enabled connection tests again, as they
+	  got working again (and more importantly, they don't block).
+	* CallbackBehaviorAttributeTest.cs : on the other hand, disabled
+	  a test so far. It is the only active test && the blocker now.
+
+2010-01-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : disable connection tests, with analyzed
+	  reason why it's blocking, for each.
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddressBuilderTest.cs : add usage example test.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackBehaviorAttributeTest.cs : added callback example from
+	  bug #567672.
+
+2010-01-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : another mannerless test here.
+
+2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : enable some tests and added streamed mode
+	  test. Commented on these changes.
+
+2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory_1Test.cs : ignore another couple of blocking tests.
+
+2009-12-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WSHttpBindingTest.cs : leave non-working test to get fixed later.
+
+2009-12-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BasicHttpBindingTest.cs : added transport security related tests.
+
+2009-12-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs :
+	  I have to disable a lot of connective tests that somehow blocks
+	  test runs. No idea why it started to happen though.
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : add test for checking non-mex contract
+	  existence.
+
+2009-10-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* OperationContextTest.cs: Add test case for OperationContext.Current
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : a few more base address test.
+	  Remove NotWorking marks.
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBaseTest.cs : added test for AddBaseAddress().
+
+2009-08-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContextTest.cs : new.
+
+2009-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CallbackBehaviorAttributeTest.cs : new test.
+
+2009-07-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : added simple connection test. It somehow
+	  stops for a while (without failing) though...
+
+2009-07-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetPeerTcpBindingTest.cs : a bit of interface implementation test.
+
+2009-07-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddress10Test.cs : added a few more serialization tests.
+
+2009-07-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNodeAddressTest.cs : new test.
+
+2009-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetPeerTcpBindingTest.cs : fix build.
+
+2009-04-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetPeerTcpBindingTest.cs : new test.
+
+2009-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : fix wrong value expectation.
+
+2009-04-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBindingTest.cs : new test.
+
+2009-02-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory_1Test.cs, ChannelFactoryTest.cs, ClientBaseTest.cs:
+	  Ignore all failing-under-dotnet tests
+
 2009-01-14  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ClientBase_InteractiveChannelInitializerTest.cs : new test, for

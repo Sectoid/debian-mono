@@ -163,7 +163,7 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_NFPREG];
 
 #define restore_regs_from_context(ctx_reg,ip_reg,tmp_reg) do {	\
 		int reg;	\
-		ppc_load_reg (code, ip_reg, G_STRUCT_OFFSET (MonoContext, sc_ir), ctx_reg);	\
+		ppc_ldptr (code, ip_reg, G_STRUCT_OFFSET (MonoContext, sc_ir), ctx_reg);	\
 		ppc_load_multiple_regs (code, ppc_r13, G_STRUCT_OFFSET (MonoContext, regs), ctx_reg);	\
 		for (reg = 0; reg < MONO_SAVED_FREGS; ++reg) {	\
 			ppc_lfd (code, (14 + reg),	\
@@ -196,21 +196,18 @@ mono_ppc_create_pre_code_ftnptr (guint8 *code)
  * The first argument in r3 is the pointer to the context.
  */
 gpointer
-mono_arch_get_restore_context (void)
+mono_arch_get_restore_context_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
 {
-	static guint8 *start = NULL;
-
-	guint8 *code;
+	guint8 *start, *code;
 	int size = MONO_PPC_32_64_CASE (128, 172) + PPC_FTNPTR_SIZE;
 
-	if (start)
-		return start;
-
 	code = start = mono_global_codeman_reserve (size);
-	code = mono_ppc_create_pre_code_ftnptr (code);
+	*ji = NULL;
+	if (!aot)
+		code = mono_ppc_create_pre_code_ftnptr (code);
 	restore_regs_from_context (ppc_r3, ppc_r4, ppc_r5);
 	/* restore also the stack pointer */
-	ppc_load_reg (code, ppc_sp, G_STRUCT_OFFSET (MonoContext, sc_sp), ppc_r3);
+	ppc_ldptr (code, ppc_sp, G_STRUCT_OFFSET (MonoContext, sc_sp), ppc_r3);
 	//ppc_break (code);
 	/* jump to the saved IP */
 	ppc_mtctr (code, ppc_r4);
@@ -220,6 +217,9 @@ mono_arch_get_restore_context (void)
 
 	g_assert ((code - start) <= size);
 	mono_arch_flush_icache (start, code - start);
+
+	*code_size = code - start;
+
 	return start;
 }
 
@@ -252,32 +252,30 @@ emit_save_saved_regs (guint8 *code, int pos)
  * @exc object in this case).
  */
 gpointer
-mono_arch_get_call_filter (void)
+mono_arch_get_call_filter_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
 {
-	static guint8 *start = NULL;
-
-	guint8 *code;
+	guint8 *start, *code;
 	int alloc_size, pos, i;
 	int size = MONO_PPC_32_64_CASE (320, 500) + PPC_FTNPTR_SIZE;
 
-	if (start)
-		return start;
+	*ji = NULL;
 
 	/* call_filter (MonoContext *ctx, unsigned long eip, gpointer exc) */
 	code = start = mono_global_codeman_reserve (size);
-	code = mono_ppc_create_pre_code_ftnptr (code);
+	if (!aot)
+		code = mono_ppc_create_pre_code_ftnptr (code);
 
 	/* store ret addr */
 	ppc_mflr (code, ppc_r0);
-	ppc_store_reg (code, ppc_r0, PPC_RET_ADDR_OFFSET, ppc_sp);
+	ppc_stptr (code, ppc_r0, PPC_RET_ADDR_OFFSET, ppc_sp);
 
 	alloc_size = REG_SAVE_STACK_FRAME_SIZE;
 
 	/* allocate stack frame and set link from sp in ctx */
 	g_assert ((alloc_size & (MONO_ARCH_FRAME_ALIGNMENT-1)) == 0);
-	ppc_load_reg (code, ppc_r0, G_STRUCT_OFFSET (MonoContext, sc_sp), ppc_r3);
-	ppc_load_reg_indexed (code, ppc_r0, ppc_r0, ppc_r0);
-	ppc_store_reg_update (code, ppc_r0, -alloc_size, ppc_sp);
+	ppc_ldptr (code, ppc_r0, G_STRUCT_OFFSET (MonoContext, sc_sp), ppc_r3);
+	ppc_ldptr_indexed (code, ppc_r0, ppc_r0, ppc_r0);
+	ppc_stptr_update (code, ppc_r0, -alloc_size, ppc_sp);
 
 	code = emit_save_saved_regs (code, alloc_size);
 
@@ -289,7 +287,7 @@ mono_arch_get_call_filter (void)
 	ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
 
 	/* epilog */
-	ppc_load_reg (code, ppc_r0, alloc_size + PPC_RET_ADDR_OFFSET, ppc_sp);
+	ppc_ldptr (code, ppc_r0, alloc_size + PPC_RET_ADDR_OFFSET, ppc_sp);
 	ppc_mtlr (code, ppc_r0);
 
 	/* restore all the regs from the stack */
@@ -306,17 +304,20 @@ mono_arch_get_call_filter (void)
 
 	g_assert ((code - start) < size);
 	mono_arch_flush_icache (start, code - start);
+
+	*code_size = code - start;
+
 	return start;
 }
 
-static void
-throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs, gboolean rethrow)
+void
+mono_ppc_throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs, gboolean rethrow)
 {
 	static void (*restore_context) (MonoContext *);
 	MonoContext ctx;
 
 	if (!restore_context)
-		restore_context = mono_arch_get_restore_context ();
+		restore_context = mono_get_restore_context ();
 
 	/* adjust eip so that it point into the call instruction */
 	eip -= 4;
@@ -346,44 +347,63 @@ throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gulong *
  * Returns a function pointer which can be used to raise 
  * exceptions. The returned function has the following 
  * signature: void (*func) (MonoException *exc); or
- * void (*func) (char *exc_name);
+ * void (*func) (guint32 ex_token, gpointer ip)
  *
  */
-static gpointer 
-mono_arch_get_throw_exception_generic (guint8 *start, int size, int by_name, gboolean rethrow)
+static gpointer
+mono_arch_get_throw_exception_generic (int size, guint32 *code_size, MonoJumpInfo **ji, int corlib, gboolean rethrow, gboolean aot)
 {
-	guint8 *code;
+	guint8 *start, *code;
 	int alloc_size, pos;
 
-	code = mono_ppc_create_pre_code_ftnptr (start);
+	*ji = NULL;
+
+	code = start = mono_global_codeman_reserve (size);
+	if (!aot)
+		code = mono_ppc_create_pre_code_ftnptr (code);
 
 	/* store ret addr */
-	ppc_mflr (code, ppc_r0);
-	ppc_store_reg (code, ppc_r0, PPC_RET_ADDR_OFFSET, ppc_sp);
+	if (corlib)
+		ppc_mr (code, ppc_r0, ppc_r4);
+	else
+		ppc_mflr (code, ppc_r0);
+	ppc_stptr (code, ppc_r0, PPC_RET_ADDR_OFFSET, ppc_sp);
 
 	alloc_size = REG_SAVE_STACK_FRAME_SIZE;
 
 	g_assert ((alloc_size & (MONO_ARCH_FRAME_ALIGNMENT-1)) == 0);
-	ppc_store_reg_update (code, ppc_sp, -alloc_size, ppc_sp);
+	ppc_stptr_update (code, ppc_sp, -alloc_size, ppc_sp);
 
 	code = emit_save_saved_regs (code, alloc_size);
 
 	//ppc_break (code);
-	if (by_name) {
-		ppc_mr (code, ppc_r5, ppc_r3);
-		ppc_load (code, ppc_r3, (gulong)mono_defaults.corlib);
-		ppc_load (code, ppc_r4, "System");
-		ppc_load_func (code, ppc_r0, mono_exception_from_name);
-		ppc_mtctr (code, ppc_r0);
-		ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
+	if (corlib) {
+		ppc_mr (code, ppc_r4, ppc_r3);
+
+		if (aot) {
+			code = mono_arch_emit_load_aotconst (start, code, ji, MONO_PATCH_INFO_IMAGE, mono_defaults.corlib);
+			ppc_mr (code, ppc_r3, ppc_r11);
+			code = mono_arch_emit_load_aotconst (start, code, ji, MONO_PATCH_INFO_JIT_ICALL_ADDR, "mono_exception_from_token");
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+			ppc_ldptr (code, ppc_r2, sizeof (gpointer), ppc_r11);
+			ppc_ldptr (code, ppc_r11, 0, ppc_r11);
+#endif
+			ppc_mtctr (code, ppc_r11);
+			ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
+		} else {
+			ppc_load (code, ppc_r3, (gulong)mono_defaults.corlib);
+			ppc_load_func (code, ppc_r0, mono_exception_from_token);
+			ppc_mtctr (code, ppc_r0);
+			ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
+		}
 	}
 
 	/* call throw_exception (exc, ip, sp, int_regs, fp_regs) */
 	/* caller sp */
-	ppc_load_reg (code, ppc_r5, 0, ppc_sp);
+	ppc_ldptr (code, ppc_r5, 0, ppc_sp);
 	/* exc is already in place in r3 */
-	if (by_name)
-		ppc_load_reg (code, ppc_r4, PPC_RET_ADDR_OFFSET, ppc_r5);
+	if (corlib)
+		ppc_ldptr (code, ppc_r4, PPC_RET_ADDR_OFFSET, ppc_r5);
 	else
 		ppc_mr (code, ppc_r4, ppc_r0); /* caller ip */
 	/* pointer to the saved fp regs */
@@ -394,13 +414,30 @@ mono_arch_get_throw_exception_generic (guint8 *start, int size, int by_name, gbo
 	ppc_addi (code, ppc_r6, ppc_sp, pos);
 	ppc_li (code, ppc_r8, rethrow);
 
-	ppc_load_func (code, ppc_r0, throw_exception);
-	ppc_mtctr (code, ppc_r0);
-	ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
+	if (aot) {
+		// This can be called from runtime code, which can't guarantee that
+		// r30 contains the got address.
+		// So emit the got address loading code too
+		code = mono_arch_emit_load_got_addr (start, code, NULL, ji);
+		code = mono_arch_emit_load_aotconst (start, code, ji, MONO_PATCH_INFO_JIT_ICALL_ADDR, "mono_ppc_throw_exception");
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+		ppc_ldptr (code, ppc_r2, sizeof (gpointer), ppc_r11);
+		ppc_ldptr (code, ppc_r11, 0, ppc_r11);
+#endif
+		ppc_mtctr (code, ppc_r11);
+		ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
+	} else {
+		ppc_load_func (code, ppc_r0, mono_ppc_throw_exception);
+		ppc_mtctr (code, ppc_r0);
+		ppc_bcctrl (code, PPC_BR_ALWAYS, 0);
+	}
 	/* we should never reach this breakpoint */
 	ppc_break (code);
 	g_assert ((code - start) <= size);
 	mono_arch_flush_icache (start, code - start);
+
+	*code_size = code - start;
+
 	return start;
 }
 
@@ -413,21 +450,15 @@ mono_arch_get_throw_exception_generic (guint8 *start, int size, int by_name, gbo
  *
  */
 gpointer
-mono_arch_get_rethrow_exception (void)
+mono_arch_get_rethrow_exception_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
 {
-	static guint8 *start = NULL;
-	static int inited = 0;
-
-	guint8 *code;
 	int size = MONO_PPC_32_64_CASE (132, 224) + PPC_FTNPTR_SIZE;
 
-	if (inited)
-		return start;
-	code = mono_global_codeman_reserve (size);
-	start = mono_arch_get_throw_exception_generic (code, size, FALSE, TRUE);
-	inited = 1;
-	return start;
+	if (aot)
+		size += 64;
+	return mono_arch_get_throw_exception_generic (size, code_size, ji, FALSE, TRUE, aot);
 }
+
 /**
  * arch_get_throw_exception:
  *
@@ -440,21 +471,14 @@ mono_arch_get_rethrow_exception (void)
  * x86_call_code (code, arch_get_throw_exception ()); 
  *
  */
-gpointer 
-mono_arch_get_throw_exception (void)
+gpointer
+mono_arch_get_throw_exception_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
 {
-	static guint8 *start = NULL;
-	static int inited = 0;
-
-	guint8 *code;
 	int size = MONO_PPC_32_64_CASE (132, 224) + PPC_FTNPTR_SIZE;
 
-	if (inited)
-		return start;
-	code = mono_global_codeman_reserve (size);
-	start = mono_arch_get_throw_exception_generic (code, size, FALSE, FALSE);
-	inited = 1;
-	return start;
+	if (aot)
+		size += 64;
+	return mono_arch_get_throw_exception_generic (size, code_size, ji, FALSE, FALSE, aot);
 }
 
 /**
@@ -469,21 +493,38 @@ mono_arch_get_throw_exception (void)
  * x86_call_code (code, arch_get_throw_exception_by_name ()); 
  *
  */
-gpointer 
-mono_arch_get_throw_exception_by_name (void)
+gpointer
+mono_arch_get_throw_exception_by_name_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
 {
-	static guint8 *start = NULL;
-	static int inited = 0;
+	guint8 *start, *code;
+	int size = 64;
 
-	guint8 *code;
+	*ji = NULL;
+
+	/* Not used on PPC */	
+	start = code = mono_global_codeman_reserve (size);
+	ppc_break (code);
+	mono_arch_flush_icache (start, code - start);
+	*code_size = code - start;
+	return start;
+}
+
+/**
+ * mono_arch_get_throw_corlib_exception:
+ *
+ * Returns a function pointer which can be used to raise 
+ * corlib exceptions. The returned function has the following 
+ * signature: void (*func) (guint32 ex_token, guint32 offset); 
+ * On PPC, we pass the ip instead of the offset
+ */
+gpointer
+mono_arch_get_throw_corlib_exception_full (guint32 *code_size, MonoJumpInfo **ji, gboolean aot)
+{
 	int size = MONO_PPC_32_64_CASE (168, 304) + PPC_FTNPTR_SIZE;
 
-	if (inited)
-		return start;
-	code = mono_global_codeman_reserve (size);
-	start = mono_arch_get_throw_exception_generic (code, size, TRUE, FALSE);
-	inited = 1;
-	return start;
+	if (aot)
+		size += 64;
+	return mono_arch_get_throw_exception_generic (size, code_size, ji, TRUE, FALSE, aot);
 }
 
 /* mono_arch_find_jit_info:
@@ -507,7 +548,7 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 	if (prev_ji && (ip > prev_ji->code_start && ((guint8*)ip < ((guint8*)prev_ji->code_start) + prev_ji->code_size)))
 		ji = prev_ji;
 	else
-		ji = mini_jit_info_table_find (domain, ip);
+		ji = mini_jit_info_table_find (domain, ip, NULL);
 
 	if (managed)
 		*managed = FALSE;
@@ -563,12 +604,12 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 		*new_ctx = *ctx;
 		setup_context (new_ctx);
 
-		if ((ji = mini_jit_info_table_find (domain, (gpointer)(*lmf)->eip))) {
+		if ((ji = mini_jit_info_table_find (domain, (gpointer)(*lmf)->eip, NULL))) {
 		} else {
 			if (!(*lmf)->method)
 				return (gpointer)-1;
 
-			memset (res, 0, sizeof (MonoJitInfo));
+			memset (res, 0, MONO_SIZEOF_JIT_INFO);
 			res->method = (*lmf)->method;
 		}
 
@@ -596,30 +637,42 @@ mono_arch_find_jit_info (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInf
 void
 mono_arch_sigctx_to_monoctx (void *ctx, MonoContext *mctx)
 {
+#ifdef MONO_CROSS_COMPILE
+	g_assert_not_reached ();
+#else
 	os_ucontext *uc = ctx;
 
 	mctx->sc_ir = UCONTEXT_REG_NIP(uc);
 	mctx->sc_sp = UCONTEXT_REG_Rn(uc, 1);
 	memcpy (&mctx->regs, &UCONTEXT_REG_Rn(uc, 13), sizeof (gulong) * MONO_SAVED_GREGS);
 	memcpy (&mctx->fregs, &UCONTEXT_REG_FPRn(uc, 14), sizeof (double) * MONO_SAVED_FREGS);
+#endif
 }
 
 void
 mono_arch_monoctx_to_sigctx (MonoContext *mctx, void *ctx)
 {
+#ifdef MONO_CROSS_COMPILE
+	g_assert_not_reached ();
+#else
 	os_ucontext *uc = ctx;
 
 	UCONTEXT_REG_NIP(uc) = mctx->sc_ir;
 	UCONTEXT_REG_Rn(uc, 1) = mctx->sc_sp;
 	memcpy (&UCONTEXT_REG_Rn(uc, 13), &mctx->regs, sizeof (gulong) * MONO_SAVED_GREGS);
 	memcpy (&UCONTEXT_REG_FPRn(uc, 14), &mctx->fregs, sizeof (double) * MONO_SAVED_FREGS);
+#endif
 }
 
 gpointer
 mono_arch_ip_from_context (void *sigctx)
 {
+#ifdef MONO_CROSS_COMPILE
+	g_assert_not_reached ();
+#else
 	os_ucontext *uc = sigctx;
 	return (gpointer)UCONTEXT_REG_NIP(uc);
+#endif
 }
 
 static void
@@ -628,7 +681,7 @@ altstack_handle_and_restore (void *sigctx, gpointer obj, gboolean test_only)
 	void (*restore_context) (MonoContext *);
 	MonoContext mctx;
 
-	restore_context = mono_arch_get_restore_context ();
+	restore_context = mono_get_restore_context ();
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
 	mono_handle_exception (&mctx, obj, (gpointer)mctx.sc_ir, test_only);
 	restore_context (&mctx);
@@ -637,10 +690,13 @@ altstack_handle_and_restore (void *sigctx, gpointer obj, gboolean test_only)
 void
 mono_arch_handle_altstack_exception (void *sigctx, gpointer fault_addr, gboolean stack_ovf)
 {
+#ifdef MONO_CROSS_COMPILE
+	g_assert_not_reached ();
+#else
 #ifdef MONO_ARCH_USE_SIGACTION
 	os_ucontext *uc = (ucontext_t*)sigctx;
 	os_ucontext *uc_copy;
-	MonoJitInfo *ji = mini_jit_info_table_find (mono_domain_get (), mono_arch_ip_from_context (sigctx));
+	MonoJitInfo *ji = mini_jit_info_table_find (mono_domain_get (), mono_arch_ip_from_context (sigctx), NULL);
 	gpointer *sp;
 	int frame_size;
 
@@ -693,6 +749,8 @@ mono_arch_handle_altstack_exception (void *sigctx, gpointer fault_addr, gboolean
 	UCONTEXT_REG_Rn(uc, PPC_FIRST_ARG_REG + 1) = 0;
 	UCONTEXT_REG_Rn(uc, PPC_FIRST_ARG_REG + 2) = 0;
 #endif
+
+#endif /* !MONO_CROSS_COMPILE */
 }
 
 gboolean

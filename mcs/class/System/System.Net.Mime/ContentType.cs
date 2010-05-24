@@ -162,11 +162,23 @@ namespace System.Net.Mime {
 						sb.Append ("; ");
 						sb.Append (pair.Key);
 						sb.Append ("=");
-						sb.Append (EncodeSubjectRFC2047 (pair.Value as string, enc));
+						sb.Append (WrapIfEspecialsExist (EncodeSubjectRFC2047 (pair.Value as string, enc)));
 					}
 				}
 			}
 			return sb.ToString ();
+		}
+
+		// see RFC 2047
+		static readonly char [] especials = {'(', ')', '<', '>', '@', ',', ';', ':', '<', '>', '/', '[', ']', '?', '.', '='};
+
+		static string WrapIfEspecialsExist (string s)
+		{
+			s = s.Replace ("\"", "\\\"");
+			if (s.IndexOfAny (especials) >= 0)
+				return '"' + s + '"';
+			else
+				return s;
 		}
 
 		internal static Encoding GuessEncoding (string s)
@@ -182,8 +194,12 @@ namespace System.Net.Mime {
 			if (Encoding.ASCII.Equals (enc))
 				return TransferEncoding.SevenBit;
 			else if (Encoding.UTF8.CodePage == enc.CodePage ||
-			    Encoding.Unicode.CodePage == enc.CodePage ||
-			    Encoding.UTF32.CodePage == enc.CodePage)
+#if !NET_2_1
+			    Encoding.Unicode.CodePage == enc.CodePage || Encoding.UTF32.CodePage == enc.CodePage
+#else
+			    Encoding.Unicode.CodePage == enc.CodePage
+#endif
+					 )
 				return TransferEncoding.Base64;
 			else
 				return TransferEncoding.QuotedPrintable;

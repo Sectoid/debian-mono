@@ -130,7 +130,7 @@ namespace System.ServiceModel
 			return implementation;				
 		}
 
-		public void IncrementManualFlowControlLimit (int incrementBy)
+		public int IncrementManualFlowControlLimit (int incrementBy)
 		{
 			throw new NotImplementedException ();
 		}
@@ -167,18 +167,29 @@ namespace System.ServiceModel
 		{
 		}
 
+		[MonoTODO]
+		protected override void OnFaulted ()
+		{
+			base.OnFaulted ();
+		}
+
+		[MonoTODO]
 		protected override void OnClosed ()
 		{
+			base.OnClosed ();
 		}
 
+		[MonoTODO]
 		protected override void OnOpened ()
 		{
+			base.OnOpened ();
 		}
 
-		protected override void OnOpening () {
+		protected override void OnOpening ()
+		{
+			base.OnOpening ();
 			if (Behavior != null)
 				Behavior.Initialize (this);
-			base.OnOpening ();
 		}
 
 		protected override IAsyncResult OnBeginOpen (

@@ -39,92 +39,226 @@ namespace System.ServiceModel
 	public class DuplexChannelFactory<TChannel> : ChannelFactory<TChannel>
 	{
 		InstanceContext callback_instance;
-		
-		[MonoTODO]
+		Type callback_instance_type;
+
+		public DuplexChannelFactory (Type callbackInstanceType)
+			: base ()
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
+		public DuplexChannelFactory (Type callbackInstanceType,
+			string endpointConfigurationName)
+			: base (endpointConfigurationName)
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
+		public DuplexChannelFactory (Type callbackInstanceType,
+			string endpointConfigurationName,
+			EndpointAddress remoteAddress)
+			: base (endpointConfigurationName, remoteAddress)
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
+		public DuplexChannelFactory (Type callbackInstanceType,
+			ServiceEndpoint endpoint)
+			: base (endpoint)
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
+		public DuplexChannelFactory (Type callbackInstanceType,
+			Binding binding)
+			: base (binding)
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
+		public DuplexChannelFactory (Type callbackInstanceType,
+			Binding binding,
+			string remoteAddress)
+			: base (binding, new EndpointAddress (remoteAddress))
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
+		public DuplexChannelFactory (Type callbackInstanceType,
+			Binding binding,
+			EndpointAddress remoteAddress)
+			: base (binding, remoteAddress)
+		{
+			callback_instance_type = callbackInstanceType;
+		}
+
 		public DuplexChannelFactory (object callbackInstance)
+			: this (new InstanceContext (callbackInstance))
 		{
 		}
 
-		[MonoTODO]
 		public DuplexChannelFactory (object callbackInstance,
 			string endpointConfigurationName)
+			: this (new InstanceContext (callbackInstance), endpointConfigurationName)
 		{
-			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
 		public DuplexChannelFactory (object callbackInstance,
 			string endpointConfigurationName,
 			EndpointAddress remoteAddress)
+			: this (new InstanceContext (callbackInstance), endpointConfigurationName, remoteAddress)
 		{
-			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
 		public DuplexChannelFactory (object callbackInstance,
 			ServiceEndpoint endpoint)
+			: this (new InstanceContext (callbackInstance), endpoint)
 		{
-			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
 		public DuplexChannelFactory (object callbackInstance,
 			Binding binding)
+			: this (new InstanceContext (callbackInstance), binding)
 		{
-			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
+		public DuplexChannelFactory (object callbackInstance,
+			Binding binding,
+			string remoteAddress)
+			: this (callbackInstance, binding, new EndpointAddress (remoteAddress))
+		{
+		}
+
 		public DuplexChannelFactory (object callbackInstance,
 			Binding binding,
 			EndpointAddress remoteAddress)
+			: this (new InstanceContext (callbackInstance), binding, remoteAddress)
 		{
-			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
-		public DuplexChannelFactory (InstanceContext callbackInstance,
-			Binding binding)
-		{
-			throw new NotImplementedException ();
-		}
-
-		[MonoTODO]
-		public DuplexChannelFactory (InstanceContext callbackInstance,
-			Binding binding,
-			EndpointAddress remoteAddress) : base (binding, remoteAddress)
+		public DuplexChannelFactory (InstanceContext callbackInstance)
+			: base ()
 		{
 			callback_instance = callbackInstance;
 		}
 
-		[MonoTODO]
+		public DuplexChannelFactory (InstanceContext callbackInstance,
+			Binding binding)
+			: base (binding)
+		{
+			callback_instance = callbackInstance;
+		}
+
+		public DuplexChannelFactory (InstanceContext callbackInstance,
+			Binding binding,
+			string remoteAddress)
+			: this (callbackInstance, binding, new EndpointAddress (remoteAddress))
+		{
+		}
+
+		public DuplexChannelFactory (InstanceContext callbackInstance,
+			Binding binding,
+			EndpointAddress remoteAddress)
+			: base (binding, remoteAddress)
+		{
+			callback_instance = callbackInstance;
+		}
+
 		public DuplexChannelFactory (InstanceContext callbackInstance,
 			string endpointConfigurationName,
 			EndpointAddress remoteAddress)
+			: base (endpointConfigurationName, remoteAddress)
 		{
-			throw new NotImplementedException ();
+			callback_instance = callbackInstance;
 		}
 
-		[MonoTODO]
 		public DuplexChannelFactory (InstanceContext callbackInstance,
 			string endpointConfigurationName)
+			: base (endpointConfigurationName)
 		{
-			throw new NotImplementedException ();
+			callback_instance = callbackInstance;
 		}
 
-		[MonoTODO]
 		public DuplexChannelFactory (InstanceContext callbackInstance,
 			ServiceEndpoint endpoint)
+			: base (endpoint)
 		{
-			throw new NotImplementedException ();
+			callback_instance = callbackInstance;
 		}
-		
-		[MonoTODO]
-		public static TChannel CreateChannel (InstanceContext callbackInstance, 
-		                                      Binding binding, 
-		                                      EndpointAddress endpointAddress)
+
+		// CreateChannel() instance methods
+
+		public TChannel CreateChannel (InstanceContext callbackInstance)
 		{
-			throw new NotImplementedException ();
+			return CreateChannel (callbackInstance, Endpoint.Address, null);
 		}
+
+		public override TChannel CreateChannel (EndpointAddress address, Uri via)
+		{
+			return CreateChannel (callback_instance, address, via);
+		}
+
+		public TChannel CreateChannel (InstanceContext callbackInstance, EndpointAddress address)
+		{
+			return CreateChannel (callbackInstance, address, null);
+		}
+
+		public virtual TChannel CreateChannel (InstanceContext callbackInstance, EndpointAddress address, Uri via)
+		{
+			if (callbackInstance == null)
+				throw new ArgumentNullException ("callbackInstance");
+
+			EnsureOpened ();
+			Type type = ClientProxyGenerator.CreateProxyType (typeof (TChannel), Endpoint.Contract, true);
+			// in .NET and SL2, it seems that the proxy is RealProxy.
+			// But since there is no remoting in SL2 (and we have
+			// no special magic), we have to use different approach
+			// that should work either.
+			object proxy = Activator.CreateInstance (type, new object [] {Endpoint, this, address, via});
+
+			((DuplexClientRuntimeChannel) proxy).CallbackInstance = callbackInstance;
+
+			return (TChannel) proxy;
+		}
+
+		// CreateChannel() factory methods
+
+		static TChannel CreateChannelCore (DuplexChannelFactory<TChannel> cf, Func<DuplexChannelFactory<TChannel>,TChannel> f)
+		{
+			var ch = f (cf);
+			((CommunicationObject) (object) ch).Closed += delegate { cf.Close (); };
+			return ch;
+		}
+
+		public static TChannel CreateChannel (object callbackObject, string endpointConfigurationName)
+		{
+			return CreateChannel (new InstanceContext (callbackObject), endpointConfigurationName);
+		}
+
+		public static TChannel CreateChannel (InstanceContext callbackInstance, string endpointConfigurationName)
+		{
+			return new DuplexChannelFactory<TChannel> (callbackInstance, endpointConfigurationName).CreateChannel (callbackInstance);
+		}
+
+		public static TChannel CreateChannel (object callbackObject, Binding binding, EndpointAddress endpointAddress)
+		{
+			return CreateChannel (new InstanceContext (callbackObject), binding, endpointAddress);
+		}
+
+		public static TChannel CreateChannel (InstanceContext callbackInstance, Binding binding, EndpointAddress endpointAddress)
+		{
+			return new DuplexChannelFactory<TChannel> (callbackInstance, binding, endpointAddress).CreateChannel (callbackInstance);
+		}
+
+		public static TChannel CreateChannel (object callbackObject, Binding binding, EndpointAddress endpointAddress, Uri via)
+		{
+			return CreateChannel (new InstanceContext (callbackObject), binding, endpointAddress, via);
+		}
+
+		public static TChannel CreateChannel (InstanceContext callbackInstance, Binding binding, EndpointAddress endpointAddress, Uri via)
+		{
+			return new DuplexChannelFactory<TChannel> (callbackInstance, binding).CreateChannel (callbackInstance, endpointAddress, via);
+		}
+
 	}
 }

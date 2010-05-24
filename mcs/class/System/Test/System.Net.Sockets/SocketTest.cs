@@ -138,12 +138,10 @@ namespace MonoTests.System.Net.Sockets
 			bool block;
 
 			block = BlockingConnect(true);
-			Assertion.AssertEquals ("BlockingStatus01",
-						block, true);
+			Assert.AreEqual (block, true, "BlockingStatus01");
 
 			block = BlockingConnect(false);
-			Assertion.AssertEquals ("BlockingStatus02",
-						block, false);
+			Assert.AreEqual (block, false, "BlockingStatus02");
 		}
 
 		static bool CFAConnected = false;
@@ -159,6 +157,22 @@ namespace MonoTests.System.Net.Sockets
 			}
 
 			CFACalledBack.Set ();
+		}
+
+		[Test] // Connect (IPEndPoint)
+		public void Connect1_RemoteEP_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork,
+				SocketType.Stream, ProtocolType.Tcp);
+			try {
+				s.Connect ((IPEndPoint) null);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("remoteEP", ex.ParamName, "#5");
+			}
 		}
 
 		[Test]
@@ -180,8 +194,7 @@ namespace MonoTests.System.Net.Sockets
 					   sock);
 			CFACalledBack.WaitOne ();
 
-			Assertion.AssertEquals ("ConnectFail", CFAConnected,
-						false);
+			Assert.AreEqual (CFAConnected, false, "ConnectFail");
 		}
 		
 #if !TARGET_JVM
@@ -215,14 +228,14 @@ namespace MonoTests.System.Net.Sockets
 				ArrayList empty = new ArrayList ();
 				list.Add (acc);
 				Socket.Select (list, empty, empty, 100);
-				Assertion.AssertEquals ("#01", 0, empty.Count);
-				Assertion.AssertEquals ("#02", 1, list.Count);
+				Assert.AreEqual (0, empty.Count, "#01");
+				Assert.AreEqual (1, list.Count, "#02");
 				Socket.Select (empty, list, empty, 100);
-				Assertion.AssertEquals ("#03", 0, empty.Count);
-				Assertion.AssertEquals ("#04", 1, list.Count);
+				Assert.AreEqual (0, empty.Count, "#03");
+				Assert.AreEqual (1, list.Count, "#04");
 				Socket.Select (list, empty, empty, -1);
-				Assertion.AssertEquals ("#05", 0, empty.Count);
-				Assertion.AssertEquals ("#06", 1, list.Count);
+				Assert.AreEqual (0, empty.Count, "#05");
+				Assert.AreEqual (1, list.Count, "#06");
 				// Need to read the 10 bytes from the client to avoid a RST
 				byte [] bytes = new byte [10];
 				acc.Receive (bytes);
@@ -269,53 +282,12 @@ namespace MonoTests.System.Net.Sockets
 
 		[Test]
 		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed1 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
-			s.Close();
-
-			s.ReceiveFrom (buf, ref ep);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
 		public void Disposed2 ()
 		{
 			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 			s.Close();
 
 			s.Blocking = true;
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed3 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			s.Close();
-
-			s.GetSocketOption (0, 0);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed4 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			s.Close();
-
-			s.GetSocketOption (0, 0, null);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed5 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			s.Close();
-
-			s.GetSocketOption (0, 0, 0);
 		}
 
 		[Test]
@@ -336,80 +308,6 @@ namespace MonoTests.System.Net.Sockets
 			s.Close();
 
 			s.Poll (100, 0);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed8 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			s.Close();
-
-			s.Receive (buf);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed9 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			s.Close();
-
-			s.Receive (buf, 0);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed10 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			s.Close();
-
-			s.Receive (buf, 10, 0);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed11 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
-			s.Close();
-
-			s.Receive (buf, 0, 10, 0);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed12 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
-			s.Close();
-
-			s.ReceiveFrom (buf, 0, ref ep);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed13 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
-			s.Close();
-
-			s.ReceiveFrom (buf, 10, 0, ref ep);
-		}
-
-		[Test]
-		[ExpectedException (typeof (ObjectDisposedException))]
-		public void Disposed14 ()
-		{
-			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
-			s.Close();
-
-			s.ReceiveFrom (buf, 0, 10, 0, ref ep);
 		}
 
 		[Test]
@@ -447,7 +345,6 @@ namespace MonoTests.System.Net.Sockets
 		public void Disposed18 ()
 		{
 			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
 			s.Close();
 
 			s.Send (buf, 0, 10, 0);
@@ -502,7 +399,6 @@ namespace MonoTests.System.Net.Sockets
 		public void Disposed23 ()
 		{
 			Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-			EndPoint ep = new IPEndPoint (IPAddress.Any, 31337);
 			s.Close();
 
 			s.Shutdown (0);
@@ -548,7 +444,7 @@ namespace MonoTests.System.Net.Sockets
 		}
 
 		[Test]
-		public void SocketError ()
+		public void SocketErrorTest ()
 		{
 			Socket sock = new Socket (AddressFamily.InterNetwork,
 						  SocketType.Stream,
@@ -566,18 +462,15 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("SocketError wait timed out");
 			}
 
-			Assertion.AssertEquals ("SocketError #1", false,
-						sock.Connected);
+			Assert.AreEqual (false, sock.Connected, "SocketError #1");
 
 			int error;
 
 			error = (int)sock.GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error);
-			Assertion.AssertEquals ("SocketError #2", 10061,
-						error);
+			Assert.AreEqual (10061, error, "SocketError #2");
 
 			error = (int)sock.GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error);
-			Assertion.AssertEquals ("SocketError #3", 10061,
-						error);
+			Assert.AreEqual (10061, error, "SocketError #3");
 
 			sock.Close ();
 		}
@@ -596,8 +489,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("DontFragmentDefaultTcp",
-						false, sock.DontFragment);
+			Assert.AreEqual (false, sock.DontFragment, "DontFragmentDefaultTcp");
 
 			sock.Close ();
 		}
@@ -612,8 +504,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.DontFragment = true;
 			
-			Assertion.AssertEquals ("DontFragmentChangeTcp",
-						true, sock.DontFragment);
+			Assert.AreEqual (true, sock.DontFragment, "DontFragmentChangeTcp");
 
 			sock.Close ();
 		}
@@ -625,8 +516,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Dgram,
 						  ProtocolType.Udp);
 			
-			Assertion.AssertEquals ("DontFragmentDefaultUdp",
-						false, sock.DontFragment);
+			Assert.AreEqual (false, sock.DontFragment, "DontFragmentDefaultUdp");
 
 			sock.Close ();
 		}
@@ -641,8 +531,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.DontFragment = true;
 			
-			Assertion.AssertEquals ("DontFragmentChangeUdp",
-						true, sock.DontFragment);
+			Assert.AreEqual (true, sock.DontFragment, "DontFragmentChangeUdp");
 
 			sock.Close ();
 		}
@@ -705,8 +594,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Dgram,
 						  ProtocolType.Udp);
 			
-			Assertion.AssertEquals ("EnableBroadcastDefaultUdp",
-						false, sock.EnableBroadcast);
+			Assert.AreEqual (false, sock.EnableBroadcast, "EnableBroadcastDefaultUdp");
 
 			sock.Close ();
 		}
@@ -739,8 +627,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.EnableBroadcast = true;
 			
-			Assertion.AssertEquals ("EnableBroadcastChangeUdp",
-						true, sock.EnableBroadcast);
+			Assert.AreEqual (true, sock.EnableBroadcast, "EnableBroadcastChangeUdp");
 
 			sock.Close ();
 		}
@@ -772,9 +659,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.ExclusiveAddressUse = true;
 			
-			Assertion.AssertEquals ("ExclusiveAddressUseUnbound",
-						true,
-						sock.ExclusiveAddressUse);
+			Assert.AreEqual (true, sock.ExclusiveAddressUse, "ExclusiveAddressUseUnbound");
 			
 			sock.Close ();
 		}
@@ -815,12 +700,10 @@ namespace MonoTests.System.Net.Sockets
 			IPEndPoint ep = new IPEndPoint (IPAddress.Loopback,
 							BogusPort);
 			
-			Assertion.AssertEquals ("IsBoundTcp #1", false,
-						sock.IsBound);
+			Assert.AreEqual (false, sock.IsBound, "IsBoundTcp #1");
 			
 			sock.Bind (ep);
-			Assertion.AssertEquals ("IsBoundTcp #2", true,
-						sock.IsBound);
+			Assert.AreEqual (true, sock.IsBound, "IsBoundTcp #2");
 
 			sock.Listen (1);
 			
@@ -828,20 +711,16 @@ namespace MonoTests.System.Net.Sockets
 						   SocketType.Stream,
 						   ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("IsBoundTcp #3", false,
-						sock2.IsBound);
+			Assert.AreEqual (false, sock2.IsBound, "IsBoundTcp #3");
 			
 			sock2.Connect (ep);
-			Assertion.AssertEquals ("IsBoundTcp #4", true,
-						sock2.IsBound);
+			Assert.AreEqual (true, sock2.IsBound, "IsBoundTcp #4");
 			
 			sock2.Close ();
-			Assertion.AssertEquals ("IsBoundTcp #5", true,
-						sock2.IsBound);
+			Assert.AreEqual (true, sock2.IsBound, "IsBoundTcp #5");
 
 			sock.Close ();
-			Assertion.AssertEquals ("IsBoundTcp #6", true,
-						sock.IsBound);
+			Assert.AreEqual (true, sock.IsBound, "IsBoundTcp #6");
 		}
 
 		[Test]
@@ -853,32 +732,26 @@ namespace MonoTests.System.Net.Sockets
 			IPEndPoint ep = new IPEndPoint (IPAddress.Loopback,
 							BogusPort);
 			
-			Assertion.AssertEquals ("IsBoundUdp #1", false,
-						sock.IsBound);
+			Assert.AreEqual (false, sock.IsBound, "IsBoundUdp #1");
 			
 			sock.Bind (ep);
-			Assertion.AssertEquals ("IsBoundUdp #2", true,
-						sock.IsBound);
+			Assert.AreEqual (true, sock.IsBound, "IsBoundUdp #2");
 			
 			sock.Close ();
-			Assertion.AssertEquals ("IsBoundUdp #3", true,
-						sock.IsBound);
+			Assert.AreEqual (true, sock.IsBound, "IsBoundUdp #3");
 			
 
 			sock = new Socket (AddressFamily.InterNetwork,
 					   SocketType.Dgram,
 					   ProtocolType.Udp);
 			
-			Assertion.AssertEquals ("IsBoundUdp #4", false,
-						sock.IsBound);
+			Assert.AreEqual (false, sock.IsBound, "IsBoundUdp #4");
 			
 			sock.Connect (ep);
-			Assertion.AssertEquals ("IsBoundUdp #5", true,
-						sock.IsBound);
+			Assert.AreEqual (true, sock.IsBound, "IsBoundUdp #5");
 			
 			sock.Close ();
-			Assertion.AssertEquals ("IsBoundUdp #6", true,
-						sock.IsBound);
+			Assert.AreEqual (true, sock.IsBound, "IsBoundUdp #6");
 		}
 
 		[Test]
@@ -941,8 +814,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Dgram,
 						  ProtocolType.Udp);
 			
-			Assertion.AssertEquals ("MulticastLoopbackDefaultUdp",
-						true, sock.MulticastLoopback);
+			Assert.AreEqual (true, sock.MulticastLoopback, "MulticastLoopbackDefaultUdp");
 			
 			sock.Close ();
 		}
@@ -956,8 +828,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.MulticastLoopback = false;
 			
-			Assertion.AssertEquals ("MulticastLoopbackChangeUdp",
-						false, sock.MulticastLoopback);
+			Assert.AreEqual (false, sock.MulticastLoopback, "MulticastLoopbackChangeUdp");
 			
 			sock.Close ();
 		}
@@ -985,8 +856,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("ReceiveBufferSizeDefault",
-						8192, sock.ReceiveBufferSize);
+			Assert.AreEqual (8192, sock.ReceiveBufferSize, "ReceiveBufferSizeDefault");
 			
 			sock.Close ();
 		}
@@ -999,8 +869,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Dgram,
 						  ProtocolType.Udp);
 			
-			Assertion.AssertEquals ("ReceiveBufferSizeDefaultUdp",
-						8192, sock.ReceiveBufferSize);
+			Assert.AreEqual (8192, sock.ReceiveBufferSize, "ReceiveBufferSizeDefaultUdp");
 			
 			sock.Close ();
 		}
@@ -1014,8 +883,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.ReceiveBufferSize = 16384;
 			
-			Assertion.AssertEquals ("ReceiveBufferSizeChange",
-						16384, sock.ReceiveBufferSize);
+			Assert.AreEqual (16384, sock.ReceiveBufferSize, "ReceiveBufferSizeChange");
 			
 			sock.Close ();
 		}
@@ -1041,8 +909,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("SendBufferSizeDefault",
-						8192, sock.SendBufferSize);
+			Assert.AreEqual (8192, sock.SendBufferSize, "SendBufferSizeDefault");
 			
 			sock.Close ();
 		}
@@ -1055,8 +922,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Dgram,
 						  ProtocolType.Udp);
 			
-			Assertion.AssertEquals ("SendBufferSizeDefaultUdp",
-						8192, sock.SendBufferSize);
+			Assert.AreEqual (8192, sock.SendBufferSize, "SendBufferSizeDefaultUdp");
 			
 			sock.Close ();
 		}
@@ -1070,8 +936,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.SendBufferSize = 16384;
 			
-			Assertion.AssertEquals ("SendBufferSizeChange",
-						16384, sock.SendBufferSize);
+			Assert.AreEqual (16384, sock.SendBufferSize, "SendBufferSizeChange");
 			
 			sock.Close ();
 		}
@@ -1099,7 +964,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.Ttl = 255;
 			
-			Assertion.AssertEquals ("TtlChange", 255, sock.Ttl);
+			Assert.AreEqual (255, sock.Ttl, "TtlChange");
 			
 			sock.Close ();
 		}
@@ -1159,9 +1024,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("UseOnlyOverlappedIODefault",
-						false,
-						sock.UseOnlyOverlappedIO);
+			Assert.AreEqual (false, sock.UseOnlyOverlappedIO, "UseOnlyOverlappedIODefault");
 			
 			sock.Close ();
 		}
@@ -1189,9 +1052,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.UseOnlyOverlappedIO = true;
 			
-			Assertion.AssertEquals ("UseOnlyOverlappedIOChange",
-						true,
-						sock.UseOnlyOverlappedIO);
+			Assert.AreEqual (true, sock.UseOnlyOverlappedIO, "UseOnlyOverlappedIOChange");
 			
 			sock.Close ();
 		}
@@ -1216,8 +1077,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("SendTimeoutDefault",
-						0, sock.SendTimeout);
+			Assert.AreEqual (0, sock.SendTimeout, "SendTimeoutDefault");
 			
 			sock.Close ();
 		}
@@ -1233,25 +1093,20 @@ namespace MonoTests.System.Net.Sockets
 			 * the MSDN docs, but the MS runtime doesn't
 			 */
 			sock.SendTimeout = 50;
-			Assertion.AssertEquals ("SendTimeoutChange #1",
-						50, Approximate (50, sock.SendTimeout));
+			Assert.AreEqual (50, Approximate (50, sock.SendTimeout), "SendTimeoutChange #1");
 			
 			sock.SendTimeout = 2000;
-			Assertion.AssertEquals ("SendTimeoutChange #2",
-						2000, Approximate (2000, sock.SendTimeout));
+			Assert.AreEqual (2000, Approximate (2000, sock.SendTimeout), "SendTimeoutChange #2");
 			
 			sock.SendTimeout = 0;
-			Assertion.AssertEquals ("SendTimeoutChange #3",
-						0, Approximate (0, sock.SendTimeout));
+			Assert.AreEqual (0, Approximate (0, sock.SendTimeout), "SendTimeoutChange #3");
 			
 			/* Should be the same as setting 0 */
 			sock.SendTimeout = -1;
-			Assertion.AssertEquals ("SendTimeoutChange #4",
-						0, sock.SendTimeout);
+			Assert.AreEqual (0, sock.SendTimeout, "SendTimeoutChange #4");
 
 			sock.SendTimeout = 65536;
-			Assertion.AssertEquals ("SendTimeoutChange #5",
-						65536, Approximate (65536, sock.SendTimeout));
+			Assert.AreEqual (65536, Approximate (65536, sock.SendTimeout), "SendTimeoutChange #5");
 			
 			try {
 				sock.SendTimeout = -2;
@@ -1284,8 +1139,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("ReceiveTimeoutDefault",
-						0, sock.ReceiveTimeout);
+			Assert.AreEqual (0, sock.ReceiveTimeout, "ReceiveTimeoutDefault");
 			
 			sock.Close ();
 		}
@@ -1298,25 +1152,20 @@ namespace MonoTests.System.Net.Sockets
 						  ProtocolType.Tcp);
 			
 			sock.ReceiveTimeout = 50;
-			Assertion.AssertEquals ("ReceiveTimeoutChange #1",
-						50, Approximate (50, sock.ReceiveTimeout));
+			Assert.AreEqual (50, Approximate (50, sock.ReceiveTimeout), "ReceiveTimeoutChange #1");
 			
 			sock.ReceiveTimeout = 2000;
-			Assertion.AssertEquals ("ReceiveTimeoutChange #2",
-						2000, Approximate (2000, sock.ReceiveTimeout));
+			Assert.AreEqual (2000, Approximate (2000, sock.ReceiveTimeout), "ReceiveTimeoutChange #2");
 			
 			sock.ReceiveTimeout = 0;
-			Assertion.AssertEquals ("ReceiveTimeoutChange #3",
-						0, sock.ReceiveTimeout);
+			Assert.AreEqual (0, sock.ReceiveTimeout, "ReceiveTimeoutChange #3");
 			
 			/* Should be the same as setting 0 */
 			sock.ReceiveTimeout = -1;
-			Assertion.AssertEquals ("ReceiveTimeoutChange #4",
-						0, sock.ReceiveTimeout);
+			Assert.AreEqual (0, sock.ReceiveTimeout, "ReceiveTimeoutChange #4");
 
 			sock.ReceiveTimeout = 65536;
-			Assertion.AssertEquals ("ReceiveTimeoutChange #5",
-						65536, Approximate (65536, sock.ReceiveTimeout));
+			Assert.AreEqual (65536, Approximate (65536, sock.ReceiveTimeout), "ReceiveTimeoutChange #5");
 			
 			try {
 				sock.ReceiveTimeout = -2;
@@ -1349,8 +1198,7 @@ namespace MonoTests.System.Net.Sockets
 						  SocketType.Stream,
 						  ProtocolType.Tcp);
 			
-			Assertion.AssertEquals ("NoDelayDefaultTcp", false,
-						sock.NoDelay);
+			Assert.AreEqual (false, sock.NoDelay, "NoDelayDefaultTcp");
 			
 			sock.Close ();
 		}
@@ -1364,8 +1212,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.NoDelay = true;
 			
-			Assertion.AssertEquals ("NoDelayChangeTcp", true,
-						sock.NoDelay);
+			Assert.AreEqual (true, sock.NoDelay, "NoDelayChangeTcp");
 			
 			sock.Close ();
 		}
@@ -1491,14 +1338,10 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("BeginAccept wait timed out");
 			}
 			
-			Assertion.AssertEquals ("BeginAccept #1", true,
-						BAAccepted);
-			Assertion.AssertEquals ("BeginAccept #2", true,
-						BASocket.Connected);
-			Assertion.AssertEquals ("BeginAccept #3", false,
-						sock.Connected);
-			Assertion.AssertEquals ("BeginAccept #4", true,
-						conn.Connected);
+			Assert.AreEqual (true, BAAccepted, "BeginAccept #1");
+			Assert.AreEqual (true, BASocket.Connected, "BeginAccept #2");
+			Assert.AreEqual (false, sock.Connected, "BeginAccept #3");
+			Assert.AreEqual (true, conn.Connected, "BeginAccept #4");
 
 			BASocket.Close ();
 			conn.Close ();
@@ -1564,17 +1407,11 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("BeginAcceptData wait timed out");
 			}
 			
-			Assertion.AssertEquals ("BeginAcceptData #1", true,
-						BADAccepted);
-			Assertion.AssertEquals ("BeginAcceptData #2", true,
-						BADSocket.Connected);
-			Assertion.AssertEquals ("BeginAcceptData #3", false,
-						sock.Connected);
-			Assertion.AssertEquals ("BeginAcceptData #4", true,
-						conn.Connected);
-			Assertion.AssertEquals ("BeginAcceptData #5",
-						send_bytes.Length,
-						BADByteCount);
+			Assert.AreEqual (true, BADAccepted, "BeginAcceptData #1");
+			Assert.AreEqual (true, BADSocket.Connected, "BeginAcceptData #2");
+			Assert.AreEqual (false, sock.Connected, "BeginAcceptData #3");
+			Assert.AreEqual (true, conn.Connected, "BeginAcceptData #4");
+			Assert.AreEqual (send_bytes.Length, BADByteCount, "BeginAcceptData #5");
 			
 			/* The MS runtime gives the returned data in a
 			 * much bigger array.  TODO: investigate
@@ -1585,7 +1422,7 @@ namespace MonoTests.System.Net.Sockets
 					"BeginAcceptData #6");
 
 			for(int i = 0; i < send_bytes.Length; i++) {
-				Assertion.AssertEquals ("BeginAcceptData #" + (i+7).ToString (), send_bytes[i], BADBytes[i]);
+				Assert.AreEqual (send_bytes[i], BADBytes[i], "BeginAcceptData #" + (i+7).ToString ());
 			}
 
 			BADSocket.Close ();
@@ -1626,7 +1463,7 @@ namespace MonoTests.System.Net.Sockets
 				sock.BeginAccept (acc, 256, BADCallback, sock);
 				Assert.Fail ("BeginAcceptSocketUdp #1");
 			} catch (SocketException ex) {
-				Assertion.AssertEquals ("BeginAcceptSocketUdp #2", 10022, ex.ErrorCode);
+				Assert.AreEqual (10022, ex.ErrorCode, "BeginAcceptSocketUdp #2");
 			} catch {
 				Assert.Fail ("BeginAcceptSocketUdp #3");
 			} finally {
@@ -1700,29 +1537,15 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("BeginAcceptSocket wait timed out");
 			}
 			
-			Assertion.AssertEquals ("BeginAcceptSocket #1", true,
-						BADAccepted);
-			Assertion.AssertEquals ("BeginAcceptSocket #2", true,
-						BADSocket.Connected);
-			Assertion.AssertEquals ("BeginAcceptSocket #3", false,
-						sock.Connected);
-			Assertion.AssertEquals ("BeginAcceptSocket #4", true,
-						conn.Connected);
-			Assertion.AssertEquals ("BeginAcceptSocket #5",
-						send_bytes.Length,
-						BADByteCount);
-			Assertion.AssertEquals ("BeginAcceptSocket #6",
-						AddressFamily.InterNetwork,
-						acc.AddressFamily);
-			Assertion.AssertEquals ("BeginAcceptSocket #7",
-						SocketType.Stream,
-						acc.SocketType);
-			Assertion.AssertEquals ("BeginAcceptSocket #8",
-						ProtocolType.Tcp,
-						acc.ProtocolType);
-			Assertion.AssertEquals ("BeginAcceptSocket #9",
-						conn.LocalEndPoint,
-						acc.RemoteEndPoint);
+			Assert.AreEqual (true, BADAccepted, "BeginAcceptSocket #1");
+			Assert.AreEqual (true, BADSocket.Connected, "BeginAcceptSocket #2");
+			Assert.AreEqual (false, sock.Connected, "BeginAcceptSocket #3");
+			Assert.AreEqual (true, conn.Connected, "BeginAcceptSocket #4");
+			Assert.AreEqual (send_bytes.Length, BADByteCount, "BeginAcceptSocket #5");
+			Assert.AreEqual (AddressFamily.InterNetwork, acc.AddressFamily, "BeginAcceptSocket #6");
+			Assert.AreEqual (SocketType.Stream, acc.SocketType, "BeginAcceptSocket #7");
+			Assert.AreEqual (ProtocolType.Tcp, acc.ProtocolType, "BeginAcceptSocket #8");
+			Assert.AreEqual (conn.LocalEndPoint, acc.RemoteEndPoint, "BeginAcceptSocket #9");
 			
 			/* The MS runtime gives the returned data in a
 			 * much bigger array.  TODO: investigate
@@ -1733,7 +1556,7 @@ namespace MonoTests.System.Net.Sockets
 					"BeginAcceptSocket #10");
 
 			for(int i = 0; i < send_bytes.Length; i++) {
-				Assertion.AssertEquals ("BeginAcceptSocket #" + (i+11).ToString (), send_bytes[i], BADBytes[i]);
+				Assert.AreEqual (send_bytes[i], BADBytes[i], "BeginAcceptSocket #" + (i+11).ToString ());
 			}
 
 			BADSocket.Close ();
@@ -1833,8 +1656,7 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("BeginConnectAddressPort wait timed out");
 			}
 			
-			Assertion.AssertEquals ("BeginConnectAddressPort #1",
-						true, BCConnected);
+			Assert.AreEqual (true, BCConnected, "BeginConnectAddressPort #1");
 			
 			sock.Close ();
 			listen.Close ();
@@ -1932,16 +1754,11 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("BeginConnectMultiple wait failed");
 			}
 			
-			Assertion.AssertEquals ("BeginConnectMultiple #1",
-						true, BCConnected);
-			Assertion.AssertEquals ("BeginConnectMultiple #2",
-						AddressFamily.InterNetwork,
-						sock.RemoteEndPoint.AddressFamily);
+			Assert.AreEqual (true, BCConnected, "BeginConnectMultiple #1");
+			Assert.AreEqual (AddressFamily.InterNetwork, sock.RemoteEndPoint.AddressFamily, "BeginConnectMultiple #2");
 			IPEndPoint remep = (IPEndPoint)sock.RemoteEndPoint;
 			
-			Assertion.AssertEquals ("BeginConnectMultiple #2",
-						IPAddress.Loopback,
-						remep.Address);
+			Assert.AreEqual (IPAddress.Loopback, remep.Address, "BeginConnectMultiple #2");
 			
 			sock.Close ();
 			listen.Close ();
@@ -2123,8 +1940,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.Connect (ip, 1254);
 			
-			Assertion.AssertEquals ("BeginDisconnect #1", true,
-						sock.Connected);
+			Assert.AreEqual (true, sock.Connected, "BeginDisconnect #1");
 			
 			sock.Shutdown (SocketShutdown.Both);
 
@@ -2137,10 +1953,8 @@ namespace MonoTests.System.Net.Sockets
 				Assert.Fail ("BeginDisconnect wait timed out");
 			}
 			
-			Assertion.AssertEquals ("BeginDisconnect #2", true,
-						BDDisconnected);
-			Assertion.AssertEquals ("BeginDisconnect #3", false,
-						sock.Connected);
+			Assert.AreEqual (true, BDDisconnected, "BeginDisconnect #2");
+			Assert.AreEqual (false, sock.Connected, "BeginDisconnect #3");
 			
 			sock.Close ();
 			listen.Close ();
@@ -2184,7 +1998,7 @@ namespace MonoTests.System.Net.Sockets
 						sock);
 				Assert.Fail ("BeginSendNotConnected #1");
 			} catch (SocketException ex) {
-				Assertion.AssertEquals ("BeginSendNotConnected #2", 10057, ex.ErrorCode);
+				Assert.AreEqual (10057, ex.ErrorCode, "BeginSendNotConnected #2");
 			} catch {
 				Assert.Fail ("BeginSendNotConnected #3");
 			} finally {
@@ -2224,8 +2038,7 @@ namespace MonoTests.System.Net.Sockets
 				sock.Bind (ep2);
 				Assert.Fail ("BindTwice #1");
 			} catch (SocketException ex) {
-				Assertion.AssertEquals ("BindTwice #2",
-							10022, ex.ErrorCode);
+				Assert.AreEqual (10022, ex.ErrorCode, "BindTwice #2");
 			} catch {
 				Assert.Fail ("BindTwice #3");
 			} finally {
@@ -2250,15 +2063,13 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.Connect (ep);
 
-			Assertion.AssertEquals ("Close #1", true,
-						sock.Connected);
+			Assert.AreEqual (true, sock.Connected, "Close #1");
 			
 			sock.Close (2);
 			
 			Thread.Sleep (3000);
 			
-			Assertion.AssertEquals ("Close #2", false,
-						sock.Connected);
+			Assert.AreEqual (false, sock.Connected, "Close #2");
 			
 			listen.Close ();
 		}
@@ -2280,8 +2091,7 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.Connect (ip, 1249);
 			
-			Assertion.AssertEquals ("ConnectAddressPort #1",
-						true, sock.Connected);
+			Assert.AreEqual (true, sock.Connected, "ConnectAddressPort #1");
 			
 			sock.Close ();
 			listen.Close ();
@@ -2367,16 +2177,11 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.Connect (ips, 1251);
 			
-			Assertion.AssertEquals ("ConnectMultiple #1",
-						true, sock.Connected);
-			Assertion.AssertEquals ("ConnectMultiple #2",
-						AddressFamily.InterNetwork,
-						sock.RemoteEndPoint.AddressFamily);
+			Assert.AreEqual (true, sock.Connected, "ConnectMultiple #1");
+			Assert.AreEqual (AddressFamily.InterNetwork, sock.RemoteEndPoint.AddressFamily, "ConnectMultiple #2");
 			IPEndPoint remep = (IPEndPoint)sock.RemoteEndPoint;
 			
-			Assertion.AssertEquals ("ConnectMultiple #2",
-						IPAddress.Loopback,
-						remep.Address);
+			Assert.AreEqual (IPAddress.Loopback, remep.Address, "ConnectMultiple #2");
 			
 			sock.Close ();
 			listen.Close ();
@@ -2540,15 +2345,13 @@ namespace MonoTests.System.Net.Sockets
 			
 			sock.Connect (ip, 1255);
 			
-			Assertion.AssertEquals ("Disconnect #1", true,
-						sock.Connected);
+			Assert.AreEqual (true, sock.Connected, "Disconnect #1");
 			
 			sock.Shutdown (SocketShutdown.Both);
 
 			sock.Disconnect (false);
 
-			Assertion.AssertEquals ("BeginDisconnect #3", false,
-						sock.Connected);
+			Assert.AreEqual (false, sock.Connected, "BeginDisconnect #3");
 			
 			sock.Close ();
 			listen.Close ();
@@ -2690,8 +2493,7 @@ namespace MonoTests.System.Net.Sockets
 				sock.Listen (1);
 				Assert.Fail ("ListenNotBound #1");
 			} catch (SocketException ex) {
-				Assertion.AssertEquals ("ListenNotBound #2",
-							10022, ex.ErrorCode);
+				Assert.AreEqual (10022, ex.ErrorCode, "ListenNotBound #2");
 			} catch {
 				Assert.Fail ("ListenNotBound #3");
 			} finally {
@@ -2756,27 +2558,726 @@ namespace MonoTests.System.Net.Sockets
 			NetworkStream stream = new NetworkStream (sock);
 
 			readbyte = stream.ReadByte ();
-			Assertion.AssertEquals ("ReceiveRemoteClosed #1",
-						0, readbyte);
+			Assert.AreEqual (0, readbyte, "ReceiveRemoteClosed #1");
 			
 			stream.Read (bytes, 0, 0);
 
 			readbyte = stream.ReadByte ();
-			Assertion.AssertEquals ("ReceiveRemoteClosed #2",
-						0, readbyte);
+			Assert.AreEqual (0, readbyte, "ReceiveRemoteClosed #2");
 			
 			stream.Read (bytes, 0, 0);
 
 			readbyte = stream.ReadByte ();
-			Assertion.AssertEquals ("ReceiveRemoteClosed #3",
-						-1, readbyte);
+			Assert.AreEqual (-1, readbyte, "ReceiveRemoteClosed #3");
 
 			sock.Close ();
 
 			RRCLastRead = true;
 			RRCReady.Set ();
 		}
-		
+
+		[Test] // Receive (Byte [])
+		public void Receive1_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			try {
+				s.Receive ((byte []) null);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (Byte [])
+		public void Receive1_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			try {
+				s.Receive ((byte []) null);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // Receive (Byte [], SocketFlags)
+		public void Receive2_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			try {
+				s.Receive ((byte []) null, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (Byte [], SocketFlags)
+		public void Receive2_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			try {
+				s.Receive ((byte []) null, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // Receive (Byte [], Int32, SocketFlags)
+		public void Receive3_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			try {
+				s.Receive ((byte []) null, 0, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (Byte [], Int32, SocketFlags)
+		public void Receive3_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			try {
+				s.Receive ((byte []) null, 0, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // Receive (Byte [], Int32, Int32, SocketFlags)
+		public void Receive4_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			try {
+				s.Receive ((byte []) null, 0, 0, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (Byte [], Int32, Int32, SocketFlags)
+		public void Receive4_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			try {
+				s.Receive ((byte []) null, 0, 0, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+#if NET_2_0
+		[Test] // Receive (Byte [], Int32, Int32, SocketFlags, out SocketError)
+		public void Receive5_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			SocketError error;
+			try {
+				s.Receive ((byte []) null, 0, 0, SocketFlags.None, out error);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (Byte [], Int32, Int32, SocketFlags, out SocketError)
+		public void Receive5_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			SocketError error;
+			try {
+				s.Receive ((byte []) null, 0, 0, SocketFlags.None, out error);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // Receive (IList<ArraySegment<Byte>>)
+		public void Receive6_Buffers_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			try {
+				s.Receive ((IList<ArraySegment<byte>>) null);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffers", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (IList<ArraySegment<Byte>>)
+		public void Receive6_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			try {
+				s.Receive ((IList<ArraySegment<byte>>) null);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // Receive (IList<ArraySegment<Byte>>, SocketFlags)
+		public void Receive7_Buffers_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			try {
+				s.Receive ((IList<ArraySegment<byte>>) null, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffers", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (IList<ArraySegment<Byte>>, SocketFlags)
+		public void Receive7_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			try {
+				s.Receive ((IList<ArraySegment<byte>>) null, (SocketFlags) 666);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // Receive (IList<ArraySegment<Byte>>, SocketFlags, out SocketError)
+		public void Receive8_Buffers_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			SocketError error;
+			try {
+				s.Receive ((IList<ArraySegment<byte>>) null, (SocketFlags) 666,
+					out error);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffers", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // Receive (IList<ArraySegment<Byte>>, SocketFlags, out SocketError)
+		public void Receive8_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			SocketError error;
+			try {
+				s.Receive ((IList<ArraySegment<byte>>) null, (SocketFlags) 666,
+					out error);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+#endif
+
+		[Test] // ReceiveFrom (Byte [], ref EndPoint)
+		public void ReceiveFrom1_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom ((Byte []) null, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], ref EndPoint)
+		public void ReceiveFrom1_RemoteEP_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			byte [] buffer = new byte [0];
+			EndPoint remoteEP = null;
+			try {
+				s.ReceiveFrom (buffer, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("remoteEP", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], ref EndPoint)
+		public void ReceiveFrom1_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom ((Byte []) null, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], SocketFlags, ref EndPoint)
+		public void ReceiveFrom2_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom ((Byte []) null, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], SocketFlags, ref EndPoint)
+		public void ReceiveFrom2_RemoteEP_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = null;
+			try {
+				s.ReceiveFrom (buffer, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("remoteEP", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], SocketFlags, ref EndPoint)
+		public void ReceiveFrom2_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom ((Byte []) null, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, SocketFlags, ref EndPoint)
+		public void ReceiveFrom3_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom ((Byte []) null, -1, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, SocketFlags, ref EndPoint)
+		public void ReceiveFrom3_RemoteEP_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = null;
+			try {
+				s.ReceiveFrom (buffer, -1, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("remoteEP", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, SocketFlags, ref EndPoint)
+		public void ReceiveFrom3_Size_OutOfRange ()
+		{
+			Socket s;
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+
+			// size negative
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, -1, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#A1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#A2");
+				Assert.IsNull (ex.InnerException, "#A3");
+				Assert.IsNotNull (ex.Message, "#A4");
+				Assert.AreEqual ("size", ex.ParamName, "#A5");
+			} finally {
+				s.Close ();
+			}
+
+			// size > buffer length
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, (buffer.Length + 1), (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#B1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#B2");
+				Assert.IsNull (ex.InnerException, "#B3");
+				Assert.IsNotNull (ex.Message, "#B4");
+				Assert.AreEqual ("size", ex.ParamName, "#B5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, SocketFlags, ref EndPoint)
+		public void ReceiveFrom3_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom ((Byte []) null, -1, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, Int32, SocketFlags, EndPoint)
+		public void ReceiveFrom4_Buffer_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+
+			try {
+				s.ReceiveFrom ((Byte []) null, -1, -1, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("buffer", ex.ParamName, "#5");
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, Int32, SocketFlags, EndPoint)
+		public void ReceiveFrom4_Offset_OutOfRange ()
+		{
+			Socket s;
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+
+			// offset negative
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, -1, 0, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#A1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#A2");
+				Assert.IsNull (ex.InnerException, "#A3");
+				Assert.IsNotNull (ex.Message, "#A4");
+				Assert.AreEqual ("offset", ex.ParamName, "#A5");
+			} finally {
+				s.Close ();
+			}
+
+			// offset > buffer length
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, (buffer.Length + 1), 0, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#B1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#B2");
+				Assert.IsNull (ex.InnerException, "#B3");
+				Assert.IsNotNull (ex.Message, "#B4");
+				Assert.AreEqual ("offset", ex.ParamName, "#B5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, Int32, SocketFlags, ref IPEndPoint)
+		public void ReceiveFrom4_RemoteEP_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = null;
+
+			try {
+				s.ReceiveFrom (buffer, -1, -1, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ArgumentNullException ex) {
+				Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual ("remoteEP", ex.ParamName, "#5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, Int32, SocketFlags, EndPoint)
+		public void ReceiveFrom4_Size_OutOfRange ()
+		{
+			Socket s;
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+
+			// size negative
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, 0, -1, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#A1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#A2");
+				Assert.IsNull (ex.InnerException, "#A3");
+				Assert.IsNotNull (ex.Message, "#A4");
+				Assert.AreEqual ("size", ex.ParamName, "#A5");
+			} finally {
+				s.Close ();
+			}
+
+			// size > buffer length
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, 0, (buffer.Length + 1), (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#B1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#B2");
+				Assert.IsNull (ex.InnerException, "#B3");
+				Assert.IsNotNull (ex.Message, "#B4");
+				Assert.AreEqual ("size", ex.ParamName, "#B5");
+			} finally {
+				s.Close ();
+			}
+
+			// offset + size > buffer length
+			s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+							ProtocolType.Tcp);
+			try {
+				s.ReceiveFrom (buffer, 2, 4, (SocketFlags) 666, ref remoteEP);
+				Assert.Fail ("#C1");
+			} catch (ArgumentOutOfRangeException ex) {
+				// Specified argument was out of the range of valid values
+				Assert.AreEqual (typeof (ArgumentOutOfRangeException), ex.GetType (), "#C2");
+				Assert.IsNull (ex.InnerException, "#C3");
+				Assert.IsNotNull (ex.Message, "#C4");
+				Assert.AreEqual ("size", ex.ParamName, "#C5");
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // ReceiveFrom (Byte [], Int32, Int32, SocketFlags, ref EndPoint)
+		public void ReceiveFrom4_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream,
+				ProtocolType.Tcp);
+			s.Close ();
+
+			byte [] buffer = new byte [5];
+			EndPoint remoteEP = new IPEndPoint (IPAddress.Loopback, 8001);
+			try {
+				s.ReceiveFrom (buffer, -1, -1, (SocketFlags) 666,
+					ref remoteEP);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
 		[Test]
 		public void ReceiveRemoteClosed ()
 		{
@@ -2801,6 +3302,27 @@ namespace MonoTests.System.Net.Sockets
 			Assert.IsTrue (RRCLastRead);
 		}
 
+		//
+		// Test case for bug #471580
+		[Test]
+		public void UdpDoubleBind ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+			
+			s.Bind (new IPEndPoint (IPAddress.Any, 12345));
+			
+			Socket ss = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			ss.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+			
+			ss.Bind (new IPEndPoint (IPAddress.Any, 12345));
+
+			// If we make it this far, we succeeded.
+			
+			ss.Close ();
+			s.Close ();
+		}
+		
 #if NET_2_0
 		[Test]
                 public void ConnectedProperty ()
@@ -2828,35 +3350,652 @@ namespace MonoTests.System.Net.Sockets
 			}
 		}
 #endif
-		[Test]
-		public void SetSocketOption_DontLinger ()
+
+		[Test] // GetSocketOption (SocketOptionLevel, SocketOptionName)
+		public void GetSocketOption1_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			try {
+				s.GetSocketOption (0, 0);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // GetSocketOption (SocketOptionLevel, SocketOptionName, Byte [])
+		public void GetSocketOption2_OptionValue_Null ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			try {
+				s.GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger,
+					(byte []) null);
+				Assert.Fail ("#1");
+				} catch (SocketException ex) {
+					// The system detected an invalid pointer address in attempting
+					// to use a pointer argument in a call
+					Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+					Assert.AreEqual (10014, ex.ErrorCode, "#3");
+					Assert.IsNull (ex.InnerException, "#4");
+					Assert.IsNotNull (ex.Message, "#5");
+					Assert.AreEqual (10014, ex.NativeErrorCode, "#6");
+#if NET_2_0
+					Assert.AreEqual (SocketError.Fault, ex.SocketErrorCode, "#7");
+#endif
+				}
+		}
+
+		[Test] // GetSocketOption (SocketOptionLevel, SocketOptionName, Byte [])
+		public void GetSocketOption2_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			try {
+				s.GetSocketOption (0, 0, (byte []) null);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // GetSocketOption (SocketOptionLevel, SocketOptionName, Int32)
+		public void GetSocketOption3_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			try {
+				s.GetSocketOption (0, 0, 0);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Byte [])
+		public void SetSocketOption1_DontLinger ()
 		{
 			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger,
+					new byte [] { 0x00 });
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger,
+					new byte [] { 0x01 });
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Byte [])
+		public void SetSocketOption1_DontLinger_Null ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.DontLinger, (byte []) null);
+					Assert.Fail ("#1");
+				} catch (SocketException ex) {
+					// The system detected an invalid pointer address in attempting
+					// to use a pointer argument in a call
+					Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+					Assert.AreEqual (10014, ex.ErrorCode, "#3");
+					Assert.IsNull (ex.InnerException, "#4");
+					Assert.IsNotNull (ex.Message, "#5");
+					Assert.AreEqual (10014, ex.NativeErrorCode, "#6");
 #if NET_2_0
-				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, false);
+					Assert.AreEqual (SocketError.Fault, ex.SocketErrorCode, "#7");
 #endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Byte [])
+		public void SetSocketOption1_Linger_Null ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.DontLinger, (byte []) null);
+					Assert.Fail ("#1");
+				} catch (SocketException ex) {
+					// The system detected an invalid pointer address in attempting
+					// to use a pointer argument in a call
+					Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+					Assert.AreEqual (10014, ex.ErrorCode, "#3");
+					Assert.IsNull (ex.InnerException, "#4");
+					Assert.IsNotNull (ex.Message, "#5");
+					Assert.AreEqual (10014, ex.NativeErrorCode, "#6");
+#if NET_2_0
+					Assert.AreEqual (SocketError.Fault, ex.SocketErrorCode, "#7");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Byte [])
+		public void SetSocketOption1_Socket_Close ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			try {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger,
+					new byte [] { 0x00 });
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Int32)
+		public void SetSocketOption2_DontLinger ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
 				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, 0);
 				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, 5);
 			}
 		}
 
-		[Test]
-		[ExpectedException (typeof (SocketException))]
-		public void SetSocketOption_Null_DontLinger ()
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Int32)
+		[Category ("NotWorking")]
+		public void SetSocketOption2_Linger ()
 		{
 			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
-				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, null);
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger, 0);
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger, 5);
 			}
 		}
 
-		[Test]
-		[ExpectedException (typeof (ArgumentException))]
-		public void SetSocketOption_LingerOption_DontLinger ()
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Int32)
+		public void SetSocketOption2_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			try {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, 0);
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_AddMembershipIPv4_IPv6MulticastOption ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("239.255.255.250");
+
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+				s.Bind (new IPEndPoint (IPAddress.Any, 1901));
+				try {
+					s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.AddMembership,
+						new IPv6MulticastOption (mcast_addr));
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+					Assert.IsNotNull (ex.Message, "#4");
+#if NET_2_0
+					// The specified value is not a valid 'MulticastOption'
+					Assert.IsTrue (ex.Message.IndexOf ("'MulticastOption'") != -1, "#5:" + ex.Message);
+					Assert.AreEqual ("optionValue", ex.ParamName, "#6");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#5");
+					Assert.IsNull (ex.ParamName, "#6");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_AddMembershipIPv4_MulticastOption ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("239.255.255.250");
+
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+				s.Bind (new IPEndPoint (IPAddress.Any, 1901));
+				s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.AddMembership,
+					new MulticastOption (mcast_addr));
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		[Category ("NotWorking")]
+		public void SetSocketOption3_AddMembershipIPv4_Socket_NotBound ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("239.255.255.250");
+
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			try {
+				s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.AddMembership,
+					new MulticastOption (mcast_addr));
+				Assert.Fail ("#1");
+			} catch (SocketException ex) {
+				// An invalid argument was supplied
+				Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+				Assert.AreEqual (10022, ex.ErrorCode, "#3");
+				Assert.IsNull (ex.InnerException, "#4");
+				Assert.IsNotNull (ex.Message, "#5");
+				Assert.AreEqual (10022, ex.NativeErrorCode, "#6");
+#if NET_2_0
+				Assert.AreEqual (SocketError.InvalidArgument, ex.SocketErrorCode, "#7");
+#endif
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_AddMembershipIPv6_IPv6MulticastOption ()
+		{
+#if NET_2_0
+			if (!Socket.OSSupportsIPv6)
+#else
+			if (!Socket.SupportsIPv6)
+#endif
+				Assert.Ignore ("IPv6 not enabled.");
+
+			IPAddress mcast_addr = IPAddress.Parse ("ff02::1");
+
+			using (Socket s = new Socket (AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)) {
+				s.Bind (new IPEndPoint (IPAddress.IPv6Any, 1902));
+				s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.AddMembership,
+					new IPv6MulticastOption (mcast_addr));
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_AddMembershipIPv6_MulticastOption ()
+		{
+#if NET_2_0
+			if (!Socket.OSSupportsIPv6)
+#else
+			if (!Socket.SupportsIPv6)
+#endif
+				Assert.Ignore ("IPv6 not enabled.");
+
+			IPAddress mcast_addr = IPAddress.Parse ("ff02::1");
+
+			using (Socket s = new Socket (AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)) {
+				s.Bind (new IPEndPoint (IPAddress.IPv6Any, 1902));
+				try {
+					s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.AddMembership,
+						new MulticastOption (mcast_addr));
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+					Assert.IsNotNull (ex.Message, "#4");
+#if NET_2_0
+					// The specified value is not a valid 'IPv6MulticastOption'
+					Assert.IsTrue (ex.Message.IndexOf ("'IPv6MulticastOption'") != -1, "#5:" + ex.Message);
+					Assert.AreEqual ("optionValue", ex.ParamName, "#6");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#5");
+					Assert.IsNull (ex.ParamName, "#6");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		[Category ("NotWorking")]
+		public void SetSocketOption3_AddMembershipIPv6_Socket_NotBound ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("ff02::1");
+
+			Socket s = new Socket (AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
+			try {
+				s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.AddMembership,
+					new IPv6MulticastOption (mcast_addr));
+				Assert.Fail ("#1");
+			} catch (SocketException ex) {
+				// An invalid argument was supplied
+				Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+				Assert.AreEqual (10022, ex.ErrorCode, "#3");
+				Assert.IsNull (ex.InnerException, "#4");
+				Assert.IsNotNull (ex.Message, "#5");
+				Assert.AreEqual (10022, ex.NativeErrorCode, "#6");
+#if NET_2_0
+				Assert.AreEqual (SocketError.InvalidArgument, ex.SocketErrorCode, "#7");
+#endif
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DontLinger_Boolean ()
 		{
 			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
-				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.DontLinger, new LingerOption (true, 1000));
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.DontLinger, (object) false);
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					// The specified value is not valid
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+#if NET_2_0
+					Assert.IsNotNull (ex.Message, "#4");
+					Assert.AreEqual ("optionValue", ex.ParamName, "#5");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#4");
+					Assert.IsNull (ex.ParamName, "#5");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DontLinger_Int32 ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.DontLinger, (object) 0);
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					// The specified value is not valid
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+#if NET_2_0
+					Assert.IsNotNull (ex.Message, "#4");
+					Assert.AreEqual ("optionValue", ex.ParamName, "#5");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#4");
+					Assert.IsNull (ex.ParamName, "#5");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DontLinger_LingerOption ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.DontLinger, new LingerOption (true, 1000));
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+#if NET_2_0
+					// The specified value is not valid
+					Assert.IsNotNull (ex.Message, "#4");
+					Assert.AreEqual ("optionValue", ex.ParamName, "#5");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#4");
+					Assert.IsNull (ex.ParamName, "#5");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_Linger_Boolean ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.Linger, (object) false);
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+#if NET_2_0
+					// The specified value is not valid
+					Assert.IsNotNull (ex.Message, "#4");
+					Assert.AreEqual ("optionValue", ex.ParamName, "#5");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#4");
+					Assert.IsNull (ex.ParamName, "#5");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_Linger_Int32 ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.Linger, (object) 0);
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+#if NET_2_0
+					// The specified value is not valid
+					Assert.IsNotNull (ex.Message, "#4");
+					Assert.AreEqual ("optionValue", ex.ParamName, "#5");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#4");
+					Assert.IsNull (ex.ParamName, "#5");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_Linger_LingerOption ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger,
+					new LingerOption (false, 0));
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger,
+					new LingerOption (true, 0));
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger,
+					new LingerOption (false, 1000));
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger,
+					new LingerOption (true, 1000));
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DropMembershipIPv4_IPv6MulticastOption ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("239.255.255.250");
+
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+				s.Bind (new IPEndPoint (IPAddress.Any, 1901));
+				s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.AddMembership,
+					new MulticastOption (mcast_addr));
+				try {
+					s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.DropMembership,
+						new IPv6MulticastOption (mcast_addr));
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+					Assert.IsNotNull (ex.Message, "#4");
+#if NET_2_0
+					// The specified value is not a valid 'MulticastOption'
+					Assert.IsTrue (ex.Message.IndexOf ("'MulticastOption'") != -1, "#5:" + ex.Message);
+					Assert.AreEqual ("optionValue", ex.ParamName, "#6");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#5");
+					Assert.IsNull (ex.ParamName, "#6");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DropMembershipIPv4_MulticastOption ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("239.255.255.250");
+
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp)) {
+				MulticastOption option = new MulticastOption (mcast_addr);
+
+				s.Bind (new IPEndPoint (IPAddress.Any, 1901));
+				s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.AddMembership,
+					option);
+				s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.DropMembership,
+					option);
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		[Category ("NotWorking")]
+		public void SetSocketOption3_DropMembershipIPv4_Socket_NotBound ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("239.255.255.250");
+
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+			try {
+				s.SetSocketOption (SocketOptionLevel.IP, SocketOptionName.DropMembership,
+					new MulticastOption (mcast_addr));
+				Assert.Fail ("#1");
+			} catch (SocketException ex) {
+				// An invalid argument was supplied
+				Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+				Assert.AreEqual (10022, ex.ErrorCode, "#3");
+				Assert.IsNull (ex.InnerException, "#4");
+				Assert.IsNotNull (ex.Message, "#5");
+				Assert.AreEqual (10022, ex.NativeErrorCode, "#6");
+#if NET_2_0
+				Assert.AreEqual (SocketError.InvalidArgument, ex.SocketErrorCode, "#7");
+#endif
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DropMembershipIPv6_IPv6MulticastOption ()
+		{
+#if NET_2_0
+			if (!Socket.OSSupportsIPv6)
+#else
+			if (!Socket.SupportsIPv6)
+#endif
+				Assert.Ignore ("IPv6 not enabled.");
+
+			using (Socket s = new Socket (AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)) {
+				IPv6MulticastOption option = new IPv6MulticastOption (
+					IPAddress.Parse ("ff02::1"));
+
+				s.Bind (new IPEndPoint (IPAddress.IPv6Any, 1902));
+				s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.AddMembership,
+					option);
+				s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.DropMembership,
+					option);
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_DropMembershipIPv6_MulticastOption ()
+		{
+#if NET_2_0
+			if (!Socket.OSSupportsIPv6)
+#else
+			if (!Socket.SupportsIPv6)
+#endif
+				Assert.Ignore ("IPv6 not enabled.");
+
+			IPAddress mcast_addr = IPAddress.Parse ("ff02::1");
+
+			using (Socket s = new Socket (AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp)) {
+				s.Bind (new IPEndPoint (IPAddress.IPv6Any, 1902));
+				s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.AddMembership,
+					new IPv6MulticastOption (mcast_addr));
+				try {
+					s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.DropMembership,
+						new MulticastOption (mcast_addr));
+					Assert.Fail ("#1");
+				} catch (ArgumentException ex) {
+					Assert.AreEqual (typeof (ArgumentException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+					Assert.IsNotNull (ex.Message, "#4");
+#if NET_2_0
+					// The specified value is not a valid 'IPv6MulticastOption'
+					Assert.IsTrue (ex.Message.IndexOf ("'IPv6MulticastOption'") != -1, "#5:" + ex.Message);
+					Assert.AreEqual ("optionValue", ex.ParamName, "#6");
+#else
+					Assert.AreEqual ("optionValue", ex.Message, "#5");
+					Assert.IsNull (ex.ParamName, "#6");
+#endif
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		[Category ("NotWorking")]
+		public void SetSocketOption3_DropMembershipIPv6_Socket_NotBound ()
+		{
+			IPAddress mcast_addr = IPAddress.Parse ("ff02::1");
+
+			Socket s = new Socket (AddressFamily.InterNetworkV6, SocketType.Dgram, ProtocolType.Udp);
+			try {
+				s.SetSocketOption (SocketOptionLevel.IPv6, SocketOptionName.DropMembership,
+					new IPv6MulticastOption (mcast_addr));
+				Assert.Fail ("#1");
+			} catch (SocketException ex) {
+				// An invalid argument was supplied
+				Assert.AreEqual (typeof (SocketException), ex.GetType (), "#2");
+				Assert.AreEqual (10022, ex.ErrorCode, "#3");
+				Assert.IsNull (ex.InnerException, "#4");
+				Assert.IsNotNull (ex.Message, "#5");
+				Assert.AreEqual (10022, ex.NativeErrorCode, "#6");
+#if NET_2_0
+				Assert.AreEqual (SocketError.InvalidArgument, ex.SocketErrorCode, "#7");
+#endif
+			} finally {
+				s.Close ();
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_OptionValue_Null ()
+		{
+			using (Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
+				try {
+					s.SetSocketOption (SocketOptionLevel.Socket,
+						SocketOptionName.Linger, (object) null);
+					Assert.Fail ("#1");
+				} catch (ArgumentNullException ex) {
+					Assert.AreEqual (typeof (ArgumentNullException), ex.GetType (), "#2");
+					Assert.IsNull (ex.InnerException, "#3");
+					Assert.IsNotNull (ex.Message, "#4");
+					Assert.AreEqual ("optionValue", ex.ParamName, "#5");
+				}
+			}
+		}
+
+		[Test] // SetSocketOption (SocketOptionLevel, SocketOptionName, Object)
+		public void SetSocketOption3_Socket_Closed ()
+		{
+			Socket s = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+			s.Close ();
+			try {
+				s.SetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Linger,
+					new LingerOption (false, 0));
+				Assert.Fail ("#1");
+			} catch (ObjectDisposedException ex) {
+				// Cannot access a disposed object
+				Assert.AreEqual (typeof (ObjectDisposedException), ex.GetType (), "#2");
+				Assert.IsNull (ex.InnerException, "#3");
+				Assert.IsNotNull (ex.Message, "#4");
+				Assert.AreEqual (typeof (Socket).FullName, ex.ObjectName, "#5");
 			}
 		}
 	}
 }
-

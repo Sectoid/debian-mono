@@ -4,12 +4,8 @@
 #include <mono/arch/arm/arm-codegen.h>
 #include <glib.h>
 
-#if defined(ARM_FPU_NONE) || defined(ARM_FPU_VFP) || defined(__ARM_EABI__)
+#if defined(ARM_FPU_NONE) || (defined(__ARM_EABI__) && !defined(ARM_FPU_VFP))
 #define MONO_ARCH_SOFT_FLOAT 1
-#endif
-
-#ifdef ARM_FPU_VFP
-#error "VFP support is not complete, try mono SVN for that."
 #endif
 
 #if defined(__ARM_EABI__)
@@ -50,7 +46,7 @@
 #define MONO_SAVED_GREGS 10 /* r4-411, ip, lr */
 #define MONO_SAVED_FREGS 8
 
-/* r4-r11, ip, lr: registers saved in the LMF and MonoContext  */
+/* r4-r11, ip, lr: registers saved in the LMF  */
 #define MONO_ARM_REGSAVE_MASK 0x5ff0
 
 /* Parameters used by the register allocator */
@@ -58,7 +54,12 @@
 #define MONO_ARCH_CALLEE_REGS ((1<<ARMREG_R0) | (1<<ARMREG_R1) | (1<<ARMREG_R2) | (1<<ARMREG_R3) | (1<<ARMREG_IP))
 #define MONO_ARCH_CALLEE_SAVED_REGS ((1<<ARMREG_V1) | (1<<ARMREG_V2) | (1<<ARMREG_V3) | (1<<ARMREG_V4) | (1<<ARMREG_V5) | (1<<ARMREG_V6) | (1<<ARMREG_V7))
 
+#ifdef ARM_FPU_VFP
+/* Every double precision vfp register, d0/d1 is reserved for a scratch reg */
+#define MONO_ARCH_CALLEE_FREGS 0x55555550
+#else
 #define MONO_ARCH_CALLEE_FREGS 0xf
+#endif
 #define MONO_ARCH_CALLEE_SAVED_FREGS 0
 
 #define MONO_ARCH_USE_FPSTACK FALSE
@@ -87,8 +88,15 @@ void arm_patch (guchar *code, const guchar *target);
 guint8* mono_arm_emit_load_imm (guint8 *code, int dreg, guint32 val);
 int mono_arm_is_rotated_imm8 (guint32 val, gint *rot_amount);
 
+void
+mono_arm_throw_exception_by_token (guint32 type_token, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs);
+
 /* keep the size of the structure a multiple of 8 */
 struct MonoLMF {
+	/* 
+	 * If the second lowest bit is set to 1, then this is a MonoLMFExt structure, and
+	 * the other fields are not valid.
+	 */
 	gpointer    previous_lmf;
 	gpointer    lmf_addr;
 	MonoMethod *method;
@@ -112,12 +120,13 @@ typedef struct {
 	gulong eip;          // pc 
 	gulong ebp;          // fp
 	gulong esp;          // sp
-	gulong regs [MONO_SAVED_GREGS];
+	gulong regs [16];
 	double fregs [MONO_SAVED_FREGS];
 } MonoContext;
 
 typedef struct MonoCompileArch {
 	int dummy;
+	gpointer seq_point_info_var, ss_trigger_page_var;
 } MonoCompileArch;
 
 #define MONO_ARCH_EMULATE_FCONV_TO_I8 1
@@ -127,6 +136,7 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_EMULATE_FREM 1
 #define MONO_ARCH_EMULATE_DIV 1
 #define MONO_ARCH_EMULATE_CONV_R8_UN 1
+#define MONO_ARCH_EMULATE_MUL_OVF 1
 //#define MONO_ARCH_BIGMUL_INTRINS 1
 
 #define ARM_FIRST_ARG_REG 0
@@ -136,17 +146,25 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_NEED_DIV_CHECK 1
 
 #define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION 1
-#define MONO_ARCH_HAVE_CREATE_TRAMPOLINE_FROM_TOKEN
 #define MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE
-#define MONO_ARCH_COMMON_VTABLE_TRAMPOLINE 1
+#define MONO_ARCH_HAVE_XP_UNWIND 1
 
 #define ARM_NUM_REG_ARGS (ARM_LAST_ARG_REG-ARM_FIRST_ARG_REG+1)
 #define ARM_NUM_REG_FPARGS 0
 
 #define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
 #define MONO_ARCH_HAVE_IMT 1
+#define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
+#define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 
 #define MONO_ARCH_AOT_SUPPORTED 1
+
+#define MONO_ARCH_GSHARED_SUPPORTED 1
+#define MONO_ARCH_DYN_CALL_SUPPORTED 1
+#define MONO_ARCH_DYN_CALL_PARAM_AREA 24
+
+#define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
+#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 
 /* ARM doesn't have too many registers, so we have to use a callee saved one */
 #define MONO_ARCH_RGCTX_REG ARMREG_V5
@@ -171,15 +189,30 @@ typedef struct MonoCompileArch {
 #if __APPLE__
 	#define UCONTEXT_REG_PC(ctx) ((ctx)->uc_mcontext->__ss.__pc)
 	#define UCONTEXT_REG_SP(ctx) ((ctx)->uc_mcontext->__ss.__sp)
-	#define UCONTEXT_REG_R4(ctx) ((ctx)->uc_mcontext->__ss.__r[4])
+	#define UCONTEXT_REG_R0(ctx) ((ctx)->uc_mcontext->__ss.__r[0])
 #else
 	#define UCONTEXT_REG_PC(ctx) ((ctx)->sig_ctx.arm_pc)
 	#define UCONTEXT_REG_SP(ctx) ((ctx)->sig_ctx.arm_sp)
-	#define UCONTEXT_REG_R4(ctx) ((ctx)->sig_ctx.arm_r4)
+	#define UCONTEXT_REG_R0(ctx) ((ctx)->sig_ctx.arm_r0)
 #endif
+
+/*
+ * This structure is an extension of MonoLMF and contains extra information.
+ */
+typedef struct {
+	struct MonoLMF lmf;
+	gboolean debugger_invoke;
+	MonoContext ctx; /* if debugger_invoke is TRUE */
+} MonoLMFExt;
 
 void
 mono_arm_throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs);
+
+void
+mono_arm_throw_exception_by_token (guint32 type_token, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs);
+
+gboolean
+mono_arm_thumb_supported (void);
 
 #endif /* __MONO_MINI_ARM_H__ */
 

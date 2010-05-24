@@ -29,9 +29,11 @@
 
 #if NET_2_0
 
-using System.Security.AccessControl;
 using System.IO;
 using System.Runtime.InteropServices;
+#if !NET_2_1
+using System.Security.AccessControl;
+#endif
 
 namespace System.Threading
 {
@@ -42,34 +44,43 @@ namespace System.Threading
 		{
 			Handle = handle;
 		}
+
+		private bool IsManualReset (EventResetMode mode)
+		{
+			if ((mode < EventResetMode.AutoReset) || (mode > EventResetMode.ManualReset))
+				throw new ArgumentException ("mode");
+			return (mode == EventResetMode.ManualReset);
+		}
 		
 		public EventWaitHandle (bool initialState, EventResetMode mode)
 		{
 			bool created;
-			
-			Handle = NativeEventCalls.CreateEvent_internal ((mode == EventResetMode.ManualReset), initialState, null, out created);
+			bool manual = IsManualReset (mode);
+			Handle = NativeEventCalls.CreateEvent_internal (manual, initialState, null, out created);
 		}
 		
 		public EventWaitHandle (bool initialState, EventResetMode mode,
 					string name)
 		{
 			bool created;
-			
-			Handle = NativeEventCalls.CreateEvent_internal ((mode == EventResetMode.ManualReset), initialState, name, out created);
+			bool manual = IsManualReset (mode);
+			Handle = NativeEventCalls.CreateEvent_internal (manual, initialState, name, out created);
 		}
 		
 		public EventWaitHandle (bool initialState, EventResetMode mode,
 					string name, out bool createdNew)
 		{
-			Handle = NativeEventCalls.CreateEvent_internal ((mode == EventResetMode.ManualReset), initialState, name, out createdNew);
+			bool manual = IsManualReset (mode);
+			Handle = NativeEventCalls.CreateEvent_internal (manual, initialState, name, out createdNew);
 		}
-		
+#if !NET_2_1
 		[MonoTODO ("Implement access control")]
 		public EventWaitHandle (bool initialState, EventResetMode mode,
 					string name, out bool createdNew,
 					EventWaitHandleSecurity eventSecurity)
 		{
-			Handle = NativeEventCalls.CreateEvent_internal ((mode == EventResetMode.ManualReset), initialState, name, out createdNew);
+			bool manual = IsManualReset (mode);
+			Handle = NativeEventCalls.CreateEvent_internal (manual, initialState, name, out createdNew);
 		}
 		
 		[MonoTODO]
@@ -77,7 +88,7 @@ namespace System.Threading
 		{
 			throw new NotImplementedException ();
 		}
-		
+
 		public static EventWaitHandle OpenExisting (string name)
 		{
 			return(OpenExisting (name, EventWaitHandleRights.Synchronize | EventWaitHandleRights.Modify));
@@ -107,7 +118,7 @@ namespace System.Threading
 			
 			return(new EventWaitHandle (handle));
 		}
-		
+#endif
 		public bool Reset ()
 		{
 			CheckDisposed ();
@@ -121,12 +132,13 @@ namespace System.Threading
 			
 			return (NativeEventCalls.SetEvent_internal (Handle));
 		}
-
+#if !NET_2_1
 		[MonoTODO]
 		public void SetAccessControl (EventWaitHandleSecurity eventSecurity)
 		{
 			throw new NotImplementedException ();
 		}
+#endif
 	}
 }
 
