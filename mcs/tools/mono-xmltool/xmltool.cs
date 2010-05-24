@@ -40,6 +40,7 @@ options:
 	--validate-rnc relax-ng-compact-grammar-file [instances]
 	--validate-nvdl nvdl-script-xml [instances]
 	--validate-xsd xml-schema [instances]
+	--validate-xsd2 xml-schema [instances] (in .NET 2.0 validator)
 	--validate-dtd instances
 	--transform stylesheet instance-xml [output-xml]
 	--prettyprint [source] [result]
@@ -76,6 +77,9 @@ environment variable that affects behavior:
 				ValidateNvdl (args);
 				return;
 #endif
+			case "--validate-xsd2":
+				ValidateXsd2 (args);
+				return;
 			case "--validate-xsd":
 				ValidateXsd (args);
 				return;
@@ -127,6 +131,8 @@ environment variable that affects behavior:
 
 		static void ValidateRelaxng (RelaxngPattern p, string [] args)
 		{
+			p.Compile ();
+
 			if (args.Length < 2)
 				return;
 
@@ -136,6 +142,16 @@ environment variable that affects behavior:
 					new RelaxngValidatingReader (xtr, p);
 				if (Environment.GetEnvironmentVariable ("MONO_XMLTOOL_ERROR_DETAILS") == "yes")
 					vr.ReportDetails = true;
+				else
+					vr.InvalidNodeFound += delegate (XmlReader source, string message) {
+						IXmlLineInfo li = source as IXmlLineInfo;
+						Console.WriteLine ("ERROR: {0} (at {1} line {2} column {3})",
+							message,
+							source.BaseURI,
+							li != null && li.HasLineInfo () ? li.LineNumber : 0,
+							li != null && li.HasLineInfo () ? li.LinePosition : 0);
+						return true;
+					};
 
 				while (!vr.EOF)
 					vr.Read ();
@@ -170,6 +186,19 @@ environment variable that affects behavior:
 				while (!xvr.EOF)
 					xvr.Read ();
 				xvr.Close ();
+			}
+		}
+
+		static void ValidateXsd2 (string [] args)
+		{
+			XmlReaderSettings s = new XmlReaderSettings ();
+			s.ValidationType = ValidationType.Schema;
+			s.Schemas.Add (null, args [1]);
+			for (int i = 2; i < args.Length; i++) {
+				XmlReader xr = XmlReader.Create (args [i], s);
+				while (!xr.EOF)
+					xr.Read ();
+				xr.Close ();
 			}
 		}
 

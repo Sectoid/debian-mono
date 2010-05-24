@@ -47,6 +47,18 @@ typedef struct {
 	guint32 stopped_on_unhandled : 1;
 } MonoDebuggerExceptionState;
 
+typedef enum {
+	MONO_DEBUGGER_THREAD_FLAGS_NONE		= 0,
+	MONO_DEBUGGER_THREAD_FLAGS_INTERNAL	= 1,
+	MONO_DEBUGGER_THREAD_FLAGS_THREADPOOL	= 2
+} MonoDebuggerThreadFlags;
+
+typedef enum {
+	MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_NONE		= 0,
+	MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_IN_RUNTIME_INVOKE	= 1,
+	MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED	= 2
+} MonoDebuggerInternalThreadFlags;
+
 struct _MonoDebuggerThreadInfo {
 	guint64 tid;
 	guint64 lmf_addr;
@@ -65,11 +77,15 @@ struct _MonoDebuggerThreadInfo {
 	guint32 stack_size;
 	guint32 signal_stack_size;
 
-	MonoDebuggerExceptionState exception_state;
+	guint32 thread_flags;
 
 	/*
 	 * The debugger doesn't access anything beyond this point.
 	 */
+	MonoDebuggerExceptionState exception_state;
+
+	guint32 internal_flags;
+
 	MonoJitTlsData *jit_tls;
 	MonoThread *thread;
 };
@@ -298,7 +314,7 @@ mono_debug_close_method (MonoCompile *cfg)
 	for (i = 0; i < jit->num_line_numbers; i++)
 		jit->line_numbers [i] = g_array_index (info->line_numbers, MonoDebugLineNumberEntry, i);
 
-	debug_info = mono_debug_add_method (method, jit, cfg->domain);
+	debug_info = mono_debug_add_method (cfg->method_to_register, jit, cfg->domain);
 
 	mono_debug_add_vg_method (method, jit);
 
@@ -743,7 +759,8 @@ mono_debugger_method_has_breakpoint (MonoMethod *method)
 {
 	int i;
 
-	if (!breakpoints || (method->wrapper_type != MONO_WRAPPER_NONE))
+	if (!breakpoints || ((method->wrapper_type != MONO_WRAPPER_NONE) &&
+						 (method->wrapper_type != MONO_WRAPPER_DYNAMIC_METHOD)))
 		return 0;
 
 	for (i = 0; i < breakpoints->len; i++) {
@@ -765,7 +782,7 @@ mono_debugger_breakpoint_callback (MonoMethod *method, guint32 index)
 }
 
 void
-mono_debugger_thread_created (gsize tid, MonoThread *thread, MonoJitTlsData *jit_tls)
+mono_debugger_thread_created (gsize tid, MonoThread *thread, MonoJitTlsData *jit_tls, gpointer func)
 {
 #ifdef MONO_DEBUGGER_SUPPORTED
 	size_t stsize = 0;
@@ -789,6 +806,11 @@ mono_debugger_thread_created (gsize tid, MonoThread *thread, MonoJitTlsData *jit
 	info->end_stack = (guint64) (gsize) GC_mono_debugger_get_stack_ptr ();
 	info->lmf_addr = (guint64) (gsize) mono_get_lmf_addr ();
 	info->jit_tls = jit_tls;
+
+	if (func)
+		info->thread_flags = MONO_DEBUGGER_THREAD_FLAGS_INTERNAL;
+	if (thread->threadpool_thread)
+		info->thread_flags |= MONO_DEBUGGER_THREAD_FLAGS_THREADPOOL;
 
 	info->next = mono_debugger_thread_table;
 	mono_debugger_thread_table = info;
@@ -909,6 +931,11 @@ _mono_debugger_throw_exception (gpointer addr, gpointer stack, MonoObject *exc)
 		return MONO_DEBUGGER_EXCEPTION_ACTION_NONE;
 	}
 
+	if ((thread_info->internal_flags & MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED) != 0) {
+		mono_debugger_unlock ();
+		return MONO_DEBUGGER_EXCEPTION_ACTION_NONE;
+	}
+
 	if (thread_info->exception_state.stopped_on_exception ||
 	    thread_info->exception_state.stopped_on_unhandled) {
 		thread_info->exception_state.stopped_on_exception = 0;
@@ -979,6 +1006,11 @@ _mono_debugger_unhandled_exception (gpointer addr, gpointer stack, MonoObject *e
 		return FALSE;
 	}
 
+	if ((thread_info->internal_flags & MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED) != 0) {
+		mono_debugger_unlock ();
+		return FALSE;
+	}
+
 	if (thread_info->exception_state.stopped_on_unhandled) {
 		thread_info->exception_state.stopped_on_unhandled = 0;
 		mono_debugger_unlock ();
@@ -1021,6 +1053,11 @@ mono_debugger_call_exception_handler (gpointer addr, gpointer stack, MonoObject 
 
 	thread_info = find_debugger_thread_info (mono_thread_current ());
 	if (!thread_info) {
+		mono_debugger_unlock ();
+		return;
+	}
+
+	if ((thread_info->internal_flags & MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED) != 0) {
 		mono_debugger_unlock ();
 		return;
 	}
@@ -1102,6 +1139,8 @@ mono_debugger_runtime_invoke (MonoMethod *method, void *obj, void **params, Mono
 	thread_info->exception_state.stopped_on_unhandled = 0;
 	thread_info->exception_state.stopped_on_exception = 0;
 
+	thread_info->internal_flags |= MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_IN_RUNTIME_INVOKE;
+
 	mono_debugger_unlock ();
 
 	if (!strcmp (method->name, ".ctor")) {
@@ -1113,9 +1152,18 @@ mono_debugger_runtime_invoke (MonoMethod *method, void *obj, void **params, Mono
 
 	mono_debugger_lock ();
 
-	thread_info = find_debugger_thread_info (mono_thread_current ());
-	if (thread_info)
-		thread_info->exception_state = saved_exception_state;
+	thread_info->exception_state = saved_exception_state;
+	thread_info->internal_flags &= ~MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_IN_RUNTIME_INVOKE;
+
+	if ((thread_info->internal_flags & MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED) != 0) {
+		thread_info->internal_flags &= ~MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED;
+		mono_thread_internal_reset_abort (thread_info->thread);
+
+		mono_debugger_unlock ();
+
+		*exc = NULL;
+		return NULL;
+	}
 
 	mono_debugger_unlock ();
 
@@ -1130,6 +1178,37 @@ mono_debugger_runtime_invoke (MonoMethod *method, void *obj, void **params, Mono
 	}
 
 	return retval;
+}
+
+gboolean
+mono_debugger_abort_runtime_invoke ()
+{
+	MonoThread *thread = mono_thread_current ();
+	MonoDebuggerThreadInfo *thread_info;
+
+	mono_debugger_lock ();
+
+	thread_info = find_debugger_thread_info (thread);
+	if (!thread_info) {
+		mono_debugger_unlock ();
+		return FALSE;
+	}
+
+	if ((thread_info->internal_flags & MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_IN_RUNTIME_INVOKE) == 0) {
+		mono_debugger_unlock ();
+		return FALSE;
+	}
+
+	if ((thread_info->internal_flags & MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED) != 0) {
+		mono_debugger_unlock ();
+		return TRUE;
+	}
+
+	thread_info->internal_flags |= MONO_DEBUGGER_INTERNAL_THREAD_FLAGS_ABORT_REQUESTED;
+	ves_icall_System_Threading_Thread_Abort (thread_info->thread, NULL);
+
+	mono_debugger_unlock ();
+	return TRUE;
 }
 
 #endif

@@ -819,7 +819,7 @@ namespace System.Data.SqlClient
 		void RowUpdatingHandler (object sender, SqlRowUpdatingEventArgs args)
 		{
 #if NET_2_0
-				base.RowUpdatingHandler (args);
+			base.RowUpdatingHandler (args);
 #else
 			if (args.Command != null)
 				return;
@@ -839,9 +839,9 @@ namespace System.Data.SqlClient
 				args.Errors = e;
 				args.Status = UpdateStatus.ErrorsOccurred;
 			}
-#endif 
+#endif
 		}
-			
+
 #if NET_2_0
 		protected override void SetRowUpdatingHandler (DbDataAdapter adapter)
 		{

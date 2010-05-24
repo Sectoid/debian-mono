@@ -48,11 +48,14 @@ System.Web.Compilation/AssemblyBuilder.cs
 System.Web.Compilation/BaseCompiler.cs
 System.Web.Compilation/BuildDependencySet.cs
 System.Web.Compilation/BuildManager.cs
+System.Web.Compilation/BuildManagerCacheItem.cs
+System.Web.Compilation/BuildManagerDirectoryBuilder.cs
 System.Web.Compilation/BuildManagerRemoveEntryEventHandler.cs
 System.Web.Compilation/BuildManagerHostUnloadEventArgs.cs
 System.Web.Compilation/BuildManagerHostUnloadEventHandler.cs
 System.Web.Compilation/BuildProviderAppliesToAttribute.cs
 System.Web.Compilation/BuildProviderAppliesTo.cs
+System.Web.Compilation/BuildProviderGroup.cs
 System.Web.Compilation/BuildProviderResultFlags.cs
 System.Web.Compilation/BuildProvider.cs
 System.Web.Compilation/CachingCompiler.cs
@@ -105,6 +108,7 @@ System.Web.Compilation/WebServiceCompiler.cs
 System.Web.Compilation/WebHandlerBuildProvider.cs
 System.Web.Compilation/WebServiceBuildProvider.cs
 System.Web.Compilation/WsdlBuildProvider.cs
+../System.Design/System.Data.Design/TypedDataSetGenerator.cs
 System.Web.Compilation/XsdBuildProvider.cs
 System.Web.Configuration/AuthConfig.cs
 System.Web.Configuration/AuthenticationConfigHandler.cs
@@ -338,6 +342,7 @@ System.Web/IHttpHandler.cs
 System.Web/IHttpHandlerFactory.cs
 System.Web/IHttpMapPath.cs
 System.Web/IHttpModule.cs
+System.Web/IisTraceListener.cs
 System.Web/IPartitionResolver.cs
 System.Web/InputFilterStream.cs
 System.Web/OutputFilterStream.cs

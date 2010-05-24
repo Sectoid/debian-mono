@@ -3,18 +3,19 @@ SUBDIRS =
 include ../../build/rules.make
 
 LIBRARY = System.ServiceModel.Web.dll
-LIB_MCS_FLAGS = -r:System.dll -r:System.Xml.dll -r:System.Runtime.Serialization.dll -r:System.ServiceModel.dll
+LIB_MCS_FLAGS = -r:System.dll -r:System.Xml.dll -r:System.Runtime.Serialization.dll -r:System.ServiceModel.dll -r:System.Core.dll
 
 ifneq (2.1, $(FRAMEWORK_VERSION))
-LIB_MCS_FLAGS += /d:NET_3_0 	\
-			/r:System.Configuration.dll
+LIB_MCS_FLAGS += -d:NET_3_5 -d:NET_3_0 	\
+			-r:System.Configuration.dll \
+			-r:System.Web.Extensions.dll
 endif
 
 TEST_MCS_FLAGS = $(LIB_MCS_FLAGS)
 
 EXTRA_DISTFILES = $(RESOURCE_FILES)
 
-VALID_PROFILE := $(filter net_2_0 net_2_1_raw, $(PROFILE))
+VALID_PROFILE := $(filter 2.0 2.1 4.0, $(FRAMEWORK_VERSION))
 ifndef VALID_PROFILE
 LIBRARY_NAME = dummy-System.ServiceModel.Web.dll
 NO_INSTALL = yes

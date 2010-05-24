@@ -420,19 +420,19 @@ namespace System.Data
 			else if (e.Action == CollectionChangeAction.Refresh)
 				args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorChanged, null);
 			else { 
-				object obj;
-				
-				if (typeof (DataTable).IsAssignableFrom (e.Element.GetType()))
-					obj = new DataTablePropertyDescriptor ((DataTable) e.Element);
-				else // Assume a DataRelation
-					obj = new DataRelationPropertyDescriptor((DataRelation) e.Element);
-				
-				if (e.Action == CollectionChangeAction.Add)
-					args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorAdded, (PropertyDescriptor) obj);
-				else
-					args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorDeleted, (PropertyDescriptor) obj);
+			       object obj;
+			       
+			       if (typeof (DataTable).IsAssignableFrom (e.Element.GetType()))
+			               obj = new DataTablePropertyDescriptor ((DataTable) e.Element);
+			       else // Assume a DataRelation
+			               obj = new DataRelationPropertyDescriptor((DataRelation) e.Element);
+			       
+			       if (e.Action == CollectionChangeAction.Add)
+			               args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorAdded, (PropertyDescriptor) obj);
+			       else
+			               args = new ListChangedEventArgs(ListChangedType.PropertyDescriptorDeleted, (PropertyDescriptor) obj);
 			}
-
+			
 			return args;
 		}
 

@@ -29,6 +29,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Security;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
@@ -38,19 +39,17 @@ using System.Xml;
 
 namespace System.ServiceModel
 {
-	public class NetPeerTcpBinding : Binding,
-		IBindingDeliveryCapabilities, IBindingMulticastCapabilities,
-		ISecurityCapabilities, IBindingRuntimePreferences
+	public class NetPeerTcpBinding : Binding, IBindingRuntimePreferences
 	{
-		string listen_ip_address;
-		long max_buffer_pool_size = 0x80000;
-		long max_recv_message_size = 0x10000;
-		bool msg_auth;
-		int port;
-		XmlDictionaryReaderQuotas reader_quotas;
-//		PeerResolver resolver = new PeerResolverImpl ();
+		// We don't support PNRP
+		public static bool IsPnrpAvailable {
+			get { return false; }
+		}
+
+		XmlDictionaryReaderQuotas reader_quotas = new XmlDictionaryReaderQuotas ();
 		PeerResolverSettings resolver = new PeerResolverSettings ();
 		PeerSecuritySettings security = new PeerSecuritySettings ();
+		PeerTransportBindingElement transport = new PeerTransportBindingElement ();
 
 		public NetPeerTcpBinding ()
 		{
@@ -62,41 +61,40 @@ namespace System.ServiceModel
 			throw new NotImplementedException ();
 		}
 
-		public string ListenIPAddress {
-			get { return listen_ip_address; }
-			set { listen_ip_address = value; }
+		[MonoTODO]
+		public IPAddress ListenIPAddress {
+			get { return transport.ListenIPAddress; }
+			set { transport.ListenIPAddress = value; }
 		}
 
-		public long MaxBufferPoolSize {
-			get { return max_buffer_pool_size; }
-			set { max_buffer_pool_size = value; }
+		[MonoTODO]
+		public new long MaxBufferPoolSize {
+			get { return transport.MaxBufferPoolSize; }
+			set { transport.MaxBufferPoolSize = value; }
 		}
 
-		public bool MessageAuthentication {
-			get { return msg_auth; }
-			set { msg_auth = value; }
-		}
-
+		[MonoTODO]
 		public long MaxReceivedMessageSize {
-			get { return max_recv_message_size; }
-			set { max_recv_message_size = value; }
+			get { return transport.MaxReceivedMessageSize; }
+			set { transport.MaxReceivedMessageSize = value; }
 		}
 
-		[MonoTODO]
 		public int Port {
-			get { return port; }
-			set { port = value; }
+			get { return transport.Port; }
+			set { transport.Port = value; }
 		}
 
-		[MonoTODO]
 		public PeerResolverSettings Resolver {
 			get { return resolver; }
-			set { resolver = value; }
 		}
 
 		public XmlDictionaryReaderQuotas ReaderQuotas {
 			get { return reader_quotas; }
-			set { reader_quotas = value; }
+			set {
+				if (value == null)
+					throw new ArgumentNullException ("value");
+				reader_quotas = value;
+			}
 		}
 
 		public override string Scheme {
@@ -107,71 +105,26 @@ namespace System.ServiceModel
 			get { return security; }
 		}
 
-		public EnvelopeVersion SoapVersion {
+		public EnvelopeVersion EnvelopeVersion {
 			get { return EnvelopeVersion.Soap12; }
 		}
 
 		public override BindingElementCollection
 			CreateBindingElements ()
 		{
-			BinaryMessageEncodingBindingElement mbe = 
-				new BinaryMessageEncodingBindingElement ();
-			ReaderQuotas.CopyTo (mbe.ReaderQuotas);
+			var mbe = new BinaryMessageEncodingBindingElement ();
+			if (ReaderQuotas != null)
+				ReaderQuotas.CopyTo (mbe.ReaderQuotas);
 
-			PeerTransportBindingElement tbe =
-				new PeerTransportBindingElement ();
-			tbe.ListenIPAddress = ListenIPAddress;
-			tbe.MaxBufferPoolSize = MaxBufferPoolSize;
-			tbe.MaxReceivedMessageSize = MaxReceivedMessageSize;
-			tbe.MessageAuthentication = MessageAuthentication;
+			var prbe = Resolver.CreateBinding ();
 
-			return new BindingElementCollection (new BindingElement [] { mbe, tbe });
+			return new BindingElementCollection (new BindingElement [] { mbe, prbe, transport.Clone () });
 		}
 
 		// explicit interface implementations
 
-		[MonoTODO]
-		bool IBindingDeliveryCapabilities.AssuresOrderedDelivery {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
-		bool IBindingDeliveryCapabilities.QueuedDelivery {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
 		bool IBindingRuntimePreferences.ReceiveSynchronously {
-			get { throw new NotImplementedException (); }
-		}
-
-		bool IBindingMulticastCapabilities.IsMulticast {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
-		ProtectionLevel ISecurityCapabilities.SupportedRequestProtectionLevel {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
-		ProtectionLevel ISecurityCapabilities.SupportedResponseProtectionLevel {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
-		bool ISecurityCapabilities.SupportsClientAuthentication {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
-		bool ISecurityCapabilities.SupportsClientWindowsIdentity {
-			get { throw new NotImplementedException (); }
-		}
-
-		[MonoTODO]
-		bool ISecurityCapabilities.SupportsServerAuthentication {
-			get { throw new NotImplementedException (); }
+			get { return false; }
 		}
 	}
 }

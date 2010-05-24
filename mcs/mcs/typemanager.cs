@@ -30,10 +30,7 @@ using System.Diagnostics;
 
 namespace Mono.CSharp {
 
-#if GMCS_SOURCE
-	partial
-#endif
-	class TypeManager {
+	partial class TypeManager {
 	//
 	// A list of core types that the compiler requires or uses
 	//
@@ -47,7 +44,6 @@ namespace Mono.CSharp {
 	static public Type float_type;
 	static public Type double_type;
 	static public Type char_type;
-	static public Type char_ptr_type;
 	static public Type short_type;
 	static public Type decimal_type;
 	static public Type bool_type;
@@ -65,7 +61,6 @@ namespace Mono.CSharp {
 	static public Type ienumerator_type;
 	static public Type ienumerable_type;
 	static public Type idisposable_type;
-	static public Type default_member_type;
 	static public Type iasyncresult_type;
 	static public Type asynccallback_type;
 	static public Type intptr_type;
@@ -73,47 +68,17 @@ namespace Mono.CSharp {
 	static public Type runtime_field_handle_type;
 	static public Type runtime_argument_handle_type;
 	static public Type attribute_type;
-	static public Type attribute_usage_type;
-	static public Type decimal_constant_attribute_type;
-	static public Type dllimport_type;
-	static public Type methodimpl_attr_type;
-#if !NET_2_0
-	static public Type marshal_as_attr_type;
-#endif
-	static public Type param_array_type;
 	static public Type void_ptr_type;
-	static public Type indexer_name_type;
 	static public Type exception_type;
-	static public Type obsolete_attribute_type;
-	static public Type conditional_attribute_type;
-	static public Type in_attribute_type;
-	static public Type out_attribute_type;
-	static public Type extension_attribute_type;
-	static public Type default_parameter_value_attribute_type;
 
-	static public Type anonymous_method_type;
-	static public Type cls_compliant_attribute_type;
 	static public Type typed_reference_type;
 	static public Type arg_iterator_type;
 	static public Type mbr_type;
-	static public Type struct_layout_attribute_type;
-	static public Type field_offset_attribute_type;
-	static public Type security_attr_type;
-	static public Type required_attr_type;
-	static public Type guid_attr_type;
-	static public Type assembly_culture_attribute_type;
-	static public Type assembly_version_attribute_type;
-	static public Type coclass_attr_type;
-	static public Type comimport_attr_type;
 	public static Type runtime_helpers_type;
-	public static Type internals_visible_attr_type;
 
 	// 
 	// C# 2.0
 	//
-	static internal Type fixed_buffer_attr_type;
-	static internal Type default_charset_type;
-	static internal Type type_forwarder_attr_type;
 	static internal Type isvolatile_type;
 	static public Type generic_ilist_type;
 	static public Type generic_icollection_type;
@@ -126,6 +91,15 @@ namespace Mono.CSharp {
 	//
 	static internal Type expression_type;
 	public static Type parameter_expression_type;
+	public static Type fieldinfo_type;
+	public static Type methodinfo_type;
+	public static Type ctorinfo_type;
+
+	//
+	// C# 4.0
+	//
+	public static Type call_site_type;
+	public static Type generic_call_site_type;
 
 	// 
 	// Expressions representing the internal types.  Used during declaration
@@ -156,35 +130,20 @@ namespace Mono.CSharp {
 	static public MethodInfo void_initializearray_array_fieldhandle;
 	static public MethodInfo delegate_combine_delegate_delegate;
 	static public MethodInfo delegate_remove_delegate_delegate;
-	static public MethodInfo int_get_offset_to_string_data;
+	static public PropertyInfo int_get_offset_to_string_data;
 	static public MethodInfo int_interlocked_compare_exchange;
 	static public PropertyInfo ienumerator_getcurrent;
 	public static MethodInfo methodbase_get_type_from_handle;
 	public static MethodInfo methodbase_get_type_from_handle_generic;
 	public static MethodInfo fieldinfo_get_field_from_handle;
+	public static MethodInfo fieldinfo_get_field_from_handle_generic;
 	static public MethodInfo activator_create_instance;
-	
+
 	//
-	// The attribute constructors.
+	// The constructors.
 	//
 	static public ConstructorInfo void_decimal_ctor_five_args;
 	static public ConstructorInfo void_decimal_ctor_int_arg;
-	static public ConstructorInfo default_member_ctor;
-	static public ConstructorInfo decimal_constant_attribute_ctor;
-	static internal ConstructorInfo struct_layout_attribute_ctor;
-	static public ConstructorInfo field_offset_attribute_ctor;
-	public static ConstructorInfo invalid_operation_exception_ctor;
-
-	static public CustomAttributeBuilder param_array_attr;
-	static CustomAttributeBuilder compiler_generated_attr;
-	static CustomAttributeBuilder debugger_hidden_attr;
-
-	// C# 2.0
-	static internal ConstructorInfo fixed_buffer_attr_ctor;
-	static internal CustomAttributeBuilder unsafe_value_type_attr;
-
-	// C# 3.0
-	static internal CustomAttributeBuilder extension_attribute_attr;
 
 	static PtrHashtable builder_to_declspace;
 
@@ -248,35 +207,35 @@ namespace Mono.CSharp {
 	//
 	static void InitExpressionTypes ()
 	{
-		system_object_expr  = new TypeLookupExpression ("System.Object");
-		system_string_expr  = new TypeLookupExpression ("System.String");
-		system_boolean_expr = new TypeLookupExpression ("System.Boolean");
-		system_decimal_expr = new TypeLookupExpression ("System.Decimal");
-		system_single_expr  = new TypeLookupExpression ("System.Single");
-		system_double_expr  = new TypeLookupExpression ("System.Double");
-		system_sbyte_expr   = new TypeLookupExpression ("System.SByte");
-		system_byte_expr    = new TypeLookupExpression ("System.Byte");
-		system_int16_expr   = new TypeLookupExpression ("System.Int16");
-		system_uint16_expr  = new TypeLookupExpression ("System.UInt16");
-		system_int32_expr   = new TypeLookupExpression ("System.Int32");
-		system_uint32_expr  = new TypeLookupExpression ("System.UInt32");
-		system_int64_expr   = new TypeLookupExpression ("System.Int64");
-		system_uint64_expr  = new TypeLookupExpression ("System.UInt64");
-		system_char_expr    = new TypeLookupExpression ("System.Char");
-		system_void_expr    = new TypeLookupExpression ("System.Void");
-		system_valuetype_expr  = new TypeLookupExpression ("System.ValueType");
-		system_intptr_expr  = new TypeLookupExpression ("System.IntPtr");
+		system_object_expr  = new TypeLookupExpression ("System", "Object");
+		system_string_expr  = new TypeLookupExpression ("System", "String");
+		system_boolean_expr = new TypeLookupExpression ("System", "Boolean");
+		system_decimal_expr = new TypeLookupExpression ("System", "Decimal");
+		system_single_expr  = new TypeLookupExpression ("System", "Single");
+		system_double_expr  = new TypeLookupExpression ("System", "Double");
+		system_sbyte_expr   = new TypeLookupExpression ("System", "SByte");
+		system_byte_expr    = new TypeLookupExpression ("System", "Byte");
+		system_int16_expr   = new TypeLookupExpression ("System", "Int16");
+		system_uint16_expr  = new TypeLookupExpression ("System", "UInt16");
+		system_int32_expr   = new TypeLookupExpression ("System", "Int32");
+		system_uint32_expr  = new TypeLookupExpression ("System", "UInt32");
+		system_int64_expr   = new TypeLookupExpression ("System", "Int64");
+		system_uint64_expr  = new TypeLookupExpression ("System", "UInt64");
+		system_char_expr    = new TypeLookupExpression ("System", "Char");
+		system_void_expr    = new TypeLookupExpression ("System", "Void");
+		system_valuetype_expr  = new TypeLookupExpression ("System", "ValueType");
+		system_intptr_expr  = new TypeLookupExpression ("System", "IntPtr");
 	}
 
 	static TypeManager ()
 	{
 		Reset ();
-
-		InitExpressionTypes ();
 	}
 
 	static public void Reset ()
 	{
+		InitExpressionTypes ();
+		
 		builder_to_declspace = new PtrHashtable ();
 		builder_to_member_cache = new PtrHashtable ();
 		builder_to_method = new PtrHashtable ();
@@ -290,6 +249,10 @@ namespace Mono.CSharp {
 		fields = new Hashtable ();
 		type_hash = new DoubleHash ();
 		assembly_internals_vis_attrs = new PtrHashtable ();
+		iface_cache = new PtrHashtable ();
+		
+		closure = new Closure ();
+		FilterWithClosure_delegate = new MemberFilter (closure.Filter);
 
 		// TODO: I am really bored by all this static stuff
 		system_type_get_type_from_handle =
@@ -300,28 +263,18 @@ namespace Mono.CSharp {
 		void_initializearray_array_fieldhandle =
 		delegate_combine_delegate_delegate =
 		delegate_remove_delegate_delegate =
-		int_get_offset_to_string_data =
 		int_interlocked_compare_exchange =
 		methodbase_get_type_from_handle =
 		methodbase_get_type_from_handle_generic =
 		fieldinfo_get_field_from_handle =
+		fieldinfo_get_field_from_handle_generic =
 		activator_create_instance = null;
 
+		int_get_offset_to_string_data =
 		ienumerator_getcurrent = null;
 
 		void_decimal_ctor_five_args =
-		void_decimal_ctor_int_arg =
-		default_member_ctor =
-		decimal_constant_attribute_ctor =
-		struct_layout_attribute_ctor =
-		field_offset_attribute_ctor =
-		invalid_operation_exception_ctor =
-		fixed_buffer_attr_ctor = null;
-
-		param_array_attr =
-		compiler_generated_attr =
-		unsafe_value_type_attr =
-		extension_attribute_attr = null;
+		void_decimal_ctor_int_arg = null;
 
 		isvolatile_type = null;
 			
@@ -374,7 +327,7 @@ namespace Mono.CSharp {
 
 	public static MemberCache LookupMemberCache (Type t)
 	{
-		if (t.Module == CodeGen.Module.Builder) {
+		if (t.Module == RootContext.ToplevelTypes.Builder) {
 			DeclSpace container = (DeclSpace)builder_to_declspace [t];
 			if (container != null)
 				return container.MemberCache;
@@ -515,42 +468,6 @@ namespace Mono.CSharp {
 		return null;
 	}
 
-	public static CustomAttributeBuilder GetCompilerGeneratedAttribute (Location loc)
-	{
-		if (compiler_generated_attr != null)
-			return compiler_generated_attr;
-
-		Type t = TypeManager.CoreLookupType (
-			"System.Runtime.CompilerServices", "CompilerGeneratedAttribute", Kind.Class, true);
-
-		// TODO: it cannot be null
-		if (t == null)
-			return null;
-
-		compiler_generated_attr = new CustomAttributeBuilder (
-			GetPredefinedConstructor (t, loc, Type.EmptyTypes), new object[0]);
-
-		return compiler_generated_attr;
-	}
-
-	public static CustomAttributeBuilder GetDebuggerHiddenAttribute (Location loc)
-	{
-		if (debugger_hidden_attr != null)
-			return debugger_hidden_attr;
-
-		Type t = TypeManager.CoreLookupType (
-			"System.Diagnostics", "DebuggerHiddenAttribute", Kind.Class, true);
-
-		// TODO: it cannot be null
-		if (t == null)
-			return null;
-
-		debugger_hidden_attr = new CustomAttributeBuilder (
-			GetPredefinedConstructor (t, loc, Type.EmptyTypes), new object[0]);
-
-		return debugger_hidden_attr;
-	}
-
 	public static Type GetNestedType (Type t, string name)
 	{
 		object ret = null;
@@ -569,20 +486,11 @@ namespace Mono.CSharp {
 	public static void LoadAllImportedTypes ()
 	{
 		AllClsTopLevelTypes = new Hashtable (1500);
-		foreach (Assembly a in RootNamespace.Global.Assemblies) {
+		foreach (Assembly a in GlobalRootNamespace.Instance.Assemblies) {
 			foreach (Type t in a.GetExportedTypes ()) {
 				AllClsTopLevelTypes [t.FullName.ToLower (System.Globalization.CultureInfo.InvariantCulture)] = null;
 			}
 		}
-	}
-
-	public static bool NamespaceClash (string name, Location loc)
-	{
-		if (! RootNamespace.Global.IsNamespace (name))
-			return false;
-
-		Report.Error (519, loc, String.Format ("`{0}' clashes with a predefined namespace", name));
-		return true;
 	}
 
 	/// <summary>
@@ -593,11 +501,17 @@ namespace Mono.CSharp {
 		if (t == null_type)
 			return "null";
 
-		if (t == typeof (ArglistParameter))
+		if (t == typeof (ArglistAccess))
 			return "__arglist";
 			
 		if (t == typeof (AnonymousMethodBody))
 			return "anonymous method";
+
+		if (t == typeof (MethodGroupExpr))
+			return "method group";
+
+		if (IsDynamicType (t))
+			return "dynamic";
 
 		if (t == null)
 			return "internal error";
@@ -727,11 +641,11 @@ namespace Mono.CSharp {
 	{
 		if (t.IsArray) {
 			string dimension = t.Name.Substring (t.Name.LastIndexOf ('['));
-			return GetFullName (t.GetElementType ()) + dimension;
+			return GetFullName (GetElementType (t)) + dimension;
 		}
 
 		if (IsNullableType (t) && !t.IsGenericTypeDefinition) {
-			t = GetTypeArguments (t)[0];
+			t = TypeToCoreType (GetTypeArguments (t)[0]);
 			return CSharpName (t) + "?";
 		}
 
@@ -821,9 +735,8 @@ namespace Mono.CSharp {
 			else {
 				sig.Append (mb.Name);
 
-#if GMCS_SOURCE
-				if (TypeManager.IsGenericMethod (mb)) {
-					Type[] args = mb.GetGenericArguments ();
+				if (IsGenericMethod (mb)) {
+					Type[] args = GetGenericArguments (mb);
 					sig.Append ('<');
 					for (int i = 0; i < args.Length; i++) {
 						if (i > 0)
@@ -832,7 +745,6 @@ namespace Mono.CSharp {
 					}
 					sig.Append ('>');
 				}
-#endif
 			}
 
 			sig.Append (parameters);
@@ -848,14 +760,10 @@ namespace Mono.CSharp {
 
 	public static string GetMethodName (MethodInfo m)
 	{
-#if GMCS_SOURCE
 		if (!IsGenericMethodDefinition (m) && !IsGenericMethod (m))
 			return m.Name;
 
-		return MemberName.MakeName (m.Name, m.GetGenericArguments ().Length);
-#else
-		return m.Name;
-#endif
+		return MemberName.MakeName (m.Name, TypeManager.GetGenericArguments (m).Length);
 	}
 
 	static public string CSharpSignature (EventInfo ei)
@@ -867,14 +775,14 @@ namespace Mono.CSharp {
 	// Looks up a type, and aborts if it is not found.  This is used
 	// by predefined types required by the compiler
 	//
-	public static Type CoreLookupType (string ns_name, string name, Kind type_kind, bool required)
+	public static Type CoreLookupType (CompilerContext ctx, string ns_name, string name, Kind type_kind, bool required)
 	{
-		Namespace ns = RootNamespace.Global.GetNamespace (ns_name, true);
-		Expression expr = ns.Lookup (RootContext.ToplevelTypes, name, Location.Null);
+		Namespace ns = GlobalRootNamespace.Instance.GetNamespace (ns_name, true);
+		Expression expr = ns.Lookup (ctx, name, Location.Null);
 
 		if (expr == null) {
 			if (required) {
-				Report.Error (518, "The predefined type `{0}.{1}' is not defined or imported",
+				ctx.Report.Error (518, "The predefined type `{0}.{1}' is not defined or imported",
 					ns_name, name);
 			}
 			return null;
@@ -885,7 +793,7 @@ namespace Mono.CSharp {
 			return t;
 
 		// TODO: All predefined imported types have to have correct signature
-		if (t.Module != CodeGen.Module.Builder)
+		if (t.Module != RootContext.ToplevelTypes.Builder)
 			return t;
 
 		DeclSpace ds = (DeclSpace)RootContext.ToplevelTypes.GetDefinition (t.FullName);
@@ -898,7 +806,7 @@ namespace Mono.CSharp {
 				return t;
 		}
 
-		Report.Error (520, ds.Location, "The predefined type `{0}.{1}' is not declared correctly",
+		ctx.Report.Error (520, ds.Location, "The predefined type `{0}.{1}' is not declared correctly",
 			ns_name, name);
 		return null;
 	}
@@ -948,7 +856,7 @@ namespace Mono.CSharp {
 		if (mt == MemberTypes.Method || mt == MemberTypes.Constructor)
 			method_args = "(" + TypeManager.CSharpName (args) + ")";
 
-		Report.Error (656, loc, "The compiler required member `{0}.{1}{2}' could not be found or is inaccessible",
+		RootContext.ToplevelTypes.Compiler.Report.Error (656, loc, "The compiler required member `{0}.{1}{2}' could not be found or is inaccessible",
 			TypeManager.CSharpName (t), name, method_args);
 
 		return null;
@@ -986,152 +894,120 @@ namespace Mono.CSharp {
 	///   population of the type has happened (for example, to
 	///   bootstrap the corlib.dll
 	/// </remarks>
-	public static bool InitCoreTypes ()
+	public static bool InitCoreTypes (CompilerContext ctx)
 	{
-		object_type   = CoreLookupType ("System", "Object", Kind.Class, true);
+		object_type   = CoreLookupType (ctx, "System", "Object", Kind.Class, true);
 		system_object_expr.Type = object_type;
-		value_type    = CoreLookupType ("System", "ValueType", Kind.Class, true);
+		value_type    = CoreLookupType (ctx, "System", "ValueType", Kind.Class, true);
 		system_valuetype_expr.Type = value_type;
-		attribute_type = CoreLookupType ("System", "Attribute", Kind.Class, true);
+		attribute_type = CoreLookupType (ctx, "System", "Attribute", Kind.Class, true);
 
-		int32_type    = CoreLookupType ("System", "Int32", Kind.Struct, true);
-		int64_type    = CoreLookupType ("System", "Int64", Kind.Struct, true);
-		uint32_type   = CoreLookupType ("System", "UInt32", Kind.Struct, true); 
-		uint64_type   = CoreLookupType ("System", "UInt64", Kind.Struct, true); 
-		byte_type     = CoreLookupType ("System", "Byte", Kind.Struct, true);
-		sbyte_type    = CoreLookupType ("System", "SByte", Kind.Struct, true);
-		short_type    = CoreLookupType ("System", "Int16", Kind.Struct, true);
-		ushort_type   = CoreLookupType ("System", "UInt16", Kind.Struct, true);
+		int32_type    = CoreLookupType (ctx, "System", "Int32", Kind.Struct, true);
+		system_int32_expr.Type = int32_type;
+		int64_type    = CoreLookupType (ctx, "System", "Int64", Kind.Struct, true);
+		system_int64_expr.Type = int64_type;
+		uint32_type   = CoreLookupType (ctx, "System", "UInt32", Kind.Struct, true);
+		system_uint32_expr.Type = uint32_type;
+		uint64_type   = CoreLookupType (ctx, "System", "UInt64", Kind.Struct, true);
+		system_uint64_expr.Type = uint64_type;
+		byte_type     = CoreLookupType (ctx, "System", "Byte", Kind.Struct, true);
+		system_byte_expr.Type = byte_type;
+		sbyte_type    = CoreLookupType (ctx, "System", "SByte", Kind.Struct, true);
+		system_sbyte_expr.Type = sbyte_type;
+		short_type    = CoreLookupType (ctx, "System", "Int16", Kind.Struct, true);
+		system_int16_expr.Type = short_type;
+		ushort_type   = CoreLookupType (ctx, "System", "UInt16", Kind.Struct, true);
+		system_uint16_expr.Type = ushort_type;
 
-		ienumerator_type     = CoreLookupType ("System.Collections", "IEnumerator", Kind.Interface, true);
-		ienumerable_type     = CoreLookupType ("System.Collections", "IEnumerable", Kind.Interface, true);
-		idisposable_type     = CoreLookupType ("System", "IDisposable", Kind.Interface, true);
+		ienumerator_type     = CoreLookupType (ctx, "System.Collections", "IEnumerator", Kind.Interface, true);
+		ienumerable_type     = CoreLookupType (ctx, "System.Collections", "IEnumerable", Kind.Interface, true);
+		idisposable_type     = CoreLookupType (ctx, "System", "IDisposable", Kind.Interface, true);
 
 		// HACK: DefineType immediately resolves iterators (very wrong)
-		generic_ienumerator_type = CoreLookupType ("System.Collections.Generic", "IEnumerator`1", Kind.Interface, false);
+		generic_ienumerator_type = CoreLookupType (ctx, "System.Collections.Generic", "IEnumerator`1", Kind.Interface, false);
 
-		char_type     = CoreLookupType ("System", "Char", Kind.Struct, true);
-		string_type   = CoreLookupType ("System", "String", Kind.Class, true);
-		float_type    = CoreLookupType ("System", "Single", Kind.Struct, true);
-		double_type   = CoreLookupType ("System", "Double", Kind.Struct, true);
-		decimal_type  = CoreLookupType ("System", "Decimal", Kind.Struct, true);
-		bool_type     = CoreLookupType ("System", "Boolean", Kind.Struct, true);
-		intptr_type = CoreLookupType ("System", "IntPtr", Kind.Struct, true);
-		uintptr_type = CoreLookupType ("System", "UIntPtr", Kind.Struct, true);
+		char_type     = CoreLookupType (ctx, "System", "Char", Kind.Struct, true);
+		system_char_expr.Type = char_type;
+		string_type   = CoreLookupType (ctx, "System", "String", Kind.Class, true);
+		system_string_expr.Type = string_type;
+		float_type    = CoreLookupType (ctx, "System", "Single", Kind.Struct, true);
+		system_single_expr.Type = float_type;
+		double_type   = CoreLookupType (ctx, "System", "Double", Kind.Struct, true);
+		system_double_expr.Type = double_type;
+		decimal_type  = CoreLookupType (ctx, "System", "Decimal", Kind.Struct, true);
+		system_decimal_expr.Type = decimal_type;
+		bool_type     = CoreLookupType (ctx, "System", "Boolean", Kind.Struct, true);
+		system_boolean_expr.Type = bool_type;
+		intptr_type = CoreLookupType (ctx, "System", "IntPtr", Kind.Struct, true);
+		system_intptr_expr.Type = intptr_type;
+		uintptr_type = CoreLookupType (ctx, "System", "UIntPtr", Kind.Struct, true);
 
-		multicast_delegate_type = CoreLookupType ("System", "MulticastDelegate", Kind.Class, true);
-		delegate_type           = CoreLookupType ("System", "Delegate", Kind.Class, true);
+		multicast_delegate_type = CoreLookupType (ctx, "System", "MulticastDelegate", Kind.Class, true);
+		delegate_type           = CoreLookupType (ctx, "System", "Delegate", Kind.Class, true);
 
-		enum_type	= CoreLookupType ("System", "Enum", Kind.Class, true);
-		array_type	= CoreLookupType ("System", "Array", Kind.Class, true);
-		void_type	= CoreLookupType ("System", "Void", Kind.Struct, true);
-		type_type	= CoreLookupType ("System", "Type", Kind.Class, true);
-		exception_type = CoreLookupType ("System", "Exception", Kind.Class, true);
+		enum_type	= CoreLookupType (ctx, "System", "Enum", Kind.Class, true);
+		array_type	= CoreLookupType (ctx, "System", "Array", Kind.Class, true);
+		void_type	= CoreLookupType (ctx, "System", "Void", Kind.Struct, true);
+		system_void_expr.Type = void_type;
+		type_type	= CoreLookupType (ctx, "System", "Type", Kind.Class, true);
+		exception_type = CoreLookupType (ctx, "System", "Exception", Kind.Class, true);
 
-		runtime_field_handle_type = CoreLookupType ("System", "RuntimeFieldHandle", Kind.Struct, true);
-		runtime_handle_type = CoreLookupType ("System", "RuntimeTypeHandle", Kind.Struct, true);
+		runtime_field_handle_type = CoreLookupType (ctx, "System", "RuntimeFieldHandle", Kind.Struct, true);
+		runtime_handle_type = CoreLookupType (ctx, "System", "RuntimeTypeHandle", Kind.Struct, true);
 
-		param_array_type = CoreLookupType ("System", "ParamArrayAttribute", Kind.Class, true);
-		out_attribute_type = CoreLookupType ("System.Runtime.InteropServices", "OutAttribute", Kind.Class, true);
+		PredefinedAttributes.Get.ParamArray.Resolve (false);
+		PredefinedAttributes.Get.Out.Resolve (false);
 
-		return Report.Errors == 0;
+		return ctx.Report.Errors == 0;
 	}
 
 	//
 	// Initializes optional core types
 	//
-	public static void InitOptionalCoreTypes ()
+	public static void InitOptionalCoreTypes (CompilerContext ctx)
 	{
-		system_string_expr.Type = string_type;
-		system_boolean_expr.Type = bool_type;
-		system_decimal_expr.Type = decimal_type;
-		system_single_expr.Type = float_type;
-		system_double_expr.Type = double_type;
-		system_sbyte_expr.Type = sbyte_type;
-		system_byte_expr.Type = byte_type;
-		system_int16_expr.Type = short_type;
-		system_uint16_expr.Type = ushort_type;
-		system_int32_expr.Type = int32_type;
-		system_uint32_expr.Type = uint32_type;
-		system_int64_expr.Type = int64_type;
-		system_uint64_expr.Type = uint64_type;
-		system_char_expr.Type = char_type;
-		system_void_expr.Type = void_type;
-
 		//
 		// These are only used for compare purposes
 		//
-		anonymous_method_type = typeof (AnonymousMethodBody);
 		null_type = typeof (NullLiteral);
 		
 		void_ptr_type = GetPointerType (void_type);
-		char_ptr_type = GetPointerType (char_type);
 
 		//
 		// Initialize InternalsVisibleTo as the very first optional type. Otherwise we would populate
 		// types cache with incorrect accessiblity when any of optional types is internal.
 		//
-		internals_visible_attr_type = CoreLookupType ("System.Runtime.CompilerServices", "InternalsVisibleToAttribute", Kind.Class, false);
+		PredefinedAttributes.Get.Initialize ();
 
-		runtime_argument_handle_type = CoreLookupType ("System", "RuntimeArgumentHandle", Kind.Struct, false);
-		asynccallback_type = CoreLookupType ("System", "AsyncCallback", Kind.Delegate, false);
-		iasyncresult_type = CoreLookupType ("System", "IAsyncResult", Kind.Interface, false);
-		typed_reference_type = CoreLookupType ("System", "TypedReference", Kind.Struct, false);
-		arg_iterator_type = CoreLookupType ("System", "ArgIterator", Kind.Struct, false);
-		mbr_type = CoreLookupType ("System", "MarshalByRefObject", Kind.Class, false);
+		runtime_argument_handle_type = CoreLookupType (ctx, "System", "RuntimeArgumentHandle", Kind.Struct, false);
+		asynccallback_type = CoreLookupType (ctx, "System", "AsyncCallback", Kind.Delegate, false);
+		iasyncresult_type = CoreLookupType (ctx, "System", "IAsyncResult", Kind.Interface, false);
+		typed_reference_type = CoreLookupType (ctx, "System", "TypedReference", Kind.Struct, false);
+		arg_iterator_type = CoreLookupType (ctx, "System", "ArgIterator", Kind.Struct, false);
+		mbr_type = CoreLookupType (ctx, "System", "MarshalByRefObject", Kind.Class, false);
 
 		//
 		// Optional attributes, used for error reporting only
 		//
-		obsolete_attribute_type = CoreLookupType ("System", "ObsoleteAttribute", Kind.Class, false);
-		if (obsolete_attribute_type != null) {
-			Class c = TypeManager.LookupClass (obsolete_attribute_type);
-			if (c != null)
-				c.Define ();
-		}
+		//if (PredefinedAttributes.Get.Obsolete.IsDefined) {
+		//    Class c = TypeManager.LookupClass (PredefinedAttributes.Get.Obsolete.Type);
+		//    if (c != null)
+		//        c.Define ();
+		//}
 
-		dllimport_type = CoreLookupType ("System.Runtime.InteropServices", "DllImportAttribute", Kind.Class, false);
-		methodimpl_attr_type = CoreLookupType ("System.Runtime.CompilerServices", "MethodImplAttribute", Kind.Class, false);
-#if !NET_2_0
-		marshal_as_attr_type = CoreLookupType ("System.Runtime.InteropServices", "MarshalAsAttribute", Kind.Class, false);
-#endif
-		in_attribute_type = CoreLookupType ("System.Runtime.InteropServices", "InAttribute", Kind.Class, false);
-		indexer_name_type = CoreLookupType ("System.Runtime.CompilerServices", "IndexerNameAttribute", Kind.Class, false);
-		conditional_attribute_type = CoreLookupType ("System.Diagnostics", "ConditionalAttribute", Kind.Class, false);
-		cls_compliant_attribute_type = CoreLookupType ("System", "CLSCompliantAttribute", Kind.Class, false);
-		security_attr_type = CoreLookupType ("System.Security.Permissions", "SecurityAttribute", Kind.Class, false);
-		required_attr_type = CoreLookupType ("System.Runtime.CompilerServices", "RequiredAttributeAttribute", Kind.Class, false);
-		guid_attr_type = CoreLookupType ("System.Runtime.InteropServices", "GuidAttribute", Kind.Class, false);
-		assembly_culture_attribute_type = CoreLookupType ("System.Reflection", "AssemblyCultureAttribute", Kind.Class, false);
-		assembly_version_attribute_type = CoreLookupType ("System.Reflection", "AssemblyVersionAttribute", Kind.Class, false);
-		comimport_attr_type = CoreLookupType ("System.Runtime.InteropServices", "ComImportAttribute", Kind.Class, false);
-		coclass_attr_type = CoreLookupType ("System.Runtime.InteropServices", "CoClassAttribute", Kind.Class, false);
-		attribute_usage_type = CoreLookupType ("System", "AttributeUsageAttribute", Kind.Class, false);
-		default_parameter_value_attribute_type = CoreLookupType ("System.Runtime.InteropServices", "DefaultParameterValueAttribute", Kind.Class, false);
-
-		// New in .NET 2.0
-		default_charset_type = CoreLookupType ("System.Runtime.InteropServices", "DefaultCharSetAttribute", Kind.Class, false);
-		type_forwarder_attr_type = CoreLookupType ("System.Runtime.CompilerServices", "TypeForwardedToAttribute", Kind.Class, false);
-		generic_ilist_type = CoreLookupType ("System.Collections.Generic", "IList`1", Kind.Interface, false);
-		generic_icollection_type = CoreLookupType ("System.Collections.Generic", "ICollection`1", Kind.Interface, false);
-		generic_ienumerable_type = CoreLookupType ("System.Collections.Generic", "IEnumerable`1", Kind.Interface, false);
-		generic_nullable_type = CoreLookupType ("System", "Nullable`1", Kind.Struct, false);
+		generic_ilist_type = CoreLookupType (ctx, "System.Collections.Generic", "IList`1", Kind.Interface, false);
+		generic_icollection_type = CoreLookupType (ctx, "System.Collections.Generic", "ICollection`1", Kind.Interface, false);
+		generic_ienumerable_type = CoreLookupType (ctx, "System.Collections.Generic", "IEnumerable`1", Kind.Interface, false);
+		generic_nullable_type = CoreLookupType (ctx, "System", "Nullable`1", Kind.Struct, false);
 
 		//
 		// Optional types which are used as types and for member lookup
 		//
-		default_member_type = CoreLookupType ("System.Reflection", "DefaultMemberAttribute", Kind.Class, false);
-		runtime_helpers_type = CoreLookupType ("System.Runtime.CompilerServices", "RuntimeHelpers", Kind.Class, false);
-		decimal_constant_attribute_type = CoreLookupType ("System.Runtime.CompilerServices", "DecimalConstantAttribute", Kind.Class, false);
-		struct_layout_attribute_type = CoreLookupType ("System.Runtime.InteropServices", "StructLayoutAttribute", Kind.Class, false);
-		field_offset_attribute_type = CoreLookupType ("System.Runtime.InteropServices", "FieldOffsetAttribute", Kind.Class, false);
-
-		// New in .NET 2.0
-		fixed_buffer_attr_type = CoreLookupType ("System.Runtime.CompilerServices", "FixedBufferAttribute", Kind.Class, false);
+		runtime_helpers_type = CoreLookupType (ctx, "System.Runtime.CompilerServices", "RuntimeHelpers", Kind.Class, false);
 
 		// New in .NET 3.5
 		// Note: extension_attribute_type is already loaded
-		expression_type = CoreLookupType ("System.Linq.Expressions", "Expression`1", Kind.Class, false);
+		expression_type = CoreLookupType (ctx, "System.Linq.Expressions", "Expression`1", Kind.Class, false);
 
 		if (!RootContext.StdLib) {
 			//
@@ -1157,7 +1033,7 @@ namespace Mono.CSharp {
 				
 				set_corlib_type_builders.Invoke (CodeGen.Assembly.Builder, args);
 			} else {
-				Report.Warning (-26, 3, "The compilation may fail due to missing `{0}.SetCorlibTypeBuilders({1})' method",
+				ctx.Report.Warning (-26, 3, "The compilation may fail due to missing `{0}.SetCorlibTypeBuilders({1})' method",
 					TypeManager.CSharpName (typeof (System.Reflection.Emit.AssemblyBuilder)),
 					TypeManager.CSharpName (system_4_type_arg));
 			}
@@ -1395,16 +1271,36 @@ namespace Mono.CSharp {
 
 	public static bool IsDelegateType (Type t)
 	{
-#if GMCS_SOURCE
-		if (t.IsGenericParameter)
+		if (TypeManager.IsGenericParameter (t))
 			return false;
-#endif
 
 		if (t == TypeManager.delegate_type || t == TypeManager.multicast_delegate_type)
 			return false;
 
 		t = DropGenericTypeArguments (t);
 		return IsSubclassOf (t, TypeManager.delegate_type);
+	}
+
+	//
+	// Is a type of dynamic type
+	//
+	public static bool IsDynamicType (Type t)
+	{
+		if (t == InternalType.Dynamic)
+			return true;
+
+		if (t != object_type)
+			return false;
+
+		if (t.Module == RootContext.ToplevelTypes.Builder)
+			return false;
+
+		PredefinedAttribute pa = PredefinedAttributes.Get.Dynamic;
+		if (pa == null)
+			return false;
+
+		object[] res = t.GetCustomAttributes (pa.Type, false);
+		return res != null && res.Length != 0;
 	}
 	
 	public static bool IsEnumType (Type t)
@@ -1460,12 +1356,10 @@ namespace Mono.CSharp {
 		if (!IsValueType (t))
 			return false;
 
-#if GMCS_SOURCE
 		for (Type p = t.DeclaringType; p != null; p = p.DeclaringType) {
-			if (p.IsGenericTypeDefinition)
+			if (IsGenericTypeDefinition (p))
 				return false;
 		}
-#endif
 
 		bool retval = true;
 		{
@@ -1494,12 +1388,25 @@ namespace Mono.CSharp {
 			return constraints.IsReferenceType;
 		}
 
-		return !t.IsValueType;
+		return !IsStruct (t) && !IsEnumType (t);
 	}			
 		
 	public static bool IsValueType (Type t)
 	{
-		return t.IsValueType || IsGenericParameter (t);
+		if (TypeManager.IsGenericParameter (t)) {
+			GenericConstraints constraints = TypeManager.GetTypeParameterConstraints (t);
+			if (constraints == null)
+				return false;
+
+			return constraints.IsValueType;
+		}
+
+		return IsStruct (t) || IsEnumType (t);
+	}
+
+	public static bool IsStruct (Type t)
+	{
+		return t.BaseType == value_type && t != enum_type && t.IsSealed;
 	}
 	
 	public static bool IsInterfaceType (Type t)
@@ -1630,18 +1537,23 @@ namespace Mono.CSharp {
 
 		if (assembly_internals_vis_attrs.Contains (assembly))
 			return (bool)(assembly_internals_vis_attrs [assembly]);
-				
-		if (internals_visible_attr_type == null)
+
+		PredefinedAttribute pa = PredefinedAttributes.Get.InternalsVisibleTo;
+		// HACK: Do very early resolve of SRE type checking
+		if (pa.Type == null)
+			pa.Resolve (true);
+
+		if (!pa.IsDefined)
 			return false;
 		
-		object [] attrs = assembly.GetCustomAttributes (internals_visible_attr_type, false);
+		object [] attrs = assembly.GetCustomAttributes (pa.Type, false);
 		if (attrs.Length == 0) {
 			assembly_internals_vis_attrs.Add (assembly, false);
 			return false;
 		}
 
 		bool is_friend = false;
-#if GMCS_SOURCE
+
 		AssemblyName this_name = CodeGen.Assembly.Name;
 		byte [] this_token = this_name.GetPublicKeyToken ();
 		foreach (InternalsVisibleToAttribute attr in attrs) {
@@ -1650,7 +1562,11 @@ namespace Mono.CSharp {
 			
 			AssemblyName aname = null;
 			try {
+#if GMCS_SOURCE
 				aname = new AssemblyName (attr.AssemblyName);
+#else
+				throw new NotSupportedException ();
+#endif
 			} catch (FileLoadException) {
 			} catch (ArgumentException) {
 			}
@@ -1662,7 +1578,7 @@ namespace Mono.CSharp {
 			if (key_token != null) {
 				if (this_token.Length == 0) {
 					// Same name, but assembly is not strongnamed
-					Error_FriendAccessNameNotMatching (aname.FullName);
+					Error_FriendAccessNameNotMatching (aname.FullName, RootContext.ToplevelTypes.Compiler.Report);
 					break;
 				}
 				
@@ -1673,12 +1589,11 @@ namespace Mono.CSharp {
 			is_friend = true;
 			break;
 		}
-#endif
+
 		assembly_internals_vis_attrs.Add (assembly, is_friend);
 		return is_friend;
 	}
 
-#if GMCS_SOURCE
 	static bool CompareKeyTokens (byte [] token1, byte [] token2)
 	{
 		for (int i = 0; i < token1.Length; i++)
@@ -1688,13 +1603,12 @@ namespace Mono.CSharp {
 		return true;
 	}
 
-	static void Error_FriendAccessNameNotMatching (string other_name)
+	static void Error_FriendAccessNameNotMatching (string other_name, Report Report)
 	{
 		Report.Error (281,
 			"Friend access was granted to `{0}', but the output assembly is named `{1}'. Try adding a reference to `{0}' or change the output assembly name to match it",
 			other_name, CodeGen.Assembly.Name.FullName);
 	}
-#endif
 
         //
         // Do the right thing when returning the element type of an
@@ -1773,14 +1687,14 @@ namespace Mono.CSharp {
 					TypeManager.CSharpName (mb.DeclaringType) + "." + mb.Name);
 			}
 
-			pd = ParametersCollection.Create (mb);
+			pd = ParametersImported.Create (mb);
 #else
 			MethodBase generic = TypeManager.DropGenericMethodArguments (mb);
 			if (generic != mb) {
 				pd = TypeManager.GetParameterData (generic);
-				pd = ParametersCollection.Create (pd, mb);
+				pd = ParametersImported.Create (pd, mb);
 			} else {
-				pd = ParametersCollection.Create (mb);
+				pd = ParametersImported.Create (mb);
 			}
 #endif
 			method_params.Add (mb, pd);
@@ -1793,26 +1707,26 @@ namespace Mono.CSharp {
 		AParametersCollection pd = (AParametersCollection)method_params [pi];
 		if (pd == null) {
 			if (pi is PropertyBuilder)
-				return Parameters.EmptyReadOnlyParameters;
+				return ParametersCompiled.EmptyReadOnlyParameters;
 
 			ParameterInfo [] p = pi.GetIndexParameters ();
 			if (p == null)
-				return Parameters.EmptyReadOnlyParameters;
+				return ParametersCompiled.EmptyReadOnlyParameters;
 
-			pd = ParametersCollection.Create (p, null);
+			pd = ParametersImported.Create (p, null);
 			method_params.Add (pi, pd);
 		}
 
 		return pd;
 	}
 
-	public static AParametersCollection GetDelegateParameters (Type t)
+	public static AParametersCollection GetDelegateParameters (ResolveContext ec, Type t)
 	{
 		Delegate d = builder_to_declspace [t] as Delegate;
 		if (d != null)
 			return d.Parameters;
 
-		MethodInfo invoke_mb = Delegate.GetInvokeMethod (t, t);
+		MethodInfo invoke_mb = Delegate.GetInvokeMethod (ec.Compiler, t, t);
 		return GetParameterData (invoke_mb);
 	}
 
@@ -1945,7 +1859,7 @@ namespace Mono.CSharp {
 				continue;
 
 			if (hash.Contains (ftc)) {
-				Report.Error (523, tc.Location,
+				RootContext.ToplevelTypes.Compiler.Report.Error (523, tc.Location,
 					      "Struct member `{0}.{1}' of type `{2}' " +
 					      "causes a cycle in the struct layout",
 					      tc.Name, field.Name, ftc.Name);
@@ -2026,7 +1940,7 @@ namespace Mono.CSharp {
 		return ret;
 	}
 		
-	static PtrHashtable iface_cache = new PtrHashtable ();
+	static PtrHashtable iface_cache;
 		
 	/// <summary>
 	///   This function returns the interfaces in the type `t'.  Works with
@@ -2077,7 +1991,6 @@ namespace Mono.CSharp {
 
 			iface_cache [t] = result;
 			return result;
-#if GMCS_SOURCE
 		} else if (t is GenericTypeParameterBuilder){
 			Type[] type_ifaces = (Type []) builder_to_ifaces [t];
 			if (type_ifaces == null || type_ifaces.Length == 0)
@@ -2085,7 +1998,6 @@ namespace Mono.CSharp {
 
 			iface_cache [t] = type_ifaces;
 			return type_ifaces;
-#endif
 		} else {
 			Type[] ifaces = t.GetInterfaces ();
 			iface_cache [t] = ifaces;
@@ -2121,7 +2033,7 @@ namespace Mono.CSharp {
 
 			if (interfaces != null){
 				foreach (Type i in interfaces){
-					if (i == iface)
+					if (i == iface || IsVariantOf (i, iface))
 						return true;
 				}
 			}
@@ -2284,6 +2196,15 @@ namespace Mono.CSharp {
 		return t;
 	}
 
+	//
+	// Converts any type to reflection supported type
+	//
+	public static Type TypeToReflectionType (Type type)
+	{
+		// TODO: Very lame and painful, GetReference () is enough for mcs-cecil
+		return IsDynamicType (type) ? object_type : type;
+	}
+
 	/// <summary>
 	///   Utility function that can be used to probe whether a type
 	///   is managed or not.  
@@ -2296,8 +2217,9 @@ namespace Mono.CSharp {
 		while (t.IsPointer)
 			t = GetElementType (t);
 
-		Report.SymbolRelatedToPreviousError (t);
-		Report.Error (208, loc, "Cannot take the address of, get the size of, or declare a pointer to a managed type `{0}'",
+		RootContext.ToplevelTypes.Compiler.Report.SymbolRelatedToPreviousError (t);
+		RootContext.ToplevelTypes.Compiler.Report.Error (208, loc,
+			"Cannot take the address of, get the size of, or declare a pointer to a managed type `{0}'",
 			CSharpName (t));
 
 		return false;	
@@ -2318,12 +2240,15 @@ namespace Mono.CSharp {
 			TypeContainer tc = t.IsInterface ? LookupInterface (t) : LookupTypeContainer (t);
 			return tc == null ? TypeContainer.DefaultIndexerName : tc.IndexerName;
 		}
-		
-		System.Attribute attr = System.Attribute.GetCustomAttribute (
-			t, TypeManager.default_member_type);
-		if (attr != null){
-			DefaultMemberAttribute dma = (DefaultMemberAttribute) attr;
-			return dma.MemberName;
+
+		PredefinedAttribute pa = PredefinedAttributes.Get.DefaultMember;
+		if (pa.IsDefined) {
+			System.Attribute attr = System.Attribute.GetCustomAttribute (
+				t, pa.Type);
+			if (attr != null) {
+				DefaultMemberAttribute dma = (DefaultMemberAttribute) attr;
+				return dma.MemberName;
+			}
 		}
 
 		return TypeContainer.DefaultIndexerName;
@@ -2341,7 +2266,7 @@ namespace Mono.CSharp {
 				new Type [] { typeof (Type), typeof (bool)},
 				null);
 			if (declare_local_method == null){
-				Report.RuntimeMissingSupport (Location.Null, "pinned local variables");
+				RootContext.ToplevelTypes.Compiler.Report.RuntimeMissingSupport (Location.Null, "pinned local variables");
 				return ig.DeclareLocal (t);
 			}
 		}
@@ -2384,19 +2309,18 @@ namespace Mono.CSharp {
 			if (a.GetArrayRank () != b.GetArrayRank ())
 				return false;
 
-			return IsSignatureEqual (a.GetElementType (), b.GetElementType ());
+			return IsSignatureEqual (GetElementType (a), GetElementType (b));
 		}
 
 		if (a.IsByRef && b.IsByRef)
-			return IsSignatureEqual (a.GetElementType (), b.GetElementType ());
+			return IsSignatureEqual (GetElementType (a), GetElementType (b));
 
-#if GMCS_SOURCE
-		if (a.IsGenericType && b.IsGenericType) {
-			if (a.GetGenericTypeDefinition () != b.GetGenericTypeDefinition ())
+		if (IsGenericType (a) && IsGenericType (b)) {
+			if (DropGenericTypeArguments (a) != DropGenericTypeArguments (b))
 				return false;
 
-			Type[] aargs = a.GetGenericArguments ();
-			Type[] bargs = b.GetGenericArguments ();
+			Type[] aargs = GetTypeArguments (a);
+			Type[] bargs = GetTypeArguments (b);
 
 			if (aargs.Length != bargs.Length)
 				return false;
@@ -2408,7 +2332,6 @@ namespace Mono.CSharp {
 
 			return true;
 		}
-#endif
 
 		return false;
 	}
@@ -2575,33 +2498,36 @@ namespace Mono.CSharp {
 				return a.FullName == b.FullName;
 
 			// Some types are never equal
-			if (a == TypeManager.null_type || a == TypeManager.anonymous_method_type)
+			if (a == TypeManager.null_type || a == InternalType.AnonymousMethod)
 				return false;
 
 			return true;
 		}
 
-#if GMCS_SOURCE
-		if (a.IsGenericParameter && b.IsGenericParameter) {
+		if (IsGenericParameter (a) && IsGenericParameter (b)) {
 			// TODO: needs more testing before cleaning up
 			//if (a.DeclaringMethod != b.DeclaringMethod &&
 			//    (a.DeclaringMethod == null || b.DeclaringMethod == null))
 			//	return false;
+#if GMCS_SOURCE
 			return a.GenericParameterPosition == b.GenericParameterPosition;
+#else
+			throw new NotSupportedException ();
+#endif
 		}
 
 		if (a.IsArray && b.IsArray) {
 			if (a.GetArrayRank () != b.GetArrayRank ())
 				return false;
-			return IsEqual (a.GetElementType (), b.GetElementType ());
+			return IsEqual (GetElementType (a), GetElementType (b));
 		}
 
 		if (a.IsByRef && b.IsByRef)
 			return IsEqual (a.GetElementType (), b.GetElementType ());
 
-		if (a.IsGenericType && b.IsGenericType) {
-			Type adef = a.GetGenericTypeDefinition ();
-			Type bdef = b.GetGenericTypeDefinition ();
+		if (IsGenericType (a) && IsGenericType (b)) {
+			Type adef = DropGenericTypeArguments (a);
+			Type bdef = DropGenericTypeArguments (b);
 
 			if (adef != bdef)
 				return false;
@@ -2609,8 +2535,8 @@ namespace Mono.CSharp {
 			if (adef.IsEnum && bdef.IsEnum)
 				return true;
 
-			Type[] aargs = a.GetGenericArguments ();
-			Type[] bargs = b.GetGenericArguments ();
+			Type[] aargs = GetTypeArguments (a);
+			Type[] bargs = GetTypeArguments (b);
 
 			if (aargs.Length != bargs.Length)
 				return false;
@@ -2622,7 +2548,6 @@ namespace Mono.CSharp {
 
 			return true;
 		}
-#endif
 
 		return false;
 	}
@@ -2697,7 +2622,7 @@ namespace Mono.CSharp {
 	public static Type[] GetGenericArguments (MethodBase mi)
 	{
 #if GMCS_SOURCE
-		return mi.GetGenericArguments ();
+		return mi.GetGenericArguments () ?? Type.EmptyTypes;
 #else
 		return Type.EmptyTypes;
 #endif
@@ -2817,30 +2742,6 @@ namespace Mono.CSharp {
 	{
 #if GMCS_SOURCE
 		return generic_nullable_type == DropGenericTypeArguments (t);
-#else
-		return false;
-#endif
-	}
-
-	public static bool IsNullableTypeOf (Type t, Type nullable)
-	{
-#if GMCS_SOURCE
-		if (!IsNullableType (t))
-			return false;
-
-		return GetTypeArguments (t) [0] == nullable;
-#else
-		return false;
-#endif
-	}
-
-	public static bool IsNullableValueType (Type t)
-	{
-#if GMCS_SOURCE
-		if (!IsNullableType (t))
-			return false;
-
-		return GetTypeArguments (t) [0].IsValueType;
 #else
 		return false;
 #endif
@@ -2983,8 +2884,8 @@ namespace Mono.CSharp {
 		}
 	}
 
-	static Closure closure = new Closure ();
-	static MemberFilter FilterWithClosure_delegate = new MemberFilter (closure.Filter);
+	static Closure closure;
+	static MemberFilter FilterWithClosure_delegate;
 
 	//
 	// Looks up a member called `name' in the `queried_type'.  This lookup
@@ -3197,7 +3098,7 @@ namespace Mono.CSharp {
 		return null;
 	}
 
-	const BindingFlags AllMembers = BindingFlags.Public | BindingFlags.NonPublic |
+	public const BindingFlags AllMembers = BindingFlags.Public | BindingFlags.NonPublic |
 									BindingFlags.Static | BindingFlags.Instance | 
 									BindingFlags.DeclaredOnly;
 
@@ -3299,8 +3200,9 @@ namespace Mono.CSharp {
 		//
 		// DefaultMemberName and indexer name has to match to identify valid C# indexer
 		//
-		if ((s_count > 1 || g_count > 0) && TypeManager.default_member_type != null) {
-			object[] o = pi.DeclaringType.GetCustomAttributes (TypeManager.default_member_type, false);
+		PredefinedAttribute pa = PredefinedAttributes.Get.DefaultMember;
+		if ((s_count > 1 || g_count > 0) && pa.IsDefined) {
+			object[] o = pi.DeclaringType.GetCustomAttributes (pa.Type, false);
 			if (o.Length == 0)
 				return false;
 			
@@ -3319,6 +3221,14 @@ namespace Mono.CSharp {
 #endregion
 	
 }
+
+	class InternalType
+	{
+		public static readonly Type AnonymousMethod = typeof (AnonymousMethodBody);
+		public static readonly Type Arglist = typeof (ArglistAccess);
+		public static readonly Type Dynamic = new DynamicType ();
+		public static readonly Type MethodGroup = typeof (MethodGroupExpr);
+	}
 
 /// <summary>
 ///   There is exactly one instance of this class per type.
@@ -3447,10 +3357,8 @@ public sealed class TypeHandle : IMemberContainer {
 	{
 		MemberInfo [] members;
 
-#if GMCS_SOURCE
 		if (type is GenericTypeParameterBuilder)
 			return MemberList.Empty;
-#endif
 
 #if MS_COMPATIBLE
 		type = TypeManager.DropGenericTypeArguments (type);

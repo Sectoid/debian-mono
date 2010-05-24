@@ -49,6 +49,7 @@ namespace System.Web.Compilation
 {
 	class AppResourcesCompiler
 	{
+		// This class fixes bug #466059
 		class TypeResolutionService : ITypeResolutionService
 		{
 			List <Assembly> referencedAssemblies;

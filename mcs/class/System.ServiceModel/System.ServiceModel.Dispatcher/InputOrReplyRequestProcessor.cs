@@ -12,11 +12,10 @@ namespace System.ServiceModel.Dispatcher
 	{
 		DispatchRuntime dispatch_runtime;
 		IChannel reply_or_input;
-		IDefaultCommunicationTimeouts communication_timeouts;
 
-		public InputOrReplyRequestProcessor (DispatchRuntime runtime, IChannel replyOrInput, IDefaultCommunicationTimeouts timeouts)
+		public InputOrReplyRequestProcessor (DispatchRuntime runtime, IChannel replyOrInput)
 		{
-			Init (runtime, reply_or_input, timeouts);
+			Init (runtime, replyOrInput);
 
 			//initialization
 			InitializeChain.AddHandler (new InitializingHandler ());
@@ -24,21 +23,19 @@ namespace System.ServiceModel.Dispatcher
 			//processing
 			ProcessingChain.AddHandler (new PostReceiveRequestHandler ()).
 							AddHandler(new SecurityHandler ()).
-							AddHandler(new OperationInvokerHandler ()).
-							AddHandler(new ReplyHandler ());			
+							AddHandler(new OperationInvokerHandler (replyOrInput));
 
 			//errors
-			ErrorChain.AddHandler (new ErrorProcessingHandler ());
+			ErrorChain.AddHandler (new ErrorProcessingHandler (replyOrInput));
 
 			//finalize
 			FinalizationChain.AddHandler (new FinalizeProcessingHandler ());
 		}
 
-		void Init (DispatchRuntime runtime, IChannel replyOrInput, IDefaultCommunicationTimeouts timeouts)
+		void Init (DispatchRuntime runtime, IChannel replyOrInput)
 		{
 			dispatch_runtime = runtime;
 			reply_or_input = replyOrInput;
-			communication_timeouts = timeouts;
 		}
 
 		public void ProcessInput (Message message)
@@ -56,13 +53,16 @@ namespace System.ServiceModel.Dispatcher
 
 		OperationContext CreateOperationContext (Message incoming)
 		{
-			ServiceRuntimeChannel contextChannel = new ServiceRuntimeChannel (reply_or_input,
-													dispatch_runtime.ChannelDispatcher.DefaultOpenTimeout,
-													dispatch_runtime.ChannelDispatcher.DefaultCloseTimeout);
+			ServiceRuntimeChannel contextChannel;
+			if (dispatch_runtime.HasCallbackRuntime) {
+				var type = ServiceProxyGenerator.CreateCallbackProxyType (dispatch_runtime.Type, dispatch_runtime.CallbackClientRuntime.CallbackClientType);
+				contextChannel = (ServiceRuntimeChannel) Activator.CreateInstance (type, new object [] {reply_or_input, dispatch_runtime});
+			}
+			else
+				contextChannel = new ServiceRuntimeChannel (reply_or_input, dispatch_runtime);
 			OperationContext opCtx = new OperationContext (contextChannel);
 			opCtx.IncomingMessage = incoming;
 			opCtx.EndpointDispatcher = dispatch_runtime.EndpointDispatcher;
-			opCtx.CommunicationTimeouts = communication_timeouts;
 			return opCtx;
 		}
 	}

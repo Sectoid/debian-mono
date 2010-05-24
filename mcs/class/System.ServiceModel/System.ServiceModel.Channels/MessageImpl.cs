@@ -32,9 +32,6 @@ using System.IO;
 
 namespace System.ServiceModel.Channels
 {
-	// Apparently Microsoft should have split Message class into
-	// two diffferent public classes such as IncomingMessage and
-	// OutgoingMessage.
 	internal class XmlReaderMessage : Message
 	{
 		MessageVersion version;
@@ -44,8 +41,6 @@ namespace System.ServiceModel.Channels
 		bool is_empty, is_fault, body_started, body_consumed;
 		int max_headers;
 
-		string body;
-
 		public XmlReaderMessage (MessageVersion version, XmlDictionaryReader reader, int maxSizeOfHeaders)
 		{
 			this.version = version;
@@ -53,16 +48,6 @@ namespace System.ServiceModel.Channels
 			this.max_headers = maxSizeOfHeaders;
 
 			ReadEnvelopeStart ();
-			// Headers and IsEmpty are consumed at this stage.
-			// Body content is not.
-			ReadBodyStart ();
-
-			StringWriter sw = new StringWriter ();
-			using (XmlDictionaryWriter bodyXml = XmlDictionaryWriter.CreateDictionaryWriter (XmlWriter.Create (sw))) {
-				while (!reader.EOF && reader.NodeType != XmlNodeType.EndElement)
-					bodyXml.WriteNode (reader, false);
-			}
-			this.body = sw.ToString ();
 		}
 
 		public override MessageHeaders Headers {
@@ -107,9 +92,16 @@ namespace System.ServiceModel.Channels
 
 		protected override XmlDictionaryReader OnGetReaderAtBodyContents ()
 		{
-			XmlDictionaryReader newReader = XmlDictionaryReader.CreateDictionaryReader (XmlReader.Create (new StringReader (this.body)));
-			newReader.MoveToContent();
-			return newReader;
+			if (reader.ReadState == ReadState.Closed)
+				return reader; // silly, but that's what our test expects.
+			if (body_consumed)
+				throw new InvalidOperationException ("The message body XmlReader is already consumed.");
+			if (!body_started)
+				ReadBodyStart ();
+			if (is_empty)
+				throw new InvalidOperationException ("The message body is empty.");
+			body_consumed = true;
+			return reader;
 		}
 
 		protected override void OnWriteBodyContents (
@@ -150,20 +142,14 @@ namespace System.ServiceModel.Channels
 			if (isEmptyHeader)
 				return;
 
-#if NET_2_1 // FIXME: implement CreateInternalHeader() without XmlElement
-			throw new NotImplementedException ();
-#else
-			XmlDocument doc = null;
 			while (!reader.EOF && reader.NodeType != XmlNodeType.EndElement) {
-				if (doc == null)
-					doc = new XmlDocument ();
-				XmlElement el = doc.ReadNode (reader) as XmlElement;
-				if (el != null)
-					headers.Add (MessageHeader.CreateInternalHeader (el, envNS));
+				if (reader.NodeType == XmlNodeType.Element)
+					headers.Add (new MessageHeader.RawMessageHeader (reader, envNS));
+				else
+					reader.Skip ();
 				// FIXME: handle UnderstoodHeaders as well.
 				reader.MoveToContent ();
 			}
-#endif
 			reader.ReadEndElement ();
 			reader.MoveToContent ();
 		}
@@ -269,5 +255,14 @@ namespace System.ServiceModel.Channels
 		{
 			body.WriteBodyContents (writer);
 		}
+
+		protected override MessageBuffer OnCreateBufferedCopy (
+			int maxBufferSize)
+		{
+			var headers = new MessageHeaders (Headers);
+			var props = new MessageProperties (Properties);
+			return new DefaultMessageBuffer (maxBufferSize, headers, props, body.CreateBufferedCopy (maxBufferSize), false);
+		}
 	}
 }
+

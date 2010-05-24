@@ -892,7 +892,7 @@ namespace System.Web.Compilation
 				return;			
 
 			object[] attrs = mi.GetCustomAttributes (typeof (LocalizableAttribute), true);
-			if (attrs == null || attrs.Length == 0 || !((LocalizableAttribute)attrs [0]).IsLocalizable)
+			if (attrs == null && attrs.Length == 0 && !((LocalizableAttribute)attrs [0]).IsLocalizable)
 				return;
 			
 			string memberName = mi.Name;
@@ -1325,6 +1325,7 @@ namespace System.Web.Compilation
 			parent.RenderMethod.Statements.Add (AddLinePragma (expr, cr));
 		}
 
+#if !NET_2_0
 		static PropertyInfo GetContainerProperty (Type type, string[] propNames)
 		{
 			PropertyInfo prop;
@@ -1338,7 +1339,6 @@ namespace System.Web.Compilation
 			return null;
 		}
 
-#if !NET_2_0
 		static string[] containerPropNames = {"Items", "Rows"};
 #endif
 		
@@ -1832,9 +1832,21 @@ namespace System.Web.Compilation
 			object[] attrs;
 			
 #if NET_2_0
-			attrs = member.GetCustomAttributes (typeof (TypeConverterAttribute), true);
-			if (attrs.Length > 0)
-				tca = attrs [0] as TypeConverterAttribute;
+			TypeDescriptionProvider prov = TypeDescriptor.GetProvider (member.ReflectedType);
+			if (prov == null)
+				return null;
+
+			ICustomTypeDescriptor desc = prov.GetTypeDescriptor (member.ReflectedType);
+			PropertyDescriptorCollection coll = desc != null ? desc.GetProperties () : null;
+
+			if (coll == null || coll.Count == 0)
+				return null;
+
+			PropertyDescriptor pd = coll.Find (member.Name, false);
+			if (pd == null)
+				return null;
+
+			return pd.Converter;
 #else
 			attrs = member.GetCustomAttributes (true);
 			
@@ -1844,7 +1856,6 @@ namespace System.Web.Compilation
 				if (tca != null)
 					break;
 			}
-#endif
 
 			if (tca == TypeConverterAttribute.Default)
 				tca = null;
@@ -1867,6 +1878,7 @@ namespace System.Web.Compilation
 				return null;
 
 			return (TypeConverter) Activator.CreateInstance (t);
+#endif
 		}
 		
 		CodeExpression CreateNullableExpression (Type type, CodeExpression inst, bool nullable)
@@ -1929,16 +1941,17 @@ namespace System.Web.Compilation
 			}
 #endif
 			if (type == typeof (string)) {
+#if NET_2_0
+				object[] urlAttr = member.GetCustomAttributes (typeof (UrlPropertyAttribute), true);
+				if (urlAttr.Length != 0)
+					str = HandleUrlProperty ((preConverted && convertedFromAttr is string) ? (string) convertedFromAttr : str, member);
+				else
+#endif
 				if (preConverted)
 					return CreateNullableExpression (originalType,
 									 new CodePrimitiveExpression ((string) convertedFromAttr),
 									 wasNullable);
 				
-#if NET_2_0
-				object[] urlAttr = member.GetCustomAttributes (typeof (UrlPropertyAttribute), true);
-				if (urlAttr.Length != 0)
-					str = HandleUrlProperty (str, member);
-#endif
 				return CreateNullableExpression (originalType, new CodePrimitiveExpression (str), wasNullable);
 			} else if (type == typeof (bool)) {
 				if (preConverted)

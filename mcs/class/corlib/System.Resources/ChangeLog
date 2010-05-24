@@ -1,3 +1,20 @@
+2009-11-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ResourceManager.cs (GetResourceFilePath): Don't use 
+	'resourceDir' which should always be null for Moonlight
+	[Backport r145165]
+
+2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ResourceReader.cs, ResourceSet.cs, RuntimeResourceSet.cs: Use 
+	UnmanagedMemoryStream (instead of IntPtrStream)
+	[Backport r144322]
+
+2009-04-16  Geoff Norton  <gnorton@novell.com>
+
+	* ResourceWriter.cs: The magic internal type here is required to match
+	Microsofts for SL2 resource deserialization.
+
 2009-03-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* ResourceSet.cs: for custom resource sets without a reader, pretende

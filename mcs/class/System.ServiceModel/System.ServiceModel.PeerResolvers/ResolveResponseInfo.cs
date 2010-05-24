@@ -33,20 +33,20 @@ namespace System.ServiceModel.PeerResolvers
 			set { body.Addresses = value; }
 		}
 		
-		[MonoTODO]
 		public bool HasBody ()
 		{
-			throw new NotImplementedException ();
+			return true; // FIXME: I have no idea when it returns false
 		}
 	}
 	
-	[DataContract]
+	[DataContract (Name = "ResolveResponse", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
 	internal class ResolveResponseInfoDC
 	{
 		IList<PeerNodeAddress> addresses;
 
 		public ResolveResponseInfoDC ()
 		{
+			addresses = new List<PeerNodeAddress> ();
 		}
 		
 		[DataMember]

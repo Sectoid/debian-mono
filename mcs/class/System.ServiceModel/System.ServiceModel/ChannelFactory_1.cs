@@ -33,13 +33,13 @@ using System.ServiceModel.Dispatcher;
 
 namespace System.ServiceModel
 {
-	// I really dislike those TChannels which are rather contract.
-	// If I were to design WCF, I'd rather name them as TContract.
+	// LAMESPEC: TChannel should have been defined as "where TChannel : IClientChannel".
+	// The returned channel is actually used as IClientChannel.
+	// (That's also likely why the type parameter name is TChannel, not TContract.)
 	public class ChannelFactory<TChannel>
 		: ChannelFactory, IChannelFactory<TChannel>
 	{
 		public ChannelFactory ()
-			: this ("*")
 		{
 		}
 
@@ -98,9 +98,12 @@ namespace System.ServiceModel
 			Endpoint.Address = remoteAddress;
 		}
 
-		[MonoTODO]
+		internal object OwnerClientBase { get; set; }
+
 		public TChannel CreateChannel ()
 		{
+			EnsureOpened ();
+
 			return CreateChannel (Endpoint.Address);
 		}
 
@@ -109,88 +112,67 @@ namespace System.ServiceModel
 			return CreateChannel (address, null);
 		}
 
+		static TChannel CreateChannelCore (ChannelFactory<TChannel> cf, Func<ChannelFactory<TChannel>, TChannel> f)
+		{
+			var ch = f (cf);
+			((CommunicationObject) (object) ch).Closed += delegate { cf.Close (); };
+			return ch;
+		}
+
 		public static TChannel CreateChannel (Binding binding, EndpointAddress address)
 		{
-			return new ChannelFactory<TChannel> (binding, address).CreateChannel ();
+			return CreateChannelCore (new ChannelFactory<TChannel> (binding, address), f => f.CreateChannel ());
 		}
 
 		public static TChannel CreateChannel (Binding binding, EndpointAddress address, Uri via)
 		{
-			return new ChannelFactory<TChannel> (binding).CreateChannel (address, via);
+			return CreateChannelCore (new ChannelFactory<TChannel> (binding), f => f.CreateChannel (address, via));
 		}
 
-		[MonoTODO]
 		public virtual TChannel CreateChannel (EndpointAddress address, Uri via)
 		{
+#if MONOTOUCH
+			throw new InvalidOperationException ("MonoTouch does not support dynamic proxy code generation. Override this method or its caller to return specific client proxy instance");
+#else
+			var existing = Endpoint.Address;
+			try {
+
+			Endpoint.Address = address;
 			EnsureOpened ();
-			Type type = ClientProxyGenerator.CreateProxyType (Endpoint.Contract);
-			object proxy = Activator.CreateInstance (type,
-				new object [] {CreateRuntime (Endpoint), this});
+			Endpoint.Validate ();
+			Type type = ClientProxyGenerator.CreateProxyType (typeof (TChannel), Endpoint.Contract, false);
+			// in .NET and SL2, it seems that the proxy is RealProxy.
+			// But since there is no remoting in SL2 (and we have
+			// no special magic), we have to use different approach
+			// that should work either.
+			object proxy = Activator.CreateInstance (type, new object [] {Endpoint, this, address ?? Endpoint.Address, via});
 			return (TChannel) proxy;
+
+			} finally {
+				Endpoint.Address = existing;
+			}
+#endif
 		}
 
 		protected static TChannel CreateChannel (string endpointConfigurationName)
 		{
-			return new ChannelFactory<TChannel> (endpointConfigurationName).CreateChannel ();
+			return CreateChannelCore (new ChannelFactory<TChannel> (endpointConfigurationName), f => f.CreateChannel ());
 		}
 
 		protected override ServiceEndpoint CreateDescription ()
 		{
 			ContractDescription cd = ContractDescription.GetContract (typeof (TChannel));
 			ServiceEndpoint ep = new ServiceEndpoint (cd);
-#if !NET_2_1
 			ep.Behaviors.Add (new ClientCredentials ());
-#endif
 			return ep;
 		}
+	}
 
-		static ClientRuntime CreateRuntime (ServiceEndpoint se)
+	class DummyClientBase<T> : ClientBase<T> where T : class
+	{
+		public DummyClientBase (ChannelFactory<T> factory)
+			: base (factory)
 		{
-			ClientRuntime proxy = new ClientRuntime (se);
-			proxy.ContractClientType = typeof (TChannel);
-
-			foreach (OperationDescription od in se.Contract.Operations)
-				if (!proxy.Operations.Contains (od.Name))
-					PopulateClientOperation (proxy, od);
-
-#if !NET_2_1
-			foreach (IEndpointBehavior b in se.Behaviors)
-				b.ApplyClientBehavior (se, proxy);
-
-			foreach (IContractBehavior b in se.Contract.Behaviors)
-				b.ApplyClientBehavior (se.Contract, se, proxy);
-			foreach (OperationDescription od in se.Contract.Operations)
-				foreach (IOperationBehavior ob in od.Behaviors)
-					ob.ApplyClientBehavior (od, proxy.Operations [od.Name]);
-#endif
-
-			return proxy;
-		}
-
-		static void PopulateClientOperation (ClientRuntime proxy, OperationDescription od)
-		{
-			string reqA = null, resA = null;
-			foreach (MessageDescription m in od.Messages) {
-				if (m.Direction == MessageDirection.Input)
-					reqA = m.Action;
-				else
-					resA = m.Action;
-			}
-			ClientOperation o =
-				od.IsOneWay ?
-				new ClientOperation (proxy, od.Name, reqA) :
-				new ClientOperation (proxy, od.Name, reqA, resA);
-			foreach (MessageDescription md in od.Messages) {
-				if (md.Direction == MessageDirection.Input &&
-				    md.Body.Parts.Count == 1 &&
-				    md.Body.Parts [0].Type == typeof (Message))
-					o.SerializeRequest = false;
-				if (md.Direction == MessageDirection.Output &&
-				    md.Body.ReturnValue != null &&
-				    md.Body.ReturnValue.Type == typeof (Message))
-					o.DeserializeReply = false;
-			}
-			proxy.Operations.Add (o);
 		}
 	}
 }

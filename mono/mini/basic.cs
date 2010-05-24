@@ -1331,32 +1331,26 @@ class Tests {
 		return 0;
 	}
 
-	//repro for #506915
-	struct Bug506915 { public int val; }
-	static int test_2_ldobj_stobj_optization (string[] args)
-	{
-		int i = 99;
-		var a = new Bug506915 ();
-		var b = new Bug506915 ();
-		if (i.GetHashCode () == 99)
-			i = 44;
-		var array = new Bug506915 [2];
-		array [0].val = 2;
-		array [1] = (i == 0) ? a : array [0];
-		
-		return array [1].val;
-	}
-	//repro for #505375
-	public static int test_2_cprop_bug () {
-		int idx = 0;
-		int a = 1;
-		var cmp = System.Collections.Generic.Comparer<int>.Default ;
-		if (cmp.Compare (a, 0) > 0)
-			a = 0;
-		do { idx++; } while (cmp.Compare (idx - 1, a) == 0);
-		return idx;
-	}
+	public static unsafe int test_0_ishr_sign_extend () {
+		// Check that ishr does sign extension from bit 31 on 64 bit platforms
+		uint val = 0xF0000000u;
 
+		uint *a = &val;
+		uint ui = (uint)((int)(*a) >> 2);
+
+		if (ui != 0xfc000000)
+			return 1;
+
+		// Same with non-immediates
+		int amount = 2;
+
+		ui = (uint)((int)(*a) >> amount);
+
+		if (ui != 0xfc000000)
+			return 2;
+
+		return 0;
+	}
 
 	public static unsafe int test_0_ishr_sign_extend_cfold () {
 		int i = 32768;

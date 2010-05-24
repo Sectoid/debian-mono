@@ -236,7 +236,7 @@ namespace System
 				obj = dblVal;
 				break;
 			case VarEnum.VT_BOOL:
-				obj = !(lVal == 0);
+				obj = !(boolVal == 0);
 				break;
 			case VarEnum.VT_BSTR:
 				obj = Marshal.PtrToStringBSTR(bstrVal);
@@ -265,7 +265,9 @@ namespace System
 	[StructLayout(LayoutKind.Sequential)]
 	internal unsafe struct BRECORD
 	{
+        #pragma warning disable 169
 		IntPtr pvRecord;
 		IntPtr pRecInfo;
+        #pragma warning restore 169
 	}
 }

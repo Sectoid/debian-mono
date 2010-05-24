@@ -218,9 +218,16 @@ namespace System.Net {
 
 			HttpListenerContext context = ares.GetContext ();
 			if (auth_schemes != AuthenticationSchemes.Anonymous) {
-				context.ParseAuthentication ();
+				context.ParseAuthentication (auth_schemes);
 			}
 			return context; // This will throw on error.
+		}
+
+		internal AuthenticationSchemes SelectAuthenticationScheme (HttpListenerContext context)
+		{
+			if (AuthenticationSchemeSelectorDelegate != null)
+				return AuthenticationSchemeSelectorDelegate (context.Request);
+			return auth_schemes;
 		}
 
 		public HttpListenerContext GetContext ()
