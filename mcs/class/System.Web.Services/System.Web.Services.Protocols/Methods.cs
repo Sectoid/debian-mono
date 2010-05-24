@@ -320,7 +320,7 @@ namespace System.Web.Services.Protocols {
 			{
 				m = new XmlReflectionMember ();
 				m.IsReturnValue = true;
-				m.MemberName = RequestName + "Result";
+				m.MemberName = Name + "Result";
 				m.MemberType = MethodInfo.ReturnType;
 
 				m.XmlAttributes = new XmlAttributes (MethodInfo.ReturnTypeCustomAttributeProvider);
@@ -491,7 +491,11 @@ namespace System.Web.Services.Protocols {
 			xmlImporter.IncludeTypes (Type);
 			soapImporter.IncludeTypes (Type);
 
+#if MONOTOUCH
+			SoapExtensions = new SoapExtensionRuntimeConfig [2][];
+#else
 			SoapExtensions = SoapExtension.GetTypeExtensions (Type);
+#endif
 		}
 
 		internal SoapServiceRoutingStyle RoutingStyle {

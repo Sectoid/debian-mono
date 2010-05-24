@@ -538,6 +538,7 @@ namespace System.Web.UI {
 			return type;
 		}
 
+#if !NET_2_0
 		void AddAssembliesInBin ()
 		{
 			Assembly asm;
@@ -550,6 +551,7 @@ namespace System.Web.UI {
 				}
 			}
 		}
+#endif
 		
 		internal virtual void AddInterface (string iface)
 		{

@@ -1,28 +1,264 @@
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SingleTest.cs : test for parsing MaxValue and PositiveInfinity.
+	  Patch by Tiaan Geldenhuys.
+
+2010-01-15  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* Int32Test.cs: Test for TryParse with MaxValue + 1.
+
+2010-01-15  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* DateTimeTest.cs: Fix the tests (DateTimeStyles.AssumeUniversal is
+	2.0 only).
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeTest.cs : added test for rounding milliseconds.
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeOffsetTest.cs : add ParseExact() case that should preserve
+	  fractions.
+
+2010-01-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DoubleTest.cs : add test for AllowLeading/TrailingSpace flags.
+
+2010-01-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Int32Test.cs: Add test case for exponent support in the Parse
+	methods.
+
+2010-01-07  Jb Evain  <jbevain@novell.com>
+
+	* TypeTest.cs: add test for the MemberType of
+	a generic parameter.
+
+	backport r149175.
+
+2010-01-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ConvertTest.cs: Add test case for #568778 and the default
+	line length.
+	[Backport r149171]
+
 2009-12-21  Marek Habersack  <mhabersack@novell.com>
 
 	* Int32Test.cs, Int64Test.cs, Int16Test.cs, ByteTest.cs: added
 	tests for formats with trailing null chars.
 
+2009-12-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* StringTest.cs: Add tests for IndexOf ("", startIndex, count).
+
+2009-12-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* StringTest.cs: Add test case for right padding an empty string
+	[Backport r148706]
+
+2009-11-24  Jb Evain  <jbevain@novell.com>
+
+	* ArrayTest.cs: test that we don't allow the use of the IList indexer
+	on a multi dimensional array.
+
+	backport r146831.
+
+2009-11-24  Jb Evain  <jbevain@novell.com>
+
+	* ArrayTest: test for the proper exception on Clear ().
+
+	backport of r146825.
+
+2009-11-24  Jb Evain  <jbevain@novell.com>
+
+	* ArrayTest.cs: add test ensuring we do not allow open
+	generic types in CreateInstance.
+
+	backport of r146823.
+
+2009-11-24  Jb Evain <jbevain@novell.com>
+
+	* ArrayTest.cs: Add test ensuring we do not allow void arrays.
+
+	backport r146815.
+
+2009-10-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* StringTest.cs: Add test case for methods that can return
+	empty strings.
+	[Backport r144921]
+
+2009-10-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* TypeTest.cs: New. Add test cases for IsInstanceOfType
+	[Backport r144840]
+
+2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* WeakReferenceTest.cs: New. Basic test cases
+	[Backport r144681]
+
+2009-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeTest.cs: Add a test for missing.
+
+2009-09-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* StringTest.cs : add more normalization tests.
+
+2009-08-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* TimeSpanTest.cs: Add test case where seconds are not specified.
+
+2009-07-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	TypeTest.cs: Add test for Type::GetArrayRank.
+
+2009-07-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	TypeTest.cs: Add test for Type::DeclaringMethod.
+	In special for throwing when the type is not a
+	generic param and for DeclaringMethod returning
+	a method bound to the right type.
+
+2009-07-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	TypeTest.cs: Fix the test.
+
+2009-07-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	TypeTest.cs: Add test for one-dym multidimensional array
+	created with Type::MakeArrayType (1).
+
+2009-07-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ArrayTest.cs: new LastIndexOf test for 0-length arrays.
+
+2009-07-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AttributeTest.cs: Add tests for user types passed to
+	Attribute.GetCustomAttribute[s].
+	
 2009-07-12  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* TypeTest.cs: Enabled test that was failing due to regression.
 
 2009-07-10  Zoltan Varga  <vargaz@gmail.com>
 
-	* ArrayTest.cs: Fix the build.
+	* TypeTest.cs: Add a test for #520690. Disable a test which fails on
+	MS.NET.
 
-2009-07-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+2009-06-30  Zoltan Varga  <vargaz@gmail.com>
 
-	* ArrayTest.cs: new LastIndexOf test for 0-length arrays.
+	* IntPtrTest.cs: Disable a test whose corresponding fix was reverted.
+
+	* *.cs: Convert all tests to new-style nunit classes/methods. Enable
+	some hidden tests.
+
+	* ObjectTest.cs RandomTest.cs SByteTest.cs SingleTest.cs 
+	TimeZoneTest.cs UInt16Test.cs UInt32Test.cs UInt64Test.cs 
+	UIntPtrTest.cs ValueTypeTest.cs: Convert all tests to new-style nunit 
+	classes/methods. Enable some hidden tests.
+
+2009-06-26  Robert Jordan  <robertj@gmx.net>
+
+	* StringTest.cs: Convert all tests to new-style nunit 
+	classes/methods.
+
+	* ArrayTest.cs, ConvertTest.cs, DecimalTest.cs, TimeSpanTest.cs:
+	likewise.
+
+	* DecimalTest2.cs: likewise, 5 hidden tests enabled.
+
+2009-06-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* NumberFormatterTest.cs: Convert all tests to new-style nunit 
+	classes/methods.
+
+2009-06-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* StringTest.cs : Fix the previous test. It was expecting wrong
+	  results. Added another NFC composition test.
 
 2009-06-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* DateTimeTest.cs: add test for parsing a negative timezone.
 	* DateTimeOffsetTest.cs: several tests for Parse.
 
+2009-06-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* StringTest.cs: Fix make check.
+
+2009-06-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* StringTest.cs : added string normalization test.
+
+2009-05-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: test for bug #506757.
+
+2009-05-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* LazyTest.cs: New file.
+
 2009-05-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* TypeTest.cs: test for bug #503728
+
+2009-05-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AppDomainManagerTest.cs: New. Unit test for CheckSecuritySettings
+
+2009-04-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* AppDomainTest.cs: Add a test for #499013.
+
+2009-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* ArrayTest.cs: Add a test for ICollection:IsReadOnly on generic arrays.
+
+2009-03-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* DelegateTest.cs: Mark a test as working.
+
+2009-03-25  Jb Evain  <jbevain@novell.com>
+
+	* DelegateTest.cs: add new CreateDelegate test.
+
+2009-03-25  Jb Evain  <jbevain@novell.com>
+
+	* DelegateTest.cs: add CreateDelegate tests for valuetype -> object
+	conversion for arguments and return types.
+
+2009-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* StringTest.cs (LastIndexOfStringComparison): Add a test for #486234.
+
+2009-03-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeTest.cs: Add more tests for user types.
+
+2009-03-15  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ConvertTest.cs: Avoid false positive in ChangeType test. 
+
+2009-03-07  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* ConvertTest.cs: Merged and improved test for bug #481687.
+	* ConvertTest2.cs: Merged into ConvertTest.cs.
+
+2009-02-27  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EnumTest.cs: Tests for CompareTo.
+
+2009-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Add a test for #471255.
+
+2009-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeTest.cs: Add a test for #467229.
 
 2009-01-06  Atsushi Enomoto  <atsushi@ximian.com>
 

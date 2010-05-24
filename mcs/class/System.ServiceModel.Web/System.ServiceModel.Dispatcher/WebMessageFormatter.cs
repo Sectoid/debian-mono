@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto  <atsushi@ximian.com>
 //
-// Copyright (C) 2008 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2008,2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,7 +26,8 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
-using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -35,6 +36,7 @@ using System.ServiceModel.Channels;
 using System.ServiceModel.Dispatcher;
 using System.ServiceModel.Web;
 using System.Text;
+using System.Xml;
 
 namespace System.ServiceModel.Description
 {
@@ -54,6 +56,10 @@ namespace System.ServiceModel.Description
 			this.converter = converter;
 			this.behavior = behavior;
 			ApplyWebAttribute ();
+			// This is a hack for WebScriptEnablingBehavior
+			var jqc = converter as JsonQueryStringConverter;
+			if (jqc != null)
+				BodyName = jqc.CustomWrapperName;
 		}
 
 		void ApplyWebAttribute ()
@@ -72,12 +78,29 @@ namespace System.ServiceModel.Description
 			template = info.BuildUriTemplate (Operation, GetMessageDescription (MessageDirection.Input));
 		}
 
+		public string BodyName { get; set; }
+
 		public WebHttpBehavior Behavior {
 			get { return behavior; }
 		}
 
 		public WebAttributeInfo Info {
 			get { return info; }
+		}
+
+		public WebMessageBodyStyle BodyStyle {
+			get { return info.IsBodyStyleSetExplicitly ? info.BodyStyle : behavior.DefaultBodyStyle; }
+		}
+
+		public bool IsResponseBodyWrapped {
+			get {
+				switch (BodyStyle) {
+				case WebMessageBodyStyle.Wrapped:
+				case WebMessageBodyStyle.WrappedResponse:
+					return true;
+				}
+				return BodyName != null;
+			}
 		}
 
 		public OperationDescription Operation {
@@ -124,11 +147,50 @@ namespace System.ServiceModel.Description
 			throw new SystemException ("INTERNAL ERROR: no corresponding message description for the specified direction: " + dir);
 		}
 
+		protected XmlObjectSerializer GetSerializer (WebContentFormat msgfmt)
+		{
+			switch (msgfmt) {
+			case WebContentFormat.Xml:
+				if (IsResponseBodyWrapped)
+					return GetSerializer (ref xml_serializer, p => new DataContractSerializer (p.Type, p.Name, p.Namespace));
+				else
+					return GetSerializer (ref xml_serializer, p => new DataContractSerializer (p.Type));
+				break;
+			case WebContentFormat.Json:
+				// FIXME: after name argument they are hack
+#if !NET_2_1 || MONOTOUCH
+				if (IsResponseBodyWrapped)
+					return GetSerializer (ref json_serializer, p => new DataContractJsonSerializer (p.Type, BodyName ?? p.Name, null, 0x100000, false, null, true));
+				else
+#endif
+					return GetSerializer (ref json_serializer, p => new DataContractJsonSerializer (p.Type));
+				break;
+			default:
+				throw new NotImplementedException ();
+			}
+		}
+
+		XmlObjectSerializer xml_serializer, json_serializer;
+
+		XmlObjectSerializer GetSerializer (ref XmlObjectSerializer serializer, Func<MessagePartDescription,XmlObjectSerializer> f)
+		{
+			if (serializer == null) {
+				MessageDescription md = GetMessageDescription (MessageDirection.Output);
+				serializer = f (md.Body.ReturnValue);
+			}
+			return serializer;
+		}
+
 		internal class RequestClientFormatter : WebClientMessageFormatter
 		{
 			public RequestClientFormatter (OperationDescription operation, ServiceEndpoint endpoint, QueryStringConverter converter, WebHttpBehavior behavior)
 				: base (operation, endpoint, converter, behavior)
 			{
+			}
+
+			public override object DeserializeReply (Message message, object [] parameters)
+			{
+				throw new NotSupportedException ();
 			}
 		}
 
@@ -138,13 +200,24 @@ namespace System.ServiceModel.Description
 				: base (operation, endpoint, converter, behavior)
 			{
 			}
+
+			public override Message SerializeRequest (MessageVersion messageVersion, object [] parameters)
+			{
+				throw new NotSupportedException ();
+			}
 		}
 
+#if !NET_2_1
 		internal class RequestDispatchFormatter : WebDispatchMessageFormatter
 		{
 			public RequestDispatchFormatter (OperationDescription operation, ServiceEndpoint endpoint, QueryStringConverter converter, WebHttpBehavior behavior)
 				: base (operation, endpoint, converter, behavior)
 			{
+			}
+
+			public override Message SerializeReply (MessageVersion messageVersion, object [] parameters, object result)
+			{
+				throw new NotSupportedException ();
 			}
 		}
 
@@ -154,7 +227,13 @@ namespace System.ServiceModel.Description
 				: base (operation, endpoint, converter, behavior)
 			{
 			}
+
+			public override void DeserializeRequest (Message message, object [] parameters)
+			{
+				throw new NotSupportedException ();
+			}
 		}
+#endif
 
 		internal abstract class WebClientMessageFormatter : WebMessageFormatter, IClientMessageFormatter
 		{
@@ -163,13 +242,13 @@ namespace System.ServiceModel.Description
 			{
 			}
 
-			public Message SerializeRequest (MessageVersion messageVersion, object [] parameters)
+			public virtual Message SerializeRequest (MessageVersion messageVersion, object [] parameters)
 			{
 				if (parameters == null)
 					throw new ArgumentNullException ("parameters");
 				CheckMessageVersion (messageVersion);
 
-				var c = new NameValueCollection ();
+				var c = new Dictionary<string,string> ();
 
 				MessageDescription md = GetMessageDescription (MessageDirection.Input);
 
@@ -178,7 +257,7 @@ namespace System.ServiceModel.Description
 
 				for (int i = 0; i < parameters.Length; i++) {
 					var p = md.Body.Parts [i];
-					string name = p.Name.ToUpperInvariant ();
+					string name = p.Name.ToUpper (CultureInfo.InvariantCulture);
 					if (UriTemplate.PathSegmentVariableNames.Contains (name) ||
 					    UriTemplate.QueryValueVariableNames.Contains (name))
 						c.Add (name, parameters [i] != null ? Converter.ConvertValueToString (parameters [i], parameters [i].GetType ()) : null);
@@ -194,6 +273,11 @@ namespace System.ServiceModel.Description
 
 				var hp = new HttpRequestMessageProperty ();
 				hp.Method = Info.Method;
+
+#if !NET_2_1
+				if (WebOperationContext.Current != null)
+					WebOperationContext.Current.OutgoingRequest.Apply (hp);
+#endif
 				// FIXME: set hp.SuppressEntityBody for some cases.
 				ret.Properties.Add (HttpRequestMessageProperty.Name, hp);
 
@@ -203,7 +287,7 @@ namespace System.ServiceModel.Description
 				return ret;
 			}
 
-			public object DeserializeReply (Message message, object [] parameters)
+			public virtual object DeserializeReply (Message message, object [] parameters)
 			{
 				if (parameters == null)
 					throw new ArgumentNullException ("parameters");
@@ -213,27 +297,85 @@ namespace System.ServiceModel.Description
 				if (!message.Properties.ContainsKey (pname))
 					throw new SystemException ("INTERNAL ERROR: it expects WebBodyFormatMessageProperty existence");
 				var wp = (WebBodyFormatMessageProperty) message.Properties [pname];
-				MessageDescription md = GetMessageDescription (MessageDirection.Output);
 
-				XmlObjectSerializer serializer = null;
-				switch (wp.Format) {
-				case WebContentFormat.Xml:
-					serializer = new DataContractSerializer (md.Body.ReturnValue.Type);
-					break;
-				case WebContentFormat.Json:
-					serializer = new DataContractJsonSerializer (md.Body.ReturnValue.Type);
-					break;
-				case WebContentFormat.Raw:
-				default:
-					throw new NotImplementedException ();
-				}
+				var serializer = GetSerializer (wp.Format);
 
 				// FIXME: handle ref/out parameters
 
-				return serializer.ReadObject (message.GetReaderAtBodyContents (), false);
+				var md = GetMessageDescription (MessageDirection.Output);
+
+				var reader = message.GetReaderAtBodyContents ();
+
+				if (IsResponseBodyWrapped) {
+					if (wp.Format == WebContentFormat.Json)
+						reader.ReadStartElement ("root", String.Empty); // note that the wrapper name is passed to the serializer.
+					else
+						reader.ReadStartElement (md.Body.WrapperName, md.Body.WrapperNamespace);
+				}
+
+				var ret = serializer.ReadObject (reader, true);
+
+				if (IsResponseBodyWrapped)
+					reader.ReadEndElement ();
+
+				return ret;
 			}
 		}
 
+		internal class WrappedBodyWriter : BodyWriter
+		{
+			public WrappedBodyWriter (object value, XmlObjectSerializer serializer, string name, string ns, bool json)
+				: base (true)
+			{
+				this.name = name;
+				this.ns = ns;
+				this.value = value;
+				this.serializer = serializer;
+				this.is_json = json;
+			}
+
+			bool is_json;
+			string name, ns;
+			object value;
+			XmlObjectSerializer serializer;
+
+#if !NET_2_1
+			protected override BodyWriter OnCreateBufferedCopy (int maxBufferSize)
+			{
+				return new WrappedBodyWriter (value, serializer, name, ns, is_json);
+			}
+#endif
+
+			protected override void OnWriteBodyContents (XmlDictionaryWriter writer)
+			{
+				if (is_json)
+					WriteJsonBodyContents (writer);
+				else
+					WriteXmlBodyContents (writer);
+			}
+			
+			void WriteJsonBodyContents (XmlDictionaryWriter writer)
+			{
+				if (name != null) {
+					writer.WriteStartElement ("root");
+					writer.WriteAttributeString ("type", "object");
+				}
+				serializer.WriteObject (writer, value);
+				if (name != null)
+					writer.WriteEndElement ();
+			}
+
+			void WriteXmlBodyContents (XmlDictionaryWriter writer)
+			{
+				if (name != null)
+					writer.WriteStartElement (name, ns);
+				serializer.WriteObject (writer, value);
+				if (name != null)
+					writer.WriteEndElement ();
+			}
+		}
+
+#if !NET_2_1
 		internal abstract class WebDispatchMessageFormatter : WebMessageFormatter, IDispatchMessageFormatter
 		{
 			protected WebDispatchMessageFormatter (OperationDescription operation, ServiceEndpoint endpoint, QueryStringConverter converter, WebHttpBehavior behavior)
@@ -241,7 +383,7 @@ namespace System.ServiceModel.Description
 			{
 			}
 
-			public Message SerializeReply (MessageVersion messageVersion, object [] parameters, object result)
+			public virtual Message SerializeReply (MessageVersion messageVersion, object [] parameters, object result)
 			{
 				try {
 					return SerializeReplyCore (messageVersion, parameters, result);
@@ -269,20 +411,28 @@ namespace System.ServiceModel.Description
 
 				string mediaType = null;
 				XmlObjectSerializer serializer = null;
-				switch (msgfmt) {
-				case WebMessageFormat.Xml:
-					serializer = new DataContractSerializer (md.Body.ReturnValue.Type);
-					mediaType = "application/xml";
-					break;
-				case WebMessageFormat.Json:
-					serializer = new DataContractJsonSerializer (md.Body.ReturnValue.Type);
-					mediaType = "application/json";
-					break;
-				}
 
 				// FIXME: serialize ref/out parameters as well.
 
-				Message ret = Message.CreateMessage (MessageVersion.None, null, result, serializer);
+				string name = null, ns = null;
+
+				switch (msgfmt) {
+				case WebMessageFormat.Xml:
+					serializer = GetSerializer (WebContentFormat.Xml);
+					mediaType = "application/xml";
+					name = IsResponseBodyWrapped ? md.Body.WrapperName : null;
+					ns = IsResponseBodyWrapped ? md.Body.WrapperNamespace : null;
+					break;
+				case WebMessageFormat.Json:
+					serializer = GetSerializer (WebContentFormat.Json);
+					mediaType = "application/json";
+					name = IsResponseBodyWrapped ? (BodyName ?? md.Body.ReturnValue.Name) : null;
+					ns = String.Empty;
+					break;
+				}
+
+				bool json = msgfmt == WebMessageFormat.Json;
+				Message ret = Message.CreateMessage (MessageVersion.None, null, new WrappedBodyWriter (result, serializer, name, ns, json));
 
 				// Message properties
 
@@ -302,7 +452,7 @@ namespace System.ServiceModel.Description
 				return ret;
 			}
 
-			public void DeserializeRequest (Message message, object [] parameters)
+			public virtual void DeserializeRequest (Message message, object [] parameters)
 			{
 				if (parameters == null)
 					throw new ArgumentNullException ("parameters");
@@ -324,9 +474,11 @@ namespace System.ServiceModel.Description
 				for (int i = 0; i < parameters.Length; i++) {
 					var p = md.Body.Parts [i];
 					string name = p.Name.ToUpperInvariant ();
-					parameters [i] = match.BoundVariables [name];
+					var str = match.BoundVariables [name];
+					parameters [i] = Converter.ConvertStringToValue (str, p.Type);
 				}
 			}
 		}
+#endif
 	}
 }

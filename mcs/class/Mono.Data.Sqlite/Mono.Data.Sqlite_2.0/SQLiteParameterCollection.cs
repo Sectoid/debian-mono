@@ -1,43 +1,10 @@
-//
-// Mono.Data.Sqlite.SQLiteParameterCollection.cs
-//
-// Author(s):
-//   Robert Simpson (robert@blackcastlesoft.com)
-//
-// Adapted and modified for the Mono Project by
-//   Marek Habersack (grendello@gmail.com)
-//
-//
-// Copyright (C) 2006 Novell, Inc (http://www.novell.com)
-// Copyright (C) 2007 Marek Habersack
-//
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-// 
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-
-/********************************************************
- * ADO.NET 2.0 Data Provider for Sqlite Version 3.X
+﻿/********************************************************
+ * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
  * 
  * Released to the public domain, use at your own risk!
  ********************************************************/
-#if NET_2_0
+
 namespace Mono.Data.Sqlite
 {
   using System;
@@ -49,7 +16,7 @@ namespace Mono.Data.Sqlite
   using System.Reflection;
 
   /// <summary>
-  /// Sqlite implementation of DbParameterCollection.
+  /// SQLite implementation of DbParameterCollection.
   /// </summary>
 #if !PLATFORM_COMPACTFRAMEWORK
   [Editor("Microsoft.VSDesigner.Data.Design.DBParametersEditor, Microsoft.VSDesigner, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a", "System.Drawing.Design.UITypeEditor, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"), ListBindable(false)]
@@ -175,7 +142,7 @@ namespace Mono.Data.Sqlite
     {
       int n = -1;
 
-      if (parameter.ParameterName != null)
+      if (String.IsNullOrEmpty(parameter.ParameterName) == false)
       {
         n = IndexOf(parameter.ParameterName);
       }
@@ -291,7 +258,7 @@ namespace Mono.Data.Sqlite
     /// Overloaded to specialize the return value of the default indexer
     /// </summary>
     /// <param name="parameterName">Name of the parameter to get/set</param>
-    /// <returns>The specified named Sqlite parameter</returns>
+    /// <returns>The specified named SQLite parameter</returns>
     public new SqliteParameter this[string parameterName]
     {
       get
@@ -308,7 +275,7 @@ namespace Mono.Data.Sqlite
     /// Overloaded to specialize the return value of the default indexer
     /// </summary>
     /// <param name="index">The index of the parameter to get/set</param>
-    /// <returns>The specified Sqlite parameter</returns>
+    /// <returns>The specified SQLite parameter</returns>
     public new SqliteParameter this[int index]
     {
       get
@@ -504,4 +471,3 @@ namespace Mono.Data.Sqlite
     }
   }
 }
-#endif

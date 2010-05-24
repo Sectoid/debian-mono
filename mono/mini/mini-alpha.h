@@ -286,8 +286,6 @@ unw_dyn_region_info_t* mono_ia64_create_unwind_region (Ia64CodegenState *code);
 
 #endif
 
-#define MONO_ARCH_ENABLE_EMIT_STATE_OPT 1
-
 #define MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS 1
 
 #define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION 1
@@ -301,7 +299,6 @@ unw_dyn_region_info_t* mono_ia64_create_unwind_region (Ia64CodegenState *code);
 #define MONO_ARCH_NEED_DIV_CHECK         1
 
 
-#define MONO_ARCH_HAVE_CREATE_TRAMPOLINE_FROM_TOKEN 1
 #define MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE 1
 
 typedef struct {

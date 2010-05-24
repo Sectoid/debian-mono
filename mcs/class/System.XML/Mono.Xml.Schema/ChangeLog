@@ -1,3 +1,13 @@
+2009-01-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdValidatingReader.cs : when xsi:nil is true, do not validate
+	  text string.
+
+2009-01-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaValidatingReader.cs : implement IHasXmlParserContext to
+	  pass possible DTD information.
+
 2008-12-09  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XsdValidatingReader.cs : skip text validation under xs:any.

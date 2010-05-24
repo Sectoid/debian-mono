@@ -29,6 +29,8 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#if !NET_2_1 || MONOTOUCH
+
 using System.Collections;
 using System.Globalization;
 using System.IO;
@@ -734,17 +736,12 @@ namespace System.Security {
 			throw new SecurityException (message, an, granted, refused, method, SecurityAction.InheritanceDemand, null, null, null);
 		}
 
-#if NET_2_1
-		private static void MethodAccessException (IntPtr caller, IntPtr callee)
-		{
-			throw new MethodAccessException (Locale.GetText ("Method call not allowed."));
-		}
+		// called by the runtime when CoreCLR is enabled
 
-		private static void VerificationException ()
+		private static void ThrowException (Exception ex)
 		{
-			throw new VerificationException (Locale.GetText ("Unsafe code encountered."));
+			throw ex;
 		}
-#endif
 
 		// internal - get called by the class loader
 
@@ -801,3 +798,6 @@ namespace System.Security {
 #pragma warning restore 169		
 	}
 }
+
+#endif
+

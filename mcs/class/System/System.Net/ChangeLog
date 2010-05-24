@@ -1,3 +1,49 @@
+2010-03-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpConnection.cs: set the right position when a CR is found.
+	Fixes bug #577891.
+
+2010-03-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListener.cs:
+	* HttpListenerRequest.cs:
+	* ListenerAsyncResult.cs:
+	* HttpConnection.cs: make sure there is no pending input when reusing
+	the connection.
+
+2010-03-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpListenerContext.cs: split the auth header in 2 parts.
+	* HttpListener.cs: backported SelectAuthenticationScheme and
+	added new InternalEndGetContext used for connections that require
+	authentication.
+	* ListenerAsyncResult.cs: allow this object to be just a forwarder
+	when nesting connections for authentication purposes.
+	Fixes bug #585455.
+
+2010-03-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: fix for UploadStringAsync(). Closes bug #577818.
+	Patch by Atsushi.
+
+2010-03-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs: attach a validation callback to the new
+	event in Mono.Security.
+	* ServicePointManager.cs: added a new ValidationHelper
+	class that takes care of building the certificate chain and perform
+	all the check that were done in Mono.Security before. This way the 2.0
+	server certificate validation callback can get all the data it needs.
+
+	Fixes bug #584050.
+
+2010-01-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IPEndPoint.cs: When throwing an ArgumentException in Create()
+	because of a mismatch in the address family, use a more informative
+	message. Patch by Juho Vähä-Herttu<juhovh@iki.fi>.
+	Fixes #505105.
+
 2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CookieContainer.cs: Fix to cloning and expiration. Patch
@@ -10,6 +56,15 @@
 	authentication methods, pick the one that works.
 	Fixes bug #562043.
 
+2010-01-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* NetworkCredential.cs: Fix properties to never return null.
+
+2009-12-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Cookie.cs: Don't use automatic properties to let older mcs
+	(e.g. bootstrap) compile this for NET_1_1 profile
+
 2009-12-24  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Cookie.cs: Re-work ToString to be useable in more cases. Fix
@@ -18,6 +73,19 @@
 	Implement removing oldest cookies when limits are reached.
 	* CookieCollection.cs: Fix sort to be closer to MS implementation
 	(but still not 100% identical). Fix some issues found by Gendarme
+
+2009-12-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnectionGroup.cs:
+	* ServicePoint.cs: implemented CloseConnectionGroup().
+
+2009-11-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CookieCollection.cs: Seal inner CookieCollectionPathComparer
+	* IPAddress.cs: Avoid multiple casts in Equals
+	* SocketAddress.cs: Avoid multiple casts in Equals
+	[Found using Gendarme]
+	[Backport r147163]
 
 2009-10-23  Alexandre Gomes  <alexmipego@gmail.com>
 
@@ -36,8 +104,14 @@
 
 2009-09-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-	* WebRequest.cs: handle upper and lowercase HTTP_PROXY and
-	the Any address.  Fixes bug #537283.
+	* HttpListenerRequest.cs: add the right status code.
+	* HttpConnection.cs: exception might come from more places when
+	reading the input. Catch all of them.
+
+2009-09-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebRequest.cs: handle upper and lowercase HTTP_PROXY and the Any
+	address. Fixes bug #537283.
 
 2009-09-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -49,6 +123,17 @@
 
 	* WebConnection.cs: HEAD response does not have a body even if the
 	response is an error. Fixes buf #535102.
+
+2009-08-17  Geoff Norton  <gnorton@novell.com>
+
+	* NtlmClient.cs: Mono.Http does not exist on monotouch
+
+2009-08-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CookieCollection.cs: Seal class for NET_2_1 (SL3)
+	* CookieContainer.cs: Seal class for NET_2_1 (SL3)
+	* NetworkCredential.cs: Use in NET_2_1 (SL3) but without implementing
+	ICredentialsByHost
 
 2009-08-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -139,10 +224,6 @@
 	* WebConnectionStream.cs: when buffering the response, we have to set
 	the internal length and regenerate the headers.
 
-2009-06-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
-
-	* WebClient.cs: backported from HEAD.
-
 2009-06-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* HttpWebRequest.cs: don't send Content-Length header when SendChunked
@@ -196,6 +277,14 @@
 	write overflow check in both buffered and non-buffered writing (if
 	not using chunked transfer encoding). Fixes bug #510642.
 
+2009-06-20  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* WebClient.cs: Use lowercase hex bytes to match MS. Avoid using
+	zero-length string literal. Fixed exception argument name to match
+	MS. 
+	* WebConnectionStream.cs: Throw a WebException that wraps an
+	IOException when closing the stream before all bytes are written.
+
 2009-06-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* WebConnection.cs: make sure we don't open a new socket if the
@@ -248,6 +337,14 @@
 	* FtpWebRequest.cs: avoid exception when the reply from the server
 	contains just response code. Fixes bug #510852.
 
+2009-06-05  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* DownloadStringCompletedEventArgs.cs: Call RaiseExceptionIfNecessary
+	* OpenReadCompletedEventArgs.cs: Remove Address property since it's 
+	not part of SL2. Call RaiseExceptionIfNecessary
+	* OpenWriteCompletedEventArgs.cs: Call RaiseExceptionIfNecessary
+	* UploadStringCompletedEventArgs.cs: Call RaiseExceptionIfNecessary
+
 2009-06-05  Robert Jordan  <robertj@gmx.net>
 
 	* WebClient.cs (UploadValuesCore): Encode POST arguments with UTF-8.
@@ -263,6 +360,13 @@
 	* HttpConnection.cs: unbind the context after every read for keep-alive
 	connections.
 	Bug #502274 fixed.
+
+2009-05-17  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* CookieContainer.cs: Provide meaningful information in exception
+	messages, and improve compatibility with MS. Modified set_Capacity to
+	no longer change MaxCookieSize when new value is less than
+	MaxCookieSize.
 
 2009-05-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -281,6 +385,23 @@
 	* CookieContainer.cs: matching hosts to domain names like MS does.
 	Bug #421827 fixed.
 
+2009-05-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CredentialCache.cs : implement all not-implemented methods.
+	  Patch by Mineda Nozomi. Close bug #499556.
+
+2009-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* EndPoint.cs: Throw NotImplementedException instead of 
+	NotSupportedException
+	* IPEndPoint.cs: Fix some validations.
+
+2009-04-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebConnection.cs:
+	* HttpWebRequest.cs: provide more information on why the connection
+	could not be established.
+
 2009-04-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* FtpWebRequest.cs: send REST after PASV to avoid some servers
@@ -291,6 +412,10 @@
 
 	* FtpWebRequest.cs: we were sending CWD instead of PWD.
 	Bug #486703 fixed.
+
+2009-03-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* IPAddress.cs: don't allocate the IPv6 array for IPv4 addresses.
 
 2009-02-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -595,7 +720,7 @@
 
 	(TryParse): Provide a exception-less parsing path.
 
-2008-07-25  Gert Driesen  <drieseng@users.sourceforge.net>µ
+2008-07-25  Gert Driesen  <drieseng@users.sourceforge.net>μ
 
 2008-08-06  Atsushi Enomoto  <atsushi@ximian.com>
 

@@ -28,12 +28,26 @@ namespace Mono.CSharp {
 	//
 	// The null literal
 	//
-	public class NullLiteral : Constant {
+	// Note: C# specification null-literal is NullLiteral of NullType type
+	//
+	public class NullLiteral : Constant
+	{
+		//
+		// Default type of null is an object
+		//
 		public NullLiteral (Location loc):
-			base (loc)
+			this (typeof (NullLiteral), loc)
+		{
+		}
+
+		//
+		// Null can have its own type, think of default (Foo)
+		//
+		public NullLiteral (Type type, Location loc)
+			: base (loc)
 		{
 			eclass = ExprClass.Value;
-			type = typeof (NullLiteral);
+			this.type = type;
 		}
 
 		override public string AsString ()
@@ -41,14 +55,16 @@ namespace Mono.CSharp {
 			return GetSignatureForError ();
 		}
 		
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			// HACK: change type to be object
-			type = TypeManager.object_type;
+			// HACK: avoid referencing mcs internal type
+			if (type == typeof (NullLiteral))
+				type = TypeManager.object_type;
+
 			return base.CreateExpressionTree (ec);
 		}		
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			return this;
 		}
@@ -56,6 +72,12 @@ namespace Mono.CSharp {
 		public override void Emit (EmitContext ec)
 		{
 			ec.ig.Emit (OpCodes.Ldnull);
+
+#if GMCS_SOURCE
+			// Only to make verifier happy
+			if (TypeManager.IsGenericParameter (type))
+				ec.ig.Emit (OpCodes.Unbox_Any, type);
+#endif
 		}
 
 		public override string ExprClassName {
@@ -69,29 +91,42 @@ namespace Mono.CSharp {
 			return "null";
 		}
 
-		public override void Error_ValueCannotBeConverted (EmitContext ec, Location loc, Type t, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type t, bool expl)
 		{
 			if (TypeManager.IsGenericParameter (t)) {
-				Report.Error(403, loc,
+				ec.Report.Error(403, loc,
 					"Cannot convert null to the type parameter `{0}' because it could be a value " +
 					"type. Consider using `default ({0})' instead", t.Name);
-			} else {
-				Report.Error(37, loc, "Cannot convert null to `{0}' because it is a value type",
-					TypeManager.CSharpName(t));
+				return;
 			}
+
+			if (TypeManager.IsValueType (t)) {
+				ec.Report.Error(37, loc, "Cannot convert null to `{0}' because it is a value type",
+					TypeManager.CSharpName(t));
+				return;
+			}
+
+			base.Error_ValueCannotBeConverted (ec, loc, t, expl);
 		}
 
 		public override Constant ConvertExplicitly (bool inCheckedContext, Type targetType)
 		{
-			if (targetType.IsPointer)
-				return new EmptyConstantCast (new NullPointer (loc), targetType);
+			if (targetType.IsPointer) {
+				if (type == TypeManager.null_type || this is NullPointer)
+					return new EmptyConstantCast (new NullPointer (loc), targetType);
+
+				return null;
+			}
 
 			// Exlude internal compiler types
-			if (targetType == TypeManager.anonymous_method_type)
+			if (targetType == InternalType.AnonymousMethod)
+				return null;
+
+			if (type != TypeManager.null_type && !Convert.ImplicitStandardConversionExists (this, targetType))
 				return null;
 
 			if (TypeManager.IsReferenceType (targetType))
-				return new EmptyConstantCast (this, targetType);
+				return new NullLiteral (targetType, loc);
 
 			if (TypeManager.IsNullableType (targetType))
 				return Nullable.LiftedNull.Create (targetType, loc);
@@ -120,8 +155,7 @@ namespace Mono.CSharp {
 			throw new NotSupportedException ();
 		}
 
-		public override bool IsDefaultValue 
-		{
+		public override bool IsDefaultValue {
 			get { return true; }
 		}
 
@@ -140,12 +174,17 @@ namespace Mono.CSharp {
 		public override bool IsZeroInteger {
 			get { return true; }
 		}
+		
+		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
+		{
+			type = storey.MutateType (type);
+		}
 	}
 
 	//
 	// A null literal in a pointer context
 	//
-	public class NullPointer : NullLiteral {
+	class NullPointer : NullLiteral {
 		public NullPointer (Location loc):
 			base (loc)
 		{
@@ -169,7 +208,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.bool_type;
 			return this;
@@ -185,7 +224,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.char_type;
 			return this;
@@ -201,7 +240,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.int32_type;
 			return this;
@@ -232,7 +271,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.uint32_type;
 			return this;
@@ -248,7 +287,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.int64_type;
 			return this;
@@ -264,7 +303,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.uint64_type;
 			return this;
@@ -281,7 +320,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.float_type;
 			return this;
@@ -298,31 +337,31 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.double_type;
 
 			return this;
 		}
 
-		public override void Error_ValueCannotBeConverted (EmitContext ec, Location loc, Type target, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type target, bool expl)
 		{
 			if (target == TypeManager.float_type) {
-				Error_664 (loc, "float", "f");
+				Error_664 (ec, loc, "float", "f");
 				return;
 			}
 
 			if (target == TypeManager.decimal_type) {
-				Error_664 (loc, "decimal", "m");
+				Error_664 (ec, loc, "decimal", "m");
 				return;
 			}
 
 			base.Error_ValueCannotBeConverted (ec, loc, target, expl);
 		}
 
-		static void Error_664 (Location loc, string type, string suffix)
+		static void Error_664 (ResolveContext ec, Location loc, string type, string suffix)
 		{
-			Report.Error (664, loc,
+			ec.Report.Error (664, loc,
 				"Literal of type double cannot be implicitly converted to type `{0}'. Add suffix `{1}' to create a literal of this type",
 				type, suffix);
 		}
@@ -338,7 +377,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.decimal_type;
 			return this;
@@ -354,7 +393,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			type = TypeManager.string_type;
 

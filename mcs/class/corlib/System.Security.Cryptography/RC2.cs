@@ -27,6 +27,8 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#if !NET_2_1 || MONOTOUCH
+
 using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography {
@@ -92,3 +94,6 @@ namespace System.Security.Cryptography {
 		}
 	}
 }
+
+#endif
+

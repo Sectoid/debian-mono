@@ -40,7 +40,7 @@ namespace System.Web.Hosting {
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public sealed class ApplicationHost {
 		internal static readonly string MonoHostedDataKey = ".:!MonoAspNetHostedApp!:.";
-		internal static string [] WebConfigFileNames = { "Web.config", "Web.Config", "web.config" };
+		internal static string [] WebConfigFileNames = { "web.config", "Web.config", "Web.Config" };
 
 		ApplicationHost ()
 		{
@@ -257,12 +257,12 @@ namespace System.Web.Hosting {
 				physicalDir += Path.DirectorySeparatorChar;
 			appdomain.SetData (".appPath", physicalDir);
 			appdomain.SetData (".appVPath", virtualDir);
+			appdomain.SetData (".appId", domain_id);
 			appdomain.SetData (".domainId", domain_id);
 			appdomain.SetData (".hostingVirtualPath", virtualDir);
 			appdomain.SetData (".hostingInstallDir", Path.GetDirectoryName (typeof (Object).Assembly.CodeBase));
 #if NET_2_0
 			appdomain.SetData ("DataDirectory", Path.Combine (physicalDir, "App_Data"));
-			HostingEnvironment.SetIsHosted (false);
 #endif
 			appdomain.SetData (MonoHostedDataKey, "yes");
 			
@@ -285,6 +285,9 @@ namespace System.Web.Hosting {
 				current.SetShadowCopyFiles ();
 				current.SetShadowCopyPath (current.SetupInformation.PrivateBinPath);
 			}
+
+			HostingEnvironment.IsHosted = true;
+			HostingEnvironment.SiteName = HostingEnvironment.ApplicationID;
 		}
 #endif
 	}

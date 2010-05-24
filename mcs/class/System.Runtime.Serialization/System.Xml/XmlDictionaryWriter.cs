@@ -82,25 +82,23 @@ namespace System.Xml
 		{
 			return new XmlSimpleDictionaryWriter (writer);
 		}
-
-		[MonoTODO]
+#if !NET_2_1
 		public static XmlDictionaryWriter CreateMtomWriter (
 			Stream stream, Encoding encoding, int maxSizeInBytes,
 			string startInfo)
 		{
 			return CreateMtomWriter (stream, encoding,
-				maxSizeInBytes, startInfo, null, null, false, false);
+				maxSizeInBytes, startInfo, Guid.NewGuid () + "id=1", "http://tempuri.org/0/" + DateTime.Now.Ticks, true, false);
 		}
 
-		[MonoTODO]
 		public static XmlDictionaryWriter CreateMtomWriter (
 			Stream stream, Encoding encoding, int maxSizeInBytes,
 			string startInfo, string boundary, string startUri,
 			bool writeMessageHeaders, bool ownsStream)
 		{
-			throw new NotImplementedException ();
+			return new XmlMtomDictionaryWriter (stream, encoding, maxSizeInBytes, startInfo, boundary, startUri, writeMessageHeaders, ownsStream);
 		}
-
+#endif
 		public static XmlDictionaryWriter CreateTextWriter (
 			Stream stream)
 		{
@@ -152,8 +150,6 @@ namespace System.Xml
 			throw new NotSupportedException ();
 		}
 
-		// FIXME: add Write*Array() overloads.
-
 		public void WriteAttributeString (
 			XmlDictionaryString localName,
 			XmlDictionaryString namespaceUri,
@@ -190,17 +186,93 @@ namespace System.Xml
 			WriteEndElement ();
 		}
 
-		[MonoTODO ("make use of dictionary reader optimization")]
 		public virtual void WriteNode (XmlDictionaryReader reader,
 			bool defattr)
 		{
-			WriteNode ((XmlReader) reader, defattr);
+			if (reader == null)
+				throw new ArgumentNullException ("reader");
+
+			switch (reader.NodeType) {
+			case XmlNodeType.Element:
+				// gratuitously copied from System.XML/System.Xml/XmlWriter.cs:WriteNode(XmlReader,bool)
+				// as there doesn't seem to be a way to hook into attribute writing w/o handling Element.
+				XmlDictionaryString ename, ens;
+				if (reader.TryGetLocalNameAsDictionaryString (out ename) && reader.TryGetLocalNameAsDictionaryString (out ens))
+					WriteStartElement (reader.Prefix, ename, ens);
+				else
+					WriteStartElement (reader.Prefix, reader.LocalName, reader.NamespaceURI);
+				// Well, I found that MS.NET took this way, since
+				// there was a error-prone SgmlReader that fails
+				// MoveToNextAttribute().
+				if (reader.HasAttributes) {
+					for (int i = 0; i < reader.AttributeCount; i++) {
+						reader.MoveToAttribute (i);
+						WriteAttribute (reader, defattr);
+					}
+					reader.MoveToElement ();
+				}
+				if (reader.IsEmptyElement)
+					WriteEndElement ();
+				else {
+					int depth = reader.Depth;
+					reader.Read ();
+					if (reader.NodeType != XmlNodeType.EndElement) {
+						do {
+							WriteNode (reader, defattr);
+						} while (depth < reader.Depth);
+					}
+					WriteFullEndElement ();
+				}
+				reader.Read ();
+				break;
+			case XmlNodeType.Attribute:
+			case XmlNodeType.Text:
+				WriteTextNode (reader, defattr);
+				break;
+			default:
+				base.WriteNode (reader, defattr);
+				break;
+			}
 		}
 
-		[MonoTODO ("make use of dictionary reader optimization")]
+		private void WriteAttribute (XmlDictionaryReader reader, bool defattr)
+		{
+			if (!defattr && reader.IsDefault)
+				return;
+
+			XmlDictionaryString name, ns;
+			if (reader.TryGetLocalNameAsDictionaryString (out name) && reader.TryGetLocalNameAsDictionaryString (out ns))
+				WriteStartAttribute (reader.Prefix, name, ns);
+			else
+				WriteStartAttribute (reader.Prefix, reader.LocalName, reader.NamespaceURI);
+#if NET_2_1
+			// no ReadAttributeValue() in 2.1 profile.
+			WriteTextNode (reader, true);
+#else
+			while (reader.ReadAttributeValue ()) {
+				switch (reader.NodeType) {
+				case XmlNodeType.Text:
+					WriteTextNode (reader, true);
+					break;
+				case XmlNodeType.EntityReference:
+					WriteEntityRef (reader.Name);
+					break;
+				}
+			}
+#endif
+			WriteEndAttribute ();
+		}
+
 		public override void WriteNode (XmlReader reader, bool defattr)
 		{
-			base.WriteNode (reader, defattr);
+			if (reader == null)
+				throw new ArgumentNullException ("reader");
+
+			XmlDictionaryReader dr = reader as XmlDictionaryReader;
+			if (dr != null)
+				WriteNode (dr, defattr);
+			else
+				base.WriteNode (reader, defattr);
 		}
 
 		public virtual void WriteQualifiedName (
@@ -235,7 +307,10 @@ namespace System.Xml
 			XmlDictionaryString localName,
 			XmlDictionaryString namespaceUri)
 		{
-			WriteStartElement (prefix, localName.Value, namespaceUri.Value);
+			if (localName == null)
+				throw new ArgumentException ("localName must not be null.", "localName");
+			WriteStartElement (prefix, localName.Value,
+					namespaceUri != null ? namespaceUri.Value : null);
 		}
 
 		public virtual void WriteString (XmlDictionaryString value)
@@ -243,19 +318,42 @@ namespace System.Xml
 			WriteString (value.Value);
 		}
 
+		protected virtual void WriteTextNode (XmlDictionaryReader reader, bool isAttribute)
+		{
+			WriteString (reader.Value);
+			if (!isAttribute)
+				reader.Read ();
+		}
+
 		public virtual void WriteValue (Guid guid)
 		{
-			throw new NotSupportedException ();
+			WriteString (guid.ToString ());
+		}
+
+		public virtual void WriteValue (IStreamProvider value)
+		{
+			if (value == null)
+				throw new ArgumentNullException ("value");
+
+			Stream stream = value.GetStream ();
+			byte[] buf = new byte [Math.Min (2048, stream.CanSeek ? stream.Length : 2048)];
+			int read;
+			while ((read = stream.Read (buf, 0, buf.Length)) > 0) {
+				WriteBase64 (buf, 0, read);
+			}
+			value.ReleaseStream (stream);
 		}
 
 		public virtual void WriteValue (TimeSpan duration)
 		{
-			throw new NotSupportedException ();
+			WriteString (XmlConvert.ToString (duration));
 		}
 
 		public virtual void WriteValue (UniqueId id)
 		{
-			throw new NotSupportedException ();
+			if (id == null)
+				throw new ArgumentNullException ("id");
+			WriteString (id.ToString ());
 		}
 
 		public virtual void WriteValue (XmlDictionaryString value)

@@ -17,7 +17,6 @@ gtest-284.cs
 gtest-289.cs
 gtest-305.cs
 gtest-312.cs
-gtest-344.cs
 gtest-345.cs
 gtest-352.cs
 gtest-353.cs
@@ -30,6 +29,7 @@ gtest-416.cs
 gtest-417.cs
 gtest-424.cs
 gtest-437.cs
+gtest-443.cs
 gtest-anon-24.cs
 gtest-anon-49.cs
 gtest-collectioninit-01.cs
@@ -37,9 +37,14 @@ gtest-collectioninit-03.cs
 gtest-etree-01.cs
 gtest-etree-04.cs
 gtest-etree-05.cs
-gtest-etree-07.cs
+gtest-etree-19.cs
 gtest-exmethod-12.cs
 gtest-linq-13.cs
+gtest-variance-1.cs IGNORE
+gtest-variance-2.cs IGNORE
+gtest-variance-3.cs IGNORE
+gtest-variance-4.cs IGNORE
+gtest-variance-5.cs IGNORE
 test-107.cs
 test-117.cs
 test-118.cs
@@ -57,15 +62,12 @@ test-263.cs
 test-269.cs
 test-271.cs
 test-28.cs
-test-286.cs
 test-300.cs
 test-304.cs
 test-311.cs
 test-316.cs
 test-318.cs
 test-324.cs
-test-388.cs
-test-389.cs
 test-399.cs
 test-399-lib.cs
 test-453.cs
@@ -81,6 +83,7 @@ test-651.cs
 test-657.cs
 test-695.cs
 test-695-3-lib.cs
+test-705.cs
 test-93.cs
 test-anon-02.cs
 test-anon-12.cs
@@ -97,3 +100,5 @@ test-xml-022.cs
 test-xml-035.cs
 test-xml-037.cs
 test-xml-038.cs
+
+test-704.cs IGNORE #472845

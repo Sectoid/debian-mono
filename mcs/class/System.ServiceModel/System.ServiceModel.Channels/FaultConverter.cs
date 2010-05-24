@@ -65,7 +65,6 @@ namespace System.ServiceModel.Channels
 
 		Message CreateSimpleFaultMessage (Exception error, MessageVersion version)
 		{
-Console.WriteLine (error);
 			OperationContext ctx = OperationContext.Current;
 			// FIXME: support more fault code depending on the exception type.
 			FaultCode fc = null;
@@ -78,12 +77,14 @@ Console.WriteLine (error);
 					"FIXME_InternalError",
 					version.Addressing.Namespace);
 
+#if !NET_2_1
 			// FIXME: set correct fault reason.
 			if (ctx.EndpointDispatcher.ChannelDispatcher.IncludeExceptionDetailInFaults) {
 				ExceptionDetail detail = new ExceptionDetail (error);
 				return Message.CreateMessage (version, fc,
-					"error occured", detail, ctx.IncomingMessageHeaders.Action);
+					"error occured", detail, ctx.IncomingMessageHeaders != null ? ctx.IncomingMessageHeaders.Action : null);
 			}
+#endif
 			return Message.CreateMessage (version, fc, "error occured", ctx.IncomingMessageHeaders.Action);
 		}
 

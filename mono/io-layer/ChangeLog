@@ -1,16 +1,39 @@
-2009-05-26  Zoltan Varga  <vargaz@gmail.com>
+2010-03-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-	* shared.c (_wapi_shm_file): Avoid creating a .wapi directory here, create
-	it in _wapi_shm_file_open (), since platforms using posix shm don't need it.
+	* processes.c: made ShellExecuteEx actually work when the file name to
+	execute is quoted. Display a message intead of blindly ignoring the
+	result of g_shell_parse_argv(). Fixes bug #385497.
 
-2009-01-29  Zoltan Varga  <vargaz@gmail.com>
+2010-03-05  Zoltan Varga  <vargaz@gmail.com>
 
-	* shared.c: Fall back to file based shared storage if shm_open () fails
-	because /dev/shm is not mounted.
+	* shared.c (shm_semaphores_init): Applied patch from Cal Page
+	(age.cal@gmail.com). Fix support for USE_SHM.
+
+2010-02-25  Geoff Norton  <gnorton@novell.com>
+
+	* wait.c: If any of our handles are shared, we need to do
+	a polling wait so we're notified of the signal change.
+
+2009-11-13 Jonathan Chambers <joncham@gmail.com>
+
+	* mono-mutex.h: Implementation for Windows platform.
 	
-	* shared.c: Add an alternative implementation using shared memory instead of
-	files. This fixes problems where the mono process would spin up the disk
-	every x secs on laptops. Fixes #434566, #415373 and #321949.
+	Code contributed under MIT/X11 license.
+
+2009-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* processes.c: Include mono-path.h.
+
+2009-11-12  Geoff Norton  <gnorton@novell.com>
+
+	* processes.c: match_procname_to_modulename should resolve
+	symlinks when checking if two process modules match.
+
+2009-11-04 Jonathan Chambers <joncham@gmail.com>
+
+	* mono-mutex.h: Add skeleton implementation for Windows platform.
+	
+	Code contributed under MIT/X11 license.
 
 2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -20,10 +43,23 @@
 
 	* sockets.[ch]: added TransmitFile implementation.
 
+2009-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* processes.c: Implement get_process_name_from_proc () on solaris.
+
 2009-09-24  Zoltan Varga  <vargaz@gmail.com>
 
 	* processes.c (load_modules): Applied patch from Thomas Philpot
 	(tom.philpot@logos.com). Fixes #533893.
+
+2009-09-15  Jeffrey Stedfast  <fejj@novell.com>
+
+	* io.c (CreateFile): In the directory fallback case, use
+	_wapi_open() again so that IOMAP magic happens.
+	(CopyFile): Need to consistently use _wapi_open() here too.
+	(ReplaceFile): Use _wapi_open() here too and get rid of the
+	fallback code that tried re-opening the file w/o O_TRUNC since
+	there's no reason to do that.
 
 2009-09-05  Zoltan Varga  <vargaz@gmail.com>
 
@@ -40,6 +76,32 @@
 	* processes.c (EnumProcessModules): Applied patch from Romain Tartière
 	(romain@blogreen.org). Fix this on freebsd/OSX. Fixes #533893.
 
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
+
+	* wthreads.c: Roll back change for thread-id as it "embraces
+	and extends" the api by passing word-size for thread id on
+	s390 and amd64.
+
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
+
+	* security.c:
+	* processes.c:
+	* wthreads.c: Be explicit when we are changing word sizes.
+
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
+
+	* processes.c: Fix method declaration warnings.
+	* sockets.c: getsockopt() wants socklen_t for size.
+
+2009-08-04  Miguel de Icaza  <miguel@novell.com>
+
+	* posix.c (_wapi_stdhandle_create): Split this into a new file to
+	more easily support non-Posix platforms.
+
+2009-07-20  Geoff Norton  <gnorton@novell.com>
+
+	* thread-private.h: Use the new mono-semaphore.h.
+
 2009-06-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* sockets.c: add the error number to the message so we can figure out
@@ -49,23 +111,148 @@
 
 	* wait.c: add missing 'break'.
 
+2009-06-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* atomic.h: Fix ilp32 support on ppc.
+
 2009-05-28  Mark Probst  <mark.probst@gmail.com>
 
 	* collection.c (_wapi_collection_init): If pthread_create() fails,
 	try again with larger and then with no stack size set.  Fixes
 	#470336.
 
-	Backport of r134985.
+2009-05-26  Zoltan Varga  <vargaz@gmail.com>
 
-2009-05-05 Gonzalo Paniagua Javier <gonzalo@novell.com>
+	* shared.c (_wapi_shm_file): Avoid creating a .wapi directory here, create
+	it in _wapi_shm_file_open (), since platforms using posix shm don't need it.
 
-	* events.c: fix event_signal and namedevent_signal to actually signal
-	the handle.
+2009-05-22  Miguel de Icaza  <miguel@novell.com>
+
+	* wapi_glob.c: Do not need sys/param.h anymore, we now use the
+	POSIX PATH_MAX instead of BSD's MAXPATHLEN
+
+	* handles.c: Do not pull a reference to sockets if they are
+	disabled.
+
+	* sockets.c: Allow for ports to define their own ioctlsocket. 
+
+	* wthreads.c: Remove obsolete code that I recently introudced (the
+	hook for mono_register_thread_attr.
+
+2009-05-22  Miguel de Icaza  <miguel@novell.com>
+
+	* versioninfo.c: One missing signature, fixed.
+
+2009-05-21  Miguel de Icaza  <miguel@novell.com>
+
+	* daemon.c: Remove more DEBUG ifdef mess.
+
+	* shared.c (_wapi_shm_attach): Implemention for DISABLE_SHARED_HANDLES 
+
+2009-05-20  Miguel de Icaza  <miguel@novell.com>
+
+	* sockets.c (ioctlsocket): Move support for MacOS semantics to the
+	ioctlsocket from the ifdef that was previously on metadata/
+
+	* wapi_glob.c (_wapi_glob): Use PATH_MAX from limits.h instead of
+	the BSD name from sys/param.h (MAXPATHLEN)
+
+	Do not include pwd.h as it is not used.
+
+	* thread-private.h: Use indent ifdef style for clarity
+
+	* sockets-wrappers.h: sys/socket.h conditional
+
+	* daemon-messages.h: sys/uio.h conditional.
+
+	* sockets.c: sys/ioctl.h conditional
+
+	* wthreads.c: work around for platforms with no thread fetching
+	information. 
+
+	* versioninfo.c: Use the portable mono_map_ interface instead of
+	using mmap directly and change the style to the Mono style.
+
+	Remove more DEBUG/ifdefs combos
+
+	* shared.c: Split the code to make DISABLE_SHARED remove all the
+	code that does not use the shared handles.   Before it merely
+	removed some of it, with this we avoid hacks on platforms that can
+	not implement it.
+
+	Split the code to reduce the amount of ifdefs.
+
+	Remove #ifdef DEBUG from the source and use a macro instead.
+
+2009-05-20  Miguel de Icaza  <miguel@novell.com>
+
+	* locking.c: Split locking code into a separate file.
+
+2009-05-18  Miguel de Icaza  <miguel@novell.com>
+
+	* daemon.c: Move the compile check of MONO_SIZEOF_SUNPATH to the
+	file that uses it.
+
+	* Rename `threads.c' to `wthreads.c' as broken build systems are
+	not able to cope with two files with the same name across multiple
+	directories. 
+
+2009-05-15  Geoff Norton  <gnorton@novell.com>
+
+	* handles.c: Don't start the collection thread if we've disabled
+	shared handles.
+
+2009-05-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* collection.c (collection_thread): Get rid of all the ifdefs and
+	gcc attributes, simply return NULL.
+
+2009-05-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* shared.c: Applied patch from Koushik K. Dutta (koush@koushikdutta.com).
+	Fix the build on android.
+
+2009-05-09  Miguel de Icaza  <miguel@novell.com>
+
+	* messages.c: Split the scan into common and uncommon messages to
+	allow the messages that are not produced by Mono to be removed on
+	embedded scenarios.
+	
+	* messages.c (message_string): instead of having a gigantic switch
+	table, use a sorted structure in memory and do a binary search on
+	it.
+
+	This reduces the runtime size by 49k and the debugging symbols by
+	400k.
 
 2009-04-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* sockets.c: don't display a warning when connect() fails because the
 	socket was closed in another thread.
+
+2009-04-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* shared.c: Fix a bunch of memleaks.
+
+2009-03-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.h: Add a comment to CreateThread.
+
+2009-03-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c handles.c wait.c: Change location of gc_wrapper.h.
+
+2009-02-22  Robert Jordan  <robertj@gmx.net>
+
+	* sockets.c: implement WSASend/WSARecv using sendmsg/recvmsg.
+	Fixes #470021.
+
+	Code is contributed under MIT/X11 license.
+
+2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* events.c: fix event_signal and namedevent_signal to actually signal
+	the handle.
 
 2009-02-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -75,14 +262,44 @@
 
 2009-02-09  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r126290.
-
 	* wait.c (WaitForMultipleObjectsEx): Initialize poll variable.
 
 2009-02-05  Miguel De Icaza  <miguel@novell.com>
 
 	* sockets.c (_wapi_setsockopt): SO_REUSEPORT is needed also on
 	MacOS X.  Fixes bug #471292
+
+2009-01-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* shared.c: Fall back to file based shared storage if shm_open () fails
+	because /dev/shm is not mounted.
+	
+	* shared.c: Add an alternative implementation using shared memory instead of
+	files. This fixes problems where the mono process would spin up the disk
+	every x secs on laptops. Fixes #434566, #415373 and #321949.
+
+2009-01-16  Miguel de Icaza  <miguel@novell.com>
+
+	* sockets.c (WSASend): Fix memory leak, and optimize for the case
+	with 1 segment. 
+
+	This should really use writev or sendmsg to use the kernel
+	scatter/gather facility instead of emulating it by copying buffers.
+
+2009-01-26  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* critical-sections.h (Enter/LeaveCriticalSection): Show
+	helpfull warning messages before crashing.
+
+2009-01-26  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* handles-private.h (_wapi_handle_set_signal_state): Show
+	helpfull warning messages before crashing.
+
+2009-01-26  Jeffrey Stedfast  <fejj@novell.com>
+
+	* mono-mutex.[c,h]: Removed GPLv2 copyright notice which should
+	not have been there.
 
 2009-01-20  Rodrigo Kumpera  <rkumpera@novell.com>
 
@@ -224,9 +441,9 @@
 2008-11-13  Bill Holmes  <billholmes54@gmail.com>
 
 	* wait.h : Adding method declaration for WaitForInputIdle.
-	  
+
 	* wait.c : Adding implementation for WaitForInputIdle.
-	  
+
 	Code is contributed under MIT/X11 license.
 
 Fri Oct 17 15:23:00 CEST 2008 Paolo Molaro <lupus@ximian.com>
