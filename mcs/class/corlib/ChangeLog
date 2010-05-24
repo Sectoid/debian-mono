@@ -1,21 +1,163 @@
-2009-04-25  Miguel de Icaza  <miguel@novell.com>
+2010-02-09  Sebastien Pouliot  <sebastien@ximian.com>
 
-	Backport of r129367
+	* net_2_1_raw_corlib.dll.sources: Add Mono.CompilerServices.
+	SymbolWriter source files directly into mscorlib 2.1
+	[Backport r151176]
+
+2009-11-30  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+        * Makefile: Remove the MOON_A11Y_INTERNAL_HACK define
+       for MoonAtkBridge after audit finished r147098.
+
+2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib_test.dll.sources: Add System/WeakReferenceTest and
+	System.Threading/EventWaitHandleTest.cs
+	[Backport r144681]
+
+2009-10-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib_test.dll.sources: Add System.Threading/WaitHandleTest.cs
+	[Backport r144529]
+
+2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib.dll.sources: Remove System.IO.IntPtrStream since it can
+	be replaced by (public in 2.0+) UnmanagedMemoryStream
+	* net_2_1_raw_corlib.dll.sources: Remove System.IO.IntPtrStream 
+	since it can be replaced by UnmanagedMemoryStream
+	[Backport r144322]
+
+2009-10-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_corlib.dll.sources: Remove System/LocalDataStoreSlot.cs
+	from Moonlight build
+	[Backport r143633]
+
+2009-10-06  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_corlib.dll.sources: Remove normalization files from
+	Moonlight build
+	[Backport r143539]
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_corlib.dll.sources: Add back UTF32 so smcs can compile
+	more source files.
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* net_2_1_bootstrap_corlib.dll.sources: Simply include net_2_1_raw*
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_bootstrap_corlib.dll.sources, net_2_1_raw_corlib.dll.sources:
+	Remove more unneeded code for NET_2_1
+
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_bootstrap_corlib.dll.sources, net_2_1_raw_corlib.dll.sources:
+	Remove more unneeded code and replace some classes with simpler
+	NET_2_1 versions.
+
+2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_bootstrap_corlib.dll.sources, net_2_1_raw_corlib.dll.sources:
+	Remove most of System.Security.Policy and System.Security.Principal
+	and more of System.Security.Permissions from NET_2_1 build
+
+2009-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_bootstrap_corlib.dll.sources, net_2_1_raw_corlib.dll.sources:
+	Remove more types (e.g. AccessControl, Soap) from NET_2_1
+
+2009-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_bootstrap_corlib.dll.sources, net_2_1_raw_corlib.dll.sources:
+	Remove more unneeded types from NET_2_1
+
+2009-09-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_bootstrap_corlib.dll.sources, net_2_1_raw_corlib.dll.sources:
+	New. Moonlight specific build files to minimize size and build time.
+	Copied from corlib.dll.sources minus some 4.0 stuff and COM types.
+
+2009-09-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* corlib.dll.sources: Add System.IO/UnmanagedMemoryAccessor.cs.
 	
-        * Convert.cs (ToType): Control whether this internal function will
-        call an IConvertible.ToType method or not.
+	* corlib.dll.sources: Add System.Runtime.InteropServices/SafeBuffer.cs.
 
-        Classes and structs implementing IConvertible in mscorlib (the
-        only callers that can access Convert.ToType) must pass false to
-        avoid a infinite recursion problem and callers from the public
-        Convert API must call it with true.
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
 
-        This fixes the regression reported in #485377 that was introduced
-        by the fix for #481687.
+	* corlib.dll.sources: Update with moved files.
+	* corlib_test.dll.source: Updated with moved files.
 
-        * Int16.cs, UInt64.cs, Double.cs, Enum.cs, SByte.cs, UInt16.cs,
-        Byte.cs, Decimal.cs, Int32.cs, String.cs, Int64.cs, Char.cs,
-        Boolean.cs, Single.cs, UInt32.cs: Update the call sites.
+2009-07-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+        * corlib.dll.sources: Added TaskCompletionSource
+        * corlib_test.dll.sources: Removed SnziTests due to
+	visibility change in Snzi.
+	Added TaskCompletionSource tests.
+
+2009-07-31 Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* corlib_test.dll.source: Add ConcurrentSkipList class
+	for internal testing
+
+2009-07-30 Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* corlib.dll.source: Add ParallelFx files.
+	* corlib_test.dll.source: Add ParallelFx unit tests.
+
+2009-06-10  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* corlib_test.dll.sources: Added test for InternalVisibleToAttribute.
+
+2009-06-10  Marek Safar  <marek.safar@gmail.com>
+
+	* corlib.dll.sources: Add new net 4.0 files.
+
+2009-05-26  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Makefile: Handling of the MOON_A11Y_INTERNAL_HACK env var.
+
+2009-05-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* corlib.dll.sources: Add new net 4.0 files.
+
+	* corlib_test.dll.sources: Add System/LazyTest.cs.
+
+	* corlib.dll.sources: Add System/{Lazy,LazyExecutionMode,Funcs}.cs for
+	NET 4.0.
+
+2009-05-01  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* corlib_test.dll.sources: Add unit tests for AppDomainManager
+	and SecurityState
+
+2009-04-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib.dll.sources: Add CryptoConfig_2_1.cs (partial class) to
+	the build
+
+2009-04-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib.dll.sources: Add new specific to 2.1 version of some 
+	classes.
+
+2009-04-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* corlib.dll.sources: Add System.IO.IsolatedStorage/
+	MoonIsolatedStorage.cs to the build
+
+2009-02-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile: Add Test/resources/Fergie.GED to EXTRA_DIST.
+
+2009-01-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: new resource, new EXTRA_DIST mess.
 
 2008-11-15  Jonathan Pryor  <jpryor@novell.com>
 

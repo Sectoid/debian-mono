@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2006 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2006,2009 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -29,69 +29,77 @@ using System;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
+using System.Transactions;
 
 namespace System.ServiceModel
 {
-	[MonoTODO]
 	[AttributeUsage (AttributeTargets.Class)]
 	public sealed class CallbackBehaviorAttribute : Attribute,
 		IEndpointBehavior
 	{
-		bool shutdown, ignore_ext, return_unknown_as_faults,
-			use_sync_context, validate_must_understand;
-		ConcurrencyMode concurrency;
-
-		public bool AutomaticSessionShutdown {
-			get { return shutdown; }
-			set { shutdown = value; }
+		public CallbackBehaviorAttribute ()
+		{
+			AutomaticSessionShutdown = true;
+			ConcurrencyMode = ConcurrencyMode.Single;
+			// LAMESPEC: it is documented as int.MaxValue, but wrong.
+			MaxItemsInObjectGraph = 0x10000;
+			UseSynchronizationContext = true;
+			ValidateMustUnderstand = true;
+			TransactionIsolationLevel = IsolationLevel.Unspecified;
 		}
 
-		public ConcurrencyMode ConcurrencyMode {
-			get { return concurrency; }
-			set { concurrency = value; }
-		}
+		[MonoTODO]
+		public bool AutomaticSessionShutdown { get; set; }
 
-		public bool IgnoreExtensionDataObject {
-			get { return ignore_ext; }
-			set { ignore_ext = value; }
-		}
+		[MonoTODO]
+		public ConcurrencyMode ConcurrencyMode { get; set; }
 
-		public bool ReturnUnknownExceptionsAsFaults {
-			get { return return_unknown_as_faults; }
-			set { return_unknown_as_faults = value; }
-		}
+		[MonoTODO]
+		public bool IgnoreExtensionDataObject { get; set; }
 
-		public bool UseSynchronizationContext {
-			get { return use_sync_context; }
-			set { use_sync_context = value; }
-		}
+		[MonoTODO]
+		public bool IncludeExceptionDetailInFaults { get; set; }
 
-		public bool ValidateMustUnderstand {
-			get { return validate_must_understand; }
-			set { validate_must_understand = value; }
-		}
+		[MonoTODO]
+		public int MaxItemsInObjectGraph { get; set; }
+
+		[MonoTODO]
+		public IsolationLevel TransactionIsolationLevel { get; set; }
+
+		[MonoTODO]
+		public string TransactionTimeout { get; set; }
+
+		[MonoTODO]
+		public bool UseSynchronizationContext { get; set; }
+
+		[MonoTODO]
+		public bool ValidateMustUnderstand { get; set; }
 
 		void IEndpointBehavior.AddBindingParameters (
 			ServiceEndpoint endpoint,
 			BindingParameterCollection parameters)
 		{
-			throw new NotImplementedException ();
 		}
 
 		void IEndpointBehavior.ApplyDispatchBehavior (
 			ServiceEndpoint serviceEndpoint,
 			EndpointDispatcher dispatcher)
 		{
-			throw new NotImplementedException ();
+			throw new InvalidOperationException ("This attribute cannot be applied to service endpoint dispatcher");
 		}
 
+		[MonoTODO]
 		void IEndpointBehavior.ApplyClientBehavior (
 			ServiceEndpoint serviceEndpoint,
 			ClientRuntime behavior)
 		{
+			if (serviceEndpoint.Contract.CallbackContractType == null)
+				throw new InvalidOperationException ("This attribute can be applied only to duplex service endpoint");
+
 			throw new NotImplementedException ();
 		}
 
+		[MonoTODO]
 		void IEndpointBehavior.Validate (
 			ServiceEndpoint serviceEndpoint)
 		{

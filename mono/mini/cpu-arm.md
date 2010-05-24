@@ -53,6 +53,7 @@ break: len:4
 jmp: len:92
 br: len:4
 switch: src1:i len:8
+seq_point: len:38
 
 throw: src1:i len:24
 rethrow: src1:i len:20
@@ -80,9 +81,9 @@ call_membase: dest:a src1:b len:12 clob:c
 voidcall: len:20 clob:c
 voidcall_reg: src1:i len:8 clob:c
 voidcall_membase: src1:b len:12 clob:c
-fcall: dest:g len:20 clob:c
-fcall_reg: dest:g src1:i len:8 clob:c
-fcall_membase: dest:g src1:b len:12 clob:c
+fcall: dest:g len:28 clob:c
+fcall_reg: dest:g src1:i len:16 clob:c
+fcall_membase: dest:g src1:b len:20 clob:c
 lcall: dest:l len:20 clob:c
 lcall_reg: dest:l src1:i len:8 clob:c
 lcall_membase: dest:l src1:b len:12 clob:c
@@ -117,7 +118,7 @@ loadu2_membase: dest:i src1:b len:4
 loadi4_membase: dest:i src1:b len:4
 loadu4_membase: dest:i src1:b len:4
 loadi8_membase: dest:i src1:b
-loadr4_membase: dest:f src1:b len:4
+loadr4_membase: dest:f src1:b len:8
 loadr8_membase: dest:f src1:b len:24
 load_memindex: dest:i src1:b src2:i len:4
 loadi1_memindex: dest:i src1:b src2:i len:4
@@ -132,10 +133,6 @@ fmove: dest:f src1:f len:4
 add_imm: dest:i src1:i len:12
 sub_imm: dest:i src1:i len:12
 mul_imm: dest:i src1:i len:12
-div_imm: dest:i src1:i src2:i len:20
-div_un_imm: dest:i src1:i src2:i len:12
-rem_imm: dest:i src1:i src2:i len:28
-rem_un_imm: dest:i src1:i src2:i len:16
 and_imm: dest:i src1:i len:12
 or_imm: dest:i src1:i len:12
 xor_imm: dest:i src1:i len:12
@@ -179,7 +176,7 @@ float_conv_to_i1: dest:i src1:f len:40
 float_conv_to_i2: dest:i src1:f len:40
 float_conv_to_i4: dest:i src1:f len:40
 float_conv_to_i8: dest:l src1:f len:40
-float_conv_to_r4: dest:f src1:f len:4
+float_conv_to_r4: dest:f src1:f len:8
 float_conv_to_u4: dest:i src1:f len:40
 float_conv_to_u8: dest:l src1:f len:40
 float_conv_to_u2: dest:i src1:f len:40
@@ -191,6 +188,7 @@ float_cgt_un: dest:i src1:f src2:f len:20
 float_clt: dest:i src1:f src2:f len:16
 float_clt_un: dest:i src1:f src2:f len:20
 float_conv_to_u: dest:i src1:f len:36
+setfret: src1:f len:12
 aot_const: dest:i len:16
 sqrt: dest:f src1:f len:4
 adc: dest:i src1:i src2:i len:4
@@ -252,13 +250,11 @@ sub_ovf_carry: dest:i src1:i src2:i len:16
 add_ovf_un_carry: dest:i src1:i src2:i len:16
 sub_ovf_un_carry: dest:i src1:i src2:i len:16
 
-long_conv_to_ovf_i: dest:i src1:i src2:i len:30
-
 arm_rsbs_imm: dest:i src1:i len:4
 arm_rsc_imm: dest:i src1:i len:4
 
 # Linear IR opcodes
-dummy_use: len:0
+dummy_use: src1:i len:0
 dummy_store: len:0
 not_reached: len:0
 not_null: src1:i len:0
@@ -313,6 +309,7 @@ long_conv_to_ovf_i4_2: dest:i src1:i src2:i len:36
 vcall2: len:20 clob:c
 vcall2_reg: src1:i len:8 clob:c
 vcall2_membase: src1:b len:12 clob:c
+dyn_call: src1:i src2:i len:128 clob:c
 
 # This is different from the original JIT opcodes
 float_beq: len:20

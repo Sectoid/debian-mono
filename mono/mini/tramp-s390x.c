@@ -99,9 +99,7 @@ mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *me
 	if (MONO_TYPE_ISSTRUCT (mono_method_signature (method)->ret))
 		this_pos = s390_r3;
 
-	mono_domain_lock (domain);
-	start = code = mono_code_manager_reserve (domain->code_mp, 28);
-	mono_domain_unlock (domain);
+	start = code = mono_domain_code_reserve (domain, 28);
 
 	s390_basr (code, s390_r1, 0);
 	s390_j	  (code, 6);
@@ -160,7 +158,7 @@ mono_arch_patch_callsite (guint8 *method_start, guint8 *orig_code, guint8 *addr)
 /*========================= End of Function ========================*/
 
 void
-mono_arch_patch_plt_entry (guint8 *code, guint8 *addr)
+mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr)
 {
 	g_assert_not_reached ();
 }
@@ -176,7 +174,7 @@ mono_arch_patch_plt_entry (guint8 *code, guint8 *addr)
 /*------------------------------------------------------------------*/
 
 void
-mono_arch_nullify_class_init_trampoline (guint8 *code, gssize *regs)
+mono_arch_nullify_class_init_trampoline (guint8 *code, mgreg_t *regs)
 {
 	char patch[2] = {0x07, 0x00};
 
@@ -188,7 +186,7 @@ mono_arch_nullify_class_init_trampoline (guint8 *code, gssize *regs)
 /*========================= End of Function ========================*/
 
 void
-mono_arch_nullify_plt_entry (guint8 *code)
+mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 {
 	g_assert_not_reached ();
 }
@@ -211,7 +209,7 @@ mono_arch_nullify_plt_entry (guint8 *code)
 /*------------------------------------------------------------------*/
 
 gpointer
-mono_arch_get_vcall_slot (guint8 *code, gpointer *regs, int *displacement)
+mono_arch_get_vcall_slot (guint8 *code, mgreg_t *regs, int *displacement)
 {
 	int reg, lkReg;
 	guchar* base;
@@ -275,19 +273,6 @@ mono_arch_get_vcall_slot (guint8 *code, gpointer *regs, int *displacement)
 		return NULL;
 
 	return base;
-}
-
-/*========================= End of Function ========================*/
-
-gpointer*
-mono_arch_get_vcall_slot_addr (guint8* code, gpointer *regs)
-{
-	gpointer vt;
-	int displacement;
-	vt = mono_arch_get_vcall_slot (code, regs, &displacement);
-	if (!vt)
-		return NULL;
-	return (gpointer*)((char*)vt + displacement);
 }
 
 /*========================= End of Function ========================*/
@@ -416,7 +401,7 @@ mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
 				
 	/* Set arguments */
 
-	/* Arg 1: gssize *regs. We pass sp instead */
+	/* Arg 1: mgreg_t *regs. We pass sp instead */
 	s390_lgr  (buf, s390_r2, STK_BASE);
 	s390_ahi  (buf, s390_r2, CREATE_STACK_SIZE);
 		
@@ -508,9 +493,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 	/* purpose is to provide the generic part with the          */
 	/* MonoMethod *method pointer. We'll use r1 to keep it.     */
 	/*----------------------------------------------------------*/
-	mono_domain_lock (domain);
-	code = buf = mono_code_manager_reserve (domain->code_mp, SPECIFIC_TRAMPOLINE_SIZE);
-	mono_domain_unlock (domain);
+	code = buf = mono_domain_code_reserve (domain, SPECIFIC_TRAMPOLINE_SIZE);
 
 	s390_basr (buf, s390_r1, 0);
 	s390_j	  (buf, 6);

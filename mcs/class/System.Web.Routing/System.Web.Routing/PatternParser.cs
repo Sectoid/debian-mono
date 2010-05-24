@@ -457,6 +457,7 @@ namespace System.Web.Routing
 				string parameterName = token.Name;
 				object tokenValue;
 
+#if SYSTEMCORE_DEP
 				if (userValues.GetValue (parameterName, out tokenValue)) {
 					if (!defaultValues.Has (parameterName, tokenValue)) {
 						canTrim = false;
@@ -486,6 +487,7 @@ namespace System.Web.Routing
 						ret.Insert (0, tokenValue.ToString ());
 					continue;
 				}
+#endif
 			}
 
 			// All the values specified in userValues that aren't part of the original
@@ -496,8 +498,10 @@ namespace System.Web.Routing
 				foreach (var de in userValues) {
 					string parameterName = de.Key;
 
+#if SYSTEMCORE_DEP
 					if (parameterNames.ContainsKey (parameterName) || defaultValues.Has (parameterName) || constraints.Has (parameterName))
 						continue;
+#endif
 
 					object parameterValue = de.Value;
 					if (parameterValue == null)

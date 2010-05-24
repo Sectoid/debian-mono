@@ -34,11 +34,15 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Messaging;
 
+#if MONOTOUCH
+using MonoTouch;
+#endif
+
 namespace System.IO.Compression {
 	public class DeflateStream : Stream
 	{
 		const int BufferSize = 4096;
-		delegate int UnmanagedReadOrWrite (IntPtr buffer, int length);
+		delegate int UnmanagedReadOrWrite (IntPtr buffer, int length, IntPtr data);
 		delegate int ReadMethod (byte[] array, int offset, int count);
 		delegate void WriteMethod (byte[] array, int offset, int count);
 
@@ -179,6 +183,9 @@ namespace System.IO.Compression {
 
 		unsafe int ReadInternal (byte[] array, int offset, int count)
 		{
+			if (count == 0)
+				return 0;
+
 			int result = 0;
 			fixed (byte *b = array) {
 				IntPtr ptr = new IntPtr (b + offset);
@@ -209,6 +216,9 @@ namespace System.IO.Compression {
 
 		unsafe void WriteInternal (byte[] array, int offset, int count)
 		{
+			if (count == 0)
+				return;
+
 			int result = 0;
 			fixed (byte *b = array) {
 				IntPtr ptr = new IntPtr (b + offset);

@@ -41,33 +41,19 @@ namespace System.ServiceModel.Dispatcher
 			_service = service;
 		}
 
-		internal ChannelDispatcherCollection (
-			ChannelDispatcherBase [] listeners)
-			: base (listeners)
-		{
-		}
-
-		[MonoTODO ("What to do here?")]
 		protected override void ClearItems ()
 		{			
-			ChannelDispatcherBase[] channels = this.InnerList.ToArray ();
-			base.ClearItems ();
-			foreach (ChannelDispatcherBase c in channels)
+			foreach (ChannelDispatcherBase c in this)
 				c.Detach (_service);
+			base.ClearItems ();
 		}
 
-		internal List<ChannelDispatcherBase> InnerList {
-			get { return Items; }
-		}
-
-		[MonoTODO ("What to do here?")]
 		protected override void InsertItem (int index, ChannelDispatcherBase item)
 		{
 			item.Attach (_service);
 			base.InsertItem (index, item);			
 		}
 
-		[MonoTODO ("What to do here?")]
 		protected override void RemoveItem (int index)
 		{
 			ChannelDispatcherBase removed = this [index];
@@ -76,7 +62,6 @@ namespace System.ServiceModel.Dispatcher
 			
 		}
 
-		[MonoTODO ("What to do here?")]
 		protected override void SetItem (int index, ChannelDispatcherBase item)
 		{
 			item.Attach (_service);

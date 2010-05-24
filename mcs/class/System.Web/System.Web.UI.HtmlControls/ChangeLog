@@ -1,3 +1,7 @@
+2009-12-22  Marek Habersack  <mhabersack@novell.com>
+
+	* HtmlForm.cs: RenderChildren is slightly more efficient now.
+
 2009-11-13  Marek Habersack  <mhabersack@novell.com>
 
 	* HtmlForm.cs: reverted part of the previous patch - action is not
@@ -15,6 +19,13 @@
 	* HtmlSelectBuilder.cs: <option> allows the value of the 'selected'
 	attribute to be a boolean or the string "selected", which is treated
 	as "true".
+
+2009-06-16  Marek Habersack  <mhabersack@novell.com>
+
+	* HtmlHeadBuilder.cs: use faster String.Compare overloads.
+
+	* HtmlHead.cs: implemented 4.0 properties Description and
+	Keywords.
 
 2009-06-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

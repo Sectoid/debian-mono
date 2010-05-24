@@ -48,6 +48,10 @@ namespace System.Web.Compilation
 		TextReader _reader;
 		bool _parsed;
 		bool _codeGenerated;
+
+		protected bool Parsed {
+			get { return _parsed; }
+		}
 		
 		protected abstract TParser CreateParser (VirtualPath virtualPath, string physicalPath, TextReader reader, HttpContext context);
 		protected abstract TParser CreateParser (VirtualPath virtualPath, string physicalPath, HttpContext context);
@@ -59,7 +63,7 @@ namespace System.Web.Compilation
 		protected abstract AspGenerator CreateAspGenerator (TParser parser);
 		protected abstract List <string> GetReferencedAssemblies (TParser parser);
 
-		protected virtual string MapPath (string virtualPath)
+		protected virtual string MapPath (VirtualPath virtualPath)
 		{
 			HttpContext ctx = HttpContext.Current;
 			HttpRequest req = ctx != null ? ctx.Request : null;
@@ -80,7 +84,7 @@ namespace System.Web.Compilation
 			if (!IsDirectoryBuilder) {
 				AspGenerator generator = CreateAspGenerator (parser);
 				if (_reader != null)
-					generator.Parse (_reader, MapPath (VirtualPath), true);
+					generator.Parse (_reader, MapPath (VirtualPathInternal), true);
 				else
 					generator.Parse ();
 			}
@@ -166,13 +170,20 @@ namespace System.Web.Compilation
 				return GetParserDependencies (parser);
 			}
 		}
+
+		internal override string LanguageName {
+			get {
+				TParser parser = Parse ();
+				if (parser != null)
+					return GetParserLanguage (parser);
+				return base.LanguageName;
+			}
+		}
 		
 		public override CompilerType CodeCompilerType {
 			get {
-				if (_compilerType == null) {
-					TParser parser = Parse ();
-					_compilerType = GetDefaultCompilerTypeForLanguage (GetParserLanguage (parser));
-				}
+				if (_compilerType == null)
+					_compilerType = GetDefaultCompilerTypeForLanguage (LanguageName);
 
 				return _compilerType;
 			}

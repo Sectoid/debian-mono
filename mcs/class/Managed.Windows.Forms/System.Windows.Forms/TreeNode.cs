@@ -214,8 +214,6 @@ namespace System.Windows.Forms
 			get {
 				if (prop_bag != null)
 					return prop_bag.BackColor;
-				if (TreeView != null)
-					return TreeView.BackColor;
 				return Color.Empty;
 			}
 			set {
@@ -563,7 +561,7 @@ namespace System.Windows.Forms
 				if (prop_bag == null)
 					prop_bag = new OwnerDrawPropertyBag (); 
 				prop_bag.Font = value;
-				InvalidateWidth ();
+				Invalidate ();
 			}
 		}
 
@@ -659,7 +657,7 @@ namespace System.Windows.Forms
 				if (state_image_index != value) {
 					state_image_index = value;
 					state_image_key = string.Empty;
-					InvalidateWidth ();
+					Invalidate ();
 				}
 			}
 		}
@@ -676,7 +674,7 @@ namespace System.Windows.Forms
 				if (state_image_key != value) {
 					state_image_key = value;
 					state_image_index = -1;
-					InvalidateWidth ();
+					Invalidate ();
 				}
 			}
 		}
@@ -702,7 +700,7 @@ namespace System.Windows.Forms
 				if (text == value)
 					return;
 				text = value;
-				InvalidateWidth ();
+				Invalidate ();
 #if NET_2_0
 				// UIA Framework Event: Text Changed
 				TreeView view = TreeView;

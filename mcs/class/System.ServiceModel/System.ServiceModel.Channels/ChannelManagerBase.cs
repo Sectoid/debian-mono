@@ -44,18 +44,12 @@ namespace System.ServiceModel.Channels
 
 		protected internal abstract TimeSpan DefaultSendTimeout { get; }
 
-		// The reason why this class implements 
-		// IDefaultCommunicationTimeouts is not clear, so they
-		// are likely to be refactored.
-
-		[MonoTODO ("verify it.")]
 		TimeSpan IDefaultCommunicationTimeouts.OpenTimeout {
-			get { return TimeSpan.FromMinutes (1); }
+			get { return DefaultOpenTimeout; }
 		}
 
-		[MonoTODO ("verify it.")]
 		TimeSpan IDefaultCommunicationTimeouts.CloseTimeout {
-			get { return TimeSpan.FromMinutes (1); }
+			get { return DefaultCloseTimeout; }
 		}
 
 		TimeSpan IDefaultCommunicationTimeouts.ReceiveTimeout {
@@ -64,6 +58,22 @@ namespace System.ServiceModel.Channels
 
 		TimeSpan IDefaultCommunicationTimeouts.SendTimeout {
 			get { return DefaultSendTimeout; }
+		}
+
+		internal MessageEncoder CreateEncoder<TChannel> (MessageEncodingBindingElement mbe)
+		{
+			var f = mbe.CreateMessageEncoderFactory ();
+			var t = typeof (TChannel);
+			if (t == typeof (IRequestSessionChannel) ||
+#if !NET_2_1
+			    t == typeof (IReplySessionChannel) ||
+#endif
+			    t == typeof (IInputSessionChannel) ||
+			    t == typeof (IOutputSessionChannel) ||
+			    t == typeof (IDuplexSessionChannel))
+				return f.CreateSessionEncoder ();
+			else
+				return f.Encoder;
 		}
 	}
 }

@@ -26,94 +26,129 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Collections;
 using System.Globalization;
 using System.Security.Permissions;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace System {
-
-	public abstract class UriParser {
+#if NET_2_0
+	public
+#endif
+	abstract class UriParser {
 
 		static object lock_object = new object ();
 		static Hashtable table;
 
-		private string scheme_name;
+		internal string scheme_name;
 		private int default_port;
 
+		// Regexp from RFC 2396
+#if NET_2_1
+		readonly static Regex uri_regex = new Regex (@"^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?");
+#else
+		// Groups:    				        12            3  4          5       6  7        8 9
+		readonly static Regex uri_regex = new Regex (@"^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?", RegexOptions.Compiled);
+#endif
+
+		// Groups:				         12         3    4 5
+		readonly static Regex auth_regex = new Regex (@"^(([^@]+)@)?(.*?)(:([0-9]+))?$");
 
 		protected UriParser ()
 		{
 		}
 
-		// protected methods
+		static Match ParseAuthority (Group g)
+		{
+			return auth_regex.Match (g.Value);
+		}
 
+		// protected methods
 		protected internal virtual string GetComponents (Uri uri, UriComponents components, UriFormat format)
 		{
 			if ((format < UriFormat.UriEscaped) || (format > UriFormat.SafeUnescaped))
 				throw new ArgumentOutOfRangeException ("format");
 
+			Match m = uri_regex.Match (uri.OriginalString);
+
+			string scheme = scheme_name;
+			int dp = default_port;
+
+			if ((scheme == null) || (scheme == "*")) {
+				scheme = m.Groups [2].Value;
+				dp = Uri.GetDefaultPort (scheme);
+			} else if (String.Compare (scheme, m.Groups [2].Value, true) != 0) {
+				throw new SystemException ("URI Parser: scheme mismatch: " + scheme + " vs. " + m.Groups [2].Value);
+			}
+
 			// it's easier to answer some case directly (as the output isn't identical 
 			// when mixed with others components, e.g. leading slash, # ...)
 			switch (components) {
 			case UriComponents.Scheme:
-				return uri.Scheme;
+				return scheme;
 			case UriComponents.UserInfo:
-				return uri.UserInfo;
-			case UriComponents.Port:
-				if (uri.IsDefaultPort)
-					return String.Empty;
-				return uri.Port.ToString ();
+				return ParseAuthority (m.Groups [4]).Groups [2].Value;
+			case UriComponents.Host:
+				return ParseAuthority (m.Groups [4]).Groups [3].Value;
+			case UriComponents.Port: {
+				string p = ParseAuthority (m.Groups [4]).Groups [5].Value;
+				if (p != null && p != String.Empty && p != dp.ToString ())
+					return p;
+				return String.Empty;
+			}
 			case UriComponents.Path:
-				return Format (IgnoreFirstCharIf (uri.LocalPath, '/'), format);
+				return Format (IgnoreFirstCharIf (m.Groups [5].Value, '/'), format);
+			case UriComponents.Query:
+				return Format (m.Groups [7].Value, format);
 			case UriComponents.Fragment:
-				return Format (IgnoreFirstCharIf (uri.Fragment, '#'), format);
-			case UriComponents.StrongPort:
-				return uri.Port.ToString ();
+				return Format (m.Groups [9].Value, format);
+			case UriComponents.StrongPort: {
+				Group g = ParseAuthority (m.Groups [4]).Groups [5];
+				return g.Success ? g.Value : dp.ToString ();
+			}
 			case UriComponents.SerializationInfoString:
 				components = UriComponents.AbsoluteUri;
 				break;
 			}
 
+			Match am = ParseAuthority (m.Groups [4]);
+
 			// now we deal with multiple flags...
 
 			StringBuilder sb = new StringBuilder ();
 			if ((components & UriComponents.Scheme) != 0) {
-				sb.Append (uri.Scheme);
-				sb.Append (Uri.GetSchemeDelimiter (uri.Scheme));
+				sb.Append (scheme);
+				sb.Append (Uri.GetSchemeDelimiter (scheme));
 			}
 
-			if ((components & UriComponents.UserInfo) != 0) {
-				string s = uri.UserInfo;
-				if (s.Length > 0) {
-					sb.Append (s);
-					sb.Append ("@");
-				}
-			}
+			if ((components & UriComponents.UserInfo) != 0)
+				sb.Append (am.Groups [1].Value);
 
 			if ((components & UriComponents.Host) != 0)
-				sb.Append (uri.Host);
+				sb.Append (am.Groups [3].Value);
 
 			// for StrongPort always show port - even if -1
 			// otherwise only display if ut's not the default port
-			if (((components & UriComponents.StrongPort) != 0) ||
-				((components & UriComponents.Port) != 0) && !uri.IsDefaultPort) {
-				sb.Append (":");
-				sb.Append (uri.Port);
+			if ((components & UriComponents.StrongPort) != 0) {
+				Group g = am.Groups [4];
+				sb.Append (g.Success ? g.Value : ":" + dp);
 			}
 
-			if ((components & UriComponents.Path) != 0) {
-				sb.Append (uri.LocalPath);
+			if ((components & UriComponents.Port) != 0) {
+				string p = am.Groups [5].Value;
+				if (p != null && p != String.Empty && p != dp.ToString ())
+					sb.Append (am.Groups [4].Value);
 			}
+
+			if ((components & UriComponents.Path) != 0)
+				sb.Append (m.Groups [5]);
 
 			if ((components & UriComponents.Query) != 0)
-				sb.Append (uri.Query);
+				sb.Append (m.Groups [6]);
 
-			if ((components & UriComponents.Fragment) != 0) {
-				sb.Append (uri.Fragment);
-			}
+			if ((components & UriComponents.Fragment) != 0)
+				sb.Append (m.Groups [8]);
 
 			return Format (sb.ToString (), format);
 		}
@@ -121,13 +156,14 @@ namespace System {
 		protected internal virtual void InitializeAndValidate (Uri uri, out UriFormatException parsingError)
 		{
 			// bad boy, it should check null arguments.
-			if (uri.Scheme != scheme_name)
+			if ((uri.Scheme != scheme_name) && (scheme_name != "*"))
 				// Here .NET seems to return "The Authority/Host could not be parsed", but it does not make sense.
 				parsingError = new UriFormatException ("The argument Uri's scheme does not match");
 			else
 				parsingError = null;
 		}
 
+#if NET_2_0
 		protected internal virtual bool IsBaseOf (Uri baseUri, Uri relativeUri)
 		{
 			// compare, not case sensitive, the scheme, host and port (+ user informations)
@@ -147,7 +183,7 @@ namespace System {
 			// Though this class does not seem to do anything. Even null arguments aren't checked :/
 			return uri.IsWellFormedOriginalString ();
 		}
-
+#endif
 		protected internal virtual UriParser OnNewUri ()
 		{
 			// nice time for init
@@ -223,8 +259,10 @@ namespace System {
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeHttp, 80);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeHttps, 443);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeMailto, 25);
+#if NET_2_0
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNetPipe, -1);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNetTcp, -1);
+#endif
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNews, 119);
 			InternalRegister (newtable, new DefaultUriParser (), Uri.UriSchemeNntp, 119);
 			// not defined in Uri.UriScheme* but a parser class exists
@@ -303,4 +341,3 @@ namespace System {
 	}
 }
 
-#endif

@@ -44,13 +44,13 @@ namespace Mono.CSharp {
 				this.Enum = e;
 			}
 
-			protected override TypeExpr DoResolveAsTypeStep (IResolveContext ec)
+			protected override TypeExpr DoResolveAsTypeStep (IMemberContext ec)
 			{
 				type = Enum.CurrentType != null ? Enum.CurrentType : Enum.TypeBuilder;
 				return this;
 			}
 
-			public override TypeExpr ResolveAsTypeTerminal (IResolveContext ec, bool silent)
+			public override TypeExpr ResolveAsTypeTerminal (IMemberContext ec, bool silent)
 			{
 				return DoResolveAsTypeStep (ec);
 			}
@@ -61,7 +61,7 @@ namespace Mono.CSharp {
 			return (t == TypeManager.int32_type || t == TypeManager.uint32_type || t == TypeManager.int64_type ||
 				t == TypeManager.byte_type || t == TypeManager.sbyte_type || t == TypeManager.short_type ||
 				t == TypeManager.ushort_type || t == TypeManager.uint64_type || t == TypeManager.char_type ||
-				t.IsEnum);
+				TypeManager.IsEnumType (t));
 		}
 
 		public object Value {
@@ -80,7 +80,7 @@ namespace Mono.CSharp {
 			return true;
 		}
 	
-		protected override Constant DoResolveValue (EmitContext ec)
+		protected override Constant DoResolveValue (ResolveContext ec)
 		{
 			if (ValueExpr != null) {
 				Constant c = ValueExpr.ResolveAsConstant (ec, this);
@@ -95,7 +95,7 @@ namespace Mono.CSharp {
 					return null;
 
 				if (!IsValidEnumType (c.Type)) {
-					Enum.Error_1008 (Location);
+					Enum.Error_1008 (Location, ec.Report);
 					return null;
 				}
 
@@ -142,7 +142,7 @@ namespace Mono.CSharp {
 		{
 			this.base_type = type;
 			int accmods = IsTopLevel ? Modifiers.INTERNAL : Modifiers.PRIVATE;
-			ModFlags = Modifiers.Check (AllowedModifiers, mod_flags, accmods, Location);
+			ModFlags = Modifiers.Check (AllowedModifiers, mod_flags, accmods, Location, Report);
 		}
 
 		public void AddEnumMember (EnumMember em)
@@ -156,7 +156,7 @@ namespace Mono.CSharp {
 			AddConstant (em);
 		}
 
-		public static void Error_1008 (Location loc)
+		public static void Error_1008 (Location loc, Report Report)
 		{
 			Report.Error (1008, loc, "Type byte, sbyte, short, ushort, " +
 				      "int, uint, long or ulong expected");

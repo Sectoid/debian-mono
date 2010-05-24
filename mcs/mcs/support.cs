@@ -19,66 +19,6 @@ using System.Globalization;
 
 namespace Mono.CSharp {
 
-#if GMCS_SOURCE
-	public class ReflectionConstraints : GenericConstraints
-	{
-		GenericParameterAttributes attrs;
-		Type base_type;
-		Type class_constraint;
-		Type[] iface_constraints;
-		string name;
-
-		public static GenericConstraints GetConstraints (Type t)
-		{
-			Type [] constraints = t.GetGenericParameterConstraints ();
-			GenericParameterAttributes attrs = t.GenericParameterAttributes;
-			if (constraints.Length == 0 && attrs == GenericParameterAttributes.None)
-				return null;
-			return new ReflectionConstraints (t.Name, constraints, attrs);
-		}
-
-		private ReflectionConstraints (string name, Type [] constraints, GenericParameterAttributes attrs)
-		{
-			this.name = name;
-			this.attrs = attrs;
-
-			if ((constraints.Length > 0) && !constraints [0].IsInterface) {
-				class_constraint = constraints [0];
-				iface_constraints = new Type [constraints.Length - 1];
-				Array.Copy (constraints, 1, iface_constraints, 0, constraints.Length - 1);
-			} else
-				iface_constraints = constraints;
-
-			if (HasValueTypeConstraint)
-				base_type = TypeManager.value_type;
-			else if (class_constraint != null)
-				base_type = class_constraint;
-			else
-				base_type = TypeManager.object_type;
-		}
-
-		public override string TypeParameter {
-			get { return name; }
-		}
-
-		public override GenericParameterAttributes Attributes {
-			get { return attrs; }
-		}
-
-		public override Type ClassConstraint {
-			get { return class_constraint; }
-		}
-
-		public override Type EffectiveBaseClass {
-			get { return base_type; }
-		}
-
-		public override Type[] InterfaceConstraints {
-			get { return iface_constraints; }
-		}
-	}
-#endif
-
 	class PtrHashtable : Hashtable {
 		sealed class PtrComparer : IComparer
 #if NET_2_0
@@ -126,7 +66,7 @@ namespace Mono.CSharp {
 		protected override int GetHash (object key)
 		{
 			TypeBuilder tb = key as TypeBuilder;
-			if (tb != null && tb.BaseType == TypeManager.enum_type)
+			if (tb != null && tb.BaseType == TypeManager.enum_type && tb.BaseType != null)
 				key = tb.BaseType;
 
 			return base.GetHash (key);
@@ -203,31 +143,42 @@ namespace Mono.CSharp {
 	}
 
 	/// <summary>
-	///   This is a wrapper around StreamReader which is seekable backwards
-	///   within a window of around 2048 chars.
+	///   This is an arbitrarily seekable StreamReader wrapper.
+	///
+	///   It uses a self-tuning buffer to cache the seekable data,
+	///   but if the seek is too far, it may read the underly
+	///   stream all over from the beginning.
 	/// </summary>
 	public class SeekableStreamReader
 	{
-		const int AverageReadLength = 1024;
+		const int default_average_read_length = 1024;
+		const int buffer_read_length_spans = 3;
+
 		TextReader reader;
 		Stream stream;
 		Encoding encoding;
 
 		char[] buffer;
+		int average_read_length;
 		int buffer_start;       // in chars
 		int char_count;         // count buffer[] valid characters
 		int pos;                // index into buffer[]
+
+		void ResetStream (int read_length_inc)
+		{
+			average_read_length += read_length_inc;
+			stream.Position = 0;
+			reader = new StreamReader (stream, encoding, true);
+			buffer = new char [average_read_length * buffer_read_length_spans];
+			buffer_start = char_count = pos = 0;
+		}
 
 		public SeekableStreamReader (Stream stream, Encoding encoding)
 		{
 			this.stream = stream;
 			this.encoding = encoding;
-			
-			this.reader = new StreamReader (stream, encoding, true);
-			this.buffer = new char [AverageReadLength * 3];
 
-			// Let the StreamWriter autodetect the encoder
-			reader.Peek ();
+			ResetStream (default_average_read_length);
 		}
 
 		/// <remarks>
@@ -241,23 +192,14 @@ namespace Mono.CSharp {
 			get { return buffer_start + pos; }
 
 			set {
-				if (value > buffer_start + char_count)
-					throw new InternalErrorException ("can't seek that far forward: " + (pos - value));
-				
-				if (value < buffer_start){
-					// Reinitialize.
-					stream.Position = 0;
-					reader = new StreamReader (stream, encoding, true);
-					buffer_start = 0;
-					char_count = 0;
-					pos = 0;
-					Peek ();
+				// If the lookahead was too small, re-read from the beginning.  Increase the buffer size while we're at it
+				if (value < buffer_start)
+					ResetStream (average_read_length / 2);
 
-					while (value > buffer_start + char_count){
-						pos = char_count+1;
-						Peek ();
-					}
-					pos = value - buffer_start;
+				while (value > buffer_start + char_count) {
+					pos = char_count;
+					if (!ReadBuffer ())
+						throw new InternalErrorException ("Seek beyond end of file: " + (buffer_start + char_count - value));
 				}
 
 				pos = value - buffer_start;
@@ -267,18 +209,17 @@ namespace Mono.CSharp {
 		private bool ReadBuffer ()
 		{
 			int slack = buffer.Length - char_count;
-			if (slack <= AverageReadLength / 2) {
-				// shift the buffer to make room for AverageReadLength number of characters
-				int shift = AverageReadLength - slack;
+			if (slack <= average_read_length / 2) {
+				// shift the buffer to make room for average_read_length number of characters
+				int shift = average_read_length - slack;
 				Array.Copy (buffer, shift, buffer, 0, char_count - shift);
 				pos -= shift;
 				char_count -= shift;
 				buffer_start += shift;
-				slack += shift;		// slack == AverageReadLength
+				slack += shift;		// slack == average_read_length
 			}
 
-			int chars_read = reader.Read (buffer, char_count, slack);
-			char_count += chars_read;
+			char_count += reader.Read (buffer, char_count, slack);
 
 			return pos < char_count;
 		}
@@ -466,6 +407,192 @@ namespace Mono.CSharp {
 		}
 	}
 
+#if NET_4_0 || MS_COMPATIBLE
+	[System.Diagnostics.DebuggerDisplay ("Dynamic type")]
+#endif
+	class DynamicType : Type
+	{
+		public override Assembly Assembly {
+			get { return UnderlyingSystemType.Assembly; }
+		}
+
+		public override string AssemblyQualifiedName {
+			get { throw new NotImplementedException (); }
+		}
+
+		public override Type BaseType {
+			get { return null; }
+		}
+
+		public override string FullName {
+			get { return UnderlyingSystemType.FullName; }
+		}
+
+		public override Guid GUID {
+			get { throw new NotImplementedException (); }
+		}
+
+		protected override TypeAttributes GetAttributeFlagsImpl ()
+		{
+			return UnderlyingSystemType.Attributes;
+		}
+
+		protected override ConstructorInfo GetConstructorImpl (BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override ConstructorInfo[] GetConstructors (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override Type GetElementType ()
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override EventInfo GetEvent (string name, BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override EventInfo[] GetEvents (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override FieldInfo GetField (string name, BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override FieldInfo[] GetFields (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override Type GetInterface (string name, bool ignoreCase)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override Type[] GetInterfaces ()
+		{
+			return Type.EmptyTypes;
+		}
+
+		public override MemberInfo[] GetMembers (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		protected override MethodInfo GetMethodImpl (string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override MethodInfo[] GetMethods (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override Type GetNestedType (string name, BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override Type[] GetNestedTypes (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override PropertyInfo[] GetProperties (BindingFlags bindingAttr)
+		{
+			throw new NotImplementedException ();
+		}
+
+		protected override PropertyInfo GetPropertyImpl (string name, BindingFlags bindingAttr, Binder binder, Type returnType, Type[] types, ParameterModifier[] modifiers)
+		{
+			throw new NotImplementedException ();
+		}
+
+		protected override bool HasElementTypeImpl ()
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override object InvokeMember (string name, BindingFlags invokeAttr, Binder binder, object target, object[] args, ParameterModifier[] modifiers, System.Globalization.CultureInfo culture, string[] namedParameters)
+		{
+			throw new NotImplementedException ();
+		}
+
+		protected override bool IsArrayImpl ()
+		{
+			return false;
+		}
+
+		protected override bool IsByRefImpl ()
+		{
+			return false;
+		}
+
+		protected override bool IsCOMObjectImpl ()
+		{
+			return false;
+		}
+
+		protected override bool IsPointerImpl ()
+		{
+			return false;
+		}
+
+		protected override bool IsPrimitiveImpl ()
+		{
+			return false;
+		}
+
+		public override Module Module {
+			get { return UnderlyingSystemType.Module; }
+		}
+
+		public override string Namespace {
+			get { throw new NotImplementedException (); }
+		}
+
+		public override Type UnderlyingSystemType {
+			get { return TypeManager.object_type; }
+		}
+
+		public override object[] GetCustomAttributes (Type attributeType, bool inherit)
+		{
+			return new object [0];
+		}
+
+		public override object[] GetCustomAttributes (bool inherit)
+		{
+			return new object [0];
+		}
+
+		public override bool IsDefined (Type attributeType, bool inherit)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public override string Name {
+			get { return UnderlyingSystemType.Name; }
+		}
+
+		public override string ToString ()
+		{
+			return UnderlyingSystemType.ToString ();
+		}
+
+		public override RuntimeTypeHandle TypeHandle {
+			get { return UnderlyingSystemType.TypeHandle; }
+		}
+	}
+
 	public class UnixUtils {
 		[System.Runtime.InteropServices.DllImport ("libc", EntryPoint="isatty")]
 		extern static int _isatty (int fd);
@@ -476,6 +603,41 @@ namespace Mono.CSharp {
 				return _isatty (fd) == 1;
 			} catch {
 				return false;
+			}
+		}
+	}
+
+	/// <summary>
+	///   An exception used to terminate the compiler resolution phase and provide completions
+	/// </summary>
+	/// <remarks>
+	///   This is thrown when we want to return the completions or
+	///   terminate the completion process by AST nodes used in
+	///   the completion process.
+	/// </remarks>
+	public class CompletionResult : Exception {
+		string [] result;
+		string base_text;
+		
+		public CompletionResult (string base_text, string [] res)
+		{
+			if (base_text == null)
+				throw new ArgumentNullException ("base_text");
+			this.base_text = base_text;
+
+			result = res;
+			Array.Sort (result);
+		}
+
+		public string [] Result {
+			get {
+				return result;
+			}
+		}
+
+		public string BaseText {
+			get {
+				return base_text;
 			}
 		}
 	}

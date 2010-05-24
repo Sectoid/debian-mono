@@ -561,13 +561,17 @@ namespace System.Diagnostics {
 		public string ProcessName {
 			get {
 				if(process_name==null) {
+					
+					if (process_handle == IntPtr.Zero)
+						throw new InvalidOperationException ("No process is associated with this object.");
+					
 					process_name=ProcessName_internal(process_handle);
 					/* If process_name is _still_
 					 * null, assume the process
 					 * has exited
 					 */
 					if (process_name == null)
-						throw new SystemException("The process has exited");
+						throw new InvalidOperationException ("Process has exited, so the requested information is not available.");
 					
 					/* Strip the suffix (if it
 					 * exists) simplistically
@@ -853,6 +857,9 @@ namespace System.Diagnostics {
 		{
 			int [] pids = GetProcesses_internal ();
 			ArrayList proclist = new ArrayList ();
+
+			if (pids == null)
+				return new Process [0];
 			
 			for (int i = 0; i < pids.Length; i++) {
 				try {

@@ -30,32 +30,46 @@ using System.Collections.ObjectModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Security;
 using System.Configuration;
 using System.ServiceModel.Configuration;
+using System.Xml;
 
 namespace System.ServiceModel
 {
-	[MonoTODO ("Actually it should work like existing ClientBase minus the impact of proxying. Separate TChannel from IChannel")]
 	public abstract class ChannelFactory : CommunicationObject,
 		IChannelFactory, ICommunicationObject, IDisposable
 	{
 		// instance members
 
 		ServiceEndpoint service_endpoint;
+		IChannelFactory factory;
 
 		protected ChannelFactory ()
 		{
+		}
+
+		internal IChannelFactory OpenedChannelFactory {
+			get {
+				if (factory == null) {
+					factory = CreateFactory ();
+					factory.Open ();
+				}
+
+				return factory;
+			}
+			private set {
+				factory = value;
+			}
 		}
 
 		public ServiceEndpoint Endpoint {
 			get { return service_endpoint; }
 		}
 
-#if !NET_2_1
 		public ClientCredentials Credentials {
 			get { return Endpoint.Behaviors.Find<ClientCredentials> (); }
 		}
-#endif
 
 		protected internal override TimeSpan DefaultCloseTimeout {
 			get { return Endpoint.Binding.CloseTimeout; }
@@ -67,12 +81,36 @@ namespace System.ServiceModel
 
 		protected virtual void ApplyConfiguration (string endpointConfig)
 		{
-#if !NET_2_1
 			if (endpointConfig == null)
 				return;
 
+#if NET_2_1
+			try {
+				// It should automatically use XmlXapResolver
+				var cfg = new SilverlightClientConfigLoader ().Load (XmlReader.Create ("ServiceReferences.ClientConfig"));
+
+				SilverlightClientConfigLoader.ServiceEndpointConfiguration se = null;
+				if (endpointConfig == "*")
+					se = cfg.GetServiceEndpointConfiguration (Endpoint.Contract.Name);
+				if (se == null)
+					se = cfg.GetServiceEndpointConfiguration (endpointConfig);
+
+				if (se.Binding != null && Endpoint.Binding == null)
+					Endpoint.Binding = se.Binding;
+				else // ignore it
+					Console.WriteLine ("WARNING: Configured binding not found in configuration {0}", endpointConfig);
+				if (se.Address != null && Endpoint.Address == null)
+					Endpoint.Address = se.Address;
+				else // ignore it
+					Console.WriteLine ("WARNING: Configured endpoint address not found in configuration {0}", endpointConfig);
+			} catch (Exception) {
+				// ignore it.
+				Console.WriteLine ("WARNING: failed to load endpoint configuration for {0}", endpointConfig);
+			}
+#else
+
 			string contractName = Endpoint.Contract.ConfigurationName;
-			ClientSection client = (ClientSection) ConfigurationManager.GetSection ("system.serviceModel/client");
+			ClientSection client = ConfigUtil.ClientSection;
 			ChannelEndpointElement res = null;
 			foreach (ChannelEndpointElement el in client.Endpoints) {
 				if (el.Contract == contractName && (endpointConfig == el.Name || endpointConfig == "*")) {
@@ -98,7 +136,7 @@ namespace System.ServiceModel
 #if !NET_2_1
 		private void ApplyBehavior (string behaviorConfig)
 		{
-			BehaviorsSection behaviorsSection = (BehaviorsSection) ConfigurationManager.GetSection ("system.serviceModel/behaviors");
+			BehaviorsSection behaviorsSection = ConfigUtil.BehaviorsSection;
 			EndpointBehaviorElement behaviorElement = behaviorsSection.EndpointBehaviors [behaviorConfig];
 			int i = 0;
 			foreach (BehaviorExtensionElement el in behaviorElement) {
@@ -109,10 +147,92 @@ namespace System.ServiceModel
 		}
 #endif
 
-		[MonoTODO]
 		protected virtual IChannelFactory CreateFactory ()
 		{
-			throw new NotImplementedException ();
+			bool isOneWay = true; // check OperationDescription.IsOneWay
+			foreach (var od in Endpoint.Contract.Operations)
+				if (!od.IsOneWay) {
+					isOneWay = false;
+					break;
+				}
+
+			BindingParameterCollection pl = CreateBindingParameters ();
+
+			// the assumption on the type of created channel could
+			// be wrong, but would mostly fit the actual 
+			// requirements. No books have explained how it is done.
+
+			// try duplex
+			switch (Endpoint.Contract.SessionMode) {
+			case SessionMode.Required:
+				if (Endpoint.Binding.CanBuildChannelFactory<IDuplexSessionChannel> (pl))
+					return Endpoint.Binding.BuildChannelFactory<IDuplexSessionChannel> (pl);
+				break;
+			case SessionMode.Allowed:
+				if (Endpoint.Binding.CanBuildChannelFactory<IDuplexChannel> (pl))
+					return Endpoint.Binding.BuildChannelFactory<IDuplexChannel> (pl);
+				if (Endpoint.Binding.CanBuildChannelFactory<IDuplexSessionChannel> (pl))
+					return Endpoint.Binding.BuildChannelFactory<IDuplexSessionChannel> (pl);
+				break;
+			default:
+				if (Endpoint.Binding.CanBuildChannelFactory<IDuplexChannel> (pl))
+					return Endpoint.Binding.BuildChannelFactory<IDuplexChannel> (pl);
+				break;
+			}
+
+			if (Endpoint.Contract.CallbackContractType != null)
+				throw new InvalidOperationException ("The binding does not support duplex channel types that the contract requies for CallbackContractType.");
+
+			if (isOneWay) {
+				switch (Endpoint.Contract.SessionMode) {
+				case SessionMode.Required:
+					if (Endpoint.Binding.CanBuildChannelFactory<IOutputSessionChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IOutputSessionChannel> (pl);
+					break;
+				case SessionMode.Allowed:
+					if (Endpoint.Binding.CanBuildChannelFactory<IOutputChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IOutputChannel> (pl);
+					goto case SessionMode.Required;
+				default:
+					if (Endpoint.Binding.CanBuildChannelFactory<IOutputChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IOutputChannel> (pl);
+					break;
+				}
+			} else {
+				switch (Endpoint.Contract.SessionMode) {
+				case SessionMode.Required:
+					if (Endpoint.Binding.CanBuildChannelFactory<IRequestSessionChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IRequestSessionChannel> (pl);
+					break;
+				case SessionMode.Allowed:
+					if (Endpoint.Binding.CanBuildChannelFactory<IRequestChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IRequestChannel> (pl);
+					if (Endpoint.Binding.CanBuildChannelFactory<IRequestSessionChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IRequestSessionChannel> (pl);
+					break;
+				default:
+					if (Endpoint.Binding.CanBuildChannelFactory<IRequestChannel> (pl))
+						return Endpoint.Binding.BuildChannelFactory<IRequestChannel> (pl);
+					break;
+				}
+			}
+			throw new InvalidOperationException ("The binding does not support any of the channel types that the contract allows.");
+		}
+
+		BindingParameterCollection CreateBindingParameters ()
+		{
+			BindingParameterCollection pl =
+				new BindingParameterCollection ();
+
+			ContractDescription cd = Endpoint.Contract;
+#if !NET_2_1
+			pl.Add (ChannelProtectionRequirements.CreateFromContract (cd));
+
+			foreach (IEndpointBehavior behavior in Endpoint.Behaviors)
+				behavior.AddBindingParameters (Endpoint, pl);
+#endif
+
+			return pl;
 		}
 
 		protected abstract ServiceEndpoint CreateDescription ();
@@ -122,14 +242,24 @@ namespace System.ServiceModel
 			Close ();
 		}
 
-		[MonoTODO]
 		public T GetProperty<T> () where T : class
 		{
-			throw new NotImplementedException ();
+			if (OpenedChannelFactory != null)
+				OpenedChannelFactory.GetProperty<T> ();
+			return null;
 		}
 
 		protected void EnsureOpened ()
 		{
+			if (Endpoint == null)
+				throw new InvalidOperationException ("A service endpoint must be configured for this channel factory");
+			if (Endpoint.Address == null)
+				throw new InvalidOperationException ("An EndpointAddress must be configured for this channel factory");
+			if (Endpoint.Contract == null)
+				throw new InvalidOperationException ("A service Contract must be configured for this channel factory");
+			if (Endpoint.Binding == null)
+				throw new InvalidOperationException ("A Binding must be configured for this channel factory");
+
 			if (State != CommunicationState.Opened)
 				Open ();
 		}
@@ -139,7 +269,8 @@ namespace System.ServiceModel
 			EndpointAddress remoteAddress)
 		{
 			InitializeEndpoint (CreateDescription ());
-			service_endpoint.Address = remoteAddress;
+			if (remoteAddress != null)
+				service_endpoint.Address = remoteAddress;
 			ApplyConfiguration (endpointConfigurationName);
 		}
 
@@ -147,65 +278,79 @@ namespace System.ServiceModel
 			EndpointAddress remoteAddress)
 		{
 			InitializeEndpoint (CreateDescription ());
-			service_endpoint.Binding = binding;
-			service_endpoint.Address = remoteAddress;
+			if (binding != null)
+				service_endpoint.Binding = binding;
+			if (remoteAddress != null)
+				service_endpoint.Address = remoteAddress;
 		}
 
 		protected void InitializeEndpoint (ServiceEndpoint endpoint)
 		{
+			if (endpoint == null)
+				throw new ArgumentNullException ("endpoint");
 			service_endpoint = endpoint;
 		}
 
-		[MonoTODO]
 		protected override void OnAbort ()
 		{
-			throw new NotImplementedException ();
+			if (OpenedChannelFactory != null)
+				OpenedChannelFactory.Abort ();
 		}
 
-		[MonoTODO]
+		Action<TimeSpan> close_delegate;
+		Action<TimeSpan> open_delegate;
+
+
 		protected override IAsyncResult OnBeginClose (
 			TimeSpan timeout, AsyncCallback callback, object state)
 		{
-			throw new NotImplementedException ();
+			if (close_delegate == null)
+				close_delegate = new Action<TimeSpan> (OnClose);
+			return close_delegate.BeginInvoke (timeout, callback, state);
 		}
 
-		[MonoTODO]
 		protected override IAsyncResult OnBeginOpen (
 			TimeSpan timeout, AsyncCallback callback, object state)
 		{
-			throw new NotImplementedException ();
+			if (open_delegate == null)
+				open_delegate = new Action<TimeSpan> (OnClose);
+			return open_delegate.BeginInvoke (timeout, callback, state);
 		}
 
-		[MonoTODO]
 		protected override void OnEndClose (IAsyncResult result)
 		{
-			throw new NotImplementedException ();
+			if (close_delegate == null)
+				throw new InvalidOperationException ("Async close operation has not started");
+			close_delegate.EndInvoke (result);
 		}
 
-		[MonoTODO]
 		protected override void OnEndOpen (IAsyncResult result)
 		{
-			throw new NotImplementedException ();
+			if (open_delegate == null)
+				throw new InvalidOperationException ("Async close operation has not started");
+			open_delegate.EndInvoke (result);
 		}
 
-		[MonoTODO]
 		protected override void OnClose (TimeSpan timeout)
 		{
+			if (OpenedChannelFactory != null)
+				OpenedChannelFactory.Close (timeout);
 		}
 
-		[MonoTODO]
 		protected override void OnOpen (TimeSpan timeout)
 		{
 		}
 
-		[MonoTODO]
 		protected override void OnOpening ()
 		{
+			base.OnOpening ();
+			OpenedChannelFactory = CreateFactory ();
 		}
 
-		[MonoTODO]
 		protected override void OnOpened ()
 		{
+			base.OnOpened ();
+			OpenedChannelFactory.Open ();
 		}
 	}
 

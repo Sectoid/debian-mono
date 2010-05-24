@@ -1,4 +1,4 @@
-//
+﻿//
 // OciIntervalDescriptor.cs - used for an Oracle TIMESPAN/INTERVAL{YTM/DTS}
 //
 // Part of managed C#/.NET library System.Data.OracleClient.dll

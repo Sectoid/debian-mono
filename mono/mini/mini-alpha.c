@@ -2106,26 +2106,6 @@ mono_arch_emit_exceptions (MonoCompile *cfg)
 #define EMIT_ALPHA_BRANCH(Tins, PRED_REG, ALPHA_BR)	\
   offset = ((char *)code -                      \
 	    (char *)cfg->native_code);          \
-  if (Tins->flags & MONO_INST_BRLABEL)		\
-    {						\
-      if (Tins->inst_i0->inst_c0)		\
-	{								\
-	  CFG_DEBUG(3) g_print("inst_c0: %0lX, data: %p]\n",		\
-		 Tins->inst_i0->inst_c0,				\
-		 cfg->native_code + Tins->inst_i0->inst_c0);		\
-	  alpha_##ALPHA_BR (code, PRED_REG, 0);				\
-	}								\
-      else								\
-	{								\
-	  CFG_DEBUG(3) g_print("add patch info: MONO_PATCH_INFO_LABEL offset: %0X, inst_i0: %p]\n", \
-		 offset, Tins->inst_i0);				\
-	  mono_add_patch_info (cfg, offset,				\
-			       MONO_PATCH_INFO_LABEL, Tins->inst_i0);	\
-	  alpha_##ALPHA_BR (code, PRED_REG, 0);				\
-	}								\
-    }									\
-  else									\
-    {									\
       if (Tins->inst_true_bb->native_offset)				\
 	{								\
 	  long br_offset = (char *)cfg->native_code +			\
@@ -2144,8 +2124,7 @@ mono_arch_emit_exceptions (MonoCompile *cfg)
 			       MONO_PATCH_INFO_BB,			\
 			       Tins->inst_true_bb);			\
 	  alpha_##ALPHA_BR (code, PRED_REG, 0);				\
-	}								\
-    }
+	}
 
 
 #define EMIT_COND_EXC_BRANCH(ALPHA_BR, PRED_REG, EXC_NAME)		\
@@ -3616,51 +3595,29 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 	   CFG_DEBUG(4) g_print("ALPHA_CHECK: [br] target: %p, next: %p, curr: %p, last: %p [",
 		  ins->inst_target_bb, bb->next_bb, ins, bb->last_ins);
 	   
-	   if (ins->flags & MONO_INST_BRLABEL)
+	   if (ins->inst_target_bb->native_offset)
 	     {
-	       if (ins->inst_i0->inst_c0)
-		 {
-		   CFG_DEBUG(4) g_print("inst_c0: %0lX, data: %p]\n",
-			  ins->inst_i0->inst_c0,
-			  cfg->native_code + ins->inst_i0->inst_c0);
-		   alpha_br(code, alpha_zero, 0);
-		 }
-	       else
-		 {
-		   CFG_DEBUG(4) g_print("add patch info: MONO_PATCH_INFO_LABEL offset: %0X, inst_i0: %p]\n",
-			  offset, ins->inst_i0);
-		   mono_add_patch_info (cfg, offset,
-					MONO_PATCH_INFO_LABEL, ins->inst_i0);
-		   
-		   alpha_br(code, alpha_zero, 0);
-		 }
+	       // Somehow native offset is offset from
+	       // start of the code. So convert it to
+	       // offset branch
+	       long br_offset = (char *)cfg->native_code +
+		 ins->inst_target_bb->native_offset - 4 - (char *)code;
+
+	       CFG_DEBUG(4) g_print("jump to: native_offset: %0X, address %p]\n",
+		      ins->inst_target_bb->native_offset,
+		      cfg->native_code +
+		      ins->inst_target_bb->native_offset);
+	       alpha_br(code, alpha_zero, br_offset/4);
 	     }
 	   else
 	     {
-	       if (ins->inst_target_bb->native_offset)
-		 {
-		   // Somehow native offset is offset from
-		   // start of the code. So convert it to
-		   // offset branch
-		   long br_offset = (char *)cfg->native_code +
-		     ins->inst_target_bb->native_offset - 4 - (char *)code;
-		   
-		   CFG_DEBUG(4) g_print("jump to: native_offset: %0X, address %p]\n",
-			  ins->inst_target_bb->native_offset,
-			  cfg->native_code +
-			  ins->inst_target_bb->native_offset);
-		   alpha_br(code, alpha_zero, br_offset/4);
-		 }
-	       else
-		 {
-		   CFG_DEBUG(4) g_print("add patch info: MONO_PATCH_INFO_BB offset: %0X, target_bb: %p]\n",
-			  offset, ins->inst_target_bb);
-		   
-		   mono_add_patch_info (cfg, offset,
-					MONO_PATCH_INFO_BB,
-					ins->inst_target_bb);
-		   alpha_br(code, alpha_zero, 0);
-		 }
+	       CFG_DEBUG(4) g_print("add patch info: MONO_PATCH_INFO_BB offset: %0X, target_bb: %p]\n",
+		      offset, ins->inst_target_bb);
+
+	       mono_add_patch_info (cfg, offset,
+				    MONO_PATCH_INFO_BB,
+				    ins->inst_target_bb);
+	       alpha_br(code, alpha_zero, 0);
 	     }
 	   
 	   break;
@@ -4465,7 +4422,7 @@ get_call_info (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, gbool
        cinfo->ret.reg = alpha_f0;
        break;
      case MONO_TYPE_GENERICINST:
-       if (!mono_type_generic_inst_is_valuetype (sig->ret))
+       if (!mono_type_generic_inst_is_valuetype (ret_type))
 	 {
 	   cinfo->ret.storage = ArgInIReg;
 	   cinfo->ret.reg = alpha_r0;
@@ -4568,7 +4525,7 @@ get_call_info (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, gbool
 	 add_general (pgr, &stack_size, ainfo);
 	 break;
        case MONO_TYPE_GENERICINST:
-	 if (!mono_type_generic_inst_is_valuetype (sig->params [i]))
+	 if (!mono_type_generic_inst_is_valuetype (ptype))
 	   {
 	     add_general (pgr, &stack_size, ainfo);
 	     break;
@@ -5358,8 +5315,7 @@ enum {
 /*------------------------------------------------------------------*/
 
 void*
-mono_arch_instrument_epilog (MonoCompile *cfg, void *func, void *p,
-	gboolean enable_arguments)
+mono_arch_instrument_epilog_full (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments, gboolean preserve_argument_registers)
 {
   unsigned int *code = p;
   int save_mode = SAVE_NONE;
@@ -5850,7 +5806,7 @@ mono_arch_print_tree (MonoInst *tree, int arity)
 */
 
 gpointer*
-mono_arch_get_vcall_slot_addr (guint8* code, gpointer *regs)
+mono_arch_get_vcall_slot_addr (guint8* code, mgreg_t *regs)
 {
   unsigned int *pc = (unsigned int *)code;
   guint32 reg, disp;
@@ -5902,7 +5858,7 @@ mono_arch_get_vcall_slot_addr (guint8* code, gpointer *regs)
 }
 
 gpointer
-mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, gssize *regs, guint8 *code)
+mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, mgreg_t *regs, guint8 *code)
 {
   unsigned int *pc = (unsigned int *)code;
 

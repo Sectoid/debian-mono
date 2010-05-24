@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 #endif // TARGET_JVM
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 using NUnit.Framework;
 
@@ -96,6 +97,16 @@ namespace MonoTests.System.Reflection
 
 			Assert.AreEqual (typeof (ParamEnum), info [5].DefaultValue.GetType (), "#1");
 			Assert.AreEqual (ParamEnum.Foo, info [5].DefaultValue, "#2");
+		}
+
+		public static void Sample2 ([DecimalConstantAttribute(2,2,2,2,2)] decimal a, [DateTimeConstantAttribute(123456)] DateTime b) {}
+
+		[Test]
+		public void DefaultValuesFromCustomAttr () {
+			ParameterInfo[] info = typeof (ParameterInfoTest).GetMethod ("Sample2").GetParameters ();
+
+			Assert.AreEqual (typeof (Decimal), info [0].DefaultValue.GetType (), "#1");
+			Assert.AreEqual (typeof (DateTime), info [1].DefaultValue.GetType (), "#2");
 		}
 
 		[Test] // bug #339013
@@ -182,6 +193,35 @@ namespace MonoTests.System.Reflection
 			{
 				return default (V);
 			}
+		}
+#endif
+
+		[Test]
+		public void Member () {
+			ParameterInfo parm = typeof (Derived).GetMethod ("SomeMethod").GetParameters()[0];
+			Assert.AreEqual (typeof (Derived), parm.Member.ReflectedType);
+			Assert.AreEqual (typeof (Base), parm.Member.DeclaringType);
+		}
+
+		class Base
+		{
+			public void SomeMethod( int x )
+			{
+			}
+		}
+
+		class Derived : Base
+		{
+		}
+
+#if NET_4_0
+		public static void TestC (decimal u = decimal.MaxValue) {
+		}
+
+		[Test]
+		public void DefaultValueDecimal () {
+			var info = typeof (ParameterInfoTest).GetMethod ("TestC").GetParameters ();
+			Assert.AreEqual (decimal.MaxValue, info [0].DefaultValue);
 		}
 #endif
 	}

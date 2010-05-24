@@ -359,7 +359,7 @@ namespace Mono.CSharp {
 				return null;
 
 			Type ret_type = method.method.ReturnType;
-			Parameters args = method.method.ParameterInfo;
+			ParametersCompiled args = method.method.ParameterInfo;
 			int arg_len = args.Count;
 			bool is_indexer = method.method is Indexer.SetIndexerMethod || method.method is Indexer.GetIndexerMethod;
 
@@ -425,6 +425,14 @@ namespace Mono.CSharp {
 					if (j != arg_len)
 						continue;
 
+					Type rt = TypeManager.TypeToCoreType (m.ReturnType);
+					if (!TypeManager.IsEqual (ret_type, rt) &&
+						!(ret_type == null && rt == TypeManager.void_type) &&
+						!(rt == null && ret_type == TypeManager.void_type)) {
+						tm.found [i] = method;
+						continue;
+					}
+
 					if (op != Operation.Lookup) {
 						// If `t != null', then this is an explicitly interface
 						// implementation and we can always clear the method.
@@ -439,12 +447,6 @@ namespace Mono.CSharp {
 					} else {
 						tm.found [i] = method;
 					}
-
-					Type rt = TypeManager.TypeToCoreType (m.ReturnType);
-					if (!TypeManager.IsEqual (ret_type, rt) &&
-						!(ret_type == null && rt == TypeManager.void_type) &&
-						!(rt == null && ret_type == TypeManager.void_type))
-						continue;
 
 					//
 					// Lookups and ClearOne return
@@ -484,20 +486,22 @@ namespace Mono.CSharp {
 				CallingConventions.Standard | CallingConventions.HasThis,
 				base_method.ReturnType, param.GetEmitTypes ());
 
-#if GMCS_SOURCE
-			Type[] gargs = iface_method.GetGenericArguments ();
+			Type[] gargs = TypeManager.GetGenericArguments (iface_method);
 			if (gargs.Length > 0) {
 				string[] gnames = new string[gargs.Length];
 				for (int i = 0; i < gargs.Length; ++i)
 					gnames[i] = gargs[i].Name;
 
+#if GMCS_SOURCE
 				proxy.DefineGenericParameters (gnames);
-			}
+#else
+				throw new NotSupportedException ();
 #endif
+			}
 
 			for (int i = 0; i < param.Count; i++) {
 				string name = param.FixedParameters [i].Name;
-				ParameterAttributes attr = Parameters.GetParameterAttribute (param.FixedParameters [i].ModFlags);
+				ParameterAttributes attr = ParametersCompiled.GetParameterAttribute (param.FixedParameters [i].ModFlags);
 				proxy.DefineParameter (i + 1, attr, name);
 			}
 
@@ -559,7 +563,7 @@ namespace Mono.CSharp {
 		///   Verifies that any pending abstract methods or interface methods
 		///   were implemented.
 		/// </summary>
-		public bool VerifyPendingMethods ()
+		public bool VerifyPendingMethods (Report Report)
 		{
 			int top = pending_implementations.Length;
 			bool errors = false;

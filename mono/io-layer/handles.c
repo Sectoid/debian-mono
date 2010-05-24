@@ -28,7 +28,7 @@
 #endif
 #include <sys/stat.h>
 
-#include <mono/os/gc_wrapper.h>
+#include <mono/utils/gc_wrapper.h>
 
 #include <mono/io-layer/wapi.h>
 #include <mono/io-layer/wapi-private.h>
@@ -54,7 +54,9 @@ static struct _WapiHandleOps *handle_ops[WAPI_HANDLE_COUNT]={
 	&_wapi_sem_ops,
 	&_wapi_mutex_ops,
 	&_wapi_event_ops,
+#ifndef DISABLE_SOCKETS
 	&_wapi_socket_ops,
+#endif
 	&_wapi_find_ops,
 	&_wapi_process_ops,
 	&_wapi_pipe_ops,
@@ -251,7 +253,10 @@ static void shared_init (void)
 	_wapi_fileshare_layout = _wapi_shm_attach (WAPI_SHM_FILESHARE);
 	g_assert (_wapi_fileshare_layout != NULL);
 	
-	_wapi_collection_init ();
+#if !defined (DISABLE_SHARED_HANDLES)
+	if (!g_getenv ("MONO_DISABLE_SHM"))
+		_wapi_collection_init ();
+#endif
 
 	/* Can't call wapi_handle_new as it calls us recursively */
 	_wapi_global_signal_handle = _wapi_handle_real_new (WAPI_HANDLE_EVENT, NULL);

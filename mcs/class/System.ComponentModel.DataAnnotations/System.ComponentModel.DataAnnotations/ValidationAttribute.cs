@@ -35,6 +35,7 @@ namespace System.ComponentModel.DataAnnotations
 	public abstract class ValidationAttribute : Attribute
 	{
 		protected ValidationAttribute ()
+			: this ("This member is required")
 		{
 		}
 

@@ -33,11 +33,15 @@ using Mono.Cecil;
 
 namespace Mono.Linker.Steps {
 
-	public class SweepStep : BaseStep {
+	public class SweepStep : IStep {
 
-		protected override void ProcessAssembly (AssemblyDefinition assembly)
+		AssemblyDefinition [] assemblies;
+
+		public void Process (LinkContext context)
 		{
-			SweepAssembly (assembly);
+			assemblies = context.GetAssemblies ();
+			foreach (var assembly in assemblies)
+				SweepAssembly (assembly);
 		}
 
 		void SweepAssembly (AssemblyDefinition assembly)
@@ -45,14 +49,55 @@ namespace Mono.Linker.Steps {
 			if (Annotations.GetAction (assembly) != AssemblyAction.Link)
 				return;
 
-			foreach (TypeDefinition type in Clone (assembly.MainModule.Types)) {
+			if (!IsMarkedAssembly (assembly)) {
+				RemoveAssembly (assembly);
+				return;
+			}
+
+			var types = assembly.MainModule.Types;
+			var cloned_types = Clone (types);
+
+			types.Clear ();
+
+			foreach (TypeDefinition type in cloned_types) {
 				if (Annotations.IsMarked (type)) {
 					SweepType (type);
+					types.Add (type);
 					continue;
 				}
 
-				assembly.MainModule.Types.Remove (type);
 				SweepReferences (assembly, type);
+			}
+		}
+
+		static bool IsMarkedAssembly (AssemblyDefinition assembly)
+		{
+			return Annotations.IsMarked (assembly.MainModule);
+		}
+
+		void RemoveAssembly (AssemblyDefinition assembly)
+		{
+			Annotations.SetAction (assembly, AssemblyAction.Delete);
+
+			SweepReferences (assembly);
+		}
+
+		void SweepReferences (AssemblyDefinition target)
+		{
+			foreach (var assembly in assemblies)
+				SweepReferences (assembly, target);
+		}
+
+		void SweepReferences (AssemblyDefinition assembly, AssemblyDefinition target)
+		{
+			var references = assembly.MainModule.AssemblyReferences;
+			for (int i = 0; i < references.Count; i++) {
+				var reference = references [i];
+				if (!AreSameReference (reference, target.Name))
+					continue;
+
+				references.RemoveAt (i);
+				return;
 			}
 		}
 
@@ -63,7 +108,7 @@ namespace Mono.Linker.Steps {
 
 		void SweepReferences (AssemblyDefinition assembly, TypeDefinition type)
 		{
-			foreach (AssemblyDefinition asm in Context.GetAssemblies ()) {
+			foreach (AssemblyDefinition asm in assemblies) {
 				ModuleDefinition module = asm.MainModule;
 				if (!module.TypeReferences.Contains (type))
 					continue;
@@ -78,9 +123,11 @@ namespace Mono.Linker.Steps {
 
 		static void SweepMemberReferences (ModuleDefinition module, TypeReference reference)
 		{
-			foreach (MemberReference member in Clone (module.MemberReferences)) {
-				if (member.DeclaringType == reference)
-					module.MemberReferences.Remove (member);
+			var references = module.MemberReferences;
+
+			for (int i = 0; i < references.Count; i++) {
+				if (references [i].DeclaringType == reference)
+					references.RemoveAt (i--);
 			}
 		}
 
@@ -90,21 +137,40 @@ namespace Mono.Linker.Steps {
 			if (reference == null)
 				return false;
 
-			return assembly.Name.FullName == reference.FullName;
+			return AreSameReference (assembly.Name, reference);
 		}
 
 		static void SweepType (TypeDefinition type)
 		{
-			SweepCollection (type.Fields);
-			SweepCollection (type.Constructors);
-			SweepCollection (type.Methods);
+			if (type.HasFields)
+				SweepCollection (type.Fields);
+
+			if (type.HasConstructors)
+				SweepCollection (type.Constructors);
+
+			if (type.HasMethods)
+				SweepCollection (type.Methods);
 		}
 
 		static void SweepCollection (IList list)
 		{
-			foreach (IAnnotationProvider provider in Clone (list))
-				if (!Annotations.IsMarked (provider))
-					list.Remove (provider);
+			for (int i = 0; i < list.Count; i++)
+				if (!Annotations.IsMarked ((IAnnotationProvider) list [i]))
+					list.RemoveAt (i--);
+		}
+
+		static bool AreSameReference (AssemblyNameReference a, AssemblyNameReference b)
+		{
+			if (a == b)
+				return true;
+
+			if (a.Name != b.Name)
+				return false;
+
+			if (a.Version != b.Version)
+				return false;
+
+			return true;
 		}
 	}
 }

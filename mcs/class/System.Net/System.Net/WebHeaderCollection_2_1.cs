@@ -3,8 +3,9 @@
 //
 // Authors:
 //	Jb Evain  <jbevain@novell.com>
+//	Sebastien Pouliot  <sebastien@ximian.com>
 //
-// (c) 2007 Novell, Inc. (http://www.novell.com)
+// (c) 2007, 2009 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -31,16 +32,25 @@
 #if NET_2_1
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace System.Net {
 
-	public class WebHeaderCollection {
+	public sealed class WebHeaderCollection : IEnumerable {
 
-		Dictionary<string, string> headers = new Dictionary<string, string> ();
+		internal Dictionary<string, string> headers;
+		bool validate;
 
 		public WebHeaderCollection ()
+			: this (false)
 		{
+		}
+
+		internal WebHeaderCollection (bool restrict)
+		{
+			validate = restrict;
+			headers = new Dictionary<string, string> (StringComparer.OrdinalIgnoreCase);
 		}
 
 		public int Count {
@@ -57,102 +67,200 @@ namespace System.Net {
 
 		public string this [string header] {
 			get {
-				string value;
-				if (headers.TryGetValue (header, out value))
-					return value;
+				if (header == null)
+					throw new ArgumentNullException ("header");
 
-				return string.Empty;
+				string value = null;
+				headers.TryGetValue (header, out value);
+				return value;
 			}
-			set { headers [header] = value; }
+			set {
+				if (header == null)
+					throw new ArgumentNullException ("header");
+				if (header.Length == 0)
+					throw new ArgumentException ("header");
+
+				if (validate)
+					ValidateHeader (header);
+				headers [header] = value;
+			}
 		}
 
 		public string this [HttpRequestHeader header] {
 			get { return this [HttpRequestHeaderToString (header)]; }
-			set { this [HttpRequestHeaderToString (header)] = value; }
+			set {
+				string h = HttpRequestHeaderToString (header);
+				if (validate)
+					ValidateHeader (h);
+				headers [h] = value;
+			}
+		}
+
+		// some headers cannot be set using the "this" property but by using
+		// the right property of the Web[Request|Response]. However the value 
+		// does end up in the collection (and can be read safely from there)
+		internal void SetHeader (string header, string value)
+		{
+			if (String.IsNullOrEmpty (value))
+				headers.Remove (header);
+			else
+				headers [header] = value;
+		}
+
+		IEnumerator IEnumerable.GetEnumerator ()
+		{
+			return headers.GetEnumerator ();
 		}
 
 		static string HttpResponseHeaderToString (HttpResponseHeader header)
 		{
 			switch (header) {
-			case HttpResponseHeader.CacheControl:		return "cache-control";
-			case HttpResponseHeader.Connection:			return "connection";
-			case HttpResponseHeader.Date:				return "date";
-			case HttpResponseHeader.KeepAlive:			return "keep-alive";
-			case HttpResponseHeader.Pragma:				return "pragma";
-			case HttpResponseHeader.Trailer:			return "trailer";
-			case HttpResponseHeader.TransferEncoding:	return "transfer-encoding";
-			case HttpResponseHeader.Upgrade:			return "upgrade";
-			case HttpResponseHeader.Via:				return "via";
-			case HttpResponseHeader.Warning:			return "warning";
-			case HttpResponseHeader.Allow:				return "allow";
-			case HttpResponseHeader.ContentLength:		return "content-length";
-			case HttpResponseHeader.ContentType:		return "content-type";
-			case HttpResponseHeader.ContentEncoding:	return "content-encoding";
-			case HttpResponseHeader.ContentLanguage:	return "content-language";
-			case HttpResponseHeader.ContentLocation:	return "content-location";
-			case HttpResponseHeader.ContentMd5:			return "content-md5";
-			case HttpResponseHeader.ContentRange:		return "content-range";
-			case HttpResponseHeader.Expires:			return "expires";
-			case HttpResponseHeader.LastModified:		return "last-modified";
-			case HttpResponseHeader.AcceptRanges:		return "accept-ranges";
-			case HttpResponseHeader.Age:				return "age";
-			case HttpResponseHeader.ETag:				return "etag";
-			case HttpResponseHeader.Location:			return "location";
-			case HttpResponseHeader.ProxyAuthenticate:	return "proxy-authenticate";
-			case HttpResponseHeader.RetryAfter:			return "retry-after";
-			case HttpResponseHeader.Server:				return "server";
-			case HttpResponseHeader.SetCookie:			return "set-cookie";
-			case HttpResponseHeader.Vary:				return "vary";
-			case HttpResponseHeader.WwwAuthenticate:	return "www-authenticate";
-			default:									throw new ArgumentException ();
+			case HttpResponseHeader.CacheControl:		return "Cache-Control";
+			case HttpResponseHeader.Connection:		return "Connection";
+			case HttpResponseHeader.Date:			return "Date";
+			case HttpResponseHeader.KeepAlive:		return "Keep-Alive";
+			case HttpResponseHeader.Pragma:			return "Pragma";
+			case HttpResponseHeader.Trailer:		return "Trailer";
+			case HttpResponseHeader.TransferEncoding:	return "Transfer-Encoding";
+			case HttpResponseHeader.Upgrade:		return "Upgrade";
+			case HttpResponseHeader.Via:			return "Via";
+			case HttpResponseHeader.Warning:		return "Warning";
+			case HttpResponseHeader.Allow:			return "Allow";
+			case HttpResponseHeader.ContentLength:		return "Content-Length";
+			case HttpResponseHeader.ContentType:		return "Content-Type";
+			case HttpResponseHeader.ContentEncoding:	return "Content-Encoding";
+			case HttpResponseHeader.ContentLanguage:	return "Content-Language";
+			case HttpResponseHeader.ContentLocation:	return "Content-Location";
+			case HttpResponseHeader.ContentMd5:		return "Content-MD5";
+			case HttpResponseHeader.ContentRange:		return "Content-Range";
+			case HttpResponseHeader.Expires:		return "Expires";
+			case HttpResponseHeader.LastModified:		return "Last-Modified";
+			case HttpResponseHeader.AcceptRanges:		return "Accept-Ranges";
+			case HttpResponseHeader.Age:			return "Age";
+			case HttpResponseHeader.ETag:			return "ETag";
+			case HttpResponseHeader.Location:		return "Location";
+			case HttpResponseHeader.ProxyAuthenticate:	return "Proxy-Authenticate";
+			case HttpResponseHeader.RetryAfter:		return "Retry-After";
+			case HttpResponseHeader.Server:			return "Server";
+			case HttpResponseHeader.SetCookie:		return "Set-Cookie";
+			case HttpResponseHeader.Vary:			return "Vary";
+			case HttpResponseHeader.WwwAuthenticate:	return "WWW-Authenticate";
+			default:
+				throw new IndexOutOfRangeException ();
 			}
 		}
 
 		static string HttpRequestHeaderToString (HttpRequestHeader header)
 		{
 			switch (header) {
-			case HttpRequestHeader.CacheControl:		return "cache-control";
-			case HttpRequestHeader.Connection:			return "connection";
-			case HttpRequestHeader.Date:				return "date";
-			case HttpRequestHeader.KeepAlive:			return "keep-alive";
-			case HttpRequestHeader.Pragma:				return "pragma";
-			case HttpRequestHeader.Trailer:				return "trailer";
-			case HttpRequestHeader.TransferEncoding:	return "transfer-encoding";
-			case HttpRequestHeader.Upgrade:				return "upgrade";
-			case HttpRequestHeader.Via:					return "via";
-			case HttpRequestHeader.Warning:				return "warning";
-			case HttpRequestHeader.Allow:				return "allow";
-			case HttpRequestHeader.ContentLength:		return "content-length";
-			case HttpRequestHeader.ContentType:			return "content-type";
-			case HttpRequestHeader.ContentEncoding:		return "content-encoding";
-			case HttpRequestHeader.ContentLanguage:		return "content-language";
-			case HttpRequestHeader.ContentLocation:		return "content-location";
-			case HttpRequestHeader.ContentMd5:			return "content-md5";
-			case HttpRequestHeader.ContentRange:		return "content-range";
-			case HttpRequestHeader.Expires:				return "expires";
-			case HttpRequestHeader.LastModified:		return "last-modified";
-			case HttpRequestHeader.Accept:				return "accept";
-			case HttpRequestHeader.AcceptCharset:		return "accept-charset";
-			case HttpRequestHeader.AcceptEncoding:		return "accept-encoding";
-			case HttpRequestHeader.AcceptLanguage:		return "accept-language";
-			case HttpRequestHeader.Authorization:		return "authorization";
-			case HttpRequestHeader.Cookie:				return "cookie";
-			case HttpRequestHeader.Expect:				return "expect";
-			case HttpRequestHeader.From:				return "from";
-			case HttpRequestHeader.Host:				return "host";
-			case HttpRequestHeader.IfMatch:				return "if-match";
-			case HttpRequestHeader.IfModifiedSince:		return "if-modified-since";
-			case HttpRequestHeader.IfNoneMatch:			return "if-none-match";
-			case HttpRequestHeader.IfRange:				return "if-range";
-			case HttpRequestHeader.IfUnmodifiedSince:	return "if-unmodified-since";
-			case HttpRequestHeader.MaxForwards:			return "max-forwards";
-			case HttpRequestHeader.ProxyAuthorization:	return "proxy-authorization";
-			case HttpRequestHeader.Referer:				return "referer";
-			case HttpRequestHeader.Range:				return "range";
-			case HttpRequestHeader.Te:					return "te";
-			case HttpRequestHeader.Translate:			return "translate";
-			case HttpRequestHeader.UserAgent:			return "user-agent";
-			default:									throw new ArgumentException ();
+			case HttpRequestHeader.CacheControl:		return "Cache-Control";
+			case HttpRequestHeader.Connection:		return "Connection";
+			case HttpRequestHeader.Date:			return "Date";
+			case HttpRequestHeader.KeepAlive:		return "Keep-Alive";
+			case HttpRequestHeader.Pragma:			return "Pragma";
+			case HttpRequestHeader.Trailer:			return "Trailer";
+			case HttpRequestHeader.TransferEncoding:	return "Transfer-Encoding";
+			case HttpRequestHeader.Upgrade:			return "Upgrade";
+			case HttpRequestHeader.Via:			return "Via";
+			case HttpRequestHeader.Warning:			return "Warning";
+			case HttpRequestHeader.Allow:			return "Allow";
+			case HttpRequestHeader.ContentLength:		return "Content-Length";
+			case HttpRequestHeader.ContentType:		return "Content-Type";
+			case HttpRequestHeader.ContentEncoding:		return "Content-Encoding";
+			case HttpRequestHeader.ContentLanguage:		return "Content-Language";
+			case HttpRequestHeader.ContentLocation:		return "Content-Location";
+			case HttpRequestHeader.ContentMd5:		return "Content-MD5";
+			case HttpRequestHeader.ContentRange:		return "Content-Range";
+			case HttpRequestHeader.Expires:			return "Expires";
+			case HttpRequestHeader.LastModified:		return "Last-Modified";
+			case HttpRequestHeader.Accept:			return "Accept";
+			case HttpRequestHeader.AcceptCharset:		return "Accept-Charset";
+			case HttpRequestHeader.AcceptEncoding:		return "Accept-Encoding";
+			case HttpRequestHeader.AcceptLanguage:		return "Accept-Language";
+			case HttpRequestHeader.Authorization:		return "Authorization";
+			case HttpRequestHeader.Cookie:			return "Cookie";
+			case HttpRequestHeader.Expect:			return "Expect";
+			case HttpRequestHeader.From:			return "From";
+			case HttpRequestHeader.Host:			return "Host";
+			case HttpRequestHeader.IfMatch:			return "If-Match";
+			case HttpRequestHeader.IfModifiedSince:		return "If-Modified-Since";
+			case HttpRequestHeader.IfNoneMatch:		return "If-None-Match";
+			case HttpRequestHeader.IfRange:			return "If-Range";
+			case HttpRequestHeader.IfUnmodifiedSince:	return "If-Unmodified-Since";
+			case HttpRequestHeader.MaxForwards:		return "Max-Forwards";
+			case HttpRequestHeader.ProxyAuthorization:	return "Proxy-Authorization";
+			case HttpRequestHeader.Referer:			return "Referer";
+			case HttpRequestHeader.Range:			return "Range";
+			case HttpRequestHeader.Te:			return "TE";
+			case HttpRequestHeader.Translate:		return "Translate";
+			case HttpRequestHeader.UserAgent:		return "User-Agent";
+			default:
+				throw new IndexOutOfRangeException ();
+			}
+		}
+
+		internal static void ValidateHeader (string header)
+		{
+			switch (header.ToLowerInvariant ()) {
+			case "connection":
+			case "date":
+			case "keep-alive":
+			case "trailer":
+			case "transfer-encoding":
+			case "upgrade":
+			case "via":
+			case "warning":
+			case "allow":
+			case "content-length":
+			case "content-type":
+			case "content-location":
+			case "content-range":
+			case "last-modified":
+			case "accept":
+			case "accept-charset":
+			case "accept-encoding":
+			case "accept-language":
+			case "authorization":
+			case "cookie":
+			case "expect":
+			case "host":
+			case "if-modified-since":
+			case "max-forwards":
+			case "proxy-authorization":
+			case "referer":
+			case "te":
+			case "user-agent":
+			// extra (not HttpRequestHeader defined) headers that are not accepted by SL2
+			// note: the HttpResponseHeader enum is not available in SL2
+			case "accept-ranges":
+			case "age":
+			case "allowed":
+			case "connect":
+			case "content-transfer-encoding":
+			case "delete":
+			case "etag":
+			case "get":
+			case "head":
+			case "location":
+			case "options":
+			case "post":
+			case "proxy-authenticate":
+			case "proxy-connection":
+			case "public":
+			case "put":
+			case "request-range":
+			case "retry-after":
+			case "server":
+			case "sec-headertest":
+			case "sec-":
+			case "trace":
+			case "uri":
+			case "vary":
+			case "www-authenticate":
+			case "x-flash-version":
+				throw new ArgumentException ("header");
+			default:
+				return;
 			}
 		}
 	}

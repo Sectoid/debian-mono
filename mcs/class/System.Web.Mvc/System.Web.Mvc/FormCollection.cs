@@ -64,8 +64,8 @@ namespace System.Web.Mvc {
             string attemptedValue = this[name];
             return new ValueProviderResult(rawValue, attemptedValue, CultureInfo.CurrentCulture);
         }
-}
-        sealed class FormCollectionBinderAttribute : CustomModelBinderAttribute {
+
+        private sealed class FormCollectionBinderAttribute : CustomModelBinderAttribute {
 
             // since the FormCollectionModelBinder.BindModel() method is thread-safe, we only need to keep
             // a single instance of the binder around
@@ -85,6 +85,7 @@ namespace System.Web.Mvc {
                     return new FormCollection(controllerContext.HttpContext.Request.Form);
                 }
             }
+        }
 
     }
 }
