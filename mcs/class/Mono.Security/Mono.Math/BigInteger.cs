@@ -1607,7 +1607,7 @@ namespace Mono.Math {
 						uint j = 1;
 
 						// Multiply and add
-						for (; j < m.length; j++) {
+						for (; j < m.length && j < A.length; j++) {
 							c += (ulong)u_i * (ulong)*(mP++) + *(aSP++);
 							*(aDP++) = (uint)c;
 							c >>= 32;
