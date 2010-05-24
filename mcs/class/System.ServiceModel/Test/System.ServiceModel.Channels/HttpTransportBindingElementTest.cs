@@ -30,6 +30,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
 using System.Net.Security;
+using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
@@ -203,6 +204,99 @@ namespace MonoTests.System.ServiceModel.Channels
 		{
 			new BasicHttpBinding ().BuildChannelListener<IReplyChannel> (new BindingParameterCollection ());
 		}
+
+		// when AddressingVersion is None (in MessageVersion), then
+		// EndpointAddress.Uri and via URIs must match.
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void EndpointAddressAndViaMustMatchOnAddressingNone ()
+		{
+			try {
+				var ch = ChannelFactory<IFoo>.CreateChannel (new BasicHttpBinding (), new EndpointAddress ("http://localhost:37564/"), new Uri ("http://localhost:8080/HogeService"));
+				((ICommunicationObject) ch).Close ();
+			} catch (TargetInvocationException) {
+				// we throw this exception so far. Since it is
+				// very internal difference (channel is created
+				// inside ClientRuntimeChannel.ctor() while .NET
+				// does it in ChannelFactory<T>.CreateChannel(),
+				// there is no point of treating it as failure).
+				throw new ArgumentException ();
+			}
+		}
+
+		[Test]
+		public void GetPrpertyBindingDeliveryCapabilities ()
+		{
+			var be = new HttpTransportBindingElement ();
+			var dc = be.GetProperty<IBindingDeliveryCapabilities> (new BindingContext (new CustomBinding (), empty_params));
+			Assert.IsFalse (dc.AssuresOrderedDelivery, "#1");
+			Assert.IsFalse (dc.QueuedDelivery, "#2");
+		}
+
+		[Test]
+		public void GetPrpertySecurityCapabilities ()
+		{
+			var be = new HttpTransportBindingElement ();
+			var sec = be.GetProperty<ISecurityCapabilities> (new BindingContext (new CustomBinding (), empty_params));
+			Assert.IsNotNull (sec, "#1.1");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedRequestProtectionLevel, "#1.2");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedResponseProtectionLevel, "#1.3");
+			Assert.IsFalse (sec.SupportsClientAuthentication, "#1.4");
+			Assert.IsFalse (sec.SupportsClientWindowsIdentity, "#1.5");
+			Assert.IsFalse (sec.SupportsServerAuthentication , "#1.6");
+
+			be = new HttpTransportBindingElement ();
+			be.AuthenticationScheme = AuthenticationSchemes.Negotiate;
+			sec = be.GetProperty<ISecurityCapabilities> (new BindingContext (new CustomBinding (), empty_params));
+			Assert.IsNotNull (sec, "#2.1");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedRequestProtectionLevel, "#2.2");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedResponseProtectionLevel, "#2.3");
+			Assert.IsTrue (sec.SupportsClientAuthentication, "#2.4");
+			Assert.IsTrue (sec.SupportsClientWindowsIdentity, "#2.5");
+			Assert.IsTrue (sec.SupportsServerAuthentication , "#2.6");
+
+			// almost the same, only differ at SupportsServerAuth
+			be = new HttpTransportBindingElement ();
+			be.AuthenticationScheme = AuthenticationSchemes.Ntlm;
+			sec = be.GetProperty<ISecurityCapabilities> (new BindingContext (new CustomBinding (), empty_params));
+			Assert.IsNotNull (sec, "#3.1");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedRequestProtectionLevel, "#3.2");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedResponseProtectionLevel, "#3.3");
+			Assert.IsTrue (sec.SupportsClientAuthentication, "#3.4");
+			Assert.IsTrue (sec.SupportsClientWindowsIdentity, "#3.5");
+			Assert.IsFalse (sec.SupportsServerAuthentication , "#3.6");
+
+			be = new HttpTransportBindingElement ();
+			be.AuthenticationScheme = AuthenticationSchemes.Basic;
+			sec = be.GetProperty<ISecurityCapabilities> (new BindingContext (new CustomBinding (), empty_params));
+			Assert.IsNotNull (sec, "#4.1");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedRequestProtectionLevel, "#4.2");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedResponseProtectionLevel, "#4.3");
+			Assert.IsTrue (sec.SupportsClientAuthentication, "#4.4");
+			Assert.IsTrue (sec.SupportsClientWindowsIdentity, "#4.5");
+			Assert.IsFalse (sec.SupportsServerAuthentication , "#4.6");
+
+			be = new HttpTransportBindingElement ();
+			be.AuthenticationScheme = AuthenticationSchemes.Digest;
+			sec = be.GetProperty<ISecurityCapabilities> (new BindingContext (new CustomBinding (), empty_params));
+			Assert.IsNotNull (sec, "#5.1");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedRequestProtectionLevel, "#5.2");
+			Assert.AreEqual (ProtectionLevel.None, sec.SupportedResponseProtectionLevel, "#5.3");
+			Assert.IsTrue (sec.SupportsClientAuthentication, "#5.4");
+			Assert.IsTrue (sec.SupportsClientWindowsIdentity, "#5.5");
+			Assert.IsFalse (sec.SupportsServerAuthentication , "#5.6");
+		}
+
+		#region contracts
+
+		[ServiceContract]
+		interface IFoo
+		{
+			[OperationContract]
+			string DoWork (string s1, string s2);
+		}
+
+		#endregion
 
 		#region connection test
 

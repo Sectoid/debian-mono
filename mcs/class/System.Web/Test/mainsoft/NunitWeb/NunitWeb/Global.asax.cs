@@ -4,6 +4,7 @@ namespace MainsoftWebApp
 {
 	public partial class Global : System.Web.HttpApplication
 	{
+#if NET_2_0
 		protected void Application_Error (object sender, EventArgs e)
 		{
 			// Code that runs when an unhandled error occurs
@@ -16,5 +17,6 @@ namespace MainsoftWebApp
 			// Ensure the headers are sent
 			MonoTests.SystemWeb.Framework.WebTest.CurrentTest.SendHeaders ();
 		}
+#endif
 	}
 }

@@ -1,9 +1,17 @@
+/*
+ * debug-mono-symfile.c: 
+ *
+ * Author:
+ *	Mono Project (http://www.mono-project.com)
+ *
+ * Copyright (C) 2005-2008 Novell, Inc. (http://www.novell.com)
+ */
+
 #include <config.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <signal.h>
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
@@ -105,7 +113,6 @@ mono_debug_open_mono_symbols (MonoDebugHandle *handle, const guint8 *raw_content
 			      int size, gboolean in_the_debugger)
 {
 	MonoSymbolFile *symfile;
-	FILE* f;
 
 	mono_debugger_lock ();
 	symfile = g_new0 (MonoSymbolFile, 1);
@@ -117,21 +124,20 @@ mono_debug_open_mono_symbols (MonoDebugHandle *handle, const guint8 *raw_content
 		memcpy (p, raw_contents, size);
 		symfile->filename = g_strdup_printf ("LoadedFromMemory");
 	} else {
+		MonoFileMap *f;
 		symfile->filename = g_strdup_printf ("%s.mdb", mono_image_get_filename (handle->image));
 
-		if ((f = fopen (symfile->filename, "rb"))) {
-			struct stat stat_buf;
-			
-			if (fstat (fileno (f), &stat_buf) < 0) {
+		if ((f = mono_file_map_open (symfile->filename))) {
+			symfile->raw_contents_size = mono_file_map_size (f);
+			if (symfile->raw_contents_size == 0) {
 				if (!in_the_debugger)
 					g_warning ("stat of %s failed: %s",
 						   symfile->filename,  g_strerror (errno));
 			} else {
-				symfile->raw_contents_size = stat_buf.st_size;
-				symfile->raw_contents = mono_file_map (stat_buf.st_size, MONO_MMAP_READ|MONO_MMAP_PRIVATE, fileno (f), 0, &symfile->raw_contents_handle);
+				symfile->raw_contents = mono_file_map (symfile->raw_contents_size, MONO_MMAP_READ|MONO_MMAP_PRIVATE, mono_file_map_fd (f), 0, &symfile->raw_contents_handle);
 			}
 
-			fclose (f);
+			mono_file_map_close (f);
 		}
 	}
 	
@@ -199,7 +205,7 @@ typedef struct {
 	int line_base, line_range, max_address_incr;
 	guint8 opcode_base;
 	guint32 last_line, last_file, last_offset;
-	guint32 line, file, offset;
+	int line, file, offset;
 } StatementMachine;
 
 static gboolean
@@ -207,7 +213,7 @@ check_line (StatementMachine *stm, int offset, MonoDebugSourceLocation **locatio
 {
 	gchar *source_file = NULL;
 
-	if ((offset > 0) && (stm->offset <= offset)) {
+	if (stm->offset <= offset) {
 		stm->last_offset = stm->offset;
 		stm->last_file = stm->file;
 		if (stm->line != 0xfeefee)
@@ -222,6 +228,15 @@ check_line (StatementMachine *stm, int offset, MonoDebugSourceLocation **locatio
 			(stm->symfile->raw_contents + offset);
 
 		source_file = read_string (stm->symfile->raw_contents + read32(&(se->_data_offset)));
+	}
+
+	if (stm->last_line == 0) {
+		/* 
+		 * The IL offset is less than the first IL offset which has a corresponding
+		 * source line.
+		 */
+		*location = NULL;
+		return TRUE;
 	}
 
 	*location = g_new0 (MonoDebugSourceLocation, 1);
@@ -275,8 +290,10 @@ mono_debug_symfile_lookup_location (MonoDebugMethodInfo *minfo, guint32 offset)
 
 	stm.symfile = symfile;
 	stm.offset = stm.last_offset = 0;
-	stm.file = stm.last_file = 1;
-	stm.line = stm.last_line = 1;
+	stm.last_file = 0;
+	stm.last_line = 0;
+	stm.file = 1;
+	stm.line = 1;
 
 	while (TRUE) {
 		guint8 opcode = *ptr++;
@@ -344,6 +361,138 @@ mono_debug_symfile_lookup_location (MonoDebugMethodInfo *minfo, guint32 offset)
 	return location;
 }
 
+static void
+add_line (StatementMachine *stm, GPtrArray *il_offset_array, GPtrArray *line_number_array)
+{
+	if (stm->line > 0) {
+		g_ptr_array_add (il_offset_array, GUINT_TO_POINTER (stm->offset));
+		g_ptr_array_add (line_number_array, GUINT_TO_POINTER (stm->line));
+	}
+}
+
+/*
+ * mono_debug_symfile_get_line_numbers:
+ *
+ *   All the output parameters can be NULL.
+ */ 
+void
+mono_debug_symfile_get_line_numbers (MonoDebugMethodInfo *minfo, char **source_file, int *n_il_offsets, int **il_offsets, int **line_numbers)
+{
+	// FIXME: Unify this with mono_debug_symfile_lookup_location
+	MonoSymbolFile *symfile;
+	const unsigned char *ptr;
+	StatementMachine stm;
+	guint32 i;
+	GPtrArray *il_offset_array, *line_number_array;
+
+	if (source_file)
+		*source_file = NULL;
+	if (n_il_offsets)
+		*n_il_offsets = 0;
+
+	if ((symfile = minfo->handle->symfile) == NULL)
+		return;
+
+	il_offset_array = g_ptr_array_new ();
+	line_number_array = g_ptr_array_new ();
+
+	stm.line_base = read32 (&symfile->offset_table->_line_number_table_line_base);
+	stm.line_range = read32 (&symfile->offset_table->_line_number_table_line_range);
+	stm.opcode_base = (guint8) read32 (&symfile->offset_table->_line_number_table_opcode_base);
+	stm.max_address_incr = (255 - stm.opcode_base) / stm.line_range;
+
+	mono_debugger_lock ();
+
+	ptr = symfile->raw_contents + minfo->lnt_offset;
+
+	stm.symfile = symfile;
+	stm.offset = stm.last_offset = 0;
+	stm.last_file = 0;
+	stm.last_line = 0;
+	stm.file = 1;
+	stm.line = 1;
+
+	while (TRUE) {
+		guint8 opcode = *ptr++;
+
+		if (opcode == 0) {
+			guint8 size = *ptr++;
+			const unsigned char *end_ptr = ptr + size;
+
+			opcode = *ptr++;
+
+			if (opcode == DW_LNE_end_sequence) {
+				add_line (&stm, il_offset_array, line_number_array);
+				break;
+			} else if (opcode == DW_LNE_MONO_negate_is_hidden) {
+				;
+			} else if ((opcode >= DW_LNE_MONO__extensions_start) &&
+				   (opcode <= DW_LNE_MONO__extensions_end)) {
+				; // reserved for future extensions
+			} else {
+				g_warning ("Unknown extended opcode %x in LNT", opcode);
+			}
+
+			ptr = end_ptr;
+			continue;
+		} else if (opcode < stm.opcode_base) {
+			switch (opcode) {
+			case DW_LNS_copy:
+				add_line (&stm, il_offset_array, line_number_array);
+				break;
+			case DW_LNS_advance_pc:
+				stm.offset += read_leb128 (ptr, &ptr);
+				break;
+			case DW_LNS_advance_line:
+				stm.line += read_leb128 (ptr, &ptr);
+				break;
+			case DW_LNS_set_file:
+				stm.file = read_leb128 (ptr, &ptr);
+				break;
+			case DW_LNS_const_add_pc:
+				stm.offset += stm.max_address_incr;
+				break;
+			default:
+				g_warning ("Unknown standard opcode %x in LNT", opcode);
+				g_assert_not_reached ();
+			}
+		} else {
+			opcode -= stm.opcode_base;
+
+			stm.offset += opcode / stm.line_range;
+			stm.line += stm.line_base + (opcode % stm.line_range);
+
+			add_line (&stm, il_offset_array, line_number_array);
+		}
+	}
+
+	if (stm.file) {
+		int offset = read32(&(stm.symfile->offset_table->_source_table_offset)) +
+			(stm.file - 1) * sizeof (MonoSymbolFileSourceEntry);
+		MonoSymbolFileSourceEntry *se = (MonoSymbolFileSourceEntry *)
+			(stm.symfile->raw_contents + offset);
+
+		if (source_file)
+			*source_file = read_string (stm.symfile->raw_contents + read32(&(se->_data_offset)));
+	}
+
+	if (n_il_offsets)
+		*n_il_offsets = il_offset_array->len;
+	if (il_offsets && line_numbers) {
+		*il_offsets = g_malloc (il_offset_array->len * sizeof (int));
+		*line_numbers = g_malloc (il_offset_array->len * sizeof (int));
+		for (i = 0; i < il_offset_array->len; ++i) {
+			(*il_offsets) [i] = GPOINTER_TO_UINT (g_ptr_array_index (il_offset_array, i));
+			(*line_numbers) [i] = GPOINTER_TO_UINT (g_ptr_array_index (line_number_array, i));
+		}
+	}
+	g_ptr_array_free (il_offset_array, TRUE);
+	g_ptr_array_free (line_number_array, TRUE);
+
+	mono_debugger_unlock ();
+	return;
+}
+
 gint32
 _mono_debug_address_from_il_offset (MonoDebugMethodJitInfo *jit, guint32 il_offset)
 {
@@ -387,6 +536,13 @@ mono_debug_symfile_lookup_method (MonoDebugHandle *handle, MonoMethod *method)
 		return NULL;
 
 	mono_debugger_lock ();
+
+	minfo = g_hash_table_lookup (symfile->method_hash, method);
+	if (minfo) {
+		mono_debugger_unlock ();
+		return minfo;
+	}
+
 	first_ie = (MonoSymbolFileMethodEntry *)
 		(symfile->raw_contents + read32(&(symfile->offset_table->_method_table_offset)));
 
@@ -412,3 +568,51 @@ mono_debug_symfile_lookup_method (MonoDebugHandle *handle, MonoMethod *method)
 	mono_debugger_unlock ();
 	return minfo;
 }
+
+/*
+ * mono_debug_symfile_lookup_locals:
+ *
+ *   Return information about the local variables of MINFO from the symbol file.
+ * NAMES and INDEXES are set to g_malloc-ed arrays containing the local names and
+ * their IL indexes.
+ * Returns: the number of elements placed into the arrays, or -1 if there is no
+ * local variable info.
+ */
+int
+mono_debug_symfile_lookup_locals (MonoDebugMethodInfo *minfo, char ***names, int **indexes)
+{
+	MonoSymbolFile *symfile = minfo->handle->symfile;
+	const guint8 *p;
+	int i, len, compile_unit_index, locals_offset, num_locals, index, block_index;
+
+	*names = NULL;
+	*indexes = NULL;
+
+	if (!symfile)
+		return -1;
+
+	p = symfile->raw_contents + minfo->data_offset;
+
+	compile_unit_index = read_leb128 (p, &p);
+	locals_offset = read_leb128 (p, &p);
+
+	p = symfile->raw_contents + locals_offset;
+	num_locals = read_leb128 (p, &p);
+
+	*names = g_new0 (char*, num_locals);
+	*indexes = g_new0 (int, num_locals);
+
+	for (i = 0; i < num_locals; ++i) {
+		index = read_leb128 (p, &p);
+		(*indexes) [i] = index;
+		len = read_leb128 (p, &p);
+		(*names) [i] = g_malloc (len + 1);
+		memcpy ((*names) [i], p, len);
+		(*names) [i][len] = '\0';
+		p += len;
+		block_index = read_leb128 (p, &p);
+	}
+
+	return num_locals;
+}
+

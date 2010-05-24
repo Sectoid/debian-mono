@@ -59,7 +59,7 @@ namespace System.ServiceModel.Channels
 			set { manual_addressing = value; }
 		}
 
-		public long MaxBufferPoolSize {
+		public virtual long MaxBufferPoolSize {
 			get { return max_buffer_pool_size; }
 			set { max_buffer_pool_size = value; }
 		}
@@ -73,9 +73,6 @@ namespace System.ServiceModel.Channels
 
 		public override T GetProperty<T> (BindingContext context)
 		{
-			T ret = context.GetInnerProperty<T> ();
-			if (ret != default (T))
-				return ret;
 			if (typeof (T) == typeof (XmlDictionaryReaderQuotas)) {
 				XmlDictionaryReaderQuotas q =
 					new XmlDictionaryReaderQuotas ();
@@ -90,7 +87,7 @@ namespace System.ServiceModel.Channels
 #endif
 			if (typeof (T) == typeof (MessageVersion))
 				return (T) (object) MessageVersion.Default;
-			return null;
+			return context.GetInnerProperty<T> ();
 		}
 	}
 }

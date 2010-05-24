@@ -73,7 +73,7 @@ namespace Mono.CSharp {
 
 			Type ttype = MemberType;
 			if (!IsConstantTypeValid (ttype)) {
-				Error_InvalidConstantType (ttype, Location);
+				Error_InvalidConstantType (ttype, Location, Report);
 			}
 
 			// If the constant is private then we don't need any field the
@@ -105,13 +105,10 @@ namespace Mono.CSharp {
 			if (TypeManager.IsBuiltinOrEnum (t))
 				return true;
 
-			if (t.IsPointer || t.IsValueType)
-				return false;
-			
-			if (TypeManager.IsGenericParameter (t))
+			if (TypeManager.IsGenericParameter (t) || t.IsPointer)
 				return false;
 
-			return true;
+			return TypeManager.IsReferenceType (t);
 		}
 
 		/// <summary>
@@ -126,7 +123,7 @@ namespace Mono.CSharp {
 				return;
 
 			if (value.Type == TypeManager.decimal_type) {
-				EmitDecimalConstant ();
+				FieldBuilder.SetCustomAttribute (CreateDecimalConstantAttribute (value));
 			} else{
 				FieldBuilder.SetConstant (value.GetTypedValue ());
 			}
@@ -134,29 +131,15 @@ namespace Mono.CSharp {
 			base.Emit ();
 		}
 
-		void EmitDecimalConstant ()
+		public static CustomAttributeBuilder CreateDecimalConstantAttribute (Constant c)
 		{
-			ConstructorInfo ctor = TypeManager.decimal_constant_attribute_ctor;
-			if (ctor == null) {
-				if (TypeManager.decimal_constant_attribute_type == null) {
-					TypeManager.decimal_constant_attribute_type = TypeManager.CoreLookupType (
-						"System.Runtime.CompilerServices", "DecimalConstantAttribute", Kind.Class, true);
+			PredefinedAttribute pa = PredefinedAttributes.Get.DecimalConstant;
+			if (pa.Constructor == null &&
+				!pa.ResolveConstructor (c.Location, TypeManager.byte_type, TypeManager.byte_type,
+					TypeManager.uint32_type, TypeManager.uint32_type, TypeManager.uint32_type))
+				return null;
 
-					if (TypeManager.decimal_constant_attribute_type == null)
-						return;
-				}
-
-				ctor = TypeManager.GetPredefinedConstructor (TypeManager.decimal_constant_attribute_type, Location,
-					TypeManager.byte_type, TypeManager.byte_type,
-					TypeManager.uint32_type, TypeManager.uint32_type, TypeManager.uint32_type);
-
-				if (ctor == null)
-					return;
-
-				TypeManager.decimal_constant_attribute_ctor = ctor;
-			}
-
-			Decimal d = ((DecimalConstant) value).Value;
+			Decimal d = (Decimal) c.GetValue ();
 			int [] bits = Decimal.GetBits (d);
 			object [] args = new object [] { 
 				(byte) (bits [3] >> 16),
@@ -164,30 +147,35 @@ namespace Mono.CSharp {
 				(uint) bits [2], (uint) bits [1], (uint) bits [0]
 			};
 
-			CustomAttributeBuilder cab = new CustomAttributeBuilder (ctor, args);
-			FieldBuilder.SetCustomAttribute (cab);
+			return new CustomAttributeBuilder (pa.Constructor, args);
 		}
 
-		public static void Error_ExpressionMustBeConstant (Location loc, string e_name)
+		public static void Error_ExpressionMustBeConstant (Location loc, string e_name, Report Report)
 		{
 			Report.Error (133, loc, "The expression being assigned to `{0}' must be constant", e_name);
 		}
 
-		public static void Error_CyclicDeclaration (MemberCore mc)
+		public static void Error_CyclicDeclaration (MemberCore mc, Report Report)
 		{
 			Report.Error (110, mc.Location, "The evaluation of the constant value for `{0}' involves a circular definition",
 				mc.GetSignatureForError ());
 		}
 
-		public static void Error_ConstantCanBeInitializedWithNullOnly (Type type, Location loc, string name)
+		public static void Error_ConstantCanBeInitializedWithNullOnly (Type type, Location loc, string name, Report Report)
 		{
 			Report.Error (134, loc, "A constant `{0}' of reference type `{1}' can only be initialized with null",
 				name, TypeManager.CSharpName (type));
 		}
 
-		public static void Error_InvalidConstantType (Type t, Location loc)
+		public static void Error_InvalidConstantType (Type t, Location loc, Report Report)
 		{
-			Report.Error (283, loc, "The type `{0}' cannot be declared const", TypeManager.CSharpName (t));
+			if (TypeManager.IsGenericParameter (t)) {
+				Report.Error (1959, loc,
+					"Type parameter `{0}' cannot be declared const", TypeManager.CSharpName (t));
+			} else {
+				Report.Error (283, loc,
+					"The type `{0}' cannot be declared const", TypeManager.CSharpName (t));
+			}
 		}
 
 		#region IConstant Members
@@ -199,7 +187,7 @@ namespace Mono.CSharp {
 
 			SetMemberIsUsed ();
 			if (in_transit) {
-				Error_CyclicDeclaration (this);
+				Error_CyclicDeclaration (this, Report);
 				// Suppress cyclic errors
 				value = New.Constantify (MemberType);
 				resolved = true;
@@ -207,18 +195,20 @@ namespace Mono.CSharp {
 			}
 
 			in_transit = true;
-			// TODO: IResolveContext here
-			EmitContext ec = new EmitContext (
-				this, Parent, Location, null, MemberType, ModFlags);
-			ec.InEnumContext = this is EnumMember;
-			ec.IsAnonymousMethodAllowed = false;
-			value = DoResolveValue (ec);
+
+			ResolveContext.Options opt = ResolveContext.Options.ConstantScope;
+			if (this is EnumMember)
+				opt |= ResolveContext.Options.EnumScope;
+
+			ResolveContext rc = new ResolveContext (this, opt);
+			value = DoResolveValue (rc);
+
 			in_transit = false;
 			resolved = true;
 			return value != null;
 		}
 
-		protected virtual Constant DoResolveValue (EmitContext ec)
+		protected virtual Constant DoResolveValue (ResolveContext ec)
 		{
 			Constant value = initializer.ResolveAsConstant (ec, this);
 			if (value == null)
@@ -227,7 +217,7 @@ namespace Mono.CSharp {
 			Constant c = value.ConvertImplicitly (MemberType);
 			if (c == null) {
 				if (TypeManager.IsReferenceType (MemberType))
-					Error_ConstantCanBeInitializedWithNullOnly (MemberType, Location, GetSignatureForError ());
+					Error_ConstantCanBeInitializedWithNullOnly (MemberType, Location, GetSignatureForError (), Report);
 				else
 					value.Error_ValueCannotBeConverted (ec, Location, MemberType, false);
 			}
@@ -272,10 +262,11 @@ namespace Mono.CSharp {
 			if (fi is FieldBuilder)
 				return null;
 
-			if (TypeManager.decimal_constant_attribute_type == null)
+			PredefinedAttribute pa = PredefinedAttributes.Get.DecimalConstant;
+			if (!pa.IsDefined)
 				return null;
 
-			object[] attrs = fi.GetCustomAttributes (TypeManager.decimal_constant_attribute_type, false);
+			object[] attrs = fi.GetCustomAttributes (pa.Type, false);
 			if (attrs.Length != 1)
 				return null;
 
@@ -294,7 +285,7 @@ namespace Mono.CSharp {
 				return;
 			}
 
-			AttributeTester.Report_ObsoleteMessage (oa, TypeManager.GetFullNameSignature (fi), loc);
+			AttributeTester.Report_ObsoleteMessage (oa, TypeManager.GetFullNameSignature (fi), loc, RootContext.ToplevelTypes.Compiler.Report);
 		}
 
 		public bool ResolveValue ()

@@ -111,6 +111,9 @@ enum Token {
 static int
 get_token (void)
 {
+	while (input [0] == '+')
+		input++;
+
 	if (input [0] == '\0') {
 		return TOKEN_END;
 	}
@@ -578,7 +581,7 @@ handle_enum:
 	}
 	case MONO_TYPE_VALUETYPE: 
 		if (type->data.klass->enumtype) {
-			type = type->data.klass->enum_basetype;
+			type = mono_class_enum_basetype (type->data.klass);
 			goto handle_enum;
 		} else {
 			guint8 *p = va_arg (ap, gpointer);

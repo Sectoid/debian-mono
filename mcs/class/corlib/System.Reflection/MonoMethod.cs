@@ -42,20 +42,62 @@ namespace System.Reflection {
 	
 	internal struct MonoMethodInfo 
 	{
-		internal Type parent;
-		internal Type ret;
+		private Type parent;
+		private Type ret;
 		internal MethodAttributes attrs;
 		internal MethodImplAttributes iattrs;
-		internal CallingConventions callconv;
+		private CallingConventions callconv;
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern void get_method_info (IntPtr handle, out MonoMethodInfo info);
+		static extern void get_method_info (IntPtr handle, out MonoMethodInfo info);
 		
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern ParameterInfo[] get_parameter_info (IntPtr handle);
+		internal static MonoMethodInfo GetMethodInfo (IntPtr handle)
+		{
+			MonoMethodInfo info;
+			MonoMethodInfo.get_method_info (handle, out info);
+			return info;
+		}
+
+		internal static Type GetDeclaringType (IntPtr handle)
+		{
+			return GetMethodInfo (handle).parent;
+		}
+
+		internal static Type GetReturnType (IntPtr handle)
+		{
+			return GetMethodInfo (handle).ret;
+		}
+
+		internal static MethodAttributes GetAttributes (IntPtr handle)
+		{
+			return GetMethodInfo (handle).attrs;
+		}
+
+		internal static CallingConventions GetCallingConvention (IntPtr handle)
+		{
+			return GetMethodInfo (handle).callconv;
+		}
+
+		internal static MethodImplAttributes GetMethodImplementationFlags (IntPtr handle)
+		{
+			return GetMethodInfo (handle).iattrs;
+		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern UnmanagedMarshal get_retval_marshal (IntPtr handle);
+		static extern ParameterInfo[] get_parameter_info (IntPtr handle, MemberInfo member);
+
+		static internal ParameterInfo[] GetParametersInfo (IntPtr handle, MemberInfo member)
+		{
+			return get_parameter_info (handle, member);
+		}
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		static extern UnmanagedMarshal get_retval_marshal (IntPtr handle);
+
+		static internal ParameterInfo GetReturnParameterInfo (MonoMethod method)
+		{
+			return new ParameterInfo (GetReturnType (method.mhandle), method, get_retval_marshal (method.mhandle));
+		}
 	};
 	
 	/*
@@ -92,32 +134,33 @@ namespace System.Reflection {
 #if NET_2_0 || BOOTSTRAP_NET_2_0
 		public override ParameterInfo ReturnParameter {
 			get {
-				return new ParameterInfo (ReturnType, this, MonoMethodInfo.get_retval_marshal (mhandle));
+				return MonoMethodInfo.GetReturnParameterInfo (this);
 			}
 		}
 #endif
 
 		public override Type ReturnType {
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.ret;
+				return MonoMethodInfo.GetReturnType (mhandle);
 			}
 		}
 		public override ICustomAttributeProvider ReturnTypeCustomAttributes { 
 			get {
-				return new ParameterInfo (ReturnType, this, MonoMethodInfo.get_retval_marshal (mhandle));
+				return MonoMethodInfo.GetReturnParameterInfo (this);
 			}
 		}
 		
-		public override MethodImplAttributes GetMethodImplementationFlags() {
-			MonoMethodInfo info;
-			MonoMethodInfo.get_method_info (mhandle, out info);
-			return info.iattrs;
+		public override MethodImplAttributes GetMethodImplementationFlags ()
+		{
+			return MonoMethodInfo.GetMethodImplementationFlags (mhandle);
 		}
 
-		public override ParameterInfo[] GetParameters() {
-			return MonoMethodInfo.get_parameter_info (mhandle);
+		public override ParameterInfo[] GetParameters ()
+		{
+			ParameterInfo[] src = MonoMethodInfo.GetParametersInfo (mhandle, this);
+			ParameterInfo[] res = new ParameterInfo [src.Length];
+			src.CopyTo (res, 0);
+			return res;
 		}
 
 		/*
@@ -126,14 +169,25 @@ namespace System.Reflection {
 		 */
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		internal extern Object InternalInvoke (Object obj, Object[] parameters, out Exception exc);
-		
+
 		public override Object Invoke (Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture) 
 		{
 			if (binder == null)
 				binder = Binder.DefaultBinder;
-			ParameterInfo[] pinfo = GetParameters ();
-			if (!Binder.ConvertArgs (binder, parameters, pinfo, culture))
-				throw new ArgumentException ("parameters");
+			/*Avoid allocating an array every time*/
+			ParameterInfo[] pinfo = MonoMethodInfo.GetParametersInfo (mhandle, this);
+
+			if ((parameters == null && pinfo.Length != 0) || (parameters != null && parameters.Length != pinfo.Length))
+				throw new TargetParameterCountException ("parameters do not match signature");
+			
+			if ((invokeAttr & BindingFlags.ExactBinding) == 0) {
+				if (!Binder.ConvertArgs (binder, parameters, pinfo, culture))
+					throw new ArgumentException ("failed to convert parameters");
+			} else {
+				for (int i = 0; i < pinfo.Length; i++)
+					if (parameters[i].GetType() != pinfo[i].ParameterType)
+						throw new ArgumentException ("parameters do not match signature");
+			}
 
 #if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
@@ -179,17 +233,13 @@ namespace System.Reflection {
 		}
 		public override MethodAttributes Attributes { 
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.attrs;
+				return MonoMethodInfo.GetAttributes (mhandle);
 			} 
 		}
 
 		public override CallingConventions CallingConvention { 
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.callconv;
+				return MonoMethodInfo.GetCallingConvention (mhandle);
 			}
 		}
 		
@@ -200,9 +250,7 @@ namespace System.Reflection {
 		}
 		public override Type DeclaringType {
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.parent;
+				return MonoMethodInfo.GetDeclaringType (mhandle);
 			}
 		}
 		public override string Name {
@@ -233,8 +281,7 @@ namespace System.Reflection {
 
 			/* MS.NET doesn't report MethodImplAttribute */
 
-			MonoMethodInfo info;
-			MonoMethodInfo.get_method_info (mhandle, out info);
+			MonoMethodInfo info = MonoMethodInfo.GetMethodInfo (mhandle);
 			if ((info.iattrs & MethodImplAttributes.PreserveSig) != 0)
 				count ++;
 			if ((info.attrs & MethodAttributes.PinvokeImpl) != 0)
@@ -396,14 +443,14 @@ namespace System.Reflection {
 		Type reftype;
 #pragma warning restore 649		
 		
-		public override MethodImplAttributes GetMethodImplementationFlags() {
-			MonoMethodInfo info;
-			MonoMethodInfo.get_method_info (mhandle, out info);
-			return info.iattrs;
+		public override MethodImplAttributes GetMethodImplementationFlags ()
+		{
+			return MonoMethodInfo.GetMethodImplementationFlags (mhandle);
 		}
 
-		public override ParameterInfo[] GetParameters() {
-			return MonoMethodInfo.get_parameter_info (mhandle);
+		public override ParameterInfo[] GetParameters ()
+		{
+			return MonoMethodInfo.GetParametersInfo (mhandle, this);
 		}
 
 		/*
@@ -417,16 +464,29 @@ namespace System.Reflection {
 		{
 			if (binder == null)
 				binder = Binder.DefaultBinder;
-			ParameterInfo[] pinfo = GetParameters ();
-			if (!Binder.ConvertArgs (binder, parameters, pinfo, culture))
-				throw new ArgumentException ("parameters");
 
+			ParameterInfo[] pinfo = GetParameters ();
+
+			if ((parameters == null && pinfo.Length != 0) || (parameters != null && parameters.Length != pinfo.Length))
+				throw new TargetParameterCountException ("parameters do not match signature");
+			
+			if ((invokeAttr & BindingFlags.ExactBinding) == 0) {
+				if (!Binder.ConvertArgs (binder, parameters, pinfo, culture))
+					throw new ArgumentException ("failed to convert parameters");
+			} else {
+				for (int i = 0; i < pinfo.Length; i++)
+					if (parameters[i].GetType() != pinfo[i].ParameterType)
+						throw new ArgumentException ("parameters do not match signature");
+			}
+
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
 				// sadly Attributes doesn't tell us which kind of security action this is so
 				// we must do it the hard way - and it also means that we can skip calling
 				// Attribute (which is another an icall)
 				SecurityManager.ReflectedLinkDemandInvoke (this);
 			}
+#endif
 
 #if NET_2_0
 			if (obj == null && DeclaringType.ContainsGenericParameters)
@@ -464,17 +524,13 @@ namespace System.Reflection {
 		}
 		public override MethodAttributes Attributes { 
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.attrs;
+				return MonoMethodInfo.GetAttributes (mhandle);
 			} 
 		}
 
 		public override CallingConventions CallingConvention { 
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.callconv;
+				return MonoMethodInfo.GetCallingConvention (mhandle);
 			}
 		}
 		
@@ -485,9 +541,7 @@ namespace System.Reflection {
 		}
 		public override Type DeclaringType {
 			get {
-				MonoMethodInfo info;
-				MonoMethodInfo.get_method_info (mhandle, out info);
-				return info.parent;
+				return MonoMethodInfo.GetDeclaringType (mhandle);
 			}
 		}
 		public override string Name {
@@ -527,6 +581,8 @@ namespace System.Reflection {
 					sb.Append (", ");
 				sb.Append (p[i].ParameterType.Name);
 			}
+			if (CallingConvention == CallingConventions.Any)
+				sb.Append (", ...");
 			sb.Append (")");
 			return sb.ToString ();
 		}

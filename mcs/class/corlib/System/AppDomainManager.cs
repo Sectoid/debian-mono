@@ -4,7 +4,7 @@
 // Author:
 //	Sebastien Pouliot  <sebastien@ximian.com>
 //
-// Copyright (C) 2004-2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004-2005,2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -42,7 +42,6 @@ namespace System {
 	[SecurityPermission (SecurityAction.LinkDemand, Infrastructure = true)]
 	[SecurityPermission (SecurityAction.InheritanceDemand, Infrastructure = true)]
 	public class AppDomainManager : MarshalByRefObject {
-
 		private ApplicationActivator _activator;
 		private AppDomainManagerInitializationOptions _flags;
 
@@ -98,6 +97,12 @@ namespace System {
 		public virtual void InitializeNewDomain (AppDomainSetup appDomainInfo)
 		{
 			// default does nothing (as documented)
+		}
+
+		// available in FX2.0 with service pack 1, including the 2.0 shipped as part of FX3.5
+		public virtual bool CheckSecuritySettings (SecurityState state)
+		{
+			return false;
 		}
 
 		// static

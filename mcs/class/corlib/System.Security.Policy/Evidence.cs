@@ -39,7 +39,9 @@ using System.Runtime.InteropServices;
 using System.Security.Permissions;
 using System.Security.Cryptography.X509Certificates;
 
+#if !NET_2_1 || MONOTOUCH
 using Mono.Security.Authenticode;
+#endif
 
 namespace System.Security.Policy {
 
@@ -300,7 +302,12 @@ namespace System.Security.Policy {
 		// "possible" presence of an Authenticode signature
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		static extern bool IsAuthenticodePresent (Assembly a);
-
+#if NET_2_1
+		static internal Evidence GetDefaultHostEvidence (Assembly a)
+		{
+			return new Evidence ();
+		}
+#else
 		// this avoid us to build all evidences from the runtime
 		// (i.e. multiple unmanaged->managed calls) and also allows
 		// to delay their creation until (if) needed
@@ -357,7 +364,9 @@ namespace System.Security.Policy {
 #endif
 			return e;
 		}
-	
+
+#endif // NET_2_1
+
 		private class EvidenceEnumerator : IEnumerator {
 			
 			private IEnumerator currentEnum, hostEnum, assemblyEnum;		

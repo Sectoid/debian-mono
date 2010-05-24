@@ -285,9 +285,11 @@ namespace System.IO {
 		public static string GetFullPath (string path)
 		{
 			string fullpath = InsecureGetFullPath (path);
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
 				new FileIOPermission (FileIOPermissionAccess.PathDiscovery, fullpath).Demand ();
 			}
+#endif
 			return fullpath;
 		}
 
@@ -446,6 +448,10 @@ namespace System.IO {
 				}
 				catch (SecurityException) {
 					// avoid an endless loop
+					throw;
+				}
+				catch (UnauthorizedAccessException) {
+					// This can happen if we don't have write permission to /tmp
 					throw;
 				}
 				catch {

@@ -36,16 +36,17 @@ namespace System
 		{
 		}
 
-		[MonoTODO]
 		public bool Equals (UriTemplate x, UriTemplate y)
 		{
-			throw new NotImplementedException ();
+			if (x == null)
+				return y == null;
+			return y != null && x.IsEquivalentTo (y);
 		}
 
-		[MonoTODO]
 		public int GetHashCode (UriTemplate obj)
 		{
-			throw new NotImplementedException ();
+			// gets string's hash code
+			return obj.ToString ().GetHashCode ();
 		}
 	}
 }

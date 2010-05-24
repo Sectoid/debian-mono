@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -57,22 +63,22 @@ namespace RabbitMQ.Client.Impl
 {
     public class SimpleBlockingRpcContinuation : IRpcContinuation
     {
-        public readonly BlockingCell cell = new BlockingCell();
+        public readonly BlockingCell m_cell = new BlockingCell();
         public SimpleBlockingRpcContinuation() { }
 
         public virtual void HandleCommand(Command cmd)
         {
-            cell.Value = Either.Left(cmd);
+            m_cell.Value = Either.Left(cmd);
         }
 
         public virtual void HandleModelShutdown(ShutdownEventArgs reason)
         {
-            cell.Value = Either.Right(reason);
+            m_cell.Value = Either.Right(reason);
         }
 
         public virtual Command GetReply()
         {
-            Either result = (Either)cell.Value;
+            Either result = (Either)m_cell.Value;
             switch (result.Alternative)
             {
                 case EitherAlternative.Left:

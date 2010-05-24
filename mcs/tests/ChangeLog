@@ -1,3 +1,46 @@
+2009-07-13  Marcus Griep  <marcus@griep.us>
+
+	* test-723.cs, test-724.cs: Added test for resolution of interface
+	members that hide parent interface definitions.
+
+2009-06-16  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (test-local): Empty out.
+
+2009-06-12  Jb Evain  <jbevain@novell.com>
+
+	* gtest-449.cs
+	* gtest-450.cs:
+		new tests for the /platform support.
+
+2009-02-07  Scott Peterson  <lunchtimemama@gmail.com>
+
+	This patch is contributed under the MIT/X11 license.
+
+	* gtest-variance-3.cs: Added test for covariance delegates.
+
+	* gtest-variance-4.cs: Added test for contravariant delegates.
+
+	* gtest-variance-5.cs: Added more complete interface variance test.
+
+	* known-issues-gmcs: Added the 3 new tests to the ignroe list.
+
+2009-02-04  Scott Peterson  <lunchtimemama@gmail.com>
+
+	This patch is contributed under the MIT/X11 license.
+
+	* gtest-variance-1.cs: Added test for generic covariance.
+
+	* gtest-variance-2.cs: Added test for generic contravariance.
+
+	* known-issues-gmcs: Added the two above tests to the ignore list
+	since runtime support is not yet in place.
+
+2009-01-22  Jb Evain  <jbevain@novell.com>
+
+	* gtest-anontype-05.cs: update according to lastest changes in gmcs
+	to match was csc outputs. Also add new cases to check.
+
 2008-11-23  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* test-695.cs:

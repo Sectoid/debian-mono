@@ -1023,6 +1023,11 @@ namespace System.Windows.Forms {
 					sb.Append (buffer, 0, charsRead);
 					charsRead = sr.Read (buffer, 0, buffer.Length);
 				}
+
+				// Remove the EOF converted to an extra EOL by the StreamReader
+				if (sb.Length > 0 && sb [sb.Length - 1] == '\n')
+					sb.Remove (sb.Length - 1, 1);
+
 				base.Text = sb.ToString();
 				return;
 			}
@@ -1943,9 +1948,22 @@ namespace System.Windows.Forms {
 			}
 		}
 
+		static readonly char [] ReservedRTFChars = new char [] { '\\', '{', '}' };
+
 		[MonoInternalNote ("Emit unicode and other special characters properly")]
 		private void EmitRTFText(StringBuilder rtf, string text) {
+			int start = rtf.Length;
+			int count = text.Length;
+
 			rtf.Append(text);
+
+			// This method emits user text *only*, so it's safe to escape any reserved rtf chars
+			// Escape '\' first, since it is used later to escape the other chars
+			if (text.IndexOfAny (ReservedRTFChars) > -1) {
+				rtf.Replace ("\\", "\\\\", start, count);
+				rtf.Replace ("{", "\\{", start, count);
+				rtf.Replace ("}", "\\}", start, count);
+			}
 		}
 
 		// start_pos and end_pos are 0-based

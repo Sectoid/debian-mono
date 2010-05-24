@@ -31,6 +31,7 @@ using System.Security;
 using System.Security.Policy;
 using System.Security.Permissions;
 using System.Runtime.Serialization;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.IO;
 using System.Globalization;
@@ -49,8 +50,11 @@ namespace System.Reflection {
 #endif
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.None)]
-	public class Assembly : System.Reflection.ICustomAttributeProvider, _Assembly,
-		System.Security.IEvidenceFactory, System.Runtime.Serialization.ISerializable {
+#if NET_2_1
+	public class Assembly : ICustomAttributeProvider, _Assembly {
+#else
+	public class Assembly : ICustomAttributeProvider, _Assembly, IEvidenceFactory, ISerializable {
+#endif
 
 		internal class ResolveEventHolder {
 			public event ModuleResolveEventHandler ModuleResolve;
@@ -103,13 +107,11 @@ namespace System.Reflection {
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern string InternalImageRuntimeVersion ();
 
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		private extern bool get_global_assembly_cache ();
-
 		// SECURITY: this should be the only caller to icall get_code_base
 		private string GetCodeBase (bool escaped)
 		{
 			string cb = get_code_base (escaped);
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
 				// we cannot divulge local file informations
 				if (String.Compare ("FILE://", 0, cb, 0, 7, true, CultureInfo.InvariantCulture) == 0) {
@@ -117,6 +119,7 @@ namespace System.Reflection {
 					new FileIOPermission (FileIOPermissionAccess.PathDiscovery, file).Demand ();
 				}
 			}
+#endif
 			return cb;
 		}
 
@@ -142,7 +145,7 @@ namespace System.Reflection {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
 		}
-
+#if !NET_2_1 || MONOTOUCH
 		public virtual Evidence Evidence {
 			[SecurityPermission (SecurityAction.Demand, ControlEvidence = true)]
 			get { return UnprotectedGetEvidence (); }
@@ -161,12 +164,15 @@ namespace System.Reflection {
 			return _evidence;
 		}
 
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		private extern bool get_global_assembly_cache ();
+
 		public bool GlobalAssemblyCache {
 			get {
 				return get_global_assembly_cache ();
 			}
 		}
-
+#endif
 		internal bool FromByteArray {
 			set { fromByteArray = value; }
 		}
@@ -177,10 +183,12 @@ namespace System.Reflection {
 					return String.Empty;
 
 				string loc = get_location ();
+#if !NET_2_1
 				if ((loc != String.Empty) && SecurityManager.SecurityEnabled) {
 					// we cannot divulge local file informations
 					new FileIOPermission (FileIOPermissionAccess.PathDiscovery, loc).Demand ();
 				}
+#endif
 				return loc;
 			}
 		}
@@ -294,8 +302,14 @@ namespace System.Reflection {
 					return null;
 #endif
 
-				string filename = Path.Combine (Path.GetDirectoryName (Location),
-											info.FileName);
+				string location = Path.GetDirectoryName (Location);
+				string filename = Path.Combine (location, info.FileName);
+#if NET_2_1 && !MONOTOUCH
+				// we don't control the content of 'info.FileName' so we want to make sure we keep to ourselves
+				filename = Path.GetFullPath (filename);
+				if (!filename.StartsWith (location))
+					throw new SecurityException ("non-rooted access to manifest resource");
+#endif
 				return new FileStream (filename, FileMode.Open, FileAccess.Read);
 			}
 
@@ -305,14 +319,11 @@ namespace System.Reflection {
 			if (data == (IntPtr) 0)
 				return null;
 			else {
-#if NET_2_0
 				UnmanagedMemoryStream stream;
 				unsafe {
 					stream = new UnmanagedMemoryStream ((byte*) data, size);
 				}
-#else
-				IntPtrStream stream = new IntPtrStream (data, size);
-#endif
+
 				/* 
 				 * The returned pointer points inside metadata, so
 				 * we have to increase the refcount of the module, and decrease
@@ -369,6 +380,8 @@ namespace System.Reflection {
 		{
 			if (name == null)
 				throw new ArgumentNullException (name);
+			if (name.Length == 0)
+			throw new ArgumentException ("name", "Name cannot be empty");
 
 			return InternalGetType (null, name, throwOnError, ignoreCase);
 		}
@@ -431,37 +444,20 @@ namespace System.Reflection {
 
 		public Assembly GetSatelliteAssembly (CultureInfo culture)
 		{
-			return GetSatelliteAssembly (culture, null);
+			return GetSatelliteAssembly (culture, null, true);
 		}
 
 		public Assembly GetSatelliteAssembly (CultureInfo culture, Version version)
 		{
-			if (culture == null)
-				throw new ArgumentException ("culture");
-
-			AssemblyName aname = GetName (true);
-			if (version != null)
-				aname.Version = version;
-
-			aname.CultureInfo = culture;
-			aname.Name = aname.Name + ".resources";
-			Assembly assembly;
-
-			try {
-				assembly = AppDomain.CurrentDomain.LoadSatellite (aname);
-				if (assembly != null)
-					return assembly;
-			} catch (FileNotFoundException ex) {
-				assembly = null;
-				// ignore
-			}
-
-			// Try the assembly directory
-			string fullName = Path.Combine (Path.GetDirectoryName (Location), Path.Combine (culture.Name, aname.Name + ".dll"));
-			return LoadFrom (fullName);
+			return GetSatelliteAssembly (culture, version, true);
 		}
 
 		internal Assembly GetSatelliteAssemblyNoThrow (CultureInfo culture, Version version)
+		{
+			return GetSatelliteAssembly (culture, version, false);
+		}
+
+		private Assembly GetSatelliteAssembly (CultureInfo culture, Version version, bool throwOnError)
 		{
 			if (culture == null)
 				throw new ArgumentException ("culture");
@@ -473,20 +469,31 @@ namespace System.Reflection {
 			aname.CultureInfo = culture;
 			aname.Name = aname.Name + ".resources";
 			Assembly assembly;
-			
+
 			try {
-				assembly = AppDomain.CurrentDomain.LoadSatellite (aname);
+				assembly = AppDomain.CurrentDomain.LoadSatellite (aname, false);
 				if (assembly != null)
 					return assembly;
-			} catch (FileNotFoundException ex) {
+			} catch (FileNotFoundException) {
 				assembly = null;
 				// ignore
 			}
 
 			// Try the assembly directory
-			string fullName = Path.Combine (Path.GetDirectoryName (Location), Path.Combine (culture.Name, aname.Name + ".dll"));
-			if (!File.Exists (fullName))
+			string location = Path.GetDirectoryName (Location);
+			string fullName = Path.Combine (location, Path.Combine (culture.Name, aname.Name + ".dll"));
+#if NET_2_1 && !MONOTOUCH
+			// it's unlikely that culture.Name or aname.Name could contain stuff like ".." but...
+			fullName = Path.GetFullPath (fullName);
+			if (!fullName.StartsWith (location)) {
+				if (throwOnError)
+					throw new SecurityException ("non-rooted access to satellite assembly");
 				return null;
+			}
+#endif
+			if (!throwOnError && !File.Exists (fullName))
+				return null;
+
 			return LoadFrom (fullName);
 		}
 		
@@ -501,10 +508,12 @@ namespace System.Reflection {
 		public static Assembly LoadFrom (String assemblyFile, Evidence securityEvidence)
 		{
 			Assembly a = LoadFrom (assemblyFile, false);
+#if !NET_2_1
 			if ((a != null) && (securityEvidence != null)) {
 				// merge evidence (i.e. replace defaults with provided evidences)
 				a.Evidence.Merge (securityEvidence);
 			}
+#endif
 			return a;
 		}
 
@@ -808,6 +817,7 @@ namespace System.Reflection {
 		}
 #endif
 
+#if !NET_2_1 || MONOTOUCH
 		// Code Access Security
 
 		internal void Resolve () 
@@ -888,5 +898,6 @@ namespace System.Reflection {
 				}
 			}
 		}
+#endif
 	}
 }

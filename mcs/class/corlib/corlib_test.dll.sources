@@ -3,6 +3,7 @@ Microsoft.Win32/RegistryKeyTest.cs
 Mono/DataConvertTest.cs
 ../Mono/DataConverter.cs
 System/ActivatorTest.cs
+System/AppDomainManagerTest.cs
 System/AppDomainSetupTest.cs
 System/AppDomainTest.cs
 System/ApplicationIdentityTest.cs
@@ -23,6 +24,7 @@ System/DelegateTest.cs
 System/ModuleHandleTest.cs
 System/ObsoleteAttributeTest.cs
 System/IntegerTryParse.cs
+System/LazyTest.cs
 System.Collections/ArrayListTest.cs
 System.Collections/BitArrayTest.cs
 System.Collections/CaseInsensitiveComparerTest.cs
@@ -125,6 +127,7 @@ System.Reflection/EventInfoTest.cs
 System.Reflection/FieldInfoTest.cs
 System.Reflection/MethodBaseTest.cs
 System.Reflection/MethodInfoTest.cs
+System.Reflection/MonoGenericClassTest.cs
 System.Reflection/ParameterInfoTest.cs
 System.Reflection/PropertyInfoTest.cs
 System.Reflection/ReflectedTypeTest.cs
@@ -134,10 +137,12 @@ System.Reflection.Emit/AssemblyBuilderAccessTest.cs
 System.Reflection.Emit/ConstructorBuilderTest.cs
 System.Reflection.Emit/ConstructorOnTypeBuilderInstTest.cs
 System.Reflection.Emit/CustomAttributeBuilderTest.cs
+System.Reflection.Emit/DerivedTypesTest.cs
 System.Reflection.Emit/DynamicMethodTest.cs
 System.Reflection.Emit/EnumBuilderTest.cs
 System.Reflection.Emit/EventBuilderTest.cs
 System.Reflection.Emit/FieldBuilderTest.cs
+System.Reflection.Emit/GenericTypeParameterBuilderTest.cs
 System.Reflection.Emit/ILGeneratorTest.cs
 System.Reflection.Emit/MethodBuilderTest.cs
 System.Reflection.Emit/MethodOnTypeBuilderInstTest.cs
@@ -153,6 +158,7 @@ System.Resources/ResourceManagerTest.cs
 System.Resources/ResourceReaderTest.cs
 System.Resources/ResourceSetTest.cs
 System.Resources/ResourceWriterTest.cs
+System.Runtime.CompilerServices/InternalsVisibleToAttributeTest.cs
 System.Runtime.CompilerServices/RuntimeHelpersTest.cs
 System.Runtime.CompilerServices/RuntimeWrappedExceptionTest.cs
 System.Runtime.InteropServices/ExternalExceptionTest.cs
@@ -320,6 +326,7 @@ System.Security/SecurityCriticalAttributeTest.cs
 System.Security/SecurityElementTest.cs
 System.Security/SecurityExceptionTest.cs
 System.Security/SecurityManagerTest.cs
+System.Security/SecurityStateTest.cs
 System.Security/SecurityTransparentAttributeTest.cs
 System/SingleTest.cs
 System/SingleFormatterTest.cs
@@ -342,6 +349,7 @@ System.Text/UTF8EncodingTest.cs
 System.Text/UTF32EncodingTest.cs
 System.Threading/AutoResetEventTest.cs
 System.Threading/CompressedStackTest.cs
+System.Threading/EventWaitHandleTest.cs
 System.Threading/ExecutionContextTest.cs
 System.Threading/MonitorTest.cs
 System.Threading/MutexTest.cs
@@ -349,6 +357,7 @@ System.Threading/ThreadTest.cs
 System.Threading/ReaderWriterLockTest.cs
 System.Threading/TimerTest.cs
 System.Threading/InterlockedTest.cs
+System.Threading/WaitHandleTest.cs
 System/TimeSpanTest.cs
 System/TimeZoneTest.cs
 System/TypeTest.cs
@@ -358,6 +367,7 @@ System/UInt64Test.cs
 System/UIntPtrTest.cs
 System/VersionTest.cs
 System/ValueTypeTest.cs
+System/WeakReferenceTest.cs
 System/ActivatorCas.cs
 System/AppDomainCas.cs
 System/BadImageFormatExceptionCas.cs
@@ -408,3 +418,24 @@ System.Threading/ExecutionContextCas.cs
 System.Threading/MutexCas.cs
 System.Threading/ThreadCas.cs
 System.Threading/WaitHandleCas.cs
+
+System.Threading.Tasks/TaskTest.cs
+System.Threading.Tasks/FutureTests.cs
+System.Threading.Tasks/TaskCompletionSourceTests.cs
+System.Collections.Concurrent/ParallelConcurrentStackTests.cs
+System.Collections.Concurrent/ConcurrentSkipListTests.cs
+../System.Collections.Concurrent/ConcurrentSkipList.cs
+System.Collections.Concurrent/ConcurrentQueueTests.cs
+System.Collections.Concurrent/ConcurrentBagTests.cs
+System.Collections.Concurrent/ConcurrentStackTests.cs
+System.Collections.Concurrent/ConcurrentDictionaryTests.cs
+System.Collections.Concurrent/CollectionStressTestHelper.cs
+System.Collections.Concurrent/ParallelConcurrentQueueTests.cs
+System.Threading/CancellationTokenTests.cs
+System.Threading/ManualResetEventSlimTests.cs
+System.Threading/SemaphoreSlimTests.cs
+System.Threading/ParallelTests.cs
+System.Threading/CountdownEventTests.cs
+System/AggregateExceptionTests.cs
+System.Threading/ThreadLazyTests.cs
+System.Threading/ParallelTestHelper.cs

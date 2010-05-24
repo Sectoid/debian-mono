@@ -38,6 +38,8 @@ EXTRA_DISTFILES = \
 	Test/resources/StreamTest.resources	\
 	Test/resources/StreamTest.ja.resources	\
 	Test/resources/bug81759.resources	\
+	Test/resources/415628.bin		\
+	Test/resources/Fergie.GED		\
 	$(RESOURCE_FILES)
 
 include $(topdir)/build/library.make

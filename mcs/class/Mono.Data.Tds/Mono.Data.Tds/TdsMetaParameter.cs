@@ -184,7 +184,7 @@ namespace Mono.Data.Tds {
 			if (newValue == DBNull.Value || newValue == null)
 				return newValue;
 
-			if (!isSizeSet || size == 0)
+			if (!isSizeSet || size <= 0)
 				return newValue;
 
 			// if size is set, truncate the value to specified size
@@ -341,7 +341,9 @@ namespace Mono.Data.Tds {
 					return TdsColumnType.BitN;
 				return TdsColumnType.Bit;
 			case "bigint":
-				return TdsColumnType.IntN;
+				if (IsNullable)
+					return TdsColumnType.IntN ;
+				return TdsColumnType.BigInt;
 			case "char":
 				return TdsColumnType.Char;
 			case "money":

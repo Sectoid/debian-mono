@@ -220,8 +220,10 @@ namespace System.Data
 					rowFilterExpr = parser.Compile (value);
 				}
 				rowFilter = value;
-				if (!inEndInit)
+				if (!inEndInit) {
 					UpdateIndex (true);
+					OnListChanged (new ListChangedEventArgs (ListChangedType.Reset, -1, -1));
+				}
 			}
 		}
 
@@ -646,27 +648,27 @@ namespace System.Data
 			if (args.Action == DataRowAction.Add && oldIndex != newIndex)
 				OnListChanged (new ListChangedEventArgs (ListChangedType.ItemAdded, newIndex, -1));
 
-			/* ItemChanged or ItemMoved */
+			/* ItemChanged or ItemDeleted */
 			if (args.Action == DataRowAction.Change) {
 				if (oldIndex != -1 && oldIndex == newIndex)
 					OnListChanged (new ListChangedEventArgs (ListChangedType.ItemChanged, newIndex, -1));
 				else if (oldIndex != newIndex) {
-                	if (newIndex < 0)
+					if (newIndex < 0)
 						OnListChanged (new ListChangedEventArgs (ListChangedType.ItemDeleted, newIndex, oldIndex));
 					else
 						OnListChanged (new ListChangedEventArgs (ListChangedType.ItemMoved, newIndex, oldIndex));
 				}
 			}
-                       
+			
 			/* Rollback - ItemAdded or ItemDeleted */
 			if (args.Action == DataRowAction.Rollback) {
 				if (oldIndex < 0 && newIndex > -1)
-			    	OnListChanged (new ListChangedEventArgs (ListChangedType.ItemAdded, newIndex, -1));
+					OnListChanged (new ListChangedEventArgs (ListChangedType.ItemAdded, newIndex, -1));
 				else if (oldIndex > -1 && newIndex < 0)
 					OnListChanged (new ListChangedEventArgs (ListChangedType.ItemDeleted, newIndex, oldIndex));
 				else if (oldIndex != -1 && oldIndex == newIndex)
 					OnListChanged (new ListChangedEventArgs (ListChangedType.ItemChanged, newIndex, -1));
-			}		
+			}
 		}
 
 		private void OnRowDeleted (object sender, DataRowChangeEventArgs args)
@@ -674,7 +676,6 @@ namespace System.Data
 			/* ItemDeleted */
 			int newIndex, oldCount;
 			oldCount = Count;
-			
 			newIndex = IndexOf (args.Row);
 			UpdateIndex (true);
 			/* Fire ListChanged only when the RowFilter is affected */
@@ -1216,10 +1217,11 @@ namespace System.Data
 			}
 
 			DataRow [] rows;
+
+			// Get the index from index collection of the data table.
 			Index index = null;
-			
-			if (sort != String.Empty)
-				index = Table.GetIndex (sortColumns, sortOrder, RowStateFilter, FilterExpression, true);
+			if (sort != string.Empty)
+				index = Table.GetIndex(sortColumns,sortOrder,RowStateFilter,FilterExpression,true);
 			else
 				index = new Index (new Key(Table, columns, sortDirection, RowStateFilter, rowFilterExpr));
 			

@@ -38,6 +38,22 @@ namespace System.ComponentModel.DataAnnotations
 		public DataTypeAttribute (DataType dataType)
 		{
 			DataType = dataType;
+
+			DisplayFormatAttribute displayFormat;
+			switch (dataType) {
+				case DataType.Time:
+					displayFormat = new DisplayFormatAttribute ();
+					displayFormat.ApplyFormatInEditMode = true;
+					displayFormat.ConvertEmptyStringToNull = true;
+					displayFormat.DataFormatString = "{0:t}";
+					break;
+
+				default:
+					displayFormat = null;
+					break;
+			}
+
+			DisplayFormat = displayFormat;
 		}
 
 		public DataTypeAttribute (string customDataType)
@@ -49,10 +65,13 @@ namespace System.ComponentModel.DataAnnotations
 		public DataType DataType { get; private set; }
 		public DisplayFormatAttribute DisplayFormat { get; protected set; }
 
-		[MonoTODO]
 		public virtual string GetDataTypeName ()
 		{
-			throw new NotImplementedException ();
+			DataType dt = DataType;
+			if (dt == DataType.Custom)
+				return CustomDataType;
+
+			return dt.ToString ();
 		}
 
 		[MonoTODO]

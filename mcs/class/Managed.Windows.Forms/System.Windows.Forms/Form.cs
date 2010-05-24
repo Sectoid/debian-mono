@@ -1381,6 +1381,7 @@ namespace System.Windows.Forms {
 				if (old_state != window_state) 
 					OnUIAWindowStateChanged ();
 #endif
+
 			}
 		}
 
