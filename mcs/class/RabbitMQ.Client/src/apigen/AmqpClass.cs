@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -54,19 +60,19 @@ using System.Xml;
 
 namespace RabbitMQ.Client.Apigen {
     public class AmqpClass: AmqpEntity {
-        public ArrayList Methods;
-        public ArrayList Fields;
+        public ArrayList m_Methods;
+        public ArrayList m_Fields;
 
         public AmqpClass(XmlNode n)
             : base(n)
         {
-            Methods = new ArrayList();
+            m_Methods = new ArrayList();
             foreach (XmlNode m in n.SelectNodes("method")) {
-                Methods.Add(new AmqpMethod(m));
+                m_Methods.Add(new AmqpMethod(m));
             }
-            Fields = new ArrayList();
+            m_Fields = new ArrayList();
             foreach (XmlNode f in n.SelectNodes("field")) {
-                Fields.Add(new AmqpField(f));
+                m_Fields.Add(new AmqpField(f));
             }
         }
 
@@ -78,7 +84,7 @@ namespace RabbitMQ.Client.Apigen {
 
         public bool NeedsProperties {
             get {
-                foreach (AmqpMethod m in Methods) {
+                foreach (AmqpMethod m in m_Methods) {
                     if (m.HasContent) return true;
                 }
                 return false;
@@ -86,7 +92,8 @@ namespace RabbitMQ.Client.Apigen {
         }
 
         public AmqpMethod MethodNamed(string name) {
-            foreach (AmqpMethod m in Methods) {
+            foreach (AmqpMethod m in m_Methods)
+            {
                 if (m.Name == name) {
                     return m;
                 }

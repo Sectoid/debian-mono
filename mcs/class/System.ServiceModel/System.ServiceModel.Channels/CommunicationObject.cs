@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Reflection;
 using System.ServiceModel;
 using System.Threading;
 
@@ -35,7 +36,7 @@ namespace System.ServiceModel.Channels
 	{
 		object mutex;
 		CommunicationState state = CommunicationState.Created;
-		TimeSpan open_timeout, close_timeout;
+		TimeSpan default_open_timeout = TimeSpan.FromMinutes (1), default_close_timeout = TimeSpan.FromMinutes (1);
 		bool aborted;
 
 		protected CommunicationObject ()
@@ -84,28 +85,30 @@ namespace System.ServiceModel.Channels
 
 		#region Methods
 
-		[MonoTODO]
 		public void Abort ()
 		{
-			OnAbort ();
+			if (State != CommunicationState.Closed) {
+				OnAbort ();
+				ProcessClosed ();
+			}
 		}
 
-		[MonoTODO]
 		protected void Fault ()
 		{
-			state = CommunicationState.Faulted;
-			OnFaulted ();
+			ProcessFaulted ();
 		}
 
 		public IAsyncResult BeginClose (AsyncCallback callback,
 			object state)
 		{
-			return BeginClose (close_timeout, callback, state);
+			return BeginClose (default_close_timeout, callback, state);
 		}
 
 		public IAsyncResult BeginClose (TimeSpan timeout,
 			AsyncCallback callback, object state)
 		{
+			if (State == CommunicationState.Created)
+				return new EventHandler (delegate { Abort (); }).BeginInvoke (null, null, callback, state);
 			ProcessClosing ();
 			return OnBeginClose (timeout, callback, state);
 		}
@@ -113,7 +116,7 @@ namespace System.ServiceModel.Channels
 		public IAsyncResult BeginOpen (AsyncCallback callback,
 			object state)
 		{
-			return BeginOpen (open_timeout, callback, state);
+			return BeginOpen (default_open_timeout, callback, state);
 		}
 
 		public IAsyncResult BeginOpen (TimeSpan timeout,
@@ -125,20 +128,29 @@ namespace System.ServiceModel.Channels
 
 		public void Close ()
 		{
-			Close (close_timeout);
+			Close (default_close_timeout);
 		}
 
 		public void Close (TimeSpan timeout)
 		{
-			ProcessClosing ();
-			OnClose (timeout);
-			ProcessClosed ();
+			if (State == CommunicationState.Created)
+				Abort ();
+			else {
+				ProcessClosing ();
+				OnClose (timeout);
+				ProcessClosed ();
+			}
 		}
 
 		public void EndClose (IAsyncResult result)
 		{
-			OnEndClose (result);
-			ProcessClosed ();
+			if (State == CommunicationState.Created || State == CommunicationState.Closed) {
+				if (!result.IsCompleted)
+					result.AsyncWaitHandle.WaitOne ();
+			} else {
+				OnEndClose (result);
+				ProcessClosed ();
+			}
 		}
 
 		public void EndOpen (IAsyncResult result)
@@ -149,7 +161,7 @@ namespace System.ServiceModel.Channels
 
 		public void Open ()
 		{
-			Open (open_timeout);
+			Open (default_open_timeout);
 		}
 
 		public void Open (TimeSpan timeout)
@@ -171,14 +183,20 @@ namespace System.ServiceModel.Channels
 
 		void ProcessClosing ()
 		{
-			if (State == CommunicationState.Faulted)
-				throw new CommunicationObjectFaultedException ();
-			state = CommunicationState.Closing;
-			OnClosing ();
+			lock (ThisLock) {
+				if (State == CommunicationState.Faulted)
+					throw new CommunicationObjectFaultedException ();
+				OnClosing ();
+				if (state != CommunicationState.Closing) {
+					state = CommunicationState.Faulted;
+					throw new InvalidOperationException (String.Format ("Communication object {0} has an overriden OnClosing method that does not call base OnClosing method (declared in {1} type).", this.GetType (), GetType ().GetMethod ("OnClosing", BindingFlags.NonPublic | BindingFlags.Instance).DeclaringType));
+				}
+			}
 		}
 
 		protected virtual void OnClosing ()
 		{
+			state = CommunicationState.Closing;
 			// This means, if this method is overriden, then
 			// Opening event is surpressed.
 			if (Closing != null)
@@ -187,12 +205,18 @@ namespace System.ServiceModel.Channels
 
 		void ProcessClosed ()
 		{
-			state = CommunicationState.Closed;
-			OnClosed ();
+			lock (ThisLock) {
+				OnClosed ();
+				if (state != CommunicationState.Closed) {
+					state = CommunicationState.Faulted;
+					throw new InvalidOperationException (String.Format ("Communication object {0} has an overriden OnClosed method that does not call base OnClosed method (declared in {1} type).", this.GetType (), GetType ().GetMethod ("OnClosed", BindingFlags.NonPublic | BindingFlags.Instance).DeclaringType));
+				}
+			}
 		}
 
 		protected virtual void OnClosed ()
 		{
+			state = CommunicationState.Closed;
 			// This means, if this method is overriden, then
 			// Closed event is surpressed.
 			if (Closed != null)
@@ -203,11 +227,24 @@ namespace System.ServiceModel.Channels
 
 		protected abstract void OnEndOpen (IAsyncResult result);
 
-		[MonoTODO]
+		void ProcessFaulted ()
+		{
+			lock (ThisLock) {
+				if (State == CommunicationState.Faulted)
+					throw new CommunicationObjectFaultedException ();
+				OnFaulted ();
+				if (state != CommunicationState.Faulted) {
+					state = CommunicationState.Faulted; // FIXME: am not sure if this makes sense ...
+					throw new InvalidOperationException (String.Format ("Communication object {0} has an overriden OnFaulted method that does not call base OnFaulted method (declared in {1} type).", this.GetType (), GetType ().GetMethod ("OnFaulted", BindingFlags.NonPublic | BindingFlags.Instance).DeclaringType));
+				}
+			}
+		}
+
 		protected virtual void OnFaulted ()
 		{
+			state = CommunicationState.Faulted;
 			// This means, if this method is overriden, then
-			// Opened event is surpressed.
+			// Faulted event is surpressed.
 			if (Faulted != null)
 				Faulted (this, new EventArgs ());
 		}
@@ -216,27 +253,37 @@ namespace System.ServiceModel.Channels
 
 		void ProcessOpened ()
 		{
-			state = CommunicationState.Opened;
-			OnOpened ();
+			lock (ThisLock) {
+				OnOpened ();
+				if (state != CommunicationState.Opened) {
+					state = CommunicationState.Faulted;
+					throw new InvalidOperationException (String.Format ("Communication object {0} has an overriden OnOpened method that does not call base OnOpened method (declared in {1} type).", this.GetType (), GetType ().GetMethod ("OnOpened", BindingFlags.NonPublic | BindingFlags.Instance).DeclaringType));
+				}
+			}
 		}
 
 		protected virtual void OnOpened ()
 		{
-			// This means, if this method is overriden, then
-			// Opened event is surpressed.
+			state = CommunicationState.Opened;
 			if (Opened != null)
 				Opened (this, new EventArgs ());
 		}
 
 		void ProcessOpening ()
 		{
-			ThrowIfDisposedOrImmutable ();
-			state = CommunicationState.Opening;
-			OnOpening ();
+			lock (ThisLock) {
+				ThrowIfDisposedOrImmutable ();
+				OnOpening ();
+				if (state != CommunicationState.Opening) {
+					state = CommunicationState.Faulted;
+					throw new InvalidOperationException (String.Format ("Communication object {0} has an overriden OnOpening method that does not call base OnOpening method (declared in {1} type).", this.GetType (), GetType ().GetMethod ("OnOpening", BindingFlags.NonPublic | BindingFlags.Instance).DeclaringType));
+				}
+			}
 		}
 
 		protected virtual void OnOpening ()
 		{
+			state = CommunicationState.Opening;
 			// This means, if this method is overriden, then
 			// Opening event is surpressed.
 			if (Opening != null)
@@ -267,7 +314,7 @@ namespace System.ServiceModel.Channels
 				throw new CommunicationObjectFaultedException ();
 			case CommunicationState.Opening:
 			case CommunicationState.Opened:
-				throw new InvalidOperationException (String.Format ("The communication object {0} is not at created state.", GetType ()));
+				throw new InvalidOperationException (String.Format ("The communication object {0} is not at created state but at {1} state.", GetType (), State));
 			}
 		}
 

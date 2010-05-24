@@ -683,6 +683,12 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		}
 
 		[Test]
+		public void ReadInvalidNumber10 () // bug #531904
+		{
+			ReadToEnd (CreateReader ("4.29153442382814E-05"));
+		}
+
+		[Test]
 		[ExpectedException (typeof (XmlException))]
 		public void ReadInvalidObjectContent ()
 		{
@@ -800,6 +806,29 @@ namespace MonoTests.System.Runtime.Serialization.Json
 			Assert.AreEqual ("object", r.GetAttribute ("type"), "#2-2");
 			Assert.IsNotNull (r.GetAttribute ("__type"), "#2-3");
 			r.Read ();
+		}
+
+		[Test]
+		public void Skip ()
+		{
+			XmlReader r = CreateReader ("{\"type\" : \"\", \"valid\" : \"0\", \"other\" : \"\"}");
+			r.ReadStartElement ();
+			r.MoveToContent ();
+			Assert.AreEqual ("type", r.Name, "Skip-1");
+			r.ReadElementContentAsString ();
+			r.MoveToContent ();
+			Assert.AreEqual ("valid", r.Name, "Skip-2");
+			r.Skip ();
+			Assert.AreEqual ("other", r.Name, "Skip-3");
+		}
+
+		[Test]
+		public void Depth ()
+		{
+			XmlReader r = CreateReader ("{\"type\" : \"\", \"valid\" : \"0\"}");
+			r.ReadStartElement ();
+			r.Read ();
+			Assert.AreEqual (2, r.Depth, "Depth-1");
 		}
 	}
 }

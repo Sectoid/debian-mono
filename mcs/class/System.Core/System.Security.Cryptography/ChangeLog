@@ -1,9 +1,18 @@
+2009-11-12  Jb Evain  <jbevain@novell.com>
+
+	* Aes.cs: avoid using an hardcoded assembly version for System.Core.
+
 2009-07-20  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Aes.cs: Use the fully qualified name since this is not a type known
 	in the default corlib (2.0 or 1.x).
-	[Fix bug #523687]
-	[Backport r138249]
+
+2009-04-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MD5Cng.cs, SHA1Cng.cs, SHA256Cng.cs, SHA256CryptoServiceProvider.cs,
+	SHA384Cng.cs, SHA384CryptoServiceProvider.cs, SHA512Cng.cs,
+	SHA512CryptoServiceProvider.cs: Regenerated to be excluded from
+	NET_2_1
 
 2008-08-07  Sebastien Pouliot  <sebastien@ximian.com>
 

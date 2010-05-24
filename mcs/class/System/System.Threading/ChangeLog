@@ -1,3 +1,17 @@
+2010-02-25  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Barrier.cs: Fix NRE with postPhaseAction delegate
+	Add post phase triggering when removing participant
+
+2009-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Barrier.cs: Fix Barrier to be really thread-safe.
+	Remove deadlocking.
+
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Barrier.cs: added.
+
 2006-09-28  Andrew Skiba <andrews@mainsoft.com>
 
 	* Semaphore.cs: TARGET_JVM

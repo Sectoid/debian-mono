@@ -1,3 +1,40 @@
+2009-10-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs, UriTemplateMatchException.cs, UriTemplateMatch.cs:
+	  Add experimental monotouch build.
+
+2009-09-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs : Fix method signatures. Take care of dictionary
+	  case sensitivity.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplateTable.cs : do not raise an error when MatchSingle() did
+	  not result in any match. Match methods should reject empty table.
+
+2008-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs, UriTemplateMatch.cs : add support for wildcard.
+
+2008-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs : implement IsEquivalentTo().
+	* UriTemplateEquivalenceComparer.cs : implement.
+
+2008-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs : add BindByName() overloads with Dictionary.
+
+2008-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs : implemented Defaults and IgnoreTrailingSlash.
+
+2008-09-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTemplate.cs : Fixed a couple of parse/match behavior to match
+	  3.5 SP1 (except for Defaults which misses implementation).
+
 2008-02-16  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* UriTemplate.cs : the rewrite broke query parameter matching.

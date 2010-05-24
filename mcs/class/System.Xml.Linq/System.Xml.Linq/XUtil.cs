@@ -27,6 +27,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -40,7 +41,20 @@ namespace System.Xml.Linq
 		public const string XmlnsNamespace =
 			"http://www.w3.org/2000/xmlns/";
 
-		// FIXME: implement
+		public static bool ConvertToBoolean (string s)
+		{
+			return XmlConvert.ToBoolean (s.ToLower (CultureInfo.InvariantCulture));
+		}
+
+		public static DateTime ToDateTime (string s)
+		{
+			try {
+				return XmlConvert.ToDateTime (s, XmlDateTimeSerializationMode.RoundtripKind);
+			} catch {
+				return DateTime.Parse (s);
+			}
+		}
+
 		public static string ToString (object o)
 		{
 			if (o == null)
@@ -51,7 +65,18 @@ namespace System.Xml.Linq
 				return (string) o;
 			case TypeCode.DateTime:
 				return XmlConvert.ToString ((DateTime) o, XmlDateTimeSerializationMode.RoundtripKind);
+			case TypeCode.Double:
+				return ((double) o).ToString ("r");
+			case TypeCode.Single:
+				return ((float) o).ToString ("r");
+			case TypeCode.Boolean:
+				// Valid XML values are `true' and `false', not `True' and `False' that boolean returns
+				return o.ToString().ToLower();
 			default:
+				if (o is TimeSpan)
+					return XmlConvert.ToString ((TimeSpan) o);
+				if (o is DateTimeOffset)
+					return XmlConvert.ToString ((DateTimeOffset) o);
 				return o.ToString ();
 			}
 		}
@@ -91,7 +116,7 @@ namespace System.Xml.Linq
 			else if (o is string)
 				return new XText ((string) o);
 			else
-				return new XText (o.ToString ());
+				return new XText (ToString (o));
 		}
 
 		public static object GetDetachedObject (XObject child)

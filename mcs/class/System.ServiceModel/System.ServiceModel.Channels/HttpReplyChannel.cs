@@ -27,6 +27,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.ServiceModel;
@@ -35,28 +36,63 @@ using System.Threading;
 
 namespace System.ServiceModel.Channels
 {
-	internal class HttpReplyChannel : ReplyChannelBase
+	internal class HttpSimpleReplyChannel : HttpReplyChannel
 	{
-		HttpChannelListener<IReplyChannel> source;
+		HttpSimpleChannelListener<IReplyChannel> source;
 		List<HttpListenerContext> waiting = new List<HttpListenerContext> ();
-		TimeSpan timeout;
-		EndpointAddress local_address;
+		RequestContext reqctx;
 
-		public HttpReplyChannel (HttpChannelListener<IReplyChannel> listener,
-			TimeSpan timeout)
+		public HttpSimpleReplyChannel (HttpSimpleChannelListener<IReplyChannel> listener)
 			: base (listener)
 		{
 			this.source = listener;
-			this.timeout = timeout;
 		}
 
-		public MessageEncoder Encoder {
-			get { return source.MessageEncoder; }
+		protected override void OnAbort ()
+		{
+			AbortConnections (TimeSpan.Zero);
+			base.OnAbort (); // FIXME: remove it. The base is wrong. But it is somehow required to not block some tests.
 		}
 
-		// FIXME: where is it set?
-		public override EndpointAddress LocalAddress {
-			get { return local_address; }
+		public override bool CancelAsync (TimeSpan timeout)
+		{
+			AbortConnections (timeout);
+			// FIXME: this wait is sort of hack (because it should not be required), but without it some tests are blocked.
+			// This hack even had better be moved to base.CancelAsync().
+			if (CurrentAsyncResult != null)
+				CurrentAsyncResult.AsyncWaitHandle.WaitOne (TimeSpan.FromMilliseconds (300));
+			return base.CancelAsync (timeout);
+		}
+
+		void SignalAsyncWait ()
+		{
+			if (wait == null)
+				return;
+			var wait_ = wait;
+			wait = null;
+			wait_.Set ();
+		}
+
+		void AbortConnections (TimeSpan timeout)
+		{
+			// FIXME: use timeout
+			lock (waiting)
+				foreach (var ctx in waiting)
+					ctx.Response.Close ();
+			if (wait != null)
+				source.ListenerManager.CancelGetHttpContextAsync ();
+		}
+
+		protected override void OnClose (TimeSpan timeout)
+		{
+			DateTime start = DateTime.Now;
+			if (reqctx != null)
+				reqctx.Close (timeout);
+
+			// FIXME: consider timeout
+			AbortConnections (timeout - (DateTime.Now - start));
+
+			base.OnClose (timeout - (DateTime.Now - start));
 		}
 
 		public override bool TryReceiveRequest (TimeSpan timeout, out RequestContext context)
@@ -80,6 +116,12 @@ namespace System.ServiceModel.Channels
 			int maxSizeOfHeaders = 0x10000;
 
 			Message msg = null;
+
+			// FIXME: our HttpConnection (under HttpListener) 
+			// somehow breaks when the underlying connection is
+			// reused. Remove it when it gets fixed.
+			ctx.Response.KeepAlive = false;
+
 			if (ctx.Request.HttpMethod == "POST") {
 				if (!Encoder.IsContentTypeSupported (ctx.Request.ContentType)) {
 					ctx.Response.StatusCode = (int) HttpStatusCode.UnsupportedMediaType;
@@ -92,26 +134,22 @@ namespace System.ServiceModel.Channels
 
 				msg = Encoder.ReadMessage (
 					ctx.Request.InputStream, maxSizeOfHeaders);
-				if (source.MessageEncoder.MessageVersion.Envelope == EnvelopeVersion.Soap11 ||
-				    source.MessageEncoder.MessageVersion.Addressing == AddressingVersion.None) {
+
+				if (MessageVersion.Envelope.Equals (EnvelopeVersion.Soap11) ||
+				    MessageVersion.Addressing.Equals (AddressingVersion.None)) {
 					string action = GetHeaderItem (ctx.Request.Headers ["SOAPAction"]);
-					if (action != null)
+					if (action != null) {
+						if (action.Length > 2 && action [0] == '"' && action [action.Length] == '"')
+							action = action.Substring (1, action.Length - 2);
 						msg.Headers.Action = action;
+					}
 				}
 			} else if (ctx.Request.HttpMethod == "GET") {
-				msg = Message.CreateMessage (source.MessageEncoder.MessageVersion, null);
+				msg = Message.CreateMessage (MessageVersion, null);
 			}
 			msg.Headers.To = ctx.Request.Url;
-			
-			HttpRequestMessageProperty prop =
-				new HttpRequestMessageProperty ();
-			prop.Method = ctx.Request.HttpMethod;
-			prop.QueryString = ctx.Request.Url.Query;
-			if (prop.QueryString.StartsWith ("?"))
-				prop.QueryString = prop.QueryString.Substring (1);
-			// FIXME: prop.SuppressEntityBody
-			prop.Headers.Add (ctx.Request.Headers);
-			msg.Properties.Add (HttpRequestMessageProperty.Name, prop);
+			msg.Properties.Add ("Via", LocalAddress.Uri);
+			msg.Properties.Add (HttpRequestMessageProperty.Name, CreateRequestProperty (ctx.Request.HttpMethod, ctx.Request.Url.Query, ctx.Request.Headers));
 /*
 MessageBuffer buf = msg.CreateBufferedCopy (0x10000);
 msg = buf.CreateMessage ();
@@ -121,7 +159,72 @@ buf.CreateMessage ().WriteMessage (w);
 w.Close ();
 */
 			context = new HttpRequestContext (this, msg, ctx);
+			reqctx = context;
 			return true;
+		}
+
+		AutoResetEvent wait;
+
+		public override bool WaitForRequest (TimeSpan timeout)
+		{
+			if (wait != null)
+				throw new InvalidOperationException ("Another wait operation is in progress");
+			try {
+				wait = new AutoResetEvent (false);
+				source.ListenerManager.GetHttpContextAsync (timeout, HttpContextAcquired);
+				if (wait != null) // in case callback is done before WaitOne() here.
+					return wait.WaitOne (timeout, false);
+				return waiting.Count > 0;
+			} catch (HttpListenerException e) {
+				// FIXME: does this make sense? I doubt.
+				if ((uint) e.ErrorCode == 0x80004005) // invalid handle. Happens during shutdown.
+					while (true) Thread.Sleep (1000); // thread is about to be terminated.
+				throw;
+			} catch (ObjectDisposedException) {
+				return false;
+			} finally {
+				wait = null;
+			}
+		}
+
+		void HttpContextAcquired (HttpContextInfo ctx)
+		{
+			if (wait == null)
+				throw new InvalidOperationException ("WaitForRequest operation has not started");
+			var sctx = (HttpListenerContextInfo) ctx;
+			if (State == CommunicationState.Opened && ctx != null)
+				waiting.Add (sctx.Source);
+			SignalAsyncWait ();
+		}
+	}
+
+	internal abstract class HttpReplyChannel : InternalReplyChannelBase
+	{
+		HttpChannelListenerBase<IReplyChannel> source;
+
+		public HttpReplyChannel (HttpChannelListenerBase<IReplyChannel> listener)
+			: base (listener)
+		{
+			this.source = listener;
+		}
+
+		public MessageEncoder Encoder {
+			get { return source.MessageEncoder; }
+		}
+
+		internal MessageVersion MessageVersion {
+			get { return source.MessageEncoder.MessageVersion; }
+		}
+
+		public override RequestContext ReceiveRequest (TimeSpan timeout)
+		{
+			RequestContext ctx;
+			TryReceiveRequest (timeout, out ctx);
+			return ctx;
+		}
+
+		protected override void OnOpen (TimeSpan timeout)
+		{
 		}
 
 		protected string GetHeaderItem (string raw)
@@ -139,84 +242,14 @@ w.Close ();
 			return raw;
 		}
 
-		public override IAsyncResult BeginTryReceiveRequest (TimeSpan timeout, AsyncCallback callback, object state)
+		protected HttpRequestMessageProperty CreateRequestProperty (string method, string query, NameValueCollection headers)
 		{
-			throw new NotImplementedException ();
-		}
-
-		public override bool EndTryReceiveRequest (IAsyncResult result, out RequestContext context)
-		{
-			throw new NotImplementedException ();
-		}
-
-		public override bool WaitForRequest (TimeSpan timeout)
-		{
-			AutoResetEvent wait = new AutoResetEvent (false);
-			try {
-				source.Http.BeginGetContext (HttpContextReceived, wait);
-			} catch (HttpListenerException e) {
-				if (e.ErrorCode == 0x80004005) // invalid handle. Happens during shutdown.
-					while (true) Thread.Sleep (1000); // thread is about to be terminated.
-				throw;
-			} catch (ObjectDisposedException) { return false; }
-			// FIXME: we might want to take other approaches.
-			if (timeout.Ticks > int.MaxValue)
-				timeout = TimeSpan.FromDays (20);
-			return wait.WaitOne (timeout, false);
-		}
-
-		void HttpContextReceived (IAsyncResult result)
-		{
-			if (State == CommunicationState.Closing || State == CommunicationState.Closed)
-				return;
-
-			waiting.Add (source.Http.EndGetContext (result));
-			AutoResetEvent wait = (AutoResetEvent) result.AsyncState;
-			wait.Set ();
-		}
-
-		public override IAsyncResult BeginWaitForRequest (TimeSpan timeout, AsyncCallback callback, object state)
-		{
-			throw new NotImplementedException ();
-		}
-
-		public override bool EndWaitForRequest (IAsyncResult result)
-		{
-			throw new NotImplementedException ();
-		}
-
-		public override RequestContext ReceiveRequest (TimeSpan timeout)
-		{
-			RequestContext ctx;
-			TryReceiveRequest (timeout, out ctx);
-			return ctx;
-		}
-
-		public override IAsyncResult BeginReceiveRequest (TimeSpan timeout, AsyncCallback callback, object state)
-		{
-			throw new NotImplementedException ();
-		}
-
-		public override RequestContext EndReceiveRequest (IAsyncResult result)
-		{
-			throw new NotImplementedException ();
-		}
-
-		protected override void OnAbort ()
-		{
-			foreach (HttpListenerContext ctx in waiting)
-				ctx.Request.InputStream.Close ();
-		}
-
-		protected override void OnClose (TimeSpan timeout)
-		{
-			// FIXME: consider timeout
-			foreach (HttpListenerContext ctx in waiting)
-				ctx.Request.InputStream.Close ();
-		}
-
-		protected override void OnOpen (TimeSpan timeout)
-		{
+			var prop = new HttpRequestMessageProperty ();
+			prop.Method = method;
+			prop.QueryString = query.StartsWith ("?") ? query.Substring (1) : query;
+			// FIXME: prop.SuppressEntityBody
+			prop.Headers.Add (headers);
+			return prop;
 		}
 	}
 }

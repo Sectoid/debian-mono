@@ -58,6 +58,7 @@ jmp: len:120
 tailcall: len:120 clob:c
 br: len:6
 label: len:0
+seq_point: len:25
 
 long_add: dest:i src1:i src2:i len:3 clob:1
 long_sub: dest:i src1:i src2:i len:3 clob:1
@@ -97,7 +98,7 @@ long_max_un: dest:i src1:i src2:i len:16 clob:1
 
 throw: src1:i len:18
 rethrow: src1:i len:18
-start_handler: len:9
+start_handler: len:16
 endfinally: len:9
 endfilter: src1:a len:9
 ckfinite: dest:f src1:f len:43
@@ -114,7 +115,6 @@ compare_imm: src1:i len:13
 icompare_imm: src1:i len:8
 fcompare: src1:f src2:f clob:a len:13
 oparglist: src1:b len:11
-setlret: dest:i src1:i src2:i len:5
 checkthis: src1:b len:5
 call: dest:a clob:c len:32
 voidcall: clob:c len:32
@@ -157,20 +157,12 @@ loadu4_membase: dest:i src1:b len:9
 loadi8_membase: dest:i src1:b len:18
 loadr4_membase: dest:f src1:b len:16
 loadr8_membase: dest:f src1:b len:16
-loadr8_spill_membase: src1:b len:9
 loadu4_mem: dest:i len:10
 amd64_loadi8_memindex: dest:i src1:i src2:i len:10
 move: dest:i src1:i len:3
 add_imm: dest:i src1:i len:8 clob:1
 sub_imm: dest:i src1:i len:8 clob:1
 mul_imm: dest:i src1:i len:11
-# there is no actual support for division or reminder by immediate
-# we simulate them, though (but we need to change the burg rules 
-# to allocate a symbolic reg for src2)
-div_imm: dest:a src1:i src2:i len:16 clob:d
-div_un_imm: dest:a src1:i src2:i len:16 clob:d
-rem_imm: dest:d src1:i src2:i len:16 clob:a
-rem_un_imm: dest:d src1:i src2:i len:16 clob:a
 and_imm: dest:i src1:i len:8 clob:1
 or_imm: dest:i src1:i len:8 clob:1
 xor_imm: dest:i src1:i len:8 clob:1
@@ -194,7 +186,6 @@ cond_exc_nc: len:8
 cond_exc_iov: len:8
 cond_exc_ic: len:8
 
-long_conv_to_ovf_i: dest:i src1:i src2:i len:40
 long_mul_ovf: dest:i src1:i src2:i clob:1 len:16
 long_mul_ovf_un: dest:i src1:i src2:i len:22
 long_shr_imm: dest:i src1:i clob:1 len:11
@@ -298,8 +289,8 @@ atomic_exchange_i4: src1:b src2:i dest:a len:32
 atomic_add_i8: src1:b src2:i dest:i len:32
 atomic_add_new_i8: src1:b src2:i dest:i len:32
 atomic_exchange_i8: src1:b src2:i dest:a len:32
-atomic_cas_imm_i4: src1:b src2:i dest:a len:32
-atomic_cas_imm_i8: src1:b src2:i dest:a len:32
+atomic_cas_i4: src1:b src2:i src3:a dest:i len:24
+atomic_cas_i8: src1:b src2:i src3:a dest:i len:24
 memory_barrier: len:16
 adc: dest:i src1:i src2:i len:3 clob:1
 addcc: dest:i src1:i src2:i len:3 clob:1
@@ -314,8 +305,6 @@ abs: dest:f src1:f clob:1 len:32
 tan: dest:f src1:f len:59
 atan: dest:f src1:f len:9
 sqrt: dest:f src1:f len:32
-bigmul: len:3 dest:i src1:a src2:i
-bigmul_un: len:3 dest:i src1:a src2:i
 sext_i1: dest:i src1:i len:4
 sext_i2: dest:i src1:i len:4
 sext_i4: dest:i src1:i len:8
@@ -385,7 +374,7 @@ hard_nop: len:1
 
 # Linear IR opcodes
 nop: len:0
-dummy_use: len:0
+dummy_use: src1:i len:0
 dummy_store: len:0
 not_reached: len:0
 not_null: src1:i len:0
@@ -495,6 +484,8 @@ vcall2: len:64 clob:c
 vcall2_reg: src1:i len:64 clob:c
 vcall2_membase: src1:b len:64 clob:c
 
+dyn_call: src1:i src2:i len:64 clob:c
+
 localloc_imm: dest:i len:84
 
 load_mem: dest:i len:16
@@ -502,3 +493,208 @@ loadi8_mem: dest:i len:16
 loadi4_mem: dest:i len:16
 loadu1_mem: dest:i len:16
 loadu2_mem: dest:i len:16
+
+
+#SIMD
+
+addps: dest:x src1:x src2:x len:4 clob:1
+divps: dest:x src1:x src2:x len:4 clob:1
+mulps: dest:x src1:x src2:x len:4 clob:1
+subps: dest:x src1:x src2:x len:4 clob:1
+maxps: dest:x src1:x src2:x len:4 clob:1
+minps: dest:x src1:x src2:x len:4 clob:1
+compps: dest:x src1:x src2:x len:5 clob:1
+andps: dest:x src1:x src2:x len:4 clob:1
+andnps: dest:x src1:x src2:x len:4 clob:1
+orps: dest:x src1:x src2:x len:4 clob:1
+xorps: dest:x src1:x src2:x len:4 clob:1
+
+haddps: dest:x src1:x src2:x len:5 clob:1
+hsubps: dest:x src1:x src2:x len:5 clob:1
+addsubps: dest:x src1:x src2:x len:5 clob:1
+dupps_low: dest:x src1:x len:5
+dupps_high: dest:x src1:x len:5
+
+addpd: dest:x src1:x src2:x len:5 clob:1
+divpd: dest:x src1:x src2:x len:5 clob:1
+mulpd: dest:x src1:x src2:x len:5 clob:1
+subpd: dest:x src1:x src2:x len:5 clob:1
+maxpd: dest:x src1:x src2:x len:5 clob:1
+minpd: dest:x src1:x src2:x len:5 clob:1
+comppd: dest:x src1:x src2:x len:6 clob:1
+andpd: dest:x src1:x src2:x len:5 clob:1
+andnpd: dest:x src1:x src2:x len:5 clob:1
+orpd: dest:x src1:x src2:x len:5 clob:1
+xorpd: dest:x src1:x src2:x len:5 clob:1
+sqrtpd: dest:x src1:x len:5 clob:1
+
+haddpd: dest:x src1:x src2:x len:6 clob:1
+hsubpd: dest:x src1:x src2:x len:6 clob:1
+addsubpd: dest:x src1:x src2:x len:6 clob:1
+duppd: dest:x src1:x len:6
+
+pand: dest:x src1:x src2:x len:5 clob:1
+por: dest:x src1:x src2:x len:5 clob:1
+pxor: dest:x src1:x src2:x len:5 clob:1
+
+sqrtps: dest:x src1:x len:5
+rsqrtps: dest:x src1:x len:5
+rcpps: dest:x src1:x len:5
+
+pshufflew_high: dest:x src1:x len:6
+pshufflew_low: dest:x src1:x len:6
+pshuffled: dest:x src1:x len:6
+
+extract_mask: dest:i src1:x len:6
+
+paddb: dest:x src1:x src2:x len:5 clob:1
+paddw: dest:x src1:x src2:x len:5 clob:1
+paddd: dest:x src1:x src2:x len:5 clob:1
+paddq: dest:x src1:x src2:x len:5 clob:1
+
+psubb: dest:x src1:x src2:x len:5 clob:1
+psubw: dest:x src1:x src2:x len:5 clob:1
+psubd: dest:x src1:x src2:x len:5 clob:1
+psubq: dest:x src1:x src2:x len:5 clob:1
+
+pmaxb_un: dest:x src1:x src2:x len:5 clob:1
+pmaxw_un: dest:x src1:x src2:x len:6 clob:1
+pmaxd_un: dest:x src1:x src2:x len:6 clob:1
+
+pmaxb: dest:x src1:x src2:x len:6 clob:1
+pmaxw: dest:x src1:x src2:x len:5 clob:1
+pmaxd: dest:x src1:x src2:x len:6 clob:1
+
+pavgb_un: dest:x src1:x src2:x len:5 clob:1
+pavgw_un: dest:x src1:x src2:x len:5 clob:1
+
+pminb_un: dest:x src1:x src2:x len:5 clob:1
+pminw_un: dest:x src1:x src2:x len:6 clob:1
+pmind_un: dest:x src1:x src2:x len:6 clob:1
+
+pminb: dest:x src1:x src2:x len:6 clob:1
+pminw: dest:x src1:x src2:x len:5 clob:1
+pmind: dest:x src1:x src2:x len:6 clob:1
+
+pcmpeqb: dest:x src1:x src2:x len:5 clob:1
+pcmpeqw: dest:x src1:x src2:x len:5 clob:1
+pcmpeqd: dest:x src1:x src2:x len:5 clob:1
+pcmpeqq: dest:x src1:x src2:x len:6 clob:1
+
+pcmpgtb: dest:x src1:x src2:x len:5 clob:1
+pcmpgtw: dest:x src1:x src2:x len:5 clob:1
+pcmpgtd: dest:x src1:x src2:x len:5 clob:1
+pcmpgtq: dest:x src1:x src2:x len:6 clob:1
+
+psumabsdiff: dest:x src1:x src2:x len:5 clob:1
+
+unpack_lowb: dest:x src1:x src2:x len:5 clob:1
+unpack_loww: dest:x src1:x src2:x len:5 clob:1
+unpack_lowd: dest:x src1:x src2:x len:5 clob:1
+unpack_lowq: dest:x src1:x src2:x len:5 clob:1
+unpack_lowps: dest:x src1:x src2:x len:5 clob:1
+unpack_lowpd: dest:x src1:x src2:x len:5 clob:1
+
+unpack_highb: dest:x src1:x src2:x len:5 clob:1
+unpack_highw: dest:x src1:x src2:x len:5 clob:1
+unpack_highd: dest:x src1:x src2:x len:5 clob:1
+unpack_highq: dest:x src1:x src2:x len:5 clob:1
+unpack_highps: dest:x src1:x src2:x len:5 clob:1
+unpack_highpd: dest:x src1:x src2:x len:5 clob:1
+
+packw: dest:x src1:x src2:x len:5 clob:1 
+packd: dest:x src1:x src2:x len:5 clob:1 
+
+packw_un: dest:x src1:x src2:x len:5 clob:1 
+packd_un: dest:x src1:x src2:x len:6 clob:1 
+
+paddb_sat: dest:x src1:x src2:x len:5 clob:1
+paddb_sat_un: dest:x src1:x src2:x len:5 clob:1
+
+paddw_sat: dest:x src1:x src2:x len:5 clob:1
+paddw_sat_un: dest:x src1:x src2:x len:5 clob:1
+
+psubb_sat: dest:x src1:x src2:x len:5 clob:1
+psubb_sat_un: dest:x src1:x src2:x len:5 clob:1
+
+psubw_sat: dest:x src1:x src2:x len:5 clob:1
+psubw_sat_un: dest:x src1:x src2:x len:5 clob:1
+
+pmulw: dest:x src1:x src2:x len:5 clob:1
+pmuld: dest:x src1:x src2:x len:6 clob:1
+pmulq: dest:x src1:x src2:x len:5 clob:1
+
+pmul_high_un: dest:x src1:x src2:x len:5 clob:1
+pmul_high: dest:x src1:x src2:x len:5 clob:1
+
+pshrw: dest:x src1:x len:6 clob:1
+pshrw_reg: dest:x src1:x src2:x len:5 clob:1
+
+psarw: dest:x src1:x len:6 clob:1
+psarw_reg: dest:x src1:x src2:x len:5 clob:1
+
+pshlw: dest:x src1:x len:6 clob:1
+pshlw_reg: dest:x src1:x src2:x len:5 clob:1
+
+pshrd: dest:x src1:x len:6 clob:1
+pshrd_reg: dest:x src1:x src2:x len:5 clob:1
+
+psard: dest:x src1:x len:6 clob:1
+psard_reg: dest:x src1:x src2:x len:5 clob:1
+
+pshld: dest:x src1:x len:6 clob:1
+pshld_reg: dest:x src1:x src2:x len:5 clob:1
+
+pshrq: dest:x src1:x len:6 clob:1
+pshrq_reg: dest:x src1:x src2:x len:5 clob:1
+
+pshlq: dest:x src1:x len:6 clob:1
+pshlq_reg: dest:x src1:x src2:x len:5 clob:1
+
+xmove: dest:x src1:x len:5
+xzero: dest:x len:5
+
+iconv_to_x: dest:x src1:i len:5
+extract_i4: dest:i src1:x len:5
+
+extract_i8: dest:i src1:x len:9
+
+extract_i2: dest:i src1:x len:13
+extract_u2: dest:i src1:x len:13
+extract_i1: dest:i src1:x len:13
+extract_u1: dest:i src1:x len:13
+extract_r8: dest:f src1:x len:5 
+
+iconv_to_r8_raw: dest:f src1:i len:10
+
+insert_i2: dest:x src1:x src2:i len:6 clob:1
+
+extractx_u2: dest:i src1:x len:6
+insertx_u1_slow: dest:x src1:i src2:i len:18 clob:x
+
+insertx_i4_slow: dest:x src1:x src2:i len:16 clob:x
+insertx_i8_slow: dest:x src1:x src2:i len:13
+insertx_r4_slow: dest:x src1:x src2:f len:24
+insertx_r8_slow: dest:x src1:x src2:f len:24
+
+loadx_membase: dest:x src1:b len:9
+storex_membase: dest:b src1:x len:9
+storex_membase_reg: dest:b src1:x len:9
+
+loadx_aligned_membase: dest:x src1:b len:7
+storex_aligned_membase_reg: dest:b src1:x len:7
+storex_nta_membase_reg: dest:b src1:x len:7
+
+fconv_to_r8_x: dest:x src1:f len:4 
+xconv_r8_to_i4: dest:y src1:x len:7
+
+prefetch_membase: src1:b len:4
+
+expand_i2: dest:x src1:i len:18
+expand_i4: dest:x src1:i len:11
+expand_i8: dest:x src1:i len:11
+expand_r4: dest:x src1:f len:16
+expand_r8: dest:x src1:f len:13
+
+liverange_start: len:0
+liverange_end: len:0

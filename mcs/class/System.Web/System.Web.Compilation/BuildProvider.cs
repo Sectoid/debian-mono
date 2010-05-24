@@ -35,6 +35,7 @@ using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Reflection;
@@ -42,15 +43,29 @@ using System.Web.Configuration;
 using System.Web.Hosting;
 using System.Web.Util;
 
-namespace System.Web.Compilation {
-
-	public abstract class BuildProvider {
-		string virtual_path;
+namespace System.Web.Compilation
+{
+	public abstract class BuildProvider
+	{
 		ArrayList ref_assemblies;
 		
 		ICollection vpath_deps;
-		VirtualPath vpath;
+		CompilationSection compilationSection;
 
+		VirtualPath vpath;
+		
+		CompilationSection CompilationConfig {
+			get {
+				if (compilationSection == null)
+					compilationSection = WebConfigurationManager.GetWebApplicationSection ("system.web/compilation") as CompilationSection;
+				return compilationSection;
+			}
+		}
+		
+		internal virtual string LanguageName {
+			get { return CompilationConfig.DefaultLanguage; }
+		}
+		
 		protected BuildProvider()
 		{
 			ref_assemblies = new ArrayList ();
@@ -64,6 +79,11 @@ namespace System.Web.Compilation {
 		internal virtual void GenerateCode ()
 		{
 		}
+
+		internal virtual IDictionary <string, bool> ExtractDependencies ()
+		{
+			return null;
+		}
 		
 		public virtual void GenerateCode (AssemblyBuilder assemblyBuilder)
 		{
@@ -76,9 +96,7 @@ namespace System.Web.Compilation {
 
 		protected CompilerType GetDefaultCompilerType ()
 		{
-			CompilationSection config;
-			config = (CompilationSection) WebConfigurationManager.GetWebApplicationSection ("system.web/compilation");
-			return BuildManager.GetDefaultCompilerTypeForLanguage (config.DefaultLanguage, config);
+			return BuildManager.GetDefaultCompilerTypeForLanguage (CompilationConfig.DefaultLanguage, CompilationConfig);
 		}
 		
 		protected CompilerType GetDefaultCompilerTypeForLanguage (string language)

@@ -4,7 +4,7 @@
 // Authors:
 //	Marek Habersack <mhabersack@novell.com>
 //
-// (C) 2007 Novell, Inc
+// Copyright (C) 2007-2009 Novell, Inc
 //
 
 //
@@ -33,12 +33,13 @@ using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Data;
+using System.Data.Design;
 using System.IO;
 using System.Reflection;
 using System.Web;
 
 namespace System.Web.Compilation {
-	[BuildProviderAppliesTo (BuildProviderAppliesTo.Web|BuildProviderAppliesTo.Code)]
+	[BuildProviderAppliesTo (BuildProviderAppliesTo.Code)]
 	sealed class XsdBuildProvider : BuildProvider {
 		public XsdBuildProvider()
 		{
@@ -51,18 +52,14 @@ namespace System.Web.Compilation {
 			unit.Namespaces.Add (dataSetCode);
 			
 			string path = HttpContext.Current.Request.MapPath (VirtualPath);
-			
-			DataSet ds = new DataSet ();
-			ds.ReadXmlSchema (path);
+			TextReader tr = new StreamReader (path);
 			
 			CodeDomProvider provider = assemblyBuilder.CodeDomProvider;
 			if (provider == null)
 				throw new HttpException ("Assembly builder has no code provider");
-			
-			ICodeGenerator generator = provider.CreateGenerator ();
-			if (generator == null)
-				throw new HttpException ("Could not create a code generator");
-			TypedDataSetGenerator.Generate (ds, dataSetCode, generator);
+
+			System.Data.Design.TypedDataSetGenerator.Generate (tr.ReadToEnd (), unit, dataSetCode, provider);
+
 			assemblyBuilder.AddCodeCompileUnit (unit);
 		}
 	}

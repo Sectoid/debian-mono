@@ -27,18 +27,24 @@
 //
 using System;
 using System.Collections.Generic;
-using System.IdentityModel.Selectors;
-using System.IdentityModel.Tokens;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
 using System.ServiceModel.Security;
+#if !NET_2_1
+using System.IdentityModel.Selectors;
+using System.IdentityModel.Tokens;
 using System.ServiceModel.Security.Tokens;
+#endif
 
 namespace System.ServiceModel.Description
 {
 	public class ClientCredentials
+#if NET_2_1
+		: IEndpointBehavior
+#else
 		: SecurityCredentialsManager, IEndpointBehavior
+#endif
 	{
 		public ClientCredentials ()
 		{
@@ -50,6 +56,9 @@ namespace System.ServiceModel.Description
 			throw new NotImplementedException ();
 		}
 
+		UserNamePasswordClientCredential userpass =
+			new UserNamePasswordClientCredential ();
+#if !NET_2_1
 		IssuedTokenClientCredential issued_token =
 			new IssuedTokenClientCredential ();
 		HttpDigestClientCredential digest =
@@ -58,8 +67,6 @@ namespace System.ServiceModel.Description
 			new X509CertificateInitiatorClientCredential ();
 		X509CertificateRecipientClientCredential recipient =
 			new X509CertificateRecipientClientCredential ();
-		UserNamePasswordClientCredential userpass =
-			new UserNamePasswordClientCredential ();
 		WindowsClientCredential windows =
 			new WindowsClientCredential ();
 		PeerCredential peer = new PeerCredential ();
@@ -90,12 +97,13 @@ namespace System.ServiceModel.Description
 			set { support_interactive = value; }
 		}
 
-		public UserNamePasswordClientCredential UserName {
-			get { return userpass; }
-		}
-
 		public WindowsClientCredential Windows {
 			get { return windows; }
+		}
+#endif
+
+		public UserNamePasswordClientCredential UserName {
+			get { return userpass; }
 		}
 
 		public ClientCredentials Clone ()
@@ -111,6 +119,7 @@ namespace System.ServiceModel.Description
 			return new ClientCredentials (this);
 		}
 
+#if !NET_2_1
 		public override SecurityTokenManager CreateSecurityTokenManager ()
 		{
 			return new ClientCredentialsSecurityTokenManager (this);
@@ -124,7 +133,14 @@ namespace System.ServiceModel.Description
 			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
+		void IEndpointBehavior.ApplyDispatchBehavior (ServiceEndpoint endpoint,
+			EndpointDispatcher dispatcher)
+		{
+			// documented as to have no effect.
+		}
+#endif
+
+#if !NET_2_1 || MONOTOUCH
 		void IEndpointBehavior.AddBindingParameters (ServiceEndpoint endpoint,
 			BindingParameterCollection parameters)
 		{
@@ -132,23 +148,21 @@ namespace System.ServiceModel.Description
 		}
 
 		[MonoTODO]
-		void IEndpointBehavior.ApplyDispatchBehavior (ServiceEndpoint endpoint,
-			EndpointDispatcher dispatcher)
-		{
-			throw new NotImplementedException ();
-		}
-
-		[MonoTODO]
-		void IEndpointBehavior.ApplyClientBehavior (
+		public virtual void ApplyClientBehavior (
 			ServiceEndpoint endpoint, ClientRuntime behavior)
 		{
-			//throw new NotImplementedException ();
+			if (endpoint == null)
+				throw new ArgumentNullException ("endpoint");
+			if (behavior == null)
+				throw new ArgumentNullException ("behavior");
+
+			// FIXME: apply to endpoint when there is not security binding element.
 		}
 
-		[MonoTODO]
 		void IEndpointBehavior.Validate (ServiceEndpoint endpoint)
 		{
-			throw new NotImplementedException ();
+			// documented as reserved for future use.
 		}
+#endif
 	}
 }

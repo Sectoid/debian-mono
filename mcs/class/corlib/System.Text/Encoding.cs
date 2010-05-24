@@ -477,12 +477,13 @@ public abstract class Encoding
 			case UnicodeEncoding.BIG_UNICODE_CODE_PAGE:
 				return BigEndianUnicode;
 
+#if !NET_2_1 || MONOTOUCH
 			case Latin1Encoding.ISOLATIN_CODE_PAGE:
 				return ISOLatin1;
-
+#endif
 			default: break;
 		}
-
+#if !NET_2_1 || MONOTOUCH
 		// Try to obtain a code page handler from the I18N handler.
 		Encoding enc = (Encoding)(InvokeI18N ("GetEncoding", codepage));
 		if (enc != null) {
@@ -516,7 +517,7 @@ public abstract class Encoding
 #endif
 			return enc;
 		}
-
+#endif // !NET_2_1
 		// We have no idea how to handle this code page.
 		throw new NotSupportedException
 			(String.Format ("CodePage {0} not supported", codepage.ToString ()));
@@ -532,6 +533,8 @@ public abstract class Encoding
 		e.is_readonly = false;
 		return e;
 	}
+
+#if !NET_2_1 || MONOTOUCH
 
 	public static Encoding GetEncoding (int codepage,
 		EncoderFallback encoderFallback, DecoderFallback decoderFallback)
@@ -562,6 +565,8 @@ public abstract class Encoding
 		e.decoder_fallback = decoderFallback;
 		return e;
 	}
+
+#endif // !NET_2_1
 
 	static EncodingInfo [] encoding_infos;
 
@@ -600,6 +605,7 @@ public abstract class Encoding
 		return encoding_infos;
 	}
 
+#if !NET_2_1 || MONOTOUCH
 	[ComVisible (false)]
 	public bool IsAlwaysNormalized ()
 	{
@@ -612,6 +618,8 @@ public abstract class Encoding
 		// umm, ASCIIEncoding should have overriden this method, no?
 		return form == NormalizationForm.FormC && this is ASCIIEncoding;
 	}
+#endif // NET_2_1
+
 #endif
 
 	// Table of builtin web encoding names and the corresponding code pages.
@@ -626,7 +634,7 @@ public abstract class Encoding
 			"utf_7", "csunicode11utf7", "unicode_1_1_utf_7",
 			"unicode_2_0_utf_7", "x_unicode_1_1_utf_7",
 			"x_unicode_2_0_utf_7",
-			
+
 			UTF8Encoding.UTF8_CODE_PAGE,
 			"utf_8", "unicode_1_1_utf_8", "unicode_2_0_utf_8",
 			"x_unicode_1_1_utf_8", "x_unicode_2_0_utf_8",
@@ -637,7 +645,6 @@ public abstract class Encoding
 
 			UnicodeEncoding.BIG_UNICODE_CODE_PAGE,
 			"unicodefffe", "utf_16be",
-
 #if NET_2_0
 			UTF32Encoding.UTF32_CODE_PAGE,
 			"utf_32", "UTF_32LE", "ucs_4",
@@ -646,8 +653,10 @@ public abstract class Encoding
 			"UTF_32BE",
 #endif
 
+#if !NET_2_1 || MONOTOUCH
 			Latin1Encoding.ISOLATIN_CODE_PAGE,
 			"iso_8859_1", "latin1"
+#endif // !NET_2_1
 		};
 
 	// Get an encoding object for a specific web encoding name.
@@ -673,7 +682,7 @@ public abstract class Encoding
 			if (converted == ((string)encodings [i]))
 				return GetEncoding (code);
 		}
-
+#if !NET_2_1 || MONOTOUCH
 		// Try to obtain a web encoding handler from the I18N handler.
 		Encoding enc = (Encoding)(InvokeI18N ("GetEncoding", name));
 		if (enc != null) {
@@ -697,7 +706,7 @@ public abstract class Encoding
 		if (type != null) {
 			return (Encoding)(Activator.CreateInstance (type));
 		}
-
+#endif
 		// We have no idea how to handle this encoding name.
 		throw new ArgumentException (String.Format ("Encoding name '{0}' not "
 			+ "supported", name), "name");
@@ -915,17 +924,27 @@ public abstract class Encoding
 								case 3: code_page = UTF8Encoding.UTF8_CODE_PAGE; break;
 								case 4: code_page = UnicodeEncoding.UNICODE_CODE_PAGE; break;
 								case 5: code_page = UnicodeEncoding.BIG_UNICODE_CODE_PAGE; break;
+#if !NET_2_1 || MONOTOUCH
 								case 6: code_page = Latin1Encoding.ISOLATIN_CODE_PAGE; break;
+#endif
 								}
 								defaultEncoding = GetEncoding (code_page);
 							}
 						} catch (NotSupportedException) {
+#if NET_2_1 && !MONOTOUCH
+							defaultEncoding = UTF8;
+#else
 							// code_page is not supported on underlying platform
 							defaultEncoding = UTF8Unmarked;
+#endif
 						} catch (ArgumentException) {
 							// code_page_name is not a valid code page, or is 
 							// not supported by underlying OS
+#if NET_2_1 && !MONOTOUCH
+							defaultEncoding = UTF8;
+#else
 							defaultEncoding = UTF8Unmarked;
+#endif
 						}
 #if NET_2_0
 						defaultEncoding.is_readonly = true;
@@ -937,6 +956,8 @@ public abstract class Encoding
 			return defaultEncoding;
 		}
 	}
+
+#if !NET_2_1 || MONOTOUCH
 
 	// Get the ISO Latin1 encoding object.
 	private static Encoding ISOLatin1
@@ -954,6 +975,8 @@ public abstract class Encoding
 			return isoLatin1Encoding;
 		}
 	}
+
+#endif
 
 	// Get the standard UTF-7 encoding object.
 #if ECMA_COMPAT

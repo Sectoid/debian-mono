@@ -12,13 +12,20 @@
 	* UriSection.cs:
 	* IdnElement.cs: new files that parse <uri> and subelements.
 
+2009-06-05 Marek Safar <marek.safar@gmail.com>
+
+	* DictionarySectionHandler.cs, NameValueSectionHandler.cs,
+	NameValueFileSectionHandler.cs, SingleTagSectionHandler.cs,
+	IConfigurationSectionHandler.cs, IgnoreSectionHandler.cs: Always
+	build IConfigurationSectionHandler.
+
 2009-05-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* CustomizableFileSettingsProvider.cs: make sure 'values' is
 	initialized in Reset(). Fixes bug #436592.
 
 2009-04-03  Marek Habersack  <mhabersack@novell.com>
-  
+
 	* CustomizableFileSettingsProvider.cs: added a way for System.Web
 	to specify path to the current Web.config. Fixes bug #491531
 

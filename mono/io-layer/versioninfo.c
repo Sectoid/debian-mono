@@ -11,7 +11,6 @@
 #include <glib.h>
 #include <string.h>
 #include <pthread.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -24,12 +23,15 @@
 #include <mono/io-layer/io-portability.h>
 #include <mono/io-layer/error.h>
 #include <mono/utils/strenc.h>
+#include <mono/utils/mono-mmap.h>
 
-#undef DEBUG
+#define LOGDEBUG(...)  
+//define LOGDEBUG(...) g_message(__VA_ARGS__)
 
 #define ALIGN32(ptr) ptr = (gpointer)((char *)ptr + 3); ptr = (gpointer)((char *)ptr - ((gsize)ptr & 3));
 
-static WapiImageSectionHeader *get_enclosing_section_header (guint32 rva, WapiImageNTHeaders32 *nt_headers)
+static WapiImageSectionHeader *
+get_enclosing_section_header (guint32 rva, WapiImageNTHeaders32 *nt_headers)
 {
 	WapiImageSectionHeader *section = _WAPI_IMAGE_FIRST_SECTION32 (nt_headers);
 	guint32 i;
@@ -52,8 +54,8 @@ static WapiImageSectionHeader *get_enclosing_section_header (guint32 rva, WapiIm
 /* This works for both 32bit and 64bit files, as the differences are
  * all after the section header block
  */
-static gpointer get_ptr_from_rva (guint32 rva, WapiImageNTHeaders32 *ntheaders,
-				  gpointer file_map)
+static gpointer
+get_ptr_from_rva (guint32 rva, WapiImageNTHeaders32 *ntheaders, gpointer file_map)
 {
 	WapiImageSectionHeader *section_header;
 	guint32 delta;
@@ -69,12 +71,13 @@ static gpointer get_ptr_from_rva (guint32 rva, WapiImageNTHeaders32 *ntheaders,
 	return((guint8 *)file_map + rva - delta);
 }
 
-static gpointer scan_resource_dir (WapiImageResourceDirectory *root,
-				   WapiImageNTHeaders32 *nt_headers,
-				   gpointer file_map,
-				   WapiImageResourceDirectoryEntry *entry,
-				   int level, guint32 res_id, guint32 lang_id,
-				   guint32 *size)
+static gpointer
+scan_resource_dir (WapiImageResourceDirectory *root,
+		   WapiImageNTHeaders32 *nt_headers,
+		   gpointer file_map,
+		   WapiImageResourceDirectoryEntry *entry,
+		   int level, guint32 res_id, guint32 lang_id,
+		   guint32 *size)
 {
 	WapiImageResourceDirectoryEntry swapped_entry;
 	gboolean is_string, is_dir;
@@ -143,9 +146,10 @@ static gpointer scan_resource_dir (WapiImageResourceDirectory *root,
 	}
 }
 
-static gpointer find_pe_file_resources32 (gpointer file_map, guint32 map_size,
-					  guint32 res_id, guint32 lang_id,
-					  guint32 *size)
+static gpointer
+find_pe_file_resources32 (gpointer file_map, guint32 map_size,
+			  guint32 res_id, guint32 lang_id,
+			  guint32 *size)
 {
 	WapiImageDosHeader *dos_header;
 	WapiImageNTHeaders32 *nt_headers;
@@ -156,19 +160,14 @@ static gpointer find_pe_file_resources32 (gpointer file_map, guint32 map_size,
 
 	dos_header = (WapiImageDosHeader *)file_map;
 	if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
-#ifdef DEBUG
-		g_message ("%s: Bad dos signature 0x%x", __func__,
-			   dos_header->e_magic);
-#endif
+		LOGDEBUG ("%s: Bad dos signature 0x%x", __func__, dos_header->e_magic);
 
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
 	}
 	
 	if (map_size < sizeof(WapiImageNTHeaders32) + GUINT32_FROM_LE (dos_header->e_lfanew)) {
-#ifdef DEBUG
-		g_message ("%s: File is too small: %d", __func__, map_size);
-#endif
+		LOGDEBUG ("%s: File is too small: %d", __func__, map_size);
 
 		SetLastError (ERROR_BAD_LENGTH);
 		return(NULL);
@@ -176,10 +175,7 @@ static gpointer find_pe_file_resources32 (gpointer file_map, guint32 map_size,
 	
 	nt_headers = (WapiImageNTHeaders32 *)((guint8 *)file_map + GUINT32_FROM_LE (dos_header->e_lfanew));
 	if (nt_headers->Signature != IMAGE_NT_SIGNATURE) {
-#ifdef DEBUG
-		g_message ("%s: Bad NT signature 0x%x", __func__,
-			   nt_headers->Signature);
-#endif
+		LOGDEBUG ("%s: Bad NT signature 0x%x", __func__, nt_headers->Signature);
 
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
@@ -193,18 +189,16 @@ static gpointer find_pe_file_resources32 (gpointer file_map, guint32 map_size,
 	}
 
 	if (resource_rva == 0) {
-#ifdef DEBUG
-		g_message ("%s: No resources in file!", __func__);
-#endif
+		LOGDEBUG ("%s: No resources in file!", __func__);
+
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
 	}
 	
 	resource_dir = (WapiImageResourceDirectory *)get_ptr_from_rva (resource_rva, (WapiImageNTHeaders32 *)nt_headers, file_map);
 	if (resource_dir == NULL) {
-#ifdef DEBUG
-		g_message ("%s: Can't find resource directory", __func__);
-#endif
+		LOGDEBUG ("%s: Can't find resource directory", __func__);
+
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
 	}
@@ -226,9 +220,10 @@ static gpointer find_pe_file_resources32 (gpointer file_map, guint32 map_size,
 	return(NULL);
 }
 
-static gpointer find_pe_file_resources64 (gpointer file_map, guint32 map_size,
-					  guint32 res_id, guint32 lang_id,
-					  guint32 *size)
+static gpointer
+find_pe_file_resources64 (gpointer file_map, guint32 map_size,
+			  guint32 res_id, guint32 lang_id,
+			  guint32 *size)
 {
 	WapiImageDosHeader *dos_header;
 	WapiImageNTHeaders64 *nt_headers;
@@ -239,19 +234,14 @@ static gpointer find_pe_file_resources64 (gpointer file_map, guint32 map_size,
 
 	dos_header = (WapiImageDosHeader *)file_map;
 	if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
-#ifdef DEBUG
-		g_message ("%s: Bad dos signature 0x%x", __func__,
-			   dos_header->e_magic);
-#endif
+		LOGDEBUG ("%s: Bad dos signature 0x%x", __func__, dos_header->e_magic);
 
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
 	}
 	
 	if (map_size < sizeof(WapiImageNTHeaders64) + GUINT32_FROM_LE (dos_header->e_lfanew)) {
-#ifdef DEBUG
-		g_message ("%s: File is too small: %d", __func__, map_size);
-#endif
+		LOGDEBUG ("%s: File is too small: %d", __func__, map_size);
 
 		SetLastError (ERROR_BAD_LENGTH);
 		return(NULL);
@@ -259,10 +249,8 @@ static gpointer find_pe_file_resources64 (gpointer file_map, guint32 map_size,
 	
 	nt_headers = (WapiImageNTHeaders64 *)((guint8 *)file_map + GUINT32_FROM_LE (dos_header->e_lfanew));
 	if (nt_headers->Signature != IMAGE_NT_SIGNATURE) {
-#ifdef DEBUG
-		g_message ("%s: Bad NT signature 0x%x", __func__,
+		LOGDEBUG ("%s: Bad NT signature 0x%x", __func__,
 			   nt_headers->Signature);
-#endif
 
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
@@ -276,18 +264,16 @@ static gpointer find_pe_file_resources64 (gpointer file_map, guint32 map_size,
 	}
 
 	if (resource_rva == 0) {
-#ifdef DEBUG
-		g_message ("%s: No resources in file!", __func__);
-#endif
+		LOGDEBUG ("%s: No resources in file!", __func__);
+
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
 	}
 	
 	resource_dir = (WapiImageResourceDirectory *)get_ptr_from_rva (resource_rva, (WapiImageNTHeaders32 *)nt_headers, file_map);
 	if (resource_dir == NULL) {
-#ifdef DEBUG
-		g_message ("%s: Can't find resource directory", __func__);
-#endif
+		LOGDEBUG ("%s: Can't find resource directory", __func__);
+
 		SetLastError (ERROR_INVALID_DATA);
 		return(NULL);
 	}
@@ -309,9 +295,10 @@ static gpointer find_pe_file_resources64 (gpointer file_map, guint32 map_size,
 	return(NULL);
 }
 
-static gpointer find_pe_file_resources (gpointer file_map, guint32 map_size,
-					guint32 res_id, guint32 lang_id,
-					guint32 *size)
+static gpointer
+find_pe_file_resources (gpointer file_map, guint32 map_size,
+			guint32 res_id, guint32 lang_id,
+			guint32 *size)
 {
 	/* Figure this out when we support 64bit PE files */
 	if (1) {
@@ -323,7 +310,8 @@ static gpointer find_pe_file_resources (gpointer file_map, guint32 map_size,
 	}
 }
 
-static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
+static gpointer
+map_pe_file (gunichar2 *filename, gint32 *map_size, void **handle)
 {
 	gchar *filename_ext;
 	int fd;
@@ -337,9 +325,7 @@ static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
 
 	filename_ext = mono_unicode_to_external (filename);
 	if (filename_ext == NULL) {
-#ifdef DEBUG
-		g_message ("%s: unicode conversion returned NULL", __func__);
-#endif
+		LOGDEBUG ("%s: unicode conversion returned NULL", __func__);
 
 		SetLastError (ERROR_INVALID_NAME);
 		return(NULL);
@@ -347,10 +333,7 @@ static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
 	
 	fd = _wapi_open (filename_ext, O_RDONLY, 0);
 	if (fd == -1) {
-#ifdef DEBUG
-		g_message ("%s: Error opening file %s: %s", __func__,
-			   filename_ext, strerror (errno));
-#endif
+		LOGDEBUG ("%s: Error opening file %s: %s", __func__, filename_ext, strerror (errno));
 
 		SetLastError (_wapi_get_win32_file_error (errno));
 		g_free (filename_ext);
@@ -359,10 +342,7 @@ static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
 	}
 
 	if (fstat (fd, &statbuf) == -1) {
-#ifdef DEBUG
-		g_message ("%s: Error stat()ing file %s: %s", __func__,
-			   filename_ext, strerror (errno));
-#endif
+		LOGDEBUG ("%s: Error stat()ing file %s: %s", __func__, filename_ext, strerror (errno));
 
 		SetLastError (_wapi_get_win32_file_error (errno));
 		g_free (filename_ext);
@@ -370,13 +350,10 @@ static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
 		return(NULL);
 	}
 	*map_size = statbuf.st_size;
-
+	
 	/* Check basic file size */
 	if (statbuf.st_size < sizeof(WapiImageDosHeader)) {
-#ifdef DEBUG
-		g_message ("%s: File %s is too small: %lld", __func__,
-			   filename_ext, statbuf.st_size);
-#endif
+		LOGDEBUG ("%s: File %s is too small: %lld", __func__, filename_ext, statbuf.st_size);
 
 		SetLastError (ERROR_BAD_LENGTH);
 		g_free (filename_ext);
@@ -384,12 +361,9 @@ static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
 		return(NULL);
 	}
 	
-	file_map = mmap (NULL, statbuf.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (file_map == MAP_FAILED) {
-#ifdef DEBUG
-		g_message ("%s: Error mmap()int file %s: %s", __func__,
-			   filename_ext, strerror (errno));
-#endif
+	file_map = mono_file_map (statbuf.st_size, MONO_MMAP_READ | MONO_MMAP_PRIVATE, fd, 0, handle);
+	if (file_map == NULL) {
+		LOGDEBUG ("%s: Error mmap()int file %s: %s", __func__, filename_ext, strerror (errno));
 
 		SetLastError (_wapi_get_win32_file_error (errno));
 		g_free (filename_ext);
@@ -404,12 +378,14 @@ static gpointer map_pe_file (gunichar2 *filename, guint32 *map_size)
 	return(file_map);
 }
 
-static void unmap_pe_file (gpointer file_map, guint32 map_size)
+static void
+unmap_pe_file (gpointer file_map, void *handle)
 {
-	munmap (file_map, map_size);
+	mono_file_unmap (file_map, handle);
 }
 
-static guint32 unicode_chars (const gunichar2 *str)
+static guint32
+unicode_chars (const gunichar2 *str)
 {
 	guint32 len = 0;
 	
@@ -421,7 +397,8 @@ static guint32 unicode_chars (const gunichar2 *str)
 	} while(1);
 }
 
-static gboolean unicode_compare (const gunichar2 *str1, const gunichar2 *str2)
+static gboolean
+unicode_compare (const gunichar2 *str1, const gunichar2 *str2)
 {
 	while (*str1 && *str2) {
 		if (*str1 != *str2) {
@@ -437,7 +414,8 @@ static gboolean unicode_compare (const gunichar2 *str1, const gunichar2 *str2)
 /* compare a little-endian null-terminated utf16 string and a normal string.
  * Can be used only for ascii or latin1 chars.
  */
-static gboolean unicode_string_equals (const gunichar2 *str1, const gchar *str2)
+static gboolean
+unicode_string_equals (const gunichar2 *str1, const gchar *str2)
 {
 	while (*str1 && *str2) {
 		if (GUINT16_TO_LE (*str1) != *str2) {
@@ -461,8 +439,8 @@ typedef struct
 /* Returns a pointer to the value data, because there's no way to know
  * how big that data is (value_len is set to zero for most blocks :-( )
  */
-static gconstpointer get_versioninfo_block (gconstpointer data,
-					    version_data *block)
+static gconstpointer
+get_versioninfo_block (gconstpointer data, version_data *block)
 {
 	block->data_len = GUINT16_FROM_LE (*((guint16 *)data));
 	data = (char *)data + sizeof(guint16);
@@ -483,8 +461,8 @@ static gconstpointer get_versioninfo_block (gconstpointer data,
 	return(data);
 }
 
-static gconstpointer get_fixedfileinfo_block (gconstpointer data,
-					      version_data *block)
+static gconstpointer
+get_fixedfileinfo_block (gconstpointer data, version_data *block)
 {
 	gconstpointer data_ptr;
 	gint32 data_len; /* signed to guard against underflow */
@@ -494,33 +472,29 @@ static gconstpointer get_fixedfileinfo_block (gconstpointer data,
 	data_len = block->data_len;
 		
 	if (block->value_len != sizeof(WapiFixedFileInfo)) {
-#ifdef DEBUG
-		g_message ("%s: FIXEDFILEINFO size mismatch", __func__);
-#endif
+		LOGDEBUG ("%s: FIXEDFILEINFO size mismatch", __func__);
 		return(NULL);
 	}
 
 	if (!unicode_string_equals (block->key, "VS_VERSION_INFO")) {
-#ifdef DEBUG
-		g_message ("%s: VS_VERSION_INFO mismatch", __func__);
-#endif
+		LOGDEBUG ("%s: VS_VERSION_INFO mismatch", __func__);
+
 		return(NULL);
 	}
 
 	ffi = ((WapiFixedFileInfo *)data_ptr);
 	if ((ffi->dwSignature != VS_FFI_SIGNATURE) ||
 	    (ffi->dwStrucVersion != VS_FFI_STRUCVERSION)) {
-#ifdef DEBUG
-		g_message ("%s: FIXEDFILEINFO bad signature", __func__);
-#endif
+		LOGDEBUG ("%s: FIXEDFILEINFO bad signature", __func__);
+
 		return(NULL);
 	}
 
 	return(data_ptr);
 }
 
-static gconstpointer get_varfileinfo_block (gconstpointer data_ptr,
-					    version_data *block)
+static gconstpointer
+get_varfileinfo_block (gconstpointer data_ptr, version_data *block)
 {
 	/* data is pointing at a Var block
 	 */
@@ -529,11 +503,12 @@ static gconstpointer get_varfileinfo_block (gconstpointer data_ptr,
 	return(data_ptr);
 }
 
-static gconstpointer get_string_block (gconstpointer data_ptr,
-				       const gunichar2 *string_key,
-				       gpointer *string_value,
-				       guint32 *string_value_len,
-				       version_data *block)
+static gconstpointer
+get_string_block (gconstpointer data_ptr,
+		  const gunichar2 *string_key,
+		  gpointer *string_value,
+		  guint32 *string_value_len,
+		  version_data *block)
 {
 	guint16 data_len = block->data_len;
 	guint16 string_len = 28; /* Length of the StringTable block */
@@ -552,10 +527,8 @@ static gconstpointer get_string_block (gconstpointer data_ptr,
 			/* We must have hit padding, so give up
 			 * processing now
 			 */
-#ifdef DEBUG
-			g_message ("%s: Hit 0-length block, giving up",
-				   __func__);
-#endif
+			LOGDEBUG ("%s: Hit 0-length block, giving up", __func__);
+
 			return(NULL);
 		}
 		
@@ -583,12 +556,13 @@ static gconstpointer get_string_block (gconstpointer data_ptr,
  *
  * If lang == NULL it means we're just stepping through this block
  */
-static gconstpointer get_stringtable_block (gconstpointer data_ptr,
-					    gchar *lang,
-					    const gunichar2 *string_key,
-					    gpointer *string_value,
-					    guint32 *string_value_len,
-					    version_data *block)
+static gconstpointer
+get_stringtable_block (gconstpointer data_ptr,
+		       gchar *lang,
+		       const gunichar2 *string_key,
+		       gpointer *string_value,
+		       guint32 *string_value_len,
+		       version_data *block)
 {
 	guint16 data_len = block->data_len;
 	guint16 string_len = 36; /* length of the StringFileInfo block */
@@ -609,10 +583,7 @@ static gconstpointer get_stringtable_block (gconstpointer data_ptr,
 			/* We must have hit padding, so give up
 			 * processing now
 			 */
-#ifdef DEBUG
-			g_message ("%s: Hit 0-length block, giving up",
-				   __func__);
-#endif
+			LOGDEBUG ("%s: Hit 0-length block, giving up", __func__);
 			return(NULL);
 		}
 		
@@ -620,9 +591,7 @@ static gconstpointer get_stringtable_block (gconstpointer data_ptr,
 
 		found_lang = g_utf16_to_utf8 (block->key, 8, NULL, NULL, NULL);
 		if (found_lang == NULL) {
-#ifdef DEBUG
-			g_message ("%s: Didn't find a valid language key, giving up", __func__);
-#endif
+			LOGDEBUG ("%s: Didn't find a valid language key, giving up", __func__);
 			return(NULL);
 		}
 		
@@ -645,9 +614,7 @@ static gconstpointer get_stringtable_block (gconstpointer data_ptr,
 		
 		if (data_ptr == NULL) {
 			/* Child block hit padding */
-#ifdef DEBUG
-			g_message ("%s: Child block hit 0-length block, giving up", __func__);
-#endif
+			LOGDEBUG ("%s: Child block hit 0-length block, giving up", __func__);
 			return(NULL);
 		}
 	}
@@ -656,8 +623,8 @@ static gconstpointer get_stringtable_block (gconstpointer data_ptr,
 }
 
 #if G_BYTE_ORDER == G_BIG_ENDIAN
-static gconstpointer big_up_string_block (gconstpointer data_ptr,
-					  version_data *block)
+static gconstpointer
+big_up_string_block (gconstpointer data_ptr, version_data *block)
 {
 	guint16 data_len = block->data_len;
 	guint16 string_len = 28; /* Length of the StringTable block */
@@ -677,10 +644,7 @@ static gconstpointer big_up_string_block (gconstpointer data_ptr,
 			/* We must have hit padding, so give up
 			 * processing now
 			 */
-#ifdef DEBUG
-			g_message ("%s: Hit 0-length block, giving up",
-				   __func__);
-#endif
+			LOGDEBUG ("%s: Hit 0-length block, giving up", __func__);
 			return(NULL);
 		}
 		
@@ -691,10 +655,7 @@ static gconstpointer big_up_string_block (gconstpointer data_ptr,
 				       "UTF-16BE", "UTF-16LE", NULL, NULL,
 				       NULL);
 		if (big_value == NULL) {
-#ifdef DEBUG
-			g_message ("%s: Didn't find a valid string, giving up",
-				   __func__);
-#endif
+			LOGDEBUG ("%s: Didn't find a valid string, giving up", __func__);
 			return(NULL);
 		}
 		
@@ -711,9 +672,7 @@ static gconstpointer big_up_string_block (gconstpointer data_ptr,
 				       "UTF-16BE", "UTF-16LE", NULL, NULL,
 				       NULL);
 		if (big_value == NULL) {
-#ifdef DEBUG
-			g_message ("%s: Didn't find a valid data string, giving up", __func__);
-#endif
+			LOGDEBUG ("%s: Didn't find a valid data string, giving up", __func__);
 			return(NULL);
 		}
 		memcpy ((gpointer)data_ptr, big_value,
@@ -731,8 +690,8 @@ static gconstpointer big_up_string_block (gconstpointer data_ptr,
  * because the data length does not include padding bytes, so it's not
  * possible to just return the start position + length
  */
-static gconstpointer big_up_stringtable_block (gconstpointer data_ptr,
-					       version_data *block)
+static gconstpointer
+big_up_stringtable_block (gconstpointer data_ptr, version_data *block)
 {
 	guint16 data_len = block->data_len;
 	guint16 string_len = 36; /* length of the StringFileInfo block */
@@ -752,10 +711,7 @@ static gconstpointer big_up_stringtable_block (gconstpointer data_ptr,
 			/* We must have hit padding, so give up
 			 * processing now
 			 */
-#ifdef DEBUG
-			g_message ("%s: Hit 0-length block, giving up",
-				   __func__);
-#endif
+			LOGDEBUG ("%s: Hit 0-length block, giving up", __func__);
 			return(NULL);
 		}
 		
@@ -764,10 +720,7 @@ static gconstpointer big_up_stringtable_block (gconstpointer data_ptr,
 		big_value = g_convert ((gchar *)block->key, 16, "UTF-16BE",
 				       "UTF-16LE", NULL, NULL, NULL);
 		if (big_value == NULL) {
-#ifdef DEBUG
-			g_message ("%s: Didn't find a valid string, giving up",
-				   __func__);
-#endif
+			LOGDEBUG ("%s: Didn't find a valid string, giving up", __func__);
 			return(NULL);
 		}
 		
@@ -778,9 +731,7 @@ static gconstpointer big_up_stringtable_block (gconstpointer data_ptr,
 		
 		if (data_ptr == NULL) {
 			/* Child block hit padding */
-#ifdef DEBUG
-			g_message ("%s: Child block hit 0-length block, giving up", __func__);
-#endif
+			LOGDEBUG ("%s: Child block hit 0-length block, giving up", __func__);
 			return(NULL);
 		}
 	}
@@ -791,7 +742,8 @@ static gconstpointer big_up_stringtable_block (gconstpointer data_ptr,
 /* Follows the data structures and turns all UTF-16 strings from the
  * LE found in the resource section into UTF-16BE
  */
-static void big_up (gconstpointer datablock, guint32 size)
+static void
+big_up (gconstpointer datablock, guint32 size)
 {
 	gconstpointer data_ptr;
 	gint32 data_len; /* signed to guard against underflow */
@@ -831,10 +783,7 @@ static void big_up (gconstpointer datablock, guint32 size)
 				/* We must have hit padding, so give
 				 * up processing now
 				 */
-#ifdef DEBUG
-				g_message ("%s: Hit 0-length block, giving up",
-					   __func__);
-#endif
+				LOGDEBUG ("%s: Hit 0-length block, giving up", __func__);
 				return;
 			}
 			
@@ -850,17 +799,13 @@ static void big_up (gconstpointer datablock, guint32 size)
 								     &block);
 			} else {
 				/* Bogus data */
-#ifdef DEBUG
-				g_message ("%s: Not a valid VERSIONINFO child block", __func__);
-#endif
+				LOGDEBUG ("%s: Not a valid VERSIONINFO child block", __func__);
 				return;
 			}
 			
 			if (data_ptr == NULL) {
 				/* Child block hit padding */
-#ifdef DEBUG
-				g_message ("%s: Child block hit 0-length block, giving up", __func__);
-#endif
+				LOGDEBUG ("%s: Child block hit 0-length block, giving up", __func__);
 				return;
 			}
 		}
@@ -868,8 +813,8 @@ static void big_up (gconstpointer datablock, guint32 size)
 }
 #endif
 
-gboolean VerQueryValue (gconstpointer datablock, const gunichar2 *subblock,
-			gpointer *buffer, guint32 *len)
+gboolean
+VerQueryValue (gconstpointer datablock, const gunichar2 *subblock, gpointer *buffer, guint32 *len)
 {
 	gchar *subblock_utf8, *lang_utf8 = NULL;
 	gboolean ret = FALSE;
@@ -932,9 +877,7 @@ gboolean VerQueryValue (gconstpointer datablock, const gunichar2 *subblock,
 					/* We must have hit padding,
 					 * so give up processing now
 					 */
-#ifdef DEBUG
-					g_message ("%s: Hit 0-length block, giving up", __func__);
-#endif
+					LOGDEBUG ("%s: Hit 0-length block, giving up", __func__);
 					goto done;
 				}
 				
@@ -963,17 +906,13 @@ gboolean VerQueryValue (gconstpointer datablock, const gunichar2 *subblock,
 					}
 				} else {
 					/* Bogus data */
-#ifdef DEBUG
-					g_message ("%s: Not a valid VERSIONINFO child block", __func__);
-#endif
+					LOGDEBUG ("%s: Not a valid VERSIONINFO child block", __func__);
 					goto done;
 				}
 				
 				if (data_ptr == NULL) {
 					/* Child block hit padding */
-#ifdef DEBUG
-					g_message ("%s: Child block hit 0-length block, giving up", __func__);
-#endif
+					LOGDEBUG ("%s: Child block hit 0-length block, giving up", __func__);
 					goto done;
 				}
 			}
@@ -989,23 +928,24 @@ gboolean VerQueryValue (gconstpointer datablock, const gunichar2 *subblock,
 	return(ret);
 }
 
-guint32 GetFileVersionInfoSize (gunichar2 *filename, guint32 *handle)
+guint32
+GetFileVersionInfoSize (gunichar2 *filename, guint32 *handle)
 {
 	gpointer file_map;
 	gpointer versioninfo;
-	guint32 map_size;
+	void *map_handle;
+	gint32 map_size;
 	guint32 size;
-	
+
 	/* This value is unused, but set to zero */
 	*handle = 0;
 	
-	file_map = map_pe_file (filename, &map_size);
+	file_map = map_pe_file (filename, &map_size, &map_handle);
 	if (file_map == NULL) {
 		return(0);
 	}
 	
-	versioninfo = find_pe_file_resources (file_map, map_size, RT_VERSION,
-					      0, &size);
+	versioninfo = find_pe_file_resources (file_map, map_size, RT_VERSION, 0, &size);
 	if (versioninfo == NULL) {
 		/* Didn't find the resource, so set the return value
 		 * to 0
@@ -1013,21 +953,22 @@ guint32 GetFileVersionInfoSize (gunichar2 *filename, guint32 *handle)
 		size = 0;
 	}
 
-	unmap_pe_file (file_map, map_size);
+	unmap_pe_file (file_map, map_handle);
 
 	return(size);
 }
 
-gboolean GetFileVersionInfo (gunichar2 *filename, guint32 handle G_GNUC_UNUSED,
-			     guint32 len, gpointer data)
+gboolean
+GetFileVersionInfo (gunichar2 *filename, guint32 handle G_GNUC_UNUSED, guint32 len, gpointer data)
 {
 	gpointer file_map;
 	gpointer versioninfo;
-	guint32 map_size;
+	void *map_handle;
+	gint32 map_size;
 	guint32 size;
 	gboolean ret = FALSE;
 	
-	file_map = map_pe_file (filename, &map_size);
+	file_map = map_pe_file (filename, &map_size, &map_handle);
 	if (file_map == NULL) {
 		return(FALSE);
 	}
@@ -1048,13 +989,13 @@ gboolean GetFileVersionInfo (gunichar2 *filename, guint32 handle G_GNUC_UNUSED,
 #endif
 	}
 
-	unmap_pe_file (file_map, map_size);
+	unmap_pe_file (file_map, map_handle);
 	
 	return(ret);
 }
 
-static guint32 copy_lang (gunichar2 *lang_out, guint32 lang_len,
-			  const gchar *text)
+static guint32
+copy_lang (gunichar2 *lang_out, guint32 lang_len, const gchar *text)
 {
 	gunichar2 *unitext;
 	int chars = strlen (text);
@@ -1078,7 +1019,8 @@ static guint32 copy_lang (gunichar2 *lang_out, guint32 lang_len,
 	return(ret);
 }
 
-guint32 VerLanguageName (guint32 lang, gunichar2 *lang_out, guint32 lang_len)
+guint32
+VerLanguageName (guint32 lang, gunichar2 *lang_out, guint32 lang_len)
 {
 	int primary, secondary;
 	

@@ -29,37 +29,82 @@
 //
 using System;
 using System.Reflection;
+using System.Collections;
 
 namespace Mono.Messaging 
 {
+	/// <summary>
+	/// The main entry point for System.Messaging to get a handle on the 
+	/// messaging implementation.  It will maintain a single instance of the 
+	/// IMessagingProvider (i.e. a singleton) that will be shared between
+	/// threads, therefore any implementation of the IMessagingProvider must
+	/// be thread safe.
+	/// </summary>
 	public class MessagingProviderLocator 
 	{
-		private static IMessagingProvider provider = null;
-		private static readonly object syncObj = new object();
 		public static readonly TimeSpan InfiniteTimeout = TimeSpan.MaxValue;
-	
+		private static readonly MessagingProviderLocator instance = new MessagingProviderLocator();
+		private readonly IMessagingProvider provider;
+		private const string MESSAGING_PROVIDER_KEY = "MONO_MESSAGING_PROVIDER";
+		private const string RABBIT_MQ_CLASS_NAME = "Mono.Messaging.RabbitMQ.RabbitMQMessagingProvider";
+		private const string RABBIT_MQ_FULL_CLASS_NAME = RABBIT_MQ_CLASS_NAME + ",Mono.Messaging.RabbitMQ";
+		private const string RABBIT_MQ_ALIAS = "rabbitmq";
+		
+		private MessagingProviderLocator () {
+			string providerName = GetProviderClassName ();
+			if (providerName == null || providerName == "")
+				providerName = RABBIT_MQ_ALIAS;
+			provider = CreateProvider (providerName);
+		}
+		
+		public static MessagingProviderLocator Instance { 
+			get { return instance; }
+		}
+		
 		public static IMessagingProvider GetProvider ()
 		{
-			//Assembly a = Assembly.Load("Mono.Messaging.RabbitMQ.dll");
-			//Type[] ts = a.GetTypes ();
+			return Instance.provider;
+		}
+		
+#if NET_2_0 || BOOTSTRAP_NET_2_0 || NET_3_0 || NET_2_1 || NET_3_0 || NET_3_5 || NET_4_0 || BOOTSTRAP_NET_4_0
+		private string GetProviderClassName ()
+		{
+			string className = System.Configuration.ConfigurationManager.AppSettings[MESSAGING_PROVIDER_KEY];
+			return className != null ? className : System.Environment.GetEnvironmentVariable(MESSAGING_PROVIDER_KEY);
+		}
+#else
+		private string GetProviderClassName ()
+		{
+			return System.Environment.GetEnvironmentVariable(MESSAGING_PROVIDER_KEY);
+		}
+#endif
+		
+		private IMessagingProvider CreateProvider (string className)
+		{
+			Type t = ResolveType (className);			
+			if (t == null)
+				throw new MonoMessagingException ("Can't find class: " + className);
 			
-			//foreach (type in ts)
-			//	Console.WriteLine (type.GetName ());
-			lock (syncObj) {
-				if (provider == null) {
-					Type t = Type.GetType ("Mono.Messaging.RabbitMQ.RabbitMQMessagingProvider, Mono.Messaging.RabbitMQ");
-					if (t == null)
-						throw new Exception ("Can't find class");
-					ConstructorInfo ci = t.GetConstructor (
-						BindingFlags.Public | BindingFlags.Instance, 
-								Type.DefaultBinder, new Type[0],
-								new ParameterModifier[0]);
-					if (ci == null)
-						throw new Exception ("Can't find constructor");
-					provider = (IMessagingProvider) ci.Invoke (new object[0]);
-				}
+			ConstructorInfo ci = t.GetConstructor (BindingFlags.Public | BindingFlags.Instance,
+			                                       Type.DefaultBinder,
+			                                       new Type[0],
+			                                       new ParameterModifier[0]);
+			if (ci == null)
+				throw new MonoMessagingException ("Can't find constructor");
+			
+			return (IMessagingProvider) ci.Invoke (new object[0]);
+		}
+
+		private Type ResolveType (string classNameOrAlias)
+		{
+			switch (classNameOrAlias) {
+			case RABBIT_MQ_ALIAS:
+			case RABBIT_MQ_FULL_CLASS_NAME:
+				Assembly a = Assembly.Load (Consts.AssemblyMono_Messaging_RabbitMQ);
+				return a.GetType (RABBIT_MQ_CLASS_NAME);
+			default:
+				throw new MonoMessagingException ("Unknown MessagingProvider class name or alias: " + classNameOrAlias);
 			}
-			return provider;
 		}
 	}
 }

@@ -37,6 +37,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Collections;
+using System.Reflection;
 using System.Security;
 
 #if NET_2_0
@@ -69,7 +70,7 @@ namespace System.Threading {
 		private int name_len; 
 		private ThreadState state = ThreadState.Unstarted;
 		private object abort_exc;
-		internal object abort_state;
+		private int abort_state_handle;
 		/* thread_id is only accessed from unmanaged code */
 		private Int64 thread_id;
 		
@@ -81,7 +82,9 @@ namespace System.Threading {
 		private UIntPtr static_data; /* GC-tracked */
 		private IntPtr jit_data;
 		private IntPtr lock_data;
-		Context current_appcontext;
+		/* current System.Runtime.Remoting.Contexts.Context instance
+		   keep as an object to avoid triggering its class constructor when not needed */
+		private object current_appcontext;
 		int stack_size;
 		object start_obj;
 		private IntPtr appdomain_refs;
@@ -94,20 +97,28 @@ namespace System.Threading {
 		private int serialized_culture_info_len;
 		private IntPtr serialized_ui_culture_info;
 		private int serialized_ui_culture_info_len;
-		private ExecutionContext _ec;
 		private bool thread_dump_requested;
 		private IntPtr end_stack;
 		private bool thread_interrupt_requested;
+#if NET_2_1
+		private byte apartment_state;
+#else
 		private byte apartment_state = (byte)ApartmentState.Unknown;
+#endif
 		volatile int critical_region_level;
 		private int small_id;
 		private IntPtr manage_callback;
 		private object pending_exception;
+		/* This is the ExecutionContext that will be set by
+		   start_wrapper() in the runtime. */
+		private ExecutionContext ec_to_set;
+
+		private IntPtr interrupt_on_stop;
+
 		/* 
 		 * These fields are used to avoid having to increment corlib versions
 		 * when a new field is added to the unmanaged MonoThread structure.
 		 */
-		private IntPtr unused2;
 		private IntPtr unused3;
 		private IntPtr unused4;
 		private IntPtr unused5;
@@ -119,7 +130,13 @@ namespace System.Threading {
 		[ThreadStatic] 
 		static object[] local_slots;
 
-		// can be both a ThreadSart and a ParameterizedThreadStart
+		/* The actual ExecutionContext of the thread.  It's
+		   ThreadStatic so that it's not shared between
+		   AppDomains. */
+		[ThreadStatic]
+		static ExecutionContext _ec;
+
+		// can be both a ThreadStart and a ParameterizedThreadStart
 		private MulticastDelegate threadstart;
 		//private string thread_name=null;
 
@@ -129,7 +146,6 @@ namespace System.Threading {
 #endif		
 		
 		private IPrincipal _principal;
-		internal NumberFormatter _numberFormatter;
 
 		public static Context CurrentContext {
 			[SecurityPermission (SecurityAction.LinkDemand, Infrastructure=true)]
@@ -138,6 +154,7 @@ namespace System.Threading {
 			}
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		public static IPrincipal CurrentPrincipal {
 			get {
 				IPrincipal p = null;
@@ -156,6 +173,7 @@ namespace System.Threading {
 				CurrentThread._principal = value;
 			}
 		}
+#endif
 
 		// Looks up the object associated with the current thread
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -176,6 +194,7 @@ namespace System.Threading {
 			}
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		// Stores a hash keyed by strings of LocalDataStoreSlot objects
 		static Hashtable datastorehash;
 		private static object datastore_lock = new object ();
@@ -248,25 +267,6 @@ namespace System.Threading {
 			slots [slot.slot] = data;
 		}
 
-		internal NumberFormatter AcquireNumberFormatter() {
-			NumberFormatter res = _numberFormatter;
-			_numberFormatter = null;
-			if (res == null)
-				return new NumberFormatter (this);
-			return res;
-		}
-
-		internal void ReleaseNumberFormatter (NumberFormatter formatter) {
-			_numberFormatter = formatter;
-		}
-
-		public static AppDomain GetDomain() {
-			return AppDomain.CurrentDomain;
-		}
-
-		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		public extern static int GetDomainID();
-
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal extern static void FreeLocalSlotValues (int slot, bool thread_local);
 
@@ -283,6 +283,13 @@ namespace System.Threading {
 				return(slot);
 			}
 		}
+#endif
+		public static AppDomain GetDomain() {
+			return AppDomain.CurrentDomain;
+		}
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		public extern static int GetDomainID();
 		
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern static void ResetAbort_internal();
@@ -296,22 +303,21 @@ namespace System.Threading {
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern static void Sleep_internal(int ms);
 
-		public static void Sleep(int millisecondsTimeout) {
-			if((millisecondsTimeout<0) && (millisecondsTimeout != Timeout.Infinite)) {
-				throw new ArgumentException("Negative timeout");
-			}
-			Sleep_internal(millisecondsTimeout);
+		public static void Sleep (int millisecondsTimeout)
+		{
+			if (millisecondsTimeout < Timeout.Infinite)
+				throw new ArgumentOutOfRangeException ("millisecondsTimeout", "Negative timeout");
+
+			Sleep_internal (millisecondsTimeout);
 		}
 
-		public static void Sleep(TimeSpan timeout) {
-			// LAMESPEC: says to throw ArgumentException too
-			int ms=Convert.ToInt32(timeout.TotalMilliseconds);
-			
-			if(ms < 0 || ms > Int32.MaxValue) {
-				throw new ArgumentOutOfRangeException("Timeout out of range");
-			}
+		public static void Sleep (TimeSpan timeout)
+		{
+			long ms = (long) timeout.TotalMilliseconds;
+			if (ms < Timeout.Infinite || ms > Int32.MaxValue)
+				throw new ArgumentOutOfRangeException ("timeout", "timeout out of range");
 
-			Sleep_internal(ms);
+			Sleep_internal ((int) ms);
 		}
 
 		// Returns the system thread handle
@@ -330,6 +336,7 @@ namespace System.Threading {
 			Thread_init ();
 		}
 
+#if !NET_2_1 || MONOTOUCH
 #if NET_2_0
 		[Obsolete ("Deprecated in favor of GetApartmentState, SetApartmentState and TrySetApartmentState.")]
 #endif
@@ -361,6 +368,7 @@ namespace System.Threading {
 #endif
 			}
 		}
+#endif // !NET_2_1
 
 		//[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		//private static extern int current_lcid ();
@@ -430,8 +438,7 @@ namespace System.Threading {
 						//
 						SetCachedCurrentCulture (culture);
 						in_currentculture = false;
-						if (_numberFormatter != null)
-							_numberFormatter.CurrentCulture = culture;
+						NumberFormatter.SetThreadCurrentCulture (culture);
 						return culture;
 					}
 				}
@@ -450,8 +457,7 @@ namespace System.Threading {
 					in_currentculture = false;
 				}
 
-				if (_numberFormatter != null)
-					_numberFormatter.CurrentCulture = culture;
+				NumberFormatter.SetThreadCurrentCulture (culture);
 				return culture;
 			}
 			
@@ -487,8 +493,7 @@ namespace System.Threading {
 				} finally {
 					in_currentculture = false;
 				}
-				if (_numberFormatter != null)
-					_numberFormatter.CurrentCulture = value;
+				NumberFormatter.SetThreadCurrentCulture (value);
 			}
 		}
 
@@ -643,6 +648,7 @@ namespace System.Threading {
 			}
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		public ThreadPriority Priority {
 			get {
 				return(ThreadPriority.Lowest);
@@ -652,6 +658,7 @@ namespace System.Threading {
 				// FIXME: Implement setter.
 			}
 		}
+#endif
 
 		public ThreadState ThreadState {
 			get {
@@ -668,12 +675,16 @@ namespace System.Threading {
 			Abort_internal (null);
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public void Abort (object stateInfo) 
 		{
 			Abort_internal (stateInfo);
 		}
-		
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		internal extern object GetAbortExceptionState ();
+
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern void Interrupt_internal ();
 		
@@ -682,6 +693,7 @@ namespace System.Threading {
 		{
 			Interrupt_internal ();
 		}
+#endif
 
 		// The current thread joins with 'this'. Set ms to 0 to block
 		// until this actually exits.
@@ -695,27 +707,29 @@ namespace System.Threading {
 
 		public bool Join(int millisecondsTimeout)
 		{
-			if (millisecondsTimeout != Timeout.Infinite && millisecondsTimeout < 0)
-				throw new ArgumentException ("Timeout less than zero", "millisecondsTimeout");
+			if (millisecondsTimeout < Timeout.Infinite)
+				throw new ArgumentOutOfRangeException ("millisecondsTimeout", "Timeout less than zero");
 
-			return Join_internal(millisecondsTimeout, system_thread_handle);
+			return Join_internal (millisecondsTimeout, system_thread_handle);
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		public bool Join(TimeSpan timeout)
 		{
-			// LAMESPEC: says to throw ArgumentException too
-			int ms=Convert.ToInt32(timeout.TotalMilliseconds);
-			
-			if(ms < 0 || ms > Int32.MaxValue) {
-				throw new ArgumentOutOfRangeException("timeout out of range");
-			}
-			return Join_internal(ms, system_thread_handle);
+			long ms = (long) timeout.TotalMilliseconds;
+			if (ms < Timeout.Infinite || ms > Int32.MaxValue)
+				throw new ArgumentOutOfRangeException ("timeout", "timeout out of range");
+
+			return Join_internal ((int) ms, system_thread_handle);
 		}
+#endif
 
 #if NET_1_1
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public extern static void MemoryBarrier ();
 #endif
+
+#if !NET_2_1 || MONOTOUCH
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern void Resume_internal();
 
@@ -727,6 +741,7 @@ namespace System.Threading {
 		{
 			Resume_internal ();
 		}
+#endif // !NET_2_1
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern static void SpinWait_nop ();
@@ -745,25 +760,68 @@ namespace System.Threading {
 			}
 		}
 
+#if NET_2_1 && !MONOTOUCH
+		private void StartSafe ()
+		{
+			try {
+				if (threadstart is ThreadStart) {
+					((ThreadStart) threadstart) ();
+				} else {
+					((ParameterizedThreadStart) threadstart) (start_obj);
+				}
+			} catch (ThreadAbortException) {
+				// do nothing
+			} catch (Exception ex) {
+				MoonlightUnhandledException (ex);
+			}
+		}
+
+		static MethodInfo moonlight_unhandled_exception = null;
+
+		static internal void MoonlightUnhandledException (Exception e)
+		{
+			try {
+				if (moonlight_unhandled_exception == null) {
+					var assembly = System.Reflection.Assembly.Load ("System.Windows, Version=2.0.5.0, Culture=Neutral, PublicKeyToken=7cec85d7bea7798e");
+					var application = assembly.GetType ("System.Windows.Application");
+					moonlight_unhandled_exception = application.GetMethod ("OnUnhandledException", 
+						System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+				}
+				moonlight_unhandled_exception.Invoke (null, new object [] { null, e });
+			}
+			catch {
+				try {
+					Console.WriteLine ("Unexpected exception while trying to report unhandled application exception: {0}", e);
+				} catch {
+				}
+			}
+		}
+#endif
+
 		public void Start() {
 			// propagate informations from the original thread to the new thread
 #if NET_2_0
 			if (!ExecutionContext.IsFlowSuppressed ())
-				_ec = ExecutionContext.Capture ();
+				ec_to_set = ExecutionContext.Capture ();
 #else
 			// before 2.0 this was only used for security (mostly CAS) so we
 			// do this only if the security manager is active
 			if (SecurityManager.SecurityEnabled)
-				_ec = ExecutionContext.Capture ();
+				ec_to_set = ExecutionContext.Capture ();
 #endif
 			if (CurrentThread._principal != null)
 				_principal = CurrentThread._principal;
 
 			// Thread_internal creates and starts the new thread, 
+#if NET_2_1 && !MONOTOUCH
+			if (Thread_internal((ThreadStart) StartSafe) == (IntPtr) 0)
+#else
 			if (Thread_internal(threadstart) == (IntPtr) 0)
+#endif
 				throw new SystemException ("Thread creation failed.");
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern void Suspend_internal();
 
@@ -775,6 +833,7 @@ namespace System.Threading {
 		{
 			Suspend_internal ();
 		}
+#endif // !NET_2_1
 
 		// Closes the system thread handle
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -784,8 +843,6 @@ namespace System.Threading {
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
 #endif
 		~Thread() {
-			// Free up the handle
-			if (system_thread_handle != (IntPtr) 0)
 				Thread_free_internal(system_thread_handle);
 		}
 
@@ -929,7 +986,6 @@ namespace System.Threading {
 		}
 
 		[MonoTODO ("limited to CompressedStack support")]
-		// FIXME: We share the _ec object between appdomains
 		public ExecutionContext ExecutionContext {
 			[ReliabilityContract (Consistency.WillNotCorruptState, Cer.MayFail)]
 			get {
@@ -975,7 +1031,8 @@ namespace System.Threading {
 		{
 			// Managed and native threads are currently bound together.
 		}
-		
+
+#if !NET_2_1 || MONOTOUCH
 		public ApartmentState GetApartmentState ()
 		{
 			return (ApartmentState)apartment_state;
@@ -1003,6 +1060,7 @@ namespace System.Threading {
 
 			return true;
 		}
+#endif // !NET_2_1
 		
 		[ComVisible (false)]
 		public override int GetHashCode ()
@@ -1025,6 +1083,7 @@ namespace System.Threading {
 		}
 #endif
 
+#if !NET_2_1 || MONOTOUCH
 		// NOTE: This method doesn't show in the class library status page because
 		// it cannot be "found" with the StrongNameIdentityPermission for ECMA key.
 		// But it's there!
@@ -1064,6 +1123,8 @@ namespace System.Threading {
 		{
 			ExecutionContext.SecurityContext.CompressedStack = stack;
 		}
+
+#endif
 
 #if NET_1_1
 		void _Thread.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)

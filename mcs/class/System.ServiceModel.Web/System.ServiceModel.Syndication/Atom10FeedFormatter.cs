@@ -106,9 +106,9 @@ namespace System.ServiceModel.Syndication
 
 		protected virtual SyndicationItem ReadItem (XmlReader reader, SyndicationFeed feed)
 		{
-			SyndicationItem item = feed.CreateItem ();
-			new Atom10ItemFormatter (item).ReadFrom (reader);
-			return item;
+			Atom10ItemFormatter formatter = new Atom10ItemFormatter ();
+			formatter.ReadFrom (reader);
+			return formatter.Item;
 		}
 
 		protected virtual IEnumerable<SyndicationItem> ReadItems (XmlReader reader, SyndicationFeed feed, out bool areAllItemsRead)
@@ -251,7 +251,7 @@ namespace System.ServiceModel.Syndication
 			reader.ReadEndElement ();
 		}
 
-		TextSyndicationContent ReadTextSyndicationContent (XmlReader reader)
+		internal static TextSyndicationContent ReadTextSyndicationContent (XmlReader reader)
 		{
 			TextSyndicationContentKind kind = TextSyndicationContentKind.Plaintext;
 			switch (reader.GetAttribute ("type")) {
@@ -267,7 +267,7 @@ namespace System.ServiceModel.Syndication
 			return t;
 		}
 
-		void ReadCategory (XmlReader reader, SyndicationCategory category)
+		internal void ReadCategory (XmlReader reader, SyndicationCategory category)
 		{
 			if (reader.MoveToFirstAttribute ()) {
 				do {
@@ -432,18 +432,8 @@ namespace System.ServiceModel.Syndication
 			writer.WriteEndElement ();
 
 			foreach (SyndicationCategory category in Feed.Categories)
-				if (category != null) {
-					writer.WriteStartElement ("category", AtomNamespace);
-					if (category.Name != null)
-						writer.WriteAttributeString ("term", category.Name);
-					if (category.Label != null)
-						writer.WriteAttributeString ("label", category.Label);
-					if (category.Scheme != null)
-						writer.WriteAttributeString ("scheme", category.Scheme);
-					WriteAttributeExtensions (writer, category, Version);
-					WriteElementExtensions (writer, category, Version);
-					writer.WriteEndElement ();
-				}
+				if (category != null)
+					WriteCategory (category, writer);
 
 			foreach (SyndicationPerson author in Feed.Authors)
 				if (author != null) {
@@ -496,8 +486,23 @@ namespace System.ServiceModel.Syndication
 
 			WriteItems (writer, Feed.Items, Feed.BaseUri);
 
+			WriteElementExtensions (writer, Feed, Version);
 			if (writeRoot)
 				writer.WriteEndElement ();
+		}
+
+		internal void WriteCategory (SyndicationCategory category, XmlWriter writer)
+		{
+			writer.WriteStartElement ("category", AtomNamespace);
+			if (category.Name != null)
+				writer.WriteAttributeString ("term", category.Name);
+			if (category.Label != null)
+				writer.WriteAttributeString ("label", category.Label);
+			if (category.Scheme != null)
+				writer.WriteAttributeString ("scheme", category.Scheme);
+			WriteAttributeExtensions (writer, category, Version);
+			WriteElementExtensions (writer, category, Version);
+			writer.WriteEndElement ();
 		}
 	}
 }

@@ -78,6 +78,10 @@ namespace Mono.Xml.Schema
 			get { return instance; }
 		}
 
+		protected XsdAnySimpleType ()
+		{
+		}
+
 #if NET_2_0
 		public override XmlTypeCode TypeCode {
 			get { return XmlTypeCode.AnyAtomicType; }
@@ -104,11 +108,12 @@ namespace Mono.Xml.Schema
 		}
 
 		public override Type ValueType {
-#if BUGGY_MS_COMPLIANT
-			get { return typeof (string); }
-#else
-			get { return typeof (object); }
-#endif
+			get {
+				if (XmlSchemaUtil.StrictMsCompliant)
+					return typeof (string);
+				else
+					return typeof (object);
+			}
 		}
 
 		public override XmlTokenizedType TokenizedType {
@@ -1527,7 +1532,7 @@ namespace Mono.Xml.Schema
 				throw new ArgumentNullException ("name table");
 			if (nsmgr == null)
 				throw new ArgumentNullException ("namespace manager");
-			XmlQualifiedName name = XmlQualifiedName.Parse (s, nsmgr);
+			XmlQualifiedName name = XmlQualifiedName.Parse (s, nsmgr, true);
 			nameTable.Add (name.Name);
 			nameTable.Add (name.Namespace);
 			return name;
@@ -1552,11 +1557,12 @@ namespace Mono.Xml.Schema
 		}
 
 		public override XmlTokenizedType TokenizedType {
-#if BUGGY_MS_COMPLIANT
-			get { return XmlTokenizedType.None; }
-#else
-			get { return XmlTokenizedType.CDATA; }
-#endif
+			get {
+				if (XmlSchemaUtil.StrictMsCompliant)
+					return XmlTokenizedType.None;
+				else
+					return XmlTokenizedType.CDATA;
+			}
 		}
 
 #if NET_2_0
