@@ -31,7 +31,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Xml;
 
@@ -61,7 +63,42 @@ namespace System.Runtime.Serialization.Json
 			if (atts.Length == 1)
 				return CreateTypeMap (type, null);
 
-			return null;
+			if (IsPrimitiveType (type))
+				return null;
+
+			return CreateDefaultTypeMap (type);
+		}
+
+		static bool IsPrimitiveType (Type type)
+		{
+			if (type.IsEnum)
+				return true;
+			if (Type.GetTypeCode (type) != TypeCode.Object)
+				return true; // FIXME: it is likely hacky
+			return false;
+		}
+
+		static TypeMap CreateDefaultTypeMap (Type type)
+		{
+			var l = new List<TypeMapMember> ();
+			foreach (var fi in type.GetFields ())
+				l.Add (new TypeMapField (fi, null));
+			foreach (var pi in type.GetProperties ())
+				if (pi.CanRead && pi.CanWrite)
+					l.Add (new TypeMapProperty (pi, null));
+			l.Sort ((x, y) => x.Order != y.Order ? x.Order - y.Order : String.Compare (x.Name, y.Name, StringComparison.Ordinal));
+			return new TypeMap (type, null, l.ToArray ());
+		}
+
+		static bool IsCollection (Type type)
+		{
+			if (type.GetInterface ("System.Collections.IList", false) != null)
+				return true;
+			if (type.GetInterface ("System.Collections.Generic.IList`1", false) != null)
+				return true;
+			if (type.GetInterface ("System.Collections.Generic.ICollection`1", false) != null)
+				return true;
+			return false;
 		}
 
 		static TypeMap CreateTypeMap (Type type, DataContractAttribute dca)
@@ -79,7 +116,7 @@ namespace System.Runtime.Serialization.Json
 					DataMemberAttribute dma = (DataMemberAttribute) atts [0];
 					members.Add (new TypeMapField (fi, dma));
 				} else {
-					if (fi.GetCustomAttributes (typeof (NonSerializedAttribute), false).Length > 0)
+					if (fi.GetCustomAttributes (typeof (IgnoreDataMemberAttribute), false).Length > 0)
 						continue;
 					members.Add (new TypeMapField (fi, null));
 				}
@@ -87,19 +124,23 @@ namespace System.Runtime.Serialization.Json
 
 			if (dca != null) {
 				foreach (PropertyInfo pi in type.GetProperties (BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)) {
-					if (pi.GetIndexParameters ().Length > 0)
-						continue;
-					if (!pi.CanRead || !pi.CanWrite)
-						throw new InvalidDataContractException (String.Format ("Property {0} must have both getter and setter", pi));
 					object [] atts = pi.GetCustomAttributes (typeof (DataMemberAttribute), true);
 					if (atts.Length == 0)
 						continue;
+					if (pi.GetIndexParameters ().Length > 0)
+						continue;
+					if (IsCollection (pi.PropertyType)) {
+						if (!pi.CanRead)
+							throw new InvalidDataContractException (String.Format ("Property {0} must have a getter", pi));
+					}
+					else if (!pi.CanRead || !pi.CanWrite)
+						throw new InvalidDataContractException (String.Format ("Non-collection property {0} must have both getter and setter", pi));
 					DataMemberAttribute dma = (DataMemberAttribute) atts [0];
 					members.Add (new TypeMapProperty (pi, dma));
 				}
 			}
 
-			members.Sort (delegate (TypeMapMember m1, TypeMapMember m2) { return m1.Order - m2.Order; });
+			members.Sort (delegate (TypeMapMember m1, TypeMapMember m2) { return m1.Order != m2.Order ? m1.Order - m2.Order : String.CompareOrdinal (m1.Name, m2.Name); });
 			return new TypeMap (type, dca == null ? null : dca.Name, members.ToArray ());
 		}
 
@@ -128,8 +169,7 @@ namespace System.Runtime.Serialization.Json
 		public object Deserialize (JsonSerializationReader jsr)
 		{
 			XmlReader reader = jsr.Reader;
-
-			object ret = Activator.CreateInstance (type, true);
+			object ret = FormatterServices.GetUninitializedObject (type);
 			Dictionary<TypeMapMember,bool> filled = new Dictionary<TypeMapMember,bool> ();
 
 			reader.ReadStartElement ();
@@ -169,10 +209,9 @@ namespace System.Runtime.Serialization.Json
 			get { return dma == null ? mi.Name : dma.Name ?? mi.Name; }
 		}
 
-		// FIXME: Fill 3.5 member in s.r.serialization.
-//		public bool EmitDefaultValue {
-//			get { return dma != null && dma.EmitDefaultValue; }
-//		}
+		public bool EmitDefaultValue {
+			get { return dma != null && dma.EmitDefaultValue; }
+		}
 
 		public bool IsRequired {
 			get { return dma != null && dma.IsRequired; }

@@ -36,48 +36,64 @@ using Mono.CodeGeneration;
 
 namespace System.ServiceModel
 {
-	internal class ClientProxyGenerator
+	internal class ClientProxyGenerator : ProxyGeneratorBase
 	{
-		public static Type CreateProxyType (ContractDescription cd)
+		public static Type CreateProxyType (Type contractInterface, ContractDescription cd, bool duplex)
 		{
 			string modname = "dummy";
+			Type crtype =
+#if !NET_2_1
+				duplex ? typeof (DuplexClientRuntimeChannel) :
+#endif
+				typeof (ClientRuntimeChannel);
 
 			// public class __clientproxy_MyContract : ClientRuntimeChannel, [ContractType]
 			CodeClass c = new CodeModule (modname).CreateClass (
 				"__clientproxy_" + cd.Name,
-				typeof (ClientRuntimeChannel),
-				new Type [] {cd.ContractType});
+				crtype,
+				new Type [] {contractInterface});
 
 			//
 			// public __clientproxy_MyContract (
-			//	ClientRuntime arg1, ChannelFactory arg2)
-			//	: base (arg1, arg2)
+			//	ServiceEndpoint arg1, ChannelFactory arg2, EndpointAddress arg3, Uri arg4)
+			//	: base (arg1, arg2, arg3, arg4)
 			// {
 			// }
 			//
-			Type [] ctorargs = new Type [] {typeof (ClientRuntime),
-				typeof (ChannelFactory)};
+			Type [] ctorargs = new Type [] {typeof (ServiceEndpoint), typeof (ChannelFactory), typeof (EndpointAddress), typeof (Uri)};
 			CodeMethod ctor = c.CreateConstructor (
 				MethodAttributes.Public, ctorargs);
 			CodeBuilder b = ctor.CodeBuilder;
-			MethodBase baseCtor = typeof (ClientRuntimeChannel).GetConstructors (
+			MethodBase baseCtor = crtype.GetConstructors (
 				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance) [0];
-			if (baseCtor == null) throw new Exception ("INTERNAL ERROR: ClientRuntimeChannel#.ctor(ClientRuntime,ChannelFactory) does not exist.");
+			if (baseCtor == null) throw new Exception ("INTERNAL ERROR: ClientRuntimeChannel.ctor() was not found.");
 			b.Call (
 				ctor.GetThis (),
 				baseCtor,
-				new CodeArgumentReference (typeof (ClientRuntime), 1, "arg0"),
-				new CodeArgumentReference (typeof (ChannelFactory), 2, "arg1"));
+				new CodeArgumentReference (typeof (ServiceEndpoint), 1, "arg0"),
+				new CodeArgumentReference (typeof (ChannelFactory), 2, "arg1"),
+				new CodeArgumentReference (typeof (EndpointAddress), 3, "arg2"),
+				new CodeArgumentReference (typeof (Uri), 4, "arg3"));
+			return CreateProxyTypeOperations (crtype, c, cd);
+		}
+	}
 
+	internal class ProxyGeneratorBase
+	{
+		protected static Type CreateProxyTypeOperations (Type crtype, CodeClass c, ContractDescription cd)
+		{
 			// member implementation
+			BindingFlags bf = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 			foreach (OperationDescription od in cd.Operations) {
 				// FIXME: handle properties and events.
+#if !NET_2_1
 				if (od.SyncMethod != null)
-					GenerateMethodImpl (c, typeof (ClientRuntimeChannel).GetMethod ("Process"), od.Name, od.SyncMethod);
+					GenerateMethodImpl (c, crtype.GetMethod ("Process", bf), od.Name, od.SyncMethod);
+#endif
 				if (od.BeginMethod != null)
-					GenerateMethodImpl (c, typeof (ClientRuntimeChannel).GetMethod ("BeginProcess"), od.Name, od.BeginMethod);
+					GenerateBeginMethodImpl (c, crtype.GetMethod ("BeginProcess", bf), od.Name, od.BeginMethod);
 				if (od.EndMethod != null)
-					GenerateMethodImpl (c, typeof (ClientRuntimeChannel).GetMethod ("EndProcess"), od.Name, od.EndMethod);
+					GenerateEndMethodImpl (c, crtype.GetMethod ("EndProcess", bf), od.Name, od.EndMethod);
 			}
 
 			//Type zzz = c.CreateType ();
@@ -130,6 +146,89 @@ namespace System.ServiceModel
 						new CodeCast (par.ParameterType.GetElementType (),
 							new CodeArrayItem (paramsRef, new CodeLiteral (i))));
 			}
+			if (retValue != null)
+				b.Return (retValue);
+		}
+
+		static void GenerateBeginMethodImpl (CodeClass c, MethodInfo beginProcessMethod, string name, MethodInfo mi)
+		{
+			CodeMethod m = c.ImplementMethod (mi);
+			CodeBuilder b = m.CodeBuilder;
+			// object [] parameters = new object [x];
+			// parameters [0] = arg1;
+			// parameters [1] = arg2;
+			// ...
+			// (return) BeginProcess (MethodBase.GetCurrentMethod(), operName, parameters, asyncCallback, userState);
+			ParameterInfo [] pinfos = mi.GetParameters ();
+			CodeVariableDeclaration paramsDecl = new CodeVariableDeclaration (typeof (object []), "parameters");
+			b.CurrentBlock.Add (paramsDecl);
+			CodeVariableReference paramsRef = paramsDecl.Variable;
+			b.Assign (paramsRef,
+				  new CodeNewArray (typeof (object), new CodeLiteral (pinfos.Length - 2)));
+			for (int i = 0; i < pinfos.Length - 2; i++) {
+				ParameterInfo par = pinfos [i];
+				if (!par.IsOut)
+					b.Assign (
+						new CodeArrayItem (paramsRef, new CodeLiteral (i)),
+						new CodeCast (typeof (object), m.GetArg (i)));
+			}
+			CodeMethodCall argMethodInfo = new CodeMethodCall (typeof (MethodBase), "GetCurrentMethod");
+			CodeLiteral argOperName = new CodeLiteral (name);
+
+			ParameterInfo p = pinfos [pinfos.Length - 2];
+			CodeArgumentReference callbackRef = new CodeArgumentReference (typeof (AsyncCallback), p.Position + 1, p.Name);
+			p = pinfos [pinfos.Length - 1];
+			CodeArgumentReference stateRef = new CodeArgumentReference (typeof (object), p.Position + 1, p.Name);
+
+			CodeVariableDeclaration retValueDecl = new CodeVariableDeclaration (mi.ReturnType, "retValue");
+			b.CurrentBlock.Add (retValueDecl);
+			CodeVariableReference retValue = retValueDecl.Variable;
+			b.Assign (retValue,
+				new CodeCast (mi.ReturnType,
+					b.CallFunc (m.GetThis (), beginProcessMethod, argMethodInfo, argOperName, paramsRef, callbackRef, stateRef)));
+
+			b.Return (retValue);
+		}
+
+		static void GenerateEndMethodImpl (CodeClass c, MethodInfo endProcessMethod, string name, MethodInfo mi)
+		{
+			CodeMethod m = c.ImplementMethod (mi);
+			CodeBuilder b = m.CodeBuilder;
+			ParameterInfo [] pinfos = mi.GetParameters ();
+
+			ParameterInfo p = pinfos [0];
+			CodeArgumentReference asyncResultRef = m.GetArg (0);
+			
+			CodeVariableDeclaration paramsDecl = new CodeVariableDeclaration (typeof (object []), "parameters");
+			b.CurrentBlock.Add (paramsDecl);
+			CodeVariableReference paramsRef = paramsDecl.Variable;
+			b.Assign (paramsRef,
+				  new CodeNewArray (typeof (object), new CodeLiteral (pinfos.Length - 1)));
+			/*
+			for (int i = 0; i < pinfos.Length - 2; i++) {
+				ParameterInfo par = pinfos [i];
+				if (!par.IsOut)
+					b.Assign (
+						new CodeArrayItem (paramsRef, new CodeLiteral (i)),
+						new CodeCast (typeof (object),
+							new CodeArgumentReference (par.ParameterType, par.Position + 1, "arg" + i)));
+			}
+			*/
+			CodeMethodCall argMethodInfo = new CodeMethodCall (typeof (MethodBase), "GetCurrentMethod");
+			CodeLiteral argOperName = new CodeLiteral (name);
+			
+			CodeVariableReference retValue = null;
+			if (mi.ReturnType == typeof (void))
+				b.Call (m.GetThis (), endProcessMethod, argMethodInfo, argOperName, paramsRef, asyncResultRef);
+			else {
+				CodeVariableDeclaration retValueDecl = new CodeVariableDeclaration (mi.ReturnType, "retValue");
+				b.CurrentBlock.Add (retValueDecl);
+				retValue = retValueDecl.Variable;
+				b.Assign (retValue,
+					new CodeCast (mi.ReturnType,
+						b.CallFunc (m.GetThis (), endProcessMethod, argMethodInfo, argOperName, paramsRef, asyncResultRef)));
+			}
+			// FIXME: fill out parameters
 			if (retValue != null)
 				b.Return (retValue);
 		}

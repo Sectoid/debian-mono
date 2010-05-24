@@ -45,9 +45,6 @@ namespace System.Text.RegularExpressions {
 	[Serializable]
 	public partial class Regex : ISerializable {
 
-#if NET_2_0
-		private static int cache_size = 15;
-#endif
 #if !TARGET_JVM
 		[MonoTODO]
 		public static void CompileToAssembly (RegexCompilationInfo [] regexes, AssemblyName aname)
@@ -100,11 +97,15 @@ namespace System.Text.RegularExpressions {
 		
 		public static string Escape (string str)
 		{
+			if (str == null)
+				throw new ArgumentNullException ("str");
 			return Parser.Escape (str);
 		}
 
 		public static string Unescape (string str)
 		{
+			if (str == null)
+				throw new ArgumentNullException ("str");
 			return Parser.Unescape (str);
 		}
 
@@ -208,10 +209,44 @@ namespace System.Text.RegularExpressions {
 
 		public Regex (string pattern, RegexOptions options)
 		{
+			if (pattern == null)
+				throw new ArgumentNullException ("pattern");
+			validate_options (options);
 			this.pattern = pattern;
 			this.roptions = options;
 			Init ();
 		}
+
+		static void validate_options (RegexOptions options)
+		{
+			const RegexOptions allopts =
+				RegexOptions.None |
+				RegexOptions.IgnoreCase |
+				RegexOptions.Multiline |
+				RegexOptions.ExplicitCapture |
+#if !NET_2_1
+				RegexOptions.Compiled |
+#endif
+				RegexOptions.Singleline |
+				RegexOptions.IgnorePatternWhitespace |
+				RegexOptions.RightToLeft |
+				RegexOptions.ECMAScript |
+				RegexOptions.CultureInvariant;
+
+			const RegexOptions ecmaopts =
+				RegexOptions.IgnoreCase |
+				RegexOptions.Multiline |
+#if !NET_2_1
+				RegexOptions.Compiled |
+#endif
+				RegexOptions.ECMAScript;
+
+			if ((options & ~allopts) != 0)
+				throw new ArgumentOutOfRangeException ("options");
+			if ((options & RegexOptions.ECMAScript) != 0 && (options & ~ecmaopts) != 0)
+				throw new ArgumentOutOfRangeException ("options");
+		}
+
 #if !TARGET_JVM
 		private void Init ()
 		{
@@ -221,8 +256,9 @@ namespace System.Text.RegularExpressions {
 				InitNewRegex();
 			} else {
 				this.group_count = this.machineFactory.GroupCount;
+				this.gap = this.machineFactory.Gap;
 				this.mapping = this.machineFactory.Mapping;
-				this._groupNumberToNameMap = this.machineFactory.NamesMapping;
+				this.group_names = this.machineFactory.NamesMapping;
 			}
 		}
 #endif
@@ -232,19 +268,16 @@ namespace System.Text.RegularExpressions {
 			this.machineFactory = CreateMachineFactory (this.pattern, this.roptions);
 			cache.Add (this.pattern, this.roptions, this.machineFactory);
 			this.group_count = machineFactory.GroupCount;
+			this.gap = this.machineFactory.Gap;
 			this.mapping = machineFactory.Mapping;
-			this._groupNumberToNameMap = this.machineFactory.NamesMapping;
+			this.group_names = this.machineFactory.NamesMapping;
 		}
 
+#if !NET_2_1
 		// The new rx engine has blocking bugs like
 		// https://bugzilla.novell.com/show_bug.cgi?id=470827
-		static readonly bool old_rx = true;
-#if FALSE
-#if !NET_2_1
-			Environment.GetEnvironmentVariable ("MONO_OLD_RX") != null;
-#else
-			false;
-#endif
+		static readonly bool old_rx =
+			Environment.GetEnvironmentVariable ("MONO_NEW_RX") == null;
 #endif
 
 		private static IMachineFactory CreateMachineFactory (string pattern, RegexOptions options) 
@@ -252,6 +285,9 @@ namespace System.Text.RegularExpressions {
 			Parser psr = new Parser ();
 			RegularExpression re = psr.ParseRegularExpression (pattern, options);
 
+#if NET_2_1
+			ICompiler cmp = new PatternCompiler ();
+#else
 			ICompiler cmp;
 			if (!old_rx) {
 				if ((options & RegexOptions.Compiled) != 0)
@@ -261,11 +297,14 @@ namespace System.Text.RegularExpressions {
 			} else {
 				cmp = new PatternCompiler ();
 			}
+#endif
 
 			re.Compile (cmp, (options & RegexOptions.RightToLeft) != 0);
 
 			IMachineFactory machineFactory = cmp.GetMachineFactory ();
-			machineFactory.Mapping = psr.GetMapping ();
+			Hashtable mapping = new Hashtable ();
+			machineFactory.Gap = psr.GetMapping (mapping);
+			machineFactory.Mapping = mapping;
 			machineFactory.NamesMapping = GetGroupNamesArray (machineFactory.GroupCount, machineFactory.Mapping);
 
 			return machineFactory;
@@ -302,41 +341,56 @@ namespace System.Text.RegularExpressions {
 		
 		public string [] GetGroupNames ()
 		{
-			string [] names = new string [mapping.Count];
-			mapping.Keys.CopyTo (names, 0);
-
+			string [] names = new string [1 + group_count];
+			Array.Copy (group_names, names, 1 + group_count);
 			return names;
 		}
 
-		public int[] GetGroupNumbers ()
+		public int [] GetGroupNumbers ()
 		{
-			int[] numbers = new int [mapping.Count];
-			mapping.Values.CopyTo (numbers, 0);
-
+			int [] numbers = new int [1 + group_count];
+			Array.Copy (GroupNumbers, numbers, 1 + group_count);
 			return numbers;
 		}
 
 		public string GroupNameFromNumber (int i)
 		{
-			if (i < 0 || i > group_count)
+			i = GetGroupIndex (i);
+			if (i < 0)
 				return "";
 
-			return _groupNumberToNameMap [i];
+			return group_names [i];
 		}
 
 		public int GroupNumberFromName (string name)
 		{
-			if (mapping.Contains (name))
-				return (int) mapping [name];
+			if (!mapping.Contains (name))
+				return -1;
+			int i = (int) mapping [name];
+			if (i >= gap)
+				i = Int32.Parse (name);
+			return i;
+		}
 
-			return -1;
+		internal int GetGroupIndex (int number)
+		{
+			if (number < gap)
+				return number;
+			if (gap > group_count)
+				return -1;
+			return Array.BinarySearch (GroupNumbers, gap, group_count - gap + 1, number);
+		}
+
+		int default_startat (string input)
+		{
+			return (RightToLeft && input != null) ? input.Length : 0;
 		}
 
 		// match methods
 		
 		public bool IsMatch (string input)
 		{
-			return IsMatch (input, RightToLeft ? input.Length : 0);
+			return IsMatch (input, default_startat (input));
 		}
 
 		public bool IsMatch (string input, int startat)
@@ -346,22 +400,32 @@ namespace System.Text.RegularExpressions {
 
 		public Match Match (string input)
 		{
-			return Match (input, RightToLeft ? input.Length : 0);
+			return Match (input, default_startat (input));
 		}
 
 		public Match Match (string input, int startat)
 		{
+			if (input == null)
+				throw new ArgumentNullException ("input");
+			if (startat < 0 || startat > input.Length)
+				throw new ArgumentOutOfRangeException ("startat");
 			return CreateMachine ().Scan (this, input, startat, input.Length);
 		}
 
 		public Match Match (string input, int startat, int length)
 		{
+			if (input == null)
+				throw new ArgumentNullException ("input");
+			if (startat < 0 || startat > input.Length)
+				throw new ArgumentOutOfRangeException ("startat");
+			if (length < 0 || length > input.Length - startat)
+				throw new ArgumentOutOfRangeException ("length");
 			return CreateMachine ().Scan (this, input, startat, startat + length);
 		}
 
 		public MatchCollection Matches (string input)
 		{
-			return Matches (input, RightToLeft ? input.Length : 0);
+			return Matches (input, default_startat (input));
 		}
 
 		public MatchCollection Matches (string input, int startat)
@@ -374,12 +438,12 @@ namespace System.Text.RegularExpressions {
 
 		public string Replace (string input, MatchEvaluator evaluator)
 		{
-			return Replace (input, evaluator, Int32.MaxValue, RightToLeft ? input.Length : 0);
+			return Replace (input, evaluator, Int32.MaxValue, default_startat (input));
 		}
 
 		public string Replace (string input, MatchEvaluator evaluator, int count)
 		{
-			return Replace (input, evaluator, count, RightToLeft ? input.Length : 0);
+			return Replace (input, evaluator, count, default_startat (input));
 		}
 
 		class Adapter {
@@ -390,6 +454,15 @@ namespace System.Text.RegularExpressions {
 
 		public string Replace (string input, MatchEvaluator evaluator, int count, int startat)
 		{
+			if (input == null)
+				throw new ArgumentNullException ("input");
+			if (evaluator == null)
+				throw new ArgumentNullException ("evaluator");
+			if (count < -1)
+				throw new ArgumentOutOfRangeException ("count");
+			if (startat < 0 || startat > input.Length)
+				throw new ArgumentOutOfRangeException ("startat");
+
 			BaseMachine m = (BaseMachine)CreateMachine ();
 
 			if (RightToLeft)
@@ -405,16 +478,25 @@ namespace System.Text.RegularExpressions {
 
 		public string Replace (string input, string replacement)
 		{
-			return Replace (input, replacement, Int32.MaxValue, RightToLeft ? input.Length : 0);
+			return Replace (input, replacement, Int32.MaxValue, default_startat (input));
 		}
 
 		public string Replace (string input, string replacement, int count)
 		{
-			return Replace (input, replacement, count, RightToLeft ? input.Length : 0);
+			return Replace (input, replacement, count, default_startat (input));
 		}
 
 		public string Replace (string input, string replacement, int count, int startat)
 		{
+			if (input == null)
+				throw new ArgumentNullException ("input");
+			if (replacement == null)
+				throw new ArgumentNullException ("replacement");
+			if (count < -1)
+				throw new ArgumentOutOfRangeException ("count");
+			if (startat < 0 || startat > input.Length)
+				throw new ArgumentOutOfRangeException ("startat");
+
 			return CreateMachine ().Replace (this, input, replacement, count, startat);
 		}
 
@@ -422,16 +504,23 @@ namespace System.Text.RegularExpressions {
 
 		public string [] Split (string input)
 		{
-			return Split (input, Int32.MaxValue, RightToLeft ? input.Length : 0);
+			return Split (input, Int32.MaxValue, default_startat (input));
 		}
 
 		public string [] Split (string input, int count)
 		{
-			return Split (input, count, RightToLeft ? input.Length : 0);
+			return Split (input, count, default_startat (input));
 		}
 
 		public string [] Split (string input, int count, int startat)
 		{
+			if (input == null)
+				throw new ArgumentNullException ("input");
+			if (count < 0)
+				throw new ArgumentOutOfRangeException ("count");
+			if (startat < 0 || startat > input.Length)
+				throw new ArgumentOutOfRangeException ("startat");
+
 			return CreateMachine ().Split (this, input, count, startat);
 		}
 
@@ -449,12 +538,12 @@ namespace System.Text.RegularExpressions {
 			// expressions compiled to assemblies.
 			Init ();
 		}
-
+#if !NET_2_1
 		protected bool UseOptionC ()
 		{
 			return ((roptions & RegexOptions.Compiled) != 0);
 		}
-
+#endif
 		protected bool UseOptionR ()
 		{
 			return ((roptions & RegexOptions.RightToLeft) != 0);
@@ -480,6 +569,10 @@ namespace System.Text.RegularExpressions {
 			get { return group_count; }
 		}
 
+		internal int Gap {
+			get { return gap; }
+		}
+
 		// private
 
 		private IMachine CreateMachine ()
@@ -489,19 +582,34 @@ namespace System.Text.RegularExpressions {
 
 		private static string [] GetGroupNamesArray (int groupCount, IDictionary mapping) 
 		{
-			string [] groupNumberToNameMap = new string [groupCount + 1];
-			foreach (string name in mapping.Keys) {
-				groupNumberToNameMap [(int) mapping [name]] = name;
-			}
-			return groupNumberToNameMap;
+			string [] group_names = new string [groupCount + 1];
+			IDictionaryEnumerator de = mapping.GetEnumerator ();
+			while (de.MoveNext ())
+				group_names [(int) de.Value] = (string) de.Key;
+			return group_names;
 		}
-		
+
+		private int [] GroupNumbers {
+			get {
+				if (group_numbers == null) {
+					group_numbers = new int [1 + group_count];
+					for (int i = 0; i < gap; ++i)
+						group_numbers [i] = i;
+					for (int i = gap; i <= group_count; ++i)
+						group_numbers [i] = Int32.Parse (group_names [i]);
+					return group_numbers;
+				}
+				return group_numbers;
+			}
+		}
+
 		private IMachineFactory machineFactory;
 		private IDictionary mapping;
 		private int group_count;
+		private int gap;
 		private bool refsInitialized;
-		private string [] _groupNumberToNameMap;
-
+		private string [] group_names;
+		private int [] group_numbers;
 		
 		// protected members
 
@@ -511,20 +619,21 @@ namespace System.Text.RegularExpressions {
 		// MS undocumented members
 #if NET_2_1
 		[MonoTODO]
-		protected internal System.Collections.Generic.Dictionary<string, int> capnames;
+		internal System.Collections.Generic.Dictionary<string, int> capnames;
 		[MonoTODO]
-		protected internal System.Collections.Generic.Dictionary<int, int> caps;
+		internal System.Collections.Generic.Dictionary<int, int> caps;
 #else
 		[MonoTODO]
 		protected internal System.Collections.Hashtable capnames;
 		[MonoTODO]
 		protected internal System.Collections.Hashtable caps;
+
+		[MonoTODO]
+		protected internal RegexRunnerFactory factory;
 #endif
 		[MonoTODO]
 		protected internal int capsize;
 		[MonoTODO]
 		protected internal string [] capslist;
-		[MonoTODO]
-		protected internal RegexRunnerFactory factory;
 	}
 }

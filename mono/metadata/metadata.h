@@ -10,10 +10,17 @@
 
 G_BEGIN_DECLS
 
+/*
+ * When embedding, you have to define MONO_ZERO_LEN_ARRAY before including any
+ * other Mono header file if you use a different compiler from the one used to
+ * build Mono.
+ */
+#ifndef MONO_ZERO_LEN_ARRAY
 #ifdef __GNUC__
 #define MONO_ZERO_LEN_ARRAY 0
 #else
 #define MONO_ZERO_LEN_ARRAY 1
+#endif
 #endif
 
 #define MONO_TYPE_ISSTRUCT(t) (!(t)->byref && (((t)->type == MONO_TYPE_VALUETYPE && \
@@ -169,6 +176,7 @@ typedef enum {
 	MONO_MARSHAL_CONV_ARRAY_BYVALCHARARRAY,
 	MONO_MARSHAL_CONV_ARRAY_SAVEARRAY,
 	MONO_MARSHAL_CONV_ARRAY_LPARRAY,
+	MONO_MARSHAL_FREE_LPARRAY,
 	MONO_MARSHAL_CONV_OBJECT_INTERFACE,
 	MONO_MARSHAL_CONV_OBJECT_IDISPATCH,
 	MONO_MARSHAL_CONV_OBJECT_IUNKNOWN,
@@ -341,6 +349,8 @@ struct _MonoType {
 	MonoCustomMod modifiers [MONO_ZERO_LEN_ARRAY]; /* this may grow */
 };
 
+#define MONO_SIZEOF_TYPE (offsetof (struct _MonoType, modifiers))
+
 /*
  * This structure is an internal runtime detail: use the mono_signature_*
  * accessors below, because it will go away from the public header.
@@ -359,6 +369,8 @@ struct _MonoMethodSignature {
 	MonoType     *ret;
 	MonoType     *params [MONO_ZERO_LEN_ARRAY];
 };
+
+#define MONO_SIZEOF_METHOD_SIGNATURE (sizeof (struct _MonoMethodSignature) - MONO_ZERO_LEN_ARRAY * SIZEOF_VOID_P)
 
 typedef struct _MonoMethodHeader MonoMethodHeader;
 

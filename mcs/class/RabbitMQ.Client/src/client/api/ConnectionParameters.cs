@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -65,8 +71,8 @@ namespace RabbitMQ.Client
         /// <summary>Default virtual host (value: "/")</summary>
         public const string DefaultVHost = "/"; // PLEASE KEEP THIS MATCHING THE DOC ABOVE
 
-        /// <summary> Default value for the desired maximum number of
-        /// channels, with zero meaning unlimited (value: 0)</summary>
+        /// <summary> Default value for the desired maximum channel
+        /// number, with zero meaning unlimited (value: 0)</summary>
         public const ushort DefaultChannelMax = 0; // PLEASE KEEP THIS MATCHING THE DOC ABOVE
 
         /// <summary>Default value for the desired maximum frame size,
@@ -83,7 +89,6 @@ namespace RabbitMQ.Client
         private ushort m_requestedChannelMax = DefaultChannelMax;
         private uint m_requestedFrameMax = DefaultFrameMax;
         private ushort m_requestedHeartbeat = DefaultHeartbeat;
-        private AccessRequestConfig m_accessRequestConfig = AccessRequestConfig.UseDefault;
 
         ///<summary>Construct a fresh instance, with all fields set to
         ///their respective defaults.</summary>
@@ -110,7 +115,7 @@ namespace RabbitMQ.Client
             set { m_virtualHost = value; }
         }
 
-        /// <summary>Channel-max parameter to ask for (number of channels)</summary>
+        /// <summary>Maximum channel number to ask for</summary>
         public ushort RequestedChannelMax
         {
             get { return m_requestedChannelMax; }
@@ -129,15 +134,6 @@ namespace RabbitMQ.Client
         {
             get { return m_requestedHeartbeat; }
             set { m_requestedHeartbeat = value; }
-        }
-
-        /// <summary>Used to control whether Access.Request methods
-        /// are sent to the peer or not, in conjunction with the
-        /// protocol default.</summary>
-        public AccessRequestConfig AccessRequestConfig
-        {
-            get { return m_accessRequestConfig; }
-            set { m_accessRequestConfig = value; }
         }
 
         ///<summary>Implement ICloneable.Clone by delegating to our type-safe variant.</summary>

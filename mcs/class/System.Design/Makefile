@@ -4,7 +4,7 @@ include ../../build/rules.make
 
 LIBRARY = System.Design.dll
 
-ifeq (net_2_0, $(PROFILE))
+ifneq (1, $(FRAMEWORK_VERSION_MAJOR))
 
 LIBRARY_USE_INTERMEDIATE_FILE = yes
 
@@ -20,7 +20,7 @@ LIB_MCS_FLAGS = -r:$(corlib) -r:System.dll -r:System.Xml.dll -r:System.Web.dll \
 	-r:System.Windows.Forms.dll -r:System.Drawing.dll \
 	-r:Accessibility.dll -r:System.Data.dll
 
-ifeq (net_2_0, $(PROFILE))
+ifneq (1, $(FRAMEWORK_VERSION_MAJOR))
 LIB_MCS_FLAGS += -r:System.Configuration.dll
 endif
 
@@ -42,5 +42,5 @@ include ../../build/library.make
 
 ifdef DRAWING_DESIGN_DEP_FILE
 LIB_MCS_FLAGS += -define:DRAWING_DESIGN_DEP -r:$(DRAWING_DESIGN_DEP)
-$(the_lib): $(DRAWING_DESIGN_DEP_FILE)
+$(build_lib): $(DRAWING_DESIGN_DEP_FILE)
 endif

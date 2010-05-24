@@ -33,16 +33,30 @@ using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 using BF = System.Xml.XmlBinaryFormat;
 
 namespace System.Xml
 {
-	internal class XmlBinaryDictionaryWriter : XmlDictionaryWriter
+	internal partial class XmlBinaryDictionaryWriter : XmlDictionaryWriter
 	{
+		class MyBinaryWriter : BinaryWriter
+		{
+			public MyBinaryWriter (Stream s)
+				: base (s)
+			{
+			}
+
+			public void WriteFlexibleInt (int value)
+			{
+				Write7BitEncodedInt (value);
+			}
+		}
+
 		#region Fields
-		BinaryWriter original, writer, buffer_writer;
+		MyBinaryWriter original, writer, buffer_writer;
 		IXmlDictionary dict_ext;
 		XmlDictionary dict_int = new XmlDictionary ();
 		XmlBinaryWriterSession session;
@@ -56,13 +70,14 @@ namespace System.Xml
 		WriteState state = WriteState.Start;
 		bool open_start_element = false;
 		// transient current node info
-		ListDictionary namespaces = new ListDictionary ();
+		List<KeyValuePair<string,object>> namespaces = new List<KeyValuePair<string,object>> ();
 		string xml_lang = null;
 		XmlSpace xml_space = XmlSpace.None;
+		int ns_index = 0;
 		// stacked info
+		Stack<int> ns_index_stack = new Stack<int> ();
 		Stack<string> xml_lang_stack = new Stack<string> ();
 		Stack<XmlSpace> xml_space_stack = new Stack<XmlSpace> ();
-		XmlNamespaceManager nsmgr = new XmlNamespaceManager (new NameTable ());
 		Stack<string> element_ns_stack = new Stack<string> ();
 		string element_ns = String.Empty;
 		int element_count;
@@ -96,15 +111,16 @@ namespace System.Xml
 			if (session == null)
 				session = new XmlBinaryWriterSession ();
 
-			original = new BinaryWriter (stream);
+			original = new MyBinaryWriter (stream);
 			this.writer = original;
-			buffer_writer = new BinaryWriter (buffer);
+			buffer_writer = new MyBinaryWriter (buffer);
 			this.dict_ext = dictionary;
 			this.session = session;
 			owns_stream = ownsStream;
 
-//			xml_lang_stack.Push (null);
-//			xml_space_stack.Push (XmlSpace.None);
+			AddNamespace ("xml", "http://www.w3.org/XML/1998/namespace");
+			AddNamespace ("xml", "http://www.w3.org/2000/xmlns/");
+			ns_index = 2;
 		}
 
 		#endregion
@@ -130,30 +146,30 @@ namespace System.Xml
 		private void AddMissingElementXmlns ()
 		{
 			// push new namespaces to manager.
-			foreach (DictionaryEntry ent in namespaces) {
+			for (int i = ns_index; i < namespaces.Count; i++) {
+				var ent = namespaces [i];
 				string prefix = (string) ent.Key;
 				string ns = ent.Value as string;
 				XmlDictionaryString dns = ent.Value as XmlDictionaryString;
 				if (ns != null) {
 					if (prefix.Length > 0) {
 						writer.Write (BF.PrefixNSString);
-						WriteNamePart (prefix);
+						writer.Write (prefix);
 					}
 					else
 						writer.Write (BF.DefaultNSString);
-					WriteNamePart (ns);
+					writer.Write (ns);
 				} else {
 					if (prefix.Length > 0) {
 						writer.Write (BF.PrefixNSIndex);
-						WriteNamePart (prefix);
+						writer.Write (prefix);
 					}
 					else
 						writer.Write (BF.DefaultNSIndex);
 					WriteDictionaryIndex (dns);
 				}
-				nsmgr.AddNamespace (prefix, ent.Value.ToString ());
 			}
-			namespaces.Clear ();
+			ns_index = namespaces.Count;
 		}
 
 		private void CheckState ()
@@ -229,7 +245,6 @@ namespace System.Xml
 
 			state = WriteState.Content;
 			open_start_element = false;
-			nsmgr.PushScope ();
 		}
 
 		public override void Flush ()
@@ -241,14 +256,30 @@ namespace System.Xml
 		{
 			if (ns == null || ns == String.Empty)
 				throw new ArgumentException ("The Namespace cannot be empty.");
-			throw new NotImplementedException ();
+
+			var de = namespaces.LastOrDefault (i => i.Value.ToString () == ns);
+			return de.Key; // de is KeyValuePair and its default key is null.
 		}
 
 		public override void WriteBase64 (byte[] buffer, int index, int count)
 		{
+			if (count < 0)
+				throw new IndexOutOfRangeException ("Negative count");
 			ProcessStateForContent ();
 
-			WriteToStream (BF.Base64, buffer, index, count);
+			if (count < 0x100) {
+				writer.Write (BF.Bytes8);
+				writer.Write ((byte) count);
+				writer.Write (buffer, index, count);
+			} else if (count < 0x10000) {
+				writer.Write (BF.Bytes8);
+				writer.Write ((ushort) count);
+				writer.Write (buffer, index, count);
+			} else {
+				writer.Write (BF.Bytes32);
+				writer.Write (count);
+				writer.Write (buffer, index, count);
+			}
 		}
 
 		public override void WriteCData (string text)
@@ -270,11 +301,26 @@ namespace System.Xml
 		{
 			ProcessStateForContent ();
 
-			if (count == 0)
+			int blen = Encoding.UTF8.GetByteCount (buffer, index, count);
+
+			if (blen == 0)
 				writer.Write (BF.EmptyText);
-			else {
-				byte [] data = utf8Enc.GetBytes (buffer, index, count);
-				WriteToStream (BF.Text, data, 0, data.Length);
+			else if (count == 1 && buffer [0] == '0')
+				writer.Write (BF.Zero);
+			else if (count == 1 && buffer [0] == '1')
+				writer.Write (BF.One);
+			else if (blen < 0x100) {
+				writer.Write (BF.Chars8);
+				writer.Write ((byte) blen);
+				writer.Write (buffer, index, count);
+			} else if (blen < 0x10000) {
+				writer.Write (BF.Chars16);
+				writer.Write ((ushort) blen);
+				writer.Write (buffer, index, count);
+			} else {
+				writer.Write (BF.Chars32);
+				writer.Write (blen);
+				writer.Write (buffer, index, count);
 			}
 		}
 
@@ -290,7 +336,8 @@ namespace System.Xml
 			if (state == WriteState.Attribute)
 				throw new InvalidOperationException ("Comment node is not allowed inside an attribute");
 
-			WriteToStream (BF.Comment, text);
+			writer.Write (BF.Comment);
+			writer.Write (text);
 		}
 
 		public override void WriteDocType (string name, string pubid, string sysid, string subset)
@@ -328,7 +375,6 @@ namespace System.Xml
 				if (current_attr_name.ToString ().Length > 0 && attr_value.Length == 0)
 					throw new ArgumentException ("Cannot use prefix with an empty namespace.");
 
-				// add namespace
 				AddNamespaceChecked (current_attr_name.ToString (), attr_value);
 				break;
 			default:
@@ -336,6 +382,9 @@ namespace System.Xml
 					WriteTextBinary (attr_value);
 				break;
 			}
+
+			if (current_attr_prefix.Length > 0 && save_target != SaveTarget.Namespaces)
+				AddNamespaceChecked (current_attr_prefix, current_attr_ns);
 
 			state = WriteState.Element;
 			current_attr_prefix = null;
@@ -385,10 +434,12 @@ namespace System.Xml
 			if (needExplicitEndElement)
 				writer.Write (BF.EndElement);
 
-			nsmgr.PopScope ();
 			element_ns = element_ns_stack.Pop ();
 			xml_lang = xml_lang_stack.Pop ();
 			xml_space = xml_space_stack.Pop ();
+			int cur = namespaces.Count;
+			ns_index = ns_index_stack.Pop ();
+			namespaces.RemoveRange (ns_index, cur - ns_index);
 			open_start_element = false;
 
 			Depth--;
@@ -412,6 +463,29 @@ namespace System.Xml
 			// is still callable after this method(!)
 		}
 
+		public override void WriteQualifiedName (XmlDictionaryString local, XmlDictionaryString ns)
+		{
+			string prefix = namespaces.LastOrDefault (i => i.Value.ToString () == ns.ToString ()).Key;
+			bool use_dic = prefix != null;
+			if (prefix == null)
+				prefix = LookupPrefix (ns.Value);
+			if (prefix == null)
+				throw new ArgumentException (String.Format ("Namespace URI '{0}' is not bound to any of the prefixes", ns));
+
+			ProcessTypedValue ();
+
+			if (use_dic && prefix.Length == 1) {
+				writer.Write (BF.QNameIndex);
+				writer.Write ((byte) (prefix [0] - 'a'));
+				WriteDictionaryIndex (local);
+			} else {
+				// QNameIndex is not applicable.
+				WriteString (prefix);
+				WriteString (":");
+				WriteString (local);
+			}
+		}
+
 		public override void WriteRaw (string data)
 		{
 			WriteString (data);
@@ -432,26 +506,55 @@ namespace System.Xml
 
 		string CreateNewPrefix ()
 		{
-			string s = String.Empty;
-			for (int n = 0; n < 26; n++) {
-				for (int i = 0; i < 26; i++) {
-					string x = s + (char) (0x61 + i);
-					if (!namespaces.Contains (x))
-						return x;
-				}
-				s = ((char) (0x61 + n)).ToString ();
+			return CreateNewPrefix (String.Empty);
+		}
+		
+		string CreateNewPrefix (string p)
+		{
+			for (char c = 'a'; c <= 'z'; c++)
+				if (!namespaces.Any (iter => iter.Key == p + c))
+					return p + c;
+			for (char c = 'a'; c <= 'z'; c++) {
+				var s = CreateNewPrefix (c.ToString ());
+				if (s != null)
+					return s;
 			}
 			throw new InvalidOperationException ("too many prefix population");
 		}
 
-		void ProcessStartAttributeCommon (string prefix, string localName, string ns, object nameObj, object nsObj)
+		bool CollectionContains (ICollection col, string value)
+		{
+			foreach (string v in col)
+				if (v == value)
+					return true;
+			return false;
+		}
+
+		void ProcessStartAttributeCommon (ref string prefix, string localName, string ns, object nameObj, object nsObj)
 		{
 			// dummy prefix is created here, while the caller
 			// still uses empty string as the prefix there.
-			if (prefix.Length == 0 && ns.Length > 0)
-				prefix = CreateNewPrefix ();
-			else if (prefix.Length > 0 && ns.Length == 0)
-				throw new ArgumentException ("Cannot use prefix with an empty namespace.");
+			if (prefix.Length == 0 && ns.Length > 0) {
+				prefix = LookupPrefix (ns);
+				// Not only null but also ""; when the returned
+				// string is empty, then it still needs a dummy
+				// prefix, since default namespace does not
+				// apply to attribute
+				if (String.IsNullOrEmpty (prefix))
+					prefix = CreateNewPrefix ();
+			}
+			else if (prefix.Length > 0 && ns.Length == 0) {
+				switch (prefix) {
+				case "xml":
+					nsObj = ns = XmlNamespace;
+					break;
+				case "xmlns":
+					nsObj = ns = XmlnsNamespace;
+					break;
+				default:
+					throw new ArgumentException ("Cannot use prefix with an empty namespace.");
+				}
+			}
 			// here we omit such cases that it is used for writing
 			// namespace-less xml, unlike XmlTextWriter.
 			if (prefix == "xmlns" && ns != XmlnsNamespace)
@@ -484,13 +587,6 @@ namespace System.Xml
 			current_attr_prefix = prefix;
 			current_attr_name = nameObj;
 			current_attr_ns = nsObj;
-
-			// for namespace nodes we don't write attribute node here.
-			if (save_target == SaveTarget.Namespaces)
-				return;
-
-			if (prefix.Length > 0)
-				AddNamespaceChecked (prefix, nsObj);
 		}
 
 		public override void WriteStartAttribute (string prefix, string localName, string ns)
@@ -504,16 +600,26 @@ namespace System.Xml
 				localName = String.Empty;
 			}
 
-			ProcessStartAttributeCommon (prefix, localName, ns, localName, ns);
+			ProcessStartAttributeCommon (ref prefix, localName, ns, localName, ns);
 
 			// for namespace nodes we don't write attribute node here.
 			if (save_target == SaveTarget.Namespaces)
 				return;
 
-			int op = prefix.Length > 0 ? BF.AttrStringPrefix : BF.AttrString;
-			// Write to Stream
-			writer.Write ((byte) op);
-			WriteNames (prefix, localName);
+			byte op = prefix.Length == 1 && 'a' <= prefix [0] && prefix [0] <= 'z' ?
+				  (byte) (prefix [0] - 'a' + BF.PrefixNAttrStringStart) :
+				  prefix.Length == 0 ? BF.AttrString :
+				  BF.AttrStringPrefix;
+
+			if (BF.PrefixNAttrStringStart <= op && op <= BF.PrefixNAttrStringEnd) {
+				writer.Write (op);
+				writer.Write (localName);
+			} else {
+				writer.Write (op);
+				if (prefix.Length > 0)
+					writer.Write (prefix);
+				writer.Write (localName);
+			}
 		}
 
 		public override void WriteStartDocument ()
@@ -544,6 +650,7 @@ namespace System.Xml
 			element_ns_stack.Push (element_ns);
 			xml_lang_stack.Push (xml_lang);
 			xml_space_stack.Push (xml_space);
+			ns_index_stack.Push (ns_index);
 		}
 
 		public override void WriteStartElement (string prefix, string localName, string ns)
@@ -560,8 +667,20 @@ namespace System.Xml
 			if (prefix == null)
 				prefix = String.Empty;
 
-			writer.Write ((byte) (prefix.Length > 0 ? BF.ElemStringPrefix : BF.ElemString));
-			WriteNames (prefix, localName);
+			byte op = prefix.Length == 1 && 'a' <= prefix [0] && prefix [0] <= 'z' ?
+				  (byte) (prefix [0] - 'a' + BF.PrefixNElemStringStart) :
+				  prefix.Length == 0 ? BF.ElemString :
+				  BF.ElemStringPrefix;
+
+			if (BF.PrefixNElemStringStart <= op && op <= BF.PrefixNElemStringEnd) {
+				writer.Write (op);
+				writer.Write (localName);
+			} else {
+				writer.Write (op);
+				if (prefix.Length > 0)
+					writer.Write (prefix);
+				writer.Write (localName);
+			}
 
 			OpenElement (prefix, ns);
 		}
@@ -569,30 +688,36 @@ namespace System.Xml
 		void OpenElement (string prefix, object nsobj)
 		{
 			string ns = nsobj.ToString ();
-//			if (prefix.Length == 0 && ns != nsmgr.DefaultNamespace ||
-//			    prefix.Length > 0 && nsmgr.LookupNamespace (prefix) != ns) {
-			// FIXME: this condition might be still incorrect...
-			if (nsobj.ToString () != element_ns ||
-			    nsmgr.LookupPrefix (element_ns) != prefix) {
-				nsmgr.AddNamespace (prefix, ns);
-				if (nsmgr.LookupPrefix (element_ns) != prefix)
-					namespaces.Add (prefix, nsobj);
-			}
 
 			state = WriteState.Element;
 			open_start_element = true;
 			element_prefix = prefix;
 			element_count++;
 			element_ns = nsobj.ToString ();
+
+			if (element_ns != String.Empty && LookupPrefix (element_ns) != prefix)
+				AddNamespace (prefix, nsobj);
 		}
 
-		public override void WriteString (string text)
+		void AddNamespace (string prefix, object nsobj)
+		{
+			namespaces.Add (new KeyValuePair<string,object> (prefix, nsobj));
+		}
+
+		void CheckIfTextAllowed ()
 		{
 			switch (state) {
 			case WriteState.Start:
 			case WriteState.Prolog:
 				throw new InvalidOperationException ("Token content in state Prolog would result in an invalid XML document.");
 			}
+		}
+
+		public override void WriteString (string text)
+		{
+			if (text == null)
+				throw new ArgumentNullException ("text");
+			CheckIfTextAllowed ();
 
 			if (text == null)
 				text = String.Empty;
@@ -603,6 +728,27 @@ namespace System.Xml
 				attr_value += text;
 			else
 				WriteTextBinary (text);
+		}
+
+		public override void WriteString (XmlDictionaryString text)
+		{
+			if (text == null)
+				throw new ArgumentNullException ("text");
+			CheckIfTextAllowed ();
+
+			if (text == null)
+				text = XmlDictionaryString.Empty;
+
+			ProcessStateForContent ();
+
+			if (state == WriteState.Attribute)
+				attr_value += text.Value;
+			else if (text.Equals (XmlDictionary.Empty))
+				writer.Write (BF.EmptyText);
+			else {
+				writer.Write (BF.TextIndex);
+				WriteDictionaryIndex (text);
+			}
 		}
 
 		public override void WriteSurrogateCharEntity (char lowChar, char highChar)
@@ -631,8 +777,8 @@ namespace System.Xml
 			if (namespaceUri == null)
 				throw new ArgumentNullException ("namespaceUri");
 
-			if (prefix == null)
-				prefix = ((char)('a' + Depth - 1)).ToString ();
+			if (String.IsNullOrEmpty (prefix))
+				prefix = CreateNewPrefix ();
 
 			CheckStateForAttribute ();
 
@@ -650,13 +796,18 @@ namespace System.Xml
 			}
 
 			if (prefix == null)
-				prefix = String.Empty;
-			if (namespaces.Contains (prefix)) {
-				if (namespaces [prefix].ToString () != ns.ToString ())
-					throw new ArgumentException (String.Format ("The prefix '{0}' is already mapped to another namespace URI '{1}' in this element scope", prefix ?? "(null)", namespaces [prefix] ?? "(null)"));
+				throw new InvalidOperationException ();
+			var o = namespaces.LastOrDefault (i => i.Key == prefix);
+			if (o.Key != null) { // i.e. exists
+				if (o.Value.ToString () != ns.ToString ()) {
+					if (namespaces.LastIndexOf (o) >= ns_index)
+						throw new ArgumentException (String.Format ("The prefix '{0}' is already mapped to another namespace URI '{1}' in this element scope and cannot be mapped to '{2}'", prefix ?? "(null)", o.Value ?? "(null)", ns.ToString ()));
+					else
+						AddNamespace  (prefix, ns);
+				}
 			}
 			else
-				namespaces.Add (prefix, ns);
+				AddNamespace  (prefix, ns);
 		}
 
 		#region DictionaryString
@@ -688,11 +839,20 @@ namespace System.Xml
 			if (prefix == null)
 				prefix = String.Empty;
 
-			if (prefix.Length == 0)
-				writer.Write (BF.ElemIndex);
-			else
-				WriteToStream (BF.ElemIndexPrefix, prefix);
-			WriteDictionaryIndex (localName);
+			byte op = prefix.Length == 1 && 'a' <= prefix [0] && prefix [0] <= 'z' ?
+				  (byte) (prefix [0] - 'a' + BF.PrefixNElemIndexStart) :
+				  prefix.Length == 0 ? BF.ElemIndex :
+				  BF.ElemIndexPrefix;
+
+			if (BF.PrefixNElemIndexStart <= op && op <= BF.PrefixNElemIndexEnd) {
+				writer.Write (op);
+				WriteDictionaryIndex (localName);
+			} else {
+				writer.Write (op);
+				if (prefix.Length > 0)
+					writer.Write (prefix);
+				WriteDictionaryIndex (localName);
+			}
 
 			OpenElement (prefix, namespaceUri);
 		}
@@ -710,28 +870,31 @@ namespace System.Xml
 				localName = XmlDictionaryString.Empty;
 			}
 
-			ProcessStartAttributeCommon (prefix, localName.Value, ns.Value, localName, ns);
+			ProcessStartAttributeCommon (ref prefix, localName.Value, ns.Value, localName, ns);
 
 			if (save_target == SaveTarget.Namespaces)
 				return;
 
-			int op = 
-				ns.Value == nsmgr.LookupNamespace (element_prefix) ? BF.GlobalAttrIndexInElemNS :
-				ns.Value.Length == 0 ? BF.AttrIndex :
-				prefix.Length > 0 ? BF.AttrIndexPrefix : BF.GlobalAttrIndex;
-			// Write to Stream
-			writer.Write ((byte) op);
-			if (prefix.Length > 0)
-				WriteNamePart (prefix);
-			WriteDictionaryIndex (localName);
+			if (prefix.Length == 1 && 'a' <= prefix [0] && prefix [0] <= 'z') {
+				writer.Write ((byte) (prefix [0] - 'a' + BF.PrefixNAttrIndexStart));
+				WriteDictionaryIndex (localName);
+			} else {
+				byte op = ns.Value.Length == 0 ? BF.AttrIndex :BF.AttrIndexPrefix;
+				// Write to Stream
+				writer.Write (op);
+				if (prefix.Length > 0)
+					writer.Write (prefix);
+				WriteDictionaryIndex (localName);
+			}
 		}
 
 		public override void WriteXmlnsAttribute (string prefix, XmlDictionaryString namespaceUri)
 		{
-			if (prefix == null)
-				throw new ArgumentNullException ("prefix");
 			if (namespaceUri == null)
 				throw new ArgumentNullException ("namespaceUri");
+
+			if (String.IsNullOrEmpty (prefix))
+				prefix = CreateNewPrefix ();
 
 			CheckStateForAttribute ();
 
@@ -745,7 +908,6 @@ namespace System.Xml
 		public override void WriteValue (bool value)
 		{
 			ProcessTypedValue ();
-
 			writer.Write ((byte) (value ? BF.BoolTrue : BF.BoolFalse));
 		}
 
@@ -788,6 +950,11 @@ namespace System.Xml
 		{
 			ProcessTypedValue ();
 			writer.Write (BF.Single);
+			WriteValueContent (value);
+		}
+
+		void WriteValueContent (float value)
+		{
 			writer.Write (value);
 		}
 
@@ -795,6 +962,11 @@ namespace System.Xml
 		{
 			ProcessTypedValue ();
 			writer.Write (BF.Double);
+			WriteValueContent (value);
+		}
+
+		void WriteValueContent (double value)
+		{
 			writer.Write (value);
 		}
 
@@ -802,6 +974,11 @@ namespace System.Xml
 		{
 			ProcessTypedValue ();
 			writer.Write (BF.Decimal);
+			WriteValueContent (value);
+		}
+
+		void WriteValueContent (decimal value)
+		{
 			int [] bits = Decimal.GetBits (value);
 			// so, looks like it is saved as its internal form,
 			// not the returned order.
@@ -816,14 +993,23 @@ namespace System.Xml
 		{
 			ProcessTypedValue ();
 			writer.Write (BF.DateTime);
+			WriteValueContent (value);
+		}
+
+		void WriteValueContent (DateTime value)
+		{
 			writer.Write (value.Ticks);
 		}
 
 		public override void WriteValue (Guid value)
 		{
 			ProcessTypedValue ();
-
 			writer.Write (BF.Guid);
+			WriteValueContent (value);
+		}
+
+		void WriteValueContent (Guid value)
+		{
 			byte [] bytes = value.ToByteArray ();
 			writer.Write (bytes, 0, bytes.Length);
 		}
@@ -839,7 +1025,7 @@ namespace System.Xml
 				// attr_typed_value not being true.
 				ProcessTypedValue ();
 
-				writer.Write (BF.UniqueIdFromGuid);
+				writer.Write (BF.UniqueId);
 				byte [] bytes = guid.ToByteArray ();
 				writer.Write (bytes, 0, bytes.Length);
 			} else {
@@ -852,6 +1038,11 @@ namespace System.Xml
 			ProcessTypedValue ();
 
 			writer.Write (BF.TimeSpan);
+			WriteValueContent (value);
+		}
+
+		void WriteValueContent (TimeSpan value)
+		{
 			WriteBigEndian (value.Ticks, 8);
 		}
 		#endregion
@@ -873,60 +1064,37 @@ namespace System.Xml
 		{
 			if (text.Length == 0)
 				writer.Write (BF.EmptyText);
-			else
-				WriteToStream (BF.Text, text);
-		}
-
-		private void WriteNames (string prefix, string localName)
-		{
-			if (prefix != String.Empty)
-				WriteNamePart (prefix);
-			WriteNamePart (localName);
-		}
-
-		private void WriteNamePart (string name)
-		{
-			byte [] data = utf8Enc.GetBytes (name);
-			writer.Write ((byte) (data.Length));
-			writer.Write (data, 0, data.Length);
-		}
-
-		private void WriteToStream (byte identifier, string text)
-		{
-			if (text.Length == 0) {
-				writer.Write (identifier);
-				writer.Write ((byte) 0);
-			} else {
-				byte [] data = utf8Enc.GetBytes (text);
-				WriteToStream (identifier, data, 0, data.Length);
+			else {
+				char [] arr = text.ToCharArray ();
+				WriteChars (arr, 0, arr.Length);
 			}
 		}
 
-		// FIXME: process long data (than 255 bytes)
-		private void WriteToStream (byte identifier, byte [] data, int start, int len)
+		#endregion
+
+		#region Write typed array content
+
+		// they are packed in WriteValue(), so we cannot reuse
+		// them for array content.
+
+		void WriteValueContent (bool value)
 		{
-			//int lengthAdjust = 0;GetLengthAdjust (len);
-			//writer.Write ((byte) (identifier + lengthAdjust));
-			//WriteLength (len, lengthAdjust);
-			writer.Write ((byte) (identifier));
-			WriteLength (len, 0);
-			writer.Write (data, start, len);
+			writer.Write (value ? (byte) 1 : (byte) 0);
 		}
 
-		/*
-		private int GetLengthAdjust (int count)
+		void WriteValueContent (short value)
 		{
-			int lengthAdjust = 0;
-			for (int ctmp = count; ctmp >= 0x100; ctmp /= 0x100)
-				lengthAdjust++;
-			return lengthAdjust;
+			writer.Write (value);
 		}
-		*/
 
-		private void WriteLength (int count, int lengthAdjust)
+		void WriteValueContent (int value)
 		{
-			for (int i = 0, ctmp = count; i < lengthAdjust + 1; i++, ctmp /= 0x100)
-				writer.Write ((byte) (ctmp % 0x100));
+			writer.Write (value);
+		}
+
+		void WriteValueContent (long value)
+		{
+			writer.Write (value);
 		}
 
 		#endregion

@@ -58,7 +58,11 @@ namespace System.ServiceModel.Channels
 
 		public override MessageVersion MessageVersion {
 			get { return version; }
-			set { version = value; }
+			set {
+				if (!version.Envelope.Equals (EnvelopeVersion.Soap12))
+					throw new InvalidOperationException ("Binary message encoding binding element only supports SOAP 1.2.");
+				version = value;
+			}
 		}
 
 		public int MaxSessionSize {
@@ -89,6 +93,7 @@ namespace System.ServiceModel.Channels
 			return base.BuildChannelFactory<TChannel> (context);
 		}
 
+#if !NET_2_1
 		public override IChannelListener<TChannel> BuildChannelListener<TChannel> (
 			BindingContext context)
 		{
@@ -105,16 +110,18 @@ namespace System.ServiceModel.Channels
 				throw new ArgumentNullException ("context");
 			return context.CanBuildInnerChannelListener<TChannel> ();
 		}
+#endif
 
 		public override BindingElement Clone ()
 		{
 			return new BinaryMessageEncodingBindingElement (this);
 		}
 
-		[MonoTODO]
 		public override T GetProperty<T> (BindingContext context)
 		{
-			throw new NotImplementedException ();
+			if (typeof (T) == typeof (MessageVersion))
+				return (T) (object) MessageVersion;
+			return null;
 		}
 
 		public override MessageEncoderFactory
@@ -123,15 +130,7 @@ namespace System.ServiceModel.Channels
 			return new BinaryMessageEncoderFactory (this);
 		}
 
-		[MonoTODO]
-		protected override void OnImportPolicy (XmlElement assertion,
-			MessageVersion messageVersion,
-			MetadataImporter exporter,
-			PolicyConversionContext context)
-		{
-			throw new NotImplementedException ();
-		}
-
+#if !NET_2_1
 		[MonoTODO]
 		void IWsdlExportExtension.ExportContract (WsdlExporter exporter,
 			WsdlContractConversionContext context)
@@ -147,10 +146,11 @@ namespace System.ServiceModel.Channels
 		}
 
 		[MonoTODO]
-		public void ExportPolicy (MetadataExporter exporter,
+		void IPolicyExportExtension.ExportPolicy (MetadataExporter exporter,
 			PolicyConversionContext context)
 		{
 			throw new NotImplementedException ();
 		}
+#endif
 	}
 }

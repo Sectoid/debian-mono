@@ -18,6 +18,11 @@
 	ListViewPagedDataSource has its TotalRowCount property set to the
 	actual total row count, not zero. Fixes bug #545417
 
+2009-09-15  Marek Habersack  <mhabersack@novell.com>
+
+	* ListView.cs: CreateChildControls calls EnsureDataBound only if
+	we're not in post-back and if data binding is required.
+
 2009-09-08  Marek Habersack  <mhabersack@novell.com>
 
 	* ListView.cs: if total row count has been retrieved from the
@@ -31,6 +36,12 @@
 	event are given chance to react accordingly.
 	SetPageProperties should use values stored in
 	PagePropertiesChangingEventArgs arguments after handler returns.
+
+2009-06-25  Marek Habersack  <mhabersack@novell.com>
+
+	* LinqDataSource.cs: make ContextType not throw an exception when
+	ContextTypeName is not set, but rather return a null in that
+	case.
 
 2009-03-03  Marek Habersack  <mhabersack@novell.com>
 

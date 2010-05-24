@@ -1,3 +1,103 @@
+2009-07-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSimpleDictionaryWriterTest.cs : test WriteNode() to not skip more
+	  than two nodes in an element.
+
+2009-06-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReaderTest.cs : verify that end element has
+	  non-empty local name.
+
+2009-05-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterTest.cs : added test for failing duplicate
+	  namespace declaration in the same element context.
+
+2009-05-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterTest.cs : added test for writing xml/xmlns
+	  attributes with null namespace.
+
+2009-05-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReaderTest.cs : added test for utf16 chars.
+
+2009-05-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryWriterSession.cs : added test to verify that session is
+	  actually used in binary dictionary writer.
+
+2009-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlMtomDictionaryWriterTest.cs : new.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReaderTest.cs: make tests more doubtful on
+	  state.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReaderTest.cs: test array reader.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterTest.cs : added test for array operation.
+
+2009-03-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReaderTest.cs,
+	  XmlBinaryDictionaryWriterTest.cs : added test for element with
+	  short prefix.
+
+2009-03-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterTest.cs : enabled QName test parts.
+
+2009-03-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterTest.cs: added test for shorthand
+	  prefixed attributes.
+
+2009-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryWriterTest.cs: added QName test part, but
+	  disable since it does not work yet.
+
+2009-03-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlBinaryDictionaryReaderTest.cs : enable reader-session dependent
+	  tests.
+	* XmlBinaryDictionaryReaderTest.cs : enable dummy-prefixed attributes
+	  tests.
+
+2009-02-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* UniqueIdTest.cs: Add tests for all members.
+
+2009-02-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriterTest.cs: Test WriteValue(IStreamProvider).
+
+2009-02-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriterTest.cs: Test WriteNode(XmlDictionaryReader),
+	  WriteNode(XmlReader), and WriteTextNode().
+
+2009-02-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriterTest.cs: Test WriteValue(Guid),
+	  WriteValue(TimeSpan), WriteValue(UniqueId).
+
+2009-02-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryWriterTest.cs: Added; test
+	  XmlDictionaryWriter.WriteElementString().
+
+2009-02-11  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlDictionaryStringTest.cs: Added; tests for XmlDictionaryString.
+
 2008-04-10  Eyal Alaluf <eyala@mainsoft.com>
 
 	* XmlBinaryDictionaryWriterTest.cs: Tested binary writer WriteXmlnsAttributa

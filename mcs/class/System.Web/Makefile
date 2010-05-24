@@ -4,7 +4,7 @@ include ../../build/rules.make
 
 LIBRARY = System.Web.dll
 
-ifeq (net_2_0, $(PROFILE))
+ifneq (1, $(FRAMEWORK_VERSION_MAJOR))
 
 LIBRARY_USE_INTERMEDIATE_FILE = yes
 
@@ -16,9 +16,11 @@ WEBSERVICES_DEP := System.Web.Services.dll
 WEBSERVICES_DEP_FILE := $(wildcard ../lib/$(PROFILE)/$(WEBSERVICES_DEP))
 MONOWEB_DEP := Mono.Web.dll
 MONOWEB_DEP_FILE := $(wildcard ../lib/$(PROFILE)/$(MONOWEB_DEP))
+ifndef NO_SYSTEMCORE_DEP
 SYSTEMCORE_DEP := System.Core.dll
 SYSTEMCORE_DEP_FILE := $(wildcard ../lib/$(PROFILE)/$(SYSTEMCORE_DEP))
-CYCLIC_DEPS := $(WEBSERVICES_DEP) $(MONOWEB_DEP)
+endif
+CYCLIC_DEPS := $(WEBSERVICES_DEP) $(MONOWEB_DEP) 
 CYCLIC_DEP_FILES := $(WEBSERVICES_DEP_FILE) $(MONOWEB_DEP_FILE)
 endif
 
@@ -95,6 +97,7 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWebResources/App_GlobalResources/Common.resx \
 	Test/mainsoft/NunitWebResources/App_GlobalResources/Common.fr-FR.resx \
 	Test/mainsoft/NunitWebResources/App_GlobalResources/Resource1.resx \
+	Test/mainsoft/NunitWebResources/App_Code/EnumConverterControl.cs \
 	Test/mainsoft/NunitWebResources/menuclass.aspx \
 	Test/mainsoft/NunitWebResources/FormView.aspx \
 	Test/mainsoft/NunitWebResources/PostBackMenuTest.aspx \
@@ -174,18 +177,23 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWebResources/ContentPlaceHolderInTemplate.master \
 	Test/mainsoft/NunitWebResources/MissingMasterFile.aspx \
 	Test/mainsoft/NunitWebResources/CustomSectionEmptyCollection.aspx \
+	Test/mainsoft/NunitWebResources/NoDoubleOnInitOnRemoveAdd.aspx \
+	Test/mainsoft/NunitWebResources/NoDoubleOnInitOnRemoveAdd.aspx.cs \
 	Test/mainsoft/NunitWebResources/LoginDisplayRememberMe.aspx \
 	Test/mainsoft/NunitWebResources/NoBindForMethodsWithBindInName.aspx \
 	Test/mainsoft/NunitWebResources/LinkInHeadWithEmbeddedExpression.aspx \
 	Test/mainsoft/NunitWebResources/ExpressionInListControl.aspx \
 	Test/mainsoft/NunitWebResources/ServerSideControlsInScriptBlock.aspx \
 	Test/mainsoft/NunitWebResources/ServerControlInClientSideComment.aspx \
+	Test/mainsoft/NunitWebResources/PreprocessorDirectivesInMarkup.aspx \
 	Test/mainsoft/NunitWebResources/UnquotedAngleBrackets.aspx \
 	Test/mainsoft/NunitWebResources/FullTagsInText.aspx \
 	Test/mainsoft/NunitWebResources/TagsExpressionsAndCommentsInText.aspx \
 	Test/mainsoft/NunitWebResources/NewlineInCodeExpression.aspx \
 	Test/mainsoft/NunitWebResources/DuplicateControlsInClientComment.aspx \
 	Test/mainsoft/NunitWebResources/TagsNestedInClientTag.aspx \
+	Test/mainsoft/NunitWebResources/ConditionalClientComments.aspx \
+	Test/mainsoft/NunitWebResources/OneLetterIdentifierInCodeRender.aspx \
 	Test/mainsoft/NunitWebResources/GlobalResourcesLocalization.aspx \
 	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx \
 	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx.cs \
@@ -194,15 +202,21 @@ TEST_RESOURCE_FILES = \
 	Test/mainsoft/NunitWebResources/StateFormatter_CollectionConverter.aspx \
 	Test/mainsoft/NunitWebResources/StateFormatter_CollectionConverter.aspx.cs \
 	Test/mainsoft/NunitWebResources/ChangePasswordContainer_FindControl.aspx \
-	Test/mainsoft/NunitWebResources/TagWithExpressionWithinAttribute.aspx
+	Test/mainsoft/NunitWebResources/TagWithExpressionWithinAttribute.aspx \
+	Test/mainsoft/NunitWebResources/CheckBoxList_Bug377703_1.aspx \
+	Test/mainsoft/NunitWebResources/CheckBoxList_Bug377703_2.aspx \
+	Test/mainsoft/NunitWebResources/CheckBoxList_Bug578770.aspx \
+	Test/mainsoft/NunitWebResources/EnumConverter_Bug578586.aspx \
+	Test/mainsoft/NunitWebResources/ButtonColor_Bug325489.aspx \
+	Test/mainsoft/NunitWebResources/SqlDataSource_OnInit_Bug572781.aspx
 
 RESX_DIST =  resources/TranslationResources.resx
-ifeq (net_2_0, $(PROFILE))
+ifneq (1, $(FRAMEWORK_VERSION_MAJOR))
 RESX_RES = $(RESX_DIST:.resx=.resources)
 endif
 
 NUNIT_RESOURCE_FILES = $(TEST_RESOURCE_FILES)
-ifeq (net_2_0, $(PROFILE))
+ifneq (1, $(FRAMEWORK_VERSION_MAJOR))
 OTHER_RES += $(RESOURCE_FILES_2)
 OTHER_LIB_MCS_FLAGS = -d:INSIDE_SYSTEM_WEB -nowarn:618 -r:System.Configuration.dll -r:Mono.Data.Sqlite.dll
 endif
@@ -223,8 +237,8 @@ LIB_MCS_FLAGS = \
 ifneq ($(CYCLIC_DEPS:%=../lib/$(PROFILE)/%), $(CYCLIC_DEP_FILES))
 NO_SIGN_ASSEMBLY = yes
 NO_INSTALL = yes
-all-local: System.Web/UplevelHelper.cs resources/TranslationResources.resources echo-warning
-.PHONY: echo-warning
+all-local: System.Web/UplevelHelper.cs resources/TranslationResources.resources echo-warning echo-warning-systemcore
+.PHONY: echo-warning echo-warning-systemcore
 
 ifeq   (, $(strip $(CYCLIC_DEP_FILES)))
 echo-warning:
@@ -232,7 +246,14 @@ echo-warning:
 endif
 endif
 
-TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -doc:$(test_lib:.dll=.xml)  -nowarn:219,169,1591 $(NUNIT_RESOURCE_FILES:%=/resource:%)
+ifeq (4, $(FRAMEWORK_VERSION_MAJOR))
+ifndef SYSTEMCORE_DEP_FILE
+echo-warning-systemcore:
+	@echo "** Warning: System.Web.dll built without parts that depend on $(SYSTEMCORE_DEP)"
+endif
+endif
+
+TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -doc:$(test_lib:.dll=.xml) -nowarn:219,169,1591 $(NUNIT_RESOURCE_FILES:%=/resource:%) -r:SystemWebTestShim.dll
 ifeq (net_2_0, $(PROFILE))
 TEST_MCS_FLAGS += -r:System.Web.Extensions.dll
 endif
@@ -245,12 +266,12 @@ include ../../build/library.make
 
 ifdef WEBSERVICES_DEP_FILE
 LIB_MCS_FLAGS += -define:WEBSERVICES_DEP -r:$(WEBSERVICES_DEP)
-$(the_lib): $(WEBSERVICES_DEP_FILE)
+$(build_lib): $(WEBSERVICES_DEP_FILE)
 endif
 
 ifdef MONOWEB_DEP_FILE
 LIB_MCS_FLAGS += -define:MONOWEB_DEP -r:$(MONOWEB_DEP)
-$(the_lib): $(MONOWEB_DEP_FILE)
+$(build_lib): $(MONOWEB_DEP_FILE)
 endif
 
 ifdef SYSTEMCORE_DEP_FILE
@@ -270,7 +291,11 @@ ifdef MONO_TRACE
 LIB_MCS_FLAGS += -define:TRACE -define:MONO_TRACE
 endif
 
-$(the_lib): $(RESX_RES) $(RESOURCE_FILES_2) $(RESOURCE_FILES_1)
+ifdef DEVEL
+LIB_MCS_FLAGS += -define:DEVEL
+endif
+
+$(build_lib): $(RESX_RES) $(RESOURCE_FILES_2) $(RESOURCE_FILES_1)
 
 $(RESX_RES): %.resources: %.resx
 	$(RESGEN) `echo $< | $(PLATFORM_CHANGE_SEPARATOR_CMD)`

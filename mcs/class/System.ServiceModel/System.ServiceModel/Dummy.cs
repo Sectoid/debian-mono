@@ -7,11 +7,7 @@ namespace System.IO
 
 namespace System.ServiceModel
 {
-	public class NamedPipeTransportSecurity { }
-	public class NetNamedPipeBinding : Binding { public override BindingElementCollection CreateBindingElements () { throw new NotImplementedException (); }  public override string Scheme { get { return null; } } }
-	public class NetNamedPipeSecurity { }
 	public class PeerHopCountAttribute { }
-	public class TransactionFlowAttribute { }
 }
 
 namespace System.ServiceModel.Activation.Configuration
@@ -21,7 +17,6 @@ namespace System.ServiceModel.Activation.Configuration
 
 namespace System.ServiceModel.Channels
 {
-	public class PeerCustomResolverBindingElement { }
 	public class PrivacyNoticeBindingElement { }
 	public class PrivacyNoticeBindingElementImporter { }
 	public class ReliableSessionBindingElement { }

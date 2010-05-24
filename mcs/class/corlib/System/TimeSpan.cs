@@ -43,6 +43,14 @@ namespace System
 		, IComparable<TimeSpan>, IEquatable <TimeSpan>
 #endif
 	{
+#if MONOTOUCH
+		static TimeSpan () {
+			if (MonoTouchAOTHelper.FalseFlag) {
+				var comparer = new System.Collections.Generic.GenericComparer <TimeSpan> ();
+				var eqcomparer = new System.Collections.Generic.GenericEqualityComparer <TimeSpan> ();
+			}
+		}
+#endif
 		public static readonly TimeSpan MaxValue = new TimeSpan (long.MaxValue);
 		public static readonly TimeSpan MinValue = new TimeSpan (long.MinValue);
 		public static readonly TimeSpan Zero = new TimeSpan (0L);
@@ -337,6 +345,10 @@ namespace System
 #if NET_2_0
 		public static bool TryParse (string s, out TimeSpan result)
 		{
+			if (s == null) {
+				result = TimeSpan.Zero;
+				return false;
+			}
 			try {
 				result = Parse (s);
 				return true;
@@ -509,7 +521,7 @@ namespace System
 					count++;
 				}
 
-				if (count == 0)
+				if (!optional && (count == 0))
 					formatError = true;
 
 				return res;

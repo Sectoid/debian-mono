@@ -1,7 +1,30 @@
+2010-01-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DateTimeConstantAttribute.cs: Add internal Ticks property.
+
+	Backport of r149083.
+
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* RuntimeHelpers.cs: Add missing validations
 	[Backport r144208]
+
+2009-09-23  Marek Safar  <marek.safar@gmail.com>
+
+	* MethodImplOptions.cs: Add NoOptimization.
+
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* TypeForwardedFromAttribute.cs: Add BOOTSTRAP_NET_4_0.
+
+2009-07-02  Marek Safar  <marek.safar@gmail.com>
+
+	* ConditionalWeakTable.cs: New file.
+
+2009-06-10  Marek Safar  <marek.safar@gmail.com>
+
+	* InternalsVisibleToAttribute.cs: Updated to 2.0 SP2.
+	* TypeForwardedFromAttribute.cs: New file.
 
 2008-04-02  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 

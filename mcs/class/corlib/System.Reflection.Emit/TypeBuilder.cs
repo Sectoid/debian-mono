@@ -58,14 +58,14 @@ namespace System.Reflection.Emit
 		private string nspace;
 		private Type parent;
 		private Type nesting_type;
-		private Type[] interfaces;
-		private int num_methods;
-		private MethodBuilder[] methods;
-		private ConstructorBuilder[] ctors;
-		private PropertyBuilder[] properties;
-		private int num_fields;
-		private FieldBuilder[] fields;
-		private EventBuilder[] events;
+		internal Type[] interfaces;
+		internal int num_methods;
+		internal MethodBuilder[] methods;
+		internal ConstructorBuilder[] ctors;
+		internal PropertyBuilder[] properties;
+		internal int num_fields;
+		internal FieldBuilder[] fields;
+		internal EventBuilder[] events;
 		private CustomAttributeBuilder[] cattrs;
 		internal TypeBuilder[] subtypes;
 		internal TypeAttributes attrs;
@@ -112,13 +112,13 @@ namespace System.Reflection.Emit
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private extern EventInfo get_event_info (EventBuilder eb);
 
-		internal TypeBuilder (ModuleBuilder mb, TypeAttributes attr)
+		internal TypeBuilder (ModuleBuilder mb, TypeAttributes attr, int table_idx)
 		{
 			this.parent = null;
 			this.attrs = attr;
 			this.class_size = UnspecifiedTypeSize;
-			this.table_idx = 1;
-			fullname = this.tname = "<Module>";
+			this.table_idx = table_idx;
+			fullname = this.tname = table_idx == 1 ? "<Module>" : "type_"+table_idx;
 			this.nspace = String.Empty;
 			pmodule = mb;
 			setup_internal_class (this);
@@ -261,6 +261,7 @@ namespace System.Reflection.Emit
 
 		public void AddDeclarativeSecurity (SecurityAction action, PermissionSet pset)
 		{
+#if !NET_2_1
 			if (pset == null)
 				throw new ArgumentNullException ("pset");
 			if ((action == SecurityAction.RequestMinimum) ||
@@ -285,6 +286,7 @@ namespace System.Reflection.Emit
 
 			permissions [permissions.Length - 1] = new RefEmitPermissionSet (action, pset.ToXml ().ToString ());
 			attrs |= TypeAttributes.HasSecurity;
+#endif
 		}
 
 #if NET_2_0
@@ -368,6 +370,8 @@ namespace System.Reflection.Emit
 
 		public override bool IsDefined (Type attributeType, bool inherit)
 		{
+			if (!is_created && !IsCompilerContext)
+				throw new NotSupportedException ();
 			/*
 			 * MS throws NotSupported here, but we can't because some corlib
 			 * classes make calls to IsDefined.
@@ -651,6 +655,8 @@ namespace System.Reflection.Emit
 			if (methodInfoDeclaration == null)
 				throw new ArgumentNullException ("methodInfoDeclaration");
 			check_not_created ();
+			if (methodInfoBody.DeclaringType != this)
+				throw new ArgumentException ("method body must belong to this type");
 
 			if (methodInfoBody is MethodBuilder) {
 				MethodBuilder mb = (MethodBuilder)methodInfoBody;
@@ -812,8 +818,11 @@ namespace System.Reflection.Emit
 				throw new TypeLoadException ("Could not load type '" + FullName + "' from assembly '" + Assembly + "' because it is an enum with methods.");
 
 			if (methods != null) {
+				bool is_concrete = !IsAbstract;
 				for (int i = 0; i < num_methods; ++i) {
 					MethodBuilder mb = (MethodBuilder)(methods[i]);
+					if (is_concrete && mb.IsAbstract)
+						throw new InvalidOperationException ("Type is concrete but has abstract method " + mb);
 					mb.check_override ();
 					mb.fixup ();
 				}
@@ -870,6 +879,14 @@ namespace System.Reflection.Emit
 			if (is_created)
 				return created.GetConstructors (bindingAttr);
 
+			if (!IsCompilerContext)
+				throw new NotSupportedException ();
+
+			return GetConstructorsInternal (bindingAttr);
+		}
+
+		internal ConstructorInfo[] GetConstructorsInternal (BindingFlags bindingAttr)
+		{
 			if (ctors == null)
 				return new ConstructorInfo [0];
 			ArrayList l = new ArrayList ();
@@ -907,8 +924,7 @@ namespace System.Reflection.Emit
 
 		public override Type GetElementType ()
 		{
-			check_created ();
-			return created.GetElementType ();
+			throw new NotSupportedException ();
 		}
 
 		public override EventInfo GetEvent (string name, BindingFlags bindingAttr)
@@ -925,13 +941,11 @@ namespace System.Reflection.Emit
 
 		public override EventInfo[] GetEvents (BindingFlags bindingAttr)
 		{
-			/* FIXME: mcs calls this
-			   check_created ();
-			*/
-			if (!is_created)
-				return new EventInfo [0];
-			else
+			if (is_created)
 				return created.GetEvents (bindingAttr);
+			if (!IsCompilerContext)
+				throw new NotSupportedException ();
+			return new EventInfo [0]; /*FIXME shouldn't we return the events here?*/
 		}
 
 		// This is only used from MonoGenericInst.initialize().
@@ -1073,6 +1087,9 @@ namespace System.Reflection.Emit
 		
 		public override Type[] GetInterfaces ()
 		{
+			if (is_created)
+				return created.GetInterfaces ();
+
 			if (interfaces != null) {
 				Type[] ret = new Type [interfaces.Length];
 				interfaces.CopyTo (ret, 0);
@@ -1248,11 +1265,32 @@ namespace System.Reflection.Emit
 		public override Type GetNestedType (string name, BindingFlags bindingAttr)
 		{
 			check_created ();
-			return created.GetNestedType (name, bindingAttr);
+
+			if (subtypes == null)
+				return null;
+
+			foreach (TypeBuilder t in subtypes) {
+				if (!t.is_created)
+					continue;
+				if ((t.attrs & TypeAttributes.VisibilityMask) == TypeAttributes.NestedPublic) {
+					if ((bindingAttr & BindingFlags.Public) == 0)
+						continue;
+				} else {
+					if ((bindingAttr & BindingFlags.NonPublic) == 0)
+						continue;
+				}
+				if (t.Name == name)
+					return t.created;
+			}
+
+			return null;
 		}
 
 		public override Type[] GetNestedTypes (BindingFlags bindingAttr)
 		{
+			if (!is_created && !IsCompilerContext)
+				throw new NotSupportedException ();
+
 			bool match;
 			ArrayList result = new ArrayList ();
 
@@ -1347,13 +1385,12 @@ namespace System.Reflection.Emit
 
 		protected override bool IsArrayImpl ()
 		{
-			return Type.IsArrayImpl (this);
+			return false; /*A TypeBuilder never represents a non typedef type.*/
 		}
 
 		protected override bool IsByRefImpl ()
 		{
-			// FIXME
-			return false;
+			return false; /*A TypeBuilder never represents a non typedef type.*/
 		}
 
 		protected override bool IsCOMObjectImpl ()
@@ -1363,8 +1400,7 @@ namespace System.Reflection.Emit
 
 		protected override bool IsPointerImpl ()
 		{
-			// FIXME
-			return false;
+			return false; /*A TypeBuilder never represents a non typedef type.*/
 		}
 
 		protected override bool IsPrimitiveImpl ()
@@ -1382,22 +1418,21 @@ namespace System.Reflection.Emit
 		}
 		
 #if NET_2_0
-		[MonoTODO]
 		public override Type MakeArrayType ()
 		{
-			return base.MakeArrayType ();
+			return new ArrayType (this, 0);
 		}
 
-		[MonoTODO]
 		public override Type MakeArrayType (int rank)
 		{
-			return base.MakeArrayType (rank);
+			if (rank < 1)
+				throw new IndexOutOfRangeException ();
+			return new ArrayType (this, rank);
 		}
 
-		[MonoTODO]
 		public override Type MakeByRefType ()
 		{
-			return base.MakeByRefType ();
+			return new ByRefType (this);
 		}
 
 		[MonoTODO]
@@ -1406,10 +1441,9 @@ namespace System.Reflection.Emit
 			return base.MakeGenericType (typeArguments);
 		}
 
-		[MonoTODO]
 		public override Type MakePointerType ()
 		{
-			return base.MakePointerType ();
+			return new PointerType (this);
 		}
 #endif
 		
@@ -1740,17 +1774,18 @@ namespace System.Reflection.Emit
 
 		public override Type[] GetGenericArguments ()
 		{
-			if (generic_params != null)
-				return generic_params;
-
-			throw new InvalidOperationException ();
+			if (generic_params == null)
+				return null;
+			Type[] args = new Type [generic_params.Length];
+			generic_params.CopyTo (args, 0);
+			return args;
 		}
 
 		public override Type GetGenericTypeDefinition ()
 		{
-			create_generic_class ();
-
-			return base.GetGenericTypeDefinition ();
+			if (generic_params == null)
+				throw new InvalidOperationException ("Type is not generic");
+			return this;
 		}
 
 		public override bool ContainsGenericParameters {
@@ -1762,6 +1797,10 @@ namespace System.Reflection.Emit
 		public extern override bool IsGenericParameter {
 			[MethodImplAttribute(MethodImplOptions.InternalCall)]
 			get;
+		}
+
+		public override GenericParameterAttributes GenericParameterAttributes {
+			get { return GenericParameterAttributes.None; }
 		}
 
 		public override bool IsGenericTypeDefinition {
@@ -1777,35 +1816,46 @@ namespace System.Reflection.Emit
 		[MonoTODO]
 		public override int GenericParameterPosition {
 			get {
-				throw new NotImplementedException ();
+				return 0;
 			}
 		}
 
 		public override MethodBase DeclaringMethod {
 			get {
-				throw new NotImplementedException ();
+				return null;
 			}
 		}
 
 		public GenericTypeParameterBuilder[] DefineGenericParameters (params string[] names)
 		{
+			if (names == null)
+				throw new ArgumentNullException ("names");
+			if (names.Length == 0)
+				throw new ArgumentException ("names");
+
 			setup_generic_class ();
 
 			generic_params = new GenericTypeParameterBuilder [names.Length];
-			for (int i = 0; i < names.Length; i++)
-				generic_params [i] = new GenericTypeParameterBuilder (
-					this, null, names [i], i);
+			for (int i = 0; i < names.Length; i++) {
+				string item = names [i];
+				if (item == null)
+					throw new ArgumentNullException ("names");
+				generic_params [i] = new GenericTypeParameterBuilder (this, null, item, i);
+			}
 
 			return generic_params;
 		}
 
 		public static ConstructorInfo GetConstructor (Type type, ConstructorInfo constructor)
 		{
+			if (type == null)
+				throw new ArgumentException ("Type is not generic", "type");
+
 			ConstructorInfo res = type.GetConstructor (constructor);
 			if (res == null)
-				throw new System.Exception ("constructor not found");
-			else
-				return res;
+				throw new ArgumentException ("constructor not found");
+
+			return res;
 		}
 
 		static bool IsValidGetMethodType (Type type)

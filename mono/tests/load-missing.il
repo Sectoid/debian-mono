@@ -52,6 +52,34 @@
 
   }
 
+  .class auto ansi sealed public DelegateWithMissingArgument
+         extends [mscorlib]System.MulticastDelegate
+  {
+    .method public hidebysig specialname rtspecialname 
+            instance void  .ctor(object 'object',
+                                 native int 'method') runtime managed
+    {
+    }
+
+    .method public hidebysig newslot virtual 
+            instance void  Invoke([t]Missing t) runtime managed
+    {
+    }
+
+    .method public hidebysig newslot virtual 
+            instance class [mscorlib]System.IAsyncResult 
+            BeginInvoke(class [mscorlib]System.AsyncCallback callback,
+                        object 'object') runtime managed
+    {
+    }
+
+    .method public hidebysig newslot virtual 
+            instance void  EndInvoke(class [mscorlib]System.IAsyncResult result) runtime managed
+    {
+    }
+
+  }
+
 .class public auto ansi beforefieldinit LoadMissing
        extends [mscorlib]System.Object
 {
@@ -491,6 +519,27 @@
 		ret
 	}	
 
+	.method public static void delegate_target () cil managed
+	{
+		ret
+	}
+
+	.method public hidebysig static void missing_delegate_ctor_argument () cil managed	   
+	{
+	    .maxstack  3
+		.locals init (class [t]Missing.Foo2 V_0,
+			          class EmptyDelegate V_1)
+    IL_0000:  nop
+    IL_0001:  newobj     instance void LoadMissing::.ctor()
+    IL_0006:  stloc.0
+    IL_0007:  ldloc.0
+    IL_0008:  ldftn      instance void LoadMissing::delegate_target()
+    IL_000e:  newobj     instance void DelegateWithMissingArgument::.ctor(object,
+                                                                          native int)
+    IL_0013:  stloc.1
+    IL_0014:  ret
+	}
+
   .method public hidebysig specialname rtspecialname 
           instance void  .ctor() cil managed
   {
@@ -501,4 +550,172 @@
     IL_0006:  ret
   }
 
+}
+
+.class public auto ansi beforefieldinit BrokenClass
+       extends [mscorlib]System.Object1
+{
+}
+
+.class public auto ansi CCtorClass
+        extends [mscorlib]System.Object     
+  {                                         
+
+    // method line 48
+    .method public hidebysig  specialname  rtspecialname 
+           instance default void '.ctor' ()  cil managed 
+    {                                                    
+        .maxstack 8                                      
+        IL_0000:  ldarg.0                                
+        IL_0001:  call instance void object::'.ctor'()   
+        IL_0006:  ret                                    
+    } // end of method CCtorClass::.ctor                 
+
+    // method line 49
+    .method private static  specialname  rtspecialname 
+           default void '.cctor' ()  cil managed       
+    {                                                  
+    IL_0000:  nop
+    IL_0001:  newobj     instance void [t]Missing.Foo2::.ctor()
+    IL_0006:  stloc.0
+    IL_0007:  ldloc.0
+    IL_0008:  callvirt   instance void [t]Missing.Foo2::missing()
+    IL_000d:  nop
+    IL_000e:  ret
+    } // end of method CCtorClass::.cctor                                    
+
+    // method line 50
+    .method public static  hidebysig 
+           default void foo ()  cil managed 
+    {                                       
+        .maxstack 8                         
+        IL_0000:  ret                       
+    } // end of method CCtorClass::foo      
+
+  } // end of class CCtorClass
+
+.class interface public auto ansi abstract TestIface
+{
+	.method public virtual  hidebysig  newslot abstract instance default int32 foo ()  cil managed  {}
+}
+
+.class public auto ansi beforefieldinit BadMethodOverride1
+{
+	.method public virtual newslot default int32 foo ()
+	{
+		.override class TestIface::foo
+		ldc.i4.0
+		ret
+	}
+
+	.method public hidebysig  specialname  rtspecialname  instance default void '.ctor' ()  cil managed 
+    {
+		ldarg.0                                
+		call instance void object::'.ctor'()   
+		ret                                    
+	}
+}
+
+.class public auto ansi beforefieldinit RandomBaseClass
+{
+	.method public virtual newslot default int32 foo ()
+	{
+		ldc.i4.0
+		ret
+	}
+
+	.method public static int32 foo2 ()
+	{
+		ldc.i4.0
+		ret
+	}
+
+	.method public hidebysig  specialname  rtspecialname  instance default void '.ctor' ()  cil managed 
+    {
+		ldarg.0                                
+		call instance void object::'.ctor'()   
+		ret                                    
+	}
+}
+
+.class public auto ansi beforefieldinit BadMethodOverride2
+{
+	.method public virtual newslot default int32 foo ()
+	{
+		.override class RandomBaseClass::foo
+		ldc.i4.0
+		ret
+	}
+
+	.method public hidebysig  specialname  rtspecialname  instance default void '.ctor' ()  cil managed 
+    {
+		ldarg.0                                
+		call instance void object::'.ctor'()   
+		ret                                    
+	}
+}
+
+.class public auto ansi beforefieldinit BadMethodOverride3 implements TestIface
+{
+	.method public default int32 foo ()
+	{
+		.override class TestIface::foo
+		ldc.i4.0
+		ret
+	}
+
+	.method public hidebysig  specialname  rtspecialname  instance default void '.ctor' ()  cil managed 
+    {
+		ldarg.0                                
+		call instance void object::'.ctor'()   
+		ret                                    
+	}
+}
+
+.class public auto ansi beforefieldinit BadMethodOverride4 extends RandomBaseClass
+{
+	.method public virtual default int32 foo2 ()
+	{
+		.override class RandomBaseClass::foo2
+		ldc.i4.0
+		ret
+	}
+
+	.method public hidebysig  specialname  rtspecialname  instance default void '.ctor' ()  cil managed 
+    {
+		ldarg.0                                
+		call instance void RandomBaseClass::'.ctor'()   
+		ret                                    
+	}
+}
+
+.class public auto ansi beforefieldinit BadOverridesDriver
+{
+	.method public static void bad_override1 ()
+	{
+		newobj instance void BadMethodOverride1::.ctor()
+		pop
+		ret
+	}
+
+	.method public static void bad_override2 ()
+	{
+		newobj instance void BadMethodOverride2::.ctor()
+		pop
+		ret
+	}
+
+	.method public static void bad_override3 ()
+	{
+		newobj instance void BadMethodOverride3::.ctor()
+		pop
+		ret
+	}
+
+	.method public static void bad_override4 ()
+	{
+		newobj instance void BadMethodOverride4::.ctor()
+		pop
+		ret
+	}
 }

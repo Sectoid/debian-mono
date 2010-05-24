@@ -43,6 +43,16 @@ using System.Security.Permissions;
 using System.Runtime.InteropServices;
 
 namespace System.Collections.Generic {
+
+	/* 
+	 * Declare this outside the main class so it doesn't have to be inflated for each
+	 * instantiation of Dictionary.
+	 */
+	internal struct Link {
+		public int HashCode;
+		public int Next;
+	}
+
 	[ComVisible(false)]
 	[Serializable]
 	public class Dictionary<TKey, TValue> : IDictionary<TKey, TValue>,
@@ -73,11 +83,6 @@ namespace System.Collections.Generic {
 		const float DEFAULT_LOAD_FACTOR = (90f / 100);
 		const int NO_SLOT = -1;
 		const int HASH_FLAG = -2147483648;
-		
-		private struct Link {
-			public int HashCode;
-			public int Next;
-		}
 
 		// The hash table contains indices into the linkSlots array
 		int [] table;
@@ -280,8 +285,8 @@ namespace System.Collections.Generic {
 			if (threshold == 0 && table.Length > 0)
 				threshold = 1;
 		}
-		
-		void CopyTo (KeyValuePair<TKey, TValue> [] array, int index)
+
+		void CopyToCheck (Array array, int index)
 		{
 			if (array == null)
 				throw new ArgumentNullException ("array");
@@ -292,13 +297,55 @@ namespace System.Collections.Generic {
 				throw new ArgumentException ("index larger than largest valid index of array");
 			if (array.Length - index < Count)
 				throw new ArgumentException ("Destination array cannot hold the requested elements!");
+		}
 
+		delegate TRet Transform<TRet> (TKey key, TValue value);
+
+		void Do_CopyTo<TRet, TElem> (TElem [] array, int index, Transform<TRet> transform)
+			where TRet : TElem
+		{
 			for (int i = 0; i < touchedSlots; i++) {
 				if ((linkSlots [i].HashCode & HASH_FLAG) != 0)
-					array [index++] = new KeyValuePair<TKey, TValue> (keySlots [i], valueSlots [i]);
+					array [index++] = transform (keySlots [i], valueSlots [i]);
 			}
 		}
-		
+
+		static KeyValuePair<TKey, TValue> make_pair (TKey key, TValue value)
+		{
+			return new KeyValuePair<TKey, TValue> (key, value);
+		}
+
+		static TKey pick_key (TKey key, TValue value)
+		{
+			return key;
+		}
+
+		static TValue pick_value (TKey key, TValue value)
+		{
+			return value;
+		}
+
+		void CopyTo (KeyValuePair<TKey, TValue> [] array, int index)
+		{
+			CopyToCheck (array, index);
+			Do_CopyTo<KeyValuePair<TKey, TValue>, KeyValuePair<TKey, TValue>> (array, index, make_pair);
+		}
+
+		void Do_ICollectionCopyTo<TRet> (Array array, int index, Transform<TRet> transform)
+		{
+			Type src = typeof (TRet);
+			Type tgt = array.GetType ().GetElementType ();
+
+			try {
+				if ((src.IsPrimitive || tgt.IsPrimitive) && !tgt.IsAssignableFrom (src))
+					throw new Exception (); // we don't care.  it'll get transformed to an ArgumentException below
+
+				Do_CopyTo ((object []) array, index, transform);
+			} catch (Exception e) {
+				throw new ArgumentException ("Cannot copy source collection elements to destination array", "array", e);
+			}
+		}
+
 		private void Resize ()
 		{
 			// From the SDK docs:
@@ -684,41 +731,20 @@ namespace System.Collections.Generic {
 
 		void ICollection.CopyTo (Array array, int index)
 		{
-			if (array == null)
-				throw new ArgumentNullException ("array");
-			if (index < 0)
-				throw new ArgumentOutOfRangeException ("index");
-			// we want no exception for index==array.Length && Count == 0
-			if (index > array.Length)
-				throw new ArgumentException ("index larger than largest valid index of array");
-			if (array.Length - index < count)
-				throw new ArgumentException ("Destination array cannot hold the requested elements!");
-
 			KeyValuePair<TKey, TValue> [] pairs = array as KeyValuePair<TKey, TValue> [];
 			if (pairs != null) {
 				this.CopyTo (pairs, index);
 				return;
 			}
 
+			CopyToCheck (array, index);
 			DictionaryEntry [] entries = array as DictionaryEntry [];
 			if (entries != null) {
-				for (int i = 0; i < touchedSlots; i++) {
-					if ((linkSlots [i].HashCode & HASH_FLAG) != 0)
-						entries [index++] = new DictionaryEntry (keySlots [i], valueSlots [i]);
-				}
+				Do_CopyTo (entries, index, delegate (TKey key, TValue value) { return new DictionaryEntry (key, value); });
 				return;
 			}
 
-			object [] objects = array as object [];
-			if (objects != null && objects.GetType () == typeof (object [])) {
-				for (int i = 0; i < touchedSlots; i++) {
-					if ((linkSlots [i].HashCode & HASH_FLAG) != 0)
-						objects [index++] = new KeyValuePair<TKey, TValue> (keySlots [i], valueSlots [i]);
-				}
-				return;
-			}
-
-			throw new ArgumentException ("Invalid array type");
+			Do_ICollectionCopyTo<KeyValuePair<TKey, TValue>> (array, index, make_pair);
 		}
 
 		IEnumerator IEnumerable.GetEnumerator ()
@@ -789,54 +815,64 @@ namespace System.Collections.Generic {
 			IDisposable, IDictionaryEnumerator, IEnumerator
 		{
 			Dictionary<TKey, TValue> dictionary;
-			int cur;
+			int next;
 			int stamp;
-			const int NOT_STARTED = -1; // must be -1
+
+			internal KeyValuePair<TKey, TValue> current;
 
 			internal Enumerator (Dictionary<TKey, TValue> dictionary)
+				: this ()
 			{
 				this.dictionary = dictionary;
 				stamp = dictionary.generation;
-
-				cur = NOT_STARTED;
 			}
 
 			public bool MoveNext ()
 			{
 				VerifyState ();
-				while (cur < dictionary.touchedSlots) {
-					if ((dictionary.linkSlots [++cur].HashCode & HASH_FLAG) != 0)
+
+				if (next < 0)
+					return false;
+
+				while (next < dictionary.touchedSlots) {
+					int cur = next++;
+					if ((dictionary.linkSlots [cur].HashCode & HASH_FLAG) != 0) {
+						current = new KeyValuePair <TKey, TValue> (
+							dictionary.keySlots [cur],
+							dictionary.valueSlots [cur]
+							);
 						return true;
+					}
 				}
+
+				next = -1;
 				return false;
 			}
 
+			// No error checking happens.  Usually, Current is immediately preceded by a MoveNext(), so it's wasteful to check again
 			public KeyValuePair<TKey, TValue> Current {
-				get { 
-					VerifyCurrent (); 
-					return new KeyValuePair <TKey, TValue> (
-						dictionary.keySlots [cur],
-						dictionary.valueSlots [cur]
-					);
-				}
+				get { return current; }
 			}
 			
 			internal TKey CurrentKey {
 				get {
 					VerifyCurrent ();
-					return dictionary.keySlots [cur];
+					return current.Key;
 				}
 			}
 			
 			internal TValue CurrentValue {
 				get {
 					VerifyCurrent ();
-					return dictionary.valueSlots [cur];
+					return current.Value;
 				}
 			}
 
 			object IEnumerator.Current {
-				get { return Current; }
+				get {
+					VerifyCurrent ();
+					return current;
+				}
 			}
 
 			void IEnumerator.Reset ()
@@ -846,31 +882,23 @@ namespace System.Collections.Generic {
 
 			internal void Reset ()
 			{
-				cur = NOT_STARTED;
+				VerifyState ();
+				next = 0;
 			}
 
 			DictionaryEntry IDictionaryEnumerator.Entry {
 				get {
 					VerifyCurrent ();
-					return new DictionaryEntry (
-						dictionary.keySlots [cur],
-						dictionary.valueSlots [cur]
-					);
+					return new DictionaryEntry (current.Key, current.Value);
 				}
 			}
 
 			object IDictionaryEnumerator.Key {
-				get {
-					VerifyCurrent();
-					return dictionary.keySlots [cur];
-				}
+				get { return CurrentKey; }
 			}
 
 			object IDictionaryEnumerator.Value {
-				get {
-					VerifyCurrent();
-					return dictionary.valueSlots [cur];
-				}
+				get { return CurrentValue; }
 			}
 
 			void VerifyState ()
@@ -884,7 +912,7 @@ namespace System.Collections.Generic {
 			void VerifyCurrent ()
 			{
 				VerifyState ();
-				if (cur == NOT_STARTED || cur >= dictionary.touchedSlots)
+				if (next <= 0)
 					throw new InvalidOperationException ("Current is not valid");
 			}
 
@@ -906,26 +934,11 @@ namespace System.Collections.Generic {
 				this.dictionary = dictionary;
 			}
 
-			void CopyToCheck (IList array, int index)
-			{
-				if (array == null)
-					throw new ArgumentNullException ("array");
-				if (index < 0)
-					throw new ArgumentOutOfRangeException ("index");
-				// we want no exception for index==array.Length && dictionary.Count == 0
-				if (index > array.Count)
-					throw new ArgumentException ("index larger than largest valid index of array");
-				if (array.Count - index < dictionary.Count)
-					throw new ArgumentException ("Destination array cannot hold the requested elements!");
-			}
 
 			public void CopyTo (TKey [] array, int index)
 			{
-				CopyToCheck ((IList)array, index);
-				for (int i = 0; i < dictionary.touchedSlots; i++) {
-					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
-						array [index++] = dictionary.keySlots [i];
-				}
+				dictionary.CopyToCheck (array, index);
+				dictionary.Do_CopyTo<TKey, TKey> (array, index, pick_key);
 			}
 
 			public Enumerator GetEnumerator ()
@@ -966,13 +979,8 @@ namespace System.Collections.Generic {
 					return;
 				}
 
-				IList list = array;
-				CopyToCheck (list, index);
-
-				for (int i = 0; i < dictionary.touchedSlots; i++) {
-					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
-						list [index++] = dictionary.keySlots [i];
-				}
+				dictionary.CopyToCheck (array, index);
+				dictionary.Do_ICollectionCopyTo<TKey> (array, index, pick_key);
 			}
 
 			IEnumerator IEnumerable.GetEnumerator ()
@@ -1016,7 +1024,7 @@ namespace System.Collections.Generic {
 				}
 
 				public TKey Current {
-					get { return host_enumerator.CurrentKey; }
+					get { return host_enumerator.current.Key; }
 				}
 
 				object IEnumerator.Current {
@@ -1042,27 +1050,10 @@ namespace System.Collections.Generic {
 				this.dictionary = dictionary;
 			}
 
-			void CopyToCheck (IList array, int index)
-			{
-				if (array == null)
-					throw new ArgumentNullException ("array");
-				if (index < 0)
-					throw new ArgumentOutOfRangeException ("index");
-				// we want no exception for index==array.Length && dictionary.Count == 0
-				if (index > array.Count)
-					throw new ArgumentException ("index larger than largest valid index of array");
-				if (array.Count - index < dictionary.Count)
-					throw new ArgumentException ("Destination array cannot hold the requested elements!");
-			}
-
 			public void CopyTo (TValue [] array, int index)
 			{
-				CopyToCheck (array, index);
-
-				for (int i = 0; i < dictionary.touchedSlots; i++) {
-					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
-						array [index++] = dictionary.valueSlots [i];
-				}
+				dictionary.CopyToCheck (array, index);
+				dictionary.Do_CopyTo<TValue, TValue> (array, index, pick_value);
 			}
 
 			public Enumerator GetEnumerator ()
@@ -1103,13 +1094,8 @@ namespace System.Collections.Generic {
 					return;
 				}
 
-				IList list = array;
-				CopyToCheck (list, index);
-
-				for (int i = 0; i < dictionary.touchedSlots; i++) {
-					if ((dictionary.linkSlots [i].HashCode & HASH_FLAG) != 0)
-						list [index++] = dictionary.valueSlots [i];
-				}
+				dictionary.CopyToCheck (array, index);
+				dictionary.Do_ICollectionCopyTo<TValue> (array, index, pick_value);
 			}
 
 			IEnumerator IEnumerable.GetEnumerator ()
@@ -1144,7 +1130,7 @@ namespace System.Collections.Generic {
 
 				public void Dispose ()
 				{
-					host_enumerator.Dispose();
+					host_enumerator.Dispose ();
 				}
 
 				public bool MoveNext ()
@@ -1153,7 +1139,7 @@ namespace System.Collections.Generic {
 				}
 
 				public TValue Current {
-					get { return host_enumerator.CurrentValue; }
+					get { return host_enumerator.current.Value; }
 				}
 
 				object IEnumerator.Current {

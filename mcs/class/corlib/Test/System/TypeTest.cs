@@ -9,6 +9,7 @@
 
 using NUnit.Framework;
 using System;
+using System.Threading;
 using System.Collections;
 #if NET_2_0
 using System.Collections.Generic;
@@ -1789,6 +1790,17 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.AreEqual (0, mi.Length);
 		}
 
+#if NET_2_0
+		[Test]
+		public void GenericParameterMemberType ()
+		{
+			var t = typeof (Foo<>).GetGenericArguments () [0];
+			Assert.IsNotNull (t);
+
+			Assert.AreEqual (MemberTypes.TypeInfo, t.MemberType);
+		}
+#endif
+
 		public class ByRef0
 		{
 			public int field;
@@ -2120,7 +2132,7 @@ PublicKeyToken=b77a5c561934e089"));
 		[Test] // bug #348522
 		public void InvokeMember_WithoutDefaultValue ()
 		{
-			BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod;;
+			BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod;
 			try {
 				typeof (Bug348522).InvokeMember ("Test", flags, new FirstMethodBinder (), new Bug348522(),
 					new object [] {Missing.Value}, null, null, null);
@@ -2133,6 +2145,25 @@ PublicKeyToken=b77a5c561934e089"));
 				Assert.IsNotNull (ex.ParamName, "#5");
 				Assert.AreEqual ("parameters", ex.ParamName, "#6");
 			}
+		}
+
+	    [Test]
+		public void TestMissing () {
+			Assert.AreEqual (Type.Missing, Missing.Value);
+		}
+
+		[Test]
+		public void InvokeMember_OutParam ()
+		{
+			object[] args = new object[] { new string [0] };
+			typeof (TypeTest).InvokeMember ("OutTest", BindingFlags.InvokeMethod | BindingFlags.Static | BindingFlags.Public, null, null, args);
+			Assert.IsTrue (args [0] is string[]);
+			Assert.AreEqual (10, ((string[])args[0]).Length);
+		}
+
+		public static void OutTest (out string[] a1)
+		{
+			a1 = new string [10];
 		}
 
 		class X
@@ -2883,6 +2914,16 @@ PublicKeyToken=b77a5c561934e089"));
 		}
 
 		[Test]
+		public void IsInstanceOfType_Null ()
+		{
+			Assert.IsFalse (typeof (int).IsInstanceOfType (null), "int");
+			Assert.IsFalse (typeof (object).IsInstanceOfType (null), "object");
+#if NET_2_0
+			Assert.IsFalse (typeof (int?).IsInstanceOfType (null), "int?");
+#endif
+		}
+
+		[Test]
 		public void ByrefType ()
 		{
 			Type foo_type = typeof (Foo<>);
@@ -2891,6 +2932,14 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.IsFalse (byref_type_param.IsGenericParameter);
 			Assert.IsNull (byref_type_param.DeclaringType);
 		}
+
+		[Test]
+		public void MakeArrayTypeTest ()
+		{
+			// This should not crash:
+			typeof (void).MakeArrayType ();
+		}
+		
 
 		[ComVisible (true)]
 		public class ComFoo<T> {
@@ -3069,6 +3118,57 @@ PublicKeyToken=b77a5c561934e089"));
 			Assert.AreEqual(1, tArgs[1].GetCustomAttributes (typeof (DocAttribute), true).Length, "#1");
 			Assert.AreEqual(1, mArgs[0].GetCustomAttributes (typeof (DocAttribute), true).Length, "#1");
 		}
+
+		[Test] //bug #471255
+		public void GetTypeCalledUsingReflection ()
+		{
+			Type expectedType = Type.GetType ("NoNamespaceClass");
+			Assert.IsNotNull (expectedType, "#1");
+			MethodInfo m = typeof (Type).GetMethod ("GetType",  BindingFlags.Public | BindingFlags.Static, null, new Type [] { typeof (string) },  null);
+			object r = m.Invoke (null, BindingFlags.Default, null, new object [] { "NoNamespaceClass" }, CultureInfo.InvariantCulture);
+			Assert.AreSame (expectedType, r, "#2");
+		}
+
+	[Test]
+	public void EqualsUserType () {
+		UserType2 t1 = new UserType2(null);
+		UserType2 t2 = new UserType2(t1);
+		Assert.IsTrue (t1.Equals(t2));
+	}
+
+	[Test]
+	public void GetHashCodeUserType () {
+		UserType2 t1 = new UserType2(null);
+		UserType2 t2 = new UserType2(t1);
+		Assert.AreEqual (42, t2.GetHashCode());
+	}
+	
+	[Test]
+	public void IsGenericTypeDefinitionUserType () {
+		Assert.IsFalse (new UserType(null).IsGenericTypeDefinition);
+	}
+	
+	[Test]
+	public void IsGenericTypeUserType () {
+		Assert.IsFalse (new UserType(null).IsGenericType);
+	}
+
+	[Test]
+	[ExpectedException (typeof (NotSupportedException))]
+	public void GetGenericTypeDefinitionUserType () {
+		new UserType(null).GetGenericTypeDefinition ();
+	}
+
+	[ExpectedException (typeof (NotSupportedException))]
+	public void GetGenericArgumentsUserType () {
+		new UserType(null).GetGenericArguments ();
+	}
+	
+	[Test]
+	[ExpectedException (typeof (InvalidOperationException))]
+	public void GenericParameterPositionUserType () {
+		Assert.IsTrue (new UserType(null).GenericParameterPosition == 0);
+	}
 #endif
 
 		[Test]
@@ -3106,6 +3206,113 @@ PublicKeyToken=b77a5c561934e089"));
 			Type t2 = Type.GetType (" System.Type, mscorlib");
 			Assert.AreEqual (t1, t2);
 		}
+
+
+		[Test]
+		public void Bug506757 ()
+		{
+			AssemblyName assemblyName = new AssemblyName ();
+			assemblyName.Name = "customMod";
+			assemblyName.Version = new Version (1, 2, 3, 4);
+	
+			AssemblyBuilder assembly 
+				= Thread.GetDomain().DefineDynamicAssembly(
+					  assemblyName, AssemblyBuilderAccess.RunAndSave);
+	
+			ModuleBuilder module = assembly.DefineDynamicModule("res.exe", "res.exe");
+	
+			TypeBuilder type0 = module.DefineType ("Base", TypeAttributes.Public, typeof (object));
+			TypeBuilder type1 = module.DefineType ("Middle", TypeAttributes.Public, type0);
+			TypeBuilder type2 = module.DefineType ("End", TypeAttributes.Public, type1);
+	
+			MethodAttributes attrs0 = MethodAttributes.Virtual | MethodAttributes.HideBySig |
+						  MethodAttributes.NewSlot | MethodAttributes.FamORAssem;
+	
+			MethodAttributes attrs1 = MethodAttributes.Virtual | MethodAttributes.HideBySig |
+						  MethodAttributes.FamORAssem;
+	
+			MethodAttributes attrs2 = MethodAttributes.Virtual | MethodAttributes.HideBySig |
+						  MethodAttributes.Public;
+	
+	
+			MethodBuilder m0 = type0.DefineMethod ("Tst", attrs0, typeof (void), null);
+			m0.GetILGenerator ().Emit (OpCodes.Ret);
+	
+			MethodBuilder m1 = type1.DefineMethod ("Tst", attrs1, typeof (void), null);
+			m1.GetILGenerator ().Emit (OpCodes.Ret);
+	
+			MethodBuilder m2 = type2.DefineMethod ("Tst", attrs2, typeof (void), null);
+			m2.GetILGenerator ().Emit (OpCodes.Ret);
+	
+	
+			type0.CreateType ();
+			type1.CreateType ();
+			Type t2 = type2.CreateType ();
+	
+			foreach (var m in t2.GetMethods (BindingFlags.Instance | BindingFlags.NonPublic))
+				Assert.IsTrue (m.DeclaringType == typeof (object), String.Format ("{0}::{1}", m.DeclaringType, m.Name));
+		}
+
+#if NET_2_0
+
+		[Test]
+		public void MakeArrayTypeOfOneDimension ()
+		{
+			Type vector = typeof (int).MakeArrayType ();
+			Type szarray = typeof (int).MakeArrayType (1);
+
+			Assert.AreNotEqual (vector, szarray, "#1");
+			Assert.AreEqual ("Int32[]", vector.Name, "#2");
+			Assert.AreEqual ("Int32[*]", szarray.Name, "#3");
+		}
+
+		public class DeclaringMethodFoo {
+			public void Test<T> (T t) {}
+			public void Test2<T> (ref T t) {}
+		}
+
+		public class DeclaringMethodBar<T> {
+			public void Test2 (ref T t) {}
+		}
+
+		[Test]
+		public void DeclaringMethodOnlyWorksWithGenericArgs ()
+		{
+	        MethodInfo testMethod = typeof (DeclaringMethodFoo).GetMethod ("Test");
+	        MethodBase otherMethod = testMethod.GetParameters ()[0].ParameterType.DeclaringMethod;
+
+			Assert.AreEqual (testMethod, otherMethod,"#1");
+
+			Assert.IsNull (typeof (DeclaringMethodBar<>).GetGenericArguments ()[0].DeclaringMethod, "#2");
+
+			try {
+				var x = typeof (int).DeclaringMethod;
+				Assert.Fail ("#3");
+			} catch (InvalidOperationException) {}
+
+			try {
+				var x = typeof (DeclaringMethodFoo).GetMethod ("Test2").GetParameters () [0].ParameterType.DeclaringMethod;
+				Assert.Fail ("#4");
+			} catch (InvalidOperationException) {}
+
+			try {
+				var x = typeof (DeclaringMethodBar<>).GetMethod ("Test2").GetParameters () [0].ParameterType.DeclaringMethod;
+				Assert.Fail ("#5");
+			} catch (InvalidOperationException) {}
+
+		}
+
+		[Test]
+		public void GetArrayRankThrowsForNonArrayType ()
+		{
+			Assert.AreEqual (1, typeof (int[]).GetArrayRank (), "#1");
+			Assert.AreEqual (2, typeof (int[,]).GetArrayRank (), "#2");
+			try {
+				typeof (int).GetArrayRank ();
+				Assert.Fail ("#3");
+			} catch (ArgumentException) {}
+		}
+#endif
 
 		static bool ContainsProperty (PropertyInfo [] props, string name)
 		{
@@ -3423,7 +3630,7 @@ PublicKeyToken=b77a5c561934e089"));
 #if NET_2_0
 	class UserType : Type
 	{
-		private Type type;
+		protected Type type;
 	
 		public UserType(Type type) {
 			this.type = type;
@@ -3596,6 +3803,20 @@ PublicKeyToken=b77a5c561934e089"));
 							 string[] namedParameters)
 		{
 			throw new NotSupportedException();
+		}
+	}
+
+    class UserType2 : UserType {
+		public UserType2 (Type type) : base (type) {
+		}
+
+		public override Type UnderlyingSystemType { get { return this.type ?? this; } }
+
+		public override int GetHashCode()
+		{
+			if (type == null)
+				return 42;
+			return type.GetHashCode();
 		}
 	}
 #endif

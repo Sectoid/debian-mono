@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2005 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2005,2009 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -31,33 +31,68 @@ using System.ServiceModel.Channels;
 
 namespace System.ServiceModel
 {
-	public class DuplexClientBase<TChannel> : ClientBase<TChannel>
+	public class DuplexClientBase<TChannel> : ClientBase<TChannel> where TChannel : class
 	{
+		protected DuplexClientBase (object instance)
+			: this (new InstanceContext (instance), (Binding) null, null)
+		{
+		}
+
+		protected DuplexClientBase (object instance,
+			Binding binding, EndpointAddress address)
+			: this (new InstanceContext (instance), binding, address)
+		{
+		}
+
+		protected DuplexClientBase (object instance,
+			string configurationName)
+			: this (new InstanceContext (instance), configurationName)
+		{
+		}
+
+		protected DuplexClientBase (object instance,
+			string bindingConfigurationName, EndpointAddress address)
+			: this (new InstanceContext (instance), bindingConfigurationName, address)
+		{
+		}
+
 		protected DuplexClientBase (InstanceContext instance)
-			: this (instance, (Binding) null, null)
+			: base (instance)
 		{
 		}
 
 		protected DuplexClientBase (InstanceContext instance,
 			Binding binding, EndpointAddress address)
+			: base (instance, binding, address)
 		{
-			throw new NotImplementedException ();
 		}
 
 		protected DuplexClientBase (InstanceContext instance,
 			string configurationName)
+			: base (instance, configurationName)
 		{
-			throw new NotImplementedException ();
 		}
 
 		protected DuplexClientBase (InstanceContext instance,
 			string configurationName, EndpointAddress address)
+			: base (instance, configurationName, address)
 		{
-			throw new NotImplementedException ();
 		}
 
 		public IDuplexContextChannel InnerDuplexChannel {
 			get { throw new NotImplementedException (); }
+		}
+
+		internal override void Initialize (InstanceContext instance,
+			string endpointConfigurationName, EndpointAddress remoteAddress)
+		{
+			ChannelFactory = new DuplexChannelFactory<TChannel> (instance, endpointConfigurationName, remoteAddress);
+		}
+
+		internal virtual void Initialize (InstanceContext instance,
+			Binding binding, EndpointAddress remoteAddress)
+		{
+			ChannelFactory = new DuplexChannelFactory<TChannel> (instance, binding, remoteAddress);
 		}
 
 		protected override TChannel CreateChannel ()

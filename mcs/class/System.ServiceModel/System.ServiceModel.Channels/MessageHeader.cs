@@ -27,6 +27,7 @@
 //
 
 using System;
+using System.IO;
 using System.Runtime.Serialization;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
@@ -52,14 +53,6 @@ namespace System.ServiceModel.Channels
 		static bool default_is_ref = false;
 		static bool default_must_understand = false;
 		static bool default_relay = false;
-		static Type [] knownTypes = new Type [1] {typeof (EndpointAddress10)};
-
-#if !NET_2_1 // FIXME: eliminate XmlElement
-		internal static MessageHeader CreateInternalHeader (XmlElement el, string soap_ns)
-		{
-			return new RawMessageHeader (el, soap_ns);
-		}
-#endif
 
 		public static MessageHeader CreateHeader (string name, string ns, object value)
 		{
@@ -92,7 +85,7 @@ namespace System.ServiceModel.Channels
 		public static MessageHeader CreateHeader (string name, string ns, object value, 
 						   bool must_understand, string actor, bool relay)
 		{
-			return CreateHeader (name, ns, value, new DataContractSerializer (value.GetType (), knownTypes),
+			return CreateHeader (name, ns, value, new DataContractSerializer (value.GetType ()),
 					must_understand, actor, relay);
 		}
 
@@ -128,7 +121,13 @@ namespace System.ServiceModel.Channels
 
 		protected virtual void OnWriteStartHeader (XmlDictionaryWriter writer, MessageVersion version)
 		{
-			writer.WriteStartElement (this.Name, this.Namespace);
+			var dic = Constants.SoapDictionary;
+			XmlDictionaryString name, ns;
+			var prefix = writer.LookupPrefix (Namespace);
+			if (dic.TryLookup (Name, out name) && dic.TryLookup (Namespace, out ns))
+				writer.WriteStartElement (prefix, name, ns);
+			else
+				writer.WriteStartElement (prefix, this.Name, this.Namespace);
 			WriteHeaderAttributes (writer, version);
 		}
 
@@ -168,23 +167,24 @@ namespace System.ServiceModel.Channels
 
 		protected void WriteHeaderAttributes (XmlDictionaryWriter writer, MessageVersion version)
 		{
+			var dic = Constants.SoapDictionary;
 			if (Id != null)
-				writer.WriteAttributeString ("u", "Id", Constants.WsuNamespace, Id);
+				writer.WriteAttributeString ("u", dic.Add ("Id"), dic.Add (Constants.WsuNamespace), Id);
 			if (Actor != String.Empty) {
 				if (version.Envelope == EnvelopeVersion.Soap11) 
-					writer.WriteAttributeString ("s", "actor", version.Envelope.Namespace, Actor);
+					writer.WriteAttributeString ("s", dic.Add ("actor"), dic.Add (version.Envelope.Namespace), Actor);
 
 				if (version.Envelope == EnvelopeVersion.Soap12) 
-					writer.WriteAttributeString ("s", "role", version.Envelope.Namespace, Actor);
+					writer.WriteAttributeString ("s", dic.Add ("role"), dic.Add (version.Envelope.Namespace), Actor);
 			}
 
 			// mustUnderstand is the same across SOAP 1.1 and 1.2
 			if (MustUnderstand == true)
-				writer.WriteAttributeString ("s", "mustUnderstand", version.Envelope.Namespace, "1");
+				writer.WriteAttributeString ("s", dic.Add ("mustUnderstand"), dic.Add (version.Envelope.Namespace), "1");
 
 			// relay is only available on SOAP 1.2
 			if (Relay == true && version.Envelope == EnvelopeVersion.Soap12)
-				writer.WriteAttributeString ("s", "relay", version.Envelope.Namespace, "true");
+				writer.WriteAttributeString ("s", dic.Add ("relay"), dic.Add (version.Envelope.Namespace), "true");
 		}
 
 		public void WriteHeaderContents (XmlDictionaryWriter writer, MessageVersion version)
@@ -205,39 +205,49 @@ namespace System.ServiceModel.Channels
 
 		public override bool Relay { get { return default_relay; }}
 
-#if !NET_2_1 // FIXME: this should be rewritten to eliminate XmlElement
 		internal class RawMessageHeader : MessageHeader
 		{
-			XmlElement source;
 			string soap_ns;
 			bool is_ref, must_understand, relay;
 			string actor;
+			string body;
+			string local_name;
+			string namespace_uri;
 
-			public RawMessageHeader (XmlElement source, string soap_ns)
+			public RawMessageHeader (XmlReader reader, string soap_ns)
 			{
-				this.source = source;
+				Id = reader.GetAttribute ("Id", Constants.WsuNamespace);
 
-				Id = source.HasAttribute ("Id", Constants.WsuNamespace) ?
-					source.GetAttribute ("Id", Constants.WsuNamespace) :
-					null;
+				string s = reader.GetAttribute ("relay", soap_ns);
+				relay = s != null ? XmlConvert.ToBoolean (s) : false;
+				s = reader.GetAttribute ("mustUnderstand", soap_ns);
+				must_understand = s != null ? XmlConvert.ToBoolean (s) : false;
+				actor = reader.GetAttribute ("actor", soap_ns) ?? String.Empty;
 
-				// FIXME: fill is_ref
-				string s = source.GetAttribute ("relay", soap_ns);
-				relay = s.Length > 0 ? XmlConvert.ToBoolean (s) : false;
-				s = source.GetAttribute ("mustUnderstand", soap_ns);
-				must_understand = s.Length > 0 ? XmlConvert.ToBoolean (s) : false;
-				actor = source.GetAttribute ("actor", soap_ns);
+				s = reader.GetAttribute ("IsReferenceParameter", Constants.WsaNamespace);
+				is_ref = s != null ? XmlConvert.ToBoolean (s) : false;
+
+				local_name = reader.LocalName;
+				namespace_uri = reader.NamespaceURI;
+				body = reader.ReadOuterXml ();
 			}
 
 			public XmlReader CreateReader ()
 			{
-				return new XmlNodeReader (source);
+				var reader = XmlReader.Create (new StringReader (body));
+				reader.MoveToContent ();
+				return reader;
 			}
 
 			protected override void OnWriteHeaderContents (
 				XmlDictionaryWriter writer, MessageVersion version)
 			{
-				source.WriteContentTo (writer);
+				var r = CreateReader ();
+				r.MoveToContent ();
+				if (r.IsEmptyElement)
+					return; // write nothing
+				for (r.Read (); r.NodeType != XmlNodeType.EndElement;)
+					writer.WriteNode (r, false);
 			}
 
 			public override string Actor { get { return actor; }}
@@ -246,13 +256,12 @@ namespace System.ServiceModel.Channels
 
 			public override bool MustUnderstand { get { return must_understand; }}
 
-			public override string Name { get { return source.LocalName; }}
+			public override string Name { get { return local_name; }}
 
-			public override string Namespace { get { return source.NamespaceURI; }}
+			public override string Namespace { get { return namespace_uri; }}
 
 			public override bool Relay { get { return relay; }}
 		}
-#endif
 
 		internal class DefaultMessageHeader : MessageHeader
 		{
@@ -278,11 +287,14 @@ namespace System.ServiceModel.Channels
 			protected override void OnWriteHeaderContents (XmlDictionaryWriter writer,
 								       MessageVersion version)
 			{
-				if (value is EndpointAddress)
-					((EndpointAddress) value).WriteTo (version.Addressing, writer, name, ns);
+				// FIXME: it's a nasty workaround just to avoid UniqueId output as a string, for bug #577139.
+				if (Value is UniqueId)
+					writer.WriteValue ((UniqueId) Value);
 				else
 					this.formatter.WriteObjectContent (writer, value);
 			}
+
+			public object Value { get { return value; } }
 
 			public override string Actor { get { return actor; }}
 

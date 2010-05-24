@@ -1,3 +1,68 @@
+2009-10-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityManager_2_1.cs: Return to duty for SecurityEnabled, it
+	will allow us to distinguish between running in the browser
+	(coreclr active) and on the console (e.g. smcs) from managed code
+	[Backport r144732]
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityContext.cs: Remove NET_2_1 defines since the type is
+	now unused in NET_2_1 profile
+
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CodeAccessPermission_2_1.cs: New. Stub to compile NET_2_1
+	* IPermission.cs: Remove ISecurityEncodable for NET_2_1
+	* PermissionSet_2_1.cs: New. Stub to compile NET_2_1
+	* SecurityContext.cs: Remove usage of CompressedStack for NET_2_1
+	* SecurityException_2_1.cs: New, CAS-less version for NET_2_1
+	* SecurityException.cs: Remove NET_2_1 conditions
+	* SecurityFrame.cs: Keep structures (needed by the runtime) but
+	remove SecurityFrame itself for NET_2_1
+
+2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityContext.cs: Don't use WindowsIdentity under NET_2_1
+
+2009-09-09  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityManager.cs, SecurityManager_2_1.cs: Replace existing
+	throw methods (for coreclr) with a single one.
+
+2009-05-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CodeAccessPermission.cs (ThrowSecurityException): Don't include
+	CAS-specific information when throwing a SecurityException in
+	NET_2_1
+
+2009-05-01  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* SecurityCriticalAttribute.cs: Add simpler version NET_2_1
+	* SecuritySafeCriticalAttribute.cs: Remove MonoTODO for NET_2_1
+	* SecurityTransparentAttribute.cs: Remove MonoTODO for NET_2_1
+
+2009-05-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityState.cs: Implement IsStateAvailable (added in 2.0SP 
+	and part of SL API)
+
+2009-04-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityException.cs: Remove CAS-specific stuff from ToString
+	* SecurityManager.cs: Do not include for NET_2_1 build
+	* SecurityManager_2_1.cs: Alternate implementation for NET_2_1
+
+2009-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityManager.cs: Remove VerificationException (not used from
+	the runtime anymore) and add FieldAccessException (which is now, 
+	or soon will be, required/used by the runtime).
+
+2009-02-19  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* SecurityManager.cs: Make core-clr work under non 2.1 profiles.
+
 2008-09-15  Jb Evain  <jbevain@novell.com>
 
 	* SecuritySafeCriticalAttribute.cs: Include SecuritySafeCritical in

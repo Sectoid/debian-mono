@@ -4,7 +4,7 @@
  * Author:
  *	Sebastien Pouliot  <sebastien@ximian.com>
  *
- * (C) 2004 Novell (http://www.novell.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #ifdef HAVE_CONFIG_H
@@ -255,19 +255,6 @@ IsMemberOf (gid_t user, struct group *g)
 
 
 /* ICALLS */
-
-
-/* System.Environment */
-
-
-MonoString*
-ves_icall_System_Environment_get_UserName (void)
-{
-	MONO_ARCH_SAVE_REGS;
-
-	/* using glib is more portable */
-	return mono_string_new (mono_domain_get (), g_get_user_name ());
-}
 
 
 /* System.Security.Principal.WindowsIdentity */
