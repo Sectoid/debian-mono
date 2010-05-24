@@ -7,6 +7,7 @@
 //   Sebastien Pouliot (sebastien@ximian.com)
 //   Daniel Morgan (danielmorgan@verizon.net)
 //   Gert Driesen (drieseng@users.sourceforge.net)
+//   Veerapuram Varadhan  (vvaradhan@novell.com)
 //
 // Copyright (C) 2002 Tim Coleman
 // Portions (C) 2003 Motus Technologies Inc. (http://www.motus.com)
@@ -41,11 +42,11 @@ using Mono.Security.Protocol.Ntlm;
 
 namespace Mono.Data.Tds.Protocol
 {
-	public sealed class Tds70 : Tds
+	public class Tds70 : Tds
 	{
 		#region Fields
 
-		public readonly static TdsVersion Version = TdsVersion.tds70;
+		//public readonly static TdsVersion Version = TdsVersion.tds70;
 		static readonly decimal SMALLMONEY_MIN = -214748.3648m;
 		static readonly decimal SMALLMONEY_MAX = 214748.3647m;
 
@@ -59,12 +60,24 @@ namespace Mono.Data.Tds.Protocol
 		}
 
 		public Tds70 (string server, int port, int packetSize, int timeout)
-			: base (server, port, packetSize, timeout, Version)
+			: base (server, port, packetSize, timeout, TdsVersion.tds70)
 		{
 		}
 
+		public Tds70 (string server, int port, int packetSize, int timeout, TdsVersion version)
+			: base (server, port, packetSize, timeout, version)
+		{
+		}
+		
 		#endregion // Constructors
 
+		#region Properties
+		
+		protected virtual byte[] ClientVersion {
+			get { return new byte[] {0x00, 0x0, 0x0, 0x70};}
+		}
+		#endregion // Properties
+		
 		#region Methods
 
 		private string BuildExec (string sql)
@@ -229,8 +242,9 @@ namespace Mono.Data.Tds.Protocol
 			Comm.Append (totalPacketSize);
 
 			//Comm.Append (empty, 3, pad);
-			byte[] version = {0x00, 0x0, 0x0, 0x70};
-			Comm.Append (version); // TDS Version 7
+			//byte[] version = {0x00, 0x0, 0x0, 0x71};
+			//Console.WriteLine ("Version: {0}", ClientVersion[3]);
+			Comm.Append (ClientVersion); // TDS Version 7
 			Comm.Append ((int)this.PacketSize); // Set the Block Size
 			Comm.Append (empty, 3, pad);
 			Comm.Append (magic);
@@ -371,7 +385,6 @@ namespace Mono.Data.Tds.Protocol
 
 			// Set "reset-connection" bit for the next message packet
 			Comm.ResetConnection = true;
-
 			base.Reset ();
 			return true;
 		}
@@ -379,7 +392,10 @@ namespace Mono.Data.Tds.Protocol
 		public override void ExecPrepared (string commandText, TdsMetaParameterCollection parameters, int timeout, bool wantResults)
 		{
 			Parameters = parameters;
-			ExecuteQuery (BuildPreparedQuery (commandText), timeout, wantResults);
+			if (Parameters != null && Parameters.Count > 0)
+				ExecRPC (TdsRpcProcId.ExecuteSql, commandText, parameters, timeout, wantResults);
+			else
+				ExecuteQuery (BuildPreparedQuery (commandText), timeout, wantResults);
 		}
 			
 		public override void ExecProc (string commandText, TdsMetaParameterCollection parameters, int timeout, bool wantResults)
@@ -388,16 +404,8 @@ namespace Mono.Data.Tds.Protocol
 			ExecRPC (commandText, parameters, timeout, wantResults);
 		}
 
-		protected override void ExecRPC (string rpcName, TdsMetaParameterCollection parameters, 
-						 int timeout, bool wantResults)
+		private void WriteRpcParameterInfo (TdsMetaParameterCollection parameters)
 		{
-			// clean up
-			InitExec ();
-			Comm.StartPacket (TdsPacketType.RPC);
-
-			Comm.Append ( (short) rpcName.Length);
-			Comm.Append (rpcName);
-			Comm.Append ( (short) 0); //no meta data
 			if (parameters != null) {
 				foreach (TdsMetaParameter param in parameters) {
 					if (param.Direction == TdsParameterDirection.ReturnValue) 
@@ -417,6 +425,66 @@ namespace Mono.Data.Tds.Protocol
 					WriteParameterInfo (param);
 				}
 			}
+		}
+		
+		private void WritePreparedParameterInfo (TdsMetaParameterCollection parameters)
+		{
+			if (parameters == null)
+				return;
+			
+			string param = BuildPreparedParameters ();
+			Comm.Append ((byte) 0x00); // no param meta data name
+			Comm.Append ((byte) 0x00); // no status flags
+			
+			// Type_info - parameter info
+			WriteParameterInfo (new TdsMetaParameter ("prep_params", 
+			                                          param.Length > 4000 ? "ntext" : "nvarchar", 
+			                                          param));
+		}
+		
+		private void ExecRPC (TdsRpcProcId rpcId, string sql, 
+		                      TdsMetaParameterCollection parameters, 
+		                      int timeout, bool wantResults)
+		{
+			// clean up
+			InitExec ();
+			Comm.StartPacket (TdsPacketType.RPC);
+			
+			Comm.Append ((ushort) 0xFFFF);
+			Comm.Append ((ushort) rpcId);
+			Comm.Append ((short) 0x02); // no meta data
+			
+			Comm.Append ((byte) 0x00); // no param meta data name
+			Comm.Append ((byte) 0x00); // no status flags
+			
+			// Write sql as a parameter value - UCS2
+			TdsMetaParameter param = new TdsMetaParameter ("sql", 
+			                                               sql.Length > 4000 ? "ntext":"nvarchar",
+			                                               sql);		
+			WriteParameterInfo (param);
+			
+			// Write Parameter infos - name and type
+			WritePreparedParameterInfo (parameters);
+
+			// Write parameter/value info
+			WriteRpcParameterInfo (parameters);
+			Comm.SendPacket ();
+			CheckForData (timeout);
+			if (!wantResults)
+				SkipToEnd ();
+		}
+		
+		protected override void ExecRPC (string rpcName, TdsMetaParameterCollection parameters, 
+						 int timeout, bool wantResults)
+		{
+			// clean up
+			InitExec ();
+			Comm.StartPacket (TdsPacketType.RPC);
+
+			Comm.Append ( (short) rpcName.Length);
+			Comm.Append (rpcName);
+			Comm.Append ( (short) 0); //no meta data
+			WriteRpcParameterInfo (parameters);
 			Comm.SendPacket ();
 			CheckForData (timeout);
 			if (!wantResults)
@@ -433,23 +501,57 @@ namespace Mono.Data.Tds.Protocol
 			TdsColumnType colType = param.GetMetaType ();
 			param.IsNullable = false;
 
-			if (ServerTdsVersion > TdsVersion.tds70 
-			           && colType == TdsColumnType.Decimal) {
+			bool partLenType = false;
+			int size = param.Size;
+			if (size < 1) {
+				if (size < 0)
+					partLenType = true;
+				size = param.GetActualSize ();
+			}
+
+			// Change colType according to the following table
+			/* 
+			 * Original Type	Maxlen		New Type 
+			 * 
+			 * NVarChar		4000 UCS2	NText
+			 * BigVarChar		8000 ASCII	Text
+			 * BigVarBinary		8000 bytes	Image
+			 * 
+			 */
+			TdsColumnType origColType = colType;
+			if (colType == TdsColumnType.BigNVarChar) {
+				// param.GetActualSize() returns len*2
+				if (size == param.Size)
+					size <<= 1;
+				if ((size >> 1) > 4000)
+					colType = TdsColumnType.NText;
+			} else if (colType == TdsColumnType.BigVarChar) {
+				if (size > 8000)
+					colType = TdsColumnType.Text;	
+			} else if (colType == TdsColumnType.BigVarBinary) {
+				if (size > 8000)
+					colType = TdsColumnType.Image;
+			}
+			// Calculation of TypeInfo field
+			/* 
+			 * orig size value		TypeInfo field
+			 * 
+			 * >= 0 <= Maxlen		origColType + content len
+			 * > Maxlen		NewType as per above table + content len
+			 * -1		origColType + USHORTMAXLEN (0xFFFF) + content len (TDS 9)
+			 * 
+			 */
+			// Write updated colType, iff partLenType == false
+			if (TdsVersion > TdsVersion.tds81 && partLenType) {
+				Comm.Append ((byte)origColType);
+				Comm.Append ((short)-1);
+			} else if (ServerTdsVersion > TdsVersion.tds70 
+			           && origColType == TdsColumnType.Decimal) {
 				Comm.Append ((byte)TdsColumnType.Numeric);
 			} else {
 				Comm.Append ((byte)colType);
 			}
 
-			int size = param.Size;
-			if (size == 0)
-				size = param.GetActualSize ();
-
-			/*
-			  If column type is SqlDbType.NVarChar the size of parameter is multiplied by 2
-			  FIXME: Need to check for other types
-			 */
-			if (colType == TdsColumnType.BigNVarChar)
-				size <<= 1;
 			if (IsLargeType (colType))
 				Comm.Append ((short)size); // Parameter size passed in SqlParameter
 			else if (IsBlobType (colType))
@@ -463,14 +565,44 @@ namespace Mono.Data.Tds.Protocol
 				Comm.Append (param.Scale);
 			}
 
-			size = param.GetActualSize ();
+			
+			/* VARADHAN: TDS 8 Debugging */
+			/*
+			if (Collation != null) {
+				Console.WriteLine ("Collation is not null");
+				Console.WriteLine ("Column Type: {0}", colType);
+				Console.WriteLine ("Collation bytes: {0} {1} {2} {3} {4}", Collation[0], Collation[1], Collation[2],
+				                   Collation[3], Collation[4]);
+			} else {
+				Console.WriteLine ("Collation is null");
+			}
+			*/
+			
+			// Tds > 7.0 uses collation
+			if (Collation != null && 
+			    (colType == TdsColumnType.BigChar || colType == TdsColumnType.BigNVarChar ||
+			     colType == TdsColumnType.BigVarChar || colType == TdsColumnType.NChar ||
+			     colType == TdsColumnType.NVarChar || colType == TdsColumnType.Text ||
+			     colType == TdsColumnType.NText))
+				Comm.Append (Collation);
+
+		 	// LAMESPEC: size should be 0xFFFF for any bigvarchar, bignvarchar and bigvarbinary 
+			// types if param value is NULL
+			if ((colType == TdsColumnType.BigVarChar || 
+			     colType == TdsColumnType.BigNVarChar ||
+			     colType == TdsColumnType.BigVarBinary) && 
+			    (param.Value == null || param.Value == DBNull.Value))
+				size = -1;
+			else
+				size = param.GetActualSize ();
+
 			if (IsLargeType (colType))
-				Comm.Append ((short)size);
+				Comm.Append ((short)size); 
 			else if (IsBlobType (colType))
-				Comm.Append (size);
+				Comm.Append (size); 
 			else
 				Comm.Append ((byte)size);
-
+			
 			if (size > 0) {
 				switch (param.TypeName) {
 				case "money" : {
@@ -535,9 +667,14 @@ namespace Mono.Data.Tds.Protocol
 		{
 			Parameters = parameters;
 			string sql = commandText;
-			if (wantResults || (Parameters != null && Parameters.Count > 0))
-				sql = BuildExec (commandText);
-			ExecuteQuery (sql, timeout, wantResults);
+
+			if (Parameters != null && Parameters.Count > 0) {
+				ExecRPC (TdsRpcProcId.ExecuteSql, commandText, parameters, timeout, wantResults);
+			} else {
+				if (wantResults)
+					sql = BuildExec (commandText);
+				ExecuteQuery (sql, timeout, wantResults);
+			}
 		}
 
 		private string FormatParameter (TdsMetaParameter parameter)
@@ -573,10 +710,7 @@ namespace Mono.Data.Tds.Protocol
 				if (paramType.IsEnum)
 					paramValue = Convert.ChangeType (paramValue,
 						Type.GetTypeCode (paramType));
-				if (paramType == typeof (Double))
-					value = ((Double) paramValue).ToString ("r");
-				else 
-					value = paramValue.ToString ();
+				value = paramValue.ToString ();
 				break;
 			case "nvarchar":
 			case "nchar":
@@ -660,12 +794,13 @@ namespace Mono.Data.Tds.Protocol
 				if (IsBlobType (columnType)) {
 					columnSize = Comm.GetTdsInt ();
 					tableName = Comm.GetString (Comm.GetTdsShort ());
-				} else if (IsFixedSizeColumn (columnType))
+				} else if (IsFixedSizeColumn (columnType)) {
 					columnSize = LookupBufferSize (columnType);
-				else if (IsLargeType ((TdsColumnType) xColumnType))
+				} else if (IsLargeType ((TdsColumnType) xColumnType)) {
 					columnSize = Comm.GetTdsShort ();
-				else
+				} else {
 					columnSize = Comm.GetByte () & 0xff;
+				}
 
 				if (IsWideType ((TdsColumnType) columnType))
 					columnSize /= 2;
@@ -696,6 +831,7 @@ namespace Mono.Data.Tds.Protocol
 				col.IsReadOnly = !writable;
 				col.AllowDBNull = nullable;
 				col.BaseTableName = tableName;
+				col.DataTypeName = Enum.GetName (typeof (TdsColumnType), xColumnType);
 #else
 				col ["ColumnType"] = columnType;
 				col ["ColumnName"] = columnName;
@@ -707,6 +843,7 @@ namespace Mono.Data.Tds.Protocol
 				col ["IsReadOnly"] = !writable;
 				col ["AllowDBNull"] = nullable;
 				col ["BaseTableName"] = tableName;
+				col ["DataTypeName"] = Enum.GetName (typeof (TdsColumnType), xColumnType);
 #endif
 			}
 		}

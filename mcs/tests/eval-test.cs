@@ -27,6 +27,11 @@ public class MyTest {
 	
 	static void Main ()
 	{
+		Evaluator.Init (new string [0]); //new string [] { "-v", "-v" });
+		//
+		// This fails because of the grammar issue with the pointer type
+		// Evaluate ("multiply", "1*2;", 2);
+		//
 		Run ("1",      "System.Console.WriteLine (100);");
 		Run ("Length", "var a = new int [] {1,2,3}; var b = a.Length;");
 		
@@ -42,6 +47,39 @@ public class MyTest {
 
 		Run ("LINQ-3", "var first_scope = new int [] {1,2,3};");
 		Run ("LINQ-4", "var second_scope = from x in first_scope select x;");
+
+		string prefix = "";
+		string [] res = Evaluator.GetCompletions ("ConsoleK", out prefix);
+		if (res [0] != "ey" || res [1] != "eyInfo"){
+			Console.WriteLine (res [0]);
+			Console.WriteLine (res [1]);
+			throw new Exception ("Expected two completions ConsoleKey and ConsoleKeyInfo");
+		}
+
+		res = Evaluator.GetCompletions ("Converte", out prefix);
+		if (res [0] != "r<"){
+			throw new Exception ("Expected one completion for Conveter<");
+		}
+
+		res = Evaluator.GetCompletions ("Sys", out prefix);
+		if (res [0] != "tem"){
+			throw new Exception ("Expected at least a conversion for System");
+		}
+
+		res = Evaluator.GetCompletions ("System.Int3", out prefix);
+		if (res [0] != "2"){
+			throw new Exception ("Expected completion to System.Int32");
+		}
+
+		res = Evaluator.GetCompletions ("new System.Text.StringBuilder () { Ca", out prefix);
+		if (res [0] != "pacity"){
+			throw new Exception ("Expected completion to Capacity");
+		}
+
+		res = Evaluator.GetCompletions ("new System.Text.StringBuilder () { ", out prefix);
+		if (res.Length != 4){
+			throw new Exception ("Epxected 4 completions (Capacity Chars Length MaxCapacity)");
+		}
 	}
 	
 }

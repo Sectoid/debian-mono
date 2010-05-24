@@ -1,17 +1,119 @@
+2010-02-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* PropertyInfoTest.cs: Make tests for GetIndexParameters() work.
+
+2010-02-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	*  MethodInfoTest.cs: New test for GetParameters() returning the interned array.
+
+	* PropertyInfoTest.cs: New tests for GetIndexParameters().
+
+2010-01-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DateTimeConstantAttribute.cs: Add internal Ticks property.
+
+	Backport of r149083.
+
+2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MethodBaseTest.cs: Add new, working, test for non-generic
+	GetMethodFromHandle. Add test case to show generic overload
+	behave exactly the same when no second RuntimeMethodHandle is
+	provided. Remove [Category("NotWorking")] on existing test case.
+	[Backport r144335]
+
+2009-08-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClassTest.cs: Test for methods that must
+	throw.
+
+2009-08-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MonoGenericClassTest.cs: New file.
+
+2009-07-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* FieldInfoTest.cs: Add a test for #525733.
+
+2009-07-27 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyTest.cs: Add test for empty string passed to
+	Assembly::GetType.
+
+2009-07-27 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventInfoTest.cs: Add test for private event and
+	RemoveEventHandler.
+
+2009-07-27 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventInfoTest.cs: Add test for cast incompatible type.
+
+	* EventInfoTest.cs: Add test for private event.
+
+	* EventInfoTest.cs: Add test for null target for non static
+	event.
+
+2009-07-14  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* BinderTests.cs: Modified SelectMethod_ByRef and BindToMethod_ByRef
+	to compile on net_1_1 profile. Added tests for SelectMethod and
+	BindToMethod with params arguments, currently marked NotWorking.
+
+2009-07-14  Raja R Harinath  <harinath@hurrynot.org>
+
+	* BinderTests.cs (SelectMethod_ByRef, BindToMethod_ByRef): Disable
+	in net_1_1 profile.
+
 2009-07-12  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* BinderTest.cs: Added SelectMethod/BindToMethod tests for methods
 	with byref arguments.
 
+2009-06-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Convert all tests to new-style nunit classes/methods.
+
+2009-06-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* ParameterInfoTest.cs: Add a test for #512330.
+
 2009-05-03  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MethodInfoTest.cs: Add test cases from Joachim Ante for bug
 	#500385.
-	[Backport of r133428]
+
+2009-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* ParameterInfoTest.cs: Add a test for #488383.
+
+2009-03-03  Matthew Metnetsky  <matthew@cowarthill.com>
+
+	* BinderTests.cs: added tests for TargetParameterCountException
+	* BinderTests.cs: added tests for BindingFlags.ExactBinding
+
+2009-03-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* BinderTests.cs: Add a test for #484294.
+
+2009-02-21  Jb Evain  <jbevain@novell.com>
+
+	* BinderTests.cs: add test for bug #471257, where Type.InvokeMember
+	calls Binder.BindToMethod will a null args.
+
+2009-02-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* MethodBaseTest.cs: Make a test quiet.
+
+2008-02-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodInfoTest.cs: Fix the 1.1 build.
 
 2008-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
 
-	Backport of r125410.
+	* MethodInfoTest.cs: Test for non primitive structs.
+
+2008-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* MethodInfoTest.cs: Test for #409583.
 

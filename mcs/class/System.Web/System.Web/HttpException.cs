@@ -125,7 +125,7 @@ namespace System.Web
 			http_code = httpCode;
 		}
 
-		public HttpException (int httpCode, string message, Exception innerException, string resourceName)
+		internal HttpException (int httpCode, string message, Exception innerException, string resourceName)
 			: this (httpCode, message, innerException)
 		{
 			resource_name = resourceName;
@@ -219,7 +219,7 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 		{
 			if (showTrace) {
 				builder.Append ("<hr style=\"color: silver\"/>");
-				builder.AppendFormat ("<strong>Version information: </strong> Runtime: <tt>{0}</tt>; ASP.NET Version: <tt>{1}</tt></body></html>\r\n",
+				builder.AppendFormat ("<strong>Version information: </strong> Mono Runtime Version: <tt>{0}</tt>; ASP.NET Version: <tt>{1}</tt></body></html>\r\n",
 						      HttpRuntime.MonoVersion, Environment.Version);
 			
 				string trace, message;
@@ -409,9 +409,17 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 				else
 					builder.Append (FormatSourceFile (exc.FileName));
 
-				if ((isParseException || isCompileException) && exc.ErrorLines.Length > 0) {
-					builder.Append ("&nbsp;&nbsp;<strong>Line: </strong>");
-					builder.Append (exc.ErrorLines [0]);
+				if (isParseException || isCompileException) {
+					int[] errorLines = exc.ErrorLines;
+					int numErrors = errorLines != null ? errorLines.Length : 0;
+					if (numErrors > 0) {
+						builder.AppendFormat ("&nbsp;&nbsp;<strong>Line{0}: </strong>", numErrors > 1 ? "s" : String.Empty);
+						for (int i = 0; i < numErrors; i++) {
+							if (i > 0)
+								builder.Append (", ");
+							builder.Append (exc.ErrorLines [i]);
+						}
+					}
 				}
 				builder.Append ("</p>");
 			} else if (exc.FileName != null)

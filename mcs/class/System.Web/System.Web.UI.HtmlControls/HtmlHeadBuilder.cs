@@ -45,11 +45,11 @@ namespace System.Web.UI.HtmlControls
 		
 		public override Type GetChildControlType (string tagName, IDictionary attribs)
 		{
-			if (String.Compare (tagName, "title", true, CultureInfo.InvariantCulture) == 0)
+			if (String.Compare (tagName, "title", StringComparison.OrdinalIgnoreCase) == 0)
 				return typeof (HtmlTitle);
-			if (String.Compare (tagName, "link", true, CultureInfo.InvariantCulture) == 0)
+			if (String.Compare (tagName, "link", StringComparison.OrdinalIgnoreCase) == 0)
 				return typeof (HtmlLink);
-			if (String.Compare (tagName, "meta", true, CultureInfo.InvariantCulture) == 0)
+			if (String.Compare (tagName, "meta", StringComparison.OrdinalIgnoreCase) == 0)
 				return typeof (HtmlMeta);
 			return null;
 		}

@@ -85,7 +85,7 @@ namespace Mono.Messaging.RabbitMQ {
 			if (msg.CorrelationId != null)
 				mb.Properties.CorrelationId = msg.CorrelationId;
 			// TODO: Change to DateTime.UtcNow??
-			mb.Properties.Timestamp = MessageFactory.DateTimeToAmqpTimestamp (DateTime.Now);
+			mb.Properties.Timestamp = MessageFactory.DateTimeToAmqpTimestamp (DateTime.UtcNow);
 			Hashtable headers = new Hashtable ();
 			
 			headers[SENDER_VERSION_KEY] = msg.SenderVersion;
@@ -219,6 +219,13 @@ namespace Mono.Messaging.RabbitMQ {
 			DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, 0);
 			return epoch.AddSeconds (ats.UnixTime).ToLocalTime ();
 		}
-		
+
+		public static int TimeSpanToInt32 (TimeSpan timespan)
+		{
+			if (timespan == TimeSpan.MaxValue)
+				return -1;
+			else
+				return (int) timespan.TotalMilliseconds;
+		}
 	}
 }

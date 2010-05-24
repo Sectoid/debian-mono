@@ -5,7 +5,7 @@
 //	Atsushi Enomoto  <atsushi@ximian.com>
 //  Jb Evain  <jbevain@novell.com>
 //
-// (c) 2007 Novell, Inc. (http://www.novell.com)
+// Copyright (C) 2007, 2009-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -31,14 +31,127 @@
 
 #if NET_2_1
 
-using System;
+using System.IO;
 
 namespace System.Net { 
 
+	// note: the NotImplementedException are needed to match MS implementation
+
+	// note: MS documents a lot of thing for this type but, in truth, all happens
+	// in a type that derive from HttpWebRequest. In Moonlight case this is either
+	// * BrowserHttpWebRequest (browser stack) located in System.Windows.Browser.dll; or
+	// * System.Net.Browser.ClientHttpWebRequest (client stack) located in System.Windows.dll
+
 	public abstract class HttpWebRequest : WebRequest {
 
-		public abstract bool HaveResponse { get; }
+		private WebHeaderCollection headers;
+
+		protected HttpWebRequest ()
+		{
+		}
+
+		public string Accept {
+			get { return Headers [HttpRequestHeader.Accept]; }
+			// this header cannot be set directly inside the collection (hence the helper)
+			set {
+				if (value == null)
+					throw new ArgumentNullException ("Accept");
+				if (value.Length == 0)
+					throw new ArgumentException ("Accept");
+				Headers.SetHeader ("accept", value);
+			}
+		}
+
+		public virtual bool AllowReadStreamBuffering {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
+
+		public override string ContentType {
+			get { return Headers [HttpRequestHeader.ContentType]; }
+			// this header cannot be set directly inside the collection (hence the helper)
+			set {
+				if (value == null)
+					throw new ArgumentNullException ("ContentType");
+				if (value.Length == 0)
+					throw new ArgumentException ("ContentType");
+				Headers.SetHeader ("content-type", value);
+			}
+		}
+
+		public virtual bool HaveResponse {
+			get { throw NotImplemented (); }
+		}
+
+		public override WebHeaderCollection Headers {
+			get {
+				if (headers == null)
+					headers = new WebHeaderCollection (true);
+				return headers;
+			}
+			set {
+				// note: this is not a field assignment but a copy (see unit tests)
+				// make sure everything we're supplied is valid...
+				string[] keys = value.AllKeys;
+				foreach (string header in keys) {
+					// anything bad will throw
+					WebHeaderCollection.ValidateHeader (header);
+				}
+				// ... before making those values our own
+				Headers.headers.Clear ();
+				foreach (string header in keys) {
+					headers [header] = value [header];
+				}
+			}
+		}
+
+		public virtual CookieContainer CookieContainer {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
+
+		public override string Method {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
+
+		public override Uri RequestUri {
+			get { throw NotImplemented (); }
+		}
+
+
+		public override void Abort ()
+		{
+			throw NotImplemented ();
+		}
+
+		public override IAsyncResult BeginGetRequestStream (AsyncCallback callback, object state)
+		{
+			throw NotImplemented ();
+		}
+
+		public override IAsyncResult BeginGetResponse (AsyncCallback callback, object state)
+		{
+			throw NotImplemented ();
+		}
+
+		public override Stream EndGetRequestStream (IAsyncResult asyncResult)
+		{
+			throw NotImplemented ();
+		}
+
+		public override WebResponse EndGetResponse (IAsyncResult asyncResult)
+		{
+			throw NotImplemented ();
+		}
+
+		static Exception NotImplemented ()
+		{
+			// a bit less IL and hide the "normal" NotImplementedException from corcompare-like tools
+			return new NotImplementedException ();
+		}
 	}
 }
 
 #endif
+

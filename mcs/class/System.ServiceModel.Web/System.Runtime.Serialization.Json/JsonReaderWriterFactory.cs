@@ -43,7 +43,7 @@ namespace System.Runtime.Serialization.Json
 
 		public static XmlDictionaryReader CreateJsonReader (byte [] source, int offset, int length, XmlDictionaryReaderQuotas quotas)
 		{
-			return CreateJsonReader (source, offset, length, Encoding.UTF8, quotas, null);
+			return CreateJsonReader (source, offset, length, null, quotas, null);
 		}
 
 		public static XmlDictionaryReader CreateJsonReader (byte [] source, int offset, int length, Encoding encoding, XmlDictionaryReaderQuotas quotas, OnXmlDictionaryReaderClose readerClose)
@@ -53,7 +53,7 @@ namespace System.Runtime.Serialization.Json
 
 		public static XmlDictionaryReader CreateJsonReader (Stream source, XmlDictionaryReaderQuotas quotas)
 		{
-			return CreateJsonReader (source, Encoding.UTF8, quotas, null);
+			return CreateJsonReader (source, null, quotas, null);
 		}
 
 		public static XmlDictionaryReader CreateJsonReader (Stream source, Encoding encoding, XmlDictionaryReaderQuotas quotas, OnXmlDictionaryReaderClose readerClose)

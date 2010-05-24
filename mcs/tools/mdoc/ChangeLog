@@ -1,3 +1,105 @@
+2010-02-28  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Allow .source files to be provided to
+	  'mdoc export-html-webdoc', which will cause the .source files to be
+	  read and all referenced .tree/.zip files to be processed.
+
+2010-02-28  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Add --use-system-sources option so
+	  that 'mdoc export-html-webdoc' will use the system-installed sources
+	  in addition to any -r'd sources (which was the behavior 2 commits
+	  ago).
+
+2010-02-26  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/assembler.cs: Allow other apps to get the same
+	  '--format' logic, specifically 'mdoc export-html-webdoc'.
+	* Mono.Documentation/webdoc.cs: Allow it to be more "stand-alone".
+	  Previously, it would depend upon the system-wide .source files.
+	  This is bad, because you might want to generate the 'cache'
+	  directory for a different installation, with a different set of
+	  .tree/.zip/.source files, and you might not want to replace your own
+	  and/or you often forget, as is the case with me.  Instead, allow a 
+	  format to be specified for .tree files, and allow additional .source 
+	  files to be referenced so that extension methods will be found within
+	  the specified sources.  This allows for a "stand-alone" method of 
+	  operation w/o depending upon the system-wide .source files.
+
+2010-01-11  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2slashdoc.cs: Fix NamespaceSummaries.xml
+	  generation to look at the ns-NAMESPACE.xml files, not just
+	  NAMESPACE.xml files.
+
+2009-09-19  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Add --with-profile=PROFILE
+	  option, which just provides a simple mapping between profile names
+	  like net_3_5 to the versions used in that profile.
+
+2009-09-19  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: By request of Edd Dumbill, add
+	  --with-version=VERSION option.  This will generate HTML
+	  documentation for ONLY those types/members which exist within
+	  VERSION.  This makes it easy to generate HTML that will show e.g.
+	  only MonoTouch docs (and not the full class library docs).
+	* Makefile: Add test for 'mdoc export-html --with-version=VERSION'.
+	  Somewhat brain-dead, as it only checks for added types (and not
+	  added members), but better than nothing...
+
+2009-09-09  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Fix behavior when multiple
+	  source directories are provided, e.g. 'mdoc export-html -o o a b c'
+	  with docs located in directories a, b, and c.  Previously this would
+	  be equivalent to running aginst a, b, and c separately, resulting in
+	  o/index.html being continually overwritten (and thus not showing ALL
+	  available types).
+	* Resources/stylesheet.xsl: Make $Index a parameter (as monodocs2html
+	  will create an in-memory index containing all types from all
+	  specified directories), and various changes to cope with $Index no
+	  longer being a file.  Better support files in the global namespace.
+	* Test/html.expected/NoNamespace.html: Fix assembly link.
+
+2009-08-12  Jonathan Pryor <jpryor@novell.com>
+
+	* Test/DocTest-v1.cs: Add a comment which uses <format/>, to test html
+	  escaping behavior.
+	* Resources/monodoc-ecma.xsd: Permit <format/> in various elements.
+	* Test/en.expected.importslashdoc/Mono.DocTest/DocAttribute.xml,
+	  Test/html.expected/Mono.DocTest/DocAttribute.html,
+	  Test/msxdoc-expected.importslashdoc.xml: Flush.
+
+2009-08-12  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: Add ../monodoc/Resources/mdoc-html-format.xsl as a resource.
+
+2009-08-06  Jonathan Pryor <jpryor@novell.com>
+
+	* mdoc.exe.sources: Add ../../build/common/Consts.cs to the build.
+	* Mono.Documentation/mdoc.cs: mdoc version is Consts.MonoVersion, not
+	  some hard-coded, perpetually out-of-date version.
+
+2009-08-02  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Sometimes <AssemblyVersion/> is
+	  found twice when it's actually present only once (!).  Attempt to
+	  work around this by usinq LINQ instead of a foreach (which oddly
+	  works...).
+
+2009-07-31  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Record attributes that are placed
+	  on property get/set and event add/remove accessors.
+	* Test/DocTest-v1.cs: Add attributes to some accessors.
+	* Test/en.expected.importslashdoc/Mono.DocTest/Widget.xml,
+	  Test/en.expected.since/Mono.DocTest/Widget.xml,
+	  Test/en.expected/Mono.DocTest/Widget.xml,
+	  Test/html.expected/Mono.DocTest/Widget.html,
+	  Test/msxdoc-expected.importslashdoc.xml: Flush.
+
 2009-06-23  Jonathan Pryor <jpryor@novell.com>
 
 	* Mono.Documentation/monodocer.cs: Don't generate an exception when an
@@ -9,6 +111,88 @@
 	  Test/html.expected/Mono.DocTest/Color.html,
 	  Test/msxdoc-expected.importslashdoc.xml,
 	  Test/en.expected.importslashdoc/Mono.DocTest/Color.xml: Flush.
+
+2009-04-18  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Change -o semantics to be a directory
+	  prefix, e.g. `mdoc export-html-webdoc -o cache.new foo.tree` will
+	  output files into `cache.new/foo` instead of directly into
+	  `cache.new`.  This makes it easier to specify more than one
+	  .tree/.zip file on the command line.
+
+2009-04-16  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2slashdoc.cs: Code refactor; use
+	  EcmaDoc.GetCref() to generate //member/@name values.
+	* Mono.Documentation/dump.cs: Add -f=FORMAT support, so that we can
+	  load an appropriate HelpSource (if supplied) so that an appropriate
+	  Node.PublicUrl can be displayed in the output.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Remove console debug spew.  If you run
+	  with `mdoc -v`, each URL will be printed as it's processed.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: When extracting files from the .zip
+	  file, ensure that the output file is closed.  Properly pre-render
+	  ecma namespace documentation.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: Add reference to ICSharpCode.SharpZipLib.dll.
+	* mdoc.exe.sources: Add Mono.Rocks/ObjectRocks.cs,
+	  Mono.Rocks/StreamRocks.cs.
+	* Mono.Documentation/webdoc.cs: Refactor into smaller methods.  Extract 
+	  ZIP file contents in addition to generating HTML output.  Use
+	  monodoc helper methods to determine cache directory.
+	* Mono.Documentation/ObjectRocks.cs: Rename to
+	  Mono.Rocks/ObjectRocks.cs.
+	* Mono.Rocks/ObjectRocks.cs: Add Check.Destination().
+	* Mono.Rocks/StreamRocks.cs: Added; extension methods for Streams.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: The timestamp logic was wrong it the
+	  output directory didn't exist.  Fix.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Do as make(1) does: if the
+	  target directory already exists and is newer than the source files, 
+	  don't regenerate output.  (Greatly speeds things up if nothing has
+	  changed.)  Add a --force-update option to disable this behavior.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Change the default -o value to
+	  include a "cache" intermediate directory.  This makes it easier to
+	  kill the entire cache at once.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Provide nice default -o value.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/webdoc.cs: Load documentation through a
+	  HelpSource, not through the RootTree, as URLs of the form
+	  "ecma:0#AvoidExtensionMethodOnSystemObjectRule/" use the number (0
+	  in this case) as a HelpSource-relative identifier.  Result: you get
+	  the wrong documentation if you go through RootTree.
+
+2009-04-15  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: Add reference to System.Web.dll, for HttpUtility.
+	* mdoc.exe.sources: Add ObjectRocks.cs, webdoc.cs to the build.
+	* Mono.Documentation/mdoc.cs: Add export-html-webdoc command, which
+	  "pre-renders" HTML for use by the webdoc ASP.NET renderer.
+	* Mono.Documentation/webdoc.cs: Added; MDocExportWebdocHtml
+	  implementation; attempts to pre-render HTML based on .tree/.zip
+	  file contents.
+	* Mono.Documentation/ObjectRocks.cs: Added; extension methods for tree
+	  traversal (from Mono.Rocks).  For use in webdoc.cs.
 
 2009-04-09  Jonathan Pryor <jpryor@novell.com>
 
@@ -31,6 +215,88 @@
 	  separate AssemblyDefinitions, and when b.dll's AssemblyDefinition
 	  tries to resolve types from a.dll, it fails).
 	  See: http://lists.ximian.com/pipermail/mono-devel-list/2009-April/031646.html
+
+2009-03-29  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/exceptions.cs: Add
+	  ExceptionLocations.AddedMember, used for --exceptions=added support.
+	* Mono.Documentation/monodocer.cs: Add --exceptions=added, which will 
+	  only add <exception/> elements for newly added elements.  This is
+	  useful for updating documentation for established projects which
+	  already have <exception/> corrections (e.g. *removal* of
+	  <exception/> elements because the exceptions weren't actually
+	  possible), so only new members should have <exception/> created.
+
+2009-03-20  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Perform the timestamp check for
+	  the top-level and namespace-level index files.
+
+2009-03-21  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Be nice to make,
+	  mdoc-export-html, and other apps that use file timetamps: if the 
+	  file contents haven't changed after the update, don't replace the
+	  "original" file.  This preserves file timestamps, thus allowing
+	  other apps to behave nicely (e.g. mdoc-export-html won't update all
+	  documentation after running mdoc-update, as the files won't change
+	  unless something has *actually* changed).
+
+2009-03-20  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Do as make(1) does: if the
+	  target file already exists and is newer than the source file, don't
+	  regenerate it.  (Greatly speeds things up if only a few .xml files
+	  changed.)  Add a --force-update option to disable this behavior.
+
+2009-02-26  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/assembler.cs: When processing an empty directory,
+	  it's possible for HelpSource.Tree to be null; avoid an NRE.
+
+2009-02-17  Jonathan Pryor <jpryor@novell.com>
+
+	* Test/DocTest-v1.cs: Add test for #475814.
+	* Mono.Documentation/exceptions.cs, Mono.Documentation/monodocer.cs:
+	  Use the new Mono.Cecil .Resolve() methods instead of (erroneously)
+	  duplicating their functionality with the .GetDefinition() methods.
+	  ExceptionLookup.this[IMemberReference] checks for multi-dimensional
+	  arrays, as MD arrays are "special" (Cecil can't resolve them, as
+	  they're internal to the runtime with no specific associated IL).
+	  Fixes #475814.
+
+2009-02-17  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Check that the cref attribute is
+	  non-null before trying to use it when importing slashdoc sources.
+	  Fixes #475852.
+	* Test/DocTest-v1.cs: Add an <exception/> doc comment with an invalid
+	  attribute value for testing.
+
+2009-02-17  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/mdoc.cs: Set Environment.ExitCode=1 if an
+	  exception occurs, so that calling code can determine that an error
+	  occurred w/o resorting to parsing stderr.  Fixes #475746.
+
+2009-02-16  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Support C#4 variant generics, e.g.
+	  `delegate TRet Func<in TArg, out TRet>(TArg a)'.  Alas, this
+	  required making MemberFormatter explicitly stateful, so any thoughts
+	  of using instances w/o locking are now out the window...  (Not that
+	  threads are currently used, but they're planned to be used...)
+	  TODO: Add a test to Test/DocTest-v1.cs.  This wasn't done as the
+	  current gmcs support doesn't like intermixing variance with generic
+	  parameter attributes, and I don't want to introduce a new delegate
+	  type (and the ~6 new files that would imply) just for this feature.
+
+2009-02-10  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Cleanup: turn static data into
+	  instance data (for future Threading changes, as only static data
+	  will be tracked for thread-safety); use MDocCommand.Message() and
+	  MDocCommand.Error() for message reporting; remove warnings.
 
 2009-01-05  Jonathan Pryor <jpryor@novell.com>
 

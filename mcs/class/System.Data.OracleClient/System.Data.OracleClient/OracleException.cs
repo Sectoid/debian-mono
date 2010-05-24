@@ -22,11 +22,11 @@ using System.Runtime.Serialization;
 namespace System.Data.OracleClient {
 	[Serializable]
 	public sealed class OracleException
-#if NET_2_0	 
-    		 : System.Data.Common.DbException
+#if NET_2_0
+		: System.Data.Common.DbException
 #else
-		 : SystemException
-#endif // NET_1_1
+		: SystemException
+#endif //NET_1_1	
 	{
 		#region Fields
 

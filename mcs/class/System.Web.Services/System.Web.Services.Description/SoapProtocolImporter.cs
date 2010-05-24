@@ -671,6 +671,8 @@ namespace System.Web.Services.Description {
 				codeProperty.SetStatements.Add (new CodeAssignStatement (ce, new CodePropertySetValueReferenceExpression()));
 				codeProperty.GetStatements.Add (new CodeMethodReturnStatement (ce));
 				CodeTypeDeclaration.Members.Add (codeProperty);
+
+				varName = propName;
 #else
 				codeField.Attributes = MemberAttributes.Public;
 #endif

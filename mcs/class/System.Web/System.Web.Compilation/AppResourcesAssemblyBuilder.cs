@@ -210,7 +210,6 @@ namespace System.Web.Compilation
 				
 				if (alOutput.Count != 0) {
 					foreach (string line in alOutput) {
-						Console.WriteLine (line);
 						if (!line.StartsWith ("ALINK: error ", StringComparison.Ordinal))
 							continue;
 						if (errors == null)

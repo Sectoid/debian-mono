@@ -76,14 +76,13 @@ namespace MonoTests.System.Web.UI.WebControls.Adapters
 		{
 			internal IEnumerable data;
 			
-			protected internal override void PerformDataBinding (IEnumerable data)
+			protected override void PerformDataBinding (IEnumerable data)
 			{
 				this.data = data;
 			}
-
 		}
 
-		class MyDataBoundControlAdapter : DataBoundControlAdapter
+		class MyDataBoundControlAdapter : SystemWebTestShim.DataBoundControlAdapter
 		{
 			internal MyDataBoundControlAdapter (DataBoundControl c) : base (c)
 			{

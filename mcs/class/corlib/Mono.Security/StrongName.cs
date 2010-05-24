@@ -160,7 +160,7 @@ namespace Mono.Security {
 			get {
 				if (rsa == null)
 					return false;
-#if INSIDE_CORLIB
+#if INSIDE_CORLIB && (!NET_2_1 || MONOTOUCH)
 				// the easy way
 				if (RSA is RSACryptoServiceProvider) {
 					// available as internal for corlib
@@ -467,8 +467,12 @@ namespace Mono.Security {
 			if (!initialized) {
 				lock (lockObject) {
 					if (!initialized) {
+#if NET_2_1
+						// Moonlight cannot depend on machine.config
+#else
 						string config = Environment.GetMachineConfigPath ();
 						StrongNameManager.LoadConfig (config);
+#endif
 						initialized = true;
 					}
 				}

@@ -1,10 +1,11 @@
 //
 // DynamicDataExtensions.cs
 //
-// Author:
+// Authors:
 //	Atsushi Enomoto <atsushi@ximian.com>
+//      Marek Habersack <mhabersack@novell.com>
 //
-// Copyright (C) 2008 Novell Inc. http://novell.com
+// Copyright (C) 2008-2009 Novell Inc. http://novell.com
 //
 
 //
@@ -44,10 +45,22 @@ namespace System.Web.DynamicData
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public static class DynamicDataExtensions
 	{
-		[MonoTODO]
 		public static object ConvertEditedValue (this IFieldFormattingOptions formattingOptions, string value)
 		{
-			throw new NotImplementedException ();
+			// Not a surprise anymore...
+			if (formattingOptions == null)
+				throw new NullReferenceException ();
+
+			if (String.IsNullOrEmpty (value)) {
+				if (formattingOptions.ConvertEmptyStringToNull)
+					return null;
+			} else {
+				string nullDisplayText = formattingOptions.NullDisplayText;
+				if (!String.IsNullOrEmpty (nullDisplayText) && String.Compare (value, nullDisplayText, StringComparison.Ordinal) == 0)
+					return null;
+			}
+
+			return value;
 		}
 
 		[MonoTODO]
@@ -74,10 +87,24 @@ namespace System.Web.DynamicData
 			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
 		public static MetaTable FindMetaTable (this Control current)
 		{
-			throw new NotImplementedException ();
+			// .NET doesn't perform the check, we will
+			if (current == null)
+				throw new NullReferenceException ();
+
+			while (current != null) {
+				DataBoundControl dbc = current as DataBoundControl;
+				if (dbc != null) {
+					IDynamicDataSource dds = dbc.DataSourceObject as IDynamicDataSource;
+					if (dds != null)
+						return dds.GetTable ();
+				}
+
+				current = current.NamingContainer;
+			}
+
+			return null;
 		}
 
 		[MonoTODO]
@@ -92,10 +119,36 @@ namespace System.Web.DynamicData
 			throw new NotImplementedException ();
 		}
 
-		[MonoTODO]
+		static string GetDataSourceId (IDynamicDataSource dataSource)
+		{
+			Control c = dataSource as Control;
+			if (c == null)
+				return String.Empty;
+			
+			return c.ID;
+		}
+		
 		public static MetaTable GetTable (this IDynamicDataSource dataSource)
 		{
-			throw new NotImplementedException ();
+			if (dataSource == null)
+				return null;
+
+			string entitySetName = dataSource.EntitySetName;
+			if (String.IsNullOrEmpty (entitySetName)) {
+				// LAMESPEC: MSDN says we should throw in this case, but .NET calls
+				// DynamicDataRouteHandler.GetRequestMetaTable(HttpContext
+				// httpContext) instead (eventually)
+				MetaTable ret = DynamicDataRouteHandler.GetRequestMetaTable (HttpContext.Current);
+				if (ret == null)
+					throw new InvalidOperationException ("The control '" + GetDataSourceId (dataSource) +
+									     "' does not have a TableName property and a table name cannot be inferred from the URL.");
+			}
+			
+			Type contextType = dataSource.ContextType;
+			if (contextType == null)
+				throw new InvalidOperationException ("The ContextType property of control '" + GetDataSourceId (dataSource) + "' must specify a data context");
+			
+			return MetaModel.GetModel (contextType).GetTable (entitySetName);
 		}
 
 		[MonoTODO]

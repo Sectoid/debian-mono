@@ -25,6 +25,12 @@ namespace System.ServiceModel.PeerResolvers
 		public ResolveInfo (Guid clientId, string meshId, int maxAddresses)
 			: this ()
 		{
+			if (clientId == Guid.Empty)
+				throw new ArgumentException ("Empty Guid");
+			if (String.IsNullOrEmpty (meshId))
+				throw new ArgumentNullException ("meshId");
+			if (maxAddresses <= 0)
+				throw new ArgumentOutOfRangeException ("maxAddresses must be positive integer");
 			body.ClientId = clientId;
 			body.MeshId = meshId;
 			body.MaxAddresses = maxAddresses;
@@ -40,14 +46,13 @@ namespace System.ServiceModel.PeerResolvers
 			get { return body.MeshId; }
 		}
 		
-		[MonoTODO]
-		public bool HasBody()
+		public bool HasBody ()
 		{
-			throw new NotImplementedException ();
+			return true; // FIXME: I have no idea when it returns false
 		}
 	}
 	
-	[DataContract]
+	[DataContract (Name = "Resolve", Namespace = "http://schemas.microsoft.com/net/2006/05/peer")]
 	internal class ResolveInfoDC
 	{
 		Guid client_id;

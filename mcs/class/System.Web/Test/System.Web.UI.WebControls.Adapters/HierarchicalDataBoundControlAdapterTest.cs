@@ -75,14 +75,13 @@ namespace MonoTests.System.Web.UI.WebControls.Adapters
 		{
 			internal bool perform_data_binding_called;
 			
-			protected internal override void PerformDataBinding ()
+			protected override void PerformDataBinding ()
 			{
 				perform_data_binding_called = true;
 			}
-
 		}
 
-		class MyHierarchicalDataBoundControlAdapter : HierarchicalDataBoundControlAdapter
+		class MyHierarchicalDataBoundControlAdapter : SystemWebTestShim.HierarchicalDataBoundControlAdapter
 		{
 			internal MyHierarchicalDataBoundControlAdapter (HierarchicalDataBoundControl c) : base (c)
 			{

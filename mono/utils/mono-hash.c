@@ -106,7 +106,8 @@ static MonoGHashNode *node_free_lists [4] = {NULL};
 static void *hash_descr = NULL;
 static GMemChunk *node_mem_chunk = NULL;
 #else
-static MonoGHashNode *node_free_list = NULL;
+static void *node_gc_descs [4] = {NULL};
+static MonoGHashNode *node_free_lists [4] = {NULL};
 #endif
 
 #ifdef HAVE_SGEN_GC
@@ -160,6 +161,8 @@ mono_g_hash_table_new_type (GHashFunc    hash_func,
 		  MonoGHashGCType type)
 {
   MonoGHashTable *table = mono_g_hash_table_new_full (hash_func, key_equal_func, NULL, NULL);
+  if (type == MONO_HASH_KEY_GC || type == MONO_HASH_KEY_VALUE_GC)
+	  g_assert (hash_func);
   table->gc_type = type;
 #if defined(HAVE_SGEN_GC)
   if (type < 0 || type > MONO_HASH_KEY_VALUE_GC)
@@ -172,6 +175,20 @@ mono_g_hash_table_new_type (GHashFunc    hash_func,
 	  hash_descr = mono_gc_make_root_descr_user (mono_g_hash_mark);
   if (type != MONO_HASH_CONSERVATIVE_GC)
 	  mono_gc_register_root_wbarrier ((char*)table, sizeof (MonoGHashTable), hash_descr);
+#elif defined(HAVE_BOEHM_GC)
+  if (type < 0 || type > MONO_HASH_KEY_VALUE_GC)
+	  g_error ("wrong type for gc hashtable");
+  if (!node_gc_descs [type] && type > MONO_HASH_CONSERVATIVE_GC) {
+	  gsize bmap = 0;
+	  if (type & MONO_HASH_KEY_GC)
+		  bmap |= 1; /* the first field in the node is the key */
+	  if (type & MONO_HASH_VALUE_GC)
+		  bmap |= 2; /* the second is the value */
+	  bmap |= 4; /* next */
+	  node_gc_descs [type] = mono_gc_make_descr_from_bitmap (&bmap, 3);
+
+	  MONO_GC_REGISTER_ROOT (node_free_lists [type]);
+  }
 #endif
   return table;
 }
@@ -205,8 +222,8 @@ mono_g_hash_table_new_full (GHashFunc       hash_func,
 #if HAVE_BOEHM_GC
   static gboolean inited = FALSE;
   if (!inited) {
-    MONO_GC_REGISTER_ROOT (node_free_list);
-    inited = TRUE;
+	  MONO_GC_REGISTER_ROOT (node_free_lists [0]);
+	  inited = TRUE;
   }
   
   hash_table = GC_MALLOC (sizeof (MonoGHashTable));
@@ -353,17 +370,23 @@ g_hash_node_new (gpointer key,
   MonoGHashNode *hash_node = NULL;
 
 #if HAVE_BOEHM_GC
-  if (node_free_list) {
+  if (node_free_lists [gc_type]) {
 	  G_LOCK (g_hash_global);
 
-	  if (node_free_list) {
-		  hash_node = node_free_list;
-		  node_free_list = node_free_list->next;
+	  if (node_free_lists [gc_type]) {
+		  hash_node = node_free_lists [gc_type];
+		  node_free_lists [gc_type] = node_free_lists [gc_type]->next;
 	  }
 	  G_UNLOCK (g_hash_global);
   }
-  if (!hash_node)
-      hash_node = GC_MALLOC (sizeof (MonoGHashNode));
+  if (!hash_node) {
+	  if (gc_type != MONO_HASH_CONSERVATIVE_GC) {
+		  //hash_node = GC_MALLOC (sizeof (MonoGHashNode));
+		  hash_node = GC_MALLOC_EXPLICITLY_TYPED (sizeof (MonoGHashNode), (GC_descr)node_gc_descs [gc_type]);
+	  } else {
+		  hash_node = GC_MALLOC (sizeof (MonoGHashNode));
+	  }
+  }
 #elif defined(HAVE_SGEN_GC)
   if (node_free_lists [gc_type]) {
 	  G_LOCK (g_hash_global);
@@ -707,6 +730,23 @@ mono_g_hash_table_foreach (MonoGHashTable *hash_table,
       (* func) (node->key, node->value, user_data);
 }
 
+gpointer
+mono_g_hash_table_find (MonoGHashTable *hash_table, GHRFunc predicate, gpointer user_data)
+{
+	int i;
+	MonoGHashNode *node;
+	
+	g_return_val_if_fail (hash_table != NULL, NULL);
+	g_return_val_if_fail (predicate != NULL, NULL);
+
+	for (i = 0; i < hash_table->size; i++){
+		for (node = hash_table->nodes[i]; node; node = node->next)
+			if ((*predicate)(node->key, node->value, user_data))
+				return node->value;
+	}
+	return NULL;
+}
+
 /**
  * g_hash_table_size:
  * @hash_table: a #GHashTable.
@@ -802,7 +842,7 @@ g_hash_node_destroy (MonoGHashNode      *hash_node,
   hash_node->value = NULL;
 
   G_LOCK (g_hash_global);
-#if defined(HAVE_SGEN_GC)
+#if defined(HAVE_SGEN_GC) || defined(HAVE_BOEHM_GC)
   hash_node->next = node_free_lists [type];
   node_free_lists [type] = hash_node;
 #else
@@ -844,7 +884,7 @@ g_hash_nodes_destroy (MonoGHashNode *hash_node,
       node->value = NULL;
  
       G_LOCK (g_hash_global);
-#if defined(HAVE_SGEN_GC)
+#if defined(HAVE_SGEN_GC) || defined(HAVE_BOEHM_GC)
       node->next = node_free_lists [type];
       node_free_lists [type] = hash_node;
 #else

@@ -11,7 +11,7 @@ EXTRA_DISTFILES = \
 	generic.cs		\
 	NOTES			\
 	TODO			\
-	gmcs.exe.config
+	*mcs.exe.config
 
 ifeq (1.0, $(FRAMEWORK_VERSION))
 COMPILER_NAME = mcs
@@ -27,6 +27,11 @@ LOCAL_MCS_FLAGS += -d:GMCS_SOURCE -d:SMCS_SOURCE
 COMPILER_NAME = smcs
 endif
 
+ifeq (4.0, $(FRAMEWORK_VERSION))
+LOCAL_MCS_FLAGS += -d:GMCS_SOURCE
+COMPILER_NAME = dmcs
+endif
+
 PROGRAM = $(topdir)/class/lib/$(PROFILE)/$(COMPILER_NAME).exe
 
 BUILT_SOURCES = cs-parser.cs
@@ -36,7 +41,7 @@ PROGRAM_COMPILE = $(BOOT_COMPILE)
 CLEAN_FILES += y.output
 
 %-parser.cs: %-parser.jay $(topdir)/jay/skeleton.cs
-	$(topdir)/jay/jay -cv < $(topdir)/jay/skeleton.cs $< > jay-tmp.out && mv jay-tmp.out $@
+	$(topdir)/jay/jay -cvt < $(topdir)/jay/skeleton.cs $< > jay-tmp.out && mv jay-tmp.out $@
 
 
 ifeq (net_2_0_bootstrap, $(PROFILE))
@@ -51,7 +56,7 @@ clean-program:
 
 $(PROGRAM) $(PROGRAM).config: $(dir $(PROGRAM))/.stamp
 
-$(PROGRAM): $(topdir)/class/lib/net_1_1/mcs.exe
+$(PROGRAM): $(topdir)/class/lib/$(BOOTSTRAP_PROFILE)/mcs.exe
 	cp $< $@
 
 $(PROGRAM).config: gmcs.exe.config
@@ -83,6 +88,17 @@ KEEP_OUTPUT_FILE_COPY = yes
 
 include ../build/executable.make
 endif
+
+csproj-local:
+	config_file=`basename $(PROGRAM) .exe`-$(PROFILE).input; \
+	echo $(thisdir):$$config_file >> $(topdir)/../mono/msvc/scripts/order; \
+	(echo $(is_boot); \
+	echo $(BOOTSTRAP_MCS);	\
+	echo $(USE_MCS_FLAGS) $(LIBRARY_FLAGS) $(LIB_MCS_FLAGS); \
+	echo $(PROGRAM); \
+	echo $(BUILT_SOURCES); \
+	echo $(PROGRAM); \
+	echo $(response)) > $(topdir)/../mono/msvc/scripts/inputs/$$config_file
 
 #
 # Below this line we have local targets used for testing and development
@@ -143,6 +159,9 @@ qh:
 	MONO_PATH="../class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) ../class/lib/net_2_0/gmcs.exe  /codepage:65001 -d:GMCS_SOURCE  -d:NET_1_1 -d:NET_2_0 -debug -target:exe -out:gmcs.exe cs-parser.cs  @gmcs.exe.sources
 	@ cp $(COMPILER_NAME).exe* $(topdir)/class/lib/$(PROFILE)/
 
+pa: cs-parser.cs
+	MONO_PATH="../class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) ../class/lib/net_2_0/gmcs.exe  /codepage:65001 -d:GMCS_SOURCE  -d:NET_1_1 -d:NET_2_0 -debug -target:exe -out:foo.exe cs-parser.cs foo.cs -main:X  @gmcs.exe.sources
+
 q: cs-parser.cs qh
 	echo 'System.Console.WriteLine ("Hello");' | mono csharp.exe
 	echo -e 'using System;\nConsole.WriteLine ("hello");' | mono csharp.exe
@@ -151,6 +170,5 @@ q: cs-parser.cs qh
 	echo -e 'int j;\nj = 1;' | mono csharp.exe
 	echo -e 'var a = new int[]{1,2,3};\nfrom x in a select x;' | mono csharp.exe
 	echo -e 'var a = from f in System.IO.Directory.GetFiles ("/tmp") where f == "passwd" select f;' | mono csharp.exe
-
 
 

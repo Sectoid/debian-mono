@@ -4,7 +4,7 @@
 // The APL v2.0:
 //
 //---------------------------------------------------------------------------
-//   Copyright (C) 2007, 2008 LShift Ltd., Cohesive Financial
+//   Copyright (C) 2007-2009 LShift Ltd., Cohesive Financial
 //   Technologies LLC., and Rabbit Technologies Ltd.
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,19 @@
 //
 //   The Original Code is The RabbitMQ .NET Client.
 //
-//   The Initial Developers of the Original Code are LShift Ltd.,
-//   Cohesive Financial Technologies LLC., and Rabbit Technologies Ltd.
+//   The Initial Developers of the Original Code are LShift Ltd,
+//   Cohesive Financial Technologies LLC, and Rabbit Technologies Ltd.
 //
-//   Portions created by LShift Ltd., Cohesive Financial Technologies
-//   LLC., and Rabbit Technologies Ltd. are Copyright (C) 2007, 2008
-//   LShift Ltd., Cohesive Financial Technologies LLC., and Rabbit
-//   Technologies Ltd.;
+//   Portions created before 22-Nov-2008 00:00:00 GMT by LShift Ltd,
+//   Cohesive Financial Technologies LLC, or Rabbit Technologies Ltd
+//   are Copyright (C) 2007-2008 LShift Ltd, Cohesive Financial
+//   Technologies LLC, and Rabbit Technologies Ltd.
+//
+//   Portions created by LShift Ltd are Copyright (C) 2007-2009 LShift
+//   Ltd. Portions created by Cohesive Financial Technologies LLC are
+//   Copyright (C) 2007-2009 Cohesive Financial Technologies
+//   LLC. Portions created by Rabbit Technologies Ltd are Copyright
+//   (C) 2007-2009 Rabbit Technologies Ltd.
 //
 //   All Rights Reserved.
 //
@@ -68,7 +74,7 @@ namespace RabbitMQ.Client.Exceptions
         : Exception
     {
         ///<summary>Possible explanation for the interruption. May be null.</summary>
-        protected ShutdownEventArgs shutdownReason;
+        protected ShutdownEventArgs m_shutdownReason;
 
         protected OperationInterruptedException() { }
 
@@ -88,11 +94,11 @@ namespace RabbitMQ.Client.Exceptions
                    string.Format("The AMQP operation was interrupted: {0}",
                                  reason))
         {
-            this.shutdownReason = reason;
+            m_shutdownReason = reason;
         }
 
         ///<summary>Retrieves the explanation for the shutdown. May
         ///return null if no explanation is available.</summary>
-        public ShutdownEventArgs ShutdownReason { get { return shutdownReason; } }
+        public ShutdownEventArgs ShutdownReason { get { return m_shutdownReason; } }
     }
 }

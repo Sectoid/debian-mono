@@ -122,7 +122,7 @@ namespace System
 		//
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		internal static extern Delegate CreateDelegate_internal (Type type, object target, MethodInfo info);
+		internal static extern Delegate CreateDelegate_internal (Type type, object target, MethodInfo info, bool throwOnBindFailure);
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal extern void SetMulticastInvoke ();
@@ -133,7 +133,7 @@ namespace System
 
 			// Delegate contravariance
 			if (!match) {
-				if (!delArgType.IsValueType && (delArgType != typeof (ValueType)) && (argType.IsAssignableFrom (delArgType)))
+				if (!argType.IsValueType && argType.IsAssignableFrom (delArgType))
 					match = true;
 			}
 
@@ -147,7 +147,7 @@ namespace System
 #if NET_2_0
 			if (!returnMatch) {
 				// Delegate covariance
-				if (!delReturnType.IsValueType && (delReturnType != typeof (ValueType)) && (delReturnType.IsAssignableFrom (returnType)))
+				if (!returnType.IsValueType && delReturnType.IsAssignableFrom (returnType))
 					returnMatch = true;
 			}
 #endif
@@ -213,8 +213,13 @@ namespace System
 					// as the 'this' argument to the method.
 					//
 					argLengthMatch = (args.Length + 1 == delargs.Length);
-				else
+				else {
 					argLengthMatch = (args.Length == delargs.Length);
+
+					if (!argLengthMatch)
+						// closed over a null reference
+						argLengthMatch = args.Length == delargs.Length + 1;
+				}
 			}
 			if (!argLengthMatch)
 				if (throwOnBindFailure)
@@ -240,9 +245,16 @@ namespace System
 					for (int i = 0; i < args.Length; i++)
 						argsMatch &= arg_type_match (delargs [i + 1].ParameterType, args [i].ParameterType);
 				} else {
-					argsMatch = true;
-					for (int i = 0; i < args.Length; i++)
-						argsMatch &= arg_type_match (delargs [i].ParameterType, args [i].ParameterType);
+					if (delargs.Length + 1 == args.Length) {
+						// closed over a null reference
+						argsMatch = !args [0].ParameterType.IsValueType;
+						for (int i = 0; i < delargs.Length; i++)
+							argsMatch &= arg_type_match (delargs [i].ParameterType, args [i + 1].ParameterType);
+					} else {
+						argsMatch = true;
+						for (int i = 0; i < args.Length; i++)
+							argsMatch &= arg_type_match (delargs [i].ParameterType, args [i].ParameterType);
+					}
 				}
 			}
 
@@ -253,8 +265,9 @@ namespace System
 					return null;
 #endif
 
-			Delegate d = CreateDelegate_internal (type, target, method);
-			d.original_method_info = method;
+			Delegate d = CreateDelegate_internal (type, target, method, throwOnBindFailure);
+			if (d != null)
+				d.original_method_info = method;
 			return d;
 		}
 
@@ -358,7 +371,7 @@ namespace System
 			if (info == null)
 				return null;
 
-			return CreateDelegate_internal (type, null, info);
+			return CreateDelegate_internal (type, null, info, throwOnBindFailure);
 		}
 
  		public static Delegate CreateDelegate (Type type, Type target, string method) {
@@ -386,7 +399,7 @@ namespace System
 			if (info == null)
 				return null;
 
-			return CreateDelegate_internal (type, target, info);
+			return CreateDelegate_internal (type, target, info, throwOnBindFailure);
 		}
 
 		public static Delegate CreateDelegate (Type type, object target, string method, bool ignoreCase) {

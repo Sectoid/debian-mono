@@ -2,6 +2,12 @@
 
 	* JavaScriptSerializerTest.cs: fixed broken tests
 
+2009-06-18  Marek Habersack  <mhabersack@novell.com>
+
+	* JavaScriptSerializerTest.cs: added comparison with the
+	.NET-generated serialization result in TestDeserialize and
+	TestDeserializeTypeResolver tests.
+
 2009-03-17  Marek Habersack  <mhabersack@novell.com>
 
 	* JavaScriptSerializerTest.cs: added tests for conversion to

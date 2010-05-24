@@ -52,6 +52,7 @@
     <Compile Include="..\class\Mono.CompilerServices.SymbolWriter\MonoSymbolWriter.cs">
       <Link>MonoSymbolWriter.cs</Link>
     </Compile>
+    <Compile Include="argument.cs" />
     <Compile Include="AssemblyInfo.cs">
     </Compile>
     <Compile Include="anonymous.cs">
@@ -66,12 +67,15 @@
     </Compile>
     <Compile Include="codegen.cs">
     </Compile>
+    <Compile Include="complete.cs" />
     <Compile Include="const.cs">
     </Compile>
     <Compile Include="constant.cs">
     </Compile>
+    <Compile Include="context.cs" />
     <Compile Include="convert.cs">
     </Compile>
+    <Compile Include="dynamic.cs" />
     <Compile Include="eval.cs" />
     <Compile Include="lambda.cs">
     </Compile>

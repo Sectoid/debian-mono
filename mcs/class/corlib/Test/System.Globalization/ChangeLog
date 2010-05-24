@@ -1,3 +1,20 @@
+2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CompareInfoTest.cs: Add test cases to validate parameters
+	[Backport r145023]
+
+2009-06-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Convert all tests to new-style nunit classes/methods.	
+
+2009-05-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* CultureInfoTest.cs: Fix the net 1.1 build.
+
+2009-05-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CultureInfoTest.cs : test zh-Hant.
+
 2009-01-07  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* CompareInfoTest.cs : added test for #462957.

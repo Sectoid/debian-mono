@@ -67,20 +67,20 @@ mono_arch_patch_callsite (guint8 *method_start, guint8 *code, guint8 *addr)
 }
 
 void
-mono_arch_patch_plt_entry (guint8 *code, guint8 *addr)
+mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr)
 {
 	g_assert_not_reached ();
 }
 
 void
-mono_arch_nullify_class_init_trampoline (guint8 *code, gssize *regs)
+mono_arch_nullify_class_init_trampoline (guint8 *code, mgreg_t *regs)
 {
 	/* Patch calling code */
 	sparc_nop (code);
 }
 
 void
-mono_arch_nullify_plt_entry (guint8 *code)
+mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 {
 	g_assert_not_reached ();
 }
@@ -243,9 +243,7 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 
 	tramp = mono_get_trampoline_code (tramp_type);
 
-	mono_domain_lock (domain);
-	code = buf = mono_code_manager_reserve (domain->code_mp, TRAMPOLINE_SIZE * 4);
-	mono_domain_unlock (domain);
+	code = buf = mono_domain_code_reserve (domain, TRAMPOLINE_SIZE * 4);
 
 	/* We have to use g5 here because there is no other free register */
 	sparc_set (code, tramp, sparc_g5);

@@ -126,7 +126,7 @@ namespace Microsoft.Build.BuildEngine {
 		public string GetEvaluatedMetadata (string metadataName)
 		{
 			if (ReservedNameUtils.IsReservedMetadataName (metadataName)) {
-				string metadata = ReservedNameUtils.GetReservedMetadata (FinalItemSpec, metadataName);
+				string metadata = ReservedNameUtils.GetReservedMetadata (FinalItemSpec, metadataName, evaluatedMetadata);
 				return (metadataName.ToLower () == "fullpath") ? Utilities.Escape (metadata) : metadata;
 			}
 
@@ -139,7 +139,7 @@ namespace Microsoft.Build.BuildEngine {
 		public string GetMetadata (string metadataName)
 		{
 			if (ReservedNameUtils.IsReservedMetadataName (metadataName)) {
-				string metadata = ReservedNameUtils.GetReservedMetadata (FinalItemSpec, metadataName);
+				string metadata = ReservedNameUtils.GetReservedMetadata (FinalItemSpec, metadataName, unevaluatedMetadata);
 				return (metadataName.ToLower () == "fullpath") ? Utilities.Escape (metadata) : metadata;
 			} else if (unevaluatedMetadata.Contains (metadataName))
 				return (string) unevaluatedMetadata [metadataName];
@@ -261,8 +261,7 @@ namespace Microsoft.Build.BuildEngine {
 
 			DirectoryScanner directoryScanner;
 			Expression includeExpr, excludeExpr;
-			ITaskItem[] includes;
-			string excludes;
+			ITaskItem[] includes, excludes;
 
 			includeExpr = new Expression ();
 			includeExpr.Parse (Include, ParseOptions.AllowItemsNoMetadataAndSplit);
@@ -271,7 +270,8 @@ namespace Microsoft.Build.BuildEngine {
 			
 			includes = (ITaskItem[]) includeExpr.ConvertTo (project, typeof (ITaskItem[]),
 								ExpressionOptions.ExpandItemRefs);
-			excludes = (string) excludeExpr.ConvertTo (project, typeof (string), ExpressionOptions.ExpandItemRefs);
+			excludes = (ITaskItem[]) excludeExpr.ConvertTo (project, typeof (ITaskItem[]),
+								ExpressionOptions.ExpandItemRefs);
 
 			this.finalItemSpec = (string) includeExpr.ConvertTo (project, typeof (string),
 							ExpressionOptions.ExpandItemRefs);

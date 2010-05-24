@@ -123,15 +123,72 @@ enum {
 	PPC_TRAP_GE_UN = 16 + PPC_TRAP_EQ
 };
 
-#define ppc_emit32(c,x) do { *((guint32 *) (c)) = x; (c) = (gpointer)((guint8 *)(c) + sizeof (guint32));} while (0)
+#define ppc_emit32(c,x) do { *((guint32 *) (c)) = GUINT32_TO_BE (x); (c) = (gpointer)((guint8 *)(c) + sizeof (guint32));} while (0)
 
 #define ppc_is_imm16(val) ((((val)>> 15) == 0) || (((val)>> 15) == -1))
 #define ppc_is_uimm16(val) ((glong)(val) >= 0L && (glong)(val) <= 65535L)
+#define ppc_ha(val) (((val >> 16) + ((val & 0x8000) ? 1 : 0)) & 0xffff)
 
 #define ppc_load32(c,D,v) G_STMT_START {	\
 		ppc_lis ((c), (D),      (guint32)(v) >> 16);	\
 		ppc_ori ((c), (D), (D), (guint32)(v) & 0xffff);	\
 	} G_STMT_END
+
+/* Macros to load/store pointer sized quantities */
+
+#if defined(__mono_ppc64__) && !defined(__mono_ilp32__)
+
+#define ppc_ldptr(c,D,d,A)         ppc_ld   ((c), (D), (d), (A))
+#define ppc_ldptr_update(c,D,d,A)  ppc_ldu  ((c), (D), (d), (A))
+#define ppc_ldptr_indexed(c,D,A,B)        ppc_ldx  ((c), (D), (A), (B))
+#define ppc_ldptr_update_indexed(c,D,A,B) ppc_ldux ((c), (D), (A), (B))
+
+#define ppc_stptr(c,S,d,A)        ppc_std  ((c), (S), (d), (A))
+#define ppc_stptr_update(c,S,d,A) ppc_stdu ((c), (S), (d), (A))
+#define ppc_stptr_indexed(c,S,A,B)        ppc_stdx  ((c), (S), (A), (B))
+#define ppc_stptr_update_indexed(c,S,A,B) ppc_stdux ((c), (S), (A), (B))
+
+#else
+
+/* Same as ppc32 */
+#define ppc_ldptr(c,D,d,A)         ppc_lwz  ((c), (D), (d), (A))
+#define ppc_ldptr_update(c,D,d,A)  ppc_lwzu ((c), (D), (d), (A))
+#define ppc_ldptr_indexed(c,D,A,B)        ppc_lwzx ((c), (D), (A), (B))
+#define ppc_ldptr_update_indexed(c,D,A,B) ppc_lwzux ((c), (D), (A), (B))
+
+#define ppc_stptr(c,S,d,A)        ppc_stw  ((c), (S), (d), (A))
+#define ppc_stptr_update(c,S,d,A) ppc_stwu ((c), (S), (d), (A))
+#define ppc_stptr_indexed(c,S,A,B)        ppc_stwx  ((c), (S), (A), (B))
+#define ppc_stptr_update_indexed(c,S,A,B) ppc_stwux ((c), (S), (A), (B))
+
+#endif
+
+/* Macros to load pointer sized immediates */
+#define ppc_load_ptr(c,D,v) ppc_load ((c),(D),(gsize)(v))
+#define ppc_load_ptr_sequence(c,D,v) ppc_load_sequence ((c),(D),(gsize)(v))
+
+/* Macros to load/store regsize quantities */
+
+#ifdef __mono_ppc64__
+#define ppc_ldr(c,D,d,A)         ppc_ld  ((c), (D), (d), (A))
+#define ppc_ldr_indexed(c,D,A,B) ppc_ldx  ((c), (D), (A), (B))
+#define ppc_str(c,S,d,A)         ppc_std ((c), (S), (d), (A))
+#define ppc_str_update(c,S,d,A)  ppc_stdu ((c), (S), (d), (A))
+#define ppc_str_indexed(c,S,A,B) ppc_stdx ((c), (S), (A), (B))
+#define ppc_str_update_indexed(c,S,A,B) ppc_stdux ((c), (S), (A), (B))
+#else
+#define ppc_ldr(c,D,d,A)         ppc_lwz  ((c), (D), (d), (A))
+#define ppc_ldr_indexed(c,D,A,B) ppc_lwzx ((c), (D), (A), (B))
+#define ppc_str(c,S,d,A)         ppc_stw ((c), (S), (d), (A))
+#define ppc_str_update(c,S,d,A)  ppc_stwu ((c), (S), (d), (A))
+#define ppc_str_indexed(c,S,A,B) ppc_stwx ((c), (S), (A), (B))
+#define ppc_str_update_indexed(c,S,A,B) ppc_stwux ((c), (S), (A), (B))
+#endif
+
+#define ppc_str_multiple(c,S,d,A) ppc_store_multiple_regs((c),(S),(d),(A))
+#define ppc_ldr_multiple(c,D,d,A) ppc_load_multiple_regs((c),(D),(d),(A))
+
+/* PPC32 macros */
 
 #ifndef __mono_ppc64__
 
@@ -149,16 +206,8 @@ enum {
 
 #define ppc_load_func(c,D,V)	      ppc_load_sequence ((c), (D), (V))
 
-#define ppc_load_reg(c,D,d,A)         ppc_lwz  ((c), (D), (d), (A))
-#define ppc_load_reg_update(c,D,d,A)  ppc_lwzu ((c), (D), (d), (A))
-#define ppc_load_reg_indexed(c,D,A,B)        ppc_lwzx ((c), (D), (A), (B))
-#define ppc_load_reg_update_indexed(c,D,A,B) ppc_lwzux ((c), (D), (A), (B))
 #define ppc_load_multiple_regs(c,D,d,A)      ppc_lmw   ((c), (D), (d), (A))
 
-#define ppc_store_reg(c,S,d,A)        ppc_stw  ((c), (S), (d), (A))
-#define ppc_store_reg_update(c,S,d,A) ppc_stwu ((c), (S), (d), (A))
-#define ppc_store_reg_indexed(c,S,A,B)        ppc_stwx  ((c), (S), (A), (B))
-#define ppc_store_reg_update_indexed(c,S,A,B) ppc_stwux ((c), (S), (A), (B))
 #define ppc_store_multiple_regs(c,S,d,A)      ppc_stmw  ((c), (S), (d), (A))
 
 #define ppc_compare(c,cfrD,A,B)		      ppc_cmp((c), (cfrD), 0, (A), (B))
@@ -706,6 +755,23 @@ my and Ximian's copyright to this code. ;)
 
 /* PPC64 */
 
+/* The following FP instructions are not are available to 32-bit
+   implementations (prior to PowerISA-V2.01 but are available to
+   32-bit mode programs on 64-bit PowerPC implementations and all
+   processors compliant with PowerISA-2.01 or later.  */
+
+#define ppc_fcfidx(c,D,B,Rc) ppc_emit32(c, (63 << 26) | ((D) << 21) | (0 << 16) | ((B) << 11) | (846 << 1) | (Rc))
+#define ppc_fcfid(c,D,B)  ppc_fcfidx(c,D,B,0)
+#define ppc_fcfidd(c,D,B) ppc_fcfidx(c,D,B,1)
+
+#define ppc_fctidx(c,D,B,Rc) ppc_emit32(c, (63 << 26) | ((D) << 21) | (0 << 16) | ((B) << 11) | (814 << 1) | (Rc))
+#define ppc_fctid(c,D,B)  ppc_fctidx(c,D,B,0)
+#define ppc_fctidd(c,D,B) ppc_fctidx(c,D,B,1)
+
+#define ppc_fctidzx(c,D,B,Rc) ppc_emit32(c, (63 << 26) | ((D) << 21) | (0 << 16) | ((B) << 11) | (815 << 1) | (Rc))
+#define ppc_fctidz(c,D,B)  ppc_fctidzx(c,D,B,0)
+#define ppc_fctidzd(c,D,B) ppc_fctidzx(c,D,B,1)
+
 #ifdef __mono_ppc64__
 
 #define ppc_load_sequence(c,D,v) G_STMT_START {	\
@@ -718,8 +784,8 @@ my and Ximian's copyright to this code. ;)
 
 #define PPC_LOAD_SEQUENCE_LENGTH	20
 
-#define ppc_is_imm32(val) (((((long)val)>> 31) == 0) || ((((long)val)>> 31) == -1))
-#define ppc_is_imm48(val) (((((long)val)>> 47) == 0) || ((((long)val)>> 47) == -1))
+#define ppc_is_imm32(val) (((((gint64)val)>> 31) == 0) || ((((gint64)val)>> 31) == -1))
+#define ppc_is_imm48(val) (((((gint64)val)>> 47) == 0) || ((((gint64)val)>> 47) == -1))
 
 #define ppc_load48(c,D,v) G_STMT_START {	\
 		ppc_li   ((c), (D), ((gint64)(v) >> 32) & 0xffff);	\
@@ -729,11 +795,11 @@ my and Ximian's copyright to this code. ;)
 	} G_STMT_END
 
 #define ppc_load(c,D,v) G_STMT_START {	\
-		if (ppc_is_imm16 ((gulong)(v)))	{	\
+		if (ppc_is_imm16 ((guint64)(v)))	{	\
 			ppc_li ((c), (D), (guint16)(guint64)(v));	\
-		} else if (ppc_is_imm32 ((gulong)(v))) {	\
+		} else if (ppc_is_imm32 ((guint64)(v))) {	\
 			ppc_load32 ((c), (D), (guint32)(guint64)(v)); \
-		} else if (ppc_is_imm48 ((gulong)(v))) {	\
+		} else if (ppc_is_imm48 ((guint64)(v))) {	\
 			ppc_load48 ((c), (D), (guint64)(v)); \
 		} else {	\
 			ppc_load_sequence ((c), (D), (guint64)(v)); \
@@ -741,32 +807,24 @@ my and Ximian's copyright to this code. ;)
 	} G_STMT_END
 
 #define ppc_load_func(c,D,v) G_STMT_START { \
-		ppc_load_sequence ((c), ppc_r11, (guint64)(v)); \
-		ppc_load_reg ((c), ppc_r2, 8, ppc_r11);	\
-		ppc_load_reg ((c), (D), 0, ppc_r11);	\
+		ppc_load_sequence ((c), ppc_r11, (guint64)(gsize)(v));	\
+		ppc_ldptr ((c), ppc_r2, 8, ppc_r11);	\
+		ppc_ldptr ((c), (D), 0, ppc_r11);	\
 	} G_STMT_END
 
-#define ppc_load_reg(c,D,d,A)         ppc_ld   ((c), (D), (d), (A))
-#define ppc_load_reg_update(c,D,d,A)  ppc_ldu  ((c), (D), (d), (A))
-#define ppc_load_reg_indexed(c,D,A,B)        ppc_ldx  ((c), (D), (A), (B))
-#define ppc_load_reg_update_indexed(c,D,A,B) ppc_ldux ((c), (D), (A), (B))
 #define ppc_load_multiple_regs(c,D,d,A) G_STMT_START { \
 		int __i, __o = (d);			\
 		for (__i = (D); __i <= 31; ++__i) {	\
-			ppc_load_reg ((c), __i, __o, (A));		\
-			__o += sizeof (gulong);				\
+			ppc_ldr ((c), __i, __o, (A));		\
+			__o += sizeof (guint64);				\
 		} \
 	} G_STMT_END
 
-#define ppc_store_reg(c,S,d,A)        ppc_std  ((c), (S), (d), (A))
-#define ppc_store_reg_update(c,S,d,A) ppc_stdu ((c), (S), (d), (A))
-#define ppc_store_reg_indexed(c,S,A,B)        ppc_stdx  ((c), (S), (A), (B))
-#define ppc_store_reg_update_indexed(c,S,A,B) ppc_stdux ((c), (S), (A), (B))
 #define ppc_store_multiple_regs(c,S,d,A) G_STMT_START { \
 		int __i, __o = (d);			\
 		for (__i = (S); __i <= 31; ++__i) {	\
-			ppc_store_reg ((c), __i, __o, (A));		\
-			__o += sizeof (gulong);				\
+			ppc_str ((c), __i, __o, (A));		\
+			__o += sizeof (guint64);				\
 		} \
 	} G_STMT_END
 
@@ -800,17 +858,14 @@ my and Ximian's copyright to this code. ;)
 #define ppc_extsw(c,A,S)  ppc_extswx(c,S,A,0)
 #define ppc_extswd(c,A,S) ppc_extswx(c,S,A,1)
 
-#define ppc_fcfidx(c,D,B,Rc) ppc_emit32(c, (63 << 26) | ((D) << 21) | (0 << 16) | ((B) << 11) | (846 << 1) | (Rc))
-#define ppc_fcfid(c,D,B)  ppc_fcfidx(c,D,B,0)
-#define ppc_fcfidd(c,D,B) ppc_fcfidx(c,D,B,1)
-
-#define ppc_fctidx(c,D,B,Rc) ppc_emit32(c, (63 << 26) | ((D) << 21) | (0 << 16) | ((B) << 11) | (814 << 1) | (Rc))
-#define ppc_fctid(c,D,B)  ppc_fctidx(c,D,B,0)
-#define ppc_fctidd(c,D,B) ppc_fctidx(c,D,B,1)
-
-#define ppc_fctidzx(c,D,B,Rc) ppc_emit32(c, (63 << 26) | ((D) << 21) | (0 << 16) | ((B) << 11) | (815 << 1) | (Rc))
-#define ppc_fctidz(c,D,B)  ppc_fctidzx(c,D,B,0)
-#define ppc_fctidzd(c,D,B) ppc_fctidzx(c,D,B,1)
+/* These move float to/from instuctions are only available on POWER6 in
+   native mode.  These instruction are faster then the equivalent
+   store/load because they avoid the store queue and associated delays.
+   These instructions should only be used in 64-bit mode unless the
+   kernel preserves the 64-bit GPR on signals and dispatch in 32-bit
+   mode.  The Linux kernel does not.  */
+#define ppc_mftgpr(c,T,B) ppc_emit32(c, (31 << 26) | ((T) << 21) | (0 << 16) | ((B) << 11) | (735 << 1) | 0)
+#define ppc_mffgpr(c,T,B) ppc_emit32(c, (31 << 26) | ((T) << 21) | (0 << 16) | ((B) << 11) | (607 << 1) | 0)
 
 #define ppc_ld(c,D,ds,A) ppc_emit32(c, (58 << 26) | ((D) << 21) | ((A) << 16) | ((guint32)(ds) & 0xfffc) | 0)
 #define ppc_lwa(c,D,ds,A) ppc_emit32(c, (58 << 26) | ((D) << 21) | ((A) << 16) | ((ds) & 0xfffc) | 2)
@@ -890,6 +945,9 @@ my and Ximian's copyright to this code. ;)
 #define ppc_stdux(c,S,A,B)  ppc_emit32(c, (31 << 26) | ((S) << 21) | ((A) << 16) | ((B) << 11) | (181 << 1) | 0)
 #define ppc_stdx(c,S,A,B)   ppc_emit32(c, (31 << 26) | ((S) << 21) | ((A) << 16) | ((B) << 11) | (149 << 1) | 0)
 
+#else
+/* Always true for 32-bit */
+#define ppc_is_imm32(val) (1)
 #endif
 
 #endif
