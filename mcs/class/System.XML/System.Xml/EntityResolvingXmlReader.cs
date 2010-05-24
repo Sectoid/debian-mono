@@ -55,10 +55,14 @@ namespace Mono.Xml
 		bool inside_attr;
 		bool do_resolve;
 
-		public EntityResolvingXmlReader (XmlReader source, XmlParserContext context)
+		public EntityResolvingXmlReader (XmlReader source)
 		{
 			this.source = source;
-			this.context = context;
+			IHasXmlParserContext container = source as IHasXmlParserContext;
+			if (container != null)
+				this.context = container.ParserContext;
+			else
+				this.context = new XmlParserContext (source.NameTable, new XmlNamespaceManager (source.NameTable), null, XmlSpace.None);
 		}
 
 		EntityResolvingXmlReader (XmlReader entityContainer,
@@ -116,11 +120,9 @@ namespace Mono.Xml
 			get { return source.EOF; }
 		}
 
-#if !NET_2_1
 		public override bool HasValue {
 			get { return Current.HasValue; }
 		}
-#endif
 
 		public override bool IsDefault {
 			get { return Current.IsDefault; }
@@ -399,7 +401,6 @@ namespace Mono.Xml
 			}
 		}
 
-#if !NET_2_1
 		public override bool ReadAttributeValue ()
 		{
 			if (entity != null && entity_inside_attr) {
@@ -414,7 +415,6 @@ namespace Mono.Xml
 			}
 			return Current.ReadAttributeValue ();
 		}
-#endif
 
 		public override string ReadString ()
 		{

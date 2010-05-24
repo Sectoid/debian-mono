@@ -14,10 +14,30 @@
 
 	* StaticSiteMapProviderTest.cs: added test for FindSiteMapNode
 
+2009-07-13  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpResponseTest.cs: Store data from all calls to
+	SendResponseFromMemory. Fixed ClearHeaders test to pass on MS. Added
+	several tests for outputstream of HttpResponse.
+
 2009-05-28  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpUtilityTest.cs: added test for bug #507666
 
+2009-03-26  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpResponseTest.cs: enabled the WriteHeader test. Modified the
+	part where it checks the values of the headers - order in which
+	the headers are sent does not matter. Partial fix for bug #488702
+	FakeHttpWorkerRequest2 stores the sent (un)known headers in hash
+	tables now.
+
+2009-03-25  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* HttpResponseTest.cs: Added tests for bug #485557 and #488702. 
+	Return meaningful value for GetUriPath () in FakeHttpWorkerRequest2
+	to allow tests to pass on MS.
+ 
 2008-07-25  Dean Brettle <dean@brettle.com>
 
 	* AppBrowsersTest.cs: Added tests for bug where capabilities 

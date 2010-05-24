@@ -14,34 +14,45 @@
 #ifdef MINI_OP
 #undef MINI_OP
 #endif
+#ifdef MINI_OP3
+#undef MINI_OP3
+#endif
 
 #ifdef HAVE_ARRAY_ELEM_INIT
 #define MSGSTRFIELD(line) MSGSTRFIELD1(line)
 #define MSGSTRFIELD1(line) str##line
 static const struct msgstr_t {
 #define MINI_OP(a,b,dest,src1,src2) char MSGSTRFIELD(__LINE__) [sizeof (b)];
+#define MINI_OP3(a,b,dest,src1,src2,src3) char MSGSTRFIELD(__LINE__) [sizeof (b)];
 #include "mini-ops.h"
 #undef MINI_OP
+#undef MINI_OP3
 } opstr = {
 #define MINI_OP(a,b,dest,src1,src2) b,
+#define MINI_OP3(a,b,dest,src1,src2,src3) b,
 #include "mini-ops.h"
 #undef MINI_OP
+#undef MINI_OP3
 };
 static const gint16 opidx [] = {
 #define MINI_OP(a,b,dest,src1,src2) [a - OP_LOAD] = offsetof (struct msgstr_t, MSGSTRFIELD(__LINE__)),
+#define MINI_OP3(a,b,dest,src1,src2,src3) [a - OP_LOAD] = offsetof (struct msgstr_t, MSGSTRFIELD(__LINE__)),
 #include "mini-ops.h"
 #undef MINI_OP
+#undef MINI_OP3
 };
 
 #else
 
 #define MINI_OP(a,b,dest,src1,src2) b,
+#define MINI_OP3(a,b,dest,src1,src2,src3) b,
 /* keep in sync with the enum in mini.h */
 static const char* const
 opnames[] = {
 #include "mini-ops.h"
 };
 #undef MINI_OP
+#undef MINI_OP3
 
 #endif
 
@@ -50,6 +61,9 @@ opnames[] = {
 #else
 #define emit_debug_info  FALSE
 #endif
+
+#define ARCH_PREFIX ""
+//#define ARCH_PREFIX "powerpc64-linux-gnu-"
 
 const char*
 mono_inst_name (int op) {
@@ -204,7 +218,7 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 	close (i);
 #endif
 
-	cmd = g_strdup_printf (AS_CMD " %s -o %s", as_file, o_file);
+	cmd = g_strdup_printf (ARCH_PREFIX AS_CMD " %s -o %s", as_file, o_file);
 	system (cmd); 
 	g_free (cmd);
 	if (!objdump_args)
@@ -215,12 +229,12 @@ mono_disassemble_code (MonoCompile *cfg, guint8 *code, int size, char *id)
 	 * The arm assembler inserts ELF directives instructing objdump to display 
 	 * everything as data.
 	 */
-	cmd = g_strdup_printf ("strip -x %s", o_file);
+	cmd = g_strdup_printf (ARCH_PREFIX "strip -x %s", o_file);
 	system (cmd);
 	g_free (cmd);
 #endif
 	
-	cmd = g_strdup_printf (DIS_CMD " %s %s", objdump_args, o_file);
+	cmd = g_strdup_printf (ARCH_PREFIX DIS_CMD " %s %s", objdump_args, o_file);
 	system (cmd);
 	g_free (cmd);
 	

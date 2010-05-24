@@ -24,7 +24,8 @@ typedef enum {
 	MONO_PROFILE_COVERAGE         = 1 << 13,
 	MONO_PROFILE_INS_COVERAGE     = 1 << 14,
 	MONO_PROFILE_STATISTICAL      = 1 << 15,
-	MONO_PROFILE_METHOD_EVENTS    = 1 << 16
+	MONO_PROFILE_METHOD_EVENTS    = 1 << 16,
+	MONO_PROFILE_MONITOR_EVENTS   = 1 << 17
 } MonoProfileFlags;
 
 typedef enum {
@@ -55,8 +56,20 @@ typedef struct {
 	int col;
 } MonoProfileCoverageEntry;
 
+/* executable code buffer info */
+typedef enum {
+	MONO_PROFILER_CODE_BUFFER_UNKNOWN,
+	MONO_PROFILER_CODE_BUFFER_METHOD,
+	MONO_PROFILER_CODE_BUFFER_LAST
+} MonoProfilerCodeBufferType;
+
 typedef struct _MonoProfiler MonoProfiler;
 
+typedef enum {
+	MONO_PROFILER_MONITOR_CONTENTION = 1,
+	MONO_PROFILER_MONITOR_DONE = 2,
+	MONO_PROFILER_MONITOR_FAIL = 3
+} MonoProfilerMonitorEvent;
 
 /*
  * Functions that the runtime will call on the profiler.
@@ -69,6 +82,7 @@ typedef void (*MonoProfileMethodFunc)   (MonoProfiler *prof, MonoMethod   *metho
 typedef void (*MonoProfileClassFunc)    (MonoProfiler *prof, MonoClass    *klass);
 typedef void (*MonoProfileModuleFunc)   (MonoProfiler *prof, MonoImage    *module);
 typedef void (*MonoProfileAssemblyFunc) (MonoProfiler *prof, MonoAssembly *assembly);
+typedef void (*MonoProfileMonitorFunc)  (MonoProfiler *prof, MonoObject *obj, MonoProfilerMonitorEvent event);
 
 typedef void (*MonoProfileExceptionFunc) (MonoProfiler *prof, MonoObject *object);
 typedef void (*MonoProfileExceptionClauseFunc) (MonoProfiler *prof, MonoMethod *method, int clause_type, int clause_num);
@@ -93,6 +107,11 @@ typedef gboolean (*MonoProfileCoverageFilterFunc)   (MonoProfiler *prof, MonoMet
 
 typedef void (*MonoProfileCoverageFunc)   (MonoProfiler *prof, const MonoProfileCoverageEntry *entry);
 
+
+typedef void (*MonoProfilerCodeChunkNew) (MonoProfiler *prof, gpointer chunk, int size);
+typedef void (*MonoProfilerCodeChunkDestroy) (MonoProfiler *prof, gpointer chunk);
+typedef void (*MonoProfilerCodeBufferNew) (MonoProfiler *prof, gpointer buffer, int size, MonoProfilerCodeBufferType type, void *data);
+
 /*
  * Function the profiler may call.
  */
@@ -113,10 +132,12 @@ void mono_profiler_install_class       (MonoProfileClassFunc start_load, MonoPro
 void mono_profiler_install_jit_compile (MonoProfileMethodFunc start, MonoProfileMethodResult end);
 void mono_profiler_install_jit_end (MonoProfileJitResult end);
 void mono_profiler_install_method_free (MonoProfileMethodFunc callback);
+void mono_profiler_install_method_invoke (MonoProfileMethodFunc start, MonoProfileMethodFunc end);
 void mono_profiler_install_enter_leave (MonoProfileMethodFunc enter, MonoProfileMethodFunc fleave);
 void mono_profiler_install_thread      (MonoProfileThreadFunc start, MonoProfileThreadFunc end);
 void mono_profiler_install_transition  (MonoProfileMethodResult callback);
 void mono_profiler_install_allocation  (MonoProfileAllocFunc callback);
+void mono_profiler_install_monitor     (MonoProfileMonitorFunc callback);
 void mono_profiler_install_statistical (MonoProfileStatFunc callback);
 void mono_profiler_install_statistical_call_chain (MonoProfileStatCallChainFunc callback, int call_chain_depth);
 void mono_profiler_install_exception   (MonoProfileExceptionFunc throw_callback, MonoProfileMethodFunc exc_method_leave, MonoProfileExceptionClauseFunc clause_callback);
@@ -124,6 +145,10 @@ void mono_profiler_install_coverage_filter (MonoProfileCoverageFilterFunc callba
 void mono_profiler_coverage_get  (MonoProfiler *prof, MonoMethod *method, MonoProfileCoverageFunc func);
 void mono_profiler_install_gc    (MonoProfileGCFunc callback, MonoProfileGCResizeFunc heap_resize_callback);
 void mono_profiler_install_runtime_initialized (MonoProfileFunc runtime_initialized_callback);
+
+void mono_profiler_install_code_chunk_new (MonoProfilerCodeChunkNew callback);
+void mono_profiler_install_code_chunk_destroy (MonoProfilerCodeChunkDestroy callback);
+void mono_profiler_install_code_buffer_new (MonoProfilerCodeBufferNew callback);
 
 void mono_profiler_load             (const char *desc);
 

@@ -6,8 +6,8 @@
 /* String of disabled features */
 #undef DISABLED_FEATURES
 
-/* Disable AOT support */
-#undef DISABLE_AOT
+/* Disable AOT Compiler */
+#undef DISABLE_AOT_COMPILER
 
 /* Disable agent attach support */
 #undef DISABLE_ATTACH
@@ -20,6 +20,9 @@
 
 /* Disable System.Decimal support */
 #undef DISABLE_DECIMAL
+
+/* Disables building in the full table of WAPI messages */
+#undef DISABLE_FULL_MESSAGES
 
 /* Disable generics support */
 #undef DISABLE_GENERICS
@@ -36,6 +39,9 @@
 /* Disable P/Invoke support */
 #undef DISABLE_PINVOKE
 
+/* Disables the IO portability layer */
+#undef DISABLE_PORTABILITY
+
 /* Disable default profiler support */
 #undef DISABLE_PROFILER
 
@@ -45,17 +51,29 @@
 /* Disable assembly saving support in reflection emit */
 #undef DISABLE_REFLECTION_EMIT_SAVE
 
+/* Disable Shadow Copy for AppDomains */
+#undef DISABLE_SHADOW_COPY
+
 /* Disable inter-process shared handles */
 #undef DISABLE_SHARED_HANDLES
 
 /* Disable SIMD intrinsics related optimizations. */
 #undef DISABLE_SIMD
 
+/* Disable Soft Debugger Agent. */
+#undef DISABLE_SOFT_DEBUG
+
 /* Disable advanced SSA JIT optimizations */
 #undef DISABLE_SSA
 
+/* Disables the verifier */
+#undef DISABLE_VERIFIER
+
 /* Enable DTrace probes */
 #undef ENABLE_DTRACE
+
+/* Enable the LLVM back end */
+#undef ENABLE_LLVM
 
 /* Have GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY */
 #undef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY
@@ -252,6 +270,12 @@
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
 
+/* Define to 1 if you have the <netinet/in.h> header file. */
+#undef HAVE_NETINET_IN_H
+
+/* Define to 1 if you have the <netinet/tcp.h> header file. */
+#undef HAVE_NETINET_TCP_H
+
 /* Define to 1 if you have the <net/if.h> header file. */
 #undef HAVE_NET_IF_H
 
@@ -278,6 +302,9 @@
 
 /* Define to 1 if you have the `pthread_attr_getstack' function. */
 #undef HAVE_PTHREAD_ATTR_GETSTACK
+
+/* Define to 1 if you have the `pthread_attr_getstacksize' function. */
+#undef HAVE_PTHREAD_ATTR_GETSTACKSIZE
 
 /* Define to 1 if you have the `pthread_attr_get_np' function. */
 #undef HAVE_PTHREAD_ATTR_GET_NP
@@ -339,6 +366,12 @@
 /* Define to 1 if you have the `shm_open' function. */
 #undef HAVE_SHM_OPEN
 
+/* Define to 1 if you have the `sigaction' function. */
+#undef HAVE_SIGACTION
+
+/* Define to 1 if you have the <signal.h> header file. */
+#undef HAVE_SIGNAL_H
+
 /* Have signbit */
 #undef HAVE_SIGNBIT
 
@@ -387,13 +420,13 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if `struct dirent' is a member of `d_off'. */
+/* Define to 1 if `d_off' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_OFF
 
-/* Define to 1 if `struct dirent' is a member of `d_reclen'. */
+/* Define to 1 if `d_reclen' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_RECLEN
 
-/* Define to 1 if `struct dirent' is a member of `d_type'. */
+/* Define to 1 if `d_type' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
 
 /* Define to 1 if the system has the type `struct flock'. */
@@ -405,7 +438,7 @@
 /* Have struct ip_mreqn */
 #undef HAVE_STRUCT_IP_MREQN
 
-/* Define to 1 if `struct kinfo_proc' is a member of `kp_proc'. */
+/* Define to 1 if `kp_proc' is member of `struct kinfo_proc'. */
 #undef HAVE_STRUCT_KINFO_PROC_KP_PROC
 
 /* Define to 1 if the system has the type `struct pollfd'. */
@@ -465,6 +498,9 @@
 /* Define to 1 if you have the <sys/sdt.h> header file. */
 #undef HAVE_SYS_SDT_H
 
+/* Define to 1 if you have the <sys/select.h> header file. */
+#undef HAVE_SYS_SELECT_H
+
 /* Define to 1 if you have the <sys/sem.h> header file. */
 #undef HAVE_SYS_SEM_H
 
@@ -494,6 +530,9 @@
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <sys/uio.h> header file. */
+#undef HAVE_SYS_UIO_H
 
 /* Define to 1 if you have the <sys/un.h> header file. */
 #undef HAVE_SYS_UN_H
@@ -567,6 +606,12 @@
 /* Have system zlib */
 #undef HAVE_ZLIB
 
+/* Major version of LLVM libraries */
+#undef LLVM_MAJOR_VERSION
+
+/* Minor version of LLVM libraries */
+#undef LLVM_MINOR_VERSION
+
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
 #undef LT_OBJDIR
@@ -610,13 +655,13 @@
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
 
-/* Define to the home page for this package. */
-#undef PACKAGE_URL
-
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Platform is Win32 */
+/* This platform does not support symlinks */
+#undef PLATFORM_NO_SYMLINKS
+
+/* Host Platform is Win32 */
 #undef PLATFORM_WIN32
 
 /* pthread is a pointer */
@@ -639,6 +684,18 @@
 
 /* ... */
 #undef TARGET_ARM
+
+/* byte order of target */
+#undef TARGET_BYTE_ORDER
+
+/* ... */
+#undef TARGET_POWERPC
+
+/* ... */
+#undef TARGET_POWERPC64
+
+/* Target OS is Win32 */
+#undef TARGET_WIN32
 
 /* ... */
 #undef TARGET_X86

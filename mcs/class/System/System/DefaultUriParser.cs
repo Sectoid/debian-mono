@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 namespace System {
 
 	// LAMESPEC: Sadly MS doesn't seems to use all/most? the new Uri
@@ -38,7 +36,10 @@ namespace System {
 		public DefaultUriParser ()
 		{
 		}
+
+		public DefaultUriParser (string scheme)
+		{
+			scheme_name = scheme;
+		}
 	}
 }
-
-#endif

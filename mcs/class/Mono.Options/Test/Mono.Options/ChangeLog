@@ -1,3 +1,12 @@
+2008-04-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Add test to check \n\n Option.Description handling.
+
+2008-04-17  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Add additional line breaking tests.  
+	  Remove [Category("NotWorking")], as they work for me.
+
 2008-11-10  Raja R Harinath  <harinath@hurrynot.org>
 
 	* OptionContextTest.cs: Fix syntax error.

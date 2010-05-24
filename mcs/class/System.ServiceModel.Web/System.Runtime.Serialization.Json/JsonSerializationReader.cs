@@ -93,16 +93,16 @@ namespace System.Runtime.Serialization.Json
 			case TypeCode.UInt32:
 				int i = reader.ReadElementContentAsInt ();
 				if (type.IsEnum)
-					return Enum.ToObject (type, i);
+					return Enum.ToObject (type, (object)i);
 				else
-					return Convert.ChangeType (i, type);
+					return Convert.ChangeType (i, type, null);
 			case TypeCode.Int64:
 			case TypeCode.UInt64:
 				long l = reader.ReadElementContentAsLong ();
 				if (type.IsEnum)
-					return Enum.ToObject (type, l);
+					return Enum.ToObject (type, (object)l);
 				else
-					return Convert.ChangeType (l, type);
+					return Convert.ChangeType (l, type, null);
 			case TypeCode.Boolean:
 				return reader.ReadElementContentAsBoolean ();
 			default:
@@ -142,7 +142,19 @@ namespace System.Runtime.Serialization.Json
 				foreach (Type t in serializer.KnownTypes)
 					if (t.FullName == name)
 						return t;
-			return Type.GetType (name, false);
+			var ret = root_type.Assembly.GetType (name, false) ?? Type.GetType (name, false);
+			if (ret != null)
+				return ret;
+#if !NET_2_1 // how to do that in ML?
+			// We probably have to iterate all the existing
+			// assemblies that are loaded in current domain.
+			foreach (var ass in AppDomain.CurrentDomain.GetAssemblies ()) {
+				ret = ass.GetType (name, false);
+				if (ret != null)
+					return ret;
+			}
+#endif
+			return null;
 		}
 
 		object ReadInstanceDrivenObject ()
@@ -213,9 +225,10 @@ namespace System.Runtime.Serialization.Json
 				return type.GetElementType ();
 			if (type.IsGenericType) {
 				// returns T for ICollection<T>
-				Type gt = type.GetGenericTypeDefinition ();
-				if (gt == typeof (ICollection<>))
-					return type.GetGenericArguments () [0];
+				Type [] ifaces = type.GetInterfaces ();
+				foreach (Type i in ifaces)
+					if (i.IsGenericType && i.GetGenericTypeDefinition ().Equals (typeof (ICollection<>)))
+						return i.GetGenericArguments () [0];
 			}
 			if (typeof (IList).IsAssignableFrom (type))
 				// return typeof(object) for mere collection.
@@ -229,9 +242,12 @@ namespace System.Runtime.Serialization.Json
 			reader.ReadStartElement ();
 			object ret;
 			if (typeof (IList).IsAssignableFrom (collectionType)) {
-				IList c = collectionType.IsArray ?
-					new ArrayList () :
-					(IList) Activator.CreateInstance (collectionType);
+#if NET_2_1
+				Type listType = collectionType.IsArray ? typeof (List<>).MakeGenericType (elementType) : null;
+#else
+				Type listType = collectionType.IsArray ? typeof (ArrayList) : null;
+#endif
+				IList c = (IList) Activator.CreateInstance (listType ?? collectionType);
 				for (reader.MoveToContent (); reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ()) {
 					if (!reader.IsStartElement ("item"))
 						throw SerializationError (String.Format ("Expected element 'item', but found '{0}' in namespace '{1}'", reader.LocalName, reader.NamespaceURI));
@@ -239,10 +255,26 @@ namespace System.Runtime.Serialization.Json
 					object elem = ReadObject (et ?? typeof (object));
 					c.Add (elem);
 				}
+#if NET_2_1
+				if (collectionType.IsArray) {
+					Array array = Array.CreateInstance (elementType, c.Count);
+					c.CopyTo (array, 0);
+					ret = array;
+				}
+				else
+					ret = c;
+#else
 				ret = collectionType.IsArray ? ((ArrayList) c).ToArray (elementType) : c;
+#endif
 			} else {
 				object c = Activator.CreateInstance (collectionType);
 				MethodInfo add = collectionType.GetMethod ("Add", new Type [] {elementType});
+				if (add == null) {
+					var icoll = typeof (ICollection<>).MakeGenericType (elementType);
+					if (icoll.IsAssignableFrom (c.GetType ()))
+						add = icoll.GetMethod ("Add");
+				}
+				
 				for (reader.MoveToContent (); reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ()) {
 					if (!reader.IsStartElement ("item"))
 						throw SerializationError (String.Format ("Expected element 'item', but found '{0}' in namespace '{1}'", reader.LocalName, reader.NamespaceURI));

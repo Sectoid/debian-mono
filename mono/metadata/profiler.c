@@ -4,8 +4,8 @@
  * Author:
  *   Paolo Molaro (lupus@ximian.com)
  *
- * (C) 2001-2003 Ximian, Inc.
- * (C) 2003-2006 Novell, Inc.
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include "config.h"
@@ -56,8 +56,11 @@ static MonoProfileMethodFunc   jit_start;
 static MonoProfileMethodResult jit_end;
 static MonoProfileJitResult    jit_end2;
 static MonoProfileMethodFunc   method_free;
+static MonoProfileMethodFunc   method_start_invoke;
+static MonoProfileMethodFunc   method_end_invoke;
 static MonoProfileMethodResult man_unman_transition;
 static MonoProfileAllocFunc    allocation_cb;
+static MonoProfileMonitorFunc  monitor_event_cb;
 static MonoProfileStatFunc     statistical_cb;
 static MonoProfileStatCallChainFunc statistical_call_chain_cb;
 static int                     statistical_call_chain_depth;
@@ -182,6 +185,13 @@ mono_profiler_install_method_free (MonoProfileMethodFunc callback)
 	method_free = callback;
 }
 
+void
+mono_profiler_install_method_invoke (MonoProfileMethodFunc start, MonoProfileMethodFunc end)
+{
+	method_start_invoke = start;
+	method_end_invoke = end;
+}
+
 void 
 mono_profiler_install_thread (MonoProfileThreadFunc start, MonoProfileThreadFunc end)
 {
@@ -199,6 +209,12 @@ void
 mono_profiler_install_allocation (MonoProfileAllocFunc callback)
 {
 	allocation_cb = callback;
+}
+
+void
+mono_profiler_install_monitor  (MonoProfileMonitorFunc callback)
+{
+	monitor_event_cb = callback;
 }
 
 void 
@@ -318,6 +334,20 @@ mono_profiler_method_free (MonoMethod *method)
 		method_free (current_profiler, method);
 }
 
+void
+mono_profiler_method_start_invoke (MonoMethod *method)
+{
+	if ((mono_profiler_events & MONO_PROFILE_METHOD_EVENTS) && method_start_invoke)
+		method_start_invoke (current_profiler, method);
+}
+
+void
+mono_profiler_method_end_invoke (MonoMethod *method)
+{
+	if ((mono_profiler_events & MONO_PROFILE_METHOD_EVENTS) && method_end_invoke)
+		method_end_invoke (current_profiler, method);
+}
+
 void 
 mono_profiler_code_transition (MonoMethod *method, int result)
 {
@@ -330,6 +360,13 @@ mono_profiler_allocation (MonoObject *obj, MonoClass *klass)
 {
 	if ((mono_profiler_events & MONO_PROFILE_ALLOCATIONS) && allocation_cb)
 		allocation_cb (current_profiler, obj, klass);
+}
+
+void
+mono_profiler_monitor_event      (MonoObject *obj, MonoProfilerMonitorEvent event) {
+	if ((mono_profiler_events & MONO_PROFILE_MONITOR_EVENTS) && monitor_event_cb) {
+		monitor_event_cb (current_profiler, obj, event);
+	}
 }
 
 void
@@ -546,6 +583,38 @@ mono_profiler_runtime_initialized (void) {
 		runtime_initialized_event (current_profiler);
 }
 
+static MonoProfilerCodeChunkNew code_chunk_new = NULL;
+void
+mono_profiler_install_code_chunk_new (MonoProfilerCodeChunkNew callback) {
+	code_chunk_new = callback;
+}
+void
+mono_profiler_code_chunk_new (gpointer chunk, int size) {
+	if (code_chunk_new)
+		code_chunk_new (current_profiler, chunk, size);
+}
+
+static MonoProfilerCodeChunkDestroy code_chunk_destroy = NULL;
+void
+mono_profiler_install_code_chunk_destroy (MonoProfilerCodeChunkDestroy callback) {
+	code_chunk_destroy = callback;
+}
+void
+mono_profiler_code_chunk_destroy (gpointer chunk) {
+	if (code_chunk_destroy)
+		code_chunk_destroy (current_profiler, chunk);
+}
+
+static MonoProfilerCodeBufferNew code_buffer_new = NULL;
+void
+mono_profiler_install_code_buffer_new (MonoProfilerCodeBufferNew callback) {
+	code_buffer_new = callback;
+}
+void
+mono_profiler_code_buffer_new (gpointer buffer, int size, MonoProfilerCodeBufferType type, void *data) {
+	if (code_buffer_new)
+		code_buffer_new (current_profiler, buffer, size, type, data);
+}
 
 static GHashTable *coverage_hash = NULL;
 
@@ -789,6 +858,7 @@ typedef struct _LastCallerInfo LastCallerInfo;
 struct _MonoProfiler {
 	GHashTable *methods;
 	MonoMemPool *mempool;
+	GSList *domains;
 	/* info about JIT time */
 	MONO_TIMER_TYPE jit_timer;
 	double      jit_time;
@@ -1220,7 +1290,7 @@ simple_allocation (MonoProfiler *prof, MonoObject *obj, MonoClass *klass)
 		MonoMethod *caller = prof->callers->method;
 
 		/* Otherwise all allocations are attributed to icall_wrapper_mono_object_new */
-		if (caller->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE)
+		if (caller->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE && prof->callers->next)
 			caller = prof->callers->next->method;
 
 		if (!(profile_info = g_hash_table_lookup (prof->methods, caller)))
@@ -1365,7 +1435,7 @@ try_addr2line (const char* binary, gpointer ip)
 }
 
 static void
-stat_prof_report (void)
+stat_prof_report (MonoProfiler *prof)
 {
 	MonoJitInfo *ji;
 	int count = prof_counts;
@@ -1373,12 +1443,19 @@ stat_prof_report (void)
 	char *mn;
 	gpointer ip;
 	GList *tmp, *sorted = NULL;
+	GSList *l;
 	int pcount = ++ prof_counts;
 
 	prof_counts = MAX_PROF_SAMPLES;
 	for (i = 0; i < count; ++i) {
 		ip = prof_addresses [i];
 		ji = mono_jit_info_table_find (mono_domain_get (), ip);
+
+		if (!ji) {
+			for (l = prof->domains; l && !ji; l = l->next)
+				ji = mono_jit_info_table_find (l->data, ip);
+		}
+
 		if (ji) {
 			mn = mono_method_full_name (ji->method, TRUE);
 		} else {
@@ -1430,6 +1507,12 @@ stat_prof_report (void)
 }
 
 static void
+simple_appdomain_load (MonoProfiler *prof, MonoDomain *domain, int result)
+{
+	prof->domains = g_slist_prepend (prof->domains, domain);
+}
+
+static void
 simple_appdomain_unload (MonoProfiler *prof, MonoDomain *domain)
 {
 	/* FIXME: we should actually record partial data for each domain, 
@@ -1459,7 +1542,7 @@ simple_shutdown (MonoProfiler *prof)
 		return;
 
 	if (mono_profiler_events & MONO_PROFILE_STATISTICAL) {
-		stat_prof_report ();
+		stat_prof_report (prof);
 	}
 
 	// Stop all incoming events
@@ -1554,7 +1637,7 @@ mono_profiler_install_simple (const char *desc)
 	mono_profiler_install_exception (NULL, simple_method_leave, NULL);
 	mono_profiler_install_jit_compile (simple_method_jit, simple_method_end_jit);
 	mono_profiler_install_allocation (simple_allocation);
-	mono_profiler_install_appdomain (NULL, NULL, simple_appdomain_unload, NULL);
+	mono_profiler_install_appdomain (NULL, simple_appdomain_load, simple_appdomain_unload, NULL);
 	mono_profiler_install_statistical (simple_stat_hit);
 	mono_profiler_set_events (flags);
 }
@@ -1577,6 +1660,8 @@ typedef void (*ProfilerInitializer) (const char*);
 void 
 mono_profiler_load (const char *desc)
 {
+	mono_gc_base_init ();
+
 #ifndef DISABLE_PROFILER
 	if (!desc || (strcmp ("default", desc) == 0) || (strncmp (desc, "default:", 8) == 0)) {
 		mono_profiler_install_simple (desc);
@@ -1588,7 +1673,7 @@ mono_profiler_load (const char *desc)
 	}
 #endif
 	{
-		MonoDl *pmodule;
+		MonoDl *pmodule = NULL;
 		const char* col = strchr (desc, ':');
 		char* libname;
 		char* path;

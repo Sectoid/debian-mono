@@ -1,5 +1,5 @@
 #
-# use `run-test'
+# use make run-test PROFILE=net_2_0
 #
 
 thisdir = tests
@@ -28,7 +28,7 @@ USE_MCS_FLAGS :=
 # mention all targets
 all-local $(STD_TARGETS:=-local):
 
-VALID_PROFILE := $(filter net_1_1 net_2_0 net_2_1, $(PROFILE))
+VALID_PROFILE := $(filter net_1_1 net_2_0 net_2_1 net_4_0, $(PROFILE))
 ifdef VALID_PROFILE
 # casts
 bootstrap-cast.exe: gen-cast-test.cs
@@ -51,26 +51,31 @@ mcs-casts.out: casts-mcs.exe
 
 test-casts: boot-casts.out mcs-casts.out
 	cmp $^
-
-test-local: casts-boot.exe
+	-rm -f bootstrap-cast.exe casts.cs casts-boot.exe casts-mcs.exe boot-casts.out mcs-casts.out
 
 eval.exe: eval-tests.cs
-	
+
+ifeq (net_4_0, $(PROFILE))
+COMPILER_NAME = dmcs
+TEST_PATTERN = 'v4'
+LOCAL_RUNTIME_FLAGS = --verify-all
+#TOPTIONS += '-il:ver-il-dmcs.xml'
+endif
 ifeq (net_2_1, $(PROFILE))
 COMPILER_NAME = smcs
-TEST_PATTERN = '*test-*.cs'
+TEST_PATTERN = 'v2'
 LOCAL_RUNTIME_FLAGS = --security=temporary-smcs-hack
 endif
 ifeq (net_2_0, $(PROFILE))
 COMPILER_NAME = gmcs
-TEST_PATTERN = '*test-*.cs'
-LOCAL_RUNTIME_FLAGS = --security=validil --verify-all
+TEST_PATTERN = 'v2'
+LOCAL_RUNTIME_FLAGS = --verify-all
 TOPTIONS += '-il:ver-il-gmcs.xml'
 endif
 ifeq (net_1_1, $(PROFILE))
 COMPILER_NAME = mcs
-TEST_PATTERN = 'test-*.cs'
-LOCAL_RUNTIME_FLAGS = --security=validil --verify-all
+TEST_PATTERN = 'v1'
+LOCAL_RUNTIME_FLAGS = --verify-all
 endif
 
 COMPILER = $(topdir)/class/lib/$(PROFILE)/$(COMPILER_NAME).exe
@@ -88,8 +93,21 @@ endif
 
 check: run-test
 
+test-local:
+	@:
+
 run-test-local: $(TEST_ILS:.il=.dll) eval-test
 	$(TESTER) -mode:pos -files:$(TEST_PATTERN) -compiler:$(COMPILER) -issues:known-issues-$(COMPILER_NAME) -log:$(COMPILER_NAME).log $(TOPTIONS)
+
+# Temporary testing targets
+cecil:
+	rm -f *.mdb
+	$(TESTER) -mode:pos -files:'test-*.cs' -compiler:gmcs.exe -issues:known-issues-$(COMPILER_NAME) -log:$(COMPILER_NAME).log -verbose
+
+cecil2:
+	rm -f *.mdb
+	$(TESTER) -mode:pos -files:'*test-*.cs' -compiler:gmcs.exe -issues:known-issues-$(COMPILER_NAME) -log:$(COMPILER_NAME).log -verbose
+# End	
 
 test-everything:
 	$(MAKE) PROFILE=net_1_1 run-test

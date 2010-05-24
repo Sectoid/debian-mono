@@ -188,17 +188,31 @@ namespace MonoTests.System.Collections.Generic {
 		}
 		
 		[Test, ExpectedException(typeof (ArgumentException))]
-		public void IList_InsertInvalidType ()
+		public void IList_InsertInvalidType1 ()
 		{
 			IList list = _list1 as IList;
 			list.Insert(0, new object());
 		}
+
+		[Test, ExpectedException(typeof (ArgumentException))]
+		public void IList_InsertInvalidType2 ()
+		{
+			IList list = _list1 as IList;
+			list.Insert(0, null);
+		}
 		
 		[Test, ExpectedException(typeof (ArgumentException))]
-		public void IList_AddInvalidType()
+		public void IList_AddInvalidType1()
 		{
 			IList list = _list1 as IList;
 			list.Add(new object());
+		}
+
+		[Test, ExpectedException(typeof (ArgumentException))]
+		public void IList_AddInvalidType2()
+		{
+			IList list = _list1 as IList;
+			list.Add(null);
 		}
 		
 		[Test]
@@ -207,6 +221,9 @@ namespace MonoTests.System.Collections.Generic {
 			IList list = _list1 as IList;
 			int nCount = list.Count;
 			list.Remove(new object());
+			Assert.AreEqual(nCount, list.Count);
+
+			list.Remove(null);
 			Assert.AreEqual(nCount, list.Count);
 		}
 
@@ -1128,6 +1145,8 @@ namespace MonoTests.System.Collections.Generic {
 			List<string> list = new List<string>();
 			list.Add("foo");
 			Assert.IsFalse (((IList)list).Contains(new object()));
+
+			Assert.IsFalse (((IList)_list1).Contains(null));
 		}
 		
 		[Test]
@@ -1136,6 +1155,8 @@ namespace MonoTests.System.Collections.Generic {
 			List<string> list = new List<string>();
 			list.Add("foo");
 			Assert.AreEqual (-1, ((IList)list).IndexOf(new object()));
+
+			Assert.AreEqual (-1, ((IList)_list1).IndexOf(null));
 		}
 
 		// for bug #77277 test case
@@ -1198,6 +1219,47 @@ namespace MonoTests.System.Collections.Generic {
 			{
 				return this._x == other._x;
 			}
+		}
+
+		delegate void D ();
+		bool Throws (D d)
+		{
+			try {
+				d ();
+				return false;
+			} catch {
+				return true;
+			}
+		}
+
+		[Test]
+		// based on #491858, #517415
+		public void Enumerator_Current ()
+		{
+			var e1 = new List<int>.Enumerator ();
+			Assert.IsFalse (Throws (delegate { var x = e1.Current; }));
+
+			var d = new List<int> ();
+			var e2 = d.GetEnumerator ();
+			Assert.IsFalse (Throws (delegate { var x = e2.Current; }));
+			e2.MoveNext ();
+			Assert.IsFalse (Throws (delegate { var x = e2.Current; }));
+			e2.Dispose ();
+			Assert.IsFalse (Throws (delegate { var x = e2.Current; }));
+
+			var e3 = ((IEnumerable<int>) d).GetEnumerator ();
+			Assert.IsFalse (Throws (delegate { var x = e3.Current; }));
+			e3.MoveNext ();
+			Assert.IsFalse (Throws (delegate { var x = e3.Current; }));
+			e3.Dispose ();
+			Assert.IsFalse (Throws (delegate { var x = e3.Current; }));
+
+			var e4 = ((IEnumerable) d).GetEnumerator ();
+			Assert.IsTrue (Throws (delegate { var x = e4.Current; }));
+			e4.MoveNext ();
+			Assert.IsTrue (Throws (delegate { var x = e4.Current; }));
+			((IDisposable) e4).Dispose ();
+			Assert.IsTrue (Throws (delegate { var x = e4.Current; }));
 		}
 	}
 }

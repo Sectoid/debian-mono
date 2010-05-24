@@ -184,12 +184,9 @@ namespace System
 				CharCopy (dest + destinationIndex, src + sourceIndex, count);
 		}
 
-		public unsafe char[] ToCharArray ()
+		public char[] ToCharArray ()
 		{
-			char[] tmp = new char [length];
-			fixed (char* dest = tmp, src = this)
-				CharCopy (dest, src, length);
-			return tmp;
+			return ToCharArray (0, length);
 		}
 
 		public unsafe char[] ToCharArray (int startIndex, int length)
@@ -383,13 +380,19 @@ namespace System
 			return tmp;
 		}
 
-		private static readonly char[] WhiteChars = { (char) 0x9, (char) 0xA, (char) 0xB, (char) 0xC, (char) 0xD,
+		private static readonly char[] WhiteChars = {
+			(char) 0x9, (char) 0xA, (char) 0xB, (char) 0xC, (char) 0xD,
 #if NET_2_0
 			(char) 0x85, (char) 0x1680, (char) 0x2028, (char) 0x2029,
 #endif
 			(char) 0x20, (char) 0xA0, (char) 0x2000, (char) 0x2001, (char) 0x2002, (char) 0x2003, (char) 0x2004,
 			(char) 0x2005, (char) 0x2006, (char) 0x2007, (char) 0x2008, (char) 0x2009, (char) 0x200A, (char) 0x200B,
-			(char) 0x3000, (char) 0xFEFF };
+			(char) 0x3000, (char) 0xFEFF,
+#if NET_2_1
+		        // Silverlight 
+		        (char) 0x202f, (char) 0x205f,
+#endif
+		};
 
 		public String Trim ()
 		{
@@ -475,8 +478,13 @@ namespace System
 				}
 				else {
 					if (c != 0xA0 && c != 0xFEFF && c != 0x3000) {
-#if NET_2_0
-						if (c != 0x85 && c != 0x1680 && c != 0x2028 && c != 0x2029)
+#if NET_2_0 || NET_2_1
+						if (c != 0x85 && c != 0x1680 && c != 0x2028 && c != 0x2029
+#if NET_2_1
+						    // On Silverlight this whitespace participates in Trim
+						    && c != 0x202f && c != 0x205f
+#endif
+							)
 #endif
 							if (c < 0x2000 || c > 0x200B)
 								return pos;
@@ -1430,6 +1438,7 @@ namespace System
 			return (value == null) || (value.Length == 0);
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		public string Normalize ()
 		{
 			return Normalization.Normalize (this, 0);
@@ -1467,6 +1476,7 @@ namespace System
 				return Normalization.IsNormalized (this, 3);
 			}
 		}
+#endif
 
 		public string Remove (int startIndex)
 		{
@@ -1521,6 +1531,8 @@ namespace System
 
 			if (totalWidth < this.length)
 				return this;
+			if (totalWidth == 0)
+				return String.Empty;
 
 			String tmp = InternalAllocateStr (totalWidth);
 
@@ -1772,6 +1784,9 @@ namespace System
 		internal unsafe String ToLowerInvariant ()
 #endif
 		{
+			if (length == 0)
+				return String.Empty;
+
 			string tmp = InternalAllocateStr (length);
 			fixed (char* source = &start_char, dest = tmp) {
 
@@ -1809,6 +1824,9 @@ namespace System
 		internal unsafe String ToUpperInvariant ()
 #endif
 		{
+			if (length == 0)
+				return String.Empty;
+
 			string tmp = InternalAllocateStr (length);
 			fixed (char* source = &start_char, dest = tmp) {
 
@@ -1987,34 +2005,9 @@ namespace System
 			return arg0.ToString ();
 		}
 
-		public unsafe static String Concat (Object arg0, Object arg1)
+		public static String Concat (Object arg0, Object arg1)
 		{
-			string s1, s2;
-
-			s1 = (arg0 != null) ? arg0.ToString () : null;
-			s2 = (arg1 != null) ? arg1.ToString () : null;
-			
-			if (s1 == null) {
-				if (s2 == null)
-					return String.Empty;
-				else
-					return s2;
-			} else if (s2 == null)
-				return s1;
-
-			String tmp = InternalAllocateStr (s1.Length + s2.Length);
-			if (s1.Length != 0) {
-				fixed (char *dest = tmp, src = s1) {
-					CharCopy (dest, src, s1.length);
-				}
-			}
-			if (s2.Length != 0) {
-				fixed (char *dest = tmp, src = s2) {
-					CharCopy (dest + s1.Length, src, s2.length);
-				}
-			}
-
-			return tmp;
+			return Concat ((arg0 != null) ? arg0.ToString () : null, (arg1 != null) ? arg1.ToString () : null);
 		}
 
 		public static String Concat (Object arg0, Object arg1, Object arg2)
@@ -2201,8 +2194,6 @@ namespace System
 					len += strings[i].length;
 				}
 			}
-			if (len == 0)
-				return String.Empty;
 
 			return ConcatInternal (strings, len);
 		}
@@ -2218,14 +2209,15 @@ namespace System
 				if (s != null)
 					len += s.length;
 			}
-			if (len == 0)
-				return String.Empty;
 
 			return ConcatInternal (values, len);
 		}
 
 		private static unsafe String ConcatInternal (String[] values, int length)
 		{
+			if (length == 0)
+				return String.Empty;
+
 			String tmp = InternalAllocateStr (length);
 
 			fixed (char* dest = tmp) {
@@ -2425,9 +2417,11 @@ namespace System
 			return Convert.ToSingle (this, provider);
 		}
 
-		object IConvertible.ToType (Type type, IFormatProvider provider)
+		object IConvertible.ToType (Type targetType, IFormatProvider provider)
 		{
-			return Convert.ToType (this, type, provider, false);
+			if (targetType == null)
+				throw new ArgumentNullException ("type");
+			return Convert.ToType (this, targetType, provider, false);
 		}
 
 #if ONLY_1_1
@@ -3039,41 +3033,11 @@ namespace System
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern String (char c, int count);
 
-//		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-//		private extern static string InternalJoin (string separator, string[] value, int sIndex, int count);
-
-//		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-//		private extern String InternalReplace (String oldValue, string newValue, CompareInfo comp);
-
-//		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-//		private extern void InternalCopyTo (int sIndex, char[] dest, int destIndex, int count);
-
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern String[] InternalSplit (char[] separator, int count, int options);
 
-//		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-//		private extern String InternalTrim (char[] chars, int typ);
-
-//		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-//		private extern int InternalLastIndexOfAny (char [] anyOf, int sIndex, int count);
-
-//		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-//		private extern String InternalPad (int width, char chr, bool right);
-
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal extern static String InternalAllocateStr (int length);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		internal extern static void InternalStrcpy (String dest, int destPos, String src);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		internal extern static void InternalStrcpy (String dest, int destPos, char[] chars);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		internal extern static void InternalStrcpy (String dest, int destPos, String src, int sPos, int count);
-
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		internal extern static void InternalStrcpy (String dest, int destPos, char[] chars, int sPos, int count);
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern static string InternalIntern (string str);

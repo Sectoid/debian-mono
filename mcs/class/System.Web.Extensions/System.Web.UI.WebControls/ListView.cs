@@ -769,9 +769,6 @@ namespace System.Web.UI.WebControls
 		{
 			object itemCount = ViewState ["_!ItemCount"];
 			if (itemCount != null) {
-				if (RequiresDataBinding)
-					EnsureDataBound ();
-
 				int c = (int)itemCount;
 				if (c >= 0) {
 					// Fake data - we only need to make sure
@@ -785,7 +782,8 @@ namespace System.Web.UI.WebControls
 						usingFakeData = false;
 					}
 				}
-			}
+			} else if (RequiresDataBinding)
+				EnsureDataBound ();
 			
 			base.CreateChildControls ();
 		}

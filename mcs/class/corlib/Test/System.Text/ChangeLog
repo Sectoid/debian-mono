@@ -1,6 +1,34 @@
+2009-10-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* UnicodeEncodingTest.cs: Add test cases with an odd number of 
+	bytes being used in GetString (it does not crash but it does not
+	work like MS FX either).
+	[Backport r144921]
+
+2009-09-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* StringBuilderTest.cs: new test.
+
 2009-07-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* StringBuilderTest.cs: new overflow tests.
+
+2009-06-26  Robert Jordan  <robertj@gmx.net>
+
+	* UTF8EncodingTest.cs: Fix the NET_1_1 build.
+
+2009-06-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Convert all tests to new-style nunit classes/methods. Add
+	[Test] attributes to some tests which were missing them.
+
+2009-02-05  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* UTF32EncodingTest.cs: Added tests for GetByteCount overloads.
+
+2009-01-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UTF8EncodingTest.cs : added test for bug #415628.
 
 2009-01-13  Jb Evain  <jbevain@novell.com>
 

@@ -5,6 +5,7 @@
 #define __MONO_METADATA_DOMAIN_INTERNALS_H__
 
 #include <mono/metadata/appdomain.h>
+#include <mono/metadata/lock-tracer.h>
 #include <mono/utils/mono-codeman.h>
 #include <mono/utils/mono-hash.h>
 #include <mono/utils/mono-compiler.h>
@@ -68,6 +69,8 @@ struct _MonoJitInfoTable
 	MonoJitInfoTableChunk  *chunks [MONO_ZERO_LEN_ARRAY];
 };
 
+#define MONO_SIZEOF_JIT_INFO_TABLE (sizeof (struct _MonoJitInfoTable) - MONO_ZERO_LEN_ARRAY * SIZEOF_VOID_P)
+
 typedef GArray MonoAotModuleInfoTable;
 
 typedef struct {
@@ -107,9 +110,10 @@ struct _MonoJitInfo {
 	MonoMethod *method;
 	struct _MonoJitInfo *next_jit_code_hash;
 	gpointer    code_start;
+	/* This might contain an id for the unwind info instead of a register mask */
 	guint32     used_regs;
 	int         code_size;
-	guint32     num_clauses:16;
+	guint32     num_clauses:15;
 	/* Whenever the code is domain neutral or 'shared' */
 	gboolean    domain_neutral:1;
 	gboolean    cas_inited:1;
@@ -120,9 +124,17 @@ struct _MonoJitInfo {
 	gboolean    cas_method_deny:1;
 	gboolean    cas_method_permitonly:1;
 	gboolean    has_generic_jit_info:1;
+	gboolean    from_aot:1;
+	gboolean    from_llvm:1;
+#ifdef HAVE_SGEN_GC
+	/* FIXME: Embed this after the structure later */
+	gpointer    gc_info;
+#endif
 	MonoJitExceptionInfo clauses [MONO_ZERO_LEN_ARRAY];
 	/* There is an optional MonoGenericJitInfo after the clauses */
 };
+
+#define MONO_SIZEOF_JIT_INFO (offsetof (struct _MonoJitInfo, clauses))
 
 struct _MonoAppContext {
 	MonoObject obj;
@@ -173,6 +185,12 @@ struct _MonoDomain {
 	MonoException      *out_of_memory_ex;
 	MonoException      *null_reference_ex;
 	MonoException      *stack_overflow_ex;
+	/* typeof (void) */
+	MonoObject         *typeof_void;
+	/* 
+	 * The fields between FIRST_GC_TRACKED and LAST_GC_TRACKED are roots, but
+	 * not object references.
+	 */
 #define MONO_DOMAIN_FIRST_GC_TRACKED env
 	MonoGHashTable     *env;
 	MonoGHashTable     *ldstr_table;
@@ -185,9 +203,7 @@ struct _MonoDomain {
 	MonoGHashTable    *type_init_exception_hash;
 	/* maps delegate trampoline addr -> delegate object */
 	MonoGHashTable     *delegate_hash_table;
-	/* typeof (void) */
-	MonoObject         *typeof_void;
-#define MONO_DOMAIN_LAST_GC_TRACKED typeof_void
+#define MONO_DOMAIN_LAST_GC_TRACKED delegate_hash_table
 	guint32            state;
 	/* Needed by Thread:GetDomainID() */
 	gint32             domain_id;
@@ -220,10 +236,12 @@ struct _MonoDomain {
 	 * if the hashtable contains a GC visible reference to them.
 	 */
 	GHashTable         *finalizable_objects_hash;
+#ifndef HAVE_SGEN_GC
 	/* Maps MonoObjects to a GSList of WeakTrackResurrection GCHandles pointing to them */
 	GHashTable         *track_resurrection_objects_hash;
 	/* Maps WeakTrackResurrection GCHandles to the MonoObjects they point to */
 	GHashTable         *track_resurrection_handles_hash;
+#endif
 	/* Protects the three hashes above */
 	CRITICAL_SECTION   finalizable_objects_hash_lock;
 	/* Used when accessing 'domain_assemblies' */
@@ -240,6 +258,15 @@ struct _MonoDomain {
 	/*thread pool jobs, used to coordinate shutdown.*/
 	int					threadpool_jobs;
 	HANDLE				cleanup_semaphore;
+	
+	/* Contains the compiled runtime invoke wrapper used by finalizers */
+	gpointer            finalize_runtime_invoke;
+
+	/* Contains the compiled runtime invoke wrapper used by async resylt creation to capture thread context*/
+	gpointer            capture_context_runtime_invoke;
+
+	/* Contains the compiled method used by async resylt creation to capture thread context*/
+	gpointer            capture_context_method;
 };
 
 typedef struct  {
@@ -253,12 +280,12 @@ typedef struct  {
 	const AssemblyVersionSet version_sets [2];
 } MonoRuntimeInfo;
 
-#define mono_domain_lock(domain)   EnterCriticalSection(&(domain)->lock)
-#define mono_domain_unlock(domain) LeaveCriticalSection(&(domain)->lock)
-#define mono_domain_assemblies_lock(domain)   EnterCriticalSection(&(domain)->assemblies_lock)
-#define mono_domain_assemblies_unlock(domain) LeaveCriticalSection(&(domain)->assemblies_lock)
-#define mono_domain_jit_code_hash_lock(domain)   EnterCriticalSection(&(domain)->jit_code_hash_lock)
-#define mono_domain_jit_code_hash_unlock(domain) LeaveCriticalSection(&(domain)->jit_code_hash_lock)
+#define mono_domain_lock(domain) mono_locks_acquire(&(domain)->lock, DomainLock)
+#define mono_domain_unlock(domain) mono_locks_release(&(domain)->lock, DomainLock)
+#define mono_domain_assemblies_lock(domain) mono_locks_acquire(&(domain)->assemblies_lock, DomainAssembliesLock)
+#define mono_domain_assemblies_unlock(domain) mono_locks_release(&(domain)->assemblies_lock, DomainAssembliesLock)
+#define mono_domain_jit_code_hash_lock(domain) mono_locks_acquire(&(domain)->jit_code_hash_lock, DomainJitCodeHashLock)
+#define mono_domain_jit_code_hash_unlock(domain) mono_locks_release(&(domain)->jit_code_hash_lock, DomainJitCodeHashLock)
 
 typedef MonoDomain* (*MonoLoadFunc) (const char *filename, const char *runtime_version);
 
@@ -319,6 +346,21 @@ mono_domain_alloc  (MonoDomain *domain, guint size) MONO_INTERNAL;
 
 gpointer
 mono_domain_alloc0 (MonoDomain *domain, guint size) MONO_INTERNAL;
+
+void*
+mono_domain_code_reserve (MonoDomain *domain, int size) MONO_INTERNAL;
+
+void*
+mono_domain_code_reserve_align (MonoDomain *domain, int size, int alignment) MONO_INTERNAL;
+
+void
+mono_domain_code_commit (MonoDomain *domain, void *data, int size, int newsize) MONO_INTERNAL;
+
+void
+mono_domain_code_foreach (MonoDomain *domain, MonoCodeManagerFunc func, void *user_data) MONO_INTERNAL;
+
+void
+mono_domain_set_internal_with_options (MonoDomain *domain, gboolean migrate_exception) MONO_INTERNAL;
 
 /* 
  * Installs a new function which is used to return a MonoJitInfo for a method inside
@@ -453,5 +495,7 @@ MonoAssembly* mono_assembly_load_full_nosearch (MonoAssemblyName *aname,
 void mono_set_private_bin_path_from_config (MonoDomain *domain) MONO_INTERNAL;
 
 int mono_framework_version (void) MONO_INTERNAL;
+
+void mono_reflection_cleanup_domain (MonoDomain *domain) MONO_INTERNAL;
 
 #endif /* __MONO_METADATA_DOMAIN_INTERNALS_H__ */

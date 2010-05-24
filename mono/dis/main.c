@@ -1016,7 +1016,7 @@ dis_property_signature (MonoImage *m, guint32 prop_idx, MonoGenericContainer *co
 	if (prop_flags & 0x0400)
 		g_string_append (res, "rtspecialname ");
 	qk = get_escaped_name (name);
-	g_string_sprintfa (res, "%s %s (", blurb, qk);
+	g_string_append_printf (res, "%s %s (", blurb, qk);
 	g_free (qk);
 	g_free (blurb);
 	for (i = 0; i < pcount; i++) {
@@ -1068,7 +1068,7 @@ dis_event_signature (MonoImage *m, guint32 event_idx, MonoGenericContainer *cont
 		g_string_append (res, "specialname ");
 	if (event_flags & 0x0400)
 		g_string_append (res, "rtspecialname ");
-	g_string_sprintfa (res, "%s %s", type, esname);
+	g_string_append_printf (res, "%s %s", type, esname);
 
 	g_free (type);
 	g_free (esname);
@@ -1222,7 +1222,7 @@ dis_type (MonoImage *m, int n, int is_nested, int forward)
 		
                 param = get_generic_param (m, container);
 		if (param) {
-			fprintf (output, param);
+			fprintf (output, "%s", param);
 			g_free (param);
 		}
                 fprintf (output, "\n");
@@ -1236,7 +1236,7 @@ dis_type (MonoImage *m, int n, int is_nested, int forward)
 
                 param = get_generic_param (m, container);
 		if (param) {
-			fprintf (output, param);
+			fprintf (output, "%s", param);
 			g_free (param);
 		}
 		fprintf (output, "\n");
@@ -1340,8 +1340,7 @@ dis_globals (MonoImage *m)
 
 }
 
-static void
-dis_mresource (MonoImage *m)
+static void dis_resources_worker (MonoImage *m, gboolean just_print)
 {
 	MonoTableInfo *t = &m->tables [MONO_TABLE_MANIFESTRESOURCE];
 	int i;
@@ -1354,10 +1353,21 @@ dis_mresource (MonoImage *m)
 
 		mono_metadata_decode_row (t, i, cols, MONO_MANIFEST_SIZE);
 		name = mono_metadata_string_heap (m, cols [MONO_MANIFEST_NAME]);
-		
-		if (! (res = mono_image_get_resource (m, cols [MONO_MANIFEST_OFFSET], &size)))
-			continue;	
 
+		if (just_print)
+			fprintf (output, "%8x: %s", cols [MONO_MANIFEST_OFFSET], name);
+		
+		if (! (res = mono_image_get_resource (m, cols [MONO_MANIFEST_OFFSET], &size))) {
+			if (just_print)
+				fprintf (output, " (absent from image)\n");
+			continue;	
+		}
+
+		if (just_print) {
+			fprintf (output, " (size %u)\n", size);
+			continue;
+		}
+		
 		if ( (fp = fopen (name, "ab")) ) {
 			if (ftell (fp) == 0)
 				fwrite (res, size, 1, fp);
@@ -1368,6 +1378,107 @@ dis_mresource (MonoImage *m)
 		} else
 			g_warning ("Error creating managed resource - %s : %s", name, g_strerror (errno));
 	}		
+}
+
+static void
+dis_mresource (MonoImage *m)
+{
+	dis_resources_worker (m, FALSE);
+}
+
+static void
+dis_presource (MonoImage *m)
+{
+	dis_resources_worker (m, TRUE);
+}
+
+static char *
+exported_type_flags (guint32 flags)
+{
+	static char buffer [1024];
+	int visibility = flags & TYPE_ATTRIBUTE_VISIBILITY_MASK;
+
+	buffer [0] = 0;
+
+	if (flags & TYPE_ATTRIBUTE_FORWARDER) {
+		strcat (buffer, "forwarder ");
+		return buffer;
+	}
+
+	strcat (buffer, map (visibility, visibility_map));
+	return buffer;
+}
+
+static char *
+get_escaped_fullname (MonoImage *m, guint32 nspace_idx, guint32 name_idx)
+{
+	const char *name, *nspace;
+	char *fullname, *esfullname;
+
+	nspace = mono_metadata_string_heap (m, nspace_idx);
+	name = mono_metadata_string_heap (m, name_idx);
+
+	fullname = g_strdup_printf ("%s%s%s", nspace, *nspace ? "." : "", name);
+	esfullname = get_escaped_name (fullname);
+
+	g_free (fullname);
+
+	return esfullname;
+}
+
+static void
+dis_exported_types (MonoImage *m)
+{
+	MonoTableInfo *t = &m->tables [MONO_TABLE_EXPORTEDTYPE];
+	int i;
+
+	for (i = 1; i <= t->rows; i++) {
+		char *fullname;
+		guint32 impl, idx, type_token;
+		guint32 cols [MONO_EXP_TYPE_SIZE];
+
+		mono_metadata_decode_row (t, i - 1, cols, MONO_EXP_TYPE_SIZE);
+
+		fullname = get_escaped_fullname (m, cols [MONO_EXP_TYPE_NAMESPACE], cols [MONO_EXP_TYPE_NAME]);
+
+		fprintf (output, "\n");
+		fprintf (output, ".class extern %s%s\n", exported_type_flags (cols [MONO_EXP_TYPE_FLAGS]), fullname);
+		fprintf (output, "{\n");
+
+		g_free (fullname);
+
+		impl = cols [MONO_EXP_TYPE_IMPLEMENTATION];
+		if (impl) {
+			idx = impl >> MONO_IMPLEMENTATION_BITS;
+			switch (impl & MONO_IMPLEMENTATION_MASK) {
+			case MONO_IMPLEMENTATION_FILE:
+				fprintf (output, "    .file '%s'\n",
+					mono_metadata_string_heap (m, mono_metadata_decode_row_col (&m->tables [MONO_TABLE_FILE], idx - 1, MONO_FILE_NAME)));
+				break;
+			case MONO_IMPLEMENTATION_ASSEMBLYREF:
+				fprintf (output, "    .assembly extern '%s'\n",
+					mono_metadata_string_heap (m, mono_metadata_decode_row_col (&m->tables [MONO_TABLE_ASSEMBLYREF], idx - 1, MONO_ASSEMBLYREF_NAME)));
+				break;
+			case MONO_IMPLEMENTATION_EXP_TYPE:
+				fullname = get_escaped_fullname (
+					m,
+					mono_metadata_decode_row_col (&m->tables [MONO_TABLE_EXPORTEDTYPE], idx - 1, MONO_EXP_TYPE_NAMESPACE),
+					mono_metadata_decode_row_col (&m->tables [MONO_TABLE_EXPORTEDTYPE], idx - 1, MONO_EXP_TYPE_NAME));
+				fprintf (output, "    .class extern %s\n", fullname);
+				g_free (fullname);
+				break;
+			default:
+				g_assert_not_reached ();
+				break;
+			}
+		}
+
+		type_token = cols [MONO_EXP_TYPE_TYPEDEF];
+		if (type_token)
+			fprintf (output, "    .class 0x%08x\n", type_token | MONO_TOKEN_TYPE_DEF);
+
+		fprintf (output, "}\n");
+	}
 }
 
 /**
@@ -1481,6 +1592,7 @@ struct {
 	{ "--moduleref",   MONO_TABLE_MODULEREF,   	dump_table_moduleref },
 	{ "--module",      MONO_TABLE_MODULE,      	dump_table_module },
 	{ "--mresources",  0,	dis_mresource },
+	{ "--presources", 0, dis_presource },
 	{ "--nested",      MONO_TABLE_NESTEDCLASS, 	dump_table_nestedclass },
 	{ "--param",       MONO_TABLE_PARAM,       	dump_table_param },
 	{ "--parconst",    MONO_TABLE_GENERICPARAMCONSTRAINT, dump_table_parconstraint },
@@ -1490,6 +1602,7 @@ struct {
 	{ "--typeref",     MONO_TABLE_TYPEREF,     	dump_table_typeref },
 	{ "--typespec",    MONO_TABLE_TYPESPEC,     	dump_table_typespec },
 	{ "--implmap",     MONO_TABLE_IMPLMAP,     	dump_table_implmap },
+	{ "--fieldrva",    MONO_TABLE_FIELDRVA,     dump_table_fieldrva },
 	{ "--standalonesig", MONO_TABLE_STANDALONESIG,  dump_table_standalonesig },
 	{ "--methodptr", MONO_TABLE_METHOD_POINTER,  dump_table_methodptr },
 	{ "--fieldptr", MONO_TABLE_FIELD_POINTER,  dump_table_fieldptr },
@@ -1537,6 +1650,7 @@ disassemble_file (const char *file)
 		dis_directive_mresource (img);
 		dis_directive_module (img);
 		dis_directive_moduleref (img);
+		dis_exported_types (img);
 		dis_nt_header (img);
                 if (dump_managed_resources)
         		dis_mresource (img);

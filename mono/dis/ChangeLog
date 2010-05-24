@@ -1,14 +1,60 @@
-2009-06-03  Jb Evain  <jbevain@novell.com>
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
 
-	backport of 135337.
+	* dis-cil.c:
+	* main.c: Fix printf warnings.
+
+2009-07-16  Raja R Harinath  <harinath@hurrynot.org>
+
+	* get.c (get_type): Make robust to invalid types.
+
+2009-07-16  Marek Habersack  <mhabersack@novell.com>
+
+	* main.c: added new --presources option which prints manifest
+	resource offsets and names.
+
+	* monodis.1: added documentation of the --presources option.
+
+2009-06-10  Jb Evain  <jbevain@novell.com>
+
+	* main.c: add support for extern types. Fixes #511672.
+
+2009-06-03  Jb Evain  <jbevain@novell.com>
 
 	* main.c (dis_code): don't try to locate invalid entry points.
 
 2009-06-03  Jb Evain  <jbevain@novell.com>
 
-	backport of r135334.
+	* main.c (dis_type): espace namespaces.
 
-	* main.c (dis_type): escape namespaces.
+2009-04-24  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* get.c (dis_stringify_method_signature_full): Don't assert
+	if no marshal info is found.
+
+2009-04-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* dump.c: Add dump_table_fieldrva.
+
+	* dump.h: Same.
+
+	* main.c: Add the option to dump the field rva table.
+
+2009-04-09  Raja R Harinath  <harinath@hurrynot.org>
+
+	* get.c: Use new MonoGenericParamInfo accessors.
+
+2009-04-08  Raja R Harinath  <harinath@hurrynot.org>
+
+	* get.c: Use new MonoGenericParam accessors.
+
+2009-04-08  Raja R Harinath  <harinath@hurrynot.org>
+
+	* get.c: Use MonoGenericContainer accessor to get the contained
+	MonoGenericParam.
+
+2009-03-12  Jb Evain  <jbevain@novell.com>
+
+	* get.c (get_token): add support for METHOD_SPEC tokens.
 
 2009-01-12  Jb Evain  <jbevain@novell.com>
 

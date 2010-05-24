@@ -57,7 +57,7 @@
 /* Represents one unwind instruction */
 typedef struct {
 	guint8 op; /* One of DW_CFA_... */
-	guint8 reg; /* register number in the hardware encoding */
+	guint16 reg; /* register number in the hardware encoding */
 	gint32 val; /* arbitrary value */
 	guint32 when; /* The offset _after_ the cpu instruction this unwind op belongs to */
 } MonoUnwindOp;
@@ -82,14 +82,35 @@ typedef struct {
 /* Similar macros usable when a cfg is not available, like for trampolines */
 #define mono_add_unwind_op_def_cfa(op_list,code,buf,reg,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_def_cfa, (reg), (offset))); } while (0)
 #define mono_add_unwind_op_def_cfa_reg(op_list,code,buf,reg) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_def_cfa_register, (reg), (0))); } while (0)
-#define mono_add_unwind_op_def_cfa_offset(op_list,code,buf,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_def_cfa, 0, (offset))); } while (0)
+#define mono_add_unwind_op_def_cfa_offset(op_list,code,buf,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_def_cfa_offset, 0, (offset))); } while (0)
 #define mono_add_unwind_op_same_value(op_list,code,buf,reg) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_same_value, (reg), 0)); } while (0)
 #define mono_add_unwind_op_offset(op_list,code,buf,reg,offset) do { (op_list) = g_slist_append ((op_list), mono_create_unwind_op ((code) - (buf), DW_CFA_offset, (reg), (offset))); } while (0)
 
 int
 mono_hw_reg_to_dwarf_reg (int reg) MONO_INTERNAL;
 
+int
+mono_unwind_get_dwarf_data_align (void) MONO_INTERNAL;
+
+int
+mono_unwind_get_dwarf_pc_reg (void) MONO_INTERNAL;
+
 guint8*
 mono_unwind_ops_encode (GSList *unwind_ops, guint32 *out_len) MONO_INTERNAL;
+
+void
+mono_unwind_frame (guint8 *unwind_info, guint32 unwind_info_len, 
+				   guint8 *start_ip, guint8 *end_ip, guint8 *ip, mgreg_t *regs, 
+				   int nregs, guint8 **out_cfa) MONO_INTERNAL;
+
+void mono_unwind_init (void) MONO_INTERNAL;
+
+void mono_unwind_cleanup (void) MONO_INTERNAL;
+
+guint32 mono_cache_unwind_info (guint8 *unwind_info, guint32 unwind_info_len) MONO_INTERNAL;
+
+guint8* mono_get_cached_unwind_info (guint32 index, guint32 *unwind_info_len) MONO_INTERNAL;
+
+guint8* mono_unwind_get_ops_from_fde (guint8 *fde, guint32 *out_len, guint32 *code_len) MONO_INTERNAL;
 
 #endif

@@ -116,7 +116,7 @@ namespace MonoTests.System.Web.UI.WebControls.Adapters
 				w.WriteLine("RenderBeginTag");
 			}
 
-			protected internal override void RenderContents (HtmlTextWriter w)
+			protected override void RenderContents (HtmlTextWriter w)
 			{
 				w.WriteLine("RenderContents");
 			}
@@ -128,7 +128,7 @@ namespace MonoTests.System.Web.UI.WebControls.Adapters
 
 		}
 
-		class MyWebControlAdapter : WebControlAdapter
+		class MyWebControlAdapter : SystemWebTestShim.WebControlAdapter
 		{
 			internal MyWebControlAdapter (WebControl wc) : base (wc)
 			{

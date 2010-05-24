@@ -48,6 +48,12 @@ namespace System.Xml
 		public XmlDictionaryString (IXmlDictionary dictionary,
 			string value, int key)
 		{
+			if (dictionary == null)
+				throw new ArgumentNullException ("dictionary");
+			if (value == null)
+				throw new ArgumentNullException ("value");
+			if (key < 0 || key > (int.MaxValue/4))
+				throw new ArgumentOutOfRangeException ("key");
 			this.dict = dictionary;
 			this.value = value;
 			this.key = key;

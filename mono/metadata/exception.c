@@ -7,7 +7,8 @@
  *	Dick Porter     (dick@ximian.com)
  *      Miguel de Icaza (miguel@ximian.com)
  *
- * (C) 2001, 2002 Ximian, Inc.
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <mono/metadata/exception.h>
@@ -51,13 +52,18 @@ mono_exception_from_name_domain (MonoDomain *domain, MonoImage *image,
 {
 	MonoClass *klass;
 	MonoObject *o;
+	MonoDomain *caller_domain = mono_domain_get ();
 
 	klass = mono_class_from_name (image, name_space, name);
 
 	o = mono_object_new (domain, klass);
 	g_assert (o != NULL);
-	
+
+	if (domain != caller_domain)
+		mono_domain_set_internal (domain);
 	mono_runtime_object_init (o);
+	if (domain != caller_domain)
+		mono_domain_set_internal (caller_domain);
 
 	return (MonoException *)o;
 }
@@ -664,6 +670,28 @@ MonoException *
 mono_get_exception_out_of_memory (void)
 {
 	return mono_exception_from_name (mono_get_corlib (), "System", "OutOfMemoryException");
+}
+
+/**
+ * mono_get_exception_field_access:
+ *
+ * Returns: a new instance of the System.FieldAccessException
+ */
+MonoException *
+mono_get_exception_field_access (void)
+{
+	return mono_exception_from_name (mono_get_corlib (), "System", "FieldAccessException");
+}
+
+/**
+ * mono_get_exception_method_access:
+ *
+ * Returns: a new instance of the System.MethodAccessException
+ */
+MonoException *
+mono_get_exception_method_access (void)
+{
+	return mono_exception_from_name (mono_get_corlib (), "System", "MethodAccessException");
 }
 
 /**

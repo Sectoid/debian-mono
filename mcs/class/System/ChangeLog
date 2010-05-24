@@ -1,3 +1,102 @@
+2010-01-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System_test.dll.sources: Add NetworkCredentialTest.cs to the tests
+	[Backport r149401]
+
+2009-12-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.dll.sources: Add existing files that are 
+	part of Silverlight 3 (but were not in Silverlight 2)
+
+2009-11-03  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.dll.sources: Remove build/common/*.cs files
+	since this will confuse other assemblies (e.g. System.Net.dll)
+	to select mscorlib or System.dll version of the internal types
+	[Backport r145313]
+
+2009-10-15  Jb Evain  <jbevain@novell.com>
+
+	* monotouch_System.dll.sources: add Semaphore to MonoTouch.
+
+2009-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* monotouch_System.dll.sources: Add lots of additional .NET 2.0
+	  functionality to the MonoTouch profile.
+
+2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System_test.dll.sources: Add unit tests for SocketAsyncEventArgs
+	[Backport r142675]
+
+2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.dll.sources: Remove System.Net.Mime since
+	System.Runtime.Serialization does not need them anymore
+
+2009-09-14 Jonathan Pryor <jpryor@novell.com>
+
+	* MonoTouch/MonoPInvokeCallbackAttribute.cs: Added.
+	* monotouch_System.dll.sources: Include MonoPInvokeCallbackAttribute.
+
+2009-08-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* System.dll.sources:
+	* monotouch_System.dll.sources:
+	* System20.csproj: add Mono.Http/NtmlClient.cs
+
+	* Mono.Http/ChangeLog: New file.
+	* Mono.Http/NtlmClient.cs: copied from Mono.Http.
+	* System.Net/NtlmClient.cs: use Mono.Http.NtmlClient from System
+	instead of dynamically loading the one in Mono.Http.
+
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* System.dll.sources: Adding ParallelFx files.
+	* System_test.dll.sources: Adding ParallelFx test files.
+
+2009-07-26  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile ($(build_lib)): Make CYCLIC_DEP_FILES depend on this.
+
+2009-07-22  Jb Evain  <jbevain@novell.com>
+
+	* monotouch_System.dll.sources: bring Process in.
+
+2009-06-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* System_test.dll.sources: Added IPv6MulticastOptionTest.cs and
+	MulticastOptionTest.cs.
+
+2009-05-14  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: Distribute Test/test-config-file-net-2.0.
+
+2009-05-13  Jonathan Pryor <jpryor@novell.com>
+
+	* System_test.dll.sources: Add ListChangedEventArgsTest.cs.
+
+2009-05-13  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: $(test_lib).config needs to be profile-specific.
+
+2009-04-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.dll.sources: Remove some unneeded files.
+
+2009-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System_test.dll.sources: Add EndPointTest.cs
+
+2009-04-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* net_2_1_raw_System.dll.sources: Remove corlib's files since System
+	can now access, for 2.1 (moonlight) corlib's internals.
+
+2009-04-09  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.dll.sources: Add System.Net.Sockets/Socket_2_1.cs
+
 2009-01-07  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_System.dll.sources: Add System/UriTypeConverter.cs to

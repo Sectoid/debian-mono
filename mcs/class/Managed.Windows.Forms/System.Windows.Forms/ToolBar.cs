@@ -547,7 +547,7 @@ namespace System.Windows.Forms
 			}
 		}
 #endif
-
+		
 		void PerformButtonClick (ToolBarButtonClickEventArgs e)
 		{
 			// Only change pushed for ToogleButton
