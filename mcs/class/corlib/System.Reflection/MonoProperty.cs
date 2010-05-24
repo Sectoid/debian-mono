@@ -45,7 +45,7 @@ namespace System.Reflection {
 		public PropertyAttributes attrs;
 		
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern void get_property_info (MonoProperty prop, out MonoPropertyInfo info,
+		internal static extern void get_property_info (MonoProperty prop, ref MonoPropertyInfo info,
 							       PInfo req_info);
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
@@ -81,37 +81,39 @@ namespace System.Reflection {
 #endif
 
 #pragma warning restore 649
+
+		void CachePropertyInfo (PInfo flags)
+		{
+			if ((cached & flags) != flags) {
+				MonoPropertyInfo.get_property_info (this, ref info, flags);
+				cached |= flags;
+			}
+		}
 		
 		public override PropertyAttributes Attributes {
 			get {
-				MonoPropertyInfo info;
-				MonoPropertyInfo.get_property_info (this, out info, PInfo.Attributes);
+				CachePropertyInfo (PInfo.Attributes);
 				return info.attrs;
 			}
 		}
 		
 		public override bool CanRead {
 			get {
-				MonoPropertyInfo info;
-				MonoPropertyInfo.get_property_info (this, out info, PInfo.GetMethod);
+				CachePropertyInfo (PInfo.GetMethod);
 				return (info.get_method != null);
 			}
 		}
 		
 		public override bool CanWrite {
 			get {
-				MonoPropertyInfo info;
-				MonoPropertyInfo.get_property_info (this, out info, PInfo.SetMethod);
+				CachePropertyInfo (PInfo.SetMethod);
 				return (info.set_method != null);
 			}
 		}
 
 		public override Type PropertyType {
 			get {
-				if ((cached & (PInfo.GetMethod | PInfo.SetMethod)) != (PInfo.GetMethod | PInfo.SetMethod)) {
-					MonoPropertyInfo.get_property_info (this, out info, PInfo.GetMethod | PInfo.SetMethod);
-					cached |= (PInfo.GetMethod | PInfo.SetMethod);
-				}
+				CachePropertyInfo (PInfo.GetMethod | PInfo.SetMethod);
 
 				if (info.get_method != null) {
 					return info.get_method.ReturnType;
@@ -125,39 +127,32 @@ namespace System.Reflection {
 
 		public override Type ReflectedType {
 			get {
-				MonoPropertyInfo info;
-				MonoPropertyInfo.get_property_info (this, out info, PInfo.ReflectedType);
+				CachePropertyInfo (PInfo.ReflectedType);
 				return info.parent;
 			}
 		}
 		
 		public override Type DeclaringType {
 			get {
-				if ((cached & PInfo.DeclaringType) == 0) {
-					MonoPropertyInfo.get_property_info (this, out info, PInfo.DeclaringType);
-					cached |= PInfo.DeclaringType;
-				}
+				CachePropertyInfo (PInfo.DeclaringType);
 				return info.parent;
 			}
 		}
 		
 		public override string Name {
 			get {
-				if ((cached & PInfo.Name) == 0) {
-					MonoPropertyInfo.get_property_info (this, out info, PInfo.Name);
-					cached |= PInfo.Name;
-				}
+				CachePropertyInfo (PInfo.Name);
 				return info.name;
 			}
 		}
 
 		public override MethodInfo[] GetAccessors (bool nonPublic)
 		{
-			MonoPropertyInfo info;
 			int nget = 0;
 			int nset = 0;
 			
-			MonoPropertyInfo.get_property_info (this, out info, PInfo.GetMethod | PInfo.SetMethod);
+			CachePropertyInfo (PInfo.GetMethod | PInfo.SetMethod);
+
 			if (info.set_method != null && (nonPublic || info.set_method.IsPublic))
 				nset = 1;
 			if (info.get_method != null && (nonPublic || info.get_method.IsPublic))
@@ -174,10 +169,7 @@ namespace System.Reflection {
 
 		public override MethodInfo GetGetMethod (bool nonPublic)
 		{
-			if ((cached & PInfo.GetMethod) == 0) {
-				MonoPropertyInfo.get_property_info (this, out info, PInfo.GetMethod);
-				cached |= PInfo.GetMethod;
-			}
+			CachePropertyInfo (PInfo.GetMethod);
 			if (info.get_method != null && (nonPublic || info.get_method.IsPublic))
 				return info.get_method;
 			else
@@ -186,19 +178,27 @@ namespace System.Reflection {
 
 		public override ParameterInfo[] GetIndexParameters()
 		{
-			MonoPropertyInfo info;
-			MonoPropertyInfo.get_property_info (this, out info, PInfo.GetMethod);
-			if (info.get_method != null)
-				return info.get_method.GetParameters ();
-			return new ParameterInfo [0];
+			CachePropertyInfo (PInfo.GetMethod | PInfo.SetMethod);
+			ParameterInfo[] res;
+			if (info.get_method != null) {
+				res = info.get_method.GetParameters ();
+			} else if (info.set_method != null) {
+				ParameterInfo[] src = info.set_method.GetParameters ();
+				res = new ParameterInfo [src.Length - 1];
+				Array.Copy (src, res, res.Length);
+			} else
+				return new ParameterInfo [0];
+
+			for (int i = 0; i < res.Length; ++i) {
+				ParameterInfo pinfo = res [i];
+				res [i] = new ParameterInfo (pinfo, this);
+			}
+			return res;	
 		}
 		
 		public override MethodInfo GetSetMethod (bool nonPublic)
 		{
-			if ((cached & PInfo.SetMethod) == 0) {
-				MonoPropertyInfo.get_property_info (this, out info, PInfo.SetMethod);
-				cached |= PInfo.SetMethod;
-			}
+			CachePropertyInfo (PInfo.SetMethod);
 			if (info.set_method != null && (nonPublic || info.set_method.IsPublic))
 				return info.set_method;
 			else
@@ -263,7 +263,16 @@ namespace System.Reflection {
 			}
 
 			getterType = getterDelegateType.MakeGenericType (typeVector);
+#if NET_2_1
+			// with Silverlight a coreclr failure (e.g. Transparent caller creating a delegate on a Critical method)
+			// would normally throw an ArgumentException, so we set throwOnBindFailure to false and check for a null
+			// delegate that we can transform into a MethodAccessException
+			getterDelegate = Delegate.CreateDelegate (getterType, method, false);
+			if (getterDelegate == null)
+				throw new MethodAccessException ();
+#else
 			getterDelegate = Delegate.CreateDelegate (getterType, method);
+#endif
 			adapterFrame = typeof (MonoProperty).GetMethod (frameName, BindingFlags.Static | BindingFlags.NonPublic);
 			adapterFrame = adapterFrame.MakeGenericMethod (typeVector);
 			return (GetterAdapter)Delegate.CreateDelegate (typeof (GetterAdapter), getterDelegate, adapterFrame, true);
@@ -273,6 +282,7 @@ namespace System.Reflection {
 		{
 			if (index == null || index.Length == 0) {
 				/*FIXME we should check if the number of arguments matches the expected one, otherwise the error message will be pretty criptic.*/
+#if !MONOTOUCH
 				if (cached_getter == null) {
 					if (!DeclaringType.IsValueType) { //FIXME find a way to build an invoke delegate for value types.
 						MethodInfo method = GetGetMethod (true);
@@ -284,6 +294,7 @@ namespace System.Reflection {
 				} else {
 					return cached_getter (obj);
 				}
+#endif
 			}
 
 			return GetValue (obj, BindingFlags.Default, null, index, null);

@@ -135,7 +135,6 @@ namespace System.ServiceModel.Syndication
 			return c;
 		}
 
-		[MonoTODO ("Find out how feedBaseUri is used")]
 		protected virtual void WriteItem (XmlWriter writer, SyndicationItem item, Uri feedBaseUri)
 		{
 			item.SaveAsRss20 (writer);
@@ -306,7 +305,7 @@ namespace System.ServiceModel.Syndication
 			if (!reader.IsEmptyElement) {
 				reader.Read ();
 				for (reader.MoveToContent (); reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ()) {
-					if (reader.NodeType == XmlNodeType.Text)
+					if (reader.IsTextNode ())
 						category.Name += reader.Value;
 					else if (!TryParseElement (reader, category, Version)) {
 						if (PreserveElementExtensions)
@@ -337,7 +336,7 @@ namespace System.ServiceModel.Syndication
 				string url = null;
 				reader.Read ();
 				for (reader.MoveToContent (); reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ()) {
-					if (reader.NodeType == XmlNodeType.Text)
+					if (reader.IsTextNode ())
 						url += reader.Value;
 					else if (!TryParseElement (reader, link, Version)) {
 						if (PreserveElementExtensions)
@@ -368,7 +367,7 @@ namespace System.ServiceModel.Syndication
 			if (!reader.IsEmptyElement) {
 				reader.Read ();
 				for (reader.MoveToContent (); reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ()) {
-					if (reader.NodeType == XmlNodeType.Text)
+					if (reader.IsTextNode ())
 						person.Email += reader.Value;
 					else if (!TryParseElement (reader, person, Version)) {
 						if (PreserveElementExtensions)

@@ -70,6 +70,11 @@ namespace MonoTests.System.ServiceModel
 			public void CallInitializeRuntime () {
 				InitializeRuntime ();
 			}
+
+			public void DoAddBaseAddress (Uri uri)
+			{
+				AddBaseAddress (uri);
+			}
 		}
 
 		[Test]
@@ -161,6 +166,7 @@ namespace MonoTests.System.ServiceModel
 			b.HttpHelpPageEnabled = false;						
 
 			h.Open ();
+			try {
 			Assert.AreEqual (h.ChannelDispatchers.Count, 1);
 			ChannelDispatcher channelDispatcher =  h.ChannelDispatchers[0] as ChannelDispatcher;
 			Assert.IsNotNull (channelDispatcher, "#1");
@@ -170,7 +176,9 @@ namespace MonoTests.System.ServiceModel
 			Assert.IsTrue (filter.Address.Equals (new EndpointAddress ("http://localhost:8080/address")), "#4");
 			Assert.IsFalse (filter.IncludeHostNameInComparison, "#5");
 			Assert.IsTrue (channelDispatcher.Endpoints [0].ContractFilter is MatchAllMessageFilter, "#6");
+			} finally {
 			h.Close ();
+			}
 		}
 
 		[Test]
@@ -196,8 +204,8 @@ namespace MonoTests.System.ServiceModel
 		}
 
 		[Test]
-		[Category ("NotWorking")]
-		public void SpecificActionTest () {
+		public void SpecificActionTest ()
+		{
 			//EndpointDispatcher d = new EndpointDispatcher(
 			ServiceHost h = new ServiceHost (typeof (SpecificAction), new Uri ("http://localhost:8080"));
 			h.AddServiceEndpoint (typeof (Action1Interface), new BasicHttpBinding (), "address");
@@ -231,7 +239,6 @@ namespace MonoTests.System.ServiceModel
 		}
 
 		[Test]
-		[Category("NotWorking")]
 		public void InitializeRuntimeBehaviors2 () {
 			HostState st = new HostState ();
 			ServiceHost h = new ServiceHost (typeof (SpecificAction), new Uri ("http://localhost:8080"));
@@ -252,6 +259,68 @@ namespace MonoTests.System.ServiceModel
 
 			string expected = "Start, IServiceBehavior.Validate, IContractBehavior.Validate, IEndpointBehavior.Validate, IOperationBehavior.ApplyDispatchBehavior, IContractBehavior.Validate, IEndpointBehavior.Validate, IOperationBehavior.ApplyDispatchBehavior, IServiceBehavior.AddBindingParameters, IContractBehavior.AddBindingParameters, IEndpointBehavior.AddBindingParameters, IOperationBehavior.AddBindingParameters, IServiceBehavior.AddBindingParameters, IContractBehavior.AddBindingParameters, IEndpointBehavior.AddBindingParameters, IOperationBehavior.AddBindingParameters, IServiceBehavior.ApplyDispatchBehavior, IContractBehavior.ApplyDispatchBehavior, IEndpointBehavior.ApplyDispatchBehavior, IOperationBehavior.ApplyDispatchBehavior, IContractBehavior.ApplyDispatchBehavior, IEndpointBehavior.ApplyDispatchBehavior, IOperationBehavior.ApplyDispatchBehavior";
 			Assert.AreEqual (expected, st.CurrentStage);
+		}
+
+		[Test]
+		public void AddBaseAddress ()
+		{
+			var host = new Poker ();
+			Assert.AreEqual (0, host.BaseAddresses.Count, "#1");
+			host.DoAddBaseAddress (new Uri ("http://localhost:37564"));
+			Assert.AreEqual (1, host.BaseAddresses.Count, "#1");
+			host.DoAddBaseAddress (new Uri ("net.tcp://localhost:893"));
+			Assert.AreEqual (2, host.BaseAddresses.Count, "#1");
+		}
+
+		[Test]
+		[ExpectedException (typeof (ArgumentException))]
+		public void AddBaseAddress2 ()
+		{
+			var host = new Poker ();
+			Assert.AreEqual (0, host.BaseAddresses.Count, "#1");
+			host.DoAddBaseAddress (new Uri ("http://localhost:37564"));
+			// http base address is already added.
+			host.DoAddBaseAddress (new Uri ("http://localhost:893"));
+		}
+
+		[Test]
+		public void AddServiceEndpointUri ()
+		{
+			var host = new ServiceHost (typeof (AllActions),
+				new Uri ("http://localhost:37564"));
+			var se = host.AddServiceEndpoint (typeof (AllActions),
+				new BasicHttpBinding (), "foobar");
+			Assert.AreEqual ("http://localhost:37564/foobar", se.Address.Uri.AbsoluteUri, "#1");
+			Assert.AreEqual ("http://localhost:37564/foobar", se.ListenUri.AbsoluteUri, "#2");
+		}
+
+		[Test]
+		public void AddServiceEndpointUri2 ()
+		{
+			var host = new ServiceHost (typeof (AllActions),
+				new Uri ("http://localhost:37564"));
+			var se = host.AddServiceEndpoint (typeof (AllActions),
+				new BasicHttpBinding (), String.Empty);
+			Assert.AreEqual ("http://localhost:37564/", se.Address.Uri.AbsoluteUri, "#1");
+			Assert.AreEqual ("http://localhost:37564/", se.ListenUri.AbsoluteUri, "#2");
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void AddServiceEndpointOnlyMex ()
+		{
+			var host = new ServiceHost (typeof (AllActions),
+				new Uri ("http://localhost:37564"));
+			host.Description.Behaviors.Add (new ServiceMetadataBehavior ());
+			host.AddServiceEndpoint ("IMetadataExchange",
+				new BasicHttpBinding (), "/wsdl");
+			host.Open ();
+			try {
+				// to make sure that throwing IOE from here does not count.
+				host.Close ();
+			} catch {
+			}
+			Assert.Fail ("should not open");
 		}
 
 		#region helpers

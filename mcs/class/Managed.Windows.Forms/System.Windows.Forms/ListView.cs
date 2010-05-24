@@ -1079,6 +1079,10 @@ namespace System.Windows.Forms
 						throw new NotSupportedException ("CheckBoxes are not"
 							+ " supported in Tile view. Choose a different"
 							+ " view or set CheckBoxes to false.");
+					if (VirtualMode && value == View.Tile)
+						throw new NotSupportedException ("VirtualMode is"
+							+ " not supported in Tile view. Choose a different"
+							+ " view or set ViewMode to false.");
 #endif
 
 					h_scroll.Value = v_scroll.Value = 0;
@@ -1106,6 +1110,10 @@ namespace System.Windows.Forms
 
 				if (!virtual_mode && items.Count > 0)
 					throw new InvalidOperationException ();
+				if (value && view == View.Tile)
+					throw new NotSupportedException ("VirtualMode is"
+						+ " not supported in Tile view. Choose a different"
+						+ " view or set ViewMode to false.");
 
 				virtual_mode = value;
 				Redraw (true);
@@ -1226,7 +1234,7 @@ namespace System.Windows.Forms
 			if (recalculate)
 				CalculateListView (this.alignment);
 
-			Refresh ();
+			Invalidate (true);
 		}
 
 		void InvalidateSelection ()
@@ -5447,12 +5455,17 @@ namespace System.Windows.Forms
 				if (is_main_collection && owner != null) {
 					owner.SetFocusedItem (-1);
 					owner.h_scroll.Value = owner.v_scroll.Value = 0;
-						
+
+#if NET_2_0
+					// first remove any item in the groups that *are* part of this LV too
+					foreach (ListViewGroup group in owner.groups)
+						group.Items.ClearItemsWithSameListView ();
+#endif
+				
 					foreach (ListViewItem item in list) {
 						owner.item_control.CancelEdit (item);
 						item.Owner = null;
 					}
-					
 				}
 #if NET_2_0
 				else
@@ -5469,6 +5482,29 @@ namespace System.Windows.Forms
 #endif
 
 			}
+
+#if NET_2_0
+			// This method is intended to be used from ListViewGroup.Items, not from ListView.Items,
+			// added for performance reasons (avoid calling manually Remove for every item on ListViewGroup.Items)
+			void ClearItemsWithSameListView ()
+			{
+				if (is_main_collection)
+					return;
+
+				int counter = list.Count - 1;
+				while (counter >= 0) {
+					ListViewItem item = list [counter] as ListViewItem;
+
+					// remove only if the items in group have being added to the ListView too
+					if (item.ListView == group.ListView) {
+						list.RemoveAt (counter);
+						item.SetGroup (null);
+					}
+						
+					counter--;
+				}
+			}
+#endif
 
 			public bool Contains (ListViewItem item)
 			{
@@ -5818,7 +5854,6 @@ namespace System.Windows.Forms
 				ListViewItem retval = args.Item;
 				retval.Owner = owner;
 				retval.DisplayIndex = displayIndex;
-				retval.Layout ();
 
 				return retval;
 			}
@@ -6381,6 +6416,12 @@ namespace System.Windows.Forms
 		{
 		}
 #endif
+
+		internal void RaiseColumnWidthChanged (ColumnHeader column)
+		{
+			int index = Columns.IndexOf (column);
+			RaiseColumnWidthChanged (index);
+		}
 
 #if NET_2_0
 		

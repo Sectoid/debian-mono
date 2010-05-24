@@ -40,8 +40,6 @@ namespace System.ServiceModel.Channels
 	internal class HttpRequestChannel : RequestChannelBase
 	{
 		HttpChannelFactory<IRequestChannel> source;
-		EndpointAddress address;
-		Uri via;
 
 		WebRequest web_request;
 
@@ -52,11 +50,9 @@ namespace System.ServiceModel.Channels
 
 		public HttpRequestChannel (HttpChannelFactory<IRequestChannel> factory,
 			EndpointAddress address, Uri via)
-			: base (factory)
+			: base (factory, address, via)
 		{
 			this.source = factory;
-			this.address = address;
-			this.via = via;
 		}
 
 		public int MaxSizeOfHeaders {
@@ -67,40 +63,78 @@ namespace System.ServiceModel.Channels
 			get { return source.MessageEncoder; }
 		}
 
-		public override EndpointAddress RemoteAddress {
-			get { return address; }
-		}
-
-		public override Uri Via {
-			get { return via; }
-		}
-
 		// Request
 
 		public override Message Request (Message message, TimeSpan timeout)
 		{
-			return ProcessRequest (message, timeout);
+			return EndRequest (BeginRequest (message, timeout, null, null));
 		}
 
-		Message ProcessRequest (Message message, TimeSpan timeout)
+		void BeginProcessRequest (HttpChannelRequestAsyncResult result)
 		{
+			Message message = result.Message;
+			TimeSpan timeout = result.Timeout;
 			// FIXME: is distination really like this?
-			Uri destination = message.Headers.To ?? Via ?? RemoteAddress.Uri;
+			Uri destination = message.Headers.To;
+			if (destination == null) {
+				if (source.Transport.ManualAddressing)
+					throw new InvalidOperationException ("When manual addressing is enabled on the transport, every request messages must be set its destination address.");
+				 else
+				 	destination = Via ?? RemoteAddress.Uri;
+			}
 
 			web_request = HttpWebRequest.Create (destination);
 			web_request.Method = "POST";
 			web_request.ContentType = Encoder.ContentType;
+
+#if NET_2_1
+			var cmgr = source.GetProperty<IHttpCookieContainerManager> ();
+			if (cmgr != null)
+				((HttpWebRequest) web_request).CookieContainer = cmgr.CookieContainer;
+#endif
+
+#if !NET_2_1 || MONOTOUCH // until we support NetworkCredential like SL4 will do.
+			// client authentication (while SL3 has NetworkCredential class, it is not implemented yet. So, it is non-SL only.)
+			var httpbe = (HttpTransportBindingElement) source.Transport;
+			string authType = null;
+			switch (httpbe.AuthenticationScheme) {
+			// AuthenticationSchemes.Anonymous is the default, ignored.
+			case AuthenticationSchemes.Basic:
+				authType = "Basic";
+				break;
+			case AuthenticationSchemes.Digest:
+				authType = "Digest";
+				break;
+			case AuthenticationSchemes.Ntlm:
+				authType = "Ntlm";
+				break;
+			case AuthenticationSchemes.Negotiate:
+				authType = "Negotiate";
+				break;
+			}
+			if (authType != null) {
+				var cred = source.ClientCredentials;
+				string user = cred != null ? cred.UserName.UserName : null;
+				string pwd = cred != null ? cred.UserName.Password : null;
+				if (String.IsNullOrEmpty (user))
+					throw new InvalidOperationException (String.Format ("Use ClientCredentials to specify a user name for required HTTP {0} authentication.", authType));
+				var nc = new NetworkCredential (user, pwd);
+				web_request.Credentials = nc;
+				// FIXME: it is said required in SL4, but it blocks full WCF.
+				//web_request.UseDefaultCredentials = false;
+			}
+#endif
 
 #if !NET_2_1 // FIXME: implement this to not depend on Timeout property
 			web_request.Timeout = (int) timeout.TotalMilliseconds;
 #endif
 
 			// There is no SOAP Action/To header when AddressingVersion is None.
-			if (message.Version.Addressing == AddressingVersion.None) {
+			if (message.Version.Envelope.Equals (EnvelopeVersion.Soap11) ||
+			    message.Version.Addressing.Equals (AddressingVersion.None)) {
 				if (message.Headers.Action != null) {
-					web_request.Headers ["SOAPAction"] = message.Headers.Action;
+					web_request.Headers ["SOAPAction"] = String.Concat ("\"", message.Headers.Action, "\"");
 					message.Headers.RemoveAll ("Action", message.Version.Addressing.Namespace);
-					if (message.Headers.Action != null) throw new Exception (message.Headers.Action);
 				}
 			}
 
@@ -110,6 +144,7 @@ namespace System.ServiceModel.Channels
 			string pname = HttpRequestMessageProperty.Name;
 			if (message.Properties.ContainsKey (pname)) {
 				HttpRequestMessageProperty hp = (HttpRequestMessageProperty) message.Properties [pname];
+				web_request.Headers.Clear ();
 				web_request.Headers.Add (hp.Headers);
 				web_request.Method = hp.Method;
 				// FIXME: do we have to handle hp.QueryString ?
@@ -128,20 +163,54 @@ namespace System.ServiceModel.Channels
 #if !NET_2_1
 				web_request.ContentLength = (int) buffer.Length;
 #endif
-				Stream requestStream = web_request.EndGetRequestStream (web_request.BeginGetRequestStream (null, null));
-				requestStream.Write (buffer.GetBuffer (), 0, (int) buffer.Length);
-				requestStream.Close ();
+
+				web_request.BeginGetRequestStream (delegate (IAsyncResult r) {
+					try {
+						result.CompletedSynchronously &= r.CompletedSynchronously;
+						using (Stream s = web_request.EndGetRequestStream (r))
+							s.Write (buffer.GetBuffer (), 0, (int) buffer.Length);
+						web_request.BeginGetResponse (GotResponse, result);
+					} catch (Exception ex) {
+						result.Complete (ex);
+					}
+				}, null);
+			} else {
+				web_request.BeginGetResponse (GotResponse, result);
+			}
+		}
+		
+		void GotResponse (IAsyncResult result)
+		{
+			HttpChannelRequestAsyncResult channelResult = (HttpChannelRequestAsyncResult) result.AsyncState;
+			channelResult.CompletedSynchronously &= result.CompletedSynchronously;
+			
+			WebResponse res;
+			Stream resstr;
+			try {
+				res = web_request.EndGetResponse (result);
+				resstr = res.GetResponseStream ();
+			} catch (WebException we) {
+				res = we.Response;
+				if (res == null) {
+					channelResult.Complete (we);
+					return;
+				}
+				try {
+					// The response might contain SOAP fault. It might not.
+					resstr = res.GetResponseStream ();
+				} catch (WebException we2) {
+					channelResult.Complete (we2);
+					return;
+				}
 			}
 
-			WebResponse res;
-			try {
-				res = web_request.EndGetResponse (web_request.BeginGetResponse (null, null));
+			var hrr = (HttpWebResponse) res;
+			if ((int) hrr.StatusCode >= 400) {
+				channelResult.Complete (new WebException (String.Format ("There was an error on processing web request: Status code {0}({1}): {2}", (int) hrr.StatusCode, hrr.StatusCode, hrr.StatusDescription)));
 			}
-			catch (WebException we) {
-				res = we.Response;
-			}
+
 			try {
-				using (Stream responseStream = res.GetResponseStream ()) {
+				using (var responseStream = resstr) {
 					MemoryStream ms = new MemoryStream ();
 					byte [] b = new byte [65536];
 					int n = 0;
@@ -154,7 +223,7 @@ namespace System.ServiceModel.Channels
 					}
 					ms.Seek (0, SeekOrigin.Begin);
 
-					Message ret = Encoder.ReadMessage (
+					channelResult.Response = Encoder.ReadMessage (
 						//responseStream, MaxSizeOfHeaders);
 						ms, MaxSizeOfHeaders, res.ContentType);
 /*
@@ -165,10 +234,12 @@ w.Formatting = System.Xml.Formatting.Indented;
 buf.CreateMessage ().WriteMessage (w);
 w.Close ();
 */
-					return ret;
+					channelResult.Complete ();
 				}
+			} catch (Exception ex) {
+				channelResult.Complete (ex);
 			} finally {
-				res.Close ();
+				res.Close ();	
 			}
 		}
 
@@ -176,7 +247,9 @@ w.Close ();
 		{
 			ThrowIfDisposedOrNotOpen ();
 
-			return new HttpChannelRequestAsyncResult (this, message, timeout, callback, state);
+			HttpChannelRequestAsyncResult result = new HttpChannelRequestAsyncResult (message, timeout, callback, state);
+			BeginProcessRequest (result);
+			return result;
 		}
 
 		public override Message EndRequest (IAsyncResult result)
@@ -194,7 +267,9 @@ w.Close ();
 
 		protected override void OnAbort ()
 		{
-			throw new NotImplementedException ();
+			if (web_request != null)
+				web_request.Abort ();
+			web_request = null;
 		}
 
 		// Close
@@ -234,42 +309,31 @@ w.Close ();
 
 		class HttpChannelRequestAsyncResult : IAsyncResult
 		{
-			HttpRequestChannel channel;
-			Message message;
-			TimeSpan timeout;
+			public Message Message {
+				get; private set;
+			}
+			
+			public TimeSpan Timeout {
+				get; private set;
+			}
+
 			AsyncCallback callback;
-			object state;
-			AutoResetEvent wait;
-			bool done, waiting;
-			Message response;
+			ManualResetEvent wait;
 			Exception error;
 
-			public HttpChannelRequestAsyncResult (HttpRequestChannel channel, Message message, TimeSpan timeout, AsyncCallback callback, object state)
+			public HttpChannelRequestAsyncResult (Message message, TimeSpan timeout, AsyncCallback callback, object state)
 			{
-				this.channel = channel;
-				this.message = message;
-				this.timeout = timeout;
+				CompletedSynchronously = true;
+				Message = message;
+				Timeout = timeout;
 				this.callback = callback;
-				this.state = state;
+				AsyncState = state;
 
-				wait = new AutoResetEvent (false);
-				Thread t = new Thread (delegate () {
-					try {
-						response = channel.ProcessRequest (message, timeout);
-						if (callback != null)
-							callback (this);
-					} catch (Exception ex) {
-						error = ex;
-					} finally {
-						done = true;
-						wait.Set ();
-					}
-				});
-				t.Start ();
+				wait = new ManualResetEvent (false);
 			}
 
 			public Message Response {
-				get { return response; }
+				get; set;
 			}
 
 			public WaitHandle AsyncWaitHandle {
@@ -277,22 +341,50 @@ w.Close ();
 			}
 
 			public object AsyncState {
-				get { return state; }
+				get; private set;
 			}
 
+			public void Complete ()
+			{
+				Complete (null);
+			}
+			
+			public void Complete (Exception ex)
+			{
+				if (IsCompleted) {
+					return;
+				}
+				// If we've already stored an error, don't replace it
+				error = error ?? ex;
+
+				IsCompleted = true;
+				wait.Set ();
+				if (callback != null)
+					callback (this);
+			}
+			
 			public bool CompletedSynchronously {
-				get { return done && !waiting; }
+				get; set;
 			}
 
 			public bool IsCompleted {
-				get { return done; }
+				get; private set;
 			}
 
 			public void WaitEnd ()
 			{
-				if (!done) {
-					waiting = true;
-					wait.WaitOne (timeout, true);
+				if (!IsCompleted) {
+					// FIXME: Do we need to use the timeout? If so, what happens when the timeout is reached.
+					// Is the current request cancelled and an exception thrown? If so we need to pass the
+					// exception to the Complete () method and allow the result to complete 'normally'.
+#if NET_2_1 || MONOTOUCH
+					// neither Moonlight nor MonoTouch supports contexts (WaitOne default to false)
+					bool result = wait.WaitOne (Timeout);
+#else
+					bool result = wait.WaitOne (Timeout, true);
+#endif
+					if (!result)
+						throw new TimeoutException ();
 				}
 				if (error != null)
 					throw error;

@@ -11,6 +11,25 @@
 
 	* docs.make Makefile.am README: Reflect above changes
 
+2009-02-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (EXTRA_DIST): Remove removed files.
+
+	* README: Point to the documentation on the wiki.
+
+	* call-sites.txt: Remove this, its contents is in jit-trampolines.
+
+	* memory-management.txt thread-safety.txt aot-compiler.txt jit-regalloc
+	exception-handling.txt: Remove documents which are now on the wiki.
+
+2009-02-11  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* thread-safety.txt: Improve the docs about image lock.
+
+2009-02-11  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* thread-safety.txt: Document the new image lock.
+
 2008-12-12  Mark Probst  <mark.probst@gmail.com>
 
 	* mini-porting.txt: Added some details about function descriptors

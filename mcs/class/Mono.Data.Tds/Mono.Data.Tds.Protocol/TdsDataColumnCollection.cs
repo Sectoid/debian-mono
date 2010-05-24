@@ -81,7 +81,7 @@ namespace Mono.Data.Tds.Protocol {
 			foreach (TdsDataColumn col in columns)
 				Add (col);
 		}
-               
+		
 		public IEnumerator GetEnumerator ()
 		{
 			return list.GetEnumerator ();
@@ -91,6 +91,7 @@ namespace Mono.Data.Tds.Protocol {
 		{
 			list.Clear ();
 		}
+		
 		#endregion // Methods
 	}
 }

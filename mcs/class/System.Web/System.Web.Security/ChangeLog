@@ -4,6 +4,12 @@
 	before attempting to use it. Patch from Tiaan Geldenhuys
 	<tagdev@gmail.com>. thanks!
 
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MembershipProvider.cs: Ensure password decryption is always
+	possible.
+	[Fix bug #538406]
+
 2009-07-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SqliteMembershipProvider.cs:
@@ -27,8 +33,8 @@
 
 2009-02-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-	* FormsAuthentication.cs: use GetWebApplication
-	instead of GetSection for application level configuration.
+	* FormsAuthentication.cs: use GetWebApplication instead of GetSection
+	for application level configuration.
 
 2009-01-12  Marek Habersack  <mhabersack@novell.com>
 

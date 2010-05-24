@@ -1,7 +1,91 @@
+2010-02-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #577029
+	* anonymous.cs: Fixed TypeBuilder* check.
+
+2010-02-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #574991
+	* rootcontext.cs, class.cs, driver.cs: Hide enhanced warnings behind
+	--lint.
+
+2010-02-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #575986
+	* expression.cs: Don't mutate typeof type definitions.
+
+2010-01-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #573329
+	* eval.cs: Don't disable error reporting completely on silent mode.
+
+2009-12-16  Miguel de Icaza  <miguel@novell.com>
+
+	* Fix for 565194
+
+2009-12-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #561149
+	anonymous.cs: Use actual type parameters when checking for generic
+	method host.
+
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #545081
+	* decl.cs: Check private nested types of nested types recursively.
+
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #558305
+	* location.cs: Ignore self referencing #line directive
+
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #558292
+	* class.cs: Allow single unsafe fixed buffer fields.
+
+2009-11-07  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #553465
+	* expression.cs: Fixed mixed version of expression tree anonymous
+	type.
+
+2009-11-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #553031
+
+	* linq.cs, expression.cs, class.cs, cs-parser.jay: Initialize
+	expression tree version of anonymous type with members declaration.
+
 2009-10-29  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #550580	
 	* convert.cs: Don't eliminate explicit precission casts.
+
+2009-10-16  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #493523, #507067
+	* convert.cs, nullable.cs, expression.cs: Do implicit and explicit
+	standard nullable conversion using underlying standard conversion
+	and not full conversion.
+
+2009-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Equality comparison of generic parameter with
+	class constraint.
+
+2009-10-05  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #543570
+	* generic.cs: Import predefined constraints correctly.
+
+2009-10-02  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Don't crash on overloads with optional paremeters where
+	arguments count overflows.
+	
+	* parameter.cs: Import optional parameter constants using optional
+	value type.
 
 2009-09-30  Marek Safar  <marek.safar@gmail.com>
 
@@ -9,10 +93,415 @@
 	* delegate.cs: Emit correct delegate instance variable when there
 	are static and non-static overloads.
 
-2009-08-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+2009-09-25  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, ecore.cs: More dynamic binary expressions.
+
+2009-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs, expression.cs: Fixed null lifted conversion for
+	bitwise enum operations.
+
+2009-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, ecore.cs: Fixed explicit unsafe coversion of long
+	values in checked context.
+
+2009-09-22  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, ecore.cs: Fixed array index constant conversion.
+
+2009-09-20  Miguel de Icaza  <miguel@novell.com>
+
+	* expression.cs: Do not crash when MemberLookup returns something
+	that is not a MemberExpr here.   Report error 582 instead. 
+
+	Fixes #499988.
+
+2009-09-18  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, class.cs: Check protected property accessors.
+
+2009-09-18  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, assign.cs: Dynamic compound assignment.
+
+2009-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Fixed compound assignment explicit conversion.
+
+2009-09-17  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, ecore.cs: Cannot infer variables from method group.
+
+2009-09-16  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, convert.cs, context.cs, anonymous.cs,
+	constant.cs, nullable.cs, expression.cs, literal.cs, ecore.cs,
+	codegen.cs: Dynamic binary operations scaffolding.
+
+2009-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Fixes nullable promotion for enum type variables.
+
+2009-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* driver.cs, dynamic.cs: Reset more static variables.
+
+2009-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, expression.cs, rootcontext.cs, namespace.cs, ecore.cs,
+	driver.cs: Introduced Expression::MakeExpression.
+
+2009-09-11  Marek Safar  <marek.safar@gmail.com>
+
+	* eval.cs: Exposed MessageOutput instead of cleaning up eval API.
+
+2009-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	* eval.cs, report.cs: Use Console.Out for all eval error or warning
+	output.
+
+2009-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #518707
+	* expression.cs (Is): Optimize only generic parameter type
+	expression probing value type generic parameter.
+
+2009-09-09  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #532571
+	* ecore.cs: Check for simple name type arguments used with
+	non-generic type.
+
+2009-09-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #497421
+	* generic.cs (CheckConstraint): Don't use buildin types to check for
+	parameterless constructor.
+
+2009-09-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #537402
+	* generic.cs (CheckConstraint): Correctly inflate generic type
+	arguments when checking generic method. 
+
+2009-09-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #536463
+	* decl.cs (AddToContainer): Don't report collision between explicit
+	and parameterless non-explicit members.
+
+2009-09-08  Marek Safar  <marek.safar@gmail.com>
+
+	* eval.cs: Reset more static stuff.
+
+2009-09-07  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #324625
+	* expression.cs, ecore.cs: Create nested generic type expression
+	using declaring and not current type.
+
+2009-09-07  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Changed Report class to accept various output printers and
+	be an instance class. An expression resolver can now use different
+	message reporter for each call and Report.Error can safely throw
+	an exception. Part of ongoing work to turn mcs into proper library.
+
+2009-09-04  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs, ecore.cs: Removed error reporting from emit code.
+
+2009-09-04  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-parser.jay, parameter.cs: Moved parser check out of constructor
+
+2009-09-03  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs, expression.cs, statement.cs, cs-parser.jay: Moved
+	parser checks out of constructors.
+
+2009-09-02  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, statement.cs, ecore.cs: Use common Report.Error.
+
+2009-09-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #535448
+	* anonymous.cs, class.cs: Copy return label between all contexts.
+
+2009-09-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #535395
+	* namespace.cs: Resolve context can be null.
+
+2009-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #533912
+	* generic.cs: Use correct context for constraints resolving.
+
+2009-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #532630
+	* driver.cs: Trim conditional symbols.
+
+2009-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	* context.cs: New file.
+	
+	* *.exe.sources, *.csproj: Updated.
+
+2009-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, parameter.cs, decl.cs, statement.cs, namespace.cs,
+	class.cs, generic-mcs.cs, codegen.cs: Add GetSignatureForError to
+	IMembercontext, some small cleanups.
+
+2009-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Split ResolveContext and EmitContext.
+
+2009-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Only ResolveContext implements IMemberContext.
+
+2009-08-21  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Renamed IResolveContext to IMemberContext.
+
+2009-08-21  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Detached ResolveContext from EmitContext.
+
+2009-08-21  Marek Safar  <marek.safar@gmail.com>
+
+	* codegen.cs: Moved flow-analysis to BlockContext.
+
+2009-08-21  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Detached BlockContext from EmitContext.
+
+2009-08-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* statement.cs: avoid nullref when the return value of GetEnumerator()
 	does not contain any MoveNext() method.
+
+2009-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Removed IResolveContext::GenericDeclContainer.
+
+2009-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs, delegate.cs: Changed Delegate to be TypeContainer based.
+
+2009-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, iterators.cs, expression.cs, statement.cs, ecore.cs,
+	cs-parser.jay, attribute.cs, codegen.cs: Better error reports.
+
+2009-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Removed boolean fields from EmitContext.
+
+2009-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Add IResolveContext::IsStatic.
+
+2009-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Moved TopBlock's methods from EmitContext to TopBlock.
+
+2009-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Removed DeclContainer from EmitContext.
+
+2009-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Add IResolveContext::CurrentTypeParameters.
+
+2009-08-14  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Removed TypeContainer and ContainerType from EmitContext.
+
+2009-08-14  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, expression.cs, namespace.cs, ecore.cs, class.cs,
+	codegen.cs: Add IResolveContext::LookupExtensionMethod.
+
+2009-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs: Look in PartialContainer for parent type parameters.
+
+2009-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, namespace.cs, ecore.cs, class.cs, attribute.cs,
+	codegen.cs: Add IResolveContext::LookupTypeParameter.
+
+2009-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	* lambda.cs, expression.cs, statement.cs, namespace.cs, ecore.cs:
+	Moved resolved logic from Emit to Resolve.
+
+2009-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs, decl.cs, roottypes.cs, class.cs, attribute.cs,
+	codegen.cs: Reworked atttributes handling of ResolveContext.
+
+2009-08-12  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs, ecore.cs, class.cs, attribute.cs, codegen.cs: Pushed
+	LookupNamespaceOrType to ResolveContext.
+
+2009-08-12  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, decl.cs, expression.cs, namespace.cs, ecore.cs,
+	class.cs: Removed unused parameters and methods.
+
+2009-08-11  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, lambda.cs, anonymous.cs, statement.cs, generic-mcs.cs,
+	codegen.cs: Finding the best common type of a set of expressions for
+	lambda statements.
+
+2009-08-07  Marek Safar  <marek.safar@gmail.com>
+
+	* dynamic.cs, expression.cs: More dynamic conversions.
+
+2009-08-06  Miguel de Icaza  <miguel@novell.com>
+
+	* generic.cs: This loop was incorrect, it was increment ii, but
+	checking for `i'.  This was a change introduced to fix #327497,
+	now we fix #424012.
+ 
+	* class.cs: Catch another case for cs0533 error, fixes #324782.
+
+2009-08-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* typemanager.cs (GetGenericArguments): SRE returns null for
+	generic methods on type builder instances if they are not generic
+	themselves. For example, for Foo<int>::Bar() it returns null, but
+	not for Foo<int>::Bar<>() or Foo<int>::Bar<double>().
+
+2009-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, expression.cs, ecore.cs, class.cs,
+	delegate.cs: Work on dynamic binding.
+
+2009-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	A second fix for bug #525342
+	* class.cs: Attach partial method attributes to method
+	implementation.
+
+2009-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, parameter.cs, support.cs, class.cs: Dynamic type
+	restrictions.
+	
+	* rootcontext.cs: Default to langversion v4.
+
+2009-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	* pending.cs: Check return type before member info is set.
+
+2009-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: Fully initialize generic hoisted field expression.
+
+2009-08-02  Miguel de Icaza  <miguel@novell.com>
+
+	* cs-parser.jay: Flag variables declared on the interactive shell
+	as used to prevent the 168 warning about local variable not being
+	used. 
+
+2009-07-31  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs, dynamic.cs, support.cs, class.cs, delegate.cs,
+	attribute.cs: Emit dynamic export attribute.
+
+2009-07-30  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: More verifier work.
+
+2009-07-29  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs: Fixed SRE crash during corlib compilation.
+
+2009-07-29  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, typemanager.cs, decl.cs, iterators.cs, convert.cs,
+	nullable.cs, expression.cs, ecore.cs, class.cs, attribute.cs:
+	More TypeManager.TypeToCoreType needed.
+
+2009-07-29  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs: Update after recent SRE fixes.
+
+2009-07-28  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, expression.cs, ecore.cs, delegate.cs: Use correct
+	version of GetFieldHandle for fields of generic types.
+
+2009-07-27  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, argument.cs, convert.cs, assign.cs, expression.cs,
+	ecore.cs: Add TypeManager.IsDynamicType,
+	PredefinedAttributes.Dynamic.
+
+2009-07-27  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #415375
+	* expression.cs: Fixed object and reference type parameter
+	comparison.
+
+2009-07-27  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #525342
+	* class.cs: Attach partial method attributes to method
+	implementation.
+
+2009-07-24  Marek Safar  <marek.safar@gmail.com>
+
+	* argument.cs, dynamic.cs, expression.cs, class.cs, attribute.cs:
+	Dynamic arguments.
+
+2009-07-24  Marek Safar  <marek.safar@gmail.com>
+
+	* anonymous.cs (MutateField): Add imported types handling.
+
+2009-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, delegate.cs: Moved arguments resolve into their
+	counterparts expressions. Removed argument resolve from
+	CollectionElementInitializer.
+
+2009-07-23  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #523683
+	* convert.cs, delegate.cs: Use common overload mechanism for method
+	group conversion check.
+
+2009-07-22  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #523899
+	* generics.cs: Exact type inference with other bound types.
+
+2009-07-22  Raja R Harinath  <harinath@hurrynot.org>
+
+	Don't complain when the same type is implemented by the output
+	assembly as well as multiple referenced assemblies
+	* namespace.cs (RootNamespace.LookupTypeReflection): Add
+	'must_be_unique' flag.
+	(GlobalRootNamespace): Update to changes.
+	(Namespace.LookupType): Pass 'must_be_unique' only when we don't
+	already have a type in hand.
+
+2009-07-22  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: More verifier instrumentation.
+	
+	* statement.cs: Do proper throw expression conversion.
 
 2009-07-22  Marek Safar  <marek.safar@gmail.com>
 
@@ -21,13 +510,234 @@
 
 2009-07-16  Marek Safar  <marek.safar@gmail.com>
 
+	* anonymous.cs: Split assignable and readonly generated variable
+	references.
+
+2009-07-16  Marek Safar  <marek.safar@gmail.com>
+
 	A fix for bug #521671
 	* statement.cs: Fixed crash when checking missing type.
+
+2009-07-16  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, argument.cs, linq.cs, convert.cs,
+	assign.cs, expression.cs, statement.cs, support.cs, ecore.cs,
+	class.cs, driver.cs: Work on dynamic binding.
+
+	* dynamic.cs: New file.
+
+	* *.sources, *.proj: Updated.
+
+2009-07-15  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (Conditional): Avoid double Resolve.
+
+2009-07-13  Marcus Griep  <marcus@griep.us>
+
+	* ecore.cs: Fix obscure bug with resolving members of interfaces
+	that hide parent interface members. Fixes bug #444388 and corrects
+	bug #323096
+
+2009-07-13  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs (LocalVariableReference): Bounce resolve.
+
+2009-07-10  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, lambda.cs, parameter.cs, convert.cs, anonymous.cs,
+	expression.cs, literal.cs, ecore.cs, complete.cs: Moved internal
+	types to new class.
+	
+	* support.cs: New dynamic type wrapper.
+
+2009-07-08  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, cs-parser.jay: Better error reporting for implicitly
+	typed local variable.
+
+2009-07-06  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #519005
+	* anonymous.cs: Use null_type as no return type placeholder.
+
+2009-07-02  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs: Handle type inference of identical type parameters
+	with different bounds.
+
+2009-07-01  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, class.cs: Events variance.
+	
+	* cs-parser.jay: Interface events error messages.
+
+2009-07-01  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, argument.cs: Updated type inference logic to C# 4.0.
+
+2009-06-29  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs, convert.cs, expression.cs, class.cs: Default
+	parameter expression can be value-type New.
+
+	* cs-parser.jay: Clean up too many parameter modifier boolean flags.
+
+2009-06-26  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, argument.cs, expression.cs, ecore.cs, cs-parser.jay:
+	Implemented C# 4.0 named arguments.
+
+2009-06-24  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, parameter.cs, iterators.cs, convert.cs,
+	expression.cs, ecore.cs, delegate.cs: Removed unnecessary ArgList
+	parameter modifier. Also fixes bug #515497.
+
+2009-06-24  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Replaced ArrayList with Arguments in need of a nonsequential 
+	arguments expression to be implemented.
+	
+	*.sources: Add argument.cs
+
+2009-06-23  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs: Moved GetParameterIndexByName to base class.
+	
+	* expression.cs, statement.cs, ecore.cs, delegate.cs: Removed
+	unused AType. Use argument's version of GetExpressionTree.
+
+2009-06-22  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs, cs-parser.jay, attribute.cs, codegen.cs: Named
+	arguments grammar.
 
 2009-06-17  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #514096
 	* class.cs: Allow IntPtr/UIntPtr fields to be volatile.
+
+2009-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: The first multi-dimensional array nested array
+	initializers was not checked.
+	
+	* statement.cs (Switch): Fixed error message to reflect 2.0 changes.
+
+2009-06-17  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #513400
+	* nullable.cs (EmitEquality): Operands emit could be simplified for
+	built-in types when we now emit user operators differently.
+
+2009-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Report inaccessible delegate methods correctly.
+
+2009-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs, expression.cs, ecore.cs, class.cs, delegate.cs,
+	cs-parser.jay: Implemented C# 4.0 optional parameters.
+
+2009-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* driver.cs: Removed broken DefineManifestResource.
+
+2009-06-16  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile [net_2_0_bootstrap]: Don't explicitly mention net_1_1.
+	Use $(BOOTSTRAP_PROFILE) instead.
+
+2009-06-12  Jb Evain  <jbevain@novell.com>
+
+	* rootcontext.cs: add a Platform field.
+	* driver.cs: handle /platform.
+	* codegen.cs: pass the proper flags according to
+	the platform when saving the assembly.
+
+2009-06-11  Marek Safar  <marek.safar@gmail.com>
+
+	* parameter.cs, const.cs, report.cs, cs-parser.jay, attribute.cs:
+	Add optional parameters grammar.
+
+2009-06-10  Marek Safar  <marek.safar@gmail.com>
+
+	* eval.cs, anonymous.cs, report.cs, rootcontext.cs, cs-parser.jay,
+	driver.cs: Split lang version and metadata version.
+
+2009-06-10  Marek Safar  <marek.safar@gmail.com>
+
+	* decl.cs: Better overload ctor collision error message.
+
+2009-06-05  Jb Evain  <jbevain@novell.com>
+
+	* driver.cs (EmbededResource): avoid using an internal method
+	in gmcs to embed manifest resources.
+
+2009-06-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* generic.cs, parameter.cs: Avoid using 'var' so we can bootstrap
+	the compiler from older mono versions (like moon's bots)
+
+2009-06-04  Marek Safar  <marek.safar@gmail.com>
+
+	* namespace.cs (LookupTypeReflection): Ignore collisions between
+	forwarded types.
+
+2009-06-04  Marek Safar  <marek.safar@gmail.com>
+
+	* codegen.cs: Enabled generic type forwarders.
+
+2009-06-04  Marek Safar  <marek.safar@gmail.com>
+
+	* dmcs.*: Add another version of SRE compiler.
+
+2009-06-03  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, typemanager.cs, parameter.cs, convert.cs,
+	generic-mcs.cs: Fixed variant type conversions.
+
+2009-06-02  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #507863
+	* codegen.cs: Fixes a crash on invalid string value attribute.
+
+2009-06-01  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #508334
+	* typemanager.cs, parameter.cs, convert.cs, expression.cs, ecore.cs,
+	cs-parser.jay: Fully import __arglist modifier.
+
+2009-05-29  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, typemanager.cs, parameter.cs, ecore.cs, class.cs,
+	delegate.cs, generic-mcs.cs: Rewrote type variance checks to
+	actually work with closed generic types.
+
+2009-05-27  Alan McGovern  <amcgovern@novell.com>
+
+	* class.cs, decl.cs, delegate.cs, parameter.cs: 
+	Fix the build by replacing the use of 'var' with the actual type.
+
+2009-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, parameter.cs, decl.cs, ecore.cs, class.cs, delegate.cs
+    cs-parser.jay, generic-mcs.cs: Report wrong variant types
+	declarations.
+	  
+	* driver.cs, rootcontext.cs, report.cs: Add 3.0 language version
+	filter.
+
+2009-05-26  Rodrigo Kumpera  <rkumpera@novell.com>
+			Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #377509
+	* parameter.cs: Use predefined and not empty name for implicit
+	setters.
+
+2009-05-21  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Don't report wrong warnings for event fields.
 
 2009-05-21  Marek Safar  <marek.safar@gmail.com>
 
@@ -35,27 +745,89 @@
 	* class.cs: Check for static class using parent container instead of
 	parent type.
 
+2009-05-08  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #496922
+	* expression.cs: Always use temporary variable when using object
+	initializer.
+
 2009-04-28  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #495112
 	* class.cs (IsUnmanagedType): Handle recursive unmanaged types using
 	local cache.
 
+2009-04-27  Miguel de Icaza  <miguel@novell.com>
+
+	* driver.cs: Add a flag to work as a replacement for CSC in VS.
+
+2009-04-24  Miguel de Icaza  <miguel@novell.com>
+
+	* complete.cs: No idea how gonzalo got a null in the list, but
+	avoid crashing.
+
+2009-04-24  Miguel de Icaza  <miguel@novell.com>
+
+	* complete.cs (CompletionElementInitializer): New completion class
+	to support completing inside a C# 3 element initializer, so this
+	allows completion for Silverlight situations where it is very
+	common to do:
+
+	new TextBlock () { Fo<TAB>
+
+	(CompletionSimpleName): Expose the prefix that was
+	passed to the simple name.
+
+	* cs-parser.jay (object_or_collection_initializer): Add support
+	for element_initializers.
+
+	* expression.cs (CollectionOrObjectInitializers.DoResolve):
+	special case completion expressions as this method aggressively
+	collects data before it operates, and errors were being thrown
+	earlier than we were able to complete.
+
+2009-04-23  Miguel de Icaza  <miguel@novell.com>
+
+	* eval.cs: Make getcompletions silent and enable debugging output
+	if the -v option is passed.
+
+	* namespace.cs (NamespaceEntry.CompletionGetTypesStartingWith):
+	Consider looking up the namespace that matches the prefix being
+	used. 
+
+	This is part of the support for allowing completions like:
+	`System.Co<TAB>' to complete to System.Console.
+
+	* complete.cs (CompletionSimpleName.AppendResults): Make this
+	routine reusable.
+
+2009-04-21  Raja R Harinath  <harinath@hurrynot.org>
+
+	* cs-parser.jay (GetTokenName): Mark GENERATE_COMPLETION and
+	COMPLETE_COMPLETION as internal.
+
 2009-04-17  Miguel de Icaza  <miguel@novell.com>
- 
+
+	* complete.cs: Include namespace resolution in simple names as
+	well as global types and types in the using scope in the
+	resolution. 
+
+	* namespace.cs: Supporting infrastrcture to provide completions
+	based on the current using scope. 
+
 	* eval.cs: Introduce an entry point that allows for initialization
 	to return a list of the files passed on the command line.
- 
+
+2009-04-14  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #494243
+	* report.cs (SymbolRelatedToPreviousError): Fixed NRE.
+
 2009-04-13  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #493887
 	* statement.cs: Don't skip string multi-section with default or
 	null label when populating string hashtable.
-
-2009-04-11  Marek Safar  <marek.safar@gmail.com>
-
-	A fix for bug #492329
-	* expression.cs (New): Workaround broken TypeManager.IsValueType.
 
 2009-04-06  Marek Safar  <marek.safar@gmail.com>
 
@@ -68,10 +840,157 @@
 	A fix for bug #488960
 	* decl.cs: Compare MVAR types using non-null values.
 
+2009-03-27  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, expression.cs: Removed unused nullable checks.
+
+2009-03-27  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Removed some gmcs conditionals.
+
+2009-03-26  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, support.cs: Moved generics stuff out of support.cs
+
+2009-03-24  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs, expression.cs: Use queried type for MethodGroupExpr
+	DeclaringType.
+
+2009-03-23  Marek Safar  <marek.safar@gmail.com>
+
+	* attribute.cs: Consider all members for error reporting when
+	checking named arguments.
+
 2009-03-23  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #487625
 	* namespace.cs: Use a warning for all predefined type conflicts.
+
+2009-03-23  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #485706
+	* statement.cs: Explicitly type catch type argument to pass verifier
+	check.
+
+2009-03-22  Miguel de Icaza  <miguel@novell.com>
+
+	Initial support to provide code completion facilities to consumers
+	of the evaluator API.
+	
+	* cs-tokenizer.cs (CompleteOnEOF): this new property is used to
+	support the completion engine.   When we reach the end of the
+	input stream instead of returning EOF, when this flag is true the
+	tokenizer instead produces:
+
+		One GENERATE_COMPLETION token: this token then must be
+		handled in the grammar at every point where the user
+		would likely request a completion.
+
+		As many COMPLETE_COMPLETION tokens as necessary.   These
+		tokens are generated to assist the parser in unwinding and
+		producing a valid parse tree.    
+
+	The parser rules do not have to be perfect, the parser needs to be
+	augmented with judicious use of GENERATE_COMPLETION tokens to
+	improve the areas where we can provide completion and the parser
+	needs to add support for COMPLETE_COMPLETION tokens in productions
+	to make them work.
+
+	It is common to not have enough support for COMPLETE_COMPLETION
+	under certain rules and that even if we generated the
+	GENERATE_COMPLETION token that the resulting tree will be invalid
+	due to the missing rules that support COMPLETE_COMPLETION.
+
+	The final EOF token is produced by having the parser notify the
+	tokenizer when it reaches the root production that the next token
+	should be EOF.
+
+	* support.cs (CompletionResult): New Exception.   This exception
+	is thrown to return the completion results when one of the special
+	completion expressions is reached.
+
+	This exception is thrown by the completing ExpressionStatements
+	classes that live in complete.cs
+
+	* complete.cs (CompletingExpression): a new base class for
+	completing expressions.   This derives from the
+	ExpressionStatement class and not from Expression as it allows
+	completion to happen not only where expressions are expected in
+	the grammar, but also where statements are expected.
+
+	(CompletionSimpleName): A new class used to provide completions
+	for SimpleNames.     This currently only resolves to local
+	variables from the evaluator context (GetVars call).
+
+	(CompletionMemberAccess): Implements support for completing member
+	access patterns. 
+
+	* cs-parser.jay: Add support for completion in a few places. 
+
+	* eval.cs (GetCompletions): New public API for the evaluator that
+	returns a list of possible completions given the input.   The
+	return value is an array of completions 
+
+	* anonymous.cs (Compatible): If the exception thrown from the
+	resolved expression is a CompletionResult exception let that one
+	through instead of printing a diagnostic error in the try/catch. 
+<	
+2009-03-22  Miguel de Icaza  <miguel@novell.com>
+
+	* 
+
+	* driver.cs (Main): Use Environment.Exit to quit quickly and
+	prevent the compiler from doing the usual wait for helper thread
+	to terminate.  
+
+	This is to prevent a slowdown that was reported by Gonzalo on
+	ASP.NET 
+
+2009-03-19  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Load build-in types directly instead of accessing
+	an internal field.
+
+2009-03-18  Marek Safar  <marek.safar@gmail.com>
+
+	* ecore.cs: Always use unbox.any when available.
+
+2009-03-18  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Always set TypeAttributes.BeforeFieldInit conditionally.
+
+2009-03-17  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs: Removed obsolete version of type inference.
+
+2009-03-16  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, decl.cs, roottypes.cs, anonymous.cs, nullable.cs,
+	expression.cs, rootcontext.cs, namespace.cs, ecore.cs, class.cs,
+	delegate.cs, flowanalysis.cs, cs-parser.jay, driver.cs,
+	attribute.cs, codegen.cs: Changed RootTypes to be ModuleContainer.
+
+2009-03-11  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #482996
+	* anonymous.cs: Make sure we are not infering return type when
+	checking type compatibility.
+
+2009-03-11  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, parameter.cs, decl.cs, const.cs,
+	rootcontext.cs, namespace.cs, class.cs, delegate.cs, driver.cs,
+	generic-mcs.cs, attribute.cs, codegen.cs: Maintain predefined
+	attributes in their own structure. Needed when accessing their
+	properties before they are resolved.
+
+2009-03-09  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Optimized GetKeyword using an array instead of
+	hashtable (~10x faster).
+	
+	* driver.cs: Removed wrong Reset.
 
 2009-03-08  Marek Safar  <marek.safar@gmail.com>
 
@@ -80,15 +999,56 @@
 
 	* rootcontext.cs: Wrap unhandled exception.
 
+2009-03-06  Raja R Harinath  <harinath@hurrynot.org>
+
+	Make SeekableStreamReader self-tuning and arbitrarily seekable
+	* support.cs (SeekableStreamReader.ResetStream): New.  Allocates
+	the buffer.
+	(SeekableStreamReader.Position.set): Use it.  Simplify logic
+	which, as a side-effect, makes it arbitrarily-seekable.  Tune the
+	buffer size when the stream needs to be re-read from the beginning.
+
 2009-03-05  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #480100
 	* parameter.cs: A parameter is not hoisted when used directly as ET.
 
+2009-03-04  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs: Fixed an issue when using variable is of interface
+	type.
+
+2009-03-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #480319
+	* report.cs, driver.cs: Support -warnaserror-:<warning list> option.
+
+2009-03-03  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #480867
+	* typemanager.cs, expression.cs, ecore.cs: Changed method group
+	expression to have no valid type.
+
 2009-03-03  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #481258
 	* class.cs: Set extension method flag in partial container.
+
+2009-03-03  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs, typemanager.cs: Use expression for StringEmitter.
+	
+	* attribute.cs: Add sanity check.
+
+2009-02-27  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Add external constructor error.
+
+2009-02-26  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475354
+	* convert.cs, nullable.cs, expression.cs, statement.cs: Emit
+	correctly user defined nullable equality operators.
 
 2009-02-25  Marek Safar  <marek.safar@gmail.com>
 
@@ -100,11 +1060,45 @@
 	A fix for bug #413633
 	* expression.cs: Iterate all base class-constraint types.
 
+2009-02-24  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #479209
+	* literal.cs: Mutate null underlying type.
+
+2009-02-24  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #476295
+	* convert.cs: Avoid wrapping implicitly convertible reference type.
+
+2009-02-23  Marek Safar  <marek.safar@gmail.com>
+
+	* iterators.cs: Create MemberName correctly.
+
+2009-02-23  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #478655
+	* literal.cs: Check also underlying null type conversion.
+
+2009-02-21  Marek Safar  <marek.safar@gmail.com>
+
+	* generic.cs, ecore.cs, class.cs: Removed redundant AsAccessible.
+
 2009-02-20  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #477447
 	* statement.cs: Add reference to correct parent storey when this
 	is accessible from deep children storey (more than 1 level).
+
+2009-02-19  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475860 by David Mitchell <dmitchell@logos.com>
+	* class.cs: Define base type members before setting up member cache.
+
+2009-02-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #477378
+	* nullable.cs, expression.cs, statement.cs: More precise null type
+	sanity checks.
 
 2009-02-18  Marek Safar  <marek.safar@gmail.com>
 
@@ -114,8 +1108,29 @@
 
 2009-02-18  Marek Safar  <marek.safar@gmail.com>
 
+	A fix for bug #476895
+	* attribute.cs: Use correct resolve context for attribute type.
+
+2009-02-18  Marek Safar  <marek.safar@gmail.com>
+
 	A fix for bug #476266
 	* anonymous.cs: Mutate multi-dimensional arrays.
+
+2009-02-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #476400
+	* statement.cs, expression.cs: Removed wrong Dispose optimization.
+
+2009-02-18  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #476811
+	* generics.cs: Fixed null-literal check.
+
+2009-02-17  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, convert.cs, flowanalysis.cs, driver.cs,
+	expression.cs, ecore.cs, rootcontext.cs, eval.cs, class.cs: More
+	messing with static variables.
 
 2009-02-16  Marek Safar  <marek.safar@gmail.com>
 
@@ -123,15 +1138,165 @@
 	* generics.cs: Check generic parameter type after extracting from
 	Expression<T>.
 
+2009-02-16  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475823
+	* convert.cs, expression.cs, literal.cs, ecore.cs, cfold.cs: Add
+	typed-null support.
+
+2009-02-14  Marek Safar  <marek.safar@gmail.com>
+
+	* modifiers.cs, decl.cs, ecore.cs, class.cs, flowanalysis.cs:
+	Simplified event field definition using backing field and not
+	field builder directly.
+
+	* expression.cs (EmitLdArg): Optimize fast paths.
+
 2009-02-13  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #475327
 	* expression.cs (ArrayCreation): Don't mutate values optimized away.
 
+2009-02-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475342
+	* cs-parser.jay: Using 'super' instead of 'base' to call base
+	constructor crashes compiler.
+
+2009-02-13  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #475354
+	* expression.cs (Constantify): Add nullable types.
+	
+	* const.cs (EmitDecimalConstant): Avoid explicit cast.
+
 2009-02-12  Marek Safar  <marek.safar@gmail.com>
 
-	A fix for bug ##475246
+	A fix for bug #475246
 	* expression.cs: More broken flowanalysis hacking needed.
+
+2009-02-12  Marek Safar  <marek.safar@gmail.com>
+
+	* attribute.cs: Compare only ref/out array modifiers. 
+
+2009-02-11  Marek Safar  <marek.safar@gmail.com>
+
+	* statement.cs: Use member cache when looking for foreach members.
+
+2009-02-11  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Don't expose internal initializer types.
+	
+	* statement.cs: Check also explicit conversions for goto case.
+
+2009-02-11  Marek Safar  <marek.safar@gmail.com>
+
+	* convert.cs, statement.cs: Removed usage of IsAssignableFrom.
+
+2009-02-10  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Replace null-type with NullLiteral where appropriate.
+
+2009-02-09  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Initializer of reference argument use temporary
+	variable to be verifiable.
+	
+	* parameter.cs: Share EmitLdArg.
+
+2009-02-09  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #473559
+	* class.cs: Fixed: Not reporting error about nested class with the
+	same name.
+
+2009-02-06  Scott Peterson  <lunchtimemama@gmail.com>
+
+	Contributed under the MIT/X11 license.
+
+	* generic.cs: Added VerifyVariantTypeParameters which performs new
+	variance verification logic. The old logic, based on the spec, was
+	wrong because the spec is full of LIES!
+
+	* generic-mcs.cs: Stubbed out the VerifyVariantTypeParameters method.
+
+	*typemanager.cs: Moved variance verification logic to GenericTypeExpr.
+
+	* class.cs:
+	* ecore.cs: Added calls to the new variance verification logic.
+
+	* parameter.cs:
+	* delegate.cs: Removed calls to the old variance verification logic.
+
+2009-02-06  Marek Safar  <marek.safar@gmail.com>
+
+	* delegate.cs: Use cached Invoke method directly.
+
+2009-02-06  Marek Safar  <marek.safar@gmail.com>
+
+	* expression.cs: Emit expression tree for hoisted variable access.
+
+2009-02-04  Marek Safar  <marek.safar@gmail.com>
+
+	* namespace.cs: Add better extension class check.
+
+2009-02-05  Scott Peterson  <lunchtimemama@gmail.com>
+
+	* generic.cs: Fixed typeo (TypeParameter.Variacne).
+
+2009-02-04  Scott Peterson  <lunchtimemama@gmail.com>
+
+	This patch adds initial generic variance support to the compiler.
+	It is contributed under the MIT/X11 license.
+
+	* typemanager.cs: Modified ImplementsInterface to check variance.
+	Added VerifyVariantTypeParameters which checks the specified type to see
+	if it uses a variant type parameter as a type argument (which is not
+	allowed). Added IsVariantOf which determins if the first type is a
+	variant of the second. NOTE: This only supports reference types at
+	the moment to conform with the current level of VM support. When the
+	VM supports value types, this will follow step.
+
+	* generic.cs: Added the Variance enum. Added a Variance property to
+	TypeParameter and added variance support to definition phase. Added a
+	Variance property to TypeParameterName. Also check to make sure that
+	no variant types appear in generic method parameters.
+
+	* cs-tokenizer.cs: Modified parse_less_than to tokenize the variance
+	keywords if the langversion supports it.
+
+	* parameter.cs: Added Parameter.VerifyNoVariantTypeParameters to ensure
+	that variant types are only used in legal positions. Also added
+	ParametersCompiled.VerifyNoVariantTypeParameters to check all of its
+	parameters.
+
+	* decl.cs: Construct TypeParameter with the variance information.
+
+	* convert.cs: Checks variance in ImplicitReferenceConversionExists
+	and ImplicitConversionStandard.
+
+	* rootcontext.cs: Added new "Future" language version.
+
+	* class.cs: In TypeContainer.DoDefineMembers, ensure that contravariant
+	type parameters are not used as type arguments in interface inheritance.
+	In MemberBase.DoMemberDependentChecks, ensure that contravariant type
+	parameters are not used as method return types. In MemberBase.
+	ResolveMemberType, ensure that variant type parameters are not used
+	as type arguments. Also call VerifyNoVariantTypeParameters on every
+	set of parameters which are resolved.
+
+	* delegate.cs: Modified Delegate.Define to ensure that variant
+	parameters are not used as type arguments and that a contravariant
+	parameter is not used as the return type. Also call
+	VerifyNoVariantTypeParameters on the delegate parameters.
+
+	* cs-parser.jay: Modified grammar to support "in" and "out" keywords
+	to specify generic variance.
+
+	* driver.cs: Added support for LanguageVersion.Future in the form of
+	"-langversion:future".
+
+	* generic-mcs.cs: Stubbed out new members in generic.cs.
 
 2009-02-03  Marek Safar  <marek.safar@gmail.com>
 
@@ -155,6 +1320,19 @@
 	* statement.cs: Introduced BlockScopeExpression, needed when 
 	expression tree conversion has to emit scope variables.
 
+2009-01-29  Marek Safar  <marek.safar@gmail.com>
+
+	* class.cs: Remove duplicate CallingConvention.
+
+2009-01-29  Marek Safar  <marek.safar@gmail.com>
+
+	*.cs: Rename Parameters to ParametersCompiled and ParametersImported
+	when I finally found the right naming convention.
+
+2009-01-29  Marek Safar  <marek.safar@gmail.com>
+
+	* cs-tokenizer.cs: Put back different open parens optimization.
+
 2009-01-28  Marek Safar  <marek.safar@gmail.com>
 
 	A fix for bug #470227
@@ -164,6 +1342,12 @@
 
 	A fix for bug #324319
 	* class.cs: Remove too early base type resolve.
+
+2009-01-27  Marek Safar  <marek.safar@gmail.com>
+
+	A fix for bug #324319
+	* ecore.cs: Explicitly type null when assigning to type argument to
+	make pass verifier check.
 
 2009-01-27  Marek Safar  <marek.safar@gmail.com>
 
@@ -185,6 +1369,35 @@
 	A fix for bug #469244
 	* cs-tokenizer.cs, cs-parser.jay: Fixed parsing of nullable type
 	instance inside a conditional expression.
+
+2009-01-23  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, parameter.cs, decl.cs, anonymous.cs,
+	expression.cs, report.cs, ecore.cs, attribute.cs: Use common 
+	GetElementType and HasElementType. IsValueType clean up.
+
+2009-01-23  Marek Safar  <marek.safar@gmail.com>
+
+	* nullable.cs: Use common EmitCall.
+	
+	* expression.cs: Emit constraint. for virtual calls only.
+
+2009-01-23  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, generic.cs, eval.cs, convert.cs, const.cs, 
+	expression.cs, statement.cs, rootcontext.cs, ecore.cs, class.cs,
+	driver.cs, attribute.cs, enum.cs: Split IsValueType and IsStruct
+	checks.
+
+2009-01-22  Jb Evain  <jbevain@novell.com>
+
+	* anonymous.cs: make anonymous types' ToString implementation
+	match what csc outputs.
+
+2009-01-21  Marek Safar  <marek.safar@gmail.com>
+
+	* typemanager.cs, ecore.cs, iterator.cs: TypeLookupExpression clean
+	up.
 
 2009-01-17  Marek Safar  <marek.safar@gmail.com>
 

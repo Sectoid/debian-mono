@@ -193,6 +193,28 @@ namespace MonoTests.I18N.CJK
 		}
 
 		[Test]
+		public void CP50220BrokenESC ()
+		{
+			Assert.AreEqual ("\u001B$0", Encoding.GetEncoding (50220).GetString (new byte [] {0x1B, 0x24, 0x30}), "#1");
+		}
+
+#if NET_2_0
+		[Test]
+		public void CP50220BrokenESC2 ()
+		{
+			// it does not really invoke fallback ...
+			Assert.AreEqual ("\u001B$0", Encoding.GetEncoding (50220, new EncoderReplacementFallback (), new DecoderReplacementFallback ("")).GetString (new byte [] {0x1B, 0x24, 0x30}), "#1");
+		}
+
+		[Test]
+		public void CP50220BrokenESC3 ()
+		{
+			// neither ...
+			Assert.AreEqual ("\u001B$0", Encoding.GetEncoding (50220, new EncoderExceptionFallback (), new DecoderExceptionFallback ()).GetString (new byte [] {0x1B, 0x24, 0x30}), "#2");
+		}
+#endif
+
+		[Test]
 #if !NET_2_0
 		[Category ("NotDotNet")] // MS bug
 #endif
@@ -287,6 +309,13 @@ namespace MonoTests.I18N.CJK
 			Assert.AreEqual (1, d.GetBytes (new char [] {'\uD800'}, 0, 1, bytes, 0, true), "#5");
 			Assert.AreEqual (new byte [] {0x3F, 00, 00, 00},
 				bytes, "#6");
+		}
+
+		[Test]
+		public void Bug491799 ()
+		{
+			Assert.AreEqual (new byte [] {0xEE, 0xFC},
+					   Encoding.GetEncoding (932).GetBytes ("\uFF02"));
 		}
 
 #if NET_2_0

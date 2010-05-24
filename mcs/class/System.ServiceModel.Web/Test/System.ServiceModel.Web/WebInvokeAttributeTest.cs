@@ -56,11 +56,26 @@ namespace MonoTests.System.ServiceModel.Description
 			oper.Validate (od);
 		}
 
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void RejectTwoParametersWhenNotWrapped ()
+		{
+			new WebChannelFactory<IBogusService1> (new WebHttpBinding (), new Uri ("http://localhost:37564")).CreateChannel ();
+		}
+
 		[ServiceContract]
 		public interface TestService
 		{
 			[OperationContract]
 			string TestMethod (string input);
+		}
+
+		[ServiceContract]
+		public interface IBogusService1
+		{
+			[OperationContract]
+			[WebInvoke]
+			string Join (string s1, string s2);
 		}
 	}
 }

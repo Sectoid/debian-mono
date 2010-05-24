@@ -43,6 +43,11 @@ using RabbitMQ.Util;
 
 namespace Mono.Messaging.RabbitMQ {
 
+	/// <summary>
+	/// RabbitMQ Implementation of a message queue.  Currrently this implementation
+	/// attempts to be as stateless as possible.  Connection the AMQP server
+	/// are only created as needed.
+	/// </summary>
 	public class RabbitMQMessageQueue : MessageQueueBase, IMessageQueue {
 		
 		private bool authenticate = false;
@@ -57,7 +62,6 @@ namespace Mono.Messaging.RabbitMQ {
 		private QueueReference qRef = QueueReference.DEFAULT;
 		private readonly RabbitMQMessagingProvider provider;
 		private readonly MessageFactory helper;
-		private readonly string realm;
 		private readonly bool transactional;
 		
 		public RabbitMQMessageQueue (RabbitMQMessagingProvider provider,
@@ -69,17 +73,9 @@ namespace Mono.Messaging.RabbitMQ {
 		public RabbitMQMessageQueue (RabbitMQMessagingProvider provider,
 		                             QueueReference qRef, 
 		                             bool transactional)
-			: this (provider, "/data", qRef, transactional)
-		{
-		}
-		
-		public RabbitMQMessageQueue (RabbitMQMessagingProvider provider,
-		                             string realm, QueueReference qRef,
-		                             bool transactional)
 		{
 			this.provider = provider;
 			this.helper = new MessageFactory (provider);
-			this.realm = realm;
 			this.qRef = qRef;
 			this.transactional = transactional;
 		}
@@ -198,14 +194,13 @@ namespace Mono.Messaging.RabbitMQ {
 			// No-op (Queue are currently stateless)
 		}
 		
-		public static void Delete (string realm, QueueReference qRef)
+		public static void Delete (QueueReference qRef)
 		{
 			ConnectionFactory cf = new ConnectionFactory ();
 			
 			using (IConnection cn = cf.CreateConnection (qRef.Host)) {
 				using (IModel model = cn.CreateModel ()) {
-					ushort ticket = model.AccessRequest (realm);
-					model.QueueDelete (ticket, qRef.Queue, false, false, false);
+					model.QueueDelete (qRef.Queue, false, false, false);
 				}
 			}
 		}			
@@ -293,11 +288,10 @@ namespace Mono.Messaging.RabbitMQ {
 		
 		private void Send (IModel model, IMessage msg)
 		{
-			ushort ticket = model.AccessRequest ("/data");
-			string finalName = model.QueueDeclare (ticket, QRef.Queue, true);
+			string finalName = model.QueueDeclare (QRef.Queue, true);
 			IMessageBuilder mb = helper.WriteMessage (model, msg);
 
-			model.BasicPublish (ticket, "", finalName,
+			model.BasicPublish ("", finalName,
 			                    (IBasicProperties) mb.GetContentHeader(),
 			                    mb.GetContentBody ());
 		}
@@ -308,8 +302,7 @@ namespace Mono.Messaging.RabbitMQ {
 
 			using (IConnection cn = cf.CreateConnection (QRef.Host)) {
 				using (IModel model = cn.CreateModel ()) {
-					ushort ticket = model.AccessRequest (realm);
-					model.QueuePurge (ticket, QRef.Queue, false);
+					model.QueuePurge (QRef.Queue, false);
 				}
 			}
 		}
@@ -455,8 +448,11 @@ namespace Mono.Messaging.RabbitMQ {
 			return new RabbitMQMessageEnumerator (helper, QRef);
 		}
 		
+		private delegate IMessage RecieveDelegate (RabbitMQMessageQueue q,
+		                                           IModel model);
+		
 		private IMessage Run (MessageQueueTransactionType transactionType,
-		                      TxReceiver.DoReceive r)
+		                      RecieveDelegate r)
 		{
 			switch (transactionType) {
 			case MessageQueueTransactionType.Single:
@@ -481,8 +477,8 @@ namespace Mono.Messaging.RabbitMQ {
 			}
 		}		
 
-		private IMessage Run (IMessageQueueTransaction transaction,
-		                      TxReceiver.DoReceive r)
+		private IMessage Run (IMessageQueueTransaction transaction, 
+		                      RecieveDelegate r)
 		{
 			TxReceiver txr = new TxReceiver (this, r);
 			RabbitMQMessageQueueTransaction tx = 
@@ -490,7 +486,7 @@ namespace Mono.Messaging.RabbitMQ {
 			return tx.RunReceive (txr.ReceiveInContext);			
 		}
 		
-		private IMessage Run (TxReceiver.DoReceive r)
+		private IMessage Run (RecieveDelegate r)
 		{
 			ConnectionFactory cf = new ConnectionFactory ();
 			using (IConnection cn = cf.CreateConnection (QRef.Host)) {
@@ -500,39 +496,16 @@ namespace Mono.Messaging.RabbitMQ {
 			}
 		}
 		
-		private IMessage ReceiveInContext (ref string host, ref IConnection cn, 
-		                                   ref IModel model, string txId)
-		{
-			if (host == null)
-				host = QRef.Host;
-			else if (host != QRef.Host)
-				throw new MonoMessagingException ("Transactions can not span multiple hosts");
-			
-			if (cn == null) {
-				ConnectionFactory cf = new ConnectionFactory ();
-				cn = cf.CreateConnection (host);
-			}
-			
-			if (model == null) {
-				model = cn.CreateModel ();
-				model.TxSelect ();
-			}
-			
-			return Receive (model, -1, true);
-		}		
-
 		private class TxReceiver
 		{
-			private readonly DoReceive doReceive;
+			private readonly RecieveDelegate doReceive;
 			private readonly RabbitMQMessageQueue q;
 			
-			public TxReceiver(RabbitMQMessageQueue q, DoReceive doReceive) {
+			public TxReceiver(RabbitMQMessageQueue q, RecieveDelegate doReceive) {
 				this.q = q;
 				this.doReceive = doReceive;
 			}
-			
-			public delegate IMessage DoReceive (RabbitMQMessageQueue q, IModel model);
-			
+						
 			public IMessage ReceiveInContext (ref string host, ref IConnection cn, 
 			                                  ref IModel model, string txId)
 			{
@@ -555,18 +528,18 @@ namespace Mono.Messaging.RabbitMQ {
 			}
 		}
 		
-		private class DoReceiveWithTimeout
+		private class RecieveDelegateFactory
 		{
 			private readonly int timeout;
 			private readonly IsMatch matcher;
 			private readonly bool ack;
 			
-			public DoReceiveWithTimeout (int timeout, IsMatch matcher)
+			public RecieveDelegateFactory (int timeout, IsMatch matcher)
 				: this (timeout, matcher, true)
 			{
 			}
 			
-			public DoReceiveWithTimeout (int timeout, IsMatch matcher, bool ack)
+			public RecieveDelegateFactory (int timeout, IsMatch matcher, bool ack)
 			{
 				if (matcher != null && timeout == -1)
 					this.timeout = 500;
@@ -576,7 +549,7 @@ namespace Mono.Messaging.RabbitMQ {
 				this.ack = ack;
 			}
 			
-			public IMessage DoReceive (RabbitMQMessageQueue q, IModel model)
+			public IMessage RecieveDelegate (RabbitMQMessageQueue q, IModel model)
 			{
 				if (matcher == null)
 					return q.Receive (model, timeout, ack);
@@ -585,49 +558,44 @@ namespace Mono.Messaging.RabbitMQ {
 			}
 		}
 		
-		private static TxReceiver.DoReceive Receiver (TimeSpan timeout,
-		                                              IsMatch matcher)
+		private static RecieveDelegate Receiver (TimeSpan timeout,
+		                                         IsMatch matcher)
 		{
-			int to = TimeSpanToInt32 (timeout);
-			return new DoReceiveWithTimeout (to, matcher).DoReceive;
+			int to = MessageFactory.TimeSpanToInt32 (timeout);
+			return new RecieveDelegateFactory (to, matcher).RecieveDelegate;
 		}
 		
-		private static TxReceiver.DoReceive Receiver (IsMatch matcher)
+		private static RecieveDelegate Receiver (IsMatch matcher)
 		{
-			return new DoReceiveWithTimeout (-1, matcher).DoReceive;
+			return new RecieveDelegateFactory (-1, matcher).RecieveDelegate;
 		}
 		
-		private static TxReceiver.DoReceive Receiver (TimeSpan timeout)
+		private static RecieveDelegate Receiver (TimeSpan timeout)
 		{
-			int to = TimeSpanToInt32 (timeout);
-			return new DoReceiveWithTimeout (to, null).DoReceive;
+			int to = MessageFactory.TimeSpanToInt32 (timeout);
+			return new RecieveDelegateFactory (to, null).RecieveDelegate;
 		}
 
-		private TxReceiver.DoReceive Receiver ()
+		private RecieveDelegate Receiver ()
 		{
-			return new DoReceiveWithTimeout (-1, null).DoReceive;
+			return new RecieveDelegateFactory (-1, null).RecieveDelegate;
 		}		
 		
-		private TxReceiver.DoReceive Peeker ()
+		private RecieveDelegate Peeker (TimeSpan timeout)
 		{
-			return new DoReceiveWithTimeout (-1, null).DoReceive;
+			int to = MessageFactory.TimeSpanToInt32 (timeout);
+			return new RecieveDelegateFactory (to, null, false).RecieveDelegate;
 		}		
 		
-		private TxReceiver.DoReceive Peeker (TimeSpan timeout)
+		private RecieveDelegate Peeker (IsMatch matcher)
 		{
-			int to = TimeSpanToInt32 (timeout);
-			return new DoReceiveWithTimeout (to, null, false).DoReceive;
+			return new RecieveDelegateFactory (-1, matcher, false).RecieveDelegate;
 		}		
 		
-		private TxReceiver.DoReceive Peeker (IsMatch matcher)
+		private RecieveDelegate Peeker (TimeSpan timeout, IsMatch matcher)
 		{
-			return new DoReceiveWithTimeout (-1, matcher, false).DoReceive;
-		}		
-		
-		private TxReceiver.DoReceive Peeker (TimeSpan timeout, IsMatch matcher)
-		{
-			int to = TimeSpanToInt32 (timeout);
-			return new DoReceiveWithTimeout (to, matcher, false).DoReceive;
+			int to = MessageFactory.TimeSpanToInt32 (timeout);
+			return new RecieveDelegateFactory (to, matcher, false).RecieveDelegate;
 		}
 		
 		delegate bool IsMatch (BasicDeliverEventArgs result);		
@@ -672,10 +640,9 @@ namespace Mono.Messaging.RabbitMQ {
 		
 		private IMessage Receive (IModel model, int timeout, bool doAck)
 		{
-			ushort ticket = model.AccessRequest (realm);
-			string finalName = model.QueueDeclare (ticket, QRef.Queue, false);
+			string finalName = model.QueueDeclare (QRef.Queue, false);
 			
-			using (Subscription sub = new Subscription (model, ticket, finalName)) {
+			using (Subscription sub = new Subscription (model, finalName)) {
 				BasicDeliverEventArgs result;
 				if (sub.Next (timeout, out result)) {
 					IMessage m = helper.ReadMessage (QRef, result);
@@ -691,10 +658,9 @@ namespace Mono.Messaging.RabbitMQ {
 		private IMessage Receive (IModel model, int timeout, 
 		                          bool doAck, IsMatch matcher)
 		{
-			ushort ticket = model.AccessRequest (realm);
-			string finalName = model.QueueDeclare (ticket, QRef.Queue, false);
+			string finalName = model.QueueDeclare (QRef.Queue, false);
 			
-			using (Subscription sub = new Subscription (model, ticket, finalName)) {
+			using (Subscription sub = new Subscription (model, finalName)) {
 				BasicDeliverEventArgs result;
 				while (sub.Next (timeout, out result)) {
 					
@@ -714,13 +680,5 @@ namespace Mono.Messaging.RabbitMQ {
 		{
 			return (RabbitMQMessageQueueTransaction) provider.CreateMessageQueueTransaction ();
 		}		
-		
-		private static int TimeSpanToInt32 (TimeSpan timespan)
-		{
-			if (timespan == TimeSpan.MaxValue)
-				return -1;
-			else
-				return (int) timespan.TotalMilliseconds;
-		}
 	}
 }

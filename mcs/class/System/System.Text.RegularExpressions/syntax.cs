@@ -287,13 +287,13 @@ namespace System.Text.RegularExpressions.Syntax {
 		private int group_count;
 	}
 
-	class CapturingGroup : Group {
+	class CapturingGroup : Group, IComparable {
 		public CapturingGroup () {
 			this.gid = 0;
 			this.name = null;
 		}
 
-		public int Number {
+		public int Index {
 			get { return gid; }
 			set { gid = value; }
 		}
@@ -317,6 +317,11 @@ namespace System.Text.RegularExpressions.Syntax {
 			return true;
 		}
 
+		public int CompareTo (object other)
+		{
+			return gid - ((CapturingGroup) other).gid;
+		}
+
 		private int gid;
 		private string name;
 	}
@@ -337,7 +342,7 @@ namespace System.Text.RegularExpressions.Syntax {
 
 			LinkRef tail = cmp.NewLink ();
 
-			cmp.EmitBalanceStart (this.Number, balance.Number, this.IsNamed,  tail);
+			cmp.EmitBalanceStart (this.Index, balance.Index, this.IsNamed,  tail);
 
 			int count = Expressions.Count;
 			for (int i = 0; i < count; ++ i) {
@@ -505,7 +510,7 @@ namespace System.Text.RegularExpressions.Syntax {
 				return;
 			}
 
-			int gid = group.Number;
+			int gid = group.Index;
 			LinkRef tail = cmp.NewLink ();
 
 			if (FalseExpression == null) {
@@ -702,7 +707,8 @@ namespace System.Text.RegularExpressions.Syntax {
 			set { ignore = value; }
 		}
 
-		public override void Compile (ICompiler cmp, bool reverse) {
+		public static void CompileLiteral (string str, ICompiler cmp, bool ignore, bool reverse)
+		{
 			if (str.Length == 0)
 				return;
 
@@ -710,6 +716,11 @@ namespace System.Text.RegularExpressions.Syntax {
 				cmp.EmitCharacter (str[0], false, ignore, reverse);
 			else
 				cmp.EmitString (str, ignore, reverse);
+		}
+
+		public override void Compile (ICompiler cmp, bool reverse)
+		{
+			CompileLiteral (str, cmp, ignore, reverse);
 		}
 
 		public override void GetWidth (out int min, out int max) {
@@ -779,7 +790,7 @@ namespace System.Text.RegularExpressions.Syntax {
 		}
 
 		public override void Compile (ICompiler cmp, bool reverse) {
-			cmp.EmitReference (group.Number, ignore, reverse);
+			cmp.EmitReference (group.Index, ignore, reverse);
 		}
 
 		public override void GetWidth (out int min, out int max) {
@@ -795,6 +806,58 @@ namespace System.Text.RegularExpressions.Syntax {
 
 		private CapturingGroup group;
 		private bool ignore;
+	}
+
+	class BackslashNumber : Reference {
+		string literal;
+		bool ecma;
+
+		public BackslashNumber (bool ignore, bool ecma)
+			: base (ignore)
+		{
+			this.ecma = ecma;
+		}
+
+		// Precondition: groups [num_str] == null
+		public bool ResolveReference (string num_str, Hashtable groups)
+		{
+			if (ecma) {
+				int last_i = 0;
+				for (int i = 1; i < num_str.Length; ++i) {
+					if (groups [num_str.Substring (0, i)] != null)
+						last_i = i;
+				}
+				if (last_i != 0) {
+					CapturingGroup = (CapturingGroup) groups [num_str.Substring (0, last_i)];
+					literal = num_str.Substring (last_i);
+					return true;
+				}
+			} else {
+				if (num_str.Length == 1)
+					return false;
+			}
+
+			int ptr = 0;
+			int as_octal = Parser.ParseOctal (num_str, ref ptr);
+			// Since ParseOctal reads at most 3 digits, as_octal <= octal 0777
+			if (as_octal == -1)
+				return false;
+			if (as_octal > 0xff && ecma) {
+				as_octal /= 8;
+				--ptr;
+			}
+			as_octal &= 0xff;
+			literal = ((char) as_octal) + num_str.Substring (ptr);
+			return true;
+		}
+
+		public override void Compile (ICompiler cmp, bool reverse)
+		{
+			if (CapturingGroup != null)
+				base.Compile (cmp, reverse);
+			if (literal != null)
+				Literal.CompileLiteral (literal, cmp, IgnoreCase, reverse);
+		}
 	}
 
 	class CharacterClass : Expression {

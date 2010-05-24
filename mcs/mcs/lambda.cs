@@ -27,20 +27,21 @@ namespace Mono.CSharp {
 		{
 		}
 
-		protected override Expression CreateExpressionTree (EmitContext ec, Type delegate_type)
+		protected override Expression CreateExpressionTree (ResolveContext ec, Type delegate_type)
 		{
 			if (ec.IsInProbingMode)
 				return this;
-			
-			Expression args = Parameters.CreateExpressionTree (ec, loc);
+
+			BlockContext bc = new BlockContext (ec.MemberContext, ec.CurrentBlock.Explicit, TypeManager.void_type);
+			Expression args = Parameters.CreateExpressionTree (bc, loc);
 			Expression expr = Block.CreateExpressionTree (ec);
 			if (expr == null)
 				return null;
 
-			ArrayList arguments = new ArrayList (2);
+			Arguments arguments = new Arguments (2);
 			arguments.Add (new Argument (expr));
 			arguments.Add (new Argument (args));
-			return CreateExpressionFactoryCall ("Lambda",
+			return CreateExpressionFactoryCall (ec, "Lambda",
 				new TypeArguments (new TypeExpression (delegate_type, loc)),
 				arguments);
 		}
@@ -51,15 +52,15 @@ namespace Mono.CSharp {
 			}
 		}
 
-		protected override Parameters ResolveParameters (EmitContext ec, TypeInferenceContext tic, Type delegateType)
+		protected override ParametersCompiled ResolveParameters (ResolveContext ec, TypeInferenceContext tic, Type delegateType)
 		{
 			if (!TypeManager.IsDelegateType (delegateType))
 				return null;
 
-			AParametersCollection d_params = TypeManager.GetDelegateParameters (delegateType);
+			AParametersCollection d_params = TypeManager.GetDelegateParameters (ec, delegateType);
 
 			if (HasExplicitParameters) {
-				if (!VerifyExplicitParameters (delegateType, d_params, ec.IsInProbingMode))
+				if (!VerifyExplicitParameters (ec, delegateType, d_params))
 					return null;
 
 				return Parameters;
@@ -69,7 +70,7 @@ namespace Mono.CSharp {
 			// If L has an implicitly typed parameter list we make implicit parameters explicit
 			// Set each parameter of L is given the type of the corresponding parameter in D
 			//
-			if (!VerifyParameterCompatibility (delegateType, d_params, ec.IsInProbingMode))
+			if (!VerifyParameterCompatibility (ec, delegateType, d_params, ec.IsInProbingMode))
 				return null;
 
 			Type [] ptypes = new Type [Parameters.Count];
@@ -100,7 +101,7 @@ namespace Mono.CSharp {
 			return Parameters;
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			//
 			// Only explicit parameters can be resolved at this point
@@ -111,11 +112,11 @@ namespace Mono.CSharp {
 			}
 
 			eclass = ExprClass.Value;
-			type = TypeManager.anonymous_method_type;						
+			type = InternalType.AnonymousMethod;
 			return this;
 		}
 
-		protected override AnonymousMethodBody CompatibleMethodFactory (Type returnType, Type delegateType, Parameters p, ToplevelBlock b)
+		protected override AnonymousMethodBody CompatibleMethodFactory (Type returnType, Type delegateType, ParametersCompiled p, ToplevelBlock b)
 		{
 			return new LambdaMethod (p, b, returnType, delegateType, loc);
 		}
@@ -128,7 +129,7 @@ namespace Mono.CSharp {
 
 	public class LambdaMethod : AnonymousMethodBody
 	{
-		public LambdaMethod (Parameters parameters,
+		public LambdaMethod (ParametersCompiled parameters,
 					ToplevelBlock block, Type return_type, Type delegate_type,
 					Location loc)
 			: base (parameters, block, return_type, delegate_type, loc)
@@ -146,17 +147,18 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			Expression args = parameters.CreateExpressionTree (ec, loc);
+			BlockContext bc = new BlockContext (ec.MemberContext, Block, ReturnType);
+			Expression args = parameters.CreateExpressionTree (bc, loc);
 			Expression expr = Block.CreateExpressionTree (ec);
 			if (expr == null)
 				return null;
 
-			ArrayList arguments = new ArrayList (2);
+			Arguments arguments = new Arguments (2);
 			arguments.Add (new Argument (expr));
 			arguments.Add (new Argument (args));
-			return CreateExpressionFactoryCall ("Lambda",
+			return CreateExpressionFactoryCall (ec, "Lambda",
 				new TypeArguments (new TypeExpression (type, loc)),
 				arguments);
 		}
@@ -169,20 +171,22 @@ namespace Mono.CSharp {
 	//
 	public class ContextualReturn : Return
 	{
+		ExpressionStatement statement;
+
 		public ContextualReturn (Expression expr)
 			: base (expr, expr.Location)
 		{
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
 			return Expr.CreateExpressionTree (ec);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			if (ec.ReturnType == TypeManager.void_type) {
-				((ExpressionStatement) Expr).EmitStatement (ec);
+			if (statement != null) {
+				statement.EmitStatement (ec);
 				ec.ig.Emit (OpCodes.Ret);
 				return;
 			}
@@ -190,8 +194,8 @@ namespace Mono.CSharp {
 			base.Emit (ec);
 		}
 
-		protected override bool DoResolve (EmitContext ec)
-		{	
+		protected override bool DoResolve (BlockContext ec)
+		{
 			//
 			// When delegate returns void, only expression statements can be used
 			//
@@ -199,12 +203,12 @@ namespace Mono.CSharp {
 				Expr = Expr.Resolve (ec);
 				if (Expr == null)
 					return false;
-				
-				if (Expr is ExpressionStatement)
-					return true;
-				
-				Expr.Error_InvalidExpressionStatement ();
-				return false;
+
+				statement = Expr as ExpressionStatement;
+				if (statement == null)
+					Expr.Error_InvalidExpressionStatement (ec);
+
+				return true;
 			}
 
 			return base.DoResolve (ec);

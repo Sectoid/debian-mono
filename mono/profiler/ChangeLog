@@ -1,13 +1,110 @@
+2010-02-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-profiler-aot.c (output_image): Emit method names instead of tokens so
+	the info can be used for different versions of the same assembly. Don't append
+	the assembly guid to the file names.
+
 2010-01-11  Zoltan Varga  <vargaz@gmail.com>
 
 	* mono-profiler-logging.c (_ProfilerFileWriteBuffer): Use MONO_ZERO_LEN_ARRAY.
 	Fixes #569806.
 
+2009-09-14  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Removed the use of signals to control the
+	profiler and extended the socket based interface to control also
+	heap snapshots.
+
+2009-08-21  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Changed max depth of call chains to 128.
+
+2009-08-21  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Report all wrapper types.
+
+2009-08-21  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: While debugging file writes, also print the
+	exact number of bytes written to disk.
+
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
+
+	* mono-profiler-aot.c:
+	* mono-cov.c: Add missing method declarations.
+
+2009-08-14  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (disable_profiler):
+	Flush buffers synchronously so the GUI knows when we are done.
+
+2009-08-14  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c:
+	- Added user thread reading commands from a local tcp port.
+	- Fixed file flushing after writing a block.
+	- Force full buffer flushing after disabling the profiler.
+
+2009-08-06  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c:
+	- Avoid registering the writer thread with the runtime unless when
+	it must create a heap snapshot.
+	- Simplified buffer flushing when an appdomain, image or assembly is
+	unloaded (now it can be done in the current thread).
+	- During shutdown, moved "code chunk cleanup" is a region of code
+	that holds the profiler lock.
+
+2009-07-29  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Implemented data structures to keep track
+	of code buffers produced by the runtime, and used them instead of
+	jit_info_table_find for the statistical profiler.
+	This eliminates crashes related to problems with the writer thread and
+	its registration to the runtime.
+
+2009-06-18  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Removed debugging printf statement.
+
+2009-06-18  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c:
+	Added assembly information to classes and wrapper flag to methods.
+
+2009-05-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (write_thread_data_block): Only emit initial
+	stack snippet if we are tracking stacks.
+
+2009-05-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c (setup_user_options): Avoid tracking stacks
+	and emitting allocation caller information if we are already emitting
+	method enter and exit events.
+
+2009-04-06  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Added monitor contention profiling.
+	- Changed RESERVE_EVENTS to require a call to the new 
+	COMMIT_RESERVED_EVENTS macro after we have filled the event slots
+	(this allows to acquire all the event slots atomically).
+	- Created utility function "save_stack_delta".
+	- Created "monitor_event" callback.
+	- renamed "handle_heap_profiling" as "process_gc_event" because it
+	must be used also to help avoid interferences between garbage
+	collections and monitor	profiling.
+
+2009-03-23  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Removed useless "gc-signal" option (the
+	newer "heap=<SIGNAL>" format of the "heap" option does the same thing).
+
 2009-03-16  Massimiliano Mantione <massi@ximian.com>
-	* mono-profiler-logging.c: Backport from trunk, make it like r129416:
-	- When checking if an elf file is valid, avoid mapping it in memory
-	until we know it's usable (avoids virtual memory fragmentation issues).
-	- Correctly handle duplicated entries in /proc/self/maps.
+	* mono-profiler-logging.c: When checking if an elf file is valid,
+	avoid mapping it in memory until we know it's usable (avoids virtual
+	memory fragmentation issues).
+
+2009-01-25  Massimiliano Mantione <massi@ximian.com>
+	* mono-profiler-logging.c: Bug fixing.
+	The issue is that while reading /proc/self/maps is can happen that
+	the last regions (typically [vsyscall] and [vsdo]) are reported more
+	than once (or anyway are read more than once, even when usng the plain
+	"read" call with no buffering), and I found no workaround for this.
+	So the code must be careful and throw away the duplicates.
+	- restore_old_regions: work starting from the new regions instead of
+	the old ones.
+	- sort_regions: introduce a "throw away the duplicates" pass.
+	- fix_region_references: added a pass to make sure that the elf files
+	always reference the new regions and not the old ones.
+	- refresh_memory_regions: call "sort_regions" before
+	"restore_old_regions" so we know we have no duplicates.
 
 2009-01-18  Massimiliano Mantione <massi@ximian.com>
 	* mono-profiler-logging.c: Bug fixing.

@@ -1,3 +1,15 @@
+2010-02-19  Marek Habersack  <mhabersack@novell.com>
+
+	* SqlDataSourceTest.cs: added test for bug #572781
+
+	* ButtonTest.cs: added test for bug #325489
+
+2010-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBoxListTest.cs: added tests for bugs #377703 and #578770
+
+	* TreeViewTest.cs: added test for bug #580692
+
 2010-01-18  Marek Habersack  <mhabersack@novell.com>
 
 	* ParameterTest.cs: added tests for ConvertDbTypeToTypeCode,

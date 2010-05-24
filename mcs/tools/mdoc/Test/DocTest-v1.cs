@@ -68,6 +68,15 @@ namespace Mono.DocTest {
 	///  <para>
 	///   cref=<c>T:Mono.DocTest.DocAttribute</c>.
 	///  </para>
+	///  <format type="text/html">
+	///   <table width="100%">
+	///     <tr>
+	///       <td style="color:red">red</td>
+	///       <td style="color:blue">blue</td>
+	///       <td style="color:green">green</td>
+	///     </tr>
+	///   </table>
+	///  </format>
 	///  <code lang="C#" src="../DocTest.cs#DocAttribute Example" />
 	/// </remarks>
 	[AttributeUsage (AttributeTargets.All)]
@@ -290,10 +299,17 @@ namespace Mono.DocTest {
 
 		/// <value>A <see cref="T:System.Int32" /> value...</value>
 		/// <remarks><c>P:Mono.DocTest.Widget.Width</c>.</remarks>
-		public int Width {get {return 0;} protected set {}}
+		[Doc ("Width property")]
+		public int Width {
+			[Doc ("Width get accessor")]
+			get {return 0;}
+			[Doc ("Width set accessor")]
+			protected set {}
+		}
 
 		/// <value>A <see cref="T:System.Int64" /> value...</value>
 		/// <remarks><c>P:Mono.DocTest.Widget.Height</c>.</remarks>
+		[Doc ("Height property")]
 		protected long Height {get {return 0;}}
 
 		/// <value>A <see cref="T:System.Int16" /> value...</value>
@@ -308,7 +324,12 @@ namespace Mono.DocTest {
 		/// <param name="i">TODO</param>
 		/// <remarks><c>P:Mono.DocTest.Widget.Item(System.Int32)</c>.</remarks>
 		/// <value>A <see cref="T:System.Int32" /> instance.</value>
-		public int this [int i] {get {return 0;} set {}}
+		[Doc ("Item property")]
+		public int this [int i] {
+			get {return 0;}
+			[Doc ("Item property set accessor")]
+			set {}
+		}
 
 		/// <param name="s">Some <see cref="T:System.String" />.</param>
 		/// <param name="i">I love <see cref="T:System.Int32" />s.</param>
@@ -317,7 +338,13 @@ namespace Mono.DocTest {
 		public int this [string s, int i] {get {return 0;} set {}}
 
 		/// <remarks><c>E:Mono.DocTest.Widget.AnEvent</c>.</remarks>
-		public event Del AnEvent;
+		[Doc ("Del event")]
+		public event Del AnEvent {
+			[Doc ("Del add accessor")]
+			add {}
+			[Doc ("Del remove accessor")]
+			remove {}
+		}
 
 		/// <remarks><c>E:Mono.DocTest.Widget.AnotherEvent</c>.</remarks>
 		protected event Del AnotherEvent;
@@ -362,6 +389,7 @@ namespace Mono.DocTest {
 		///  <para><c>M:Mono.DocTest.UseLists.Process(System.Collections.Generic.List{System.Int32})</c>.</para>
 		/// <para><see cref="M:System.Collections.Generic.List{System.Int32}.Remove(`0)" /></para>
 		/// </remarks>
+		/// <exception invalid="foo">text!</exception>
 		public void Process (List<int> list)
 		{
 			// Bug: only creation is looked for, so this generates an <exception/>
@@ -372,6 +400,12 @@ namespace Mono.DocTest {
 			// delegates/interface calls:
 			Func<int, int> a = x => {throw new InvalidOperationException ();};
 			a (1);
+
+			// Multi-dimensional arrays have "phantom" methods that Cecil can't
+			// resolve, as they're provided by the runtime.  These should be
+			// ignored.
+			int[,] array = new int[1,1];
+			array[0,0] = 42;
 		}
 
 		/// <param name="list">A <see cref="T:Mono.DocTest.Generic.MyList{System.Predicate{System.Int32}}" />.</param>

@@ -23,29 +23,17 @@ namespace Mono.CSharp {
 		//
 		static MethodInfo get_namespaces_method;
 
-		string alias_name;
+		protected readonly string alias_name;
 		protected Assembly [] referenced_assemblies;
 
 		Hashtable all_namespaces;
 
-		static ListDictionary root_namespaces;
-		public static GlobalRootNamespace Global;
-		
 		static RootNamespace ()
 		{
 			get_namespaces_method = typeof (Assembly).GetMethod ("GetNamespaces", BindingFlags.Instance | BindingFlags.NonPublic);
-
-			Reset ();
 		}
 
-		public static void Reset ()
-		{
-			root_namespaces = new ListDictionary ();
-			Global = new GlobalRootNamespace ();
-			root_namespaces ["global"] = Global;
-		}
-
-		protected RootNamespace (string alias_name)
+		public RootNamespace (string alias_name)
 			: base (null, String.Empty)
 		{
 			this.alias_name = alias_name;
@@ -69,50 +57,21 @@ namespace Mono.CSharp {
 			referenced_assemblies = n;
 		}
 
-		public static void DefineRootNamespace (string alias, Assembly assembly)
+		public void ComputeNamespace (CompilerContext ctx, Type extensionType)
 		{
-			if (alias == "global") {
-				NamespaceEntry.Error_GlobalNamespaceRedefined (Location.Null);
-				return;
-			}
-
-			RootNamespace retval = GetRootNamespace (alias);
-			if (retval == null) {
-				retval = new RootNamespace (alias);
-				root_namespaces.Add (alias, retval);
-			}
-
-			retval.AddAssemblyReference (assembly);
-		}
-
-		public static RootNamespace GetRootNamespace (string name)
-		{
-			return (RootNamespace) root_namespaces [name];
-		}
-
-		public static void ComputeNamespaces ()
-		{
-			//
-			// Do very early lookup because type is required when we cache
-			// imported extension types in ComputeNamespaces
-			//
-			TypeManager.extension_attribute_type = TypeManager.CoreLookupType ("System.Runtime.CompilerServices", "ExtensionAttribute", Kind.Class, false);
-			
-			foreach (RootNamespace rn in root_namespaces.Values) {
-				foreach (Assembly a in rn.referenced_assemblies) {
-					try {
-						rn.ComputeNamespaces (a);
-					} catch (TypeLoadException e) {
-						Report.Error (11, Location.Null, e.Message);
-					} catch (System.IO.FileNotFoundException) {
-						Report.Error (12, Location.Null, "An assembly `{0}' is used without being referenced",
-							a.FullName);
-					}
+			foreach (Assembly a in referenced_assemblies) {
+				try {
+					ComputeNamespaces (a, extensionType);
+				} catch (TypeLoadException e) {
+					ctx.Report.Error (11, Location.Null, e.Message);
+				} catch (System.IO.FileNotFoundException) {
+					ctx.Report.Error (12, Location.Null, "An assembly `{0}' is used without being referenced",
+						a.FullName);
 				}
 			}
 		}
 
-		public virtual Type LookupTypeReflection (string name, Location loc)
+		public virtual Type LookupTypeReflection (CompilerContext ctx, string name, Location loc, bool must_be_unique)
 		{
 			Type found_type = null;
 
@@ -121,17 +80,24 @@ namespace Mono.CSharp {
 				if (t == null)
 					continue;
 
+				if (!must_be_unique)
+					return t;
+
 				if (found_type == null) {
 					found_type = t;
 					continue;
 				}
 
-				Report.SymbolRelatedToPreviousError (found_type);
-				Report.SymbolRelatedToPreviousError (t);
+				// When type is forwarded
+				if (t.Assembly == found_type.Assembly)
+					continue;					
+
+				ctx.Report.SymbolRelatedToPreviousError (found_type);
+				ctx.Report.SymbolRelatedToPreviousError (t);
 				if (loc.IsNull) {
-					Error_AmbiguousPredefinedType (loc, name, found_type);
+					Error_AmbiguousPredefinedType (ctx, loc, name, found_type);
 				} else {
-					Report.Error (433, loc, "The imported type `{0}' is defined multiple times", name);
+					ctx.Report.Error (433, loc, "The imported type `{0}' is defined multiple times", name);
 				}
 
 				return found_type;
@@ -140,9 +106,33 @@ namespace Mono.CSharp {
 			return found_type;
 		}
 
-		protected void Error_AmbiguousPredefinedType (Location loc, string name, Type type)
+		//
+		// Returns the types starting with the given prefix
+		//
+		public ICollection CompletionGetTypesStartingWith (string prefix)
 		{
-			Report.Warning (1685, 1, loc,
+			Hashtable result = null;
+
+			foreach (Assembly a in referenced_assemblies){
+				Type [] mtypes = a.GetTypes ();
+
+				foreach (Type t in mtypes){
+					string f = t.FullName;
+
+					if (f.StartsWith (prefix) && (result == null || !result.Contains (f))){
+						if (result == null)
+							result = new Hashtable ();
+
+						result [f] = f;
+					}
+				}
+			}
+			return result == null ? result : result.Keys;
+		}
+		
+		protected static void Error_AmbiguousPredefinedType (CompilerContext ctx, Location loc, string name, Type type)
+		{
+			ctx.Report.Warning (1685, 1, loc,
 				"The predefined type `{0}' is ambiguous. Using definition from `{1}'",
 				name, type.Assembly.FullName);
 		}
@@ -167,17 +157,16 @@ namespace Mono.CSharp {
 		void RegisterExtensionMethodClass (Type t)
  		{
 			string n = t.Namespace;
- 			Namespace ns = n == null ? Global : (Namespace)all_namespaces [n];
+			Namespace ns = n == null ? GlobalRootNamespace.Instance : (Namespace) all_namespaces[n];
  			if (ns == null)
  				ns = GetNamespace (n, true);
  
  			ns.RegisterExternalExtensionMethodClass (t);
  		}
 
-  		protected void ComputeNamespaces (Assembly assembly)
+  		void ComputeNamespaces (Assembly assembly, Type extensionType)
   		{
- 			bool contains_extension_methods = TypeManager.extension_attribute_type != null &&
- 					assembly.IsDefined(TypeManager.extension_attribute_type, false);
+			bool contains_extension_methods = extensionType != null && assembly.IsDefined (extensionType, false);
  
  			if (get_namespaces_method != null) {
   				string [] namespaces = (string []) get_namespaces_method.Invoke (assembly, null);
@@ -190,7 +179,7 @@ namespace Mono.CSharp {
 
  			foreach (Type t in assembly.GetTypes ()) {
  				if ((t.Attributes & Class.StaticClassAttribute) == Class.StaticClassAttribute &&
- 					contains_extension_methods && t.IsDefined (TypeManager.extension_attribute_type, false))
+ 					contains_extension_methods && t.IsDefined (extensionType, false))
  					RegisterExtensionMethodClass (t);
 
 				if (get_namespaces_method == null)
@@ -200,6 +189,10 @@ namespace Mono.CSharp {
 
 		protected static Type GetTypeInAssembly (Assembly assembly, string name)
 		{
+			if (assembly == null)
+				throw new ArgumentNullException ("assembly");
+			if (name == null)
+				throw new ArgumentNullException ("name");
 			Type t = assembly.GetType (name);
 			if (t == null)
 				return null;
@@ -233,10 +226,20 @@ namespace Mono.CSharp {
 
 	public class GlobalRootNamespace : RootNamespace {
 		Module [] modules;
+		ListDictionary root_namespaces;
 
-		public GlobalRootNamespace ()
+		public static GlobalRootNamespace Instance = new GlobalRootNamespace ();
+
+		GlobalRootNamespace ()
 			: base ("global")
 		{
+			root_namespaces = new ListDictionary ();
+			root_namespaces.Add (alias_name, this);
+		}
+
+		public static void Reset ()
+		{
+			Instance = new GlobalRootNamespace ();
 		}
 
 		public Assembly [] Assemblies {
@@ -256,22 +259,56 @@ namespace Mono.CSharp {
 			n [top] = m;
 			modules = n;
 
-			if (m == CodeGen.Module.Builder)
+			if (m == RootContext.ToplevelTypes.Builder)
 				return;
 
 			foreach (Type t in m.GetTypes ())
 				RegisterNamespace (t.Namespace);
 		}
 
-		public override void Error_NamespaceDoesNotExist(DeclSpace ds, Location loc, string name)
+		public void ComputeNamespaces (CompilerContext ctx)
+		{
+			//
+			// Do very early lookup because type is required when we cache
+			// imported extension types in ComputeNamespaces
+			//
+			Type extension_attribute_type = TypeManager.CoreLookupType (ctx, "System.Runtime.CompilerServices", "ExtensionAttribute", Kind.Class, false);
+
+			foreach (RootNamespace rn in root_namespaces.Values) {
+				rn.ComputeNamespace (ctx, extension_attribute_type);
+			}
+		}
+
+		public void DefineRootNamespace (string alias, Assembly assembly, CompilerContext ctx)
+		{
+			if (alias == alias_name) {
+				NamespaceEntry.Error_GlobalNamespaceRedefined (Location.Null, ctx.Report);
+				return;
+			}
+
+			RootNamespace retval = GetRootNamespace (alias);
+			if (retval == null) {
+				retval = new RootNamespace (alias);
+				root_namespaces.Add (alias, retval);
+			}
+
+			retval.AddAssemblyReference (assembly);
+		}
+
+		public override void Error_NamespaceDoesNotExist (Location loc, string name, Report Report)
 		{
 			Report.Error (400, loc, "The type or namespace name `{0}' could not be found in the global namespace (are you missing an assembly reference?)",
 				name);
 		}
 
-		public override Type LookupTypeReflection (string name, Location loc)
+		public RootNamespace GetRootNamespace (string name)
 		{
-			Type found_type = base.LookupTypeReflection (name, loc);
+			return (RootNamespace) root_namespaces[name];
+		}
+
+		public override Type LookupTypeReflection (CompilerContext ctx, string name, Location loc, bool must_be_unique)
+		{
+			Type found_type = base.LookupTypeReflection (ctx, name, loc, must_be_unique);
 
 			if (modules != null) {
 				foreach (Module module in modules) {
@@ -284,14 +321,14 @@ namespace Mono.CSharp {
 						continue;
 					}
 
-					Report.SymbolRelatedToPreviousError (found_type);
+					ctx.Report.SymbolRelatedToPreviousError (found_type);
 					if (loc.IsNull) {
 						DeclSpace ds = TypeManager.LookupDeclSpace (t);
-						Error_AmbiguousPredefinedType (ds.Location, name, found_type);
+						Error_AmbiguousPredefinedType (ctx, ds.Location, name, found_type);
 						return found_type;
 					}
-					Report.SymbolRelatedToPreviousError (t);
-					Report.Warning (436, 2, loc, "The type `{0}' conflicts with the imported type `{1}'. Ignoring the imported type definition",
+					ctx.Report.SymbolRelatedToPreviousError (t);
+					ctx.Report.Warning (436, 2, loc, "The type `{0}' conflicts with the imported type `{1}'. Ignoring the imported type definition",
 						TypeManager.CSharpName (t), TypeManager.CSharpName (found_type));
 					return t;
 				}
@@ -364,15 +401,15 @@ namespace Mono.CSharp {
 			root.RegisterNamespace (this);
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			return this;
 		}
 
-		public virtual void Error_NamespaceDoesNotExist (DeclSpace ds, Location loc, string name)
+		public virtual void Error_NamespaceDoesNotExist (Location loc, string name, Report Report)
 		{
 			if (name.IndexOf ('`') > 0) {
-				FullNamedExpression retval = Lookup (ds, SimpleName.RemoveGenericArity (name), loc);
+				FullNamedExpression retval = Lookup (RootContext.ToplevelTypes.Compiler, SimpleName.RemoveGenericArity (name), loc);
 				if (retval != null) {
 					Error_TypeArgumentsCannotBeUsed (retval, loc);
 					return;
@@ -391,30 +428,31 @@ namespace Mono.CSharp {
 
 		public static void Error_InvalidNumberOfTypeArguments (Type t, Location loc)
 		{
-			Report.SymbolRelatedToPreviousError (t);
-			Report.Error (305, loc, "Using the generic type `{0}' requires `{1}' type argument(s)",
+			RootContext.ToplevelTypes.Compiler.Report.SymbolRelatedToPreviousError (t);
+			RootContext.ToplevelTypes.Compiler.Report.Error (305, loc, "Using the generic type `{0}' requires `{1}' type argument(s)",
 				TypeManager.CSharpName(t), TypeManager.GetNumberOfTypeArguments(t).ToString());
 		}
 
 		public static void Error_TypeArgumentsCannotBeUsed (FullNamedExpression expr, Location loc)
 		{
 			if (expr is TypeExpr) {
-				Report.SymbolRelatedToPreviousError (expr.Type);
+				RootContext.ToplevelTypes.Compiler.Report.SymbolRelatedToPreviousError (expr.Type);
 				Error_TypeArgumentsCannotBeUsed (loc, "type", expr.GetSignatureForError ());
 			} else {
-				expr.Error_ExpressionCannotBeGeneric (loc);
+				RootContext.ToplevelTypes.Compiler.Report.Error (307, loc, "The {0} `{1}' cannot be used with type arguments",
+					expr.ExprClassName, expr.GetSignatureForError ());
 			}
 		}
 
 		public static void Error_TypeArgumentsCannotBeUsed (MethodBase mi, Location loc)
 		{
-			Report.SymbolRelatedToPreviousError (mi);
+			RootContext.ToplevelTypes.Compiler.Report.SymbolRelatedToPreviousError (mi);
 			Error_TypeArgumentsCannotBeUsed (loc, "method", TypeManager.CSharpSignature (mi));
 		}
 
 		static void Error_TypeArgumentsCannotBeUsed (Location loc, string type, string name)
 		{
-			Report.Error(308, loc, "The non-generic {0} `{1}' cannot be used with the type arguments",
+			RootContext.ToplevelTypes.Compiler.Report.Error(308, loc, "The non-generic {0} `{1}' cannot be used with the type arguments",
 				type, name);
 		}
 
@@ -454,7 +492,7 @@ namespace Mono.CSharp {
 			return declspaces != null && declspaces [name] != null;
 		}
 
-		TypeExpr LookupType (string name, Location loc)
+		TypeExpr LookupType (CompilerContext ctx, string name, Location loc)
 		{
 			if (cached_types.Contains (name))
 				return cached_types [name] as TypeExpr;
@@ -486,7 +524,7 @@ namespace Mono.CSharp {
 				}
 			}
 			string lookup = t != null ? t.FullName : (fullname.Length == 0 ? name : fullname + "." + name);
-			Type rt = root.LookupTypeReflection (lookup, loc);
+			Type rt = root.LookupTypeReflection (ctx, lookup, loc, t == null);
 
 			// HACK: loc.IsNull when the type is core type
 			if (t == null || (rt != null && loc.IsNull))
@@ -516,12 +554,44 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		public FullNamedExpression Lookup (DeclSpace ds, string name, Location loc)
+		public FullNamedExpression Lookup (CompilerContext ctx, string name, Location loc)
 		{
 			if (namespaces.Contains (name))
 				return (Namespace) namespaces [name];
 
-			return LookupType (name, loc);
+			return LookupType (ctx, name, loc);
+		}
+
+		//
+		// Completes types with the given `prefix' and stores the results in `result'
+		//
+		public void CompletionGetTypesStartingWith (string prefix, Hashtable result)
+		{
+			int l = fullname.Length + 1;
+			ICollection res = root.CompletionGetTypesStartingWith (fullname + "." + prefix);
+
+			if (res == null)
+				return;
+			
+			foreach (string match in res){
+				string x = match.Substring (l);
+
+				// Turn reflection nested classes foo+bar into foo.bar
+				x = x.Replace ('+', '.');
+
+				// Only get the first name element, no point in adding anything beyond the first dot.
+				int p = x.IndexOf ('.');
+				if (p != -1)
+					x = x.Substring (0, p);
+
+				// Turn Foo`N into Foo<
+				p = x.IndexOf ('`');
+				if (p != -1)
+					x = x.Substring (0, p) + "<";
+
+				if (!result.Contains (x))
+					result [x] = x;
+			}
 		}
 
 		public void RegisterExternalExtensionMethodClass (Type type)
@@ -554,7 +624,7 @@ namespace Mono.CSharp {
 					if (c == null)
 						continue;
 
-					if (!c.IsStaticClass)
+					if ((c.ModFlags & Modifiers.METHOD_EXTENSION) == 0)
 						continue;
 
 					ArrayList res = c.MemberCache.FindExtensionMethods (extensionType, name, c != currentClass);
@@ -617,7 +687,7 @@ namespace Mono.CSharp {
 	//
 	// Namespace container as created by the parser
 	//
-	public class NamespaceEntry : IResolveContext {
+	public class NamespaceEntry : IMemberContext {
 
 		class UsingEntry {
 			readonly MemberName name;
@@ -645,7 +715,7 @@ namespace Mono.CSharp {
 				get { return GetSignatureForError (); }
 			}
 
-			public Namespace Resolve (IResolveContext rc)
+			public Namespace Resolve (IMemberContext rc)
 			{
 				if (resolved != null)
 					return resolved;
@@ -656,8 +726,8 @@ namespace Mono.CSharp {
 
 				resolved = fne as Namespace;
 				if (resolved == null) {
-					Report.SymbolRelatedToPreviousError (fne.Type);
-					Report.Error (138, Location,
+					rc.Compiler.Report.SymbolRelatedToPreviousError (fne.Type);
+					rc.Compiler.Report.Error (138, Location,
 						"`{0}' is a type not a namespace. A using namespace directive can only be applied to namespaces",
 						GetSignatureForError ());
 				}
@@ -680,11 +750,11 @@ namespace Mono.CSharp {
 				this.Location = loc;
 			}
 
-			public virtual FullNamedExpression Resolve (IResolveContext rc)
+			public virtual FullNamedExpression Resolve (IMemberContext rc)
 			{
-				FullNamedExpression fne = RootNamespace.GetRootNamespace (Alias);
+				FullNamedExpression fne = GlobalRootNamespace.Instance.GetRootNamespace (Alias);
 				if (fne == null) {
-					Report.Error (430, Location,
+					rc.Compiler.Report.Error (430, Location,
 						"The extern alias `{0}' was not specified in -reference option",
 						Alias);
 				}
@@ -709,10 +779,13 @@ namespace Mono.CSharp {
 				this.value = name;
 			}
 
-			public override FullNamedExpression Resolve (IResolveContext rc)
+			public override FullNamedExpression Resolve (IMemberContext rc)
 			{
 				if (resolved != null || value == null)
 					return resolved;
+
+				if (rc == null)
+					return null;
 
 				resolved = value.GetTypeExpression ().ResolveAsTypeStep (rc, false);
 				if (resolved == null) {
@@ -720,13 +793,8 @@ namespace Mono.CSharp {
 					return null;
 				}
 
-				TypeExpr te = resolved as TypeExpr;
-				if (te != null) {
-					if (!te.CheckAccessLevel (rc.DeclContainer)) {
-						Report.SymbolRelatedToPreviousError (te.Type);
-						Expression.ErrorIsInaccesible (resolved.Location, resolved.GetSignatureForError ());
-					}
-				}
+				if (resolved is TypeExpr)
+					resolved = resolved.ResolveAsBaseTerminal (rc, false);
 
 				return resolved;
 			}
@@ -769,9 +837,9 @@ namespace Mono.CSharp {
 			if (parent != null)
 				ns = parent.NS.GetNamespace (name, true);
 			else if (name != null)
-				ns = RootNamespace.Global.GetNamespace (name, true);
+				ns = GlobalRootNamespace.Instance.GetNamespace (name, true);
 			else
-				ns = RootNamespace.Global;
+				ns = GlobalRootNamespace.Instance;
 			SlaveDeclSpace = new RootDeclSpace (this);
 		}
 
@@ -893,7 +961,7 @@ namespace Mono.CSharp {
 		public void AddUsing (MemberName name, Location loc)
 		{
 			if (DeclarationFound){
-				Report.Error (1529, loc, "A using clause must precede all other namespace elements except extern alias declarations");
+				Compiler.Report.Error (1529, loc, "A using clause must precede all other namespace elements except extern alias declarations");
 			}
 
 			if (using_clauses == null) {
@@ -901,8 +969,8 @@ namespace Mono.CSharp {
 			} else {
 				foreach (UsingEntry old_entry in using_clauses) {
 					if (name.Equals (old_entry.MemberName)) {
-						Report.SymbolRelatedToPreviousError (old_entry.Location, old_entry.GetSignatureForError ());
-						Report.Warning (105, 3, loc, "The using directive for `{0}' appeared previously in this namespace", name.GetSignatureForError ());
+						Compiler.Report.SymbolRelatedToPreviousError (old_entry.Location, old_entry.GetSignatureForError ());
+						Compiler.Report.Warning (105, 3, loc, "The using directive for `{0}' appeared previously in this namespace", name.GetSignatureForError ());
 						return;
 					}
 				}
@@ -915,17 +983,17 @@ namespace Mono.CSharp {
 		{
 			// TODO: This is parser bussines
 			if (DeclarationFound){
-				Report.Error (1529, loc, "A using clause must precede all other namespace elements except extern alias declarations");
+				Compiler.Report.Error (1529, loc, "A using clause must precede all other namespace elements except extern alias declarations");
 			}
 
 			if (RootContext.Version != LanguageVersion.ISO_1 && alias == "global")
-				Report.Warning (440, 2, loc, "An alias named `global' will not be used when resolving 'global::';" +
+				Compiler.Report.Warning (440, 2, loc, "An alias named `global' will not be used when resolving 'global::';" +
 					" the global namespace will be used instead");
 
 			AddUsingAlias (new LocalUsingAliasEntry (alias, name, loc));
 		}
 
-		public void AddUsingExternalAlias (string alias, Location loc)
+		public void AddUsingExternalAlias (string alias, Location loc, Report Report)
 		{
 			// TODO: Do this in parser
 			bool not_first = using_clauses != null || DeclarationFound;
@@ -942,7 +1010,7 @@ namespace Mono.CSharp {
 				Report.Error (439, loc, "An extern alias declaration must precede all other elements");
 
 			if (alias == "global") {
-				Error_GlobalNamespaceRedefined (loc);
+				Error_GlobalNamespaceRedefined (loc, Report);
 				return;
 			}
 
@@ -956,8 +1024,8 @@ namespace Mono.CSharp {
 			} else {
 				foreach (UsingAliasEntry entry in using_aliases) {
 					if (uae.Alias == entry.Alias) {
-						Report.SymbolRelatedToPreviousError (uae.Location, uae.Alias);
-						Report.Error (1537, entry.Location, "The using alias `{0}' appeared previously in this namespace",
+						Compiler.Report.SymbolRelatedToPreviousError (uae.Location, uae.Alias);
+						Compiler.Report.Error (1537, entry.Location, "The using alias `{0}' appeared previously in this namespace",
 							entry.Alias);
 						return;
 					}
@@ -971,15 +1039,9 @@ namespace Mono.CSharp {
 		/// Does extension methods look up to find a method which matches name and extensionType.
 		/// Search starts from this namespace and continues hierarchically up to top level.
 		///
-		public ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, ClassOrStruct currentClass, string name, Location loc)
+		public ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, string name, Location loc)
 		{
 			ArrayList candidates = null;
-			if (currentClass != null) {
-				candidates = ns.LookupExtensionMethod (extensionType, currentClass, name);
-				if (candidates != null)
-					return new ExtensionMethodGroupExpr (candidates, this, extensionType, loc);
-			}
-
 			foreach (Namespace n in GetUsingTable ()) {
 				ArrayList a = n.LookupExtensionMethod (extensionType, null, name);
 				if (a == null)
@@ -1012,30 +1074,51 @@ namespace Mono.CSharp {
 			//
 			// Continue in parent scope
 			//
-			return parent.LookupExtensionMethod (extensionType, currentClass, name, loc);
+			return parent.LookupExtensionMethod (extensionType, name, loc);
 		}
 
-		public FullNamedExpression LookupNamespaceOrType (DeclSpace ds, string name, Location loc, bool ignore_cs0104)
+		public FullNamedExpression LookupNamespaceOrType (string name, Location loc, bool ignore_cs0104)
 		{
 			// Precondition: Only simple names (no dots) will be looked up with this function.
 			FullNamedExpression resolved = null;
 			for (NamespaceEntry curr_ns = this; curr_ns != null; curr_ns = curr_ns.ImplicitParent) {
-				if ((resolved = curr_ns.Lookup (ds, name, loc, ignore_cs0104)) != null)
+				if ((resolved = curr_ns.Lookup (name, loc, ignore_cs0104)) != null)
 					break;
 			}
 			return resolved;
 		}
 
-		static void Error_AmbiguousTypeReference (Location loc, string name, FullNamedExpression t1, FullNamedExpression t2)
+		public ICollection CompletionGetTypesStartingWith (string prefix)
 		{
-			Report.SymbolRelatedToPreviousError (t1.Type);
-			Report.SymbolRelatedToPreviousError (t2.Type);
-			Report.Error (104, loc, "`{0}' is an ambiguous reference between `{1}' and `{2}'",
+			Hashtable result = new Hashtable ();
+			
+			for (NamespaceEntry curr_ns = this; curr_ns != null; curr_ns = curr_ns.ImplicitParent){
+				foreach (Namespace using_ns in GetUsingTable ()){
+					if (prefix.StartsWith (using_ns.Name)){
+						int ld = prefix.LastIndexOf ('.');
+						if (ld != -1){
+							string rest = prefix.Substring (ld+1);
+
+							using_ns.CompletionGetTypesStartingWith (rest, result);
+						}
+					}
+					using_ns.CompletionGetTypesStartingWith (prefix, result);
+				}
+			}
+
+			return result.Keys;
+		}
+		
+		void Error_AmbiguousTypeReference (Location loc, string name, FullNamedExpression t1, FullNamedExpression t2)
+		{
+			Compiler.Report.SymbolRelatedToPreviousError (t1.Type);
+			Compiler.Report.SymbolRelatedToPreviousError (t2.Type);
+			Compiler.Report.Error (104, loc, "`{0}' is an ambiguous reference between `{1}' and `{2}'",
 				name, t1.GetSignatureForError (), t2.GetSignatureForError ());
 		}
 
 		// Looks-up a alias named @name in this and surrounding namespace declarations
-		public FullNamedExpression LookupAlias (string name)
+		public FullNamedExpression LookupNamespaceAlias (string name)
 		{
 			for (NamespaceEntry n = this; n != null; n = n.ImplicitParent) {
 				if (n.using_aliases == null)
@@ -1050,12 +1133,12 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		private FullNamedExpression Lookup (DeclSpace ds, string name, Location loc, bool ignore_cs0104)
+		private FullNamedExpression Lookup (string name, Location loc, bool ignore_cs0104)
 		{
 			//
 			// Check whether it's in the namespace.
 			//
-			FullNamedExpression fne = ns.Lookup (ds, name, loc);
+			FullNamedExpression fne = ns.Lookup (Compiler, name, loc);
 
 			//
 			// Check aliases. 
@@ -1067,8 +1150,8 @@ namespace Mono.CSharp {
 							if (Doppelganger != null) {
 								// TODO: Namespace has broken location
 								//Report.SymbolRelatedToPreviousError (fne.Location, null);
-								Report.SymbolRelatedToPreviousError (ue.Location, null);
-								Report.Error (576, loc,
+								Compiler.Report.SymbolRelatedToPreviousError (ue.Location, null);
+								Compiler.Report.Error (576, loc,
 									"Namespace `{0}' contains a definition with same name as alias `{1}'",
 									GetSignatureForError (), name);
 							} else {
@@ -1092,7 +1175,7 @@ namespace Mono.CSharp {
 			//
 			FullNamedExpression match = null;
 			foreach (Namespace using_ns in GetUsingTable ()) {
-				match = using_ns.Lookup (ds, name, loc);
+				match = using_ns.Lookup (Compiler, name, loc);
 				if (match == null || !(match is TypeExpr))
 					continue;
 				if (fne != null) {
@@ -1160,12 +1243,12 @@ namespace Mono.CSharp {
 			Console.WriteLine ("    Try using -pkg:" + s);
 		}
 
-		public static void Error_GlobalNamespaceRedefined (Location loc)
+		public static void Error_GlobalNamespaceRedefined (Location loc, Report Report)
 		{
 			Report.Error (1681, loc, "You cannot redefine the global extern alias");
 		}
 
-		public static void Error_NamespaceNotFound (Location loc, string name)
+		public static void Error_NamespaceNotFound (Location loc, string name, Report Report)
 		{
 			Report.Error (246, loc, "The type or namespace name `{0}' could not be found. Are you missing a using directive or an assembly reference?",
 				name);
@@ -1230,22 +1313,34 @@ namespace Mono.CSharp {
 			return ns.ToString ();
 		}
 
-		#region IResolveContext Members
+		#region IMemberContext Members
 
-		public DeclSpace DeclContainer {
-			get { return SlaveDeclSpace; }
+		public CompilerContext Compiler {
+			get { return RootContext.ToplevelTypes.Compiler; }
 		}
 
-		public bool IsInObsoleteScope {
-			get { return SlaveDeclSpace.IsInObsoleteScope; }
+		public Type CurrentType {
+			get { return SlaveDeclSpace.CurrentType; }
 		}
 
-		public bool IsInUnsafeScope {
-			get { return SlaveDeclSpace.IsInUnsafeScope; }
+		public TypeContainer CurrentTypeDefinition {
+			get { return SlaveDeclSpace.CurrentTypeDefinition; }
 		}
 
-		public DeclSpace GenericDeclContainer {
-			get { return SlaveDeclSpace; }
+		public TypeParameter[] CurrentTypeParameters {
+			get { return SlaveDeclSpace.CurrentTypeParameters; }
+		}
+
+		public bool IsObsolete {
+			get { return SlaveDeclSpace.IsObsolete; }
+		}
+
+		public bool IsUnsafe {
+			get { return SlaveDeclSpace.IsUnsafe; }
+		}
+
+		public bool IsStatic {
+			get { return SlaveDeclSpace.IsStatic; }
 		}
 
 		#endregion

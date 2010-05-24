@@ -2320,6 +2320,31 @@ namespace MonoTests.System.Xml
 			Assert.IsTrue (xml.IndexOf ("xmlns", first + 5) > 0);
 		}
 
+		[Test]
+		public void WriteAttributePrefixedNullNamespace ()
+		{
+			StringWriter sw = new StringWriter ();
+			XmlWriter xw = new XmlTextWriter (sw);
+			xw.WriteStartElement ("root");
+			xw.WriteAttributeString ("xmlns", "abc", null, "uri:abcnamespace");
+			xw.WriteAttributeString ("abc", "def", null, "value");
+			xw.WriteEndElement ();
+			Assert.AreEqual ("<root xmlns:abc=\"uri:abcnamespace\" abc:def=\"value\" />", sw.ToString ());
+		}
+
+		[Test]
+		public void WriteElementPrefixedNullNamespace ()
+		{
+			StringWriter sw = new StringWriter ();
+			XmlWriter xw = new XmlTextWriter (sw);
+			xw.WriteStartElement ("root");
+			xw.WriteAttributeString ("xmlns", "abc", null, "uri:abcnamespace");
+			xw.WriteStartElement ("abc", "def", null);
+			xw.WriteEndElement ();
+			xw.WriteEndElement ();
+			Assert.AreEqual ("<root xmlns:abc=\"uri:abcnamespace\"><abc:def /></root>", sw.ToString ());
+		}
+
 #if NET_2_0
 		[Test]
 		[ExpectedException (typeof (InvalidOperationException))]

@@ -32,94 +32,18 @@ using System.Threading;
 
 namespace System.ServiceModel.Channels
 {
-	internal class HttpRequestContext : RequestContext
+	internal class HttpRequestContext : HttpRequestContextBase
 	{
-		class HttpRequestContextAsyncResult : IAsyncResult
-		{
-			AutoResetEvent wait;
-			AsyncCallback callback;
-			object state;
-			bool done, waiting;
-			TimeSpan timeout;
-			Exception error;
-
-			public HttpRequestContextAsyncResult (
-				HttpRequestContext context,
-				Message msg,
-				TimeSpan timeout,
-				AsyncCallback callback,
-				object state)
-			{
-				this.timeout = timeout;
-				this.wait = new AutoResetEvent (false);
-				ThreadStart ts = delegate () {
-					try {
-						context.ProcessReply (msg, timeout);
-						if (callback != null)
-							callback (this);
-					} catch (Exception ex) {
-						error = ex;
-					} finally {
-						done = true;
-						wait.Set ();
-					}
-				};
-				Thread t = new Thread (ts);
-				t.Start ();
-			}
-
-			public WaitHandle AsyncWaitHandle {
-				get { return wait; }
-			}
-
-			public object AsyncState {
-				get { return state; }
-			}
-
-			public bool CompletedSynchronously {
-				get { return done && !waiting; }
-			}
-
-			public bool IsCompleted {
-				get { return done; }
-			}
-
-			public void WaitEnd ()
-			{
-				if (!done) {
-					waiting = true;
-					wait.WaitOne (timeout, true);
-				}
-				if (error != null)
-					throw error;
-			}
-		}
-
-		Message msg;
 		HttpListenerContext ctx;
-		HttpReplyChannel channel;
 
 		public HttpRequestContext (
 			HttpReplyChannel channel,
 			Message msg, HttpListenerContext ctx)
+			: base (channel, msg)
 		{
-			if (channel == null)
-				throw new ArgumentNullException ("channel");
-			if (msg == null)
-				throw new ArgumentNullException ("msg");
 			if (ctx == null)
 				throw new ArgumentNullException ("ctx");
-			this.channel = channel;
-			this.msg = msg;
 			this.ctx = ctx;
-		}
-
-		public override Message RequestMessage {
-			get { return msg; }
-		}
-
-		public HttpReplyChannel Channel {
-			get { return channel; }
 		}
 
 		public override void Abort ()
@@ -127,45 +51,28 @@ namespace System.ServiceModel.Channels
 			ctx.Response.Abort ();
 		}
 
-		public override IAsyncResult BeginReply (
-			Message msg, AsyncCallback callback, object state)
-		{
-			return BeginReply (msg,
-				channel.DefaultSendTimeout,
-				callback, state);
-		}
-
-		public override IAsyncResult BeginReply (
-			Message msg, TimeSpan timeout,
-			AsyncCallback callback, object state)
-		{
-			return new HttpRequestContextAsyncResult (this, msg, timeout, callback, state);
-		}
-
-		public override void EndReply (IAsyncResult result)
-		{
-			if (result == null)
-				throw new ArgumentNullException ("result");
-			HttpRequestContextAsyncResult r = result as HttpRequestContextAsyncResult;
-			if (r == null)
-				throw new InvalidOperationException ("Wrong IAsyncResult");
-			r.WaitEnd ();
-		}
-
-		public override void Reply (Message msg)
-		{
-			Reply (msg, channel.DefaultSendTimeout);
-		}
-
-		public override void Reply (Message msg, TimeSpan timeout)
-		{
-			ProcessReply (msg, timeout);
-		}
-
-		protected virtual void ProcessReply (Message msg, TimeSpan timeout)
+		protected override void ProcessReply (Message msg, TimeSpan timeout)
 		{
 			if (msg == null)
 				throw new ArgumentNullException ("msg");
+
+			// Handle DestinationUnreacheable as 400 (it is what .NET does).
+			if (msg.IsFault) {
+				// FIXME: isn't there any better way?
+				var mb = msg.CreateBufferedCopy (0x10000);
+				var fault = MessageFault.CreateFault (mb.CreateMessage (), 0x10000);
+				if (fault.Code.Name == "DestinationUnreachable") {
+					ctx.Response.StatusCode = 400;
+					return;
+				}
+				else
+					msg = mb.CreateMessage ();
+			}
+
+			// FIXME: should this be done here?
+			if (channel.MessageVersion.Addressing.Equals (AddressingVersion.None))
+				msg.Headers.Action = null; // prohibited
+
 			MemoryStream ms = new MemoryStream ();
 			channel.Encoder.WriteMessage (msg, ms);
 			ctx.Response.ContentType = channel.Encoder.ContentType;
@@ -191,15 +98,80 @@ namespace System.ServiceModel.Channels
 			}
 		}
 
+		public override void Close (TimeSpan timeout)
+		{
+			ctx.Response.Close ();
+		}
+	}
+
+	internal abstract class HttpRequestContextBase : RequestContext
+	{
+		Message request;
+		internal HttpReplyChannel channel;
+
+		public HttpRequestContextBase (
+			HttpReplyChannel channel,
+			Message request)
+		{
+			if (channel == null)
+				throw new ArgumentNullException ("channel");
+			if (request == null)
+				throw new ArgumentNullException ("request");
+			this.channel = channel;
+			this.request = request;
+		}
+
+		public override Message RequestMessage {
+			get { return request; }
+		}
+
+		public HttpReplyChannel Channel {
+			get { return channel; }
+		}
+
+		protected abstract void ProcessReply (Message msg, TimeSpan timeout);
+
+		public override IAsyncResult BeginReply (
+			Message msg, AsyncCallback callback, object state)
+		{
+			return BeginReply (msg,
+				channel.DefaultSendTimeout,
+				callback, state);
+		}
+
+		Action<Message,TimeSpan> reply_delegate;
+
+		public override IAsyncResult BeginReply (
+			Message msg, TimeSpan timeout,
+			AsyncCallback callback, object state)
+		{
+			if (reply_delegate == null)
+				reply_delegate = new Action<Message,TimeSpan> (Reply);
+			return reply_delegate.BeginInvoke (msg, timeout, callback, state);
+		}
+
+		public override void EndReply (IAsyncResult result)
+		{
+			if (result == null)
+				throw new ArgumentNullException ("result");
+			if (reply_delegate == null)
+				throw new InvalidOperationException ("reply operation has not started");
+			reply_delegate.EndInvoke (result);
+		}
+
+		public override void Reply (Message msg)
+		{
+			Reply (msg, channel.DefaultSendTimeout);
+		}
+
+		public override void Reply (Message msg, TimeSpan timeout)
+		{
+			ProcessReply (msg, timeout);
+		}
+
 		public override void Close ()
 		{
 			Close (channel.DefaultSendTimeout);
-		}
-
-		public override void Close (TimeSpan timeout)
-		{
-			// FIXME: use timeout
-			ctx.Response.Close ();
 		}
 	}
 }

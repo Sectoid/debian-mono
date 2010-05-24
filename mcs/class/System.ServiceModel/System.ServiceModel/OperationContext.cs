@@ -36,16 +36,15 @@ namespace System.ServiceModel
 {
 	public sealed class OperationContext : IExtensibleObject<OperationContext>
 	{
-		// generated guid (no special meaning)
-		const string operation_context_name = "c15795e2-bb44-4cfb-a89c-8529feb170cb";
-		Message incoming_message;
-		IDefaultCommunicationTimeouts timeouts;
+		[ThreadStatic]
+		static OperationContext current;
 
 		public static OperationContext Current {
-			get { return Thread.GetData (Thread.GetNamedDataSlot (operation_context_name)) as OperationContext; }
-			set { Thread.SetData (Thread.GetNamedDataSlot (operation_context_name), value); }
+			get { return current; }
+			set { current = value; }
 		}
 
+		Message incoming_message;
 #if !NET_2_1
 		EndpointDispatcher dispatcher;
 #endif
@@ -57,10 +56,16 @@ namespace System.ServiceModel
 		InstanceContext instance_context;
 
 		public OperationContext (IContextChannel channel)
+			: this (channel, true)
+		{
+		}
+
+		internal OperationContext (IContextChannel channel, bool isUserContext)
 		{
 			if (channel == null)
 				throw new ArgumentNullException ("channel");
 			this.channel = channel;
+			IsUserContext = isUserContext;
 		}
 
 		public event EventHandler OperationCompleted;
@@ -93,15 +98,15 @@ namespace System.ServiceModel
 #endif
 
 		public MessageHeaders IncomingMessageHeaders {
-			get { return request_ctx != null ? request_ctx.RequestMessage.Headers : null; }
+			get { return incoming_message != null ? incoming_message.Headers : null; }
 		}
 
 		public MessageProperties IncomingMessageProperties {
-			get { return request_ctx != null ? request_ctx.RequestMessage.Properties : null; }
+			get { return incoming_message != null ? incoming_message.Properties : null; }
 		}
 
 		public MessageVersion IncomingMessageVersion {
-			get { return request_ctx != null ? request_ctx.RequestMessage.Version : null; }
+			get { return incoming_message != null ? incoming_message.Version : null; }
 		}
 
 		[MonoTODO]
@@ -114,10 +119,7 @@ namespace System.ServiceModel
 			}
 		}
 
-		[MonoTODO]
-		public bool IsUserContext {
-			get { throw new NotImplementedException (); }
-		}
+		public bool IsUserContext { get; private set; }
 
 		public MessageHeaders OutgoingMessageHeaders {
 			get {
@@ -140,9 +142,8 @@ namespace System.ServiceModel
 			set { request_ctx = value; }
 		}
 
-		[MonoTODO]
 		public string SessionId {
-			get { throw new NotImplementedException (); }
+			get { return Channel.SessionId; }
 		}
 
 #if !NET_2_1
@@ -156,16 +157,7 @@ namespace System.ServiceModel
 
 		public T GetCallbackChannel<T> ()
 		{
-			if (!(channel is IDuplexContextChannel))
-				return default (T);
-			IDuplexContextChannel duplex = (IDuplexContextChannel) channel;
-			foreach (IChannel ch in duplex.CallbackInstance.IncomingChannels)
-				if (typeof (T).IsAssignableFrom (ch.GetType ()))
-					return (T) (object) ch;
-			foreach (IChannel ch in duplex.CallbackInstance.OutgoingChannels)
-				if (typeof (T).IsAssignableFrom (ch.GetType ()))
-					return (T) (object) ch;
-			return default (T);
+			return (T) (object) channel;
 		}
 
 		[MonoTODO]
@@ -181,16 +173,6 @@ namespace System.ServiceModel
 			}
 			set {
 				incoming_message = value;
-			}
-		}
-
-		internal IDefaultCommunicationTimeouts CommunicationTimeouts
-		{
-			get {
-				return timeouts;
-			}
-			set {
-				timeouts = value;
 			}
 		}
 	}

@@ -27,14 +27,13 @@
 //
 namespace System.ServiceModel.Dispatcher
 {
-	[MonoTODO]
 	public sealed class ServiceThrottle
 	{
 		internal ServiceThrottle ()
 		{
 		}
 
-		int max_call, max_session, max_instance;
+		int max_call = 16, max_session = 10, max_instance = 26;
 
 		public int MaxConcurrentCalls {
 			get { return max_call; }

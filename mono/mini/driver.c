@@ -47,7 +47,7 @@
 #include <mono/metadata/coree.h>
 #include <mono/metadata/attach.h>
 #include "mono/utils/mono-counters.h"
-#include <mono/os/gc_wrapper.h>
+#include <mono/utils/gc_wrapper.h>
 
 #include "mini.h"
 #include "jit.h"
@@ -55,6 +55,7 @@
 #include <ctype.h>
 #include <locale.h>
 #include "version.h"
+#include "debugger-agent.h"
 
 static FILE *mini_stats_fd = NULL;
 
@@ -215,6 +216,9 @@ parse_debug_options (const char* p)
 		} else if (!strncmp (p, "mdb-optimizations", 17)) {
 			opt->mdb_optimizations = TRUE;
 			p += 17;
+		} else if (!strncmp (p, "gdb", 3)) {
+			opt->gdb = TRUE;
+			p += 3;
 		} else {
 			fprintf (stderr, "Invalid debug option `%s', use --help-debug for details\n", p);
 			return FALSE;
@@ -368,7 +372,9 @@ mini_regression (MonoImage *image, int verbose, int *total_run)
 
 	/* load the metadata */
 	for (i = 0; i < mono_image_get_table_rows (image, MONO_TABLE_METHOD); ++i) {
-       	        method = mono_get_method (image, MONO_TOKEN_METHOD_DEF | (i + 1), NULL);
+		method = mono_get_method (image, MONO_TOKEN_METHOD_DEF | (i + 1), NULL);
+		if (!method)
+			continue;
 		mono_class_init (method->klass);
 
 		if (!strncmp (method->name, "test_", 5) && mini_stats_fd) {
@@ -402,7 +408,9 @@ mini_regression (MonoImage *image, int verbose, int *total_run)
 		if (mini_stats_fd)
 			fprintf (mini_stats_fd, "[");
 		for (i = 0; i < mono_image_get_table_rows (image, MONO_TABLE_METHOD); ++i) {
-        	        method = mono_get_method (image, MONO_TOKEN_METHOD_DEF | (i + 1), NULL);
+			method = mono_get_method (image, MONO_TOKEN_METHOD_DEF | (i + 1), NULL);
+			if (!method)
+				continue;
 			if (strncmp (method->name, "test_", 5) == 0) {
 				expected = atoi (method->name + 5);
 				run++;
@@ -853,6 +861,14 @@ compile_all_methods_thread_main (CompileAllThreadArgs *args)
 		if (method->klass->generic_container)
 			continue;
 		sig = mono_method_signature (method);
+		if (!sig) {
+			char * desc = mono_method_full_name (method, TRUE);
+			g_print ("Could not retrieve method signature for %s\n", desc);
+			g_free (desc);
+			fail_count ++;
+			continue;
+		}
+
 		if (sig->has_type_parameters)
 			continue;
 
@@ -948,6 +964,17 @@ static void main_thread_handler (gpointer user_data)
 			if (!assembly) {
 				fprintf (stderr, "Can not open image %s\n", main_args->argv [i]);
 				exit (1);
+			}
+			/* Check that the assembly loaded matches the filename */
+			{
+				MonoImageOpenStatus status;
+				MonoImage *img;
+
+				img = mono_image_open (main_args->argv [i], &status);
+				if (img && strcmp (img->name, assembly->image->name)) {
+					fprintf (stderr, "Error: Loaded assembly '%s' doesn't match original file name '%s'. Set MONO_PATH to the assembly's location.\n", assembly->image->name, img->name);
+					exit (1);
+				}
 			}
 			res = mono_compile_assembly (assembly, main_args->opts, main_args->aot_options);
 			if (res != 0) {
@@ -1089,6 +1116,7 @@ mini_usage (void)
 		"Development:\n"
 		"    --aot                  Compiles the assembly to native code\n"
 		"    --debug[=<options>]    Enable debugging support, use --help-debug for details\n"
+ 		"    --debugger-agent=options Enable the debugger agent\n"
 		"    --profile[=profiler]   Runs in profiling mode with the specified profiler module\n"
 		"    --trace[=EXPR]         Enable tracing, use --help-trace for details\n"
 		"    --help-devel           Shows more options available to developers\n"
@@ -1198,6 +1226,41 @@ BOOL APIENTRY DllMain (HMODULE module_handle, DWORD reason, LPVOID reserved)
 }
 #endif
 
+static gboolean enable_debugging;
+
+/*
+ * mono_jit_parse_options:
+ *
+ *   Process the command line options in ARGV as done by the runtime executable. 
+ * This should be called before mono_jit_init ().
+ */
+void
+mono_jit_parse_options (int argc, char * argv[])
+{
+	int i;
+
+	/* 
+	 * Some options have no effect here, since they influence the behavior of 
+	 * mono_main ().
+	 */
+
+	/* FIXME: Avoid code duplication */
+	for (i = 0; i < argc; ++i) {
+		if (argv [i] [0] != '-')
+			break;
+ 		if (strncmp (argv [i], "--debugger-agent=", 17) == 0) {
+			MonoDebugOptions *opt = mini_get_debug_options ();
+
+ 			mono_debugger_agent_parse_options (argv [i] + 17);
+			opt->mdb_optimizations = TRUE;
+			enable_debugging = TRUE;
+		} else {
+			fprintf (stderr, "Unsupported command line option: '%s'\n", argv [i]);
+			exit (1);
+		}
+	}
+}
+
 int
 mono_main (int argc, char* argv[])
 {
@@ -1211,7 +1274,6 @@ mono_main (int argc, char* argv[])
 	const char* aname, *mname = NULL;
 	char *config_file = NULL;
 	int i, count = 1;
-	int enable_debugging = FALSE;
 	guint32 opt, action = DO_EXEC;
 	MonoGraphOptions mono_graph_options = 0;
 	int mini_verbose = 0;
@@ -1271,7 +1333,7 @@ mono_main (int argc, char* argv[])
 			mini_verbose++;
 		} else if (strcmp (argv [i], "--version") == 0 || strcmp (argv [i], "-V") == 0) {
 			char *build = mono_get_runtime_build_info ();
-			g_print ("Mono JIT compiler version %s (%s)\nCopyright (C) 2002-2010 Novell, Inc and Contributors. www.mono-project.com\n", VERSION, build);
+			g_print ("Mono JIT compiler version %s\nCopyright (C) 2002-2010 Novell, Inc and Contributors. www.mono-project.com\n", build);
 			g_free (build);
 			g_print (info);
 			if (mini_verbose) {
@@ -1429,6 +1491,12 @@ mono_main (int argc, char* argv[])
 			enable_debugging = TRUE;
 			if (!parse_debug_options (argv [i] + 8))
 				return 1;
+ 		} else if (strncmp (argv [i], "--debugger-agent=", 17) == 0) {
+			MonoDebugOptions *opt = mini_get_debug_options ();
+
+ 			mono_debugger_agent_parse_options (argv [i] + 17);
+			opt->mdb_optimizations = TRUE;
+			enable_debugging = TRUE;
 		} else if (strcmp (argv [i], "--security") == 0) {
 			mono_verifier_set_mode (MONO_VERIFIER_MODE_VERIFIABLE);
 			mono_security_set_mode (MONO_SECURITY_MODE_CAS);
@@ -1492,6 +1560,16 @@ mono_main (int argc, char* argv[])
 		return 1;
 	}
 
+	if (getenv ("MONO_XDEBUG"))
+		enable_debugging = TRUE;
+
+#ifdef MONO_CROSS_COMPILE
+       if (!mono_compile_aot) {
+		   fprintf (stderr, "This mono runtime is compiled for cross-compiling. Only the --aot option is supported.");
+		   exit (1);
+       }
+#endif
+
 	if ((action == DO_EXEC) && mono_debug_using_mono_debugger ())
 		action = DO_DEBUGGER;
 
@@ -1499,11 +1577,8 @@ mono_main (int argc, char* argv[])
 		g_set_prgname (argv[i]);
 	}
 
-	if (enable_profile) {
-		/* Needed because of TLS accesses in mono_profiler_load () */
-		mono_gc_base_init ();
+	if (enable_profile)
 		mono_profiler_load (profile_options);
-	}
 
 	mono_attach_parse_options (attach_options);
 
@@ -1529,13 +1604,19 @@ mono_main (int argc, char* argv[])
 
 #ifdef MONO_DEBUGGER_SUPPORTED
 		mono_debug_init (MONO_DEBUG_FORMAT_DEBUGGER);
-		mono_debugger_init ();
 #else
 		g_print ("The Mono Debugger is not supported on this platform.\n");
 		return 1;
 #endif
 	} else if (enable_debugging)
 		mono_debug_init (MONO_DEBUG_FORMAT_MONO);
+
+#ifdef MONO_DEBUGGER_SUPPORTED
+	if (enable_debugging) {
+		if ((opt & MONO_OPT_GSHARED) == 0)
+			mini_debugger_set_attach_ok ();
+	}
+#endif
 
 	mono_set_defaults (mini_verbose, opt);
 	mono_setup_vtable_in_class_init = FALSE;
@@ -1693,7 +1774,7 @@ mono_main (int argc, char* argv[])
 			exit (1);
 		}
 
-		mono_debugger_main (domain, assembly, argc - i, argv + i);
+		mini_debugger_main (domain, assembly, argc - i, argv + i);
 		mini_cleanup (domain);
 		return 0;
 #else
@@ -1846,6 +1927,12 @@ mono_jit_cleanup (MonoDomain *domain)
 	mini_cleanup (domain);
 }
 
+void
+mono_jit_set_aot_only (gboolean val)
+{
+	mono_aot_only = val;
+}
+
 /**
  * mono_jit_set_trace_options:
  * @options: string representing the trace options
@@ -1865,3 +1952,21 @@ mono_jit_set_trace_options (const char* options)
 	return TRUE;
 }
 
+/**
+ * mono_set_signal_chaining:
+ *
+ *   Enable/disable signal chaining. This should be called before mono_jit_init ().
+ * If signal chaining is enabled, the runtime saves the original signal handlers before
+ * installing its own handlers, and calls the original ones in the following cases:
+ * - a SIGSEGV/SIGABRT signal received while executing native (i.e. not JITted) code.
+ * - SIGPROF
+ * - SIGFPE
+ * - SIGQUIT
+ * - SIGUSR2
+ * Signal chaining only works on POSIX platforms.
+ */
+void
+mono_set_signal_chaining (gboolean chain_signals)
+{
+	mono_do_signal_chaining = chain_signals;
+}

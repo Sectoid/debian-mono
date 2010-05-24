@@ -17,20 +17,20 @@ using XmlElement = System.Object;
 namespace Mono.CSharp {
 	public class DocUtil
 	{
-		internal static void GenerateTypeDocComment (TypeContainer t, DeclSpace ds)
+		internal static void GenerateTypeDocComment (TypeContainer t, DeclSpace ds, Report r)
 		{
 		}
 
-		internal static void GenerateDocComment (MemberCore mc, DeclSpace ds)
+		internal static void GenerateDocComment (MemberCore mc, DeclSpace ds, Report r)
 		{
 		}
 
-		public static string GetMethodDocCommentName (MemberCore mc, Parameters p, DeclSpace ds)
+		public static string GetMethodDocCommentName (MemberCore mc, ParametersCompiled p, DeclSpace ds)
 		{
 			return "";
 		}
 
-		internal static void OnMethodGenerateDocComment (MethodCore mc, XmlElement el)
+		internal static void OnMethodGenerateDocComment (MethodCore mc, XmlElement el, Report r)
 		{
 		}
 
@@ -45,7 +45,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public bool OutputDocComment (string asmfilename)
+		public bool OutputDocComment (string asmfilename, Report r)
 		{
 			return true;
 		}

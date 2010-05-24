@@ -206,19 +206,19 @@ namespace Mono.CSharp {
 			builder = null;
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			ArrayList args = new ArrayList (1);
+			Arguments args = new Arguments (1);
 			args.Add (new Argument (this));
-			return CreateExpressionFactoryCall ("Constant", args);
+			return CreateExpressionFactoryCall (ec, "Constant", args);
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			return this;
 		}
 
-		public override Expression DoResolveLValue (EmitContext ec, Expression right_side)
+		public override Expression DoResolveLValue (ResolveContext ec, Expression right_side)
 		{
 			return this;
 		}
@@ -308,7 +308,7 @@ namespace Mono.CSharp {
 	///   The Assign node takes care of assigning the value of source into
 	///   the expression represented by target.
 	/// </summary>
-	public class Assign : ExpressionStatement {
+	public abstract class Assign : ExpressionStatement {
 		protected Expression target, source;
 
 		protected Assign (Expression target, Expression source, Location loc)
@@ -318,9 +318,9 @@ namespace Mono.CSharp {
 			this.loc = loc;
 		}
 		
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			Report.Error (832, loc, "An expression tree cannot contain an assignment operator");
+			ec.Report.Error (832, loc, "An expression tree cannot contain an assignment operator");
 			return null;
 		}
 
@@ -332,7 +332,7 @@ namespace Mono.CSharp {
 			get { return source; }
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			bool ok = true;
 			source = source.Resolve (ec);
@@ -342,7 +342,7 @@ namespace Mono.CSharp {
 				source = EmptyExpression.Null;
 			}
 
-			target = target.ResolveLValue (ec, source, Location);
+			target = target.ResolveLValue (ec, source);
 
 			if (target == null || !ok)
 				return null;
@@ -354,20 +354,23 @@ namespace Mono.CSharp {
 			type = target_type;
 
 			if (!(target is IAssignMethod)) {
-				Error_ValueAssignment (loc);
+				Error_ValueAssignment (ec, loc);
 				return null;
 			}
 
-			if ((source.eclass == ExprClass.Type) && (source is TypeExpr)) {
-				source.Error_UnexpectedKind (ec.DeclContainer, "variable or value", loc);
-				return null;
-			} else if ((RootContext.Version == LanguageVersion.ISO_1) &&
+			if ((RootContext.Version == LanguageVersion.ISO_1) &&
 				   (source is MethodGroupExpr)){
-				((MethodGroupExpr) source).ReportUsageError ();
+				((MethodGroupExpr) source).ReportUsageError (ec);
 				return null;
 			}
 
-			if (!TypeManager.IsEqual (target_type, source_type)){
+			if (!TypeManager.IsEqual (target_type, source_type)) {
+				if (TypeManager.IsDynamicType (source_type)) {
+					Arguments args = new Arguments (1);
+					args.Add (new Argument (source));
+					return new DynamicConversion (target_type, false, args, loc).Resolve (ec);
+				}
+
 				Expression resolved = ResolveConversions (ec);
 
 				if (resolved != this)
@@ -384,7 +387,7 @@ namespace Mono.CSharp {
 			type = storey.MutateType (type);			
 		}
 
-		protected virtual Expression ResolveConversions (EmitContext ec)
+		protected virtual Expression ResolveConversions (ResolveContext ec)
 		{
 			source = Convert.ImplicitConversionRequired (ec, source, target.Type, loc);
 			if (source == null)
@@ -440,14 +443,14 @@ namespace Mono.CSharp {
 			return t.Equals (source);
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			Expression e = base.DoResolve (ec);
 			if (e == null || e != this)
 				return e;
 
 			if (CheckEqualAssign (target))
-				Report.Warning (1717, 3, loc, "Assignment made to same variable; did you mean to assign something else?");
+				ec.Report.Warning (1717, 3, loc, "Assignment made to same variable; did you mean to assign something else?");
 
 			return this;
 		}
@@ -460,9 +463,9 @@ namespace Mono.CSharp {
 		// Keep resolved value because field initializers have their own rules
 		//
 		ExpressionStatement resolved;
-		IResolveContext rc;
+		IMemberContext rc;
 
-		public FieldInitializer (FieldBuilder field, Expression expression, IResolveContext rc)
+		public FieldInitializer (FieldBuilder field, Expression expression, IMemberContext rc)
 			: base (new FieldExpr (field, expression.Location), expression, expression.Location)
 		{
 			this.rc = rc;
@@ -470,7 +473,7 @@ namespace Mono.CSharp {
 				((FieldExpr)target).InstanceExpression = CompilerGeneratedThis.Instance;
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
 			// Field initializer can be resolved (fail) many times
 			if (source == null)
@@ -482,18 +485,14 @@ namespace Mono.CSharp {
 				// share same costructor (block) but they have they own resolve scope.
 				//
 
-				// TODO: Use ResolveContext only
-				EmitContext f_ec = new EmitContext (rc, rc.DeclContainer, loc, null, TypeManager.void_type, 0, true);
-				f_ec.IsStatic = ec.IsStatic;
-				f_ec.CurrentBlock = ec.CurrentBlock;
+				IMemberContext old = ec.MemberContext;
+				ec.MemberContext = rc;
 
-				EmitContext.Flags flags = EmitContext.Flags.InFieldInitializer;
-				if (ec.IsInUnsafeScope)
-					flags |= EmitContext.Flags.InUnsafe;
+				using (ec.Set (ResolveContext.Options.FieldInitializerScope)) {
+					resolved = base.DoResolve (ec) as ExpressionStatement;
+				}
 
-				f_ec.Set (flags);
-
-				resolved = base.DoResolve (f_ec) as ExpressionStatement;
+				ec.MemberContext = old;
 			}
 
 			return resolved;
@@ -539,13 +538,16 @@ namespace Mono.CSharp {
 			this.loc = loc;
 		}
 
-		public override Expression CreateExpressionTree (EmitContext ec)
+		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
 			return new SimpleAssign (target, source).CreateExpressionTree (ec);
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		public override Expression DoResolve (ResolveContext ec)
 		{
+			if (op != Binary.Operator.Addition && op != Binary.Operator.Subtraction)
+				target.Error_AssignmentEventOnly (ec);
+
 			source = source.Resolve (ec);
 			if (source == null)
 				return null;
@@ -576,18 +578,11 @@ namespace Mono.CSharp {
 	//
 	// This class is used for compound assignments.
 	//
-	class CompoundAssign : Assign {
-		Binary.Operator op;
-		Expression original_source;
-
-		public CompoundAssign (Binary.Operator op, Expression target, Expression source)
-			: base (target, source, target.Location)
+	public class CompoundAssign : Assign
+	{
+		// This is just a hack implemented for arrays only
+		public sealed class TargetExpression : Expression
 		{
-			original_source = source;
-			this.op = op;
-		}
-
-		public sealed class TargetExpression : Expression {
 			Expression child;
 			public TargetExpression (Expression child)
 			{
@@ -595,16 +590,13 @@ namespace Mono.CSharp {
 				this.loc = child.Location;
 			}
 
-			public override Expression CreateExpressionTree (EmitContext ec)
+			public override Expression CreateExpressionTree (ResolveContext ec)
 			{
 				throw new NotSupportedException ("ET");
 			}
 
-			public override Expression DoResolve (EmitContext ec)
+			public override Expression DoResolve (ResolveContext ec)
 			{
-				child = child.Resolve (ec);
-				if (child == null)
-					return null;
 				type = child.Type;
 				eclass = ExprClass.Value;
 				return this;
@@ -616,13 +608,32 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public override Expression DoResolve (EmitContext ec)
+		// Used for underlying binary operator
+		readonly Binary.Operator op;
+		Expression right;
+		Expression left;
+
+		public CompoundAssign (Binary.Operator op, Expression target, Expression source)
+			: base (target, source, target.Location)
 		{
-			original_source = original_source.Resolve (ec);
-			if (original_source == null)
+			right = source;
+			this.op = op;
+		}
+
+		public CompoundAssign (Binary.Operator op, Expression target, Expression source, Expression left)
+			: this (op, target, source)
+		{
+			this.left = left;
+		}
+
+		public override Expression DoResolve (ResolveContext ec)
+		{
+			right = right.Resolve (ec);
+			if (right == null)
 				return null;
 
-			using (ec.Set (EmitContext.Flags.InCompoundAssignment)) {
+			MemberAccess ma = target as MemberAccess;
+			using (ec.Set (ResolveContext.Options.CompoundAssignmentScope)) {
 				target = target.Resolve (ec);
 			}
 			
@@ -630,23 +641,68 @@ namespace Mono.CSharp {
 				return null;
 
 			if (target is MethodGroupExpr){
-				Error_CannotAssign (((MethodGroupExpr)target).Name, target.ExprClassName);
+				ec.Report.Error (1656, loc,
+					"Cannot assign to `{0}' because it is a `{1}'",
+					((MethodGroupExpr)target).Name, target.ExprClassName);
 				return null;
 			}
 
 			if (target is EventExpr)
-				return new EventAddOrRemove (target, op, original_source, loc).DoResolve (ec);
+				return new EventAddOrRemove (target, op, right, loc).DoResolve (ec);
 
 			//
 			// Only now we can decouple the original source/target
 			// into a tree, to guarantee that we do not have side
 			// effects.
 			//
-			source = new Binary (op, new TargetExpression (target), original_source, true);
+			if (left == null)
+				left = new TargetExpression (target);
+
+			source = new Binary (op, left, right, true);
+
+			// TODO: TargetExpression breaks MemberAccess composition
+			if (target is DynamicMemberBinder) {
+				Arguments targs = ((DynamicMemberBinder) target).Arguments;
+				source = source.Resolve (ec);
+
+				Arguments args = new Arguments (2);
+				args.AddRange (targs);
+				args.Add (new Argument (source));
+				source = new DynamicMemberBinder (true, ma.Name, args, loc).Resolve (ec);
+
+				// Handles possible event addition/subtraction
+				if (op == Binary.Operator.Addition || op == Binary.Operator.Subtraction) {
+					args = new Arguments (2);
+					args.AddRange (targs);
+					args.Add (new Argument (right));
+					string method_prefix = op == Binary.Operator.Addition ?
+						Event.AEventAccessor.AddPrefix : Event.AEventAccessor.RemovePrefix;
+
+					Expression invoke = new DynamicInvocation (
+						new MemberAccess (right, method_prefix + ma.Name, loc), args, loc).Resolve (ec);
+
+					args = new Arguments (1);
+					args.AddRange (targs);
+					source = new DynamicEventCompoundAssign (ma.Name, args,
+						(ExpressionStatement) source, (ExpressionStatement) invoke, loc).Resolve (ec);
+				}
+
+				return source;
+			}
+
 			return base.DoResolve (ec);
 		}
 
-		protected override Expression ResolveConversions (EmitContext ec)
+#if NET_4_0
+		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
+		{
+			var target_object = target.MakeExpression (ctx);
+			var source_object = System.Linq.Expressions.Expression.Convert (source.MakeExpression (ctx), target_object.Type);
+			return System.Linq.Expressions.Expression.Assign (target_object, source_object);
+		}
+#endif
+
+		protected override Expression ResolveConversions (ResolveContext ec)
 		{
 			Type target_type = target.Type;
 
@@ -670,13 +726,13 @@ namespace Mono.CSharp {
 				// y is implicitly convertible to the type of x
 				//
 				if ((b.Oper & Binary.Operator.ShiftMask) != 0 ||
-					Convert.ImplicitConversionExists (ec, original_source, target_type)) {
+					Convert.ImplicitConversionExists (ec, right, target_type)) {
 					source = Convert.ExplicitConversion (ec, source, target_type, loc);
 					return this;
 				}
 			}
 
-			original_source.Error_ValueCannotBeConverted (ec, loc, target_type, false);
+			right.Error_ValueCannotBeConverted (ec, loc, target_type, false);
 			return null;
 		}
 
@@ -684,7 +740,7 @@ namespace Mono.CSharp {
 		{
 			CompoundAssign ctarget = (CompoundAssign) t;
 
-			ctarget.original_source = ctarget.source = source.Clone (clonectx);
+			ctarget.right = ctarget.source = source.Clone (clonectx);
 			ctarget.target = target.Clone (clonectx);
 		}
 	}
