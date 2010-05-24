@@ -27,8 +27,9 @@
 //
 using System;
 using System.Collections.Generic;
-using System.ServiceModel.Channels;
 using System.ServiceModel;
+using System.ServiceModel.Channels;
+using System.ServiceModel.Dispatcher;
 
 namespace System.ServiceModel.Description
 {
@@ -78,7 +79,7 @@ namespace System.ServiceModel.Description
 		}
 
 		public Uri ListenUri {
-			get { return listen_uri; }
+			get { return listen_uri ?? (Address != null ? Address.Uri : null); }
 			set { listen_uri = value; }
 		}
 
@@ -107,6 +108,22 @@ namespace System.ServiceModel.Description
 					b.Validate (operation);
 			}
 #endif
+		}
+
+
+		internal ClientRuntime CreateRuntime ()
+		{
+			ServiceEndpoint se = this;
+
+			var proxy = se.Contract.CreateClientRuntime ();
+
+#if !NET_2_1
+			foreach (IEndpointBehavior b in se.Behaviors)
+				b.ApplyClientBehavior (se, proxy);
+			foreach (IContractBehavior b in se.Contract.Behaviors)
+				b.ApplyClientBehavior (se.Contract, se, proxy);
+#endif
+			return proxy;
 		}
 	}
 }

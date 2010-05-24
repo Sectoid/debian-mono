@@ -658,28 +658,31 @@ namespace System.Collections.Generic {
 		{
 			try {
 				Add ((T) item);
+				return _size - 1;
+			} catch (NullReferenceException) {
 			} catch (InvalidCastException) {
-				throw new ArgumentException("item");
 			}
-			return _size - 1;
+			throw new ArgumentException ("item");
 		}
 		
 		bool IList.Contains (object item)
 		{
 			try {
 				return Contains ((T) item);
+			} catch (NullReferenceException) {
 			} catch (InvalidCastException) {
-				return false;
 			}
+			return false;
 		}
 		
 		int IList.IndexOf (object item)
 		{
 			try {
-				return IndexOf((T) item);
+				return IndexOf ((T) item);
+			} catch (NullReferenceException) {
 			} catch (InvalidCastException) {
-				return -1;
 			}
+			return -1;
 		}
 		
 		void IList.Insert (int index, object item)
@@ -691,22 +694,24 @@ namespace System.Collections.Generic {
 			CheckIndex (index);
 			try {
 				Insert (index, (T) item);
+				return;
+			} catch (NullReferenceException) {
 			} catch (InvalidCastException) {
-				throw new ArgumentException("item");
 			}
+			throw new ArgumentException ("item");
 		}
 		
 		void IList.Remove (object item)
 		{
 			try {
 				Remove ((T) item);
+				return;
+			} catch (NullReferenceException) {
 			} catch (InvalidCastException) {
-				// Swallow the exception--if we
-				// can't cast to the correct type
-				// then we've already "succeeded"
-				// in removing the item from the
-				// List.
 			}
+			// Swallow the exception--if we can't cast to the
+			// correct type then we've already "succeeded" in
+			// removing the item from the List.
 		}
 		
 		bool ICollection <T>.IsReadOnly {
@@ -729,69 +734,81 @@ namespace System.Collections.Generic {
 		
 		object IList.this [int index] {
 			get { return this [index]; }
-			set { this [index] = (T) value; }
+			set {
+				try {
+					this [index] = (T) value;
+					return;
+				} catch (NullReferenceException) {
+					// can happen when 'value' is null and T is a valuetype
+				} catch (InvalidCastException) {
+				}
+				throw new ArgumentException ("value");
+			}
 		}
 #endregion
 				
 		[Serializable]
 		public struct Enumerator : IEnumerator <T>, IDisposable {
-			const int NOT_STARTED = -2;
-			
-			// this MUST be -1, because we depend on it in move next.
-			// we just decr the size, so, 0 - 1 == FINISHED
-			const int FINISHED = -1;
-			
 			List <T> l;
-			int idx;
+			int next;
 			int ver;
-			
+
+			T current;
+
 			internal Enumerator (List <T> l)
+				: this ()
 			{
 				this.l = l;
-				idx = NOT_STARTED;
 				ver = l._version;
 			}
 			
-			// for some fucked up reason, MSFT added a useless dispose to this class
-			// It means that in foreach, we must still do a try/finally. Broken, very
-			// broken.
 			public void Dispose ()
 			{
-				idx = NOT_STARTED;
+				l = null;
+			}
+
+			void VerifyState ()
+			{
+				if (l == null)
+					throw new ObjectDisposedException (GetType ().FullName);
+				if (ver != l._version)
+					throw new InvalidOperationException (
+						"Collection was modified; enumeration operation may not execute.");
 			}
 			
 			public bool MoveNext ()
 			{
-				if (ver != l._version)
-					throw new InvalidOperationException ("Collection was modified;"
-						+ "enumeration operation may not execute.");
-				
-				if (idx == NOT_STARTED)
-					idx = l._size;
-				
-				return idx != FINISHED && -- idx != FINISHED;
+				VerifyState ();
+
+				if (next < 0)
+					return false;
+
+				if (next < l._size) {
+					current = l._items [next++];
+					return true;
+				}
+
+				next = -1;
+				return false;
 			}
 			
 			public T Current {
-				get {
-					if (idx < 0)
-						throw new InvalidOperationException ();
-					
-					return l._items [l._size - 1 - idx];
-				}
+				get { return current; }
 			}
 			
 			void IEnumerator.Reset ()
 			{
-				if (ver != l._version)
-					throw new InvalidOperationException ("Collection was modified;"
-						+ "enumeration operation may not execute.");
-				
-				idx = NOT_STARTED;
+				VerifyState ();
+				next = 0;
 			}
 			
 			object IEnumerator.Current {
-				get { return Current; }
+				get {
+					VerifyState ();
+					if (next <= 0)
+						throw new InvalidOperationException ();
+					return current;
+				}
 			}
 		}
 	}

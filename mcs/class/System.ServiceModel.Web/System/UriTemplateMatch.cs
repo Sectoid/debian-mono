@@ -29,6 +29,10 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 
+#if NET_2_1
+using NameValueCollection = System.Collections.Generic.Dictionary<string,string>;
+#endif
+
 namespace System
 {
 	public class UriTemplateMatch
@@ -41,7 +45,7 @@ namespace System
 		NameValueCollection nvc, query_params;
 		object data;
 		UriTemplate template;
-		Collection<string> path_segments;
+		Collection<string> path_segments, wildcard;
 
 		public Uri BaseUri {
 			get { return base_uri; }
@@ -87,9 +91,12 @@ namespace System
 			set { template = value; }
 		}
 
-		[MonoTODO]
 		public Collection<string> WildcardPathSegments {
-			get { throw new NotImplementedException (); }
+			get {
+				if (wildcard == null)
+					wildcard = new Collection<string> ();
+				return wildcard;
+			}
 		}
 	}
 }

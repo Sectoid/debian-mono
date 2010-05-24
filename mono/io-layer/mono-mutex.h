@@ -1,23 +1,10 @@
 /* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
 /*
- *  Authors: Jeffrey Stedfast <fejj@ximian.com>
+ * mono-mutex.h: Portability wrappers around POSIX Mutexes
  *
- *  Copyright 2002 Ximain, Inc. (www.ximian.com)
+ * Authors: Jeffrey Stedfast <fejj@ximian.com>
  *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Street #330, Boston, MA 02111-1307, USA.
- *
+ * Copyright 2002 Ximian, Inc. (www.ximian.com)
  */
 
 
@@ -25,10 +12,14 @@
 #define __MONO_MUTEX_H__
 
 #include <glib.h>
+#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
+#endif
 #include <time.h>
 
 G_BEGIN_DECLS
+
+#ifndef PLATFORM_WIN32
 
 typedef struct {
 	pthread_mutex_t mutex;
@@ -109,6 +100,7 @@ int mono_cond_wait (pthread_cond_t *cond, mono_mutex_t *mutex);
 int mono_cond_timedwait (pthread_cond_t *cond, mono_mutex_t *mutex, const struct timespec *timeout);
 #define mono_cond_signal(cond) pthread_cond_signal (cond)
 #define mono_cond_broadcast(cond) pthread_cond_broadcast (cond)
+#define mono_cond_destroy(cond)
 
 #else /* system is equipped with a fully-functional pthread mutex library */
 
@@ -126,9 +118,11 @@ int mono_cond_timedwait (pthread_cond_t *cond, mono_mutex_t *mutex, const struct
 
 typedef pthread_mutex_t mono_mutex_t;
 typedef pthread_mutexattr_t mono_mutexattr_t;
+typedef pthread_cond_t mono_cond_t;
 
 #define MONO_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
 #define MONO_RECURSIVE_MUTEX_INITIALIZER PTHREAD_RECURSIVE_MUTEX_INITIALIZER
+#define MONO_COND_INITIALIZER PTHREAD_COND_INITIALIZER
 
 #define mono_mutexattr_init(attr) pthread_mutexattr_init (attr)
 #define mono_mutexattr_settype(attr,type) pthread_mutexattr_settype (attr, type)
@@ -153,6 +147,7 @@ typedef pthread_mutexattr_t mono_mutexattr_t;
 #define mono_cond_timedwait(cond,mutex,timeout) pthread_cond_timedwait (cond, mutex, timeout)
 #define mono_cond_signal(cond) pthread_cond_signal (cond)
 #define mono_cond_broadcast(cond) pthread_cond_broadcast (cond)
+#define mono_cond_destroy(cond)
 
 #endif /* USE_MONO_MUTEX */
 
@@ -164,6 +159,28 @@ static inline int mono_mutex_unlock_in_cleanup (mono_mutex_t *mutex)
 {
 	return(mono_mutex_unlock (mutex));
 }
+
+#else
+
+typedef CRITICAL_SECTION mono_mutex_t;
+typedef HANDLE mono_cond_t;
+
+#define mono_mutex_init(mutex,attr) InitializeCriticalSection((mutex))
+#define mono_mutex_lock(mutex) EnterCriticalSection((mutex))
+#define mono_mutex_unlock(mutex)  LeaveCriticalSection((mutex))
+#define mono_mutex_destroy(mutex) DeleteCriticalSection((mutex))
+
+
+#define mono_cond_init(cond,attr) do{*(cond) = CreateEvent(NULL,FALSE,FALSE,NULL); } while (0)
+#define mono_cond_wait(cond,mutex) WaitForSingleObject(*(cond),INFINITE)
+#define mono_cond_timedwait(cond,mutex,timeout) WaitForSingleObject(*(cond),timeout)
+#define mono_cond_signal(cond) SetEvent(*(cond))
+#define mono_cond_broadcast(cond) (!SetEvent(*(cond)))
+#define mono_cond_destroy(cond) CloseHandle(*(cond))
+
+#define MONO_MUTEX_INITIALIZER NULL
+#define MONO_COND_INITIALIZER NULL
+#endif
 
 G_END_DECLS
 

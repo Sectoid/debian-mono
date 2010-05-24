@@ -21,6 +21,17 @@ namespace MonoTests.System.Xml
 	[TestFixture]
 	public class XmlSchemaValidatorTests
 	{
+		void Validate (string xml, string xsd)
+		{
+			XmlSchema schema = XmlSchema.Read (new StringReader (xsd), null);
+			XmlReaderSettings settings = new XmlReaderSettings ();
+			settings.ValidationType = ValidationType.Schema;
+			settings.Schemas.Add (schema);
+			XmlReader reader = XmlReader.Create (new StringReader (xml), settings);
+			while (reader.Read ())
+				;
+		}
+
 		[Test]
 		public void XsdAnyToSkipAttributeValidation ()
 		{
@@ -114,14 +125,65 @@ namespace MonoTests.System.Xml
     </xs:complexType>
   </xs:element>
 </xs:schema>";
+			string xml = @"<myDoc foo='12' bar='January 1st 1900'/>";
+			Validate (xml, xsd);
+		}
 
-			XmlSchema schema = XmlSchema.Read (new StringReader (xsd), null);
-			XmlReaderSettings settings = new XmlReaderSettings ();
-			settings.ValidationType = ValidationType.Schema;
-			settings.Schemas.Add (schema);
-			XmlReader reader = XmlReader.Create (new StringReader (@"<myDoc foo='12' bar='January 1st 1900'/>"), settings);
-			while (reader.Read ())
-				;
+		[Test]
+		public void Bug469713 ()
+		{
+			string xsd = @"<xs:schema elementFormDefault='qualified' xmlns:xs='http://www.w3.org/2001/XMLSchema'>
+  <xs:element name='Message'>
+    <xs:complexType>
+      <xs:all>
+        <xs:element name='MyDateTime' nillable='true' type='xs:dateTime' />
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>";
+			string xml = @"<Message xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='test.xsd'>
+        <MyDateTime xsi:nil='true'></MyDateTime>
+</Message>";
+			Validate (xml, xsd);
+		}
+
+		[Test]
+		public void Bug496192_496205 ()
+		{
+			using (var xmlr = new StreamReader ("Test/XmlFiles/496192.xml"))
+				using (var xsdr = new StreamReader ("Test/XmlFiles/496192.xsd"))
+					Validate (xmlr.ReadToEnd (), xsdr.ReadToEnd ());
+		}
+		
+		[Test]		
+		public void Bug501666 ()
+		{
+			string xsd = @"
+			<xs:schema id='Settings'
+				targetNamespace='foo'                
+				xmlns='foo'
+				xmlns:xs='http://www.w3.org/2001/XMLSchema'>
+
+				<xs:element name='Settings' type='Settings'/>
+
+				<xs:complexType name='Settings'>
+					<xs:attribute name='port' type='PortNumber' use='required'/>
+				</xs:complexType>
+                
+				<xs:simpleType name='PortNumber'>
+					<xs:restriction base='xs:positiveInteger'>
+						<xs:minInclusive value='1'/>
+						<xs:maxInclusive value='65535'/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:schema>";
+
+			string xml = @"<Settings port='1337' xmlns='foo'/>";
+
+			XmlDocument doc = new XmlDocument ();
+			doc.LoadXml (xml);
+			doc.Schemas.Add (XmlSchema.Read (XmlReader.Create (new StringReader (xsd)), null));
+			doc.Validate (null);
 		}
 	}
 }

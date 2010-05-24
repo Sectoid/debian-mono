@@ -29,6 +29,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Security;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -67,13 +68,11 @@ namespace System.ServiceModel.Description
 			return table;
 		}
 
-		[MonoTODO]
 		public static ContractDescription GetContract (
 			Type contractType) {
 			return GetContract (contractType, (Type) null);
 		}
 
-		[MonoTODO]
 		public static ContractDescription GetContract (
 			Type contractType, object serviceImplementation) {
 			if (serviceImplementation == null)
@@ -93,30 +92,46 @@ namespace System.ServiceModel.Description
 			return null;
 		}
 
-		[MonoTODO]
+		public static ContractDescription GetCallbackContract (Type serviceType, Type callbackType)
+		{
+			return GetContract (callbackType, null, serviceType);
+		}
+
 		public static ContractDescription GetContract (
 			Type givenContractType, Type givenServiceType)
+		{
+			return GetContract (givenContractType, givenServiceType, null);
+		}
+
+		static ContractDescription GetContract (Type givenContractType, Type givenServiceType, Type serviceTypeForCallback)
 		{
 			// FIXME: serviceType should be used for specifying attributes like OperationBehavior.
 
 			Type exactContractType = null;
 			ServiceContractAttribute sca = null;
 			Dictionary<Type, ServiceContractAttribute> contracts = 
-				GetServiceContractAttributes (givenServiceType ?? givenContractType);
+				GetServiceContractAttributes (serviceTypeForCallback ?? givenServiceType ?? givenContractType);
 			if (contracts.ContainsKey(givenContractType)) {
 				exactContractType = givenContractType;
-				sca = contracts[givenContractType];
+				sca = contracts [givenContractType];
 			} else {
 				foreach (Type t in contracts.Keys)
 					if (t.IsAssignableFrom(givenContractType)) {
-						if (sca != null)
-							throw new InvalidOperationException("The contract type of " + givenContractType + " is ambiguous: can be either " + exactContractType + " or " + t);
+						if (t.IsAssignableFrom (exactContractType)) // exact = IDerived, t = IBase
+							continue;
+						if (sca != null && (exactContractType == null || !exactContractType.IsAssignableFrom (t))) // t = IDerived, exact = IBase
+							throw new InvalidOperationException ("The contract type of " + givenContractType + " is ambiguous: can be either " + exactContractType + " or " + t);
 						exactContractType = t;
 						sca = contracts [t];
 					}
 			}
+			if (exactContractType == null)
+				exactContractType = givenContractType;
 			if (sca == null) {
-				throw new InvalidOperationException (String.Format ("Attempted to get contract type from '{0}' which neither is a service contract nor does it inherit service contract.", givenContractType));
+				if (serviceTypeForCallback != null)
+					sca = contracts.Values.First ();
+				else
+					throw new InvalidOperationException (String.Format ("Attempted to get contract type from '{0}' which neither is a service contract nor does it inherit service contract.", serviceTypeForCallback ?? givenContractType));
 			}
 			string name = sca.Name ?? exactContractType.Name;
 			string ns = sca.Namespace ?? "http://tempuri.org/";
@@ -134,10 +149,13 @@ namespace System.ServiceModel.Description
 				cd.ProtectionLevel = sca.ProtectionLevel;
 
 			// FIXME: load Behaviors
-			MethodInfo [] contractMethods = exactContractType.GetMethods ();
+			MethodInfo [] contractMethods = exactContractType.IsInterface ? GetAllMethods (exactContractType) : exactContractType.GetMethods ();
 			MethodInfo [] serviceMethods = contractMethods;
 			if (givenServiceType != null && exactContractType.IsInterface) {
-				serviceMethods = givenServiceType.GetInterfaceMap (exactContractType).TargetMethods;
+				var l = new List<MethodInfo> ();
+				foreach (Type t in GetAllInterfaceTypes (exactContractType))
+					l.AddRange (givenServiceType.GetInterfaceMap (t).TargetMethods);
+				serviceMethods = l.ToArray ();
 			}
 			
 			for (int i = 0; i < contractMethods.Length; ++i)
@@ -151,9 +169,10 @@ namespace System.ServiceModel.Description
 				if (oca.AsyncPattern) {
 					if (String.Compare ("Begin", 0, mi.Name,0, 5) != 0)
 						throw new InvalidOperationException ("For async operation contract patterns, the initiator method name must start with 'Begin'.");
-					end = givenContractType.GetMethod ("End" + mi.Name.Substring (5));
+					string endName = "End" + mi.Name.Substring (5);
+					end = mi.DeclaringType.GetMethod (endName);
 					if (end == null)
-						throw new InvalidOperationException ("For async operation contract patterns, corresponding End method is required for each Begin method.");
+						throw new InvalidOperationException (String.Format ("'{0}' method is missing. For async operation contract patterns, corresponding End method is required for each Begin method.", endName));
 					if (GetOperationContractAttribute (end) != null)
 						throw new InvalidOperationException ("Async 'End' method must not have OperationContractAttribute. It is automatically treated as the EndMethod of the corresponding 'Begin' method.");
 				}
@@ -172,6 +191,30 @@ namespace System.ServiceModel.Description
 				throw new InvalidOperationException (String.Format ("The service contract type {0} has no operation. At least one operation must exist.", contractType));
 			*/
 			return cd;
+		}
+
+		static MethodInfo [] GetAllMethods (Type type)
+		{
+			var l = new List<MethodInfo> ();
+			foreach (var t in GetAllInterfaceTypes (type)) {
+#if MONOTOUCH
+				// The MethodBase[] from t.GetMethods () is cast to a IEnumerable <MethodInfo>
+				// when passed to List<MethodInfo>.AddRange, which in turn casts it to 
+				// ICollection <MethodInfo>.  The full-aot compiler has no idea of this, so
+				// we're going to make it aware.
+				int c = ((ICollection <MethodInfo>) t.GetMethods ()).Count;
+#endif
+				l.AddRange (t.GetMethods ());
+			}
+			return l.ToArray ();
+		}
+
+		static IEnumerable<Type> GetAllInterfaceTypes (Type type)
+		{
+			yield return type;
+			foreach (var t in type.GetInterfaces ())
+				foreach (var tt in GetAllInterfaceTypes (t))
+					yield return tt;
 		}
 
 		static OperationDescription GetOrCreateOperation (
@@ -196,6 +239,14 @@ namespace System.ServiceModel.Description
 				od.Messages.Add (GetMessage (od, mi, oca, true, null));
 				if (!od.IsOneWay)
 					od.Messages.Add (GetMessage (od, mi, oca, false, asyncReturnType));
+				foreach (ServiceKnownTypeAttribute a in cd.ContractType.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false))
+					foreach (Type t in a.GetTypes ())
+						od.KnownTypes.Add (t);
+				foreach (ServiceKnownTypeAttribute a in serviceMethod.GetCustomAttributes (typeof (ServiceKnownTypeAttribute), false))
+					foreach (Type t in a.GetTypes ())
+						od.KnownTypes.Add (t);
+				foreach (FaultContractAttribute a in serviceMethod.GetCustomAttributes (typeof (FaultContractAttribute), false))
+					od.Faults.Add (new FaultDescription (a.Action) { DetailType = a.DetailType, Name = a.Name, Namespace = a.Namespace });
 				cd.Operations.Add (od);
 			}
 			else if (oca.AsyncPattern && od.BeginMethod != null ||
@@ -244,7 +295,8 @@ namespace System.ServiceModel.Description
 			// If the argument is only one and has [MessageContract]
 			// then infer it as a typed messsage
 			if (isRequest) {
-				mca = plist.Length != 1 ? null :
+				int len = mi.Name.StartsWith ("Begin", StringComparison.Ordinal) ? 3 : 1;
+				mca = plist.Length != len ? null :
 					GetMessageContractAttribute (plist [0].ParameterType);
 				if (mca != null)
 					messageType = plist [0].ParameterType;
@@ -257,7 +309,7 @@ namespace System.ServiceModel.Description
 
 			if (action == null)
 				action = String.Concat (cd.Namespace, 
-					cd.Namespace.EndsWith ("/") ? "" : "/", cd.Name, "/",
+					cd.Namespace.Length == 0 ? "urn:" : cd.Namespace.EndsWith ("/") ? "" : "/", cd.Name, "/",
 					od.Name, isRequest ? String.Empty : "Response");
 
 			if (mca != null)
@@ -276,8 +328,10 @@ namespace System.ServiceModel.Description
 				md.ProtectionLevel = mca.ProtectionLevel;
 
 			MessageBodyDescription mb = md.Body;
-			mb.WrapperName = mca.WrapperName ?? messageType.Name;
-			mb.WrapperNamespace = mca.WrapperNamespace ?? defaultNamespace;
+			if (mca.IsWrapped) {
+				mb.WrapperName = mca.WrapperName ?? messageType.Name;
+				mb.WrapperNamespace = mca.WrapperNamespace ?? defaultNamespace;
+			}
 
 			int index = 0;
 			foreach (MemberInfo bmi in messageType.GetMembers (BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)) {
@@ -322,7 +376,8 @@ namespace System.ServiceModel.Description
 			mb.WrapperName = name + (isRequest ? String.Empty : "Response");
 			mb.WrapperNamespace = defaultNamespace;
 
-			// FIXME: anything to do for ProtectionLevel?
+			if (oca.HasProtectionLevel)
+				md.ProtectionLevel = oca.ProtectionLevel;
 
 			// Parts
 			int index = 0;

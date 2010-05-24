@@ -129,9 +129,13 @@ namespace System.Xml
 		// argument is uri, not an xml fragment.
 		internal XmlTextReader (bool dummy, XmlResolver resolver, string url, XmlNodeType fragType, XmlParserContext context)
 		{
-			if (resolver == null)
+			if (resolver == null) {
+#if NET_2_1 && !MONOTOUCH
+				resolver = new XmlXapResolver ();
+#else
 				resolver = new XmlUrlResolver ();
-
+#endif
+			}
 			this.XmlResolver = resolver;
 			string uriString;
 			Stream stream = GetStreamFromUrl (url, out uriString);
@@ -178,6 +182,12 @@ namespace System.Xml
 
 		private Stream GetStreamFromUrl (string url, out string absoluteUriString)
 		{
+#if NET_2_1
+			if (url == null)
+				throw new ArgumentNullException ("url");
+			if (url.Length == 0)
+				throw new ArgumentException ("url");
+#endif
 			Uri uri = resolver.ResolveUri (null, url);
 			absoluteUriString = uri != null ? uri.ToString () : String.Empty;
 			return resolver.GetEntity (uri, null, typeof (Stream)) as Stream;
@@ -253,11 +263,9 @@ namespace System.Xml
 			get { return readState == ReadState.EndOfFile; }
 		}
 
-#if !NET_2_1
 		public override bool HasValue {
 			get { return cursorToken.Value != null; }
 		}
-#endif
 
 		public override bool IsDefault {
 			// XmlTextReader does not expand default attributes.
@@ -617,7 +625,6 @@ namespace System.Xml
 			return more;
 		}
 
-#if !NET_2_1
 		public override bool ReadAttributeValue ()
 		{
 			if (readState == ReadState.Initial && startNodeType == XmlNodeType.Attribute) {
@@ -638,7 +645,6 @@ namespace System.Xml
 			else
 				return false;
 		}
-#endif
 
 		public int ReadBase64 (byte [] buffer, int offset, int length)
 		{
@@ -952,7 +958,11 @@ namespace System.Xml
 		// These values are never re-initialized.
 		private bool namespaces = true;
 		private WhitespaceHandling whitespaceHandling = WhitespaceHandling.All;
+#if NET_2_1 && !MONOTOUCH
+		private XmlResolver resolver = new XmlXapResolver ();
+#else
 		private XmlResolver resolver = new XmlUrlResolver ();
+#endif
 		private bool normalization = false;
 
 		private bool checkCharacters;
@@ -1050,13 +1060,21 @@ namespace System.Xml
 			nsmgr = nsmgr != null ? nsmgr : new XmlNamespaceManager (nameTable);
 
 			if (url != null && url.Length > 0) {
+#if NET_2_1
+				Uri uri = new Uri (url, UriKind.RelativeOrAbsolute);
+#else
 				Uri uri = null;
 				try {
+#if NET_2_0
+					uri = new Uri (url, UriKind.RelativeOrAbsolute);
+#else
 					uri = new Uri (url);
+#endif
 				} catch (Exception) {
 					string path = Path.GetFullPath ("./a");
 					uri = new Uri (new Uri (path), url);
 				}
+#endif
 				parserContext.BaseURI = uri.ToString ();
 			}
 
@@ -1815,7 +1833,7 @@ namespace System.Xml
 		{
 			IncrementAttributeToken ();
 			XmlAttributeTokenInfo ati = attributeTokens [currentAttribute];
-			ati.Name = parserContext.NameTable.Add (name);
+			ati.Name = NameTable.Add (name);
 			ati.Prefix = String.Empty;
 			ati.NamespaceURI = String.Empty;
 			IncrementAttributeValueToken ();

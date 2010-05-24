@@ -35,7 +35,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 using System.Xml.Schema; // only required for NET_2_0 (SchemaInfo)
 using System.Xml.Serialization; // only required for NET_2_0 (SchemaInfo)
 using Mono.Xml.Schema; // only required for NET_2_0
@@ -123,9 +123,7 @@ namespace System.Xml
 			get { return AttributeCount > 0; }
 		}
 
-#if !NET_2_1
 		public abstract bool HasValue { get; }
-#endif
 
 		public abstract bool IsEmptyElement { get; }
 
@@ -188,7 +186,7 @@ namespace System.Xml
 		public abstract ReadState ReadState { get; }
 
 #if NET_2_0
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		public virtual IXmlSchemaInfo SchemaInfo {
 			get { return null; }
 		}
@@ -416,7 +414,7 @@ namespace System.Xml
 
 		private static XmlReader CreateValidatingXmlReader (XmlReader reader, XmlReaderSettings settings)
 		{
-#if NET_2_1
+#if NET_2_1 && !MONOTOUCH
 			return reader;
 #else
 			XmlValidatingReader xvr = null;
@@ -544,6 +542,14 @@ namespace System.Xml
 
 		public virtual XmlNodeType MoveToContent ()
 		{
+			switch (ReadState) {
+			case ReadState.Initial:
+			case ReadState.Interactive:
+				break;
+			default:
+				return NodeType;
+			}
+
 			if (NodeType == XmlNodeType.Attribute)
 				MoveToElement ();
 
@@ -563,9 +569,7 @@ namespace System.Xml
 
 		public abstract bool Read ();
 
-#if !NET_2_1
 		public abstract bool ReadAttributeValue ();
-#endif
 
 		public virtual string ReadElementString ()
 		{
@@ -849,7 +853,7 @@ namespace System.Xml
 		public virtual bool ReadToFollowing (string localName, string namespaceURI)
 		{
 			while (Read ())
-				if (NodeType == XmlNodeType.Element && localName == Name && namespaceURI == NamespaceURI)
+				if (NodeType == XmlNodeType.Element && localName == LocalName && namespaceURI == NamespaceURI)
 					return true;
 			return false;
 		}
@@ -887,7 +891,9 @@ namespace System.Xml
 
 		private string ReadContentString ()
 		{
-			if (NodeType == XmlNodeType.Attribute)
+			// The latter condition indicates that this XmlReader is on an attribute value
+			// (HasAttributes is to indicate it is on attribute value).
+			if (NodeType == XmlNodeType.Attribute || NodeType != XmlNodeType.Element && HasAttributes)
 				return Value;
 			return ReadContentString (true);
 		}
@@ -987,6 +993,8 @@ namespace System.Xml
 					else
 						return XmlQualifiedName.Parse (text, this);
 				}
+				if (type == typeof (DateTimeOffset))
+					return XmlConvert.ToDateTimeOffset (text);
 
 				switch (Type.GetTypeCode (type)) {
 				case TypeCode.Boolean:

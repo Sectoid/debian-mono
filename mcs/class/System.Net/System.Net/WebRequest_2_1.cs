@@ -3,8 +3,9 @@
 //
 // Authors:
 //	Jb Evain  <jbevain@novell.com>
+//	Sebastien Pouliot <sebastien@ximian.com>
 //
-// (c) 2008 Novell, Inc. (http://www.novell.com)
+// Copyright (C) 2008-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -31,6 +32,7 @@
 #if NET_2_1
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
@@ -38,12 +40,28 @@ namespace System.Net {
 
 	public abstract class WebRequest {
 
-		static Type browser_http_request;
+		static IWebRequestCreate default_creator;
+		static Dictionary<string, IWebRequestCreate> registred_prefixes;
 
 		public abstract string ContentType { get; set; }
 		public abstract WebHeaderCollection Headers { get; set; }
 		public abstract string Method { get; set; }
 		public abstract Uri RequestUri { get; }
+
+		// custom registered prefixes return null (unless they override this)
+		public virtual IWebRequestCreate CreatorInstance { 
+			get { return null; }
+		}
+
+		public virtual ICredentials Credentials {
+			get { throw NotImplemented (); }
+			set { throw NotImplemented (); }
+		}
+
+		static WebRequest ()
+		{
+			registred_prefixes = new Dictionary<string, IWebRequestCreate> (StringComparer.OrdinalIgnoreCase);
+		}
 
 		protected WebRequest ()
 		{
@@ -55,48 +73,95 @@ namespace System.Net {
 		public abstract Stream EndGetRequestStream (IAsyncResult asyncResult);
 		public abstract WebResponse EndGetResponse (IAsyncResult asyncResult);
 
+		internal virtual IAsyncResult BeginGetResponse (AsyncCallback callback, object state, bool policy)
+		{
+			return BeginGetResponse (callback, state);
+		}
+
+		public static WebRequest Create (string requestUriString)
+		{
+			return Create (new Uri (requestUriString));
+		}
+
 		public static WebRequest Create (Uri uri)
 		{
-			if (uri.IsAbsoluteUri && !uri.Scheme.StartsWith ("http"))
-				throw new NotSupportedException (string.Format ("Scheme {0} not supported", uri.Scheme));
+			if (uri == null)
+				throw new ArgumentNullException ("uri");
+			if (!uri.IsAbsoluteUri)
+				throw new InvalidOperationException ("Uri is not absolute.");
 
-			return CreateBrowserHttpRequest (uri);
+			IWebRequestCreate creator = null;
+
+			// first we look if a domain is registred
+			string scheme = uri.Scheme + Uri.SchemeDelimiter;
+			string domain = scheme + uri.DnsSafeHost;
+			if (!registred_prefixes.TryGetValue (domain, out creator)) {
+				// next we look if the protocol is registred (the delimiter '://' is important)
+				if (!registred_prefixes.TryGetValue (scheme, out creator)) {
+					scheme = uri.Scheme; // without the delimiter
+					// then we default to SL
+					switch (scheme) {
+					case "http":
+					case "https":
+						creator = default_creator;
+						break;
+					default:
+						registred_prefixes.TryGetValue (scheme, out creator);
+						break;
+					}
+				}
+			}
+
+			if (creator == null)
+				throw new NotSupportedException (string.Format ("Scheme {0} not supported", scheme));
+
+			return creator.Create (uri);
 		}
 
-		static WebRequest CreateBrowserHttpRequest (Uri uri)
+		internal static void RegisterDefaultStack (IWebRequestCreate creator)
 		{
-			if (browser_http_request == null)
-				browser_http_request = GetBrowserHttpFromMoonlight ();
-
-			return (WebRequest) Activator.CreateInstance (browser_http_request, new object [] { uri });
+			default_creator = creator;
 		}
 
-		static Type GetBrowserHttpFromMoonlight ()
-		{
-			var assembly = Assembly.Load ("System.Windows.Browser, Version=2.0.5.0, Culture=Neutral, PublicKeyToken=7cec85d7bea7798e");
-			if (assembly == null)
-				throw new InvalidOperationException ("Can not load System.Windows.Browser");
-
-			var type = assembly.GetType ("System.Windows.Browser.Net.BrowserHttpWebRequest");
-			if (type == null)
-				throw new InvalidOperationException ("Can not get BrowserHttpWebRequest");
-
-			return type;
-		}
-
+		// We can register for
+		// * a protocol (e.g. http) for all requests
+		// * a protocol (e.g. https) for a domain
+		// * a protocol (e.g. http) for a single request
+		//
+		// See "How to: Specify Browser or Client HTTP Handling" for more details
+		// http://msdn.microsoft.com/en-us/library/dd920295%28VS.95%29.aspx
 		public static bool RegisterPrefix (string prefix, IWebRequestCreate creator)
 		{
-			throw new NotSupportedException ();
+			if (prefix == null)
+				throw new ArgumentNullException ("prefix");
+			if (creator == null)
+				throw new ArgumentNullException ("creator");
+
+			Uri uri;
+			if (Uri.TryCreate (prefix, UriKind.Absolute, out uri)) {
+				// if a valid URI is supplied then only register the scheme + domain
+				prefix = uri.Scheme + Uri.SchemeDelimiter + uri.DnsSafeHost;
+			}
+
+			if (registred_prefixes.ContainsKey (prefix))
+				return false;
+
+			registred_prefixes.Add (prefix, creator);
+			return true;
 		}
 
-		internal void SetupProgressDelegate (Delegate progress_delegate)
+		internal void SetupProgressDelegate (Action<long,long> progress)
 		{
-			if (browser_http_request == null)
-				browser_http_request = GetBrowserHttpFromMoonlight ();
-
-			this.GetType ().GetField ("progress_delegate", BindingFlags.Instance | BindingFlags.NonPublic).SetValue (this, progress_delegate);
+			FieldInfo fi = GetType ().GetField ("progress", BindingFlags.Instance | BindingFlags.NonPublic);
+			if (fi != null)
+				fi.SetValue (this, progress);
 		}
-		
+
+		static Exception NotImplemented ()
+		{
+			// hide the "normal" NotImplementedException from corcompare-like tools
+			return new NotImplementedException ();
+		}
 	}
 }
 

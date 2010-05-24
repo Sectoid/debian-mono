@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2005 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2005,2009 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,13 +39,49 @@ namespace System.ServiceModel.Dispatcher
 {
 	public class ChannelDispatcher : ChannelDispatcherBase
 	{
+		class EndpointDispatcherCollection : SynchronizedCollection<EndpointDispatcher>
+		{
+			public EndpointDispatcherCollection (ChannelDispatcher owner)
+			{
+				this.owner = owner;
+			}
+
+			ChannelDispatcher owner;
+
+			protected override void ClearItems ()
+			{
+				foreach (var ed in this)
+					ed.ChannelDispatcher = null;
+				base.ClearItems ();
+			}
+
+			protected override void InsertItem (int index, EndpointDispatcher item)
+			{
+				item.ChannelDispatcher = owner;
+				base.InsertItem (index, item);
+			}
+
+			protected override void RemoveItem (int index)
+			{
+				if (index < Count)
+					this [index].ChannelDispatcher = null;
+				base.RemoveItem (index);
+			}
+
+			protected override void SetItem (int index, EndpointDispatcher item)
+			{
+				item.ChannelDispatcher = owner;
+				base.SetItem (index, item);
+			}
+		}
+
 		ServiceHostBase host;
 
 		string binding_name;		
 		Collection<IErrorHandler> error_handlers
 			= new Collection<IErrorHandler> ();
 		IChannelListener listener;
-		IDefaultCommunicationTimeouts timeouts;
+		internal IDefaultCommunicationTimeouts timeouts; // FIXME: remove internal
 		MessageVersion message_version;
 		bool receive_sync, include_exception_detail_in_faults,
 			manual_addressing, is_tx_receive;
@@ -58,23 +94,19 @@ namespace System.ServiceModel.Dispatcher
 
 		Guid identifier = Guid.NewGuid ();
 		ManualResetEvent async_event = new ManualResetEvent (false);
-		EndpointListenerAsyncResult async_result;
 
 		ListenerLoopManager loop_manager;
-		SynchronizedCollection<EndpointDispatcher> _endpoints;
+		SynchronizedCollection<EndpointDispatcher> endpoints;
 
 		[MonoTODO ("get binding info from config")]
-		public ChannelDispatcher (IChannelListener listener)			
+		public ChannelDispatcher (IChannelListener listener)
+			: this (listener, null)
 		{
-			if (listener == null)
-				throw new ArgumentNullException ("listener");
-			Init (listener, null, null);
 		}
 
 		public ChannelDispatcher (
 			IChannelListener listener, string bindingName)
-			: this (listener, bindingName, 
-				DefaultCommunicationTimeouts.Instance)
+			: this (listener, bindingName, null)
 		{
 		}
 
@@ -82,21 +114,32 @@ namespace System.ServiceModel.Dispatcher
 			IChannelListener listener, string bindingName,
 			IDefaultCommunicationTimeouts timeouts)
 		{
-		if (listener == null)
+			if (listener == null)
 				throw new ArgumentNullException ("listener");
-			if (bindingName == null)
-				throw new ArgumentNullException ("bindingName");
-			if (timeouts == null)
-				throw new ArgumentNullException ("timeouts");
 			Init (listener, bindingName, timeouts);
 		}
 
 		private void Init (IChannelListener listener, string bindingName,
-			IDefaultCommunicationTimeouts timeouts) {
+			IDefaultCommunicationTimeouts timeouts)
+		{
 			this.listener = listener;
 			this.binding_name = bindingName;
-			this.timeouts = timeouts;
-			_endpoints = new SynchronizedCollection<EndpointDispatcher> ();
+			// IChannelListener is often a ChannelListenerBase
+			// which implements IDefaultCommunicationTimeouts.
+			this.timeouts = timeouts ?? listener as IDefaultCommunicationTimeouts ?? DefaultCommunicationTimeouts.Instance;
+			endpoints = new EndpointDispatcherCollection (this);
+		}
+
+		internal void InitializeServiceEndpoint (Type serviceType, ServiceEndpoint se)
+		{
+			this.MessageVersion = se.Binding.MessageVersion;
+			if (this.MessageVersion == null)
+				this.MessageVersion = MessageVersion.Default;
+
+			//Attach one EndpointDispacher to the ChannelDispatcher
+			EndpointDispatcher ed = new EndpointDispatcher (se.Address, se.Contract.Name, se.Contract.Namespace);
+			this.Endpoints.Add (ed);
+			ed.InitializeServiceEndpoint (false, serviceType, se);
 		}
 
 		public string BindingName {
@@ -120,9 +163,7 @@ namespace System.ServiceModel.Dispatcher
 		}
 
 		public SynchronizedCollection<EndpointDispatcher> Endpoints {
-			get {				
-				return _endpoints;
-			}
+			get { return endpoints; }
 		}
 
 		[MonoTODO]
@@ -160,7 +201,10 @@ namespace System.ServiceModel.Dispatcher
 
 		public bool ReceiveSynchronously {
 			get { return receive_sync; }
-			set { receive_sync = value; }
+			set {
+				ThrowIfDisposedOrImmutable ();
+				receive_sync = value; 
+			}
 		}
 
 		public bool IncludeExceptionDetailInFaults {
@@ -186,22 +230,12 @@ namespace System.ServiceModel.Dispatcher
 		protected internal override void Attach (ServiceHostBase host)
 		{
 			this.host = host;
-		}		
+		}
 
 		public override void CloseInput ()
 		{
-			if (State == CommunicationState.Closed)
-				return;
-			try {
-				try {
-					listener.Close ();
-				} finally {
-					listener = null;
-				}
-			} finally {
-				if (async_result != null)
-					async_result.Complete (false);
-			}
+			if (loop_manager != null)
+				loop_manager.CloseInput ();
 		}
 
 		protected internal override void Detach (ServiceHostBase host)
@@ -211,186 +245,323 @@ namespace System.ServiceModel.Dispatcher
 
 		protected override void OnAbort ()
 		{
-			throw new NotImplementedException ();
+			if (loop_manager != null)
+				loop_manager.Stop (TimeSpan.FromTicks (1));
 		}
+
+		Action<TimeSpan> open_delegate;
+		Action<TimeSpan> close_delegate;
 
 		protected override IAsyncResult OnBeginClose (TimeSpan timeout,
 			AsyncCallback callback, object state)
 		{
-			async_event.Reset ();
-			async_result = new CloseAsyncResult (
-				async_event, identifier, timeout,
-				callback, state);
-			return async_result;
+			if (close_delegate == null)
+				close_delegate = new Action<TimeSpan> (OnClose);
+			return close_delegate.BeginInvoke (timeout, callback, state);
 		}
 
 		protected override IAsyncResult OnBeginOpen (TimeSpan timeout,
 			AsyncCallback callback, object state)
 		{
-			async_event.Reset ();
-			async_result = new OpenAsyncResult (
-				async_event, identifier, timeout,
-				callback, state);
-			return async_result;
+			if (open_delegate == null)
+				open_delegate = new Action<TimeSpan> (OnClose);
+			return open_delegate.BeginInvoke (timeout, callback, state);
 		}
 
 		protected override void OnClose (TimeSpan timeout)
 		{
-			ProcessClose (timeout);
+			if (loop_manager != null)
+				loop_manager.Stop (timeout);
 		}
 
 		protected override void OnClosed ()
 		{
 			if (host != null)
 				host.ChannelDispatchers.Remove (this);
+			base.OnClosed ();
 		}
 
 		protected override void OnEndClose (IAsyncResult result)
 		{
-			if (result == null)
-				throw new ArgumentNullException ("result");
-			OpenAsyncResult or = result as OpenAsyncResult;
-			if (or == null)
-				throw new ArgumentException ("Pass an IAsyncResult instance that is returned from BeginOpen().");
-			CloseInput ();
-			or.AsyncWaitHandle.WaitOne ();
+			close_delegate.EndInvoke (result);
 		}
 
-		[MonoTODO ("this is not a real async method.")]
 		protected override void OnEndOpen (IAsyncResult result)
 		{
-			if (result == null)
-				throw new ArgumentNullException ("result");
-			OpenAsyncResult or = result as OpenAsyncResult;
-			if (or == null)
-				throw new ArgumentException ("Pass an IAsyncResult instance that is returned from BeginOpen().");
-			or.AsyncWaitHandle.WaitOne ();
+			open_delegate.EndInvoke (result);
 		}
 
 		protected override void OnOpen (TimeSpan timeout)
 		{
-			ProcessOpen (timeout);
+			if (Host == null || MessageVersion == null)
+				throw new InvalidOperationException ("Service host is not attached to this ChannelDispatcher.");
+
+			loop_manager.Setup (timeout);
 		}
 
-		[MonoTODO ("what to do here?")]
 		protected override void OnOpening ()
 		{
+			base.OnOpening ();
+			loop_manager = new ListenerLoopManager (this);
 		}
 
-		[MonoTODO ("what to do here?")]
 		protected override void OnOpened ()
 		{
+			base.OnOpened ();
+			StartLoop ();
 		}
 
-		void ProcessClose (TimeSpan timeout)
+		void StartLoop ()
 		{
-			if (loop_manager != null)
-				loop_manager.Stop ();
-			CloseInput ();
-		}
+			// FIXME: not sure if it should be filled here.
+			if (ServiceThrottle == null)
+				ServiceThrottle = new ServiceThrottle ();
 
-		void ProcessOpen (TimeSpan timeout)
-		{
-			if (Host == null || MessageVersion == null)
-				throw new InvalidOperationException ("Service host is not attached to this ChannelDispatcher.");			
-			try {
-				// FIXME: hack, just to make it runnable
-				listener.Open (timeout);
-				loop_manager = new ListenerLoopManager (this);
-				loop_manager.Start ();
-			} finally {
-				if (async_result != null)
-					async_result.Complete (false);
-			}
+			loop_manager.Start ();
 		}
+	}
 
-		bool IsMessageMatchesEndpointDispatcher (Message req, EndpointDispatcher endpoint)
-		{
-			Uri to = req.Headers.To;
-			if (to == null)
-				return false;
-			if (to.AbsoluteUri == Constants.WsaAnonymousUri)
-				return false;
-			return endpoint.AddressFilter.Match (req) && endpoint.ContractFilter.Match (req);
-		}
-		 
-		void HandleError (Exception ex)
-		{
-			foreach (IErrorHandler handler in ErrorHandlers)
-				if (handler.HandleError (ex))
-					break;
-		}
-
+		// isolated from ChannelDispatcher
 		class ListenerLoopManager
 		{
 			ChannelDispatcher owner;
-			AutoResetEvent handle;
-			IReplyChannel reply;
-			IInputChannel input;
+			AutoResetEvent throttle_wait_handle = new AutoResetEvent (false);
+			AutoResetEvent creator_handle = new AutoResetEvent (false);
+			ManualResetEvent stop_handle = new ManualResetEvent (false);
 			bool loop;
 			Thread loop_thread;
+			DateTime close_started;
+			TimeSpan close_timeout;
+			Func<IAsyncResult> channel_acceptor;
+			List<IChannel> channels = new List<IChannel> ();
+			AddressFilterMode address_filter_mode;
 
 			public ListenerLoopManager (ChannelDispatcher owner)
 			{
 				this.owner = owner;
-				MethodInfo mi = owner.Listener.GetType ().GetMethod ("AcceptChannel", Type.EmptyTypes);
-				object channel = mi.Invoke (owner.Listener, new object [0]);
-				reply = channel as IReplyChannel;
-				input = channel as IInputChannel;
+				var sba = owner.Host != null ? owner.Host.Description.Behaviors.Find<ServiceBehaviorAttribute> () : null;
+				if (sba != null)
+					address_filter_mode = sba.AddressFilterMode;
+			}
+
+			public void Setup (TimeSpan openTimeout)
+			{
+				if (owner.Listener.State != CommunicationState.Opened)
+					owner.Listener.Open (openTimeout);
+
+				// It is tested at Open(), but strangely it is not instantiated at this point.
+				foreach (var ed in owner.Endpoints)
+					if (ed.DispatchRuntime.InstanceContextProvider == null && (ed.DispatchRuntime.Type == null || ed.DispatchRuntime.Type.GetConstructor (Type.EmptyTypes) == null))
+						throw new InvalidOperationException ("There is no default constructor for the service Type in the DispatchRuntime");
+				SetupChannelAcceptor ();
 			}
 
 			public void Start ()
 			{
 				if (loop_thread == null)
-					loop_thread = new Thread (new ThreadStart (StartLoop));
+					loop_thread = new Thread (new ThreadStart (Loop));
 				loop_thread.Start ();
 			}
 
-			public void Stop ()
+			Func<IAsyncResult> CreateAcceptor<TChannel> (IChannelListener l) where TChannel : class, IChannel
 			{
-				StopLoop ();
-				owner.Listener.Close ();
-				if (loop_thread.IsAlive)
+				IChannelListener<TChannel> r = l as IChannelListener<TChannel>;
+				if (r == null)
+					return null;
+				AsyncCallback callback = delegate (IAsyncResult result) {
+					try {
+						ChannelAccepted (r.EndAcceptChannel (result));
+					} catch (Exception ex) {
+						Console.WriteLine ("Exception during finishing channel acceptance.");
+						Console.WriteLine (ex);
+						creator_handle.Set ();
+					}
+				};
+				return delegate {
+					try {
+						return r.BeginAcceptChannel (callback, null);
+					} catch (Exception ex) {
+						Console.WriteLine ("Exception during accepting channel.");
+						Console.WriteLine (ex);
+						throw;
+					}
+				};
+			}
+
+			void SetupChannelAcceptor ()
+			{
+				var l = owner.Listener;
+				channel_acceptor =
+					CreateAcceptor<IReplyChannel> (l) ??
+					CreateAcceptor<IReplySessionChannel> (l) ??
+					CreateAcceptor<IInputChannel> (l) ??
+					CreateAcceptor<IInputSessionChannel> (l) ??
+					CreateAcceptor<IDuplexChannel> (l) ??
+					CreateAcceptor<IDuplexSessionChannel> (l);
+				if (channel_acceptor == null)
+					throw new InvalidOperationException (String.Format ("Unrecognized channel listener type: {0}", l.GetType ()));
+			}
+
+			public void Stop (TimeSpan timeout)
+			{
+				if (loop_thread == null)
+					return;
+
+				close_started = DateTime.Now;
+				close_timeout = timeout;
+				loop = false;
+				creator_handle.Set ();
+				throttle_wait_handle.Set (); // break primary loop
+				if (stop_handle != null) {
+					stop_handle.WaitOne (timeout > TimeSpan.Zero ? timeout : TimeSpan.FromTicks (1));
+					stop_handle.Close ();
+					stop_handle = null;
+				}
+				if (owner.Listener.State != CommunicationState.Closed) {
+					// FIXME: log it
+					Console.WriteLine ("Channel listener '{0}' is not closed. Aborting.", owner.Listener.GetType ());
+					owner.Listener.Abort ();
+				}
+				if (loop_thread != null && loop_thread.IsAlive)
 					loop_thread.Abort ();
 				loop_thread = null;
 			}
 
-			void StartLoop ()
+			public void CloseInput ()
 			{
-				try {
-					StartLoopCore ();
-				} catch (ThreadAbortException) {
-					Thread.ResetAbort ();
+				foreach (var ch in channels.ToArray ()) {
+					if (ch.State == CommunicationState.Closed)
+						channels.Remove (ch); // zonbie, if exists
+					else {
+						try {
+							ch.Close (close_timeout - (DateTime.Now - close_started));
+						} catch (Exception ex) {
+							// FIXME: log it.
+							Console.WriteLine (ex);
+							ch.Abort ();
+						}
+					}
 				}
 			}
 
-			void StartLoopCore ()
+			void Loop ()
+			{
+				try {
+					LoopCore ();
+				} catch (Exception ex) {
+					// FIXME: log it
+					Console.WriteLine ("ChannelDispatcher caught an exception inside dispatcher loop, which is likely thrown by the channel listener {0}", owner.Listener);
+					Console.WriteLine (ex);
+				} finally {
+					if (stop_handle != null)
+						stop_handle.Set ();
+				}
+			}
+
+			void LoopCore ()
 			{
 				loop = true;
 
-				// FIXME: use async WaitForBlah() method so
-				// that we can stop them at our own will.
-				
-				//FIXME: The logic here should be entirely different as follows:
-				//1. Get the message
-				//2. Get the appropriate EndPointDispatcher that can handle the message
-				//   which is done using the filters (AddressFilter, ContractFilter).
-				//3. Let the appropriate endpoint handle the request.
+				// FIXME: use WaitForChannel() for (*only* for) transacted channel listeners.
+				// http://social.msdn.microsoft.com/Forums/en-US/wcf/thread/3faa4a5e-8602-4dbe-a181-73b3f581835e
+
+				while (loop) {
+					// FIXME: enable throttling and allow more than one connection to process at a time.
+					while (loop && channels.Count < 1) {
+//					while (loop && channels.Count < owner.ServiceThrottle.MaxConcurrentSessions) {
+						channel_acceptor ();
+						creator_handle.WaitOne (); // released by ChannelAccepted()
+					}
+					if (!loop)
+						break;
+					throttle_wait_handle.WaitOne (); // released by IChannel.Close()
+				}
+				try {
+					owner.Listener.Close ();
+				} finally {
+					// make sure to close both listener and channels.
+					owner.CloseInput ();
+				}
+			}
+
+			void ChannelAccepted (IChannel ch)
+			{
+			try {
+				if (ch == null) // could happen when it was aborted
+					return;
+				if (!loop) {
+					var dis = ch as IDisposable;
+					if (dis != null)
+						dis.Dispose ();
+					return;
+				}
+
+				channels.Add (ch);
+				ch.Opened += delegate {
+					ch.Faulted += delegate {
+						if (channels.Contains (ch))
+							channels.Remove (ch);
+						throttle_wait_handle.Set (); // release loop wait lock.
+						};
+					ch.Closed += delegate {
+						if (channels.Contains (ch))
+							channels.Remove (ch);
+						throttle_wait_handle.Set (); // release loop wait lock.
+						};
+					};
+				ch.Open ();
+			} finally {
+				creator_handle.Set ();
+			}
+
+				ProcessRequestOrInput (ch);
+			}
+
+			void ProcessRequestOrInput (IChannel ch)
+			{
+				var reply = ch as IReplyChannel;
+				var input = ch as IInputChannel;
 
 				if (reply != null) {
-					while (loop) {
-						if (reply.WaitForRequest (owner.timeouts.ReceiveTimeout))							
-							ProcessRequest ();
+					if (owner.ReceiveSynchronously) {
+						RequestContext rc;
+						if (reply.TryReceiveRequest (owner.timeouts.ReceiveTimeout, out rc))
+							ProcessRequest (reply, rc);
+					} else {
+						reply.BeginTryReceiveRequest (owner.timeouts.ReceiveTimeout, TryReceiveRequestDone, reply);
 					}
 				} else if (input != null) {
-					while (loop) {
-						if (input.WaitForMessage (owner.timeouts.ReceiveTimeout))
-							ProcessInput ();
+					if (owner.ReceiveSynchronously) {
+						Message msg;
+						if (input.TryReceive (owner.timeouts.ReceiveTimeout, out msg))
+							ProcessInput (input, msg);
+					} else {
+						input.BeginTryReceive (owner.timeouts.ReceiveTimeout, TryReceiveDone, input);
 					}
 				}
 			}
 
-			void sendEndpointNotFound (RequestContext rc, EndpointNotFoundException ex) 
+			void TryReceiveRequestDone (IAsyncResult result)
+			{
+				RequestContext rc;
+				var reply = (IReplyChannel) result.AsyncState;
+				if (reply.EndTryReceiveRequest (result, out rc))
+					ProcessRequest (reply, rc);
+				else
+					reply.Close ();
+			}
+
+			void TryReceiveDone (IAsyncResult result)
+			{
+				Message msg;
+				var input = (IInputChannel) result.AsyncState;
+				if (input.EndTryReceive (result, out msg))
+					ProcessInput (input, msg);
+				else
+					input.Close ();
+			}
+
+			void SendEndpointNotFound (RequestContext rc, EndpointNotFoundException ex) 
 			{
 				try {
 
@@ -398,135 +569,76 @@ namespace System.ServiceModel.Dispatcher
 					FaultCode fc = new FaultCode ("DestinationUnreachable", version.Addressing.Namespace);
 					Message res = Message.CreateMessage (version, fc, "error occured", rc.RequestMessage.Headers.Action);
 					rc.Reply (res);
+				} catch (Exception e) {
+					// FIXME: log it
+					Console.WriteLine ("Error on sending DestinationUnreachable fault message: " + e);
 				}
-				catch (Exception e) { }
 			}
 
-			void ProcessRequest ()
+			void ProcessRequest (IReplyChannel reply, RequestContext rc)
 			{
-				RequestContext rc = null;
 				try {
-					rc = reply.ReceiveRequest (owner.timeouts.ReceiveTimeout);
-					if (rc == null)
-						throw new InvalidOperationException ("The reply channel didn't return RequestContext");
-
 					EndpointDispatcher candidate = FindEndpointDispatcher (rc.RequestMessage);
-					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, reply, owner.timeouts).
+					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, reply).
 						ProcessReply (rc);
-				}
-				catch (EndpointNotFoundException ex) {
-					sendEndpointNotFound (rc, ex);
+				} catch (EndpointNotFoundException ex) {
+					SendEndpointNotFound (rc, ex);
+				} catch (Exception ex) {
+					// FIXME: log it.
+					Console.WriteLine (ex);
+				} finally {
+					if (rc != null)
+						rc.Close ();
+					// unless it is closed by session/call manager, move it back to the loop to receive the next message.
+					if (loop && reply.State != CommunicationState.Closed)
+						ProcessRequestOrInput (reply);
 				}
 			}
 
-			void ProcessInput ()
+			void ProcessInput (IInputChannel input, Message message)
 			{
-				Message message = input.Receive ();
-				EndpointDispatcher candidate = null;
-
 				try {
+					EndpointDispatcher candidate = null;
 					candidate = FindEndpointDispatcher (message);
-					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, reply, owner.timeouts).
-						ProcessInput(message);
+					new InputOrReplyRequestProcessor (candidate.DispatchRuntime, input).
+						ProcessInput (message);
 				}
-				catch (EndpointNotFoundException ex) {
-					// silently ignore
+				catch (Exception ex) {
+					// FIXME: log it.
+					Console.WriteLine (ex);
+				} finally {
+					// unless it is closed by session/call manager, move it back to the loop to receive the next message.
+					if (loop && input.State != CommunicationState.Closed)
+						ProcessRequestOrInput (input);
 				}
 			}
 
 			EndpointDispatcher FindEndpointDispatcher (Message message) {
 				EndpointDispatcher candidate = null;
 				for (int i = 0; i < owner.Endpoints.Count; i++) {
-					if (owner.IsMessageMatchesEndpointDispatcher (message, owner.Endpoints [i])) {
-						candidate = owner.Endpoints [i];
-						break;
+					if (MessageMatchesEndpointDispatcher (message, owner.Endpoints [i])) {
+						var newdis = owner.Endpoints [i];
+						if (candidate == null || candidate.FilterPriority < newdis.FilterPriority)
+							candidate = newdis;
+						else if (candidate.FilterPriority == newdis.FilterPriority)
+							throw new MultipleFilterMatchesException ();
 					}
 				}
-				if (candidate == null)
-					throw new EndpointNotFoundException (String.Format ("The request message has the target '{0}' which is not reachable in this service contract", message.Headers.To));
+				if (candidate == null && owner.Host != null)
+					owner.Host.OnUnknownMessageReceived (message);
 				return candidate;
 			}
 
-			void StopLoop ()
+			bool MessageMatchesEndpointDispatcher (Message req, EndpointDispatcher endpoint)
 			{
-				loop = false;
-				// FIXME: send manual stop for reply or input channel.
+				// FIXME: handle AddressFilterMode.Prefix too.
+
+				Uri to = req.Headers.To;
+				if (to == null)
+					return address_filter_mode == AddressFilterMode.Any;
+				if (to.AbsoluteUri == Constants.WsaAnonymousUri)
+					return false;
+				return endpoint.AddressFilter.Match (req) && endpoint.ContractFilter.Match (req);
 			}
 		}
-
-		#region AsyncResult classes
-
-		class CloseAsyncResult : EndpointListenerAsyncResult
-		{
-			public CloseAsyncResult (ManualResetEvent asyncEvent,
-				Guid identifier, TimeSpan timeout,
-				AsyncCallback callback, object state)
-				: base (asyncEvent, identifier, timeout,
-					callback, state)
-			{
-			}
-		}
-
-		class OpenAsyncResult : EndpointListenerAsyncResult
-		{
-			public OpenAsyncResult (ManualResetEvent asyncEvent,
-				Guid identifier, TimeSpan timeout,
-				AsyncCallback callback, object state)
-				: base (asyncEvent, identifier, timeout,
-					callback, state)
-			{
-			}
-		}
-
-		abstract class EndpointListenerAsyncResult : IAsyncResult
-		{
-			ManualResetEvent async_event;
-			Guid identifier;
-			TimeSpan timeout;
-			AsyncCallback callback;
-			object state;
-			bool completed, completed_async;
-
-			public EndpointListenerAsyncResult (
-				ManualResetEvent asyncEvent,
-				Guid identifier, TimeSpan timeout,
-				AsyncCallback callback, object state)
-			{
-				async_event = asyncEvent;
-				this.identifier = identifier;
-				this.timeout = timeout;
-				this.callback = callback;
-				this.state = state;
-			}
-
-			public WaitHandle AsyncWaitHandle {
-				get { return async_event; }
-			}
-
-			public bool IsCompleted {
-				get { return completed; }
-			}
-
-			public TimeSpan Timeout {
-				get { return timeout; }
-			}
-
-			public void Complete (bool async)
-			{
-				completed_async = async;
-				if (callback != null)
-					callback (this);
-				async_event.Set ();
-			}
-
-			public object AsyncState {
-				get { return state; }
-			}
-
-			public bool CompletedSynchronously {
-				get { return completed_async; }
-			}
-		}
-		#endregion
-	}
 }

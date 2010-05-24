@@ -51,13 +51,13 @@ namespace System.Reflection.Emit {
 #pragma warning disable 169, 414
 		private RuntimeMethodHandle mhandle;
 		private ILGenerator ilgen;
-		private Type[] parameters;
+		internal Type[] parameters;
 		private MethodAttributes attrs;
 		private MethodImplAttributes iattrs;
 		private int table_idx;
 		private CallingConventions call_conv;
 		private TypeBuilder type;
-		private ParameterBuilder[] pinfo;
+		internal ParameterBuilder[] pinfo;
 		private CustomAttributeBuilder[] cattrs;
 		private bool init_locals = true;
 		private Type[][] paramModReq;
@@ -196,6 +196,7 @@ namespace System.Reflection.Emit {
 
 		public void AddDeclarativeSecurity (SecurityAction action, PermissionSet pset)
 		{
+#if !NET_2_1
 			if (pset == null)
 				throw new ArgumentNullException ("pset");
 			if ((action == SecurityAction.RequestMinimum) ||
@@ -220,6 +221,7 @@ namespace System.Reflection.Emit {
 
 			permissions [permissions.Length - 1] = new RefEmitPermissionSet (action, pset.ToXml ().ToString ());
 			attrs |= MethodAttributes.HasSecurity;
+#endif
 		}
 
 		public ParameterBuilder DefineParameter (int iSequence, ParameterAttributes attributes, string strParamName)

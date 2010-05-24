@@ -212,6 +212,7 @@ namespace System.Net {
 			int colon = header.IndexOf (':');
 			if (colon == -1 || colon == 0) {
 				context.ErrorMessage = "Bad Request";
+				context.ErrorStatus = 400;
 				return;
 			}
 
@@ -287,6 +288,28 @@ namespace System.Net {
 						cookies.Add (current);
 					}
 					break;
+			}
+		}
+
+		// returns true is the stream could be reused.
+		internal bool FlushInput ()
+		{
+			if (!HasEntityBody)
+				return true;
+
+			int length = 2048;
+			if (content_length > 0)
+				length = (int) Math.Min (content_length, (long) length);
+
+			byte [] bytes = new byte [length];
+			while (true) {
+				// TODO: test if MS has a timeout when doing this
+				try {
+					if (InputStream.Read (bytes, 0, length) <= 0)
+						return true;
+				} catch {
+					return false;
+				}
 			}
 		}
 

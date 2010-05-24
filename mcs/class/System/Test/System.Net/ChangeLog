@@ -1,3 +1,13 @@
+2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CookieContainerTest.cs: Additional test cases from Tom Philpot
+	[Backport r149976 + NET_1_1 fixes]
+
+2010-01-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* NetworkCredentialTest.cs: New. Unit tests.
+	[Backport r149401]
+
 2009-12-24  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CookieContainerTest.cs: Split many tests into smaller test 
@@ -5,6 +15,11 @@
 	DefaultCookieLimit. Remove all, but one 1.x, [Category 
 	("NotWorking")] since everything works now.
 
+2009-10-23  Alexandre Gomes  <alexmipego@gmail.com>
+
+	* WebClientTest.cs: Test for GetWebRequest overriding
+	  issues
+	  
 2009-07-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* WebHeaderCollectionTest.cs: test for allowed characters in headers.

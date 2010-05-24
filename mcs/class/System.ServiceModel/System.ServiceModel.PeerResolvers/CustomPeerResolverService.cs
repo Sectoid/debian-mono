@@ -3,45 +3,87 @@
 // 
 // Author: 
 //     Marcos Cobena (marcoscobena@gmail.com)
+//	Atsushi Enomoto  <atsushi@ximian.com>
 // 
 // Copyright 2007 Marcos Cobena (http://www.youcannoteatbits.org/)
+//
+// Copyright (C) 2009 Novell, Inc (http://www.novell.com)
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
 // 
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
 using System.Transactions;
+using System.Timers;
 
 namespace System.ServiceModel.PeerResolvers
 {
-	// FIXME: TransactionTimeout must be null by-default.
-	[ServiceBehavior (AutomaticSessionShutdown = true, ConcurrencyMode = ConcurrencyMode.Multiple, 
-	                  InstanceContextMode = InstanceContextMode.Single, ReleaseServiceInstanceOnTransactionComplete = true, 
-	                  TransactionIsolationLevel = IsolationLevel.Unspecified, /*TransactionTimeout = null, */
-	                  UseSynchronizationContext = false, ValidateMustUnderstand = true)]
+	[MonoTODO ("Implement cleanup and refresh")]
+	[ServiceBehavior (ConcurrencyMode = ConcurrencyMode.Multiple, 
+	                  InstanceContextMode = InstanceContextMode.Single,
+	                  UseSynchronizationContext = false)]
 	public class CustomPeerResolverService : IPeerResolverContract
 	{
-		TimeSpan cleanup_interval;
-		bool control_shape;
-		bool opened;
-		// Maybe it's worth to change List<T> for a better distributed and faster collection.
-		List<Node> mesh = new List<Node> ();
-		object mesh_lock = new object ();
-		TimeSpan refresh_interval;
+		static ServiceHost localhost;
+
+		static void SetupCustomPeerResolverServiceHost ()
+		{
+			// launch peer resolver service locally only when it does not seem to be running ...
+			var t = new TcpListener (8931);
+			try {
+				t.Start ();
+				t.Stop ();
+			} catch {
+				return;
+			}
+			Console.WriteLine ("WARNING: it is running peer resolver service locally. This means, the node registration is valid only within this application domain...");
+			var host = new ServiceHost (new LocalPeerResolverService (TextWriter.Null));
+			host.Description.Behaviors.Find<ServiceBehaviorAttribute> ().InstanceContextMode = InstanceContextMode.Single;
+			host.AddServiceEndpoint (typeof (ICustomPeerResolverContract), new BasicHttpBinding (), "http://localhost:8931");
+			localhost = host;
+			host.Open ();
+		}
+
+		ICustomPeerResolverClient client;
+		bool control_shape, opened;
+		TimeSpan refresh_interval, cleanup_interval;
 
 		public CustomPeerResolverService ()
 		{
-			cleanup_interval = new TimeSpan (0, 1, 0);
-			control_shape = false;
-			opened = false;
+			client = ChannelFactory<ICustomPeerResolverClient>.CreateChannel (new BasicHttpBinding (), new EndpointAddress ("http://localhost:8931"));
+
 			refresh_interval = new TimeSpan (0, 10, 0);
+			cleanup_interval = new TimeSpan (0, 1, 0);
 		}
 
-		[MonoTODO ("To check for InvalidOperationException")]
 		public TimeSpan CleanupInterval {
 			get { return cleanup_interval; }
-			set {
+			set { 
 				if ((value < TimeSpan.Zero) || (value > TimeSpan.MaxValue))
 					throw new ArgumentOutOfRangeException (
 					"The interval is either zero or greater than max value.");
+				if (opened)
+					throw new InvalidOperationException ("The interval must be set before it is opened");
 
 				cleanup_interval = value;
 			}
@@ -49,51 +91,65 @@ namespace System.ServiceModel.PeerResolvers
 
 		public bool ControlShape {
 			get { return control_shape; }
-			set { control_shape = value; }
+			set {
+				if (opened)
+					throw new InvalidOperationException ("The interval must be set before it is opened");
+				control_shape = value;
+			}
 		}
 
-		[MonoTODO ("To check for InvalidOperationException")]
 		public TimeSpan RefreshInterval {
 			get { return refresh_interval; }
 			set {
 				if ((value < TimeSpan.Zero) || (value > TimeSpan.MaxValue))
 					throw new ArgumentOutOfRangeException (
 					"The interval is either zero or greater than max value.");
+				if (opened)
+					throw new InvalidOperationException ("The interval must be set before it is opened");
 
 				refresh_interval = value;
 			}
 		}
 
-		[MonoTODO]
+		[MonoTODO ("Do we have to unregister nodes here?")]
 		public virtual void Close ()
 		{
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed by a previous call to this method.");
+			client.Close ();
+			opened = false;
+
+			if (localhost != null) {
+				localhost.Close ();
+				localhost = null;
+			}
 		}
 
-		[MonoTODO]
 		public virtual ServiceSettingsResponseInfo GetServiceSettings ()
 		{
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed previously.");
 		
-//			return new ServiceSettingsResponseInfo ();
-			throw new NotImplementedException ();
+			return client.GetServiceSettings ();
 		}
 
-		[MonoTODO]
 		public virtual void Open ()
 		{
-			if ((cleanup_interval == TimeSpan.Zero) || (refresh_interval == TimeSpan.Zero))
+			if (localhost == null)
+				SetupCustomPeerResolverServiceHost ();
+
+			if ((CleanupInterval == TimeSpan.Zero) || (RefreshInterval == TimeSpan.Zero))
 				throw new ArgumentException ("Cleanup interval or refresh interval are set to a time span interval of zero.");
 
 			if (opened)
 				throw new InvalidOperationException ("The service has been started by a previous call to this method.");
 			
 			opened = true;
+
+			client.Open ();
+			client.SetCustomServiceSettings (new PeerServiceSettingsInfo () { ControlMeshShape = control_shape, RefreshInterval = refresh_interval, CleanupInterval = cleanup_interval });
 		}
 
-		[MonoTODO]
 		public virtual RefreshResponseInfo Refresh (RefreshInfo refreshInfo)
 		{
 			if (refreshInfo == null)
@@ -101,9 +157,8 @@ namespace System.ServiceModel.PeerResolvers
 			
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed previously.");
-			
-//			return new RefreshResponseInfo ();
-			throw new NotImplementedException ();
+
+			return client.Refresh (refreshInfo);
 		}
 
 		public virtual RegisterResponseInfo Register (RegisterInfo registerInfo)
@@ -114,49 +169,25 @@ namespace System.ServiceModel.PeerResolvers
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed previously.");
 			
-			return Register (registerInfo.ClientId, registerInfo.MeshId, registerInfo.NodeAddress);
+			return client.Register (registerInfo);
 		}
 
-		[MonoTODO]
-		public virtual RegisterResponseInfo Register (Guid clientId, 
-			string meshId, 
-			PeerNodeAddress address)
+		public virtual RegisterResponseInfo Register (Guid clientId, string meshId, PeerNodeAddress address)
 		{
-			Node n = new Node ();
-			RegisterResponseInfo rri = new RegisterResponseInfo ();
-			
-			if (ControlShape) {
-				// FIXME: To update mesh node here.
-				lock (mesh_lock)
-				{
-					mesh.Add (n);
-//					Console.WriteLine ("{0}, {1}, {2}", clientId, meshId, address);
-				}
-			}
-			
-			return rri;
+			return Register (new RegisterInfo (clientId, meshId, address));
 		}
 
-		[MonoTODO]
 		public virtual ResolveResponseInfo Resolve (ResolveInfo resolveInfo)
 		{
-			ResolveResponseInfo rri = new ResolveResponseInfo ();
-			
 			if (resolveInfo == null)
 				throw new ArgumentException ("Resolve info cannot be null.");
 			
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed previously.");
-			
-			if (ControlShape)
-			{
-				// FIXME: To resolve address here.
-			}
-			
-			return rri;
+
+			return client.Resolve (resolveInfo);
 		}
 
-		[MonoTODO]
 		public virtual void Unregister (UnregisterInfo unregisterInfo)
 		{
 			if (unregisterInfo == null)
@@ -164,14 +195,10 @@ namespace System.ServiceModel.PeerResolvers
 			
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed previously.");
-			
-			if (ControlShape)
-			{
-				// FIXME: To remove node from mesh here.
-			}
+
+			client.Unregister (unregisterInfo);
 		}
 
-		[MonoTODO]
 		public virtual RegisterResponseInfo Update (UpdateInfo updateInfo)
 		{
 			if (updateInfo == null)
@@ -179,14 +206,8 @@ namespace System.ServiceModel.PeerResolvers
 			
 			if (! opened)
 				throw new InvalidOperationException ("The service has never been opened or it was closed previously.");
-			
-//			return new RegisterResponseInfo ();
-			throw new NotImplementedException ();
+
+			return client.Update (updateInfo);
 		}
-	}
-	
-	internal class Node
-	{
-		
 	}
 }

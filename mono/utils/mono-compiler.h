@@ -74,6 +74,8 @@
 #else
 #define MONO_THREAD_VAR_OFFSET(var,offset) __asm ("addl %0 = @tprel(" #var "#), r0 ;;\n" : "=r" (offset))
 #endif
+#elif defined(__arm__) && defined(__ARM_EABI__) && !defined(PIC)
+#define MONO_THREAD_VAR_OFFSET(var,offset) __asm ("	ldr	%0, 1f; b 2f; 1: .word " #var "(tpoff); 2:" : "=r" (offset))
 #elif defined(__mono_ppc__) && defined(__GNUC__)
 #if defined(PIC)
 #ifdef PIC_INITIAL_EXEC

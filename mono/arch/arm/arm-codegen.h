@@ -449,8 +449,8 @@ typedef struct {
 	ARM_DEF_COND(cond)
 
 
-#define ARM_LDMIA(p, base, regs) ARM_EMIT(p, ARM_DEF_MRT(regs, base, 1, 0, 0, 1, 0, ARMCOND_AL))
-#define ARM_STMIA(p, base, regs) ARM_EMIT(p, ARM_DEF_MRT(regs, base, 0, 0, 0, 1, 0, ARMCOND_AL))
+#define ARM_LDM(p, base, regs) ARM_EMIT(p, ARM_DEF_MRT(regs, base, 1, 0, 0, 1, 0, ARMCOND_AL))
+#define ARM_STM(p, base, regs) ARM_EMIT(p, ARM_DEF_MRT(regs, base, 0, 0, 0, 1, 0, ARMCOND_AL))
 
 /* stmdb sp!, {regs} */
 #define ARM_PUSH(p, regs) ARM_EMIT(p, ARM_DEF_MRT(regs, ARMREG_SP, 0, 1, 0, 0, 1, ARMCOND_AL))
@@ -1076,6 +1076,13 @@ typedef union {
 	arminstr_t      raw;
 } ARMInstr;
 
+/* ARMv6t2 */
+
+#define ARM_MOVW_REG_IMM_COND(p, rd, imm16, cond) ARM_EMIT(p, (((cond) << 28) | (3 << 24) | (0 << 20) | ((((guint32)(imm16)) >> 12) << 16) | ((rd) << 12) | (((guint32)(imm16)) & 0xfff)))
+#define ARM_MOVW_REG_IMM(p, rd, imm16) ARM_MOVW_REG_IMM_COND ((p), (rd), (imm16), ARMCOND_AL)
+
+#define ARM_MOVT_REG_IMM_COND(p, rd, imm16, cond) ARM_EMIT(p, (((cond) << 28) | (3 << 24) | (4 << 20) | ((((guint32)(imm16)) >> 12) << 16) | ((rd) << 12) | (((guint32)(imm16)) & 0xfff)))
+#define ARM_MOVT_REG_IMM(p, rd, imm16) ARM_MOVT_REG_IMM_COND ((p), (rd), (imm16), ARMCOND_AL)
 
 #ifdef __cplusplus
 }

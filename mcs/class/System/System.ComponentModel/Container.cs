@@ -33,6 +33,9 @@
 //
 
 using System.Collections;
+#if NET_2_0
+using System.Collections.Generic;
+#endif
 
 namespace System.ComponentModel {
 
@@ -45,8 +48,11 @@ namespace System.ComponentModel {
 	// </remarks>
 	public class Container : IContainer, IDisposable {
 
+#if NET_2_0
+		private List<IComponent> c = new List<IComponent> ();
+#else
 		private ArrayList c = new ArrayList ();
-		//ComponentCollection cc;
+#endif
 
 		// <summary>
 		//   Auxiliary class to support the default behaviour of CreateSite
@@ -61,9 +67,9 @@ namespace System.ComponentModel {
 		
 		class DefaultSite : ISite {
 
-			private IComponent component;
-			private Container container;
-			private string     name;
+			private readonly IComponent component;
+			private readonly Container container;
+			private string name;
 			
 			public DefaultSite (string name, IComponent component, Container container)
 			{
@@ -108,18 +114,15 @@ namespace System.ComponentModel {
 				return container.GetService (t);
 			}
 		}
-		
-		// <summary>
-		//   Container constructor
-		// </summary>
-		public Container ()
-		{
-		}
 
 		public virtual ComponentCollection Components {
 			get {
-				Array a = c.ToArray(typeof (IComponent));
-				return new ComponentCollection((IComponent[]) a);
+#if NET_2_0
+				IComponent [] a = c.ToArray ();
+#else
+				IComponent [] a = (IComponent []) c.ToArray (typeof (IComponent));
+#endif
+				return new ComponentCollection (a);
 			}
 		}
 
@@ -131,13 +134,10 @@ namespace System.ComponentModel {
 		public virtual void Add (IComponent component, string name)
 		{
 			if (component != null) {
-				if (component.Site == null || component.Site.Container != this) {					
-					if (component.Site != null) {
-						component.Site.Container.Remove (component);
-					}
-#if NET_2_0
+				if (component.Site == null || component.Site.Container != this) {
 					ValidateName (component, name);
-#endif
+					if (component.Site != null)
+						component.Site.Container.Remove (component);
 					component.Site = this.CreateSite (component, name);
 					c.Add (component);
 				}
@@ -145,17 +145,21 @@ namespace System.ComponentModel {
 		}
 
 #if NET_2_0
-		protected virtual void ValidateName (IComponent component, string name)
+		protected virtual
+#endif
+		void ValidateName (IComponent component, string name)
 		{
 			if (component == null)
 				throw new ArgumentNullException ("component");
 			if (name == null)
 				return;
-			foreach (IComponent ic in c)
-				if (ic.Site != null && ic.Site.Name == name)
+			foreach (IComponent ic in c) {
+				if (object.ReferenceEquals (component, ic))
+					continue;
+				if (ic.Site != null && string.Compare (ic.Site.Name, name, true) == 0)
 					throw new ArgumentException (String.Format ("There already is a named component '{0}' in this container", name));
+			}
 		}
-#endif
 
 		protected virtual ISite CreateSite (IComponent component, string name)
 		{
@@ -168,22 +172,20 @@ namespace System.ComponentModel {
 			GC.SuppressFinalize (this);
 		}
 
-		bool disposed = false;
-		
-		protected virtual void Dispose (bool release_all)
+		protected virtual void Dispose (bool disposing)
 		{
-			if (disposed)
-				return;
-			disposed = true;
-
-			if (release_all){
-				foreach (IComponent component in c) {
-					component.Site = null;
+			if (disposing) {
+				while (c.Count > 0) {
+					int index = c.Count - 1;
+#if NET_2_0
+					var component = c [index];
+#else
+					IComponent component = c [index] as IComponent;
+#endif
+					Remove (component);
 					component.Dispose ();
 				}
 			}
-
-			c = null;
 		}
 
 		~Container ()
@@ -193,36 +195,33 @@ namespace System.ComponentModel {
 
 		protected virtual object GetService (Type service)
 		{
-			if (typeof(IContainer) != service) {
-				return null; 
-			}
+			if (typeof(IContainer) != service)
+				return null;
 			return this;
 		}
 
 		public virtual void Remove (IComponent component)
 		{
-			Remove (component, true);		
+			Remove (component, true);
 		}
 
-		private void Remove (IComponent component, bool unsite)
+		void Remove (IComponent component, bool unsite)
 		{
-			if (component.Site != null && component.Site.Container == this) {
-				if (unsite) {
-					component.Site = null;
+			if (component != null) {
+				if (component.Site != null && component.Site.Container == this) {
+					if (unsite)
+						component.Site = null;
+					c.Remove (component);
 				}
-				c.Remove (component);
-			}					
+			}
 		}
 
 #if NET_2_0
 		protected void RemoveWithoutUnsiting (IComponent component)
 		{
-			if (component.Site != null && component.Site.Container == this) {
-				Remove (component, false);
-			}
+			Remove (component, false);
 		}
 #endif
-		
 	}
 	
 }

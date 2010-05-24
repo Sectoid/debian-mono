@@ -1,3 +1,31 @@
+2010-03-03  Lluis Sanchez Gual <lluis@novell.com> 
+
+	* ServiceDescriptionCollection.cs: When looking for bindings and other
+	items, look in the list instead of the namespace table, since the
+	collection may have several description documents with the same
+	namespace.
+	* ProtocolImporter.cs: Same as above. A schemas collection can have
+	more than one schema with the same name, so we can use the namespace
+	indexer to find schemas.
+	* BasicProfileChecker.cs: Added null check.
+
+2010-02-01  Jb Evain  <jbevain@novell.com>
+
+	* SoapProtocolImporter.cs: properly generate the SoapHeader
+	attribute on NET_2_0.
+
+2009-09-30  Miguel de Icaza  <miguel@novell.com>
+
+	* ExtensionManager.cs: Initialize the NET_2_0 pieces with
+	MonoTouch, but do not register any of the System.Configuration
+	depending extensions.
+
+	BuildExtensionImporters, BuildExtensionReflectors: empty methods
+	for MOnoTouch.
+
+	* ServiceDescriptionImporter.cs, WebReference.cs: Remove
+	codegeneration features for MonoTouch
+
 2008-12-18  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* BasicProfileChecker.cs : /definitions/message/part could omit

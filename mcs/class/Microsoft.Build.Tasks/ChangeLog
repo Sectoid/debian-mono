@@ -1,3 +1,23 @@
+2010-03-02  Ankit Jain  <jankit@novell.com>
+
+	Fix tests.
+	* Makefile (EXTRA_DISTFILES): Add Test/resources/junk.txt .
+
+2010-02-06  Ankit Jain  <jankit@novell.com>
+
+	* Microsoft.Build.Tasks.dll.sources: Add LC.cs
+	* Microsoft.Build.Tasks_test.dll.sources: Add LCTest.cs
+
+2010-02-04  Ankit Jain  <jankit@novell.com>
+
+	* Microsoft.Build.Tasks_test.dll.sources: Added
+	WriteLinesToFileTest.cs
+
+2009-12-22  Ankit Jain  <jankit@novell.com>
+
+	* Microsoft.Build.Tasks.dll.sources: Add DirectoryScanner.cs
+	from Build.Engine, required by CreateItem.
+
 2009-10-12  Ankit Jain  <jankit@novell.com>
 
 	* Makefile: Add reference to Microsoft.Build.Engine .

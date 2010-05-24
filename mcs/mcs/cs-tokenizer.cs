@@ -27,9 +27,23 @@ namespace Mono.CSharp
 
 	public class Tokenizer : yyParser.yyInput
 	{
+		class KeywordEntry
+		{
+			public readonly int Token;
+			public KeywordEntry Next;
+			public readonly char[] Value;
+
+			public KeywordEntry (string value, int token)
+			{
+				this.Value = value.ToCharArray ();
+				this.Token = token;
+			}
+		}
+
 		SeekableStreamReader reader;
 		SourceFile ref_name;
 		CompilationUnit file_name;
+		CompilerContext context;
 		bool hidden = false;
 		int ref_line = 1;
 		int line = 1;
@@ -100,6 +114,14 @@ namespace Mono.CSharp
 		bool tokens_seen = false;
 
 		//
+		// Set to true once the GENERATE_COMPLETION token has bee
+		// returned.   This helps produce one GENERATE_COMPLETION,
+		// as many COMPLETE_COMPLETION as necessary to complete the
+		// AST tree and one final EOF.
+		//
+		bool generated;
+		
+		//
 		// Whether a token has been seen on the file
 		// This is needed because `define' is not allowed to be used
 		// after a token has been seen.
@@ -139,6 +161,10 @@ namespace Mono.CSharp
 			}
 		}
 
+		//
+		// This is used to trigger completion generation on the parser
+		public bool CompleteOnEOF;
+		
 		void AddEscapedIdentifier (LocatedToken lt)
 		{
 			if (escaped_identifiers == null)
@@ -161,7 +187,7 @@ namespace Mono.CSharp
 		//
 		// Class variables
 		// 
-		static CharArrayHashtable[] keywords;
+		static KeywordEntry[][] keywords;
 		static Hashtable keyword_strings;
 		static NumberStyles styles;
 		static NumberFormatInfo csharp_format_info;
@@ -278,16 +304,32 @@ namespace Mono.CSharp
 		static void AddKeyword (string kw, int token)
 		{
 			keyword_strings.Add (kw, kw);
-			if (keywords [kw.Length] == null) {
-				keywords [kw.Length] = new CharArrayHashtable (kw.Length);
+
+			int length = kw.Length;
+			if (keywords [length] == null) {
+				keywords [length] = new KeywordEntry ['z' - '_' + 1];
 			}
-			keywords [kw.Length] [kw.ToCharArray ()] = token;
+
+			int char_index = kw [0] - '_';
+			KeywordEntry kwe = keywords [length] [char_index];
+			if (kwe == null) {
+				keywords [length] [char_index] = new KeywordEntry (kw, token);
+				return;
+			}
+
+			while (kwe.Next != null) {
+				kwe = kwe.Next;
+			}
+
+			kwe.Next = new KeywordEntry (kw, token);
 		}
 
 		static void InitTokens ()
 		{
 			keyword_strings = new Hashtable ();
-			keywords = new CharArrayHashtable [64];
+
+			// 11 is the length of the longest keyword for now
+			keywords = new KeywordEntry [11] [];
 
 			AddKeyword ("__arglist", Token.ARGLIST);
 			AddKeyword ("abstract", Token.ABSTRACT);
@@ -394,12 +436,7 @@ namespace Mono.CSharp
 		// 
 		static Tokenizer ()
 		{
-			Reset ();
-		}
-
-		public static void Reset ()
-		{
-			InitTokens ();
+			InitTokens ();			
 			csharp_format_info = NumberFormatInfo.InvariantInfo;
 			styles = NumberStyles.Float;
 
@@ -408,20 +445,37 @@ namespace Mono.CSharp
 
 		int GetKeyword (char[] id, int id_len)
 		{
-			/*
-			 * Keywords are stored in an array of hashtables grouped by their
-			 * length.
-			 */
-
-			if ((id_len >= keywords.Length) || (keywords [id_len] == null))
+			//
+			// Keywords are stored in an array of arrays grouped by their
+			// length and then by the first character
+			//
+			if (id_len >= keywords.Length || keywords [id_len] == null)
 				return -1;
-			object o = keywords [id_len] [id];
 
-			if (o == null)
+			int first_index = id [0] - '_';
+			if (first_index > 'z')
+				return -1;
+
+			KeywordEntry kwe = keywords [id_len] [first_index];
+			if (kwe == null)
+				return -1;
+
+			int res;
+			do {
+				res = kwe.Token;
+				for (int i = 1; i < id_len; ++i) {
+					if (id [i] != kwe.Value [i]) {
+						res = 0;
+						break;
+					}
+				}
+				kwe = kwe.Next;
+			} while (kwe != null && res == 0);
+
+			if (res == 0)
 				return -1;
 
 			int next_token;
-			int res = (int) o;
 			switch (res) {
 			case Token.GET:
 			case Token.SET:
@@ -485,7 +539,7 @@ namespace Mono.CSharp
 							Report.FeatureIsNotAvailable (Location, "query expressions");
 						break;
 					case Token.VOID:
-						Expression.Error_VoidInvalidInTheContext (Location);
+						Expression.Error_VoidInvalidInTheContext (Location, Report);
 						break;
 					default:
 						PopPosition ();
@@ -565,10 +619,11 @@ namespace Mono.CSharp
 			}
 		}
 
-		public Tokenizer (SeekableStreamReader input, CompilationUnit file)
+		public Tokenizer (SeekableStreamReader input, CompilationUnit file, CompilerContext ctx)
 		{
 			this.ref_name = file;
 			this.file_name = file;
+			this.context = ctx;
 			reader = input;
 			
 			putback_char = -1;
@@ -589,8 +644,19 @@ namespace Mono.CSharp
 
 		static bool is_identifier_part_character (char c)
 		{
-			return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9') ||
-				Char.IsLetter (c) || Char.GetUnicodeCategory (c) == UnicodeCategory.ConnectorPunctuation;
+			if (c >= 'a' && c <= 'z')
+				return true;
+
+			if (c >= 'A' && c <= 'Z')
+				return true;
+
+			if (c == '_' || (c >= '0' && c <= '9'))
+				return true;
+
+			if (c < 0x80)
+				return false;
+
+			return Char.IsLetter (c) || Char.GetUnicodeCategory (c) == UnicodeCategory.ConnectorPunctuation;
 		}
 
 		public static bool IsKeyword (string s)
@@ -787,6 +853,8 @@ namespace Mono.CSharp
 					the_token = token ();
 				} while (the_token != Token.CLOSE_BRACKET);
 				the_token = token ();
+			} else if (the_token == Token.IN || the_token == Token.OUT) {
+				the_token = token ();
 			}
 			switch (the_token) {
 			case Token.IDENTIFIER:
@@ -807,7 +875,6 @@ namespace Mono.CSharp
 			case Token.CHAR:
 			case Token.VOID:
 				break;
-
 			case Token.OP_GENERICS_GT:
 				return true;
 
@@ -1489,7 +1556,7 @@ namespace Mono.CSharp
 
 		public bool advance ()
 		{
-			return peek_char () != -1;
+			return peek_char () != -1 || CompleteOnEOF;
 		}
 
 		public Object Value {
@@ -1809,7 +1876,7 @@ namespace Mono.CSharp
 				int[] codes = ParseNumbers (arg.Substring (w_disable.Length));
 				foreach (int code in codes) {
 					if (code != 0)
-						Report.RegisterWarningRegion (Location).WarningDisable (Location, code);
+						Report.RegisterWarningRegion (Location).WarningDisable (Location, code, Report);
 				}
 				return;
 			}
@@ -1819,8 +1886,8 @@ namespace Mono.CSharp
 				Hashtable w_table = Report.warning_ignore_table;
 				foreach (int code in codes) {
 					if (w_table != null && w_table.Contains (code))
-						Report.Warning (1635, 1, Location, String.Format ("Cannot restore warning `CS{0:0000}' because it was disabled globally", code));
-					Report.RegisterWarningRegion (Location).WarningEnable (Location, code);
+						Report.Warning (1635, 1, Location, "Cannot restore warning `CS{0:0000}' because it was disabled globally", code);
+					Report.RegisterWarningRegion (Location).WarningEnable (Location, code, Report);
 				}
 				return;
 			}
@@ -2485,6 +2552,17 @@ namespace Mono.CSharp
 							return Token.OPEN_PARENS;
 						}
 
+						// Optimize using peek
+						int xx = peek_char ();
+						switch (xx) {
+						case '(':
+						case '\'':
+						case '"':
+						case '0':
+						case '1':
+							return Token.OPEN_PARENS;
+						}
+
 						lambda_arguments_parsing = true;
 						PushPosition ();
 						d = TokenizeOpenParens ();
@@ -2535,7 +2613,7 @@ namespace Mono.CSharp
 					}
 
 					return Token.OP_GT;
-				
+
 				case '+':
 					d = peek_char ();
 					if (d == '+') {
@@ -2806,7 +2884,16 @@ namespace Mono.CSharp
 				error_details = ((char)c).ToString ();
 				return Token.ERROR;
 			}
+
+			if (CompleteOnEOF){
+				if (generated)
+					return Token.COMPLETE_COMPLETION;
+				
+				generated = true;
+				return Token.GENERATE_COMPLETION;
+			}
 			
+
 			return Token.EOF;
 		}
 
@@ -2990,6 +3077,10 @@ namespace Mono.CSharp
 				return ret;
 			}
 			return null;
+		}
+
+		Report Report {
+			get { return context.Report; }
 		}
 
 		void reset_doc_comment ()

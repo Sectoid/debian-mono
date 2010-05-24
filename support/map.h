@@ -1568,6 +1568,7 @@ struct Mono_Unix_UnixSignal_SignalInfo {
 	int   read_fd;
 	int   write_fd;
 	int   have_handler;
+	int   pipecnt;
 	void* handler;
 };
 

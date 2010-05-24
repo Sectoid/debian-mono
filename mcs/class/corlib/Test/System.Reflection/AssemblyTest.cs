@@ -425,7 +425,7 @@ namespace MonoTests.System.Reflection
 			foreach (string s in names)
 				if (Assembly.LoadWithPartialName (s) != null)
 					return;
-			Assertion.Fail ("Was not able to load any corlib test");
+			Assert.Fail ("Was not able to load any corlib test");
 		}
 
 #if !TARGET_JVM // GetObjectData currently not implemented for Assembly.
@@ -1154,5 +1154,15 @@ namespace MonoTests.System.Reflection
 				Assert.AreEqual ("attributeType", ex.ParamName, "#6");
 			}
 		}
+
+		[Test]
+		public void GetTypeWithEmptyStringShouldThrow ()
+		{
+			try {
+				typeof (string).Assembly.GetType ("");
+				Assert.Fail ("#1");
+			} catch (ArgumentException) {}
+		}
+
 	}
 }
