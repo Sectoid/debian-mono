@@ -85,6 +85,9 @@ mono_domain_set_internal   (MonoDomain *domain);
 void
 mono_domain_unload (MonoDomain *domain);
 
+void
+mono_domain_try_unload (MonoDomain *domain, MonoObject **exc);
+
 gboolean
 mono_domain_is_unloading   (MonoDomain *domain);
 
@@ -201,6 +204,14 @@ mono_get_thread_class       (void);
 
 MonoClass*
 mono_get_exception_class    (void);
+
+void
+mono_security_enable_core_clr (void);
+
+typedef gboolean (*MonoCoreClrPlatformCB) (const char *image_name);
+
+void
+mono_security_set_core_clr_platform_callback (MonoCoreClrPlatformCB callback);
 
 G_END_DECLS
 #endif /* _MONO_METADATA_APPDOMAIN_H_ */

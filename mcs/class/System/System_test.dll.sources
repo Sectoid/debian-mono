@@ -136,6 +136,7 @@ System.ComponentModel/Int32ConverterTests.cs
 System.ComponentModel/Int64ConverterTests.cs
 System.ComponentModel/InvalidEnumArgumentExceptionTest.cs
 System.ComponentModel/LicenseManagerTests.cs
+System.ComponentModel/ListChangedEventArgsTest.cs
 System.ComponentModel/LookupBindingPropertiesAttributeTest.cs
 System.ComponentModel/MaskedTextProviderTest.cs
 System.ComponentModel/NestedContainerTest.cs
@@ -209,6 +210,7 @@ System.Net/HttpListener2Test.cs
 System.Net/HttpListenerRequestTest.cs
 System.Net/IPAddressTest.cs
 System.Net/IPEndPointTest.cs
+System.Net/NetworkCredentialTest.cs
 System.Net/ServicePointManagerTest.cs
 System.Net/ServicePointTest.cs
 System.Net/SocketPermissionAttributeTest.cs
@@ -223,10 +225,13 @@ System.Net/WebClientTest.cs
 System.Net.Configuration/ConnectionManagementSectionTest.cs
 System.Net.Configuration/HttpWebRequestElementTest.cs
 System.Net.Configuration/WebRequestModulesSectionTest.cs
+System.Net.Sockets/IPv6MulticastOptionTest.cs
+System.Net.Sockets/MulticastOptionTest.cs
 System.Net.Sockets/NetworkStreamTest.cs
 System.Net.Sockets/TcpClientTest.cs
 System.Net.Sockets/TcpListenerTest.cs
 System.Net.Sockets/SocketTest.cs
+System.Net.Sockets/SocketAsyncEventArgsTest.cs
 System.Net.Sockets/UdpClientTest.cs
 System.Net.Mail/LinkedResourceTest.cs
 System.Net.Mail/AttachmentCollectionTest.cs
@@ -468,3 +473,4 @@ System.Timers/ElapsedEventArgsCas.cs
 System.Timers/TimerCas.cs
 System.Web/AspNetHostingPermissionCas.cs
 System.Web/AspNetHostingPermissionAttributeCas.cs
+System.Collections.Concurrent/BlockingCollectionTests.cs

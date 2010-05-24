@@ -1,3 +1,31 @@
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* Evidence_2_1.cs: New.
+	* PolicyLevel_2_1.cs: Remove use of NamedPermissionSet
+
+2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* PolicyLevel_2_1.cs: Remove use of PolicyStatement
+
+2009-07-30  Marek Safar  <marek.safar@gmail.com>
+
+	* ApplicationTrust.cs: Add FullTrustAssemblies.
+
+2009-04-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Evidence.cs: Exclude "Mono.Security.Authenticode" when building
+	NET_2_1
+
+2009-04-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Evidence.cs: Custom GetDefaultHostEvidence for NET_2_1
+	* Hash.cs: Do not include for NET_2_1 build
+	* HashMembershipCondition.cs: Do not include for NET_2_1 build
+	* PolicyLevel.cs: Do not include for NET_2_1 build
+	* PolicyLevel_2_1.cs: Alternate implementation for NET_2_1
+	* Zone.cs: Do not include for NET_2_1 build
+	* ZoneMembershipCondition.cs: Do not include for NET_2_1 build
+
 2008-07-06  Andreas Nahr  <ClassDevelopment@A-SoftTech.com>
 
 	* ApplicationTrust.cs: Add missing attribute

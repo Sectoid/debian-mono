@@ -62,6 +62,12 @@ namespace Mono.Linker {
 			}
 		}
 
+		public void ReplaceStep (Type target, IStep step)
+		{
+			AddStepBefore (target, step);
+			RemoveStep (target);
+		}
+
 		public void AddStepAfter (Type target, IStep step)
 		{
 			for (int i = 0; i < _steps.Count; i++) {

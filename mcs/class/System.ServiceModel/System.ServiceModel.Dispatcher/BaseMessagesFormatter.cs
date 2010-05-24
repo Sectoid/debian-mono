@@ -129,9 +129,10 @@ namespace System.ServiceModel.Dispatcher
 				if (HasReturnValue (md.Body))
 					parts [0] = result;
 				int index = ParamsOffset (md.Body);
+				int paramsIdx = 0;
 				foreach (ParameterInfo pi in replyMethodParams)
 					if (pi.IsOut || pi.ParameterType.IsByRef)
-						parts [index++] = parameters [pi.Position];
+				parts [index++] = parameters [paramsIdx++];
 			}
 			string action = version.Addressing == AddressingVersion.None ? null : md.Action;
 			return PartsToMessage (md, version, action, parts);
@@ -146,15 +147,21 @@ namespace System.ServiceModel.Dispatcher
 
 			object [] parts = MessageToParts (md, message);
 			if (md.MessageType != null) {
+#if NET_2_1
+				parameters [0] = Activator.CreateInstance (md.MessageType);
+#else
 				parameters [0] = Activator.CreateInstance (md.MessageType, true);
+#endif
 				PartsToMessageObject (md, parts, parameters [0]);
 			}
 			else
 			{
 				int index = 0;
 				foreach (ParameterInfo pi in requestMethodParams)
-					if (!pi.IsOut)
-						parameters [pi.Position] = parts [index++];
+					if (!pi.IsOut) {
+						parameters [index] = parts [index];
+						index++;
+					}
 			}
 		}
 
@@ -167,7 +174,11 @@ namespace System.ServiceModel.Dispatcher
 
 			object [] parts = MessageToParts (md, message);
 			if (md.MessageType != null) {
+#if NET_2_1
+				object msgObject = Activator.CreateInstance (md.MessageType);
+#else
 				object msgObject = Activator.CreateInstance (md.MessageType, true);
+#endif
 				PartsToMessageObject (md, parts, msgObject);
 				return msgObject;
 			}
@@ -295,10 +306,9 @@ namespace System.ServiceModel.Dispatcher
 				this.body = parts;
 			}
 
-			[MonoTODO]
 			protected override BodyWriter OnCreateBufferedCopy (int maxBufferSize)
 			{
-				throw new NotSupportedException ();
+				return new XmlBodyWriter (serializer, body);
 			}
 
 			protected override void OnWriteBodyContents (XmlDictionaryWriter writer)

@@ -34,8 +34,52 @@ using System.Xml;
 
 namespace System.Runtime.Serialization.Json
 {
+	class PushbackReader : StreamReader
+	{
+		Stack<int> pushback;
+
+		public PushbackReader (Stream stream, Encoding encoding) : base (stream, encoding)
+		{
+			pushback = new Stack<int>();
+		}
+
+		public PushbackReader (Stream stream) : base (stream, true)
+		{
+			pushback = new Stack<int>();
+		}
+
+		public override void Close ()
+		{
+			pushback.Clear ();
+		}
+
+		public override int Peek ()
+		{
+			if (pushback.Count > 0) {
+				return pushback.Peek ();
+			}
+			else {
+				return base.Peek ();
+			}
+		}
+
+		public override int Read ()
+		{
+			if (pushback.Count > 0) {
+				return pushback.Pop ();
+			}
+			else {
+				return base.Read ();
+			}
+		}
+
+		public void Pushback (int ch)
+		{
+			pushback.Push (ch);
+		}
+	}
+
 	// FIXME: quotas check
-	// FIXME: parse object content and handle __type as attribute.
 	class JsonReader : XmlDictionaryReader, IXmlJsonReaderInitializer, IXmlLineInfo
 	{
 		class ElementInfo
@@ -60,7 +104,7 @@ namespace System.Runtime.Serialization.Json
 			RuntimeTypeValue
 		}
 
-		TextReader reader;
+		PushbackReader reader;
 		XmlDictionaryReaderQuotas quotas;
 		OnXmlDictionaryReaderClose on_close;
 		XmlNameTable name_table = new NameTable ();
@@ -77,8 +121,6 @@ namespace System.Runtime.Serialization.Json
 
 		int line = 1, column = 0;
 
-		int saved_char = -1;
-
 		// Constructors
 
 		public JsonReader (byte [] buffer, int offset, int count, Encoding encoding, XmlDictionaryReaderQuotas quotas, OnXmlDictionaryReaderClose onClose)
@@ -90,6 +132,8 @@ namespace System.Runtime.Serialization.Json
 		{
 			SetInput (stream, encoding, quotas, onClose);
 		}
+
+		internal bool LameSilverlightLiteralParser { get; set; }
 
 		// IXmlLineInfo
 
@@ -115,7 +159,10 @@ namespace System.Runtime.Serialization.Json
 
 		public void SetInput (Stream stream, Encoding encoding, XmlDictionaryReaderQuotas quotas, OnXmlDictionaryReaderClose onClose)
 		{
-			reader = new StreamReader (stream, encoding ?? Encoding.UTF8);
+			if (encoding != null)
+				reader = new PushbackReader (stream, encoding);
+			else
+				reader = new PushbackReader (stream);
 			if (quotas == null)
 				throw new ArgumentNullException ("quotas");
 			this.quotas = quotas;
@@ -144,6 +191,10 @@ namespace System.Runtime.Serialization.Json
 				case AttributeState.RuntimeTypeValue:
 					mod += 2;
 					break;
+				case AttributeState.None:
+					if (NodeType == XmlNodeType.Text)
+						mod++;
+					break;
 				}
 				return read_state != ReadState.Interactive ? 0 : elements.Count - 1 + mod;
 			}
@@ -161,7 +212,6 @@ namespace System.Runtime.Serialization.Json
 			}
 		}
 
-#if !NET_2_1
 		public override bool HasValue {
 			get {
 				switch (NodeType) {
@@ -173,7 +223,6 @@ namespace System.Runtime.Serialization.Json
 				}
 			}
 		}
-#endif
 
 		public override bool IsEmptyElement {
 			get { return false; }
@@ -341,7 +390,6 @@ namespace System.Runtime.Serialization.Json
 				return MoveToAttribute ("__type");
 		}
 
-#if !NET_2_1
 		public override bool ReadAttributeValue ()
 		{
 			switch (attr_state) {
@@ -354,7 +402,6 @@ namespace System.Runtime.Serialization.Json
 			}
 			return false;
 		}
-#endif
 
 		public override void ResolveEntity ()
 		{
@@ -410,6 +457,20 @@ namespace System.Runtime.Serialization.Json
 				return false;
 			if (finished)
 				throw XmlError ("Multiple top-level content is not allowed");
+			return true;
+		}
+
+		bool TryReadString (string str)
+		{
+			for (int i = 0; i < str.Length; i ++) {
+				int ch = ReadChar ();
+				if (ch != str[i]) {
+					for (int j = i; j >= 0; j--)
+						PushbackChar (j);
+					return false;
+				}
+			}
+
 			return true;
 		}
 
@@ -472,11 +533,13 @@ namespace System.Runtime.Serialization.Json
 				ReadEndArray ();
 				return true;
 			case '"':
-				string s = ReadStringLiteral ();
+				bool lame = LameSilverlightLiteralParser && ch != '"';
+				string s = ReadStringLiteral (lame);
 				if (!objectValue && elements.Count > 0 && elements.Peek ().Type == "object") {
 					next_element = s;
 					SkipWhitespaces ();
-					Expect (':');
+					if (!lame)
+						Expect (':');
 					SkipWhitespaces ();
 					ReadContent (true);
 				}
@@ -487,36 +550,48 @@ namespace System.Runtime.Serialization.Json
 				ReadNumber (ch);
 				return true;
 			case 'n':
-				if (ReadChar () == 'u' &&
-				    ReadChar () == 'l' &&
-				    ReadChar () == 'l') {
-				    	ReadAsSimpleContent ("null", "null");
+				if (TryReadString("ull")) {
+					ReadAsSimpleContent ("null", "null");
 					return true;
 				}
-				goto default;
+				else {
+					// the pushback for 'n' is taken care of by the
+					// default case if we're in lame silverlight literal
+					// mode
+					goto default;
+				}
 			case 't':
-				if (ReadChar () == 'r' &&
-				    ReadChar () == 'u' &&
-				    ReadChar () == 'e') {
-				    	ReadAsSimpleContent ("boolean", "true");
+				if (TryReadString ("rue")) {
+					ReadAsSimpleContent ("boolean", "true");
 					return true;
 				}
-				goto default;
+				else {
+					// the pushback for 't' is taken care of by the
+					// default case if we're in lame silverlight literal
+					// mode
+					goto default;
+				}
 			case 'f':
-				if (ReadChar () == 'a' &&
-				    ReadChar () == 'l' &&
-				    ReadChar () == 's' &&
-				    ReadChar () == 'e') {
-				    	ReadAsSimpleContent ("boolean", "false");
+				if (TryReadString ("alse")) {
+					ReadAsSimpleContent ("boolean", "false");
 					return true;
 				}
-				goto default;
+				else {
+					// the pushback for 'f' is taken care of by the
+					// default case if we're in lame silverlight literal
+					// mode
+					goto default;
+				}
 			default:
 				if ('0' <= ch && ch <= '9') {
 					ReadNumber (ch);
 					return true;
 				}
-				throw XmlError ("Unexpected token");
+				if (LameSilverlightLiteralParser) {
+					PushbackChar (ch);
+					goto case '"';
+				}
+				throw XmlError (String.Format ("Unexpected token: '{0}' ({1:X04})", (char) ch, (int) ch));
 			}
 		}
 
@@ -612,9 +687,14 @@ namespace System.Runtime.Serialization.Json
 						throw XmlError ("Invalid JSON number token. '.' must not occur after 'E' or 'e'");
 					floating = true;
 					break;
+				case '+':
+				case '-':
+					if (prev == 'E' || prev == 'e')
+						break;
+					goto default;
 				default:
 					if (!IsNumber (ch)) {
-						saved_char = ch;
+						PushbackChar (ch);
 						cont = false;
 					}
 					break;
@@ -635,32 +715,83 @@ namespace System.Runtime.Serialization.Json
 			return '0' <= c && c <= '9';
 		}
 
-		// FIXME: implement
+		StringBuilder vb = new StringBuilder ();
+
 		string ReadStringLiteral ()
 		{
-			StringBuilder sb = new StringBuilder ();
+			return ReadStringLiteral (false);
+		}
 
-			do {
-				int ch = ReadChar ();
-				if (ch < 0)
-					throw XmlError ("Unexpected end of stream in string literal");
-				if (ch == '"')
-					return sb.ToString ();
-				sb.Append ((char) ch);
-			} while (true);
+		string ReadStringLiteral (bool endWithColon)
+		{
+			vb.Length = 0;
+			while (true) {
+				int c = ReadChar ();
+				if (c < 0)
+					throw XmlError ("JSON string is not closed");
+				if (c == '"' && !endWithColon)
+					return vb.ToString ();
+				else if (c == ':' && endWithColon)
+					return vb.ToString ();
+				else if (c != '\\') {
+					vb.Append ((char) c);
+					continue;
+				}
+
+				// escaped expression
+				c = ReadChar ();
+				if (c < 0)
+					throw XmlError ("Invalid JSON string literal; incomplete escape sequence");
+				switch (c) {
+				case '"':
+				case '\\':
+				case '/':
+					vb.Append ((char) c);
+					break;
+				case 'b':
+					vb.Append ('\x8');
+					break;
+				case 'f':
+					vb.Append ('\f');
+					break;
+				case 'n':
+					vb.Append ('\n');
+					break;
+				case 'r':
+					vb.Append ('\r');
+					break;
+				case 't':
+					vb.Append ('\t');
+					break;
+				case 'u':
+					ushort cp = 0;
+					for (int i = 0; i < 4; i++) {
+						if ((c = ReadChar ()) < 0)
+							throw XmlError ("Incomplete unicode character escape literal");
+						cp *= 16;
+						if ('0' <= c && c <= '9')
+							cp += (ushort) (c - '0');
+						if ('A' <= c && c <= 'F')
+							cp += (ushort) (c - 'A' + 10);
+						if ('a' <= c && c <= 'f')
+							cp += (ushort) (c - 'a' + 10);
+					}
+					vb.Append ((char) cp);
+					break;
+				default:
+					throw XmlError ("Invalid JSON string literal; unexpected escape character");
+				}
+			}
 		}
 
 		int PeekChar ()
 		{
-			if (saved_char < 0)
-				saved_char = reader.Read ();
-			return saved_char;
+			return reader.Peek ();
 		}
 
 		int ReadChar ()
 		{
-			int v = saved_char >= 0 ? saved_char : reader.Read ();
-			saved_char = -1;
+			int v = reader.Read ();
 			if (v == '\n') {
 				line++;
 				column = 0;
@@ -668,6 +799,12 @@ namespace System.Runtime.Serialization.Json
 			else
 				column++;
 			return v;
+		}
+
+		void PushbackChar (int ch)
+		{
+			// FIXME handle lines (and columns?  ugh, how?)
+			reader.Pushback (ch);
 		}
 
 		void SkipWhitespaces ()

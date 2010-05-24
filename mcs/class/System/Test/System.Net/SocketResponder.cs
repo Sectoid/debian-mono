@@ -98,6 +98,7 @@ namespace MonoTests.System.Net
 				if (tcpListener != null) {
 					tcpListener.Stop ();
 					tcpListener = null;
+					Thread.Sleep (50);
 				}
 			}
 		}
@@ -105,20 +106,23 @@ namespace MonoTests.System.Net
 		private void Listen ()
 		{
 			while (!_stopped) {
+				Socket socket = null;
 				try {
-					Socket socket = tcpListener.AcceptSocket ();
+					socket = tcpListener.AcceptSocket ();
 					socket.Send (_requestHandler (socket));
 					try {
 						socket.Shutdown (SocketShutdown.Receive);
 						socket.Shutdown (SocketShutdown.Send);
 					} catch {
 					}
-					Thread.Sleep (500);
-					socket.Close ();
 				} catch (SocketException ex) {
 					// ignore interruption of blocking call
 					if (ex.ErrorCode != SOCKET_CLOSED && ex.ErrorCode != SOCKET_INVALID_ARGS)
 						throw;
+				} finally {
+					Thread.Sleep (500);
+					if (socket != null)
+						socket.Close ();
 				}
 			}
 		}

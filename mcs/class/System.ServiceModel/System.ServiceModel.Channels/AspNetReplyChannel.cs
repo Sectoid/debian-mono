@@ -38,95 +38,141 @@ namespace System.ServiceModel.Channels
 {
 	internal class AspNetReplyChannel : HttpReplyChannel
 	{
+		AspNetChannelListener<IReplyChannel> listener;
+		List<HttpContext> waiting = new List<HttpContext> ();
 		HttpContext http_context;
-		Uri uri;
+		AutoResetEvent wait;
 
-		public AspNetReplyChannel (HttpChannelListener<IReplyChannel> listener,
-			TimeSpan timeout)
-			: base (listener, timeout)
+		public AspNetReplyChannel (AspNetChannelListener<IReplyChannel> listener)
+			: base (listener)
 		{
-			uri = listener.Uri;
+			this.listener = listener;
+		}
+
+		internal void CloseContext ()
+		{
+			if (http_context == null)
+				return;
+			try {
+				listener.HttpHandler.EndRequest (listener, http_context);
+			} finally {
+				http_context = null;
+			}
+		}
+
+		void ShutdownPendingRequests ()
+		{
+			lock (waiting)
+				foreach (HttpContext ctx in waiting)
+					try {
+						listener.HttpHandler.EndRequest (listener, ctx);
+					} catch {
+					}
+		}
+
+		protected override void OnAbort ()
+		{
+			ShutdownPendingRequests ();
+			CloseContext ();
+		}
+
+		protected override void OnClose (TimeSpan timeout)
+		{
+			base.OnClose (timeout);
+
+			ShutdownPendingRequests ();
+			CloseContext ();
 		}
 
 		public override bool TryReceiveRequest (TimeSpan timeout, out RequestContext context)
 		{
-#if false
+			try {
+				return TryReceiveRequestCore (timeout, out context);
+			} catch (Exception ex) {
+				// FIXME: log it
+				Console.WriteLine ("AspNetReplyChannel caught an error: " + ex);
+				throw;
+			}
+		}
+
+		bool TryReceiveRequestCore (TimeSpan timeout, out RequestContext context)
+		{
 			context = null;
 			if (waiting.Count == 0 && !WaitForRequest (timeout))
 				return false;
-			HttpListenerContext ctx = null;
 			lock (waiting) {
 				if (waiting.Count > 0) {
-					ctx = waiting [0];
+					http_context = waiting [0];
 					waiting.RemoveAt (0);
 				}
 			}
-			if (ctx == null) 
+			if (http_context == null) 
 				// Though as long as this instance is used
 				// synchronously, it should not happen.
 				return false;
-#endif
 
 			Message msg;
-			if (http_context.Request.HttpMethod == "GET") {
-				if (http_context.Request.QueryString ["wsdl"] != null) {
-					msg = Message.CreateMessage (Encoder.MessageVersion,
-						"http://schemas.xmlsoap.org/ws/2004/09/transfer/Get");
-					msg.Headers.To = http_context.Request.Url;
-				} else {
-					msg = Message.CreateMessage (Encoder.MessageVersion, null);
-					msg.Headers.To = http_context.Request.Url;
-				}
+			var req = http_context.Request;
+			if (req.HttpMethod == "GET") {
+				msg = Message.CreateMessage (Encoder.MessageVersion, null);
 			} else {
 				//FIXME: Do above stuff for HttpContext ?
 				int maxSizeOfHeaders = 0x10000;
 
 				msg = Encoder.ReadMessage (
-					http_context.Request.InputStream, maxSizeOfHeaders);
+					req.InputStream, maxSizeOfHeaders);
 
 				if (Encoder.MessageVersion.Envelope == EnvelopeVersion.Soap11) {
-					string action = GetHeaderItem (http_context.Request.Headers ["SOAPAction"]);
+					string action = GetHeaderItem (req.Headers ["SOAPAction"]);
 					if (action != null)
 						msg.Headers.Action = action;
 				}
 			}
+
+			// FIXME: prop.SuppressEntityBody
+			msg.Headers.To = req.Url;
+			msg.Properties.Add ("Via", LocalAddress.Uri);
+			msg.Properties.Add (HttpRequestMessageProperty.Name, CreateRequestProperty (req.HttpMethod, req.Url.Query, req.Headers));
+
 			context = new AspNetRequestContext (this, msg, http_context);
 
 			return true;
 		}
 
-		public HttpContext Context {
-			get { return http_context; }
-			set { http_context = value; }
+		/*
+		public override bool WaitForRequest (TimeSpan timeout)
+		{
+			if (http_context == null)
+				http_context = listener.HttpHandler.WaitForRequest (listener, timeout);
+			return http_context != null;
 		}
+		*/
 
 		public override bool WaitForRequest (TimeSpan timeout)
 		{
-			// FIXME: we might want to take other approaches.
-			if (timeout.Ticks > int.MaxValue)
-				timeout = TimeSpan.FromDays (20);
-
-			SvcHttpHandler h = SvcHttpHandlerFactory.GetHandler (uri.OriginalString.Replace ("file://", ""));
-			return h.WaitForRequest (this, timeout);
-
-#if false
-			AutoResetEvent wait = new AutoResetEvent (false);
-			source.Http.BeginGetContext (HttpContextReceived, wait);
-			// FIXME: we might want to take other approaches.
-			if (timeout.Ticks > int.MaxValue)
-				timeout = TimeSpan.FromDays (20);
-			return wait.WaitOne (timeout, false);
-#endif
+			if (wait != null)
+				throw new InvalidOperationException ("Another wait operation is in progress");
+			try {
+				wait = new AutoResetEvent (false);
+				listener.ListenerManager.GetHttpContextAsync (timeout, HttpContextAcquired);
+				if (wait != null) // in case callback is done before WaitOne() here.
+					return wait.WaitOne (timeout, false);
+				return waiting.Count > 0;
+			} finally {
+				wait = null;
+			}
 		}
 
-		void HttpContextReceived (IAsyncResult result)
+		void HttpContextAcquired (HttpContextInfo ctx)
 		{
-			throw new NotImplementedException ();
-#if false	
-			waiting.Add (source.Http.EndGetContext (result));
-			AutoResetEvent wait = (AutoResetEvent) result.AsyncState;
-			wait.Set ();
-#endif
+			if (wait == null)
+				throw new InvalidOperationException ("WaitForRequest operation has not started");
+			var sctx = (AspNetHttpContextInfo) ctx;
+			if (State == CommunicationState.Opened && ctx != null)
+				waiting.Add (sctx.Source);
+			var wait_ = wait;
+			wait = null;
+			wait_.Set ();
 		}
 	}
 }

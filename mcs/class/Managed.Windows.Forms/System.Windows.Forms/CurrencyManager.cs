@@ -326,9 +326,7 @@ namespace System.Windows.Forms {
 			foreach (Binding binding in Bindings)
 				binding.UpdateIsBinding ();
 
-			//Console.WriteLine ("UpdateIsBinding BEFORE count = " + Count);
 			ChangeRecordState (listposition, false, false, true, false);
-			//Console.WriteLine ("UpdateIsBinding AFTER count = " + Count);
 
 			OnItemChanged (new ItemChangedEventArgs (-1));
 		}
@@ -352,10 +350,8 @@ namespace System.Windows.Forms {
 			if (old_index != -1 && listposition != -1)
 				OnCurrentChanged (EventArgs.Empty);
 
-			//Console.WriteLine ("Change record state, BEFORE new pos = " + newPosition);
 			if (firePositionChanged)
 				OnPositionChanged (EventArgs.Empty);
-			//Console.WriteLine ("Change record state, AFTER new pos = " + newPosition);
 		}
 
 		private void UpdateItem ()
@@ -402,7 +398,6 @@ namespace System.Windows.Forms {
 				break;
 			case ListChangedType.ItemDeleted:
 				if (list.Count == 0) {
-					// THIS IS OUR FAULTY CODE
 					/* the last row was deleted */
 					listposition = -1;
 					UpdateIsBinding ();

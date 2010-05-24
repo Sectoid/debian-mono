@@ -2410,6 +2410,26 @@ class Tests {
 		}
 	}
 
+	public static string GetText (string s) {
+		return s;
+	}
+
+	public static int throw_only_gettext () {
+		throw new Exception (GetText ("FOO"));
+	}
+
+	public static int test_0_inline_throw_only_gettext () {
+		object o = null;
+		try {
+			o = throw_only_gettext ();
+		}
+		catch (Exception ex) {
+			return 0;
+		}
+
+		return o != null ? 0 : 1;
+	}
+
 	// bug #78633
 	public static int test_0_throw_to_branch_opt_outer_clause () {
 		int i = 0;
@@ -2427,6 +2447,35 @@ class Tests {
 
 		return (i == 1) ? 0 : 1;
 	}		
+
+	// bug #485721
+	public static int test_0_try_inside_finally_cmov_opt () {
+		bool Reconect = false;
+
+		object o = new object ();
+
+		try {
+		}
+		catch (Exception ExCon) {
+			if (o != null)
+				Reconect = true;
+
+			try {
+			}
+			catch (Exception Last) {
+			}
+		}
+		finally {
+			if (Reconect == true) {
+				try {
+				}
+				catch (Exception ex) {
+				}
+			}
+		}
+
+		return 0;
+	}
 
 	public static int test_0_inline_throw () {
 		try {

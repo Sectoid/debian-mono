@@ -39,9 +39,13 @@ namespace Cairo
 	// sort these so it is easier to find what is missing
 	// http://www.cairographics.org/manual/ix01.html
 
-	public static class NativeMethods
+	internal static class NativeMethods
 	{
+#if MONOTOUCH
+		const string cairo = "__Internal";
+#else
 		const string cairo = "libcairo-2.dll";
+#endif
 		
 		//[DllImport (cairo)]
 		//internal static extern void cairo_append_path (IntPtr cr, Path path);

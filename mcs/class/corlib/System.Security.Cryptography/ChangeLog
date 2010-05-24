@@ -4,12 +4,57 @@
 	to use from System.Convert
 	[Backport r149171]
 
-2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+2009-12-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CryptoConfig_2_1.cs: Add mapping for SHA256 since it's used 
+	internally in corlib (e.g. HMAC256)
+	* KeySizes.cs, RandomNumberGenerator.cs, RNGCryptoServiceProvider.cs:
+	Remove [ComVisible] attribute from NET_2_1 build.
+
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CryptoStream.cs: Fix [Input|Output]BlockSize for custom streams.
 	Patches by Santa Marta (via Atsushi).
 	[Fix bug #539288 and #539229]
-	[Backport r142435]
+
+2009-09-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* RNGCryptoServiceProvider.cs: Remove unneeded SSC from NET_2_1
+
+2009-07-28  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* CryptoConfig_2_1.cs: Add SHA1 support in MapNameToOID in order to
+	be able to verify the codecs signature integrity.
+
+2009-04-30  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* DSACryptoServiceProvider.cs, RSACryptoServiceProvider.cs: Remove
+	from NET_2_1
+
+2009-04-29  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* DES.cs, DESCryptoServiceProvider.cs: Do not include in NET_2_1
+	* HMACMD5.cs, HMACRIPEMD160.cs, HMACSHA384.cs, HMACSHA512.cs: Do 
+	not include in NET_2_1
+	* MACTripleDES.cs: Do not include in NET_2_1
+	* RC2.cs, RC2CryptoServiceProvider.cs: Do not include in NET_2_1
+	* Rijndael.cs, RijndaelManaged.cs, RijndaelManagedTransform.cs:
+	Do not include in NET_2_1 (AES is available in System.Core.dll)
+	* RIPEMD160.cs, RIPEMD160Managed.cs: Do not include in NET_2_1
+	* SHA1CryptoServiceProvider.cs: Do not include in NET_2_1, however
+	SHA1Managed is available.
+	* SHA384.cs, SHA384Managed.cs: Do not include in NET_2_1
+	* SHA512.cs, SHA512Managed.cs: Do not include in NET_2_1
+	* TripleDES.cs, TripleDESCryptoServiceProvider.cs: Do not include
+	in NET_2_1
+
+2009-04-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CryptoConfig.cs: Change to partial class and don't include this
+	part (#ifdef out) in the NET_2_1 build.
+	* CryptoConfig_2_1.cs: Partial class that contains only what's 
+	needed for Moonlight (NET_2_1). This disallow dynamically replacing
+	cryptographic algorithms using machine.config
 
 2008-09-17  Sebastien Pouliot  <sebastien@ximian.com>
 

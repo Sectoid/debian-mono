@@ -25,7 +25,6 @@ using System.Xml.XPath;
 using System.Xml.Xsl;
 using System.Text;
 using System.Collections;
-using ICSharpCode.SharpZipLib.Zip;
 using Monodoc.Lucene.Net.Index;
 using Monodoc.Lucene.Net.Documents;
 
@@ -140,6 +139,48 @@ public static class EcmaDoc {
 		if (!File.Exists (nsxml))
 			nsxml = Path.Combine (dir, ns + ".xml");
 		return nsxml;
+	}
+
+	public static string GetCref (XmlElement member)
+	{
+		string typeName = XmlDocUtils.ToEscapedTypeName (member.SelectSingleNode("/Type/@FullName").InnerText);
+		if (member.Name == "Type")
+			return "T:" + typeName;
+		string memberType = member.SelectSingleNode("MemberType").InnerText;
+		switch (memberType) {
+			case "Constructor":
+				return "C:" + typeName + MakeArgs(member);
+			case "Event":
+				return "E:" + typeName + "." + XmlDocUtils.ToEscapedMemberName (member.GetAttribute("MemberName"));
+			case "Field":
+				return "F:" + typeName + "." + XmlDocUtils.ToEscapedMemberName (member.GetAttribute("MemberName"));
+			case "Method": {
+				string name = "M:" + typeName + "." + XmlDocUtils.ToEscapedMemberName (member.GetAttribute("MemberName")) + MakeArgs(member);
+				if (member.GetAttribute("MemberName") == "op_Implicit" || member.GetAttribute("MemberName") == "op_Explicit")
+					name += "~" + XmlDocUtils.ToTypeName (member.SelectSingleNode("ReturnValue/ReturnType").InnerText, member);
+				return name;
+			}
+			case "Property":
+				return "P:" + typeName + "." + XmlDocUtils.ToEscapedMemberName (member.GetAttribute("MemberName")) + MakeArgs(member);
+			default:
+				throw new NotSupportedException ("MemberType '" + memberType + "' is not supported.");
+		}
+	}
+	
+	private static string MakeArgs (XmlElement member)
+	{
+		XmlNodeList parameters = member.SelectNodes ("Parameters/Parameter");
+		if (parameters.Count == 0)
+			return "";
+		StringBuilder args = new StringBuilder ();
+		args.Append ("(");
+		args.Append (XmlDocUtils.ToTypeName (parameters [0].Attributes ["Type"].Value, member));
+		for (int i = 1; i < parameters.Count; ++i) {
+			args.Append (",");
+			args.Append (XmlDocUtils.ToTypeName (parameters [i].Attributes ["Type"].Value, member));
+		}
+		args.Append (")");
+		return args.ToString ();
 	}
 }
 
@@ -565,7 +606,7 @@ public class EcmaHelpSource : HelpSource {
 				return js;
 			if (use_css) {
 				System.Reflection.Assembly assembly = typeof(EcmaHelpSource).Assembly;
-				Stream str_js = assembly.GetManifestResourceStream ("mono-ecma-css.js");
+				Stream str_js = assembly.GetManifestResourceStream ("helper.js");
 				js = (new StreamReader (str_js)).ReadToEnd();
 			} else {
 				js = String.Empty;
@@ -578,9 +619,80 @@ public class EcmaHelpSource : HelpSource {
 		get {return js_code + base.InlineJavaScript;}
 	}
 
+	public override string GetPublicUrl (string url)
+	{
+		if (url == null || url.Length == 0)
+			return url;
+		try {
+			string rest;
+			XmlDocument d = GetXmlFromUrl (url, out rest);
+			if (rest == "")
+				return EcmaDoc.GetCref (d.DocumentElement);
+			XmlElement e = GetDocElement (d, rest);
+			if (e == null)
+				return url;
+			return EcmaDoc.GetCref (e);
+		}
+		catch (Exception e) {
+			return url;
+		}
+	}
+
+	private static XmlElement GetDocElement (XmlDocument d, string rest)
+	{
+		string memberType = null;
+		string memberIndex = null;
+
+		string [] nodes = rest.Split (new char [] {'/'});
+		
+		switch (nodes.Length) {
+			// e.g. C; not supported.
+			case 1:
+				return null;
+			// e.g. C/0 or M/MethodName; the latter isn't supported.
+			case 2:
+				try {
+					// XPath wants 1-based indexes, while the url uses 0-based values.
+					memberIndex = (int.Parse (nodes [1]) + 1).ToString ();
+					memberType  = GetMemberType (nodes [0]);
+				} catch {
+					return null;
+				}
+				break;
+			// e.g. M/MethodName/0
+			case 3:
+				memberIndex = (int.Parse (nodes [2]) + 1).ToString ();
+				memberType  = GetMemberType (nodes [0]);
+				break;
+			// not supported
+			default:
+				return null;
+		}
+		string xpath = "/Type/Members/Member[MemberType=\"" + memberType + "\"]" + 
+				"[position()=" + memberIndex + "]";
+		return (XmlElement) d.SelectSingleNode (xpath);
+	}
+
+	private static string GetMemberType (string type)
+	{
+		switch (type) {
+			case "C": return "Constructor";
+			case "E": return "Event";
+			case "F": return "Field";
+			case "M": return "Method";
+			case "P": return "Property";
+			default:
+				throw new NotSupportedException ("Member Type: '" + type + "'.");
+		}
+	}
+
 	public override string GetText (string url, out Node match_node)
 	{
 		match_node = null;
+
+		string cached = GetCachedText (url);
+		if (cached != null)
+			return cached;
 		
 		if (url == "root:")
 		{
@@ -990,8 +1102,9 @@ public class EcmaHelpSource : HelpSource {
 		return base.GetNodeXPath (n);
 	}
 
-	protected virtual XmlReader GetNamespaceDocument (string ns) {
-		return GetHelpXml ("xml.summary." + ns);
+	protected virtual XmlDocument GetNamespaceDocument (string ns)
+	{
+		return GetHelpXmlWithChanges ("xml.summary." + ns);
 	}
 
 	public override string RenderNamespaceLookup (string nsurl, out Node match_node)
@@ -1003,7 +1116,7 @@ public class EcmaHelpSource : HelpSource {
 			match_node = ns_node;
 			string ns_name = nsurl.Substring (2);
 			
-			XmlDocument doc = GetHelpXmlWithChanges("xml.summary." + ns_name);
+			XmlDocument doc = GetNamespaceDocument (ns_name);
 			if (doc == null)
 				return null;
 
@@ -1042,6 +1155,13 @@ public class EcmaHelpSource : HelpSource {
 	
 	string GetTextFromUrl (string url)
 	{
+		if (nozip) {
+			string path = XmlDocUtils.GetCachedFileName (base_dir, url);
+			if (File.Exists (path))
+				return File.OpenText (path).ReadToEnd ();
+			return null;
+		}
+
 		string rest, rest2;
 		Node node;
 
@@ -1103,21 +1223,18 @@ public class EcmaHelpSource : HelpSource {
 			basetype = basetypedoc.SelectSingleNode("Type/Base/BaseTypeName");
 		}
 		ArrayList extensions = new ArrayList ();
+		AddExtensionMethodsFromHelpSource (extensions, this);
 		foreach (HelpSource hs in RootTree.HelpSources) {
 			EcmaHelpSource es = hs as EcmaHelpSource;
 			if (es == null)
 				continue;
-			Stream s = es.GetHelpStream ("ExtensionMethods.xml");
-			if (s != null) {
-				XmlDocument d = new XmlDocument ();
-				d.Load (s);
-				foreach (XmlNode n in d.SelectNodes ("/ExtensionMethods/*")) {
-					extensions.Add (n);
-				}
-			}
+			if (es == this)
+				continue;
+			AddExtensionMethodsFromHelpSource (extensions, es);
 		}
 		XmlDocUtils.AddExtensionMethods (doc, extensions, delegate (string s) {
-				return RootTree.GetHelpXml ("T:" + s);
+				s = s.StartsWith ("T:") ? s : "T:" + s;
+				return RootTree.GetHelpXml (s);
 		});
 
 		XsltArgumentList args = new XsltArgumentList();
@@ -1190,6 +1307,18 @@ public class EcmaHelpSource : HelpSource {
 		return BuildHtml (css_ecma_code, js_code, html); 
 	}
 
+	void AddExtensionMethodsFromHelpSource (ArrayList extensions, EcmaHelpSource es)
+	{
+		Stream s = es.GetHelpStream ("ExtensionMethods.xml");
+		if (s != null) {
+			XmlDocument d = new XmlDocument ();
+			d.Load (s);
+			foreach (XmlNode n in d.SelectNodes ("/ExtensionMethods/*")) {
+				extensions.Add (n);
+			}
+		}
+	}
+
 	
 	public override void RenderPreviewDocs (XmlNode newNode, XmlWriter writer)
 	{
@@ -1201,18 +1330,24 @@ public class EcmaHelpSource : HelpSource {
 
 	static XslTransform ecma_transform;
 
-	public static string Htmlize (IXPathNavigable ecma_xml)
+	public string Htmlize (IXPathNavigable ecma_xml)
 	{
 		return Htmlize(ecma_xml, null);
 	}
-	
-	public static string Htmlize (IXPathNavigable ecma_xml, XsltArgumentList args)
+
+	public string Htmlize (IXPathNavigable ecma_xml, XsltArgumentList args)
 	{
 		EnsureTransform ();
 		
 		StringWriter output = new StringWriter ();
-		ecma_transform.Transform (ecma_xml, args, output, null);
+		ecma_transform.Transform (ecma_xml, args, output, CreateDocumentResolver ());
 		return output.ToString ();
+	}
+
+	protected virtual XmlResolver CreateDocumentResolver ()
+	{
+		// results in using XmlUrlResolver
+		return null;
 	}
 	
 	static void Htmlize (IXPathNavigable ecma_xml, XsltArgumentList args, XmlWriter w)
@@ -2094,18 +2229,20 @@ public class EcmaUncompiledHelpSource : EcmaHelpSource {
 			XsltArgumentList args = new XsltArgumentList();
 			args.AddExtensionObject("monodoc:///extensions", ExtObject);
 			args.AddParam("show", "", "masteroverview");
-			string s = EcmaHelpSource.Htmlize(new XPathDocument (reader), args);
+			string s = Htmlize(new XPathDocument (reader), args);
 			return BuildHtml (css_ecma_code, js_code, s); 
 		}
 		return base.GetText(url, out match_node);
 	}
 	
-	protected override XmlReader GetNamespaceDocument (string ns) {
+	protected override XmlDocument GetNamespaceDocument (string ns)
+	{
 		XmlDocument nsdoc = new XmlDocument();
 		nsdoc.Load (EcmaDoc.GetNamespaceFile (basedir.FullName, ns));
 		
 		XmlDocument elements = new XmlDocument();
 		XmlElement docnode = elements.CreateElement("elements");
+		elements.AppendChild (docnode);
 		
 		foreach (XmlElement doc in nsdoc.SelectNodes("Namespace/Docs/*")) {
 			docnode.AppendChild(elements.ImportNode(doc, true));
@@ -2133,9 +2270,44 @@ public class EcmaUncompiledHelpSource : EcmaHelpSource {
 			docnode.AppendChild(typenode);
 		}
 
-		return new XmlNodeReader(docnode);
+		return elements;
 	}
 	
+	public override Stream GetHelpStream (string id)
+	{
+		if (id == "ExtensionMethods.xml") {
+			// TODO: generate ExtensionMethods.xml based on index.xml contents.
+		}
+		return null;
+	}
+
+	public override XmlDocument GetHelpXmlWithChanges (string id)
+	{
+		XmlDocument doc = new XmlDocument ();
+		doc.Load (id);
+		return doc;
+	}
+	
+	class UncompiledResolver : XmlResolver {
+		public override Uri ResolveUri (Uri baseUri, string relativeUri)
+		{
+			return null;
+		}
+
+		public override object GetEntity (Uri absoluteUri, string role, Type ofObjectToReturn)
+		{
+			return null;
+		}
+
+		public override System.Net.ICredentials Credentials {
+			set {/* ignore */}
+		}
+	}
+
+	protected override XmlResolver CreateDocumentResolver ()
+	{
+		return new UncompiledResolver ();
+	}
 }
 
 }

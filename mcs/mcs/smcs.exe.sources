@@ -1,5 +1,6 @@
 AssemblyInfo.cs
 anonymous.cs
+argument.cs
 assign.cs
 attribute.cs
 driver.cs
@@ -7,12 +8,15 @@ cs-tokenizer.cs
 cfold.cs
 class.cs
 codegen.cs
+complete.cs
 const.cs
 constant.cs
 convert.cs
+context.cs
 decl.cs
 delegate.cs
 doc-bootstrap.cs
+dynamic.cs
 enum.cs
 ecore.cs
 eval.cs

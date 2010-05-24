@@ -145,10 +145,13 @@ namespace System.Xml
 			get { return outputMethod; }
 			//set { outputMethod = value; }
 		}
-#if NET_2_1
-		[MonoTODO]
-		public NamespaceHandling NamespaceHandling { get; set; }
+
+#if NET_2_1 && !MONOTOUCH
+		public
+#else
+		internal
 #endif
+		NamespaceHandling NamespaceHandling { get; set; }
 	}
 }
 

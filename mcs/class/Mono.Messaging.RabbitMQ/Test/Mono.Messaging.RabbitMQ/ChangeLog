@@ -1,3 +1,28 @@
+2009-07-19  Michael Barker  <mike@middlesoft.co.uk>
+
+	* AdminTest.cs:  Moved to System.Messaging
+	* AsyncPeekTest.cs:  Moved to System.Messaging
+	* AsyncReceiveTest.cs:  Moved to System.Messaging
+	* BasicMessagingTest.cs:  Moved to System.Messaging
+	* MessageEnumeratorTest.cs:  Moved to System.Messaging
+	* MQUtil.cs:  Moved to System.Messaging
+	* PeekTest.cs:  Moved to System.Messaging
+	* SelectorTest.cs:  Moved to System.Messaging
+
+
+2009-07-11  Michael Barker  <mike@middlesoft.co.uk>
+
+	* MessageBaseTest.cs: Moved from Mono.Messaging.Test
+	* MessageEnumeratorTest.cs: Moved from Mono.Messaging.Test
+	* MessageTest.cs: Used using aliases to prevent namespace clashes.
+	* AdminTest.cs: Remove unused variables.
+	* AsyncPeekTest.cs: Remove unused variables.
+	* AsyncReceiveTest.cs: Remove unused variables.
+	
+2009-05-23  Michael Barker  <mike@middlesoft.co.uk>
+
+	* MessageEnumeratorTest.cs:  Added tests for timeout methods.
+
 2009-01-05  Michael Barker  <mike@middlesoft.co.uk>
 
 	* BinaryMessageFormatter.cs, XMLMessageFormatterTest.cs, TestUtils.cs, 
@@ -54,3 +79,8 @@
 
 	* BasicMessagingTest.cs: New
 	* RabbitMQMessagingProviderTest.cs: New
+	
+2009-05-19  Michael Barker  <mike@middlesoft.co.uk>
+
+	* RabbitMQMessagingProviderTest.cs: Added test for dynamic create of 
+	MessagingProvider

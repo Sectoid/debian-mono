@@ -24,6 +24,10 @@
 
 #include <dlfcn.h>
 
+#include <sys/types.h> 
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #define HAS_OPROFILE 0
 
 #if (HAS_OPROFILE)
@@ -51,6 +55,9 @@ typedef enum {
 	MONO_PROFILER_DIRECTIVE_ALLOCATIONS_CARRY_CALLER = 1,
 	MONO_PROFILER_DIRECTIVE_ALLOCATIONS_HAVE_STACK = 2,
 	MONO_PROFILER_DIRECTIVE_ALLOCATIONS_CARRY_ID = 3,
+	MONO_PROFILER_DIRECTIVE_LOADED_ELEMENTS_CARRY_ID = 4,
+	MONO_PROFILER_DIRECTIVE_CLASSES_CARRY_ASSEMBLY_ID = 5,
+	MONO_PROFILER_DIRECTIVE_METHODS_CARRY_WRAPPER_FLAG = 6,
 	MONO_PROFILER_DIRECTIVE_LAST
 } MonoProfilerDirectives;
 
@@ -92,7 +99,8 @@ typedef enum {
 	MONO_PROFILER_EVENT_CLASS_LOAD = 0,
 	MONO_PROFILER_EVENT_CLASS_UNLOAD = 1,
 	MONO_PROFILER_EVENT_CLASS_EXCEPTION = 2,
-	MONO_PROFILER_EVENT_CLASS_ALLOCATION = 3
+	MONO_PROFILER_EVENT_CLASS_MONITOR = 3,
+	MONO_PROFILER_EVENT_CLASS_ALLOCATION = 4
 } MonoProfilerClassEvents;
 typedef enum {
 	MONO_PROFILER_EVENT_RESULT_SUCCESS = 0,
@@ -109,7 +117,8 @@ typedef enum {
 	MONO_PROFILER_EVENT_GC_START_WORLD = 7,
 	MONO_PROFILER_EVENT_JIT_TIME_ALLOCATION = 8,
 	MONO_PROFILER_EVENT_STACK_SECTION = 9,
-	MONO_PROFILER_EVENT_ALLOCATION_OBJECT_ID = 10
+	MONO_PROFILER_EVENT_ALLOCATION_OBJECT_ID = 10,
+	MONO_PROFILER_EVENT_OBJECT_MONITOR = 11
 } MonoProfilerEvents;
 typedef enum {
 	MONO_PROFILER_EVENT_KIND_START = 0,
@@ -306,11 +315,48 @@ typedef struct _LoadedElement {
 	guint64 load_end_counter;
 	guint64 unload_start_counter;
 	guint64 unload_end_counter;
+	guint32 id;
 	guint8 loaded;
 	guint8 load_written;
 	guint8 unloaded;
 	guint8 unload_written;
 } LoadedElement;
+struct _ProfilerCodeBufferArray;
+typedef struct _ProfilerCodeBuffer {
+	gpointer start;
+	gpointer end;
+	struct {
+		union {
+			MonoMethod *method;
+			MonoClass *klass;
+			void *data;
+			struct _ProfilerCodeBufferArray *sub_buffers;
+		} data;
+		guint16 value;
+		guint16 type;
+	} info;
+} ProfilerCodeBuffer;
+
+#define PROFILER_CODE_BUFFER_ARRAY_SIZE 64
+typedef struct _ProfilerCodeBufferArray {
+	int level;
+	int number_of_buffers;
+	ProfilerCodeBuffer buffers [PROFILER_CODE_BUFFER_ARRAY_SIZE];
+} ProfilerCodeBufferArray;
+
+typedef struct _ProfilerCodeChunk {
+	gpointer start;
+	gpointer end;
+	gboolean destroyed;
+	ProfilerCodeBufferArray *buffers;
+} ProfilerCodeChunk;
+
+typedef struct _ProfilerCodeChunks {
+	int capacity;
+	int number_of_chunks;;
+	ProfilerCodeChunk *chunks;
+} ProfilerCodeChunks;
+
 
 #define PROFILER_HEAP_SHOT_OBJECT_BUFFER_SIZE 1024
 #define PROFILER_HEAP_SHOT_HEAP_BUFFER_SIZE 4096
@@ -370,7 +416,7 @@ typedef struct _ProfilerHeapShotWriteJob {
 	ProfilerHeapShotWriteBuffer *buffers;
 	ProfilerHeapShotWriteBuffer **last_next;
 	guint32 full_buffers;
-	gboolean heap_shot_was_signalled;
+	gboolean heap_shot_was_requested;
 	guint64 start_counter;
 	guint64 start_time;
 	guint64 end_counter;
@@ -393,6 +439,7 @@ typedef struct _ProfilerThreadStack {
 typedef struct _ProfilerPerThreadData {
 	ProfilerEventData *events;
 	ProfilerEventData *next_free_event;
+	ProfilerEventData *next_unreserved_event;
 	ProfilerEventData *end_event;
 	ProfilerEventData *first_unwritten_event;
 	ProfilerEventData *first_unmapped_event;
@@ -403,6 +450,8 @@ typedef struct _ProfilerPerThreadData {
 	ProfilerThreadStack stack;
 	struct _ProfilerPerThreadData* next;
 } ProfilerPerThreadData;
+
+#define MAX_STATISTICAL_CALL_CHAIN_DEPTH 128
 
 typedef struct _ProfilerStatisticalHit {
 	gpointer *address;
@@ -650,6 +699,7 @@ typedef struct _ProfilerExecutableFiles {
 
 #define THREAD_TYPE pthread_t
 #define CREATE_WRITER_THREAD(f) pthread_create (&(profiler->data_writer_thread), NULL, ((void*(*)(void*))f), NULL)
+#define CREATE_USER_THREAD(f) pthread_create (&(profiler->user_thread), NULL, ((void*(*)(void*))f), NULL)
 #define EXIT_THREAD() pthread_exit (NULL);
 #define WAIT_WRITER_THREAD() do {\
 	if (CHECK_WRITER_THREAD ()) {\
@@ -698,13 +748,13 @@ make_pthread_profiler_key (void) {
 #define OPEN_FILE() profiler->file = fopen (profiler->file_name, "wb");
 #define WRITE_BUFFER(b,s) fwrite ((b), 1, (s), profiler->file)
 #define FLUSH_FILE() fflush (profiler->file)
-#define CLOSE_FILE() fclose (profiler->file);
+#define CLOSE_FILE() fclose (profiler->file)
 #else
 #define FILE_HANDLE_TYPE int
 #define OPEN_FILE() profiler->file = open (profiler->file_name, O_WRONLY|O_CREAT|O_TRUNC, 0664);
 #define WRITE_BUFFER(b,s) write (profiler->file, (b), (s))
-#define FLUSH_FILE()
-#define CLOSE_FILE() close (profiler->file);
+#define FLUSH_FILE() fsync (profiler->file)
+#define CLOSE_FILE() close (profiler->file)
 #endif
 
 #else
@@ -816,6 +866,7 @@ struct _MonoProfiler {
 	MethodIdMapping *methods;
 	ClassIdMapping *classes;
 	
+	guint32 loaded_element_next_free_id;
 	GHashTable *loaded_assemblies;
 	GHashTable *loaded_modules;
 	GHashTable *loaded_appdomains;
@@ -828,15 +879,15 @@ struct _MonoProfiler {
 	ProfilerStatisticalData *statistical_data_second_buffer;
 	int statistical_call_chain_depth;
 	
+	ProfilerCodeChunks code_chunks;
+	
 	THREAD_TYPE data_writer_thread;
+	THREAD_TYPE user_thread;
 	EVENT_TYPE enable_data_writer_event;
 	EVENT_TYPE wake_data_writer_event;
 	EVENT_TYPE done_data_writer_event;
 	gboolean terminate_writer_thread;
 	gboolean writer_thread_terminated;
-	gboolean detach_writer_thread;
-	gboolean writer_thread_enabled;
-	gboolean writer_thread_flush_everything;
 	
 	ProfilerFileWriteBuffer *write_buffers;
 	ProfilerFileWriteBuffer *current_write_buffer;
@@ -847,10 +898,10 @@ struct _MonoProfiler {
 	ProfilerHeapShotWriteJob *heap_shot_write_jobs;
 	ProfilerHeapShotHeapBuffers heap;
 	
-	char *heap_shot_command_file_name;
+	int command_port;
+	
 	int dump_next_heap_snapshots;
-	guint64 heap_shot_command_file_access_time;
-	gboolean heap_shot_was_signalled;
+	gboolean heap_shot_was_requested;
 	guint32 garbage_collection_counter;
 	
 	ProfilerExecutableMemoryRegions *executable_regions;
@@ -863,6 +914,7 @@ struct _MonoProfiler {
 		gboolean jit_time;
 		gboolean unreachable_objects;
 		gboolean collection_summary;
+		gboolean report_gc_events;
 		gboolean heap_shot;
 		gboolean track_stack;
 		gboolean track_calls;
@@ -873,88 +925,24 @@ struct _MonoProfiler {
 };
 static MonoProfiler *profiler;
 
-#ifndef PLATFORM_WIN32
-#include <signal.h>
-
-#ifdef MONO_ARCH_USE_SIGACTION
-#define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy, siginfo_t *info, void *context)
-#elif defined(__sparc__)
-#define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy, void *sigctx)
-#else
-#define SIG_HANDLER_SIGNATURE(ftn) ftn (int _dummy)
-#endif
-
-static void
-request_heap_snapshot (void) {
-	profiler->heap_shot_was_signalled = TRUE;
-	mono_gc_collect (mono_gc_max_generation ());
-}
-
-static void
-SIG_HANDLER_SIGNATURE (gc_request_handler) {
-	profiler->heap_shot_was_signalled = TRUE;
-	WRITER_EVENT_RAISE ();
-}
-
-static void
-add_gc_request_handler (int signal_number)
-{
-	struct sigaction sa;
-	
-#ifdef MONO_ARCH_USE_SIGACTION
-	sa.sa_sigaction = gc_request_handler;
-	sigemptyset (&sa.sa_mask);
-	sa.sa_flags = SA_SIGINFO;
-#else
-	sa.sa_handler = gc_request_handler;
-	sigemptyset (&sa.sa_mask);
-	sa.sa_flags = 0;
-#endif
-	
-	g_assert (sigaction (signal_number, &sa, NULL) != -1);
-}
-
 static void
 enable_profiler (void) {
 	profiler->profiler_enabled = TRUE;
 }
 
+static void flush_everything (void);
+
 static void
 disable_profiler (void) {
 	profiler->profiler_enabled = FALSE;
-}
-
-
-
-static void
-SIG_HANDLER_SIGNATURE (toggle_handler) {
-	if (profiler->profiler_enabled) {
-		profiler->profiler_enabled = FALSE;
-	} else {
-		profiler->profiler_enabled = TRUE;
-	}
+	flush_everything ();
 }
 
 static void
-add_toggle_handler (int signal_number)
-{
-	struct sigaction sa;
-	
-#ifdef MONO_ARCH_USE_SIGACTION
-	sa.sa_sigaction = toggle_handler;
-	sigemptyset (&sa.sa_mask);
-	sa.sa_flags = SA_SIGINFO;
-#else
-	sa.sa_handler = toggle_handler;
-	sigemptyset (&sa.sa_mask);
-	sa.sa_flags = 0;
-#endif
-	
-	g_assert (sigaction (signal_number, &sa, NULL) != -1);
+request_heap_snapshot (void) {
+	profiler->heap_shot_was_requested = TRUE;
+	mono_gc_collect (mono_gc_max_generation ());
 }
-#endif
-
-
 
 #define DEBUG_LOAD_EVENTS 0
 #define DEBUG_MAPPING_EVENTS 0
@@ -963,11 +951,17 @@ add_toggle_handler (int signal_number)
 #define DEBUG_CLASS_BITMAPS 0
 #define DEBUG_STATISTICAL_PROFILER 0
 #define DEBUG_WRITER_THREAD 0
+#define DEBUG_USER_THREAD 0
 #define DEBUG_FILE_WRITES 0
 #if (DEBUG_LOGGING_PROFILER || DEBUG_STATISTICAL_PROFILER || DEBUG_HEAP_PROFILER || DEBUG_WRITER_THREAD || DEBUG_FILE_WRITES)
 #define LOG_WRITER_THREAD(m) printf ("WRITER-THREAD-LOG %s\n", m)
 #else
 #define LOG_WRITER_THREAD(m)
+#endif
+#if (DEBUG_LOGGING_PROFILER || DEBUG_STATISTICAL_PROFILER || DEBUG_HEAP_PROFILER || DEBUG_USER_THREAD || DEBUG_FILE_WRITES)
+#define LOG_USER_THREAD(m) printf ("USER-THREAD-LOG %s\n", m)
+#else
+#define LOG_USER_THREAD(m)
 #endif
 
 #if DEBUG_LOGGING_PROFILER
@@ -1504,6 +1498,8 @@ print_load_event (const char *event_name, GHashTable *table, gpointer item, Load
 static LoadedElement*
 loaded_element_load_start (GHashTable *table, gpointer item) {
 	LoadedElement *element = g_new0 (LoadedElement, 1);
+	element->id = profiler->loaded_element_next_free_id;
+	profiler->loaded_element_next_free_id ++;
 #if (DEBUG_LOAD_EVENTS)
 	print_load_event ("LOAD START", table, item, element);
 #endif
@@ -1548,6 +1544,21 @@ loaded_element_unload_end (GHashTable *table, gpointer item) {
 	return element;
 }
 
+static LoadedElement*
+loaded_element_find (GHashTable *table, gpointer item) {
+	LoadedElement *element = g_hash_table_lookup (table, item);
+	return element;
+}
+
+static guint32
+loaded_element_get_id (GHashTable *table, gpointer item) {
+	LoadedElement *element = loaded_element_find (table, item);
+	if (element != NULL) {
+		return element->id;
+	} else {
+		return 0;
+	}
+}
 
 static void
 loaded_element_destroy (gpointer element) {
@@ -1581,7 +1592,7 @@ print_load_event (const char *event_name, GHashTable *table, gpointer item, Load
 		item_name = "<NULL>";
 	}
 	
-	printf ("%s EVENT for %s (%s)\n", event_name, item_info, item_name);
+	printf ("%s EVENT for %s (%s [id %d])\n", event_name, item_info, item_name, element->id);
 	g_free (item_info);
 }
 #endif
@@ -1622,7 +1633,7 @@ profiler_heap_shot_object_buffer_new (ProfilerPerThreadData *data) {
 }
 
 static ProfilerHeapShotWriteJob*
-profiler_heap_shot_write_job_new (gboolean heap_shot_was_signalled, gboolean dump_heap_data, guint32 collection) {
+profiler_heap_shot_write_job_new (gboolean heap_shot_was_requested, gboolean dump_heap_data, guint32 collection) {
 	ProfilerHeapShotWriteJob *job = g_new (ProfilerHeapShotWriteJob, 1);
 	job->next = NULL;
 	job->next_unwritten = NULL;
@@ -1651,7 +1662,7 @@ profiler_heap_shot_write_job_new (gboolean heap_shot_was_signalled, gboolean dum
 		job->summary.per_class_data = NULL;
 	}
 
-	job->heap_shot_was_signalled = heap_shot_was_signalled;
+	job->heap_shot_was_requested = heap_shot_was_requested;
 	job->collection = collection;
 	job->dump_heap_data = dump_heap_data;
 #if DEBUG_HEAP_PROFILER
@@ -1829,6 +1840,7 @@ profiler_per_thread_data_new (guint32 buffer_size)
 
 	data->events = g_new0 (ProfilerEventData, buffer_size);
 	data->next_free_event = data->events;
+	data->next_unreserved_event = data->events;
 	data->end_event = data->events + (buffer_size - 1);
 	data->first_unwritten_event = data->events;
 	data->first_unmapped_event = data->events;
@@ -1876,6 +1888,286 @@ profiler_statistical_data_destroy (ProfilerStatisticalData *data) {
 	g_free (data);
 }
 
+static ProfilerCodeBufferArray*
+profiler_code_buffer_array_new (ProfilerCodeBufferArray *child) {
+	ProfilerCodeBufferArray *result = g_new0 (ProfilerCodeBufferArray, 1);
+	if (child == NULL) {
+		result->level = 0;
+	} else {
+		result->level = child->level + 1;
+		result->number_of_buffers = 1;
+		result->buffers [0].info.data.sub_buffers = child;
+		result->buffers [0].start = child->buffers [0].start;
+		result->buffers [0].end = child->buffers [child->number_of_buffers - 1].end;
+	}
+	return result;
+}
+
+static void
+profiler_code_buffer_array_destroy (ProfilerCodeBufferArray *buffers) {
+	if (buffers->level > 0) {
+		int i;
+		for (i = 0; i < buffers->number_of_buffers; i++) {
+			ProfilerCodeBufferArray *sub_buffers = buffers->buffers [i].info.data.sub_buffers;
+			profiler_code_buffer_array_destroy (sub_buffers);
+		}
+	}
+	g_free (buffers);
+}
+
+static gboolean
+profiler_code_buffer_array_is_full (ProfilerCodeBufferArray *buffers) {
+	while (buffers->level > 0) {
+		ProfilerCodeBufferArray *next;
+		if (buffers->number_of_buffers < PROFILER_CODE_BUFFER_ARRAY_SIZE) {
+			return FALSE;
+		}
+		next = buffers->buffers [PROFILER_CODE_BUFFER_ARRAY_SIZE - 1].info.data.sub_buffers;
+		if (next->level < (buffers->level - 1)) {
+			return FALSE;
+		}
+		buffers = next;
+	}
+	return (buffers->number_of_buffers == PROFILER_CODE_BUFFER_ARRAY_SIZE);
+}
+
+static ProfilerCodeBufferArray*
+profiler_code_buffer_add (ProfilerCodeBufferArray *buffers, gpointer *buffer, int size, MonoProfilerCodeBufferType type, void *data) {
+	if (buffers == NULL) {
+		buffers = profiler_code_buffer_array_new (NULL);
+	}
+	
+	if (profiler_code_buffer_array_is_full (buffers)) {
+		ProfilerCodeBufferArray *new_slot = profiler_code_buffer_add (NULL, buffer, size, type, data);
+		buffers = profiler_code_buffer_array_new (buffers);
+		buffers->buffers [buffers->number_of_buffers].info.data.sub_buffers = new_slot;
+		buffers->buffers [buffers->number_of_buffers].start = new_slot->buffers [0].start;
+		buffers->buffers [buffers->number_of_buffers].end = new_slot->buffers [new_slot->number_of_buffers - 1].end;
+		buffers->number_of_buffers ++;
+	} else if (buffers->level > 0) {
+		ProfilerCodeBufferArray *new_slot = profiler_code_buffer_add (buffers->buffers [buffers->number_of_buffers - 1].info.data.sub_buffers, buffer, size, type, data);
+		buffers->buffers [buffers->number_of_buffers - 1].info.data.sub_buffers = new_slot;
+		buffers->buffers [buffers->number_of_buffers - 1].start = new_slot->buffers [0].start;
+		buffers->buffers [buffers->number_of_buffers - 1].end = new_slot->buffers [new_slot->number_of_buffers - 1].end;
+	} else {
+		buffers->buffers [buffers->number_of_buffers].start = buffer;
+		buffers->buffers [buffers->number_of_buffers].end = (((guint8*) buffer) + size);
+		buffers->buffers [buffers->number_of_buffers].info.type = type;
+		switch (type) {
+		case MONO_PROFILER_CODE_BUFFER_UNKNOWN:
+			buffers->buffers [buffers->number_of_buffers].info.data.data = NULL;
+			break;
+		case MONO_PROFILER_CODE_BUFFER_METHOD:
+			buffers->buffers [buffers->number_of_buffers].info.data.method = data;
+			break;
+		default:
+			buffers->buffers [buffers->number_of_buffers].info.type = MONO_PROFILER_CODE_BUFFER_UNKNOWN;
+			buffers->buffers [buffers->number_of_buffers].info.data.data = NULL;
+		}
+		buffers->number_of_buffers ++;
+	}
+	return buffers;
+}
+
+static ProfilerCodeBuffer*
+profiler_code_buffer_find (ProfilerCodeBufferArray *buffers, gpointer *address) {
+	if (buffers != NULL) {
+		ProfilerCodeBuffer *result = NULL;
+		do {
+			int low = 0;
+			int high = buffers->number_of_buffers - 1;
+			
+			while (high != low) {
+				int middle = low + ((high - low) >> 1);
+				
+				if ((guint8*) address < (guint8*) buffers->buffers [low].start) {
+					return NULL;
+				}
+				if ((guint8*) address >= (guint8*) buffers->buffers [high].end) {
+					return NULL;
+				}
+				
+				if ((guint8*) address < (guint8*) buffers->buffers [middle].start) {
+					high = middle - 1;
+					if (high < low) {
+						high = low;
+					}
+				} else if ((guint8*) address >= (guint8*) buffers->buffers [middle].end) {
+					low = middle + 1;
+					if (low > high) {
+						low = high;
+					}
+				} else {
+					high = middle;
+					low = middle;
+				}
+			}
+			
+			if (((guint8*) address >= (guint8*) buffers->buffers [low].start) && ((guint8*) address < (guint8*) buffers->buffers [low].end)) {
+				if (buffers->level == 0) {
+					result = & (buffers->buffers [low]);
+				} else {
+					buffers = buffers->buffers [low].info.data.sub_buffers;
+				}
+			} else {
+				return NULL;
+			}
+		} while (result == NULL);
+		return result;
+	} else {
+		return NULL;
+	}
+}
+
+static void
+profiler_code_chunk_initialize (ProfilerCodeChunk *chunk, gpointer memory, gsize size) {
+	chunk->buffers = profiler_code_buffer_array_new (NULL);
+	chunk->destroyed = FALSE;
+	chunk->start = memory;
+	chunk->end = ((guint8*)memory) + size;
+}
+
+static void
+profiler_code_chunk_cleanup (ProfilerCodeChunk *chunk) {
+	if (chunk->buffers != NULL) {
+		profiler_code_buffer_array_destroy (chunk->buffers);
+		chunk->buffers = NULL;
+	}
+	chunk->start = NULL;
+	chunk->end = NULL;
+}
+
+static void
+profiler_code_chunks_initialize (ProfilerCodeChunks *chunks) {
+	chunks->capacity = 32;
+	chunks->chunks = g_new0 (ProfilerCodeChunk, 32);
+	chunks->number_of_chunks = 0;
+}
+
+static void
+profiler_code_chunks_cleanup (ProfilerCodeChunks *chunks) {
+	int i;
+	for (i = 0; i < chunks->number_of_chunks; i++) {
+		profiler_code_chunk_cleanup (& (chunks->chunks [i]));
+	}
+	chunks->capacity = 0;
+	chunks->number_of_chunks = 0;
+	g_free (chunks->chunks);
+	chunks->chunks = NULL;
+}
+
+static int
+compare_code_chunks (const void* c1, const void* c2) {
+	ProfilerCodeChunk *chunk1 = (ProfilerCodeChunk*) c1;
+	ProfilerCodeChunk *chunk2 = (ProfilerCodeChunk*) c2;
+	return ((guint8*) chunk1->end < (guint8*) chunk2->start) ? -1 : (((guint8*) chunk1->start >= (guint8*) chunk2->end) ? 1 : 0);
+}
+
+static int
+compare_address_and_code_chunk (const void* a, const void* c) {
+	gpointer address = (gpointer) a;
+	ProfilerCodeChunk *chunk = (ProfilerCodeChunk*) c;
+	return ((guint8*) address < (guint8*) chunk->start) ? -1 : (((guint8*) address >= (guint8*) chunk->end) ? 1 : 0);
+}
+
+static void
+profiler_code_chunks_sort (ProfilerCodeChunks *chunks) {
+	qsort (chunks->chunks, chunks->number_of_chunks, sizeof (ProfilerCodeChunk), compare_code_chunks);
+}
+
+static ProfilerCodeChunk*
+profiler_code_chunk_find (ProfilerCodeChunks *chunks, gpointer address) {
+	return bsearch (address, chunks->chunks, chunks->number_of_chunks, sizeof (ProfilerCodeChunk), compare_address_and_code_chunk);
+}
+
+static ProfilerCodeChunk*
+profiler_code_chunk_new (ProfilerCodeChunks *chunks, gpointer memory, gsize size) {
+	ProfilerCodeChunk *result;
+	
+	if (chunks->number_of_chunks == chunks->capacity) {
+		ProfilerCodeChunk *new_chunks = g_new0 (ProfilerCodeChunk, chunks->capacity * 2);
+		memcpy (new_chunks, chunks->chunks, chunks->capacity * sizeof (ProfilerCodeChunk));
+		chunks->capacity *= 2;
+		g_free (chunks->chunks);
+		chunks->chunks = new_chunks;
+	}
+	
+	result = & (chunks->chunks [chunks->number_of_chunks]);
+	chunks->number_of_chunks ++;
+	profiler_code_chunk_initialize (result, memory, size);
+	profiler_code_chunks_sort (chunks);
+	return result;
+}
+
+static int
+profiler_code_chunk_to_index (ProfilerCodeChunks *chunks, ProfilerCodeChunk *chunk) {
+	return (int) (chunk - chunks->chunks);
+}
+
+static void
+profiler_code_chunk_remove (ProfilerCodeChunks *chunks, ProfilerCodeChunk *chunk) {
+	int index = profiler_code_chunk_to_index (chunks, chunk);
+	
+	profiler_code_chunk_cleanup (chunk);
+	if ((index >= 0) && (index < chunks->number_of_chunks)) {
+		memmove (chunk, chunk + 1, (chunks->number_of_chunks - index) * sizeof (ProfilerCodeChunk));
+	}
+}
+
+/* This assumes the profiler lock is held */
+static ProfilerCodeBuffer*
+profiler_code_buffer_from_address (MonoProfiler *prof, gpointer address) {
+	ProfilerCodeChunks *chunks = & (prof->code_chunks);
+	
+	ProfilerCodeChunk *chunk = profiler_code_chunk_find (chunks, address);
+	if (chunk != NULL) {
+		return profiler_code_buffer_find (chunk->buffers, address);
+	} else {
+		return NULL;
+	}
+}
+
+static void
+profiler_code_chunk_new_callback (MonoProfiler *prof, gpointer address, int size) {
+	ProfilerCodeChunks *chunks = & (prof->code_chunks);
+	
+	if (prof->code_chunks.chunks != NULL) {
+		LOCK_PROFILER ();
+		profiler_code_chunk_new (chunks, address, size);
+		UNLOCK_PROFILER ();
+	}
+}
+
+static void
+profiler_code_chunk_destroy_callback  (MonoProfiler *prof, gpointer address) {
+	ProfilerCodeChunks *chunks = & (prof->code_chunks);
+	ProfilerCodeChunk *chunk;
+	
+	if (prof->code_chunks.chunks != NULL) {
+		LOCK_PROFILER ();
+		chunk = profiler_code_chunk_find (chunks, address);
+		if (chunk != NULL) {
+			profiler_code_chunk_remove (chunks, chunk);
+		}
+		UNLOCK_PROFILER ();
+	}
+}
+
+static void
+profiler_code_buffer_new_callback  (MonoProfiler *prof, gpointer address, int size, MonoProfilerCodeBufferType type, void *data) {
+	ProfilerCodeChunks *chunks = & (prof->code_chunks);
+	ProfilerCodeChunk *chunk;
+	
+	if (prof->code_chunks.chunks != NULL) {
+		LOCK_PROFILER ();
+		chunk = profiler_code_chunk_find (chunks, address);
+		if (chunk != NULL) {
+			chunk->buffers = profiler_code_buffer_add (chunk->buffers, address, size, type, data);
+		}
+		UNLOCK_PROFILER ();
+	}
+}
+
 static void
 profiler_add_write_buffer (void) {
 	if (profiler->current_write_buffer->next == NULL) {
@@ -1911,6 +2203,9 @@ profiler_free_write_buffers (void) {
 	profiler->current_write_position ++;\
 } while (0)
 
+#if (DEBUG_FILE_WRITES)
+static int bytes_written = 0;
+#endif
 
 static void
 write_current_block (guint16 code) {
@@ -1940,13 +2235,15 @@ write_current_block (guint16 code) {
 	header [9] = (counter_delta >> 24) & 0xff;
 	
 #if (DEBUG_FILE_WRITES)
-	printf ("write_current_block: writing header (code %d)\n", code);
+	printf ("write_current_block: writing header (code %d) at offset %d\n", code, bytes_written);
+	bytes_written += 10;
 #endif
 	WRITE_BUFFER (& (header [0]), 10);
 	
 	while ((current_buffer != NULL) && (profiler->full_write_buffers > 0)) {
 #if (DEBUG_FILE_WRITES)
 		printf ("write_current_block: writing buffer (size %d)\n", PROFILER_FILE_WRITE_BUFFER_SIZE);
+		bytes_written += PROFILER_FILE_WRITE_BUFFER_SIZE;
 #endif
 		WRITE_BUFFER (& (current_buffer->buffer [0]), PROFILER_FILE_WRITE_BUFFER_SIZE);
 		profiler->full_write_buffers --;
@@ -1955,12 +2252,13 @@ write_current_block (guint16 code) {
 	if (profiler->current_write_position > 0) {
 #if (DEBUG_FILE_WRITES)
 		printf ("write_current_block: writing last buffer (size %d)\n", profiler->current_write_position);
+		bytes_written += profiler->current_write_position;
 #endif
 		WRITE_BUFFER (& (current_buffer->buffer [0]), profiler->current_write_position);
 	}
 	FLUSH_FILE ();
 #if (DEBUG_FILE_WRITES)
-	printf ("write_current_block: buffers flushed\n");
+	printf ("write_current_block: buffers flushed (file size %d)\n", bytes_written);
 #endif
 	
 	profiler->current_write_buffer = profiler->write_buffers;
@@ -2012,6 +2310,9 @@ write_directives_block (gboolean start) {
 		if (profiler->action_flags.allocations_carry_id) {
 			write_uint32 (MONO_PROFILER_DIRECTIVE_ALLOCATIONS_CARRY_ID);
 		}
+		write_uint32 (MONO_PROFILER_DIRECTIVE_LOADED_ELEMENTS_CARRY_ID);
+		write_uint32 (MONO_PROFILER_DIRECTIVE_CLASSES_CARRY_ASSEMBLY_ID);
+		write_uint32 (MONO_PROFILER_DIRECTIVE_METHODS_CARRY_WRAPPER_FLAG);
 	}
 	write_uint32 (MONO_PROFILER_DIRECTIVE_END);
 	
@@ -2244,12 +2545,37 @@ profiler_heap_shot_write_block (ProfilerHeapShotWriteJob *job) {
 }
 
 static void
-write_element_load_block (LoadedElement *element, guint8 kind, gsize thread_id) {
+write_element_load_block (LoadedElement *element, guint8 kind, gsize thread_id, gpointer item) {
 	WRITE_BYTE (kind);
 	write_uint64 (element->load_start_counter);
 	write_uint64 (element->load_end_counter);
 	write_uint64 (thread_id);
+	write_uint32 (element->id);
 	write_string (element->name);
+	if (kind & MONO_PROFILER_LOADED_EVENT_ASSEMBLY) {
+		MonoImage *image = mono_assembly_get_image ((MonoAssembly*) item);
+		MonoAssemblyName aname;
+		if (mono_assembly_fill_assembly_name (image, &aname)) {
+			write_string (aname.name);
+			write_uint32 (aname.major);
+			write_uint32 (aname.minor);
+			write_uint32 (aname.build);
+			write_uint32 (aname.revision);
+			write_string (aname.culture && *aname.culture? aname.culture: "neutral");
+			write_string (aname.public_key_token [0] ? (char *)aname.public_key_token : "null");
+			/* Retargetable flag */
+			write_uint32 ((aname.flags & 0x00000100) ? 1 : 0);
+		} else {
+			write_string ("UNKNOWN");
+			write_uint32 (0);
+			write_uint32 (0);
+			write_uint32 (0);
+			write_uint32 (0);
+			write_string ("neutral");
+			write_string ("null");
+			write_uint32 (0);
+		}
+	}
 	write_current_block (MONO_PROFILER_FILE_BLOCK_KIND_LOADED);
 	element->load_written = TRUE;
 }
@@ -2260,6 +2586,7 @@ write_element_unload_block (LoadedElement *element, guint8 kind, gsize thread_id
 	write_uint64 (element->unload_start_counter);
 	write_uint64 (element->unload_end_counter);
 	write_uint64 (thread_id);
+	write_uint32 (element->id);
 	write_string (element->name);
 	write_current_block (MONO_PROFILER_FILE_BLOCK_KIND_UNLOADED);
 	element->unload_written = TRUE;
@@ -2293,7 +2620,11 @@ write_mapping_block (gsize thread_id) {
 	write_uint64 (thread_id);
 	
 	for (current_class = profiler->classes->unwritten; current_class != NULL; current_class = current_class->next_unwritten) {
+		MonoImage *image = mono_class_get_image (current_class->klass);
+		MonoAssembly *assembly = mono_image_get_assembly (image);
+		guint32 assembly_id = loaded_element_get_id (profiler->loaded_assemblies, assembly);
 		write_uint32 (current_class->id);
+		write_uint32 (assembly_id);
 		write_string (current_class->name);
 #if (DEBUG_MAPPING_EVENTS)
 		printf ("mapping CLASS (%d => %s)\n", current_class->id, current_class->name);
@@ -2311,6 +2642,11 @@ write_mapping_block (gsize thread_id) {
 		g_assert (class_element != NULL);
 		write_uint32 (current_method->id);
 		write_uint32 (class_element->id);
+		if (method->wrapper_type != 0) {
+			write_uint32 (1);
+		} else {
+			write_uint32 (0);
+		}
 		write_string (current_method->name);
 #if (DEBUG_MAPPING_EVENTS)
 		printf ("mapping METHOD ([%d]%d => %s)\n", class_element?class_element->id:1, current_method->id, current_method->name);
@@ -2478,6 +2814,15 @@ write_event (ProfilerEventData *event, ProfilerPerThreadData *data) {
 				write_event_value_extension_2 = TRUE;
 				next ++;
 			}
+		} else if (event->code == MONO_PROFILER_EVENT_CLASS_MONITOR) {
+			g_assert (next->code == MONO_PROFILER_EVENT_OBJECT_MONITOR);
+			
+			MONO_PROFILER_EVENT_MAKE_FULL_CODE (event_code, event->code, event->kind, MONO_PROFILER_PACKED_EVENT_CODE_CLASS_EVENT);
+			event_value_extension_1 = next->value;
+			write_event_value_extension_1 = TRUE;
+			event_value_extension_2  = GPOINTER_TO_UINT (next->data.address);
+			write_event_value_extension_2 = TRUE;
+			next ++;
 		} else {
 			MONO_PROFILER_EVENT_MAKE_FULL_CODE (event_code, event->code, event->kind, MONO_PROFILER_PACKED_EVENT_CODE_CLASS_EVENT);
 		}
@@ -2532,8 +2877,11 @@ write_thread_data_block (ProfilerPerThreadData *data) {
 	
 	write_uint64 (data->start_event_counter);
 	
-	/* Make sure that stack sections can be fully reconstructed even reading only one block */
-	rewrite_last_written_stack (&(data->stack));
+	/* If we are tracking the stack, make sure that stack sections */
+	/* can be fully reconstructed even reading only one block */
+	if (profiler->action_flags.track_stack) {
+		rewrite_last_written_stack (&(data->stack));
+	}
 	
 	while (start < end) {
 		start = write_event (start, data);
@@ -3440,10 +3788,10 @@ refresh_memory_regions (void) {
 
 static gboolean
 write_statistical_hit (MonoDomain *domain, gpointer address, gboolean regions_refreshed) {
-	MonoJitInfo *ji = (domain != NULL) ? mono_jit_info_table_find (domain, (char*) address) : NULL;
+	ProfilerCodeBuffer *code_buffer = profiler_code_buffer_from_address (profiler, address);
 	
-	if (ji != NULL) {
-		MonoMethod *method = mono_jit_info_get_method (ji);
+	if ((code_buffer != NULL) && (code_buffer->info.type == MONO_PROFILER_CODE_BUFFER_METHOD)) {
+		MonoMethod *method = code_buffer->info.data.method;
 		MethodIdMappingElement *element = method_id_mapping_element_get (method);
 		
 		if (element != NULL) {
@@ -3655,6 +4003,7 @@ flush_full_event_data_buffer (ProfilerPerThreadData *data) {
 	write_thread_data_block (data);
 	
 	data->next_free_event = data->events;
+	data->next_unreserved_event = data->events;
 	data->first_unwritten_event = data->events;
 	data->first_unmapped_event = data->events;
 	MONO_PROFILER_GET_CURRENT_COUNTER (data->start_event_counter);
@@ -3664,14 +4013,17 @@ flush_full_event_data_buffer (ProfilerPerThreadData *data) {
 }
 
 /* The ">=" operator is intentional, to leave one spare slot for "extended values" */
-#define RESERVE_EVENTS(d,e,count) {\
-	if ((d)->next_free_event >= ((d)->end_event - (count))) {\
+#define RESERVE_EVENTS(d,e,count) do {\
+	if ((d)->next_unreserved_event >= ((d)->end_event - (count))) {\
 		flush_full_event_data_buffer (d);\
 	}\
-	(e) = (d)->next_free_event;\
-	(d)->next_free_event += (count);\
+	(e) = (d)->next_unreserved_event;\
+	(d)->next_unreserved_event += (count);\
 } while (0)
 #define GET_NEXT_FREE_EVENT(d,e) RESERVE_EVENTS ((d),(e),1)
+#define COMMIT_RESERVED_EVENTS(d) do {\
+	data->next_free_event = data->next_unreserved_event;\
+} while (0)
 
 static void
 flush_everything (void) {
@@ -3682,21 +4034,6 @@ flush_everything (void) {
 		write_thread_data_block (data);
 	}
 	write_statistical_data_block (profiler->statistical_data);
-}
-
-/* This assumes the lock is held: it just offloads the work to the writer thread. */
-static void
-writer_thread_flush_everything (void) {
-	if (CHECK_WRITER_THREAD ()) {
-		profiler->writer_thread_flush_everything = TRUE;
-		LOG_WRITER_THREAD ("writer_thread_flush_everything: raising event...");
-		WRITER_EVENT_RAISE ();
-		LOG_WRITER_THREAD ("writer_thread_flush_everything: waiting event...");
-		WRITER_EVENT_DONE_WAIT ();
-		LOG_WRITER_THREAD ("writer_thread_flush_everything: got event.");
-	} else {
-		LOG_WRITER_THREAD ("writer_thread_flush_everything: no thread.");
-	}
 }
 
 #define RESULT_TO_LOAD_CODE(r) (((r)==MONO_PROFILE_OK)?MONO_PROFILER_LOADED_EVENT_SUCCESS:MONO_PROFILER_LOADED_EVENT_FAILURE)
@@ -3715,7 +4052,7 @@ appdomain_end_load (MonoProfiler *profiler, MonoDomain *domain, int result) {
 	name = g_strdup_printf ("%d", mono_domain_get_id (domain));
 	LOCK_PROFILER ();
 	element = loaded_element_load_end (profiler->loaded_appdomains, domain, name);
-	write_element_load_block (element, MONO_PROFILER_LOADED_EVENT_APPDOMAIN | RESULT_TO_LOAD_CODE (result), CURRENT_THREAD_ID ());
+	write_element_load_block (element, MONO_PROFILER_LOADED_EVENT_APPDOMAIN | RESULT_TO_LOAD_CODE (result), CURRENT_THREAD_ID (), domain);
 	UNLOCK_PROFILER ();
 }
 
@@ -3723,7 +4060,7 @@ static void
 appdomain_start_unload (MonoProfiler *profiler, MonoDomain *domain) {
 	LOCK_PROFILER ();
 	loaded_element_unload_start (profiler->loaded_appdomains, domain);
-	writer_thread_flush_everything ();
+	flush_everything ();
 	UNLOCK_PROFILER ();
 }
 
@@ -3757,7 +4094,7 @@ module_end_load (MonoProfiler *profiler, MonoImage *module, int result) {
 	}
 	LOCK_PROFILER ();
 	element = loaded_element_load_end (profiler->loaded_modules, module, name);
-	write_element_load_block (element, MONO_PROFILER_LOADED_EVENT_MODULE | RESULT_TO_LOAD_CODE (result), CURRENT_THREAD_ID ());
+	write_element_load_block (element, MONO_PROFILER_LOADED_EVENT_MODULE | RESULT_TO_LOAD_CODE (result), CURRENT_THREAD_ID (), module);
 	UNLOCK_PROFILER ();
 }
 
@@ -3765,7 +4102,7 @@ static void
 module_start_unload (MonoProfiler *profiler, MonoImage *module) {
 	LOCK_PROFILER ();
 	loaded_element_unload_start (profiler->loaded_modules, module);
-	writer_thread_flush_everything ();
+	flush_everything ();
 	UNLOCK_PROFILER ();
 }
 
@@ -3799,7 +4136,7 @@ assembly_end_load (MonoProfiler *profiler, MonoAssembly *assembly, int result) {
 	}
 	LOCK_PROFILER ();
 	element = loaded_element_load_end (profiler->loaded_assemblies, assembly, name);
-	write_element_load_block (element, MONO_PROFILER_LOADED_EVENT_ASSEMBLY | RESULT_TO_LOAD_CODE (result), CURRENT_THREAD_ID ());
+	write_element_load_block (element, MONO_PROFILER_LOADED_EVENT_ASSEMBLY | RESULT_TO_LOAD_CODE (result), CURRENT_THREAD_ID (), assembly);
 	UNLOCK_PROFILER ();
 }
 
@@ -3807,7 +4144,7 @@ static void
 assembly_start_unload (MonoProfiler *profiler, MonoAssembly *assembly) {
 	LOCK_PROFILER ();
 	loaded_element_unload_start (profiler->loaded_assemblies, assembly);
-	writer_thread_flush_everything ();
+	flush_everything ();
 	UNLOCK_PROFILER ();
 }
 static void
@@ -3938,8 +4275,8 @@ print_event_data (ProfilerPerThreadData *data, ProfilerEventData *event, guint64
 	if (delta < MAX_EVENT_VALUE) {\
 		(event)->value = delta;\
 	} else {\
-		ProfilerEventData *extension = data->next_free_event;\
-		data->next_free_event ++;\
+		ProfilerEventData *extension = data->next_unreserved_event;\
+		data->next_unreserved_event ++;\
 		(event)->value = MAX_EVENT_VALUE;\
 		*(guint64*)extension = delta;\
 	}\
@@ -3954,8 +4291,8 @@ print_event_data (ProfilerPerThreadData *data, ProfilerEventData *event, guint64
 	if ((v) < MAX_EVENT_VALUE) {\
 		(event)->value = (v);\
 	} else {\
-		ProfilerEventData *extension = data->next_free_event;\
-		data->next_free_event ++;\
+		ProfilerEventData *extension = data->next_unreserved_event;\
+		data->next_unreserved_event ++;\
 		(event)->value = MAX_EVENT_VALUE;\
 		*(guint64*)extension = (v);\
 	}\
@@ -3973,8 +4310,8 @@ print_event_data (ProfilerPerThreadData *data, ProfilerEventData *event, guint64
 	if (delta < MAX_EVENT_VALUE) {\
 		(event)->value = delta;\
 	} else {\
-		ProfilerEventData *extension = data->next_free_event;\
-		data->next_free_event ++;\
+		ProfilerEventData *extension = data->next_unreserved_event;\
+		data->next_unreserved_event ++;\
 		(event)->value = MAX_EVENT_VALUE;\
 		*(guint64*)extension = delta;\
 	}\
@@ -3989,12 +4326,19 @@ print_event_data (ProfilerPerThreadData *data, ProfilerEventData *event, guint64
 	if ((v) < MAX_EVENT_VALUE) {\
 		(event)->value = (v);\
 	} else {\
-		ProfilerEventData *extension = data->next_free_event;\
-		data->next_free_event ++;\
+		ProfilerEventData *extension = data->next_unreserved_event;\
+		data->next_unreserved_event ++;\
 		(event)->value = MAX_EVENT_VALUE;\
 		*(guint64*)extension = (v);\
 	}\
 	LOG_EVENT (data, (event), (v));\
+}while (0);
+#define INCREMENT_EVENT(event) do {\
+	if ((event)->value != MAX_EVENT_VALUE) {\
+		(event) ++;\
+	} else {\
+		(event) += 2;\
+	}\
 }while (0);
 
 static void
@@ -4004,6 +4348,7 @@ class_start_load (MonoProfiler *profiler, MonoClass *klass) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, klass, MONO_PROFILER_EVENT_DATA_TYPE_CLASS, MONO_PROFILER_EVENT_CLASS_LOAD, MONO_PROFILER_EVENT_KIND_START);
+	COMMIT_RESERVED_EVENTS (data);
 }
 static void
 class_end_load (MonoProfiler *profiler, MonoClass *klass, int result) {
@@ -4012,6 +4357,7 @@ class_end_load (MonoProfiler *profiler, MonoClass *klass, int result) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, klass, MONO_PROFILER_EVENT_DATA_TYPE_CLASS, MONO_PROFILER_EVENT_CLASS_LOAD | RESULT_TO_EVENT_CODE (result), MONO_PROFILER_EVENT_KIND_END);
+	COMMIT_RESERVED_EVENTS (data);
 }
 static void
 class_start_unload (MonoProfiler *profiler, MonoClass *klass) {
@@ -4020,6 +4366,7 @@ class_start_unload (MonoProfiler *profiler, MonoClass *klass) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, klass, MONO_PROFILER_EVENT_DATA_TYPE_CLASS, MONO_PROFILER_EVENT_CLASS_UNLOAD, MONO_PROFILER_EVENT_KIND_START);
+	COMMIT_RESERVED_EVENTS (data);
 }
 static void
 class_end_unload (MonoProfiler *profiler, MonoClass *klass) {
@@ -4028,6 +4375,7 @@ class_end_unload (MonoProfiler *profiler, MonoClass *klass) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, klass, MONO_PROFILER_EVENT_DATA_TYPE_CLASS, MONO_PROFILER_EVENT_CLASS_UNLOAD, MONO_PROFILER_EVENT_KIND_END);
+	COMMIT_RESERVED_EVENTS (data);
 }
 
 static void
@@ -4038,6 +4386,7 @@ method_start_jit (MonoProfiler *profiler, MonoMethod *method) {
 	GET_NEXT_FREE_EVENT (data, event);
 	thread_stack_push_jitted_safely (&(data->stack), method, TRUE);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, method, MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_JIT, MONO_PROFILER_EVENT_KIND_START);
+	COMMIT_RESERVED_EVENTS (data);
 }
 static void
 method_end_jit (MonoProfiler *profiler, MonoMethod *method, int result) {
@@ -4047,6 +4396,7 @@ method_end_jit (MonoProfiler *profiler, MonoMethod *method, int result) {
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, method, MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_JIT | RESULT_TO_EVENT_CODE (result), MONO_PROFILER_EVENT_KIND_END);
 	thread_stack_pop (&(data->stack));
+	COMMIT_RESERVED_EVENTS (data);
 }
 
 #if (HAS_OPROFILE)
@@ -4080,6 +4430,7 @@ method_enter (MonoProfiler *profiler, MonoMethod *method) {
 		ProfilerEventData *event;
 		GET_NEXT_FREE_EVENT (data, event);
 		STORE_EVENT_ITEM_COUNTER (event, profiler, method, MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_CALL, MONO_PROFILER_EVENT_KIND_START);
+		COMMIT_RESERVED_EVENTS (data);
 	}
 	if (profiler->action_flags.track_stack) {
 		thread_stack_push_safely (&(data->stack), method);
@@ -4095,6 +4446,7 @@ method_leave (MonoProfiler *profiler, MonoMethod *method) {
 		ProfilerEventData *event;
 		GET_NEXT_FREE_EVENT (data, event);
 		STORE_EVENT_ITEM_COUNTER (event, profiler, method, MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_CALL, MONO_PROFILER_EVENT_KIND_END);
+		COMMIT_RESERVED_EVENTS (data);
 	}
 	if (profiler->action_flags.track_stack) {
 		thread_stack_pop (&(data->stack));
@@ -4108,6 +4460,7 @@ method_free (MonoProfiler *profiler, MonoMethod *method) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_ITEM_COUNTER (event, profiler, method, MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_FREED, 0);
+	COMMIT_RESERVED_EVENTS (data);
 }
 
 static void
@@ -4117,6 +4470,7 @@ thread_start (MonoProfiler *profiler, gsize tid) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_NUMBER_COUNTER (event, profiler, tid, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_THREAD, MONO_PROFILER_EVENT_KIND_START);
+	COMMIT_RESERVED_EVENTS (data);
 }
 static void
 thread_end (MonoProfiler *profiler, gsize tid) {
@@ -4125,6 +4479,28 @@ thread_end (MonoProfiler *profiler, gsize tid) {
 	GET_PROFILER_THREAD_DATA (data);
 	GET_NEXT_FREE_EVENT (data, event);
 	STORE_EVENT_NUMBER_COUNTER (event, profiler, tid, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_THREAD, MONO_PROFILER_EVENT_KIND_END);
+	COMMIT_RESERVED_EVENTS (data);
+}
+
+static ProfilerEventData*
+save_stack_delta (MonoProfiler *profiler, ProfilerPerThreadData *data, ProfilerEventData *events, int unsaved_frames) {
+	int i;
+	
+	/* In this loop it is safe to simply increment "events" because MAX_EVENT_VALUE cannot be reached. */
+	STORE_EVENT_NUMBER_VALUE (events, profiler, data->stack.last_saved_top, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_STACK_SECTION, 0, unsaved_frames);
+	events++;
+	for (i = 0; i < unsaved_frames; i++) {
+		if (! thread_stack_index_from_top_is_jitted (&(data->stack), i)) {
+			STORE_EVENT_ITEM_VALUE (events, profiler, thread_stack_index_from_top (&(data->stack), i), MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_ALLOCATION_CALLER, 0, 0);
+		} else {
+			STORE_EVENT_ITEM_VALUE (events, profiler, thread_stack_index_from_top (&(data->stack), i), MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_ALLOCATION_JIT_TIME_CALLER, 0, 0);
+		}
+		events ++;
+	}
+	
+	data->stack.last_saved_top = data->stack.top;
+	
+	return events;
 }
 
 static void
@@ -4151,20 +4527,7 @@ object_allocated (MonoProfiler *profiler, MonoObject *obj, MonoClass *klass) {
 	RESERVE_EVENTS (data, events, event_slot_count);
 	
 	if (profiler->action_flags.save_allocation_stack) {
-		int i;
-		
-		STORE_EVENT_NUMBER_VALUE (events, profiler, data->stack.last_saved_top, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_STACK_SECTION, 0, unsaved_frames);
-		events++;
-		for (i = 0; i < unsaved_frames; i++) {
-			if (! thread_stack_index_from_top_is_jitted (&(data->stack), i)) {
-				STORE_EVENT_ITEM_VALUE (events, profiler, thread_stack_index_from_top (&(data->stack), i), MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_ALLOCATION_CALLER, 0, 0);
-			} else {
-				STORE_EVENT_ITEM_VALUE (events, profiler, thread_stack_index_from_top (&(data->stack), i), MONO_PROFILER_EVENT_DATA_TYPE_METHOD, MONO_PROFILER_EVENT_METHOD_ALLOCATION_JIT_TIME_CALLER, 0, 0);
-			}
-			events ++;
-		}
-		
-		data->stack.last_saved_top = data->stack.top;
+		events = save_stack_delta (profiler, data, events, unsaved_frames);
 	}
 	
 	STORE_EVENT_ITEM_VALUE (events, profiler, klass, MONO_PROFILER_EVENT_DATA_TYPE_CLASS, MONO_PROFILER_EVENT_CLASS_ALLOCATION, 0, (guint64) mono_object_get_size (obj));
@@ -4176,6 +4539,7 @@ object_allocated (MonoProfiler *profiler, MonoObject *obj, MonoClass *klass) {
 		MonoMethod *caller = thread_stack_top (&(data->stack));
 		gboolean caller_is_jitted = thread_stack_top_is_jitted (&(data->stack));
 		int index = 1;
+		/* In this loop it is safe to simply increment "events" because MAX_EVENT_VALUE cannot be reached. */
 		events ++;
 		
 		while ((caller != NULL) && (caller->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE)) {
@@ -4193,6 +4557,38 @@ object_allocated (MonoProfiler *profiler, MonoObject *obj, MonoClass *klass) {
 		events ++;
 		STORE_EVENT_ITEM_VALUE (events, profiler, obj, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_ALLOCATION_OBJECT_ID, 0, 0);
 	}
+	
+	COMMIT_RESERVED_EVENTS (data);
+}
+
+static void
+monitor_event (MonoProfiler *profiler, MonoObject *obj, MonoProfilerMonitorEvent event) {
+	ProfilerPerThreadData *data;
+	ProfilerEventData *events;
+	MonoClass *klass;
+	int unsaved_frames;
+	int event_slot_count;
+	
+	CHECK_PROFILER_ENABLED ();
+	
+	GET_PROFILER_THREAD_DATA (data);
+	klass = mono_object_get_class (obj);
+	
+	unsaved_frames = thread_stack_count_unsaved_frames (&(data->stack));
+	if (unsaved_frames > 0) {
+		event_slot_count = unsaved_frames + 3;
+	} else {
+		event_slot_count = 2;
+	}
+	
+	RESERVE_EVENTS (data, events, event_slot_count);
+	if (unsaved_frames > 0) {
+		events = save_stack_delta (profiler, data, events, unsaved_frames);
+	}
+	STORE_EVENT_ITEM_COUNTER (events, profiler, klass, MONO_PROFILER_EVENT_DATA_TYPE_CLASS, MONO_PROFILER_EVENT_CLASS_MONITOR, MONO_PROFILER_EVENT_KIND_START);
+	INCREMENT_EVENT (events);
+	STORE_EVENT_ITEM_VALUE (events, profiler, obj, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_OBJECT_MONITOR, 0, event);
+	COMMIT_RESERVED_EVENTS (data);
 }
 
 static void
@@ -4340,46 +4736,13 @@ gc_event_kind_from_profiler_event (MonoGCEvent event) {
 	}
 }
 
-#define HEAP_SHOT_COMMAND_FILE_MAX_LENGTH 64
-static void
-profiler_heap_shot_process_command_file (void) {
-	//FIXME: Port to Windows as well
-	struct stat stat_buf;
-	int fd;
-	char buffer [HEAP_SHOT_COMMAND_FILE_MAX_LENGTH + 1];
-	
-	if (profiler->heap_shot_command_file_name == NULL)
-		return;
-	if (stat (profiler->heap_shot_command_file_name, &stat_buf) != 0)
-		return;
-	if (stat_buf.st_size > HEAP_SHOT_COMMAND_FILE_MAX_LENGTH)
-		return;
-	if ((stat_buf.st_mtim.tv_sec * 1000000) < profiler->heap_shot_command_file_access_time)
-		return;
-	
-	fd = open (profiler->heap_shot_command_file_name, O_RDONLY);
-	if (fd < 0) {
-		return;
-	} else {
-		if (read (fd, &(buffer [0]), stat_buf.st_size) != stat_buf.st_size) {
-			return;
-		} else {
-			buffer [stat_buf.st_size] = 0;
-			profiler->dump_next_heap_snapshots = atoi (buffer);
-			MONO_PROFILER_GET_CURRENT_TIME (profiler->heap_shot_command_file_access_time);
-		}
-		close (fd);
-	}
-}
-
 static gboolean
 dump_current_heap_snapshot (void) {
 	gboolean result;
 	
-	if (profiler->heap_shot_was_signalled) {
+	if (profiler->heap_shot_was_requested) {
 		result = TRUE;
 	} else {
-		profiler_heap_shot_process_command_file ();
 		if (profiler->dump_next_heap_snapshots > 0) {
 			profiler->dump_next_heap_snapshots--;
 			result = TRUE;
@@ -4642,76 +5005,83 @@ heap_shot_write_job_should_be_created (gboolean dump_heap_data) {
 }
 
 static void
-handle_heap_profiling (MonoProfiler *profiler, MonoGCEvent ev) {
+process_gc_event (MonoProfiler *profiler, gboolean do_heap_profiling, MonoGCEvent ev) {
 	static gboolean dump_heap_data;
 	
 	switch (ev) {
 	case MONO_GC_EVENT_PRE_STOP_WORLD:
 		// Get the lock, so we are sure nobody is flushing events during the collection,
 		// and we can update all mappings (building the class descriptors).
+		// This is necessary also during lock profiling (even if do_heap_profiling is FALSE).
 		LOCK_PROFILER ();
 		break;
 	case MONO_GC_EVENT_POST_STOP_WORLD:
-		dump_heap_data = dump_current_heap_snapshot ();
-		if (heap_shot_write_job_should_be_created (dump_heap_data)) {
-			ProfilerPerThreadData *data;
-			// Update all mappings, so that we have built all the class descriptors.
-			flush_all_mappings ();
-			// Also write all event buffers, so that allocations are recorded.
-			for (data = profiler->per_thread_data; data != NULL; data = data->next) {
-				write_thread_data_block (data);
+		if (do_heap_profiling) {
+			dump_heap_data = dump_current_heap_snapshot ();
+			if (heap_shot_write_job_should_be_created (dump_heap_data)) {
+				ProfilerPerThreadData *data;
+				// Update all mappings, so that we have built all the class descriptors.
+				flush_all_mappings ();
+				// Also write all event buffers, so that allocations are recorded.
+				for (data = profiler->per_thread_data; data != NULL; data = data->next) {
+					write_thread_data_block (data);
+				}
 			}
+		} else {
+			dump_heap_data = FALSE;
 		}
 		// Release lock...
 		UNLOCK_PROFILER ();
 		break;
 	case MONO_GC_EVENT_MARK_END: {
-		ProfilerHeapShotWriteJob *job;
-		ProfilerPerThreadData *data;
-		
-		if (heap_shot_write_job_should_be_created (dump_heap_data)) {
-			job = profiler_heap_shot_write_job_new (profiler->heap_shot_was_signalled, dump_heap_data, profiler->garbage_collection_counter);
-			profiler->heap_shot_was_signalled = FALSE;
-			MONO_PROFILER_GET_CURRENT_COUNTER (job->start_counter);
-			MONO_PROFILER_GET_CURRENT_TIME (job->start_time);
-		} else {
-			job = NULL;
-		}
-		
-		profiler_heap_scan (&(profiler->heap), job);
-		
-		for (data = profiler->per_thread_data; data != NULL; data = data->next) {
-			ProfilerHeapShotObjectBuffer *buffer;
-			for (buffer = data->heap_shot_object_buffers; buffer != NULL; buffer = buffer->next) {
-				MonoObject **cursor;
-				for (cursor = buffer->first_unprocessed_slot; cursor < buffer->next_free_slot; cursor ++) {
-					MonoObject *obj = *cursor;
-#if DEBUG_HEAP_PROFILER
-					printf ("gc_event: in object buffer %p(%p-%p) cursor at %p has object %p ", buffer, &(buffer->buffer [0]), buffer->end, cursor, obj);
-#endif
-					if (mono_object_is_alive (obj)) {
-#if DEBUG_HEAP_PROFILER
-						printf ("(object is alive, adding to heap)\n");
-#endif
-						profiler_heap_add_object (&(profiler->heap), job, obj);
-					} else {
-#if DEBUG_HEAP_PROFILER
-						printf ("(object is unreachable, reporting in job)\n");
-#endif
-						profiler_heap_report_object_unreachable (job, obj);
-					}
-				}
-				buffer->first_unprocessed_slot = cursor;
-			}
-		}
-		
-		if (job != NULL) {
-			MONO_PROFILER_GET_CURRENT_COUNTER (job->end_counter);
-			MONO_PROFILER_GET_CURRENT_TIME (job->end_time);
+		if (do_heap_profiling) {
+			ProfilerHeapShotWriteJob *job;
+			ProfilerPerThreadData *data;
 			
-			profiler_add_heap_shot_write_job (job);
-			profiler_free_heap_shot_write_jobs ();
-			WRITER_EVENT_RAISE ();
+			if (heap_shot_write_job_should_be_created (dump_heap_data)) {
+				job = profiler_heap_shot_write_job_new (profiler->heap_shot_was_requested, dump_heap_data, profiler->garbage_collection_counter);
+				profiler->heap_shot_was_requested = FALSE;
+				MONO_PROFILER_GET_CURRENT_COUNTER (job->start_counter);
+				MONO_PROFILER_GET_CURRENT_TIME (job->start_time);
+			} else {
+				job = NULL;
+			}
+			
+			profiler_heap_scan (&(profiler->heap), job);
+			
+			for (data = profiler->per_thread_data; data != NULL; data = data->next) {
+				ProfilerHeapShotObjectBuffer *buffer;
+				for (buffer = data->heap_shot_object_buffers; buffer != NULL; buffer = buffer->next) {
+					MonoObject **cursor;
+					for (cursor = buffer->first_unprocessed_slot; cursor < buffer->next_free_slot; cursor ++) {
+						MonoObject *obj = *cursor;
+#if DEBUG_HEAP_PROFILER
+						printf ("gc_event: in object buffer %p(%p-%p) cursor at %p has object %p ", buffer, &(buffer->buffer [0]), buffer->end, cursor, obj);
+#endif
+						if (mono_object_is_alive (obj)) {
+#if DEBUG_HEAP_PROFILER
+							printf ("(object is alive, adding to heap)\n");
+#endif
+							profiler_heap_add_object (&(profiler->heap), job, obj);
+						} else {
+#if DEBUG_HEAP_PROFILER
+							printf ("(object is unreachable, reporting in job)\n");
+#endif
+							profiler_heap_report_object_unreachable (job, obj);
+						}
+					}
+					buffer->first_unprocessed_slot = cursor;
+				}
+			}
+			
+			if (job != NULL) {
+				MONO_PROFILER_GET_CURRENT_COUNTER (job->end_counter);
+				MONO_PROFILER_GET_CURRENT_TIME (job->end_time);
+				
+				profiler_add_heap_shot_write_job (job);
+				profiler_free_heap_shot_write_jobs ();
+				WRITER_EVENT_RAISE ();
+			}
 		}
 		break;
 	}
@@ -4733,16 +5103,20 @@ gc_event (MonoProfiler *profiler, MonoGCEvent ev, int generation) {
 	
 	event_value = (profiler->garbage_collection_counter << 8) | generation;
 	
-	if (do_heap_profiling && (ev == MONO_GC_EVENT_POST_STOP_WORLD)) {
-		handle_heap_profiling (profiler, ev);
+	if (ev == MONO_GC_EVENT_POST_STOP_WORLD) {
+		process_gc_event (profiler, do_heap_profiling, ev);
 	}
 	
-	GET_PROFILER_THREAD_DATA (data);
-	GET_NEXT_FREE_EVENT (data, event);
-	STORE_EVENT_NUMBER_COUNTER (event, profiler, event_value, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, gc_event_code_from_profiler_event (ev), gc_event_kind_from_profiler_event (ev));
+	/* Check if the gc event should be recorded. */
+	if (profiler->action_flags.report_gc_events || do_heap_profiling) {
+		GET_PROFILER_THREAD_DATA (data);
+		GET_NEXT_FREE_EVENT (data, event);
+		STORE_EVENT_NUMBER_COUNTER (event, profiler, event_value, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, gc_event_code_from_profiler_event (ev), gc_event_kind_from_profiler_event (ev));
+		COMMIT_RESERVED_EVENTS (data);
+	}
 	
-	if (do_heap_profiling && (ev != MONO_GC_EVENT_POST_STOP_WORLD)) {
-		handle_heap_profiling (profiler, ev);
+	if (ev != MONO_GC_EVENT_POST_STOP_WORLD) {
+		process_gc_event (profiler, do_heap_profiling, ev);
 	}
 }
 
@@ -4754,20 +5128,184 @@ gc_resize (MonoProfiler *profiler, gint64 new_size) {
 	GET_NEXT_FREE_EVENT (data, event);
 	profiler->garbage_collection_counter ++;
 	STORE_EVENT_NUMBER_VALUE (event, profiler, new_size, MONO_PROFILER_EVENT_DATA_TYPE_OTHER, MONO_PROFILER_EVENT_GC_RESIZE, 0, profiler->garbage_collection_counter);
+	COMMIT_RESERVED_EVENTS (data);
 }
 
 static void
 runtime_initialized (MonoProfiler *profiler) {
-	LOG_WRITER_THREAD ("runtime_initialized: waking writer thread to enable it...\n");
-	WRITER_EVENT_ENABLE_RAISE ();
-	LOG_WRITER_THREAD ("runtime_initialized: waiting writer thread...\n");
-	WRITER_EVENT_DONE_WAIT ();
-	LOG_WRITER_THREAD ("runtime_initialized: writer thread enabled.\n");
+	LOG_WRITER_THREAD ("runtime_initialized: initializing internal calls.\n");
 	mono_add_internal_call ("Mono.Profiler.RuntimeControls::EnableProfiler", enable_profiler);
 	mono_add_internal_call ("Mono.Profiler.RuntimeControls::DisableProfiler", disable_profiler);
 	mono_add_internal_call ("Mono.Profiler.RuntimeControls::TakeHeapSnapshot", request_heap_snapshot);
 	LOG_WRITER_THREAD ("runtime_initialized: initialized internal calls.\n");
 }
+
+
+#define MAX_COMMAND_LENGTH (1024)
+static int server_socket;
+static int command_socket;
+
+static void
+write_user_response (const char *response) {
+	LOG_USER_THREAD ("write_user_response: writing response:");
+	LOG_USER_THREAD (response);
+	send (command_socket, response, strlen (response), 0);
+}
+
+static void
+execute_user_command (char *command) {
+	char *line_feed;
+	
+	LOG_USER_THREAD ("execute_user_command: executing command:");
+	LOG_USER_THREAD (command);
+	
+	/* Ignore leading and trailing '\r' */
+	line_feed = strchr (command, '\r');
+	if (line_feed == command) {
+		command ++;
+		line_feed = strchr (command, '\r');
+	}
+	if ((line_feed != NULL) && (* (line_feed + 1) == 0)) {
+		*line_feed = 0;
+	}
+	
+	if (strcmp (command, "enable") == 0) {
+		LOG_USER_THREAD ("execute_user_command: enabling profiler");
+		enable_profiler ();
+		write_user_response ("DONE\n");
+	} else if (strcmp (command, "disable") == 0) {
+		LOG_USER_THREAD ("execute_user_command: disabling profiler");
+		disable_profiler ();
+		write_user_response ("DONE\n");
+	} else if (strcmp (command, "heap-snapshot") == 0) {
+		LOG_USER_THREAD ("execute_user_command: taking heap snapshot");
+		profiler->heap_shot_was_requested = TRUE;
+		WRITER_EVENT_RAISE ();
+		write_user_response ("DONE\n");
+	} else if (strstr (command, "heap-snapshot-counter") == 0) {
+		char *equals; 
+		LOG_USER_THREAD ("execute_user_command: changing heap counter");
+		equals = strstr (command, "=");
+		if (equals != NULL) {
+			equals ++;
+			if (strcmp (equals, "all") == 0) {
+				LOG_USER_THREAD ("execute_user_command: heap counter is \"all\"");
+				profiler->garbage_collection_counter = -1;
+			} else if (strcmp (equals, "none") == 0) {
+				LOG_USER_THREAD ("execute_user_command: heap counter is \"none\"");
+				profiler->garbage_collection_counter = 0;
+			} else {
+				profiler->garbage_collection_counter = atoi (equals);
+			}
+			write_user_response ("DONE\n");
+		} else {
+			write_user_response ("ERROR\n");
+		}
+		profiler->heap_shot_was_requested = TRUE;
+	} else {
+		LOG_USER_THREAD ("execute_user_command: command not recognized");
+		write_user_response ("ERROR\n");
+	}
+}
+
+static gboolean
+process_user_commands (void) {
+	char *command_buffer = malloc (MAX_COMMAND_LENGTH);
+	int command_buffer_current_index = 0;
+	gboolean loop = TRUE;
+	gboolean result = TRUE;
+	
+	while (loop) {
+		int unprocessed_characters;
+		
+		LOG_USER_THREAD ("process_user_commands: reading from socket...");
+		unprocessed_characters = recv (command_socket, command_buffer + command_buffer_current_index, MAX_COMMAND_LENGTH - command_buffer_current_index, 0);
+		
+		if (unprocessed_characters > 0) {
+			char *command_end = NULL;
+			
+			LOG_USER_THREAD ("process_user_commands: received characters.");
+			
+			do {
+				if (command_end != NULL) {
+					*command_end = 0;
+					execute_user_command (command_buffer);
+					unprocessed_characters -= (((command_end - command_buffer) - command_buffer_current_index) + 1);
+					
+					if (unprocessed_characters > 0) {
+						memmove (command_buffer, command_end + 1, unprocessed_characters);
+					}
+					command_buffer_current_index = 0;
+				}
+				
+				command_end = memchr (command_buffer, '\n', command_buffer_current_index + unprocessed_characters);
+			} while (command_end != NULL);
+			
+			command_buffer_current_index += unprocessed_characters;
+			
+		} else if (unprocessed_characters == 0) {
+			LOG_USER_THREAD ("process_user_commands: received no character.");
+			result = TRUE;
+			loop = FALSE;
+		} else {
+			LOG_USER_THREAD ("process_user_commands: received error.");
+			result = FALSE;
+			loop = FALSE;
+		}
+	}
+	
+	free (command_buffer);
+	return result;
+}
+
+static guint32
+user_thread (gpointer nothing) {
+	struct sockaddr_in server_address;
+	
+	server_socket = -1;
+	command_socket = -1;
+	
+	LOG_USER_THREAD ("user_thread: starting up...");
+	
+	server_socket = socket (AF_INET, SOCK_STREAM, 0);
+	if (server_socket < 0) {
+		LOG_USER_THREAD ("user_thread: error creating socket.");
+		return 0;
+	}
+	memset (& server_address, 0, sizeof (server_address));
+	
+	server_address.sin_family = AF_INET;
+	server_address.sin_addr.s_addr = INADDR_ANY;
+	if ((profiler->command_port < 1023) || (profiler->command_port > 65535)) {
+		LOG_USER_THREAD ("user_thread: invalid port number.");
+		return 0;
+	}
+	server_address.sin_port = htons (profiler->command_port);
+	
+	if (bind (server_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
+		LOG_USER_THREAD ("user_thread: error binding socket.");
+		close (server_socket);
+		return 0;
+	}
+	
+	LOG_USER_THREAD ("user_thread: listening...\n");
+	listen (server_socket, 1);
+	command_socket = accept (server_socket, NULL, NULL);
+	if (command_socket < 0) {
+		LOG_USER_THREAD ("user_thread: error accepting socket.");
+		close (server_socket);
+		return 0;
+	}
+	
+	LOG_USER_THREAD ("user_thread: processing user commands...");
+	process_user_commands ();
+	
+	LOG_USER_THREAD ("user_thread: exiting cleanly.");
+	close (server_socket);
+	close (command_socket);
+	return 0;
+}
+
 
 /* called at the end of the program */
 static void
@@ -4797,6 +5335,10 @@ profiler_shutdown (MonoProfiler *prof)
 	write_end_block ();
 	FLUSH_FILE ();
 	CLOSE_FILE();
+	mono_profiler_install_code_chunk_new (NULL);
+	mono_profiler_install_code_chunk_destroy (NULL);
+	mono_profiler_install_code_buffer_new (NULL);
+	profiler_code_chunks_cleanup (& (profiler->code_chunks));
 	UNLOCK_PROFILER ();
 	
 	g_free (profiler->file_name);
@@ -4830,9 +5372,6 @@ profiler_shutdown (MonoProfiler *prof)
 	}
 	
 	profiler_heap_buffers_free (&(profiler->heap));
-	if (profiler->heap_shot_command_file_name != NULL) {
-		g_free (profiler->heap_shot_command_file_name);
-	}
 	
 	profiler_free_write_buffers ();
 	profiler_destroy_heap_shot_write_jobs ();
@@ -4848,31 +5387,6 @@ profiler_shutdown (MonoProfiler *prof)
 	g_free (profiler);
 	profiler = NULL;
 }
-
-#ifndef PLATFORM_WIN32
-static int
-parse_signal_name (const char *signal_name) {
-	if (! strcasecmp (signal_name, "SIGUSR1")) {
-		return SIGUSR1;
-	} else if (! strcasecmp (signal_name, "SIGUSR2")) {
-		return SIGUSR2;
-	} else if (! strcasecmp (signal_name, "SIGPROF")) {
-		return SIGPROF;
-	} else {
-		return atoi (signal_name);
-	}
-}
-static gboolean
-check_signal_number (int signal_number) {
-	if (((signal_number == SIGPROF) && ! (profiler->flags & MONO_PROFILE_STATISTICAL)) ||
-			(signal_number == SIGUSR1) ||
-			(signal_number == SIGUSR2)) {
-		return TRUE;
-	} else {
-		return FALSE;
-	}
-}
-#endif
 
 #define FAIL_ARGUMENT_CHECK(message) do {\
 	failure_message = (message);\
@@ -4893,10 +5407,6 @@ check_signal_number (int signal_number) {
 static void
 setup_user_options (const char *arguments) {
 	gchar **arguments_array, **current_argument;
-#ifndef PLATFORM_WIN32
-	int gc_request_signal_number = 0;
-	int toggle_signal_number = 0;
-#endif
 	detect_fast_timer ();
 	
 	profiler->file_name = NULL;
@@ -4905,10 +5415,8 @@ setup_user_options (const char *arguments) {
 	profiler->statistical_buffer_size = 10000;
 	profiler->statistical_call_chain_depth = 0;
 	profiler->write_buffer_size = 1024;
-	profiler->heap_shot_command_file_name = NULL;
 	profiler->dump_next_heap_snapshots = 0;
-	profiler->heap_shot_command_file_access_time = 0;
-	profiler->heap_shot_was_signalled = FALSE;
+	profiler->heap_shot_was_requested = FALSE;
 	profiler->flags = MONO_PROFILE_APPDOMAIN_EVENTS|
 			MONO_PROFILE_ASSEMBLY_EVENTS|
 			MONO_PROFILE_MODULE_EVENTS|
@@ -4961,8 +5469,8 @@ setup_user_options (const char *arguments) {
 				int value = atoi (equals + 1);
 				FAIL_IF_HAS_MINUS;
 				if (value > 0) {
-					if (value > 16) {
-						value = 16;
+					if (value > MAX_STATISTICAL_CALL_CHAIN_DEPTH) {
+						value = MAX_STATISTICAL_CALL_CHAIN_DEPTH;
 					}
 					profiler->statistical_call_chain_depth = value;
 					profiler->flags |= MONO_PROFILE_STATISTICAL;
@@ -4994,7 +5502,7 @@ setup_user_options (const char *arguments) {
 				if (! strcmp (parameter, "all")) {
 					profiler->dump_next_heap_snapshots = -1;
 				} else {
-					gc_request_signal_number = parse_signal_name (parameter);
+					profiler->dump_next_heap_snapshots = atoi (parameter);
 				}
 				FAIL_IF_HAS_MINUS;
 				if (! has_plus) {
@@ -5003,30 +5511,16 @@ setup_user_options (const char *arguments) {
 					profiler->action_flags.allocations_carry_id = TRUE_IF_NOT_MINUS;
 				}
 				profiler->action_flags.heap_shot = TRUE_IF_NOT_MINUS;
-			} else if (! (strncmp (argument, "gc-commands", equals_position) && strncmp (argument, "gc-c", equals_position) && strncmp (argument, "gcc", equals_position))) {
-				FAIL_IF_HAS_MINUS;
-				if (strlen (equals + 1) > 0) {
-					profiler->heap_shot_command_file_name = g_strdup (equals + 1);
-				}
 			} else if (! (strncmp (argument, "gc-dumps", equals_position) && strncmp (argument, "gc-d", equals_position) && strncmp (argument, "gcd", equals_position))) {
 				FAIL_IF_HAS_MINUS;
 				if (strlen (equals + 1) > 0) {
 					profiler->dump_next_heap_snapshots = atoi (equals + 1);
 				}
-#ifndef PLATFORM_WIN32
-			} else if (! (strncmp (argument, "gc-signal", equals_position) && strncmp (argument, "gc-s", equals_position) && strncmp (argument, "gcs", equals_position))) {
+			} else if (! (strncmp (argument, "command-port", equals_position) && strncmp (argument, "cp", equals_position))) {
 				FAIL_IF_HAS_MINUS;
 				if (strlen (equals + 1) > 0) {
-					char *signal_name = equals + 1;
-					gc_request_signal_number = parse_signal_name (signal_name);
+					profiler->command_port = atoi (equals + 1);
 				}
-			} else if (! (strncmp (argument, "toggle-signal", equals_position) && strncmp (argument, "ts", equals_position))) {
-				FAIL_IF_HAS_MINUS;
-				if (strlen (equals + 1) > 0) {
-					char *signal_name = equals + 1;
-					toggle_signal_number = parse_signal_name (signal_name);
-				}
-#endif
 			} else {
 				FAIL_PARSING_VALUED_ARGUMENT;
 			}
@@ -5044,8 +5538,14 @@ setup_user_options (const char *arguments) {
 				} else {
 					profiler->flags &= ~MONO_PROFILE_ALLOCATIONS;
 				}
+			} else if (! (strcmp (argument, "monitor") && strcmp (argument, "locks") && strcmp (argument, "lock"))) {
+				FAIL_IF_HAS_MINUS;
+				profiler->action_flags.track_stack = TRUE;
+				profiler->flags |= MONO_PROFILE_MONITOR_EVENTS;
+				profiler->flags |= MONO_PROFILE_GC;
 			} else if (! (strcmp (argument, "gc") && strcmp (argument, "g"))) {
 				FAIL_IF_HAS_MINUS;
+				profiler->action_flags.report_gc_events = TRUE;
 				profiler->flags |= MONO_PROFILE_GC;
 			} else if (! (strcmp (argument, "allocations-summary") && strcmp (argument, "as"))) {
 				profiler->action_flags.collection_summary = TRUE_IF_NOT_MINUS;
@@ -5082,7 +5582,7 @@ setup_user_options (const char *arguments) {
 			} else if (! (strcmp (argument, "start-enabled") && strcmp (argument, "se"))) {
 				profiler->profiler_enabled = TRUE_IF_NOT_MINUS;
 			} else if (! (strcmp (argument, "start-disabled") && strcmp (argument, "sd"))) {
-				profiler->profiler_enabled = TRUE_IF_NOT_MINUS;
+				profiler->profiler_enabled = ! TRUE_IF_NOT_MINUS;
 			} else if (! (strcmp (argument, "force-accurate-timer") && strcmp (argument, "fac"))) {
 				use_fast_timer = TRUE_IF_NOT_MINUS;
 #if (HAS_OPROFILE)
@@ -5107,23 +5607,6 @@ failure_handling:
 	
 	g_free (arguments_array);
 	
-#ifndef PLATFORM_WIN32
-	if (gc_request_signal_number != 0) {
-		if (check_signal_number (gc_request_signal_number) && (gc_request_signal_number != toggle_signal_number)) {
-			add_gc_request_handler (gc_request_signal_number);
-		} else {
-			g_error ("Cannot use signal %d", gc_request_signal_number);
-		}
-	}
-	if (toggle_signal_number != 0) {
-		if (check_signal_number (toggle_signal_number) && (toggle_signal_number != gc_request_signal_number)) {
-			add_toggle_handler (toggle_signal_number);
-		} else {
-			g_error ("Cannot use signal %d", gc_request_signal_number);
-		}
-	}
-#endif
-	
 	/* Ensure that the profiler flags needed to support required action flags are active */
 	if (profiler->action_flags.jit_time) {
 		profiler->flags |= MONO_PROFILE_JIT_COMPILATION;
@@ -5133,6 +5616,7 @@ failure_handling:
 	}
 	if (profiler->action_flags.collection_summary || profiler->action_flags.heap_shot || profiler->action_flags.unreachable_objects) {
 		profiler->flags |= MONO_PROFILE_ALLOCATIONS;
+		profiler->action_flags.report_gc_events = TRUE;
 	}
 	if (profiler->action_flags.track_calls) {
 		profiler->flags |= MONO_PROFILE_ENTER_LEAVE;
@@ -5142,6 +5626,16 @@ failure_handling:
 		profiler->action_flags.track_stack = TRUE;
 		profiler->flags |= MONO_PROFILE_ENTER_LEAVE;
 	}
+	if (profiler->action_flags.track_stack) {
+		profiler->flags |= MONO_PROFILE_ENTER_LEAVE;
+	}
+	
+	/* Tracking call stacks is useless if we already emit all enter-exit events... */
+	if (profiler->action_flags.track_calls) {
+		profiler->action_flags.track_stack = FALSE;
+		profiler->action_flags.save_allocation_caller = FALSE;
+		profiler->action_flags.save_allocation_stack = FALSE;
+	}
 	
 	/* Without JIT events the stat profiler will not find method IDs... */
 	if (profiler->flags | MONO_PROFILE_STATISTICAL) {
@@ -5150,6 +5644,7 @@ failure_handling:
 	/* Profiling allocations without knowing which gc we are doing is not nice... */
 	if (profiler->flags | MONO_PROFILE_ALLOCATIONS) {
 		profiler->flags |= MONO_PROFILE_GC;
+		profiler->action_flags.report_gc_events = TRUE;
 	}
 
 	
@@ -5197,42 +5692,8 @@ failure_handling:
 	}
 }
 
-static gboolean
-thread_detach_callback (MonoThread *thread) {
-	LOG_WRITER_THREAD ("thread_detach_callback: asking writer thread to detach");
-	profiler->detach_writer_thread = TRUE;
-	WRITER_EVENT_RAISE ();
-	LOG_WRITER_THREAD ("thread_detach_callback: done");
-	return FALSE;
-}
-
 static guint32
 data_writer_thread (gpointer nothing) {
-	static gboolean thread_attached = FALSE;
-	static gboolean thread_detached = FALSE;
-	static MonoThread *this_thread = NULL;
-	
-	/* Wait for the OK to attach to the runtime */
-	WRITER_EVENT_ENABLE_WAIT ();
-	if (! profiler->terminate_writer_thread) {
-		MonoDomain * root_domain = mono_get_root_domain ();
-		if (root_domain != NULL) {
-			LOG_WRITER_THREAD ("data_writer_thread: attaching thread");
-			this_thread = mono_thread_attach (root_domain);
-			mono_thread_set_manage_callback (this_thread, thread_detach_callback);
-			thread_attached = TRUE;
-		} else {
-			g_error ("Cannot get root domain\n");
-		}
-	} else {
-		/* Execution was too short, pretend we attached and detached. */
-		thread_attached = TRUE;
-		thread_detached = TRUE;
-	}
-	profiler->writer_thread_enabled = TRUE;
-	/* Notify that we are attached to the runtime */
-	WRITER_EVENT_DONE_RAISE ();
-	
 	for (;;) {
 		ProfilerStatisticalData *statistical_data;
 		gboolean done;
@@ -5241,78 +5702,59 @@ data_writer_thread (gpointer nothing) {
 		WRITER_EVENT_WAIT ();
 		LOG_WRITER_THREAD ("data_writer_thread: just woke up");
 		
-		if (profiler->heap_shot_was_signalled) {
+		if (profiler->heap_shot_was_requested) {
+			MonoDomain * root_domain = mono_get_root_domain ();
+			
+			if (root_domain != NULL) {
+				MonoThread *this_thread;
+				LOG_WRITER_THREAD ("data_writer_thread: attaching thread");
+				this_thread = mono_thread_attach (root_domain);
 			LOG_WRITER_THREAD ("data_writer_thread: starting requested collection");
 			mono_gc_collect (mono_gc_max_generation ());
 			LOG_WRITER_THREAD ("data_writer_thread: requested collection done");
-		}
-		
-		statistical_data = profiler->statistical_data_ready;
-		done = (statistical_data == NULL) && (profiler->heap_shot_write_jobs == NULL) && (profiler->writer_thread_flush_everything == FALSE);
-		
-		if ((!done) && thread_attached) {
-			if (profiler->writer_thread_flush_everything) {
-				/* Note that this assumes the lock is held by the thread that woke us up! */
-				if (! thread_detached) {
-					LOG_WRITER_THREAD ("data_writer_thread: flushing everything...");
-					flush_everything ();
-					profiler->writer_thread_flush_everything = FALSE;
-					WRITER_EVENT_DONE_RAISE ();
-					LOG_WRITER_THREAD ("data_writer_thread: flushed everything.");
-				} else {
-					LOG_WRITER_THREAD ("data_writer_thread: flushing requested, but thread is detached...");
-					profiler->writer_thread_flush_everything = FALSE;
-					WRITER_EVENT_DONE_RAISE ();
-					LOG_WRITER_THREAD ("data_writer_thread: done event raised.");
-				}
-			} else {
-				LOG_WRITER_THREAD ("data_writer_thread: acquiring lock and writing data");
-				LOCK_PROFILER ();
-				
-				// This makes sure that all method ids are in place
-				LOG_WRITER_THREAD ("data_writer_thread: writing mapping...");
-				flush_all_mappings ();
-				LOG_WRITER_THREAD ("data_writer_thread: wrote mapping");
-				
-				if ((statistical_data != NULL) && ! thread_detached) {
-					LOG_WRITER_THREAD ("data_writer_thread: writing statistical data...");
-					profiler->statistical_data_ready = NULL;
-					write_statistical_data_block (statistical_data);
-					statistical_data->next_free_index = 0;
-					statistical_data->first_unwritten_index = 0;
-					profiler->statistical_data_second_buffer = statistical_data;
-					LOG_WRITER_THREAD ("data_writer_thread: wrote statistical data");
-				}
-				
-				profiler_process_heap_shot_write_jobs ();
-				
-				UNLOCK_PROFILER ();
-				LOG_WRITER_THREAD ("data_writer_thread: wrote data and released lock");
-			}
-		} else {
-			if (profiler->writer_thread_flush_everything) {
-				LOG_WRITER_THREAD ("data_writer_thread: flushing requested, but thread is not attached...");
-				profiler->writer_thread_flush_everything = FALSE;
-				WRITER_EVENT_DONE_RAISE ();
-				LOG_WRITER_THREAD ("data_writer_thread: done event raised.");
-			}
-		}
-		
-		if (profiler->detach_writer_thread) {
-			if (this_thread != NULL) {
-				LOG_WRITER_THREAD ("data_writer_thread: detach requested, acquiring lock and flushing data");
-				LOCK_PROFILER ();
-				flush_everything ();
-				UNLOCK_PROFILER ();
-				LOG_WRITER_THREAD ("data_writer_thread: flushed data and released lock");
 				LOG_WRITER_THREAD ("data_writer_thread: detaching thread");
 				mono_thread_detach (this_thread);
 				this_thread = NULL;
-				profiler->detach_writer_thread = FALSE;
-				thread_detached = TRUE;
+				LOG_WRITER_THREAD ("data_writer_thread: collection sequence completed");
 			} else {
-				LOG_WRITER_THREAD ("data_writer_thread: warning: thread has already been detached");
+				LOG_WRITER_THREAD ("data_writer_thread: cannot get root domain, collection sequence skipped");
 			}
+			
+		}
+		
+		statistical_data = profiler->statistical_data_ready;
+		done = (statistical_data == NULL) && (profiler->heap_shot_write_jobs == NULL);
+		
+		if (!done) {
+			LOG_WRITER_THREAD ("data_writer_thread: acquiring lock and writing data");
+			LOCK_PROFILER ();
+			
+			// This makes sure that all method ids are in place
+			LOG_WRITER_THREAD ("data_writer_thread: writing mapping...");
+			flush_all_mappings ();
+			LOG_WRITER_THREAD ("data_writer_thread: wrote mapping");
+			
+			if (statistical_data != NULL) {
+				LOG_WRITER_THREAD ("data_writer_thread: writing statistical data...");
+				profiler->statistical_data_ready = NULL;
+				write_statistical_data_block (statistical_data);
+				statistical_data->next_free_index = 0;
+				statistical_data->first_unwritten_index = 0;
+				profiler->statistical_data_second_buffer = statistical_data;
+				LOG_WRITER_THREAD ("data_writer_thread: wrote statistical data");
+			}
+			
+			profiler_process_heap_shot_write_jobs ();
+			
+			UNLOCK_PROFILER ();
+			LOG_WRITER_THREAD ("data_writer_thread: wrote data and released lock");
+		} else {
+			LOG_WRITER_THREAD ("data_writer_thread: acquiring lock and flushing buffers");
+			LOCK_PROFILER ();
+			LOG_WRITER_THREAD ("data_writer_thread: lock acquired, flushing buffers");
+			flush_everything ();
+			UNLOCK_PROFILER ();
+			LOG_WRITER_THREAD ("data_writer_thread: flushed buffers and released lock");
 		}
 		
 		if (profiler->terminate_writer_thread) {
@@ -5342,6 +5784,7 @@ mono_profiler_startup (const char *desc)
 	
 	profiler->methods = method_id_mapping_new ();
 	profiler->classes = class_id_mapping_new ();
+	profiler->loaded_element_next_free_id = 1;
 	profiler->loaded_assemblies = g_hash_table_new_full (g_direct_hash, NULL, NULL, loaded_element_destroy);
 	profiler->loaded_modules = g_hash_table_new_full (g_direct_hash, NULL, NULL, loaded_element_destroy);
 	profiler->loaded_appdomains = g_hash_table_new_full (g_direct_hash, NULL, NULL, loaded_element_destroy);
@@ -5354,6 +5797,7 @@ mono_profiler_startup (const char *desc)
 	profiler->current_write_buffer = profiler->write_buffers;
 	profiler->current_write_position = 0;
 	profiler->full_write_buffers = 0;
+	profiler_code_chunks_initialize (& (profiler->code_chunks));
 	
 	profiler->executable_regions = profiler_executable_memory_regions_new (1, 1);
 	
@@ -5372,6 +5816,13 @@ mono_profiler_startup (const char *desc)
 	LOG_WRITER_THREAD ("mono_profiler_startup: creating writer thread");
 	CREATE_WRITER_THREAD (data_writer_thread);
 	LOG_WRITER_THREAD ("mono_profiler_startup: created writer thread");
+	if ((profiler->command_port >= 1024) && (profiler->command_port <= 65535)) {
+		LOG_USER_THREAD ("mono_profiler_startup: creating user thread");
+		CREATE_USER_THREAD (user_thread);
+		LOG_USER_THREAD ("mono_profiler_startup: created user thread");
+	} else {
+		LOG_USER_THREAD ("mono_profiler_startup: skipping user thread creation");
+	}
 
 	ALLOCATE_PROFILER_THREAD_DATA ();
 	
@@ -5395,6 +5846,7 @@ mono_profiler_startup (const char *desc)
 	mono_profiler_install_method_free (method_free);
 	mono_profiler_install_thread (thread_start, thread_end);
 	mono_profiler_install_allocation (object_allocated);
+	mono_profiler_install_monitor (monitor_event);
 	mono_profiler_install_statistical (statistical_hit);
 	mono_profiler_install_statistical_call_chain (statistical_call_chain, profiler->statistical_call_chain_depth);
 	mono_profiler_install_gc (gc_event, gc_resize);
@@ -5402,6 +5854,11 @@ mono_profiler_startup (const char *desc)
 #if (HAS_OPROFILE)
 	mono_profiler_install_jit_end (method_jit_result);
 #endif
+	if (profiler->flags | MONO_PROFILE_STATISTICAL) {
+		mono_profiler_install_code_chunk_new (profiler_code_chunk_new_callback);
+		mono_profiler_install_code_chunk_destroy (profiler_code_chunk_destroy_callback);
+		mono_profiler_install_code_buffer_new (profiler_code_buffer_new_callback);
+	}
 	
 	mono_profiler_set_events (profiler->flags);
 }

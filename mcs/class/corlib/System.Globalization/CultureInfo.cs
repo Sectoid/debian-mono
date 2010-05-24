@@ -174,7 +174,7 @@ namespace System.Globalization
 			get { return territory; }
 		}
 
-#if NET_2_0
+#if NET_2_0 && !NET_2_1
 		// FIXME: It is implemented, but would be hell slow.
 		[ComVisible (false)]
 		public CultureTypes CultureTypes {
@@ -270,6 +270,12 @@ namespace System.Globalization
 
 		public virtual string Name {
 			get {
+#if NET_2_1 && !MONOTOUCH
+				if (m_name == "zh-CHS")
+					return "zh-Hans";
+				if (m_name == "zh-CHT")
+					return "zh-Hant";
+#endif
 				return(m_name);
 			}
 		}
@@ -320,14 +326,14 @@ namespace System.Globalization
 			}
 		}
 
-		public unsafe virtual TextInfo TextInfo
+		public virtual TextInfo TextInfo
 		{
 			get {
 				if (textInfo == null) {
 					if (!constructed) Construct ();
 					lock (this) {
 						if(textInfo == null) {
-							textInfo = new TextInfo (this, cultureID, textinfo_data, m_isReadOnly);
+							textInfo = CreateTextInfo (m_isReadOnly);
 						}
 					}
 				}
@@ -402,6 +408,7 @@ namespace System.Globalization
 			return false;
 		}
 
+#if !NET_2_1 || MONOTOUCH
 		public static CultureInfo[] GetCultures(CultureTypes types)
 		{
 			bool neutral=((types & CultureTypes.NeutralCultures)!=0);
@@ -421,6 +428,7 @@ namespace System.Globalization
 
 			return infos;
 		}
+#endif
 
 		public override int GetHashCode()
 		{
@@ -495,12 +503,14 @@ namespace System.Globalization
 
 		internal void CheckNeutral ()
 		{
+#if !NET_2_1 || MONOTOUCH
 			if (IsNeutralCulture) {
 				throw new NotSupportedException ("Culture \"" + m_name + "\" is " +
 						"a neutral culture. It can not be used in formatting " +
 						"and parsing and therefore cannot be set as the thread's " +
 						"current culture.");
 			}
+#endif
 		}
 
 		public virtual NumberFormatInfo NumberFormat {
@@ -619,6 +629,22 @@ namespace System.Globalization
 
 		bool ConstructInternalLocaleFromName (string locale)
 		{
+			// It is sort of hack to get those new pseudo-alias
+			// culture names that are not supported in good old
+			// Windows.
+#if NET_2_1 && !MONOTOUCH
+			if (locale == "zh-chs" || locale == "zh-cht")
+				return false;
+#endif
+			switch (locale) {
+			case "zh-hans":
+				locale = "zh-chs";
+				break;
+			case "zh-hant":
+				locale = "zh-cht";
+				break;
+			}
+
 			if (!construct_internal_locale_from_name (locale))
 				return false;
 			return true;
@@ -671,7 +697,7 @@ namespace System.Globalization
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		private extern static bool internal_is_lcid_neutral (int lcid, out bool is_neutral);
 
-		private unsafe void ConstructInvariant (bool read_only)
+		private void ConstructInvariant (bool read_only)
 		{
 			cultureID = InvariantCultureId;
 
@@ -685,7 +711,7 @@ namespace System.Globalization
 				dateTimeInfo = (DateTimeFormatInfo) dateTimeInfo.Clone ();
 			}
 
-			textInfo=new TextInfo (this, cultureID, this.textinfo_data,read_only);
+			textInfo = CreateTextInfo (read_only);
 
 			m_name=String.Empty;
 			displayname=
@@ -695,6 +721,11 @@ namespace System.Globalization
 			iso2lang="iv";
 			icu_name="en_US_POSIX";
 			win3lang="IVL";
+		}
+
+		private unsafe TextInfo CreateTextInfo (bool readOnly)
+		{
+			return new TextInfo (this, cultureID, this.textinfo_data, readOnly);
 		}
 
 		public CultureInfo (int culture) : this (culture, true) {}

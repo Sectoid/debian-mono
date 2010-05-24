@@ -270,7 +270,7 @@ namespace System.Net
 		{
 			protocolVersion = version;
 		}
-#if !TARGET_JVM && !NET_2_1
+#if MONOTOUCH || (!TARGET_JVM && !NET_2_1)
 		WebConnectionGroup GetConnectionGroup (string name)
 		{
 			if (name == null)
@@ -298,10 +298,17 @@ namespace System.Net
 		}
 #endif
 #if NET_2_0
-		[MonoNotSupported ("")]
 		public bool CloseConnectionGroup (string connectionGroupName)
 		{
-			throw new NotImplementedException ();
+			lock (locker) {
+				WebConnectionGroup cncGroup = GetConnectionGroup (connectionGroupName);
+				if (cncGroup != null) {
+					cncGroup.Close ();
+					return true;
+				}
+			}
+
+			return false;
 		}
 #endif
 

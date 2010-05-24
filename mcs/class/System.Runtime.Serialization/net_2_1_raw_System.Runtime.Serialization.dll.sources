@@ -1,6 +1,3 @@
-../../build/common/Consts.cs
-../../build/common/Locale.cs
-../../build/common/MonoTODOAttribute.cs
 Assembly/AssemblyInfo.cs
 System.Runtime.Serialization/CollectionDataContractAttribute.cs
 System.Runtime.Serialization/ContractNamespaceAttribute.cs
@@ -12,6 +9,7 @@ System.Runtime.Serialization/ExportOptions.cs
 System.Runtime.Serialization/ExtensionDataObject.cs
 System.Runtime.Serialization/IDataContractSurrogate.cs
 System.Runtime.Serialization/IExtensibleDataObject.cs
+System.Runtime.Serialization/IgnoreDataMemberAttribute.cs
 System.Runtime.Serialization/InvalidDataContractException.cs
 System.Runtime.Serialization/KnownTypeAttribute.cs
 System.Runtime.Serialization/KnownTypeCollection.cs
@@ -46,4 +44,3 @@ System.Xml/XmlDictionaryWriter.cs
 System.Xml/XmlDictionaryWriterAutoGen.cs
 System.Xml/XmlSimpleDictionaryReader.cs
 System.Xml/XmlSimpleDictionaryWriter.cs
-System.Xml.Schema/XmlSchema.cs
