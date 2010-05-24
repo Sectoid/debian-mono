@@ -1,12 +1,13 @@
-mono (2.4.4~svn151842-3~pre1) unstable; urgency=low
+mono (2.6.3-1~pre1) unstable; urgency=low
 
+  * New upstream release
   * The "Good bye dpatch, hello git" release
   * debian/control
     debian/rules
     debian/patches/*:
     + Replaced dpatches with git branches.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 08 May 2010 20:52:33 +0200
+ -- Mirco Bauer <meebey@debian.org>  Mon, 24 May 2010 21:42:58 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
