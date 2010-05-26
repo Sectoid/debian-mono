@@ -119,10 +119,10 @@ net_2_0_dirs := \
 	Mono.Simd			\
 	Mono.Tasklets       		\
 	WindowsBase			\
-	Mono.Debugger.Soft	\
 	System.Data.Services    \
 	Mono.Cecil			\
 	Mono.Cecil.Mdb			\
+	Mono.Debugger.Soft	\
 	FirebirdSql.Data.Firebird
 
 net_2_0_only_dirs := \
