@@ -38,8 +38,12 @@ mono (2.6.3-1~pre1) unstable; urgency=low
     debian/mono-devel.manpages:
     + Added pdb2mdb, sqlmetal, svcutil and RabbitMQ.Client.Apigen.exe.
     + Updated mono-xmltool.exe path.
+  * debian/control
+    debian/libmono-windowsbase3.0-cil.install:
+    + New package containing the WindowsBase library which used to be part of
+      the mono-uia source package.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 20:47:02 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 21:14:36 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
