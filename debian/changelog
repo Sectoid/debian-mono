@@ -44,8 +44,13 @@ mono (2.6.3-1~pre1) unstable; urgency=low
       the mono-uia source package.
   * debian/watch:
     + Tracking latest branch now.
+  * debian/copyright:
+    + Completly rewritten copyright file in DEP5 format based on
+      moonlight 2.0's debian/copyright written by Jo Shields with minor
+      modifications.
+    + Updated debian/* copyright.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 21:14:36 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 22:51:38 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
