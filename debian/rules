@@ -80,56 +80,31 @@ autoreconf-stamp:
 	autoreconf -f -i -s
 	touch $@
 
-configure-arch: configure-arch-stamp
-configure-arch-stamp: autoreconf
-	dh_testdir
-	$(CONFIGURE) --disable-mcs-build
-	touch $@
-
-configure-indep: configure-indep-stamp
-configure-indep-stamp: autoreconf
+configure: configure-stamp
+configure-stamp: autoreconf-stamp
 	dh_testdir
 	$(CONFIGURE)
 	touch $@
 
-build: build-arch
-build-all: build-arch build-indep
-
-build-arch: configure-arch build-arch-stamp
-build-arch-stamp:
+build: build-stamp
+build-stamp: configure-stamp
 	dh_testdir
 	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
-	cd mcs/jay && \
-	  $(MAKE)
+
 	cd debian/detector && \
 	  $(MAKE)
-	#debian/mono-aot-bootstrap
-	touch $@
-
-build-indep: configure-indep build-indep-stamp
-build-indep-stamp:
-	dh_testdir
-	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
-	cd docs && $(MAKE)
 	chmod +x debian/dh_makeclilibs \
 	         debian/dh_clideps \
 	         debian/dh_clistrip \
 	         debian/dh_clifixperms \
 	         debian/dh_monoaot
+
 	touch $@
 
-test: test-arch
-test-arch: build-indep-stamp test-arch-stamp
-test-arch-stamp: configure-indep
-	# we have to depend on configure-indep here because configure-arch
-	# passes --disable-mcs-build to ./configure which skips generating
-	# mcs/build/config.make which is required when we wan't to build
-	# assemblies here as thats where RUNTIME etc is defined.
-
-	# show time baby: run all tests
+test: test-stamp
+test-stamp: build-stamp
 	-$(MINI_TEST)
 	-$(MONO_TEST)
-
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
 	rm -rf mono/tests/abcde12345abcde12345abcde12345abcde12345/
@@ -265,7 +240,7 @@ install-indep-stamp:
 
 binary: binary-arch binary-indep
 
-binary-indep: build-arch install-arch build-indep install-indep
+binary-indep: build-stamp install-arch install-indep
 	dh_testdir
 	dh_testroot
 
@@ -369,7 +344,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_md5sums -i
 	dh_builddeb -i
 
-binary-arch: build-arch install-arch test-arch
+binary-arch: build-stamp install-arch test-stamp
 	dh_testdir
 	dh_testroot
 	
@@ -421,10 +396,10 @@ get-orig-source:
 		--repack
 
 .PHONY: autoreconf \
-        configure-arch configure-indep \
+        configure \
         clean \
-        build build-all build-arch build-indep \
-        test test-arch \
+        build build-all \
+        test \
         install install-all install-arch install-indep \
         binary binary-arch binary-indep \
         get-orig-source
