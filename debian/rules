@@ -119,77 +119,20 @@ build-indep-stamp:
 	touch $@
 
 test: test-arch
-test-arch: test-arch-stamp
+test-arch: build-indep-stamp test-arch-stamp
 test-arch-stamp: configure-indep
 	# we have to depend on configure-indep here because configure-arch
 	# passes --disable-mcs-build to ./configure which skips generating
 	# mcs/build/config.make which is required when we wan't to build
 	# assemblies here as thats where RUNTIME etc is defined.
 
-	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
-
-	# bootstrap 1.1 needs basic
-	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
-
-	# mcs needs bootstrap 1.1
-	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
-
-	# mcs needs mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
-	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	# build mcs
-	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_1_1
-
-	# gmcs needs bootstrap 2.0, 
-	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
-	# build gmcs
-	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# PEAPI need mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
-	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# ilasm needs PEAPI and Mono.Security
-	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/Mono.Security && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	# build ilasm
-	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# mkbundle needs Mono.Posix and ICSharpCode.SharpZipLib
-	cd mcs/class/Mono.Posix && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/ICSharpCode.SharpZipLib && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	# build mkbundle
-	cd mcs/tools/mkbundle && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# some tests need System.Core
-	cd mcs/class/System.Core && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# mono/mini tests need Mono.Simd
-	cd mcs/class/Mono.Simd && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
 	# show time baby: run all tests
 	-$(MINI_TEST)
 	-$(MONO_TEST)
 
-	# clean up
-	cd mono/mini && $(MAKE) clean
-	cd mono/tests && $(MAKE) clean
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
 	rm -rf mono/tests/abcde12345abcde12345abcde12345abcde12345/
-	# delete the assemblies we built here, to make sure they get cleanly
-	# rebuild in the build-indep target
-	rm -rf \
-		mcs/class/lib/basic \
-		mcs/class/lib/net_1_1 \
-		mcs/class/lib/net_1_1_bootstrap \
-		mcs/class/lib/net_2_0 \
-		mcs/class/lib/net_2_0_bootstrap
-
 	touch $@
 
 clean:
@@ -426,7 +369,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_md5sums -i
 	dh_builddeb -i
 
-binary-arch: build-arch install-arch test-arch-stamp
+binary-arch: build-arch install-arch test-arch
 	dh_testdir
 	dh_testroot
 	
