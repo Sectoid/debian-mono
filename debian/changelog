@@ -1,7 +1,14 @@
 mono (2.6.3-1~pre1) unstable; urgency=low
 
   * New upstream release
-    + Ships the Dynamic Language Runtime (DLR) used by IronRuby and IronPython
+    + Soft debugger
+    + Co-routine framework Mono.Tasklets
+    + Auto-completion for the csharp shell
+    + LINQ to SQL
+    + Enhanced XBuild
+    + Mono.Simd for AMD64
+    + Verifier and Sandbox (used by Moonlight)
+    + Debugging support for GDB
 
   * The "Good bye dpatch, hello git" release
   * debian/control
