@@ -21,8 +21,11 @@ mono (2.6.3-1~pre1) unstable; urgency=low
     debian/libmono-c5-1.1-cil.install:
     + Renamed the libmono-c5-1.0-cil package to libmono-c5-1.1-cil as the
       assembly version changed.
+  * debiab/control
+    debian/libmono-tasklets2.0-cil.install:
+    + New package for the continuations library.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 20:19:02 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 20:37:00 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
