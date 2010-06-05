@@ -1,6 +1,6 @@
 mono (2.6.3-1~pre1) unstable; urgency=low
 
-  * New upstream release
+  * New upstream release (Closes: #572901)
     + Soft debugger
     + Co-routine framework Mono.Tasklets
     + Auto-completion for the csharp shell
