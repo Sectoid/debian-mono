@@ -1289,7 +1289,7 @@ Description: Mono Relaxng library (for CLI 2.0)
 
 Package: libmono-debugger-soft0.0-cil
 Architecture: all
-Depends: ${misc:Depends}, ${cli:Depends}
+Depends: ${misc:Depends}, ${cli:Depends}, mono-runtime (>= ${mono:upversion}), mono-runtime (<< ${mono:next-upversion})
 Description: Mono Soft Debugger library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
