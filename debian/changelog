@@ -27,8 +27,12 @@ mono (2.6.3-1~pre1) unstable; urgency=low
   * debian/libmono-wcf3.0-cil.install:
     + Added new System.Data.Services library.
     + Updated System.ServiceModel.Web GAC path.
+  * debian/mono-devel.install
+    debian/mono-devel.manpages:
+    + Added pdb2mdb, sqlmetal, svcutil and RabbitMQ.Client.Apigen.exe.
+    + Updated mono-xmltool.exe path.
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 20:45:18 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 20:47:02 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 

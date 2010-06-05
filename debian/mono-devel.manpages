@@ -18,6 +18,7 @@ debian/tmp/usr/share/man/man1/mono-xmltool.1
 debian/tmp/usr/share/man/man1/monolinker.1
 debian/tmp/usr/share/man/man1/monop.1
 debian/tmp/usr/share/man/man1/mozroots.1
+debian/tmp/usr/share/man/man1/pdb2mdb.1
 debian/tmp/usr/share/man/man1/permview.1
 debian/tmp/usr/share/man/man1/resgen.1
 debian/tmp/usr/share/man/man1/secutil.1
