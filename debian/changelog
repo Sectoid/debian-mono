@@ -9,7 +9,10 @@ mono (2.6.3-1~pre1) unstable; urgency=low
     debian/patches/*:
     + Replaced dpatches with git branches.
 
- -- Mirco Bauer <meebey@debian.org>  Mon, 24 May 2010 21:47:05 +0200
+  * debian/mono-dbg.install:
+    + Added mono-gdb.py script for gdb integration
+
+ -- Mirco Bauer <meebey@debian.org>  Sat, 05 Jun 2010 19:12:52 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
