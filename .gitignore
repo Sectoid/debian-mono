@@ -1,0 +1,22 @@
+# ignore objects and archives, anywhere in the tree.
+*.[oa]
+*.lo
+*.la
+*.exe*
+*.dll*
+*.resources
+# autoconf/make files
+config.h
+config.log
+config.status
+Makefile
+autom4te.cache/
+.deps
+.libs
+*-stamp
+scripts/
+data/*.pc
+docs/*.tree
+docs/*.zip
+mcs/docs/*.tree
+mcs/docs/*.zip
