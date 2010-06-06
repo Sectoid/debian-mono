@@ -52,8 +52,9 @@ mono (2.6.3-1~pre1) unstable; urgency=low
   * debian/rules:
     + Dropped build-arch/indep split as we needed to build 90% of the classlib
       for the test suite anyhow.
+    + Bumped clilibs where needed.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 06 Jun 2010 17:29:50 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 06 Jun 2010 17:32:57 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
