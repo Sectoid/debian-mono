@@ -1,4 +1,4 @@
-mono (2.6.3-1~pre1) unstable; urgency=low
+mono (2.6.3-1) experimental; urgency=low
 
   * New upstream release (Closes: #572901)
     + Soft debugger
@@ -54,7 +54,7 @@ mono (2.6.3-1~pre1) unstable; urgency=low
       for the test suite anyhow.
     + Bumped clilibs where needed.
 
- -- Mirco Bauer <meebey@debian.org>  Sun, 06 Jun 2010 17:32:57 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 06 Jun 2010 17:45:35 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
