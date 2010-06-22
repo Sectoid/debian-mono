@@ -16,6 +16,8 @@ mono (2.6.3-2) UNRELEASED; urgency=low
   * debian/update-monodoc:
     + Updated script from Iain Lane <laney@ubuntu.com> which no longer fails
       when called using bash rather than dash (Closes: #580665)
+  * debian/control:
+    + Add a Replaces: on libmono-dev << 2.4.3 (Closes: #582614)
 
  -- Jo Shields <directhex@apebox.org>  Tue, 22 Jun 2010 08:53:51 +0100
 
