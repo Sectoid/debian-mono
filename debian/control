@@ -181,7 +181,8 @@ Replaces: libmono-nunit2.4-cil (<< 2.4.3),
           libmono-system-web2.0-cil (<< 2.4.3),
           libmono-wcf3.0-cil (<< 2.4.3),
           libmono2.0-cil (<< 2.4.3),
-          mono-devel (<< 2.4.3)
+          mono-devel (<< 2.4.3),
+          libmono-dev (<< 2.4.3)
 Conflicts: libmono-nunit2.4-cil
 Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
 Depends: ${misc:Depends},

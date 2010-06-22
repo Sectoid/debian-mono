@@ -12,6 +12,10 @@ mono (~pre12.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
     not dash. Prevented the generation of the monodoc search indexes using
     the trigger.
 
+  [ Jo Shields ]
+  * debian/control:
+    + Add a Replaces: on libmono-dev << 2.4.3 (Closes: #582614)
+
  -- Mirco Bauer <meebey@debian.org>  Sat, 08 May 2010 20:52:33 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
