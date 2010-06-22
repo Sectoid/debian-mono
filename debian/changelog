@@ -11,6 +11,9 @@ mono (2.6.3-2) UNRELEASED; urgency=low
     + Backport from upstream SVN repository to fix CVE-2010-1459, which
       implies that the default value for EnableViewStateMac can potentially
       allow XSS attacks against ASP.NET sites hosted on Mono
+  * debian/update-monodoc:
+    + Updated script from Iain Lane <laney@ubuntu.com> which no longer fails
+      when called using bash rather than dash
 
  -- Jo Shields <directhex@apebox.org>  Tue, 22 Jun 2010 08:53:51 +0100
 
