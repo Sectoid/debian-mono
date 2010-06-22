@@ -425,7 +425,6 @@ namespace System.Web.Compilation
 				method.Statements.Add (expr);
 			}
 #endif
-		}
 
 			if (!pageParser.EnableViewStateMac) {
 				CodeAssignStatement stmt = new CodeAssignStatement ();
@@ -433,6 +432,8 @@ namespace System.Web.Compilation
 				stmt.Right = new CodePrimitiveExpression (false);
 				method.Statements.Add (stmt);
 			}
+
+		}
 
 #if NET_2_0
 		CodeAssignStatement AssignOutputCacheParameter (CodeVariableReferenceExpression variable, string propName, object value)
