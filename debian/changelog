@@ -4,6 +4,7 @@ mono (2.6.3-2) UNRELEASED; urgency=low
     + Ensure all FreeBSD ifdefs also apply to kFreeBSD
     + Use &ctx->uc_mcontext, not &ctx->uc_mcontext.gregs, on FreeBSD kernels
     + Ensure kFreeBSD follows POSIX signal code paths
+    + (Closes: #585662)
   * git:debian/patches/fix_GetTypeDescriptor_wrapped_type_call_forwarding_r157626:
     + Backport from upstream SVN repository to fix upstream bug 603060, which
       causes TypeDescriptorProvider to return false values on wrapped types
@@ -11,9 +12,10 @@ mono (2.6.3-2) UNRELEASED; urgency=low
     + Backport from upstream SVN repository to fix CVE-2010-1459, which
       implies that the default value for EnableViewStateMac can potentially
       allow XSS attacks against ASP.NET sites hosted on Mono
+      (Closes: #585440)
   * debian/update-monodoc:
     + Updated script from Iain Lane <laney@ubuntu.com> which no longer fails
-      when called using bash rather than dash
+      when called using bash rather than dash (Closes: #580665)
 
  -- Jo Shields <directhex@apebox.org>  Tue, 22 Jun 2010 08:53:51 +0100
 
