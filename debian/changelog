@@ -1,4 +1,4 @@
-mono (2.6.3-2) UNRELEASED; urgency=low
+mono (2.6.3-2) experimental; urgency=low
 
   * git:debian/patches/kfreebsd_support:
     + Ensure all FreeBSD ifdefs also apply to kFreeBSD
