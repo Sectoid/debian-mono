@@ -44,7 +44,7 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 
 #endif /* PLATFORM_WIN32 */
 
-#if defined( __linux__) || defined(__sun) || defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__)
+#if defined( __linux__) || defined(__sun) || defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
 #define MONO_ARCH_USE_SIGACTION
 #endif
 
@@ -150,7 +150,7 @@ typedef struct {
 	gboolean need_stack_frame;
 } MonoCompileArch;
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__) || defined(__FreeBSD_kernel__)
 # define SC_EAX sc_eax
 # define SC_EBX sc_ebx
 # define SC_ECX sc_ecx

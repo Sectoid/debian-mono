@@ -125,6 +125,7 @@ case "$host" in
 		libgc_threads=pthreads
 		need_link_unlink=yes
 		with_sigaltstack=no
+		use_sigposix=yes
 		;;
 	*-*-*freebsd*)
 		platform_win32=no
