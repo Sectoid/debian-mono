@@ -24,6 +24,9 @@ mono (2.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
     + Backport from upstream SVN repository to fix CVE-2010-1459, which
       implies that the default value for EnableViewStateMac can potentially
       allow XSS attacks against ASP.NET sites hosted on Mono
+  * git:debian/patches/fix_GetTypeDescriptor_wrapped_type_call_forwarding_r157626:
+    + Backport from upstream SVN repository to fix upstream bug 603060, which
+      causes TypeDescriptorProvider to return false values on wrapped types
 
  -- Mirco Bauer <meebey@debian.org>  Sat, 08 May 2010 20:52:33 +0200
 
