@@ -1,2 +1,4 @@
 debian/tmp/usr/bin/mono-service
 debian/tmp/usr/lib/mono/1.0/mono-service.exe*
+debian/tmp/usr/lib/mono/gac/mono-service/1.0.5000.0__*/
+

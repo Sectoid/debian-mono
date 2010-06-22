@@ -18,6 +18,11 @@ mono (2.6.3-2) UNRELEASED; urgency=low
       when called using bash rather than dash (Closes: #580665)
   * debian/control:
     + Add a Replaces: on libmono-dev << 2.4.3 (Closes: #582614)
+  * debian/control,
+    debian/libmono{1,0}.0-cil.install,
+    debian/mono-{1,2}.0-service.install:
+    + Move mono-service executables' GAC entries to mono-service packages
+      where they belong (Closes: #586192)
 
  -- Jo Shields <directhex@apebox.org>  Tue, 22 Jun 2010 08:53:51 +0100
 
