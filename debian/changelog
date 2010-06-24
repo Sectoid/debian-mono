@@ -1,10 +1,16 @@
-mono (2.4.4~svn151842-3~pre1) unstable; urgency=low
+mono (~pre12.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
 
+  [ Mirco Bauer ]
   * The "Good bye dpatch, hello git" release
   * debian/control
     debian/rules
     debian/patches/*:
     + Replaced dpatches with git branches.
+
+  [ Iain Lane ]
+  * debian/update-monodoc: Fix syntax error that occurs when sh is bash but
+    not dash. Prevented the generation of the monodoc search indexes using
+    the trigger.
 
  -- Mirco Bauer <meebey@debian.org>  Sat, 08 May 2010 20:52:33 +0200
 
