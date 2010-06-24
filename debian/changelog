@@ -1,4 +1,4 @@
-mono (~pre12.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
+mono (2.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
 
   [ Mirco Bauer ]
   * The "Good bye dpatch, hello git" release
