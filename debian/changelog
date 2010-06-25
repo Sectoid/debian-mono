@@ -14,7 +14,7 @@ mono (2.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
   [ Iain Lane ]
   * debian/update-monodoc: Fix syntax error that occurs when sh is bash but
     not dash. Prevented the generation of the monodoc search indexes using
-    the trigger.
+    the trigger. (Closes: #580665)
 
   [ Jo Shields ]
   * debian/control:
@@ -27,7 +27,7 @@ mono (2.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
   * git:debian/patches/insecure_EnableViewStateMac_XSS_CVE-2010-1459:
     + Backport from upstream SVN repository to fix CVE-2010-1459, which
       implies that the default value for EnableViewStateMac can potentially
-      allow XSS attacks against ASP.NET sites hosted on Mono
+      allow XSS attacks against ASP.NET sites hosted on Mono (Closes: #585440)
   * git:debian/patches/fix_GetTypeDescriptor_wrapped_type_call_forwarding_r157626:
     + Backport from upstream SVN repository to fix upstream bug 603060, which
       causes TypeDescriptorProvider to return false values on wrapped types
