@@ -6,6 +6,10 @@ mono (2.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
     debian/rules
     debian/patches/*:
     + Replaced dpatches with git branches.
+  * git:debian/patches/fix_for_wm_without_net_workarea_support:
+    + XplatUIX11.WorkingArea can segfault if the WM does not support
+      _NET_WORKAREA. (Closes: #557229)
+      (thanks to Brian Pellin and Andy Stührk for the investigation and patch)
 
   [ Iain Lane ]
   * debian/update-monodoc: Fix syntax error that occurs when sh is bash but
@@ -28,7 +32,7 @@ mono (2.4.4~svn151842-3~pre1) UNRELEASED; urgency=low
     + Backport from upstream SVN repository to fix upstream bug 603060, which
       causes TypeDescriptorProvider to return false values on wrapped types
 
- -- Mirco Bauer <meebey@debian.org>  Sat, 08 May 2010 20:52:33 +0200
+ -- Mirco Bauer <meebey@debian.org>  Fri, 25 Jun 2010 01:56:31 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 
