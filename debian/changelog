@@ -9,7 +9,7 @@ mono (2.4.4~svn151842-3) unstable; urgency=medium
   * git:debian/patches/fix_for_wm_without_net_workarea_support:
     + XplatUIX11.WorkingArea can segfault if the WM does not support
       _NET_WORKAREA. (Closes: #557229)
-      (thanks to Brian Pellin and Andy Stührk for the investigation and patch)
+      (thanks to Brian Pellin and Andy StÃ¼hrk for the investigation and patch)
 
   [ Iain Lane ]
   * debian/update-monodoc: Fix syntax error that occurs when sh is bash but
