@@ -1,3 +1,13 @@
+mono (2.6.3-3) UNRELEASED; urgency=low
+
+  * git:debian/patches/arm_cpuinfo_parsing:
+    + Fix bug in QEMU-friendly ARM CPU capability parsing, by setting
+      v7_supported explicitly to FALSE on non-QEMU hardware, unless
+      a v7 CPU is detected (previously it was MAYBE, so v7 instructions
+      were always generated)
+
+ -- Jo Shields <directhex@apebox.org>  Thu, 01 Jul 2010 00:38:28 +0100
+
 mono (2.6.3-2) experimental; urgency=low
 
   * git:debian/patches/kfreebsd_support:
