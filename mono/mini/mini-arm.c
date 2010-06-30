@@ -551,6 +551,7 @@ mono_arch_cpu_optimizazions (guint32 *exclude_mask)
 					/* invalid cpuinfo; perhaps running withing qemu-arm; skip */
 					break;
 				}
+				v7_supported = FALSE;
 				if (ver && (ver [2] == '7'))
 					v7_supported = TRUE;
 				if (ver [2] == '5' || ver [2] == '6' || ver [2] == '7') {
