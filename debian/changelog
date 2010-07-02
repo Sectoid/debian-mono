@@ -1,4 +1,4 @@
-mono (2.6.3-3) UNRELEASED; urgency=low
+mono (2.6.3-3) experimental; urgency=low
 
   * git:debian/patches/arm_cpuinfo_parsing:
     + Fix bug in QEMU-friendly ARM CPU capability parsing, by setting
