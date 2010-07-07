@@ -1,4 +1,4 @@
-mono (2.6.3-4) UNRELEASED; urgency=low
+mono (2.6.3-4) experimental; urgency=low
 
   * Backported fix from upstream SVN revision r158081, which corrects
     xbuild's handling of wildcards with directories. This fixes a bug
