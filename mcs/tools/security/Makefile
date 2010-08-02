@@ -6,8 +6,8 @@ include ../../build/rules.make
 LOCAL_MCS_FLAGS = /lib:$(topdir)/class/lib/$(PROFILE) -r:Mono.Security.dll
 
 SECURITY_PROGRAMS = secutil.exe cert2spc.exe sn.exe makecert.exe chktrust.exe \
-	signcode.exe setreg.exe certmgr.exe caspol.exe permview.exe mozroots.exe
-SECURITY_PROGRAMS_2_0 = httpcfg.exe
+	signcode.exe setreg.exe certmgr.exe caspol.exe mozroots.exe
+SECURITY_PROGRAMS_2_0 = httpcfg.exe permview.exe
 
 HELPER_SOURCES = AssemblyInfo.cs $(topdir)/build/common/Consts.cs
 SN_SOURCES = sn.cs StrongNameManager.cs $(HELPER_SOURCES)

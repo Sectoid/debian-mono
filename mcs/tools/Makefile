@@ -14,7 +14,6 @@ net_1_1_dirs := \
 	browsercaps-updater	\
 	monop		\
 	gacutil		\
-	cil-strip	\
 	resgen		\
 	macpack		\
 	mkbundle	\
@@ -39,6 +38,7 @@ net_2_0_dirs := \
 	mono-xsd	\
 	wsdl		\
 	mono-xmltool	\
+	genxs		\
 	compiler-tester	\
 	monop		\
 	xbuild		\
@@ -57,7 +57,8 @@ net_2_0_dirs := \
 	sqlmetal	\
 	gacutil		\
 	svcutil		\
-	lc
+	lc          \
+	cil-strip
 
 net_2_1_dirs := \
 	compiler-tester
