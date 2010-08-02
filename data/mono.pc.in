@@ -1,5 +1,5 @@
-prefix=${pcfiledir}/../..
-exec_prefix=${pcfiledir}/../..
+prefix=@prefix@
+exec_prefix=${prefix}
 libdir=${prefix}/@reloc_libdir@
 includedir=${prefix}/include/mono-@API_VER@
 sysconfdir=@sysconfdir@
