@@ -1695,6 +1695,11 @@ is_valid_standalonesig_blob (VerifyContext *ctx, guint32 offset)
 	--ptr;
 	if (signature == 0x07)
 		return parse_locals_signature (ctx, &ptr, end);
+
+	/*F# and managed C++ produce standalonesig for fields even thou the spec doesn't mention it.*/
+	if (signature == 0x06)
+		return parse_field (ctx, &ptr, end);
+
 	return parse_method_signature (ctx, &ptr, end, TRUE, TRUE);
 }
 
@@ -2106,8 +2111,10 @@ verify_typedef_table_full (VerifyContext *ctx)
 		mono_metadata_decode_row (table, i, data, MONO_TYPEDEF_SIZE);
 
 		if (i == 0) {
-			if (data [MONO_TYPEDEF_EXTENDS] != 0)
+			/*XXX it's ok if <module> extends object, or anything at all, actually. */
+			/*if (data [MONO_TYPEDEF_EXTENDS] != 0)
 				ADD_ERROR (ctx, g_strdup_printf ("Invalid typedef row 0 for the special <module> type must have a null extend field"));
+			*/
 			continue;
 		}
 
@@ -2213,8 +2220,8 @@ verify_field_table_full (VerifyContext *ctx)
 	}
 }
 
-/*bits 6,8,9,10,11,13,14,15*/
-#define INVALID_METHOD_IMPLFLAG_BITS ((1 << 6) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 14) | (1 << 15))
+/*bits 8,9,10,11,13,14,15*/
+#define INVALID_METHOD_IMPLFLAG_BITS ((1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 14) | (1 << 15))
 static void
 verify_method_table (VerifyContext *ctx)
 {
@@ -3336,11 +3343,15 @@ verify_typeref_table_global_constraints (VerifyContext *ctx)
 static void
 verify_tables_data_global_constraints (VerifyContext *ctx)
 {
-	verify_typeref_table_global_constraints (ctx);
-	CHECK_ERROR ();
 	verify_typedef_table_global_constraints (ctx);
 }
-	
+
+static void
+verify_tables_data_global_constraints_full (VerifyContext *ctx)
+{
+	verify_typeref_table_global_constraints (ctx);
+}
+
 static void
 verify_tables_data (VerifyContext *ctx)
 {
@@ -3573,6 +3584,8 @@ mono_verifier_verify_full_table_data (MonoImage *image, GSList **error_list)
 	verify_typespec_table_full (&ctx);
 	CHECK_STATE ();
 	verify_method_spec_table_full (&ctx);
+	CHECK_STATE ();
+	verify_tables_data_global_constraints_full (&ctx);
 
 cleanup:
 	return cleanup_context (&ctx, error_list);

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <mono/io-layer/atomic.h>
+#include <mono/metadata/appdomain.h>
 #endif
 
 G_BEGIN_DECLS
@@ -119,6 +120,7 @@ int Mono_Posix_FromRealTimeSignum (int offset, int *r)
 	#define mph_int_set(p,o,n) do { *(p) = n; } while (0)
 #endif
 
+#if HAVE_PSIGNAL
 int
 Mono_Posix_Syscall_psignal (int sig, const char* s)
 {
@@ -126,6 +128,7 @@ Mono_Posix_Syscall_psignal (int sig, const char* s)
 	psignal (sig, s);
 	return errno == 0 ? 0 : -1;
 }
+#endif  /* def HAVE_PSIGNAL */
 
 #define NUM_SIGNALS 64
 static signal_info signals[NUM_SIGNALS];
@@ -151,6 +154,12 @@ static void release_mutex (pthread_mutex_t *mutex)
 	}
 }
 
+static inline int
+keep_trying (int r)
+{
+	return r == -1 && errno == EINTR;
+}
+
 static void
 default_handler (int signum)
 {
@@ -168,7 +177,7 @@ default_handler (int signum)
 			pipecounter = mph_int_get (&h->pipecnt);
 			for (j = 0; j < pipecounter; ++j) {
 				int r;
-				do { r = write (fd, &c, 1); } while (r == -1 && errno == EINTR);
+				do { r = write (fd, &c, 1); } while (keep_trying (r));
 				fsync (fd); /* force */
 			}
 		}
@@ -326,7 +335,7 @@ teardown_pipes (signal_info** signals, int count)
 }
 
 static int
-wait_for_any (signal_info** signals, int count, int *currfd, struct pollfd* fd_structs, int timeout)
+wait_for_any (signal_info** signals, int count, int *currfd, struct pollfd* fd_structs, int timeout, Mono_Posix_RuntimeIsShuttingDown shutting_down)
 {
 	int r, idx;
 	do {
@@ -338,7 +347,7 @@ wait_for_any (signal_info** signals, int count, int *currfd, struct pollfd* fd_s
 			ptv = &tv;
 		}
 		r = poll (fd_structs, count, timeout);
-	} while (r == -1 && errno == EINTR);
+	} while (keep_trying (r) && !shutting_down ());
 
 	idx = -1;
 	if (r == 0)
@@ -352,7 +361,7 @@ wait_for_any (signal_info** signals, int count, int *currfd, struct pollfd* fd_s
 				char c;
 				do {
 					r = read (h->read_fd, &c, 1);
-				} while (r == -1 && errno == EINTR);
+				} while (keep_trying (r) && !shutting_down ());
 				if (idx == -1)
 					idx = i;
 			}
@@ -368,7 +377,7 @@ wait_for_any (signal_info** signals, int count, int *currfd, struct pollfd* fd_s
  *          index into _signals array of signal that was generated on success
  */
 int
-Mono_Unix_UnixSignal_WaitAny (void** _signals, int count, int timeout /* milliseconds */)
+Mono_Unix_UnixSignal_WaitAny (void** _signals, int count, int timeout /* milliseconds */, Mono_Posix_RuntimeIsShuttingDown shutting_down)
 {
 	int r;
 	int currfd = 0;
@@ -387,7 +396,7 @@ Mono_Unix_UnixSignal_WaitAny (void** _signals, int count, int timeout /* millise
 	release_mutex (&signals_mutex);
 
 	if (r == 0) {
-		r = wait_for_any (signals, count, &currfd, &fd_structs[0], timeout);
+		r = wait_for_any (signals, count, &currfd, &fd_structs[0], timeout, shutting_down);
 	}
 
 	if (acquire_mutex (&signals_mutex) == -1)

@@ -217,7 +217,12 @@ namespace System.Web.UI.WebControls {
 		bool LoadPostData (string postDataKey, NameValueCollection postCollection)
 		{
 #if NET_2_0
+			if (!IsEnabled)
+				return false;
 			EnsureDataBound ();
+#else
+			if (!Enabled)
+				return false;
 #endif
 			int checkbox = -1;
 
@@ -235,12 +240,14 @@ namespace System.Web.UI.WebControls {
 			string val = postCollection [postDataKey];
 			bool ischecked = val == "on";
 			ListItem item = Items [checkbox];
-
 #if NET_2_0
 			if (item.Enabled)
 #endif
 				if (ischecked && !item.Selected) {
 					item.Selected = true;
+					return true;
+				} else if (!ischecked && item.Selected) {
+					item.Selected = false;
 					return true;
 				}
 
@@ -358,7 +365,7 @@ namespace System.Web.UI.WebControls {
 			check_box.Checked = item.Selected;
 			check_box.TextAlign = TextAlign;
 #if NET_2_0
-			if (!Enabled)
+			if (!IsEnabled)
 				check_box.Enabled = false;
 			else
 				check_box.Enabled = item.Enabled;

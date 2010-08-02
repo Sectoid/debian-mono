@@ -1,3 +1,80 @@
+2010-07-12  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* mono-core.spec.in: Updates, including breaking a circular dep.
+
+2010-04-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Applied patch from Robert Nagy (robert@openbsd.org). Add
+	sys/param.h dependencies to a few checks.
+
+2010-04-21  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* configure.in: Propagate DISABLE_MCS_DOCS to makefiles so mono/docs
+	can be disabled. Fixes the build '--with-profile2=no' using
+	'--with-mcs-docs=no' as a workaround.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Check for the asm/sigcontext.h header.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: On OpenBSD, remove duplicate -pthread options in 
+	  libmono_ldflags.  Change from Robert Nagy <robert@openbsd.org>.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: For Linux hosts, remove AC_CHECK_LIB(pthread...) in the
+	  primary `case "$host"` block.  Using AC_CHECK_LIB() here breaks *BSD,
+	  and it's unnecessary (for !target_win32, pthreads are checked again 
+	  later in configure.in).
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Use AC_CHECK_LIB() to check for pthread instead of
+	  just blindly linking to -lpthread, as Android includes pthread
+	  support within libc and doesn't provide a separate libpthread.
+	  Android's <string.h> pulls in <malloc.h> (unlike glibc), resulting
+	  in a build error in mono/utils/mono-codeman.c due to 
+	  `struct mallinfo` re-declaration.  Define HAVE_USR_INCLUDE_MALLOC_H 
+	  if /usr/include/malloc.h is present to avoid this.
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Add header, structure member, and function checks as 
+	  Android doesn't provide all the headers, structure members, and 
+	  functions that a "full" Linux distro includes.
+
+2010-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add a --enable-minimal=normalization option to disable support
+	for string normalization.
+
+2010-04-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Append -lgc to libmono_ldflags if using an external libgc.
+
+2010-04-04  Andreas Färber  <andreas.faerber@web.de>
+
+	* configure.in: Fix typo.
+	Set default for with_moonlight to fix "Moon Profile:" output.
+
+	Contributed under MIT/X11 license.
+
+2010-04-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Applied some openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-01-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Check whenever g++ is installed, since libtool requires it
+	even if no c++ files will be compiled.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Apply some openbsd changes from openbsd ports.
+
 2010-01-22  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Disable the solaris tar check on !solaris platforms.

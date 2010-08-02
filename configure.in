@@ -6,7 +6,7 @@ AC_CANONICAL_SYSTEM
 m4_ifdef([_A][M_PROG_TAR],[_A][M_SET_OPTION([tar-ustar])])
 
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(mono,2.6.3)
+AM_INIT_AUTOMAKE(mono,2.6.7)
 AM_MAINTAINER_MODE
 
 API_VER=1.0
@@ -147,14 +147,18 @@ case "$host" in
 		;;
 	*-*-*openbsd*)
 		platform_win32=no
-		CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE -DGC_FREEBSD_THREADS -DPLATFORM_BSD"
-		libmono_cflags="-D_THREAD_SAFE"
+		CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE -DGC_OPENBSD_THREADS -DPLATFORM_BSD -D_GNU_SOURCE -D_REENTRANT -DUSE_MMAP"
+		if test "x$disable_munmap" != "xyes"; then
+		CPPFLAGS="$CPPFLAGS -DUSE_MUNMAP"
+		fi
+		libmono_cflags="-D_THREAD_SAFE -D_REENTRANT"
 		LDFLAGS="$LDFLAGS -pthread"
-		libmono_ldflags="-pthread"
 		need_link_unlink=yes
 		AC_DEFINE(PTHREAD_POINTER_ID)
 		libdl=
+		gc_default=boehm
 		libgc_threads=pthreads
+		with_sigaltstack=no
 		use_sigposix=yes
 		;;
 	*-*-linux*)
@@ -164,7 +168,6 @@ case "$host" in
 			CPPFLAGS="$CPPFLAGS -DUSE_MUNMAP"
 		fi
 		libmono_cflags="-D_REENTRANT"
-		libmono_ldflags="-lpthread"
 		libdl="-ldl"
 		libgc_threads=pthreads
 		AOT_SUPPORTED="yes"
@@ -256,6 +259,7 @@ AM_CONDITIONAL(PLATFORM_SIGPOSIX, test x$use_sigposix = xyes)
 
 AC_CHECK_TOOL(CC, gcc, gcc)
 AC_PROG_CC
+AC_CHECK_TOOL(CXX, g++, g++)
 AC_PROG_CXX
 AM_PROG_AS
 AM_PROG_CC_STDC
@@ -267,6 +271,14 @@ dnl We should use AM_PROG_AS, but it's not available on automake/aclocal 1.4
 : ${CCASFLAGS='$(CFLAGS)'}
 AC_SUBST(CCAS)
 AC_SUBST(CCASFLAGS)
+
+# AC_PROG_CXX helpfully sets CXX to g++ even if no c++ compiler is found so check
+# GXX instead
+if test "$GXX" != "yes"; then
+   # automake/libtool is so broken, it requires g++ even if the c++ sources
+   # are inside automake conditionals
+   AC_MSG_ERROR([You need to install g++])
+fi
 
 AC_CHECK_PROG(BISON, bison,yes,no)
 if test "x$BISON" = "xno";
@@ -315,8 +327,14 @@ fi
 AM_CONDITIONAL(NO_VERSION_SCRIPT, test x$no_version_script = xyes)
 
 AC_CHECK_HEADERS(sys/filio.h sys/sockio.h netdb.h utime.h sys/utime.h semaphore.h sys/un.h linux/rtc.h sys/syscall.h sys/mkdev.h sys/uio.h)
-AC_CHECK_HEADERS(sys/user.h sys/socket.h sys/ipc.h sys/sem.h sys/utsname.h alloca.h ucontext.h pwd.h sys/select.h netinet/tcp.h netinet/in.h unistd.h sys/types.h)
+AC_CHECK_HEADERS(sys/param.h sys/socket.h sys/ipc.h sys/sem.h sys/utsname.h alloca.h ucontext.h pwd.h sys/select.h netinet/tcp.h netinet/in.h unistd.h sys/types.h link.h asm/sigcontext.h)
 
+AC_CHECK_HEADERS(sys/user.h, [], [],
+[
+#ifdef HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
+])
 
 AC_CHECK_HEADER(zlib.h, [have_zlib=yes], [have_zlib=no])
 if test x$have_zlib = xyes; then
@@ -612,7 +630,7 @@ DISABLED_FEATURES=none
 
 AC_ARG_ENABLE(minimal, [  --enable-minimal=LIST      drop support for LIST subsystems.
      LIST is a comma-separated list from: aot, profiler, decimal, pinvoke, debug,
-     reflection_emit, reflection_emit_save, large_code, logging, com, ssa, generics, attach, jit, simd,soft_debug.],
+     reflection_emit, reflection_emit_save, large_code, logging, com, ssa, generics, attach, jit, simd, soft_debug, normalization.],
 [
 	for feature in `echo "$enable_minimal" | sed -e "s/,/ /g"`; do
 		eval "mono_feature_disable_$feature='yes'"
@@ -727,6 +745,11 @@ if test "x$mono_feature_disable_soft_debug" = "xyes"; then
 	AC_MSG_NOTICE([Disabled Soft Debugger.])
 fi
 
+if test "x$mono_feature_disable_normalization" = "xyes"; then
+	AC_DEFINE(DISABLE_NORMALIZATION, 1, [Disable String normalization support.])
+	AC_MSG_NOTICE([Disabled String normalization support.])
+fi
+
 AC_MSG_CHECKING(for visibility __attribute__)
 AC_TRY_COMPILE([], [
    void __attribute__ ((visibility ("hidden"))) doit (void) {}
@@ -764,6 +787,7 @@ case "x$gc" in
 		AC_SUBST(HAVE_BOEHM_GC)
 		LIBGC_LIBS="-lgc $libdl"
 		LIBGC_STATIC_LIBS="$LIBGC_LIBS"
+		libmono_ldflags="$libmono_ldflags -lgc"
 
 		# AC_CHECK_FUNCS does not work for some reason...
 		AC_CHECK_LIB(gc, GC_gcj_malloc, found_gcj_malloc="yes",,$libdl)
@@ -1228,6 +1252,9 @@ if test x$platform_win32 = xno; then
 		*-*-*freebsd*)
 			AC_CHECK_LIB(pthread, main, LIBS="$LIBS -pthread")
 		;;
+		*-*-*openbsd*)
+			AC_CHECK_LIB(pthread, main, LIBS="$LIBS -pthread")
+		;;
 		*)
 			AC_CHECK_LIB(pthread, main, LIBS="$LIBS -lpthread")
 		;;
@@ -1488,7 +1515,15 @@ if test x$platform_win32 = xno; then
 	dnl *** Checks for SIOCGIFCONF ***
 	dnl ******************************
 	AC_CHECK_HEADERS(sys/ioctl.h)
-	AC_CHECK_HEADERS(net/if.h)
+	AC_CHECK_HEADERS(net/if.h, [], [],
+	   [
+	   #ifdef HAVE_SYS_TYPES_H
+	   # include <sys/types.h>
+	   #endif
+	   #ifdef HAVE_SYS_SOCKET_H
+	   # include <sys/socket.h>
+	   #endif
+	   ])
 	AC_MSG_CHECKING(for ifreq)
 	AC_TRY_COMPILE([
 		#include <stdio.h>
@@ -1541,6 +1576,7 @@ if test x$platform_win32 = xno; then
 	dnl *** Checks for MonoPosixHelper ***
 	dnl **********************************
 	AC_CHECK_HEADERS(checklist.h)
+	AC_CHECK_HEADERS(pathconf.h)
 	AC_CHECK_HEADERS(fstab.h)
 	AC_CHECK_HEADERS(attr/xattr.h)
 	AC_CHECK_HEADERS(sys/extattr.h)
@@ -1551,14 +1587,22 @@ if test x$platform_win32 = xno; then
 	AC_CHECK_HEADERS(sys/xattr.h)
 	AC_CHECK_HEADERS(sys/mman.h)
 	AC_CHECK_HEADERS(sys/param.h)
+	AC_CHECK_HEADERS(sys/mount.h, [], [],
+		[
+		#ifdef HAVE_SYS_PARAM_H
+		# include <sys/param.h>
+		#endif
+		])
 	AC_CHECK_HEADERS(sys/mount.h)
+	AC_CHECK_FUNCS(confstr)
+	AC_CHECK_FUNCS(seekdir telldir)
 	AC_CHECK_FUNCS(getdomainname)
 	AC_CHECK_FUNCS(setdomainname)
-	AC_CHECK_FUNCS(fgetgrent)
-	AC_CHECK_FUNCS(fgetpwent)
-	AC_CHECK_FUNCS(fgetpwent)
+	AC_CHECK_FUNCS(endgrent getgrent fgetgrent setgrent)
+	AC_CHECK_FUNCS(setgroups)
+	AC_CHECK_FUNCS(endpwent getpwent fgetpwent setpwent)
 	AC_CHECK_FUNCS(getfsstat)
-	AC_CHECK_FUNCS(lutimes)
+	AC_CHECK_FUNCS(lutimes futimes)
 	AC_CHECK_FUNCS(mremap)
 	AC_CHECK_FUNCS(remap_file_pages)
 	AC_CHECK_FUNCS(posix_fadvise)
@@ -1566,7 +1610,8 @@ if test x$platform_win32 = xno; then
 	AC_CHECK_FUNCS(posix_madvise)
 	AC_CHECK_FUNCS(vsnprintf)
 	AC_CHECK_FUNCS(sendfile)
-	AC_CHECK_FUNCS(sethostid)
+	AC_CHECK_FUNCS(gethostid sethostid)
+	AC_CHECK_FUNCS(sethostname)
 	AC_CHECK_FUNCS(statfs)
 	AC_CHECK_FUNCS(fstatfs)
 	AC_CHECK_FUNCS(statvfs)
@@ -1574,6 +1619,11 @@ if test x$platform_win32 = xno; then
 	AC_CHECK_FUNCS(stime)
 	AC_CHECK_FUNCS(strerror_r)
 	AC_CHECK_FUNCS(ttyname_r)
+	AC_CHECK_FUNCS(psignal)
+	AC_CHECK_FUNCS(getlogin_r)
+	AC_CHECK_FUNCS(lockf)
+	AC_CHECK_FUNCS(swab)
+	AC_CHECK_FUNCS(setusershell endusershell)
 	AC_CHECK_SIZEOF(size_t)
 	AC_CHECK_TYPES([blksize_t], [AC_DEFINE(HAVE_BLKSIZE_T)], , 
 		[#include <sys/types.h>
@@ -1609,6 +1659,14 @@ if test x$platform_win32 = xno; then
 		[struct dirent.d_off, struct dirent.d_reclen, struct dirent.d_type],,, 
 		[#include <sys/types.h>
 		 #include <dirent.h>])
+	AC_CHECK_MEMBERS(
+		[struct passwd.pw_gecos],,, 
+		[#include <sys/types.h>
+		 #include <pwd.h>])
+	AC_CHECK_MEMBERS(
+		[struct statfs.f_flags],,, 
+		[#include <sys/types.h>
+		 #include <sys/vfs.h>])
 
 	dnl Favour xattr through glibc, but use libattr if we have to
 	AC_CHECK_FUNC(lsetxattr, ,
@@ -1620,6 +1678,7 @@ if test x$platform_win32 = xno; then
 	AC_CHECK_MEMBERS(
 		[struct kinfo_proc.kp_proc],,, 
 		[#include <sys/types.h>
+		 #include <sys/param.h>
 		 #include <sys/sysctl.h>
 		 #include <sys/proc.h>
 		 ])
@@ -1700,7 +1759,7 @@ ac_cv_c_socklen_t=yes
 	AC_MSG_RESULT(no)
 ])
 
-AC_MSG_CHECKING(for array element initalizer support)
+AC_MSG_CHECKING(for array element initializer support)
 AC_TRY_COMPILE([#include <sys/socket.h>], [
 	const int array[] = {[1] = 2,};
 ], [
@@ -1743,7 +1802,7 @@ AC_MSG_RESULT($try_dev_random)
 
 case "{$target}" in
     *-openbsd*)
-    NAME_DEV_RANDOM="/dev/srandom"
+    NAME_DEV_RANDOM="/dev/arandom"
     ;;
 
 dnl Win32 does not have /dev/random, they have their own method...
@@ -2373,7 +2432,11 @@ AC_ARG_WITH(mcs_docs,[  --with-mcs-docs=yes,no         If you want to build the 
 	if test x$with_mcs_docs != xyes; then
 		DISABLE_MCS_DOCS=yes
 	fi
-])
+], [with_moonlight=no])
+
+AC_CHECK_HEADER([malloc.h], 
+		[AC_DEFINE([HAVE_USR_INCLUDE_MALLOC_H], [1], 
+			[Define to 1 if you have /usr/include/malloc.h.])],,)
 
 dnl
 dnl Consistency settings
@@ -2714,6 +2777,8 @@ fi
 	echo "DISABLE_MCS_DOCS = yes" >> $srcdir/$mcsdir/build/config.make
   fi
 )
+
+AM_CONDITIONAL(DISABLE_MCS_DOCS, test x$DISABLE_MCS_DOCS = xyes)
 
 libgdiplus_msg=${libgdiplus_loc:-assumed to be installed}
 

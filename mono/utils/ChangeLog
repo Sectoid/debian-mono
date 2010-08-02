@@ -1,3 +1,79 @@
+2010-07-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.h:
+	* mono-semaphore.c: use io-layer wait functions in OSX.
+
+2010-07-01  Martin Baulig  <martin@ximian.com>
+
+	Backport r157195:
+
+	2010-05-12  Zoltan Varga  <vargaz@gmail.com>
+
+		* mono-sigcontext.h: Define UCONTEXT_REG_ constants for amd64 even if the gregs
+		  array is available.
+
+2010-05-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-logger.h (mono_trace_message): Fix some warnings.
+
+2010-05-05 Jonathan Chambers <joncham@gmail.com>
+
+	* mono-semaphore.c: Implement alertable wait on Windows similar to
+	other platforms. Always be alertable, but only return from wait if
+	user requested alertable state. Fixes soft debugger on Windows.
+
+2010-04-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: account for the time already spent in wait if
+	interrupted.
+
+2010-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-time.c (get_boot_time): Applied more openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-proclib.c: Applied more openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-04-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: set EINTR on windows too.
+
+2010-04-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: patch from Robert Nagy that makes this work in
+	OpenBSD.
+
+2010-04-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.[ch]: wait can be alertable now. Defaults to FALSE.
+
+2010-03-31  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-semaphore.h: Use Windows semaphores on Windows, patch
+	contributed by Vincent Povirk from bugzilla #531767
+
+2010-03-26  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-semaphore.h (MONO_SEM_POST): Fix on Darwin.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-proclib.c mono-semaphore.c: Apply some openbsd changes from openbsd
+	ports.
+
+2010-03-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.[hc]: make sure the semaphore calls are restarted if
+	interrupted. Return 0 on success and -1 on failure on windows.
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-sigcontext.h: Applied patch from Robert Nagy (Robert@openbsd.org).
+	Add OpenBSD definitions.
+
 2010-03-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* mono-mmap.c: apparently kill() can return ENOMEM. Also use signal 0

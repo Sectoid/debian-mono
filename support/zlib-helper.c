@@ -103,7 +103,7 @@ CloseZStream (ZStream *zstream)
 
 	status = 0;
 	if (zstream->compress) {
-		if (zstream->stream->total_out) {
+		if (zstream->stream->total_in > 0) {
 			do {
 				status = deflate (zstream->stream, Z_FINISH);
 				flush_status = Flush (zstream);

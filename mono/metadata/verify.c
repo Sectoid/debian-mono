@@ -24,6 +24,7 @@
 #include <mono/metadata/security-core-clr.h>
 #include <mono/metadata/tokentype.h>
 #include <mono/metadata/mono-basic-block.h>
+#include <mono/utils/monobitset.h>
 #include <string.h>
 #include <signal.h>
 #include <ctype.h>
@@ -605,7 +606,7 @@ is_valid_generic_instantiation (MonoGenericContainer *gc, MonoGenericContext *co
  * This means that @candidate constraints are a super set of @target constaints
  */
 static gboolean
-mono_generic_param_is_constraint_compatible (VerifyContext *ctx, MonoGenericParam *target, MonoGenericParam *candidate, MonoGenericContext *context)
+mono_generic_param_is_constraint_compatible (VerifyContext *ctx, MonoGenericParam *target, MonoGenericParam *candidate, MonoClass *candidate_param_class, MonoGenericContext *context)
 {
 	MonoGenericParamInfo *tinfo = mono_generic_param_info (target);
 	MonoGenericParamInfo *cinfo = mono_generic_param_info (candidate);
@@ -626,6 +627,13 @@ mono_generic_param_is_constraint_compatible (VerifyContext *ctx, MonoGenericPara
 				return FALSE;
 			tc = mono_class_from_mono_type (inflated);
 			mono_metadata_free_type (inflated);
+
+			/*
+			 * A constraint from @target might inflate into @candidate itself and in that case we don't need
+			 * check it's constraints since it satisfy the constraint by itself.
+			 */
+			if (mono_metadata_type_equal (&tc->byval_arg, &candidate_param_class->byval_arg))
+				continue;
 
 			for (candidate_class = cinfo->constraints; *candidate_class; ++candidate_class) {
 				MonoClass *cc;
@@ -703,6 +711,7 @@ generic_arguments_respect_constraints (VerifyContext *ctx, MonoGenericContainer 
 		MonoType *type = ginst->type_argv [i];
 		MonoGenericParam *target = mono_generic_container_get_param (gc, i);
 		MonoGenericParam *candidate;
+		MonoClass *candidate_class;
 
 		if (!mono_type_is_generic_argument (type))
 			continue;
@@ -711,8 +720,9 @@ generic_arguments_respect_constraints (VerifyContext *ctx, MonoGenericContainer 
 			return FALSE;
 
 		candidate = verifier_get_generic_param_from_type (ctx, type);
+		candidate_class = mono_class_from_mono_type (type);
 
-		if (!mono_generic_param_is_constraint_compatible (ctx, target, candidate, context))
+		if (!mono_generic_param_is_constraint_compatible (ctx, target, candidate, candidate_class, context))
 			return FALSE;
 	}
 	return TRUE;
@@ -999,17 +1009,29 @@ stack_slot_stack_type_full_name (ILStackDesc *value)
 {
 	GString *str = g_string_new ("");
 	char *result;
+	gboolean has_pred = FALSE, first = TRUE;
 
 	if ((value->stype & TYPE_MASK) != value->stype) {
-		gboolean first = TRUE;
 		g_string_append(str, "[");
 		APPEND_WITH_PREDICATE (stack_slot_is_this_pointer, "this");
 		APPEND_WITH_PREDICATE (stack_slot_is_boxed_value, "boxed");
 		APPEND_WITH_PREDICATE (stack_slot_is_null_literal, "null");
 		APPEND_WITH_PREDICATE (stack_slot_is_managed_mutability_pointer, "cmmp");
 		APPEND_WITH_PREDICATE (stack_slot_is_managed_pointer, "mp");
-		g_string_append(str, "] ");
+		has_pred = TRUE;
 	}
+
+	if (mono_type_is_generic_argument (value->type) && !stack_slot_is_boxed_value (value)) {
+		if (!has_pred)
+			g_string_append(str, "[");
+		if (!first)
+			g_string_append (str, ", ");
+		g_string_append (str, "unboxed");
+		has_pred = TRUE;
+	}
+
+	if (has_pred)
+		g_string_append(str, "] ");
 
 	g_string_append (str, stack_slot_get_name (value));
 	result = str->str;
@@ -2372,15 +2394,6 @@ handle_enum:
 	case MONO_TYPE_ARRAY:
 		return TYPE_COMPLEX | mask;
 
-	case MONO_TYPE_GENERICINST:
-		if (mono_type_is_enum_type (type)) {
-			type = mono_type_get_underlying_type_any (type);
-			type_kind = type->type;
-			goto handle_enum;
-		} else {
-			return TYPE_COMPLEX | mask;
-		}
-
 	case MONO_TYPE_I8:
 	case MONO_TYPE_U8:
 		return TYPE_I8 | mask;
@@ -2389,9 +2402,12 @@ handle_enum:
 	case MONO_TYPE_R8:
 		return TYPE_R8 | mask;
 
+	case MONO_TYPE_GENERICINST:
 	case MONO_TYPE_VALUETYPE:
 		if (mono_type_is_enum_type (type)) {
 			type = mono_type_get_underlying_type_any (type);
+			if (!type)
+				return FALSE;
 			type_kind = type->type;
 			goto handle_enum;
 		} else {
@@ -2451,16 +2467,6 @@ handle_enum:
 		stack->stype = TYPE_COMPLEX | mask;
 		break;
 		
-	case MONO_TYPE_GENERICINST:
-		if (mono_type_is_enum_type (type)) {
-			type = mono_type_get_underlying_type_any (type);
-			type_kind = type->type;
-			goto handle_enum;
-		} else {
-			stack->stype = TYPE_COMPLEX | mask;
-			break;
-		}
-
 	case MONO_TYPE_I8:
 	case MONO_TYPE_U8:
 		stack->stype = TYPE_I8 | mask;
@@ -2469,9 +2475,15 @@ handle_enum:
 	case MONO_TYPE_R8:
 		stack->stype = TYPE_R8 | mask;
 		break;
+	case MONO_TYPE_GENERICINST:
 	case MONO_TYPE_VALUETYPE:
 		if (mono_type_is_enum_type (type)) {
-			type = mono_type_get_underlying_type_any (type);
+			MonoType *utype = mono_type_get_underlying_type_any (type);
+			if (!utype) {
+				ADD_VERIFY_ERROR (ctx, g_strdup_printf ("Could not resolve underlying type of %x at %d", type->type, ctx->ip_offset));
+				return FALSE;
+			}
+			type = utype;
 			type_kind = type->type;
 			goto handle_enum;
 		} else {
@@ -2609,8 +2621,17 @@ handle_enum:
 		MonoClass *candidate_klass;
 		if (mono_type_is_enum_type (target)) {
 			target = mono_type_get_underlying_type_any (target);
+			if (!target)
+				return FALSE;
 			goto handle_enum;
 		}
+		/*
+		 * VAR / MVAR compatibility must be checked by verify_stack_type_compatibility
+		 * to take boxing status into account.
+		 */
+		if (mono_type_is_generic_argument (original_candidate))
+			return FALSE;
+
 		target_klass = mono_class_from_mono_type (target);
 		candidate_klass = mono_class_from_mono_type (candidate);
 		if (mono_class_is_nullable (target_klass)) {
@@ -2632,6 +2653,10 @@ handle_enum:
 		 */
 		if (mono_type_is_generic_argument (original_candidate))
 			return FALSE;
+
+		if (candidate->type == MONO_TYPE_VALUETYPE)
+			return FALSE;
+
 		/* If candidate is an enum it should return true for System.Enum and supertypes.
 		 * That's why here we use the original type and not the underlying type.
 		 */ 
@@ -2660,13 +2685,20 @@ handle_enum:
 		return candidate->type == MONO_TYPE_TYPEDBYREF;
 
 	case MONO_TYPE_VALUETYPE: {
-		MonoClass *target_klass  = mono_class_from_mono_type (target);
-		MonoClass *candidate_klass = mono_class_from_mono_type (candidate);
+		MonoClass *target_klass;
+		MonoClass *candidate_klass;
 
+		if (candidate->type == MONO_TYPE_CLASS)
+			return FALSE;
+
+		target_klass = mono_class_from_mono_type (target);
+		candidate_klass = mono_class_from_mono_type (candidate);
 		if (target_klass == candidate_klass)
 			return TRUE;
 		if (mono_type_is_enum_type (target)) {
 			target = mono_type_get_underlying_type_any (target);
+			if (!target)
+				return FALSE;
 			goto handle_enum;
 		}
 		return FALSE;
@@ -2722,6 +2754,30 @@ get_generic_param (VerifyContext *ctx, MonoType *param)
 	return ctx->generic_context->method_inst->type_argv [param_num]->data.generic_param;
 	
 }
+
+static gboolean
+recursive_boxed_constraint_type_check (VerifyContext *ctx, MonoType *type, MonoClass *constraint_class, int recursion_level)
+{
+	MonoType *constraint_type = &constraint_class->byval_arg;
+	if (recursion_level <= 0)
+		return FALSE;
+
+	if (verify_type_compatibility_full (ctx, type, mono_type_get_type_byval (constraint_type), FALSE))
+		return TRUE;
+
+	if (mono_type_is_generic_argument (constraint_type)) {
+		MonoGenericParam *param = get_generic_param (ctx, constraint_type);
+		MonoClass **class;
+		if (!param)
+			return FALSE;
+		for (class = mono_generic_param_info (param)->constraints; class && *class; ++class) {
+			if (recursive_boxed_constraint_type_check (ctx, type, *class, recursion_level - 1))
+				return TRUE;
+		}
+	}
+	return FALSE;
+}
+
 /*
  * is_compatible_boxed_valuetype:
  * 
@@ -2744,8 +2800,12 @@ is_compatible_boxed_valuetype (VerifyContext *ctx, MonoType *type, MonoType *can
 	if (mono_type_is_generic_argument (candidate)) {
 		MonoGenericParam *param = get_generic_param (ctx, candidate);
 		MonoClass **class;
+		if (!param)
+			return FALSE;
+
 		for (class = mono_generic_param_info (param)->constraints; class && *class; ++class) {
-			if (verify_type_compatibility_full (ctx, type, mono_type_get_type_byval (& (*class)->byval_arg), FALSE))
+			/*256 should be enough since there can't be more than 255 generic arguments.*/
+			if (recursive_boxed_constraint_type_check (ctx, type, *class, 256))
 				return TRUE;
 		}
 	}
@@ -3403,7 +3463,7 @@ do_invoke_method (VerifyContext *ctx, int method_token, gboolean virtual)
 		if (method->flags & METHOD_ATTRIBUTE_ABSTRACT) 
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Cannot use call with an abstract method at 0x%04x", ctx->ip_offset));
 		
-		if ((method->flags & METHOD_ATTRIBUTE_VIRTUAL) && !(method->flags & METHOD_ATTRIBUTE_FINAL)) {
+		if ((method->flags & METHOD_ATTRIBUTE_VIRTUAL) && !(method->flags & METHOD_ATTRIBUTE_FINAL) && !(method->klass->flags & TYPE_ATTRIBUTE_SEALED)) {
 			virt_check_this = TRUE;
 			ctx->code [ctx->ip_offset].flags |= IL_CODE_CALL_NONFINAL_VIRTUAL;
 		}
@@ -3626,8 +3686,13 @@ check_is_valid_type_for_field_ops (VerifyContext *ctx, int token, ILStackDesc *o
 		if (field->parent->valuetype && stack_slot_is_boxed_value (obj))
 			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Type at stack is a boxed valuetype and is not compatible to reference the field at 0x%04x", ctx->ip_offset));
 
-		if (!stack_slot_is_null_literal (obj) && !verify_stack_type_compatibility_full (ctx, &field->parent->byval_arg, obj, TRUE, FALSE))
-			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Type at stack is not compatible to reference the field at 0x%04x", ctx->ip_offset));
+		if (!stack_slot_is_null_literal (obj) && !verify_stack_type_compatibility_full (ctx, &field->parent->byval_arg, obj, TRUE, FALSE)) {
+			char *found = stack_slot_full_name (obj);
+			char *expected = mono_type_full_name (&field->parent->byval_arg);
+			CODE_NOT_VERIFIABLE (ctx, g_strdup_printf ("Expected type '%s' but found '%s' referencing the 'this' argument at 0x%04x", expected, found, ctx->ip_offset));
+			g_free (found);
+			g_free (expected);
+		}
 
 		if (!IS_SKIP_VISIBILITY (ctx) && !mono_method_can_access_field_full (ctx->method, field, mono_class_from_mono_type (obj->type)))
 			CODE_NOT_VERIFIABLE2 (ctx, g_strdup_printf ("Type at stack is not accessible at 0x%04x", ctx->ip_offset), MONO_EXCEPTION_FIELD_ACCESS);
@@ -5555,7 +5620,6 @@ mono_method_verify (MonoMethod *method, int level)
 			code_bounds_check (sizeof (guint32) * entries);
 			
 			do_switch (&ctx, entries, ip);
-			start = 1;
 			ip += sizeof (guint32) * entries;
 			break;
 		}
@@ -6318,6 +6382,71 @@ verify_valuetype_layout (MonoClass *class)
 	return res;
 }
 
+static gboolean
+recursive_mark_constraint_args (MonoBitSet *used_args, MonoGenericContainer *gc, MonoType *type)
+{
+	int idx;
+	MonoClass **constraints;
+	MonoGenericParamInfo *param_info;
+
+	g_assert (mono_type_is_generic_argument (type));
+
+	idx = mono_type_get_generic_param_num (type);
+	if (mono_bitset_test_fast (used_args, idx))
+		return FALSE;
+
+	mono_bitset_set_fast (used_args, idx);
+	param_info = mono_generic_container_get_param_info (gc, idx);
+
+	if (!param_info->constraints)
+		return TRUE;
+
+	for (constraints = param_info->constraints; *constraints; ++constraints) {
+		MonoClass *ctr = *constraints;
+		MonoType *constraint_type = &ctr->byval_arg;
+
+		if (mono_type_is_generic_argument (constraint_type) && !recursive_mark_constraint_args (used_args, gc, constraint_type))
+			return FALSE;
+	}
+	return TRUE;
+}
+
+static gboolean
+verify_generic_parameters (MonoClass *class)
+{
+	int i;
+	MonoGenericContainer *gc = class->generic_container;
+	MonoBitSet *used_args = mono_bitset_new (gc->type_argc, 0);
+
+	for (i = 0; i < gc->type_argc; ++i) {
+		MonoGenericParamInfo *param_info = mono_generic_container_get_param_info (gc, i);
+		MonoClass **constraints;
+
+		if (!param_info->constraints)
+			continue;
+
+		mono_bitset_clear_all (used_args);
+		mono_bitset_set_fast (used_args, i);
+
+		for (constraints = param_info->constraints; *constraints; ++constraints) {
+			MonoClass *ctr = *constraints;
+			MonoType *constraint_type = &ctr->byval_arg;
+
+			if (!mono_type_is_valid_type_in_context (constraint_type, &gc->context))
+				goto fail;
+
+			if (mono_type_is_generic_argument (constraint_type) && !recursive_mark_constraint_args (used_args, gc, constraint_type))
+				goto fail;
+		}
+	}
+	mono_bitset_free (used_args);
+	return TRUE;
+
+fail:
+	mono_bitset_free (used_args);
+	return FALSE;
+}
+
 /*
  * Check if the class is verifiable.
  * 
@@ -6339,6 +6468,8 @@ mono_verifier_verify_class (MonoClass *class)
 	if (class->parent && MONO_CLASS_IS_INTERFACE (class->parent))
 		return FALSE;
 	if (class->generic_container && (class->flags & TYPE_ATTRIBUTE_LAYOUT_MASK) == TYPE_ATTRIBUTE_EXPLICIT_LAYOUT)
+		return FALSE;
+	if (class->generic_container && !verify_generic_parameters (class))
 		return FALSE;
 	if (!verify_class_for_overlapping_reference_fields (class))
 		return FALSE;

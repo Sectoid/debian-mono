@@ -1,3 +1,17 @@
+2010-06-08  Jonathan Pryor  <jpryor@novell.com>
+
+	* StringTest.cs: Add tests for #601772 (i.e. take SplitStringChars(),
+	  change all the chars to Strings, and things should work).
+
+2010-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* StringTest.cs: Add a test for #597604.
+
+2009-11-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeOffsetTest.cs : add test for bug #547675.
+	  patch by Santa Marta.
+
 2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SingleTest.cs : test for parsing MaxValue and PositiveInfinity.

@@ -1,3 +1,420 @@
+2010-07-12 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (mono_generic_param_is_constraint_compatible):
+	The candidate type itself might satisty the required
+	constraints.
+
+	Fixes #621599.
+
+2010-07-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* loader.c (mono_method_signature_checked): Use checked
+	variant of inflate_generic_signature.
+
+	Fixes #606353.
+
+2010-07-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_method_can_access_method_full): Handle type
+	accessibility with very deep nested types.
+
+	* class.c (mono_method_can_access_field_full): Ditto.
+
+	Fixes #619300.
+
+2010-06-25  Mark Probst  <mark.probst@gmail.com>
+
+	* class.c (mono_class_inflate_generic_method_full_checked): Added
+	a comment regarding a hack in mini-trampolines.c.
+
+	Backport of r159578.
+
+2010-06-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* icall.c (ves_icall_Type_make_array_type): Raise a TLE if a
+	TypedByRef is passed.
+
+	* icall.c (ves_icall_Type_make_byref_type): Ditto.
+
+	* icall.c (ves_icall_Type_MakePointerType): Ditto.
+
+	Fixes #612780.
+
+2010-06-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_array_to_lparray): Allow MONO_TYPE_PTR. Fixes #615952.
+
+2010-06-04  Marek Habersack  <mhabersack@novell.com>
+
+	* icall.c (ves_icall_MonoType_GetEvent): be case insensitive is
+	the BFLAGS_IgnoreCase is raised
+
+2010-06-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* debug-mono-symfile.c (mono_debug_symfile_lookup_locals): Rewrite this so it returns
+	all information in a single structure. Return information about scopes as well.
+
+	* mono-debug.c (mono_debug_lookup_locals): Ditto.
+
+2010-06-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (verify_generic_parameters): Verify if
+	there are not loops in constraints.
+
+2010-06-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (is_compatible_boxed_valuetype): Constaints
+	must be recursively checked if one generic argument
+	has a constraint on another.
+
+	Fixes #610625.
+
+2010-06-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* threadpool.c (process_io_event): Discard io events
+	if the domain is unloading. Fixes part of #582162.
+
+2010-05-25  Martin Baulig  <martin@ximian.com>
+
+	Applying a patch from Lucas Meijer <lucas@lucasmeijer.com>.
+
+	* debug-mono-symfile.c: Release memory from symfiles that were
+	loaded from memory.
+
+2010-05-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* marshal.c (mono_marshal_free_dynamic_wrappers): Avoid an assert when this is called
+	during shutdown.
+
+2010-05-19 Martin Baulig  <martin@novell.com>
+
+	Fix #604911.
+
+	* threads.c (wait_for_tids_or_state_change): Use an
+	alertable WaitForMultipleObjectsEx().
+	(wait_for_tids): Likewise.
+
+2010-05-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* marshal.c (mono_marshal_init): Register mono_gchandle_get_target
+	icall.
+
+	* marshal.c (mono_delegate_to_ftnptr): Use a gchandle instead of
+	gc tracked memory.
+
+	* marshal.c (mono_marshal_emit_managed_wrapper): Retrieve the first
+	argument from a gchandle.
+
+	* marshal.c: Get rid of the delegate_target_locations hash table.
+
+	Fixes #605295.
+
+	Backport of r157589.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_create_from_typedef): Fail a class
+	if there is a loop with its parent.
+
+	Fixes #598239.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_get_full): Release strings on failure
+	to avoid leaking them.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_create_from_typedef): Only return
+	the class if no exceptions were detected.
+
+	* class.c (mono_class_create_from_typedef): Don't remove
+	broken classes from class_cache. Just set failure and
+	bail out.
+
+	This fixes a memory a memory leak where resolving the same
+	broken class multiple times resulted in a memory leak.
+
+	The right behavior would be to actually return the class
+	a let the caller figure it out.
+
+2010-05-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* class.c (mono_class_alloc): New helper function to centralize memory allocation
+	for classes, allocates either from the image mempool or from the heap.
+
+	* class.c: Use mono_class_alloc to allocate memory owned by classes.
+
+	* metadata.c (free_generic_class_dependents): Free more items belonging to
+	generic classes.
+
+2010-05-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* reflection.c (mono_reflection_method_get_handle): Handle MonoGenericMethod
+	as well. Fixes #604054.
+
+2010-05-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* metadata-verify.c: MS doesn't mind duplicates in the
+	typeref table. Move it to full verification.
+
+	Fixes #600508.
+
+2010-05-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* appdomain.c (mono_domain_has_type_resolve): Check for
+	NULL domain objects to make pedump happy.
+
+	* object.c (mono_field_get_value): Assert on NULL object.
+	It's the caller resposibility to check for this.
+
+	* object.c (mono_field_get_value_object): Ditto.
+
+	Fixes #601384.
+
+2010-05-07  Marek Habersack  <mhabersack@novell.com>
+
+	* culture-info-tables.h: updated to include en-TT culture. Fixes
+	bug #594035
+
+2010-05-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_layout_fields): Don't perform alignment
+	if align is zero.
+
+	* class.c (mono_class_layout_fields): Init field related information
+	to sane defaults.
+
+2010-05-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (mono_verifier_verify_class): Verify the constraint
+	of generic type definitions.
+
+2010-04-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* boehm-gc.c: Applied patch from Robert Nagy (robert@openbsd.org). Include
+	string.h for memmove.
+
+	socket-io.c: Applied patch from Robert Nagy (robert@openbsd.org).
+	ipaddress_to_struct_in6_addr() is only needed when
+	defined(HAVE_STRUCT_IP_MREQN) || defined(HAVE_STRUCT_IP_MREQ).
+
+2010-04-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* class.c (mono_class_create_from_typedef): Initialize class->nested_in after
+	calling setup_mono_type () since the nested parent could recursively reference
+	the nested class using generic constraints. Fixes #599469.
+
+2010-04-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+		* verify.c: Handle the case where mono_type_get_underlying_type_any
+		returns NULL. Remove duplicated code between MONO_TYPE_GENERICINST
+	 	and MONO_TYPE_VALUETYPE in those case.
+
+		Based on a slightly modified patch by Sebastien Pouliot  <sebastien@ximian.com>
+
+		Hopefully Fixes #564253.
+
+2010-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* locales.c: Implement support for DISABLE_NORMALIZATION.
+
+2010-04-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* boehm-gc.c (mono_gc_base_init): Applied patch from Robert Nagy
+	(robert@openbsd.org). Fix GC_stackbottom calculation on OpenBSD.
+
+2010-04-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_get_method_by_index): Return NULL
+	on type load failures.
+
+2010-04-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_from_typeref): Check if the supplied
+	image has an assembly bound to it.
+
+	Fixes #567884.
+
+2010-04-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* loader.c (mono_method_get_signature_full): Use new function
+	inflate_generic_signature_checked to check for errors.
+
+	Fixes #560839.
+
+2010-04-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* loader.c (inflate_generic_signature): Add _checked variant
+	and move this function to use it.
+
+2010-04-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_setup_vtable_general): Use error checking
+	version of mono_class_inflate_generic_method_full.
+
+	Fixes #596975.
+
+2010-04-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (mono_class_inflate_generic_type_no_copy): Do proper
+	error handling passing MonoError around.
+
+	Fixes #560336.
+
+2010-04-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* socket-io.c: make GetHostByName ("") work on windows.
+	Fixes bug #456723.
+
+2010-04-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* reflection.c (_mono_reflection_parse_type): MS supports
+	non-assembly-qualified types in a generic type parameter list
+	when enclosed in '[]' (which signals that they should be a fqn).
+
+	This breaks ECMA specs for how type names are encoded in cattr
+	blobs but F# does it.
+
+	Fixes #576342.
+
+2010-04-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* icall.c (ves_icall_InternalInvoke): Check if the vtable is sane
+	for instance methods/ctors.
+
+	Fixes #422113.
+
+2010-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (mono_method_verify): A switch op don't empty
+	the stack for the next one. Fixes a bug when running fsi
+	under --verify-all.
+
+2010-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* metadata-verify.c (is_valid_standalonesig_blob): Accept
+	fields as valid standalone sig too. F# does generate them.
+
+	* metadata-verify.c (verify_typedef_table_full): Ignore
+	what <module> extends.
+
+2010-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (do_invoke_method): It's ok to do use call with
+	virtual, non-final methods if their class is sealed.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.h: Fix header.
+
+2010-04-07  Geoff Norton  <gnorton@novell.com>
+
+	* domain.c: Avoid a deadlock on osx.  Fixes #565765
+
+2010-04-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* icall.c (ves_icall_System_Enum_ToObject): Avoid a crash for unfinished type
+	builders. Fixes #594464.
+
+2010-04-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* icall.c (ves_icall_System_Environment_Exit): Shutdown the threadpool before
+	waiting for all threads to suspend, as those threads can't be suspended.
+
+2010-04-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c (mono_thread_suspend_all_other_threads): Call ensure_synch_cs_set ()
+	to avoid crashes on newly created threads.
+
+2010-04-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* threadpool.c: decrement the domain threadpool jobs count.
+
+2010-04-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* file-io.c: reset the MonoIOStat structure in case of error.
+	Fixes bug #582667.
+
+2010-04-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* class.c (print_implemented_interfaces): Print proper type name.
+
+	* class.c (mono_class_setup_vtable): Don't try that hard to produce
+	the override map for generic instances since it later ignored.
+
+	* class.c (mono_class_implement_interface_slow): Don't break for
+	dynamic generic instances.
+
+	* object.c (mono_runtime_invoke_array): Add an assert for allocation.
+
+	* reflection.c (mono_reflection_method_get_handle): New method that
+	resolves a method handle.
+
+	* reflection.c (mono_reflection_get_dynamic_overrides): Handle the
+	case when we override methods from a dynamic generic instance interface.
+
+	Fixes #575941.
+
+2010-04-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (verify_type_compatibility_full): Fail mixed valuetype
+	and reference types that point to the same class.
+
+	Fixes #565598.
+
+2010-04-05 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* verify.c (verify_stack_type_compatibility_full): Ignore constraints
+	when verifying compatibility between a generic instance and a generic
+	parameter.
+
+	* verify.c (check_is_valid_type_for_field_ops): Improve error message.
+
+	* verify.c (stack_slot_stack_type_full_name): Improve verification type
+	name.
+
+	Fixes #587849.
+
+2010-04-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* threads.c Applied some openbsd changes from Robert Nagy <robert@openbsd.org>.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* appdomain.c (mono_domain_assembly_postload_search): Avoid a crash/assert if
+	the assembly name is not well formed utf8. Fixes #567882.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* reflection.c (mono_reflection_create_generic_class): Set the flags field of
+	the generic parameters from the builder. Fixes #473298.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* icall.c (ves_icall_System_Enum_get_underlying_type): Don't crash on
+	unfinished/broken typebuilders.
+
+2010-03-29  Raja R Harinath  <harinath@hurrynot.org>
+
+	* metadata-verify.c (INVALID_METHOD_IMPLFLAG_BITS): Allow bit 6
+	"NoOptimization".
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* loader.c (mono_method_get_marshal_info): Fix the handling of dynamic methods
+	broken by the last change.
+
+2010-03-04  Geoff Norton  <gnorton@novell.com>
+
+	* loader.c: The marshal specs are freed at the end of the call
+	but it explicitly frees the strings as well as the container,
+	so we need to dup them too to avoid referencing free'd memory.
+
+2009-12-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* debug-helpers.c (dis_one): Avoid a glib assert on empty strings.
+
 2010-03-09  Zoltan Varga  <vargaz@gmail.com>
 
 	* object-internals.h (_G_BOOLEAN_EXPR): Fix the definition of this to explicitly

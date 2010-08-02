@@ -2172,11 +2172,10 @@ load_method (MonoDomain *domain, MonoAotModule *amodule, MonoImage *image, MonoM
 }
 
 static guint32
-find_extra_method_in_amodule (MonoAotModule *amodule, MonoMethod *method)
+find_extra_method_in_amodule (MonoAotModule *amodule, MonoMethod *method, const char *name)
 {
 	guint32 table_size, entry_size, hash;
 	guint32 *table, *entry;
-	char *name = NULL;
 	guint32 index;
 	static guint32 n_extra_decodes;
 
@@ -2186,10 +2185,6 @@ find_extra_method_in_amodule (MonoAotModule *amodule, MonoMethod *method)
 	table_size = amodule->extra_method_table [0];
 	table = amodule->extra_method_table + 1;
 	entry_size = 3;
-
-	if (method->wrapper_type) {
-		name = mono_aot_wrapper_name (method);
-	}
 
 	hash = mono_aot_method_hash (method) % table_size;
 
@@ -2261,7 +2256,6 @@ find_extra_method_in_amodule (MonoAotModule *amodule, MonoMethod *method)
 			break;
 	}
 
-	g_free (name);
 	return index;
 }
 
@@ -2284,12 +2278,18 @@ find_extra_method (MonoMethod *method, MonoAotModule **out_amodule)
 	guint32 index;
 	GPtrArray *modules;
 	int i;
+	char *name = NULL;
+
+	if (method->wrapper_type)
+		name = mono_aot_wrapper_name (method);
 
 	/* Try the method's module first */
 	*out_amodule = method->klass->image->aot_module;
-	index = find_extra_method_in_amodule (method->klass->image->aot_module, method);
-	if (index != 0xffffff)
+	index = find_extra_method_in_amodule (method->klass->image->aot_module, method, name);
+	if (index != 0xffffff) {
+		g_free (name);
 		return index;
+	}
 
 	/* 
 	 * Try all other modules.
@@ -2309,7 +2309,7 @@ find_extra_method (MonoMethod *method, MonoAotModule **out_amodule)
 		MonoAotModule *amodule = g_ptr_array_index (modules, i);
 
 		if (amodule != method->klass->image->aot_module)
-			index = find_extra_method_in_amodule (amodule, method);
+			index = find_extra_method_in_amodule (amodule, method, name);
 		if (index != 0xffffff) {
 			*out_amodule = amodule;
 			break;
@@ -2318,6 +2318,7 @@ find_extra_method (MonoMethod *method, MonoAotModule **out_amodule)
 	
 	g_ptr_array_free (modules, TRUE);
 
+	g_free (name);
 	return index;
 }
 
@@ -2535,6 +2536,19 @@ find_aot_module (guint8 *code)
 	return user_data.module;
 }
 
+void
+mono_aot_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr)
+{
+	/*
+	 * Since AOT code is only used in the root domain, 
+	 * mono_domain_get () != mono_get_root_domain () means the calling method
+	 * is AppDomain:InvokeInDomain, so this is the same check as in 
+	 * mono_method_same_domain () but without loading the metadata for the method.
+	 */
+	if (mono_domain_get () == mono_get_root_domain ())
+		mono_arch_patch_plt_entry (code, got, regs, addr);
+}
+
 /*
  * mono_aot_plt_resolve:
  *
@@ -2580,7 +2594,7 @@ mono_aot_plt_resolve (gpointer aot_module, guint32 plt_info_offset, guint8 *code
 	/* Patch the PLT entry with target which might be the actual method not a trampoline */
 	plt_entry = mono_aot_get_plt_entry (code);
 	g_assert (plt_entry);
-	mono_arch_patch_plt_entry (plt_entry, module->got, NULL, target);
+	mono_aot_patch_plt_entry (plt_entry, module->got, NULL, target);
 
 	return target;
 #else
@@ -2602,12 +2616,8 @@ init_plt (MonoAotModule *amodule)
 #ifndef MONO_CROSS_COMPILE
 
 #ifdef MONO_ARCH_AOT_SUPPORTED
-#ifdef __i386__
-	guint8 *buf = amodule->plt;
-#elif defined(__x86_64__) || defined(__arm__) || defined(__mono_ppc__)
 	int i;
 	gpointer plt_0;
-#endif
 	gpointer tramp;
 
 	if (amodule->plt_inited)
@@ -2615,11 +2625,6 @@ init_plt (MonoAotModule *amodule)
 
 	tramp = mono_create_specific_trampoline (amodule, MONO_TRAMPOLINE_AOT_PLT, mono_get_root_domain (), NULL);
 
-#ifdef __i386__
-	/* Initialize the first PLT entry */
-	make_writable (amodule->plt, amodule->plt_end - amodule->plt);
-	x86_jump_code (buf, tramp);
-#elif defined(__x86_64__) || defined(__arm__) || defined(__mono_ppc__)
 	/*
 	 * Initialize the PLT entries in the GOT to point to the default targets.
 	 */
@@ -2631,9 +2636,6 @@ init_plt (MonoAotModule *amodule)
 	 for (i = 1; i < amodule->info.plt_size; ++i)
 		 /* All the default entries point to the first entry */
 		 ((gpointer*)amodule->got)[amodule->info.plt_got_offset_base + i] = plt_0;
-#else
-	g_assert_not_reached ();
-#endif
 
 	amodule->plt_inited = TRUE;
 #endif
@@ -2708,7 +2710,7 @@ mono_aot_get_plt_info_offset (mgreg_t *regs, guint8 *code)
 
 	/* The offset is embedded inside the code after the plt entry */
 #if defined(__i386__)
-	return *(guint32*)(plt_entry + 5);
+	return *(guint32*)(plt_entry + 6);
 #elif defined(__x86_64__)
 	return *(guint32*)(plt_entry + 6);
 #elif defined(__arm__)
@@ -2816,6 +2818,14 @@ load_function (MonoAotModule *amodule, const char *name)
 				} else if (!strcmp (ji->data.name, "mono_amd64_get_original_ip")) {
 					target = mono_amd64_get_original_ip;
 #endif
+#ifdef TARGET_X86
+				} else if (!strcmp (ji->data.name, "mono_x86_throw_exception")) {
+					target = mono_x86_throw_exception;
+#endif
+#ifdef TARGET_X86
+				} else if (!strcmp (ji->data.name, "mono_x86_throw_corlib_exception")) {
+					target = mono_x86_throw_corlib_exception;
+#endif
 #ifdef __arm__
 				} else if (!strcmp (ji->data.name, "mono_arm_throw_exception")) {
 					target = mono_arm_throw_exception;
@@ -2849,6 +2859,24 @@ load_function (MonoAotModule *amodule, const char *name)
 					target = mono_create_ftnptr_malloc (target);
 				} else if (!strcmp (ji->data.name, "mono_thread_get_and_clear_pending_exception")) {
 					target = mono_thread_get_and_clear_pending_exception;
+				} else if (strstr (ji->data.name, "generic_trampoline_monitor_enter")) {
+					char *symbol;
+
+					symbol = g_strdup_printf ("generic_trampoline_%d", MONO_TRAMPOLINE_MONITOR_ENTER);
+					target = mono_aot_get_named_code (symbol);
+					g_free (symbol);
+				} else if (strstr (ji->data.name, "generic_trampoline_monitor_exit")) {
+					char *symbol;
+
+					symbol = g_strdup_printf ("generic_trampoline_%d", MONO_TRAMPOLINE_MONITOR_EXIT);
+					target = mono_aot_get_named_code (symbol);
+					g_free (symbol);
+				} else if (strstr (ji->data.name, "generic_trampoline_generic_class_init")) {
+					char *symbol;
+
+					symbol = g_strdup_printf ("generic_trampoline_%d", MONO_TRAMPOLINE_GENERIC_CLASS_INIT);
+					target = mono_aot_get_named_code (symbol);
+					g_free (symbol);
 				} else {
 					fprintf (stderr, "Unknown relocation '%s'\n", ji->data.name);
 					g_assert_not_reached ();
@@ -3207,6 +3235,11 @@ gpointer
 mono_aot_plt_resolve (gpointer aot_module, guint32 plt_info_offset, guint8 *code)
 {
 	return NULL;
+}
+
+void
+mono_aot_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr)
+{
 }
 
 gpointer

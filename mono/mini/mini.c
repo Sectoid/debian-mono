@@ -386,6 +386,34 @@ mono_jump_info_token_new (MonoMemPool *mp, MonoImage *image, guint32 token)
 {
 	return mono_jump_info_token_new2 (mp, image, token, NULL);
 }
+ 
+/*
+ * mono_tramp_info_create:
+ *
+ *   Create a MonoTrampInfo structure from the arguments. This function assumes ownership
+ * of NAME, JI, and UNWIND_OPS.
+ */
+MonoTrampInfo*
+mono_tramp_info_create (const char *name, guint8 *code, guint32 code_size, MonoJumpInfo *ji, GSList *unwind_ops)
+{
+	MonoTrampInfo *info = g_new0 (MonoTrampInfo, 1);
+
+	info->name = (char*)name;
+	info->code = code;
+	info->code_size = code_size;
+	info->ji = ji;
+	info->unwind_ops = unwind_ops;
+
+	return info;
+}
+
+void
+mono_tramp_info_free (MonoTrampInfo *info)
+{
+	g_free (info->name);
+
+	// FIXME: ji + unwind_ops
+}
 
 #define MONO_INIT_VARINFO(vi,id) do { \
 	(vi)->range.first_use.pos.bid = 0xffff; \
@@ -3676,7 +3704,10 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 		mono_decompose_array_access_opts (cfg);
 
 	if (cfg->got_var) {
+#ifndef MONO_ARCH_GOT_REG
 		GList *regs;
+#endif
+		int got_reg;
 
 		g_assert (cfg->got_var_allocated);
 
@@ -3687,13 +3718,17 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 		 * branches problem. Testcase: mcs crash in 
 		 * System.MonoCustomAttrs:GetCustomAttributes.
 		 */
+#ifdef MONO_ARCH_GOT_REG
+		got_reg = MONO_ARCH_GOT_REG;
+#else
 		regs = mono_arch_get_global_int_regs (cfg);
 		g_assert (regs);
-		cfg->got_var->opcode = OP_REGVAR;
-		cfg->got_var->dreg = GPOINTER_TO_INT (regs->data);
-		cfg->used_int_regs |= 1LL << cfg->got_var->dreg;
-		
+		got_reg = GPOINTER_TO_INT (regs->data);
 		g_list_free (regs);
+#endif
+		cfg->got_var->opcode = OP_REGVAR;
+		cfg->got_var->dreg = got_reg;
+		cfg->used_int_regs |= 1LL << cfg->got_var->dreg;
 	}
 
 	/*
@@ -3712,7 +3747,7 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 	}
 
 	if ((cfg->opt & MONO_OPT_LINEARS) && !cfg->globalra) {
-		GList *vars, *regs;
+		GList *vars, *regs, *l;
 		
 		/* fixme: maybe we can avoid to compute livenesss here if already computed ? */
 		cfg->comp_done &= ~MONO_COMP_LIVENESS;
@@ -3721,8 +3756,15 @@ mini_method_compile (MonoMethod *method, guint32 opts, MonoDomain *domain, gbool
 
 		if ((vars = mono_arch_get_allocatable_int_vars (cfg))) {
 			regs = mono_arch_get_global_int_regs (cfg);
-			if (cfg->got_var)
-				regs = g_list_delete_link (regs, regs);
+			/* Remove the reg reserved for holding the GOT address */
+			if (cfg->got_var) {
+				for (l = regs; l; l = l->next) {
+					if (GPOINTER_TO_UINT (l->data) == cfg->got_var->dreg) {
+						regs = g_list_delete_link (regs, l);
+						break;
+					}
+				}
+			}
 			mono_linear_scan (cfg, vars, regs, &cfg->used_int_regs);
 		}
 	}
@@ -4314,21 +4356,31 @@ mono_jit_compile_method_inner (MonoMethod *method, MonoDomain *target_domain, in
 
 	vtable = mono_class_vtable (target_domain, method->klass);
 	if (!vtable) {
-		MonoException *exc;
-		exc = mono_class_get_exception_for_failure (method->klass);
-		g_assert (exc);
-		mono_raise_exception (exc);
+		ex = mono_class_get_exception_for_failure (method->klass);
+		g_assert (ex);
+		*jit_ex = ex;
+		return NULL;
 	}
 
 	if (prof_options & MONO_PROFILE_JIT_COMPILATION) {
-		if (method->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE)
-			/* The profiler doesn't know about wrappers, so pass the original icall method */
-			mono_profiler_method_end_jit (mono_marshal_method_from_wrapper (method), jinfo, MONO_PROFILE_OK);
-		else
+		if (method->wrapper_type == MONO_WRAPPER_MANAGED_TO_NATIVE) {
+			if (strstr (method->name, "wrapper_native_") == method->name) {
+				/* Native func wrappers, these have no method */
+				/* FIXME: Clean this up */
+			} else {
+				/* The profiler doesn't know about wrappers, so pass the original icall method */
+				mono_profiler_method_end_jit (mono_marshal_method_from_wrapper (method), jinfo, MONO_PROFILE_OK);
+			}
+		} else {
 			mono_profiler_method_end_jit (method, jinfo, MONO_PROFILE_OK);
+		}
 	}
 
-	mono_runtime_class_init (vtable);
+	ex = mono_runtime_class_init_full (vtable, FALSE);
+	if (ex) {
+		*jit_ex = ex;
+		return NULL;
+	}
 	return code;
 }
 
@@ -4680,7 +4732,13 @@ mono_jit_runtime_invoke (MonoMethod *method, void *obj, void **params, MonoObjec
 	 * We need this here because mono_marshal_get_runtime_invoke can place 
 	 * the helper method in System.Object and not the target class.
 	 */
-	mono_runtime_class_init (info->vtable);
+	if (exc) {
+		*exc = (MonoObject*)mono_runtime_class_init_full (info->vtable, FALSE);
+		if (*exc)
+			return NULL;
+	} else {
+		mono_runtime_class_init (info->vtable);
+	}
 
 #ifdef MONO_ARCH_DYN_CALL_SUPPORTED
 	if (info->dyn_call_info) {
@@ -4773,18 +4831,19 @@ SIG_HANDLER_SIGNATURE (mono_sigill_signal_handler)
 	mono_arch_handle_exception (ctx, exc, FALSE);
 }
 
+#if defined(MONO_ARCH_USE_SIGACTION) || defined(PLATFORM_WIN32)
+#define HAVE_SIG_INFO
+#endif
+
 void
 SIG_HANDLER_SIGNATURE (mono_sigsegv_signal_handler)
 {
-#ifndef MONO_ARCH_SIGSEGV_ON_ALTSTACK
-	MonoException *exc = NULL;
-#endif
 	MonoJitInfo *ji;
 	MonoJitTlsData *jit_tls = TlsGetValue (mono_jit_tls_id);
 
 	GET_CONTEXT;
 
-#ifdef MONO_ARCH_SOFT_DEBUG_SUPPORTED
+#if defined(MONO_ARCH_SOFT_DEBUG_SUPPORTED) && defined(HAVE_SIG_INFO)
 	if (mono_arch_is_single_step_event (info, ctx)) {
 		mono_debugger_agent_single_step_event (ctx);
 		return;
@@ -4794,7 +4853,7 @@ SIG_HANDLER_SIGNATURE (mono_sigsegv_signal_handler)
 	}
 #endif
 
-#ifndef PLATFORM_WIN32
+#if !defined(PLATFORM_WIN32) && defined(HAVE_SIG_INFO)
 	if (mono_aot_is_pagefault (info->si_addr)) {
 		mono_aot_handle_pagefault (info->si_addr);
 		return;
@@ -4844,7 +4903,7 @@ SIG_HANDLER_SIGNATURE (mono_sigsegv_signal_handler)
 		mono_handle_native_sigsegv (SIGSEGV, ctx);
 	}
 			
-	mono_arch_handle_exception (ctx, exc, FALSE);
+	mono_arch_handle_exception (ctx, NULL, FALSE);
 #endif
 }
 
@@ -5065,6 +5124,8 @@ mini_free_jit_domain_info (MonoDomain *domain)
 		g_hash_table_destroy (info->static_rgctx_trampoline_hash);
 	g_hash_table_destroy (info->llvm_vcall_trampoline_hash);
 	g_hash_table_destroy (info->runtime_invoke_hash);
+	g_hash_table_destroy (info->seq_points);
+	g_hash_table_destroy (info->arch_seq_points);
 
 	if (info->agent_info)
 		mono_debugger_agent_free_domain_info (domain);

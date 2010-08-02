@@ -66,6 +66,12 @@ typedef gint64 mgreg_t;
 #define LLVM_ENABLED FALSE
 #endif
 
+#ifdef MONO_ARCH_SOFT_FLOAT
+#define COMPILE_SOFT_FLOAT(cfg) (!COMPILE_LLVM ((cfg)))
+#else
+#define COMPILE_SOFT_FLOAT(cfg) 0
+#endif
+
 #define NOT_IMPLEMENTED do { g_assert_not_reached (); } while (0)
 
 /* for 32 bit systems */
@@ -791,6 +797,8 @@ typedef struct {
 	void            (*abort_func) (MonoObject *object);
 	/* Used to implement --debug=casts */
 	MonoClass       *class_cast_from, *class_cast_to;
+
+	MonoContext      ex_ctx;
 } MonoJitTlsData;
 
 typedef enum {
@@ -1343,16 +1351,30 @@ enum {
 	MINI_TOKEN_SOURCE_FIELD
 };
 
-/* 
- * This structures contains information about a trampoline function required by
- * the AOT compiler in full-aot mode.
- */
-typedef struct
-{
-	guint8 *code;
-	guint32 code_size;
-	char *name;
-} MonoAotTrampInfo;
+ /* 
+  * Information about a trampoline function.
+  */
+ typedef struct
+ {
+	/* 
+	 * The native code of the trampoline. Not owned by this structure.
+	 */
+ 	guint8 *code;
+ 	guint32 code_size;
+	/*
+	 * The name of the trampoline which can be used in AOT/xdebug. Owned by this
+	 * structure.
+	 */
+ 	char *name;
+	/* 
+	 * Patches required by the trampoline when aot-ing. Owned by this structure.
+	 */
+	MonoJumpInfo *ji;
+	/*
+	 * Unwind information. Owned by this structure.
+	 */
+	GSList *unwind_ops;
+} MonoTrampInfo;
 
 typedef void (*MonoInstFunc) (MonoInst *tree, gpointer data);
 
@@ -1479,6 +1501,7 @@ gboolean  mono_aot_get_cached_class_info    (MonoClass *klass, MonoCachedClassIn
 gboolean  mono_aot_get_class_from_name      (MonoImage *image, const char *name_space, const char *name, MonoClass **klass) MONO_INTERNAL;
 MonoJitInfo* mono_aot_find_jit_info         (MonoDomain *domain, MonoImage *image, gpointer addr) MONO_INTERNAL;
 gpointer mono_aot_plt_resolve               (gpointer aot_module, guint32 plt_info_offset, guint8 *code) MONO_INTERNAL;
+void     mono_aot_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr) MONO_INTERNAL;
 gpointer mono_aot_get_method_from_vt_slot   (MonoDomain *domain, MonoVTable *vtable, int slot) MONO_INTERNAL;
 gpointer mono_aot_create_specific_trampoline   (MonoImage *image, gpointer arg1, MonoTrampolineType tramp_type, MonoDomain *domain, guint32 *code_len) MONO_INTERNAL;
 gpointer mono_aot_get_named_code            (const char *name) MONO_INTERNAL;
@@ -1489,7 +1512,6 @@ gpointer mono_aot_get_imt_thunk             (MonoVTable *vtable, MonoDomain *dom
 guint8*  mono_aot_get_unwind_info           (MonoJitInfo *ji, guint32 *unwind_info_len) MONO_INTERNAL;
 guint32  mono_aot_method_hash               (MonoMethod *method) MONO_INTERNAL;
 char*    mono_aot_wrapper_name              (MonoMethod *method) MONO_INTERNAL;
-MonoAotTrampInfo* mono_aot_tramp_info_create (const char *name, guint8 *code, guint32 code_len) MONO_INTERNAL;
 guint    mono_aot_str_hash                  (gconstpointer v1) MONO_INTERNAL;
 MonoMethod* mono_aot_get_array_helper_from_wrapper (MonoMethod *method) MONO_INTERNAL;
 void     mono_aot_set_make_unreadable       (gboolean unreadable) MONO_INTERNAL;
@@ -1587,6 +1609,8 @@ MonoUnwindOp     *mono_create_unwind_op (int when,
 void              mono_emit_unwind_op (MonoCompile *cfg, int when, 
 									   int tag, int reg, 
 									   int val) MONO_INTERNAL;
+MonoTrampInfo*    mono_tramp_info_create (const char *name, guint8 *code, guint32 code_size, MonoJumpInfo *ji, GSList *unwind_ops) MONO_INTERNAL;
+void              mono_tramp_info_free (MonoTrampInfo *info) MONO_INTERNAL;
 
 int               mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_bblock, MonoBasicBlock *end_bblock, 
 									 MonoInst *return_var, GList *dont_inline, MonoInst **inline_args, 

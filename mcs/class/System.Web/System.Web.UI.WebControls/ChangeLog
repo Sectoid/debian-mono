@@ -1,3 +1,54 @@
+2010-06-21  Marek Habersack  <mhabersack@novell.com>
+
+	* BaseValidator.cs, BulletedList.cs, Calendar.cs, CheckBox.cs,
+	CheckBoxList.cs, DataGrid.cs, DropDownList.cs, GridView.cs,
+	HyperLink.cs, ImageButton.cs, LinkButton.cs, ListBox.cs,
+	ListControl.cs, Menu.cs, RadioButton.cs, RadioButtonList.cs,
+	RepeatInfo.cs, Repeater.cs, TextBox.cs, TreeView.cs,
+	ValidationSummary.cs, WebControl.cs: use WebControl.IsEnabled
+	instead of Enabled wherever necessary.
+
+2010-06-16  Marek Habersack  <mhabersack@novell.com>
+
+	* FormView.cs: row values must be retrieved with inclusion of
+	keys. Fixes bug #607722
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBoxList.cs: do not modify list item status in LoadPostData
+	when the list control is disabled.
+	If an item is selected and it was unchecked by the user, deselect
+	it. Fixes bug #600415
+
+2010-04-13  Marek Habersack  <mhabersack@novell.com>
+
+	* GridView.cs: make sure Header and Footer visibility are set when
+	binding the data. Fixes bug #595567
+
+	* ImageField.cs, CheckBoxField.cs: OnDataBindField must expect
+	sender to be something else than DataControlFieldCell. Fixes bug
+	#595568
+
+2010-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* FormParameter.cs, CookieParameter.cs, ProfileParameter.cs,
+	QueryStringParameter.cs, SessionParameter.cs: implemented
+	constructor overloads which take DbType as one of the arguments.
+
+2010-04-01  Marek Habersack  <mhabersack@novell.com>
+
+	* FormView.cs: do not show the pager if PagerSettings.Visible is
+	false. Fixes bug #578863
+
+2010-03-29  Marek Habersack  <mhabersack@novell.com>
+
+	* GridView.cs: main table must be created and added to the
+	controls collection before any OnRowCreated event is fired.
+
+2010-03-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TreeView.cs: use enums instead of strings for attributes.
+
 2010-03-06  Marek Habersack  <mhabersack@novell.com>
 
 	* XmlDataSource.cs: reload document when one of Data, DataFile,

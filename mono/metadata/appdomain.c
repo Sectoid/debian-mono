@@ -487,6 +487,10 @@ mono_domain_has_type_resolve (MonoDomain *domain)
 		g_assert (field);
 	}
 
+	/*pedump doesn't create an appdomin, so the domain object doesn't exist.*/
+	if (!domain->domain)
+		return FALSE;
+
 	mono_field_get_value ((MonoObject*)(domain->domain), field, &o);
 	return o != NULL;
 }
@@ -898,12 +902,17 @@ mono_domain_assembly_postload_search (MonoAssemblyName *aname,
 	MonoReflectionAssembly *assembly;
 	MonoDomain *domain = mono_domain_get ();
 	char *aname_str;
+	MonoString *str;
 
 	aname_str = mono_stringify_assembly_name (aname);
 
 	/* FIXME: We invoke managed code here, so there is a potential for deadlocks */
-	assembly = mono_try_assembly_resolve (domain, mono_string_new (domain, aname_str), refonly);
-
+	str = mono_string_new (domain, aname_str);
+	if (!str) {
+		g_free (aname_str);
+		return NULL;
+	}
+	assembly = mono_try_assembly_resolve (domain, str, refonly);
 	g_free (aname_str);
 
 	if (assembly)
