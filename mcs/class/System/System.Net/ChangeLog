@@ -1,3 +1,67 @@
+2010-07-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: handle compressed streams when automatic decompression
+	is turned on by a class derived from WebClient.
+
+2010-07-01  Marek Habersack  <mhabersack@novell.com>
+
+	* WebRequest.cs: DefaultCachePolicy and CachePolicy return a
+	NoCacheNoStore policy in all cases now. Workaround for bug #583934
+
+2010-06-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* IPAddress.cs: verify the last IPv4 digit too.
+	Fixes bug #612135.
+
+2010-06-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: DELETE allows an entity body.
+	Fixes bug #614483.
+
+2010-06-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: 307 does not change request method.
+
+2010-04-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpDataStream.cs:
+	* FtpWebRequest.cs: use streams instead of sockets as soon as
+	possible. Correctly initialize the control connection when SSL
+	is used and protect the data connection by default.
+	Fixes bug #598908.
+
+2010-04-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ChunkStream.cs: ignore chunk extensions when reading the chunk
+	size. Fixes bug #597556.
+
+2010-04-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: set content length to -1 on redirect. Reset
+	'FinishedReading' on redirects. Fixes bug #593596.
+
+2010-04-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServicePointManager.cs: obtain the SubjectAltName extension the
+	right way. Fixes bug #594110.
+
+2010-03-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServicePointManager.cs: errors parsing the certificate don't prevent
+	calling the callback now. Exceptions thrown parsing the certificate
+	are printed to stderr in case they are library errors.
+
+2010-03-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpWebResponse.cs:
+	* FtpWebRequest.cs: for non-data operations, make sure we send the
+	QUIT command upon completion when KeepAlive is false.
+	Fixes bug #589305.
+
+2010-03-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* ServicePointManager.cs: perform the entire chain validation here.
+
 2010-03-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* HttpConnection.cs: set the right position when a CR is found.

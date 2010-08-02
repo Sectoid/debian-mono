@@ -145,7 +145,7 @@ namespace System.IO
 		}
 
 		public FileStream (string path, FileMode mode, FileAccess access, FileShare share, int bufferSize, bool useAsync)
-			: this (path, mode, access, share, bufferSize, useAsync, FileOptions.None)
+			: this (path, mode, access, share, bufferSize, false, useAsync ? FileOptions.Asynchronous : FileOptions.None)
 		{
 		}
 
@@ -270,7 +270,11 @@ namespace System.IO
 				throw new ArgumentException (string.Format (msg, access, mode));
 			}
 
-			string dname = Path.GetDirectoryName (path);
+			string dname;
+			if (Path.DirectorySeparatorChar != '/' && path.IndexOf ('/') >= 0)
+				dname = Path.GetDirectoryName (Path.GetFullPath (path));
+			else
+				dname = Path.GetDirectoryName (path);
 			if (dname.Length > 0) {
 				string fp = Path.GetFullPath (dname);
 				if (!Directory.Exists (fp)) {
@@ -652,6 +656,7 @@ namespace System.IO
 			WriteInternal (array, offset, count);
 		}
 
+
 		void WriteInternal (byte [] src, int offset, int count)
 		{
 			if (count > buf_size) {
@@ -659,13 +664,16 @@ namespace System.IO
 				MonoIOError error;
 
 				FlushBuffer ();
-
-				MonoIO.Write (handle, src, offset, count, out error);
-				if (error != MonoIOError.ERROR_SUCCESS) {
-					// don't leak the path information for isolated storage
-					throw MonoIO.GetException (GetSecureFileName (name), error);
-				}
+				int wcount = count;
 				
+				while (wcount > 0){
+					int n = MonoIO.Write (handle, src, offset, wcount, out error);
+					if (error != MonoIOError.ERROR_SUCCESS)
+						throw MonoIO.GetException (GetSecureFileName (name), error);
+					
+					wcount -= n;
+					offset += n;
+				} 
 				buf_start += count;
 			} else {
 

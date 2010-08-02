@@ -3327,6 +3327,8 @@ handle_ccastclass (MonoCompile *cfg, MonoClass *klass, MonoInst *src)
 	MONO_EMIT_NEW_BIALU_IMM (cfg, OP_COMPARE_IMM, -1, obj_reg, 0);
 	MONO_EMIT_NEW_BRANCH_BLOCK (cfg, OP_PBEQ, ok_result_bb);
 
+	save_cast_details (cfg, klass, obj_reg);
+
 	if (klass->flags & TYPE_ATTRIBUTE_INTERFACE) {
 		NEW_BBLOCK (cfg, interface_fail_bb);
 	
@@ -4140,7 +4142,7 @@ mini_emit_inst_for_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSign
 				size = 4;
 			else if (is_ref || fsig->params [1]->type == MONO_TYPE_I)
 				size = sizeof (gpointer);
-			else if (sizeof (gpointer) == 8 && fsig->params [1]->type == MONO_TYPE_I4)
+			else if (sizeof (gpointer) == 8 && fsig->params [1]->type == MONO_TYPE_I8)
 				size = 8;
 			if (size == 4) {
 				MONO_INST_NEW (cfg, ins, OP_ATOMIC_CAS_I4);
@@ -4374,6 +4376,8 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 
 	/* allocate local variables */
 	cheader = mono_method_get_header (cmethod);
+	if (!cheader)
+		return 0;
 	prev_locals = cfg->locals;
 	cfg->locals = mono_mempool_alloc0 (cfg->mempool, cheader->num_locals * sizeof (MonoInst*));	
 	for (i = 0; i < cheader->num_locals; ++i)
@@ -6338,6 +6342,19 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					/* MS.NET seems to silently convert this to a callvirt */
 					virtual = 1;
 
+				{
+					/*
+					 * MS.NET accepts non virtual calls to virtual final methods of transparent proxy classes and
+					 * converts to a callvirt.
+					 *
+					 * tests/bug-515884.il is an example of this behavior
+					 */
+					const int test_flags = METHOD_ATTRIBUTE_VIRTUAL | METHOD_ATTRIBUTE_FINAL | METHOD_ATTRIBUTE_STATIC;
+					const int expected_flags = METHOD_ATTRIBUTE_VIRTUAL | METHOD_ATTRIBUTE_FINAL;
+					if (!virtual && cmethod->klass->marshalbyref && (cmethod->flags & test_flags) == expected_flags && cfg->method->wrapper_type == MONO_WRAPPER_NONE)
+						virtual = 1;
+				}
+
 				if (!cmethod->klass->inited)
 					if (!mono_class_init (cmethod->klass))
 						goto load_error;
@@ -6394,6 +6411,9 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					 * but that type doesn't override the method we're
 					 * calling, so we need to box `this'.
 					 */
+					if (cfg->generic_sharing_context && mono_class_check_context_used (constrained_call))
+						GENERIC_SHARING_FAILURE (CEE_CONSTRAINED_);
+
 					EMIT_NEW_LOAD_MEMBASE_TYPE (cfg, ins, &constrained_call->byval_arg, sp [0]->dreg, 0);
 					ins->klass = constrained_call;
 					sp [0] = handle_box (cfg, ins, constrained_call);
@@ -6590,6 +6610,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				if (!MONO_TYPE_IS_VOID (fsig->ret))
 					*sp++ = mono_emit_widen_call_res (cfg, ins, fsig);
 
+				CHECK_CFG_EXCEPTION;
+
 				ip += 5;
 				ins_flag = 0;
 				break;
@@ -6636,6 +6658,9 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				MONO_ADD_INS (bblock, ins);
 				link_bblock (cfg, bblock, end_bblock);			
 				start_new_bblock = 1;
+
+				CHECK_CFG_EXCEPTION;
+
 				/* skip CEE_RET as well */
 				ip += 6;
 				ins_flag = 0;
@@ -6649,6 +6674,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					*sp = ins;
 					sp++;
 				}
+
+				CHECK_CFG_EXCEPTION;
 
 				ip += 5;
 				ins_flag = 0;
@@ -6794,6 +6821,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				if (!MONO_TYPE_IS_VOID (fsig->ret))
 					*sp++ = mono_emit_widen_call_res (cfg, ins, fsig);
 
+				CHECK_CFG_EXCEPTION;
+
 				ip += 5;
 				ins_flag = 0;
 				break;
@@ -6833,6 +6862,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					g_assert_not_reached ();
 				}
 
+				CHECK_CFG_EXCEPTION;
+
 				ip += 5;
 				ins_flag = 0;
 				break;
@@ -6842,6 +6873,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			if (ins) {
 				if (!MONO_TYPE_IS_VOID (fsig->ret))
 					*sp++ = mono_emit_widen_call_res (cfg, ins, fsig);
+
+				CHECK_CFG_EXCEPTION;
 
 				ip += 5;
 				ins_flag = 0;
@@ -6861,6 +6894,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 
 			if (!MONO_TYPE_IS_VOID (fsig->ret))
 				*sp++ = mono_emit_widen_call_res (cfg, ins, fsig);
+
+			CHECK_CFG_EXCEPTION;
 
 			ip += 5;
 			ins_flag = 0;
@@ -7421,6 +7456,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		case CEE_CONV_U:
 			CHECK_STACK (1);
 			ADD_UNOP (*ip);
+			CHECK_CFG_EXCEPTION;
 			ip++;
 			break;
 		case CEE_ADD_OVF:
@@ -9951,7 +9987,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		MONO_ADD_INS (cfg->cbb, store);
 	}
 
-#ifdef TARGET_POWERPC
+#if defined(TARGET_POWERPC) || defined(TARGET_X86)
 	if (cfg->compile_aot)
 		/* FIXME: The plt slots require a GOT var even if the method doesn't use it */
 		mono_get_got_var (cfg);
@@ -10515,14 +10551,15 @@ mono_op_to_op_imm_noemul (int opcode)
 	case OP_LSHR:
 	case OP_LSHL:
 	case OP_LSHR_UN:
+		return -1;
 #endif
 #if defined(MONO_ARCH_EMULATE_MUL_DIV) || defined(MONO_ARCH_EMULATE_DIV)
 	case OP_IDIV:
 	case OP_IDIV_UN:
 	case OP_IREM:
 	case OP_IREM_UN:
-#endif
 		return -1;
+#endif
 	default:
 		return mono_op_to_op_imm (opcode);
 	}

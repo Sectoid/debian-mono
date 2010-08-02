@@ -238,6 +238,30 @@ mono_convert_imt_slot_to_vtable_slot (gpointer* slot, mgreg_t *regs, guint8 *cod
 }
 #endif
 
+/*
+ * This is a super-ugly hack to fix bug #616463.
+ *
+ * The problem is that we don't always set is_generic for generic
+ * method definitions.  See the comment at the end of
+ * mono_class_inflate_generic_method_full_checked() in class.c.
+ */
+static gboolean
+is_generic_method_definition (MonoMethod *m)
+{
+	MonoGenericContext *context;
+	if (m->is_generic)
+		return TRUE;
+	if (!m->is_inflated)
+		return FALSE;
+
+	context = mono_method_get_context (m);
+	if (!context->method_inst)
+		return FALSE;
+	if (context->method_inst == mono_method_get_generic_container (((MonoMethodInflated*)m)->declaring)->context.method_inst)
+		return TRUE;
+	return FALSE;
+}
+
 /**
  * mono_magic_trampoline:
  *
@@ -292,6 +316,19 @@ mono_magic_trampoline (mgreg_t *regs, guint8 *code, gpointer arg, guint8* tramp)
 				return addr;
 			}
 
+			/*
+			 * Bug #616463 (see
+			 * is_generic_method_definition() above) also
+			 * goes away if we do a
+			 * mono_class_setup_vtable (vt->klass) here,
+			 * because we then inflate the method
+			 * correctly, put it in the cache, and the
+			 * "wrong" inflation invocation still looks up
+			 * the correctly inflated method.
+			 *
+			 * The hack above seems more stable and
+			 * trustworthy.
+			 */
 			m = mono_class_get_vtable_entry (vt->klass, displacement);
 			if (mono_method_needs_static_rgctx_invoke (m, FALSE))
 				need_rgctx_tramp = TRUE;
@@ -343,7 +380,7 @@ mono_magic_trampoline (mgreg_t *regs, guint8 *code, gpointer arg, guint8* tramp)
 	}
 #endif
 
-	if (m->is_generic) {
+	if (arg == MONO_FAKE_VTABLE_METHOD && is_generic_method_definition (m)) {
 		MonoGenericContext context = { NULL, NULL };
 		MonoMethod *declaring;
 
@@ -545,7 +582,7 @@ mono_magic_trampoline (mgreg_t *regs, guint8 *code, gpointer arg, guint8* tramp)
 		guint8 *plt_entry = mono_aot_get_plt_entry (code);
 
 		if (plt_entry) {
-			mono_arch_patch_plt_entry (plt_entry, NULL, regs, addr);
+			mono_aot_patch_plt_entry (plt_entry, NULL, regs, addr);
 		} else if (!generic_shared || (m->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) ||
 			mono_domain_lookup_shared_generic (mono_domain_get (), declaring)) {
 			if (generic_shared) {
@@ -692,9 +729,7 @@ mono_aot_trampoline (mgreg_t *regs, guint8 *code, guint8 *token_info,
 	MonoMethod *method = NULL;
 	gpointer addr;
 	gpointer *vtable_slot;
-	gboolean is_got_entry;
 	guint8 *plt_entry;
-	gboolean need_rgctx_tramp = FALSE;
 
 	image = *(gpointer*)(gpointer)token_info;
 	token_info += sizeof (gpointer);
@@ -718,24 +753,7 @@ mono_aot_trampoline (mgreg_t *regs, guint8 *code, guint8 *token_info,
 	plt_entry = mono_aot_get_plt_entry (code);
 	g_assert (plt_entry);
 
-	mono_arch_patch_plt_entry (plt_entry, NULL, regs, addr);
-
-	is_got_entry = FALSE;
-
-	/*
-	 * Since AOT code is only used in the root domain, 
-	 * mono_domain_get () != mono_get_root_domain () means the calling method
-	 * is AppDomain:InvokeInDomain, so this is the same check as in 
-	 * mono_method_same_domain () but without loading the metadata for the method.
-	 */
-	if ((is_got_entry && (mono_domain_get () == mono_get_root_domain ())) || mono_domain_owns_vtable_slot (mono_domain_get (), vtable_slot)) {
-#ifdef MONO_ARCH_HAVE_IMT
-		if (!method)
-			method = mono_get_method (image, token, NULL);
-		vtable_slot = mono_convert_imt_slot_to_vtable_slot (vtable_slot, regs, code, method, NULL, &need_rgctx_tramp);
-#endif
-		*vtable_slot = addr;
-	}
+	mono_aot_patch_plt_entry (plt_entry, NULL, regs, addr);
 
 	return addr;
 }

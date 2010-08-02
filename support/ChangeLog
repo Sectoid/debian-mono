@@ -1,3 +1,42 @@
+2010-04-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: don't call Z_FINISH if nothing has been written.
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* dirent.c, grp.c, macros.c, pwd.c, signal.c, sys-statvfs.c, sys-time.c,
+	  unistd.c: Add #if HAVE_XXX checks for functions which aren't
+	  provided on Android.
+
+2010-04-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile.am: Revert previous linkage against libmono.so, as lupus
+	  mentioned that it's unacceptable for MonoPosixHelper to link against
+	  libmono (e.g. when embedding mono, there might not be a libmono).
+	* map.h: Flush updated Mono_Unix_UnixSignal_SignalInfo prototype.
+	* signal.c: Don't use mono_runtime_is_shutting_down(). Instead, change
+	  Mono_Unix_UnixSignal_WaitAny() to accept a function pointer argument,
+	  which will return Environment.HasShutdownStarted in managed code (the 
+	  moral equivalent of mono_runtime_is_shutting_down()).  This allows
+	  us to avoid a libmono dependency w/o lots of rewriting. Fixes #592981.
+
+2010-04-07 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* zlib-helper.c: now that we don't use Z_SYNC_FLUSH, there might be
+	unflushed input in zstream, so always call Z_FINISH.
+
+2010-04-02  Jonathan Pryor  <jpryor@novell.com>
+
+	* Makefile.am: On non-Windows platforms, MonoPosixHelper now links
+	  against libmono.so, for mono_runtime_is_shutting_down().
+	* signal.c: Only continue retrying system calls if Mono is NOT
+	  attempting to shut down.  Fixes #592981.
+
+2010-03-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mph.h: Applied some changes from the openbsd ports tree to fix openbsd
+	support.
+
 2010-01-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* zlib-helper.c: no need for sync flush when compressing.

@@ -429,8 +429,10 @@ process_io_event (MonoMList *list, int event)
 #ifdef EPOLL_DEBUG
 		g_print ("Dispatching event %d on socket %d\n", event, state->handle);
 #endif
-		InterlockedIncrement (&pending_io_items);
-		start_io_thread_or_queue (state);
+		if (!(mono_object_domain (state)->state == MONO_APPDOMAIN_UNLOADING || mono_object_domain (state)->state == MONO_APPDOMAIN_UNLOADED)) {
+			InterlockedIncrement (&pending_io_items);
+			start_io_thread_or_queue (state);
+		}
 	}
 
 	return oldlist;
@@ -527,7 +529,8 @@ socket_io_poll_main (gpointer p)
 
 			for (i = 1; i < allocated; i++) {
 				pfd = &pfds [i];
-				if (pfd->fd == -1 || pfd->fd == data->newpfd->fd)
+				if (pfd->fd == -1 || data->newpfd == NULL ||
+				    pfd->fd == data->newpfd->fd)
 					break;
 			}
 
@@ -1290,6 +1293,7 @@ clear_queue (CRITICAL_SECTION *cs, TPQueue *list, MonoDomain *domain)
 	for (i = list->first_elem; i < list->next_elem; ++i) {
 		MonoObject *obj = mono_array_get (list->array, MonoObject*, i);
 		if (obj->vtable->domain == domain) {
+			threadpool_jobs_dec (obj);
 			unregister_job ((MonoAsyncResult*)obj);
 
 			mono_array_set (list->array, MonoObject*, i, NULL);

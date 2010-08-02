@@ -258,11 +258,12 @@ sources_DATA = \
 	monoapi.source \
 	$(ASSEMBLED_DOCS)
 
-ASSEMBLED_DOCS = \
-	mono-file-formats.tree mono-file-formats.zip  \
-	mono-tools.tree mono-tools.zip                \
-	monoapi.tree monoapi.zip
+@DISABLE_MCS_DOCS_FALSE@ASSEMBLED_DOCS = \
+@DISABLE_MCS_DOCS_FALSE@	mono-file-formats.tree mono-file-formats.zip  \
+@DISABLE_MCS_DOCS_FALSE@	mono-tools.tree mono-tools.zip                \
+@DISABLE_MCS_DOCS_FALSE@	monoapi.tree monoapi.zip
 
+@DISABLE_MCS_DOCS_TRUE@ASSEMBLED_DOCS = 
 EXTRA_DIST = \
 	abc-removal.txt		\
 	api-style.css		\

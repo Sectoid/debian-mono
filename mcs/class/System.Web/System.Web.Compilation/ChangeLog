@@ -1,3 +1,34 @@
+2010-06-15  Marek Habersack  <mhabersack@novell.com>
+
+	* ResourceExpressionBuilder.cs: cast the return value of
+	GetLocalResourceObject to appropriate type. Fixes bug #607766
+
+	* TemplateControlCompiler.cs: made CreateConvertToCall internal
+	static, so that it can be used from ResourceExpressionBuilder
+
+2010-05-19  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: IsDirective, IsExpression and
+	IsDataBound methods moved to System.Web.UI.BaseParser.
+	Made CompileExpression and GetFieldOrProperty methods internal.
+
+	* PageCompiler.cs: check several of the Page directive attributes
+	for expressions. Fixes bug #603532
+
+	* AspGenerator.cs, TagAttributes.cs: use IDictionary instead of
+	Hashtable
+
+2010-04-29  Marek Habersack  <mhabersack@novell.com>
+
+	* AppResourcesAssemblyBuilder.cs: when running on windows,
+	SetAlPath must return al.exe path with a trailing space, or
+	otherwise the process won't start. Fixes bug #600691
+
+2010-04-12  Marek Habersack  <mhabersack@novell.com>
+
+	* PageCompiler.cs: if EnableViewStateMac is set in the page
+	source, generate relevant code.
+
 2010-03-06  Marek Habersack  <mhabersack@novell.com>
 
 	* TemplateControlCompiler.cs: AssignPropertyForResources localizes

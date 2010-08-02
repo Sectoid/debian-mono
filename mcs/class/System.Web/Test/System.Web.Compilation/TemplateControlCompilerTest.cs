@@ -222,11 +222,11 @@ namespace MonoTests.System.Web.Compilation {
 		}
 
 		[Test (Description="Bug #524358")]
-		[ExpectedException ("System.Web.Compilation.ParseException")]
 		public void DuplicateControlsInClientComment ()
 		{
 			// Just test if it throws an exception
-			new WebTest ("DuplicateControlsInClientComment.aspx").Run ();
+			string pageHtml = new WebTest ("DuplicateControlsInClientComment.aspx").Run ();
+			Assert.IsTrue (pageHtml.IndexOf ("[System.Web.Compilation.ParseException]:") != -1, "#A1");
 		}
 
 		[Test (Description="Bug #367723")]
@@ -235,7 +235,7 @@ namespace MonoTests.System.Web.Compilation {
 			string pageHtml = new WebTest ("ConditionalClientComments.aspx").Run ();
 			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
 			string originalHtml = @"<!--[if IE 6]>
-		<link rel=""styleheet"" type=""text/css"" href=""compat-ie6.css"" />
+		<link rel=""styleheet"" type=""text/css"" href=""~/compat-ie6.css""></link>
 	<![endif]-->";
 			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
 		}

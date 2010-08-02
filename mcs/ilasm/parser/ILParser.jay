@@ -3274,7 +3274,7 @@ float64			: FLOAT64
                           {
                                 int i = (int) $3;
                                 byte[] intb = BitConverter.GetBytes (i);
-                                $$ = (double) BitConverter.ToSingle (intb, BitConverter.IsLittleEndian ? 0 : 4);
+                                $$ = (double) BitConverter.ToSingle (intb, 0);
                           }
                         | K_FLOAT32 OPEN_PARENS INT64 CLOSE_PARENS
                           {
@@ -3285,12 +3285,12 @@ float64			: FLOAT64
 			| K_FLOAT64 OPEN_PARENS INT64 CLOSE_PARENS
                           {
                                 byte[] intb = BitConverter.GetBytes ((long) $3);
-				$$ = BitConverter.ToDouble (intb, BitConverter.IsLittleEndian ? 0 : 4);
+				$$ = BitConverter.ToDouble (intb, 0);
                           }
                         | K_FLOAT64 OPEN_PARENS INT32 CLOSE_PARENS
                           {
                                 byte[] intb = BitConverter.GetBytes ((int) $3);
-                                $$ = (double) BitConverter.ToSingle (intb, BitConverter.IsLittleEndian ? 0 : 4);
+                                $$ = (double) BitConverter.ToSingle (intb, 0);
                           }
 			;
 

@@ -481,11 +481,11 @@ mono_arch_get_delegate_invoke_impls (void)
 	int i;
 
 	code = get_delegate_invoke_impl (TRUE, 0, &code_len, TRUE);
-	res = g_slist_prepend (res, mono_aot_tramp_info_create (g_strdup ("delegate_invoke_impl_has_target"), code, code_len));
+	res = g_slist_prepend (res, mono_tramp_info_create (g_strdup ("delegate_invoke_impl_has_target"), code, code_len, NULL, NULL));
 
 	for (i = 0; i < MAX_ARCH_DELEGATE_PARAMS; ++i) {
 		code = get_delegate_invoke_impl (FALSE, i, &code_len, TRUE);
-		res = g_slist_prepend (res, mono_aot_tramp_info_create (g_strdup_printf ("delegate_invoke_impl_target_%d", i), code, code_len));
+		res = g_slist_prepend (res, mono_tramp_info_create (g_strdup_printf ("delegate_invoke_impl_target_%d", i), code, code_len, NULL, NULL));
 	}
 
 	return res;
@@ -2279,12 +2279,9 @@ mono_arch_decompose_long_opts (MonoCompile *cfg, MonoInst *ins)
 		NULLIFY_INS (ins);
 		break;
 	case OP_LNEG:
-		/* This is the old version from inssel-long32.brg */
-		MONO_EMIT_NEW_UNALU (cfg, OP_INOT, ins->dreg + 1, ins->sreg1 + 1);
-		MONO_EMIT_NEW_UNALU (cfg, OP_INOT, ins->dreg + 2, ins->sreg1 + 2);
-		/* ADC sets the condition codes */
-		MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ADC_IMM, ins->dreg + 1, ins->dreg + 1, 1);
-		MONO_EMIT_NEW_BIALU_IMM (cfg, OP_ADC_IMM, ins->dreg + 2, ins->dreg + 2, 0);
+		/* From gcc generated code */
+		MONO_EMIT_NEW_BIALU_IMM (cfg, OP_PPC_SUBFIC, ins->dreg + 1, ins->sreg1 + 1, 0);
+		MONO_EMIT_NEW_UNALU (cfg, OP_PPC_SUBFZE, ins->dreg + 2, ins->sreg1 + 2);
 		NULLIFY_INS (ins);
 		break;
 	default:
@@ -4417,7 +4414,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			EMIT_COND_SYSTEM_EXCEPTION (CEE_BEQ - CEE_BEQ, "ArithmeticException");
 			break;
 		case OP_JUMP_TABLE:
-			mono_add_patch_info (cfg, offset, (MonoJumpInfoType)ins->inst_i1, ins->inst_p0);
+			mono_add_patch_info (cfg, offset, (MonoJumpInfoType)ins->inst_c1, ins->inst_p0);
 #ifdef __mono_ppc64__
 			ppc_load_sequence (code, ins->dreg, (gulong)0x0f0f0f0f0f0f0f0fL);
 #else
@@ -5365,9 +5362,14 @@ mono_arch_emit_exceptions (MonoCompile *cfg)
 	MonoJumpInfo *patch_info;
 	int i;
 	guint8 *code;
-	const guint8* exc_throw_pos [MONO_EXC_INTRINS_NUM] = {NULL};
-	guint8 exc_throw_found [MONO_EXC_INTRINS_NUM] = {0};
+	guint8* exc_throw_pos [MONO_EXC_INTRINS_NUM];
+	guint8 exc_throw_found [MONO_EXC_INTRINS_NUM];
 	int max_epilog_size = 50;
+
+	for (i = 0; i < MONO_EXC_INTRINS_NUM; i++) {
+		exc_throw_pos [i] = NULL;
+		exc_throw_found [i] = 0;
+	}
 
 	/* count the number of exception infos */
      
@@ -5447,7 +5449,7 @@ mono_arch_emit_exceptions (MonoCompile *cfg)
 
 			unsigned char *ip = patch_info->ip.i + cfg->native_code;
 			i = exception_id_by_name (patch_info->data.target);
-			if (exc_throw_pos [i]) {
+			if (exc_throw_pos [i] && !(ip > exc_throw_pos [i] && ip - exc_throw_pos [i] > 50000)) {
 				ppc_patch (ip, exc_throw_pos [i]);
 				patch_info->type = MONO_PATCH_INFO_NONE;
 				break;
@@ -5718,26 +5720,26 @@ mono_arch_build_imt_thunk (MonoVTable *vtable, MonoDomain *domain, MonoIMTCheckI
 		}
 		size += item->chunk_size;
 	}
+	/* the initial load of the vtable address */
+	size += PPC_LOAD_SEQUENCE_LENGTH + LOADSTORE_SIZE;
 	if (fail_tramp) {
 		code = mono_method_alloc_generic_virtual_thunk (domain, size);
 	} else {
-		/* the initial load of the vtable address */
-		size += PPC_LOAD_SEQUENCE_LENGTH + LOADSTORE_SIZE;
 		code = mono_domain_code_reserve (domain, size);
 	}
 	start = code;
-	if (!fail_tramp) {
-		/*
-		 * We need to save and restore r11 because it might be
-		 * used by the caller as the vtable register, so
-		 * clobbering it will trip up the magic trampoline.
-		 *
-		 * FIXME: Get rid of this by making sure that r11 is
-		 * not used as the vtable register in interface calls.
-		 */
-		ppc_stptr (code, ppc_r11, PPC_RET_ADDR_OFFSET, ppc_sp);
-		ppc_load (code, ppc_r11, (gsize)(& (vtable->vtable [0])));
-	}
+
+	/*
+	 * We need to save and restore r11 because it might be
+	 * used by the caller as the vtable register, so
+	 * clobbering it will trip up the magic trampoline.
+	 *
+	 * FIXME: Get rid of this by making sure that r11 is
+	 * not used as the vtable register in interface calls.
+	 */
+	ppc_stptr (code, ppc_r11, PPC_RET_ADDR_OFFSET, ppc_sp);
+	ppc_load (code, ppc_r11, (gsize)(& (vtable->vtable [0])));
+
 	for (i = 0; i < count; ++i) {
 		MonoIMTCheckItem *item = imt_entries [i];
 		item->code_target = code;

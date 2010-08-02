@@ -1,3 +1,410 @@
+2010-07-05  Martin Baulig  <martin@ximian.com>
+
+	* debugger-agent.c: Bump minor version to 2.
+
+2010-06-25  Mark Probst  <mark.probst@gmail.com>
+
+	* mini-trampolines.c (common_call_trampoline): An ugly hack to
+	work around a potentially very hard to fix problem with inflating
+	generic methods.
+
+	Backport of r159578.
+
+2010-07-01  Martin Baulig  <martin@ximian.com>
+
+	Resume from the signal handler and do most of the work on the normal stack.
+
+	* exceptions-x86.c (mono_arch_handle_exception): Port this to Windows.
+
+	Backport r157282:
+
+	2010-05-13  Zoltan Varga  <vargaz@gmail.com>
+
+		* exceptions-amd64.c (mono_arch_handle_exception): Resume from the signal handler
+		and do most of the work on the normal stack even if
+		sigaltstack is disabled.
+
+	Backport r157380:
+
+	2010-05-14  Geoff Norton  <gnorton@novell.com>
+
+		* exceptions-x86.c: Fix the alignment of this trampoline so we dont get a
+		misaligned stack on darwin.
+
+	Backport r157327:
+
+	2010-05-13  Zoltan Varga  <vargaz@gmail.com>
+
+		* exceptions-x86.c (mono_arch_handle_exception): Resume from the signal handler
+		and do most of the work on the normal stack.
+		(mono_x86_get_signal_exception_trampoline): New x86 specific trampoline function.
+
+2010-06-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* tramp-amd64.c (mono_arch_create_generic_trampoline): Increase the buf len a little,
+	to avoid an assert.
+
+2010-06-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (compile_method): Add a 'depth' parameter to add_generic_class too
+	to fix infinite generic recursion. Fixes #612702.
+
+2010-06-09  Levi Bard  <levi@unity3d.com>
+
+	* debugger-agent.c: Clear unloaded types on appdomain unload.
+
+2010-06-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* liveness.c (visit_bb): Make the component vregs of long vars volatile as well.
+	Fixes #612206.
+
+	* exceptions.cs: Add a test.
+
+2010-06-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* dwarfwriter.c: Update after the mono_debug_lookup_locals () changes.
+
+	* debugger-agent.c (method_commands_internal): Ditto. Return scope information for
+	locals.
+
+2010-06-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (appdomain_unload): Clear all breakpoint instances in the dying
+	appdomain.
+
+2010-05-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-s390x.c (mono_arch_output_basic_block): Applied patch from Aurelien Minvielle
+	. Fix OP_ATOMIC_EXCHANGE_I4 on s390x. Fixes #609023.
+
+2010-05-31  Martin Baulig  <martin@ximian.com>
+
+	Fix #608271.
+
+	* debugger-agent.c (breakpoints_cleanup): Iterate over `event_requests', call
+	clear_breakpoint() on all breakpoint events and remove them from the list.
+
+2010-05-27  Martin Baulig  <martin@ximian.com>
+
+	Fix #605698.
+
+	* debugger-agent.c (method_commands, type_commands): Temporarily
+	set the appdomain while executing this method; do all metadata
+	calls in the debuggee's appdomain where user assemblies are loaded.
+
+2010-05-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_jit_compile_method_inner): Propagate exceptions in one more place.
+
+2010-05-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_jit_compile_method_inner): Propagate exceptions from
+	mono_runtime_class_init_full ().
+	(mono_jit_runtime_invoke): Ditto. Fixes #608073.
+
+2010-05-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ppc.c (mono_arch_output_basic_block): Use ins->inst_c1 instead of p1, the
+	two are not the same on ilp32.
+
+2010-05-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c: Collect all information about a PLT entry into a separate MonoPltEntry
+	structure. Make the labels to plt entries local symbols instead of assembler local
+	labels, since tha latter causes problems for the iphone linker.
+
+2010-05-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (set_breakpoint): Fix setting of pending breakpoints in
+	other domains.
+
+2009-12-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (find_extra_method): Call mono_aot_wrapper_name only once,
+	instead of once for each module.
+
+2010-05-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (insert_breakpoint): Print a more descriptive error message
+	if a breakpoint cannot be inserted.
+
+2010-05-09 Jonathan Chambers  <joncham@gmail.com>
+
+	* mini.c (mono_sigsegv_signal_handler): Use PLATFORM_WIN32 define instead of 
+	HOST_WIN32. HOST_WIN32 was added after 2.6.
+
+	Code is contributed under MIT/X11 license.
+
+2010-05-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mini_free_jit_domain_info): Fix the seq_points/arch_seq_points hash
+	tables.
+
+2010-05-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (frame_commands): Return an error instead of asserting if
+	no JIT info is found for the method.
+
+2010-05-05 Jonathan Chambers  <joncham@gmail.com>
+
+	* debugger-agent.c (mono_debugger_agent_thread_interrupt): Protect against a NULL sigctx
+	in debug printf.
+
+2010-05-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_emit_prolog): Fix full-aot support for thread
+	attach.
+
+2010-05-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ppc.c (mono_arch_decompose_long_opts): Fix LNEG.
+
+2010-05-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ppc.c (mono_arch_emit_exceptions): Initialize exc_throw_pos/found
+	explicitly, this seems to be required by some gcc versions at -O2.
+
+	* mini-arm.c: Ditto.
+
+2010-05-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_get_delegate_invoke_impl): Fix full-aot support for
+	has_target delegate invokes.
+
+2010-05-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.h (MonoAotTrampInfo): Rename this to MonoTrampInfo, add patches/unwind
+	info fields.
+
+	* aot-compiler.c (mono_aot_tramp_info_create): Rename to mono_tramp_info_create,
+	add patches/unwind info arguments, move to mini.c.
+
+	* mini-<ARCH>.c aot-compiler.c: Update after the above changes.
+
+2010-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* tramp-x86.c (mono_arch_create_generic_class_init_trampoline_full): Set the
+	code_size output variable.
+
+	* mini-x86.c (mono_arch_emit_prolog): Compute the GOT addr before calling
+	mono_get_lmf_addr.
+	
+2010-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+2010-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_emit_prolog): Remove a disable_aot which is not needed.
+	(mono_arch_cpu_optimizazions): Make this a no-op when running with full aot.
+	(mono_arch_cpu_enumerate_simd_versions): Ditto.
+
+2010-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.c (mono_arch_emit_prolog): Avoid an assert in full-aot mode.
+
+2010-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-runtime.c (load_function): Use TARGET_X86 instead of __i386__.
+
+2010-04-27  Zoltan Varga  <vargaz@gmail.com>
+
+        * tramp-x86.c exceptions-x86.c mini-x86.c aot-compiler.c aot-runtime.c:
+        Implement full-aot support on x86.
+
+        * method-to-ir.c: Always use a got var on x86 too, just like on ppc, because the
+        trampolines depend on it. Use MONO_ARCH_GOT_REG as the got register, instead of
+        the first register returned by get_global_int_regs ().
+
+        * cpu-x86.md: Fix the length of insertx_u1_slow.
+
+        * iltests.il.in: Disable tail call tests when running with full-aot.
+
+2010-04-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (type_commands): Add a new CMD_TYPE_GET_SOURCE_FILES_2
+	command which returns full path names.
+
+2010-04-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* image-writer.c (asm_writer_emit_alignment): Use ilog2 for alignments for the
+	apple assembler.
+
+2010-04-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* aot-compiler.c (emit_got_info): Double the buffer size to avoid an assert.
+
+2010-04-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_op_to_op_imm_noemul): Fix a warning.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* exceptions-arm.c: Remove platform checks in favor of configure checks.
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* exceptions-arm.c: Add Android support for sigcontext structure.
+
+2010-04-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (mono_jit_compile_method_inner): Avoid calling
+	mono_marshal_method_from_wrapper () for native func wrappers. Fixes #597189.
+
+2010-04-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* genmdesc.c (inst_name): Define this as a copy of mono_inst_name in helpers.c,
+	so the latter can be #ifndef DISABLE_JIT-ed.
+
+	* helpers.c: Comment out the opstr array if DISABLE_JIT is set.
+
+2010-04-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (type_commands): Call mono_class_setup_methods () before
+	calling mono_class_num_methods (). Fixes #592244.
+
+2010-04-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Disable generic sharing for constrained
+	calls where the constrained class needs a context. Fixes #595863.
+
+	* iltests.il.in: Add a test.
+
+2010-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (thread_commands): Add a GET_ID command to get the
+	MonoInternalThread belonging to the thread.
+
+2010-04-08  Kornel Pal  <kornelpal@gmail.com>
+
+	* method-to-ir.c (mini_emit_inst_for_method): Fix a typo that caused
+	CompareExchange not to be inlined for I8.
+
+	Contributed under MIT/X11 license.
+
+	Backport of r155039.
+
+2010-04-06  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c: Fix tests/load-exceptions.cs
+
+2010-03-05  Martin Baulig  <martin@ximian.com>
+
+	**** Backport of r153335 ****
+
+	Add support for aborting invocations.
+
+	* debugger-agent.c
+	(InvokeData): Added `InvokeData *last_invoke'.
+	(DebuggerTlsData): Renamed `invoke' into `pending_invoke' and
+	added a new `invoke' field to keep the `InvokeData *' throughout
+	the invocation.
+	(ErrorCode): Added `ERR_NO_INVOCATION'.
+	(CmdVM): Added `CMD_VM_ABORT_INVOKE'.
+	(mono_debugger_agent_handle_exception): Don't report any exception
+	if an abort was requested.
+	(invoke_method): Store the `InvokeData *' in `tls->invoke'; reset
+	a thread abort if necessary.
+	(vm_commands): Implement `CMD_VM_ABORT_INVOKE'.
+
+2010-04-05  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* method-to-ir.c (mono_method_to_ir): Handle call to virtual final methods
+	of marshalbyref classes.
+
+	Fixes #515884.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* decompose.c (mono_decompose_opcode): Set the cfg exception if the unsupported
+	float conv.ovf.un opcodes are encountered, instead of asserting later.
+	Fixes #566296.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* decompose.c (mono_decompose_opcode): Add OP_ICONV_TO_U4_UN as a no-op.
+
+	* iltests.il.in: Add a test.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-amd64.c (mono_arch_emit_call): Fail compilation if an argument is too
+	large. Fixes #567040.
+
+	* method-to-ir.c: Call CHECK_CFG_EXCEPTION after emitting a call.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* method-to-ir.c (handle_ccastclass): Call save_cast_details (). Fixes
+	#592711.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-trampolines.c (mono_aot_trampoline): Remove some dead code.
+
+	* aot-runtime.c (mono_aot_patch_plt_entry): New helper function, which only
+	does the patching if the callee is in the same domain.
+
+	* aot-runtime.c mini-trampolines.c: Call mono_aot_patch_plt_entry instead
+	of mono_arch_patch_plt_entry ().
+
+2010-03-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (jit_end): Send type loads for types loaded before the VMStart
+	event is sent. Fixes #591733.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-posix.c (SIG_HANDLER_SIGNATURE): Handle the case when ctx is NULL on
+	OpenBSD.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* image-writer.c (bin_writer_emit_writeout): Fix the size of the got.plt
+	section. Fixes #591000.
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-x86.h: Applied patch from Robert Nagy (Robert@openbsd.org).
+	Use sigaction on OpenBSD too.
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (event_req_matches_assembly): Handle request modifiers too.
+
+2010-03-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini.c (SIG_HANDLER_SIGNATURE): Fix the build on platforms without sigaction
+	(openbsd+amd64 ?).
+
+2010-03-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ppc.c (mono_arch_emit_exceptions): Avoid an assert in ppc_patch () for
+	some large methods with lots of exception handlers. Fixes #440924.
+
+2010-03-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (clear_event_requests_for_assembly): New helper function.
+	(assembly_unload): Clear all event requests referencing the to-be unloaded
+	assembly.
+
+2010-03-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c: Simplify the way breakpoints are processed by removing
+	the 'pending' flag. This fixes support for appdomains too.
+
+
+2010-03-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini-ppc.c (mono_arch_build_imt_thunk): Always save and restore r11 since it
+	is needed even when fail_tramp!=NULL.
+
+2010-03-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* debugger-agent.c (insert_breakpoint): Write a log message.
+
+2010-03-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* iltests.il.in: Disable the fconv_to_i test on sparc too.
+
 2010-03-11  Martin Baulig  <martin@ximian.com>
 
 	* debugger-agent.c (type_commands): Add NULL check to
