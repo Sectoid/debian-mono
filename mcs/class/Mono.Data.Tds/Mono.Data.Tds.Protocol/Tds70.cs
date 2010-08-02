@@ -76,11 +76,18 @@ namespace Mono.Data.Tds.Protocol
 		protected virtual byte[] ClientVersion {
 			get { return new byte[] {0x00, 0x0, 0x0, 0x70};}
 		}
+		
+		// Default precision is 28 for a 7.0 server. Unless and 
+		// otherwise the server is started with /p option - which would be 38
+		protected virtual byte Precision {
+			get { return 28; }
+		}
+		
 		#endregion // Properties
 		
 		#region Methods
 
-		private string BuildExec (string sql)
+		protected string BuildExec (string sql)
 		{
 			string esql = sql.Replace ("'", "''"); // escape single quote
 			if (Parameters != null && Parameters.Count > 0)
@@ -118,6 +125,12 @@ namespace Mono.Data.Tds.Protocol
 			foreach (TdsMetaParameter p in Parameters) {
 				if (parms.Length > 0)
 					parms.Append (", ");
+				
+				// Set default precision according to the TdsVersion
+				// Current default is 29 for Tds80 
+				if (p.TypeName == "decimal")
+					p.Precision = (p.Precision !=0  ? p.Precision : (byte) Precision);
+										
 				parms.Append (p.Prepare ());
 				if (p.Direction == TdsParameterDirection.Output)
 					parms.Append (" output");
@@ -152,6 +165,9 @@ namespace Mono.Data.Tds.Protocol
 						else
 							select.Append (", ");
 						select.Append ("@" + parameterName);
+						
+						if (p.TypeName == "decimal")
+							p.Precision = (p.Precision !=0 ? p.Precision : (byte) Precision);
 							
 						declare.Append (String.Format ("declare {0}\n", p.Prepare ()));
 
@@ -392,10 +408,7 @@ namespace Mono.Data.Tds.Protocol
 		public override void ExecPrepared (string commandText, TdsMetaParameterCollection parameters, int timeout, bool wantResults)
 		{
 			Parameters = parameters;
-			if (Parameters != null && Parameters.Count > 0)
-				ExecRPC (TdsRpcProcId.ExecuteSql, commandText, parameters, timeout, wantResults);
-			else
-				ExecuteQuery (BuildPreparedQuery (commandText), timeout, wantResults);
+			ExecuteQuery (BuildPreparedQuery (commandText), timeout, wantResults);
 		}
 			
 		public override void ExecProc (string commandText, TdsMetaParameterCollection parameters, int timeout, bool wantResults)
@@ -442,9 +455,9 @@ namespace Mono.Data.Tds.Protocol
 			                                          param));
 		}
 		
-		private void ExecRPC (TdsRpcProcId rpcId, string sql, 
-		                      TdsMetaParameterCollection parameters, 
-		                      int timeout, bool wantResults)
+		protected void ExecRPC (TdsRpcProcId rpcId, string sql, 
+		                        TdsMetaParameterCollection parameters, 
+		                        int timeout, bool wantResults)
 		{
 			// clean up
 			InitExec ();
@@ -561,8 +574,20 @@ namespace Mono.Data.Tds.Protocol
 
 			// Precision and Scale are non-zero for only decimal/numeric
 			if ( param.TypeName == "decimal" || param.TypeName == "numeric") {
-				Comm.Append ((param.Precision !=0 ) ? param.Precision : (byte) 29);
+				Comm.Append ((param.Precision !=0 ) ? param.Precision : Precision);
 				Comm.Append (param.Scale);
+				// Convert the decimal value according to Scale
+				if (param.Value != null && param.Value != DBNull.Value &&
+				    ((decimal)param.Value) != Decimal.MaxValue && 
+				    ((decimal)param.Value) != Decimal.MinValue &&
+				    ((decimal)param.Value) != long.MaxValue &&
+				    ((decimal)param.Value) != long.MinValue &&
+				    ((decimal)param.Value) != ulong.MaxValue &&
+				    ((decimal)param.Value) != ulong.MinValue) {
+					long expo = (long)new Decimal (System.Math.Pow (10, (double)param.Scale));
+					long pVal = (long)(((decimal)param.Value) * expo);
+					param.Value = pVal;				
+				}
 			}
 
 			
@@ -606,7 +631,8 @@ namespace Mono.Data.Tds.Protocol
 			if (size > 0) {
 				switch (param.TypeName) {
 				case "money" : {
-					Decimal val = (decimal) param.Value;
+					// 4 == SqlMoney::MoneyFormat.NumberDecimalDigits
+					Decimal val = Decimal.Round ((decimal) param.Value, 4);
 					int[] arr = Decimal.GetBits (val);
 
 					if (val >= 0) {
@@ -667,14 +693,9 @@ namespace Mono.Data.Tds.Protocol
 		{
 			Parameters = parameters;
 			string sql = commandText;
-
-			if (Parameters != null && Parameters.Count > 0) {
-				ExecRPC (TdsRpcProcId.ExecuteSql, commandText, parameters, timeout, wantResults);
-			} else {
-				if (wantResults)
-					sql = BuildExec (commandText);
-				ExecuteQuery (sql, timeout, wantResults);
-			}
+			if (wantResults || (Parameters != null && Parameters.Count > 0))
+				sql = BuildExec (commandText);
+			ExecuteQuery (sql, timeout, wantResults);
 		}
 
 		private string FormatParameter (TdsMetaParameter parameter)

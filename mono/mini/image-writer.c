@@ -1164,7 +1164,7 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 	virt_offset = ALIGN_TO (virt_offset, secth [SECT_GOT_PLT].sh_addralign);
 	secth [SECT_GOT_PLT].sh_addr = virt_offset;
 	secth [SECT_GOT_PLT].sh_offset = file_offset;
-	size = 12;
+	size = 3 * SIZEOF_VOID_P;
 	secth [SECT_GOT_PLT].sh_size = size;
 	file_offset += size;
 	virt_offset += size;
@@ -1248,6 +1248,11 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 	size = str_table.data->len;
 	secth [SECT_STRTAB].sh_size = size;
 	file_offset += size;
+
+	for (i = 1; i < SECT_NUM; ++i) {
+		if (section_info [i].esize != 0)
+			g_assert (secth [i].sh_size % section_info [i].esize == 0);
+	}
 
 	file_offset += 4-1;
 	file_offset &= ~(4-1);
@@ -1588,6 +1593,8 @@ asm_writer_emit_alignment (MonoImageWriter *acfg, int size)
 	fprintf (acfg->fp, "\t.align %d\t; ilog2\n", ilog2(size));
 #elif defined(TARGET_ASM_GAS)
 	fprintf (acfg->fp, "\t.balign %d\n", size);
+#elif defined(TARGET_ASM_APPLE)
+	fprintf (acfg->fp, "\t.align %d\n", ilog2 (size));
 #else
 	fprintf (acfg->fp, "\t.align %d\n", size);
 #endif

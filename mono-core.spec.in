@@ -1,5 +1,4 @@
 %{!?ext_man: %define ext_man .gz}
-
 Name:           mono-core
 License:        LGPL v2.1 only
 Group:          Development/Languages/Mono
@@ -91,8 +90,8 @@ BuildRequires:  libunwind-devel
 # Allows overrides of __find_provides in fedora distros... (already set to zero on newer suse distros)
 %define _use_internal_dependency_generator 0
 %endif
-%define __find_provides env sh -c 'filelist=($(cat)) && { printf "%s\\n" "${filelist[@]}" | /usr/lib/rpm/find-provides && printf "%s\\n" "${filelist[@]}" | prefix=%{buildroot}/usr %{buildroot}%{_bindir}/mono-find-provides ; } | sort | uniq'
-%define __find_requires env sh -c 'filelist=($(cat)) && { printf "%s\\n" "${filelist[@]}" | /usr/lib/rpm/find-requires && printf "%s\\n" "${filelist[@]}" | prefix=%{buildroot}/usr %{buildroot}%{_bindir}/mono-find-requires ; } | sort | uniq'
+%define __find_provides env sh -c 'filelist=($(cat)) && { printf "%s\\n" "${filelist[@]}" | /usr/lib/rpm/find-provides && printf "%s\\n" "${filelist[@]}" | prefix=%{buildroot}%{_prefix} %{buildroot}%{_bindir}/mono-find-provides ; } | sort | uniq'
+%define __find_requires env sh -c 'filelist=($(cat)) && { printf "%s\\n" "${filelist[@]}" | /usr/lib/rpm/find-requires && printf "%s\\n" "${filelist[@]}" | prefix=%{buildroot}%{_prefix} %{buildroot}%{_bindir}/mono-find-requires ; } | sort | uniq'
 
 %description
 The Mono Project is an open development initiative that is working to
@@ -174,6 +173,8 @@ Authors:
 %_prefix/lib/mono/gac/Mono.Security
 %_prefix/lib/mono/1.0/Mono.Security.dll
 %_prefix/lib/mono/2.0/Mono.Security.dll
+%_prefix/lib/mono/gac/System.Runtime.Serialization
+%_prefix/lib/mono/2.0/System.Runtime.Serialization.dll
 %_prefix/lib/mono/gac/System.Security
 %_prefix/lib/mono/1.0/System.Security.dll
 %_prefix/lib/mono/2.0/System.Security.dll
@@ -240,7 +241,6 @@ Authors:
 %_prefix/lib/mono/gac/Mono.Cecil.Mdb
 # localizations?
 #%_datadir/locale/*/LC_MESSAGES/mcs.mo
-# Not sure if autobuild allows this...
 
 %post
 /sbin/ldconfig
@@ -359,7 +359,6 @@ Authors:
 %_prefix/lib/mono/2.0/System.Data.dll
 %_prefix/lib/mono/gac/System.Data.Linq
 %_prefix/lib/mono/2.0/System.Data.Linq.dll
-%_prefix/lib/mono/gac/System.Data.Services
 %_prefix/lib/mono/gac/Mono.Data
 %_prefix/lib/mono/1.0/Mono.Data.dll
 %_prefix/lib/mono/2.0/Mono.Data.dll
@@ -585,6 +584,7 @@ Authors:
 %_prefix/lib/mono/2.0/Mono.Data.SybaseClient.dll
 
 %package -n mono-wcf
+License:        MIT License (or similar) ; Ms-Pl
 Summary:        Mono implementation of WCF, Windows Communication Foundation
 Group:          Development/Languages/Mono
 Requires:       mono-core == %version-%release
@@ -610,12 +610,11 @@ Authors:
 %files -n mono-wcf
 %defattr(-, root, root)
 %_bindir/svcutil
+%_prefix/lib/mono/gac/System.Data.Services
 %_prefix/lib/mono/gac/System.IdentityModel
 %_prefix/lib/mono/2.0/System.IdentityModel.dll
 %_prefix/lib/mono/gac/System.IdentityModel.Selectors
 %_prefix/lib/mono/2.0/System.IdentityModel.Selectors.dll
-%_prefix/lib/mono/gac/System.Runtime.Serialization
-%_prefix/lib/mono/2.0/System.Runtime.Serialization.dll
 %_prefix/lib/mono/gac/System.ServiceModel
 %_prefix/lib/mono/2.0/System.ServiceModel.dll
 %_prefix/lib/mono/gac/System.ServiceModel.Web
@@ -624,9 +623,10 @@ Authors:
 %_libdir/pkgconfig/wcf.pc
 
 %package -n mono-winfxcore
-Summary: Mono implementation of core WinFX APIs
-Group: Development/Languages/Mono
-Requires: mono-core == %version-%release
+License:        MIT License (or similar) ; Ms-Pl
+Summary:        Mono implementation of core WinFX APIs
+Group:          Development/Languages/Mono
+Requires:       mono-core == %version-%release
 
 %description -n mono-winfxcore
 The Mono Project is an open development initiative that is working to
@@ -652,7 +652,7 @@ Dietmar Maurer <dietmar@ximian.com>
 %_prefix/lib/mono/2.0/WindowsBase.dll*
 
 %package -n mono-web
-License:        X11/MIT; Ms-Pl
+License:        MIT License (or similar) ; Ms-Pl
 Summary:        Mono implementation of ASP.NET, Remoting and Web Services
 Group:          Development/Languages/Mono
 Requires:       mono-core == %version-%release
@@ -716,6 +716,7 @@ Authors:
 %_prefix/lib/mono/2.0/System.ComponentModel.DataAnnotations.dll
 %_prefix/lib/mono/gac/System.Web.Mvc
 %_prefix/lib/mono/2.0/System.Web.Mvc.dll
+%_prefix/lib/mono/compat-2.0/System.Web.Mvc.dll
 # pkg-config files
 %_libdir/pkgconfig/mono.web.pc
 %_libdir/pkgconfig/system.web.extensions_1.0.pc
@@ -918,7 +919,6 @@ Authors:
 %_prefix/lib/mono/gac/nunit-console-runner
 %_prefix/lib/mono/1.0/nunit-console-runner.dll
 %_prefix/lib/mono/2.0/nunit-console-runner.dll
-
 %_libdir/pkgconfig/mono-nunit.pc
 
 %package -n mono-devel
@@ -926,7 +926,15 @@ License:        LGPL v2.1 only
 Summary:        Mono development tools
 Group:          Development/Languages/Mono
 Requires:       mono-core == %version-%release
-Requires:       glib2-devel
+Recommends:     glib2-devel
+Requires:       pkgconfig
+# Required because they are referenced by .pc files
+Requires:       mono-data == %version-%release
+Requires:       mono-data-oracle == %version-%release
+Requires:       mono-extras == %version-%release
+Requires:       mono-jscript == %version-%release
+Requires:       mono-web == %version-%release
+Requires:       mono-winforms == %version-%release
 %if 0%{?monobuild}
 Requires:       libgdiplus0
 %else
@@ -955,11 +963,7 @@ Authors:
     Paolo Molaro <lupus@ximian.com>
     Dietmar Maurer <dietmar@ximian.com>
 
-%post -n mono-devel
-/sbin/ldconfig
-if [ ! -d /opt/gnome ]; then
-sed -i 's:/opt/gnome:/usr:g' %_libdir/libmono.la
-fi
+%post -n mono-devel -p /sbin/ldconfig
 
 %postun -n mono-devel -p /sbin/ldconfig
 
@@ -968,7 +972,6 @@ fi
 # libs
 %_libdir/libmono.so
 %_libdir/libmono.a
-%verify(not size md5 mtime) %_libdir/libmono.la
 # exes
 %_prefix/lib/mono/1.0/makecert.exe*
 %_prefix/lib/mono/2.0/mono-api-info.exe*
@@ -1002,14 +1005,22 @@ fi
 %_prefix/lib/mono/2.0/mono-xmltool.exe*
 %_prefix/lib/mono/2.0/pdb2mdb.exe*
 # xbuild related files
-%_prefix/lib/mono/2.0/xbuild.exe*
-%_prefix/lib/mono/2.0/Microsoft.Build.xsd
-%_prefix/lib/mono/2.0/Microsoft.Common.tasks
-%_prefix/lib/mono/2.0/Microsoft.Common.targets
-%_prefix/lib/mono/2.0/Microsoft.CSharp.targets
-%_prefix/lib/mono/2.0/Microsoft.VisualBasic.targets
 %_prefix/lib/mono/2.0/MSBuild
+%_prefix/lib/mono/2.0/Microsoft.Build.xsd
+%_prefix/lib/mono/2.0/Microsoft.CSharp.targets
+%_prefix/lib/mono/2.0/Microsoft.Common.targets
+%_prefix/lib/mono/2.0/Microsoft.Common.tasks
+%_prefix/lib/mono/2.0/Microsoft.VisualBasic.targets
+%_prefix/lib/mono/2.0/xbuild.exe*
 %_prefix/lib/mono/2.0/xbuild.rsp
+%_prefix/lib/mono/3.5/MSBuild
+%_prefix/lib/mono/3.5/Microsoft.Build.xsd
+%_prefix/lib/mono/3.5/Microsoft.CSharp.targets
+%_prefix/lib/mono/3.5/Microsoft.Common.targets
+%_prefix/lib/mono/3.5/Microsoft.Common.tasks
+%_prefix/lib/mono/3.5/Microsoft.VisualBasic.targets
+%_prefix/lib/mono/3.5/xbuild.exe*
+%_prefix/lib/mono/3.5/xbuild.rsp
 %_prefix/lib/mono/xbuild
 # man pages
 %_mandir/man1/cert2spc.1%ext_man
@@ -1122,12 +1133,13 @@ fi
 #  yet gzipped
 
 %package -n monodoc-core
-License:        GNU General Public License (GPL)
-Summary:        Monodoc-Documentation tools for C# code
+License:        LGPL v2.1 only
+Summary:        Monodoc - Documentation tools for C# code
 Group:          Development/Tools/Other
-URL:            http://go-mono.org/
 Provides:       monodoc
 Obsoletes:      monodoc
+# Added to uncompress and compare documentation used by build-compare
+Requires:       unzip
 
 %description -n monodoc-core
 Monodoc-core contains documentation tools for C#.
@@ -1228,45 +1240,13 @@ make
 %install
 make install DESTDIR=%buildroot
 # Remove unused files
-rm $RPM_BUILD_ROOT%_libdir/libMonoPosixHelper.a
-rm $RPM_BUILD_ROOT%_libdir/libMonoPosixHelper.la
+rm -f $RPM_BUILD_ROOT%_libdir/*.la
+rm -f $RPM_BUILD_ROOT%_libdir/libMonoPosixHelper.a
 rm -f $RPM_BUILD_ROOT%_libdir/libikvm-native.a
-rm -f $RPM_BUILD_ROOT%_libdir/libikvm-native.la
 rm -fr $RPM_BUILD_ROOT%_prefix/lib/mono/gac/Mono.Security.Win32/[12]*
 rm $RPM_BUILD_ROOT%_prefix/lib/mono/1.0/Mono.Security.Win32.dll
 rm $RPM_BUILD_ROOT%_prefix/lib/mono/2.0/Mono.Security.Win32.dll
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.DGUX386
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.Mac
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.MacOSX
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.OS2
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.amiga
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.arm.cross
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.autoconf
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.changes
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.contributors
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.cords
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.darwin
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.dj
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.environment
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.ews4800
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.hp
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.linux
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.macros
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.rs6000
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.sgi
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.solaris2
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.uts
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/README.win32
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/barrett_diagram
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/debugging.html
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/gc.man
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/gcdescr.html
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/gcinterface.html
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/leak.html
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/scale.html
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/simple_example.html
-rm $RPM_BUILD_ROOT%_datadir/libgc-mono/tree.html
+rm -fr $RPM_BUILD_ROOT%_datadir/libgc-mono
 rm $RPM_BUILD_ROOT%_mandir/man1/cilc.1
 rm $RPM_BUILD_ROOT%_mandir/man1/monostyle.1
 rm $RPM_BUILD_ROOT%_mandir/man1/oldmono.1

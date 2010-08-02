@@ -7131,7 +7131,8 @@ _mono_reflection_parse_type (char *name, char **endptr, gboolean is_recursed,
 					if (!_mono_reflection_parse_type (p, &p, TRUE, subinfo))
 						return 0;
 
-					if (fqname) {
+					/*MS is lenient on [] delimited parameters that aren't fqn - and F# uses them.*/
+					if (fqname && (*p != ']')) {
 						char *aname;
 
 						if (*p != ',')
@@ -7156,6 +7157,8 @@ _mono_reflection_parse_type (char *name, char **endptr, gboolean is_recursed,
 						if (!*aname ||
 						    !assembly_name_to_aname (&subinfo->assembly, aname))
 							return 0;
+					} else if (fqname && (*p == ']')) {
+						*p++ = 0;
 					}
 
 					if (i + 1 < arity) {
@@ -9563,6 +9566,7 @@ mono_reflection_create_generic_class (MonoReflectionTypeBuilder *tb)
 		/*Make sure we are a diferent type instance */
 		klass->generic_container->type_params [i].param.owner = klass->generic_container;
 		klass->generic_container->type_params [i].info.pklass = NULL;
+		klass->generic_container->type_params [i].info.flags = gparam->attrs;
 
 		g_assert (klass->generic_container->type_params [i].param.owner);
 	}
@@ -10468,6 +10472,45 @@ ensure_runtime_vtable (MonoClass *klass)
 	 */
 }
 
+static MonoMethod*
+mono_reflection_method_get_handle (MonoObject *method)
+{
+	MonoClass *class = mono_object_class (method);
+	if (is_sr_mono_method (class) || is_sr_mono_generic_method (class)) {
+		MonoReflectionMethod *sr_method = (MonoReflectionMethod*)method;
+		return sr_method->method;
+	}
+	if (is_sre_method_builder (class)) {
+		MonoReflectionMethodBuilder *mb = (MonoReflectionMethodBuilder*)method;
+		return mb->mhandle;
+	}
+	if (is_sre_method_on_tb_inst (class)) {
+		MonoReflectionMethodOnTypeBuilderInst *m = (MonoReflectionMethodOnTypeBuilderInst*)method;
+		MonoMethod *result;
+		/*FIXME move this to a proper method and unify with resolve_object*/
+		if (m->method_args) {
+			result = mono_reflection_method_on_tb_inst_get_handle (m);
+		} else {
+			MonoType *type = mono_reflection_type_get_handle ((MonoReflectionType*)m->inst);
+			MonoClass *inflated_klass = mono_class_from_mono_type (type);
+			MonoMethod *mono_method;
+
+			if (is_sre_method_builder (mono_object_class (m->mb)))
+				mono_method = ((MonoReflectionMethodBuilder *)m->mb)->mhandle;
+ 			else if (is_sr_mono_method (mono_object_class (m->mb)))
+				mono_method = ((MonoReflectionMethod *)m->mb)->method;
+			else
+				g_error ("resolve_object:: can't handle a MTBI with base_method of type %s", mono_type_get_full_name (mono_object_class (m->mb)));
+
+			result = inflate_mono_method (inflated_klass, mono_method, (MonoObject*)m->mb);
+		}
+		return result;
+	}
+
+	g_error ("Can't handle methods of type %s:%s", class->name_space, class->name);
+	return NULL;
+}
+
 void
 mono_reflection_get_dynamic_overrides (MonoClass *klass, MonoMethod ***overrides, int *num_overrides)
 {
@@ -10504,13 +10547,9 @@ mono_reflection_get_dynamic_overrides (MonoClass *klass, MonoMethod ***overrides
 			MonoReflectionMethodBuilder *mb = 
 				mono_array_get (tb->methods, MonoReflectionMethodBuilder*, i);
 			if (mb->override_method) {
-				(*overrides) [onum * 2] = 
-					mb->override_method->method;
-				(*overrides) [onum * 2 + 1] =
-					mb->mhandle;
+				(*overrides) [onum * 2] = mono_reflection_method_get_handle ((MonoObject *)mb->override_method);
+				(*overrides) [onum * 2 + 1] = mb->mhandle;
 
-				/* FIXME: What if 'override_method' is a MethodBuilder ? */
-				g_assert (mb->override_method->method);
 				g_assert (mb->mhandle);
 
 				onum ++;

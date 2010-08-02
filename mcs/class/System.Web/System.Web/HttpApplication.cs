@@ -864,6 +864,14 @@ namespace System.Web {
 			return null;
 		}
 
+		bool ShouldHandleException (Exception e)
+		{
+			if (e is ParseException)
+				return false;
+
+			return true;
+		}
+		
 		//
 		// If we catch an error, queue this error
 		//
@@ -871,11 +879,13 @@ namespace System.Web {
 		{
 			bool first = context.Error == null;
 			context.AddError (e);
-			if (first) {
+			if (first && ShouldHandleException (e)) {
 				EventHandler eh = nonApplicationEvents [errorEvent] as EventHandler;
 				if (eh != null){
 					try {
 						eh (this, EventArgs.Empty);
+						if (stop_processing)
+							context.ClearError ();
 					} catch (ThreadAbortException taex){
 						context.ClearError ();
 						if (FlagEnd.Value == taex.ExceptionState || HttpRuntime.DomainUnloading)
@@ -937,7 +947,6 @@ namespace System.Web {
 			} catch (ThreadAbortException taex) {
 				object obj = taex.ExceptionState;
 				Thread.ResetAbort ();
-				stop_processing = true;
 				if (obj is StepTimeout)
 					ProcessError (new HttpException ("The request timed out."));
 				else {
@@ -945,11 +954,12 @@ namespace System.Web {
 					if (FlagEnd.Value != obj && !HttpRuntime.DomainUnloading)
 						context.AddError (taex);
 				}
-
+				
+				stop_processing = true;
 				PipelineDone ();
 			} catch (Exception e) {
-				stop_processing = true;
 				ProcessError (e);
+				stop_processing = true;
 				PipelineDone ();
 			}
 		}

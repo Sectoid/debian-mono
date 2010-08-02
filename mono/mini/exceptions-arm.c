@@ -12,7 +12,12 @@
 #include <glib.h>
 #include <signal.h>
 #include <string.h>
+#ifdef HAVE_ASM_SIGCONTEXT_H
+#include <asm/sigcontext.h>
+#endif  /* def HAVE_ASM_SIGCONTEXT_H */
+#ifdef HAVE_UCONTEXT_H
 #include <ucontext.h>
+#endif  /* def HAVE_UCONTEXT_H */
 
 #include <mono/arch/arm/arm-codegen.h>
 #include <mono/metadata/appdomain.h>

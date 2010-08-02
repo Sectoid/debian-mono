@@ -50,7 +50,7 @@ namespace System.Web.UI
 		{
 		}
 
-		internal override void AddDirective (string directive, Hashtable atts)
+		internal override void AddDirective (string directive, IDictionary atts)
 		{
 			int cmp = String.Compare ("Register", directive, StringComparison.OrdinalIgnoreCase);
 			if (cmp == 0) {

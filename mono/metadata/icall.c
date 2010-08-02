@@ -2788,6 +2788,11 @@ ves_icall_InternalInvoke (MonoReflectionMethod *method, MonoObject *this, MonoAr
 		mono_security_core_clr_ensure_reflection_access_method (m);
 
 	if (!(m->flags & METHOD_ATTRIBUTE_STATIC)) {
+		if (!mono_class_vtable_full (mono_object_domain (method), m->klass, FALSE)) {
+			mono_gc_wbarrier_generic_store (exc, (MonoObject*) mono_class_get_exception_for_failure (m->klass));
+			return NULL;
+		}
+
 		if (this) {
 			if (!mono_object_isinst (this, m->klass)) {
 				mono_gc_wbarrier_generic_store (exc, (MonoObject*) mono_exception_from_name_msg (mono_defaults.corlib, "System.Reflection", "TargetException", "Object does not match target type."));
@@ -3040,6 +3045,7 @@ ves_icall_System_Enum_ToObject (MonoReflectionType *enumType, MonoObject *value)
 	MonoDomain *domain; 
 	MonoClass *enumc, *objc;
 	MonoObject *res;
+	MonoType *etype;
 	guint64 val;
 	
 	MONO_ARCH_SAVE_REGS;
@@ -3056,9 +3062,14 @@ ves_icall_System_Enum_ToObject (MonoReflectionType *enumType, MonoObject *value)
 	if (!((objc->enumtype) || (objc->byval_arg.type >= MONO_TYPE_I1 && objc->byval_arg.type <= MONO_TYPE_U8)))
 		mono_raise_exception (mono_get_exception_argument ("value", "The value passed in must be an enum base or an underlying type for an enum, such as an Int32."));
 
+	etype = mono_class_enum_basetype (enumc);
+	if (!etype)
+		/* MS throws this for typebuilders */
+		mono_raise_exception (mono_get_exception_argument ("Type must be a type provided by the runtime.", "enumType"));
+
 	res = mono_object_new (domain, enumc);
 	val = read_enum_value ((char *)value + sizeof (MonoObject), objc->enumtype? mono_class_enum_basetype (objc)->type: objc->byval_arg.type);
-	write_enum_value ((char *)res + sizeof (MonoObject), mono_class_enum_basetype (enumc)->type, val);
+	write_enum_value ((char *)res + sizeof (MonoObject), etype->type, val);
 
 	return res;
 }
@@ -3093,9 +3104,16 @@ ves_icall_System_Enum_get_value (MonoObject *this)
 static MonoReflectionType *
 ves_icall_System_Enum_get_underlying_type (MonoReflectionType *type)
 {
+	MonoType *etype;
+
 	MONO_ARCH_SAVE_REGS;
 
-	return mono_type_get_object (mono_object_domain (type), mono_class_enum_basetype (mono_class_from_mono_type (type->type)));
+	etype = mono_class_enum_basetype (mono_class_from_mono_type (type->type));
+	if (!etype)
+		/* MS throws this for typebuilders */
+		mono_raise_exception (mono_get_exception_argument ("Type must be a type provided by the runtime.", "enumType"));
+
+	return mono_type_get_object (mono_object_domain (type), etype);
 }
 
 static int
@@ -3783,7 +3801,7 @@ ves_icall_MonoType_GetEvent (MonoReflectionType *type, MonoString *name, guint32
 	MonoEvent *event;
 	MonoMethod *method;
 	gchar *event_name;
-
+	int (*compare_func) (const char *s1, const char *s2) = NULL;
 	MONO_ARCH_SAVE_REGS;
 
 	event_name = mono_string_to_utf8 (name);
@@ -3792,13 +3810,15 @@ ves_icall_MonoType_GetEvent (MonoReflectionType *type, MonoString *name, guint32
 	klass = startklass = mono_class_from_mono_type (type->type);
 	domain = mono_object_domain (type);
 
-handle_parent:	
+	compare_func = (bflags & BFLAGS_IgnoreCase) ? mono_utf8_strcasecmp : strcmp;
+
+  handle_parent:
 	if (klass->exception_type != MONO_EXCEPTION_NONE)
 		mono_raise_exception (mono_class_get_exception_for_failure (klass));
 
 	iter = NULL;
 	while ((event = mono_class_get_events (klass, &iter))) {
-		if (strcmp (event->name, event_name))
+		if (compare_func (event->name, event_name))
 			continue;
 
 		method = event->add;
@@ -5701,6 +5721,20 @@ ves_icall_Type_IsArrayImpl (MonoReflectionType *t)
 	return res;
 }
 
+static void
+check_for_invalid_type (MonoClass *klass)
+{
+	char *name;
+	MonoString *str;
+	if (klass->byval_arg.type != MONO_TYPE_TYPEDBYREF)
+		return;
+
+	name = mono_type_get_full_name (klass);
+	str =  mono_string_new (mono_domain_get (), name);
+	g_free (name);
+	mono_raise_exception ((MonoException*)mono_get_exception_type_load (str, NULL));
+
+}
 static MonoReflectionType *
 ves_icall_Type_make_array_type (MonoReflectionType *type, int rank)
 {
@@ -5709,6 +5743,8 @@ ves_icall_Type_make_array_type (MonoReflectionType *type, int rank)
 	MONO_ARCH_SAVE_REGS;
 
 	klass = mono_class_from_mono_type (type->type);
+	check_for_invalid_type (klass);
+
 	if (rank == 0) //single dimentional array
 		aklass = mono_array_class_get (klass, 1);
 	else
@@ -5725,6 +5761,7 @@ ves_icall_Type_make_byref_type (MonoReflectionType *type)
 	MONO_ARCH_SAVE_REGS;
 
 	klass = mono_class_from_mono_type (type->type);
+	check_for_invalid_type (klass);
 
 	return mono_type_get_object (mono_object_domain (type), &klass->this_arg);
 }
@@ -5732,9 +5769,13 @@ ves_icall_Type_make_byref_type (MonoReflectionType *type)
 static MonoReflectionType *
 ves_icall_Type_MakePointerType (MonoReflectionType *type)
 {
-	MonoClass *pklass;
+	MonoClass *klass, *pklass;
+
 
 	MONO_ARCH_SAVE_REGS;
+
+	klass = mono_class_from_mono_type (type->type);
+	check_for_invalid_type (klass);
 
 	pklass = mono_ptr_class_get (type->type);
 
@@ -6422,6 +6463,9 @@ ves_icall_System_Environment_Exit (int result)
 	mono_threads_set_shutting_down ();
 
 	mono_runtime_set_shutting_down ();
+
+	/* This will kill the tp threads which cannot be suspended */
+	mono_thread_pool_cleanup ();
 
 	/* Suspend all managed threads since the runtime is going away */
 	mono_thread_suspend_all_other_threads ();

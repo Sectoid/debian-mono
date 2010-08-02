@@ -704,22 +704,28 @@ find_method (MonoClass *in_class, MonoClass *ic, const char* name, MonoMethodSig
 }
 
 static MonoMethodSignature*
-inflate_generic_signature (MonoImage *image, MonoMethodSignature *sig, MonoGenericContext *context)
+inflate_generic_signature_checked (MonoImage *image, MonoMethodSignature *sig, MonoGenericContext *context, MonoError *error)
 {
 	MonoMethodSignature *res;
 	gboolean is_open;
 	int i;
 
+	mono_error_init (error);
 	if (!context)
 		return sig;
 
 	res = g_malloc0 (MONO_SIZEOF_METHOD_SIGNATURE + ((gint32)sig->param_count) * sizeof (MonoType*));
 	res->param_count = sig->param_count;
 	res->sentinelpos = -1;
-	res->ret = mono_class_inflate_generic_type (sig->ret, context);
+	res->ret = mono_class_inflate_generic_type_checked (sig->ret, context, error);
+	if (!mono_error_ok (error))
+		goto fail;
 	is_open = mono_class_is_open_constructed_type (res->ret);
 	for (i = 0; i < sig->param_count; ++i) {
-		res->params [i] = mono_class_inflate_generic_type (sig->params [i], context);
+		res->params [i] = mono_class_inflate_generic_type_checked (sig->params [i], context, error);
+		if (!mono_error_ok (error))
+			goto fail;
+
 		if (!is_open)
 			is_open = mono_class_is_open_constructed_type (res->params [i]);
 	}
@@ -731,6 +737,25 @@ inflate_generic_signature (MonoImage *image, MonoMethodSignature *sig, MonoGener
 	res->sentinelpos = sig->sentinelpos;
 	res->has_type_parameters = is_open;
 	res->is_inflated = 1;
+	return res;
+
+fail:
+	if (res->ret)
+		mono_metadata_free_type (res->ret);
+	for (i = 0; i < sig->param_count; ++i) {
+		if (res->params [i])
+			mono_metadata_free_type (res->params [i]);
+	}
+	g_free (res);
+	return NULL;
+}
+
+static MonoMethodSignature*
+inflate_generic_signature (MonoImage *image, MonoMethodSignature *sig, MonoGenericContext *context)
+{
+	MonoError error;
+	MonoMethodSignature *res = inflate_generic_signature_checked (image, sig, context, &error);
+	g_assert (mono_error_ok (&error)); /*FIXME move callers to use _checked version*/
 	return res;
 }
 
@@ -823,10 +848,17 @@ mono_method_get_signature_full (MonoMethod *method, MonoImage *image, guint32 to
 	}
 
 	if (context) {
+		MonoError error;
 		MonoMethodSignature *cached;
 
 		/* This signature is not owned by a MonoMethod, so need to cache */
-		sig = inflate_generic_signature (image, sig, context);
+		sig = inflate_generic_signature_checked (image, sig, context, &error);
+		if (!mono_error_ok (&error)) {/*XXX bubble up this and kill one use of loader errors */
+			mono_loader_set_error_bad_image (g_strdup_printf ("Could not inflate signature %s", mono_error_get_message (&error)));
+			mono_error_cleanup (&error);
+			return NULL;
+		}
+
 		cached = mono_metadata_get_inflated_signature (sig, context);
 		if (cached != sig)
 			mono_metadata_free_inflated_signature (sig);
@@ -1865,6 +1897,8 @@ mono_method_get_marshal_info (MonoMethod *method, MonoMarshalSpec **mspecs)
 				if (dyn_specs [i]) {
 					mspecs [i] = g_new0 (MonoMarshalSpec, 1);
 					memcpy (mspecs [i], dyn_specs [i], sizeof (MonoMarshalSpec));
+					mspecs [i]->data.custom_data.custom_name = g_strdup (dyn_specs [i]->data.custom_data.custom_name);
+					mspecs [i]->data.custom_data.cookie = g_strdup (dyn_specs [i]->data.custom_data.cookie);
 				}
 		}
 		return;
@@ -2086,10 +2120,15 @@ mono_method_signature (MonoMethod *m)
 	}
 
 	if (m->is_inflated) {
+		MonoError error;
 		MonoMethodInflated *imethod = (MonoMethodInflated *) m;
 		/* the lock is recursive */
 		signature = mono_method_signature (imethod->declaring);
-		signature = inflate_generic_signature (imethod->declaring->klass->image, signature, mono_method_get_context (m));
+		signature = inflate_generic_signature_checked (imethod->declaring->klass->image, signature, mono_method_get_context (m), &error);
+		if (!mono_error_ok (&error)) {
+			mono_loader_unlock ();
+			return NULL;
+		}
 
 		inflated_signatures_size += mono_metadata_signature_size (signature);
 
