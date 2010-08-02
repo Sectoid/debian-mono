@@ -227,6 +227,7 @@ Files: mcs/tools/pdb2mdb/*,
        mcs/class/dlr/*,
        mcs/class/MicrosoftAjaxLibrary/*, 
        mcs/class/System.Web.Mvc/*,
+       mcs/class/System.Web.Mvc2/*,
        mono/docs/HtmlAgilityPack/*
 Copyright: © 2003 Ximian, Inc (http://www.ximian.com)
            © 2007-2009 Microsoft Corporation
