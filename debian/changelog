@@ -1,3 +1,26 @@
+mono (2.6.7-1) experimental; urgency=low
+
+  [ Mirco Bauer ]
+  * The "squeeze-ing the best out of Mono" release
+  * [c91fe56] Added git-dch settings
+  * [665316e] Imported Upstream version 2.6.7
+    + Includes ASP.NET MVC 2.0
+  * [1823ffa] Don't let git-import-orig do merges
+  * [9b50f29] Implemented tool to test merge all debian patch branches
+    against the upstream branch.
+  * [d06b9ad] Only merge branches that really begin with
+    debian/patches/*
+  * [822f606] Added System.Web.Mvc2 to debian/copyright
+  * [45d4f69] Added libmono-system-web-mvc2.0-cil package
+  * [b9b720e] Fix mono/test test suite compilation.
+
+  [ Andy Stührk ]
+  * [f6745b9] XplatUIX11.WorkingArea can segfault if the WM does not
+    support _NET_WORKAREA (Closes: #557229)
+    (thanks to Brian Pellin and Andy Stührk for the investigation and patch)
+
+ -- Mirco Bauer <meebey@debian.org>  Sat, 07 Aug 2010 00:35:39 +0200
+
 mono (2.6.3-4) experimental; urgency=low
 
   * Backported fix from upstream SVN revision r158081, which corrects
