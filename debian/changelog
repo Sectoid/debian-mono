@@ -1,3 +1,23 @@
+mono (2.6.7-2) experimental; urgency=low
+
+  [ Mirco Bauer ]
+  * [d1bf954] Added missing tasks and targets files for xbuild 3.5
+  * [814bfd7] Bumped clilibs of libmono-data-tds{1,2}.0-cil, libmono-
+    security2.0-cil, libmono-microsoft-build2.0-cil and libmono-
+    debugger-soft0.0-cil
+  * [3c1d0ef] Added development symlink for System.Web.Mvc to libmono-
+    system-web-mvc1.0-cil
+
+  [ Iain Lane ]
+  * [754b410] Revert upstream commit 59db1f55409d80fc93ed, which
+    commented out the Requires line in mono.pc.in.
+
+  [ Jo Shields ]
+  * [ea1f755] Add full definitions for all AMD64 registers on kFreeBSD.
+    This fixes a FTBFS on kFreeBSD-AMD64.
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 24 Aug 2010 02:26:43 +0200
+
 mono (2.6.7-1) experimental; urgency=low
 
   [ Mirco Bauer ]
