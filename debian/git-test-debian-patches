@@ -32,7 +32,7 @@ for DEBIAN_PATCH in $DEBIAN_PATCHES; do
         if [ $? != 0 ]; then
                 echo "ERROR: Test merge of $DEBIAN_PATCH failed, branch needs update!"
         else
-                DELTA=$(git diff HEAD | wc -l)
+                DELTA=$(git diff --no-ext-diff HEAD | wc -l)
                 if [ $DELTA = 0 ]; then
                         echo "WARNING: delta of $DEBIAN_PATCH is 0! Patch already applied upstream, drop branch!"
                 fi
