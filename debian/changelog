@@ -1,3 +1,18 @@
+mono (2.6.7-3) unstable; urgency=low
+
+  * The "welcome to new java refugees" release
+
+  [ Iain Lane ]
+  * [a2781e1] Add an environment variable to control X509 validation
+    mode, and set default to no check
+  * [a16f93a] Add --no-ext-diff to git diff call of git-test-debian-
+    patches
+
+  [ Mirco Bauer ]
+  * [cb9c6c2] Fixed manpage name sections. (closes: #595149)
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 09 Sep 2010 01:09:45 +0200
+
 mono (2.6.7-2) experimental; urgency=low
 
   [ Mirco Bauer ]
