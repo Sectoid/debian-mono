@@ -1442,6 +1442,14 @@ AMQP implementation the variable should be set to:
 
 .nf
 Mono.Messaging.RabbitMQ.RabbitMQMessagingProvider,Mono.Messaging.RabbitMQ
+.fi
+.TP
+\fBMONO_X509_REVOCATION_MODE\fR
+Sets the revocation mode used when validating a X509 certificate chain (https,
+ftps, smtps...).  The default is 'nocheck', which performs no revocation check
+at all. The other possible values are 'offline', which performs CRL check (not
+implemented yet) and 'online' which uses OCSP and CRL to verify the revocation
+status (not implemented yet).
 .SH ENVIRONMENT VARIABLES FOR DEBUGGING
 .TP
 \fBMONO_ASPNET_NODELETE\fR
