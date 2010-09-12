@@ -14,36 +14,29 @@ using System.Net;
 using System.Net.Sockets;
 using System.ServiceModel.Description;
 using System.Text;
+using System.Threading;
+using System.Xml;
 
 namespace System.ServiceModel.Channels
 {
-	internal class TcpChannelListener<TChannel> : ChannelListenerBase<TChannel> 
+	internal class TcpChannelListener<TChannel> : InternalChannelListenerBase<TChannel> 
 		where TChannel : class, IChannel
 	{
-		List<IChannel> channels = new List<IChannel> ();
 		BindingContext context;
 		TcpChannelInfo info;
-		IDuplexSession session;
-		Uri listen_uri;
 		TcpListener tcp_listener;
 		
-		[MonoTODO]
-		public TcpChannelListener (TcpTransportBindingElement source, 
-		                           BindingContext context) : base (context.Binding)
+		public TcpChannelListener (TcpTransportBindingElement source, BindingContext context)
+			: base (context)
 		{
 			MessageEncoder encoder = null;
-			if (context.ListenUriMode == ListenUriMode.Explicit)
-				listen_uri =
-					context.ListenUriRelativeAddress != null ?
-					new Uri (context.ListenUriBaseAddress, context.ListenUriRelativeAddress) :
-					context.ListenUriBaseAddress;
-			else
-				throw new NotImplementedException ();
-			
+			XmlDictionaryReaderQuotas quotas = null;
+
 			foreach (BindingElement be in context.RemainingBindingElements) {
 				MessageEncodingBindingElement mbe = be as MessageEncodingBindingElement;
 				if (mbe != null) {
-					encoder = mbe.CreateMessageEncoderFactory ().Encoder;
+					encoder = CreateEncoder<TChannel> (mbe);
+					quotas = mbe.GetProperty<XmlDictionaryReaderQuotas> (context);
 					break;
 				}
 			}
@@ -51,57 +44,81 @@ namespace System.ServiceModel.Channels
 			if (encoder == null)
 				encoder = new BinaryMessageEncoder ();
 
-			info = new TcpChannelInfo (source, encoder);
+			info = new TcpChannelInfo (source, encoder, quotas);
 		}
 		
-		public override Uri Uri {
-			get { return listen_uri; }
-		}
-		
-		[MonoTODO]
+		List<ManualResetEvent> accept_handles = new List<ManualResetEvent> ();
+		List<TChannel> accepted_channels = new List<TChannel> ();
+
 		protected override TChannel OnAcceptChannel (TimeSpan timeout)
 		{
-			TChannel channel = PopulateChannel (timeout);
-			channels.Add (channel);
-			return channel;
-		}
-		
-		TChannel PopulateChannel (TimeSpan timeout)
-		{
-			TcpClient cli = tcp_listener.AcceptTcpClient ();
+			DateTime start = DateTime.Now;
 
-			// FIXME: pass delegate or something to remove the channel instance from "channels" when it is closed.
+			// Close channels that are incorrectly kept open first.
+			var l = new List<TcpDuplexSessionChannel> ();
+			foreach (var tch in accepted_channels) {
+				var dch = tch as TcpDuplexSessionChannel;
+				if (dch != null && dch.TcpClient != null && !dch.TcpClient.Connected)
+					l.Add (dch);
+			}
+			foreach (var dch in l)
+				dch.Close (timeout - (DateTime.Now - start));
+
+			TcpClient client = AcceptTcpClient (timeout - (DateTime.Now - start));
+			if (client == null)
+				return null; // onclose
+
+			TChannel ch;
+
 			if (typeof (TChannel) == typeof (IDuplexSessionChannel))
-				return (TChannel) (object) new TcpDuplexSessionChannel (this, info, cli, timeout);
+				ch = (TChannel) (object) new TcpDuplexSessionChannel (this, info, client);
+			else if (typeof (TChannel) == typeof (IReplyChannel))
+				ch = (TChannel) (object) new TcpReplyChannel (this, info, client);
+			else
+				throw new InvalidOperationException (String.Format ("Channel type {0} is not supported.", typeof (TChannel).Name));
 
-			// FIXME: To implement more.
-			throw new NotImplementedException ();
+			((ChannelBase) (object) ch).Closed += delegate {
+				accepted_channels.Remove (ch);
+				};
+			accepted_channels.Add (ch);
+
+			return ch;
 		}
 
-		[MonoTODO]
-		protected override IAsyncResult OnBeginAcceptChannel (TimeSpan timeout,
-			AsyncCallback callback, object asyncState)
+		// TcpReplyChannel requires refreshed connection after each request processing.
+		internal TcpClient AcceptTcpClient (TimeSpan timeout)
 		{
-			throw new NotImplementedException ();
-		}
+			DateTime start = DateTime.Now;
 
-		[MonoTODO]
-		protected override TChannel OnEndAcceptChannel (IAsyncResult result)
-		{
-			throw new NotImplementedException ();
-		}
-		
-		[MonoTODO]
-		protected override IAsyncResult OnBeginWaitForChannel (
-			TimeSpan timeout, AsyncCallback callback, object state)
-		{
-			throw new NotImplementedException ();
-		}
+			TcpClient client = null;
+			if (tcp_listener.Pending ()) {
+				client = tcp_listener.AcceptTcpClient ();
+			} else {
+				var wait = new ManualResetEvent (false);
+				tcp_listener.BeginAcceptTcpClient (delegate (IAsyncResult result) {
+					client = tcp_listener.EndAcceptTcpClient (result);
+					wait.Set ();
+					accept_handles.Remove (wait);
+				}, null);
+				if (State == CommunicationState.Closing)
+					return null;
+				accept_handles.Add (wait);
+				wait.WaitOne (timeout);
+			}
 
-		[MonoTODO]
-		protected override bool OnEndWaitForChannel (IAsyncResult result)
-		{
-			throw new NotImplementedException ();
+			// This may be optional though ...
+			if (client != null) {
+				foreach (var ch in accepted_channels) {
+					var dch = ch as TcpDuplexSessionChannel;
+					if (dch == null || dch.TcpClient == null && !dch.TcpClient.Connected)
+						continue;
+					if (((IPEndPoint) dch.TcpClient.Client.RemoteEndPoint).Equals (client.Client.RemoteEndPoint))
+						// ... then it should be handled in another BeginTryReceive/EndTryReceive loop in ChannelDispatcher.
+						return AcceptTcpClient (timeout - (DateTime.Now - start));
+				}
+			}
+
+			return client;
 		}
 
 		[MonoTODO]
@@ -112,54 +129,40 @@ namespace System.ServiceModel.Channels
 		
 		// CommunicationObject
 		
-		[MonoTODO]
 		protected override void OnAbort ()
 		{
-			throw new NotImplementedException ();
+			if (State == CommunicationState.Closed)
+				return;
+			ProcessClose ();
 		}
 
-		[MonoTODO]
-		protected override IAsyncResult OnBeginClose (TimeSpan timeout,
-			AsyncCallback callback, object state)
-		{
-			throw new NotImplementedException ();
-		}
-
-		[MonoTODO]
-		protected override IAsyncResult OnBeginOpen (TimeSpan timeout,
-			AsyncCallback callback, object state)
-		{
-			throw new NotImplementedException ();
-		}
-
-		[MonoTODO]
 		protected override void OnClose (TimeSpan timeout)
 		{
+			if (State == CommunicationState.Closed)
+				return;
+			ProcessClose ();
+		}
+
+		void ProcessClose ()
+		{
+			if (tcp_listener == null)
+				throw new InvalidOperationException ("Current state is " + State);
+			lock (accept_handles) {
+				foreach (var wait in accept_handles)
+					wait.Set ();
+			}
 			tcp_listener.Stop ();
 			tcp_listener = null;
 		}
-		
-		[MonoTODO]
-		protected override void OnEndClose (IAsyncResult result)
-		{
-			throw new NotImplementedException ();
-		}
 
-		[MonoTODO]
-		protected override void OnEndOpen (IAsyncResult result)
-		{
-			throw new NotImplementedException ();
-		}
-		
-		[MonoTODO]
 		protected override void OnOpen (TimeSpan timeout)
 		{
-			IPHostEntry entry = Dns.GetHostEntry (listen_uri.Host);
+			IPHostEntry entry = Dns.GetHostEntry (Uri.Host);
 			
 			if (entry.AddressList.Length ==0)
-				throw new ArgumentException (String.Format ("Invalid listen URI: {0}", listen_uri));
+				throw new ArgumentException (String.Format ("Invalid listen URI: {0}", Uri));
 			
-			int explicitPort = listen_uri.Port;
+			int explicitPort = Uri.Port;
 			tcp_listener = new TcpListener (entry.AddressList [0], explicitPort <= 0 ? TcpTransportBindingElement.DefaultPort : explicitPort);
 			tcp_listener.Start ();
 		}

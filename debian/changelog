@@ -1,4 +1,119 @@
-mono (2.4.4~svn151842-3) unstable; urgency=medium
+mono (2.6.7-3) unstable; urgency=low
+
+  * The "welcome to new java refugees" release
+
+  [ Iain Lane ]
+  * [a2781e1] Add an environment variable to control X509 validation
+    mode, and set default to no check
+  * [a16f93a] Add --no-ext-diff to git diff call of git-test-debian-
+    patches
+
+  [ Mirco Bauer ]
+  * [cb9c6c2] Fixed manpage name sections. (closes: #595149)
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 09 Sep 2010 01:09:45 +0200
+
+mono (2.6.7-2) experimental; urgency=low
+
+  [ Mirco Bauer ]
+  * [d1bf954] Added missing tasks and targets files for xbuild 3.5
+  * [814bfd7] Bumped clilibs of libmono-data-tds{1,2}.0-cil, libmono-
+    security2.0-cil, libmono-microsoft-build2.0-cil and libmono-
+    debugger-soft0.0-cil
+  * [3c1d0ef] Added development symlink for System.Web.Mvc to libmono-
+    system-web-mvc1.0-cil
+
+  [ Iain Lane ]
+  * [754b410] Revert upstream commit 59db1f55409d80fc93ed, which
+    commented out the Requires line in mono.pc.in.
+
+  [ Jo Shields ]
+  * [ea1f755] Add full definitions for all AMD64 registers on kFreeBSD.
+    This fixes a FTBFS on kFreeBSD-AMD64.
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 24 Aug 2010 02:26:43 +0200
+
+mono (2.6.7-1) experimental; urgency=low
+
+  [ Mirco Bauer ]
+  * The "squeeze-ing the best out of Mono" release
+  * [c91fe56] Added git-dch settings
+  * [665316e] Imported Upstream version 2.6.7
+    + Includes ASP.NET MVC 2.0
+  * [1823ffa] Don't let git-import-orig do merges
+  * [9b50f29] Implemented tool to test merge all debian patch branches
+    against the upstream branch.
+  * [d06b9ad] Only merge branches that really begin with
+    debian/patches/*
+  * [822f606] Added System.Web.Mvc2 to debian/copyright
+  * [45d4f69] Added libmono-system-web-mvc2.0-cil package
+  * [b9b720e] Fix mono/test test suite compilation.
+
+  [ Andy Stührk ]
+  * [f6745b9] XplatUIX11.WorkingArea can segfault if the WM does not
+    support _NET_WORKAREA (Closes: #557229)
+    (thanks to Brian Pellin and Andy Stührk for the investigation and patch)
+
+ -- Mirco Bauer <meebey@debian.org>  Sat, 07 Aug 2010 00:35:39 +0200
+
+mono (2.6.3-4) experimental; urgency=low
+
+  * Backported fix from upstream SVN revision r158081, which corrects
+    xbuild's handling of wildcards with directories. This fixes a bug
+    which prevents Pinta 0.4 from being built. Thanks to Ankit Jain
+    <jankit@novell.com>
+
+ -- Jo Shields <directhex@apebox.org>  Wed, 07 Jul 2010 10:56:17 +0100
+
+mono (2.6.3-3) experimental; urgency=low
+
+  * git:debian/patches/arm_cpuinfo_parsing:
+    + Fix bug in QEMU-friendly ARM CPU capability parsing, by setting
+      v7_supported explicitly to FALSE on non-QEMU hardware, unless
+      a v7 CPU is detected (previously it was MAYBE, so v7 instructions
+      were always generated)
+
+ -- Jo Shields <directhex@apebox.org>  Thu, 01 Jul 2010 00:38:28 +0100
+
+mono (2.6.3-2) experimental; urgency=low
+
+  * git:debian/patches/kfreebsd_support:
+    + Ensure all FreeBSD ifdefs also apply to kFreeBSD
+    + Use &ctx->uc_mcontext, not &ctx->uc_mcontext.gregs, on FreeBSD kernels
+    + Ensure kFreeBSD follows POSIX signal code paths
+    + (Closes: #585662)
+  * git:debian/patches/fix_GetTypeDescriptor_wrapped_type_call_forwarding_r157626:
+    + Backport from upstream SVN repository to fix upstream bug 603060, which
+      causes TypeDescriptorProvider to return false values on wrapped types
+  * git:debian/patches/insecure_EnableViewStateMac_XSS_CVE-2010-1459:
+    + Backport from upstream SVN repository to fix CVE-2010-1459, which
+      implies that the default value for EnableViewStateMac can potentially
+      allow XSS attacks against ASP.NET sites hosted on Mono
+      (Closes: #585440)
+  * debian/update-monodoc:
+    + Updated script from Iain Lane <laney@ubuntu.com> which no longer fails
+      when called using bash rather than dash (Closes: #580665)
+  * debian/control:
+    + Add a Replaces: on libmono-dev << 2.4.3 (Closes: #582614)
+  * debian/control,
+    debian/libmono{1,0}.0-cil.install,
+    debian/mono-{1,2}.0-service.install:
+    + Move mono-service executables' GAC entries to mono-service packages
+      where they belong (Closes: #586192)
+
+ -- Jo Shields <directhex@apebox.org>  Tue, 22 Jun 2010 08:53:51 +0100
+
+mono (2.6.3-1) experimental; urgency=low
+
+  * New upstream release (Closes: #572901)
+    + Soft debugger
+    + Co-routine framework Mono.Tasklets
+    + Auto-completion for the csharp shell
+    + LINQ to SQL
+    + Enhanced XBuild
+    + Mono.Simd for AMD64
+    + Verifier and Sandbox (used by Moonlight)
+    + Debugging support for GDB
 
   [ Mirco Bauer ]
   * The "Good bye dpatch, hello git" release
@@ -16,23 +131,45 @@ mono (2.4.4~svn151842-3) unstable; urgency=medium
     not dash. Prevented the generation of the monodoc search indexes using
     the trigger. (Closes: #580665)
 
-  [ Jo Shields ]
-  * debian/control:
-    + Add a Replaces: on libmono-dev << 2.4.3 (Closes: #582614)
-  * debian/control,
-    debian/libmono{1,0}.0-cil.install,
-    debian/mono-{1,2}.0-service.install:
-    + Move mono-service executables' GAC entries to mono-service packages
-      where they belong (Closes: #586192)
-  * git:debian/patches/insecure_EnableViewStateMac_XSS_CVE-2010-1459:
-    + Backport from upstream SVN repository to fix CVE-2010-1459, which
-      implies that the default value for EnableViewStateMac can potentially
-      allow XSS attacks against ASP.NET sites hosted on Mono (Closes: #585440)
-  * git:debian/patches/fix_GetTypeDescriptor_wrapped_type_call_forwarding_r157626:
-    + Backport from upstream SVN repository to fix upstream bug 603060, which
-      causes TypeDescriptorProvider to return false values on wrapped types
+  * debian/mono-dbg.install:
+    + Added mono-gdb.py script for gdb integration
+  * debian/control
+    debian/libmono-debugger-soft0.0-cil.install:
+    + New package for the soft debugger library.
+  * debian/libmono-microsoft-build2.0-cil.install:
+    + Added new libraries.
+  * debian/control
+    debian/libmono-c5-1.0-cil.install
+    debian/libmono-c5-1.1-cil.install:
+    + Renamed the libmono-c5-1.0-cil package to libmono-c5-1.1-cil as the
+      assembly version changed.
+  * debiab/control
+    debian/libmono-tasklets2.0-cil.install:
+    + New package for the continuations library.
+  * debian/libmono-wcf3.0-cil.install:
+    + Added new System.Data.Services library.
+    + Updated System.ServiceModel.Web GAC path.
+  * debian/mono-devel.install
+    debian/mono-devel.manpages:
+    + Added pdb2mdb, sqlmetal, svcutil and RabbitMQ.Client.Apigen.exe.
+    + Updated mono-xmltool.exe path.
+  * debian/control
+    debian/libmono-windowsbase3.0-cil.install:
+    + New package containing the WindowsBase library which used to be part of
+      the mono-uia source package.
+  * debian/watch:
+    + Tracking latest branch now.
+  * debian/copyright:
+    + Completly rewritten copyright file in DEP5 format based on
+      moonlight 2.0's debian/copyright written by Jo Shields with minor
+      modifications.
+    + Updated debian/* copyright.
+  * debian/rules:
+    + Dropped build-arch/indep split as we needed to build 90% of the classlib
+      for the test suite anyhow.
+    + Bumped clilibs where needed.
 
- -- Mirco Bauer <meebey@debian.org>  Fri, 25 Jun 2010 01:56:31 +0200
+ -- Mirco Bauer <meebey@debian.org>  Sun, 06 Jun 2010 17:45:35 +0200
 
 mono (2.4.4~svn151842-2) unstable; urgency=low
 

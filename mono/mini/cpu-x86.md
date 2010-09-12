@@ -61,6 +61,8 @@ break: len:1
 jmp: len:32
 call: dest:a clob:c len:17
 br: len:5
+seq_point: len:16
+
 int_beq: len:6
 int_bge: len:6
 int_bgt: len:6
@@ -96,7 +98,7 @@ int_not: dest:i src1:i len:2 clob:1
 int_conv_to_i1: dest:i src1:y len:3
 int_conv_to_i2: dest:i src1:i len:3
 int_conv_to_i4: dest:i src1:i len:2
-int_conv_to_r4: dest:f src1:i len:7
+int_conv_to_r4: dest:f src1:i len:13
 int_conv_to_r8: dest:f src1:i len:7
 int_conv_to_u4: dest:i src1:i
 int_conv_to_u2: dest:i src1:i len:3
@@ -117,20 +119,18 @@ cgt: dest:y len:6
 cgt.un: dest:y len:6
 clt: dest:y len:6
 clt.un: dest:y len:6
-cne: dest:y len:6
 localloc: dest:i src1:i len:120
 compare: src1:i src2:i len:2
 compare_imm: src1:i len:6
 fcompare: src1:f src2:f clob:a len:9
 oparglist: src1:b len:10
-setlret: dest:l src1:i src2:i len:4
 checkthis: src1:b len:3
 voidcall: len:17 clob:c
 voidcall_reg: src1:i len:11 clob:c
 voidcall_membase: src1:b len:16 clob:c
-fcall: dest:f len:48 clob:c
-fcall_reg: dest:f src1:i len:48 clob:c
-fcall_membase: dest:f src1:b len:48 clob:c
+fcall: dest:f len:17 clob:c
+fcall_reg: dest:f src1:i len:11 clob:c
+fcall_membase: dest:f src1:b len:16 clob:c
 lcall: dest:l len:17 clob:c
 lcall_reg: dest:l src1:i len:11 clob:c
 lcall_membase: dest:l src1:b len:16 clob:c
@@ -164,7 +164,6 @@ loadu4_membase: dest:i src1:b len:7
 loadi8_membase: dest:i src1:b
 loadr4_membase: dest:f src1:b len:7
 loadr8_membase: dest:f src1:b len:7
-loadr8_spill_membase: src1:b len:9
 loadu4_mem: dest:i len:9
 move: dest:i src1:i len:2
 addcc_imm: dest:i src1:i len:6 clob:1
@@ -172,13 +171,6 @@ add_imm: dest:i src1:i len:6 clob:1
 subcc_imm: dest:i src1:i len:6 clob:1
 sub_imm: dest:i src1:i len:6 clob:1
 mul_imm: dest:i src1:i len:9
-# there is no actual support for division or reminder by immediate
-# we simulate them, though (but we need to change the burg rules 
-# to allocate a symbolic reg for src2)
-div_imm: dest:a src1:a src2:i len:15 clob:d
-div_un_imm: dest:a src1:a src2:i len:15 clob:d
-rem_imm: dest:d src1:a src2:i len:15 clob:a
-rem_un_imm: dest:d src1:a src2:i len:15 clob:a
 and_imm: dest:i src1:i len:6 clob:1
 or_imm: dest:i src1:i len:6 clob:1
 xor_imm: dest:i src1:i len:6 clob:1
@@ -202,9 +194,6 @@ cond_exc_nc: len:6
 long_shl: dest:L src1:L src2:s clob:1 len:21
 long_shr: dest:L src1:L src2:s clob:1 len:22
 long_shr_un: dest:L src1:L src2:s clob:1 len:22
-long_conv_to_ovf_i: dest:i src1:i src2:i len:30
-long_mul_ovf: 
-long_conv_to_r_un: dest:f src1:i src2:i len:37 
 long_shr_imm: dest:L src1:L clob:1 len:10
 long_shr_un_imm: dest:L src1:L clob:1 len:10
 long_shl_imm: dest:L src1:L clob:1 len:10
@@ -304,7 +293,7 @@ tls_get: dest:i len:20
 atomic_add_i4: src1:b src2:i dest:i len:16
 atomic_add_new_i4: src1:b src2:i dest:i len:16
 atomic_exchange_i4: src1:b src2:i dest:a len:24
-atomic_cas_imm_i4: src1:b src2:i dest:a len:24
+atomic_cas_i4: src1:b src2:i src3:a dest:i len:24
 memory_barrier: len:16
 
 relaxed_nop: len:2
@@ -312,7 +301,7 @@ hard_nop: len:1
 
 # Linear IR opcodes
 nop: len:0
-dummy_use: len:0
+dummy_use: src1:i len:0
 dummy_store: len:0
 not_reached: len:0
 not_null: src1:i len:0
@@ -376,12 +365,12 @@ cmov_ile_un: dest:i src1:i src2:i len:16 clob:1
 cmov_ilt_un: dest:i src1:i src2:i len:16 clob:1
 
 long_conv_to_ovf_i4_2: dest:i src1:i src2:i len:30
-long_conv_to_r8_2: dest:f src1:i src2:i len:37 
-long_conv_to_r4_2: dest:f src1:i src2:i len:64
-long_conv_to_r_un_2: dest:f src1:i src2:i len:37 
+long_conv_to_r8_2: dest:f src1:i src2:i len:14 
+long_conv_to_r4_2: dest:f src1:i src2:i len:14
+long_conv_to_r_un_2: dest:f src1:i src2:i len:26 
 
 fmove: dest:f src1:f
-float_conv_to_r4: dest:f src1:f
+float_conv_to_r4: dest:f src1:f  len:12
 
 load_mem: dest:i len:9
 loadi4_mem: dest:i len:9
@@ -436,6 +425,7 @@ andpd: dest:x src1:x src2:x len:4 clob:1
 andnpd: dest:x src1:x src2:x len:4 clob:1
 orpd: dest:x src1:x src2:x len:4 clob:1
 xorpd: dest:x src1:x src2:x len:4 clob:1
+sqrtpd: dest:x src1:x len:4 clob:1
 
 haddpd: dest:x src1:x src2:x len:5 clob:1
 hsubpd: dest:x src1:x src2:x len:5 clob:1
@@ -577,7 +567,7 @@ iconv_to_r8_raw: dest:f src1:i len:17
 insert_i2: dest:x src1:x src2:i len:5 clob:1
 
 extractx_u2: dest:i src1:x len:5
-insertx_u1_slow: dest:x src1:i src2:i len:15 clob:x
+insertx_u1_slow: dest:x src1:i src2:i len:16 clob:x
 
 insertx_i4_slow: dest:x src1:x src2:i len:13 clob:x
 insertx_r4_slow: dest:x src1:x src2:f len:24 clob:1
@@ -602,3 +592,5 @@ expand_i4: dest:x src1:i len:9
 expand_r4: dest:x src1:f len:13
 expand_r8: dest:x src1:f len:13
 
+liverange_start: len:0
+liverange_end: len:0

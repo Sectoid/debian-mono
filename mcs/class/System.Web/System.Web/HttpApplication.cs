@@ -73,6 +73,7 @@ using System.Security.Permissions;
 using System.Security.Principal;
 using System.Threading;
 using System.Web.Caching;
+using System.Web.Compilation;
 using System.Web.Configuration;
 using System.Web.SessionState;
 using System.Web.UI;
@@ -863,6 +864,14 @@ namespace System.Web {
 			return null;
 		}
 
+		bool ShouldHandleException (Exception e)
+		{
+			if (e is ParseException)
+				return false;
+
+			return true;
+		}
+		
 		//
 		// If we catch an error, queue this error
 		//
@@ -870,15 +879,18 @@ namespace System.Web {
 		{
 			bool first = context.Error == null;
 			context.AddError (e);
-			if (first) {
+			if (first && ShouldHandleException (e)) {
 				EventHandler eh = nonApplicationEvents [errorEvent] as EventHandler;
 				if (eh != null){
 					try {
 						eh (this, EventArgs.Empty);
+						if (stop_processing)
+							context.ClearError ();
 					} catch (ThreadAbortException taex){
 						context.ClearError ();
-						if (FlagEnd.Value == taex.ExceptionState)
-							// This happens on Redirect() or End()
+						if (FlagEnd.Value == taex.ExceptionState || HttpRuntime.DomainUnloading)
+							// This happens on Redirect(), End() and
+							// when unloading the AppDomain
 							Thread.ResetAbort ();
 						else
 							// This happens on Thread.Abort()
@@ -935,19 +947,19 @@ namespace System.Web {
 			} catch (ThreadAbortException taex) {
 				object obj = taex.ExceptionState;
 				Thread.ResetAbort ();
-				stop_processing = true;
 				if (obj is StepTimeout)
 					ProcessError (new HttpException ("The request timed out."));
 				else {
 					context.ClearError ();
-					if (FlagEnd.Value != obj)
+					if (FlagEnd.Value != obj && !HttpRuntime.DomainUnloading)
 						context.AddError (taex);
 				}
-
+				
+				stop_processing = true;
 				PipelineDone ();
 			} catch (Exception e) {
-				stop_processing = true;
 				ProcessError (e);
+				stop_processing = true;
 				PipelineDone ();
 			}
 		}

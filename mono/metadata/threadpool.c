@@ -5,15 +5,16 @@
  *   Dietmar Maurer (dietmar@ximian.com)
  *   Gonzalo Paniagua Javier (gonzalo@ximian.com)
  *
- * (C) 2001-2003 Ximian, Inc.
- * (c) 2004,2005 Novell, Inc. (http://www.novell.com)
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
 #include <glib.h>
 
-#define THREADS_PER_CPU	15 /* 20 + THREADS_PER_CPU * number of CPUs */
-#define THREAD_EXIT_TIMEOUT 2000
+#define THREADS_PER_CPU	10 /* 20 + THREADS_PER_CPU * number of CPUs */
+#define THREAD_EXIT_TIMEOUT 1000
+#define INITIAL_QUEUE_LENGTH 128
 
 #include <mono/metadata/domain-internals.h>
 #include <mono/metadata/tabledefs.h>
@@ -48,7 +49,9 @@
 #include <sys/epoll.h>
 #endif
 
+#ifndef DISABLE_SOCKETS
 #include "mono/io-layer/socket-wrappers.h"
+#endif
 
 #include "threadpool.h"
 
@@ -75,10 +78,6 @@ static int busy_io_worker_threads;
 static int tp_inited;
 /* started idle threads */
 static int tp_idle_started;
-
-
-/* we use this to store a reference to the AsyncResult to avoid GC */
-static MonoGHashTable *ares_htable = NULL;
 
 static CRITICAL_SECTION ares_lock;
 static CRITICAL_SECTION io_queue_lock;
@@ -138,6 +137,14 @@ static MonoClass *async_call_klass;
 static MonoClass *socket_async_call_klass;
 static MonoClass *process_async_call_klass;
 
+/* Hooks */
+static MonoThreadPoolFunc tp_start_func;
+static MonoThreadPoolFunc tp_finish_func;
+static gpointer tp_hooks_user_data;
+static MonoThreadPoolItemFunc tp_item_begin_func;
+static MonoThreadPoolItemFunc tp_item_end_func;
+static gpointer tp_item_user_data;
+
 #define INIT_POLLFD(a, b, c) {(a)->fd = b; (a)->events = c; (a)->revents = 0;}
 enum {
 	AIO_OP_FIRST,
@@ -153,6 +160,9 @@ enum {
 	AIO_OP_LAST
 };
 
+#ifdef DISABLE_SOCKETS
+#define socket_io_cleanup(x)
+#else
 static void
 socket_io_cleanup (SocketIOData *data)
 {
@@ -233,13 +243,11 @@ get_events_from_list (MonoMList *list)
 				(SOCKET)(gssize)x->handle, x->buffer, x->offset, x->size,\
 				 x->socket_flags, &x->error);
 
+#endif /* !DISABLE_SOCKETS */
 
 static void
 unregister_job (MonoAsyncResult *obj)
 {
-	EnterCriticalSection (&ares_lock);
-	mono_g_hash_table_remove (ares_htable, obj);
-	LeaveCriticalSection (&ares_lock);	
 }
 
 static void
@@ -261,14 +269,18 @@ threadpool_jobs_dec (MonoObject *obj)
 	return FALSE;
 }
 
+#ifndef DISABLE_SOCKETS
 static void
 async_invoke_io_thread (gpointer data)
 {
 	MonoDomain *domain;
 	MonoThread *thread;
 	const gchar *version;
+	int workers_io, min_io;
 
 	thread = mono_thread_current ();
+ 	if (tp_start_func)
+ 		tp_start_func (tp_hooks_user_data);
 
 	version = mono_get_runtime_info ()->framework_version;
 	for (;;) {
@@ -307,11 +319,15 @@ async_invoke_io_thread (gpointer data)
 					continue;
 				}
 				if (mono_domain_set (domain, FALSE)) {
-					ASyncCall *ac;
+					/* ASyncCall *ac; */
 
+					if (tp_item_begin_func)
+						tp_item_begin_func (tp_item_user_data);
 					mono_async_invoke (ar);
-					ac = (ASyncCall *) ar->object_data;
+					if (tp_item_end_func)
+						tp_item_end_func (tp_item_user_data);
 					/*
+					ac = (ASyncCall *) ar->object_data;
 					if (ac->msg->exc != NULL)
 						mono_unhandled_exception (ac->msg->exc);
 					*/
@@ -346,13 +362,24 @@ async_invoke_io_thread (gpointer data)
 		}
 
 		if (!data) {
-			if (InterlockedDecrement (&io_worker_threads) < 2) {
-				/* If we have pending items, keep the thread alive */
-				if (InterlockedCompareExchange (&pending_io_items, 0, 0) != 0) {
-					InterlockedIncrement (&io_worker_threads);
-					continue;
-				}
+			workers_io = (int) InterlockedCompareExchange (&io_worker_threads, 0, -1); 
+			min_io = (int) InterlockedCompareExchange (&mono_io_min_worker_threads, 0, -1); 
+	
+			while (!data && workers_io <= min_io) {
+				WaitForSingleObjectEx (io_job_added, INFINITE, TRUE);
+				if (THREAD_WANTS_A_BREAK (thread))
+					mono_thread_interruption_checkpoint ();
+			
+				data = dequeue_job (&io_queue_lock, &async_io_queue);
+				workers_io = (int) InterlockedCompareExchange (&io_worker_threads, 0, -1); 
+				min_io = (int) InterlockedCompareExchange (&mono_io_min_worker_threads, 0, -1); 
 			}
+		}
+	
+		if (!data) {
+			InterlockedDecrement (&io_worker_threads);
+ 			if (tp_finish_func)
+ 				tp_finish_func (tp_hooks_user_data);
 			return;
 		}
 		
@@ -402,8 +429,10 @@ process_io_event (MonoMList *list, int event)
 #ifdef EPOLL_DEBUG
 		g_print ("Dispatching event %d on socket %d\n", event, state->handle);
 #endif
-		InterlockedIncrement (&pending_io_items);
-		start_io_thread_or_queue (state);
+		if (!(mono_object_domain (state)->state == MONO_APPDOMAIN_UNLOADING || mono_object_domain (state)->state == MONO_APPDOMAIN_UNLOADED)) {
+			InterlockedIncrement (&pending_io_items);
+			start_io_thread_or_queue (state);
+		}
 	}
 
 	return oldlist;
@@ -500,7 +529,8 @@ socket_io_poll_main (gpointer p)
 
 			for (i = 1; i < allocated; i++) {
 				pfd = &pfds [i];
-				if (pfd->fd == -1 || pfd->fd == data->newpfd->fd)
+				if (pfd->fd == -1 || data->newpfd == NULL ||
+				    pfd->fd == data->newpfd->fd)
 					break;
 			}
 
@@ -796,10 +826,6 @@ socket_io_init (SocketIOData *data)
 	g_assert (data->pipe [0] != INVALID_SOCKET);
 	closesocket (srv);
 #endif
-	mono_io_max_worker_threads = mono_max_worker_threads / 2;
-	if (mono_io_max_worker_threads < 10)
-		mono_io_max_worker_threads = 10;
-
 	data->sock_to_state = mono_g_hash_table_new_type (g_direct_hash, g_direct_equal, MONO_HASH_VALUE_GC);
 
 	if (data->epoll_disabled) {
@@ -827,8 +853,9 @@ socket_io_add_poll (MonoSocketAsyncResult *state)
 	char msg [1];
 	MonoMList *list;
 	SocketIOData *data = &socket_io_data;
+	int w;
 
-#if defined(PLATFORM_MACOSX) || defined(PLATFORM_BSD6) || defined(PLATFORM_WIN32) || defined(PLATFORM_SOLARIS)
+#if defined(PLATFORM_MACOSX) || defined(PLATFORM_BSD) || defined(PLATFORM_WIN32) || defined(PLATFORM_SOLARIS)
 	/* select() for connect() does not work well on the Mac. Bug #75436. */
 	/* Bug #77637 for the BSD 6 case */
 	/* Bug #78888 for the Windows case */
@@ -856,7 +883,8 @@ socket_io_add_poll (MonoSocketAsyncResult *state)
 	LeaveCriticalSection (&data->io_lock);
 	*msg = (char) state->operation;
 #ifndef PLATFORM_WIN32
-	write (data->pipe [1], msg, 1);
+	w = write (data->pipe [1], msg, 1);
+	w = w;
 #else
 	send ((SOCKET) data->pipe [1], msg, 1, 0);
 #endif
@@ -967,6 +995,7 @@ socket_io_filter (MonoObject *target, MonoObject *state)
 
 	return TRUE;
 }
+#endif /* !DISABLE_SOCKETS */
 
 static void
 mono_async_invoke (MonoAsyncResult *ares)
@@ -979,8 +1008,8 @@ mono_async_invoke (MonoAsyncResult *ares)
 	if (ares->execution_context) {
 		/* use captured ExecutionContext (if available) */
 		thread = mono_thread_current ();
-		MONO_OBJECT_SETREF (ares, original_context, thread->execution_context);
-		MONO_OBJECT_SETREF (thread, execution_context, ares->execution_context);
+		MONO_OBJECT_SETREF (ares, original_context, mono_thread_get_execution_context ());
+		mono_thread_set_execution_context (ares->execution_context);
 	} else {
 		ares->original_context = NULL;
 	}
@@ -1006,7 +1035,7 @@ mono_async_invoke (MonoAsyncResult *ares)
 
 	/* restore original thread execution context if flow isn't suppressed, i.e. non null */
 	if (ares->original_context) {
-		MONO_OBJECT_SETREF (thread, execution_context, ares->original_context);
+		mono_thread_set_execution_context (ares->original_context);
 		ares->original_context = NULL;
 	}
 
@@ -1017,10 +1046,6 @@ mono_async_invoke (MonoAsyncResult *ares)
 		SetEvent ((gpointer)(gsize)ac->wait_event);
 	}
 	mono_monitor_exit ((MonoObject *) ares);
-
-	EnterCriticalSection (&ares_lock);
-	mono_g_hash_table_remove (ares_htable, ares);
-	LeaveCriticalSection (&ares_lock);
 }
 
 static void
@@ -1066,12 +1091,10 @@ mono_thread_pool_init ()
 	if ((int) InterlockedCompareExchange (&tp_inited, 1, 0) == 1)
 		return;
 
-	MONO_GC_REGISTER_ROOT (ares_htable);
 	MONO_GC_REGISTER_ROOT (socket_io_data.sock_to_state);
 	InitializeCriticalSection (&socket_io_data.io_lock);
 	InitializeCriticalSection (&ares_lock);
 	InitializeCriticalSection (&io_queue_lock);
-	ares_htable = mono_g_hash_table_new_type (NULL, NULL, MONO_HASH_KEY_VALUE_GC);
 	job_added = CreateSemaphore (NULL, 0, 0x7fffffff, NULL);
 	g_assert (job_added != NULL);
 	if (g_getenv ("MONO_THREADS_PER_CPU") != NULL) {
@@ -1083,6 +1106,10 @@ mono_thread_pool_init ()
 	cpu_count = mono_cpu_count ();
 	mono_max_worker_threads = 20 + threads_per_cpu * cpu_count;
 	mono_min_worker_threads = cpu_count; /* 1 idle thread per cpu */
+	mono_io_max_worker_threads = mono_max_worker_threads / 2;
+	if (mono_io_max_worker_threads < 16)
+		mono_io_max_worker_threads = 16;
+	mono_io_min_worker_threads = cpu_count;
 
 	async_call_klass = mono_class_from_name (mono_defaults.corlib, "System", "MonoAsyncCall");
 	g_assert (async_call_klass);
@@ -1109,14 +1136,19 @@ mono_thread_pool_add (MonoObject *target, MonoMethodMessage *msg, MonoDelegate *
 	MONO_OBJECT_SETREF (ares, async_delegate, target);
 
 	EnterCriticalSection (&ares_lock);
-	mono_g_hash_table_insert (ares_htable, ares, ares);
+	if (domain->state == MONO_APPDOMAIN_UNLOADED || domain->state == MONO_APPDOMAIN_UNLOADING) {
+		LeaveCriticalSection (&ares_lock);
+		return ares;
+	}
 	LeaveCriticalSection (&ares_lock);
 
+#ifndef DISABLE_SOCKETS
 	if (socket_io_filter (target, state)) {
 		socket_io_add (ares, (MonoSocketAsyncResult *) state);
 		return ares;
 	}
-
+#endif
+	
 	start_thread_or_queue (ares);
 	return ares;
 }
@@ -1201,11 +1233,26 @@ mono_thread_pool_cleanup (void)
 }
 
 static void
+null_array (MonoArray *a, int first, int last)
+{
+	/* We must null the old array because it might
+	   contain cross-appdomain references, which
+	   will crash the GC when the domains are
+	   unloaded. */
+	memset (mono_array_addr (a, MonoObject*, first), 0, sizeof (MonoObject*) * (last - first));
+}
+
+static void
 append_job (CRITICAL_SECTION *cs, TPQueue *list, MonoObject *ar)
 {
 	threadpool_jobs_inc (ar); 
 
 	EnterCriticalSection (cs);
+	if (ar->vtable->domain->state == MONO_APPDOMAIN_UNLOADING ||
+			ar->vtable->domain->state == MONO_APPDOMAIN_UNLOADED) {
+		LeaveCriticalSection (cs);
+		return;
+	}
 	if (list->array && (list->next_elem < mono_array_length (list->array))) {
 		mono_array_setref (list->array, list->next_elem, ar);
 		list->next_elem++;
@@ -1214,16 +1261,19 @@ append_job (CRITICAL_SECTION *cs, TPQueue *list, MonoObject *ar)
 	}
 	if (!list->array) {
 		MONO_GC_REGISTER_ROOT (list->array);
-		list->array = mono_array_new (mono_get_root_domain (), mono_defaults.object_class, 16);
+		list->array = mono_array_new_cached (mono_get_root_domain (), mono_defaults.object_class, INITIAL_QUEUE_LENGTH);
 	} else {
 		int count = list->next_elem - list->first_elem;
 		/* slide the array or create a larger one if it's full */
 		if (list->first_elem) {
 			mono_array_memcpy_refs (list->array, 0, list->array, list->first_elem, count);
+			null_array (list->array, count, list->next_elem);
 		} else {
-			MonoArray *newa = mono_array_new (mono_get_root_domain (), mono_defaults.object_class, mono_array_length (list->array) * 2);
+			MonoArray *olda = list->array;
+			MonoArray *newa = mono_array_new_cached (mono_get_root_domain (), mono_defaults.object_class, mono_array_length (list->array) * 2);
 			mono_array_memcpy_refs (newa, 0, list->array, list->first_elem, count);
 			list->array = newa;
+			null_array (olda, list->first_elem, list->next_elem);
 		}
 		list->first_elem = 0;
 		list->next_elem = count;
@@ -1243,6 +1293,7 @@ clear_queue (CRITICAL_SECTION *cs, TPQueue *list, MonoDomain *domain)
 	for (i = list->first_elem; i < list->next_elem; ++i) {
 		MonoObject *obj = mono_array_get (list->array, MonoObject*, i);
 		if (obj->vtable->domain == domain) {
+			threadpool_jobs_dec (obj);
 			unregister_job ((MonoAsyncResult*)obj);
 
 			mono_array_set (list->array, MonoObject*, i, NULL);
@@ -1275,6 +1326,8 @@ mono_thread_pool_remove_domain_jobs (MonoDomain *domain, int timeout)
 	HANDLE sem_handle;
 	int result = TRUE;
 	guint32 start_time = 0;
+
+	g_assert (domain->state == MONO_APPDOMAIN_UNLOADING);
 
 	clear_queue (&mono_delegate_section, &async_call_queue, domain);
 	clear_queue (&io_queue_lock, &async_io_queue, domain);
@@ -1321,13 +1374,16 @@ dequeue_job (CRITICAL_SECTION *cs, TPQueue *list)
 		return NULL;
 	}
 	ar = mono_array_get (list->array, MonoObject*, list->first_elem);
+	mono_array_setref (list->array, list->first_elem, NULL);
 	list->first_elem++;
 	count = list->next_elem - list->first_elem;
 	/* reduce the size of the array if it's mostly empty */
-	if (mono_array_length (list->array) > 16 && count < (mono_array_length (list->array) / 3)) {
-		MonoArray *newa = mono_array_new (mono_get_root_domain (), mono_defaults.object_class, mono_array_length (list->array) / 2);
+	if (mono_array_length (list->array) > INITIAL_QUEUE_LENGTH && count < (mono_array_length (list->array) / 3)) {
+		MonoArray *olda = list->array;
+		MonoArray *newa = mono_array_new_cached (mono_get_root_domain (), mono_defaults.object_class, mono_array_length (list->array) / 2);
 		mono_array_memcpy_refs (newa, 0, list->array, list->first_elem, count);
 		list->array = newa;
+		null_array (olda, list->first_elem, list->next_elem);
 		list->first_elem = 0;
 		list->next_elem = count;
 	}
@@ -1339,6 +1395,8 @@ dequeue_job (CRITICAL_SECTION *cs, TPQueue *list)
 static void
 free_queue (TPQueue *list)
 {
+	if (list->array)
+		null_array (list->array, list->first_elem, list->next_elem);
 	list->array = NULL;
 	list->first_elem = list->next_elem = 0;
 }
@@ -1352,6 +1410,9 @@ async_invoke_thread (gpointer data)
 	const gchar *version;
  
 	thread = mono_thread_current ();
+ 	if (tp_start_func)
+ 		tp_start_func (tp_hooks_user_data);
+
 	version = mono_get_runtime_info ()->framework_version;
 	for (;;) {
 		MonoAsyncResult *ar;
@@ -1378,11 +1439,15 @@ async_invoke_thread (gpointer data)
 				}
 
 				if (mono_domain_set (domain, FALSE)) {
-					ASyncCall *ac;
+					/* ASyncCall *ac; */
 
+					if (tp_item_begin_func)
+						tp_item_begin_func (tp_item_user_data);
 					mono_async_invoke (ar);
-					ac = (ASyncCall *) ar->object_data;
+					if (tp_item_end_func)
+						tp_item_end_func (tp_item_user_data);
 					/*
+					ac = (ASyncCall *) ar->object_data;
 					if (ac->msg->exc != NULL)
 						mono_unhandled_exception (ac->msg->exc);
 					*/
@@ -1433,6 +1498,8 @@ async_invoke_thread (gpointer data)
 	
 		if (!data) {
 			InterlockedDecrement (&mono_worker_threads);
+ 			if (tp_finish_func)
+ 				tp_finish_func (tp_hooks_user_data);
 			return;
 		}
 		
@@ -1522,5 +1589,40 @@ ves_icall_System_Threading_ThreadPool_SetMaxThreads (gint workerThreads, gint co
 	InterlockedExchange (&mono_max_worker_threads, workerThreads);
 	InterlockedExchange (&mono_io_max_worker_threads, completionPortThreads);
 	return TRUE;
+}
+
+/**
+ * mono_install_threadpool_thread_hooks
+ * @start_func: the function to be called right after a new threadpool thread is created. Can be NULL.
+ * @finish_func: the function to be called right before a thredpool thread is exiting. Can be NULL.
+ * @user_data: argument passed to @start_func and @finish_func.
+ *
+ * @start_fun will be called right after a threadpool thread is created and @finish_func right before a threadpool thread exits.
+ * The calls will be made from the thread itself.
+ */
+void
+mono_install_threadpool_thread_hooks (MonoThreadPoolFunc start_func, MonoThreadPoolFunc finish_func, gpointer user_data)
+{
+	tp_start_func = start_func;
+	tp_finish_func = finish_func;
+	tp_hooks_user_data = user_data;
+}
+
+/**
+ * mono_install_threadpool_item_hooks
+ * @begin_func: the function to be called before a threadpool work item processing starts.
+ * @end_func: the function to be called after a threadpool work item is finished.
+ * @user_data: argument passed to @begin_func and @end_func.
+ *
+ * The calls will be made from the thread itself and from the same AppDomain
+ * where the work item was executed.
+ *
+ */
+void
+mono_install_threadpool_item_hooks (MonoThreadPoolItemFunc begin_func, MonoThreadPoolItemFunc end_func, gpointer user_data)
+{
+	tp_item_begin_func = begin_func;
+	tp_item_end_func = end_func;
+	tp_item_user_data = user_data;
 }
 

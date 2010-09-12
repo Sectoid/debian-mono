@@ -1,11 +1,53 @@
+2010-07-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Process.cs: allow the exit callback to be used more than once. Fixes
+	bug #614909.
+
+2010-07-04 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Process.cs: ignore processes that finish while we are looking for
+	processes by name. Fixes bug #596779.
+
+2009-11-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Debug_2_1.cs: Change type to sealed to match SL2/3
+
 2009-10-12  Zoltan Varga  <vargaz@gmail.com>
 
 	* Process.cs (Dispose): Close the async output/error readers. Fixes #545429.
+
+2009-07-22  Jb Evain  <jbevain@novell.com>
+
+	* ProcessStartInfo.cs: force no-verb on MONOTOUCH.
 
 2009-07-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* ProcessStartInfo.cs: HaveEnvVars is enabled by just using the
 	EnvironmentVariables property. Bug #520650 fixed.
+
+2009-05-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* DiagnosticsConfigurationHandler.cs: Use the new
+	  TraceSourceInfo(string, SourceLevels, TraceImplSettings) constructor.
+	* TraceSourceInfo.cs: Add a new constructor, 
+	  TraceSourceInfo(string, SourceLevels, TraceImplSettings), which adds
+	  the DefaultTraceListener w/o depending upon (the possibly still
+	  initializing) TraceImpl members.  Fixes #502944.
+
+2009-05-01 Jonathan Pryor  <jpryor@novell.com>
+
+	* DiagnosticsConfigurationHandler.cs: Don't refer to TraceImpl member
+	  while reading the .config file, instead cache the values and refer
+	  to the cached values during initialization.  This prevents recursive
+	  initialization calls (Trace.OnInit() ... Trace.Listeners.Add() ...
+	  Trace.OnInit() ...), and associated duplicate parsing of .config file
+	  sections.  Fixes bnc#499442.
+	* TraceImpl.cs: Cope with DiagnosticsConfigurationHandler changes.
+	* TraceListenerCollection.cs: Add internal 
+	  Add(TraceListener,TraceImplSettings) method for adding
+	  TraceListeners during DiagnosticsConfigurationHandler initialization
+	  (which can't access TraceImpl, as we may still be reading the
+	  .config file to determine the TraceImpl values).
 
 2009-04-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -15,10 +57,19 @@
 	the assembly is System.
 	Fixes bug #498853.
 
+2009-04-19  Miguel de Icaza  <miguel@novell.com>
+
+	* Process.cs: Do not crash if GetProcesses_internal returns null
+	This happens on operating systems where we have not implemented
+	EnumProcesses in the io-layer, see bug 496294.
+
+2009-02-24  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Process.cs: Throw IOEs instead of normal exceptions.
+	Fixes bug 477943.
+
 2009-01-22  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r124260.
-	
 	* Stopwatch.cs: Reorder the calculations in Elapsed and ElapsedMilliseconds
 	to avoid overflow. Fixes #468570. Patch by Yoni Shalom <silver83@gmail.com>.
 

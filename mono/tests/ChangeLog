@@ -1,6 +1,45 @@
+2010-06-26  Mark Probst  <mark.probst@gmail.com>
+
+	* bug-616463.cs: New test.
+
+	* Makefile.am: Test added to generic tests.
+
+	Backport of r159578.
+
+2010-05-13 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* typeload-unaligned.cs: Move the reference to the broken type
+	to an inner function since mono now detects the brokenness earlier.
+
+2010-04-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* libtest.c: Add OpenBSD to the list of defines.
+
+2010-02-03  Sylvain Dupont <duposyl@gmail.com>
+
+	backport of r149817
+
+	* cominterop.cs libtest.c: Added tests for marshalling
+	  in, in/byref, in/out, in/out/byref parameters of type
+	  SAFEARRAY[VARIANT].
+
+	Code is contributed under MIT/X11 license.
+
 2009-12-17  Zoltan Varga  <vargaz@gmail.com>
 
 	* libtest.c pinvoke2.cs: Add a test for calling pinvoke methods using calli.
+
+2009-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* libtest.c (mono_test_marshal_bool_in): Use 'short' as the type of the
+	variant bool argument.
+
+	* marshalbool.cs: Pass -1 as the 'expected' argument instead of 0xffff, which
+	causes sign extensions issues on some platforms.
+
+2009-10-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* gc-altstack.cs: New test.
 
 2009-10-07  Zoltan Varga  <vargaz@gmail.com>
 
@@ -18,13 +57,124 @@
 
 	* pinvoke2.cs libtest.c: Add a test for #543133.
 
+2009-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* assembly-load-stress.cs: New stress test.
+
+	* Makefile.am: Disable filter-stack.cs on ia64.
+
+	* appdomain-thread-abort.cs: Add a new test.
+
+2009-09-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* runtime-invoke.cs: Add a test for invoking string ctors. Remove tests which
+	are auto-generated now by gen-runtime-invoke.cs.
+
+2009-09-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* array_load_exception.il: Test for broken arrays.
+
+2009-09-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* gen-runtime-invoke.cs: New test generator for runtime invoke tests.
+
+	* Makefile.am (test-runtime-invoke): New test target.
+
+	* runtime-invoke.cs: Add more tests.
+
+	* runtime-invoke.cs: Add tests for passing/receiving generic instances of
+	vtypes.
+
+2009-09-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* runtime-invoke.cs: Add more tests.
+
+2009-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* coreclr-security.cs: Add test cases for arrays (one dimension,
+	multidimentional and jagged) creation.
+
+2009-09-15  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-type-load-exception.2.il: Test case for vtable setup
+	failure in shared generic code.
+
+	* Makefile.am: Test added.
+
+2009-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* runtime-invoke.cs: Add a test.
+
+2009-09-10  Bill Holmes  <billholmes54@gmail.com>
+
+	* cominterop.cs : Adding a test for invoking delegates that
+	  target COM methods.
+
+	Contributed under MIT/X11 license.
+
+2009-09-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* iface4.cs: Add one more check.
+
+2009-09-08  Jonathan Chambers  <joncham@gmail.com>
+
+	* cominterop.cs libtest.c: Add support to run tests
+	on all x86 and amd64 platforms.
+
+2009-09-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (runtest): Disable aot on some tests which contain loading
+	errors.
+
+2009-09-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* process-stress.cs: New stress test for spawning processes.
+
 2009-09-03  Zoltan Varga  <vargaz@gmail.com>
 
 	* pinvoke3.cs libtest.c: Add a test for #481559.
 
-2009-07-09  Mark Probst  <mark.probst@gmail.com>
+2009-08-24  Rodrigo Kumpera  <rkumpera@novell.com>
 
-	Backport of r137640.
+	* load-exceptions.cs:
+	* load-missing.il: Test for virtual and static methods.
+
+2009-08-24  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* load-exceptions.cs:
+	* load-missing.il: Test for invalid method overrides.
+
+2009-08-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* constraints-load.il: New test for errors related to loading
+	type and method constraints.
+
+2009-08-12 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* bug-528055.il: Regression test for #528055.
+
+2009-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* make_imt_test.sh: fix freebsd build by Makoto Kishimoto
+	  http://lists.ximian.com/pipermail/mono-devel-list/2008-November/029970.html
+
+2009-07-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* generic_type_definition.2.cs: This test verifies for a lot of stuff
+	that must work under compiler context. A few of those used to work outside
+	of it, so this test worked by pure luck.
+	The fix is to run the test under compiler context.
+
+2009-07-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* load-exceptions.cs: Add a test for #524498.
+
+2009-07-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* runtime-invoke.cs: Convert it to use TestDriver. Add tests for
+	ptr types.
+
+2009-07-09  Mark Probst  <mark.probst@gmail.com>
 
 	* generic-xdomain.2.cs: Test case for generic marshal-by-ref
 	objects.
@@ -37,41 +187,227 @@
 
 	* dynamic-method-finalize.2.cs: New test.
 
+2009-06-25  Mark Probst  <mark.probst@gmail.com>
+
+	* appdomain-async-invoke.cs: Fail if BeginInvoke doesn't return an
+	AsyncResult.
+
+2009-06-25  Mark Probst  <mark.probst@gmail.com>
+
+	* appdomain-async-invoke.cs: Test for adding async invokes while a
+	domain is unloading.
+
+	* Makefile.am: Test added.
+
+2009-06-25  Sylvain Dupont <duposyl@gmail.com>
+
+	* cominterop.cs libtest.c: Added tests for marshalling
+	  out parameters of type SAFEARRAY[VARIANT].
+
+	Code is contributed under MIT/X11 license.
+
+2009-06-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* libtest.c make_imt_test.sh: Applied patch from Romain Tartiere 
+	(romain@blogreen.org). Fix tests on freebsd.
+
+2009-06-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* runtime-invoke.cs: Add test for sharing i8/u8 return values.
+
 2009-06-15 Rodrigo Kumpera  <rkumpera@novell.com>
 
-	Backport of r136135.
-
-	* load-exceptions.cs: Add regression test for #508487.
+	* load-exceptions.cs class.cs: Add regression test for #508487.
 
 	* t-missing.cs: Add nested type.
 
+2009-06-06  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* bug-508538.cs: New regression test for bug #508538.
+
 2009-06-01 Rodrigo Kumpera  <rkumpera@novell.com>
 
-	* bug-508538.cs: New regression test.
+	* load-exceptions.cs: Fix thiko.
+
+2009-06-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* load-exceptions.cs: Test for #508532.
+
+	* load-missing.il: Ditto.
+
+2009-05-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am: Disable the test_messages test as it fails on the
+	buildbot.
+
+2009-05-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (test_messages): Fix the dependencies of this test.
+
+2009-05-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (test-coreclr-security): Use the net_2_1_raw profile since
+	the net_2_1 profile is no longer generated.
+
+2009-05-05  Geoff Norton  <gnorton@novell.com>	
+
+	* tests-config: This file is generated by configure.
+
+2009-04-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* custom-attr.cs: Add a test for #498545.
+
+2009-04-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* virtual-sync.cs: Remove this, there is already a test for this in
+	synchronized.cs.
+
+2009-04-18  Mark Probst  <mark.probst@gmail.com>
+
+	* appdomain-thread-abort.cs: New tests for thread aborts across
+	app domains.
+
+	* Makefile.am: Test added.
+
+2009-04-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* coreclr-security.cs: Add test case for the "special" case about
+	a default ctor being SSC on a transparent type (e.g. WebClient)
+
+2009-04-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* runtime-invoke.cs: Add a test for #494847.
+
+2009-04-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* thread-static.cs: Add a test for accesses through reflection.
+
+2009-04-13  Bill Holmes  <billholmes54@gmail.com>
+
+	* Makefile.am: Adding marshalbool.cs.
+
+	* libtest.c: Adding native code for marshalbool.cs tests.
+
+	* marshalbool.cs: Adding tests for emit_marshal_boolean.
+
+	Contributed under MIT/X11 license.
+
+2009-04-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs: Add a test for #492330.
+
+2009-04-10  Mark Probst  <mark.probst@gmail.com>
+
+	* appdomain-unload.cs: Test for invoking on a proxy whose server
+	domain was unloaded.
+
+2009-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* thread6.cs: Fix race added by the last change.
+
+2009-04-09  Bill Holmes  <billholmes54@gmail.com>
+
+	* finalizer-abort.cs, finalizer-exception.cs, finalizer-exit.cs :
+	  Adding a sleep to the waiting thread to give Mono on Windows an
+	  opportunity to interrupt the thread via QueueUserAPC.
+
+	Contributed under MIT/X11 license.
+
+2009-03-31  Mark Probst  <mark.probst@gmail.com>
+
+	* critical-finalizers.cs: Test case for critical finalizers.
+
+	* Makefile.am: Test added.
+
+2009-03-31  Mark Probst  <mark.probst@gmail.com>
+
+	* finalizer-wait.cs: Test case for WaitForPendingFinalizers.
+
+	* Makefile.am: Test added.
+
+2009-03-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* remoting4.cs: Fix the last change.
+
+2009-03-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* load-exceptions.cs: Add a test for missing locals.
+
+	* remoting4.cs: Add a test for generic virtual interface methods on proxies.
+
+2009-03-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* coreclr-security.cs: Add more override test cases.
 
 2009-03-26  Zoltan Varga  <vargaz@gmail.com>
 
 	* pinvoke2.cs: Add a test for #488670.
 
+2009-03-25  Mark Probst  <mark.probst@gmail.com>
+
+	* interlocked-4.2.cs: New CompareExchange test (triggered register
+	allocation bug on x86 and amd64).
+
+	* Makefile.am: Test added.
+
+2009-03-24  Mark Probst  <mark.probst@gmail.com>
+
+	* interlocked-3.cs: New CompareExchange test.
+
+	* Makefile.am: Test added.
+
+2009-03-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* thread6.cs: Add back a sleep to avoid a race.
+
 2009-03-23  Zoltan Varga  <vargaz@gmail.com>
 
 	* pinvoke-2.2.cs libtest.c: Add a test for #487758.
 
+2009-03-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* thread6.cs: Use a monitor to avoid sleeping which doesn't work on slow
+	machines.
+
 2009-03-15  Steven Munroe  <munroesj@us.ibm.com>
 
-	Backport of r129461.
-	
 	This patch is contributed under the terms of the MIT/X11 license
 
 	* Makefile.am (test_platform): Enable testbundle for ppc.
 
-2009-03-09  Mark Probst  <mark.probst@gmail.com>
+2009-03-13  Mark Probst  <mark.probst@gmail.com>
+
+	* coreclr-security.exe: Added a test for calling via a
+	MANAGED_TO_MANAGED wrapper.
+
+2009-03-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* custom-attr.cs: Add a test for #483247.
+
+2009-03-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* gchandles.cs: New test.
+
+	* Makefile.am: Test added.
+
+2009-03-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* load-exceptions.cs load-missing.il: Add a test for #482638.
+
+2009-03-05  Mark Probst  <mark.probst@gmail.com>
 
 	* bug-479763.2.cs: New test.
 
 	* Makefile.am: Test added.
 
-	Backport of r128723.
+2009-03-04  Mark Probst  <mark.probst@gmail.com>
+
+	* Makefile.am: Second part of the erroneous change reverted.  I
+	suck.
+
+2009-03-04  Mark Probst  <mark.probst@gmail.com>
+
+	* Makefile.am: Erroneous change reverted.
 
 2009-03-04  Mark Probst  <mark.probst@gmail.com>
 
@@ -79,11 +415,15 @@
 
 	* Makefile.am: Test added.
 
-	Backport of r128552.
+2009-02-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* invoke.cs: Add a test.
+
+2009-02-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* pinvoke2.cs libtest.c: Add a test for #477396.
 
 2009-02-11  Mark Probst  <mark.probst@gmail.com>
-
-	Backport of r126631.
 
 	* bug-473999.2.cs: New test.
 
@@ -91,15 +431,11 @@
 
 2009-02-10  Mark Probst  <mark.probst@gmail.com>
 
-	Backport of r126467.
-
 	* bug-473482.2.cs: New test.
 
 	* Makefile.am: Test added.
 
 2009-02-05  Mark Probst  <mark.probst@gmail.com>
-
-	Backport of r125887.
 
 	* bug-472692.2.cs: New test.
 
@@ -107,23 +443,30 @@
 
 2009-02-05  Mark Probst  <mark.probst@gmail.com>
 
-	Backport of r125839.
-
 	* bug-472600.2.cs: New test.
 
 	* Makefile.am: Test added.
 
-2009-01-27  Mark Probst  <mark.probst@gmail.com>
+2009-02-02  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r124712.
+	* generics-invoke-byref.2.cs: Add a test for #471259.
+
+2009-01-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* generic-marshalbyref.2.cs: Also do the test for a class without type
+	constraints.
+
+2009-01-27  Mark Probst  <mark.probst@gmail.com>
 
 	* bug469742.2.il: New test.
 
 	* Makefile.am: Test added.
 
-2009-01-22  Mark Probst  <mark.probst@gmail.com>
+2009-01-26  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of r124246.
+	* pinvoke2.cs libtest.c: Add a test for #469135.
+
+2009-01-22  Mark Probst  <mark.probst@gmail.com>
 
 	* generic-stack-traces2.2.cs: Another generic sharing test for
 	stack traces.
@@ -132,8 +475,6 @@
 
 2009-01-21 Rodrigo Kumpera  <rkumpera@novell.com>
 
-	Backport of r124059.
-
 	* appdomain-unload-callback.cs: New test for the AppDomain::DomainUnload
 	deadlock.
 
@@ -141,15 +482,11 @@
 
 2009-01-21  Mark Probst  <mark.probst@gmail.com>
 
-	Backport of r124028.
-
 	* bug-467456.cs: New test case.
 
 	* Makefile.am: Test added.
 
 2009-01-21  Mark Probst  <mark.probst@gmail.com>
-
-	Backport of r124022.
 
 	* generic-unloading.2.cs, generic-unloading-sub.2.cs: Test case
 	for unloading images whose MonoGenericInst's are still in use.
@@ -158,10 +495,15 @@
 
 2009-01-20  Mark Probst  <mark.probst@gmail.com>
 
-	Backport of r123917.
-
 	* generic-stack-traces.2.cs: Generic sharing test for stack
 	traces.
+
+	* Makefile.am: Test added.
+
+2009-01-20  Mark Probst  <mark.probst@gmail.com>
+
+	* generic-system-arrays.2.cs: Generic sharing test case for
+	arrays.
 
 	* Makefile.am: Test added.
 

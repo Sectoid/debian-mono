@@ -115,8 +115,12 @@ namespace System.Windows.Forms {
 		{
 			if (menu is MainMenu)
 				pt = ScreenToMenu (menu, pt);
-			else
+			else {
+				if (menu.Wnd == null) {
+					return null;
+				}
 				pt = menu.Wnd.PointToClient (pt);
+			}
 			foreach (MenuItem item in menu.MenuItems) {
 				Rectangle rect = item.bounds;
 				if (rect.Contains (pt))
@@ -526,8 +530,7 @@ namespace System.Windows.Forms {
 
 			case ItemNavigation.Next:
 
-				if (menu.SelectedItem != null)
-					pos = menu.SelectedItem.Index;
+				pos = menu.SelectedItem == null ? - 1 : menu.SelectedItem.Index;
 
 				/* Next item that is not separator and it is visible*/
 				for (pos++; pos < menu.MenuItems.Count; pos++) {
@@ -626,7 +629,7 @@ namespace System.Windows.Forms {
 		{
 			keynav_state = KeyNavState.Navigating;
 			MenuItem item = FindItemByKey (CurrentMenu, msg.WParam);
-			if ((item == null) || (GrabControl == null))
+			if ((item == null) || (GrabControl == null) || (GrabControl.ActiveTracker == null))
 				return false;
 
 			active = true;

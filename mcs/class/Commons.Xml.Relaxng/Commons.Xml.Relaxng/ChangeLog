@@ -1,3 +1,20 @@
+2009-02-23  Atsushi Enomoto <atsushi@ximian.com>
+
+	* RelaxngValidatingReader.cs : implemented error recovery feature.
+	  Use InvalidNodeFound event (of type RelaxngValidationEventHandler)
+	  to handle validation error like ValidationEventHandler in
+	  System.Xml.XmlSchema.
+
+2009-02-19  Atsushi Enomoto <atsushi@ximian.com>
+
+	* XsdDatatypeProvider.cs : detect grammar-level error in type usage
+	  at compile time.
+
+2009-02-17  Atsushi Enomoto <atsushi@ximian.com>
+
+	* XsdDatatypeProvider.cs : workaround .NET/Mono Regex bug that
+	  does not handle \p{Latin-1Supplement} to work with OOXML grammar.
+
 2009-01-20  Atsushi Enomoto <atsushi@ximian.com>
 
 	* RelaxngReader.cs : fixed wrong text skip and ns/datatypeLibrary

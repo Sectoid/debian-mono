@@ -38,9 +38,17 @@ using System.Security;
 
 namespace System
 {
+	// Contains information about the type which is expensive to compute
+	internal class MonoTypeInfo {
+		public string full_name;
+		public ConstructorInfo default_ctor;
+	}
+		
 	[Serializable]
 	internal class MonoType : Type, ISerializable
 	{
+		[NonSerialized]
+		MonoTypeInfo type_info;
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern void type_from_obj (MonoType type, Object obj);
@@ -55,7 +63,21 @@ namespace System
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern TypeAttributes get_attributes (Type type);
+
+		internal ConstructorInfo GetDefaultConstructor () {
+			ConstructorInfo ctor = null;
+			
+			if (type_info == null)
+				type_info = new MonoTypeInfo ();
+			if ((ctor = type_info.default_ctor) == null) {
+				const BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
 	
+				ctor = type_info.default_ctor = GetConstructor (flags,  null, CallingConventions.Any, Type.EmptyTypes, null);
+			}
+
+			return ctor;
+		}
+
 		protected override TypeAttributes GetAttributeFlagsImpl ()
 		{
 			return get_attributes (this);
@@ -150,9 +172,16 @@ namespace System
 			Type[] interfaces = GetInterfaces();
 
 			foreach (Type type in interfaces) {
-				if (String.Compare (type.Name, name, ignoreCase, CultureInfo.InvariantCulture) == 0)
+				/*We must compare against the generic type definition*/
+#if NET_2_0
+				Type t = type.IsGenericType ? type.GetGenericTypeDefinition () : type;
+#else
+				Type t = type;
+#endif
+
+				if (String.Compare (t.Name, name, ignoreCase, CultureInfo.InvariantCulture) == 0)
 					return type;
-				if (String.Compare (type.FullName, name, ignoreCase, CultureInfo.InvariantCulture) == 0)
+				if (String.Compare (t.FullName, name, ignoreCase, CultureInfo.InvariantCulture) == 0)
 					return type;
 			}
 
@@ -229,11 +258,15 @@ namespace System
 
 		internal override MethodInfo GetMethod (MethodInfo fromNoninstanciated)
                 {
+			if (fromNoninstanciated == null)
+				throw new ArgumentNullException ("fromNoninstanciated");
                         return GetCorrespondingInflatedMethod (fromNoninstanciated);
                 }
 
 		internal override ConstructorInfo GetConstructor (ConstructorInfo fromNoninstanciated)
 		{
+			if (fromNoninstanciated == null)
+				throw new ArgumentNullException ("fromNoninstanciated");
                         return GetCorrespondingInflatedConstructor (fromNoninstanciated);
 		}
 
@@ -522,7 +555,14 @@ namespace System
 
 		public override string FullName {
 			get {
-				return getFullName (true, false);
+				string fullName;
+				// This doesn't need locking
+				if (type_info == null)
+					type_info = new MonoTypeInfo ();
+				if ((fullName = type_info.full_name) == null)
+					fullName = type_info.full_name = getFullName (true, false);
+
+				return fullName;
 			}
 		}
 
@@ -557,7 +597,11 @@ namespace System
 
 		public override MemberTypes MemberType {
 			get {
-				if (DeclaringType != null)
+				if (DeclaringType != null
+#if NET_2_0
+					&& !IsGenericParameter
+#endif
+					)
 					return MemberTypes.NestedType;
 				else
 					return MemberTypes.TypeInfo;
@@ -639,6 +683,14 @@ namespace System
 		public extern override MethodBase DeclaringMethod {
 			[MethodImplAttribute(MethodImplOptions.InternalCall)]
 			get;
+		}
+
+		public override Type GetGenericTypeDefinition () {
+			Type res = GetGenericTypeDefinition_impl ();
+			if (res == null)
+				throw new InvalidOperationException ();
+
+			return res;
 		}
 #endif
 

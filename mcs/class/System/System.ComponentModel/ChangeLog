@@ -1,3 +1,28 @@
+2010-05-20  Marek Habersack  <mhabersack@novell.com>
+
+	* TypeDescriptor.cs: GetTypeDescriptor correctly forwards the call
+	to the wrapped type, if any. Fixes bug #603060
+
+	* TypeDescriptionProvider.cs: GetTypeDescriptor must return the
+	value from a call forwarded to _parent. Fixes bug #603060
+
+2010-01-15  Alexandre Gomes  <alexmipego@gmail.com>
+
+	* BaseNumberConverter.cs: Fixed CanConvertTo and ConvertTo when
+	targeting primitive types.
+
+2009-11-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* TypeConverterAttribute.cs: Add missing [ComVisible] for SL2/3 builds
+	[Backport r147154]
+
+2009-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* TypeConverter_2_1.cs: Skip this type in the MonoTouch profile;
+	  MonoTouch will be using the 2.0 version of TypeConverter.
+	* ComponentCollection.cs, PropertyDescriptor.cs: MonoTouch uses the
+	  .NET 2.0 versions of these types.
+
 2009-09-29  Alan McGovern  <amcgovern@novell.com>
 
 	* DefaultValueAttribute.cs: Implement the cctor which takes
@@ -9,6 +34,32 @@
 
 	* EnumConverter.cs: Fix conversion of 0 flag values.
 	[Fixes bug #541402]
+
+2009-07-22  Jb Evain  <jbevain@novell.com>
+
+	* ExpandableObjectConverter.cs: no method to override for a NET_2_1 profile.
+
+2009-07-20  Tom Hindle <tom_hindle@sil.org>
+
+	* Container.cs: Replaced for loop with for loop.
+	[Fixes bug #522474]
+
+2009-07-19  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Container.cs: Use generic list on 2.0 profile, and avoid using var
+	on 1.0 profile. Use for loop instead of while in Dispose to avoid
+	accessing count on each iteration.
+
+2009-07-19  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Container.cs: Avoid NRE in Remove and RemoveWithoutUnsiting.
+
+2009-07-18  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Container.cs: Changed Dispose(bool) behaviour to match .NET, based
+	on patch by Tom Hindle (tom_hindle@sil.org). Also use ValidateName
+	in Add overloads on 1.0 profile by making it available as private
+	method. Use case-insensitive comparison of component name.
 
 2009-06-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

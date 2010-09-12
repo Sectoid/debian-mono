@@ -62,10 +62,14 @@ namespace System.Reflection.Emit {
 		}
 	}
 	internal struct ILExceptionInfo {
+#pragma warning disable 169
+#pragma warning disable 414
 		ILExceptionBlock[] handlers;
 		internal int start;
 		int len;
 		internal Label end;
+#pragma warning restore 169
+#pragma warning restore 414
 
 		internal int NumHandlers ()
 		{
@@ -364,7 +368,8 @@ namespace System.Reflection.Emit {
 
 			if (open_blocks.Count <= 0)
 				throw new NotSupportedException ("Not in an exception block");
-
+			if (exceptionType != null && exceptionType.IsUserType)
+				throw new NotSupportedException ("User defined subclasses of System.Type are not yet supported.");
 			if (ex_handlers [cur_block].LastClauseType () == ILExceptionBlock.FILTER_START) {
 				if (exceptionType != null)
 					throw new ArgumentException ("Do not supply an exception type for filter clause");
@@ -474,7 +479,8 @@ namespace System.Reflection.Emit {
 		{
 			if (localType == null)
 				throw new ArgumentNullException ("localType");
-
+			if (localType.IsUserType)
+				throw new NotSupportedException ("User defined subclasses of System.Type are not yet supported.");
 			LocalBuilder res = new LocalBuilder (localType, this);
 			res.is_pinned = pinned;
 			
@@ -674,7 +680,7 @@ namespace System.Reflection.Emit {
 			make_room (6);
 
 			if (local.ilgen != this)
-				throw new Exception ("Trying to emit a local from a different ILGenerator.");
+				throw new ArgumentException ("Trying to emit a local from a different ILGenerator.");
 
 			/* inline the code from ll_emit () to optimize il code size */
 			if (opcode.StackBehaviourPop == StackBehaviour.Pop1) {
@@ -831,6 +837,10 @@ namespace System.Reflection.Emit {
 			short value = opcode.Value;
 			if (!(value == OpCodes.Call.Value || value == OpCodes.Callvirt.Value))
 				throw new NotSupportedException ("Only Call and CallVirt are allowed");
+#if NET_2_0
+			if ((methodInfo.CallingConvention & CallingConventions.VarArgs)  == 0)
+				optionalParameterTypes = null;
+#endif
 			if (optionalParameterTypes != null){
 				if ((methodInfo.CallingConvention & CallingConventions.VarArgs)  == 0){
 					throw new InvalidOperationException ("Method is not VarArgs method and optional types were passed");
@@ -1010,7 +1020,8 @@ namespace System.Reflection.Emit {
 		internal void label_fixup ()
 		{
 			for (int i = 0; i < num_fixups; ++i) {
-				
+				if (labels [fixups [i].label_idx].addr < 0)
+					throw new ArgumentException ("Label not marked");
 				// Diff is the offset from the end of the jump instruction to the address of the label
 				int diff = labels [fixups [i].label_idx].addr - (fixups [i].pos + fixups [i].offset);
 				if (fixups [i].offset == 1) {
@@ -1024,10 +1035,17 @@ namespace System.Reflection.Emit {
 			}
 		}
 
+		[Obsolete ("Use ILOffset")]
 		internal static int Mono_GetCurrentOffset (ILGenerator ig)
 		{
 			return ig.code_len;
 		}
+		
+#if NET_4_0 || BOOTSTRAP_NET_4_0
+		public int ILOffset {
+			get { return code_len; }
+		}
+#endif
 
 		void _ILGenerator.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{

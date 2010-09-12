@@ -30,6 +30,8 @@
 using System;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Reflection;
 using Microsoft.Build.BuildEngine;
@@ -54,10 +56,11 @@ namespace Mono.XBuild.CommandLine {
 		string[]		targets;
 		bool			validate;
 		string			validationSchema;
+		string			toolsVersion;
 		
 		string			responseFile;
 	
-		public Parameters (string binPath)
+		public Parameters ()
 		{
 			consoleLoggerParameters = "";
 			displayHelp = false;
@@ -89,9 +92,9 @@ namespace Mono.XBuild.CommandLine {
 					flatArguments.Add (s);
 					continue;
 				}
-				string responseFilename = Path.GetFullPath (s.Substring (1));
+				string responseFilename = Path.GetFullPath (UnquoteIfNeeded (s.Substring (1)));
 				if (responseFiles.ContainsKey (responseFilename))
-					ErrorUtilities.ReportError (1, String.Format ("We already have {0} file.", responseFilename));
+					ReportError (1, String.Format ("We already have {0} file.", responseFilename));
 				responseFiles [responseFilename] = responseFilename;
 				LoadResponseFile (responseFilename);
 			}
@@ -108,11 +111,24 @@ namespace Mono.XBuild.CommandLine {
 				string[] proj_files = Directory.GetFiles (Directory.GetCurrentDirectory (), "*proj");
 
 				if (sln_files.Length == 0 && proj_files.Length == 0)
-					ErrorUtilities.ReportError (3, "Please specify the project or solution file " +
+					ReportError (3, "Please specify the project or solution file " +
 							"to build, as none was found in the current directory.");
 
+				if (sln_files.Length == 1 && proj_files.Length > 0) {
+					var projects_table = new Dictionary<string, string> ();
+					foreach (string pfile in SolutionParser.GetAllProjectFileNames (sln_files [0])) {
+						string full_path = Path.GetFullPath (pfile);
+						projects_table [full_path] = full_path;
+					}
+
+					if (!proj_files.Any (p => !projects_table.ContainsKey (Path.GetFullPath (p))))
+						// if all the project files in the cur dir, are referenced
+						// from the single .sln in the cur dir, then pick the sln
+						proj_files = new string [0];
+				}
+
 				if (sln_files.Length + proj_files.Length > 1)
-					ErrorUtilities.ReportError (5, "Please specify the project or solution file " +
+					ReportError (5, "Please specify the project or solution file " +
 							"to build, as more than one solution or project file was found " +
 							"in the current directory");
 
@@ -123,10 +139,17 @@ namespace Mono.XBuild.CommandLine {
 			} else if (remainingArguments.Count == 1) {
 				projectFile = (string) remainingArguments [0];
 			} else {
-				ErrorUtilities.ReportError (4, "Too many project files specified");
+				ReportError (4, "Too many project files specified");
 			}
 		}
-		
+
+		private string UnquoteIfNeeded(string arg)
+		{
+			if (arg.StartsWith("\""))
+				return arg.Substring(1, arg.Length - 2);
+			return arg;
+		}
+
 		void LoadResponseFile (string filename)
 		{
 			StreamReader sr = null;
@@ -168,9 +191,10 @@ namespace Mono.XBuild.CommandLine {
                                                 sb.Length = 0;
                                         }
                                 }
-                        } catch (Exception) {
-				// FIXME: we lose exception message
-				ErrorUtilities.ReportError (2, "Error during loading response file.");
+                        } catch (IOException x) {
+				ErrorUtilities.ReportWarning (2, String.Format (
+							"Error loading response file. (Exception: {0}). Ignoring.",
+							x.Message));
 			} finally {
                                 if (sr != null)
                                         sr.Close ();
@@ -214,6 +238,8 @@ namespace Mono.XBuild.CommandLine {
 					ProcessConsoleLoggerParameters (s);
 				} else if (s.StartsWith ("/validate:") || s.StartsWith ("/val:")) {
 					ProcessValidate (s);
+				} else if (s.StartsWith ("/toolsversion:") || s.StartsWith ("/tv:")) {
+					ToolsVersion = s.Split (':') [1];
 				} else
 					return false;
 				break;
@@ -224,34 +250,54 @@ namespace Mono.XBuild.CommandLine {
 		
 		internal void ProcessTarget (string s)
 		{
-			string[] temp = s.Split (':');
-			targets = temp [1].Split (';');
+			TryProcessMultiOption (s, "Target names must be specified as /t:Target1;Target2",
+						out targets);
 		}
 		
 		internal bool ProcessProperty (string s)
 		{
-			string[] parameter, splittedProperties, property;
-			parameter = s.Split (':');
-			if (parameter.Length != 2) {
-				ErrorUtilities.ReportError (5, "Property name and value expected as /p:<prop name>=<prop value>");
+			string[] splitProperties;
+			if (!TryProcessMultiOption (s, "Property name and value expected as /p:<prop name>=<prop value>",
+						out splitProperties))
 				return false;
-			}
 
-			splittedProperties = parameter [1].Split (';');
-			foreach (string st in splittedProperties) {
+			foreach (string st in splitProperties) {
 				if (st.IndexOf ('=') < 0) {
-					ErrorUtilities.ReportError (5,
+					ReportError (5,
 							"Invalid syntax. Property name and value expected as " +
 							"<prop name>=[<prop value>]");
 					return false;
 				}
-				property = st.Split ('=');
+				string [] property = st.Split ('=');
 				properties.SetProperty (property [0], property.Length == 2 ? property [1] : "");
 			}
 
 			return true;
 		}
-		
+
+		bool TryProcessMultiOption (string s, string error_message, out string[] values)
+		{
+			values = null;
+			int colon = s.IndexOf (':');
+			if (colon + 1 == s.Length) {
+				ReportError (5, error_message);
+				return false;
+			}
+
+			values = s.Substring (colon + 1).Split (';');
+			return true;
+		}
+
+		private void ReportError (int errorCode, string message)
+		{
+			throw new CommandLineException (message, errorCode);
+		}
+
+		private void ReportError (int errorCode, string message, Exception cause)
+		{
+			throw new CommandLineException (message, cause, errorCode);
+		}
+
 		internal void ProcessLogger (string s)
 		{
 			loggers.Add (new LoggerInfo (s));
@@ -342,6 +388,11 @@ namespace Mono.XBuild.CommandLine {
 		
 		public string ValidationSchema {
 			get { return validationSchema; }
+		}
+
+		public string ToolsVersion {
+			get { return toolsVersion; }
+			private set { toolsVersion = value; }
 		}
 		
 	}

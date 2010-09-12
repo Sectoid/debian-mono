@@ -1,3 +1,13 @@
+2010-04-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* UnixSignal.cs: Fix build break under .NET 1.1 profile.
+
+2010-04-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* UnixSignal.cs: Change the native WaitAny() method to accept a
+	  Mono_Posix_RuntimeIsShuttingDown delegate, so that we can prevent an
+	  infinite loop while shutting the process down.  Fixes #592981.
+
 2009-03-23  Jonathan Pryor  <jpryor@novell.com>
 
 	* UnixDriveInfo.cs: UnixDriveInfo.AvailableFreeSpace needs to return 
@@ -5,6 +15,17 @@
 	  platforms (Solaris) bsize is the preferred block I/O size, while
 	  f_frsize is the *actual* filesystem block size.  Thus, to get proper
 	  disk under Solaris, we need to s/f_bsize/f_frsize/g.
+
+2009-02-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* UnixSignal.cs: Add a pipecnt member to UnixSignal.SignalIinfo.
+	  Patch thanks to tim.jenks@realtimeworlds.com.
+
+2009-02-09  Jonathan Pryor  <jpryor@novell.com>
+
+	* UnixGroupInfo.cs (GetMembers): Skip group members which aren't valid
+	  users on the system (thus removing a possible exception).  Patch
+	  thanks to Daniel Peñalba.
 
 2009-01-08  Rodrigo Kumpera  <rkumpera@novell.com>
 

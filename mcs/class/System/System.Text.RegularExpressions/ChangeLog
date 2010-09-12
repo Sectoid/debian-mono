@@ -1,3 +1,147 @@
+2010-06-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* parser.cs: Handle repetition of position assertions.
+
+	Fixes #610587.
+
+	Backport of r159287.
+
+2009-09-07  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Regex.cs (Escape, Unescape): Add null checks.
+	(validate_options): Add ECMAScript option checks.
+	(Replace, Split): Add a few bounds checks.
+
+2009-09-07  Raja R Harinath  <harinath@hurrynot.org>
+
+	Add some null checks and bounds checks.
+	* Regex.cs (default_startat): New.  Replaces the fragment
+	'RightToLeft ?  input.Length : 0' with a null-safe variant.
+	(Replace) <string variant>: Add null checks for argument strings.
+	(Split): Likewise.
+	(.ctor): Likewise.  Validate regex options partially.
+	(Match): Add null check on string arguments, and bounds checks for
+	offset and length arguments.
+
+2009-08-20  Raja R Harinath  <harinath@hurrynot.org>
+
+	Final piece of explicit numeric group support
+	* parser.cs (gap): New.
+	(GetMapping): Return it.
+	(ResolveReferences): Collect explicit numeric groups which may not
+	match their indices.
+	(HandleExplicitNumericGroups): New.  Process the above list to
+	assign appropriate indices, and compute the correct value of 'gap'.
+
+2009-08-20  Raja R Harinath  <harinath@hurrynot.org>
+
+	* syntax.cs (CapturingGroup.Index): Rename from Number to clarify
+	semantics.
+	(CapturingGroup.CompareTo): New.
+	* parser.cs, syntax.cs: Update to changes.
+
+2009-08-20  Raja R Harinath  <harinath@hurrynot.org>
+
+	Implement some more group number/index distinction
+	* Regex.cs (gap, Gap): New.
+	(Init, InitNewRegex): Update it.
+	(GroupNumberFromName): If the 'name' is beyond the gap, it is an
+	explicit numeric group -- use the name as the group number.
+	(GetGroupIndex): Use a binary search to map a group number to its
+	index when we know that they don't match.
+	(GroupNumbers): Use group number, not group index, for explicit
+	numeric groups.
+	* Match.cs (.ctor): Use the newly introduce 'Regex.Gap'.
+
+2009-08-19  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Regex.cs (group_numbers): New.
+	(GetGroupNumbers): Move array initialization ...
+	(GroupNumbers): ... to new on-demand initializer.
+
+2009-08-19  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Regex.cs (group_names): Rename from _groupNumbersToNameMap.
+	(GetGroupNamesArray): Use an IDictionaryEnumerator to walk the
+	mapping, since both the key and value are used in the loop.
+
+2009-08-19  Raja R Harinath  <harinath@hurrynot.org>
+
+	Introduce 'gap' concept into all the variants of regex
+	* arch.cs (IMachineFactory::Gap): New property.
+	* compiler.cs (InterpreterFactory): Update to changes.
+	* RxCompiler.cs (RxInterpreterFactory): Likewise.
+	* JvmReMachineFactory.cs: Likewise.
+	* parser.cs (GetMapping): Return the 'gap' index.  Move creation
+	of mapping dictionary ...
+	* Regex.cs (CreateMachineFactory): ... here.  Update to changes.
+
+2009-08-18  Raja R Harinath  <harinath@hurrynot.org>
+
+	Distinguish between the internal index of a group and group number.
+	* Regex.cs (GetGroupIndex): New.
+	(GroupNameFromNumber): Use it.
+	* GroupCollection.cs (.ctor): Introduce 'gap' argument.  It is the
+	index of the first group whose group number differs from its index.
+	(Item.get): Likewise.
+
+2009-08-18  Raja R Harinath  <harinath@hurrynot.org>
+
+	* parser.cs (GetMapping): Extend duplicate check for numeric
+	groups too.
+
+2009-08-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* parser.cs (ResolveReferences): Handle some cases of
+	explicitly-named numeric groups.
+
+2009-08-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* parser.cs (ResolveReferences): Rearrange slightly to prepare for
+	future changes.
+
+2009-08-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Regex.cs (GetGroupNumbers): List group numbers in ascending order.
+	(GetGroupNames): List names in order of group number.
+
+2009-08-12  Raja R Harinath  <harinath@hurrynot.org>
+
+	* syntax.cs (BackslashNumber.ResolveReference): Improve ECMAScript
+	semantics.  Handle cases like "group 43 exists but group 4 doesn't".
+
+2009-08-10  Raja R Harinath  <harinath@hurrynot.org>
+
+	* syntax.cs (BackslashNumber.ResolveReference): Implement fallback
+	to octal numbers, and ECMAScript semantics.
+	* parser.cs (ResolveReferences): Use it.
+
+2009-08-10  Raja R Harinath  <harinath@hurrynot.org>
+
+	* syntax.cs (BackslashNumber): New class.
+	* parser.cs (ParseSpecial): Create it instead of 'Reference' if a
+	numeric backreference is seen.
+
+2009-08-10  Raja R Harinath  <harinath@hurrynot.org>
+
+	* parser.cs (ResolveReferences): Allow named groups to be
+	referred-to by their group numbers too.
+
+2009-04-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Regex.cs: Remove Compiler-related support for NET_2_1
+	* RegexOptions.cs: Remove Compile from values available on NET_2_1
+
+2009-03-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* RxInterpreter.cs (ResetGroups): Avoid allocating larger than needed
+	arrays.
+
+2009-02-27  Jonathan Pryor <jpryor@novell.com>
+
+	* Regex.cs (Replace): Check that input & evaluator are not null, as
+	  documented in MSDN (and the variance found while testing DbLinq).
+
 2009-02-27  Zoltan Varga  <vargaz@gmail.com>
 
 	* BaseMachine.cs (LTRReplace): Initialize the StringBuilder with an
@@ -8,10 +152,17 @@
 	* CILCompiler.cs: Partially inline calls to Char.ToLower () to speed
 	up ignorecase matching.
 
+2009-02-16  Jb Evain  <jbevain@novell.com>
+
+	* Regex.cs: on the NET_2_1 profile, always use the old engine for now.
+
+2009-02-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* Regex.cs: Add a MONO_NEW_RX variable to enable the new regex
+	engine.
+
 2009-02-04  Zoltan Varga  <vargaz@gmail.com>
 
-	Backport of 125637.
-	
 	* Regex.cs: Disable the new regex engine for now.
 
 2009-01-14  Zoltan Varga  <vargaz@gmail.com>

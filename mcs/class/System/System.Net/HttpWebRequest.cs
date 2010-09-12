@@ -110,8 +110,9 @@ namespace System.Net
 		// Constructors
 		static HttpWebRequest ()
 		{
-			NetConfig config = ConfigurationSettings.GetConfig ("system.net/settings") as NetConfig;
 			defaultMaxResponseHeadersLength = 64 * 1024;
+#if !MONOTOUCH
+			NetConfig config = ConfigurationSettings.GetConfig ("system.net/settings") as NetConfig;
 			if (config != null) {
 				int x = config.MaxResponseHeadersLength;
 				if (x != -1)
@@ -119,6 +120,7 @@ namespace System.Net
 
 				defaultMaxResponseHeadersLength = x;
 			}
+#endif
 		}
 #endif
 
@@ -212,7 +214,7 @@ namespace System.Net
 			get {
 				return (allowBuffering && (method != "HEAD" && method != "GET" &&
 							method != "MKCOL" && method != "CONNECT" &&
-							method != "DELETE" && method != "TRACE"));
+							method != "TRACE"));
 			}
 		}
 		
@@ -647,7 +649,7 @@ namespace System.Net
 				throw new WebException ("The request was canceled.", WebExceptionStatus.RequestCanceled);
 
 			bool send = !(method == "GET" || method == "CONNECT" || method == "HEAD" ||
-					method == "TRACE" || method == "DELETE");
+					method == "TRACE");
 			if (method == null || !send)
 				throw new ProtocolViolationException ("Cannot send data when method is: " + method);
 
@@ -952,10 +954,11 @@ namespace System.Net
 					return false;
 				*/
 
-				contentLength = 0;
+				contentLength = -1;
 				bodyBufferLength = 0;
 				bodyBuffer = null;
-				method = "GET";
+				if (code != HttpStatusCode.TemporaryRedirect)
+					method = "GET";
 				uriString = webResponse.Headers ["Location"];
 				break;
 			case HttpStatusCode.SeeOther: //303
@@ -1053,14 +1056,14 @@ namespace System.Net
 
 		void DoPreAuthenticate ()
 		{
-			webHeaders.RemoveInternal ("Proxy-Authorization");
-			webHeaders.RemoveInternal ("Authorization");
 			bool isProxy = (proxy != null && !proxy.IsBypassed (actualUri));
 			ICredentials creds = (!isProxy || credentials != null) ? credentials : proxy.Credentials;
 			Authorization auth = AuthenticationManager.PreAuthenticate (this, creds);
 			if (auth == null)
 				return;
 
+			webHeaders.RemoveInternal ("Proxy-Authorization");
+			webHeaders.RemoveInternal ("Authorization");
 			string authHeader = (isProxy && credentials == null) ? "Proxy-Authorization" : "Authorization";
 			webHeaders [authHeader] = auth.Message;
 			usedPreAuth = true;
@@ -1154,7 +1157,7 @@ namespace System.Net
 				bodyBuffer = null;
 				writeStream.Close ();
 			} else if (method != "HEAD" && method != "GET" && method != "MKCOL" && method != "CONNECT" &&
-					method != "DELETE" && method != "TRACE") {
+					method != "TRACE") {
 				if (getResponseCalled && !writeStream.RequestWritten)
 					writeStream.WriteRequest ();
 			}
@@ -1307,6 +1310,7 @@ namespace System.Net
 							}
 							webResponse.Close ();
 						}
+						finished_reading = false;
 						haveResponse = false;
 						webResponse = null;
 						r.Reset ();

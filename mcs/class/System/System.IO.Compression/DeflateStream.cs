@@ -34,11 +34,16 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Messaging;
 
+#if MONOTOUCH
+using MonoTouch;
+#endif
+
 namespace System.IO.Compression {
 	public class DeflateStream : Stream
 	{
 		const int BufferSize = 4096;
-		delegate int UnmanagedReadOrWrite (IntPtr buffer, int length);
+		[UnmanagedFunctionPointer (CallingConvention.Cdecl)]
+		delegate int UnmanagedReadOrWrite (IntPtr buffer, int length, IntPtr data);
 		delegate int ReadMethod (byte[] array, int offset, int count);
 		delegate void WriteMethod (byte[] array, int offset, int count);
 
@@ -179,6 +184,9 @@ namespace System.IO.Compression {
 
 		unsafe int ReadInternal (byte[] array, int offset, int count)
 		{
+			if (count == 0)
+				return 0;
+
 			int result = 0;
 			fixed (byte *b = array) {
 				IntPtr ptr = new IntPtr (b + offset);
@@ -209,6 +217,9 @@ namespace System.IO.Compression {
 
 		unsafe void WriteInternal (byte[] array, int offset, int count)
 		{
+			if (count == 0)
+				return;
+
 			int result = 0;
 			fixed (byte *b = array) {
 				IntPtr ptr = new IntPtr (b + offset);
@@ -411,19 +422,19 @@ namespace System.IO.Compression {
 		const string LIBNAME = "MonoPosixHelper";
 #endif
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern IntPtr CreateZStream (CompressionMode compress, bool gzip, UnmanagedReadOrWrite feeder, IntPtr data);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int CloseZStream (IntPtr stream);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int Flush (IntPtr stream);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int ReadZStream (IntPtr stream, IntPtr buffer, int length);
 
-		[DllImport (LIBNAME)]
+		[DllImport (LIBNAME, CallingConvention=CallingConvention.Cdecl)]
 		static extern int WriteZStream (IntPtr stream, IntPtr buffer, int length);
 	}
 }

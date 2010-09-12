@@ -28,6 +28,7 @@ Microsoft.Win32/UserPreferenceChangedEventArgs.cs
 Microsoft.Win32/UserPreferenceChangedEventHandler.cs
 Microsoft.Win32/UserPreferenceChangingEventArgs.cs
 Microsoft.Win32/UserPreferenceChangingEventHandler.cs
+Mono.Http/NtlmClient.cs
 System.CodeDom/CodeArgumentReferenceExpression.cs
 System.CodeDom/CodeArrayCreateExpression.cs
 System.CodeDom/CodeArrayIndexerExpression.cs
@@ -829,6 +830,7 @@ System.Net.Sockets/ProtocolType.cs
 System.Net.Sockets/SelectMode.cs
 System.Net.Sockets/SendPacketsElement.cs
 System.Net.Sockets/Socket.cs
+System.Net.Sockets/Socket_2_1.cs
 System.Net.Sockets/SocketAsyncEventArgs.cs
 System.Net.Sockets/SocketAsyncOperation.cs
 System.Net.Sockets/SocketError.cs
@@ -879,6 +881,7 @@ System.Security.Cryptography/OidCollection.cs
 System.Security.Cryptography/Oid.cs
 System.Security.Cryptography/OidEnumerator.cs
 System.Security.Cryptography.X509Certificates/OpenFlags.cs
+System.Security.Cryptography.X509Certificates/OSX509Certificates.cs
 System.Security.Cryptography.X509Certificates/PublicKey.cs
 System.Security.Cryptography.X509Certificates/StoreLocation.cs
 System.Security.Cryptography.X509Certificates/StoreName.cs
@@ -950,6 +953,7 @@ System.Threading/Semaphore.cs
 System.Threading/SemaphoreFullException.cs
 System.Threading/ThreadExceptionEventArgs.cs
 System.Threading/ThreadExceptionEventHandler.cs
+System.Threading/Barrier.cs
 System.Timers/ElapsedEventArgs.cs
 System.Timers/ElapsedEventHandler.cs
 System.Timers/Timer.cs
@@ -1004,3 +1008,7 @@ System.Runtime.InteropServices.ComTypes/IEnumSTATDATA.cs
 System.Runtime.InteropServices.ComTypes/STATDATA.cs
 System.Runtime.InteropServices.ComTypes/STGMEDIUM.cs
 System.Runtime.InteropServices.ComTypes/TYMED.cs
+System/IUriData.cs
+System/UriData.cs
+System.Collections.Concurrent/BlockingCollection.cs
+../corlib/System.Threading/AtomicBoolean.cs

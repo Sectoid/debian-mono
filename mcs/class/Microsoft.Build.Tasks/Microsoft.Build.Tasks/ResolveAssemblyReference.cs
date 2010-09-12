@@ -78,6 +78,7 @@ namespace Microsoft.Build.Tasks {
 		List<ITaskItem> tempResolvedFiles;
 		List<PrimaryReference> primaryReferences;
 		Dictionary<string, string> alreadyScannedAssemblyNames;
+		Dictionary<string, string> conflictWarningsCache;
 
 		//FIXME: construct and use a graph of the dependencies, useful across projects
 
@@ -107,6 +108,7 @@ namespace Microsoft.Build.Tasks {
 
 			primaryReferences = new List<PrimaryReference> ();
 			assemblyNameToResolvedRef = new Dictionary<string, ResolvedReference> ();
+			conflictWarningsCache = new Dictionary<string, string> ();
 
 			ResolveAssemblies ();
 			ResolveAssemblyFiles ();
@@ -135,6 +137,7 @@ namespace Microsoft.Build.Tasks {
 			alreadyScannedAssemblyNames.Clear ();
 			primaryReferences.Clear ();
 			assemblyNameToResolvedRef.Clear ();
+			conflictWarningsCache.Clear ();
 			dependency_search_paths = null;
 
 			return true;
@@ -218,7 +221,8 @@ namespace Microsoft.Build.Tasks {
 				} else {
 					resolved = assembly_resolver.FindInDirectory (
 							item, spath,
-							allowedAssemblyExtensions ?? default_assembly_extensions);
+							allowedAssemblyExtensions ?? default_assembly_extensions,
+							specific_version);
 				}
 
 				if (resolved != null)
@@ -236,10 +240,13 @@ namespace Microsoft.Build.Tasks {
 			specific_version = true;
 			string value = item.GetMetadata ("SpecificVersion");
 			if (String.IsNullOrEmpty (value)) {
-				AssemblyName name = new AssemblyName (item.ItemSpec);
+				//AssemblyName name = new AssemblyName (item.ItemSpec);
 				// If SpecificVersion is not specified, then
 				// it is true if the Include is a strong name else false
-				specific_version = assembly_resolver.IsStrongNamed (name);
+				//specific_version = assembly_resolver.IsStrongNamed (name);
+
+				// msbuild seems to just look for a ',' in the name :/
+				specific_version = item.ItemSpec.IndexOf (',') >= 0;
 				return true;
 			}
 
@@ -457,7 +464,7 @@ namespace Microsoft.Build.Tasks {
 				return false;
 
 			// match for full name
-			if (AssemblyResolver.AssemblyNamesCompatible (key_aname, found_ref.AssemblyName, true))
+			if (AssemblyResolver.AssemblyNamesCompatible (key_aname, found_ref.AssemblyName, true, false))
 				// exact match, so its already there, dont add anything
 				return true;
 
@@ -479,25 +486,20 @@ namespace Microsoft.Build.Tasks {
 			assembly_resolver.LogSearchMessage ("Choosing '{0}' as it is a primary reference.",
 					found_ref.AssemblyName.FullName);
 
-			Log.LogWarning ("Found a conflict between : '{0}' and '{1}'. Using '{0}' reference.",
-					found_ref.AssemblyName.FullName,
-					key_aname.FullName);
+			LogConflictWarning (found_ref.AssemblyName.FullName, key_aname.FullName);
 
 			return true;
 		}
 
-		bool IsCopyLocal (ITaskItem item)
+		// conflict b/w @main and @conflicting, picking @main
+		void LogConflictWarning (string main, string conflicting)
 		{
-			return Boolean.Parse (item.GetMetadata ("CopyLocal"));
-		}
-
-		bool IsFromTargetFramework (string filename)
-		{
-			foreach (string fpath in targetFrameworkDirectories)
-				if (filename.StartsWith (fpath))
-					return true;
-
-			return false;
+			string key = main + ":" + conflicting;
+			if (!conflictWarningsCache.ContainsKey (key)) {
+				Log.LogWarning ("Found a conflict between : '{0}' and '{1}'. Using '{0}' reference.",
+						main, conflicting);
+				conflictWarningsCache [key] = key;
+			}
 		}
 
 		bool IsFromGacOrTargetFramework (ResolvedReference rr)

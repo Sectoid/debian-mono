@@ -1,3 +1,34 @@
+2010-04-03  Ankit Jain  <jankit@novell.com>
+
+	* Makefile: Import tools/xbuild/xbuild_targets.make, which copies
+	the target and tasks file in the correct place, to allow running
+	tests with different toolsversion. Copy the config file for the
+	test assembly. Clean the generated test.dll .
+	Use the correct target assembly name for 4.0 profile
+	(ms.build.tasks.v4.0.dll), and for Utilities assembly.
+	* Microsoft.Build.Tasks_test.dll.sources: Use Consts.cs from Engine
+	instead of maintaining a copy here.
+
+2010-03-02  Ankit Jain  <jankit@novell.com>
+
+	Fix tests.
+	* Makefile (EXTRA_DISTFILES): Add Test/resources/junk.txt .
+
+2010-02-06  Ankit Jain  <jankit@novell.com>
+
+	* Microsoft.Build.Tasks.dll.sources: Add LC.cs
+	* Microsoft.Build.Tasks_test.dll.sources: Add LCTest.cs
+
+2010-02-04  Ankit Jain  <jankit@novell.com>
+
+	* Microsoft.Build.Tasks_test.dll.sources: Added
+	WriteLinesToFileTest.cs
+
+2009-12-22  Ankit Jain  <jankit@novell.com>
+
+	* Microsoft.Build.Tasks.dll.sources: Add DirectoryScanner.cs
+	from Build.Engine, required by CreateItem.
+
 2009-10-12  Ankit Jain  <jankit@novell.com>
 
 	* Makefile: Add reference to Microsoft.Build.Engine .

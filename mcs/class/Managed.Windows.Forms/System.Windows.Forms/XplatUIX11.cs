@@ -1757,42 +1757,35 @@ namespace System.Windows.Forms {
 							sel_event.SelectionEvent.property = xevent.SelectionRequestEvent.property;
 							Marshal.FreeHGlobal(buffer);
 						}
-					} else if (Clipboard.IsSourceText) {
-						IntPtr	buffer;
+					} else if (Clipboard.IsSourceText && 
+					           (format_atom == (IntPtr)Atom.XA_STRING 
+					            || format_atom == OEMTEXT
+					            || format_atom == UTF16_STRING
+					            || format_atom == UTF8_STRING)) {
+						IntPtr	buffer = IntPtr.Zero;
 						int	buflen;
+						Encoding encoding = null;
 
 						buflen = 0;
 
+						// Select an encoding depending on the target
 						IntPtr target_atom = xevent.SelectionRequestEvent.target;
-						if (target_atom == (IntPtr)Atom.XA_STRING) {
-							Byte[] bytes;
+						if (target_atom == (IntPtr)Atom.XA_STRING || target_atom == OEMTEXT)
+							// FIXME - EOMTEXT should encode into ISO2022
+							encoding = Encoding.ASCII;
+						else if (target_atom == UTF16_STRING)
+							encoding = Encoding.Unicode;
+						else if (target_atom == UTF8_STRING)
+							encoding = Encoding.UTF8;
 
-							bytes = Encoding.ASCII.GetBytes(Clipboard.GetPlainText ());
-							buffer = Marshal.AllocHGlobal(bytes.Length);
-							buflen = bytes.Length;
+						Byte [] bytes;
 
-							for (int i = 0; i < buflen; i++) {
-								Marshal.WriteByte(buffer, i, bytes[i]);
-							}
-						} else if (target_atom == OEMTEXT) {
-							// FIXME - this should encode into ISO2022
-							buffer = Marshal.StringToHGlobalAnsi(Clipboard.GetPlainText ());
-							while (Marshal.ReadByte(buffer, buflen) != 0) {
-								buflen++;
-							}
-						} else if (target_atom == UTF16_STRING) {
-							Byte [] bytes;
+						bytes = encoding.GetBytes (Clipboard.GetPlainText ());
+						buffer = Marshal.AllocHGlobal (bytes.Length);
+						buflen = bytes.Length;
 
-							bytes = Encoding.Unicode.GetBytes (Clipboard.GetPlainText ());
-							buffer = Marshal.AllocHGlobal (bytes.Length);
-							buflen = bytes.Length;
-
-							for (int i = 0; i < buflen; i++) {
-								Marshal.WriteByte (buffer, i, bytes [i]);
-							}
-						} else {
-							buffer = IntPtr.Zero;
-						}
+						for (int i = 0; i < buflen; i++)
+							Marshal.WriteByte (buffer, i, bytes [i]);
 
 						if (buffer != IntPtr.Zero) {
 							XChangeProperty(DisplayHandle, xevent.SelectionRequestEvent.requestor, (IntPtr)xevent.SelectionRequestEvent.property, (IntPtr)xevent.SelectionRequestEvent.target, 8, PropertyMode.Replace, buffer, buflen);
@@ -3655,6 +3648,11 @@ namespace System.Windows.Forms {
 			in_doevents = true;
 
 			while (PeekMessage(queue, ref msg, IntPtr.Zero, 0, 0, (uint)PeekMessageFlags.PM_REMOVE)) {
+				Message m = Message.Create (msg.hwnd, (int)msg.message, msg.wParam, msg.lParam);
+
+				if (Application.FilterMessage (ref m))
+					continue;
+
 				TranslateMessage (ref msg);
 				DispatchMessage (ref msg);
 
@@ -3930,18 +3928,14 @@ namespace System.Windows.Forms {
 
 					// F1 key special case - WM_HELP sending
 					if (msg.wParam == (IntPtr)VirtualKeys.VK_F1 || msg.wParam == (IntPtr)VirtualKeys.VK_HELP) {
-						// Send the keypress message first
-						NativeWindow.WndProc (FocusWindow, msg.message, msg.wParam, msg.lParam);
-
-						// Send wM_HELP
+						// Send wM_HELP and then return it as a keypress message in
+						// case it needs to be preproccessed.
 						HELPINFO helpInfo = new HELPINFO ();
 						GetCursorPos (IntPtr.Zero, out helpInfo.MousePos.x, out helpInfo.MousePos.y);
 						IntPtr helpInfoPtr = Marshal.AllocHGlobal (Marshal.SizeOf (helpInfo));
 						Marshal.StructureToPtr (helpInfo, helpInfoPtr, true);
 						NativeWindow.WndProc (FocusWindow, Msg.WM_HELP, IntPtr.Zero, helpInfoPtr);
 						Marshal.FreeHGlobal (helpInfoPtr);
-
-						goto ProcessNextMessage;
 					}
 					break;
 				}
@@ -4421,25 +4415,27 @@ namespace System.Windows.Forms {
 					goto ProcessNextMessage;
 				}
 
+				// We are already firing WM_SHOWWINDOW messages in the proper places, but I'm leaving this code
+				// in case we break a scenario not taken into account in the tests
 				case XEventName.MapNotify: {
-					if (client && (xevent.ConfigureEvent.xevent == xevent.ConfigureEvent.window)) {	// Ignore events for children (SubstructureNotify) and client areas
+					/*if (client && (xevent.ConfigureEvent.xevent == xevent.ConfigureEvent.window)) {	// Ignore events for children (SubstructureNotify) and client areas
 						hwnd.mapped = true;
 						msg.message = Msg.WM_SHOWWINDOW;
 						msg.wParam = (IntPtr) 1;
 						// XXX we're missing the lParam..
 						break;
-					}
+					}*/
 					goto ProcessNextMessage;
 				}
 
 				case XEventName.UnmapNotify: {
-					if (client && (xevent.ConfigureEvent.xevent == xevent.ConfigureEvent.window)) {	// Ignore events for children (SubstructureNotify) and client areas
+					/*if (client && (xevent.ConfigureEvent.xevent == xevent.ConfigureEvent.window)) {	// Ignore events for children (SubstructureNotify) and client areas
 						hwnd.mapped = false;
 						msg.message = Msg.WM_SHOWWINDOW;
 						msg.wParam = (IntPtr) 0;
 						// XXX we're missing the lParam..
 						break;
-					}
+					}*/
 					goto ProcessNextMessage;
 				}
 
@@ -4921,7 +4917,11 @@ namespace System.Windows.Forms {
 				clip_region.MakeEmpty();
 
 				foreach (Rectangle r in hwnd.ClipRectangles) {
-					clip_region.Union (r);
+					/* Expand the region slightly.
+					 * See bug 464464.
+					 */
+					Rectangle r2 = Rectangle.FromLTRB (r.Left, r.Top, r.Right, r.Bottom + 1);
+					clip_region.Union (r2);
 				}
 
 				if (hwnd.UserClip != null) {
@@ -5690,15 +5690,13 @@ namespace System.Windows.Forms {
 							case FormWindowState.Maximized:	SetWindowState(handle, FormWindowState.Maximized); break;
 						}
 					}
+
+					SendMessage(handle, Msg.WM_WINDOWPOSCHANGED, IntPtr.Zero, IntPtr.Zero);
 				}
 				else {
 					UnmapWindow(hwnd, WindowType.Both);
 				}
 			}
-
-			if (visible)
-				SendMessage(handle, Msg.WM_WINDOWPOSCHANGED, IntPtr.Zero, IntPtr.Zero);
-
 			return true;
 		}
 

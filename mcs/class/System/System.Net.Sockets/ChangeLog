@@ -1,10 +1,74 @@
+2010-03-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket.cs: error handling was totally broken in the synchronous
+	Connect() call.  Fixes bug #590488.
+
+2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Apply Gendarme's ProtectCallToEventDelegatesRule
+	[Backport r150033]
+
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Implement ConnectByNameError for 
+	Moonlight 3
+
+2009-11-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket_2_1.cs: throw when shutting down a socket that is not
+	connected. Don't linger if the socket is not connected.
+
 2009-11-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Socket_2_1.cs: stop any blocking thread before closing the socket.
 
+2009-11-03  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Set error back to SocketError.Success
+	once CheckEndPoint succeed.
+	[Fix bug #549586]
+	[Backport r145329]
+
 2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Socket.cs: implement *SendFile().
+
+2009-09-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Default SocketError.AccessDenied on 
+	Connect in case none of the DnsEndPoint provides an adequate 
+	address (family).
+	[Backport r142746]
+
+2009-09-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Socket_2_1.cs: Close(int timeout) blocks up to timeout ms if there's
+	pending data to be written to the socket. If there's no pending data,
+	it closes and returns right away. Instead of using Timer and then
+	doing a 'hard' close(), we set the linger option for the socket.
+
+2009-09-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Don't use Socket.Poll for NET_2_1.
+	Throw NIE for use of BufferList in Receive.
+	* Socket.cs: Move Close(int) to Socket_2_1.cs. Remove NET_2_1
+	defines since the file is not used by Moonlight
+	* Socket_2_1.cs: Add Close(int) from Socket. Define out Poll
+	and Blocking.
+	[Backport r142722]
+
+2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Fix paramater validations and default 
+	values
+	[Backport r142675]
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket_2_1.cs: Remove NET_2_1 socket policy checks from here.
+	* SocketAsyncEventArgs.cs: Support DnsEndPoint correctly (NET_2_1 but
+	that will be useful for NET_4_0 soon). Add socket policy checks here
+	since it could be called several times to connect to a host.
 
 2009-09-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -16,6 +80,40 @@
 	* SocketAsyncEventArgs.cs: fix check for non-null.
 	Fixes bug #516455.
 
+2009-07-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket_2_1.cs, SocketAsyncEventArgs.cs: A bit more NET_2_1 defines
+	to help the tuner remove some extra types for moonlight.
+
+2009-06-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Socket.cs: Modified some argument names to match MS. Moved disposed
+	check before argument checks in Receive. Use SocketError.InvalidArgument
+	instead of using magic numbers. Added back comments that was
+	accidentally removed in my previous commit.
+	* Socket_2_1.cs: Modified some argument names to match MS.
+
+2009-06-28  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Socket.cs: In GetSocketOption, throw SocketException when (byte [])
+	option value is null. Use SocketError fields instead of using "magic"
+	number. In SetSocketOption (SocketOptionLevel, SocketOptionName, object)
+	only accept Linger, AddMembership, DropMembership and verify option
+	value.
+	* MulticastOption.cs: Added argument checks. Save interfaceIndex that is
+	passed to .ctor, and removed MonoTODO. Renamed arguments to match MS.
+	Reset InterfaceIndex when LocalAddress is modified, and reset
+	LocalAddress when InterfaceIndex is modified.
+	* UdpClient.cs: Modified exception to more closely match MS. Fixed
+	(int, AddressFamily) .ctor to construct IPv6 endpoint when family is
+	InterNetworkV6. Added null check for multicastAddr to (IPAddress)
+	JoinMulticastGroup overload. In (int, IPAddress) and (IPAddress,
+	IPAddress) overloads of JoinMulticastGroup throw SocketException when
+	client is IPv4. Added null check for multicastAddr to (IPAddress, int),
+	overload, and moved JoinMulticastGroup call after argument checks.
+	* IPv6MulticastOption.cs: Renamed argument names to match MS. Added
+	null check to set_Group. Added range check to set_InterfaceIndex.
+
 2009-06-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Socket.cs: turn WSAEINVAL into ArgumentException.
@@ -24,6 +122,23 @@
 
 	* Socket.cs: MS throws a SocketException in the byte[] overload when
 	the value is null.
+
+2009-05-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket_2_1.cs: Do not throw a SecurityException if the security
+	policy check fails in NET_2_1 but set the SocketError to AccessDenied
+	ensure the EndPoint has a valid policy before connecting.
+	* SocketAsyncEventArgs.cs: Don't recurse endlessly in SendCallback
+	and ReceiveCallback if the socket is not connected. Check for
+	AccessDenied in ConnectCallback (needed for the security policy
+	check in NET_2_1).
+
+2009-05-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket_2_1.cs: Add ConnectAsync support for NET_2_1 which will
+	ensure the EndPoint has a valid policy before connecting.
+	* SocketAsyncEventArgs.cs: Add support for IList<ArraySegment<byte>>
+	when sending. Add ConnectSocket for NET_2_1
 
 2009-05-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -42,17 +157,30 @@
 	* Socket.cs: return the last error if a connect to multiple addresses
 	fails.
 
+2009-04-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket_2_1.cs: Use old-n-simple CheckProtocolSupport to implement
+	OSSupportsIP[v4|v6] for Moonlight (NET_2_1 only) so we can avoid 
+	including a bunch of types (22) from System.Net.NetworkInformation 
+	and drop the number of [SecuritySafeCritical] methods to audit (the 
+	same 22) and [SecurityCritical] (8) beside getting a smaller 
+	System.Net.dll assembly :)
+
 2009-04-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Socket.cs: End* methods can only be called once per IAsyncResult.
 	Bug #466031 fixed.
 
-2009-02-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+2009-04-09  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* Socket.cs: instead of clearing the sockets form the output and then
-	adding them back, we just remove the ones that have not been signaled.
-	Fixes bug #354090 and bug #476138.
-
+	* Socket.cs: Split socket class into two files (this one and the
+	new Socket_2_1.cs). This let us remove (some) existing #if in the
+	sources and avoid (a lot) of new ones for Moonlight.
+	* Socket_2_1.cs: Just enough of socket for NET_2_1. This helps
+	the tuner not to bring a lot of extra stuff (some visible)
+	into Moonlight.
+	* SocketAsyncEventArgs.cs: Ifdef out some cases for NET_2_1 so 
+	Moonlight can use it's own (smaller) SocketAsyncOperation enum
 
 2009-02-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

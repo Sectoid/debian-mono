@@ -1,3 +1,13 @@
+/*
+ * mono-debug.c: 
+ *
+ * Author:
+ *	Mono Project (http://www.mono-project.com)
+ *
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
+ */
+
 #include <config.h>
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/tabledefs.h>
@@ -213,6 +223,9 @@ mono_debug_init (MonoDebugFormat format)
 {
 	g_assert (!mono_debug_initialized);
 
+	if (_mono_debug_using_mono_debugger)
+		format = MONO_DEBUG_FORMAT_DEBUGGER;
+
 	mono_debug_initialized = TRUE;
 	mono_debug_format = format;
 
@@ -327,6 +340,9 @@ mono_debug_domain_unload (MonoDomain *domain)
 	mono_debugger_unlock ();
 }
 
+/*
+ * LOCKING: Assumes the debug lock is held.
+ */
 static MonoDebugHandle *
 _mono_debug_get_image (MonoImage *image)
 {
@@ -341,11 +357,13 @@ mono_debug_close_image (MonoImage *image)
 	if (!mono_debug_initialized)
 		return;
 
-	handle = _mono_debug_get_image (image);
-	if (!handle)
-		return;
-
 	mono_debugger_lock ();
+
+	handle = _mono_debug_get_image (image);
+	if (!handle) {
+		mono_debugger_unlock ();
+		return;
+	}
 
 	mono_debugger_event (MONO_DEBUGGER_EVENT_UNLOAD_MODULE, (guint64) (gsize) handle,
 			     handle->index);
@@ -364,11 +382,13 @@ mono_debug_open_image (MonoImage *image, const guint8 *raw_contents, int size)
 	if (mono_image_is_dynamic (image))
 		return NULL;
 
-	handle = _mono_debug_get_image (image);
-	if (handle != NULL)
-		return handle;
-
 	mono_debugger_lock ();
+
+	handle = _mono_debug_get_image (image);
+	if (handle != NULL) {
+		mono_debugger_unlock ();
+		return handle;
+	}
 
 	handle = g_new0 (MonoDebugHandle, 1);
 	handle->index = ++next_symbol_file_id;
@@ -575,8 +595,8 @@ mono_debug_add_method (MonoMethod *method, MonoDebugMethodJitInfo *jit, MonoDoma
 		is_wrapper = TRUE;
 	}
 
-	max_size = 24 + 8 * jit->num_line_numbers +
-		(20 + sizeof (gpointer)) * (1 + jit->num_params + jit->num_locals);
+	max_size = (5 * 5) + 1 + (10 * jit->num_line_numbers) +
+		(25 + sizeof (gpointer)) * (1 + jit->num_params + jit->num_locals);
 
 	if (max_size > BUFSIZ)
 		ptr = oldptr = g_malloc (max_size);
@@ -804,15 +824,17 @@ mono_debug_add_type (MonoClass *klass)
 	guint32 size, total_size, max_size;
 	int base_offset = 0;
 
-	handle = _mono_debug_get_image (klass->image);
-	if (!handle)
-		return;
-
 	if (klass->generic_class || klass->rank ||
 	    (klass->byval_arg.type == MONO_TYPE_VAR) || (klass->byval_arg.type == MONO_TYPE_MVAR))
 		return;
 
 	mono_debugger_lock ();
+
+	handle = _mono_debug_get_image (klass->image);
+	if (!handle) {
+		mono_debugger_unlock ();
+		return;
+	}
 
 	max_size = 12 + sizeof (gpointer);
 	if (max_size > BUFSIZ)
@@ -970,6 +992,26 @@ cleanup_and_fail:
 }
 
 /**
+ * mono_debug_il_offset_from_address:
+ *
+ *   Compute the IL offset corresponding to NATIVE_OFFSET inside the native
+ * code of METHOD in DOMAIN.
+ */
+gint32
+mono_debug_il_offset_from_address (MonoMethod *method, MonoDomain *domain, guint32 native_offset)
+{
+	gint32 res;
+
+	mono_debugger_lock ();
+
+	res = il_offset_from_address (method, domain, native_offset);
+
+	mono_debugger_unlock ();
+
+	return res;
+}
+
+/**
  * mono_debug_lookup_source_location:
  * @address: Native offset within the @method's machine code.
  *
@@ -1008,6 +1050,34 @@ mono_debug_lookup_source_location (MonoMethod *method, guint32 address, MonoDoma
 	return location;
 }
 
+/*
+ * mono_debug_lookup_locals:
+ *
+ *   Return information about the local variables of MINFO.
+ * The result should be freed using mono_debug_symfile_free_locals ().
+ */
+MonoDebugLocalsInfo*
+mono_debug_lookup_locals (MonoMethod *method)
+{
+	MonoDebugMethodInfo *minfo;
+	MonoDebugLocalsInfo *res;
+
+	if (mono_debug_format == MONO_DEBUG_FORMAT_NONE)
+		return NULL;
+
+	mono_debugger_lock ();
+	minfo = _mono_debug_lookup_method (method);
+	if (!minfo || !minfo->handle || !minfo->handle->symfile || !minfo->handle->symfile->offset_table) {
+		mono_debugger_unlock ();
+		return NULL;
+	}
+
+	res = mono_debug_symfile_lookup_locals (minfo);
+	mono_debugger_unlock ();
+
+	return res;
+}
+
 /**
  * mono_debug_free_source_location:
  * @location: A `MonoDebugSourceLocation'.
@@ -1035,6 +1105,7 @@ mono_debug_print_stack_frame (MonoMethod *method, guint32 native_offset, MonoDom
 {
 	MonoDebugSourceLocation *location;
 	gchar *fname, *ptr, *res;
+	int offset;
 
 	fname = mono_method_full_name (method, TRUE);
 	for (ptr = fname; *ptr; ptr++) {
@@ -1044,7 +1115,18 @@ mono_debug_print_stack_frame (MonoMethod *method, guint32 native_offset, MonoDom
 	location = mono_debug_lookup_source_location (method, native_offset, domain);
 
 	if (!location) {
-		res = g_strdup_printf ("at %s <0x%05x>", fname, native_offset);
+		if (mono_debug_initialized) {
+			mono_debugger_lock ();
+			offset = il_offset_from_address (method, domain, native_offset);
+			mono_debugger_unlock ();
+		} else {
+			offset = -1;
+		}
+
+		if (offset < 0)
+			res = g_strdup_printf ("at %s <0x%05x>", fname, native_offset);
+		else
+			res = g_strdup_printf ("at %s <IL 0x%05x, 0x%05x>", fname, offset, native_offset);
 		g_free (fname);
 		return res;
 	}
@@ -1087,3 +1169,18 @@ mono_debug_list_remove (MonoDebugList **list, gconstpointer data)
 		break;
 	}
 }
+
+static gboolean is_attached = FALSE;
+
+void
+mono_set_is_debugger_attached (gboolean attached)
+{
+	is_attached = attached;
+}
+
+gboolean
+mono_is_debugger_attached (void)
+{
+	return is_attached;
+}
+

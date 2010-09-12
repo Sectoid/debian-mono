@@ -20,7 +20,7 @@ JITTEST_PROG_RUN = MONO_SHARED_DIR=$(mono_build_root)/runtime MONO_CFG_DIR=$(mon
 RUNTIME_ARGS=--config tests-config --optimize=all --debug
 
 with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/net_2_0
-with_mono_path21 = MONO_PATH=$(mcs_topdir)/class/lib/net_2_1
+with_mono_path21 = MONO_PATH=$(mcs_topdir)/class/lib/net_2_1_raw
 
 RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper
 RUNTIME21 = $(with_mono_path21) $(top_builddir)/runtime/mono-wrapper
@@ -30,7 +30,7 @@ MKBUNDLE = \
 	$(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/mkbundle.exe
 
 MCS = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/gmcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219 -debug
-SMCS = $(RUNTIME21) --runtime=moonlight --security=temporary-smcs-hack $(mcs_topdir)/class/lib/net_2_1/smcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219
+SMCS = $(RUNTIME21) --runtime=moonlight --security=temporary-smcs-hack $(mcs_topdir)/class/lib/net_2_1_raw/smcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219
 ILASM = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/ilasm.exe
 
 BENCHSRC=fib.cs random.cs nested-loops.cs ackermann.cs tight-loop.cs sieve.cs
@@ -44,7 +44,9 @@ STRESS_TESTS_SRC=	\
 	monitor-stress.cs	\
 	thread-stress.cs	\
 	gc-stress.cs		\
-	exit-stress.cs
+	exit-stress.cs		\
+	process-stress.cs	\
+	assembly-load-stress.cs
 
 BASE_TEST_CS_SRC=		\
 	array-init.cs		\
@@ -140,7 +142,6 @@ BASE_TEST_CS_SRC=		\
 	iface4.cs		\
 	iface-large.cs		\
 	virtual-method.cs	\
-	virtual-sync.cs	\
 	intptrcast.cs		\
 	indexer.cs		\
 	stream.cs		\
@@ -159,6 +160,7 @@ BASE_TEST_CS_SRC=		\
 	appdomain2.cs		\
 	appdomain-client.cs	\
 	appdomain-unload.cs \
+	appdomain-async-invoke.cs	\
 	loader.cs       \
 	pointer.cs		\
 	hashcode.cs		\
@@ -194,6 +196,7 @@ BASE_TEST_CS_SRC=		\
 	marshal7.cs		\
 	marshal8.cs		\
 	marshal9.cs		\
+	marshalbool.cs		\
 	marshal-valuetypes.cs	\
 	test-byval-in-struct.cs	\
 	thread.cs		\
@@ -295,6 +298,7 @@ BASE_TEST_CS_SRC=		\
 	generic-virtual-invoke.2.cs	\
 	bug-461198.2.cs	\
 	generic-sealed-virtual.2.cs	\
+	generic-system-arrays.2.cs	\
 	generic-stack-traces.2.cs	\
 	generic-stack-traces2.2.cs	\
 	bug-472600.2.cs	\
@@ -302,6 +306,7 @@ BASE_TEST_CS_SRC=		\
 	bug-473482.2.cs	\
 	bug-473999.2.cs	\
 	bug-479763.2.cs	\
+	bug-616463.cs	\
 	bug-80392.2.cs		\
 	dynamic-method-access.2.cs	\
 	dynamic-method-finalize.2.cs	\
@@ -347,8 +352,17 @@ BASE_TEST_CS_SRC=		\
 	bug-467456.cs	\
 	appdomain-unload-callback.cs	\
 	bug-508538.cs	\
-	bug-472692.2.cs	\
-	bug-544446.cs
+	bug-472692.2.cs		\
+	gchandles.cs	\
+	interlocked-3.cs	\
+	interlocked-4.2.cs	\
+	finalizer-wait.cs	\
+	critical-finalizers.cs	\
+	appdomain-thread-abort.cs \
+	w32message.cs	\
+	bug-544446.cs	\
+	gc-altstack.cs	\
+	bug-599469.cs
 
 if AMD64
 TEST_CS_SRC = $(BASE_TEST_CS_SRC) async-exc-compilation.cs
@@ -361,7 +375,7 @@ endif
 endif
 
 if IA64
-TEST_CS_SRC+=async-exc-compilation.cs
+TEST_CS_SRC+=async-exc-compilation.cs filter-stack.cs
 # bug #319249
 PLATFORM_DISABLED_TESTS=exception17.exe
 PLATFORM_DISABLED_TESTS+=winx64structs.exe
@@ -380,10 +394,15 @@ if POWERPC
 PLATFORM_DISABLED_TESTS=finalizer-abort.exe finalizer-exception.exe finalizer-exit.exe
 endif
 
+# The two finalizer tests only work under sgen
 DISABLED_TESTS=			\
 	delegate-async-exception.exe	\
 	bug-348522.2.exe	\
+	finalizer-wait.exe	\
+	critical-finalizers.exe	\
 	$(PLATFORM_DISABLED_TESTS)
+
+AOT_DISABLED_TESTS=constraints-load.exe
 
 # These only compile with MS CSC
 TEST_CSC_SRC=			\
@@ -440,11 +459,15 @@ TEST_IL_SRC=			\
 	generic-valuetype-newobj2.2.il	\
 	generic-valuetype-newobj.2.il	\
 	generic-constrained.2.il	\
+	generic-type-load-exception.2.il	\
 	bug-81466.il	\
 	bug457574.il	\
 	bug445361.il	\
 	bug-463303.il	\
 	bug469742.2.il	\
+	bug-528055.il	\
+	constraints-load.il	\
+	array_load_exception.il \
 	bug-481403.il
 
 #	bug-318677.il
@@ -485,13 +508,23 @@ test_platform:	testbundle test-iomap-regression
 endif
 endif
 
+#
+# Tests that the internals in mono/io-layer/messages.c are ok by triggering the 
+# code that checks that the table is properly sorted
+#
+test_messages: w32message.exe
+	> test_messages.zero
+	$(JITTEST_PROG_RUN) w32message.exe >& w32message.allout && cmp test_messages.zero w32message.allout
+
 if INSTALL_2_1
 test_2_1 : test-coreclr-security
 else
 test_2_1 :
 endif
 
-test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test_2_1
+# test_messages fails on the buildbots
+#test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test_2_1 test_messages
+test: assemblyresolve/test/asm.dll testjit test-type-load test-generic-sharing test_platform test-runtime-invoke test_2_1
 
 assemblyresolve/test/asm.dll:
 	$(MAKE) -C assemblyresolve prereq
@@ -538,7 +571,7 @@ runtest: $(TESTSI_CS) $(TESTSI_IL) $(TESTBS) libtest.la $(PREREQSI_IL) $(PREREQS
 	failed_tests="";\
 	for i in $(TESTSI_CS) $(TESTBS) $(TESTSI_IL); do	\
 		rm -f $${i}.so; \
-		if [ x$(AOT) = x1 ]; then $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $${i} > /dev/null || exit 1; fi; \
+		if [ x$(AOT) = x1 ]; then if echo $(AOT_DISABLED_TESTS) | grep -v -q $${i}; then $(with_mono_path) $(JITTEST_PROG_RUN) --aot --debug $${i} > /dev/null || exit 1; fi; fi; \
 		if $(srcdir)/test-driver '$(with_mono_path) $(JITTEST_PROG_RUN)' $$i '$(DISABLED_TESTS)' $(RUNTIME_ARGS); \
 		then \
 			passed=`expr $${passed} + 1`; \
@@ -610,6 +643,14 @@ test-type-load: TestDriver.dll
 	@$(MCS) -t:library -out:t.dll $(srcdir)/t-missing.cs
 	@echo "Testing load-exception.exe..."
 	@$(RUNTIME) load-exceptions.exe > load-exceptions.exe.stdout 2> load-exceptions.exe.stderr
+
+# Generated tests for runtime invoke
+EXTRA_DIST += gen-runtime-invoke.cs
+test-runtime-invoke: TestDriver.dll gen-runtime-invoke.exe
+	@$(RUNTIME) gen-runtime-invoke.exe > runtime-invoke.gen.cs
+	@$(MCS) -out:runtime-invoke.gen.exe -r:TestDriver.dll runtime-invoke.gen.cs
+	@echo "Testing runtime-invoke.gen.exe..."
+	@$(RUNTIME) runtime-invoke.gen.exe > runtime-invoke.gen.exe.stdout 2> runtime-invoke.gen.exe.stderr
 
 EXTRA_DIST += test-inline-call-stack-library.cs test-inline-call-stack.cs
 test-inline-call-stack-library.dll: TestDriver.dll $(srcdir)/test-inline-call-stack-library.cs
@@ -750,9 +791,11 @@ test-generic-sharing : generics-sharing.2.exe shared-generic-methods.2.exe	\
 		generic-constrained.2.exe bug-431413.2.exe			\
 		generic-virtual-invoke.2.exe generic-typedef.2.exe		\
 		generic-marshalbyref.2.exe bug-459285.2.exe bug-461198.2.exe	\
-		generic-sealed-virtual.2.exe generic-stack-traces.2.exe		\
-		generic-stack-traces2.2.exe bug-472600.2.exe bug-473482.2.exe	\
-		bug-473999.2.exe bug-479763.2.exe generic-xdomain.2.exe
+		generic-sealed-virtual.2.exe generic-system-arrays.2.exe	\
+		generic-stack-traces.2.exe generic-stack-traces2.2.exe		\
+		bug-472600.2.exe bug-473482.2.exe bug-473999.2.exe		\
+		bug-479763.2.exe generic-xdomain.2.exe				\
+		generic-type-load-exception.2.exe bug-616463.exe
 	@for fn in $+ ; do	\
 		echo "Testing $$fn ...";	\
 		MONO_GENERIC_SHARING=all $(RUNTIME) -O=gshared                $$fn > $$fn.stdout || exit 1;	\

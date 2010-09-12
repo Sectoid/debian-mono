@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <glib.h>
+#include "map.h"
 
 int wifexited (int status)
 {
@@ -98,6 +99,7 @@ char *helper_Mono_Posix_readdir(void *dir) {
 	return strdup (e->d_name);
 }
 
+#if HAVE_GETPWNAM_R
 int helper_Mono_Posix_getpwnamuid (int mode, char *in_name, int in_uid,
 	char **account,
 	char **password,
@@ -144,3 +146,5 @@ int helper_Mono_Posix_getpwnamuid (int mode, char *in_name, int in_uid,
 
 	return 0;
 }
+#endif  /* def HAVE_GETPWNAM_R */
+

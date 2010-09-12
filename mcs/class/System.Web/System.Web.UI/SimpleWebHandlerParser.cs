@@ -246,7 +246,7 @@ namespace System.Web.UI
 			throw new ParseException (location, message);
 		}
 
-		static string GetAndRemove (Hashtable table, string key)
+		static string GetAndRemove (IDictionary table, string key)
 		{
 			string o = table [key] as string;
 			table.Remove (key);
@@ -281,7 +281,7 @@ namespace System.Web.UI
 				throw new ParseException (location, "duplicate " + DefaultDirectiveName + " directive");
 
 			gotDefault = true;
-			Hashtable attributes = attrs.GetDictionary (null);
+			IDictionary attributes = attrs.GetDictionary (null);
 			className = GetAndRemove (attributes, "class");
 			if (className == null)
 				throw new ParseException (null, "No Class attribute found.");
@@ -306,7 +306,7 @@ namespace System.Web.UI
 
 		internal virtual void AddAssemblyDirective (ILocation location, TagAttributes attrs)
 		{
-			Hashtable tbl = attrs.GetDictionary (null);
+			IDictionary tbl = attrs.GetDictionary (null);
 			string name = GetAndRemove (tbl, "Name");
 			string src = GetAndRemove (tbl, "Src");
 			if (name == null && src == null)
@@ -387,12 +387,27 @@ namespace System.Web.UI
 
 		void AddAssembliesInBin ()
 		{
+			Exception ex;
 			foreach (string s in HttpApplication.BinDirectoryAssemblies) {
+				ex = null;
+				
 				try {
 					Assembly assembly = Assembly.LoadFrom (s);
 					AddAssembly (assembly, true);
+				} catch (FileLoadException e) {
+					ex = e;
+					// ignore
+				} catch (BadImageFormatException e) {
+					ex = e;
+					// ignore
 				} catch (Exception e) {
 					throw new Exception ("Error while loading " + s, e);
+				}
+				
+				if (ex != null && HttpRuntime.IsDebuggingEnabled) {
+					Console.WriteLine ("**** DEBUG MODE *****");
+					Console.WriteLine ("Bad assembly found in bin/. Exception (ignored):");
+					Console.WriteLine (ex);
 				}
 			}
 		}
@@ -476,7 +491,16 @@ namespace System.Web.UI
 #endif
 
 			foreach (string dll in HttpApplication.BinDirectoryAssemblies) {
-				assembly = Assembly.LoadFrom (dll);
+				try {
+					assembly = Assembly.LoadFrom (dll);
+				} catch (FileLoadException) {
+					// ignore
+					continue;
+				} catch (BadImageFormatException) {
+					// ignore
+					continue;
+				}
+				
 				type = assembly.GetType (typeName, false);
 				if (type != null) {
 					if (result != null) 

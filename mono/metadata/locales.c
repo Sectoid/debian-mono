@@ -5,7 +5,8 @@
  *	Dick Porter (dick@ximian.com)
  *	Mohammad DAMT (mdamt@cdl2000.com)
  *
- * (C) 2003 Ximian, Inc.
+ * Copyright 2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  * (C) 2003 PT Cakram Datalingga Duaribu  http://www.cdl2000.com
  */
 
@@ -21,8 +22,10 @@
 #include <mono/metadata/locales.h>
 #include <mono/metadata/culture-info.h>
 #include <mono/metadata/culture-info-tables.h>
-#include <mono/metadata/normalization-tables.h>
 
+#ifndef DISABLE_NORMALIZATION
+#include <mono/metadata/normalization-tables.h>
+#endif
 
 #include <locale.h>
 
@@ -102,7 +105,7 @@ create_group_sizes_array (const gint *gs, gint ml)
 		len++;
 	}
 	
-	ret = mono_array_new (mono_domain_get (),
+	ret = mono_array_new_cached (mono_domain_get (),
 			mono_get_int32_class (), len);
 
 	for(i = 0; i < len; i++)
@@ -129,7 +132,7 @@ create_names_array_idx (const guint16 *names, int ml)
 		len++;
 	}
 
-	ret = mono_array_new (mono_domain_get (), mono_get_string_class (), len);
+	ret = mono_array_new_cached (mono_domain_get (), mono_get_string_class (), len);
 
 	for(i = 0; i < len; i++)
 		mono_array_setref (ret, i, mono_string_new (domain, idx2string (names [i])));
@@ -194,6 +197,8 @@ ves_icall_System_Globalization_CultureInfo_construct_number_format (MonoCultureI
 	MONO_ARCH_SAVE_REGS;
 
 	g_assert (this->number_format != 0);
+	if (this->number_index < 0)
+		return;
 
 	number = this->number_format;
 	nfe = &number_format_entries [this->number_index];
@@ -929,12 +934,16 @@ void load_normalization_resource (guint8 **argProps,
 				  guint8 **argMapIdxToComposite,
 				  guint8 **argCombiningClass)
 {
+#ifdef DISABLE_NORMALIZATION
+	mono_raise_exception (mono_get_exception_not_supported ("This runtime has been compiled without string normalization support."));
+#else
 	*argProps = (guint8*)props;
 	*argMappedChars = (guint8*) mappedChars;
 	*argCharMapIndex = (guint8*) charMapIndex;
 	*argHelperIndex = (guint8*) helperIndex;
 	*argMapIdxToComposite = (guint8*) mapIdxToComposite;
 	*argCombiningClass = (guint8*)combiningClass;
+#endif
 }
 
 

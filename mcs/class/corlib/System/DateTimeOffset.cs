@@ -41,6 +41,14 @@ namespace System
 	[StructLayout (LayoutKind.Auto)]
 	public struct DateTimeOffset : IComparable, IFormattable, ISerializable, IDeserializationCallback, IComparable<DateTimeOffset>, IEquatable<DateTimeOffset>
 	{
+#if MONOTOUCH
+		static DateTimeOffset () {
+			if (MonoTouchAOTHelper.FalseFlag) {
+				var comparer = new System.Collections.Generic.GenericComparer <DateTimeOffset> ();
+				var eqcomparer = new System.Collections.Generic.GenericEqualityComparer <DateTimeOffset> ();
+			}
+		}
+#endif
 		public static readonly DateTimeOffset MaxValue = new DateTimeOffset (DateTime.MaxValue, TimeSpan.Zero);
 		public static readonly DateTimeOffset MinValue = new DateTimeOffset (DateTime.MinValue, TimeSpan.Zero);
 		
@@ -525,7 +533,7 @@ namespace System
 						ii += ParseEnum (input, ii, new string [] {dfi.TimeSeparator}, false, out temp_int);
 						ii += ParseNumber (input, ii, 2, true, false, out off_m);
 					}
-					if (off_h == -1 || off_m == -1 || sign == -1 || temp_int == -1)
+					if (off_h == -1 || off_m == -1 || sign == -1)
 						return false;
 
 					if (sign == 0)
@@ -584,7 +592,8 @@ namespace System
 			if (second < 0)		second = 0;
 			if (fraction < 0)	fraction = 0;
 			if (year > 0 && month > 0 && day > 0) {
-				result = new DateTimeOffset (year, month, day, hour, minute, second, (int) (1000 * fraction), offset);
+				result = new DateTimeOffset (year, month, day, hour, minute, second, 0, offset);
+				result = result.AddSeconds (fraction);
 				if ((styles & DateTimeStyles.AdjustToUniversal) != 0)
 					result = result.ToUniversalTime ();
 				return true;

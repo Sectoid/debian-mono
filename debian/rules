@@ -63,6 +63,7 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
 		  --with-libgdiplus=installed --with-x=yes \
+		  --with-profile4=no \
 		  --with-moonlight=no \
 		  --enable-quiet-build=no
 
@@ -79,116 +80,34 @@ autoreconf-stamp:
 	autoreconf -f -i -s
 	touch $@
 
-configure-arch: configure-arch-stamp
-configure-arch-stamp: autoreconf
-	dh_testdir
-	$(CONFIGURE) --disable-mcs-build
-	touch $@
-
-configure-indep: configure-indep-stamp
-configure-indep-stamp: autoreconf
+configure: configure-stamp
+configure-stamp: autoreconf-stamp
 	dh_testdir
 	$(CONFIGURE)
 	touch $@
 
-build: build-arch
-build-all: build-arch build-indep
-
-build-arch: configure-arch build-arch-stamp
-build-arch-stamp:
+build: build-stamp
+build-stamp: configure-stamp
 	dh_testdir
 	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
-	cd mcs/jay && \
-	  $(MAKE)
+
 	cd debian/detector && \
 	  $(MAKE)
-	#debian/mono-aot-bootstrap
-	touch $@
-
-build-indep: configure-indep build-indep-stamp
-build-indep-stamp:
-	dh_testdir
-	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
-	cd docs && $(MAKE)
 	chmod +x debian/dh_makeclilibs \
 	         debian/dh_clideps \
 	         debian/dh_clistrip \
 	         debian/dh_clifixperms \
 	         debian/dh_monoaot
+
 	touch $@
 
-test: test-arch
-test-arch: test-arch-stamp
-test-arch-stamp: configure-indep
-	# we have to depend on configure-indep here because configure-arch
-	# passes --disable-mcs-build to ./configure which skips generating
-	# mcs/build/config.make which is required when we wan't to build
-	# assemblies here as thats where RUNTIME etc is defined.
-
-	# runtime tests need gmcs, ilasm and mkbundle, so let's build them
-
-	# bootstrap 1.1 needs basic
-	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false PROFILE=basic
-
-	# mcs needs bootstrap 1.1
-	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_1_1_bootstrap
-
-	# mcs needs mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
-	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_1_1
-	# build mcs
-	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_1_1
-
-	# gmcs needs bootstrap 2.0, 
-	cd mcs && LC_ALL=C $(MAKE) EXTERNAL_MCS=false EXTERNAL_MONO=false NO_DIR_CHECK=1 PROFILE=net_2_0_bootstrap
-	# build gmcs
-	cd mcs/mcs && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# PEAPI need mscorlib, System, System.Xml and Mono.CompilerServices.SymbolWriter
-	cd mcs/class/corlib && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/System && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/System.XML && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/Mono.CompilerServices.SymbolWriter && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# ilasm needs PEAPI and Mono.Security
-	cd mcs/class/PEAPI && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/Mono.Security && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	# build ilasm
-	cd mcs/ilasm && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# mkbundle needs Mono.Posix and ICSharpCode.SharpZipLib
-	cd mcs/class/Mono.Posix && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	cd mcs/class/ICSharpCode.SharpZipLib && LC_ALL=C $(MAKE) PROFILE=net_2_0
-	# build mkbundle
-	cd mcs/tools/mkbundle && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# some tests need System.Core
-	cd mcs/class/System.Core && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# mono/mini tests need Mono.Simd
-	cd mcs/class/Mono.Simd && LC_ALL=C $(MAKE) PROFILE=net_2_0
-
-	# show time baby: run all tests
+test: test-stamp
+test-stamp: build-stamp
 	-$(MINI_TEST)
 	-$(MONO_TEST)
-
-	# clean up
-	cd mono/mini && $(MAKE) clean
-	cd mono/tests && $(MAKE) clean
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
 	rm -rf mono/tests/abcde12345abcde12345abcde12345abcde12345/
-	# delete the assemblies we built here, to make sure they get cleanly
-	# rebuild in the build-indep target
-	rm -rf \
-		mcs/class/lib/basic \
-		mcs/class/lib/net_1_1 \
-		mcs/class/lib/net_1_1_bootstrap \
-		mcs/class/lib/net_2_0 \
-		mcs/class/lib/net_2_0_bootstrap
-
 	touch $@
 
 clean:
@@ -321,7 +240,7 @@ install-indep-stamp:
 
 binary: binary-arch binary-indep
 
-binary-indep: build-arch install-arch build-indep install-indep
+binary-indep: build-stamp install-arch install-indep
 	dh_testdir
 	dh_testroot
 
@@ -378,35 +297,36 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_installdeb -i
 	#DH_VERBOSE=1 DH_AUTOSCRIPTDIR=$(CURDIR)/debian debian/dh_monoaot -i
 	debian/dh_makeclilibs -i -m 1.0 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono1.0-cil -m 2.0 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono2.0-cil -m 2.0 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono1.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono2.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-cairo1.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-cairo2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-corlib1.0-cil -m 1.2.2.1 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-corlib2.0-cil -m 1.2.2.1 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-corlib2.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-data1.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-data2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 2.4.3 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 2.4.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-data-tds1.0-cil -m 2.6.7 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-data-tds2.0-cil -m 2.6.7 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-ldap1.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-ldap2.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 2.4.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-oracle2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-peapi1.0-cil -m 2.4.2 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-peapi2.0-cil -m 2.4.2 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-posix1.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-posix2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-relaxng1.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-relaxng2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-system1.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-system2.0-cil -m 2.4.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-relaxng1.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-relaxng2.0-cil -m 2.6.3  $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-system1.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-system2.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-system-data1.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-system-data2.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-system-data2.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-system-ldap2.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-system-messaging1.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-system-messaging2.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-system-runtime2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-system-web2.0-cil -m 1.9.1 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-security1.0-cil -m 2.4.3 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-security2.0-cil -m 2.4.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-security2.0-cil -m 2.6.7 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-sqlite1.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-web1.0-cil -m 1.9 $(DH_INTERNAL_MONO_PARAM)
@@ -414,8 +334,11 @@ binary-indep: build-arch install-arch build-indep install-indep
 	debian/dh_makeclilibs -p libmono-webbrowser0.5-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-winforms1.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
-	# preview APIs get tighter clilibs
-	debian/dh_makeclilibs -p libmono-system2.1-cil -m 2.0 $(DH_INTERNAL_MONO_PARAM)
+	# unstable and preview APIs get tighter clilibs
+	debian/dh_makeclilibs -p libmono-cecil-private-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 2.6.7 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-wcf3.0-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
+	debian/dh_makeclilibs -p libmono-debugger-soft0.0-cil -m 2.6.7 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_clideps -i -l debian/tmp $(DH_INTERNAL_MONO_PARAM)
 	#DH_VERBOSE=1 debian/dh_clideps -i -l debian/tmp $(DH_INTERNAL_MONO_PARAM)
 	# mono-1.0/2.0-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-1.0/2.0-gac)
@@ -425,7 +348,7 @@ binary-indep: build-arch install-arch build-indep install-indep
 	dh_md5sums -i
 	dh_builddeb -i
 
-binary-arch: build-arch install-arch test-arch-stamp
+binary-arch: build-stamp install-arch test-stamp
 	dh_testdir
 	dh_testroot
 	
@@ -475,28 +398,12 @@ get-orig-source:
 		--force-download \
 		--rename \
 		--repack
-	if [ -d $(TARBALL_DIR) ]; then \
-		echo "$(TARBALL_DIR) is in the way, bailing out!"; \
-		exit 1; \
-	fi
-	if [ -d $(TARBALL_DIR)+dfsg ]; then \
-		echo "$(TARBALL_DIR)+dfsg is in the way, bailing out!"; \
-		exit 1; \
-	fi
-	tar -xzf $(DEB_SOURCE_NAME)_$(UPVERSION).orig.tar.gz
-	rm $(DEB_SOURCE_NAME)_$(UPVERSION).orig.tar.gz
-	rm -rf $(TARBALL_DIR)/mcs/class/RabbitMQ.Client/docs/specs/
-	find $(TARBALL_DIR) -name "*.dll" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -print -delete
-	find $(TARBALL_DIR) -name "*.exe" -not -path "$(TARBALL_DIR)/mcs/class/lib/monolite/*" -print -delete
-	mv $(TARBALL_DIR) $(TARBALL_DIR)+dfsg
-	tar -czf $(DEB_SOURCE_NAME)_$(UPVERSION)+dfsg.orig.tar.gz $(TARBALL_DIR)+dfsg
-	rm -r $(TARBALL_DIR)+dfsg
 
 .PHONY: autoreconf \
-        configure-arch configure-indep \
+        configure \
         clean \
-        build build-all build-arch build-indep \
-        test test-arch \
+        build build-all \
+        test \
         install install-all install-arch install-indep \
         binary binary-arch binary-indep \
         get-orig-source

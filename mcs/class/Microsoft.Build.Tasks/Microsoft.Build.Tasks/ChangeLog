@@ -1,3 +1,147 @@
+2010-06-09  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs: Don't check for tool's existence, as we might
+	not have the full path.
+
+2010-05-28  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs: Add some comments.
+
+2010-05-28  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs (FindInDirectory): Add a 'specific_version'
+	parameter. Look for reference.{dll|exe} instead of checking all
+	files in the directory. Compare assembly names only if
+	specific_version is true.
+	(ResolveHintPathReference): Extract code to check and compare assembly
+	names to ..
+	(ResolvedReferenceFromPath): .. this.
+	(AssemblyNamesCompatible): Change default value of @specificVersion to
+	true.
+	Track api changes.
+	* ResolveAssemblyReference.cs (ResolveReference): Specify
+	'specific_version' in case of SearchPath.Directory.
+	(TryGetSpecificVersionValue): msbuild seems to look only for ',' in
+	the reference, instead of checking whether the assembly is strong
+	named.
+	(TryGetResolvedReferenceByAssemblyName): Track api changes.
+
+2010-05-28  Ankit Jain  <jankit@novell.com>
+
+	* AssemblyResolver.cs (PopulateTargetFrameworkAssemblies):
+	Handle invalid dll, add a null check.
+
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* GetFrameworkPath.cs (FrameworkVersion40Path): New.
+
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* Copy.cs: Cleanly log errors, instead of throwing exceptions.
+
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* Vbc.cs (LogEventsFromTextOutput):
+	* ToolTask.cs (LogEventsFromTextOutput): Emit the messages
+	that don't match the error regex, as is.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	* Copy.cs: Handle non-existant source files.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #594541
+	* Vbc.cs (LogEventsFromTextOutput): Override and correctly parse
+	output. Taken regex from monodevelop for this.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	* Vbc.cs (ValidateParameters): Always return true, dummy implementation.
+
+2010-04-07  Ankit Jain  <jankit@novell.com>
+
+	* MSBuild.cs: Emit global properties, if any. Sort the property
+	list.
+
+2010-04-03  Ankit Jain  <jankit@novell.com>
+
+	* Csc.cs: Use dmcs as the compiler for 4.0 profile.
+	* MSBuild.cs (ToolsVersion): New.
+	Use toolsVersion for building.
+
+2010-02-10  Ankit Jain  <jankit@novell.com>
+
+	* GenerateResource.cs (CompileResourceFile): Check File.Exists
+	for source file.
+	Don't build if the target is newer than the source file.
+	(Execute): Continue building all the resources, even if there
+	are failures for some files.
+
+2010-02-10  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #558739.
+	* GenerateResource (Resgen): New. Internal task to run resgen
+	with MONO_IOMAP=drive .
+	(Execute): Use the new Resgen task to compile the resources.
+
+2010-02-06  Ankit Jain  <jankit@novell.com>
+
+	* LC.cs: New.
+
+2010-02-05  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #576579.
+	* CreateManifestResourceName.cs: Use TargetPath metadata, as the link
+	name.
+	* CreateCSharpManifestResourceName.cs:
+	* CreateVisualBasicManifestResourceName.cs: Prefer linkname over
+	filename, if available.
+
+2010-02-04  Ankit Jain  <jankit@novell.com>
+
+	* WriteLinesToFile.cs: Delete the file if there is nothing to
+	be written and overwrite==true.
+
+2010-02-02	Rodrigo B. de Oliveira	<rodrigo@unity3d.com>
+
+	* AssemblyResolver.cs:
+		guard against non existing framework directory
+		(for scenarios where lib/mono/3.5 is not available).
+
+2009-12-22  Ankit Jain  <jankit@novell.com>
+
+	Fix bug #565849.
+	* CreateItem.cs: Use DirectoryScanner to handle wildcards.
+	(IsExcluded): Remove.
+
+2009-11-26  Ankit Jain  <jankit@novell.com>
+
+	* ManagedCompiler.cs (AddResponseFileCommands): *mcs doesn't
+	support /debug:pdbonly, so map it to /debug:full .
+
+2009-11-10  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (ToolExe): New.
+	* Csc.cs:
+	* AL.cs: Use ToolExe instead of ToolName to construct
+	tool's full path.
+
+2009-11-09  Ankit Jain  <jankit@novell.com>
+
+	* GetFrameworkPath.cs (FrameworkVersion11Path):
+	(FrameworkVersion20Path):
+	(FrameworkVersion30Path):
+	(FrameworkVersion35Path): New.
+
+2009-10-13  Ankit Jain  <jankit@novell.com>
+
+	* ResolveAssemblyReference.cs: Fix warnings.
+
+2009-10-13  Ankit Jain  <jankit@novell.com>
+
+	* ResolveAssemblyReference.cs: Log only unique conflict warnings.
+
 2009-10-12  Ankit Jain  <jankit@novell.com>
 
 	* ResolveAssemblyReference.cs: Remove unnecessary tab in the warning

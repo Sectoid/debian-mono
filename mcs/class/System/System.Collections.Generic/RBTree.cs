@@ -36,6 +36,7 @@ using System.Collections;
 
 namespace System.Collections.Generic
 {
+	[Serializable]
 	internal class RBTree : IEnumerable, IEnumerable<RBTree.Node> {
 		public interface INodeHelper<T> {
 			int Compare (T key, Node node);
@@ -591,22 +592,19 @@ namespace System.Collections.Generic
 
 			public void Reset ()
 			{
-				if (tree == null)
-					throw new ObjectDisposedException ("enumerator");
+				check_version ();
 				pennants = null;
 			}
 
 			public Node Current {
-				get {
-					check_version ();
-					if (pennants == null)
-						throw new InvalidOperationException ("state invalid before the first MoveNext()");
-					return pennants.Peek ();
-				}
+				get { return pennants.Peek (); }
 			}
 
 			object IEnumerator.Current {
-				get { return Current; }
+				get {
+					check_current ();
+					return Current;
+				}
 			}
 
 			public bool MoveNext ()
@@ -643,6 +641,13 @@ namespace System.Collections.Generic
 					throw new ObjectDisposedException ("enumerator");
 				if (version != tree.version)
 					throw new InvalidOperationException ("tree modified");
+			}
+
+			internal void check_current ()
+			{
+				check_version ();
+				if (pennants == null)
+					throw new InvalidOperationException ("state invalid before the first MoveNext()");
 			}
 		}
 	}

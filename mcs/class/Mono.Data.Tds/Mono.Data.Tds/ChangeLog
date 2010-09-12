@@ -1,3 +1,37 @@
+2010-07-06  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	* TdsMetaParameter.cs (Prepare): Use the count of characters in nvarchar 
+	param as the size, to match .NET implementation.
+       
+2010-07-03  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #609935
+	* TdsMetaParameter.cs (Prepare): Use GetActualSize() instead of Size 
+	property to calculate the length of a nvarchar param.
+	
+2009-05-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsComm.cs (Append):  When appending strings of length bigger than 
+	output buffer, calculate and iterate over the strings according to 
+	the output buffer length.  Fixes ArgumentOutOfRangeException.
+	
+2009-05-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsBulkCopy.cs (WriteParameterInfo): Update default precision from 28 to 29.
+	
+2009-05-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsComm.cs (Append): When appending smalldatetime values, cast value of 
+	days to short instead of ushort.  Fixes Tds error in RPC packet.
+	
+	* Tds70.cs (WriteParameterInfo): Instead of IsLargetType, compare only 
+	the types that can take 0xFFFF as size if value is null. 
+	
+2009-05-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsMetaParameter.cs (GetMetaType): If param is Nullable, use IntN instead 
+	of BigInt for column type.
+	
 2009-05-16  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* TdsMetaParameter.cs (Prepare): Default precision is 29 and not 28.
@@ -7,7 +41,17 @@
 	** Fixes rest of #497715 - Patch by Jonas Larsson <Jonas.Larsson@manodo.se>
 	* TdsMetaParameter.cs: Add support for XML type.  For now, handle 
 	XML type as just NVarchar.
+	
+2009-03-23  Veerapuram Varadhan  <vvaradhan@novell.com>
 
+	* TdsMetaParameter.cs (GetMetaType): Return TdsColumnType.BigInt 
+	instead of TdsColumnType.IntN.
+	
+2009-03-14  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsMetaParameter.cs (ResizeValue): Return unmodified value 
+	in case of size < 0.
+	
 2009-01-17  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* TdsMetaParameter.cs: Modified signature of delegate to also allow

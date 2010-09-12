@@ -285,9 +285,11 @@ namespace System.IO {
 		public static string GetFullPath (string path)
 		{
 			string fullpath = InsecureGetFullPath (path);
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled) {
 				new FileIOPermission (FileIOPermissionAccess.PathDiscovery, fullpath).Demand ();
 			}
+#endif
 			return fullpath;
 		}
 
@@ -343,7 +345,7 @@ namespace System.IO {
 				IsDsc (path [0]) &&
 				IsDsc (path [1])) {
 				if (path.Length == 2 || path.IndexOf (path [0], 2) < 0)
-					throw new ArgumentException ("UNC pass should be of the form \\\\server\\share.");
+					throw new ArgumentException ("UNC paths should be of the form \\\\server\\share.");
 
 				if (path [0] != DirectorySeparatorChar)
 					path = path.Replace (AltDirectorySeparatorChar, DirectorySeparatorChar);
@@ -446,6 +448,14 @@ namespace System.IO {
 				}
 				catch (SecurityException) {
 					// avoid an endless loop
+					throw;
+				}
+				catch (UnauthorizedAccessException) {
+					// This can happen if we don't have write permission to /tmp
+					throw;
+				}
+				catch (DirectoryNotFoundException) {
+					// This happens when TMPDIR does not exist
 					throw;
 				}
 				catch {

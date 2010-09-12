@@ -1,3 +1,24 @@
+2010-05-27  Jonathan Pryor  <jpryor@novell.com>
+
+	* net_4_0_System.Web.dll.sources: Fix NET_4_0 build break; 
+	  add System.Web.UI/MainDirectiveAttribute.cs to the build.
+
+2010-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile: moved App_* test resources to separate variables -
+	whatever is contained in those variables is preprocessed before
+	embedding as resource to include appropriate resource name prefix
+	(App_Code/, App_GlobalResources/ for now). This is used in WebTest
+	to automatically populate the relevant directories when running
+	the test suite.
+
+2010-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/CheckBoxList_Bug377703_1.aspx,
+	Test/mainsoft/NunitWebResources/CheckBoxList_Bug377703_2.aspx and
+	Test/mainsoft/NunitWebResources/CheckBoxList_Bug578770.aspx
+
 2010-02-11  Marek Habersack  <mhabersack@novell.com>
 
 	* System.Web_test.dll.sources: added
@@ -41,7 +62,7 @@
 
 2009-10-05  Marek Habersack  <mhabersack@novell.com>
 
-	* Makefile ($(the_lib)): fixed a typo in dependency macro
+	* Makefile ($(build_lib)): fixed a typo in dependency macro
 
 2009-09-07  Marek Habersack  <mhabersack@novell.com>
 
@@ -57,10 +78,16 @@
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_08.sitemap
 	Test/mainsoft/NunitWeb/NunitWeb/Resources/test_map_09.sitemap
 
+2009-08-26  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/OneLetterIdentifierInCodeRender.aspx
+
 2009-08-25  Marek Habersack  <mhabersack@novell.com>
 
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/TagsNestedInClientTag.aspx
+	Test/mainsoft/NunitWebResources/ConditionalClientComments.aspx
 
 2009-08-18  Marek Habersack  <mhabersack@novell.com>
 
@@ -72,16 +99,34 @@
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/NewlineInCodeExpression.aspx
 
+2009-07-30  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile ($(build_lib)): Move cyclic dependencies onto this.
+
 2009-07-23  Marek Habersack  <mhabersack@novell.com>
 
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/FullTagsInText.aspx
 	Test/mainsoft/NunitWebResources/TagsExpressionsAndCommentsInText.aspx
 
+2009-07-21  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* System.Web.dll.sources: Added
+	System.Design/System.Data.Design/TypedDataSetGenerator.cs. 
+	
 2009-07-21  Marek Habersack  <mhabersack@novell.com>
 
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/UnquotedAngleBrackets.aspx
+
+2009-07-08  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/PreprocessorDirectivesInMarkup.aspx
+
+2009-07-06  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (TEST_MCS_FLAGS): Reference SystemWebTestShim.
 
 2009-06-30  Marek Habersack  <mhabersack@novell.com>
 
@@ -92,6 +137,20 @@
 
 	* browscap.ini.diff: updated to match the latest upstream
 	version.
+
+2009-06-16  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile: warn if the 4.0 assembly is compiled without
+	System.Core
+
+	* net_4_0_System.Web.dll.sources: added. System.Web.Routing and
+	System.Web.Abstractions are part of System.Web.dll in the 4.0
+	profile.
+	Added System.Web.Routing/PageRouteHandler.cs,
+	System.Web.UI.WebControls/IDataBoundControl.cs,
+	System.Web.UI.WebControls/IDataBoundItemControl.cs,
+	System.Web.UI.WebControls/IDataBoundListControl.cs,,
+	System.Web.UI.WebControls/IFieldControl.cs
 
 2009-06-04  Marek Habersack  <mhabersack@novell.com>
 
@@ -118,14 +177,36 @@
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/NoBindForMethodsWithBindInName.aspx
 
+2009-02-26  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added System.Web/IisTraceListener.cs
+
 2009-02-05  Marek Habersack  <mhabersack@novell.com>
 
 	* Makefile (TEST_RESOURCE_FILES): added
+	Test/mainsoft/NunitWebResources/NoDoubleOnInitOnRemoveAdd.aspx and
+	Test/mainsoft/NunitWebResources/NoDoubleOnInitOnRemoveAdd.aspx.cs
 	Test/mainsoft/NunitWebResources/LoginDisplayRememberMe.aspx
 
 2009-01-27  Marek Habersack  <mhabersack@novell.com>
 
 	* System.Web.dll.sources: added System.Web.Util/SearchPattern.cs
+
+2009-01-22  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web.dll.sources: added
+	System.Web.Compilation/BuildManagerCacheItem.cs,
+	System.Web.Compilation/BuildManagerDirectoryBuilder.cs,
+	System.Web.Compilation/BuildProviderGroup.cs
+
+	* Makefile (SYSTEMCORE_DEP): added. Defines SYSTEMCORE_DEP on the
+	mcs command line when System.Core is present.
+	Added the DEVEL define, which defines DEVEL on the mcs command
+	line. This is used to conditionally compile development helper code in
+	System.Web.Util.FileUtils (and possibly other stuff later on)
+	If NO_SYSTEMCORE_DEP is defined System.Web.dll will not be linked
+	with System.Core.dll and BuildManager will use ReaderWriterLock
+	instead of ReaderWriterLockSlim.
 
 2009-01-20  Marek Habersack  <mhabersack@novell.com>
 

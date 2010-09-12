@@ -34,35 +34,98 @@ using System.ServiceModel.Dispatcher;
 
 namespace System.ServiceModel
 {
-	internal class ServiceRuntimeChannel : CommunicationObject, IContextChannel, IClientChannel
+	internal class DuplexServiceRuntimeChannel : ServiceRuntimeChannel, IDuplexContextChannel
+	{
+		public DuplexServiceRuntimeChannel (IChannel channel, DispatchRuntime runtime)
+			: base (channel, runtime)
+		{
+			// setup callback ClientRuntimeChannel.
+			var crt = runtime.CallbackClientRuntime;
+			var cd = ContractDescriptionGenerator.GetCallbackContract (runtime.Type, crt.CallbackClientType);
+			client = new ClientRuntimeChannel (crt, cd, this.DefaultOpenTimeout, this.DefaultCloseTimeout, channel, null,
+							   runtime.ChannelDispatcher.MessageVersion, this.RemoteAddress, null);
+		}
+
+		ClientRuntimeChannel client;
+
+		public override bool AllowOutputBatching {
+			get { return client.AllowOutputBatching; }
+			set { client.AllowOutputBatching = value; }
+		}
+
+		public virtual TimeSpan OperationTimeout {
+			get { return client.OperationTimeout; }
+			set { client.OperationTimeout = value; }
+		}
+
+		public bool AutomaticInputSessionShutdown {
+			get { throw new NotImplementedException (); }
+			set { throw new NotImplementedException (); }
+		}
+
+		public InstanceContext CallbackInstance { get; set; }
+
+		Action<TimeSpan> session_shutdown_delegate;
+
+		public void CloseOutputSession (TimeSpan timeout)
+		{
+			throw new NotImplementedException ();
+		}
+
+		public IAsyncResult BeginCloseOutputSession (TimeSpan timeout, AsyncCallback callback, object state)
+		{
+			if (session_shutdown_delegate == null)
+				session_shutdown_delegate = new Action<TimeSpan> (CloseOutputSession);
+			return session_shutdown_delegate.BeginInvoke (timeout, callback, state);
+		}
+
+		public void EndCloseOutputSession (IAsyncResult result)
+		{
+			session_shutdown_delegate.EndInvoke (result);
+		}
+
+		// proxy base implementation.
+
+		public IAsyncResult BeginProcess (MethodBase method, string operationName, object [] parameters, AsyncCallback callback, object asyncState)
+		{
+			return client.BeginProcess (method, operationName, parameters, callback, asyncState);
+		}
+
+		public object EndProcess (MethodBase method, string operationName, object [] parameters, IAsyncResult result)
+		{
+			return client.EndProcess (method, operationName, parameters, result);
+		}
+
+		public object Process (MethodBase method, string operationName, object [] parameters)
+		{
+			return client.Process (method, operationName, parameters);
+		}
+	}
+
+	internal class ServiceRuntimeChannel : CommunicationObject, IServiceChannel
 	{
 		IExtensionCollection<IContextChannel> extensions;
-		readonly IChannel channel;		
-		bool _allowInitializationUI;
-		Uri _via;
-		readonly TimeSpan _openTimeout;
-		readonly TimeSpan _closeTimeout;
+		readonly IChannel channel;
+		readonly DispatchRuntime runtime;
 
-		public ServiceRuntimeChannel (IChannel channel, TimeSpan openTimeout, TimeSpan closeTimeout)
+		public ServiceRuntimeChannel (IChannel channel, DispatchRuntime runtime)
 		{
 			this.channel = channel;
-			this._openTimeout = openTimeout;
-			this._closeTimeout = closeTimeout;
+			this.runtime = runtime;
 		}
 
 		#region IContextChannel
 
 		[MonoTODO]
-		public bool AllowOutputBatching {
-			get { throw new NotImplementedException (); }
-			set { throw new NotImplementedException (); }
-		}
+		public virtual bool AllowOutputBatching { get; set; }
 
 		public IInputSession InputSession {
 			get {
-				if (channel is IInputSessionChannel)
-					return ((IInputSessionChannel) channel).Session;
-				return null;
+				var ch = channel as ISessionChannel<IInputSession>;
+				if (ch != null)
+					return ch.Session;
+				var dch = channel as ISessionChannel<IDuplexSession>;
+				return dch != null ? dch.Session : null;
 			}
 		}
 
@@ -77,25 +140,19 @@ namespace System.ServiceModel
 		}
 
 		[MonoTODO]
-		public TimeSpan OperationTimeout {
-			get { throw new NotImplementedException (); }
-			set { throw new NotImplementedException (); }
-		}
+		public virtual TimeSpan OperationTimeout { get; set; }
 
 		public IOutputSession OutputSession {
 			get {
-				if (channel is IOutputSessionChannel)
-					return ((IOutputSessionChannel) channel).Session;
-				return null;
+				var dch = channel as ISessionChannel<IDuplexSession>;
+				return dch != null ? dch.Session : null;
 			}
 		}
 
 		public EndpointAddress RemoteAddress {
 			get {
-				if (channel is IRequestChannel)
-					return ((IRequestChannel) channel).RemoteAddress;
-				if (channel is IOutputChannel)
-					return ((IOutputChannel) channel).RemoteAddress;
+				if (channel is IDuplexChannel)
+					return ((IDuplexChannel) channel).RemoteAddress;
 				return null;
 			}
 		}
@@ -108,11 +165,11 @@ namespace System.ServiceModel
 
 		// CommunicationObject
 		protected internal override TimeSpan DefaultOpenTimeout {
-			get { return _openTimeout; }
+			get { return runtime.ChannelDispatcher.DefaultOpenTimeout; }
 		}
 
 		protected internal override TimeSpan DefaultCloseTimeout {
-			get { return _closeTimeout; }
+			get { return runtime.ChannelDispatcher.DefaultCloseTimeout; }
 		}
 
 		protected override void OnAbort ()
@@ -167,46 +224,15 @@ namespace System.ServiceModel
 			}
 		}
 
-
-		#region IClientChannel Members
-
-		public bool AllowInitializationUI {
-			get {
-				return _allowInitializationUI;
-			}
-			set {
-				_allowInitializationUI = value;
-			}
+		public Uri ListenUri {
+			get { return runtime.ChannelDispatcher.Listener.Uri; }
 		}
-
-		public bool DidInteractiveInitialization {
-			get { throw new NotImplementedException (); }
-		}
-
-		public Uri Via {
-			get { return _via; }
-		}
-
-		public IAsyncResult BeginDisplayInitializationUI (AsyncCallback callback, object state) {
-			throw new NotImplementedException ();
-		}
-
-		public void EndDisplayInitializationUI (IAsyncResult result) {
-			throw new NotImplementedException ();
-		}
-
-		public void DisplayInitializationUI () {
-			throw new NotImplementedException ();
-		}
-
-		public event EventHandler<UnknownMessageReceivedEventArgs> UnknownMessageReceived;
-
-		#endregion
 
 		#region IDisposable Members
 
-		public void Dispose () {
-			throw new NotImplementedException ();
+		public void Dispose ()
+		{
+			Close ();
 		}
 
 		#endregion

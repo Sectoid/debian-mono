@@ -437,7 +437,8 @@ namespace System.Xml.Schema
 			if (xsiType != null)
 				HandleXsiType (xsiType);
 
-			shouldValidateCharacters = true;
+			if (xsiNilDepth < depth)
+				shouldValidateCharacters = true;
 
 			if (info != null) {
 				info.IsNil = xsiNilDepth >= 0;
@@ -668,10 +669,11 @@ namespace System.Xml.Schema
 			}
 
 #region Key Constraints
-			if (!IgnoreIdentity)
+			if (!IgnoreIdentity) {
 				ValidateKeySelectors ();
 				ValidateKeyFields (false, xsiNilDepth == depth,
 					Context.ActualType, null, null, null);
+			}
 #endregion
 		}
 
@@ -770,7 +772,7 @@ namespace System.Xml.Schema
 			// 2 (xsi:nil and content prohibition)
 			// See AssessStartElementSchemaValidity() and ValidateCharacters()
 			// 3. attribute uses and  5. wild IDs are handled at
-			// ValidateAttribute().
+			// ValidateAttribute(), except for default/fixed values.
 
 			// Collect default attributes.
 			// 4.
@@ -790,6 +792,24 @@ namespace System.Xml.Schema
 			defaultAttributesCache.Clear ();
 			// 5. wild IDs was already checked at ValidateAttribute().
 
+			// 3. - handle default attributes
+#region ID Constraints
+			if (!IgnoreIdentity) {
+				foreach (XsAttribute a in defaultAttributes) {
+					var atype = a.AttributeType as XmlSchemaDatatype ?? a.AttributeSchemaType.Datatype;
+					object avalue = a.ValidatedFixedValue ?? a.ValidatedDefaultValue;
+					string error = idManager.AssessEachAttributeIdentityConstraint (atype, avalue, ((QName) elementQNameStack [elementQNameStack.Count - 1]).Name);
+					if (error != null)
+						HandleError (error);
+				}
+			}
+#endregion
+
+#region Key Constraints
+			if (!IgnoreIdentity)
+				foreach (XsAttribute a in defaultAttributes)
+					ValidateKeyFieldsAttribute (a, a.ValidatedFixedValue ?? a.ValidatedDefaultValue);
+#endregion
 		}
 
 		private object AssessAttributeElementLocallyValidType (string localName, string ns, XmlValueGetter getter, XmlSchemaInfo info)
@@ -817,9 +837,11 @@ namespace System.Xml.Schema
 			XsDatatype dt = attr.AttributeType as XsDatatype;
 			if (dt == null)
 				dt = ((SimpleType) attr.AttributeType).Datatype;
+
+			object parsedValue = null;
+
 			// It is a bit heavy process, so let's omit as long as possible ;-)
 			if (dt != SimpleType.AnySimpleType || attr.ValidatedFixedValue != null) {
-				object parsedValue = null;
 				try {
 					CurrentAttributeType = dt;
 					parsedValue = getter ();
@@ -832,34 +854,27 @@ namespace System.Xml.Schema
 				if (st != null)
 					ValidateRestrictedSimpleTypeValue (st, ref dt, new XmlAtomicValue (parsedValue, attr.AttributeSchemaType).Value);
 
-				if (attr.ValidatedFixedValue != null && 
-					!XmlSchemaUtil.AreSchemaDatatypeEqual (
-					attr.AttributeSchemaType.Datatype as XsdAnySimpleType, attr.ValidatedFixedTypedValue, dt as XsdAnySimpleType, parsedValue)) {
-					HandleError (String.Format ("The value of the attribute {0} does not match with its fixed value '{1}' in the space of type {2}", attr.QualifiedName, attr.ValidatedFixedValue, dt));
+				if (attr.ValidatedFixedValue != null) {
+					if (!XmlSchemaUtil.AreSchemaDatatypeEqual (attr.AttributeSchemaType, attr.ValidatedFixedTypedValue, attr.AttributeSchemaType, parsedValue))
+						HandleError (String.Format ("The value of the attribute {0} does not match with its fixed value '{1}' in the space of type {2}", attr.QualifiedName, attr.ValidatedFixedValue, dt));
 					parsedValue = attr.ValidatedFixedTypedValue;
 				}
+			}
+
 #region ID Constraints
-				if (!IgnoreIdentity) {
-					string error = idManager.AssessEachAttributeIdentityConstraint (dt, parsedValue, ((QName) elementQNameStack [elementQNameStack.Count - 1]).Name);
-					if (error != null)
-						HandleError (error);
-				}
+			if (!IgnoreIdentity) {
+				string error = idManager.AssessEachAttributeIdentityConstraint (dt, parsedValue, ((QName) elementQNameStack [elementQNameStack.Count - 1]).Name);
+				if (error != null)
+					HandleError (error);
+			}
 #endregion
 
-				#region Key Constraints
-				if (!IgnoreIdentity)
-					ValidateKeyFields (
-						true,
-						false,
-						attr.AttributeType,
-						attr.QualifiedName.Name,
-						attr.QualifiedName.Namespace,
-						getter);
-				#endregion
+#region Key Constraints
+			if (!IgnoreIdentity)
+				ValidateKeyFieldsAttribute (attr, parsedValue);
+#endregion
 
-				return parsedValue;
-			}
-			return null;
+			return parsedValue;
 		}
 
 		private void AssessAttributeLocallyValidUse (XsAttribute attr)
@@ -900,6 +915,7 @@ namespace System.Xml.Schema
 			}
 			Context.PopCurrentElement ();
 			state.PopContext ();
+			Context.XsiType = null; // FIXME: this is hack. should be stacked as well as element.
 		}
 
 		// Utility for missing validation completion related to child items.
@@ -1223,7 +1239,12 @@ namespace System.Xml.Schema
 			}
 		}
 
-		private void ValidateKeyFields (bool isAttr, bool isNil, object schemaType, string attrName, string attrNs, XmlValueGetter getter)
+		private void ValidateKeyFieldsAttribute (XsAttribute attr, object value)
+		{
+			ValidateKeyFields (true, false, attr.AttributeType, attr.QualifiedName.Name, attr.QualifiedName.Namespace, value);
+		}
+
+		private void ValidateKeyFields (bool isAttr, bool isNil, object schemaType, string attrName, string attrNs, object value)
 		{
 			// (c) Evaluate field paths.
 			for (int i = 0; i < keyTables.Count; i++) {
@@ -1241,12 +1262,10 @@ namespace System.Xml.Schema
 							schemaType,
 							nsResolver,
 							lineInfo,
-							depth,
+							isAttr ? depth + 1 : depth,
 							attrName,
 							attrNs,
-							getter == null ?
-								null :
-								getter (),
+							value,
 							isNil, 
 							currentKeyFieldConsumers);
 					} catch (ValException ex) {
@@ -1377,7 +1396,7 @@ namespace System.Xml.Schema
 		{
 			object xsiType = null;
 			XmlQualifiedName typeQName =
-				XmlQualifiedName.Parse (name, nsResolver);
+				XmlQualifiedName.Parse (name, nsResolver, true);
 			if (typeQName == ComplexType.AnyTypeName)
 				xsiType = ComplexType.AnyType;
 			else if (XmlSchemaUtil.IsBuiltInDatatypeName (typeQName))

@@ -41,45 +41,31 @@ namespace System.ServiceModel.Description
 	{
 		public const string MexContractName = "IMetadataExchange";
 
-		bool enable_http, enable_https;
-		Uri http_url, https_url, location;
 		MetadataExporter exporter;
 
 		public ServiceMetadataBehavior ()
 		{
 		}
 
-		public bool HttpGetEnabled {
-			get { return enable_http; }
-			set { enable_http = value; }
-		}
+		public bool HttpGetEnabled { get; set; }
 
-		public bool HttpsGetEnabled {
-			get { return enable_https; }
-			set { enable_https = value; }
-		}
+		public bool HttpsGetEnabled { get; set; }
 
 		public MetadataExporter MetadataExporter {
 			get { return exporter ?? (exporter = new WsdlExporter ()); }
 			set { exporter = value; }
 		}
 
-		public Uri ExternalMetadataLocation {
-			get { return location; }
-			set { location = value; }
-		}
+		public Uri ExternalMetadataLocation { get; set; }
 
-		public Uri HttpGetUrl {
-			get { return http_url; }
-			set { http_url = value; }
-		}
+		public Uri HttpGetUrl { get; set; }
 
-		public Uri HttpsGetUrl {
-			get { return https_url; }
-			set { https_url = value; }
-		}
+		public Uri HttpsGetUrl { get; set; }
 
-		[MonoTODO]
+		public Binding HttpGetBinding { get; set; }
+
+		public Binding HttpsGetBinding { get; set; }
+
 		void IServiceBehavior.AddBindingParameters (
 			ServiceDescription description,
 			ServiceHostBase serviceHostBase,
@@ -92,7 +78,7 @@ namespace System.ServiceModel.Description
 			ServiceDescription description,
 			ServiceHostBase serviceHostBase) {
 
-			ServiceMetadataExtension sme = ServiceMetadataExtension.EnsureServiceMetadataExtension (description, serviceHostBase);
+			ServiceMetadataExtension sme = ServiceMetadataExtension.EnsureServiceMetadataExtension (serviceHostBase);
 
 			//Find ChannelDispatcher for Mex, and add a MexInstanceContextProvider
 			//to it
@@ -110,13 +96,13 @@ namespace System.ServiceModel.Description
 			if (HttpGetEnabled) {
 				Uri uri = serviceHostBase.CreateUri ("http", HttpGetUrl);
 				if (uri != null)
-					ServiceMetadataExtension.EnsureServiceMetadataHttpChanelDispatcher (description, serviceHostBase, sme, uri);
+					sme.EnsureChannelDispatcher (true, "http", uri, HttpGetBinding);
 			}
 
 			if (HttpsGetEnabled) {
 				Uri uri = serviceHostBase.CreateUri ("https", HttpsGetUrl);
 				if (uri != null)
-					ServiceMetadataExtension.EnsureServiceMetadataHttpsChanelDispatcher (description, serviceHostBase, sme, uri);
+					sme.EnsureChannelDispatcher (true, "https", uri, HttpsGetBinding);
 			}
 		}
 

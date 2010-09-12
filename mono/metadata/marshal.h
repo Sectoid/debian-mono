@@ -17,6 +17,7 @@
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/opcodes.h>
 #include <mono/metadata/reflection.h>
+#include <mono/metadata/method-builder.h>
 
 #define mono_marshal_find_bitfield_offset(type, elem, byte_offset, bitmask) \
 	do { \
@@ -26,7 +27,65 @@
 		mono_marshal_find_nonzero_bit_offset ((guint8*)&tmp, sizeof (tmp), (byte_offset), (bitmask)); \
 	} while (0)
 
+/*
+ * This structure holds the state kept by the emit_ marshalling functions.
+ * This is exported so it can be used by cominterop.c.
+ */
+typedef struct {
+	MonoMethodBuilder *mb;
+	MonoMethodSignature *sig;
+	MonoMethodPInvoke *piinfo;
+	int *orig_conv_args; /* Locals containing the original values of byref args */
+	int retobj_var;
+	MonoClass *retobj_class;
+	MonoMethodSignature *csig; /* Might need to be changed due to MarshalAs directives */
+	MonoImage *image; /* The image to use for looking up custom marshallers */
+} EmitMarshalContext;
+
+typedef enum {
+	/*
+	 * This is invoked to convert arguments from the current types to
+	 * the underlying types expected by the platform routine.  If required,
+	 * the methods create a temporary variable with the proper type, and return
+	 * the location for it (either the passed argument, or the newly allocated
+	 * local slot).
+	 */
+	MARSHAL_ACTION_CONV_IN,
+
+	/*
+	 * This operation is called to push the actual value that was optionally
+	 * converted on the first stage
+	 */
+	MARSHAL_ACTION_PUSH,
+
+	/*
+	 * Convert byref arguments back or free resources allocated during the
+	 * CONV_IN stage
+	 */
+	MARSHAL_ACTION_CONV_OUT,
+
+	/*
+	 * The result from the unmanaged call is at the top of the stack when
+	 * this action is invoked.    The result should be stored in the
+	 * third local variable slot. 
+	 */
+	MARSHAL_ACTION_CONV_RESULT,
+
+	MARSHAL_ACTION_MANAGED_CONV_IN,
+	MARSHAL_ACTION_MANAGED_CONV_OUT,
+	MARSHAL_ACTION_MANAGED_CONV_RESULT
+} MarshalAction;
+
+typedef struct {
+	guint32 rank, elem_size;
+} ElementAddrWrapperInfo;
+
 G_BEGIN_DECLS
+
+/*type of the function pointer of methods returned by mono_marshal_get_runtime_invoke*/
+typedef MonoObject *(*RuntimeInvokeFunction) (MonoObject *this, void **params, MonoObject **exc, void* compiled_method);
+
+typedef void (*RuntimeInvokeDynamicFunction) (void *args, MonoObject **exc, void* compiled_method);
 
 /* marshaling helper functions */
 
@@ -54,6 +113,9 @@ mono_array_to_savearray (MonoArray *array) MONO_INTERNAL;
 
 gpointer
 mono_array_to_lparray (MonoArray *array) MONO_INTERNAL;
+
+void
+mono_free_lparray (MonoArray *array, gpointer* nativeArray) MONO_INTERNAL;
 
 void
 mono_string_utf8_to_builder (MonoStringBuilder *sb, char *text) MONO_INTERNAL;
@@ -107,6 +169,9 @@ mono_type_to_stind (MonoType *type) MONO_INTERNAL;
 MonoMethod *
 mono_marshal_method_from_wrapper (MonoMethod *wrapper) MONO_INTERNAL;
 
+gpointer
+mono_marshal_wrapper_info_from_wrapper (MonoMethod *wrapper) MONO_INTERNAL;
+
 MonoMethod *
 mono_marshal_get_remoting_invoke (MonoMethod *method) MONO_INTERNAL;
 
@@ -129,13 +194,16 @@ MonoMethod *
 mono_marshal_get_delegate_invoke (MonoMethod *method, MonoDelegate *del) MONO_INTERNAL;
 
 MonoMethod *
-mono_marshal_get_runtime_invoke (MonoMethod *method) MONO_INTERNAL;
+mono_marshal_get_runtime_invoke (MonoMethod *method, gboolean virtual) MONO_INTERNAL;
+
+MonoMethod*
+mono_marshal_get_runtime_invoke_dynamic (void) MONO_INTERNAL;
+
+MonoMethodSignature*
+mono_marshal_get_string_ctor_signature (MonoMethod *method) MONO_INTERNAL;
 
 MonoMethod *
-mono_marshal_get_static_rgctx_invoke (MonoMethod *method) MONO_INTERNAL;
-
-MonoMethod *
-mono_marshal_get_managed_wrapper (MonoMethod *method, MonoClass *delegate_klass, MonoObject *this) MONO_INTERNAL;
+mono_marshal_get_managed_wrapper (MonoMethod *method, MonoClass *delegate_klass, guint32 this_loc) MONO_INTERNAL;
 
 gpointer
 mono_marshal_get_vtfixup_ftnptr (MonoImage *image, guint32 token, guint16 type) MONO_INTERNAL;
@@ -218,10 +286,8 @@ mono_marshal_free_array (gpointer *ptr, int size) MONO_INTERNAL;
 gboolean 
 mono_marshal_free_ccw (MonoObject* obj) MONO_INTERNAL;
 
-#ifndef DISABLE_COM
 void
 cominterop_release_all_rcws (void) MONO_INTERNAL; 
-#endif
 
 void
 ves_icall_System_Runtime_InteropServices_Marshal_copy_to_unmanaged (MonoArray *src, gint32 start_index,
@@ -395,6 +461,27 @@ mono_marshal_find_nonzero_bit_offset (guint8 *buf, int len, int *byte_offset, gu
 
 MonoMethodSignature*
 mono_signature_no_pinvoke (MonoMethod *method) MONO_INTERNAL;
+
+/* Called from cominterop.c */
+
+void
+mono_marshal_emit_native_wrapper (MonoImage *image, MonoMethodBuilder *mb, MonoMethodSignature *sig, MonoMethodPInvoke *piinfo, MonoMarshalSpec **mspecs, gpointer func, gboolean aot, gboolean check_exceptions) MONO_INTERNAL;
+
+void
+mono_marshal_emit_managed_wrapper (MonoMethodBuilder *mb, MonoMethodSignature *invoke_sig, MonoMarshalSpec **mspecs, EmitMarshalContext* m, MonoMethod *method, guint32 target_handle) MONO_INTERNAL;
+
+GHashTable*
+mono_marshal_get_cache (GHashTable **var, GHashFunc hash_func, GCompareFunc equal_func) MONO_INTERNAL;
+
+MonoMethod*
+mono_marshal_find_in_cache (GHashTable *cache, gpointer key) MONO_INTERNAL;
+
+MonoMethod*
+mono_mb_create_and_cache (GHashTable *cache, gpointer key,
+						  MonoMethodBuilder *mb, MonoMethodSignature *sig,
+						  int max_stack) MONO_INTERNAL;
+void
+mono_marshal_emit_thread_interrupt_checkpoint (MonoMethodBuilder *mb) MONO_INTERNAL;
 
 G_END_DECLS
 

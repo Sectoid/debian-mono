@@ -1,3 +1,24 @@
+2010-03-26  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Patch by Daniel Morgan <monodanmorg@yahoo.com>
+	* System.Data.OracleClient/OracleParameter.cs: clean up 
+	
+2010-03-24  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #565149 - by Daniel Morgan  <monodanmorg@yahoo.com>
+	* System.Data.OracleClient/OracleParameter.cs:
+	- if programmer explicitly sets the Size property, 
+	do not override the size later if the Value property 
+	is set for character data. 
+	- for character and numeric data types, output and 
+	return parameters were not allocated memory.  
+	Also, input/output parameters need to allocate memory 
+	based on Size because the output can be bigger than 
+	the input after an execute.
+
+	* Test/TestOracleClient.cs: Data Adapter Test 2 is failing 
+	for NET_2_0 profile.
+        
 2009-10-29  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #322695
@@ -21,14 +42,14 @@
 	value is null or DBNull.  Also, use rsize instead of bindSize to 
 	avoid extra allocation.
 	
+2009-09-20  Daniel Morgan  <monodanmorg@yahoo.com>
+
+	* OracleConnection.cs: implement GetSchema methods
+
 2009-06-04  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* OracleParameter.cs: Infer size only for 2.0 profile when only 
 	value is passed.  Fixes test failure under 1.1 profile.
-	
-2009-06-03  Veerapuram Varadhan  <vvaradhan@novell.com>
-
-	* OracleParameter.cs:  Infer the ocitype before inferring the size
 	
 2009-06-03  Veerapuram Varadhan  <vvaradhan@novell.com>
 	
@@ -59,8 +80,8 @@
 
 2009-02-23  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-        * OracleException:  2.0 changes - patch submitted by 
-	        Jay Wren <jrwren@xmtp.net>
+	* OracleException:  2.0 changes - patch submitted by 
+	Jay Wren <jrwren@xmtp.net>
 	
 2009-02-19  Veerapuram Varadhan  <vvaradhan@novell.com>
 

@@ -99,6 +99,8 @@ public partial class Page : TemplateControl, IHttpHandler
 	NameValueCollection secondPostData;
 	bool requiresPostBackScript;
 	bool postBackScriptRendered;
+	bool requiresFormScriptDeclaration;
+	bool formScriptDeclarationRendered;
 	bool handleViewState;
 	string viewStateUserKey;
 	NameValueCollection _requestValueCollection;
@@ -192,11 +194,16 @@ public partial class Page : TemplateControl, IHttpHandler
 			asyncTimeout = ps.AsyncTimeout;
 			viewStateEncryptionMode = ps.ViewStateEncryptionMode;
 			_viewState = ps.EnableViewState;
+			_viewStateMac = ps.EnableViewStateMac;
 		} else {
 			asyncTimeout = TimeSpan.FromSeconds (DefaultAsyncTimeout);
 			viewStateEncryptionMode = ViewStateEncryptionMode.Auto;
 			_viewState = true;
 		}
+#else
+		PagesConfiguration ps = PagesConfiguration.GetInstance (HttpContext.Current);
+		if (ps != null)
+			_viewStateMac = ps.EnableViewStateMac;
 #endif
 	}
 
@@ -945,6 +952,11 @@ public partial class Page : TemplateControl, IHttpHandler
 		return scriptManager.GetPostBackEventReference (control, argument);
 	}
 
+	internal void RequiresFormScriptDeclaration ()
+	{
+		requiresFormScriptDeclaration = true;
+	}
+	
 	internal void RequiresPostBackScript ()
 	{
 #if NET_2_0
@@ -954,6 +966,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		ClientScript.RegisterHiddenField (postEventArgumentID, String.Empty);
 #endif
 		requiresPostBackScript = true;
+		RequiresFormScriptDeclaration ();
 	}
 
 	[EditorBrowsable (EditorBrowsableState.Never)]
@@ -1147,7 +1160,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		
 		ClientScriptManager.WriteBeginScriptBlock (writer);
 
-#if ONLY_1_1
+#if NET_1_1
 		RenderClientScriptFormDeclaration (writer, formUniqueID);
 #endif
 #if NET_2_0
@@ -1167,6 +1180,9 @@ public partial class Page : TemplateControl, IHttpHandler
 
 	void RenderClientScriptFormDeclaration (HtmlTextWriter writer, string formUniqueID)
 	{
+		if (formScriptDeclarationRendered)
+			return;
+		
 #if NET_2_0
 		if (PageAdapter != null) {
  			writer.WriteLine ("\tvar {0} = {1};\n", theForm, PageAdapter.GetPostBackFormReference(formUniqueID));
@@ -1183,6 +1199,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		writer.WriteLine ("\twindow.TARGET_J2EE = true;");
 		writer.WriteLine ("\twindow.IsMultiForm = {0};", IsMultiForm ? "true" : "false");
 #endif
+		formScriptDeclarationRendered = true;
 	}
 
 	internal void OnFormRender (HtmlTextWriter writer, string formUniqueID)
@@ -1194,9 +1211,11 @@ public partial class Page : TemplateControl, IHttpHandler
 		writer.WriteLine ();
 
 #if NET_2_0
-		ClientScriptManager.WriteBeginScriptBlock (writer);
-		RenderClientScriptFormDeclaration (writer, formUniqueID);
-		ClientScriptManager.WriteEndScriptBlock (writer);
+		if (requiresFormScriptDeclaration || (scriptManager != null && scriptManager.ScriptsPresent) || PageAdapter != null) {
+			ClientScriptManager.WriteBeginScriptBlock (writer);
+			RenderClientScriptFormDeclaration (writer, formUniqueID);
+			ClientScriptManager.WriteEndScriptBlock (writer);
+		}
 #endif
 
 		if (handleViewState)
@@ -2278,7 +2297,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		try {
 			target.RaiseCallbackEvent (callbackArgument);
 		} catch (Exception ex) {
-			callbackEventError = String.Concat ("e", ex.Message);
+			callbackEventError = String.Concat ("e", HttpRuntime.IsDebuggingEnabled ? ex.ToString () : ex.Message);
 		}
 		
 	}
@@ -2289,7 +2308,7 @@ public partial class Page : TemplateControl, IHttpHandler
 		try {
 			callBackResult = target.GetCallbackResult ();
 		} catch (Exception ex) {
-			return String.Concat ("e", ex.Message);
+			return String.Concat ("e", HttpRuntime.IsDebuggingEnabled ? ex.ToString () : ex.Message);
 		}
 		
 		string eventValidation = ClientScript.GetEventValidationStateFormatted ();

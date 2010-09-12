@@ -84,7 +84,8 @@
 #undef AF_INET6
 #endif
 
-#undef DEBUG
+#define LOGDEBUG(...)  
+/* define LOGDEBUG(...) g_message(__VA_ARGS__)  */
 
 /* 
  * Some older versions of libc provide IPV6 support without defining the AI_ADDRCONFIG
@@ -697,6 +698,7 @@ static gint32 get_family_hint(void)
 		ipv4_field = mono_class_get_field_from_name (socket_class, "ipv4Supported");
 		ipv6_field = mono_class_get_field_from_name (socket_class, "ipv6Supported");
 		vtable = mono_class_vtable (mono_domain_get (), socket_class);
+		g_assert (vtable);
 		mono_runtime_class_init (vtable);
 
 		mono_field_static_get_value (vtable, ipv4_field, &ipv4_enabled);
@@ -780,9 +782,7 @@ void ves_icall_System_Net_Sockets_Socket_Close_internal(SOCKET sock,
 {
 	MONO_ARCH_SAVE_REGS;
 
-#ifdef DEBUG
-	g_message (G_GNUC_PRETTY_FUNCTION ": closing 0x%x", sock);
-#endif
+	LOGDEBUG (g_message ("%s: closing 0x%x", __func__, sock));
 
 	*error = 0;
 
@@ -796,9 +796,7 @@ gint32 ves_icall_System_Net_Sockets_SocketException_WSAGetLastError_internal(voi
 {
 	MONO_ARCH_SAVE_REGS;
 
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": returning %d", WSAGetLastError());
-#endif
+	LOGDEBUG (g_message("%s: returning %d", __func__, WSAGetLastError()));
 
 	return(WSAGetLastError());
 }
@@ -813,14 +811,7 @@ gint32 ves_icall_System_Net_Sockets_Socket_Available_internal(SOCKET sock,
 
 	*error = 0;
 	
-#if defined(PLATFORM_MACOSX)
-	{
-		socklen_t optlen = sizeof (amount);
-		ret=getsockopt (sock, SOL_SOCKET, SO_NREAD, &amount, &optlen);
-	}
-#else
 	ret=ioctlsocket(sock, FIONREAD, &amount);
-#endif
 	if(ret==SOCKET_ERROR) {
 		*error = WSAGetLastError ();
 		return(0);
@@ -860,45 +851,16 @@ gpointer ves_icall_System_Net_Sockets_Socket_Accept_internal(SOCKET sock,
 	MONO_ARCH_SAVE_REGS;
 
 	*error = 0;
-
 #ifdef PLATFORM_WIN32
-	/* Several applications are getting stuck during shutdown on Windows 
-	 * when an accept call is on a background thread.
-	 * 
-	 */
-	if (blocking) {
+	{
 		MonoThread* curthread = mono_thread_current ();
-
-		if (curthread) {
-			for (;;) {
-				int selectret;
-				int optlen = sizeof (gint);
-				TIMEVAL timeout; 
-				fd_set readfds;
-				FD_ZERO (&readfds);
-				FD_SET(sock, &readfds);
-				timeout.tv_sec = 0;
-				timeout.tv_usec = 1000;
-				selectret = select (0, &readfds, NULL, NULL, &timeout);
-				if (selectret > 0)
-					break;
-				if (curthread->state & ThreadState_StopRequested)
-					return NULL;
-				/* A negative return from select means that an error has occurred.
-				 * Let _wapi_accept handle that.*/
-				if (selectret != 0)
-					break;
-				/* The socket's state may have changed.  If it is no longer listening, stop.*/
-				if (!getsockopt (sock, SOL_SOCKET, SO_ACCEPTCONN, (char*)&selectret, &optlen)) {
-					if (!selectret)
-						break;
-				}
-			}
-		}
+		curthread->interrupt_on_stop = (gpointer)TRUE;
+		newsock = _wapi_accept (sock, NULL, 0);
+		curthread->interrupt_on_stop = (gpointer)FALSE;
 	}
-#endif
-	
+#else
 	newsock = _wapi_accept (sock, NULL, 0);
+#endif
 	if(newsock==INVALID_SOCKET) {
 		*error = WSAGetLastError ();
 		return(NULL);
@@ -934,25 +896,25 @@ static MonoObject *create_object_from_sockaddr(struct sockaddr *saddr,
 	MonoAddressFamily family;
 
 	/* Build a System.Net.SocketAddress object instance */
-	sockaddr_class=mono_class_from_name(get_socket_assembly (), "System.Net", "SocketAddress");
+	sockaddr_class=mono_class_from_name_cached (get_socket_assembly (), "System.Net", "SocketAddress");
 	sockaddr_obj=mono_object_new(domain, sockaddr_class);
 	
 	/* Locate the SocketAddress data buffer in the object */
-	field=mono_class_get_field_from_name(sockaddr_class, "data");
+	field=mono_class_get_field_from_name_cached (sockaddr_class, "data");
 
 	/* Make sure there is space for the family and size bytes */
 #ifdef HAVE_SYS_UN_H
 	if (saddr->sa_family == AF_UNIX) {
 		/* sa_len includes the entire sockaddr size, so we don't need the
 		 * N bytes (sizeof (unsigned short)) of the family. */
-		data=mono_array_new(domain, mono_get_byte_class (), sa_size);
+		data=mono_array_new_cached(domain, mono_get_byte_class (), sa_size);
 	} else
 #endif
 	{
 		/* May be the +2 here is too conservative, as sa_len returns
 		 * the length of the entire sockaddr_in/in6, including
 		 * sizeof (unsigned short) of the family */
-		data=mono_array_new(domain, mono_get_byte_class (), sa_size+2);
+		data=mono_array_new_cached(domain, mono_get_byte_class (), sa_size+2);
 	}
 
 	/* The data buffer is laid out as follows:
@@ -1056,9 +1018,7 @@ extern MonoObject *ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal(SO
 		return(NULL);
 	}
 	
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": bound to %s port %d", inet_ntoa(((struct sockaddr_in *)&sa)->sin_addr), ntohs(((struct sockaddr_in *)&sa)->sin_port));
-#endif
+	LOGDEBUG (g_message("%s: bound to %s port %d", __func__, inet_ntoa(((struct sockaddr_in *)&sa)->sin_addr), ntohs(((struct sockaddr_in *)&sa)->sin_port)));
 
 	return(create_object_from_sockaddr((struct sockaddr *)sa, salen,
 					   error));
@@ -1082,9 +1042,7 @@ extern MonoObject *ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal(S
 		return(NULL);
 	}
 	
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": connected to %s port %d", inet_ntoa(((struct sockaddr_in *)&sa)->sin_addr), ntohs(((struct sockaddr_in *)&sa)->sin_port));
-#endif
+	LOGDEBUG (g_message("%s: connected to %s port %d", __func__, inet_ntoa(((struct sockaddr_in *)&sa)->sin_addr), ntohs(((struct sockaddr_in *)&sa)->sin_port)));
 
 	return(create_object_from_sockaddr((struct sockaddr *)sa, salen,
 					   error));
@@ -1217,9 +1175,7 @@ extern void ves_icall_System_Net_Sockets_Socket_Bind_internal(SOCKET sock, MonoO
 		return;
 	}
 
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": binding to %s port %d", inet_ntoa(((struct sockaddr_in *)sa)->sin_addr), ntohs (((struct sockaddr_in *)sa)->sin_port));
-#endif
+	LOGDEBUG (g_message("%s: binding to %s port %d", __func__, inet_ntoa(((struct sockaddr_in *)sa)->sin_addr), ntohs (((struct sockaddr_in *)sa)->sin_port)));
 
 	ret = _wapi_bind (sock, sa, sa_size);
 	if(ret==SOCKET_ERROR) {
@@ -1325,9 +1281,7 @@ extern void ves_icall_System_Net_Sockets_Socket_Connect_internal(SOCKET sock, Mo
 		return;
 	}
 	
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": connecting to %s port %d", inet_ntoa(((struct sockaddr_in *)sa)->sin_addr), ntohs (((struct sockaddr_in *)sa)->sin_port));
-#endif
+	LOGDEBUG (g_message("%s: connecting to %s port %d", __func__, inet_ntoa(((struct sockaddr_in *)sa)->sin_addr), ntohs (((struct sockaddr_in *)sa)->sin_port)));
 
 	ret = _wapi_connect (sock, sa, sa_size);
 	if(ret==SOCKET_ERROR) {
@@ -1365,10 +1319,7 @@ extern void ves_icall_System_Net_Sockets_Socket_Disconnect_internal(SOCKET sock,
 
 	*error = 0;
 	
-#ifdef DEBUG
-	g_message("%s: disconnecting from socket %p (reuse %d)", __func__,
-		  sock, reuse);
-#endif
+	LOGDEBUG (g_message("%s: disconnecting from socket %p (reuse %d)", __func__, sock, reuse));
 
 	/* I _think_ the extension function pointers need to be looked
 	 * up for each socket.  FIXME: check the best way to store
@@ -1446,8 +1397,18 @@ gint32 ves_icall_System_Net_Sockets_Socket_Receive_internal(SOCKET sock, MonoArr
 		*error = WSAEOPNOTSUPP;
 		return (0);
 	}
-		
+
+#ifdef PLATFORM_WIN32
+	{
+		MonoThread* curthread = mono_thread_current ();
+		curthread->interrupt_on_stop = (gpointer)TRUE;
+		ret = _wapi_recv (sock, buf, count, recvflags);
+		curthread->interrupt_on_stop = (gpointer)FALSE;
+	}
+#else
 	ret = _wapi_recv (sock, buf, count, recvflags);
+#endif
+
 	if(ret==SOCKET_ERROR) {
 		*error = WSAGetLastError ();
 		return(0);
@@ -1553,15 +1514,11 @@ gint32 ves_icall_System_Net_Sockets_Socket_Send_internal(SOCKET sock, MonoArray 
 		return(0);
 	}
 
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": alen: %d", alen);
-#endif
+	LOGDEBUG (g_message("%s: alen: %d", __func__, alen));
 	
 	buf=mono_array_addr(buffer, guchar, offset);
 
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": Sending %d bytes", count);
-#endif
+	LOGDEBUG (g_message("%s: Sending %d bytes", __func__, count));
 
 	sendflags = convert_socketflags (flags);
 	if (sendflags == -1) {
@@ -1630,15 +1587,11 @@ gint32 ves_icall_System_Net_Sockets_Socket_SendTo_internal(SOCKET sock, MonoArra
 		return(0);
 	}
 	
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": alen: %d", alen);
-#endif
+	LOGDEBUG (g_message("%s: alen: %d", __func__, alen));
 	
 	buf=mono_array_addr(buffer, guchar, offset);
 
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": Sending %d bytes", count);
-#endif
+	LOGDEBUG (g_message("%s: Sending %d bytes", __func__, count));
 
 	sendflags = convert_socketflags (flags);
 	if (sendflags == -1) {
@@ -1981,7 +1934,6 @@ static struct in_addr ipaddress_to_struct_in_addr(MonoObject *ipaddr)
 	
 	return(inaddr);
 }
-#endif
 
 #ifdef AF_INET6
 static struct in6_addr ipaddress_to_struct_in6_addr(MonoObject *ipaddr)
@@ -2008,6 +1960,7 @@ static struct in6_addr ipaddress_to_struct_in6_addr(MonoObject *ipaddr)
 	return(in6addr);
 }
 #endif /* AF_INET6 */
+#endif
 
 void ves_icall_System_Net_Sockets_Socket_SetSocketOption_internal(SOCKET sock, gint32 level, gint32 name, MonoObject *obj_val, MonoArray *byte_val, gint32 int_val, gint32 *error)
 {
@@ -2814,7 +2767,7 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = get_family_hint ();
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_CANONNAME;
+	hints.ai_flags = AI_CANONNAME | AI_ADDRCONFIG;
 
 	if (*hostname && getaddrinfo(hostname, NULL, &hints, &info) == -1) {
 		return(FALSE);
@@ -2898,9 +2851,13 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	}
 #endif
 
+#ifndef HOST_WIN32
 	he = NULL;
 	if (*hostname)
 		he = _wapi_gethostbyname (hostname);
+#else
+	he = _wapi_gethostbyname (hostname);
+#endif
 	g_free(hostname);
 
 	if (*hostname && he==NULL)
@@ -3016,7 +2973,7 @@ extern MonoBoolean ves_icall_System_Net_Dns_GetHostByAddr_internal(MonoString *a
 	memset (&hints, 0, sizeof(hints));
 	hints.ai_family = get_family_hint ();
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_CANONNAME;
+	hints.ai_flags = AI_CANONNAME | AI_ADDRCONFIG;
 
 	if( getaddrinfo (hostname, NULL, &hints, &info) == -1 ) {
 		return(FALSE);
@@ -3107,14 +3064,12 @@ void mono_network_init(void)
 	
 	err=WSAStartup(MAKEWORD(2,0), &wsadata);
 	if(err!=0) {
-		g_error(G_GNUC_PRETTY_FUNCTION ": Couldn't initialise networking");
+		g_error("%s: Couldn't initialise networking", __func__);
 		exit(-1);
 	}
 
-#ifdef DEBUG
-	g_message(G_GNUC_PRETTY_FUNCTION ": Using socket library: %s", wsadata.szDescription);
-	g_message(G_GNUC_PRETTY_FUNCTION ": Socket system status: %s", wsadata.szSystemStatus);
-#endif
+	LOGDEBUG (g_message("%s: Using socket library: %s", __func__, wsadata.szDescription));
+	LOGDEBUG (g_message("%s: Socket system status: %s", __func__, wsadata.szSystemStatus));
 }
 
 void mono_network_cleanup(void)

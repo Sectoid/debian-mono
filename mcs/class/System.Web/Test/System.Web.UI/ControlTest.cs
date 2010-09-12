@@ -39,6 +39,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using MonoTests.SystemWeb.Framework;
+using MonoTests.stand_alone.WebHarness;
 
 #if NET_2_0
 using System.Web.UI.Adapters;
@@ -274,6 +275,23 @@ namespace MonoTests.System.Web.UI
 			Assert.AreEqual ("", result, "#01");
 		}
 
+		[Test] // Bug #471305
+		[Category ("NunitWeb")]
+		public void NoDoubleOnInitOnRemoveAdd ()
+		{
+#if VISUAL_STUDIO
+			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.NoDoubleOnInitOnRemoveAdd.aspx", "NoDoubleOnInitOnRemoveAdd.aspx");
+			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.NoDoubleOnInitOnRemoveAdd.aspx.cs", "NoDoubleOnInitOnRemoveAdd.aspx.cs");
+#else
+			WebTest.CopyResource (GetType (), "NoDoubleOnInitOnRemoveAdd.aspx", "NoDoubleOnInitOnRemoveAdd.aspx");
+			WebTest.CopyResource (GetType (), "NoDoubleOnInitOnRemoveAdd.aspx.cs", "NoDoubleOnInitOnRemoveAdd.aspx.cs");
+#endif
+			WebTest t = new WebTest ("NoDoubleOnInitOnRemoveAdd.aspx");
+			string html = t.Run ();
+
+			Assert.AreEqual (-1, html.IndexOf ("<span>label</span><span>label</span>"), "#A1");
+		}
+		
 #if NET_2_0
 		[Test]
 		[Category("NunitWeb")]
@@ -970,6 +988,26 @@ namespace MonoTests.System.Web.UI
 		}
 
 #if NET_2_0
+		[Test (Description="Bug #594238")]
+		public void OverridenControlsPropertyAndPostBack_Bug594238 ()
+		{
+			WebTest t = new WebTest ("OverridenControlsPropertyAndPostBack_Bug594238.aspx");
+			t.Run ();
+
+			FormRequest fr = new FormRequest (t.Response, "form1");
+			fr.Controls.Add ("__EVENTTARGET");
+			fr.Controls.Add ("__EVENTARGUMENT");
+			fr.Controls ["__EVENTTARGET"].Value = "container$children$lb";
+			fr.Controls ["__EVENTARGUMENT"].Value = String.Empty;
+			t.Request = fr;
+
+			string originalHtml = @"<span id=""container""><a href=""javascript:__doPostBack('container$children$lb','')"" id=""container_children_lb"">Woot! I got clicked!</a></span><hr/>";
+			string pageHtml = t.Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
+		}
+		
 		[TestFixtureTearDown]
 		public void Tear_down ()
 		{
@@ -982,9 +1020,11 @@ namespace MonoTests.System.Web.UI
 #if VISUAL_STUDIO
 			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.ResolveUrl.aspx", "ResolveUrl.aspx");
 			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.ResolveUrl.ascx", "Folder/ResolveUrl.ascx");
+			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.OverridenControlsPropertyAndPostBack_Bug594238.aspx", "OverridenControlsPropertyAndPostBack_Bug594238.aspx");
 #else
 			WebTest.CopyResource (GetType (), "ResolveUrl.aspx", "ResolveUrl.aspx");
 			WebTest.CopyResource (GetType (), "ResolveUrl.ascx", "Folder/ResolveUrl.ascx");
+			WebTest.CopyResource (GetType (), "OverridenControlsPropertyAndPostBack_Bug594238.aspx", "OverridenControlsPropertyAndPostBack_Bug594238.aspx");
 #endif
 		}
 

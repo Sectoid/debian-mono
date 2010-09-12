@@ -93,6 +93,11 @@ namespace System.Reflection.Emit {
 			/* FIXME: Add more checks */
 			if (t.IsArray && t.GetArrayRank () > 1)
 				return false;
+			if (t is TypeBuilder && t.IsEnum) {
+				// Check that the enum is properly constructed, the unmanaged code
+				// depends on this
+				Enum.GetUnderlyingType (t);
+			}
 			return true;
 		}
 
@@ -266,6 +271,12 @@ namespace System.Reflection.Emit {
 					hasSize = true;
 					break;
 				case "SafeArraySubType":
+					value = (int)data[pos++];
+					value |= ((int)data[pos++]) << 8;
+					value |= ((int)data[pos++]) << 16;
+					value |= ((int)data[pos++]) << 24;
+					subtype = (UnmanagedType)value;
+					break;
 				case "IidParameterIndex":
 					pos += 4;
 					break;

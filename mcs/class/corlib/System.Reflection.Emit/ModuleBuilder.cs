@@ -78,6 +78,9 @@ namespace System.Reflection.Emit {
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern void basic_init (ModuleBuilder ab);
 
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private static extern void set_wrappers_type (ModuleBuilder mb, Type ab);
+
 		internal ModuleBuilder (AssemblyBuilder assb, string name, string fullyqname, bool emitSymbolInfo, bool transient) {
 			this.name = this.scopename = name;
 			this.fqname = fullyqname;
@@ -92,8 +95,17 @@ namespace System.Reflection.Emit {
 			basic_init (this);
 
 			CreateGlobalType ();
-			
+
+			if (assb.IsRun) {
+				TypeBuilder tb = new TypeBuilder (this, TypeAttributes.Abstract, 0xFFFFFF); /*last valid token*/
+				Type type = tb.CreateType ();
+				set_wrappers_type (this, type);
+			}
+
 			if (emitSymbolInfo) {
+#if NET_2_1 && !MONOTOUCH
+				symbolWriter = new Mono.CompilerServices.SymbolWriter.SymbolWriterImpl (this);
+#else
 				Assembly asm = Assembly.LoadWithPartialName ("Mono.CompilerServices.SymbolWriter");
 				if (asm == null)
 					throw new ExecutionEngineException ("The assembly for default symbol writer cannot be loaded");
@@ -103,6 +115,7 @@ namespace System.Reflection.Emit {
 					throw new ExecutionEngineException ("The type that implements the default symbol writer interface cannot be found");
 
 				symbolWriter = (ISymbolWriter) Activator.CreateInstance (t, new object[] { this });
+#endif
 				string fileName = fqname;
 				if (assemblyb.AssemblyDir != null)
 					fileName = Path.Combine (assemblyb.AssemblyDir, fileName);
@@ -144,8 +157,7 @@ namespace System.Reflection.Emit {
 			if ((size <= 0) || (size > 0x3f0000))
 				throw new ArgumentException ("size", "Data size must be > 0 and < 0x3f0000");
 
-			if (global_type == null)
-				global_type = new TypeBuilder (this, 0);
+			CreateGlobalType ();
 
 			string typeName = "$ArrayType$" + size;
 			Type datablobtype = GetType (typeName, false, false);
@@ -204,8 +216,7 @@ namespace System.Reflection.Emit {
 				throw new ArgumentException ("global methods must be static");
 			if (global_type_created != null)
 				throw new InvalidOperationException ("global methods already created");
-			if (global_type == null)
-				global_type = new TypeBuilder (this, 0);
+			CreateGlobalType ();
 			MethodBuilder mb = global_type.DefineMethod (name, attributes, callingConvention, returnType, requiredReturnTypeCustomModifiers, optionalReturnTypeCustomModifiers, parameterTypes, requiredParameterTypeCustomModifiers, optionalParameterTypeCustomModifiers);
 
 			addGlobalMethod (mb);
@@ -223,8 +234,7 @@ namespace System.Reflection.Emit {
 				throw new ArgumentException ("global methods must be static");
 			if (global_type_created != null)
 				throw new InvalidOperationException ("global methods already created");
-			if (global_type == null)
-				global_type = new TypeBuilder (this, 0);
+			CreateGlobalType ();
 			MethodBuilder mb = global_type.DefinePInvokeMethod (name, dllName, entryName, attributes, callingConvention, returnType, parameterTypes, nativeCallConv, nativeCharSet);
 
 			addGlobalMethod (mb);
@@ -261,14 +271,12 @@ namespace System.Reflection.Emit {
 		}
 
 		private TypeBuilder DefineType (string name, TypeAttributes attr, Type parent, Type[] interfaces, PackingSize packingSize, int typesize) {
+			if (name_cache.ContainsKey (name))
+				throw new ArgumentException ("Duplicate type name within an assembly.");
 			TypeBuilder res = new TypeBuilder (this, name, attr, parent, interfaces, packingSize, typesize, null);
 			AddType (res);
-			
-			try {
-				name_cache.Add (name, res);
-			} catch {
-				throw new ArgumentException ("Duplicate type name within an assembly.");
-			}
+
+			name_cache.Add (name, res);
 			
 			return res;
 		}
@@ -378,7 +386,13 @@ namespace System.Reflection.Emit {
 #if NET_2_0
 		[ComVisible (true)]
 #endif		
-		public override Type GetType (string className, bool throwOnError, bool ignoreCase) {
+		public override Type GetType (string className, bool throwOnError, bool ignoreCase)
+		{
+			if (className == null)
+				throw new ArgumentNullException ("className");
+			if (className.Length == 0)
+				throw new ArgumentException ("className");
+
 			int subt;
 			string orig = className;
 			string modifiers;
@@ -543,7 +557,7 @@ namespace System.Reflection.Emit {
 			throw new NotImplementedException ();
 		}
 
-#if NET_2_0
+#if NET_2_0 || BOOTSTRAP_NET_2_0
 		public void DefineManifestResource (string name, Stream stream, ResourceAttributes attribute) {
 			if (name == null)
 				throw new ArgumentNullException ("name");
@@ -787,7 +801,7 @@ namespace System.Reflection.Emit {
 
 		internal void CreateGlobalType () {
 			if (global_type == null)
-				global_type = new TypeBuilder (this, 0);
+				global_type = new TypeBuilder (this, 0, 1);
 		}
 
 		internal override Guid GetModuleVersionId ()

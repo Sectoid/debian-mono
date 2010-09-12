@@ -39,12 +39,24 @@ namespace System.ServiceModel.Web
 {
 	public class WebChannelFactory<TChannel> : ChannelFactory<TChannel>
 	{
+#if !NET_2_1
 		public WebChannelFactory ()
 			: base ()
 		{
 		}
 
-		public WebChannelFactory (Type serviceType)
+		public WebChannelFactory(Binding binding)
+			: base(binding)
+		{
+		}
+
+		public WebChannelFactory(ServiceEndpoint endpoint)
+			: base(endpoint)
+		{
+		}
+#endif
+
+		public WebChannelFactory(Type serviceType)
 			: base (serviceType)
 		{
 		}
@@ -54,37 +66,28 @@ namespace System.ServiceModel.Web
 		{
 		}
 
-		public WebChannelFactory (Binding binding)
-			: base (binding)
-		{
-		}
-
 		public WebChannelFactory (Uri remoteAddress)
-			: base ()
+			: this (String.Empty, remoteAddress)
 		{
-			Endpoint.Address = new EndpointAddress (remoteAddress);
 		}
 
-		public WebChannelFactory (string configurationName, Uri remoteAddress)
-			: this (configurationName)
+		public WebChannelFactory (string endpointConfigurationName, Uri remoteAddress)
+			: base (endpointConfigurationName)
 		{
 			Endpoint.Address = new EndpointAddress (remoteAddress);
 		}
 
 		public WebChannelFactory (Binding binding, Uri remoteAddress)
-			: this (new ServiceEndpoint (ContractDescription.GetContract (typeof (TChannel)), binding, new EndpointAddress (remoteAddress)))
-		{
-		}
-
-		public WebChannelFactory (ServiceEndpoint endpoint)
-			: base (endpoint)
+			: base (binding, new EndpointAddress (remoteAddress))
 		{
 		}
 
 		protected override void OnOpening ()
 		{
+#if !NET_2_1
 			if (Endpoint.Behaviors.Find<WebHttpBehavior> () == null)
 				Endpoint.Behaviors.Add (new WebHttpBehavior ());
+#endif
 
 			if (Endpoint.Binding == null)
 				Endpoint.Binding = new WebHttpBinding ();

@@ -95,7 +95,15 @@ namespace System.Data.SqlClient
 		const int IS_HIDDEN_IDX = 20;
 		const int IS_LONG_IDX = 21;
 		const int IS_READ_ONLY_IDX = 22;
-
+		const int PROVIDER_SPECIFIC_TYPE_IDX = 23;
+		const int DATA_TYPE_NAME_IDX = 24;
+		const int XML_SCHEMA_COLLCTN_DB_IDX = 25;
+		const int XML_SCHEMA_COLLCTN_OWN_SCHEMA_IDX = 26;
+		const int XML_SCHEMA_COLLCTN_NAME_IDX = 27;
+		const int UDT_ASMBLY_QUALIFIED_NAME_IDX = 28;
+		const int NON_VER_PROVIDER_TYPE_IDX = 29;
+		const int IS_COLUMN_SET = 30;
+		
 		#region Constructors
 
 		internal SqlDataReader (SqlCommand command)
@@ -248,7 +256,17 @@ namespace System.Data.SqlClient
 			schemaTable.Columns.Add ("IsHidden", booleanType);
 			schemaTable.Columns.Add ("IsLong", booleanType);
 			schemaTable.Columns.Add ("IsReadOnly", booleanType);
-
+#if NET_2_0
+			schemaTable.Columns.Add ("ProviderSpecificDataType", typeType);
+			schemaTable.Columns.Add ("DataTypeName", stringType);
+			schemaTable.Columns.Add ("XmlSchemaCollectionDatabase", stringType);
+			schemaTable.Columns.Add ("XmlSchemaCollectionOwningSchema", stringType);
+			schemaTable.Columns.Add ("XmlSchemaCollectionName", stringType);
+			schemaTable.Columns.Add ("UdtAssemblyQualifiedName", stringType);
+			schemaTable.Columns.Add ("NonVersionedProviderType", intType);
+			schemaTable.Columns.Add ("IsColumnSet", booleanType);
+#endif
+			
 			return schemaTable;
 		}
 		
@@ -331,6 +349,7 @@ namespace System.Data.SqlClient
 				case TdsColumnType.Int2:
 				case TdsColumnType.Int4:
 				case TdsColumnType.IntN:
+				case TdsColumnType.BigInt:
 					switch (csize) {
 					case 1:
 						typeName = "tinyint";
@@ -627,7 +646,7 @@ namespace System.Data.SqlClient
 				length = availLen;
 			if (dataIndex < 0)
 				return 0;
-
+			
 			Array.Copy ((byte []) value, (int) dataIndex, buffer, bufferIndex, length);
 			return length; // return actual read count
 		}
@@ -983,6 +1002,14 @@ namespace System.Data.SqlClient
 				row [BASE_SCHEMA_NAME_IDX]		= GetSchemaValue (schema.BaseSchemaName);
 				row [BASE_TABLE_NAME_IDX]		= GetSchemaValue (schema.BaseTableName);
 				row [ALLOW_DBNULL_IDX]		= GetSchemaValue (schema.AllowDBNull);
+				row [PROVIDER_SPECIFIC_TYPE_IDX] = DBNull.Value;
+				row [DATA_TYPE_NAME_IDX] = GetSchemaValue (schema.DataTypeName);
+				row [XML_SCHEMA_COLLCTN_DB_IDX] = DBNull.Value;
+				row [XML_SCHEMA_COLLCTN_OWN_SCHEMA_IDX] = DBNull.Value;
+				row [XML_SCHEMA_COLLCTN_NAME_IDX] = DBNull.Value;
+				row [UDT_ASMBLY_QUALIFIED_NAME_IDX] = DBNull.Value;
+				row [NON_VER_PROVIDER_TYPE_IDX] = DBNull.Value;
+				row [IS_COLUMN_SET] = DBNull.Value;
 #else
 				row [COLUMN_NAME_IDX]		= GetSchemaValue (schema, "ColumnName");
 				row [COLUMN_ORDINAL_IDX]		= GetSchemaValue (schema, "ColumnOrdinal");
@@ -1227,10 +1254,10 @@ namespace System.Data.SqlClient
 			if (!(value is SqlXml)) {
 				if (value is DBNull) {
 					throw new SqlNullValueException ();
-				} else if (command.Tds.TdsVersion == TdsVersion.tds70 && value is SqlString) {
-					// Workaround for TDS 7 clients
-					// Xml column types are supported only from Sql Server 2005 / TDS 8, however
-					// when a TDS 7 client requests for Xml column data, Sql Server 2005 returns
+				} else if (command.Tds.TdsVersion <= TdsVersion.tds80 && value is SqlString) {
+					// Workaround for TDS 7/8/8.1 clients
+					// Xml column types are supported only from Sql Server 2005 / TDS 9, however
+					// when a TDS 7/8/8.1 client requests for Xml column data, Sql Server 2005 returns
 					// it as NTEXT
 					MemoryStream stream = null;
 					if (!((SqlString) value).IsNull)
@@ -1256,7 +1283,8 @@ namespace System.Data.SqlClient
 			TdsDataColumn column;
 
 			object value = GetValue (i);
-
+			//Console.WriteLine ("Type of value: {0}", value.GetType ());
+			
 			SqlDbType type = GetSchemaRowDbType (i);
 			switch (type) {
 			case SqlDbType.BigInt:
@@ -1293,6 +1321,8 @@ namespace System.Data.SqlClient
 					return SqlDecimal.Null;
 				if (value is TdsBigDecimal)
 					return SqlDecimal.FromTdsBigDecimal ((TdsBigDecimal) value);
+				if (value is System.Int64)
+					return (SqlDecimal)((long) value);
 				return (SqlDecimal) ((decimal) value);
 			case SqlDbType.Float:
 				if (value == DBNull.Value)

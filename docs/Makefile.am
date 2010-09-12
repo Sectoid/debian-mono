@@ -6,14 +6,17 @@ sources_DATA = \
 	monoapi.source \
 	$(ASSEMBLED_DOCS)
 
+if DISABLE_MCS_DOCS
+ASSEMBLED_DOCS = 
+else
 ASSEMBLED_DOCS = \
 	mono-file-formats.tree mono-file-formats.zip  \
 	mono-tools.tree mono-tools.zip                \
 	monoapi.tree monoapi.zip
+endif
 
 EXTRA_DIST = \
 	abc-removal.txt		\
-	aot-compiler.txt	\
 	api-style.css		\
 	assembly-bundle		\
 	check-exports		\
@@ -24,7 +27,6 @@ EXTRA_DIST = \
 	docs.make		\
 	documented		\
 	embedded-api		\
-	exception-handling.txt	\
 	exceptions		\
 	exdoc			\
 	file-share-modes	\
@@ -35,13 +37,11 @@ EXTRA_DIST = \
 	internal-calls		\
 	ir-desc			\
 	jit-imt			\
-	jit-regalloc		\
 	jit-thoughts		\
 	jit-trampolines		\
 	local-regalloc.txt	\
 	magic.diff		\
 	mini-doc.txt		\
-	mini-porting.txt	\
 	mono-api-metadata.html	\
 	mono-file-formats.config\
 	mono-file-formats.source\
@@ -62,7 +62,6 @@ EXTRA_DIST = \
 	ssapre.txt		\
 	stack-alignment		\
 	stack-overflow.txt	\
-	thread-safety.txt	\
 	threading		\
 	toc.xml			\
 	TODO			\
@@ -111,4 +110,3 @@ convert.exe: convert.cs AgilityPack.dll
 
 AgilityPack.dll:
 	cd $(srcdir) && $(MAKE) PROFILE=net_2_0 -f docs.make topdir=$(mcs_topdir_from_srcdir) AgilityPack.dll
-

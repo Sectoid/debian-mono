@@ -1,8 +1,379 @@
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* ModuleBuilder.cs (DefinedType): Lookup inside the name_cache before creating
+	the TypeBuilder since the runtime code can't handle a duplicate type name.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeBuilder.cs (IsValidType): Call Enum.GetUnderlyingType () for
+	dynamic enums to avoid crashes in the unmanaged code. Fixes #591800.
+
+2010-02-09  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ModuleBuilder.cs: Do not use reflection to create SymbolWriterImpl
+	for Moonlight since the code is bundled inside mscorlib.dll to avoid
+	having a non-platform assembly poking the internals of mscorlib.dll
+	[Backport r151176]
+
+2009-10-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MethodBuilder.cs: Add missing 'names' validations in 
+	DefineGenericParameters
+	[Backport r145118]
+
+2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ModuleBuilder.cs: Add missing 'className' validations in GetType
+	* TypeBuilder.cs: Add missing 'names' validations in 
+	DefineGenericParameters
+	[Backport r145013]
+
+2009-10-24  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AssemblyBuilder.cs: For Silverlight only AssemblyBuilderAccess.Run
+	is supported (browser-side) but we still allow other values when
+	compiling (e.g. smcs) outside the browser (wo coreclr)
+	* TypeBuilder.cs (GetConstructor): Fix validations
+	[Backport r144791]
+
+2009-09-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AssemblyBuilder.cs, ConstructorBuilder.cs, MethodBuilder.cs, 
+	TypeBuilder.cs: Don't process PermissionSet under NET_2_1
+
+2009-09-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConstructorOnTypeBuilderInst.cs (GetParameters): Make it work for
+	finished types.
+
+2009-09-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ILGenerator.cs (label_fixup): Check for unmarked labels.
+	Fixes #536243.
+
+2009-08-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBuilder.cs: Mark generic_params internal.
+
+	* MethodOnTypeBuilderInst.cs: Add fields to support
+	inflated generic methods. Implement generics related
+	methods.
+
+2009-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	* ILGenerator.cs: Add 4.0 ILOffset.
+
+2009-08-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs (DerivedType): Implement ToString ().
+
+2009-08-03 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventBuilder.cs: Make some fields internal.
+
+	* TypeBuilder.cs: Make events field internal.
+	Remove some MonoTODOs that are already done.
+
+	* EventOnTypeBuilderInst.cs: New file which implements
+	the required functionality by compiler context.
+
+2009-07-30 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (IsDefined): Throw if not
+	created and not in compiler context.
+
+2009-07-30 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetNestedTypes): Throw if not
+	created and not in compiler context.
+
+2009-07-30 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetEvents): Throw if not created
+	and not in compiler context.
+
+	* TypeBuilder.cs (GetNestedType): Don't rely on
+	MonoType implementation as it doesn't work if the
+	nested type is defined after the TypeBuilder is
+	created.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetConstructors): Throw if
+	TypeBuilder is incomplete.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (DefineMethodOverride): Throw if
+	method body doesn't belong to the TypeBuilder.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetInterfaces): Return the expanded
+	interface list if the type has been created.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetGenericArguments): Returns null for
+	 non generic TypeBuilders.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GenericParameterAttributes): Return none.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetElementType): Throw always.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetGenericTypeDefinition): Either
+	throw or return itself.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GenericParameterPosition): Return 0
+	instead of throwing.
+
+2009-07-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (DeclaringMethod): Return null
+	instead of throwing.
+
+2009-07-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (CreateType): Throw if concrete
+	type has abstract method.
+
+2009-07-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* GenericTypeParameterBuilder.cs: SetBaseTypeConstraint with
+	null argument is the same as passing typeof (object).
+
+2009-07-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs (ArrayType): Special case vector arrays using zero
+	 as rank. This is required because we need to make the distinction
+	between a vector and a one dimension SZARRAY.
+
+	* EnumBuilder.cs: Create vectors as rank-zero ArrayType objects.
+
+ 	* TypeBuilder.cs: Same.
+
+	* GenericTypeParameterBuilder.cs: Same.
+
+2009-07-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	DerivedTypes.cs: ByRef and Pointer types return Array as base
+	type.
+
+2009-07-28  Marek Safar  <marek.safar@gmail.com>
+
+	* DynamicMethod.cs: Pass skipVisibility.
+
+2009-07-27 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	OpCode.cs: HashCode is meant to be calculated based on Name. 
+
+	OpCodeNames.cs: Fix some names.
+
+	OpCodes.cs: Fix Stelem, Constrained and Readonly specs.
+
+2009-07-26  Miguel de Icaza  <miguel@novell.com>
+
+	* ILGenerator.cs: Fix the exception thrown when LocalBuilders are
+	mixed between ILGenerators.
+
+2009-07-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs: Make the interfaces field internal.
+
+2009-07-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldOnTypeBuilderInst.cs: Add a ToString() to help debugging.
+	Make fields internal.
+
+	* MethodOnTypeBuilderInst.cs: Build it under BOOTSTRAP_NET_2_0.
+
+2009-07-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConstructorBuilder.cs: Make parameters and pinfo fields internal.
+
+	* ConstructorOnTypeBuilderInst.cs: Build it under BOOTSTRAP_NET_2_0.
+	Properly implement GetParameters under compiler context.
+
+	* TypeBuilder.cs: Make ctors field internal.
+
+2009-07-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldOnTypeBuilderInst.cs: Implement MetadataToken and FieldToken
+	for compiler context.
+
+	* TypeBuilder.cs: Make FieldBuilder related fields internal.
+
+2009-07-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* PropertyOnTypeBuilderInst.cs: Use TypeBuilder::GetMethod instead of
+	MonoGenericClass::GetCorrespondingInflatedMethod. This is possible
+	since the returned methods of MonoGenericClass::GetMethods have been
+	unified with TypeBuilder::GetMethod.
+
+	* TypeBuilder.cs: Make property related fields internal.
+
+2009-07-22 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Implement ToString to help debugging.
+
+	* TypeBuilder.cs: Make the properties field internal.
+
+	* PropertyOnTypeBuilderInst.cs: New type implementing a property of an
+	inflated TypeBuilder.
+
+2009-07-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EnumBuilder.cs: Use new derived types for array, pointer and byref.
+
+2009-07-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* GenericTypeParameterBuilder.cs (MakeByRefType): Return an instance
+	of PointerType instead of relying on the runtime for it.
+
+2009-07-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* GenericTypeParameterBuilder.cs (MakeByRefType): Return an instance
+	of ByRefType instead of relying on the runtime for it.
+
+2009-07-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs (DerivedType): Implement IsAssignableFrom
+	and ContainsGenericParameters
+
+	* DerivedTypes.cs (DerivedType::UnderlyingSystemType): Create 
+	the unmanaged type before returning so the resulting object is
+	understood as a SystemType.
+
+	* DerivedTypes.cs (DerivedType::AssemblyQualifiedName): Return null
+	if element's FullName is null as well.
+
+	* DerivedTypes.cs (ArrayType::GetAttributeFlagsImpl): Return proper
+	array flags if under compiler context.
+	
+	* DerivedTypes.cs (*::FormatName): Return null if elementName is.
+
+	* GenericTypeParameterBuilder.cs: Improve compatibility when not
+	under compler context.
+
+	* GenericTypeParameterBuilder.cs (MakeArrayType): Return an instance
+	of ArrayType instead of relying on the runtime for it.
+
+	* TypeBuilder.cs: Add error checking to MakeArrayType and remove some
+	MonoTODO.
+
+2009-07-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* AssemblyBuilder.cs: Applied patch from <Dax@daxxfiles.net>. Save
+	the public key token to a field where the runtime can access it.
+
+2009-07-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs: Implemented PointerType.
+
+	* TypeBuilder.cs (MakePointerType): Return an
+	instance of PointerType.
+
+2009-07-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs: Implemented ByRefType.
+
+	* TypeBuilder.cs (MakeByRefType): Return an
+	instance of ByRefType.
+
+2009-07-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs: Refactor the types here to move
+	a lot of code to the base DerivedType in preparation
+	for upcomming ByRefType and PointerType puppies.
+
+2009-07-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (IsArrayImpl): Return false always as a
+	typebuilder will never represent an array.
+
+	* TypeBuilder.cs (MakeArrayType): Return a new instance of
+	ArrayType instead of calling into MonoType machinery.
+
+	* DerivedTypes.cs: New file with all the internal types
+	used by SRE to represent derived types from TypeBuilder:
+	arrays, pointers and byrefs'.
+
+2009-07-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Add IsRun property that returns true if
+	any execute mode is enabled.
+
+	* ModuleBuilder.cs: Add set_wrappers_type icall to define which type
+	is to be bound to wrappers. Create a new abstract type and call it
+	when the assembly is build this way.
+
+	Replace explicit checks for global_type with calls to CreateGlobalType.
+
+	* TypeBuilder.cs: Internal ctor now takes an extra table_idx argument.
+
+2009-06-25  Sylvain Dupont <duposyl@gmail.com>
+
+	* CustomAttributeBuilder.cs: Properly handle element type for safe 
+	  arrays (SafeArraySubType marshal attribute option).
+
+	Code is contributed under MIT/X11 license.
+
+2009-06-12  Jb Evain  <jbevain@novell.com>
+
+	* AssemblyBuilder.cs (Save): throw a NotImplementedException
+	when asked to emit a pe32+ binary for a AMD64 or IA64
+	specific assembly.
+
+2009-06-05  Jb Evain  <jbevain@novell.com>
+
+	* ModuleBuilder.cs (DefineManifestResource): expose during
+	BOOTSTRAP_NET_2_0 as well.
+
+2009-06-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ILGenerator.cs (EmitCall): Under 2.0 profile ignore optional
+	arguments if the method call conv is not vararg.
+
+2009-05-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* AssemblyBuilder.cs (.ctor): Error out if the not yet supported 
+	RunAndCollect flag was given.
+
+	* AssemblyBuilderAccess.cs: Add RunAndCollect flag for net 4.0.
+
+2009-03-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DynamicMethod.cs (Invoke): Wrap a MethodAccessException inside a
+	TargetInvocationException (required for Moonlight 2).
+
+2009-03-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeBuilder.cs (GetGenericTypeDefinition): Call the icall instead of
+	the base method which now throws an exception.
+
+2009-02-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* ILGenerator.cs SignatureHelper.cs: Add checks for user types.
+
 2008-02-21  Jb Evain  <jbevain@novell.com>
 
 	* ModuleBuilder.cs: override GetModuleVersionId
 	so that we can get the module guid from Module.ModuleVersionId.
 	Part of the fix for #471302.
+
+2009-01-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* SignatureHelper.cs: Fix warnings.
+
+	* ILGenerator.cs: Fix warnings.
 
 2008-11-23  Gert Driesen  <drieseng@users.sourceforge.net>
 

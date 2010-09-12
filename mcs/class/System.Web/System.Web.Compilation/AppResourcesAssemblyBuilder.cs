@@ -210,7 +210,6 @@ namespace System.Web.Compilation
 				
 				if (alOutput.Count != 0) {
 					foreach (string line in alOutput) {
-						Console.WriteLine (line);
 						if (!line.StartsWith ("ALINK: error ", StringComparison.Ordinal))
 							continue;
 						if (errors == null)
@@ -254,7 +253,7 @@ namespace System.Web.Compilation
 				}
 
 				info.FileName = monoPath;
-				return alPath;
+				return alPath + " ";
 			} else {
 				info.FileName = "al2";
 				return String.Empty;

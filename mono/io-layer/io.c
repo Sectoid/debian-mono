@@ -40,9 +40,6 @@
 
 #undef DEBUG
 
-static gboolean _wapi_lock_file_region (int fd, off_t offset, off_t length);
-static gboolean _wapi_unlock_file_region (int fd, off_t offset, off_t length);
-
 static void file_close (gpointer handle, gpointer data);
 static WapiFileType file_getfiletype(void);
 static gboolean file_read(gpointer handle, gpointer buffer,
@@ -1347,31 +1344,6 @@ static int convert_flags(guint32 fileaccess, guint32 createmode)
 	return(flags);
 }
 
-static guint32 convert_from_flags(int flags)
-{
-	guint32 fileaccess=0;
-	
-#ifndef O_ACCMODE
-#define O_ACCMODE (O_RDONLY|O_WRONLY|O_RDWR)
-#endif
-
-	if((flags & O_ACCMODE) == O_RDONLY) {
-		fileaccess=GENERIC_READ;
-	} else if ((flags & O_ACCMODE) == O_WRONLY) {
-		fileaccess=GENERIC_WRITE;
-	} else if ((flags & O_ACCMODE) == O_RDWR) {
-		fileaccess=GENERIC_READ|GENERIC_WRITE;
-	} else {
-#ifdef DEBUG
-		g_message("%s: Can't figure out flags 0x%x", __func__, flags);
-#endif
-	}
-
-	/* Maybe sort out create mode too */
-
-	return(fileaccess);
-}
-
 #if 0 /* unused */
 static mode_t convert_perms(guint32 sharemode)
 {
@@ -1575,7 +1547,7 @@ gpointer CreateFile(const gunichar2 *name, guint32 fileaccess,
 	if (fd == -1 && errno == EISDIR)
 	{
 		/* Try again but don't try to make it writable */
-		fd = open(filename, flags  & ~(O_RDWR|O_WRONLY), perms);
+		fd = _wapi_open (filename, flags & ~(O_RDWR|O_WRONLY), perms);
 	}
 	
 	if (fd == -1) {
@@ -2007,7 +1979,7 @@ gboolean CopyFile (const gunichar2 *name, const gunichar2 *dest_name,
 	
 	if(dest_name==NULL) {
 #ifdef DEBUG
-		g_message("%s: name is NULL", __func__);
+		g_message("%s: dest is NULL", __func__);
 #endif
 
 		g_free (utf8_src);
@@ -2050,16 +2022,15 @@ gboolean CopyFile (const gunichar2 *name, const gunichar2 *dest_name,
 	}
 	
 	if (fail_if_exists) {
-		dest_fd = open (utf8_dest, O_WRONLY | O_CREAT | O_EXCL,
-				st.st_mode);
+		dest_fd = _wapi_open (utf8_dest, O_WRONLY | O_CREAT | O_EXCL, st.st_mode);
 	} else {
-		dest_fd = open (utf8_dest, O_WRONLY | O_TRUNC, st.st_mode);
+		/* FIXME: it kinda sucks that this code path potentially scans
+		 * the directory twice due to the weird SetLastError()
+		 * behavior. */
+		dest_fd = _wapi_open (utf8_dest, O_WRONLY | O_TRUNC, st.st_mode);
 		if (dest_fd < 0) {
-			/* O_TRUNC might cause a fail if the file
-			 * doesn't exist
-			 */
-			dest_fd = open (utf8_dest, O_WRONLY | O_CREAT,
-					st.st_mode);
+			/* The file does not exist, try creating it */
+			dest_fd = _wapi_open (utf8_dest, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode);
 		} else {
 			/* Apparently this error is set if we
 			 * overwrite the dest file
@@ -2148,12 +2119,9 @@ ReplaceFile (const gunichar2 *replacedFileName, const gunichar2 *replacementFile
 		_wapi_set_last_path_error_from_errno (NULL, utf8_replacementFileName);
 		_wapi_rename (utf8_backupFileName, utf8_replacedFileName);
 		if (backup_fd != -1 && !fstat (backup_fd, &stBackup)) {
-			replaced_fd = open (utf8_backupFileName, O_WRONLY | O_CREAT | O_TRUNC,
-					     stBackup.st_mode);
-			if (replaced_fd == -1) {
-				replaced_fd = open (utf8_backupFileName, O_WRONLY | O_CREAT,
-					     stBackup.st_mode);
-			}
+			replaced_fd = _wapi_open (utf8_backupFileName, O_WRONLY | O_CREAT | O_TRUNC,
+						  stBackup.st_mode);
+			
 			if (replaced_fd == -1)
 				goto replace_cleanup;
 
@@ -2174,64 +2142,6 @@ replace_cleanup:
 	if (replaced_fd != -1)
 		close (replaced_fd);
 	return ret;
-}
-
-static gpointer stdhandle_create (int fd, const gchar *name)
-{
-	struct _WapiHandle_file file_handle = {0};
-	gpointer handle;
-	int flags;
-	
-#ifdef DEBUG
-	g_message("%s: creating standard handle type %s, fd %d", __func__,
-		  name, fd);
-#endif
-	
-	/* Check if fd is valid */
-	do {
-		flags=fcntl(fd, F_GETFL);
-	} while (flags == -1 && errno == EINTR);
-
-	if(flags==-1) {
-		/* Invalid fd.  Not really much point checking for EBADF
-		 * specifically
-		 */
-#ifdef DEBUG
-		g_message("%s: fcntl error on fd %d: %s", __func__, fd,
-			  strerror(errno));
-#endif
-
-		_wapi_set_last_error_from_errno ();
-		return(INVALID_HANDLE_VALUE);
-	}
-
-	file_handle.filename = g_strdup(name);
-	/* some default security attributes might be needed */
-	file_handle.security_attributes=0;
-	file_handle.fileaccess=convert_from_flags(flags);
-
-	/* Apparently input handles can't be written to.  (I don't
-	 * know if output or error handles can't be read from.)
-	 */
-	if (fd == 0) {
-		file_handle.fileaccess &= ~GENERIC_WRITE;
-	}
-	
-	file_handle.sharemode=0;
-	file_handle.attrs=0;
-
-	handle = _wapi_handle_new_fd (WAPI_HANDLE_CONSOLE, fd, &file_handle);
-	if (handle == _WAPI_HANDLE_INVALID) {
-		g_warning ("%s: error creating file handle", __func__);
-		SetLastError (ERROR_GEN_FAILURE);
-		return(INVALID_HANDLE_VALUE);
-	}
-	
-#ifdef DEBUG
-	g_message("%s: returning handle %p", __func__, handle);
-#endif
-
-	return(handle);
 }
 
 /**
@@ -2290,7 +2200,7 @@ gpointer GetStdHandle(WapiStdHandle stdhandle)
 				  (gpointer *)&file_handle);
 	if (ok == FALSE) {
 		/* Need to create this console handle */
-		handle = stdhandle_create (fd, name);
+		handle = _wapi_stdhandle_create (fd, name);
 		
 		if (handle == INVALID_HANDLE_VALUE) {
 			SetLastError (ERROR_NO_MORE_FILES);
@@ -3929,181 +3839,3 @@ guint32 GetDriveType(const gunichar2 *root_path_name)
 	return (drive_type);
 }
 
-static gboolean _wapi_lock_file_region (int fd, off_t offset, off_t length)
-{
-	struct flock lock_data;
-	int ret;
-
-	lock_data.l_type = F_WRLCK;
-	lock_data.l_whence = SEEK_SET;
-	lock_data.l_start = offset;
-	lock_data.l_len = length;
-	
-	do {
-		ret = fcntl (fd, F_SETLK, &lock_data);
-	} while(ret == -1 && errno == EINTR);
-	
-#ifdef DEBUG
-	g_message ("%s: fcntl returns %d", __func__, ret);
-#endif
-
-	if (ret == -1) {
-		/*
-		 * if locks are not available (NFS for example),
-		 * ignore the error
-		 */
-		if (errno == ENOLCK
-#ifdef EOPNOTSUPP
-		    || errno == EOPNOTSUPP
-#endif
-#ifdef ENOTSUP
-		    || errno == ENOTSUP
-#endif
-		   ) {
-			return (TRUE);
-		}
-		
-		SetLastError (ERROR_LOCK_VIOLATION);
-		return(FALSE);
-	}
-
-	return(TRUE);
-}
-
-static gboolean _wapi_unlock_file_region (int fd, off_t offset, off_t length)
-{
-	struct flock lock_data;
-	int ret;
-
-	lock_data.l_type = F_UNLCK;
-	lock_data.l_whence = SEEK_SET;
-	lock_data.l_start = offset;
-	lock_data.l_len = length;
-	
-	do {
-		ret = fcntl (fd, F_SETLK, &lock_data);
-	} while(ret == -1 && errno == EINTR);
-	
-#ifdef DEBUG
-	g_message ("%s: fcntl returns %d", __func__, ret);
-#endif
-	
-	if (ret == -1) {
-		/*
-		 * if locks are not available (NFS for example),
-		 * ignore the error
-		 */
-		if (errno == ENOLCK
-#ifdef EOPNOTSUPP
-		    || errno == EOPNOTSUPP
-#endif
-#ifdef ENOTSUP
-		    || errno == ENOTSUP
-#endif
-		   ) {
-			return (TRUE);
-		}
-		
-		SetLastError (ERROR_LOCK_VIOLATION);
-		return(FALSE);
-	}
-
-	return(TRUE);
-}
-
-gboolean LockFile (gpointer handle, guint32 offset_low, guint32 offset_high,
-		   guint32 length_low, guint32 length_high)
-{
-	struct _WapiHandle_file *file_handle;
-	gboolean ok;
-	off_t offset, length;
-	int fd = GPOINTER_TO_UINT(handle);
-	
-	ok = _wapi_lookup_handle (handle, WAPI_HANDLE_FILE,
-				  (gpointer *)&file_handle);
-	if (ok == FALSE) {
-		g_warning ("%s: error looking up file handle %p", __func__,
-			   handle);
-		SetLastError (ERROR_INVALID_HANDLE);
-		return(FALSE);
-	}
-
-	if (!(file_handle->fileaccess & GENERIC_READ) &&
-	    !(file_handle->fileaccess & GENERIC_WRITE) &&
-	    !(file_handle->fileaccess & GENERIC_ALL)) {
-#ifdef DEBUG
-		g_message ("%s: handle %p doesn't have GENERIC_READ or GENERIC_WRITE access: %u", __func__, handle, file_handle->fileaccess);
-#endif
-		SetLastError (ERROR_ACCESS_DENIED);
-		return(FALSE);
-	}
-
-#ifdef HAVE_LARGE_FILE_SUPPORT
-	offset = ((gint64)offset_high << 32) | offset_low;
-	length = ((gint64)length_high << 32) | length_low;
-
-#ifdef DEBUG
-	g_message ("%s: Locking handle %p, offset %lld, length %lld", __func__,
-		   handle, offset, length);
-#endif
-#else
-	offset = offset_low;
-	length = length_low;
-
-#ifdef DEBUG
-	g_message ("%s: Locking handle %p, offset %ld, length %ld", __func__,
-		   handle, offset, length);
-#endif
-#endif
-
-	return(_wapi_lock_file_region (fd, offset, length));
-}
-
-gboolean UnlockFile (gpointer handle, guint32 offset_low,
-		     guint32 offset_high, guint32 length_low,
-		     guint32 length_high)
-{
-	struct _WapiHandle_file *file_handle;
-	gboolean ok;
-	off_t offset, length;
-	int fd = GPOINTER_TO_UINT(handle);
-	
-	ok = _wapi_lookup_handle (handle, WAPI_HANDLE_FILE,
-				  (gpointer *)&file_handle);
-	if (ok == FALSE) {
-		g_warning ("%s: error looking up file handle %p", __func__,
-			   handle);
-		SetLastError (ERROR_INVALID_HANDLE);
-		return(FALSE);
-	}
-	
-	if (!(file_handle->fileaccess & GENERIC_READ) &&
-	    !(file_handle->fileaccess & GENERIC_WRITE) &&
-	    !(file_handle->fileaccess & GENERIC_ALL)) {
-#ifdef DEBUG
-		g_message ("%s: handle %p doesn't have GENERIC_READ or GENERIC_WRITE access: %u", __func__, handle, file_handle->fileaccess);
-#endif
-		SetLastError (ERROR_ACCESS_DENIED);
-		return(FALSE);
-	}
-
-#ifdef HAVE_LARGE_FILE_SUPPORT
-	offset = ((gint64)offset_high << 32) | offset_low;
-	length = ((gint64)length_high << 32) | length_low;
-
-#ifdef DEBUG
-	g_message ("%s: Unlocking handle %p, offset %lld, length %lld",
-		   __func__, handle, offset, length);
-#endif
-#else
-	offset = offset_low;
-	length = length_low;
-
-#ifdef DEBUG
-	g_message ("%s: Unlocking handle %p, offset %ld, length %ld", __func__,
-		   handle, offset, length);
-#endif
-#endif
-
-	return(_wapi_unlock_file_region (fd, offset, length));
-}

@@ -100,7 +100,11 @@ namespace System.Linq {
 
 		static Expression TransformQueryable (Expression expression)
 		{
+#if NET_4_0 || BOOTSTRAP_NET_4_0
+			throw new NotImplementedException ();
+#else						
 			return new QueryableTransformer ().Transform (expression);
+#endif
 		}
 
 		public IQueryable<TElem> CreateQuery<TElem> (Expression expression)
@@ -112,6 +116,21 @@ namespace System.Linq {
 		{
 			var lambda = Expression.Lambda<Func<TResult>> (TransformQueryable (expression));
 			return lambda.Compile ().Invoke ();
+		}
+
+		public override string ToString ()
+		{
+			if (enumerable != null)
+				return enumerable.ToString ();
+
+			if (expression == null)
+				return base.ToString ();
+
+			var constant = expression as ConstantExpression;
+			if (constant != null && constant.Value == this)
+				return base.ToString ();
+
+			return expression.ToString ();
 		}
 	}
 }

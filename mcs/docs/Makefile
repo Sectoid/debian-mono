@@ -39,12 +39,19 @@ endif
 all-local test-local run-test-local run-test-ondotnet-local doc-update:
 
 clean-local:
-	-rm $(CLEAN_FILES)
+	-rm -f $(CLEAN_FILES)
 
 dist-local: dist-default
 
+
 MONODOC_INSTALL_DIR = $(DESTDIR)$(mono_libdir)/monodoc
 
+ifdef DISABLE_MCS_DOCS
+install-local:
+
+uninstall-local:
+
+else
 install-local:
 	$(MKINSTALLDIRS) $(MONODOC_INSTALL_DIR) $(MONODOC_INSTALL_DIR)/sources
 	$(INSTALL_DATA) $(MONODOC_SOURCES_INSTALL_FILES) $(MONODOC_INSTALL_DIR)/sources
@@ -53,6 +60,9 @@ install-local:
 uninstall-local:
 	-rm -f $(MONODOC_INSTALL_DIR)/monodoc.xml
 	-rm -f $(addprefix $(MONODOC_INSTALL_DIR)/sources/,$(MONODOC_SOURCES_INSTALL_FILES))
+endif
+
+
 
 classdir = $(topdir)/class
 doc_en   = Documentation/en
@@ -87,7 +97,8 @@ MONO_DIRS = \
 	$(classdir)/Mono.Security/$(doc_en)                \
 	$(classdir)/Mono.Simd/$(doc_en)                    \
 	$(classdir)/Npgsql/$(doc_en)                       \
-	$(topdir)/tools/csharplib/en
+	$(topdir)/tools/csharplib/en					   \
+	$(classdir)/Mono.Debugger.Soft/$(doc_en)
 
 NOVELL_DIRS = \
 	$(topdir)/class/Novell.Directory.Ldap/Documentation/en
@@ -98,7 +109,11 @@ NUNIT_DIRS = \
 	$(topdir)/nunit20/mocks/$(doc_en)      \
 	$(topdir)/nunit20/util/$(doc_en)
 
+ifdef DISABLE_MCS_DOCS
+build-documentation:
+else
 build-documentation: $(ASSEMBLED_DOCS)
+endif
 
 # To support `make -jN`, we can't mention multiple targets in the same rule;
 # DO NOT DO THIS:

@@ -198,7 +198,7 @@ namespace System.Data.Common {
 				if (whereClause.Length > 0) 
 					whereClause.Append (" AND ");
 
-				bool isKey = !schemaRow.IsNull ("IsKey") & (bool) schemaRow ["IsKey"];
+				bool isKey = (bool) schemaRow ["IsKey"];
 				DbParameter parameter = null;
 				string sourceColumnName;
 
@@ -208,7 +208,7 @@ namespace System.Data.Common {
 				//ms.net 1.1 generates the null check for columns even if AllowDBNull is false
 				//while ms.net 2.0 does not. Anyways, since both forms are logically equivalent
 				//following the 2.0 approach
-				bool allowNull = !schemaRow.IsNull ("AllowDBNull") & (bool) schemaRow ["AllowDBNull"];
+				bool allowNull = (bool) schemaRow ["AllowDBNull"];
 				if (!isKey && allowNull) {
 					parameter = _deleteCommand.CreateParameter ();
 					if (option) {
@@ -364,14 +364,14 @@ namespace System.Data.Common {
 				if (whereClause.Length > 0) 
 					whereClause.Append (" AND ");
 
-				bool isKey = !schemaRow.IsNull ("IsKey") & (bool) schemaRow ["IsKey"];
+				bool isKey = (bool) schemaRow ["IsKey"];
 				if (isKey)
 					keyFound = true;
 
 				//ms.net 1.1 generates the null check for columns even if AllowDBNull is false
 				//while ms.net 2.0 does not. Anyways, since both forms are logically equivalent
 				//following the 2.0 approach
-				bool allowNull = !schemaRow.IsNull ("AllowDBNull") & (bool) schemaRow ["AllowDBNull"];
+				bool allowNull = (bool) schemaRow ["AllowDBNull"];
 				if (!isKey && allowNull) {
 					parameter = _updateCommand.CreateParameter ();
 					if (option) {
@@ -474,10 +474,9 @@ namespace System.Data.Common {
 		[Browsable (false)]
 		public DbDataAdapter DataAdapter {
 			get { return _dbDataAdapter; }
-			set {  if (value != null) {
-					SetRowUpdatingHandler (value);
-					_dbDataAdapter = value; 
-				}
+			set {  if (value != null) 
+				SetRowUpdatingHandler (value);
+				_dbDataAdapter = value; 
 			}
 		}
 
@@ -576,20 +575,20 @@ namespace System.Data.Common {
 
 		public DbCommand GetInsertCommand ()
 		{
-			return GetInsertCommand (false);
+			return GetInsertCommand (false, null);
 		}
 
 		public DbCommand GetInsertCommand (bool option)
 		{
 			return GetInsertCommand (option, null);
 		}
-		
+
 		internal DbCommand GetInsertCommand (bool option, DataRow row)
 		{
 			BuildCache (true);
 			if (_insertCommand == null || option)
 				return CreateInsertCommand (option, row);
-			return _insertCommand;	
+			return _insertCommand;
 		}
 
 		public DbCommand GetUpdateCommand ()

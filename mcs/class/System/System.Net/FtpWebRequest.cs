@@ -16,7 +16,8 @@ using System.Threading;
 using System.Net.Cache;
 using System.Security.Cryptography.X509Certificates;
 using System.Net;
-
+using System.Net.Security;
+using System.Security.Authentication;
 
 namespace System.Net
 {
@@ -25,8 +26,9 @@ namespace System.Net
 		Uri requestUri;
 		string file_name; // By now, used for upload
 		ServicePoint servicePoint;
-		Socket dataSocket;
-		NetworkStream controlStream;
+		Stream origDataStream;
+		Stream dataStream;
+		Stream controlStream;
 		StreamReader controlReader;
 		NetworkCredential credentials;
 		IPHostEntry hostEntry;
@@ -204,13 +206,14 @@ namespace System.Net
 			}
 		}
 
+		[MonoTODO ("We don't support KeepAlive = true")]
 		public bool KeepAlive {
 			get {
 				return keepAlive;
 			}
 			set {
 				CheckRequestStarted ();
-				keepAlive = value;
+				//keepAlive = value;
 			}
 		}
 
@@ -366,7 +369,7 @@ namespace System.Net
 
 				if (!InFinalState ()) {
 					State = RequestState.Aborted;
-					ftpResponse = new FtpWebResponse (requestUri, method, FtpStatusCode.FileActionAborted, "Aborted by request");
+					ftpResponse = new FtpWebResponse (this, requestUri, method, FtpStatusCode.FileActionAborted, "Aborted by request");
 				}
 			}
 		}
@@ -500,7 +503,7 @@ namespace System.Net
 		void ProcessRequest () {
 
 			if (State == RequestState.Scheduled) {
-				ftpResponse = new FtpWebResponse (requestUri, method, keepAlive);
+				ftpResponse = new FtpWebResponse (this, requestUri, method, keepAlive);
 
 				try {
 					ProcessMethod ();
@@ -614,13 +617,18 @@ namespace System.Net
 		}
 
 		private void CloseControlConnection () {
-			SendCommand (QuitCommand);
-			controlStream.Close ();
+			if (controlStream != null) {
+				SendCommand (QuitCommand);
+				controlStream.Close ();
+				controlStream = null;
+			}
 		}
 
-		private void CloseDataConnection () {
-			if(dataSocket != null)
-				dataSocket.Close ();
+		internal void CloseDataConnection () {
+			if(origDataStream != null) {
+				origDataStream.Close ();
+				origDataStream = null;
+			}
 		}
 
 		private void CloseConnection () {
@@ -642,7 +650,7 @@ namespace System.Net
 			
 			status = SendCommand (method, file_name);
 
-			ftpResponse.Stream = new EmptyStream ();
+			ftpResponse.Stream = Stream.Null;
 			
 			string desc = status.StatusDescription;
 
@@ -711,7 +719,7 @@ namespace System.Net
 			OpenDataConnection ();
 
 			State = RequestState.TransferInProgress;
-			requestStream = new FtpDataStream (this, dataSocket, false);
+			requestStream = new FtpDataStream (this, dataStream, false);
 			asyncResult.Stream = requestStream;
 		}
 
@@ -722,7 +730,7 @@ namespace System.Net
 			OpenDataConnection ();
 
 			State = RequestState.TransferInProgress;
-			ftpResponse.Stream = new FtpDataStream (this, dataSocket, true);
+			ftpResponse.Stream = new FtpDataStream (this, dataStream, true);
 		}
 
 		void CheckRequestStarted ()
@@ -855,7 +863,7 @@ namespace System.Net
 
 		Exception CreateExceptionFromResponse (FtpStatus status)
 		{
-			FtpWebResponse ftpResponse = new FtpWebResponse (requestUri, method, status);
+			FtpWebResponse ftpResponse = new FtpWebResponse (this, requestUri, method, status);
 			
 			WebException exc = new WebException ("Server returned an error: " + status.StatusDescription, 
 				null, WebExceptionStatus.ProtocolError, ftpResponse);
@@ -871,6 +879,12 @@ namespace System.Net
 			State = RequestState.Finished;
 			FtpStatus status = GetResponseStatus ();
 			ftpResponse.UpdateStatus (status);
+			if(!keepAlive)
+				CloseConnection ();
+		}
+
+		internal void OperationCompleted ()
+		{
 			if(!keepAlive)
 				CloseConnection ();
 		}
@@ -947,7 +961,10 @@ namespace System.Net
 				throw CreateExceptionFromResponse (status);
 
 			if (usePassive) {
-				dataSocket = s;
+				origDataStream = new NetworkStream (s, true);
+				dataStream = origDataStream;
+				if (EnableSsl)
+					ChangeToSSLSocket (ref dataStream);
 			}
 			else {
 
@@ -965,12 +982,10 @@ namespace System.Net
 				}
 
 				s.Close ();
-				dataSocket = incoming;
-			}
-
-			if (EnableSsl) {
-				InitiateSecureConnection (ref controlStream);
-				controlReader = new StreamReader (controlStream, Encoding.ASCII);
+				origDataStream = new NetworkStream (s, true);
+				dataStream = origDataStream;
+				if (EnableSsl)
+					ChangeToSSLSocket (ref dataStream);
 			}
 
 			ftpResponse.UpdateStatus (status);
@@ -1002,6 +1017,17 @@ namespace System.Net
 			if (EnableSsl) {
 				InitiateSecureConnection (ref controlStream);
 				controlReader = new StreamReader (controlStream, Encoding.ASCII);
+				status = SendCommand ("PBSZ", "0");
+				int st = (int) status.StatusCode;
+				if (st < 200 || st >= 300)
+					throw CreateExceptionFromResponse (status);
+				// TODO: what if "PROT P" is denied by the server? What does MS do?
+				status = SendCommand ("PROT", "P");
+				st = (int) status.StatusCode;
+				if (st < 200 || st >= 300)
+					throw CreateExceptionFromResponse (status);
+
+				status = new FtpStatus (FtpStatusCode.SendUserCommand, "");
 			}
 			
 			if (status.StatusCode != FtpStatusCode.SendUserCommand)
@@ -1080,6 +1106,7 @@ namespace System.Net
 					string line = null;
 					string find = code.ToString() + ' ';
 					while (true){
+						line = null;
 						try {
 							line = controlReader.ReadLine();
 						} catch (IOException) {
@@ -1097,19 +1124,39 @@ namespace System.Net
 			}
 		}
 
-		private void InitiateSecureConnection (ref NetworkStream stream) {
+		private void InitiateSecureConnection (ref Stream stream) {
 			FtpStatus status = SendCommand (AuthCommand, "TLS");
-
-			if (status.StatusCode != FtpStatusCode.ServerWantsSecureSession) {
+			if (status.StatusCode != FtpStatusCode.ServerWantsSecureSession)
 				throw CreateExceptionFromResponse (status);
-			}
 
 			ChangeToSSLSocket (ref stream);
 		}
 
-		internal static bool ChangeToSSLSocket (ref NetworkStream stream) {
+#if SECURITY_DEP
+		RemoteCertificateValidationCallback callback = delegate (object sender,
+									 X509Certificate certificate,
+									 X509Chain chain,
+									 SslPolicyErrors sslPolicyErrors) {
+			// honor any exciting callback defined on ServicePointManager
+			if (ServicePointManager.ServerCertificateValidationCallback != null)
+				return ServicePointManager.ServerCertificateValidationCallback (sender, certificate, chain, sslPolicyErrors);
+			// otherwise provide our own
+			if (sslPolicyErrors != SslPolicyErrors.None)
+				throw new InvalidOperationException ("SSL authentication error: " + sslPolicyErrors);
+			return true;
+			};
+#endif
+
+		internal bool ChangeToSSLSocket (ref Stream stream) {
 #if TARGET_JVM
 			stream.ChangeToSSLSocket ();
+			return true;
+#elif SECURITY_DEP
+			SslStream sslStream = new SslStream (stream, true, callback, null);
+			//sslStream.AuthenticateAsClient (Host, this.ClientCertificates, SslProtocols.Default, false);
+			//TODO: client certificates
+			sslStream.AuthenticateAsClient (requestUri.Host, null, SslProtocols.Default, false);
+			stream = sslStream;
 			return true;
 #else
 			throw new NotImplementedException ();
@@ -1132,13 +1179,6 @@ namespace System.Net
 		void CheckFinalState () {
 			if (InFinalState ())
 				throw new InvalidOperationException ("Cannot change final state");
-		}
-
-		class EmptyStream : MemoryStream
-		{
-			internal EmptyStream ()
-				: base (new byte [0], false) {
-			}
 		}
 	}
 }

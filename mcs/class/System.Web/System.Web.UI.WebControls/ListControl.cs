@@ -408,8 +408,9 @@ namespace System.Web.UI.WebControls {
 		{
 			base.OnPreRender (e);
 #if NET_2_0
-			if (Page != null && Enabled)
-				Page.RegisterEnabledControl (this);
+			Page page = Page;
+			if (page != null && IsEnabled)
+				page.RegisterEnabledControl (this);
 #endif
 		}
 
@@ -561,10 +562,8 @@ namespace System.Web.UI.WebControls {
 			baseState = base.SaveViewState ();
 
 			IStateManager manager = items as IStateManager;
-			if (manager != null) {
-				items.ItemsEnabled = Enabled;
+			if (manager != null)
 				itemsState = manager.SaveViewState ();
-			}
 			
 			if (baseState == null && itemsState == null)
 				return null;

@@ -2,6 +2,7 @@
 #define __MONO_MINI_X86_H__
 
 #include <mono/arch/x86/x86-codegen.h>
+#include <mono/utils/mono-sigcontext.h>
 #ifdef PLATFORM_WIN32
 #include <windows.h>
 /* use SIG* defines if possible */
@@ -22,7 +23,7 @@ struct sigcontext {
 	unsigned int eip;
 };
 
-typedef void (* MonoW32ExceptionHandler) (int);
+typedef void (* MonoW32ExceptionHandler) (int _dummy, EXCEPTION_RECORD *info, void *context);
 void win32_seh_init(void);
 void win32_seh_cleanup(void);
 void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler);
@@ -43,7 +44,8 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 
 #endif /* PLATFORM_WIN32 */
 
-#if defined( __linux__) || defined(__sun) || defined(__APPLE__) || defined(__NetBSD__)
+#if defined( __linux__) || defined(__sun) || defined(__APPLE__) || defined(__NetBSD__) || \
+       defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__OpenBSD__)
 #define MONO_ARCH_USE_SIGACTION
 #endif
 
@@ -63,6 +65,7 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 #endif /* !PLATFORM_WIN32 */
 
 #define MONO_ARCH_SUPPORT_SIMD_INTRINSICS 1
+#define MONO_ARCH_SUPPORT_TASKLETS 1
 
 #ifndef DISABLE_SIMD
 #define MONO_ARCH_SIMD_INTRINSICS 1
@@ -121,8 +124,15 @@ LONG CALLBACK seh_handler(EXCEPTION_POINTERS* ep);
 #define MONO_ARCH_RETREG1 X86_EAX
 #define MONO_ARCH_RETREG2 X86_EDX
 
+/*This is the max size of the locals area of a given frame. I think 1MB is a safe default for now*/
+#define MONO_ARCH_MAX_FRAME_SIZE 0x100000
+
 struct MonoLMF {
-	/* Offset by 1 if this is a trampoline LMF frame */
+	/* 
+	 * If the lowest bit is set to 1, then this is a trampoline LMF frame.
+	 * If the second lowest bit is set to 1, then this is a MonoLMFExt structure, and
+	 * the other fields are not valid.
+	 */
 	guint32    previous_lmf;
 	gpointer    lmf_addr;
 	/* Only set in trampoline LMF frames */
@@ -136,65 +146,12 @@ struct MonoLMF {
 	guint32     eip;
 };
 
-typedef void* MonoCompileArch;
+typedef struct {
+	gboolean need_stack_frame_inited;
+	gboolean need_stack_frame;
+} MonoCompileArch;
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
-#include <ucontext.h>
-#endif 
-
-#if defined(__FreeBSD__)
-	#define UCONTEXT_REG_EAX(ctx) ((ctx)->uc_mcontext.mc_eax)
-	#define UCONTEXT_REG_EBX(ctx) ((ctx)->uc_mcontext.mc_ebx)
-	#define UCONTEXT_REG_ECX(ctx) ((ctx)->uc_mcontext.mc_ecx)
-	#define UCONTEXT_REG_EDX(ctx) ((ctx)->uc_mcontext.mc_edx)
-	#define UCONTEXT_REG_EBP(ctx) ((ctx)->uc_mcontext.mc_ebp)
-	#define UCONTEXT_REG_ESP(ctx) ((ctx)->uc_mcontext.mc_esp)
-	#define UCONTEXT_REG_ESI(ctx) ((ctx)->uc_mcontext.mc_esi)
-	#define UCONTEXT_REG_EDI(ctx) ((ctx)->uc_mcontext.mc_edi)
-	#define UCONTEXT_REG_EIP(ctx) ((ctx)->uc_mcontext.mc_eip)
-#elif defined(__APPLE__) && defined(_STRUCT_MCONTEXT)
-	#define UCONTEXT_REG_EAX(ctx) ((ctx)->uc_mcontext->__ss.__eax)
-	#define UCONTEXT_REG_EBX(ctx) ((ctx)->uc_mcontext->__ss.__ebx)
-	#define UCONTEXT_REG_ECX(ctx) ((ctx)->uc_mcontext->__ss.__ecx)
-	#define UCONTEXT_REG_EDX(ctx) ((ctx)->uc_mcontext->__ss.__edx)
-	#define UCONTEXT_REG_EBP(ctx) ((ctx)->uc_mcontext->__ss.__ebp)
-	#define UCONTEXT_REG_ESP(ctx) ((ctx)->uc_mcontext->__ss.__esp)
-	#define UCONTEXT_REG_ESI(ctx) ((ctx)->uc_mcontext->__ss.__esi)
-	#define UCONTEXT_REG_EDI(ctx) ((ctx)->uc_mcontext->__ss.__edi)
-	#define UCONTEXT_REG_EIP(ctx) ((ctx)->uc_mcontext->__ss.__eip)
-#elif defined(__APPLE__) && !defined(_STRUCT_MCONTEXT)
-	#define UCONTEXT_REG_EAX(ctx) ((ctx)->uc_mcontext->ss.eax)
-	#define UCONTEXT_REG_EBX(ctx) ((ctx)->uc_mcontext->ss.ebx)
-	#define UCONTEXT_REG_ECX(ctx) ((ctx)->uc_mcontext->ss.ecx)
-	#define UCONTEXT_REG_EDX(ctx) ((ctx)->uc_mcontext->ss.edx)
-	#define UCONTEXT_REG_EBP(ctx) ((ctx)->uc_mcontext->ss.ebp)
-	#define UCONTEXT_REG_ESP(ctx) ((ctx)->uc_mcontext->ss.esp)
-	#define UCONTEXT_REG_ESI(ctx) ((ctx)->uc_mcontext->ss.esi)
-	#define UCONTEXT_REG_EDI(ctx) ((ctx)->uc_mcontext->ss.edi)
-	#define UCONTEXT_REG_EIP(ctx) ((ctx)->uc_mcontext->ss.eip)
-#elif defined(__NetBSD__)
-	#define UCONTEXT_REG_EAX(ctx) ((ctx)->uc_mcontext.__gregs [_REG_EAX])
-	#define UCONTEXT_REG_EBX(ctx) ((ctx)->uc_mcontext.__gregs [_REG_EBX])
-	#define UCONTEXT_REG_ECX(ctx) ((ctx)->uc_mcontext.__gregs [_REG_ECX])
-	#define UCONTEXT_REG_EDX(ctx) ((ctx)->uc_mcontext.__gregs [_REG_EDX])
-	#define UCONTEXT_REG_EBP(ctx) ((ctx)->uc_mcontext.__gregs [_REG_EBP])
-	#define UCONTEXT_REG_ESP(ctx) ((ctx)->uc_mcontext.__gregs [_REG_ESP])
-	#define UCONTEXT_REG_ESI(ctx) ((ctx)->uc_mcontext.__gregs [_REG_ESI])
-	#define UCONTEXT_REG_EDI(ctx) ((ctx)->uc_mcontext.__gregs [_REG_EDI])
-	#define UCONTEXT_REG_EIP(ctx) ((ctx)->uc_mcontext.__gregs [_REG_EIP])
-#else
-	#define UCONTEXT_REG_EAX(ctx) ((ctx)->uc_mcontext.gregs [REG_EAX])
-	#define UCONTEXT_REG_EBX(ctx) ((ctx)->uc_mcontext.gregs [REG_EBX])
-	#define UCONTEXT_REG_ECX(ctx) ((ctx)->uc_mcontext.gregs [REG_ECX])
-	#define UCONTEXT_REG_EDX(ctx) ((ctx)->uc_mcontext.gregs [REG_EDX])
-	#define UCONTEXT_REG_EBP(ctx) ((ctx)->uc_mcontext.gregs [REG_EBP])
-	#define UCONTEXT_REG_ESP(ctx) ((ctx)->uc_mcontext.gregs [REG_ESP])
-	#define UCONTEXT_REG_ESI(ctx) ((ctx)->uc_mcontext.gregs [REG_ESI])
-	#define UCONTEXT_REG_EDI(ctx) ((ctx)->uc_mcontext.gregs [REG_EDI])
-	#define UCONTEXT_REG_EIP(ctx) ((ctx)->uc_mcontext.gregs [REG_EIP])
-#endif
-
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__) || defined(__FreeBSD_kernel__)
 # define SC_EAX sc_eax
 # define SC_EBX sc_ebx
 # define SC_ECX sc_ecx
@@ -260,6 +217,15 @@ typedef struct {
 
 #endif
 
+/*
+ * This structure is an extension of MonoLMF and contains extra information.
+ */
+typedef struct {
+	struct MonoLMF lmf;
+	gboolean debugger_invoke;
+	MonoContext ctx; /* if debugger_invoke is TRUE */
+} MonoLMFExt;
+
 /* Enables OP_LSHL, OP_LSHL_IMM, OP_LSHR, OP_LSHR_IMM, OP_LSHR_UN, OP_LSHR_UN_IMM */
 #define MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS
 
@@ -269,30 +235,35 @@ typedef struct {
 #define MONO_ARCH_HAVE_INVALIDATE_METHOD 1
 #define MONO_ARCH_NEED_GOT_VAR 1
 #define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION 1
-#define MONO_ARCH_ENABLE_EMIT_STATE_OPT 1
 #define MONO_ARCH_ENABLE_MONO_LMF_VAR 1
-#define MONO_ARCH_HAVE_CREATE_TRAMPOLINE_FROM_TOKEN 1
 #define MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_ATOMIC_ADD 1
 #define MONO_ARCH_HAVE_ATOMIC_EXCHANGE 1
-#define MONO_ARCH_HAVE_ATOMIC_CAS_IMM 1
+#define MONO_ARCH_HAVE_ATOMIC_CAS 1
 #define MONO_ARCH_HAVE_IMT 1
 #define MONO_ARCH_HAVE_TLS_GET 1
 #define MONO_ARCH_IMT_REG X86_EDX
 #define MONO_ARCH_VTABLE_REG X86_EDX
-#define MONO_ARCH_COMMON_VTABLE_TRAMPOLINE 1
 #define MONO_ARCH_RGCTX_REG X86_EDX
 #define MONO_ARCH_HAVE_GENERALIZED_IMT_THUNK 1
+#define MONO_ARCH_HAVE_LIVERANGE_OPS 1
+#define MONO_ARCH_HAVE_XP_UNWIND 1
+#define MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX 1
 #if defined(__linux__) && !defined(HAVE_MOVING_COLLECTOR)
 #define MONO_ARCH_MONITOR_OBJECT_REG X86_EAX
 #endif
+#define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
+#define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
+#define MONO_ARCH_GOT_REG X86_EBX
+#define MONO_ARCH_HAVE_GET_TRAMPOLINES 1
 
 #define MONO_ARCH_HAVE_CMOV_OPS 1
 
 #ifdef MONO_ARCH_SIMD_INTRINSICS
 #define MONO_ARCH_HAVE_DECOMPOSE_OPTS 1
-#define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 #endif
+
+#define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 
 #if !defined(__APPLE__)
 #define MONO_ARCH_AOT_SUPPORTED 1
@@ -301,6 +272,12 @@ typedef struct {
 #if defined(__linux__) || defined(__sun)
 #define MONO_ARCH_ENABLE_MONITOR_IL_FASTPATH 1
 #endif
+
+#define MONO_ARCH_GSHARED_SUPPORTED 1
+//#define MONO_ARCH_HAVE_LLVM_IMT_TRAMPOLINE 1
+#define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
+#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
+#define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
 
 /* Used for optimization, not complete */
 #define MONO_ARCH_IS_OP_MEMBASE(opcode) ((opcode) == OP_X86_PUSH_MEMBASE)
@@ -324,6 +301,17 @@ extern MonoBreakpointInfo mono_breakpoint_info [MONO_BREAKPOINT_ARRAY_SIZE];
 
 guint8*
 mono_x86_emit_tls_get (guint8* code, int dreg, int tls_offset) MONO_INTERNAL;
+
+void
+mono_x86_throw_exception (mgreg_t *regs, MonoObject *exc, 
+						  mgreg_t eip, gboolean rethrow) MONO_INTERNAL;
+
+void
+mono_x86_throw_corlib_exception (mgreg_t *regs, guint32 ex_token_index, 
+								 mgreg_t eip, gint32 pc_offset) MONO_INTERNAL;
+
+void 
+mono_x86_patch (unsigned char* code, gpointer target) MONO_INTERNAL;
 
 #endif /* __MONO_MINI_X86_H__ */  
 

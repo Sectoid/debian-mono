@@ -1,3 +1,27 @@
+2009-08-20  Raja R Harinath  <harinath@hurrynot.org>
+
+	* RegexMatchTests.cs: Add some explicit numeric group tests.
+
+2009-08-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* RegexMatchTests.cs (RegexTrial0061): New.
+
+2009-08-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	* RegexTrial.cs (Execute): Prepare to handle dis-contiguous group numbers.
+
+2009-08-10  Raja R Harinath  <harinath@hurrynot.org>
+
+	* RegexMatchTests.cs (RegexTrial0054..60): New.
+
+2009-08-10  Raja R Harinath  <harinath@hurrynot.org>
+
+	* RegexMatchTests.cs (RegexTrial0053): New.
+
+2009-02-27  Jonathan Pryor <jpryor@novell.com>
+
+	* RegexReplace.cs: Add null argument checks for Regex.Replace().
+
 2009-01-14  Zoltan Varga  <vargaz@gmail.com>
 
 	* RegexTrial.cs: Run all tests with the CIL Compiler too.

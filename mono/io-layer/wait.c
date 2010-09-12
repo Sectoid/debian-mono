@@ -12,7 +12,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include <mono/os/gc_wrapper.h>
+#include <mono/utils/gc_wrapper.h>
 
 #include <mono/io-layer/wapi.h>
 #include <mono/io-layer/handles-private.h>
@@ -653,7 +653,7 @@ guint32 WaitForMultipleObjectsEx(guint32 numobjects, gpointer *handles,
 
 	poll = FALSE;
 	for (i = 0; i < numobjects; ++i)
-		if (_wapi_handle_type (handles [i]) == WAPI_HANDLE_PROCESS)
+		if (_wapi_handle_type (handles [i]) == WAPI_HANDLE_PROCESS || _WAPI_SHARED_HANDLE (_wapi_handle_type (handles[i]))) 
 			/* Can't wait for a process handle + another handle without polling */
 			poll = TRUE;
 

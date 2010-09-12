@@ -566,7 +566,7 @@ namespace System.Linq
 		{
 			var items = new HashSet<TSource> (second, comparer);
 			foreach (var element in first) {
-				if (!items.Contains (element, comparer))
+				if (!items.Contains (element))
 					yield return element;
 			}
 		}
@@ -664,8 +664,8 @@ namespace System.Linq
 		static IEnumerable<IGrouping<TKey, TSource>> CreateGroupByIterator<TSource, TKey> (this IEnumerable<TSource> source,
 			Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer)
 		{
-			Dictionary<TKey, List<TSource>> groups = new Dictionary<TKey, List<TSource>> ();
-			List<TSource> nullList = new List<TSource> ();
+			var groups = new Dictionary<TKey, List<TSource>> ();
+			var nullList = new List<TSource> ();
 			int counter = 0;
 			int nullCounter = -1;
 
@@ -689,14 +689,18 @@ namespace System.Linq
 			}
 
 			counter = 0;
-			foreach (KeyValuePair<TKey, List<TSource>> group in groups) {
+			foreach (var group in groups) {
 				if (counter == nullCounter) {
-					Grouping<TKey, TSource> nullGroup = new Grouping<TKey, TSource> (default (TKey), nullList);
-					yield return nullGroup;
+					yield return new Grouping<TKey, TSource> (default (TKey), nullList);
 					counter++;
 				}
-				Grouping<TKey, TSource> grouping = new Grouping<TKey, TSource> (group.Key, group.Value);
-				yield return grouping;
+
+				yield return new Grouping<TKey, TSource> (group.Key, group.Value);
+				counter++;
+			}
+
+			if (counter == nullCounter) {
+				yield return new Grouping<TKey, TSource> (default (TKey), nullList);
 				counter++;
 			}
 		}
@@ -712,8 +716,14 @@ namespace System.Linq
 		{
 			Check.SourceAndKeyElementSelectors (source, keySelector, elementSelector);
 
-			Dictionary<TKey, List<TElement>> groups = new Dictionary<TKey, List<TElement>> ();
-			List<TElement> nullList = new List<TElement> ();
+			return CreateGroupByIterator (source, keySelector, elementSelector, comparer);
+		}
+
+		static IEnumerable<IGrouping<TKey, TElement>> CreateGroupByIterator<TSource, TKey, TElement> (this IEnumerable<TSource> source,
+			Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer)
+		{
+			var groups = new Dictionary<TKey, List<TElement>> ();
+			var nullList = new List<TElement> ();
 			int counter = 0;
 			int nullCounter = -1;
 
@@ -738,14 +748,18 @@ namespace System.Linq
 			}
 
 			counter = 0;
-			foreach (KeyValuePair<TKey, List<TElement>> group in groups) {
+			foreach (var group in groups) {
 				if (counter == nullCounter) {
-					Grouping<TKey, TElement> nullGroup = new Grouping<TKey, TElement> (default (TKey), nullList);
-					yield return nullGroup;
+					yield return new Grouping<TKey, TElement> (default (TKey), nullList);
 					counter++;
 				}
-				Grouping<TKey, TElement> grouping = new Grouping<TKey, TElement> (group.Key, group.Value);
-				yield return grouping;
+
+				yield return new Grouping<TKey, TElement> (group.Key, group.Value);
+				counter++;
+			}
+
+			if (counter == nullCounter) {
+				yield return new Grouping<TKey, TElement> (default (TKey), nullList);
 				counter++;
 			}
 		}
@@ -758,6 +772,16 @@ namespace System.Linq
 		}
 
 		public static IEnumerable<TResult> GroupBy<TSource, TKey, TElement, TResult> (this IEnumerable<TSource> source,
+			Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector,
+			Func<TKey, IEnumerable<TElement>, TResult> resultSelector,
+			IEqualityComparer<TKey> comparer)
+		{
+			Check.GroupBySelectors (source, keySelector, elementSelector, resultSelector);
+
+			return CreateGroupByIterator (source, keySelector, elementSelector, resultSelector, comparer);
+		}
+
+		static IEnumerable<TResult> CreateGroupByIterator<TSource, TKey, TElement, TResult> (this IEnumerable<TSource> source,
 			Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector,
 			Func<TKey, IEnumerable<TElement>, TResult> resultSelector,
 			IEqualityComparer<TKey> comparer)
@@ -777,6 +801,16 @@ namespace System.Linq
 		}
 
 		public static IEnumerable<TResult> GroupBy<TSource, TKey, TResult> (this IEnumerable<TSource> source,
+			Func<TSource, TKey> keySelector,
+			Func<TKey, IEnumerable<TSource>, TResult> resultSelector,
+			IEqualityComparer<TKey> comparer)
+		{
+			Check.SourceAndKeyResultSelectors (source, keySelector, resultSelector);
+
+			return CreateGroupByIterator (source, keySelector, resultSelector, comparer);
+		}
+
+		static IEnumerable<TResult> CreateGroupByIterator<TSource, TKey, TResult> (this IEnumerable<TSource> source,
 			Func<TSource, TKey> keySelector,
 			Func<TKey, IEnumerable<TSource>, TResult> resultSelector,
 			IEqualityComparer<TKey> comparer)
@@ -1056,38 +1090,38 @@ namespace System.Linq
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static long? Max (this IEnumerable<long?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static double? Max (this IEnumerable<double?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static float? Max (this IEnumerable<float?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
 		public static decimal? Max (this IEnumerable<decimal?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a > b);
+			return IterateNullable (source, (a, b) => Math.Max (a, b));
 		}
 
-		static T? IterateNullable<T> (IEnumerable<T?> source, Func<T?, T?, bool> selector) where T : struct
+		static T? IterateNullable<T> (IEnumerable<T?> source, Func<T, T, T> selector) where T : struct
 		{
 			bool empty = true;
 			T? value = null;
@@ -1097,8 +1131,8 @@ namespace System.Linq
 
 				if (!value.HasValue)
 					value = element.Value;
-				else if (selector (element.Value, value))
-					value = element;
+				else
+					value = selector (element.Value, value.Value);
 
 				empty = false;
 			}
@@ -1316,35 +1350,35 @@ namespace System.Linq
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static long? Min (this IEnumerable<long?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static double? Min (this IEnumerable<double?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static float? Min (this IEnumerable<float?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static decimal? Min (this IEnumerable<decimal?> source)
 		{
 			Check.Source (source);
 
-			return IterateNullable (source, (a, b) => a < b);
+			return IterateNullable (source, (a, b) => Math.Min (a, b));
 		}
 
 		public static TSource Min<TSource> (this IEnumerable<TSource> source)
@@ -1541,17 +1575,17 @@ namespace System.Linq
 		{
 			Check.Source (source);
 
+			return CreateReverseIterator (source);
+		}
+
+		static IEnumerable<TSource> CreateReverseIterator<TSource> (IEnumerable<TSource> source)
+		{
 			var list = source as IList<TSource>;
 			if (list == null)
 				list = new List<TSource> (source);
 
-			return CreateReverseIterator (list);
-		}
-
-		static IEnumerable<TSource> CreateReverseIterator<TSource> (IList<TSource> source)
-		{
-			for (int i = source.Count; i > 0; --i)
-				yield return source [i - 1];
+			for (int i = list.Count - 1; i >= 0; i--)
+				yield return list [i];
 		}
 
 		#endregion
@@ -1726,12 +1760,17 @@ namespace System.Linq
 
 		static IEnumerable<TSource> CreateSkipIterator<TSource> (IEnumerable<TSource> source, int count)
 		{
-			int i = 0;
-			foreach (var element in source) {
-				if (i++ < count)
-					continue;
+			var enumerator = source.GetEnumerator ();
+			try {
+				while (count-- > 0)
+					if (!enumerator.MoveNext ())
+						yield break;
 
-				yield return element;
+				while (enumerator.MoveNext ())
+					yield return enumerator.Current;
+
+			} finally {
+				enumerator.Dispose ();
 			}
 		}
 
@@ -2155,14 +2194,20 @@ namespace System.Linq
 		{
 			Check.SourceAndKeyElementSelectors (source, keySelector, elementSelector);
 
+			List<TElement> nullKeyElements = null;
+			
 			var dictionary = new Dictionary<TKey, List<TElement>> (comparer ?? EqualityComparer<TKey>.Default);
 			foreach (var element in source) {
 				var key = keySelector (element);
-				if (key == null)
-					throw new ArgumentNullException ("key");
 
 				List<TElement> list;
-				if (!dictionary.TryGetValue (key, out list)) {
+				
+				if (key == null) {
+					if (nullKeyElements == null)
+						nullKeyElements = new List<TElement> ();
+					
+					list = nullKeyElements;
+				} else if (!dictionary.TryGetValue (key, out list)) {
 					list = new List<TElement> ();
 					dictionary.Add (key, list);
 				}
@@ -2170,7 +2215,7 @@ namespace System.Linq
 				list.Add (elementSelector (element));
 			}
 
-			return new Lookup<TKey, TElement> (dictionary);
+			return new Lookup<TKey, TElement> (dictionary, nullKeyElements);
 		}
 
 		#endregion
@@ -2236,7 +2281,7 @@ namespace System.Linq
 			}
 
 			foreach (var element in second) {
-				if (! items.Contains (element, comparer)) {
+				if (! items.Contains (element)) {
 					items.Add (element);
 					yield return element;
 				}

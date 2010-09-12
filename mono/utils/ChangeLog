@@ -1,12 +1,232 @@
+2010-07-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.h:
+	* mono-semaphore.c: use io-layer wait functions in OSX.
+
+2010-07-01  Martin Baulig  <martin@ximian.com>
+
+	Backport r157195:
+
+	2010-05-12  Zoltan Varga  <vargaz@gmail.com>
+
+		* mono-sigcontext.h: Define UCONTEXT_REG_ constants for amd64 even if the gregs
+		  array is available.
+
+2010-05-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-logger.h (mono_trace_message): Fix some warnings.
+
+2010-05-05 Jonathan Chambers <joncham@gmail.com>
+
+	* mono-semaphore.c: Implement alertable wait on Windows similar to
+	other platforms. Always be alertable, but only return from wait if
+	user requested alertable state. Fixes soft debugger on Windows.
+
+2010-04-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: account for the time already spent in wait if
+	interrupted.
+
+2010-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-time.c (get_boot_time): Applied more openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-04-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-proclib.c: Applied more openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-04-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: set EINTR on windows too.
+
+2010-04-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.c: patch from Robert Nagy that makes this work in
+	OpenBSD.
+
+2010-04-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.[ch]: wait can be alertable now. Defaults to FALSE.
+
+2010-03-31  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-semaphore.h: Use Windows semaphores on Windows, patch
+	contributed by Vincent Povirk from bugzilla #531767
+
+2010-03-26  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-semaphore.h (MONO_SEM_POST): Fix on Darwin.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-proclib.c mono-semaphore.c: Apply some openbsd changes from openbsd
+	ports.
+
+2010-03-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-semaphore.[hc]: make sure the semaphore calls are restarted if
+	interrupted. Return 0 on success and -1 on failure on windows.
+
+2010-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-sigcontext.h: Applied patch from Robert Nagy (Robert@openbsd.org).
+	Add OpenBSD definitions.
+
+2010-03-03 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* mono-mmap.c: apparently kill() can return ENOMEM. Also use signal 0
+	which is the documented way of testing for the existence of a PID.
+	Thanks to Cal Page.
+
+2010-01-28 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-error-internals.h: Add mono_error_set_not_verifiable.
+
+	* mono-error.h: Add MONO_ERROR_NOT_VERIFIABLE.
+
+	* mono-error.c: Implement mono_error_set_not_verifiable.
+
+	Backport of r150306.
+
+2010-01-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mono-error.c: Call va_end/va_start before reusing 'args'.
+	[Backport r149765]
+
+2010-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-path.c (mono_path_resolve_symlinks): Use g_strfreev () to free the
+	result of g_strplit.
+
+2009-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-ehash.c (mono_g_hash_table_find): Add this for eglib too.
+
+2009-11-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-error-internals.h: Add mono_error_set_bad_image_name and change signature
+	of mono_error_set_bad_image to take a MonoImage instead of a const char *.
+
+	* mono-error.c: Same.
+
+	Backport of r146936.
+
+2009-11-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-hash.c (mono_g_hash_table_find): Implement this.
+
+2009-11-13 Jonathan Chambers <joncham@gmail.com>
+
+	* mono-semaphore.h: Implementation for Windows platform.
+
+	Code contributed under MIT/X11 license.
+
+2009-11-12  Geoff Norton  <gnorton@novell.com>
+
+	* mono-path.c: When resolving symlinks in a path, we need to
+	split on the directory separator and check each level, as
+	readlink only checks the final destination.
+
+2009-11-10 Rodrigo Kumpera  <rkumpera@novell.com>
+ 
+     * mono-error-internals.h: Add mono_error_set_argument and mono_error_raise_exception.
+ 
+     * mono-error.h: Add new MONO_ERROR_ARGUMENT constant for
+     ArgumentException.
+ 
+     * mono-error.c: Implement mono_error_set_argument, mono_error_raise_exception.
+ 
+     * mono-error.c (mono_error_prepare_exception) Init error_out at the beginning. Add support
+     for MONO_ERROR_ARGUMENT.
+
+	Backport of r145538.
+
+2009-11-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+    * mono-error.c, mono-error.h, mono-error-internal.h: New error handling
+    structures and functions.
+
+    * Makefile.am: Add new files.
+
 2009-10-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* mono-proclib.c: hz is only multiplied by the number of cpus when
 	requesting "_Total".
 
+2009-10-12  Joel W. Reed <joelwreed@gmail.com>
+
+	* mono-networkinterfaces.c, mono-networkinterfaces.h: Read
+	network statistics from "/proc/net/dev" for performance counters.
+
+	Code is contributed under MIT/X11 license.
+
 2009-09-29  Zoltan Varga  <vargaz@gmail.com>
 
 	* mono-compiler.h (MONO_INTERNAL): Disable this on solaris as it produces a
 	millions of warnings during compilation.
+
+2009-09-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-sha1.c: Update documentation.
+
+2009-09-02 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* mono-md5.c: Update documentation.
+
+2009-09-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mono-dl.c (mono_dl_open): Don't leak module if name is NULL
+	* mono-md5.c (mono_md5_get_digest_from_file): Close 'fp' even on
+	success (just like we do for sha1)
+
+2009-08-21  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-hash.c: When creating a hash table, if the keys are managed
+	objects, assert that we have a hash function.  Remove the
+	rehashing after GC marking.
+
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
+
+	* strtod.c: Fix warnings for uninitialized variables.
+
+2009-08-18  Christian Hergert  <chris@dronelabs.com>
+
+	* mono-proclib.c:
+	* mono-counters.c: Fix printf warnings.
+
+2009-08-12  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-hash.c (mono_g_hash_mark): If the keys are managed objects,
+	rehash the table after marking.
+
+2009-08-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* monobitset.h: add comment.
+
+2009-08-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-sigcontext.h (UCONTEXT_GREGS): Fix freebsd definition.
+
+2009-07-30  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-sigcontext.h: Include config.h.
+
+2009-07-30  Mark Probst  <mark.probst@gmail.com>
+
+	* mono-sigcontext.h, Makefile.am: Arch-dependent sigcontext
+	macros, moved from mini.
+
+2009-07-29  Massimiliano Mantione  <massi@ximian.com>
+
+	* mono-codeman.c (free_chunklist and new_codechunk):
+	Call profiler hooks to keep track of code chunks.
+
+2009-07-20  Geoff Norton  <gnorton@novell.com>
+
+	* mono-semaphore.h: Refactor from io-layer/thread-private.h so it
+	can be used by the runtime as well.
 
 2009-07-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -18,14 +238,85 @@
 	* mono-proclib.c: fixed setting the NUL terminator.
 	Thanks to Jacob Gladish.
 
-2009-03-05  Mark Probst  <mark.probst@gmail.com>
+2009-06-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* gc_wrapper.h: Disable thread local alloc on mips.
+
+2009-05-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* CMakeLists.txt: New file.
+
+2009-05-09  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-value-hash.c (mono_value_hash_table_insert_replace):
+	Initialize variable, to quiet the compiler. 
+
+	* mono-proclib.c: Eliminate two warnings.
+
+2009-04-03  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-filemap.c: Move mono_file_unmap for the not-mmap case to
+	the mono-filemap.c file so it can be plugged in platform-specific
+	code as well. 
+
+2009-04-03 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* strenc.h:
+	* strenc.c: Add mono_utf8_validate_and_len_with_bounds.
+
+2009-03-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (libmonoutils_la_SOURCES): Fix make dist.
+
+2009-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* gc_wrapper.h: Disable thread local allocation for ARM too because of
+	incomplete support in libgc.
+
+2009-03-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* gc_wrapper.h: New file, moved from ../os.
+
+	* Makefile.am: Add gc_wrapper.h
+
+2009-03-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-hash.c: Use precise GC allocation for the Boehm GC as well.
+
+2009-02-16  Mark Probst  <mark.probst@gmail.com>
 
 	Contributed under the terms of the MIT/X11 license by Steven
 	Munroe <munroesj@us.ibm.com>.
 
 	* mono-compiler.h: MONO_THREAD_VAR_OFFSET for PPC(64).
 
-	Backport of r127060.
+2009-02-11  Bill Holmes  <billholmes54@gmail.com>
+
+	* mono-filemap.c : Fixing the MSVC build.
+
+	Contributed under MIT/X11 license.
+
+2009-02-03  Miguel de Icaza  <miguel@novell.com>
+
+	* mono-dl.c: Add support for registering in-proc addresses as
+	libraries that can be P/Invoked.   Used in operating systems that
+	lack a dynamic linker. 
+
+	* mono-filemap.c: Integrate Paolo's mono-filemap code here, split
+	some code from mono-mmap. into this file to ease porting.
+
+	* mono-io-portability.c: Use new define to turn off portability
+	features. 
+
+2009-01-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-compiler.h (MONO_THREAD_VAR_OFFSET): Add ARM Linux support.
+
+2009-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono-mmap.c: Applied patch from Koushik Dutta
+	(koush@koushikdutta.com). Rework the #ifdefs so Android could use the mmap
+	implementation.
 
 2009-01-19  Bill Holmes  <billholmes54@gmail.com>
 

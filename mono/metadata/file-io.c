@@ -5,8 +5,8 @@
  *	Dick Porter (dick@ximian.com)
  *	Gonzalo Paniagua Javier (gonzalo@ximian.com)
  *
- * (C) 2001,2002,2003 Ximian, Inc.
- * Copyright (c) 2004,2005,2006 Novell, Inc. (http://www.novell.com)
+ * Copyright 2001-2003 Ximian, Inc (http://www.ximian.com)
+ * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  */
 
 #include <config.h>
@@ -14,7 +14,6 @@
 #include <glib.h>
 #include <string.h>
 #include <errno.h>
-#include <signal.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -188,7 +187,7 @@ static void convert_win32_file_attribute_data (const WIN32_FILE_ATTRIBUTE_DATA *
 	while (name [len])
 		++ len;
 
-	stat->name = mono_string_new_utf16 (mono_domain_get (), name, len);
+	MONO_STRUCT_SETREF (stat, name, mono_string_new_utf16 (mono_domain_get (), name, len));
 }
 
 /* Managed file attributes have nearly but not quite the same values
@@ -345,8 +344,8 @@ ves_icall_System_IO_MonoIO_GetFileSystemEntries (MonoString *path,
 		return(NULL);
 	}
 
+	utf8_path = mono_string_to_utf8 (path); /*If this raises there is not memory to release*/
 	names = g_ptr_array_new ();
-	utf8_path = mono_string_to_utf8 (path);
 
 	do {
 		if ((data.cFileName[0] == '.' && data.cFileName[1] == 0) ||
@@ -607,6 +606,7 @@ ves_icall_System_IO_MonoIO_GetFileStat (MonoString *path, MonoIOStat *stat,
 						   stat);
 	} else {
 		*error=GetLastError ();
+		memset (stat, 0, sizeof (MonoIOStat));
 	}
 
 	return result;
@@ -1044,12 +1044,11 @@ ves_icall_System_IO_MonoIO_GetTempPath (MonoString **mono_name)
 	
 	if(ret>0) {
 #ifdef DEBUG
-		g_message (G_GNUC_PRETTY_FUNCTION
-			   ": Temp path is [%s] (len %d)", name, ret);
+		g_message ("%s: Temp path is [%s] (len %d)", __func__, name, ret);
 #endif
 
-		*mono_name=mono_string_new_utf16 (mono_domain_get (), name,
-						  ret);
+		mono_gc_wbarrier_generic_store ((gpointer) mono_name,
+				(MonoObject*) mono_string_new_utf16 (mono_domain_get (), name, ret));
 	}
 
 	g_free (name);

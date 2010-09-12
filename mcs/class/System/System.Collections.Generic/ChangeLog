@@ -1,18 +1,46 @@
+2009-11-25  Jb Evain  <jbevain@novell.com>
+
+	* Queue.cs (Enqueue): deal with the case where the tail
+	is off the array when deciding to enlarge the capacity.
+
+	backport 146925.
+
+2009-11-25  Jb Evain  <jbevain@novell.com>
+
+	* Queue.cs (ICollection.CopyTo): fix typo, remove code duplication.
+
+	backport r146914.
+
+2009-07-31  Raja R Harinath  <harinath@hurrynot.org>
+
+	* RBTree.cs (NodeEnumerator.check_current): New helper.
+	(NodeEnumerator.Current): Don't check invariants.
+	* SortedDictionary.cs (Enumerator.Current): Likewise.
+	(ValueCollection.Enumerator.Current): Likewise.
+	(KeyCollection.Enumerator.Current): Likewise.
+
+2009-07-26  Miguel de Icaza  <miguel@novell.com>
+
+	* Stack.cs: Check arguments.
 
 2009-07-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SortedList.cs: the IComparar.Compare arguments were reversed.
 	Fixes bug #521750. Patch by Kevin Fitzgerald.
 
-2009-05-06  Pia Eriksson  <pe@hallerud.se>
+2009-05-10  Andy Hume  <andyhume32@yahoo.co.uk>
 
-	* SortedList.cs: Handle Count == 0 in CopyTo correcly
-	* SortedDictionary.cs: Handle Count == 0 in CopyTo correcly
+	* LinkedList.cs: Add null check. Fixes #481621.
 
 2009-03-11  Zoltan Varga  <vargaz@gmail.com>
 
 	* SortedList.cs: Add version checking to the Key/Value enumerators +
 	implement support for Reset (). Fixes #483985.
+
+2009-05-06  Pia Eriksson  <pe@hallerud.se>
+
+	* SortedList.cs: Handle Count == 0 in CopyTo correcly
+	* SortedDictionary.cs: Handle Count == 0 in CopyTo correcly
 
 2007-11-15  Roei Erez  <roeie@mainsoft.com>
 

@@ -1,8 +1,40 @@
+2010-05-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: check object reference when the timers are equal.
+	Fixes bug #605092.
+
+2009-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Parallel.cs: Added fix for Bug #536919.
+
+2009-12-09  Jb Evain  <jbevain@novell.com>
+
+	* ThreadPool.cs (QueueUserWorkItem): properly throw
+	an ANE instead of triggering a NRE when being passed a null callback.
+
+	backports r147934.
+
 2009-11-02  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Thread.cs (set_CurrentUICulture): Delay setting in_currentculture
 	to true until after the null check and the return statement.
-	[Backport r145215]
+
+2009-10-25  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Thread.cs: Fix validations for Join and Sleep overloads
+	[Backport r144824]
+
+2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* EventWaitHandleTest.cs: New. Test case for EventResetMode 
+	validation
+	[Backport r144681]
+
+2009-10-22  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* Monitor.cs: Fix validations for TryEnter and Wait. Reduce 
+	duplicated code between overloads.
+	[Backport r144627]
 
 2009-10-21  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -11,9 +43,237 @@
 	WaitAll to reduce code duplication.
 	[Backport r144529]
 
+2009-10-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Timer.cs: Always call Init from every constructors to avoid 
+	duplicate checks. Fix validations on different dueTime and period
+	(ctor and Change methods). Seal private TimerComparer class and
+	avoid multiple (identical) casts in its Compare method. Seal 
+	private Scheduler class.
+	[Backport r144466]
+
+2009-10-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: make sure we don't insert 2 timers with the same key.
+
+2009-10-20  Jb Evain  <jbevain@novell.com>
+
+	* Thread.cs: change type of the current_appcontext field to object
+	to avoid triggering static constructors unless explicitely required.
+
+2009-10-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Thread.cs: Remove LocalDataStoreSlot-related methods from
+	Moonlight build
+	[Backport r143629]
+
+2009-09-29  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Thread.cs: StartSafe: ignore ThreadAbortExceptions.
+
+	Backport of r142847.
+
+2009-09-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: account for the time spent sending jobs to the queue.
+
+2009-09-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: no need to wake up the scheduler when removing the next
+	scheduled item.
+
+2009-09-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Timer.cs: rewritten. It only has one queue now and it is sorted by
+	due time. Before this changes, it was using a lot of CPU when there
+	were a lot of 'future' timers.
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ExecutionContext.cs: Don't use SecurityContext and don't expose
+	AsyncFlowControl for NET_2_1
+	* ThreadAbortException.cs: Remove ExceptionState from NET_2_1
+	* Thread.cs: Don't expose ApartmentState and remove Suspend and
+	Resume methods for NET_2_1
+	* ThreadPool.cs: Remove GetAvailableThreads and Unsafe* methods
+	for NET_2_1
+
+2009-09-22  Jb Evain  <jbevain@novell.com>
+
+	* Timer.cs: MONOTOUCH doesn't support remoting, so do not pass
+	true to exitContext when calling WaitOne on a WaitHandle.
+
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Thread.cs: Remove [Get|Set]CompressedStack for NET_2_1
+
+2009-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Thread.cs: Remove CurrentPrincipal property for NET_2_1
+	* ExecutionContext.cs: Remove Run method for NET_2_1
+
+2009-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* EventWaitHandle.cs: Remove AccessControl usage for NET_2_1
+	* Mutex.cs: Remove some ctors and AccessControl usage for NET_2_1
+	* NativeEventCalls.cs: Remove AccessControl usage for NET_2_1
+
+2009-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ParallelLoopState.cs: Take in account that
+	AtomicBoolean is a class.
+
+2009-08-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* AtomicBoolean.cs: Turn it into a class
+	* CountdownEvent.cs: Work on cached variable. Make sure
+	count doesn't go under 0.
+
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Watch.cs:
+	* SpinWait.cs:
+	* CountdownEvent.cs:
+	* CancellationToken.cs:
+	* ICancelableOperation.cs:
+	* CancellationTokenSource.cs:
+	* CancellationTokenRegistration.cs: Add BOOTSTRAP_NET_4_0.
+
+2009-08-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* Parallel.cs: Disable While method.
+	* CountdownEvent.cs: Fix method signature.
+	* Barrier.cs: Moved type.
+	* AggregateException.cs: Moved type.
+
+2009-08-04 Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* SpinLock: Remove unused private methods.
+
+2009-08-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* Thread.cs: Always call Thread_free_internal from the finalizer, since
+	it frees other things besides the handle. Fixes #527576.
+
+2009-07-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+        * Snzi.cs:
+        * Parallel.cs:
+        * SpinLock.cs:
+        * SpinWait.cs:
+        * ThreadLocal.cs:
+        * SemaphoreSlim.cs:
+        * CountdownEvent.cs:
+        * ManualResetEventSlim.cs
+        * CancellationTokenSource.cs: Various 4.0 b1 API mismatch fixes.
+
+2009-07-30 Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* AggregateException.cs:
+	* AtomicBoolean.cs:
+	* Barrier.cs:
+	* CSnzi.cs:
+	* CancellationToken.cs:
+	* CancellationTokenRegistration.cs:
+	* CancellationTokenSource.cs:
+	* CountdownEvent.cs:
+	* ICancelableOperation.cs:
+	* LazyInitializer.cs:
+	* ManualResetEventSlim.cs:
+	* Parallel.cs:
+	* ParallelLoopResult.cs:
+	* ParallelLoopState.cs:
+	* ParallelOptions.cs:
+	* SemaphoreSlim.cs:
+	* Snzi.cs:
+	* SpinLock.cs:
+	* SpinWait.cs:
+	* ThreadLocal.cs:
+	* Watch.cs: Add ParallelFx files for System.Threading namespace
+
+2009-07-21  Jb Evain  <jbevain@novell.com>
+
+	* ThreadPool.cs: avoid an unecessary method call when not running
+	in moonlight.
+
+2009-07-20  Jb Evain  <jbevain@novell.com>
+
+	* Thread.cs: use the moonlight specific thread start
+	hack for the net_2_1 profile exclusively.
+
+2009-06-25  Miguel de Icaza  <miguel@novell.com>
+
+	* Timer.cs: Throw ArgumentNullException if the callback is null. 
+
+2009-06-22  Bill Holmes  <billholmes54@gmail.com>
+
+	* Thread.cs : Adding interrupt_on_stop field.
+
+	Contributed under MIT/X11 license.
+
+2009-06-10  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Thread.cs: MoonlightUnhandledException: ensure there's no way to
+	reach native code with a managed exception.
+
+2009-06-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Thread.cs: Refactor calling Moonlight's OnUnhandledException to 
+	make sur the delegate it not called from a [SecuritySafeCritical]
+	caller.
+	* ThreadPool.cs: Reuse the above code for QueueUserWorkItem. 
+	Original patch from Alan McGovern
+
+2009-06-10  Marek Safar  <marek.safar@gmail.com>
+
+	* LockRecursionException.cs: New file.
+
+2009-04-21  Mark Probst  <mark.probst@gmail.com>
+
+	* Thread.cs: Make the execution context field thread-static to
+	avoid it being shared between app domains.
+
+2009-04-20  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Thread.cs: For 2.1 ensure exceptions in threads are handled using the
+	UnhandledException event mechanism in System.Windows.Application instead
+	of crashing the application.
+
+2009-04-18  Mark Probst  <mark.probst@gmail.com>
+
+	* Thread.cs: Don't keep the current number formatter here because
+	it's shared between app domains.
+
+2009-04-18  Mark Probst  <mark.probst@gmail.com>
+
+	* Thread.cs: Make the abort exception state a GC handle, to
+	properly separate AppDomains.  Add internal method for getting the
+	state object.
+
+	* ThreadAbortException.cs: Get the abort exception state via the
+	method in Thread.
+
+2009-04-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WaitHandle.cs: implemented 2 missing WaitAny overloads.
+
+2009-03-05 Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* WaitHandle.cs: Added missing WaitOne overload.
+
 2009-02-20 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* WaitHandle.cs: implemented SignalAndWait.
+
+2009-02-18  Jb Evain  <jbevain@novell.com>
+
+	* SynchronizationContext.cs: add NET_2_1 SetThreadStaticContext
+	method, even if already obsolete.
+
+2009-01-30  Andreia Gaita  <avidigal@novell.com>
+
+	* SynchronizationContext.cs: Remove moonlight hacks, dispatcher should
+	be able to handle this now.
 
 2008-12-20  Miguel de Icaza  <miguel@novell.com>
 

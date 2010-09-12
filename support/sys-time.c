@@ -90,10 +90,10 @@ static inline struct timeval*
 copy_utimes (struct timeval* to, struct Mono_Posix_Timeval *from)
 {
 	if (from) {
-		to[0].tv_sec  = from->tv_sec;
-		to[0].tv_usec = from->tv_usec;
-		to[1].tv_sec  = from->tv_sec;
-		to[1].tv_usec = from->tv_usec;
+		to[0].tv_sec  = from[0].tv_sec;
+		to[0].tv_usec = from[0].tv_usec;
+		to[1].tv_sec  = from[1].tv_sec;
+		to[1].tv_usec = from[1].tv_usec;
 		return to;
 	}
 
@@ -124,6 +124,7 @@ Mono_Posix_Syscall_lutimes(const char *filename, struct Mono_Posix_Timeval *tv)
 }
 #endif /* def HAVE_LUTIMES */
 
+#if HAVE_FUTIMES
 gint32
 Mono_Posix_Syscall_futimes(int fd, struct Mono_Posix_Timeval *tv)
 {
@@ -134,6 +135,7 @@ Mono_Posix_Syscall_futimes(int fd, struct Mono_Posix_Timeval *tv)
 
 	return futimes (fd, ptv);
 }
+#endif  /* def HAVE_FUTIMES */
 
 G_END_DECLS
 

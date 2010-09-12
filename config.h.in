@@ -6,8 +6,8 @@
 /* String of disabled features */
 #undef DISABLED_FEATURES
 
-/* Disable AOT support */
-#undef DISABLE_AOT
+/* Disable AOT Compiler */
+#undef DISABLE_AOT_COMPILER
 
 /* Disable agent attach support */
 #undef DISABLE_ATTACH
@@ -21,6 +21,9 @@
 /* Disable System.Decimal support */
 #undef DISABLE_DECIMAL
 
+/* Disables building in the full table of WAPI messages */
+#undef DISABLE_FULL_MESSAGES
+
 /* Disable generics support */
 #undef DISABLE_GENERICS
 
@@ -33,8 +36,14 @@
 /* Disable support debug logging */
 #undef DISABLE_LOGGING
 
+/* Disable String normalization support. */
+#undef DISABLE_NORMALIZATION
+
 /* Disable P/Invoke support */
 #undef DISABLE_PINVOKE
+
+/* Disables the IO portability layer */
+#undef DISABLE_PORTABILITY
 
 /* Disable default profiler support */
 #undef DISABLE_PROFILER
@@ -45,17 +54,29 @@
 /* Disable assembly saving support in reflection emit */
 #undef DISABLE_REFLECTION_EMIT_SAVE
 
+/* Disable Shadow Copy for AppDomains */
+#undef DISABLE_SHADOW_COPY
+
 /* Disable inter-process shared handles */
 #undef DISABLE_SHARED_HANDLES
 
 /* Disable SIMD intrinsics related optimizations. */
 #undef DISABLE_SIMD
 
+/* Disable Soft Debugger Agent. */
+#undef DISABLE_SOFT_DEBUG
+
 /* Disable advanced SSA JIT optimizations */
 #undef DISABLE_SSA
 
+/* Disables the verifier */
+#undef DISABLE_VERIFIER
+
 /* Enable DTrace probes */
 #undef ENABLE_DTRACE
+
+/* Enable the LLVM back end */
+#undef ENABLE_LLVM
 
 /* Have GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY */
 #undef GLIBC_BEFORE_2_3_4_SCHED_SETAFFINITY
@@ -68,6 +89,9 @@
 
 /* Supports C99 array initialization */
 #undef HAVE_ARRAY_ELEM_INIT
+
+/* Define to 1 if you have the <asm/sigcontext.h> header file. */
+#undef HAVE_ASM_SIGCONTEXT_H
 
 /* Define to 1 if you have the <attr/xattr.h> header file. */
 #undef HAVE_ATTR_XATTR_H
@@ -87,6 +111,9 @@
 /* Define to 1 if you have the <checklist.h> header file. */
 #undef HAVE_CHECKLIST_H
 
+/* Define to 1 if you have the `confstr' function. */
+#undef HAVE_CONFSTR
+
 /* Have /dev/random */
 #undef HAVE_CRYPT_RNG
 
@@ -104,6 +131,15 @@
 
 /* Define to 1 if you have the <elf.h> header file. */
 #undef HAVE_ELF_H
+
+/* Define to 1 if you have the `endgrent' function. */
+#undef HAVE_ENDGRENT
+
+/* Define to 1 if you have the `endpwent' function. */
+#undef HAVE_ENDPWENT
+
+/* Define to 1 if you have the `endusershell' function. */
+#undef HAVE_ENDUSERSHELL
 
 /* epoll supported */
 #undef HAVE_EPOLL
@@ -132,6 +168,9 @@
 /* Define to 1 if you have the `fstatvfs' function. */
 #undef HAVE_FSTATVFS
 
+/* Define to 1 if you have the `futimes' function. */
+#undef HAVE_FUTIMES
+
 /* Have GC_enable */
 #undef HAVE_GC_ENABLE
 
@@ -150,6 +189,9 @@
 /* Define to 1 if you have the `getfsstat' function. */
 #undef HAVE_GETFSSTAT
 
+/* Define to 1 if you have the `getgrent' function. */
+#undef HAVE_GETGRENT
+
 /* Define to 1 if you have the `getgrgid_r' function. */
 #undef HAVE_GETGRGID_R
 
@@ -159,11 +201,20 @@
 /* Have gethostbyname2_r */
 #undef HAVE_GETHOSTBYNAME2_R
 
+/* Define to 1 if you have the `gethostid' function. */
+#undef HAVE_GETHOSTID
+
+/* Define to 1 if you have the `getlogin_r' function. */
+#undef HAVE_GETLOGIN_R
+
 /* Define to 1 if you have the `getpriority' function. */
 #undef HAVE_GETPRIORITY
 
 /* Define to 1 if you have the `GetProcessId' function. */
 #undef HAVE_GETPROCESSID
+
+/* Define to 1 if you have the `getpwent' function. */
+#undef HAVE_GETPWENT
 
 /* Define to 1 if you have the `getpwnam_r' function. */
 #undef HAVE_GETPWNAM_R
@@ -222,8 +273,14 @@
 /* Define to 1 if you have the `unwind' library (-lunwind). */
 #undef HAVE_LIBUNWIND
 
+/* Define to 1 if you have the <link.h> header file. */
+#undef HAVE_LINK_H
+
 /* Define to 1 if you have the <linux/rtc.h> header file. */
 #undef HAVE_LINUX_RTC_H
+
+/* Define to 1 if you have the `lockf' function. */
+#undef HAVE_LOCKF
 
 /* Define to 1 if you have the `lutimes' function. */
 #undef HAVE_LUTIMES
@@ -252,6 +309,12 @@
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
 
+/* Define to 1 if you have the <netinet/in.h> header file. */
+#undef HAVE_NETINET_IN_H
+
+/* Define to 1 if you have the <netinet/tcp.h> header file. */
+#undef HAVE_NETINET_TCP_H
+
 /* Define to 1 if you have the <net/if.h> header file. */
 #undef HAVE_NET_IF_H
 
@@ -260,6 +323,9 @@
 
 /* Have oprofile support */
 #undef HAVE_OPROFILE
+
+/* Define to 1 if you have the <pathconf.h> header file. */
+#undef HAVE_PATHCONF_H
 
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
@@ -276,8 +342,14 @@
 /* Define to 1 if you have the `posix_madvise' function. */
 #undef HAVE_POSIX_MADVISE
 
+/* Define to 1 if you have the `psignal' function. */
+#undef HAVE_PSIGNAL
+
 /* Define to 1 if you have the `pthread_attr_getstack' function. */
 #undef HAVE_PTHREAD_ATTR_GETSTACK
+
+/* Define to 1 if you have the `pthread_attr_getstacksize' function. */
+#undef HAVE_PTHREAD_ATTR_GETSTACKSIZE
 
 /* Define to 1 if you have the `pthread_attr_get_np' function. */
 #undef HAVE_PTHREAD_ATTR_GET_NP
@@ -315,6 +387,9 @@
 /* Define to 1 if you have the `sched_setaffinity' function. */
 #undef HAVE_SCHED_SETAFFINITY
 
+/* Define to 1 if you have the `seekdir' function. */
+#undef HAVE_SEEKDIR
+
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
 
@@ -324,20 +399,41 @@
 /* Define to 1 if you have the `setdomainname' function. */
 #undef HAVE_SETDOMAINNAME
 
+/* Define to 1 if you have the `setgrent' function. */
+#undef HAVE_SETGRENT
+
+/* Define to 1 if you have the `setgroups' function. */
+#undef HAVE_SETGROUPS
+
 /* Define to 1 if you have the `sethostid' function. */
 #undef HAVE_SETHOSTID
+
+/* Define to 1 if you have the `sethostname' function. */
+#undef HAVE_SETHOSTNAME
 
 /* Define to 1 if you have the `setpriority' function. */
 #undef HAVE_SETPRIORITY
 
+/* Define to 1 if you have the `setpwent' function. */
+#undef HAVE_SETPWENT
+
 /* Define to 1 if you have the `setresuid' function. */
 #undef HAVE_SETRESUID
+
+/* Define to 1 if you have the `setusershell' function. */
+#undef HAVE_SETUSERSHELL
 
 /* Using the simple generational GC. */
 #undef HAVE_SGEN_GC
 
 /* Define to 1 if you have the `shm_open' function. */
 #undef HAVE_SHM_OPEN
+
+/* Define to 1 if you have the `sigaction' function. */
+#undef HAVE_SIGACTION
+
+/* Define to 1 if you have the <signal.h> header file. */
+#undef HAVE_SIGNAL_H
 
 /* Have signbit */
 #undef HAVE_SIGNBIT
@@ -387,13 +483,13 @@
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
 
-/* Define to 1 if `struct dirent' is a member of `d_off'. */
+/* Define to 1 if `d_off' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_OFF
 
-/* Define to 1 if `struct dirent' is a member of `d_reclen'. */
+/* Define to 1 if `d_reclen' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_RECLEN
 
-/* Define to 1 if `struct dirent' is a member of `d_type'. */
+/* Define to 1 if `d_type' is member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
 
 /* Define to 1 if the system has the type `struct flock'. */
@@ -405,14 +501,20 @@
 /* Have struct ip_mreqn */
 #undef HAVE_STRUCT_IP_MREQN
 
-/* Define to 1 if `struct kinfo_proc' is a member of `kp_proc'. */
+/* Define to 1 if `kp_proc' is member of `struct kinfo_proc'. */
 #undef HAVE_STRUCT_KINFO_PROC_KP_PROC
+
+/* Define to 1 if `pw_gecos' is member of `struct passwd'. */
+#undef HAVE_STRUCT_PASSWD_PW_GECOS
 
 /* Define to 1 if the system has the type `struct pollfd'. */
 #undef HAVE_STRUCT_POLLFD
 
 /* Define to 1 if the system has the type `struct stat'. */
 #undef HAVE_STRUCT_STAT
+
+/* Define to 1 if `f_flags' is member of `struct statfs'. */
+#undef HAVE_STRUCT_STATFS_F_FLAGS
 
 /* Define to 1 if the system has the type `struct timespec'. */
 #undef HAVE_STRUCT_TIMESPEC
@@ -428,6 +530,9 @@
 
 /* Define to 1 if the system has the type `suseconds_t'. */
 #undef HAVE_SUSECONDS_T
+
+/* Define to 1 if you have the `swab' function. */
+#undef HAVE_SWAB
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #undef HAVE_SYSLOG_H
@@ -465,6 +570,9 @@
 /* Define to 1 if you have the <sys/sdt.h> header file. */
 #undef HAVE_SYS_SDT_H
 
+/* Define to 1 if you have the <sys/select.h> header file. */
+#undef HAVE_SYS_SELECT_H
+
 /* Define to 1 if you have the <sys/sem.h> header file. */
 #undef HAVE_SYS_SEM_H
 
@@ -495,6 +603,9 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
+/* Define to 1 if you have the <sys/uio.h> header file. */
+#undef HAVE_SYS_UIO_H
+
 /* Define to 1 if you have the <sys/un.h> header file. */
 #undef HAVE_SYS_UN_H
 
@@ -515,6 +626,9 @@
 
 /* Define to 1 if you have the <sys/xattr.h> header file. */
 #undef HAVE_SYS_XATTR_H
+
+/* Define to 1 if you have the `telldir' function. */
+#undef HAVE_TELLDIR
 
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
@@ -543,6 +657,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define to 1 if you have /usr/include/malloc.h. */
+#undef HAVE_USR_INCLUDE_MALLOC_H
+
 /* Define to 1 if you have the <utime.h> header file. */
 #undef HAVE_UTIME_H
 
@@ -566,6 +683,12 @@
 
 /* Have system zlib */
 #undef HAVE_ZLIB
+
+/* Major version of LLVM libraries */
+#undef LLVM_MAJOR_VERSION
+
+/* Minor version of LLVM libraries */
+#undef LLVM_MINOR_VERSION
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
@@ -610,13 +733,13 @@
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
 
-/* Define to the home page for this package. */
-#undef PACKAGE_URL
-
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Platform is Win32 */
+/* This platform does not support symlinks */
+#undef PLATFORM_NO_SYMLINKS
+
+/* Host Platform is Win32 */
 #undef PLATFORM_WIN32
 
 /* pthread is a pointer */
@@ -639,6 +762,18 @@
 
 /* ... */
 #undef TARGET_ARM
+
+/* byte order of target */
+#undef TARGET_BYTE_ORDER
+
+/* ... */
+#undef TARGET_POWERPC
+
+/* ... */
+#undef TARGET_POWERPC64
+
+/* Target OS is Win32 */
+#undef TARGET_WIN32
 
 /* ... */
 #undef TARGET_X86

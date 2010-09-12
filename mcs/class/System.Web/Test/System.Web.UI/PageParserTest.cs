@@ -29,7 +29,6 @@
 using NUnit.Framework;
 using System;
 using System.Web;
-using System.Web.Compilation;
 using System.Web.UI;
 using MonoTests.SystemWeb.Framework;
 
@@ -45,10 +44,10 @@ namespace MonoTests.System.Web.UI
 		}
 		
 		[Test]
-		[ExpectedException (typeof (ParseException))]
 		public void MissingMasterFile ()
 		{
-			new WebTest ("MissingMasterFile.aspx").Run ();
+			string pageHtml = new WebTest ("MissingMasterFile.aspx").Run ();
+			Assert.IsTrue (pageHtml.IndexOf ("[System.Web.Compilation.ParseException]:") != -1, "#A1");
 		}
 	}
 }

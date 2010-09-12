@@ -15,9 +15,6 @@ bootstrap_dirs := \
 # We may have to add those if 'mcs' starts using them.
 basic_SUBDIRS := corlib System System.XML System
 
-net_1_1_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI
-net_2_0_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI
-
 net_1_1_java_SUBDIRS = \
 	System.Xml					\
 	System.Data					\
@@ -32,6 +29,8 @@ common_dirs := \
 	System				\
 	System.XML			\
 	Mono.CompilerServices.SymbolWriter \
+	Mono.Posix			\
+	System.Core			\
 	Mono.Security			\
 	System				\
 	System.Security			\
@@ -42,12 +41,10 @@ common_dirs := \
 	System.Drawing			\
 	System.Transactions		\
 	System.EnterpriseServices	\
-	Mono.C5				\
 	Mono.Data.Tds			\
 	System.Data			\
 	Mono.Data			\
 	Mono.GetOptions			\
-	Mono.Posix			\
 	Accessibility			\
 	Mono.WebBrowser			\
 	Managed.Windows.Forms		\
@@ -90,7 +87,8 @@ common_dirs := \
 	IBM.Data.DB2			\
 	Microsoft.JScript		\
 	CustomMarshalers		\
-	OpenSystem.C
+	OpenSystem.C			\
+	SystemWebTestShim
 
 net_1_1_dirs :=
 
@@ -98,60 +96,101 @@ net_2_0_dirs := \
 	Microsoft.Build.Framework	\
 	Microsoft.Build.Utilities	\
 	Microsoft.Build.Engine		\
-	System.Core			\
 	Microsoft.Build.Tasks		\
 	System.Xml.Linq			\
+	System.Runtime.Serialization	\
 	System.Data.DataSetExtensions	\
 	System.Data.Linq		\
+	System.Web			\
 	System.Web.Abstractions		\
 	System.Web.Routing		\
-	System.Web.Extensions_1.0	\
-	System.Web.Extensions.Design_1.0	\
+	System.IdentityModel		\
+	System.IdentityModel.Selectors	\
+	System.ServiceModel		\
 	System.Web.Extensions		\
 	System.Web.Extensions.Design	\
 	System.ComponentModel.DataAnnotations	\
 	System.Web.DynamicData		\
-	System.Runtime.Serialization	\
-	System.IdentityModel		\
-	System.IdentityModel.Selectors	\
-	System.ServiceModel		\
 	System.ServiceModel.Web		\
 	System.Web.Mvc			\
+	System.Web.Mvc2			\
+	Mono.C5				\
 	Mono.Management			\
 	Mono.Options 			\
 	Mono.Simd			\
+	Mono.Tasklets       		\
+	WindowsBase			\
+	System.Data.Services    \
 	Mono.Cecil			\
 	Mono.Cecil.Mdb			\
+	Mono.Debugger.Soft	\
 	FirebirdSql.Data.Firebird
+
+net_2_0_only_dirs := \
+	System.Web.Extensions_1.0	\
+	System.Web.Extensions.Design_1.0
 
 net_2_1_dirs := \
 	corlib			\
 	Mono.CompilerServices.SymbolWriter \
 	System			\
-	System.Net		\
 	System.XML		\
 	System.Core		\
+	System.Net		\
 	System.Xml.Linq	\
 	System.Runtime.Serialization	\
 	System.ServiceModel	\
 	System.ServiceModel.Web
 
-net_3_5_dirs := \
-	System.Web.Extensions.Design
+monotouch_dirs := \
+	corlib	\
+	Mono.CompilerServices.SymbolWriter	\
+	System	\
+	System.XML	\
+	Mono.Security	\
+	System	\
+	I18N		\
+	System.Core	\
+	System.Json	\
+	System.Xml.Linq	\
+	System.Runtime.Serialization	\
+	System.ServiceModel	\
+	System.ServiceModel.Web	\
+	System.Web.Services	\
+	Mono.Data.Tds	\
+	System.Transactions	\
+	System.Data	\
+	Mono.Cairo	\
+	Mono.Data.Sqlite
 
+net_3_5_dirs := \
+	Microsoft.Build.Framework	\
+	Microsoft.Build.Utilities	\
+	Microsoft.Build.Engine		\
+	Microsoft.Build.Tasks		\
+	System.Web.Extensions.Design	
+
+net_4_0_dirs := \
+	System.Dynamic		\
+	Microsoft.CSharp
+
+net_1_1_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI
 net_1_1_SUBDIRS := $(common_dirs) $(net_1_1_dirs)
-net_2_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs)
+net_2_0_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI
+net_2_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs) $(net_2_0_only_dirs)
 net_2_1_bootstrap_SUBDIRS := corlib System Mono.CompilerServices.SymbolWriter
 net_2_1_raw_SUBDIRS := $(net_2_1_dirs)
+monotouch_bootstrap_SUBDIRS := corlib System Mono.CompilerServices.SymbolWriter
+monotouch_SUBDIRS := $(monotouch_dirs)
 net_3_5_SUBDIRS := $(net_3_5_dirs)
+net_4_0_bootstrap_SUBDIRS := $(bootstrap_dirs) PEAPI Mono.Posix System.Core
+net_4_0_SUBDIRS := $(common_dirs) $(net_2_0_dirs) $(net_4_0_dirs)
 
 include ../build/rules.make
 
-SUBDIRS = $(common_dirs) $(net_1_1_dirs) $(net_2_0_dirs) $(net_2_1_dirs) $(net_3_5_dirs)
+SUBDIRS = $(common_dirs) $(net_1_1_dirs) $(net_2_0_dirs) $(net_2_0_only_dirs) $(net_2_1_dirs) $(net_3_5_dirs) $(net_4_0_dirs)
 
-# These libraries below are either unimplemented or don't compile, but
-#BROKEN_SUBDIRS =
-#DIST_ONLY_SUBDIRS = $(BROKEN_SUBDIRS)
+DIST_ONLY_SUBDIRS = dlr
 
 # No new makefiles for: System.Messaging, System.Web.Mobile,
 # System.ServiceProcess
@@ -159,6 +198,7 @@ SUBDIRS = $(common_dirs) $(net_1_1_dirs) $(net_2_0_dirs) $(net_2_1_dirs) $(net_3
 DISTFILES = \
 	ecma.pub		\
 	winfx.pub		\
+	winfx3.pub		\
 	mono.pub		\
 	msfinal.pub		\
 	silverlight.pub		\
@@ -191,3 +231,6 @@ $(basic_files:%=lib/basic/%):
 
 dist-default: $(monolite_files)
 dist-local: dist-default
+
+csproj-local:
+

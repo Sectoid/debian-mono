@@ -1,3 +1,170 @@
+2010-05-31  Jb Evain  <jbevain@novell.com>
+
+	Merge the MonoTouch Linker branch.
+
+	* Mono.Linker/TypeParser.cs: add a type parser.
+
+	* Mono.Linker.Steps/MarkStep.cs: properly mark types used
+	with typeof in custom attributes
+
+	* monolinker.exe.sources: add TypeParser.cs
+
+2010-03-02  Jb Evain  <jbevain@novell.com>
+
+	Merge the MonoTouch Linker branch.
+
+	* Mono.Linker/LinkContext.cs:
+		Allow creation with a custom resolver.
+
+	* Mono.Linker/AssemblyResolver.cs:
+		Allow creation with a custom assembly cache.
+
+	* Mono.Linker.Steps/ResolveFromAssemblyStep.cs:
+		- Mark fields for copied assemblied.
+		- Now can take an assembly directly.
+
+	* Mono.Linker.Steps/SweepStep.cs
+	* Mono.Linker.Steps/CleanStep.cs:
+		Optimizations.
+
+2010-02-01  Jb Evain  <jbevain@novell.com>
+
+	* MarkStep.cs: SoapHeader can either take a field or a property.
+
+2010-01-14  Jb Evain  <jbevain@novell.com>
+
+	* MarkStep.cs: preserve fields specified by the
+	SoapHeader attribute.
+
+	backport r149571.
+
+2010-01-13  Jb Evain  <jbevain@novell.com>
+
+	* MarkStep.cs: preserve methods specified by the
+	XmlSchemaProvider attribute.
+
+	backport r149460.
+
+2010-01-06  Jb Evain  <jbevain@novell.com>
+
+	* Descriptors/mscorlib.xml: optimize descriptor.
+
+2009-11-02  Jb Evain  <jbevain@novell.com>
+
+	Merge the MonoTouch Linker branch.
+
+	* monolinker.exe.sources: update
+
+	* Mono.Linker/Annotations.cs:
+		- add an preserved methods annotation on a type.
+		- add an annotation to get the base methods of a method.
+		- add an annotation to get the overriden method of a method.
+
+	* Mono.Linker/AssemblyAction.cs:
+		add a Delete action to remove an assembly from the output set.
+
+	* Mono.Linker.Steps/TypeMapStep.cs:
+		new step that create a map of virtual methods implementation.
+
+	* Mono.Linker.Steps/MarkStep.cs:
+		- removal of virtual methods.
+		- fix for custom attributes assigning properties and field
+			defined in a base type.
+		- mark scopes.
+		- mark default constructors of types used as a generic instance
+			of a generic parameter constrained with new().
+		- apply preserved methods.
+
+	* Mono.Linker.Steps/SweepStep.cs: remove unused assemblies.
+
+	* Mono.Linker.Steps/LoadI18nAssemblies.cs:
+		fix linking of i18n assemblies.
+
+	* Mono.Linker.Steps/OutputStep.cs:
+		fix the copied assemblies when the output directory
+		is the same as the origin of the assemblies.
+
+	* Mono.Linker.Steps/ResolveFromXmlStep.cs
+	* Mono.Linker.Steps/ResolveFromAssemblyStep.cs
+	* Mono.Linker.Steps/BaseStep.cs
+	* Mono.Linker/Driver.cs
+	* Mono.Linker/Pipeline.cs:
+		Cosmetics.
+
+2009-09-10  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Mono.Linker.Steps/MarkStep.cs: Make IgnoreScope() virtual to
+	  prevent marking custom attributes of foreign assemblies in a
+	  derived step in the tuner. ( r: jb )
+
+2009-09-09  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Mono.Linker.Steps/MarkStep.cs: Visibility changes needed by
+	  the need of some new tuner step to redefine or call some
+	  methods.
+
+2009-07-02  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: fix cecil's location.
+
+2009-06-09  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Mono.Linker.Steps/BaseStep.cs: New virtual API needed.
+
+	* Mono.Linker/Pipeline.cs: API love.
+
+2009-06-09  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Mono.Linker.csproj: Update.
+
+	* Mono.Linker/Driver.cs: Prevent InvalidCastException.
+
+2009-06-05  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker.Steps/MarkStep.cs: fix a nre.
+	Based on patch by Andres G. Aragoneses  <aaragoneses@novell.com>.
+
+2009-06-05  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker.Steps/ResolveFromXmlStep.cs: more ways of choosing fields.
+
+2009-06-05  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker.Steps/ResolveFromXmlStep.cs: give us more
+	possibilities to detail the xml descriptors.
+
+2009-06-04  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker.Steps/ResolveFromXmlStep.cs: fix handling
+	of wildcards constructors.
+
+2009-04-23  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Mono.Linker/Driver.cs: Report error and exit if it cannot
+	  resolve some type (useful to avoid an ugly TypeLoadException
+	  when specifying an erroneus custom step).
+
+2009-04-21  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Driver.cs: Postprocess custom steps in order to make them
+	able to find steps determined by the resolve method. Fixes
+	#493702.
+
+2009-04-08  Andrés G. Aragoneses  <aaragoneses@novell.com>
+
+	* Mono.Linker.csproj: Update.
+
+2009-02-18  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker/XApiService.cs: delete, unused.
+	* Mono.Linker/Driver.cs: don't use the uneeded XApiService anymore.
+
+2009-01-28  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Linker/AssemblyResolver.cs
+	  Mono.Linker.Steps/MarkStep.cs:
+		Directly use the Resolve methods from Cecil.
+
 2008-12-16  Jb Evain  <jbevain@novell.com>
 
 	* Makefile: build monolinker.exe in the profile directory instead of

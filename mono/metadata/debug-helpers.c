@@ -1,7 +1,16 @@
+/*
+ * console-io.c: ConsoleDriver internal calls
+ *
+ * Author:
+ *	Mono Project (http://www.mono-project.com)
+ *
+ * Copyright (C) 2005-2008 Novell, Inc. (http://www.novell.com)
+ */
 
 #include <string.h>
 #include "mono/metadata/tokentype.h"
 #include "mono/metadata/opcodes.h"
+#include "mono/metadata/metadata-internals.h"
 #include "mono/metadata/class-internals.h"
 #include "mono/metadata/mono-endian.h"
 #include "mono/metadata/debug-helpers.h"
@@ -14,7 +23,7 @@ struct MonoMethodDesc {
 	char *name;
 	char *args;
 	guint num_args;
-	gboolean include_namespace;
+	gboolean include_namespace, klass_glob, name_glob;
 };
 
 #ifdef HAVE_ARRAY_ELEM_INIT
@@ -73,8 +82,33 @@ append_class_name (GString *res, MonoClass *class, gboolean include_namespace)
 		g_string_append_c (res, '/');
 	}
 	if (include_namespace && *(class->name_space))
-		g_string_sprintfa (res, "%s.", class->name_space);
-	g_string_sprintfa (res, "%s", class->name);
+		g_string_append_printf (res, "%s.", class->name_space);
+	g_string_append_printf (res, "%s", class->name);
+}
+
+static MonoClass*
+find_system_class (const char *name)
+{
+	if (!strcmp (name, "void")) 
+		return mono_defaults.void_class;
+	else if (!strcmp (name, "char")) return mono_defaults.char_class;
+	else if (!strcmp (name, "bool")) return mono_defaults.boolean_class;
+	else if (!strcmp (name, "byte")) return mono_defaults.byte_class;
+	else if (!strcmp (name, "sbyte")) return mono_defaults.sbyte_class;
+	else if (!strcmp (name, "uint16")) return mono_defaults.uint16_class;
+	else if (!strcmp (name, "int16")) return mono_defaults.int16_class;
+	else if (!strcmp (name, "uint")) return mono_defaults.uint32_class;
+	else if (!strcmp (name, "int")) return mono_defaults.int32_class;
+	else if (!strcmp (name, "ulong")) return mono_defaults.uint64_class;
+	else if (!strcmp (name, "long")) return mono_defaults.int64_class;
+	else if (!strcmp (name, "uintptr")) return mono_defaults.uint_class;
+	else if (!strcmp (name, "intptr")) return mono_defaults.int_class;
+	else if (!strcmp (name, "single")) return mono_defaults.single_class;
+	else if (!strcmp (name, "double")) return mono_defaults.double_class;
+	else if (!strcmp (name, "string")) return mono_defaults.string_class;
+	else if (!strcmp (name, "object")) return mono_defaults.object_class;
+	else
+		return NULL;
 }
 
 void
@@ -125,7 +159,7 @@ mono_type_get_desc (GString *res, MonoType *type, gboolean include_namespace)
 		break;
 	case MONO_TYPE_ARRAY:
 		mono_type_get_desc (res, &type->data.array->eklass->byval_arg, include_namespace);
-		g_string_sprintfa (res, "[%d]", type->data.array->rank);
+		g_string_append_printf (res, "[%d]", type->data.array->rank);
 		break;
 	case MONO_TYPE_SZARRAY:
 		mono_type_get_desc (res, &type->data.klass->byval_arg, include_namespace);
@@ -162,7 +196,15 @@ mono_type_get_desc (GString *res, MonoType *type, gboolean include_namespace)
 	}
 	case MONO_TYPE_VAR:
 	case MONO_TYPE_MVAR:
-		g_string_append (res, type->data.generic_param->name);
+		if (type->data.generic_param) {
+			MonoGenericParamInfo *info = mono_generic_param_info (type->data.generic_param);
+			if (info)
+				g_string_append (res, info->name);
+			else
+				g_string_append_printf (res, "%s%d", type->type == MONO_TYPE_VAR ? "!" : "!!", mono_generic_param_num (type->data.generic_param));
+		} else {
+			g_string_append (res, "<unknown>");
+		}
 		break;
 	default:
 		break;
@@ -186,7 +228,12 @@ mono_signature_get_desc (MonoMethodSignature *sig, gboolean include_namespace)
 {
 	int i;
 	char *result;
-	GString *res = g_string_new ("");
+	GString *res;
+
+	if (!sig)
+		return g_strdup ("<invalid signature>");
+
+	res = g_string_new ("");
 
 	for (i = 0; i < sig->param_count; ++i) {
 		if (i > 0)
@@ -245,6 +292,8 @@ mono_context_get_desc (MonoGenericContext *context)
  *
  * in all the loaded assemblies.
  *
+ * Both classname and methodname can contain '*' which matches anything.
+ *
  * Returns: a parsed representation of the method description.
  */
 MonoMethodDesc*
@@ -257,6 +306,9 @@ mono_method_desc_new (const char *name, gboolean include_namespace)
 	class_nspace = g_strdup (name);
 	use_args = strchr (class_nspace, '(');
 	if (use_args) {
+		/* Allow a ' ' between the method name and the signature */
+		if (use_args > class_nspace && use_args [-1] == ' ')
+			use_args [-1] = 0;
 		*use_args++ = 0;
 		end = strchr (use_args, ')');
 		if (!end) {
@@ -288,6 +340,10 @@ mono_method_desc_new (const char *name, gboolean include_namespace)
 	result->klass = class_name;
 	result->namespace = use_namespace? class_nspace: NULL;
 	result->args = use_args? use_args: NULL;
+	if (strstr (result->name, "*"))
+		result->name_glob = TRUE;
+	if (strstr (result->klass, "*"))
+		result->klass_glob = TRUE;
 	if (use_args) {
 		end = use_args;
 		if (*end)
@@ -339,7 +395,14 @@ gboolean
 mono_method_desc_match (MonoMethodDesc *desc, MonoMethod *method)
 {
 	char *sig;
-	if (strcmp (desc->name, method->name))
+	gboolean name_match;
+
+	name_match = strcmp (desc->name, method->name) == 0;
+#ifndef _EGLIB_MAJOR
+	if (!name_match && desc->name_glob)
+		name_match = g_pattern_match_simple (desc->name, method->name);
+#endif
+	if (!name_match)
 		return FALSE;
 	if (!desc->args)
 		return TRUE;
@@ -375,6 +438,12 @@ match_class (MonoMethodDesc *desc, int pos, MonoClass *klass)
 {
 	const char *p;
 
+	if (desc->klass_glob && !strcmp (desc->klass, "*"))
+		return TRUE;
+#ifndef _EGLIB_MAJOR
+	if (desc->klass_glob && g_pattern_match_simple (desc->klass, klass->name))
+		return TRUE;
+#endif
 	p = my_strrchr (desc->klass, '/', &pos);
 	if (!p) {
 		if (strncmp (desc->klass, klass->name, pos))
@@ -422,6 +491,13 @@ mono_method_desc_search_in_image (MonoMethodDesc *desc, MonoImage *image)
 	MonoMethod *method;
 	int i;
 
+	/* Handle short names for system classes */
+	if (!desc->namespace && image == mono_defaults.corlib) {
+		klass = find_system_class (desc->klass);
+		if (klass)
+			return mono_method_desc_search_in_class (desc, klass);
+	}
+
 	if (desc->namespace && desc->klass) {
 		klass = mono_class_from_name (image, desc->namespace, desc->klass);
 		if (!klass)
@@ -462,12 +538,12 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 		g_free (tmp);
 	}
 	if (dh->label_format)
-		g_string_sprintfa (str, dh->label_format, label);
+		g_string_append_printf (str, dh->label_format, label);
 	
 	i = mono_opcode_value (&ip, end);
 	ip++;
 	opcode = &mono_opcodes [i];
-	g_string_sprintfa (str, "%-10s", mono_opcode_name (i));
+	g_string_append_printf (str, "%-10s", mono_opcode_name (i));
 
 	switch (opcode->argument) {
 	case MonoInlineNone:
@@ -483,37 +559,76 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 			g_string_append (str, tmp);
 			g_free (tmp);
 		} else {
-			g_string_sprintfa (str, "0x%08x", token);
+			g_string_append_printf (str, "0x%08x", token);
 		}
 		ip += 4;
 		break;
-	case MonoInlineString:
-		/* TODO */
+	case MonoInlineString: {
+		const char *blob;
+		char *s;
+		size_t len2;
+		char *blob2 = NULL;
+
+		if (!method->klass->image->dynamic) {
+			token = read32 (ip);
+			blob = mono_metadata_user_string (method->klass->image, mono_metadata_token_index (token));
+
+			len2 = mono_metadata_decode_blob_size (blob, &blob);
+			len2 >>= 1;
+
+#ifdef NO_UNALIGNED_ACCESS
+			/* The blob might not be 2 byte aligned */
+			blob2 = g_malloc ((len2 * 2) + 1);
+			memcpy (blob2, blob, len2 * 2);
+#else
+			blob2 = blob;
+#endif
+
+#if G_BYTE_ORDER != G_LITTLE_ENDIAN
+			{
+				guint16 *buf = g_new (guint16, len2 + 1);
+				int i;
+
+				for (i = 0; i < len2; ++i)
+					buf [i] = GUINT16_FROM_LE (((guint16*)blob2) [i]);
+				s = g_utf16_to_utf8 (buf, len2, NULL, NULL, NULL);
+				g_free (buf);
+			}
+#else
+				s = g_utf16_to_utf8 ((gunichar2*)blob2, len2, NULL, NULL, NULL);
+#endif
+
+			g_string_append_printf (str, "\"%s\"", s);
+			g_free (s);
+			if (blob != blob2)
+				g_free (blob2);
+		}
 		ip += 4;
 		break;
+	}
 	case MonoInlineVar:
-		g_string_sprintfa (str, "%d", read16 (ip));
+		g_string_append_printf (str, "%d", read16 (ip));
 		ip += 2;
 		break;
 	case MonoShortInlineVar:
-		g_string_sprintfa (str, "%d", (*ip));
+		g_string_append_printf (str, "%d", (*ip));
 		ip ++;
 		break;
 	case MonoInlineBrTarget:
 		sval = read32 (ip);
 		ip += 4;
 		if (dh->label_target)
-			g_string_sprintfa (str, dh->label_target, ip + sval - il_code);
+			g_string_append_printf (str, dh->label_target, ip + sval - il_code);
 		else
-			g_string_sprintfa (str, "%d", sval);
+			g_string_append_printf (str, "%d", sval);
 		break;
 	case MonoShortInlineBrTarget:
 		sval = *(const signed char*)ip;
 		ip ++;
 		if (dh->label_target)
-			g_string_sprintfa (str, dh->label_target, ip + sval - il_code);
+			g_string_append_printf (str, dh->label_target, ip + sval - il_code);
 		else
-			g_string_sprintfa (str, "%d", sval);
+			g_string_append_printf (str, "%d", sval);
 		break;
 	case MonoInlineSwitch: {
 		const unsigned char *end;
@@ -526,9 +641,9 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 				g_string_append (str, ", ");
 			label = read32 (ip);
 			if (dh->label_target)
-				g_string_sprintfa (str, dh->label_target, end + label - il_code);
+				g_string_append_printf (str, dh->label_target, end + label - il_code);
 			else
-				g_string_sprintfa (str, "%d", label);
+				g_string_append_printf (str, "%d", label);
 			ip += 4;
 		}
 		g_string_append_c (str, ')');
@@ -537,23 +652,23 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 	case MonoInlineR: {
 		double r;
 		readr8 (ip, &r);
-		g_string_sprintfa (str, "%g", r);
+		g_string_append_printf (str, "%g", r);
 		ip += 8;
 		break;
 	}
 	case MonoShortInlineR: {
 		float r;
 		readr4 (ip, &r);
-		g_string_sprintfa (str, "%g", r);
+		g_string_append_printf (str, "%g", r);
 		ip += 4;
 		break;
 	}
 	case MonoInlineI:
-		g_string_sprintfa (str, "%d", (gint32)read32 (ip));
+		g_string_append_printf (str, "%d", (gint32)read32 (ip));
 		ip += 4;
 		break;
 	case MonoShortInlineI:
-		g_string_sprintfa (str, "%d", *(const signed char*)ip);
+		g_string_append_printf (str, "%d", *(const signed char*)ip);
 		ip ++;
 		break;
 	case MonoInlineI8:
@@ -641,6 +756,16 @@ mono_method_full_name (MonoMethod *method, gboolean signature)
 
 		inst_desc = str->str;
 		g_string_free (str, FALSE);
+	} else if (method->is_generic) {
+		MonoGenericContainer *container = mono_method_get_generic_container (method);
+
+		GString *str = g_string_new ("");
+		g_string_append (str, "<");
+		ginst_get_desc (str, container->context.method_inst);
+		g_string_append (str, ">");
+
+		inst_desc = str->str;
+		g_string_free (str, FALSE);
 	}
 
 	if (method->wrapper_type != MONO_WRAPPER_NONE)
@@ -674,11 +799,11 @@ print_name_space (MonoClass *klass)
 {
 	if (klass->nested_in) {
 		print_name_space (klass->nested_in);
-		g_print (klass->nested_in->name);
+		g_print ("%s", klass->nested_in->name);
 		return "/";
 	}
 	if (klass->name_space [0]) {
-		g_print (klass->name_space);
+		g_print ("%s", klass->name_space);
 		return ".";
 	}
 	return "";
@@ -868,8 +993,12 @@ mono_class_describe_statics (MonoClass* klass)
 	MonoClassField *field;
 	MonoClass *p;
 	const char *field_ptr;
-	const char *addr = mono_class_vtable (mono_domain_get (), klass)->data;
-	if (!addr)
+	MonoVTable *vtable = mono_class_vtable_full (mono_domain_get (), klass, FALSE);
+	const char *addr;
+
+	if (!vtable)
+		return;
+	if (!(addr = vtable->data))
 		return;
 
 	for (p = klass; p != NULL; p = p->parent) {

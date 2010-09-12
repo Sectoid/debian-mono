@@ -561,13 +561,17 @@ namespace System.Diagnostics {
 		public string ProcessName {
 			get {
 				if(process_name==null) {
+					
+					if (process_handle == IntPtr.Zero)
+						throw new InvalidOperationException ("No process is associated with this object.");
+					
 					process_name=ProcessName_internal(process_handle);
 					/* If process_name is _still_
 					 * null, assume the process
 					 * has exited
 					 */
 					if (process_name == null)
-						throw new SystemException("The process has exited");
+						throw new InvalidOperationException ("Process has exited, so the requested information is not available.");
 					
 					/* Strip the suffix (if it
 					 * exists) simplistically
@@ -853,6 +857,9 @@ namespace System.Diagnostics {
 		{
 			int [] pids = GetProcesses_internal ();
 			ArrayList proclist = new ArrayList ();
+
+			if (pids == null)
+				return new Process [0];
 			
 			for (int i = 0; i < pids.Length; i++) {
 				try {
@@ -882,19 +889,26 @@ namespace System.Diagnostics {
 
 		public static Process[] GetProcessesByName(string processName)
 		{
-			Process [] procs = GetProcesses();
-			ArrayList proclist = new ArrayList();
+			int [] pids = GetProcesses_internal ();
+			if (pids == null)
+				return new Process [0];
 			
-			for (int i = 0; i < procs.Length; i++) {
-				/* Ignore case */
-				if (String.Compare (processName,
-						    procs [i].ProcessName,
-						    true) == 0) {
-					proclist.Add (procs [i]);
+			ArrayList proclist = new ArrayList ();
+			for (int i = 0; i < pids.Length; i++) {
+				try {
+					Process p = GetProcessById (pids [i]);
+					if (String.Compare (processName, p.ProcessName, true) == 0)
+						proclist.Add (p);
+				} catch (SystemException) {
+					/* The process might exit
+					 * between
+					 * GetProcesses_internal and
+					 * GetProcessById
+					 */
 				}
 			}
 
-			return ((Process[]) proclist.ToArray (typeof(Process)));
+			return ((Process []) proclist.ToArray (typeof (Process)));
 		}
 
 		[MonoTODO]
@@ -1632,6 +1646,7 @@ namespace System.Diagnostics {
 		static void CBOnExit (object state, bool unused)
 		{
 			Process p = (Process) state;
+			p.already_waiting = false;
 			p.OnExited ();
 		}
 

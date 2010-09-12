@@ -3,6 +3,7 @@ SUBDIRS =
 include ../../build/rules.make
 
 LOCAL_MCS_FLAGS = \
+	/resource:../monodoc/Resources/mdoc-html-format.xsl,mdoc-html-format.xsl    \
 	/resource:../monodoc/Resources/mdoc-html-utils.xsl,mdoc-html-utils.xsl      \
 	/resource:../monodoc/Resources/mdoc-sections-css.xsl,mdoc-sections-css.xsl  \
 	/resource:../monodoc/Resources/mono-ecma-css.xsl,mono-ecma-css.xsl          \
@@ -10,6 +11,9 @@ LOCAL_MCS_FLAGS = \
 	/resource:Resources/monodoc-ecma.xsd,monodoc-ecma.xsd                       \
 	/resource:Resources/overview.xsl,overview.xsl                               \
 	/resource:Resources/stylesheet.xsl,stylesheet.xsl                           \
+	/r:System.Web.dll                                                           \
+	/r:System.Xml.Linq.dll                                                      \
+	/r:ICSharpCode.SharpZipLib.dll                                              \
 	/r:$(topdir)/class/lib/net_1_1/monodoc.dll                                  \
 	/r:$(topdir)/class/lib/net_2_0/Mono.Cecil.dll
 
@@ -152,6 +156,16 @@ check-mdoc-export-html: check-monodocer mdoc.exe
 		Test/en.expected.importslashdoc
 	diff --exclude=.svn -rup Test/html.expected Test/html.actual
 
+check-mdoc-export-html-with-version: mdoc.exe
+	rm -Rf Test/html.actual.v0 Test/html.actual.since-with-v0 .v0.txt .v2.txt
+	$(MONO) mdoc.exe export-html -o Test/html.actual.v0 \
+		Test/en.expected
+	$(MONO) mdoc.exe export-html -o Test/html.actual.since-with-v0 \
+		Test/en.expected.since -with-version 0.0.0.0
+	(cd Test/html.actual.v0            && find . -type f) | sort > .v0.txt
+	(cd Test/html.actual.since-with-v0 && find . -type f) | sort > .v2.txt
+	diff -rup .v0.txt .v2.txt   # assert no types added
+
 check-md-html-dir: mdoc.exe
 	rm -Rf Test/html.actual
 	$(MONO) mdoc.exe export-html -dest:Test/html.actual $(DIR) 
@@ -198,6 +212,7 @@ check-doc-tools: check-monodocer-since \
 	check-monodocer-importslashdoc \
 	check-monodocer \
 	check-mdoc-export-html \
+	check-mdoc-export-html-with-version \
 	check-mdoc-export-msxdoc \
 	check-mdoc-validate
 

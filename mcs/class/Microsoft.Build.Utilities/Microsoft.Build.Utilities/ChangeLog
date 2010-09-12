@@ -1,3 +1,64 @@
+2010-04-10  Ankit Jain  <jankit@novell.com>
+
+	* ReservedNameUtils.cs (GetReservedMetadata): Handle empty item.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs: Use regex to parse output. Regex is from monodevelop.
+
+2010-04-08  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (ExecuteTool): Check that the tool exists.
+
+2010-04-03  Ankit Jain  <jankit@novell.com>
+
+	* TargetDotNetFrameworkVersion.cs: Add Version40 .
+	* Task.cs (BuildEngine2): New.
+	* ToolLocationHelper.cs: Use class/lib/net_* as the path
+	for the assemblies and targets when running tests.
+	Environment variable TESTING_MONO is set for testing.
+	This allows a 4.0 xbuild to build 2.0/3.5 projects.
+
+2010-02-19  Ankit Jain  <jankit@novell.com>
+
+	* TaskItem.cs: Track api changes.
+
+2010-02-10  Ankit Jain  <jankit@novell.com>
+
+	* ProcessService.cs (globalEnvironmentVariablesOverride): Use
+	ProcessStringDictionary instead of StringDictionary.
+	ProcessStringDictionary retains the case of the keys (env vars
+	here).
+	* ToolTask.cs (environmentOverride): Likewise.
+
+2010-02-10  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (ExecuteTool): Use the virtual method
+	Standard*LoggingImportance, instead of the underlying field.
+	(LogEventsFromTextOutput): Use @importance argument for LogMessage.
+	(LogToolCommand): Remove MonoTODO.
+
+2010-02-06  Ankit Jain  <jankit@novell.com>
+
+	* ToolTask.cs (SkipTaskExecution): Use ValidateParameters method.
+	Remove some MonoTODOs.
+
+2009-11-25  Ankit Jain  <jankit@novell.com>
+
+	* ToolLocationHelper.cs: Set directory for 3.0 framework
+	to "2.0"
+
+2009-11-09  Ankit Jain  <jankit@novell.com>
+
+	* TargetDotNetFrameworkVersion.cs (Version30):
+	(Version35): New.
+	* ToolLocationHelper.cs: Support 3.0 and 3.5 also.
+
+2009-10-13  Ankit Jain  <jankit@novell.com>
+
+	* TaskLoggingHelper.cs:
+	* ToolTask.cs: Fix warnings.
+
 2009-10-12  Ankit Jain  <jankit@novell.com>
 
 	* TaskLoggingHelper.cs: Use the buildEngine.ProjectFileOfTaskNode

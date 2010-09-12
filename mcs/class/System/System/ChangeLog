@@ -1,11 +1,92 @@
+2010-06-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Uri.cs: change of behavior un 4.0.
+	Fixes bug #602411.
+
+2010-06-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Uri.cs: fix serialization for relative URIs. Patch from Greg
+	Smolyn. Fixes bug #615320.
+
+2010-04-17  Raja R Harinath  <harinath@hurrynot.org>
+
+	Keep "ftp://a.b/%2fcd" urls unmolested
+	* Uri.cs (CompactEscaped): New.  Check if scheme allows escaped
+	path characters are compacted (list of schemes obtained from MSDN).
+	(Reduce): Add argument that is set if escaped characters need to
+	be compacted.
+
+2009-11-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Uri.cs: Hide protected EscapeString and Unescape for SL2/3
+	* UriTypeConverter.cs: Seal type for SL2/3
+	[Backport r147156]
+
 2009-09-01  Raja R Harinath  <harinath@hurrynot.org>
 
 	Fix #533572
 	* Uri.cs (ParseNoExceptions): Don't look for '@' in absolute unix paths.
 
-2009-01-28  Bill Holmes  <billholmes54@gmail.com>
+2009-05-16  Sebastien Pouliot  <sebastien@ximian.com>
 
-	Backport of r124869.
+	* Uri.cs (NET_2_1): Remove some extra code for NET_2_1
+
+2009-04-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* UriParser.cs: Don't use compiled regex on NET_2_1 (feature is
+	not available)
+
+2009-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DefaultUriParser.cs: Add special case for schema
+	* Uri.cs: Make sure we can use a default parser if none was
+	registred for the URI schema.
+	* UriParser.cs: Handle "*" as a special schema for "anything"
+	[Fix bug #496783]
+
+2009-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Uri.cs: Fix some issues found with Moonlight (see new unit
+	tests)
+
+2009-04-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Uri.cs: Fix processing of %2f and %5c in paths. Avoid a few
+	computation where the result is not used (overwritten)
+
+2009-03-16  Raja R Harinath  <harinath@hurrynot.org>
+
+	Reduce dependence of UriParser on Uri
+	* UriParser.cs (GetComponents): Don't refer to fields of Uri to
+	extract components.  Use a pair of regexes instead on
+	Uri.OriginalString.
+	* Uri.cs (OriginalString): Make available as an internal property
+	in the NET_1_1 profile.
+
+2009-03-10  Jackson Harper  <jackson@ximian.com>
+
+	* Uri.cs: 2.1 Uris do get a UriTypeConverter.
+
+2009-02-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Uri.cs : file URI for Windows path should also try '\' instead of
+	  '/' as a host/path separator.
+
+2009-02-09  Raja R Harinath  <harinath@hurrynot.org>
+
+	* IUriData.cs, UriData.cs: New.  Initial cut at UriParser protocol.
+
+	Make UriParser available in the NET_1_1 build
+	* UriParser.cs: Make visible as internal class in the NET_1_1 build.
+	* UriComponents.cs, UriFormats.cs, DefaultUriParser.cs: Likewise.
+	* GenericUriParser.cs, GenericUriParserOptions.cs: Likewise.
+
+2009-02-08  Gert Driesen  <drieseng@users.sourceforge.net>
+
+	* Uri.cs: Moved UriKind check from TryCreate to exception-less .ctor,
+	and check accessibility of this .ctor from internal to private.
+
+2009-01-28  Bill Holmes  <billholmes54@gmail.com>
 
 	* Uri.cs (IsWellFormedUriString):  Changing IsWellFormedUriString
 	  to not throw an exception but return false instead. 

@@ -1,43 +1,10 @@
-//
-// Mono.Data.Sqlite.SQLiteStatement.cs
-//
-// Author(s):
-//   Robert Simpson (robert@blackcastlesoft.com)
-//
-// Adapted and modified for the Mono Project by
-//   Marek Habersack (grendello@gmail.com)
-//
-//
-// Copyright (C) 2006 Novell, Inc (http://www.novell.com)
-// Copyright (C) 2007 Marek Habersack
-//
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-// 
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-
-/********************************************************
- * ADO.NET 2.0 Data Provider for Sqlite Version 3.X
+﻿/********************************************************
+ * ADO.NET 2.0 Data Provider for SQLite Version 3.X
  * Written by Robert Simpson (robert@blackcastlesoft.com)
  * 
  * Released to the public domain, use at your own risk!
  ********************************************************/
-#if NET_2_0
+
 namespace Mono.Data.Sqlite
 {
   using System;
@@ -46,14 +13,14 @@ namespace Mono.Data.Sqlite
   using System.Globalization;
 
   /// <summary>
-  /// Represents a single SQL statement in Sqlite.
+  /// Represents a single SQL statement in SQLite.
   /// </summary>
   internal sealed class SqliteStatement : IDisposable
   {
     /// <summary>
-    /// The underlying Sqlite object this statement is bound to
+    /// The underlying SQLite object this statement is bound to
     /// </summary>
-    internal SqliteBase        _sql;
+    internal SQLiteBase        _sql;
     /// <summary>
     /// The command text of this SQL statement
     /// </summary>
@@ -61,13 +28,13 @@ namespace Mono.Data.Sqlite
     /// <summary>
     /// The actual statement pointer
     /// </summary>
-    internal IntPtr            _sqlite_stmt;
+    internal SqliteStatementHandle  _sqlite_stmt;
     /// <summary>
     /// An index from which unnamed parameters begin
     /// </summary>
     internal int               _unnamedParameters;
     /// <summary>
-    /// Names of the parameters as Sqlite understands them to be
+    /// Names of the parameters as SQLite understands them to be
     /// </summary>
     internal string[]          _paramNames;
     /// <summary>
@@ -84,11 +51,11 @@ namespace Mono.Data.Sqlite
     /// <summary>
     /// Initializes the statement and attempts to get all information about parameters in the statement
     /// </summary>
-    /// <param name="sqlbase">The base Sqlite object</param>
+    /// <param name="sqlbase">The base SQLite object</param>
     /// <param name="stmt">The statement</param>
     /// <param name="strCommand">The command text for this statement</param>
     /// <param name="previous">The previous command in a multi-statement command</param>
-    internal SqliteStatement(SqliteBase sqlbase, IntPtr stmt, string strCommand, SqliteStatement previous)
+    internal SqliteStatement(SQLiteBase sqlbase, SqliteStatementHandle stmt, string strCommand, SqliteStatement previous)
     {
       _sql     = sqlbase;
       _sqlite_stmt = stmt;
@@ -158,14 +125,16 @@ namespace Mono.Data.Sqlite
     /// </summary>
     public void Dispose()
     {
-      _sql.FinalizeStatement(this);
+      if (_sqlite_stmt != null)
+      {
+        _sqlite_stmt.Dispose();
+      }
+      _sqlite_stmt = null;
       
       _paramNames = null;
       _paramValues = null;
       _sql = null;
       _sqlStatement = null;
-
-      GC.SuppressFinalize(this);
     }
     #endregion
     
@@ -191,7 +160,7 @@ namespace Mono.Data.Sqlite
     private void BindParameter(int index, SqliteParameter param)
     {
       if (param == null)
-        throw new SqliteException((int)SqliteErrorCode.Error, "Insufficient parameters supplied to the command");
+        throw new SqliteException((int)SQLiteErrorCode.Error, "Insufficient parameters supplied to the command");
 
       object obj = param.Value;
       DbType objType = param.DbType;
@@ -228,7 +197,7 @@ namespace Mono.Data.Sqlite
         case DbType.Single:
         case DbType.Double:
         case DbType.Currency:
-        case DbType.Decimal:
+        //case DbType.Decimal: // Dont store decimal as double ... loses precision
           _sql.Bind_Double(this, index, Convert.ToDouble(obj, CultureInfo.CurrentCulture));
           break;
         case DbType.Binary:
@@ -240,6 +209,9 @@ namespace Mono.Data.Sqlite
           else
             _sql.Bind_Text(this, index, obj.ToString());
 
+          break;
+        case DbType.Decimal: // Dont store decimal as double ... loses precision
+          _sql.Bind_Text(this, index, Convert.ToDecimal(obj, CultureInfo.CurrentCulture).ToString(CultureInfo.InvariantCulture));
           break;
         default:
           _sql.Bind_Text(this, index, obj.ToString());
@@ -257,25 +229,15 @@ namespace Mono.Data.Sqlite
       int pos = typedefs.IndexOf("TYPES", 0, StringComparison.OrdinalIgnoreCase);
       if (pos == -1) throw new ArgumentOutOfRangeException();
 
-      string[] types = typedefs.Substring(pos + 6).Replace(" ", "").Replace(";", "").Replace("\"", "").Replace("[", "").Replace("]", "").Split(',', '\r', '\n', '\t');
+      string[] types = typedefs.Substring(pos + 6).Replace(" ", "").Replace(";", "").Replace("\"", "").Replace("[", "").Replace("]", "").Replace("`","").Split(',', '\r', '\n', '\t');
 
-      int cols = 0;
       int n;
       for (n = 0; n < types.Length; n++)
       {
-        if (String.IsNullOrEmpty(types[n]) == false)
-          cols++;
+        if (String.IsNullOrEmpty(types[n]) == true)
+          types[n] = null;
       }
-
-      _types = new string[cols];
-
-      cols = 0;
-      for (n = 0; n < types.Length; n++)
-      {
-        if (String.IsNullOrEmpty(types[n]) == false)
-          _types[cols++] = types[n];
-      }
+      _types = types;
     }
   }
 }
-#endif

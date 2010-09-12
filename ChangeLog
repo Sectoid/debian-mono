@@ -1,7 +1,92 @@
+2010-07-12  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* mono-core.spec.in: Updates, including breaking a circular dep.
+
+2010-04-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Applied patch from Robert Nagy (robert@openbsd.org). Add
+	sys/param.h dependencies to a few checks.
+
+2010-04-21  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* configure.in: Propagate DISABLE_MCS_DOCS to makefiles so mono/docs
+	can be disabled. Fixes the build '--with-profile2=no' using
+	'--with-mcs-docs=no' as a workaround.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Check for the asm/sigcontext.h header.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: On OpenBSD, remove duplicate -pthread options in 
+	  libmono_ldflags.  Change from Robert Nagy <robert@openbsd.org>.
+
+2010-04-20  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: For Linux hosts, remove AC_CHECK_LIB(pthread...) in the
+	  primary `case "$host"` block.  Using AC_CHECK_LIB() here breaks *BSD,
+	  and it's unnecessary (for !target_win32, pthreads are checked again 
+	  later in configure.in).
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Use AC_CHECK_LIB() to check for pthread instead of
+	  just blindly linking to -lpthread, as Android includes pthread
+	  support within libc and doesn't provide a separate libpthread.
+	  Android's <string.h> pulls in <malloc.h> (unlike glibc), resulting
+	  in a build error in mono/utils/mono-codeman.c due to 
+	  `struct mallinfo` re-declaration.  Define HAVE_USR_INCLUDE_MALLOC_H 
+	  if /usr/include/malloc.h is present to avoid this.
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Add header, structure member, and function checks as 
+	  Android doesn't provide all the headers, structure members, and 
+	  functions that a "full" Linux distro includes.
+
+2010-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add a --enable-minimal=normalization option to disable support
+	for string normalization.
+
+2010-04-05  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Append -lgc to libmono_ldflags if using an external libgc.
+
+2010-04-04  Andreas Färber  <andreas.faerber@web.de>
+
+	* configure.in: Fix typo.
+	Set default for with_moonlight to fix "Moon Profile:" output.
+
+	Contributed under MIT/X11 license.
+
+2010-04-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Applied some openbsd changes from Robert Nagy
+	<robert@openbsd.org>.
+
+2010-01-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Check whenever g++ is installed, since libtool requires it
+	even if no c++ files will be compiled.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Apply some openbsd changes from openbsd ports.
+
+2010-01-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Disable the solaris tar check on !solaris platforms.
+
 2009-12-22  Geoff Norton  <gnorton@novell.com>
 
 	* configure.in: Fix invalid escaping.  Patch from Spina from
 	www.slacky.eu.
+
+2009-12-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add an LLVM_CFLAGS automake variable.
 
 2009-12-11  Zoltan Varga  <vargaz@gmail.com>
 
@@ -9,10 +94,112 @@
 	for 2 parameter sched_setaffinity in older glibc versions. Fixes
 	#564000.
 
-2009-06-11  Zoltan Varga  <vargaz@gmail.com>
+2009-11-17  Marek Habersack  <mhabersack@novell.com>
 
-	* configure.in: Disable dtrace support if dtrace doesn't support the
-	-h option.
+	* runtime/Makefile.am (TEST_SUPPORT_FILES): added bin/al2 - needed
+	for System.Web tests.
+
+2009-11-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add a --enable-minimal=soft-debug option.
+
+2009-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* acinclude.m4 (dolt_supported): Handle 'i686-pc-cygwin' too.
+
+2009-11-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* acinclude.m4 (dolt_supported): Applied patch from Kornél Pál
+	<kornelpal@gmail.com>. Enable dolt on cygwin.
+
+2009-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Check for netinet/in.h.
+
+2009-11-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* configure.in: add a few missing header file checks.
+
+2009-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Make the LLVM warning a bit more up-to-date.
+
+	* configure.in: Pass -mno-cygwin to CXX too on windows. Enable AC_PROG_CXX
+	since it now works on windows too.
+
+2009-10-12  Zoltan Varga  <vargaz@gmail.com>
+
+	* data/Makefile.am (gdb_DATA): Install mono-gdb.py alongside the mono executable.
+
+	* data/gdb-pre7.0: New directory, containing the mono support files for
+	gdb versions before 7.0.
+
+2009-09-29  Ankit Jain  <jankit@novell.com>
+
+	* mono-core.spec.in: Add Microsoft.WebApplication.targets
+
+2009-08-29  Jonathan Pryor  <jpryor@novell.com>
+
+	* man/mdoc-export-html.1: Document --with-profile, --with-version.
+
+2009-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* acinclude.m4 (dolt_supported): Enable this for mips.
+
+2009-08-29  Jonathan Pryor  <jpryor@novell.com>
+
+	* man/mdoc.5: Document the new <format/> element.
+
+2009-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/Makefile.am: Applied patch from Hib Eris (hib@hiberis.nl).
+	Add $(SCRIPT_SUFFIX) to the name of the 'mod' tool.
+
+2009-08-04  Miguel de Icaza  <miguel@novell.com>
+
+	* Start the split between PLATFORM_WIN32 and TARGET_WIN32.
+
+	PLATFORM_WIN32 should be used to configure the runtime while
+	building it.   TARGET_WIN32 is used for target execution.
+
+	This is used by Mono's AOT cross compiler when running on Windows,
+	but targetting a different operating system.    So we have to tell
+	those two apart.
+
+2009-07-24  Jb Evain  <jbevain@novell.com>
+
+	* scripts/Makefile.am: generate a dmcs script for the 4.0 compiler
+	when building the net_4_0 profile.
+
+2009-07-24  Jb Evain  <jbevain@novell.com>
+
+	* configure.in
+	* runtime/Makefile.am
+	* data/Makefile.am: create a and populate a configuration folder
+	for the net_4_0 profile.
+
+2009-07-21  Jb Evain  <jbevain@novell.com>
+
+	* configure.in: add a --with-monotouch option.
+	* runtime/Makefile.am: use it to trigger the mcs monotouch build.
+
+2009-07-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add more libraries needed by the llvm backend.
+
+2009-07-02  Jb Evain  <jbevain@novell.com>
+
+	* scripts/Makefile.am: monolinker is now a 2.0 assembly.
+
+2009-07-02  jonas echterhoff <jonas@unity3d.com>
+
+	* configure.in: Add linker flag on Mac OS X to allow access to other
+	processes, needed for debugging. Enable debugging on OS X.
+	
+2009-06-21  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in (TARGET_BYTE_ORDER): New define containing the byte order of
+	the target.
 
 2009-06-18  Marek Habersack  <mhabersack@novell.com>
 
@@ -21,18 +208,111 @@
 	Added ecmascriptversion, msdomversion and w3cdomversion to the IE
 	8.0 entry. Fixes bug #513965
 
+2009-06-16  Raja R Harinath  <harinath@hurrynot.org>
+
+	* configure.in (--with-profile2): Simplify slightly.
+	(--with-profile4, --with-moonlight): Likewise.
+
+2009-06-15  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: Changed the default to not build the 4.0 profile
+	unless explicitly enabled.
+
+2009-06-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* CMakeLists.txt: Add mips support.
+
+2009-06-14  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/CMakeLists.txt: New file.
+
+	* samples/CMakeLists.txt: New file, currently empty.
+
+2009-06-12  Andreia Gaita  <avidigal@novell.com>
+
+	* data/config.in: add libcups dllmap entry
+
+2009-06-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Disable dtrace support if dtrace doesn't support the
+	-h option.
+
+2009-06-10  Marek Safar  <marek.safar@gmail.com>
+
+	* runtime/Makefile.am, configure.in: Make net_4_0 profile optional.
+
+2009-06-07  Marek Safar  <marek.safar@gmail.com>
+
+	* runtime/Makefile.am: Enabled net_4_0 for compilation.
+
 2009-05-27  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Disable USE_MUNMAP on ppc to work around #504411.
 
-2009-04-28  Zoltan Varga  <vargaz@gmail.com>
+2009-05-26  Zoltan Varga  <vargaz@gmail.com>
 
-	* configure.in: Define a TARGET_<ARCH> preprocessor symbol for some
-	architectures.
+	* CMakeLists.txt: Implement AC_OUTPUT, creation of config.make, etc.
+	
+	* CMakeLists.txt: implement arm fpu detection, add vfp detection as
+	well.
 
-2009-01-25  Zoltan Varga  <vargaz@gmail.com>
+	* CMakeLists.txt: Add arm support.
 
-	* acinclude.m4 (dolt_supported): Handle ARM as well.
+2009-05-24  Miguel de Icaza  <miguel@novell.com>
+
+	* Disable mono/docs build if we disabled the mcs build.
+
+2009-05-24  Zoltan Varga  <vargaz@gmail.com>
+
+	* */CMakeLists.txt: Add beginnings of a cmake based build system.
+
+2009-05-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* acinclude.m4 (dolt_supported): Enable dolt on sparc linux.
+
+2009-05-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add TARGET_POWERPC/POWERPC64 defines.
+
+2009-05-09  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: Instead of reporting the various disabled features
+	in a loop, where a keyword might fail, report the actual disabled
+	features in the sections that handle them
+
+2009-05-08  Zoltan Varga  <vargaz@gmail.com>
+
+	* acinclude.m4 (dolt_supported): Add powerpc64.
+
+2009-05-07  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* runtime/Makefile.am (mcs-compileall): Pass --security=validil
+	to the runtime so the assemblies are not required to be verifiable.
+
+2009-05-06  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile.am (compiler-tests): Rewrite to re-build the moon
+	assemblies after mcs/ is built.
+	* runtime/Makefile.am (build_profiles) [INSTALL_2_1]: Build only
+	the net_2_1_raw profile.
+	(test_profiles): New.  Mention net_2_1 profile.
+	(moon-do-build): New.
+
+2009-05-05  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: Fix the bug reported on the mailing list by
+	Koushik K Dutta: do not build docs when --disable-mcs-builds is
+	passed. 
+
+2009-05-05  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: Reduce configure-time dependencies by using
+	pkg-config the way it was originally intended to be used, and not
+	with the incredibly lame and painful inducing pkg.m4 file. 
+
+	I am on a quest to remove this gratuitous dep on pkg.m4 that is
+	making people's lives miserable around the globe, just because
+	someone can not be bothered to learn the shell if construct.
 
 2009-04-28  Zoltan Varga  <vargaz@gmail.com>
 
@@ -40,6 +320,81 @@
 	
 	* configure.in: Define a TARGET_<ARCH> preprocessor symbol for some
 	architectures.
+
+2009-04-23  Jb Evain  <jbevain@novell.com>
+
+	* scripts/Makefile.am: add a pdb2mdb script.
+
+2009-04-22  Jeffrey Stedfast  <fejj@novell.com>
+
+	* configure.in: Check for a stable version of glib-2.0 as opposed
+	to an unstable development version (we don't want people
+	unfamiliar with glib versioning to install an unstable development
+	version of glib).
+
+2009-04-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Quiet 'copying selected object files' messages from
+	newer libtool versions as well.
+	
+	* configure.in: Disable AC_PROG_CXX for now to fix the windows build.
+
+	In mono/mini:
+
+	* Makefile.am: Comment out the cpp files as f@#%$ automake complains even
+	if they are inside a conditional.
+	
+2009-04-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/patch-quiet.sh: Process LTCXXCOMPILE too.
+
+2009-04-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Move the call to AC_PROG_CXX earlier and enable it again.
+	
+	* configure.in: Disable the call to AC_PROG_CXX for now.
+
+2009-04-02  Marek Habersack  <mhabersack@novell.com>
+
+	* data/Makefile.am: added system.web.mvc.pc{.in}
+
+	* configure.in: added data/system.web.mvc.pc to AC_OUTPUT
+
+	* data/system.web.mvc.pc.in: added
+
+2009-04-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add an ENABLE_LLVM autoconf define.
+	
+	* configure.in: Add --enable-llvm argument to enable the experimental
+	LLVM back end.
+
+2009-03-31  Jb Evain  <jbevain@novell.com>
+
+	* scripts: Remove smcs, which is handled by moon now.
+	* data: ditto.
+
+2009-03-20  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono/os: Remove this now empty directory.
+	
+	* mono/Makefile.am (SUBDIRS): Remove 'os'.
+
+2009-03-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* scripts/Makefile.am : mono-xmltool uses 2.0.
+
+2009-03-12  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/Makefile.am: Add sqlmetal.
+
+2009-03-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* README: Remove the comment about --with-moonlight being pre-alpha.
+
+2009-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* scripts/Makefile.am : added svcutil.
 
 2009-02-26  Marek Habersack  <mhabersack@novell.com>
 
@@ -51,6 +406,47 @@
 
 	* configure.in: include stdio so that NULL is defined when checking
 	for ifreq.
+
+2009-02-06  Miguel De Icaza  <miguel@novell.com>
+
+	* Disable parallel marking on OSX as it hangs during collections
+	in the bootstrap stage of Mono.
+
+	As we find more platforms that hang, we should disable it there as
+	well. 
+
+2009-02-03  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in (PLATFORM_NO_SYMLINKS): New define that replaces
+	PLATFORM_WIN32.
+
+2009-02-02  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* configure.in: Add --with-mcs-docs to make it possible to disable building of documentation under mcs.
+
+2009-01-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Remove -Wcast-align from the warning list, it leads to a lot of
+	useless warnings which can only be fixed by casting a pointer to (void*).
+
+2009-01-29  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: Add a couple of new AM conditionals for POSIX and
+	DARWIN, these are used to conditionally include some files in
+	mono/mini. 
+
+2009-01-27  Jb Evain  <jbevain@novell.com>
+
+	* configure.in: bump Mono's version to 2.5 now that 2.4
+	has been branched.
+
+2009-01-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* acinclude.m4 (dolt_supported): Handle ARM as well.
+
+2009-01-23  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Make --enable-parallel-mark=yes the default.
 
 2009-01-17  Zoltan Varga  <vargaz@gmail.com>
 
@@ -77,6 +473,11 @@
 
 	* scripts/Makefile.am: don't generate a script for the now
 	dead mono-api-diff.
+
+2008-12-05  Jonathan Pryor  <jpryor@novell.com>
+
+	* scripts/mdassembler, scripts/monodocer, scripts/monodocs2html:
+	  Properly quote parameters as they may contain spaces.
 
 2008-12-05  Jonathan Pryor  <jpryor@novell.com>
 

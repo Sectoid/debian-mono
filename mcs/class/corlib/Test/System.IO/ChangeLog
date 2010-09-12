@@ -1,7 +1,32 @@
+2010-03-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* StreamReaderTest.cs: test for bug 589236. The detected encoding is
+	different from the one provided in the ctor.
+
+2010-02-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MemoryStreamTest.cs: Activate ZeroingOnExpandTest as we have fixed
+	this issue.
+
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* UnmanagedMemoryStream.cs: Fix some and add missing validations
+	* UnmanagedMemoryStreamTest.cs: Add more test cases to cover all
+	validations
 	[Backport r144226]
+
+2009-06-25  Robert Jordan  <robertj@gmx.net>
+
+	* BinaryReaderTest.cs, BinaryWriterTest.cs, BufferedStreamTest.cs,
+	PathTest.cs, PathTest.cs, StringWriterTest.cs, TextWriterTest.cs:
+	Upgrade to new NUnit style.
+
+2009-05-06  Raja R Harinath  <harinath@hurrynot.org>
+
+	* FileInfoTest.cs: Wrap Replace() tests in #if NET_2_0.
+
+2009-04-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* StreamReaderTest.cs: Fix build for NET_1_1
 
 2009-04-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

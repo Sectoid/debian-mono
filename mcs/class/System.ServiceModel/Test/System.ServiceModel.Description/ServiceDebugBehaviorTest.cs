@@ -28,6 +28,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using NUnit.Framework;
 using System.ServiceModel;
@@ -54,13 +55,22 @@ namespace MonoTests.System.ServiceModel.Description
 			}
 		}
 
+		Uri CreateUri (string uriString)
+		{
+			var uri = new Uri (uriString);
+			var l = new TcpListener (uri.Port);
+			l.Start ();
+			l.Stop ();
+			return uri;
+		}
+
 		[Test]
 		public void InitializeRuntime1 () {
-			using (ServiceHost host = new ServiceHost (typeof (MyService), new Uri ("http://localhost:8080"))) {
+			using (ServiceHost host = new ServiceHost (typeof (MyService), CreateUri ("http://localhost:37564"))) {
 				host.AddServiceEndpoint (typeof (IMyContract), new BasicHttpBinding (), "e1");
 
 				Assert.AreEqual (0, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #1");
-
+				try {
 				host.Open ();
 
 				Assert.AreEqual (2, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #2");
@@ -85,51 +95,58 @@ namespace MonoTests.System.ServiceModel.Description
 
 				DispatchRuntime dr = ed.DispatchRuntime;
 				// TODO
-
+				} finally {
 				host.Close ();
+				}
 			}
 		}
 
 		[Test]
 		public void InitializeRuntime2 () {
-			using (ServiceHost host = new ServiceHost (typeof (MyService), new Uri ("http://localhost:8080"))) {
+			using (ServiceHost host = new ServiceHost (typeof (MyService), CreateUri ("http://localhost:37564"))) {
 				host.AddServiceEndpoint (typeof (IMyContract), new BasicHttpBinding (), "");
 				host.Description.Behaviors.Remove<ServiceDebugBehavior> ();
 
 				Assert.AreEqual (0, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #1");
 
+				try {
 				host.Open ();
 
 				Assert.AreEqual (1, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #2");
 
+				} finally {
 				host.Close ();
+				}
 			}
 		}
 
 		[Test]
 		public void InitializeRuntime3 () {
-			using (ServiceHost host = new ServiceHost (typeof (MyService), new Uri ("http://localhost:8080"))) {
+			using (ServiceHost host = new ServiceHost (typeof (MyService), CreateUri ("http://localhost:37564"))) {
 				host.AddServiceEndpoint (typeof (IMyContract), new BasicHttpBinding (), "");
 				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageEnabled = false;
 
 				Assert.AreEqual (0, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #1");
 
+				try {
 				host.Open ();
 
 				Assert.AreEqual (1, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #2");
-
+				} finally {
 				host.Close ();
+				}
 			}
 		}
 
 		[Test]
 		public void InitializeRuntime4 () {
-			using (ServiceHost host = new ServiceHost (typeof (MyService), new Uri ("http://localhost:8080"))) {
+			using (ServiceHost host = new ServiceHost (typeof (MyService), CreateUri ("http://localhost:37564"))) {
 				host.AddServiceEndpoint (typeof (IMyContract), new BasicHttpBinding (), "");
-				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageUrl = new Uri ("http://localhost:8080/help");
+				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageUrl = new Uri ("http://localhost:37564/help");
 
 				Assert.AreEqual (0, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #1");
 
+				try {
 				host.Open ();
 
 				Assert.AreEqual (2, host.ChannelDispatchers.Count, "ChannelDispatchers.Count #2");
@@ -151,7 +168,7 @@ namespace MonoTests.System.ServiceModel.Description
 				Assert.AreEqual (0, ed.FilterPriority, "FilterPriority");
 
 				EndpointAddress ea = ed.EndpointAddress;
-				Assert.AreEqual (new Uri ("http://localhost:8080/help"), ea.Uri, "Uri");
+				Assert.AreEqual (new Uri ("http://localhost:37564/help"), ea.Uri, "Uri");
 
 				DispatchRuntime dr = ed.DispatchRuntime;
 				Assert.AreEqual (1, dr.Operations.Count, "Operations.Count");
@@ -161,42 +178,46 @@ namespace MonoTests.System.ServiceModel.Description
 				Assert.AreEqual ("*", dispOp.ReplyAction, "Operation.ReplyAction");
 				Assert.AreEqual ("Get", dispOp.Name, "Operation.Name");
 				//Assert.IsNotNull (dispOp.Invoker, "Operation.Invoker");
-
+				} finally {
 				host.Close ();
+				}
 			}
 		}
 
 		[Test]
 		public void ServiceMetadataExtension1 () {
-			using (ServiceHost host = new ServiceHost (typeof (MyService), new Uri ("http://localhost:8080"))) {
+			using (ServiceHost host = new ServiceHost (typeof (MyService), CreateUri ("http://localhost:37564"))) {
 				host.AddServiceEndpoint (typeof (IMyContract), new BasicHttpBinding (), "");
-				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageUrl = new Uri ("http://localhost:8080/help");
-
+				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageUrl = new Uri ("http://localhost:37564/help");
+				try {
 				host.Open ();
 
 				Assert.IsNotNull (host.Extensions.Find<ServiceMetadataExtension> (), "ServiceMetadataExtension #1");
 				Assert.AreEqual (1, host.Extensions.FindAll<ServiceMetadataExtension> ().Count, "ServiceMetadataExtension #2");
-
+				} finally {
 				host.Close ();
+				}
 			}
 		}
 
 		[Test]
 		public void ServiceMetadataExtension2 () {
-			using (ServiceHost host = new ServiceHost (typeof (MyService), new Uri ("http://localhost:8080"))) {
+			using (ServiceHost host = new ServiceHost (typeof (MyService), CreateUri ("http://localhost:37564"))) {
 				host.AddServiceEndpoint (typeof (IMyContract), new BasicHttpBinding (), "");
-				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageUrl = new Uri ("http://localhost:8080/help");
+				host.Description.Behaviors.Find<ServiceDebugBehavior> ().HttpHelpPageUrl = CreateUri ("http://localhost:37564/help");
 
 				ServiceMetadataExtension extension = new ServiceMetadataExtension ();
 				host.Extensions.Add (extension);
 
+				try {
 				host.Open ();
 
 				Assert.IsNotNull (host.Extensions.Find<ServiceMetadataExtension> (), "ServiceMetadataExtension #1");
 				Assert.AreEqual (1, host.Extensions.FindAll<ServiceMetadataExtension> ().Count, "ServiceMetadataExtension #2");
 				Assert.AreEqual (extension, host.Extensions.Find<ServiceMetadataExtension> (), "ServiceMetadataExtension #3");
-
+				} finally {
 				host.Close ();
+				}
 			}
 		}
 

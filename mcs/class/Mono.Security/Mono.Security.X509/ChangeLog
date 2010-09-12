@@ -1,3 +1,12 @@
+2010-03-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* OSX509Certificates.cs: moved to System.dll.
+
+2010-02-27  Miguel de Icaza  <miguel@novell.com>
+
+	* OSX509Certificates.cs: Add support to validate X509 certificate
+	chains using the OSX certificates API.
+
 2008-09-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* PKCS12.cs, X509Store.cs: Use File.Create instead of OpenWrite to

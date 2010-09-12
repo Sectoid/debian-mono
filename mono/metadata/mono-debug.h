@@ -26,6 +26,7 @@ typedef struct _MonoDebugMethodAddressList	MonoDebugMethodAddressList;
 typedef struct _MonoDebugClassEntry		MonoDebugClassEntry;
 
 typedef struct _MonoDebugMethodInfo		MonoDebugMethodInfo;
+typedef struct _MonoDebugLocalsInfo		MonoDebugLocalsInfo;
 typedef struct _MonoDebugSourceLocation		MonoDebugSourceLocation;
 
 typedef struct _MonoDebugList			MonoDebugList;
@@ -128,8 +129,8 @@ struct _MonoDebugVarInfo {
 	MonoType *type;
 };
 
-#define MONO_DEBUGGER_MAJOR_VERSION			80
-#define MONO_DEBUGGER_MINOR_VERSION			2
+#define MONO_DEBUGGER_MAJOR_VERSION			81
+#define MONO_DEBUGGER_MINOR_VERSION			5
 #define MONO_DEBUGGER_MAGIC				0x7aff65af4253d427ULL
 
 extern MonoSymbolTable *mono_symbol_table;
@@ -171,12 +172,18 @@ mono_debug_free_method_jit_info (MonoDebugMethodJitInfo *jit);
 void
 mono_debug_add_delegate_trampoline (gpointer code, int size);
 
+MonoDebugLocalsInfo*
+mono_debug_lookup_locals (MonoMethod *method);
+
 /*
  * Line number support.
  */
 
 MonoDebugSourceLocation *
 mono_debug_lookup_source_location (MonoMethod *method, guint32 address, MonoDomain *domain);
+
+gint32
+mono_debug_il_offset_from_address (MonoMethod *method, MonoDomain *domain, guint32 native_offset);
 
 void
 mono_debug_free_source_location (MonoDebugSourceLocation *location);
@@ -192,5 +199,8 @@ mono_debug_print_stack_frame (MonoMethod *method, guint32 native_offset, MonoDom
 
 int             mono_debugger_method_has_breakpoint       (MonoMethod *method);
 int             mono_debugger_insert_breakpoint           (const gchar *method_name, gboolean include_namespace);
+
+void mono_set_is_debugger_attached (gboolean attached);
+gboolean mono_is_debugger_attached (void);
 
 #endif /* __MONO_DEBUG_H__ */

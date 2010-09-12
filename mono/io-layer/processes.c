@@ -35,6 +35,25 @@
 #include <sys/resource.h>
 #endif
 
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
+#include <sys/proc.h>
+#include <sys/sysctl.h>
+#  if !defined(__OpenBSD__)
+#    include <sys/utsname.h>
+#  endif
+#endif
+
+#ifdef PLATFORM_SOLARIS
+/* procfs.h cannot be included if this define is set, but it seems to work fine if it is undefined */
+#if _FILE_OFFSET_BITS == 64
+#undef _FILE_OFFSET_BITS
+#include <procfs.h>
+#define _FILE_OFFSET_BITS 64
+#else
+#include <procfs.h>
+#endif
+#endif
+
 #include <mono/io-layer/wapi.h>
 #include <mono/io-layer/wapi-private.h>
 #include <mono/io-layer/handles-private.h>
@@ -43,6 +62,7 @@
 #include <mono/io-layer/process-private.h>
 #include <mono/io-layer/threads.h>
 #include <mono/utils/strenc.h>
+#include <mono/utils/mono-path.h>
 #include <mono/io-layer/timefuncs-private.h>
 
 /* The process' environment strings */
@@ -51,7 +71,7 @@
  * arm-apple-darwin9.  We'll manually define the symbol on Apple as it does
  * in fact exist on all implementations (so far) 
  */
-gchar ***_NSGetEnviron();
+gchar ***_NSGetEnviron(void);
 #define environ (*_NSGetEnviron())
 #else
 extern char **environ;
@@ -60,7 +80,11 @@ extern char **environ;
 #undef DEBUG
 
 static guint32 process_wait (gpointer handle, guint32 timeout);
-FILE *open_process_map (int pid, const char *mode);
+
+#if !defined(__OpenBSD__)
+static FILE *
+open_process_map (int pid, const char *mode);
+#endif
 
 struct _WapiHandleOps _wapi_process_ops = {
 	NULL,				/* close_shared */
@@ -396,13 +420,12 @@ utf16_concat (const gunichar2 *first, ...)
 }
 
 #ifdef PLATFORM_MACOSX
-#include <sys/utsname.h>
 
 /* 0 = no detection; -1 = not 10.5 or higher;  1 = 10.5 or higher */
 static int osx_10_5_or_higher;
 
 static void
-detect_osx_10_5_or_higher ()
+detect_osx_10_5_or_higher (void)
 {
 	struct utsname u;
 	char *p;
@@ -423,7 +446,7 @@ detect_osx_10_5_or_higher ()
 }
 
 static gboolean
-is_macos_10_5_or_higher ()
+is_macos_10_5_or_higher (void)
 {
 	if (osx_10_5_or_higher == 0)
 		detect_osx_10_5_or_higher ();
@@ -436,6 +459,19 @@ static const gunichar2 utf16_space_bytes [2] = { 0x20, 0 };
 static const gunichar2 *utf16_space = utf16_space_bytes; 
 static const gunichar2 utf16_quote_bytes [2] = { 0x22, 0 };
 static const gunichar2 *utf16_quote = utf16_quote_bytes;
+
+#ifdef DEBUG
+/* Useful in gdb */
+void
+print_utf16 (gunichar2 *str)
+{
+	gchar *res;
+
+	res = g_utf16_to_utf8 (str, -1, NULL, NULL, NULL);
+	g_print ("%s\n", res);
+	g_free (res);
+}
+#endif
 
 /* Implemented as just a wrapper around CreateProcess () */
 gboolean ShellExecuteEx (WapiShellExecuteInfo *sei)
@@ -462,7 +498,7 @@ gboolean ShellExecuteEx (WapiShellExecuteInfo *sei)
 	 * into and back out of utf8 is because there is no
 	 * g_strdup_printf () equivalent for gunichar2 :-(
 	 */
-	args = utf16_concat (sei->lpFile, sei->lpParameters == NULL ? NULL : utf16_space, sei->lpParameters, NULL);
+	args = utf16_concat (utf16_quote, sei->lpFile, utf16_quote, sei->lpParameters == NULL ? NULL : utf16_space, sei->lpParameters, NULL);
 	if (args == NULL){
 		SetLastError (ERROR_INVALID_DATA);
 		return (FALSE);
@@ -834,6 +870,7 @@ gboolean CreateProcess (const gunichar2 *appname, const gunichar2 *cmdline,
 	} else {
 		gchar *token = NULL;
 		char quote;
+		gint token_len;
 		
 		/* Dig out the first token from args, taking quotation
 		 * marks into account
@@ -854,10 +891,10 @@ gboolean CreateProcess (const gunichar2 *appname, const gunichar2 *cmdline,
 		if (args[0] == '\"' || args [0] == '\'') {
 			quote = args [0];
 			for (i = 1; args[i] != '\0' && args[i] != quote; i++);
-			if (g_ascii_isspace (args[i+1])) {
+			if (args [i + 1] == '\0' || g_ascii_isspace (args[i+1])) {
 				/* We found the first token */
 				token = g_strndup (args+1, i-1);
-				args_after_prog = args + i;
+				args_after_prog = g_strchug (args + i + 1);
 			} else {
 				/* Quotation mark appeared in the
 				 * middle of the token.  Just give the
@@ -897,7 +934,8 @@ gboolean CreateProcess (const gunichar2 *appname, const gunichar2 *cmdline,
 		/* Turn all the slashes round the right way. Only for
 		 * the prg. name
 		 */
-		for (i = 0; i < strlen (token); i++) {
+		token_len = strlen (token);
+		for (i = 0; i < token_len; i++) {
 			if (token[i] == '\\') {
 				token[i] = '/';
 			}
@@ -1014,8 +1052,10 @@ gboolean CreateProcess (const gunichar2 *appname, const gunichar2 *cmdline,
 
 	ret = g_shell_parse_argv (full_prog, NULL, &argv, &gerr);
 	if (ret == FALSE) {
-		/* FIXME: Could do something with the GError here
-		 */
+		g_message ("CreateProcess: %s\n", gerr->message);
+		g_error_free (gerr);
+		gerr = NULL;
+		goto free_strings;
 	}
 
 	if (startup != NULL && startup->dwFlags & STARTF_USESTDHANDLES) {
@@ -1477,6 +1517,89 @@ static gboolean process_enum (gpointer handle, gpointer user_data)
 }
 #endif /* UNUSED_CODE */
 
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
+
+gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
+{
+	guint32 count, fit, i, j;
+	gint32 err;
+	gboolean done;
+	size_t proclength, size;
+#if defined(__OpenBSD__)
+	struct kinfo_proc2 *result;
+	int name[6];
+	name[0] = CTL_KERN;
+	name[1] = KERN_PROC2;
+	name[2] = KERN_PROC_ALL;
+	name[3] = 0;
+	name[4] = sizeof(struct kinfo_proc2);
+	name[5] = 0;
+#else
+	struct kinfo_proc *result;
+	static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+#endif
+
+	mono_once (&process_current_once, process_set_current);
+
+	result = NULL;
+	done = FALSE;
+
+	do {
+		proclength = 0;
+#if defined(__OpenBSD__)
+		size = (sizeof(name) / sizeof(*name));
+#else
+		size = (sizeof(name) / sizeof(*name)) - 1;
+#endif
+		err = sysctl ((int *)name, size, NULL, &proclength, NULL, 0);
+
+		if (err == 0) {
+			result = malloc (proclength);
+
+			if (result == NULL)
+				return FALSE;
+
+#if defined(__OpenBSD__)
+			name[5] = (int)(proclength / sizeof(struct kinfo_proc2));
+#endif
+
+			err = sysctl ((int *) name, size, result, &proclength, NULL, 0);
+
+			if (err == 0) 
+				done = TRUE;
+			else
+				free (result);
+		}
+	} while (err == 0 && !done);
+	
+	if (err != 0) {
+ 		if (result != NULL) {
+			free (result);
+			result = NULL;
+		}
+		return(FALSE);
+	}	
+
+#if defined(__OpenBSD__)
+	count = proclength / sizeof(struct kinfo_proc2);
+#else
+	count = proclength / sizeof(struct kinfo_proc);
+#endif
+	fit = len / sizeof(guint32);
+	for (i = 0, j = 0; j< fit && i < count; i++) {
+#if defined(__OpenBSD__)
+		pids [j++] = result [i].p_pid;
+#else
+		pids [j++] = result [i].kp_proc.p_pid;
+#endif
+	}
+	free (result);
+	result = NULL;
+	*needed = j * sizeof(guint32);
+	
+	return(TRUE);
+}
+#else
 gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 {
 	GArray *processes = g_array_new (FALSE, FALSE, sizeof(pid_t));
@@ -1516,6 +1639,7 @@ gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 	
 	return(TRUE);
 }
+#endif
 
 static gboolean process_open_compare (gpointer handle, gpointer user_data)
 {
@@ -1559,12 +1683,16 @@ gpointer OpenProcess (guint32 req_access G_GNUC_UNUSED, gboolean inherit G_GNUC_
 				      process_open_compare,
 				      GUINT_TO_POINTER (pid), NULL, TRUE);
 	if (handle == 0) {
+#if defined(__OpenBSD__)
+		if ((kill(pid, 0) == 0) || (errno == EPERM)) {
+#else
 		gchar *dir = g_strdup_printf ("/proc/%d", pid);
 		if (!access (dir, F_OK)) {
+#endif
 			/* Return a pseudo handle for processes we
 			 * don't have handles for
 			 */
-			return((gpointer)(_WAPI_PROCESS_UNHANDLED + pid));
+			return GINT_TO_POINTER (_WAPI_PROCESS_UNHANDLED + pid);
 		} else {
 #ifdef DEBUG
 			g_message ("%s: Can't find pid %d", __func__, pid);
@@ -1728,8 +1856,9 @@ static gint find_procmodule (gconstpointer a, gconstpointer b)
 
 #ifdef PLATFORM_MACOSX
 #include <mach-o/dyld.h>
+#include <mach-o/getsect.h>
 
-static GSList *load_modules ()
+static GSList *load_modules (void)
 {
 	GSList *ret = NULL;
 	WapiProcModule *mod;
@@ -1753,8 +1882,8 @@ static GSList *load_modules ()
 		}
 			
 		mod = g_new0 (WapiProcModule, 1);
-		mod->address_start = sec->addr;
-		mod->address_end = sec->addr+sec->size;
+		mod->address_start = GINT_TO_POINTER (sec->addr);
+		mod->address_end = GINT_TO_POINTER (sec->addr+sec->size);
 		mod->perms = g_strdup ("r--p");
 		mod->address_offset = 0;
 		mod->device = makedev (0, 0);
@@ -1770,6 +1899,67 @@ static GSList *load_modules ()
 
 	ret = g_slist_reverse (ret);
 	
+	return(ret);
+}
+#elif defined(__OpenBSD__)
+#include <link.h>
+static int load_modules_callback (struct dl_phdr_info *info, size_t size, void *ptr)
+{
+	if (size < offsetof (struct dl_phdr_info, dlpi_phnum)
+	    + sizeof (info->dlpi_phnum))
+		return (-1);
+
+	struct dl_phdr_info *cpy = calloc(1, sizeof(struct dl_phdr_info));
+	if (!cpy)
+		return (-1);
+
+	memcpy(cpy, info, sizeof(*info));
+
+	g_ptr_array_add ((GPtrArray *)ptr, cpy);
+
+	return (0);
+}
+
+static GSList *load_modules (void)
+{
+	GSList *ret = NULL;
+	WapiProcModule *mod;
+	GPtrArray *dlarray = g_ptr_array_new();
+	int i;
+
+	if (dl_iterate_phdr(load_modules_callback, dlarray) < 0)
+		return (ret);
+
+	for (i = 0; i < dlarray->len; i++) {
+		struct dl_phdr_info *info = g_ptr_array_index (dlarray, i);
+
+		mod = g_new0 (WapiProcModule, 1);
+		mod->address_start = (gpointer)(info->dlpi_addr + info->dlpi_phdr[0].p_vaddr);
+		mod->address_end = (gpointer)(info->dlpi_addr +
+                                       info->dlpi_phdr[info->dlpi_phnum - 1].p_vaddr);
+		mod->perms = g_strdup ("r--p");
+		mod->address_offset = 0;
+		mod->inode = (ino_t) i;
+		mod->filename = g_strdup (info->dlpi_name); 
+
+#ifdef DEBUG
+		g_message ("%s: inode=%d, filename=%s, address_start=%p, address_end=%p", __func__,
+				   mod->inode, mod->filename, mod->address_start, mod->address_end);
+#endif
+
+		free(info);
+
+		if (g_slist_find_custom (ret, mod, find_procmodule) == NULL) {
+			ret = g_slist_prepend (ret, mod);
+		} else {
+			free_procmodule (mod);
+		}
+	}
+
+	g_ptr_array_free (dlarray, TRUE);
+
+	ret = g_slist_reverse (ret);
+
 	return(ret);
 }
 #else
@@ -1896,24 +2086,35 @@ static GSList *load_modules (FILE *fp)
 static gboolean match_procname_to_modulename (gchar *procname, gchar *modulename)
 {
 	char* lastsep = NULL;
+	char* pname = NULL;
+	char* mname = NULL;
+	gboolean result = FALSE;
 
 	if (procname == NULL || modulename == NULL)
 		return (FALSE);
 
-	if (!strcmp (procname, modulename))
-		return (TRUE);
+	pname = mono_path_resolve_symlinks (procname);
+	mname = mono_path_resolve_symlinks (modulename);
 
-	lastsep = strrchr (modulename, '/');
-	if (lastsep) {
-		if (!strcmp (lastsep+1, procname))
-			return (TRUE);
-		return (FALSE);
+	if (!strcmp (pname, mname))
+		result = TRUE;
+
+	if (!result) {
+		lastsep = strrchr (mname, '/');
+		if (lastsep)
+			if (!strcmp (lastsep+1, pname))
+				result = TRUE;
 	}
 
-	return (FALSE);
+	g_free (pname);
+	g_free (mname);
+
+	return result;
 }
 
-FILE *open_process_map (int pid, const char *mode)
+#if !defined(__OpenBSD__)
+static FILE *
+open_process_map (int pid, const char *mode)
 {
 	FILE *fp = NULL;
 	const gchar *proc_path[] = {
@@ -1932,13 +2133,16 @@ FILE *open_process_map (int pid, const char *mode)
 
 	return fp;
 }
+#endif
 
 gboolean EnumProcessModules (gpointer process, gpointer *modules,
 			     guint32 size, guint32 *needed)
 {
 	struct _WapiHandle_process *process_handle;
 	gboolean ok;
+#if !defined(__OpenBSD__)
 	FILE *fp;
+#endif
 	GSList *mods = NULL;
 	WapiProcModule *module;
 	guint32 count, avail = size / sizeof(gpointer);
@@ -1976,7 +2180,7 @@ gboolean EnumProcessModules (gpointer process, gpointer *modules,
 		proc_name = process_handle->proc_name;
 	}
 	
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
 	{
 		mods = load_modules ();
 #else
@@ -2024,13 +2228,70 @@ gboolean EnumProcessModules (gpointer process, gpointer *modules,
 
 static gchar *get_process_name_from_proc (pid_t pid)
 {
-	gchar *filename = NULL;
-	gchar *ret = NULL;
-	gchar buf[256];
+#if !defined(__OpenBSD__)
 	FILE *fp;
-	
+	gchar *filename = NULL;
+	gchar buf[256];
+#endif
+	gchar *ret = NULL;
+
+#if defined(PLATFORM_SOLARIS)
+	filename = g_strdup_printf ("/proc/%d/psinfo", pid);
+	if ((fp = fopen (filename, "r")) != NULL) {
+		struct psinfo info;
+		int nread;
+
+		nread = fread (&info, sizeof (info), 1, fp);
+		if (nread == 1) {
+			ret = g_strdup (info.pr_fname);
+		}
+
+		fclose (fp);
+	}
+	g_free (filename);
+#elif defined(PLATFORM_MACOSX)
 	memset (buf, '\0', sizeof(buf));
-	
+#  if !defined (__mono_ppc__)
+	proc_name (pid, buf, sizeof(buf));
+#  endif
+	if (strlen (buf) > 0)
+		ret = g_strdup (buf);
+#elif defined(__OpenBSD__)
+	int mib [6];
+	size_t size;
+	struct kinfo_proc2 *pi;
+
+	mib [0] = CTL_KERN;
+	mib [1] = KERN_PROC2;
+	mib [2] = KERN_PROC_PID;
+	mib [3] = pid;
+	mib [4] = sizeof(struct kinfo_proc2);
+	mib [5] = 0;
+
+retry:
+	if (sysctl(mib, 6, NULL, &size, NULL, 0) < 0)
+		return(ret);
+
+	if ((pi = malloc(size)) == NULL)
+		return(ret);
+
+	mib[5] = (int)(size / sizeof(struct kinfo_proc2));
+
+	if ((sysctl (mib, 6, pi, &size, NULL, 0) < 0) ||
+		(size != sizeof (struct kinfo_proc2))) {
+		if (errno == ENOMEM) {
+			free(pi);
+			goto retry;
+		}
+		return(ret);
+	}
+
+	if (strlen (pi->p_comm) > 0)
+		ret = g_strdup (pi->p_comm);
+
+	free(pi);
+#else
+	memset (buf, '\0', sizeof(buf));
 	filename = g_strdup_printf ("/proc/%d/exe", pid);
 	if (readlink (filename, buf, 255) > 0) {
 		ret = g_strdup (buf);
@@ -2040,7 +2301,7 @@ static gchar *get_process_name_from_proc (pid_t pid)
 	if (ret != NULL) {
 		return(ret);
 	}
-	
+
 	filename = g_strdup_printf ("/proc/%d/cmdline", pid);
 	if ((fp = fopen (filename, "r")) != NULL) {
 		if (fgets (buf, 256, fp) != NULL) {
@@ -2074,6 +2335,7 @@ static gchar *get_process_name_from_proc (pid_t pid)
 		fclose (fp);
 	}
 	g_free (filename);
+#endif
 
 	if (ret != NULL) {
 		return(ret);
@@ -2093,7 +2355,9 @@ static guint32 get_module_name (gpointer process, gpointer module,
 	gchar *procname_ext = NULL;
 	glong len;
 	gsize bytes;
+#if !defined(__OpenBSD__)
 	FILE *fp;
+#endif
 	GSList *mods = NULL;
 	WapiProcModule *found_module;
 	guint32 count;
@@ -2133,7 +2397,7 @@ static guint32 get_module_name (gpointer process, gpointer module,
 	}
 
 	/* Look up the address in /proc/<pid>/maps */
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
 	{
 		mods = load_modules ();
 #else
@@ -2245,7 +2509,9 @@ gboolean GetModuleInformation (gpointer process, gpointer module,
 	struct _WapiHandle_process *process_handle;
 	gboolean ok;
 	pid_t pid;
+#if !defined(__OpenBSD__)
 	FILE *fp;
+#endif
 	GSList *mods = NULL;
 	WapiProcModule *found_module;
 	guint32 count;
@@ -2283,7 +2549,7 @@ gboolean GetModuleInformation (gpointer process, gpointer module,
 		proc_name = g_strdup (process_handle->proc_name);
 	}
 
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
 	{
 		mods = load_modules ();
 #else

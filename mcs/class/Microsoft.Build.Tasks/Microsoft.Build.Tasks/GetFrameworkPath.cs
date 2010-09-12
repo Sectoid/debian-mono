@@ -54,6 +54,48 @@ namespace Microsoft.Build.Tasks {
 				path = value;
 			}
 		}
+
+		[Output]
+		public string FrameworkVersion11Path {
+			get {
+				return ToolLocationHelper.GetPathToDotNetFramework (
+						TargetDotNetFrameworkVersion.Version11);
+			}
+		}
+
+		[Output]
+		public string FrameworkVersion20Path {
+			get {
+				return ToolLocationHelper.GetPathToDotNetFramework (
+						TargetDotNetFrameworkVersion.Version20);
+			}
+		}
+
+		[Output]
+		public string FrameworkVersion30Path {
+			get {
+				return ToolLocationHelper.GetPathToDotNetFramework (
+						TargetDotNetFrameworkVersion.Version30);
+			}
+		}
+
+		[Output]
+		public string FrameworkVersion35Path {
+			get {
+				return ToolLocationHelper.GetPathToDotNetFramework (
+						TargetDotNetFrameworkVersion.Version35);
+			}
+		}
+
+#if NET_4_0
+		[Output]
+		public string FrameworkVersion40Path {
+			get {
+				return ToolLocationHelper.GetPathToDotNetFramework (
+						TargetDotNetFrameworkVersion.Version40);
+			}
+		}
+#endif
 	}
 }
 

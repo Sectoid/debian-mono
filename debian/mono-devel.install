@@ -20,6 +20,7 @@ debian/tmp/usr/bin/mono-xmltool
 debian/tmp/usr/bin/monop
 debian/tmp/usr/bin/monolinker
 debian/tmp/usr/bin/mozroots
+debian/tmp/usr/bin/pdb2mdb
 debian/tmp/usr/bin/permview
 debian/tmp/usr/bin/resgen
 debian/tmp/usr/bin/secutil
@@ -28,6 +29,8 @@ debian/tmp/usr/bin/signcode
 debian/tmp/usr/bin/sn
 debian/tmp/usr/bin/soapsuds
 debian/tmp/usr/bin/sqlsharp
+debian/tmp/usr/bin/sqlmetal
+debian/tmp/usr/bin/svcutil
 debian/tmp/usr/bin/wsdl
 debian/tmp/usr/bin/xsd
 debian/tmp/usr/lib/mono/1.0/browsercaps-updater.exe
@@ -44,11 +47,12 @@ debian/tmp/usr/lib/mono/1.0/ictool.exe
 debian/tmp/usr/lib/mono/1.0/installvst.exe
 debian/tmp/usr/lib/mono/1.0/macpack.exe
 debian/tmp/usr/lib/mono/1.0/makecert.exe
-debian/tmp/usr/lib/mono/1.0/mono-xmltool.exe
+debian/tmp/usr/lib/mono/2.0/mono-xmltool.exe
 debian/tmp/usr/lib/mono/1.0/mozroots.exe
 debian/tmp/usr/lib/mono/1.0/secutil.exe
 debian/tmp/usr/lib/mono/1.0/setreg.exe
 debian/tmp/usr/lib/mono/1.0/signcode.exe
+debian/tmp/usr/lib/mono/1.0/RabbitMQ.Client.Apigen.exe*
 debian/tmp/usr/lib/mono/2.0/lc.exe
 debian/tmp/usr/lib/mono/1.0/sn.exe
 debian/tmp/usr/lib/mono/1.0/soapsuds.exe
@@ -58,6 +62,9 @@ debian/tmp/usr/lib/mono/2.0/mono-api-info.exe
 debian/tmp/usr/lib/mono/2.0/mono-cil-strip.exe
 debian/tmp/usr/lib/mono/2.0/mono-shlib-cop.exe*
 debian/tmp/usr/lib/mono/2.0/sqlsharp.exe
+debian/tmp/usr/lib/mono/2.0/sqlmetal.exe*
+debian/tmp/usr/lib/mono/2.0/pdb2mdb.exe*
+debian/tmp/usr/lib/mono/2.0/svcutil.exe*
 debian/tmp/usr/lib/mono-source-libs/getline.cs
 debian/tmp/usr/lib/mono-source-libs/Options.cs
 debian/tmp/usr/lib/pkgconfig/mono-lineeditor.pc

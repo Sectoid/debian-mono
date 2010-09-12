@@ -1,8 +1,49 @@
+2010-05-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FileStream.cs: backport of Miguel's r145271 that fixes bug #531613.
+
+2010-05-20  Marek Habersack  <mhabersack@novell.com>
+
+	* FileStream.cs: when running on Windows and a path with Unix
+	directory separator chars is passed (including an UNC share), get
+	the canonical form of the path before attempting to retrieve its
+	directory name. Fixes bug #607502
+
+	* Path.cs: typo fix
+
+2010-03-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* StreamReader.cs: if the detected encoding is different from the
+	provided to the constructor, adjust the decoded buffer size if
+	needed. Fixes bug #589236.
+
+2010-03-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* Path.cs (GetTempFileName): Fix infinite loop if the process doesn't have
+	write access to /tmp. Fixes #585017.
+
+2010-02-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MemoryStream.cs: Don't clear the bytes beyond Length when shrinking
+	it. Instead just save the related information for it and do it when
+	Length grows and touchs that dirty region. Refactor the code where
+	needed to avoid duplication as well.
+	Fixes #327053.
+
 2010-02-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* StreamWriter.cs:
 	* FileStream.cs: if flushing fails when disposing the stream, make
 	sure it is closed before throwing the exception. Fixes bug #579146.
+
+2010-01-31  Zoltan Varga  <vargaz@gmail.com>
+
+	* Directory.cs (Exists): Never throw an exception. Fixes #565152.
+
+2010-01-14  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* UnmanagedMemoryStream.cs: Read: don't read bytes one-by-one, read all
+	at once.
 
 2009-12-21  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -10,15 +51,63 @@
 	Read will return all the data we require.
 	[Backport r148822]
 
+2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* FileStream.cs: Reduce code duplication by merging FillBuffer 
+	with FillBufferToStream
+	[Backport r145008]
+
+2009-10-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* FileStream.cs: Move code to deal with 'anonymous' filenames
+	into two methods (returning the path, fullpath or only the 
+	filename). Default Moonlight to anonymous (not only for isolated
+	storage) unless the coreclr is disable (e.g. smcs)
+	[Backport r144945]
+
+2009-10-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* UnmanagedMemoryStream.cs: Allow the use under NET_1_1 so we can
+	remove the internal IntPtrStream from every profile.
+
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* UnmanagedMemoryStream.cs: Fix some and add missing validations
 	[Backport r144226]
 
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com> 
+
+	* StreamReader.cs: Add back UTF32 under NET_2_1 (for smcs)
+
+2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Directory.cs: Don't expose SearchOption in NET_2_1
+	* DirectoryInfo.cs: Don't expose SearchOption in NET_2_1
+	* MonoIO.cs: Don't throw a DriveNotFoundException under NET_2_1 -
+	an IOExpection will be thrown (like the 1.x profile)
+
+2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* StreamReader.cs: Don't use UTF32 under NET_2_1
+
+2009-09-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Directory.cs: Avoid imperative CAS checks and remove 
+	AccessControl types for NET_2_1
+	* DirectoryInfo.cs: Remove AccessControl types for NET_2_1
+	* File.cs: Remove AccessControl types for NET_2_1
+	* FileInfo.cs: Remove AccessControl types for NET_2_1
+	* FileStream.cs: Remove AccessControl types for NET_2_1
+	* Path.cs: Avoid imperative CAS checks for NET_2_1
+
 2009-09-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* DirectoryInfo.cs: throw if FullPath is not a directory.
 	Fixes bug #539791.
+
+2009-09-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* UnmanagedMemoryAccessor.cs: New net 4.0 class.
 
 2009-07-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -41,6 +130,10 @@
 
 	* StreamReader.cs: if Peek() needs to block, do it.
 	Fixes bug #496905.
+
+2009-03-22  Marek Habersack  <mhabersack@novell.com>
+
+	* FileStream.cs: implemented the SafeFileHandle property.
 
 2009-02-24 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

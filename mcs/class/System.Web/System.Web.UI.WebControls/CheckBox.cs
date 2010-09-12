@@ -299,15 +299,13 @@ namespace System.Web.UI.WebControls {
 		{
 			base.OnPreRender (e);
 			Page page = Page;
-			bool enabled = Enabled;
 			
-			if (page != null && enabled) {
+			if (page != null && IsEnabled) {
 				page.RegisterRequiresPostBack (this);
-			}
 #if NET_2_0
-			if (Page != null && enabled)
 				page.RegisterEnabledControl (this);
 #endif
+			}
 		}
 
 		static bool IsInputOrCommonAttr (string attname)
@@ -348,21 +346,26 @@ namespace System.Web.UI.WebControls {
 
 		bool AddAttributesForSpan (HtmlTextWriter writer)
 		{
-			ICollection k = Attributes.Keys;
-			string [] keys = new string [k.Count];
-			k.CopyTo (keys, 0);
-			foreach (string key in keys) {
-				if (!IsInputOrCommonAttr (key))
-					continue;
-				if (common_attrs == null)
-					common_attrs = new AttributeCollection (new StateBag ());
-				common_attrs [key] = Attributes [key];
-				Attributes.Remove (key);
+			if (HasAttributes) {
+				AttributeCollection attributes = Attributes;
+				ICollection k = attributes.Keys;
+				string [] keys = new string [k.Count];
+				k.CopyTo (keys, 0);
+				foreach (string key in keys) {
+					if (!IsInputOrCommonAttr (key))
+						continue;
+					if (common_attrs == null)
+						common_attrs = new AttributeCollection (new StateBag ());
+					common_attrs [key] = Attributes [key];
+					attributes.Remove (key);
+				}
+			
+				if (attributes.Count > 0) {
+					attributes.AddAttributes (writer);
+					return true;
+				}
 			}
-			if (Attributes.Count > 0) {
-				Attributes.AddAttributes (writer);
-				return true;
-			}
+			
 			return false;
 		}
 #if NET_2_0
@@ -388,7 +391,8 @@ namespace System.Web.UI.WebControls {
 				ControlStyle.AddAttributesToRender (w, this);
 			}
 
-			if (!Enabled) {
+			bool enabled = IsEnabled;
+			if (!enabled) {
 				w.AddAttribute (HtmlTextWriterAttribute.Disabled, "disabled", false);
 				need_span = true;
 			}
@@ -412,26 +416,26 @@ namespace System.Web.UI.WebControls {
 
 			TextAlign align = TextAlign;
 			if (align == TextAlign.Right) {
-				RenderInput (w);
+				RenderInput (w, enabled);
 				RenderLabel (w);
 			} else {
 				RenderLabel (w);
-				RenderInput (w);
+				RenderInput (w, enabled);
 			}
 
 			if (need_span)
 				w.RenderEndTag ();
 		}
 
-		void RenderInput (HtmlTextWriter w) {
-
+		void RenderInput (HtmlTextWriter w, bool enabled)
+		{
 			if (ClientID != null && ClientID.Length > 0)
 				w.AddAttribute (HtmlTextWriterAttribute.Id, ClientID);
 			w.AddAttribute (HtmlTextWriterAttribute.Type, render_type);
 			string nameAttr = NameAttribute;
 			if (nameAttr != null && nameAttr.Length > 0)
 				w.AddAttribute (HtmlTextWriterAttribute.Name, nameAttr);
-			InternalAddAttributesToRender (w);
+			InternalAddAttributesToRender (w, enabled);
 #if NET_2_0
 			AddAttributesToRender (w);
 			if (inputAttributes != null)
@@ -484,7 +488,7 @@ namespace System.Web.UI.WebControls {
 #endif
 		bool LoadPostData (string postDataKey, NameValueCollection postCollection)
 		{
-			if (!Enabled)
+			if (!IsEnabled)
 				return false;
 
 			string postedValue = postCollection[postDataKey];
@@ -542,9 +546,9 @@ namespace System.Web.UI.WebControls {
 		}
 #endif
 
-		internal virtual void InternalAddAttributesToRender (HtmlTextWriter w)
+		internal virtual void InternalAddAttributesToRender (HtmlTextWriter w, bool enabled)
 		{
-			if (!Enabled)
+			if (!enabled)
 				w.AddAttribute (HtmlTextWriterAttribute.Disabled, "disabled", false);
 		}
 	}

@@ -40,6 +40,14 @@ using System.Net.Cache;
 using System.Security.Principal;
 #endif
 
+#if MONOTOUCH
+using ConfigurationException = System.ArgumentException;
+
+namespace System.Net.Configuration {
+	class Dummy {}
+}
+#endif
+
 namespace System.Net 
 {
 	[Serializable]
@@ -49,12 +57,22 @@ namespace System.Net
 #if NET_2_0
 		static bool isDefaultWebProxySet;
 		static IWebProxy defaultWebProxy;
+		static RequestCachePolicy defaultCachePolicy;
 #endif
 		
 		// Constructors
 		
 		static WebRequest ()
 		{
+#if MONOTOUCH
+			AddPrefix ("http", typeof (HttpRequestCreator));
+			AddPrefix ("https", typeof (HttpRequestCreator));
+			AddPrefix ("file", typeof (FileWebRequestCreator));
+			AddPrefix ("ftp", typeof (FtpRequestCreator));
+#else
+	#if NET_2_0
+			defaultCachePolicy = new HttpRequestCachePolicy (HttpRequestCacheLevel.NoCacheNoStore);
+	#endif
 #if NET_2_0 && CONFIGURATION_DEP
 			object cfg = ConfigurationManager.GetSection ("system.net/webRequestModules");
 			WebRequestModulesSection s = cfg as WebRequestModulesSection;
@@ -66,6 +84,7 @@ namespace System.Net
 			}
 #endif
 			ConfigurationSettings.GetConfig ("system.net/webRequestModules");
+#endif
 		}
 		
 		protected WebRequest () 
@@ -99,11 +118,10 @@ namespace System.Net
 			}
 		}
 
+		[MonoTODO ("Implement the caching system. Currently always returns a policy with the NoCacheNoStore level")]
 		public virtual RequestCachePolicy CachePolicy
 		{
-			get {
-				throw GetMustImplement ();
-			}
+			get { return DefaultCachePolicy; }
 			set {
 			}
 		}
@@ -132,9 +150,7 @@ namespace System.Net
 #if NET_2_0
 		public static RequestCachePolicy DefaultCachePolicy
 		{
-			get {
-				throw GetMustImplement ();
-			}
+			get { return defaultCachePolicy; }
 			set {
 				throw GetMustImplement ();
 			}

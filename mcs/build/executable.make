@@ -61,7 +61,7 @@ uninstall-local:
 endif
 
 clean-local:
-	-rm -f $(executable_CLEAN_FILES) $(CLEAN_FILES)
+	-rm -f $(executable_CLEAN_FILES) $(CLEAN_FILES) $(tests_CLEAN_FILES)
 
 test-local:
 	@:
@@ -71,6 +71,17 @@ run-test-ondotnet-local:
 	@:
 
 DISTFILES = $(sourcefile) $(base_prog_config) $(EXTRA_DISTFILES)
+
+ifdef HAS_NUNIT_TEST
+ASSEMBLY      = $(PROGRAM)
+ASSEMBLY_EXT  = .exe
+the_assembly  = $(PROGRAM)
+include $(topdir)/build/tests.make
+endif
+
+ifdef HAVE_CS_TESTS
+DISTFILES += $(test_sourcefile)
+endif
 
 dist-local: dist-default
 	for f in `cat $(sourcefile)` ; do \
@@ -114,7 +125,19 @@ endif
 
 -include $(makefrag)
 
-all-local: $(makefrag)
+all-local: $(makefrag) $(extra_targets)
+
+csproj-local:
+	config_file=`basename $(PROGRAM) .exe`-$(PROFILE).input; \
+	echo $(thisdir):$$config_file >> $(topdir)/../mono/msvc/scripts/order; \
+	(echo $(is_boot); \
+	echo $(MCS);	\
+	echo $(USE_MCS_FLAGS) $(LIBRARY_FLAGS) $(LIB_MCS_FLAGS); \
+	echo $(PROGRAM); \
+	echo $(BUILT_SOURCES_cmdline); \
+	echo $(build_lib); \
+	echo $(response)) > $(topdir)/../mono/msvc/scripts/inputs/$$config_file
+
 
 ifneq ($(response),$(sourcefile))
 $(response): $(topdir)/build/executable.make $(depsdir)/.stamp

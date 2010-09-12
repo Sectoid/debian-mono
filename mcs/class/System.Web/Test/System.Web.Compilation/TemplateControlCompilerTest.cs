@@ -59,9 +59,10 @@ namespace MonoTests.System.Web.Compilation {
 			WebTest.CopyResource (GetType (), "FullTagsInText.aspx", "FullTagsInText.aspx");
 			WebTest.CopyResource (GetType (), "TagsExpressionsAndCommentsInText.aspx", "TagsExpressionsAndCommentsInText.aspx");
 			WebTest.CopyResource (GetType (), "NewlineInCodeExpression.aspx", "NewlineInCodeExpression.aspx");
-			WebTest.CopyResource (GetType (), "TagsNestedInClientTag.aspx", "TagsNestedInClientTag.aspx");
-#if NET_2_0
 			WebTest.CopyResource (GetType (), "DuplicateControlsInClientComment.aspx", "DuplicateControlsInClientComment.aspx");
+			WebTest.CopyResource (GetType (), "TagsNestedInClientTag.aspx", "TagsNestedInClientTag.aspx");
+			WebTest.CopyResource (GetType (), "ConditionalClientComments.aspx", "ConditionalClientComments.aspx");
+#if NET_2_0
 			WebTest.CopyResource (GetType (), "InvalidPropertyBind1.aspx", "InvalidPropertyBind1.aspx");
 			WebTest.CopyResource (GetType (), "InvalidPropertyBind2.aspx", "InvalidPropertyBind2.aspx");
 			WebTest.CopyResource (GetType (), "InvalidPropertyBind3.aspx", "InvalidPropertyBind3.aspx");
@@ -77,8 +78,11 @@ namespace MonoTests.System.Web.Compilation {
 			WebTest.CopyResource (GetType (), "ContentPlaceHolderInTemplate.master", "ContentPlaceHolderInTemplate.master");
 			WebTest.CopyResource (GetType (), "LinkInHeadWithEmbeddedExpression.aspx", "LinkInHeadWithEmbeddedExpression.aspx");
 			WebTest.CopyResource (GetType (), "ExpressionInListControl.aspx", "ExpressionInListControl.aspx");
+			WebTest.CopyResource (GetType (), "PreprocessorDirectivesInMarkup.aspx", "PreprocessorDirectivesInMarkup.aspx");
+			WebTest.CopyResource (GetType (), "OneLetterIdentifierInCodeRender.aspx", "OneLetterIdentifierInCodeRender.aspx");
 			WebTest.CopyResource (GetType (), "NestedParserFileText.aspx", "NestedParserFileText.aspx");
 			WebTest.CopyResource (GetType (), "TagWithExpressionWithinAttribute.aspx", "TagWithExpressionWithinAttribute.aspx");
+			WebTest.CopyResource (GetType (), "EnumConverter_Bug578586.aspx", "EnumConverter_Bug578586.aspx");
 #endif
 		}
 		
@@ -101,7 +105,7 @@ namespace MonoTests.System.Web.Compilation {
 		}
 		
 		[Test]
-		[ExpectedException (typeof (CompilationException))]
+		[ExpectedException ("System.Web.Compilation.CompilationException")]
 		public void InvalidPropertyBindTest1 ()
 		{
 			new WebTest ("InvalidPropertyBind1.aspx").Run ();
@@ -115,7 +119,7 @@ namespace MonoTests.System.Web.Compilation {
 		}
 
 		[Test]
-		[ExpectedException (typeof (CompilationException))]
+		[ExpectedException ("System.Web.Compilation.CompilationException")]
 		public void InvalidPropertyBindTest3 ()
 		{
 			new WebTest ("InvalidPropertyBind3.aspx").Run ();
@@ -201,6 +205,13 @@ namespace MonoTests.System.Web.Compilation {
 			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
 		}
 
+		[Test (Description="Bug #520024")]
+		public void PreprocessorDirectivesInMarkup ()
+		{
+			// Just test if it doesn't throw an exception
+			new WebTest ("PreprocessorDirectivesInMarkup.aspx").Run ();
+		}
+
 		[Test (Description="Bug #526449")]
 		public void NewlineInCodeExpression ()
 		{
@@ -211,13 +222,34 @@ namespace MonoTests.System.Web.Compilation {
 		}
 
 		[Test (Description="Bug #524358")]
-		[ExpectedException ("System.Web.Compilation.ParseException")]
 		public void DuplicateControlsInClientComment ()
 		{
 			// Just test if it throws an exception
-			new WebTest ("DuplicateControlsInClientComment.aspx").Run ();
+			string pageHtml = new WebTest ("DuplicateControlsInClientComment.aspx").Run ();
+			Assert.IsTrue (pageHtml.IndexOf ("[System.Web.Compilation.ParseException]:") != -1, "#A1");
+		}
+
+		[Test (Description="Bug #367723")]
+		public void ConditionalClientComments ()
+		{
+			string pageHtml = new WebTest ("ConditionalClientComments.aspx").Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+			string originalHtml = @"<!--[if IE 6]>
+		<link rel=""styleheet"" type=""text/css"" href=""~/compat-ie6.css""></link>
+	<![endif]-->";
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
 		}
 		
+		[Test (Description="Bug #400807")]
+		public void OneLetterIdentifierInCodeRender ()
+		{
+			string pageHtml = new WebTest ("OneLetterIdentifierInCodeRender.aspx").Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+			string originalHtml = @"bDoR called";
+
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
+		}
+
 		[Test (Description="Bug #562286")]
 		public void NestedParserFileText ()
 		{
@@ -231,8 +263,18 @@ namespace MonoTests.System.Web.Compilation {
 			// Just test if it doesn't throw an exception
 			new WebTest ("TagWithExpressionWithinAttribute.aspx").Run ();
 		}
-#endif
 
+		[Test (Description="Bug #578586")]
+		public void EnumConverter_Bug578586 ()
+		{
+			WebTest t = new WebTest ("EnumConverter_Bug578586.aspx");
+			string pageHtml = t.Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+			string originalHtml = @"<input type=""text"" value=""FlagOne"" name=""test"" id=""test"" />";
+
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
+		}
+#endif		
 		[Test (Description="Bug #323719")]
 		public void TagsNestedInClientTag ()
 		{

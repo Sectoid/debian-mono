@@ -67,7 +67,6 @@ loadu4_membase: dest:i src1:b len:48
 loadi8_membase: dest:i src1:b len:48
 loadr4_membase: dest:f src1:b len:48
 loadr8_membase: dest:f src1:b len:48
-loadr8_spill_membase: src1:b len:48
 loadu4_mem: dest:i len:48
 move: dest:i src1:i len:48
 add_imm: dest:i src1:i len:48
@@ -368,7 +367,7 @@ relaxed_nop: len:0
 
 # Linear IR opcodes
 nop: len:0
-dummy_use: len:0
+dummy_use: src1:i len:0
 dummy_store: len:0
 not_reached: len:0
 not_null: src1:i len:0

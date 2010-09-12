@@ -1,3 +1,42 @@
+2010-06-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #581679
+	* DataRelationCollection.cs (Add, Remove): Use DataRelation obj instead 
+	of this when raising OnCollectionChang(ing, ed) events.
+	
+2010-04-11  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #591443
+	* DataColumn.cs (Clone): Use property to clone Expression as it builds 
+	compiled expression also, if any. 
+	
+2010-04-10  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	** Fixes #589482
+	* DataColumn.cs (set_DataType): Preserve autoIncrement value 
+	for Decimal types as well.
+	
+2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #576520 - Based on a patch by Greg SIROU <gspam@secway.fr>
+	* DataSet.cs (WriteColumnAsElement): Handle system.object types sanely.
+	
+2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** DataColumn.cs (Clone): Fix a typo - use the member directly 
+	instead of get/set property.
+	
+2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #590232
+	* DataColumn.cs (Clone): Clone Extended properties as well. 
+	
+2010-02-10  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlSchemaDataImporter.cs: the <connections> element might be
+	empty - make sure FirstChild of the element is not null before
+	attempting to use it. Fixes bug #578587
+
 2009-10-30  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* DataTable.cs: Reuse old utility methods for raising DataTable 
@@ -16,17 +55,22 @@
 	* DataRowCollection.cs (Clear): Raise TableClearing/Cleared events accordingly.
 	
 2009-10-29  Veerapuram Varadhan  <vvaradhan@novell.com>
-	
- 	** Fixes 332875 - based on analysis by Ben Martin <ben@trustorm.com.au>
- 	* XmlSchemaDataImporter.cs (AddParentKeyColumn): If a table already has a 
- 	PrimaryKey column defined, when called again, fill the PKCol data into the 
- 	passed DataColumn and return.
 
+	** Fixes 332875 - based on analysis by Ben Martin <ben@trustorm.com.au>
+	* XmlSchemaDataImporter.cs (AddParentKeyColumn): If a table already has a 
+	PrimaryKey column defined, when called again, fill the PKCol data into the 
+	passed DataColumn and return.
+	
 2009-10-29  Veerapuram Varadhan  <vvaradhan@novell.com>
- 
- 	** Fixes #550960 - Patch by Stefano <stefano.sapienti@apsystems.it>
- 	* DataTable.cs (BinarySerialize): Use datatype from DataColumn 
- 	instead of value of the column.
+
+	** Fixes #550960 - Patch by Stefano <stefano.sapienti@apsystems.it>
+	* DataTable.cs (BinarySerialize): Use datatype from DataColumn 
+	instead of value of the column.
+	
+2009-10-14  Jonathan Pryor  <jpryor@novell.com>
+
+	* XmlSchemaDataImporter.cs: Remove DbProviderFactories dependency in
+	  the MonoTouch profile.
 
 2009-10-13  Veerapuram Varadhan  <vvaradhan@novell.com>
 
@@ -47,15 +91,15 @@
 	
 2009-09-10  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-        ** Fixes #510176
-        * DataView.cs (OnRowChanged/OnRowDeleted): Raise appropriate events iff
-        view is affected. This silence of the numerous Add/Change events that were
-        getting raised from DataView.
-        (ToTable): Use appropriate index to generated DataTable in case of
-        RowFilter / Sort conditions.
-
-        * DataRow.cs (AcceptChanges/RejectChanges): Raise appropriate Changing events.
-        	
+	** Fixes #510176
+	* DataView.cs (OnRowChanged/OnRowDeleted): Raise appropriate events iff 
+	view is affected. This silence of the numerous Add/Change events that were
+	getting raised from DataView.
+	(ToTable): Use appropriate index to generated DataTable in case of 
+	RowFilter / Sort conditions.
+	
+	* DataRow.cs (AcceptChanges/RejectChanges): Raise appropriate Changing events
+	
 2009-09-03  Ivan N. Zlatev  <contact@i-nz.net>
 
 	* DataColumnPropertyDescriptor.cs, DataView.cs: Not browsable if Hidden.
@@ -63,14 +107,76 @@
 
 2009-08-25  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	* DataViewManager.cs (CollectionToListChangeEventArgs) : Use IsAssignableFrom 
-	instead of type comparison.
-		
-2009-08-25  Veerapuram Varadhan  <vvaradhan@novell.com>
-
 	** Fixes #521951
 	* DataViewManager.cs (CollectionToListChangeEventArgs) : Use a corresponding 
 	DataTable/DataRelation obj instead of only DataRelation.
+	
+2009-07-30  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* CustomDataClassGenerator.cs (MakeSafeName): Throw NRE instead of 
+	ArgumentNullException - fixes failing tests.
+	
+2009-07-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* XmlSchemaDataImporter.cs (HandleDataSourceAnnotation): Don't rely 
+	on the order of elements.
+	
+2009-07-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* XmlSchemaDataImporter.cs: String.IsNullOrEmpty changes
+	
+2009-07-23  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* XmlSchemaDataImporter.cs: Added null checks.
+	
+2009-07-22  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* XmlSchemaDataImporter.cs:
+	CustomDataClassGenerator.cs: Silence off CWLs.
+	
+2009-07-22  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	* CustomDataClassGenerator.cs (CreateCommandCollectionInitializeMethod):
+	Fix generation of DbCommand[] instead of DbCommand()[].  Fix IndexRef to 
+	ref proper index.
+	Avoid using SourceColumnNullMapping property in the constructor 
+	of DbParameter while creating the code.
+	
+2009-07-18  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* CustomDataClassGenerator.cs (CreateDbSourceMethods): Handle cases of Scalar 
+	and NoData QueryTypes.
+	
+2009-07-17  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	* TableAdapterSchemaInfo.cs: Wrap DbCommand within DbCommandInfo and 
+	define MethodInfo to hold method properties common to both Get and Fill.
+	
+	* CustomDataClassGenerator.cs (CreateDbSourceMethods): Handle cases of Fill 
+	and Get appropriately.
+	
+2009-07-16  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* CustomDataClassGenerator.cs (CreateDbSourceMethods):  Handle 
+	methods of type "Fill".
+	
+	* XmlSchemaDataImporter.cs (ProcessDbParameters): Handle empty strings 
+	while setting parameter properties.
+	
+2009-07-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Part of fix for #325464
+	* CustomDataClassGenerator.cs: Add implementation to generate 
+	TableAdapter code.
+	
+	* DataSet.cs (TableAdapterSchemaData): New internal property that 
+	holds TableAdapter details to generate code from.
+	
+	* XmlConstants.cs: Add Msdatasource constant to handle 
+	<...:xml-msdatasource> elements.
+	
+	* XmlSchemaDataImporter.cs: Implement handling of <TableAdapter ...>
+	* TableAdapterSchemaInfo.cs: New 
 	
 2009-05-16  Veerapuram Varadhan  <vvaradhan@novell.com>
 
@@ -79,6 +185,11 @@
 	member names when it is same as that of the dataset.  Fixes the CS0542 error
 	during compilation of the generated source.
 	
+2009-03-25  Ivan N. Zlatev  <contact@i-nz.net>
+
+	* DataView.cs: Fire ListChanged when the RowFilter changes.
+	[Fixes bug #479405]
+
 2009-02-24  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	* *Fixes #377146 - in a better way

@@ -1,3 +1,848 @@
+2010-05-21  Geoff Norton  <gnorton@novell.com>
+
+	* BasicHttpBinding.cs: Transport mode supports authentication as well.
+
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : and "To" header is also automatically
+	  added if AddressingVersion is WSA1. This likely fixes bug #577139.
+
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Constants.cs, EndpointAddress10.cs :
+	  Remove duplicate constant (WSA1).
+
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Constants.cs : moved SoapDictionary from BinaryMessageEncoder.
+
+2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : cosmetic attribute reordering.
+
+2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : when WSAddressing10 is used, set ReplyTo
+	  and MessageID. (found while fixing #577139).
+
+2010-02-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : public->internal.
+
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory_1.cs, ChannelFactory.cs : fix default constructor
+	  handling and ensure service endpoint at opening the factory.
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : fix complicated IMetadataExchange handling to
+	  pass nunit tests (treat mex binding as special case).
+
+2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientRuntimeChannel.cs : do not try to iterate channel
+	  acceptor when it is being closed.
+
+2010-01-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : a stability workaround to make nunit test
+	  stopper almost reproducible.
+
+2010-01-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WS2007FederationHttpBinding.cs, WS2007HttpBinding.cs:
+	  add missing constructors.
+
+2010-01-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MessageSecurityVersion.cs : add new 3.5 members.
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : add another loop blocker.
+	  Do not reject binding configuration with no basic http binding.
+	  In SL3 it may be custom and such configuration should be valid.
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ExceptionDetail.cs : uncomment DataMember (likely commented out due
+	  to missing default serialization in the past).
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddressBuilder.cs : reader getters were broken.
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddressBuilder.cs : implement.
+
+2010-01-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BasicHttpBinding.cs : add SL3 EnableHttpCookieContainer support.
+
+2010-01-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : uncomment binary message
+	  encoding element which was internal-only in SL2 but public in SL3.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceProxyGenerator.cs, ServiceRuntimeChannel.cs :
+	  Pass service type to correctly retrieve ServiceContractAttribute
+	  from the service type, not callback type.
+
+2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : to open duplex callback channel, it must
+	  ensure to open the channel itself (not only its inner channel).
+
+2009-12-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : remove extra CWLs.
+
+2009-12-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* AllEnums.cs :
+	  added ServiceContractGenerationOptions.EventBasedAsynchronousMethods.
+
+2009-12-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : a bit more kindful error message.
+	* ClientProxyGenerator.cs : fix async parameter offset.
+
+2009-12-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : in AddBaseAddress(), use base_addresses
+	  instead of Description. It could be called in InitializeDescription.
+
+2009-12-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BasicHttpBinding.cs : handle transport security properties.
+
+2009-12-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CommunicationObjectAbortedException.cs, ServerTooBusyException.cs,
+	ServiceActivationException.cs: Fix base class
+	* ServiceKnownTypeAttribute.cs: Seal type and add missing 
+	[AttributeUsage] attribute
+
+2009-12-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : I made an extraneous change.
+
+2009-12-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs, ChannelFactory_1.cs, ChannelFactory.cs :
+	  more SL3 changes.
+
+2009-12-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : do not enter infinite loop at
+	  empty <binding> element.
+
+2009-11-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddress10.cs : added it to the 2.1 build for SL3 API.
+
+2009-11-05  Geoff Norton  <gnorton@novell.com>
+
+	* ClientRuntimeChannel.cs: Support OperationContext in async calls
+	as well
+
+2009-10-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : removed internal dispatcher builder method.
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : eliminate possible '/' + '/foo' combination.
+
+2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ClientRuntimeChannel.cs: Remove the WaitOne 'emitContext' 
+	overloads from the Moonlight build. Directly call WaitHandle.
+	WaitAll from WaitOne(int) (since the overloads are not always
+	present)
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : fix relative URI construction for
+	  ServiceMetadataExtension. It should create URI like
+	  http://localhost/test.svc/wsdl, not http://localhost/wsdl .
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : on opening the host, check service endpoints
+	  to make sure if there is at least one "non-mex" endpoint.
+	  Fix couple of typos.
+
+2009-10-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InstanceContext.cs : new constraints on CommunicationObject
+	  required calls to base methods.
+	* ChannelFactory.cs : ditto. Actually changed timing to call
+	  Open() on the internal factory.
+	* ServiceHostBase.cs : removed DoOpen() which is almost extra now.
+	  Added temporary IMetadataExchange workaround.
+
+2009-10-07  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* OperationContext.cs: Use [ThreadStatic] instead of Thread.
+	GetNamedDataSlot with Thread.[Get|Set]Data since it offers type
+	safety and don't require keeping extra API inside Moonlight
+
+2009-10-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : a couple of refactoring on contract loopup.
+	  Do not push mex contracts to ImplementedContracts.
+
+2009-10-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostingEnvironment.cs : revert the change, to use
+	  internal asp.net state again.
+
+2009-10-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : apply endpoint behavior section in config.
+	  Otherwise WebScriptEnablingBehavior won't be created.
+
+2009-10-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : fill behaviors first, then add endpoints.
+	  IMetadataExchange requires ServiceMetadataBehaviors, but it may be
+	  filled only from config (which is to be read later).
+
+2009-10-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : MT users should be warned.
+	* ClientBase.cs : make MT-only ChannelBase.Invoke() protected.
+
+2009-09-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostingEnvironment.cs : use AspNetCompatibilityEnabled as
+	  ASP.NET switch.
+
+2009-09-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : use ConfigUtil to get config sections.
+
+2009-09-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : fix wrong parameter number for async
+	  end method with return value.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientRuntimeChannel.cs : reflecting EndpointDispatcher change.
+
+2009-09-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : OnOpened() should not hide events that are
+	  invoked at the base class.
+
+2009-09-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : partly revert dispatcher builder refactoring
+	  to fix some ServiceHostBaseTest regressions.
+
+2009-09-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : it missed end method argument on
+	  generating end method proxy.
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : URI trailing '/' can be added only when the
+	  relative URI is non-empty. Do not make http://host/foo.svc as
+	  http://host/foo.svc/ , it's not a directory.
+
+2009-09-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : add AddBaseAddress(). BaseAddresses must be
+	  non-null.
+
+2009-09-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : move DispatcherBuilder out from ServiceHostBase.
+
+2009-09-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : on service contract lookup, do not always
+	  expect contract name to match type name.
+	* ServiceHost.cs : remove extra local var.
+
+2009-09-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : fix wrong listenUri argument in
+	  AddServiceEndpoint() call chain.
+
+2009-09-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory_1.cs : validate behaviors.
+
+2009-09-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : add Extensions.
+
+2009-08-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : add (incomplete) binary
+	  encoder support at config layer. see:
+	  http://lists.ximian.com/pipermail/mono-list/2009-August/043245.html
+
+2009-08-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : use ulong as same as Welcome message value.
+
+2009-08-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Constants.cs : p2p constants should rather go here.
+
+2009-08-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, DuplexClientRuntimeChannel.cs : split out
+	  from former to latter and implemented most part of listener part.
+	  Make sure to open internal channel at base ClientRuntimeChannel.
+	* ClientProxyGenerator.cs : minimize !NET_2_1 to here.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : some refactoring to reduce weird limitation
+	  to apply behaviors to endpoints. (no need to limit to [0]).
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : some refactoring to isolate dispatcher
+	  builder code from here.
+
+2009-08-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : moved some code to channel/endpoint dispatcher
+	  to reduce their dependencies on this type.
+
+2009-08-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : implement async OnBegin/EndOpen like close.
+	  Add FIXME and OnOpen() override on duplex channel.
+
+2009-08-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : support UnknownMessageReceived (used by
+	  ChannelDispatcher).
+
+2009-08-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContext.cs, OperationContextScope.cs :
+	  implement IsUserContext.
+
+2009-08-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexChannelFactory.cs, ChannelFactory_1.cs: with static factory
+	  methods, they should close the factory when the channel is closed,
+	  but nonstatic CreateChannel() could be called more than once, so
+	  do not always close it.
+	* ClientRuntimeChannel.cs : take OperationContext.Current into
+	  consideration (it could be created by users).
+
+2009-08-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetNamedPipeBinding.cs, NetNamedPipeSecurity.cs
+	  NamedPipeTransportSecurity.cs : new files.
+	* Dummy.cs : remove above ones.
+
+2009-08-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : wildcard action support was not working
+	  for one-way channels.
+
+2009-08-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : set expected AddressFilter.
+
+2009-08-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddress.cs : #if !NET_2_1 is removing code too much.
+
+2009-08-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : made some properties in duplex context
+	  channel dispatching to internal client.
+
+2009-08-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContextScope.cs : check null arg.
+
+2009-08-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : return timeouts that are set at
+	  dispatch runtime later than its .ctor(). Provide ListenUri too.
+
+2009-08-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* AllEnums.cs : add AddressFilterMode and SupportedAddressingMode.
+	* ServiceBehaviorAttribute.cs : added missing properties.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : (ChannelBase) now ClientRuntimeChannel demands an
+	  explicit address.
+
+2009-08-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : use new IOperationInvoker implementation.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : change .ctor() args.
+	  Add proxy hook methods that simply calls those in callback
+	  ClientRuntimeChannel.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : create callback runtime here, if required.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : factory was not fully optional. Add
+	  contextChannel argument to make room for duplex callback channel.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : split client-specific code generation
+	  from those common to service callback generation.
+	* ServiceProxyGenerator.cs : new file, uses common basis above.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : created derived duplex type.
+
+2009-08-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : close/abort channels.
+	  factory is optional now.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : unify IChannel field to one.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : de-factorying toward callback instancing.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexChannelFactory.cs, ClientRuntimeChannel.cs,
+	  ChannelFactory_1.cs : more ServiceEndpoint dep reduction.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : removing extra deps on ServiceEndpoint.
+
+2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : eliminate dependency on ChannelFactory,
+	  which will block using it for callback instances.
+
+2009-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : fix 2.1 build.
+
+2009-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : actually CallbackInstance is set and
+	  should be available.
+
+2009-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexChannelFactory.cs, ClientProxyGenerator.cs, ClientBase.cs,
+	  ChannelFactory_1.cs, DuplexClientBase.cs :
+	  create IDuplexContextChannel from ClientBase if required.
+
+2009-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientRuntimeChannel.cs : new proxy base channel.
+
+2009-08-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : it should implement IServiceChannel,
+	  not IClientChannel.
+
+2009-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContext.cs : GetCallbackChannel<T>() should just return
+	  channel (which should also implement T, which must be callback
+	  type).
+
+2009-08-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceBehaviorAttribute.cs : cosmetic spelling fix.
+
+2009-07-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ClientProxyGenerator.cs, ClientBase.cs,
+	  ChannelFactory_1.cs : now proxies take remote address and via uri
+	  which could be optionally specified and use it whenever required.
+
+2009-07-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : remove TCP listener creator.
+	  It is now in PeerDuplexChannel.
+
+2009-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TransactionFlowAttribute.cs : new file.
+
+2009-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : implement some remaining members.
+	  Remove null argument check and make setter optional.
+
+2009-07-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs: add some null checks.
+
+2009-07-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBinding.cs : a couple of members should be passed to
+	  appropriate binding element.
+
+2009-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceBehaviorAttribute.cs : fix IsolationLevel default value.
+	* CallbackBehaviorAttribute.cs : ditto.
+	  Partly implemented interface methods.
+
+2009-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationBehaviorAttribute.cs :
+	  add AutoDisposeParameters, and apply it.
+	* CallbackBehaviorAttribute.cs : added couple of missing members.
+
+2009-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceBehaviorAttribute.cs : fix default values and simplify code.
+
+2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientBase.cs : oops, fix build.
+
+2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientBase.cs : add missing members here too.
+
+2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : some of Silverlight API are backported to full CLR.
+
+2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexChannelFactory.cs : fill missing members.
+
+2009-07-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : significant refactoring. It does not call resolver
+	  to manage the node itself but rather hold its state.
+
+2009-07-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : some implementation cleanup before significant
+	  refactoring. Mesh state is not maintained here. Use optionally
+	  fixed listener address and port. Set offline status when closed.
+
+2009-07-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetPeerTcpBinding.cs : Fix interface implementations.
+
+2009-07-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceBehaviorAttribute.cs : fill SingletonInstanceContext on
+	  opening the host.
+
+2009-06-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InstanceContext.cs : add missing member / cosmetic API fix.
+	* ServiceBehaviorAttribute.cs : InstanceContextMode is per-session
+	  by default.
+
+2009-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : remove more TODO.
+
+2009-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContext.cs : implement SessionId.
+	* ServiceHostBase.cs : implement open/close async methods.
+	  remove some TODOs.
+
+2009-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : remove some NIEs for actual use.
+	  Dispose->Close.
+
+2009-06-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : no need for NIE at OnAbort() (at least so far).
+
+2009-06-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	 * ServiceHostBase.cs : do not give up releasing further channel
+	   dispatchers when one of them threw an error. Use strict timeout.
+
+2009-06-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* InstanceContext.cs :
+	  Add call to base (see CommunicationObject change).
+
+2009-05-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContext.cs : IncomingMessage* properties should work
+	  for non-reply channels as well.
+
+2009-05-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : if Resolve() returns no address, create a new peer
+	  address here, and shut it down when it is closed.
+
+2009-05-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ServiceRuntimeChannel.cs :
+	  IDuplexSession was not supported.
+
+2009-05-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationContext.cs : missing from the previous commit (remove
+	  timeouts).
+
+2009-04-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHost.cs : split dispatcher open from dispatcher loop start.
+	  Use DispatchRuntime.Type to specify service type.
+
+2009-04-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : reordered preferrence of created channel types,
+	  and fixed to allow duplex channels without CallbackContractType
+	  (which does not always exist for duplex channels).
+
+2009-04-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : now Request() supports duplex ones too.
+
+2009-04-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexChannelFactory.cs : remove todos. Implement CreateChannel().
+
+2009-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ClientBase.cs (NET_2_1): Change cctor not to require being 
+	[SecuritySafeCritical] and drop IDisposable.
+
+2009-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : remove extra field.
+
+2009-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : setup IChannel instance at construction
+	  time, so that it can GetProperty<T>() immediately after
+	  ChannelFactory.CreateChannel().
+	  Implement some properties.
+
+2009-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerNode.cs : update API to the latest .NET amd implement some.
+
+2009-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerResolver.cs, PeerResolverImpl.cs :
+	  update API to the latest .NET.
+
+2009-04-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Dummy.cs : remove some peer transport stuff.
+	* NetPeerTcpBinding.cs : implemented some members.
+	* PeerSecuritySettings.cs : added copy utility method.
+
+2009-04-17  Geoff Norton  <gnorton@novell.com>
+
+	* ChannelFactory.cs: Ensure we create and open a factory here,
+	avoids a NRE regression in
+	System.ServiceModel.ClientRuntimeChannel.SetupRequestChannel ()
+
+2009-04-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs, ClientRuntimeChannel.cs : implemented
+	  CreateFactory() and moved corresponding code from latter to
+	  former. Made implementation closer to .NET behavior.
+
+2009-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ClientProxyGenerator.cs, ClientBase.cs,
+	  ChannelFactory_1.cs :
+	  Sort of reverted internal client channel type changes from
+	  February, but to work fine in SL2 too. Now ChannelFactory<T>
+	  can handle combined interface of IClientChannel and the contract.
+
+2009-04-16  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexChannelFactory.cs : a bit of constructor implementation.
+
+2009-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetPeerTcpBinding.cs : ListenIPAddress is IPAddress here too.
+
+2009-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* PeerTransportSecuritySettings.cs : new.
+	* PeerSecuritySettings.cs : Transport was missing.
+
+2009-04-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : add duplex channels as channel candidates.
+
+2009-04-07  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* IOnlineStatus.cs : added missing interface.
+
+2009-03-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : do not bork at some unimplemented bits.
+
+2009-03-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CrossDomainAccessManager.cs: temporarily disable
+	  access checker to just warn invalid access for now.
+
+2009-03-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceKnownTypeAttribute.cs : correct implementation to populate
+	  specified types.
+
+2009-03-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MessageHeaderException.cs : added missing members.
+
+2009-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CrossDomainPolicy.cs : added validation method. Not sure if it is
+	  complete.
+	* CrossDomainAccessManager.cs : validate against crossdomain.xml too.
+
+2009-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CrossDomainAccessManager.cs : replace reflection-based
+	  Uri retrieval with actually working one.
+
+2009-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CrossDomainAccessManager.cs : 2.1 WebRequest misses some
+ 	  members used here.
+
+2009-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* CrossDomainAccessManager.cs, ClientAccessPolicy.cs,
+	  CrossDomainPolicy.cs : new. support cross domain access check.
+
+2009-02-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : give successful WCF call completion info.
+
+2009-02-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : diagnose more precisely.
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : fix wrong argument index.
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : use overridable CreateChannel().
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : make it work with SL2 UI threading model.
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : simply use CodeMethod.GetArg().
+
+2009-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ClientProxyGenerator.cs,
+	  ClientBase.cs, ChannelFactory_1.cs, DuplexClientBase.cs:
+	  now ClientBase<TChannel>.InnerChannel became ChannelBase<T> as
+	  SL2 does. This change required several internal changes in
+	  proxy code generation. Also, now TChannel must be class.
+
+2009-02-20  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory_1.cs : it's not going to create ClientRuntime
+	  anymore here. Moving to ServiceEndpoint.cs as the first stage.
+	* ClientBase.cs : some comment.
+
+2009-02-13  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : for default constructor, first try to
+	  retrieve configuration from its contract name.
+	  Diagnose errorneous configuration.
+	* SilverlightClientConfigLoader.cs : basicHttpBinding/binding
+	  element could be defined two or more times.
+
+2009-02-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : so, the proxy generator was buggy to
+	  generate end invoke.
+	* ClientBase.cs : make it simpler and just work.
+
+2009-02-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : oops, should have tried build with net_2_1_raw.
+
+2009-02-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ClientBase.cs :
+	  implement remaining ChannelBase members and made some required
+	  changes in ClientRuntimeChannel.
+
+2009-02-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ClientProxyGenerator.cs :
+	  change async methods signature and dynamic code generation.
+
+2009-01-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientBase.cs : added another missing type.
+
+2009-01-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : fix wrong file reference.
+
+2009-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs :
+	  removed extraneous code. Handle "*" (wildcard).
+
+2009-01-22  Alan McGovern  <amcgovern@novell.com>
+
+	* BasicHttpBinding.cs: In silverlight ReaderQuota is immutable and always
+	has a default value of ReaderQuota.Max. Therefore no need to call CopyTo.
+
+2009-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SilverlightClientConfigLoader.cs : in Silverlight, there is
+	  "ServiceReference.ClientConfig" which is used to resolve service
+	  endpoint configuration. It is to consume that file.
+	* ChannelFactory.cs : use above in SL.
+	* ClientBase.cs : rename some misleading param names.
+
+2009-01-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelFactory.cs : some code comment.
+	* ClientBase.cs : remove some todos.
+	* ClientRuntimeChannel.cs : hack some session properties.
+
 2009-01-19  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ClientBase.cs : implement InvokeAsync(). Not sure if it works yet.

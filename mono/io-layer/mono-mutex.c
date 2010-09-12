@@ -1,23 +1,10 @@
 /* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
 /*
- *  Authors: Jeffrey Stedfast <fejj@ximian.com>
+ * mono-mutex.h: Portability wrappers around POSIX Mutexes
  *
- *  Copyright 2002 Ximain, Inc. (www.ximian.com)
+ * Authors: Jeffrey Stedfast <fejj@ximian.com>
  *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Street #330, Boston, MA 02111-1307, USA.
- *
+ * Copyright 2002 Ximian, Inc. (www.ximian.com)
  */
 
 
@@ -35,11 +22,19 @@
 
 
 #ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
-int pthread_mutex_timedlock (pthread_mutex_t *mutex,
-			    const struct timespec *timeout);
+/* Android does not implement pthread_mutex_timedlock(), but does provide an
+ * unusual declaration: http://code.google.com/p/android/issues/detail?id=7807
+ */
+#ifdef PLATFORM_ANDROID
+#define CONST_NEEDED
+#else
+#define CONST_NEEDED const
+#endif
 
+int pthread_mutex_timedlock (pthread_mutex_t *mutex,
+			    CONST_NEEDED struct timespec *timeout);
 int
-pthread_mutex_timedlock (pthread_mutex_t *mutex, const struct timespec *timeout)
+pthread_mutex_timedlock (pthread_mutex_t *mutex, CONST_NEEDED struct timespec *timeout)
 {
 	struct timeval timenow;
 	struct timespec sleepytime;

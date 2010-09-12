@@ -1,5 +1,5 @@
 /*
- * aot.c: mono Ahead of Time compiler
+ * aot-compiler.c: mono Ahead of Time compiler
  *
  * Author:
  *   Dietmar Maurer (dietmar@ximian.com)
@@ -9,8 +9,6 @@
  */
 
 /* Remaining AOT-only work:
- * - reduce the length of the wrapper names.
- * - aot IMT tables, so we don't have two kinds of aot code.
  * - optimize the trampolines, generate more code in the arch files.
  * - make things more consistent with how elf works, for example, use ELF 
  *   relocations.
@@ -44,10 +42,6 @@
 
 #include <errno.h>
 #include <sys/stat.h>
-#include <limits.h>    /* for PAGESIZE */
-#ifndef PAGESIZE
-#define PAGESIZE 4096
-#endif
 
 #include <mono/metadata/tabledefs.h>
 #include <mono/metadata/class.h>
@@ -59,24 +53,20 @@
 #include <mono/metadata/metadata-internals.h>
 #include <mono/metadata/marshal.h>
 #include <mono/metadata/gc-internal.h>
-#include <mono/metadata/method-builder.h>
 #include <mono/metadata/monitor.h>
 #include <mono/metadata/mempool-internals.h>
 #include <mono/metadata/mono-endian.h>
+#include <mono/metadata/threads-types.h>
 #include <mono/utils/mono-logger.h>
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-time.h>
-
-#ifndef PLATFORM_WIN32
-#include <mono/utils/freebsd-elf32.h>
-#include <mono/utils/freebsd-elf64.h>
-#endif
-
-#include <mono/utils/freebsd-dwarf.h>
+#include <mono/utils/mono-mmap.h>
 
 #include "mini.h"
+#include "image-writer.h"
+#include "dwarfwriter.h"
 
-#ifndef DISABLE_AOT
+#if !defined(DISABLE_AOT) && !defined(DISABLE_JIT)
 
 #define TV_DECLARE(name) gint64 name
 #define TV_GETTIME(tv) tv = mono_100ns_ticks ()
@@ -89,20 +79,6 @@
 #else
 #define SHARED_EXT ".so"
 #endif
-
-#if defined(sparc) || defined(__ppc__) || defined(__powerpc__) || defined(__MACH__)
-#define AS_STRING_DIRECTIVE ".asciz"
-#else
-/* GNU as */
-#define AS_STRING_DIRECTIVE ".string"
-#endif
-
-
-// __MACH__
-// .byte generates 1 byte per expression.
-// .short generates 2 bytes per expression.
-// .long generates 4 bytes per expression.
-// .quad generates 8 bytes per expression.
 
 #define ALIGN_TO(val,align) ((((guint64)val) + ((align) - 1)) & ~((align) - 1))
 #define ALIGN_PTR_TO(ptr,align) (gpointer)((((gssize)(ptr)) + (align - 1)) & (~(align - 1)))
@@ -119,54 +95,24 @@ typedef struct MonoAotOptions {
 	gboolean static_link;
 	gboolean asm_only;
 	gboolean asm_writer;
+	gboolean nodebug;
+	gboolean soft_debug;
 	int nthreads;
+	int ntrampolines;
+	int nrgctx_trampolines;
+	int nimt_trampolines;
+	gboolean print_skipped_methods;
+	char *tool_prefix;
 } MonoAotOptions;
 
 typedef struct MonoAotStats {
-	int ccount, mcount, lmfcount, abscount, wrappercount, gcount, ocount, genericcount;
-	int code_size, info_size, ex_info_size, got_size, class_info_size, got_info_size, got_info_offsets_size;
+	int ccount, mcount, lmfcount, abscount, gcount, ocount, genericcount;
+	int code_size, info_size, ex_info_size, unwind_info_size, got_size, class_info_size, got_info_size, got_info_offsets_size;
 	int methods_without_got_slots, direct_calls, all_calls;
 	int got_slots;
 	int got_slot_types [MONO_PATCH_INFO_NONE];
 	int jit_time, gen_time, link_time;
 } MonoAotStats;
-
-#if defined(TARGET_AMD64) && !defined(PLATFORM_WIN32)
-#define USE_ELF_WRITER 1
-#define USE_ELF_RELA 1
-#endif
-
-#if defined(TARGET_X86) && !defined(PLATFORM_WIN32)
-#define USE_ELF_WRITER 1
-#endif
-
-#if defined(TARGET_ARM) && !defined(__MACH__)
-#define USE_ELF_WRITER 1
-#endif
-
-#if defined(__mips__)
-#define USE_ELF_WRITER 1
-#endif
-
-#if defined(USE_ELF_WRITER)
-#define USE_BIN_WRITER 1
-#endif
-
-#ifdef USE_BIN_WRITER
-
-typedef struct _BinSymbol BinSymbol;
-typedef struct _BinReloc BinReloc;
-typedef struct _BinSection BinSection;
-
-#endif
-
-/* emit mode */
-enum {
-	EMIT_NONE,
-	EMIT_BYTE,
-	EMIT_WORD,
-	EMIT_LONG
-};
 
 typedef struct MonoAotCompile {
 	MonoImage *image;
@@ -175,10 +121,11 @@ typedef struct MonoAotCompile {
 	GHashTable *method_depth;
 	MonoCompile **cfgs;
 	int cfgs_size;
-	GHashTable *patch_to_plt_offset;
-	GHashTable *plt_offset_to_patch;
-	GHashTable *patch_to_shared_got_offset;
-	GPtrArray *shared_patches;
+	GHashTable *patch_to_plt_entry;
+	GHashTable *plt_offset_to_entry;
+	GHashTable *patch_to_got_offset;
+	GHashTable **patch_to_got_offset_by_type;
+	GPtrArray *got_patches;
 	GHashTable *image_hash;
 	GHashTable *method_to_cfg;
 	GHashTable *token_info_hash;
@@ -187,12 +134,14 @@ typedef struct MonoAotCompile {
 	GPtrArray *globals;
 	GList *method_order;
 	guint32 *plt_got_info_offsets;
-	/* Number of trampolines emitted into the AOT file */
-	guint32 num_aot_trampolines;
 	guint32 got_offset, plt_offset, plt_got_offset_base;
 	/* Number of GOT entries reserved for trampolines */
 	guint32 num_trampoline_got_entries;
-	guint32 trampoline_got_offset_base;
+
+	guint32 num_trampolines [MONO_AOT_TRAMP_NUM];
+	guint32 trampoline_got_offset_base [MONO_AOT_TRAMP_NUM];
+	guint32 trampoline_size [MONO_AOT_TRAMP_NUM];
+
 	MonoAotOptions aot_opts;
 	guint32 nmethods;
 	guint32 opts;
@@ -202,24 +151,26 @@ typedef struct MonoAotCompile {
 	char *static_linking_symbol;
 	CRITICAL_SECTION mutex;
 	gboolean use_bin_writer;
-	/* Bin writer */
-#ifdef USE_BIN_WRITER
-	BinSymbol *symbols;
-	BinSection *sections;
-	BinSection *cur_section;
-	BinReloc *relocations;
-	GHashTable *labels;
-	int num_relocs;
-#endif
-	/* Asm writer */
+	MonoImageWriter *w;
+	MonoDwarfWriter *dwarf;
 	FILE *fp;
 	char *tmpfname;
-	int mode; /* emit mode */
-	int col_count; /* bytes emitted per .byte line */
-	/* xdebug */
-	GHashTable *class_to_die;
-	int fde_index, tdie_index;
+	GSList *cie_program;
+	GHashTable *unwind_info_offsets;
+	GPtrArray *unwind_ops;
+	guint32 unwind_info_offset;
+	char *got_symbol;
+	char *plt_symbol;
+	GHashTable *method_label_hash;
+	const char *temp_prefix;
+	guint32 label_generator;
 } MonoAotCompile;
+
+typedef struct {
+	int plt_offset;
+	char *symbol;
+	MonoJumpInfo *ji;
+} MonoPltEntry;
 
 #define mono_acfg_lock(acfg) EnterCriticalSection (&((acfg)->mutex))
 #define mono_acfg_unlock(acfg) LeaveCriticalSection (&((acfg)->mutex))
@@ -242,7 +193,7 @@ static const gint16 opidx [] = {
 #undef PATCH_INFO
 };
 
-static const char*
+static G_GNUC_UNUSED const char*
 get_patch_name (int info)
 {
 	return (const char*)&opstr + opidx [info];
@@ -256,7 +207,7 @@ patch_types [MONO_PATCH_INFO_NUM + 1] = {
 	NULL
 };
 
-static const char*
+static G_GNUC_UNUSED const char*
 get_patch_name (int info)
 {
 	return patch_types [info];
@@ -264,1792 +215,108 @@ get_patch_name (int info)
 
 #endif
 
-static void
-emit_global (MonoAotCompile *acfg, const char *name, gboolean func);
+/* Wrappers around the image writer functions */
 
-static gboolean 
-is_got_patch (MonoJumpInfoType patch_type)
+static inline void
+emit_section_change (MonoAotCompile *acfg, const char *section_name, int subsection_index)
 {
-	return TRUE;
+	img_writer_emit_section_change (acfg->w, section_name, subsection_index);
 }
 
-static G_GNUC_UNUSED int
-ilog2(register int value)
+static inline void
+emit_push_section (MonoAotCompile *acfg, const char *section_name, int subsection)
 {
-	int count = -1;
-	while (value & ~0xf) count += 4, value >>= 4;
-	while (value) count++, value >>= 1;
-	return count;
+	img_writer_emit_push_section (acfg->w, section_name, subsection);
 }
 
-#ifdef USE_BIN_WRITER
-
-typedef struct _BinLabel BinLabel;
-struct _BinLabel {
-	char *name;
-	BinSection *section;
-	int offset;
-};
-
-struct _BinReloc {
-	BinReloc *next;
-	char *val1;
-	char *val2;
-	BinSection *val2_section;
-	int val2_offset;
-	int offset;
-	BinSection *section;
-	int section_offset;
-	int reloc_type;
-};
-
-struct _BinSymbol {
-	BinSymbol *next;
-	char *name;
-	BinSection *section;
-	int offset;
-	gboolean is_function;
-	gboolean is_global;
-	char *end_label;
-};
-
-struct _BinSection {
-	BinSection *next;
-	BinSection *parent;
-	char *name;
-	int subsection;
-	guint8 *data;
-	int data_len;
-	int cur_offset;
-	int file_offset;
-	int virt_offset;
-	int shidx;
-};
-
-static void
-bin_writer_emit_start (MonoAotCompile *acfg)
+static inline void
+emit_pop_section (MonoAotCompile *acfg)
 {
-	acfg->labels = g_hash_table_new (g_str_hash, g_str_equal);
+	img_writer_emit_pop_section (acfg->w);
 }
 
-static void
-bin_writer_emit_section_change (MonoAotCompile *acfg, const char *section_name, int subsection_index)
-{
-	BinSection *section;
-
-	if (acfg->cur_section && acfg->cur_section->subsection == subsection_index
-			&& strcmp (acfg->cur_section->name, section_name) == 0)
-		return;
-	for (section = acfg->sections; section; section = section->next) {
-		if (section->subsection == subsection_index && strcmp (section->name, section_name) == 0) {
-			acfg->cur_section = section;
-			return;
-		}
-	}
-	if (!section) {
-		section = g_new0 (BinSection, 1);
-		section->name = g_strdup (section_name);
-		section->subsection = subsection_index;
-		section->next = acfg->sections;
-		acfg->sections = section;
-		acfg->cur_section = section;
-	}
+static inline void
+emit_local_symbol (MonoAotCompile *acfg, const char *name, const char *end_label, gboolean func) 
+{ 
+	img_writer_emit_local_symbol (acfg->w, name, end_label, func); 
 }
 
-static void
-bin_writer_emit_symbol_inner (MonoAotCompile *acfg, const char *name, const char *end_label, gboolean is_global, gboolean func)
-{
-	BinSymbol *symbol = g_new0 (BinSymbol, 1);
-	symbol->name = g_strdup (name);
-	if (end_label)
-		symbol->end_label = g_strdup (end_label);
-	symbol->is_function = func;
-	symbol->is_global = is_global;
-	symbol->section = acfg->cur_section;
-	/* FIXME: we align after this call... */
-	symbol->offset = symbol->section->cur_offset;
-	symbol->next = acfg->symbols;
-	acfg->symbols = symbol;
+static inline void
+emit_label (MonoAotCompile *acfg, const char *name) 
+{ 
+	img_writer_emit_label (acfg->w, name); 
 }
 
-static void
-bin_writer_emit_global_inner (MonoAotCompile *acfg, const char *name, gboolean func)
-{
-	bin_writer_emit_symbol_inner (acfg, name, NULL, TRUE, func);
+static inline void
+emit_bytes (MonoAotCompile *acfg, const guint8* buf, int size) 
+{ 
+	img_writer_emit_bytes (acfg->w, buf, size); 
 }
 
-static void
-bin_writer_emit_local_symbol (MonoAotCompile *acfg, const char *name, const char *end_label, gboolean func)
-{
-	bin_writer_emit_symbol_inner (acfg, name, end_label, FALSE, func);
+static inline void
+emit_string (MonoAotCompile *acfg, const char *value) 
+{ 
+	img_writer_emit_string (acfg->w, value); 
 }
 
-static void
-bin_writer_emit_label (MonoAotCompile *acfg, const char *name)
-{
-	BinLabel *label = g_new0 (BinLabel, 1);
-	label->name = g_strdup (name);
-	label->section = acfg->cur_section;
-	label->offset = acfg->cur_section->cur_offset;
-	g_hash_table_insert (acfg->labels, label->name, label);
+static inline void
+emit_line (MonoAotCompile *acfg) 
+{ 
+	img_writer_emit_line (acfg->w); 
 }
 
-static void
-bin_writer_emit_ensure_buffer (BinSection *section, int size)
-{
-	int new_offset = section->cur_offset + size;
-	if (new_offset >= section->data_len) {
-		int new_size = section->data_len? section->data_len * 2: 256;
-		guint8 *data;
-		while (new_size <= new_offset)
-			new_size *= 2;
-		data = g_malloc0 (new_size);
-		memcpy (data, section->data, section->data_len);
-		g_free (section->data);
-		section->data = data;
-		section->data_len = new_size;
-	}
+static inline void
+emit_alignment (MonoAotCompile *acfg, int size) 
+{ 
+	img_writer_emit_alignment (acfg->w, size); 
 }
 
-static void
-bin_writer_emit_bytes (MonoAotCompile *acfg, const guint8* buf, int size)
-{
-	bin_writer_emit_ensure_buffer (acfg->cur_section, size);
-	memcpy (acfg->cur_section->data + acfg->cur_section->cur_offset, buf, size);
-	acfg->cur_section->cur_offset += size;
+static inline void
+emit_pointer_unaligned (MonoAotCompile *acfg, const char *target) 
+{ 
+	img_writer_emit_pointer_unaligned (acfg->w, target); 
 }
 
-static void
-bin_writer_emit_string (MonoAotCompile *acfg, const char *value)
-{
-	int size = strlen (value) + 1;
-	bin_writer_emit_bytes (acfg, (const guint8*)value, size);
+static inline void
+emit_pointer (MonoAotCompile *acfg, const char *target) 
+{ 
+	img_writer_emit_pointer (acfg->w, target); 
 }
 
-static void
-bin_writer_emit_line (MonoAotCompile *acfg)
-{
-	/* Nothing to do in binary writer */
+static inline void
+emit_int16 (MonoAotCompile *acfg, int value) 
+{ 
+	img_writer_emit_int16 (acfg->w, value); 
 }
 
-static void 
-bin_writer_emit_alignment (MonoAotCompile *acfg, int size)
-{
-	int offset = acfg->cur_section->cur_offset;
-	int add;
-	offset += (size - 1);
-	offset &= ~(size - 1);
-	add = offset - acfg->cur_section->cur_offset;
-	if (add) {
-		bin_writer_emit_ensure_buffer (acfg->cur_section, add);
-		acfg->cur_section->cur_offset += add;
-	}
+static inline void
+emit_int32 (MonoAotCompile *acfg, int value) 
+{ 
+	img_writer_emit_int32 (acfg->w, value); 
 }
 
-static void
-bin_writer_emit_pointer_unaligned (MonoAotCompile *acfg, const char *target)
-{
-	BinReloc *reloc;
-
-	if (!target)
-		// FIXME:
-		g_assert_not_reached ();
-	reloc = g_new0 (BinReloc, 1);
-	reloc->val1 = g_strdup (target);
-	reloc->section = acfg->cur_section;
-	reloc->section_offset = acfg->cur_section->cur_offset;
-	reloc->next = acfg->relocations;
-	acfg->relocations = reloc;
-	if (strcmp (reloc->section->name, ".data") == 0) {
-		acfg->num_relocs++;
-		g_print ("reloc: %s at %d\n", target, acfg->cur_section->cur_offset);
-	}
-	acfg->cur_section->cur_offset += sizeof (gpointer);
+static inline void
+emit_symbol_diff (MonoAotCompile *acfg, const char *end, const char* start, int offset) 
+{ 
+	img_writer_emit_symbol_diff (acfg->w, end, start, offset); 
 }
 
-static void
-bin_writer_emit_pointer (MonoAotCompile *acfg, const char *target)
-{
-	bin_writer_emit_alignment (acfg, sizeof (gpointer));
-	bin_writer_emit_pointer_unaligned (acfg, target);
+static inline void
+emit_zero_bytes (MonoAotCompile *acfg, int num) 
+{ 
+	img_writer_emit_zero_bytes (acfg->w, num); 
 }
 
-static void
-bin_writer_emit_int16 (MonoAotCompile *acfg, int value)
-{
-	guint8 *data;
-	bin_writer_emit_ensure_buffer (acfg->cur_section, 2);
-	data = acfg->cur_section->data + acfg->cur_section->cur_offset;
-	acfg->cur_section->cur_offset += 2;
-	/* FIXME: little endian */
-	data [0] = value;
-	data [1] = value >> 8;
+static inline void
+emit_byte (MonoAotCompile *acfg, guint8 val) 
+{ 
+	img_writer_emit_byte (acfg->w, val); 
 }
 
-static void
-bin_writer_emit_int32 (MonoAotCompile *acfg, int value)
-{
-	guint8 *data;
-	bin_writer_emit_ensure_buffer (acfg->cur_section, 4);
-	data = acfg->cur_section->data + acfg->cur_section->cur_offset;
-	acfg->cur_section->cur_offset += 4;
-	/* FIXME: little endian */
-	data [0] = value;
-	data [1] = value >> 8;
-	data [2] = value >> 16;
-	data [3] = value >> 24;
-}
-
-static BinReloc*
-create_reloc (MonoAotCompile *acfg, const char *end, const char* start, int offset)
-{
-	BinReloc *reloc;
-	reloc = mono_mempool_alloc0 (acfg->mempool, sizeof (BinReloc));
-	reloc->val1 = mono_mempool_strdup (acfg->mempool, end);
-	if (strcmp (start, ".") == 0) {
-		reloc->val2_section = acfg->cur_section;
-		reloc->val2_offset = acfg->cur_section->cur_offset;
-	} else {
-		reloc->val2 = mono_mempool_strdup (acfg->mempool, start);
-	}
-	reloc->offset = offset;
-	reloc->section = acfg->cur_section;
-	reloc->section_offset = acfg->cur_section->cur_offset;
-	reloc->next = acfg->relocations;
-	acfg->relocations = reloc;
-	return reloc;
-}
-
-static void
-bin_writer_emit_symbol_diff (MonoAotCompile *acfg, const char *end, const char* start, int offset)
-{
-	create_reloc (acfg, end, start, offset);
-	acfg->cur_section->cur_offset += 4;
-	/*if (strcmp (reloc->section->name, ".data") == 0) {
-		acfg->num_relocs++;
-		g_print ("reloc: %s - %s + %d at %d\n", end, start, offset, acfg->cur_section->cur_offset - 4);
-	}*/
-}
-
-/* 
- * Emit a relocation entry of type RELOC_TYPE against symbol SYMBOL at the current PC.
- * Do not advance PC.
- */
 static G_GNUC_UNUSED void
-bin_writer_emit_reloc (MonoAotCompile *acfg, int reloc_type, const char *symbol, int addend)
+emit_global_inner (MonoAotCompile *acfg, const char *name, gboolean func)
 {
-	BinReloc *reloc = create_reloc (acfg, symbol, ".", addend);
-	reloc->reloc_type = reloc_type;
-}
-
-static void
-bin_writer_emit_zero_bytes (MonoAotCompile *acfg, int num)
-{
-	bin_writer_emit_ensure_buffer (acfg->cur_section, num);
-	acfg->cur_section->cur_offset += num;
-}
-
-#ifdef USE_ELF_WRITER
-
-enum {
-	SECT_NULL,
-	SECT_HASH,
-	SECT_DYNSYM,
-	SECT_DYNSTR,
-	SECT_REL_DYN,
-	SECT_RELA_DYN,
-	SECT_TEXT,
-	SECT_DYNAMIC,
-	SECT_GOT_PLT,
-	SECT_DATA,
-	SECT_BSS,
-	SECT_DEBUG_FRAME,
-	SECT_DEBUG_INFO,
-	SECT_DEBUG_ABBREV,
-	SECT_SHSTRTAB,
-	SECT_SYMTAB,
-	SECT_STRTAB,
-	SECT_NUM
-};
-
-/* Relocation types */
-#define R_ARM_CALL 28
-#define R_ARM_ALU_PC_G0_NC 59
-
-#if SIZEOF_VOID_P == 4
-
-typedef Elf32_Ehdr ElfHeader;
-typedef Elf32_Shdr ElfSectHeader;
-typedef Elf32_Phdr ElfProgHeader;
-typedef Elf32_Sym ElfSymbol;
-typedef Elf32_Rel ElfReloc;
-typedef Elf32_Rela ElfRelocA;
-typedef Elf32_Dyn ElfDynamic;
-
-#else
-
-typedef Elf64_Ehdr ElfHeader;
-typedef Elf64_Shdr ElfSectHeader;
-typedef Elf64_Phdr ElfProgHeader;
-typedef Elf64_Sym ElfSymbol;
-typedef Elf64_Rel ElfReloc;
-typedef Elf64_Rela ElfRelocA;
-typedef Elf64_Dyn ElfDynamic;
-
-#endif
-
-typedef struct {
-	const char *name;
-	int type;
-	int esize;
-	int flags;
-	int align;
-} SectInfo;
-
-static SectInfo section_info [] = {
-	{"", 0, 0, 0, 0},
-	{".hash", SHT_HASH, 4, 2, SIZEOF_VOID_P},
-	{".dynsym", SHT_DYNSYM, sizeof (ElfSymbol), 2, SIZEOF_VOID_P},
-	{".dynstr", SHT_STRTAB, 0, 2, 1},
-	{".rel.dyn", SHT_REL, sizeof (ElfReloc), 2, SIZEOF_VOID_P},
-	{".rela.dyn", SHT_RELA, sizeof (ElfRelocA), 2, SIZEOF_VOID_P},
-	{".text", SHT_PROGBITS, 0, 6, 4096},
-	{".dynamic", SHT_DYNAMIC, sizeof (ElfDynamic), 3, SIZEOF_VOID_P},
-	{".got.plt", SHT_PROGBITS, SIZEOF_VOID_P, 3, SIZEOF_VOID_P},
-	{".data", SHT_PROGBITS, 0, 3, 8},
-	{".bss", SHT_NOBITS, 0, 3, 8},
-	{".debug_frame", SHT_PROGBITS, 0, 0, 8},
-	{".debug_info", SHT_PROGBITS, 0, 0, 1},
-	{".debug_abbrev", SHT_PROGBITS, 0, 0, 1},
-	{".shstrtab", SHT_STRTAB, 0, 0, 1},
-	{".symtab", SHT_SYMTAB, sizeof (ElfSymbol), 0, SIZEOF_VOID_P},
-	{".strtab", SHT_STRTAB, 0, 0, 1}
-};
-
-typedef struct {
-	GString *data;
-	GHashTable *hash;
-} ElfStrTable;
-
-static int
-str_table_add (ElfStrTable *table, const char* value)
-{
-	int idx;
-	if (!table->data) {
-		table->data = g_string_new_len ("", 1);
-		table->hash = g_hash_table_new (g_str_hash, g_str_equal);
-	}
-	idx = GPOINTER_TO_UINT (g_hash_table_lookup (table->hash, value));
-	if (idx)
-		return idx;
-	idx = table->data->len;
-	g_string_append (table->data, value);
-	g_string_append_c (table->data, 0);
-	g_hash_table_insert (table->hash, (void*)value, GUINT_TO_POINTER (idx));
-	return idx;
-}
-
-static void
-append_subsection (MonoAotCompile *acfg, ElfSectHeader *sheaders, BinSection *sect, BinSection *add)
-{
-	int offset = sect->cur_offset;
-	/*offset += (sheaders [sect->shidx].sh_addralign - 1);
-	offset &= ~(sheaders [sect->shidx].sh_addralign - 1);*/
-	offset += (8 - 1);
-	offset &= ~(8 - 1);
-	bin_writer_emit_ensure_buffer (sect, offset);
-	g_print ("section %s aligned to %d from %d\n", sect->name, offset, sect->cur_offset);
-	sect->cur_offset = offset;
-
-	bin_writer_emit_ensure_buffer (sect, add->cur_offset);
-	memcpy (sect->data + sect->cur_offset, add->data, add->cur_offset);
-	add->parent = sect;
-	sect->cur_offset += add->cur_offset;
-	add->cur_offset = offset; /* it becomes the offset in the parent section */
-	g_print ("subsection %d of %s added at offset %d (align: %d)\n", add->subsection, sect->name, add->cur_offset, (int)sheaders [sect->shidx].sh_addralign);
-	add->data = NULL;
-	add->data_len = 0;
-}
-
-/* merge the subsections */
-static int
-collect_sections (MonoAotCompile *acfg, ElfSectHeader *sheaders, BinSection **out, int num)
-{
-	int i, j, maxs, num_sections;
-	BinSection *sect;
-
-	num_sections = 0;
-	maxs = 0;
-	for (sect = acfg->sections; sect; sect = sect->next) {
-		if (sect->subsection == 0) {
-			out [num_sections++] = sect;
-			g_assert (num_sections < num);
-		}
-		maxs = MAX (maxs, sect->subsection);
-	}
-	for (i = 0; i < num_sections; i++) {
-		for (j = 1; j <= maxs; ++j) {
-			for (sect = acfg->sections; sect; sect = sect->next) {
-				if (sect->subsection == j && strcmp (out [i]->name, sect->name) == 0) {
-					append_subsection (acfg, sheaders, out [i], sect);
-				}
-			}
-		}
-	}
-	return num_sections;
-}
-
-static unsigned long
-elf_hash (const unsigned char *name)
-{
-	unsigned long h = 0, g;
-	while (*name) {
-		h = (h << 4) + *name++;
-		if ((g = h & 0xf0000000))
-			h ^= g >> 24;
-		h &= ~g;
-	}
-	return h;
-}
-
-#define NUM_BUCKETS 17
-
-static int*
-build_hash (MonoAotCompile *acfg, int num_sections, ElfStrTable *dynstr)
-{
-	int *data;
-	int num_symbols = 1 + num_sections + 3;
-	BinSymbol *symbol;
-
-	for (symbol = acfg->symbols; symbol; symbol = symbol->next) {
-		if (!symbol->is_global)
-			continue;
-		num_symbols++;
-		str_table_add (dynstr, symbol->name);
-		/*g_print ("adding sym: %s\n", symbol->name);*/
-	}
-	str_table_add (dynstr, "__bss_start");
-	str_table_add (dynstr, "_edata");
-	str_table_add (dynstr, "_end");
-
-	data = g_new0 (int, num_symbols + 2 + NUM_BUCKETS);
-	data [0] = NUM_BUCKETS;
-	data [1] = num_symbols;
-
-	return data;
-}
-
-static gsize
-get_label_addr (MonoAotCompile *acfg, const char *name)
-{
-	int offset;
-	BinLabel *lab;
-	BinSection *section;
-	gsize value;
-
-	lab = g_hash_table_lookup (acfg->labels, name);
-	if (!lab)
-		g_error ("Undefined label: '%s'.\n", name);
-	section = lab->section;
-	offset = lab->offset;
-	if (section->parent) {
-		value = section->parent->virt_offset + section->cur_offset + offset;
-	} else {
-		value = section->virt_offset + offset;
-	}
-	return value;
-}
-
-static ElfSymbol*
-collect_syms (MonoAotCompile *acfg, int *hash, ElfStrTable *strtab, ElfSectHeader *sheaders, int *num_syms)
-{
-	ElfSymbol *symbols;
-	BinSymbol *symbol;
-	BinSection *section;
-	int i;
-	int *bucket;
-	int *chain;
-	unsigned long hashc;
-
-	if (hash)
-		symbols = g_new0 (ElfSymbol, hash [1]);
-	else {
-		i = 0;
-		for (symbol = acfg->symbols; symbol; symbol = symbol->next)
-			i ++;
-		
-		symbols = g_new0 (ElfSymbol, i + SECT_NUM + 10); /* FIXME */
-	}
-
-	/* the first symbol is undef, all zeroes */
-	i = 1;
-	if (sheaders) {
-		int j;
-		for (j = 1; j < SECT_NUM; ++j) {
-			symbols [i].st_info = ELF32_ST_INFO (STB_LOCAL, STT_SECTION);
-			symbols [i].st_shndx = j;
-			symbols [i].st_value = sheaders [j].sh_addr;
-			++i;
-		}
-	} else {
-		for (section = acfg->sections; section; section = section->next) {
-			if (section->parent)
-				continue;
-			symbols [i].st_info = ELF32_ST_INFO (STB_LOCAL, STT_SECTION);
-			if (strcmp (section->name, ".text") == 0) {
-				symbols [i].st_shndx = SECT_TEXT;
-				section->shidx = SECT_TEXT;
-				section->file_offset = 4096;
-				symbols [i].st_value = section->virt_offset;
-			} else if (strcmp (section->name, ".data") == 0) {
-				symbols [i].st_shndx = SECT_DATA;
-				section->shidx = SECT_DATA;
-				section->file_offset = 4096 + 28; /* FIXME */
-				symbols [i].st_value = section->virt_offset;
-			} else if (strcmp (section->name, ".bss") == 0) {
-				symbols [i].st_shndx = SECT_BSS;
-				section->shidx = SECT_BSS;
-				section->file_offset = 4096 + 28 + 8; /* FIXME */
-				symbols [i].st_value = section->virt_offset;
-			}
-			++i;
-		}
-	}
-	for (symbol = acfg->symbols; symbol; symbol = symbol->next) {
-		int offset;
-		BinLabel *lab;
-		if (!symbol->is_global && hash)
-			continue;
-		symbols [i].st_info = ELF32_ST_INFO (symbol->is_global ? STB_GLOBAL : STB_LOCAL, symbol->is_function? STT_FUNC : STT_OBJECT);
-		symbols [i].st_name = str_table_add (strtab, symbol->name);
-		/*g_print ("sym name %s tabled to %d\n", symbol->name, symbols [i].st_name);*/
-		section = symbol->section;
-		symbols [i].st_shndx = section->parent? section->parent->shidx: section->shidx;
-		lab = g_hash_table_lookup (acfg->labels, symbol->name);
-		offset = lab->offset;
-		if (section->parent) {
-			symbols [i].st_value = section->parent->virt_offset + section->cur_offset + offset;
-		} else {
-			symbols [i].st_value = section->virt_offset + offset;
-		}
-
-		if (symbol->end_label) {
-			BinLabel *elab = g_hash_table_lookup (acfg->labels, symbol->end_label);
-			g_assert (elab);
-			symbols [i].st_size = elab->offset - lab->offset;
-		}
-		++i;
-	}
-	/* add special symbols */
-	symbols [i].st_name = str_table_add (strtab, "__bss_start");
-	symbols [i].st_shndx = 0xfff1;
-	symbols [i].st_info = ELF32_ST_INFO (STB_GLOBAL, 0);
-	++i;
-	symbols [i].st_name = str_table_add (strtab, "_edata");
-	symbols [i].st_shndx = 0xfff1;
-	symbols [i].st_info = ELF32_ST_INFO (STB_GLOBAL, 0);
-	++i;
-	symbols [i].st_name = str_table_add (strtab, "_end");
-	symbols [i].st_shndx = 0xfff1;
-	symbols [i].st_info = ELF32_ST_INFO (STB_GLOBAL, 0);
-	++i;
-
-	if (num_syms)
-		*num_syms = i;
-
-	/* add to hash table */
-	if (hash) {
-		bucket = hash + 2;
-		chain = hash + 2 + hash [0];
-		for (i = 0; i < hash [1]; ++i) {
-			int slot;
-			/*g_print ("checking %d '%s' (sym %d)\n", symbols [i].st_name, strtab->data->str + symbols [i].st_name, i);*/
-			if (!symbols [i].st_name)
-				continue;
-			hashc = elf_hash ((guint8*)strtab->data->str + symbols [i].st_name);
-			slot = hashc % hash [0];
-			/*g_print ("hashing '%s' at slot %d (sym %d)\n", strtab->data->str + symbols [i].st_name, slot, i);*/
-			if (bucket [slot]) {
-				chain [i] = bucket [slot];
-				bucket [slot] = i;
-			} else {
-				bucket [slot] = i;
-			}
-		}
-	}
-	return symbols;
-}
-
-static void
-reloc_symbols (MonoAotCompile *acfg, ElfSymbol *symbols, ElfSectHeader *sheaders, ElfStrTable *strtab, gboolean dynamic)
-{
-	BinSection *section;
-	BinSymbol *symbol;
-	int i;
-
-	i = 1;
-	if (dynamic) {
-		for (section = acfg->sections; section; section = section->next) {
-			if (section->parent)
-				continue;
-			symbols [i].st_value = sheaders [section->shidx].sh_addr;
-			++i;
-		}
-	} else {
-		for (i = 1; i < SECT_NUM; ++i) {
-			symbols [i].st_value = sheaders [i].sh_addr;
-		}
-	}
-	for (symbol = acfg->symbols; symbol; symbol = symbol->next) {
-		int offset;
-		BinLabel *lab;
-		if (dynamic && !symbol->is_global)
-			continue;
-		section = symbol->section;
-		lab = g_hash_table_lookup (acfg->labels, symbol->name);
-		offset = lab->offset;
-		if (section->parent) {
-			symbols [i].st_value = sheaders [section->parent->shidx].sh_addr + section->cur_offset + offset;
-		} else {
-			symbols [i].st_value = sheaders [section->shidx].sh_addr + offset;
-		}
-		++i;
-	}
-	/* __bss_start */
-	symbols [i].st_value = sheaders [SECT_BSS].sh_addr;
-	++i;
-	/* _edata */
-	symbols [i].st_value = sheaders [SECT_DATA].sh_addr + sheaders [SECT_DATA].sh_size;
-	++i;
-	/* _end */
-	symbols [i].st_value = sheaders [SECT_BSS].sh_addr + sheaders [SECT_BSS].sh_size;
-	++i;
-}
-
-static void
-resolve_reloc (MonoAotCompile *acfg, BinReloc *reloc, guint8 **out_data, gsize *out_vaddr, gsize *out_start_val, gsize *out_end_val)
-{
-	guint8 *data;
-	gssize end_val, start_val;
-	gsize vaddr;
-
-	end_val = get_label_addr (acfg, reloc->val1);
-	if (reloc->val2) {
-		start_val = get_label_addr (acfg, reloc->val2);
-	} else if (reloc->val2_section) {
-		start_val = reloc->val2_offset;
-		if (reloc->val2_section->parent)
-			start_val += reloc->val2_section->parent->virt_offset + reloc->val2_section->cur_offset;
-		else
-			start_val += reloc->val2_section->virt_offset;
-	} else {
-		start_val = 0;
-	}
-	end_val = end_val - start_val + reloc->offset;
-	if (reloc->section->parent) {
-		data = reloc->section->parent->data;
-		data += reloc->section->cur_offset;
-		data += reloc->section_offset;
-		vaddr = reloc->section->parent->virt_offset;
-		vaddr += reloc->section->cur_offset;
-		vaddr += reloc->section_offset;
-	} else {
-		data = reloc->section->data;
-		data += reloc->section_offset;
-		vaddr = reloc->section->virt_offset;
-		vaddr += reloc->section_offset;
-	}
-
-	*out_start_val = start_val;
-	*out_end_val = end_val;
-	*out_data = data;
-	*out_vaddr = vaddr;
-}
-
-#ifdef USE_ELF_RELA
-
-static ElfRelocA*
-resolve_relocations (MonoAotCompile *acfg)
-{
-	BinReloc *reloc;
-	guint8 *data;
-	gsize end_val, start_val;
-	ElfRelocA *rr;
-	int i;
-	gsize vaddr;
-
-	rr = g_new0 (ElfRelocA, acfg->num_relocs);
-	i = 0;
-
-	for (reloc = acfg->relocations; reloc; reloc = reloc->next) {
-		resolve_reloc (acfg, reloc, &data, &vaddr, &start_val, &end_val);
-		/* FIXME: little endian */
-		data [0] = end_val;
-		data [1] = end_val >> 8;
-		data [2] = end_val >> 16;
-		data [3] = end_val >> 24;
-		// FIXME:
-		if (start_val == 0 && reloc->val1 [0] != '.') {
-			rr [i].r_offset = vaddr;
-			rr [i].r_info = R_X86_64_RELATIVE;
-			rr [i].r_addend = end_val;
-			++i;
-			g_assert (i <= acfg->num_relocs);
-		}
-	}
-	return rr;
-}
-
-#else /* USE_ELF_RELA */
-
-static void
-do_reloc (MonoAotCompile *acfg, BinReloc *reloc, guint8 *data, gssize addr)
-{
-#ifdef TARGET_ARM
-	/*
-	 * We use the official ARM relocation types, but implement only the stuff actually
-	 * needed by the code we generate.
-	 */
-	switch (reloc->reloc_type) {
-	case R_ARM_CALL: {
-		guint32 *code = (guint32*)(gpointer)data;
-		guint32 ins = *code;
-		int diff = addr;
-
-		/* bl */
-		g_assert (data [3] == 0xeb);
-		if (diff >= 0 && diff <= 33554431) {
-			diff >>= 2;
-			ins = (ins & 0xff000000) | diff;
-			*code = ins;
-		} else if (diff <= 0 && diff >= -33554432) {
-			diff >>= 2;
-			ins = (ins & 0xff000000) | (diff & ~0xff000000);
-			*code = ins;
-		} else {
-			g_assert_not_reached ();
-		}
-		break;
-	}
-	case R_ARM_ALU_PC_G0_NC: {
-		/* Generated by emit_plt () */
-		guint8 *code = data;
-		guint32 val = addr;
-
-		g_assert (val <= 0xffff);
-		ARM_ADD_REG_IMM (code, ARMREG_IP, ARMREG_PC, 0, 0);
-		ARM_ADD_REG_IMM (code, ARMREG_IP, ARMREG_IP, (val & 0xFF00) >> 8, 24);
-		ARM_LDR_IMM (code, ARMREG_PC, ARMREG_IP, val & 0xFF);
-		break;
-	}		
-	default:
-		g_assert_not_reached ();
-	}
-#else
-	g_assert_not_reached ();
-#endif
-}
-
-static ElfReloc*
-resolve_relocations (MonoAotCompile *acfg)
-{
-	BinReloc *reloc;
-	guint8 *data;
-	gsize end_val, start_val;
-	ElfReloc *rr;
-	int i;
-	gsize vaddr;
-
-	rr = g_new0 (ElfReloc, acfg->num_relocs);
-	i = 0;
-
-	for (reloc = acfg->relocations; reloc; reloc = reloc->next) {
-		resolve_reloc (acfg, reloc, &data, &vaddr, &start_val, &end_val);
-		/* FIXME: little endian */
-		if (reloc->reloc_type) {
-			/* Must be static */
-			g_assert (start_val > 0);
-			do_reloc (acfg, reloc, data, end_val);
-		} else {
-			data [0] = end_val;
-			data [1] = end_val >> 8;
-			data [2] = end_val >> 16;
-			data [3] = end_val >> 24;
-		}
-		// FIXME:
-		if (start_val == 0 && reloc->val1 [0] != '.') {
-			rr [i].r_offset = vaddr;
-			rr [i].r_info = R_386_RELATIVE;
-			++i;
-			g_assert (i <= acfg->num_relocs);
-		}
-	}
-	return rr;
-}
-
-#endif /* USE_ELF_RELA */
-
-static int
-bin_writer_emit_writeout (MonoAotCompile *acfg)
-{
-	char *outfile_name, *tmp_outfile_name;
-	FILE *file;
-	ElfHeader header;
-	ElfProgHeader progh [3];
-	ElfSectHeader secth [SECT_NUM];
-#ifdef USE_ELF_RELA
-	ElfRelocA *relocs;
-#else
-	ElfReloc *relocs;
-#endif
-	ElfStrTable str_table = {NULL, NULL};
-	ElfStrTable sh_str_table = {NULL, NULL};
-	ElfStrTable dyn_str_table = {NULL, NULL};
-	BinSection* all_sections [32];
-	BinSection* sections [SECT_NUM];
-	ElfSymbol *dynsym;
-	ElfSymbol *symtab;
-	ElfDynamic dynamic [14];
-	int *hash;
-	int i, num_sections, file_offset, virt_offset, size, num_symtab;
-	int num_local_syms;
-
-	g_assert (!acfg->aot_opts.asm_only);
-
-	if (acfg->aot_opts.outfile)
-		outfile_name = g_strdup_printf ("%s", acfg->aot_opts.outfile);
-	else
-		outfile_name = g_strdup_printf ("%s%s", acfg->image->name, SHARED_EXT);
-
-	tmp_outfile_name = g_strdup_printf ("%s.tmp", outfile_name);
-
-	unlink (tmp_outfile_name);
-	file = fopen (tmp_outfile_name, "w");
-	g_assert (file);
-
-	/* Section headers */
-	memset (&secth, 0, sizeof (secth));
-	memset (&dynamic, 0, sizeof (dynamic));
-	memset (&header, 0, sizeof (header));
-
-	for (i = 1; i < SECT_NUM; ++i) {
-		secth [i].sh_name = str_table_add (&sh_str_table, section_info [i].name);
-		secth [i].sh_type = section_info [i].type;
-		secth [i].sh_addralign = section_info [i].align;
-		secth [i].sh_flags = section_info [i].flags;
-		secth [i].sh_entsize = section_info [i].esize;
-	}
-	secth [SECT_DYNSYM].sh_info = SIZEOF_VOID_P == 4 ? 4 : 2;
-	secth [SECT_SYMTAB].sh_info = SIZEOF_VOID_P == 4 ? 20 : 17;
-	secth [SECT_HASH].sh_link = SECT_DYNSYM;
-	secth [SECT_DYNSYM].sh_link = SECT_DYNSTR;
-	secth [SECT_REL_DYN].sh_link = SECT_DYNSYM;
-	secth [SECT_RELA_DYN].sh_link = SECT_DYNSYM;
-	secth [SECT_DYNAMIC].sh_link = SECT_DYNSTR;
-	secth [SECT_SYMTAB].sh_link = SECT_STRTAB;
-
-	num_sections = collect_sections (acfg, secth, all_sections, 8);
-	hash = build_hash (acfg, num_sections, &dyn_str_table);
-	num_symtab = hash [1]; /* FIXME */
-	g_print ("num_sections: %d\n", num_sections);
-	g_print ("dynsym: %d, dynstr size: %d\n", hash [1], (int)dyn_str_table.data->len);
-	for (i = 0; i < num_sections; ++i) {
-		g_print ("section %s, size: %d, %x\n", all_sections [i]->name, all_sections [i]->cur_offset, all_sections [i]->cur_offset);
-	}
-
-	/* Associate the bin sections with the ELF sections */
-	memset (sections, 0, sizeof (sections));
-	for (i = 0; i < num_sections; ++i) {
-		BinSection *sect = all_sections [i];
-		int j;
-
-		for (j = 0; j < SECT_NUM; ++j) {
-			if (strcmp (sect->name, section_info [j].name) == 0) {
-				sect->shidx = j;
-				break;
-			}
-		}
-
-		sections [all_sections [i]->shidx] = sect;
-	}
-
-	/* at this point we know where in the file the first segment sections go */
-	dynsym = collect_syms (acfg, hash, &dyn_str_table, NULL, NULL);
-	num_local_syms = hash [1];
-	symtab = collect_syms (acfg, NULL, &str_table, secth, &num_local_syms);
-
-	file_offset = virt_offset = sizeof (header) + sizeof (progh);
-	secth [SECT_HASH].sh_addr = secth [SECT_HASH].sh_offset = file_offset;
-	size = sizeof (int) * (2 + hash [0] + hash [1]);
-	virt_offset = (file_offset += size);
-	secth [SECT_HASH].sh_size = size;
-	secth [SECT_DYNSYM].sh_addr = secth [SECT_DYNSYM].sh_offset = file_offset;
-	size = sizeof (ElfSymbol) * hash [1];
-	virt_offset = (file_offset += size);
-	secth [SECT_DYNSYM].sh_size = size;
-	secth [SECT_DYNSTR].sh_addr = secth [SECT_DYNSTR].sh_offset = file_offset;
-	size = dyn_str_table.data->len;
-	virt_offset = (file_offset += size);
-	secth [SECT_DYNSTR].sh_size = size;
-	file_offset += 4-1;
-	file_offset &= ~(4-1);
-	secth [SECT_REL_DYN].sh_addr = secth [SECT_REL_DYN].sh_offset = file_offset;
-#ifndef USE_ELF_RELA
-	size = sizeof (ElfReloc) * acfg->num_relocs;
-#else
-	size = 0;
-#endif
-	virt_offset = (file_offset += size);
-	secth [SECT_REL_DYN].sh_size = size;
-	secth [SECT_RELA_DYN].sh_addr = secth [SECT_RELA_DYN].sh_offset = file_offset;
-#ifdef USE_ELF_RELA
-	size = sizeof (ElfRelocA) * acfg->num_relocs;
-#else
-	size = 0;
-#endif
-	virt_offset = (file_offset += size);
-	secth [SECT_RELA_DYN].sh_size = size;
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_TEXT].sh_addralign);
-	virt_offset = file_offset;
-	secth [SECT_TEXT].sh_addr = secth [SECT_TEXT].sh_offset = file_offset;
-	if (sections [SECT_TEXT]) {
-		size = sections [SECT_TEXT]->cur_offset;
-		secth [SECT_TEXT].sh_size = size;
-		file_offset += size;
-	}
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_DYNAMIC].sh_addralign);
-	virt_offset = file_offset;
-
-	/* .dynamic, .got.plt, .data, .bss here */
-	/* Have to increase the virt offset since these go to a separate segment */
-	virt_offset += PAGESIZE;
-	secth [SECT_DYNAMIC].sh_addr = virt_offset;
-	secth [SECT_DYNAMIC].sh_offset = file_offset;
-	size = sizeof (dynamic);
-	secth [SECT_DYNAMIC].sh_size = size;
-	file_offset += size;
-	virt_offset += size;
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_GOT_PLT].sh_addralign);
-	virt_offset = ALIGN_TO (virt_offset, secth [SECT_GOT_PLT].sh_addralign);
-	secth [SECT_GOT_PLT].sh_addr = virt_offset;
-	secth [SECT_GOT_PLT].sh_offset = file_offset;
-	size = 12;
-	secth [SECT_GOT_PLT].sh_size = size;
-	file_offset += size;
-	virt_offset += size;
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_DATA].sh_addralign);
-	virt_offset = ALIGN_TO (virt_offset, secth [SECT_DATA].sh_addralign);
-	secth [SECT_DATA].sh_addr = virt_offset;
-	secth [SECT_DATA].sh_offset = file_offset;
-	if (sections [SECT_DATA]) {
-		size = sections [SECT_DATA]->cur_offset;
-		secth [SECT_DATA].sh_size = size;
-		file_offset += size;
-		virt_offset += size;
-	}
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_BSS].sh_addralign);
-	virt_offset = ALIGN_TO (virt_offset, secth [SECT_BSS].sh_addralign);
-	secth [SECT_BSS].sh_addr = virt_offset;
-	secth [SECT_BSS].sh_offset = file_offset;
-	if (sections [SECT_BSS]) {
-		size = sections [SECT_BSS]->cur_offset;
-		secth [SECT_BSS].sh_size = size;
-	}
-
-	/* virtual doesn't matter anymore */
-	file_offset = ALIGN_TO (file_offset, secth [SECT_DEBUG_FRAME].sh_addralign);
- 	secth [SECT_DEBUG_FRAME].sh_offset = file_offset;
- 	if (sections [SECT_DEBUG_FRAME])
- 		size = sections [SECT_DEBUG_FRAME]->cur_offset;
- 	else
- 		size = 0;
- 	secth [SECT_DEBUG_FRAME].sh_size = size;
- 	file_offset += size;
-
- 	secth [SECT_DEBUG_INFO].sh_offset = file_offset;
- 	if (sections [SECT_DEBUG_INFO])
- 		size = sections [SECT_DEBUG_INFO]->cur_offset;
- 	else
- 		size = 0;
- 	secth [SECT_DEBUG_INFO].sh_size = size;
- 	file_offset += size;
-
- 	secth [SECT_DEBUG_ABBREV].sh_offset = file_offset;
- 	if (sections [SECT_DEBUG_ABBREV])
- 		size = sections [SECT_DEBUG_ABBREV]->cur_offset;
- 	else
- 		size = 0;
- 	secth [SECT_DEBUG_ABBREV].sh_size = size;
- 	file_offset += size;
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_SHSTRTAB].sh_addralign);
-	secth [SECT_SHSTRTAB].sh_offset = file_offset;
-	size = sh_str_table.data->len;
-	secth [SECT_SHSTRTAB].sh_size = size;
-	file_offset += size;
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_SYMTAB].sh_addralign);
-	secth [SECT_SYMTAB].sh_offset = file_offset;
-	size = sizeof (ElfSymbol) * num_local_syms;
-	secth [SECT_SYMTAB].sh_size = size;
-	file_offset += size;
-
-	file_offset = ALIGN_TO (file_offset, secth [SECT_STRTAB].sh_addralign);
-	secth [SECT_STRTAB].sh_offset = file_offset;
-	size = str_table.data->len;
-	secth [SECT_STRTAB].sh_size = size;
-	file_offset += size;
-
-	file_offset += 4-1;
-	file_offset &= ~(4-1);
-
-	header.e_ident [EI_MAG0] = ELFMAG0;
-	header.e_ident [EI_MAG1] = ELFMAG1;
-	header.e_ident [EI_MAG2] = ELFMAG2;
-	header.e_ident [EI_MAG3] = ELFMAG3;
-	header.e_ident [EI_CLASS] = SIZEOF_VOID_P == 4 ? ELFCLASS32 : ELFCLASS64;
-	header.e_ident [EI_DATA] = ELFDATA2LSB;
-	header.e_ident [EI_VERSION] = EV_CURRENT;
-	header.e_ident [EI_OSABI] = ELFOSABI_NONE;
-	header.e_ident [EI_ABIVERSION] = 0;
-	for (i = EI_PAD; i < EI_NIDENT; ++i)
-		header.e_ident [i] = 0;
-
-	header.e_type = ET_DYN;
-#if defined(TARGET_X86)
-	header.e_machine = EM_386;
-#elif defined(TARGET_AMD64)
-	header.e_machine = EM_X86_64;
-#elif defined(TARGET_ARM)
-	header.e_machine = EM_ARM;
-#else
-	g_assert_not_reached ();
-#endif
-	header.e_version = 1;
-
-	header.e_phoff = sizeof (header);
-	header.e_ehsize = sizeof (header);
-	header.e_phentsize = sizeof (ElfProgHeader);
-	header.e_phnum = 3;
-	header.e_entry = secth [SECT_TEXT].sh_addr;
-	header.e_shstrndx = SECT_SHSTRTAB;
-	header.e_shentsize = sizeof (ElfSectHeader);
-	header.e_shnum = SECT_NUM;
-	header.e_shoff = file_offset;
-
-	/* dynamic data */
-	i = 0;
-	dynamic [i].d_tag = DT_HASH;
-	dynamic [i].d_un.d_val = secth [SECT_HASH].sh_offset;
-	++i;
-	dynamic [i].d_tag = DT_STRTAB;
-	dynamic [i].d_un.d_val = secth [SECT_DYNSTR].sh_offset;
-	++i;
-	dynamic [i].d_tag = DT_SYMTAB;
-	dynamic [i].d_un.d_val = secth [SECT_DYNSYM].sh_offset;
-	++i;
-	dynamic [i].d_tag = DT_STRSZ;
-	dynamic [i].d_un.d_val = dyn_str_table.data->len;
-	++i;
-	dynamic [i].d_tag = DT_SYMENT;
-	dynamic [i].d_un.d_val = sizeof (ElfSymbol);
-	++i;
-#ifdef USE_ELF_RELA
-	dynamic [i].d_tag = DT_RELA;
-	dynamic [i].d_un.d_val = secth [SECT_RELA_DYN].sh_offset;
-	++i;
-	dynamic [i].d_tag = DT_RELASZ;
-	dynamic [i].d_un.d_val = secth [SECT_RELA_DYN].sh_size;
-	++i;
-	dynamic [i].d_tag = DT_RELAENT;
-	dynamic [i].d_un.d_val = sizeof (ElfRelocA);
-	++i;
-#else
-	dynamic [i].d_tag = DT_REL;
-	dynamic [i].d_un.d_val = secth [SECT_REL_DYN].sh_offset;
-	++i;
-	dynamic [i].d_tag = DT_RELSZ;
-	dynamic [i].d_un.d_val = secth [SECT_REL_DYN].sh_size;
-	++i;
-	dynamic [i].d_tag = DT_RELENT;
-	dynamic [i].d_un.d_val = sizeof (ElfReloc);
-	++i;
-#endif
-	dynamic [i].d_tag = DT_RELCOUNT;
-	dynamic [i].d_un.d_val = acfg->num_relocs;
-	++i;
-
-	/* Program header */
-	memset (&progh, 0, sizeof (progh));
-	progh [0].p_type = PT_LOAD;
-	progh [0].p_filesz = progh [0].p_memsz = secth [SECT_DYNAMIC].sh_offset;
-	progh [0].p_align = 4096;
-	progh [0].p_flags = 5;
-
-	progh [1].p_type = PT_LOAD;
-	progh [1].p_offset = secth [SECT_DYNAMIC].sh_offset;
-	progh [1].p_vaddr = progh [1].p_paddr = secth [SECT_DYNAMIC].sh_addr;
-	progh [1].p_filesz = secth [SECT_BSS].sh_offset  - secth [SECT_DYNAMIC].sh_offset;
-	progh [1].p_memsz = secth [SECT_BSS].sh_addr + secth [SECT_BSS].sh_size - secth [SECT_DYNAMIC].sh_addr;
-	progh [1].p_align = 4096;
-	progh [1].p_flags = 6;
-
-	progh [2].p_type = PT_DYNAMIC;
-	progh [2].p_offset = secth [SECT_DYNAMIC].sh_offset;
-	progh [2].p_vaddr = progh [2].p_paddr = secth [SECT_DYNAMIC].sh_addr;
-	progh [2].p_filesz = progh [2].p_memsz = secth [SECT_DYNAMIC].sh_size;
-	progh [2].p_align = SIZEOF_VOID_P;
-	progh [2].p_flags = 6;
-
-	/* Compute the addresses of the bin sections, so relocation can be done */
-	for (i = 0; i < SECT_NUM; ++i) {
-		if (sections [i]) {
-			sections [i]->file_offset = secth [i].sh_offset;
-			sections [i]->virt_offset = secth [i].sh_addr;
-		}
-	}
-
-	reloc_symbols (acfg, dynsym, secth, &dyn_str_table, TRUE);
-	reloc_symbols (acfg, symtab, secth, &str_table, FALSE);
-	relocs = resolve_relocations (acfg);
-
-	fwrite (&header, sizeof (header), 1, file);
-	fwrite (&progh, sizeof (progh), 1, file);
-	fwrite (hash, sizeof (int) * (hash [0] + hash [1] + 2), 1, file);
-	fwrite (dynsym, sizeof (ElfSymbol) * hash [1], 1, file);
-	fwrite (dyn_str_table.data->str, dyn_str_table.data->len, 1, file);
-	/* .rel.dyn */
-	fseek (file, secth [SECT_REL_DYN].sh_offset, SEEK_SET);
-	fwrite (relocs, sizeof (ElfReloc), acfg->num_relocs, file);
-
-	/* .rela.dyn */
-	fseek (file, secth [SECT_RELA_DYN].sh_offset, SEEK_SET);
-	fwrite (relocs, secth [SECT_RELA_DYN].sh_size, 1, file);
-
-	/* .text */
-	if (sections [SECT_TEXT]) {
-		fseek (file, secth [SECT_TEXT].sh_offset, SEEK_SET);
-		fwrite (sections [SECT_TEXT]->data, sections [SECT_TEXT]->cur_offset, 1, file);
-	}
-	/* .dynamic */
-	fwrite (dynamic, sizeof (dynamic), 1, file);
-
-	/* .got.plt */
-	size = secth [SECT_DYNAMIC].sh_addr;
-	fwrite (&size, sizeof (size), 1, file);
-
-	/* .data */
-	if (sections [SECT_DATA]) {
-		fseek (file, secth [SECT_DATA].sh_offset, SEEK_SET);
-		fwrite (sections [SECT_DATA]->data, sections [SECT_DATA]->cur_offset, 1, file);
-	}
-
-	fseek (file, secth [SECT_DEBUG_FRAME].sh_offset, SEEK_SET);
-	if (sections [SECT_DEBUG_FRAME])
-		fwrite (sections [SECT_DEBUG_FRAME]->data, sections [SECT_DEBUG_FRAME]->cur_offset, 1, file);
-	fseek (file, secth [SECT_DEBUG_INFO].sh_offset, SEEK_SET);
-	if (sections [SECT_DEBUG_INFO])
-		fwrite (sections [SECT_DEBUG_INFO]->data, sections [SECT_DEBUG_INFO]->cur_offset, 1, file);
-	fseek (file, secth [SECT_DEBUG_ABBREV].sh_offset, SEEK_SET);
-	if (sections [SECT_DEBUG_ABBREV])
-		fwrite (sections [SECT_DEBUG_ABBREV]->data, sections [SECT_DEBUG_ABBREV]->cur_offset, 1, file);
-	fseek (file, secth [SECT_SHSTRTAB].sh_offset, SEEK_SET);
-	fwrite (sh_str_table.data->str, sh_str_table.data->len, 1, file);
-	fseek (file, secth [SECT_SYMTAB].sh_offset, SEEK_SET);
-	fwrite (symtab, sizeof (ElfSymbol) * num_local_syms, 1, file);
-	fseek (file, secth [SECT_STRTAB].sh_offset, SEEK_SET);
-	fwrite (str_table.data->str, str_table.data->len, 1, file);
-	/*g_print ("file_offset %d vs %d\n", file_offset, ftell (file));*/
-	/*g_assert (file_offset >= ftell (file));*/
-	fseek (file, file_offset, SEEK_SET);
-	fwrite (&secth, sizeof (secth), 1, file);
-	fclose (file);
-	rename (tmp_outfile_name, outfile_name);
-
-	g_free (tmp_outfile_name);
-	g_free (outfile_name);
-
-	return 0;
-}
-
-#endif /* USE_ELF_WRITER */
-
-#endif /* USE_BIN_WRITER */
-
-/* ASM WRITER */
-
-static void
-asm_writer_emit_start (MonoAotCompile *acfg)
-{
-	if (acfg->aot_opts.asm_only) {
-		if (acfg->aot_opts.outfile)
-			acfg->tmpfname = g_strdup_printf ("%s", acfg->aot_opts.outfile);
-		else
-			acfg->tmpfname = g_strdup_printf ("%s.s", acfg->image->name);
-		acfg->fp = fopen (acfg->tmpfname, "w+");
-	} else {
-		int i = g_file_open_tmp ("mono_aot_XXXXXX", &acfg->tmpfname, NULL);
-		acfg->fp = fdopen (i, "w+");
-	}
-	g_assert (acfg->fp);
-}
-
-static void
-asm_writer_emit_unset_mode (MonoAotCompile *acfg)
-{
-	if (acfg->mode == EMIT_NONE)
-		return;
-	fprintf (acfg->fp, "\n");
-	acfg->mode = EMIT_NONE;
-}
-
-static void
-asm_writer_emit_section_change (MonoAotCompile *acfg, const char *section_name, int subsection_index)
-{
-	asm_writer_emit_unset_mode (acfg);
-#if defined(PLATFORM_WIN32)
-	fprintf (acfg->fp, ".section %s\n", section_name);
-#elif defined(__MACH__)
-	if (strcmp(section_name, ".bss") == 0)
-		fprintf (acfg->fp, "%s\n", ".data");
-	else
-		fprintf (acfg->fp, "%s\n", section_name);
-#elif defined(sparc) || defined(TARGET_ARM)
-	/* For solaris as, GNU as should accept the same */
-	fprintf (acfg->fp, ".section \"%s\"\n", section_name);
-#else
-	if (!strcmp (section_name, ".text") || !strcmp (section_name, ".data") || !strcmp (section_name, ".bss")) {
-		fprintf (acfg->fp, "%s %d\n", section_name, subsection_index);
-	} else {
-		fprintf (acfg->fp, ".section \"%s\"\n", section_name);
-		fprintf (acfg->fp, ".subsection %d\n", subsection_index);
-	}
-#endif
-}
-
-static void
-asm_writer_emit_symbol_type (MonoAotCompile *acfg, const char *name, gboolean func)
-{
-	const char *stype;
-
-	if (func)
-		stype = "function";
-	else
-		stype = "object";
-
-	asm_writer_emit_unset_mode (acfg);
-#if defined(__MACH__)
-
-#elif defined(sparc) || defined(TARGET_ARM)
-	fprintf (acfg->fp, "\t.type %s,#%s\n", name, stype);
-#elif defined(PLATFORM_WIN32)
-
-#elif defined(TARGET_AMD64) || defined(TARGET_X86)
-	fprintf (acfg->fp, "\t.type %s,@%s\n", name, stype);
-#else
-	fprintf (acfg->fp, "\t.type %s,@%s\n", name, stype);
-#endif
-}
-
-static void
-asm_writer_emit_global_inner (MonoAotCompile *acfg, const char *name, gboolean func)
-{
-	asm_writer_emit_unset_mode (acfg);
-#if  (defined(__ppc__) && defined(__MACH__)) || defined(PLATFORM_WIN32)
-    // mach-o always uses a '_' prefix.
-	fprintf (acfg->fp, "\t.globl _%s\n", name);
-#else
-	fprintf (acfg->fp, "\t.globl %s\n", name);
-#endif
-
-	asm_writer_emit_symbol_type (acfg, name, func);
-}
-
-static void
-asm_writer_emit_local_symbol (MonoAotCompile *acfg, const char *name, const char *end_label, gboolean func)
-{
-	asm_writer_emit_unset_mode (acfg);
-
-	fprintf (acfg->fp, "\t.local %s\n", name);
-
-	asm_writer_emit_symbol_type (acfg, name, func);
-}
-
-static void
-asm_writer_emit_label (MonoAotCompile *acfg, const char *name)
-{
-	asm_writer_emit_unset_mode (acfg);
-#if (defined(__ppc__) && defined(__MACH__)) || defined(PLATFORM_WIN32)
-    // mach-o always uses a '_' prefix.
-	fprintf (acfg->fp, "_%s:\n", name);
-#else
-	fprintf (acfg->fp, "%s:\n", name);
-#endif
-
-#if defined(PLATFORM_WIN32)
-	/* Emit a normal label too */
-	fprintf (acfg->fp, "%s:\n", name);
-#endif
-}
-
-static void
-asm_writer_emit_string (MonoAotCompile *acfg, const char *value)
-{
-	asm_writer_emit_unset_mode (acfg);
-	fprintf (acfg->fp, "\t%s \"%s\"\n", AS_STRING_DIRECTIVE, value);
-}
-
-static void
-asm_writer_emit_line (MonoAotCompile *acfg)
-{
-	asm_writer_emit_unset_mode (acfg);
-	fprintf (acfg->fp, "\n");
-}
-
-static void 
-asm_writer_emit_alignment (MonoAotCompile *acfg, int size)
-{
-	asm_writer_emit_unset_mode (acfg);
-#if defined(TARGET_ARM)
-	fprintf (acfg->fp, "\t.align %d\n", ilog2 (size));
-#elif defined(__ppc__) && defined(__MACH__)
-	// the mach-o assembler specifies alignments as powers of 2.
-	fprintf (acfg->fp, "\t.align %d\t; ilog2\n", ilog2(size));
-#elif defined(__powerpc__)
-	/* ignore on linux/ppc */
-#else
-	fprintf (acfg->fp, "\t.align %d\n", size);
-#endif
-}
-
-static void
-asm_writer_emit_pointer_unaligned (MonoAotCompile *acfg, const char *target)
-{
-	asm_writer_emit_unset_mode (acfg);
-	asm_writer_emit_alignment (acfg, sizeof (gpointer));
-#if defined(TARGET_AMD64)
-	fprintf (acfg->fp, "\t.quad %s\n", target ? target : "0");
-#elif defined(sparc) && SIZEOF_VOID_P == 8
-	fprintf (acfg->fp, "\t.xword %s\n", target ? target : "0");
-#else
-	fprintf (acfg->fp, "\t.long %s\n", target ? target : "0");
-#endif
-}
-
-static void
-asm_writer_emit_pointer (MonoAotCompile *acfg, const char *target)
-{
-	asm_writer_emit_unset_mode (acfg);
-	asm_writer_emit_alignment (acfg, sizeof (gpointer));
-	asm_writer_emit_pointer_unaligned (acfg, target);
-}
-
-static char *byte_to_str;
-
-static void
-asm_writer_emit_bytes (MonoAotCompile *acfg, const guint8* buf, int size)
-{
-	int i;
-	if (acfg->mode != EMIT_BYTE) {
-		acfg->mode = EMIT_BYTE;
-		acfg->col_count = 0;
-	}
-
-	if (byte_to_str == NULL) {
-		byte_to_str = g_new0 (char, 256 * 8);
-		for (i = 0; i < 256; ++i) {
-			sprintf (byte_to_str + (i * 8), ",%d", i);
-		}
-	}
-
-	for (i = 0; i < size; ++i, ++acfg->col_count) {
-		if ((acfg->col_count % 32) == 0)
-			fprintf (acfg->fp, "\n\t.byte %d", buf [i]);
-		else
-			fputs (byte_to_str + (buf [i] * 8), acfg->fp);
-	}
-}
-
-static inline void
-asm_writer_emit_int16 (MonoAotCompile *acfg, int value)
-{
-	if (acfg->mode != EMIT_WORD) {
-		acfg->mode = EMIT_WORD;
-		acfg->col_count = 0;
-	}
-	if ((acfg->col_count++ % 8) == 0)
-#if defined(__MACH__)
-		fprintf (acfg->fp, "\n\t.short ");
-#elif defined(TARGET_ARM)
-		/* FIXME: Use .hword on other archs as well */
-		fprintf (acfg->fp, "\n\t.hword ");
-#else
-		fprintf (acfg->fp, "\n\t.word ");
-#endif
-	else
-		fprintf (acfg->fp, ", ");
-	fprintf (acfg->fp, "%d", value);
-}
-
-static inline void
-asm_writer_emit_int32 (MonoAotCompile *acfg, int value)
-{
-	if (acfg->mode != EMIT_LONG) {
-		acfg->mode = EMIT_LONG;
-		acfg->col_count = 0;
-	}
-	if ((acfg->col_count++ % 8) == 0)
-		fprintf (acfg->fp, "\n\t.long ");
-	else
-		fprintf (acfg->fp, ",");
-	fprintf (acfg->fp, "%d", value);
-}
-
-static void
-asm_writer_emit_symbol_diff (MonoAotCompile *acfg, const char *end, const char* start, int offset)
-{
-	if (acfg->mode != EMIT_LONG) {
-		acfg->mode = EMIT_LONG;
-		acfg->col_count = 0;
-	}
-	if ((acfg->col_count++ % 8) == 0)
-		fprintf (acfg->fp, "\n\t.long ");
-	else
-		fprintf (acfg->fp, ",");
-	if (offset > 0)
-		fprintf (acfg->fp, "%s - %s + %d", end, start, offset);
-	else if (offset < 0)
-		fprintf (acfg->fp, "%s - %s %d", end, start, offset);
-	else
-		fprintf (acfg->fp, "%s - %s", end, start);
-}
-
-static void
-asm_writer_emit_zero_bytes (MonoAotCompile *acfg, int num)
-{
-	asm_writer_emit_unset_mode (acfg);
-#if defined(__MACH__)
-	fprintf (acfg->fp, "\t.space %d\n", num);
-#else
-	fprintf (acfg->fp, "\t.skip %d\n", num);
-#endif
-}
-
-static int
-asm_writer_emit_writeout (MonoAotCompile *acfg)
-{
-	char *command, *objfile;
-	char *outfile_name, *tmp_outfile_name;
-
-	fclose (acfg->fp);
-
-#if defined(TARGET_AMD64)
-#define AS_OPTIONS "--64"
-#elif defined(sparc) && SIZEOF_VOID_P == 8
-#define AS_OPTIONS "-xarch=v9"
-#else
-#define AS_OPTIONS ""
-#endif
-
-	if (acfg->aot_opts.asm_only) {
-		printf ("Output file: '%s'.\n", acfg->tmpfname);
-		if (acfg->aot_opts.static_link)
-			printf ("Linking symbol: '%s'.\n", acfg->static_linking_symbol);
-		return 0;
-	}
-
-	if (acfg->aot_opts.static_link) {
-		if (acfg->aot_opts.outfile)
-			objfile = g_strdup_printf ("%s", acfg->aot_opts.outfile);
-		else
-			objfile = g_strdup_printf ("%s.o", acfg->image->name);
-	} else {
-		objfile = g_strdup_printf ("%s.o", acfg->tmpfname);
-	}
-	command = g_strdup_printf ("as %s %s -o %s", AS_OPTIONS, acfg->tmpfname, objfile);
-	printf ("Executing the native assembler: %s\n", command);
-	if (system (command) != 0) {
-		g_free (command);
-		g_free (objfile);
-		return 1;
-	}
-
-	g_free (command);
-
-	if (acfg->aot_opts.static_link) {
-		printf ("Output file: '%s'.\n", objfile);
-		printf ("Linking symbol: '%s'.\n", acfg->static_linking_symbol);
-		g_free (objfile);
-		return 0;
-	}
-
-	if (acfg->aot_opts.outfile)
-		outfile_name = g_strdup_printf ("%s", acfg->aot_opts.outfile);
-	else
-		outfile_name = g_strdup_printf ("%s%s", acfg->image->name, SHARED_EXT);
-
-	tmp_outfile_name = g_strdup_printf ("%s.tmp", outfile_name);
-
-#if defined(sparc)
-	command = g_strdup_printf ("ld -shared -G -o %s %s.o", outfile_name, acfg->tmpfname);
-#elif defined(__ppc__) && defined(__MACH__)
-	command = g_strdup_printf ("gcc -dynamiclib -o %s %s.o", outfile_name, acfg->tmpfname);
-#elif defined(PLATFORM_WIN32)
-	command = g_strdup_printf ("gcc -shared --dll -mno-cygwin -o %s %s.o", outfile_name, acfg->tmpfname);
-#else
-	if (acfg->aot_opts.no_dlsym) {
-		/* 
-		 * Need to link using gcc so our ctor function gets called.
-		 */
-		command = g_strdup_printf ("gcc -shared -o %s %s.o", tmp_outfile_name, acfg->tmpfname);
-	} else {
-		command = g_strdup_printf ("ld -shared -o %s %s.o", tmp_outfile_name, acfg->tmpfname);
-	}
-#endif
-	printf ("Executing the native linker: %s\n", command);
-	if (system (command) != 0) {
-		g_free (tmp_outfile_name);
-		g_free (outfile_name);
-		g_free (command);
-		g_free (objfile);
-		return 1;
-	}
-
-	g_free (command);
-	unlink (objfile);
-	/*com = g_strdup_printf ("strip --strip-unneeded %s%s", acfg->image->name, SHARED_EXT);
-	printf ("Stripping the binary: %s\n", com);
-	system (com);
-	g_free (com);*/
-
-#if defined(TARGET_ARM) && !defined(__MACH__)
-       /*
-        * gas generates 'mapping symbols' each time code and data is mixed, which
-        * happens a lot in emit_and_reloc_code (), so we need to get rid of them.
-        */
-       command = g_strdup_printf ("strip --strip-symbol=\\$a --strip-symbol=\\$d %s", tmp_outfile_name);
-       printf ("Stripping the binary: %s\n", command);
-       if (system (command) != 0) {
-               g_free (tmp_outfile_name);
-               g_free (outfile_name);
-               g_free (command);
-               g_free (objfile);
-               return 1;
-       }
-#endif
-
-	rename (tmp_outfile_name, outfile_name);
-
-	g_free (tmp_outfile_name);
-	g_free (outfile_name);
-	g_free (objfile);
-
-	if (acfg->aot_opts.save_temps)
-		printf ("Retained input file.\n");
-	else
-		unlink (acfg->tmpfname);
-
-	return 0;
-}
-
-/* EMIT FUNCTIONS */
-
-static void emit_start (MonoAotCompile *acfg)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_start (acfg);
-	else
-		asm_writer_emit_start (acfg);
-#else
-	asm_writer_emit_start (acfg);
-#endif
-}
-
-static void emit_section_change (MonoAotCompile *acfg, const char *section_name, int subsection_index)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_section_change (acfg, section_name, subsection_index);
-	else
-		asm_writer_emit_section_change (acfg, section_name, subsection_index);
-#else
-	asm_writer_emit_section_change (acfg, section_name, subsection_index);
-#endif
-}
-
-static void emit_global_inner (MonoAotCompile *acfg, const char *name, gboolean func)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_global_inner (acfg, name, func);
-	else
-		asm_writer_emit_global_inner (acfg, name, func);
-#else
-	asm_writer_emit_global_inner (acfg, name, func);
-#endif
-}
-
-static void G_GNUC_UNUSED emit_local_symbol (MonoAotCompile *acfg, const char *name, const char *end_label, gboolean func)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_local_symbol (acfg, name, end_label, func);
-	else
-		asm_writer_emit_local_symbol (acfg, name, end_label, func);
-#else
-	asm_writer_emit_local_symbol (acfg, name, end_label, func);
-#endif
-}
-
-static void emit_label (MonoAotCompile *acfg, const char *name)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_label (acfg, name);
-	else
-		asm_writer_emit_label (acfg, name);
-#else
-	asm_writer_emit_label (acfg, name);
-#endif
-}
-
-static void emit_bytes (MonoAotCompile *acfg, const guint8* buf, int size)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_bytes (acfg, buf, size);
-	else
-		asm_writer_emit_bytes (acfg, buf, size);
-#else
-	asm_writer_emit_bytes (acfg, buf, size);
-#endif
-}
-
-static void emit_string (MonoAotCompile *acfg, const char *value)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_string (acfg, value);
-	else
-		asm_writer_emit_string (acfg, value);
-#else
-	asm_writer_emit_string (acfg, value);
-#endif
-}
-
-static void emit_line (MonoAotCompile *acfg)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_line (acfg);
-	else
-		asm_writer_emit_line (acfg);
-#else
-		asm_writer_emit_line (acfg);
-#endif
-}
-
-static void emit_alignment (MonoAotCompile *acfg, int size)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_alignment (acfg, size);
-	else
-		asm_writer_emit_alignment (acfg, size);
-#else
-	asm_writer_emit_alignment (acfg, size);
-#endif
-}
-
-static void emit_pointer_unaligned (MonoAotCompile *acfg, const char *target)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_pointer_unaligned (acfg, target);
-	else
-		asm_writer_emit_pointer_unaligned (acfg, target);
-#else
-	asm_writer_emit_pointer_unaligned (acfg, target);
-#endif
-}
-
-static void emit_pointer (MonoAotCompile *acfg, const char *target)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_pointer (acfg, target);
-	else
-		asm_writer_emit_pointer (acfg, target);
-#else
-	asm_writer_emit_pointer (acfg, target);
-#endif
-}
-
-static void emit_int16 (MonoAotCompile *acfg, int value)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_int16 (acfg, value);
-	else
-		asm_writer_emit_int16 (acfg, value);
-#else
-	asm_writer_emit_int16 (acfg, value);
-#endif
-}
-
-static void emit_int32 (MonoAotCompile *acfg, int value)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_int32 (acfg, value);
-	else
-		asm_writer_emit_int32 (acfg, value);
-#else
-	asm_writer_emit_int32 (acfg, value);
-#endif
-}
-
-static void emit_symbol_diff (MonoAotCompile *acfg, const char *end, const char* start, int offset)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_symbol_diff (acfg, end, start, offset);
-	else
-		asm_writer_emit_symbol_diff (acfg, end, start, offset);
-#else
-	asm_writer_emit_symbol_diff (acfg, end, start, offset);
-#endif
-}
-
-static void emit_zero_bytes (MonoAotCompile *acfg, int num)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		bin_writer_emit_zero_bytes (acfg, num);
-	else
-		asm_writer_emit_zero_bytes (acfg, num);
-#else
-	asm_writer_emit_zero_bytes (acfg, num);
-#endif
-}
-
-static int
-emit_writeout (MonoAotCompile *acfg)
-{
-#ifdef USE_BIN_WRITER
-	if (acfg->use_bin_writer)
-		return bin_writer_emit_writeout (acfg);
-	else
-		return asm_writer_emit_writeout (acfg);
-#else
-		return asm_writer_emit_writeout (acfg);
-#endif
+	img_writer_emit_global (acfg->w, name, func);
 }
 
 static void
@@ -2057,27 +324,936 @@ emit_global (MonoAotCompile *acfg, const char *name, gboolean func)
 {
 	if (acfg->aot_opts.no_dlsym) {
 		g_ptr_array_add (acfg->globals, g_strdup (name));
+		img_writer_emit_local_symbol (acfg->w, name, NULL, func);
 	} else {
-		emit_global_inner (acfg, name, func);
+		img_writer_emit_global (acfg->w, name, func);
 	}
 }
 
 static void
-emit_byte (MonoAotCompile *acfg, guint8 val)
+emit_symbol_size (MonoAotCompile *acfg, const char *name, const char *end_label)
 {
-	emit_bytes (acfg, &val, 1);
+	img_writer_emit_symbol_size (acfg->w, name, end_label);
 }
 
 static void
 emit_string_symbol (MonoAotCompile *acfg, const char *name, const char *value)
 {
-	emit_section_change (acfg, ".text", 1);
+	img_writer_emit_section_change (acfg->w, ".text", 1);
 	emit_global (acfg, name, FALSE);
-	emit_label (acfg, name);
-	emit_string (acfg, value);
+	img_writer_emit_label (acfg->w, name);
+	img_writer_emit_string (acfg->w, value);
 }
 
-/* AOT COMPILER */
+static G_GNUC_UNUSED void
+emit_uleb128 (MonoAotCompile *acfg, guint32 value)
+{
+	do {
+		guint8 b = value & 0x7f;
+		value >>= 7;
+		if (value != 0) /* more bytes to come */
+			b |= 0x80;
+		emit_byte (acfg, b);
+	} while (value);
+}
+
+static G_GNUC_UNUSED void
+emit_sleb128 (MonoAotCompile *acfg, gint64 value)
+{
+	gboolean more = 1;
+	gboolean negative = (value < 0);
+	guint32 size = 64;
+	guint8 byte;
+
+	while (more) {
+		byte = value & 0x7f;
+		value >>= 7;
+		/* the following is unnecessary if the
+		 * implementation of >>= uses an arithmetic rather
+		 * than logical shift for a signed left operand
+		 */
+		if (negative)
+			/* sign extend */
+			value |= - ((gint64)1 <<(size - 7));
+		/* sign bit of byte is second high order bit (0x40) */
+		if ((value == 0 && !(byte & 0x40)) ||
+			(value == -1 && (byte & 0x40)))
+			more = 0;
+		else
+			byte |= 0x80;
+		emit_byte (acfg, byte);
+	}
+}
+
+static G_GNUC_UNUSED void
+encode_uleb128 (guint32 value, guint8 *buf, guint8 **endbuf)
+{
+	guint8 *p = buf;
+
+	do {
+		guint8 b = value & 0x7f;
+		value >>= 7;
+		if (value != 0) /* more bytes to come */
+			b |= 0x80;
+		*p ++ = b;
+	} while (value);
+
+	*endbuf = p;
+}
+
+static G_GNUC_UNUSED void
+encode_sleb128 (gint32 value, guint8 *buf, guint8 **endbuf)
+{
+	gboolean more = 1;
+	gboolean negative = (value < 0);
+	guint32 size = 32;
+	guint8 byte;
+	guint8 *p = buf;
+
+	while (more) {
+		byte = value & 0x7f;
+		value >>= 7;
+		/* the following is unnecessary if the
+		 * implementation of >>= uses an arithmetic rather
+		 * than logical shift for a signed left operand
+		 */
+		if (negative)
+			/* sign extend */
+			value |= - (1 <<(size - 7));
+		/* sign bit of byte is second high order bit (0x40) */
+		if ((value == 0 && !(byte & 0x40)) ||
+			(value == -1 && (byte & 0x40)))
+			more = 0;
+		else
+			byte |= 0x80;
+		*p ++= byte;
+	}
+
+	*endbuf = p;
+}
+
+/* ARCHITECTURE SPECIFIC CODE */
+
+#if defined(TARGET_X86) || defined(TARGET_AMD64) || defined(TARGET_ARM) || defined(TARGET_POWERPC)
+#define EMIT_DWARF_INFO 1
+#endif
+
+#if defined(TARGET_ARM)
+#define AOT_FUNC_ALIGNMENT 4
+#else
+#define AOT_FUNC_ALIGNMENT 16
+#endif
+ 
+#if defined(TARGET_POWERPC64) && !defined(__mono_ilp32__)
+#define PPC_LD_OP "ld"
+#define PPC_LDX_OP "ldx"
+#else
+#define PPC_LD_OP "lwz"
+#define PPC_LDX_OP "lwzx"
+#endif
+
+/*
+ * arch_emit_direct_call:
+ *
+ *   Emit a direct call to the symbol TARGET. CALL_SIZE is set to the size of the
+ * calling code.
+ */
+static void
+arch_emit_direct_call (MonoAotCompile *acfg, const char *target, int *call_size)
+{
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
+	/* Need to make sure this is exactly 5 bytes long */
+	emit_byte (acfg, '\xe8');
+	emit_symbol_diff (acfg, target, ".", -4);
+	*call_size = 5;
+#elif defined(TARGET_ARM)
+	if (acfg->use_bin_writer) {
+		guint8 buf [4];
+		guint8 *code;
+
+		code = buf;
+		ARM_BL (code, 0);
+
+		img_writer_emit_reloc (acfg->w, R_ARM_CALL, target, -8);
+		emit_bytes (acfg, buf, 4);
+	} else {
+		img_writer_emit_unset_mode (acfg->w);
+		fprintf (acfg->fp, "bl %s\n", target);
+	}
+	*call_size = 4;
+#elif defined(TARGET_POWERPC)
+	if (acfg->use_bin_writer) {
+		g_assert_not_reached ();
+	} else {
+		img_writer_emit_unset_mode (acfg->w);
+		fprintf (acfg->fp, "bl %s\n", target);
+		*call_size = 4;
+	}
+#else
+	g_assert_not_reached ();
+#endif
+}
+
+/*
+ * PPC32 design:
+ * - we use an approach similar to the x86 abi: reserve a register (r30) to hold 
+ *   the GOT pointer.
+ * - The full-aot trampolines need access to the GOT of mscorlib, so we store
+ *   in in the 2. slot of every GOT, and require every method to place the GOT
+ *   address in r30, even when it doesn't access the GOT otherwise. This way,
+ *   the trampolines can compute the mscorlib GOT address by loading 4(r30).
+ */
+
+/*
+ * PPC64 design:
+ * PPC64 uses function descriptors which greatly complicate all code, since
+ * these are used very inconsistently in the runtime. Some functions like 
+ * mono_compile_method () return ftn descriptors, while others like the
+ * trampoline creation functions do not.
+ * We assume that all GOT slots contain function descriptors, and create 
+ * descriptors in aot-runtime.c when needed.
+ * The ppc64 abi uses r2 to hold the address of the TOC/GOT, which is loaded
+ * from function descriptors, we could do the same, but it would require 
+ * rewriting all the ppc/aot code to handle function descriptors properly.
+ * So instead, we use the same approach as on PPC32.
+ * This is a horrible mess, but fixing it would probably lead to an even bigger
+ * one.
+ */
+
+/*
+ * X86 design:
+ * - similar to the PPC32 design, we reserve EBX to hold the GOT pointer.
+ */
+
+#ifdef MONO_ARCH_AOT_SUPPORTED
+/*
+ * arch_emit_got_offset:
+ *
+ *   The memory pointed to by CODE should hold native code for computing the GOT
+ * address. Emit this code while patching it with the offset between code and
+ * the GOT. CODE_SIZE is set to the number of bytes emitted.
+ */
+static void
+arch_emit_got_offset (MonoAotCompile *acfg, guint8 *code, int *code_size)
+{
+#if defined(TARGET_POWERPC64)
+	g_assert (!acfg->use_bin_writer);
+	img_writer_emit_unset_mode (acfg->w);
+	/* 
+	 * The ppc32 code doesn't seem to work on ppc64, the assembler complains about
+	 * unsupported relocations. So we store the got address into the .Lgot_addr
+	 * symbol which is in the text segment, compute its address, and load it.
+	 */
+	fprintf (acfg->fp, ".L%d:\n", acfg->label_generator);
+	fprintf (acfg->fp, "lis 0, (.Lgot_addr + 4 - .L%d)@h\n", acfg->label_generator);
+	fprintf (acfg->fp, "ori 0, 0, (.Lgot_addr + 4 - .L%d)@l\n", acfg->label_generator);
+	fprintf (acfg->fp, "add 30, 30, 0\n");
+	fprintf (acfg->fp, "%s 30, 0(30)\n", PPC_LD_OP);
+	acfg->label_generator ++;
+	*code_size = 16;
+#elif defined(TARGET_POWERPC)
+	g_assert (!acfg->use_bin_writer);
+	img_writer_emit_unset_mode (acfg->w);
+	fprintf (acfg->fp, ".L%d:\n", acfg->label_generator);
+	fprintf (acfg->fp, "lis 0, (%s + 4 - .L%d)@h\n", acfg->got_symbol, acfg->label_generator);
+	fprintf (acfg->fp, "ori 0, 0, (%s + 4 - .L%d)@l\n", acfg->got_symbol, acfg->label_generator);
+	acfg->label_generator ++;
+	*code_size = 8;
+#else
+	guint32 offset = mono_arch_get_patch_offset (code);
+	emit_bytes (acfg, code, offset);
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", offset);
+
+	*code_size = offset + 4;
+#endif
+}
+
+/*
+ * arch_emit_got_access:
+ *
+ *   The memory pointed to by CODE should hold native code for loading a GOT
+ * slot. Emit this code while patching it so it accesses the GOT slot GOT_SLOT.
+ * CODE_SIZE is set to the number of bytes emitted.
+ */
+static void
+arch_emit_got_access (MonoAotCompile *acfg, guint8 *code, int got_slot, int *code_size)
+{
+	/* Emit beginning of instruction */
+	emit_bytes (acfg, code, mono_arch_get_patch_offset (code));
+
+	/* Emit the offset */
+#ifdef TARGET_AMD64
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (unsigned int) ((got_slot * sizeof (gpointer)) - 4));
+	*code_size = mono_arch_get_patch_offset (code) + 4;
+#elif defined(TARGET_X86)
+	emit_int32 (acfg, (unsigned int) ((got_slot * sizeof (gpointer))));
+	*code_size = mono_arch_get_patch_offset (code) + 4;
+#elif defined(TARGET_ARM)
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (unsigned int) ((got_slot * sizeof (gpointer))) - 12);
+	*code_size = mono_arch_get_patch_offset (code) + 4;
+#elif defined(TARGET_POWERPC)
+	{
+		guint8 buf [32];
+		guint8 *code;
+
+		code = buf;
+		ppc_load32 (code, ppc_r0, got_slot * sizeof (gpointer));
+		g_assert (code - buf == 8);
+		emit_bytes (acfg, buf, code - buf);
+		*code_size = code - buf;
+	}
+#else
+	g_assert_not_reached ();
+#endif
+}
+
+#endif
+
+/*
+ * arch_emit_plt_entry:
+ *
+ *   Emit code for the PLT entry with index INDEX.
+ */
+static void
+arch_emit_plt_entry (MonoAotCompile *acfg, int index)
+{
+#if defined(TARGET_X86)
+		guint32 offset = (acfg->plt_got_offset_base + index) * sizeof (gpointer);
+
+		/* jmp *<offset>(%ebx) */
+		emit_byte (acfg, 0xff);
+		emit_byte (acfg, 0xa3);
+		emit_int32 (acfg, offset);
+		/* Used by mono_aot_get_plt_info_offset */
+		emit_int32 (acfg, acfg->plt_got_info_offsets [index]);
+#elif defined(TARGET_AMD64)
+		/*
+		 * We can't emit jumps because they are 32 bits only so they can't be patched.
+		 * So we make indirect calls through GOT entries which are patched by the AOT 
+		 * loader to point to .Lpd entries. 
+		 * An x86_64 plt entry is 10 bytes long, init_plt () depends on this.
+		 */
+		/* jmpq *<offset>(%rip) */
+		emit_byte (acfg, '\xff');
+		emit_byte (acfg, '\x25');
+		emit_symbol_diff (acfg, acfg->got_symbol, ".", ((acfg->plt_got_offset_base + index) * sizeof (gpointer)) -4);
+		/* Used by mono_aot_get_plt_info_offset */
+		emit_int32 (acfg, acfg->plt_got_info_offsets [index]);
+#elif defined(TARGET_ARM)
+		guint8 buf [256];
+		guint8 *code;
+
+		/* FIXME:
+		 * - optimize OP_AOTCONST implementation
+		 * - optimize the PLT entries
+		 * - optimize SWITCH AOT implementation
+		 * - implement IMT support
+		 */
+		code = buf;
+		if (acfg->use_bin_writer && FALSE) {
+			/* FIXME: mono_arch_patch_plt_entry () needs to decode this */
+			/* We only emit 1 relocation since we implement it ourselves anyway */
+			img_writer_emit_reloc (acfg->w, R_ARM_ALU_PC_G0_NC, acfg->got_symbol, ((acfg->plt_got_offset_base + index) * sizeof (gpointer)) - 8);
+			/* FIXME: A 2 instruction encoding is sufficient in most cases */
+			ARM_ADD_REG_IMM (code, ARMREG_IP, ARMREG_PC, 0, 0);
+			ARM_ADD_REG_IMM (code, ARMREG_IP, ARMREG_IP, 0, 0);
+			ARM_LDR_IMM (code, ARMREG_PC, ARMREG_IP, 0);
+			emit_bytes (acfg, buf, code - buf);
+			/* Used by mono_aot_get_plt_info_offset */
+			emit_int32 (acfg, acfg->plt_got_info_offsets [index]);
+		} else {
+			ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 0);
+			ARM_LDR_REG_REG (code, ARMREG_PC, ARMREG_PC, ARMREG_IP);
+			emit_bytes (acfg, buf, code - buf);
+			emit_symbol_diff (acfg, acfg->got_symbol, ".", ((acfg->plt_got_offset_base + index) * sizeof (gpointer)) - 4);
+			/* Used by mono_aot_get_plt_info_offset */
+			emit_int32 (acfg, acfg->plt_got_info_offsets [index]);
+		}
+		/* 
+		 * The plt_got_info_offset is computed automatically by 
+		 * mono_aot_get_plt_info_offset (), so no need to save it here.
+		 */
+#elif defined(TARGET_POWERPC)
+		guint32 offset = (acfg->plt_got_offset_base + index) * sizeof (gpointer);
+
+		/* The GOT address is guaranteed to be in r30 by OP_LOAD_GOTADDR */
+		g_assert (!acfg->use_bin_writer);
+		img_writer_emit_unset_mode (acfg->w);
+		fprintf (acfg->fp, "lis 11, %d@h\n", offset);
+		fprintf (acfg->fp, "ori 11, 11, %d@l\n", offset);
+		fprintf (acfg->fp, "add 11, 11, 30\n");
+		fprintf (acfg->fp, "%s 11, 0(11)\n", PPC_LD_OP);
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+		fprintf (acfg->fp, "%s 2, %d(11)\n", PPC_LD_OP, (int)sizeof (gpointer));
+		fprintf (acfg->fp, "%s 11, 0(11)\n", PPC_LD_OP);
+#endif
+		fprintf (acfg->fp, "mtctr 11\n");
+		fprintf (acfg->fp, "bctr\n");
+		emit_int32 (acfg, acfg->plt_got_info_offsets [index]);
+#else
+		g_assert_not_reached ();
+#endif
+}
+
+/*
+ * arch_emit_specific_trampoline:
+ *
+ *   Emit code for a specific trampoline. OFFSET is the offset of the first of
+ * two GOT slots which contain the generic trampoline address and the trampoline
+ * argument. TRAMP_SIZE is set to the size of the emitted trampoline.
+ */
+static void
+arch_emit_specific_trampoline (MonoAotCompile *acfg, int offset, int *tramp_size)
+{
+	/*
+	 * The trampolines created here are variations of the specific 
+	 * trampolines created in mono_arch_create_specific_trampoline (). The 
+	 * differences are:
+	 * - the generic trampoline address is taken from a got slot.
+	 * - the offset of the got slot where the trampoline argument is stored
+	 *   is embedded in the instruction stream, and the generic trampoline
+	 *   can load the argument by loading the offset, adding it to the
+	 *   address of the trampoline to get the address of the got slot, and
+	 *   loading the argument from there.
+	 * - all the trampolines should be of the same length.
+	 */
+#if defined(TARGET_AMD64)
+	/* This should be exactly 16 bytes long */
+	*tramp_size = 16;
+	/* call *<offset>(%rip) */
+	emit_byte (acfg, '\x41');
+	emit_byte (acfg, '\xff');
+	emit_byte (acfg, '\x15');
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4);
+	/* This should be relative to the start of the trampoline */
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4 + 19);
+	emit_zero_bytes (acfg, 5);
+#elif defined(TARGET_ARM)
+	guint8 buf [128];
+	guint8 *code;
+
+	/* This should be exactly 20 bytes long */
+	*tramp_size = 20;
+	code = buf;
+	ARM_PUSH (code, 0x5fff);
+	ARM_LDR_IMM (code, ARMREG_R1, ARMREG_PC, 4);
+	/* Load the value from the GOT */
+	ARM_LDR_REG_REG (code, ARMREG_R1, ARMREG_PC, ARMREG_R1);
+	/* Branch to it */
+	ARM_BLX_REG (code, ARMREG_R1);
+
+	g_assert (code - buf == 16);
+
+	/* Emit it */
+	emit_bytes (acfg, buf, code - buf);
+	/* 
+	 * Only one offset is needed, since the second one would be equal to the
+	 * first one.
+	 */
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4 + 4);
+	//emit_symbol_diff (acfg, acfg->got_symbol, ".", ((offset + 1) * sizeof (gpointer)) - 4 + 8);
+#elif defined(TARGET_POWERPC)
+	guint8 buf [128];
+	guint8 *code;
+
+	*tramp_size = 4;
+	code = buf;
+
+	g_assert (!acfg->use_bin_writer);
+
+	/*
+	 * PPC has no ip relative addressing, so we need to compute the address
+	 * of the mscorlib got. That is slow and complex, so instead, we store it
+	 * in the second got slot of every aot image. The caller already computed
+	 * the address of its got and placed it into r30.
+	 */
+	img_writer_emit_unset_mode (acfg->w);
+	/* Load mscorlib got address */
+	fprintf (acfg->fp, "%s 0, %d(30)\n", PPC_LD_OP, (int)sizeof (gpointer));
+	/* Load generic trampoline address */
+	fprintf (acfg->fp, "lis 11, %d@h\n", (int)(offset * sizeof (gpointer)));
+	fprintf (acfg->fp, "ori 11, 11, %d@l\n", (int)(offset * sizeof (gpointer)));
+	fprintf (acfg->fp, "%s 11, 11, 0\n", PPC_LDX_OP);
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+	fprintf (acfg->fp, "%s 11, 0(11)\n", PPC_LD_OP);
+#endif
+	fprintf (acfg->fp, "mtctr 11\n");
+	/* Load trampoline argument */
+	/* On ppc, we pass it normally to the generic trampoline */
+	fprintf (acfg->fp, "lis 11, %d@h\n", (int)((offset + 1) * sizeof (gpointer)));
+	fprintf (acfg->fp, "ori 11, 11, %d@l\n", (int)((offset + 1) * sizeof (gpointer)));
+	fprintf (acfg->fp, "%s 0, 11, 0\n", PPC_LDX_OP);
+	/* Branch to generic trampoline */
+	fprintf (acfg->fp, "bctr\n");
+
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+	*tramp_size = 10 * 4;
+#else
+	*tramp_size = 9 * 4;
+#endif
+#elif defined(TARGET_X86)
+	guint8 buf [128];
+	guint8 *code;
+
+	/* Similar to the PPC code above */
+
+	/* FIXME: Could this clobber the register needed by get_vcall_slot () ? */
+
+	/* We clobber ECX, since EAX is used as MONO_ARCH_MONITOR_OBJECT_REG */
+#ifdef MONO_ARCH_MONITOR_OBJECT_REG
+	g_assert (MONO_ARCH_MONITOR_OBJECT_REG != X86_ECX);
+#endif
+
+	code = buf;
+	/* Load mscorlib got address */
+	x86_mov_reg_membase (code, X86_ECX, MONO_ARCH_GOT_REG, sizeof (gpointer), 4);
+	/* Push trampoline argument */
+	x86_push_membase (code, X86_ECX, (offset + 1) * sizeof (gpointer));
+	/* Load generic trampoline address */
+	x86_mov_reg_membase (code, X86_ECX, X86_ECX, offset * sizeof (gpointer), 4);
+	/* Branch to generic trampoline */
+	x86_jump_reg (code, X86_ECX);
+
+	emit_bytes (acfg, buf, code - buf);
+
+	*tramp_size = 17;
+	g_assert (code - buf == *tramp_size);
+#else
+	g_assert_not_reached ();
+#endif
+}
+
+/*
+ * arch_emit_unbox_trampoline:
+ *
+ *   Emit code for the unbox trampoline for METHOD used in the full-aot case.
+ * CALL_TARGET is the symbol pointing to the native code of METHOD.
+ */
+static void
+arch_emit_unbox_trampoline (MonoAotCompile *acfg, MonoMethod *method, MonoGenericSharingContext *gsctx, const char *call_target)
+{
+#if defined(TARGET_AMD64)
+	guint8 buf [32];
+	guint8 *code;
+	int this_reg;
+
+	this_reg = mono_arch_get_this_arg_reg (mono_method_signature (method), gsctx, NULL);
+	code = buf;
+	amd64_alu_reg_imm (code, X86_ADD, this_reg, sizeof (MonoObject));
+
+	emit_bytes (acfg, buf, code - buf);
+	/* jump <method> */
+	emit_byte (acfg, '\xe9');
+	emit_symbol_diff (acfg, call_target, ".", -4);
+#elif defined(TARGET_X86)
+	guint8 buf [32];
+	guint8 *code;
+	int this_pos = 4;
+
+	if (MONO_TYPE_ISSTRUCT (mono_method_signature (method)->ret))
+		this_pos = 8;
+	    
+	code = buf;
+
+	x86_alu_membase_imm (code, X86_ADD, X86_ESP, this_pos, sizeof (MonoObject));
+
+	emit_bytes (acfg, buf, code - buf);
+
+	/* jump <method> */
+	emit_byte (acfg, '\xe9');
+	emit_symbol_diff (acfg, call_target, ".", -4);
+#elif defined(TARGET_ARM)
+	guint8 buf [128];
+	guint8 *code;
+	int this_pos = 0;
+
+	code = buf;
+
+	if (MONO_TYPE_ISSTRUCT (mono_method_signature (method)->ret))
+		this_pos = 1;
+
+	ARM_ADD_REG_IMM8 (code, this_pos, this_pos, sizeof (MonoObject));
+
+	emit_bytes (acfg, buf, code - buf);
+	/* jump to method */
+	if (acfg->use_bin_writer) {
+		guint8 buf [4];
+		guint8 *code;
+
+		code = buf;
+		ARM_B (code, 0);
+
+		img_writer_emit_reloc (acfg->w, R_ARM_JUMP24, call_target, -8);
+		emit_bytes (acfg, buf, 4);
+	} else {
+		fprintf (acfg->fp, "\n\tb %s\n", call_target);
+	}
+#elif defined(TARGET_POWERPC)
+	int this_pos = 3;
+
+	if (MONO_TYPE_ISSTRUCT (mono_method_signature (method)->ret))
+		this_pos = 4;
+
+	g_assert (!acfg->use_bin_writer);
+
+	fprintf (acfg->fp, "\n\taddi %d, %d, %d\n", this_pos, this_pos, (int)sizeof (MonoObject));
+	fprintf (acfg->fp, "\n\tb %s\n", call_target);
+#else
+	g_assert_not_reached ();
+#endif
+}
+
+/*
+ * arch_emit_static_rgctx_trampoline:
+ *
+ *   Emit code for a static rgctx trampoline. OFFSET is the offset of the first of
+ * two GOT slots which contain the rgctx argument, and the method to jump to.
+ * TRAMP_SIZE is set to the size of the emitted trampoline.
+ * These kinds of trampolines cannot be enumerated statically, since there could
+ * be one trampoline per method instantiation, so we emit the same code for all
+ * trampolines, and parameterize them using two GOT slots.
+ */
+static void
+arch_emit_static_rgctx_trampoline (MonoAotCompile *acfg, int offset, int *tramp_size)
+{
+#if defined(TARGET_AMD64)
+	/* This should be exactly 13 bytes long */
+	*tramp_size = 13;
+
+	/* mov <OFFSET>(%rip), %r10 */
+	emit_byte (acfg, '\x4d');
+	emit_byte (acfg, '\x8b');
+	emit_byte (acfg, '\x15');
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4);
+
+	/* jmp *<offset>(%rip) */
+	emit_byte (acfg, '\xff');
+	emit_byte (acfg, '\x25');
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", ((offset + 1) * sizeof (gpointer)) - 4);
+#elif defined(TARGET_ARM)
+	guint8 buf [128];
+	guint8 *code;
+
+	/* This should be exactly 24 bytes long */
+	*tramp_size = 24;
+	code = buf;
+	/* Load rgctx value */
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 8);
+	ARM_LDR_REG_REG (code, MONO_ARCH_RGCTX_REG, ARMREG_PC, ARMREG_IP);
+	/* Load branch addr + branch */
+	ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 4);
+	ARM_LDR_REG_REG (code, ARMREG_PC, ARMREG_PC, ARMREG_IP);
+
+	g_assert (code - buf == 16);
+
+	/* Emit it */
+	emit_bytes (acfg, buf, code - buf);
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4 + 8);
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", ((offset + 1) * sizeof (gpointer)) - 4 + 4);
+#elif defined(TARGET_POWERPC)
+	guint8 buf [128];
+	guint8 *code;
+
+	*tramp_size = 4;
+	code = buf;
+
+	g_assert (!acfg->use_bin_writer);
+
+	/*
+	 * PPC has no ip relative addressing, so we need to compute the address
+	 * of the mscorlib got. That is slow and complex, so instead, we store it
+	 * in the second got slot of every aot image. The caller already computed
+	 * the address of its got and placed it into r30.
+	 */
+	img_writer_emit_unset_mode (acfg->w);
+	/* Load mscorlib got address */
+	fprintf (acfg->fp, "%s 0, %d(30)\n", PPC_LD_OP, (int)sizeof (gpointer));
+	/* Load rgctx */
+	fprintf (acfg->fp, "lis 11, %d@h\n", (int)(offset * sizeof (gpointer)));
+	fprintf (acfg->fp, "ori 11, 11, %d@l\n", (int)(offset * sizeof (gpointer)));
+	fprintf (acfg->fp, "%s %d, 11, 0\n", PPC_LDX_OP, MONO_ARCH_RGCTX_REG);
+	/* Load target address */
+	fprintf (acfg->fp, "lis 11, %d@h\n", (int)((offset + 1) * sizeof (gpointer)));
+	fprintf (acfg->fp, "ori 11, 11, %d@l\n", (int)((offset + 1) * sizeof (gpointer)));
+	fprintf (acfg->fp, "%s 11, 11, 0\n", PPC_LDX_OP);
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+	fprintf (acfg->fp, "%s 2, %d(11)\n", PPC_LD_OP, (int)sizeof (gpointer));
+	fprintf (acfg->fp, "%s 11, 0(11)\n", PPC_LD_OP);
+#endif
+	fprintf (acfg->fp, "mtctr 11\n");
+	/* Branch to the target address */
+	fprintf (acfg->fp, "bctr\n");
+
+#ifdef PPC_USES_FUNCTION_DESCRIPTOR
+	*tramp_size = 11 * 4;
+#else
+	*tramp_size = 9 * 4;
+#endif
+
+#elif defined(TARGET_X86)
+	guint8 buf [128];
+	guint8 *code;
+
+	/* Similar to the PPC code above */
+
+	g_assert (MONO_ARCH_RGCTX_REG != X86_ECX);
+
+	code = buf;
+	/* Load mscorlib got address */
+	x86_mov_reg_membase (code, X86_ECX, MONO_ARCH_GOT_REG, sizeof (gpointer), 4);
+	/* Load arg */
+	x86_mov_reg_membase (code, MONO_ARCH_RGCTX_REG, X86_ECX, offset * sizeof (gpointer), 4);
+	/* Branch to the target address */
+	x86_jump_membase (code, X86_ECX, (offset + 1) * sizeof (gpointer));
+
+	emit_bytes (acfg, buf, code - buf);
+
+	*tramp_size = 15;
+	g_assert (code - buf == *tramp_size);
+#else
+	g_assert_not_reached ();
+#endif
+}	
+
+/*
+ * arch_emit_imt_thunk:
+ *
+ *   Emit an IMT thunk usable in full-aot mode. The thunk uses 1 got slot which
+ * points to an array of pointer pairs. The pairs of the form [key, ptr], where
+ * key is the IMT key, and ptr holds the address of a memory location holding
+ * the address to branch to if the IMT arg matches the key. The array is 
+ * terminated by a pair whose key is NULL, and whose ptr is the address of the 
+ * fail_tramp.
+ * TRAMP_SIZE is set to the size of the emitted trampoline.
+ */
+static void
+arch_emit_imt_thunk (MonoAotCompile *acfg, int offset, int *tramp_size)
+{
+#if defined(TARGET_AMD64)
+	guint8 *buf, *code;
+	guint8 *labels [3];
+
+	code = buf = g_malloc (256);
+
+	/* FIXME: Optimize this, i.e. use binary search etc. */
+	/* Maybe move the body into a separate function (slower, but much smaller) */
+
+	/* R10 is a free register */
+
+	labels [0] = code;
+	amd64_alu_membase_imm (code, X86_CMP, AMD64_R10, 0, 0);
+	labels [1] = code;
+	amd64_branch8 (code, X86_CC_Z, FALSE, 0);
+
+	/* Check key */
+	amd64_alu_membase_reg (code, X86_CMP, AMD64_R10, 0, MONO_ARCH_IMT_REG);
+	labels [2] = code;
+	amd64_branch8 (code, X86_CC_Z, FALSE, 0);
+
+	/* Loop footer */
+	amd64_alu_reg_imm (code, X86_ADD, AMD64_R10, 2 * sizeof (gpointer));
+	amd64_jump_code (code, labels [0]);
+
+	/* Match */
+	mono_amd64_patch (labels [2], code);
+	amd64_mov_reg_membase (code, AMD64_R10, AMD64_R10, sizeof (gpointer), 8);
+	amd64_jump_membase (code, AMD64_R10, 0);
+
+	/* No match */
+	/* FIXME: */
+	mono_amd64_patch (labels [1], code);
+	x86_breakpoint (code);
+
+	/* mov <OFFSET>(%rip), %r10 */
+	emit_byte (acfg, '\x4d');
+	emit_byte (acfg, '\x8b');
+	emit_byte (acfg, '\x15');
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) - 4);
+
+	emit_bytes (acfg, buf, code - buf);
+	
+	*tramp_size = code - buf + 7;
+#elif defined(TARGET_X86)
+	guint8 *buf, *code;
+	guint8 *labels [3];
+
+	code = buf = g_malloc (256);
+
+	/* Allocate a temporary stack slot */
+	x86_push_reg (code, X86_EAX);
+	/* Save EAX */
+	x86_push_reg (code, X86_EAX);
+
+	/* Load mscorlib got address */
+	x86_mov_reg_membase (code, X86_EAX, MONO_ARCH_GOT_REG, sizeof (gpointer), 4);
+	/* Load arg */
+	x86_mov_reg_membase (code, X86_EAX, X86_EAX, offset * sizeof (gpointer), 4);
+
+	labels [0] = code;
+	x86_alu_membase_imm (code, X86_CMP, X86_EAX, 0, 0);
+	labels [1] = code;
+	x86_branch8 (code, X86_CC_Z, FALSE, 0);
+
+	/* Check key */
+	x86_alu_membase_reg (code, X86_CMP, X86_EAX, 0, MONO_ARCH_IMT_REG);
+	labels [2] = code;
+	x86_branch8 (code, X86_CC_Z, FALSE, 0);
+
+	/* Loop footer */
+	x86_alu_reg_imm (code, X86_ADD, X86_EAX, 2 * sizeof (gpointer));
+	x86_jump_code (code, labels [0]);
+
+	/* Match */
+	mono_x86_patch (labels [2], code);
+	x86_mov_reg_membase (code, X86_EAX, X86_EAX, sizeof (gpointer), 4);
+	x86_mov_reg_membase (code, X86_EAX, X86_EAX, 0, 4);
+	/* Save the target address to the temporary stack location */
+	x86_mov_membase_reg (code, X86_ESP, 4, X86_EAX, 4);
+	/* Restore EAX */
+	x86_pop_reg (code, X86_EAX);
+	/* Jump to the target address */
+	x86_ret (code);
+
+	/* No match */
+	/* FIXME: */
+	mono_x86_patch (labels [1], code);
+	x86_breakpoint (code);
+
+	emit_bytes (acfg, buf, code - buf);
+	
+	*tramp_size = code - buf;
+#elif defined(TARGET_ARM)
+	guint8 buf [128];
+	guint8 *code, *code2, *labels [16];
+
+	code = buf;
+
+	/* The IMT method is in v5 */
+
+	/* Need at least two free registers, plus a slot for storing the pc */
+	ARM_PUSH (code, (1 << ARMREG_R0)|(1 << ARMREG_R1)|(1 << ARMREG_R2));
+	labels [0] = code;
+	/* Load the parameter from the GOT */
+	ARM_LDR_IMM (code, ARMREG_R0, ARMREG_PC, 0);
+	ARM_LDR_REG_REG (code, ARMREG_R0, ARMREG_PC, ARMREG_R0);
+
+	labels [1] = code;
+	ARM_LDR_IMM (code, ARMREG_R1, ARMREG_R0, 0);
+	ARM_CMP_REG_REG (code, ARMREG_R1, ARMREG_V5);
+	labels [2] = code;
+	ARM_B_COND (code, ARMCOND_EQ, 0);
+
+	/* End-of-loop check */
+	ARM_CMP_REG_IMM (code, ARMREG_R1, 0, 0);
+	labels [3] = code;
+	ARM_B_COND (code, ARMCOND_EQ, 0);
+
+	/* Loop footer */
+	ARM_ADD_REG_IMM8 (code, ARMREG_R0, ARMREG_R0, sizeof (gpointer) * 2);
+	labels [4] = code;
+	ARM_B (code, 0);
+	arm_patch (labels [4], labels [1]);
+
+	/* Match */
+	arm_patch (labels [2], code);
+	ARM_LDR_IMM (code, ARMREG_R0, ARMREG_R0, 4);
+	ARM_LDR_IMM (code, ARMREG_R0, ARMREG_R0, 0);
+	/* Save it to the third stack slot */
+	ARM_STR_IMM (code, ARMREG_R0, ARMREG_SP, 8);
+	/* Restore the registers and branch */
+	ARM_POP (code, (1 << ARMREG_R0)|(1 << ARMREG_R1)|(1 << ARMREG_PC));
+
+	/* No match */
+	arm_patch (labels [3], code);
+	ARM_DBRK (code);
+
+	/* Fixup offset */
+	code2 = labels [0];
+	ARM_LDR_IMM (code2, ARMREG_R0, ARMREG_PC, (code - (labels [0] + 8)));
+
+	emit_bytes (acfg, buf, code - buf);
+	emit_symbol_diff (acfg, acfg->got_symbol, ".", (offset * sizeof (gpointer)) + (code - (labels [0] + 8)) - 4);
+
+	*tramp_size = code - buf + 4;
+#elif defined(TARGET_POWERPC)
+	guint8 buf [128];
+	guint8 *code, *labels [16];
+
+	code = buf;
+
+	/* Load the mscorlib got address */
+	ppc_ldptr (code, ppc_r11, sizeof (gpointer), ppc_r30);
+	/* Load the parameter from the GOT */
+	ppc_load (code, ppc_r0, offset * sizeof (gpointer));
+	ppc_ldptr_indexed (code, ppc_r11, ppc_r11, ppc_r0);
+
+	/* Load and check key */
+	labels [1] = code;
+	ppc_ldptr (code, ppc_r0, 0, ppc_r11);
+	ppc_cmp (code, 0, sizeof (gpointer) == 8 ? 1 : 0, ppc_r0, MONO_ARCH_IMT_REG);
+	labels [2] = code;
+	ppc_bc (code, PPC_BR_TRUE, PPC_BR_EQ, 0);
+
+	/* End-of-loop check */
+	ppc_cmpi (code, 0, sizeof (gpointer) == 8 ? 1 : 0, ppc_r0, 0);
+	labels [3] = code;
+	ppc_bc (code, PPC_BR_TRUE, PPC_BR_EQ, 0);
+
+	/* Loop footer */
+	ppc_addi (code, ppc_r11, ppc_r11, 2 * sizeof (gpointer));
+	labels [4] = code;
+	ppc_b (code, 0);
+	mono_ppc_patch (labels [4], labels [1]);
+
+	/* Match */
+	mono_ppc_patch (labels [2], code);
+	ppc_ldptr (code, ppc_r11, sizeof (gpointer), ppc_r11);
+	/* r11 now contains the value of the vtable slot */
+	/* this is not a function descriptor on ppc64 */
+	ppc_ldptr (code, ppc_r11, 0, ppc_r11);
+	ppc_mtctr (code, ppc_r11);
+	ppc_bcctr (code, PPC_BR_ALWAYS, 0);
+
+	/* Fail */
+	mono_ppc_patch (labels [3], code);
+	/* FIXME: */
+	ppc_break (code);
+
+	*tramp_size = code - buf;
+
+	emit_bytes (acfg, buf, code - buf);
+#else
+	g_assert_not_reached ();
+#endif
+}
+
+/*
+ * arch_get_cie_program:
+ *
+ *   Get the unwind bytecode for the DWARF CIE.
+ */
+static GSList*
+arch_get_cie_program (void)
+{
+#ifdef TARGET_AMD64
+	GSList *l = NULL;
+
+	mono_add_unwind_op_def_cfa (l, (guint8*)NULL, (guint8*)NULL, AMD64_RSP, 8);
+	mono_add_unwind_op_offset (l, (guint8*)NULL, (guint8*)NULL, AMD64_RIP, -8);
+
+	return l;
+#elif defined(TARGET_POWERPC)
+	GSList *l = NULL;
+
+	mono_add_unwind_op_def_cfa (l, (guint8*)NULL, (guint8*)NULL, ppc_r1, 0);
+
+	return l;
+#else
+	return NULL;
+#endif
+}
+
+/* END OF ARCH SPECIFIC CODE */
 
 static guint32
 mono_get_field_token (MonoClassField *field) 
@@ -2207,20 +1383,20 @@ encode_klass_ref (MonoAotCompile *acfg, MonoClass *klass, guint8 *buf, guint8 **
 		encode_value (klass->type_token - MONO_TOKEN_TYPE_DEF, p, &p);
 		encode_value (get_image_index (acfg, klass->image), p, &p);
 	} else if ((klass->byval_arg.type == MONO_TYPE_VAR) || (klass->byval_arg.type == MONO_TYPE_MVAR)) {
-		MonoGenericParam *param = klass->byval_arg.data.generic_param;
+		MonoGenericContainer *container = mono_type_get_generic_param_owner (&klass->byval_arg);
+		g_assert (container);
 
 		/* Marker */
 		encode_value (MONO_TOKEN_TYPE_SPEC, p, &p);
 		encode_value (klass->byval_arg.type, p, &p);
 
-		encode_value (param->num, p, &p);
+		encode_value (mono_type_get_generic_param_num (&klass->byval_arg), p, &p);
 		
-		g_assert (param->owner);
-		encode_value (param->owner->is_method, p, &p);
-		if (param->owner->is_method)
-			encode_method_ref (acfg, param->owner->owner.method, p, &p);
+		encode_value (container->is_method, p, &p);
+		if (container->is_method)
+			encode_method_ref (acfg, container->owner.method, p, &p);
 		else
-			encode_klass_ref (acfg, param->owner->owner.klass, p, &p);
+			encode_klass_ref (acfg, container->owner.klass, p, &p);
 	} else {
 		/* Array class */
 		g_assert (klass->rank > 0);
@@ -2279,19 +1455,64 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 	guint32 token = method->token;
 	MonoJumpInfoToken *ji;
 	guint8 *p = buf;
+	char *name;
 
-	g_assert (image_index < MAX_IMAGE_INDEX);
+	/*
+	 * The encoding for most methods is as follows:
+	 * - image index encoded as a leb128
+	 * - token index encoded as a leb128
+	 * Values of image index >= MONO_AOT_METHODREF_MIN are used to mark additional
+	 * types of method encodings.
+	 */
+
+	g_assert (image_index < MONO_AOT_METHODREF_MIN);
 
 	/* Mark methods which can't use aot trampolines because they need the further 
 	 * processing in mono_magic_trampoline () which requires a MonoMethod*.
 	 */
 	if ((method->is_generic && (method->flags & METHOD_ATTRIBUTE_VIRTUAL)) ||
 		(method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED))
-		encode_value ((252 << 24), p, &p);
+		encode_value ((MONO_AOT_METHODREF_NO_AOT_TRAMPOLINE << 24), p, &p);
 
+	/* 
+	 * Some wrapper methods are shared using their signature, encode their 
+	 * stringified signature instead.
+	 * FIXME: Optimize disk usage
+	 */
+	name = NULL;
 	if (method->wrapper_type) {
-		/* Marker */
-		encode_value ((253 << 24), p, &p);
+		if (method->wrapper_type == MONO_WRAPPER_RUNTIME_INVOKE) {
+			char *tmpsig = mono_signature_get_desc (mono_method_signature (method), TRUE);
+			if (strcmp (method->name, "runtime_invoke_dynamic")) {
+				name = mono_aot_wrapper_name (method);
+			} else if (mono_marshal_method_from_wrapper (method) != method) {
+				/* Direct wrapper, encode it normally */
+			} else {
+				name = g_strdup_printf ("(wrapper runtime-invoke):%s (%s)", method->name, tmpsig);
+			}
+			g_free (tmpsig);
+		} else if (method->wrapper_type == MONO_WRAPPER_DELEGATE_INVOKE) {
+			char *tmpsig = mono_signature_get_desc (mono_method_signature (method), TRUE);
+			name = g_strdup_printf ("(wrapper delegate-invoke):%s (%s)", method->name, tmpsig);
+			g_free (tmpsig);
+		} else if (method->wrapper_type == MONO_WRAPPER_DELEGATE_BEGIN_INVOKE) {
+			char *tmpsig = mono_signature_get_desc (mono_method_signature (method), TRUE);
+			name = g_strdup_printf ("(wrapper delegate-begin-invoke):%s (%s)", method->name, tmpsig);
+			g_free (tmpsig);
+		} else if (method->wrapper_type == MONO_WRAPPER_DELEGATE_END_INVOKE) {
+			char *tmpsig = mono_signature_get_desc (mono_method_signature (method), TRUE);
+			name = g_strdup_printf ("(wrapper delegate-end-invoke):%s (%s)", method->name, tmpsig);
+			g_free (tmpsig);
+		}
+	}
+
+	if (name) {
+		encode_value ((MONO_AOT_METHODREF_WRAPPER_NAME << 24), p, &p);
+		strcpy ((char*)p, name);
+		p += strlen (name) + 1;
+		g_free (name);
+	} else if (method->wrapper_type) {
+		encode_value ((MONO_AOT_METHODREF_WRAPPER << 24), p, &p);
 
 		encode_value (method->wrapper_type, p, &p);
 
@@ -2334,14 +1555,29 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 			else
 				g_assert_not_reached ();
 			break;
-		case MONO_WRAPPER_STATIC_RGCTX_INVOKE: {
+		case MONO_WRAPPER_SYNCHRONIZED:
+		case MONO_WRAPPER_MANAGED_TO_NATIVE:
+		case MONO_WRAPPER_RUNTIME_INVOKE: {
 			MonoMethod *m;
 
 			m = mono_marshal_method_from_wrapper (method);
 			g_assert (m);
+			g_assert (m != method);
 			encode_method_ref (acfg, m, p, &p);
 			break;
 		}
+		case MONO_WRAPPER_MANAGED_TO_MANAGED:
+			if (!strcmp (method->name, "ElementAddr")) {
+				ElementAddrWrapperInfo *info = mono_marshal_wrapper_info_from_wrapper (method);
+
+				g_assert (info);
+				encode_value (MONO_AOT_WRAPPER_ELEMENT_ADDR, p, &p);
+				encode_value (info->rank, p, &p);
+				encode_value (info->elem_size, p, &p);
+			} else {
+				g_assert_not_reached ();
+			}
+			break;
 		default:
 			g_assert_not_reached ();
 		}
@@ -2357,8 +1593,7 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 			g_assert (image_index < MAX_IMAGE_INDEX);
 			token = ji->token;
 
-			/* Marker */
-			encode_value ((255 << 24), p, &p);
+			encode_value ((MONO_AOT_METHODREF_METHODSPEC << 24), p, &p);
 			encode_value (image_index, p, &p);
 			encode_value (token, p, &p);
 		} else {
@@ -2374,8 +1609,7 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 			 * like Nullable:Box/Unbox, or by generic sharing.
 			 */
 
-			/* Marker */
-			encode_value ((254 << 24), p, &p);
+			encode_value ((MONO_AOT_METHODREF_GINST << 24), p, &p);
 			/* Encode the klass */
 			encode_klass_ref (acfg, method->klass, p, &p);
 			/* Encode the method */
@@ -2392,15 +1626,34 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 		/* This might be a method of a constructed type like int[,].Set */
 		/* Obtain the token from information recorded by the JIT */
 		ji = g_hash_table_lookup (acfg->token_info_hash, method);
-		g_assert (ji);
-		image_index = get_image_index (acfg, ji->image);
-		g_assert (image_index < MAX_IMAGE_INDEX);
-		token = ji->token;
+		if (ji) {
+			image_index = get_image_index (acfg, ji->image);
+			g_assert (image_index < MAX_IMAGE_INDEX);
+			token = ji->token;
 
-		/* Marker */
-		encode_value ((255 << 24), p, &p);
-		encode_value (image_index, p, &p);
-		encode_value (token, p, &p);
+			encode_value ((MONO_AOT_METHODREF_METHODSPEC << 24), p, &p);
+			encode_value (image_index, p, &p);
+			encode_value (token, p, &p);
+		} else {
+			/* Array methods */
+			g_assert (method->klass->rank);
+
+			/* Encode directly */
+			encode_value ((MONO_AOT_METHODREF_ARRAY << 24), p, &p);
+			encode_klass_ref (acfg, method->klass, p, &p);
+			if (!strcmp (method->name, ".ctor") && mono_method_signature (method)->param_count == method->klass->rank)
+				encode_value (0, p, &p);
+			else if (!strcmp (method->name, ".ctor") && mono_method_signature (method)->param_count == method->klass->rank * 2)
+				encode_value (1, p, &p);
+			else if (!strcmp (method->name, "Get"))
+				encode_value (2, p, &p);
+			else if (!strcmp (method->name, "Address"))
+				encode_value (3, p, &p);
+			else if (!strcmp (method->name, "Set"))
+				encode_value (4, p, &p);
+			else
+				g_assert_not_reached ();
+		}
 	} else {
 		g_assert (mono_metadata_token_table (token) == MONO_TABLE_METHOD);
 		encode_value ((image_index << 24) | mono_metadata_token_index (token), p, &p);
@@ -2451,60 +1704,63 @@ is_plt_patch (MonoJumpInfo *patch_info)
 }
 
 /*
- * is_shared_got_patch:
+ * get_plt_symbol:
  *
- *   Return whenever PATCH_INFO refers to a patch which needs a shared GOT
- * entry.
- * Keep it in sync with the version in aot-runtime.c.
+ *   Return the symbol identifying the plt entry PLT_OFFSET.
  */
-static inline gboolean
-is_shared_got_patch (MonoJumpInfo *patch_info)
+static char*
+get_plt_symbol (MonoAotCompile *acfg, int plt_offset, MonoJumpInfo *patch_info)
 {
-	switch (patch_info->type) {
-	case MONO_PATCH_INFO_VTABLE:
-	case MONO_PATCH_INFO_CLASS:
-	case MONO_PATCH_INFO_IID:
-	case MONO_PATCH_INFO_ADJUSTED_IID:
-	case MONO_PATCH_INFO_FIELD:
-	case MONO_PATCH_INFO_SFLDA:
-	case MONO_PATCH_INFO_DECLSEC:
-	case MONO_PATCH_INFO_LDTOKEN:
-	case MONO_PATCH_INFO_TYPE_FROM_HANDLE:
-	case MONO_PATCH_INFO_RVA:
-	case MONO_PATCH_INFO_METHODCONST:
-		return TRUE;
-	default:
-		return FALSE;
-	}
+#ifdef __MACH__
+	/* 
+	 * The Apple linker reorganizes object files, so it doesn't like branches to local
+	 * labels, since those have no relocations.
+	 */
+	return g_strdup_printf ("p_%d", plt_offset);
+#else
+	return g_strdup_printf ("%sp_%d", acfg->temp_prefix, plt_offset);
+#endif
 }
 
-static int
-get_plt_offset (MonoAotCompile *acfg, MonoJumpInfo *patch_info)
+/*
+ * get_plt_entry:
+ *
+ *   Return a PLT entry which belongs to the method identified by PATCH_INFO.
+ */
+static MonoPltEntry*
+get_plt_entry (MonoAotCompile *acfg, MonoJumpInfo *patch_info)
 {
-	int res = -1;
+	MonoPltEntry *res;
 
-	if (is_plt_patch (patch_info)) {
-		int idx = GPOINTER_TO_UINT (g_hash_table_lookup (acfg->patch_to_plt_offset, patch_info));
+	if (!is_plt_patch (patch_info))
+		return NULL;
 
-		if (patch_info->type == MONO_PATCH_INFO_METHOD && (patch_info->data.method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED)) {
-			/* 
-			 * Allocate a separate PLT slot for each such patch, since some plt
-			 * entries will refer to the method itself, and some will refer to
-			 * wrapper.
-			 */
-			idx = 0;
-		}
+	res = g_hash_table_lookup (acfg->patch_to_plt_entry, patch_info);
 
-		if (idx) {
-			res = idx;
-		} else {
-			MonoJumpInfo *new_ji = mono_patch_info_dup_mp (acfg->mempool, patch_info);
+	if (patch_info->type == MONO_PATCH_INFO_METHOD && (patch_info->data.method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED)) {
+		/* 
+		 * Allocate a separate PLT slot for each such patch, since some plt
+		 * entries will refer to the method itself, and some will refer to the
+		 * wrapper.
+		 */
+		res = NULL;
+	}
 
-			res = acfg->plt_offset;
-			g_hash_table_insert (acfg->plt_offset_to_patch, GUINT_TO_POINTER (res), new_ji);
-			g_hash_table_insert (acfg->patch_to_plt_offset, new_ji, GUINT_TO_POINTER (res));
-			acfg->plt_offset ++;
-		}
+	if (!res) {
+		MonoJumpInfo *new_ji;
+
+		new_ji = mono_patch_info_dup_mp (acfg->mempool, patch_info);
+
+		res = mono_mempool_alloc0 (acfg->mempool, sizeof (MonoPltEntry));
+		res->plt_offset = acfg->plt_offset;
+		res->ji = new_ji;
+		res->symbol = get_plt_symbol (acfg, res->plt_offset, patch_info);
+
+		g_hash_table_insert (acfg->patch_to_plt_entry, new_ji, res);
+
+		g_hash_table_insert (acfg->plt_offset_to_entry, GUINT_TO_POINTER (res->plt_offset), res);
+
+		acfg->plt_offset ++;
 	}
 
 	return res;
@@ -2521,7 +1777,7 @@ get_got_offset (MonoAotCompile *acfg, MonoJumpInfo *ji)
 {
 	guint32 got_offset;
 
-	got_offset = GPOINTER_TO_UINT (g_hash_table_lookup (acfg->patch_to_shared_got_offset, ji));
+	got_offset = GPOINTER_TO_UINT (g_hash_table_lookup (acfg->patch_to_got_offset_by_type [ji->type], ji));
 	if (got_offset)
 		return got_offset - 1;
 
@@ -2531,28 +1787,16 @@ get_got_offset (MonoAotCompile *acfg, MonoJumpInfo *ji)
 	acfg->stats.got_slots ++;
 	acfg->stats.got_slot_types [ji->type] ++;
 
+	g_hash_table_insert (acfg->patch_to_got_offset, ji, GUINT_TO_POINTER (got_offset + 1));
+	g_hash_table_insert (acfg->patch_to_got_offset_by_type [ji->type], ji, GUINT_TO_POINTER (got_offset + 1));
+	g_ptr_array_add (acfg->got_patches, ji);
+
 	return got_offset;
-}
-
-static guint32
-get_shared_got_offset (MonoAotCompile *acfg, MonoJumpInfo *ji)
-{
-	MonoJumpInfo *copy;
-	guint32 got_offset;
-
-	if (!g_hash_table_lookup (acfg->patch_to_shared_got_offset, ji)) {
-		got_offset = get_got_offset (acfg, ji);
-		copy = mono_patch_info_dup_mp (acfg->mempool, ji);
-		g_hash_table_insert (acfg->patch_to_shared_got_offset, copy, GUINT_TO_POINTER (got_offset + 1));
-		g_ptr_array_add (acfg->shared_patches, copy);
-	}
-
-	return get_got_offset (acfg, ji);
 }
 
 /* Add a method to the list of methods which need to be emitted */
 static void
-add_method_with_index (MonoAotCompile *acfg, MonoMethod *method, int index)
+add_method_with_index (MonoAotCompile *acfg, MonoMethod *method, int index, gboolean extra)
 {
 	g_assert (method);
 	if (!g_hash_table_lookup (acfg->method_indexes, method)) {
@@ -2560,6 +1804,9 @@ add_method_with_index (MonoAotCompile *acfg, MonoMethod *method, int index)
 		g_hash_table_insert (acfg->method_indexes, method, GUINT_TO_POINTER (index + 1));
 		acfg->nmethods = acfg->methods->len + 1;
 	}
+
+	if (method->wrapper_type || extra)
+		g_ptr_array_add (acfg->extra_methods, method);
 }
 
 static guint32
@@ -2573,7 +1820,7 @@ get_method_index (MonoAotCompile *acfg, MonoMethod *method)
 }
 
 static int
-add_method_full (MonoAotCompile *acfg, MonoMethod *method, int depth)
+add_method_full (MonoAotCompile *acfg, MonoMethod *method, gboolean extra, int depth)
 {
 	int index;
 
@@ -2582,7 +1829,7 @@ add_method_full (MonoAotCompile *acfg, MonoMethod *method, int depth)
 		return index - 1;
 
 	index = acfg->method_index;
-	add_method_with_index (acfg, method, index);
+	add_method_with_index (acfg, method, index, extra);
 
 	/* FIXME: Fix quadratic behavior */
 	acfg->method_order = g_list_append (acfg->method_order, GUINT_TO_POINTER (index));
@@ -2597,31 +1844,19 @@ add_method_full (MonoAotCompile *acfg, MonoMethod *method, int depth)
 static int
 add_method (MonoAotCompile *acfg, MonoMethod *method)
 {
-	return add_method_full (acfg, method, 0);
+	return add_method_full (acfg, method, FALSE, 0);
 }
 
 static void
 add_extra_method (MonoAotCompile *acfg, MonoMethod *method)
 {
-	int index;
-
-	index = GPOINTER_TO_UINT (g_hash_table_lookup (acfg->method_indexes, method));
-	if (index)
-		return;
-	add_method (acfg, method);
-	g_ptr_array_add (acfg->extra_methods, method);
+	add_method_full (acfg, method, TRUE, 0);
 }
 
 static void
 add_extra_method_with_depth (MonoAotCompile *acfg, MonoMethod *method, int depth)
 {
-	int index;
-
-	index = GPOINTER_TO_UINT (g_hash_table_lookup (acfg->method_indexes, method));
-	if (index)
-		return;
-	add_method_full (acfg, method, depth);
-	g_ptr_array_add (acfg->extra_methods, method);
+	add_method_full (acfg, method, TRUE, depth);
 }
 
 static void
@@ -2650,14 +1885,65 @@ get_runtime_invoke_sig (MonoMethodSignature *sig)
 
 	mb = mono_mb_new (mono_defaults.object_class, "FOO", MONO_WRAPPER_NONE);
 	m = mono_mb_create_method (mb, sig, 16);
-	return mono_marshal_get_runtime_invoke (m);
+	return mono_marshal_get_runtime_invoke (m, FALSE);
+}
+
+static gboolean
+can_marshal_struct (MonoClass *klass)
+{
+	MonoClassField *field;
+	gboolean can_marshal = TRUE;
+	gpointer iter = NULL;
+
+	if ((klass->flags & TYPE_ATTRIBUTE_LAYOUT_MASK) == TYPE_ATTRIBUTE_AUTO_LAYOUT)
+		return FALSE;
+
+	/* Only allow a few field types to avoid asserts in the marshalling code */
+	while ((field = mono_class_get_fields (klass, &iter))) {
+		if ((field->type->attrs & FIELD_ATTRIBUTE_STATIC))
+			continue;
+
+		switch (field->type->type) {
+		case MONO_TYPE_I4:
+		case MONO_TYPE_U4:
+		case MONO_TYPE_I1:
+		case MONO_TYPE_U1:
+		case MONO_TYPE_BOOLEAN:
+		case MONO_TYPE_I2:
+		case MONO_TYPE_U2:
+		case MONO_TYPE_CHAR:
+		case MONO_TYPE_I8:
+		case MONO_TYPE_U8:
+		case MONO_TYPE_I:
+		case MONO_TYPE_U:
+		case MONO_TYPE_PTR:
+		case MONO_TYPE_R4:
+		case MONO_TYPE_R8:
+		case MONO_TYPE_STRING:
+			break;
+		case MONO_TYPE_VALUETYPE:
+			if (!mono_class_from_mono_type (field->type)->enumtype && !can_marshal_struct (mono_class_from_mono_type (field->type)))
+				can_marshal = FALSE;
+			break;
+		default:
+			can_marshal = FALSE;
+			break;
+		}
+	}
+
+	/* Special cases */
+	/* Its hard to compute whenever these can be marshalled or not */
+	if (!strcmp (klass->name_space, "System.Net.NetworkInformation.MacOsStructs"))
+		return TRUE;
+
+	return can_marshal;
 }
 
 static void
 add_wrappers (MonoAotCompile *acfg)
 {
 	MonoMethod *method, *m;
-	int i, j, nallocators;
+	int i, j;
 	MonoMethodSignature *sig, *csig;
 	guint32 token;
 
@@ -2671,59 +1957,6 @@ add_wrappers (MonoAotCompile *acfg)
 	 * FIXME: This depends on the fact that different wrappers have different 
 	 * names.
 	 */
-
-	/* FIXME: Collect these automatically */
-
-	/* Runtime invoke wrappers */
-
-	/* void runtime-invoke () [.cctor] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 0);
-	csig->ret = &mono_defaults.void_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
-
-	/* void runtime-invoke () [Finalize] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 0);
-	csig->hasthis = 1;
-	csig->ret = &mono_defaults.void_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
-
-	/* void runtime-invoke (string) [exception ctor] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 1);
-	csig->hasthis = 1;
-	csig->ret = &mono_defaults.void_class->byval_arg;
-	csig->params [0] = &mono_defaults.string_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
-
-	/* void runtime-invoke (string, string) [exception ctor] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
-	csig->hasthis = 1;
-	csig->ret = &mono_defaults.void_class->byval_arg;
-	csig->params [0] = &mono_defaults.string_class->byval_arg;
-	csig->params [1] = &mono_defaults.string_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
-
-	/* string runtime-invoke () [Exception.ToString ()] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 0);
-	csig->hasthis = 1;
-	csig->ret = &mono_defaults.string_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
-
-	/* void runtime-invoke (string, Exception) [exception ctor] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
-	csig->hasthis = 1;
-	csig->ret = &mono_defaults.void_class->byval_arg;
-	csig->params [0] = &mono_defaults.string_class->byval_arg;
-	csig->params [1] = &mono_defaults.exception_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
-
-	/* Assembly runtime-invoke (string, bool) [DoAssemblyResolve] */
-	csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
-	csig->hasthis = 1;
-	csig->ret = &(mono_class_from_name (
-										mono_defaults.corlib, "System.Reflection", "Assembly"))->byval_arg;
-	csig->params [0] = &mono_defaults.string_class->byval_arg;
-	csig->params [1] = &mono_defaults.boolean_class->byval_arg;
-	add_method (acfg, get_runtime_invoke_sig (csig));
 
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHOD].rows; ++i) {
 		MonoMethod *method;
@@ -2751,18 +1984,108 @@ add_wrappers (MonoAotCompile *acfg)
 				skip = TRUE;
 		}
 
-		if (!skip)
-			add_method (acfg, mono_marshal_get_runtime_invoke (method));
-	}
+#ifdef MONO_ARCH_DYN_CALL_SUPPORTED
+		if (!method->klass->contextbound) {
+			MonoDynCallInfo *info = mono_arch_dyn_call_prepare (sig);
+			gboolean has_nullable = FALSE;
+
+			for (j = 0; j < sig->param_count; j++) {
+				if (sig->params [j]->type == MONO_TYPE_GENERICINST && mono_class_is_nullable (mono_class_from_mono_type (sig->params [j])))
+					has_nullable = TRUE;
+			}
+
+			if (info && !has_nullable) {
+				/* Supported by the dynamic runtime-invoke wrapper */
+				skip = TRUE;
+				g_free (info);
+			}
+		}
+#endif
+
+		if (!skip) {
+			//printf ("%s\n", mono_method_full_name (method, TRUE));
+			add_method (acfg, mono_marshal_get_runtime_invoke (method, FALSE));
+		}
+ 	}
 
 	if (strcmp (acfg->image->assembly->aname.name, "mscorlib") == 0) {
+#ifdef MONO_ARCH_HAVE_TLS_GET
 		MonoMethodDesc *desc;
 		MonoMethod *orig_method;
+		int nallocators;
+#endif
+
+		/* Runtime invoke wrappers */
+
+		/* void runtime-invoke () [.cctor] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 0);
+		csig->ret = &mono_defaults.void_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* void runtime-invoke () [Finalize] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 0);
+		csig->hasthis = 1;
+		csig->ret = &mono_defaults.void_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* void runtime-invoke (string) [exception ctor] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 1);
+		csig->hasthis = 1;
+		csig->ret = &mono_defaults.void_class->byval_arg;
+		csig->params [0] = &mono_defaults.string_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* void runtime-invoke (string, string) [exception ctor] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
+		csig->hasthis = 1;
+		csig->ret = &mono_defaults.void_class->byval_arg;
+		csig->params [0] = &mono_defaults.string_class->byval_arg;
+		csig->params [1] = &mono_defaults.string_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* string runtime-invoke () [Exception.ToString ()] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 0);
+		csig->hasthis = 1;
+		csig->ret = &mono_defaults.string_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* void runtime-invoke (string, Exception) [exception ctor] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
+		csig->hasthis = 1;
+		csig->ret = &mono_defaults.void_class->byval_arg;
+		csig->params [0] = &mono_defaults.string_class->byval_arg;
+		csig->params [1] = &mono_defaults.exception_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* Assembly runtime-invoke (string, bool) [DoAssemblyResolve] */
+		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
+		csig->hasthis = 1;
+		csig->ret = &(mono_class_from_name (
+											mono_defaults.corlib, "System.Reflection", "Assembly"))->byval_arg;
+		csig->params [0] = &mono_defaults.string_class->byval_arg;
+		csig->params [1] = &mono_defaults.boolean_class->byval_arg;
+		add_method (acfg, get_runtime_invoke_sig (csig));
+
+		/* runtime-invoke used by finalizers */
+		add_method (acfg, mono_marshal_get_runtime_invoke (mono_class_get_method_from_name_flags (mono_defaults.object_class, "Finalize", 0, 0), TRUE));
+
+		/* This is used by mono_runtime_capture_context () */
+		method = mono_get_context_capture_method ();
+		if (method)
+			add_method (acfg, mono_marshal_get_runtime_invoke (method, FALSE));
+
+#ifdef MONO_ARCH_DYN_CALL_SUPPORTED
+		add_method (acfg, mono_marshal_get_runtime_invoke_dynamic ());
+#endif
 
 		/* JIT icall wrappers */
 		/* FIXME: locking */
 		g_hash_table_foreach (mono_get_jit_icall_info (), add_jit_icall_wrapper, acfg);
 
+		/* stelemref */
+		add_method (acfg, mono_marshal_get_stelemref ());
+
+#ifdef MONO_ARCH_HAVE_TLS_GET
 		/* Managed Allocators */
 		nallocators = mono_gc_get_managed_allocator_types ();
 		for (i = 0; i < nallocators; ++i) {
@@ -2770,9 +2093,6 @@ add_wrappers (MonoAotCompile *acfg)
 			if (m)
 				add_method (acfg, m);
 		}
-
-		/* stelemref */
-		add_method (acfg, mono_marshal_get_stelemref ());
 
 		/* Monitor Enter/Exit */
 		desc = mono_method_desc_new ("Monitor:Enter", FALSE);
@@ -2790,8 +2110,15 @@ add_wrappers (MonoAotCompile *acfg)
 		method = mono_monitor_get_fast_path (orig_method);
 		if (method)
 			add_method (acfg, method);
+#endif
 	}
 
+	/* 
+	 * remoting-invoke-with-check wrappers are very frequent, so avoid emitting them,
+	 * we use the original method instead at runtime.
+	 * Since full-aot doesn't support remoting, this is not a problem.
+	 */
+#if 0
 	/* remoting-invoke wrappers */
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHOD].rows; ++i) {
 		MonoMethodSignature *sig;
@@ -2807,6 +2134,7 @@ add_wrappers (MonoAotCompile *acfg)
 			add_method (acfg, m);
 		}
 	}
+#endif
 
 	/* delegate-invoke wrappers */
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_TYPEDEF].rows; ++i) {
@@ -2821,6 +2149,12 @@ add_wrappers (MonoAotCompile *acfg)
 			m = mono_marshal_get_delegate_invoke (method, NULL);
 
 			add_method (acfg, m);
+
+			method = mono_class_get_method_from_name_flags (klass, "BeginInvoke", -1, 0);
+			add_method (acfg, mono_marshal_get_delegate_begin_invoke (method));
+
+			method = mono_class_get_method_from_name_flags (klass, "EndInvoke", -1, 0);
+			add_method (acfg, mono_marshal_get_delegate_end_invoke (method));
 		}
 	}
 
@@ -2829,26 +2163,9 @@ add_wrappers (MonoAotCompile *acfg)
 		token = MONO_TOKEN_METHOD_DEF | (i + 1);
 		method = mono_get_method (acfg->image, token, NULL);
 
-		if (method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED)
+		if (method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED && !method->is_generic)
 			add_method (acfg, mono_marshal_get_synchronized_wrapper (method));
 	}
-
-#if 0
-	/* static rgctx wrappers */
-	/* FIXME: Each wrapper belongs to a given instantiation of a generic method */
-	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHOD].rows; ++i) {
-		token = MONO_TOKEN_METHOD_DEF | (i + 1);
-		method = mono_get_method (acfg->image, token, NULL);
-
-		if (((method->flags & METHOD_ATTRIBUTE_STATIC) ||
-			 (method->is_inflated && mono_method_get_context (method)->method_inst)) &&
-			mono_class_generic_sharing_enabled (method->klass) &&
-			mono_method_is_generic_sharable_impl (method, FALSE)) {
-			m = mono_marshal_get_static_rgctx_invoke (method);
-			add_method (acfg, m);
-		}
-	}
-#endif
 
 	/* pinvoke wrappers */
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHOD].rows; ++i) {
@@ -2857,8 +2174,23 @@ add_wrappers (MonoAotCompile *acfg)
 
 		method = mono_get_method (acfg->image, token, NULL);
 
-		if (method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL)
+		if ((method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL) ||
+			(method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL)) {
 			add_method (acfg, mono_marshal_get_native_wrapper (method, TRUE, TRUE));
+		}
+	}
+
+	/* StructureToPtr/PtrToStructure wrappers */
+	for (i = 0; i < acfg->image->tables [MONO_TABLE_TYPEDEF].rows; ++i) {
+		MonoClass *klass;
+		
+		token = MONO_TOKEN_TYPE_DEF | (i + 1);
+		klass = mono_class_get (acfg->image, token);
+
+		if (klass->valuetype && !klass->generic_container && can_marshal_struct (klass)) {
+			add_method (acfg, mono_marshal_get_struct_to_ptr (klass));
+			add_method (acfg, mono_marshal_get_ptr_to_struct (klass));
+		}
 	}
 }
 
@@ -2901,6 +2233,140 @@ method_has_type_vars (MonoMethod *method)
 	return FALSE;
 }
 
+static void add_generic_class_with_depth (MonoAotCompile *acfg, MonoClass *klass, int depth);
+
+static void
+add_generic_class (MonoAotCompile *acfg, MonoClass *klass)
+{
+	add_generic_class_with_depth (acfg, klass, 0);
+}
+
+/*
+ * add_generic_class:
+ *
+ *   Add all methods of a generic class.
+ */
+static void
+add_generic_class_with_depth (MonoAotCompile *acfg, MonoClass *klass, int depth)
+{
+	MonoMethod *method;
+	gpointer iter;
+
+	mono_class_init (klass);
+
+	if (klass->generic_class && klass->generic_class->context.class_inst->is_open)
+		return;
+
+	if (has_type_vars (klass))
+		return;
+
+	if (!klass->generic_class && !klass->rank)
+		return;
+
+	iter = NULL;
+	while ((method = mono_class_get_methods (klass, &iter))) {
+		if (mono_method_is_generic_sharable_impl (method, FALSE))
+			/* Already added */
+			continue;
+
+		if (method->is_generic)
+			/* FIXME: */
+			continue;
+
+		/*
+		 * FIXME: Instances which are referenced by these methods are not added,
+		 * for example Array.Resize<int> for List<int>.Add ().
+		 */
+		add_extra_method_with_depth (acfg, method, depth);
+	}
+
+	if (klass->delegate) {
+		method = mono_get_delegate_invoke (klass);
+
+		method = mono_marshal_get_delegate_invoke (method, NULL);
+
+		add_method (acfg, method);
+	}
+
+	/* 
+	 * For ICollection<T>, add instances of the helper methods
+	 * in Array, since a T[] could be cast to ICollection<T>.
+	 */
+	if (klass->image == mono_defaults.corlib && !strcmp (klass->name_space, "System.Collections.Generic") &&
+		(!strcmp(klass->name, "ICollection`1") || !strcmp (klass->name, "IEnumerable`1") || !strcmp (klass->name, "IList`1") || !strcmp (klass->name, "IEnumerator`1"))) {
+		MonoClass *tclass = mono_class_from_mono_type (klass->generic_class->context.class_inst->type_argv [0]);
+		MonoClass *array_class = mono_bounded_array_class_get (tclass, 1, FALSE);
+		gpointer iter;
+		char *name_prefix;
+
+		if (!strcmp (klass->name, "IEnumerator`1"))
+			name_prefix = g_strdup_printf ("%s.%s", klass->name_space, "IEnumerable`1");
+		else
+			name_prefix = g_strdup_printf ("%s.%s", klass->name_space, klass->name);
+
+		/* Add the T[]/InternalEnumerator class */
+		if (!strcmp (klass->name, "IEnumerable`1") || !strcmp (klass->name, "IEnumerator`1")) {
+			MonoClass *nclass;
+
+			iter = NULL;
+			while ((nclass = mono_class_get_nested_types (array_class->parent, &iter))) {
+				if (!strcmp (nclass->name, "InternalEnumerator`1"))
+					break;
+			}
+			g_assert (nclass);
+			nclass = mono_class_inflate_generic_class (nclass, mono_generic_class_get_context (klass->generic_class));
+			add_generic_class (acfg, nclass);
+		}
+
+		iter = NULL;
+		while ((method = mono_class_get_methods (array_class, &iter))) {
+			if (strstr (method->name, name_prefix)) {
+				MonoMethod *m = mono_aot_get_array_helper_from_wrapper (method);
+				add_extra_method_with_depth (acfg, m, depth);
+			}
+		}
+
+		g_free (name_prefix);
+	}
+
+	/* Add an instance of GenericComparer<T> which is created dynamically by Comparer<T> */
+	if (klass->image == mono_defaults.corlib && !strcmp (klass->name_space, "System.Collections.Generic") && !strcmp (klass->name, "Comparer`1")) {
+		MonoClass *tclass = mono_class_from_mono_type (klass->generic_class->context.class_inst->type_argv [0]);
+		MonoClass *icomparable, *gcomparer;
+		MonoGenericContext ctx;
+		MonoType *args [16];
+
+		memset (&ctx, 0, sizeof (ctx));
+
+		icomparable = mono_class_from_name (mono_defaults.corlib, "System", "IComparable`1");
+		g_assert (icomparable);
+		args [0] = &tclass->byval_arg;
+		ctx.class_inst = mono_metadata_get_generic_inst (1, args);
+
+		if (mono_class_is_assignable_from (mono_class_inflate_generic_class (icomparable, &ctx), tclass)) {
+			gcomparer = mono_class_from_name (mono_defaults.corlib, "System.Collections.Generic", "GenericComparer`1");
+			g_assert (gcomparer);
+			add_generic_class (acfg, mono_class_inflate_generic_class (gcomparer, &ctx));
+		}
+	}
+}
+
+static void
+add_instances_of (MonoAotCompile *acfg, MonoClass *klass, MonoType **insts, int ninsts)
+{
+	int i;
+	MonoGenericContext ctx;
+	MonoType *args [16];
+
+	memset (&ctx, 0, sizeof (ctx));
+
+	for (i = 0; i < ninsts; ++i) {
+		args [0] = insts [i];
+		ctx.class_inst = mono_metadata_get_generic_inst (1, args);
+		add_generic_class (acfg, mono_class_inflate_generic_class (klass, &ctx));
+	}
+}
+
 /*
  * add_generic_instances:
  *
@@ -2912,6 +2378,8 @@ add_generic_instances (MonoAotCompile *acfg)
 	int i;
 	guint32 token;
 	MonoMethod *method;
+	MonoMethodHeader *header;
+	MonoMethodSignature *sig;
 	MonoGenericContext *context;
 
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHODSPEC].rows; ++i) {
@@ -2935,52 +2403,135 @@ add_generic_instances (MonoAotCompile *acfg)
 
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_TYPESPEC].rows; ++i) {
 		MonoClass *klass;
-		gpointer iter;
 
 		token = MONO_TOKEN_TYPE_SPEC | (i + 1);
 
 		klass = mono_class_get (acfg->image, token);
-		if (!klass)
-			continue;
-		mono_class_init (klass);
-
-		if (klass->generic_class && klass->generic_class->context.class_inst->is_open)
+		if (!klass || klass->rank)
 			continue;
 
-		if (has_type_vars (klass))
-			continue;
+		add_generic_class (acfg, klass);
+	}
 
-		if (!klass->generic_class && !klass->rank)
-			continue;
+	/* Add types of args/locals */
+	for (i = 0; i < acfg->methods->len; ++i) {
+		int j;
 
-		/* 
-		 * Add rgctx wrappers for cctors since those are called by the runtime, so 
-		 * there is no methodspec for them. This is needed even for shared classes,
-		 * since rgctx wrappers belong to inflated methods.
-		 */
-		method = mono_class_get_cctor (klass);
-		if (method)
-			add_extra_method (acfg, mono_marshal_get_static_rgctx_invoke (method));
+		method = g_ptr_array_index (acfg->methods, i);
 
-		iter = NULL;
-		while ((method = mono_class_get_methods (klass, &iter))) {
-			if (mono_method_is_generic_sharable_impl (method, FALSE))
-				/* Already added */
-				continue;
+		sig = mono_method_signature (method);
 
-			if (method->is_generic)
-				/* FIXME: */
-				continue;
+		if (sig) {
+			for (j = 0; j < sig->param_count; ++j)
+				if (sig->params [j]->type == MONO_TYPE_GENERICINST)
+					add_generic_class (acfg, mono_class_from_mono_type (sig->params [j]));
+		}
 
-			/*
-			 * FIXME: Instances which are referenced by these methods are not added,
-			 * for example Array.Resize<int> for List<int>.Add ().
-			 */
-			add_extra_method (acfg, method);
+		header = mono_method_get_header (method);
+
+		if (header) {
+			for (j = 0; j < header->num_locals; ++j)
+				if (header->locals [j]->type == MONO_TYPE_GENERICINST)
+					add_generic_class (acfg, mono_class_from_mono_type (header->locals [j]));
+		}
+	}
+
+	if (acfg->image == mono_defaults.corlib) {
+		MonoClass *klass;
+		MonoType *insts [256];
+		int ninsts = 0;
+
+		insts [ninsts ++] = &mono_defaults.byte_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.sbyte_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.int16_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.uint16_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.int32_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.uint32_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.int64_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.uint64_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.single_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.double_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.char_class->byval_arg;
+		insts [ninsts ++] = &mono_defaults.boolean_class->byval_arg;
+
+		/* Add GenericComparer<T> instances for primitive types for Enum.ToString () */
+		klass = mono_class_from_name (acfg->image, "System.Collections.Generic", "GenericComparer`1");
+		if (klass)
+			add_instances_of (acfg, klass, insts, ninsts);
+		klass = mono_class_from_name (acfg->image, "System.Collections.Generic", "GenericEqualityComparer`1");
+		if (klass)
+			add_instances_of (acfg, klass, insts, ninsts);
+
+		/* Add instances of the array generic interfaces for primitive types */
+		/* This will add instances of the InternalArray_ helper methods in Array too */
+		klass = mono_class_from_name (acfg->image, "System.Collections.Generic", "ICollection`1");
+		if (klass)
+			add_instances_of (acfg, klass, insts, ninsts);
+		klass = mono_class_from_name (acfg->image, "System.Collections.Generic", "IList`1");
+		if (klass)
+			add_instances_of (acfg, klass, insts, ninsts);
+		klass = mono_class_from_name (acfg->image, "System.Collections.Generic", "IEnumerable`1");
+		if (klass)
+			add_instances_of (acfg, klass, insts, ninsts);
+	}
+
+	/* 
+	 * Add a managed-to-native wrapper of Array.GetGenericValueImpl<object>, which is
+	 * used for all instances of GetGenericValueImpl by the AOT runtime.
+	 */
+	{
+		MonoGenericContext ctx;
+		MonoType *args [16];
+		MonoMethod *get_method;
+		MonoClass *array_klass = mono_array_class_get (mono_defaults.object_class, 1)->parent;
+
+		get_method = mono_class_get_method_from_name (array_klass, "GetGenericValueImpl", 2);
+
+		if (get_method) {
+			memset (&ctx, 0, sizeof (ctx));
+			args [0] = &mono_defaults.object_class->byval_arg;
+			ctx.method_inst = mono_metadata_get_generic_inst (1, args);
+			add_extra_method (acfg, mono_marshal_get_native_wrapper (mono_class_inflate_generic_method (get_method, &ctx), TRUE, TRUE));
 		}
 	}
 }
 
+/*
+ * is_direct_callable:
+ *
+ *   Return whenever the method identified by JI is directly callable without 
+ * going through the PLT.
+ */
+static gboolean
+is_direct_callable (MonoAotCompile *acfg, MonoMethod *method, MonoJumpInfo *patch_info)
+{
+	if ((patch_info->type == MONO_PATCH_INFO_METHOD) && (patch_info->data.method->klass->image == acfg->image)) {
+		MonoCompile *callee_cfg = g_hash_table_lookup (acfg->method_to_cfg, patch_info->data.method);
+		if (callee_cfg) {
+			gboolean direct_callable = TRUE;
+
+			if (direct_callable && !(!callee_cfg->has_got_slots && (callee_cfg->method->klass->flags & TYPE_ATTRIBUTE_BEFORE_FIELD_INIT)))
+				direct_callable = FALSE;
+			if ((callee_cfg->method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED) && (!method || method->wrapper_type != MONO_WRAPPER_SYNCHRONIZED))
+				// FIXME: Maybe call the wrapper directly ?
+				direct_callable = FALSE;
+
+			if (direct_callable)
+				return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+/*
+ * emit_and_reloc_code:
+ *
+ *   Emit the native code in CODE, handling relocations along the way. If GOT_ONLY
+ * is true, calls are made through the GOT too. This is used for emitting trampolines
+ * in full-aot mode, since calls made from trampolines couldn't go through the PLT,
+ * since trampolines are needed to make PTL work.
+ */
 static void
 emit_and_reloc_code (MonoAotCompile *acfg, MonoMethod *method, guint8 *code, guint32 code_len, MonoJumpInfo *relocs, gboolean got_only)
 {
@@ -3022,52 +2573,40 @@ emit_and_reloc_code (MonoAotCompile *acfg, MonoMethod *method, guint8 *code, gui
 			case MONO_PATCH_INFO_NONE:
 				break;
 			case MONO_PATCH_INFO_GOT_OFFSET: {
-				guint32 offset = mono_arch_get_patch_offset (code + i);
-				emit_bytes (acfg, code + i, offset);
-				emit_symbol_diff (acfg, "got", ".", offset);
-
-				i += offset + 4 - 1;
+				int code_size;
+ 
+				arch_emit_got_offset (acfg, code + i, &code_size);
+				i += code_size - 1;
 				skip = TRUE;
+				patch_info->type = MONO_PATCH_INFO_NONE;
 				break;
 			}
 			default: {
-				if (!is_got_patch (patch_info->type))
-					break;
-
 				/*
 				 * If this patch is a call, try emitting a direct call instead of
 				 * through a PLT entry. This is possible if the called method is in
 				 * the same assembly and requires no initialization.
 				 */
 				direct_call = FALSE;
-				if (!got_only && (patch_info->type == MONO_PATCH_INFO_METHOD) && (patch_info->data.method->klass->image == method->klass->image)) {
-					MonoCompile *callee_cfg = g_hash_table_lookup (acfg->method_to_cfg, patch_info->data.method);
-					if (callee_cfg) {
-						gboolean direct_callable = TRUE;
-
-						if (direct_callable && !(!callee_cfg->has_got_slots && (callee_cfg->method->klass->flags & TYPE_ATTRIBUTE_BEFORE_FIELD_INIT)))
-							direct_callable = FALSE;
-						if ((callee_cfg->method->iflags & METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED) && method->wrapper_type != MONO_WRAPPER_SYNCHRONIZED)
-							// FIXME: Maybe call the wrapper directly ?
-							direct_callable = FALSE;
-						if (direct_callable) {
-							//printf ("DIRECT: %s %s\n", method ? mono_method_full_name (method, TRUE) : "", mono_method_full_name (callee_cfg->method, TRUE));
-							direct_call = TRUE;
-							sprintf (direct_call_target, ".Lm_%x", get_method_index (acfg, callee_cfg->orig_method));
-							patch_info->type = MONO_PATCH_INFO_NONE;
-							acfg->stats.direct_calls ++;
-						}
+				if ((patch_info->type == MONO_PATCH_INFO_METHOD) && (patch_info->data.method->klass->image == acfg->image)) {
+					if (!got_only && is_direct_callable (acfg, method, patch_info)) {
+						MonoCompile *callee_cfg = g_hash_table_lookup (acfg->method_to_cfg, patch_info->data.method);
+						//printf ("DIRECT: %s %s\n", method ? mono_method_full_name (method, TRUE) : "", mono_method_full_name (callee_cfg->method, TRUE));
+						direct_call = TRUE;
+						sprintf (direct_call_target, "%sm_%x", acfg->temp_prefix, get_method_index (acfg, callee_cfg->orig_method));
+						patch_info->type = MONO_PATCH_INFO_NONE;
+						acfg->stats.direct_calls ++;
 					}
 
 					acfg->stats.all_calls ++;
 				}
 
 				if (!got_only && !direct_call) {
-					int plt_offset = get_plt_offset (acfg, patch_info);
-					if (plt_offset != -1) {
+					MonoPltEntry *plt_entry = get_plt_entry (acfg, patch_info);
+					if (plt_entry) {
 						/* This patch has a PLT entry, so we must emit a call to the PLT entry */
 						direct_call = TRUE;
-						sprintf (direct_call_target, ".Lp_%d", plt_offset);
+						sprintf (direct_call_target, "%s", plt_entry->symbol);
 		
 						/* Nullify the patch */
 						patch_info->type = MONO_PATCH_INFO_NONE;
@@ -3075,47 +2614,17 @@ emit_and_reloc_code (MonoAotCompile *acfg, MonoMethod *method, guint8 *code, gui
 				}
 
 				if (direct_call) {
-#if defined(TARGET_X86) || defined(TARGET_AMD64)
-					g_assert (code [i] == 0xe8);
-					/* Need to make sure this is exactly 5 bytes long */
-					emit_byte (acfg, '\xe8');
-					emit_symbol_diff (acfg, direct_call_target, ".", -4);
-					i += 4;
-#elif defined(TARGET_ARM)
-#ifdef USE_BIN_WRITER
-					{
-						guint8 buf [4];
-						guint8 *code;
+					int call_size;
 
-						code = buf;
-						ARM_BL (code, 0);
-
-						bin_writer_emit_reloc (acfg, R_ARM_CALL, direct_call_target, -8);
-						emit_bytes (acfg, buf, 4);
-					}
-#else
-					asm_writer_emit_unset_mode (acfg);
-					fprintf (acfg->fp, "bl %s\n", direct_call_target);
-#endif
-					i += 4 - 1;
-#else
-					g_assert_not_reached ();
-#endif
+					arch_emit_direct_call (acfg, direct_call_target, &call_size);
+					i += call_size - 1;
 				} else {
+					int code_size;
+
 					got_slot = get_got_offset (acfg, patch_info);
 
-					emit_bytes (acfg, code + i, mono_arch_get_patch_offset (code + i));
-#ifdef TARGET_AMD64
-					emit_symbol_diff (acfg, "got", ".", (unsigned int) ((got_slot * sizeof (gpointer)) - 4));
-#elif defined(TARGET_X86)
-					emit_int32 (acfg, (unsigned int) ((got_slot * sizeof (gpointer))));
-#elif defined(TARGET_ARM)
-					emit_symbol_diff (acfg, "got", ".", (unsigned int) ((got_slot * sizeof (gpointer))) - 12);
-#else
-					g_assert_not_reached ();
-#endif
-					
-					i += mono_arch_get_patch_offset (code + i) + 4 - 1;
+					arch_emit_got_access (acfg, code + i, got_slot, &code_size);
+					i += code_size - 1;
 				}
 				skip = TRUE;
 			}
@@ -3143,14 +2652,69 @@ emit_and_reloc_code (MonoAotCompile *acfg, MonoMethod *method, guint8 *code, gui
 	}
 }
 
+/*
+ * sanitize_symbol:
+ *
+ *   Modify SYMBOL so it only includes characters permissible in symbols.
+ */
+static void
+sanitize_symbol (char *symbol)
+{
+	int i, len = strlen (symbol);
+
+	for (i = 0; i < len; ++i)
+		if (!isalnum (symbol [i]) && (symbol [i] != '_'))
+			symbol [i] = '_';
+}
+
+static char*
+get_debug_sym (MonoMethod *method, const char *prefix, GHashTable *cache)
+{
+	char *name1, *name2, *cached;
+	int i, j, len, count;
+		
+	name1 = mono_method_full_name (method, TRUE);
+	len = strlen (name1);
+	name2 = malloc (strlen (prefix) + len + 16);
+	memcpy (name2, prefix, strlen (prefix));
+	j = strlen (prefix);
+	for (i = 0; i < len; ++i) {
+		if (isalnum (name1 [i])) {
+			name2 [j ++] = name1 [i];
+		} else if (name1 [i] == ' ' && name1 [i + 1] == '(' && name1 [i + 2] == ')') {
+			i += 2;
+		} else if (name1 [i] == ',' && name1 [i + 1] == ' ') {
+			name2 [j ++] = '_';
+			i++;
+		} else if (name1 [i] == '(' || name1 [i] == ')' || name1 [i] == '>') {
+		} else
+			name2 [j ++] = '_';
+	}
+	name2 [j] = '\0';
+
+	g_free (name1);
+
+	count = 0;
+	while (g_hash_table_lookup (cache, name2)) {
+		sprintf (name2 + j, "_%d", count);
+		count ++;
+	}
+
+	cached = g_strdup (name2);
+	g_hash_table_insert (cache, cached, cached);
+
+	return name2;
+}
+
 static void
 emit_method_code (MonoAotCompile *acfg, MonoCompile *cfg)
 {
 	MonoMethod *method;
 	int method_index;
 	guint8 *code;
+	char *debug_sym = NULL;
 	char symbol [128];
-	int func_alignment = 16;
+	int func_alignment = AOT_FUNC_ALIGNMENT;
 	MonoMethodHeader *header;
 
 	method = cfg->orig_method;
@@ -3159,20 +2723,44 @@ emit_method_code (MonoAotCompile *acfg, MonoCompile *cfg)
 
 	method_index = get_method_index (acfg, method);
 
+	/* Emit unbox trampoline */
+	if (acfg->aot_opts.full_aot && cfg->orig_method->klass->valuetype && (method->flags & METHOD_ATTRIBUTE_VIRTUAL)) {
+		char call_target [256];
+
+		if (!method->wrapper_type && !method->is_inflated) {
+			g_assert (method->token);
+			sprintf (symbol, "ut_%d", mono_metadata_token_index (method->token) - 1);
+		} else {
+			sprintf (symbol, "ut_e_%d", get_method_index (acfg, method));
+		}
+
+		emit_section_change (acfg, ".text", 0);
+		emit_global (acfg, symbol, TRUE);
+		emit_label (acfg, symbol);
+
+		sprintf (call_target, "%sm_%x", acfg->temp_prefix, method_index);
+
+		arch_emit_unbox_trampoline (acfg, cfg->orig_method, cfg->generic_sharing_context, call_target);
+	}
+
 	/* Make the labels local */
-	sprintf (symbol, ".Lm_%x", method_index);
+	sprintf (symbol, "%sm_%x", acfg->temp_prefix, method_index);
 
 	emit_alignment (acfg, func_alignment);
 	emit_label (acfg, symbol);
 
-	if (acfg->aot_opts.write_symbols && acfg->use_bin_writer) {
-		char *full_name;
-		/* Emit a local symbol into the symbol table */
-		full_name = mono_method_full_name (method, TRUE);
-		sprintf (symbol, ".Lme_%x", method_index);
-		emit_local_symbol (acfg, full_name, symbol, TRUE);
-		emit_label (acfg, full_name);
-		g_free (full_name);
+	if (acfg->aot_opts.write_symbols) {
+		/* 
+		 * Write a C style symbol for every method, this has two uses:
+		 * - it works on platforms where the dwarf debugging info is not
+		 *   yet supported.
+		 * - it allows the setting of breakpoints of aot-ed methods.
+		 */
+		debug_sym = get_debug_sym (method, "", acfg->method_label_hash);
+
+		sprintf (symbol, "%sme_%x", acfg->temp_prefix, method_index);
+		emit_local_symbol (acfg, debug_sym, symbol, TRUE);
+		emit_label (acfg, debug_sym);
 	}
 
 	if (cfg->verbose_level > 0)
@@ -3186,7 +2774,12 @@ emit_method_code (MonoAotCompile *acfg, MonoCompile *cfg)
 
 	emit_line (acfg);
 
-	sprintf (symbol, ".Lme_%x", method_index);
+	if (acfg->aot_opts.write_symbols) {
+		emit_symbol_size (acfg, debug_sym, ".");
+		g_free (debug_sym);
+	}
+
+	sprintf (symbol, "%sme_%x", acfg->temp_prefix, method_index);
 	emit_label (acfg, symbol);
 }
 
@@ -3205,6 +2798,8 @@ encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info, guint8 *buf, guint
 		break;
 	case MONO_PATCH_INFO_IMAGE:
 		encode_value (get_image_index (acfg, patch_info->data.image), p, &p);
+		break;
+	case MONO_PATCH_INFO_MSCORLIB_GOT_ADDR:
 		break;
 	case MONO_PATCH_INFO_METHOD_REL:
 		encode_value ((gint)patch_info->data.offset, p, &p);
@@ -3300,6 +2895,7 @@ encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info, guint8 *buf, guint
 	case MONO_PATCH_INFO_GENERIC_CLASS_INIT:
 	case MONO_PATCH_INFO_MONITOR_ENTER:
 	case MONO_PATCH_INFO_MONITOR_EXIT:
+	case MONO_PATCH_INFO_SEQ_POINT_INFO:
 		break;
 	default:
 		g_warning ("unable to handle jump info %d", patch_info->type);
@@ -3313,45 +2909,20 @@ static void
 encode_patch_list (MonoAotCompile *acfg, GPtrArray *patches, int n_patches, int first_got_offset, guint8 *buf, guint8 **endbuf)
 {
 	guint8 *p = buf;
-	guint32 last_offset, j, pindex;
+	guint32 pindex, offset;
 	MonoJumpInfo *patch_info;
 
 	encode_value (n_patches, p, &p);
 
-	if (n_patches)
-		encode_value (first_got_offset, p, &p);
-
-	/* First encode the type+position table */
-	last_offset = 0;
-	j = 0;
 	for (pindex = 0; pindex < patches->len; ++pindex) {
-		guint32 offset;
 		patch_info = g_ptr_array_index (patches, pindex);
-		
+
 		if (patch_info->type == MONO_PATCH_INFO_NONE)
 			/* Nothing to do */
 			continue;
 
-		j ++;
-		//printf ("T: %d O: %d.\n", patch_info->type, patch_info->ip.i);
-		offset = patch_info->ip.i - last_offset;
-		last_offset = patch_info->ip.i;
-
-		/* Only the type is needed */
-		*p = patch_info->type;
-		p++;
-	}
-
-	/* Then encode the other info */
-	for (pindex = 0; pindex < patches->len; ++pindex) {
-		patch_info = g_ptr_array_index (patches, pindex);
-
-		if (is_shared_got_patch (patch_info)) {
-			guint32 offset = get_got_offset (acfg, patch_info);
-			encode_value (offset, p, &p);
-		} else {
-			encode_patch (acfg, patch_info, p, &p);
-		}
+		offset = get_got_offset (acfg, patch_info);
+		encode_value (offset, p, &p);
 	}
 
 	*endbuf = p;
@@ -3379,7 +2950,7 @@ emit_method_info (MonoAotCompile *acfg, MonoCompile *cfg)
 	method_index = get_method_index (acfg, method);
 
 	/* Make the labels local */
-	sprintf (symbol, ".Lm_%x_p", method_index);
+	sprintf (symbol, "%sm_%x_p", acfg->temp_prefix, method_index);
 
 	/* Sort relocations */
 	patches = g_ptr_array_new ();
@@ -3455,17 +3026,53 @@ emit_method_info (MonoAotCompile *acfg, MonoCompile *cfg)
 	g_free (buf);
 }
 
+static guint32
+get_unwind_info_offset (MonoAotCompile *acfg, guint8 *encoded, guint32 encoded_len)
+{
+	guint32 cache_index;
+	guint32 offset;
+
+	/* Reuse the unwind module to canonize and store unwind info entries */
+	cache_index = mono_cache_unwind_info (encoded, encoded_len);
+
+	/* Use +/- 1 to distinguish 0s from missing entries */
+	offset = GPOINTER_TO_UINT (g_hash_table_lookup (acfg->unwind_info_offsets, GUINT_TO_POINTER (cache_index + 1)));
+	if (offset)
+		return offset - 1;
+	else {
+		guint8 buf [16];
+		guint8 *p;
+
+		/* 
+		 * It would be easier to use assembler symbols, but the caller needs an
+		 * offset now.
+		 */
+		offset = acfg->unwind_info_offset;
+		g_hash_table_insert (acfg->unwind_info_offsets, GUINT_TO_POINTER (cache_index + 1), GUINT_TO_POINTER (offset + 1));
+		g_ptr_array_add (acfg->unwind_ops, GUINT_TO_POINTER (cache_index));
+
+		p = buf;
+		encode_value (encoded_len, p, &p);
+
+		acfg->unwind_info_offset += encoded_len + (p - buf);
+		return offset;
+	}
+}
+
 static void
 emit_exception_debug_info (MonoAotCompile *acfg, MonoCompile *cfg)
 {
 	MonoMethod *method;
-	int k, buf_size, method_index;
+	int i, k, buf_size, method_index;
 	guint32 debug_info_size;
 	guint8 *code;
 	char symbol [128];
 	MonoMethodHeader *header;
 	guint8 *p, *buf, *debug_info;
 	MonoJitInfo *jinfo = cfg->jit_info;
+	guint32 flags;
+	gboolean use_unwind_ops = FALSE;
+	GPtrArray *seq_points;
 
 	method = cfg->orig_method;
 	code = cfg->native_code;
@@ -3474,31 +3081,68 @@ emit_exception_debug_info (MonoAotCompile *acfg, MonoCompile *cfg)
 	method_index = get_method_index (acfg, method);
 
 	/* Make the labels local */
-	sprintf (symbol, ".Le_%x_p", method_index);
+	sprintf (symbol, "%se_%x_p", acfg->temp_prefix, method_index);
 
-	mono_debug_serialize_debug_info (cfg, &debug_info, &debug_info_size);
+	if (!acfg->aot_opts.nodebug) {
+		mono_debug_serialize_debug_info (cfg, &debug_info, &debug_info_size);
+	} else {
+		debug_info = NULL;
+		debug_info_size = 0;
+	}
 
-	buf_size = header->num_clauses * 256 + debug_info_size + 128;
+	buf_size = header->num_clauses * 256 + debug_info_size + 1024 + (cfg->seq_points ? (cfg->seq_points->len * 16) : 0);
 	p = buf = g_malloc (buf_size);
 
+#ifdef MONO_ARCH_HAVE_XP_UNWIND
+	use_unwind_ops = cfg->unwind_ops != NULL;
+#endif
+
+	seq_points = cfg->seq_points;
+
+	flags = (jinfo->has_generic_jit_info ? 1 : 0) | (use_unwind_ops ? 2 : 0) | (header->num_clauses ? 4 : 0) | (seq_points ? 8 : 0);
+
 	encode_value (jinfo->code_size, p, &p);
-	encode_value (jinfo->used_regs, p, &p);
-	encode_value (jinfo->has_generic_jit_info, p, &p);
+	encode_value (flags, p, &p);
+
+	if (use_unwind_ops) {
+		guint32 encoded_len;
+		guint8 *encoded;
+
+		/* 
+		 * This is a duplicate of the data in the .debug_frame section, but that
+		 * section cannot be accessed using the dl interface.
+		 */
+		encoded = mono_unwind_ops_encode (cfg->unwind_ops, &encoded_len);
+		encode_value (get_unwind_info_offset (acfg, encoded, encoded_len), p, &p);
+		g_free (encoded);
+	} else {
+		encode_value (jinfo->used_regs, p, &p);
+	}
 
 	/* Exception table */
-	if (header->num_clauses) {
-		for (k = 0; k < header->num_clauses; ++k) {
-			MonoJitExceptionInfo *ei = &jinfo->clauses [k];
+	if (jinfo->num_clauses)
+		encode_value (jinfo->num_clauses, p, &p);
 
-			encode_value (ei->exvar_offset, p, &p);
+	for (k = 0; k < jinfo->num_clauses; ++k) {
+		MonoJitExceptionInfo *ei = &jinfo->clauses [k];
 
-			if (ei->flags == MONO_EXCEPTION_CLAUSE_FILTER)
-				encode_value ((gint)((guint8*)ei->data.filter - code), p, &p);
+		encode_value (ei->flags, p, &p);
+		encode_value (ei->exvar_offset, p, &p);
 
-			encode_value ((gint)((guint8*)ei->try_start - code), p, &p);
-			encode_value ((gint)((guint8*)ei->try_end - code), p, &p);
-			encode_value ((gint)((guint8*)ei->handler_start - code), p, &p);
+		if (ei->flags == MONO_EXCEPTION_CLAUSE_FILTER)
+			encode_value ((gint)((guint8*)ei->data.filter - code), p, &p);
+		else {
+			if (ei->data.catch_class) {
+				encode_value (1, p, &p);
+				encode_klass_ref (acfg, ei->data.catch_class, p, &p);
+			} else {
+				encode_value (0, p, &p);
+			}
 		}
+
+		encode_value ((gint)((guint8*)ei->try_start - code), p, &p);
+		encode_value ((gint)((guint8*)ei->try_end - code), p, &p);
+		encode_value ((gint)((guint8*)ei->handler_start - code), p, &p);
 	}
 
 	if (jinfo->has_generic_jit_info) {
@@ -3514,6 +3158,22 @@ emit_exception_debug_info (MonoAotCompile *acfg, MonoCompile *cfg)
 		 */
 		encode_method_ref (acfg, jinfo->method, p, &p);
 	}
+
+	if (seq_points) {
+		int il_offset, native_offset, last_il_offset, last_native_offset;
+
+		encode_value (seq_points->len, p, &p);
+		last_il_offset = last_native_offset = 0;
+		for (i = 0; i < seq_points->len; i += 2) {
+			il_offset = GPOINTER_TO_INT (g_ptr_array_index (seq_points, i));
+			native_offset = GPOINTER_TO_INT (g_ptr_array_index (seq_points, i + 1));
+			encode_value (il_offset - last_il_offset, p, &p);
+			encode_value (native_offset - last_native_offset, p, &p);
+			last_il_offset = il_offset;
+			last_native_offset = native_offset;
+		}
+	}
+		
 
 	g_assert (debug_info_size < buf_size);
 
@@ -3578,7 +3238,7 @@ emit_klass_info (MonoAotCompile *acfg, guint32 token)
 		encode_value (-1, p, &p);
 	} else {
 		encode_value (klass->vtable_size, p, &p);
-		encode_value ((no_special_static << 7) | (klass->has_static_refs << 6) | (klass->has_references << 5) | ((klass->blittable << 4) | (klass->nested_classes ? 1 : 0) << 3) | (klass->has_cctor << 2) | (klass->has_finalize << 1) | klass->ghcimpl, p, &p);
+		encode_value ((no_special_static << 7) | (klass->has_static_refs << 6) | (klass->has_references << 5) | ((klass->blittable << 4) | ((klass->ext && klass->ext->nested_classes) ? 1 : 0) << 3) | (klass->has_cctor << 2) | (klass->has_finalize << 1) | klass->ghcimpl, p, &p);
 		if (klass->has_cctor)
 			encode_method_ref (acfg, mono_class_get_cctor (klass), p, &p);
 		if (klass->has_finalize)
@@ -3602,7 +3262,7 @@ emit_klass_info (MonoAotCompile *acfg, guint32 token)
 	acfg->stats.class_info_size += p - buf;
 
 	/* Emit the info */
-	sprintf (symbol, ".LK_I_%x", token - MONO_TOKEN_TYPE_DEF - 1);
+	sprintf (symbol, "%sK_I_%x", acfg->temp_prefix, token - MONO_TOKEN_TYPE_DEF - 1);
 	emit_label (acfg, symbol);
 
 	g_assert (p - buf < buf_size);
@@ -3624,6 +3284,9 @@ emit_plt (MonoAotCompile *acfg)
 {
 	char symbol [128];
 	int i;
+	GHashTable *cache;
+
+	cache = g_hash_table_new (g_str_hash, g_str_equal);
 
 	emit_line (acfg);
 	sprintf (symbol, "plt");
@@ -3632,93 +3295,93 @@ emit_plt (MonoAotCompile *acfg)
 	emit_global (acfg, symbol, TRUE);
 #ifdef TARGET_X86
 	/* This section will be made read-write by the AOT loader */
-	emit_alignment (acfg, PAGESIZE);
+	emit_alignment (acfg, mono_pagesize ());
 #else
 	emit_alignment (acfg, 16);
 #endif
 	emit_label (acfg, symbol);
+	emit_label (acfg, acfg->plt_symbol);
 
 	for (i = 0; i < acfg->plt_offset; ++i) {
 		char label [128];
-#if defined(TARGET_ARM)
-		guint8 buf [256];
-		guint8 *code;
-#endif
+		char *debug_sym = NULL;
+		MonoPltEntry *plt_entry = NULL;
+		MonoJumpInfo *ji;
 
-		sprintf (label, ".Lp_%d", i);
+		if (i == 0) {
+			/* 
+			 * The first plt entry is used to transfer code to the AOT loader. 
+			 */
+			arch_emit_plt_entry (acfg, i);
+			continue;
+		}
+
+		plt_entry = g_hash_table_lookup (acfg->plt_offset_to_entry, GUINT_TO_POINTER (i));
+		ji = plt_entry->ji;
+		sprintf (label, "%s", plt_entry->symbol);
+
 		emit_label (acfg, label);
 
-		/* 
-		 * The first plt entry is used to transfer code to the AOT loader. 
-		 */
+		if (acfg->aot_opts.write_symbols) {
+			switch (ji->type) {
+			case MONO_PATCH_INFO_METHOD:
+				debug_sym = get_debug_sym (ji->data.method, "plt_", cache);
+				break;
+			case MONO_PATCH_INFO_INTERNAL_METHOD:
+				debug_sym = g_strdup_printf ("plt__jit_icall_%s", ji->data.name);
+				break;
+			case MONO_PATCH_INFO_CLASS_INIT:
+				debug_sym = g_strdup_printf ("plt__class_init_%s", mono_type_get_name (&ji->data.klass->byval_arg));
+				sanitize_symbol (debug_sym);
+				break;
+			case MONO_PATCH_INFO_RGCTX_FETCH:
+				debug_sym = g_strdup_printf ("plt__rgctx_fetch_%d", acfg->label_generator ++);
+				break;
+			case MONO_PATCH_INFO_ICALL_ADDR: {
+				char *s = get_debug_sym (ji->data.method, "", cache);
+					
+				debug_sym = g_strdup_printf ("plt__icall_native_%s", s);
+				g_free (s);
+				break;
+			}
+			case MONO_PATCH_INFO_JIT_ICALL_ADDR:
+				debug_sym = g_strdup_printf ("plt__jit_icall_native_%s", ji->data.name);
+				break;
+			case MONO_PATCH_INFO_GENERIC_CLASS_INIT:
+				debug_sym = g_strdup_printf ("plt__generic_class_init");
+				break;
+			default:
+				break;
+			}
 
-#if defined(TARGET_X86)
-		if (i == 0) {
-			/* It is filled up during loading by the AOT loader. */
-			emit_zero_bytes (acfg, 16);
-		} else {
-			/* Need to make sure this is 9 bytes long */
-			emit_byte (acfg, '\xe9');
-			emit_symbol_diff (acfg, "plt", ".", -4);
-			emit_int32 (acfg, acfg->plt_got_info_offsets [i]);
+			if (debug_sym) {
+				emit_local_symbol (acfg, debug_sym, NULL, TRUE);
+				emit_label (acfg, debug_sym);
+			}
 		}
-#elif defined(TARGET_AMD64)
-		/*
-		 * We can't emit jumps because they are 32 bits only so they can't be patched.
-		 * So we make indirect calls through GOT entries which are patched by the AOT 
-		 * loader to point to .Lpd entries. 
-		 * An x86_64 plt entry is 10 bytes long, init_plt () depends on this.
-		 */
-		/* jmpq *<offset>(%rip) */
-		emit_byte (acfg, '\xff');
-		emit_byte (acfg, '\x25');
-		emit_symbol_diff (acfg, "got", ".", ((acfg->plt_got_offset_base + i) * sizeof (gpointer)) -4);
-		/* Used by mono_aot_get_plt_info_offset */
-		emit_int32 (acfg, acfg->plt_got_info_offsets [i]);
-#elif defined(TARGET_ARM)
-		/* FIXME:
-		 * - optimize OP_AOTCONST implementation
-		 * - optimize the PLT entries
-		 * - optimize SWITCH AOT implementation
-		 * - implement IMT support
-		 */
-		code = buf;
-#ifdef USE_BIN_WRITER
-		/* We only emit 1 relocation since we implement it ourselves anyway */
-		bin_writer_emit_reloc (acfg, R_ARM_ALU_PC_G0_NC, "got", ((acfg->plt_got_offset_base + i) * sizeof (gpointer)) - 8);
-		/* FIXME: A 2 instruction encoding is sufficient in most cases */
-		ARM_ADD_REG_IMM (code, ARMREG_IP, ARMREG_PC, 0, 0);
-		ARM_ADD_REG_IMM (code, ARMREG_IP, ARMREG_IP, 0, 0);
-		ARM_LDR_IMM (code, ARMREG_PC, ARMREG_IP, 0);
-		emit_bytes (acfg, buf, code - buf);
-		/* FIXME: Get rid of this */
-		emit_symbol_diff (acfg, "got", ".", ((acfg->plt_got_offset_base + i) * sizeof (gpointer)));
-		/* Used by mono_aot_get_plt_info_offset */
-		emit_int32 (acfg, acfg->plt_got_info_offsets [i]);
-#else
-		ARM_LDR_IMM (code, ARMREG_IP, ARMREG_PC, 4);
-		ARM_ADD_REG_REG (code, ARMREG_IP, ARMREG_PC, ARMREG_IP);
-		ARM_LDR_IMM (code, ARMREG_PC, ARMREG_IP, 0);
-		emit_bytes (acfg, buf, code - buf);
-		emit_symbol_diff (acfg, "got", ".", ((acfg->plt_got_offset_base + i) * sizeof (gpointer)));
-		/* Used by mono_aot_get_plt_info_offset */
-		emit_int32 (acfg, acfg->plt_got_info_offsets [i]);
-#endif
 
-#else
-		g_assert_not_reached ();
-#endif
+		arch_emit_plt_entry (acfg, i);
+
+		if (debug_sym) {
+			emit_symbol_size (acfg, debug_sym, ".");
+			g_free (debug_sym);
+		}
 	}
+
+	emit_symbol_size (acfg, acfg->plt_symbol, ".");
 
 	sprintf (symbol, "plt_end");
 	emit_global (acfg, symbol, TRUE);
 	emit_label (acfg, symbol);
+
+	g_hash_table_destroy (cache);
 }
 
 static G_GNUC_UNUSED void
-emit_named_code (MonoAotCompile *acfg, const char *name, guint8 *code, 
-				 guint32 code_size, int got_offset, MonoJumpInfo *ji)
+emit_trampoline (MonoAotCompile *acfg, const char *name, guint8 *code, 
+				 guint32 code_size, int got_offset, MonoJumpInfo *ji, GSList *unwind_ops)
 {
+	char start_symbol [256];
 	char symbol [256];
 	guint32 buf_size;
 	MonoJumpInfo *patch_info;
@@ -3727,11 +3390,14 @@ emit_named_code (MonoAotCompile *acfg, const char *name, guint8 *code,
 
 	/* Emit code */
 
-	sprintf (symbol, "%s", name);
+	sprintf (start_symbol, "%s", name);
 
 	emit_section_change (acfg, ".text", 0);
-	emit_global (acfg, symbol, TRUE);
+	emit_global (acfg, start_symbol, TRUE);
 	emit_alignment (acfg, 16);
+	emit_label (acfg, start_symbol);
+
+	sprintf (symbol, "%snamed_%s", acfg->temp_prefix, name);
 	emit_label (acfg, symbol);
 
 	/* 
@@ -3740,12 +3406,15 @@ emit_named_code (MonoAotCompile *acfg, const char *name, guint8 *code,
 	 */
 	emit_and_reloc_code (acfg, NULL, code, code_size, ji, TRUE);
 
+	emit_symbol_size (acfg, start_symbol, ".");
+
 	/* Emit info */
 
 	/* Sort relocations */
 	patches = g_ptr_array_new ();
 	for (patch_info = ji; patch_info; patch_info = patch_info->next)
-		g_ptr_array_add (patches, patch_info);
+		if (patch_info->type != MONO_PATCH_INFO_NONE)
+			g_ptr_array_add (patches, patch_info);
 	g_ptr_array_sort (patches, compare_patches);
 
 	buf_size = patches->len * 128 + 128;
@@ -3762,28 +3431,31 @@ emit_named_code (MonoAotCompile *acfg, const char *name, guint8 *code,
 	emit_label (acfg, symbol);
 		
 	emit_bytes (acfg, buf, p - buf);
+
+	/* Emit debug info */
+	if (unwind_ops) {
+		char symbol2 [256];
+
+		sprintf (symbol, "%s", name);
+		sprintf (symbol2, "%snamed_%s", acfg->temp_prefix, name);
+
+		if (acfg->dwarf)
+			mono_dwarf_writer_emit_trampoline (acfg->dwarf, symbol, symbol2, NULL, NULL, code_size, unwind_ops);
+	}
 }
 
-/*
- * When running in aot-only mode, we can't create trampolines at runtime, so we create 
- * a few, and save them in the AOT file. Normal trampolines embed their argument as a 
- * literal inside the trampoline code, we can't do that here, so instead we embed an offset
- * which needs to be added to the trampoline address to get the address of the GOT slot
- * which contains the argument value.
- * The generated trampolines jump to the generic trampolines using another GOT slot, which
- * will be setup by the AOT loader to point to the generic trampoline code of the given 
- * type.
- */
 static void
 emit_trampolines (MonoAotCompile *acfg)
 {
 	char symbol [256];
-	int i, offset;
+	int i, tramp_got_offset;
+	MonoAotTrampoline ntype;
 #ifdef MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES
 	int tramp_type;
 	guint32 code_size;
 	MonoJumpInfo *ji;
 	guint8 *code;
+	GSList *unwind_ops;
 #endif
 
 	if (!acfg->aot_opts.full_aot)
@@ -3802,187 +3474,160 @@ emit_trampolines (MonoAotCompile *acfg)
 		 * method.
 		 */
 		for (tramp_type = 0; tramp_type < MONO_TRAMPOLINE_NUM; ++tramp_type) {
-			code = mono_arch_create_trampoline_code_full (tramp_type, &code_size, &ji, TRUE);
+			code = mono_arch_create_trampoline_code_full (tramp_type, &code_size, &ji, &unwind_ops, TRUE);
 
 			/* Emit trampoline code */
 
 			sprintf (symbol, "generic_trampoline_%d", tramp_type);
 
-			emit_named_code (acfg, symbol, code, code_size, acfg->got_offset, ji);
+			emit_trampoline (acfg, symbol, code, code_size, acfg->got_offset, ji, unwind_ops);
 		}
 
 		code = mono_arch_get_nullified_class_init_trampoline (&code_size);
-		emit_named_code (acfg, "nullified_class_init_trampoline", code, code_size, acfg->got_offset, NULL);
-#if defined(TARGET_AMD64) && defined(MONO_ARCH_MONITOR_OBJECT_REG)
+		emit_trampoline (acfg, "nullified_class_init_trampoline", code, code_size, acfg->got_offset, NULL, NULL);
+#if (defined(TARGET_AMD64) || defined(TARGET_X86)) && defined(MONO_ARCH_MONITOR_OBJECT_REG)
 		code = mono_arch_create_monitor_enter_trampoline_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "monitor_enter_trampoline", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "monitor_enter_trampoline", code, code_size, acfg->got_offset, ji, NULL);
 		code = mono_arch_create_monitor_exit_trampoline_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "monitor_exit_trampoline", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "monitor_exit_trampoline", code, code_size, acfg->got_offset, ji, NULL);
 #endif
+
+		code = mono_arch_create_generic_class_init_trampoline_full (&code_size, &ji, TRUE);
+		emit_trampoline (acfg, "generic_class_init_trampoline", code, code_size, acfg->got_offset, ji, NULL);
 
 		/* Emit the exception related code pieces */
 		code = mono_arch_get_restore_context_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "restore_context", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "restore_context", code, code_size, acfg->got_offset, ji, NULL);
 		code = mono_arch_get_call_filter_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "call_filter", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "call_filter", code, code_size, acfg->got_offset, ji, NULL);
 		code = mono_arch_get_throw_exception_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "throw_exception", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "throw_exception", code, code_size, acfg->got_offset, ji, NULL);
 		code = mono_arch_get_rethrow_exception_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "rethrow_exception", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "rethrow_exception", code, code_size, acfg->got_offset, ji, NULL);
 		code = mono_arch_get_throw_exception_by_name_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "throw_exception_by_name", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "throw_exception_by_name", code, code_size, acfg->got_offset, ji, NULL);
 		code = mono_arch_get_throw_corlib_exception_full (&code_size, &ji, TRUE);
-		emit_named_code (acfg, "throw_corlib_exception", code, code_size, acfg->got_offset, ji);
+		emit_trampoline (acfg, "throw_corlib_exception", code, code_size, acfg->got_offset, ji, NULL);
 
-#if defined(TARGET_AMD64) || defined(TARGET_ARM)
+#if defined(TARGET_AMD64)
+		code = mono_arch_get_throw_pending_exception_full (&code_size, &ji, TRUE);
+		emit_trampoline (acfg, "throw_pending_exception", code, code_size, acfg->got_offset, ji, NULL);
+#endif
+
 		for (i = 0; i < 128; ++i) {
 			int offset;
 
 			offset = MONO_RGCTX_SLOT_MAKE_RGCTX (i);
 			code = mono_arch_create_rgctx_lazy_fetch_trampoline_full (offset, &code_size, &ji, TRUE);
 			sprintf (symbol, "rgctx_fetch_trampoline_%u", offset);
-			emit_named_code (acfg, symbol, code, code_size, acfg->got_offset, ji);
+			emit_trampoline (acfg, symbol, code, code_size, acfg->got_offset, ji, NULL);
 
 			offset = MONO_RGCTX_SLOT_MAKE_MRGCTX (i);
 			code = mono_arch_create_rgctx_lazy_fetch_trampoline_full (offset, &code_size, &ji, TRUE);
 			sprintf (symbol, "rgctx_fetch_trampoline_%u", offset);
-			emit_named_code (acfg, symbol, code, code_size, acfg->got_offset, ji);
+			emit_trampoline (acfg, symbol, code, code_size, acfg->got_offset, ji, NULL);
 		}
-#endif
-#endif
+
+		{
+			GSList *l;
+
+			/* delegate_invoke_impl trampolines */
+			l = mono_arch_get_delegate_invoke_impls ();
+			while (l) {
+				MonoTrampInfo *info = l->data;
+
+				emit_trampoline (acfg, info->name, info->code, info->code_size, acfg->got_offset, NULL, NULL);
+				l = l->next;
+			}
+		}
+
+#endif /* #ifdef MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES */
+
+		/* Emit trampolines which are numerous */
+
+		/*
+		 * These include the following:
+		 * - specific trampolines
+		 * - static rgctx invoke trampolines
+		 * - imt thunks
+		 * These trampolines have the same code, they are parameterized by GOT 
+		 * slots. 
+		 * They are defined in this file, in the arch_... routines instead of
+		 * in tramp-<ARCH>.c, since it is easier to do it this way.
+		 */
+
+		/*
+		 * When running in aot-only mode, we can't create specific trampolines at 
+		 * runtime, so we create a few, and save them in the AOT file. 
+		 * Normal trampolines embed their argument as a literal inside the 
+		 * trampoline code, we can't do that here, so instead we embed an offset
+		 * which needs to be added to the trampoline address to get the address of
+		 * the GOT slot which contains the argument value.
+		 * The generated trampolines jump to the generic trampolines using another
+		 * GOT slot, which will be setup by the AOT loader to point to the 
+		 * generic trampoline code of the given type.
+		 */
 
 		/*
 		 * FIXME: Maybe we should use more specific trampolines (i.e. one class init for
 		 * each class).
 		 */
 
-		/* Reserve some entries at the end of the GOT for our use */
-		acfg->num_trampoline_got_entries = acfg->num_aot_trampolines * 2;
-
-		sprintf (symbol, "trampolines");
-
 		emit_section_change (acfg, ".text", 0);
-		emit_global (acfg, symbol, TRUE);
-		emit_alignment (acfg, 16);
-		emit_label (acfg, symbol);
 
-		for (i = 0; i < acfg->num_aot_trampolines; ++i) {
-			offset = acfg->got_offset + (i * 2);
+		tramp_got_offset = acfg->got_offset;
 
-			/*
-			 * The trampolines created here are variations of the specific 
-			 * trampolines created in mono_arch_create_specific_trampoline (). The 
-			 * differences are:
-			 * - the generic trampoline address is taken from a got slot.
-			 * - the offset of the got slot where the trampoline argument is stored
-			 *   is embedded in the instruction stream, and the generic trampoline
-			 *   can load the argument by loading the offset, adding it to the
-			 *   address of the trampoline to get the address of the got slot, and
-			 *   loading the argument from the there.
-			 */
-#if defined(TARGET_AMD64)
-			/* This should be exactly 16 bytes long */
-			/* It should work together with the generic trampoline code in tramp-amd64.c */
-			/* call *<offset>(%rip) */
-			emit_byte (acfg, '\x41');
-			emit_byte (acfg, '\xff');
-			emit_byte (acfg, '\x15');
-			emit_symbol_diff (acfg, "got", ".", (offset * sizeof (gpointer)) - 4);
-			/* This should be relative to the start of the trampoline */
-			emit_symbol_diff (acfg, "got", ".", (offset * sizeof (gpointer)) - 4 + 19);
-			emit_zero_bytes (acfg, 5);
-#elif defined(TARGET_ARM)
-			{
-				guint8 buf [128];
-
-				/* Generate the trampoline code */
-				/* This should be exactly 28 bytes long */
-
-				code = buf;
-				ARM_PUSH (code, 0x5fff);
-				ARM_LDR_IMM (code, ARMREG_R1, ARMREG_PC, 8);
-				/* Load the value from the GOT */
-				ARM_LDR_REG_REG (code, ARMREG_R1, ARMREG_PC, ARMREG_R1);
-				/* Branch to it */
-				ARM_MOV_REG_REG (code, ARMREG_LR, ARMREG_PC);
-				ARM_MOV_REG_REG (code, ARMREG_PC, ARMREG_R1);
-
-				g_assert (code - buf == 20);
-
-				/* Emit it */
-				emit_bytes (acfg, buf, code - buf);
-				emit_symbol_diff (acfg, "got", ".", (offset * sizeof (gpointer)) - 4 + 8);
-				emit_symbol_diff (acfg, "got", ".", ((offset + 1) * sizeof (gpointer)) - 4 + 8);
+		for (ntype = 0; ntype < MONO_AOT_TRAMP_NUM; ++ntype) {
+			switch (ntype) {
+			case MONO_AOT_TRAMP_SPECIFIC:
+				sprintf (symbol, "specific_trampolines");
+				break;
+			case MONO_AOT_TRAMP_STATIC_RGCTX:
+				sprintf (symbol, "static_rgctx_trampolines");
+				break;
+			case MONO_AOT_TRAMP_IMT_THUNK:
+				sprintf (symbol, "imt_thunks");
+				break;
+			default:
+				g_assert_not_reached ();
 			}
-#else
-			g_assert_not_reached ();
-#endif
+
+			emit_global (acfg, symbol, TRUE);
+			emit_alignment (acfg, 16);
+			emit_label (acfg, symbol);
+
+			acfg->trampoline_got_offset_base [ntype] = tramp_got_offset;
+
+			for (i = 0; i < acfg->num_trampolines [ntype]; ++i) {
+				int tramp_size = 0;
+
+				switch (ntype) {
+				case MONO_AOT_TRAMP_SPECIFIC:
+					arch_emit_specific_trampoline (acfg, tramp_got_offset, &tramp_size);
+					tramp_got_offset += 2;
+				break;
+				case MONO_AOT_TRAMP_STATIC_RGCTX:
+					arch_emit_static_rgctx_trampoline (acfg, tramp_got_offset, &tramp_size);				
+					tramp_got_offset += 2;
+					break;
+				case MONO_AOT_TRAMP_IMT_THUNK:
+					arch_emit_imt_thunk (acfg, tramp_got_offset, &tramp_size);
+					tramp_got_offset += 1;
+					break;
+				default:
+					g_assert_not_reached ();
+				}
+
+				if (!acfg->trampoline_size [ntype]) {
+					g_assert (tramp_size);
+					acfg->trampoline_size [ntype] = tramp_size;
+				}
+			}
 		}
+
+		/* Reserve some entries at the end of the GOT for our use */
+		acfg->num_trampoline_got_entries = tramp_got_offset - acfg->got_offset;
 	}
-
-	/* Unbox trampolines */
-
-	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHOD].rows; ++i) {
-		MonoMethod *method;
-		guint32 token = MONO_TOKEN_METHOD_DEF | (i + 1);
-		MonoCompile *cfg;
-		char call_target [256];
-
-		method = mono_get_method (acfg->image, token, NULL);
-
-		cfg = g_hash_table_lookup (acfg->method_to_cfg, method);
-		if (!cfg || !cfg->orig_method->klass->valuetype || !(method->flags & METHOD_ATTRIBUTE_VIRTUAL))
-			continue;
-
-		sprintf (symbol, "unbox_trampoline_%d", i);
-
-		emit_section_change (acfg, ".text", 0);
-		emit_global (acfg, symbol, TRUE);
-		emit_label (acfg, symbol);
-
-		sprintf (call_target, ".Lm_%x", get_method_index (acfg, cfg->orig_method));
-
-#if defined(TARGET_AMD64)
-		{
-			guint8 buf [32];
-			int this_reg;
-
-			this_reg = mono_arch_get_this_arg_reg (mono_method_signature (cfg->orig_method), cfg->generic_sharing_context, NULL);
-			code = buf;
-			amd64_alu_reg_imm (code, X86_ADD, this_reg, sizeof (MonoObject));
-
-			emit_bytes (acfg, buf, code - buf);
-			/* jump <method> */
-			emit_byte (acfg, '\xe9');
-			emit_symbol_diff (acfg, call_target, ".", -4);
-		}
-#elif defined(TARGET_ARM)
-		{
-			guint8 buf [128];
-			int this_pos = 0;
-
-			code = buf;
-
-			if (MONO_TYPE_ISSTRUCT (mono_method_signature (cfg->orig_method)->ret))
-				this_pos = 1;
-
-			ARM_ADD_REG_IMM8 (code, this_pos, this_pos, sizeof (MonoObject));
-
-			emit_bytes (acfg, buf, code - buf);
-			/* jump to method */
-#if defined(USE_BIN_WRITER)
-			/* FIXME: */
-			g_assert_not_reached ();
-#else
-			fprintf (acfg->fp, "\n\tb %s\n", call_target);
-#endif
-		}
-#else
-		g_assert_not_reached ();
-#endif
-	}
-
-	acfg->trampoline_got_offset_base = acfg->got_offset;
 
 	acfg->got_offset += acfg->num_trampoline_got_entries;
 }
@@ -4017,15 +3662,6 @@ mono_aot_parse_options (const char *aot_options, MonoAotOptions *opts)
 			opts->bind_to_runtime_version = TRUE;
 		} else if (str_begins_with (arg, "full")) {
 			opts->full_aot = TRUE;
-			/*
-			 * The no-dlsym option is only useful on the iphone, and even there,
-			 * do to other limitations of the dynamic linker, it doesn't seem to
-			 * work. So disable it for now so we don't have to support it.
-			 */
-			/*
-		} else if (str_begins_with (arg, "no-dlsym")) {
-			opts->no_dlsym = TRUE;
-			*/
 		} else if (str_begins_with (arg, "threads=")) {
 			opts->nthreads = atoi (arg + strlen ("threads="));
 		} else if (str_begins_with (arg, "static")) {
@@ -4035,6 +3671,18 @@ mono_aot_parse_options (const char *aot_options, MonoAotOptions *opts)
 			opts->asm_only = TRUE;
 		} else if (str_begins_with (arg, "asmwriter")) {
 			opts->asm_writer = TRUE;
+		} else if (str_begins_with (arg, "nodebug")) {
+			opts->nodebug = TRUE;
+		} else if (str_begins_with (arg, "ntrampolines=")) {
+			opts->ntrampolines = atoi (arg + strlen ("ntrampolines="));
+		} else if (str_begins_with (arg, "nrgctx-trampolines=")) {
+			opts->nrgctx_trampolines = atoi (arg + strlen ("nrgctx-trampolines="));
+		} else if (str_begins_with (arg, "nimt-trampolines=")) {
+			opts->nimt_trampolines = atoi (arg + strlen ("nimt-trampolines="));
+		} else if (str_begins_with (arg, "tool-prefix=")) {
+			opts->tool_prefix = g_strdup (arg + strlen ("tool-prefix="));
+		} else if (str_begins_with (arg, "soft-debug")) {
+			opts->soft_debug = TRUE;
 		} else {
 			fprintf (stderr, "AOT : Unknown argument '%s'.\n", arg);
 			exit (1);
@@ -4056,6 +3704,92 @@ add_token_info_hash (gpointer key, gpointer value, gpointer user_data)
 	new_ji->token = ji->token;
 	g_hash_table_insert (acfg->token_info_hash, method, new_ji);
 }
+
+static gboolean
+can_encode_class (MonoAotCompile *acfg, MonoClass *klass)
+{
+	if (klass->type_token)
+		return TRUE;
+	if ((klass->byval_arg.type == MONO_TYPE_VAR) || (klass->byval_arg.type == MONO_TYPE_MVAR))
+		return TRUE;
+	if (klass->rank)
+		return can_encode_class (acfg, klass->element_class);
+	return FALSE;
+}
+
+static gboolean
+can_encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info)
+{
+	switch (patch_info->type) {
+	case MONO_PATCH_INFO_METHOD:
+	case MONO_PATCH_INFO_METHODCONST: {
+		MonoMethod *method = patch_info->data.method;
+
+		if (method->wrapper_type) {
+			switch (method->wrapper_type) {
+			case MONO_WRAPPER_NONE:
+			case MONO_WRAPPER_REMOTING_INVOKE_WITH_CHECK:
+			case MONO_WRAPPER_XDOMAIN_INVOKE:
+			case MONO_WRAPPER_STFLD:
+			case MONO_WRAPPER_LDFLD:
+			case MONO_WRAPPER_LDFLDA:
+			case MONO_WRAPPER_LDFLD_REMOTE:
+			case MONO_WRAPPER_STFLD_REMOTE:
+			case MONO_WRAPPER_STELEMREF:
+			case MONO_WRAPPER_ISINST:
+			case MONO_WRAPPER_PROXY_ISINST:
+			case MONO_WRAPPER_ALLOC:
+			case MONO_WRAPPER_REMOTING_INVOKE:
+			case MONO_WRAPPER_UNKNOWN:
+				break;
+			case MONO_WRAPPER_MANAGED_TO_MANAGED:
+				if (!strcmp (method->name, "ElementAddr"))
+					return TRUE;
+				else
+					return FALSE;
+			default:
+				//printf ("Skip (wrapper call): %d -> %s\n", patch_info->type, mono_method_full_name (patch_info->data.method, TRUE));
+				return FALSE;
+			}
+		} else {
+			if (!method->token) {
+				/* The method is part of a constructed type like Int[,].Set (). */
+				if (!g_hash_table_lookup (acfg->token_info_hash, method)) {
+					if (method->klass->rank)
+						return TRUE;
+					return FALSE;
+				}
+			}
+		}
+		break;
+	}
+	case MONO_PATCH_INFO_VTABLE:
+	case MONO_PATCH_INFO_CLASS_INIT:
+	case MONO_PATCH_INFO_DELEGATE_TRAMPOLINE:
+	case MONO_PATCH_INFO_CLASS:
+	case MONO_PATCH_INFO_IID:
+	case MONO_PATCH_INFO_ADJUSTED_IID:
+		if (!can_encode_class (acfg, patch_info->data.klass)) {
+			//printf ("Skip: %s\n", mono_type_full_name (&patch_info->data.klass->byval_arg));
+			return FALSE;
+		}
+		break;
+	case MONO_PATCH_INFO_RGCTX_FETCH: {
+		MonoJumpInfoRgctxEntry *entry = patch_info->data.rgctx_entry;
+
+		if (!can_encode_patch (acfg, entry->data))
+			return FALSE;
+		break;
+	}
+	default:
+		break;
+	}
+
+	return TRUE;
+}
+
+static void
+add_generic_class (MonoAotCompile *acfg, MonoClass *klass);
 
 /*
  * compile_method:
@@ -4104,8 +3838,7 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 	}
 #endif
 
-	if (acfg->aot_opts.full_aot)
-		mono_use_imt = FALSE;
+	//acfg->aot_opts.print_skipped_methods = TRUE;
 
 	/*
 	 * Since these methods are the only ones which are compiled with
@@ -4125,7 +3858,8 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 	}
 
 	if (cfg->disable_aot) {
-		//printf ("Skip (other): %s\n", mono_method_full_name (method, TRUE));
+		if (acfg->aot_opts.print_skipped_methods)
+			printf ("Skip (disabled): %s\n", mono_method_full_name (method, TRUE));
 		InterlockedIncrement (&acfg->stats.ocount);
 		mono_destroy_compile (cfg);
 		return;
@@ -4156,7 +3890,6 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 		switch (patch_info->type) {
 		case MONO_PATCH_INFO_ABS:
 			/* unable to handle this */
-			//printf ("Skip (abs addr):   %s %d\n", mono_method_full_name (method, TRUE), patch_info->type);
 			skip = TRUE;	
 			break;
 		default:
@@ -4165,57 +3898,9 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 	}
 
 	if (skip) {
+		if (acfg->aot_opts.print_skipped_methods)
+			printf ("Skip (abs call): %s\n", mono_method_full_name (method, TRUE));
 		InterlockedIncrement (&acfg->stats.abscount);
-		mono_destroy_compile (cfg);
-		return;
-	}
-
-	/*
-	 * Check for wrapper methods we can't encode.
-	 */
-	skip = FALSE;
-	for (patch_info = cfg->patch_info; patch_info; patch_info = patch_info->next) {
-		if ((patch_info->type == MONO_PATCH_INFO_METHODCONST) || (patch_info->type == MONO_PATCH_INFO_METHOD)) {
-			switch (patch_info->data.method->wrapper_type) {
-			case MONO_WRAPPER_NONE:
-			case MONO_WRAPPER_REMOTING_INVOKE_WITH_CHECK:
-			case MONO_WRAPPER_XDOMAIN_INVOKE:
-			case MONO_WRAPPER_STFLD:
-			case MONO_WRAPPER_LDFLD:
-			case MONO_WRAPPER_LDFLDA:
-			case MONO_WRAPPER_LDFLD_REMOTE:
-			case MONO_WRAPPER_STFLD_REMOTE:
-			case MONO_WRAPPER_STELEMREF:
-			case MONO_WRAPPER_ISINST:
-			case MONO_WRAPPER_PROXY_ISINST:
-			case MONO_WRAPPER_ALLOC:
-			case MONO_WRAPPER_REMOTING_INVOKE:
-			case MONO_WRAPPER_STATIC_RGCTX_INVOKE:
-			case MONO_WRAPPER_UNKNOWN:
-				break;
-			default:
-				/* unable to handle this */
-				//printf ("Skip (wrapper call):   %s %d -> %s\n", mono_method_full_name (method, TRUE), patch_info->type, mono_method_full_name (patch_info->data.method, TRUE));
-				skip = TRUE;
-				break;
-			}
-		} else if (patch_info->type == MONO_PATCH_INFO_RGCTX_FETCH) {
-			MonoJumpInfo *child = patch_info->data.rgctx_entry->data;
-
-			if (child->type == MONO_PATCH_INFO_METHODCONST) {
-				switch (child->data.method->wrapper_type) {
-				case MONO_WRAPPER_NONE:
-				case MONO_WRAPPER_STATIC_RGCTX_INVOKE:
-					break;
-				default:
-					skip = TRUE;
-				}
-			}
-		}
-	}
-
-	if (skip) {
-		InterlockedIncrement (&acfg->stats.wrappercount);
 		mono_destroy_compile (cfg);
 		return;
 	}
@@ -4228,33 +3913,13 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 	 */
 	skip = FALSE;
 	for (patch_info = cfg->patch_info; patch_info; patch_info = patch_info->next) {
-		switch (patch_info->type) {
-		case MONO_PATCH_INFO_METHOD:
-		case MONO_PATCH_INFO_METHODCONST:
-			if (patch_info->data.method->wrapper_type)
-				break;
-			if (!patch_info->data.method->token) {
-				/* The method is part of a constructed type like Int[,].Set (). */
-				if (!g_hash_table_lookup (acfg->token_info_hash, patch_info->data.method))
-					skip = TRUE;
-			}
-			break;
-		case MONO_PATCH_INFO_VTABLE:
-		case MONO_PATCH_INFO_CLASS_INIT:
-		case MONO_PATCH_INFO_DELEGATE_TRAMPOLINE:
-		case MONO_PATCH_INFO_CLASS:
-		case MONO_PATCH_INFO_IID:
-		case MONO_PATCH_INFO_ADJUSTED_IID:
-			if (!patch_info->data.klass->type_token)
-				if (!patch_info->data.klass->element_class->type_token && !(patch_info->data.klass->element_class->rank && patch_info->data.klass->element_class->element_class->type_token))
-					skip = TRUE;
-			break;
-		default:
-			break;
-		}
+		if (!can_encode_patch (acfg, patch_info))
+			skip = TRUE;
 	}
 
 	if (skip) {
+		if (acfg->aot_opts.print_skipped_methods)
+			printf ("Skip (patches): %s\n", mono_method_full_name (method, TRUE));
 		acfg->stats.ocount++;
 		mono_destroy_compile (cfg);
 		mono_acfg_unlock (acfg);
@@ -4275,9 +3940,25 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 				if (m->is_inflated) {
 					if (!(mono_class_generic_sharing_enabled (m->klass) &&
 						  mono_method_is_generic_sharable_impl (m, FALSE)) &&
-						!method_has_type_vars (m))
-						add_extra_method_with_depth (acfg, m, depth + 1);
+						!method_has_type_vars (m)) {
+						if (m->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) {
+							if (acfg->aot_opts.full_aot)
+								add_extra_method_with_depth (acfg, mono_marshal_get_native_wrapper (m, TRUE, TRUE), depth + 1);
+						} else {
+							add_extra_method_with_depth (acfg, m, depth + 1);
+						}
+					}
+					add_generic_class_with_depth (acfg, m->klass, depth + 5);
 				}
+				if (m->wrapper_type == MONO_WRAPPER_MANAGED_TO_MANAGED && !strcmp (m->name, "ElementAddr"))
+					add_extra_method_with_depth (acfg, m, depth + 1);
+				break;
+			}
+			case MONO_PATCH_INFO_VTABLE: {
+				MonoClass *klass = patch_info->data.klass;
+
+				if (klass->generic_class && !mono_generic_context_is_sharable (&klass->generic_class->context, FALSE))
+					add_generic_class_with_depth (acfg, klass, depth + 5);
 				break;
 			}
 			default:
@@ -4335,10 +4016,11 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 		}
 		cfg->unwind_ops = g_slist_reverse (unwind_ops);
 	}
-	/* Make a copy of the argument info */
+	/* Make a copy of the argument/local info */
 	{
-		MonoInst **args;
+		MonoInst **args, **locals;
 		MonoMethodSignature *sig;
+		MonoMethodHeader *header;
 		int i;
 		
 		sig = mono_method_signature (method);
@@ -4348,6 +4030,14 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 			memcpy (args [i], cfg->args [i], sizeof (MonoInst));
 		}
 		cfg->args = args;
+
+		header = mono_method_get_header (method);
+		locals = mono_mempool_alloc (acfg->mempool, sizeof (MonoInst*) * header->num_locals);
+		for (i = 0; i < header->num_locals; ++i) {
+			locals [i] = mono_mempool_alloc (acfg->mempool, sizeof (MonoInst));
+			memcpy (locals [i], cfg->locals [i], sizeof (MonoInst));
+		}
+		cfg->locals = locals;
 	}
 
 	/* Free some fields used by cfg to conserve memory */
@@ -4379,8 +4069,10 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 
 	g_hash_table_insert (acfg->method_to_cfg, cfg->orig_method, cfg);
 
+	/*
 	if (cfg->orig_method->wrapper_type)
 		g_ptr_array_add (acfg->extra_methods, cfg->orig_method);
+	*/
 
 	mono_acfg_unlock (acfg);
 
@@ -4413,7 +4105,7 @@ load_profile_files (MonoAotCompile *acfg)
 
 	file_index = 0;
 	while (TRUE) {
-		tmp = g_strdup_printf ("%s/.mono/aot-profile-data/%s-%s-%d", g_get_home_dir (), acfg->image->assembly_name, acfg->image->guid, file_index);
+		tmp = g_strdup_printf ("%s/.mono/aot-profile-data/%s-%d", g_get_home_dir (), acfg->image->assembly_name, file_index);
 
 		if (!g_file_test (tmp, G_FILE_TEST_IS_REGULAR)) {
 			g_free (tmp);
@@ -4429,21 +4121,38 @@ load_profile_files (MonoAotCompile *acfg)
 		file_index ++;
 
 		res = fscanf (infile, "%32s\n", ver);
-		if ((res != 1) || strcmp (ver, "#VER:1") != 0) {
+		if ((res != 1) || strcmp (ver, "#VER:2") != 0) {
 			printf ("Profile file has wrong version or invalid.\n");
 			fclose (infile);
 			continue;
 		}
 
 		while (TRUE) {
-			res = fscanf (infile, "%d\n", &token);
-			if (res < 1)
+			char name [1024];
+			MonoMethodDesc *desc;
+			MonoMethod *method;
+
+			if (fgets (name, 1023, infile) == NULL)
 				break;
 
-			method_index = mono_metadata_token_index (token) - 1;
+			/* Kill the newline */
+			if (strlen (name) > 0)
+				name [strlen (name) - 1] = '\0';
 
-			if (!g_list_find (acfg->method_order, GUINT_TO_POINTER (method_index)))
-				acfg->method_order = g_list_append (acfg->method_order, GUINT_TO_POINTER (method_index));
+			desc = mono_method_desc_new (name, TRUE);
+
+			method = mono_method_desc_search_in_image (desc, acfg->image);
+
+			if (method && mono_method_get_token (method)) {
+				token = mono_method_get_token (method);
+				method_index = mono_metadata_token_index (token) - 1;
+
+				if (!g_list_find (acfg->method_order, GUINT_TO_POINTER (method_index))) {
+					acfg->method_order = g_list_append (acfg->method_order, GUINT_TO_POINTER (method_index));
+				}
+			} else {
+				//printf ("No method found matching '%s'.\n", name);
+			}
 		}
 		fclose (infile);
 	}
@@ -4461,46 +4170,20 @@ load_profile_files (MonoAotCompile *acfg)
 		acfg->method_order = unordered;
 }
 
-/**
- * alloc_got_slots:
- *
- *  Collect all patches which have shared GOT entries and alloc entries for them. The
- * rest will get entries allocated during emit_code ().
- */
-static void
-alloc_got_slots (MonoAotCompile *acfg)
-{
-	int i;
-	GList *l;
-	MonoJumpInfo *ji;
-
-	/* Slot 0 is reserved for the address of the current assembly */
-	ji = mono_mempool_alloc0 (acfg->mempool, sizeof (MonoAotCompile));
-	ji->type = MONO_PATCH_INFO_IMAGE;
-	ji->data.image = acfg->image;
-
-	get_shared_got_offset (acfg, ji);
-
-	for (l = acfg->method_order; l != NULL; l = l->next) {
-		i = GPOINTER_TO_UINT (l->data);
-
-		if (acfg->cfgs [i]) {
-			MonoCompile *cfg = acfg->cfgs [i];
-
-			for (ji = cfg->patch_info; ji; ji = ji->next) {
-				if (is_shared_got_patch (ji))
-					get_shared_got_offset (acfg, ji);
-			}
-		}
-	}
-}
-
 static void
 emit_code (MonoAotCompile *acfg)
 {
 	int i;
 	char symbol [256];
 	GList *l;
+
+#if defined(TARGET_POWERPC64)
+	sprintf (symbol, ".Lgot_addr");
+	emit_section_change (acfg, ".text", 0);
+	emit_alignment (acfg, 8);
+	emit_label (acfg, symbol);
+	emit_pointer (acfg, acfg->got_symbol);
+#endif
 
 	sprintf (symbol, "methods");
 	emit_section_change (acfg, ".text", 0);
@@ -4535,7 +4218,7 @@ emit_code (MonoAotCompile *acfg)
 
 	for (i = 0; i < acfg->nmethods; ++i) {
 		if (acfg->cfgs [i]) {
-			sprintf (symbol, ".Lm_%x", i);
+			sprintf (symbol, "%sm_%x", acfg->temp_prefix, i);
 			emit_symbol_diff (acfg, symbol, "methods", 0);
 		} else {
 			emit_int32 (acfg, 0xffffffff);
@@ -4577,7 +4260,7 @@ emit_info (MonoAotCompile *acfg)
 
 	for (i = 0; i < acfg->nmethods; ++i) {
 		if (acfg->cfgs [i]) {
-			sprintf (symbol, ".Lm_%x_p", i);
+			sprintf (symbol, "%sm_%x_p", acfg->temp_prefix, i);
 			emit_symbol_diff (acfg, symbol, "mi", 0);
 		} else {
 			emit_int32 (acfg, 0);
@@ -4585,11 +4268,8 @@ emit_info (MonoAotCompile *acfg)
 	}
 	emit_line (acfg);
 }
- 
-typedef struct HashEntry {
-    guint32 key, value, index;
-	struct HashEntry *next;
-} HashEntry;
+
+#endif /* #if !defined(DISABLE_AOT) && !defined(DISABLE_JIT) */
 
 /*
  * mono_aot_str_hash:
@@ -4612,6 +4292,215 @@ mono_aot_str_hash (gconstpointer v1)
 	return hash;
 } 
 
+#define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
+#define mix(a,b,c) { \
+	a -= c;  a ^= rot(c, 4);  c += b; \
+	b -= a;  b ^= rot(a, 6);  a += c; \
+	c -= b;  c ^= rot(b, 8);  b += a; \
+	a -= c;  a ^= rot(c,16);  c += b; \
+	b -= a;  b ^= rot(a,19);  a += c; \
+	c -= b;  c ^= rot(b, 4);  b += a; \
+}
+#define final(a,b,c) { \
+	c ^= b; c -= rot(b,14); \
+	a ^= c; a -= rot(c,11); \
+	b ^= a; b -= rot(a,25); \
+	c ^= b; c -= rot(b,16); \
+	a ^= c; a -= rot(c,4);  \
+	b ^= a; b -= rot(a,14); \
+	c ^= b; c -= rot(b,24); \
+}
+
+static guint
+mono_aot_type_hash (MonoType *t1)
+{
+	guint hash = t1->type;
+
+	hash |= t1->byref << 6; /* do not collide with t1->type values */
+	switch (t1->type) {
+	case MONO_TYPE_VALUETYPE:
+	case MONO_TYPE_CLASS:
+	case MONO_TYPE_SZARRAY:
+		/* check if the distribution is good enough */
+		return ((hash << 5) - hash) ^ mono_aot_str_hash (t1->data.klass->name);
+	case MONO_TYPE_PTR:
+		return ((hash << 5) - hash) ^ mono_aot_type_hash (t1->data.type);
+	case MONO_TYPE_ARRAY:
+		return ((hash << 5) - hash) ^ mono_aot_type_hash (&t1->data.array->eklass->byval_arg);
+	case MONO_TYPE_GENERICINST:
+		return ((hash << 5) - hash) ^ 0;
+	}
+	return hash;
+}
+
+/*
+ * mono_aot_method_hash:
+ *
+ *   Return a hash code for methods which only depends on metadata.
+ */
+guint32
+mono_aot_method_hash (MonoMethod *method)
+{
+	MonoMethodSignature *sig;
+	MonoClass *klass;
+	int i;
+	int hashes_count;
+	guint32 *hashes_start, *hashes;
+	guint32 a, b, c;
+
+	/* Similar to the hash in mono_method_get_imt_slot () */
+
+	sig = mono_method_signature (method);
+
+	hashes_count = sig->param_count + 5;
+	hashes_start = malloc (hashes_count * sizeof (guint32));
+	hashes = hashes_start;
+
+	/* Some wrappers are assigned to random classes */
+	if (!method->wrapper_type || method->wrapper_type == MONO_WRAPPER_REMOTING_INVOKE_WITH_CHECK)
+		klass = method->klass;
+	else
+		klass = mono_defaults.object_class;
+
+	if (!method->wrapper_type) {
+		char *full_name = mono_type_full_name (&klass->byval_arg);
+
+		hashes [0] = mono_aot_str_hash (full_name);
+		hashes [1] = 0;
+		g_free (full_name);
+	} else {
+		hashes [0] = mono_aot_str_hash (klass->name);
+		hashes [1] = mono_aot_str_hash (klass->name_space);
+	}
+	if (method->wrapper_type == MONO_WRAPPER_STFLD || method->wrapper_type == MONO_WRAPPER_LDFLD || method->wrapper_type == MONO_WRAPPER_LDFLDA)
+		/* The method name includes a stringified pointer */
+		hashes [2] = 0;
+	else
+		hashes [2] = mono_aot_str_hash (method->name);
+	hashes [3] = method->wrapper_type;
+	hashes [4] = mono_aot_type_hash (sig->ret);
+	for (i = 0; i < sig->param_count; i++) {
+		hashes [5 + i] = mono_aot_type_hash (sig->params [i]);
+	}
+	
+	/* Setup internal state */
+	a = b = c = 0xdeadbeef + (((guint32)hashes_count)<<2);
+
+	/* Handle most of the hashes */
+	while (hashes_count > 3) {
+		a += hashes [0];
+		b += hashes [1];
+		c += hashes [2];
+		mix (a,b,c);
+		hashes_count -= 3;
+		hashes += 3;
+	}
+
+	/* Handle the last 3 hashes (all the case statements fall through) */
+	switch (hashes_count) { 
+	case 3 : c += hashes [2];
+	case 2 : b += hashes [1];
+	case 1 : a += hashes [0];
+		final (a,b,c);
+	case 0: /* nothing left to add */
+		break;
+	}
+	
+	free (hashes_start);
+	
+	return c;
+}
+#undef rot
+#undef mix
+#undef final
+
+/*
+ * mono_aot_wrapper_name:
+ *
+ *   Return a string which uniqely identifies the given wrapper method.
+ */
+char*
+mono_aot_wrapper_name (MonoMethod *method)
+{
+	char *name, *tmpsig, *klass_desc;
+
+	tmpsig = mono_signature_get_desc (mono_method_signature (method), TRUE);
+
+	switch (method->wrapper_type) {
+	case MONO_WRAPPER_RUNTIME_INVOKE:
+		if (!strcmp (method->name, "runtime_invoke_dynamic"))
+			name = g_strdup_printf ("(wrapper runtime-invoke-dynamic)");
+		else
+			name = g_strdup_printf ("%s (%s)", method->name, tmpsig);
+		break;
+	case MONO_WRAPPER_DELEGATE_INVOKE:
+	case MONO_WRAPPER_DELEGATE_BEGIN_INVOKE:
+	case MONO_WRAPPER_DELEGATE_END_INVOKE:
+		/* This is a hack to work around the fact that these wrappers get assigned to some random class */
+		name = g_strdup_printf ("%s (%s)", method->name, tmpsig);
+		break;
+	default:
+		klass_desc = mono_type_full_name (&method->klass->byval_arg);
+		name = g_strdup_printf ("%s:%s (%s)", klass_desc, method->name, tmpsig);
+		g_free (klass_desc);
+		break;
+	}
+
+	g_free (tmpsig);
+
+	return name;
+}
+
+/*
+ * mono_aot_get_array_helper_from_wrapper;
+ *
+ * Get the helper method in Array called by an array wrapper method.
+ */
+MonoMethod*
+mono_aot_get_array_helper_from_wrapper (MonoMethod *method)
+{
+	MonoMethod *m;
+	const char *prefix;
+	MonoGenericContext ctx;
+	MonoType *args [16];
+	char *mname, *iname, *s, *s2, *helper_name = NULL;
+
+	prefix = "System.Collections.Generic";
+	s = g_strdup_printf ("%s", method->name + strlen (prefix) + 1);
+	s2 = strstr (s, "`1.");
+	g_assert (s2);
+	s2 [0] = '\0';
+	iname = s;
+	mname = s2 + 3;
+
+	//printf ("X: %s %s\n", iname, mname);
+
+	if (!strcmp (iname, "IList"))
+		helper_name = g_strdup_printf ("InternalArray__%s", mname);
+	else
+		helper_name = g_strdup_printf ("InternalArray__%s_%s", iname, mname);
+	m = mono_class_get_method_from_name (mono_defaults.array_class, helper_name, mono_method_signature (method)->param_count);
+	g_assert (m);
+	g_free (helper_name);
+	g_free (s);
+
+	if (m->is_generic) {
+		memset (&ctx, 0, sizeof (ctx));
+		args [0] = &method->klass->element_class->byval_arg;
+		ctx.method_inst = mono_metadata_get_generic_inst (1, args);
+		m = mono_class_inflate_generic_method (m, &ctx);
+	}
+
+	return m;
+}
+
+#if !defined(DISABLE_AOT) && !defined(DISABLE_JIT)
+
+typedef struct HashEntry {
+    guint32 key, value, index;
+	struct HashEntry *next;
+} HashEntry;
+
 /*
  * emit_extra_methods:
  *
@@ -4627,11 +4516,12 @@ emit_extra_methods (MonoAotCompile *acfg)
 	guint32 hash;
 	GPtrArray *table;
 	HashEntry *entry, *new_entry;
-	int nmethods;
+	int nmethods, max_chain_length;
+	int *chain_lengths;
 
 	info_offsets = g_new0 (guint32, acfg->extra_methods->len);
 
-	buf_size = acfg->extra_methods->len * 256 + 256;
+	buf_size = acfg->extra_methods->len * 1024 + 256;
 	p = buf = g_malloc (buf_size);
 
 	/* Encode method info */
@@ -4642,6 +4532,7 @@ emit_extra_methods (MonoAotCompile *acfg)
 	for (i = 0; i < acfg->extra_methods->len; ++i) {
 		MonoMethod *method = g_ptr_array_index (acfg->extra_methods, i);
 		MonoCompile *cfg = g_hash_table_lookup (acfg->method_to_cfg, method);
+		char *name;
 
 		if (!cfg)
 			continue;
@@ -4649,19 +4540,32 @@ emit_extra_methods (MonoAotCompile *acfg)
 		nmethods ++;
 		info_offsets [i] = p - buf;
 
+		name = NULL;
 		if (method->wrapper_type) {
-			char *name;
-
-			// FIXME: Optimize disk usage
-			if (method->wrapper_type == MONO_WRAPPER_RUNTIME_INVOKE) {
-				char *tmpsig = mono_signature_get_desc (mono_method_signature (method), TRUE);
-				name = g_strdup_printf ("(wrapper runtime-invoke):%s (%s)", method->name, tmpsig);
-				g_free (tmpsig);
-			} else {
-				name = mono_method_full_name (cfg->orig_method, TRUE);
+			/* 
+			 * We encode some wrappers using their name, since encoding them
+			 * directly would be difficult. This also avoids creating the wrapper
+			 * methods at runtime, since they are not needed anyway.
+			 */
+			switch (method->wrapper_type) {
+			case MONO_WRAPPER_REMOTING_INVOKE_WITH_CHECK:
+			case MONO_WRAPPER_SYNCHRONIZED:
+				/* encode_method_ref () can handle these */
+				break;
+			case MONO_WRAPPER_RUNTIME_INVOKE:
+				if (mono_marshal_method_from_wrapper (method) != method && !strstr (method->name, "virtual"))
+					/* Direct wrapper, encode normally */
+					break;
+				/* Fall through */
+			default:
+				name = mono_aot_wrapper_name (method);
+				break;
 			}
+		}
 
+		if (name) {
 			encode_value (1, p, &p);
+			encode_value (method->wrapper_type, p, &p);
 			strcpy ((char*)p, name);
 			p += strlen (name ) + 1;
 			g_free (name);
@@ -4694,6 +4598,8 @@ emit_extra_methods (MonoAotCompile *acfg)
 	table = g_ptr_array_sized_new (table_size);
 	for (i = 0; i < table_size; ++i)
 		g_ptr_array_add (table, NULL);
+	chain_lengths = g_new0 (int, table_size);
+	max_chain_length = 0;
 	for (i = 0; i < acfg->extra_methods->len; ++i) {
 		MonoMethod *method = g_ptr_array_index (acfg->extra_methods, i);
 		MonoCompile *cfg = g_hash_table_lookup (acfg->method_to_cfg, method);
@@ -4705,12 +4611,10 @@ emit_extra_methods (MonoAotCompile *acfg)
 		key = info_offsets [i];
 		value = get_method_index (acfg, method);
 
-		if (method->wrapper_type) {
-			hash = mono_aot_str_hash (method->name) % table_size;
-		} else {
-			// FIXME:
-			hash = 0 % table_size;
-		}
+		hash = mono_aot_method_hash (method) % table_size;
+
+		chain_lengths [hash] ++;
+		max_chain_length = MAX (max_chain_length, chain_lengths [hash]);
 
 		/* FIXME: Allocate from the mempool */
 		new_entry = g_new0 (HashEntry, 1);
@@ -4731,6 +4635,8 @@ emit_extra_methods (MonoAotCompile *acfg)
 		}
 	}
 
+	//printf ("MAX: %d\n", max_chain_length);
+
 	/* Emit the table */
 	sprintf (symbol, "extra_method_table");
 	emit_section_change (acfg, ".text", 0);
@@ -4738,9 +4644,7 @@ emit_extra_methods (MonoAotCompile *acfg)
 	emit_alignment (acfg, 8);
 	emit_label (acfg, symbol);
 
-	g_assert (table_size < 65000);
 	emit_int32 (acfg, table_size);
-	g_assert (table->len < 65000);
 	for (i = 0; i < table->len; ++i) {
 		HashEntry *entry = g_ptr_array_index (table, i);
 
@@ -4854,13 +4758,49 @@ emit_exception_info (MonoAotCompile *acfg)
 
 	for (i = 0; i < acfg->nmethods; ++i) {
 		if (acfg->cfgs [i]) {
-			sprintf (symbol, ".Le_%x_p", i);
+			sprintf (symbol, "%se_%x_p", acfg->temp_prefix, i);
 			emit_symbol_diff (acfg, symbol, "ex", 0);
 		} else {
 			emit_int32 (acfg, 0);
 		}
 	}
 	emit_line (acfg);
+}
+
+static void
+emit_unwind_info (MonoAotCompile *acfg)
+{
+	int i;
+	char symbol [128];
+
+	/* 
+	 * The unwind info contains a lot of duplicates so we emit each unique
+	 * entry once, and only store the offset from the start of the table in the
+	 * exception info.
+	 */
+
+	sprintf (symbol, "unwind_info");
+	emit_section_change (acfg, ".text", 1);
+	emit_alignment (acfg, 8);
+	emit_label (acfg, symbol);
+	emit_global (acfg, symbol, FALSE);
+
+	for (i = 0; i < acfg->unwind_ops->len; ++i) {
+		guint32 index = GPOINTER_TO_UINT (g_ptr_array_index (acfg->unwind_ops, i));
+		guint8 *unwind_info;
+		guint32 unwind_info_len;
+		guint8 buf [16];
+		guint8 *p;
+
+		unwind_info = mono_get_cached_unwind_info (index, &unwind_info_len);
+
+		p = buf;
+		encode_value (unwind_info_len, p, &p);
+		emit_bytes (acfg, buf, p - buf);
+		emit_bytes (acfg, unwind_info, unwind_info_len);
+
+		acfg->stats.unwind_info_size += (p - buf) + unwind_info_len;
+	}
 }
 
 static void
@@ -4885,7 +4825,7 @@ emit_class_info (MonoAotCompile *acfg)
 	emit_label (acfg, symbol);
 
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_TYPEDEF].rows; ++i) {
-		sprintf (symbol, ".LK_I_%x", i);
+		sprintf (symbol, "%sK_I_%x", acfg->temp_prefix, i);
 		emit_symbol_diff (acfg, symbol, "class_info", 0);
 	}
 	emit_line (acfg);
@@ -5015,11 +4955,11 @@ emit_got_info (MonoAotCompile *acfg)
 
 	/* Add the patches needed by the PLT to the GOT */
 	acfg->plt_got_offset_base = acfg->got_offset;
-	first_plt_got_patch = acfg->shared_patches->len;
+	first_plt_got_patch = acfg->got_patches->len;
 	for (i = 1; i < acfg->plt_offset; ++i) {
-		MonoJumpInfo *patch_info = g_hash_table_lookup (acfg->plt_offset_to_patch, GUINT_TO_POINTER (i));
+		MonoPltEntry *plt_entry = g_hash_table_lookup (acfg->plt_offset_to_entry, GUINT_TO_POINTER (i));
 
-		g_ptr_array_add (acfg->shared_patches, patch_info);
+		g_ptr_array_add (acfg->got_patches, plt_entry->ji);
 	}
 
 	acfg->got_offset += acfg->plt_offset;
@@ -5036,19 +4976,20 @@ emit_got_info (MonoAotCompile *acfg)
 	 */
 
 	/* Encode info required to decode shared GOT entries */
-	buf_size = acfg->shared_patches->len * 64;
+	buf_size = acfg->got_patches->len * 64;
 	p = buf = mono_mempool_alloc (acfg->mempool, buf_size);
-	got_info_offsets = mono_mempool_alloc (acfg->mempool, acfg->shared_patches->len * sizeof (guint32));
+	got_info_offsets = mono_mempool_alloc (acfg->mempool, acfg->got_patches->len * sizeof (guint32));
 	acfg->plt_got_info_offsets = mono_mempool_alloc (acfg->mempool, acfg->plt_offset * sizeof (guint32));
-	for (i = 0; i < acfg->shared_patches->len; ++i) {
-		MonoJumpInfo *ji = g_ptr_array_index (acfg->shared_patches, i);
+	/* Unused */
+	if (acfg->plt_offset)
+		acfg->plt_got_info_offsets [0] = 0;
+	for (i = 0; i < acfg->got_patches->len; ++i) {
+		MonoJumpInfo *ji = g_ptr_array_index (acfg->got_patches, i);
 
 		got_info_offsets [i] = p - buf;
-		/* No need to encode the patch type for non-PLT patches */
-		if (i >= first_plt_got_patch) {
+		if (i >= first_plt_got_patch)
 			acfg->plt_got_info_offsets [i - first_plt_got_patch + 1] = got_info_offsets [i];
-			encode_value (ji->type, p, &p);
-		}
+		encode_value (ji->type, p, &p);
 		encode_patch (acfg, ji, p, &p);
 	}
 
@@ -5072,10 +5013,11 @@ emit_got_info (MonoAotCompile *acfg)
 	emit_alignment (acfg, 8);
 	emit_label (acfg, symbol);
 
-	for (i = 0; i < acfg->shared_patches->len; ++i)
+	/* No need to emit offsets for the got plt entries, the plt embeds them directly */
+	for (i = 0; i < first_plt_got_patch; ++i)
 		emit_int32 (acfg, got_info_offsets [i]);
 
-	acfg->stats.got_info_offsets_size = acfg->shared_patches->len * 4;
+	acfg->stats.got_info_offsets_size = acfg->got_patches->len * 4;
 }
 
 static void
@@ -5084,12 +5026,126 @@ emit_got (MonoAotCompile *acfg)
 	char symbol [256];
 
 	/* Don't make GOT global so accesses to it don't need relocations */
-	sprintf (symbol, "got");
+	sprintf (symbol, "%s", acfg->got_symbol);
 	emit_section_change (acfg, ".bss", 0);
 	emit_alignment (acfg, 8);
+	emit_local_symbol (acfg, symbol, "got_end", FALSE);
 	emit_label (acfg, symbol);
 	if (acfg->got_offset > 0)
 		emit_zero_bytes (acfg, (int)(acfg->got_offset * sizeof (gpointer)));
+
+	sprintf (symbol, "got_end");
+	emit_label (acfg, symbol);
+
+	sprintf (symbol, "mono_aot_got_addr");
+	emit_section_change (acfg, ".data", 0);
+	emit_global (acfg, symbol, FALSE);
+	emit_alignment (acfg, 8);
+	emit_label (acfg, symbol);
+	emit_pointer (acfg, acfg->got_symbol);
+}
+
+typedef struct GlobalsTableEntry {
+	guint32 value, index;
+	struct GlobalsTableEntry *next;
+} GlobalsTableEntry;
+
+static void
+emit_globals_table (MonoAotCompile *acfg)
+{
+	int i, table_size;
+	guint32 hash;
+	GPtrArray *table;
+	char symbol [256];
+	GlobalsTableEntry *entry, *new_entry;
+
+	/*
+	 * Construct a chained hash table for mapping global names to their index in
+	 * the globals table.
+	 */
+	table_size = g_spaced_primes_closest ((int)(acfg->globals->len * 1.5));
+	table = g_ptr_array_sized_new (table_size);
+	for (i = 0; i < table_size; ++i)
+		g_ptr_array_add (table, NULL);
+	for (i = 0; i < acfg->globals->len; ++i) {
+		char *name = g_ptr_array_index (acfg->globals, i);
+
+		hash = mono_aot_str_hash (name) % table_size;
+
+		/* FIXME: Allocate from the mempool */
+		new_entry = g_new0 (GlobalsTableEntry, 1);
+		new_entry->value = i;
+
+		entry = g_ptr_array_index (table, hash);
+		if (entry == NULL) {
+			new_entry->index = hash;
+			g_ptr_array_index (table, hash) = new_entry;
+		} else {
+			while (entry->next)
+				entry = entry->next;
+			
+			entry->next = new_entry;
+			new_entry->index = table->len;
+			g_ptr_array_add (table, new_entry);
+		}
+	}
+
+	/* Emit the table */
+	sprintf (symbol, ".Lglobals_hash");
+	emit_section_change (acfg, ".text", 0);
+	emit_alignment (acfg, 8);
+	emit_label (acfg, symbol);
+
+	/* FIXME: Optimize memory usage */
+	g_assert (table_size < 65000);
+	emit_int16 (acfg, table_size);
+	for (i = 0; i < table->len; ++i) {
+		GlobalsTableEntry *entry = g_ptr_array_index (table, i);
+
+		if (entry == NULL) {
+			emit_int16 (acfg, 0);
+			emit_int16 (acfg, 0);
+		} else {
+			emit_int16 (acfg, entry->value + 1);
+			if (entry->next)
+				emit_int16 (acfg, entry->next->index);
+			else
+				emit_int16 (acfg, 0);
+		}
+	}
+
+	/* Emit the names */
+	for (i = 0; i < acfg->globals->len; ++i) {
+		char *name = g_ptr_array_index (acfg->globals, i);
+
+		sprintf (symbol, "name_%d", i);
+		emit_section_change (acfg, ".text", 1);
+		emit_label (acfg, symbol);
+		emit_string (acfg, name);
+	}
+
+	/* Emit the globals table */
+	sprintf (symbol, ".Lglobals");
+	emit_section_change (acfg, ".data", 0);
+	/* This is not a global, since it is accessed by the init function */
+	emit_alignment (acfg, 8);
+	emit_label (acfg, symbol);
+
+	sprintf (symbol, "%sglobals_hash", acfg->temp_prefix);
+	emit_pointer (acfg, symbol);
+
+	for (i = 0; i < acfg->globals->len; ++i) {
+		char *name = g_ptr_array_index (acfg->globals, i);
+
+		sprintf (symbol, "name_%d", i);
+		emit_pointer (acfg, symbol);
+
+		sprintf (symbol, "%s", name);
+		emit_pointer (acfg, symbol);
+	}
+	/* Null terminate the table */
+	emit_int32 (acfg, 0);
+	emit_int32 (acfg, 0);
 }
 
 static void
@@ -5116,141 +5172,53 @@ emit_globals (MonoAotCompile *acfg)
 		emit_string_symbol (acfg, "mono_runtime_version", "");
 	}
 
-	/*
-	 * Some platforms like the iphone have no working dlsym (). To work around this,
-	 * we create an ELF ctor function which will be invoked by dlopen, and which
-	 * will call a function in the AOT loader to register the symbols used by the
-	 * image.
+	/* 
 	 * When static linking, we emit a global which will point to the symbol table.
 	 */
-	if (acfg->aot_opts.no_dlsym) {
-		int i;
+	if (acfg->aot_opts.static_link) {
 		char symbol [256];
+		char *p;
 
-		if (acfg->aot_opts.static_link)
-			/* Emit a string holding the assembly name */
-			emit_string_symbol (acfg, "mono_aot_assembly_name", acfg->image->assembly->aname.name);
+		/* Emit a string holding the assembly name */
+		emit_string_symbol (acfg, "mono_aot_assembly_name", acfg->image->assembly->aname.name);
 
-		/* Emit the names */
-		for (i = 0; i < acfg->globals->len; ++i) {
-			char *name = g_ptr_array_index (acfg->globals, i);
+		emit_globals_table (acfg);
 
-			sprintf (symbol, "name_%d", i);
-			emit_section_change (acfg, ".text", 1);
-			emit_label (acfg, symbol);
-			emit_string (acfg, name);
+		/* 
+		 * Emit a global symbol which can be passed by an embedding app to
+		 * mono_aot_register_module ().
+		 */
+#if defined(__MACH__)
+		sprintf (symbol, "_mono_aot_module_%s_info", acfg->image->assembly->aname.name);
+#else
+		sprintf (symbol, "mono_aot_module_%s_info", acfg->image->assembly->aname.name);
+#endif
+
+		/* Get rid of characters which cannot occur in symbols */
+		p = symbol;
+		for (p = symbol; *p; ++p) {
+			if (!(isalnum (*p) || *p == '_'))
+				*p = '_';
 		}
-
-		/* Emit the globals table */
-		sprintf (symbol, "globals");
-		emit_section_change (acfg, ".data", 0);
-		/* This is not a global, since it is accessed by the init function */
+		acfg->static_linking_symbol = g_strdup (symbol);
+		emit_global_inner (acfg, symbol, FALSE);
 		emit_alignment (acfg, 8);
 		emit_label (acfg, symbol);
-
-		for (i = 0; i < acfg->globals->len; ++i) {
-			char *name = g_ptr_array_index (acfg->globals, i);
-
-			sprintf (symbol, "name_%d", i);
-			emit_pointer (acfg, symbol);
-
-			sprintf (symbol, "%s", name);
-			emit_pointer (acfg, symbol);
-		}
-		/* Null terminate the table */
-		emit_pointer (acfg, NULL);
-		emit_pointer (acfg, NULL);
-
-		if (acfg->aot_opts.static_link) {
-			char *p;
-
-			/* 
-			 * Emit a global symbol which can be passed by an embedding app to
-			 * mono_aot_register_module ().
-			 */
-#if defined(__MACH__)
-			sprintf (symbol, "_mono_aot_module_%s_info", acfg->image->assembly->aname.name);
-#else
-			sprintf (symbol, "mono_aot_module_%s_info", acfg->image->assembly->aname.name);
-#endif
-
-			/* Get rid of characters which cannot occur in symbols */
-			p = symbol;
-			for (p = symbol; *p; ++p) {
-				if (!(isalnum (*p) || *p == '_'))
-					*p = '_';
-			}
-			acfg->static_linking_symbol = g_strdup (symbol);
-			emit_global_inner (acfg, symbol, FALSE);
-			emit_alignment (acfg, 8);
-			emit_label (acfg, symbol);
-			emit_pointer (acfg, "globals");
-		} else {
-			sprintf (symbol, "init_%s", acfg->image->assembly->aname.name);
-			emit_section_change (acfg, ".text", 1);
-			emit_alignment (acfg, 8);
-			emit_label (acfg, symbol);
-#ifdef USE_BIN_WRITER
-			g_assert_not_reached ();
-#else
-#ifdef TARGET_AMD64
-			fprintf (acfg->fp, "leaq globals(%%rip), %%rdi\n");
-			fprintf (acfg->fp, "call mono_aot_register_globals@PLT\n");
-			fprintf (acfg->fp, "ret\n");
-			fprintf (acfg->fp, ".section .ctors,\"aw\",@progbits\n");
-			emit_alignment (acfg, 8);
-			emit_pointer (acfg, symbol);
-#elif defined(TARGET_ARM) && defined(__MACH__)
-				
-			fprintf (acfg->fp, ".text\n");
-			fprintf (acfg->fp, ".align   3\n");
-		
-			fprintf (acfg->fp, "ldr	r0, .L5\n");
-			fprintf (acfg->fp, ".LPIC0:\n");
-			fprintf (acfg->fp, "add	r0, pc, r0\n");
-			fprintf (acfg->fp, "ldr r0, [r0]\n");
-			fprintf (acfg->fp, "b	_mono_aot_register_globals@PLT\n");
-			fprintf (acfg->fp, ".align 2\n");
-
-			fprintf (acfg->fp, ".L5:\n");
-			fprintf (acfg->fp, ".long	globals_ptr-(.LPIC0+8)\n");
-			
-			fprintf (acfg->fp, ".data\n");
-			fprintf (acfg->fp, ".align	2\n");
-			fprintf (acfg->fp, "globals_ptr:\n");
-			fprintf (acfg->fp, ".long	globals\n");
-			
-			fprintf (acfg->fp, ".mod_init_func\n");
-			fprintf (acfg->fp, ".align	2\n");
-			fprintf (acfg->fp, ".long	%s@target1\n", symbol);
-
-#elif defined(TARGET_ARM)
-			/* 
-			 * Taken from gcc generated code for:
-			 * static int i;
-			 * void foo () { bar (&i); }
-			 * gcc --shared -fPIC -O2
-			 */
-			fprintf (acfg->fp, "ldr	r3, .L5\n");
-			fprintf (acfg->fp, "ldr	r0, .L5+4\n");
-			fprintf (acfg->fp, ".LPIC0:\n");
-			fprintf (acfg->fp, "add	r3, pc, r3\n");
-			fprintf (acfg->fp, "add	r0, r3, r0\n");
-			fprintf (acfg->fp, "b	mono_aot_register_globals(PLT)\n");
-
-			fprintf (acfg->fp, ".L5:\n");
-			fprintf (acfg->fp, ".word	_GLOBAL_OFFSET_TABLE_-(.LPIC0+8)\n");
-			fprintf (acfg->fp, ".word	globals(GOTOFF)\n");
-
-			fprintf (acfg->fp, ".section	.init_array,\"aw\",%%init_array\n");
-			fprintf (acfg->fp, ".align	2\n");
-			fprintf (acfg->fp, ".word	%s(target1)\n", symbol);
-#else
-			g_assert_not_reached ();
-#endif
-#endif
-		}
+		sprintf (symbol, "%sglobals", acfg->temp_prefix);
+		emit_pointer (acfg, symbol);
 	}
+}
+
+static void
+emit_mem_end (MonoAotCompile *acfg)
+{
+	char symbol [128];
+
+	sprintf (symbol, "mem_end");
+	emit_section_change (acfg, ".text", 1);
+	emit_global (acfg, symbol, FALSE);
+	emit_alignment (acfg, 8);
+	emit_label (acfg, symbol);
 }
 
 /*
@@ -5260,6 +5228,7 @@ static void
 emit_file_info (MonoAotCompile *acfg)
 {
 	char symbol [128];
+	int i;
 
 	sprintf (symbol, "mono_aot_file_info");
 	emit_section_change (acfg, ".data", 0);
@@ -5269,679 +5238,24 @@ emit_file_info (MonoAotCompile *acfg)
 
 	/* The data emitted here must match MonoAotFileInfo in aot-runtime.c. */
 	emit_int32 (acfg, acfg->plt_got_offset_base);
-	emit_int32 (acfg, acfg->trampoline_got_offset_base);
-	emit_int32 (acfg, acfg->num_aot_trampolines);
 	emit_int32 (acfg, (int)(acfg->got_offset * sizeof (gpointer)));
 	emit_int32 (acfg, acfg->plt_offset);
-	emit_pointer (acfg, "got");
-}
-
-/*****************************************/
-/*   Emitting DWARF debug information    */
-/*****************************************/
-
-static G_GNUC_UNUSED void
-emit_uleb128 (MonoAotCompile *acfg, guint32 value)
-{
-	do {
-		guint8 b = value & 0x7f;
-		value >>= 7;
-		if (value != 0) /* more bytes to come */
-			b |= 0x80;
-		emit_byte (acfg, b);
-	} while (value);
-}
-
-static G_GNUC_UNUSED void
-emit_sleb128 (MonoAotCompile *acfg, gint64 value)
-{
-	gboolean more = 1;
-	gboolean negative = (value < 0);
-	guint32 size = 64;
-	guint8 byte;
-
-	while (more) {
-		byte = value & 0x7f;
-		value >>= 7;
-		/* the following is unnecessary if the
-		 * implementation of >>= uses an arithmetic rather
-		 * than logical shift for a signed left operand
-		 */
-		if (negative)
-			/* sign extend */
-			value |= - (1 <<(size - 7));
-		/* sign bit of byte is second high order bit (0x40) */
-		if ((value == 0 && !(byte & 0x40)) ||
-			(value == -1 && (byte & 0x40)))
-			more = 0;
-		else
-			byte |= 0x80;
-		emit_byte (acfg, byte);
-	}
-}
-
-static G_GNUC_UNUSED void
-encode_uleb128 (guint32 value, guint8 *buf, guint8 **endbuf)
-{
-	guint8 *p = buf;
-
-	do {
-		guint8 b = value & 0x7f;
-		value >>= 7;
-		if (value != 0) /* more bytes to come */
-			b |= 0x80;
-		*p ++ = b;
-	} while (value);
-
-	*endbuf = p;
-}
-
-static G_GNUC_UNUSED void
-encode_sleb128 (gint32 value, guint8 *buf, guint8 **endbuf)
-{
-	gboolean more = 1;
-	gboolean negative = (value < 0);
-	guint32 size = 32;
-	guint8 byte;
-	guint8 *p = buf;
-
-	while (more) {
-		byte = value & 0x7f;
-		value >>= 7;
-		/* the following is unnecessary if the
-		 * implementation of >>= uses an arithmetic rather
-		 * than logical shift for a signed left operand
-		 */
-		if (negative)
-			/* sign extend */
-			value |= - (1 <<(size - 7));
-		/* sign bit of byte is second high order bit (0x40) */
-		if ((value == 0 && !(byte & 0x40)) ||
-			(value == -1 && (byte & 0x40)))
-			more = 0;
-		else
-			byte |= 0x80;
-		*p ++= byte;
-	}
-
-	*endbuf = p;
-}
-
-static void
-emit_dwarf_abbrev (MonoAotCompile *acfg, int code, int tag, gboolean has_child,
-				   int *attrs, int attrs_len)
-{
-	int i;
-
-	emit_uleb128 (acfg, code);
-	emit_uleb128 (acfg, tag);
-	emit_byte (acfg, has_child);
-
-	for (i = 0; i < attrs_len; i++)
-		emit_uleb128 (acfg, attrs [i]);
-	emit_uleb128 (acfg, 0);
-	emit_uleb128 (acfg, 0);
-}
-
-static void
-emit_cie (MonoAotCompile *acfg)
-{
-#if defined(TARGET_AMD64)
-	emit_section_change (acfg, ".debug_frame", 0);
-
-	emit_alignment (acfg, 8);
-
-	/* Emit a CIE */
-	emit_symbol_diff (acfg, ".Lcie0_end", ".", -4); /* length */
-	emit_int32 (acfg, 0xffffffff); /* CIE id */
-	emit_byte (acfg, 3); /* version */
-	emit_string (acfg, ""); /* augmention */
-	emit_sleb128 (acfg, 1); /* code alignment factor */
-#ifdef TARGET_AMD64
-	emit_sleb128 (acfg, -8); /* data alignment factor */
-	emit_uleb128 (acfg, AMD64_RIP);
-#else
-	g_assert_not_reached ();
-#endif
-
-#ifdef TARGET_AMD64
-	emit_byte (acfg, DW_CFA_def_cfa);
-	emit_uleb128 (acfg, mono_hw_reg_to_dwarf_reg (AMD64_RSP));
-	emit_uleb128 (acfg, 8); /* offset=8 */
-	emit_byte (acfg, DW_CFA_offset | AMD64_RIP);
-	emit_uleb128 (acfg, 1); /* offset=-8 */
-#else
-	g_assert_not_reached ();
-#endif
-
-	emit_alignment (acfg, sizeof (gpointer));
-	emit_label (acfg, ".Lcie0_end");
-#endif
-}
-
-static void
-emit_pointer_value (MonoAotCompile *acfg, gpointer ptr)
-{
-	gssize val = (gssize)ptr;
-	emit_bytes (acfg, (guint8*)&val, sizeof (gpointer));
-}
-
-static void
-emit_fde (MonoAotCompile *acfg, int fde_index, char *start_symbol, char *end_symbol,
-		  guint8 *code, guint32 code_size, GSList *unwind_ops, gboolean use_cie)
-{
-#if defined(TARGET_AMD64)
-	char symbol [128];
-	GSList *l;
-	guint8 *uw_info;
-	guint32 uw_info_len;
-
-	emit_section_change (acfg, ".debug_frame", 0);
-
-	sprintf (symbol, ".Lfde%d_end", fde_index);
-	emit_symbol_diff (acfg, symbol, ".", -4); /* length */
-	emit_int32 (acfg, 0); /* CIE_pointer */
-	if (start_symbol) {
-		emit_pointer (acfg, start_symbol); /* initial_location */
-		emit_symbol_diff (acfg, end_symbol, start_symbol, 0); /* address_range */
-		emit_int32 (acfg, 0);
-	} else {
-		emit_pointer_value (acfg, code);
-		emit_int32 (acfg, code_size);
-		emit_int32 (acfg, 0);
-	}
-
-	l = unwind_ops;
-#ifdef TARGET_AMD64
-	if (use_cie)
-		/* Skip the first two ops which are in the CIE */
-		l = l->next->next;
-#endif
-
-	/* Convert the list of MonoUnwindOps to the format used by DWARF */	
-	uw_info = mono_unwind_ops_encode (l, &uw_info_len);
-	emit_bytes (acfg, uw_info, uw_info_len);
-	g_free (uw_info);
-
-	emit_alignment (acfg, sizeof (gpointer));
-	sprintf (symbol, ".Lfde%d_end", fde_index);
-	emit_label (acfg, symbol);
-#endif
-}
-
-/* Abbrevations */
-#define AB_COMPILE_UNIT 1
-#define AB_SUBPROGRAM 2
-#define AB_PARAM 3
-#define AB_BASE_TYPE 4
-#define AB_STRUCT_TYPE 5
-#define AB_DATA_MEMBER 6
-#define AB_TYPEDEF 7
-#define AB_ENUM_TYPE 8
-#define AB_ENUMERATOR 9
-#define AB_NAMESPACE 10
-
-static int compile_unit_attr [] = {
-	DW_AT_producer     ,DW_FORM_string,
-    DW_AT_name         ,DW_FORM_string,
-    DW_AT_comp_dir     ,DW_FORM_string,
-	DW_AT_language     ,DW_FORM_data1,
-    DW_AT_low_pc       ,DW_FORM_addr,
-    DW_AT_high_pc      ,DW_FORM_addr,
-};
-
-static int subprogram_attr [] = {
-	DW_AT_name         , DW_FORM_string,
-    DW_AT_low_pc       , DW_FORM_addr,
-    DW_AT_high_pc      , DW_FORM_addr,
-	DW_AT_frame_base   , DW_FORM_block1
-};
-
-static int param_attr [] = {
-	DW_AT_name,     DW_FORM_string,
-	DW_AT_type,     DW_FORM_ref4,
-	DW_AT_location, DW_FORM_block1
-};
-
-static int base_type_attr [] = {
-	DW_AT_byte_size,   DW_FORM_data1,
-	DW_AT_encoding,    DW_FORM_data1,
-	DW_AT_name,        DW_FORM_string
-};
-
-static int struct_type_attr [] = {
-	DW_AT_name,        DW_FORM_string,
-	DW_AT_byte_size,   DW_FORM_udata,
-};
-
-static int data_member_attr [] = {
-	DW_AT_name,        DW_FORM_string,
-	DW_AT_type,        DW_FORM_ref4,
-	DW_AT_data_member_location, DW_FORM_block1
-};
-
-static int typedef_attr [] = {
-	DW_AT_name,        DW_FORM_string,
-	DW_AT_type,        DW_FORM_ref4
-};
-
-static int enum_type_attr [] = {
-	DW_AT_name,        DW_FORM_string,
-	DW_AT_byte_size,   DW_FORM_udata,
-	DW_AT_type,        DW_FORM_ref4,
-};
-
-static int enumerator_attr [] = {
-	DW_AT_name,        DW_FORM_string,
-	DW_AT_const_value, DW_FORM_sdata,
-};
-
-static int namespace_attr [] = {
-	DW_AT_name,        DW_FORM_string,
-};
-
-typedef struct DwarfBasicType {
-	const char *die_name, *name;
-	int type;
-	int size;
-	int encoding;
-} DwarfBasicType;
-
-static DwarfBasicType basic_types [] = {
-	{ ".LDIE_I1", "sbyte", MONO_TYPE_I1, 1, DW_ATE_signed },
-	{ ".LDIE_U1", "byte", MONO_TYPE_U1, 1, DW_ATE_unsigned },
-	{ ".LDIE_I2", "short", MONO_TYPE_I2, 2, DW_ATE_signed },
-	{ ".LDIE_U2", "ushort", MONO_TYPE_U2, 2, DW_ATE_unsigned },
-	{ ".LDIE_I4", "int", MONO_TYPE_I4, 4, DW_ATE_signed },
-	{ ".LDIE_U4", "uint", MONO_TYPE_U4, 4, DW_ATE_unsigned },
-	{ ".LDIE_I8", "long", MONO_TYPE_I8, 8, DW_ATE_signed },
-	{ ".LDIE_U8", "ulong", MONO_TYPE_U8, 8, DW_ATE_unsigned },
-	{ ".LDIE_R4", "float", MONO_TYPE_R4, 4, DW_ATE_float },
-	{ ".LDIE_R8", "double", MONO_TYPE_R8, 8, DW_ATE_float },
-	{ ".LDIE_BOOLEAN", "boolean", MONO_TYPE_BOOLEAN, 1, DW_ATE_boolean },
-	{ ".LDIE_STRING", "string", MONO_TYPE_STRING, sizeof (gpointer), DW_ATE_address },
-	{ ".LDIE_OBJECT", "object", MONO_TYPE_OBJECT, sizeof (gpointer), DW_ATE_address },
-	{ ".LDIE_SZARRAY", "object", MONO_TYPE_SZARRAY, sizeof (gpointer), DW_ATE_address },
-};
-
-static void
-emit_base_dwarf_info (MonoAotCompile *acfg)
-{
-	char *s, *build_info;
-	int i;
-
-	emit_section_change (acfg, ".debug_abbrev", 0);
-	emit_dwarf_abbrev (acfg, AB_COMPILE_UNIT, DW_TAG_compile_unit, TRUE, 
-					   compile_unit_attr, G_N_ELEMENTS (compile_unit_attr));
-	emit_dwarf_abbrev (acfg, AB_SUBPROGRAM, DW_TAG_subprogram, TRUE, 
-					   subprogram_attr, G_N_ELEMENTS (subprogram_attr));
-	emit_dwarf_abbrev (acfg, AB_PARAM, DW_TAG_formal_parameter, FALSE, 
-					   param_attr, G_N_ELEMENTS (param_attr));
-	emit_dwarf_abbrev (acfg, AB_BASE_TYPE, DW_TAG_base_type, FALSE, 
-					   base_type_attr, G_N_ELEMENTS (base_type_attr));
-	emit_dwarf_abbrev (acfg, AB_STRUCT_TYPE, DW_TAG_class_type, TRUE, 
-					   struct_type_attr, G_N_ELEMENTS (struct_type_attr));
-	emit_dwarf_abbrev (acfg, AB_DATA_MEMBER, DW_TAG_member, FALSE, 
-					   data_member_attr, G_N_ELEMENTS (data_member_attr));
-	emit_dwarf_abbrev (acfg, AB_TYPEDEF, DW_TAG_typedef, FALSE, 
-					   typedef_attr, G_N_ELEMENTS (typedef_attr));
-	emit_dwarf_abbrev (acfg, AB_ENUM_TYPE, DW_TAG_enumeration_type, TRUE,
-					   enum_type_attr, G_N_ELEMENTS (enum_type_attr));
-	emit_dwarf_abbrev (acfg, AB_ENUMERATOR, DW_TAG_enumerator, FALSE,
-					   enumerator_attr, G_N_ELEMENTS (enumerator_attr));
-	emit_dwarf_abbrev (acfg, AB_NAMESPACE, DW_TAG_namespace, TRUE,
-					   namespace_attr, G_N_ELEMENTS (namespace_attr));
-	emit_byte (acfg, 0);
-
-	emit_section_change (acfg, ".debug_info", 0);
-	emit_label (acfg, ".Ldebug_info_start");
-	emit_symbol_diff (acfg, ".Ldebug_info_end", ".", -4); /* length */
-	emit_int16 (acfg, 0x3); /* DWARF version 3 */
-	emit_int32 (acfg, 0); /* .debug_abbrev offset */
-	emit_byte (acfg, sizeof (gpointer)); /* address size */
-
-	/* Emit this into a separate section so it gets placed at the end */
-	emit_section_change (acfg, ".debug_info", 1);
-	emit_int32 (acfg, 0); /* close everything */
-	emit_label (acfg, ".Ldebug_info_end");
-	emit_section_change (acfg, ".debug_info", 0);
-
-	/* Compilation unit */
-	emit_uleb128 (acfg, AB_COMPILE_UNIT);
-	build_info = mono_get_runtime_build_info ();
-	s = g_strdup_printf ("Mono AOT Compiler %s", build_info);
-	emit_string (acfg, s);
-	g_free (build_info);
-	g_free (s);
-	emit_string (acfg, "JITted code");
-	emit_string (acfg, "");
-	emit_byte (acfg, DW_LANG_C);
-	emit_pointer_value (acfg, 0);
-	emit_pointer_value (acfg, 0);
-
-	/* Base types */
-	for (i = 0; i < G_N_ELEMENTS (basic_types); ++i) {
-		emit_label (acfg, basic_types [i].die_name);
-		emit_uleb128 (acfg, AB_BASE_TYPE);
-		emit_byte (acfg, basic_types [i].size);
-		emit_byte (acfg, basic_types [i].encoding);
-		emit_string (acfg, basic_types [i].name);
-	}
-
-	emit_cie (acfg);
-}
-
-/* Returns the local symbol pointing to the emitted debug info */
-static char*
-emit_class_dwarf_info (MonoAotCompile *acfg, MonoClass *klass)
-{
-	char *die;
-	char *full_name;
-	gpointer iter;
-	MonoClassField *field;
-	const char *fdie;
-	int k;
-	gboolean emit_namespace = FALSE;
-
-	// FIXME: Appdomains
-	if (!acfg->class_to_die)
-		acfg->class_to_die = g_hash_table_new (NULL, NULL);
-
-	die = g_hash_table_lookup (acfg->class_to_die, klass);
-	if (die)
-		return die;
-
-	if (!((klass->byval_arg.type == MONO_TYPE_CLASS) || klass->enumtype))
-		return NULL;
-
-	/*
-	 * FIXME: gdb can't handle namespaces in languages it doesn't know about.
-	 */
-	/*
-	if (klass->name_space && klass->name_space [0] != '\0')
-		emit_namespace = TRUE;
-	*/
-	if (emit_namespace) {
-		emit_uleb128 (acfg, AB_NAMESPACE);
-		emit_string (acfg, klass->name_space);
-	}
-
-	full_name = g_strdup_printf ("%s%s%s", klass->name_space, klass->name_space ? "." : "", klass->name);
-
-	die = g_strdup_printf (".LTDIE_%d", acfg->tdie_index);
-	emit_label (acfg, die);
-
-	if (klass->enumtype) {
-		int size = mono_class_value_size (mono_class_from_mono_type (klass->enum_basetype), NULL);
-
-		emit_uleb128 (acfg, AB_ENUM_TYPE);
-		emit_string (acfg, full_name);
-		emit_uleb128 (acfg, size);
-		for (k = 0; k < G_N_ELEMENTS (basic_types); ++k)
-			if (basic_types [k].type == klass->enum_basetype->type)
-				break;
-		g_assert (k < G_N_ELEMENTS (basic_types));
-		emit_symbol_diff (acfg, basic_types [k].die_name, ".Ldebug_info_start", 0);
-
-		/* Emit enum values */
-		iter = NULL;
-		while ((field = mono_class_get_fields (klass, &iter))) {
-			const char *p;
-			int len;
-			MonoTypeEnum def_type;
-
-			if (strcmp ("value__", mono_field_get_name (field)) == 0)
-				continue;
-			if (mono_field_is_deleted (field))
-				continue;
-
-			emit_uleb128 (acfg, AB_ENUMERATOR);
-			emit_string (acfg, mono_field_get_name (field));
-
-			p = mono_class_get_field_default_value (field, &def_type);
-			len = mono_metadata_decode_blob_size (p, &p);
-			switch (klass->enum_basetype->type) {
-			case MONO_TYPE_U1:
-			case MONO_TYPE_I1:
-				emit_sleb128 (acfg, *p);
-				break;
-			case MONO_TYPE_CHAR:
-			case MONO_TYPE_U2:
-			case MONO_TYPE_I2:
-				emit_sleb128 (acfg, read16 (p));
-				break;
-			case MONO_TYPE_U4:
-			case MONO_TYPE_I4:
-				emit_sleb128 (acfg, read32 (p));
-				break;
-			case MONO_TYPE_U8:
-			case MONO_TYPE_I8:
-				emit_sleb128 (acfg, read64 (p));
-				break;
-			default:
-				g_assert_not_reached ();
-			}
-		}
-	} else {
-		emit_uleb128 (acfg, AB_STRUCT_TYPE);
-		emit_string (acfg, full_name);
-		emit_uleb128 (acfg, klass->instance_size);
-
-		/* Emit fields */
-		iter = NULL;
-		while ((field = mono_class_get_fields (klass, &iter))) {
-			guint8 buf [128];
-			guint8 *p;
-
-			if (field->type->attrs & FIELD_ATTRIBUTE_STATIC)
-				continue;
-
-			for (k = 0; k < G_N_ELEMENTS (basic_types); ++k)
-				if (basic_types [k].type == field->type->type)
-					break;
-			if (k < G_N_ELEMENTS (basic_types) && field->type->type != MONO_TYPE_SZARRAY && field->type->type != MONO_TYPE_CLASS) {
-				fdie = basic_types [k].die_name;
-
-				emit_uleb128 (acfg, AB_DATA_MEMBER);
-				emit_string (acfg, field->name);
-				emit_symbol_diff (acfg, fdie, ".Ldebug_info_start", 0);
-				/* location */
-				p = buf;
-				*p ++= DW_OP_plus_uconst;
-				encode_uleb128 (field->offset, p, &p);
-
-				emit_byte (acfg, p - buf);
-				emit_bytes (acfg, buf, p - buf);
-			}
-		}
-	}
-
-	/* Type end */
-	emit_uleb128 (acfg, 0x0);
-
-	/* Add a typedef, so we can reference the type without a 'struct' in gdb */
-	emit_uleb128 (acfg, AB_TYPEDEF);
-	emit_string (acfg, full_name);
-	emit_symbol_diff (acfg, die, ".Ldebug_info_start", 0);
-
-	g_free (full_name);
-	acfg->tdie_index ++;
-
-
-	if (emit_namespace) {
-		/* Namespace end */
-		emit_uleb128 (acfg, 0x0);
-	}
-
-	g_hash_table_insert (acfg->class_to_die, klass, die);
-	return die;
-}
-
-static void
-emit_method_dwarf_info (MonoAotCompile *acfg, MonoMethod *method, char *start_symbol, char *end_symbol, guint8 *code, guint32 code_size, MonoInst **args, GSList *unwind_info)
-{
-	char *name;
-	MonoMethodSignature *sig;
-	char **names, **tdies;
-	int i;
-
-	emit_section_change (acfg, ".debug_info", 0);
-
-	sig = mono_method_signature (method);
-
-	/* Parameter types */
-	tdies = g_new0 (char *, sig->param_count + sig->hasthis);
-	for (i = 0; i < sig->param_count + sig->hasthis; ++i) {
-		MonoType *t;
-
-		if (i == 0 && sig->hasthis) {
-			t = &method->klass->this_arg;
-		} else {
-			t = sig->params [i - sig->hasthis];
-		}
-
-		emit_class_dwarf_info (acfg, mono_class_from_mono_type (t));
-	}
-
-	/* Subprogram */
-	names = g_new0 (char *, sig->param_count);
-	mono_method_get_param_names (method, (const char **) names);
-
-	emit_uleb128 (acfg, AB_SUBPROGRAM);
-	name = mono_method_full_name (method, FALSE);
-	emit_string (acfg, name);
-	g_free (name);
-	if (start_symbol) {
-		emit_pointer_unaligned (acfg, start_symbol);
-		emit_pointer_unaligned (acfg, end_symbol);
-	} else {
-		emit_pointer_value (acfg, code);
-		emit_pointer_value (acfg, code + code_size);
-	}
-	/* frame_base */
-	emit_byte (acfg, 2);
-	emit_byte (acfg, DW_OP_breg6);
-	emit_byte (acfg, 16);
-
-	/* Parameters */
-	for (i = 0; i < sig->param_count + sig->hasthis; ++i) {
-		MonoInst *arg = args ? args [i] : NULL;
-		const char *tdie;
-		MonoType *t;
-		MonoClass *klass;
-		const char *pname;
-		char pname_buf [128];
-		int j;
-
-		if (i == 0 && sig->hasthis) {
-			t = &mono_defaults.object_class->byval_arg;
-			pname = "this";
-		} else {
-			t = sig->params [i - sig->hasthis];
-			pname = names [i - sig->hasthis];
-		}
-		
-		emit_uleb128 (acfg, AB_PARAM);
-		/* name */
-		if (pname[0] == '\0') {
-			sprintf (pname_buf, "param%d", i - sig->hasthis);
-			pname = pname_buf;
-		}
-		emit_string (acfg, pname);
-		/* type */
-		klass = mono_class_from_mono_type (t);
-		for (j = 0; j < G_N_ELEMENTS (basic_types); ++j)
-			if (basic_types [j].type == t->type)
-				break;
-		if (j < G_N_ELEMENTS (basic_types))
-			tdie = basic_types [j].die_name;
-		else {
-			switch (t->type) {
-			case MONO_TYPE_CLASS:
-			case MONO_TYPE_ARRAY:
-				tdie = ".LDIE_OBJECT";
-				break;
-			case MONO_TYPE_VALUETYPE:
-				if (klass->enumtype)
-					tdie = emit_class_dwarf_info (acfg, klass);
-				else
-					tdie = ".LDIE_I4";
-				break;
-			default:
-				tdie = ".LDIE_I4";
-				break;
-			}
-		}
-		if (t->byref)
-			// FIXME:
-			tdie = ".LDIE_I4";
-		if (!arg || arg->flags & MONO_INST_IS_DEAD)
-			tdie = ".LDIE_I4";
-		emit_symbol_diff (acfg, tdie, ".Ldebug_info_start", 0);
-		/* location */
-		/* FIXME: This needs a location list, since the args can go from reg->stack */
-		if (!arg || arg->flags & MONO_INST_IS_DEAD) {
-			/* gdb treats this as optimized out */
-			emit_byte (acfg, 0);
-		} else if (arg->opcode == OP_REGVAR) {
-			emit_byte (acfg, 1);
-			emit_byte (acfg, DW_OP_reg0 + mono_hw_reg_to_dwarf_reg (arg->dreg));
-		} else if (arg->opcode == OP_REGOFFSET) {
-			guint8 buf [128];
-			guint8 *p;
-
-			p = buf;
-			*p ++= DW_OP_breg0 + mono_hw_reg_to_dwarf_reg (arg->inst_basereg);
-			encode_sleb128 (arg->inst_offset, p, &p);
-			emit_byte (acfg, p - buf);
-			emit_bytes (acfg, buf, p - buf);
-		} else {
-			// FIXME:
-			emit_byte (acfg, 1);
-			emit_byte (acfg, DW_OP_reg0);
-		}
-	}		
-	g_free (names);
-
-	/* Subprogram end */
-	emit_uleb128 (acfg, 0x0);
-
-	/* Emit unwind info */
-	emit_fde (acfg, acfg->fde_index, start_symbol, end_symbol, code, code_size, unwind_info, TRUE);
-	acfg->fde_index ++;
-}
-
-static void
-emit_trampoline_dwarf_info (MonoAotCompile *acfg, const char *tramp_name, char *start_symbol, char *end_symbol, guint8 *code, guint32 code_size, GSList *unwind_info)
-{
-	emit_section_change (acfg, ".debug_info", 0);
-
-	/* Subprogram */
-	emit_uleb128 (acfg, AB_SUBPROGRAM);
-	emit_string (acfg, tramp_name);
-	emit_pointer_value (acfg, code);
-	emit_pointer_value (acfg, code + code_size);
-	/* frame_base */
-	emit_byte (acfg, 2);
-	emit_byte (acfg, DW_OP_breg6);
-	emit_byte (acfg, 16);
-
-	/* Subprogram end */
-	emit_uleb128 (acfg, 0x0);
-
-	/* Emit unwind info */
-	emit_fde (acfg, acfg->fde_index, NULL, NULL, code, code_size, unwind_info, FALSE);
-	acfg->fde_index ++;
+	emit_int32 (acfg, acfg->nmethods);
+
+	for (i = 0; i < MONO_AOT_TRAMP_NUM; ++i)
+		emit_int32 (acfg, acfg->num_trampolines [i]);
+	for (i = 0; i < MONO_AOT_TRAMP_NUM; ++i)
+		emit_int32 (acfg, acfg->trampoline_got_offset_base [i]);
+	for (i = 0; i < MONO_AOT_TRAMP_NUM; ++i)
+		emit_int32 (acfg, acfg->trampoline_size [i]);
 }
 
 static void
 emit_dwarf_info (MonoAotCompile *acfg)
 {
-#if defined(USE_ELF_WRITER) && defined(TARGET_AMD64)
+#ifdef EMIT_DWARF_INFO
 	int i;
 	char symbol [128], symbol2 [128];
-
-	emit_base_dwarf_info (acfg);
 
 	/* DIEs for methods */
 	for (i = 0; i < acfg->nmethods; ++i) {
@@ -5950,87 +5264,19 @@ emit_dwarf_info (MonoAotCompile *acfg)
 		if (!cfg)
 			continue;
 
-		sprintf (symbol, ".Lm_%x", i);
-		sprintf (symbol2, ".Lme_%x", i);
+		sprintf (symbol, "%sm_%x", acfg->temp_prefix, i);
+		sprintf (symbol2, "%sme_%x", acfg->temp_prefix, i);
 
-		emit_method_dwarf_info (acfg, cfg->method, symbol, symbol2, NULL, 0, cfg->args, cfg->unwind_ops);
+		mono_dwarf_writer_emit_method (acfg->dwarf, cfg, cfg->method, symbol, symbol2, cfg->jit_info->code_start, cfg->jit_info->code_size, cfg->args, cfg->locals, cfg->unwind_ops, mono_debug_find_method (cfg->jit_info->method, mono_domain_get ()));
 	}
-#endif /* ELF_WRITER */
+#endif
 }
 
 static void
-acfg_free (MonoAotCompile *acfg)
+collect_methods (MonoAotCompile *acfg)
 {
 	int i;
-
-	for (i = 0; i < acfg->nmethods; ++i)
-		if (acfg->cfgs [i])
-			g_free (acfg->cfgs [i]);
-	g_free (acfg->cfgs);
-	g_free (acfg->static_linking_symbol);
-	g_ptr_array_free (acfg->methods, TRUE);
-	g_ptr_array_free (acfg->shared_patches, TRUE);
-	g_ptr_array_free (acfg->image_table, TRUE);
-	g_ptr_array_free (acfg->globals, TRUE);
-	g_hash_table_destroy (acfg->method_indexes);
-	g_hash_table_destroy (acfg->plt_offset_to_patch);
-	g_hash_table_destroy (acfg->patch_to_plt_offset);
-	g_hash_table_destroy (acfg->patch_to_shared_got_offset);
-	g_hash_table_destroy (acfg->method_to_cfg);
-	g_hash_table_destroy (acfg->token_info_hash);
-	g_hash_table_destroy (acfg->image_hash);
-	mono_mempool_destroy (acfg->mempool);
-	g_free (acfg);
-}
-
-int
-mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
-{
-	MonoImage *image = ass->image;
-	char symbol [256];
-	int i, res, methods_len;
-	MonoAotCompile *acfg;
-	TV_DECLARE (atv);
-	TV_DECLARE (btv);
-
-	printf ("Mono Ahead of Time compiler - compiling assembly %s\n", image->name);
-
-	acfg = g_new0 (MonoAotCompile, 1);
-	acfg->methods = g_ptr_array_new ();
-	acfg->method_indexes = g_hash_table_new (NULL, NULL);
-	acfg->method_depth = g_hash_table_new (NULL, NULL);
-	acfg->plt_offset_to_patch = g_hash_table_new (NULL, NULL);
-	acfg->patch_to_plt_offset = g_hash_table_new (mono_patch_info_hash, mono_patch_info_equal);
-	acfg->patch_to_shared_got_offset = g_hash_table_new (mono_patch_info_hash, mono_patch_info_equal);
-	acfg->shared_patches = g_ptr_array_new ();
-	acfg->method_to_cfg = g_hash_table_new (NULL, NULL);
-	acfg->token_info_hash = g_hash_table_new_full (NULL, NULL, NULL, g_free);
-	acfg->image_hash = g_hash_table_new (NULL, NULL);
-	acfg->image_table = g_ptr_array_new ();
-	acfg->globals = g_ptr_array_new ();
-	acfg->image = image;
-	acfg->opts = opts;
-	acfg->mempool = mono_mempool_new ();
-	acfg->extra_methods = g_ptr_array_new ();
-	InitializeCriticalSection (&acfg->mutex);
-
-	memset (&acfg->aot_opts, 0, sizeof (acfg->aot_opts));
-	acfg->aot_opts.write_symbols = TRUE;
-
-	mono_aot_parse_options (aot_options, &acfg->aot_opts);
- 
-#ifdef USE_BIN_WRITER
-	if (!acfg->aot_opts.asm_only && !acfg->aot_opts.asm_writer)
-		acfg->use_bin_writer = TRUE;
-#endif
-
-	load_profile_files (acfg);
-
-	emit_start (acfg);
-
-	acfg->num_aot_trampolines = acfg->aot_opts.full_aot ? 10240 : 0;
-
-	acfg->method_index = 1;
+	MonoImage *image = acfg->image;
 
 	/* Collect methods */
 	for (i = 0; i < image->tables [MONO_TABLE_METHOD].rows; ++i) {
@@ -6039,6 +5285,11 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 
 		method = mono_get_method (acfg->image, token, NULL);
 
+		if (!method) {
+			printf ("Failed to load method 0x%x from '%s'.\n", token, image->name);
+			exit (1);
+		}
+			
 		/* Load all methods eagerly to skip the slower lazy loading code */
 		mono_class_setup_methods (method->klass);
 
@@ -6049,8 +5300,23 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 			method = wrapper;
 		}
 
+		/* FIXME: Some mscorlib methods don't have debug info */
+		/*
+		if (acfg->aot_opts.soft_debug && !method->wrapper_type) {
+			if (!((method->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL) ||
+				  (method->iflags & METHOD_IMPL_ATTRIBUTE_RUNTIME) ||
+				  (method->flags & METHOD_ATTRIBUTE_ABSTRACT) ||
+				  (method->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL))) {
+				if (!mono_debug_lookup_method (method)) {
+					fprintf (stderr, "Method %s has no debug info, probably the .mdb file for the assembly is missing.\n", mono_method_full_name (method, TRUE));
+					exit (1);
+				}
+			}
+		}
+		*/
+
 		/* Since we add the normal methods first, their index will be equal to their zero based token index */
-		add_method_with_index (acfg, method, i);
+		add_method_with_index (acfg, method, i, FALSE);
 		acfg->method_index ++;
 	}
 
@@ -6058,15 +5324,12 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 
 	if (acfg->aot_opts.full_aot)
 		add_wrappers (acfg);
+}
 
-	acfg->cfgs_size = acfg->methods->len + 32;
-	acfg->cfgs = g_new0 (MonoCompile*, acfg->cfgs_size);
-
-	/* PLT offset 0 is reserved for the PLT trampoline */
-	acfg->plt_offset = 1;
-
-	/* Compile methods */
-	TV_GETTIME (atv);
+static void
+compile_methods (MonoAotCompile *acfg)
+{
+	int i, methods_len;
 
 	if (acfg->aot_opts.nthreads > 0) {
 		GPtrArray *frag;
@@ -6105,7 +5368,7 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 			user_data [1] = acfg;
 			user_data [2] = frag;
 			
-			handle = CreateThread (NULL, 0, (gpointer)compile_thread_main, user_data, 0, NULL);
+			handle = mono_create_thread (NULL, 0, (gpointer)compile_thread_main, user_data, 0, NULL);
 			g_ptr_array_add (threads, handle);
 		}
 		g_free (methods);
@@ -6122,14 +5385,345 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 		/* This can new methods to acfg->methods */
 		compile_method (acfg, g_ptr_array_index (acfg->methods, i));
 	}
+}
+
+static int
+compile_asm (MonoAotCompile *acfg)
+{
+	char *command, *objfile;
+	char *outfile_name, *tmp_outfile_name;
+	const char *tool_prefix = acfg->aot_opts.tool_prefix ? acfg->aot_opts.tool_prefix : "";
+
+#if defined(TARGET_AMD64)
+#define AS_OPTIONS "--64"
+#elif defined(TARGET_POWERPC64)
+#define AS_OPTIONS "-a64 -mppc64"
+#define LD_OPTIONS "-m elf64ppc"
+#elif defined(sparc) && SIZEOF_VOID_P == 8
+#define AS_OPTIONS "-xarch=v9"
+#else
+#define AS_OPTIONS ""
+#endif
+
+#ifndef LD_OPTIONS
+#define LD_OPTIONS ""
+#endif
+
+	if (acfg->aot_opts.asm_only) {
+		printf ("Output file: '%s'.\n", acfg->tmpfname);
+		if (acfg->aot_opts.static_link)
+			printf ("Linking symbol: '%s'.\n", acfg->static_linking_symbol);
+		return 0;
+	}
+
+	if (acfg->aot_opts.static_link) {
+		if (acfg->aot_opts.outfile)
+			objfile = g_strdup_printf ("%s", acfg->aot_opts.outfile);
+		else
+			objfile = g_strdup_printf ("%s.o", acfg->image->name);
+	} else {
+		objfile = g_strdup_printf ("%s.o", acfg->tmpfname);
+	}
+	command = g_strdup_printf ("%sas %s %s -o %s", tool_prefix, AS_OPTIONS, acfg->tmpfname, objfile);
+	printf ("Executing the native assembler: %s\n", command);
+	if (system (command) != 0) {
+		g_free (command);
+		g_free (objfile);
+		return 1;
+	}
+
+	g_free (command);
+
+	if (acfg->aot_opts.static_link) {
+		printf ("Output file: '%s'.\n", objfile);
+		printf ("Linking symbol: '%s'.\n", acfg->static_linking_symbol);
+		g_free (objfile);
+		return 0;
+	}
+
+	if (acfg->aot_opts.outfile)
+		outfile_name = g_strdup_printf ("%s", acfg->aot_opts.outfile);
+	else
+		outfile_name = g_strdup_printf ("%s%s", acfg->image->name, SHARED_EXT);
+
+	tmp_outfile_name = g_strdup_printf ("%s.tmp", outfile_name);
+
+#if defined(sparc)
+	command = g_strdup_printf ("ld -shared -G -o %s %s.o", tmp_outfile_name, acfg->tmpfname);
+#elif defined(__ppc__) && defined(__MACH__)
+	command = g_strdup_printf ("gcc -dynamiclib -o %s %s.o", tmp_outfile_name, acfg->tmpfname);
+#elif defined(PLATFORM_WIN32)
+	command = g_strdup_printf ("gcc -shared --dll -mno-cygwin -o %s %s.o", tmp_outfile_name, acfg->tmpfname);
+#else
+	command = g_strdup_printf ("%sld %s -shared -o %s %s.o", tool_prefix, LD_OPTIONS, tmp_outfile_name, acfg->tmpfname);
+#endif
+	printf ("Executing the native linker: %s\n", command);
+	if (system (command) != 0) {
+		g_free (tmp_outfile_name);
+		g_free (outfile_name);
+		g_free (command);
+		g_free (objfile);
+		return 1;
+	}
+
+	g_free (command);
+	unlink (objfile);
+	/*com = g_strdup_printf ("strip --strip-unneeded %s%s", acfg->image->name, SHARED_EXT);
+	printf ("Stripping the binary: %s\n", com);
+	system (com);
+	g_free (com);*/
+
+#if defined(TARGET_ARM) && !defined(__MACH__)
+	/* 
+	 * gas generates 'mapping symbols' each time code and data is mixed, which 
+	 * happens a lot in emit_and_reloc_code (), so we need to get rid of them.
+	 */
+	command = g_strdup_printf ("%sstrip --strip-symbol=\\$a --strip-symbol=\\$d %s", tool_prefix, tmp_outfile_name);
+	printf ("Stripping the binary: %s\n", command);
+	if (system (command) != 0) {
+		g_free (tmp_outfile_name);
+		g_free (outfile_name);
+		g_free (command);
+		g_free (objfile);
+		return 1;
+	}
+#endif
+
+	rename (tmp_outfile_name, outfile_name);
+
+	g_free (tmp_outfile_name);
+	g_free (outfile_name);
+	g_free (objfile);
+
+	if (acfg->aot_opts.save_temps)
+		printf ("Retained input file.\n");
+	else
+		unlink (acfg->tmpfname);
+
+	return 0;
+}
+
+static MonoAotCompile*
+acfg_create (MonoAssembly *ass, guint32 opts)
+{
+	MonoImage *image = ass->image;
+	MonoAotCompile *acfg;
+	int i;
+
+	acfg = g_new0 (MonoAotCompile, 1);
+	acfg->methods = g_ptr_array_new ();
+	acfg->method_indexes = g_hash_table_new (NULL, NULL);
+	acfg->method_depth = g_hash_table_new (NULL, NULL);
+	acfg->plt_offset_to_entry = g_hash_table_new (NULL, NULL);
+	acfg->patch_to_plt_entry = g_hash_table_new (mono_patch_info_hash, mono_patch_info_equal);
+	acfg->patch_to_got_offset = g_hash_table_new (mono_patch_info_hash, mono_patch_info_equal);
+	acfg->patch_to_got_offset_by_type = g_new0 (GHashTable*, MONO_PATCH_INFO_NUM);
+	for (i = 0; i < MONO_PATCH_INFO_NUM; ++i)
+		acfg->patch_to_got_offset_by_type [i] = g_hash_table_new (mono_patch_info_hash, mono_patch_info_equal);
+	acfg->got_patches = g_ptr_array_new ();
+	acfg->method_to_cfg = g_hash_table_new (NULL, NULL);
+	acfg->token_info_hash = g_hash_table_new_full (NULL, NULL, NULL, g_free);
+	acfg->image_hash = g_hash_table_new (NULL, NULL);
+	acfg->image_table = g_ptr_array_new ();
+	acfg->globals = g_ptr_array_new ();
+	acfg->image = image;
+	acfg->opts = opts;
+	acfg->mempool = mono_mempool_new ();
+	acfg->extra_methods = g_ptr_array_new ();
+	acfg->unwind_info_offsets = g_hash_table_new (NULL, NULL);
+	acfg->unwind_ops = g_ptr_array_new ();
+	acfg->method_label_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+	InitializeCriticalSection (&acfg->mutex);
+
+	return acfg;
+}
+
+static void
+acfg_free (MonoAotCompile *acfg)
+{
+	int i;
+
+	img_writer_destroy (acfg->w);
+	for (i = 0; i < acfg->nmethods; ++i)
+		if (acfg->cfgs [i])
+			g_free (acfg->cfgs [i]);
+	g_free (acfg->cfgs);
+	g_free (acfg->static_linking_symbol);
+	g_free (acfg->got_symbol);
+	g_free (acfg->plt_symbol);
+	g_ptr_array_free (acfg->methods, TRUE);
+	g_ptr_array_free (acfg->got_patches, TRUE);
+	g_ptr_array_free (acfg->image_table, TRUE);
+	g_ptr_array_free (acfg->globals, TRUE);
+	g_ptr_array_free (acfg->unwind_ops, TRUE);
+	g_hash_table_destroy (acfg->method_indexes);
+	g_hash_table_destroy (acfg->method_depth);
+	g_hash_table_destroy (acfg->plt_offset_to_entry);
+	g_hash_table_destroy (acfg->patch_to_plt_entry);
+	g_hash_table_destroy (acfg->patch_to_got_offset);
+	g_hash_table_destroy (acfg->method_to_cfg);
+	g_hash_table_destroy (acfg->token_info_hash);
+	g_hash_table_destroy (acfg->image_hash);
+	g_hash_table_destroy (acfg->unwind_info_offsets);
+	g_hash_table_destroy (acfg->method_label_hash);
+	for (i = 0; i < MONO_PATCH_INFO_NUM; ++i)
+		g_hash_table_destroy (acfg->patch_to_got_offset_by_type [i]);
+	g_free (acfg->patch_to_got_offset_by_type);
+	mono_mempool_destroy (acfg->mempool);
+	g_free (acfg);
+}
+
+int
+mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
+{
+	MonoImage *image = ass->image;
+	int res;
+	MonoAotCompile *acfg;
+	char *outfile_name, *tmp_outfile_name, *p;
+	TV_DECLARE (atv);
+	TV_DECLARE (btv);
+
+	printf ("Mono Ahead of Time compiler - compiling assembly %s\n", image->name);
+
+	acfg = acfg_create (ass, opts);
+
+	memset (&acfg->aot_opts, 0, sizeof (acfg->aot_opts));
+	acfg->aot_opts.write_symbols = TRUE;
+	acfg->aot_opts.ntrampolines = 1024;
+	acfg->aot_opts.nrgctx_trampolines = 1024;
+	acfg->aot_opts.nimt_trampolines = 128;
+
+	mono_aot_parse_options (aot_options, &acfg->aot_opts);
+
+	//acfg->aot_opts.print_skipped_methods = TRUE;
+
+#ifndef MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES
+	if (acfg->aot_opts.full_aot) {
+		printf ("--aot=full is not supported on this platform.\n");
+		return 1;
+	}
+#endif
+
+	if (acfg->aot_opts.static_link)
+		acfg->aot_opts.asm_writer = TRUE;
+
+	if (acfg->aot_opts.soft_debug) {
+		MonoDebugOptions *opt = mini_get_debug_options ();
+
+		opt->mdb_optimizations = TRUE;
+		opt->gen_seq_points = TRUE;
+
+		if (mono_debug_format == MONO_DEBUG_FORMAT_NONE) {
+			fprintf (stderr, "The soft-debug AOT option requires the --debug option.\n");
+			return 1;
+		}
+	}
+
+	load_profile_files (acfg);
+
+	acfg->num_trampolines [MONO_AOT_TRAMP_SPECIFIC] = acfg->aot_opts.full_aot ? acfg->aot_opts.ntrampolines : 0;
+#ifdef MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE
+	acfg->num_trampolines [MONO_AOT_TRAMP_STATIC_RGCTX] = acfg->aot_opts.full_aot ? acfg->aot_opts.nrgctx_trampolines : 0;
+#endif
+	acfg->num_trampolines [MONO_AOT_TRAMP_IMT_THUNK] = acfg->aot_opts.full_aot ? acfg->aot_opts.nimt_trampolines : 0;
+
+	acfg->got_symbol = g_strdup_printf ("mono_aot_%s_got", acfg->image->assembly->aname.name);
+	acfg->plt_symbol = g_strdup_printf ("mono_aot_%s_plt", acfg->image->assembly->aname.name);
+
+	/* Get rid of characters which cannot occur in symbols */
+	for (p = acfg->got_symbol; *p; ++p) {
+		if (!(isalnum (*p) || *p == '_'))
+			*p = '_';
+	}
+	for (p = acfg->plt_symbol; *p; ++p) {
+		if (!(isalnum (*p) || *p == '_'))
+			*p = '_';
+	}
+
+	acfg->method_index = 1;
+
+	collect_methods (acfg);
+
+	acfg->cfgs_size = acfg->methods->len + 32;
+	acfg->cfgs = g_new0 (MonoCompile*, acfg->cfgs_size);
+
+	/* PLT offset 0 is reserved for the PLT trampoline */
+	acfg->plt_offset = 1;
+
+	/* GOT offset 0 is reserved for the address of the current assembly */
+	{
+		MonoJumpInfo *ji;
+
+		ji = mono_mempool_alloc0 (acfg->mempool, sizeof (MonoAotCompile));
+		ji->type = MONO_PATCH_INFO_IMAGE;
+		ji->data.image = acfg->image;
+
+		get_got_offset (acfg, ji);
+
+		/* Slot 1 is reserved for the mscorlib got addr */
+		ji = mono_mempool_alloc0 (acfg->mempool, sizeof (MonoAotCompile));
+		ji->type = MONO_PATCH_INFO_MSCORLIB_GOT_ADDR;
+		get_got_offset (acfg, ji);
+	}
+
+	TV_GETTIME (atv);
+
+	compile_methods (acfg);
 
 	TV_GETTIME (btv);
- 
+
 	acfg->stats.jit_time = TV_ELAPSED (atv, btv);
 
 	TV_GETTIME (atv);
 
-	alloc_got_slots (acfg);
+	if (!acfg->aot_opts.asm_only && !acfg->aot_opts.asm_writer && bin_writer_supported ()) {
+		if (acfg->aot_opts.outfile)
+			outfile_name = g_strdup_printf ("%s", acfg->aot_opts.outfile);
+		else
+			outfile_name = g_strdup_printf ("%s%s", acfg->image->name, SHARED_EXT);
+
+		/* 
+		 * Can't use g_file_open_tmp () as it will be deleted at exit, and
+		 * it might be in another file system so the rename () won't work.
+		 */
+		tmp_outfile_name = g_strdup_printf ("%s.tmp", outfile_name);
+
+		acfg->fp = fopen (tmp_outfile_name, "w");
+		if (!acfg->fp) {
+			printf ("Unable to create temporary file '%s': %s\n", tmp_outfile_name, strerror (errno));
+			return 1;
+		}
+
+		acfg->w = img_writer_create (acfg->fp, TRUE);
+		acfg->use_bin_writer = TRUE;
+	} else {
+		if (acfg->aot_opts.asm_only) {
+			if (acfg->aot_opts.outfile)
+				acfg->tmpfname = g_strdup_printf ("%s", acfg->aot_opts.outfile);
+			else
+				acfg->tmpfname = g_strdup_printf ("%s.s", acfg->image->name);
+			acfg->fp = fopen (acfg->tmpfname, "w+");
+		} else {
+			int i = g_file_open_tmp ("mono_aot_XXXXXX", &acfg->tmpfname, NULL);
+			acfg->fp = fdopen (i, "w+");
+		}
+		g_assert (acfg->fp);
+
+		acfg->w = img_writer_create (acfg->fp, FALSE);
+		
+		tmp_outfile_name = NULL;
+		outfile_name = NULL;
+	}
+
+	acfg->temp_prefix = img_writer_get_temp_label_prefix (acfg->w);
+
+	if (!acfg->aot_opts.nodebug)
+		acfg->dwarf = mono_dwarf_writer_create (acfg->w, NULL, 0, FALSE);
+
+	img_writer_emit_start (acfg->w);
+
+	if (acfg->dwarf)
+		mono_dwarf_writer_emit_base_info (acfg->dwarf, arch_get_cie_program ());
 
 	emit_code (acfg);
 
@@ -6147,6 +5741,8 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 
 	emit_exception_info (acfg);
 
+	emit_unwind_info (acfg);
+
 	emit_class_info (acfg);
 
 	emit_plt (acfg);
@@ -6159,25 +5755,38 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 
 	emit_globals (acfg);
 
-	emit_dwarf_info (acfg);
+	if (acfg->dwarf) {
+		emit_dwarf_info (acfg);
+		mono_dwarf_writer_close (acfg->dwarf);
+	}
 
-	sprintf (symbol, "mem_end");
-	emit_section_change (acfg, ".text", 1);
-	emit_global (acfg, symbol, FALSE);
-	emit_alignment (acfg, 8);
-	emit_label (acfg, symbol);
+	emit_mem_end (acfg);
 
 	TV_GETTIME (btv);
 
 	acfg->stats.gen_time = TV_ELAPSED (atv, btv);
 
-	printf ("Code: %d Info: %d Ex Info: %d Class Info: %d PLT: %d GOT Info: %d GOT Info Offsets: %d GOT: %d\n", acfg->stats.code_size, acfg->stats.info_size, acfg->stats.ex_info_size, acfg->stats.class_info_size, acfg->plt_offset, acfg->stats.got_info_size, acfg->stats.got_info_offsets_size, (int)(acfg->got_offset * sizeof (gpointer)));
+	printf ("Code: %d Info: %d Ex Info: %d Unwind Info: %d Class Info: %d PLT: %d GOT Info: %d GOT Info Offsets: %d GOT: %d Offsets: %d\n", acfg->stats.code_size, acfg->stats.info_size, acfg->stats.ex_info_size, acfg->stats.unwind_info_size, acfg->stats.class_info_size, acfg->plt_offset, acfg->stats.got_info_size, acfg->stats.got_info_offsets_size, (int)(acfg->got_offset * sizeof (gpointer)), (int)(acfg->nmethods * 3 * sizeof (gpointer)));
 
 	TV_GETTIME (atv);
-	res = emit_writeout (acfg);
+	res = img_writer_emit_writeout (acfg->w);
 	if (res != 0) {
 		acfg_free (acfg);
 		return res;
+	}
+	if (acfg->use_bin_writer) {
+		int err = rename (tmp_outfile_name, outfile_name);
+
+		if (err) {
+			printf ("Unable to rename '%s' to '%s': %s\n", tmp_outfile_name, outfile_name, strerror (errno));
+			return 1;
+		}
+	} else {
+		res = compile_asm (acfg);
+		if (res != 0) {
+			acfg_free (acfg);
+			return res;
+		}
 	}
 	TV_GETTIME (btv);
 	acfg->stats.link_time = TV_ELAPSED (atv, btv);
@@ -6187,20 +5796,21 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 		printf ("%d methods are generic (%d%%)\n", acfg->stats.genericcount, acfg->stats.mcount ? (acfg->stats.genericcount * 100) / acfg->stats.mcount : 100);
 	if (acfg->stats.abscount)
 		printf ("%d methods contain absolute addresses (%d%%)\n", acfg->stats.abscount, acfg->stats.mcount ? (acfg->stats.abscount * 100) / acfg->stats.mcount : 100);
-	if (acfg->stats.wrappercount)
-		printf ("%d methods contain wrapper references (%d%%)\n", acfg->stats.wrappercount, acfg->stats.mcount ? (acfg->stats.wrappercount * 100) / acfg->stats.mcount : 100);
 	if (acfg->stats.lmfcount)
 		printf ("%d methods contain lmf pointers (%d%%)\n", acfg->stats.lmfcount, acfg->stats.mcount ? (acfg->stats.lmfcount * 100) / acfg->stats.mcount : 100);
 	if (acfg->stats.ocount)
 		printf ("%d methods have other problems (%d%%)\n", acfg->stats.ocount, acfg->stats.mcount ? (acfg->stats.ocount * 100) / acfg->stats.mcount : 100);
 	printf ("Methods without GOT slots: %d (%d%%)\n", acfg->stats.methods_without_got_slots, acfg->stats.mcount ? (acfg->stats.methods_without_got_slots * 100) / acfg->stats.mcount : 100);
 	printf ("Direct calls: %d (%d%%)\n", acfg->stats.direct_calls, acfg->stats.all_calls ? (acfg->stats.direct_calls * 100) / acfg->stats.all_calls : 100);
-	printf ("JIT time: %d ms, Generation time: %d ms, Assembly+Link time: %d ms.\n", acfg->stats.jit_time / 1000, acfg->stats.gen_time / 1000, acfg->stats.link_time / 1000);
 
+	/*
 	printf ("GOT slot distribution:\n");
 	for (i = 0; i < MONO_PATCH_INFO_NONE; ++i)
 		if (acfg->stats.got_slot_types [i])
 			printf ("\t%s: %d\n", get_patch_name (i), acfg->stats.got_slot_types [i]);
+	*/
+
+	printf ("JIT time: %d ms, Generation time: %d ms, Assembly+Link time: %d ms.\n", acfg->stats.jit_time / 1000, acfg->stats.gen_time / 1000, acfg->stats.link_time / 1000);
 
 	acfg_free (acfg);
 	
@@ -6222,7 +5832,10 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
  * into the runtime to emit the shared library, which would cause all kinds of
  * complications, like threading issues, and the fact that the ELF writer's
  * emit_writeout () function cannot be called more than once.
+ * GDB 7.0 and later has a JIT interface.
  */
+
+#define USE_GDB_JIT_INTERFACE
 
 /* The recommended gdb macro is: */
 /*
@@ -6232,73 +5845,275 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
   end
 */
 
-static MonoAotCompile *xdebug_acfg;
+/*
+ * GDB JIT interface definitions.
+ *
+ *	http://sources.redhat.com/gdb/onlinedocs/gdb_30.html
+ */
+typedef enum
+{
+  JIT_NOACTION = 0,
+  JIT_REGISTER_FN,
+  JIT_UNREGISTER_FN
+} jit_actions_t;
+
+struct jit_code_entry
+{
+  struct jit_code_entry *next_entry;
+  struct jit_code_entry *prev_entry;
+  const char *symfile_addr;
+  guint64 symfile_size;
+};
+
+struct jit_descriptor
+{
+  guint32 version;
+  /* This type should be jit_actions_t, but we use guint32
+     to be explicit about the bitwidth.  */
+  guint32 action_flag;
+  struct jit_code_entry *relevant_entry;
+  struct jit_code_entry *first_entry;
+};
+
+
+#ifdef _MSC_VER
+#define MONO_NOINLINE __declspec (noinline)
+#else
+#define MONO_NOINLINE __attribute__((noinline))
+#endif
+
+/* GDB puts a breakpoint in this function.  */
+void MONO_NOINLINE __jit_debug_register_code(void);
+
+void MONO_NOINLINE __jit_debug_register_code(void) { };
+
+/* Make sure to specify the version statically, because the
+   debugger may check the version before we can set it.  */
+struct jit_descriptor __jit_debug_descriptor = { 1, 0, 0, 0 };
+
+static MonoImageWriter *xdebug_w;
+static MonoDwarfWriter *xdebug_writer;
+static FILE *xdebug_fp, *il_file;
+static gboolean use_gdb_interface, save_symfiles;
+static int il_file_line_index;
+static GHashTable *xdebug_syms;
 
 void
-mono_xdebug_init (void)
+mono_xdebug_init (char *options)
 {
-	MonoAotCompile *acfg;
+	MonoImageWriter *w;
+	char **args, **ptr;
 
-	acfg = g_new0 (MonoAotCompile, 1);
-	acfg->mempool = mono_mempool_new ();
-	InitializeCriticalSection (&acfg->mutex);
-	acfg->aot_opts.asm_only = TRUE;
-	acfg->aot_opts.outfile = g_strdup ("xdb.s");
+	args = g_strsplit (options, ",", -1);
+	for (ptr = args; ptr && *ptr; ptr ++) {
+		char *arg = *ptr;
+
+		if (!strcmp (arg, "gdb"))
+			use_gdb_interface = TRUE;
+		if (!strcmp (arg, "save-symfiles"))
+			save_symfiles = TRUE;
+	}
+
+	/* This file will contain the IL code for methods which don't have debug info */
+	il_file = fopen ("xdb.il", "w");
+
+	if (use_gdb_interface)
+		return;
 
 	unlink ("xdb.s");
+	xdebug_fp = fopen ("xdb.s", "w");
+	
+	w = img_writer_create (xdebug_fp, FALSE);
 
-	emit_start (acfg);
+	img_writer_emit_start (w);
 
-	xdebug_acfg = acfg;
+	xdebug_writer = mono_dwarf_writer_create (w, il_file, 0, TRUE);
 
 	/* Emit something so the file has a text segment */
-	emit_section_change (acfg, ".text", 0);
-	emit_string (acfg, "");
+	img_writer_emit_section_change (w, ".text", 0);
+	img_writer_emit_string (w, "");
 
-	emit_base_dwarf_info (acfg);
+	mono_dwarf_writer_emit_base_info (xdebug_writer, arch_get_cie_program ());
 }
+
+static void
+xdebug_begin_emit (MonoImageWriter **out_w, MonoDwarfWriter **out_dw)
+{
+	MonoImageWriter *w;
+	MonoDwarfWriter *dw;
+
+	w = img_writer_create (NULL, TRUE);
+
+	img_writer_emit_start (w);
+
+	/* This file will contain the IL code for methods which don't have debug info */
+	if (!il_file)
+		il_file = fopen ("xdb.il", "w");
+
+	dw = mono_dwarf_writer_create (w, il_file, il_file_line_index, FALSE);
+
+	mono_dwarf_writer_emit_base_info (dw, arch_get_cie_program ());
+
+	*out_w = w;
+	*out_dw = dw;
+}
+
+static void
+xdebug_end_emit (MonoImageWriter *w, MonoDwarfWriter *dw, MonoMethod *method)
+{
+	guint8 *img;
+	guint32 img_size;
+	struct jit_code_entry *entry;
+
+	il_file_line_index = mono_dwarf_writer_get_il_file_line_index (dw);
+	mono_dwarf_writer_close (dw);
+
+	img_writer_emit_writeout (w);
+
+	img = img_writer_get_output (w, &img_size);
+
+	img_writer_destroy (w);
+
+	if (FALSE) {
+		/* Save the symbol files to help debugging */
+		FILE *fp;
+		char *file_name;
+		static int file_counter;
+
+		file_counter ++;
+		file_name = g_strdup_printf ("xdb-%d.o", file_counter);
+		//printf ("%s -> %s\n", mono_method_full_name (method, TRUE), file_name);
+
+		fp = fopen (file_name, "w");
+		fwrite (img, img_size, 1, fp);
+		fclose (fp);
+		g_free (file_name);
+	}
+
+	/* Register the image with GDB */
+
+	entry = g_malloc (sizeof (struct jit_code_entry));
+
+	entry->symfile_addr = (const char*)img;
+	entry->symfile_size = img_size;
+
+	entry->next_entry = __jit_debug_descriptor.first_entry;
+	if (__jit_debug_descriptor.first_entry)
+		__jit_debug_descriptor.first_entry->prev_entry = entry;
+	__jit_debug_descriptor.first_entry = entry;
+	
+	__jit_debug_descriptor.relevant_entry = entry;
+	__jit_debug_descriptor.action_flag = JIT_REGISTER_FN;
+
+	__jit_debug_register_code ();
+}
+
+/*
+ * mono_xdebug_flush:
+ *
+ *   This could be called from inside gdb to flush the debugging information not yet
+ * registered with gdb.
+ */
+void
+mono_xdebug_flush (void)
+{
+	if (xdebug_w)
+		xdebug_end_emit (xdebug_w, xdebug_writer, NULL);
+
+	xdebug_begin_emit (&xdebug_w, &xdebug_writer);
+}
+
+static int xdebug_method_count;
 
 /*
  * mono_save_xdebug_info:
  *
  *   Emit debugging info for METHOD into an assembly file which can be assembled
  * and loaded into gdb to provide debugging info for JITted code.
+ * LOCKING: Acquires the loader lock.
  */
 void
-mono_save_xdebug_info (MonoMethod *method, guint8 *code, guint32 code_size, MonoInst **args, GSList *unwind_info)
+mono_save_xdebug_info (MonoCompile *cfg)
 {
-	MonoAotCompile *acfg;
+	if (use_gdb_interface) {
+		mono_loader_lock ();
 
-	if (!xdebug_acfg)
-		return;
-	
-	acfg = xdebug_acfg;
+		if (!xdebug_syms)
+			xdebug_syms = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
-	mono_acfg_lock (acfg);
-	emit_method_dwarf_info (acfg, method, NULL, NULL, code, code_size, args, unwind_info);
-	fflush (acfg->fp);
-	mono_acfg_unlock (acfg);
+		/*
+		 * gdb is not designed to handle 1000s of symbol files (one per method). So we
+		 * group them into groups of 100.
+		 */
+		if ((xdebug_method_count % 100) == 0)
+			mono_xdebug_flush ();
+
+		xdebug_method_count ++;
+
+		mono_dwarf_writer_emit_method (xdebug_writer, cfg, cfg->jit_info->method, NULL, NULL, cfg->jit_info->code_start, cfg->jit_info->code_size, cfg->args, cfg->locals, cfg->unwind_ops, mono_debug_find_method (cfg->jit_info->method, mono_domain_get ()));
+
+#if 0
+		/* 
+		 * Emit a symbol for the code by emitting it at the beginning of the text 
+		 * segment, and setting the text segment to have an absolute address.
+		 * This symbol can be used to set breakpoints in gdb.
+		 * FIXME: This doesn't work when multiple methods are emitted into the same file.
+		 */
+		sym = get_debug_sym (cfg->jit_info->method, "", xdebug_syms);
+		img_writer_emit_section_change (w, ".text", 0);
+		if (!xdebug_text_addr) {
+			xdebug_text_addr = cfg->jit_info->code_start;
+			img_writer_set_section_addr (w, (gssize)xdebug_text_addr);
+		}
+		img_writer_emit_global_with_size (w, sym, cfg->jit_info->code_size, TRUE);
+		img_writer_emit_label (w, sym);
+		img_writer_emit_bytes (w, cfg->jit_info->code_start, cfg->jit_info->code_size);
+		g_free (sym);
+#endif
+		
+		mono_loader_unlock ();
+	} else {
+		if (!xdebug_writer)
+			return;
+
+		mono_loader_lock ();
+		mono_dwarf_writer_emit_method (xdebug_writer, cfg, cfg->jit_info->method, NULL, NULL, cfg->jit_info->code_start, cfg->jit_info->code_size, cfg->args, cfg->locals, cfg->unwind_ops, mono_debug_find_method (cfg->jit_info->method, mono_domain_get ()));
+		fflush (xdebug_fp);
+		mono_loader_unlock ();
+	}
 }
 
 /*
  * mono_save_trampoline_xdebug_info:
  *
  *   Same as mono_save_xdebug_info, but for trampolines.
+ * LOCKING: Acquires the loader lock.
  */
 void
 mono_save_trampoline_xdebug_info (const char *tramp_name, guint8 *code, guint32 code_size, GSList *unwind_info)
 {
-	MonoAotCompile *acfg;
+	if (use_gdb_interface) {
+		MonoImageWriter *w;
+		MonoDwarfWriter *dw;
 
-	if (!xdebug_acfg)
-		return;
+		mono_loader_lock ();
 
-	acfg = xdebug_acfg;
+		xdebug_begin_emit (&w, &dw);
 
-	mono_acfg_lock (acfg);
-	emit_trampoline_dwarf_info (acfg, tramp_name, NULL, NULL, code, code_size, unwind_info);
-	fflush (acfg->fp);
-	mono_acfg_unlock (acfg);
+		mono_dwarf_writer_emit_trampoline (dw, tramp_name, NULL, NULL, code, code_size, unwind_info);
+
+		xdebug_end_emit (w, dw, NULL);
+		
+		mono_loader_unlock ();
+	} else {
+		if (!xdebug_writer)
+			return;
+
+		mono_loader_lock ();
+		mono_dwarf_writer_emit_trampoline (xdebug_writer, tramp_name, NULL, NULL, code, code_size, unwind_info);
+		fflush (xdebug_fp);
+		mono_loader_unlock ();
+	}
 }
 
 #else
@@ -6312,12 +6127,12 @@ mono_compile_assembly (MonoAssembly *ass, guint32 opts, const char *aot_options)
 }
 
 void
-mono_xdebug_init (void)
+mono_xdebug_init (char *options)
 {
 }
 
 void
-mono_save_xdebug_info (MonoMethod *method, guint8 *code, guint32 code_size, MonoInst **args, GSList *unwind_info)
+mono_save_xdebug_info (MonoCompile *cfg)
 {
 }
 

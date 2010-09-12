@@ -1,11 +1,11 @@
 .\" 
 .\" mono manual page.
-.\" (C) 2003 Ximian, Inc. 
-.\" (C) 2004-2005 Novell, Inc. 
+.\" Copyright 2003 Ximian, Inc. 
+.\" Copyright 2004-2009 Novell, Inc. 
 .\" Author:
 .\"   Miguel de Icaza (miguel@gnu.org)
 .\"
-.TH Mono "Mono 2.4"
+.TH Mono "Mono 2.5"
 .SH NAME
 mono \- Mono's ECMA-CLI native code generator (Just-in-Time and Ahead-of-Time)
 .SH SYNOPSIS
@@ -106,8 +106,55 @@ This is currently an experimental feature as it is not complete.
 This instructs Mono to precompile code that has historically not been
 precompiled with AOT.   
 .TP
+.I outfile=[filename]
+Instructs the AOT compiler to save the output to the specified file.
+.TP
 .I write-symbols
 Instructs the AOT compiler to emit debug symbol information.
+.TP
+.I save-temps,keep-temps
+Instructs the AOT compiler to keep temporary files.
+.TP
+.I threads=[number]
+This is an experimental option for the AOT compiler to use multiple threads
+when compiling the methods.
+.TP
+.I nodebug
+Instructs the AOT compiler to not output any debugging information.
+.TP
+.I ntrampolines=[number]
+When compiling in full aot mode, the method trampolines must be precreated
+in the AOT image.  You can add additional method trampolines with this argument.
+Defaults to 1024.
+.TP
+.I nrgctx-trampolines=[number]
+When compiling in full aot mode, the generic sharing trampolines must be precreated
+in the AOT image.  You can add additional method trampolines with this argument.
+Defaults to 1024.
+.TP
+.I nimt-trampolines=[number]
+When compiling in full aot mode, the IMT trampolines must be precreated
+in the AOT image.  You can add additional method trampolines with this argument.
+Defaults to 128.
+.TP
+.I print-skipped-methods
+If the AOT compiler cannot compile a method for any reason, enabling this flag
+will output the skipped methods to the console.
+.TP
+.I autoreg
+The AOT compiler will emit a (ELF only) library initializer to automatically
+register the aot compiled module with the runtime.  This is only useful in static
+mode
+.TP
+.I asmonly
+Instructs the AOT compiler to output assembly code instead of an object file.
+.TP
+.I soft-debug
+This instructs the compiler to generate sequence point checks that
+allow Mono's soft debugger to debug applications even on systems where
+it is not possible to set breakpoints or to single step (certain
+hardware configurations like the cell phones and video gaming
+consoles). 
 .TP
 .I static
 Create an ELF object file (.o) which can be statically linked into an executable
@@ -299,6 +346,10 @@ execution time.
 Disable some JIT optimizations which are usually only disabled when
 running inside the debugger.  This can be helpful if you want to attach
 to the running process with mdb.
+.TP
+.I gdb
+Generate and register debugging information with gdb. This is only supported on some
+platforms, and only when using gdb 7.0 or later.
 .ne
 .RE
 .TP
@@ -503,14 +554,45 @@ addr2line utility that comes from the binutils package).
 .PP
 The
 .I logging profiler
-will eventually replace the default profiler as it is more complete
-and encompasses the functionality of all the other profilers for Mono.
-It supports the following execution modes:
+is a general purpose profiler that can track many different kinds of
+events and logs those into a file as the program executes.   This is
+different than previous profilers in Mono that kept the information in
+memory and rendered a summary of the results when the program shut
+down.
+.PP
+Using the logging profiler means that useful information can be
+gathered for long-running applications, applications that terminate
+abormally (crashes, segfaults, complicated tear down processes) or
+when no data about the shutdown is required.
+.PP
+The data collected by the running threads is kept independent of each
+other to minimize the runtime overhead and the information dumped into
+the log at regular intervals. 
+.PP
+A sample use is very simple:
+.nf
+	$ mono --profile=logging program.exe
+
+	$ mprof-decoder program.mprof
+.fi
+.PP
+In the above example the logging profiler is used in its default mode
+that merely records GC statistics for the execution of program.exe.
+The profiling data collected is stored in the file program.mprof.  The
+mprof-decoder tool is then used to analyze the data.
+.PP
+You can instruct the logging profiler to record different one or more
+sets of events.   These are the modes supported:
 .IP
-.I Statistical:
-the program instruction pointer is periodically sampled (it works also with
-unmanaged functions). If call chains are requested, for each sample the
-profiler gets a partial stack trace (up to a desired depth) so that
+.I Statistical Profiling (stat)
+the program instruction pointer is periodically sampled to determine
+where the program is spending most of its time.   Statistical
+profiling has a very low impact on a running application and it is
+very useful to get a general picture of where time is being spent on a
+program.   
+.IP 
+If call chains are requested, for each sample the profiler gets a
+partial stack trace (limited by the specified depth) so that
 caller-callee information is available.
 .IP
 .I Instrumenting:
@@ -536,16 +618,6 @@ Moreover, other events can be logged and analyzed, like jit time for each
 method, load and unload for assemblies, modules and and individual classes,
 and appdomain and thread creation and destruction.
 .PP
-Instead of reporting the collected
-information at the end of the execution of the program, this profiler logs
-all the events periodically into a file during program execution.
-To minimize the performance impact with multi-threaded applications,
-the logging uses per-thread buffers that are routinely saved to disk.
-.PP
-The output file contains compressed events, to process the data you should
-use tools like the "Mono.Profiler" tool provided on the Mono SVN
-repository.  
-.PP
 This profiler is activated passing the \fB--profile=logging\fR option to
 the mono runtime, and is controlled attaching further options, like
 \fB--profile=logging:statistical\fR for doing statistical profiling (multiple
@@ -553,17 +625,16 @@ options are separated by commas).
 .PP
 As a quick primer, here are a few examples of the most common usage modes:
 .PP
-To write the resulting data to "mydata.mprof" (defaults to statistical
-profiling):
+To perform statistical profiling:
 .nf
 
-	mono --profile=logging:output=mydata.mprof program.exe
+	mono --profile=logging:stat program.exe
 .fi
 .PP
 To perform statistical profiling, inspecting call chains up to depth 8:
 .nf
 
-	mono --profile=logging:statistical=8 program.exe
+	mono --profile=logging:stat=8 program.exe
 .fi
 .PP
 To profile allocations (by default the call stack will be analized for
@@ -584,41 +655,34 @@ To perform heap profiling taking heap snapshots:
 .nf
 
 	mono --profile=logging:heap=all program.exe
-	mono --profile=logging:heap=<signal> program.exe
 .fi
+.PP
+To write the resulting data to a different file:
+.nf
 
-If "all" is specified, a heap snapshot is taken at each collection.
-If, instead, a signal name or number is given (one of SIGUSR1, SIGUSR2 and
-SIGPROF, remembering that SIGPROF is not compatible with the statistical
-profiler), a garbage collection is forced and a snapshot is taken every
-time the signal is received.
-Heap profiling also enables full allocation profiling (with call stacks),
-and each allocation can be related to its corresponding object in the
-snapshots, enabling investigations like "find all objects of a given class
-allocated by a given method and still live at a given collection, and then
-find all objects referencing them".
-
+	mono --profile=logging:output=mydata.mprof program.exe
+.fi
 .PP
 Then you would need to invoke the decoder \fImprof-decoder(1)\fR
 on the output file to see the profiling results, or to examine heap
 snapshots and allocations in detail \fImprof-heap-viewer(1)\fR.
-
 .PP
 The operating modes described above are the default ones, and are sufficient
 to use the profiler.
 .PP
 To further customize the profiler behavior there are more options, described
 below.
-These options can be individually enabled and disabled prefixing them with
-an (optional) '+' character or a '-' character.
-For instance, the "allocations" option by default records also the full call
-stack at each allocation.
-If only the caller is wanted, one should use "allocations,-save-allocation-stack",
-or to disable call tracking completely (making the profiler less intrusive)
-"allocations,-save-allocation-caller,-save-allocation-stack".
-In practice the "allocation" option by default behaves like
-"allocations,save-allocation-caller,save-allocation-stack", but the user can
-tune this to his needs.
+.PP
+These options can be individually enabled and disabled prefixing them
+with an (optional) '+' character or a '-' character.  For instance,
+the "allocations" option by default records also the full call stack
+at each allocation.  If only the caller is wanted, one should use
+"allocations,-save-allocation-stack", or to disable call tracking
+completely (making the profiler less intrusive)
+"allocations,-save-allocation-caller,-save-allocation-stack".  In
+practice the "allocation" option by default behaves like
+"allocations,save-allocation-caller,save-allocation-stack", but the
+user can tune this to his needs.
 .PP
 These are all the available options, organized by category:
 .PP
@@ -687,32 +751,52 @@ the summarized data broken down by class).
 \fIgc\fR or \fIg\fR
 Measure the time spent in each collection, and also trace heap resizes.
 .TP
-\fIheap-shot\fR, \fIheap\fR or \fIh\fR
+\fIheap-shot[=ARG]\fR, \fIheap[=ARG]\fR or \fIh[=ARH]\fR
 Performs full heap profiling.   In this case on each
 collection a full heap snapshot is recorded to disk.
 Inside the snapshots, each object reference is still represented so
 that it's possible to investigate who is responsible for keeping objects
 alive.
 .PP
-The actual production of heap snapshots could produce large log files,
-so it can be controlled in three ways:
+If the value of ARG is 
+.B all, 
+a heap snapshot is taken at each collection.  
+.PP
+If the value is an integer
+.B n,
+a snapshot will be taken at the first
+.B n
+collections (like setting
+.B gcd=n
+);
+.PP
+If no additional argument is given to the heap option, the only way to take
+heap snapshots is to requeste them using the runtime socket based command
+interface described below (see "Profiler activity control").
+.PP
+Heap profiling also enables full allocation profiling (with call
+stacks), and each allocation can be related to its corresponding
+object in the snapshots, enabling investigations like "find all
+objects of a given class allocated by a given method and still live at
+a given collection, and then find all objects referencing them".
+.PP
+This kind of heap snapshot analysis is performed using the mprof-heap-viewer(1)
+application.
+.PP
+The number of heap snapshots taken (and the moment in which they are taken)
+can be further customized with the following options: 
 .TP
 \fIgc-dumps=N\fR, \fIgc-d=N\fR, \fIgcd=N\fR
 states the number of snapshots that must be dumped (since the application
-starts). Zero means no dumps at all, -1 means dump at all collections.
+starts).  Zero means no dumps at all, -1 means dump at all collections.
 .TP
-\fIgc-signal=<signal>\fR, \fIgc-s\fR or \fIgcs\fR
-(where <signal> is one of "SIGUSR1", "SIGUSR2", or "SIGPROF")
-specifies a signal that will immediately trigger a collection and a dump.
-.TP
-\fIgc-commands=FILE\fR, \fIgc-c=FILE\fR or \fIgcc=FILE\fR 
-specify a "command file". The file must contain an integer value in ASCII
-form, and the profiler will stat it at every collection.
-If it has been modified it will interpret its contents as a \fIgcd=N\fR
-option value, and dump the required number of snapshots from that moment
-onwards.
-If the file is present at application startup it takes precedence over an
-eventual \fIgcd=N\fR option.
+These options exist because it can happen that the user wants to investigate
+what happens during collections but without forcing a collection using the
+command interface, because forcing a collection alters the program behavior.
+Of course it is possible to simply take a snapshot at every collection, but
+in some workloads this is could not be feasible (too much data).
+So we have this "garbage collection dumps" counter to control how many
+snapshots to take.
 .ne
 .RE
 .PP
@@ -732,17 +816,33 @@ the output file name equals to "<program-name>-SUFFIX.mprof".
 .TP
 \fIstart-disabled\fR or \fIsd\fR: start with the profiler inactive.
 .TP
-\fItoggle-signal=<SIGNAL>\fR or \fIts=<SIGNAL>\fR (where <SIGNAL>
-is one of SIGUSR1, SIGUSR2 or SIGPROF): Choose a signal that will be used to
-toggle the profiler activity on and off. This way you can decide to profile
-only portions of the applicatopn lifetime (for instance, you can decide to
-avoid profiling an initial setup phase using \fIsd\fR, and enable the
-profiler later delivering the signal to the application).
-.TP
 \fIforce-accurate-timer\fR (or \fIfac\fR): the profiler by default uses
 rtdsc to acquire timestamps for frequent events, but this can be imprecise;
 using this option you force the use of "gettimeofday" at every event, which
 is more accurate but much slower.
+.TP
+\fIcommand-port=port\fR or \fIcp=port\fR (where port is an integer between
+1024 nd 65535):
+Choose a TCP port where the profiler will listen for user commands.
+The protocol is ASCII based and line oriented (one line per command), and the
+profiler answers with one line containing either "OK" or "ERROR" to each
+received command.
+.PP
+The user can telnet to this port and give commands manually, or a GUI can
+use this facility to control the profiler at runtime.
+.PP
+The available commands are:
+.TP
+\fIenable\fR: Enables the profiler.
+.TP
+\fIdisable\fR: Disables the profiler.
+.TP
+\fIheap-snapshot\fR: Takes a heap snapshot now (forces a full garbage collection).
+.TP
+\fIheap-snapshot-counter=arg\fR: Set the counter of the next heap snapshots
+that must be taken, where arg can be "all" (take a snapshot at every
+collection), "none" (do not take snapshots), or an integer "n" (take a heap
+snapshot for the next "n" collections).
 .ne
 .RE
 .PP
@@ -773,10 +873,9 @@ This defaults to wbs=1024.
 .ne
 .RE
 .PP
-In its current state, this profiler can also perform heap analysis (like
-heap-shot), and the decoder is already able to read the data, however
-the user interface for this feature is experimental (the
-\fImprof-heap-viewer\fR tool in the mono-tools module).
+In its current state, this profiler can also perform heap analysis
+like the HeapShot profiler, but there is no UI to process this
+information. 
 .PP
 Another known issue is that if the timer is not strictly monotonic (like
 rtdsc), differences between times can underflow (they are handled as
@@ -785,6 +884,10 @@ unsigned integers) and weird numbers can show up in the logs.
 Finally, it can happen that when exceptions are thrown the profiler temporarily
 loses track of the execution stack and misattributes the caller for a few
 allocations (and method execution time).
+.PP
+The output file contains compressed events, to process the data you should
+use tools like the "Mono.Profiler" tool provided on the Mono SVN
+repository.  
 .PP
 More explanations are provided here: "http://www.mono-project.com/LoggingProfiler".
 .SH EXTERNAL PROFILERS
@@ -1017,6 +1120,14 @@ by setting the option
 Turns off the garbage collection in Mono.  This should be only used
 for debugging purposes
 .TP
+\fBLVM_COUNT\fR
+When Mono is compiled with LLVM support, this instructs the runtime to
+stop using LLVM after the specified number of methods are JITed.
+This is a tool used in diagnostics to help isolate problems in the
+code generation backend.   For example \fBLLVM_COUNT=10\fR would only
+compile 10 methods with LLVM and then switch to the Mono JIT engine.
+\fBLLVM_COUNT=0\fR would disable the LLVM engine altogether.
+.TP
 \fBMONO_AOT_CACHE\fR
 If set, this variable will instruct Mono to ahead-of-time compile new
 assemblies on demand and store the result into a cache in
@@ -1084,6 +1195,12 @@ to track down the source of the problems.
 \fBno-gdb-backtrace\fR
 This option will disable the GDB backtrace emitted by the runtime
 after a SIGSEGV or SIGABRT in unmanaged code.
+.TP
+\fBsuspend-on-sigsegv\fR
+
+This option will suspend the program when a native SIGSEGV is received.
+This is useful for debugging crashes which do not happen under gdb,
+since a live process contains more information than a core file.
 .ne
 .RE
 .TP
@@ -1315,6 +1432,24 @@ Both files are read by System.Web on application startup, if they are found at t
 above locations. If you don't want the mapping to be performed you can set this
 variable in your environment before starting the application and no action will
 be taken.
+.TP
+\fBMONO_MESSAGING_PROVIDER\fR
+Mono supports a plugin model for its implementation of System.Messaging making
+it possible to support a variety of messaging implementations (e.g. AMQP, ActiveMQ).
+To specify which messaging implementation is to be used the evironement variable
+needs to be set to the full class name for the provider.  E.g. to use the RabbitMQ based
+AMQP implementation the variable should be set to:
+
+.nf
+Mono.Messaging.RabbitMQ.RabbitMQMessagingProvider,Mono.Messaging.RabbitMQ
+.fi
+.TP
+\fBMONO_X509_REVOCATION_MODE\fR
+Sets the revocation mode used when validating a X509 certificate chain (https,
+ftps, smtps...).  The default is 'nocheck', which performs no revocation check
+at all. The other possible values are 'offline', which performs CRL check (not
+implemented yet) and 'online' which uses OCSP and CRL to verify the revocation
+status (not implemented yet).
 .SH ENVIRONMENT VARIABLES FOR DEBUGGING
 .TP
 \fBMONO_ASPNET_NODELETE\fR

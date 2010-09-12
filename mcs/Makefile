@@ -9,7 +9,11 @@ net_2_0_SUBDIRS := build jay mcs class nunit24 ilasm tools tests errors docs
 net_2_1_bootstrap_SUBDIRS := build mcs class
 net_2_1_raw_SUBDIRS := build mcs class tools
 net_2_1_SUBDIRS := tools tests errors
-net_3_5_SUBDIRS := build class
+monotouch_SUBDIRS := build mcs class
+monotouch_bootstrap_SUBDIRS := build mcs class
+net_3_5_SUBDIRS := build class tools/xbuild
+net_4_0_bootstrap_SUBDIRS := build mcs class tools
+net_4_0_SUBDIRS := build mcs class nunit24 ilasm tools tests errors
 
 # List of test subdirs that should pass 100%
 centum_tests := \
@@ -47,6 +51,9 @@ net_2_0_centum_tests := \
 	class/Microsoft.Build.Framework		\
 	class/Microsoft.Build.Utilities		\
 	class/Microsoft.Build.Engine		\
+	class/System.Runtime.Serialization	\
+	class/System.IdentityModel		\
+	class/System.ServiceModel.Web		\
 	class/Mono.C5
 
 #	class/System.Web.Extensions
@@ -77,7 +84,7 @@ dir-check:
 
 # fun specialty targets
 
-PROFILES = net_1_1 net_2_0 net_3_5
+PROFILES = net_1_1 net_2_0 net_3_5 net_4_0
 
 .PHONY: all-profiles $(STD_TARGETS:=-profiles)
 all-profiles $(STD_TARGETS:=-profiles): %-profiles: profiles-do--%
@@ -96,12 +103,16 @@ profiles-do--run-test:
 
 # Orchestrate the bootstrap here.
 _boot_ = all clean install
+$(_boot_:%=profile-do--net_4_0--%):           profile-do--net_4_0--%:           profile-do--net_4_0_bootstrap--%
+$(_boot_:%=profile-do--net_4_0_bootstrap--%): profile-do--net_4_0_bootstrap--%: profile-do--net_2_0--%
 $(_boot_:%=profile-do--net_3_5--%):           profile-do--net_3_5--%:           profile-do--net_2_0--%
 $(_boot_:%=profile-do--net_2_1--%):           profile-do--net_2_1--%:           profile-do--net_2_1_raw--%
+$(_boot_:%=profile-do--monotouch--%):         profile-do--monotouch--%:         profile-do--monotouch_bootstrap--%
+$(_boot_:%=profile-do--monotouch_bootstrap--%): profile-do--monotouch_bootstrap--%: profile-do--net_2_0--%
 $(_boot_:%=profile-do--net_2_1_raw--%):       profile-do--net_2_1_raw--%:       profile-do--net_2_1_bootstrap--%
 $(_boot_:%=profile-do--net_2_1_bootstrap--%): profile-do--net_2_1_bootstrap--%: profile-do--net_2_0--%
 $(_boot_:%=profile-do--net_2_0--%):           profile-do--net_2_0--%:           profile-do--net_2_0_bootstrap--%
-$(_boot_:%=profile-do--net_2_0_bootstrap--%): profile-do--net_2_0_bootstrap--%: profile-do--net_1_1--%
+$(_boot_:%=profile-do--net_2_0_bootstrap--%): profile-do--net_2_0_bootstrap--%: profile-do--net_1_1_bootstrap--%
 $(_boot_:%=profile-do--net_1_1--%):           profile-do--net_1_1--%:           profile-do--net_1_1_bootstrap--%
 $(_boot_:%=profile-do--net_1_1_bootstrap--%): profile-do--net_1_1_bootstrap--%: profile-do--basic--%
 

@@ -83,7 +83,7 @@ namespace Mono.Tuner {
 			else
 				type.Attributes |= TypeAttributes.NestedAssembly;
 
-			TunerAnnotations.Internalized (type);
+			MarkInternalized (type);
 		}
 
 		static void ProcessMethods (ICollection methods)
@@ -94,13 +94,13 @@ namespace Mono.Tuner {
 
 		static void ProcessMethod (MethodDefinition method)
 		{
-			if (!method.IsPublic)
-				return;
-
 			if (IsMarkedAsPublic (method))
 				return;
 
-			SetInternalVisibility (method);
+			if (method.IsPublic)
+				SetInternalVisibility (method);
+			else if (method.IsFamily || method.IsFamilyOrAssembly)
+				SetProtectedAndInternalVisibility (method);
 		}
 
 		static void SetInternalVisibility (MethodDefinition method)
@@ -108,7 +108,15 @@ namespace Mono.Tuner {
 			method.Attributes &= ~MethodAttributes.MemberAccessMask;
 			method.Attributes |= MethodAttributes.Assem;
 
-			TunerAnnotations.Internalized (method);
+			MarkInternalized (method);
+		}
+
+		static void SetProtectedAndInternalVisibility (MethodDefinition method)
+		{
+			method.Attributes &= ~MethodAttributes.MemberAccessMask;
+			method.Attributes |= MethodAttributes.FamANDAssem;
+
+			MarkInternalized (method);
 		}
 
 		static bool IsMarkedAsPublic (IAnnotationProvider provider)
@@ -124,13 +132,13 @@ namespace Mono.Tuner {
 
 		static void ProcessField (FieldDefinition field)
 		{
-			if (!field.IsPublic)
-				return;
-
 			if (IsMarkedAsPublic (field))
 				return;
 
-			SetInternalVisibility (field);
+			if (field.IsPublic)
+				SetInternalVisibility (field);
+			else if (field.IsFamily || field.IsFamilyOrAssembly)
+				SetProtectedAndInternalVisibility (field);
 		}
 
 		static void SetInternalVisibility (FieldDefinition field)
@@ -138,7 +146,20 @@ namespace Mono.Tuner {
 			field.Attributes &= ~FieldAttributes.FieldAccessMask;
 			field.Attributes |= FieldAttributes.Assembly;
 
-			TunerAnnotations.Internalized (field);
+			MarkInternalized (field);
+		}
+
+		static void SetProtectedAndInternalVisibility (FieldDefinition field)
+		{
+			field.Attributes &= ~FieldAttributes.FieldAccessMask;
+			field.Attributes |= FieldAttributes.FamANDAssem;
+
+			MarkInternalized (field);
+		}
+
+		static void MarkInternalized (IAnnotationProvider provider)
+		{
+			TunerAnnotations.Internalized (provider);
 		}
 	}
 }

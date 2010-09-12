@@ -3,8 +3,9 @@
 //
 // Author:
 //	Ankit Jain  <jankit@novell.com>
+//	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2006 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2006,2009 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -26,6 +27,9 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Web;
 using System.Threading;
 
@@ -36,17 +40,39 @@ using System.ServiceModel.Description;
 
 namespace System.ServiceModel.Channels {
 
+	internal class WcfListenerInfo
+	{
+		public WcfListenerInfo ()
+		{
+			Pending = new List<HttpContext> ();
+			ProcessRequestHandles = new List<ManualResetEvent> ();
+		}
+
+		public IChannelListener Listener { get; set; }
+		public List<ManualResetEvent> ProcessRequestHandles { get; private set; }
+		public List<HttpContext> Pending { get; private set; }
+	}
+
+	internal class WcfListenerInfoCollection : KeyedCollection<IChannelListener,WcfListenerInfo>
+	{
+		protected override IChannelListener GetKeyForItem (WcfListenerInfo info)
+		{
+			return info.Listener;
+		}
+	}
+
 	internal class SvcHttpHandler : IHttpHandler
 	{
+		static object type_lock = new object ();
+
 		Type type;
 		Type factory_type;
-		internal string path;
-		Uri request_url;
+		string path;
 		ServiceHostBase host;
-
-		AspNetReplyChannel reply_channel;
-		AutoResetEvent wait = new AutoResetEvent (false);
-		AutoResetEvent listening = new AutoResetEvent (false);
+		WcfListenerInfoCollection listeners = new WcfListenerInfoCollection ();
+		Dictionary<HttpContext,AutoResetEvent> wcf_wait_handles = new Dictionary<HttpContext,AutoResetEvent> ();
+		AutoResetEvent wait_for_request_handle = new AutoResetEvent (false);
+		int close_state;
 
 		public SvcHttpHandler (Type type, Type factoryType, string path)
 		{
@@ -60,83 +86,133 @@ namespace System.ServiceModel.Channels {
 			get { return true; }
 		}
 
-		public bool WaitForRequest (AspNetReplyChannel reply_channel, TimeSpan timeout)
-		{
-			this.reply_channel = reply_channel;
-			listening.Set ();
+		public ServiceHostBase Host {
+			get { return host; }
+		}
 
-			return wait.WaitOne (timeout, false);
+		public HttpContext WaitForRequest (IChannelListener listener)
+		{
+			if (close_state > 0)
+				return null;
+
+			var wait = new ManualResetEvent (false);
+			var info = listeners [listener];
+			if (info.Pending.Count == 0) {
+				info.ProcessRequestHandles.Add (wait);
+				wait_for_request_handle.Set ();
+				wait.WaitOne ();
+				info.ProcessRequestHandles.Remove (wait);
+			}
+
+			var ctx = listeners [listener].Pending [0];
+			listeners [listener].Pending.RemoveAt (0);
+			return ctx;
+		}
+
+		IChannelListener FindBestMatchListener (HttpContext ctx)
+		{
+			var actx = new AspNetHttpContextInfo (ctx);
+
+			// Select the best-match listener.
+			IChannelListener best = null;
+			string rel = null;
+			foreach (var li in listeners) {
+				var l = li.Listener;
+				if (!l.GetProperty<HttpListenerManager> ().FilterHttpContext (actx))
+					continue;
+				if (l.Uri.Equals (ctx.Request.Url)) {
+					best = l;
+					break;
+				}
+			}
+			// FIXME: the matching must be better-considered.
+			foreach (var li in listeners) {
+				var l = li.Listener;
+				if (!l.GetProperty<HttpListenerManager> ().FilterHttpContext (actx))
+					continue;
+				if (!ctx.Request.Url.ToString ().StartsWith (l.Uri.ToString (), StringComparison.Ordinal))
+					continue;
+				if (best == null)
+					best = l;
+			}
+			return best;
+/*
+			var actx = new AspNetHttpContextInfo (ctx);
+			foreach (var i in listeners)
+				if (i.Listener.GetProperty<HttpListenerManager> ().FilterHttpContext (actx))
+					return i.Listener;
+			throw new InvalidOperationException ();
+*/
 		}
 
 		public void ProcessRequest (HttpContext context)
 		{
-			request_url = context.Request.Url;
 			EnsureServiceHost ();
 
-			reply_channel.Context = context;
-			wait.Set ();
+			var wait = new AutoResetEvent (false);
+			var l = FindBestMatchListener (context);
+			var i = listeners [l];
+			lock (i) {
+				i.Pending.Add (context);
+				wcf_wait_handles [context] = wait;
+				if (i.ProcessRequestHandles.Count > 0)
+					i.ProcessRequestHandles [0].Set ();
+			}
 
-			listening.WaitOne ();
-			reply_channel.Context = null;
+			wait.WaitOne ();
 		}
 
+		public void EndRequest (IChannelListener listener, HttpContext context)
+		{
+			var wait = wcf_wait_handles [context];
+			wcf_wait_handles.Remove (context);
+			wait.Set ();
+		}
+
+		// called from SvcHttpHandlerFactory's remove callback (i.e.
+		// unloading asp.net). It closes ServiceHost, then the host
+		// in turn closes the listener and the channels it opened.
+		// The channel listener calls CloseServiceChannel() to stop
+		// accepting further requests on its shutdown.
 		public void Close ()
 		{
 			host.Close ();
 			host = null;
 		}
 
-		void ApplyConfiguration (ServiceHost host)
+		public void RegisterListener (IChannelListener listener)
 		{
-			foreach (ServiceElement service in ConfigUtil.ServicesSection.Services) {
-				foreach (ServiceEndpointElement endpoint in service.Endpoints) {
-					// FIXME: consider BindingName as well
-					ServiceEndpoint se = host.AddServiceEndpoint (
-						endpoint.Contract,
-						ConfigUtil.CreateBinding (endpoint.Binding, endpoint.BindingConfiguration),
-						new Uri (path));
-				}
-				// behaviors
-				ServiceBehaviorElement behavior = ConfigUtil.BehaviorsSection.ServiceBehaviors.Find (service.BehaviorConfiguration);
-				if (behavior != null) {
-					foreach (BehaviorExtensionElement bxel in behavior) {
-						IServiceBehavior b = null;
-						ServiceMetadataPublishingElement meta = bxel as ServiceMetadataPublishingElement;
-						if (meta != null) {
-							ServiceMetadataBehavior smb = meta.CreateBehavior () as ServiceMetadataBehavior;
-							smb.HttpGetUrl = request_url;
-							// FIXME: HTTPS as well
-							b = smb;
-						}
-						if (b != null)
-							host.Description.Behaviors.Add (b);
-					}
-				}
-			}
+			lock (type_lock)
+				listeners.Add (new WcfListenerInfo () {Listener = listener});
+		}
+
+		public void UnregisterListener (IChannelListener listener)
+		{
+			listeners.Remove (listener);
 		}
 
 		void EnsureServiceHost ()
 		{
-			if (reply_channel != null)
+			lock (type_lock) {
+
+			if (host != null)
 				return;
 
 			//ServiceHost for this not created yet
-			if (factory_type != null)
-				host = ((ServiceHostFactory) Activator.CreateInstance (factory_type)).CreateServiceHost (type, new Uri [0]);
+			var baseUri = new Uri (new Uri (HttpContext.Current.Request.Url.GetLeftPart (UriPartial.Authority)), path);
+			if (factory_type != null) {
+				host = ((ServiceHostFactory) Activator.CreateInstance (factory_type)).CreateServiceHost (type, new Uri [] {baseUri});
+			}
 			else
-				host = new ServiceHost (type);
-
-#if true
-			//FIXME: Binding: Get from web.config.
-			host.AddServiceEndpoint (ContractDescription.GetContract (type).Name,
-				new BasicHttpBinding (), new Uri (path));
-#else
-			ApplyConfiguration (host);
-#endif
+				host = new ServiceHost (type, baseUri);
+			host.Extensions.Add (new VirtualPathExtension (baseUri.AbsolutePath));
 
 			host.Open ();
 
-			listening.WaitOne ();
+			// Not precise, but it needs some wait time to have all channels start requesting. And it is somehow required.
+			Thread.Sleep (500);
+
+			}
 		}
 	}
 }

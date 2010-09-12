@@ -1,19 +1,72 @@
+2010-05-19  Jb Evain  <jbevain@novell.com>
+
+	backport of r157550.
+
+	* ConstantExpression.cs: fix emission of nullable constants.
+
+2010-01-08  Jb Evain  <jbevain@novell.com>
+
+	* Expression.cs (Call): properly deal with zero length array
+	of type arguments for non generic methods. Fixes #568989.
+
+	backport r149241.
+
+2009-12-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Expression.cs: expression can be null for static getters. Patch from
+	Miguel de Icaza (miguel@novell.com).
+
+2009-11-15  Jb Evain  <jbevain@novell.com>
+
+	backport of 146225.
+
+	* Expression (Call): deal with lambda expression <> delegate
+	comparison when filtering methods.
+	Fixes #536637.
+
+2009-11-15  Jb Evain  <jbevain@novell.com>
+
+	backport of 146222.
+
+	* Expression (Call): better filtering of generic methods.
+	Fixes #537768.
+
+2009-11-14  Jb Evain  <jbevain@novell.com>
+
+	* UnaryExpression.cs: isolate quoted expressions.
+	* EmitContext.cs (ParameterReplacer): new helper type
+	to replace the parameters of isolated expressions.
+	Fix #550722.
+
+2009-10-08  Jb Evain  <jbevain@novell.com>
+
+	* LambdaExpression.cs (Compile): use the interpreter on MonoTouch.
+
+2009-09-03  Jb Evain  <jbevain@novell.com>
+
+	* ConstantExpression.cs (Emit): add support to emit DBNull values.
+
+2009-09-03  Jb Evain  <jbevain@novell.com>
+
+	* ConstantExpression.cs (Emit): add support for emitting
+	DateTime constants.
+
+2009-03-05  Jb Evain  <jbevain@novell.com>
+
+	* EmitContext.cs
+	* ParameterExpression.cs:
+		add support for hoisted locals.
+
 2009-02-24  Jb Evain  <jbevain@novell.com>
 
-	backport of 127871.
-
-	* Expression.cs (BinaryCoreCheck): fix comparison of enums.
+	* Expression.cs (BinaryCoreCheck): fix comparison of enums
 
 2009-02-23  Jb Evain  <jbevain@novell.com>
-
-	backport of 127755.
 
 	* Expression.cs (IsNumber): actually decimal is rather a special
 	case, and not a primitive number.
 
 2009-02-23  Jb Evain  <jbevain@novell.com>
-
-	backport of 127746.
 
 	* Expression.cs (BinaryCoreCheck): add decimal operations
 	are provided by custom operators.

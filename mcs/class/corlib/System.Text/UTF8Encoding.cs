@@ -57,9 +57,9 @@ public class UTF8Encoding : Encoding
 		emitIdentifier = encoderShouldEmitUTF8Identifier;
 #if NET_2_0
 		if (throwOnInvalidBytes)
-			SetFallbackInternal (null, new DecoderExceptionFallback ());
+			SetFallbackInternal (null, DecoderFallback.ExceptionFallback);
 		else
-			SetFallbackInternal (null, new DecoderReplacementFallback ("\uFFFD"));
+			SetFallbackInternal (null, DecoderFallback.StandardSafeFallback);
 #else
 		throwOnInvalid = throwOnInvalidBytes;
 #endif
@@ -580,6 +580,15 @@ fail_no_space:
 									throw new ArgumentException (_("Overlong"), leftBits.ToString ());
 #endif
 							}
+							else if ((leftBits & 0xF800) == 0xD800) {
+								// UTF-8 doesn't use surrogate characters
+#if NET_2_0
+								length += Fallback (provider, ref fallbackBuffer, ref bufferArg, bytes, index - leftSoFar, leftSoFar);
+#else
+								if (throwOnInvalid)
+									throw new ArgumentException (_("Arg_InvalidUTF8"), "bytes");
+#endif
+							}
 							else
 								++length;
 						} else if (leftBits < (uint)0x110000) {
@@ -1010,9 +1019,9 @@ fail_no_space:
 		if (enc != null) {
 #if NET_2_0
 			return (codePage == enc.codePage &&
-					emitIdentifier == enc.emitIdentifier &&
-					DecoderFallback == enc.DecoderFallback &&
-					EncoderFallback == enc.EncoderFallback);
+				emitIdentifier == enc.emitIdentifier &&
+				DecoderFallback.Equals (enc.DecoderFallback) &&
+				EncoderFallback.Equals (enc.EncoderFallback));
 #else
 			return (codePage == enc.codePage &&
 					emitIdentifier == enc.emitIdentifier &&

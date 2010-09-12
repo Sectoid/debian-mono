@@ -6,7 +6,7 @@
 //   Atsushi Enomoto (atsushi@ximian.com)
 //
 // (C) 2001 Jason Diamond  http://injektilo.org/
-// (C) 2004 Novell Inc.
+// Copyright (C) 2004,2009 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -38,7 +38,7 @@ namespace System.Xml
 {
 	public abstract class XmlResolver
 	{
-#if !NET_2_1
+#if !NET_2_1 || MONOTOUCH
 		public abstract ICredentials Credentials { set; }
 #endif
 
@@ -53,17 +53,18 @@ namespace System.Xml
 			if (baseUri == null) {
 				if (relativeUri == null)
 					throw new ArgumentNullException ("Either baseUri or relativeUri are required.");
+#if NET_2_1 && !MONOTOUCH
+				return new Uri (relativeUri, UriKind.RelativeOrAbsolute);
+#else
 				// Don't ignore such case that relativeUri is in fact absolute uri (e.g. ResolveUri (null, "http://foo.com")).
 				if (relativeUri.StartsWith ("http:") ||
 					relativeUri.StartsWith ("https:") ||
+					relativeUri.StartsWith ("ftp:") ||
 					relativeUri.StartsWith ("file:"))
 					return new Uri (relativeUri);
 				else
-					// extraneous "/a" is required because current Uri stuff 
-					// seems ignorant of difference between "." and "./". 
-					// I'd be appleciate if it is fixed with better solution.
 					return new Uri (Path.GetFullPath (relativeUri));
-//					return new Uri (new Uri (Path.GetFullPath ("./a")), EscapeRelativeUriBody (relativeUri));
+#endif
 			}
 
 			if (relativeUri == null)
@@ -81,5 +82,13 @@ namespace System.Xml
 				.Replace ("%", "%25")
 				.Replace ("\"", "%22");
 		}
+#if NET_2_1 && !MONOTOUCH
+		public virtual bool SupportsType (Uri absoluteUri, Type type)
+		{
+			if (absoluteUri == null)
+				throw new ArgumentNullException ("absoluteUri");
+			return ((type == null) || (type == typeof (Stream)));
+		}
+#endif
 	}
 }
