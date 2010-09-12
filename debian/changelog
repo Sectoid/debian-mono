@@ -115,21 +115,11 @@ mono (2.6.3-1) experimental; urgency=low
     + Verifier and Sandbox (used by Moonlight)
     + Debugging support for GDB
 
-  [ Mirco Bauer ]
   * The "Good bye dpatch, hello git" release
   * debian/control
     debian/rules
     debian/patches/*:
     + Replaced dpatches with git branches.
-  * git:debian/patches/fix_for_wm_without_net_workarea_support:
-    + XplatUIX11.WorkingArea can segfault if the WM does not support
-      _NET_WORKAREA. (Closes: #557229)
-      (thanks to Brian Pellin and Andy Stührk for the investigation and patch)
-
-  [ Iain Lane ]
-  * debian/update-monodoc: Fix syntax error that occurs when sh is bash but
-    not dash. Prevented the generation of the monodoc search indexes using
-    the trigger. (Closes: #580665)
 
   * debian/mono-dbg.install:
     + Added mono-gdb.py script for gdb integration
