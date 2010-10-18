@@ -1,4 +1,3 @@
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 // 
 // CancellationTokenSource.cs
 //  
@@ -25,13 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 using System;
 using System.Collections.Generic;
 
 namespace System.Threading
 {
 	
-	public class CancellationTokenSource : IDisposable, ICancelableOperation
+	public sealed class CancellationTokenSource : IDisposable
 	{
 		volatile bool canceled;
 		volatile bool processed;
@@ -43,9 +43,9 @@ namespace System.Threading
 		
 		ManualResetEvent handle = new ManualResetEvent (false);
 		
-//#if USE_MONITOR
 		object syncRoot = new object ();
-//#endif
+		
+		internal static readonly CancellationTokenSource NoneSource = new CancellationTokenSource ();
 		
 		public void Cancel ()
 		{
@@ -105,10 +105,7 @@ namespace System.Threading
 		
 		public CancellationToken Token {
 			get {
-				CancellationToken token = new CancellationToken (canceled);
-				token.Source = this;
-				
-				return token;
+				return CreateToken ();
 			}
 		}
 		
@@ -159,12 +156,26 @@ namespace System.Threading
 			
 		}
 		
+		internal void ThrowIfCancellationRequested ()
+		{
+			if (canceled)
+				throw new OperationCanceledException (CreateToken ());
+		}
+		
 		CancellationTokenRegistration GetTokenReg ()
 		{
 			CancellationTokenRegistration registration
 				= new CancellationTokenRegistration (Interlocked.Increment (ref currId), this);
 			
 			return registration;
+		}
+		
+		CancellationToken CreateToken ()
+		{
+			CancellationToken tk = new CancellationToken (canceled);
+			tk.Source = this;
+			
+			return tk;
 		}
 	}
 }

@@ -22,11 +22,19 @@
 
 
 #ifndef HAVE_PTHREAD_MUTEX_TIMEDLOCK
-int pthread_mutex_timedlock (pthread_mutex_t *mutex,
-			    const struct timespec *timeout);
+/* Android does not implement pthread_mutex_timedlock(), but does provide an
+ * unusual declaration: http://code.google.com/p/android/issues/detail?id=7807
+ */
+#ifdef PLATFORM_ANDROID
+#define CONST_NEEDED
+#else
+#define CONST_NEEDED const
+#endif
 
+int pthread_mutex_timedlock (pthread_mutex_t *mutex,
+			    CONST_NEEDED struct timespec *timeout);
 int
-pthread_mutex_timedlock (pthread_mutex_t *mutex, const struct timespec *timeout)
+pthread_mutex_timedlock (pthread_mutex_t *mutex, CONST_NEEDED struct timespec *timeout)
 {
 	struct timeval timenow;
 	struct timespec sleepytime;

@@ -100,7 +100,7 @@ namespace System.ServiceModel.Channels
 		{
 			if (context == null)
 				throw new ArgumentNullException ("context");
-			context.RemainingBindingElements.Add (this);
+			//context.RemainingBindingElements.Add (this);
 			return base.BuildChannelFactory<TChannel> (context);
 		}
 
@@ -110,7 +110,7 @@ namespace System.ServiceModel.Channels
 		{
 			if (context == null)
 				throw new ArgumentNullException ("context");
-			context.RemainingBindingElements.Add (this);
+			//context.RemainingBindingElements.Add (this);
 			return base.BuildChannelListener<TChannel> (context);
 		}
 
@@ -131,6 +131,8 @@ namespace System.ServiceModel.Channels
 		[MonoTODO]
 		public override T GetProperty<T> (BindingContext context)
 		{
+			if (typeof (T) == typeof (MessageVersion))
+				return (T) (object) MessageVersion;
 			return context.GetInnerProperty<T> ();
 		}
 

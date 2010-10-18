@@ -1,3 +1,29 @@
+2010-06-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindingsTest.cs : make sure that the target port
+	  of the Uri is available (as some other tests do).
+
+2010-06-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindingsTest.cs : make sure that special casing of
+	  MessageVersion does not happen at this layer.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlExporterTest.cs : fixed and enabled some working tests.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FaultDescriptionTest.cs : add new test.
+
+2010-03-29  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataResolverTest.cs : enable working tests.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindingsTest.cs : new test.
+
 2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WsdlImporterTest.cs : ignore whatever make dist broke.
@@ -8,6 +34,11 @@
 2010-02-09  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* WsdlImporterTest.cs : added test for processing ArrayOfXxx types.
+
+2010-01-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGeneratorTest.cs : add test for async method
+	  generation option to generate sync methods as well.
 
 2010-01-22  Atsushi Enomoto  <atsushi@ximian.com>
 

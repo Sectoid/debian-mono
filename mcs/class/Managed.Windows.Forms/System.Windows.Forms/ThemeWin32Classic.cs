@@ -65,9 +65,13 @@ namespace System.Windows.Forms
 		#region	Principal Theme Methods
 		public ThemeWin32Classic ()
 		{			
+			ResetDefaults ();
+		}
+
+		public override void ResetDefaults() {
 			defaultWindowBackColor = this.ColorWindow;
 			defaultWindowForeColor = this.ColorControlText;
-            window_border_font = new Font(FontFamily.GenericSansSerif, 8.25f, FontStyle.Bold);
+			window_border_font = new Font(FontFamily.GenericSansSerif, 8.25f, FontStyle.Bold);
 			
 			/* Menu string formats */
 			string_format_menu_text = new StringFormat ();
@@ -85,11 +89,6 @@ namespace System.Windows.Forms
 			string_format_menu_menubar_text.LineAlignment = StringAlignment.Center;
 			string_format_menu_menubar_text.Alignment = StringAlignment.Center;
 			string_format_menu_menubar_text.HotkeyPrefix = HotkeyPrefix.Show;
-		}
-
-		public override void ResetDefaults() {
-			Console.WriteLine("NOT IMPLEMENTED: ResetDefault()");
-			//throw new NotImplementedException("Need to implement ResetDefaults() for Win32 theme");
 		}
 
 		public override bool DoubleBufferingSupported {
@@ -2777,6 +2776,7 @@ namespace System.Windows.Forms
 							int image_width = control.SmallImageList.ImageSize.Width + 5;
 							int text_width = (int)dc.MeasureString (col.Text, control.Font).Width;
 							int x_origin = rect.X;
+							int y_origin = rect.Y + ((rect.Height - control.SmallImageList.ImageSize.Height) / 2);
 
 							switch (col.TextAlign) {
 								case HorizontalAlignment.Left:
@@ -2792,7 +2792,7 @@ namespace System.Windows.Forms
 							if (x_origin < rect.X)
 								x_origin = rect.X;
 
-							control.SmallImageList.Draw (dc, new Point (x_origin, rect.Y), image_index);
+							control.SmallImageList.Draw (dc, new Point (x_origin, y_origin), image_index);
 							rect.X += image_width;
 							rect.Width -= image_width;
 						}
@@ -5527,6 +5527,16 @@ namespace System.Windows.Forms
 			balloon_window.Icon = icon;
 			balloon_window.Timeout = timeout;
 			balloon_window.Show ();
+		}
+
+		public override void HideBalloonWindow (IntPtr handle)
+		{
+			if (balloon_window == null || balloon_window.OwnerHandle != handle)
+				return;
+
+			balloon_window.Close ();
+			balloon_window.Dispose ();
+			balloon_window = null;
 		}
 
 		private const int balloon_iconsize = 16;

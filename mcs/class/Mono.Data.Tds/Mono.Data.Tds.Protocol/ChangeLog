@@ -1,3 +1,66 @@
+2010-07-13  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #613845
+	* Tds70.cs (WriteParameterInfo): Round money values to 4 decimals.
+	
+2010-07-12  Veerapuram Varadhan  <vvaradhan@novell.com>
+	
+	** Fixes #569543
+	* Tds70.cs (ExecPrepared): Revert back to old changes.
+	* Tds80.cs (ExecPrepared): Override for Tds 8 version that optimizes 
+	network bandwidth.
+	
+2010-07-10  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes 620860
+	* Tds70.cs (Precision): New virtual property to handle Precision values 
+	across different Tds versions.
+	(WriteParameterInfo): Use defined Precision property instead of 
+	constant value.  Also handle Ulong and long max/min values properly.
+	* Tds80.cs (Precision): Override property to provide Tds 8 precision value.
+	
+2010-07-07  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	* TdsComm.cs (Append[DateTime]): Ugh.. ugh.. final fix for handling MinValue for DateTime.
+	
+2010-07-07  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #609109 - DateTime part
+	* TdsComm.cs (Append[DateTime]): More fix for handling SqlServer MinValue for DateTime.
+	
+2010-07-06  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #609109
+	* TdsComm.cs (Append[DateTime]): Handle datetime values sanely that are less than epoch.
+	(Append[string]): Fix boundary checking for availability of enough buffer
+	
+2010-07-03  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #609935
+	* TdsComm.cs (Append[string]): Fix boundary calculations of bytes 
+	to be written and available free buffer.
+	
+2010-06-15 Jonathan Chambers  <joncham@gmail.com>
+
+	* Tds.cs: Add {} around default switch case.
+
+2010-06-15  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #613087
+	* Tds.cs (ProcessLoginAck): Fix server version being compared in 
+	the switch-case.
+	* Tds70.cs (BuildPreparedParameters, BuildProcedureCall): Set default 
+	precision to 18 as used by MS.Net when connecting to SqlServer 7.0.
+	(BuildExec, ExecRPC): Marked protected in order to be used by Tds80 
+	and henceforth.
+	* Tds80.cs (Execute): Separated from Tds70 to include Tds80 changes.
+	
+2010-04-21  Veerapuram Varadhan  <vvaradhan@novell.com>
+
+	** Fixes #595918
+	* Tds70.cs (WriteParameterInfo): Write updated decimal value according 
+	to specified scale value.
+	
 2009-08-17  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #381151 NRE 

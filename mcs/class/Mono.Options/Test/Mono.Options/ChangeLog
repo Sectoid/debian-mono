@@ -1,3 +1,19 @@
+2010-06-09  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Make OptionSetTest inherit from ListContract so
+	  that the IList<T> and ICollection<T> interfaces are fully tested.
+	* BaseRocksFixture.cs, CollectionContract.cs, ListContract.cs: Added;
+	  interface contract tests from Cadenza.
+
+2010-06-08  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Add tests for constrained value splitting.
+
+2008-04-18  Jonathan Pryor  <jpryor@novell.com>
+
+	* OptionSetTest.cs: Update WriteOptionDescriptions() for new, 
+	  better-defined line-wrapping semantics.
+
 2008-04-18  Jonathan Pryor  <jpryor@novell.com>
 
 	* OptionSetTest.cs: Add test to check \n\n Option.Description handling.

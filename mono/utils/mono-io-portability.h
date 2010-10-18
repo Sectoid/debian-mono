@@ -8,7 +8,7 @@ enum {
         PORTABILITY_NONE        = 0x00,
         PORTABILITY_UNKNOWN     = 0x01,
         PORTABILITY_DRIVE       = 0x02,
-        PORTABILITY_CASE        = 0x04,
+        PORTABILITY_CASE        = 0x04
 };
 
 void mono_portability_helpers_init (void) MONO_INTERNAL;

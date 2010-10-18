@@ -130,7 +130,7 @@ namespace System.Xml
 		internal XmlTextReader (bool dummy, XmlResolver resolver, string url, XmlNodeType fragType, XmlParserContext context)
 		{
 			if (resolver == null) {
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 				resolver = new XmlXapResolver ();
 #else
 				resolver = new XmlUrlResolver ();
@@ -958,7 +958,7 @@ namespace System.Xml
 		// These values are never re-initialized.
 		private bool namespaces = true;
 		private WhitespaceHandling whitespaceHandling = WhitespaceHandling.All;
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		private XmlResolver resolver = new XmlXapResolver ();
 #else
 		private XmlResolver resolver = new XmlUrlResolver ();
@@ -1473,6 +1473,10 @@ namespace System.Xml
 						Uri buri =
 							BaseURI != String.Empty ?
 							new Uri (BaseURI) : null;
+						// xml:base="" without any base URI -> pointless. However there are
+						// some people who use such xml:base. Seealso bug #608391.
+						if (buri == null && String.IsNullOrEmpty (value))
+							break;
 						Uri uri = resolver.ResolveUri (
 							buri, value);
 						parserContext.BaseURI =
@@ -1580,7 +1584,7 @@ namespace System.Xml
 
 		private void AppendValueChar (int ch)
 		{
-			if (ch < Char.MaxValue)
+			if (ch <= Char.MaxValue)
 				valueBuffer.Append ((char) ch);
 			else
 				AppendSurrogatePairValueChar (ch);
@@ -1662,7 +1666,7 @@ namespace System.Xml
 				// FIXME: it might be optimized by the JIT later,
 //				AppendValueChar (ch);
 				{
-					if (ch < Char.MaxValue)
+					if (ch <= Char.MaxValue)
 						valueBuffer.Append ((char) ch);
 					else
 						AppendSurrogatePairValueChar (ch);
@@ -1983,7 +1987,7 @@ namespace System.Xml
 					// FIXME: it might be optimized by the JIT later,
 //					AppendValueChar (ch);
 					{
-						if (ch < Char.MaxValue)
+						if (ch <= Char.MaxValue)
 							valueBuffer.Append ((char) ch);
 						else
 							AppendSurrogatePairValueChar (ch);
@@ -2376,7 +2380,7 @@ namespace System.Xml
 				// FIXME: it might be optimized by the JIT later,
 //				AppendValueChar (ch);
 				{
-					if (ch < Char.MaxValue)
+					if (ch <= Char.MaxValue)
 						valueBuffer.Append ((char) ch);
 					else
 						AppendSurrogatePairValueChar (ch);
@@ -2774,7 +2778,7 @@ namespace System.Xml
 			// AppendNameChar (ch);
 			{
 				// nameBuffer.Length is always non-0 so no need to ExpandNameCapacity () here
-				if (ch < Char.MaxValue)
+				if (ch <= Char.MaxValue)
 					nameBuffer [nameLength++] = (char) ch;
 				else
 					AppendSurrogatePairNameChar (ch);
@@ -2791,7 +2795,7 @@ namespace System.Xml
 				{
 					if (nameLength == nameCapacity)
 						ExpandNameCapacity ();
-					if (ch < Char.MaxValue)
+					if (ch <= Char.MaxValue)
 						nameBuffer [nameLength++] = (char) ch;
 					else
 						AppendSurrogatePairNameChar (ch);
@@ -2947,7 +2951,7 @@ namespace System.Xml
 					return i;
 				default:
 					Advance (c);
-					if (c < Char.MaxValue)
+					if (c <= Char.MaxValue)
 						buffer [bufIndex++] = (char) c;
 					else {
 						buffer [bufIndex++] = (char) ((c - 0x10000) / 0x400 + 0xD800);

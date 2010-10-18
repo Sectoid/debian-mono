@@ -32,15 +32,11 @@ using System;
 using System.Text;
 using System.Globalization;
 using Mono.Security;
-#if NET_2_0
 using System.Runtime.InteropServices;
-#endif
 
 namespace System.IO {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class BinaryWriter : IDisposable {
 
 		// Null is a BinaryWriter with no backing store.
@@ -80,7 +76,12 @@ namespace System.IO {
 			Dispose (true);
 		}
 
-		void IDisposable.Dispose() {
+#if NET_4_0
+		public void Dispose ()
+#else
+		void IDisposable.Dispose() 
+#endif
+		{
 			Dispose (true);
 		}
 

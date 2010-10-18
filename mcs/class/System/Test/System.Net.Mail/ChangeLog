@@ -1,3 +1,11 @@
+2010-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	Implement envelope sender semantics in SmtpClient
+
+2010-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	* SmtpServer.cs: New. * SmtpClientTest.cs (Deliver): New. Use it.
+
 2008-08-16  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* SmtpClientTest.cs: Added property tests. Added Send argument check

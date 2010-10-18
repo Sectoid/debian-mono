@@ -8,6 +8,7 @@ RESOURCE_FILES = \
 
 LIBRARY = System.ServiceModel.dll
 LIB_MCS_FLAGS = \
+		/d:USE_DATA_CONTRACT_IMPORTER \
 		/nowarn:414,169,67,3005,436,219,618 \
 		/unsafe \
 	        /r:System.dll \
@@ -30,8 +31,12 @@ LIB_MCS_FLAGS += /d:NET_3_0 	\
 			/r:Mono.Security.dll
 endif
 
-ifeq (net_2_1_raw, $(PROFILE))
+ifeq (moonlight_raw, $(PROFILE))
 LIB_MCS_FLAGS += /r:System.Net
+endif
+
+ifeq (4, $(FRAMEWORK_VERSION_MAJOR))
+LIB_MCS_FLAGS += /r:System.Web.ApplicationServices.dll
 endif
 
 TEST_MCS_FLAGS = $(LIB_MCS_FLAGS)

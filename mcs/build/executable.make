@@ -55,6 +55,9 @@ install-local: $(PROGRAM) $(PROGRAM_config)
 ifdef PROGRAM_config
 	$(INSTALL_DATA) $(PROGRAM_config) $(DESTDIR)$(PROGRAM_INSTALL_DIR)
 endif
+ifdef PLATFORM_AOT_SUFFIX
+	test ! -f $(PROGRAM)$(PLATFORM_AOT_SUFFIX) || $(INSTALL_LIB) $(PROGRAM)$(PLATFORM_AOT_SUFFIX) $(DESTDIR)$(PROGRAM_INSTALL_DIR)
+endif
 
 uninstall-local:
 	-rm -f $(DESTDIR)$(PROGRAM_INSTALL_DIR)/$(base_prog) $(DESTDIR)$(PROGRAM_INSTALL_DIR)/$(base_prog).mdb $(DESTDIR)$(PROGRAM_INSTALL_DIR)/$(base_prog).config
@@ -87,9 +90,9 @@ dist-local: dist-default
 	for f in `cat $(sourcefile)` ; do \
 	  case $$f in \
 	  ../*) : ;; \
-	  *) dest=`dirname $$f` ; \
+	  *) dest=`dirname "$$f"` ; \
 	     case $$subs in *" $$dest "*) : ;; *) subs=" $$dest$$subs" ; $(MKINSTALLDIRS) $(distdir)/$$dest ;; esac ; \
-	     cp -p $$f $(distdir)/$$dest || exit 1 ;; \
+	     cp -p "$$f" $(distdir)/$$dest || exit 1 ;; \
 	  esac ; done ; \
 	for d in . $$subs ; do \
 	  case $$d in .) : ;; *) test ! -f $$d/ChangeLog || cp -p $$d/ChangeLog $(distdir)/$$d ;; esac ; done

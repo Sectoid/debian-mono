@@ -43,7 +43,6 @@ public partial class _Default : System.Web.UI.Page
         //
         // Here we add five DataRows.
         //
-        DateTime dt = new DateTime (2009, 11, 13);
         table.Rows.Add(25, "Indocin", "David", "2009-11-13");
         table.Rows.Add(50, "Enebrel", "Sam", "2009-11-13");
         table.Rows.Add(10, "Hydralazine", "Christoff", "2009-11-13");

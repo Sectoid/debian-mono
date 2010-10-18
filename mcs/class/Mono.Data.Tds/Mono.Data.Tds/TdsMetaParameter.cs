@@ -231,7 +231,7 @@ namespace Mono.Data.Tds {
 			case "numeric":
 				// msdotnet sends a default precision of 29
 				result.Append (String.Format ("({0},{1})",
-					 (Precision == (byte)0 ? (byte)29 : Precision), Scale));
+					 (Precision == (byte)0 ? (byte)38 : Precision), Scale));
 				break;
 			case "varchar":
 			case "varbinary":
@@ -246,7 +246,8 @@ namespace Mono.Data.Tds {
 				break;
 			case "nvarchar":
 			case "xml":
-				result.Append (Size > 0 ? (Size > 8000 ? "(max)" : String.Format ("({0})", Size)) : "(4000)");
+				int paramSize = GetActualSize () / 2;
+				result.Append (paramSize > 0 ? (paramSize > 4000 ? "(max)" : String.Format ("({0})", paramSize)) : "(4000)");
 				break;
 			case "char":
 			case "nchar":

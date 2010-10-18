@@ -65,7 +65,7 @@ namespace Microsoft.Build.Tasks {
 				string [] defines = DefineConstants.Split (new char [] {';', ' '},
 						StringSplitOptions.RemoveEmptyEntries);
 				if (defines.Length > 0)
-					commandLine.AppendSwitchUnquotedIfNotNull ("/define:",
+					commandLine.AppendSwitchIfNotNull ("/define:",
 							String.Join (";", defines));
 			}
 
@@ -187,7 +187,11 @@ namespace Microsoft.Build.Tasks {
 
 		protected override string ToolName {
 			get {
+#if NET_4_0
+				return Utilities.RunningOnWindows ? "dmcs.bat" : "dmcs";
+#else
 				return Utilities.RunningOnWindows ? "gmcs.bat" : "gmcs";
+#endif
 			}
 		}
 

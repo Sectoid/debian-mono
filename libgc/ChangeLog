@@ -1,3 +1,43 @@
+2010-08-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid warnings on machines with cpus > 16.
+
+2010-08-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add --quiet-build (on by default)
+
+2010-07-27  Geoff Norton  <gnorton@novell.com>
+
+	* darwin_stop_world.c: Dont track unneeded registers for amd64.
+
+2010-06-29  Geoff Norton  <gnorton@novell.com>
+
+	* include/private/gc_locks.h: Implement armv6+ variants of
+	GC_test_and_set
+
+2010-06-14  Geoff Norton  <gnorton@novell.com>
+
+	* dyn_load.c: Fix one other place where l_addr could be null on 
+	bionic.
+
+2010-05-31  Geoff Norton  <gnorton@novell.com>
+
+	* dyn_load.c: Its possible for linkmap->l_addr to be null for the
+	linker entry on some systems (Android/Bionic based libc's)
+
+2010-04-23  Geoff Norton  <gnorton@novell.com>
+
+	* include/private/gcconfig.h: Darwin x86-64 bit support.
+	* darwin_stop_world.c: Ditto
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* include/private/gcconfig.h: Android platforms are built atop Linux,
+	  don't use glibc, and uses `environ` instead of `__environ`.
+	* configure.in: Use AC_CHECK_LIB() to check for pthread instead of
+	  just blindly linking to -lpthread, as Android includes pthread
+	  support within libc and doesn't provide a separate libpthread.
+
 2010-03-09  Zoltan Varga  <vargaz@gmail.com>
 
 	* include/private/gc_locks.h: Fix amd64 build with newer gcc's.
@@ -7,10 +47,30 @@
        * include/private/gc_locks.h: Add SPARC implementations of
        GC_compare_and_exchange and GC_memory_barrier.
 
+2010-02-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* obj_map.c (GC_add_map_entry): Speed this up for the common case where
+	GC_register_displacement () was never called.
+
+2010-01-29  Geoff Norton  <gnorton@novell.com>
+
+	* include/private/gcconfig.h: Don't define NO_PTHREAD_TRYLOCK on darwin-x86
+	Patch from Tom Philpot (tom.philpot@gmail.com)
+
 2009-10-25  Zoltan Varga  <vargaz@gmail.com>
 
 	* misc.c (GC_get_suspend_signal): New API function to return the suspend signal
 	used by libgc.
+
+2009-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* solaris_threads.c (GC_thr_daemon): Don't crash if GC_lookup_thread () returns
+	NULL.
+
+2009-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* solaris_threads.c (GC_get_orig_stack_size): Remove the annoying 'Large stack
+	limit' warning.
 
 2009-07-20  Geoff Norton  <gnorton@novell.com>
 
@@ -18,10 +78,10 @@
 	properly defined macros.
 
 2009-07-02  jonas echterhoff <jonas@unity3d.com>
-	
-	* darwin_stop_world.c: make debugger code compile on 
+
+	* darwin_stop_world.c: make debugger code compile on
 	OS X.
-	
+
 	* pthread_support.c: give mach ports to the debugger instead of pthreads,
 	as those can be iterated over from another executable.
 

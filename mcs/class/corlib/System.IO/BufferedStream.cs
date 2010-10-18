@@ -35,9 +35,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace System.IO {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class BufferedStream : Stream {
 		Stream m_stream;
 		byte[] m_buffer;
@@ -111,15 +109,10 @@ namespace System.IO {
 			}
 		}
 
-#if NET_2_0
 		protected override void Dispose (bool disposing)
 		{
 			if (disposed)
 				return;
-#else
-		public override void Close ()
-		{
-#endif
 			if (m_buffer != null)
 				Flush();
 
@@ -176,22 +169,54 @@ namespace System.IO {
 		{
 			CheckObjectDisposedException ();
 			
-			byte[] b = new byte[1];
+			if (!m_stream.CanRead) {
+				throw new NotSupportedException (
+					Locale.GetText ("Cannot read from stream"));
+			}
 
-			if (Read(b, 0, 1) == 1) {
-				return b[0];
-			} else {
-				return -1;
+			if (!m_buffer_reading) {
+				Flush ();
+				m_buffer_reading = true;
+			}
+
+			if (1 <= m_buffer_read_ahead - m_buffer_pos) {
+				return m_buffer [m_buffer_pos++];
+			}
+			else
+			{
+				if (m_buffer_pos >= m_buffer_read_ahead) {
+					m_buffer_pos = 0;
+					m_buffer_read_ahead = 0;
+				}
+
+				m_buffer_read_ahead = m_stream.Read (m_buffer, 0, m_buffer.Length);
+				if (1 <= m_buffer_read_ahead) {
+					return m_buffer [m_buffer_pos++];
+				} else {
+					return -1;
+				}
 			}
 		}
 
 		public override void WriteByte (byte value) 
 		{
 			CheckObjectDisposedException ();
-			byte[] b = new byte[1];
+			if (!m_stream.CanWrite) {
+				throw new NotSupportedException (
+					Locale.GetText ("Cannot write to stream"));
+			}
 
-			b[0] = value;
-			Write(b, 0, 1);
+			if (m_buffer_reading) {
+				Flush ();
+				m_buffer_reading = false;
+			} 
+			else
+			// reordered to avoid possible integer overflow
+			if (m_buffer_pos >= m_buffer.Length - 1) {
+				Flush ();
+			} 
+
+			m_buffer [m_buffer_pos++] = value;
 		}
 
 		public override int Read ([In,Out] byte[] array, int offset, int count) 
@@ -236,9 +261,9 @@ namespace System.IO {
 			count -= ret;
 
 			if (count >= m_buffer.Length) {
-				ret += m_stream.Read(array, offset, count);
+				ret += m_stream.Read (array, offset, count);
 			} else {
-				m_buffer_read_ahead = m_stream.Read(m_buffer, 0, m_buffer.Length);
+				m_buffer_read_ahead = m_stream.Read (m_buffer, 0, m_buffer.Length);
 				
 				if (count < m_buffer_read_ahead) {
 					Buffer.BlockCopyInternal (m_buffer, 0, array, offset, count);

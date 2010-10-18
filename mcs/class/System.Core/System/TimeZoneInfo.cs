@@ -27,11 +27,11 @@
 using System;
 using System.Runtime.CompilerServices;
 
-#if !INSIDE_CORLIB && (NET_4_0 || BOOTSTRAP_NET_4_0)
+#if !INSIDE_CORLIB && (NET_4_0 || BOOTSTRAP_NET_4_0 || MOONLIGHT)
 
 [assembly:TypeForwardedTo (typeof(TimeZoneInfo))]
 
-#elif NET_3_5 || (NET_2_1 && !INSIDE_CORLIB)
+#elif NET_3_5 || (MONOTOUCH && !INSIDE_CORLIB) || (MOONLIGHT && INSIDE_CORLIB)
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -43,11 +43,15 @@ using System.IO;
 using Mono;
 #endif
 
+using Microsoft.Win32;
+
 namespace System
 {
-#if NET_4_0 || BOOTSRAP_NET_4_0
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 	[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]
-#endif	
+#elif MOONLIGHT
+	[TypeForwardedFrom (Consts.AssemblySystem_Core)]
+#endif
 	[SerializableAttribute]
 	public sealed partial class TimeZoneInfo : IEquatable<TimeZoneInfo>, ISerializable, IDeserializationCallback
 	{
@@ -130,6 +134,25 @@ namespace System
 		}
 #endif
 		private AdjustmentRule [] adjustmentRules;
+
+#if !NET_2_1
+		static RegistryKey timeZoneKey = null;
+		static bool timeZoneKeySet = false;
+		static RegistryKey TimeZoneKey {
+			get {
+				if (!timeZoneKeySet) {
+					int p = (int) Environment.OSVersion.Platform;
+					/* Only use the registry on non-Unix platforms. */
+					if ((p != 4) && (p != 6) && (p != 128))
+						timeZoneKey = Registry.LocalMachine.OpenSubKey (
+							"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones",
+							false);
+					timeZoneKeySet = true;
+				}
+				return timeZoneKey;
+			}
+		}
+#endif
 
 		public static void ClearCachedData ()
 		{
@@ -288,6 +311,15 @@ namespace System
 			//FIXME: this method should check for cached values in systemTimeZones
 			if (id == null)
 				throw new ArgumentNullException ("id");
+#if !NET_2_1
+			if (TimeZoneKey != null)
+			{
+				RegistryKey key = TimeZoneKey.OpenSubKey (id, false);
+				if (key == null)
+					throw new TimeZoneNotFoundException ();
+				return FromRegistryKey(id, key);
+			}
+#endif
 #if LIBC	
 			string filepath = Path.Combine (TimeZoneDirectory, id);
 			return FindSystemTimeZoneByFileName (id, filepath);
@@ -317,6 +349,112 @@ namespace System
 			} catch (Exception e) {
 				throw new InvalidTimeZoneException (e.Message);
 			}
+		}
+#endif
+
+#if !NET_2_1
+		private static TimeZoneInfo FromRegistryKey (string id, RegistryKey key)
+		{
+			byte [] reg_tzi = (byte []) key.GetValue ("TZI");
+
+			if (reg_tzi == null)
+				throw new InvalidTimeZoneException ();
+
+			int bias = BitConverter.ToInt32 (reg_tzi, 0);
+			TimeSpan baseUtcOffset = new TimeSpan (0, -bias, 0);
+
+			string display_name = (string) key.GetValue ("Display");
+			string standard_name = (string) key.GetValue ("Std");
+			string daylight_name = (string) key.GetValue ("Dlt");
+
+			List<AdjustmentRule> adjustmentRules = new List<AdjustmentRule> ();
+
+			RegistryKey dst_key = key.OpenSubKey ("Dynamic DST", false);
+			if (dst_key != null) {
+				int first_year = (int) dst_key.GetValue ("FirstEntry");
+				int last_year = (int) dst_key.GetValue ("LastEntry");
+				int year;
+
+				for (year=first_year; year<=last_year; year++) {
+					byte [] dst_tzi = (byte []) dst_key.GetValue (year.ToString ());
+					if (dst_tzi != null) {
+						int start_year = year == first_year ? 1 : year;
+						int end_year = year == last_year ? 9999 : year;
+						ParseRegTzi(adjustmentRules, start_year, end_year, dst_tzi);
+					}
+				}
+			}
+			else
+				ParseRegTzi(adjustmentRules, 1, 9999, reg_tzi);
+
+			return CreateCustomTimeZone (id, baseUtcOffset, display_name, standard_name, daylight_name, ValidateRules (adjustmentRules).ToArray ());
+		}
+
+		private static void ParseRegTzi (List<AdjustmentRule> adjustmentRules, int start_year, int end_year, byte [] buffer)
+		{
+			//int standard_bias = BitConverter.ToInt32 (buffer, 4); /* not sure how to handle this */
+			int daylight_bias = BitConverter.ToInt32 (buffer, 8);
+
+			int standard_year = BitConverter.ToInt16 (buffer, 12);
+			int standard_month = BitConverter.ToInt16 (buffer, 14);
+			int standard_dayofweek = BitConverter.ToInt16 (buffer, 16);
+			int standard_day = BitConverter.ToInt16 (buffer, 18);
+			int standard_hour = BitConverter.ToInt16 (buffer, 20);
+			int standard_minute = BitConverter.ToInt16 (buffer, 22);
+			int standard_second = BitConverter.ToInt16 (buffer, 24);
+			int standard_millisecond = BitConverter.ToInt16 (buffer, 26);
+
+			int daylight_year = BitConverter.ToInt16 (buffer, 28);
+			int daylight_month = BitConverter.ToInt16 (buffer, 30);
+			int daylight_dayofweek = BitConverter.ToInt16 (buffer, 32);
+			int daylight_day = BitConverter.ToInt16 (buffer, 34);
+			int daylight_hour = BitConverter.ToInt16 (buffer, 36);
+			int daylight_minute = BitConverter.ToInt16 (buffer, 38);
+			int daylight_second = BitConverter.ToInt16 (buffer, 40);
+			int daylight_millisecond = BitConverter.ToInt16 (buffer, 42);
+
+			if (standard_month == 0 || daylight_month == 0)
+				return;
+
+			DateTime start_date;
+			DateTime start_timeofday = new DateTime (1, 1, 1, daylight_hour, daylight_minute, daylight_second, daylight_millisecond);
+			TransitionTime start_transition_time;
+
+			if (daylight_year == 0) {
+				start_date = new DateTime (start_year, 1, 1);
+				start_transition_time = TransitionTime.CreateFloatingDateRule (
+					start_timeofday, daylight_month, daylight_day,
+					(DayOfWeek) daylight_dayofweek);
+			}
+			else {
+				start_date = new DateTime (daylight_year, daylight_month, daylight_day,
+					daylight_hour, daylight_minute, daylight_second, daylight_millisecond);
+				start_transition_time = TransitionTime.CreateFixedDateRule (
+					start_timeofday, daylight_month, daylight_day);
+			}
+
+			DateTime end_date;
+			DateTime end_timeofday = new DateTime (1, 1, 1, standard_hour, standard_minute, standard_second, standard_millisecond);
+			TransitionTime end_transition_time;
+
+			if (standard_year == 0) {
+				end_date = new DateTime (end_year, 12, 31);
+				end_transition_time = TransitionTime.CreateFloatingDateRule (
+					end_timeofday, standard_month, standard_day,
+					(DayOfWeek) standard_dayofweek);
+			}
+			else {
+				end_date = new DateTime (standard_year, standard_month, standard_day,
+					standard_hour, standard_minute, standard_second, standard_millisecond);
+				end_transition_time = TransitionTime.CreateFixedDateRule (
+					end_timeofday, standard_month, standard_day);
+			}
+
+			TimeSpan daylight_delta = new TimeSpan(0, -daylight_bias, 0);
+
+			adjustmentRules.Add (AdjustmentRule.CreateAdjustmentRule (
+				start_date, end_date, daylight_delta,
+				start_transition_time, end_transition_time));
 		}
 #endif
 
@@ -358,7 +496,11 @@ namespace System
 			return hash_code;
 		}
 
+#if NET_4_0
+		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
+#else
 		public void GetObjectData (SerializationInfo info, StreamingContext context)
+#endif
 		{
 			throw new NotImplementedException ();
 		}
@@ -369,6 +511,17 @@ namespace System
 		{
 			if (systemTimeZones == null) {
 				systemTimeZones = new List<TimeZoneInfo> ();
+#if !NET_2_1
+				if (TimeZoneKey != null) {
+					foreach (string id in TimeZoneKey.GetSubKeyNames ()) {
+						try {
+							systemTimeZones.Add (FindSystemTimeZoneById (id));
+						} catch {}
+					}
+
+					return new ReadOnlyCollection<TimeZoneInfo> (systemTimeZones);
+				}
+#endif
 #if LIBC
 				string[] continents = new string [] {"Africa", "America", "Antarctica", "Arctic", "Asia", "Atlantic", "Brazil", "Canada", "Chile", "Europe", "Indian", "Mexico", "Mideast", "Pacific", "US"};
 				foreach (string continent in continents) {
@@ -512,7 +665,11 @@ namespace System
 			return false;
 		}
 
+#if NET_4_0
+		void IDeserializationCallback.OnDeserialization (object sender)
+#else
 		public void OnDeserialization (object sender)
+#endif
 		{
 			throw new NotImplementedException ();
 		}
@@ -589,12 +746,14 @@ namespace System
 			if (dateTime.Kind == DateTimeKind.Utc && this != TimeZoneInfo.Utc)
 				date = date + BaseUtcOffset;
 
-			foreach (AdjustmentRule rule in adjustmentRules) {
-				if (rule.DateStart > date.Date)
-					return null;
-				if (rule.DateEnd < date.Date)
-					continue;
-				return rule;
+			if (adjustmentRules != null) {
+				foreach (AdjustmentRule rule in adjustmentRules) {
+					if (rule.DateStart > date.Date)
+						return null;
+					if (rule.DateEnd < date.Date)
+						continue;
+					return rule;
+				}
 			}
 			return null;
 		}
@@ -609,6 +768,18 @@ namespace System
 			if (day >  DateTime.DaysInMonth (year, transition.Month))
 				day -= 7;
 			return new DateTime (year, transition.Month, day) + transition.TimeOfDay.TimeOfDay;
+		}
+
+		static List<AdjustmentRule> ValidateRules (List<AdjustmentRule> adjustmentRules)
+		{
+			AdjustmentRule prev = null;
+			foreach (AdjustmentRule current in adjustmentRules.ToArray ()) {
+				if (prev != null && prev.DateEnd > current.DateStart) {
+					adjustmentRules.Remove (current);
+				}
+				prev = current;
+			}
+			return adjustmentRules;
 		}
 
 #if LIBC
@@ -755,18 +926,6 @@ namespace System
 			} else {
 				return CreateCustomTimeZone (id, baseUtcOffset, id, standardDisplayName, daylightDisplayName, ValidateRules (adjustmentRules).ToArray ());
 			}
-		}
-
-		static List<AdjustmentRule> ValidateRules (List<AdjustmentRule> adjustmentRules)
-		{
-			AdjustmentRule prev = null;
-			foreach (AdjustmentRule current in adjustmentRules.ToArray ()) {
-				if (prev != null && prev.DateEnd > current.DateStart) {
-					adjustmentRules.Remove (current);
-				}
-				prev = current;
-			}
-			return adjustmentRules;
 		}
 
 		static Dictionary<int, string> ParseAbbreviations (byte [] buffer, int index, int count)

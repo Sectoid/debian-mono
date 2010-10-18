@@ -1,3 +1,137 @@
+2010-08-28  Atsushi Eno  <atsushi@ximian.com>
+
+	ISerializable type didn't iterate all base types to pick up all
+	target fields.
+
+2010-08-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Use XmlConvert.EncodeLocalName() to not introduce xml syntax
+	violation for not-WF member names.
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	For IXmlSerializable types it should first try static GetSchema()
+	for QName. WS-DD uses it.
+
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	KnownTypes should return the actual types.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : add OnDeserializing/OnDeserialized support.
+
+2010-06-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XmlFormatterDeserializer.cs: Fix some issues in Moonlight when 
+	some referenced assemblies cannot be found or loaded
+
+2010-06-03  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SerializationMap.cs: NET_2_1 needs cast too
+
+2010-06-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : fix PeerNodeAddress serialization regression.
+
+2010-06-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : for IXmlSerializable it uses CreateInstance()
+	  instead of GetUninitializedObject(). Fixed bug #601785.
+
+2010-05-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, XmlFormatterSerializer.cs,
+	  DataContractSerializer.cs :
+	  support DataContractSerializer.PreserveObjectReferences. z:Ref
+	  attributes are used not only for objects with IsReference=true.
+	  Fixed bug #610036.
+
+2010-05-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs, KnownTypeCollection.cs : contract namespace
+	  should be still considered even if contract (local) name is null.
+	  Fix crash for generic derived type of dictionary. Fixed the
+	  primary (crasher) part of bug #610036.
+
+2010-05-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlFormatterDeserializer.cs : Array of something with non-default
+	  namespace should be deserialized as well. Required for fixing
+	  PeerResolvers ResolveResponseInfo serialization test case.
+
+2010-05-19  Andreia Gaita  <avidigal@novell.com>
+
+	* SerializationMap.cs: when deserializing, it is possible that the
+	DataMemberInfo objects being matched against the xml don't have
+	a set namespace because they were created from
+	DefaultTypeMap.GetDataMembers(), so only use the namespace for
+	comparison if it's not null (fixes part of #599667)
+
+2010-04-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs : support DataContractNamespaceAttribute.
+	  Fixed bug #599889.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractExporter-new.cs : do not expect contract attribute on
+	  dictionary map. Non-contract type also uses this.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.XsdExporter.cs, DataContractExporter-new.cs :
+	  handle schema export for SharedTypeMap.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs, SerializationMap.cs : split SharedTypeMap
+	  .ctor() and initialization. Fixed infinite loop for some
+	  [Serializable] types (such as Assembly).
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializer : implement IsStartObject().
+
+2010-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* KnownTypeCollection.cs, SerializationMap.cs :
+	  some refactoring to implement MessageDescription.XmlName.
+
+2010-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.cs : return array instance if the runtime type is
+	  an array (it used to return ArrayList without conveting to array).
+
+2010-03-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* SerializationMap.XsdExporter.cs, XsdDataContractExporter-new.cs:
+	  refresh implementation to reflect the latest WCF impl.
+	* SerializationMap.cs : make types partial.
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter.cs : fix extension type name (and comment).
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter.cs : added dictionary support.
+
+2010-02-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter-new.cs, XsdDataContractImporter.cs :
+	  replaced implementation.
+	* ImportOptions.cs : add correct MonoTODOs.
+
+2010-02-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter-new.cs : output [KnownType] to expose
+	  base/derived type relationship.
+
+2010-02-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporter-new.cs : fix GenerateInternal.
+
 2010-02-17  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XsdDataContractImporter-new.cs : refresh implementation that is

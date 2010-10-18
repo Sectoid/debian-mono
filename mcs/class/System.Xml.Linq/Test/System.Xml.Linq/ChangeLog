@@ -1,3 +1,17 @@
+2010-04-23  Jonathan Pobst  <monkey@jpobst.com>
+
+	* XAttributeTest.cs, XElementTest.cs: Try to standardize DST usage
+	to fix failing tests in buildbot.
+
+2010-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XNodeNavigatorTest.cs : added test for bug #594877. Enable and fix
+	  tests that were commented out.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XElementTest.cs : added test for bug #592435.
+
 2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XElementTest.cs, XAttributeTest.cs : add corner case value conversion

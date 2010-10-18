@@ -33,12 +33,12 @@ using System.ComponentModel;
 using System.Configuration;
 using System.Web.SessionState;
 
-#if NET_2_0
-
-namespace System.Web.Configuration {
-
+namespace System.Web.Configuration
+{
 	public sealed class SessionStateSection : ConfigurationSection
 	{
+		internal static readonly string DefaultSqlConnectionString = "data source=localhost;Integrated Security=SSPI";
+		
 		static ConfigurationProperty allowCustomSqlDatabaseProp;
 		static ConfigurationProperty cookielessProp;
 		static ConfigurationProperty cookieNameProp;
@@ -54,6 +54,10 @@ namespace System.Web.Configuration {
 		static ConfigurationProperty stateNetworkTimeoutProp;
 		static ConfigurationProperty timeoutProp;
 		static ConfigurationProperty useHostingIdentityProp;
+#if NET_4_0
+		static ConfigurationProperty compressionEnabledProp;
+		static ConfigurationProperty sqlConnectionRetryIntervalProp;
+#endif
 		static ConfigurationPropertyCollection properties;
 
 		static ConfigurationElementProperty elementProperty;
@@ -75,7 +79,7 @@ namespace System.Web.Configuration {
 			sqlCommandTimeoutProp = new ConfigurationProperty ("sqlCommandTimeout", typeof (TimeSpan), TimeSpan.FromSeconds (30),
 									   PropertyHelper.TimeSpanSecondsOrInfiniteConverter, null,
 									   ConfigurationPropertyOptions.None);
-			sqlConnectionStringProp = new ConfigurationProperty ("sqlConnectionString", typeof (string), "data source=localhost;Integrated Security=SSPI");
+			sqlConnectionStringProp = new ConfigurationProperty ("sqlConnectionString", typeof (string), DefaultSqlConnectionString);
 			stateConnectionStringProp = new ConfigurationProperty ("stateConnectionString", typeof (string), "tcpip=loopback:42424");
 			stateNetworkTimeoutProp = new ConfigurationProperty ("stateNetworkTimeout", typeof (TimeSpan), TimeSpan.FromSeconds (10),
 									     PropertyHelper.TimeSpanSecondsOrInfiniteConverter,
@@ -86,6 +90,14 @@ namespace System.Web.Configuration {
 								 new TimeSpanValidator (new TimeSpan (0,1,0), TimeSpan.MaxValue),
 								 ConfigurationPropertyOptions.None);
 			useHostingIdentityProp = new ConfigurationProperty ("useHostingIdentity", typeof (bool), true);
+
+#if NET_4_0
+			compressionEnabledProp = new ConfigurationProperty ("compressionEnabled", typeof (bool), false);
+			sqlConnectionRetryIntervalProp = new ConfigurationProperty ("sqlConnectionRetryIntervalProp", typeof (TimeSpan), TimeSpan.FromSeconds (0),
+										    PropertyHelper.TimeSpanSecondsOrInfiniteConverter,
+										    PropertyHelper.PositiveTimeSpanValidator,
+										    ConfigurationPropertyOptions.None);
+#endif
 			properties = new ConfigurationPropertyCollection ();
 
 			properties.Add (allowCustomSqlDatabaseProp);
@@ -103,6 +115,10 @@ namespace System.Web.Configuration {
 			properties.Add (stateNetworkTimeoutProp);
 			properties.Add (timeoutProp);
 			properties.Add (useHostingIdentityProp);
+#if NET_4_0
+			properties.Add (compressionEnabledProp);
+			properties.Add (sqlConnectionRetryIntervalProp);
+#endif
 
 			elementProperty = new ConfigurationElementProperty (new CallbackValidator (typeof (SessionStateSection), ValidateElement));
 		}
@@ -206,6 +222,21 @@ namespace System.Web.Configuration {
 			set { base[useHostingIdentityProp] = value; }
 		}
 
+#if NET_4_0
+		[ConfigurationPropertyAttribute("compressionEnabled", DefaultValue = false)]
+		public bool CompressionEnabled {
+			get { return (bool) base [compressionEnabledProp]; }
+			set { base [compressionEnabledProp] = value; }
+		}
+
+		[TypeConverterAttribute(typeof(TimeSpanSecondsOrInfiniteConverter))]
+		[ConfigurationPropertyAttribute("sqlConnectionRetryInterval", DefaultValue = "00:00:00")]
+		public TimeSpan SqlConnectionRetryInterval {
+			get { return (TimeSpan) base [sqlConnectionRetryIntervalProp]; }
+			set { base [sqlConnectionRetryIntervalProp] = value; }
+		}
+#endif
+		
 		static void ValidateElement (object o)
 		{
 			/* XXX do some sort of element validation here? */
@@ -244,5 +275,3 @@ namespace System.Web.Configuration {
 
 	}
 }
-
-#endif

@@ -32,11 +32,12 @@ using System.Collections.Concurrent;
 
 using System.Threading;
 using System.Linq;
+using MonoTests.System.Threading.Tasks;
 
 using NUnit;
 using NUnit.Framework;
 
-namespace ParallelFxTests
+namespace MonoTests.System.Collections.Concurrent
 {
 	public enum CheckOrderingType {
 		InOrder,
@@ -80,14 +81,25 @@ namespace ParallelFxTests
 				const int delta = 5;
 				
 				for (int i = 0; i < (count + delta) * threads; i++)
-					coll.TryAdd (i);
+					while (!coll.TryAdd (i));
 				
 				bool state = true;
 				
+				Assert.AreEqual ((count + delta) * threads, coll.Count, "#0");
+				
 				ParallelTestHelper.ParallelStressTest (coll, (q) => {
+					bool s = true;
 					int t;
-					for (int i = 0; i < count; i++)
-						state &= coll.TryTake (out t);
+					
+					for (int i = 0; i < count; i++) {
+						s &= coll.TryTake (out t);
+						// try again in case it was a transient failure
+						if (!s && coll.TryTake (out t))
+							s = true;
+					}
+					
+					if (!s)
+						state = false;
 				}, threads);
 				
 				Assert.IsTrue (state, "#1");
@@ -109,7 +121,7 @@ namespace ParallelFxTests
 					CollectionAssert.AreEquivalent (expected, actual, "#3");
 				else 
 					Assert.AreEqual (expected, actual, "#3");
-			});
+			}, 1000);
 		}
 	}
 }

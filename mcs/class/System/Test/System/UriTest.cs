@@ -69,6 +69,7 @@ namespace MonoTests.System
 
 			uri = new Uri("  \r  \n http://test.com\r\n \r\r  ");
 			Assert.AreEqual ("http://test.com/", uri.ToString(), "#k0");
+			Assert.AreEqual ("http", uri.GetComponents (UriComponents.Scheme, UriFormat.UriEscaped), "#k0-gc");
 
 			uri = new Uri ("http://contoso.com?subject=uri");
 			Assert.AreEqual ("/", uri.AbsolutePath, "#k1");
@@ -156,6 +157,7 @@ namespace MonoTests.System
 			uri = new Uri (new Uri("http://www.contoso.com/xxx/yyy/index.htm"), "../../../foo/bar/Hello World.htm?x=0:8", false);
 #if NET_2_0
 			Assert.AreEqual ("http://www.contoso.com/foo/bar/Hello%20World.htm?x=0:8", uri.AbsoluteUri, "#rel9");
+			Assert.AreEqual ("/foo/bar/Hello%20World.htm", uri.AbsolutePath, "#rel9-path");
 #else
 			Assert.AreEqual ("http://www.contoso.com/../foo/bar/Hello%20World.htm?x=0:8", uri.AbsoluteUri, "#rel9");
 #endif
@@ -167,8 +169,10 @@ namespace MonoTests.System
 
 			uri = new Uri (new Uri("http://www.xxx.com"), "?x=0");
 			Assert.AreEqual ("http://www.xxx.com/?x=0", uri.ToString(), "#rel30");
+#if !NET_4_0
 			uri = new Uri (new Uri("http://www.xxx.com/index.htm"), "?x=0");
 			Assert.AreEqual ("http://www.xxx.com/?x=0", uri.ToString(), "#rel31");
+#endif
 			uri = new Uri (new Uri("http://www.xxx.com/index.htm"), "#here");
 			Assert.AreEqual ("http://www.xxx.com/index.htm#here", uri.ToString(), "#rel32");
 #if NET_2_0
@@ -243,7 +247,9 @@ namespace MonoTests.System
 			Uri b = new Uri ("http://a/b/c/d;p?q");
 			Assert.AreEqual ("http://a/g", new Uri (b, "/g").ToString (), "#1");
 			Assert.AreEqual ("http://g/", new Uri (b, "//g").ToString (), "#2");
+#if !NET_4_0
 			Assert.AreEqual ("http://a/b/c/?y", new Uri (b, "?y").ToString (), "#3");
+#endif
 			Assert.IsTrue (new Uri (b, "#s").ToString ().EndsWith ("#s"), "#4");
 
 			Uri u = new Uri (b, "/g?q=r");
@@ -1714,6 +1720,18 @@ namespace MonoTests.System
 			Console.WriteLine ("");
 		}
 
+		[Test]
+		public void FtpRootPath ()
+		{
+			Uri u = new Uri ("ftp://a.b/%2fabc/def");
+			string p = u.PathAndQuery;
+			Assert.AreEqual ("/%2fabc/def", p);
+			p = Uri.UnescapeDataString (p).Substring (1);
+			Assert.AreEqual ("/abc/def", p);
+			u = new Uri (new Uri ("ftp://a.b/c/d/e/f"), p);
+			Assert.AreEqual ("/abc/def", u.PathAndQuery);
+		}
+
 //BNC#533572
 #if NET_2_0
 		[Test]
@@ -1814,6 +1832,35 @@ namespace MonoTests.System
 			Uri fileUri = new Uri (fullpath);
 		}
 
+		[Test]
+		public void UnixAbsoluteFilePath_WithSpecialChars1 ()
+		{
+			Uri unixuri = new Uri ("/home/user/a@b");
+			Assert.AreEqual ("file", unixuri.Scheme, "UnixAbsoluteFilePath_WithSpecialChars #1");
+		}
+
+		[Test]
+		public void UnixAbsoluteFilePath_WithSpecialChars2 ()
+		{
+			Uri unixuri = new Uri ("/home/user/a:b");
+			Assert.AreEqual ("file", unixuri.Scheme, "UnixAbsoluteFilePath_WithSpecialChars #2");
+		}
+
+		[Test]
+		public void RelativeUriWithColons ()
+		{
+			string s = @"Transform?args=[{""__type"":""Record:#Nostr"",""Code"":""%22test%22SomeGloss"",""ID"":""1"",""Table"":""Glossary""},{""__type"":""Record:#Nostr"",""Code"":""%22test%22All"",""ID"":""2"",""Table"":""GlossView""}, {""__type"":""Record:#Nostr"",""Code"":""%22test%22Q"",""ID"":""3"",""Table"":""Glossary""}]"; // with related to bug #573795
+			new Uri (s, UriKind.Relative);
+			new Uri (":", UriKind.Relative);
+			new Uri ("1:", UriKind.Relative);
+		}
+
+		[Test]
+		public void ConsecutiveSlashes ()
+		{
+			Uri uri = new Uri ("http://media.libsyn.com/bounce/http://cdn4.libsyn.com/nerdist/somestuff.txt");
+			Assert.AreEqual ("http://media.libsyn.com/bounce/http://cdn4.libsyn.com/nerdist/somestuff.txt", uri.ToString ());
+		}
 
 		public class DerivedUri : Uri
 		{

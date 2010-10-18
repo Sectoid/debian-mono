@@ -535,8 +535,8 @@ static dis_map_t method_flags_map [] = {
 	{ METHOD_ATTRIBUTE_RT_SPECIAL_NAME,     "rtspecialname " },
 	{ METHOD_ATTRIBUTE_UNMANAGED_EXPORT,    "export " },
 /* MS ilasm doesn't compile this statement - is must be added automagically when permissionset are present */
-/*	{ METHOD_ATTRIBUTE_HAS_SECURITY,        "hassecurity" }, */
-	{ METHOD_ATTRIBUTE_REQUIRE_SEC_OBJECT,  "requiresecobj" },
+	{ METHOD_ATTRIBUTE_HAS_SECURITY,        "" /*"hassecurity"*/ },
+	{ METHOD_ATTRIBUTE_REQUIRE_SEC_OBJECT,  "requiresecobj " },
 	{ METHOD_ATTRIBUTE_PINVOKE_IMPL,        "pinvokeimpl " }, 
 	{ METHOD_ATTRIBUTE_STRICT,	            "strict " }, 
 	{ 0, NULL }
@@ -552,10 +552,11 @@ method_flags (guint32 f)
 {
 	GString *str = g_string_new ("");
 	int access = f & METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK;
+	int rest = f & ~access;
 	char *s;
 	
 	g_string_append (str, map (access, method_access_map));
-	g_string_append (str, flags (f, method_flags_map));
+	g_string_append (str, flags (rest, method_flags_map));
 
 	s = str->str;
 	g_string_free (str, FALSE);
@@ -566,10 +567,10 @@ method_flags (guint32 f)
 static dis_map_t pinvoke_flags_map [] = {
 	{ PINVOKE_ATTRIBUTE_NO_MANGLE ,            "nomangle " },
 	{ PINVOKE_ATTRIBUTE_SUPPORTS_LAST_ERROR,   "lasterr " },
-	{ PINVOKE_ATTRIBUTE_BEST_FIT_ENABLED,      "bestfit:on" },
-	{ PINVOKE_ATTRIBUTE_BEST_FIT_DISABLED,      "bestfit:off" },
-	{ PINVOKE_ATTRIBUTE_THROW_ON_UNMAPPABLE_ENABLED, "charmaperror:on" },
-	{ PINVOKE_ATTRIBUTE_THROW_ON_UNMAPPABLE_DISABLED, "charmaperror:off" },
+	{ PINVOKE_ATTRIBUTE_BEST_FIT_ENABLED,      "bestfit:on " },
+	{ PINVOKE_ATTRIBUTE_BEST_FIT_DISABLED,      "bestfit:off " },
+	{ PINVOKE_ATTRIBUTE_THROW_ON_UNMAPPABLE_ENABLED, "charmaperror:on " },
+	{ PINVOKE_ATTRIBUTE_THROW_ON_UNMAPPABLE_DISABLED, "charmaperror:off " },
 	{ 0, NULL }
 };
 
@@ -602,55 +603,16 @@ pinvoke_flags (guint32 f)
 	GString *str = g_string_new ("");
 	int cset = f & PINVOKE_ATTRIBUTE_CHAR_SET_MASK;
 	int cconv = f & PINVOKE_ATTRIBUTE_CALL_CONV_MASK;
+	int rest = f & ~(cset | cconv);
 	char *s;
 
 	g_string_append (str, map (cset, pinvoke_char_set_map));
 	g_string_append (str, map (cconv, pinvoke_call_conv_map));
-	g_string_append (str, flags (f, pinvoke_flags_map));
+	g_string_append (str, flags (rest, pinvoke_flags_map));
 
 	s = g_strdup(str->str);
 	g_string_free (str, FALSE);
 
-	return s;
-}
-
-static dis_map_t method_impl_map [] = {
-	{ METHOD_IMPL_ATTRIBUTE_IL,              "cil " },
-	{ METHOD_IMPL_ATTRIBUTE_NATIVE,          "native " },
-	{ METHOD_IMPL_ATTRIBUTE_OPTIL,           "optil " },
-	{ METHOD_IMPL_ATTRIBUTE_RUNTIME,         "runtime " },
-	{ 0, NULL }
-};
-
-static dis_map_t managed_type_map [] = {
-	{ METHOD_IMPL_ATTRIBUTE_UNMANAGED,       "unmanaged " },
-	{ METHOD_IMPL_ATTRIBUTE_MANAGED,         "managed " },
-	{ 0, NULL }
-};
-
-static dis_map_t managed_impl_flags [] = {
-	{ METHOD_IMPL_ATTRIBUTE_FORWARD_REF,     "fwdref " },
-	{ METHOD_IMPL_ATTRIBUTE_PRESERVE_SIG,    "preservesig " },
-	{ METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL,   "internalcall " },
-	{ METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED,    "synchronized " },
-	{ METHOD_IMPL_ATTRIBUTE_NOINLINING,      "noinlining " },
-	{ 0, NULL }
-};
-
-static char *
-method_impl_flags (guint32 f)
-{
-	GString *str = g_string_new ("");
-	char *s;
-	int code_type = f & METHOD_IMPL_ATTRIBUTE_CODE_TYPE_MASK;
-	int managed_type = f & METHOD_IMPL_ATTRIBUTE_MANAGED_MASK;
-
-	g_string_append (str, map (code_type, method_impl_map));
-	g_string_append (str, map (managed_type, managed_type_map));
-	g_string_append (str, flags (f, managed_impl_flags));
-	
-	s = str->str;
-	g_string_free (str, FALSE);
 	return s;
 }
 
@@ -885,7 +847,7 @@ dis_method_list (const char *klass_name, MonoImage *m, guint32 start, guint32 en
 		mono_metadata_decode_row (t, i, cols, MONO_METHOD_SIZE);
 
 		flags = method_flags (cols [MONO_METHOD_FLAGS]);
-		impl_flags = method_impl_flags (cols [MONO_METHOD_IMPLFLAGS]);
+		impl_flags = get_method_impl_flags (cols [MONO_METHOD_IMPLFLAGS]);
 
 		sig = mono_metadata_blob_heap (m, cols [MONO_METHOD_SIGNATURE]);
 		mono_metadata_decode_blob_size (sig, &sig);
@@ -897,8 +859,11 @@ dis_method_list (const char *klass_name, MonoImage *m, guint32 start, guint32 en
 			container = type_container;
 
 		ms = mono_metadata_parse_method_signature_full (m, container, i + 1, sig, &sig);
-		sig_str = dis_stringify_method_signature (m, ms, i + 1, container, FALSE);
-		method_name = mono_metadata_string_heap (m, cols [MONO_METHOD_NAME]);
+		if (ms != NULL){
+			sig_str = dis_stringify_method_signature (m, ms, i + 1, container, FALSE);
+			method_name = mono_metadata_string_heap (m, cols [MONO_METHOD_NAME]);
+		} else
+			method_name = g_strdup ("<NULL METHOD SIGNATURE>");
 
 		fprintf (output, "    // method line %d\n", i + 1);
 		fprintf (output, "    .method %s", flags);

@@ -145,28 +145,34 @@ namespace System.ServiceModel.Description
 			throw new NotImplementedException ();
 		}
 
-		internal ClientRuntime CreateClientRuntime ()
+		internal ClientRuntime CreateClientRuntime (object callbackDispatchRuntime)
 		{
-			ClientRuntime proxy = new ClientRuntime (Name, Namespace) { ContractClientType = ContractType, CallbackClientType = CallbackContractType };
-			//proxy.ContractClientType = typeof (TChannel);
+			ClientRuntime proxy = new ClientRuntime (Name, Namespace, callbackDispatchRuntime) {ContractClientType = ContractType, CallbackClientType = CallbackContractType};
+			FillClientOperations (proxy, false);
+			return proxy;
+		}
 
+		internal void FillClientOperations (ClientRuntime proxy, bool isCallback)
+		{
 			foreach (OperationDescription od in Operations) {
+				if (!(isCallback && od.InCallbackContract || !isCallback && od.InOrdinalContract))
+					continue; // not in the contract in use.
+
 				if (!proxy.Operations.Contains (od.Name))
-					PopulateClientOperation (proxy, od);
-#if !NET_2_1 || MONOTOUCH
+					PopulateClientOperation (proxy, od, isCallback);
+#if !MOONLIGHT
 				foreach (IOperationBehavior ob in od.Behaviors)
 					ob.ApplyClientBehavior (od, proxy.Operations [od.Name]);
 #endif
 			}
-
-			return proxy;
 		}
 
-		void PopulateClientOperation (ClientRuntime proxy, OperationDescription od)
+		void PopulateClientOperation (ClientRuntime proxy, OperationDescription od, bool isCallback)
 		{
 			string reqA = null, resA = null;
 			foreach (MessageDescription m in od.Messages) {
-				if (m.Direction == MessageDirection.Input)
+				bool isReq = m.Direction == MessageDirection.Input ^ isCallback;
+				if (isReq)
 					reqA = m.Action;
 				else
 					resA = m.Action;
@@ -176,15 +182,29 @@ namespace System.ServiceModel.Description
 				new ClientOperation (proxy, od.Name, reqA) :
 				new ClientOperation (proxy, od.Name, reqA, resA);
 			foreach (MessageDescription md in od.Messages) {
-				if (md.Direction == MessageDirection.Input &&
+				bool isReq = md.Direction == MessageDirection.Input ^ isCallback;
+				if (isReq &&
 				    md.Body.Parts.Count == 1 &&
 				    md.Body.Parts [0].Type == typeof (Message))
 					o.SerializeRequest = false;
-				if (md.Direction == MessageDirection.Output &&
+				if (!isReq &&
 				    md.Body.ReturnValue != null &&
 				    md.Body.ReturnValue.Type == typeof (Message))
 					o.DeserializeReply = false;
 			}
+#if !NET_2_1
+			foreach (var fd in od.Faults)
+				o.FaultContractInfos.Add (new FaultContractInfo (fd.Action, fd.DetailType));
+#endif
+
+			// FIXME: at initialization time it does not seem to 
+			// fill default formatter. It should be filled after
+			// applying all behaviors. (Tthat causes regression, so
+			// I don't care little compatibility difference so far)
+			//
+			// FIXME: pass correct isRpc, isEncoded
+			o.Formatter = new OperationFormatter (od, false, false);
+
 			proxy.Operations.Add (o);
 		}
 	}

@@ -4,7 +4,7 @@
 // Author:
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2005 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2005,2010 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -31,11 +31,66 @@ using System.Configuration;
 
 namespace System.Runtime.Serialization.Configuration
 {
-	[MonoTODO]
 	public sealed class TypeElement : ConfigurationElement
 	{
+		// Static Fields
+		static ConfigurationPropertyCollection properties;
+		static ConfigurationProperty index;
+		static ConfigurationProperty parameters;
+		static ConfigurationProperty type;
+
+		static TypeElement ()
+		{
+			properties = new ConfigurationPropertyCollection ();
+			index = new ConfigurationProperty ("index",
+				typeof (int), "", null, null,
+				ConfigurationPropertyOptions.None);
+			parameters = new ConfigurationProperty ("",
+				typeof (ParameterElementCollection), null, null, null,
+				ConfigurationPropertyOptions.IsDefaultCollection);
+			type = new ConfigurationProperty ("type",
+				typeof (string), "", null, null,
+				ConfigurationPropertyOptions.None);
+
+			properties.Add (index);
+			properties.Add (parameters);
+			properties.Add (type);
+		}
+
 		public TypeElement ()
 		{
+		}
+		
+		public TypeElement (string typeName)
+		{
+		}
+
+		[ConfigurationProperty ("index", DefaultValue = 0)]
+		[IntegerValidator (MinValue = 0)]
+		public int Index {
+			get { return (int) base [index]; }
+			set { base [index] = value; }
+		}
+
+		[ConfigurationProperty ("", DefaultValue = null, Options = ConfigurationPropertyOptions.IsDefaultCollection)]
+		public ParameterElementCollection Parameters {
+			get { return (ParameterElementCollection) base [parameters]; }
+		}
+
+		[ConfigurationProperty ("type", DefaultValue = "")]
+		[StringValidator (MinLength = 0)]
+		public string Type {
+			get { return (string) base [type]; }
+			set { base [type] = value; }
+		}
+
+		protected override ConfigurationPropertyCollection Properties {
+			get { return properties; }
+		}
+
+		protected override void Reset (ConfigurationElement parentElement)
+		{
+			base.Reset (parentElement);
 		}
 	}
 }

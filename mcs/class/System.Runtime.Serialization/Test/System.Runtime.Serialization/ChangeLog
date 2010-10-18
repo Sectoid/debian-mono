@@ -1,3 +1,44 @@
+2010-08-06  Atsushi Eno  <atsushi@ximian.com>
+
+	KnownTypes should return the actual types.
+
+2010-06-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : enable binary reader test for #601785.
+
+2010-06-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : added test for bug #601785, based on
+	  the test by Raja Harinath.
+
+2010-05-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : test PreserveObjectReferences too.
+
+2010-05-31  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : add test for bug #610036.
+
+2010-04-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : add test for bug #599899.
+
+2010-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlObjectSerializerTest.cs : test for empty array deserialization.
+
+2010-03-01  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractExporterTest.cs : remove [NotWorking].
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporterTest.cs : added Dictionary export tests.
+
+2010-02-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XsdDataContractImporterTest.cs : enabled new tests.
+
 2010-02-17  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XsdDataContractImporterTest.cs : added a bunch of tests for new

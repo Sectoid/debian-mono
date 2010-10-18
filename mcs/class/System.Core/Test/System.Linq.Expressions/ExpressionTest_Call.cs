@@ -87,7 +87,11 @@ namespace MonoTests.System.Linq.Expressions {
 		}
 
 		[Test]
+#if NET_4_0
+		[ExpectedException (typeof (ArgumentException))]
+#else
 		[ExpectedException (typeof (ArgumentNullException))]
+#endif
 		public void ArgInstanceNullForNonStaticMethod ()
 		{
 			Expression.Call (null, typeof (object).GetMethod ("ToString"));
@@ -281,7 +285,7 @@ namespace MonoTests.System.Linq.Expressions {
 		{
 			return (int) (i as ConstantExpression).Value;
 		}
-
+#if !NET_4_0 // dlr bug 5875
 		[Test]
 		public void CallMethodWithExpressionParameter ()
 		{
@@ -292,7 +296,7 @@ namespace MonoTests.System.Linq.Expressions {
 
 			Assert.AreEqual (42, l ());
 		}
-
+#endif
 		static bool fout_called = false;
 
 		public static int FooOut (out int x)
@@ -470,6 +474,36 @@ namespace MonoTests.System.Linq.Expressions {
 			Assert.IsTrue (method.IsGenericMethod);
 			Assert.AreEqual (typeof (string), method.GetGenericArguments () [0]);
 			Assert.AreEqual (typeof (int), method.GetGenericArguments () [1]);
+		}
+
+		[Test]
+		public void CallNullableGetValueOrDefault () // #568989
+		{
+			var value = Expression.Parameter (typeof (int?), "value");
+			var default_parameter = Expression.Parameter (typeof (int), "default");
+
+			var getter = Expression.Lambda<Func<int?, int, int>> (
+				Expression.Call (
+					value,
+					"GetValueOrDefault",
+					Type.EmptyTypes,
+					default_parameter),
+				value,
+				default_parameter).Compile ();
+
+			Assert.AreEqual (2, getter (null, 2));
+			Assert.AreEqual (4, getter (4, 2));
+		}
+
+		[Test]
+		public void CallToStringOnEnum () // #625367
+		{
+			var lambda = Expression.Lambda<Func<string>> (
+				Expression.Call (
+					Expression.Constant (TypeCode.Boolean, typeof (TypeCode)),
+					typeof (object).GetMethod ("ToString"))).Compile ();
+
+			Assert.AreEqual ("Boolean", lambda ());
 		}
 	}
 }

@@ -49,7 +49,13 @@ namespace System.ServiceModel.Dispatcher
 				object result = operation.Invoker.Invoke (instance, parameters, out outParams);
 				HandleInvokeResult (mrc, outParams, result);
 			} else {
-				var ar = operation.Invoker.InvokeBegin (instance, parameters, null, null);
+				AsyncCallback callback = delegate {};
+				// FIXME: the original code passed null callback
+				// and null state, which is very wrong :(
+				// It is still wrong to pass dummy callback, but
+				// wrong code without obvious issues is better
+				// than code with an obvious issue.
+				var ar = operation.Invoker.InvokeBegin (instance, parameters, callback, null);
 				object result = operation.Invoker.InvokeEnd (instance, out outParams, ar);
 				HandleInvokeResult (mrc, outParams, result);
 			}
@@ -90,22 +96,14 @@ namespace System.ServiceModel.Dispatcher
 			Message res = null;
 			if (operation.SerializeReply)
 				res = operation.Formatter.SerializeReply (
-					mrc.OperationContext.EndpointDispatcher.ChannelDispatcher.MessageVersion, outputs, result);
+					mrc.OperationContext.IncomingMessageVersion, outputs, result);
 			else
 				res = (Message) result;
 			res.Headers.CopyHeadersFrom (mrc.OperationContext.OutgoingMessageHeaders);
 			res.Properties.CopyProperties (mrc.OperationContext.OutgoingMessageProperties);
+			if (res.Headers.RelatesTo == null)
+				 res.Headers.RelatesTo = mrc.OperationContext.IncomingMessageHeaders.MessageId;
 			mrc.ReplyMessage = res;
-		}
-
-		Message CreateActionNotSupported (Message req)
-		{
-			FaultCode fc = new FaultCode (
-				req.Version.Addressing.ActionNotSupported,
-				req.Version.Addressing.Namespace);
-			// FIXME: set correct namespace URI
-			return Message.CreateMessage (req.Version, fc,
-				String.Format ("action '{0}' is not supported in this service contract.", req.Headers.Action), String.Empty);
 		}
 
 		void BuildInvokeParams (MessageProcessingContext mrc, out object [] parameters)
@@ -126,8 +124,9 @@ namespace System.ServiceModel.Dispatcher
 		{
 			var dr = mrc.OperationContext.EndpointDispatcher.DispatchRuntime;
 			bool shutdown = false;
-			foreach (var eh in dr.ChannelDispatcher.ErrorHandlers)
-				shutdown |= eh.HandleError (ex);
+			if (dr.ChannelDispatcher != null) // non-callback channel
+				foreach (var eh in dr.ChannelDispatcher.ErrorHandlers)
+					shutdown |= eh.HandleError (ex);
 			if (shutdown)
 				ProcessSessionErrorShutdown (mrc);
 		}
@@ -148,12 +147,21 @@ namespace System.ServiceModel.Dispatcher
 			var dr = mrc.OperationContext.EndpointDispatcher.DispatchRuntime;
 			var cd = dr.ChannelDispatcher;
 			Message msg = null;
-			foreach (var eh in cd.ErrorHandlers)
-				eh.ProvideFault (ex, cd.MessageVersion, ref msg);
+			if (cd != null) // non-callback channel
+				foreach (var eh in cd.ErrorHandlers)
+					eh.ProvideFault (ex, cd.MessageVersion, ref msg);
 			if (msg != null)
 				return msg;
 
 			var req = mrc.IncomingMessage;
+
+			var fe = ex as FaultException;
+			if (fe != null && fe.GetType ().IsGenericType) {
+				var t = fe.GetType ().GetGenericArguments () [0];
+				foreach (var fci in mrc.Operation.FaultContractInfos)
+					if (fci.Detail == t)
+						return Message.CreateMessage (req.Version, fe.CreateMessageFault (), fci.Action);
+			}
 
 			// FIXME: set correct name
 			FaultCode fc = new FaultCode (

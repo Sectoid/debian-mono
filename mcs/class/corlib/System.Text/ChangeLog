@@ -1,12 +1,60 @@
+2010-08-10  Atsushi Eno  <atsushi@ximian.com>
+
+	EncoderFallback support in UTF8Encoding. Fixed bug #565129 and
+	regression in d961246.
+
+	Patch mostly by JB Evain.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	Revert "EncoderFallback support in UTF8Encoding. Fixed bug
+	#565129."
+
+	This reverts commit d961246014394a19ce813de43f9719ae63af4842
+	because it breaks 2 tests in System.Web on 2.0 and 4 on 4.0
+	profile.
+
+2010-08-04  atsushieno  <atsushi@ximian.com>
+
+	EncoderFallback support in UTF8Encoding. Fixed bug #565129.
+
+	Patch mostly by JB Evain.
+
+2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* StringBuilder.cs: Moonlight needs Clear too.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* StringBuilder.cs, Encoding.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-02-02  Jb Evain  <jbevain@novell.com>
+
+	* ASCIIEncoding.cs, Latin1Encoding.cs: remove duplicated code.
+
 2009-12-09  Chris Toshok  <toshok@ximian.com>
 
 	* Encoding.cs (get_Default): moonlight defaults to UTF8, not
 	UTF8Unmarked.
+	
+2009-11-24  Marek Safar  <marek.safar@gmail.com>
+
+	* UTF8Encoding.cs (GetPreamble): Let compiler optimize it.
+
+2009-11-02  Miguel de Icaza  <miguel@novell.com>
+
+	* Jumbo patch to drop support for pre-NET_2_0 code:
+
+	Remove NET_2_0 defines assuming the value is true.
+
+2009-10-22  Miguel de Icaza  <miguel@novell.com>
+
+	* StringBuilder.cs (Text): Add new 4.0 method.
 
 2009-10-06  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Encoding.cs: Remove normalization methods for Moonlight
-	[Backport r143536]
 
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 

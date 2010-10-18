@@ -85,14 +85,7 @@ namespace System.ServiceModel.Channels
 		public abstract string Scheme { get; }
 
 		public MessageVersion MessageVersion {
-			get {
-				foreach (BindingElement e in CreateBindingElements ()) {
-					MessageEncodingBindingElement me = e as MessageEncodingBindingElement;
-					if (me != null)
-						return me.MessageVersion;
-				}
-				return null;
-			}
+			get { return GetProperty<MessageVersion> (new BindingParameterCollection ()); }
 		}
 
 		BindingContext CreateContext (

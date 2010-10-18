@@ -4,7 +4,7 @@
 // Authors:
 //      Marek Habersack (mhabersack@novell.com)
 //
-// (C) 2009 Novell, Inc (http://www.novell.com)
+// (C) 2009-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -28,14 +28,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_4_0
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 using System.Web;
+using System.Web.UI;
+using System.Web.Compilation;
 
 namespace System.Web.Routing
 {
@@ -52,21 +52,45 @@ namespace System.Web.Routing
 
 		public PageRouteHandler (string virtualPath, bool checkPhysicalUrlAccess)
 		{
+			if (String.IsNullOrEmpty (virtualPath) || !virtualPath.StartsWith ("~/"))
+				throw new ArgumentException ("VirtualPath must be a non empty string starting with ~/", "virtualPath");
+			
 			VirtualPath = virtualPath;
 			CheckPhysicalUrlAccess = checkPhysicalUrlAccess;
 		}
 
-		[MonoTODO]
+		[MonoTODO ("Implement checking physical URL access")]
 		public virtual IHttpHandler GetHttpHandler (RequestContext requestContext)
 		{
-			throw new NotImplementedException ();
+			if (requestContext == null)
+				throw new ArgumentNullException ("requestContext");
+
+			string vpath = GetSubstitutedVirtualPath (requestContext);
+			int idx = vpath.IndexOf ('?');
+			if (idx > -1)
+				vpath = vpath.Substring (0, idx);
+
+			if (String.IsNullOrEmpty (vpath))
+				return null;
+			
+			return BuildManager.CreateInstanceFromVirtualPath (vpath, typeof (Page)) as IHttpHandler;
 		}
 
-		[MonoTODO]
 		public string GetSubstitutedVirtualPath (RequestContext requestContext)
 		{
-			throw new NotImplementedException ();
+			if (requestContext == null)
+				throw new ArgumentNullException ("requestContext");
+
+			RouteData rd = requestContext.RouteData;
+			Route route = rd != null ? rd.Route as Route: null;
+			if (route == null)
+				return VirtualPath;
+			
+			VirtualPathData vpd = new Route (VirtualPath.Substring (2), this).GetVirtualPath (requestContext, rd.Values);
+			if (vpd == null)
+				return VirtualPath;
+
+			return "~/" + vpd.VirtualPath;
 		}
 	}
 }
-#endif

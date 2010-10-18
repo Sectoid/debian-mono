@@ -28,8 +28,6 @@
  */
 
 
-#if NET_2_0 // Introduced by .NET 3.5 for 2.0 mscorlib
-
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -111,17 +109,17 @@ namespace System
 
 		public DateTimeOffset Add (TimeSpan timeSpan)
 		{
-			return new DateTimeOffset (dt.Add (timeSpan), utc_offset);
+			return new DateTimeOffset (dt.Add (timeSpan).Ticks, utc_offset);
 		}
 	
 		public DateTimeOffset AddDays (double days)
 		{
-			return new DateTimeOffset (dt.AddDays (days), utc_offset);	
+			return new DateTimeOffset (dt.AddDays (days).Ticks, utc_offset);	
 		}
 		
 		public DateTimeOffset AddHours (double hours)
 		{
-			return new DateTimeOffset (dt.AddHours (hours), utc_offset);
+			return new DateTimeOffset (dt.AddHours (hours).Ticks, utc_offset);
 		}
 
 		public static DateTimeOffset operator + (DateTimeOffset dateTimeTz, TimeSpan timeSpan)
@@ -131,32 +129,32 @@ namespace System
 
 		public DateTimeOffset AddMilliseconds (double milliseconds)
 		{
-			return new DateTimeOffset (dt.AddMilliseconds (milliseconds), utc_offset);
+			return new DateTimeOffset (dt.AddMilliseconds (milliseconds).Ticks, utc_offset);
 		}
 
 		public DateTimeOffset AddMinutes (double minutes)
 		{
-			return new DateTimeOffset (dt.AddMinutes (minutes), utc_offset);	
+			return new DateTimeOffset (dt.AddMinutes (minutes).Ticks, utc_offset);	
 		}
 
 		public DateTimeOffset AddMonths (int months)
 		{
-			return new DateTimeOffset (dt.AddMonths (months), utc_offset);
+			return new DateTimeOffset (dt.AddMonths (months).Ticks, utc_offset);
 		}
 
 		public DateTimeOffset AddSeconds (double seconds)
 		{
-			return new DateTimeOffset (dt.AddSeconds (seconds), utc_offset);
+			return new DateTimeOffset (dt.AddSeconds (seconds).Ticks, utc_offset);
 		}
 
 		public DateTimeOffset AddTicks (long ticks)
 		{
-			return new DateTimeOffset (dt.AddTicks (ticks), utc_offset);	
+			return new DateTimeOffset (dt.AddTicks (ticks).Ticks, utc_offset);	
 		}
 
 		public DateTimeOffset AddYears (int years)
 		{
-			return new DateTimeOffset (dt.AddYears (years), utc_offset);
+			return new DateTimeOffset (dt.AddYears (years).Ticks, utc_offset);
 		}
 
 		public static int Compare (DateTimeOffset first, DateTimeOffset second)
@@ -520,12 +518,29 @@ namespace System
 					} else
 						ii += ParseNumber (input, ii, tokLen, true, allow_white_spaces, out year);
 					break;
+
+					// The documentation is incorrect, they claim that K is the same as 'zz', but
+					// it actually allows the format to contain 4 digits for the offset
+				case 'K':
+					tokLen = 1;
+					int off_h, off_m = 0, sign;
+					temp_int = 0;
+					ii += ParseEnum (input, ii, new string [] {"-", "+"}, allow_white_spaces, out sign);
+					ii += ParseNumber (input, ii, 4, false, false, out off_h);
+					if (off_h == -1 || off_m == -1 || sign == -1)
+						return false;
+
+					if (sign == 0)
+						sign = -1;
+					offset = new TimeSpan (sign * off_h, sign * off_m, 0);
+					break;
+					
 				case 'z':
 					tokLen = DateTimeUtils.CountRepeat (format, fi, ch);
 					if (offset != TimeSpan.MinValue || tokLen > 3)
 						return false;
 
-					int off_h, off_m = 0, sign;
+					off_m = 0;
 					temp_int = 0;
 					ii += ParseEnum (input, ii, new string [] {"-", "+"}, allow_white_spaces, out sign);
 					ii += ParseNumber (input, ii, 2, tokLen != 1, false, out off_h);
@@ -533,7 +548,7 @@ namespace System
 						ii += ParseEnum (input, ii, new string [] {dfi.TimeSeparator}, false, out temp_int);
 						ii += ParseNumber (input, ii, 2, true, false, out off_m);
 					}
-					if (off_h == -1 || off_m == -1 || sign == -1 || temp_int == -1)
+					if (off_h == -1 || off_m == -1 || sign == -1)
 						return false;
 
 					if (sign == 0)
@@ -860,4 +875,3 @@ namespace System
 		}
 	}
 }
-#endif

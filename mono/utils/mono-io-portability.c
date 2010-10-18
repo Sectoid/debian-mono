@@ -6,6 +6,13 @@
 #endif
 #include <errno.h>
 #include <mono/utils/mono-io-portability.h>
+#include <mono/metadata/metadata.h>
+#include <mono/metadata/class.h>
+#include <mono/metadata/class-internals.h>
+#include <mono/metadata/object.h>
+#include <mono/metadata/gc-internal.h>
+#include <mono/metadata/profiler.h>
+#include <mono/metadata/profiler-private.h>
 
 #ifdef DISABLE_PORTABILITY
 int __mono_io_portability_helpers = PORTABILITY_NONE;
@@ -28,6 +35,8 @@ mono_portability_find_file (const gchar *pathname, gboolean last_exists)
 
 int __mono_io_portability_helpers = PORTABILITY_UNKNOWN;
 
+static inline gchar *mono_portability_find_file_internal (GString **report, const gchar *pathname, gboolean last_exists);
+
 void mono_portability_helpers_init (void)
 {
         const gchar *env;
@@ -36,7 +45,7 @@ void mono_portability_helpers_init (void)
 		return;
 	
         __mono_io_portability_helpers = PORTABILITY_NONE;
-        
+	
         env = g_getenv ("MONO_IOMAP");
         if (env != NULL) {
                 /* parse the environment setting and set up some vars
@@ -60,11 +69,10 @@ void mono_portability_helpers_init (void)
                         } else if (!strncasecmp (options[i], "case", 4)) {
                                 __mono_io_portability_helpers |= PORTABILITY_CASE;
                         } else if (!strncasecmp (options[i], "all", 3)) {
-                                __mono_io_portability_helpers |= (PORTABILITY_DRIVE |
-								  PORTABILITY_CASE);
-                        }
+                                __mono_io_portability_helpers |= (PORTABILITY_DRIVE | PORTABILITY_CASE);
+			}
                 }
-        }
+	}
 }
 
 /* Returns newly allocated string, or NULL on failure */
@@ -104,17 +112,65 @@ static gchar *find_in_dir (DIR *current, const gchar *name)
 	return(NULL);
 }
 
-/* Returns newly-allocated string or NULL on failure */
+static inline void append_report (GString **report, const gchar *format, ...)
+{
+#if GLIB_CHECK_VERSION(2,14,0)
+	va_list ap;
+	if (!*report)
+		*report = g_string_new ("");
+
+	va_start (ap, format);
+	g_string_append_vprintf (*report, format, ap);
+	va_end (ap);
+#else
+	g_assert_not_reached ();
+#endif
+}
+
+static inline void do_mono_profiler_iomap (GString **report, const char *pathname, const char *new_pathname)
+{
+	char *rep = NULL;
+	GString *tmp = report ? *report : NULL;
+
+	if (tmp) {
+		if (tmp->len > 0)
+			rep = g_string_free (tmp, FALSE);
+		else
+			g_string_free (tmp, TRUE);
+		*report = NULL;
+	}
+
+	mono_profiler_iomap (rep, pathname, new_pathname);
+	g_free (rep);
+}
+
 gchar *mono_portability_find_file (const gchar *pathname, gboolean last_exists)
+{
+	GString *report = NULL;
+	gchar *ret = mono_portability_find_file_internal (&report, pathname, last_exists);
+
+	if (report)
+		g_string_free (report, TRUE);
+
+	return ret;
+}
+
+/* Returns newly-allocated string or NULL on failure */
+static inline gchar *mono_portability_find_file_internal (GString **report, const gchar *pathname, gboolean last_exists)
 {
 	gchar *new_pathname, **components, **new_components;
 	int num_components = 0, component = 0;
 	DIR *scanning = NULL;
 	size_t len;
+	gboolean drive_stripped = FALSE;
+	gboolean do_report = (mono_profiler_get_events () & MONO_PROFILE_IOMAP_EVENTS) != 0;
 
 	if (IS_PORTABILITY_NONE) {
 		return(NULL);
 	}
+
+	if (do_report)
+		append_report (report, " - Requested file path: '%s'\n", pathname);
 
 	new_pathname = g_strdup (pathname);
 	
@@ -146,7 +202,11 @@ gchar *mono_portability_find_file (const gchar *pathname, gboolean last_exists)
 		
 		g_memmove (new_pathname, new_pathname+2, len - 2);
 		new_pathname[len - 2] = '\0';
-		
+
+		if (do_report) {
+			append_report (report, " - Stripped drive letter.\n");
+			drive_stripped = TRUE;
+		}
 #ifdef DEBUG
 		g_message ("%s: Stripped drive letter, now looking for [%s]\n",
 			   __func__, new_pathname);
@@ -167,7 +227,9 @@ gchar *mono_portability_find_file (const gchar *pathname, gboolean last_exists)
 #ifdef DEBUG
 		g_message ("%s: Found it\n", __func__);
 #endif
-		
+		if (do_report && drive_stripped)
+			do_mono_profiler_iomap (report, pathname, new_pathname);
+
 		return(new_pathname);
 	}
 
@@ -337,12 +399,13 @@ gchar *mono_portability_find_file (const gchar *pathname, gboolean last_exists)
 	if ((last_exists &&
 	     access (new_pathname, F_OK) == 0) ||
 	    (!last_exists)) {
+		if (do_report && strcmp (pathname, new_pathname) != 0)
+			do_mono_profiler_iomap (report, pathname, new_pathname);
+
 		return(new_pathname);
 	}
-	
+
 	g_free (new_pathname);
 	return(NULL);
 }
-
-
 #endif

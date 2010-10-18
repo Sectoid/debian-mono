@@ -1,3 +1,43 @@
+2010-08-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #626829. Nodes need to be re-populated on
+	postback, with populate on demand active
+
+	When one clicks on the plus sign in the tree with populate on
+	demand active and then clicks on the node's text, the resulting
+	post back is a plain one, not a callback. In this case all the
+	nodes need to be repopulated or they will vanish from the
+	rendering. At the same time, the nodes have to be simply marked as
+	populated when a post back in callback mode is processed.
+
+	Disabled one test and a small chunk of code in TreeView.RenderNode
+	- it needs more investigation (nothing critical though)
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net, 4.0] Added support for RepeatLayout lists to the list
+	controls.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net, 4.0] Implemented OrderedList and UnorderedList layouts
+	for RepeatInfo
+
+	Also added auto-generated tests for the new layouts and updated
+	the test generator to account for the new layouts in 4.0.
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBoxListTest.cs: added test for bug #600415
+
+2010-04-13  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBoxFieldTest.cs: added test for bug #595568
+
+2010-04-01  Marek Habersack  <mhabersack@novell.com>
+
+	* FormViewTest.cs: added test for bug #578863
+
 2010-02-19  Marek Habersack  <mhabersack@novell.com>
 
 	* SqlDataSourceTest.cs: added test for bug #572781
@@ -9,6 +49,11 @@
 	* CheckBoxListTest.cs: added tests for bugs #377703 and #578770
 
 	* TreeViewTest.cs: added test for bug #580692
+
+2010-01-21  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ThemeTest.cs: Mark UrlProperty test as NotWorking to clean
+	up buildbot.  Filed as 572707.
 
 2010-01-18  Marek Habersack  <mhabersack@novell.com>
 
@@ -30,6 +75,10 @@
 2009-11-13  Marek Habersack  <mhabersack@novell.com>
 
 	* GridViewTest.cs: added test for bug #551666
+
+2009-10-13  Marek Safar  <marek.safar@gmail.com>
+
+	* WebColorConverterTest.cs: Fixed .NET compatibility.
 
 2009-10-13  Marek Habersack  <mhabersack@novell.com>
 

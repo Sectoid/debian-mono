@@ -27,23 +27,18 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Security;
 using System.Security.Permissions;
-
-#if NET_2_0
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
-#endif
 
 namespace System.IO.IsolatedStorage {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class IsolatedStorageFileStream : FileStream {
 
 		[ReflectionPermission (SecurityAction.Assert, TypeInformation = true)]
@@ -66,6 +61,13 @@ namespace System.IO.IsolatedStorage {
 					IsolatedStorageFile.GetDomainIdentityFromEvidence (AppDomain.CurrentDomain.Evidence), 
 					IsolatedStorageFile.GetAssemblyIdentityFromEvidence (sf.GetMethod ().ReflectedType.Assembly.UnprotectedGetEvidence ()));
 			}
+
+#if NET_4_0
+			if (isf.IsDisposed)
+				throw new ObjectDisposedException ("IsolatedStorageFile");
+			if (isf.IsClosed)
+				throw new InvalidOperationException ("Storage needs to be open for this operation.");
+#endif
 
 			// ensure that the _root_ isolated storage can be (and is) created.
 			FileInfo fi = new FileInfo (isf.Root);
@@ -153,7 +155,6 @@ namespace System.IO.IsolatedStorage {
 			get {return base.CanWrite;}
 		}
 
-#if NET_2_0
 		public override SafeFileHandle SafeFileHandle {
 			[SecurityPermission (SecurityAction.LinkDemand, UnmanagedCode = true)]
 			get {
@@ -163,7 +164,6 @@ namespace System.IO.IsolatedStorage {
 		}
 
 		[Obsolete ("Use SafeFileHandle - once available")]
-#endif
 		public override IntPtr Handle {
 			[SecurityPermission (SecurityAction.LinkDemand, UnmanagedCode = true)]
 			get {
@@ -194,12 +194,7 @@ namespace System.IO.IsolatedStorage {
 		{
 			return base.BeginWrite (buffer, offset, numBytes, userCallback, stateObject);
 		}
-#if !NET_2_0
-		public override void Close ()
-		{
-			base.Close ();
-		}
-#endif
+
 		public override int EndRead (IAsyncResult asyncResult)
 		{
 			return base.EndRead (asyncResult);
@@ -214,6 +209,13 @@ namespace System.IO.IsolatedStorage {
 		{
 			base.Flush ();
 		}
+
+#if NET_4_0
+		public override void Flush (bool flushToDisk)
+		{
+			base.Flush (flushToDisk);
+		}
+#endif
 
 		public override int Read (byte[] buffer, int offset, int count)
 		{

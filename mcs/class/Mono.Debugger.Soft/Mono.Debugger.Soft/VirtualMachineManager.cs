@@ -21,18 +21,28 @@ namespace Mono.Debugger.Soft
 			get; set;
 		}
 
+		public TargetProcessLauncher CustomTargetProcessLauncher {
+			get; set;
+		}
+
 		public delegate Process ProcessLauncher (ProcessStartInfo info);
+		public delegate ITargetProcess TargetProcessLauncher (ProcessStartInfo info);
 	}
 
 	public class VirtualMachineManager
 	{
-		private delegate VirtualMachine LaunchCallback (Process p, Socket socket);
+		private delegate VirtualMachine LaunchCallback (ITargetProcess p, ProcessStartInfo info, Socket socket);
 		private delegate VirtualMachine ListenCallback (Socket dbg_sock, Socket con_sock); 
 
 		internal VirtualMachineManager () {
 		}
 
-		public static VirtualMachine LaunchInternal (Process p, Socket socket) {
+		public static VirtualMachine LaunchInternal (Process p, ProcessStartInfo info, Socket socket)
+		{
+			return LaunchInternal (new ProcessWrapper (p), info, socket);
+		}
+			
+		public static VirtualMachine LaunchInternal (ITargetProcess p, ProcessStartInfo info, Socket socket) {
 			Socket accepted = null;
 			try {
 				accepted = socket.Accept ();
@@ -44,10 +54,10 @@ namespace Mono.Debugger.Soft
 
 			VirtualMachine vm = new VirtualMachine (p, conn);
 
-			if (p.StartInfo.RedirectStandardOutput)
+			if (info.RedirectStandardOutput)
 				vm.StandardOutput = p.StandardOutput;
 			
-			if (p.StartInfo.RedirectStandardError)
+			if (info.RedirectStandardError)
 				vm.StandardError = p.StandardError;
 
 			conn.EventHandler = new EventHandler (vm);
@@ -77,18 +87,20 @@ namespace Mono.Debugger.Soft
 			if (options != null && options.Valgrind)
 				info.FileName = "valgrind";
 				
-			Process p;
+			ITargetProcess p;
 			if (options != null && options.CustomProcessLauncher != null)
-				p = options.CustomProcessLauncher (info);
+				p = new ProcessWrapper (options.CustomProcessLauncher (info));
+			else if (options != null && options.CustomTargetProcessLauncher != null)
+				p = options.CustomTargetProcessLauncher (info);
 			else
-				p = Process.Start (info);
+				p = new ProcessWrapper (Process.Start (info));
 			
 			p.Exited += delegate (object sender, EventArgs eargs) {
 				socket.Close ();
 			};
 
 			LaunchCallback c = new LaunchCallback (LaunchInternal);
-			return c.BeginInvoke (p, socket, callback, socket);
+			return c.BeginInvoke (p, info, socket, callback, socket);
 		}
 
 		public static VirtualMachine EndLaunch (IAsyncResult asyncResult) {

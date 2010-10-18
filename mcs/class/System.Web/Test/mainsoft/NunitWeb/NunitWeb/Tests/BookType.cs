@@ -1,4 +1,3 @@
-#if NET_2_0
 // BookType.cs
 using System;
 
@@ -11,4 +10,3 @@ namespace Samples.AspNet.CS.Controls
         NonFiction = 2
     }
 }
-#endif

@@ -41,6 +41,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -48,6 +49,7 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Security;
 using System.Threading;
+using Microsoft.Win32.SafeHandles;
 
 namespace Microsoft.Win32 {
 
@@ -96,23 +98,50 @@ namespace Microsoft.Win32 {
 		static Hashtable key_to_handler = new Hashtable ();
 		static Hashtable dir_to_handler = new Hashtable (
 			new CaseInsensitiveHashCodeProvider (), new CaseInsensitiveComparer ());
+		const string VolatileDirectoryName = "volatile-keys";
+
 		public string Dir;
+		string ActualDir; // Lets keep this one private.
+		public bool IsVolatile;
 
 		Hashtable values;
 		string file;
 		bool dirty;
 
-		KeyHandler (RegistryKey rkey, string basedir)
+		static KeyHandler ()
 		{
-			if (!Directory.Exists (basedir)){
+			CleanVolatileKeys ();
+		}
+
+		KeyHandler (RegistryKey rkey, string basedir) : this (rkey, basedir, false)
+		{
+		}
+
+		KeyHandler (RegistryKey rkey, string basedir, bool is_volatile)
+		{
+			// Force ourselved to reuse the key, if any.
+			string volatile_basedir = GetVolatileDir (basedir);
+			string actual_basedir = basedir;
+
+			if (Directory.Exists (basedir))
+				is_volatile = false;
+			else if (Directory.Exists (volatile_basedir)) {
+				actual_basedir = volatile_basedir;
+				is_volatile = true;
+			} else if (is_volatile)
+				actual_basedir = volatile_basedir;
+
+			if (!Directory.Exists (actual_basedir)) {
 				try {
-					Directory.CreateDirectory (basedir);
+					Directory.CreateDirectory (actual_basedir);
 				} catch (UnauthorizedAccessException){
 					throw new SecurityException ("No access to the given key");
 				}
 			}
-			Dir = basedir;
-			file = Path.Combine (Dir, "values.xml");
+			Dir = basedir; // This is our identifier.
+			ActualDir = actual_basedir; // This our actual location.
+			IsVolatile = is_volatile;
+			file = Path.Combine (ActualDir, "values.xml");
 			Load ();
 		}
 
@@ -166,7 +195,7 @@ namespace Microsoft.Win32 {
 					values [name] = Convert.FromBase64String (se.Text);
 					break;
 				case "string":
-					values [name] = se.Text;
+					values [name] = se.Text == null ? String.Empty : se.Text;
 					break;
 				case "expand":
 					values [name] = new ExpandString (se.Text);
@@ -188,14 +217,20 @@ namespace Microsoft.Win32 {
 				// We ignore individual errors in the file.
 			}
 		}
-		
+
 		public RegistryKey Ensure (RegistryKey rkey, string extra, bool writable)
+		{
+			return Ensure (rkey, extra, writable, false);
+		}
+
+		// 'is_volatile' is used only if the key hasn't been created already.
+		public RegistryKey Ensure (RegistryKey rkey, string extra, bool writable, bool is_volatile)
 		{
 			lock (typeof (KeyHandler)){
 				string f = Path.Combine (Dir, extra);
 				KeyHandler kh = (KeyHandler) dir_to_handler [f];
 				if (kh == null)
-					kh = new KeyHandler (rkey, f);
+					kh = new KeyHandler (rkey, f, is_volatile);
 				RegistryKey rk = new RegistryKey (kh, CombineName (rkey, extra), writable);
 				key_to_handler [rk] = kh;
 				dir_to_handler [f] = kh;
@@ -214,7 +249,7 @@ namespace Microsoft.Win32 {
 					rk = new RegistryKey (kh, CombineName (rkey,
 						extra), writable);
 					key_to_handler [rk] = kh;
-				} else if (Directory.Exists (f)) {
+				} else if (Directory.Exists (f) || VolatileKeyExists (f)) {
 					kh = new KeyHandler (rkey, f);
 					rk = new RegistryKey (kh, CombineName (rkey, extra),
 						writable);
@@ -232,7 +267,121 @@ namespace Microsoft.Win32 {
 			
 			return String.Concat (rkey.Name, "\\", extra);
 		}
-		
+
+		static long GetSystemBootTime ()
+		{
+			if (!File.Exists ("/proc/stat"))
+				return -1;
+
+			string btime = null;
+			string line;
+
+			try {
+				using (StreamReader stat_file = new StreamReader ("/proc/stat", Encoding.ASCII)) {
+					while ((line = stat_file.ReadLine ()) != null)
+						if (line.StartsWith ("btime")) {
+							btime = line;
+							break;
+						}
+				}
+			} catch (Exception e) {
+				Console.Error.WriteLine ("While reading system info {0}", e);
+			}
+
+			if (btime == null)
+				return -1;
+
+			int space = btime.IndexOf (' ');
+			long res;
+			if (!Int64.TryParse (btime.Substring (space, btime.Length - space), out res))
+				return -1;
+
+			return res;
+		}
+
+		// The registered boot time it's a simple line containing the last system btime.
+		static long GetRegisteredBootTime (string path)
+		{
+			if (!File.Exists (path))
+				return -1;
+
+			string line = null;
+			try {
+				using (StreamReader reader = new StreamReader (path, Encoding.ASCII))
+					line = reader.ReadLine ();
+			} catch (Exception e) {
+				Console.Error.WriteLine ("While reading registry data at {0}: {1}", path, e);
+			}
+
+			if (line == null)
+				return -1;
+
+			long res;
+			if (!Int64.TryParse (line, out res))
+				return -1;
+
+			return res;
+		}
+
+		static void SaveRegisteredBootTime (string path, long btime)
+		{
+			try {
+				using (StreamWriter writer = new StreamWriter (path, false, Encoding.ASCII))
+					writer.WriteLine (btime.ToString ());
+			} catch (Exception e) {
+				Console.Error.WriteLine ("While saving registry data at {0}: {1}", path, e);
+			}
+		}
+			
+		// We save the last boot time in a last-btime file in every root, and we use it
+		// to clean the volatile keys directory in case the system btime changed.
+		static void CleanVolatileKeys ()
+		{
+			long system_btime = GetSystemBootTime ();
+
+			string [] roots = new string [] {
+				UserStore,
+				MachineStore
+			};
+
+			foreach (string root in roots) {
+				if (!Directory.Exists (root))
+					continue;
+
+				string btime_file = Path.Combine (root, "last-btime");
+				string volatile_dir = Path.Combine (root, VolatileDirectoryName);
+
+				if (Directory.Exists (volatile_dir)) {
+					long registered_btime = GetRegisteredBootTime (btime_file);
+					if (system_btime < 0 || registered_btime < 0 || registered_btime != system_btime)
+						Directory.Delete (volatile_dir, true);
+				}
+
+				SaveRegisteredBootTime (btime_file, system_btime);
+			}
+		}
+	
+		public static bool VolatileKeyExists (string dir)
+		{
+			lock (typeof (KeyHandler)) {
+				KeyHandler kh = (KeyHandler) dir_to_handler [dir];
+				if (kh != null)
+					return kh.IsVolatile;
+			}
+
+			if (Directory.Exists (dir)) // Non-volatile key exists.
+				return false;
+
+			return Directory.Exists (GetVolatileDir (dir));
+		}
+
+		public static string GetVolatileDir (string dir)
+		{
+			string root = GetRootFromDir (dir);
+			string volatile_dir = dir.Replace (root, Path.Combine (root, VolatileDirectoryName));
+			return volatile_dir;
+		}
+
 		public static KeyHandler Lookup (RegistryKey rkey, bool createNonExisting)
 		{
 			lock (typeof (KeyHandler)){
@@ -268,6 +417,16 @@ namespace Microsoft.Win32 {
 				key_to_handler [rkey] = k;
 				return k;
 			}
+		}
+
+		static string GetRootFromDir (string dir)
+		{
+			if (dir.IndexOf (UserStore) > -1)
+				return UserStore;
+			else if (dir.IndexOf (MachineStore) > -1)
+				return MachineStore;
+
+			throw new Exception ("Could not get root for dir " + dir);
 		}
 
 		public static void Drop (RegistryKey rkey)
@@ -308,6 +467,44 @@ namespace Microsoft.Win32 {
 			}
 		}
 
+		public static bool Delete (string dir)
+		{
+			if (!Directory.Exists (dir)) {
+				string volatile_dir = GetVolatileDir (dir);
+				if (!Directory.Exists (volatile_dir))
+					return false;
+
+				dir = volatile_dir;
+			}
+
+			Directory.Delete (dir, true);
+			Drop (dir);
+			return true;
+		}
+
+		public RegistryValueKind GetValueKind (string name)
+		{
+			if (name == null)
+				return RegistryValueKind.Unknown;
+			object value = values [name];
+			if (value == null)
+				return RegistryValueKind.Unknown;
+
+			if (value is int)
+				return RegistryValueKind.DWord;
+			if (value is string [])
+				return RegistryValueKind.MultiString;
+			if (value is long)
+				return RegistryValueKind.QWord;
+			if (value is byte [])
+				return RegistryValueKind.Binary;
+			if (value is string)
+				return RegistryValueKind.String;
+			if (value is ExpandString)
+				return RegistryValueKind.ExpandString;
+			return RegistryValueKind.Unknown;
+		}
+		
 		public object GetValue (string name, RegistryValueOptions options)
 		{
 			if (IsMarkedForDeletion)
@@ -352,7 +549,46 @@ namespace Microsoft.Win32 {
 			return vals;
 		}
 
-#if NET_2_0
+		public int GetSubKeyCount ()
+		{
+			return GetSubKeyNames ().Length;
+		}
+
+		public string [] GetSubKeyNames ()
+		{
+			DirectoryInfo selfDir = new DirectoryInfo (ActualDir);
+			DirectoryInfo[] subDirs = selfDir.GetDirectories ();
+			string[] subKeyNames;
+
+			// for volatile keys (cannot contain non-volatile subkeys) or keys
+			// without *any* presence in the volatile key section, we can do it simple.
+			if (IsVolatile || !Directory.Exists (GetVolatileDir (Dir))) {
+				subKeyNames = new string[subDirs.Length];
+				for (int i = 0; i < subDirs.Length; i++) {
+					DirectoryInfo subDir = subDirs[i];
+					subKeyNames[i] = subDir.Name;
+				}
+				return subKeyNames;
+			}
+
+			// We may have the entries repeated, so keep just one of each one.
+			DirectoryInfo volatileDir = new DirectoryInfo (GetVolatileDir (Dir));
+			DirectoryInfo [] volatileSubDirs = volatileDir.GetDirectories ();
+			Dictionary<string,string> dirs = new Dictionary<string,string> ();
+
+			foreach (DirectoryInfo dir in subDirs)
+				dirs [dir.Name] = dir.Name;
+			foreach (DirectoryInfo volDir in volatileSubDirs)
+				dirs [volDir.Name] = volDir.Name;
+
+			subKeyNames = new string [dirs.Count];
+			int j = 0;
+			foreach (KeyValuePair<string,string> entry in dirs)
+				subKeyNames[j++] = entry.Value;
+
+			return subKeyNames;
+		}
+
 		//
 		// This version has to do argument validation based on the valueKind
 		//
@@ -419,7 +655,6 @@ namespace Microsoft.Win32 {
 			}
 			throw new ArgumentException ("Value could not be converted to specified type", "valueKind");
 		}
-#endif
 
 		void SetDirty ()
 		{
@@ -537,23 +772,31 @@ namespace Microsoft.Win32 {
 				throw RegistryKey.CreateMarkedForDeletionException ();
 		}
 
+		static string user_store;
+		static string machine_store;
+
 		private static string UserStore {
 			get {
-				return Path.Combine (Environment.GetFolderPath (Environment.SpecialFolder.Personal),
+				if (user_store == null)
+					user_store = Path.Combine (Environment.GetFolderPath (Environment.SpecialFolder.Personal),
 					".mono/registry");
+
+				return user_store;
 			}
 		}
 
 		private static string MachineStore {
 			get {
-				string s;
+				if (machine_store == null) {
+					machine_store = Environment.GetEnvironmentVariable ("MONO_REGISTRY_PATH");
+					if (machine_store == null) {
+						string s = Environment.GetMachineConfigPath ();
+						int p = s.IndexOf ("machine.config");
+						machine_store = Path.Combine (Path.Combine (s.Substring (0, p-1), ".."), "registry");
+					}
+				}
 
-				s = Environment.GetEnvironmentVariable ("MONO_REGISTRY_PATH");
-				if (s != null)
-					return s;
-				s = Environment.GetMachineConfigPath ();
-				int p = s.IndexOf ("machine.config");
-				return Path.Combine (Path.Combine (s.Substring (0, p-1), ".."), "registry");
+				return machine_store;
 			}
 		}
 	}
@@ -582,6 +825,13 @@ namespace Microsoft.Win32 {
 			return CreateSubKey (rkey, keyname, true);
 		}
 
+#if NET_4_0
+		public RegistryKey CreateSubKey (RegistryKey rkey, string keyname, RegistryOptions options)
+		{
+			return CreateSubKey (rkey, keyname, true, options == RegistryOptions.Volatile);
+		}
+#endif
+
 		public RegistryKey OpenRemoteBaseKey (RegistryHive hKey, string machineName)
 		{
 			throw new NotImplementedException ();
@@ -603,6 +853,13 @@ namespace Microsoft.Win32 {
 
 			return result;
 		}
+
+#if NET_4_0
+		public RegistryKey FromHandle (SafeRegistryHandle handle)
+		{
+			throw new NotImplementedException ();
+		}
+#endif
 		
 		public void Flush (RegistryKey rkey)
 		{
@@ -640,7 +897,6 @@ namespace Microsoft.Win32 {
 			self.SetValue (name, value);
 		}
 
-#if NET_2_0
 		public void SetValue (RegistryKey rkey, string name, object value, RegistryValueKind valueKind)
 		{
 			KeyHandler self = KeyHandler.Lookup (rkey, true);
@@ -648,14 +904,13 @@ namespace Microsoft.Win32 {
 				throw RegistryKey.CreateMarkedForDeletionException ();
 			self.SetValue (name, value, valueKind);
 		}
-#endif
 
 		public int SubKeyCount (RegistryKey rkey)
 		{
 			KeyHandler self = KeyHandler.Lookup (rkey, true);
 			if (self == null)
 				throw RegistryKey.CreateMarkedForDeletionException ();
-			return Directory.GetDirectories (self.Dir).Length;
+			return self.GetSubKeyCount ();
 		}
 		
 		public int ValueCount (RegistryKey rkey)
@@ -693,24 +948,14 @@ namespace Microsoft.Win32 {
 
 			string dir = Path.Combine (self.Dir, ToUnix (keyname));
 			
-			if (Directory.Exists (dir)){
-				Directory.Delete (dir, true);
-				KeyHandler.Drop (dir);
-			} else if (throw_if_missing)
+			if (!KeyHandler.Delete (dir) && throw_if_missing)
 				throw new ArgumentException ("the given value does not exist");
 		}
 		
 		public string [] GetSubKeyNames (RegistryKey rkey)
 		{
 			KeyHandler self = KeyHandler.Lookup (rkey, true);
-			DirectoryInfo selfDir = new DirectoryInfo (self.Dir);
-			DirectoryInfo[] subDirs = selfDir.GetDirectories ();
-			string[] subKeyNames = new string[subDirs.Length];
-			for (int i = 0; i < subDirs.Length; i++) {
-				DirectoryInfo subDir = subDirs[i];
-				subKeyNames[i] = subDir.Name;
-			}
-			return subKeyNames;
+			return self.GetSubKeyNames ();
 		}
 		
 		public string [] GetValueNames (RegistryKey rkey)
@@ -728,11 +973,37 @@ namespace Microsoft.Win32 {
 
 		private RegistryKey CreateSubKey (RegistryKey rkey, string keyname, bool writable)
 		{
+			return CreateSubKey (rkey, keyname, writable, false);
+		}
+
+		private RegistryKey CreateSubKey (RegistryKey rkey, string keyname, bool writable, bool is_volatile)
+		{
 			KeyHandler self = KeyHandler.Lookup (rkey, true);
 			if (self == null)
 				throw RegistryKey.CreateMarkedForDeletionException ();
-			return self.Ensure (rkey, ToUnix (keyname), writable);
+			if (KeyHandler.VolatileKeyExists (self.Dir) && !is_volatile)
+				throw new IOException ("Cannot create a non volatile subkey under a volatile key.");
+
+			return self.Ensure (rkey, ToUnix (keyname), writable, is_volatile);
 		}
+
+		public RegistryValueKind GetValueKind (RegistryKey rkey, string name)
+		{
+			KeyHandler self = KeyHandler.Lookup (rkey, true);
+			if (self != null) 
+				return self.GetValueKind (name);
+
+			// key was removed since it was opened or it does not exist.
+			return RegistryValueKind.Unknown;
+		}
+
+#if NET_4_0
+		public IntPtr GetHandle (RegistryKey key)
+		{
+			throw new NotImplementedException ();
+		}
+#endif
+		
 	}
 }
 

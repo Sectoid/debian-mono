@@ -1,3 +1,16 @@
+2010-08-26  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationInfoTest.cs: Add a SetType test.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationBinderTest.cs: New test file.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationInfoTest.cs: New file, to contain some tests for
+	the new 4.0 properties.
+
 2009-06-25  Zoltan Varga  <vargaz@gmail.com>
 
 	* *.cs: Convert all tests to new-style nunit classes/methods.

@@ -1,3 +1,318 @@
+2010-08-31  Marek Safar  <marek.safar@gmail.com>
+
+	Add support for indirect pointer type constants.
+
+2010-08-31  Marek Safar  <marek.safar@gmail.com>
+
+	[635714] Inconsistent accessibility between nested private and
+	protected internal types
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic sites for hoisted mvar types
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	Check also modifier for identical ref/out parameters
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Consider parameter constraints when choosing applicable method
+	candidate
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Always build type from compiler type when flagged
+
+2010-08-27  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Jagged arrays have to be imported not created
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Run event type detection on actual and not context type
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Import private event backing fields in dynamic context
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Special case unbox SLE conversion
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Maintain only one place with dynamic explicit conversions
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Defer null check to resolver
+
+2010-08-25  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix explicitly-implemented interface member cref generation.
+
+	The //member/@name for explicitly implemented interface members
+	needs to contain the fully-qualified interface name, including
+	type parameters (if necessary), so we need to generate
+	"M:Container`2.Element.System#ICloneable#Clone", not
+	"M:Container`2.Element.ICloneable.Clone".
+
+	Furthermore, explicitly implemented generic interface methods
+	within a generic type were always getting the type parameter count
+	appended to them (which somewhat makes sense, as they're on a
+	generic type...) which is counter to what CSC generates, e.g. we
+	need to generate
+	"P:Container`2.System#Collections#Generic#IList&lt;TValue&gt;#Item(System.Int32)"
+	not "P:Container`2.IList`1.Item``1(System.Int32)".
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Import private members too when using dynamic context
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Probing dynamic compatibility is identical to object
+
+2010-08-24  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Improve XML documentation support for generic type parameters.
+
+	Fixes #624242
+
+	This also allows master 'gmcs /doc' to build OpenTK,
+	gitorious.org/cadenza, and build the mcs/tools/mdoc unit tests w/o
+	compilation error.
+
+	The bug was caused by a NotSupportedException when calling
+	ArrayContainer.Name within DocUtil.GetSignatureForDoc(TypeSpec).
+	This is directly fixed by checking explicitly for ArrayContainer.
+
+	Another bug fixed was wrt type parameter indexing in nested types,
+	hence "counting" the number of type parameters declared in all
+	declaring types.
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	More variance best candidate tweaks
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	[633674] Consider nested inflated types when mutating fields and
+	methods
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	[633277] Import type parameters used as type parameter constraints
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Recreate proxy parameters for imported methods
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Dynamic shares object members internally
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed type inference between upper and lower bounds
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Add explicit variant delegates conversion
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed moving of named params arguments
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Custom attribute itself can be used to specify optional parameter
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Prefer dynamic over other types when used with type inference.
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	Create dynamic sites in the scope where used to overcome
+	visibility issues
+
+2010-08-20  Marek Safar  <marek.safar@gmail.com>
+
+	[633037] Resolve instance expression of dynamic members
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	Fixes delegate creation with dynamic parameters
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	More dynamic conversion fixes
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	Refactor preprocessor parsing to use less string operations.
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Cannot skip on the first type match for multiple inheritances
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Defer checks until all base types are ready
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	New tests
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	[614924] Use proper best type expression for implicit array
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[408516] No implicit user conversion from or to interfaces
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[319462] Add more call optimizations
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	[627488] Inflate inherited base method constraints with MVAR
+	arguments
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed crlf issue
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed crlf issue
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up lf
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629383] Inflate generic type of default expression
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629390] Avoid crash on the sole type expressions used for
+	extension methods
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629742] Iterators can be of dynamic type
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Avoid a crash when using attributes and only partial method
+	definition exists.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic dispatch for element initializers.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	More fixes for equality comparison between G<object> and
+	G<dynamic>.
+
+2010-08-05  Marek Safar  <marek.safar@gmail.com>
+
+	Resolve ambiguity between optional and params parameter. Fixes
+	#582360, #625353
+
+2010-08-05  Raja R Harinath  <harinath@hurrynot.org>
+
+	update {tests,errors}/known-issues-?mcs
+
+2010-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	Ambiguous enumerator pattern means that we can still try to apply
+	interface matching rules. Fixes #620154
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Add more cases for 4.0 identity comparison. Fixes #624183
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed equality match between object and dynamic for ref/out
+	parameters.
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Updated known issues
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Implemented as operator over dynamic expression. Fixes #624194
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Add verifier assistance for coalescing operator. Fixes #619192
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Add verifier required boxing of reference type of fields left
+	expression
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Emit address load for compound struct references assignment. Fixed
+	#620362
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Initialize anonymous methods story for all sections inside switch
+	block. Fixes #624324
+
+2010-08-02  Marek Safar  <marek.safar@gmail.com>
+
+	Actually test the call
+
+2010-08-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	Re-enable 'crlf' attributes on *.cs
+
+	This fixes EOL conversions flagged by git 1.7.1
+	core.autocrlf=true. At this point, neither git 1.7.1 nor 1.7.2
+	show any automatic CRLF normalization. I think we're ready for
+	another experiment.
+
+	There seems to be a difference in the handling of mixed
+	line-ending files between git 1.7.2 and older versions, when
+	core.autocrlf is set to true.
+
+2010-07-30  Marek Safar  <marek.safar@gmail.com>
+
+	Allow Delegate.Combine/Remove with right null. Fixes #627044
+
+2010-04-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Makefile (DEFINES) [moonlight, net_4_0]: New.
+	(check): Use it.
+	* gtest-284.cs [NET_4_0]: Don't complain about
+	IStructuralEquatable and IStructuralComparable array interfaces.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* test-106.cs: Move the wait for cb_state == 1 out of the try block so this
+	test becomes deterministic.
+
+2009-11-11  Scott Peterson  <lunchtimemama@gmail.com>
+
+	* gtest-469.cs: Added test for BGO 553655.
+
 2009-07-13  Marcus Griep  <marcus@griep.us>
 
 	* test-723.cs, test-724.cs: Added test for resolution of interface

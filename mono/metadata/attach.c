@@ -10,7 +10,7 @@
 #include <config.h>
 #include <glib.h>
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 #define DISABLE_ATTACH
 #endif
 #ifndef DISABLE_ATTACH
@@ -506,7 +506,7 @@ receiver_thread (void *arg)
 		/* Ask the runtime to not abort this thread */
 		//mono_thread_current ()->flags |= MONO_THREAD_FLAG_DONT_MANAGE;
 		/* Ask the runtime to not wait for this thread */
-		mono_thread_current ()->state |= ThreadState_Background;
+		mono_thread_internal_current ()->state |= ThreadState_Background;
 
 		while (TRUE) {
 			char *cmd, *agent_name, *agent_args;

@@ -66,7 +66,6 @@ namespace MonoTests.System.ServiceModel.Channels
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void TestWriteMessage ()
 		{
 			Message m = Message.CreateMessage (MessageVersion.Default, "action", 1);
@@ -174,6 +173,18 @@ namespace MonoTests.System.ServiceModel.Channels
 			using (XmlWriter w = XmlWriter.Create (TextWriter.Null)) {
 				msg.WriteMessage (w);
 			}
+		}
+
+		[Test]
+		public void IsFaultCopied ()
+		{
+			var ret = Message.CreateMessage (MessageVersion.Soap12,
+				MessageFault.CreateFault (new FaultCode ("mycode"), "private affair"),
+				"http://tempuri.org/IFoo/Test");
+			Assert.IsTrue (ret.IsFault, "#1");
+			var mb = ret.CreateBufferedCopy (0x1000);
+			ret = mb.CreateMessage ();
+			Assert.IsTrue (ret.IsFault, "#2");
 		}
 	}
 

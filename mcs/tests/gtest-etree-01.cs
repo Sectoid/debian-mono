@@ -299,6 +299,10 @@ class Tester
 {
 	delegate void EmptyDelegate ();
 	delegate int IntDelegate ();
+	static int ReturnNumber ()
+	{
+		return 8;
+	}
 
 	static void AssertNodeType (LambdaExpression e, ExpressionType et)
 	{
@@ -980,6 +984,13 @@ class Tester
 		Assert (null, e15.Compile ().Invoke (null));
 		Assert (9, e15.Compile ().Invoke (9));
 	}
+	
+	void ConvertTest_16 ()
+	{
+		Expression<Func<sbyte, sbyte>> e16 = a => (sbyte)a;
+		AssertNodeType (e16, ExpressionType.Convert);
+		Assert (6, e16.Compile ().Invoke (6));
+	}	
 
 	void ConvertCheckedTest ()
 	{
@@ -1199,6 +1210,14 @@ class Tester
 		Assert (false, e2.Compile ().Invoke (delegate () {}, delegate {}));
 		Assert (false, e2.Compile ().Invoke (ed, delegate {}));
 		Assert (true, e2.Compile ().Invoke (ed, ed));
+	}
+	
+	void EqualTestDelegate_3 ()
+	{
+		Expression<Func<Func<int>, bool>> e1 = (a) => a == ReturnNumber;
+		AssertNodeType (e1, ExpressionType.Equal);
+		Assert (false, e1.Compile ().Invoke (null));
+		Assert (true, e1.Compile ().Invoke (ReturnNumber));
 	}
 
 	void ExclusiveOrTest ()
@@ -1456,6 +1475,13 @@ class Tester
 		Assert (null, e5.Compile ().Invoke (30));
 	}
 	
+	void LeftShiftTest_6 ()
+	{
+		Expression<Func<int, MyTypeImplicitOnly, int>> e = (a, b) => a << b;
+		AssertNodeType (e, ExpressionType.LeftShift);
+		Assert (0x7F0, e.Compile ().Invoke (0xFE, new MyTypeImplicitOnly (3)));
+	}
+	
 	void LessThanTest ()
 	{
 		Expression<Func<int, int, bool>> e = (int a, int b) => a < b;
@@ -1672,8 +1698,10 @@ class Tester
 	{
 		string s = "localvar";
 		Expression<Func<string>> e9 = () => s;
+		s = "changed";
+
 		AssertNodeType (e9, ExpressionType.MemberAccess);
-		Assert ("localvar", e9.Compile ().Invoke ());
+		Assert ("changed", e9.Compile ().Invoke ());
 	}
 	
 	void MemberInitTest ()
@@ -2081,11 +2109,30 @@ class Tester
 	{
 		Expression<Func<object>> e5 = () => new { A = 9, Value = "a" };
 		AssertNodeType (e5, ExpressionType.New);
+		var ne = ((NewExpression) e5.Body);
+
+		Assert (2, ne.Members.Count, "members count");	
+	
+		// Behaviour is different between .NET 3.5 and .NET 4.0
+		if (ne.Members [0].MemberType == MemberTypes.Property) {
+			Assert ("A", ne.Members [0].Name, "Name #1");
+			Assert ("Value", ne.Members [1].Name, "Name #2");
+		} else {
+			Assert ("get_A", ne.Members [0].Name, "Name #1");
+			Assert ("get_Value", ne.Members [1].Name, "Name #2");
+		}
+		
 		Assert (new { A = 9, Value = "a" }, e5.Compile ().Invoke ());
+	}
+	
+	void NewTest_6 ()
+	{
+		Expression<Func<object>> e5 = () => new { A = 9, Value = new MyType (5) };
+		AssertNodeType (e5, ExpressionType.New);
 	}	
 
 	// CSC bug: emits new MyEnum as a constant	
-	void NewTest_6 ()
+	void NewTest_7 ()
 	{
 		Expression<Func<MyEnum>> e = () => new MyEnum ();
 		AssertNodeType (e, ExpressionType.New);
@@ -2323,7 +2370,6 @@ class Tester
 		Assert (null, c2 (new MyType (1), null));
 	}
 
-	// CSC BUG: Fixed?
 	void OrNullableTest_3 ()
 	{
 		Expression<Func<MyType?, uint, long?>> e3 = (MyType? a, uint b) => a | b;
@@ -2393,6 +2439,14 @@ class Tester
 		Assert (2, e.Compile ().Invoke ().Compile ().Invoke ());
 	}
 
+	void QuoteTest_2 ()
+	{
+		Expression<Func<string, Expression<Func<string>>>> e = (string s) => () => s;
+		AssertNodeType (e, ExpressionType.Quote);
+		
+		Assert ("data", e.Compile ().Invoke ("data").Compile ().Invoke ());
+	}
+	
 	void RightShiftTest ()
 	{
 		Expression<Func<ulong, short, ulong>> e = (ulong a, short b) => a >> b;
@@ -2429,6 +2483,13 @@ class Tester
 		Assert (null, c4 (new MyType (8), null));
 		Assert (null, c4 (null, new MyType (8)));
 		Assert (64, c4 (new MyType (256), new MyType (2)));
+	}
+	
+	void RightShiftTest_5 ()
+	{
+		Expression<Func<int, MyTypeImplicitOnly, int>> e = (a, b) => a >> b;
+		AssertNodeType (e, ExpressionType.RightShift);
+		Assert (31, e.Compile ().Invoke (0xFE, new MyTypeImplicitOnly (3)));
 	}
 	
 	void SubtractTest ()

@@ -21,11 +21,11 @@
 #define freedtoa __freedtoa
 #define dtoa __dtoa
 
-G_LOCK_DEFINE_STATIC(str_mutex0);
-G_LOCK_DEFINE_STATIC(str_mutex1);
+#define Omit_Private_Memory
 #define MULTIPLE_THREADS 1
-#define ACQUIRE_DTOA_LOCK(n)	G_LOCK (str_mutex##n)
-#define FREE_DTOA_LOCK(n)		G_UNLOCK (str_mutex##n)
+/* Lock 0 is not used because of USE_MALLOC, Lock 1 protects a lazy-initialized table */
+#define ACQUIRE_DTOA_LOCK(n)
+#define FREE_DTOA_LOCK(n)
 
 /* Please send bug reports to David M. Gay (dmg at acm dot org,
  * with " at " changed at "@" and " dot " changed to ".").	*/
@@ -565,13 +565,17 @@ Bfree
 	(Bigint *v)
 #endif
 {
+#ifdef Omit_Private_Memory
+	free (v);
+#else
 	if (v) {
 		ACQUIRE_DTOA_LOCK(0);
 		v->next = freelist[v->k];
 		freelist[v->k] = v;
 		FREE_DTOA_LOCK(0);
-		}
 	}
+#endif
+}
 
 #define Bcopy(x,y) memcpy((char *)&x->sign, (char *)&y->sign, \
 y->wds*sizeof(Long) + 2*sizeof(int))
@@ -1543,6 +1547,11 @@ hexnan
 	}
 #endif /*No_Hex_NaN*/
 #endif /* INFNAN_CHECK */
+
+	/*
+	 * LOCKING: This is not thread-safe, since the locking macros are defined as no-ops,
+	 * the caller should lock.
+	 */
 
  double
 mono_strtod

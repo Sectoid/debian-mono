@@ -1,0 +1,12 @@
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	flush ongoing hack. add UDP transport. Headers on configuration
+	sources.
+
+2010-08-02  atsushieno  <atsushi@ximian.com>
+
+	Fix a bunch of compilation errors now that I can get.
+
+2010-07-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	*.cs : initial checkin.

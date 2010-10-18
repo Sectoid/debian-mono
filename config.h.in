@@ -3,6 +3,9 @@
 /* The architecture this is running on */
 #undef ARCHITECTURE
 
+/* GC description */
+#undef DEFAULT_GC_NAME
+
 /* String of disabled features */
 #undef DISABLED_FEATURES
 
@@ -36,6 +39,9 @@
 /* Disable support debug logging */
 #undef DISABLE_LOGGING
 
+/* Disable String normalization support. */
+#undef DISABLE_NORMALIZATION
+
 /* Disable P/Invoke support */
 #undef DISABLE_PINVOKE
 
@@ -59,6 +65,9 @@
 
 /* Disable SIMD intrinsics related optimizations. */
 #undef DISABLE_SIMD
+
+/* Disable sockets support */
+#undef DISABLE_SOCKETS
 
 /* Disable Soft Debugger Agent. */
 #undef DISABLE_SOFT_DEBUG
@@ -87,6 +96,9 @@
 /* Supports C99 array initialization */
 #undef HAVE_ARRAY_ELEM_INIT
 
+/* Define to 1 if you have the <asm/sigcontext.h> header file. */
+#undef HAVE_ASM_SIGCONTEXT_H
+
 /* Define to 1 if you have the <attr/xattr.h> header file. */
 #undef HAVE_ATTR_XATTR_H
 
@@ -99,11 +111,11 @@
 /* Define to 1 if the system has the type `blksize_t'. */
 #undef HAVE_BLKSIZE_T
 
-/* Have Boehm GC */
-#undef HAVE_BOEHM_GC
-
 /* Define to 1 if you have the <checklist.h> header file. */
 #undef HAVE_CHECKLIST_H
+
+/* Define to 1 if you have the `confstr' function. */
+#undef HAVE_CONFSTR
 
 /* Have /dev/random */
 #undef HAVE_CRYPT_RNG
@@ -111,17 +123,32 @@
 /* Define to 1 if you have the <curses.h> header file. */
 #undef HAVE_CURSES_H
 
+/* Support for the deprecated attribute */
+#undef HAVE_DEPRECATED
+
 /* Define to 1 if you have the <dirent.h> header file. */
 #undef HAVE_DIRENT_H
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 if you have the `dl_iterate_phdr' function. */
+#undef HAVE_DL_ITERATE_PHDR
+
 /* dlopen-based dynamic loader available */
 #undef HAVE_DL_LOADER
 
 /* Define to 1 if you have the <elf.h> header file. */
 #undef HAVE_ELF_H
+
+/* Define to 1 if you have the `endgrent' function. */
+#undef HAVE_ENDGRENT
+
+/* Define to 1 if you have the `endpwent' function. */
+#undef HAVE_ENDPWENT
+
+/* Define to 1 if you have the `endusershell' function. */
+#undef HAVE_ENDUSERSHELL
 
 /* epoll supported */
 #undef HAVE_EPOLL
@@ -150,16 +177,13 @@
 /* Define to 1 if you have the `fstatvfs' function. */
 #undef HAVE_FSTATVFS
 
-/* Have GC_enable */
-#undef HAVE_GC_ENABLE
-
-/* Have GC_gcj_malloc */
-#undef HAVE_GC_GCJ_MALLOC
+/* Define to 1 if you have the `futimes' function. */
+#undef HAVE_FUTIMES
 
 /* Define to 1 if you have the <gc/gc.h> header file. */
 #undef HAVE_GC_GC_H
 
-/* Have gc.h */
+/* Define to 1 if you have the <gc.h> header file. */
 #undef HAVE_GC_H
 
 /* Define to 1 if you have the `getdomainname' function. */
@@ -167,6 +191,9 @@
 
 /* Define to 1 if you have the `getfsstat' function. */
 #undef HAVE_GETFSSTAT
+
+/* Define to 1 if you have the `getgrent' function. */
+#undef HAVE_GETGRENT
 
 /* Define to 1 if you have the `getgrgid_r' function. */
 #undef HAVE_GETGRGID_R
@@ -177,11 +204,20 @@
 /* Have gethostbyname2_r */
 #undef HAVE_GETHOSTBYNAME2_R
 
+/* Define to 1 if you have the `gethostid' function. */
+#undef HAVE_GETHOSTID
+
+/* Define to 1 if you have the `getlogin_r' function. */
+#undef HAVE_GETLOGIN_R
+
 /* Define to 1 if you have the `getpriority' function. */
 #undef HAVE_GETPRIORITY
 
 /* Define to 1 if you have the `GetProcessId' function. */
 #undef HAVE_GETPROCESSID
+
+/* Define to 1 if you have the `getpwent' function. */
+#undef HAVE_GETPWENT
 
 /* Define to 1 if you have the `getpwnam_r' function. */
 #undef HAVE_GETPWNAM_R
@@ -240,8 +276,14 @@
 /* Define to 1 if you have the `unwind' library (-lunwind). */
 #undef HAVE_LIBUNWIND
 
+/* Define to 1 if you have the <link.h> header file. */
+#undef HAVE_LINK_H
+
 /* Define to 1 if you have the <linux/rtc.h> header file. */
 #undef HAVE_LINUX_RTC_H
+
+/* Define to 1 if you have the `lockf' function. */
+#undef HAVE_LOCKF
 
 /* Define to 1 if you have the `lutimes' function. */
 #undef HAVE_LUTIMES
@@ -257,9 +299,6 @@
 
 /* Define to 1 if you have the `mmap' function. */
 #undef HAVE_MMAP
-
-/* The GC can move objects. */
-#undef HAVE_MOVING_COLLECTOR
 
 /* Define to 1 if you have the `mremap' function. */
 #undef HAVE_MREMAP
@@ -285,6 +324,9 @@
 /* Have oprofile support */
 #undef HAVE_OPROFILE
 
+/* Define to 1 if you have the <pathconf.h> header file. */
+#undef HAVE_PATHCONF_H
+
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
 
@@ -299,6 +341,9 @@
 
 /* Define to 1 if you have the `posix_madvise' function. */
 #undef HAVE_POSIX_MADVISE
+
+/* Define to 1 if you have the `psignal' function. */
+#undef HAVE_PSIGNAL
 
 /* Define to 1 if you have the `pthread_attr_getstack' function. */
 #undef HAVE_PTHREAD_ATTR_GETSTACK
@@ -342,6 +387,9 @@
 /* Define to 1 if you have the `sched_setaffinity' function. */
 #undef HAVE_SCHED_SETAFFINITY
 
+/* Define to 1 if you have the `seekdir' function. */
+#undef HAVE_SEEKDIR
+
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
 
@@ -351,17 +399,29 @@
 /* Define to 1 if you have the `setdomainname' function. */
 #undef HAVE_SETDOMAINNAME
 
+/* Define to 1 if you have the `setgrent' function. */
+#undef HAVE_SETGRENT
+
+/* Define to 1 if you have the `setgroups' function. */
+#undef HAVE_SETGROUPS
+
 /* Define to 1 if you have the `sethostid' function. */
 #undef HAVE_SETHOSTID
+
+/* Define to 1 if you have the `sethostname' function. */
+#undef HAVE_SETHOSTNAME
 
 /* Define to 1 if you have the `setpriority' function. */
 #undef HAVE_SETPRIORITY
 
+/* Define to 1 if you have the `setpwent' function. */
+#undef HAVE_SETPWENT
+
 /* Define to 1 if you have the `setresuid' function. */
 #undef HAVE_SETRESUID
 
-/* Using the simple generational GC. */
-#undef HAVE_SGEN_GC
+/* Define to 1 if you have the `setusershell' function. */
+#undef HAVE_SETUSERSHELL
 
 /* Define to 1 if you have the `shm_open' function. */
 #undef HAVE_SHM_OPEN
@@ -441,11 +501,17 @@
 /* Define to 1 if `kp_proc' is member of `struct kinfo_proc'. */
 #undef HAVE_STRUCT_KINFO_PROC_KP_PROC
 
+/* Define to 1 if `pw_gecos' is member of `struct passwd'. */
+#undef HAVE_STRUCT_PASSWD_PW_GECOS
+
 /* Define to 1 if the system has the type `struct pollfd'. */
 #undef HAVE_STRUCT_POLLFD
 
 /* Define to 1 if the system has the type `struct stat'. */
 #undef HAVE_STRUCT_STAT
+
+/* Define to 1 if `f_flags' is member of `struct statfs'. */
+#undef HAVE_STRUCT_STATFS_F_FLAGS
 
 /* Define to 1 if the system has the type `struct timespec'. */
 #undef HAVE_STRUCT_TIMESPEC
@@ -461,6 +527,12 @@
 
 /* Define to 1 if the system has the type `suseconds_t'. */
 #undef HAVE_SUSECONDS_T
+
+/* Define to 1 if you have the `swab' function. */
+#undef HAVE_SWAB
+
+/* Define to 1 if you have the `sysconf' function. */
+#undef HAVE_SYSCONF
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #undef HAVE_SYSLOG_H
@@ -555,6 +627,9 @@
 /* Define to 1 if you have the <sys/xattr.h> header file. */
 #undef HAVE_SYS_XATTR_H
 
+/* Define to 1 if you have the `telldir' function. */
+#undef HAVE_TELLDIR
+
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
 
@@ -582,11 +657,11 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define to 1 if you have /usr/include/malloc.h. */
+#undef HAVE_USR_INCLUDE_MALLOC_H
+
 /* Define to 1 if you have the <utime.h> header file. */
 #undef HAVE_UTIME_H
-
-/* Define to 1 if you have the <valgrind/memcheck.h> header file. */
-#undef HAVE_VALGRIND_MEMCHECK_H
 
 /* Support for the visibility ("hidden") attribute */
 #undef HAVE_VISIBILITY_HIDDEN
@@ -600,11 +675,11 @@
 /* Have a working sigaltstack */
 #undef HAVE_WORKING_SIGALTSTACK
 
-/* The GC needs write barriers. */
-#undef HAVE_WRITE_BARRIERS
-
 /* Have system zlib */
 #undef HAVE_ZLIB
+
+/* Host Platform is Win32 */
+#undef HOST_WIN32
 
 /* Major version of LLVM libraries */
 #undef LLVM_MAJOR_VERSION
@@ -612,27 +687,42 @@
 /* Minor version of LLVM libraries */
 #undef LLVM_MINOR_VERSION
 
+/* Whenever we are using the mono branch of LLVM */
+#undef LLVM_MONO_BRANCH
+
+/* Full version of LLVM libraties */
+#undef LLVM_VERSION
+
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
 #undef LT_OBJDIR
 
-/* Architecture uses registers for Parameters */
-#undef MONO_ARCH_REGPARMS
+/* Cross-compiling using MinGW */
+#undef MINGW_CROSS_COMPILE
 
 /* Enable the allocation and indexing of arrays greater than Int32.MaxValue */
 #undef MONO_BIG_ARRAYS
 
-/* The Mono Debugger is supported on this platform */
-#undef MONO_DEBUGGER_SUPPORTED
+/* The runtime is compiled for cross-compiling mode */
+#undef MONO_CROSS_COMPILE
+
+/* The LLVM back end is dynamically loaded */
+#undef MONO_LLVM_LOADED
 
 /* Sizeof sock_un.sun_path */
 #undef MONO_SIZEOF_SUNPATH
+
+/* Reduce runtime requirements (and capabilities) */
+#undef MONO_SMALL_CONFIG
 
 /* Xen-specific behaviour */
 #undef MONO_XEN_OPT
 
 /* Length of zero length arrays */
-#undef MONO_ZERO_ARRAY_LENGTH
+#undef MONO_ZERO_LEN_ARRAY
+
+/* Building for Moonlight */
+#undef MOONLIGHT
 
 /* Name of /dev/random */
 #undef NAME_DEV_RANDOM
@@ -661,9 +751,6 @@
 /* This platform does not support symlinks */
 #undef PLATFORM_NO_SYMLINKS
 
-/* Host Platform is Win32 */
-#undef PLATFORM_WIN32
-
 /* pthread is a pointer */
 #undef PTHREAD_POINTER_ID
 
@@ -689,22 +776,25 @@
 #undef TARGET_BYTE_ORDER
 
 /* ... */
+#undef TARGET_NACL
+
+/* ... */
 #undef TARGET_POWERPC
 
 /* ... */
 #undef TARGET_POWERPC64
 
-/* Target OS is Win32 */
+/* ... */
+#undef TARGET_PS3
+
+/* Target OS is Win32/MinGW */
 #undef TARGET_WIN32
 
 /* ... */
 #undef TARGET_X86
 
-/* GC description */
-#undef USED_GC_NAME
-
-/* Use included libgc */
-#undef USE_INCLUDED_LIBGC
+/* ... */
+#undef TARGET_XBOX360
 
 /* ... */
 #undef USE_MACH_SEMA
@@ -717,3 +807,9 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* 64 bit mode with 4 byte longs and pointers */
+#undef __mono_ilp32__
+
+/* ... */
+#undef __mono_ppc64__

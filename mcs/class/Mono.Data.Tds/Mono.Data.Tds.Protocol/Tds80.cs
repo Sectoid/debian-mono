@@ -61,6 +61,10 @@ namespace Mono.Data.Tds.Protocol {
 		protected override byte[] ClientVersion {
 			get { return new byte[] {0x00, 0x0, 0x0, 0x71};}
 		}
+		protected override byte Precision {
+			get { return 38; }
+		}
+		
 		#endregion // Properties
 		
 		#region Methods
@@ -210,6 +214,43 @@ namespace Mono.Data.Tds.Protocol {
 			OutputParameters.Add (value);
 		}
 		
+		public override void Execute (string commandText, TdsMetaParameterCollection parameters, int timeout, bool wantResults)
+		{
+			// We are connected to a Sql 7.0 server
+			if (TdsVersion < TdsVersion.tds80) {
+				base.Execute (commandText, parameters, timeout, wantResults);
+				return;
+			}
+
+			Parameters = parameters;
+			string sql = commandText;
+
+			if (Parameters != null && Parameters.Count > 0) {
+				ExecRPC (TdsRpcProcId.ExecuteSql, commandText, parameters, timeout, wantResults);
+			} else {
+				if (wantResults)
+					sql = BuildExec (commandText);
+				ExecuteQuery (sql, timeout, wantResults);
+			}
+		}
+		
+		public override void ExecPrepared (string commandText, TdsMetaParameterCollection parameters, int timeout, bool wantResults)
+		{
+			Parameters = parameters;
+			// We are connected to a Sql 7.0 server
+			if (TdsVersion < TdsVersion.tds80 || 
+			    Parameters == null || Parameters.Count < 1) {
+				base.ExecPrepared (commandText, parameters, timeout, wantResults);
+				return;
+			}
+			TdsMetaParameterCollection parms = new TdsMetaParameterCollection ();
+			parms.Add (new TdsMetaParameter ("@Handle", "int", Int32.Parse (commandText)));
+			foreach (TdsMetaParameter parm in Parameters)
+				parms.Add (parm);
+			
+			ExecRPC ("sp_execute", parms, timeout, wantResults);			
+		}
+
 		#endregion // Methods
 	}
 }

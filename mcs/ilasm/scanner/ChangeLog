@@ -1,3 +1,7 @@
+2010-10-03  Miguel de Icaza  <miguel@gnome.org>
+
+	Retval is not a reserved keyword, fixes 643345
+
 2009-04-15  Ankit Jain  <jankit@novell.com>
 
 	* StringHelper.cs (startIdChars): New. Set of chars that can start an

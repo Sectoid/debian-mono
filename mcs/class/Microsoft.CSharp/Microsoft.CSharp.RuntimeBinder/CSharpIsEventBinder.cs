@@ -30,10 +30,11 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpIsEventBinder : DynamicMetaObjectBinder
+	class CSharpIsEventBinder : DynamicMetaObjectBinder
 	{
 		Type callingContext;
 		string name;
@@ -44,33 +45,26 @@ namespace Microsoft.CSharp.RuntimeBinder
 			this.callingContext = callingContext;
 		}
 		
-		[MonoTODO]
-		public sealed override DynamicMetaObject Bind (DynamicMetaObject target, DynamicMetaObject[] args)
+		public override DynamicMetaObject Bind (DynamicMetaObject target, DynamicMetaObject[] args)
 		{
-			throw new NotImplementedException ();
+			var ctx = DynamicContext.Create ();
+			var context_type = ctx.ImportType (callingContext);
+			var queried_type = ctx.ImportType (target.LimitType);
+			var rc = new Compiler.ResolveContext (new RuntimeBinderContext (ctx, context_type), 0);
+
+			var expr = Compiler.Expression.MemberLookup (rc, context_type, queried_type, name, 0, false, Compiler.Location.Null);
+
+			var binder = new CSharpBinder (
+				this, new Compiler.BoolConstant (expr is Compiler.EventExpr, Compiler.Location.Null), null);
+
+			binder.AddRestrictions (target);
+			return binder.Bind (ctx, callingContext);
 		}
-		
-		public Type CallingContext {
+
+		public override Type ReturnType {
 			get {
-				return callingContext;
+				return typeof (bool);
 			}
 		}
-		
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpIsEventBinder;
-			return other != null && name == other.name && other.callingContext == callingContext;
-		}
-		
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-		
-		public string Name {
-			get {
-				return name;
-			}
-		}		
 	}
 }

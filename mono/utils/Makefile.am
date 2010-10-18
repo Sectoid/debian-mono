@@ -11,17 +11,11 @@ mono-dtrace.h: $(top_srcdir)/data/mono.d
 
 endif
 
-if EGLIB_BUILD 
-hash_sources = mono-ehash.c
-else
-hash_sources = mono-hash.c
-endif
-
-libmonoutils_la_SOURCES = \
-	$(hash_sources)		\
+monoutils_sources = \
 	mono-md5.c		\
 	mono-sha1.c		\
 	mono-logger.c		\
+	mono-logger-internal.h	\
 	mono-codeman.c		\
 	dlmalloc.h      	\
 	dlmalloc.c      	\
@@ -42,6 +36,7 @@ libmonoutils_la_SOURCES = \
 	mono-networkinterfaces.h		\
 	mono-proclib.c		\
 	mono-proclib.h		\
+	mono-publib.c		\
 	mono-string.h		\
 	mono-time.c  		\
 	mono-time.h  		\
@@ -52,6 +47,7 @@ libmonoutils_la_SOURCES = \
 	mono-uri.c		\
 	mono-poll.c		\
 	mono-path.c		\
+	mono-semaphore.c	\
 	mono-semaphore.h	\
 	mono-sigcontext.h	\
 	mono-stdlib.c 		\
@@ -65,25 +61,45 @@ libmonoutils_la_SOURCES = \
 	freebsd-dwarf.h 	\
 	dtrace.h			\
 	gc_wrapper.h		\
-	mono-error.c		\
-	mono-error.h		\
-	mono-error-internals.h
-
-libmonoutilsincludedir = $(includedir)/mono-$(API_VER)/mono/utils
-
-libmonoutilsinclude_HEADERS = \
+	mono-error.c	\
+	mono-error-internals.h	\
 	monobitset.h	\
 	mono-codeman.h	\
 	mono-counters.h	\
 	mono-digest.h	\
 	mono-embed.h	\
-	mono-logger.h	\
-	mono-hash.h	\
+	mono-error.h	\
 	mono-math.h	\
 	mono-membar.h	\
 	mono-path.h	\
 	mono-poll.h	\
 	mono-uri.h	\
-	mono-stdlib.h
+	mono-stdlib.h	\
+	valgrind.h	\
+	mach-support.c	\
+	mach-support.h  \
+	memcheck.h
 
-EXTRA_DIST = ChangeLog mono-hash.c mono-hash.h mono-ehash.c
+arch_sources = 
+
+if X86
+arch_sources += mach-support-x86.c
+endif
+
+if AMD64
+arch_sources += mach-support-amd64.c
+endif
+
+if ARM
+arch_sources += mach-support-arm.c
+endif
+
+libmonoutils_la_SOURCES = $(monoutils_sources) $(arch_sources)
+libmonoutilsincludedir = $(includedir)/mono-$(API_VER)/mono/utils
+
+libmonoutilsinclude_HEADERS = \
+	mono-logger.h	\
+	mono-error.h	\
+	mono-publib.h
+
+EXTRA_DIST = ChangeLog

@@ -46,7 +46,6 @@ using System.Xml;
 
 namespace System.ServiceModel.Configuration
 {
-	[MonoTODO]
 	public sealed partial class WebHttpSecurityElement
 		 : ConfigurationElement
 	{
@@ -95,8 +94,18 @@ namespace System.ServiceModel.Configuration
 		public HttpTransportSecurityElement Transport {
 			get { return (HttpTransportSecurityElement) base [transport]; }
 		}
-
-
+		
+		internal void ApplyConfiguration (WebHttpSecurity security)
+		{
+			security.Mode = Mode;
+			security.Transport.ClientCredentialType = Transport.ClientCredentialType;
+		}
+		
+		internal void InitializeFrom (WebHttpSecurity security)
+		{
+			Mode = security.Mode;
+			Transport.ClientCredentialType = security.Transport.ClientCredentialType;
+		}
 	}
 
 }

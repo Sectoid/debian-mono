@@ -489,7 +489,8 @@ namespace System.Windows.Forms
 					throw new Exception ("CurrentCell cannot be set at this time.");
 				}
 
-				if (current_cell.Equals (value)) {
+				/* Even if we are on the same cell, we could need to actually start edition */
+				if (current_cell.Equals (value) && is_editing) {
 					setting_current_cell = false;
 					return;
 				}
@@ -954,6 +955,14 @@ namespace System.Windows.Forms
 
 		internal int FirstVisibleRow {
 			get { return first_visible_row; }
+		}
+
+		// As opposed to VisibleRowCount, this value is the maximum
+		// *possible* number of visible rows given our area.
+		internal int MaxVisibleRowCount {
+			get {
+				return cells_area.Height / RowHeight;
+			}
 		}
 		
 		internal int RowsCount {
@@ -1476,9 +1485,10 @@ namespace System.Windows.Forms
 			base.OnLeave (e);
 
 			EndEdit ();
-			if (cursor_in_add_row) {
+			if (commit_row_changes)
+				ListManager.EndCurrentEdit ();
+			else
 				ListManager.CancelCurrentEdit ();
-			}
 		}
 
 		protected override void OnMouseDown (MouseEventArgs e)
@@ -2037,8 +2047,10 @@ namespace System.Windows.Forms
 					selected_rows.Keys.CopyTo (rows, 0);
 
 					// reverse order to keep index sanity
+					int edit_row_index = ShowEditRow ? RowsCount : -1; // new cell is +1
 					for (int i = rows.Length - 1; i >= 0; i--)
-						ListManager.RemoveAt (rows [i]);
+						if (rows [i] != edit_row_index)
+							ListManager.RemoveAt (rows [i]);
 
 					CalcAreasAndInvalidate ();
 				}
@@ -2520,6 +2532,13 @@ namespace System.Windows.Forms
 
 		private void OnListManagerPositionChanged (object sender, EventArgs e)
 		{
+			// Set the field directly, as we are empty now and using CurrentRow
+			// directly would add a new row in this case.
+			if (list_manager.Count == 0) {
+				current_cell = new DataGridCell (0, 0);
+				return;
+			}
+
 			from_positionchanged_handler = true;
 			CurrentRow = list_manager.Position;
 			from_positionchanged_handler = false;
@@ -2593,7 +2612,8 @@ namespace System.Windows.Forms
 			if (!CurrentTableStyle.GridColumnStyles[CurrentColumn].bound)
 				return;
 
-			if (ListManager != null && ListManager.Count == 0)
+			// if we don't have any rows nor the "new" cell, there's nothing to do
+			if (ListManager != null && (ListManager.Count == 0 && !ListManager.AllowNew))
 				return;
 
 			is_editing = true;
@@ -3013,7 +3033,7 @@ namespace System.Windows.Forms
 				UpdateVisibleRowCount ();
 
 				needHoriz = (width_of_all_columns > visible_cells_width);
-				needVert = (allrows > visible_row_count);
+				needVert = (allrows > MaxVisibleRowCount);
 			}
 
 			int horiz_scrollbar_width = ClientRectangle.Width;
@@ -3345,8 +3365,7 @@ namespace System.Windows.Forms
 
 		int VLargeChange {
 			get { 
-				// the possible number of visible rows
-				return cells_area.Height / RowHeight;
+				return MaxVisibleRowCount;
 			}
 		}
 

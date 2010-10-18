@@ -66,7 +66,7 @@ enum {
 static CRITICAL_SECTION cominterop_mutex;
 
 /* STDCALL on windows, CDECL everywhere else to work with XPCOM and MainWin COM */
-#ifdef  PLATFORM_WIN32
+#ifdef  HOST_WIN32
 #define STDCALL __stdcall
 #else
 #define STDCALL
@@ -81,7 +81,7 @@ typedef struct {
 	guint32 ref_count;
 	guint32 gc_handle;
 	GHashTable* vtable_hash;
-#ifdef  PLATFORM_WIN32
+#ifdef  HOST_WIN32
 	gpointer free_marshaler;
 #endif
 } MonoCCW;
@@ -204,7 +204,7 @@ cominterop_method_signature (MonoMethod* method)
 	res->param_count = param_count;
 
 	// STDCALL on windows, CDECL everywhere else to work with XPCOM and MainWin COM
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	res->call_convention = MONO_CALL_STDCALL;
 #else
 	res->call_convention = MONO_CALL_C;
@@ -358,7 +358,7 @@ cominterop_get_com_slot_for_method (MonoMethod* method)
 
 
 static void
-cominterop_mono_string_to_guid (const MonoString* string, guint8 *guid);
+cominterop_mono_string_to_guid (MonoString* string, guint8 *guid);
 
 static gboolean
 cominterop_class_guid (MonoClass* klass, guint8* guid)
@@ -1525,6 +1525,9 @@ ves_icall_System_Runtime_InteropServices_Marshal_GetCCW (MonoObject* object, Mon
 	g_assert (type->type);
 	klass = mono_type_get_class (type->type);
 	g_assert (klass);
+	if (!mono_class_init (klass))
+		mono_raise_exception (mono_class_get_exception_for_failure (klass));
+
 	itf = cominterop_get_ccw (object, klass);
 	g_assert (itf);
 	return itf;
@@ -1680,7 +1683,11 @@ gpointer
 ves_icall_System_ComObject_GetInterfaceInternal (MonoComObject* obj, MonoReflectionType* type, MonoBoolean throw_exception)
 {
 #ifndef DISABLE_COM
-	return cominterop_get_interface (obj, mono_type_get_class (type->type), (gboolean)throw_exception);
+	MonoClass *class = mono_type_get_class (type->type);
+	if (!mono_class_init (class))
+		mono_raise_exception (mono_class_get_exception_for_failure (class));
+
+	return cominterop_get_interface (obj, class, (gboolean)throw_exception);
 #else
 	g_assert_not_reached ();
 #endif
@@ -1796,7 +1803,7 @@ cominterop_setup_marshal_context (EmitMarshalContext *m, MonoMethod *method)
 	/* csig = mono_metadata_signature_dup (sig); */
 	
 	/* STDCALL on windows, CDECL everywhere else to work with XPCOM and MainWin COM */
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	csig->call_convention = MONO_CALL_STDCALL;
 #else
 	csig->call_convention = MONO_CALL_C;
@@ -1875,7 +1882,7 @@ cominterop_get_ccw (MonoObject* object, MonoClass* itf)
 
 	if (!ccw) {
 		ccw = g_new0 (MonoCCW, 1);
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 		ccw->free_marshaler = 0;
 #endif
 		ccw->vtable_hash = g_hash_table_new (mono_aligned_addr_hash, NULL);
@@ -2015,7 +2022,7 @@ cominterop_get_ccw (MonoObject* object, MonoClass* itf)
 
 			cominterop_setup_marshal_context (&m, adjust_method);
 			m.mb = mb;
-			mono_marshal_emit_managed_wrapper (mb, sig_adjusted, mspecs, &m, adjust_method, NULL);
+			mono_marshal_emit_managed_wrapper (mb, sig_adjusted, mspecs, &m, adjust_method, 0);
 			mono_loader_lock ();
 			mono_cominterop_lock ();
 			wrapper_method = mono_mb_create_method (mb, m.csig, m.csig->param_count + 16);
@@ -2044,6 +2051,7 @@ cominterop_get_ccw (MonoObject* object, MonoClass* itf)
 static gboolean
 mono_marshal_free_ccw_entry (gpointer key, gpointer value, gpointer user_data)
 {
+	g_hash_table_remove (ccw_interface_hash, value);
 	g_assert (value);
 	g_free (value);
 	return TRUE;
@@ -2240,7 +2248,7 @@ cominterop_get_managed_wrapper_adjusted (MonoMethod *method)
  * to a 16 byte Microsoft GUID.
  */
 static void
-cominterop_mono_string_to_guid (const MonoString* string, guint8 *guid) {
+cominterop_mono_string_to_guid (MonoString* string, guint8 *guid) {
 	gunichar2 * chars = mono_string_chars (string);
 	int i = 0;
 	static guint8 indexes[16] = {7, 5, 3, 1, 12, 10, 17, 15, 20, 22, 25, 27, 29, 31, 33, 35};
@@ -2289,7 +2297,7 @@ cominterop_ccw_release (MonoCCWInterface* ccwe)
 		/* allow gc of object */
 		guint32 oldhandle = ccw->gc_handle;
 		g_assert (oldhandle);
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 		if (ccw->free_marshaler)
 			ves_icall_System_Runtime_InteropServices_Marshal_ReleaseInternal (ccw->free_marshaler);
 #endif
@@ -2299,16 +2307,16 @@ cominterop_ccw_release (MonoCCWInterface* ccwe)
 	return ref_count;
 }
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 static const IID MONO_IID_IMarshal = {0x3, 0x0, 0x0, {0xC0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x46}};
 #endif
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 /* All ccw objects are free threaded */
 static int
 cominterop_ccw_getfreethreadedmarshaler (MonoCCW* ccw, MonoObject* object, gpointer* ppv)
 {
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	if (!ccw->free_marshaler) {
 		int ret = 0;
 		gpointer tunk;
@@ -2369,7 +2377,7 @@ cominterop_ccw_queryinterface (MonoCCWInterface* ccwe, guint8* riid, gpointer* p
 		return MONO_S_OK;
 	}
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	/* handle IMarshal special */
 	if (0 == memcmp (riid, &MONO_IID_IMarshal, sizeof (IID))) {
 		return cominterop_ccw_getfreethreadedmarshaler (ccw, object, ppv);	
@@ -2444,7 +2452,7 @@ static SysAllocStringLenFunc sys_alloc_string_len_ms = NULL;
 static SysStringLenFunc sys_string_len_ms = NULL;
 static SysFreeStringFunc sys_free_string_ms = NULL;
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 
 typedef struct tagSAFEARRAYBOUND {
 	ULONG cElements;
@@ -2566,7 +2574,7 @@ mono_string_to_bstr (MonoString *string_obj)
 {
 	if (!string_obj)
 		return NULL;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	return SysAllocStringLen (mono_string_chars (string_obj), mono_string_length (string_obj));
 #else
 	if (com_provider == MONO_COM_DEFAULT) {
@@ -2602,7 +2610,7 @@ mono_string_from_bstr (gpointer bstr)
 {
 	if (!bstr)
 		return NULL;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	return mono_string_new_utf16 (mono_domain_get (), bstr, SysStringLen (bstr));
 #else
 	if (com_provider == MONO_COM_DEFAULT) {
@@ -2628,7 +2636,7 @@ mono_free_bstr (gpointer bstr)
 {
 	if (!bstr)
 		return;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	SysFreeString ((BSTR)bstr);
 #else
 	if (com_provider == MONO_COM_DEFAULT) {
@@ -2897,7 +2905,7 @@ static
 guint32 mono_marshal_safearray_get_dim (gpointer safearray)
 {
 	guint32 result=0;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	result = SafeArrayGetDim (safearray);
 #else
 	if (com_provider == MONO_COM_MS && init_com_provider_ms ()) {
@@ -2913,7 +2921,7 @@ static
 int mono_marshal_safe_array_get_lbound (gpointer psa, guint nDim, glong* plLbound)
 {
 	int result=MONO_S_OK;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	result = SafeArrayGetLBound (psa, nDim, plLbound);
 #else
 	if (com_provider == MONO_COM_MS && init_com_provider_ms ()) {
@@ -2929,7 +2937,7 @@ static
 int mono_marshal_safe_array_get_ubound (gpointer psa, guint nDim, glong* plUbound)
 {
 	int result=MONO_S_OK;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	result = SafeArrayGetUBound (psa, nDim, plUbound);
 #else
 	if (com_provider == MONO_COM_MS && init_com_provider_ms ()) {
@@ -2945,13 +2953,13 @@ static gboolean
 mono_marshal_safearray_begin (gpointer safearray, MonoArray **result, gpointer *indices, gpointer empty, gpointer parameter, gboolean allocateNewArray)
 {
 	int dim;
-	mono_array_size_t *sizes;
-	mono_array_size_t *bounds;
+	uintptr_t *sizes;
+	intptr_t *bounds;
 	MonoClass *aklass;
 	int i;
 	gboolean bounded = FALSE;
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 	// If not on windows, check that the MS provider is used as it is 
 	// required for SAFEARRAY support.
 	// If SAFEARRAYs are not supported, returning FALSE from this
@@ -2972,8 +2980,8 @@ mono_marshal_safearray_begin (gpointer safearray, MonoArray **result, gpointer *
 
 			*indices = g_malloc (dim * sizeof(int));
 
-			sizes = alloca (dim * sizeof(mono_array_size_t));
-			bounds = alloca (dim * sizeof(mono_array_size_t));
+			sizes = alloca (dim * sizeof(uintptr_t));
+			bounds = alloca (dim * sizeof(intptr_t));
 
 			for (i=0; i<dim; ++i) {
 				glong lbound, ubound;
@@ -3015,7 +3023,7 @@ static
 gpointer mono_marshal_safearray_get_value (gpointer safearray, gpointer indices)
 {
 	gpointer result;
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	int hr = SafeArrayPtrOfIndex (safearray, indices, &result);
 	if (hr < 0) {
 		cominterop_raise_hr_exception (hr);
@@ -3072,7 +3080,7 @@ static
 void mono_marshal_safearray_end (gpointer safearray, gpointer indices)
 {
 	g_free(indices);
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	SafeArrayDestroy (safearray);
 #else
 	if (com_provider == MONO_COM_MS && init_com_provider_ms ()) {
@@ -3091,7 +3099,7 @@ mono_marshal_safearray_create (MonoArray *input, gpointer *newsafearray, gpointe
 	int i;
 	int max_array_length;
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 	// If not on windows, check that the MS provider is used as it is 
 	// required for SAFEARRAY support.
 	// If SAFEARRAYs are not supported, returning FALSE from this
@@ -3120,7 +3128,7 @@ mono_marshal_safearray_create (MonoArray *input, gpointer *newsafearray, gpointe
 		bounds [0].lLbound = 0;
 	}
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	*newsafearray = SafeArrayCreate (VT_VARIANT, dim, bounds);
 #else
 	*newsafearray = safe_array_create_ms (VT_VARIANT, dim, bounds);
@@ -3132,7 +3140,7 @@ mono_marshal_safearray_create (MonoArray *input, gpointer *newsafearray, gpointe
 static 
 void mono_marshal_safearray_set_value (gpointer safearray, gpointer indices, gpointer value)
 {
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	int hr = SafeArrayPutElement (safearray, indices, value);
 	if (hr < 0)
 		cominterop_raise_hr_exception (hr);

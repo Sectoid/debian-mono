@@ -7,7 +7,7 @@
 //	Ben Maurer (bmaurer@ximian.com)
 //
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -35,8 +35,8 @@ using System.Text;
 using System.Globalization;
 using System.Runtime.InteropServices;
 	
-namespace System.Web {
-
+namespace System.Web
+{
 	//
 	// HttpResponseStream implements the "OutputStream" from HttpResponse
 	//
@@ -47,7 +47,8 @@ namespace System.Web {
 	// You must call HttpResponse.Flush which does the actual header generation
 	// and actual data flushing
 	//
-	internal class HttpResponseStream : Stream {
+	class HttpResponseStream : Stream
+	{
 		Bucket first_bucket;
 		Bucket cur_bucket;
 		HttpResponse response;
@@ -188,7 +189,13 @@ namespace System.Web {
 				
 				EnsureCapacity (position + count);
 				byte *src = (byte *) ptr.ToPointer ();
-				memcpy (data + position, src, count);
+				if (count < 32) {
+					byte *dest = (data + position);
+					for (int i = 0; i < count; i++)
+						*dest++ = *src++;
+				} else {
+					memcpy (data + position, src, count);
+				}
 				position += count;
 			}
 
@@ -516,27 +523,16 @@ namespace System.Web {
 		public override void Write (byte [] buffer, int offset, int count)
 		{
 			bool buffering = response.BufferOutput;
-
-#if NET_2_0
 			if (buffer == null)
 				throw new ArgumentNullException ("buffer");
-#endif
 
 			int max_count = buffer.Length - offset;
-#if NET_2_0
 			if (offset < 0 || max_count <= 0)
-#else
-			if (offset < 0)
-#endif
 				throw new ArgumentOutOfRangeException ("offset");
 			if (count < 0)
 				throw new ArgumentOutOfRangeException ("count");
 			if (count > max_count)
 				count = max_count;
-#if ONLY_1_1
-			if (max_count <= 0)
-				return;
-#endif
 
 			if (buffering) {
 				// It does not matter whether we're in ApplyFilter or not

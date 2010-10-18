@@ -30,13 +30,12 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
+using System.Collections.Generic;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_MemberInfo))]
-#endif
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.None)]
 	[PermissionSet (SecurityAction.InheritanceDemand, Unrestricted = true)]
@@ -62,20 +61,11 @@ namespace System.Reflection {
 			get;
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		public virtual Module Module {
 			get {
 				return DeclaringType.Module;
 			}
 		}
-#endif
-
-#if ONLY_1_1
-		public new Type GetType ()
-		{
-			return base.GetType ();
-		}
-#endif
 
 		public abstract bool IsDefined (Type attributeType, bool inherit);
 
@@ -83,15 +73,44 @@ namespace System.Reflection {
 
 		public abstract object [] GetCustomAttributes (Type attributeType, bool inherit);
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-		public
-#else
-		internal
-#endif
-		virtual extern int MetadataToken {
+		public virtual extern int MetadataToken {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
 		}
+
+#if NET_4_0
+		public override bool Equals (object obj)
+		{
+			return obj == this;
+		}
+
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
+
+		public static bool operator == (MemberInfo left, MemberInfo right)
+		{
+			if ((object)left == (object)right)
+				return true;
+			if ((object)left == null ^ (object)right == null)
+				return false;
+			return left.Equals (right);
+		}
+
+		public static bool operator != (MemberInfo left, MemberInfo right)
+		{
+			if ((object)left == (object)right)
+				return false;
+			if ((object)left == null ^ (object)right == null)
+				return true;
+			return !left.Equals (right);
+		}
+
+		public virtual IList<CustomAttributeData> GetCustomAttributesData () {
+			throw new NotImplementedException ();
+		}
+#endif
 
 		void _MemberInfo.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{

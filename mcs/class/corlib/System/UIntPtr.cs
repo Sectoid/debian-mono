@@ -39,14 +39,13 @@
 using System.Globalization;
 using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
+using System.Runtime.ConstrainedExecution;
 
 namespace System
 {
 	[Serializable]
 	[CLSCompliant (false)]
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public unsafe struct UIntPtr : ISerializable
 	{
 		public static readonly UIntPtr Zero = new UIntPtr (0u);
@@ -162,5 +161,27 @@ namespace System
 		public static int Size {
 			get { return sizeof (void*); }
 		}
+
+#if NET_4_0
+		public static UIntPtr Add (UIntPtr pointer, int offset)
+		{
+			return (UIntPtr) (unchecked (((byte *) pointer) + offset));
+		}
+
+		public static UIntPtr Subtract (UIntPtr pointer, int offset)
+		{
+			return (UIntPtr) (unchecked (((byte *) pointer) - offset));
+		}
+
+		public static UIntPtr operator + (UIntPtr pointer, int offset)
+		{
+			return (UIntPtr) (unchecked (((byte *) pointer) + offset));
+		}
+
+		public static UIntPtr operator - (UIntPtr pointer, int offset)
+		{
+			return (UIntPtr) (unchecked (((byte *) pointer) - offset));
+		}
+#endif
 	}
 }

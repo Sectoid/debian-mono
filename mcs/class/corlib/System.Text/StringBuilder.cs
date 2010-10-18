@@ -43,14 +43,9 @@ using System.Runtime.InteropServices;
 namespace System.Text {
 	
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
-        [MonoTODO ("Serialization format not compatible with .NET")]
-	public sealed class StringBuilder
-#if NET_2_0
-		: ISerializable
-#endif
+        [MonoLimitation ("Serialization format not compatible with .NET")]
+	public sealed class StringBuilder : ISerializable
 	{
 		private int _length;
 		private string _str;
@@ -213,7 +208,7 @@ namespace System.Text {
 				return _cached_str;
 
 			// If we only have a half-full buffer we return a new string.
-			if (_length < (_str.Length >> 1)) 
+			if (_length < (_str.Length >> 1) || (_str.Length > string.LOS_limit && _length <= string.LOS_limit))
 			{
 				// use String.SubstringUnchecked instead of String.Substring
 				// as the former is guaranteed to create a new string object
@@ -508,7 +503,14 @@ namespace System.Text {
 			return this;
 		}
 
-#if NET_2_0
+#if NET_4_0 || MOONLIGHT
+		public StringBuilder Clear ()
+		{
+			_length = 0;
+			return this;
+		}
+#endif
+
 		[ComVisible (false)]
 		public StringBuilder AppendLine ()
 		{
@@ -520,7 +522,6 @@ namespace System.Text {
 		{
 			return Append (value).Append (System.Environment.NewLine);
 		}
-#endif
 
 		public StringBuilder AppendFormat (string format, params object[] args)
 		{
@@ -535,7 +536,7 @@ namespace System.Text {
 			return this;
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		internal
 #else
 		public
@@ -545,7 +546,7 @@ namespace System.Text {
 			return AppendFormat (null, format, new object [] { arg0 });
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		internal
 #else
 		public
@@ -555,7 +556,7 @@ namespace System.Text {
 			return AppendFormat (null, format, new object [] { arg0, arg1 });
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		internal
 #else
 		public
@@ -732,7 +733,6 @@ namespace System.Text {
 			_cached_str = null;
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public void CopyTo (int sourceIndex, char [] destination, int destinationIndex, int count)
 		{
@@ -768,6 +768,5 @@ namespace System.Text {
 				_maxCapacity = Int32.MaxValue;
 			Capacity = info.GetInt32 ("Capacity");
 		}
-#endif
 	}
 }       

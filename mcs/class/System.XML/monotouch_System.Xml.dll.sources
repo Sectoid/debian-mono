@@ -82,6 +82,7 @@ System.Xml/DTDAutomata.cs
 System.Xml/DTDObjectModel.cs
 System.Xml/DTDReader.cs
 System.Xml/DTDValidatingReader2.cs
+System.Xml/DefaultXmlWriter.cs
 System.Xml/EntityResolvingXmlReader.cs
 System.Xml/EntityHandling.cs
 System.Xml/Formatting.cs
@@ -90,8 +91,8 @@ System.Xml/IXmlLineInfo.cs
 System.Xml/IHasXmlChildNode.cs
 System.Xml/IXmlNamespaceResolver.cs
 System.Xml/MonoFIXAttribute.cs
-System.Xml/NameTable.cs
 System.Xml/NamespaceHandling.cs
+System.Xml/NameTable.cs
 System.Xml/NewLineHandling.cs
 System.Xml/ReadState.cs
 ../../build/common/MonoTODOAttribute.cs

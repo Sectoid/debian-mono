@@ -28,16 +28,11 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0 || NET_2_0_BOOTSTRAP
-
 namespace System.Text
 {
 	[Serializable]
 	public sealed class DecoderFallbackException : ArgumentException
 	{
-		const string defaultMessage =
-			"Failed to decode the input byte sequence to Unicode characters.";
-
 		public DecoderFallbackException ()
 			: this (null)
 		{
@@ -75,5 +70,3 @@ namespace System.Text
 		}
 	}
 }
-
-#endif

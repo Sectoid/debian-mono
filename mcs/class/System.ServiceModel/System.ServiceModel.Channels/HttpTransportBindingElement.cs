@@ -30,11 +30,13 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Security;
 using System.ServiceModel.Channels;
+#if !NET_2_1
+using System.ServiceModel.Channels.Http;
+#endif
 using System.ServiceModel.Description;
 
 namespace System.ServiceModel.Channels
 {
-	[MonoTODO]
 	public class HttpTransportBindingElement : TransportBindingElement,
 		IPolicyExportExtension, IWsdlExportExtension
 	{
@@ -47,7 +49,7 @@ namespace System.ServiceModel.Channels
 		string realm = String.Empty;
 		TransferMode transfer_mode;
 		IDefaultCommunicationTimeouts timeouts;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		AuthenticationSchemes auth_scheme =
 			AuthenticationSchemes.Anonymous;
 		AuthenticationSchemes proxy_auth_scheme =
@@ -75,13 +77,13 @@ namespace System.ServiceModel.Channels
 			transfer_mode = other.transfer_mode;
 			// FIXME: it does not look safe
 			timeouts = other.timeouts;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			auth_scheme = other.auth_scheme;
 			proxy_auth_scheme = other.proxy_auth_scheme;
 #endif
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public AuthenticationSchemes AuthenticationScheme {
 			get { return auth_scheme; }
 			set { auth_scheme = value; }
@@ -170,15 +172,14 @@ namespace System.ServiceModel.Channels
 		}
 
 #if !NET_2_1
+		internal static object ListenerBuildLock = new object ();
+
 		public override IChannelListener<TChannel> BuildChannelListener<TChannel> (
 			BindingContext context)
 		{
 			// remaining contexts are ignored ... e.g. such binding
 			// element that always causes an error is ignored.
-			if (ServiceHostingEnvironment.InAspNet)
-				return new AspNetChannelListener<TChannel> (this, context);
-			else
-				return new HttpSimpleChannelListener<TChannel> (this, context);
+			return new HttpChannelListener<TChannel> (this, context);
 		}
 #endif
 
@@ -223,61 +224,63 @@ namespace System.ServiceModel.Channels
 		{
 			throw new NotImplementedException ();
 		}
+#endif
+	}
 
-		class HttpBindingProperties : ISecurityCapabilities, IBindingDeliveryCapabilities
+#if !NET_2_1
+	class HttpBindingProperties : ISecurityCapabilities, IBindingDeliveryCapabilities
+	{
+		HttpTransportBindingElement source;
+
+		public HttpBindingProperties (HttpTransportBindingElement source)
 		{
-			HttpTransportBindingElement source;
+			this.source = source;
+		}
 
-			public HttpBindingProperties (HttpTransportBindingElement source)
-			{
-				this.source = source;
-			}
+		public bool AssuresOrderedDelivery {
+			get { return false; }
+		}
 
-			public bool AssuresOrderedDelivery {
-				get { return false; }
-			}
+		public bool QueuedDelivery {
+			get { return false; }
+		}
 
-			public bool QueuedDelivery {
-				get { return false; }
-			}
+		public virtual ProtectionLevel SupportedRequestProtectionLevel {
+			get { return ProtectionLevel.None; }
+		}
 
-			public ProtectionLevel SupportedRequestProtectionLevel {
-				get { return ProtectionLevel.None; }
-			}
+		public virtual ProtectionLevel SupportedResponseProtectionLevel {
+			get { return ProtectionLevel.None; }
+		}
 
-			public ProtectionLevel SupportedResponseProtectionLevel {
-				get { return ProtectionLevel.None; }
-			}
+		public virtual bool SupportsClientAuthentication {
+			get { return source.AuthenticationScheme != AuthenticationSchemes.Anonymous; }
+		}
 
-			public bool SupportsClientAuthentication {
-				get { return source.AuthenticationScheme != AuthenticationSchemes.Anonymous; }
-			}
-
-			public bool SupportsServerAuthentication {
-				get {
-					switch (source.AuthenticationScheme) {
-					case AuthenticationSchemes.Negotiate:
-						return true;
-					default:
-						return false;
-					}
-				}
-			}
-
-			public bool SupportsClientWindowsIdentity {
-				get {
-					switch (source.AuthenticationScheme) {
-					case AuthenticationSchemes.Basic:
-					case AuthenticationSchemes.Digest: // hmm... why? but they return true on .NET
-					case AuthenticationSchemes.Negotiate:
-					case AuthenticationSchemes.Ntlm:
-						return true;
-					default:
-						return false;
-					}
+		public virtual bool SupportsServerAuthentication {
+			get {
+				switch (source.AuthenticationScheme) {
+				case AuthenticationSchemes.Negotiate:
+					return true;
+				default:
+					return false;
 				}
 			}
 		}
-#endif
+
+		public virtual bool SupportsClientWindowsIdentity {
+			get {
+				switch (source.AuthenticationScheme) {
+				case AuthenticationSchemes.Basic:
+				case AuthenticationSchemes.Digest: // hmm... why? but they return true on .NET
+				case AuthenticationSchemes.Negotiate:
+				case AuthenticationSchemes.Ntlm:
+					return true;
+				default:
+					return false;
+				}
+			}
+		}
 	}
+#endif
 }

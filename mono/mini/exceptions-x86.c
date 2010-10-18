@@ -27,7 +27,12 @@
 #include "tasklets.h"
 #include "debug-mini.h"
 
-#ifdef PLATFORM_WIN32
+static gpointer signal_exception_trampoline;
+
+gpointer
+mono_x86_get_signal_exception_trampoline (MonoTrampInfo **info, gboolean aot) MONO_INTERNAL;
+
+#ifdef TARGET_WIN32
 static void (*restore_stack) (void *);
 
 static MonoW32ExceptionHandler fpe_handler;
@@ -253,7 +258,7 @@ void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler)
 	}
 }
 
-#endif /* PLATFORM_WIN32 */
+#endif /* TARGET_WIN32 */
 
 /*
  * mono_arch_get_restore_context:
@@ -261,13 +266,12 @@ void win32_seh_set_handler(int type, MonoW32ExceptionHandler handler)
  * Returns a pointer to a method which restores a previously saved sigcontext.
  */
 gpointer
-mono_arch_get_restore_context (void)
+mono_arch_get_restore_context (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8 *start = NULL;
+	guint8 *start = NULL;
 	guint8 *code;
-
-	if (start)
-		return start;
+	MonoJumpInfo *ji = NULL;
+	GSList *unwind_ops = NULL;
 
 	/* restore_contect (MonoContext *ctx) */
 
@@ -300,6 +304,9 @@ mono_arch_get_restore_context (void)
 	/* jump to the saved IP */
 	x86_ret (code);
 
+	if (info)
+		*info = mono_tramp_info_create (g_strdup_printf ("restore_context"), start, code - start, ji, unwind_ops);
+
 	return start;
 }
 
@@ -311,18 +318,20 @@ mono_arch_get_restore_context (void)
  * @exc object in this case).
  */
 gpointer
-mono_arch_get_call_filter (void)
+mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8* start;
-	static int inited = 0;
+	guint8* start;
 	guint8 *code;
+	MonoJumpInfo *ji = NULL;
+	GSList *unwind_ops = NULL;
+#ifdef __native_client_codegen__
+	guint kMaxCodeSize = 128;
+#else
+	guint kMaxCodeSize = 64;
+#endif  /* __native_client_codegen__ */
 
-	if (inited)
-		return start;
-
-	inited = 1;
 	/* call_filter (MonoContext *ctx, unsigned long eip) */
-	start = code = mono_global_codeman_reserve (64);
+	start = code = mono_global_codeman_reserve (kMaxCodeSize);
 
 	x86_push_reg (code, X86_EBP);
 	x86_mov_reg_reg (code, X86_EBP, X86_ESP, 4);
@@ -367,31 +376,37 @@ mono_arch_get_call_filter (void)
 	x86_leave (code);
 	x86_ret (code);
 
-	g_assert ((code - start) < 64);
+	if (info)
+		*info = mono_tramp_info_create (g_strdup_printf ("call_filter"), start, code - start, ji, unwind_ops);
+
+	g_assert ((code - start) < kMaxCodeSize);
 	return start;
 }
 
-static void
-throw_exception (unsigned long eax, unsigned long ecx, unsigned long edx, unsigned long ebx,
-		 unsigned long esi, unsigned long edi, unsigned long ebp, MonoObject *exc,
-		 unsigned long eip,  unsigned long esp, gboolean rethrow)
+/*
+ * mono_x86_throw_exception:
+ *
+ *   C function called from the throw trampolines.
+ */
+void
+mono_x86_throw_exception (mgreg_t *regs, MonoObject *exc, 
+						  mgreg_t eip, gboolean rethrow)
 {
 	static void (*restore_context) (MonoContext *);
 	MonoContext ctx;
 
 	if (!restore_context)
-		restore_context = mono_arch_get_restore_context ();
+		restore_context = mono_get_restore_context ();
 
-	/* Pop alignment added in get_throw_exception (), the return address, plus the argument and the alignment added at the call site */
-	ctx.esp = esp + 8 + MONO_ARCH_FRAME_ALIGNMENT;
+	ctx.esp = regs [X86_ESP];
 	ctx.eip = eip;
-	ctx.ebp = ebp;
-	ctx.edi = edi;
-	ctx.esi = esi;
-	ctx.ebx = ebx;
-	ctx.edx = edx;
-	ctx.ecx = ecx;
-	ctx.eax = eax;
+	ctx.ebp = regs [X86_EBP];
+	ctx.edi = regs [X86_EDI];
+	ctx.esi = regs [X86_ESI];
+	ctx.ebx = regs [X86_EBX];
+	ctx.edx = regs [X86_EDX];
+	ctx.ecx = regs [X86_ECX];
+	ctx.eax = regs [X86_EAX];
 
 #ifdef __APPLE__
 	/* The OSX ABI specifies 16 byte alignment at call sites */
@@ -431,32 +446,172 @@ throw_exception (unsigned long eax, unsigned long ecx, unsigned long edx, unsign
 	g_assert_not_reached ();
 }
 
+void
+mono_x86_throw_corlib_exception (mgreg_t *regs, guint32 ex_token_index, 
+								 mgreg_t eip, gint32 pc_offset)
+{
+	guint32 ex_token = MONO_TOKEN_TYPE_DEF | ex_token_index;
+	MonoException *ex;
+
+	ex = mono_exception_from_token (mono_defaults.exception_class->image, ex_token);
+
+	eip -= pc_offset;
+
+	/* Negate the ip adjustment done in mono_x86_throw_exception () */
+	eip += 1;
+
+	mono_x86_throw_exception (regs, (MonoObject*)ex, eip, FALSE);
+}
+
+static void
+mono_x86_resume_unwind (mgreg_t *regs, MonoObject *exc, 
+						mgreg_t eip, gboolean rethrow)
+{
+	MonoContext ctx;
+
+	ctx.esp = regs [X86_ESP];
+	ctx.eip = eip;
+	ctx.ebp = regs [X86_EBP];
+	ctx.edi = regs [X86_EDI];
+	ctx.esi = regs [X86_ESI];
+	ctx.ebx = regs [X86_EBX];
+	ctx.edx = regs [X86_EDX];
+	ctx.ecx = regs [X86_ECX];
+	ctx.eax = regs [X86_EAX];
+
+	mono_resume_unwind (&ctx);
+}
+
+/*
+ * get_throw_trampoline:
+ *
+ *  Generate a call to mono_x86_throw_exception/
+ * mono_x86_throw_corlib_exception.
+ * If LLVM is true, generate code which assumes the caller is LLVM generated code, 
+ * which doesn't push the arguments.
+ */
 static guint8*
-get_throw_exception (gboolean rethrow)
+get_throw_trampoline (const char *name, gboolean rethrow, gboolean llvm, gboolean corlib, gboolean llvm_abs, gboolean resume_unwind, MonoTrampInfo **info, gboolean aot)
 {
 	guint8 *start, *code;
+	int i, stack_size, stack_offset, arg_offsets [5], regs_offset;
+	MonoJumpInfo *ji = NULL;
+	GSList *unwind_ops = NULL;
+#ifdef __native_client_codegen__
+	guint kMaxCodeSize = 256;
+#else
+	guint kMaxCodeSize = 128;
+#endif
+	start = code = mono_global_codeman_reserve (kMaxCodeSize);
 
-	start = code = mono_global_codeman_reserve (64);
+	stack_size = 128;
 
 	/* 
-	 * Align the stack on apple, since we push 10 args, and the call pushed 4 bytes.
+	 * On apple, the stack is misaligned by the pushing of the return address.
 	 */
-	x86_alu_reg_imm (code, X86_SUB, X86_ESP, 4);
-	x86_push_reg (code, X86_ESP);
-	x86_push_membase (code, X86_ESP, 8); /* IP */
-	x86_push_membase (code, X86_ESP, 16); /* exception */
-	x86_push_reg (code, X86_EBP);
-	x86_push_reg (code, X86_EDI);
-	x86_push_reg (code, X86_ESI);
-	x86_push_reg (code, X86_EBX);
-	x86_push_reg (code, X86_EDX);
-	x86_push_reg (code, X86_ECX);
-	x86_push_reg (code, X86_EAX);
-	x86_call_code (code, throw_exception);
-	/* we should never reach this breakpoint */
+	if (!llvm && corlib)
+		/* On OSX, we don't generate alignment code to save space */
+		stack_size += 4;
+	else
+		stack_size += MONO_ARCH_FRAME_ALIGNMENT - 4;
+
+	/*
+	 * The stack looks like this:
+	 * <pc offset> (only if corlib is TRUE)
+	 * <exception object>/<type token>
+	 * <return addr> <- esp (unaligned on apple)
+	 */
+
+	mono_add_unwind_op_def_cfa (unwind_ops, (guint8*)NULL, (guint8*)NULL, X86_ESP, 4);
+	mono_add_unwind_op_offset (unwind_ops, (guint8*)NULL, (guint8*)NULL, X86_NREG, -4);
+
+	/* Alloc frame */
+	x86_alu_reg_imm (code, X86_SUB, X86_ESP, stack_size);
+	mono_add_unwind_op_def_cfa_offset (unwind_ops, code, start, stack_size + 4);
+
+	arg_offsets [0] = 0;
+	arg_offsets [1] = 4;
+	arg_offsets [2] = 8;
+	arg_offsets [3] = 12;
+	regs_offset = 16;
+
+	/* Save registers */
+	for (i = 0; i < X86_NREG; ++i)
+		if (i != X86_ESP)
+			x86_mov_membase_reg (code, X86_ESP, regs_offset + (i * 4), i, 4);
+	/* Calculate the offset between the current sp and the sp of the caller */
+	if (llvm) {
+		/* LLVM doesn't push the arguments */
+		stack_offset = stack_size + 4;
+	} else {
+		if (corlib) {
+			/* Two arguments */
+			stack_offset = stack_size + 4 + 8;
+#ifdef __APPLE__
+			/* We don't generate stack alignment code on osx to save space */
+#endif
+		} else {
+			/* One argument */
+			stack_offset = stack_size + 4 + 4;
+#ifdef __APPLE__
+			/* Pop the alignment added by OP_THROW too */
+			stack_offset += MONO_ARCH_FRAME_ALIGNMENT - 4;
+#endif
+		}
+	}
+	/* Save ESP */
+	x86_lea_membase (code, X86_EAX, X86_ESP, stack_offset);
+	x86_mov_membase_reg (code, X86_ESP, regs_offset + (X86_ESP * 4), X86_EAX, 4);
+
+	/* Set arg1 == regs */
+	x86_lea_membase (code, X86_EAX, X86_ESP, regs_offset);
+	x86_mov_membase_reg (code, X86_ESP, arg_offsets [0], X86_EAX, 4);
+	/* Set arg2 == exc/ex_token_index */
+	if (resume_unwind)
+		x86_mov_reg_imm (code, X86_EAX, 0);
+	else
+		x86_mov_reg_membase (code, X86_EAX, X86_ESP, stack_size + 4, 4);
+	x86_mov_membase_reg (code, X86_ESP, arg_offsets [1], X86_EAX, 4);
+	/* Set arg3 == eip */
+	if (llvm_abs)
+		x86_alu_reg_reg (code, X86_XOR, X86_EAX, X86_EAX);
+	else
+		x86_mov_reg_membase (code, X86_EAX, X86_ESP, stack_size, 4);
+	x86_mov_membase_reg (code, X86_ESP, arg_offsets [2], X86_EAX, 4);
+	/* Set arg4 == rethrow/pc_offset */
+	if (resume_unwind) {
+		x86_mov_membase_imm (code, X86_ESP, arg_offsets [3], 0, 4);
+	} else if (corlib) {
+		x86_mov_reg_membase (code, X86_EAX, X86_ESP, stack_size + 8, 4);
+		if (llvm_abs) {
+			/* 
+			 * The caller is LLVM code which passes the absolute address not a pc offset,
+			 * so compensate by passing 0 as 'ip' and passing the negated abs address as
+			 * the pc offset.
+			 */
+			x86_neg_reg (code, X86_EAX);
+		}
+		x86_mov_membase_reg (code, X86_ESP, arg_offsets [3], X86_EAX, 4);
+	} else {
+		x86_mov_membase_imm (code, X86_ESP, arg_offsets [3], rethrow, 4);
+	}
+	/* Make the call */
+	if (aot) {
+		// This can be called from runtime code, which can't guarantee that
+		// ebx contains the got address.
+		// So emit the got address loading code too
+		code = mono_arch_emit_load_got_addr (start, code, NULL, &ji);
+		code = mono_arch_emit_load_aotconst (start, code, &ji, MONO_PATCH_INFO_JIT_ICALL_ADDR, corlib ? "mono_x86_throw_corlib_exception" : "mono_x86_throw_exception");
+		x86_call_reg (code, X86_EAX);
+	} else {
+		x86_call_code (code, resume_unwind ? (mono_x86_resume_unwind) : (corlib ? (gpointer)mono_x86_throw_corlib_exception : (gpointer)mono_x86_throw_exception));
+	}
 	x86_breakpoint (code);
 
-	g_assert ((code - start) < 64);
+	g_assert ((code - start) < kMaxCodeSize);
+
+	if (info)
+		*info = mono_tramp_info_create (g_strdup (name), start, code - start, ji, unwind_ops);
 
 	return start;
 }
@@ -474,64 +629,15 @@ get_throw_exception (gboolean rethrow)
  *
  */
 gpointer 
-mono_arch_get_throw_exception (void)
+mono_arch_get_throw_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8 *start;
-	static int inited = 0;
-
-	if (inited)
-		return start;
-
-	start = get_throw_exception (FALSE);
-
-	inited = 1;
-
-	return start;
+	return get_throw_trampoline ("throw_exception", FALSE, FALSE, FALSE, FALSE, FALSE, info, aot);
 }
 
 gpointer 
-mono_arch_get_rethrow_exception (void)
+mono_arch_get_rethrow_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8 *start;
-	static int inited = 0;
-
-	if (inited)
-		return start;
-
-	start = get_throw_exception (TRUE);
-
-	inited = 1;
-
-	return start;
-}
-
-/**
- * mono_arch_get_throw_exception_by_name:
- *
- * Returns a function pointer which can be used to raise 
- * corlib exceptions. The returned function has the following 
- * signature: void (*func) (gpointer ip, char *exc_name); 
- * For example to raise an arithmetic exception you can use:
- *
- * x86_push_imm (code, "ArithmeticException"); 
- * x86_push_imm (code, <IP>)
- * x86_jump_code (code, arch_get_throw_exception_by_name ()); 
- *
- */
-gpointer 
-mono_arch_get_throw_exception_by_name (void)
-{
-	guint8* start;
-	guint8 *code;
-
-	start = code = mono_global_codeman_reserve (32);
-
-	/* Not used */
-	x86_breakpoint (code);
-
-	mono_arch_flush_icache (start, code - start);
-
-	return start;
+	return get_throw_trampoline ("rethrow_exception", TRUE, FALSE, FALSE, FALSE, FALSE, info, aot);
 }
 
 /**
@@ -545,49 +651,38 @@ mono_arch_get_throw_exception_by_name (void)
  * needs no relocations in the caller.
  */
 gpointer 
-mono_arch_get_throw_corlib_exception (void)
+mono_arch_get_throw_corlib_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8* start;
-	static int inited = 0;
-	guint8 *code;
+	return get_throw_trampoline ("throw_corlib_exception", FALSE, FALSE, TRUE, FALSE, FALSE, info, aot);
+}
 
-	if (inited)
-		return start;
+void
+mono_arch_exceptions_init (void)
+{
+	guint8 *tramp;
 
-	inited = 1;
-	code = start = mono_global_codeman_reserve (64);
+	if (mono_aot_only) {
+		signal_exception_trampoline = mono_aot_get_trampoline ("x86_signal_exception_trampoline");
+		return;
+	}
 
-	/* 
-	 * Align the stack on apple, the caller doesn't do this to save space,
-	 * two arguments + the return addr are already on the stack.
-	 */
-	x86_alu_reg_imm (code, X86_SUB, X86_ESP, 4);
-	x86_mov_reg_membase (code, X86_EAX, X86_ESP, 4 + 4, 4); /* token */
-	x86_alu_reg_imm (code, X86_ADD, X86_EAX, MONO_TOKEN_TYPE_DEF);
-	/* Align the stack on apple */
-	x86_alu_reg_imm (code, X86_SUB, X86_ESP, 8);
-	x86_push_reg (code, X86_EAX);
-	x86_push_imm (code, mono_defaults.exception_class->image);
-	x86_call_code (code, mono_exception_from_token);
-	x86_alu_reg_imm (code, X86_ADD, X86_ESP, 16);
-	/* Compute caller ip */
-	x86_mov_reg_membase (code, X86_ECX, X86_ESP, 4, 4);
-	/* Compute offset */
-	x86_mov_reg_membase (code, X86_EDX, X86_ESP, 4 + 4 + 4, 4);
-	/* Pop everything */
-	x86_alu_reg_imm (code, X86_ADD, X86_ESP, 4 + 4 + 4 + 4);
-	x86_alu_reg_reg (code, X86_SUB, X86_ECX, X86_EDX);
-	/* Align the stack on apple, mirrors the sub in OP_THROW. */
-	x86_alu_reg_imm (code, X86_SUB, X86_ESP, MONO_ARCH_FRAME_ALIGNMENT - 4);
-	/* Push exception object */
-	x86_push_reg (code, X86_EAX);
-	/* Push throw IP */
-	x86_push_reg (code, X86_ECX);
-	x86_jump_code (code, mono_arch_get_throw_exception ());
+	/* LLVM needs different throw trampolines */
+	tramp = get_throw_trampoline ("llvm_throw_exception_trampoline", FALSE, TRUE, FALSE, FALSE, FALSE, NULL, FALSE);
+	mono_register_jit_icall (tramp, "llvm_throw_exception_trampoline", NULL, TRUE);
 
-	g_assert ((code - start) < 64);
+	tramp = get_throw_trampoline ("llvm_rethrow_exception_trampoline", FALSE, TRUE, FALSE, FALSE, FALSE, NULL, FALSE);
+	mono_register_jit_icall (tramp, "llvm_rethrow_exception_trampoline", NULL, TRUE);
 
-	return start;
+	tramp = get_throw_trampoline ("llvm_throw_corlib_exception_trampoline", FALSE, TRUE, TRUE, FALSE, FALSE, NULL, FALSE);
+	mono_register_jit_icall (tramp, "llvm_throw_corlib_exception_trampoline", NULL, TRUE);
+
+	tramp = get_throw_trampoline ("llvm_throw_corlib_exception_abs_trampoline", FALSE, TRUE, TRUE, TRUE, FALSE, NULL, FALSE);
+	mono_register_jit_icall (tramp, "llvm_throw_corlib_exception_abs_trampoline", NULL, TRUE);
+
+	tramp = get_throw_trampoline ("llvm_resume_unwind_trampoline", FALSE, FALSE, FALSE, FALSE, TRUE, NULL, FALSE);
+	mono_register_jit_icall (tramp, "llvm_resume_unwind_trampoline", NULL, TRUE);
+
+	signal_exception_trampoline = mono_x86_get_signal_exception_trampoline (NULL, FALSE);
 }
 
 /*
@@ -661,12 +756,18 @@ mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 		}
 
 		/* Pop arguments off the stack */
+		/* 
+		 * FIXME: LLVM doesn't push these, we can't use ji->from_llvm as it describes
+		 * the caller.
+		 */
+#ifndef ENABLE_LLVM
 		{
 			MonoJitArgumentInfo *arg_info = g_newa (MonoJitArgumentInfo, mono_method_signature (ji->method)->param_count + 1);
 
 			guint32 stack_to_pop = mono_arch_get_argument_info (mono_method_signature (ji->method), mono_method_signature (ji->method)->param_count, arg_info);
 			new_ctx->esp += stack_to_pop;
 		}
+#endif
 
 		return TRUE;
 	} else if (*lmf) {
@@ -704,6 +805,9 @@ mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 		new_ctx->ebp = (*lmf)->ebp;
 		new_ctx->eip = (*lmf)->eip;
 
+		/* Adjust IP */
+		new_ctx->eip --;
+
 		frame->ji = ji;
 		frame->type = FRAME_TYPE_MANAGED_TO_NATIVE;
 
@@ -715,13 +819,15 @@ mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 			/* Pop arguments off the stack */
 			/* FIXME: Handle the delegate case too ((*lmf)->method == NULL) */
 			/* FIXME: Handle the IMT/vtable case too */
-			if ((*lmf)->method && (*lmf)->method != MONO_FAKE_IMT_METHOD && (*lmf)->method != MONO_FAKE_VTABLE_METHOD) {
+#ifndef ENABLE_LLVM
+			if ((*lmf)->method) {
 				MonoMethod *method = (*lmf)->method;
 				MonoJitArgumentInfo *arg_info = g_newa (MonoJitArgumentInfo, mono_method_signature (method)->param_count + 1);
 
 				guint32 stack_to_pop = mono_arch_get_argument_info (mono_method_signature (method), mono_method_signature (method)->param_count, arg_info);
 				new_ctx->esp += stack_to_pop;
 			}
+#endif
 		}
 		else
 			/* the lmf is always stored on the stack, so the following
@@ -751,6 +857,18 @@ mono_arch_find_jit_info_ext (MonoDomain *domain, MonoJitTlsData *jit_tls,
 void
 mono_arch_sigctx_to_monoctx (void *sigctx, MonoContext *mctx)
 {
+#if defined (__native_client__)
+	printf("WARNING: mono_arch_sigctx_to_monoctx() called!\n");
+	mctx->eax = 0xDEADBEEF;
+	mctx->ebx = 0xDEADBEEF;
+	mctx->ecx = 0xDEADBEEF;
+	mctx->edx = 0xDEADBEEF;
+	mctx->ebp = 0xDEADBEEF;
+	mctx->esp = 0xDEADBEEF;
+	mctx->esi = 0xDEADBEEF;
+	mctx->edi = 0xDEADBEEF;
+	mctx->eip = 0xDEADBEEF;
+#else
 #ifdef MONO_ARCH_USE_SIGACTION
 	ucontext_t *ctx = (ucontext_t*)sigctx;
 	
@@ -776,11 +894,15 @@ mono_arch_sigctx_to_monoctx (void *sigctx, MonoContext *mctx)
 	mctx->edi = ctx->SC_EDI;
 	mctx->eip = ctx->SC_EIP;
 #endif
+#endif /* if defined(__native_client__) */
 }
 
 void
 mono_arch_monoctx_to_sigctx (MonoContext *mctx, void *sigctx)
 {
+#if defined(__native_client__)
+	printf("WARNING: mono_arch_monoctx_to_sigctx() called!\n");
+#else
 #ifdef MONO_ARCH_USE_SIGACTION
 	ucontext_t *ctx = (ucontext_t*)sigctx;
 
@@ -806,23 +928,153 @@ mono_arch_monoctx_to_sigctx (MonoContext *mctx, void *sigctx)
 	ctx->SC_EDI = mctx->edi;
 	ctx->SC_EIP = mctx->eip;
 #endif
+#endif /* __native_client__ */
 }	
 
 gpointer
 mono_arch_ip_from_context (void *sigctx)
 {
+#if defined(__native_client__)
+	printf("WARNING: mono_arch_ip_from_context() called!\n");
+	return (NULL);
+#else
 #ifdef MONO_ARCH_USE_SIGACTION
 	ucontext_t *ctx = (ucontext_t*)sigctx;
 	return (gpointer)UCONTEXT_REG_EIP (ctx);
 #else
 	struct sigcontext *ctx = sigctx;
 	return (gpointer)ctx->SC_EIP;
-#endif	
+#endif
+#endif	/* __native_client__ */
+}
+
+/*
+ * handle_exception:
+ *
+ *   Called by resuming from a signal handler.
+ */
+static void
+handle_signal_exception (gpointer obj)
+{
+	MonoJitTlsData *jit_tls = TlsGetValue (mono_jit_tls_id);
+	MonoContext ctx;
+	static void (*restore_context) (MonoContext *);
+
+	if (!restore_context)
+		restore_context = mono_get_restore_context ();
+
+	memcpy (&ctx, &jit_tls->ex_ctx, sizeof (MonoContext));
+
+	if (mono_debugger_handle_exception (&ctx, (MonoObject *)obj))
+		return;
+
+	mono_handle_exception (&ctx, obj, MONO_CONTEXT_GET_IP (&ctx), FALSE);
+
+	restore_context (&ctx);
+}
+
+/*
+ * mono_x86_get_signal_exception_trampoline:
+ *
+ *   This x86 specific trampoline is used to call handle_signal_exception.
+ */
+gpointer
+mono_x86_get_signal_exception_trampoline (MonoTrampInfo **info, gboolean aot)
+{
+	guint8 *start, *code;
+	MonoJumpInfo *ji = NULL;
+	GSList *unwind_ops = NULL;
+	int stack_size;
+
+	start = code = mono_global_codeman_reserve (128);
+
+	/* Caller ip */
+	x86_push_reg (code, X86_ECX);
+
+	mono_add_unwind_op_def_cfa (unwind_ops, (guint8*)NULL, (guint8*)NULL, X86_ESP, 4);
+	mono_add_unwind_op_offset (unwind_ops, (guint8*)NULL, (guint8*)NULL, X86_NREG, -4);
+
+	/* Fix the alignment to be what apple expects */
+	stack_size = 12;
+
+	x86_alu_reg_imm (code, X86_SUB, X86_ESP, stack_size);
+	mono_add_unwind_op_def_cfa_offset (unwind_ops, code, start, stack_size + 4);
+
+	/* Arg1 */
+	x86_mov_membase_reg (code, X86_ESP, 0, X86_EAX, 4);
+	/* Branch to target */
+	x86_call_reg (code, X86_EDX);
+
+	g_assert ((code - start) < 128);
+
+	if (info)
+		*info = mono_tramp_info_create (g_strdup ("x86_signal_exception_trampoline"), start, code - start, ji, unwind_ops);
+
+	return start;
 }
 
 gboolean
 mono_arch_handle_exception (void *sigctx, gpointer obj, gboolean test_only)
 {
+#if defined(MONO_ARCH_USE_SIGACTION)
+	ucontext_t *ctx = (ucontext_t*)sigctx;
+
+	/*
+	 * Handling the exception in the signal handler is problematic, since the original
+	 * signal is disabled, and we could run arbitrary code though the debugger. So
+	 * resume into the normal stack and do most work there if possible.
+	 */
+	MonoJitTlsData *jit_tls = TlsGetValue (mono_jit_tls_id);
+	guint64 sp = UCONTEXT_REG_ESP (ctx);
+
+	/* Pass the ctx parameter in TLS */
+	mono_arch_sigctx_to_monoctx (ctx, &jit_tls->ex_ctx);
+	/*
+	 * Can't pass the obj on the stack, since we are executing on the
+	 * same stack. Can't save it into MonoJitTlsData, since it needs GC tracking.
+	 * So put it into a register, and branch to a trampoline which
+	 * pushes it.
+	 */
+	g_assert (!test_only);
+	UCONTEXT_REG_EAX (ctx) = (gsize)obj;
+	UCONTEXT_REG_ECX (ctx) = UCONTEXT_REG_EIP (ctx);
+	UCONTEXT_REG_EDX (ctx) = (gsize)handle_signal_exception;
+
+	/* Allocate a stack frame, align it to 16 bytes which is needed on apple */
+	sp -= 16;
+	sp &= ~15;
+	UCONTEXT_REG_ESP (ctx) = sp;
+
+	UCONTEXT_REG_EIP (ctx) = (gsize)signal_exception_trampoline;
+
+	return TRUE;
+#elif defined (TARGET_WIN32)
+	MonoJitTlsData *jit_tls = TlsGetValue (mono_jit_tls_id);
+	struct sigcontext *ctx = (struct sigcontext *)sigctx;
+	guint64 sp = ctx->SC_ESP;
+
+	mono_arch_sigctx_to_monoctx (sigctx, &jit_tls->ex_ctx);
+
+	/*
+	 * Can't pass the obj on the stack, since we are executing on the
+	 * same stack. Can't save it into MonoJitTlsData, since it needs GC tracking.
+	 * So put it into a register, and branch to a trampoline which
+	 * pushes it.
+	 */
+	g_assert (!test_only);
+	ctx->SC_EAX = (gsize)obj;
+	ctx->SC_ECX = ctx->SC_EIP;
+	ctx->SC_EDX = (gsize)handle_signal_exception;
+
+	/* Allocate a stack frame, align it to 16 bytes which is needed on apple */
+	sp -= 16;
+	sp &= ~15;
+	ctx->SC_ESP = sp;
+
+	ctx->SC_EIP = (gsize)signal_exception_trampoline;
+
+	return TRUE;
+#else
 	MonoContext mctx;
 
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
@@ -835,6 +1087,7 @@ mono_arch_handle_exception (void *sigctx, gpointer obj, gboolean test_only)
 	mono_arch_monoctx_to_sigctx (&mctx, sigctx);
 
 	return TRUE;
+#endif
 }
 
 static void
@@ -869,7 +1122,7 @@ altstack_handle_and_restore (void *sigctx, gpointer obj, gboolean stack_ovf)
 	void (*restore_context) (MonoContext *);
 	MonoContext mctx;
 
-	restore_context = mono_arch_get_restore_context ();
+	restore_context = mono_get_restore_context ();
 	mono_arch_sigctx_to_monoctx (sigctx, &mctx);
 
 	if (mono_debugger_handle_exception (&mctx, (MonoObject *)obj)) {
@@ -946,6 +1199,9 @@ mono_tasklets_arch_restore (void)
 	static guint8* saved = NULL;
 	guint8 *code, *start;
 
+#ifdef __native_client_codegen__
+	g_print("mono_tasklets_arch_restore needs to be aligned for Native Client\n");
+#endif
 	if (saved)
 		return (MonoContinuationRestore)saved;
 	code = start = mono_global_codeman_reserve (48);

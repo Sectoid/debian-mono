@@ -15,6 +15,11 @@
 
 	All of the above fix bug #578880
 
+2010-01-14  Marek Habersack  <mhabersack@novell.com>
+
+	* ApplicationManager.cs: implemented a missing CreateObject
+	overload
+
 2009-11-18  Marek Habersack  <mhabersack@novell.com>
 
 	* ApplicationHost.cs: changed the order of file names in

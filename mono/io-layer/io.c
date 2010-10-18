@@ -326,7 +326,8 @@ static void file_close (gpointer handle, gpointer data)
 	
 	g_free (file_handle->filename);
 	
-	_wapi_handle_share_release (file_handle->share_info);
+	if (file_handle->share_info)
+		_wapi_handle_share_release (file_handle->share_info);
 	
 	close (GPOINTER_TO_UINT(handle));
 }
@@ -1732,7 +1733,8 @@ gboolean DeleteFile(const gunichar2 *name)
 		g_free (filename);
 		return FALSE;
 	}
-	_wapi_handle_share_release (shareinfo);
+	if (shareinfo)
+		_wapi_handle_share_release (shareinfo);
 #endif
 
 	retval = _wapi_unlink (filename);
@@ -1843,7 +1845,8 @@ gboolean MoveFile (const gunichar2 *name, const gunichar2 *dest_name)
 		SetLastError (ERROR_SHARING_VIOLATION);
 		return FALSE;
 	}
-	_wapi_handle_share_release (shareinfo);
+	if (shareinfo)
+		_wapi_handle_share_release (shareinfo);
 
 	result = _wapi_rename (utf8_name, utf8_dest_name);
 	errno_copy = errno;
@@ -1954,7 +1957,7 @@ gboolean CopyFile (const gunichar2 *name, const gunichar2 *dest_name,
 {
 	gchar *utf8_src, *utf8_dest;
 	int src_fd, dest_fd;
-	struct stat st;
+	struct stat st, dest_st;
 	gboolean ret = TRUE;
 	
 	if(name==NULL) {
@@ -2019,6 +2022,20 @@ gboolean CopyFile (const gunichar2 *name, const gunichar2 *dest_name,
 		close (src_fd);
 		
 		return(FALSE);
+	}
+
+	/* Before trying to open/create the dest, we need to report a 'file busy'
+	 * error if src and dest are actually the same file. We do the check here to take
+	 * advantage of the IOMAP capability */
+	if (!_wapi_stat (utf8_dest, &dest_st) && st.st_dev == dest_st.st_dev && 
+			st.st_ino == dest_st.st_ino) {
+
+		g_free (utf8_src);
+		g_free (utf8_dest);
+		close (src_fd);
+
+		SetLastError (ERROR_SHARING_VIOLATION);
+		return (FALSE);
 	}
 	
 	if (fail_if_exists) {

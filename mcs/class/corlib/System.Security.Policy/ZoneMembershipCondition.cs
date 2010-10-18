@@ -28,7 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 
 using System.Collections;
 using System.Globalization;
@@ -37,9 +37,7 @@ using System.Runtime.InteropServices;
 namespace System.Security.Policy {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class ZoneMembershipCondition : IMembershipCondition, IConstantMembershipCondition {
 
 		private readonly int version = 1;

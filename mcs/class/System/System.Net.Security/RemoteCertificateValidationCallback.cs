@@ -29,26 +29,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Security.Cryptography.X509Certificates;
 
 namespace System.Net.Security 
 {
-#if !NET_2_1 || MONOTOUCH
-	public
-#endif
-	delegate bool RemoteCertificateValidationCallback (
+	public delegate bool RemoteCertificateValidationCallback (
 		object sender,
-#if !NET_2_1 || MONOTOUCH
 		X509Certificate certificate,
 		X509Chain chain,
-#else
-		object certificate,
-		object chain,
-#endif
 		SslPolicyErrors sslPolicyErrors);
 }
-
-#endif
 

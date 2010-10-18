@@ -39,9 +39,15 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using MonoTests.SystemWeb.Framework;
+using MonoTests.stand_alone.WebHarness;
+using MonoTests.Common;
 
 #if NET_2_0
 using System.Web.UI.Adapters;
+#endif
+
+#if NET_4_0
+using System.Web.Routing;
 #endif
 
 namespace MonoTests.System.Web.UI
@@ -278,13 +284,8 @@ namespace MonoTests.System.Web.UI
 		[Category ("NunitWeb")]
 		public void NoDoubleOnInitOnRemoveAdd ()
 		{
-#if VISUAL_STUDIO
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.NoDoubleOnInitOnRemoveAdd.aspx", "NoDoubleOnInitOnRemoveAdd.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.NoDoubleOnInitOnRemoveAdd.aspx.cs", "NoDoubleOnInitOnRemoveAdd.aspx.cs");
-#else
 			WebTest.CopyResource (GetType (), "NoDoubleOnInitOnRemoveAdd.aspx", "NoDoubleOnInitOnRemoveAdd.aspx");
 			WebTest.CopyResource (GetType (), "NoDoubleOnInitOnRemoveAdd.aspx.cs", "NoDoubleOnInitOnRemoveAdd.aspx.cs");
-#endif
 			WebTest t = new WebTest ("NoDoubleOnInitOnRemoveAdd.aspx");
 			string html = t.Run ();
 
@@ -320,11 +321,7 @@ namespace MonoTests.System.Web.UI
 		[Category ("NunitWeb")]
 		public void ApplyStyleSheetSkin_1 ()
 		{
-#if VISUAL_STUDIO
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.Theme2.skin", "App_Themes/Theme2/Theme2.skin");
-#else
 			WebTest.CopyResource (GetType (), "Theme2.skin", "App_Themes/Theme2/Theme2.skin");
-#endif
 			WebTest t = new WebTest ();
 			PageDelegates pd = new PageDelegates ();
 			pd.PreInit = ApplyStyleSheetSkin_PreInit;
@@ -987,6 +984,29 @@ namespace MonoTests.System.Web.UI
 		}
 
 #if NET_2_0
+		[Test (Description="Bug #594238")]
+		public void OverridenControlsPropertyAndPostBack_Bug594238 ()
+		{
+			WebTest t = new WebTest ("OverridenControlsPropertyAndPostBack_Bug594238.aspx");
+			t.Run ();
+
+			FormRequest fr = new FormRequest (t.Response, "form1");
+			fr.Controls.Add ("__EVENTTARGET");
+			fr.Controls.Add ("__EVENTARGUMENT");
+			fr.Controls ["__EVENTTARGET"].Value = "container$children$lb";
+			fr.Controls ["__EVENTARGUMENT"].Value = String.Empty;
+			t.Request = fr;
+#if NET_4_0
+			string originalHtml = "<span id=\"container\"><a id=\"container_children_lb\" href=\"javascript:__doPostBack(&#39;container$children$lb&#39;,&#39;&#39;)\">Woot! I got clicked!</a></span><hr/>";
+#else
+			string originalHtml = @"<span id=""container""><a href=""javascript:__doPostBack('container$children$lb','')"" id=""container_children_lb"">Woot! I got clicked!</a></span><hr/>";
+#endif
+			string pageHtml = t.Run ();
+			string renderedHtml = HtmlDiff.GetControlFromPageHtml (pageHtml);
+
+			HtmlDiff.AssertAreEqual (originalHtml, renderedHtml, "#A1");
+		}
+		
 		[TestFixtureTearDown]
 		public void Tear_down ()
 		{
@@ -996,17 +1016,131 @@ namespace MonoTests.System.Web.UI
 		[TestFixtureSetUp]
 		public void TestFixtureSetUp ()
 		{
-#if VISUAL_STUDIO
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.ResolveUrl.aspx", "ResolveUrl.aspx");
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.ResolveUrl.ascx", "Folder/ResolveUrl.ascx");
-#else
 			WebTest.CopyResource (GetType (), "ResolveUrl.aspx", "ResolveUrl.aspx");
 			WebTest.CopyResource (GetType (), "ResolveUrl.ascx", "Folder/ResolveUrl.ascx");
-#endif
+			WebTest.CopyResource (GetType (), "OverridenControlsPropertyAndPostBack_Bug594238.aspx", "OverridenControlsPropertyAndPostBack_Bug594238.aspx");
 		}
 
 #endif
+#if NET_4_0
+		[Test]
+		public void GetRouteUrl_Object ()
+		{
+			var t = new WebTest (PageInvoker.CreateOnLoad (GetRouteUrl_Object_Load));
+			t.Run ();
+		}
 
+		public static void GetRouteUrl_Object_Load (Page p)
+		{
+			RouteTable.Routes.Clear ();
+
+			var ctl = new Control ();
+			object obj = new { foo = "one", bar = "two" };
+			string path = ctl.GetRouteUrl (obj);
+			Assert.IsNull (path, "#A1");
+
+			RouteTable.Routes.Add (new Route ("{foo}-{bar}", new PageRouteHandler ("~/default.aspx")));
+			path = ctl.GetRouteUrl (obj);
+			Assert.IsNotNull (path, "#A2-1");
+			Assert.AreEqual ("/NunitWeb/one-two", path, "#A2-2");
+
+			path = ctl.GetRouteUrl ((object)null);
+			Assert.IsNull (path, "#A3");
+		}
+
+		[Test]
+		public void GetRouteUrl_RouteValueDictionary ()
+		{
+			var t = new WebTest (PageInvoker.CreateOnLoad (GetRouteUrl_RouteValueDictionary_Load));
+			t.Run ();
+		}
+
+		public static void GetRouteUrl_RouteValueDictionary_Load (Page p)
+		{
+			RouteTable.Routes.Clear ();
+
+			var ctl = new Control ();
+			var rvd = new RouteValueDictionary {
+				{"foo", "one"},
+				{"bar", "two"}
+			};
+			string path = ctl.GetRouteUrl (rvd);
+			Assert.IsNull (path, "#A1");
+
+			RouteTable.Routes.Add (new Route ("{foo}-{bar}", new PageRouteHandler ("~/default.aspx")));
+			path = ctl.GetRouteUrl (rvd);
+			Assert.IsNotNull (path, "#A2-1");
+			Assert.AreEqual ("/NunitWeb/one-two", path, "#A2-2");
+
+			path = ctl.GetRouteUrl ((RouteValueDictionary) null);
+			Assert.IsNull (path, "#A3");
+		}
+
+		[Test]
+		public void GetRouteUrl_String_Object ()
+		{
+			var t = new WebTest (PageInvoker.CreateOnLoad (GetRouteUrl_String_Object_Load));
+			t.Run ();
+		}
+
+		public static void GetRouteUrl_String_Object_Load (Page p)
+		{
+			RouteTable.Routes.Clear ();
+
+			var ctl = new Control ();
+			object obj = new { foo = "one", bar = "two" };
+			string path;
+			AssertExtensions.Throws<ArgumentException> (() => {
+				path = ctl.GetRouteUrl ("myroute1", obj);
+			}, "#A1");
+
+			RouteTable.Routes.Add (new Route ("{foo}-{bar}", new PageRouteHandler ("~/default.aspx")));
+			RouteTable.Routes.Add ("myroute1", new Route ("{bar}-{foo}", new PageRouteHandler ("~/default.aspx")));
+			path = ctl.GetRouteUrl ("myroute1", obj);
+			Assert.IsNotNull (path, "#A2-1");
+			Assert.AreEqual ("/NunitWeb/two-one", path, "#A2-2");
+
+			path = ctl.GetRouteUrl ("myroute1", (object) null);
+			Assert.IsNull (path, "#A3");
+		}
+
+		[Test]
+		public void GetRouteUrl_String_RouteValueDictionary ()
+		{
+			var t = new WebTest (PageInvoker.CreateOnLoad (GetRouteUrl_String_RouteValueDictionary_Load));
+			t.Run ();
+		}
+
+		public static void GetRouteUrl_String_RouteValueDictionary_Load (Page p)
+		{
+			RouteTable.Routes.Clear ();
+
+			var ctl = new Control ();
+			var rvd = new RouteValueDictionary {
+				{"foo", "one"},
+				{"bar", "two"}
+			};
+			string path;
+			AssertExtensions.Throws<ArgumentException> (() => {
+				path = ctl.GetRouteUrl ("myroute", rvd);
+			}, "#A1");
+
+			RouteTable.Routes.Add (new Route ("{foo}-{bar}", new PageRouteHandler ("~/default.aspx")));
+			RouteTable.Routes.Add ("myroute", new Route ("{bar}-{foo}", new PageRouteHandler ("~/default.aspx")));
+			path = ctl.GetRouteUrl ("myroute", rvd);
+			Assert.IsNotNull (path, "#A2-1");
+			Assert.AreEqual ("/NunitWeb/two-one", path, "#A2-2");
+
+			path = ctl.GetRouteUrl ("myroute", (RouteValueDictionary) null);
+			Assert.IsNull (path, "#A3-1");
+
+			path = ctl.GetRouteUrl (null, (RouteValueDictionary) null);
+			Assert.IsNull (path, "#A3-2");
+
+			path = ctl.GetRouteUrl (String.Empty, (RouteValueDictionary) null);
+			Assert.IsNull (path, "#A3-3");
+		}
+#endif
 		#region helpcalsses
 #if NET_2_0
 		class ControlWithState : Control

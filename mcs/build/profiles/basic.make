@@ -8,19 +8,25 @@ use_monolite := $(wildcard $(monolite_flag))
 
 ifdef use_monolite
 PROFILE_RUNTIME = $(with_mono_path_monolite) $(RUNTIME)
-BOOTSTRAP_MCS = $(PROFILE_RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/monolite/mcs.exe
+BOOTSTRAP_MCS = $(PROFILE_RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/monolite/gmcs.exe
 else
 PROFILE_RUNTIME = $(EXTERNAL_RUNTIME)
 BOOTSTRAP_MCS = $(EXTERNAL_MCS)
 endif
 
-MCS = $(with_mono_path) $(INTERNAL_MCS)
+MCS = $(with_mono_path) $(INTERNAL_GMCS)
 
-PROFILE_MCS_FLAGS = -d:NET_1_1 -d:ONLY_1_1 -d:BOOTSTRAP_WITH_OLDLIB
+PROFILE_MCS_FLAGS = -d:NET_1_1 -d:NET_2_0 -d:BOOTSTRAP_BASIC -nowarn:1699
 NO_SIGN_ASSEMBLY = yes
 NO_TEST = yes
 NO_INSTALL = yes
-FRAMEWORK_VERSION = 1.0
+FRAMEWORK_VERSION = 2.0
+
+# Compiler all using same bootstrap compiler
+LIBRARY_COMPILE = $(BOOT_COMPILE)
+
+# Verbose basic only
+# V = 1
 
 #
 # Copy from rules.make because I don't know how to unset MCS_FLAGS
@@ -38,29 +44,27 @@ clean-local: clean-profile
 endif
 
 clean-profile:
-	-rm -f $(PROFILE_CS) $(PROFILE_EXE) $(PROFILE_OUT) $(monolite_flag)
+	-rm -f $(PROFILE_EXE) $(PROFILE_OUT) $(monolite_flag)
 
 post-profile-cleanup:
 	@rm -f $(monolite_flag)
 
-PROFILE_CS  = $(depsdir)/basic-profile-check.cs
-PROFILE_EXE = $(PROFILE_CS:.cs=.exe)
-PROFILE_OUT = $(PROFILE_CS:.cs=.out)
+PROFILE_EXE = $(depsdir)/basic-profile-check.exe
+PROFILE_OUT = $(PROFILE_EXE:.exe=.out)
 
 MAKE_Q=$(if $(V),,-s)
 
-do-profile-check:
+do-profile-check: $(depsdir)/.stamp
 	@ok=:; \
 	rm -f $(PROFILE_EXE) $(PROFILE_OUT); \
 	$(MAKE) $(MAKE_Q) $(PROFILE_OUT) || ok=false; \
 	rm -f $(PROFILE_EXE) $(PROFILE_OUT); \
 	if $$ok; then :; else \
-	    if test -f $(topdir)/class/lib/monolite/mcs.exe; then \
+	    if test -f $(topdir)/class/lib/monolite/gmcs.exe; then \
 		$(MAKE) -s do-profile-check-monolite ; \
 	    else \
 		echo "*** The compiler '$(BOOTSTRAP_MCS)' doesn't appear to be usable." 1>&2; \
-                echo "*** You need a C# 1.0 compiler installed to build MCS (make sure mcs works from the command line)" 1>&2 ; \
-				echo "*** mcs/gmcs from mono > 2.6 will not work, since they target NET 2.0." 1>&2 ; \
+                echo "*** You need Mono version 2.4 or better installed to build MCS" 1>&2 ; \
                 echo "*** Read INSTALL.txt for information on how to bootstrap a Mono installation." 1>&2 ; \
 	        exit 1; fi; fi
 
@@ -83,11 +87,10 @@ do-profile-check-monolite: $(depsdir)/.stamp
 
 endif
 
-$(PROFILE_CS): $(topdir)/build/profiles/basic.make $(depsdir)/.stamp
-	echo 'class X { static int Main () { try { System.Activator.CreateInstance ("mscorlib", "System.Runtime.CompilerServices.CompilerGeneratedAttribute"); return 1; } catch { return 0; } } }' > $@
-
-$(PROFILE_EXE): $(PROFILE_CS)
-	$(BOOTSTRAP_MCS) /out:$@ $<
+$(PROFILE_EXE): $(topdir)/build/common/basic-profile-check.cs
+	$(BOOTSTRAP_MCS) /warn:0 /out:$@ $<
+	echo -n "Bootstrap compiler: " 1>&2
+	$(BOOTSTRAP_MCS) --version 1>&2
 
 $(PROFILE_OUT): $(PROFILE_EXE)
 	$(PROFILE_RUNTIME) $< > $@ 2>&1

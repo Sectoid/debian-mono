@@ -65,13 +65,8 @@ namespace MonoTests.System.Web.UI
 		[TestFixtureSetUp]
 		public void Set_Up ()
 		{
-#if DOT_NET
 			WebTest.CopyResource (GetType (), "EventValidationTest1.aspx", "EventValidationTest1.aspx");
 			WebTest.CopyResource (GetType (), "EventValidationTest2.aspx", "EventValidationTest2.aspx");
-#else
-			WebTest.CopyResource (GetType (), "EventValidationTest1.aspx", "EventValidationTest1.aspx");
-			WebTest.CopyResource (GetType (), "EventValidationTest2.aspx", "EventValidationTest2.aspx");
-#endif
 		}
 
 		[SetUp]
@@ -391,11 +386,11 @@ namespace MonoTests.System.Web.UI
 			FormRequest fr = new FormRequest (t.Response, "form1");
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("__CALLBACKTARGET");
-			fr.Controls.Add ("__CALLBACKARGUMENT");
+			fr.Controls.Add ("__CALLBACKID");
+			fr.Controls.Add ("__CALLBACKPARAM");
 			fr.Controls["__EVENTTARGET"].Value = "";
 			fr.Controls["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["__CALLBACKTARGET"].Value = "__Page";
+			fr.Controls ["__CALLBACKID"].Value = "__Page";
 			t.Request = fr;
 			html = t.Run ();
 
@@ -414,11 +409,11 @@ namespace MonoTests.System.Web.UI
 			FormRequest fr = new FormRequest (t.Response, "form1");
 			fr.Controls.Add ("__EVENTTARGET");
 			fr.Controls.Add ("__EVENTARGUMENT");
-			fr.Controls.Add ("__CALLBACKTARGET");
-			fr.Controls.Add ("__CALLBACKARGUMENT");
+			fr.Controls.Add ("__CALLBACKID");
+			fr.Controls.Add ("__CALLBACKPARAM");
 			fr.Controls["__EVENTTARGET"].Value = "";
 			fr.Controls["__EVENTARGUMENT"].Value = "";
-			fr.Controls ["__CALLBACKTARGET"].Value = "__Page";
+			fr.Controls ["__CALLBACKID"].Value = "__Page";
 			t.Request = fr;
 			html = t.Run ();
 

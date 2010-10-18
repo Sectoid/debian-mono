@@ -11,8 +11,6 @@ LIBRARY_USE_INTERMEDIATE_FILE = yes
 LIBRARY_COMPILE = $(BOOT_COMPILE)
 LIBRARY_INSTALL_DIR = $(mono_libdir)/mono/$(FRAMEWORK_VERSION)
 
-AOT_IN_PROFILES = net_1_1
-
 RESOURCE_FILES = \
 	resources/collation.core.bin \
 	resources/collation.tailoring.bin \
@@ -23,13 +21,12 @@ RESOURCE_FILES = \
 	resources/collation.cjkKOlv2.bin
 
 corlib_flags = -unsafe -nostdlib
-LOCAL_MCS_FLAGS = -nowarn:612,618 -d:INSIDE_CORLIB
+LOCAL_MCS_FLAGS = -nowarn:612,618 -d:INSIDE_CORLIB -d:LIBC
 
 # System.IO/DirectoryInfoTest.cs needs Mono.Posix
 TEST_MCS_FLAGS = -debug+ -debug:full -nowarn:168,219,618,672 -unsafe -r:$(topdir)/class/lib/$(PROFILE)/Mono.Posix.dll -define:MONO_DATACONVERTER_STATIC_METHODS
 
 EXTRA_DISTFILES = \
-	corlib.dll.win32-excludes		\
 	Test/ms_run_test.sh			\
 	Test/resources/MyResources.resources	\
 	Test/resources/MyResources.de.resources	\
@@ -75,11 +72,3 @@ $(cmp_makefrag): $(cmp_response)
 
 $(cmp_response) $(cmp_makefrag): Makefile $(depsdir)/.stamp
 endif
-
-#
-# qh21 = Quick Hack for 2.1, to be used by impatient developers to get
-# test builds done quickly
-#
-qh21:
-	make PROFILE=net_2_1_raw
-	(cd ../../tools/tuner; rm tune.stamp; make tune.stamp && make PROFILE=net_2_1 install)

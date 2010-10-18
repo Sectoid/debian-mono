@@ -1,8 +1,33 @@
-2009-11-04  Rodrigo Kumpera  <rkumpera@novell.com>
+2010-06-28  Robert Jordan  <robertj@gmx.net>
 
-	- Add kumpera's mono-error stuff to hopefully fix the build.
+	* mono.def: Add mono_free symbol (exposed by mono-publib.h).
 
-	Backport of r144696 by Jonathan Pobst  <monkey@jpobst.com>
+2010-05-31  Robert Jordan  <robertj@gmx.net>
+
+	* mono.def : Remove unimplemented symbols.
+
+	* mono.def: Regenerate with create-windef.pl.
+
+	* create-windef.pl: Track 2.0 API changes.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* scripts/monowrap.cs, scripts/genproj.cs: rename
+	the net_2_1 profile to moonlight.
+
+2010-03-01  Robert Jordan  <robertj@gmx.net>
+
+	* libmono.vcproj: Track changes.
+
+2009-11-02 Jonathan Chambers <joncham@gmail.com>
+
+	* genmdesc.vcproj: Fix amd64 build.
+
+	* libmono.vcproj: Fix amd64 build.
+
+	* mono.vcproj: Fix amd64 build.
+
+	* mono.sln: Fix amd64 build.
 
 2009-09-08  Jonathan Chambers  <joncham@gmail.com>
 

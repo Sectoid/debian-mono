@@ -17,9 +17,11 @@
 #include "mono/metadata/mono-config.h"
 #include "mono/metadata/metadata-internals.h"
 #include "mono/metadata/object-internals.h"
-#include "mono/utils/mono-logger.h"
+#include "mono/utils/mono-logger-internal.h"
 
-#if defined(__linux__)
+#if defined(TARGET_PS3)
+#define CONFIG_OS "CellOS"
+#elif defined(__linux__)
 #define CONFIG_OS "linux"
 #elif defined(__APPLE__)
 #define CONFIG_OS "osx"
@@ -37,8 +39,8 @@
 #define CONFIG_OS "aix"
 #elif defined(__hpux)
 #define CONFIG_OS "hpux"
-#elif defined(SN_TARGET_PS3)
-#define CONFIG_OS "CellOS"
+#elif defined(__HAIKU__)
+#define CONFIG_OS "haiku"
 #else
 #warning Unknown operating system
 #define CONFIG_OS "unknownOS"
@@ -54,9 +56,9 @@
 #elif defined(sparc) || defined(__sparc__)
 #define CONFIG_CPU "sparc"
 #define CONFIG_WORDSIZE "32"
-#elif defined(__ppc64__) || defined(__powerpc64__)
+#elif defined(__ppc64__) || defined(__powerpc64__) || defined(TARGET_POWERPC)
 #define CONFIG_WORDSIZE "64"
-#ifdef __mono_ppc_ilp32__
+#ifdef __mono_ppc_ilp32__ 
 #   define CONFIG_CPU "ppc64ilp32"
 #else
 #   define CONFIG_CPU "ppc64"
@@ -86,7 +88,7 @@
 #define CONFIG_CPU "mips"
 #define CONFIG_WORDSIZE "32"
 #else
-#warning Unknown CPU
+#error Unknown CPU
 #define CONFIG_CPU "unknownCPU"
 #endif
 #endif
@@ -130,6 +132,9 @@ mono_parser = {
 
 static GHashTable *config_handlers;
 
+static const char *mono_cfg_dir = NULL;
+static char *mono_cfg_dir_allocated = NULL;
+
 /* when this interface is stable, export it. */
 typedef struct MonoParseHandler MonoParseHandler;
 
@@ -143,6 +148,12 @@ struct MonoParseHandler {
 	void (*end)    (gpointer user_data, const char *name);
 	void (*finish) (gpointer user_data);
 };
+
+typedef struct {
+	MonoAssemblyBindingInfo *info;
+	void (*info_parsed)(MonoAssemblyBindingInfo *info, void *user_data);
+	void *user_data;
+} ParserUserData;
 
 typedef struct {
 	MonoParseHandler *current;
@@ -360,6 +371,14 @@ mono_config_init (void)
 	g_hash_table_insert (config_handlers, (gpointer) legacyUEP_handler.element_name, (gpointer) &legacyUEP_handler);
 }
 
+void
+mono_config_cleanup (void)
+{
+	if (config_handlers)
+		g_hash_table_destroy (config_handlers);
+	g_free (mono_cfg_dir_allocated);
+}
+
 /* FIXME: error handling */
 
 static void
@@ -509,7 +528,7 @@ mono_config_for_assembly (MonoImage *assembly)
 		got_it += mono_config_parse_file_with_context (&state, cfg);
 		g_free (cfg);
 
-#ifndef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 		cfg = g_build_filename (home, ".mono", "assemblies", aname, cfg_name, NULL);
 		got_it += mono_config_parse_file_with_context (&state, cfg);
 		g_free (cfg);
@@ -532,7 +551,7 @@ void
 mono_config_parse (const char *filename) {
 	const char *home;
 	char *mono_cfg;
-#ifndef PLATFORM_WIN32
+#ifndef TARGET_WIN32
 	char *user_cfg;
 #endif
 
@@ -551,15 +570,13 @@ mono_config_parse (const char *filename) {
 	mono_config_parse_file (mono_cfg);
 	g_free (mono_cfg);
 
-#ifndef PLATFORM_WIN32
+#ifndef TARGET_WIN32
 	home = g_get_home_dir ();
 	user_cfg = g_strconcat (home, G_DIR_SEPARATOR_S, ".mono/config", NULL);
 	mono_config_parse_file (user_cfg);
 	g_free (user_cfg);
 #endif
 }
-
-static const char *mono_cfg_dir = NULL;
 
 /* Invoked during startup */
 void
@@ -568,7 +585,7 @@ mono_set_config_dir (const char *dir)
 	/* If this variable is set, overrides the directory computed */
 	mono_cfg_dir = g_getenv ("MONO_CFG_DIR");
 	if (mono_cfg_dir == NULL)
-		mono_cfg_dir = g_strdup (dir);
+		mono_cfg_dir = mono_cfg_dir_allocated = g_strdup (dir);
 }
 
 const char* 
@@ -593,16 +610,42 @@ mono_get_machine_config (void)
 }
 
 static void
+assembly_binding_end (gpointer user_data, const char *element_name)
+{
+	ParserUserData *pud = user_data;
+
+	if (!strcmp (element_name, "dependentAssembly")) {
+		if (pud->info_parsed && pud->info) {
+			pud->info_parsed (pud->info, pud->user_data);
+			g_free (pud->info->name);
+			g_free (pud->info->culture);
+		}
+	}
+}
+
+static void
 publisher_policy_start (gpointer user_data,
 		const gchar *element_name,
 		const gchar **attribute_names,
 		const gchar **attribute_values)
 {
+	ParserUserData *pud;
 	MonoAssemblyBindingInfo *info;
 	int n;
 
-	info = user_data;
-	if (!strcmp (element_name, "assemblyIdentity")) {
+	pud = user_data;
+	info = pud->info;
+	if (!strcmp (element_name, "dependentAssembly")) {
+		info->name = NULL;
+		info->culture = NULL;
+		info->has_old_version_bottom = FALSE;
+		info->has_old_version_top = FALSE;
+		info->has_new_version = FALSE;
+		info->is_valid = FALSE;
+		memset (&info->old_version_bottom, 0, sizeof (info->old_version_bottom));
+		memset (&info->old_version_top, 0, sizeof (info->old_version_top));
+		memset (&info->new_version, 0, sizeof (info->new_version));
+	} if (!strcmp (element_name, "assemblyIdentity")) {
 		for (n = 0; attribute_names [n]; n++) {
 			const gchar *attribute_name = attribute_names [n];
 			
@@ -706,13 +749,50 @@ publisher_policy_parser = {
 void
 mono_config_parse_publisher_policy (const gchar *filename, MonoAssemblyBindingInfo *info)
 {
+	ParserUserData user_data = {
+		info,
+		NULL,
+		NULL
+	};
 	ParseState state = {
 		&publisher_policy_parser, /* MonoParseHandler */
-		info, /* user_data */
+		&user_data, /* user_data */
 		NULL, /* MonoImage (we don't need it right now)*/
 		TRUE /* We are already inited */
 	};
 	
+	mono_config_parse_file_with_context (&state, filename);
+}
+
+static MonoParseHandler
+config_assemblybinding_parser = {
+	"", /* We don't need to use declare an xml element */
+	NULL,
+	publisher_policy_start,
+	NULL,
+	assembly_binding_end,
+	NULL
+};
+
+void
+mono_config_parse_assembly_bindings (const char *filename, int amajor, int aminor, void *user_data, void (*infocb)(MonoAssemblyBindingInfo *info, void *user_data))
+{
+	MonoAssemblyBindingInfo info;
+	ParserUserData pud;
+	ParseState state;
+
+	info.major = amajor;
+	info.minor = aminor;
+
+	pud.info = &info;
+	pud.info_parsed = infocb;
+	pud.user_data = user_data;
+
+	state.current = &config_assemblybinding_parser;  /* MonoParseHandler */
+	state.user_data = &pud;
+	state.assembly = NULL; /* MonoImage (we don't need it right now)*/
+	state.inited = TRUE; /* We are already inited */
+
 	mono_config_parse_file_with_context (&state, filename);
 }
 

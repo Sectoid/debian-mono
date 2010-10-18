@@ -26,7 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
@@ -36,7 +35,7 @@ namespace System.Security.Policy {
 	[ComVisible (true)]
 	public sealed class ApplicationSecurityInfo {
 
-		private ActivationContext _context;
+//		private ActivationContext _context;
 		private Evidence _evidence;
 		private ApplicationId _appid;
 		private PermissionSet _defaultSet;
@@ -46,7 +45,7 @@ namespace System.Security.Policy {
 		{
 			if (activationContext == null)
 				throw new ArgumentNullException ("activationContext");
-			_context = activationContext;
+//			_context = activationContext;
 		}
 
 		public Evidence ApplicationEvidence {
@@ -91,4 +90,3 @@ namespace System.Security.Policy {
 	}
 }
 
-#endif

@@ -26,18 +26,18 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
 using System.Security.Permissions;
 
 namespace System.Web
 {
+#if !NET_4_0
 	[AspNetHostingPermission(SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal),
 	AspNetHostingPermission(SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
+#endif
 	public interface IPartitionResolver
 	{
 		void Initialize ();
 		string ResolvePartition (object key);
 	}
 }
-#endif

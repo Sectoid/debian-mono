@@ -36,6 +36,7 @@
 using System;
 using System.Net;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -43,11 +44,9 @@ using System.Reflection;
 using System.IO;
 using System.Net.Configuration;
 using System.Text;
-
-#if NET_2_0
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
 using System.Timers;
+#if !MOONLIGHT
+using System.Net.NetworkInformation;
 #endif
 
 namespace System.Net.Sockets 
@@ -202,8 +201,13 @@ namespace System.Net.Sockets
 				}
 
 				if (callback != null)
-					callback (this);
+					ThreadPool.QueueUserWorkItem (CB, null);
 				Buffer = null;
+			}
+
+			void CB (object unused)
+			{
+				callback (this);
 			}
 
 			SocketAsyncCall GetDelegate (Worker worker, SocketOperation op)
@@ -664,7 +668,6 @@ namespace System.Net.Sockets
 			IList currentList = checkRead;
 			int currentIdx = 0;
 			for (int i = 0; i < count; i++) {
-				Socket cur_sock;
 				Socket sock = sockets [i];
 				if (sock == null) { // separator
 					if (currentList != null) {
@@ -685,8 +688,8 @@ namespace System.Net.Sockets
 				}
 
 				// Remove non-signaled sockets before the current one
-				int max = currentList.Count;
-				while ((cur_sock = (Socket) currentList [currentIdx]) != sock) {
+				//int max = currentList.Count;
+				while (((Socket) currentList [currentIdx]) != sock) {
 					currentList.RemoveAt (currentIdx);
 				}
 				currentIdx++;
@@ -1793,7 +1796,7 @@ namespace System.Net.Sockets
 			seed_endpoint = local_end;
 		}
 
-#if NET_2_0
+#if !MOONLIGHT
 		public bool ConnectAsync (SocketAsyncEventArgs e)
 		{
 			// NO check is made whether e != null in MS.NET (NRE is thrown in such case)
@@ -1836,11 +1839,10 @@ namespace System.Net.Sockets
 				throw new InvalidOperationException ();
 
 			/* FIXME: do non-blocking sockets Poll here? */
+			int error = 0;
 			foreach (IPAddress address in addresses) {
-				IPEndPoint iep = new IPEndPoint (address,
-								 port);
+				IPEndPoint iep = new IPEndPoint (address, port);
 				SocketAddress serial = iep.Serialize ();
-				int error = 0;
 				
 				Connect_internal (socket, serial, out error);
 				if (error == 0) {
@@ -1854,14 +1856,16 @@ namespace System.Net.Sockets
 				
 				if (!blocking) {
 					Poll (-1, SelectMode.SelectWrite);
-					int success = (int)GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error);
-					if (success == 0) {
+					error = (int)GetSocketOption (SocketOptionLevel.Socket, SocketOptionName.Error);
+					if (error == 0) {
 						connected = true;
 						seed_endpoint = iep;
 						return;
 					}
 				}
 			}
+			if (error != 0)
+				throw new SocketException (error);
 		}
 
 		public void Connect (string host, int port)

@@ -30,46 +30,39 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpConvertBinder : ConvertBinder
+	class CSharpConvertBinder : ConvertBinder
 	{
-		bool is_checked;
+		readonly CSharpBinderFlags flags;
+		readonly Type context;
 
-		public CSharpConvertBinder (Type type, CSharpConversionKind conversionKind, bool isChecked)
-			: base (type, conversionKind == CSharpConversionKind.ExplicitConversion)
+		public CSharpConvertBinder (Type type, Type context, CSharpBinderFlags flags)
+			: base (type, (flags & CSharpBinderFlags.ConvertExplicit) != 0)
 		{
-			this.is_checked = isChecked;
-		}
-		
-		public CSharpConversionKind ConversionKind {
-			get {
-				return Explicit ? CSharpConversionKind.ExplicitConversion : CSharpConversionKind.ImplicitConversion;
-			}
-		}		
-		
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpConvertBinder;
-			return other != null && other.Type == Type && other.Explicit == Explicit && other.is_checked == is_checked;
+			this.flags = flags;
+			this.context = context;
 		}
 
-		public bool IsChecked {
-			get {
-				return is_checked;
-			}
-		}
-		
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-		
-		[MonoTODO]
 		public override DynamicMetaObject FallbackConvert (DynamicMetaObject target, DynamicMetaObject errorSuggestion)
 		{
-			throw new NotImplementedException ();
+			var ctx = DynamicContext.Create ();
+			var expr = ctx.CreateCompilerExpression (null, target);
+
+			if (Explicit)
+				expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (Type), Compiler.Location.Null), expr, Compiler.Location.Null);
+			else
+				expr = new Compiler.ImplicitCast (expr, ctx.ImportType (Type), (flags & CSharpBinderFlags.ConvertArrayIndex) != 0);
+
+			if ((flags & CSharpBinderFlags.CheckedContext) != 0)
+				expr = new Compiler.CheckedExpr (expr, Compiler.Location.Null);
+
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+
+			return binder.Bind (ctx, context);
 		}
 	}
 }

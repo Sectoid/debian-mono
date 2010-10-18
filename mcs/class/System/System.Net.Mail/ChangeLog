@@ -1,8 +1,22 @@
+2010-08-04  Raja R Harinath  <harinath@hurrynot.org>
+
+	* System.Net.Mail/SmtpClient.cs (SendCore): Compute envelope
+	sender separately from the 'From: ' header. *
+	Test/System.Net.Mail/SmtpClientTest.cs (Deliver_Envelope): New.
+
+2010-06-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* SmtpClient.cs: support PLAIN authentication and throw if LOGIN and
+	PLAIN are not supported. Fixes bug #607249.
+
+2010-05-04  Miguel de Icaza  <miguel@novell.com>
+
+	* Apply patch from Ted Unangst to fix bug 574049
+
 2010-03-06 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* SmtpClient.cs: typo in reply-to header. Thanks to Chris Tomlinson.
 	Fixes bug #578271.
-	Re-enabled code that seems to compile now.
 
 2010-02-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

@@ -1,6 +1,33 @@
+2010-08-08  Robert Jordan  <robertj@gmx.net>
+
+	[Fix] Handle the portName argument/property properly.
+
+	Some of IpcServerChannel's ctors did not keep track of the
+	original IPC port name correctly. This led to a non-functional
+	GetUrlsForUri method.
+
+2010-05-29  Robert Jordan  <robertj@gmx.net>
+
+	* IpcChannelTest.cs: Add test for bug #609381.
+
 2010-02-28  Robert Jordan  <robertj@gmx.net>
 
 	* BaseCalls.cs: Enable tests again. See bug #576618.
+
+2010-02-11  Jonathan Pobst  <monkey@jpobst.com>
+
+	* ActivationTests.cs: Disable TestCreateHttpWkoSingleCall and
+	TestCreateHttpWkoSingleton due to sporadic failures.
+	Filed as bug #579277.
+
+2010-02-03  Jonathan Pobst  <monkey@jpobst.com>
+
+	* HttpCalls.cs: Disable all tests here due to excessive
+	sporadic failures.  Filed as bug #576724.
+
+2010-02-03  Jonathan Pobst  <monkey@jpobst.com>
+
+	* BaseCalls.cs: Mark tests as NotWorking.  Reported as bug #576618.
 
 2009-09-12 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

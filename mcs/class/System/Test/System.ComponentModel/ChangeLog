@@ -1,3 +1,17 @@
+2010-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove some hash code tests which can fail.
+
+2010-05-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DefaultValueAttributeTest.cs: Change test case to compare the 
+	hash code of two DVA created with null (instead of comparing to 0)
+
+2010-02-05  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MaskedTextProviderTest.cs: New tests for ToString and
+	ToDisplayString, specifically when IsPassword is true. 
+
 2010-01-15  Alexandre Gomes  <alexmipego@gmail.com>
 
 	* ByteConverterTests.cs:

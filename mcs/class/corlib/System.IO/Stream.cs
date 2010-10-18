@@ -40,9 +40,7 @@ using System.Runtime.InteropServices;
 namespace System.IO
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 #if NET_2_1
 	public abstract class Stream : IDisposable
 #else
@@ -70,14 +68,12 @@ namespace System.IO
 			get;
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public virtual bool CanTimeout {
 			get {
 				return false;
 			}
 		}
-#endif
 
 		public abstract long Length
 		{
@@ -91,7 +87,6 @@ namespace System.IO
 		}
 
 
-#if NET_2_0
 		// 2.0 version of Dispose.
 		public void Dispose ()
 		{
@@ -134,24 +129,10 @@ namespace System.IO
 
 		public static Stream Synchronized (Stream stream)
 		{
-			throw new NotImplementedException ();
-		}
-#else
-		// 1.1 version of Close
-		public virtual void Close ()
-		{
-			// nothing
+			return new SynchronizedStream (stream);
 		}
 
-		void IDisposable.Dispose ()
-		{
-			Close ();
-		}
-#endif
-
-#if NET_2_0
 		[Obsolete ("CreateWaitHandle is due for removal.  Use \"new ManualResetEvent(false)\" instead.")]
-#endif
 		protected virtual WaitHandle CreateWaitHandle()
 		{
 			return new ManualResetEvent (false);
@@ -279,6 +260,34 @@ namespace System.IO
 			if (result.Exception != null)
 				throw result.Exception;
 		}
+
+#if MOONLIGHT || NET_4_0
+		public void CopyTo (Stream destination)
+		{
+			CopyTo (destination, 16*1024);
+		}
+
+		public void CopyTo (Stream destination, int bufferSize)
+		{
+			if (destination == null)
+				throw new ArgumentNullException ("destination");
+			if (!CanRead)
+				throw new NotSupportedException ("This stream does not support reading");
+			if (!destination.CanWrite)
+				throw new NotSupportedException ("This destination stream does not support writing");
+			if (bufferSize <= 0)
+				throw new ArgumentOutOfRangeException ("bufferSize");
+
+			var buffer = new byte [bufferSize];
+			int nread;
+			while ((nread = Read (buffer, 0, bufferSize)) != 0)
+				destination.Write (buffer, 0, nread);
+		}
+
+		protected virtual void ObjectInvariant ()
+		{
+		}
+#endif
 	}
 
 	class NullStream : Stream
@@ -349,6 +358,103 @@ namespace System.IO
 
 		public override void WriteByte (byte value)
 		{
+		}
+	}
+
+	class SynchronizedStream : Stream {
+		Stream source;
+		object slock;
+			
+		internal SynchronizedStream (Stream source)
+		{
+			this.source = source;
+			slock = new object ();
+		}
+		
+		public override bool CanRead
+		{
+			get {
+				lock (slock)
+					return source.CanRead;
+			}
+		}
+
+		public override bool CanSeek
+		{
+                        get {
+				lock (slock)
+					return source.CanSeek;
+                        }
+                }
+
+                public override bool CanWrite
+		{
+                        get {
+				lock (slock)
+					return source.CanWrite;
+                        }
+                }
+
+		public override long Length
+		{
+			get {
+				lock (slock)
+					return source.Length;
+			}
+		}
+
+		public override long Position
+		{
+			get {
+				lock (slock)
+					return source.Position;
+			}
+			set {
+				lock (slock)
+					source.Position = value;
+			}
+		}
+
+		public override void Flush ()
+		{
+			lock (slock)
+				source.Flush ();
+		}
+
+		public override int Read (byte[] buffer, int offset, int count)
+		{
+			lock (slock)
+				return source.Read (buffer, offset, count);
+		}
+
+		public override int ReadByte ()
+		{
+			lock (slock)
+				return source.ReadByte ();
+		}
+
+		public override long Seek (long offset, SeekOrigin origin)
+		{
+			lock (slock)
+				return source.Seek (offset, origin);
+		}
+
+		public override void SetLength (long value)
+		{
+			lock (slock)
+				source.SetLength (value);
+		}
+
+		public override void Write (byte[] buffer, int offset, int count)
+		{
+			lock (slock)
+				source.Write (buffer, offset, count);
+		}
+
+		public override void WriteByte (byte value)
+		{
+			lock (slock)
+				source.WriteByte (value);
 		}
 	}
 }

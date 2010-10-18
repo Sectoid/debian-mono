@@ -1,4 +1,3 @@
-#if NET_4_0
 // 
 // TaskCompletionSource.cs
 //  
@@ -25,7 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if NET_4_0
 using System;
+using System.Collections.Generic;
 
 namespace System.Threading.Tasks
 {
@@ -55,13 +56,18 @@ namespace System.Threading.Tasks
 		
 		public void SetCanceled ()
 		{
-			if (!ApplyOperation (TaskStatus.Canceled, () => { source.Cancel (); source.CancelReal (); }))
+			if (!ApplyOperation (TaskStatus.Canceled, source.CancelReal))
 				ThrowInvalidException ();
 		}
 		
 		public void SetException (Exception e)
 		{
-			if (!ApplyOperation (TaskStatus.Faulted, () => source.Exception = e))
+			SetException (new Exception[] { e });
+		}
+		
+		public void SetException (IEnumerable<Exception> e)
+		{
+			if (!ApplyOperation (TaskStatus.Faulted, () => source.Exception = new AggregateException (e)))
 				ThrowInvalidException ();
 		}
 		
@@ -78,12 +84,18 @@ namespace System.Threading.Tasks
 		
 		public bool TrySetCanceled ()
 		{
-			return ApplyOperation (TaskStatus.Canceled, () => { source.Cancel (); source.CancelReal (); });
+			return ApplyOperation (TaskStatus.Canceled, source.CancelReal);
 		}
 		
 		public bool TrySetException (Exception e)
 		{
-			return ApplyOperation (TaskStatus.Faulted, () => source.Exception = e);
+			return TrySetException (new Exception[] { e });
+		}
+		
+		
+		public bool TrySetException (IEnumerable<Exception> e)
+		{
+			return ApplyOperation (TaskStatus.Faulted, () => source.Exception = new AggregateException (e));
 		}
 		
 		public bool TrySetResult (TResult result)

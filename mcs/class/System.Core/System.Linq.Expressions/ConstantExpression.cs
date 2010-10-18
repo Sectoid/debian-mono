@@ -52,9 +52,31 @@ namespace System.Linq.Expressions {
 
 		internal override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
+			if (Type.IsNullable ()) {
+				EmitNullableConstant (ec, Type, value);
+				return;
+			}
 
-			switch (Type.GetTypeCode (Type)){
+			EmitConstant (ec, Type, value);
+		}
+
+		void EmitNullableConstant (EmitContext ec, Type type, object value)
+		{
+			if (value == null) {
+				var ig = ec.ig;
+				var local = ec.ig.DeclareLocal (type);
+				ec.EmitNullableInitialize (local);
+			} else {
+				EmitConstant (ec, type.GetFirstGenericArgument (), value);
+				ec.EmitNullableNew (type);
+			}
+		}
+
+		void EmitConstant (EmitContext ec, Type type, object value)
+		{
+			var ig = ec.ig;
+
+			switch (Type.GetTypeCode (type)){
 			case TypeCode.Byte:
 				ig.Emit (OpCodes.Ldc_I4, (int) ((byte)value));
 				return;
@@ -163,17 +185,7 @@ namespace System.Linq.Expressions {
 		void EmitIfNotNull (EmitContext ec, Action<EmitContext> emit)
 		{
 			if (value == null) {
-				var ig = ec.ig;
-
-				if (Type.IsValueType) { // happens for nullable types
-					var local = ig.DeclareLocal (Type);
-					ig.Emit (OpCodes.Ldloca, local);
-					ig.Emit (OpCodes.Initobj, Type);
-					ig.Emit (OpCodes.Ldloc, local);
-				} else {
-					ec.ig.Emit (OpCodes.Ldnull);
-				}
-
+				ec.ig.Emit (OpCodes.Ldnull);
 				return;
 			}
 

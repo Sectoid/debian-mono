@@ -266,13 +266,30 @@ namespace Mono.Data.Tds.Protocol {
 		{
 			DateTime epoch = new DateTime (1900,1,1);
 			
-			TimeSpan span = t - epoch;
-			int days = span.Days ;
+			TimeSpan span = t - epoch; //new TimeSpan (t.Ticks - epoch.Ticks);
+			int days, hours, minutes, secs;
+			long msecs;
 			int val = 0;	
+
+			days = span.Days;
+			hours = span.Hours;
+			minutes = span.Minutes;
+			secs = span.Seconds;
+			msecs = span.Milliseconds;
+			
+			if (epoch > t) {
+				// If t.Hour/Min/Sec/MSec is > 0, days points to the next day and hence, 
+				// we move it back by a day - otherwise, no change
+				days = (t.Hour > 0 || t.Minute > 0 || t.Second > 0 || t.Millisecond > 0) ? days-1: days;
+				hours = t.Hour;
+				minutes = t.Minute;
+				secs = t.Second;
+				msecs = t.Millisecond;
+			}
 
 			SendIfFull (bytes);
 			if (bytes == 8) {
-				long ms = (span.Hours * 3600 + span.Minutes * 60 + span.Seconds)*1000L + (long)span.Milliseconds;
+				long ms = (hours * 3600 + minutes * 60 + secs)*1000L + (long)msecs;
 				val = (int) ((ms*300)/1000);
 				AppendInternal ((int) days);
 				AppendInternal ((int) val);
@@ -374,23 +391,28 @@ namespace Mono.Data.Tds.Protocol {
 			if (tdsVersion < TdsVersion.tds70) { 
 				Append (encoder.GetBytes (s));
 			} else {
-				int lenToWrite = s.Length * 2;
-				int count = lenToWrite/outBufferLength;
 				int cindex = 0, index;
-				int remBufLen = 0;
+				int ssize = sizeof (short);
+				int lenToWrite = s.Length * ssize;
+				// if nextOutBufferLength points to the last buffer in outBuffer, 
+				// we would get a DivisionByZero while calculating remBufLen
+				if (outBufferLength - nextOutBufferIndex < ssize)
+					SendIfFull (ssize);
 				
-				if (lenToWrite % outBufferLength > 0)
+				int remBufLen = outBufferLength - nextOutBufferIndex;
+				int count = lenToWrite/remBufLen;
+				
+				if (lenToWrite % remBufLen > 0)
 					count++;
 			
-				remBufLen = outBufferLength - nextOutBufferIndex;
 				for (int i = 0; i < count; i++) {
-					index = System.Math.Min (remBufLen, lenToWrite);
-					for (int j = 0; j < index; j+=2, cindex++)
+					index = System.Math.Min (remBufLen/ssize, lenToWrite/ssize);
+					for (int j = 0; j < index*ssize; j+=2, cindex++)
 						AppendInternal ((short)s[cindex]);
 					
-					lenToWrite -= System.Math.Min (remBufLen, lenToWrite);
+					lenToWrite -= index*ssize;
 					// Just make sure to flush the buffer
-					SendIfFull (lenToWrite+2);
+					SendIfFull ((lenToWrite+1)*ssize);
 				}
 			}
 		}	

@@ -56,6 +56,15 @@ namespace System.Web.Configuration
 		static ConfigurationProperty shutdownTimeoutProp;
 		static ConfigurationProperty useFullyQualifiedRedirectUrlProp;
 		static ConfigurationProperty waitChangeNotificationProp;
+#if NET_4_0
+		static ConfigurationProperty requestPathInvalidCharactersProp;
+		static ConfigurationProperty requestValidationTypeProp;
+		static ConfigurationProperty requestValidationModeProp;
+		static ConfigurationProperty maxQueryStringLengthProp;
+		static ConfigurationProperty maxUrlLengthProp;
+		static ConfigurationProperty encoderTypeProp;
+		static ConfigurationProperty relaxedUrlToFileSystemMappingProp;
+#endif
 		static ConfigurationPropertyCollection properties;
 
 		static HttpRuntimeSection ()
@@ -108,7 +117,31 @@ namespace System.Web.Configuration
 										TypeDescriptor.GetConverter (typeof (int)),
 										PropertyHelper.IntFromZeroToMaxValidator,
 										ConfigurationPropertyOptions.None);
-
+#if NET_4_0
+			requestPathInvalidCharactersProp = new ConfigurationProperty ("requestPathInvalidCharacters", typeof (string), ",*,%,&,:,\\,?");
+			requestValidationTypeProp = new ConfigurationProperty ("requestValidationType", typeof (string),"System.Web.Util.RequestValidator",
+									       TypeDescriptor.GetConverter (typeof (string)),
+									       PropertyHelper.NonEmptyStringValidator,
+									       ConfigurationPropertyOptions.None);
+			requestValidationModeProp = new ConfigurationProperty ("requestValidationMode", typeof (Version), new Version (4, 0),
+									       PropertyHelper.VersionConverter,
+									       PropertyHelper.DefaultValidator,
+									       ConfigurationPropertyOptions.None);
+			maxQueryStringLengthProp = new ConfigurationProperty ("maxQueryStringLength", typeof (int), 2048,
+									      TypeDescriptor.GetConverter (typeof (int)),
+									      PropertyHelper.IntFromZeroToMaxValidator,
+									      ConfigurationPropertyOptions.None);
+			maxUrlLengthProp = new ConfigurationProperty ("maxUrlLength", typeof (int), 260,
+								      TypeDescriptor.GetConverter (typeof (int)),
+								      PropertyHelper.IntFromZeroToMaxValidator,
+								      ConfigurationPropertyOptions.None);
+			encoderTypeProp = new ConfigurationProperty ("encoderType", typeof (string), "System.Web.Util.HttpEncoder",
+								     TypeDescriptor.GetConverter (typeof (string)),
+								     PropertyHelper.NonEmptyStringValidator,
+								     ConfigurationPropertyOptions.None);
+			relaxedUrlToFileSystemMappingProp = new ConfigurationProperty ("relaxedUrlToFileSystemMapping", typeof (bool), false);
+#endif
+			
 			properties = new ConfigurationPropertyCollection();
 			properties.Add (apartmentThreadingProp);
 			properties.Add (appRequestQueueLimitProp);
@@ -128,6 +161,15 @@ namespace System.Web.Configuration
 			properties.Add (shutdownTimeoutProp);
 			properties.Add (useFullyQualifiedRedirectUrlProp);
 			properties.Add (waitChangeNotificationProp);
+#if NET_4_0
+			properties.Add (requestPathInvalidCharactersProp);
+			properties.Add (requestValidationTypeProp);
+			properties.Add (requestValidationModeProp);
+			properties.Add (maxQueryStringLengthProp);
+			properties.Add (maxUrlLengthProp);
+			properties.Add (encoderTypeProp);
+			properties.Add (relaxedUrlToFileSystemMappingProp);
+#endif
 		}
 
 		public HttpRuntimeSection()
@@ -253,6 +295,54 @@ namespace System.Web.Configuration
 			set { base[waitChangeNotificationProp] = value; }
 		}
 
+#if NET_4_0
+		[ConfigurationProperty ("requestPathInvalidCharacters", DefaultValue = ",*,%,&,:,\\,?")]
+		public string RequestPathInvalidCharacters {
+			get { return (string) base [requestPathInvalidCharactersProp]; }
+			set { base [requestPathInvalidCharactersProp] = value; }
+		}
+
+		[ConfigurationProperty ("requestValidationType", DefaultValue = "System.Web.Util.RequestValidator")]
+		[StringValidator (MinLength = 1)]
+		public string RequestValidationType {
+			get { return (string) base [requestValidationTypeProp]; }
+			set { base [requestValidationTypeProp] = value; }
+		}
+
+		[ConfigurationProperty ("requestValidationMode", DefaultValue = "4.0")]
+		[TypeConverter ("System.Web.Configuration.VersionConverter")]
+		public Version RequestValidationMode {
+			get { return (Version) base [requestValidationModeProp]; }
+			set { base [requestValidationModeProp] = value; }
+		}
+
+		[IntegerValidator (MinValue = 0)]
+		[ConfigurationProperty ("maxQueryStringLength", DefaultValue = "2048")]
+		public int MaxQueryStringLength {
+			get { return (int) base [maxQueryStringLengthProp]; }
+			set { base [maxQueryStringLengthProp] = value; }
+		}
+
+		[IntegerValidator (MinValue = 0)]
+		[ConfigurationProperty ("maxUrlLength", DefaultValue = "260")]
+		public int MaxUrlLength {
+			get { return (int) base [maxUrlLengthProp]; }
+			set { base [maxUrlLengthProp] = value; }
+		}
+
+		[StringValidator (MinLength = 1)]
+		[ConfigurationProperty ("encoderType", DefaultValue = "System.Web.Util.HttpEncoder")]
+		public string EncoderType {
+			get { return (string) base [encoderTypeProp]; }
+			set { base [encoderTypeProp] = value; }
+		}
+
+		[ConfigurationProperty ("relaxedUrlToFileSystemMapping", DefaultValue = "False")]
+		public bool RelaxedUrlToFileSystemMapping {
+			get { return (bool) base [relaxedUrlToFileSystemMappingProp]; }
+			set { base [relaxedUrlToFileSystemMappingProp] = value; }
+		}
+#endif
 		protected override ConfigurationPropertyCollection Properties {
 			get { return properties; }
 		}

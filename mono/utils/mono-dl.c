@@ -17,7 +17,7 @@
 #include <string.h>
 #include <glib.h>
 
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 #define SOPREFIX ""
 static const char suffixes [][5] = {
 	".dll"
@@ -41,7 +41,7 @@ static const char suffixes [][4] = {
 };
 #endif
 
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 
 #include <windows.h>
 #include <psapi.h>
@@ -105,7 +105,7 @@ struct _MonoDl {
 	int main_module;
 };
 
-#ifdef PLATFORM_WIN32
+#ifdef TARGET_WIN32
 
 static char*
 w32_dlerror (void)
@@ -305,7 +305,7 @@ get_dl_name_from_libtool (const char *libtool_file)
  * from the module to the shared namespace. The MONO_DL_LAZY bit can be set
  * to lazily load the symbols instead of resolving everithing at load time.
  * @error_msg points to a string where an error message will be stored in
- * case of failure.
+ * case of failure.   The error must be released with g_free.
  *
  * Returns: a MonoDl pointer on success, NULL on failure.
  */
@@ -434,29 +434,53 @@ mono_dl_build_path (const char *directory, const char *name, void **iter)
 	int idx;
 	const char *prefix;
 	const char *suffix;
+	gboolean first_call;
 	int prlen;
+	int suffixlen;
 	char *res;
+
 	if (!iter)
 		return NULL;
+
+	/*
+	  The first time we are called, idx = 0 (as *iter is initialized to NULL). This is our
+	  "bootstrap" phase in which we check the passed name verbatim and only if we fail to find
+	  the dll thus named, we start appending suffixes, each time increasing idx twice (since now
+	  the 0 value became special and we need to offset idx to a 0-based array index). This is
+	  done to handle situations when mapped dll name is specified as libsomething.so.1 or
+	  libsomething.so.1.1 or libsomething.so - testing it algorithmically would be an overkill
+	  here.
+	 */
 	idx = GPOINTER_TO_UINT (*iter);
-	if (idx >= G_N_ELEMENTS (suffixes))
-		return NULL;
+	if (idx == 0) {
+		first_call = TRUE;
+		suffix = "";
+		suffixlen = 0;
+	} else {
+		idx--;
+		if (idx >= G_N_ELEMENTS (suffixes))
+			return NULL;
+		first_call = FALSE;
+		suffix = suffixes [idx];
+		suffixlen = strlen (suffix);
+	}
 
 	prlen = strlen (SOPREFIX);
 	if (prlen && strncmp (name, SOPREFIX, prlen) != 0)
 		prefix = SOPREFIX;
 	else
 		prefix = "";
-	/* if the platform prefix is already provided, we suppose the caller knows the full name already */
-	if (prlen && strncmp (name, SOPREFIX, prlen) == 0)
+
+	if (first_call || (suffixlen && strstr (name, suffix) == (name + strlen (name) - suffixlen)))
 		suffix = "";
-	else
-		suffix = suffixes [idx];
+
 	if (directory && *directory)
-		res = g_strconcat (directory, G_DIR_SEPARATOR_S, prefix, name, suffixes [idx], NULL);
+		res = g_strconcat (directory, G_DIR_SEPARATOR_S, prefix, name, suffix, NULL);
 	else
-		res = g_strconcat (prefix, name, suffixes [idx], NULL);
+		res = g_strconcat (prefix, name, suffix, NULL);
 	++idx;
+	if (!first_call)
+		idx++;
 	*iter = GUINT_TO_POINTER (idx);
 	return res;
 }
@@ -520,7 +544,6 @@ LL_SO_OPEN (const char *file, int flag)
 		
 	mappings = g_hash_table_lookup (mono_dls, file);
 	ll_last_error = mappings == NULL ? "File not registered" : "";
-	printf ("Returning mappings=0x%p\n", mappings);
 	return mappings;
 }
 
@@ -535,7 +558,6 @@ _LL_SO_SYMBOL (void *handle, const char *symbol)
 {
 	MonoDlMapping *mappings = (MonoDlMapping *) handle;
 	
-	printf ("During lookup: 0x%p\n", handle);
 	for (;mappings->name; mappings++){
 		if (strcmp (symbol, mappings->name) == 0){
 			ll_last_error = "";
@@ -549,6 +571,6 @@ _LL_SO_SYMBOL (void *handle, const char *symbol)
 char *
 LL_SO_ERROR (void)
 {
-	return ll_last_error;
+	return g_strdup (ll_last_error);
 }
 #endif

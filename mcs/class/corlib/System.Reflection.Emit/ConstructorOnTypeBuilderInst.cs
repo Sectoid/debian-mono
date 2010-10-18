@@ -31,8 +31,6 @@ using System;
 using System.Globalization;
 using System.Reflection;
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-
 namespace System.Reflection.Emit
 {
 	/*
@@ -42,10 +40,10 @@ namespace System.Reflection.Emit
 	{
 		#region Keep in sync with object-internals.h
 		MonoGenericClass instantiation;
-		ConstructorBuilder cb;
+		ConstructorInfo cb;
 		#endregion
 
-		public ConstructorOnTypeBuilderInst (MonoGenericClass instantiation, ConstructorBuilder cb)
+		public ConstructorOnTypeBuilderInst (MonoGenericClass instantiation, ConstructorInfo cb)
 		{
 			this.instantiation = instantiation;
 			this.cb = cb;
@@ -99,20 +97,32 @@ namespace System.Reflection.Emit
 
 		public override ParameterInfo[] GetParameters ()
 		{
-			if (!((ModuleBuilder)cb.Module).assemblyb.IsCompilerContext && !instantiation.generic_type.is_created)
+			/*FIXME, maybe the right thing to do when the type is creates is to retrieve from the inflated type*/
+			if (!instantiation.IsCompilerContext && !instantiation.IsCreated)
 				throw new NotSupportedException ();
 
-			ParameterInfo [] res = new ParameterInfo [cb.parameters.Length];
-			for (int i = 0; i < cb.parameters.Length; i++) {
-				Type type = instantiation.InflateType (cb.parameters [i]);
-				res [i] = new ParameterInfo (cb.pinfo == null ? null : cb.pinfo [i], type, this, i + 1);
+			ParameterInfo [] res;
+			if (cb is ConstructorBuilder) {
+				ConstructorBuilder cbuilder = (ConstructorBuilder)cb;
+				res = new ParameterInfo [cbuilder.parameters.Length];
+				for (int i = 0; i < cbuilder.parameters.Length; i++) {
+					Type type = instantiation.InflateType (cbuilder.parameters [i]);
+					res [i] = new ParameterInfo (cbuilder.pinfo == null ? null : cbuilder.pinfo [i], type, this, i + 1);
+				}
+			} else {
+				ParameterInfo[] parms = cb.GetParameters ();
+				res = new ParameterInfo [parms.Length];
+				for (int i = 0; i < parms.Length; i++) {
+					Type type = instantiation.InflateType (parms [i].ParameterType);
+					res [i] = new ParameterInfo (parms [i], type, this, i + 1);
+				}
 			}
 			return res;
 		}
 
 		public override int MetadataToken {
 			get {
-				if (!((ModuleBuilder)cb.Module).assemblyb.IsCompilerContext)
+				if (!instantiation.IsCompilerContext)
 					return base.MetadataToken;
 				return cb.MetadataToken;
 			}
@@ -182,4 +192,3 @@ namespace System.Reflection.Emit
 	}
 }
 
-#endif

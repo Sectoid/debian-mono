@@ -7,7 +7,6 @@
 // Copyright (C) 2007 Novell, Inc (http://www.novell.com)
 //
 
-#if NET_2_0
 using System.Globalization;
 using NUnit.Framework;
 using System;
@@ -243,6 +242,17 @@ namespace MonoTests.System {
 					Assert.AreEqual (dto, DateTimeOffset.ParseExact (serialized, format, fp), format);
 				}
 		}
+
+		//
+		// Tests that we can parse the K format specifier which is a 4 digit offset
+		// see bug 589227
+		//
+		[Test]
+		public void ParseExactWithKFormat ()
+		{
+			DateTimeOffset o = DateTimeOffset.ParseExact ("Wed Mar 17 22:25:08 +0000 2010", "ddd MMM d H:m:ss K yyyy", null);
+		}
+		
 		[Test]
 		public void ParseExactYearFormat ()
 		{
@@ -270,6 +280,27 @@ namespace MonoTests.System {
 					Assert.AreEqual (dto, DateTimeOffset.ParseExact (serialized, format, fp), format);
 				}
 			
+		}
+
+		[Test]
+		public void ParseExactOffsetFormat ()
+		{
+			CultureInfo fp = CultureInfo.InvariantCulture;
+			string[] dates = {
+				"13/Oct/2009:22:35:35 +09:00",
+				"13/Oct/2009:22:35:35 +0900",
+				"13/Oct/2009:22:35:35 +09:30",
+				"13/Oct/2009:22:35:35 +0930",
+			};
+			TimeSpan[] offsets = {
+				new TimeSpan (9,0,0),
+				new TimeSpan (9,0,0),
+				new TimeSpan (9,30,0),
+				new TimeSpan (9,30,0),
+			};
+
+			for (int i = 0; i < dates.Length; i++)
+				Assert.AreEqual(offsets[i], DateTimeOffset.ParseExact (dates[i], "d/MMM/yyyy:HH:mm:ss zzz", fp).Offset, dates[i]);
 		}
 
 		[Test]
@@ -605,8 +636,16 @@ namespace MonoTests.System {
 			}
 			return result;
 		}
-
+		
+		[Test]
+		public void ArithmeticAccrossDSTBoudaries ()
+		{
+			DateTime dt = new DateTime (633954393584177800, DateTimeKind.Local); //Dec 3, 2009, 12:16
+			DateTimeOffset dto = new DateTimeOffset (dt);
+			DateTimeOffset dto2 = dto.AddDays (-60); //Should cross the late Oct boundary in most part of the world
+			Assert.AreEqual (dto.Offset, dto2.Offset);
+			Assert.AreEqual (dt.AddDays (-60), dto2.DateTime);
+		}
 	}
 }
-#endif
 

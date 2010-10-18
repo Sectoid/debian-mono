@@ -31,27 +31,13 @@
 //
 
 using System.Runtime.CompilerServices;
-
-#if NET_2_0
 using System.Runtime.ConstrainedExecution;
-#endif
+using System.Security.Permissions;
 
 namespace System
 {
-	public
-#if NET_2_0
-	static
-#else
-	sealed
-#endif
-	class GC
+	public static class GC
 	{
-
-#if !NET_2_0
-		private GC ()
-		{
-		}
-#endif
 
 		public extern static int MaxGeneration {
 			[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -71,12 +57,10 @@ namespace System
 			InternalCollect (generation);
 		}
 
-#if NET_2_0
 		[MonoDocumentationNote ("mode parameter ignored")]
 		public static void Collect (int generation, GCCollectionMode mode) {
 			Collect (generation);
 		}
-#endif
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern static int GetGeneration (object obj);
@@ -92,25 +76,20 @@ namespace System
 		public extern static long GetTotalMemory (bool forceFullCollection);
 
 		/* this icall has weird semantics check the docs... */
-#if NET_2_0
 		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern static void KeepAlive (object obj);
 		
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern static void ReRegisterForFinalize (object obj);
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern static void SuppressFinalize (object obj);
 
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern static void WaitForPendingFinalizers ();
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		public extern static int CollectionCount (int generation);
@@ -125,6 +104,55 @@ namespace System
 		public static void RemoveMemoryPressure (long bytesAllocated) {
 			RecordPressure (-bytesAllocated);
 		}
+
+#if NET_4_0
+		[PermissionSetAttribute (SecurityAction.LinkDemand, Name = "FullTrust")]
+		[MonoTODO]
+		public static GCNotificationStatus WaitForFullGCApproach () {
+			throw new NotImplementedException ();
+		}
+
+		[PermissionSetAttribute (SecurityAction.LinkDemand, Name = "FullTrust")]
+		[MonoTODO]
+		public static GCNotificationStatus WaitForFullGCApproach (int millisecondsTimeout) {
+			throw new NotImplementedException ();
+		}
+
+		[PermissionSetAttribute (SecurityAction.LinkDemand, Name = "FullTrust")]
+		[MonoTODO]
+		public static GCNotificationStatus WaitForFullGCComplete () {
+			throw new NotImplementedException ();
+		}
+
+		[PermissionSetAttribute (SecurityAction.LinkDemand, Name = "FullTrust")]
+		[MonoTODO]
+		public static GCNotificationStatus WaitForFullGCComplete (int millisecondsTimeout) {
+			throw new NotImplementedException ();
+		}
+
+		[PermissionSetAttribute (SecurityAction.LinkDemand, Name = "FullTrust")]
+		public static void RegisterForFullGCNotification (int maxGenerationThreshold, int largeObjectHeapThreshold) {
+			if (maxGenerationThreshold < 1 || maxGenerationThreshold > 99)
+				throw new ArgumentOutOfRangeException ("maxGenerationThreshold", maxGenerationThreshold, "maxGenerationThreshold must be between 1 and 99 inclusive");
+			if (largeObjectHeapThreshold < 1 || largeObjectHeapThreshold > 99)
+				throw new ArgumentOutOfRangeException ("largeObjectHeapThreshold", largeObjectHeapThreshold, "largeObjectHeapThreshold must be between 1 and 99 inclusive");
+			throw new NotImplementedException ();
+		}
+
+		[PermissionSetAttribute (SecurityAction.LinkDemand, Name = "FullTrust")]
+		public static void CancelFullGCNotification () {
+			throw new NotImplementedException ();
+		}
+#endif
+
+#if NET_4_0 || BOOTSTRAP_NET_4_0 || MOONLIGHT
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		internal extern static void register_ephemeron_array (Ephemeron[] array);
+
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		extern static object get_ephemeron_tombstone ();
+
+		internal static readonly object EPHEMERON_TOMBSTONE = get_ephemeron_tombstone ();
 #endif
 	}
 }

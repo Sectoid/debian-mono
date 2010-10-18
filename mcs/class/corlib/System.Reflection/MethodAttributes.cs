@@ -39,10 +39,8 @@ namespace System.Reflection {
 
 	/// <summary>
 	/// </summary>
-#if NET_2_0
 	[ComVisible (true)]
 	[Serializable]
-#endif
 	[Flags]
 	public enum MethodAttributes {
 
@@ -98,11 +96,9 @@ namespace System.Reflection {
 		/// </summary>
 		VtableLayoutMask = 256,
 
-#if NET_1_1
 		/// <summary>
 		/// </summary>		
 		CheckAccessOnOverride = 512,
-#endif
 
 		/// <summary>
 		/// </summary>

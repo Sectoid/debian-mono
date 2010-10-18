@@ -1,3 +1,16 @@
+2010-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Partial fix for bug #575600. Convert virtual path to
+	absolute only if necessary in HttpRequest.MapPath
+
+	Also added two tests for HttpRequest.MapPath which check cases
+	when the baseVirtualDir is not rooted.
+
+2010-03-20  Marek Habersack  <mhabersack@novell.com>
+
+	* XmlSiteMapProviderTest.cs: AreEqual should have expected result first
+	and actual next - swapped parameters in RootNode_2_OnLoad
+
 2009-11-16  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpContext.cs: added some tests for RewritePath

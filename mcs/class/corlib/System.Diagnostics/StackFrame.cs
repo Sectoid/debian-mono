@@ -34,17 +34,12 @@ using System.Runtime.CompilerServices;
 using System.Security;
 using System.Security.Permissions;
 using System.Text;
-
-#if NET_2_0
 using System.Runtime.InteropServices;
-#endif
 
 namespace System.Diagnostics {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	[MonoTODO ("Serialized objects are not compatible with MS.NET")]
         public class StackFrame {
 
@@ -131,7 +126,7 @@ namespace System.Diagnostics {
                 
                 public virtual string GetFileName()
                 {
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 			if (SecurityManager.SecurityEnabled && (fileName != null) && (fileName.Length > 0)) {
 				string fn = Path.GetFullPath (fileName);
 				new FileIOPermission (FileIOPermissionAccess.PathDiscovery, fn).Demand ();
@@ -145,7 +140,7 @@ namespace System.Diagnostics {
 			string filename = "<filename unknown>";
 			if (fileName == null)
 				return filename;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			try {
 				filename = GetFileName ();
 			}
@@ -173,9 +168,6 @@ namespace System.Diagnostics {
                         return ilOffset;
                 }
                 
-#if ONLY_1_1
-		[ReflectionPermission (SecurityAction.Demand, TypeInformation = true)]
-#endif
 		public virtual MethodBase GetMethod ()
                 {
                         return methodBase;

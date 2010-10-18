@@ -9,11 +9,10 @@
 // Copyright 2003-2008 Novell, Inc.
 //
 
-namespace Mono.CSharp {
+using System;
+using System.Reflection.Emit;
 
-	using System;
-	using System.Reflection.Emit;
-	using System.Collections;
+namespace Mono.CSharp {
 
 	/// <summary>
 	///   Base class for constants and literals.
@@ -40,23 +39,6 @@ namespace Mono.CSharp {
 			return this.GetType ().Name + " (" + AsString () + ")";
 		}
 
-		public override bool GetAttributableValue (ResolveContext ec, Type value_type, out object value)
-		{
-			if (value_type == TypeManager.object_type) {
-				value = GetTypedValue ();
-				return true;
-			}
-
-			Constant c = ImplicitConversionRequired (ec, value_type, loc);
-			if (c == null) {
-				value = null;
-				return false;
-			}
-
-			value = c.GetTypedValue ();
-			return true;
-		}
-
 		/// <summary>
 		///  This is used to obtain the actual value of the literal
 		///  cast into an object.
@@ -68,15 +50,7 @@ namespace Mono.CSharp {
 			return GetValue ();
 		}
 
-		/// <summary>
-		///   Constants are always born in a fully resolved state
-		/// </summary>
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			return this;
-		}
-
-		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type target, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, TypeSpec target, bool expl)
 		{
 			if (!expl && IsLiteral && 
 				(TypeManager.IsPrimitiveType (target) || type == TypeManager.decimal_type) &&
@@ -88,15 +62,16 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public Constant ImplicitConversionRequired (ResolveContext ec, Type type, Location loc)
+		public Constant ImplicitConversionRequired (ResolveContext ec, TypeSpec type, Location loc)
 		{
-			Constant c = ConvertImplicitly (type);
+			Constant c = ConvertImplicitly (ec, type);
 			if (c == null)
 				Error_ValueCannotBeConverted (ec, loc, type, false);
+
 			return c;
 		}
 
-		public virtual Constant ConvertImplicitly (Type type)
+		public virtual Constant ConvertImplicitly (ResolveContext rc, TypeSpec type)
 		{
 			if (this.type == type)
 				return this;
@@ -115,12 +90,18 @@ namespace Mono.CSharp {
 				  TypeManager.CSharpName (Type), TypeManager.CSharpName (type));
 			}
 
-			return CreateConstant (type, constant_value, loc);
+			return CreateConstant (rc, type, constant_value, loc);
 		}
 
-		///  Returns a constant instance based on Type
-		///  The returned value is already resolved.
-		public static Constant CreateConstant (Type t, object v, Location loc)
+		//
+		//  Returns a constant instance based on Type
+		//
+		public static Constant CreateConstant (ResolveContext rc, TypeSpec t, object v, Location loc)
+		{
+			return CreateConstantFromValue (t, v, loc).Resolve (rc);
+		}
+
+		public static Constant CreateConstantFromValue (TypeSpec t, object v, Location loc)
 		{
 			if (t == TypeManager.int32_type)
 				return new IntConstant ((int) v, loc);
@@ -151,14 +132,19 @@ namespace Mono.CSharp {
 			if (t == TypeManager.decimal_type)
 				return new DecimalConstant ((decimal) v, loc);
 			if (TypeManager.IsEnumType (t)) {
-				Type real_type = TypeManager.GetEnumUnderlyingType (t);
-				return new EnumConstant (CreateConstant (real_type, v, loc), t);
+				var real_type = EnumSpec.GetUnderlyingType (t);
+				return new EnumConstant (CreateConstantFromValue (real_type, v, loc).Resolve (null), t);
 			}
-			if (v == null && !TypeManager.IsValueType (t))
-				return new EmptyConstantCast (new NullLiteral (loc), t);
+			if (v == null) {
+				if (TypeManager.IsNullableType (t))
+					return Nullable.LiftedNull.Create (t, loc);
 
-			throw new Exception ("Unknown type for constant (" + t +
-					"), details: " + v);
+				if (TypeManager.IsReferenceType (t))
+					return new NullConstant (t, loc);
+			}
+
+			throw new InternalErrorException ("Constant value `{0}' has unexpected underlying type `{1}'",
+				v, TypeManager.CSharpName (t));
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
@@ -176,12 +162,12 @@ namespace Mono.CSharp {
 		/// It throws OverflowException 
 		/// </summary>
 		// DON'T CALL THIS METHOD DIRECTLY AS IT DOES NOT HANDLE ENUMS
-		public abstract Constant ConvertExplicitly (bool in_checked_context, Type target_type);
+		public abstract Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type);
 
 		/// <summary>
 		///   Attempts to do a compile-time folding of a constant cast.
 		/// </summary>
-		public Constant TryReduce (ResolveContext ec, Type target_type, Location loc)
+		public Constant TryReduce (ResolveContext ec, TypeSpec target_type, Location loc)
 		{
 			try {
 				return TryReduce (ec, target_type);
@@ -194,33 +180,36 @@ namespace Mono.CSharp {
 					Error_ValueCannotBeConverted (ec, loc, target_type, false);
 				}
 
-				return New.Constantify (target_type);
+				return New.Constantify (target_type).Resolve (ec);
 			}
 		}
 
-		Constant TryReduce (ResolveContext ec, Type target_type)
+		Constant TryReduce (ResolveContext ec, TypeSpec target_type)
 		{
 			if (Type == target_type)
 				return this;
 
+			Constant c;
 			if (TypeManager.IsEnumType (target_type)) {
-				Constant c = TryReduce (ec, TypeManager.GetEnumUnderlyingType (target_type));
+				c = TryReduce (ec, EnumSpec.GetUnderlyingType (target_type));
 				if (c == null)
 					return null;
 
-				return new EnumConstant (c, target_type);
+				return new EnumConstant (c, target_type).Resolve (ec);
 			}
 
-			return ConvertExplicitly (ec.ConstantCheckState, target_type);
+			c = ConvertExplicitly (ec.ConstantCheckState, target_type);
+			if (c != null)
+				c = c.Resolve (ec);
+
+			return c;
 		}
 
-		public abstract Constant Increment ();
-		
 		/// <summary>
 		/// Need to pass type as the constant can require a boxing
 		/// and in such case no optimization is possible
 		/// </summary>
-		public bool IsDefaultInitializer (Type type)
+		public bool IsDefaultInitializer (TypeSpec type)
 		{
 			if (type == Type)
 				return IsDefaultValue;
@@ -242,6 +231,10 @@ namespace Mono.CSharp {
 		public virtual bool IsLiteral {
 			get { return false; }
 		}
+		
+		public virtual bool IsOneInteger {
+			get { return false; }
+		}		
 
 		//
 		// Returns true iff 1) the stack type of this is one of Object, 
@@ -256,31 +249,52 @@ namespace Mono.CSharp {
 			// do nothing
 		}
 
+		public sealed override Expression Clone (CloneContext clonectx)
+		{
+			// No cloning is not needed for constants
+			return this;
+		}
+
 		protected override void CloneTo (CloneContext clonectx, Expression target)
 		{
-			// CloneTo: Nothing, we do not keep any state on this expression
+			throw new NotSupportedException ("should not be reached");
 		}
 
-#if NET_4_0
 		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
 		{
-			return System.Linq.Expressions.Expression.Constant (GetValue ());
+			return System.Linq.Expressions.Expression.Constant (GetTypedValue (), type.GetMetaInfo ());
 		}
-#endif
 
-		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
+		public new Constant Resolve (ResolveContext rc)
 		{
-			// A constant cannot be of generic type
+			if (eclass != ExprClass.Unresolved)
+				return this;
+
+			// Resolved constant has to be still a constant
+			Constant c = (Constant) DoResolve (rc);
+			if (c == null)
+				return null;
+
+			if ((c.eclass & ExprClass.Value) == 0) {
+				c.Error_UnexpectedKind (rc, ResolveFlags.VariableOrValue, loc);
+				return null;
+			}
+
+			if (c.type == null)
+				throw new InternalErrorException ("Expression `{0}' did not set its type after Resolve", c.GetType ());
+
+			return c;
 		}
 	}
 
-	public abstract class IntegralConstant : Constant {
+	public abstract class IntegralConstant : Constant
+	{
 		protected IntegralConstant (Location loc) :
 			base (loc)
 		{
 		}
 
-		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type target, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, TypeSpec target, bool expl)
 		{
 			try {
 				ConvertExplicitly (true, target);
@@ -292,6 +306,8 @@ namespace Mono.CSharp {
 					GetValue ().ToString (), TypeManager.CSharpName (target));
 			}
 		}
+		
+		public abstract Constant Increment ();
 	}
 	
 	public class BoolConstant : Constant {
@@ -300,9 +316,6 @@ namespace Mono.CSharp {
 		public BoolConstant (bool val, Location loc):
 			base (loc)
 		{
-			type = TypeManager.bool_type;
-			eclass = ExprClass.Value;
-
 			Value = val;
 		}
 
@@ -311,25 +324,31 @@ namespace Mono.CSharp {
 			return Value ? "true" : "false";
 		}
 
+		protected override Expression DoResolve (ResolveContext ec)
+		{
+			type = TypeManager.bool_type;
+			eclass = ExprClass.Value;
+			return this;
+		}
+
 		public override object GetValue ()
 		{
 			return (object) Value;
 		}
-				
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
+		}
 		
 		public override void Emit (EmitContext ec)
 		{
 			if (Value)
-				ec.ig.Emit (OpCodes.Ldc_I4_1);
+				ec.Emit (OpCodes.Ldc_I4_1);
 			else
-				ec.ig.Emit (OpCodes.Ldc_I4_0);
+				ec.Emit (OpCodes.Ldc_I4_0);
 		}
 
-		public override Constant Increment ()
-		{
-			throw new NotSupportedException ();
-		}
-	
 		public override bool IsDefaultValue {
 			get {
 				return !Value;
@@ -346,7 +365,7 @@ namespace Mono.CSharp {
 			get { return Value == false; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			return null;
 		}
@@ -359,19 +378,29 @@ namespace Mono.CSharp {
 		public ByteConstant (byte v, Location loc):
 			base (loc)
 		{
-			type = TypeManager.byte_type;
-			eclass = ExprClass.Value;
 			Value = v;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			IntLiteral.EmitInt (ec.ig, Value);
+			ec.EmitInt (Value);
 		}
 
 		public override string AsString ()
 		{
 			return Value.ToString ();
+		}
+
+		protected override Expression DoResolve (ResolveContext ec)
+		{
+			type = TypeManager.byte_type;
+			eclass = ExprClass.Value;
+			return this;
 		}
 
 		public override object GetValue ()
@@ -390,6 +419,12 @@ namespace Mono.CSharp {
 			}
 		}
 
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
+
 		public override bool IsNegative {
 			get {
 				return false;
@@ -400,7 +435,7 @@ namespace Mono.CSharp {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.sbyte_type) {
 				if (in_checked_context){
@@ -441,17 +476,27 @@ namespace Mono.CSharp {
 		public CharConstant (char v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.char_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write ((ushort) Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			IntLiteral.EmitInt (ec.ig, Value);
+			ec.EmitInt (Value);
 		}
 
-		static public string descape (char c)
+		static string descape (char c)
 		{
 			switch (c){
 			case '\a':
@@ -490,11 +535,6 @@ namespace Mono.CSharp {
 			return Value;
 		}
 
-		public override Constant Increment ()
-		{
-			return new CharConstant (checked ((char)(Value + 1)), loc);
-		}
-		
 		public override bool IsDefaultValue {
 			get {
 				return Value == 0;
@@ -511,7 +551,7 @@ namespace Mono.CSharp {
 			get { return Value == '\0'; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -560,14 +600,24 @@ namespace Mono.CSharp {
 		public SByteConstant (sbyte v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.sbyte_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			IntLiteral.EmitInt (ec.ig, Value);
+			ec.EmitInt (Value);
 		}
 
 		public override string AsString ()
@@ -597,11 +647,17 @@ namespace Mono.CSharp {
 			}
 		}
 		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
+		
 		public override bool IsZeroInteger {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context && Value < 0)
@@ -650,14 +706,24 @@ namespace Mono.CSharp {
 		public ShortConstant (short v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.short_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			IntLiteral.EmitInt (ec.ig, Value);
+			ec.EmitInt (Value);
 		}
 
 		public override string AsString ()
@@ -690,8 +756,14 @@ namespace Mono.CSharp {
 				return Value < 0;
 			}
 		}
+		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -752,14 +824,24 @@ namespace Mono.CSharp {
 		public UShortConstant (ushort v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.ushort_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			IntLiteral.EmitInt (ec.ig, Value);
+			ec.EmitInt (Value);
 		}
 
 		public override string AsString ()
@@ -788,12 +870,18 @@ namespace Mono.CSharp {
 				return false;
 			}
 		}
+		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
 	
 		public override bool IsZeroInteger {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -848,66 +936,24 @@ namespace Mono.CSharp {
 		public IntConstant (int v, Location loc):
 			base (loc)
 		{
-			type = TypeManager.int32_type;
-			eclass = ExprClass.Value;
 			Value = v;
 		}
 
-		static public void EmitInt (ILGenerator ig, int i)
+		protected override Expression DoResolve (ResolveContext rc)
 		{
-			switch (i){
-			case -1:
-				ig.Emit (OpCodes.Ldc_I4_M1);
-				break;
-				
-			case 0:
-				ig.Emit (OpCodes.Ldc_I4_0);
-				break;
-				
-			case 1:
-				ig.Emit (OpCodes.Ldc_I4_1);
-				break;
-				
-			case 2:
-				ig.Emit (OpCodes.Ldc_I4_2);
-				break;
-				
-			case 3:
-				ig.Emit (OpCodes.Ldc_I4_3);
-				break;
-				
-			case 4:
-				ig.Emit (OpCodes.Ldc_I4_4);
-				break;
-				
-			case 5:
-				ig.Emit (OpCodes.Ldc_I4_5);
-				break;
-				
-			case 6:
-				ig.Emit (OpCodes.Ldc_I4_6);
-				break;
-				
-			case 7:
-				ig.Emit (OpCodes.Ldc_I4_7);
-				break;
-				
-			case 8:
-				ig.Emit (OpCodes.Ldc_I4_8);
-				break;
+			type = TypeManager.int32_type;
+			eclass = ExprClass.Value;
+			return this;
+		}
 
-			default:
-				if (i >= -128 && i <= 127){
-					ig.Emit (OpCodes.Ldc_I4_S, (sbyte) i);
-				} else
-					ig.Emit (OpCodes.Ldc_I4, i);
-				break;
-			}
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			EmitInt (ec.ig, Value);
+			ec.EmitInt (Value);
 		}
 
 		public override string AsString ()
@@ -936,12 +982,18 @@ namespace Mono.CSharp {
 				return Value < 0;
 			}
 		}
+		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
 
 		public override bool IsZeroInteger {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -1002,16 +1054,16 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		public override Constant ConvertImplicitly (Type type)
+		public override Constant ConvertImplicitly (ResolveContext rc, TypeSpec type)
 		{
 			if (this.type == type)
 				return this;
 
 			Constant c = TryImplicitIntConversion (type);
 			if (c != null)
-				return c;
+				return c.Resolve (rc);
 
-			return base.ConvertImplicitly (type);
+			return base.ConvertImplicitly (rc, type);
 		}
 
 		/// <summary>
@@ -1019,7 +1071,7 @@ namespace Mono.CSharp {
 		///   into a different data type using casts (See Implicit Constant
 		///   Expression Conversions)
 		/// </summary>
-		Constant TryImplicitIntConversion (Type target_type)
+		Constant TryImplicitIntConversion (TypeSpec target_type)
 		{
 			if (target_type == TypeManager.sbyte_type) {
 				if (Value >= SByte.MinValue && Value <= SByte.MaxValue)
@@ -1065,14 +1117,24 @@ namespace Mono.CSharp {
 		public UIntConstant (uint v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.uint32_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			IntLiteral.EmitInt (ec.ig, unchecked ((int) Value));
+			ec.EmitInt (unchecked ((int) Value));
 		}
 
 		public override string AsString ()
@@ -1101,12 +1163,18 @@ namespace Mono.CSharp {
 				return false;
 			}
 		}
+		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
 
 		public override bool IsZeroInteger {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -1172,31 +1240,24 @@ namespace Mono.CSharp {
 		public LongConstant (long v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.int64_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			EmitLong (ec.ig, Value);
-		}
-
-		static public void EmitLong (ILGenerator ig, long l)
-		{
-			if (l >= int.MinValue && l <= int.MaxValue) {
-				IntLiteral.EmitInt (ig, unchecked ((int) l));
-				ig.Emit (OpCodes.Conv_I8);
-				return;
-			}
-
-			if (l >= 0 && l <= uint.MaxValue) {
-				IntLiteral.EmitInt (ig, unchecked ((int) l));
-				ig.Emit (OpCodes.Conv_U8);
-				return;
-			}
-			
-			ig.Emit (OpCodes.Ldc_I8, l);
+			ec.EmitLong (Value);
 		}
 
 		public override string AsString ()
@@ -1225,12 +1286,18 @@ namespace Mono.CSharp {
 				return Value < 0;
 			}
 		}
+		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
 
 		public override bool IsZeroInteger {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -1296,13 +1363,13 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		public override Constant ConvertImplicitly (Type type)
+		public override Constant ConvertImplicitly (ResolveContext rc, TypeSpec type)
 		{
 			if (Value >= 0 && type == TypeManager.uint64_type) {
-				return new ULongConstant ((ulong) Value, loc);
+				return new ULongConstant ((ulong) Value, loc).Resolve (rc);
 			}
 
-			return base.ConvertImplicitly (type);
+			return base.ConvertImplicitly (rc, type);
 		}
 	}
 
@@ -1312,16 +1379,24 @@ namespace Mono.CSharp {
 		public ULongConstant (ulong v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.uint64_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-
-			LongLiteral.EmitLong (ig, unchecked ((long) Value));
+			ec.EmitLong (unchecked ((long) Value));
 		}
 
 		public override string AsString ()
@@ -1350,12 +1425,18 @@ namespace Mono.CSharp {
 				return false;
 			}
 		}
+		
+		public override bool IsOneInteger {
+			get {
+				return Value == 1;
+			}
+		}		
 
 		public override bool IsZeroInteger {
 			get { return Value == 0; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context && Value > Byte.MaxValue)
@@ -1415,14 +1496,24 @@ namespace Mono.CSharp {
 		public FloatConstant (float v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.float_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			ec.ig.Emit (OpCodes.Ldc_R4, Value);
+			ec.Emit (OpCodes.Ldc_R4, Value);
 		}
 
 		public override string AsString ()
@@ -1433,11 +1524,6 @@ namespace Mono.CSharp {
 		public override object GetValue ()
 		{
 			return Value;
-		}
-
-		public override Constant Increment ()
-		{
-			return new FloatConstant (checked(Value + 1), loc);
 		}
 
 		public override bool IsDefaultValue {
@@ -1452,7 +1538,7 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -1533,14 +1619,24 @@ namespace Mono.CSharp {
 		public DoubleConstant (double v, Location loc):
 			base (loc)
 		{
+			Value = v;
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
 			type = TypeManager.double_type;
 			eclass = ExprClass.Value;
-			Value = v;
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			enc.Stream.Write (Value);
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			ec.ig.Emit (OpCodes.Ldc_R8, Value);
+			ec.Emit (OpCodes.Ldc_R8, Value);
 		}
 
 		public override string AsString ()
@@ -1551,11 +1647,6 @@ namespace Mono.CSharp {
 		public override object GetValue ()
 		{
 			return Value;
-		}
-
-		public override Constant Increment ()
-		{
-			return new DoubleConstant (checked(Value + 1), loc);
 		}
 
 		public override bool IsDefaultValue {
@@ -1570,7 +1661,7 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.byte_type) {
 				if (in_checked_context){
@@ -1651,14 +1742,19 @@ namespace Mono.CSharp {
 		public DecimalConstant (decimal d, Location loc):
 			base (loc)
 		{
-			type = TypeManager.decimal_type;
-			eclass = ExprClass.Value;
 			Value = d;
 		}
 
 		override public string AsString ()
 		{
 			return Value.ToString () + "M";
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
+			type = TypeManager.decimal_type;
+			eclass = ExprClass.Value;
+			return this;
 		}
 
 		public override object GetValue ()
@@ -1668,41 +1764,48 @@ namespace Mono.CSharp {
 
 		public override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-
-			int [] words = Decimal.GetBits (Value);
+			int [] words = decimal.GetBits (Value);
 			int power = (words [3] >> 16) & 0xff;
 
-			if (power == 0 && Value <= int.MaxValue && Value >= int.MinValue)
-			{
-				if (TypeManager.void_decimal_ctor_int_arg == null) {
-					TypeManager.void_decimal_ctor_int_arg = TypeManager.GetPredefinedConstructor (
-						TypeManager.decimal_type, loc, TypeManager.int32_type);
+			if (power == 0) {
+				if (Value <= int.MaxValue && Value >= int.MinValue) {
+					if (TypeManager.void_decimal_ctor_int_arg == null) {
+						TypeManager.void_decimal_ctor_int_arg = TypeManager.GetPredefinedConstructor (
+							TypeManager.decimal_type, loc, TypeManager.int32_type);
 
-					if (TypeManager.void_decimal_ctor_int_arg == null)
-						return;
+						if (TypeManager.void_decimal_ctor_int_arg == null)
+							return;
+					}
+
+					ec.EmitInt ((int) Value);
+					ec.Emit (OpCodes.Newobj, TypeManager.void_decimal_ctor_int_arg);
+					return;
 				}
 
-				IntConstant.EmitInt (ig, (int)Value);
-				ig.Emit (OpCodes.Newobj, TypeManager.void_decimal_ctor_int_arg);
-				return;
+				if (Value <= long.MaxValue && Value >= long.MinValue) {
+					if (TypeManager.void_decimal_ctor_long_arg == null) {
+						TypeManager.void_decimal_ctor_long_arg = TypeManager.GetPredefinedConstructor (
+							TypeManager.decimal_type, loc, TypeManager.int64_type);
+
+						if (TypeManager.void_decimal_ctor_long_arg == null)
+							return;
+					}
+
+					ec.EmitLong ((long) Value);
+					ec.Emit (OpCodes.Newobj, TypeManager.void_decimal_ctor_long_arg);
+					return;
+				}
 			}
 
-			
-			//
-			// FIXME: we could optimize this, and call a better 
-			// constructor
-			//
-
-			IntConstant.EmitInt (ig, words [0]);
-			IntConstant.EmitInt (ig, words [1]);
-			IntConstant.EmitInt (ig, words [2]);
+			ec.EmitInt (words [0]);
+			ec.EmitInt (words [1]);
+			ec.EmitInt (words [2]);
 
 			// sign
-			IntConstant.EmitInt (ig, words [3] >> 31);
+			ec.EmitInt (words [3] >> 31);
 
 			// power
-			IntConstant.EmitInt (ig, power);
+			ec.EmitInt (power);
 
 			if (TypeManager.void_decimal_ctor_five_args == null) {
 				TypeManager.void_decimal_ctor_five_args = TypeManager.GetPredefinedConstructor (
@@ -1713,12 +1816,7 @@ namespace Mono.CSharp {
 					return;
 			}
 
-			ig.Emit (OpCodes.Newobj, TypeManager.void_decimal_ctor_five_args);
-		}
-
-		public override Constant Increment ()
-		{
-			return new DecimalConstant (checked (Value + 1), loc);
+			ec.Emit (OpCodes.Newobj, TypeManager.void_decimal_ctor_five_args);
 		}
 
 		public override bool IsDefaultValue {
@@ -1733,7 +1831,7 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			if (target_type == TypeManager.sbyte_type)
 				return new SByteConstant ((sbyte)Value, loc);
@@ -1769,8 +1867,6 @@ namespace Mono.CSharp {
 		public StringConstant (string s, Location loc):
 			base (loc)
 		{
-			type = TypeManager.string_type;
-			eclass = ExprClass.Value;
 			Value = s;
 		}
 
@@ -1778,6 +1874,13 @@ namespace Mono.CSharp {
 		override public string AsString ()
 		{
 			return "\"" + Value + "\"";
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
+			type = TypeManager.string_type;
+			eclass = ExprClass.Value;
+			return this;
 		}
 
 		public override object GetValue ()
@@ -1788,7 +1891,7 @@ namespace Mono.CSharp {
 		public override void Emit (EmitContext ec)
 		{
 			if (Value == null) {
-				ec.ig.Emit (OpCodes.Ldnull);
+				ec.Emit (OpCodes.Ldnull);
 				return;
 			}
 
@@ -1796,22 +1899,26 @@ namespace Mono.CSharp {
 			// Use string.Empty for both literals and constants even if
 			// it's not allowed at language level
 			//
-			if (Value.Length == 0 && RootContext.Optimize && !TypeManager.IsEqual (ec.CurrentType, TypeManager.string_type)) {
+			if (Value.Length == 0 && RootContext.Optimize && ec.CurrentType != TypeManager.string_type) {
 				if (TypeManager.string_empty == null)
-					TypeManager.string_empty = TypeManager.GetPredefinedField (TypeManager.string_type, "Empty", loc);
+					TypeManager.string_empty = TypeManager.GetPredefinedField (TypeManager.string_type, "Empty", loc, TypeManager.string_type);
 
 				if (TypeManager.string_empty != null) {
-					ec.ig.Emit (OpCodes.Ldsfld, TypeManager.string_empty);
+					ec.Emit (OpCodes.Ldsfld, TypeManager.string_empty);
 					return;
 				}
 			}
 
-			ec.ig.Emit (OpCodes.Ldstr, Value);
+			ec.Emit (OpCodes.Ldstr, Value);
 		}
 
-		public override Constant Increment ()
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
 		{
-			throw new NotSupportedException ();
+			// cast to object
+			if (type != targetType)
+				enc.Encode (type);
+
+			enc.Encode (Value);
 		}
 
 		public override bool IsDefaultValue {
@@ -1826,9 +1933,138 @@ namespace Mono.CSharp {
 			}
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override bool IsNull {
+			get {
+				return IsDefaultValue;
+			}
+		}
+
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			return null;
+		}
+	}
+
+	//
+	// Null constant can have its own type, think of `default (Foo)'
+	//
+	public class NullConstant : Constant
+	{
+		public NullConstant (TypeSpec type, Location loc)
+			: base (loc)
+		{
+			eclass = ExprClass.Value;
+			this.type = type;
+		}
+
+		public override string AsString ()
+		{
+			return GetSignatureForError ();
+		}
+
+		public override Expression CreateExpressionTree (ResolveContext ec)
+		{
+			if (type == InternalType.Null || type == TypeManager.object_type) {
+				// Optimized version, also avoids referencing literal internal type
+				Arguments args = new Arguments (1);
+				args.Add (new Argument (this));
+				return CreateExpressionFactoryCall (ec, "Constant", args);
+			}
+
+			return base.CreateExpressionTree (ec);
+		}
+
+		protected override Expression DoResolve (ResolveContext ec)
+		{
+			return this;
+		}
+
+		public override void EncodeAttributeValue (IMemberContext rc, AttributeEncoder enc, TypeSpec targetType)
+		{
+			// Type it as string cast
+			if (targetType == TypeManager.object_type || targetType == InternalType.Null)
+				enc.Encode (TypeManager.string_type);
+
+			var ac = targetType as ArrayContainer;
+			if (ac != null) {
+				if (ac.Rank != 1 || ac.Element.IsArray)
+					base.EncodeAttributeValue (rc, enc, targetType);
+				else
+					enc.Stream.Write (uint.MaxValue);
+			} else {
+				enc.Stream.Write (byte.MaxValue);
+			}
+		}
+
+		public override void Emit (EmitContext ec)
+		{
+			ec.Emit (OpCodes.Ldnull);
+
+			// Only to make verifier happy
+			if (TypeManager.IsGenericParameter (type))
+				ec.Emit (OpCodes.Unbox_Any, type);
+		}
+
+		public override string ExprClassName {
+			get {
+				return GetSignatureForError ();
+			}
+		}
+
+		public override string GetSignatureForError ()
+		{
+			return "null";
+		}
+
+		public override Constant ConvertExplicitly (bool inCheckedContext, TypeSpec targetType)
+		{
+			if (targetType.IsPointer) {
+				if (IsLiteral || this is NullPointer)
+					return new EmptyConstantCast (new NullPointer (loc), targetType);
+
+				return null;
+			}
+
+			// Exlude internal compiler types
+			if (targetType.Kind == MemberKind.InternalCompilerType && targetType != InternalType.Dynamic && targetType != InternalType.Null)
+				return null;
+
+			if (!IsLiteral && !Convert.ImplicitStandardConversionExists (this, targetType))
+				return null;
+
+			if (TypeManager.IsReferenceType (targetType))
+				return new NullConstant (targetType, loc);
+
+			if (TypeManager.IsNullableType (targetType))
+				return Nullable.LiftedNull.Create (targetType, loc);
+
+			return null;
+		}
+
+		public override Constant ConvertImplicitly (ResolveContext rc, TypeSpec targetType)
+		{
+			return ConvertExplicitly (false, targetType);
+		}
+
+		public override object GetValue ()
+		{
+			return null;
+		}
+
+		public override bool IsDefaultValue {
+			get { return true; }
+		}
+
+		public override bool IsNegative {
+			get { return false; }
+		}
+
+		public override bool IsNull {
+			get { return true; }
+		}
+
+		public override bool IsZeroInteger {
+			get { return true; }
 		}
 	}
 
@@ -1837,7 +2073,6 @@ namespace Mono.CSharp {
 	///   used by BitwiseAnd to ensure that the second expression is invoked
 	///   regardless of the value of the left side.  
 	/// </summary>
-	
 	public class SideEffectConstant : Constant {
 		public Constant value;
 		Expression side_effect;
@@ -1848,13 +2083,20 @@ namespace Mono.CSharp {
 			while (side_effect is SideEffectConstant)
 				side_effect = ((SideEffectConstant) side_effect).side_effect;
 			this.side_effect = side_effect;
-			eclass = ExprClass.Value;
-			type = value.Type;
 		}
 
 		public override string AsString ()
 		{
 			return value.AsString ();
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
+			value = value.Resolve (rc);
+
+			type = value.Type;
+			eclass = ExprClass.Value;
+			return this;
 		}
 
 		public override object GetValue ()
@@ -1878,11 +2120,6 @@ namespace Mono.CSharp {
 			get { return value.IsDefaultValue; }
 		}
 
-		public override Constant Increment ()
-		{
-			throw new NotSupportedException ();
-		}
-		
 		public override bool IsNegative {
 			get { return value.IsNegative; }
 		}
@@ -1891,7 +2128,7 @@ namespace Mono.CSharp {
 			get { return value.IsZeroInteger; }
 		}
 
-		public override Constant ConvertExplicitly (bool in_checked_context, Type target_type)
+		public override Constant ConvertExplicitly (bool in_checked_context, TypeSpec target_type)
 		{
 			Constant new_value = value.ConvertExplicitly (in_checked_context, target_type);
 			return new_value == null ? null : new SideEffectConstant (new_value, side_effect, new_value.Location);

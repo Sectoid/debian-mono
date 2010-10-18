@@ -1,3 +1,7 @@
+2010-08-19  Jb Evain  <jbevain@gmail.com>
+
+	Add test for #572084, issue with SymmetricWith and duplicate items
+
 2010-02-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* System.Collections.Generic/HashSetTest.cs: fix and test for bug

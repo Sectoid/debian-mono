@@ -1,3 +1,35 @@
+2010-08-25  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationInfo.cs: Set/reset the new 4.0 members in SetType
+	based on the new type.
+
+2010-08-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* FormatterServices.cs: Add 4.0 GetSurrogateForCyclicalReference
+	method.
+
+2010-08-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* FormatterServices.cs: Remove NET_1_1 directive, since it's
+	useless for us now.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationBinder.cs: Add 4.0 BindToName.
+
+2010-08-16  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* SerializationInfo.cs: Add 4.0 ObjectType,
+	IsAssemblyNameSetExplicit and IsFullTypeNameSetExplicit.
+
+2010-06-03  Jb Evain  <jbevain@novell.com>
+
+	* SafeSerializationEventArgs.cs: add new type in net_4_0.
+
+2010-06-03  Jb Evain  <jbevain@novell.com>
+
+	* ISafeSerializationData.cs: add new interface in net_4_0.
+
 2008-05-22  Miguel de Icaza  <miguel@novell.com>
 
 	* SerializationCallbacks.cs: This lock has a high contention rate

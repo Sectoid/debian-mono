@@ -9,7 +9,7 @@
 //
 
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -39,15 +39,22 @@ using System.Security;
 using System.Security.Permissions;
 using System.Security.Principal;
 using System.Web.Configuration;
+using System.Web.Management;
 using System.Web.UI;
 using System.Web.Util;
 using System.Globalization;
 
-namespace System.Web {
-	
+#if NET_4_0
+using System.Security.Authentication.ExtendedProtection;
+using System.Web.Routing;
+#endif
+
+namespace System.Web
+{	
 	// CAS - no InheritanceDemand here as the class is sealed
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public sealed partial class HttpRequest {
+	public sealed partial class HttpRequest
+	{
 		HttpWorkerRequest worker_request;
 		HttpContext context;
 		WebROCollection query_string_nvc;
@@ -70,7 +77,9 @@ namespace System.Web {
 		string current_exe_path;
 		string physical_path;
 		string unescaped_path;
+		string original_path;
 		string path_info;
+		string raw_url;
 		WebROCollection all_params;
 		WebROCollection headers;
 		Stream input_stream;
@@ -96,16 +105,23 @@ namespace System.Web {
 		// Validations
 		bool validate_cookies, validate_query_string, validate_form;
 		bool checked_cookies, checked_query_string, checked_form;
-
-#if NET_2_0
 		static readonly UrlMappingCollection urlMappings;
-#endif
-		
 		readonly static char [] queryTrimChars = {'?'};
+#if NET_4_0
+		RequestContext requestContext;
 		
+		static bool validateRequestNewMode;
+		internal static bool ValidateRequestNewMode {
+			get { return validateRequestNewMode; }
+		}
+
+		internal static char[] RequestPathInvalidCharacters {
+			get; private set;
+		}
+#endif
+
 		static HttpRequest ()
 		{
-#if NET_2_0
 			try {
 				UrlMappingsSection ums = WebConfigurationManager.GetWebApplicationSection ("system.web/urlMappings") as UrlMappingsSection;
 				if (ums != null && ums.IsEnabled) {
@@ -113,10 +129,21 @@ namespace System.Web {
 					if (urlMappings.Count == 0)
 						urlMappings = null;
 				}
+
+#if NET_4_0
+				HttpRuntimeSection runtimeConfig = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
+				Version validationMode = runtimeConfig.RequestValidationMode;
+
+				if (validationMode >= new Version (4, 0)) {
+					validateRequestNewMode = true;
+					string invalidChars = runtimeConfig.RequestPathInvalidCharacters;
+					if (!String.IsNullOrEmpty (invalidChars))
+						RequestPathInvalidCharacters = invalidChars.ToCharArray ();
+				}
+#endif
 			} catch {
 				// unlikely to happen
 			}
-#endif
 			
 			host_addresses = GetLocalHostAddresses ();
 		}
@@ -153,13 +180,7 @@ namespace System.Web {
 					else
 						query = worker_request.GetQueryString();
 					
-					BuildUrlComponents (
-#if NET_2_0
-						ApplyUrlMapping (worker_request.GetUriPath ()),
-#else
-						worker_request.GetUriPath (),
-#endif
-						query);
+					BuildUrlComponents (ApplyUrlMapping (worker_request.GetUriPath ()), query);
 				}
 				return url_components;
 			}
@@ -178,7 +199,6 @@ namespace System.Web {
 				url_components.Query = query.TrimStart (queryTrimChars);
 		}
 
-#if NET_2_0
 		internal string ApplyUrlMapping (string url)
 		{
 			if (urlMappings == null)
@@ -213,7 +233,6 @@ namespace System.Web {
 
 			return url_components.Path;
 		}
-#endif
 
 		string [] SplitHeader (int header_index)
 		{
@@ -239,7 +258,6 @@ namespace System.Web {
 			}
 		}
 
-#if NET_2_0
 #if !TARGET_JVM
 		public WindowsIdentity LogonUserIdentity {
 			get { throw new NotImplementedException (); }
@@ -255,7 +273,6 @@ namespace System.Web {
 				anonymous_id = value;
 			}
 		}
-#endif
 
 		public string ApplicationPath {
 			get {
@@ -279,7 +296,6 @@ namespace System.Web {
 			}
 		}
 
-#if NET_2_0		
 		internal bool BrowserMightHaveSpecialWriter {
 			get {
 				return (browser_capabilities != null 
@@ -293,7 +309,6 @@ namespace System.Web {
 					|| HttpApplicationFactory.AppBrowsersFiles.Length > 0);
 			}
 		}
-#endif
 
 		public HttpClientCertificate ClientCertificate {
 			get {
@@ -328,7 +343,7 @@ namespace System.Web {
 			get {
 				if (encoding == null){
 					if (worker_request == null)
-						throw new HttpException ("No HttpWorkerRequest");
+						throw HttpException.NewWithCode ("No HttpWorkerRequest", WebEventCodes.RuntimeErrorRequestAbort);
 					
 					string content_type = ContentType;
 					string parameter = GetParameter (content_type, "; charset=");
@@ -407,9 +422,15 @@ namespace System.Web {
 				// For J2EE portal support we emulate cookies using the session.
 				GetSessionCookiesForPortal (cookies);
 #endif
-				if (validate_cookies && !checked_cookies){
-					ValidateCookieCollection (cookies);
+				bool needValidation = validate_cookies;
+#if NET_4_0
+				needValidation |= validateRequestNewMode;
+#endif
+				if (needValidation && !checked_cookies) {
+					// Setting this before calling the validator prevents
+					// possible endless recursion
 					checked_cookies = true;
+					ValidateCookieCollection (cookies);
 				}
 
 				return cookies;
@@ -425,14 +446,16 @@ namespace System.Web {
 				return FilePath;
 			}
 		}
-
-#if NET_2_0
+#if NET_4_0
+		public string CurrentExecutionFilePathExtension {
+			get { return global::System.IO.Path.GetExtension (CurrentExecutionFilePath); }
+		}
+#endif
 		public string AppRelativeCurrentExecutionFilePath {
 			get {
 				return VirtualPathUtility.ToAppRelative (CurrentExecutionFilePath);
 			}
 		}
-#endif
 
 		public string FilePath {
 			get {
@@ -440,28 +463,19 @@ namespace System.Web {
 					return "/"; // required for 2.0
 
 				if (file_path == null)
-					file_path = UrlUtils.Canonic (
-#if NET_2_0
-						ApplyUrlMapping (worker_request.GetFilePath ())
-#else
-						worker_request.GetFilePath ()
-#endif
-					);
+					file_path = UrlUtils.Canonic (ApplyUrlMapping (worker_request.GetFilePath ()));
 
 				return file_path;
 			}
 		}
-		
+
 		internal string ClientFilePath {
 			get {
 				if (client_file_path == null) {
 					if (worker_request == null)
 						return "/";
-#if NET_2_0
+					
 					return UrlUtils.Canonic (ApplyUrlMapping (worker_request.GetFilePath ()));
-#else
-					return UrlUtils.Canonic (worker_request.GetFilePath ());
-#endif
 				}
 				
 				return client_file_path;
@@ -666,10 +680,18 @@ namespace System.Web {
 					form.Protect ();
 				}
 
-				if (validate_form && !checked_form){
+#if NET_4_0
+				if (validateRequestNewMode && !checked_form) {
+					// Setting this before calling the validator prevents
+					// possible endless recursion
 					checked_form = true;
-					ValidateNameValueCollection ("Form", form);
-				}
+					ValidateNameValueCollection ("Form", query_string_nvc, RequestValidationSource.Form);
+				} else
+#endif
+					if (validate_form && !checked_form){
+						checked_form = true;
+						ValidateNameValueCollection ("Form", form);
+					}
 				
 				return form;
 			}
@@ -677,8 +699,22 @@ namespace System.Web {
 
 		public NameValueCollection Headers {
 			get {
-				if (headers == null)
+				if (headers == null) {
 					headers = new HeadersCollection (this);
+#if NET_4_0
+					if (validateRequestNewMode) {
+						RequestValidator validator = RequestValidator.Current;
+						int validationFailureIndex;
+
+						foreach (string hkey in headers.AllKeys) {
+							string value = headers [hkey];
+							
+							if (!validator.IsValidRequestString (HttpContext.Current, value, RequestValidationSource.Headers, hkey, out validationFailureIndex))
+								ThrowValidationException ("Headers", hkey, value);
+						}
+					}
+#endif
+				}
 				
 				return headers;
 			}
@@ -760,14 +796,9 @@ namespace System.Web {
 			//
 			int content_length = ContentLength;
 			int content_length_kb = content_length / 1024;
-			
-#if NET_2_0
 			HttpRuntimeSection config = (HttpRuntimeSection) WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime");
-#else
-			HttpRuntimeConfig config = (HttpRuntimeConfig) HttpContext.GetAppConfig ("system.web/httpRuntime");
-#endif
 			if (content_length_kb > config.MaxRequestLength)
-				throw new HttpException (400, "Upload size exceeds httpRuntime limit.");
+				throw HttpException.NewWithCode (400, "Upload size exceeds httpRuntime limit.", WebEventCodes.RuntimeErrorPostTooLarge);
 
 			int total = 0;
 			byte [] buffer;
@@ -814,8 +845,9 @@ namespace System.Web {
 				total = Math.Min (content_length, total);
 				IntPtr content = Marshal.AllocHGlobal (content_length);
 				if (content == (IntPtr) 0)
-					throw new HttpException (String.Format ("Not enough memory to allocate {0} bytes.",
-									content_length));
+					throw HttpException.NewWithCode (
+						String.Format ("Not enough memory to allocate {0} bytes.", content_length),
+						WebEventCodes.WebErrorOtherError);
 
 				if (total > 0)
 					Marshal.Copy (buffer, 0, content, total);
@@ -851,7 +883,7 @@ namespace System.Web {
 						break;
 					total += n;
 					if (total < 0 || total > maxlength)
-						throw new HttpException (400, "Upload size exceeds httpRuntime limit.");
+						throw HttpException.NewWithCode (400, "Upload size exceeds httpRuntime limit.", WebEventCodes.RuntimeErrorPostTooLarge);
 
 					if (ms != null && total > disk_th) {
 						// Swith to on-disk file.
@@ -873,7 +905,7 @@ namespace System.Web {
 			DoFilter (buffer);
 
 			if (total < content_length)
-				throw new HttpException (411, "The request body is incomplete.");
+				throw HttpException.NewWithCode (411, "The request body is incomplete.", WebEventCodes.WebErrorOtherError);
 		}
 #endif
 
@@ -896,7 +928,24 @@ namespace System.Web {
 				} catch {}
 			}
 		}
-		
+#if NET_4_0
+		public RequestContext RequestContext {
+			get {
+				if (requestContext == null)
+					requestContext = new RequestContext (new HttpContextWrapper (this.context ?? HttpContext.Current), new RouteData ());
+
+				return requestContext;
+			}
+			
+			internal set { requestContext = value; }	
+		}
+
+		public ChannelBinding HttpChannelBinding {
+			get {
+				throw new PlatformNotSupportedException ("This property is not supported.");
+			}
+		}
+#endif
 		public Stream InputStream {
 			get {
 				if (input_stream == null)
@@ -952,26 +1001,33 @@ namespace System.Web {
 			}
 		}
 
+		internal string PathNoValidation {
+			get {
+				if (original_path == null) {
+					if (url_components != null)
+						// use only if it's already been instantiated, so that we can't go into endless
+						// recursion in some scenarios
+						original_path = UrlComponents.Path;
+					else
+						original_path = ApplyUrlMapping (worker_request.GetUriPath ());
+				}
+
+				return original_path;
+			}
+		}
+		
 		public string Path {
 			get {
 				if (unescaped_path == null) {
-					string path;
-					if (url_components != null) {
-						// use only if it's already been instantiated, so that we can't go into endless
-						// recursion in some scenarios
-						path = UrlComponents.Path;
-					} else {
-#if NET_2_0
-						path = ApplyUrlMapping (worker_request.GetUriPath ());
-#else
-						path = worker_request.GetUriPath ();
-#endif
-					}
+					unescaped_path = Uri.UnescapeDataString (PathNoValidation);
+#if NET_4_0
+					if (validateRequestNewMode) {
+						RequestValidator validator = RequestValidator.Current;
+						int validationFailureIndex;
 						
-#if NET_2_0
-					unescaped_path = Uri.UnescapeDataString (path);
-#else
-					unescaped_path = HttpUtility.UrlDecode (path);
+						if (!validator.IsValidRequestString (HttpContext.Current, unescaped_path, RequestValidationSource.Path, null, out validationFailureIndex))
+							ThrowValidationException ("Path", "Path", unescaped_path);
+					}
 #endif
 				}
 				
@@ -984,9 +1040,16 @@ namespace System.Web {
 				if (path_info == null) {
 					if (worker_request == null)
 						return String.Empty;
-					path_info = worker_request.GetPathInfo ();
-					if (path_info == null)
-						path_info = String.Empty;
+					path_info = worker_request.GetPathInfo () ?? String.Empty;
+#if NET_4_0
+					if (validateRequestNewMode) {
+						RequestValidator validator = RequestValidator.Current;
+						int validationFailureIndex;
+						
+						if (!validator.IsValidRequestString (HttpContext.Current, path_info, RequestValidationSource.PathInfo, null, out validationFailureIndex))
+							ThrowValidationException ("PathInfo", "PathInfo", path_info);
+					}
+#endif
 				}
 
 				return path_info;
@@ -1052,11 +1115,18 @@ namespace System.Web {
 					
 					query_string_nvc.Protect();
 				}
-				
-				if (validate_query_string && !checked_query_string) {
-					ValidateNameValueCollection ("QueryString", query_string_nvc);
+#if NET_4_0
+				if (validateRequestNewMode && !checked_query_string) {
+					// Setting this before calling the validator prevents
+					// possible endless recursion
 					checked_query_string = true;
-				}
+					ValidateNameValueCollection ("QueryString", query_string_nvc, RequestValidationSource.QueryString);
+				} else
+#endif
+					if (validate_query_string && !checked_query_string) {
+						ValidateNameValueCollection ("QueryString", query_string_nvc);
+						checked_query_string = true;
+					}
 				
 				return query_string_nvc;
 			}
@@ -1064,10 +1134,26 @@ namespace System.Web {
 
 		public string RawUrl {
 			get {
-				if (worker_request != null)
-					return worker_request.GetRawUrl ();
-				else
-					return UrlComponents.Path + UrlComponents.Query;
+				if (raw_url == null) {
+					if (worker_request != null)
+						raw_url = worker_request.GetRawUrl ();
+					else
+						raw_url = UrlComponents.Path + UrlComponents.Query;
+					
+					if (raw_url == null)
+						raw_url = String.Empty;
+#if NET_4_0
+					if (validateRequestNewMode) {
+						RequestValidator validator = RequestValidator.Current;
+						int validationFailureIndex;
+
+						if (!validator.IsValidRequestString (HttpContext.Current, raw_url, RequestValidationSource.RawUrl, null, out validationFailureIndex))
+							ThrowValidationException ("RawUrl", "RawUrl", raw_url);
+					}
+#endif
+				}
+				
+				return raw_url;
 			}
 		}
 
@@ -1234,7 +1320,7 @@ namespace System.Web {
 		public string MapPath (string virtualPath, string baseVirtualDir, bool allowCrossAppMapping)
 		{
 			if (worker_request == null)
-				throw new HttpException ("No HttpWorkerRequest");
+				throw HttpException.NewWithCode ("No HttpWorkerRequest", WebEventCodes.RuntimeErrorRequestAbort);
 
 			if (virtualPath == null)
 				virtualPath = "~";
@@ -1245,22 +1331,23 @@ namespace System.Web {
 			}
 
 			if (!VirtualPathUtility.IsValidVirtualPath (virtualPath))
-				throw new HttpException (String.Format ("'{0}' is not a valid virtual path.", virtualPath));
+				throw HttpException.NewWithCode (String.Format ("'{0}' is not a valid virtual path.", virtualPath), WebEventCodes.RuntimeErrorRequestAbort);
 
 			string appVirtualPath = HttpRuntime.AppDomainAppVirtualPath;
-
 			if (!VirtualPathUtility.IsRooted (virtualPath)) {
 				if (StrUtils.IsNullOrEmpty (baseVirtualDir))
 					baseVirtualDir = appVirtualPath;
 				virtualPath = VirtualPathUtility.Combine (VirtualPathUtility.AppendTrailingSlash (baseVirtualDir), virtualPath);
-			}
-			virtualPath = VirtualPathUtility.ToAbsolute (virtualPath);
-			
+				if (!VirtualPathUtility.IsAbsolute (virtualPath))
+					virtualPath = VirtualPathUtility.ToAbsolute (virtualPath);
+			} else if (!VirtualPathUtility.IsAbsolute (virtualPath))
+				virtualPath = VirtualPathUtility.ToAbsolute (virtualPath);
+
 			if (!allowCrossAppMapping){
 				if (!StrUtils.StartsWith (virtualPath, appVirtualPath, true))
-					throw new HttpException ("MapPath: Mapping across applications not allowed");
+					throw HttpException.NewWithCode ("MapPath: Mapping across applications not allowed", WebEventCodes.RuntimeErrorRequestAbort);
 				if (appVirtualPath.Length > 1 && virtualPath.Length > 1 && virtualPath [0] != '/')
-					throw new HttpException ("MapPath: Mapping across applications not allowed");
+					throw HttpException.NewWithCode ("MapPath: Mapping across applications not allowed", WebEventCodes.RuntimeErrorRequestAbort);
 			}
 #if TARGET_JVM
 			return worker_request.MapPath (virtualPath);
@@ -1324,7 +1411,32 @@ namespace System.Web {
 			validate_query_string = true;
 			validate_form = true;
 		}
-
+#if NET_4_0
+		internal void Validate ()
+		{
+			var cfg = WebConfigurationManager.GetSection ("system.web/httpRuntime") as HttpRuntimeSection;
+			string query = UrlComponents.Query;
+			
+			if (query != null && query.Length > cfg.MaxQueryStringLength)
+				throw new HttpException (400, "The length of the query string for this request exceeds the configured maxQueryStringLength value.");
+			
+			string path = PathNoValidation;
+			if (path != null) {
+				if (path.Length > cfg.MaxUrlLength)
+					throw new HttpException (400, "The length of the URL for this request exceeds the configured maxUrlLength value.");
+				
+				char[] invalidChars = RequestPathInvalidCharacters;
+				if (invalidChars != null) {
+					int idx = path.IndexOfAny (invalidChars);
+					if (idx != -1)
+						throw HttpException.NewWithCode (
+							String.Format ("A potentially dangerous Request.Path value was detected from the client ({0}).", path [idx]),
+							WebEventCodes.RuntimeErrorValidationFailure
+						);
+				}
+			}
+		}
+#endif
 #region internal routines
 		internal string ClientTarget {
 			get {
@@ -1335,13 +1447,8 @@ namespace System.Web {
 				client_target = value;
 			}
 		}
-
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		bool IsLocal {
+		
+		public bool IsLocal {
 			get {
 				string address = worker_request.GetRemoteAddress ();
 
@@ -1367,24 +1474,30 @@ namespace System.Web {
 		{
 			file_path = path;
 			physical_path = null;
+			original_path = null;
 		}
 
 		internal void SetCurrentExePath (string path)
 		{
 			cached_url = null;
 			current_exe_path = path;
-			UrlComponents.Path = path;
+			UrlComponents.Path = path + PathInfo;
 			// recreated on demand
 			root_virtual_dir = null;
 			base_virtual_dir = null;
 			physical_path = null;
 			unescaped_path = null;
+			original_path = null;
 		}
 
 		internal void SetPathInfo (string pi)
 		{
 			cached_url = null;
 			path_info = pi;
+			original_path = null;
+
+			string path = UrlComponents.Path;
+			UrlComponents.Path = path + PathInfo;
 		}
 
 		// Headers is ReadOnly, so we need this hack for cookie-less sessions.
@@ -1436,9 +1549,8 @@ namespace System.Web {
 		}
 
 		internal HttpContext Context {
-			get {
-				return context;
-			}
+			get { return context; }
+			set { context = value; }
 		}
 
 		static void ValidateNameValueCollection (string name, NameValueCollection coll)
@@ -1448,11 +1560,39 @@ namespace System.Web {
 		
 			foreach (string key in coll.Keys) {
 				string val = coll [key];
-				if (val != null && val.Length > 0 && CheckString (val))
+				if (val != null && val.Length > 0 && IsInvalidString (val))
 					ThrowValidationException (name, key, val);
 			}
 		}
-		
+#if NET_4_0
+		static void ValidateNameValueCollection (string name, NameValueCollection coll, RequestValidationSource source)
+		{
+			if (coll == null)
+				return;
+
+			RequestValidator validator = RequestValidator.Current;
+			int validationFailureIndex;
+			HttpContext context = HttpContext.Current;
+
+			foreach (string key in coll.Keys) {
+				string val = coll [key];
+				if (val != null && val.Length > 0 && !validator.IsValidRequestString (context, val, source, key, out validationFailureIndex))
+					ThrowValidationException (name, key, val);
+			}
+		}
+
+		[AspNetHostingPermission (SecurityAction.Demand, Level = AspNetHostingPermissionLevel.High)]
+		public void InsertEntityBody ()
+		{
+			throw new PlatformNotSupportedException ("This method is not supported.");
+		}
+
+		[AspNetHostingPermission (SecurityAction.Demand, Level = AspNetHostingPermissionLevel.High)]
+		public void InsertEntityBody (byte[] buffer, int offset, int count)
+		{
+			throw new PlatformNotSupportedException ("This method is not supported.");
+		}
+#endif
 		static void ValidateCookieCollection (HttpCookieCollection cookies)
 		{
 			if (cookies == null)
@@ -1460,15 +1600,35 @@ namespace System.Web {
 		
 			int size = cookies.Count;
 			HttpCookie cookie;
+#if NET_4_0
+			RequestValidator validator = RequestValidator.Current;
+			int validationFailureIndex;
+			HttpContext context = HttpContext.Current;
+#endif
+			bool invalid;
+			
 			for (int i = 0 ; i < size ; i++) {
 				cookie = cookies[i];
-				string value = cookie.Value;
+				if (cookie == null)
+					continue;
 				
-				if (value != null && value != "" && CheckString (value))
-					ThrowValidationException ("Cookies", cookie.Name, cookie.Value);
+				string value = cookie.Value;
+				string name = cookie.Name;
+
+				if (!String.IsNullOrEmpty (value)) {
+#if NET_4_0
+					if (validateRequestNewMode)
+						invalid = !validator.IsValidRequestString (context, value, RequestValidationSource.Cookies, name, out validationFailureIndex);
+					else
+#endif
+						invalid = IsInvalidString (value);
+
+					if (invalid)
+						ThrowValidationException ("Cookies", name, value);
+				}
 			}
 		}
-		
+
 		static void ThrowValidationException (string name, string key, string value)
 		{
 			string v = "\"" + value + "\"";
@@ -1480,9 +1640,19 @@ namespace System.Web {
 		
 			throw new HttpRequestValidationException (msg);
 		}
-		
-		static bool CheckString (string val)
+
+
+		internal static bool IsInvalidString (string val)
 		{
+			int validationFailureIndex;
+
+			return IsInvalidString (val, out validationFailureIndex);
+		}
+
+		internal static bool IsInvalidString (string val, out int validationFailureIndex)
+		{
+			validationFailureIndex = 0;
+
 			int len = val.Length;
 			if (len < 2)
 				return false;
@@ -1494,9 +1664,12 @@ namespace System.Web {
 				if (current == '<' || current == '\xff1c') {
 					if (next == '!' || next < ' '
 					    || (next >= 'a' && next <= 'z')
-					    || (next >= 'A' && next <= 'Z'))
+					    || (next >= 'A' && next <= 'Z')) {
+						validationFailureIndex = idx - 1;
 						return true;
+					}
 				} else if (current == '&' && next == '#') {
+					validationFailureIndex = idx - 1;
 					return true;
 				}
 
@@ -1505,20 +1678,14 @@ namespace System.Web {
 
 			return false;
 		}
-
+		
 		static System.Net.IPAddress [] GetLocalHostAddresses ()
 		{
 			try {
 				string hostName = System.Net.Dns.GetHostName ();
-#if NET_2_0
 				System.Net.IPAddress [] ipaddr = System.Net.Dns.GetHostAddresses (hostName);
-#else
-				System.Net.IPAddress [] ipaddr = System.Net.Dns.GetHostByName (hostName).AddressList;
-#endif
 				return ipaddr;
-			}
-			catch
-			{
+			} catch {
 				return new System.Net.IPAddress[0];
 			}
 		}

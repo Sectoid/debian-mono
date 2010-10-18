@@ -38,9 +38,7 @@ using System.Collections;
 
 namespace System.Runtime.Serialization
 {
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisibleAttribute (true)]
-#endif
 	public sealed class SerializationInfo
 	{
 		Hashtable serialized = new Hashtable ();
@@ -48,6 +46,11 @@ namespace System.Runtime.Serialization
 
 		string assemblyName; // the assembly being serialized
 		string fullTypeName; // the type being serialized.
+#if NET_4_0
+		Type objectType;
+		bool isAssemblyNameSetExplicit;
+		bool isFullTypeNameSetExplicit;
+#endif
 
 		IFormatterConverter converter;
 		
@@ -57,6 +60,9 @@ namespace System.Runtime.Serialization
 			assemblyName = type.Assembly.FullName;
 			fullTypeName = type.FullName;
 			converter = new FormatterConverter ();
+#if NET_4_0
+			objectType = type;
+#endif
 		}
 		
 		/* used by the runtime */
@@ -67,6 +73,9 @@ namespace System.Runtime.Serialization
 			assemblyName = type.Assembly.FullName;
 			fullTypeName = type.FullName;
 			converter = new FormatterConverter ();
+#if NET_4_0
+			objectType = type;
+#endif
 
 			for (int i = 0; i < len; i++) {
 				serialized.Add (data [i].Name, data [i]);
@@ -87,6 +96,9 @@ namespace System.Runtime.Serialization
 			this.converter = converter;
 			assemblyName = type.Assembly.FullName;
 			fullTypeName = type.FullName;
+#if NET_4_0
+			objectType = type;
+#endif
 		}
 
 		// Properties
@@ -98,6 +110,9 @@ namespace System.Runtime.Serialization
 				if (value == null)
 					throw new ArgumentNullException ("Argument is null.");
 				assemblyName = value;
+#if NET_4_0
+				isAssemblyNameSetExplicit = true;
+#endif
 			}
 		}
 		
@@ -109,6 +124,9 @@ namespace System.Runtime.Serialization
 				if ( value == null)
 					throw new ArgumentNullException ("Argument is null.");
 				fullTypeName = value;
+#if NET_4_0
+				isFullTypeNameSetExplicit = true;
+#endif
 			}
 		}
 		
@@ -116,6 +134,26 @@ namespace System.Runtime.Serialization
 		{
 			get { return serialized.Count; }
 		}
+
+#if NET_4_0
+		public bool IsAssemblyNameSetExplicit {
+			get {
+				return isAssemblyNameSetExplicit;
+			}
+		}
+
+		public bool IsFullTypeNameSetExplicit {
+			get {
+				return isFullTypeNameSetExplicit;
+			}
+		}
+
+		public Type ObjectType {
+			get {
+				return objectType;
+			}
+		}
+#endif
 
 		// Methods
 		public void AddValue (string name, object value, Type type)
@@ -151,6 +189,11 @@ namespace System.Runtime.Serialization
 				return entry.Value;
 		}
 
+		internal bool HasKey (string name)
+		{
+			return serialized [name] != null;
+		}
+		
 		public void SetType (Type type)
 		{
 			if (type == null)
@@ -158,6 +201,11 @@ namespace System.Runtime.Serialization
 
 			fullTypeName = type.FullName;
 			assemblyName = type.Assembly.FullName;
+#if NET_4_0
+			objectType = type;
+			isAssemblyNameSetExplicit = false;
+			isFullTypeNameSetExplicit = false;
+#endif
 		}
 
 		public SerializationInfoEnumerator GetEnumerator ()

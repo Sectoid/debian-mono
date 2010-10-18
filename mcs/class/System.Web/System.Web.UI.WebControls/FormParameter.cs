@@ -28,17 +28,17 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Collections;
 using System.Collections.Specialized;
+using System.Data;
 using System.Text;
 using System.ComponentModel;
 
-namespace System.Web.UI.WebControls {
-
+namespace System.Web.UI.WebControls
+{
 	[DefaultPropertyAttribute ("FormField")]
-	public class FormParameter : Parameter {
-
+	public class FormParameter : Parameter
+	{
 		public FormParameter () : base ()
 		{
 		}
@@ -57,28 +57,38 @@ namespace System.Web.UI.WebControls {
 		{
 			FormField = formField;
 		}
+
+		public FormParameter (string name, DbType dbType, string formField) : base (name, dbType)
+		{
+			FormField = formField;
+		}
 		
 		protected override Parameter Clone ()
 		{
 			return new FormParameter (this);
 		}
-		
-		protected override object Evaluate (HttpContext ctx, Control control)
+#if NET_4_0
+		protected internal
+#else
+		protected
+#endif
+		override object Evaluate (HttpContext ctx, Control control)
 		{
-			if (control == null || ctx.Request == null)
+			HttpRequest req = ctx != null ? ctx.Request : null;
+			if (req == null)
 				return null;
 			
-			return ctx.Request.Form [FormField];
+			return req.Form [FormField];
 		}
 		
-	    [DefaultValueAttribute ("")]
+		[DefaultValueAttribute ("")]
 		public string FormField {
 			get {
 				string s = ViewState ["FormField"] as string;
 				if (s != null)
 					return s;
 				
-				return "";
+				return String.Empty;
 			}
 			set {
 				if (FormField != value) {
@@ -89,5 +99,5 @@ namespace System.Web.UI.WebControls {
 		}
 	}
 }
-#endif
+
 
