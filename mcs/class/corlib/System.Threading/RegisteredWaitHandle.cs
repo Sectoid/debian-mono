@@ -31,15 +31,11 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Runtime.InteropServices;
-#endif
 
 namespace System.Threading
 {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class RegisteredWaitHandle : MarshalByRefObject
 	{
 		WaitHandle _waitObject;
@@ -92,8 +88,11 @@ namespace System.Threading
 
 		private void DoCallBack (object timedOut)
 		{
-			if (_callback != null)
-				_callback (_state, (bool)timedOut); 
+			if (_callback != null) {
+				try {
+					_callback (_state, (bool)timedOut); 
+				} catch {}
+			}
 
 			lock (this) 
 			{
@@ -103,9 +102,7 @@ namespace System.Threading
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public bool Unregister(WaitHandle waitObject) 
 		{
 			lock (this) 

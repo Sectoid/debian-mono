@@ -1,7 +1,37 @@
+2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaValidator.cs : limit validity initialization. In some
+	  cases it failed to set Invalid.
+
+2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaValidator.cs : fill Validity. Fixed bug #613682.
+
+2010-03-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaComplexType.cs : quick fix for bug #584664. Fill base
+	  content type particles in prior to filling its own.
+
 2010-02-16  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlSchemaComplexType.cs : in modern .NET, xs:anyType has the
 	  appropriate qname.
+
+2010-01-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlAtomicValue.cs: handle Decimal here to process xs:decimal as
+	  a valid base type for simple types. patch by Luke Ravitch,
+	  Fixed bug #557452.
+
+2010-01-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaComplexType.cs : validate base type first and then
+	  validate particle. Patch by Jonas Larsson, fixed bug #502251.
+
+2010-01-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlSchemaSet.cs : when adding a schema with "", it seems treated
+	  as if it were null. Fixed bug #571650.
 
 2009-05-19  Jonas Larsson <jonas.larsson@manodo.se> 
 

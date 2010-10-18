@@ -1,3 +1,35 @@
+2010-08-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #629990 In-Proc session state must remove
+	cache prefix from item key
+
+	When the in-proc session handler puts items in the internal cache,
+	it prefixes them with the @@@InProc@ prefix to make sure they
+	don't conflict with other values stored there. The handler has
+	been failing so far to remove that prefix when triggering the
+	session end event. This commit fixes the issue.
+
+2010-02-24  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateServerHandler.cs, SessionSQLServerHandler.cs: added
+	support for session state compression (4.0)
+
+2010-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateBehavior.cs: added (4.0)
+
+2009-10-19  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateModule.cs: enabled SQL session state provider.
+
+	* SessionSQLServerHandler.cs: implemented. Uses System.Data.Common
+	for provider-agnostic implementation. Until an issue with Npgsql's
+	2.0 factory missing is resolved it defaults to using
+	Mono.Data.Sqlite as the provider.
+	Selecting of the data provider is done by putting DbProviderName
+	in the connection string specified in the
+	<system.web/sessionState> configuration section.
+
 2009-03-21  Marek Habersack  <mhabersack@novell.com>
 
 	* HttpSessionState.cs: implemented the CookieMode property.

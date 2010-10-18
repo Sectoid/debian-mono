@@ -14,7 +14,6 @@
 
 @SET_MAKE@
 
-
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -35,8 +34,7 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 subdir = mono/io-layer
-DIST_COMMON = $(am__libwapiinclude_HEADERS_DIST) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in ChangeLog
+DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in ChangeLog
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/libtool.m4 \
 	$(top_srcdir)/ltoptions.m4 $(top_srcdir)/ltsugar.m4 \
@@ -58,10 +56,10 @@ am__libwapi_la_SOURCES_DIST = access.h atomic.c atomic.h collection.c \
 	handles-private.h io.c io.h io-portability.c io-portability.h \
 	io-private.h io-layer.h locking.c macros.h messages.c \
 	messages.h misc.c misc-private.h mutexes.c mutexes.h \
-	mutex-private.h mono-mutex.c mono-mutex.h mono-spinlock.h \
-	posix.c processes.c processes.h process-private.h security.c \
-	security.h semaphores.c semaphores.h semaphore-private.h \
-	shared.c shared.h sockets.c sockets.h socket-private.h \
+	mutex-private.h mono-mutex.c mono-mutex.h posix.c processes.c \
+	processes.h process-private.h security.c security.h \
+	semaphores.c semaphores.h semaphore-private.h shared.c \
+	shared.h sockets.c sockets.h socket-private.h \
 	socket-wrappers.h status.h system.c system.h threads.h \
 	thread-private.h timefuncs.c timefuncs.h timefuncs-private.h \
 	types.h uglify.h versioninfo.c versioninfo.h wait.c wait.h \
@@ -73,14 +71,16 @@ am__objects_1 = atomic.lo collection.lo context.lo \
 	mono-mutex.lo posix.lo processes.lo security.lo semaphores.lo \
 	shared.lo sockets.lo system.lo timefuncs.lo versioninfo.lo \
 	wait.lo wapi_glob.lo wthreads.lo
-am__objects_2 = libwapi_la-hppa_atomic.lo
-am__objects_3 = io-layer-dummy.lo
-@HPPA_FALSE@@PLATFORM_WIN32_FALSE@am_libwapi_la_OBJECTS =  \
-@HPPA_FALSE@@PLATFORM_WIN32_FALSE@	$(am__objects_1)
-@HPPA_TRUE@@PLATFORM_WIN32_FALSE@am_libwapi_la_OBJECTS =  \
-@HPPA_TRUE@@PLATFORM_WIN32_FALSE@	$(am__objects_1) \
-@HPPA_TRUE@@PLATFORM_WIN32_FALSE@	$(am__objects_2)
-@PLATFORM_WIN32_TRUE@am_libwapi_la_OBJECTS = $(am__objects_3)
+am__objects_2 =
+am__objects_3 = libwapi_la-hppa_atomic.lo
+am__objects_4 = io-layer-dummy.lo
+@HOST_WIN32_FALSE@@HPPA_FALSE@am_libwapi_la_OBJECTS =  \
+@HOST_WIN32_FALSE@@HPPA_FALSE@	$(am__objects_1) \
+@HOST_WIN32_FALSE@@HPPA_FALSE@	$(am__objects_2)
+@HOST_WIN32_FALSE@@HPPA_TRUE@am_libwapi_la_OBJECTS = $(am__objects_1) \
+@HOST_WIN32_FALSE@@HPPA_TRUE@	$(am__objects_3)
+@HOST_WIN32_TRUE@am_libwapi_la_OBJECTS = $(am__objects_4) \
+@HOST_WIN32_TRUE@	$(am__objects_2)
 libwapi_la_OBJECTS = $(am_libwapi_la_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -98,21 +98,6 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libwapi_la_SOURCES)
 DIST_SOURCES = $(am__libwapi_la_SOURCES_DIST)
-am__libwapiinclude_HEADERS_DIST = access.h atomic.h collection.h \
-	context.h critical-sections.h error.h events.h handles.h io.h \
-	io-layer.h io-portability.h macros.h messages.h mono-mutex.h \
-	mutexes.h processes.h security.h semaphores.h sockets.h \
-	status.h system.h threads.h timefuncs.h types.h uglify.h \
-	versioninfo.h wait.h wapi.h
-am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
-am__vpath_adj = case $$p in \
-    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
-    *) f=$$p;; \
-  esac;
-am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
-am__installdirs = "$(DESTDIR)$(libwapiincludedir)"
-libwapiincludeHEADERS_INSTALL = $(INSTALL_HEADER)
-HEADERS = $(libwapiinclude_HEADERS)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -126,6 +111,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -167,7 +153,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -199,6 +184,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -221,6 +207,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -258,7 +245,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -381,7 +367,6 @@ OTHER_SRC = \
 	mutex-private.h		\
 	mono-mutex.c		\
 	mono-mutex.h		\
-	mono-spinlock.h		\
 	posix.c			\
 	processes.c		\
 	processes.h		\
@@ -427,14 +412,12 @@ WINDOWS_SRC = \
 HPPA_SRC = \
 	hppa_atomic.S
 
-@HPPA_FALSE@@PLATFORM_WIN32_FALSE@libwapi_la_SOURCES = $(OTHER_SRC)
-@HPPA_TRUE@@PLATFORM_WIN32_FALSE@libwapi_la_SOURCES = $(OTHER_SRC) $(HPPA_SRC)
-@PLATFORM_WIN32_TRUE@libwapi_la_SOURCES = $(WINDOWS_SRC)
-@PLATFORM_WIN32_FALSE@libwapiinclude_HEADERS = $(OTHER_H)
-@PLATFORM_WIN32_TRUE@libwapiinclude_HEADERS = $(WINDOWS_H)
+@HOST_WIN32_FALSE@@HPPA_FALSE@libwapi_la_SOURCES = $(OTHER_SRC) $(OTHER_H)
+@HOST_WIN32_FALSE@@HPPA_TRUE@libwapi_la_SOURCES = $(OTHER_SRC) $(HPPA_SRC)
+@HOST_WIN32_TRUE@libwapi_la_SOURCES = $(WINDOWS_SRC) $(WINDOWS_H)
 # to enable pick up of config.h
-@HPPA_TRUE@@PLATFORM_WIN32_FALSE@libwapi_la_CCASFLAGS = -I$(top_builddir)
-@PLATFORM_DARWIN_TRUE@@X86_TRUE@libwapi_la_LIBADD = -lproc
+@HOST_WIN32_FALSE@@HPPA_TRUE@libwapi_la_CCASFLAGS = -I$(top_builddir)
+@PLATFORM_DARWIN_TRUE@libwapi_la_LIBADD = -lproc
 EXTRA_DIST = \
 	$(WINDOWS_SRC)	\
         $(HPPA_SRC) \
@@ -574,23 +557,6 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-libwapiincludeHEADERS: $(libwapiinclude_HEADERS)
-	@$(NORMAL_INSTALL)
-	test -z "$(libwapiincludedir)" || $(MKDIR_P) "$(DESTDIR)$(libwapiincludedir)"
-	@list='$(libwapiinclude_HEADERS)'; for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  f=$(am__strip_dir) \
-	  echo " $(libwapiincludeHEADERS_INSTALL) '$$d$$p' '$(DESTDIR)$(libwapiincludedir)/$$f'"; \
-	  $(libwapiincludeHEADERS_INSTALL) "$$d$$p" "$(DESTDIR)$(libwapiincludedir)/$$f"; \
-	done
-
-uninstall-libwapiincludeHEADERS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(libwapiinclude_HEADERS)'; for p in $$list; do \
-	  f=$(am__strip_dir) \
-	  echo " rm -f '$(DESTDIR)$(libwapiincludedir)/$$f'"; \
-	  rm -f "$(DESTDIR)$(libwapiincludedir)/$$f"; \
-	done
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -667,11 +633,8 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES) $(HEADERS)
+all-am: Makefile $(LTLIBRARIES)
 installdirs:
-	for dir in "$(DESTDIR)$(libwapiincludedir)"; do \
-	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
-	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -717,7 +680,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-libwapiincludeHEADERS
+install-data-am:
 
 install-dvi: install-dvi-am
 
@@ -753,7 +716,7 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-libwapiincludeHEADERS
+uninstall-am:
 
 .MAKE: install-am install-strip
 
@@ -763,13 +726,12 @@ uninstall-am: uninstall-libwapiincludeHEADERS
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am \
-	install-libwapiincludeHEADERS install-man install-pdf \
-	install-pdf-am install-ps install-ps-am install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-libwapiincludeHEADERS
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

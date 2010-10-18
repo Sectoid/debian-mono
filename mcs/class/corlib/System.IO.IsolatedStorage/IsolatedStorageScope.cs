@@ -35,15 +35,13 @@ using System.Runtime.InteropServices;
 namespace System.IO.IsolatedStorage {
 
 	[Flags]
-#if NET_2_0
 	[ComVisible (true)]
 	[Serializable]
-#endif
 	public enum IsolatedStorageScope {
 
 		None = 0,
 		User = 1,
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		// Available in Silverlight
 		Application = 32,
 #else
@@ -53,10 +51,8 @@ namespace System.IO.IsolatedStorage {
 		// Documented in "C# In A Nutshell"
 		Roaming = 8,
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		Machine = 16,
 		Application = 32
-#endif
 #endif
 	}
 }

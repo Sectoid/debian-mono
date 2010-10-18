@@ -27,12 +27,18 @@ void ppc_patch (guchar *code, const guchar *target);
 void ppc_patch_full (guchar *code, const guchar *target, gboolean is_fd);
 
 struct MonoLMF {
+	/*
+	 * If the second lowest bit is set to 1, then this is a MonoLMFExt structure, and
+	 * the other fields are not valid.
+	 */
 	gpointer    previous_lmf;
 	gpointer    lmf_addr;
 	MonoMethod *method;
 	gulong     ebp;
 	gulong     eip;
-	gulong     iregs [MONO_SAVED_GREGS]; /* 13..31 */
+	/* Add a dummy field to force iregs to be aligned when cross compiling from x86 */
+	gulong     dummy;
+	mgreg_t    iregs [MONO_SAVED_GREGS]; /* 13..31 */
 	gdouble    fregs [MONO_SAVED_FREGS]; /* 14..31 */
 };
 
@@ -45,9 +51,18 @@ struct MonoLMF {
 typedef struct {
 	gulong sc_ir;          // pc 
 	gulong sc_sp;          // r1
-	gulong regs [MONO_SAVED_GREGS];
+	mgreg_t regs [MONO_SAVED_GREGS];
 	double fregs [MONO_SAVED_FREGS];
 } MonoContext;
+
+/*
+ * This structure is an extension of MonoLMF and contains extra information.
+ */
+typedef struct {
+	struct MonoLMF lmf;
+	gboolean debugger_invoke;
+	MonoContext ctx; /* if debugger_invoke is TRUE */
+} MonoLMFExt;
 
 typedef struct MonoCompileArch {
 	int fp_conv_var_offset;
@@ -55,9 +70,19 @@ typedef struct MonoCompileArch {
 
 /*
  * ILP32 uses a version of the ppc64 abi with sizeof(void*)==sizeof(long)==4.
- * To support this, code which needs the size of a pointer needs to use 
- * sizeof (gpointer), while code which needs the size of a register/stack slot 
- * needs to use SIZEOF_REGISTER.
+ * To support this, code needs to follow the following conventions:
+ * - for the size of a pointer use sizeof (gpointer)
+ * - for the size of a register/stack slot use SIZEOF_REGISTER.
+ * - for variables which contain values of registers, use mgreg_t.
+ * - for loading/saving pointers/ints, use the normal ppc_load_reg/ppc_save_reg ()
+ *   macros.
+ * - for loading/saving register sized quantities, use the ppc_ldr/ppc_str 
+ *   macros.
+ * - make sure to not mix the two kinds of macros for the same memory location, 
+ *   since ppc is big endian, so a 8 byte store followed by a 4 byte load will
+ *   load the upper 32 bit of the value.
+ * - use OP_LOADR_MEMBASE/OP_STORER_MEMBASE to load/store register sized
+ *   quantities.
  */
 
 #ifdef __mono_ppc64__
@@ -177,16 +202,21 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 
 #define MONO_ARCH_HAVE_GENERALIZED_IMT_THUNK 1
-#define MONO_ARCH_HAVE_THROW_CORLIB_EXCEPTION 1
 
 #define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
+#define MONO_ARCH_HAVE_XP_UNWIND 1
+#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 
 #define MONO_ARCH_GSHARED_SUPPORTED 1
 
 #define MONO_ARCH_NEED_DIV_CHECK 1
 #define MONO_ARCH_AOT_SUPPORTED 1
 #define MONO_ARCH_NEED_GOT_VAR 1
+#if !defined(MONO_CROSS_COMPILE) && !defined(TARGET_PS3)
+#define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
+#endif
+#define MONO_ARCH_THIS_AS_FIRST_ARG 1
 
 #define PPC_NUM_REG_ARGS (PPC_LAST_ARG_REG-PPC_FIRST_ARG_REG+1)
 #define PPC_NUM_REG_FPARGS (PPC_LAST_FPARG_REG-PPC_FIRST_FPARG_REG+1)
@@ -195,6 +225,7 @@ typedef struct MonoCompileArch {
 #define MONO_CONTEXT_SET_IP(ctx,ip) do { (ctx)->sc_ir = (gulong)ip; } while (0);
 /* FIXME: should be called SET_SP */
 #define MONO_CONTEXT_SET_BP(ctx,bp) do { (ctx)->sc_sp = (gulong)bp; } while (0);
+#define MONO_CONTEXT_SET_SP(ctx,sp) do { (ctx)->sc_sp = (gulong)sp; } while (0);
 
 #define MONO_CONTEXT_GET_IP(ctx) ((gpointer)((ctx)->sc_ir))
 #define MONO_CONTEXT_GET_BP(ctx) ((gpointer)((ctx)->regs [ppc_r31-13]))
@@ -228,11 +259,11 @@ typedef struct {
 #else
 
 typedef struct {
-	unsigned long sp;
+	mgreg_t sp;
 #ifdef __mono_ppc64__
-	unsigned long cr;
+	mgreg_t cr;
 #endif
-	unsigned long lr;
+	mgreg_t lr;
 } MonoPPCStackFrame;
 
 #ifdef G_COMPILER_CODEWARRIOR
@@ -283,6 +314,18 @@ extern guint8* mono_ppc_create_pre_code_ftnptr (guint8 *code) MONO_INTERNAL;
 #define MONO_ARCH_USE_SIGACTION 1
 #elif defined(__NetBSD__)
 #define MONO_ARCH_USE_SIGACTION 1
+#elif defined(__FreeBSD__)
+#define MONO_ARCH_USE_SIGACTION 1
+#elif defined(MONO_CROSS_COMPILE)
+	typedef MonoContext ucontext_t;
+/*	typedef struct {
+		int dummy;
+	} ucontext_t;*/
+	#define UCONTEXT_REG_Rn(ctx, n)
+	#define UCONTEXT_REG_FPRn(ctx, n)
+	#define UCONTEXT_REG_NIP(ctx)
+	#define UCONTEXT_REG_LNK(ctx)
+
 #else
 /* For other operating systems, we pull the definition from an external file */
 #include "mini-ppc-os.h"
@@ -292,11 +335,11 @@ void
 mono_ppc_patch (guchar *code, const guchar *target) MONO_INTERNAL;
 
 void
-mono_ppc_throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs, gboolean rethrow) MONO_INTERNAL;
+mono_ppc_throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, mgreg_t *int_regs, gdouble *fp_regs, gboolean rethrow) MONO_INTERNAL;
 
 #ifdef __mono_ppc64__
 #define MONO_PPC_32_64_CASE(c32,c64)	c64
-extern void mono_ppc_emitted (guint8 *code, ssize_t length, const char *format, ...);
+extern void mono_ppc_emitted (guint8 *code, gint64 length, const char *format, ...);
 #else
 #define MONO_PPC_32_64_CASE(c32,c64)	c32
 #endif
@@ -304,5 +347,7 @@ extern void mono_ppc_emitted (guint8 *code, ssize_t length, const char *format, 
 gboolean mono_ppc_is_direct_call_sequence (guint32 *code) MONO_INTERNAL;
 
 void mono_ppc_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr) MONO_INTERNAL;
+
+void mono_ppc_set_func_into_sigctx (void *sigctx, void *func) MONO_INTERNAL;
 
 #endif /* __MONO_MINI_PPC_H__ */

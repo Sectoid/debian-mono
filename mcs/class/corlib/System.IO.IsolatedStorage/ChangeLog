@@ -1,9 +1,137 @@
+2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* MoonIsolatedStorageFile.cs: Add IsEnabled.
+
+2010-06-16  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Remove should catch all the exceptions
+	caused by DirectoryInfo.Delete and throw an IsolatedStorageException
+	instead.
+
+2010-06-08  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Ugh, accidentally forgot to commit the changes for
+	in the previous commit.
+
+2010-06-07  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: GetUserStoreForSite is only throwing a
+	NotSupportedException.
+	* IsolatedStorageFileStream.cs: Implement Flush by calling the base impl.
+
+2010-06-07  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Remove and DeleteFile must report any
+	error found in our System.IO classes as IsolatedStorageException.
+
+2010-06-07  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Update the exceptions we are firing in 4.0
+	for CreateDirectory, GetFileNames and GetDirectoryNames.
+
+2010-06-06  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* IsolatedStorageSecurityState.cs: Make our .ctor internal - so we
+	don't expose a public .ctor at all.
+
+2010-06-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Our 4.0 methods receiving a path should
+	either return false or throw an IsolatedStorageException if the path
+	refers to a directory outside the storage root.
+
+2010-06-04  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: In CheckOpen check that the directory for
+	the current storage is still valid, and throw an exception if needed.
+	Also, in the static Remove method call Directory.Delete only if the
+	directory exists, to avoid throwing an exception there.
+
+2010-06-03  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MoonIsolatedStorage.cs: Make class internal so we can access it
+	from System.Window.dll to adjust quotas
+
+2010-06-02  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Check for empty paths and existing paths in
+	both MoveFile and MoveDirectory, just as we do in CopyFile. Finally
+	cover our IO calls with a try-catch block, so all the IOException
+	instances are reported as IsolatedStorageException.
+
+2010-05-31  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorage.cs:
+	* IsolatedStorageFile.cs: Implement AvailableFreeSpace, Quota,
+	UsedSize and IncreaseQuotaTo.
+
+2010-05-27  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+
+	* IsolatedStorageFile.cs: Implement CopyFile.
+
+2010-05-27  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Implement GetCreationTime, GetLastAccessTime
+	and GetLastWriteTime, as well as creating a single method to check for
+	the closed/disposed fields.
+
+2010-05-26  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Remove should call Close, just as .Net seems
+	to do.
+
+2010-05-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFileStream.cs: When creating the instance, we should check 
+	for diposed first, and for closed on second place.
+	* IsolatedStorageFile.cs: Add Obsolete to CurrentSize and MaximumSize,
+	as part of 4.0.
+
+2010-05-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFileStream.cs: When creating our instance check that
+	the IsolatedStorageFile is not closed/disposed.
+	* IsolatedStorageFile.cs: Expose closed/disposed info as internal
+	properties, as well as implement 4.0 MoveDirectory/MoveFile, CreateFile
+	and OpenFile methods.
+
+2010-05-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Implement FileExists and DirectoryExists, as
+	well as adding fields to detect that Close/Dispose have been called
+	and fire the proper exceptions.
+
+2010-05-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	4.0 Updates.
+
+	* IsolatedStorage.cs: Add ObsoleteAttribute to CurrentSize and
+	MaximumSize.
+	* IsolatedStorageSecurityState.cs: New, stubbed.
+	* IsolatedStorageSecurityOptions.cs: New file.
+
+2010-05-20  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* IsolatedStorageFile.cs: Add the new 4.0 overloads for
+	GetDirectoryNames and GetFileNames.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* IsolatedStorageFileEnumerator.cs
+	* MoonIsolatedStorageFileStream.cs
+	* MoonIsolatedStorageFile.cs
+	* MoonIsolatedStorage.cs
+	* IsolatedStorageScope.cs
+	* IsolatedStorageFileStream.cs
+	* IsolatedStorage.cs
+	* IsolatedStorageFile.cs:
+		use MOONLIGHT symbol to disambiguate MonoTouch and Moonlight code.
+
 2009-11-01  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MoonIsolatedStorageFile.cs: Add new CheckSearchPattern 
 	validation method. Fix GetDirectoryNames to behave like 
 	GetFileNames wrt searchPattern
-	[Backport r145167]
 
 2009-08-30  Jb Evain  <jbevain@novell.com>
 

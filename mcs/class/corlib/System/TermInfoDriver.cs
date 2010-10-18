@@ -27,8 +27,12 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if (NET_2_0||BOOTSTRAP_NET_2_0) && !NET_2_1
+#if !NET_2_1
+
+//
+// Defining this writes the output to console.log
 //#define DEBUG
+
 using System.Collections;
 using System.IO;
 using System.Text;
@@ -474,7 +478,7 @@ namespace System {
 			int b;
 
 			// First, get any data in the input buffer.  Merely reduces the likelyhood of getting an error
-			int inqueue = ConsoleDriver.InternalKeyAvailable (1000);
+			int inqueue = ConsoleDriver.InternalKeyAvailable (0);
 			while (inqueue-- > 0){
 				b = stdin.Read ();
 				AddToBuffer (b);

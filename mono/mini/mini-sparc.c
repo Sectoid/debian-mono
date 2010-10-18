@@ -504,6 +504,8 @@ get_call_info (MonoCompile *cfg, MonoMethodSignature *sig, gboolean is_pinvoke)
 		/* The address of the return value is passed in %o0 */
 		add_general (&gr, &stack_size, &cinfo->ret, FALSE);
 		cinfo->ret.reg += sparc_i0;
+		/* FIXME: Pass this after this as on other platforms */
+		NOT_IMPLEMENTED;
 	}
 #endif
 
@@ -798,7 +800,7 @@ mono_arch_allocate_vars (MonoCompile *cfg)
 	int i, offset, size, align, curinst;
 	CallInfo *cinfo;
 
-	header = mono_method_get_header (cfg->method);
+	header = cfg->header;
 
 	sig = mono_method_signature (cfg->method);
 
@@ -1755,7 +1757,7 @@ mono_arch_peephole_pass_2 (MonoCompile *cfg, MonoBasicBlock *bb)
 			 * Only do this if the method is small since BPr only has a 16bit
 			 * displacement.
 			 */
-			if (v64 && (mono_method_get_header (cfg->method)->code_size < 10000) && last_ins && 
+			if (v64 && (cfg->header->code_size < 10000) && last_ins && 
 				(last_ins->opcode == OP_COMPARE_IMM) &&
 				(last_ins->inst_imm == 0)) {
 				switch (ins->opcode) {
@@ -2257,84 +2259,6 @@ mono_sparc_is_virtual_call (guint32 *code)
 	return FALSE;
 }
 
-/*
- * mono_arch_get_vcall_slot:
- *
- *  Determine the vtable slot used by a virtual call.
- */
-gpointer
-mono_arch_get_vcall_slot (guint8 *code8, mgreg_t *regs, int *displacement)
-{
-	guint32 *code = (guint32*)(gpointer)code8;
-	guint32 ins = code [0];
-	guint32 prev_ins = code [-1];
-
-	mono_sparc_flushw ();
-
-	*displacement = 0;
-
-	if (!mono_sparc_is_virtual_call (code))
-		return NULL;
-
-	if ((sparc_inst_op (ins) == 0x2) && (sparc_inst_op3 (ins) == 0x38)) {
-		if ((sparc_inst_op (prev_ins) == 0x3) && (sparc_inst_i (prev_ins) == 1) && (sparc_inst_op3 (prev_ins) == 0 || sparc_inst_op3 (prev_ins) == 0xb)) {
-			/* ld [r1 + CONST ], r2; call r2 */
-			guint32 base = sparc_inst_rs1 (prev_ins);
-			gint32 disp = (((gint32)(sparc_inst_imm13 (prev_ins))) << 19) >> 19;
-			gpointer base_val;
-
-			g_assert (sparc_inst_rd (prev_ins) == sparc_inst_rs1 (ins));
-
-			g_assert ((base >= sparc_o0) && (base <= sparc_i7));
-
-			base_val = regs [base];
-
-			*displacement = disp;
-
-			return (gpointer)base_val;
-		}
-		else if ((sparc_inst_op (prev_ins) == 0x3) && (sparc_inst_i (prev_ins) == 0) && (sparc_inst_op3 (prev_ins) == 0)) {
-			/* set r1, ICONST; ld [r1 + r2], r2; call r2 */
-			/* Decode a sparc_set32 */
-			guint32 base = sparc_inst_rs1 (prev_ins);
-			guint32 disp;
-			gpointer base_val;
-			guint32 s1 = code [-3];
-			guint32 s2 = code [-2];
-
-#ifdef SPARCV9
-			NOT_IMPLEMENTED;
-#endif
-
-			/* sparc_sethi */
-			g_assert (sparc_inst_op (s1) == 0);
-			g_assert (sparc_inst_op2 (s1) == 4);
-
-			/* sparc_or_imm */
-			g_assert (sparc_inst_op (s2) == 2);
-			g_assert (sparc_inst_op3 (s2) == 2);
-			g_assert (sparc_inst_i (s2) == 1);
-			g_assert (sparc_inst_rs1 (s2) == sparc_inst_rd (s2));
-			g_assert (sparc_inst_rd (s1) == sparc_inst_rs1 (s2));
-
-			disp = ((s1 & 0x3fffff) << 10) | sparc_inst_imm13 (s2);
-
-			g_assert ((base >= sparc_o0) && (base <= sparc_i7));
-
-			base_val = regs [base];
-
-			*displacement = disp;
-
-			return (gpointer)base_val;
-		} else
-			g_assert_not_reached ();
-	}
-	else
-		g_assert_not_reached ();
-
-	return NULL;
-}
-
 #define CMP_SIZE 3
 #define BR_SMALL_SIZE 2
 #define BR_LARGE_SIZE 2
@@ -2452,8 +2376,8 @@ mono_arch_find_imt_method (mgreg_t *regs, guint8 *code)
 	return (MonoMethod*)regs [sparc_g1];
 }
 
-MonoObject*
-mono_arch_find_this_argument (mgreg_t *regs, MonoMethod *method, MonoGenericSharingContext *gsctx)
+gpointer
+mono_arch_get_this_arg_from_call (MonoGenericSharingContext *gsctx, MonoMethodSignature *sig, mgreg_t *regs, guint8 *code)
 {
 	mono_sparc_flushw ();
 
@@ -3214,6 +3138,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			/* This is a jump inside the method, so call_simple works even on V9 */
 			sparc_call_simple (code, 0);
 			sparc_nop (code);
+			mono_cfg_add_try_hole (cfg, ins->inst_eh_block, code, bb);
 			break;
 		case OP_LABEL:
 			ins->inst_c0 = (guint8*)code - cfg->native_code;
@@ -4499,11 +4424,6 @@ mono_arch_print_tree (MonoInst *tree, int arity)
 }
 
 MonoInst* mono_arch_get_domain_intrinsic (MonoCompile* cfg)
-{
-	return NULL;
-}
-
-MonoInst* mono_arch_get_thread_intrinsic (MonoCompile* cfg)
 {
 	return NULL;
 }

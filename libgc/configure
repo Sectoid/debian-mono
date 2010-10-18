@@ -948,6 +948,7 @@ with_cross_host
 enable_full_debug
 enable_redirect_malloc
 enable_gc_assertions
+enable_quiet_build
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1609,6 +1610,7 @@ Optional Features:
   --enable-full-debug	include full support for pointer backtracing etc.
   --enable-redirect-malloc  redirect malloc and friends to GC routines
   --enable-gc-assertions  collector-internal assertion checking
+  --enable-quiet-build  Enable quiet libgc build (on by default)
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -5960,13 +5962,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5963: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5965: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5966: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5968: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5969: output\"" >&5)
+  (eval echo "\"\$as_me:5971: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -7171,7 +7173,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 7174 "configure"' > conftest.$ac_ext
+  echo '#line 7176 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -9713,11 +9715,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9716: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9718: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9720: \$? = $ac_status" >&5
+   echo "$as_me:9722: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -10052,11 +10054,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10055: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10057: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:10059: \$? = $ac_status" >&5
+   echo "$as_me:10061: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -10157,11 +10159,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10160: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10162: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:10164: \$? = $ac_status" >&5
+   echo "$as_me:10166: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10212,11 +10214,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10215: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10217: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:10219: \$? = $ac_status" >&5
+   echo "$as_me:10221: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13012,7 +13014,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13015 "configure"
+#line 13017 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13108,7 +13110,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13111 "configure"
+#line 13113 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -15128,11 +15130,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15131: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15133: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15135: \$? = $ac_status" >&5
+   echo "$as_me:15137: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -15227,11 +15229,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15230: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15232: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15234: \$? = $ac_status" >&5
+   echo "$as_me:15236: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15279,11 +15281,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15282: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15284: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15286: \$? = $ac_status" >&5
+   echo "$as_me:15288: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16695,6 +16697,13 @@ _ACEOF
 
 fi
 
+# Check whether --enable-quiet-build was given.
+if test "${enable_quiet_build+set}" = set; then
+  enableval=$enable_quiet_build; enable_quiet_build=$enableval
+else
+  enable_quiet_build=yes
+fi
+
  if test -z "$with_cross_host"; then
   USE_LIBDIR_TRUE=
   USE_LIBDIR_FALSE='#'
@@ -16708,6 +16717,13 @@ if test "${multilib}" = "yes"; then
   multilib_arg="--enable-multilib"
 else
   multilib_arg=
+fi
+
+if test x$enable_quiet_build = xyes; then
+   ac_config_commands="$ac_config_commands quiet"
+
+   ac_config_commands="$ac_config_commands quiet-libtool"
+
 fi
 
 ac_config_files="$ac_config_files Makefile include/Makefile include/private/Makefile doc/Makefile"
@@ -17746,6 +17762,7 @@ fi
 
 
 
+shell=$SHELL
 srcdir=${srcdir}
 host=${host}
 CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
@@ -17763,6 +17780,8 @@ do
   case $ac_config_target in
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
+    "quiet") CONFIG_COMMANDS="$CONFIG_COMMANDS quiet" ;;
+    "quiet-libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS quiet-libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "include/private/Makefile") CONFIG_FILES="$CONFIG_FILES include/private/Makefile" ;;
@@ -19172,6 +19191,8 @@ compiler_lib_search_path=$lt_compiler_lib_search_path_CXX
 _LT_EOF
 
  ;;
+    "quiet":C) for i in `find . -name Makefile.in | sed -e 's/Makefile.in/Makefile/g'`; do if test -f $i; then $srcdir/../scripts/patch-quiet.sh $i; fi; done ;;
+    "quiet-libtool":C) sed -e 's/$echo "copying selected/$show "copying selected/g' < libtool > libtool.tmp && mv libtool.tmp libtool && chmod a+x libtool; sed -e 's/$ECHO "copying selected/# "copying selected/g' < libtool > libtool.tmp && mv libtool.tmp libtool && chmod a+x libtool ;;
 
   esac
 done # for ac_tag

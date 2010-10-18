@@ -701,7 +701,7 @@ namespace System.Data {
 			//Copy.Container
 			copy.DataType = DataType;
 			copy._defaultValue = _defaultValue;
-			// Use property to clone Expression as it builds compiled expression also, if any. 
+			// Use the property to set the expression as it updates compiledExpression, if any.
 			copy.Expression = _expression;
 			//Copy.ExtendedProperties
 			copy._maxLength = _maxLength;
@@ -715,8 +715,8 @@ namespace System.Data {
 			if (DataType == typeof (DateTime))
 				copy.DateTimeMode = _datetimeMode;
 #endif
-
 			copy._extendedProperties = _extendedProperties;
+
 			return copy;
 		}
 

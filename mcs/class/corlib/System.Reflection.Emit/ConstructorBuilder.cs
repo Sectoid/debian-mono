@@ -41,10 +41,8 @@ using System.Diagnostics.SymbolStore;
 
 namespace System.Reflection.Emit {
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_ConstructorBuilder))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public sealed class ConstructorBuilder : ConstructorInfo, _ConstructorBuilder {
 	
@@ -85,14 +83,13 @@ namespace System.Reflection.Emit {
 			((ModuleBuilder) tb.Module).RegisterToken (this, GetToken ().Token);
 		}
 
-#if NET_2_0
 		[MonoTODO]
 		public override CallingConventions CallingConvention {
 			get {
 				return call_conv;
 			}
 		}
-#endif
+
 		public bool InitLocals {
 			get {
 				return init_locals;
@@ -176,6 +173,9 @@ namespace System.Reflection.Emit {
 			}
 		}
 
+#if NET_4_0
+		[Obsolete]
+#endif
 		public Type ReturnType {
 			get {
 				return null;
@@ -269,12 +269,7 @@ namespace System.Reflection.Emit {
 			return GetILGenerator (64);
 		}
 
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		ILGenerator GetILGenerator (int streamSize)
+		public ILGenerator GetILGenerator (int streamSize)
 		{
 			if (ilgen != null)
 				return ilgen;
@@ -307,9 +302,7 @@ namespace System.Reflection.Emit {
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public void SetCustomAttribute (ConstructorInfo con, byte[] binaryAttribute)
 		{
 			if (con == null)
@@ -345,13 +338,11 @@ namespace System.Reflection.Emit {
 				throw not_after_created ();
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		public override Module Module {
 			get {
 				return base.Module;
 			}
 		}
-#endif
 
 		public override string ToString ()
 		{
@@ -361,7 +352,7 @@ namespace System.Reflection.Emit {
 		internal void fixup ()
 		{
 			if (((attrs & (MethodAttributes.Abstract | MethodAttributes.PinvokeImpl)) == 0) && ((iattrs & (MethodImplAttributes.Runtime | MethodImplAttributes.InternalCall)) == 0)) {
-			if ((ilgen == null) || (ILGenerator.Mono_GetCurrentOffset (ilgen) == 0))
+			if ((ilgen == null) || (ilgen.ILOffset == 0))
 				throw new InvalidOperationException ("Method '" + Name + "' does not have a method body.");
 			}
 			if (ilgen != null)
@@ -410,11 +401,7 @@ namespace System.Reflection.Emit {
 
 		private Exception not_created ()
 		{
-#if NET_2_0
 			return new NotSupportedException ("The type is not yet created.");
-#else
-			return new InvalidOperationException ("The type is not yet created.");
-#endif
 		}
 
 		void _ConstructorBuilder.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)

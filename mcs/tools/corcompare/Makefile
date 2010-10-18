@@ -4,7 +4,7 @@ include ../../build/rules.make
 
 ALL_PROGRAMS = mono-api-info.exe
 
-CECIL = ../../class/lib/net_1_1/Mono.Cecil.dll
+CECIL = ../../class/lib/net_2_0/Mono.Cecil.dll
 
 COMMON_SOURCES = \
 	AssemblyResolver.cs	\
@@ -19,7 +19,7 @@ DISTFILES= $(COMMON_SOURCES) $(APIINFO_SOURCES)
 
 all-local: $(ALL_PROGRAMS)
 
-doc-update-local:
+csproj-local doc-update-local:
 
 install-local: $(ALL_PROGRAMS)
 	$(MKINSTALLDIRS) $(DESTDIR)$(PROGRAM_INSTALL_DIR)

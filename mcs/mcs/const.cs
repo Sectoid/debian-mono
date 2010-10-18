@@ -9,50 +9,25 @@
 // Copyright 2003-2008 Novell, Inc.
 //
 
+using System;
+using System.Reflection;
+using System.Reflection.Emit;
+
 namespace Mono.CSharp {
 
-	using System;
-	using System.Reflection;
-	using System.Reflection.Emit;
-	using System.Collections;
-
-	public interface IConstant
+	public class Const : FieldBase
 	{
-		void CheckObsoleteness (Location loc);
-		bool ResolveValue ();
-		Constant CreateConstantReference (Location loc);
-	}
-
-	public class Const : FieldBase, IConstant {
-		protected Constant value;
-		bool in_transit;
-		bool resolved;
-		bool define_called;
-
-		public const int AllowedModifiers =
+		public const Modifiers AllowedModifiers =
 			Modifiers.NEW |
 			Modifiers.PUBLIC |
 			Modifiers.PROTECTED |
 			Modifiers.INTERNAL |
 			Modifiers.PRIVATE;
 
-		public Const (DeclSpace parent, FullNamedExpression type, string name,
-			      Expression expr, int mod_flags, Attributes attrs, Location loc)
-			: base (parent, type, mod_flags, AllowedModifiers,
-				new MemberName (name, loc), attrs)
+		public Const (DeclSpace parent, FullNamedExpression type, Modifiers mod_flags, MemberName name, Attributes attrs)
+			: base (parent, type, mod_flags, AllowedModifiers, name, attrs)
 		{
-			initializer = expr;
 			ModFlags |= Modifiers.STATIC;
-		}
-
-		protected override bool CheckBase ()
-		{
-			// Constant.Define can be called when the parent type hasn't yet been populated
-			// and it's base types need not have been populated.  So, we defer this check
-			// to the second time Define () is called on this member.
-			if (Parent.PartialContainer.BaseCache == null)
-				return true;
-			return base.CheckBase ();
 		}
 
 		/// <summary>
@@ -60,55 +35,48 @@ namespace Mono.CSharp {
 		/// </summary>
 		public override bool Define ()
 		{
-			// Because constant define can be called from other class
-			if (define_called) {
-				CheckBase ();
-				return FieldBuilder != null;
-			}
-
-			define_called = true;
-
 			if (!base.Define ())
 				return false;
 
-			Type ttype = MemberType;
-			if (!IsConstantTypeValid (ttype)) {
-				Error_InvalidConstantType (ttype, Location, Report);
+			if (!member_type.IsConstantCompatible) {
+				Error_InvalidConstantType (member_type, Location, Report);
 			}
 
-			// If the constant is private then we don't need any field the
-			// value is already inlined and cannot be referenced
-			//if ((ModFlags & Modifiers.PRIVATE) != 0 && RootContext.Optimize)
-			//	return true;
-
-			FieldAttributes field_attr = FieldAttributes.Static | Modifiers.FieldAttr (ModFlags);
+			FieldAttributes field_attr = FieldAttributes.Static | ModifiersExtensions.FieldAttr (ModFlags);
 			// Decimals cannot be emitted into the constant blob.  So, convert to 'readonly'.
-			if (ttype == TypeManager.decimal_type) {
+			if (member_type == TypeManager.decimal_type) {
 				field_attr |= FieldAttributes.InitOnly;
 			} else {
 				field_attr |= FieldAttributes.Literal;
 			}
 
-			FieldBuilder = Parent.TypeBuilder.DefineField (Name, MemberType, field_attr);
-			TypeManager.RegisterConstant (FieldBuilder, this);
-			Parent.MemberCache.AddMember (FieldBuilder, this);
+			FieldBuilder = Parent.TypeBuilder.DefineField (Name, MemberType.GetMetaInfo (), field_attr);
+			spec = new ConstSpec (Parent.Definition, this, MemberType, FieldBuilder, ModFlags, initializer);
+
+			Parent.MemberCache.AddMember (spec);
 
 			if ((field_attr & FieldAttributes.InitOnly) != 0)
 				Parent.PartialContainer.RegisterFieldForInitialization (this,
-					new FieldInitializer (FieldBuilder, initializer, this));
+					new FieldInitializer (spec, initializer, this));
+
+			if (declarators != null) {
+				var t = new TypeExpression (MemberType, TypeExpression.Location);
+				int index = Parent.PartialContainer.Constants.IndexOf (this);
+				foreach (var d in declarators) {
+					var c = new Const (Parent, t, ModFlags & ~Modifiers.STATIC, new MemberName (d.Name.Value, d.Name.Location), OptAttributes);
+					c.initializer = d.Initializer;
+					((ConstInitializer) c.initializer).Name = d.Name.Value;
+					Parent.PartialContainer.Constants.Insert (++index, c);
+				}
+			}
 
 			return true;
 		}
 
-		public static bool IsConstantTypeValid (Type t)
+		public void DefineValue ()
 		{
-			if (TypeManager.IsBuiltinOrEnum (t))
-				return true;
-
-			if (TypeManager.IsGenericParameter (t) || t.IsPointer)
-				return false;
-
-			return TypeManager.IsReferenceType (t);
+			var rc = new ResolveContext (this);
+			((ConstSpec) spec).GetConstant (rc);
 		}
 
 		/// <summary>
@@ -116,26 +84,21 @@ namespace Mono.CSharp {
 		/// </summary>
 		public override void Emit ()
 		{
-			if (!ResolveValue ())
-				return;
-
-			if (FieldBuilder == null)
-				return;
-
-			if (value.Type == TypeManager.decimal_type) {
-				FieldBuilder.SetCustomAttribute (CreateDecimalConstantAttribute (value));
-			} else{
-				FieldBuilder.SetConstant (value.GetTypedValue ());
+			var c = ((ConstSpec) spec).Value as Constant;
+			if (c.Type == TypeManager.decimal_type) {
+				FieldBuilder.SetCustomAttribute (CreateDecimalConstantAttribute (c, Compiler.PredefinedAttributes));
+			} else {
+				FieldBuilder.SetConstant (c.GetTypedValue ());
 			}
 
 			base.Emit ();
 		}
 
-		public static CustomAttributeBuilder CreateDecimalConstantAttribute (Constant c)
+		public static CustomAttributeBuilder CreateDecimalConstantAttribute (Constant c, PredefinedAttributes pa)
 		{
-			PredefinedAttribute pa = PredefinedAttributes.Get.DecimalConstant;
-			if (pa.Constructor == null &&
-				!pa.ResolveConstructor (c.Location, TypeManager.byte_type, TypeManager.byte_type,
+			PredefinedAttribute attr = pa.DecimalConstant;
+			if (attr.Constructor == null &&
+				!attr.ResolveConstructor (c.Location, TypeManager.byte_type, TypeManager.byte_type,
 					TypeManager.uint32_type, TypeManager.uint32_type, TypeManager.uint32_type))
 				return null;
 
@@ -147,29 +110,12 @@ namespace Mono.CSharp {
 				(uint) bits [2], (uint) bits [1], (uint) bits [0]
 			};
 
-			return new CustomAttributeBuilder (pa.Constructor, args);
+			return new CustomAttributeBuilder (attr.Constructor, args);
 		}
 
-		public static void Error_ExpressionMustBeConstant (Location loc, string e_name, Report Report)
+		public static void Error_InvalidConstantType (TypeSpec t, Location loc, Report Report)
 		{
-			Report.Error (133, loc, "The expression being assigned to `{0}' must be constant", e_name);
-		}
-
-		public static void Error_CyclicDeclaration (MemberCore mc, Report Report)
-		{
-			Report.Error (110, mc.Location, "The evaluation of the constant value for `{0}' involves a circular definition",
-				mc.GetSignatureForError ());
-		}
-
-		public static void Error_ConstantCanBeInitializedWithNullOnly (Type type, Location loc, string name, Report Report)
-		{
-			Report.Error (134, loc, "A constant `{0}' of reference type `{1}' can only be initialized with null",
-				name, TypeManager.CSharpName (type));
-		}
-
-		public static void Error_InvalidConstantType (Type t, Location loc, Report Report)
-		{
-			if (TypeManager.IsGenericParameter (t)) {
+			if (t.IsGenericParameter) {
 				Report.Error (1959, loc,
 					"Type parameter `{0}' cannot be declared const", TypeManager.CSharpName (t));
 			} else {
@@ -177,132 +123,122 @@ namespace Mono.CSharp {
 					"The type `{0}' cannot be declared const", TypeManager.CSharpName (t));
 			}
 		}
-
-		#region IConstant Members
-
-		public bool ResolveValue ()
-		{
-			if (resolved)
-				return value != null;
-
-			SetMemberIsUsed ();
-			if (in_transit) {
-				Error_CyclicDeclaration (this, Report);
-				// Suppress cyclic errors
-				value = New.Constantify (MemberType);
-				resolved = true;
-				return false;
-			}
-
-			in_transit = true;
-
-			ResolveContext.Options opt = ResolveContext.Options.ConstantScope;
-			if (this is EnumMember)
-				opt |= ResolveContext.Options.EnumScope;
-
-			ResolveContext rc = new ResolveContext (this, opt);
-			value = DoResolveValue (rc);
-
-			in_transit = false;
-			resolved = true;
-			return value != null;
-		}
-
-		protected virtual Constant DoResolveValue (ResolveContext ec)
-		{
-			Constant value = initializer.ResolveAsConstant (ec, this);
-			if (value == null)
-				return null;
-
-			Constant c = value.ConvertImplicitly (MemberType);
-			if (c == null) {
-				if (TypeManager.IsReferenceType (MemberType))
-					Error_ConstantCanBeInitializedWithNullOnly (MemberType, Location, GetSignatureForError (), Report);
-				else
-					value.Error_ValueCannotBeConverted (ec, Location, MemberType, false);
-			}
-
-			return c;
-		}
-
-		public virtual Constant CreateConstantReference (Location loc)
-		{
-			if (value == null)
-				return null;
-
-			return Constant.CreateConstant (value.Type, value.GetValue(), loc);
-		}
-
-		#endregion
 	}
 
-	public class ExternalConstant : IConstant
+	public class ConstSpec : FieldSpec
 	{
-		FieldInfo fi;
-		object value;
+		Expression value;
 
-		public ExternalConstant (FieldInfo fi)
-		{
-			this.fi = fi;
-		}
-
-		private ExternalConstant (FieldInfo fi, object value):
-			this (fi)
+		public ConstSpec (TypeSpec declaringType, IMemberDefinition definition, TypeSpec memberType, FieldInfo fi, Modifiers mod, Expression value)
+			: base (declaringType, definition, memberType, fi, mod)
 		{
 			this.value = value;
 		}
 
 		//
-		// Decimal constants cannot be encoded in the constant blob, and thus are marked
-		// as IsInitOnly ('readonly' in C# parlance).  We get its value from the 
-		// DecimalConstantAttribute metadata.
+		// This expresion is guarantee to be a constant at emit phase only
 		//
-		public static IConstant CreateDecimal (FieldInfo fi)
-		{
-			if (fi is FieldBuilder)
-				return null;
-
-			PredefinedAttribute pa = PredefinedAttributes.Get.DecimalConstant;
-			if (!pa.IsDefined)
-				return null;
-
-			object[] attrs = fi.GetCustomAttributes (pa.Type, false);
-			if (attrs.Length != 1)
-				return null;
-
-			IConstant ic = new ExternalConstant (fi,
-				((System.Runtime.CompilerServices.DecimalConstantAttribute) attrs [0]).Value);
-
-			return ic;
-		}
-
-		#region IConstant Members
-
-		public void CheckObsoleteness (Location loc)
-		{
-			ObsoleteAttribute oa = AttributeTester.GetMemberObsoleteAttribute (fi);
-			if (oa == null) {
-				return;
+		public Expression Value {
+			get {
+				return value;
 			}
-
-			AttributeTester.Report_ObsoleteMessage (oa, TypeManager.GetFullNameSignature (fi), loc, RootContext.ToplevelTypes.Compiler.Report);
 		}
 
-		public bool ResolveValue ()
+		//
+		// For compiled constants we have to resolve the value as there could be constant dependecies. This
+		// is needed for imported constants too to get the right context type
+		//
+		public Constant GetConstant (ResolveContext rc)
 		{
-			if (value != null)
-				return true;
+			if (value.eclass != ExprClass.Value)
+				value = value.Resolve (rc);
 
-			value = fi.GetValue (fi);
-			return true;
+			return (Constant) value;
 		}
-
-		public Constant CreateConstantReference (Location loc)
-		{
-			return Constant.CreateConstant (TypeManager.TypeToCoreType (fi.FieldType), value, loc);
-		}
-
-		#endregion
 	}
 
+	public class ConstInitializer : ShimExpression
+	{
+		bool in_transit;
+		readonly FieldBase field;
+
+		public ConstInitializer (FieldBase field, Expression value, Location loc)
+			: base (value)
+		{
+			this.loc = loc;
+			this.field = field;
+		}
+
+		public string Name { get; set; }
+
+		protected override Expression DoResolve (ResolveContext unused)
+		{
+			if (type != null)
+				return expr;
+
+			var opt = ResolveContext.Options.ConstantScope;
+			if (field is EnumMember)
+				opt |= ResolveContext.Options.EnumScope;
+
+			//
+			// Use a context in which the constant was declared and
+			// not the one in which is referenced
+			//
+			var rc = new ResolveContext (field, opt);
+			expr = DoResolveInitializer (rc);
+			type = expr.Type;
+
+			return expr;
+		}
+
+		protected virtual Expression DoResolveInitializer (ResolveContext rc)
+		{
+			if (in_transit) {
+				field.Compiler.Report.Error (110, expr.Location,
+					"The evaluation of the constant value for `{0}' involves a circular definition",
+					GetSignatureForError ());
+
+				expr = null;
+			} else {
+				in_transit = true;
+				expr = expr.Resolve (rc);
+			}
+
+			in_transit = false;
+
+			if (expr != null) {
+				Constant c = expr as Constant;
+				if (c != null)
+					c = field.ConvertInitializer (rc, c);
+
+				if (c == null) {
+					if (TypeManager.IsReferenceType (field.MemberType))
+						Error_ConstantCanBeInitializedWithNullOnly (rc, field.MemberType, expr.Location, GetSignatureForError ());
+					else if (!(expr is Constant))
+						Error_ExpressionMustBeConstant (rc, expr.Location, GetSignatureForError ());
+					else
+						expr.Error_ValueCannotBeConverted (rc, expr.Location, field.MemberType, false);
+				}
+
+				expr = c;
+			}
+
+			if (expr == null) {
+				expr = New.Constantify (field.MemberType);
+				if (expr == null)
+					expr = Constant.CreateConstantFromValue (field.MemberType, null, Location);
+				expr = expr.Resolve (rc);
+			}
+
+			return expr;
+		}
+
+		public override string GetSignatureForError ()
+		{
+			if (Name == null)
+				return field.GetSignatureForError ();
+
+			return field.Parent.GetSignatureForError () + "." + Name;
+		}
+	}
 }

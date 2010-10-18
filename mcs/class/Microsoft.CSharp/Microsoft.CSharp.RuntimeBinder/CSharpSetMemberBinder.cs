@@ -30,10 +30,11 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpSetMemberBinder : SetMemberBinder
+	class CSharpSetMemberBinder : SetMemberBinder
 	{
 		IList<CSharpArgumentInfo> argumentInfo;
 		Type callingContext;
@@ -45,34 +46,22 @@ namespace Microsoft.CSharp.RuntimeBinder
 			this.argumentInfo = argumentInfo.ToReadOnly ();
 		}
 		
-		public IList<CSharpArgumentInfo> ArgumentInfo {
-			get {
-				return argumentInfo;
-			}
-		}
-
-		public Type CallingContext {
-			get {
-				return callingContext;
-			}
-		}
-		
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpSetMemberBinder;
-			return other != null && base.Equals (obj) && other.callingContext == callingContext && 
-				other.argumentInfo.SequenceEqual (argumentInfo);
-		}
-
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-		
-		[MonoTODO]
 		public override DynamicMetaObject FallbackSetMember (DynamicMetaObject target, DynamicMetaObject value, DynamicMetaObject errorSuggestion)
 		{
-			throw new NotImplementedException ();			
+			var ctx = DynamicContext.Create ();
+			var source = ctx.CreateCompilerExpression (argumentInfo [1], value);
+			var expr = ctx.CreateCompilerExpression (argumentInfo [0], target);
+
+			// Field assignment
+			expr = new Compiler.MemberAccess (expr, Name);
+			expr = new Compiler.SimpleAssign (expr, source);
+			expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (ReturnType), Compiler.Location.Null), expr, Compiler.Location.Null);
+
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+			binder.AddRestrictions (value);
+
+			return binder.Bind (ctx, callingContext);
 		}
 	}
 }

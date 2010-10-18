@@ -34,10 +34,8 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_FieldInfo))]
-#endif
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.None)]
 	public abstract class FieldInfo : MemberInfo, _FieldInfo {
@@ -158,7 +156,6 @@ namespace System.Reflection {
 			return internal_from_handle_type (handle.Value, IntPtr.Zero);
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		[ComVisible (false)]
 		public static FieldInfo GetFieldFromHandle (RuntimeFieldHandle handle, RuntimeTypeHandle declaringType)
 		{
@@ -169,7 +166,6 @@ namespace System.Reflection {
 				throw new ArgumentException ("The field handle and the type handle are incompatible.");
 			return fi;
 		}
-#endif
 
 		//
 		// Note: making this abstract imposes an implementation requirement
@@ -238,7 +234,6 @@ namespace System.Reflection {
 			return attrs;
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		extern Type[] GetTypeModifiers (bool optional);
 
@@ -260,8 +255,37 @@ namespace System.Reflection {
 		{
 			throw new NotSupportedException ("This non-CLS method is not implemented.");
 		}
-#endif
 
+
+#if NET_4_0
+		public override bool Equals (object obj)
+		{
+			return obj == this;
+		}
+
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
+
+		public static bool operator == (FieldInfo left, FieldInfo right)
+		{
+			if ((object)left == (object)right)
+				return true;
+			if ((object)left == null ^ (object)right == null)
+				return false;
+			return left.Equals (right);
+		}
+
+		public static bool operator != (FieldInfo left, FieldInfo right)
+		{
+			if ((object)left == (object)right)
+				return false;
+			if ((object)left == null ^ (object)right == null)
+				return true;
+			return !left.Equals (right);
+		}
+#endif
 		void _FieldInfo.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{
 			throw new NotImplementedException ();

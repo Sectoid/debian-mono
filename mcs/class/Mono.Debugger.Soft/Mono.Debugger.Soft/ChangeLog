@@ -1,3 +1,7 @@
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Bump minor version to 2 to be compatible with the runtime.
+
 2010-06-17  Zoltan Varga  <vargaz@gmail.com>
 
 	* VirtualMachine.cs Connection.cs: Group events received together into an EventSet,
@@ -48,8 +52,6 @@
 	* ThreadMirror.cs: Add a ThreadId property.
 
 2010-03-05  Martin Baulig  <martin@ximian.com>
-
-	**** Backport of r153125 and r153336 ****
 
 	Add support for aborting invocations.
 

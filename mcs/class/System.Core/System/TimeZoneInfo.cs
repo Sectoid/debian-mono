@@ -27,11 +27,11 @@
 using System;
 using System.Runtime.CompilerServices;
 
-#if !INSIDE_CORLIB && (NET_4_0 || BOOTSTRAP_NET_4_0)
+#if !INSIDE_CORLIB && (NET_4_0 || BOOTSTRAP_NET_4_0 || MOONLIGHT)
 
 [assembly:TypeForwardedTo (typeof(TimeZoneInfo))]
 
-#elif NET_3_5 || (NET_2_1 && !INSIDE_CORLIB)
+#elif NET_3_5 || (MONOTOUCH && !INSIDE_CORLIB) || (MOONLIGHT && INSIDE_CORLIB)
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -47,9 +47,11 @@ using Microsoft.Win32;
 
 namespace System
 {
-#if NET_4_0 || BOOTSRAP_NET_4_0
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 	[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]
-#endif	
+#elif MOONLIGHT
+	[TypeForwardedFrom (Consts.AssemblySystem_Core)]
+#endif
 	[SerializableAttribute]
 	public sealed partial class TimeZoneInfo : IEquatable<TimeZoneInfo>, ISerializable, IDeserializationCallback
 	{
@@ -133,6 +135,7 @@ namespace System
 #endif
 		private AdjustmentRule [] adjustmentRules;
 
+#if !NET_2_1
 		static RegistryKey timeZoneKey = null;
 		static bool timeZoneKeySet = false;
 		static RegistryKey TimeZoneKey {
@@ -149,6 +152,7 @@ namespace System
 				return timeZoneKey;
 			}
 		}
+#endif
 
 		public static void ClearCachedData ()
 		{
@@ -307,6 +311,7 @@ namespace System
 			//FIXME: this method should check for cached values in systemTimeZones
 			if (id == null)
 				throw new ArgumentNullException ("id");
+#if !NET_2_1
 			if (TimeZoneKey != null)
 			{
 				RegistryKey key = TimeZoneKey.OpenSubKey (id, false);
@@ -314,6 +319,7 @@ namespace System
 					throw new TimeZoneNotFoundException ();
 				return FromRegistryKey(id, key);
 			}
+#endif
 #if LIBC	
 			string filepath = Path.Combine (TimeZoneDirectory, id);
 			return FindSystemTimeZoneByFileName (id, filepath);
@@ -346,6 +352,7 @@ namespace System
 		}
 #endif
 
+#if !NET_2_1
 		private static TimeZoneInfo FromRegistryKey (string id, RegistryKey key)
 		{
 			byte [] reg_tzi = (byte []) key.GetValue ("TZI");
@@ -380,20 +387,7 @@ namespace System
 			else
 				ParseRegTzi(adjustmentRules, 1, 9999, reg_tzi);
 
-			return CreateCustomTimeZone (id, baseUtcOffset, display_name, standard_name, daylight_name,
-							(AdjustmentRule []) ValidateRules (adjustmentRules).ToArray ());
-		}
-
-		static List<AdjustmentRule> ValidateRules (List<AdjustmentRule> adjustmentRules)
-		{
-			AdjustmentRule prev = null;
-			foreach (AdjustmentRule current in adjustmentRules.ToArray ()) {
-				if (prev != null && prev.DateEnd > current.DateStart) {
-					adjustmentRules.Remove (current);
-				}
-				prev = current;
-			}
-			return adjustmentRules;
+			return CreateCustomTimeZone (id, baseUtcOffset, display_name, standard_name, daylight_name, ValidateRules (adjustmentRules).ToArray ());
 		}
 
 		private static void ParseRegTzi (List<AdjustmentRule> adjustmentRules, int start_year, int end_year, byte [] buffer)
@@ -462,6 +456,7 @@ namespace System
 				start_date, end_date, daylight_delta,
 				start_transition_time, end_transition_time));
 		}
+#endif
 
 		public static TimeZoneInfo FromSerializedString (string source)
 		{
@@ -501,7 +496,11 @@ namespace System
 			return hash_code;
 		}
 
+#if NET_4_0
+		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
+#else
 		public void GetObjectData (SerializationInfo info, StreamingContext context)
+#endif
 		{
 			throw new NotImplementedException ();
 		}
@@ -512,35 +511,36 @@ namespace System
 		{
 			if (systemTimeZones == null) {
 				systemTimeZones = new List<TimeZoneInfo> ();
+#if !NET_2_1
 				if (TimeZoneKey != null) {
 					foreach (string id in TimeZoneKey.GetSubKeyNames ()) {
 						try {
 							systemTimeZones.Add (FindSystemTimeZoneById (id));
 						} catch {}
 					}
+
+					return new ReadOnlyCollection<TimeZoneInfo> (systemTimeZones);
 				}
+#endif
 #if LIBC
-				else {
-					string[] continents = new string [] {"Africa", "America", "Antarctica", "Arctic", "Asia", "Atlantic", "Brazil", "Canada", "Chile", "Europe", "Indian", "Mexico", "Mideast", "Pacific", "US"};
-					foreach (string continent in continents) {
-						try {
-							foreach (string zonepath in Directory.GetFiles (Path.Combine (TimeZoneDirectory, continent))) {
-								try {
-									string id = String.Format ("{0}/{1}", continent, Path.GetFileName (zonepath));
-									systemTimeZones.Add (FindSystemTimeZoneById (id));
-								} catch (ArgumentNullException) {
-								} catch (TimeZoneNotFoundException) {
-								} catch (InvalidTimeZoneException) {
-								} catch (Exception) {
-									throw;
-								}
+				string[] continents = new string [] {"Africa", "America", "Antarctica", "Arctic", "Asia", "Atlantic", "Brazil", "Canada", "Chile", "Europe", "Indian", "Mexico", "Mideast", "Pacific", "US"};
+				foreach (string continent in continents) {
+					try {
+						foreach (string zonepath in Directory.GetFiles (Path.Combine (TimeZoneDirectory, continent))) {
+							try {
+								string id = String.Format ("{0}/{1}", continent, Path.GetFileName (zonepath));
+								systemTimeZones.Add (FindSystemTimeZoneById (id));
+							} catch (ArgumentNullException) {
+							} catch (TimeZoneNotFoundException) {
+							} catch (InvalidTimeZoneException) {
+							} catch (Exception) {
+								throw;
 							}
-						} catch {}
-					}
+						}
+					} catch {}
 				}
 #else
-				else
-					throw new NotImplementedException ("This method is not implemented for this platform");
+				throw new NotImplementedException ("This method is not implemented for this platform");
 #endif
 			}
 			return new ReadOnlyCollection<TimeZoneInfo> (systemTimeZones);
@@ -665,7 +665,11 @@ namespace System
 			return false;
 		}
 
+#if NET_4_0
+		void IDeserializationCallback.OnDeserialization (object sender)
+#else
 		public void OnDeserialization (object sender)
+#endif
 		{
 			throw new NotImplementedException ();
 		}
@@ -764,6 +768,18 @@ namespace System
 			if (day >  DateTime.DaysInMonth (year, transition.Month))
 				day -= 7;
 			return new DateTime (year, transition.Month, day) + transition.TimeOfDay.TimeOfDay;
+		}
+
+		static List<AdjustmentRule> ValidateRules (List<AdjustmentRule> adjustmentRules)
+		{
+			AdjustmentRule prev = null;
+			foreach (AdjustmentRule current in adjustmentRules.ToArray ()) {
+				if (prev != null && prev.DateEnd > current.DateStart) {
+					adjustmentRules.Remove (current);
+				}
+				prev = current;
+			}
+			return adjustmentRules;
 		}
 
 #if LIBC
@@ -908,8 +924,7 @@ namespace System
 				}
 				return CreateCustomTimeZone (id, baseUtcOffset, id, standardDisplayName);
 			} else {
-				return CreateCustomTimeZone (id, baseUtcOffset, id, standardDisplayName, daylightDisplayName,
-								(AdjustmentRule []) ValidateRules (adjustmentRules).ToArray ());
+				return CreateCustomTimeZone (id, baseUtcOffset, id, standardDisplayName, daylightDisplayName, ValidateRules (adjustmentRules).ToArray ());
 			}
 		}
 

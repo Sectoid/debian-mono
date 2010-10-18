@@ -25,90 +25,79 @@ COMPAT_2_0_SUFFIX=2$(SCRIPT_SUFFIX)
 COMPAT_4_0_SUFFIX=4$(SCRIPT_SUFFIX)
 
 bin_SCRIPTS = \
-	$(scripts_1_0)		\
-	$(scripts_1_0_umask)	\
-	$(scripts_1_0_compat)	\
+	$(scripts_4_0_umask)	\
 	$(scripts_defaults)	\
 	$(scripts_2_0)		\
 	$(scripts_service)	\
 	$(scripts_nunit)	\
 	$(scripts_rpmhelpers)	\
+	$(scripts_mcs)		\
 	$(MDOC_SUBCOMMANDS)	\
 	$(MDOC_COMPAT)		\
-	mod$(SCRIPT_SUFFIX)	\
-	mono-test-install
+	mono-test-install	\
+	peverify			\
+	mono-heapviz		\
+	$(scripts_mono_configuration_crypto)
 
 if INSTALL_4_0
 bin_SCRIPTS += $(scripts_4_0)
 endif
 
-scripts_1_0_compat = \
-	al1$(SCRIPT_SUFFIX)			\
-	genxs1$(SCRIPT_SUFFIX)			\
-	ilasm1$(SCRIPT_SUFFIX)			\
-	mcs1$(SCRIPT_SUFFIX)			\
-	mkbundle1$(SCRIPT_SUFFIX)		\
-	gacutil1$(SCRIPT_SUFFIX)			\
-	monop1$(SCRIPT_SUFFIX)			\
-	resgen1$(SCRIPT_SUFFIX)			\
-	wsdl1$(SCRIPT_SUFFIX)
+scripts_4_0_umask = \
+	makecert$(SCRIPT_SUFFIX)		\
+	sn$(SCRIPT_SUFFIX)
 
-scripts_1_0 = \
-	caspol$(SCRIPT_SUFFIX)			\
-	cert2spc$(SCRIPT_SUFFIX)		\
-	certmgr$(SCRIPT_SUFFIX)			\
-	chktrust$(SCRIPT_SUFFIX)		\
-	cilc$(SCRIPT_SUFFIX)			\
+deprecated = 					\
+	cilc(SCRIPT_SUFFIX)			\
+	mjs(SCRIPT_SUFFIX)
+
+scripts_2_0 = \
+	al2$(SCRIPT_SUFFIX)			\
+	csharp2$(SCRIPT_SUFFIX)			\
+	gacutil2$(SCRIPT_SUFFIX)		\
+	gmcs$(SCRIPT_SUFFIX)			\
+	monop2$(SCRIPT_SUFFIX) 			\
+	resgen2$(SCRIPT_SUFFIX)			\
+	wsdl2$(SCRIPT_SUFFIX)
+
+scripts_4_0 = \
+	dmcs$(SCRIPT_SUFFIX)			\
 	disco$(SCRIPT_SUFFIX)			\
 	dtd2xsd$(SCRIPT_SUFFIX)			\
 	dtd2rng$(SCRIPT_SUFFIX)			\
 	installvst$(SCRIPT_SUFFIX)		\
 	genxs$(SCRIPT_SUFFIX)			\
 	macpack$(SCRIPT_SUFFIX)			\
-	mcs$(SCRIPT_SUFFIX)			\
-	mjs$(SCRIPT_SUFFIX)			\
+	mdoc$(SCRIPT_SUFFIX)                    \
 	mono-cil-strip$(SCRIPT_SUFFIX)		\
-	mozroots$(SCRIPT_SUFFIX)		\
-	permview$(SCRIPT_SUFFIX)		\
 	prj2make$(SCRIPT_SUFFIX)		\
-	secutil$(SCRIPT_SUFFIX)			\
-	setreg$(SCRIPT_SUFFIX)			\
-	signcode$(SCRIPT_SUFFIX)		\
 	soapsuds$(SCRIPT_SUFFIX)		\
-	xsd$(SCRIPT_SUFFIX)
-
-scripts_1_0_umask = \
-	makecert$(SCRIPT_SUFFIX)		\
-	sn$(SCRIPT_SUFFIX)
-
-scripts_2_0 = \
-	al2$(SCRIPT_SUFFIX)			\
+	caspol$(SCRIPT_SUFFIX)			\
+	cert2spc$(SCRIPT_SUFFIX)		\
+	certmgr$(SCRIPT_SUFFIX)			\
+	chktrust$(SCRIPT_SUFFIX)		\
 	csharp$(SCRIPT_SUFFIX)			\
-	gacutil2$(SCRIPT_SUFFIX)		\
-	gmcs$(SCRIPT_SUFFIX)			\
 	httpcfg$(SCRIPT_SUFFIX)			\
-	ilasm2$(SCRIPT_SUFFIX)			\
 	lc$(SCRIPT_SUFFIX)			\
 	mconfig$(SCRIPT_SUFFIX)			\
-	mkbundle2$(SCRIPT_SUFFIX)		\
-	mdoc$(SCRIPT_SUFFIX)                    \
+	mod$(SCRIPT_SUFFIX)			\
 	monolinker$(SCRIPT_SUFFIX)		\
 	mono-api-info$(SCRIPT_SUFFIX) 		\
 	mono-shlib-cop$(SCRIPT_SUFFIX) 		\
-	monop2$(SCRIPT_SUFFIX) 			\
-	resgen2$(SCRIPT_SUFFIX)			\
+	mozroots$(SCRIPT_SUFFIX)		\
+	permview$(SCRIPT_SUFFIX)		\
 	pdb2mdb$(SCRIPT_SUFFIX)			\
-	wsdl2$(SCRIPT_SUFFIX)			\
-	xsd2$(SCRIPT_SUFFIX)			\
+	xsd$(SCRIPT_SUFFIX)			\
 	mono-xmltool$(SCRIPT_SUFFIX)		\
+	setreg$(SCRIPT_SUFFIX)			\
+	secutil$(SCRIPT_SUFFIX)			\
+	signcode$(SCRIPT_SUFFIX)		\
 	sgen$(SCRIPT_SUFFIX)			\
 	sqlmetal$(SCRIPT_SUFFIX)		\
 	sqlsharp$(SCRIPT_SUFFIX)		\
 	svcutil$(SCRIPT_SUFFIX)			\
-	xbuild$(SCRIPT_SUFFIX)
-
-scripts_4_0 = \
-	dmcs$(SCRIPT_SUFFIX)
+	xbuild$(SCRIPT_SUFFIX)			\
+	ccrewrite$(SCRIPT_SUFFIX)
 
 MDOC_SUBCOMMANDS = \
 	mdoc-assemble \
@@ -143,8 +132,10 @@ scripts_defaults = 		\
 scripts_service = mono-service mono-service2
 scripts_nunit = nunit-console$(SCRIPT_SUFFIX) nunit-console2$(SCRIPT_SUFFIX)
 scripts_rpmhelpers = mono-find-provides mono-find-requires
+scripts_mcs = mcs$(SCRIPT_SUFFIX)
+scripts_mono_configuration_crypto = mono-configuration-crypto$(SCRIPT_SUFFIX)
 
-CLEANFILES = $(scripts_1_0) $(scripts_1_0_umask) $(scripts_2_0) $(scripts_defaults) $(scripts_1_0_compat) $(scripts_4_0) mono-service mono-service2 nunit-console nunit-console2 mono-find-provides mono-find-requires mod $(MDOC_SUBCOMMANDS)
+CLEANFILES = $(scripts_mono_configuration_crypto) $(scripts_mcs) $(scripts_4_0_umask) $(scripts_2_0) $(scripts_defaults) $(scripts_4_0) mono-service mono-service2 nunit-console nunit-console2 mono-find-provides mono-find-requires mod $(MDOC_SUBCOMMANDS)
 DISTCLEANFILES = $(pkgconfig_DATA) $(scripts_rpmhelpers)
 
 EXTRA_DIST =			\
@@ -156,9 +147,13 @@ EXTRA_DIST =			\
 	mono-service.in		\
 	mono-find-provides.in	\
 	mono-find-requires.in	\
+	peverify.in			\
 	mono-test-install	\
+	mono-heapviz		\
 	$(MDOC_COMPAT)		\
-	patch-quiet.sh
+	patch-quiet.sh		\
+	get-cygwin-deps.sh	\
+	mono-configuration-crypto.in
 
 if USE_JIT
 mono_interp = mono
@@ -166,7 +161,7 @@ else
 mono_interp = mint
 endif
 
-if PLATFORM_WIN32
+if HOST_WIN32
 if CROSS_COMPILING
 plat_bindir = $(bindir)
 mono_instdir = $(prefix)/lib/mono
@@ -189,61 +184,68 @@ REWRITE_COMMON = sed \
 REWRITE = $(REWRITE_COMMON) -e 's,@''mono_interp@,$(mono_interp),g'
 REWRITE_DEBUG = $(REWRITE_COMMON) -e 's,@''mono_interp@,$(mono_interp) --debug,g'
 
-REWRITE1 = $(REWRITE) -e 's,@''framework_version@,1.0,g'
 REWRITE2 = $(REWRITE) -e 's,@''framework_version@,2.0,g'
 REWRITE2_1 = $(REWRITE) -e 's,@''framework_version@,2.1,g'
+if INSTALL_4_0
 REWRITE4 = $(REWRITE) -e 's,@''framework_version@,4.0,g'
-REWRITE1_DEBUG = $(REWRITE_DEBUG) -e 's,@''framework_version@,1.0,g'
+else
+REWRITE4 = $(REWRITE) -e 's,@''framework_version@,2.0,g'
+endif
 REWRITE2_DEBUG = $(REWRITE_DEBUG) -e 's,@''framework_version@,2.0,g'
 
+peverify: peverify.in Makefile
+	$(REWRITE_COMMON) $(srcdir)/peverify.in > $@.tmp
+	mv -f $@.tmp $@
 
 mono-service: mono-service.in Makefile
-	$(REWRITE1) -e 's,@''exe_name@,$@,g' $(srcdir)/mono-service.in > $@.tmp
-	mv $@.tmp $@
+	$(REWRITE4) -e 's,@''exe_name@,$@,g' $(srcdir)/mono-service.in > $@.tmp
+	mv -f $@.tmp $@
 
 mono-service2: mono-service.in Makefile
 	$(REWRITE2) -e 's,@''exe_name@,$@,g' $(srcdir)/mono-service.in > $@.tmp
-	mv $@.tmp $@
+	mv -f $@.tmp $@
 
 nunit-console$(SCRIPT_SUFFIX): $(SCRIPT_IN) Makefile
-	$(REWRITE1_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+	$(REWRITE2_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
+	mv -f $@.tmp $@
 
 nunit-console2$(SCRIPT_SUFFIX): $(SCRIPT_IN) Makefile
 	$(REWRITE2_DEBUG) -e 's,@''exe_name@,nunit-console,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+	mv -f $@.tmp $@
 
 #FIXME: this is not the correct rule for mod.bat.
 mod$(SCRIPT_SUFFIX): mod.in Makefile
-	$(REWRITE1) -e "s,@""exe_name@,mod,g" $(srcdir)/mod.in > $@.tmp
-	mv $@.tmp $@
-
-$(scripts_1_0): $(SCRIPT_IN) Makefile
-	$(REWRITE1) -e 's,@''exe_name@,$@,g' $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+	$(REWRITE2) -e "s,@""exe_name@,mod,g" $(srcdir)/mod.in > $@.tmp
+	mv -f $@.tmp $@
 
 #FIXME: this is not the correct rule for bat files.
-$(scripts_1_0_umask): script_umask.in Makefile
-	$(REWRITE1) -e 's,@''exe_name@,$@,g' $(srcdir)/script_umask.in > $@.tmp
-	mv $@.tmp $@
+$(scripts_4_0_umask): script_umask.in Makefile
+	n=`echo $@ | sed 's,$(COMPAT_4_0_SUFFIX)$$,,'`; \
+	$(REWRITE4) -e "s,@""exe_name@,$$n,g" $(srcdir)/script_umask.in | $(FILTER) > $@.tmp
+	mv -f $@.tmp $@
 
-$(scripts_1_0_compat): $(SCRIPT_IN) Makefile
-	t=`basename $@ $(COMPAT_1_0_SUFFIX)`; $(REWRITE1) -e "s,@exe_name@,$$t,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+mcs$(SCRIPT_SUFFIX): $(SCRIPT_IN) Makefile
+	$(REWRITE2) -e "s,@exe_name@,gmcs,g" $(srcdir)/$(SCRIPT_IN) > $@.tmp
+	mv -f $@.tmp $@
 
 $(scripts_defaults): $(SCRIPT_IN) Makefile
-	$(REWRITE2) -e "s,@exe_name@,$@,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+	n=`echo $@ | sed 's,$(COMPAT_4_0_SUFFIX)$$,,'`; \
+	$(REWRITE4) -e "s,@""exe_name@,$$n,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
+	mv -f $@.tmp $@
 
 $(scripts_2_0): $(SCRIPT_IN) Makefile
 	n=`echo $@ | sed 's,$(COMPAT_2_0_SUFFIX)$$,,'`; \
 	$(REWRITE2) -e "s,@""exe_name@,$$n,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+	mv -f $@.tmp $@
 
 $(scripts_4_0): $(SCRIPT_IN) Makefile
 	n=`echo $@ | sed 's,$(COMPAT_4_0_SUFFIX)$$,,'`; \
 	$(REWRITE4) -e "s,@""exe_name@,$$n,g" $(srcdir)/$(SCRIPT_IN) | $(FILTER) > $@.tmp
-	mv $@.tmp $@
+	mv -f $@.tmp $@
+
+$(scripts_mono_configuration_crypto): mono-configuration-crypto.in
+	$(REWRITE4)  -e "s,@exe_name@,mono-configuration-crypto,g" $(srcdir)/mono-configuration-crypto.in > $@.tmp
+	mv -f $@.tmp $@
 
 $(MDOC_SUBCOMMANDS): Makefile
 	for script in $(MDOC_SUBCOMMANDS) ; do                  \

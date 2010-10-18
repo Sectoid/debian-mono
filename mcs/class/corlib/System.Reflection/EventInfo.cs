@@ -32,22 +32,20 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_EventInfo))]
 	[Serializable]
-#endif
 	[ClassInterface(ClassInterfaceType.None)]
 	public abstract class EventInfo : MemberInfo, _EventInfo {
-#if NET_2_0
 		AddEventAdapter cached_add_event;
-#else
-		object placeholder;
-#endif
 
 		public abstract EventAttributes Attributes {get;}
 
-		public Type EventHandlerType {
+		public
+#if NET_4_0
+		virtual
+#endif
+		Type EventHandlerType {
 			get {
 				ParameterInfo[] p;
 				MethodInfo add = GetAddMethod (true);
@@ -62,7 +60,12 @@ namespace System.Reflection {
 					return null;
 			}
 		}
-		public bool IsMulticast {get {return true;}}
+
+		public
+#if NET_4_0
+		virtual
+#endif
+		bool IsMulticast {get {return true;}}
 		public bool IsSpecialName {get {return (Attributes & EventAttributes.SpecialName ) != 0;}}
 		public override MemberTypes MemberType {
 			get {return MemberTypes.Event;}
@@ -71,18 +74,15 @@ namespace System.Reflection {
 		protected EventInfo() {
 		}
 
-#if ONLY_1_1
-		public new Type GetType ()
-		{
-			return base.GetType ();
-		}
-#endif
 
 		[DebuggerHidden]
 		[DebuggerStepThrough]
-		public void AddEventHandler (object target, Delegate handler)
+		public
+#if NET_4_0
+		virtual
+#endif
+		void AddEventHandler (object target, Delegate handler)
 		{
-#if NET_2_0
 			if (cached_add_event == null) {
 				MethodInfo add = GetAddMethod ();
 				if (add == null)
@@ -98,12 +98,6 @@ namespace System.Reflection {
 			//if (target == null && is_instance)
 			//	throw new TargetException ("Cannot add a handler to a non static event with a null target");
 			cached_add_event (target, handler);
-#else
-			MethodInfo add = GetAddMethod ();
-			if (add == null)
-				throw new InvalidOperationException ("Cannot add a handler to an event that doesn't have a visible add method");
-			add.Invoke (target, new object [] {handler});
-#endif
 		}
 
 		public MethodInfo GetAddMethod() {
@@ -119,7 +113,6 @@ namespace System.Reflection {
 		}
 		public abstract MethodInfo GetRemoveMethod( bool nonPublic);
 
-#if NET_2_0
 		public virtual MethodInfo[] GetOtherMethods (bool nonPublic) {
 			// implemented by the derived class
 			return new MethodInfo [0];
@@ -128,11 +121,14 @@ namespace System.Reflection {
 		public MethodInfo[] GetOtherMethods () {
 			return GetOtherMethods (false);
 		}
-#endif		
 
 		[DebuggerHidden]
 		[DebuggerStepThrough]
-		public void RemoveEventHandler (object target, Delegate handler)
+		public
+#if NET_4_0
+		virtual
+#endif
+		void RemoveEventHandler (object target, Delegate handler)
 		{
 			MethodInfo remove = GetRemoveMethod ();
 			if (remove == null)
@@ -140,6 +136,36 @@ namespace System.Reflection {
 
 			remove.Invoke (target, new object [] {handler});
 		}
+
+#if NET_4_0
+		public override bool Equals (object obj)
+		{
+			return obj == this;
+		}
+
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
+
+		public static bool operator == (EventInfo left, EventInfo right)
+		{
+			if ((object)left == (object)right)
+				return true;
+			if ((object)left == null ^ (object)right == null)
+				return false;
+			return left.Equals (right);
+		}
+
+		public static bool operator != (EventInfo left, EventInfo right)
+		{
+			if ((object)left == (object)right)
+				return false;
+			if ((object)left == null ^ (object)right == null)
+				return true;
+			return !left.Equals (right);
+		}
+#endif
 
 		void _EventInfo.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{
@@ -160,11 +186,12 @@ namespace System.Reflection {
 		{
 			throw new NotImplementedException ();
 		}
-#if NET_2_0
 		delegate void AddEventAdapter (object _this, Delegate dele);
 		delegate void AddEvent<T, D> (T _this, D dele);
 		delegate void StaticAddEvent<D> (D dele);
 
+#pragma warning disable 169
+		// Used via reflection
 		static void AddEventFrame<T,D> (AddEvent<T,D> addEvent, object obj, object dele)
 		{
 			if (obj == null)
@@ -178,6 +205,7 @@ namespace System.Reflection {
 		{
 			addEvent ((D)dele);
 		}
+#pragma warning restore 169
 
 		/*
 		 * The idea behing this optimization is to use a pair of delegates to simulate the same effect of doing a reflection call.
@@ -217,6 +245,5 @@ namespace System.Reflection {
 			adapterFrame = adapterFrame.MakeGenericMethod (typeVector);
 			return (AddEventAdapter)Delegate.CreateDelegate (typeof (AddEventAdapter), addHandlerDelegate, adapterFrame, true);
 		}
-#endif
 	}
 }

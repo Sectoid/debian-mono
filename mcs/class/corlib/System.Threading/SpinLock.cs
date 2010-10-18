@@ -1,4 +1,3 @@
-#if NET_4_0
 // SpinLock.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -25,36 +24,51 @@
 
 using System;
 using System.Runtime.ConstrainedExecution;
+using System.Runtime.InteropServices;
 
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 namespace System.Threading
 {
+	[StructLayout(LayoutKind.Explicit)]
+	internal struct TicketType {
+		[FieldOffset(0)]
+		public long TotalValue;
+		[FieldOffset(0)]
+		public int Value;
+		[FieldOffset(4)]
+		public int Users;
+	}
+
+	// Implement the ticket SpinLock algorithm described on http://locklessinc.com/articles/locks/
+	// This lock is usable on both endianness
+	// TODO: some 32 bits platform apparently doesn't support CAS with 64 bits value
 	public struct SpinLock
 	{
-		const int isFree = 0;
-		const int isOwned = 1;
-		int lockState;
-		readonly SpinWait sw;
+		TicketType ticket;
+
 		int threadWhoTookLock;
 		readonly bool isThreadOwnerTrackingEnabled;
-		
+
 		public bool IsThreadOwnerTrackingEnabled {
 			get {
 				return isThreadOwnerTrackingEnabled;
 			}
 		}
-		
+
 		public bool IsHeld {
 			get {
-				return lockState == isOwned;
+				// No need for barrier here
+				long totalValue = ticket.TotalValue;
+				return (totalValue >> 32) != (totalValue & 0xFFFFFFFF);
 			}
 		}
-		
+
 		public bool IsHeldByCurrentThread {
 			get {
 				if (isThreadOwnerTrackingEnabled)
-					return lockState == isOwned && Thread.CurrentThread.ManagedThreadId == threadWhoTookLock;
+					return IsHeld && Thread.CurrentThread.ManagedThreadId == threadWhoTookLock;
 				else
-					return lockState == isOwned;
+					return IsHeld;
 			}
 		}
 
@@ -62,115 +76,90 @@ namespace System.Threading
 		{
 			this.isThreadOwnerTrackingEnabled = trackId;
 			this.threadWhoTookLock = 0;
-			this.lockState = isFree;
-			this.sw = new SpinWait();
+			this.ticket = new TicketType ();
 		}
-		
-		void CheckAndSetThreadId ()
-		{
-			if (threadWhoTookLock == Thread.CurrentThread.ManagedThreadId)
-				throw new LockRecursionException("The current thread has already acquired this lock.");
-			threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
-		}
-		
+
+		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
 		public void Enter (ref bool lockTaken)
 		{
-			try {
-				Enter ();
-				lockTaken = lockState == isOwned && Thread.CurrentThread.ManagedThreadId == threadWhoTookLock;
-			} catch {
-				lockTaken = false;
-			}
-		}
-		
-		internal void Enter () 
-		{
-			int result = Interlocked.Exchange (ref lockState, isOwned);
-			
-			//Thread.BeginCriticalRegion();
-			while (result == isOwned) {
-				// If resource available, set it to in-use and return
-				if (result == isFree) {
-					result = Interlocked.Exchange (ref lockState, isOwned);
-					if (result == isFree)
-						break;
-				}
-				
-				// Efficiently spin, until the resource looks like it might 
-				// be free. NOTE: Just reading here (as compared to repeatedly 
-				// calling Exchange) improves performance because writing 
-				// forces all CPUs to update this value
-				//while (Thread.VolatileRead (ref lockState) == isOwned) {
-					sw.SpinOnce ();
-				//}
-			}
-			
-			CheckAndSetThreadId ();
-		}
-		
-		bool TryEnter ()
-		{
-			//Thread.BeginCriticalRegion();
+			if (lockTaken)
+				throw new ArgumentException ("lockTaken", "lockTaken must be initialized to false");
+			if (isThreadOwnerTrackingEnabled && IsHeldByCurrentThread)
+				throw new LockRecursionException ();
 
-			// If resource available, set it to in-use and return
-			if (Interlocked.Exchange (ref lockState, isOwned) == isFree) {
-				CheckAndSetThreadId ();
-				return true;
-			}
-			return false;
+			int slot = Interlocked.Increment (ref ticket.Users) - 1;
+
+			SpinWait wait = new SpinWait ();
+			while (slot != ticket.Value)
+				wait.SpinOnce ();
+			
+			lockTaken = true;
+			
+			threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
 		}
-		
+
+		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
 		public void TryEnter (ref bool lockTaken)
 		{
-			try {
-				lockTaken = TryEnter ();
-			} catch {
-				lockTaken = false;
-			}
+			TryEnter (0, ref lockTaken);
 		}
-		
+
+		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
 		public void TryEnter (TimeSpan timeout, ref bool lockTaken)
 		{
 			TryEnter ((int)timeout.TotalMilliseconds, ref lockTaken);
 		}
-		
+
+		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
 		public void TryEnter (int milliSeconds, ref bool lockTaken)
 		{
-			//Thread.BeginCriticalRegion();
-			
+			if (milliSeconds < -1)
+				throw new ArgumentOutOfRangeException ("milliSeconds", "millisecondsTimeout is a negative number other than -1");
+			if (lockTaken)
+				throw new ArgumentException ("lockTaken", "lockTaken must be initialized to false");
+			if (isThreadOwnerTrackingEnabled && IsHeldByCurrentThread)
+				throw new LockRecursionException ();
+
 			Watch sw = Watch.StartNew ();
-			
-			while (sw.ElapsedMilliseconds < milliSeconds) {
-				TryEnter (ref lockTaken);
-			}
-			sw.Stop ();
+
+			do {
+				long u = ticket.Users;
+				long totalValue = (u << 32) | u;
+				long newTotalValue
+					= BitConverter.IsLittleEndian ? (u << 32) | (u + 1) : ((u + 1) << 32) | u;
+				
+				lockTaken = Interlocked.CompareExchange (ref ticket.TotalValue, newTotalValue, totalValue) == totalValue;
+				
+				if (lockTaken) {
+					threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
+					break;
+				}
+			} while (milliSeconds == -1 || (milliSeconds > 0 && sw.ElapsedMilliseconds < milliSeconds));
 		}
 
-		//[ReliabilityContractAttribute]
-		public void Exit () 
-		{ 
+		public void Exit ()
+		{
 			Exit (false);
 		}
 
-		public void Exit (bool flushReleaseWrites) 
-		{ 
+		public void Exit (bool flushReleaseWrites)
+		{
+			if (isThreadOwnerTrackingEnabled && !IsHeldByCurrentThread)
+				throw new SynchronizationLockException ("Current thread is not the owner of this lock");
+
 			threadWhoTookLock = int.MinValue;
-			
-			// Mark the resource as available
-			if (!flushReleaseWrites) {
-				lockState = isFree;
-			} else {
-				Interlocked.Exchange (ref lockState, isFree);
-			}
-			//Thread.EndCriticalRegion();
+			if (flushReleaseWrites)
+				Interlocked.Increment (ref ticket.Value);
+			else
+				ticket.Value++;
 		}
 	}
-	
+
 	// Wraps a SpinLock in a reference when we need to pass
 	// around the lock
 	internal class SpinLockWrapper
 	{
-		public readonly SpinLock Lock = new SpinLock (false);
+		public SpinLock Lock = new SpinLock (false);
 	}
 }
 #endif

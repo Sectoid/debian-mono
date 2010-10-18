@@ -26,7 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 
 using System;
 using System.IO;
@@ -37,7 +37,7 @@ using System.Text;
 
 namespace System.IO.IsolatedStorage {
 
-	static class IsolatedStorage {
+	internal static class IsolatedStorage {
 
 		// NOTE: both the 'site' and 'application' share the same quota
 		internal const long DefaultQuota = 1024 * 1024;

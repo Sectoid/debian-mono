@@ -31,10 +31,8 @@ using System;
 using System.Runtime.InteropServices;
 
 [Serializable]
-#if NET_2_0
 [ComVisible (true)]
-#endif
-[MonoTODO ("Serialization format not compatible with .NET")]
+[MonoLimitation ("Serialization format not compatible with .NET")]
 public class ASCIIEncoding : Encoding
 {
 	// Magic number used by Windows for "ASCII".
@@ -48,12 +46,10 @@ public class ASCIIEncoding : Encoding
 		is_mail_news_save = true;
 	}
 
-#if NET_2_0
 	[ComVisible (false)]
 	public override bool IsSingleByte {
 		get { return true; }
 	}
-#endif
 
 	// Get the number of bytes needed to encode a character buffer.
 	public override int GetByteCount (char[] chars, int index, int count)
@@ -81,14 +77,13 @@ public class ASCIIEncoding : Encoding
 
 	// Get the bytes that result from encoding a character buffer.
 	public override int GetBytes (char[] chars, int charIndex, int charCount,
-								 byte[] bytes, int byteIndex)
+				      byte[] bytes, int byteIndex)
 	{
-#if NET_2_0
-// well, yes, I know this #if is ugly, but I think it is the simplest switch.
 		EncoderFallbackBuffer buffer = null;
 		char [] fallback_chars = null;
-		return GetBytes (chars, charIndex, charCount, bytes,
-			byteIndex, ref buffer, ref fallback_chars);
+		
+		return GetBytes (chars, charIndex, charCount, bytes, byteIndex,
+				 ref buffer, ref fallback_chars);
 	}
 
 	int GetBytes (char[] chars, int charIndex, int charCount,
@@ -96,60 +91,19 @@ public class ASCIIEncoding : Encoding
 		      ref EncoderFallbackBuffer buffer,
 		      ref char [] fallback_chars)
 	{
-#endif
-		if (chars == null) {
+		if (chars == null)
 			throw new ArgumentNullException ("chars");
-		}
-		if (bytes == null) {
-			throw new ArgumentNullException ("bytes");
-		}
-		if (charIndex < 0 || charIndex > chars.Length) {
-			throw new ArgumentOutOfRangeException ("charIndex", _("ArgRange_Array"));
-		}
-		if (charCount < 0 || charCount > (chars.Length - charIndex)) {
-			throw new ArgumentOutOfRangeException ("charCount", _("ArgRange_Array"));
-		}
-		if (byteIndex < 0 || byteIndex > bytes.Length) {
-			throw new ArgumentOutOfRangeException ("byteIndex", _("ArgRange_Array"));
-		}
-		if ((bytes.Length - byteIndex) < charCount) {
-			throw new ArgumentException (_("Arg_InsufficientSpace"));
-		}
-		int count = charCount;
-		char ch;
-		while (count-- > 0) {
-			ch = chars [charIndex++];
-			if (ch < (char)0x80) {
-				bytes [byteIndex++] = (byte)ch;
-			} else {
-#if NET_2_0
-				if (buffer == null)
-					buffer = EncoderFallback.CreateFallbackBuffer ();
-				if (Char.IsSurrogate (ch) && count > 1 &&
-				    Char.IsSurrogate (chars [charIndex]))
-					buffer.Fallback (ch, chars [charIndex], charIndex++ - 1);
-				else
-					buffer.Fallback (ch, charIndex - 1);
-				if (fallback_chars == null || fallback_chars.Length < buffer.Remaining)
-					fallback_chars = new char [buffer.Remaining];
-				for (int i = 0; i < fallback_chars.Length; i++)
-					fallback_chars [i] = buffer.GetNextChar ();
-				byteIndex += GetBytes (fallback_chars, 0, 
-					fallback_chars.Length, bytes, byteIndex,
-					ref buffer, ref fallback_chars);
-#else
-				bytes [byteIndex++] = (byte)'?';
-#endif
+
+		unsafe {
+			fixed (char *cptr = chars) {
+				return InternalGetBytes (cptr, chars.Length, charIndex, charCount, bytes, byteIndex, ref buffer, ref fallback_chars);
 			}
 		}
-		return charCount;
 	}
 
 	// Convenience wrappers for "GetBytes".
 	public override int GetBytes (String chars, int charIndex, int charCount, byte[] bytes, int byteIndex)
 	{
-#if NET_2_0
-// I know this #if is ugly, but I think it is the simplest switch.
 		EncoderFallbackBuffer buffer = null;
 		char [] fallback_chars = null;
 		return GetBytes (chars, charIndex, charCount, bytes, byteIndex,
@@ -161,25 +115,32 @@ public class ASCIIEncoding : Encoding
 		      ref EncoderFallbackBuffer buffer,
 		      ref char [] fallback_chars)
 	{
-#endif
-		if (chars == null) {
+		if (chars == null)
 			throw new ArgumentNullException ("chars");
+
+		unsafe {
+			fixed (char *cptr = chars) {
+				return InternalGetBytes (cptr, chars.Length, charIndex, charCount, bytes, byteIndex, ref buffer, ref fallback_chars);
+			}
 		}
-		if (bytes == null) {
+	}
+
+	unsafe int InternalGetBytes (char *chars, int charLength, int charIndex, int charCount,
+		      byte[] bytes, int byteIndex,
+		      ref EncoderFallbackBuffer buffer,
+		      ref char [] fallback_chars)
+	{
+		if (bytes == null)
 			throw new ArgumentNullException ("bytes");
-		}
-		if (charIndex < 0 || charIndex > chars.Length) {
+		if (charIndex < 0 || charIndex > charLength)
 			throw new ArgumentOutOfRangeException ("charIndex", _("ArgRange_StringIndex"));
-		}
-		if (charCount < 0 || charCount > (chars.Length - charIndex)) {
+		if (charCount < 0 || charCount > (charLength - charIndex))
 			throw new ArgumentOutOfRangeException ("charCount", _("ArgRange_StringRange"));
-		}
-		if (byteIndex < 0 || byteIndex > bytes.Length) {
+		if (byteIndex < 0 || byteIndex > bytes.Length)
 			throw new ArgumentOutOfRangeException ("byteIndex", _("ArgRange_Array"));
-		}
-		if ((bytes.Length - byteIndex) < charCount) {
+		if ((bytes.Length - byteIndex) < charCount)
 			throw new ArgumentException (_("Arg_InsufficientSpace"));
-		}
+
 		int count = charCount;
 		char ch;
 		while (count-- > 0) {
@@ -187,7 +148,6 @@ public class ASCIIEncoding : Encoding
 			if (ch < (char)0x80) {
 				bytes [byteIndex++] = (byte)ch;
 			} else {
-#if NET_2_0
 				if (buffer == null)
 					buffer = EncoderFallback.CreateFallbackBuffer ();
 				if (Char.IsSurrogate (ch) && count > 1 &&
@@ -202,9 +162,6 @@ public class ASCIIEncoding : Encoding
 				byteIndex += GetBytes (fallback_chars, 0, 
 					fallback_chars.Length, bytes, byteIndex,
 					ref buffer, ref fallback_chars);
-#else
-				bytes [byteIndex++] = (byte)'?';
-#endif
 			}
 		}
 		return charCount;
@@ -228,8 +185,6 @@ public class ASCIIEncoding : Encoding
 	// Get the characters that result from decoding a byte buffer.
 	public override int GetChars (byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
 	{
-#if NET_2_0
-// well, yes, I know this #if is ugly, but I think it is the simplest switch.
 		DecoderFallbackBuffer buffer = null;
 		return GetChars (bytes, byteIndex, byteCount, chars,
 			charIndex, ref buffer);
@@ -239,7 +194,6 @@ public class ASCIIEncoding : Encoding
 		      char[] chars, int charIndex,
 		      ref DecoderFallbackBuffer buffer)
 	{
-#endif
 		if (bytes == null)
 			throw new ArgumentNullException ("bytes");
 		if (chars == null) 
@@ -260,15 +214,11 @@ public class ASCIIEncoding : Encoding
 			if (c < '\x80')
 				chars [charIndex++] = c;
 			else {
-#if NET_2_0
 				if (buffer == null)
 					buffer = DecoderFallback.CreateFallbackBuffer ();
 				buffer.Fallback (bytes, byteIndex);
 				while (buffer.Remaining > 0)
 					chars [charIndex++] = buffer.GetNextChar ();
-#else
-				chars [charIndex++] = '?';
-#endif
 			}
 		}
 		return byteCount;
@@ -319,13 +269,8 @@ public class ASCIIEncoding : Encoding
 					char* currChar = charPtr;
 
 					while (currByte < lastByte) {
-#if NET_2_0
 						byte b = currByte++ [0];
 						currChar++ [0] = b <= 0x7F ? (char) b : (char) '?';
-#else
-						// GetString is incompatible with GetChars
-						currChar++ [0] = (char) (currByte++ [0] & 0x7F);
-#endif
 					}
 				}
 
@@ -334,7 +279,6 @@ public class ASCIIEncoding : Encoding
 		}
 	}
 
-#if NET_2_0
 	[CLSCompliantAttribute (false)]
 	[ComVisible (false)]
 	public unsafe override int GetBytes (char *chars, int charCount, byte *bytes, int byteCount)
@@ -394,33 +338,18 @@ public class ASCIIEncoding : Encoding
 	{
 		return count;
 	}
-#else
-	// This routine is gone in 2.x
-	public override String GetString (byte[] bytes)
-	{
-		if (bytes == null) {
-			throw new ArgumentNullException ("bytes");
-		}
 
-		return GetString (bytes, 0, bytes.Length);
-	}
-#endif
-
-#if NET_2_0
-	[MonoTODO ("we have simple override to match method signature.")]
 	[ComVisible (false)]
 	public override Decoder GetDecoder ()
 	{
 		return base.GetDecoder ();
 	}
 
-	[MonoTODO ("we have simple override to match method signature.")]
 	[ComVisible (false)]
 	public override Encoder GetEncoder ()
 	{
 		return base.GetEncoder ();
 	}
-#endif
 }; // class ASCIIEncoding
 
 }; // namespace System.Text

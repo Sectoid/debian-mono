@@ -1,3 +1,18 @@
+2010-07-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ClientSessionCache.cs: Do not let the ValidityInterval be 
+	controlled by an environment variable for Moonlight
+	* HttpsClientStream.cs: Simplify code for Moonlight profile
+
+2010-05-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CipherSuite.cs:
+	* DebugHelper.cs:
+	* RecordProtocol.cs:
+	* SslClientStream.cs:
+		Let them compile for Moonlight (where the files are 
+		compiled inside System.dll)
+
 2010-04-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Context.cs:
@@ -15,8 +30,9 @@
 
 2010-03-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
-	* HttpsClientStream.cs: use Address instead of RequestUri to get
-	the right host name when the request is redirected.
+	* HttpsClientStream.cs: use Address instead
+	of RequestUri to get the right host name when the request is
+	redirected.
 
 	* SslStreamBase.cs:
 	* SslClientStream.cs:

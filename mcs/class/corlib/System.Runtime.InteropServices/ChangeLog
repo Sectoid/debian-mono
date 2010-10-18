@@ -1,3 +1,18 @@
+2010-08-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Type is sealed, forgot to make it so.
+
+2010-08-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement System.Runtime.InteropServices.TypeIdentifierAttribute.
+
+2010-08-18  Geoff Norton  <gnorton@novell.com>
+
+	Fix GetDelegateForFunctionPointer for generic types
+
+	MSFT .NET throws an ArgumentException if you attempt to call
+	GetDelegateForFunctionPointer for a generic type.
+
 2010-04-02  Miguel de Icaza  <miguel@novell.com>
 
 	* SafeHandle.cs: Use refcount == -1 to indicate that the handle
@@ -11,10 +26,30 @@
 
 	Sadly, we have no test suites for that.
 
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* MarshalAsAttribute.cs, Marshal.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2009-12-13  Miguel de Icaza  <miguel@novell.com>
+
+	* SafeBuffer.cs: When comparing the end, we only need to compare
+	source+size being bigger than last_byte, not bigger or equal,
+	otherwise we can not access the last element.
+
+2009-11-08  Miguel de Icaza  <miguel@novell.com>
+
+	* Marshal.cs: Expose copy_*_unamnaged to SafeBuffer.
+
+	* SafeBuffer.cs: Update SafeBufer implementation
+
+2009-11-02  Miguel de Icaza  <miguel@novell.com>
+
+	* Jumbo NET_2_0 removal patch.
+
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* GCHandle.cs: Add missing validations
-	[Backport r144204]
 
 2009-09-22  Sebastien Pouliot  <sebastien@ximian.com>
 

@@ -29,20 +29,12 @@ using System;
 
 namespace System.Web.UI
 {
-#if NET_2_0
 	sealed class MainDirectiveAttribute <T>
-#else
-	sealed class MainDirectiveAttribute
-#endif
 	{
 		string unparsedValue;
-#if NET_2_0
 		T value;
-#else
-		object value;
-#endif
 		bool isExpression;
-		bool isDataBound;
+//		bool isDataBound;
 		
 		public string UnparsedValue {
 			get { return unparsedValue; }
@@ -51,28 +43,19 @@ namespace System.Web.UI
 		public bool IsExpression {
 			get { return isExpression; }
 		}
-#if NET_2_0
+
 		public T Value {
 			get { return value; }
 		}
-#else
-		public object Value {
-			get { return value; }
-		}
-#endif
+
 		public MainDirectiveAttribute (string value)
 		{
 			this.unparsedValue = value;
-#if NET_2_0
 			if (value != null)
 				this.isExpression = BaseParser.IsExpression (value);
-#endif
 		}
-#if NET_2_0
+
 		public MainDirectiveAttribute (T value, bool unused)
-#else
-		public MainDirectiveAttribute (object value)
-#endif
 		{
 			this.value = value;
 		}

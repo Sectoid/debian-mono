@@ -29,9 +29,9 @@ using System.Threading.Tasks;
 
 using NUnit.Framework;
 
-namespace ParallelFxTests
+namespace MonoTests.System.Threading.Tasks
 {
-	[TestFixture()]
+	[TestFixture]
 	public class TaskTests
 	{
 		Task[]      tasks;
@@ -91,23 +91,31 @@ namespace ParallelFxTests
 		[Test]
 		public void CancelTestCase()
 		{
-			int count = 1;
-			ParallelTestHelper.Repeat (delegate {
-				bool result = false;
-				
-				Task t = new Task (delegate {
-					result = true;
-				});
-				t.Cancel();
-				Assert.IsTrue (t.IsCancellationRequested, "#-1");
-				t.Start ();
+			bool result = false;
+			
+			CancellationTokenSource src = new CancellationTokenSource ();
+			
+			Task t = new Task (delegate {
+				result = true;
+			}, src.Token);
+			src.Cancel ();
+			
+			t.Start ();
+			Exception ex = null;
+			
+			try {
 				t.Wait ();
-				
-				Assert.IsInstanceOfType(typeof(TaskCanceledException), t.Exception, "#1 : " + count ++);
-				TaskCanceledException ex = (TaskCanceledException)t.Exception;
-				Assert.AreEqual(t, ex.Task, "#2");
-				Assert.IsFalse(result, "#3");
-			});
+			} catch (Exception e) {
+				ex = e;
+			}
+			
+			Assert.IsNotNull (ex, "#1");
+			Assert.IsInstanceOfType (typeof(AggregateException), ex, "#2");
+			Assert.IsNull (t.Exception, "#3");
+			
+			AggregateException aggr = (AggregateException)ex;
+			Assert.AreEqual (1, aggr.InnerExceptions.Count, "#4");
+			Assert.IsInstanceOfType (typeof (OperationCanceledException), aggr.InnerExceptions[0], "#5");
 		}
 		
 		[Test]
@@ -118,9 +126,8 @@ namespace ParallelFxTests
 				
 				Task t = Task.Factory.StartNew(delegate { });
 				Task cont = t.ContinueWith(delegate { result = true; }, TaskContinuationOptions.None);
-				t.Wait();
-				cont.Wait();
-				
+				Assert.IsTrue (t.Wait (2000), "First wait, (status, {0})", t.Status);
+				Assert.IsTrue (cont.Wait(2000), "Cont wait, (result, {0}) (parent status, {2}) (status, {1})", result, cont.Status, t.Status);
 				Assert.IsNull(cont.Exception, "#1");
 				Assert.IsNotNull(cont, "#2");
 				Assert.IsTrue(result, "#3");
@@ -151,13 +158,13 @@ namespace ParallelFxTests
 				bool result = false;
 				bool taskResult = false;
 				
-				Task t = new Task(delegate { taskResult = true; });
-				t.Cancel();
+				CancellationTokenSource src = new CancellationTokenSource ();
+				Task t = new Task(delegate { taskResult = true; }, src.Token);
+				src.Cancel ();
 				
-				Task cont = t.ContinueWith(delegate { result = true; }, TaskContinuationOptions.OnlyOnCanceled);
+				Task cont = t.ContinueWith (delegate { result = true; }, TaskContinuationOptions.OnlyOnCanceled);
 
 				t.Start();
-				t.Wait();
 				cont.Wait();
 				
 				Assert.IsFalse (taskResult, "#-1");
@@ -170,22 +177,22 @@ namespace ParallelFxTests
 			});
 		}
 		
-		/*[Test]
+		[Test]
 		public void ContinueWithOnFailedTestCase()
 		{
 			ParallelTestHelper.Repeat (delegate {
 				bool result = false;
 				
-				Task t = Task.Factory.StartNew(delegate {throw new Exception("foo"); });
-		//		Task cont = t.ContinueWith(delegate { result = true; }, TaskContinuationOptions.OnlyOnFaulted);
-			//	t.Wait();
-				//cont.Wait();
+				Task t = Task.Factory.StartNew(delegate { throw new Exception("foo"); });	
+				Task cont = t.ContinueWith(delegate { result = true; }, TaskContinuationOptions.OnlyOnFaulted);
+			
+				cont.Wait();
 				
-				//Assert.IsNotNull (t.Exception, "#1");
-		//		Assert.IsNotNull (cont, "#2");
+				Assert.IsNotNull (t.Exception, "#1");
+				Assert.IsNotNull (cont, "#2");
 				Assert.IsTrue (result, "#3");
 			});
-		}*/
+		}
 
 		[TestAttribute]
 		public void MultipleTaskTestCase()
@@ -223,20 +230,17 @@ namespace ParallelFxTests
 					Task.Factory.StartNew(delegate {
 						Thread.Sleep(50);
 						r1 = true;
-						//Console.WriteLine("finishing 1");
-					});
+					}, TaskCreationOptions.AttachedToParent);
 					Task.Factory.StartNew(delegate {
 						Thread.Sleep(300);
 						
 						r2 = true;
-						//Console.WriteLine("finishing 2");
-					});
+					}, TaskCreationOptions.AttachedToParent);
 					Task.Factory.StartNew(delegate {
 						Thread.Sleep(150);
 						
 						r3 = true;
-						//Console.WriteLine("finishing 3");
-					});
+					}, TaskCreationOptions.AttachedToParent);
 				});
 				
 				t.Wait();

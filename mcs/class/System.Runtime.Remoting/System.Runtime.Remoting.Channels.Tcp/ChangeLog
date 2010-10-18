@@ -1,3 +1,10 @@
+2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Adapt to new exception in threadpool behavior.
+
+	Since an exception in the threadpool can kill the application,
+	silently ignore it when we know it is not harmful.
+
 2008-09-18  Robert Jordan  <robertj@gmx.net>
 
 	* TcpConnectionPool.cs: Set NoDelay on both profiles.

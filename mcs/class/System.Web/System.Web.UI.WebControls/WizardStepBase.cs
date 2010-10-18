@@ -54,6 +54,19 @@ namespace System.Web.UI.WebControls
 				ViewState ["AllowReturn"] = value;
 			}
 		}
+
+		[Browsable (true)]
+		public override bool EnableTheming {
+			get { return base.EnableTheming; }
+			set { base.EnableTheming = value; }
+		}
+
+		// .NET version of this property performs design-time checks, which we don't
+		// support, thus our version is just a do-nothing override
+		public override string ID {
+			get { return base.ID; }
+			set { base.ID = value; }
+		}
 		
 		[DesignerSerializationVisibilityAttribute (DesignerSerializationVisibility.Hidden)]
 		[BrowsableAttribute (false)]
@@ -92,6 +105,24 @@ namespace System.Web.UI.WebControls
 		[BrowsableAttribute (false)]
 		public Wizard Wizard {
 			get { return wizard; }
+		}
+		
+		protected override void LoadViewState (object savedState)
+		{
+			// why override?
+			base.LoadViewState (savedState);
+		}
+
+		protected internal override void OnLoad (EventArgs e)
+		{
+			// why override?
+			base.OnLoad (e);
+		}
+
+		protected internal override void RenderChildren (HtmlTextWriter writer)
+		{
+			// why override?
+			base.RenderChildren (writer);
 		}
 		
 		internal void SetWizard (Wizard w)

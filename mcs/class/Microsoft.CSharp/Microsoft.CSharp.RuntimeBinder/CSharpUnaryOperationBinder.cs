@@ -31,42 +31,69 @@ using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpUnaryOperationBinder : UnaryOperationBinder
+	class CSharpUnaryOperationBinder : UnaryOperationBinder
 	{
 		IList<CSharpArgumentInfo> argumentInfo;
-		bool is_checked;
+		readonly CSharpBinderFlags flags;
+		readonly Type context;
 		
-		public CSharpUnaryOperationBinder (ExpressionType operation, bool isChecked, IEnumerable<CSharpArgumentInfo> argumentInfo)
+		public CSharpUnaryOperationBinder (ExpressionType operation, CSharpBinderFlags flags, Type context, IEnumerable<CSharpArgumentInfo> argumentInfo)
 			: base (operation)
 		{
 			this.argumentInfo = argumentInfo.ToReadOnly ();
-			this.is_checked = isChecked;
-		}
-		
-		public IList<CSharpArgumentInfo> ArgumentInfo {
-			get {
-				return argumentInfo;
-			}
-		}
+			if (this.argumentInfo.Count != 1)
+				throw new ArgumentException ("Unary operation requires 1 argument");
 
-		public bool IsChecked {
-			get {
-				return is_checked;
+			this.flags = flags;
+			this.context = context;
+		}
+	
+
+		Compiler.Unary.Operator GetOperator ()
+		{
+			switch (Operation) {
+			case ExpressionType.Negate:
+				return Compiler.Unary.Operator.UnaryNegation;
+			case ExpressionType.Not:
+				return Compiler.Unary.Operator.LogicalNot;
+			case ExpressionType.OnesComplement:
+				return Compiler.Unary.Operator.OnesComplement;
+			case ExpressionType.UnaryPlus:
+				return Compiler.Unary.Operator.UnaryPlus;
+			default:
+				throw new NotImplementedException (Operation.ToString ());
 			}
 		}
 		
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-		
-		[MonoTODO]
 		public override DynamicMetaObject FallbackUnaryOperation (DynamicMetaObject target, DynamicMetaObject errorSuggestion)
 		{
-			throw new NotImplementedException ();
+			var ctx = DynamicContext.Create ();
+			var expr = ctx.CreateCompilerExpression (argumentInfo [0], target);
+
+			if (Operation == ExpressionType.IsTrue) {
+				expr = new Compiler.BooleanExpression (expr);
+			} else {
+				if (Operation == ExpressionType.Increment)
+					expr = new Compiler.UnaryMutator (Compiler.UnaryMutator.Mode.PreIncrement, expr, Compiler.Location.Null);
+				else if (Operation == ExpressionType.Decrement)
+					expr = new Compiler.UnaryMutator (Compiler.UnaryMutator.Mode.PreDecrement, expr, Compiler.Location.Null);
+				else
+					expr = new Compiler.Unary (GetOperator (), expr, Compiler.Location.Null);
+
+				expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (ReturnType), Compiler.Location.Null), expr, Compiler.Location.Null);
+
+				if ((flags & CSharpBinderFlags.CheckedContext) != 0)
+					expr = new Compiler.CheckedExpr (expr, Compiler.Location.Null);
+			}
+
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+
+			return binder.Bind (ctx, context);
 		}
 	}
 }

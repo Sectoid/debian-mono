@@ -28,7 +28,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -100,6 +100,13 @@ namespace System.IO.IsolatedStorage {
 			throw new IsolatedStorageException ();
 		}
 		
+		public static bool IsEnabled {
+			get {
+				Console.WriteLine ("NIEX: System.IO.IsolatedStorage.IsolatedStorageFile:get_IsEnabled");
+				throw new NotImplementedException ();
+			}
+		}
+
 		public void CreateDirectory (string dir)
 		{
 			PreCheck ();

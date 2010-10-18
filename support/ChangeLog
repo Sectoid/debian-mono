@@ -1,3 +1,14 @@
+2010-06-28  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (patch-libtool): Fix this up after the dolt changes.
+
+2010-05-13  Geoff Norton  <gnorton@novell.com>
+
+	* fakepoll.h: Added for OSX
+	* serial.c:
+	* signal.c: poll on OSX is broken, so we use a select based 
+	implementation instead.
+
 2010-04-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* zlib-helper.c: don't call Z_FINISH if nothing has been written.
@@ -37,10 +48,32 @@
 	* mph.h: Applied some changes from the openbsd ports tree to fix openbsd
 	support.
 
+2010-03-23  Andreas Faerber  <andreas.faerber@web.de>
+
+	* old-map.c (map_Mono_Posix_Signals): Fix build for platforms where
+	SIGIO is not defined (Haiku).
+	
+	Code is contributed under MIT/X11 license.
+
+2010-02-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* serial.cs: Add 921600 to the list of possible baud rates, and
+	use it only if defined, as is not available in all the unix systems.
+	Fixes #445520.
+
 2010-01-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* zlib-helper.c: no need for sync flush when compressing.
 	Thanks to Hin-Tak Leung.
+
+2010-01-28  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* serial.c: Fix the OSX build.
+
+2010-01-22 Leszek Ciesielski <skolima@gmail.com>
+	
+	* serial.c: baud rate 460800 by Thad Thompson <TThompson@nucsafe.com>
+	* serial.c: report errors from every function
 
 2009-12-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
 

@@ -40,7 +40,7 @@ namespace Mono.Security.Protocol.Tls
 	public delegate bool CertificateValidationCallback(
 		X509Certificate certificate, 
 		int[]			certificateErrors);
-#if NET_2_0
+
 	public class ValidationResult {
 		bool trusted;
 		bool user_denied;
@@ -66,8 +66,12 @@ namespace Mono.Security.Protocol.Tls
 		}
 	}
 
-	public delegate ValidationResult CertificateValidationCallback2 (Mono.Security.X509.X509CertificateCollection collection);
+#if MOONLIGHT
+	internal
+#else
+	public
 #endif
+	delegate ValidationResult CertificateValidationCallback2 (Mono.Security.X509.X509CertificateCollection collection);
 
 	public delegate X509Certificate CertificateSelectionCallback(
 		X509CertificateCollection	clientCertificates, 
@@ -133,9 +137,12 @@ namespace Mono.Security.Protocol.Tls
 		
 		#endregion
 
-#if NET_2_0
+#if MOONLIGHT
+		internal event CertificateValidationCallback2 ServerCertValidation2;
+#else
 		public event CertificateValidationCallback2 ServerCertValidation2;
 #endif
+
 		#region Constructors
 		
 		public SslClientStream(
@@ -223,9 +230,7 @@ namespace Mono.Security.Protocol.Tls
 				this.ServerCertValidation = null;
 				this.ClientCertSelection = null;
 				this.PrivateKeySelection = null;
-#if NET_2_0
 				this.ServerCertValidation2 = null;
-#endif
 			}
 		}
 
@@ -407,7 +412,6 @@ namespace Mono.Security.Protocol.Tls
 			return null;
 		}
 
-#if NET_2_0
 		internal override bool HaveRemoteValidation2Callback {
 			get { return ServerCertValidation2 != null; }
 		}
@@ -419,7 +423,6 @@ namespace Mono.Security.Protocol.Tls
 				return cb (collection);
 			return null;
 		}
-#endif
 
 		internal override bool OnRemoteCertificateValidation(X509Certificate certificate, int[] errors)
 		{
@@ -438,12 +441,11 @@ namespace Mono.Security.Protocol.Tls
 			return base.RaiseRemoteCertificateValidation(certificate, certificateErrors);
 		}
 
-#if NET_2_0
 		internal virtual ValidationResult RaiseServerCertificateValidation2 (Mono.Security.X509.X509CertificateCollection collection)
 		{
 			return base.RaiseRemoteCertificateValidation2 (collection);
 		}
-#endif
+
 		internal X509Certificate RaiseClientCertificateSelection(
 			X509CertificateCollection	clientCertificates, 
 			X509Certificate				serverCertificate, 

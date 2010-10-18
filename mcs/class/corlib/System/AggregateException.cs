@@ -1,4 +1,3 @@
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 // AggregateException.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -23,6 +22,7 @@
 //
 //
 
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
@@ -47,7 +47,7 @@ namespace System
 		{
 		}
 		
-		public AggregateException (SerializationInfo info, StreamingContext ctx)
+		protected AggregateException (SerializationInfo info, StreamingContext ctx)
 			: base (info, ctx)
 		{
 		}
@@ -115,7 +115,7 @@ namespace System
 			return this.Message;
 		}
 		
-		const string baseMessage = "Exception(s) occurred while inside the Parallel loop. {0}.";
+		const string baseMessage = "Exception(s) occurred : {0}.";
 		static string GetFormattedMessage (string customMessage, IEnumerable<Exception> inner)
 		{
 			System.Text.StringBuilder finalMessage

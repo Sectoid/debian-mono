@@ -28,18 +28,17 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Collections;
 using System.Collections.Specialized;
 using System.Data;
 using System.Text;
 using System.ComponentModel;
 
-namespace System.Web.UI.WebControls {
-
+namespace System.Web.UI.WebControls
+{
 	[DefaultPropertyAttribute ("CookieName")]
-	public class CookieParameter : Parameter {
-
+	public class CookieParameter : Parameter
+	{
 		public CookieParameter () : base ()
 		{
 		}
@@ -68,8 +67,12 @@ namespace System.Web.UI.WebControls {
 		{
 			return new CookieParameter (this);
 		}
-		
-		protected override object Evaluate (HttpContext ctx, Control control)
+#if NET_4_0
+		protected internal
+#else
+		protected
+#endif
+		override object Evaluate (HttpContext ctx, Control control)
 		{
 			if (ctx == null || ctx.Request == null)
 				return null;
@@ -83,7 +86,7 @@ namespace System.Web.UI.WebControls {
 		
 		[DefaultValueAttribute ("")]
 		public string CookieName {
-			get { return ViewState.GetString ("CookieName", ""); }
+			get { return ViewState.GetString ("CookieName", String.Empty); }
 			set {
 				if (CookieName != value) {
 					ViewState ["CookieName"] = value;
@@ -95,6 +98,6 @@ namespace System.Web.UI.WebControls {
 	
 	}
 }
-#endif
+
 
 

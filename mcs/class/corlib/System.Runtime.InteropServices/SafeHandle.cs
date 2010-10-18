@@ -43,7 +43,6 @@
 //
 //
 
-#if NET_2_0
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.ConstrainedExecution;
@@ -218,4 +217,3 @@ namespace System.Runtime.InteropServices
 		}
 	}
 }
-#endif

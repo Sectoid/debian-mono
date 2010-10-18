@@ -3223,10 +3223,6 @@ namespace Test.OracleClient
 
 			Wait ("");
 			
-			Console.WriteLine ("Out Parameter and PL/SQL Block Test 2 BEGIN...");
-			OutParmTest2 (con1); 
-			Console.WriteLine ("Out Parameter and PL/SQL Block Test 2 END...");
-
 			Console.WriteLine ("LOB Test BEGIN...");
 			CLOBTest (con1);
 			BLOBTest (con1);
@@ -3246,12 +3242,12 @@ namespace Test.OracleClient
 			Wait ("");
 
 			Console.WriteLine ("DataAdapter Test 2 BEGIN...");
-                       // FIXME: test is failing in NET_2_0 profile but not in NET_1_1 profile
-                       // Unhandled Exception: System.Data.OracleClient.OracleException: ORA-01400: cannot insert NULL 
-                       // into ("SCOTT"."MONO_ADAPTER_TEST"."NUMBER_WHOLE_VALUE")
-                       // NUMBER_WHOLE_VALUE is a primary key on the table.
-                       //DataAdapterTest2(con1);
-                       Console.WriteLine ("***DataAdapter Test 2 FAILS!");
+			// FIXME: test is failing in NET_2_0 profile but not in NET_1_1 profile
+			// Unhandled Exception: System.Data.OracleClient.OracleException: ORA-01400: cannot insert NULL 
+			// into ("SCOTT"."MONO_ADAPTER_TEST"."NUMBER_WHOLE_VALUE")
+			// NUMBER_WHOLE_VALUE is a primary key on the table.
+			//DataAdapterTest2(con1);
+			Console.WriteLine ("***DataAdapter Test 2 FAILS!");
 			Console.WriteLine ("DataAdapter Test 2 END.");
 
 			Wait ("");
@@ -3292,6 +3288,10 @@ namespace Test.OracleClient
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 1 BEGIN...");
 			OutParmTest1 (con1); 
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 1 END...");
+
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 2 BEGIN...");
+			OutParmTest2 (con1); 
+			Console.WriteLine ("Out Parameter and PL/SQL Block Test 2 END...");
 
 			Console.WriteLine ("Out Parameter and PL/SQL Block Test 3 BEGIN...");
 			OutParmTest3 (con1); 

@@ -38,19 +38,16 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
-
-#if NET_2_0
 using System.Security.AccessControl;
-#endif
+using System.Security.Permissions;
+using Microsoft.Win32.SafeHandles;
 
 namespace Microsoft.Win32
 {
 	/// <summary>
 	///	Wrapper class for Windows Registry Entry.
 	/// </summary>
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class RegistryKey : MarshalByRefObject, IDisposable 
 	{
 		//
@@ -58,6 +55,9 @@ namespace Microsoft.Win32
 		// RegistryKey object
 		//
 		object handle;
+#if NET_4_0
+		SafeRegistryHandle safe_handle;
+#endif
 
 		object hive; // the RegistryHive if the key represents a base key
 		readonly string qname;	// the fully qualified registry key name
@@ -110,7 +110,11 @@ namespace Microsoft.Win32
 		///	Dispose of registry key object. Close the 
 		///	key if it's still open.
 		/// </summary>
+#if NET_4_0
+		public void Dispose ()
+#else
 		void IDisposable.Dispose ()
+#endif
 		{
 			GC.SuppressFinalize (this);
 			Close ();
@@ -159,6 +163,9 @@ namespace Microsoft.Win32
 			
 			RegistryApi.Close (this);
 			handle = null;
+#if NET_4_0
+			safe_handle = null;
+#endif
 		}
 		
 		
@@ -185,6 +192,31 @@ namespace Microsoft.Win32
 			}
 		}
 
+#if NET_4_0
+		[ComVisible (false)]
+		[MonoTODO ("Not implemented in Unix")]
+		public SafeRegistryHandle Handle {
+			get {
+				AssertKeyStillValid ();
+
+				if (safe_handle == null) {
+					IntPtr h = RegistryApi.GetHandle (this);
+					safe_handle = new SafeRegistryHandle (h, true);
+				}
+
+				return safe_handle;
+			}
+		}
+
+		[ComVisible (false)]
+		[MonoLimitation ("View is ignored in Mono.")]
+		public RegistryView View {
+			get {
+				return RegistryView.Default;
+			}
+		}
+#endif
+
 		
 		/// <summary>
 		///	Set a registry value.
@@ -205,7 +237,6 @@ namespace Microsoft.Win32
 			RegistryApi.SetValue (this, name, value);
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public void SetValue (string name, object value, RegistryValueKind valueKind)
 		{
@@ -222,7 +253,6 @@ namespace Microsoft.Win32
 
 			RegistryApi.SetValue (this, name, value, valueKind);
 		}
-#endif
 
 		/// <summary>
 		///	Open the sub key specified, for read access.
@@ -269,7 +299,6 @@ namespace Microsoft.Win32
 				RegistryValueOptions.None);
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public object GetValue (string name, object defaultValue, RegistryValueOptions options)
 		{
@@ -281,9 +310,8 @@ namespace Microsoft.Win32
 		[ComVisible (false)]
 		public RegistryValueKind GetValueKind (string name)
 		{
-			throw new NotImplementedException ();
+			return RegistryApi.GetValueKind (this, name);
 		}
-#endif
 
 		/// <summary>
 		///	Create a sub key.
@@ -299,19 +327,44 @@ namespace Microsoft.Win32
 			return RegistryApi.CreateSubKey (this, subkey);
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
+		[MonoLimitation ("permissionCheck is ignored in Mono")]
 		public RegistryKey CreateSubKey (string subkey, RegistryKeyPermissionCheck permissionCheck)
 		{
-			throw new NotImplementedException ();
+			return CreateSubKey (subkey);
 		}
 
 		[ComVisible (false)]
+		[MonoLimitation ("permissionCheck and registrySecurity are ignored in Mono")]
 		public RegistryKey CreateSubKey (string subkey, RegistryKeyPermissionCheck permissionCheck, RegistrySecurity registrySecurity)
 		{
-			throw new NotImplementedException ();
+			return CreateSubKey (subkey);
+		}
+
+#if NET_4_0
+		[ComVisible (false)]
+		[MonoLimitation ("permissionCheck is ignored in Mono")]
+		public RegistryKey CreateSubKey (string subkey, RegistryKeyPermissionCheck permissionCheck, RegistryOptions options)
+		{
+			AssertKeyStillValid ();
+			AssertKeyNameNotNull (subkey);
+			AssertKeyNameLength (subkey);
+
+			if (!IsWritable)
+				throw new UnauthorizedAccessException ("Cannot write to the registry key.");
+
+			return RegistryApi.CreateSubKey (this, subkey, options);
+		}
+
+		[ComVisible (false)]
+		[MonoLimitation ("permissionCheck and registrySecurity are ignored in Mono")]
+		public RegistryKey CreateSubKey (string subkey, RegistryKeyPermissionCheck permissionCheck, RegistryOptions options,
+			RegistrySecurity registrySecurity)
+		{
+			return CreateSubKey (subkey, permissionCheck, options);
 		}
 #endif
+
 		
 		/// <summary>
 		///	Delete the specified subkey.
@@ -359,6 +412,14 @@ namespace Microsoft.Win32
 		/// </summary>
 		public void DeleteSubKeyTree(string subkey)
 		{
+			DeleteSubKeyTree (subkey, true);
+		}
+
+#if NET_4_0
+		public
+#endif
+		void DeleteSubKeyTree (string subkey, bool throwOnMissingSubKey)
+		{
 			// Note: this is done by deleting sub-nodes recursively.
 			// The preformance is not very good. There may be a 
 			// better way to implement this.
@@ -368,9 +429,13 @@ namespace Microsoft.Win32
 			AssertKeyNameLength (subkey);
 			
 			RegistryKey child = OpenSubKey (subkey, true);
-			if (child == null)
+			if (child == null) {
+				if (!throwOnMissingSubKey)
+					return;
+
 				throw new ArgumentException ("Cannot delete a subkey tree"
 					+ " because the subkey does not exist.");
+			}
 
 			child.DeleteChildKeysAndValues ();
 			child.Close ();
@@ -403,7 +468,6 @@ namespace Microsoft.Win32
 			RegistryApi.DeleteValue (this, name, throwOnMissingValue);
 		}
 
-#if NET_2_0
 		public RegistrySecurity GetAccessControl ()
 		{
 			throw new NotImplementedException ();
@@ -413,7 +477,6 @@ namespace Microsoft.Win32
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 		
 		
 		/// <summary>
@@ -435,6 +498,27 @@ namespace Microsoft.Win32
 			AssertKeyStillValid ();
 			return RegistryApi.GetValueNames (this);
 		}
+
+#if NET_4_0
+		[ComVisible (false)]
+		[SecurityPermission (SecurityAction.Demand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+		[MonoTODO ("Not implemented on unix")]
+		public static RegistryKey FromHandle (SafeRegistryHandle handle)
+		{
+			if (handle == null)
+				throw new ArgumentNullException ("handle");
+
+			return RegistryApi.FromHandle (handle);
+		}
+
+		[ComVisible (false)]
+		[SecurityPermission (SecurityAction.Demand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+		[MonoTODO ("Not implemented on unix")]
+		public static RegistryKey FromHandle (SafeRegistryHandle handle, RegistryKey view)
+		{
+			return FromHandle (handle);
+		}
+#endif
 		
 		
 		[MonoTODO ("Not implemented on unix")]
@@ -445,24 +529,59 @@ namespace Microsoft.Win32
 			return RegistryApi.OpenRemoteBaseKey (hKey, machineName);
 		}
 
-#if NET_2_0
+#if NET_4_0
 		[ComVisible (false)]
+		[MonoTODO ("Not implemented on unix")]
+		public static RegistryKey OpenRemoteBaseKey (RegistryHive hKey, string machineName, RegistryView view)
+		{
+			if (machineName == null)
+				throw new ArgumentNullException ("machineName");
+			return RegistryApi.OpenRemoteBaseKey (hKey, machineName);
+		}
+
+		[ComVisible (false)]
+		[MonoLimitation ("View is ignored in Mono")]
+		public static RegistryKey OpenBaseKey (RegistryHive hKey, RegistryView view)
+		{
+			switch (hKey) {
+				case RegistryHive.ClassesRoot:
+					return Registry.ClassesRoot;
+				case RegistryHive.CurrentConfig:
+					return Registry.CurrentConfig;
+				case RegistryHive.CurrentUser:
+					return Registry.CurrentUser;
+				case RegistryHive.DynData:
+					return Registry.DynData;
+				case RegistryHive.LocalMachine:
+					return Registry.LocalMachine;
+				case RegistryHive.PerformanceData:
+					return Registry.PerformanceData;
+				case RegistryHive.Users:
+					return Registry.Users;
+			}
+
+			throw new ArgumentException ("hKey");
+		}
+#endif
+
+		[ComVisible (false)]
+		[MonoLimitation ("permissionCheck is ignored in Mono")]
 		public RegistryKey OpenSubKey (string name, RegistryKeyPermissionCheck permissionCheck)
 		{
-			throw new NotImplementedException ();
+			return OpenSubKey (name);
 		}
 		
 		[ComVisible (false)]
+		[MonoLimitation ("permissionCheck and rights are ignored in Mono")]
 		public RegistryKey OpenSubKey (string name, RegistryKeyPermissionCheck permissionCheck, RegistryRights rights)
 		{
-			throw new NotImplementedException ();
+			return OpenSubKey (name);
 		}
 		
 		public void SetAccessControl (RegistrySecurity registrySecurity)
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 		
 		
 		/// <summary>
@@ -497,7 +616,7 @@ namespace Microsoft.Win32
 
 		// returns the key handle for the win32 implementation and the
 		// KeyHandler for the unix implementation
-		internal object Handle {
+		internal object InternalHandle {
 			get { return handle; }
 		}
 
@@ -518,22 +637,13 @@ namespace Microsoft.Win32
 		private void AssertKeyNameNotNull (string subKeyName)
 		{
 			if (subKeyName == null)
-#if NET_2_0
 				throw new ArgumentNullException ("name");
-#else
-				throw new ArgumentNullException ("subkey");
-#endif
 		}
 
 		private void AssertKeyNameLength (string name)
 		{
-#if NET_2_0
 			if (name.Length > 255)
 				throw new ArgumentException ("Name of registry key cannot be greater than 255 characters");
-#else
-			if (name.Length >= 255)
-				throw new ArgumentException ("Name of registry key cannot be greater than or equal to 255 characters");
-#endif
 		}
 
 		/// <summary>

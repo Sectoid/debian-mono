@@ -5,7 +5,7 @@
 //	Atsushi Enomoto <atsushi@ximian.com>
 //	Eyal Alaluf <eyala@mainsoft.com>
 //
-// Copyright (C) 2005-2007 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2005-2010 Novell, Inc.  http://www.novell.com
 // Copyright (C) 2008 Mainsoft Co. http://www.mainsoft.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -40,6 +40,70 @@ using System.Xml.Serialization;
 
 namespace System.ServiceModel.Dispatcher
 {
+	// This type is introduced for moonlight compatibility.
+	internal class OperationFormatter
+		: IDispatchMessageFormatter, IClientMessageFormatter
+	{
+		BaseMessagesFormatter impl;
+		string operation_name;
+
+		public OperationFormatter (OperationDescription od, bool isRpc, bool isEncoded)
+		{
+			Validate (od, isRpc, isEncoded);
+
+			impl = BaseMessagesFormatter.Create (od);
+
+			operation_name = od.Name;
+		}
+
+		public string OperationName {
+			get { return operation_name; }
+		}
+
+		public bool IsValidReturnValue (MessagePartDescription part)
+		{
+			return part != null && part.Type != typeof (void);
+		}
+
+		void Validate (OperationDescription od, bool isRpc, bool isEncoded)
+		{
+			bool hasParameter = false, hasVoid = false;
+			foreach (var md in od.Messages) {
+				if (md.IsTypedMessage || md.IsUntypedMessage) {
+					if (isRpc && !isEncoded)
+						throw new InvalidOperationException ("Message with action {0} is either strongly-typed or untyped, but defined as RPC and encoded.");
+					if (hasParameter && !md.IsVoid)
+						throw new InvalidOperationException (String.Format ("Operation '{0}' contains a message with parameters. Strongly-typed or untyped message can be paired only with strongly-typed, untyped or void message.", od.Name));
+					if (isRpc && hasVoid)
+						throw new InvalidOperationException (String.Format ("This operation '{0}' is defined as RPC and contains a message with void, which is not allowed.", od.Name));
+				} else {
+					hasParameter |= !md.IsVoid;
+					hasVoid |= md.IsVoid;
+				}
+			}
+		}
+
+		public object DeserializeReply (Message message, object [] parameters)
+		{
+			return impl.DeserializeReply (message, parameters);
+		}
+
+		public Message SerializeRequest (MessageVersion messageVersion, object [] parameters)
+		{
+			return impl.SerializeRequest (messageVersion, parameters);
+		}
+
+		public void DeserializeRequest (Message message, object [] parameters)
+		{
+			impl.DeserializeRequest (message, parameters);
+		}
+
+		public Message SerializeReply (MessageVersion messageVersion, object [] parameters, object result)
+		{
+			return impl.SerializeReply (messageVersion, parameters, result);
+		}
+	}
+
 	internal abstract class BaseMessagesFormatter
 		: IDispatchMessageFormatter, IClientMessageFormatter
 	{
@@ -97,7 +161,7 @@ namespace System.ServiceModel.Dispatcher
 		{
 			MessageDescription md = null;
 			foreach (MessageDescription mdi in messages)
-				if (mdi.Direction == MessageDirection.Input)
+				if (mdi.IsRequest)
 					md = mdi;
 
 			object [] parts = CreatePartsArray (md.Body);
@@ -119,7 +183,7 @@ namespace System.ServiceModel.Dispatcher
 
 			MessageDescription md = null;
 			foreach (MessageDescription mdi in messages)
-				if (mdi.Direction == MessageDirection.Output)
+				if (!mdi.IsRequest)
 					md = mdi;
 
 			object [] parts = CreatePartsArray (md.Body);
@@ -169,7 +233,7 @@ namespace System.ServiceModel.Dispatcher
 		{
 			MessageDescription md = null;
 			foreach (MessageDescription mdi in messages)
-				if (mdi.Direction == MessageDirection.Output)
+				if (!mdi.IsRequest)
 					md = mdi;
 
 			object [] parts = MessageToParts (md, message);

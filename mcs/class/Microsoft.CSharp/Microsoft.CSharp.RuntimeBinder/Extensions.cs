@@ -38,29 +38,8 @@ namespace Microsoft.CSharp.RuntimeBinder
 	{
 		public static IList<T> ToReadOnly<T> (this IEnumerable<T> col)
 		{
-			return col == null ?
-				new ReadOnlyCollectionBuilder<T> (0) :
-				new ReadOnlyCollectionBuilder<T> (col);
-		}
-
-		public static int HashCode (int h1, int h2, int h3, int h4, int h5)
-		{
-			const int FNV_prime = 16777619;
-			int hash = unchecked ((int) 2166136261);
-
-			hash = (hash ^ h1) * FNV_prime;
-			hash = (hash ^ h2) * FNV_prime;
-			hash = (hash ^ h3) * FNV_prime;
-			hash = (hash ^ h4) * FNV_prime;
-			hash = (hash ^ h5) * FNV_prime;
-
-			hash += hash << 13;
-			hash ^= hash >> 7;
-			hash += hash << 3;
-			hash ^= hash >> 17;
-			hash += hash << 5;
-
-			return hash;
+			return col == null ? 
+				null : new ReadOnlyCollectionBuilder<T> (col);
 		}
 	}
 }

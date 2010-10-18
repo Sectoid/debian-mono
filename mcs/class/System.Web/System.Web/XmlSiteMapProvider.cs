@@ -31,7 +31,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -49,7 +48,6 @@ namespace System.Web
 	public class XmlSiteMapProvider : StaticSiteMapProvider, IDisposable
 	{
 		static readonly char [] seperators = { ';', ',' };
-		static readonly StringComparison stringComparison = HttpRuntime.RunningOnWindows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 		
 		bool initialized;
 		string fileVirtualPath;
@@ -176,7 +174,7 @@ namespace System.Web
 			if (file == null)
 				throw new HttpException ("Virtual path '" + virtualPath + "' cannot be mapped to physical path.");
 			
-			if (String.Compare (Path.GetExtension (file), ".sitemap", stringComparison) != 0)
+			if (String.Compare (Path.GetExtension (file), ".sitemap", RuntimeHelpers.StringComparison) != 0)
 				throw new InvalidOperationException (String.Format ("The file {0} has an invalid extension, only .sitemap files are allowed in XmlSiteMapProvider.",
 										    String.IsNullOrEmpty (virtualPath) ? Path.GetFileName (file) : virtualPath));
 			
@@ -527,5 +525,4 @@ namespace System.Web
 	}
 
 }
-#endif
 

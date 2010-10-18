@@ -14,7 +14,6 @@
 using System;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Collections;
 	
 namespace Mono.CSharp.Nullable
 {
@@ -30,7 +29,7 @@ namespace Mono.CSharp.Nullable
 			eclass = ExprClass.Type;
 		}
 
-		public NullableType (Type type, Location loc)
+		public NullableType (TypeSpec type, Location loc)
 			: this (new TypeExpression (type, loc), loc)
 		{ }
 
@@ -38,70 +37,54 @@ namespace Mono.CSharp.Nullable
 		{
 			if (TypeManager.generic_nullable_type == null) {
 				TypeManager.generic_nullable_type = TypeManager.CoreLookupType (ec.Compiler,
-					"System", "Nullable`1", Kind.Struct, true);
+					"System", "Nullable", 1, MemberKind.Struct, true);
 			}
 
 			TypeArguments args = new TypeArguments (underlying);
 			GenericTypeExpr ctype = new GenericTypeExpr (TypeManager.generic_nullable_type, args, loc);
 			return ctype.ResolveAsTypeTerminal (ec, false);
 		}
-
-		public override TypeExpr ResolveAsTypeTerminal (IMemberContext ec, bool silent)
-		{
-			return ResolveAsBaseTerminal (ec, silent);
-		}		
 	}
 
-	public sealed class NullableInfo
+	static class NullableInfo
 	{
-		public readonly Type Type;
-		public readonly Type UnderlyingType;
-		public MethodInfo HasValue;
-		public MethodInfo Value;
-		public MethodInfo GetValueOrDefault;
-		public ConstructorInfo Constructor;
-
-		public NullableInfo (Type type)
+		public static MethodSpec GetConstructor (TypeSpec nullableType)
 		{
-			Type = type;
-			UnderlyingType = TypeManager.TypeToCoreType (TypeManager.GetTypeArguments (type) [0]);
+			return TypeManager.GetPredefinedConstructor (nullableType, Location.Null, GetUnderlyingType (nullableType));
+		}
 
-			PropertyInfo has_value_pi = TypeManager.GetPredefinedProperty (type, "HasValue", Location.Null, Type.EmptyTypes);
-			PropertyInfo value_pi = TypeManager.GetPredefinedProperty (type, "Value", Location.Null, Type.EmptyTypes);
-			GetValueOrDefault = TypeManager.GetPredefinedMethod (type, "GetValueOrDefault", Location.Null, Type.EmptyTypes);
+		public static MethodSpec GetHasValue (TypeSpec nullableType)
+		{
+			return (MethodSpec) MemberCache.FindMember (nullableType,
+				MemberFilter.Method ("get_HasValue", 0, ParametersCompiled.EmptyReadOnlyParameters, null), BindingRestriction.None);
+		}
 
-			HasValue = has_value_pi.GetGetMethod (false);
-			Value = value_pi.GetGetMethod (false);
+		public static MethodSpec GetGetValueOrDefault (TypeSpec nullableType)
+		{
+			return (MethodSpec) MemberCache.FindMember (nullableType,
+				MemberFilter.Method ("GetValueOrDefault", 0, ParametersCompiled.EmptyReadOnlyParameters, null), BindingRestriction.None);
+		}
 
-			// When compiling corlib
-			if (type.Module == RootContext.ToplevelTypes.Builder) {
-				TypeContainer tc = TypeManager.LookupGenericTypeContainer (type);
-				
-				// TODO: check for correct overload
-				Constructor c = ((Constructor) tc.InstanceConstructors [0]);
+		public static MethodSpec GetValue (TypeSpec nullableType)
+		{
+			return (MethodSpec) MemberCache.FindMember (nullableType,
+				MemberFilter.Method ("get_Value", 0, ParametersCompiled.EmptyReadOnlyParameters, null), BindingRestriction.None);
+		}
 
-#if GMCS_SOURCE
-				Constructor = TypeBuilder.GetConstructor (type, c.ConstructorBuilder);
-#endif
-				return;
-			}
+		public static TypeSpec GetUnderlyingType (TypeSpec nullableType)
+		{
+			return ((InflatedTypeSpec) nullableType).TypeArguments[0];
+		}
 
-#if MS_COMPATIBLE
-			if (UnderlyingType.Module == RootContext.ToplevelTypes.Builder) {
-				ConstructorInfo cinfo = TypeManager.DropGenericTypeArguments (type).GetConstructors ()[0];
-				Constructor = TypeBuilder.GetConstructor (type, cinfo);
-				return;
-			}
-#endif
-
-			Constructor = type.GetConstructor (new Type[] { UnderlyingType });
+		public static bool IsNullableType (TypeSpec type)
+		{
+			throw new NotImplementedException ("net");
 		}
 	}
 
 	public class Unwrap : Expression, IMemoryLocation, IAssignMethod
 	{
 		Expression expr;
-		NullableInfo info;
 
 		LocalTemporary temp;
 		readonly bool useDefaultValue;
@@ -112,8 +95,7 @@ namespace Mono.CSharp.Nullable
 			this.loc = expr.Location;
 			this.useDefaultValue = useDefaultValue;
 
-			info = new NullableInfo (expr.Type);
-			type = info.UnderlyingType;
+			type = NullableInfo.GetUnderlyingType (expr.Type);
 			eclass = expr.eclass;
 		}
 
@@ -139,29 +121,30 @@ namespace Mono.CSharp.Nullable
 			return expr.CreateExpressionTree (ec);
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
 			return this;
 		}
 
 		public override Expression DoResolveLValue (ResolveContext ec, Expression right_side)
 		{
-			return DoResolve (ec);
+			expr = expr.DoResolveLValue (ec, right_side);
+			return this;
 		}
 
 		public override void Emit (EmitContext ec)
 		{
 			Store (ec);
 			if (useDefaultValue)
-				Invocation.EmitCall (ec, false, this, info.GetValueOrDefault, null, loc);
+				Invocation.EmitCall (ec, this, NullableInfo.GetGetValueOrDefault (expr.Type), null, loc);
 			else
-				Invocation.EmitCall (ec, false, this, info.Value, null, loc);
+				Invocation.EmitCall (ec, this, NullableInfo.GetValue (expr.Type), null, loc);
 		}
 
 		public void EmitCheck (EmitContext ec)
 		{
 			Store (ec);
-			Invocation.EmitCall (ec, false, this, info.HasValue, null, loc);
+			Invocation.EmitCall (ec, this, NullableInfo.GetHasValue (expr.Type), null, loc);
 		}
 
 		public override bool Equals (object obj)
@@ -207,20 +190,9 @@ namespace Mono.CSharp.Nullable
 				LocalVariable.Emit (ec);
 		}
 
-#if NET_4_0
 		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
 		{
 			return expr.MakeExpression (ctx);
-		}
-#endif
-
-		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
-		{
-			type = storey.MutateType (type);
-			info.Constructor = storey.MutateConstructor (info.Constructor);
-			info.HasValue = storey.MutateGenericMethod (info.HasValue);
-			info.GetValueOrDefault = storey.MutateGenericMethod (info.GetValueOrDefault);
-			info.Value = storey.MutateGenericMethod (info.Value);
 		}
 
 		public void AddressOf (EmitContext ec, AddressOp mode)
@@ -238,7 +210,7 @@ namespace Mono.CSharp.Nullable
 		LocalTemporary LocalVariable {
 			get {
 				if (temp == null)
-					temp = new LocalTemporary (info.Type);
+					temp = new LocalTemporary (expr.Type);
 				return temp;
 			}
 		}
@@ -254,22 +226,20 @@ namespace Mono.CSharp.Nullable
 		public void EmitAssign (EmitContext ec, Expression source,
 					bool leave_copy, bool prepare_for_load)
 		{
-			InternalWrap wrap = new InternalWrap (source, info, loc);
+			InternalWrap wrap = new InternalWrap (source, expr.Type, loc);
 			((IAssignMethod) expr).EmitAssign (ec, wrap, leave_copy, false);
 		}
 
-		protected class InternalWrap : Expression
+		class InternalWrap : Expression
 		{
 			public Expression expr;
-			public NullableInfo info;
 
-			public InternalWrap (Expression expr, NullableInfo info, Location loc)
+			public InternalWrap (Expression expr, TypeSpec type, Location loc)
 			{
 				this.expr = expr;
-				this.info = info;
 				this.loc = loc;
+				this.type = type;
 
-				type = info.Type;
 				eclass = ExprClass.Value;
 			}
 
@@ -278,7 +248,7 @@ namespace Mono.CSharp.Nullable
 				throw new NotSupportedException ("ET");
 			}
 
-			public override Expression DoResolve (ResolveContext ec)
+			protected override Expression DoResolve (ResolveContext ec)
 			{
 				return this;
 			}
@@ -286,24 +256,17 @@ namespace Mono.CSharp.Nullable
 			public override void Emit (EmitContext ec)
 			{
 				expr.Emit (ec);
-				ec.ig.Emit (OpCodes.Newobj, info.Constructor);
+				ec.Emit (OpCodes.Newobj, NullableInfo.GetConstructor (type));
 			}
 		}
 	}
 
 	public class Wrap : TypeCast
 	{
-		readonly NullableInfo info;
-
-		protected Wrap (Expression expr, Type type)
+		private Wrap (Expression expr, TypeSpec type)
 			: base (expr, type)
 		{
-			info = new NullableInfo (type);
 			eclass = ExprClass.Value;
-		}
-
-		public Expression Child {
-			get { return child; }
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
@@ -317,13 +280,13 @@ namespace Mono.CSharp.Nullable
 			return base.CreateExpressionTree (ec);
 		}
 
-		public static Expression Create (Expression expr, Type type)
+		public static Expression Create (Expression expr, TypeSpec type)
 		{
 			//
 			// Avoid unwraping and wraping of the same type
 			//
 			Unwrap unwrap = expr as Unwrap;
-			if (unwrap != null && TypeManager.IsEqual (expr.Type, TypeManager.TypeToCoreType (TypeManager.GetTypeArguments (type) [0])))
+			if (unwrap != null && expr.Type == NullableInfo.GetUnderlyingType (type))
 				return unwrap.Original;
 		
 			return new Wrap (expr, type);
@@ -332,22 +295,22 @@ namespace Mono.CSharp.Nullable
 		public override void Emit (EmitContext ec)
 		{
 			child.Emit (ec);
-			ec.ig.Emit (OpCodes.Newobj, info.Constructor);
+			ec.Emit (OpCodes.Newobj, NullableInfo.GetConstructor (type));
 		}
 	}
 
 	//
 	// Represents null literal lifted to nullable type
 	//
-	public class LiftedNull : EmptyConstantCast, IMemoryLocation
+	public class LiftedNull : NullConstant, IMemoryLocation
 	{
-		private LiftedNull (Type nullable_type, Location loc)
-			: base (new NullLiteral (loc), nullable_type)
+		private LiftedNull (TypeSpec nullable_type, Location loc)
+			: base (nullable_type, loc)
 		{
 			eclass = ExprClass.Value;
 		}
 
-		public static Constant Create (Type nullable, Location loc)
+		public static Constant Create (TypeSpec nullable, Location loc)
 		{
 			return new LiftedNull (nullable, loc);
 		}
@@ -360,22 +323,13 @@ namespace Mono.CSharp.Nullable
 			return ReducedExpression.Create (Create (e.Type, e.Location), e);
 		}
 
-		public override Expression CreateExpressionTree (ResolveContext ec)
-		{
-			Arguments args = new Arguments (2);
-			args.Add (new Argument (this));
-			args.Add (new Argument (new TypeOf (new TypeExpression (type, loc), loc)));
-
-			return CreateExpressionFactoryCall (ec, "Constant", args);
-		}
-
 		public override void Emit (EmitContext ec)
 		{
 			// TODO: generate less temporary variables
 			LocalTemporary value_target = new LocalTemporary (type);
 
 			value_target.AddressOf (ec, AddressOp.Store);
-			ec.ig.Emit (OpCodes.Initobj, type);
+			ec.Emit (OpCodes.Initobj, type);
 			value_target.Emit (ec);
 		}
 
@@ -384,7 +338,7 @@ namespace Mono.CSharp.Nullable
 			LocalTemporary value_target = new LocalTemporary (type);
 				
 			value_target.AddressOf (ec, AddressOp.Store);
-			ec.ig.Emit (OpCodes.Initobj, type);
+			ec.Emit (OpCodes.Initobj, type);
 			((IMemoryLocation) value_target).AddressOf (ec, Mode);
 		}
 	}
@@ -397,7 +351,7 @@ namespace Mono.CSharp.Nullable
 		Expression expr, null_value;
 		Unwrap unwrap;
 
-		public Lifted (Expression expr, Unwrap unwrap, Type type)
+		public Lifted (Expression expr, Unwrap unwrap, TypeSpec type)
 		{
 			this.expr = expr;
 			this.unwrap = unwrap;
@@ -405,7 +359,7 @@ namespace Mono.CSharp.Nullable
 			this.type = type;
 		}
 
-		public Lifted (Expression expr, Expression unwrap, Type type)
+		public Lifted (Expression expr, Expression unwrap, TypeSpec type)
 			: this (expr, unwrap as Unwrap, type)
 		{
 		}
@@ -415,7 +369,7 @@ namespace Mono.CSharp.Nullable
 			return expr.CreateExpressionTree (ec);
 		}			
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
 			//
 			// It's null when lifting non-nullable type
@@ -436,8 +390,10 @@ namespace Mono.CSharp.Nullable
 					return null;
 
 				null_value = LiftedNull.Create (type, loc);
+			} else if (TypeManager.IsValueType (type)) {
+				null_value = LiftedNull.Create (type, loc);
 			} else {
-				null_value = new NullLiteral (type, loc);
+				null_value = new NullConstant (type, loc);
 			}
 
 			eclass = ExprClass.Value;
@@ -446,20 +402,19 @@ namespace Mono.CSharp.Nullable
 
 		public override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-			Label is_null_label = ig.DefineLabel ();
-			Label end_label = ig.DefineLabel ();
+			Label is_null_label = ec.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			unwrap.EmitCheck (ec);
-			ig.Emit (OpCodes.Brfalse, is_null_label);
+			ec.Emit (OpCodes.Brfalse, is_null_label);
 
 			expr.Emit (ec);
 
-			ig.Emit (OpCodes.Br, end_label);
-			ig.MarkLabel (is_null_label);
+			ec.Emit (OpCodes.Br, end_label);
+			ec.MarkLabel (is_null_label);
 
 			null_value.Emit (ec);
-			ig.MarkLabel (end_label);
+			ec.MarkLabel (end_label);
 		}
 
 		public void AddressOf (EmitContext ec, AddressOp mode)
@@ -473,8 +428,8 @@ namespace Mono.CSharp.Nullable
 		Unwrap unwrap;
 		Expression user_operator;
 
-		public LiftedUnaryOperator (Unary.Operator op, Expression expr)
-			: base (op, expr)
+		public LiftedUnaryOperator (Unary.Operator op, Expression expr, Location loc)
+			: base (op, expr, loc)
 		{
 		}
 
@@ -494,11 +449,8 @@ namespace Mono.CSharp.Nullable
 			return base.CreateExpressionTree (ec);
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
-			if (eclass != ExprClass.Invalid)
-				return this;
-
 			unwrap = Unwrap.Create (Expr, false);
 			if (unwrap == null)
 				return null;
@@ -521,28 +473,25 @@ namespace Mono.CSharp.Nullable
 
 		public override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-			Label is_null_label = ig.DefineLabel ();
-			Label end_label = ig.DefineLabel ();
+			Label is_null_label = ec.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			unwrap.EmitCheck (ec);
-			ig.Emit (OpCodes.Brfalse, is_null_label);
-
-			NullableInfo ni = new NullableInfo (type);
+			ec.Emit (OpCodes.Brfalse, is_null_label);
 
 			if (user_operator != null) {
 				user_operator.Emit (ec);
 			} else {
-				EmitOperator (ec, ni.UnderlyingType);
+				EmitOperator (ec, NullableInfo.GetUnderlyingType (type));
 			}
 
-			ig.Emit (OpCodes.Newobj, ni.Constructor);
-			ig.Emit (OpCodes.Br_S, end_label);
+			ec.Emit (OpCodes.Newobj, NullableInfo.GetConstructor (type));
+			ec.Emit (OpCodes.Br_S, end_label);
 
-			ig.MarkLabel (is_null_label);
+			ec.MarkLabel (is_null_label);
 			LiftedNull.Create (type, loc).Emit (ec);
 
-			ig.MarkLabel (end_label);
+			ec.MarkLabel (end_label);
 		}
 
 		Expression LiftExpression (ResolveContext ec, Expression expr)
@@ -590,13 +539,11 @@ namespace Mono.CSharp.Nullable
 		bool left_null_lifted, right_null_lifted;
 		Expression left_orig, right_orig;
 		Expression user_operator;
-		ConstructorInfo wrap_ctor;
+		MethodSpec wrap_ctor;
 
-		public LiftedBinaryOperator (Binary.Operator op, Expression left, Expression right,
-					     Location loc)
-			: base (op, left, right)
+		public LiftedBinaryOperator (Binary.Operator op, Expression left, Expression right, Location loc)
+			: base (op, left, right, loc)
 		{
-			this.loc = loc;
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
@@ -615,24 +562,21 @@ namespace Mono.CSharp.Nullable
 		Expression CreateNullConstant (ResolveContext ec, Expression expr)
 		{
 			// FIXME: Handle side effect constants
-			Constant c = new BoolConstant (Oper == Operator.Inequality, loc);
+			Constant c = new BoolConstant (Oper == Operator.Inequality, loc).Resolve (ec);
 
 			if ((Oper & Operator.EqualityMask) != 0) {
 				ec.Report.Warning (472, 2, loc, "The result of comparing value type `{0}' with null is `{1}'",
-						expr.GetSignatureForError (), c.AsString ());
+					TypeManager.CSharpName (expr.Type), c.AsString ());
 			} else {
 				ec.Report.Warning (464, 2, loc, "The result of comparing type `{0}' with null is always `{1}'",
-						expr.GetSignatureForError (), c.AsString ());
+					TypeManager.CSharpName (expr.Type), c.AsString ());
 			}
 
 			return ReducedExpression.Create (c, this);
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
-			if (eclass != ExprClass.Invalid)
-				return this;
-
 			if ((Oper & Operator.LogicalMask) != 0) {
 				Error_OperatorCannotBeApplied (ec, left, right);
 				return null;
@@ -676,23 +620,21 @@ namespace Mono.CSharp.Nullable
 
 		void EmitBitwiseBoolean (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-
-			Label load_left = ig.DefineLabel ();
-			Label load_right = ig.DefineLabel ();
-			Label end_label = ig.DefineLabel ();
+			Label load_left = ec.DefineLabel ();
+			Label load_right = ec.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			left_unwrap.Emit (ec);
-			ig.Emit (OpCodes.Brtrue_S, load_right);
+			ec.Emit (OpCodes.Brtrue_S, load_right);
 
 			right_unwrap.Emit (ec);
-			ig.Emit (OpCodes.Brtrue_S, load_left);
+			ec.Emit (OpCodes.Brtrue_S, load_left);
 
 			left_unwrap.EmitCheck (ec);
-			ig.Emit (OpCodes.Brfalse_S, load_right);
+			ec.Emit (OpCodes.Brfalse_S, load_right);
 
 			// load left
-			ig.MarkLabel (load_left);
+			ec.MarkLabel (load_left);
 
 			if (Oper == Operator.BitwiseAnd) {
 				left_unwrap.Load (ec);
@@ -700,13 +642,13 @@ namespace Mono.CSharp.Nullable
 				right_unwrap.Load (ec);
 				right_unwrap = left_unwrap;
 			}
-			ig.Emit (OpCodes.Br_S, end_label);
+			ec.Emit (OpCodes.Br_S, end_label);
 
 			// load right
-			ig.MarkLabel (load_right);
+			ec.MarkLabel (load_right);
 			right_unwrap.Load (ec);
 
-			ig.MarkLabel (end_label);
+			ec.MarkLabel (end_label);
 		}
 
 		//
@@ -714,16 +656,14 @@ namespace Mono.CSharp.Nullable
 		//
 		void EmitEquality (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-
 			//
 			// Either left or right is null
 			//
 			if (left_unwrap != null && (right_null_lifted || right.IsNull)) {
 				left_unwrap.EmitCheck (ec);
 				if (Oper == Binary.Operator.Equality) {
-					ig.Emit (OpCodes.Ldc_I4_0);
-					ig.Emit (OpCodes.Ceq);
+					ec.Emit (OpCodes.Ldc_I4_0);
+					ec.Emit (OpCodes.Ceq);
 				}
 				return;
 			}
@@ -731,23 +671,23 @@ namespace Mono.CSharp.Nullable
 			if (right_unwrap != null && (left_null_lifted || left.IsNull)) {
 				right_unwrap.EmitCheck (ec);
 				if (Oper == Binary.Operator.Equality) {
-					ig.Emit (OpCodes.Ldc_I4_0);
-					ig.Emit (OpCodes.Ceq);
+					ec.Emit (OpCodes.Ldc_I4_0);
+					ec.Emit (OpCodes.Ceq);
 				}
 				return;
 			}
 
-			Label dissimilar_label = ig.DefineLabel ();
-			Label end_label = ig.DefineLabel ();
+			Label dissimilar_label = ec.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			if (user_operator != null) {
 				user_operator.Emit (ec);
-				ig.Emit (Oper == Operator.Equality ? OpCodes.Brfalse_S : OpCodes.Brtrue_S, dissimilar_label);
+				ec.Emit (Oper == Operator.Equality ? OpCodes.Brfalse_S : OpCodes.Brtrue_S, dissimilar_label);
 			} else {
 				left.Emit (ec);
 				right.Emit (ec);
 
-				ig.Emit (OpCodes.Bne_Un_S, dissimilar_label);
+				ec.Emit (OpCodes.Bne_Un_S, dissimilar_label);
 			}
 
 			if (left_unwrap != null)
@@ -758,31 +698,31 @@ namespace Mono.CSharp.Nullable
 
 			if (left_unwrap != null && right_unwrap != null) {
 				if (Oper == Operator.Inequality)
-					ig.Emit (OpCodes.Xor);
+					ec.Emit (OpCodes.Xor);
 				else
-					ig.Emit (OpCodes.Ceq);
+					ec.Emit (OpCodes.Ceq);
 			} else {
 				if (Oper == Operator.Inequality) {
-					ig.Emit (OpCodes.Ldc_I4_0);
-					ig.Emit (OpCodes.Ceq);
+					ec.Emit (OpCodes.Ldc_I4_0);
+					ec.Emit (OpCodes.Ceq);
 				}
 			}
 
-			ig.Emit (OpCodes.Br_S, end_label);
+			ec.Emit (OpCodes.Br_S, end_label);
 
-			ig.MarkLabel (dissimilar_label);
+			ec.MarkLabel (dissimilar_label);
 			if (Oper == Operator.Inequality)
-				ig.Emit (OpCodes.Ldc_I4_1);
+				ec.Emit (OpCodes.Ldc_I4_1);
 			else
-				ig.Emit (OpCodes.Ldc_I4_0);
+				ec.Emit (OpCodes.Ldc_I4_0);
 
-			ig.MarkLabel (end_label);
+			ec.MarkLabel (end_label);
 		}
 		
 		public override void EmitBranchable (EmitContext ec, Label target, bool onTrue)
 		{
 			Emit (ec);
-			ec.ig.Emit (onTrue ? OpCodes.Brtrue : OpCodes.Brfalse, target);
+			ec.Emit (onTrue ? OpCodes.Brtrue : OpCodes.Brfalse, target);
 		}			
 
 		public override void Emit (EmitContext ec)
@@ -803,14 +743,12 @@ namespace Mono.CSharp.Nullable
 				return;
 			}
 
-			ILGenerator ig = ec.ig;
-
-			Label is_null_label = ig.DefineLabel ();
-			Label end_label = ig.DefineLabel ();
+			Label is_null_label = ec.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			if (left_unwrap != null) {
 				left_unwrap.EmitCheck (ec);
-				ig.Emit (OpCodes.Brfalse, is_null_label);
+				ec.Emit (OpCodes.Brfalse, is_null_label);
 			}
 
 			//
@@ -818,27 +756,27 @@ namespace Mono.CSharp.Nullable
 			//
 			if (right_unwrap != null && !left.Equals (right)) {
 				right_unwrap.EmitCheck (ec);
-				ig.Emit (OpCodes.Brfalse, is_null_label);
+				ec.Emit (OpCodes.Brfalse, is_null_label);
 			}
 
 			EmitOperator (ec, left.Type);
 
 			if (wrap_ctor != null)
-				ig.Emit (OpCodes.Newobj, wrap_ctor);
+				ec.Emit (OpCodes.Newobj, wrap_ctor);
 
-			ig.Emit (OpCodes.Br_S, end_label);
-			ig.MarkLabel (is_null_label);
+			ec.Emit (OpCodes.Br_S, end_label);
+			ec.MarkLabel (is_null_label);
 
 			if ((Oper & Operator.ComparisonMask) != 0) {
-				ig.Emit (OpCodes.Ldc_I4_0);
+				ec.Emit (OpCodes.Ldc_I4_0);
 			} else {
 				LiftedNull.Create (type, loc).Emit (ec);
 			}
 
-			ig.MarkLabel (end_label);
+			ec.MarkLabel (end_label);
 		}
 
-		protected override void EmitOperator (EmitContext ec, Type l)
+		protected override void EmitOperator (EmitContext ec, TypeSpec l)
 		{
 			if (user_operator != null) {
 				user_operator.Emit (ec);
@@ -846,7 +784,7 @@ namespace Mono.CSharp.Nullable
 			}
 
 			if (TypeManager.IsNullableType (l))
-				l = TypeManager.TypeToCoreType (TypeManager.GetTypeArguments (l) [0]);
+				l = TypeManager.GetTypeArguments (l) [0];
 
 			base.EmitOperator (ec, l);
 		}
@@ -865,7 +803,7 @@ namespace Mono.CSharp.Nullable
 			//
 			// Avoid double conversion
 			//
-			if (left_unwrap == null || left_null_lifted || !TypeManager.IsEqual (left_unwrap.Type, left.Type) || (left_unwrap != null && right_null_lifted)) {
+			if (left_unwrap == null || left_null_lifted || left_unwrap.Type != left.Type || (left_unwrap != null && right_null_lifted)) {
 				lifted_type = new NullableType (left.Type, loc);
 				lifted_type = lifted_type.ResolveAsTypeTerminal (ec, false);
 				if (lifted_type == null)
@@ -877,7 +815,7 @@ namespace Mono.CSharp.Nullable
 					left = EmptyCast.Create (left, lifted_type.Type);
 			}
 
-			if (right_unwrap == null || right_null_lifted || !TypeManager.IsEqual (right_unwrap.Type, right.Type) || (right_unwrap != null && left_null_lifted)) {
+			if (left != right && (right_unwrap == null || right_null_lifted || right_unwrap.Type != right.Type || (right_unwrap != null && left_null_lifted))) {
 				lifted_type = new NullableType (right.Type, loc);
 				lifted_type = lifted_type.ResolveAsTypeTerminal (ec, false);
 				if (lifted_type == null)
@@ -895,7 +833,7 @@ namespace Mono.CSharp.Nullable
 				if (lifted_type == null)
 					return null;
 
-				wrap_ctor = new NullableInfo (lifted_type.Type).Constructor;
+				wrap_ctor = NullableInfo.GetConstructor (lifted_type.Type);
 				type = res_expr.Type = lifted_type.Type;
 			}
 
@@ -922,13 +860,13 @@ namespace Mono.CSharp.Nullable
 				// Value types and null comparison
 				//
 				if (left_unwrap == null || (Oper & Operator.RelationalMask) != 0)
-					return CreateNullConstant (ec, left_orig).Resolve (ec);
+					return CreateNullConstant (ec, left_orig);
 			}
 
 			return res_expr;
 		}
 
-		protected override Expression ResolveOperatorPredefined (ResolveContext ec, Binary.PredefinedOperator [] operators, bool primitives_only, Type enum_type)
+		protected override Expression ResolveOperatorPredefined (ResolveContext ec, Binary.PredefinedOperator [] operators, bool primitives_only, TypeSpec enum_type)
 		{
 			Expression e = base.ResolveOperatorPredefined (ec, operators, primitives_only, enum_type);
 
@@ -950,7 +888,7 @@ namespace Mono.CSharp.Nullable
 			return e;
 		}
 
-		protected override Expression ResolveUserOperator (ResolveContext ec, Type l, Type r)
+		protected override Expression ResolveUserOperator (ResolveContext ec, TypeSpec l, TypeSpec r)
 		{
 			Expression expr = base.ResolveUserOperator (ec, l, r);
 			if (expr == null)
@@ -980,7 +918,7 @@ namespace Mono.CSharp.Nullable
 		
 		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			if (left.Type == TypeManager.null_type)
+			if (left is NullLiteral)
 				ec.Report.Error (845, loc, "An expression tree cannot contain a coalescing operator with null left side");
 
 			UserCast uc = left as UserCast;
@@ -1009,7 +947,7 @@ namespace Mono.CSharp.Nullable
 			if (left.eclass == ExprClass.MethodGroup)
 				return null;
 
-			Type ltype = left.Type;
+			TypeSpec ltype = left.Type;
 
 			//
 			// If left is a nullable type and an implicit conversion exists from right to underlying type of left,
@@ -1039,7 +977,7 @@ namespace Mono.CSharp.Nullable
 					// Reduce (left ?? null) to left OR (null-constant ?? right) to right
 					//
 					if (right.IsNull || lc != null)
-						return ReducedExpression.Create (lc != null ? right : left, this).Resolve (ec);
+						return ReducedExpression.Create (lc != null ? right : left, this);
 
 					right = Convert.ImplicitConversion (ec, right, ltype, loc);
 					type = left.Type;
@@ -1049,7 +987,7 @@ namespace Mono.CSharp.Nullable
 				return null;
 			}
 
-			Type rtype = right.Type;
+			TypeSpec rtype = right.Type;
 			if (!Convert.ImplicitConversionExists (ec, unwrap != null ? unwrap : left, rtype) || right.eclass == ExprClass.MethodGroup)
 				return null;
 
@@ -1057,18 +995,15 @@ namespace Mono.CSharp.Nullable
 			// Reduce (null ?? right) to right
 			//
 			if (left.IsNull)
-				return ReducedExpression.Create (right, this).Resolve (ec);
+				return ReducedExpression.Create (right, this);
 
 			left = Convert.ImplicitConversion (ec, unwrap != null ? unwrap : left, rtype, loc);
 			type = rtype;
 			return this;
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
-			if (eclass != ExprClass.Invalid)
-				return this;
-
 			left = left.Resolve (ec);
 			right = right.Resolve (ec);
 
@@ -1088,42 +1023,37 @@ namespace Mono.CSharp.Nullable
 
 		public override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-
-			Label end_label = ig.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			if (unwrap != null) {
-				Label is_null_label = ig.DefineLabel ();
+				Label is_null_label = ec.DefineLabel ();
 
 				unwrap.EmitCheck (ec);
-				ig.Emit (OpCodes.Brfalse, is_null_label);
+				ec.Emit (OpCodes.Brfalse, is_null_label);
 
 				left.Emit (ec);
-				ig.Emit (OpCodes.Br, end_label);
+				ec.Emit (OpCodes.Br, end_label);
 
-				ig.MarkLabel (is_null_label);
+				ec.MarkLabel (is_null_label);
 				right.Emit (ec);
 
-				ig.MarkLabel (end_label);
+				ec.MarkLabel (end_label);
 				return;
 			}
 
 			left.Emit (ec);
+			ec.Emit (OpCodes.Dup);
 
-			ig.Emit (OpCodes.Dup);
-			ig.Emit (OpCodes.Brtrue, end_label);
+			// Only to make verifier happy
+			if (left.Type.IsGenericParameter)
+				ec.Emit (OpCodes.Box, left.Type);
 
-			ig.Emit (OpCodes.Pop);
+			ec.Emit (OpCodes.Brtrue, end_label);
+
+			ec.Emit (OpCodes.Pop);
 			right.Emit (ec);
 
-			ig.MarkLabel (end_label);
-		}
-
-		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
-		{
-			left.MutateHoistedGenericType (storey);
-			right.MutateHoistedGenericType (storey);
-			type = storey.MutateType (type);
+			ec.MarkLabel (end_label);
 		}
 
 		protected override void CloneTo (CloneContext clonectx, Expression t)
@@ -1147,8 +1077,6 @@ namespace Mono.CSharp.Nullable
 			this.expr = expr;
 			this.Mode = mode;
 			this.loc = loc;
-
-			eclass = ExprClass.Value;
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
@@ -1156,7 +1084,7 @@ namespace Mono.CSharp.Nullable
 			return new SimpleAssign (this, this).CreateExpressionTree (ec);
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
 			expr = expr.Resolve (ec);
 			if (expr == null)
@@ -1166,35 +1094,36 @@ namespace Mono.CSharp.Nullable
 			if (unwrap == null)
 				return null;
 
-			underlying = (UnaryMutator) new UnaryMutator (Mode, unwrap).Resolve (ec);
+			underlying = (UnaryMutator) new UnaryMutator (Mode, unwrap, loc).Resolve (ec);
 			if (underlying == null)
 				return null;
 
+
+			eclass = ExprClass.Value;
 			type = expr.Type;
 			return this;
 		}
 
 		void DoEmit (EmitContext ec, bool is_expr)
 		{
-			ILGenerator ig = ec.ig;
-			Label is_null_label = ig.DefineLabel ();
-			Label end_label = ig.DefineLabel ();
+			Label is_null_label = ec.DefineLabel ();
+			Label end_label = ec.DefineLabel ();
 
 			unwrap.EmitCheck (ec);
-			ig.Emit (OpCodes.Brfalse, is_null_label);
+			ec.Emit (OpCodes.Brfalse, is_null_label);
 
 			if (is_expr) {
 				underlying.Emit (ec);
-				ig.Emit (OpCodes.Br_S, end_label);
+				ec.Emit (OpCodes.Br_S, end_label);
 			} else {
 				underlying.EmitStatement (ec);
 			}
 
-			ig.MarkLabel (is_null_label);
+			ec.MarkLabel (is_null_label);
 			if (is_expr)
 				LiftedNull.Create (type, loc).Emit (ec);
 
-			ig.MarkLabel (end_label);
+			ec.MarkLabel (end_label);
 		}
 
 		public override void Emit (EmitContext ec)

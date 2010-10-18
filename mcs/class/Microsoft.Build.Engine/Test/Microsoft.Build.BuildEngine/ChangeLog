@@ -1,3 +1,7 @@
+2010-08-04  Ankit Jain  <radical@corewars.org>
+
+	* Test/*/EngineTest.cs (TestGlobalPropertiesImport*): New tests.
+
 2010-06-03  Ankit Jain  <jankit@novell.com>
 
 	* EngineTest.cs (TestGetLoadedProject1):

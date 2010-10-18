@@ -32,12 +32,14 @@
 using System.Collections;
 using System.IO;
 using System.Web.Services.Protocols;
-using System.Web.Services.Description;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
 using System.Net;
 using System.Text.RegularExpressions;
+#if !MONOTOUCH
+using System.Web.Services.Description;
+#endif
 
 namespace System.Web.Services.Discovery {
 	public class DiscoveryClientProtocol : HttpWebClientProtocol {
@@ -148,6 +150,7 @@ namespace System.Web.Services.Discovery {
 					refe = new DiscoveryDocumentReference ();
 					AddDiscoReferences (doc);
 				}
+#if !MONOTOUCH
 				else if (ServiceDescription.CanRead (reader))
 				{
 					ServiceDescription wsdl = ServiceDescription.Read (reader);
@@ -158,6 +161,7 @@ namespace System.Web.Services.Discovery {
 					refe.Url = url;
 					((ContractReference)refe).ResolveInternal (this, wsdl);
 				}
+#endif
 				else
 				{
 					XmlSchema schema = XmlSchema.Read (reader, null);

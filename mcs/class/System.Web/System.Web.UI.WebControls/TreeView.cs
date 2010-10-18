@@ -53,6 +53,8 @@ namespace System.Web.UI.WebControls
 	[Designer ("System.Web.UI.Design.WebControls.TreeViewDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
 	public class TreeView: HierarchicalDataBoundControl, IPostBackEventHandler, IPostBackDataHandler, ICallbackEventHandler
 	{
+		static readonly char[] postDataSplitChars = {'|'};
+		
 		string activeSiteMapPath;
 		bool stylesPrepared;
 		Style hoverNodeStyle;
@@ -1025,12 +1027,15 @@ namespace System.Web.UI.WebControls
 			if (EnableClientScript && PopulateNodesFromClient) {
 				string states = postCollection [ClientID + "_PopulatedStates"];
 				if (states != null) {
-					foreach (string id in states.Split ('|')) {
-						if (String.IsNullOrEmpty(id))
-							continue;
+					foreach (string id in states.Split (postDataSplitChars, StringSplitOptions.RemoveEmptyEntries)) {
 						TreeNode node = FindNodeByPos (id);
-						if (node != null && node.PopulateOnDemand && !node.Populated)
-							node.Populated = true;
+						if (node != null && node.PopulateOnDemand && !node.Populated) {
+							Page page = Page;
+							if (page != null && page.IsCallback)
+								node.Populated = true; // Bug #492307
+							else
+								node.Populate (); // Bug #626829
+						}
 					}
 				}
 				res = true;
@@ -1042,7 +1047,7 @@ namespace System.Web.UI.WebControls
 			if (EnableClientScript) {
 				string states = postCollection [ClientID + "_ExpandStates"];
 				if (states != null) {
-					string[] ids = states.Split ('|');
+					string[] ids = states.Split (postDataSplitChars, StringSplitOptions.RemoveEmptyEntries);
 					UnsetExpandStates (Nodes, ids);
 					SetExpandStates (ids);
 				} else
@@ -1331,15 +1336,17 @@ namespace System.Web.UI.WebControls
 				writer.AddAttribute (HtmlTextWriterAttribute.Href, "#" + ClientID + "_SkipLink");
 				writer.RenderBeginTag (HtmlTextWriterTag.A);
 
-				Image img = new Image ();
 				ClientScriptManager csm = new ClientScriptManager (null);
-				img.ImageUrl = csm.GetWebResourceUrl (typeof (SiteMapPath), "transparent.gif");
-				img.Attributes.Add ("height", "0");
-				img.Attributes.Add ("width", "0");
-				img.AlternateText = skipLinkText;
-				img.Render (writer);
-
-				writer.RenderEndTag ();
+				
+				writer.AddAttribute (HtmlTextWriterAttribute.Alt, skipLinkText);
+				writer.AddAttribute (HtmlTextWriterAttribute.Src, csm.GetWebResourceUrl (typeof (SiteMapPath), "transparent.gif"));
+				writer.AddAttribute (HtmlTextWriterAttribute.Height, "0");
+				writer.AddAttribute (HtmlTextWriterAttribute.Width, "0");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0px");
+				writer.RenderBeginTag (HtmlTextWriterTag.Img);
+				
+				writer.RenderEndTag (); // img
+				writer.RenderEndTag (); // a
 			}
 			base.RenderBeginTag (writer);
 		}
@@ -1357,8 +1364,9 @@ namespace System.Web.UI.WebControls
 		
  		void RenderNode (HtmlTextWriter writer, TreeNode node, int level, ArrayList levelLines, bool hasPrevious, bool hasNext)
 		{
-			if (node.PopulateOnDemand && node.HadChildrenBeforePopulating)
-				throw new InvalidOperationException ("PopulateOnDemand cannot be set to true on a node that already has children.");
+			// FIXME: disabled for now - needs closer investigation
+			//if (node.PopulateOnDemand && node.HadChildrenBeforePopulating)
+			// 	throw new InvalidOperationException ("PopulateOnDemand cannot be set to true on a node that already has children.");
 			
 			DecorateNode(node);
 			
@@ -1383,10 +1391,10 @@ namespace System.Web.UI.WebControls
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
 
 			Unit nodeSpacing = GetNodeSpacing (node);
-
+#if !NET_4_0
 			if (nodeSpacing != Unit.Empty && (node.Depth > 0 || node.Index > 0))
 				RenderMenuItemSpacing (writer, nodeSpacing);
-			
+#endif
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			
 			// Vertical lines from previous levels
@@ -1485,6 +1493,9 @@ namespace System.Web.UI.WebControls
 			
 			if (!String.IsNullOrEmpty (imageUrl)) {
 				writer.RenderBeginTag (HtmlTextWriterTag.Td);	// TD
+#if NET_4_0
+				writer.AddAttribute (HtmlTextWriterAttribute.Tabindex, "-1");
+#endif
 				BeginNodeTag (writer, node, clientExpand);
 				writer.AddAttribute (HtmlTextWriterAttribute.Src, imageUrl);
 				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0");
@@ -1501,9 +1512,7 @@ namespace System.Web.UI.WebControls
 			bool nodeIsSelected = node == SelectedNode && selectedNodeStyle != null;
 			if (!nodeIsSelected && selectedNodeStyle != null) {
 				if (!String.IsNullOrEmpty (activeSiteMapPath))
-					nodeIsSelected = String.Compare (activeSiteMapPath,
-									 node.NavigateUrl,
-									 HttpRuntime.CaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) == 0;
+					nodeIsSelected = String.Compare (activeSiteMapPath, node.NavigateUrl, RuntimeHelpers.StringComparison) == 0;
 			}
 			
 			AddNodeStyle (writer, node, level, nodeIsSelected);
@@ -1518,8 +1527,15 @@ namespace System.Web.UI.WebControls
 			if (node.ShowCheckBoxInternal) {
 				writer.AddAttribute (HtmlTextWriterAttribute.Name, ClientID + "_cs_" + node.Path);
 				writer.AddAttribute (HtmlTextWriterAttribute.Type, "checkbox", false);
+#if NET_4_0
+				string str = node.ToolTip;
+				if (!String.IsNullOrEmpty (str))
+					writer.AddAttribute (HtmlTextWriterAttribute.Title, str);
+#else
 				writer.AddAttribute (HtmlTextWriterAttribute.Title, node.Text);
-				if (node.Checked) writer.AddAttribute (HtmlTextWriterAttribute.Checked, "checked", false);
+#endif
+				if (node.Checked)
+					writer.AddAttribute (HtmlTextWriterAttribute.Checked, "checked", false);
 				writer.RenderBeginTag (HtmlTextWriterTag.Input);	// INPUT
 				writer.RenderEndTag ();	// INPUT
 			}
@@ -1540,9 +1556,10 @@ namespace System.Web.UI.WebControls
 			writer.RenderEndTag ();	// TD
 			
 			writer.RenderEndTag ();	// TR
-
+#if !NET_4_0
 			if (nodeSpacing != Unit.Empty)
 				RenderMenuItemSpacing (writer, nodeSpacing);
+#endif
 			
 			writer.RenderEndTag ();	// TABLE
 			
@@ -1604,7 +1621,7 @@ namespace System.Web.UI.WebControls
 				return;
 
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
-			writer.AddAttribute (HtmlTextWriterAttribute.Height, ((int) value).ToString (), false);
+			writer.AddAttribute (HtmlTextWriterAttribute.Height, ((int) value).ToString () + "dupa1", false);
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			writer.RenderBeginTag (HtmlTextWriterTag.Td);
 			writer.RenderEndTag (); // td
@@ -1614,7 +1631,9 @@ namespace System.Web.UI.WebControls
 		
 		void RenderMenuItemSpacing (HtmlTextWriter writer, Unit itemSpacing)
 		{
+#if !NET_4_0
 			writer.AddStyleAttribute (HtmlTextWriterStyle.Height, itemSpacing.ToString ());
+#endif
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			writer.RenderBeginTag (HtmlTextWriterTag.Td);
 			writer.RenderEndTag ();
@@ -1652,33 +1671,64 @@ namespace System.Web.UI.WebControls
 			if (Page.Header != null) {
 				// styles are registered
 				if (nodeStyle != null) {
+#if NET_4_0
+ 					style.PrependCssClass (nodeStyle.RegisteredCssClass);
+ 					style.PrependCssClass (nodeStyle.CssClass);
+#else
 					style.AddCssClass (nodeStyle.CssClass);
 					style.AddCssClass (nodeStyle.RegisteredCssClass);
+#endif
 				}
 				if (node.IsLeafNode) {
 					if (leafNodeStyle != null) {
+#if NET_4_0
+						style.PrependCssClass (leafNodeStyle.RegisteredCssClass);
+						style.PrependCssClass (leafNodeStyle.CssClass);
+#else
 						style.AddCssClass (leafNodeStyle.CssClass);
 						style.AddCssClass (leafNodeStyle.RegisteredCssClass);
+#endif
 					}
 				} else if (node.IsRootNode) {
 					if (rootNodeStyle != null) {
+#if NET_4_0
+						style.PrependCssClass (rootNodeStyle.RegisteredCssClass);
+						style.PrependCssClass (rootNodeStyle.CssClass);
+#else
 						style.AddCssClass (rootNodeStyle.CssClass);
 						style.AddCssClass (rootNodeStyle.RegisteredCssClass);
+#endif
 					}
 				} else if (node.IsParentNode) {
 					if (parentNodeStyle != null) {
+#if NET_4_0
+						style.AddCssClass (parentNodeStyle.RegisteredCssClass);
+						style.AddCssClass (parentNodeStyle.CssClass);
+#else
 						style.AddCssClass (parentNodeStyle.CssClass);
 						style.AddCssClass (parentNodeStyle.RegisteredCssClass);
+#endif
 					}
 				}
+				
 				if (levelStyles != null && levelStyles.Count > level) {
+#if NET_4_0
+ 					style.PrependCssClass (levelStyles [level].RegisteredCssClass);
+ 					style.PrependCssClass (levelStyles [level].CssClass);
+#else
 					style.AddCssClass (levelStyles [level].CssClass);
 					style.AddCssClass (levelStyles [level].RegisteredCssClass);
+#endif
 				}
 				
 				if (nodeIsSelected) {
+#if NET_4_0
+					style.AddCssClass (selectedNodeStyle.RegisteredCssClass);
+					style.AddCssClass (selectedNodeStyle.CssClass);
+#else
 					style.AddCssClass (selectedNodeStyle.CssClass);
 					style.AddCssClass (selectedNodeStyle.RegisteredCssClass);
+#endif
 				}
 			} else {
 				// styles are not registered
@@ -1710,6 +1760,9 @@ namespace System.Web.UI.WebControls
 		void AddNodeLinkStyle (HtmlTextWriter writer, TreeNode node, int level, bool nodeIsSelected)
 		{
 			Style style = new Style ();
+#if NET_4_0
+			bool addBorderStyle = false;
+#endif
 			if (Page.Header != null) {
 				// styles are registered
 				style.AddCssClass (ControlLinkStyle.RegisteredCssClass);
@@ -1722,6 +1775,9 @@ namespace System.Web.UI.WebControls
 				if (levelLinkStyles != null && levelLinkStyles.Count > level) {
 					style.AddCssClass (levelLinkStyles [level].CssClass);
 					style.AddCssClass (levelLinkStyles [level].RegisteredCssClass);
+#if NET_4_0
+					addBorderStyle = true;
+#endif
 				}
 				
 				if (node.IsLeafNode) {
@@ -1750,28 +1806,38 @@ namespace System.Web.UI.WebControls
 				style.CopyFrom (ControlLinkStyle);
 				if (nodeStyle != null)
 					style.CopyFrom (nodeLinkStyle);
-
-				if (levelLinkStyles != null && levelLinkStyles.Count > level)
+				
+				if (levelLinkStyles != null && levelLinkStyles.Count > level) {
 					style.CopyFrom (levelLinkStyles [level]);
+#if NET_4_0
+					addBorderStyle = true;
+#endif
+				}
 				
 				if (node.IsLeafNode) {
-					if (node.IsLeafNode && leafNodeStyle != null) {
+					if (node.IsLeafNode && leafNodeStyle != null)
 						style.CopyFrom (leafNodeLinkStyle);
-					}
 				} else if (node.IsRootNode) {
-					if (node.IsRootNode && rootNodeStyle != null) {
+					if (node.IsRootNode && rootNodeStyle != null)
 						style.CopyFrom (rootNodeLinkStyle);
-					}
 				} else if (node.IsParentNode) {
-					if (node.IsParentNode && parentNodeStyle != null) {
+					if (node.IsParentNode && parentNodeStyle != null)
 						style.CopyFrom (parentNodeLinkStyle);
-					}
 				}
 				
 				if (nodeIsSelected)
 					style.CopyFrom (selectedNodeLinkStyle);
+				
 				style.AlwaysRenderTextDecoration = true;
 			}
+#if NET_4_0
+			if (addBorderStyle) {
+				// This appears not to come from any style. Instead, it's added
+				// whenever a level style is present.
+				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderStyle, "none");
+				writer.AddStyleAttribute (HtmlTextWriterStyle.FontSize, "1em");
+			}		
+#endif
 			style.AddAttributesToRender (writer);
 		}
 
@@ -1797,6 +1863,7 @@ namespace System.Web.UI.WebControls
 					writer.AddAttribute (HtmlTextWriterAttribute.Href, GetClientExpandEvent (node));
 				else
 					writer.AddAttribute (HtmlTextWriterAttribute.Href, GetClientEvent (node, "sel"));
+
 				writer.RenderBeginTag (HtmlTextWriterTag.A);
 			} else
 				writer.RenderBeginTag (HtmlTextWriterTag.Span);

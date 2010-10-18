@@ -1,8 +1,55 @@
+2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* XDocument.cs: Don't use XmlReaderSettings.ProhibitDtd when 
+	building Moonlight SDK assemblies
+
+2010-04-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XDocument.cs : don't prohibit DTD.
+	* XNodeNavigator.cs : do not return true in MoveToFirstChild()
+	  when there is no child node. Fixed bug #594877.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XContainer.cs : create snapshot copy first before removal of nodes.
+	  Fixed bug #592435.
+
+2010-03-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* XElement.cs:
+	* SaveOptions.cs: Add more 4.0 api to Moonlight.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* XElement.cs, XNodeNavigator.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* XElement.cs: Added two new Load overloads for NET 4.0 and Moonlight.
+
+2010-02-12  Miguel de Icaza  <miguel@novell.com>
+
+	* XStreamingElement.cs: Avoid an extra indirect call, by calling
+	the target methods directly.
+	
+	* XDocument.cs, XElement.cs, XStreamingElement.cs: Fix the
+	setting of the Indent flag, since this is an enumeration, testing
+	against SaveOptions.None was incorrect.  Check on the actual flag.
+
+	* XElement.cs, XDocument.cs, XStreamingElement.cs: Add support for
+	the new .NET 4.0 Save methods and the new OmitDuplicateNamespaces
+	flag to SaveOptions.
+
+	* XElement.cs, XDocument.cs, XNamespace.cs: Sprinkle
+	CLSCompliantAttribute to match the compare page.
+
+	* SaveOptions.cs: New setting for 4.0 OmitDuplicateNamespaces.
+
 2010-02-09  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* XUtil.cs: Avoid using ToLowerInvariant since it is not 
 	available in Silverlight.
-	[Backport r151136]
 
 2010-02-09  Chris Toshok  <toshok@ximian.com>
 
@@ -478,4 +525,3 @@
 	* XAttribute.cs, XIterators.cs, XName.cs, XElementSequence.cs,
 	  System.Xml.XLinq.cs :
 	  Minimum implementation to run ms XLinqIntro.
-

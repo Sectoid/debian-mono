@@ -1,30 +1,251 @@
+2010-08-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix Math.Log (2, 1). Fixes #626944.
+
+2010-08-06  Jb Evain  <jbevain@gmail.com>
+
+	DelegateTest.ClosedOverNullReferenceInstanceMethod: remove
+	NotWorking attribute
+
+2010-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	Add special compiler define RUN_ONDOTNET. Fixes #624942
+
+2010-08-03  Jb Evain  <jbevain@gmail.com>
+
+	Add tests for delegates closed over null
+
+2010-07-05  Jb Evain  <jbevain@novell.com>
+
+	* TypeTest.cs: prefixed TypedReference with global:: to
+	remove confusion with the test suite namespace.
+
+2010-06-29 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Add tests for #612780.
+
+2010-06-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AttributeTest.cs: Add test cases for GetHashCode
+
+2010-06-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* ArrayTest.cs: Add a test for #616416.
+
+2010-06-22  Jb Evain  <jbevain@novell.com>
+
+	* GuidTest.cs: add tests for #616050.
+
+2010-06-15  Jonathan Pryor  <jpryor@novell.com>
+
+	* ConvertTest.cs: Add tests for #596339.
+
 2010-06-08  Jonathan Pryor  <jpryor@novell.com>
 
 	* StringTest.cs: Add tests for #601772 (i.e. take SplitStringChars(),
 	  change all the chars to Strings, and things should work).
 
+2010-05-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* LazyTest.cs: Add a test that actually test something.
+
+2010-05-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EnumTest.cs : add test for bug #604134.
+
+2010-05-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* StringTest.cs : add test for bug #605094.
+
+2010-04-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: New test for ToString using custom formats.
+
+2010-04-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: Update our test after the 4.0 release.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Add tests for #331126.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Fix the test suite.
+
+2010-04-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Add regression test for #473289.
+
+2010-04-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* *.cs: Fix warnings.
+
 2010-04-19  Zoltan Varga  <vargaz@gmail.com>
 
 	* StringTest.cs: Add a test for #597604.
 
-2009-11-17  Atsushi Enomoto  <atsushi@ximian.com>
+2010-04-18  Zoltan Varga  <vargaz@gmail.com>
 
-	* DateTimeOffsetTest.cs : add test for bug #547675.
-	  patch by Santa Marta.
+	* CharTest.cs: Add missing [TestFixture] attribute.
+
+2010-04-16 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Add regression test for #484246.
+
+2010-04-16 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AttributeTest.cs: Add regression test for #499569.
+
+2010-04-15  Jb Evain  <jbevain@novell.com>
+
+	* GuidTest.cs: add tests for net_4_0 ParseExact methods.
+
+2010-04-13  Zoltan Varga  <vargaz@gmail.com>
+
+	* ConvertTest.cs: Add a test for #596339.
+
+2010-04-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: Remove "NotWorking" from our custom formats parse
+	methods, as well as augmenting the test with some new assertions, and
+	changing a pair to properly reflect what they are testing.
+
+2010-04-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: Augment our ParseExactCustomFormats test - still
+	marked as NotWorking for now, but committing now in order to have the
+	tests ready.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Fix test for v4 Equals behavior.
+
+2010-03-30  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: New test for TryParseExact.
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* ActivatorTest.cs: add more tests to CreateInstance constructors
+	with params arrays.
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* ActivatorTest.cs: add tests for #591877.
+
+2010-03-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpan.cs: New test for ParseExact/TryParseExact.
+
+2010-03-26  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: New assertion in our exception order test, to
+	assert that int32 overflow error has higher precedence in both 2.0 and
+	4.0 profiles.
+
+2010-03-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpan.cs: Add some new assertions for old/new stuff in
+	TimeSpan.
+
+2010-03-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: It seems somebody forgot to actually mark the
+	TestParse method with TestAttribute. Also, add a bunch of asserions
+	to reflect the new behaviour for 4.0 in the needed test cases.
+
+2010-03-08  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: New tests for the 4.0 ToString overloads.
+
+2010-03-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TimeSpanTest.cs: 'Port' our Parse assertions to also use TryParse.
+
+2010-03-03 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs : Added test for bug #574696	
+	Patch by Eberhard Beilharz <eb1@sil.org>
+
+2010-03-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Tests for new v4 overloads of GetType.
+
+2010-02-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* LazyTest.cs: Add tests for lazy modes.
+
+2010-02-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Test new v4 IsEnumDefined ().
+
+2010-02-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Test new v4 GetEnumValue ().
+
+2010-02-24 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Test new v4 GetEnumValues ().
+
+2010-02-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Test new v4 GetEnumNames ().
+
+2010-02-22 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs:  Test new v4 GetEnumUnderlyingType ().
+
+2010-02-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Test new v4 behavior for Equals.
+
+2010-01-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* Int32Test.cs: Fix a copy-paste error.
+
+2010-01-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeTest.cs: Add a test for #574819.
+
+2010-01-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* VersionTest.cs: New tests for Parse and TryParse.
+
+2010-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* ValueTypeTest.cs: Add a test for Equals () + nullables.
+
+2010-01-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* EnumTest.cs: New tests for the new TryParse method.
+
+2010-01-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* ArrayTest.cs: Add a test for SetValue () + nullables.
 
 2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SingleTest.cs : test for parsing MaxValue and PositiveInfinity.
 	  Patch by Tiaan Geldenhuys.
 
-2010-01-15  Carlos Alberto Cortez <calberto.cortez@gmail.com> 
+2010-01-19 Rodrigo Kumpera  <rkumpera@novell.com>
 
-	* Int32Test.cs: Test for TryParse with MaxValue + 1.
+	* TypeTest.cs: Add test for GetGenericMethodDefinition of inflated
+	generic methods on a GTD.
+
+2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeTest.cs : commented out ParseExact() case that tests
+	  preserved fraction.
 
 2010-01-15  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
-	* DateTimeTest.cs: Fix the tests (DateTimeStyles.AssumeUniversal is
-	2.0 only).
+	* Int32Test.cs: Test for TryParse with MaxValue + 1.
+
+2010-01-15 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ArrayTest.cs: Tests for IStructuralComparer::CompareTo.
 
 2010-01-15  Atsushi Enomoto  <atsushi@ximian.com>
 
@@ -44,18 +265,23 @@
 	* Int32Test.cs: Add test case for exponent support in the Parse
 	methods.
 
+2010-01-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Test for variant use of GetInterfaceMap.
+
 2010-01-07  Jb Evain  <jbevain@novell.com>
 
 	* TypeTest.cs: add test for the MemberType of
 	a generic parameter.
 
-	backport r149175.
-
 2010-01-07  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* ConvertTest.cs: Add test case for #568778 and the default
 	line length.
-	[Backport r149171]
+
+2010-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* ArrayTest.cs: Add a test for #564095.
 
 2009-12-21  Marek Habersack  <mhabersack@novell.com>
 
@@ -69,49 +295,96 @@
 2009-12-17  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* StringTest.cs: Add test case for right padding an empty string
-	[Backport r148706]
+
+2009-12-17 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Add tests for #564379.
+
+2009-12-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeTest.cs: Fix test that checked for old and wrong behavior of mono.
+
+2009-12-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AttributeTest.cs: Fix a NotDotNet test since mono now implements
+	the same behavior.
+
+2009-12-09  Jb Evain  <jbevain@novell.com>
+
+	* StringComparerTest.cs: add test for null passed to a ordinal
+	comparer GetHashCode.
+
+2009-12-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	TypeTest.cs: Remove NET_2_0.
+
+2009-12-02  Jb Evain  <jbevain@novell.com>
+
+	* EnumTest.cs: add a test for IConvertible.ToType when converting
+	an enum to a string.
+
+2009-12-02  Jb Evain  <jbevain@novell.com>
+
+	* AttributeTest.cs: add tests for retrieving custom attributes
+	defined on parameters on virtual methods.
+
+2009-12-01  Jb Evain  <jbevain@novell.com>
+
+	* TypeTest.cs: add tests for namespaces of generic parameter types.
+
+2009-12-01  Jb Evain  <jbevain@novell.com>
+
+	* TypeTest.cs: add test for MakeByRefType on a ByRef type.
+
+2009-11-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* DelegateTest.cs: Add a test for GetHashCode ().
 
 2009-11-24  Jb Evain  <jbevain@novell.com>
 
 	* ArrayTest.cs: test that we don't allow the use of the IList indexer
 	on a multi dimensional array.
 
-	backport r146831.
-
 2009-11-24  Jb Evain  <jbevain@novell.com>
 
 	* ArrayTest: test for the proper exception on Clear ().
-
-	backport of r146825.
 
 2009-11-24  Jb Evain  <jbevain@novell.com>
 
 	* ArrayTest.cs: add test ensuring we do not allow open
 	generic types in CreateInstance.
 
-	backport of r146823.
-
 2009-11-24  Jb Evain <jbevain@novell.com>
 
 	* ArrayTest.cs: Add test ensuring we do not allow void arrays.
 
-	backport r146815.
+2009-11-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DateTimeOffsetTest.cs : add test for bug #547675.
+	  patch by Santa Marta.
+
+2009-11-08  Juraj Skripsky  <js@hotfeet.ch>
+
+	* ArraySortArgChecks.cs: Added tests checking all possible exceptions
+	the Array.Sort method can throw. 
 
 2009-10-27  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* StringTest.cs: Add test case for methods that can return
 	empty strings.
-	[Backport r144921]
 
 2009-10-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* TypeTest.cs: New. Add test cases for IsInstanceOfType
-	[Backport r144840]
 
 2009-10-22  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* WeakReferenceTest.cs: New. Basic test cases
-	[Backport r144681]
+
+2009-10-06  Jonathan Chambers  <joncham@gmail.com>
+
+	* StringTest.cs (Contains): Add test for Contains using
+	an Ordinal compare. Bug #535425.
 
 2009-09-24  Zoltan Varga  <vargaz@gmail.com>
 

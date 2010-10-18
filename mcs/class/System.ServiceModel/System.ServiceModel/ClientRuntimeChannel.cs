@@ -27,6 +27,7 @@
 //
 using System;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
@@ -34,9 +35,10 @@ using System.ServiceModel.Security;
 using System.Threading;
 using System.Xml;
 
-namespace System.ServiceModel
+namespace System.ServiceModel.MonoInternal
 {
-	internal class ClientRuntimeChannel
+	// FIXME: This is a quick workaround for bug #571907
+	public class ClientRuntimeChannel
 		: CommunicationObject, IClientChannel
 	{
 		ClientRuntime runtime;
@@ -64,7 +66,7 @@ namespace System.ServiceModel
 
 		public ClientRuntimeChannel (ServiceEndpoint endpoint,
 			ChannelFactory channelFactory, EndpointAddress remoteAddress, Uri via)
-			: this (endpoint.CreateRuntime (), endpoint.Contract, channelFactory.DefaultOpenTimeout, channelFactory.DefaultCloseTimeout, null, channelFactory.OpenedChannelFactory, endpoint.Binding.MessageVersion, remoteAddress, via)
+			: this (endpoint.CreateClientRuntime (null), endpoint.Contract, channelFactory.DefaultOpenTimeout, channelFactory.DefaultCloseTimeout, null, channelFactory.OpenedChannelFactory, endpoint.Binding.MessageVersion, remoteAddress, via)
 		{
 		}
 
@@ -72,7 +74,8 @@ namespace System.ServiceModel
 		{
 			this.runtime = runtime;
 			this.remote_address = remoteAddress;
-			runtime.Via = via;
+			if (runtime.Via == null)
+				runtime.Via = via ?? remote_address.Uri;
 			this.contract = contract;
 			this.message_version = messageVersion;
 			default_open_timeout = openTimeout;
@@ -89,9 +92,20 @@ namespace System.ServiceModel
 				channel = contextChannel;
 			else {
 				var method = factory.GetType ().GetMethod ("CreateChannel", new Type [] {typeof (EndpointAddress), typeof (Uri)});
-				channel = (IChannel) method.Invoke (factory, new object [] {remote_address, Via});
-				this.factory = factory;
+				try {
+					channel = (IChannel) method.Invoke (factory, new object [] {remote_address, Via});
+					this.factory = factory;
+				} catch (TargetInvocationException ex) {
+					if (ex.InnerException != null)
+						throw ex.InnerException;
+					else
+						throw;
+				}
 			}
+		}
+
+		public ContractDescription Contract {
+			get { return contract; }
 		}
 
 		public ClientRuntime Runtime {
@@ -161,7 +175,7 @@ namespace System.ServiceModel
 				}
 			}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			public override bool WaitOne (int millisecondsTimeout, bool exitContext)
 			{
 				return WaitHandle.WaitAll (ResultWaitHandles, millisecondsTimeout, exitContext);
@@ -399,12 +413,42 @@ namespace System.ServiceModel
 
 		#region Request/Output processing
 
+		class TempAsyncResult : IAsyncResult
+		{
+			public TempAsyncResult (object returnValue, object state)
+			{
+				ReturnValue = returnValue;
+				AsyncState = state;
+				CompletedSynchronously = true;
+				IsCompleted = true;
+				AsyncWaitHandle = new ManualResetEvent (true);
+			}
+			
+			public object ReturnValue { get; set; }
+			public object AsyncState { get; set; }
+			public bool CompletedSynchronously { get; set; }
+			public bool IsCompleted { get; set; }
+			public WaitHandle AsyncWaitHandle { get; set; }
+		}
+
 		public IAsyncResult BeginProcess (MethodBase method, string operationName, object [] parameters, AsyncCallback callback, object asyncState)
 		{
 			if (context != null)
 				throw new InvalidOperationException ("another operation is in progress");
 			context = OperationContext.Current;
-			return _processDelegate.BeginInvoke (method, operationName, parameters, callback, asyncState);
+
+			// FIXME: this is a workaround for bug #633945
+			switch (Environment.OSVersion.Platform) {
+			case PlatformID.Unix:
+			case PlatformID.MacOSX:
+				return _processDelegate.BeginInvoke (method, operationName, parameters, callback, asyncState);
+			default:
+				var result = Process (method, operationName, parameters);
+				var ret = new TempAsyncResult (asyncState, result);
+				if (callback != null)
+					callback (ret);
+				return ret;
+			}
 		}
 
 		public object EndProcess (MethodBase method, string operationName, object [] parameters, IAsyncResult result)
@@ -416,7 +460,14 @@ namespace System.ServiceModel
 				throw new ArgumentNullException ("parameters");
 			// FIXME: the method arguments should be verified to be 
 			// identical to the arguments in the corresponding begin method.
-			return _processDelegate.EndInvoke (result);
+			// FIXME: this is a workaround for bug #633945
+			switch (Environment.OSVersion.Platform) {
+			case PlatformID.Unix:
+			case PlatformID.MacOSX:
+				return _processDelegate.EndInvoke (result);
+			default:
+				return ((TempAsyncResult) result).ReturnValue;
+			}
 		}
 
 		public object Process (MethodBase method, string operationName, object [] parameters)
@@ -424,8 +475,10 @@ namespace System.ServiceModel
 			try {
 				return DoProcess (method, operationName, parameters);
 			} catch (Exception ex) {
+#if MOONLIGHT // just for debugging
 				Console.Write ("Exception in async operation: ");
 				Console.WriteLine (ex);
+#endif
 				throw;
 			}
 		}
@@ -477,27 +530,40 @@ namespace System.ServiceModel
 
 			Message res = Request (req, OperationTimeout);
 			if (res.IsFault) {
-				MessageFault fault = MessageFault.CreateFault (res, runtime.MaxFaultSize);
-				if (fault.HasDetail && fault is MessageFault.SimpleMessageFault) {
-					MessageFault.SimpleMessageFault simpleFault = fault as MessageFault.SimpleMessageFault;
-					object detail = simpleFault.Detail;
-					Type t = detail.GetType ();
-					Type faultType = typeof (FaultException<>).MakeGenericType (t);
-					object [] constructorParams = new object [] { detail, fault.Reason, fault.Code, fault.Actor };
-					FaultException fe = (FaultException) Activator.CreateInstance (faultType, constructorParams);
-					throw fe;
+				var resb = res.CreateBufferedCopy (runtime.MaxFaultSize);
+				MessageFault fault = MessageFault.CreateFault (resb.CreateMessage (), runtime.MaxFaultSize);
+				var conv = OperationChannel.GetProperty<FaultConverter> () ?? FaultConverter.GetDefaultFaultConverter (res.Version);
+				Exception ex;
+				if (!conv.TryCreateException (resb.CreateMessage (), fault, out ex)) {
+					if (fault.HasDetail) {
+						Type detailType = typeof (ExceptionDetail);
+						var freader = fault.GetReaderAtDetailContents ();
+						DataContractSerializer ds = null;
+#if !NET_2_1
+						foreach (var fci in op.FaultContractInfos)
+							if (res.Headers.Action == fci.Action || fci.Serializer.IsStartObject (freader)) {
+								detailType = fci.Detail;
+								ds = fci.Serializer;
+								break;
+							}
+#endif
+						if (ds == null)
+							ds = new DataContractSerializer (detailType);
+						var detail = ds.ReadObject (freader);
+						ex = (Exception) Activator.CreateInstance (typeof (FaultException<>).MakeGenericType (detailType), new object [] {detail, fault.Reason, fault.Code, res.Headers.Action});
+					}
+
+					if (ex == null)
+						ex = new FaultException (fault);
 				}
-				else {
-					// given a MessageFault, it is hard to figure out the type of the embedded detail
-					throw new FaultException(fault);
-				}
+				throw ex;
 			}
 
 			for (int i = 0; i < inspections.Length; i++)
 				runtime.MessageInspectors [i].AfterReceiveReply (ref res, inspections [i]);
 
 			if (op.DeserializeReply)
-				return op.GetFormatter ().DeserializeReply (res, parameters);
+				return op.Formatter.DeserializeReply (res, parameters);
 			else
 				return res;
 		}
@@ -527,7 +593,10 @@ namespace System.ServiceModel
 
 		internal void Send (Message msg, TimeSpan timeout)
 		{
-			OutputChannel.Send (msg, timeout);
+			if (OutputChannel != null)
+				OutputChannel.Send (msg, timeout);
+			else
+				RequestChannel.Request (msg, timeout); // and ignore returned message.
 		}
 
 		internal IAsyncResult BeginSend (Message msg, TimeSpan timeout, AsyncCallback callback, object state)
@@ -549,7 +618,7 @@ namespace System.ServiceModel
 
 			Message msg;
 			if (op.SerializeRequest)
-				msg = op.GetFormatter ().SerializeRequest (
+				msg = op.Formatter.SerializeRequest (
 					version, parameters);
 			else {
 				if (parameters.Length != 1)
@@ -571,8 +640,9 @@ namespace System.ServiceModel
 				msg.Properties.CopyProperties (context.OutgoingMessageProperties);
 			}
 
-			if (OutputSession != null)
-				msg.Headers.MessageId = new UniqueId (OutputSession.Id);
+			// FIXME: disabling MessageId as it's not seen for bug #567672 case. But might be required for PeerDuplexChannel. Check it later.
+			//if (OutputSession != null)
+			//	msg.Headers.MessageId = new UniqueId (OutputSession.Id);
 			msg.Properties.AllowOutputBatching = AllowOutputBatching;
 
 			if (msg.Version.Addressing.Equals (AddressingVersion.WSAddressing10)) {

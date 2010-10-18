@@ -1,4 +1,3 @@
-#if NET_4_0
 // 
 // TaskScheduler.cs
 //  
@@ -25,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 using System;
 using System.Threading;
 using System.Collections.Generic;
@@ -41,12 +41,14 @@ namespace System.Threading.Tasks
 		int id;
 		static int lastId = int.MinValue;
 		
+		public static event EventHandler<UnobservedTaskExceptionEventArgs> UnobservedTaskException;
+		
 		protected TaskScheduler ()
 		{
 			this.id = Interlocked.Increment (ref lastId);
 		}
 
-	  // FIXME: Probably not correct
+		// FIXME: Probably not correct
 		public static TaskScheduler FromCurrentSynchronizationContext ()
 		{
 			return Current;
@@ -60,7 +62,7 @@ namespace System.Threading.Tasks
 		
 		public static TaskScheduler Current  {
 			get {
-				if (Task.Current != null && currentScheduler != null)
+				if (currentScheduler != null)
 					return currentScheduler;
 				
 				return defaultScheduler;
@@ -95,6 +97,19 @@ namespace System.Threading.Tasks
 		}
 
 		protected abstract bool TryExecuteTaskInline (Task task, bool taskWasPreviouslyQueued);
+		
+		internal UnobservedTaskExceptionEventArgs FireUnobservedEvent (AggregateException e)
+		{
+			UnobservedTaskExceptionEventArgs args = new UnobservedTaskExceptionEventArgs (e);
+			
+			EventHandler<UnobservedTaskExceptionEventArgs> temp = UnobservedTaskException;
+			if (temp == null)
+				return args;
+			
+			temp (this, args);
+			
+			return args;
+		}
 	}
 }
 #endif

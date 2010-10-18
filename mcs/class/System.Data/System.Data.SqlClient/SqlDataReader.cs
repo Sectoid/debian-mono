@@ -1321,7 +1321,7 @@ namespace System.Data.SqlClient
 					return SqlDecimal.Null;
 				if (value is TdsBigDecimal)
 					return SqlDecimal.FromTdsBigDecimal ((TdsBigDecimal) value);
-				if (value is System.Int64)
+				if (value is Int64)
 					return (SqlDecimal)((long) value);
 				return (SqlDecimal) ((decimal) value);
 			case SqlDbType.Float:

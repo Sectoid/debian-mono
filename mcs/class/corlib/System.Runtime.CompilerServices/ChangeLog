@@ -1,13 +1,53 @@
+2010-06-04  Jb Evain  <jbevain@novell.com>
+
+	* ConditionalWeakTable.cs: make sure we use positive indexes.
+
+2010-05-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConditionalWeakTable.cs: Implement simple open addressing
+	hash table with linear probing. We use a prime sized table
+	for an easy hashing and a target load capacity of 70%.
+
+	On a synthetic benchmark, a load factor of 70% did not cause
+	significant performance degradation over 60% as would be expected.
+
+2010-05-06 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ConditionalWeakTable.cs: Discard old broken version. New
+	version user proper runtime support. Currently it performs
+	linear search over the keys, which is dog slow but it's a
+	good start.
+
+2010-03-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ConditionalWeakTable.cs:
+	* ReferenceAssemblyAttribute.cs:
+	* TypeForwardedFromAttribute.cs:
+		Build them into Moonlight too (SL4)
+
+Fri Feb 12 19:03:11 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* ReferenceAssemblyAttribute.cs: new attribute in 4.0.
+
+Fri Feb 12 18:39:57 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* RuntimeHelpers.cs: implemented EnsureSufficientExecutionStack ().
+
 2010-01-05 Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* DateTimeConstantAttribute.cs: Add internal Ticks property.
 
-	Backport of r149083.
+2009-11-08  Miguel de Icaza  <miguel@novell.com>
+
+	* Use the ConditionalWeakTable.cs implementation from MEF, it
+	needs a little bit of work (see the comment on the file, and the
+	test suite that shows the problem).
+
+	This code is MS-PL
 
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* RuntimeHelpers.cs: Add missing validations
-	[Backport r144208]
 
 2009-09-23  Marek Safar  <marek.safar@gmail.com>
 

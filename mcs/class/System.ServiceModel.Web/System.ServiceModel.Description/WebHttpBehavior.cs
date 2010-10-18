@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 using System;
+using System.Net;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Dispatcher;
@@ -92,17 +93,16 @@ namespace System.ServiceModel.Description
 		}
 
 #if !NET_2_1
-		[MonoTODO]
 		protected virtual void AddServerErrorHandlers (ServiceEndpoint endpoint, EndpointDispatcher endpointDispatcher)
 		{
-			// endpointDispatcher.ChannelDispatcher.ErrorHandlers.Add (something);
+			endpointDispatcher.ChannelDispatcher.ErrorHandlers.Add (new WebHttpErrorHandler ());
 		}
 #endif
 
 		public virtual void ApplyClientBehavior (ServiceEndpoint endpoint, ClientRuntime clientRuntime)
 		{
 			AddClientErrorInspector (endpoint, clientRuntime);
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			throw new NotSupportedException ("Due to the lack of ClientRuntime.Operations, Silverlight cannot support this binding.");
 #else
 			foreach (ClientOperation oper in clientRuntime.Operations) {
@@ -118,6 +118,7 @@ namespace System.ServiceModel.Description
 		{
 			endpointDispatcher.DispatchRuntime.OperationSelector = GetOperationSelector (endpoint);
 			// FIXME: get HostNameComparisonMode from WebHttpBinding by some means.
+			endpointDispatcher.FilterPriority = 1; // It is to take higher priority than that of ServiceMetadataExtension (whose URL likely conflicts with this one).
 			endpointDispatcher.AddressFilter = new PrefixEndpointAddressMessageFilter (endpoint.Address);
 			endpointDispatcher.ContractFilter = new MatchAllMessageFilter ();
 			AddServerErrorHandlers (endpoint, endpointDispatcher);
@@ -127,6 +128,10 @@ namespace System.ServiceModel.Description
 				var res = GetReplyDispatchFormatter (endpoint.Contract.Operations.Find (oper.Name), endpoint);
 				oper.Formatter = new DispatchPairFormatter (req, res);
 			}
+			endpointDispatcher.DispatchRuntime.UnhandledDispatchOperation = new DispatchOperation (endpointDispatcher.DispatchRuntime, "*", "*", "*") {
+				Invoker = new EndpointNotFoundOperationInvoker (),
+				DeserializeRequest = false,
+				SerializeReply = false};
 		}
 #endif
 
@@ -257,5 +262,52 @@ namespace System.ServiceModel.Description
 			if (!endpoint.Binding.CreateBindingElements ().Find<TransportBindingElement> ().ManualAddressing)
 				throw new InvalidOperationException ("ManualAddressing in the transport binding element in the binding must be true for WebHttpBehavior");
 		}
+
+#if !NET_2_1
+		internal class WebHttpErrorHandler : IErrorHandler
+		{
+			public void ProvideFault (Exception error, MessageVersion version, ref Message fault)
+			{
+				if (!(error is EndpointNotFoundException))
+					return;
+				fault = Message.CreateMessage (version, null);
+				var prop = new HttpResponseMessageProperty ();
+				prop.StatusCode = HttpStatusCode.NotFound;
+				fault.Properties.Add (HttpResponseMessageProperty.Name, prop);
+			}
+			
+			public bool HandleError (Exception error)
+			{
+				return false;
+			}
+		}
+
+		class EndpointNotFoundOperationInvoker : IOperationInvoker
+		{
+			public bool IsSynchronous {
+				get { return true; }
+			}
+
+			public object [] AllocateInputs ()
+			{
+				return new object [1];
+			}
+			
+			public object Invoke (object instance, object [] inputs, out object [] outputs)
+			{
+				throw new EndpointNotFoundException ();
+			}
+			
+			public IAsyncResult InvokeBegin (object instance, object [] inputs, AsyncCallback callback, object state)
+			{
+				throw new EndpointNotFoundException ();
+			}
+
+			public object InvokeEnd (object instance, out object [] outputs, IAsyncResult result)
+			{
+				throw new InvalidOperationException ();
+			}
+		}
+#endif
 	}
 }

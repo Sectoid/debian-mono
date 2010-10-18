@@ -12,21 +12,17 @@
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
+using System;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
+
+#if CLR2
+namespace Microsoft.Scripting.Ast {
 #else
-using Microsoft.Scripting.Utils;
+namespace System.Linq.Expressions {
 #endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions {
-#else
-namespace Microsoft.Linq.Expressions {
-#endif
     internal enum AnalyzeTypeIsResult {
         KnownFalse,
         KnownTrue,
@@ -37,14 +33,8 @@ namespace Microsoft.Linq.Expressions {
     internal static class ConstantCheck {
 
         internal static bool IsNull(Expression e) {
-            switch (e.NodeType) {
-                case ExpressionType.Constant:
-                    return ((ConstantExpression)e).Value == null;
-
-                case ExpressionType.TypeAs:
-                    var typeAs = (UnaryExpression)e;
-                    // if the TypeAs check is guarenteed to fail, then its result will be null
-                    return AnalyzeTypeIs(typeAs) == AnalyzeTypeIsResult.KnownFalse;
+            if (e.NodeType == ExpressionType.Constant) {
+                return ((ConstantExpression)e).Value == null;
             }
             return false;
         }
@@ -60,19 +50,6 @@ namespace Microsoft.Linq.Expressions {
         /// </summary>
         internal static AnalyzeTypeIsResult AnalyzeTypeIs(TypeBinaryExpression typeIs) {
             return AnalyzeTypeIs(typeIs.Expression, typeIs.TypeOperand);
-        }
-
-        /// <summary>
-        /// If the result of a unary TypeAs expression is known statically, this
-        /// returns the result, otherwise it returns null, meaning we'll need
-        /// to perform the IsInst instruction at runtime.
-        /// 
-        /// The result of this function must be equivalent to IsInst, or
-        /// null.
-        /// </summary>
-        internal static AnalyzeTypeIsResult AnalyzeTypeIs(UnaryExpression typeAs) {
-            Debug.Assert(typeAs.NodeType == ExpressionType.TypeAs);
-            return AnalyzeTypeIs(typeAs.Operand, typeAs.Type);
         }
 
         /// <summary>
@@ -118,13 +95,9 @@ namespace Microsoft.Linq.Expressions {
                 return AnalyzeTypeIsResult.KnownAssignable;
             }
 
-            //
-            // If we couldn't statically assign and the type is sealed, no
-            // value at runtime can make isinst succeed
-            //
-            if (nnOperandType.IsSealed) {
-                return AnalyzeTypeIsResult.KnownFalse;
-            }
+            // We used to have an if IsSealed, return KnownFalse check here.
+            // but that doesn't handle generic types & co/contravariance correctly.
+            // So just use IsInst, which we know always gives us the right answer.
 
             // Otherwise we need a full runtime check
             return AnalyzeTypeIsResult.Unknown;

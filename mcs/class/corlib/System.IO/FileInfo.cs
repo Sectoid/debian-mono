@@ -35,27 +35,32 @@
 
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
+using System.Security;
 
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 using System.Security.AccessControl;
 #endif
 
 namespace System.IO {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class FileInfo : FileSystemInfo
 	{
 		private bool exists;
 
+#if MOONLIGHT
+		internal FileInfo ()
+		{
+		}
+#endif
 		public FileInfo (string fileName)
 		{
 			if (fileName == null)
 				throw new ArgumentNullException ("fileName");
 
 			CheckPath (fileName);
+			SecurityManager.EnsureElevatedPermissions (); // this is a no-op outside moonlight
 
 			OriginalPath = fileName;
 			FullPath = Path.GetFullPath (fileName);
@@ -93,7 +98,7 @@ namespace System.IO {
 			}
 		}
 
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 		public bool IsReadOnly {
 			get {
 				if (!Exists)
@@ -216,6 +221,8 @@ namespace System.IO {
 		{
 			MonoIOError error;
 
+			SecurityManager.EnsureElevatedPermissions (); // this is a no-op outside moonlight
+
 			if (!MonoIO.Exists (FullPath, out error))
 				// a weird MS.NET behaviour
 				return;
@@ -271,7 +278,7 @@ namespace System.IO {
 #endif
 		}
 
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 		public FileSecurity GetAccessControl ()
 		{
 			throw new NotImplementedException ();
@@ -315,11 +322,12 @@ namespace System.IO {
 		}
 		
 		[ComVisible (false)]
+		[MonoLimitation ("We ignore the ignoreMetadataErrors parameter")]
 		public FileInfo Replace (string destinationFileName,
 					 string destinationBackupFileName,
 					 bool ignoreMetadataErrors)
 		{
-			throw new NotImplementedException ();
+			return Replace (destinationFileName, destinationBackupFileName);
 		}
 
 		public void SetAccessControl (FileSecurity fileSecurity)

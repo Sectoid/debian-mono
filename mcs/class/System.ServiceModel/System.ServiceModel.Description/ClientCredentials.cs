@@ -53,7 +53,16 @@ namespace System.ServiceModel.Description
 		[MonoTODO]
 		protected ClientCredentials (ClientCredentials source)
 		{
-			throw new NotImplementedException ();
+			userpass = source.userpass.Clone ();
+#if !NET_2_1
+			issued_token = source.issued_token.Clone ();
+			digest = source.digest.Clone ();
+			initiator = source.initiator.Clone ();
+			recipient = source.recipient.Clone ();
+			windows = source.windows.Clone ();
+			peer = source.peer.Clone ();
+			support_interactive = source.support_interactive;
+#endif
 		}
 
 		UserNamePasswordClientCredential userpass =
@@ -140,7 +149,7 @@ namespace System.ServiceModel.Description
 		}
 #endif
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		void IEndpointBehavior.AddBindingParameters (ServiceEndpoint endpoint,
 			BindingParameterCollection parameters)
 		{

@@ -14,7 +14,7 @@
 //	  Veerapuram Varadhan  <vvaradhan@novell.com>	
 //
 // Copyright (C) Tim Coleman , 2003
-// Copyright (C) Daniel Morgan, 2005, 2008
+// Copyright (C) Daniel Morgan, 2005, 2008, 2009
 // Copyright (C) Hubert FONGARNAND, 2005
 // Copyright (C) Novell Inc, 2009
 //
@@ -79,7 +79,7 @@ namespace System.Data.OracleClient
 
 		short indicator; 
 		int bindSize;
-               bool sizeManuallySet;
+		bool sizeManuallySet;
 
 		#endregion // Fields
 
@@ -332,7 +332,7 @@ namespace System.Data.OracleClient
 			set {
 				sizeSet = true;
 				size = value;
-                               sizeManuallySet = true;
+				sizeManuallySet = true;
 			}
 		}
 
@@ -437,6 +437,8 @@ namespace System.Data.OracleClient
 			string sDate;
 			DateTime dt;
 			bool isnull = false;
+			int byteCount;
+			byte[] byteArrayLen;
 
 			if (direction == ParameterDirection.Input || direction == ParameterDirection.InputOutput) {
 				if (v == null)
@@ -482,24 +484,24 @@ namespace System.Data.OracleClient
 						// Get size of buffer
 						status = OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
 
-                                               if (direction == ParameterDirection.Input)
-                                                       bindSize = rsize;
-                                               else {
-                                                       // this cannot be rsize because you need room for the output after the execute
-                                                       bindSize = Encoding.UTF8.GetMaxByteCount (Size + 1);
-                                               }
+						if (direction == ParameterDirection.Input)
+							bindSize = rsize;
+						else {
+							// this cannot be rsize because you need room for the output after the execute
+							bindSize = Encoding.UTF8.GetMaxByteCount (Size + 1);
+						}
 
-                                               // allocate memory based on bind size
-                                               bytes = new byte [bindSize];
+						// allocate memory based on bind size
+						bytes = new byte [bindSize];
 
 						// Fill buffer
 						status = OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
-                                       } else {
-                                               // for Output and ReturnValue parameters, get size in bytes                                     
-                                               bindSize = Encoding.UTF8.GetMaxByteCount (size + 1);
-                                               // allocate memory for oracle to place the results for the Return or Output param                                               
-                                               bytes = new byte [bindSize];
-                                       }
+					} else {
+						// for Output and ReturnValue parameters, get size in bytes 					
+						bindSize = Encoding.UTF8.GetMaxByteCount (size + 1);
+						// allocate memory for oracle to place the results for the Return or Output param						
+						bytes = new byte [bindSize];
+					}
 					break;
 				case OciDataType.Date:
 					bindType = OciDataType.Date;
@@ -613,18 +615,18 @@ namespace System.Data.OracleClient
 						OciCalls.OCIUnicodeToCharSet (statement.Parent, null, svalue, out rsize);
 
 						// Fill buffer 
-                                               
-                                               if (direction == ParameterDirection.Input)
-                                                       bindSize = rsize;
-                                               else
-                                                       bindSize = 30; // need room for output possibly being bigger than the input
-                                               
-                                               bytes = new byte [bindSize];
+						
+						if (direction == ParameterDirection.Input)
+							bindSize = rsize;
+						else
+							bindSize = 30; // need room for output possibly being bigger than the input
+						
+						bytes = new byte [bindSize];
 						OciCalls.OCIUnicodeToCharSet (statement.Parent, bytes, svalue, out rsize);
-                                       } else {
-                                               // Output and ReturnValue parameters allocate memory
-                                               bindSize = 30;
-                                               bytes = new byte [bindSize];
+					} else {
+						// Output and ReturnValue parameters allocate memory
+						bindSize = 30;
+						bytes = new byte [bindSize];
 					} 
 					break;
 				case OciDataType.Long:
@@ -651,12 +653,11 @@ namespace System.Data.OracleClient
 					
 					if (direction == ParameterDirection.Input || 
 						direction == ParameterDirection.InputOutput) {
-						int byteCount = 0;
 						if (svalue.Length > 0) {	
 							byteCount = enc.GetBytes (svalue, 4, svalue.Length, bytes, 0);
 							// LONG VARCHAR prepends a 4-byte length
 							if (byteCount > 0) {
-								byte[] byteArrayLen = BitConverter.GetBytes ((uint) byteCount);
+								byteArrayLen = BitConverter.GetBytes ((uint) byteCount);
 								bytes[0] = byteArrayLen[0];
 								bytes[1] = byteArrayLen[1];
 								bytes[2] = byteArrayLen[2];
@@ -753,50 +754,83 @@ namespace System.Data.OracleClient
 						useRef = true;
 					}
 					break;
-                               case OciDataType.Raw:
-                                       if (direction == ParameterDirection.Input) {
-                                               byte[] val = v as byte[];
-                                               bindValue = OciCalls.AllocateClear (val.Length);
-                                               Marshal.Copy (val, 0, bindValue, val.Length);
-                                               bindSize = val.Length;
-                                       } else
-                                               throw new NotImplementedException ("Raw parameters not implemented for InputOutput, Output, and Return");
-                                       break;
-                               case OciDataType.LongRaw:
-                               case OciDataType.LongVarRaw:
-                                       // TODO: See how LongVarChar and Raw are implemented
-                                       throw new NotImplementedException ("LongVarRaw not implemented.");
-                               case OciDataType.RowIdDescriptor:
+				case OciDataType.Raw:
+				case OciDataType.VarRaw:
+					bindType = OciDataType.VarRaw;
+					bindSize = Size + 2; // include 2 bytes prepended to hold the length
+					indicator = 0;
+					bytes = new byte [bindSize];
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+						byteCount = 0;
+						byte[] val = v as byte[];
+						if (val.Length > 0) {	
+							byteCount = val.Length;
+							// LONG VARRAW prepends a 4-byte length
+							if (byteCount > 0) {
+								byteArrayLen = BitConverter.GetBytes ((ushort) byteCount);
+								bytes[0] = byteArrayLen[0];
+								bytes[1] = byteArrayLen[1];
+								Array.ConstrainedCopy (val, 2, bytes, 0, byteCount);
+							}
+						}
+					}
+					break;
+				case OciDataType.LongRaw:
+				case OciDataType.LongVarRaw:
+					bindType = OciDataType.LongVarRaw;
+					bindSize = Size + 4; // include 4 bytes prepended to hold the length
+					indicator = 0;
+					bytes = new byte [bindSize];
+					if (direction == ParameterDirection.Input || 
+						direction == ParameterDirection.InputOutput) {
+						byteCount = 0;
+						byte[] val = v as byte[];
+						if (val.Length > 0) {	
+							byteCount = val.Length;
+							// LONG VARRAW prepends a 4-byte length
+							if (byteCount > 0) {
+								byteArrayLen = BitConverter.GetBytes ((uint) byteCount);
+								bytes[0] = byteArrayLen[0];
+								bytes[1] = byteArrayLen[1];
+								bytes[2] = byteArrayLen[2];
+								bytes[3] = byteArrayLen[3];
+								Array.ConstrainedCopy (val, 4, bytes, 0, byteCount);
+							}
+						}
+					}
+					break;
+				case OciDataType.RowIdDescriptor:
 					if (direction == ParameterDirection.Output || 
 						direction == ParameterDirection.InputOutput || 
 						direction == ParameterDirection.ReturnValue) {
 
-                                       size = 10;
-                                       bindType = OciDataType.Char;
-                                       bindSize = size * 2;
-                                       bindOutValue = OciCalls.AllocateClear (bindSize);
-                                       bindValue = bindOutValue;
-                                       } else
-                                               throw new NotImplementedException("data type RowIdDescriptor as Intput parameters");
-                                       break;
-                               case OciDataType.RSet: // REF CURSOR
-                                       if (direction == ParameterDirection.Output || 
-                                               direction == ParameterDirection.InputOutput || 
-                                               direction == ParameterDirection.ReturnValue) {
-
-                                               cursor = IntPtr.Zero;
-                                               OciCalls.OCIHandleAlloc (connection.Environment,
-                                                       out cursor,
-                                                       OciHandleType.Statement,
-                                                       0,
-                                                       IntPtr.Zero);
-							bindSize = 0;
-                                               bindType = OciDataType.RSet;
-                                       } else
-                                               throw new NotImplementedException ("data type Ref Cursor not implemented for Input parameters");
+					size = 10;
+					bindType = OciDataType.Char;
+					bindSize = size * 2;
+					bindOutValue = OciCalls.AllocateClear (bindSize);
+					bindValue = bindOutValue;
+					} else
+						throw new NotImplementedException("data type RowIdDescriptor as Intput parameters");
 					break;
-                               default:
-                                       throw new NotImplementedException ("Data Type not implemented: " + ociType.ToString() + ".");
+				case OciDataType.RSet: // REF CURSOR
+					if (direction == ParameterDirection.Output || 
+						direction == ParameterDirection.InputOutput || 
+						direction == ParameterDirection.ReturnValue) {
+
+						cursor = IntPtr.Zero;
+						OciCalls.OCIHandleAlloc (connection.Environment,
+							out cursor,
+							OciHandleType.Statement,
+							0,
+							IntPtr.Zero);
+							bindSize = 0;
+						bindType = OciDataType.RSet;
+					} else
+						throw new NotImplementedException ("data type Ref Cursor not implemented for Input parameters");
+					break;
+				default:
+					throw new NotImplementedException ("Data Type not implemented: " + ociType.ToString() + ".");
 				}			
 			}
 			
@@ -962,8 +996,8 @@ namespace System.Data.OracleClient
 			case OciDataType.OciString:
 			case OciDataType.Long:
 			case OciDataType.LongVarChar:
-                               if (sizeManuallySet == true)
-                                       return size;
+				if (sizeManuallySet == true)
+					return size;
 				if (value == null || value == DBNull.Value)
 					newSize = 0;
 				else
@@ -1235,6 +1269,30 @@ namespace System.Data.OracleClient
 				value = encoding.GetString (bytes, 4, longSize);
 				encoding = null;
 				break;
+			case OciDataType.LongRaw:
+			case OciDataType.LongVarRaw:
+				int longrawSize = 0;
+				if (BitConverter.IsLittleEndian)
+					longrawSize = BitConverter.ToInt32 (new byte [] {bytes [0], bytes [1], bytes [2], bytes [3]}, 0);
+				else
+					longrawSize = BitConverter.ToInt32 (new byte [] {bytes [3], bytes [2], bytes [1], bytes [0]}, 0);
+
+				byte[] longraw_buffer = new byte [longrawSize];
+				Array.ConstrainedCopy (bytes, 4, longraw_buffer, 0, longrawSize);
+				value = longraw_buffer;
+				break;
+			case OciDataType.Raw:
+			case OciDataType.VarRaw:
+				int rawSize = 0;
+				if (BitConverter.IsLittleEndian)
+					rawSize = (int) BitConverter.ToInt16 (new byte [] {bytes [0], bytes [1]}, 0);
+				else
+					rawSize = (int) BitConverter.ToInt16 (new byte [] {bytes [1], bytes [0]}, 0);
+
+				byte[] raw_buffer = new byte [rawSize];
+				Array.ConstrainedCopy (bytes, 2, raw_buffer, 0, rawSize);
+				value = raw_buffer;
+				break;
 			case OciDataType.Integer:
 			case OciDataType.Number:
 			case OciDataType.Float:
@@ -1303,9 +1361,6 @@ namespace System.Data.OracleClient
 			case OciDataType.Clob:
 			case OciDataType.Blob:
 				lobLocator = null;
-				break;
-			case OciDataType.Raw:
-				Marshal.FreeHGlobal (bindValue);
 				break;
 			case OciDataType.TimeStamp:
 				break;

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.Serialization;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
@@ -188,5 +189,57 @@ namespace MonoTests.System.ServiceModel.Description
 			OperationDescription od = cd.Operations[0];
 			Assert.IsTrue (od.Behaviors.Contains (typeof (WebGetAttribute)), "Operation is recognized as WebGet");
 		}
+
+		[Test]
+		public void MessageFormatterSupportsRaw ()
+		{
+			// serializing reply
+			var ms = new MemoryStream ();
+			var bytes = new byte [] {0, 1, 2, 0xFF};
+			ms.Write (bytes, 0, bytes.Length);
+			ms.Position = 0;
+			var cd = ContractDescription.GetContract (typeof (ITestService));
+			var od = cd.Operations [0];
+			var se = new ServiceEndpoint (cd, new WebHttpBinding (), new EndpointAddress ("http://localhost:37564/"));
+			var formatter = new WebHttpBehaviorExt ().DoGetReplyDispatchFormatter (od, se);
+
+			var msg = formatter.SerializeReply (MessageVersion.None, null, ms);
+			var wp = msg.Properties ["WebBodyFormatMessageProperty"] as WebBodyFormatMessageProperty;
+			Assert.IsNotNull (wp, "#1");
+			Assert.AreEqual (WebContentFormat.Raw, wp.Format, "#2");
+
+			var wmebe = new WebMessageEncodingBindingElement ();
+			var wme = wmebe.CreateMessageEncoderFactory ().Encoder;
+			var ms2 = new MemoryStream ();
+			wme.WriteMessage (msg, ms2);
+			Assert.AreEqual (bytes, ms2.ToArray (), "#3");
+		}
+
+		[Test]
+		public void MessageFormatterSupportsRaw2 ()
+		{
+			// deserializing request
+			var ms = new MemoryStream ();
+			ms.Write (new byte [] {0, 1, 2, 0xFF}, 0, 4);
+			ms.Position = 0;
+			var cd = ContractDescription.GetContract (typeof (ITestService));
+			var od = cd.Operations [0];
+			var se = new ServiceEndpoint (cd, new WebHttpBinding (), new EndpointAddress ("http://localhost:8080/"));
+			var wmebe = new WebMessageEncodingBindingElement ();
+			var wme = wmebe.CreateMessageEncoderFactory ().Encoder;
+	Console.WriteLine (wme.MediaType);
+			var msg = wme.ReadMessage (ms, 100, null); // "application/xml" causes error.
+			var formatter = new WebHttpBehaviorExt ().DoGetRequestDispatchFormatter (od, se);
+			object [] pars = new object [1];
+			formatter.DeserializeRequest (msg, pars);
+			Assert.IsTrue (pars [0] is Stream, "ret");
+		}
+	}
+
+	[ServiceContract]
+	public interface ITestService
+	{
+		[OperationContract]
+		Stream Receive (Stream input);
 	}
 }

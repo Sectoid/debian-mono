@@ -10,7 +10,7 @@
 //
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Reflection.Emit;
 
 namespace Mono.CSharp
@@ -24,7 +24,7 @@ namespace Mono.CSharp
 		//
 		// A scope type context, it can be inflated for generic types
 		//
-		Type CurrentType { get; }
+		TypeSpec CurrentType { get; }
 
 		//
 		// A scope type parameters either VAR or MVAR
@@ -32,21 +32,20 @@ namespace Mono.CSharp
 		TypeParameter[] CurrentTypeParameters { get; }
 
 		//
-		// A type definition of the type context. For partial types definition use
+		// A member definition of the context. For partial types definition use
 		// CurrentTypeDefinition.PartialContainer otherwise the context is local
 		//
-		// TODO: CurrentType.Definition
-		//
-		TypeContainer CurrentTypeDefinition { get; }
+		MemberCore CurrentMemberDefinition { get; }
 
 		bool IsObsolete { get; }
 		bool IsUnsafe { get; }
 		bool IsStatic { get; }
+		bool HasUnresolvedConstraints { get; }
 
 		string GetSignatureForError ();
 
-		ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, string name, Location loc);
-		FullNamedExpression LookupNamespaceOrType (string name, Location loc, bool ignore_cs0104);
+		IList<MethodSpec> LookupExtensionMethod (TypeSpec extensionType, string name, int arity, ref NamespaceEntry scope);
+		FullNamedExpression LookupNamespaceOrType (string name, int arity, Location loc, bool ignore_cs0104);
 		FullNamedExpression LookupNamespaceAlias (string name);
 
 		CompilerContext Compiler { get; }
@@ -59,9 +58,7 @@ namespace Mono.CSharp
 	{
 		FlowBranching current_flow_branching;
 
-		public TypeInferenceContext ReturnTypeInference;
-
-		Type return_type;
+		TypeSpec return_type;
 
 		/// <summary>
 		///   The location where return has to jump to return the
@@ -74,7 +71,7 @@ namespace Mono.CSharp
 		/// </summary>
 		public bool HasReturnLabel;
 
-		public BlockContext (IMemberContext mc, ExplicitBlock block, Type returnType)
+		public BlockContext (IMemberContext mc, ExplicitBlock block, TypeSpec returnType)
 			: base (mc)
 		{
 			if (returnType == null)
@@ -180,7 +177,7 @@ namespace Mono.CSharp
 				HasReturnLabel = true;
 		}
 
-		public Type ReturnType {
+		public TypeSpec ReturnType {
 			get { return return_type; }
 		}
 	}
@@ -262,7 +259,11 @@ namespace Mono.CSharp
 			//
 			InferReturnType = 1 << 23,
 
-			OmitDebuggingInfo = 1 << 24
+			OmitDebuggingInfo = 1 << 24,
+
+			ExpressionTreeConversion = 1 << 25,
+
+			InvokeSpecialName = 1 << 26
 		}
 
 		// utility helper for CheckExpr, UnCheckExpr, Checked and Unchecked statements
@@ -320,6 +321,9 @@ namespace Mono.CSharp
 
 		public ResolveContext (IMemberContext mc)
 		{
+			if (mc == null)
+				throw new ArgumentNullException ();
+
 			MemberContext = mc;
 
 			//
@@ -355,7 +359,7 @@ namespace Mono.CSharp
 			get { return CurrentAnonymousMethod as Iterator; }
 		}
 
-		public Type CurrentType {
+		public TypeSpec CurrentType {
 			get { return MemberContext.CurrentType; }
 		}
 
@@ -363,8 +367,8 @@ namespace Mono.CSharp
 			get { return MemberContext.CurrentTypeParameters; }
 		}
 
-		public TypeContainer CurrentTypeDefinition {
-			get { return MemberContext.CurrentTypeDefinition; }
+		public MemberCore CurrentMemberDefinition {
+			get { return MemberContext.CurrentMemberDefinition; }
 		}
 
 		public bool ConstantCheckState {
@@ -373,6 +377,10 @@ namespace Mono.CSharp
 
 		public bool DoFlowAnalysis {
 			get { return (flags & Options.DoFlowAnalysis) != 0; }
+		}
+
+		public bool HasUnresolvedConstraints {
+			get { return false; }
 		}
 
 		public bool IsInProbingMode {
@@ -392,15 +400,8 @@ namespace Mono.CSharp
 		// TODO: Merge with CompilerGeneratedThis
 		public Expression GetThis (Location loc)
 		{
-			This my_this;
-			if (CurrentBlock != null)
-				my_this = new This (CurrentBlock, loc);
-			else
-				my_this = new This (loc);
-
-			if (!my_this.ResolveBase (this))
-				my_this = null;
-
+			This my_this = new This (loc);
+			my_this.ResolveBase (this);
 			return my_this;
 		}
 
@@ -444,14 +445,6 @@ namespace Mono.CSharp
 			return new FlagsHandle (this, options, enable ? options : 0);
 		}
 
-		public FlagsHandle WithFlowAnalysis (bool do_flow_analysis, bool omit_struct_analysis)
-		{
-			Options newflags =
-				(do_flow_analysis ? Options.DoFlowAnalysis : 0) |
-				(omit_struct_analysis ? Options.OmitStructFlowAnalysis : 0);
-			return new FlagsHandle (this, Options.DoFlowAnalysis | Options.OmitStructFlowAnalysis, newflags);
-		}
-
 		#region IMemberContext Members
 
 		public string GetSignatureForError ()
@@ -462,7 +455,7 @@ namespace Mono.CSharp
 		public bool IsObsolete {
 			get {
 				// Disables obsolete checks when probing is on
-				return IsInProbingMode || MemberContext.IsObsolete;
+				return MemberContext.IsObsolete;
 			}
 		}
 
@@ -474,14 +467,14 @@ namespace Mono.CSharp
 			get { return HasSet (Options.UnsafeScope) || MemberContext.IsUnsafe; }
 		}
 
-		public ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, string name, Location loc)
+		public IList<MethodSpec> LookupExtensionMethod (TypeSpec extensionType, string name, int arity, ref NamespaceEntry scope)
 		{
-			return MemberContext.LookupExtensionMethod (extensionType, name, loc);
+			return MemberContext.LookupExtensionMethod (extensionType, name, arity, ref scope);
 		}
 
-		public FullNamedExpression LookupNamespaceOrType (string name, Location loc, bool ignore_cs0104)
+		public FullNamedExpression LookupNamespaceOrType (string name, int arity, Location loc, bool ignore_cs0104)
 		{
-			return MemberContext.LookupNamespaceOrType (name, loc, ignore_cs0104);
+			return MemberContext.LookupNamespaceOrType (name, arity, loc, ignore_cs0104);
 		}
 
 		public FullNamedExpression LookupNamespaceAlias (string name)
@@ -502,23 +495,19 @@ namespace Mono.CSharp
 	//
 	public class CloneContext
 	{
-		Hashtable block_map = new Hashtable ();
-		Hashtable variable_map;
+		Dictionary<Block, Block> block_map = new Dictionary<Block, Block> ();
+		Dictionary<LocalInfo, LocalInfo> variable_map;
 
 		public void AddBlockMap (Block from, Block to)
 		{
-			if (block_map.Contains (from))
-				return;
-			block_map[from] = to;
+			block_map.Add (from, to);
 		}
 
 		public Block LookupBlock (Block from)
 		{
-			Block result = (Block) block_map[from];
-
-			if (result == null) {
+			Block result;
+			if (!block_map.TryGetValue (from, out result)) {
 				result = (Block) from.Clone (this);
-				block_map[from] = result;
 			}
 
 			return result;
@@ -529,8 +518,8 @@ namespace Mono.CSharp
 		///
 		public Block RemapBlockCopy (Block from)
 		{
-			Block mapped_to = (Block) block_map[from];
-			if (mapped_to == null)
+			Block mapped_to;
+			if (!block_map.TryGetValue (from, out mapped_to))
 				return from;
 
 			return mapped_to;
@@ -539,21 +528,20 @@ namespace Mono.CSharp
 		public void AddVariableMap (LocalInfo from, LocalInfo to)
 		{
 			if (variable_map == null)
-				variable_map = new Hashtable ();
-
-			if (variable_map.Contains (from))
+				variable_map = new Dictionary<LocalInfo, LocalInfo> ();
+			else if (variable_map.ContainsKey (from))
 				return;
+
 			variable_map[from] = to;
 		}
 
 		public LocalInfo LookupVariable (LocalInfo from)
 		{
-			LocalInfo result = (LocalInfo) variable_map[from];
-
-			if (result == null)
+			try {
+				return variable_map[from];
+			} catch (KeyNotFoundException) {
 				throw new Exception ("LookupVariable: looking up a variable that has not been registered yet");
-
-			return result;
+			}
 		}
 	}
 
@@ -563,19 +551,44 @@ namespace Mono.CSharp
 	public class CompilerContext
 	{
 		readonly Report report;
+		readonly ReflectionMetaImporter meta_importer;
+		readonly PredefinedAttributes attributes;
+		readonly GlobalRootNamespace root;
 
-		public CompilerContext (Report report)
+		public CompilerContext (ReflectionMetaImporter metaImporter, Report report)
 		{
+			this.meta_importer = metaImporter;
 			this.report = report;
+
+			this.attributes = new PredefinedAttributes ();
+			this.root = new GlobalRootNamespace ();
+		}
+
+		public GlobalRootNamespace GlobalRootNamespace {
+			get {
+				return root;
+			}
+		}
+
+		public bool IsRuntimeBinder { get; set; }
+
+		public ReflectionMetaImporter MetaImporter {
+			get {
+				return meta_importer;
+			}
+		}
+
+		public PredefinedAttributes PredefinedAttributes {
+			get {
+				return attributes;
+			}
 		}
 
 		public Report Report {
-			get { return report; }
+			get {
+				return report;
+			}
 		}
-
-		//public PredefinedAttributes PredefinedAttributes {
-		//    get { throw new NotImplementedException (); }
-		//}
 	}
 
 	//

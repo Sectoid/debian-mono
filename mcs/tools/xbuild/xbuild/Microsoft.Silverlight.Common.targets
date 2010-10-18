@@ -28,6 +28,15 @@
 		<SilverlightVersion Condition="'$(SilverlightVersion)' == ''">@SILVERLIGHT_VERSION@</SilverlightVersion>
 		<RuntimeVersion Condition="'$(RuntimeVersion)' == '' and '$(SilverlightVersion)' == '2.0'">2.0.31005.0</RuntimeVersion>
 		<RuntimeVersion Condition="'$(RuntimeVersion)' == '' and '$(SilverlightVersion)' == '3.0'">3.0.40624.0</RuntimeVersion>
+
+		<AssemblySearchPaths>
+			{CandidateAssemblyFiles};
+			$(ReferencePath);
+			{HintPathFromItem};
+			{TargetFrameworkDirectory};
+			{RawFileName};
+			$(OutDir)
+		</AssemblySearchPaths>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -40,7 +49,7 @@
 	<Target Name="GetFrameworkPaths">
 		<GetMoonlightFrameworkPath
 			SilverlightVersion="$(SilverlightVersion)">
-			<Output TaskParameter="FrameworkPath" ItemName="TargetFrameworkDirectories"/>
+			<Output TaskParameter="FrameworkPath" PropertyName="TargetFrameworkDirectory"/>
 			<Output TaskParameter="FrameworkPath" ItemName="_FrameworkPath"/>
 		</GetMoonlightFrameworkPath>
 
@@ -84,7 +93,9 @@
 		</XamlG>
 	</Target>
 
-	<Target Name="GenerateMoonlightManifest">
+	<Target Name="GenerateMoonlightManifest"
+		Inputs="$(MSBuildAllProjects);$(SilverlightManifestTemplate)"
+		Outputs="@(MoonlightManifestFile->'%(Identity)')">
 		<GenerateMoonlightManifest
 			ManifestFile="@(MoonlightManifestFile->'%(Identity)')"
 			EntryPointAssembly="$(AssemblyName)$(TargetExt)"
@@ -106,7 +117,8 @@
 			GetXapInputFiles
 		</GenerateXapDependsOn>
 	</PropertyGroup>
-	<Target Name="GenerateXap" DependsOnTargets="$(GenerateXapDependsOn)" Condition="'$(XapOutputs)' == 'true'">
+	<Target Name="GenerateXap" DependsOnTargets="$(GenerateXapDependsOn)" Condition="'$(XapOutputs)' == 'true'"
+		Inputs="@(XapInputFiles)" Outputs="$(OutDir)$(XapFilename)">
 		<!-- Looks for %(DestinationSubdirectory) in LocalCopyReferences -->
 		<GenerateXap
 			InputFiles="@(XapInputFiles)"

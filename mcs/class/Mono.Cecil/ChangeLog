@@ -1,11 +1,74 @@
+2010-08-13  jbevain  <jbevain@gmail.com>
+
+	[Fix] emit the proper metadata version for net_4_0 assemblies
+
+2010-08-12  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Moved back to Cecil version 0.6.* PDB files are not supported any
+	more. Symbol writing is not supported.
+
+2010-04-23  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/ReflectionWriter.cs: fix writing of exported types.
+
+2010-04-19  Sebastien Pouliot  <sebastien at ximian.com>
+
+	* Mono.Cecil/ReflectionWriter.cs: Partial (forwarders) fix for
+	writing ExternTypes (needed for tuning ML4 correctly)
+
+2010-04-11  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/GenericParameter.cs: override Module properly.
+
+2010-03-29  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/AssemblyStripper.cs: optimize.
+
+2010-02-13  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/ReflectionReader.cs: don't cache everything
+	that is context dependent.
+	Based on a patch by Frank Laub  <frank.laub@gmail.com>
+
+2010-02-13  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/MethodReturnType.cs: avoid creating an
+	inner parameter if not necessary.
+
+2010-02-13  Jb Evain  <jbevain@novell.com>
+
+	* TypeAttributes.cs: add Forwarder flag.
+
+2010-02-12  Jb Evain  <jbevain@novell.com>
+
+	* AssemblyStripper.cs: properly set the rva of methods with
+	no body.
+
+2010-01-06	Rodrigo B. de Oliveira <rodrigo@unity.com>
+
+	* Mono.Cecil.csproj
+	  Mono.Cecil/NameObjectCollectionBase.cs
+	  Mono.Cecil/BaseAssemblyResolver.cs
+	  Mono.Cecil/DefaultAssemblyResolver.cs:
+	  	support for compiling Mono.Cecil without
+	  	any references to System.dll using the newly introduced
+	  	"Debug - No System.dll" configuration in Mono.Cecil.csproj;
+
 2009-12-14  Sebastien Pouliot  <sebastien at ximian.com>
 
 	* Mono.Cecil/BaseAssemblyResolver.cs: Update to .net fx 4 beta2
 	version number and reduce code duplication.
 
+2009-10-25  Jb Evain  <jbevain@novell.com>
+
+	* Mono.Cecil/BaseAssemblyResolver.cs
+	  Mono.Cecil/StructureReader.cs
+	  Mono.Cecil.Metadata/MetadataWriter.cs:
+		update .net 4.0 version to beta 2.
+
 2009-08-18  Michael Hutchinson  <mhutchinson@novell.com>
 
-	* Mono.Cecil/BaseAssemblyResolver.cs: Search GACs specified in the 
+	* Mono.Cecil/BaseAssemblyResolver.cs: Search GACs specified in the
 	  MONO_GAC_PREFIX environment variable.
 
 2009-08-06  Jb Evain  <jbevain@novell.com>

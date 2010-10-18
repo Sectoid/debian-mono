@@ -34,22 +34,22 @@ using System.ServiceModel;
 
 namespace System.ServiceModel.Dispatcher
 {
-	[MonoTODO]
 	public class XPathMessageContext : XsltContext
 	{
 		public XPathMessageContext ()
-			: base ()
+			: this (new NameTable ())
 		{
 		}
 
 		public XPathMessageContext (NameTable nameTable)
 			: base (nameTable)
 		{
+			AddNamespace ("s11", Constants.Soap11);
+			AddNamespace ("s12", Constants.Soap12);
 		}
 
-		[MonoTODO]
 		public override bool Whitespace {
-			get { throw new NotImplementedException (); }
+			get { return false; } // as documented.
 		}
 
 		public override int CompareDocument (string uri1, string uri2)
@@ -57,24 +57,21 @@ namespace System.ServiceModel.Dispatcher
 			return String.CompareOrdinal (uri1, uri2);
 		}
 
-		[MonoTODO]
 		public override bool PreserveWhitespace (XPathNavigator node)
 		{
-			throw new NotImplementedException ();
+			return false; // as documented.
 		}
 
-		[MonoTODO]
 		public override IXsltContextFunction ResolveFunction (
 			string prefix, string name, XPathResultType [] argTypes)
 		{
-			throw new NotImplementedException ();
+			return null;
 		}
 
-		[MonoTODO]
 		public override IXsltContextVariable ResolveVariable (
 			string prefix, string name)
 		{
-			throw new NotImplementedException ();
+			return null;
 		}
 	}
 }

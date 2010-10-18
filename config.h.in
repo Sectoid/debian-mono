@@ -3,6 +3,9 @@
 /* The architecture this is running on */
 #undef ARCHITECTURE
 
+/* GC description */
+#undef DEFAULT_GC_NAME
+
 /* String of disabled features */
 #undef DISABLED_FEATURES
 
@@ -63,6 +66,9 @@
 /* Disable SIMD intrinsics related optimizations. */
 #undef DISABLE_SIMD
 
+/* Disable sockets support */
+#undef DISABLE_SOCKETS
+
 /* Disable Soft Debugger Agent. */
 #undef DISABLE_SOFT_DEBUG
 
@@ -105,9 +111,6 @@
 /* Define to 1 if the system has the type `blksize_t'. */
 #undef HAVE_BLKSIZE_T
 
-/* Have Boehm GC */
-#undef HAVE_BOEHM_GC
-
 /* Define to 1 if you have the <checklist.h> header file. */
 #undef HAVE_CHECKLIST_H
 
@@ -120,11 +123,17 @@
 /* Define to 1 if you have the <curses.h> header file. */
 #undef HAVE_CURSES_H
 
+/* Support for the deprecated attribute */
+#undef HAVE_DEPRECATED
+
 /* Define to 1 if you have the <dirent.h> header file. */
 #undef HAVE_DIRENT_H
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
+
+/* Define to 1 if you have the `dl_iterate_phdr' function. */
+#undef HAVE_DL_ITERATE_PHDR
 
 /* dlopen-based dynamic loader available */
 #undef HAVE_DL_LOADER
@@ -171,16 +180,10 @@
 /* Define to 1 if you have the `futimes' function. */
 #undef HAVE_FUTIMES
 
-/* Have GC_enable */
-#undef HAVE_GC_ENABLE
-
-/* Have GC_gcj_malloc */
-#undef HAVE_GC_GCJ_MALLOC
-
 /* Define to 1 if you have the <gc/gc.h> header file. */
 #undef HAVE_GC_GC_H
 
-/* Have gc.h */
+/* Define to 1 if you have the <gc.h> header file. */
 #undef HAVE_GC_H
 
 /* Define to 1 if you have the `getdomainname' function. */
@@ -296,9 +299,6 @@
 
 /* Define to 1 if you have the `mmap' function. */
 #undef HAVE_MMAP
-
-/* The GC can move objects. */
-#undef HAVE_MOVING_COLLECTOR
 
 /* Define to 1 if you have the `mremap' function. */
 #undef HAVE_MREMAP
@@ -423,9 +423,6 @@
 /* Define to 1 if you have the `setusershell' function. */
 #undef HAVE_SETUSERSHELL
 
-/* Using the simple generational GC. */
-#undef HAVE_SGEN_GC
-
 /* Define to 1 if you have the `shm_open' function. */
 #undef HAVE_SHM_OPEN
 
@@ -533,6 +530,9 @@
 
 /* Define to 1 if you have the `swab' function. */
 #undef HAVE_SWAB
+
+/* Define to 1 if you have the `sysconf' function. */
+#undef HAVE_SYSCONF
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #undef HAVE_SYSLOG_H
@@ -663,9 +663,6 @@
 /* Define to 1 if you have the <utime.h> header file. */
 #undef HAVE_UTIME_H
 
-/* Define to 1 if you have the <valgrind/memcheck.h> header file. */
-#undef HAVE_VALGRIND_MEMCHECK_H
-
 /* Support for the visibility ("hidden") attribute */
 #undef HAVE_VISIBILITY_HIDDEN
 
@@ -678,11 +675,11 @@
 /* Have a working sigaltstack */
 #undef HAVE_WORKING_SIGALTSTACK
 
-/* The GC needs write barriers. */
-#undef HAVE_WRITE_BARRIERS
-
 /* Have system zlib */
 #undef HAVE_ZLIB
+
+/* Host Platform is Win32 */
+#undef HOST_WIN32
 
 /* Major version of LLVM libraries */
 #undef LLVM_MAJOR_VERSION
@@ -690,27 +687,42 @@
 /* Minor version of LLVM libraries */
 #undef LLVM_MINOR_VERSION
 
+/* Whenever we are using the mono branch of LLVM */
+#undef LLVM_MONO_BRANCH
+
+/* Full version of LLVM libraties */
+#undef LLVM_VERSION
+
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
 #undef LT_OBJDIR
 
-/* Architecture uses registers for Parameters */
-#undef MONO_ARCH_REGPARMS
+/* Cross-compiling using MinGW */
+#undef MINGW_CROSS_COMPILE
 
 /* Enable the allocation and indexing of arrays greater than Int32.MaxValue */
 #undef MONO_BIG_ARRAYS
 
-/* The Mono Debugger is supported on this platform */
-#undef MONO_DEBUGGER_SUPPORTED
+/* The runtime is compiled for cross-compiling mode */
+#undef MONO_CROSS_COMPILE
+
+/* The LLVM back end is dynamically loaded */
+#undef MONO_LLVM_LOADED
 
 /* Sizeof sock_un.sun_path */
 #undef MONO_SIZEOF_SUNPATH
+
+/* Reduce runtime requirements (and capabilities) */
+#undef MONO_SMALL_CONFIG
 
 /* Xen-specific behaviour */
 #undef MONO_XEN_OPT
 
 /* Length of zero length arrays */
-#undef MONO_ZERO_ARRAY_LENGTH
+#undef MONO_ZERO_LEN_ARRAY
+
+/* Building for Moonlight */
+#undef MOONLIGHT
 
 /* Name of /dev/random */
 #undef NAME_DEV_RANDOM
@@ -739,9 +751,6 @@
 /* This platform does not support symlinks */
 #undef PLATFORM_NO_SYMLINKS
 
-/* Host Platform is Win32 */
-#undef PLATFORM_WIN32
-
 /* pthread is a pointer */
 #undef PTHREAD_POINTER_ID
 
@@ -767,22 +776,25 @@
 #undef TARGET_BYTE_ORDER
 
 /* ... */
+#undef TARGET_NACL
+
+/* ... */
 #undef TARGET_POWERPC
 
 /* ... */
 #undef TARGET_POWERPC64
 
-/* Target OS is Win32 */
+/* ... */
+#undef TARGET_PS3
+
+/* Target OS is Win32/MinGW */
 #undef TARGET_WIN32
 
 /* ... */
 #undef TARGET_X86
 
-/* GC description */
-#undef USED_GC_NAME
-
-/* Use included libgc */
-#undef USE_INCLUDED_LIBGC
+/* ... */
+#undef TARGET_XBOX360
 
 /* ... */
 #undef USE_MACH_SEMA
@@ -795,3 +807,9 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* 64 bit mode with 4 byte longs and pointers */
+#undef __mono_ilp32__
+
+/* ... */
+#undef __mono_ppc64__

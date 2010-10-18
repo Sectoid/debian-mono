@@ -39,10 +39,8 @@ using System.Runtime.InteropServices;
 namespace System.IO
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
-	[MonoTODO ("Serialization format not compatible with .NET")]
+	[MonoLimitation ("Serialization format not compatible with .NET")]
 	public class MemoryStream : Stream
 	{
 		bool canWrite;
@@ -165,6 +163,9 @@ namespace System.IO
 					throw new ArgumentOutOfRangeException ("value",
 					"New capacity cannot be negative or less than the current capacity " + value + " " + capacity);
 
+				if (value == internalBuffer.Length)
+					return;
+
 				byte [] newBuffer = null;
 				if (value != 0) {
 					newBuffer = new byte [value];
@@ -211,11 +212,7 @@ namespace System.IO
 			}
 		}
 
-#if NET_2_0
 		protected override void Dispose (bool disposing)
-#else
-		public override void Close ()
-#endif
 		{
 			streamClosed = true;
 			expandable = false;
@@ -422,5 +419,11 @@ namespace System.IO
 
 			stream.Write (internalBuffer, initialIndex, length - initialIndex);
 		}
+
+#if NET_4_0
+		protected override void ObjectInvariant ()
+		{
+		}
+#endif
 	}               
 }

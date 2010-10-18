@@ -1,3 +1,11 @@
+2010-10-03  Miguel de Icaza  <miguel@gnome.org>
+
+	Retval is not a reserved keyword, fixes 643345
+
+2010-08-31  Marek Safar  <marek.safar@gmail.com>
+
+	Don't use break in jay
+
 2010-03-14  Zoltan Varga  <vargaz@gmail.com>
 
 	* ILParser.jay: Fix the float32(<long>) case in the previous change.

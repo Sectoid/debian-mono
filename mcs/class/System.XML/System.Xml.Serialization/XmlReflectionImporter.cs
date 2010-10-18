@@ -293,7 +293,7 @@ namespace System.Xml.Serialization {
 			XmlTypeMapping map;
 			switch (typeData.SchemaType) {
 				case SchemaTypes.XmlSerializable:
-					map = new XmlSerializableMapping (elementName, rootNamespace, typeData, defaultXmlType, typeNamespace);
+					map = new XmlSerializableMapping (root, elementName, rootNamespace, typeData, defaultXmlType, typeNamespace);
 					break;
 				case SchemaTypes.Primitive:
 					if (!typeData.IsXsdType)
@@ -808,16 +808,10 @@ namespace System.Xml.Serialization {
 			}
 			else if (atts.XmlAnyElements != null && atts.XmlAnyElements.Count > 0)
 			{
-				if ( (rmember.MemberType.FullName == "System.Xml.XmlElement[]") ||
-					 (rmember.MemberType.FullName == "System.Xml.XmlNode[]") ||
-					 (rmember.MemberType.FullName == "System.Xml.XmlElement"))
-				{
-					XmlTypeMapMemberAnyElement member = new XmlTypeMapMemberAnyElement();
-					member.ElementInfo = ImportAnyElementInfo (defaultNamespace, rmember, member, atts);
-					mapMember = member;
-				}
-				else
-					throw new InvalidOperationException ("XmlAnyElementAttribute can only be applied to members of type XmlElement, XmlElement[] or XmlNode[]");
+				// no XmlNode type check is done here (seealso: bug #553032).
+				XmlTypeMapMemberAnyElement member = new XmlTypeMapMemberAnyElement();
+				member.ElementInfo = ImportAnyElementInfo (defaultNamespace, rmember, member, atts);
+				mapMember = member;
 			}
 			else if (atts.Xmlns)
 			{

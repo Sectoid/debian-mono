@@ -1,17 +1,60 @@
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Invoke the callback in separate threads
+
+	The callbacks need to be invoked in different threads to avoid
+	clogging the IO pool.
+
+	Fixes bug #639656.
+
+2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Add check for elevated permissions on
+	sockets (unrestricted). Add handling of new (SL4) 
+	SocketClientAccessPolicyProtocol and pass this option to the
+	CrossDomainPolicyManager
+
 2010-03-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Socket.cs: error handling was totally broken in the synchronous
 	Connect() call.  Fixes bug #590488.
 
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Socket.cs: Remove some NET_2_0 defines (using) and add a few
+	MOONLIGHT defines needed to reuse Socket in the client http stack
+	* Socket_2_1.cs: Remove some MOONLIGHT defines
+	* SocketAsyncEventArgs.cs: For Moonlight check policy if outside
+	System.dll (the client stack use sockets with it's own web 
+	xdomain policy)
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Socket_2_1.cs, SocketAsyncEventArgs.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Remove the use of reflection to check
+	xdomain poilicy on sockets (since the policy code now resides in
+	System.Net.dll)
+
+2010-01-29  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* NetworkStream.cs: Our explicit impl of IDisposable.Dispose belongs
+	to 1.0/1.1 only. Also move the call to GC.SupressFinalize to
+	Dispose(bool), as expected and as done by other Stream children
+	implementing a destructor.
+	Fixes #564637.
+
 2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* SocketAsyncEventArgs.cs: Apply Gendarme's ProtectCallToEventDelegatesRule
-	[Backport r150033]
 
 2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
 
-	* SocketAsyncEventArgs.cs: Implement ConnectByNameError for 
-	Moonlight 3
+	* System.Net.Sockets/SocketAsyncEventArgs.cs: Implement 
+	ConnectByNameError property for Moonlight 3 (and fx 4.0)
 
 2009-11-10 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -27,7 +70,6 @@
 	* SocketAsyncEventArgs.cs: Set error back to SocketError.Success
 	once CheckEndPoint succeed.
 	[Fix bug #549586]
-	[Backport r145329]
 
 2009-10-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -38,7 +80,6 @@
 	* SocketAsyncEventArgs.cs: Default SocketError.AccessDenied on 
 	Connect in case none of the DnsEndPoint provides an adequate 
 	address (family).
-	[Backport r142746]
 
 2009-09-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -55,13 +96,11 @@
 	defines since the file is not used by Moonlight
 	* Socket_2_1.cs: Add Close(int) from Socket. Define out Poll
 	and Blocking.
-	[Backport r142722]
 
 2009-09-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* SocketAsyncEventArgs.cs: Fix paramater validations and default 
 	values
-	[Backport r142675]
 
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 

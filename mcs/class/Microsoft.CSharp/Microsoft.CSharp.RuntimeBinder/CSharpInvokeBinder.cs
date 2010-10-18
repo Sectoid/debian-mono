@@ -30,16 +30,17 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpInvokeBinder : InvokeBinder
+	class CSharpInvokeBinder : InvokeBinder
 	{
-		CSharpCallFlags flags;
+		readonly CSharpBinderFlags flags;
 		IList<CSharpArgumentInfo> argumentInfo;
 		Type callingContext;
 		
-		public CSharpInvokeBinder (CSharpCallFlags flags, Type callingContext, IEnumerable<CSharpArgumentInfo> argumentInfo)
+		public CSharpInvokeBinder (CSharpBinderFlags flags, Type callingContext, IEnumerable<CSharpArgumentInfo> argumentInfo)
 			: base (CSharpArgumentInfo.CreateCallInfo (argumentInfo, 1))
 		{
 			this.flags = flags;
@@ -47,39 +48,23 @@ namespace Microsoft.CSharp.RuntimeBinder
 			this.argumentInfo = argumentInfo.ToReadOnly ();
 		}
 		
-		public IList<CSharpArgumentInfo> ArgumentInfo {
-			get {
-				return argumentInfo;
-			}
-		}
-
-		public Type CallingContext {
-			get {
-				return callingContext;
-			}
-		}
-		
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpInvokeBinder;
-			return other != null && base.Equals (obj) && other.flags == flags && other.callingContext == callingContext && 
-				other.argumentInfo.SequenceEqual (argumentInfo);
-		}
-
-		public CSharpCallFlags Flags {
-			get {
-				return flags;
-			}
-		}
-		
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-		
 		public override DynamicMetaObject FallbackInvoke (DynamicMetaObject target, DynamicMetaObject[] args, DynamicMetaObject errorSuggestion)
 		{
-			return CSharpBinder.Bind (target, errorSuggestion, args);
+			var ctx = DynamicContext.Create ();
+			var expr = ctx.CreateCompilerExpression (argumentInfo [0], target);
+			var c_args = ctx.CreateCompilerArguments (argumentInfo.Skip (1), args);
+			expr = new Compiler.Invocation (expr, c_args);
+
+			if ((flags & CSharpBinderFlags.ResultDiscarded) == 0)
+				expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (ReturnType), Compiler.Location.Null), expr, Compiler.Location.Null);
+			else
+				expr = new Compiler.DynamicResultCast (ctx.ImportType (ReturnType), expr);
+
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+			binder.AddRestrictions (args);
+
+			return binder.Bind (ctx, callingContext);
 		}
 	}
 }

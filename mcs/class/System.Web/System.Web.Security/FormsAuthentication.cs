@@ -233,11 +233,8 @@ namespace System.Web.Security
 				password = HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.MD5);
 				break;
 			}
-#if NET_2_0
+
 			return String.Compare (password, stored, caseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) == 0;
-#else
-			return String.Compare (password, stored, caseInsensitive, Helpers.InvariantCulture) == 0;
-#endif
 		}
 
 #if NET_2_0

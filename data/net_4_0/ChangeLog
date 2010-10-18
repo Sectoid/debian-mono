@@ -1,3 +1,19 @@
+2010-09-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Add working .svc handler in 4.0 web.config.
+
+2010-09-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add wsdl help generator to the 4.0 files
+
+	Ditto.
+
+	Fixes bug #636841.
+
+2010-08-19  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] update the System.ServiceModel assembly version
+
 2009-08-06  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* web.config: add WCF assemblies as references at compilation.

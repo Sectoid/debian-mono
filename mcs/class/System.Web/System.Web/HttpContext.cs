@@ -4,10 +4,11 @@
 // Author:
 //	Miguel de Icaza (miguel@novell.com)
 //	Gonzalo Paniagua Javier (gonzalo@novell.com)
+//      Marek Habersack <mhabersack@novell.com>
 //
 
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -42,19 +43,19 @@ using System.Web.SessionState;
 using System.Web.UI;
 using System.Web.Util;
 using System.Reflection;
-#if NET_2_0
 using System.Collections.Generic;
 using System.IO;
 using System.Resources;
 using System.Web.Compilation;
 using System.Web.Profile;
 using CustomErrorMode = System.Web.Configuration.CustomErrorsMode;
-#endif
 
-namespace System.Web {
+namespace System.Web
+{
 	// CAS - no InheritanceDemand here as the class is sealed
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-	public sealed partial class HttpContext : IServiceProvider {
+	public sealed partial class HttpContext : IServiceProvider
+	{
 		internal HttpWorkerRequest WorkerRequest;
 		HttpApplication app_instance;
 		HttpRequest request;
@@ -74,8 +75,7 @@ namespace System.Web {
 		Timer timer;
 		Thread thread;
 		bool _isProcessingInclude;
-
-#if NET_2_0
+		
 		[ThreadStatic]
 		static ResourceProviderFactory provider_factory;
 
@@ -104,20 +104,26 @@ namespace System.Web {
 				return default_provider_factory;
 			}
 		}
-#endif
 		
 		public HttpContext (HttpWorkerRequest wr)
 		{
 			WorkerRequest = wr;
 			request = new HttpRequest (WorkerRequest, this);
 			response = new HttpResponse (WorkerRequest, this);
+#if NET_4_0
+			SessionStateBehavior = SessionStateBehavior.Default;
+#endif
 		}
 
 		public HttpContext (HttpRequest request, HttpResponse response)
 		{
 			this.request = request;
 			this.response = response;
-			
+			this.request.Context = this;
+			this.response.Context = this;
+#if NET_4_0
+			SessionStateBehavior = SessionStateBehavior.Default;
+#endif
 		}
 
 		internal bool IsProcessingInclude {
@@ -215,19 +221,7 @@ namespace System.Web {
 
 		internal bool IsCustomErrorEnabledUnsafe {
 			get {
-#if NET_2_0
 				CustomErrorsSection cfg = (CustomErrorsSection) WebConfigurationManager.GetSection ("system.web/customErrors");
-#else
-				CustomErrorsConfig cfg = null;
-				try {
-					cfg = (CustomErrorsConfig) GetConfig ("system.web/customErrors");
-				} catch {
-				}
-
-				if (cfg == null)
-					return false;
-#endif
-
 				if (cfg.Mode == CustomErrorMode.On)
 					return true;
 
@@ -236,7 +230,7 @@ namespace System.Web {
 		}
 #if !TARGET_JVM
 		public bool IsDebuggingEnabled {
-			get { return HttpRuntime.IsDebuggingEnabled; }
+			get { return RuntimeHelpers.DebuggingEnabled; }
 		}
 #endif
 		public IDictionary Items {
@@ -309,7 +303,6 @@ namespace System.Web {
 			}
 		}
 
-#if NET_2_0
 		internal bool MapRequestHandlerDone {
 			get;
 			set;
@@ -386,7 +379,6 @@ namespace System.Web {
 				profile = value;
 			}
 		}
-#endif
 
 		public void AddError (Exception errorInfo)
 		{
@@ -424,9 +416,7 @@ namespace System.Web {
 			errors = null;
 		}
 
-#if NET_2_0
-		[Obsolete ("use WebConfigurationManager.GetWebApplicationSection")]
-#endif
+		[Obsolete ("The recommended alternative is System.Web.Configuration.WebConfigurationManager.GetWebApplicationSection in System.Web.dll. http://go.microsoft.com/fwlink/?linkid=14202")]
 		public static object GetAppConfig (string name)
 		{
 			object o = ConfigurationSettings.GetConfig (name);
@@ -434,19 +424,12 @@ namespace System.Web {
 			return o;
 		}
 
-#if NET_2_0
-		[Obsolete ("see GetSection")]
-#endif
+		[Obsolete ("The recommended alternative is System.Web.HttpContext.GetSection in System.Web.dll. http://go.microsoft.com/fwlink/?linkid=14202")]
 		public object GetConfig (string name)
 		{
-#if NET_2_0
 			return GetSection (name);
-#else
-			return WebConfigurationSettings.GetConfig (name, this);
-#endif
 		}
 
-#if NET_2_0
 		public static object GetGlobalResourceObject (string classKey, string resourceKey)
 		{
 			return GetGlobalResourceObject (classKey, resourceKey, Thread.CurrentThread.CurrentUICulture);
@@ -494,19 +477,15 @@ namespace System.Web {
 			// we should expire the entries (or just store them in InternalCache?)
 			IResourceProvider rp = null;
 			if (!resource_providers.TryGetValue (virtualPath, out rp)) {
-				if (isLocal) {
-					HttpContext ctx = HttpContext.Current;
-					HttpRequest req = ctx != null ? ctx.Request : null;
+				if (isLocal)
 					rp = provider_factory.CreateLocalResourceProvider (virtualPath);
-				} else
+				else
 					rp = provider_factory.CreateGlobalResourceProvider (virtualPath);
 				
 				if (rp == null) {
-					if (isLocal) {
-						HttpContext ctx = HttpContext.Current;
-						HttpRequest req = ctx != null ? ctx.Request : null;
+					if (isLocal)
 						rp = DefaultProviderFactory.CreateLocalResourceProvider (virtualPath);
-					} else
+					else
 						rp = DefaultProviderFactory.CreateGlobalResourceProvider (virtualPath);
 
 					if (rp == null)
@@ -560,7 +539,7 @@ namespace System.Web {
 		{
 			return WebConfigurationManager.GetSection (name);
 		}
-#endif
+
 		object IServiceProvider.GetService (Type service)
 		{
 			if (service == typeof (HttpWorkerRequest))
@@ -606,22 +585,16 @@ namespace System.Web {
 			return null;
 		}
 
-#if NET_2_0
 		public void RemapHandler (IHttpHandler handler)
 		{
 			if (MapRequestHandlerDone)
 				throw new InvalidOperationException ("The RemapHandler method was called after the MapRequestHandler event occurred.");
 			Handler = handler;
 		}
-#endif
 		
 		public void RewritePath (string path)
 		{
-#if NET_2_0
 			RewritePath (path, true);
-#else
-			RewritePath (path, false);
-#endif
 		}
 
 		public void RewritePath (string filePath, string pathInfo, string queryString)
@@ -629,12 +602,7 @@ namespace System.Web {
 			RewritePath (filePath, pathInfo, queryString, false);
 		}
 
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		void RewritePath (string path, bool rebaseClientPath)
+		public void RewritePath (string path, bool rebaseClientPath)
 		{
 			int qmark = path.IndexOf ('?');
 			if (qmark != -1)
@@ -643,18 +611,14 @@ namespace System.Web {
 				RewritePath (path, null, null, rebaseClientPath);
 		}
 
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		void RewritePath (string filePath, string pathInfo, string queryString, bool setClientFilePath)
+		public void RewritePath (string filePath, string pathInfo, string queryString, bool setClientFilePath)
 		{
 			if (filePath == null)
 				throw new ArgumentNullException ("filePath");
 			if (!VirtualPathUtility.IsValidVirtualPath (filePath))
 				throw new HttpException ("'" + HttpUtility.HtmlEncode (filePath) + "' is not a valid virtual path.");
 
+			filePath = VirtualPathUtility.Canonize (filePath);
 			bool pathRelative = VirtualPathUtility.IsAppRelative (filePath);
 			bool pathAbsolute = pathRelative ? false : VirtualPathUtility.IsAbsolute (filePath);
 			HttpRequest req = Request;
@@ -664,8 +628,6 @@ namespace System.Web {
 			if (pathRelative || pathAbsolute) {
 				if (pathRelative)
 					filePath = VirtualPathUtility.ToAbsolute (filePath);
-				else
-					filePath = filePath;
 			} else
 				filePath = VirtualPathUtility.AppendTrailingSlash (req.BaseVirtualDir) + filePath;
 			
@@ -686,8 +648,14 @@ namespace System.Web {
 				req.QueryStringRaw = queryString;
 		}
 
-#region internals
+#if NET_4_0
+		public void SetSessionStateBehavior (SessionStateBehavior sessionStateBehavior)
+		{
+			SessionStateBehavior = sessionStateBehavior;
+		}
+#endif
 		
+#region internals
 		internal void SetSession (HttpSessionState state)
 		{
 			session_state = state;
@@ -707,14 +675,8 @@ namespace System.Web {
 		internal TimeSpan ConfigTimeout {
 			get {
 				if (config_timeout == null) {
-#if NET_2_0
 					HttpRuntimeSection section = (HttpRuntimeSection)WebConfigurationManager.GetSection ("system.web/httpRuntime");
 					config_timeout = section.ExecutionTimeout;
-#else
-					HttpRuntimeConfig config = (HttpRuntimeConfig)
-								GetConfig ("system.web/httpRuntime");
-					config_timeout = new TimeSpan (0, 0, config.ExecutionTimeout);
-#endif
 				}
 
 				return (TimeSpan) config_timeout;
@@ -737,6 +699,13 @@ namespace System.Web {
 			}
 		}
 
+#if NET_4_0
+		internal SessionStateBehavior SessionStateBehavior {
+			get;
+			private set;
+		}
+#endif
+		
 #if !TARGET_J2EE
 		void TimeoutReached(object state) {
 			HttpRuntime.QueuePendingRequest (false);

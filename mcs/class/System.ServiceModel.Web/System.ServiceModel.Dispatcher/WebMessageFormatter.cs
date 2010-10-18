@@ -28,17 +28,22 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
-using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Description;
 using System.ServiceModel.Web;
 using System.Text;
 using System.Xml;
 
-namespace System.ServiceModel.Description
+#if NET_2_1
+using XmlObjectSerializer = System.Object;
+#endif
+
+namespace System.ServiceModel.Dispatcher
 {
 	internal abstract class WebMessageFormatter
 	{
@@ -56,10 +61,12 @@ namespace System.ServiceModel.Description
 			this.converter = converter;
 			this.behavior = behavior;
 			ApplyWebAttribute ();
+#if !NET_2_1
 			// This is a hack for WebScriptEnablingBehavior
 			var jqc = converter as JsonQueryStringConverter;
 			if (jqc != null)
 				BodyName = jqc.CustomWrapperName;
+#endif
 		}
 
 		void ApplyWebAttribute ()
@@ -119,8 +126,10 @@ namespace System.ServiceModel.Description
 			get { return template; }
 		}
 
-		protected WebContentFormat ToContentFormat (WebMessageFormat src)
+		protected WebContentFormat ToContentFormat (WebMessageFormat src, object result)
 		{
+			if (result is Stream)
+				return WebContentFormat.Raw;
 			switch (src) {
 			case WebMessageFormat.Xml:
 				return WebContentFormat.Xml;
@@ -158,7 +167,7 @@ namespace System.ServiceModel.Description
 				break;
 			case WebContentFormat.Json:
 				// FIXME: after name argument they are hack
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 				if (IsResponseBodyWrapped)
 					return GetSerializer (ref json_serializer, p => new DataContractJsonSerializer (p.Type, BodyName ?? p.Name, null, 0x100000, false, null, true));
 				else
@@ -281,7 +290,7 @@ namespace System.ServiceModel.Description
 				// FIXME: set hp.SuppressEntityBody for some cases.
 				ret.Properties.Add (HttpRequestMessageProperty.Name, hp);
 
-				var wp = new WebBodyFormatMessageProperty (ToContentFormat (Info.IsRequestFormatSetExplicitly ? Info.RequestFormat : Behavior.DefaultOutgoingRequestFormat));
+				var wp = new WebBodyFormatMessageProperty (ToContentFormat (Info.IsRequestFormatSetExplicitly ? Info.RequestFormat : Behavior.DefaultOutgoingRequestFormat, null));
 				ret.Properties.Add (WebBodyFormatMessageProperty.Name, wp);
 
 				return ret;
@@ -313,7 +322,13 @@ namespace System.ServiceModel.Description
 						reader.ReadStartElement (md.Body.WrapperName, md.Body.WrapperNamespace);
 				}
 
+#if NET_2_1
+				var ret = (serializer is DataContractJsonSerializer) ?
+					((DataContractJsonSerializer) serializer).ReadObject (reader) :
+					((DataContractSerializer) serializer).ReadObject (reader, true);
+#else
 				var ret = serializer.ReadObject (reader, true);
+#endif
 
 				if (IsResponseBodyWrapped)
 					reader.ReadEndElement ();
@@ -324,17 +339,17 @@ namespace System.ServiceModel.Description
 
 		internal class WrappedBodyWriter : BodyWriter
 		{
-			public WrappedBodyWriter (object value, XmlObjectSerializer serializer, string name, string ns, bool json)
+			public WrappedBodyWriter (object value, XmlObjectSerializer serializer, string name, string ns, WebContentFormat fmt)
 				: base (true)
 			{
 				this.name = name;
 				this.ns = ns;
 				this.value = value;
 				this.serializer = serializer;
-				this.is_json = json;
+				this.fmt = fmt;
 			}
 
-			bool is_json;
+			WebContentFormat fmt;
 			string name, ns;
 			object value;
 			XmlObjectSerializer serializer;
@@ -342,16 +357,28 @@ namespace System.ServiceModel.Description
 #if !NET_2_1
 			protected override BodyWriter OnCreateBufferedCopy (int maxBufferSize)
 			{
-				return new WrappedBodyWriter (value, serializer, name, ns, is_json);
+				return new WrappedBodyWriter (value, serializer, name, ns, fmt);
 			}
 #endif
 
 			protected override void OnWriteBodyContents (XmlDictionaryWriter writer)
 			{
-				if (is_json)
+				switch (fmt) {
+				case WebContentFormat.Raw:
+					WriteRawContents (writer);
+					break;
+				case WebContentFormat.Json:
 					WriteJsonBodyContents (writer);
-				else
+					break;
+				case WebContentFormat.Xml:
 					WriteXmlBodyContents (writer);
+					break;
+				}
+			}
+			
+			void WriteRawContents (XmlDictionaryWriter writer)
+			{
+				throw new NotSupportedException ("Some unsupported sequence of writing operation occured. It is likely a missing feature.");
 			}
 			
 			void WriteJsonBodyContents (XmlDictionaryWriter writer)
@@ -360,7 +387,7 @@ namespace System.ServiceModel.Description
 					writer.WriteStartElement ("root");
 					writer.WriteAttributeString ("type", "object");
 				}
-				serializer.WriteObject (writer, value);
+				WriteObject (serializer, writer, value);
 				if (name != null)
 					writer.WriteEndElement ();
 			}
@@ -369,9 +396,21 @@ namespace System.ServiceModel.Description
 			{
 				if (name != null)
 					writer.WriteStartElement (name, ns);
-				serializer.WriteObject (writer, value);
+				WriteObject (serializer, writer, value);
 				if (name != null)
 					writer.WriteEndElement ();
+			}
+
+			void WriteObject (XmlObjectSerializer serializer, XmlDictionaryWriter writer, object value)
+			{
+#if NET_2_1
+					if (serializer is DataContractJsonSerializer)
+						((DataContractJsonSerializer) serializer).WriteObject (writer, value);
+					else
+						((DataContractSerializer) serializer).WriteObject (writer, value);
+#else
+					serializer.WriteObject (writer, value);
+#endif
 			}
 		}
 
@@ -395,8 +434,9 @@ namespace System.ServiceModel.Description
 
 			Message SerializeReplyCore (MessageVersion messageVersion, object [] parameters, object result)
 			{
-				if (parameters == null)
-					throw new ArgumentNullException ("parameters");
+				// parameters could be null.
+				// result could be null. For Raw output, it becomes no output.
+
 				CheckMessageVersion (messageVersion);
 
 				MessageDescription md = GetMessageDescription (MessageDirection.Output);
@@ -431,8 +471,8 @@ namespace System.ServiceModel.Description
 					break;
 				}
 
-				bool json = msgfmt == WebMessageFormat.Json;
-				Message ret = Message.CreateMessage (MessageVersion.None, null, new WrappedBodyWriter (result, serializer, name, ns, json));
+				var contentFormat = ToContentFormat (msgfmt, result);
+				Message ret = contentFormat == WebContentFormat.Raw ? new RawMessage ((Stream) result) : Message.CreateMessage (MessageVersion.None, null, new WrappedBodyWriter (result, serializer, name, ns, contentFormat));
 
 				// Message properties
 
@@ -441,12 +481,13 @@ namespace System.ServiceModel.Description
 				hp.Headers ["Content-Type"] = mediaType + "; charset=utf-8";
 
 				// apply user-customized HTTP results via WebOperationContext.
-				WebOperationContext.Current.OutgoingResponse.Apply (hp);
+				if (WebOperationContext.Current != null) // this formatter must be available outside ServiceHost.
+					WebOperationContext.Current.OutgoingResponse.Apply (hp);
 
 				// FIXME: fill some properties if required.
 				ret.Properties.Add (HttpResponseMessageProperty.Name, hp);
 
-				var wp = new WebBodyFormatMessageProperty (ToContentFormat (msgfmt));
+				var wp = new WebBodyFormatMessageProperty (contentFormat);
 				ret.Properties.Add (WebBodyFormatMessageProperty.Name, wp);
 
 				return ret;
@@ -458,16 +499,26 @@ namespace System.ServiceModel.Description
 					throw new ArgumentNullException ("parameters");
 				CheckMessageVersion (message.Version);
 
-				OperationContext.Current.Extensions.Add (new WebOperationContext (OperationContext.Current));
-
-				IncomingWebRequestContext iwc = WebOperationContext.Current.IncomingRequest;
+				IncomingWebRequestContext iwc = null;
+				if (OperationContext.Current != null) {
+					OperationContext.Current.Extensions.Add (new WebOperationContext (OperationContext.Current));
+					iwc = WebOperationContext.Current.IncomingRequest;
+				}
+				
+				var wp = message.Properties [WebBodyFormatMessageProperty.Name] as WebBodyFormatMessageProperty;
+				if (wp != null && wp.Format == WebContentFormat.Raw) {
+					var rmsg = (RawMessage) message;
+					parameters [0] = rmsg.Stream;
+					return;
+				}
 
 				Uri to = message.Headers.To;
 				UriTemplateMatch match = UriTemplate.Match (Endpoint.Address.Uri, to);
 				if (match == null)
 					// not sure if it could happen
 					throw new SystemException (String.Format ("INTERNAL ERROR: UriTemplate does not match with the request: {0} / {1}", UriTemplate, to));
-				iwc.UriTemplateMatch = match;
+				if (iwc != null)
+					iwc.UriTemplateMatch = match;
 
 				MessageDescription md = GetMessageDescription (MessageDirection.Input);
 
@@ -480,5 +531,38 @@ namespace System.ServiceModel.Description
 			}
 		}
 #endif
+
+		internal class RawMessage : Message
+		{
+			public RawMessage (Stream stream)
+			{
+				this.Stream = stream;
+				headers = new MessageHeaders (MessageVersion.None);
+				properties = new MessageProperties ();
+			}
+		
+			public override MessageVersion Version {
+				get { return MessageVersion.None; }
+			}
+		
+			MessageHeaders headers;
+
+			public override MessageHeaders Headers {
+				get { return headers; }
+			}
+		
+			MessageProperties properties;
+
+			public override MessageProperties Properties {
+				get { return properties; }
+			}
+
+			public Stream Stream { get; private set; }
+
+			protected override void OnWriteBodyContents (XmlDictionaryWriter writer)
+			{
+				throw new NotSupportedException ();
+			}
+		}
 	}
 }

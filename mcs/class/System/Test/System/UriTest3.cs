@@ -304,6 +304,7 @@ namespace MonoTests.System
 			Assert.IsTrue (Uri.IsWellFormedUriString ("http://www.go-mono.com/Main%20Page", UriKind.Absolute), "http/%20");
 			Assert.IsFalse (Uri.IsWellFormedUriString (null, UriKind.Absolute), "null");
 			Assert.IsFalse (Uri.IsWellFormedUriString ("data", UriKind.Absolute), "data");
+			Assert.IsTrue (Uri.IsWellFormedUriString ("http://www.go-mono.com/Main_Page#1", UriKind.Absolute), "http/hex");
 		}
 
 		[Test]
@@ -599,6 +600,12 @@ namespace MonoTests.System
 			} catch (UriFormatException) {
 				Assert.Fail ("Spring Uri is expected to work.");
 			}
+		}
+
+		[Test]
+		public void ParseShortNameAsRelativeOrAbsolute ()
+		{
+			new Uri ("x", UriKind.RelativeOrAbsolute);
 		}
 
 		private class TolerantUriParser : GenericUriParser

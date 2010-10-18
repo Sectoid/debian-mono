@@ -23,7 +23,7 @@
 //	Peter Bartok	(pbartok@novell.com)
 //
 //
-
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Security.Permissions;
@@ -41,7 +41,11 @@ namespace System.Web.UI.WebControls {
 #else	
 	[PersistChildrenAttribute (false)]
 #endif		
-	public class WebControl : Control, IAttributeAccessor {
+	public class WebControl : Control, IAttributeAccessor
+	{
+#if NET_4_0
+		const string DEFAULT_DISABLED_CSS_CLASS = "aspNetDisabled";
+#endif
 		Style style;
 		HtmlTextWriterTag tag;
 		string tag_name;
@@ -49,7 +53,12 @@ namespace System.Web.UI.WebControls {
 		StateBag attribute_state;
 		bool enabled;
 		bool track_enabled_state;
-
+#if NET_4_0
+		static WebControl ()
+		{
+			DisabledCssClass = DEFAULT_DISABLED_CSS_CLASS;
+		}
+#endif
 		public WebControl (HtmlTextWriterTag tag) 
 		{
 			this.tag = tag;
@@ -175,9 +184,7 @@ namespace System.Web.UI.WebControls {
 
 				return style.BorderWidth;
 			}
-			set {
-				ControlStyle.BorderWidth = value;
-			}
+			set { ControlStyle.BorderWidth = value; }
 		}
 
 		[Browsable(false)]
@@ -208,9 +215,7 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 
-#if ONLY_1_1
-		[Bindable(true)]
-#endif		
+		[CssClassProperty]
 		[DefaultValue("")]
 		[WebSysDescription ("")]
 		[WebCategory ("Appearance")]
@@ -426,7 +431,17 @@ namespace System.Web.UI.WebControls {
 #endif
 			}
 		}
-
+#if NET_4_0
+		public static string DisabledCssClass {
+			get;
+			set;
+		}
+		
+		[Browsable (false)]
+		public virtual bool SupportsDisabledAttribute {
+			get { return true; }
+		}
+#endif
 		public void ApplyStyle (Style s) 
 		{
 			if (s != null && !s.IsEmpty)
@@ -508,24 +523,38 @@ namespace System.Web.UI.WebControls {
 				return;
 
 			if (!ControlStyle.BorderWidth.IsEmpty ||
-			(ControlStyle.BorderStyle != BorderStyle.None && ControlStyle.BorderStyle != BorderStyle.NotSet) ||
-			!ControlStyle.Height.IsEmpty ||
-			!ControlStyle.Width.IsEmpty)
+			    (ControlStyle.BorderStyle != BorderStyle.None && ControlStyle.BorderStyle != BorderStyle.NotSet) ||
+			    !ControlStyle.Height.IsEmpty ||
+			    !ControlStyle.Width.IsEmpty)
 				writer.AddStyleAttribute (HtmlTextWriterStyle.Display, "inline-block");
 		}
 #endif
+		void RenderDisabled (HtmlTextWriter writer)
+		{
+			if (!IsEnabled) {
+#if NET_4_0
+				if (!SupportsDisabledAttribute)
+					ControlStyle.PrependCssClass (DisabledCssClass);
+				else
+#endif
+					writer.AddAttribute (HtmlTextWriterAttribute.Disabled, "disabled", false);
+			}
 
+		}
+		
 		protected virtual void AddAttributesToRender (HtmlTextWriter writer) 
 		{
+#if NET_4_0
+			RenderDisabled (writer);
+#endif
 			if (ID != null)
 				writer.AddAttribute(HtmlTextWriterAttribute.Id, ClientID);
-
+#if !NET_4_0
+			RenderDisabled (writer);
+#endif
 			if (AccessKey != string.Empty)
 				writer.AddAttribute (HtmlTextWriterAttribute.Accesskey, AccessKey);
-
-			if (!IsEnabled)
-				writer.AddAttribute (HtmlTextWriterAttribute.Disabled, "disabled", false);
-
+			
 			if (ToolTip != string.Empty)
 				writer.AddAttribute (HtmlTextWriterAttribute.Title, ToolTip);
 
@@ -577,7 +606,60 @@ namespace System.Web.UI.WebControls {
 
 			enabled = ViewState.GetBool ("Enabled", enabled);
 		}
+#if NET_4_0
+		internal virtual string InlinePropertiesSet ()
+		{
+			var properties = new List <string> ();
+			
+			if (BackColor != Color.Empty)
+				properties.Add ("BackColor");
 
+			if (BorderColor != Color.Empty)
+				properties.Add ("BorderColor");
+
+			if (BorderStyle != BorderStyle.NotSet)
+				properties.Add ("BorderStyle");
+
+			if (BorderWidth != Unit.Empty)
+				properties.Add ("BorderWidth");
+
+			if (CssClass != String.Empty)
+				properties.Add ("CssClass");
+
+			if (ForeColor != Color.Empty)
+				properties.Add ("ForeColor");
+
+			if (Height != Unit.Empty)
+				properties.Add ("Height");
+
+			if (Width != Unit.Empty)
+				properties.Add ("Width");
+
+			if (properties.Count == 0)
+				return null;
+
+			return String.Join (", ", properties);
+		}
+
+		internal void VerifyInlinePropertiesNotSet ()
+		{
+			var renderOuterTableControl = this as IRenderOuterTable;
+			if (renderOuterTableControl == null || renderOuterTableControl.RenderOuterTable)
+				return;
+
+			string properties = InlinePropertiesSet ();
+			if (!String.IsNullOrEmpty (properties)) {
+				bool many = properties.IndexOf (',') > -1;
+				throw new InvalidOperationException (
+					String.Format ("The style propert{0} '{1}' cannot be used while RenderOuterTable is disabled on the {2} control with ID '{3}'",
+						       many ? "ies" : "y",
+						       properties,
+						       GetType ().Name,
+						       ID)
+				);
+			}
+		}
+#endif
 #if NET_2_0
 		protected internal
 #else		

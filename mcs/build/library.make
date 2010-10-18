@@ -11,14 +11,17 @@
 sourcefile = $(LIBRARY).sources
 
 # If the directory contains the per profile include file, generate list file.
-PROFILE_sources = $(PROFILE)_$(LIBRARY).sources
-ifeq ($(wildcard $(PROFILE_sources)), $(PROFILE_sources))
+PROFILE_sources := $(wildcard $(PROFILE)_$(LIBRARY).sources)
+ifdef PROFILE_sources
 PROFILE_excludes = $(wildcard $(PROFILE)_$(LIBRARY).exclude.sources)
-COMMON_sourcefile := $(sourcefile)
 sourcefile = $(depsdir)/$(PROFILE)_$(LIBRARY).sources
-$(sourcefile): $(PROFILE_sources) $(PROFILE_excludes) $(COMMON_sourcefile)
+library_CLEAN_FILES += $(sourcefile)
+
+# Note, gensources.sh can create a $(sourcefile).makefrag if it sees any '#include's
+# We don't include it in the dependencies since it isn't always created
+$(sourcefile): $(PROFILE_sources) $(PROFILE_excludes) $(topdir)/build/gensources.sh
 	@echo Creating the per profile list $@ ...
-	$(topdir)/tools/gensources.sh $(PROFILE_sources) $(PROFILE_excludes) > $@
+	$(SHELL) $(topdir)/build/gensources.sh $@ $(PROFILE_sources) $(PROFILE_excludes)
 endif
 
 PLATFORM_excludes := $(wildcard $(LIBRARY).$(PLATFORM)-excludes)
@@ -31,7 +34,7 @@ endif
 
 ifndef response
 response = $(depsdir)/$(PROFILE)_$(LIBRARY).response
-library_CLEAN_FILES += $(response) $(LIBRARY).mdb $(BUILT_SOURCES)
+library_CLEAN_FILES += $(response)
 endif
 
 ifndef LIBRARY_NAME
@@ -44,13 +47,7 @@ else
 lib_dir = lib
 endif
 
-makefrag = $(depsdir)/$(PROFILE)_$(LIBRARY).makefrag
 the_libdir = $(topdir)/class/$(lib_dir)/$(PROFILE)/
-the_lib = $(the_libdir)$(LIBRARY_NAME)
-the_pdb = $(the_lib:.dll=.pdb)
-the_mdb = $(the_lib).mdb
-library_CLEAN_FILES += $(makefrag) $(the_lib) $(the_lib).so $(the_pdb) $(the_mdb)
-
 ifdef LIBRARY_NEEDS_POSTPROCESSING
 build_libdir = fixup/$(PROFILE)/
 else
@@ -61,14 +58,16 @@ build_libdir = $(the_libdir)
 endif
 endif
 
+the_lib   = $(the_libdir)$(LIBRARY_NAME)
 build_lib = $(build_libdir)$(LIBRARY_NAME)
-library_CLEAN_FILES += $(build_lib) $(build_lib:.dll=.pdb)
+library_CLEAN_FILES += $(the_lib)   $(the_lib).so   $(the_lib).mdb   $(the_lib:.dll=.pdb)
+library_CLEAN_FILES += $(build_lib) $(build_lib).so $(build_lib).mdb $(build_lib:.dll=.pdb)
 
 ifdef NO_SIGN_ASSEMBLY
 SN = :
 else
-sn = $(topdir)/class/lib/net_1_1_bootstrap/sn.exe
-SN = $(Q) MONO_PATH="$(topdir)/class/lib/net_1_1_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn)
+sn = $(topdir)/class/lib/basic/sn.exe
+SN = $(Q) MONO_PATH="$(topdir)/class/lib/basic$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(sn)
 SNFLAGS = -q
 endif
 
@@ -92,7 +91,7 @@ is_boot=false
 endif
 
 csproj-local: 
-	config_file=`basename $(LIBRARY_NAME) .dll`-$(PROFILE).input; \
+	config_file=`basename $(LIBRARY) .dll`-$(PROFILE).input; \
 	echo $(thisdir):$$config_file >> $(topdir)/../mono/msvc/scripts/order; \
 	(echo $(is_boot); \
 	echo $(MCS);	\
@@ -113,11 +112,17 @@ install-local uninstall-local:
 
 else
 
+aot_lib = $(the_lib)$(PLATFORM_AOT_SUFFIX)
+aot_libname = $(LIBRARY_NAME)$(PLATFORM_AOT_SUFFIX)
+
 ifdef LIBRARY_INSTALL_DIR
 install-local:
 	$(MKINSTALLDIRS) $(DESTDIR)$(LIBRARY_INSTALL_DIR)
 	$(INSTALL_LIB) $(the_lib) $(DESTDIR)$(LIBRARY_INSTALL_DIR)/$(LIBRARY_NAME)
 	test ! -f $(the_lib).mdb || $(INSTALL_LIB) $(the_lib).mdb $(DESTDIR)$(LIBRARY_INSTALL_DIR)/$(LIBRARY_NAME).mdb
+ifdef PLATFORM_AOT_SUFFIX
+	test ! -f $(aot_lib) || $(INSTALL_LIB) $(aot_lib) $(DESTDIR)$(LIBRARY_INSTALL_DIR)
+endif
 
 uninstall-local:
 	-rm -f $(DESTDIR)$(LIBRARY_INSTALL_DIR)/$(LIBRARY_NAME) $(DESTDIR)$(LIBRARY_INSTALL_DIR)/$(LIBRARY_NAME).mdb
@@ -181,9 +186,9 @@ dist-local: dist-default
 	for f in `$(topdir)/tools/removecomments.sh $(wildcard *$(LIBRARY).sources)` $(TEST_FILES) ; do \
 	  case $$f in \
 	  ../*) : ;; \
-	  *) dest=`dirname $$f` ; \
+	  *) dest=`dirname "$$f"` ; \
 	     case $$subs in *" $$dest "*) : ;; *) subs=" $$dest$$subs" ; $(MKINSTALLDIRS) $(distdir)/$$dest ;; esac ; \
-	     cp -p $$f $(distdir)/$$dest || exit 1 ;; \
+	     cp -p "$$f" $(distdir)/$$dest || exit 1 ;; \
 	  esac ; done ; \
 	for d in . $$subs ; do \
 	  case $$d in .) : ;; *) test ! -f $$d/ChangeLog || cp -p $$d/ChangeLog $(distdir)/$$d ;; esac ; done
@@ -203,17 +208,8 @@ ifndef LIBRARY_SNK
 LIBRARY_SNK = $(topdir)/class/mono.snk
 endif
 
-ifdef gacutil
-$(gacutil):
-	cd $(topdir) && $(MAKE) PROFILE=net_1_1_bootstrap
-endif
-
-ifdef sn
-$(sn):
-	cd $(topdir) && $(MAKE) PROFILE=net_1_1_bootstrap
-endif
-
 ifdef BUILT_SOURCES
+library_CLEAN_FILES += $(BUILT_SOURCES)
 ifeq (cat, $(PLATFORM_CHANGE_SEPARATOR_CMD))
 BUILT_SOURCES_cmdline = $(BUILT_SOURCES)
 else
@@ -240,7 +236,7 @@ endif
 ifdef PLATFORM_AOT_SUFFIX
 Q_AOT=$(if $(V),,@echo "AOT [$(PROFILE)] $(notdir $(@))";)
 $(the_lib)$(PLATFORM_AOT_SUFFIX): $(the_lib)
-	$(Q_AOT) MONO_PATH='$(the_libdir)' > $(PROFILE)_aot.log 2>&1 $(RUNTIME) --aot=bind-to-runtime-version $(the_lib)
+	$(Q_AOT) MONO_PATH='$(the_libdir)' > $(PROFILE)_aot.log 2>&1 $(RUNTIME) --aot=bind-to-runtime-version --debug $(the_lib)
 endif
 
 ifdef ENABLE_AOT
@@ -251,14 +247,28 @@ all-local: $(the_lib)$(PLATFORM_AOT_SUFFIX)
 endif
 endif
 
+makefrag = $(depsdir)/$(PROFILE)_$(LIBRARY).makefrag
+library_CLEAN_FILES += $(makefrag)
 $(makefrag): $(sourcefile)
 	@echo Creating $@ ...
 	@sed 's,^,$(build_lib): ,' $< >$@
+	@if test ! -f $(sourcefile).makefrag; then :; else \
+	   cat $(sourcefile).makefrag >> $@ ; \
+	   echo '$@: $(sourcefile).makefrag' >> $@; \
+	   echo '$(sourcefile).makefrag:' >> $@; fi
 
 ifneq ($(response),$(sourcefile))
+
+ifdef PLATFORM_excludes
 $(response): $(sourcefile) $(PLATFORM_excludes)
-	@echo Creating $@ ...
+	@echo Filtering $(sourcefile) to $@ ...
 	@sort $(sourcefile) $(PLATFORM_excludes) | uniq -u | $(PLATFORM_CHANGE_SEPARATOR_CMD) >$@
+else
+$(response): $(sourcefile)
+	@echo Converting $(sourcefile) to $@ ...
+	@cat $(sourcefile) | $(PLATFORM_CHANGE_SEPARATOR_CMD) >$@
+endif
+	
 endif
 
 -include $(makefrag)
@@ -279,13 +289,9 @@ $(makefrag) $(test_response) $(test_makefrag) $(btest_response) $(btest_makefrag
 
 Q_MDOC_UP=$(if $(V),,@echo "MDOC-UP [$(PROFILE)] $(notdir $(@))";)
 MDOC_UP  =$(Q_MDOC_UP) \
-	if `echo $(PROFILE) | grep ^net_1_ > /dev/null 2>/dev/null` ; then    \
-		$(RUNTIME) $(topdir)/tools/mdoc/monodocer1.exe                      \
-			-path:Documentation/en -assembly:$(the_lib) ;                     \
-	else                                                                  \
+		MONO_PATH="$(topdir)/class/lib/net_4_0$(PLATFORM_PATH_SEPARATOR)$(topdir)/class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" \
 		$(RUNTIME) $(topdir)/tools/mdoc/mdoc.exe update --delete            \
-			-o Documentation/en $(the_lib) ;                                  \
-	fi
+			-o Documentation/en $(the_lib)
 
 doc-update-local: $(the_libdir)/.doc-stamp
 

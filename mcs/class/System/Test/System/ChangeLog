@@ -1,11 +1,39 @@
+2010-08-31  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Trim the uri in UriParser::GetComponents, just like we do in
+	Uri::Parse
+
+2010-08-31  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Uri: fix path component of merged uris with parent directory
+	references above the root directory
+
 2010-06-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* UriTest.cs: exclude 2 tests in 4.0.
+
+2010-05-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* UriTest.cs: test for bug #606142.
+
+2010-05-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTest.cs : more URI tests, for relative URIs with ':'.
 
 2010-04-17  Raja R Harinath  <harinath@hurrynot.org>
 
 	* UriTest.cs (FtpRootPath): New.  Check that ftp root paths are
 	unmolested.
+
+2010-01-27  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* UriTest.cs: added an assertion in the IsWellFormedOriginalString
+	test case to test urls containing '#'.
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* UriTest3.cs : added test for parsing short name with
+	  RelativeOrAbsolute mode.
 
 2009-09-01  Andres Aragoneses  <aaragoneses@novell.com>
 

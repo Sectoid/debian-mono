@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography.X509Certificates {
@@ -37,7 +35,7 @@ namespace System.Security.Cryptography.X509Certificates {
 	[ComVisible (true)]
 	public enum X509KeyStorageFlags	{
 		DefaultKeySet = 0,
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		// not supported by Silverlight 2.0 (NET_2_1)
 		UserKeySet = 1,
 		MachineKeySet = 2,
@@ -48,4 +46,3 @@ namespace System.Security.Cryptography.X509Certificates {
 	}
 }
 
-#endif

@@ -12,6 +12,7 @@
 #include "mono/metadata/opcodes.h"
 #include "mono/metadata/metadata-internals.h"
 #include "mono/metadata/class-internals.h"
+#include "mono/metadata/object-internals.h"
 #include "mono/metadata/mono-endian.h"
 #include "mono/metadata/debug-helpers.h"
 #include "mono/metadata/tabledefs.h"
@@ -205,6 +206,9 @@ mono_type_get_desc (GString *res, MonoType *type, gboolean include_namespace)
 		} else {
 			g_string_append (res, "<unknown>");
 		}
+		break;
+	case MONO_TYPE_TYPEDBYREF:
+		g_string_append (res, "typedbyref");
 		break;
 	default:
 		break;
@@ -581,7 +585,7 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 			blob2 = g_malloc ((len2 * 2) + 1);
 			memcpy (blob2, blob, len2 * 2);
 #else
-			blob2 = blob;
+			blob2 = (char*)blob;
 #endif
 
 #if G_BYTE_ORDER != G_LITTLE_ENDIAN
@@ -680,6 +684,7 @@ dis_one (GString *str, MonoDisHelper *dh, MonoMethod *method, const unsigned cha
 	if (dh->newline)
 		g_string_append (str, dh->newline);
 
+	mono_metadata_free_mh (header);
 	return ip;
 }
 
@@ -839,7 +844,7 @@ mono_object_describe (MonoObject *obj)
 		MonoArray *array = (MonoArray*)obj;
 		sep = print_name_space (klass);
 		g_print ("%s%s", sep, klass->name);
-		g_print (" at %p, rank: %d, length: %d\n", obj, klass->rank, mono_array_length (array));
+		g_print (" at %p, rank: %d, length: %d\n", obj, klass->rank, (int)mono_array_length (array));
 	} else {
 		sep = print_name_space (klass);
 		g_print ("%s%s", sep, klass->name);

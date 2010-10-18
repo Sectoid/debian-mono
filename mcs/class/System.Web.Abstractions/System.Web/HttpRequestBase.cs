@@ -40,6 +40,11 @@ using System.Security.Principal;
 using System.Text;
 using System.Web.Caching;
 
+#if NET_4_0
+using System.Security.Authentication.ExtendedProtection;
+using System.Web.Routing;
+#endif
+
 namespace System.Web
 {
 #if NET_4_0
@@ -89,7 +94,11 @@ namespace System.Web
 		public virtual string HttpMethod { get { NotImplemented (); return null; } }
 
 		public virtual Stream InputStream { get { NotImplemented (); return null; } }
-
+#if NET_4_0
+		// LAMESPEC: MSDN says NotImplementedException is thrown only when the request is
+		// not IIS7WorkerRequest or ISAPIWorkerRequestInProc, but it is thrown always.
+		public virtual ChannelBinding HttpChannelBinding { get { NotImplemented (); return null; } }
+#endif
 		public virtual bool IsAuthenticated { get { NotImplemented (); return false; } }
 
 		public virtual bool IsLocal { get { NotImplemented (); return false; } }
@@ -117,7 +126,12 @@ namespace System.Web
 		public virtual string RawUrl { get { NotImplemented (); return null; } }
 
 		public virtual string RequestType { get { NotImplemented (); return null; } set { NotImplemented (); } }
-
+#if NET_4_0
+		public virtual RequestContext RequestContext {
+			get { NotImplemented (); return null; } 
+			internal set { NotImplemented (); }
+		}
+#endif
 		public virtual NameValueCollection ServerVariables { get { NotImplemented (); return null; } }
 
 		public virtual int TotalBytes { get { NotImplemented (); return 0; } }

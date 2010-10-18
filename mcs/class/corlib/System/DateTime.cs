@@ -34,6 +34,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace System
 {
@@ -44,44 +45,18 @@ namespace System
 	/// 
 	[Serializable]
 	[StructLayout (LayoutKind.Auto)]
-	public struct DateTime : IFormattable, IConvertible, IComparable
-#if NET_2_0
-		, IComparable<DateTime>, IEquatable <DateTime>
-#endif
+	public struct DateTime : IFormattable, IConvertible, IComparable, ISerializable, IComparable<DateTime>, IEquatable <DateTime>
 	{
-#if MONOTOUCH
-		static DateTime () {
-			if (MonoTouchAOTHelper.FalseFlag) {
-				var comparer = new System.Collections.Generic.GenericComparer <DateTime> ();
-				var eqcomparer = new System.Collections.Generic.GenericEqualityComparer <DateTime> ();
-			}
-		}
-#endif
-		private TimeSpan ticks;
-
-#if NET_2_0
-		DateTimeKind kind;
-#endif
-#if !NET_2_0
-		internal struct DateTimeOffset {
-			public DateTime DateTime;
-			public TimeSpan Offset;
-
-			public DateTimeOffset (DateTime dt) : this (dt, TimeSpan.Zero)
-			{
-			}
-
-			public DateTimeOffset (long ticks, TimeSpan offset) : this (new DateTime (ticks), offset)
-			{
-			}
-
-			public DateTimeOffset (DateTime dt, TimeSpan offset)
-			{
-				DateTime = dt;
-				Offset = offset;
-			}
-		}
-#endif
+		//
+		// Encodes the DateTime in 64 bits, top two bits contain the DateTimeKind,
+		// the rest contains the 62 bit value for the ticks.   This reduces the
+		// memory usage from 16 to 8 bytes, see bug: 592221.   This also fixes the
+		// 622127 issue and simplifies the code in reflection.c to encode DateTimes
+		//
+		public long encoded;
+		const long TicksMask = 0x3fffffffffffffff;
+		const long KindMask = unchecked ((long) 0xc000000000000000);
+		const int KindShift = 62;
 
 		private const int dp400 = 146097;
 		private const int dp100 = 36524;
@@ -106,8 +81,8 @@ namespace System
 		private const double OAMinValue = -657435.0d;
 		private const double OAMaxValue = 2958466.0d;
 
-		public static readonly DateTime MaxValue = new DateTime (false, new TimeSpan (MAX_VALUE_TICKS));
-		public static readonly DateTime MinValue = new DateTime (false, new TimeSpan (0));
+		public static readonly DateTime MaxValue = new DateTime (3155378975999999999);
+		public static readonly DateTime MinValue = new DateTime (0);
 
 		// DateTime.Parse patterns
 		// Patterns are divided to date and time patterns. The algorithm will
@@ -144,13 +119,9 @@ namespace System
 			"M/yyyy/dT",
 			"yyyy'\u5E74'M'\u6708'd'\u65E5",
 
-#if NET_2_0
+
 			"yyyy/d/MMMM",
 			"yyyy/MMM/d",
-#else
-			"yyyy/MMMM/d",
-			"yyyy/d/MMM",
-#endif
 			"d/MMMM/yyyy",
 			"MMM/d/yyyy",
 			"d/yyyy/MMMM",
@@ -225,11 +196,7 @@ namespace System
 		};
 		private static readonly string[] DayMonthShortFormats = new string [] {
 			"d/MMMM",
-#if NET_2_0
 			"MMM/yy",
-#else // In .Net 1.0 Feb 03 is always Feb 3rd (and not Feb 2003)
-			"MMM/d",
-#endif
 			"yyyy/MMMM",
 		};
 
@@ -262,7 +229,7 @@ namespace System
 			int M =1;
 
 			int[] days = daysmonth;
-			int totaldays = this.ticks.Days;
+			int totaldays = (int) ((encoded & TicksMask) / TimeSpan.TicksPerDay);
 
 			num400 = (totaldays / dp400);
 			totaldays -=  num400 * dp400;
@@ -298,6 +265,11 @@ namespace System
 			return totaldays +1; 
 		}
 
+		static void InvalidTickValue (long ticks)
+		{
+			string msg = Locale.GetText ("Value {0} is outside the valid range [0,{1}].", ticks, MAX_VALUE_TICKS);
+			throw new ArgumentOutOfRangeException ("ticks", msg);
+		}
 
 		// Constructors
 		
@@ -307,15 +279,9 @@ namespace System
 		/// 
 		public DateTime (long ticks)
 		{
-			this.ticks = new TimeSpan (ticks);
-			if (ticks < MinValue.Ticks || ticks > MaxValue.Ticks) {
-				string msg = Locale.GetText ("Value {0} is outside the valid range [{1},{2}].", 
-					ticks, MinValue.Ticks, MaxValue.Ticks);
-				throw new ArgumentOutOfRangeException ("ticks", msg);
-			}
-#if NET_2_0
-			kind = DateTimeKind.Unspecified;
-#endif
+			if (ticks < 0 || ticks > MAX_VALUE_TICKS)
+				InvalidTickValue (ticks);
+			encoded = ticks;
 		}
 
 		public DateTime (int year, int month, int day)
@@ -325,22 +291,18 @@ namespace System
 			: this (year, month, day, hour, minute, second, 0)	{}
 
 		public DateTime (int year, int month, int day, int hour, int minute, int second, int millisecond)
-			{
-			if ( year < 1 || year > 9999 || 
-				month < 1 || month >12  ||
-				day < 1 || day > DaysInMonth(year, month) ||
-				hour < 0 || hour > 23 ||
-				minute < 0 || minute > 59 ||
-				second < 0 || second > 59 ||
-				millisecond < 0 || millisecond > 999)
+		{
+			if (year < 1 || year > 9999 || 
+			    month < 1 || month >12  ||
+			    day < 1 || day > DaysInMonth(year, month) ||
+			    hour < 0 || hour > 23 ||
+			    minute < 0 || minute > 59 ||
+			    second < 0 || second > 59 ||
+			    millisecond < 0 || millisecond > 999)
 				throw new ArgumentOutOfRangeException ("Parameters describe an " +
-									"unrepresentable DateTime.");
+								       "unrepresentable DateTime.");
 
-			ticks = new TimeSpan (AbsoluteDays(year,month,day), hour, minute, second, millisecond);
-
-#if NET_2_0
-			kind = DateTimeKind.Unspecified;
-#endif
+			encoded = new TimeSpan (AbsoluteDays (year,month,day), hour, minute, second, millisecond).Ticks;
 		}
 
 		public DateTime (int year, int month, int day, Calendar calendar)
@@ -357,137 +319,120 @@ namespace System
 		{
 			if (calendar == null)
 				throw new ArgumentNullException ("calendar");
-			ticks = calendar.ToDateTime (year, month, day, hour, minute, second, millisecond).ticks;
-#if NET_2_0
-			kind = DateTimeKind.Unspecified;
-#endif
+			encoded = calendar.ToDateTime (year, month, day, hour, minute, second, millisecond).encoded;
 		}
 
-		internal DateTime (bool check, TimeSpan value)
+		public DateTime (long ticks, DateTimeKind kind) 
 		{
-			if (check && (value.Ticks < MinValue.Ticks || value.Ticks > MaxValue.Ticks))
-				throw new ArgumentOutOfRangeException ();
+			if (ticks < 0 || ticks > MAX_VALUE_TICKS)
+				InvalidTickValue (ticks);
+			if (kind < 0 || kind > DateTimeKind.Local)
+				throw new ArgumentException ("Invalid DateTimeKind value.", "kind");
 
-			ticks = value;
-
-#if NET_2_0
-			kind = DateTimeKind.Unspecified;
-#endif
-		}
-
-#if NET_2_0
-		public DateTime (long ticks, DateTimeKind kind) : this (ticks)
-		{
-			CheckDateTimeKind (kind);
-			this.kind = kind;
+			encoded = ((long)kind << KindShift) | ticks;
 		}
 
 		public DateTime (int year, int month, int day, int hour, int minute, int second, DateTimeKind kind)
 			: this (year, month, day, hour, minute, second)
 		{
-			CheckDateTimeKind (kind);
-			this.kind = kind;
+			if (kind < 0 || kind > DateTimeKind.Local)
+				throw new ArgumentException ("Invalid DateTimeKind value.", "kind");
+			encoded |= ((long)kind << KindShift);
 		}
 
 		public DateTime (int year, int month, int day, int hour, int minute, int second, int millisecond, DateTimeKind kind)
 			: this (year, month, day, hour, minute, second, millisecond)
 		{
-			CheckDateTimeKind (kind);
-			this.kind = kind;
+			if (kind < 0 || kind > DateTimeKind.Local)
+				throw new ArgumentException ("Invalid DateTimeKind value.", "kind");
+			encoded |= ((long)kind << KindShift);
 		}
 
 		public DateTime (int year, int month, int day, int hour, int minute, int second, int millisecond, Calendar calendar, DateTimeKind kind)
 			: this (year, month, day, hour, minute, second, millisecond, calendar)
 		{
-			CheckDateTimeKind (kind);
-			this.kind = kind;
-		}			
-#endif
+			if (kind < 0 || kind > DateTimeKind.Local)
+				throw new ArgumentException ("Invalid DateTimeKind value.", "kind");
+			encoded |= ((long)kind << KindShift);
+		}
 
+		//
+		// Not visible, but can be invoked during deserialization
+		//
+		DateTime (SerializationInfo info, StreamingContext context)
+		{
+			if (info.HasKey ("dateData")){
+				encoded = info.GetInt64 ("dateData");
+			} else if (info.HasKey ("ticks")){
+				encoded = info.GetInt64 ("ticks") & TicksMask;
+			} else {
+				encoded = 0;
+			}
+		}
+		
+			      
 		/* Properties  */
 
-		public DateTime Date 
-		{
-			get	
-			{ 
+		public DateTime Date {
+			get { 
 				DateTime ret = new DateTime (Year, Month, Day);
-#if NET_2_0
-				ret.kind = kind;
-#endif
+				ret.encoded |= encoded & KindMask;
 				return ret;
 			}
 		}
 
-		public int Month 
-		{
-			get	
-			{ 
-				return FromTicks(Which.Month); 
+		public int Month {
+			get { 
+				return FromTicks (Which.Month); 
 			}
 		}
 
-		public int Day
-		{
-			get 
-			{ 
-				return FromTicks(Which.Day); 
+		public int Day {
+			get { 
+				return FromTicks (Which.Day); 
 			}
 		}
 
-		public DayOfWeek DayOfWeek 
-		{
-			get 
-			{ 
-				return ( (DayOfWeek) ((ticks.Days+1) % 7) ); 
+		public DayOfWeek DayOfWeek {
+			get {
+				return (DayOfWeek) ((((encoded & TicksMask)/TimeSpan.TicksPerDay)+1) % 7);
 			}
 		}
 
-		public int DayOfYear 
-		{
-			get 
-			{ 
-				return FromTicks(Which.DayYear); 
+		public int DayOfYear {
+			get { 
+				return FromTicks (Which.DayYear); 
 			}
 		}
 
-		public TimeSpan TimeOfDay 
-		{
-			get	
-			{ 
-				return new TimeSpan(ticks.Ticks % TimeSpan.TicksPerDay );
+		public TimeSpan TimeOfDay {
+			get { 
+				return new TimeSpan ((encoded & TicksMask) % TimeSpan.TicksPerDay);
 			}
 			
 		}
 
-		public int Hour 
-		{
-			get 
-			{ 
-				return ticks.Hours;
+		public int Hour {
+			get { 
+				return (int) ((encoded & TicksMask) % TimeSpan.TicksPerDay / TimeSpan.TicksPerHour);
 			}
 		}
 
-		public int Minute 
-		{
-			get 
-			{ 
-				return ticks.Minutes;
+		public int Minute {
+			get { 
+				return (int)  ((encoded & TicksMask) % TimeSpan.TicksPerHour / TimeSpan.TicksPerMinute);
 			}
 		}
 
-		public int Second 
-		{
-			get	
-			{ 
-				return ticks.Seconds;
+		public int Second {
+			get { 
+				return (int) ((encoded & TicksMask) % TimeSpan.TicksPerMinute / TimeSpan.TicksPerSecond);
 			}
 		}
 
-		public int Millisecond 
-		{
-			get 
-			{ 
-				return ticks.Milliseconds;
+		public int Millisecond {
+			get { 
+				return (int) ((encoded & TicksMask) % TimeSpan.TicksPerSecond / TimeSpan.TicksPerMillisecond);
 			}
 		}
 		
@@ -506,10 +451,8 @@ namespace System
 		static object to_local_time_span_object;
 		static long last_now;
 		
-		public static DateTime Now 
-		{
-			get	
-			{
+		public static DateTime Now {
+			get {
 				long now = GetNow ();
 				DateTime dt = new DateTime (now);
 
@@ -521,68 +464,49 @@ namespace System
 
 				// This is boxed, so we avoid locking.
 				DateTime ret = dt + (TimeSpan) to_local_time_span_object;
-#if NET_2_0
-				ret.kind = DateTimeKind.Local;
-#endif
+				ret.encoded |= ((long)DateTimeKind.Local << KindShift);
 				return ret;
 			}
 		}
 
-		public long Ticks
-		{ 
-			get	
-			{ 
-				return ticks.Ticks;
+		public long Ticks { 
+			get { 
+				return encoded & TicksMask;
 			}
 		}
 	
-		public static DateTime Today 
-		{
+		public static DateTime Today {
 			get {
 				DateTime now = Now;
 				DateTime today = new DateTime (now.Year, now.Month, now.Day);
-#if NET_2_0
-				today.kind = now.kind;
-#endif
+				today.encoded |= ((long)DateTimeKind.Local << KindShift);
 				return today;
 			}
 		}
 
-		public static DateTime UtcNow 
-		{
+		public static DateTime UtcNow {
 			get {
-#if NET_2_0
 				return new DateTime (GetNow (), DateTimeKind.Utc);
-#else
-				return new DateTime (GetNow ());
-#endif
 			}
 		}
 
-		public int Year 
-		{
-			get 
-			{ 
-				return FromTicks(Which.Year); 
+		public int Year {
+			get { 
+				return FromTicks (Which.Year); 
 			}
 		}
 
-#if NET_2_0
 		public DateTimeKind Kind {
 			get {
-				return kind;
+				return (DateTimeKind) ((ulong)encoded >> KindShift);
 			}
 		}
-#endif
 
 		/* methods */
 
 		public DateTime Add (TimeSpan value)
 		{
 			DateTime ret = AddTicks (value.Ticks);
-#if NET_2_0
-			ret.kind = kind;
-#endif
 			return ret;
 		}
 
@@ -593,13 +517,12 @@ namespace System
 		
 		public DateTime AddTicks (long value)
 		{
-			if ((value + ticks.Ticks) > MAX_VALUE_TICKS || (value + ticks.Ticks) < 0) {
+			long res = value + (encoded & TicksMask);
+			if (res < 0 || res > MAX_VALUE_TICKS)
 				throw new ArgumentOutOfRangeException();
-			}
-			DateTime ret = new DateTime (value + ticks.Ticks);
-#if NET_2_0
-			ret.kind = kind;
-#endif
+
+			DateTime ret = new DateTime (res);
+			ret.encoded |= (encoded & KindMask);
 			return ret;
 		}
 
@@ -611,7 +534,7 @@ namespace System
 		public DateTime AddMilliseconds (double value)
 		{
 			if ((value * TimeSpan.TicksPerMillisecond) > long.MaxValue ||
-					(value * TimeSpan.TicksPerMillisecond) < long.MinValue) {
+			    (value * TimeSpan.TicksPerMillisecond) < long.MinValue) {
 				throw new ArgumentOutOfRangeException();
 			}
 			long msticks = (long) Math.Round (value * TimeSpan.TicksPerMillisecond);
@@ -660,9 +583,7 @@ namespace System
 				day = maxday;
 
 			temp = new DateTime (year, month, day);
-#if NET_2_0
-			temp.kind = kind;
-#endif
+			temp.encoded |= encoded & KindMask;
 			return  temp.Add (this.TimeOfDay);
 		}
 
@@ -678,9 +599,12 @@ namespace System
 
 		public static int Compare (DateTime t1,	DateTime t2)
 		{
-			if (t1.ticks < t2.ticks) 
+			long t1t = t1.encoded & TicksMask;
+			long t2t = t2.encoded & TicksMask;
+			
+			if (t1t < t2t) 
 				return -1;
-			else if (t1.ticks > t2.ticks) 
+			else if (t1t > t2t) 
 				return 1;
 			else
 				return 0;
@@ -698,10 +622,9 @@ namespace System
 			return Compare (this, (DateTime) value);
 		}
 
-#if NET_2_0
 		public bool IsDaylightSavingTime ()
 		{
-			if (kind == DateTimeKind.Utc)
+			if ((int)((ulong)encoded >> KindShift) == (int) DateTimeKind.Utc)
 				return false;
 			return TimeZone.CurrentTimeZone.IsDaylightSavingTime (this);
 		}
@@ -713,30 +636,26 @@ namespace System
 
 		public bool Equals (DateTime value)
 		{
-			return value.ticks == ticks;
+			return (value.encoded & TicksMask) == (encoded & TicksMask);
 		}
 
 		public long ToBinary ()
 		{
-			switch (kind) {
-			case DateTimeKind.Utc:
-				return Ticks | 0x4000000000000000;
-			case DateTimeKind.Local:
+			if ((encoded & ((long)DateTimeKind.Local << KindShift)) != 0)
 				return (long) ((ulong) ToUniversalTime ().Ticks | 0x8000000000000000);
-			default:
-				return Ticks;
-			}
+			
+			return encoded;
 		}
 
 		public static DateTime FromBinary (long dateData)
 		{
 			switch ((ulong)dateData >> 62) {
-			case 1:
-				return new DateTime (dateData ^ 0x4000000000000000, DateTimeKind.Utc);
-			case 0:
+			case 1: // Utc
+				return new DateTime (dateData & TicksMask, DateTimeKind.Utc);
+			case 0: // Unspecified
 				return new DateTime (dateData, DateTimeKind.Unspecified);
-			default:
-				return new DateTime (dateData & 0x3fffffffffffffff, DateTimeKind.Utc).ToLocalTime ();
+			default: // Local
+				return new DateTime (dateData & TicksMask, DateTimeKind.Utc).ToLocalTime ();
 			}
 		}
 
@@ -744,19 +663,6 @@ namespace System
 		{
 			return new DateTime (value.Ticks, kind);
 		}
-
-#else
-
-		internal long ToBinary ()
-		{
-			return Ticks;
-		}
-
-		internal static DateTime FromBinary (long dateData)
-		{
-			return new DateTime (dateData & 0x3fffffffffffffff);
-		}
-#endif
 
 		public static int DaysInMonth (int year, int month)
 		{
@@ -777,12 +683,12 @@ namespace System
 			if (!(value is System.DateTime))
 				return false;
 
-			return ((DateTime) value).ticks == ticks;
+			return (((DateTime) value).encoded & TicksMask) == (encoded & TicksMask);
 		}
 
 		public static bool Equals (DateTime t1, DateTime t2 )
 		{
-			return (t1.ticks == t2.ticks );
+			return (t1.encoded & TicksMask) == (t2.encoded & TicksMask);
 		}
 
 		public static DateTime FromFileTime (long fileTime) 
@@ -793,7 +699,6 @@ namespace System
 			return new DateTime (w32file_epoch + fileTime).ToLocalTime ();
 		}
 
-#if NET_1_1
 		public static DateTime FromFileTimeUtc (long fileTime) 
 		{
 			if (fileTime < 0)
@@ -801,7 +706,6 @@ namespace System
 
 			return new DateTime (w32file_epoch + fileTime);
 		}
-#endif
 
 		public static DateTime FromOADate (double d)
 		{
@@ -884,16 +788,9 @@ namespace System
 			return results;
 		}
 
-#if NET_2_0
-		private void CheckDateTimeKind (DateTimeKind kind) {
-			if ((kind != DateTimeKind.Unspecified) && (kind != DateTimeKind.Utc) && (kind != DateTimeKind.Local))
-				throw new ArgumentException ("Invalid DateTimeKind value.", "kind");
-		}
-#endif
-
 		public override int GetHashCode ()
 		{
-			return (int) ticks.Ticks;
+			return (int) encoded;
 		}
 
 		public TypeCode GetTypeCode ()
@@ -1019,15 +916,8 @@ namespace System
 			if (!setExceptionOnError)
 				return false;
 			
-#if NET_2_0
 			// .NET 2.x does not throw an ArgumentOutOfRangeException, but .NET 1.1 does.
 			exception = new FormatException (formatExceptionMessage);
-#else
-			if (longYear)
-				exception = new ArgumentOutOfRangeException ("year", "Valid values are between 1 and 9999, inclusive.");
-			else 
-				exception = new FormatException (formatExceptionMessage);
-#endif
 			return false;
 		}
 
@@ -1244,9 +1134,6 @@ namespace System
 			bool use_invariant = false;
 			bool sloppy_parsing = false;
 			dto = new DateTimeOffset (0, TimeSpan.Zero);
-#if !NET_2_0
-			bool afterTimePart = firstPartIsDate && secondPart == "";
-#endif
 			bool flexibleTwoPartsParsing = !exact && secondPart != null;
 			incompleteFormat = false;
 			int valuePos = 0;
@@ -1262,7 +1149,7 @@ namespace System
 
 			if (s == null)
 				return false;
-
+				
 			if ((style & DateTimeStyles.AllowLeadingWhite) != 0) {
 				format = format.TrimStart (null);
 
@@ -1301,11 +1188,7 @@ namespace System
 				if (flexibleTwoPartsParsing && pos + num == 0)
 				{
 					bool isLetter = IsLetter(s, valuePos);
-#if NET_2_0
 					if (isLetter) {
-#else
-					if (afterTimePart && isLetter) {
-#endif
 						if (s [valuePos] == 'Z')
 							num_parsed = 1;
 						else
@@ -1359,10 +1242,6 @@ namespace System
 						chars = format;
 						len = chars.Length;
 						isFirstPart = false;
-#if !NET_2_0
-						if (!firstPartIsDate || format == "")
-							afterTimePart = true;
-#endif
 						continue;
 					}
 					break;
@@ -1566,11 +1445,9 @@ namespace System
 						return false;
 
 					break;
-#if NET_2_0
 				case 'F':
 					leading_zeros = false;
 					goto case 'f';
-#endif
 				case 'f':
 					if (num > 6 || fractionalSeconds != -1)
 						return false;
@@ -1619,7 +1496,6 @@ namespace System
 							num_parsed = 0;
 					}
 					break;
-#if NET_2_0
 				case 'K':
 					if (s [valuePos] == 'Z') {
 						valuePos++;
@@ -1652,7 +1528,7 @@ namespace System
 							return false;
 					}
 					break;
-#endif
+
 				// LAMESPEC: This should be part of UTCpattern
 				// string and thus should not be considered here.
 				//
@@ -1712,9 +1588,7 @@ namespace System
 					switch (chars [pos]) {
 					case 'm':
 					case 's':
-#if NET_2_0
 					case 'F':
-#endif
 					case 'f':
 					case 'z':
 						if (s.Length > valuePos && s [valuePos] == 'Z' &&
@@ -1730,7 +1604,6 @@ namespace System
 				num = 0;
 			}
 
-#if NET_2_0
 			if (pos + 1 < len && chars [pos] == '.' && chars [pos + 1] == 'F') {
 				pos++;
 				while (pos < len && chars [pos] == 'F') // '.FFF....' can be mapped to nothing. See bug #444103
@@ -1738,7 +1611,7 @@ namespace System
 			}
 			while (pos < len && chars [pos] == 'K') // 'K' can be mapped to nothing
 				pos++;
-#endif
+
 			if (pos < len)
 				return false;
 
@@ -1833,36 +1706,27 @@ namespace System
 			bool adjustToUniversal = (style & DateTimeStyles.AdjustToUniversal) != 0;
 			
 			if (tzsign != -1) {
-				long newticks = (result.ticks - dto.Offset).Ticks;
+				long newticks = (result - dto.Offset).Ticks;
 				if (newticks < 0)
 					newticks += TimeSpan.TicksPerDay;
-				result = new DateTime (false, new TimeSpan (newticks));
-#if NET_2_0
-				result.kind = DateTimeKind.Utc;
+				result = new DateTime (newticks, DateTimeKind.Utc);
 				if ((style & DateTimeStyles.RoundtripKind) != 0)
 					result = result.ToLocalTime ();
-#endif
-			}
-#if NET_2_0							
-			else if (useutc || ((style & DateTimeStyles.AssumeUniversal) != 0))
-				result.kind = DateTimeKind.Utc;
+			} else if (useutc || ((style & DateTimeStyles.AssumeUniversal) != 0))
+				result.encoded |= ((long) DateTimeKind.Utc << KindShift);
 			else if ((style & DateTimeStyles.AssumeLocal) != 0)
-				result.kind = DateTimeKind.Local;						
+				result.encoded |= ((long) DateTimeKind.Local << KindShift);
 
 			bool adjustToLocal = !adjustToUniversal && (style & DateTimeStyles.RoundtripKind) == 0;
-			if (result.kind != DateTimeKind.Unspecified)
-			{				
+			if ((DateTimeKind)(((ulong) result.encoded >> KindShift)) != DateTimeKind.Unspecified) {
 				if (adjustToUniversal)
 					result = result.ToUniversalTime ();
 				else if (adjustToLocal)
 					result = result.ToLocalTime ();
 			}
-#else
-			if (!adjustToUniversal && (useutc || tzsign != -1))
-				result = result.ToLocalTime ();
-#endif
 			return true;
 		}
+		
 
 		public static DateTime ParseExact (string s, string format,
 						   IFormatProvider provider, DateTimeStyles style)
@@ -1881,9 +1745,7 @@ namespace System
 						   DateTimeStyles style)
 		{
 			DateTimeFormatInfo dfi = DateTimeFormatInfo.GetInstance (provider);
-#if NET_2_0
 			CheckStyle (style);
-#endif
 			if (s == null)
 				throw new ArgumentNullException ("s");
 			if (formats == null)
@@ -1899,7 +1761,6 @@ namespace System
 			return result;
 		}		
 
-#if NET_2_0
 		private static void CheckStyle (DateTimeStyles style)
 		{
 			if ( (style & DateTimeStyles.RoundtripKind) != 0)
@@ -1968,7 +1829,6 @@ namespace System
 				return false;
 			}
 		}
-#endif
 
 		private static bool ParseExact (string s, string [] formats,
 						DateTimeFormatInfo dfi, DateTimeStyles style, out DateTime ret,
@@ -1999,18 +1859,18 @@ namespace System
 		
 		public TimeSpan Subtract (DateTime value)
 		{
-			return new TimeSpan (ticks.Ticks) - value.ticks;
+			return new TimeSpan (Ticks) - new TimeSpan (value.Ticks);
 		}
 
 		public DateTime Subtract(TimeSpan value)
 		{
-			TimeSpan newticks;
+			long newticks;
 
-			newticks = (new TimeSpan (ticks.Ticks)) - value;
-			DateTime ret = new DateTime (true,newticks);
-#if NET_2_0
-			ret.kind = kind;
-#endif
+			newticks = Ticks - value.Ticks;
+			if (newticks < 0 || newticks > MAX_VALUE_TICKS)
+				throw new ArgumentOutOfRangeException ();
+			DateTime ret = new DateTime (newticks);
+			ret.encoded |= (encoded & KindMask);
 			return ret;
 		}
 
@@ -2025,7 +1885,6 @@ namespace System
 			return(universalTime.Ticks - w32file_epoch);
 		}
 
-#if NET_1_1
 		public long ToFileTimeUtc()
 		{
 			if (Ticks < w32file_epoch) {
@@ -2034,7 +1893,6 @@ namespace System
 			
 			return (Ticks - w32file_epoch);
 		}
-#endif
 
 		public string ToLongDateString()
 		{
@@ -2136,116 +1994,117 @@ namespace System
 
 		public static DateTime operator +(DateTime d, TimeSpan t)
 		{
-			DateTime ret = new DateTime (true, d.ticks + t);
-#if NET_2_0
-			ret.kind = d.kind;
-#endif
-			return ret;
+			try {
+				long res = checked ((d.encoded & TicksMask) + t.Ticks);
+				if (res < 0 || res > MAX_VALUE_TICKS){
+					throw new ArgumentOutOfRangeException ();
+				}
+				
+				return new DateTime (res, d.Kind);
+			} catch (OverflowException){
+				throw new ArgumentOutOfRangeException ();
+			}
 		}
 
 		public static bool operator ==(DateTime d1, DateTime d2)
 		{
-			return (d1.ticks == d2.ticks);
+			return ((d1.encoded & TicksMask) == (d2.encoded & TicksMask));
 		}
 
 		public static bool operator >(DateTime t1,DateTime t2)
 		{
-			return (t1.ticks > t2.ticks);
+			return ((t1.encoded & TicksMask) > (t2.encoded & TicksMask));
 		}
 
 		public static bool operator >=(DateTime t1,DateTime t2)
 		{
-			return (t1.ticks >= t2.ticks);
+			return ((t1.encoded & TicksMask) >= (t2.encoded & TicksMask));
 		}
 
 		public static bool operator !=(DateTime d1, DateTime d2)
 		{
-			return (d1.ticks != d2.ticks);
+			return ((d1.encoded & TicksMask) != (d2.encoded & TicksMask));
 		}
 
-		public static bool operator <(DateTime t1,	DateTime t2)
+		public static bool operator <(DateTime t1, DateTime t2)
 		{
-			return (t1.ticks < t2.ticks );
+			return ((t1.encoded & TicksMask) < (t2.encoded & TicksMask));
 		}
 
-		public static bool operator <=(DateTime t1,DateTime t2)
+		public static bool operator <=(DateTime t1, DateTime t2)
 		{
-			return (t1.ticks <= t2.ticks);
+			return ((t1.encoded & TicksMask) <= (t2.encoded & TicksMask));
 		}
 
-		public static TimeSpan operator -(DateTime d1,DateTime d2)
+		public static TimeSpan operator -(DateTime d1, DateTime d2)
 		{
-			return new TimeSpan((d1.ticks - d2.ticks).Ticks);
+			return new TimeSpan ((d1.encoded & TicksMask) - (d2.encoded & TicksMask));
 		}
 
-		public static DateTime operator -(DateTime d,TimeSpan t)
+		public static DateTime operator -(DateTime d, TimeSpan t)
 		{
-			DateTime ret = new DateTime (true, d.ticks - t);
-#if NET_2_0
-			ret.kind = d.kind;
-#endif
-			return ret;
+			try {
+				long res = checked ((d.encoded & TicksMask) - t.Ticks);
+				if (res < 0 || res > MAX_VALUE_TICKS)
+					throw new ArgumentOutOfRangeException ();
+				return new DateTime (res, d.Kind);
+			} catch (OverflowException){
+				throw new ArgumentOutOfRangeException ();
+			}
 		}
 
-		bool IConvertible.ToBoolean(IFormatProvider provider)
+		bool IConvertible.ToBoolean (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
 		
-		byte IConvertible.ToByte(IFormatProvider provider)
+		byte IConvertible.ToByte (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 
 		}
 
-		char IConvertible.ToChar(IFormatProvider provider)
+		char IConvertible.ToChar (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
 
-		System.DateTime IConvertible.ToDateTime(IFormatProvider provider)
+		System.DateTime IConvertible.ToDateTime (IFormatProvider provider)
 		{
 			return this;
 		} 
 		
-		decimal IConvertible.ToDecimal(IFormatProvider provider)
+		decimal IConvertible.ToDecimal (IFormatProvider provider)
 		{
 			 throw new InvalidCastException();
 		}
 
-		double IConvertible.ToDouble(IFormatProvider provider)
+		double IConvertible.ToDouble (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
 
-		Int16 IConvertible.ToInt16(IFormatProvider provider)
+		Int16 IConvertible.ToInt16 (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
 
-		Int32 IConvertible.ToInt32(IFormatProvider provider)
+		Int32 IConvertible.ToInt32 (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
 
-		Int64 IConvertible.ToInt64(IFormatProvider provider)
+		Int64 IConvertible.ToInt64 (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
-		SByte IConvertible.ToSByte(IFormatProvider provider)
+		SByte IConvertible.ToSByte (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-		Single IConvertible.ToSingle(IFormatProvider provider)
+		Single IConvertible.ToSingle (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
@@ -2265,40 +2124,37 @@ namespace System
 				throw new InvalidCastException();
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
-		UInt16 IConvertible.ToUInt16(IFormatProvider provider)
+		UInt16 IConvertible.ToUInt16 (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
-		UInt32 IConvertible.ToUInt32(IFormatProvider provider)
+		UInt32 IConvertible.ToUInt32 (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
-		UInt64 IConvertible.ToUInt64(IFormatProvider provider)
+		UInt64 IConvertible.ToUInt64 (IFormatProvider provider)
 		{
 			throw new InvalidCastException();
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
+
+		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
+		{
+			long t = Ticks;
+			info.AddValue ("ticks", t);
+
+			// This is the new .NET format, encodes the kind on the top bits
+			info.AddValue ("dateData", encoded);
+		}
+		
+#if MONOTOUCH
+		static DateTime () {
+			if (MonoTouchAOTHelper.FalseFlag) {
+				var comparer = new System.Collections.Generic.GenericComparer <DateTime> ();
+				var eqcomparer = new System.Collections.Generic.GenericEqualityComparer <DateTime> ();
+			}
+		}
 #endif
 	}
 }

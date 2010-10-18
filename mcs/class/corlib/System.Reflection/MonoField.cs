@@ -33,6 +33,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -59,8 +60,13 @@ namespace System.Reflection {
 			}
 		}
 
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		extern Type ResolveType ();
+
 		public override Type FieldType { 
 			get {
+				if (type == null)
+					type = ResolveType ();
 				return type;
 			}
 		}
@@ -103,15 +109,23 @@ namespace System.Reflection {
 
 		public override object GetValue (object obj)
 		{
-			if (!IsStatic && obj == null)
-				throw new TargetException ("Non-static field requires a target");
+			if (!IsStatic) {
+				if (obj == null)
+					throw new TargetException ("Non-static field requires a target");
+				if (!DeclaringType.IsAssignableFrom (obj.GetType ()))
+					throw new ArgumentException (string.Format (
+						"Field {0} defined on type {1} is not a field on the target object which is of type {2}.",
+					 	Name, DeclaringType, obj.GetType ()),
+					 	"obj");
+			}
+			
 			if (!IsLiteral)
 				CheckGeneric ();
 			return GetValueInternal (obj);
 		}
 
 		public override string ToString () {
-			return String.Format ("{0} {1}", type, name);
+			return String.Format ("{0} {1}", FieldType, name);
 		}
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -119,8 +133,15 @@ namespace System.Reflection {
 
 		public override void SetValue (object obj, object val, BindingFlags invokeAttr, Binder binder, CultureInfo culture)
 		{
-			if (!IsStatic && obj == null)
-				throw new TargetException ("Non-static field requires a target");
+			if (!IsStatic) {
+				if (obj == null)
+					throw new TargetException ("Non-static field requires a target");
+				if (!DeclaringType.IsAssignableFrom (obj.GetType ()))
+					throw new ArgumentException (string.Format (
+						"Field {0} defined on type {1} is not a field on the target object which is of type {2}.",
+					 	Name, DeclaringType, obj.GetType ()),
+					 	"obj");
+			}
 			if (IsLiteral)
 				throw new FieldAccessException ("Cannot set a constant field");
 			if (binder == null)
@@ -128,9 +149,9 @@ namespace System.Reflection {
 			CheckGeneric ();
 			if (val != null) {
 				object newVal;
-				newVal = binder.ChangeType (val, type, culture);
+				newVal = binder.ChangeType (val, FieldType, culture);
 				if (newVal == null)
-					throw new ArgumentException ("Object type " + val.GetType() + " cannot be converted to target type: " + type, "val");
+					throw new ArgumentException ("Object type " + val.GetType() + " cannot be converted to target type: " + FieldType, "val");
 				val = newVal;
 			}
 			SetValueInternal (this, obj, val);
@@ -154,16 +175,18 @@ namespace System.Reflection {
 				ToString(), MemberTypes.Field);
 		}
 
-#if NET_2_0
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		public override extern object GetRawConstantValue ();
+
+#if NET_4_0
+		public override IList<CustomAttributeData> GetCustomAttributesData () {
+			return CustomAttributeData.GetCustomAttributes (this);
+		}
 #endif
 
 		void CheckGeneric () {
-#if NET_2_0
 			if (DeclaringType.ContainsGenericParameters)
 				throw new InvalidOperationException ("Late bound operations cannot be performed on fields with types for which Type.ContainsGenericParameters is true.");
-#endif
 	    }
 	}
 }

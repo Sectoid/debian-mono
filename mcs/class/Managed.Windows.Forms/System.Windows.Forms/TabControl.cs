@@ -49,6 +49,7 @@ namespace System.Windows.Forms {
 		private bool multiline;
 		private ImageList image_list;
 		private Size item_size = Size.Empty;
+		private bool item_size_manual;
 		private Point padding;
 		private int row_count = 0;
 		private bool hottrack;
@@ -61,6 +62,10 @@ namespace System.Windows.Forms {
 		private int slider_pos = 0;
 		TabPage entered_tab_page;
 		bool mouse_down_on_a_tab_page;
+		ToolTip tooltip;
+		ToolTip.TipState tooltip_state = ToolTip.TipState.Down;
+		Timer tooltip_timer;
+
 #if NET_2_0
 		private bool rightToLeftLayout;
 #endif		
@@ -114,7 +119,6 @@ namespace System.Windows.Forms {
 			tab_pages = new TabPageCollection (this);
 			SetStyle (ControlStyles.UserPaint, false);
 			padding = ThemeEngine.Current.TabControlDefaultPadding;
-			item_size = ThemeEngine.Current.TabControlDefaultItemSize;
 
 			MouseDown += new MouseEventHandler (MouseDownHandler);
 			MouseLeave += new EventHandler (OnMouseLeave);
@@ -225,18 +229,37 @@ namespace System.Windows.Forms {
 		[DefaultValue(null)]
 		public ImageList ImageList {
 			get { return image_list; }
-			set { image_list = value; }
+			set { 
+				image_list = value; 
+				Redraw ();
+			}
 		}
 
 		[Localizable(true)]
 		public Size ItemSize {
 			get {
-				return item_size;
+				if (item_size_manual)
+					return item_size;
+
+				if (!IsHandleCreated)
+					return Size.Empty;
+
+				Size size = item_size;
+				if (SizeMode != TabSizeMode.Fixed) {
+					size.Width += padding.X * 2;
+					size.Height += padding.Y * 2;
+				}
+
+				if (tab_pages.Count == 0)
+					size.Width = 0;
+
+				return size;
 			}
 			set {
 				if (value.Height < 0 || value.Width < 0)
 					throw new ArgumentException ("'" + value + "' is not a valid value for 'ItemSize'.");
 				item_size = value;
+				item_size_manual = true;
 				Redraw ();
 			}
 		}
@@ -367,7 +390,7 @@ namespace System.Windows.Forms {
 					int re = LeftScrollButtonArea.Left;
 					if (show_slider && le > re) {
 						int i = 0;
-						for (i = 0; i < new_index - 1; i++) {
+						for (i = 0; i < new_index; i++) {
 							if (TabPages [i].TabBounds.Left < 0) // tab scrolled off the visible area, ignore
 								continue;
 
@@ -446,7 +469,6 @@ namespace System.Windows.Forms {
 				if (show_tool_tips == value)
 					return;
 				show_tool_tips = value;
-				Redraw ();
 			}
 		}
 
@@ -556,6 +578,11 @@ namespace System.Windows.Forms {
 					area_to_invalidate.Dispose ();
 				} else
 					entered_tab_page = value;
+
+				if (value == null)
+					CloseToolTip ();
+				else
+					SetToolTip (GetToolTipText (value));
 			}
 		}
 		#endregion	// Internal Properties
@@ -686,6 +713,7 @@ namespace System.Windows.Forms {
 
 		protected override void Dispose (bool disposing)
 		{
+			CloseToolTip ();
 			base.Dispose (disposing);
 		}
 
@@ -928,8 +956,6 @@ namespace System.Windows.Forms {
 		{
 			switch ((Msg)m.Msg) {
 			case Msg.WM_SETFOCUS:
-				if (selected_index == -1 && this.TabCount > 0)
-					this.SelectedIndex = 0;
 				if (selected_index != -1)
 					Invalidate(GetTabRect(selected_index));
 				base.WndProc (ref m);
@@ -1136,6 +1162,8 @@ namespace System.Windows.Forms {
 				row_count = 1;
 			show_slider = false;
 			
+			CalculateItemSize ();
+
 			for (int i = 0; i < TabPages.Count; i++) {
 				TabPage page = TabPages [i];
 				int aux = 0;
@@ -1144,6 +1172,34 @@ namespace System.Windows.Forms {
 
 			if (SelectedIndex != -1 && TabPages.Count > SelectedIndex && TabPages[SelectedIndex].Row != BottomRow)
 				DropRow (TabPages [SelectedIndex].Row);
+		}
+
+		// ItemSize per-se is used mostly only to retrieve the Height,
+		// since the actual Width of the tabs is computed individually,
+		// except when SizeMode is TabSizeMode.Fixed, where Width is used as well.
+		private void CalculateItemSize ()
+		{
+			if (item_size_manual)
+				return;
+
+			SizeF size;
+			if (tab_pages.Count > 0) {
+				// .Net uses the first tab page if available.
+				size = TextRenderer.MeasureString (tab_pages [0].Text, Font);
+
+			} else {
+				size = TextRenderer.MeasureString ("a", Font);
+				size.Width = 0;
+			}
+
+			if (size_mode == TabSizeMode.Fixed)
+				size.Width = 96;
+			if (size.Width < MinimumTabWidth)
+				size.Width = MinimumTabWidth;
+			if (image_list != null && image_list.ImageSize.Height > size.Height)
+				size.Height = image_list.ImageSize.Height;
+
+			item_size = size.ToSize ();
 		}
 
 		private int BottomRow {
@@ -1264,22 +1320,23 @@ namespace System.Windows.Forms {
 			if (SizeMode == TabSizeMode.Fixed) {
 				width = item_size.Width;
 			} else {			
-				width = MeasureStringWidth (DeviceContext, page.Text, page.Font);
+				width = MeasureStringWidth (DeviceContext, page.Text, Font);
 				width += (Padding.X * 2) + 2;
 
-				if (ImageList != null && page.ImageIndex >= 0 && page.ImageIndex < ImageList.Images.Count) {
+				if (ImageList != null && page.ImageIndex >= 0) {
 					width += ImageList.ImageSize.Width + ThemeEngine.Current.TabControlImagePadding.X;
 
 					int image_size = ImageList.ImageSize.Height + ThemeEngine.Current.TabControlImagePadding.Y;
 					if (item_size.Height < image_size)
 						item_size.Height = image_size;
 				}
+
+				if (width < MinimumTabWidth)
+					width = MinimumTabWidth;
 			}
 
-			height = item_size.Height - ThemeEngine.Current.TabControlSelectedDelta.Height; // full height only for selected tab
-
-			if (width < MinimumTabWidth)
-				width = MinimumTabWidth;
+			// Use ItemSize property to recover the padding info as well.
+			height = ItemSize.Height - ThemeEngine.Current.TabControlSelectedDelta.Height; // full height only for selected tab
 
 			if (i == SelectedIndex)
 				width += ThemeEngine.Current.TabControlSelectedSpacing;
@@ -1499,6 +1556,55 @@ namespace System.Windows.Forms {
 			return (int)(rect.Width);
 		}
 
+		void SetToolTip (string text)
+		{
+			if (!show_tool_tips)
+				return;
+
+			if (text == null || text.Length == 0) {
+				CloseToolTip ();
+				return;
+			}
+
+			if (tooltip == null) {
+				tooltip = new ToolTip ();
+				tooltip_timer = new Timer ();
+				tooltip_timer.Tick += new EventHandler (ToolTipTimerTick);
+			}
+
+			CloseToolTip ();
+
+			tooltip_state = ToolTip.TipState.Initial;
+			tooltip_timer.Interval = 500;
+			tooltip_timer.Start ();
+		}
+
+		void CloseToolTip ()
+		{
+			if (tooltip == null)
+				return;
+
+			tooltip.Hide (this);
+			tooltip_timer.Stop ();
+			tooltip_state = ToolTip.TipState.Down;
+		}
+
+		void ToolTipTimerTick (object o, EventArgs args)
+		{
+			switch (tooltip_state) {
+				case ToolTip.TipState.Initial:
+					tooltip_timer.Stop ();
+					tooltip_timer.Interval = 5000;
+					tooltip_timer.Start ();
+					tooltip_state = ToolTip.TipState.Show;
+					tooltip.Present (this, GetToolTipText (EnteredTabPage));
+					break;
+				case ToolTip.TipState.Show:
+					CloseToolTip ();
+					break;
+			}
+		}
+
 		void OnMouseMove (object sender, MouseEventArgs e)
 		{
 			if (!mouse_down_on_a_tab_page && ShowSlider) {
@@ -1694,9 +1800,11 @@ namespace System.Windows.Forms {
 					owner.selected_index = -1;
 
 					owner.SelectedIndex = --prev_selected_index;
+					owner.Invalidate ();
 				} else if (change_index) {
 					owner.selected_index = -1;
 					owner.OnSelectedIndexChanged (EventArgs.Empty);
+					owner.Invalidate ();
 				} else
 					owner.Redraw ();
 			}

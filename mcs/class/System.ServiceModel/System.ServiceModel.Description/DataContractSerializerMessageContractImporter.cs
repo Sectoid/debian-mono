@@ -28,6 +28,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.Serialization;
 using System.ServiceModel;
 using System.Text;
 using System.Web.Services.Description;
@@ -71,6 +72,16 @@ namespace System.ServiceModel.Description
 			if (this.importer != null || this.context != null)
 				throw new SystemException ("INTERNAL ERROR: unexpected recursion of ImportContract method call");
 
+#if USE_DATA_CONTRACT_IMPORTER
+			dc_importer = new XsdDataContractImporter ();
+			schema_set_in_use = new XmlSchemaSet ();
+			schema_set_in_use.Add (importer.XmlSchemas);
+			foreach (WSDL wsdl in importer.WsdlDocuments)
+				foreach (XmlSchema xs in wsdl.Types.Schemas)
+					schema_set_in_use.Add (xs);
+			dc_importer.Import (schema_set_in_use);
+#endif
+
 			this.importer = importer;
 			this.context = context;
 			try {
@@ -83,6 +94,12 @@ namespace System.ServiceModel.Description
 
 		WsdlImporter importer;
 		WsdlContractConversionContext context;
+
+		XsdDataContractImporter dc_importer;
+
+#if USE_DATA_CONTRACT_IMPORTER
+		XmlSchemaSet schema_set_in_use;
+#else
 		XmlSchemaImporter schema_importer_;
 		XmlSchemaImporter schema_importer {
 			get {
@@ -112,6 +129,7 @@ namespace System.ServiceModel.Description
 				return xml_schemas_;
 			}
 		}
+#endif
 
 		void DoImportContract ()
 		{
@@ -179,15 +197,26 @@ namespace System.ServiceModel.Description
 			}
 		}
 		
+#if USE_DATA_CONTRACT_IMPORTER
+		void resolveElement (QName qname, List<MessagePartDescription> parts, string ns)
+		{
+			XmlSchemaElement element = (XmlSchemaElement) schema_set_in_use.GlobalElements [qname];
+			if (element == null)
+				//FIXME: What to do here?
+				throw new Exception ("Could not resolve : " + qname.ToString ());
+
+			resolveParticle (element, parts, ns, 2);
+		}
+#else
 		void resolveElement (QName qname, List<MessagePartDescription> parts, string ns)
 		{
 			XmlSchemaElement element = (XmlSchemaElement) xml_schemas.Find (qname, typeof (XmlSchemaElement));
 			if (element == null)
 				//FIXME: What to do here?
 				throw new Exception ("Could not resolve : " + qname.ToString ());
-
-			resolveParticle (schema_importer, element, parts, ns, 2);
+			resolveParticle (element, parts, ns, 2);
 		}
+#endif
 
 		void resolveType (QName qname, List<MessagePartDescription> parts, string ns)
 		{
@@ -262,8 +291,7 @@ namespace System.ServiceModel.Description
 			return null;
 		}
 
-		void resolveParticle (XmlSchemaImporter schema_importer, 
-				XmlSchemaParticle particle, 
+		void resolveParticle (XmlSchemaParticle particle, 
 				List<MessagePartDescription> parts, 
 				string ns, 
 				int depth)
@@ -276,7 +304,7 @@ namespace System.ServiceModel.Description
 
 				XmlSchemaGroupBase groupBase = particle as XmlSchemaGroupBase;
 				foreach (XmlSchemaParticle item in groupBase.Items)
-					resolveParticle (schema_importer, item, parts, ns, depth - 1);
+					resolveParticle (item, parts, ns, depth - 1);
 
 				return;
 			}
@@ -291,6 +319,12 @@ namespace System.ServiceModel.Description
 			if (ct == null) {
 				//Not a complex type
 				XmlSchemaSimpleType simple = elem.ElementSchemaType as XmlSchemaSimpleType;
+#if USE_DATA_CONTRACT_IMPORTER
+				msg_part = new MessagePartDescription (elem.QualifiedName.Name, elem.QualifiedName.Namespace);
+				msg_part.Importer = dc_importer;
+				msg_part.CodeTypeReference = dc_importer.GetCodeTypeReference (dc_importer.Import (schema_set_in_use, elem));
+				parts.Add (msg_part);
+#else
 				msg_part = new MessagePartDescription (
 						elem.Name, ns);
 				if (elem.SchemaType != null)
@@ -299,16 +333,23 @@ namespace System.ServiceModel.Description
 					msg_part.XmlTypeMapping = schema_importer.ImportSchemaType (elem.SchemaTypeName);
 				msg_part.TypeName = new QName (GetCLRTypeName (elem.SchemaTypeName), "");
 				parts.Add (msg_part);
+#endif
 
 				return;
 			}
 
 			if (depth > 0) {
-				resolveParticle (schema_importer, ct.ContentTypeParticle, parts, ns, depth - 1);
+				resolveParticle (ct.ContentTypeParticle, parts, ns, depth - 1);
 				return;
 			}
 
 			//depth <= 0
+#if USE_DATA_CONTRACT_IMPORTER
+			msg_part = new MessagePartDescription (elem.QualifiedName.Name, elem.QualifiedName.Namespace);
+			msg_part.Importer = dc_importer;
+			msg_part.CodeTypeReference = dc_importer.GetCodeTypeReference (dc_importer.Import (schema_set_in_use, elem));
+			parts.Add (msg_part);
+#else
 			msg_part = new MessagePartDescription (elem.Name, ns);
 			if (elem.SchemaType != null)
 				msg_part.XmlTypeMapping = schema_importer.ImportTypeMapping (elem.QualifiedName);
@@ -317,6 +358,7 @@ namespace System.ServiceModel.Description
 			msg_part.TypeName = elem.SchemaTypeName;
 
 			parts.Add (msg_part);
+#endif
 		}
 
 		void IWsdlImportExtension.ImportEndpoint (WsdlImporter importer,

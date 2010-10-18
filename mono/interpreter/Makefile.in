@@ -105,6 +105,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -146,7 +147,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -178,6 +178,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -200,6 +201,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -237,7 +239,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -293,8 +294,9 @@ INCLUDES = \
 
 # The mingw math.h has "extern inline" functions that dont appear in libs, so
 # optimisation is required to actually inline them
-@PLATFORM_WIN32_TRUE@AM_CFLAGS = -O
+@HOST_WIN32_TRUE@AM_CFLAGS = -O
 @INTERP_SUPPORTED_TRUE@lib_LTLIBRARIES = libmint.la
+@INTERP_SUPPORTED_TRUE@man_MANS = mint.1
 mint_SOURCES = \
 	main.c
 
@@ -328,7 +330,6 @@ libmint_la_LIBADD = \
 	$(ICU_LIBS)			\
 	-lm
 
-man_MANS = mint.1
 EXTRA_DIST = $(man_MANS)
 all: all-am
 
@@ -712,7 +713,7 @@ uninstall-man: uninstall-man1
 	uninstall-libmintincludeHEADERS uninstall-man uninstall-man1
 
 
-@PLATFORM_WIN32_TRUE@export HOST_CC
+@HOST_WIN32_TRUE@export HOST_CC
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

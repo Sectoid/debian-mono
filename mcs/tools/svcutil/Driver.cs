@@ -35,7 +35,17 @@ namespace Mono.ServiceContractTool
 		void Run (string [] args)
 		{
 			co.ProcessArgs (args);
-			if (co.RemainingArguments.Length == 0) {
+			if (co.Usage) {
+				co.DoUsage ();
+				return;
+			}
+
+			if (co.Version) {
+				co.DoVersion ();
+				return;
+			}
+
+			if (co.Help || co.RemainingArguments.Count == 0) {
 				co.DoHelp ();
 				return;
 			}
@@ -96,9 +106,9 @@ namespace Mono.ServiceContractTool
 			foreach (ContractDescription cd in contracts) {
 				if (co.GenerateMoonlightProxy) {
 					var moonctx = new MoonlightChannelBaseContext ();
-					cd.Behaviors.Add (new MoonlightChannelBaseContractExtension (moonctx));
+					cd.Behaviors.Add (new MoonlightChannelBaseContractExtension (moonctx, co.GenerateMonoTouchProxy));
 					foreach (var od in cd.Operations)
-						od.Behaviors.Add (new MoonlightChannelBaseOperationExtension (moonctx));
+						od.Behaviors.Add (new MoonlightChannelBaseOperationExtension (moonctx, co.GenerateMonoTouchProxy));
 					generator.GenerateServiceContractType (cd);
 					moonctx.Fixup ();
 				}
@@ -230,6 +240,9 @@ namespace Mono.ServiceContractTool
 				go |= ServiceContractGenerationOptions.ClientClass;
 			if (co.GenerateTypedMessages)
 				go |= ServiceContractGenerationOptions.TypedMessages;
+			if ((co.TargetClientVersion35 && co.GenerateAsync) || co.GenerateMoonlightProxy)
+				go |= ServiceContractGenerationOptions.EventBasedAsynchronousMethods;
+
 			return go;
 		}
 

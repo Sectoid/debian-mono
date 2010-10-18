@@ -34,6 +34,9 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@X86_TRUE@am__append_1 = mach-support-x86.c
+@AMD64_TRUE@am__append_2 = mach-support-amd64.c
+@ARM_TRUE@am__append_3 = mach-support-arm.c
 subdir = mono/utils
 DIST_COMMON = $(libmonoutilsinclude_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in ChangeLog
@@ -51,31 +54,40 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libmonoutils_la_LIBADD =
-am__libmonoutils_la_SOURCES_DIST = mono-hash.c mono-ehash.c mono-md5.c \
-	mono-sha1.c mono-logger.c mono-codeman.c dlmalloc.h dlmalloc.c \
-	mono-counters.c mono-compiler.h mono-dl.c mono-dl.h \
+am__libmonoutils_la_SOURCES_DIST = mono-md5.c mono-sha1.c \
+	mono-logger.c mono-logger-internal.h mono-codeman.c dlmalloc.h \
+	dlmalloc.c mono-counters.c mono-compiler.h mono-dl.c mono-dl.h \
 	mono-internal-hash.c mono-internal-hash.h \
 	mono-io-portability.c mono-io-portability.h monobitset.c \
 	mono-filemap.c mono-math.c mono-mmap.c mono-mmap.h \
 	mono-networkinterfaces.c mono-networkinterfaces.h \
-	mono-proclib.c mono-proclib.h mono-semaphore.h \
-	mono-semaphore.c mono-string.h mono-time.c mono-time.h \
-	strtod.h strtod.c strenc.h strenc.c mono-uri.c mono-poll.c \
-	mono-path.c mono-sigcontext.h mono-stdlib.c \
+	mono-proclib.c mono-proclib.h mono-publib.c mono-string.h \
+	mono-time.c mono-time.h strtod.h strtod.c strenc.h strenc.c \
+	mono-uri.c mono-poll.c mono-path.c mono-semaphore.c \
+	mono-semaphore.h mono-sigcontext.h mono-stdlib.c \
 	mono-property-hash.h mono-property-hash.c mono-value-hash.h \
 	mono-value-hash.c freebsd-elf_common.h freebsd-elf32.h \
 	freebsd-elf64.h freebsd-dwarf.h dtrace.h gc_wrapper.h \
-	mono-error.c mono-error.h mono-error-internals.h
-@EGLIB_BUILD_FALSE@am__objects_1 = mono-hash.lo
-@EGLIB_BUILD_TRUE@am__objects_1 = mono-ehash.lo
-am_libmonoutils_la_OBJECTS = $(am__objects_1) mono-md5.lo mono-sha1.lo \
-	mono-logger.lo mono-codeman.lo dlmalloc.lo mono-counters.lo \
-	mono-dl.lo mono-internal-hash.lo mono-io-portability.lo \
-	monobitset.lo mono-filemap.lo mono-math.lo mono-mmap.lo \
-	mono-networkinterfaces.lo mono-proclib.lo mono-semaphore.lo \
+	mono-error.c mono-error-internals.h monobitset.h \
+	mono-codeman.h mono-counters.h mono-digest.h mono-embed.h \
+	mono-error.h mono-math.h mono-membar.h mono-path.h mono-poll.h \
+	mono-uri.h mono-stdlib.h valgrind.h mach-support.c \
+	mach-support.h memcheck.h mach-support-x86.c \
+	mach-support-amd64.c mach-support-arm.c
+am__objects_1 = mono-md5.lo mono-sha1.lo mono-logger.lo \
+	mono-codeman.lo dlmalloc.lo mono-counters.lo mono-dl.lo \
+	mono-internal-hash.lo mono-io-portability.lo monobitset.lo \
+	mono-filemap.lo mono-math.lo mono-mmap.lo \
+	mono-networkinterfaces.lo mono-proclib.lo mono-publib.lo \
 	mono-time.lo strtod.lo strenc.lo mono-uri.lo mono-poll.lo \
-	mono-path.lo mono-stdlib.lo mono-property-hash.lo \
-	mono-value-hash.lo mono-error.lo
+	mono-path.lo mono-semaphore.lo mono-stdlib.lo \
+	mono-property-hash.lo mono-value-hash.lo mono-error.lo \
+	mach-support.lo
+@X86_TRUE@am__objects_2 = mach-support-x86.lo
+@AMD64_TRUE@am__objects_3 = mach-support-amd64.lo
+@ARM_TRUE@am__objects_4 = mach-support-arm.lo
+am__objects_5 = $(am__objects_2) $(am__objects_3) $(am__objects_4)
+am_libmonoutils_la_OBJECTS = $(am__objects_1) $(am__objects_5)
 libmonoutils_la_OBJECTS = $(am_libmonoutils_la_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -110,6 +122,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -151,7 +164,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -183,6 +195,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -205,6 +218,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -242,7 +256,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -294,13 +307,11 @@ top_srcdir = @top_srcdir@
 noinst_LTLIBRARIES = libmonoutils.la
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/mono $(LIBGC_CFLAGS) $(GLIB_CFLAGS)
 @ENABLE_DTRACE_TRUE@BUILT_SOURCES = mono-dtrace.h
-@EGLIB_BUILD_FALSE@hash_sources = mono-hash.c
-@EGLIB_BUILD_TRUE@hash_sources = mono-ehash.c
-libmonoutils_la_SOURCES = \
-	$(hash_sources)		\
+monoutils_sources = \
 	mono-md5.c		\
 	mono-sha1.c		\
 	mono-logger.c		\
+	mono-logger-internal.h	\
 	mono-codeman.c		\
 	dlmalloc.h      	\
 	dlmalloc.c      	\
@@ -321,8 +332,7 @@ libmonoutils_la_SOURCES = \
 	mono-networkinterfaces.h		\
 	mono-proclib.c		\
 	mono-proclib.h		\
-	mono-semaphore.h	\
-	mono-semaphore.c	\
+	mono-publib.c		\
 	mono-string.h		\
 	mono-time.c  		\
 	mono-time.h  		\
@@ -333,6 +343,7 @@ libmonoutils_la_SOURCES = \
 	mono-uri.c		\
 	mono-poll.c		\
 	mono-path.c		\
+	mono-semaphore.c	\
 	mono-semaphore.h	\
 	mono-sigcontext.h	\
 	mono-stdlib.c 		\
@@ -346,27 +357,34 @@ libmonoutils_la_SOURCES = \
 	freebsd-dwarf.h 	\
 	dtrace.h			\
 	gc_wrapper.h		\
-	mono-error.c		\
-	mono-error.h		\
-	mono-error-internals.h
-
-libmonoutilsincludedir = $(includedir)/mono-$(API_VER)/mono/utils
-libmonoutilsinclude_HEADERS = \
+	mono-error.c	\
+	mono-error-internals.h	\
 	monobitset.h	\
 	mono-codeman.h	\
 	mono-counters.h	\
 	mono-digest.h	\
 	mono-embed.h	\
-	mono-logger.h	\
-	mono-hash.h	\
+	mono-error.h	\
 	mono-math.h	\
 	mono-membar.h	\
 	mono-path.h	\
 	mono-poll.h	\
 	mono-uri.h	\
-	mono-stdlib.h
+	mono-stdlib.h	\
+	valgrind.h	\
+	mach-support.c	\
+	mach-support.h  \
+	memcheck.h
 
-EXTRA_DIST = ChangeLog mono-hash.c mono-hash.h mono-ehash.c
+arch_sources = $(am__append_1) $(am__append_2) $(am__append_3)
+libmonoutils_la_SOURCES = $(monoutils_sources) $(arch_sources)
+libmonoutilsincludedir = $(includedir)/mono-$(API_VER)/mono/utils
+libmonoutilsinclude_HEADERS = \
+	mono-logger.h	\
+	mono-error.h	\
+	mono-publib.h
+
+EXTRA_DIST = ChangeLog
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -420,13 +438,15 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dlmalloc.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mach-support-amd64.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mach-support-arm.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mach-support-x86.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mach-support.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-codeman.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-counters.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-dl.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-ehash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-error.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-filemap.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-hash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-internal-hash.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-io-portability.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-logger.Plo@am__quote@
@@ -438,6 +458,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-poll.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-proclib.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-property-hash.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-publib.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-semaphore.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-sha1.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-stdlib.Plo@am__quote@

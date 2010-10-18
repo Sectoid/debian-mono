@@ -1,3 +1,24 @@
+2010-08-31  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Trim the uri in UriParser::GetComponents, just like we do in
+	Uri::Parse
+
+2010-08-31  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Uri: fix path component of merged uris with parent directory
+	references above the root directory
+
+2010-06-28  Alan McGovern  <amcgovern@novell.com>
+
+	* UriTypeConverter.cs: Fix some regressed tests and add a new test
+	for when ConvertFrom is called with String.Empty.
+
+2010-06-28  Alan McGovern  <amcgovern@novell.com>
+
+	* UriTypeConverter.cs: Converting String.Empty should return null
+	instead of a Uri instance. Null values and unconvertable values
+	need to throw NotSupportedExceptions for moonlight too.
+
 2010-06-22 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Uri.cs: change of behavior un 4.0.
@@ -8,6 +29,16 @@
 	* Uri.cs: fix serialization for relative URIs. Patch from Greg
 	Smolyn. Fixes bug #615320.
 
+2010-05-29 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* Uri.cs: Leave consecutive slashes in 'path' alone.
+	Fix for bug #606142. Backport once tested.
+
+2010-05-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Uri.cs : do not reject relative URIs that contain ':' and
+	  any non-scheme characters preceding it.
+
 2010-04-17  Raja R Harinath  <harinath@hurrynot.org>
 
 	Keep "ftp://a.b/%2fcd" urls unmolested
@@ -16,11 +47,43 @@
 	(Reduce): Add argument that is set if escaped characters need to
 	be compacted.
 
+2010-03-20  Miguel de Icaza  <miguel@novell.com>
+
+	* Uri.cs: Drop pre-2.0 support
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Uri.cs: Remove some MOONLIGHT defines
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Uri.cs, UriTypeConverter.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-01-27  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Uri.cs: In IsWellFormedOriginalString(), call to our internal
+	EscapeString() method since we need to tell it to *not* escape '#'
+	(hex). Fixes #549135.
+
 2009-11-30  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Uri.cs: Hide protected EscapeString and Unescape for SL2/3
 	* UriTypeConverter.cs: Seal type for SL2/3
-	[Backport r147156]
+
+2009-11-26  Stephane Delcroix  <stephane@delcroix.org>
+
+	* Uri.cs (ParseNoExceptions): don't try to find a scheme if the uri is a
+	UnixFileName or WindowsUNC.
+
+2009-11-02  Miguel de Icaza  <miguel@novell.com>
+
+	* UriFormatException.cs: .NET 4.0 API
+
+2009-10-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Uri.cs : do not reject relative short name URI when uriKind is
+	  RelativeOrAbsolute.
 
 2009-09-01  Raja R Harinath  <harinath@hurrynot.org>
 

@@ -85,10 +85,10 @@ namespace Mono.Cecil {
 				if (!method.HasBody)
 					continue;
 
-				method.Body.ExceptionHandlers.Clear();
-				method.Body.Variables.Clear ();
-				method.Body.Instructions.Clear ();
-				method.Body.CilWorker.Emit (OpCodes.Ret);
+				MethodBody body = new MethodBody (method);
+				body.CilWorker.Emit (OpCodes.Ret);
+
+				method.Body = body;
 			}
 		}
 
@@ -150,11 +150,14 @@ namespace Mono.Cecil {
 
 				MethodDefinition method = (MethodDefinition) assembly.MainModule.LookupByToken (methodToken);
 
-				method_rva = method_rva != RVA.Zero
-					? method_rva
-					: reflection_writer.CodeWriter.WriteMethodBody (method);
+				if (method.HasBody) {
+					method_rva = method_rva != RVA.Zero
+						? method_rva
+						: reflection_writer.CodeWriter.WriteMethodBody (method);
 
-				methodRow.RVA = method_rva;
+					methodRow.RVA = method_rva;
+				} else
+					methodRow.RVA = RVA.Zero;
 			}
 		}
 

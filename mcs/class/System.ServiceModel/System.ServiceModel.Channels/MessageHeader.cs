@@ -123,7 +123,7 @@ namespace System.ServiceModel.Channels
 		{
 			var dic = Constants.SoapDictionary;
 			XmlDictionaryString name, ns;
-			var prefix = writer.LookupPrefix (Namespace);
+			var prefix = Prefix ?? (Namespace.Length > 0 ? writer.LookupPrefix (Namespace) : String.Empty);
 			if (dic.TryLookup (Name, out name) && dic.TryLookup (Namespace, out ns))
 				writer.WriteStartElement (prefix, name, ns);
 			else
@@ -210,12 +210,20 @@ namespace System.ServiceModel.Channels
 			string soap_ns;
 			bool is_ref, must_understand, relay;
 			string actor;
+#if NET_2_1
 			string body;
+#else
+			// This is required to completely clone body xml that 
+			// does not introduce additional xmlns declarations that
+			// blocks canonicalized copy of the input XML.
+			XmlDocument body;
+#endif
 			string local_name;
 			string namespace_uri;
 
 			public RawMessageHeader (XmlReader reader, string soap_ns)
 			{
+				Prefix = reader.Prefix;
 				Id = reader.GetAttribute ("Id", Constants.WsuNamespace);
 
 				string s = reader.GetAttribute ("relay", soap_ns);
@@ -229,12 +237,23 @@ namespace System.ServiceModel.Channels
 
 				local_name = reader.LocalName;
 				namespace_uri = reader.NamespaceURI;
+#if NET_2_1
 				body = reader.ReadOuterXml ();
+#else
+				body = new XmlDocument ();
+				var w = body.CreateNavigator ().AppendChild ();
+				w.WriteNode (reader, false);
+				w.Close ();
+#endif
 			}
 
 			public XmlReader CreateReader ()
 			{
+#if NET_2_1
 				var reader = XmlReader.Create (new StringReader (body));
+#else
+				var reader = new XmlNodeReader (body);
+#endif
 				reader.MoveToContent ();
 				return reader;
 			}

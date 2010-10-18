@@ -1,3 +1,106 @@
+2010-08-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* Microsoft.Win32/Win32RegistryApi.cs: *
+	Microsoft.Win32/RegistryKey.cs: Don't call SafeHandle.Close from
+	our public api, and do it instead un the windows layer, as we only
+	support it there for now.
+
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKey.cs: Dispose is public in 4.0.
+
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryValueKind.cs: Add None as part of the 4.0 update.
+
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKey.cs: Implement Handle, but only for Windows, since we
+	don't have any unmanaged api to access the registry - and our unix
+	impl is fully managed anyway. Also rename our internal Handle
+	property to InternalHandle.
+
+	* Win32RegistryApi.cs: * UnixRegistryApi.cs: * IRegistryApi.cs:
+	Add a GetHandle method, and update calls to RegistryKey.Handle to
+	use InternalHandle instead.
+
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKey.cs: Implement the simple overloads of OpenBaseKey,
+	OpenRemoteBaseKey, FromHandle that take a RegistryView parameter,
+	which we ignore, as well as adding View property.
+
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* Win32RegistryApi.cs: * RegistryKey.cs: Implement
+	RegistryKey.FromHandle method, supported only on Windows as there
+	is not any unmanaged convention to retrieve a handle for a given
+	key.
+
+	* Win32ResultCode.cs: Add InvalidHandle code.
+
+	* UnixRegistryApi.cs: * IRegistryApi.cs: Update overloads.
+
+2010-08-01  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKey.cs: Implement the 4.0 overload of DeleteSubKeyTree
+	that takes a boolean to throw an exception if the key is not
+	found. Just expose our already existing method as an internal
+	overload for 2.0.
+
+2010-07-25  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* UnixRegistryApi.cs: From the static ctor of KeyHandler remove the
+	volatile keys directory if the last registered boot time has changed.
+	This way we *actually* have our volatile keys removed if the system as
+	rebooted.
+
+2010-07-19  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* UnixRegistryApi.cs: Remove the in-memmory approach to volatile keys,
+	as it becomes trickier to handle deep hiearchies, subkeys and values
+	in some scenarios. So for now we keep them in disk, we in an
+	alternative directory, so we can cleam them properly later.
+
+2010-07-13  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RegistryKey.cs: Call the proper UnixRegistryApi.CreateSubKey overload.
+	* UnixRegistryApi.cs: Implement basic support for volatile keys, by
+	storing them in memory instead of disk. We lack the support to have
+	them available to other processes - and given the fact that a
+	workaround would be gross, just don't implement that now.
+
+2010-07-11  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RegistryKey.cs: Add 4.0 CreateSubKey overloads taking a RegistryOptions
+	parameter.
+	* IRegistryApi.cs: Add a new overload for CreateSubKey for the 4.0
+	profile. Not nice, but better than to change the signature for each
+	profile.
+	* Win32RegistryApi.cs: Properly recognize a handle where a volatile
+	key is requested.
+	* UnixRegistryApi.cs: Stubbed.
+
+2010-07-09  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Win32RegistryApi.cs: Use RegCreateKeyEx instead of RegCreateKey, as
+	we need it to further support both the missing bits and the 4.0
+	features.
+
+2010-02-08  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* UnixRegistryApi.cs: When retrieving the registry keys from file in a
+	unix system, if the value returned by a SecurityElement is null,
+	use String.Empty, since at this point we know that this registry key
+	*exists* and *cannot* have a null value, as specified in the public
+	api.
+	Fixes #543206.
+
+2009-11-21  Miguel de Icaza  <miguel@novell.com>
+
+	* RegistryKey.cs: Implement a GetValueKind and a handful of
+	methods. 
+
 2009-04-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* *.cs: Exclude the files for the NET_2_1 profile, since they are

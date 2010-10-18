@@ -70,6 +70,8 @@ namespace System.ServiceModel.Channels
 
 		public override T GetProperty<T> ()
 		{
+			if (typeof (T) == typeof (MessageVersion) && listener is IHasMessageEncoder)
+				return (T) (object) ((IHasMessageEncoder) listener).MessageEncoder.MessageVersion;
 			if (typeof (T) == typeof (IChannelListener))
 				return (T) (object) listener;
 			return base.GetProperty<T> ();
@@ -106,6 +108,7 @@ namespace System.ServiceModel.Channels
 		delegate bool TryReceiveDelegate (TimeSpan timeout, out RequestContext context);
 		TryReceiveDelegate try_recv_delegate;
 
+		object async_result_lock = new object ();
 		protected Thread CurrentAsyncThread { get; private set; }
 		protected IAsyncResult CurrentAsyncResult { get; private set; }
 
@@ -115,18 +118,26 @@ namespace System.ServiceModel.Channels
 				throw new InvalidOperationException ("Another async TryReceiveRequest operation is in progress");
 			if (try_recv_delegate == null)
 				try_recv_delegate = new TryReceiveDelegate (delegate (TimeSpan tout, out RequestContext ctx) {
-					if (CurrentAsyncResult != null)
-						CurrentAsyncThread = Thread.CurrentThread;
+					lock (async_result_lock) {
+						if (CurrentAsyncResult != null)
+							CurrentAsyncThread = Thread.CurrentThread;
+					}
 					try {
 						return TryReceiveRequest (tout, out ctx);
 					} finally {
-						CurrentAsyncResult = null;
-						CurrentAsyncThread = null;
+						lock (async_result_lock) {
+							CurrentAsyncResult = null;
+							CurrentAsyncThread = null;
+						}
 					}
 					});
 			RequestContext dummy;
-			CurrentAsyncResult = try_recv_delegate.BeginInvoke (timeout, out dummy, callback, state);
-			return CurrentAsyncResult;
+			IAsyncResult result;
+			lock (async_result_lock) {
+				result = CurrentAsyncResult = try_recv_delegate.BeginInvoke (timeout, out dummy, callback, state);
+			}
+			// Note that at this point CurrentAsyncResult can be null here if delegate has run to completion
+			return result;
 		}
 
 		public virtual bool EndTryReceiveRequest (IAsyncResult result)

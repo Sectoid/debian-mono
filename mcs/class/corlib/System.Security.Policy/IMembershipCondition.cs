@@ -30,17 +30,12 @@ using System.Runtime.InteropServices;
 
 namespace System.Security.Policy {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public interface IMembershipCondition : ISecurityEncodable, ISecurityPolicyEncodable {
 
 		bool Check (Evidence evidence);
 		IMembershipCondition Copy ();
-
-#if !BOOTSTRAP_WITH_OLDLIB
 		bool Equals (object obj);
 		string ToString ();
-#endif
 	}
 }

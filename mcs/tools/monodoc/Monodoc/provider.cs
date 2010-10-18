@@ -353,6 +353,7 @@ public class Node : IComparable {
 			nodes.Sort ();
 	}
 
+	[Obsolete("Use PublicUrl")]
 	public string URL {
 		get {
 			if (position < 0)
@@ -880,20 +881,18 @@ public class RootTree : Tree {
 		doc.Load (layout);
 
 		return LoadTree (basedir, doc, 
-				Where (Directory.GetFiles (Path.Combine (basedir, "sources")),
-					delegate (object file) {return file.ToString ().EndsWith (".source");}));
+				Directory.GetFiles (Path.Combine (basedir, "sources"))
+				.Where (file => file.EndsWith (".source")));
 	}
 
-	delegate bool WherePredicate (object o);
 
-	static IEnumerable Where (IEnumerable source, WherePredicate predicate)
+	// Compatibility shim w/ Mono 2.6
+	public static RootTree LoadTree (string indexDir, XmlDocument docTree, IEnumerable sourceFiles)
 	{
-		foreach (var e in source)
-			if (predicate (e))
-				yield return e;
+		return LoadTree (indexDir, docTree, sourceFiles.Cast<string>());
 	}
 
-	public static RootTree LoadTree (string indexDir, XmlDocument docTree, IEnumerable/*<string>*/ sourceFiles)
+	public static RootTree LoadTree (string indexDir, XmlDocument docTree, IEnumerable<string> sourceFiles)
 	{
 		if (docTree == null) {
 			docTree = new XmlDocument ();
@@ -925,7 +924,7 @@ public class RootTree : Tree {
 		//
 		// Load the sources
 		//
-		foreach (string sourceFile in sourceFiles)
+		foreach (var sourceFile in sourceFiles)
 			root.AddSourceFile (sourceFile);
 		
 		foreach (string path in UncompiledHelpSources) {
@@ -1348,6 +1347,43 @@ public class RootTree : Tree {
 	public HelpSource GetHelpSourceFromId (int id)
 	{
 		return (HelpSource) help_sources [id];
+	}
+	
+	//
+	// Fetches the node title
+	//
+	public string GetTitle (string url)
+	{
+		Node match_node;
+
+		if (url == null || url.StartsWith ("root:"))
+			return "Mono Documentation";
+		
+		if (url.Length > 2 && url [1] == ':'){
+			switch (url [0]){
+			case 'N':
+				return url.Substring (2) + " Namespace";
+
+			case 'T':
+				string s = TypeLookup (url, out match_node);
+				if (match_node != null)
+					return match_node.Caption;
+				return url.Substring (2) + " type";
+
+		case 'M':
+		case 'F':
+		case 'P':
+		case 'E':
+		case 'C':
+		case 'O':
+			MemberLookup (url.Substring (0,2), url, out match_node);
+			if (match_node != null)
+				return match_node.Caption;
+			break;
+			}
+		}
+		
+		return "Mono Documentation";
 	}
 	
 	string home_cache;

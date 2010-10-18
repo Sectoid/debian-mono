@@ -116,6 +116,7 @@ namespace MonoTests.System.Reflection.Emit
 		}
 
 		[Test]
+		[Category("NotWorking")]
 		public void TestGlobalMethods ()
 		{
 			AssemblyBuilder builder = genAssembly ();
@@ -126,9 +127,12 @@ namespace MonoTests.System.Reflection.Emit
 															  CharSet.Auto);
 			method.SetImplementationFlags (MethodImplAttributes.PreserveSig |
 										   method.GetMethodImplementationFlags ());
+
+			Assert.IsNull (module.GetMethod ("printf"), "#1");
+
 			module.CreateGlobalFunctions ();
 
-			Assert.IsNotNull (module.GetMethod ("printf"));
+			Assert.IsNotNull (module.GetMethod ("printf"), "#2");
 		}
 
 		[Test]

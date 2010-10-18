@@ -1,3 +1,22 @@
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKeyTest.cs: New test for Handle - activated only for
+	windows now, as we don't have it implemented in unix.
+
+2010-08-02  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKeyTest.cs: New tests for FromHandle, as well as the
+	needed bits to get the key handle from the unmanaged world.
+
+2010-08-01  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* RegistryKeyTest.cs: New test for the 4.0 overload of
+	DeleteSubKeyTree that takes a boolean to throw an exc.
+
+2010-07-13  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* RegistryKeyTest.cs: New tests for volatile keys.
+
 2008-02-01  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* RegistryKeyTest.cs: Added tests for max length of subkey and value

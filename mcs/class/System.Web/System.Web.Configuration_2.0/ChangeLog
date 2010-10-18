@@ -1,3 +1,64 @@
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Get rid of a possible (although unlikely) race condition
+	when acquiring locks
+
+	The patch removes a small race condition where a boolean flag is
+	set after acquiring a lock to indicate to code executing in the
+	finally {} block that it should release the lock. The boolean
+	variable is now removed and the lock is released unconditionally.
+	It carries a potential to throw an exception when the lock is not
+	held, but it's better than to fail to release it and lead the
+	application to a deadlock.
+
+2010-08-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Partial fix for bug #575600. Support opening another app
+	configuration.
+
+	WebConfigurationHost now supports one more parameter passed to it
+	in InitForConfiguration - a boolean telling whether the
+	configuration being initialized belongs to another app. If it is
+	true then the virtual path passed to InitForConfiguration is used
+	as the application virtual path. This has the effect that
+	IsDefinitionAllowed doesn't throw an exception when a
+	configuration element with the MachineToApplication level is
+	parsed. WebConfigurationManager.FindWebConfig checks whether the
+	path passed to it belongs to this application which allows the
+	mechanism described in the first paragraph to work.
+
+2010-08-05  Jb Evain  <jbevain@gmail.com>
+
+	[Perf] avoid an exception when reading a non existent app
+	configuration
+
+	Make implementors of IInternalConfigurationHost.OpenStreamForRead
+	return null instead of throwing an exception when there's no
+	usable configuration file and deal with null at the call site.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] implemented
+	BaseTemplateParser.{GetReferencedType,GetUserControlType} methods
+
+2010-07-02  Marek Habersack  <mhabersack@novell.com>
+
+	* VersionConverter.cs: added support for checking whether the
+	passed version is equal or more than a specified minimal version.
+
+	* PagesSection.cs: added two 4.0 properties - ClientIDMode and
+	ControlRenderingCompatibilityVersion 
+
+2010-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* HttpRuntimeSection.cs: added 4.0 properties
+	MaxQueryLengthString, MaxUrlLength, EncoderType and
+	RelaxedUrlToFileSystemMapping.
+
+2010-05-17  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildProvider.cs: made the Extension property case-insensitive
+
 2010-04-09  Marek Habersack  <mhabersack@novell.com>
 
 	* WebConfigurationManager.cs: GetSection properly processes paths
@@ -8,9 +69,33 @@
 
 	* GlobalizationSection.cs: use WebName instead of EncodingName.
 
+2010-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* WebConfigurationManager.cs: do not use Request.Path - it may
+	fail because of invalid web.config file, use
+	Request.PathNoValidation instead.
+
+	* VersionConverter.cs: added
+
+	* PropertyHelper.cs: added a Version converter helper.
+
+	* HttpRuntimeSection.cs: added 4.0 properties -
+	RequestPathInvalidCharacters, RequestValidationType and
+	RequestValidationMode.
+
+2010-02-23  Marek Habersack  <mhabersack@novell.com>
+
+	* SessionStateSection.cs: implemented 4.0 properties -
+	CompressionEnabled and SqlConnectionRetryInterval 
+
 2010-02-12  Marek Habersack  <mhabersack@novell.com>
 
 	* WebConfigurationHost.cs: implemented {Encrypt,Decrypt}Section
+
+2010-01-20  Marek Habersack  <mhabersack@novell.com>
+
+	* OutputCacheSection.cs: implemented the Providers and
+	DefaultProviderName 4.0 properties.
 
 2010-01-09  Marek Habersack  <mhabersack@novell.com>
 
@@ -24,8 +109,8 @@
 
 2009-12-02  Marek Habersack  <mhabersack@novell.com>
 
-	* CompilationSection.cs: added new property - 
-	OptimizeCompilations (3.5+)
+	* CompilationSection.cs: added two properties -
+	OptimizeCompilations (3.5+) and TargetFramework (4.0+)
 
 2009-11-19  Marek Habersack  <mhabersack@novell.com>
 

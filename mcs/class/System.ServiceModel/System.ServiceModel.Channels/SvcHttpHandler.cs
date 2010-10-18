@@ -5,7 +5,7 @@
 //	Ankit Jain  <jankit@novell.com>
 //	Atsushi Enomoto <atsushi@ximian.com>
 //
-// Copyright (C) 2006,2009 Novell, Inc.  http://www.novell.com
+// Copyright (C) 2006,2009-2010 Novell, Inc.  http://www.novell.com
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -35,43 +35,23 @@ using System.Threading;
 
 using System.ServiceModel;
 using System.ServiceModel.Activation;
+using System.ServiceModel.Channels.Http;
 using System.ServiceModel.Configuration;
 using System.ServiceModel.Description;
 
-namespace System.ServiceModel.Channels {
-
-	internal class WcfListenerInfo
-	{
-		public WcfListenerInfo ()
-		{
-			Pending = new List<HttpContext> ();
-			ProcessRequestHandles = new List<ManualResetEvent> ();
-		}
-
-		public IChannelListener Listener { get; set; }
-		public List<ManualResetEvent> ProcessRequestHandles { get; private set; }
-		public List<HttpContext> Pending { get; private set; }
-	}
-
-	internal class WcfListenerInfoCollection : KeyedCollection<IChannelListener,WcfListenerInfo>
-	{
-		protected override IChannelListener GetKeyForItem (WcfListenerInfo info)
-		{
-			return info.Listener;
-		}
-	}
-
+namespace System.ServiceModel.Channels
+{
 	internal class SvcHttpHandler : IHttpHandler
 	{
+		internal static SvcHttpHandler Current;
+
 		static object type_lock = new object ();
 
 		Type type;
 		Type factory_type;
 		string path;
 		ServiceHostBase host;
-		WcfListenerInfoCollection listeners = new WcfListenerInfoCollection ();
-		Dictionary<HttpContext,AutoResetEvent> wcf_wait_handles = new Dictionary<HttpContext,AutoResetEvent> ();
-		AutoResetEvent wait_for_request_handle = new AutoResetEvent (false);
+		Dictionary<HttpContext,ManualResetEvent> wcf_wait_handles = new Dictionary<HttpContext,ManualResetEvent> ();
 		int close_state;
 
 		public SvcHttpHandler (Type type, Type factoryType, string path)
@@ -90,79 +70,22 @@ namespace System.ServiceModel.Channels {
 			get { return host; }
 		}
 
-		public HttpContext WaitForRequest (IChannelListener listener)
-		{
-			if (close_state > 0)
-				return null;
-
-			var wait = new ManualResetEvent (false);
-			var info = listeners [listener];
-			if (info.Pending.Count == 0) {
-				info.ProcessRequestHandles.Add (wait);
-				wait_for_request_handle.Set ();
-				wait.WaitOne ();
-				info.ProcessRequestHandles.Remove (wait);
-			}
-
-			var ctx = listeners [listener].Pending [0];
-			listeners [listener].Pending.RemoveAt (0);
-			return ctx;
-		}
-
-		IChannelListener FindBestMatchListener (HttpContext ctx)
-		{
-			var actx = new AspNetHttpContextInfo (ctx);
-
-			// Select the best-match listener.
-			IChannelListener best = null;
-			string rel = null;
-			foreach (var li in listeners) {
-				var l = li.Listener;
-				if (!l.GetProperty<HttpListenerManager> ().FilterHttpContext (actx))
-					continue;
-				if (l.Uri.Equals (ctx.Request.Url)) {
-					best = l;
-					break;
-				}
-			}
-			// FIXME: the matching must be better-considered.
-			foreach (var li in listeners) {
-				var l = li.Listener;
-				if (!l.GetProperty<HttpListenerManager> ().FilterHttpContext (actx))
-					continue;
-				if (!ctx.Request.Url.ToString ().StartsWith (l.Uri.ToString (), StringComparison.Ordinal))
-					continue;
-				if (best == null)
-					best = l;
-			}
-			return best;
-/*
-			var actx = new AspNetHttpContextInfo (ctx);
-			foreach (var i in listeners)
-				if (i.Listener.GetProperty<HttpListenerManager> ().FilterHttpContext (actx))
-					return i.Listener;
-			throw new InvalidOperationException ();
-*/
-		}
-
 		public void ProcessRequest (HttpContext context)
 		{
 			EnsureServiceHost ();
 
-			var wait = new AutoResetEvent (false);
-			var l = FindBestMatchListener (context);
-			var i = listeners [l];
-			lock (i) {
-				i.Pending.Add (context);
-				wcf_wait_handles [context] = wait;
-				if (i.ProcessRequestHandles.Count > 0)
-					i.ProcessRequestHandles [0].Set ();
-			}
-
+			var table = HttpListenerManagerTable.GetOrCreate (host);
+			var manager = table.GetOrCreateManager (host.BaseAddresses [0]);
+			var wait = new ManualResetEvent (false);
+			wcf_wait_handles [context] = wait;
+			manager.ProcessNewContext (new System.ServiceModel.Channels.Http.AspNetHttpContextInfo (this, context));
+			// This method must not return until the RequestContext
+			// explicitly finishes replying. Otherwise xsp will
+			// close the connection after this method call.
 			wait.WaitOne ();
 		}
 
-		public void EndRequest (IChannelListener listener, HttpContext context)
+		public void EndHttpRequest (HttpContext context)
 		{
 			var wait = wcf_wait_handles [context];
 			wcf_wait_handles.Remove (context);
@@ -180,21 +103,20 @@ namespace System.ServiceModel.Channels {
 			host = null;
 		}
 
-		public void RegisterListener (IChannelListener listener)
-		{
-			lock (type_lock)
-				listeners.Add (new WcfListenerInfo () {Listener = listener});
-		}
-
-		public void UnregisterListener (IChannelListener listener)
-		{
-			listeners.Remove (listener);
-		}
-
 		void EnsureServiceHost ()
 		{
 			lock (type_lock) {
+				Current = this;
+				try {
+					EnsureServiceHostCore ();
+				} finally {
+					Current = null;
+				}
+			}
+		}
 
+		void EnsureServiceHostCore ()
+		{
 			if (host != null)
 				return;
 
@@ -208,11 +130,6 @@ namespace System.ServiceModel.Channels {
 			host.Extensions.Add (new VirtualPathExtension (baseUri.AbsolutePath));
 
 			host.Open ();
-
-			// Not precise, but it needs some wait time to have all channels start requesting. And it is somehow required.
-			Thread.Sleep (500);
-
-			}
 		}
 	}
 }

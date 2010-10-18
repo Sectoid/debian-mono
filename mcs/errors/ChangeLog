@@ -1,3 +1,155 @@
+2010-08-31  Marek Safar  <marek.safar@gmail.com>
+
+	Add support for indirect pointer type constants.
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Consider parameter constraints when choosing applicable method
+	candidate
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Show better message when assigning to the type
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Import all delegates as sealed
+
+2010-08-24  Marek Safar  <marek.safar@gmail.com>
+
+	Probing dynamic compatibility is identical to object
+
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed moving of named params arguments
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	[520151] Fail on invalid directive inside pre-processed block
+
+2010-08-19  Marek Safar  <marek.safar@gmail.com>
+
+	Refactor preprocessor parsing to use less string operations.
+
+2010-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	Updated error message
+
+2010-08-18  Marek Safar  <marek.safar@gmail.com>
+
+	When merging sessions error messages don't get confused by
+	warnings.
+
+2010-08-17  Marek Safar  <marek.safar@gmail.com>
+
+	Cannot skip on the first type match for multiple inheritances
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[570422] Cannot return from iterators
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[472007] Add warning about obsolete security attributes
+
+2010-08-16  Marek Safar  <marek.safar@gmail.com>
+
+	[408516] No implicit user conversion from or to interfaces
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	New test
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Not all nested generic types are allowed for typeof expression.
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Implicit conversions between dynamic and object is allowed for
+	managed types only
+
+2010-08-12  Marek Safar  <marek.safar@gmail.com>
+
+	Optimize little bit cloning operations.
+
+2010-08-11  Marek Safar  <marek.safar@gmail.com>
+
+	New test.
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629383] Inflate generic type of default expression
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	[629390] Avoid crash on the sole type expressions used for
+	extension methods
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	Also check for generic arguments of dynamic arrays
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Implement dynamic dispatch for element initializers.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Add more sanity checks for dynamic attributes.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	Restrict allowed modifiers for struct members.
+
+2010-08-06  Marek Safar  <marek.safar@gmail.com>
+
+	More fixes for equality comparison between G<object> and
+	G<dynamic>.
+
+2010-08-05  Raja R Harinath  <harinath@hurrynot.org>
+
+	update {tests,errors}/known-issues-?mcs
+
+2010-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	Ambiguous enumerator pattern means that we can still try to apply
+	interface matching rules. Fixes #620154
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Member names cannot be the same as their enclosing type. Fixes
+	#627296
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Report CS0243 before CS0578. Fixes #624650
+
+2010-08-03  Marek Safar  <marek.safar@gmail.com>
+
+	Updated known issues
+
+2010-08-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	Re-enable 'crlf' attributes on *.cs
+
+	This fixes EOL conversions flagged by git 1.7.1
+	core.autocrlf=true. At this point, neither git 1.7.1 nor 1.7.2
+	show any automatic CRLF normalization. I think we're ready for
+	another experiment.
+
+	There seems to be a difference in the handling of mixed
+	line-ending files between git 1.7.2 and older versions, when
+	core.autocrlf is set to true.
+
+2010-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	Import abstract members as abstract only, Fixes #617970.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+
 2009-06-18  Raja R Harinath  <harinath@hurrynot.org>
 
 	* Makefile (run-test-local): Make parallel-make safe.

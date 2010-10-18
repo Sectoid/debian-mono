@@ -33,9 +33,7 @@ using System.Collections;
 
 namespace System.Threading
 {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class Timer : MarshalByRefObject, IDisposable
 	{
 		static Scheduler scheduler = Scheduler.Instance;
@@ -71,12 +69,10 @@ namespace System.Threading
 			Init (callback, state, d, p);
 		}
 
-#if NET_2_0
 		public Timer (TimerCallback callback)
 		{
 			Init (callback, this, Timeout.Infinite, Timeout.Infinite);
 		}
-#endif
 
 		void Init (TimerCallback callback, object state, long dueTime, long period)
 		{
@@ -292,7 +288,11 @@ namespace System.Threading
 							list.RemoveAt (i);
 							count--;
 							i--;
-							ThreadPool.QueueUserWorkItem (new WaitCallback (timer.callback), timer.state);
+							ThreadPool.QueueUserWorkItem (new WaitCallback (data => {
+								try {
+									timer.callback (data);
+								} catch {}
+								}), timer.state);
 							long period = timer.period_ms;
 							long due_time = timer.due_time_ms;
 							bool no_more = (period == -1 || ((period == 0 || period == Timeout.Infinite) && due_time != Timeout.Infinite));

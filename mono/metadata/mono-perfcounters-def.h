@@ -27,6 +27,7 @@ PERFCTR_COUNTER(PROC_PBYTES,    "Private Bytes", "", NumberOfItems64, unused)
 /* sample runtime counter */
 PERFCTR_CAT(MONO_MEM, "Mono Memory", "", SingleInstance, Mono, MEM_NUM_OBJECTS)
 PERFCTR_COUNTER(MEM_NUM_OBJECTS, "Allocated Objects", "", NumberOfItems64, unused)
+PERFCTR_COUNTER(MEM_PHYS_TOTAL, "Total Physical Memory", "Physical memory installed in the machine, in bytes", NumberOfItems64, unused)
 
 PERFCTR_CAT(ASPNET, "ASP.NET", "", MultiInstance, Mono, ASPNET_REQ_Q)
 PERFCTR_COUNTER(ASPNET_REQ_Q, "Requests Queued", "", NumberOfItems64, aspnet_requests_queued)
@@ -118,6 +119,14 @@ PERFCTR_COUNTER(SECURITY_CHECKS, "Total Runtime Checks", "", NumberOfItems32, se
 PERFCTR_COUNTER(SECURITY_LCHECKS, "# Link Time Checks", "", NumberOfItems32, security_num_link_checks)
 PERFCTR_COUNTER(SECURITY_PERCTIME, "% Time in RT checks", "", RawFraction, security_time)
 PERFCTR_COUNTER(SECURITY_SWDEPTH, "Stack Walk Depth", "", NumberOfItems32, security_depth)
+
+PERFCTR_CAT(THREADPOOL, "Mono Threadpool", "", MultiInstance, Mono, THREADPOOL_WORKITEMS)
+PERFCTR_COUNTER(THREADPOOL_WORKITEMS, "Work Items Added", "", NumberOfItems64, threadpool_workitems)
+PERFCTR_COUNTER(THREADPOOL_WORKITEMS_PSEC, "Work Items Added/Sec", "", RateOfCountsPerSecond32, threadpool_workitems)
+PERFCTR_COUNTER(THREADPOOL_IOWORKITEMS, "IO Work Items Added", "", NumberOfItems64, threadpool_ioworkitems)
+PERFCTR_COUNTER(THREADPOOL_IOWORKITEMS_PSEC, "IO Work Items Added/Sec", "", RateOfCountsPerSecond32, threadpool_ioworkitems)
+PERFCTR_COUNTER(THREADPOOL_THREADS, "# of Threads", "", NumberOfItems32, threadpool_threads)
+PERFCTR_COUNTER(THREADPOOL_IOTHREADS, "# of IO Threads", "", NumberOfItems32, threadpool_iothreads)
 
 PERFCTR_CAT(NETWORK, "Network Interface", "", MultiInstance, NetworkInterface, NETWORK_BYTESRECSEC)
 PERFCTR_COUNTER(NETWORK_BYTESRECSEC, "Bytes Received/sec", "", RateOfCountsPerSecond64, unused)

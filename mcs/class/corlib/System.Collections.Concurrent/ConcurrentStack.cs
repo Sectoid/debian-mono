@@ -1,4 +1,3 @@
-#if NET_4_0
 // ConcurrentStack.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -23,6 +22,8 @@
 //
 //
 
+#if NET_4_0
+
 using System;
 using System.Threading;
 using System.Collections;
@@ -34,7 +35,7 @@ namespace System.Collections.Concurrent
 	
 	
 	public class ConcurrentStack<T> : IProducerConsumerCollection<T>, IEnumerable<T>,
-	                                  ICollection, IEnumerable, ISerializable, IDeserializationCallback
+	                                  ICollection, IEnumerable
 	{
 		class Node
 		{
@@ -54,12 +55,6 @@ namespace System.Collections.Concurrent
 		{
 			foreach (T item in enumerable) 
 				Push (item);
-		}
-		
-		[MonoTODO]
-		protected ConcurrentStack (SerializationInfo info, StreamingContext context)
-		{
-			throw new NotImplementedException ();
 		}
 		
 		bool IProducerConsumerCollection<T>.TryAdd (T elem)
@@ -178,16 +173,11 @@ namespace System.Collections.Concurrent
 			return (IEnumerator)InternalGetEnumerator ();
 		}
 		
-		IEnumerator<T> IEnumerable<T>.GetEnumerator ()
-		{
-			return InternalGetEnumerator ();
-		}
-		
 		public IEnumerator<T> GetEnumerator ()
 		{
 			return InternalGetEnumerator ();
 		}
-		
+
 		IEnumerator<T> InternalGetEnumerator ()
 		{
 			Node my_head = head;
@@ -217,33 +207,10 @@ namespace System.Collections.Concurrent
 			}
 		}
 		
-		[MonoTODO]
-		protected virtual void GetObjectData (SerializationInfo info, StreamingContext context)
-		{
-			throw new NotImplementedException ();
-		}
-		
-		[MonoTODO]
-		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
-		{
-			GetObjectData (info, context);
-		}
-		
 		bool ICollection.IsSynchronized {
 			get { return true; }
 		}
-
-		[MonoTODO]
-		protected virtual void OnDeserialization (object sender)
-		{
-			throw new NotImplementedException ();
-		}
 		
-		void IDeserializationCallback.OnDeserialization (object sender)
-		{
-			OnDeserialization (sender);
-		}
-
 		bool IProducerConsumerCollection<T>.TryTake (out T item)
 		{
 			return TryPop (out item);

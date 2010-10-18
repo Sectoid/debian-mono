@@ -1,7 +1,10 @@
+2009-12-09  Jb Evain  <jbevain@novell.com>
+
+	* StringInfoTest.cs: test the default constructor.
+
 2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CompareInfoTest.cs: Add test cases to validate parameters
-	[Backport r145023]
 
 2009-06-25  Zoltan Varga  <vargaz@gmail.com>
 

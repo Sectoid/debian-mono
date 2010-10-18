@@ -7,7 +7,7 @@
 //
 // (c) 2002 Patrik Torstensson
 // (c) 2003 Ximian, Inc. (http://www.ximian.com)
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2009 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -36,6 +36,7 @@ using System.Security.Permissions;
 using System.Text;
 using System.Web.Util;
 using System.Web.Compilation;
+using System.Web.Management;
 using System.Collections.Specialized;
 
 namespace System.Web
@@ -43,19 +44,28 @@ namespace System.Web
 	// CAS
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
-#if NET_2_0
 	[Serializable]
-#endif
 	public class HttpException : ExternalException
 	{
 		const string DEFAULT_DESCRIPTION_TEXT = "Error processing request.";
 		const string ERROR_404_DESCRIPTION = "The resource you are looking for (or one of its dependencies) could have been removed, had its name changed, or is temporarily unavailable.  Please review the following URL and make sure that it is spelled correctly.";
-		
+
+		int webEventCode = WebEventCodes.UndefinedEventCode;
 		int http_code = 500;
 		string resource_name;
 		string description;
 		
 		const string errorStyleFonts = "\"Verdana\",\"DejaVu Sans\",sans-serif";
+
+#if NET_4_0
+		public
+#else
+		internal
+#endif
+		int WebEventCode 
+		{
+			get { return webEventCode; }
+		}
 		
 		public HttpException ()
 		{
@@ -86,27 +96,20 @@ namespace System.Web
 			this.description = description;
 		}
 		
-#if NET_2_0
-		protected
-#else
-		internal
-#endif
-		HttpException (SerializationInfo info, StreamingContext context)
+		protected HttpException (SerializationInfo info, StreamingContext context)
 			: base (info, context)
 		{
-#if NET_2_0
 			http_code = info.GetInt32 ("_httpCode");
-#endif
+			webEventCode = info.GetInt32 ("_webEventCode");
 		}
 
-#if NET_2_0
 		[SecurityPermission (SecurityAction.Demand, SerializationFormatter = true)]
 		public override void GetObjectData (SerializationInfo info, StreamingContext context)
 		{
 			base.GetObjectData (info, context);
 			info.AddValue ("_httpCode", http_code);
+			info.AddValue ("_webEventCode", webEventCode);
 		}
-#endif
 
 		public HttpException (int httpCode, string message, int hr) 
 			: base (message, hr)
@@ -177,6 +180,59 @@ namespace System.Web
 			}
 		}
 
+		internal static HttpException NewWithCode (string message, int webEventCode)
+		{
+			var ret = new HttpException (message);
+			ret.SetWebEventCode (webEventCode);
+
+			return ret;
+		}
+
+		internal static HttpException NewWithCode (string message, Exception innerException, int webEventCode)
+		{
+			var ret = new HttpException (message, innerException);
+			ret.SetWebEventCode (webEventCode);
+
+			return ret;
+		}
+
+		internal static HttpException NewWithCode (int httpCode, string message, int webEventCode)
+		{
+			var ret = new HttpException (httpCode, message);
+			ret.SetWebEventCode (webEventCode);
+
+			return ret;
+		}
+		
+		internal static HttpException NewWithCode (int httpCode, string message, Exception innerException, string resourceName, int webEventCode)
+		{
+			var ret = new HttpException (httpCode, message, innerException, resourceName);
+			ret.SetWebEventCode (webEventCode);
+
+			return ret;
+		}
+
+		internal static HttpException NewWithCode (int httpCode, string message, string resourceName, int webEventCode)
+		{
+			var ret = new HttpException (httpCode, message, resourceName);
+			ret.SetWebEventCode (webEventCode);
+
+			return ret;
+		}
+
+		internal static HttpException NewWithCode (int httpCode, string message, Exception innerException, int webEventCode)
+		{
+			var ret = new HttpException (httpCode, message, innerException);
+			ret.SetWebEventCode (webEventCode);
+
+			return ret;
+		}
+		
+		internal void SetWebEventCode (int webEventCode)
+		{
+			this.webEventCode = webEventCode;
+		}
+		
 		void WriteFileTop (StringBuilder builder, string title)
 		{
 #if TARGET_J2EE
@@ -225,7 +281,7 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 			if (showTrace) {
 				builder.Append ("<hr style=\"color: silver\"/>");
 				builder.AppendFormat ("<strong>Version information: </strong> Mono Runtime Version: <tt>{0}</tt>; ASP.NET Version: <tt>{1}</tt></body></html>\r\n",
-						      HttpRuntime.MonoVersion, Environment.Version);
+						      RuntimeHelpers.MonoVersion, Environment.Version);
 			
 				string trace, message;
 				bool haveTrace;
@@ -384,11 +440,7 @@ table.sampleCode {{width: 100%; background-color: #ffffcc; }}
 				builder.Append ("Compiler ");
 			
 			builder.Append ("Error Message: </strong>");
-#if NET_2_0
 			builder.AppendFormat ("<code>{0}</code></p>", errorMessage);
-#else
-			builder.AppendFormat ("<blockquote><pre>{0}</pre></blockquote></p>", errorMessage);
-#endif
 
 			StringBuilder longCodeVersion = null;
 			

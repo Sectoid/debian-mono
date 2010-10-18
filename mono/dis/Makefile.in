@@ -64,7 +64,10 @@ am_monodis_OBJECTS = dump.$(OBJEXT) main.$(OBJEXT) declsec.$(OBJEXT)
 monodis_OBJECTS = $(am_monodis_OBJECTS)
 am__DEPENDENCIES_1 =
 monodis_DEPENDENCIES = libmonodis.a $(runtime_lib) \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+monodis_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(monodis_LDFLAGS) \
+	$(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -92,6 +95,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -133,7 +137,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -165,6 +168,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -187,6 +191,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -224,7 +229,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -275,7 +279,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 INCLUDES = $(GLIB_CFLAGS) -I$(top_srcdir)
 @JIT_SUPPORTED_FALSE@runtime_lib = ../interpreter/libmint.la
-@JIT_SUPPORTED_TRUE@runtime_lib = ../mini/libmono.la
+@JIT_SUPPORTED_TRUE@runtime_lib = ../mini/libmono-$(API_VER).la
 noinst_LIBRARIES = libmonodis.a
 libmonodis_a_SOURCES = \
 	get.c		\
@@ -296,8 +300,10 @@ monodis_SOURCES = \
 monodis_LDADD = \
 	libmonodis.a			\
 	$(runtime_lib)			\
+	$(LLVM_LIBS)			\
 	$(GLIB_LIBS) 
 
+@PLATFORM_DARWIN_TRUE@monodis_LDFLAGS = -framework CoreFoundation
 man_MANS = monodis.1
 EXTRA_DIST = $(man_MANS)
 all: all-am
@@ -370,7 +376,7 @@ clean-binPROGRAMS:
 	done
 monodis$(EXEEXT): $(monodis_OBJECTS) $(monodis_DEPENDENCIES) 
 	@rm -f monodis$(EXEEXT)
-	$(LINK) $(monodis_OBJECTS) $(monodis_LDADD) $(LIBS)
+	$(monodis_LINK) $(monodis_OBJECTS) $(monodis_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -640,7 +646,7 @@ uninstall-man: uninstall-man1
 	uninstall-binPROGRAMS uninstall-man uninstall-man1
 
 
-@PLATFORM_WIN32_TRUE@export HOST_CC
+@HOST_WIN32_TRUE@export HOST_CC
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

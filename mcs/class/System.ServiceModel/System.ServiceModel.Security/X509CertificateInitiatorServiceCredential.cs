@@ -30,12 +30,12 @@ using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
 using System.IdentityModel.Selectors;
 using System.ServiceModel.Channels;
+using System.ServiceModel.Configuration;
 using System.ServiceModel.Description;
 using System.ServiceModel.Security.Tokens;
 
 namespace System.ServiceModel.Security
 {
-	[MonoTODO]
 	public sealed class X509CertificateInitiatorServiceCredential
 	{
 		internal X509CertificateInitiatorServiceCredential ()
@@ -46,7 +46,11 @@ namespace System.ServiceModel.Security
 			new X509ClientCertificateAuthentication ();
 		X509Certificate2 certificate;
 
-		[MonoTODO]
+		internal X509CertificateInitiatorServiceCredential Clone ()
+		{
+			return new X509CertificateInitiatorServiceCredential () { auth = this.auth.Clone (), certificate = this.certificate };
+		}
+
 		public X509ClientCertificateAuthentication Authentication {
 			get { return auth; }
 		}
@@ -56,20 +60,18 @@ namespace System.ServiceModel.Security
 			set { certificate = value; }
 		}
 
-		[MonoTODO]
 		public void SetCertificate (StoreLocation storeLocation,
 			StoreName storeName, X509FindType findType,
 			object findValue)
 		{
-			throw new NotImplementedException ();
+			certificate = ConfigUtil.CreateCertificateFrom (storeLocation, storeName, findType, findValue);
 		}
 
-		[MonoTODO]
 		public void SetCertificate (
 			string subjectName, StoreLocation storeLocation,
 			StoreName storeName)
 		{
-			throw new NotImplementedException ();
+			certificate = ConfigUtil.CreateCertificateFrom (storeLocation, storeName, X509FindType.FindBySubjectName, subjectName);
 		}
 	}
 }

@@ -4,7 +4,7 @@
 // Authors:
 //	Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -28,8 +28,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections;
 using System.Web;
@@ -39,9 +37,14 @@ namespace System.Web.UI.WebControls
 {
 	public sealed class DataKeyArray : ICollection, IEnumerable, IStateManager
 	{
-		ArrayList keys;
+		IList keys;
 		bool trackViewState;
 
+		internal DataKeyArray (IList keys)
+		{
+			this.keys = keys;
+		}
+		
 		public DataKeyArray (ArrayList keys)
 		{
 			this.keys = keys;
@@ -114,4 +117,3 @@ namespace System.Web.UI.WebControls
 	}
 }
 
-#endif
