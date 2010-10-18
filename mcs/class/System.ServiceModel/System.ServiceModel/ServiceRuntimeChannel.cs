@@ -31,10 +31,12 @@ using System.Reflection;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
+using System.ServiceModel.MonoInternal;
 
-namespace System.ServiceModel
+namespace System.ServiceModel.MonoInternal
 {
-	internal class DuplexServiceRuntimeChannel : ServiceRuntimeChannel, IDuplexContextChannel
+	// FIXME: this is a (similar) workaround for bug 571907.
+	public class DuplexServiceRuntimeChannel : ServiceRuntimeChannel, IDuplexContextChannel
 	{
 		public DuplexServiceRuntimeChannel (IChannel channel, DispatchRuntime runtime)
 			: base (channel, runtime)
@@ -53,7 +55,7 @@ namespace System.ServiceModel
 			set { client.AllowOutputBatching = value; }
 		}
 
-		public virtual TimeSpan OperationTimeout {
+		public override TimeSpan OperationTimeout {
 			get { return client.OperationTimeout; }
 			set { client.OperationTimeout = value; }
 		}
@@ -102,7 +104,8 @@ namespace System.ServiceModel
 		}
 	}
 
-	internal class ServiceRuntimeChannel : CommunicationObject, IServiceChannel
+	// FIXME: this is a (similar) workaround for bug 571907.
+	public class ServiceRuntimeChannel : CommunicationObject, IServiceChannel
 	{
 		IExtensionCollection<IContextChannel> extensions;
 		readonly IChannel channel;

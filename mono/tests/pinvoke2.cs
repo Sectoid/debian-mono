@@ -1543,12 +1543,17 @@ public class Tests {
 	 * Marshalling of DateTime to OLE DATE (double)
 	 */
 	[DllImport ("libtest", EntryPoint="mono_test_marshal_date_time")]
-	public static extern double mono_test_marshal_date_time (DateTime d);
+	public static extern double mono_test_marshal_date_time (DateTime d, out DateTime d2);
 
 	public static int test_0_marshal_date_time () {
 		DateTime d = new DateTime (2009, 12, 6);
-		double d2 = mono_test_marshal_date_time (new DateTime (2009, 12, 6));
-		return  (d2 == 40153.0) ? 0 : 1;
+		DateTime d2;
+		double d3 = mono_test_marshal_date_time (d, out d2);
+		if (d3 != 40153.0)
+			return 1;
+		if (d2 != d)
+			return 2;
+		return 0;
 	}
 
 	/*
@@ -1561,7 +1566,8 @@ public class Tests {
 	delegate void CalliDel (IntPtr a, int[] f);
 
 	public static int test_0_calli_dynamic () {
-		IntPtr func = mono_test_marshal_lookup_symbol ("mono_test_marshal_inout_array");
+		/* we need the cdecl version because the icall convention demands it under Windows */
+		IntPtr func = mono_test_marshal_lookup_symbol ("mono_test_marshal_inout_array_cdecl");
 
 		DynamicMethod dm = new DynamicMethod ("calli", typeof (void), new Type [] { typeof (IntPtr), typeof (int[]) });
 

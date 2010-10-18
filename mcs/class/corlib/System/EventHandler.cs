@@ -33,20 +33,10 @@
 
 namespace System {
 
-#if NET_2_0
-
 	[Serializable]
-#if NET_4_0
-	public delegate void EventHandler <in TEventArgs> (object sender, TEventArgs e) where TEventArgs : EventArgs;
-#else	
 	public delegate void EventHandler <TEventArgs> (object sender, TEventArgs e) where TEventArgs : EventArgs;
-#endif	
 
 	[Serializable]
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	public delegate void EventHandler (object sender, EventArgs e);
-
 }
-
-

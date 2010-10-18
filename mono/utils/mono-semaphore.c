@@ -17,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-#if (defined(HAVE_SEMAPHORE_H) || defined(USE_MACH_SEMA)) && !defined(__APPLE__)
+#if (defined(HAVE_SEMAPHORE_H) || defined(USE_MACH_SEMA))
 /* sem_* or semaphore_* functions in use */
 #  ifdef USE_MACH_SEMA
 #    define TIMESPEC mach_timespec_t
@@ -64,12 +64,12 @@ mono_sem_timedwait (MonoSemType *sem, guint32 timeout_ms, gboolean alertable)
 		if (alertable)
 			return -1;
 
-		usleep (ts.tv_nsec);
+		usleep (ts.tv_nsec / 1000);
 		timeout--;
 	}
 #else
 	copy = ts;
-	while ((res = WAIT_BLOCK (sem, &ts) == -1) && errno == EINTR) {
+	while ((res = WAIT_BLOCK (sem, &ts)) == -1 && errno == EINTR) {
 		struct timeval current;
 		if (alertable)
 			return -1;
@@ -91,7 +91,7 @@ mono_sem_timedwait (MonoSemType *sem, guint32 timeout_ms, gboolean alertable)
 		}
 	}
 #endif
-	return res;
+	return (res != -1);
 }
 
 int

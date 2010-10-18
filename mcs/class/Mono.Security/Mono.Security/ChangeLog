@@ -2,7 +2,6 @@
 
 	* ASN1Convert.cs: Specify CultureInfo.InvariantCulture (instead of 
 	null) to avoid crash on Windows. Patch by Yoni Shalom.
-	[Backport r154135]
 
 2008-09-12  Sebastien Pouliot  <sebastien@ximian.com>
 

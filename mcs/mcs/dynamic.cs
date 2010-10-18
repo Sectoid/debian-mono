@@ -9,7 +9,8 @@
 //
 
 using System;
-using System.Collections;
+using System.Linq;
+using SLE = System.Linq.Expressions;
 
 #if NET_4_0
 using System.Dynamic;
@@ -17,6 +18,28 @@ using System.Dynamic;
 
 namespace Mono.CSharp
 {
+	//
+	// A copy of Microsoft.CSharp/Microsoft.CSharp.RuntimeBinder/CSharpBinderFlags.cs
+	// has to be kept in sync
+	//
+	[Flags]
+	public enum CSharpBinderFlags
+	{
+		None = 0,
+		CheckedContext = 1,
+		InvokeSimpleName = 1 << 1,
+		InvokeSpecialName = 1 << 2,
+		BinaryOperationLogical = 1 << 3,
+		ConvertExplicit = 1 << 4,
+		ConvertArrayIndex = 1 << 5,
+		ResultIndexed = 1 << 6,
+		ValueFromCompoundAssignment = 1 << 7,
+		ResultDiscarded = 1 << 8
+	}
+
+	//
+	// Type expression with internal dynamic type symbol
+	//
 	class DynamicTypeExpr : TypeExpr
 	{
 		public DynamicTypeExpr (Location loc)
@@ -38,26 +61,44 @@ namespace Mono.CSharp
 		}
 	}
 
+	#region Dynamic runtime binder expressions
+
 	//
-	// Expression created from runtime dynamic object value
+	// Expression created from runtime dynamic object value by dynamic binder
 	//
-	public class RuntimeValueExpression : Expression, IAssignMethod
+	public class RuntimeValueExpression : Expression, IDynamicAssign, IMemoryLocation
 	{
 #if !NET_4_0
-		public class DynamicMetaObject { public Type RuntimeType; }
+		public class DynamicMetaObject
+		{
+			public TypeSpec RuntimeType;
+			public TypeSpec LimitType;
+			public SLE.Expression Expression;
+		}
 #endif
 
 		readonly DynamicMetaObject obj;
 
-		// When strongly typed expression is required
-		readonly bool typed;
-
-		public RuntimeValueExpression (DynamicMetaObject obj, bool typed)
+		public RuntimeValueExpression (DynamicMetaObject obj, TypeSpec type)
 		{
 			this.obj = obj;
-			this.typed = typed;
-			this.type = obj.RuntimeType;
-			this.eclass = ExprClass.Value;
+			this.type = type;
+			this.eclass = ExprClass.Variable;
+		}
+
+		#region Properties
+
+		public bool IsSuggestionOnly { get; set; }
+
+		public DynamicMetaObject MetaObject {
+			get { return obj; }
+		}
+
+		#endregion
+
+		public void AddressOf (EmitContext ec, AddressOp mode)
+		{
+			throw new NotImplementedException ();
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
@@ -65,7 +106,7 @@ namespace Mono.CSharp
 			throw new NotImplementedException ();
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
 			return this;
 		}
@@ -94,42 +135,112 @@ namespace Mono.CSharp
 
 		#endregion
 
-#if NET_4_0
-		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
+		public SLE.Expression MakeAssignExpression (BuilderContext ctx, Expression source)
 		{
-			if (typed && obj.Expression.Type != type)
-				return System.Linq.Expressions.Expression.Convert (obj.Expression, type);
-
 			return obj.Expression;
+		}
+
+		public override SLE.Expression MakeExpression (BuilderContext ctx)
+		{
+#if NET_4_0		
+			if (type.IsStruct && !obj.Expression.Type.IsValueType)
+				return SLE.Expression.Unbox (obj.Expression, type.GetMetaInfo ());
+
+			if (obj.Expression.NodeType == SLE.ExpressionType.Parameter) {
+				if (((SLE.ParameterExpression) obj.Expression).IsByRef)
+					return obj.Expression;
+			}
+#endif
+
+			return SLE.Expression.Convert (obj.Expression, type.GetMetaInfo ());
+		}
+	}
+
+	//
+	// Wraps runtime dynamic expression into expected type. Needed
+	// to satify expected type check by dynamic binder and no conversion
+	// is required (ResultDiscarded).
+	//
+	public class DynamicResultCast : ShimExpression
+	{
+		public DynamicResultCast (TypeSpec type, Expression expr)
+			: base (expr)
+		{
+			this.type = type;
+		}
+
+		protected override Expression DoResolve (ResolveContext ec)
+		{
+			expr = expr.Resolve (ec);
+			eclass = ExprClass.Value;
+			return this;
+		}
+
+#if NET_4_0
+		public override SLE.Expression MakeExpression (BuilderContext ctx)
+		{
+			return SLE.Expression.Block (expr.MakeExpression (ctx), SLE.Expression.Default (type.GetMetaInfo ()));
 		}
 #endif
 	}
 
+	#endregion
+
+	//
+	// Creates dynamic binder expression
+	//
 	interface IDynamicBinder
 	{
 		Expression CreateCallSiteBinder (ResolveContext ec, Arguments args);
 	}
 
+	//
+	// Extends standard assignment interface for expressions
+	// supported by dynamic resolver
+	//
+	interface IDynamicAssign : IAssignMethod
+	{
+		SLE.Expression MakeAssignExpression (BuilderContext ctx, Expression source);
+	}
+
+	//
+	// Base dynamic expression statement creator
+	//
 	class DynamicExpressionStatement : ExpressionStatement
 	{
-		class StaticDataClass : CompilerGeneratedClass
+		//
+		// Binder flag dynamic constant, the value is combination of
+		// flags known at resolve stage and flags known only at emit
+		// stage
+		//
+		protected class BinderFlags : EnumConstant
 		{
-			public StaticDataClass ()
-				: base (new RootDeclSpace (new NamespaceEntry (null, null, null)),
-					new MemberName (CompilerGeneratedClass.MakeName (null, "c", "DynamicSites", 0)),
-					Modifiers.INTERNAL | Modifiers.STATIC)
+			DynamicExpressionStatement statement;
+			CSharpBinderFlags flags;
+
+			public BinderFlags (CSharpBinderFlags flags, DynamicExpressionStatement statement)
+				: base (statement.loc)
 			{
-				ModFlags &= ~Modifiers.SEALED;
+				this.flags = flags;
+				this.statement = statement;
+			}
+
+			protected override Expression DoResolve (ResolveContext ec)
+			{
+				Child = new IntConstant ((int) (flags | statement.flags), statement.loc).Resolve (ec);
+
+				type = TypeManager.binder_flags;
+				eclass = Child.eclass;
+				return this;
 			}
 		}
 
-		static StaticDataClass global_site_container;
-		static int field_counter;
-		static int container_counter;
-
 		readonly Arguments arguments;
 		protected IDynamicBinder binder;
-		Expression binder_expr;
+		protected Expression binder_expr;
+
+		// Used by BinderFlags
+		protected CSharpBinderFlags flags;
 
 		public DynamicExpressionStatement (IDynamicBinder binder, Arguments args, Location loc)
 		{
@@ -144,84 +255,89 @@ namespace Mono.CSharp
 			}
 		}
 
-		static TypeContainer CreateSiteContainer ()
+		FieldSpec CreateSiteField (EmitContext ec, FullNamedExpression type)
 		{
-			if (global_site_container == null) {
-				global_site_container = new StaticDataClass ();
-				RootContext.ToplevelTypes.AddCompilerGeneratedClass (global_site_container);
-				global_site_container.DefineType ();
-				global_site_container.Define ();
-//				global_site_container.EmitType ();
-
-				RootContext.RegisterCompilerGeneratedType (global_site_container.TypeBuilder);
-			}
-
-			return global_site_container;
-		}
-
-		static Field CreateSiteField (FullNamedExpression type)
-		{
-			TypeContainer site_container = CreateSiteContainer ();
-			Field f = new Field (site_container, type, Modifiers.PUBLIC | Modifiers.STATIC,
-				new MemberName ("Site" +  field_counter++), null);
-			f.Define ();
-
-			site_container.AddField (f);
-			return f;
+			var site_container = ec.CreateDynamicSite ();
+			return site_container.CreateCallSiteField (type, loc);
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
 		{
-			throw new NotImplementedException ();
+			ec.Report.Error (1963, loc, "An expression tree cannot contain a dynamic operation");
+			return null;
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
-			if (eclass != ExprClass.Invalid)
-				return this;
+			if (DoResolveCore (ec))
+				binder_expr = binder.CreateCallSiteBinder (ec, arguments);
+
+			return this;
+		}
+
+		protected bool DoResolveCore (ResolveContext rc)
+		{
+			int errors = rc.Report.Errors;
+
+			if (TypeManager.binder_type == null) {
+				var t = TypeManager.CoreLookupType (rc.Compiler,
+					"Microsoft.CSharp.RuntimeBinder", "Binder", MemberKind.Class, true);
+				if (t != null)
+					TypeManager.binder_type = new TypeExpression (t, Location.Null);
+			}
 
 			if (TypeManager.call_site_type == null)
-				TypeManager.call_site_type = TypeManager.CoreLookupType (ec.Compiler,
-					"System.Runtime.CompilerServices", "CallSite", Kind.Class, true);
+				TypeManager.call_site_type = TypeManager.CoreLookupType (rc.Compiler,
+					"System.Runtime.CompilerServices", "CallSite", MemberKind.Class, true);
 
 			if (TypeManager.generic_call_site_type == null)
-				TypeManager.generic_call_site_type = TypeManager.CoreLookupType (ec.Compiler,
-					"System.Runtime.CompilerServices", "CallSite`1", Kind.Class, true);
+				TypeManager.generic_call_site_type = TypeManager.CoreLookupType (rc.Compiler,
+					"System.Runtime.CompilerServices", "CallSite", 1, MemberKind.Class, true);
+
+			if (TypeManager.binder_flags == null) {
+				TypeManager.binder_flags = TypeManager.CoreLookupType (rc.Compiler,
+					"Microsoft.CSharp.RuntimeBinder", "CSharpBinderFlags", MemberKind.Enum, true);
+			}
 
 			eclass = ExprClass.Value;
 
 			if (type == null)
 				type = InternalType.Dynamic;
 
-			binder_expr = binder.CreateCallSiteBinder (ec, arguments);
-			return this;
+			if (rc.Report.Errors == errors)
+				return true;
+
+			rc.Report.Error (1969, loc,
+				"Dynamic operation cannot be compiled without `Microsoft.CSharp.dll' assembly reference");
+			return false;
 		}
 
 		public override void Emit (EmitContext ec)
 		{
-			EmitCall (ec, false);
+			EmitCall (ec, binder_expr, arguments,  false);
 		}
 
 		public override void EmitStatement (EmitContext ec)
 		{
-			EmitCall (ec, true);
+			EmitCall (ec, binder_expr, arguments, true);
 		}
 
-		void EmitCall (EmitContext ec, bool isStatement)
+		protected void EmitCall (EmitContext ec, Expression binder, Arguments arguments, bool isStatement)
 		{
 			int dyn_args_count = arguments == null ? 0 : arguments.Count;
-			TypeExpr site_type = CreateSiteType (RootContext.ToplevelTypes.Compiler, isStatement, dyn_args_count);
-			FieldExpr site_field_expr = new FieldExpr (CreateSiteField (site_type).FieldBuilder, loc);
+			TypeExpr site_type = CreateSiteType (ec, arguments, dyn_args_count, isStatement);
 
-			SymbolWriter.OpenCompilerGeneratedBlock (ec.ig);
+			FieldExpr site_field_expr = new FieldExpr (CreateSiteField (ec, site_type), loc);
+
+			SymbolWriter.OpenCompilerGeneratedBlock (ec);
 
 			Arguments args = new Arguments (1);
-			args.Add (new Argument (binder_expr));
+			args.Add (new Argument (binder));
 			StatementExpression s = new StatementExpression (new SimpleAssign (site_field_expr, new Invocation (new MemberAccess (site_type, "Create"), args)));
 			
 			BlockContext bc = new BlockContext (ec.MemberContext, null, TypeManager.void_type);		
 			if (s.Resolve (bc)) {
-				Statement init = new If (new Binary (Binary.Operator.Equality, site_field_expr, new NullLiteral (loc)), s, loc);
+				Statement init = new If (new Binary (Binary.Operator.Equality, site_field_expr, new NullLiteral (loc), loc), s, loc);
 				init.Emit (ec);
 			}
 
@@ -239,12 +355,11 @@ namespace Mono.CSharp
 				}
 			}
 
-			ResolveContext rc = new ResolveContext (ec.MemberContext);
-			Expression target = new DelegateInvocation (new MemberAccess (site_field_expr, "Target", loc).Resolve (rc), args, loc).Resolve (rc);
+			Expression target = new DelegateInvocation (new MemberAccess (site_field_expr, "Target", loc).Resolve (bc), args, loc).Resolve (bc);
 			if (target != null)
 				target.Emit (ec);
 
-			SymbolWriter.CloseCompilerGeneratedBlock (ec.ig);
+			SymbolWriter.CloseCompilerGeneratedBlock (ec);
 		}
 
 		public static MemberAccess GetBinderNamespace (Location loc)
@@ -253,70 +368,69 @@ namespace Mono.CSharp
 				new QualifiedAliasMember (QualifiedAliasMember.GlobalAlias, "Microsoft", loc), "CSharp", loc), "RuntimeBinder", loc);
 		}
 
-		TypeExpr CreateSiteType (CompilerContext ctx, bool isStatement, int dyn_args_count)
+		public static MemberAccess GetBinder (string name, Location loc)
 		{
-			int default_args = isStatement ? 1 : 2;
+			return new MemberAccess (TypeManager.binder_type, name, loc);
+		}
+
+		TypeExpr CreateSiteType (EmitContext ec, Arguments arguments, int dyn_args_count, bool is_statement)
+		{
+			int default_args = is_statement ? 1 : 2;
 
 			bool has_ref_out_argument = false;
 			FullNamedExpression[] targs = new FullNamedExpression[dyn_args_count + default_args];
 			targs [0] = new TypeExpression (TypeManager.call_site_type, loc);
 			for (int i = 0; i < dyn_args_count; ++i) {
-				Type arg_type;
 				Argument a = arguments [i];
-				if (a.Type == TypeManager.null_type)
-					arg_type = TypeManager.object_type;
-				else
-					arg_type = TypeManager.TypeToReflectionType (a.Type);
-
 				if (a.ArgType == Argument.AType.Out || a.ArgType == Argument.AType.Ref)
 					has_ref_out_argument = true;
 
-				targs [i + 1] = new TypeExpression (arg_type, loc);
+				targs [i + 1] = new TypeExpression (a.Type, loc);
 			}
 
 			TypeExpr del_type = null;
 			if (!has_ref_out_argument) {
-				string d_name = isStatement ? "Action`" : "Func`";
+				string d_name = is_statement ? "Action" : "Func";
 
-				Type t = TypeManager.CoreLookupType (ctx, "System", d_name + (dyn_args_count + default_args), Kind.Delegate, false);
+				TypeSpec t = TypeManager.CoreLookupType (ec.MemberContext.Compiler, "System", d_name, dyn_args_count + default_args, MemberKind.Delegate, false);
 				if (t != null) {
-					if (!isStatement)
-						targs[targs.Length - 1] = new TypeExpression (TypeManager.TypeToReflectionType (type), loc);
+					if (!is_statement)
+						targs [targs.Length - 1] = new TypeExpression (type, loc);
 
 					del_type = new GenericTypeExpr (t, new TypeArguments (targs), loc);
 				}
 			}
 
-			// No appropriate predefined delegate found
+			//
+			// Create custom delegate when no appropriate predefined one is found
+			//
 			if (del_type == null) {
-				Type rt = isStatement ? TypeManager.void_type : type;
+				TypeSpec rt = is_statement ? TypeManager.void_type : type;
 				Parameter[] p = new Parameter [dyn_args_count + 1];
 				p[0] = new Parameter (targs [0], "p0", Parameter.Modifier.NONE, null, loc);
 
 				for (int i = 1; i < dyn_args_count + 1; ++i)
 					p[i] = new Parameter (targs[i], "p" + i.ToString ("X"), arguments[i - 1].Modifier, null, loc);
 
-				TypeContainer parent = CreateSiteContainer ();
-				Delegate d = new Delegate (parent.NamespaceEntry, parent, new TypeExpression (rt, loc),
-					Modifiers.INTERNAL | Modifiers.COMPILER_GENERATED,
-					new MemberName ("Container" + container_counter++.ToString ("X")),
-					new ParametersCompiled (p), null);
+				TypeContainer site = ec.CreateDynamicSite ();
+				int index = site.Types == null ? 0 : site.Types.Count;
 
+				Delegate d = new Delegate (site.NamespaceEntry, site, new TypeExpression (rt, loc),
+					Modifiers.INTERNAL | Modifiers.COMPILER_GENERATED,
+					new MemberName ("Container" + index.ToString ("X")),
+					new ParametersCompiled (null, p), null);
+
+				d.CreateType ();
 				d.DefineType ();
 				d.Define ();
+				d.Emit ();
 
-				parent.AddDelegate (d);
-				del_type = new TypeExpression (d.TypeBuilder, loc);
+				site.AddDelegate (d);
+				del_type = new TypeExpression (d.Definition, loc);
 			}
 
 			TypeExpr site_type = new GenericTypeExpr (TypeManager.generic_call_site_type, new TypeArguments (del_type), loc);
 			return site_type;
-		}
-
-		public static void Reset ()
-		{
-			global_site_container = null;
-			field_counter = container_counter = 0;
 		}
 	}
 
@@ -326,104 +440,101 @@ namespace Mono.CSharp
 	class DynamicEventCompoundAssign : DynamicExpressionStatement, IDynamicBinder
 	{
 		string name;
-		ExpressionStatement assignment;
-		ExpressionStatement invoke;
+		Statement condition;
 
 		public DynamicEventCompoundAssign (string name, Arguments args, ExpressionStatement assignment, ExpressionStatement invoke, Location loc)
 			: base (null, args, loc)
 		{
 			this.name = name;
-			this.assignment = assignment;
-			this.invoke = invoke;
 			base.binder = this;
 
 			// Used by += or -= only
 			type = TypeManager.bool_type;
+
+			condition = new If (
+				new Binary (Binary.Operator.Equality, this, new BoolLiteral (true, loc), loc),
+				new StatementExpression (invoke), new StatementExpression (assignment),
+				loc);
 		}
 
 		public Expression CreateCallSiteBinder (ResolveContext ec, Arguments args)
 		{
-			Arguments binder_args = new Arguments (2);
-			MemberAccess binder = GetBinderNamespace (loc);
+			Arguments binder_args = new Arguments (3);
 
+			binder_args.Add (new Argument (new BinderFlags (0, this)));
 			binder_args.Add (new Argument (new StringLiteral (name, loc)));
 			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
 
-			return new New (new MemberAccess (binder, "CSharpIsEventBinder", loc), binder_args, loc);
+			return new Invocation (GetBinder ("IsEvent", loc), binder_args);
 		}
 
 		public override void EmitStatement (EmitContext ec)
 		{
-			Statement cond = new If (
-				new Binary (Binary.Operator.Equality, this, new BoolLiteral (true, loc)),
-				new StatementExpression (invoke),
-				new StatementExpression (assignment),
-				loc);
-			cond.Emit (ec);
+			condition.Emit (ec);
 		}
 	}
 
 	class DynamicConversion : DynamicExpressionStatement, IDynamicBinder
 	{
-		bool is_explicit;
-
-		public DynamicConversion (Type targetType, bool isExplicit, Arguments args, Location loc)
+		public DynamicConversion (TypeSpec targetType, CSharpBinderFlags flags, Arguments args, Location loc)
 			: base (null, args, loc)
 		{
 			type = targetType;
-			is_explicit = isExplicit;
+			base.flags = flags;
 			base.binder = this;
 		}
 
 		public Expression CreateCallSiteBinder (ResolveContext ec, Arguments args)
 		{
-			Arguments binder_args = new Arguments (2);
-			MemberAccess binder = GetBinderNamespace (loc);
+			Arguments binder_args = new Arguments (3);
 
+			flags |= ec.HasSet (ResolveContext.Options.CheckedScope) ? CSharpBinderFlags.CheckedContext : 0;
+
+			binder_args.Add (new Argument (new BinderFlags (flags, this)));
 			binder_args.Add (new Argument (new TypeOf (new TypeExpression (type, loc), loc)));
-			binder_args.Add (new Argument (new MemberAccess (new MemberAccess (binder, "CSharpConversionKind", loc),
-				is_explicit ? "ExplicitConversion" : "ImplicitConversion", loc)));
-			binder_args.Add (new Argument (new BoolLiteral (ec.HasSet (ResolveContext.Options.CheckedScope), loc)));
-				
-			return new New (new MemberAccess (binder, "CSharpConvertBinder", loc), binder_args, loc);
+			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
+			return new Invocation (GetBinder ("Convert", loc), binder_args);
 		}
 	}
 
-	class DynamicIndexBinder : DynamicExpressionStatement, IDynamicBinder, IAssignMethod
+	class DynamicConstructorBinder : DynamicExpressionStatement, IDynamicBinder
 	{
-		readonly bool isSet;
-
-		public DynamicIndexBinder (bool isSet, Arguments args, Location loc)
+		public DynamicConstructorBinder (TypeSpec type, Arguments args, Location loc)
 			: base (null, args, loc)
 		{
+			this.type = type;
 			base.binder = this;
-			this.isSet = isSet;
 		}
 
 		public Expression CreateCallSiteBinder (ResolveContext ec, Arguments args)
 		{
-			Arguments binder_args = new Arguments (2);
-			MemberAccess binder = GetBinderNamespace (loc);
+			Arguments binder_args = new Arguments (3);
 
+			binder_args.Add (new Argument (new BinderFlags (0, this)));
 			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
-			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation ("[]", args.CreateDynamicBinderArguments (), loc)));
+			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation (args.CreateDynamicBinderArguments (ec), loc)));
 
-			return new New (new MemberAccess (binder, isSet ? "CSharpSetIndexBinder" : "CSharpGetIndexBinder", loc), binder_args, loc);
+			return new Invocation (GetBinder ("InvokeConstructor", loc), binder_args);
 		}
+	}
 
-		#region IAssignMethod Members
-
-		public void Emit (EmitContext ec, bool leave_copy)
+	class DynamicIndexBinder : DynamicMemberAssignable
+	{
+		public DynamicIndexBinder (Arguments args, Location loc)
+			: base (args, loc)
 		{
-			throw new NotImplementedException ();
 		}
 
-		public void EmitAssign (EmitContext ec, Expression source, bool leave_copy, bool prepare_for_load)
+		protected override Expression CreateCallSiteBinder (ResolveContext ec, Arguments args, bool isSet)
 		{
-			EmitStatement (ec);
-		}
+			Arguments binder_args = new Arguments (3);
 
-		#endregion
+			binder_args.Add (new Argument (new BinderFlags (0, this)));
+			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
+			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation (args.CreateDynamicBinderArguments (ec), loc)));
+
+			return new Invocation (GetBinder (isSet ? "SetIndex" : "GetIndex", loc), binder_args);
+		}
 	}
 
 	class DynamicInvocation : DynamicExpressionStatement, IDynamicBinder
@@ -437,85 +548,158 @@ namespace Mono.CSharp
 			this.member = member;
 		}
 
-		public DynamicInvocation (ATypeNameExpression member, Arguments args, Type type, Location loc)
+		//
+		// When a return type is known not to be dynamic
+		//
+		public DynamicInvocation (ATypeNameExpression member, Arguments args, TypeSpec type, Location loc)
 			: this (member, args, loc)
 		{
-			// When a return type is known not to be dynamic
 			this.type = type;
+		}
+
+		public static DynamicInvocation CreateSpecialNameInvoke (ATypeNameExpression member, Arguments args, Location loc)
+		{
+			return new DynamicInvocation (member, args, loc) {
+				flags = CSharpBinderFlags.InvokeSpecialName
+			};
 		}
 
 		public Expression CreateCallSiteBinder (ResolveContext ec, Arguments args)
 		{
 			Arguments binder_args = new Arguments (member != null ? 5 : 3);
-			MemberAccess binder = GetBinderNamespace (loc);
 			bool is_member_access = member is MemberAccess;
 
-			string call_flags;
+			CSharpBinderFlags call_flags;
 			if (!is_member_access && member is SimpleName) {
-				call_flags = "SimpleNameCall";
+				call_flags = CSharpBinderFlags.InvokeSimpleName;
 				is_member_access = true;
 			} else {
-				call_flags = "None";
+				call_flags = 0;
 			}
 
-			binder_args.Add (new Argument (new MemberAccess (new MemberAccess (binder, "CSharpCallFlags", loc), call_flags, loc)));
+			binder_args.Add (new Argument (new BinderFlags (call_flags, this)));
 
 			if (is_member_access)
 				binder_args.Add (new Argument (new StringLiteral (member.Name, member.Location)));
 
-			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
-
 			if (member != null && member.HasTypeArguments) {
 				TypeArguments ta = member.TypeArguments;
 				if (ta.Resolve (ec)) {
-					ArrayList targs = new ArrayList (ta.Count);
-					foreach (Type t in ta.Arguments)
+					var targs = new ArrayInitializer (ta.Count, loc);
+					foreach (TypeSpec t in ta.Arguments)
 						targs.Add (new TypeOf (new TypeExpression (t, loc), loc));
 
-					binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation ("[]", targs, loc)));
+					binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation (targs, loc)));
 				}
 			} else if (is_member_access) {
 				binder_args.Add (new Argument (new NullLiteral (loc)));
 			}
 
+			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
+
 			Expression real_args;
 			if (args == null) {
 				// Cannot be null because .NET trips over
-				real_args = new ArrayCreation (new MemberAccess (binder, "CSharpArgumentInfo", loc), "[]", new ArrayList (0), loc);
+				real_args = new ArrayCreation (
+					new MemberAccess (GetBinderNamespace (loc), "CSharpArgumentInfo", loc),
+					new ArrayInitializer (0, loc), loc);
 			} else {
-				real_args = new ImplicitlyTypedArrayCreation ("[]", args.CreateDynamicBinderArguments (), loc);
+				real_args = new ImplicitlyTypedArrayCreation (args.CreateDynamicBinderArguments (ec), loc);
 			}
 
 			binder_args.Add (new Argument (real_args));
 
-			return new New (new MemberAccess (binder,
-				is_member_access ? "CSharpInvokeMemberBinder" : "CSharpInvokeBinder", loc), binder_args, loc);
+			return new Invocation (GetBinder (is_member_access ? "InvokeMember" : "Invoke", loc), binder_args);
+		}
+
+		public override void EmitStatement (EmitContext ec)
+		{
+			flags |= CSharpBinderFlags.ResultDiscarded;
+			base.EmitStatement (ec);
 		}
 	}
 
-	class DynamicMemberBinder : DynamicExpressionStatement, IDynamicBinder, IAssignMethod
+	class DynamicMemberBinder : DynamicMemberAssignable
 	{
-		readonly bool isSet;
 		readonly string name;
 
-		public DynamicMemberBinder (bool isSet, string name, Arguments args, Location loc)
+		public DynamicMemberBinder (string name, Arguments args, Location loc)
+			: base (args, loc)
+		{
+			this.name = name;
+		}
+
+		protected override Expression CreateCallSiteBinder (ResolveContext ec, Arguments args, bool isSet)
+		{
+			Arguments binder_args = new Arguments (4);
+
+			binder_args.Add (new Argument (new BinderFlags (0, this)));
+			binder_args.Add (new Argument (new StringLiteral (name, loc)));
+			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
+			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation (args.CreateDynamicBinderArguments (ec), loc)));
+
+			return new Invocation (GetBinder (isSet ? "SetMember" : "GetMember", loc), binder_args);
+		}
+	}
+
+	//
+	// Any member binder which can be source and target of assignment
+	//
+	abstract class DynamicMemberAssignable : DynamicExpressionStatement, IDynamicBinder, IAssignMethod
+	{
+		Expression setter;
+		Arguments setter_args;
+
+		protected DynamicMemberAssignable (Arguments args, Location loc)
 			: base (null, args, loc)
 		{
 			base.binder = this;
-			this.isSet = isSet;
-			this.name = name;
 		}
 
 		public Expression CreateCallSiteBinder (ResolveContext ec, Arguments args)
 		{
-			Arguments binder_args = new Arguments (3);
-			MemberAccess binder = GetBinderNamespace (loc);
+			//
+			// DoResolve always uses getter
+			//
+			return CreateCallSiteBinder (ec, args, false);
+		}
 
-			binder_args.Add (new Argument (new StringLiteral (name, loc)));
-			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
-			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation ("[]", args.CreateDynamicBinderArguments (), loc)));
+		protected abstract Expression CreateCallSiteBinder (ResolveContext ec, Arguments args, bool isSet);
 
-			return new New (new MemberAccess (binder, isSet ? "CSharpSetMemberBinder" : "CSharpGetMemberBinder", loc), binder_args, loc);
+		public override Expression DoResolveLValue (ResolveContext rc, Expression right_side)
+		{
+			if (right_side == EmptyExpression.OutAccess.Instance) {
+				right_side.DoResolveLValue (rc, this);
+				return null;
+			}
+
+			if (DoResolveCore (rc)) {
+				setter_args = new Arguments (Arguments.Count + 1);
+				setter_args.AddRange (Arguments);
+				setter_args.Add (new Argument (right_side));
+				setter = CreateCallSiteBinder (rc, setter_args, true);
+			}
+
+			eclass = ExprClass.Variable;
+			return this;
+		}
+
+		public override void Emit (EmitContext ec)
+		{
+			// It's null for ResolveLValue used without assignment
+			if (binder_expr == null)
+				EmitCall (ec, setter, Arguments, false);
+			else
+				base.Emit (ec);
+		}
+
+		public override void EmitStatement (EmitContext ec)
+		{
+			// It's null for ResolveLValue used without assignment
+			if (binder_expr == null)
+				EmitCall (ec, setter, Arguments, true);
+			else
+				base.EmitStatement (ec);
 		}
 
 		#region IAssignMethod Members
@@ -527,7 +711,7 @@ namespace Mono.CSharp
 
 		public void EmitAssign (EmitContext ec, Expression source, bool leave_copy, bool prepare_for_load)
 		{
-			EmitStatement (ec);
+			EmitCall (ec, setter, setter_args, !leave_copy);
 		}
 
 		#endregion
@@ -548,18 +732,65 @@ namespace Mono.CSharp
 
 		public Expression CreateCallSiteBinder (ResolveContext ec, Arguments args)
 		{
-			Arguments binder_args = new Arguments (3);
+			Arguments binder_args = new Arguments (4);
 
 			MemberAccess sle = new MemberAccess (new MemberAccess (
 				new QualifiedAliasMember (QualifiedAliasMember.GlobalAlias, "System", loc), "Linq", loc), "Expressions", loc);
 
-			MemberAccess binder = GetBinderNamespace (loc);
+			var flags = ec.HasSet (ResolveContext.Options.CheckedScope) ? CSharpBinderFlags.CheckedContext : 0;
 
+			binder_args.Add (new Argument (new BinderFlags (flags, this)));
 			binder_args.Add (new Argument (new MemberAccess (new MemberAccess (sle, "ExpressionType", loc), name, loc)));
-			binder_args.Add (new Argument (new BoolLiteral (ec.HasSet (ResolveContext.Options.CheckedScope), loc)));
-			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation ("[]", args.CreateDynamicBinderArguments (), loc)));
+			binder_args.Add (new Argument (new TypeOf (new TypeExpression (ec.CurrentType, loc), loc)));
+			binder_args.Add (new Argument (new ImplicitlyTypedArrayCreation (args.CreateDynamicBinderArguments (ec), loc)));
 
-			return new New (new MemberAccess (binder, "CSharpUnaryOperationBinder", loc), binder_args, loc);
+			return new Invocation (GetBinder ("UnaryOperation", loc), binder_args);
+		}
+	}
+
+	public class DynamicSiteClass : HoistedStoreyClass
+	{
+		//
+		// Holds the type to access the site. It gets inflated
+		// by MVARs for generic call sites
+		//
+		TypeSpec instance_type;
+
+		public DynamicSiteClass (TypeContainer parent, MemberBase host, TypeParameter[] tparams)
+			: base (parent, MakeMemberName (host, "DynamicSite", 0, tparams, Location.Null), tparams, Modifiers.STATIC)
+		{
+			if (tparams != null) {
+				mutator = new TypeParameterMutator (tparams, CurrentTypeParameters);
+			}
+		}
+
+		public FieldSpec CreateCallSiteField (FullNamedExpression type, Location loc)
+		{
+			int index = fields == null ? 0 : fields.Count;
+			Field f = new HoistedField (this, type, Modifiers.PUBLIC | Modifiers.STATIC, "Site" + index.ToString ("X"), null, loc);
+			f.Define ();
+
+			AddField (f);
+
+			var fs = f.Spec;
+			if (mutator != null) {
+				//
+				// Inflate the field, no need to keep it in MemberCache as it's accessed only once
+				//
+				var inflator = new TypeParameterInflator (instance_type, spec.MemberDefinition.TypeParameters, instance_type.TypeArguments);
+				fs = (FieldSpec) fs.InflateMember (inflator);
+			}
+
+			return fs;
+		}
+
+		protected override bool DoResolveTypeParameters ()
+		{
+			instance_type = spec;
+			if (mutator != null)
+				instance_type = instance_type.MakeGenericType (mutator.MethodTypeParameters.Select (l => l.Type).ToArray ());
+
+			return true;
 		}
 	}
 }

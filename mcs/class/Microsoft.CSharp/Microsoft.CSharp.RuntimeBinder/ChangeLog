@@ -1,3 +1,113 @@
+2010-09-16  Marek Safar  <marek.safar@gmail.com>
+
+	[639407] Clean up more static stuff to fix repl instances.
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Always build type from compiler type when flagged
+
+2010-08-26  Marek Safar  <marek.safar@gmail.com>
+
+	Run event type detection on actual and not context type
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Defer null check to resolver
+
+2010-08-25  Marek Safar  <marek.safar@gmail.com>
+
+	Import private members too when using dynamic context
+
+2010-08-04  Jb Evain  <jbevain@gmail.com>
+
+	Microsoft.CSharp.RuntimeBinder.Binder::Convert: fix parameter
+	ordering to match .net 4.0
+
+2010-06-16  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpInvokeMemberBinder.cs: Construct MemberAccess for simple
+	name expressions.
+
+2010-05-27  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Sync with the latest gmcs.
+
+2010-02-10  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Track RC API changes.
+
+2009-12-09  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpBinder.cs: Actually use merged restrictions.
+
+2009-11-18  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpBinder.cs: Fixed unsafe initialization.
+
+2009-11-16  Marek Safar  <marek.safar@gmail.com>
+
+	* RuntimeBinderContext.cs, ErrorPrinter.cs, CSharpBinder.cs: Reject
+	unsafe type.
+
+2009-11-11  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpInvokeBinder.cs, CSharpBinder.cs,
+	CSharpInvokeMemberBinder.cs: Convert discarded result expressions.
+
+2009-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpIsEventBinder.cs: Dynamic events implementation.
+	
+	* *.cs: Make CSharpBinder instance and share common checks.
+
+2009-11-03  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpInvokeConstructorBinder.cs: Dynamic constructors.
+
+2009-10-30  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpBinder.cs, CSharpInvokeMemberBinder.cs,
+	CSharpSetIndexBinder.cs: Simple member binder.
+
+2009-10-23  Marek Safar  <marek.safar@gmail.com>
+
+	* RuntimeBinderContext.cs, Extensions.cs, CSharpBinder.cs: More
+	literal and constant work.
+
+2009-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Cleanup the old API.
+
+2009-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	* *.cs: Update to the latest API.
+
+2009-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpBinaryOperationBinder.cs, CSharpGetIndexBinder.cs,
+	CSharpGetMemberBinder.cs, CSharpArgumentInfo.cs, CSharpBinder.cs,
+	CSharpUnaryOperationBinder.cs, CSharpConvertBinder.cs,
+	CSharpSetIndexBinder.cs, CSharpSetMemberBinder.cs: Index setters
+	implemented.
+
+2009-10-07  Marek Safar  <marek.safar@gmail.com>
+
+	* RuntimeBinderContext.cs, CSharpBinaryOperationBinder.cs,
+	CSharpGetMemberBinder.cs, CSharpBinder.cs,
+	CSharpUnaryOperationBinder.cs, CSharpSetMemberBinder.cs: Member
+	access implemented.
+
+2009-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpBinaryOperationBinder.cs, CSharpBinder.cs,
+	CSharpUnaryOperationBinder.cs, CSharpConvertBinder.cs: Implicit
+	and explicit conversions implemented.
+
+2009-09-29  Marek Safar  <marek.safar@gmail.com>
+
+	* CSharpBinaryOperationBinder.cs, Extensions.cs, CSharpBinder.cs,
+	CSharpUnaryOperationBinder.cs: Dynamic unary expressions.
+
 2009-09-25  Marek Safar  <marek.safar@gmail.com>
 
 	* CSharpBinaryOperationBinder.cs, CSharpBinder.cs: More dynamic

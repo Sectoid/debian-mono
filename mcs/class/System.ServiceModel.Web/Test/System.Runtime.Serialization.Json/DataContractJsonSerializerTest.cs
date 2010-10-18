@@ -97,7 +97,7 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		[Test]
 		public void ConstructorMisc ()
 		{
-			new DataContractJsonSerializer (typeof (GlobalSample1));
+			new DataContractJsonSerializer (typeof (GlobalSample1)).WriteObject (new MemoryStream (), new GlobalSample1 ());
 		}
 
 		[Test]
@@ -1287,12 +1287,13 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		[Category ("NotWorking")]
 		public void TypeIsNotPartsOfKnownTypes ()
 		{
-			DataContractJsonSerializer dcjs = new DataContractJsonSerializer (typeof (string));
-			Assert.AreEqual (0, dcjs.KnownTypes.Count, "KnownTypes");
+			var dcs = new DataContractSerializer (typeof (string));
+			Assert.AreEqual (0, dcs.KnownTypes.Count, "KnownTypes #1");
+			var dcjs = new DataContractJsonSerializer (typeof (string));
+			Assert.AreEqual (0, dcjs.KnownTypes.Count, "KnownTypes #2");
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void ReadWriteNullObject ()
 		{
 			DataContractJsonSerializer dcjs = new DataContractJsonSerializer (typeof (string));
@@ -1325,7 +1326,7 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		}
 
 		[Test]
-		[Category ("NotWorking")]
+		[Ignore ("Wrong test case. See bug #573691")]
 		public void ReadWriteObject_Single_SpecialCases ()
 		{
 			Assert.IsTrue (Single.IsNaN ((float) ReadWriteObject (typeof (float), Single.NaN, "NaN")));
@@ -1334,12 +1335,57 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		}
 
 		[Test]
-		[Category ("NotWorking")]
+		[Ignore ("Wrong test case. See bug #573691")]
 		public void ReadWriteObject_Double_SpecialCases ()
 		{
 			Assert.IsTrue (Double.IsNaN ((double) ReadWriteObject (typeof (double), Double.NaN, "NaN")));
 			Assert.IsTrue (Double.IsNegativeInfinity ((double) ReadWriteObject (typeof (double), Double.NegativeInfinity, "-INF")));
 			Assert.IsTrue (Double.IsPositiveInfinity ((double) ReadWriteObject (typeof (double), Double.PositiveInfinity, "INF")));
+		}
+
+		[Test]
+		public void ReadWriteDateTime ()
+		{
+			var ms = new MemoryStream ();
+			DataContractJsonSerializer serializer = new DataContractJsonSerializer (typeof (Query));
+			Query query = new Query () {
+				StartDate = new DateTime (2010, 3, 4, 5, 6, 7),
+				EndDate = new DateTime (2010, 4, 5, 6, 7, 8)
+				};
+			serializer.WriteObject (ms, query);
+			Assert.AreEqual ("{\"StartDate\":\"\\/Date(1267679167000)\\/\",\"EndDate\":\"\\/Date(1270447628000)\\/\"}", Encoding.UTF8.GetString (ms.ToArray ()), "#1");
+			ms.Position = 0;
+			Console.WriteLine (new StreamReader (ms).ReadToEnd ());
+			ms.Position = 0;
+			var q = (Query) serializer.ReadObject(ms);
+			Assert.AreEqual (query.StartDate, q.StartDate, "#2");
+			Assert.AreEqual (query.EndDate, q.EndDate, "#3");
+		}
+		
+		[Test]
+		public void DeserializeNullMember ()
+		{
+			var ds = new DataContractJsonSerializer (typeof (ClassA));
+			var stream = new MemoryStream ();
+			var a = new ClassA ();
+			ds.WriteObject (stream, a);
+			stream.Position = 0;
+			a = (ClassA) ds.ReadObject (stream);
+			Assert.IsNull (a.B, "#1");
+		}
+
+		[Test]
+		public void OnDeserializationMethods ()
+		{
+			var ds = new DataContractJsonSerializer (typeof (GSPlayerListErg));
+			var obj = new GSPlayerListErg ();
+			var ms = new MemoryStream ();
+			ds.WriteObject (ms, obj);
+			ms.Position = 0;
+			ds.ReadObject (ms);
+			Assert.IsTrue (GSPlayerListErg.A, "A");
+			Assert.IsTrue (GSPlayerListErg.B, "B");
+			Assert.IsTrue (GSPlayerListErg.C, "C");
 		}
 	}
 
@@ -1422,16 +1468,22 @@ namespace MonoTests.System.Runtime.Serialization.Json
 	[DataContract (Name = "")]
 	public class DCWithEmptyName
 	{
+		[DataMember]
+		public string Foo;
 	}
 
 	[DataContract (Name = null)]
 	public class DCWithNullName
 	{
+		[DataMember]
+		public string Foo;
 	}
 
 	[DataContract (Namespace = "")]
 	public class DCWithEmptyNamespace
 	{
+		[DataMember]
+		public string Foo;
 	}
 
 	[Serializable]
@@ -1499,9 +1551,58 @@ namespace MonoTests.System.Runtime.Serialization.Json
 		public List<KeyValuePair<string,string>> TestData = new List<KeyValuePair<string,string>>();
 	}
 
+	[DataContract] // bug #586169
+	public class Query
+	{
+		[DataMember (Order=1)]
+		public DateTime StartDate { get; set; }
+		[DataMember (Order=2)]
+		public DateTime EndDate { get; set; }
+	}
+
+	public class ClassA {
+		public ClassB B { get; set; }
+	}
+
+	public class ClassB
+	{
+	}
+
+	public class GSPlayerListErg
+	{
+		public GSPlayerListErg ()
+		{
+			Init ();
+		}
+
+		void Init ()
+		{
+			C = true;
+		}
+
+		[OnDeserializing]
+		public void OnDeserializing (StreamingContext c)
+		{
+			A = true;
+			Init ();
+		}
+
+		[OnDeserialized]
+		void OnDeserialized (StreamingContext c)
+		{
+			B = true;
+		}
+
+		public static bool A, B, C;
+
+		[DataMember (Name = "T")]
+		public long CodedServerTimeUTC { get; set; }
+		public DateTime ServerTimeUTC { get; set; }
+	}
 }
 
 [DataContract]
 class GlobalSample1
 {
 }
+

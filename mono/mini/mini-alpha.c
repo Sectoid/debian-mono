@@ -5053,7 +5053,7 @@ mono_arch_get_allocatable_int_vars (MonoCompile *cfg)
 
    CFG_DEBUG(2) ALPHA_DEBUG("mono_arch_get_allocatable_int_vars");
 
-   header = mono_method_get_header (cfg->method);
+   header = cfg->header;
 
    sig = mono_method_signature (cfg->method);
 
@@ -5125,31 +5125,6 @@ mono_arch_get_domain_intrinsic (MonoCompile* cfg)
    
    MONO_INST_NEW (cfg, ins, OP_TLS_GET);
    ins->inst_offset = appdomain_tls_offset;
-   return (ins);
-}
-
-/*========================= End of Function ========================*/
-
-/*------------------------------------------------------------------*/
-/*                                                                  */
-/* Name         - mono_arch_get_thread_intrinsic                    */
-/*                                                                  */
-/* Function     -                                                   */
-/*                                                                  */
-/* Returns      -                                                   */
-/*                                                                  */
-/*------------------------------------------------------------------*/
-
-MonoInst *
-mono_arch_get_thread_intrinsic (MonoCompile* cfg)
-{
-   MonoInst *ins;
-   
-   if (thread_tls_offset == -1)
-	 return NULL;
-   
-   MONO_INST_NEW (cfg, ins, OP_TLS_GET);
-   ins->inst_offset = thread_tls_offset;
    return (ins);
 }
 
@@ -5478,7 +5453,7 @@ mono_arch_allocate_vars (MonoCompile *cfg)
    
    CFG_DEBUG(2) ALPHA_DEBUG("mono_arch_allocate_vars");
    
-   header = mono_method_get_header (cfg->method);
+   header = cfg->header;
    
    sig = mono_method_signature (cfg->method);
    

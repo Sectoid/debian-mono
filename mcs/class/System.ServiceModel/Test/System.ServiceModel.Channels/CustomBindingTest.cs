@@ -85,6 +85,14 @@ namespace MonoTests.System.ServiceModel.Channels
 		}
 
 		[Test]
+		public void MessageVersionProperty ()
+		{
+			Assert.IsNull (new CustomBinding ().MessageVersion, "#1");
+			Assert.AreEqual (MessageVersion.Soap12WSAddressing10, new CustomBinding (new HttpTransportBindingElement ()).MessageVersion, "#2");
+			Assert.AreEqual (MessageVersion.Soap12WSAddressing10, new CustomBinding (new TextMessageEncodingBindingElement ()).MessageVersion, "#3");
+		}
+
+		[Test]
 		[ExpectedException (typeof (ApplicationException))]
 		public void CtorFromAnotherBindingCallsCreateBindingElement ()
 		{
@@ -136,6 +144,12 @@ namespace MonoTests.System.ServiceModel.Channels
 		}
 
 		[Test]
+		public void TransportBindingElementDefaultMessageVersion ()
+		{
+			Assert.AreEqual (MessageVersion.Soap12WSAddressing10, new HandlerTransportBindingElement (null).GetProperty<MessageVersion> (new BindingContext (new CustomBinding (), new BindingParameterCollection ())), "version");
+		}
+
+		[Test]
 		[ExpectedException (typeof (InvalidOperationException))]
 		//  Envelope Version 'EnvelopeNone (http://schemas.microsoft.com/ws/2005/05/envelope/none)'
 		// does not support adding Message Headers.
@@ -160,7 +174,7 @@ namespace MonoTests.System.ServiceModel.Channels
 				new HandlerTransportBindingElement (sender));
 
 			EndpointAddress address = new EndpointAddress (
-				new Uri ("http://localhost:8080"),
+				new Uri ("http://localhost:37564"),
 				new X509CertificateEndpointIdentity (new X509Certificate2 ("Test/Resources/test.pfx", "mono")));
 
 			ChannelFactory<IRequestChannel> cf =
@@ -208,7 +222,7 @@ namespace MonoTests.System.ServiceModel.Channels
 				new HandlerTransportBindingElement (sender));
 
 			EndpointAddress address = new EndpointAddress (
-				new Uri ("http://localhost:8080"),
+				new Uri ("http://localhost:37564"),
 				new X509CertificateEndpointIdentity (new X509Certificate2 ("Test/Resources/test.pfx", "mono")));
 
 			ChannelProtectionRequirements reqs =
@@ -242,13 +256,20 @@ namespace MonoTests.System.ServiceModel.Channels
 		}
 
 		[Test]
-		[ExpectedException (typeof (ArgumentException))]
-		[Category ("NotWorking")]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CanBuildChannelListenerNoTransport ()
+		{
+			CustomBinding cb = new CustomBinding ();
+			BindingContext ctx = new BindingContext (
+				cb, new BindingParameterCollection ());
+			Assert.IsFalse (new TextMessageEncodingBindingElement ().CanBuildChannelListener<IReplyChannel> (ctx), "#1");
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
 		public void BuildChannelListenerNoTransport ()
 		{
-			CustomBinding cb = new CustomBinding (
-				new TextMessageEncodingBindingElement (),
-				new CompositeDuplexBindingElement ());
+			CustomBinding cb = new CustomBinding ();
 			BindingContext ctx = new BindingContext (
 				cb, new BindingParameterCollection ());
 			new TextMessageEncodingBindingElement ().BuildChannelListener<IReplyChannel> (ctx);
@@ -264,8 +285,117 @@ namespace MonoTests.System.ServiceModel.Channels
 				new HttpTransportBindingElement ());
 			BindingContext ctx = new BindingContext (
 				cb, new BindingParameterCollection (),
-				new Uri ("http://localhost:8080"), String.Empty, ListenUriMode.Unique);
+				new Uri ("http://localhost:37564"), String.Empty, ListenUriMode.Unique);
 			new TextMessageEncodingBindingElement ().BuildChannelListener<IReplyChannel> (ctx);
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void BuildChannelListenerWithNoMessageVersion ()
+		{
+			// MyBindingElement overrides GetProperty<T>() without calling GetInnerProperty<T>() and returns null in this case.
+			// ServiceHost.Open() tries to get MessageVersion and raises an error if it cannot get any.
+			// HttpTransportBindingElement can actually provide one.
+			ServiceHost host = new ServiceHost (typeof (FooService));
+			host.AddServiceEndpoint (typeof (IFooService),
+				new CustomBinding (new MyBindingElement (false), new HttpTransportBindingElement ()),
+				"http://localhost:37564");
+			host.Open ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (MyException))]
+		public void BuildChannelListenerWithMessageVersion ()
+		{
+			// MyBindingElement overrides GetProperty<T>() to call GetInnerProperty<T>() (default implementation).
+			// HttpTransportBindingElement should return Soap11.
+			ServiceHost host = new ServiceHost (typeof (FooService));
+			host.AddServiceEndpoint (typeof (IFooService),
+				new CustomBinding (new MyBindingElement (true), new HttpTransportBindingElement ()),
+				"http://localhost:37564");
+			host.Open ();
+			host.Close ();
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void RelativeListenUriNoBaseAddress ()
+		{
+			// MyBindingElement overrides GetProperty<T>() to call GetInnerProperty<T>() (default implementation).
+			// HttpTransportBindingElement should return Soap11.
+			ServiceHost host = new ServiceHost (typeof (FooService));
+			host.AddServiceEndpoint (typeof (IFooService),
+				new CustomBinding (new MyBindingElement (true), new HttpTransportBindingElement ()),
+				"http://localhost:37564", new Uri ("foobar", UriKind.Relative));
+		}
+
+		[Test]
+		[ExpectedException (typeof (MyException))]
+		public void RelativeListenUriWithBaseAddress ()
+		{
+			// MyBindingElement overrides GetProperty<T>() to call GetInnerProperty<T>() (default implementation).
+			// HttpTransportBindingElement should return Soap11.
+			ServiceHost host = new ServiceHost (typeof (FooService), new Uri ("http://localhost:37564"));
+			host.AddServiceEndpoint (typeof (IFooService),
+				new CustomBinding (new MyBindingElement (true), new HttpTransportBindingElement ()),
+				"http://localhost:37564", new Uri ("foobar", UriKind.Relative));
+			host.Open ();
+			host.Close ();
+		}
+		
+		[ServiceContract]
+		public interface IFooService
+		{
+			[OperationContract]
+			string Hello (string msg);
+		}
+		public class FooService : IFooService
+		{
+			public string Hello (string msg)
+			{
+				return "hello";
+			}
+		}
+
+		class MyBindingElement : BindingElement
+		{
+			public MyBindingElement (bool returnProperty)
+			{
+				return_property = returnProperty;
+			}
+			
+			bool return_property;
+
+			public override IChannelFactory<TChannel> BuildChannelFactory<TChannel> (
+				BindingContext ctx)
+			{
+				throw new NotImplementedException ();
+			}
+
+			public override IChannelListener<TChannel> BuildChannelListener<TChannel> (
+				BindingContext ctx)
+			{
+				throw new MyException ();
+			}
+
+			public override bool CanBuildChannelListener<TChannel> (BindingContext ctx)
+			{
+				return true;
+			}
+
+			public override BindingElement Clone ()
+			{
+				return new MyBindingElement (return_property);
+			}
+
+			public override T GetProperty<T> (BindingContext context)
+			{
+				return return_property ? context.GetInnerProperty<T> () : null;
+			}
+		}
+		
+		public class MyException : Exception
+		{
 		}
 	}
 

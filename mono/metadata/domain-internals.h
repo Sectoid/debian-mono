@@ -5,12 +5,14 @@
 #define __MONO_METADATA_DOMAIN_INTERNALS_H__
 
 #include <mono/metadata/appdomain.h>
+#include <mono/metadata/mempool.h>
 #include <mono/metadata/lock-tracer.h>
 #include <mono/utils/mono-codeman.h>
-#include <mono/utils/mono-hash.h>
+#include <mono/metadata/mono-hash.h>
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-internal-hash.h>
 #include <mono/io-layer/io-layer.h>
+#include <mono/metadata/mempool-internals.h>
 
 extern CRITICAL_SECTION mono_delegate_section;
 extern CRITICAL_SECTION mono_strtod_mutex;
@@ -43,10 +45,11 @@ typedef struct {
 	MonoBoolean disallow_code_downloads;
 	MonoObject *activation_arguments; /* it is System.Object in 1.x, ActivationArguments in 2.0 */
 	MonoObject *domain_initializer;
-	MonoArray *domain_initializer_args;
 	MonoObject *application_trust; /* it is System.Object in 1.x, ApplicationTrust in 2.0 */
+	MonoArray *domain_initializer_args;
 	MonoBoolean disallow_appbase_probe;
 	MonoArray *configuration_bytes;
+	MonoArray *serialized_non_primitives;
 } MonoAppDomainSetup;
 
 typedef struct _MonoJitInfoTable MonoJitInfoTable;
@@ -82,6 +85,7 @@ typedef struct {
 	union {
 		MonoClass *catch_class;
 		gpointer filter;
+		gpointer handler_end;
 	} data;
 } MonoJitExceptionInfo;
 
@@ -101,6 +105,42 @@ typedef struct
 	gboolean has_this:1;
 	gboolean this_in_reg:1;
 } MonoGenericJitInfo;
+
+/*
+A try block hole is used to represent a non-contiguous part of
+of a segment of native code protected by a given .try block.
+Usually, a try block is defined as a contiguous segment of code.
+But in some cases it's needed to have some parts of it to not be protected.
+For example, given "try {} finally {}", the code in the .try block to call
+the finally part looks like:
+
+try {
+    ...
+	call finally_block
+	adjust stack
+	jump outside try block
+	...
+} finally {
+	...
+}
+
+The instructions between the call and the jump should not be under the try block since they happen
+after the finally block executes, which means if an async exceptions happens at that point we would
+execute the finally clause twice. So, to avoid this, we introduce a hole in the try block to signal
+that those instructions are not protected.
+*/
+typedef struct
+{
+	guint32 offset;
+	guint16 clause;
+	guint16 length;
+} MonoTryBlockHoleJitInfo;
+
+typedef struct
+{
+	guint16 num_holes;
+	MonoTryBlockHoleJitInfo holes [MONO_ZERO_LEN_ARRAY];
+} MonoTryBlockHoleTableJitInfo;
 
 struct _MonoJitInfo {
 	/* NOTE: These first two elements (method and
@@ -124,14 +164,16 @@ struct _MonoJitInfo {
 	gboolean    cas_method_deny:1;
 	gboolean    cas_method_permitonly:1;
 	gboolean    has_generic_jit_info:1;
+	gboolean    has_try_block_holes:1;
 	gboolean    from_aot:1;
 	gboolean    from_llvm:1;
-#ifdef HAVE_SGEN_GC
-	/* FIXME: Embed this after the structure later */
-	gpointer    gc_info;
-#endif
+
+	/* FIXME: Embed this after the structure later*/
+	gpointer    gc_info; /* Currently only used by SGen */
+	
 	MonoJitExceptionInfo clauses [MONO_ZERO_LEN_ARRAY];
 	/* There is an optional MonoGenericJitInfo after the clauses */
+	/* There is an optional MonoTryBlockHoleTableJitInfo after MonoGenericJitInfo clauses*/
 };
 
 #define MONO_SIZEOF_JIT_INFO (offsetof (struct _MonoJitInfo, clauses))
@@ -187,6 +229,10 @@ struct _MonoDomain {
 	MonoException      *stack_overflow_ex;
 	/* typeof (void) */
 	MonoObject         *typeof_void;
+	/* Ephemeron Tombstone*/
+	MonoObject         *ephemeron_tombstone;
+	/* new MonoType [0] */
+	MonoArray          *empty_types;
 	/* 
 	 * The fields between FIRST_GC_TRACKED and LAST_GC_TRACKED are roots, but
 	 * not object references.
@@ -212,7 +258,7 @@ struct _MonoDomain {
 	GSList             *domain_assemblies;
 	MonoAssembly       *entry_assembly;
 	char               *friendly_name;
-	GHashTable         *class_vtable_hash;
+	GPtrArray          *class_vtable_array;
 	/* maps remote class key -> MonoRemoteClass */
 	GHashTable         *proxy_vtable_hash;
 	/* Protected by 'jit_code_hash_lock' */
@@ -236,12 +282,13 @@ struct _MonoDomain {
 	 * if the hashtable contains a GC visible reference to them.
 	 */
 	GHashTable         *finalizable_objects_hash;
-#ifndef HAVE_SGEN_GC
+
+	/* These two are boehm only */
 	/* Maps MonoObjects to a GSList of WeakTrackResurrection GCHandles pointing to them */
 	GHashTable         *track_resurrection_objects_hash;
 	/* Maps WeakTrackResurrection GCHandles to the MonoObjects they point to */
 	GHashTable         *track_resurrection_handles_hash;
-#endif
+
 	/* Protects the three hashes above */
 	CRITICAL_SECTION   finalizable_objects_hash_lock;
 	/* Used when accessing 'domain_assemblies' */
@@ -256,7 +303,7 @@ struct _MonoDomain {
 	gpointer runtime_info;
 
 	/*thread pool jobs, used to coordinate shutdown.*/
-	int					threadpool_jobs;
+	volatile int			threadpool_jobs;
 	HANDLE				cleanup_semaphore;
 	
 	/* Contains the compiled runtime invoke wrapper used by finalizers */
@@ -267,6 +314,10 @@ struct _MonoDomain {
 
 	/* Contains the compiled method used by async resylt creation to capture thread context*/
 	gpointer            capture_context_method;
+
+	/* Assembly bindings, the per-domain part */
+	GSList *assembly_bindings;
+	gboolean assembly_bindings_parsed;
 };
 
 typedef struct  {
@@ -277,7 +328,7 @@ typedef struct  {
 typedef struct  {
 	const char runtime_version [12];
 	const char framework_version [4];
-	const AssemblyVersionSet version_sets [2];
+	const AssemblyVersionSet version_sets [3];
 } MonoRuntimeInfo;
 
 #define mono_domain_lock(domain) mono_locks_acquire(&(domain)->lock, DomainLock)
@@ -348,7 +399,7 @@ gpointer
 mono_domain_alloc0 (MonoDomain *domain, guint size) MONO_INTERNAL;
 
 void*
-mono_domain_code_reserve (MonoDomain *domain, int size) MONO_INTERNAL;
+mono_domain_code_reserve (MonoDomain *domain, int size) MONO_LLVM_INTERNAL;
 
 void*
 mono_domain_code_reserve_align (MonoDomain *domain, int size, int alignment) MONO_INTERNAL;
@@ -360,7 +411,13 @@ void
 mono_domain_code_foreach (MonoDomain *domain, MonoCodeManagerFunc func, void *user_data) MONO_INTERNAL;
 
 void
+mono_domain_unset (void) MONO_INTERNAL;
+
+void
 mono_domain_set_internal_with_options (MonoDomain *domain, gboolean migrate_exception) MONO_INTERNAL;
+
+MonoTryBlockHoleTableJitInfo*
+mono_jit_info_get_try_block_hole_table_info (MonoJitInfo *ji) MONO_INTERNAL;
 
 /* 
  * Installs a new function which is used to return a MonoJitInfo for a method inside
@@ -473,9 +530,6 @@ mono_runtime_get_no_exec (void) MONO_INTERNAL;
 
 gboolean
 mono_assembly_name_parse (const char *name, MonoAssemblyName *aname) MONO_INTERNAL;
-
-void
-mono_assembly_name_free (MonoAssemblyName *aname) MONO_INTERNAL;
 
 MonoImage *mono_assembly_open_from_bundle (const char *filename,
 					   MonoImageOpenStatus *status,

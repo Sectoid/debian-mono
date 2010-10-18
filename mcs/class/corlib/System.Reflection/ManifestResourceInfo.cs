@@ -32,9 +32,7 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection
 {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class ManifestResourceInfo
 	{
 		private Assembly _assembly;
@@ -45,11 +43,16 @@ namespace System.Reflection
 		{
 		}
 
-		internal ManifestResourceInfo (Assembly assembly, string filename, ResourceLocation location)
+#if NET_4_0
+		public
+#else
+		internal
+#endif
+		ManifestResourceInfo (Assembly containingAssembly, string containingFileName, ResourceLocation resourceLocation)
 		{
-			_assembly = assembly;
-			_filename = filename;
-			_location = location;
+			_assembly = containingAssembly;
+			_filename = containingFileName;
+			_location = resourceLocation;
 		}
 		public virtual string FileName {
 			get { return _filename; }

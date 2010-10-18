@@ -31,6 +31,7 @@
 //
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.CodeDom.Compiler;
 using System.Globalization;
 using System.IO;
@@ -42,10 +43,6 @@ using System.Web.Hosting;
 using System.Web.UI;
 using System.Web.UI.HtmlControls;
 using System.Web.Util;
-
-#if NET_2_0
-using System.Collections.Generic;
-#endif
 
 namespace System.Web.Compilation
 {
@@ -211,11 +208,10 @@ namespace System.Web.Compilation
 	
 	class AspGenerator
 	{
-#if NET_2_0
 		const int READ_BUFFER_SIZE = 8192;
 		
 		internal static Regex DirectiveRegex = new Regex (@"<%\s*@(\s*(?<attrname>\w[\w:]*(?=\W))(\s*(?<equal>=)\s*""(?<attrval>[^""]*)""|\s*(?<equal>=)\s*'(?<attrval>[^']*)'|\s*(?<equal>=)\s*(?<attrval>[^\s%>]*)|(?<equal>)(?<attrval>\s*?)))*\s*?%>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-#endif
+
 		static readonly Regex runatServer = new Regex (@"<[\w:\.]+.*?runat=[""']?server[""']?.*(?:/>|>)",
 							       RegexOptions.Compiled | RegexOptions.Singleline |
 							       RegexOptions.Multiline | RegexOptions.IgnoreCase |
@@ -244,15 +240,10 @@ namespace System.Web.Compilation
 		ILocation location;
 		bool isApplication;
 		StringBuilder tagInnerText = new StringBuilder ();
-#if NET_2_0
 		static IDictionary emptyHash = new Dictionary <string, object> ();
-#else
-		static IDictionary emptyHash = new Hashtable ();
-#endif
 		bool inForm;
 		bool useOtherTags;
 		TagType lastTag;
-#if NET_2_0
 		AspComponentFoundry componentFoundry;
 		Stream inputStream;
 
@@ -260,19 +251,12 @@ namespace System.Web.Compilation
 		{
 			this.componentFoundry = componentFoundry;
 		}
-#endif
 		
 		public AspGenerator (TemplateParser tparser)
 		{
 			this.tparser = tparser;
 			text = new StringBuilder ();
 			stack = new BuilderLocationStack ();
-
-#if !NET_2_0
-			rootBuilder = new RootBuilder (tparser);
-			tparser.RootBuilder = rootBuilder;
-			stack.Push (rootBuilder, null);
-#endif
 			pstack = new ParserStack ();
 		}
 
@@ -288,7 +272,6 @@ namespace System.Web.Compilation
 			get { return pstack.Filename; }
 		}
 
-#if NET_2_0
 		PageParserFilter PageParserFilter {
 			get {
 				if (tparser == null)
@@ -527,7 +510,6 @@ namespace System.Web.Compilation
 			stack.Push (rootBuilder, null);
 			tparser.RootBuilder = rootBuilder;
 		}
-#endif
 		
 		BaseCompiler GetCompilerFromType ()
 		{
@@ -540,10 +522,9 @@ namespace System.Web.Compilation
 
 			if (type == typeof (UserControlParser))
 				return new UserControlCompiler ((UserControlParser) tparser);
-#if NET_2_0
+
 			if (type == typeof(MasterPageParser))
 				return new MasterPageCompiler ((MasterPageParser) tparser);
-#endif
 
 			throw new Exception ("Got type: " + type);
 		}
@@ -554,11 +535,10 @@ namespace System.Web.Compilation
 			parser.Error += new ParseErrorHandler (ParseError);
 			parser.TagParsed += new TagParsedHandler (TagParsed);
 			parser.TextParsed += new TextParsedHandler (TextParsed);
-#if NET_2_0
 			parser.ParsingComplete += new ParsingCompleteHandler (ParsingCompleted);
 			tparser.AspGenerator = this;
 			CreateRootBuilder (inputStream, filename);
-#endif
+
 			if (!pstack.Push (parser))
 				throw new ParseException (Location, "Infinite recursion detected including file: " + filename);
 
@@ -571,13 +551,11 @@ namespace System.Web.Compilation
 			}
 		}
 		
-#if NET_2_0
 		void InitParser (string filename)
 		{
 			StreamReader reader = new StreamReader (filename, WebEncoding.FileEncoding);
 			InitParser (reader, filename);
 		}
-#endif
 
 		void CheckForDuplicateIds (ControlBuilder root, Stack scopes)
 		{
@@ -585,27 +563,15 @@ namespace System.Web.Compilation
 				return;
 			
 			if (scopes == null)
-				scopes = new Stack ();
-			
-#if NET_2_0
+				scopes = new Stack ();			
+
 			Dictionary <string, bool> ids;
-#else
-			Hashtable ids;
-#endif
 			
 			if (scopes.Count == 0 || root.IsNamingContainer) {
-#if NET_2_0
 				ids = new Dictionary <string, bool> (StringComparer.Ordinal);
-#else
-				ids = new Hashtable ();
-#endif
 				scopes.Push (ids);
 			} else {
-#if NET_2_0
 				ids = scopes.Peek () as Dictionary <string, bool>;
-#else
-				ids = scopes.Peek () as Hashtable;
-#endif
 			}
 			
 			if (ids == null)
@@ -635,11 +601,7 @@ namespace System.Web.Compilation
 		
 		public void Parse (string file)
 		{
-#if ONLY_1_1
-			Parse (file, true);
-#else
 			Parse (file, false);
-#endif
 		}
 		
 		public void Parse (TextReader reader, string filename, bool doInitParser)
@@ -654,9 +616,7 @@ namespace System.Web.Compilation
 				if (text.Length > 0)
 					FlushText ();
 
-#if NET_2_0
 				tparser.MD5Checksum = pstack.Parser.MD5Checksum;
-#endif
 				pstack.Pop ();
 
 #if DEBUG
@@ -676,9 +636,7 @@ namespace System.Web.Compilation
 
 		public void Parse (Stream stream, string filename, bool doInitParser)
 		{
-#if NET_2_0
 			inputStream = stream;
-#endif
 			Parse (new StreamReader (stream, WebEncoding.FileEncoding), filename, doInitParser);
 		}
 		
@@ -690,7 +648,6 @@ namespace System.Web.Compilation
 
 		public void Parse ()
 		{
-#if NET_2_0
 			string inputFile = tparser.InputFile;
 			TextReader inputReader = tparser.Reader;
 
@@ -720,9 +677,6 @@ namespace System.Web.Compilation
 				if (inputReader != null)
 					inputReader.Close ();
 			}
-#else
-			Parse (Path.GetFullPath (tparser.InputFile));
-#endif
 		}
 
 		internal static void AddTypeToCache (ArrayList dependencies, string inputFile, Type type)
@@ -753,15 +707,7 @@ namespace System.Web.Compilation
 				return type;
 			}
 
-#if NET_2_0
 			Parse ();
-#else
-			try {
-				Parse ();
-			} catch (ParseException ex) {
-				throw new HttpException ("Compilation failed.", ex);
-			}
-#endif
 			BaseCompiler compiler = GetCompilerFromType ();
 			
 			type = compiler.GetCompiledType ();
@@ -882,7 +828,6 @@ namespace System.Web.Compilation
 				FlushText ();
 		}
 
-#if NET_2_0
 		void ParsingCompleted ()
 		{
 			PageParserFilter pfilter = PageParserFilter;
@@ -891,7 +836,6 @@ namespace System.Web.Compilation
 
 			pfilter.ParseComplete (RootBuilder);
 		}
-#endif
 
 		void CheckIfIncludeFileIsSecure (string filePath)
 		{
@@ -940,9 +884,11 @@ namespace System.Web.Compilation
 			if (tparser != null)
 				tparser.Location = location;
 
-			if (text.Length != 0)
-				FlushText (lastTag == TagType.CodeRender);
-
+			if (text.Length != 0) {
+				bool ignoreEmptyString = lastTag == TagType.CodeRender;
+				FlushText (ignoreEmptyString);
+			}
+			
 			if (0 == String.Compare (tagid, "script", true, Helpers.InvariantCulture)) {
 				bool in_script = (inScript || ignore_text);
 				if (in_script) {
@@ -997,10 +943,11 @@ namespace System.Web.Compilation
 				}
 				break;
 			case TagType.DataBinding:
-				goto case TagType.CodeRender;
 			case TagType.CodeRenderExpression:
-				goto case TagType.CodeRender;
 			case TagType.CodeRender:
+#if NET_4_0
+			case TagType.CodeRenderEncode:
+#endif
 				if (isApplication)
 					throw new ParseException (location, "Invalid content for application file.");
 			
@@ -1017,7 +964,6 @@ namespace System.Web.Compilation
 
 				if (isvirtual) {
 					bool parsed = false;
-#if NET_2_0
 					VirtualPathProvider vpp = HostingEnvironment.VirtualPathProvider;
 
 					if (vpp.FileExists (file)) {
@@ -1027,7 +973,6 @@ namespace System.Web.Compilation
 							parsed = true;
 						}
 					}
-#endif
 					
 					if (!parsed)
 						Parse (tparser.MapPath (file), true);
@@ -1081,19 +1026,9 @@ namespace System.Web.Compilation
 			return !text.EndsWith ("/>");
 		}
 		
-#if NET_2_0
-		List <TextBlock>
-#else
-		ArrayList
-#endif
-		FindRegexBlocks (Regex rxStart, Regex rxEnd, CheckBlockEnd checkEnd, IList blocks, TextBlockType typeForMatches, bool discardBlocks)
+		List <TextBlock> FindRegexBlocks (Regex rxStart, Regex rxEnd, CheckBlockEnd checkEnd, IList blocks, TextBlockType typeForMatches, bool discardBlocks)
 		{
-#if NET_2_0
 			var ret = new List <TextBlock> ();
-#else
-			ArrayList ret = new ArrayList ();
-#endif
-			
 			foreach (TextBlock block in blocks) {
 				if (block.Type != TextBlockType.Verbatim) {
 					ret.Add (block);
@@ -1134,11 +1069,7 @@ namespace System.Web.Compilation
 		
 		IList SplitTextIntoBlocks (string text)
 		{
-#if NET_2_0
 			var ret = new List <TextBlock> ();
-#else
-			ArrayList ret = new ArrayList ();
-#endif
 
 			ret.Add (new TextBlock (TextBlockType.Verbatim, text));
 			ret = FindRegexBlocks (clientCommentRegex, null, null, ret, TextBlockType.Comment, false);
@@ -1219,11 +1150,10 @@ namespace System.Web.Compilation
 				return;
 			
 			if (inScript) {
-#if NET_2_0
 				PageParserFilter pfilter = PageParserFilter;
 				if (pfilter != null && !pfilter.ProcessCodeConstruct (CodeConstructType.ScriptTag, t))
 					return;
-#endif
+
 				tparser.Scripts.Add (new ServerSideScript (t, new System.Web.Compilation.Location (tparser.Location)));
 				return;
 			}
@@ -1238,7 +1168,6 @@ namespace System.Web.Compilation
 			}
 		}
 
-#if NET_2_0
 		bool BuilderHasOtherThan (Type type, ControlBuilder cb)
 		{
 			ArrayList al = cb.OtherTags;
@@ -1286,7 +1215,6 @@ namespace System.Web.Compilation
 			
 			return true;
 		}
-#endif
 
 		public void AddControl (Type type, IDictionary attributes)
 		{
@@ -1355,14 +1283,13 @@ namespace System.Web.Compilation
 			string plainText = location.PlainText;
 			if (!runatServer && plainText.IndexOf ("<%$") == -1&& plainText.IndexOf ("<%") > -1)
 				return false;
-#if NET_2_0
+
 			PageParserFilter pfilter = PageParserFilter;
 			if (pfilter != null && !pfilter.AllowControl (builder.ControlType, builder))
 				throw new ParseException (Location, "Control type '" + builder.ControlType + "' not allowed.");
 			
 			if (!OtherControlsAllowed (builder))
 				throw new ParseException (Location, "Only Content controls are allowed directly in a content page that contains Content controls.");
-#endif
 			
 			builder.Location = location;
 			builder.ID = htable ["id"] as string;
@@ -1511,7 +1438,6 @@ namespace System.Web.Compilation
 			return true;
 		}
 
-#if NET_2_0
 		CodeConstructType MapTagTypeToConstructType (TagType tagtype)
 		{
 			switch (tagtype) {
@@ -1519,6 +1445,9 @@ namespace System.Web.Compilation
 					return CodeConstructType.ExpressionSnippet;
 
 				case TagType.CodeRender:
+#if NET_4_0
+				case TagType.CodeRenderEncode:
+#endif
 					return CodeConstructType.CodeSnippet;
 
 				case TagType.DataBinding:
@@ -1529,10 +1458,8 @@ namespace System.Web.Compilation
 			}
 		}
 		
-#endif
 		bool ProcessCode (TagType tagtype, string code, ILocation location)
 		{
-#if NET_2_0
 			PageParserFilter pfilter = PageParserFilter;
 			// LAMESPEC:
 			//
@@ -1545,7 +1472,7 @@ namespace System.Web.Compilation
 			//
 			if (pfilter != null && (!pfilter.AllowCode || pfilter.ProcessCodeConstruct (MapTagTypeToConstructType (tagtype), code)))
 				return true;
-#endif
+
 			ControlBuilder b = null;
 			if (tagtype == TagType.CodeRender)
 				b = new CodeRenderBuilder (code, false, location);
@@ -1553,6 +1480,10 @@ namespace System.Web.Compilation
 				b = new CodeRenderBuilder (code, true, location);
 			else if (tagtype == TagType.DataBinding)
 				b = new DataBindingBuilder (code, location);
+#if NET_4_0
+			else if (tagtype == TagType.CodeRenderEncode)
+				b = new CodeRenderBuilder (code, true, location, true);
+#endif
 			else
 				throw new HttpException ("Should never happen");
 
@@ -1572,13 +1503,8 @@ namespace System.Web.Compilation
 			if (String.Compare (lang, tparser.Language, true, Helpers.InvariantCulture) == 0)
 				return;
 
-#if NET_2_0
 			CompilationSection section = (CompilationSection) WebConfigurationManager.GetWebApplicationSection ("system.web/compilation");
 			if (section.Compilers[tparser.Language] != section.Compilers[lang])
-#else
-			CompilationConfiguration cfg = CompilationConfiguration.GetInstance (HttpContext.Current); 
-			if (!cfg.Compilers.CompareLanguages (tparser.Language, lang))
-#endif
 				throw new ParseException (Location,
 						String.Format ("Trying to mix language '{0}' and '{1}'.", 
 								tparser.Language, lang));
@@ -1662,7 +1588,11 @@ namespace System.Web.Compilation
 					case TagType.CodeRenderExpression:
 						builder.AppendSubBuilder (new CodeRenderBuilder (tagid, true, location));
 						break;
-						
+#if NET_4_0
+					case TagType.CodeRenderEncode:
+						builder.AppendSubBuilder (new CodeRenderBuilder (tagid, true, location, true));
+						break;
+#endif
 					case TagType.DataBinding:
 						builder.AppendSubBuilder (new DataBindingBuilder (tagid, location));
 						break;

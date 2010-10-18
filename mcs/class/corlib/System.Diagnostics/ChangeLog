@@ -1,8 +1,16 @@
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* StackFrame.cs: use MOONLIGHT symbol to disambiguate
+	MonoTouch and Moonlight code.
+
+2010-03-07 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Debugger.cs: Add Obsolete attribute to .ctor().
+
 2009-10-24  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* StackFrame.cs: Relax GetSecureFileName when the coreclr is not 
 	active (i.e. show full path when compiling with smcs)
-	[Backport r144797]
 
 2009-10-08  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -11,7 +19,6 @@
 	(for Moonlight) on a stack frame.
 	* StackTrace.cs: Use the new StackFrame.GetSecureFileName to
 	simplify logic
-	[Backport r143802]
 
 2009-09-18  Sebastien Pouliot  <sebastien@ximian.com>
 

@@ -28,7 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -38,9 +38,7 @@ using System.Security.Policy;
 
 namespace System.IO.IsolatedStorage {
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public abstract class IsolatedStorage : MarshalByRefObject {
 
 		// Constructor
@@ -56,8 +54,7 @@ namespace System.IO.IsolatedStorage {
 
 		// Properties
 
-#if NET_2_0
-		[MonoTODO ("requires manifest support")]
+		[MonoTODO ("Does not currently use the manifest support")]
 		[ComVisible (false)]
 		public object ApplicationIdentity {
 			[SecurityPermission (SecurityAction.Demand, ControlPolicy=true)]
@@ -71,23 +68,23 @@ namespace System.IO.IsolatedStorage {
 				throw new NotImplementedException (Locale.GetText ("CAS related")); 
 			}
 		}
-#endif
 
 		public object AssemblyIdentity {
 			[SecurityPermission (SecurityAction.Demand, ControlPolicy=true)]
 			get {
-#if NET_2_0
 				if ((storage_scope & IsolatedStorageScope.Assembly) == 0) {
 					throw new InvalidOperationException (Locale.GetText ("Invalid Isolation Scope.")); 
 				}
 				if (_assemblyIdentity == null)
 					throw new InvalidOperationException (Locale.GetText ("Identity unavailable.")); 
-#endif
 				return _assemblyIdentity;
 			}
 		}
 
 		[CLSCompliant (false)]
+#if NET_4_0
+		[Obsolete]
+#endif
 		public virtual ulong CurrentSize {
 			get {
 				throw new InvalidOperationException (
@@ -108,6 +105,9 @@ namespace System.IO.IsolatedStorage {
 		}
 
 		[CLSCompliant (false)]
+#if NET_4_0
+		[Obsolete]
+#endif
 		public virtual ulong MaximumSize {
 			get {
 				throw new InvalidOperationException (
@@ -118,6 +118,29 @@ namespace System.IO.IsolatedStorage {
 		public IsolatedStorageScope Scope {
 			get { return storage_scope; }
 		}
+
+#if NET_4_0
+		[ComVisible (false)]
+		public virtual long AvailableFreeSpace {
+			get {
+				throw new InvalidOperationException ("This property is not defined for this store.");
+			}
+		}
+
+		[ComVisible (false)]
+		public virtual long Quota {
+			get {
+				throw new InvalidOperationException ("This property is not defined for this store.");
+			}
+		}
+
+		[ComVisible (false)]
+		public virtual long UsedSize {
+			get {
+				throw new InvalidOperationException ("This property is not defined for this store.");
+			}
+		}
+#endif
 
 		protected virtual char SeparatorExternal {
 			get { return System.IO.Path.DirectorySeparatorChar; }
@@ -142,7 +165,7 @@ namespace System.IO.IsolatedStorage {
 				throw new ArgumentException (scope.ToString ());
 			}
 		}
-#if NET_2_0
+
 		[MonoTODO ("requires manifest support")]
 		protected void InitStore (IsolatedStorageScope scope, Type appEvidenceType)
 		{
@@ -156,9 +179,16 @@ namespace System.IO.IsolatedStorage {
 			// no exception here because this can work without CAS
 			storage_scope = scope;
 		}
-#endif
 		public abstract void Remove ();
+
+#if NET_4_0
+		[ComVisible (false)]
+		public virtual bool IncreaseQuotaTo (long newQuotaSize)
+		{
+			return false;
+		}
+#endif
 	}
 }
-/* NET_2_1 */
+/* MOONLIGHT */
 #endif 

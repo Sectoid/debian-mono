@@ -323,6 +323,67 @@ namespace MonoTests.System.ServiceModel
 			Assert.Fail ("should not open");
 		}
 
+		[Test]
+		public void RunDestinationUnreachableTest ()
+		{
+			RunDestinationUnreachableTest ("BasicHttp", new BasicHttpBinding ());
+		}
+
+		[Test]
+		public void RunDestinationUnreachableTest2 ()
+		{
+			RunDestinationUnreachableTest ("CustomSoap12", new CustomBinding (new HttpTransportBindingElement ()));
+		}
+
+		void RunDestinationUnreachableTest (string label, Binding binding)
+		{
+			string address = "http://localhost:37564/";
+			var host = OpenHost (address, binding);
+			
+			try {
+				var client = new DestinationUnreachableClient (binding, address);
+				client.NotImplementedOperation ();
+				Assert.Fail (label + " ActionNotSupportedException is expected");
+			} catch (ActionNotSupportedException) {
+				// catching it instead of ExpectedException to distinguish errors at service side.
+			} finally {
+				host.Close ();
+			}
+		}
+		
+		ServiceHost OpenHost (string address, Binding binding)
+		{
+			var baseAddresses = new Uri[] { new Uri(address) };
+
+			var host = new ServiceHost (typeof (DummyService), baseAddresses);
+			host.AddServiceEndpoint (typeof (IDummyService), binding, new Uri ("", UriKind.Relative));
+			host.Open ();
+			return host;
+		}
+
+#if NET_4_0
+		[Test]
+		public void AddServiceEndpoint_Directly ()
+		{
+			var host = new ServiceHost (typeof (DummyService));
+			var address = new EndpointAddress ("http://localhost:8080");
+			var binding = new BasicHttpBinding ();
+			var contract = ContractDescription.GetContract (typeof (IDummyService));
+			host.AddServiceEndpoint (new ServiceEndpoint (contract, binding, address));
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void AddServiceEndpoint_Directly_ContractMismatch ()
+		{
+			var host = new ServiceHost (typeof (DummyService));
+			var address = new EndpointAddress ("http://localhost:8080");
+			var binding = new BasicHttpBinding ();
+			var contract = ContractDescription.GetContract (typeof (INotImplementedService));
+			host.AddServiceEndpoint (new ServiceEndpoint (contract, binding, address));
+		}
+#endif
+
 		#region helpers
 
 		public enum Stage
@@ -606,7 +667,39 @@ namespace MonoTests.System.ServiceModel
 
 			#endregion
 		}
-		#endregion
 
+		[ServiceContract]
+		public interface IDummyService
+		{
+			[OperationContract]
+			void DummyOperation ();
+		}
+		public class DummyService : IDummyService
+		{
+			public void DummyOperation ()
+			{
+				// Do nothing
+			}
+		}
+		[ServiceContract]
+		public interface INotImplementedService
+		{
+			[OperationContract]
+			void NotImplementedOperation ();
+		}
+		public class DestinationUnreachableClient : ClientBase<INotImplementedService>, INotImplementedService
+		{
+			public void NotImplementedOperation ()
+			{
+				Channel.NotImplementedOperation ();
+			}
+		
+			public DestinationUnreachableClient (Binding binding, string address) 
+				: base (binding, new EndpointAddress (address))
+			{
+			}
+		}
+
+		#endregion
 	}
 }

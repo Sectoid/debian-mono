@@ -27,8 +27,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -39,38 +37,88 @@ namespace System.Reflection {
 
 	[ComVisible (true)]
 	[Serializable]
-	public sealed class CustomAttributeData {
+#if NET_4_0
+	public
+#else
+	public sealed
+#endif
+	class CustomAttributeData {
+		class LazyCAttrData {
+			internal Assembly assembly;
+			internal IntPtr data;
+			internal uint data_length;
+		}
+
 		ConstructorInfo ctorInfo;
 		IList<CustomAttributeTypedArgument> ctorArgs;
 		IList<CustomAttributeNamedArgument> namedArgs;
+		LazyCAttrData lazyData;
 
-		internal CustomAttributeData (ConstructorInfo ctorInfo, object [] ctorArgs, object [] namedArgs)
+
+#if NET_4_0
+		protected CustomAttributeData ()
+		{
+		}
+#endif
+
+		internal CustomAttributeData (ConstructorInfo ctorInfo, Assembly assembly, IntPtr data, uint data_length)
 		{
 			this.ctorInfo = ctorInfo;
-			
-			this.ctorArgs = Array.AsReadOnly<CustomAttributeTypedArgument> 
-				(ctorArgs != null ? UnboxValues<CustomAttributeTypedArgument> (ctorArgs) : new CustomAttributeTypedArgument [0]);
-			
-			this.namedArgs = Array.AsReadOnly<CustomAttributeNamedArgument> 
-				(namedArgs != null ? UnboxValues<CustomAttributeNamedArgument> (namedArgs) : new CustomAttributeNamedArgument [0]);
+			this.lazyData = new LazyCAttrData ();
+			this.lazyData.assembly = assembly;
+			this.lazyData.data = data;
+			this.lazyData.data_length = data_length;
 		}
 
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		static extern void ResolveArgumentsInternal (ConstructorInfo ctor, Assembly assembly, IntPtr data, uint data_length, out object[] ctorArgs, out object[] namedArgs); 
+
+		void ResolveArguments ()
+		{
+			object[] ctor_args, named_args;
+			if (lazyData == null)
+				return;
+
+			ResolveArgumentsInternal (ctorInfo, lazyData.assembly, lazyData.data, lazyData.data_length, out ctor_args, out named_args);
+
+			this.ctorArgs = Array.AsReadOnly<CustomAttributeTypedArgument>
+				(ctor_args != null ? UnboxValues<CustomAttributeTypedArgument> (ctor_args) : new CustomAttributeTypedArgument [0]);
+			this.namedArgs = Array.AsReadOnly<CustomAttributeNamedArgument> 
+				(named_args != null ? UnboxValues<CustomAttributeNamedArgument> (named_args) : new CustomAttributeNamedArgument [0]);
+			
+			lazyData = null;
+		}
+		
 		[ComVisible (true)]
-		public ConstructorInfo Constructor {
+		public
+#if NET_4_0
+		virtual
+#endif
+		ConstructorInfo Constructor {
 			get {
 				return ctorInfo;
 			}
 		}
 
 		[ComVisible (true)]
-		public IList<CustomAttributeTypedArgument> ConstructorArguments {
+		public
+#if NET_4_0
+		virtual
+#endif
+		IList<CustomAttributeTypedArgument> ConstructorArguments {
 			get {
+				ResolveArguments ();
 				return ctorArgs;
 			}
 		}
 
-		public IList<CustomAttributeNamedArgument> NamedArguments {
+		public
+#if NET_4_0
+		virtual
+#endif
+		IList<CustomAttributeNamedArgument> NamedArguments {
 			get {
+				ResolveArguments ();
 				return namedArgs;
 			}
 		}
@@ -161,6 +209,4 @@ namespace System.Reflection {
 	}
 
 }
-
-#endif
 

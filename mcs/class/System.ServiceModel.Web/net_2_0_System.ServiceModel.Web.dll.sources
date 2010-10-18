@@ -2,6 +2,8 @@
 System.Runtime.Serialization.Json/DataContractJsonSerializer.cs
 System.Runtime.Serialization.Json/IXmlJsonReaderInitializer.cs
 System.Runtime.Serialization.Json/IXmlJsonWriterInitializer.cs
+System.Runtime.Serialization.Json/JavaScriptObjectDeserializer.cs
+System.Runtime.Serialization.Json/JavaScriptReader.cs
 System.Runtime.Serialization.Json/JsonReader.cs
 System.Runtime.Serialization.Json/JsonReaderWriterFactory.cs
 System.Runtime.Serialization.Json/JsonSerializationReader.cs
@@ -44,3 +46,8 @@ System.ServiceModel.Syndication/TextSyndicationContentKind.cs
 System.ServiceModel.Syndication/UrlSyndicationContent.cs
 System.ServiceModel.Syndication/Workspace.cs
 System.ServiceModel.Syndication/XmlSyndicationContent.cs
+System/UriTemplate.cs
+System/UriTemplateEquivalenceComparer.cs
+System/UriTemplateMatch.cs
+System/UriTemplateMatchException.cs
+System/UriTemplateTable.cs

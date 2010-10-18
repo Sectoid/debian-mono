@@ -28,7 +28,9 @@ using System.Threading;
 
 using NUnit.Framework;
 
-namespace ParallelFxTests
+using MonoTests.System.Threading.Tasks;
+
+namespace MonoTests.System.Threading
 {
 	
 	[TestFixture]
@@ -71,7 +73,7 @@ namespace ParallelFxTests
 					m.Wait();
 					s = true;
 				}
-			});	
+			}, 2);	
 			
 			Assert.IsTrue(s, "#1");
 			Assert.IsTrue(mre.IsSet, "#2");

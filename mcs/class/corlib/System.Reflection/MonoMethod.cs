@@ -28,6 +28,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -42,11 +43,13 @@ namespace System.Reflection {
 	
 	internal struct MonoMethodInfo 
 	{
+#pragma warning disable 649	
 		private Type parent;
 		private Type ret;
 		internal MethodAttributes attrs;
 		internal MethodImplAttributes iattrs;
 		private CallingConventions callconv;
+#pragma warning restore 649		
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		static extern void get_method_info (IntPtr handle, out MonoMethodInfo info);
@@ -124,20 +127,23 @@ namespace System.Reflection {
 		internal static extern string get_name (MethodBase method);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-		internal static extern MonoMethod get_base_definition (MonoMethod method);
+		internal static extern MonoMethod get_base_method (MonoMethod method, bool definition);
 
 		public override MethodInfo GetBaseDefinition ()
 		{
-			return get_base_definition (this);
+			return get_base_method (this, true);
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
+		internal override MethodInfo GetBaseMethod ()
+		{
+			return get_base_method (this, false);
+		}
+
 		public override ParameterInfo ReturnParameter {
 			get {
 				return MonoMethodInfo.GetReturnParameterInfo (this);
 			}
 		}
-#endif
 
 		public override Type ReturnType {
 			get {
@@ -161,6 +167,12 @@ namespace System.Reflection {
 			ParameterInfo[] res = new ParameterInfo [src.Length];
 			src.CopyTo (res, 0);
 			return res;
+		}
+		
+		internal override int GetParameterCount ()
+		{
+			var pi = MonoMethodInfo.GetParametersInfo (mhandle, this);
+			return pi == null ? 0 : pi.Length;
 		}
 
 		/*
@@ -198,10 +210,8 @@ namespace System.Reflection {
 			}
 #endif
 
-#if NET_2_0
 			if (ContainsGenericParameters)
 				throw new InvalidOperationException ("Late bound operations cannot be performed on types or methods for which ContainsGenericParameters is true.");
-#endif
 
 			Exception exc;
 			object o = null;
@@ -211,10 +221,8 @@ namespace System.Reflection {
 				// from the exceptions thrown by the called method (which need to be
 				// wrapped in TargetInvocationException).
 				o = InternalInvoke (obj, parameters, out exc);
-#if NET_2_0
 			} catch (ThreadAbortException) {
 				throw;
-#endif
 #if NET_2_1
 			} catch (MethodAccessException) {
 				throw;
@@ -306,11 +314,7 @@ namespace System.Reflection {
 
 		static bool ShouldPrintFullName (Type type) {
 			return type.IsClass && (!type.IsPointer ||
-#if NET_2_0
  				(!type.GetElementType ().IsPrimitive && !type.GetElementType ().IsNested));
-#else
-				!type.GetElementType ().IsPrimitive);
-#endif
 		}
 
 		public override string ToString () {
@@ -322,7 +326,6 @@ namespace System.Reflection {
 				sb.Append (retType.Name);
 			sb.Append (" ");
 			sb.Append (Name);
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 			if (IsGenericMethod) {
 				Type[] gen_params = GetGenericArguments ();
 				sb.Append ("[");
@@ -333,7 +336,6 @@ namespace System.Reflection {
 				}
 				sb.Append ("]");
 			}
-#endif
 			sb.Append ("(");
 			ParameterInfo[] p = GetParameters ();
 			for (int i = 0; i < p.Length; ++i) {
@@ -364,23 +366,33 @@ namespace System.Reflection {
 		// ISerializable
 		public void GetObjectData(SerializationInfo info, StreamingContext context) 
 		{
-#if NET_2_0
 			Type[] genericArguments = IsGenericMethod && !IsGenericMethodDefinition
 				? GetGenericArguments () : null;
 			MemberInfoSerializationHolder.Serialize ( info, Name, ReflectedType, ToString(), MemberTypes.Method, genericArguments);
-#else
-			MemberInfoSerializationHolder.Serialize ( info, Name, ReflectedType, ToString(), MemberTypes.Method);
-#endif
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		public override MethodInfo MakeGenericMethod (Type [] methodInstantiation)
 		{
 			if (methodInstantiation == null)
 				throw new ArgumentNullException ("methodInstantiation");
-			foreach (Type type in methodInstantiation)
+
+			if (!IsGenericMethodDefinition)
+				throw new InvalidOperationException ("not a generic method definition");
+
+			/*FIXME add GetGenericArgumentsLength() internal vcall to speed this up*/
+			if (GetGenericArguments ().Length != methodInstantiation.Length)
+				throw new ArgumentException ("Incorrect length");
+
+			bool hasUserType = false;
+			foreach (Type type in methodInstantiation) {
 				if (type == null)
 					throw new ArgumentNullException ();
+				if (!(type is MonoType))
+					hasUserType = true;
+			}
+
+			if (hasUserType)
+				return new MethodOnTypeBuilderInst (this, methodInstantiation);
 
 			MethodInfo ret = MakeGenericMethod_impl (methodInstantiation);
 			if (ret == null)
@@ -426,11 +438,14 @@ namespace System.Reflection {
 				return DeclaringType.ContainsGenericParameters;
 			}
 		}
-#endif
 
-#if NET_2_0
 		public override MethodBody GetMethodBody () {
 			return GetMethodBody (mhandle);
+		}
+
+#if NET_4_0
+		public override IList<CustomAttributeData> GetCustomAttributesData () {
+			return CustomAttributeData.GetCustomAttributes (this);
 		}
 #endif
 	}
@@ -451,6 +466,12 @@ namespace System.Reflection {
 		public override ParameterInfo[] GetParameters ()
 		{
 			return MonoMethodInfo.GetParametersInfo (mhandle, this);
+		}
+
+		internal override int GetParameterCount ()
+		{
+			var pi = MonoMethodInfo.GetParametersInfo (mhandle, this);
+			return pi == null ? 0 : pi.Length;
 		}
 
 		/*
@@ -488,10 +509,8 @@ namespace System.Reflection {
 			}
 #endif
 
-#if NET_2_0
 			if (obj == null && DeclaringType.ContainsGenericParameters)
 				throw new MemberAccessException ("Cannot create an instance of " + DeclaringType + " because Type.ContainsGenericParameters is true.");
-#endif
 
 			if ((invokeAttr & BindingFlags.CreateInstance) != 0 && DeclaringType.IsAbstract) {
 				throw new MemberAccessException (String.Format ("Cannot create an instance of {0} because it is an abstract class", DeclaringType));
@@ -564,11 +583,9 @@ namespace System.Reflection {
 			return MonoCustomAttrs.GetCustomAttributes (this, attributeType, inherit);
 		}
 
-#if NET_2_0
 		public override MethodBody GetMethodBody () {
 			return GetMethodBody (mhandle);
 		}
-#endif
 
 		public override string ToString () {
 			StringBuilder sb = new StringBuilder ();
@@ -592,5 +609,11 @@ namespace System.Reflection {
 		{
 			MemberInfoSerializationHolder.Serialize ( info, Name, ReflectedType, ToString(), MemberTypes.Constructor);
 		}
+
+#if NET_4_0
+		public override IList<CustomAttributeData> GetCustomAttributesData () {
+			return CustomAttributeData.GetCustomAttributes (this);
+		}
+#endif
 	}
 }

@@ -4,7 +4,7 @@
 // Author:
 //	Sebastien Pouliot  <sebastien@ximian.com>
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -30,18 +30,15 @@ using System.Collections;
 using System.ComponentModel;
 using System.Security.Permissions;
 
-namespace System.Web.UI.WebControls {
-
+namespace System.Web.UI.WebControls
+{
 	// CAS
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	[AspNetHostingPermission (SecurityAction.InheritanceDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	// attributes
 	[ToolboxItem ("")]
-#if NET_2_0
-	public class DataListItem : WebControl, INamingContainer, IDataItemContainer {
-#else
-	public class DataListItem : WebControl, INamingContainer {
-#endif
+	public class DataListItem : WebControl, INamingContainer, IDataItemContainer
+	{
 		int index;
 		ListItemType type;
 		object item;
@@ -64,7 +61,11 @@ namespace System.Web.UI.WebControls {
 		public virtual ListItemType ItemType {
 			get { return type; }
 		}
-
+#if NET_4_0
+		public override bool SupportsDisabledAttribute {
+			get { return RenderingCompatibilityLessThan40; }
+		}
+#endif
 		protected override Style CreateControlStyle ()
 		{
 			return new TableItemStyle (ViewState);
@@ -90,9 +91,8 @@ namespace System.Web.UI.WebControls {
 		public virtual void RenderItem (HtmlTextWriter writer, bool extractRows, bool tableLayout)
 		{
 			bool span = (!extractRows && !tableLayout); 
-			if (span) {
+			if (span)
 				writer.RenderBeginTag (TagKey);
-			}
 			
 			if (HasControls ()) {
 				if (extractRows) {
@@ -102,9 +102,8 @@ namespace System.Web.UI.WebControls {
 						if (t != null) {
 							table = true;
 							foreach (TableRow tr in t.Rows) {
-								if (ControlStyleCreated && !ControlStyle.IsEmpty) {
+								if (ControlStyleCreated && !ControlStyle.IsEmpty)
 									tr.ControlStyle.MergeWith (ControlStyle);
-								}
 								tr.RenderControl (writer);
 							}
 							break; // ignore all, but the first, table
@@ -121,9 +120,8 @@ namespace System.Web.UI.WebControls {
 				}
 			}
 			
-			if (span) {
+			if (span)
 				writer.RenderEndTag ();
-			}
 		}
 
 		protected virtual void SetItemType (ListItemType itemType)
@@ -131,7 +129,6 @@ namespace System.Web.UI.WebControls {
 			type = itemType;
 		}
 
-#if NET_2_0
 		object IDataItemContainer.DataItem {
 			get { return item; }
 		}
@@ -143,6 +140,5 @@ namespace System.Web.UI.WebControls {
 		int IDataItemContainer.DisplayIndex {
 			get { return index; }
 		}
-#endif
 	}
 }

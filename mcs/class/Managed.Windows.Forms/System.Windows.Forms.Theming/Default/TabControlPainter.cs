@@ -167,7 +167,7 @@ namespace System.Windows.Forms.Theming.Default
 
 		public TabControlPainter ()
 		{
-			defaultItemSize = new Size (42, 21);
+			defaultItemSize = new Size (42, 16);
 			defaultPadding = new Point (6, 3);
 			selectedTabDelta = new Rectangle (2, 2, 4, 3);
 			selectedSpacing = 0;
@@ -188,8 +188,9 @@ namespace System.Windows.Forms.Theming.Default
 			imagePadding = new Point (2, 3);
 
 			defaultFormatting = new StringFormat();
+			// Horizontal Alignment is handled in the Draw method
 			defaultFormatting.Alignment = StringAlignment.Near;
-			defaultFormatting.LineAlignment = StringAlignment.Near;
+			defaultFormatting.LineAlignment = StringAlignment.Center;
 			defaultFormatting.FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.NoClip;
 			defaultFormatting.HotkeyPrefix = HotkeyPrefix.Show;
 
@@ -272,6 +273,12 @@ namespace System.Windows.Forms.Theming.Default
 				end = 0;
 				delta = -1;
 			}
+
+			if (tab.SizeMode == TabSizeMode.Fixed)
+				defaultFormatting.Alignment = StringAlignment.Center;
+			else
+				defaultFormatting.Alignment = StringAlignment.Near;
+
 			int counter = start;
 			for (; counter != end; counter += delta) {
 				for (int i = tab.SliderPos; i < tab.TabPages.Count; i++) {
@@ -414,16 +421,17 @@ namespace System.Windows.Forms.Theming.Default
 				}
 			}
 
-			interior = new Rectangle (bounds.Left + focusRectSpacing.X + borderThickness.Left, 
-				bounds.Top + focusRectSpacing.Y +  + borderThickness.Top,
-				bounds.Width - (focusRectSpacing.X * 2) - borderThickness.Width + 1, 
-				bounds.Height - (focusRectSpacing.Y * 2) - borderThickness.Height);
+			Point padding = tab.Padding;
+			interior = new Rectangle (bounds.Left + padding.X - 1, // substract a little offset
+				bounds.Top + padding.Y,
+				bounds.Width - (padding.X * 2), 
+				bounds.Height - (padding.Y * 2));
 
 			if (tab.DrawMode == TabDrawMode.Normal && page.Text != null) {
 				if (tab.Alignment == TabAlignment.Left) {
 					dc.TranslateTransform (bounds.Left, bounds.Bottom);
 					dc.RotateTransform (-90);
-					dc.DrawString (page.Text, page.Font,
+					dc.DrawString (page.Text, tab.Font,
 						SystemBrushes.ControlText, 
 						tab.Padding.X - 2, // drawstring adds some extra unwanted leading spaces, so trimming
 						tab.Padding.Y,
@@ -432,7 +440,7 @@ namespace System.Windows.Forms.Theming.Default
 				} else if (tab.Alignment == TabAlignment.Right) {
 					dc.TranslateTransform (bounds.Right, bounds.Top);
 					dc.RotateTransform (90);
-					dc.DrawString (page.Text, page.Font,
+					dc.DrawString (page.Text, tab.Font,
 						SystemBrushes.ControlText, 
 						tab.Padding.X - 2, // drawstring adds some extra unwanted leading spaces, so trimming
 						tab.Padding.Y,
@@ -447,7 +455,7 @@ namespace System.Windows.Forms.Theming.Default
 						str_rect.X += tab.ImageList.ImageSize.Width + 2;
 						str_rect.Width -= tab.ImageList.ImageSize.Width + 2;
 					}
-					dc.DrawString (page.Text, page.Font,
+					dc.DrawString (page.Text, tab.Font,
 						SystemBrushes.ControlText,
 						str_rect, 
 						defaultFormatting);
@@ -464,9 +472,11 @@ namespace System.Windows.Forms.Theming.Default
 				return res;
 			}
 
-			if (page.Parent.Focused && is_selected && tab.ShowFocusCues) {
-				interior.Width -= 1;
-				ThemeEngine.Current.CPDrawFocusRectangle (dc, interior, tab.ForeColor, tab.BackColor);
+			// TabControl ignores the value of ShowFocusCues
+			if (page.Parent.Focused && is_selected) {
+				Rectangle focus_rect = bounds;
+				focus_rect.Inflate (-2, -2);
+				ThemeEngine.Current.CPDrawFocusRectangle (dc, focus_rect, tab.BackColor, tab.ForeColor);
 			}
 
 			return res;

@@ -1,3 +1,12 @@
+2010-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Call BeginErrorReadLine()/BeginOutputReadLine() in a Process test
+	so it runs on windows too.
+
+2010-08-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid printing the output of /bin/ls in a Process test.
+
 2009-06-26  Robert Jordan  <robertj@gmx.net>
 
 	* SwitchesTest.cs, TraceTest.cs: Upgrade to new NUnit style.

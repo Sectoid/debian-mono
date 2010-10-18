@@ -670,7 +670,7 @@ word GC_get_orig_stack_size() {
     result = (word)rl.rlim_cur & ~(HBLKSIZE-1);
     if (result > MAX_ORIG_STACK_SIZE) {
 	if (!warned) {
-	    WARN("Large stack limit(%ld): only scanning 8 MB\n", result);
+	    /* WARN("Large stack limit(%ld): only scanning 8 MB\n", result); */
 	    warned = 1;
 	}
 	result = MAX_ORIG_STACK_SIZE;
@@ -787,18 +787,20 @@ void * GC_thr_daemon(void * dummy)
             UNLOCK();
     	} else {
     	    t = GC_lookup_thread(departed);
-	    GC_multithreaded--;
-    	    if (!(t -> flags & CLIENT_OWNS_STACK)) {
-    	    	GC_stack_free(t -> stack, t -> stack_size);
-    	    }
-    	    if (t -> flags & DETACHED) {
-    	    	GC_delete_thread(departed);
-    	    } else {
-    	        t -> status = status;
-    	    	t -> flags |= FINISHED;
-    	    	cond_signal(&(t -> join_cv));
-    	    	cond_broadcast(&GC_prom_join_cv);
-    	    }
+			GC_multithreaded--;
+			if (t) {
+				if (!(t -> flags & CLIENT_OWNS_STACK)) {
+					GC_stack_free(t -> stack, t -> stack_size);
+				}
+				if (t -> flags & DETACHED) {
+					GC_delete_thread(departed);
+				} else {
+					t -> status = status;
+					t -> flags |= FINISHED;
+					cond_signal(&(t -> join_cv));
+					cond_broadcast(&GC_prom_join_cv);
+				}
+			}
     	    UNLOCK();
     	}
     }

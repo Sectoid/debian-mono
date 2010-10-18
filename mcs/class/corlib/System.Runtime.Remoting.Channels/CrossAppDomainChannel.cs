@@ -50,7 +50,9 @@ namespace System.Runtime.Remoting.Channels
 	{
 		// TODO: Add context support
 		// Required for .NET compatibility
+#pragma warning disable 0414
 		private object _ContextID;
+#pragma warning restore
 		private int _DomainID;
 		private string _processGuid;
 
@@ -77,7 +79,6 @@ namespace System.Runtime.Remoting.Channels
 	internal class CrossAppDomainChannel : IChannel, IChannelSender, IChannelReceiver 
 	{
 		private const String _strName = "MONOCAD";
-		private const String _strBaseURI = "MONOCADURI";
 		
 		private static Object s_lock = new Object();
 
@@ -266,7 +267,12 @@ namespace System.Runtime.Remoting.Channels
 		public virtual IMessageCtrl AsyncProcessMessage (IMessage reqMsg, IMessageSink replySink) 
 		{
 			AsyncRequest req = new AsyncRequest (reqMsg, replySink);
-			ThreadPool.QueueUserWorkItem (new WaitCallback (SendAsyncMessage), req);
+			ThreadPool.QueueUserWorkItem (new WaitCallback ((data) => {
+				try {
+					SendAsyncMessage (data);
+				} catch {}
+				}
+				), req);
 			return null;
 		}
 		

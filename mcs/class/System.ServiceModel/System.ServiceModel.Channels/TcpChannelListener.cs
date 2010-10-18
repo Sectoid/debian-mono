@@ -3,9 +3,30 @@
 // 
 // Author: 
 //     Marcos Cobena (marcoscobena@gmail.com)
+//     Atsushi Enomoto  (atsushi@ximian.com)
 // 
 // Copyright 2007 Marcos Cobena (http://www.youcannoteatbits.org/)
+// Copyright 2009-2010 Novell, Inc (http://www.novell.com/)
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
 // 
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
 using System;
 using System.Collections.Generic;
@@ -29,26 +50,26 @@ namespace System.ServiceModel.Channels
 		public TcpChannelListener (TcpTransportBindingElement source, BindingContext context)
 			: base (context)
 		{
-			MessageEncoder encoder = null;
 			XmlDictionaryReaderQuotas quotas = null;
 
-			foreach (BindingElement be in context.RemainingBindingElements) {
+			foreach (BindingElement be in context.Binding.Elements) {
 				MessageEncodingBindingElement mbe = be as MessageEncodingBindingElement;
 				if (mbe != null) {
-					encoder = CreateEncoder<TChannel> (mbe);
+					MessageEncoder = CreateEncoder<TChannel> (mbe);
 					quotas = mbe.GetProperty<XmlDictionaryReaderQuotas> (context);
 					break;
 				}
 			}
 			
-			if (encoder == null)
-				encoder = new BinaryMessageEncoder ();
+			if (MessageEncoder == null)
+				MessageEncoder = new BinaryMessageEncoder ();
 
-			info = new TcpChannelInfo (source, encoder, quotas);
+			info = new TcpChannelInfo (source, MessageEncoder, quotas);
 		}
 		
-		List<ManualResetEvent> accept_handles = new List<ManualResetEvent> ();
-		List<TChannel> accepted_channels = new List<TChannel> ();
+		SynchronizedCollection<ManualResetEvent> accept_handles = new SynchronizedCollection<ManualResetEvent> ();
+		Queue<TcpClient> accepted_clients = new Queue<TcpClient> ();
+		SynchronizedCollection<TChannel> accepted_channels = new SynchronizedCollection<TChannel> ();
 
 		protected override TChannel OnAcceptChannel (TimeSpan timeout)
 		{
@@ -90,32 +111,28 @@ namespace System.ServiceModel.Channels
 		{
 			DateTime start = DateTime.Now;
 
-			TcpClient client = null;
-			if (tcp_listener.Pending ()) {
-				client = tcp_listener.AcceptTcpClient ();
-			} else {
+			TcpClient client = accepted_clients.Count == 0 ? null : accepted_clients.Dequeue ();
+			if (client == null) {
 				var wait = new ManualResetEvent (false);
-				tcp_listener.BeginAcceptTcpClient (delegate (IAsyncResult result) {
-					client = tcp_listener.EndAcceptTcpClient (result);
-					wait.Set ();
-					accept_handles.Remove (wait);
-				}, null);
-				if (State == CommunicationState.Closing)
-					return null;
 				accept_handles.Add (wait);
-				wait.WaitOne (timeout);
+				if (!wait.WaitOne (timeout)) {
+					accept_handles.Remove (wait);
+					return null;
+				}
+				accept_handles.Remove (wait);
+				// recurse with new timeout, or return null if it's either being closed or timed out.
+				timeout -= (DateTime.Now - start);
+				return State == CommunicationState.Opened && timeout > TimeSpan.Zero ? AcceptTcpClient (timeout) : null;
 			}
 
-			// This may be optional though ...
-			if (client != null) {
-				foreach (var ch in accepted_channels) {
-					var dch = ch as TcpDuplexSessionChannel;
-					if (dch == null || dch.TcpClient == null && !dch.TcpClient.Connected)
-						continue;
-					if (((IPEndPoint) dch.TcpClient.Client.RemoteEndPoint).Equals (client.Client.RemoteEndPoint))
-						// ... then it should be handled in another BeginTryReceive/EndTryReceive loop in ChannelDispatcher.
-						return AcceptTcpClient (timeout - (DateTime.Now - start));
-				}
+			// There might be bettwe way to exclude those TCP clients though ...
+			foreach (var ch in accepted_channels) {
+				var dch = ch as TcpDuplexSessionChannel;
+				if (dch == null || dch.TcpClient == null && !dch.TcpClient.Connected)
+					continue;
+				if (((IPEndPoint) dch.TcpClient.Client.RemoteEndPoint).Equals (client.Client.RemoteEndPoint))
+					// ... then it should be handled in another BeginTryReceive/EndTryReceive loop in ChannelDispatcher.
+					return AcceptTcpClient (timeout - (DateTime.Now - start));
 			}
 
 			return client;
@@ -133,25 +150,25 @@ namespace System.ServiceModel.Channels
 		{
 			if (State == CommunicationState.Closed)
 				return;
-			ProcessClose ();
+			ProcessClose (TimeSpan.Zero);
 		}
 
 		protected override void OnClose (TimeSpan timeout)
 		{
 			if (State == CommunicationState.Closed)
 				return;
-			ProcessClose ();
+			ProcessClose (timeout);
 		}
 
-		void ProcessClose ()
+		void ProcessClose (TimeSpan timeout)
 		{
 			if (tcp_listener == null)
 				throw new InvalidOperationException ("Current state is " + State);
-			lock (accept_handles) {
-				foreach (var wait in accept_handles)
-					wait.Set ();
-			}
+			//tcp_listener.Client.Close (Math.Max (50, (int) timeout.TotalMilliseconds));
 			tcp_listener.Stop ();
+			var l = new List<ManualResetEvent> (accept_handles);
+			foreach (var wait in l) // those handles will disappear from accepted_handles
+				wait.Set ();
 			tcp_listener = null;
 		}
 
@@ -165,6 +182,31 @@ namespace System.ServiceModel.Channels
 			int explicitPort = Uri.Port;
 			tcp_listener = new TcpListener (entry.AddressList [0], explicitPort <= 0 ? TcpTransportBindingElement.DefaultPort : explicitPort);
 			tcp_listener.Start ();
+			tcp_listener.BeginAcceptTcpClient (TcpListenerAcceptedClient, tcp_listener);
+		}
+
+		void TcpListenerAcceptedClient (IAsyncResult result)
+		{
+			var listener = (TcpListener) result.AsyncState;
+			try {
+				var client = listener.EndAcceptTcpClient (result);
+				if (client != null) {
+					accepted_clients.Enqueue (client);
+					if (accept_handles.Count > 0)
+						accept_handles [0].Set ();
+				}
+			} catch {
+				/* If an accept fails, just ignore it. Maybe the remote peer disconnected already */
+			} finally {
+				if (State == CommunicationState.Opened) {
+					try {
+						listener.BeginAcceptTcpClient (TcpListenerAcceptedClient, listener);
+					} catch {
+						/* If this fails, we must have disposed the listener */
+					}
+				}
+			}
 		}
 	}
 }
+

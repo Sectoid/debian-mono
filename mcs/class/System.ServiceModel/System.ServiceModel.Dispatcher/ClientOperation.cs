@@ -36,7 +36,6 @@ using System.Text;
 
 namespace System.ServiceModel.Dispatcher
 {
-	[MonoTODO]
 	public sealed class ClientOperation
 	{
 		internal class ClientOperationCollection :
@@ -57,11 +56,11 @@ namespace System.ServiceModel.Dispatcher
 		MethodInfo sync_method, begin_method, end_method;
 		bool deserialize_reply = true, serialize_request = true;
 		bool is_initiating, is_terminating, is_oneway;
-		IClientMessageFormatter formatter, actual_formatter;
+		IClientMessageFormatter formatter;
 		SynchronizedCollection<IParameterInspector> inspectors
 			= new SynchronizedCollection<IParameterInspector> ();
 #if !NET_2_1
-		SynchronizedCollection<FaultContractInfo> fault_contract_infos;
+		SynchronizedCollection<FaultContractInfo> fault_contract_infos = new SynchronizedCollection<FaultContractInfo> ();
 #endif
 
 		public ClientOperation (ClientRuntime parent,
@@ -91,51 +90,64 @@ namespace System.ServiceModel.Dispatcher
 
 		public MethodInfo BeginMethod {
 			get { return begin_method; }
-			set { begin_method = value; }
+			set {
+				ThrowIfOpened ();
+				begin_method = value;
+			}
 		}
 
 		public bool DeserializeReply {
 			get { return deserialize_reply; }
-			set { deserialize_reply = value; }
+			set {
+				ThrowIfOpened ();
+				deserialize_reply = value;
+			}
 		}
 
 		public MethodInfo EndMethod {
 			get { return end_method; }
-			set { end_method = value; }
+			set {
+				ThrowIfOpened ();
+				end_method = value;
+			}
 		}
 
 #if !NET_2_1
 		public SynchronizedCollection<FaultContractInfo> FaultContractInfos {
-			get {
-				if (fault_contract_infos == null) {
-					var l = new SynchronizedCollection<FaultContractInfo> ();
-					foreach (var f in Description.Faults)
-						l.Add (new FaultContractInfo (f.Action, f.DetailType));
-					fault_contract_infos = l;
-				}
-				return fault_contract_infos;
-			}
+			get { return fault_contract_infos; }
 		}
 #endif
 
 		public IClientMessageFormatter Formatter {
 			get { return formatter; }
-			set { formatter = value; }
+			set {
+				ThrowIfOpened ();
+				formatter = value;
+			}
 		}
 
 		public bool IsInitiating {
 			get { return is_initiating; }
-			set { is_initiating = value; }
+			set {
+				ThrowIfOpened ();
+				is_initiating = value;
+			}
 		}
 
 		public bool IsOneWay {
 			get { return is_oneway; }
-			set { is_oneway = value; }
+			set {
+				ThrowIfOpened ();
+				is_oneway = value;
+			}
 		}
 
 		public bool IsTerminating {
 			get { return is_terminating; }
-			set { is_terminating = value; }
+			set {
+				ThrowIfOpened ();
+				is_terminating = value;
+			}
 		}
 
 		public string Name {
@@ -152,38 +164,30 @@ namespace System.ServiceModel.Dispatcher
 
 		public bool SerializeRequest {
 			get { return serialize_request; }
-			set { serialize_request = value; }
+			set {
+				ThrowIfOpened ();
+				serialize_request = value;
+			}
 		}
 
 		public MethodInfo SyncMethod {
 			get { return sync_method; }
-			set { sync_method = value; }
-		}
-
-		OperationDescription Description {
-			get {
-				// FIXME: ContractDescription should be acquired from elsewhere.
-				ContractDescription cd = ContractDescription.GetContract (Parent.ContractClientType);
-				OperationDescription od = cd.Operations.Find (Name);
-				if (od == null) {
-					if (Name == "*")
-						throw new Exception (String.Format ("INTERNAL ERROR: Contract {0} in namespace {1} does not contain Operations.", Parent.ContractName, Parent.ContractNamespace));
-					else
-						throw new Exception (String.Format ("INTERNAL ERROR: Operation {0} was not found.", Name));
-				}
-				return od;
+			set {
+				ThrowIfOpened ();
+				sync_method = value;
 			}
 		}
 
-		internal IClientMessageFormatter GetFormatter ()
+		void ThrowIfOpened ()
 		{
-			if (actual_formatter == null) {
-				if (Formatter != null)
-					actual_formatter = Formatter;
-				else
-					actual_formatter = BaseMessagesFormatter.Create (Description);
+			// FIXME: get correct state
+			var state = CommunicationState.Created;
+			switch (state) {
+			case CommunicationState.Created:
+			case CommunicationState.Opening:
+				return;
 			}
-			return actual_formatter;
+			throw new InvalidOperationException ("Cannot change this property after the service host is opened");
 		}
 	}
 }

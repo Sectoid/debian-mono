@@ -1,3 +1,43 @@
+2010-08-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Scripts may be requested also from pages without
+	associated ScriptManager
+
+	Make sure ScriptManager exists in the current page before
+	attempting to use it.
+
+2010-08-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #618481. AsyncPostBackTrigger.OnEvent must
+	call Owner.Update only for conditionally updated panels
+
+	If the owner UpdatePanel has its UpdateMode set to Always, do not
+	call Update () as it will cause an InvalidOperationException to be
+	thrown.
+
+2010-08-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] AsyncPostBackTrigger.HasTriggered must use
+	FindTargetControl ()
+
+	When a postback is made to the server,
+	AsyncPostBackTrigger.HasTriggered must use FindTargetControl
+	(true) to find the associated control and see if its UniqueID
+	matches the one of the control which originated the postback. The
+	target control may (and most probably is) outside the control
+	panel and looking for it only in the collection of child controls
+	will make some sites fail to update content on async postback.
+
+2010-08-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,bugfix] Fix for bug #620456. AsyncPostBackTrigger must
+	look for target control in naming containers
+
+	AsyncPostBackTrigger must search for the associated control in the
+	naming containers during intialization because its ControlID
+	property is initialized with the unique name of the target
+	control.
+
 2010-02-02  Marek Habersack  <mhabersack@novell.com>
 
 	* ScriptManager.cs: adjusted script rendering to match .NET

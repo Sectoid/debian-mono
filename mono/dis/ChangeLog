@@ -1,3 +1,59 @@
+2010-08-04  Marek Safar  <marek.safar@gmail.com>
+
+	Add escaping for legacy keyword.
+
+2010-04-07  Jb Evain  <jbevain@novell.com>
+
+	* main.c: don't overwrite method_name.
+
+2010-04-06  Miguel de Icaza  <miguel@novell.com>
+
+	* main.c: Prevent a crash with broken assemblies.
+
+2010-03-30  Raja R Harinath  <harinath@hurrynot.org>
+
+	Clean up some whitespace in the output
+	* main.c (pinvoke_flags_map): Add a few trailing spaces.
+	* util.c (flags): Simplify.
+
+	Make util.c:flags() stricter
+	* get.c (field_flags_map): Add empty entries for
+	HAS_FIELD_MARSHAL, HAS_DEFAULT and HAS_FIELD_RVA.
+	* main.c (method_flags_map): Add empty entry for HAS_SECURITY.
+	* util.c (flags): Remove known flags from 'code' in loop.  Any
+	leftover flags are printed as "unknown-flag-xx".
+
+	Prepare for util.c:flags() to be stricter
+	* main.c (pinvoke_flags): Remove cset and cconv flags before
+	passing onto flags().
+	(method_flags): Likewise with access flags.
+	* get.c (field_flags): Likewise.
+	(get_method_impl_flags): Likewise, with code_type and managed_type
+	flags.
+
+	* get.c (managed_impl_flags): Add 'nooptimization' flag.
+
+2010-03-12  Jb Evain  <jbevain@novell.com>
+
+	* dump.c (dump_table_exported): dump the type flags as well.
+
+
+Wed Feb 24 16:00:56 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* Makefile.am: link to the new libmono version.
+
+2010-02-10  Miguel de Icaza  <miguel@novell.com>
+
+	* main.c (dis_method_list): Show method implementation flags as
+	well when calling --method.
+
+	get.c: Moved some code here from main.c so it could be reused by
+	dump.c
+
+2009-12-21  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* get.c (get_type): Don't crash if the type is not found.
+
 2009-08-18  Christian Hergert  <chris@dronelabs.com>
 
 	* dis-cil.c:

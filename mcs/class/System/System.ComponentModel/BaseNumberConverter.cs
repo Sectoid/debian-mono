@@ -105,8 +105,8 @@ namespace System.ComponentModel
 			}
 #endif
 
-			if(destinationType.IsPrimitive)
-				return Convert.ChangeType(value, destinationType, culture);
+			if (destinationType.IsPrimitive)
+				return Convert.ChangeType (value, destinationType, culture);
 
 			return base.ConvertTo (context, culture, value, destinationType);
 		}

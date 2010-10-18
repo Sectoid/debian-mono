@@ -1,9 +1,79 @@
+2010-08-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed typo in T14 argument
+
+2010-07-22  tgiphil  <phil@thinkedge.com>
+
+	Moved ValidateRules method in TimeZoneInfo.cs outside of LIBC
+	since a caller outside of LIBC calls the method. Fixes compile
+	error when LIBC is not defined.
+
+
+Fri Jul 23 16:46:38 CEST 2010 Paolo Molaro <lupus@ximian.com>
+
+	* Funcs.cs: Fixed typo in Func`15.
+
+2010-07-09 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TimeZoneInfo.cs: avoid nullref when there are no adjustment rules.
+	Fixes bug #619811.
+
+2010-06-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* Actions.cs: Add missing v4 type forwarding.
+
+2010-06-21  Jb Evain  <jbevain@novell.com>
+
+	* TimeZoneInfo.cs: fix the moonlight and monotouch build.
+
+2010-06-18  Vincent Povirk <madewokherd@gmail.com>  
+
+	* TimeZoneInfo.cs: Applied patch from Vincent Povirk that adds
+	support for reading time zone information on windows.
+
+	This patch makes TimeZoneInfo.GetSystemTimeZones and
+	FindSystemTimeZoneById work based on the registry on non-Unix
+	platforms, if the appropriate registry key exists. Mono currently
+	reads from /usr/share/zoneinfo, which doesn't exist on Windows.
+
+	This should fix bug 606084.
+
+	It won't fix the Local property on Windows. I think that requires
+	a Windows API call to get the id of the local timezone.
+
+	This was modified from the previous version to not check the
+	registry on Unix platforms. (Sorry it took me so long to do
+	this. I have very little time to spend on Mono-related work.)
+
+	This patch is licensed under the MIT X11 license.
+
+2010-04-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Actions.cs: Forward Action() to mscorlib.dll and add the new
+	Action<...T16> delegates
+	* Funcs.cs: Add the new Func<...T16> delegates
+	* TimeZoneInfo.cs: Forward to mscorlib.dll
+
+2010-03-30  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* InvalidTimeZoneException.cs
+	* TimeZoneInfo.AdjustmentRule.cs
+	* TimeZoneInfo.cs
+	* TimeZoneInfo.TransitionTime.cs
+	* TimeZoneNotFoundException.cs:
+		Fix Moonlight since these types now reside in mscorlib 
+		for NET_4_0 and also for SL4
+
+2010-03-30  Jb Evain  <jbevain@novell.com>
+
+	* TimeZoneInfo.AdjustmentRule.cs
+	* TimeZoneInfo.TransitionTime.cs:
+		Add TypeForwarderFrom attributes.
+
 2010-01-04  Jb Evain  <jbevain@novell.com>
 
 	* TimeZoneInfo.AdjustmentRule.cs, TimeZoneInfo.TransitionTime.cs:
 	Do not include in both mscorlib and System.Core for a NET_2_1 profile.
-
-	backport r149020.
 
 2009-07-16  Sebastien Pouliot  <sebastien@ximian.com>
 

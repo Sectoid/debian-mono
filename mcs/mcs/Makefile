@@ -8,27 +8,26 @@ EXTRA_DISTFILES = \
 	*mcs.sln		\
 	*cs-parser.jay		\
 	*.sources		\
-	generic.cs		\
 	NOTES			\
 	TODO			\
 	*mcs.exe.config
 
-ifeq (1.0, $(FRAMEWORK_VERSION))
-COMPILER_NAME = mcs
+COMPILER_NAME = gmcs
+
+ifeq (net_2_0, $(PROFILE))
+INTERNAL_GMCS = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BOOTSTRAP_PROFILE)/gmcs.exe
 endif
 
-ifeq (2.0, $(FRAMEWORK_VERSION))
-LOCAL_MCS_FLAGS += -d:GMCS_SOURCE
-COMPILER_NAME = gmcs
+ifeq (moonlight_bootstrap, $(PROFILE))
+INTERNAL_GMCS = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BOOTSTRAP_PROFILE)/gmcs.exe
 endif
 
 ifeq (2.1, $(FRAMEWORK_VERSION))
-LOCAL_MCS_FLAGS += -d:GMCS_SOURCE -d:SMCS_SOURCE
+LOCAL_MCS_FLAGS += -d:SMCS_SOURCE
 COMPILER_NAME = smcs
 endif
 
 ifeq (4.0, $(FRAMEWORK_VERSION))
-LOCAL_MCS_FLAGS += -d:GMCS_SOURCE
 COMPILER_NAME = dmcs
 endif
 
@@ -40,54 +39,14 @@ PROGRAM_COMPILE = $(BOOT_COMPILE)
 
 CLEAN_FILES += y.output
 
+# Use -cvt for parser debug version
 %-parser.cs: %-parser.jay $(topdir)/jay/skeleton.cs
-	$(topdir)/jay/jay -cvt < $(topdir)/jay/skeleton.cs $< > jay-tmp.out && mv jay-tmp.out $@
+	$(topdir)/jay/jay -cv < $(topdir)/jay/skeleton.cs $< > jay-tmp.out && mv jay-tmp.out $@
 
-
-ifeq (net_2_0_bootstrap, $(PROFILE))
-
-all-local $(STD_TARGETS:=-local):
-	@:
-
-all-local: $(PROGRAM) $(PROGRAM).config
-clean-local: clean-program
-clean-program:
-	rm -f $(PROGRAM) $(PROGRAM).config
-
-$(PROGRAM) $(PROGRAM).config: $(dir $(PROGRAM))/.stamp
-
-$(PROGRAM): $(topdir)/class/lib/$(BOOTSTRAP_PROFILE)/mcs.exe
-	cp $< $@
-
-$(PROGRAM).config: gmcs.exe.config
-	cp $< $@
-
-else
-
-ifeq (net_2_0, $(PROFILE))
-
-BOOTSTRAP_MCS = MONO_PATH="$(topdir)/class/lib/net_2_0_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/net_2_0_bootstrap/gmcs.exe $(DEBUG_FLAGS)
-
-clean-local: clean-net_2_0_bootstrap
-clean-net_2_0_bootstrap:
-	cd .. && $(MAKE) NO_DIR_CHECK=yes PROFILE=net_2_0_bootstrap clean
-
-bootstrap_libs = mscorlib.dll System.dll System.Xml.dll Mono.CompilerServices.SymbolWriter.dll
-bootstrap_libfiles = $(bootstrap_libs:%=$(topdir)/class/lib/net_2_0_bootstrap/%)
-
-$(bootstrap_libfiles): bootstrap-libs
-	@:
-.PHONY: bootstrap-libs
-bootstrap-libs:
-	cd .. && $(MAKE) NO_DIR_CHECK=yes PROFILE=net_2_0_bootstrap all
-
-$(PROGRAM): $(bootstrap_libfiles)
-endif
 
 KEEP_OUTPUT_FILE_COPY = yes
 
 include ../build/executable.make
-endif
 
 csproj-local:
 	config_file=`basename $(PROGRAM) .exe`-$(PROFILE).input; \
@@ -155,12 +114,6 @@ profile : $(PROGRAM)
 #
 # quick hack target, to quickly develop the gmcs compiler
 # Update manually.
-qh:
-	MONO_PATH="../class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) ../class/lib/net_2_0/gmcs.exe  /codepage:65001 -d:GMCS_SOURCE  -d:NET_1_1 -d:NET_2_0 -debug -target:exe -out:gmcs.exe cs-parser.cs  @gmcs.exe.sources
-	@ cp $(COMPILER_NAME).exe* $(topdir)/class/lib/$(PROFILE)/
-
-pa: cs-parser.cs
-	MONO_PATH="../class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) ../class/lib/net_2_0/gmcs.exe  /codepage:65001 -d:GMCS_SOURCE  -d:NET_1_1 -d:NET_2_0 -debug -target:exe -out:foo.exe cs-parser.cs foo.cs -main:X  @gmcs.exe.sources
 
 q: cs-parser.cs qh
 	echo 'System.Console.WriteLine ("Hello");' | mono csharp.exe

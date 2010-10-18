@@ -33,18 +33,19 @@ using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
 using System.Threading;
+using System.ServiceModel.MonoInternal;
 
 namespace System.ServiceModel
 {
 	[MonoTODO ("It somehow rejects classes, but dunno how we can do that besides our code wise.")]
 	public abstract class ClientBase<TChannel> :
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		IDisposable,
 #endif
 		ICommunicationObject where TChannel : class
 	{
 		static InstanceContext initialContxt = new InstanceContext (null);
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		static readonly PropertyInfo dispatcher_main_property;
 		static readonly MethodInfo dispatcher_begin_invoke_method;
 
@@ -64,7 +65,6 @@ namespace System.ServiceModel
 
 		ChannelFactory<TChannel> factory;
 		IClientChannel inner_channel;
-		CommunicationState state;
 
 		protected delegate IAsyncResult BeginOperationDelegate (object[] inValues, AsyncCallback asyncCallback, object state);
 		protected delegate object[] EndOperationDelegate (IAsyncResult result);
@@ -148,20 +148,40 @@ namespace System.ServiceModel
 			Initialize (instance, binding, remoteAddress);
 		}
 
-		internal ClientBase (ChannelFactory<TChannel> factory)
+#if NET_4_0
+		protected ClientBase (ServiceEndpoint endpoint)
+			: this (null, endpoint)
 		{
+		}
+
+		protected ClientBase (InstanceContext instance, ServiceEndpoint endpoint)
+			: this (instance, new ChannelFactory<TChannel> (endpoint))
+		{
+		}
+#endif
+
+		internal ClientBase (ChannelFactory<TChannel> factory)
+			: this (null, factory)
+		{
+		}
+
+		internal ClientBase (InstanceContext instance, ChannelFactory<TChannel> factory)
+		{
+			// FIXME: use instance
 			ChannelFactory = factory;
 		}
 
 		internal virtual void Initialize (InstanceContext instance,
 			string endpointConfigurationName, EndpointAddress remoteAddress)
 		{
+			// FIXME: use instance
 			ChannelFactory = new ChannelFactory<TChannel> (endpointConfigurationName, remoteAddress);
 		}
 
 		internal virtual void Initialize (InstanceContext instance,
 			Binding binding, EndpointAddress remoteAddress)
 		{
+			// FIXME: use instance
 			ChannelFactory = new ChannelFactory<TChannel> (binding, remoteAddress);
 		}
 
@@ -194,7 +214,7 @@ namespace System.ServiceModel
 		}
 
 		public CommunicationState State {
-			get { return InnerChannel.State; }
+			get { return inner_channel != null ? inner_channel.State : CommunicationState.Created; }
 		}
 
 		public void Abort ()
@@ -221,7 +241,7 @@ namespace System.ServiceModel
 
 		void RunCompletedCallback (SendOrPostCallback callback, InvokeAsyncCompletedEventArgs args)
 		{
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			callback (args);
 #else
 			object dispatcher = dispatcher_main_property.GetValue (null, null);
@@ -275,7 +295,7 @@ namespace System.ServiceModel
 		}
 		IAsyncResult begin_async_result;
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		void IDisposable.Dispose ()
 		{
 			Close ();
@@ -401,7 +421,7 @@ namespace System.ServiceModel
 				}
 			}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			protected object Invoke (string methodName, object [] args)
 			{
 				var cd = endpoint.Contract;

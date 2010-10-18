@@ -41,7 +41,7 @@ using Mono.Globalization.Unicode;
 namespace System.Globalization
 {
 	[Serializable]
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 	[ComVisible (true)]
 	public class CompareInfo : IDeserializationCallback {
 
@@ -106,10 +106,7 @@ namespace System.Globalization
 		const CompareOptions ValidCompareOptions_NoStringSort =
 			CompareOptions.None | CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace |
 			CompareOptions.IgnoreSymbols | CompareOptions.IgnoreKanaType | CompareOptions.IgnoreWidth |
-#if NET_2_0
-			CompareOptions.OrdinalIgnoreCase |
-#endif
-			CompareOptions.Ordinal;
+			CompareOptions.OrdinalIgnoreCase | CompareOptions.Ordinal;
 
 		const CompareOptions ValidCompareOptions = ValidCompareOptions_NoStringSort | CompareOptions.StringSort;
 
@@ -122,9 +119,7 @@ namespace System.Globalization
 
 #pragma warning disable 169		
 		private int win32LCID;	// Unused, but MS.NET serializes this
-#if NET_2_0
 		private string m_name; // Unused, but MS.NET serializes this
-#endif
 #pragma warning restore 169
 
 		[NonSerialized]
@@ -154,7 +149,7 @@ namespace System.Globalization
 					}
 				}
 			} else {
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 				this.icu_name = ci.IcuName;
 				this.construct_compareinfo (icu_name);
 #endif
@@ -163,12 +158,12 @@ namespace System.Globalization
 
 		~CompareInfo ()
 		{
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			free_internal_collator ();
 #endif
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		private int internal_compare_managed (string str1, int offset1,
 						int length1, string str2,
 						int offset2, int length2,
@@ -409,14 +404,12 @@ namespace System.Globalization
 		public virtual SortKey GetSortKey(string source,
 						  CompareOptions options)
 		{
-#if NET_2_0
 			switch (options) {
 			case CompareOptions.Ordinal:
 			case CompareOptions.OrdinalIgnoreCase:
 				throw new ArgumentException ("Now allowed CompareOptions.", "options");
 			}
-#endif
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			if (UseManagedCollation)
 				return collator.GetSortKey (source, options);
 			SortKey key=new SortKey (culture, source, options);
@@ -505,7 +498,7 @@ namespace System.Globalization
 					CompareOptions.None));
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		private int internal_index_managed (string s, int sindex,
 			int count, char c, CompareOptions opt,
 			bool first)
@@ -574,7 +567,7 @@ namespace System.Globalization
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		private int internal_index_managed (string s1, int sindex,
 			int count, string s2, CompareOptions opt,
 			bool first)
@@ -838,7 +831,6 @@ namespace System.Globalization
 					       value, options, false));
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public static bool IsSortable (char ch)
 		{
@@ -850,7 +842,6 @@ namespace System.Globalization
 		{
 			return MSCompatUnicodeTable.IsSortable (text);
 		}
-#endif
 
 		public override string ToString()
 		{
@@ -868,11 +859,9 @@ namespace System.Globalization
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (false)]
 		public virtual string Name {
 			get { return icu_name; }
 		}
-#endif
 	}
 }

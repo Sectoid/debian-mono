@@ -49,7 +49,7 @@ namespace System.Runtime.Serialization
 
 		// This is only for compatible mode.
 		StreamingContext context;
-		ReadOnlyCollection<Type> known_runtime_types;
+		ReadOnlyCollection<Type> returned_known_types;
 		KnownTypeCollection known_types;
 		IDataContractSurrogate surrogate;
 
@@ -222,7 +222,11 @@ namespace System.Runtime.Serialization
 		}
 
 		public ReadOnlyCollection<Type> KnownTypes {
-			get { return known_runtime_types; }
+			get {
+				if (returned_known_types == null)
+					returned_known_types = new ReadOnlyCollection<Type> (known_types);
+				return returned_known_types;
+			}
 		}
 
 		public IDataContractSurrogate DataContractSurrogate {
@@ -237,10 +241,12 @@ namespace System.Runtime.Serialization
 			get { return preserve_refs; }
 		}
 
-		[MonoTODO]
 		public override bool IsStartObject (XmlDictionaryReader reader)
 		{
-			throw new NotImplementedException ();
+			if (reader == null)
+				throw new ArgumentNullException ("reader");
+			reader.MoveToContent ();
+			return reader.IsStartElement (root_name, root_ns);
 		}
 
 		// SP1
@@ -320,7 +326,7 @@ namespace System.Runtime.Serialization
 
 			XmlFormatterSerializer.Serialize (writer, graph,
 				known_types,
-				ignore_ext, max_items, root_ns.Value);
+				ignore_ext, max_items, root_ns.Value, preserve_refs);
 
 			// remove temporarily-added known types for
 			// rootType and object graph type.

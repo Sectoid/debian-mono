@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -35,32 +33,32 @@ using System.ComponentModel;
 
 namespace System.Web.UI.WebControls
 {
+	//[TypeConverter (""System.Web.UI.WebControls.EmbeddedMailObject+EmbeddedMailObjectTypeConverter"")]
 	public sealed class EmbeddedMailObject
 	{
-		string _name;
-		string _path;
+		public EmbeddedMailObject ()
+		{ }
 
-		public EmbeddedMailObject () { }
-
-		public EmbeddedMailObject (string name, string path) {
-			_name = name;
-			_path = path;
+		public EmbeddedMailObject (string name, string path)
+		{
+			Name = name;
+			Path = path;
 		}
 
 		[NotifyParentProperty (true)]
 		[DefaultValue ("")]
 		public string Name {
-			get { return _name; }
-			set { _name = value; }
+			get;
+			set;
 		}
 
 		[DefaultValue ("")]
 		[NotifyParentProperty (true)]
+		[UrlProperty]
+		[Editor ("System.Web.UI.Design.MailFileEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 		public string Path {
-			get { return _path; }
-			set { _path = value; }
+			get;
+			set;
 		}
 	}
 }
-
-#endif

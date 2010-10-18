@@ -1,3 +1,19 @@
+2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.Xml.dll.sources,
+	  moonlight_raw_System.Xml.dll.sources,
+	  monotouch_System.Xml.dll.sources : add DefaultXmlWriter.cs.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2009-11-30  Jonathan Pryor  <jpryor@novell.com>
+
+	* monotouch_System.Xml.dll.sources: Add System.Xml/NamespaceHandling.cs 
+	  to the MonoTouch build (fixed build break).
+
 2009-11-27  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* System.Xml.dll.sources : added NamespaceHandling which is kept

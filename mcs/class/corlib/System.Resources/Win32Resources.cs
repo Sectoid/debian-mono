@@ -236,14 +236,8 @@ internal class Win32VersionResource : Win32Resource {
 	public string[] WellKnownProperties = {
 		"Comments",
 		"CompanyName",
-#if !NET_2_0
-		"FileDescription",
-#endif
 		"FileVersion",
 		"InternalName",
-#if !NET_2_0
-		"LegalCopyright",
-#endif
 		"LegalTrademarks",
 		"OriginalFilename",
 		"ProductName",
@@ -283,21 +277,15 @@ internal class Win32VersionResource : Win32Resource {
 
 		properties = new Hashtable ();
 
-#if NET_2_0
 		string defaultvalue = compilercontext ? string.Empty : " ";
-#else
-		string defaultvalue = " ";
-#endif
 
 		// Well known properties
 		foreach (string s in WellKnownProperties)
 			// The value of properties can't be empty
 			properties [s] = defaultvalue;
 
-#if NET_2_0
 		LegalCopyright = " ";
 		FileDescription = " ";
-#endif
 	}
 
 	public string Version {
@@ -310,11 +298,7 @@ internal class Win32VersionResource : Win32Resource {
 		}
 
 		set {
-#if NET_2_0
 			long[] ver = new long [4] { 0, 0, 0, 0 };
-#else
-			long [] ver = new long [4] { 0, 0xffff, 0xffff, 0xffff };
-#endif
 			if (value != null) {
 				string[] parts = value.Split ('.');
 
@@ -625,9 +609,12 @@ internal class Win32ResFileReader {
 		return w1 | (w2 << 16);
 	}
 
-	private void read_padding () {
-		while ((res_file.Position % 4) != 0)
-			read_int16 ();
+	private bool read_padding () {
+		while ((res_file.Position % 4) != 0){
+			if (read_int16 () == -1)
+				return false;
+		}
+		return true;
 	}
 
 	NameOrId read_ordinal () {
@@ -668,8 +655,9 @@ internal class Win32ResFileReader {
 
 		while (true) {
 
-			read_padding ();
-
+			if (!read_padding ())
+				break;
+			
 			int data_size = read_int32 ();
 
 			if (data_size == -1)
@@ -681,8 +669,9 @@ internal class Win32ResFileReader {
 			NameOrId type = read_ordinal ();
 			NameOrId name = read_ordinal ();
 
-			read_padding ();
-
+			if (!read_padding ())
+				break;
+			
 			//int data_version = 
 			read_int32 ();
 			//int memory_flags =
@@ -698,7 +687,8 @@ internal class Win32ResFileReader {
 				continue;
 
 			byte[] data = new byte [data_size];
-			res_file.Read (data, 0, data_size);
+			if (res_file.Read (data, 0, data_size) != data_size)
+				break;
 
 			resources.Add (new Win32EncodedResource (type, name, language_id, data));
 		}

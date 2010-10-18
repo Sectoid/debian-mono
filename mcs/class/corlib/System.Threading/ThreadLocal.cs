@@ -1,4 +1,3 @@
-#if NET_4_0
 // 
 // ThreadLocal.cs
 //  
@@ -25,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+#if NET_4_0
 using System;
 using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
@@ -34,13 +34,15 @@ namespace System.Threading
 {
 	[HostProtectionAttribute(SecurityAction.LinkDemand, Synchronization = true, 
 	                         ExternalThreading = true)]
-	public class ThreadLocal<T>
+	public class ThreadLocal<T> : IDisposable
 	{
 		readonly Func<T> initializer;
 		LocalDataStoreSlot localStore;
+		Exception cachedException;
 		
 		class DataSlotWrapper
 		{
+			public bool Creating;
 			public bool Init;
 			public Func<T> Getter;
 		}
@@ -58,45 +60,74 @@ namespace System.Threading
 			this.initializer = initializer;
 		}
 		
+		public void Dispose ()
+		{
+			Dispose (true);
+		}
+		
+		protected virtual void Dispose (bool dispManagedRes)
+		{
+			
+		}
+		
 		public bool IsValueCreated {
 			get {
+				ThrowIfNeeded ();
 				return IsInitializedThreadLocal ();
 			}
 		}
 		
 		public T Value {
 			get {
+				ThrowIfNeeded ();
 				return GetValueThreadLocal ();
+			}
+			set {
+				ThrowIfNeeded ();
+
+				DataSlotWrapper w = GetWrapper ();
+				w.Init = true;
+				w.Getter = () => value;
 			}
 		}
 		
 		public override string ToString ()
 		{
-			return string.Format("[ThreadLocal: IsValueCreated={0}, Value={1}]", IsValueCreated, Value);
+			return string.Format ("[ThreadLocal: IsValueCreated={0}, Value={1}]", IsValueCreated, Value);
 		}
 
 		
 		T GetValueThreadLocal ()
 		{
-			DataSlotWrapper myWrapper = Thread.GetData (localStore) as DataSlotWrapper;
-			// In case it's the first time the Thread access its data
-			if (myWrapper == null) {
-				myWrapper = DataSlotCreator ();
-				Thread.SetData (localStore, myWrapper);
-			}
-				
-			return myWrapper.Getter();
+			DataSlotWrapper myWrapper = GetWrapper ();
+			if (myWrapper.Creating)
+				throw new InvalidOperationException ("The initialization function attempted to reference Value recursively");
+
+			return myWrapper.Getter ();
 		}
 		
 		bool IsInitializedThreadLocal ()
+		{
+			DataSlotWrapper myWrapper = GetWrapper ();
+
+			return myWrapper.Init;
+		}
+
+		DataSlotWrapper GetWrapper ()
 		{
 			DataSlotWrapper myWrapper = (DataSlotWrapper)Thread.GetData (localStore);
 			if (myWrapper == null) {
 				myWrapper = DataSlotCreator ();
 				Thread.SetData (localStore, myWrapper);
 			}
-			
-			return myWrapper.Init;
+
+			return myWrapper;
+		}
+
+		void ThrowIfNeeded ()
+		{
+			if (cachedException != null)
+				throw cachedException;
 		}
 
 		DataSlotWrapper DataSlotCreator ()
@@ -105,10 +136,17 @@ namespace System.Threading
 			Func<T> valSelector = initializer;
 	
 			wrapper.Getter = delegate {
-				T val = valSelector ();
-				wrapper.Init = true;
-				wrapper.Getter = delegate { return val; };
-				return val;
+				wrapper.Creating = true;
+				try {
+					T val = valSelector ();
+					wrapper.Creating = false;
+					wrapper.Init = true;
+					wrapper.Getter = () => val;
+					return val;
+				} catch (Exception e) {
+					cachedException = e;
+					throw e;
+				}
 			};
 			
 			return wrapper;

@@ -98,6 +98,7 @@ System.Collections.Generic/StackTest.cs
 System.Collections.Generic/LinkedListTest.cs
 System.Collections.Generic/SortedDictionaryTest.cs
 System.Collections.Generic/SortedListTest.cs
+System.Collections.Generic/SortedSetTest.cs
 System.Collections.Specialized/BasicOperationsTest.cs
 System.Collections.Specialized/BitVector32Test.cs
 System.Collections.Specialized/HybridDictionaryTest.cs
@@ -139,6 +140,7 @@ System.ComponentModel/LicenseManagerTests.cs
 System.ComponentModel/ListChangedEventArgsTest.cs
 System.ComponentModel/LookupBindingPropertiesAttributeTest.cs
 System.ComponentModel/MaskedTextProviderTest.cs
+System.ComponentModel/MultilineStringConverterTest.cs
 System.ComponentModel/NestedContainerTest.cs
 System.ComponentModel/NullableConverterTest.cs
 System.ComponentModel/PropertyDescriptorCollectionTests.cs
@@ -190,6 +192,7 @@ System.Diagnostics/CounterCreationDataTest.cs
 System.IO/FileSystemWatcherTest.cs
 System.IO.Compression/DeflateStreamTest.cs
 System.IO.Compression/GzipStreamTest.cs
+System.IO.Ports/SerialPortTest.cs
 System.Net/CookieCollectionTest.cs
 System.Net/CookieContainerTest.cs
 System.Net/CookieTest.cs
@@ -222,6 +225,7 @@ System.Net/WebPermissionTest.cs
 System.Net/WebProxyTest.cs
 System.Net/WebRequestTest.cs
 System.Net/WebClientTest.cs
+System.Net/WebUtilityTest.cs
 System.Net.Configuration/ConnectionManagementSectionTest.cs
 System.Net.Configuration/HttpWebRequestElementTest.cs
 System.Net.Configuration/WebRequestModulesSectionTest.cs
@@ -246,9 +250,11 @@ System.Net.Mail/SmtpClientTest.cs
 System.Net.Mail/SmtpExceptionTest.cs
 System.Net.Mail/SmtpPermissionTest.cs
 System.Net.Mail/SmtpPermissionAttributeTest.cs
+System.Net.Mail/SmtpServer.cs
 System.Net.Mime/ContentDispositionTest.cs
 System.Net.Mime/ContentTypeTest.cs
 System.Net.NetworkInformation/PhysicalAddressTest.cs
+System.Runtime.Versioning/FrameworkNameTest.cs
 System.Security.Cryptography/AsnEncodedDataTest.cs
 System.Security.Cryptography/OidCollectionTest.cs
 System.Security.Cryptography/OidEnumeratorTest.cs
@@ -464,9 +470,11 @@ System.Text.RegularExpressions/RegexCas.cs
 System.Text.RegularExpressions/RegexCompilationInfoCas.cs
 System.Text.RegularExpressions/RegexRunnerCas.cs
 System.Text.RegularExpressions/RegexRunnerFactoryCas.cs
+System.Text.RegularExpressions/SplitTests.cs
 System.Threading/SemaphoreCas.cs
 System.Threading/SemaphoreFullExceptionCas.cs
 System.Threading/SemaphoreTest.cs
+System.Threading/BarrierTest.cs
 System.Threading/ThreadExceptionEventArgsCas.cs
 System.Timers/TimersDescriptionAttributeCas.cs
 System.Timers/ElapsedEventArgsCas.cs

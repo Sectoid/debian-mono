@@ -123,6 +123,12 @@ namespace System.Windows.Forms
 			return result;
 		}
 
+		internal void Replace (int columnIndex, DataGridViewCell dataGridViewCell)
+		{
+			RemoveAt (columnIndex);
+			Insert (columnIndex, dataGridViewCell);
+		}
+
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		public virtual void AddRange (params DataGridViewCell[] dataGridViewCells)
 		{
@@ -171,6 +177,7 @@ namespace System.Windows.Forms
 			dataGridViewCell.SetOwningRow (dataGridViewRow);
 			dataGridViewCell.SetColumnIndex (index);
 			dataGridViewCell.SetDataGridView (dataGridViewRow.DataGridView);
+			ReIndex ();
 			OnCollectionChanged (new CollectionChangeEventArgs (
 				CollectionChangeAction.Add, dataGridViewCell));
 		}

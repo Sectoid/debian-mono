@@ -26,7 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_4_0
+#if NET_4_0 || BOOTSTRAP_NET_4_0 || MOONLIGHT
 
 using System;
 using System.Collections.Generic;
@@ -37,19 +37,27 @@ namespace System.Runtime.CompilerServices
 	[AttributeUsage (AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.ReturnValue)]
 	public sealed class DynamicAttribute : Attribute
 	{
-		bool[] transformFlags;
+		static readonly IList<bool> empty = Array.AsReadOnly (new [] { true });
 		
+		IList<bool> transformFlags;
+
 		public DynamicAttribute ()
 		{
+			transformFlags = empty;
 		}
-		
+
 		public DynamicAttribute (bool[] transformFlags)
 		{
+			if (transformFlags == null)
+				throw new ArgumentNullException ();
+
 			this.transformFlags = transformFlags;
 		}
-		
+
 		public IList<bool> TransformFlags {
-			get { return transformFlags; }
+			get {
+				return transformFlags;
+			}
 		}
 	}
 }

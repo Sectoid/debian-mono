@@ -94,9 +94,7 @@ namespace Mono.Unix {
 				EntryPoint="Mono_Unix_UnixSignal_uninstall")]
 		private static extern int uninstall (IntPtr info);
 
-#if NET_2_0
 		[UnmanagedFunctionPointer (CallingConvention.Cdecl)]
-#endif
 		delegate int Mono_Posix_RuntimeIsShuttingDown ();
 
 		[DllImport (Stdlib.MPH, CallingConvention=CallingConvention.Cdecl,

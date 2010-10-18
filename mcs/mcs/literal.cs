@@ -30,70 +30,19 @@ namespace Mono.CSharp {
 	//
 	// Note: C# specification null-literal is NullLiteral of NullType type
 	//
-	public class NullLiteral : Constant
+	public class NullLiteral : NullConstant
 	{
 		//
 		// Default type of null is an object
 		//
-		public NullLiteral (Location loc):
-			this (typeof (NullLiteral), loc)
+		public NullLiteral (Location loc)
+			: base (InternalType.Null, loc)
 		{
 		}
 
-		//
-		// Null can have its own type, think of default (Foo)
-		//
-		public NullLiteral (Type type, Location loc)
-			: base (loc)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, TypeSpec t, bool expl)
 		{
-			eclass = ExprClass.Value;
-			this.type = type;
-		}
-
-		override public string AsString ()
-		{
-			return GetSignatureForError ();
-		}
-		
-		public override Expression CreateExpressionTree (ResolveContext ec)
-		{
-			// HACK: avoid referencing mcs internal type
-			if (type == typeof (NullLiteral))
-				type = TypeManager.object_type;
-
-			return base.CreateExpressionTree (ec);
-		}		
-
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			return this;
-		}
-
-		public override void Emit (EmitContext ec)
-		{
-			ec.ig.Emit (OpCodes.Ldnull);
-
-#if GMCS_SOURCE
-			// Only to make verifier happy
-			if (TypeManager.IsGenericParameter (type))
-				ec.ig.Emit (OpCodes.Unbox_Any, type);
-#endif
-		}
-
-		public override string ExprClassName {
-			get {
-				return GetSignatureForError ();
-			}
-		}
-
-		public override string GetSignatureForError ()
-		{
-			return "null";
-		}
-
-		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type t, bool expl)
-		{
-			if (TypeManager.IsGenericParameter (t)) {
+			if (t.IsGenericParameter) {
 				ec.Report.Error(403, loc,
 					"Cannot convert null to the type parameter `{0}' because it could be a value " +
 					"type. Consider using `default ({0})' instead", t.Name);
@@ -109,75 +58,13 @@ namespace Mono.CSharp {
 			base.Error_ValueCannotBeConverted (ec, loc, t, expl);
 		}
 
-		public override Constant ConvertExplicitly (bool inCheckedContext, Type targetType)
-		{
-			if (targetType.IsPointer) {
-				if (type == TypeManager.null_type || this is NullPointer)
-					return new EmptyConstantCast (new NullPointer (loc), targetType);
-
-				return null;
-			}
-
-			// Exlude internal compiler types
-			if (targetType == InternalType.AnonymousMethod)
-				return null;
-
-			if (type != TypeManager.null_type && !Convert.ImplicitStandardConversionExists (this, targetType))
-				return null;
-
-			if (TypeManager.IsReferenceType (targetType))
-				return new NullLiteral (targetType, loc);
-
-			if (TypeManager.IsNullableType (targetType))
-				return Nullable.LiftedNull.Create (targetType, loc);
-
-			return null;
-		}
-
-		public override Constant ConvertImplicitly (Type targetType)
-		{
-			//
-			// Null literal is of object type
-			//
-			if (targetType == TypeManager.object_type)
-				return this;
-
-			return ConvertExplicitly (false, targetType);
-		}
-
-		public override object GetValue ()
-		{
-			return null;
-		}
-
-		public override Constant Increment ()
-		{
-			throw new NotSupportedException ();
-		}
-
-		public override bool IsDefaultValue {
-			get { return true; }
-		}
-
 		public override bool IsLiteral {
 			get { return true; }
 		}
 
-		public override bool IsNegative {
-			get { return false; }
-		}
-
-		public override bool IsNull {
-			get { return true; }
-		}
-
-		public override bool IsZeroInteger {
-			get { return true; }
-		}
-		
-		public override void MutateHoistedGenericType (AnonymousMethodStorey storey)
+		public override System.Linq.Expressions.Expression MakeExpression (BuilderContext ctx)
 		{
-			type = storey.MutateType (type);
+			return System.Linq.Expressions.Expression.Constant (null);
 		}
 	}
 
@@ -193,25 +80,17 @@ namespace Mono.CSharp {
 
 		public override void Emit (EmitContext ec)
 		{
-			ILGenerator ig = ec.ig;
-				
 			//
 			// Emits null pointer
 			//
-			ig.Emit (OpCodes.Ldc_I4_0);
-			ig.Emit (OpCodes.Conv_U);
+			ec.Emit (OpCodes.Ldc_I4_0);
+			ec.Emit (OpCodes.Conv_U);
 		}
 	}
 
 	public class BoolLiteral : BoolConstant {
 		public BoolLiteral (bool val, Location loc) : base (val, loc)
 		{
-		}
-
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.bool_type;
-			return this;
 		}
 
 		public override bool IsLiteral {
@@ -224,12 +103,6 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.char_type;
-			return this;
-		}
-
 		public override bool IsLiteral {
 			get { return true; }
 		}
@@ -240,25 +113,20 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		public override Constant ConvertImplicitly (ResolveContext rc, TypeSpec type)
 		{
-			type = TypeManager.int32_type;
-			return this;
-		}
-
-		public override Constant ConvertImplicitly (Type type)
-		{
-			///
-			/// The 0 literal can be converted to an enum value,
-			///
+			//
+			// The 0 literal can be converted to an enum value
+			//
 			if (Value == 0 && TypeManager.IsEnumType (type)) {
-				Constant c = ConvertImplicitly (TypeManager.GetEnumUnderlyingType (type));
+				Constant c = ConvertImplicitly (rc, EnumSpec.GetUnderlyingType (type));
 				if (c == null)
 					return null;
 
-				return new EnumConstant (c, type);
+				return new EnumConstant (c, type).Resolve (rc);
 			}
-			return base.ConvertImplicitly (type);
+
+			return base.ConvertImplicitly (rc, type);
 		}
 
 		public override bool IsLiteral {
@@ -271,12 +139,6 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.uint32_type;
-			return this;
-		}
-
 		public override bool IsLiteral {
 			get { return true; }
 		}
@@ -287,12 +149,6 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.int64_type;
-			return this;
-		}
-
 		public override bool IsLiteral {
 			get { return true; }
 		}
@@ -301,12 +157,6 @@ namespace Mono.CSharp {
 	public class ULongLiteral : ULongConstant {
 		public ULongLiteral (ulong l, Location loc) : base (l, loc)
 		{
-		}
-
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.uint64_type;
-			return this;
 		}
 
 		public override bool IsLiteral {
@@ -320,12 +170,6 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.float_type;
-			return this;
-		}
-
 		public override bool IsLiteral {
 			get { return true; }
 		}
@@ -337,14 +181,7 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.double_type;
-
-			return this;
-		}
-
-		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, Type target, bool expl)
+		public override void Error_ValueCannotBeConverted (ResolveContext ec, Location loc, TypeSpec target, bool expl)
 		{
 			if (target == TypeManager.float_type) {
 				Error_664 (ec, loc, "float", "f");
@@ -377,12 +214,6 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.decimal_type;
-			return this;
-		}
-
 		public override bool IsLiteral {
 			get { return true; }
 		}
@@ -391,13 +222,6 @@ namespace Mono.CSharp {
 	public class StringLiteral : StringConstant {
 		public StringLiteral (string s, Location loc) : base (s, loc)
 		{
-		}
-
-		public override Expression DoResolve (ResolveContext ec)
-		{
-			type = TypeManager.string_type;
-
-			return this;
 		}
 
 		public override bool IsLiteral {

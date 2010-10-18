@@ -1,3 +1,84 @@
+2010-08-31  Sebastien Pouliot  <sebastien@ximian.com>
+
+	*
+	mcs/class/System.Net/System.Net/InternalWebRequestStreamWrapper.cs:
+	Ensure WebClient.WriteStreamClosedCallback is never called more
+	than once (even if the stream was closed by the caller). Supply
+	the length of the data that was written to the stream to
+	WebClient.
+
+	* mcs/class/System.Net/System.Net/WebClient_2_1.cs: Keep an Uri of
+	BaseAddress handy since we'll need it later. Ensure
+	OnWriteStreamClosed is at least called once (inside finally). Emit
+	UploadProgressChanged (instead of Download*) when uploading.
+
+	* mcs/class/System.Net/System.Net/WebRequest_2_1.cs: Change text
+	for InvalidOperationException when the URI is not absolute (some
+	MS tests check for, case-sensitive, "URI").
+
+2010-08-25  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* HttpWebRequest_2_1.cs: Avoid using AllKeys (unneeded
+	allocations) * WebClient_2_1.cs: Copy headers to WebRequest (some
+	special cases are now considered) then clear them. Expose
+	SecurityException (unwrapped) and closely match SL4 exceptions
+	(including inner exceptions). * WebHeaderCollection_2_1.cs: Add
+	missing validations on header names and values (from original
+	WebHeaderCollection.cs + small fix)
+
+2010-07-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* WebHeaderCollection_2_1.cs: Fix IEnumerable.GetEnumerator
+
+2010-05-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* WebHeaderCollection_2_1.cs: Hide the internal Dictionary and 
+	provide methods to use it properly.
+	* HttpWebRequest_2_1.cs: Use internal Clear method
+
+2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* HttpWebResponse_2_1.cs: Method, StatusCode and StatusDescription
+	property getters are now virtual (instead of abstract) and throw
+	NIE in SL4 (final) API.
+	* WebRequest_2_1.cs: Added ContentLength (SL4) property to throw
+	NIE. Implement (SL4) CreateHttp methods. Rework stack registration
+	logic.
+	* WebResponse_2_1.cs: default Headers getter throws NIE
+
+2010-04-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* InternalWebResponseStreamWrapper.cs: Move back to 
+	System.Windows.dll
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* HttpWebRequest_2_1.cs: AllowWriteStreamBuffering getter/setter
+	throws NIE by default (must be overridden). Revert Accept and
+	ContentType behavior to SL2 (identical to SL4 but different from
+	SL3). 
+	* WebClient_2_1.cs: Initialize UseDefaultCredentials to true. Set
+	the properties when creating a new WebRequest
+
+2010-03-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* HttpWebRequest_2_1.cs: Add SL4 RC AllowWriteStreamBuffering and
+	SupportsCookieContainer properties.
+	* WebClient_2_1.cs: Add SL4 RC AllowWriteStreamBuffering and 
+	UseDefaultCredentials properties.
+	* WebHeaderCollection_2_1.cs: Authorization and Proxy-Authorization
+	are valid (i.e. usable) headers in SL4 (in both stacks)
+
+2010-03-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* WebRequest_2_1.cs: Added UseDefaultCredentials property.
+
+2010-03-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* WebClient_2_1.cs: Directly set 'progress' delegate field
+	* WebRequest_2_1.cs: Avoid using reflection (since it was not 
+	really needed anyway)
+
 2010-03-03  Andreia Gaita  <avidigal@novell.com>
 
 	* InternalWebRequestStreamWrapper.cs: don't add a newline to the
@@ -18,14 +99,12 @@
 	related to browser/client stacks)
 	* WebRequest_2_1.cs: Fix registration to work on domains (new) 
 	and scheme (more correctly wrt new unit tests).
-	[Backport r152275]
 
 2010-02-16  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* WebClient_2_1.cs: Keep a copy of 'userToken' since we need to
 	supply it when calling OnDownloadProgressChanged
 	* WebRequest_2_1.cs (SetupProgressDelegate): Simplify signature
-	[Backport r151800]
 
 2010-01-29  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
@@ -48,7 +127,6 @@
 
 	* UdpAnySourceMulticastClient.cs: New. Stub for SL4
 	* UdpSingleSourceMulticastClient.cs: New. Stub for SL4
-	[Backport r150127]
 
 2010-01-13  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -61,13 +139,11 @@
 	* WebHeaderCollection_2_1.cs: Provide an argument to 
 	ArgumentException. Found by Gendarme's ArgumentException
 	InstantiateArgumentExceptionCorrectlyRule
-	[Backport r149484]
 
 2010-01-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* WebRequest_2_1.cs: Rework registration wrt the two, browser
 	and client, stacks offered in SL3. Only global works now.
-	[Backport r149423]
 
 2010-01-11  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -83,7 +159,6 @@
 	* WebRequest_2_1.cs: Signature change from delegate to 
 	Action<long,long,object>. Found using Gendarme's
 	AvoidDeclaringCustomDelegatesRule
-	[Backport r149327]
 
 2009-12-12  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
@@ -91,14 +166,18 @@
 	any headers the user set on us. We also need to wrap
 	InvalidOperationExceptions in WebExceptions.
 
-2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com> 
 
 	* HttpStatusCode_2_1.cs: Remove. SL3 provides all status code 
 	since they are used for the client stack
 	* WebClient_2_1.cs: Add Credentials property and change
 	ResponseHeaders property to public
 	* WebRequest_2_1.cs: Add Credentials property
-	[Backport r147704]
+
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* DnsEndPoint_2_1.cs: Moved to System.dll since it's also part
+	of .net 4.0
 
 2009-12-04  Sebastien Pouliot  <sebastien@ximian.com> 
 
@@ -107,13 +186,7 @@
 	* HttpWebResponse_2_1.cs: CookieContainer is virtual. Add FIXME
 	to move (a real) implementation into the client stack
 	* WebRequest_2_1.cs: Add Create(string) overload (SL3)
-	[Backport r147670]
 
-2009-11-17  Jackson Harper  <jackson@ximian.com>
-
-	* WebResponse_2_1.cs: Update to the SL3 API.
-	* HttpWebRequest.cs: Add cookies.
-	
 2009-09-24  Sebastien Pouliot  <sebastien@ximian.com> 
 
 	* Dns_2_1.cs: New. Smaller version of Dns.cs that offers just

@@ -94,9 +94,9 @@ namespace System.Runtime.Serialization.Json
 				case '\\':
 					AppendBuffer (ref sb, input, start, i, @"\\");
 					break;
-				//case '/':
-				//	AppendBuffer (ref sb, input, start, i, @"\/");
-				//	break;
+				case '/':
+					AppendBuffer (ref sb, input, start, i, @"\/");
+					break;
 				case '\x8':
 					AppendBuffer (ref sb, input, start, i, @"\b");
 					break;
@@ -364,6 +364,21 @@ namespace System.Runtime.Serialization.Json
 					}
 					break;
 				case ElementType.Number:
+					// .NET is buggy here, it just outputs raw string, which results in invalid JSON format.
+					bool isString = false;
+					switch (text) {
+					case "INF":
+					case "-INF":
+					case "NaN":
+						isString = true;
+						break;
+					}
+					if (isString) {
+						element_kinds.Pop ();
+						element_kinds.Push (ElementType.String);
+						goto case ElementType.String;
+					}
+					break;
 				case ElementType.Boolean:
 					break;
 				default:

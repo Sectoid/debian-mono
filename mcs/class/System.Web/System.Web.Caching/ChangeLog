@@ -1,3 +1,153 @@
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Remove lock recursion in Cache.ExpireItems
+
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Get rid of a possible (although unlikely) race condition
+	when acquiring locks
+
+	The patch removes a small race condition where a boolean flag is
+	set after acquiring a lock to indicate to code executing in the
+	finally {} block that it should release the lock. The boolean
+	variable is now removed and the lock is released unconditionally.
+	It carries a potential to throw an exception when the lock is not
+	held, but it's better than to fail to release it and lead the
+	application to a deadlock.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] Added support for declarative per-user control
+	output cache provider selection
+
+	This adds support for the ProviderName attribute of the
+	OutputCache directive in user controls. Also implemented missing
+	support for SqlDependency attribute.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	* OutputCache.cs: added DefaultProvider internal property to
+	return whatever default provider is configured. Added
+	GetProvider() method to return instance of a named provider *
+	BasePartialCachingControl.cs: cache key and cached data are store
+	in instance fields. Added 4.0 internal property ProviderName which
+	names the output cache provider to use for storage. Removed OnInit
+	from 4.0 profile, replaced with an override of Control's
+	InitRecursive. Control is created only when cached data is not
+	found in the provider. * Control.cs: made InitRecursive virtual
+	for the benefit of BasePartialCachingControl above. *
+	ControlCachePolicy.cs: added 4.0 property ProviderName
+
+2010-05-06  Marek Habersack  <mhabersack@novell.com>
+
+	* OutputCacheModule.cs: added a 2.0 internal property to return
+	the internal provider used in this profile.
+
+	* OutputCache.cs: added internal RemoveFromProvider method to
+	remove items from the indicated provider.
+
+2010-02-23  Marek Habersack  <mhabersack@novell.com>
+
+	* CachedVaryBy.cs: made serializable for 4.0+ (necessary for
+	extensible output caching)
+
+2010-02-03  Marek Habersack  <mhabersack@novell.com>
+
+	* OutputCache.cs: DefaultProviderName checks if there was any
+	provider configured and, if not, returns a built-in provider's
+	name.
+
+	* SqlCacheDependencyAdmin.cs: added
+
+	* OutputCacheProviderCollection.cs: added
+
+	* OutputCacheProvider.cs: added
+
+	* OutputCacheModule.cs: uses the 4.0 extensible output cache
+	provider model now (also internally in the 2.0 profile)
+	OutputCacheProvider is retrieved on every request using
+	HttpApplication.GetOutputCacheProviderName (4.0+). In the 2.0
+	profile an instance of InMemoryOutputCacheProvider is always
+	returned.
+
+	* InMemoryOutputCacheProvider.cs: default output cache provider
+	for ASP.NET 4.0, also used internally in the  2.0 profile.
+
+	* CachedVaryBy.cs: made the generated key shorter
+
+	* CacheItemPriorityQueueDebug.cs: debugging support for
+	CacheItemPriorityQueue. Most of the code is compiled only when the
+	DEBUG macro is defined. Debugging support includes recording of
+	the queue operations sequence which is output to an XML file on
+	appdomain shutdown. The recorded sequence files can be used to
+	generate NUnit test cases for the priority queue (see
+	../Test/tools/README)
+
+	* CacheItemPriorityQueue.cs: rewritten using an array based heap
+	instead of a binary tree based one - implementation is simpler,
+	faster and more elegant. Heap is initially 32 entries long and
+	its size is doubled every time it fills up. After reaching a
+	threshold (8192 entries currently) it is shrunk to the number of
+	items + 1/3 of item count in order to preserve memory.
+
+	* CacheItem.cs: added a Guid field to easier distinguish items
+	(mostly for debugging purposes)
+
+	* CacheDependency.cs: minor performance improvements
+
+	* Cache.cs: better handling of timer periods
+
+2010-01-25  Marek Habersack  <mhabersack@novell.com>
+
+	* SqlCacheDependency.cs: added parameter checks to the
+	constructors.
+	Partially implemented 4.0 method CreateOutputCacheDependency
+
+	* CacheItemUpdateReason.cs, CacheItemUpdateCallback.cs: added
+
+	* CacheItem.cs: added OnUpdateCallback field
+
+	* Cache.cs: implemented support for cache item update callback
+	(3.5+)
+
+	* AggregateCacheDependency.cs: added undocumented
+	DependencyDispose method override
+
+2010-01-22  Marek Habersack  <mhabersack@novell.com>
+
+	* SubstitutionResponseElement.cs: implemented correct
+	(de)serialization of the Callback delegate.
+
+	* OutputCache.cs: implemented Serialize, Deserialize,
+	DefaultProviderName and Providers.
+
+2010-01-21  Marek Habersack  <mhabersack@novell.com>
+
+	* DatabaseNotEnabledForNotificationException.cs, OutputCache.cs,
+	FileResponseElement.cs, HeaderElement.cs, IOutputCacheEntry.cs,
+	MemoryResponseElement.cs, OutputCacheProvider.cs,
+	ResponseElement.cs, OutputCacheProviderCollection.cs,
+	SubstitutionResponseElement.cs,
+	TableNotEnabledForNotificationException.cs: added
+
+	* CacheDependency.cs: default constructor is protected in 4.0
+
+2010-01-06  Marek Habersack  <mhabersack@novell.com>
+
+	* CacheItemPriorityQueue.cs: make sure lastParent is never null if
+	root is not null in Enqueue. Possible fix for bug #567869
+
+2009-12-01  Marek Habersack  <mhabersack@novell.com>
+
+	* Cache.cs: ExpireItems dequeues the next item when a disabled
+	item is found before continuing to look for items to expire. Fixes
+	bug #559470. Patch from Adriaan van Kekem <avkekem@hotmail.com>,
+	thanks.
+
+2009-10-21  Marek Habersack  <mhabersack@novell.com>
+
+	* CacheItemPriorityQueue.cs: lock the queue on enqueue/dequeue
+
 2009-10-20  Marek Habersack  <mhabersack@novell.com>
 
 	* OutputCacheModule.cs: keysCache and entriesToInvalidate
@@ -17,6 +167,20 @@
 	as the timer will be rescheduled for the item's expiration time
 	once that item is bubbled to the top of the priority queue. Fixes
 	bug #544171
+
+2009-09-26  Marek Habersack  <mhabersack@novell.com>
+
+	* CacheItemPriorityQueue.cs, CacheItem.cs, CacheItemEnumerator.cs:
+	added
+
+	* Cache.cs: factored out CacheItem and CacheItemEnumerator to
+	separate files.
+	Use reader-writer locks instead of Monitor.
+	Added two 3.5sp1 properties - EffectivePrivateBytesLimit and
+	EffectivePercentagePhysicalMemoryLimit.
+	Added support for disabling cache item expiration.
+	One timer is used to expire all timed items (instead of one timer
+	per item). Timed items are kept in a priority queue.
 
 2009-03-03  Marek Habersack  <mhabersack@novell.com>
 

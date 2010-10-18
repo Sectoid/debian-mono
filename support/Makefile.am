@@ -1,4 +1,4 @@
-if PLATFORM_WIN32
+if HOST_WIN32
 SUPPORT=
 else
 SUPPORT=libMonoSupportW.la
@@ -26,6 +26,7 @@ MPH_C_SOURCE =					\
 # Source code which helps implement POSIX and other related Unix standards,
 # and *may* be portable between Unix platforms.
 MPH_UNIX_SOURCE =				\
+	fakepoll.h				\
 	dirent.c				\
 	fcntl.c					\
 	fstab.c					\
@@ -49,7 +50,7 @@ MPH_UNIX_SOURCE =				\
 	utime.c					\
 	x-struct-str.c
 
-if PLATFORM_WIN32
+if HOST_WIN32
 MPH_SOURCE = $(MPH_C_SOURCE)
 MPH_LIBS   = $(GLIB_LIBS)
 else
@@ -161,5 +162,9 @@ refresh:
 patch-libtool:
 	cp "../libtool" .
 	sed -e 's,build_libtool_libs=no,build_libtool_libs=yes,g' libtool > 2; mv 2 libtool
-	sed -e 's,LIBTOOL =,LIBTOOL2 =,g' Makefile > 2 && echo "LIBTOOL = bash ./libtool" > 1 && cat 1 2 > Makefile
+	echo "LIBTOOL = bash ./libtool" > 1
+	echo "LTCOMPILE = bash ./libtool --mode=compile $(COMPILE)" >> 1
+	sed -e 's,LIBTOOL =,LIBTOOL2 =,g' Makefile > 2
+	sed -e 's,LTCOMPILE =,LTCOMPILE2 =,g' 2 > 3
+	cat 1 3 > Makefile
 	touch *.c

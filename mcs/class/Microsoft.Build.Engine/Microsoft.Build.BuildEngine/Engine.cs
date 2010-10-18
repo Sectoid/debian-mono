@@ -104,7 +104,6 @@ namespace Microsoft.Build.BuildEngine {
 			this.Toolsets = new ToolsetCollection ();
 			LoadDefaultToolsets ();
 			defaultTasksTableByToolsVersion = new Dictionary<string, TaskDatabase> ();
-			GetDefaultTasks (DefaultToolsVersion);
 		}
 
 		//FIXME: should be loaded from config file
@@ -119,9 +118,6 @@ namespace Microsoft.Build.BuildEngine {
 #if NET_4_0
 			Toolsets.Add (new Toolset ("4.0",
 						ToolLocationHelper.GetPathToDotNetFramework (TargetDotNetFrameworkVersion.Version40)));
-#else
-			Toolsets.Add (new Toolset ("4.0",
-						ToolLocationHelper.GetPathToDotNetFramework (TargetDotNetFrameworkVersion.Version35)));
 #endif
 		}
 		
@@ -230,11 +226,10 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			Project project;
 
-			if (projects.ContainsKey (projectFile)) {
-				project = (Project) projects [projectFile];
-			} else {
+			bool newProject = false;
+			if (!projects.TryGetValue (projectFile, out project)) {
 				project = CreateNewProject ();
-				project.Load (projectFile);
+				newProject = true;
 			}
 
 			BuildPropertyGroup engine_old_grp = null;
@@ -247,18 +242,30 @@ namespace Microsoft.Build.BuildEngine {
 				// ones explicitlcur_y specified here
 				foreach (BuildProperty bp in globalProperties)
 					project.GlobalProperties.AddProperty (bp);
-				project.NeedToReevaluate ();
+
+				if (!newProject)
+					project.NeedToReevaluate ();
 			}
 
+			if (newProject)
+				project.Load (projectFile);
+
 			try {
+				string oldProjectToolsVersion = project.ToolsVersion;
 				if (String.IsNullOrEmpty (toolsVersion) && defaultToolsVersion != null)
-					// it has been explicitly set, xbuild does this..
-					//FIXME: should this be cleared after building?
+					// no tv specified, let the project inherit it from the
+					// engine. 'defaultToolsVersion' will be effective only
+					// it has been overridden. Otherwise, the project's own
+					// tv will be used.
 					project.ToolsVersion = defaultToolsVersion;
 				else
 					project.ToolsVersion = toolsVersion;
 
-				return project.Build (targetNames, targetOutputs, buildFlags);
+				try {
+					return project.Build (targetNames, targetOutputs, buildFlags);
+				} finally {
+					project.ToolsVersion = oldProjectToolsVersion;
+				}
 			} finally {
 				if (globalProperties != null) {
 					GlobalProperties = engine_old_grp;
@@ -430,7 +437,7 @@ namespace Microsoft.Build.BuildEngine {
 
 			var toolset = Toolsets [toolsVersion];
 			if (toolset == null)
-				throw new Exception ("Unknown toolsversion: " + toolsVersion);
+				throw new UnknownToolsVersionException (toolsVersion);
 
 			string toolsPath = toolset.ToolsPath;
 			string tasksFile = Path.Combine (toolsPath, defaultTasksProjectName);
@@ -505,7 +512,11 @@ namespace Microsoft.Build.BuildEngine {
 				
 				return defaultToolsVersion;
 			}
-			set { defaultToolsVersion = value; }
+			set {
+				if (Toolsets [value] == null)
+					throw new UnknownToolsVersionException (value);
+				defaultToolsVersion = value;
+			}
 		}
 		
 		public bool IsBuilding {

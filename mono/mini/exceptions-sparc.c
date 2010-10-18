@@ -39,11 +39,15 @@
  * Returns a pointer to a method which restores a previously saved sigcontext.
  */
 gpointer
-mono_arch_get_restore_context (void)
+mono_arch_get_restore_context (MonoTrampInfo **info, gboolean aot)
 {
 	static guint32 *start;
 	static int inited = 0;
 	guint32 *code;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -76,12 +80,16 @@ mono_arch_get_restore_context (void)
  * call_filter (MonoContext *ctx, gpointer ip)
  */
 gpointer
-mono_arch_get_call_filter (void)
+mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 {
 	static guint32 *start;
 	static int inited = 0;
 	guint32 *code;
 	int i;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -163,7 +171,7 @@ throw_exception (MonoObject *exc, gpointer sp, gpointer ip, gboolean rethrow)
 	gpointer *window;
 	
 	if (!restore_context)
-		restore_context = mono_arch_get_restore_context ();
+		restore_context = mono_get_restore_context ();
 
 	window = MONO_SPARC_WINDOW_ADDR (sp);
 	ctx.sp = (gpointer*)sp;
@@ -213,11 +221,15 @@ get_throw_exception (gboolean rethrow)
  * The returned function has the following 
  * signature: void (*func) (MonoException *exc); 
  */
-gpointer 
-mono_arch_get_throw_exception (void)
+gpointer
+mono_arch_get_throw_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint32* start;
 	static int inited = 0;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -229,11 +241,15 @@ mono_arch_get_throw_exception (void)
 	return start;
 }
 
-gpointer 
-mono_arch_get_rethrow_exception (void)
+gpointer
+mono_arch_get_rethrow_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint32* start;
 	static int inited = 0;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -241,59 +257,6 @@ mono_arch_get_rethrow_exception (void)
 	inited = 1;
 
 	start = get_throw_exception (TRUE);
-
-	return start;
-}
-
-/**
- * mono_arch_get_throw_exception_by_name:
- *
- * Returns a function pointer which can be used to raise 
- * corlib exceptions. The returned function has the following 
- * signature: void (*func) (char *exc_name, gpointer ip); 
- */
-gpointer 
-mono_arch_get_throw_exception_by_name (void)
-{
-	static guint32 *start;
-	static int inited = 0;
-	guint32 *code;
-	int reg;
-
-	if (inited)
-		return start;
-
-	inited = 1;
-	code = start = mono_global_codeman_reserve (64 * sizeof (guint32));
-
-#ifdef SPARCV9
-	reg = sparc_g4;
-#else
-	reg = sparc_g1;
-#endif
-
-	sparc_save_imm (code, sparc_sp, -160, sparc_sp);
-
-	sparc_mov_reg_reg (code, sparc_i0, sparc_o2);
-	sparc_set (code, mono_defaults.corlib, sparc_o0);
-	sparc_set (code, "System", sparc_o1);
-	sparc_set (code, mono_exception_from_name, sparc_o7);
-	sparc_jmpl (code, sparc_o7, sparc_g0, sparc_callsite);
-	sparc_nop (code);
-
-	/* Return to the caller, so exception handling does not see this frame */
-	sparc_restore (code, sparc_o0, sparc_g0, sparc_o0);
-
-	/* Put original return address into %o7 */
-	sparc_mov_reg_reg (code, sparc_o1, sparc_o7);
-	sparc_set (code, mono_arch_get_throw_exception (), reg);
-	/* Use a jmp instead of a call so o7 is preserved */
-	sparc_jmpl_imm (code, reg, 0, sparc_g0);
-	sparc_nop (code);
-
-	g_assert ((code - start) < 32);
-
-	mono_arch_flush_icache ((guint8*)start, (guint8*)code - (guint8*)start);
 
 	return start;
 }
@@ -308,13 +271,17 @@ mono_arch_get_throw_exception_by_name (void)
  * to get the IP of the throw. Passing the offset has the advantage that it 
  * needs no relocations in the caller.
  */
-gpointer 
-mono_arch_get_throw_corlib_exception (void)
+gpointer
+mono_arch_get_throw_corlib_exception (MonoTrampInfo **info, gboolean aot)
 {
 	static guint32 *start;
 	static int inited = 0;
 	guint32 *code;
 	int reg;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -345,7 +312,7 @@ mono_arch_get_throw_corlib_exception (void)
 	sparc_sll_imm (code, sparc_o1, 2, sparc_o1);
 	sparc_sub (code, 0, sparc_o2, sparc_o1, sparc_o7);
 
-	sparc_set (code, mono_arch_get_throw_exception (), reg);
+	sparc_set (code, mono_arch_get_throw_exception (NULL, FALSE), reg);
 	/* Use a jmp instead of a call so o7 is preserved */
 	sparc_jmpl_imm (code, reg, 0, sparc_g0);
 	sparc_nop (code);

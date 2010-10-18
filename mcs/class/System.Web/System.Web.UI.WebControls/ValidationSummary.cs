@@ -159,7 +159,11 @@ namespace System.Web.UI.WebControls {
 			}
 		}
 #endif		
-		
+#if NET_4_0
+		public override bool SupportsDisabledAttribute {
+			get { return RenderingCompatibilityLessThan40; }
+		}
+#endif		
 		#endregion	// Public Instance Properties
 
 		#region Public Instance Methods
@@ -223,7 +227,17 @@ namespace System.Web.UI.WebControls {
 				Page.ClientScript.RegisterExpandoAttribute (controlId, attributeName, attributeValue, encode);
 		}
 #endif
+#if NET_4_0
+		protected internal override void OnInit (EventArgs e)
+		{
+			base.OnInit (e);
+			if (!RenderingCompatibilityLessThan40)
+				return;
 
+			if (ForeColor == Color.Empty)
+				ForeColor = Color.Red;
+		}
+#endif
 #if NET_2_0
 		protected internal
 #else		

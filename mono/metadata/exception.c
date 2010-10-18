@@ -13,6 +13,7 @@
 
 #include <mono/metadata/exception.h>
 #include <mono/metadata/object-internals.h>
+#include <mono/metadata/metadata-internals.h>
 #include <mono/metadata/appdomain.h>
 #include <string.h>
 
@@ -591,7 +592,7 @@ mono_get_exception_type_initialization (const gchar *type_name, MonoException *i
  * mono_get_exception_synchronization_lock:
  * @inner: the inner exception.
  *
- * Returns: a new instance of the System.TypeInitializationException
+ * Returns: a new instance of the System.SynchronizationLockException
  */
 MonoException *
 mono_get_exception_synchronization_lock (const char *msg)
@@ -684,6 +685,18 @@ mono_get_exception_field_access (void)
 }
 
 /**
+ * mono_get_exception_field_access2:
+ * @msg: an informative message for the user.
+ *
+ * Returns: a new instance of the System.FieldAccessException
+ */
+MonoException *
+mono_get_exception_field_access_msg (const char *msg)
+{
+	return mono_exception_from_name_msg (mono_get_corlib (), "System", "FieldAccessException", msg);
+}
+
+/**
  * mono_get_exception_method_access:
  *
  * Returns: a new instance of the System.MethodAccessException
@@ -692,6 +705,18 @@ MonoException *
 mono_get_exception_method_access (void)
 {
 	return mono_exception_from_name (mono_get_corlib (), "System", "MethodAccessException");
+}
+
+/**
+ * mono_get_exception_method_access2:
+ * @msg: an informative message for the user.
+ *
+ * Returns: a new instance of the System.MethodAccessException
+ */
+MonoException *
+mono_get_exception_method_access_msg (const char *msg)
+{
+	return mono_exception_from_name_msg (mono_get_corlib (), "System", "MethodAccessException", msg);
 }
 
 /**

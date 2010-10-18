@@ -13,7 +13,8 @@
 // (C) 2001 Garrett Rooney
 // (C) 2003 Ian MacLean
 // (C) 2003 Ben Maurer
-// Copyright (C) 2003,2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2003,2009 Novell, Inc (http://www.novell.com)
+// Copyright (c) 2009 Stephane Delcroix
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -54,12 +55,8 @@ using System.Globalization;
 namespace System {
 
 	[Serializable]
-#if NET_2_0
 	[TypeConverter (typeof (UriTypeConverter))]
 	public class Uri : ISerializable {
-#else
-	public class Uri : MarshalByRefObject, ISerializable {
-#endif
 		// NOTES:
 		// o  scheme excludes the scheme delimiter
 		// o  port is -1 to indicate no port is defined
@@ -105,14 +102,12 @@ namespace System {
 		public static readonly string UriSchemeMailto = "mailto";
 		public static readonly string UriSchemeNews = "news";
 		public static readonly string UriSchemeNntp = "nntp";
-#if NET_2_0
 		public static readonly string UriSchemeNetPipe = "net.pipe";
 		public static readonly string UriSchemeNetTcp = "net.tcp";
-#endif
 
 		// Constructors		
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		public Uri (string uriString) : this (uriString, UriKind.Absolute) 
 		{
 		}
@@ -138,7 +133,6 @@ namespace System {
 			}
 		}
 
-#if NET_2_0
 		public Uri (string uriString, UriKind uriKind)
 		{
 			source = uriString;
@@ -222,17 +216,6 @@ namespace System {
 				throw new UriFormatException("Invalid URI: The format of the URI could not be "
 					+ "determined: " + uriString);
 		}
-#else
-		public Uri (string uriString, bool dontEscape) 
-		{
-			userEscaped = dontEscape;
-			source = uriString;
-			Parse ();
-			if (!isAbsoluteUri)
-				throw new UriFormatException("Invalid URI: The format of the URI could not be "
-					+ "determined.");
-		}
-#endif
 
 		public Uri (Uri baseUri, string relativeUri) 
 		{
@@ -240,9 +223,7 @@ namespace System {
 			// FIXME: this should call UriParser.Resolve
 		}
 
-#if NET_2_0
 		[Obsolete ("dontEscape is always false")]
-#endif
 		public Uri (Uri baseUri, string relativeUri, bool dontEscape) 
 		{
 			userEscaped = dontEscape;
@@ -251,27 +232,19 @@ namespace System {
 
 		private void Merge (Uri baseUri, string relativeUri)
 		{
-#if NET_2_0
 			if (baseUri == null)
 				throw new ArgumentNullException ("baseUri");
 			if (!baseUri.IsAbsoluteUri)
 				throw new ArgumentOutOfRangeException ("baseUri");
 			if (relativeUri == null)
 				relativeUri = String.Empty;
-#else
-			if (baseUri == null)
-				throw new NullReferenceException ("baseUri");
-#endif
+
 			// See RFC 2396 Par 5.2 and Appendix C
 
 			// Check Windows UNC (for // it is scheme/host separator)
 			if (relativeUri.Length >= 2 && relativeUri [0] == '\\' && relativeUri [1] == '\\') {
 				source = relativeUri;
-#if NET_2_0
 				ParseUri (UriKind.Absolute);
-#else
-				Parse ();
-#endif
 				return;
 			}
 
@@ -296,11 +269,7 @@ namespace System {
 					    relativeUri.Length > pos + 1 &&
 					    relativeUri [pos + 1] == '/') {
 						source = relativeUri;
-#if NET_2_0
 						ParseUri (UriKind.Absolute);
-#else
-						Parse ();
-#endif
 						return;
 					}
 					else
@@ -346,11 +315,7 @@ namespace System {
 			if (relativeUri.Length > 0 && relativeUri [0] == '/') {
 				if (relativeUri.Length > 1 && relativeUri [1] == '/') {
 					source = scheme + ':' + relativeUri;
-#if NET_2_0
 					ParseUri (UriKind.Absolute);
-#else
-					Parse ();
-#endif
 					return;
 				} else {
 					path = relativeUri;
@@ -427,6 +392,10 @@ namespace System {
 						path = path.Remove (pos + 1, path.Length - pos - 1);
 			}
 			
+			// 6 g)
+			while (path.StartsWith ("/../"))
+				path = path.Substring (3);
+			
 			if (!userEscaped)
 				path = EscapeString (path);
 		}		
@@ -435,7 +404,6 @@ namespace System {
 		
 		public string AbsolutePath { 
 			get {
-#if NET_2_0
 				EnsureAbsoluteUri ();
 				switch (Scheme) {
 				case "mailto":
@@ -452,9 +420,6 @@ namespace System {
 					}
 					return path;
 				}
-#else
-				return path;
-#endif
 			}
 		}
 
@@ -493,28 +458,21 @@ namespace System {
 				return host; 
 			} 
 		}
-#if !NET_2_1 || MONOTOUCH
+
 		public UriHostNameType HostNameType { 
 			get {
 				EnsureAbsoluteUri ();
 				UriHostNameType ret = CheckHostName (Host);
 				if (ret != UriHostNameType.Unknown)
 					return ret;
-#if NET_2_0
 				switch (Scheme) {
 				case "mailto":
 					return UriHostNameType.Basic;
 				default:
 					return (IsFile) ? UriHostNameType.Basic : ret;
 				}
-#else
-				// looks it always returns Basic...
-				return UriHostNameType.Basic; //.Unknown;
-#endif
 			} 
 		}
-
-#endif // NET_2_1
 
 		public bool IsDefaultPort { 
 			get {
@@ -530,17 +488,12 @@ namespace System {
 			}
 		}
 
-#if !NET_2_1 || MONOTOUCH
 		public bool IsLoopback { 
 			get {
 				EnsureAbsoluteUri ();
 				
 				if (Host.Length == 0) {
-#if NET_2_0
 					return IsFile;
-#else
-					return false;
-#endif
 				}
 
 				if (host == "loopback" || host == "localhost") 
@@ -560,8 +513,6 @@ namespace System {
 				return false;
 			} 
 		}
-
-#endif // NET_2_1
 
 		public bool IsUnc {
 			// rule: This should be true only if
@@ -606,13 +557,9 @@ namespace System {
 					else if (System.IO.Path.DirectorySeparatorChar == '\\') {
 						string h = host;
 						if (path.Length > 0) {
-#if NET_2_0
 							if ((path.Length > 1) || (path[0] != '/')) {
 								h += path.Replace ('/', '\\');
 							}
-#else
-							h += path.Replace ('/', '\\');
-#endif
 						}
 						cachedLocalPath = "\\\\" + Unescape (h);
 					}  else
@@ -703,7 +650,6 @@ namespace System {
 			}
 		}
 		
-#if NET_2_0
 		[MonoTODO ("add support for IPv6 address")]
 		public string DnsSafeHost {
 			get {
@@ -711,7 +657,6 @@ namespace System {
 				return Unescape (Host);
 			}
 		}
-#endif
 
 #if NET_2_0
 		public
@@ -721,17 +666,13 @@ namespace System {
 		bool IsAbsoluteUri {
 			get { return isAbsoluteUri; }
 		}
+
 		// LAMESPEC: source field is supplied in such case that this
 		// property makes sense. For such case that source field is
 		// not supplied (i.e. .ctor(Uri, string), this property
 		// makes no sense. To avoid silly regression it just returns
 		// ToString() value now. See bug #78374.
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		string OriginalString {
+		public string OriginalString {
 			get { return source != null ? source : ToString (); }
 		}
 
@@ -768,16 +709,8 @@ namespace System {
 				if (length == 0)
 					return false;
 				uint number;
-#if NET_2_0
 				if (!UInt32.TryParse (captures [i], out number))
 					return false;
-#else
-				try {
-					number = UInt32.Parse (captures [i]);
-				} catch (Exception) {
-					return false;
-				}
-#endif
 				if (number > 255)
 					return false;
 			}
@@ -807,9 +740,7 @@ namespace System {
 		}
 #if !NET_2_1
 
-#if NET_2_0
 		[Obsolete("This method does nothing, it has been obsoleted")]
-#endif
 		protected virtual void Canonicalize ()
 		{
 			//
@@ -819,9 +750,7 @@ namespace System {
 		}
 
 		[MonoTODO ("Find out what this should do")]
-#if NET_2_0
 		[Obsolete]
-#endif
 		protected virtual void CheckSecurity ()
 		{
 		}
@@ -849,15 +778,10 @@ namespace System {
 
 		private static bool IsAlpha (char c)
 		{
-#if NET_2_0
 			// as defined in rfc2234
 			// %x41-5A / %x61-7A (A-Z / a-z)
 			int i = (int) c;
 			return (((i >= 0x41) && (i <= 0x5A)) || ((i >= 0x61) && (i <= 0x7A)));
-#else
-			// Fx 1.x got this too large
-			return Char.IsLetter (c);
-#endif
 		}
 
 		public override bool Equals (object comparant) 
@@ -879,27 +803,19 @@ namespace System {
 		// Assumes: uri != null
 		bool InternalEquals (Uri uri)
 		{
-#if NET_2_0
 			if (this.isAbsoluteUri != uri.isAbsoluteUri)
 				return false;
 			if (!this.isAbsoluteUri)
 				return this.source == uri.source;
-#endif
 
 			CultureInfo inv = CultureInfo.InvariantCulture;
 			return this.scheme.ToLower (inv) == uri.scheme.ToLower (inv)
 				&& this.host.ToLower (inv) == uri.host.ToLower (inv)
 				&& this.port == uri.port
-#if NET_2_0
 				&& this.query == uri.query
-#else
-				// Note: MS.NET 1.x has bug - ignores query check altogether
-				&& this.query.ToLower (inv) == uri.query.ToLower (inv)
-#endif
 				&& this.path == uri.path;
 		}
 
-#if NET_2_0
 		public static bool operator == (Uri u1, Uri u2)
 		{
 			return object.Equals(u1, u2);
@@ -909,7 +825,6 @@ namespace System {
 		{
 			return !(u1 == u2);
 		}
-#endif
 
 		public override int GetHashCode () 
 		{
@@ -919,11 +834,7 @@ namespace System {
 					cachedHashCode = scheme.ToLower (inv).GetHashCode ()
 						^ host.ToLower (inv).GetHashCode ()
 						^ port
-#if NET_2_0
 						^ query.GetHashCode ()
-#else
-						^ query.ToLower (inv).GetHashCode ()
-#endif
 						^ path.GetHashCode ();
 				}
 				else {
@@ -970,7 +881,6 @@ namespace System {
 					sb.Append (':').Append (port);
 
 				if (path.Length > 0) {
-#if NET_2_0
 					switch (Scheme) {
 					case "mailto":
 					case "news":
@@ -980,9 +890,6 @@ namespace System {
 						sb.Append (Reduce (path, CompactEscaped (Scheme)));
 						break;
 					}
-#else
-					sb.Append (path);
-#endif
 				}
 				return sb.ToString ();
 			}
@@ -1048,7 +955,6 @@ namespace System {
 			        IsHexDigit (pattern [index]));
 		}
 
-#if NET_2_0
 		//
 		// Implemented by copying most of the MakeRelative code
 		//
@@ -1083,7 +989,6 @@ namespace System {
 		}
 
 		[Obsolete ("Use MakeRelativeUri(Uri uri) instead.")]
-#endif
 		public string MakeRelative (Uri toUri) 
 		{
 			if ((this.Scheme != toUri.Scheme) ||
@@ -1137,7 +1042,6 @@ namespace System {
 			return cachedToString;
 		}
 
-#if NET_2_0
 		protected void GetObjectData (SerializationInfo info, StreamingContext context)
 		{
 			if (this.isAbsoluteUri) {
@@ -1147,39 +1051,25 @@ namespace System {
 				info.AddValue("RelativeUri", this.OriginalString);
 			}
 		}
-#endif
 
 		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
 		{
-#if NET_2_0
 			GetObjectData (info, context);
-#else
-			if (this.isAbsoluteUri) {
-				info.AddValue ("AbsoluteUri", this.AbsoluteUri);
-			} else {
-				info.AddValue("AbsoluteUri", String.Empty);
-				info.AddValue("RelativeUri", this.OriginalString);
-			}		
-#endif
 		}
 
 
 		// Internal Methods		
 
-#if NET_2_0
 		[Obsolete]
-#endif
 		protected virtual void Escape ()
 		{
 			path = EscapeString (path);
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		static string EscapeString (string str)
 #else
-	#if NET_2_0
 		[Obsolete]
-	#endif
 		protected static string EscapeString (string str) 
 #endif
 		{
@@ -1234,14 +1124,9 @@ namespace System {
 		// On .NET 1.x, this method is called from .ctor(). When overriden, we 
 		// can avoid the "absolute uri" constraints of the .ctor() by
 		// overriding with custom code.
-#if NET_2_0
 		[Obsolete("The method has been deprecated. It is not used by the system.")]
-#endif
 		protected virtual void Parse ()
 		{
-#if !NET_2_0
-			ParseUri (UriKind.Absolute);
-#endif
 		}
 
 		private void ParseUri (UriKind kind)
@@ -1262,12 +1147,10 @@ namespace System {
 			}
 		}
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		string Unescape (string str)
 #else
-	#if NET_2_0
 		[Obsolete]
-	#endif
 		protected virtual string Unescape (string str)
 #endif
 		{
@@ -1409,38 +1292,50 @@ namespace System {
 				}
 			}
 			
-			if (len <= 1 && (kind != UriKind.Relative))
+			if (len <= 1 && (kind == UriKind.Absolute))
 				return "Absolute URI is too short";
 
 			int pos = 0;
 
 			// 1, 2
 			// Identify Windows path, unix path, or standard URI.
+			if (uriString [0] == '/' && Path.DirectorySeparatorChar == '/'){
+				//Unix Path
+				ParseAsUnixAbsoluteFilePath (uriString);
+#if MOONLIGHT
+				isAbsoluteUri = false;
+#else
+				if (kind == UriKind.Relative)
+					isAbsoluteUri = false;
+#endif
+				return null;
+			} else if (uriString.Length >= 2 && uriString [0] == '\\' && uriString [1] == '\\') {
+				//Windows UNC
+				ParseAsWindowsUNC (uriString);
+				return null;
+			}
+
+
 			pos = uriString.IndexOf (':');
 			if (pos == 0) {
-				return "Invalid URI: The format of the URI could not be determined.";
+				if (kind == UriKind.Absolute)
+					return "Invalid URI: The format of the URI could not be determined.";
+				isAbsoluteUri = false;
+				path = uriString;
+				return null;
 			} else if (pos < 0) {
-				// It must be Unix file path or Windows UNC
-				if (uriString [0] == '/' && Path.DirectorySeparatorChar == '/'){
-					ParseAsUnixAbsoluteFilePath (uriString);
-#if NET_2_1 && !MONOTOUCH
-					isAbsoluteUri = false;
-#else
-					if (kind == UriKind.Relative)
-						isAbsoluteUri = false;
-#endif
-					
-				} else if (uriString.Length >= 2 && uriString [0] == '\\' && uriString [1] == '\\')
-					ParseAsWindowsUNC (uriString);
-				else {
-					/* Relative path */
-					isAbsoluteUri = false;
-					path = uriString;
-				}
+				/* Relative path */
+				isAbsoluteUri = false;
+				path = uriString;
 				return null;
 			} else if (pos == 1) {
-				if (!IsAlpha (uriString [0]))
-					return "URI scheme must start with a letter.";
+				if (!IsAlpha (uriString [0])) {
+					if (kind == UriKind.Absolute)
+						return "URI scheme must start with a letter.";
+					isAbsoluteUri = false;
+					path = uriString;
+					return null;
+				}
 				// This means 'a:' == windows full path.
 				string msg = ParseAsWindowsAbsoluteFilePath (uriString);
 				if (msg != null)
@@ -1453,8 +1348,13 @@ namespace System {
 
 			// Check scheme name characters as specified in RFC2396.
 			// Note: different checks in 1.x and 2.0
-			if (!CheckSchemeName (scheme)) 
-				return Locale.GetText ("URI scheme must start with a letter and must consist of one of alphabet, digits, '+', '-' or '.' character.");
+			if (!CheckSchemeName (scheme)) {
+				if (kind == UriKind.Absolute)
+					return Locale.GetText ("URI scheme must start with a letter and must consist of one of alphabet, digits, '+', '-' or '.' character.");
+				isAbsoluteUri = false;
+				path = uriString;
+				return null;
+			}
 
 			// from here we're practically working on uriString.Substring(startpos,endpos-startpos)
 			int startpos = pos + 1;
@@ -1565,19 +1465,10 @@ namespace System {
 			if (pos != -1 && pos != endpos - 1) {
 				string portStr = uriString.Substring(pos + 1, endpos - (pos + 1));
 				if (portStr.Length > 0 && portStr[portStr.Length - 1] != ']') {
-#if NET_2_0
 					if (!Int32.TryParse (portStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out port) ||
 					    port < 0 || port > UInt16.MaxValue)
 						return "Invalid URI: Invalid port number";
 					endpos = pos;
-#else
-					try {
-						port = (int) UInt32.Parse (portStr, CultureInfo.InvariantCulture);
-						endpos = pos;
-					} catch (Exception) {
-						return "Invalid URI: Invalid port number";
-					}
-#endif
 				} else {
 					if (port == -1) {
 						port = GetDefaultPort (scheme);
@@ -1626,7 +1517,6 @@ namespace System {
 				else
 					badhost = true;
 			}
-#if NET_2_0
 			if (badhost && (Parser is DefaultUriParser || Parser == null))
 				return Locale.GetText ("Invalid URI: The hostname could not be parsed. (" + host + ")");
 
@@ -1635,10 +1525,6 @@ namespace System {
 				Parser.InitializeAndValidate (this, out ex);
 			if (ex != null)
 				return ex.Message;
-#else
-			if (badhost)
-				return Locale.GetText ("Invalid URI: The hostname could not be parsed. (" + host + ")");
-#endif
 
 			if ((scheme != Uri.UriSchemeMailto) &&
 					(scheme != Uri.UriSchemeNews) &&
@@ -1706,17 +1592,18 @@ namespace System {
 
 			ArrayList result = new ArrayList ();
 
+			bool begin = true;
 			for (int startpos = 0; startpos < path.Length; ) {
 				int endpos = path.IndexOf('/', startpos);
 				if (endpos == -1) endpos = path.Length;
 				string current = path.Substring (startpos, endpos-startpos);
 				startpos = endpos + 1;
-				if (current.Length == 0 || current == "." )
+				if ((begin && current.Length == 0) || current == "." )
 					continue;
 
+				begin = false;
 				if (current == "..") {
 					int resultCount = result.Count;
-#if NET_2_0
 					// in 2.0 profile, skip leading ".." parts
 					if (resultCount == 0) {
 						continue;
@@ -1724,16 +1611,6 @@ namespace System {
 
 					result.RemoveAt (resultCount - 1);
 					continue;
-#else
-					// in 1.x profile, retain leading ".." parts, and only reduce
-					// URI is previous part is not ".."
-					if (resultCount > 0) {
-						if ((string) result[resultCount - 1] != "..") {
-							result.RemoveAt (resultCount - 1);
-							continue;
-						}
-					}
-#endif
 				}
 
 				result.Add (current);
@@ -1886,17 +1763,10 @@ namespace System {
 		
 		internal static int GetDefaultPort (string scheme)
 		{
-#if NET_2_0
 			UriParser parser = UriParser.GetParser (scheme);
 			if (parser == null)
 				return -1;
 			return parser.DefaultPort;
-#else
-			for (int i = 0; i < schemes.Length; i++) 
-				if (schemes [i].scheme == scheme)
-					return schemes [i].defaultPort;
-			return -1;
-#endif
 		}
 
 		private string GetOpaqueWiseSchemeDelimiter ()
@@ -1907,9 +1777,7 @@ namespace System {
 				return GetSchemeDelimiter (scheme);
 		}
 
-#if NET_2_0
 		[Obsolete]
-#endif
 		protected virtual bool IsBadFileSystemCharacter (char ch)
 		{
 			// It does not always overlap with InvalidPathChars.
@@ -1932,9 +1800,7 @@ namespace System {
 			return false;
 		}
 
-#if NET_2_0
 		[Obsolete]
-#endif
 		protected static bool IsExcludedCharacter (char ch)
 		{
 			if (ch <= 32 || ch >= 127)
@@ -1971,19 +1837,15 @@ namespace System {
 			case "gopher":
 			case "mailto":
 			case "news":
-#if NET_2_0
 			case "net.pipe":
 			case "net.tcp":
-#endif
 				return true;
 			default:
 				return false;
 			}
 		}
 
-#if NET_2_0
 		[Obsolete]
-#endif
 		protected virtual bool IsReservedCharacter (char ch)
 		{
 			if (ch == '$' || ch == '&' || ch == '+' || ch == ',' ||
@@ -1992,7 +1854,7 @@ namespace System {
 				return true;
 			return false;
 		}
-#if NET_2_0
+
 		[NonSerialized]
 		private UriParser parser;
 
@@ -2022,7 +1884,8 @@ namespace System {
 		public bool IsWellFormedOriginalString ()
 		{
 			// funny, but it does not use the Parser's IsWellFormedOriginalString().
-			return EscapeString (OriginalString) == OriginalString;
+			// Also, it seems we need to *not* escape hex.
+			return EscapeString (OriginalString, false, false, true) == OriginalString;
 		}
 
 		// static methods
@@ -2280,10 +2143,5 @@ namespace System {
 			if (!IsAbsoluteUri)
 				throw new InvalidOperationException ("This operation is not supported for a relative URI.");
 		}
-#else
-		private void EnsureAbsoluteUri ()
-		{
-		}
-#endif
 	}
 }

@@ -38,10 +38,15 @@ INSTALL_LIB = $(INSTALL_BIN)
 MKINSTALLDIRS = $(SHELL) $(topdir)/mkinstalldirs
 INTERNAL_MCS = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(PROFILE)/mcs.exe
 INTERNAL_MBAS = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/mbas/mbas.exe
-INTERNAL_GMCS = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/mcs/gmcs.exe
+INTERNAL_GMCS = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(PROFILE)/gmcs.exe
 INTERNAL_ILASM = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(PROFILE)/ilasm.exe
-INTERNAL_RESGEN = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BOOTSTRAP_PROFILE)/resgen.exe
 corlib = mscorlib.dll
+
+ifndef BUILD_TOOLS_PROFILE
+BUILD_TOOLS_PROFILE = $(BOOTSTRAP_PROFILE)
+endif
+
+INTERNAL_RESGEN = $(RUNTIME) $(RUNTIME_FLAGS) $(topdir)/class/lib/$(BUILD_TOOLS_PROFILE)/resgen.exe
 
 depsdir = $(topdir)/build/deps
 
@@ -113,8 +118,8 @@ endif
 ifdef NO_INSTALL
 GACUTIL = :
 else
-gacutil = $(topdir)/class/lib/net_1_1_bootstrap/gacutil.exe
-GACUTIL = MONO_PATH="$(topdir)/class/lib/net_1_1_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(gacutil)
+gacutil = $(topdir)/class/lib/basic/gacutil.exe
+GACUTIL = MONO_PATH="$(topdir)/class/lib/basic$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(RUNTIME_FLAGS) $(gacutil)
 endif
 
 STD_TARGETS = test run-test run-test-ondotnet clean install uninstall doc-update
@@ -126,6 +131,9 @@ do-run-test:
 
 do-%: %-recursive
 	$(MAKE) $*-local
+
+.PHONY: all-local $(STD_TARGETS:=-local)
+all-local $(STD_TARGETS:=-local):
 
 csproj: do-csproj
 
@@ -176,8 +184,8 @@ dist-default:
 	if test -f makefile; then m=m; fi; \
 	if test -f GNUmakefile; then m=GNUm; fi; \
 	for f in $${m}akefile $(DISTFILES) ; do \
-	    dest=`dirname $(distdir)/$$f` ; \
-	    $(MKINSTALLDIRS) $$dest && cp -p $$f $$dest || exit 1 ; \
+	    dest=`dirname "$(distdir)/$$f"` ; \
+	    $(MKINSTALLDIRS) $$dest && cp -p "$$f" $$dest || exit 1 ; \
 	done
 	if test -d Documentation ; then \
 		find . -name '*.xml' > .files ; \
@@ -197,5 +205,6 @@ withmcs:
 ## Documentation stuff
 
 Q_MDOC =$(if $(V),,@echo "MDOC    [$(PROFILE)] $(notdir $(@))";)
-MDOC   =$(Q_MDOC) MONO_PATH="$(topdir)/class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$(topdir)/class/lib/net_1_1$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(RUNTIME) $(topdir)/tools/mdoc/mdoc.exe
+MDOC   =$(Q_MDOC) MONO_PATH="$(topdir)/class/lib/net_4_0$(PLATFORM_PATH_SEPARATOR)$(topdir)/class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" \
+	$(RUNTIME) $(topdir)/tools/mdoc/mdoc.exe
 

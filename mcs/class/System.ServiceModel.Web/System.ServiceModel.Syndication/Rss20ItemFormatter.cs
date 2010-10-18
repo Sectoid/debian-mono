@@ -203,12 +203,13 @@ namespace System.ServiceModel.Syndication
 						Item.Links.Add (l);
 						continue;
 					case "guid":
-						Item.AddPermalink (CreateUri (reader.ReadElementContentAsString ()));
+						if (reader.GetAttribute ("isPermaLink") == "true")
+							Item.AddPermalink (CreateUri (reader.ReadElementContentAsString ()));
+						else
+							Item.Id = reader.ReadElementContentAsString ();
 						continue;
 					case "pubDate":
-						// FIXME: somehow DateTimeOffset causes the runtime crash.
-						reader.ReadElementContentAsString ();
-						// Item.PublishDate = FromRFC822DateString (reader.ReadElementContentAsString ());
+						Item.PublishDate = FromRFC822DateString (reader.ReadElementContentAsString ());
 						continue;
 					case "source":
 						Item.SourceFeed = new SyndicationFeed ();
@@ -223,9 +224,7 @@ namespace System.ServiceModel.Syndication
 						Item.Contributors.Add (p);
 						continue;
 					case "updated":
-						// FIXME: somehow DateTimeOffset causes the runtime crash.
-						reader.ReadElementContentAsString ();
-						// Item.LastUpdatedTime = XmlConvert.ToDateTimeOffset (reader.ReadElementContentAsString ());
+						Item.LastUpdatedTime = XmlConvert.ToDateTimeOffset (reader.ReadElementContentAsString ());
 						continue;
 					case "rights":
 						Item.Copyright = ReadTextSyndicationContent (reader);

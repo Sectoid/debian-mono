@@ -1,3 +1,26 @@
+2010-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : do not depend on WebOperationContext.
+	  add support for Raw format request.
+
+2010-07-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : add support for Raw format.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WebMessageFormatter.cs : add NET_2_1 profile build.
+
+2010-05-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonQueryStringConverter.cs : objects are regarded serializable as
+	  long as they are public here, with some exceptions (not implemented).
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* WebMessageFormatter.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
 2009-10-23  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* JsonQueryStringConverter.cs

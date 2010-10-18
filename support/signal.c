@@ -15,10 +15,14 @@
 #include "map.h"
 #include "mph.h"
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 #include <sys/time.h>
 #include <sys/types.h>
+#if defined(__APPLE__)
+#include "fakepoll.h"
+#else
 #include <poll.h>
+#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -99,7 +103,7 @@ int Mono_Posix_FromRealTimeSignum (int offset, int *r)
 #endif /* defined (SIGRTMIN) && defined (SIGRTMAX) */
 }
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 
 #ifdef WAPI_ATOMIC_ASM
 	#define mph_int_get(p)     InterlockedExchangeAdd ((p), 0)
@@ -409,7 +413,7 @@ Mono_Unix_UnixSignal_WaitAny (void** _signals, int count, int timeout /* millise
 	return r;
 }
 
-#endif /* ndef PLATFORM_WIN32 */
+#endif /* ndef HOST_WIN32 */
 
 
 G_END_DECLS

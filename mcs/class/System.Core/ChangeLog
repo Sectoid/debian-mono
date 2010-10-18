@@ -1,3 +1,70 @@
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Split ReaderWriterLockSlim helper classes into their own files
+
+2010-08-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix non 4.0 build of ReaderWriterLockSlim.
+
+	It needs to be cleaned up though.
+
+2010-08-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Factorize tatas pattern in TryRelaxedSet method in AtomicBoolean,
+	add AtomicBoolean to the compilation file list for System.Core
+
+2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add a more specialized visitor object for checking query
+	ordering.
+
+2010-08-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Plug in QueryJoinNode for Join operator
+
+2010-08-20  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add implementation of Take/TakeWhile operators (including
+	corresponding query node and unit tests)
+
+2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* System.Core/Dummy.cs: 
+	* moonlight_raw_System.Core.dll.sources: Add an internal dummy class to create
+	the System.Core namespace.
+
+	* Makefile:
+	* moonlight_raw_System.Core.dll.sources: Include the dlr in Moonlight.
+
+2010-05-25  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: define INSIDE_SYSCORE.
+
+2010-04-23  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* moonlight_raw_System.Core.dll.sources: Include Lazy.cs and
+	LazyThreadSafetyMode.cs from corlib in here.
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* System.Core_test.dll.sources: Add PLinq unit tests
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* net_4_0_System.Core.dll.sources: add PLinq sources
+
+2010-04-06  Jb Evain  <jbevain@novell.com>
+
+	* net_4_0_System.Core.dll.sources: add files to support ToQueryable.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* net_2_1_*.dll.sources: rename to moonlight_*.dll.sources.
+
+2009-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Compile itself using bootstrap System.Core.
+
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_System.Core.dll.sources: Remove some extra classes

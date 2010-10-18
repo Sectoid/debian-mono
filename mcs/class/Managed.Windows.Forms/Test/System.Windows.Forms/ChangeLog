@@ -1,4 +1,83 @@
-2010-01-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+2010-08-15  Thomas Goldstein  <stifu@free.fr>
+
+	* ListControlTest.cs: New test for #620326 - actual values being
+	passed in the Format event.
+
+2010-08-15  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ListViewEventTest.cs: Another test for items added using
+	AddRange that are already selected.
+
+2010-08-15  Mark Strobert  <markstrobert@users.sourceforge.net>
+
+	* ListViewEventTest.cs: New test case for #621749, for already
+	selected items being inserted to ListViewItemCollection.
+
+2010-08-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ListViewTest.cs: New test to make sure Dispose is not generating
+	extra Layout events.
+
+2010-07-27 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventLogger.cs: Emit verifiable code. This was blocking the SWF
+	test suite from running under the verifier.
+
+2010-06-24  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TabControlTest.cs: New test to assert that getting focus is not
+	setting SelectedTabIndex.
+
+2010-05-17  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TabControlTest.cs: New test cases for ItemSize.
+
+2010-05-15  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TabControlTest.cs: New test for ItemSize.
+
+2010-05-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ScrollabeControlTest.cs: New test to show that DockPadding is lazyly
+	created.
+
+2010-05-06  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeNodeCollectionTest.cs: New test for the return value of Add with
+	sorting applied.
+	Patch from Thomas Goldstein (stifu@free.fr).
+
+2010-05-03  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeNodeCollectionTest.cs: New tests for Insert and Indexer
+	interacting with Sort.
+
+2010-05-02  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	*  TreeNodeCollectionTest.cs: Add a new test for Add interacting with
+	nodes that are part of other collections.
+
+2010-05-01  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ToolStripItemCollectionTest.cs: New test for Clear.
+
+2010-04-24  Ivan Zlatev  <ivan@ivanz.com>
+
+	* DataGridViewColumnCollectionTest.cs: Add tests for bug #583387.
+
+2010-04-17  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeViewTest.cs: New test for Sorted and BeginUpdate interaction.
+
+2010-04-16  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeViewTest.cs: New test for automatical sorting.
+
+2010-04-14  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* TreeViewTest.cs: New test for TreeViewNodeSorter used recursively.
+
+2010-01-18  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* RichTextBoxTest.cs: New test for the Modified property.
 
@@ -11,10 +90,15 @@
 
 	* TrackBarTest.cs: New test for events.
 
-2009-11-12  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+2009-10-26  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* ComboBoxTest.cs: New test case for data binding and Text
 	interaction.
+
+2009-10-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* ColumnHeaderTest.cs: New test to ensure automatic width works as
+	expected with the last column.
 
 2009-08-28  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 

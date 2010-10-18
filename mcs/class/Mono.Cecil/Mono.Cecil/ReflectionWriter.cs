@@ -425,12 +425,41 @@ namespace Mono.Cecil {
 
 		public override void VisitExternTypeCollection (ExternTypeCollection externs)
 		{
-			VisitCollection (externs);
+			if (externs.Count == 0)
+				return;
+
+			ExportedTypeTable etTable = m_tableWriter.GetExportedTypeTable ();
+			foreach (TypeReference ext in externs) {
+				TypeDefinition td = ext.Resolve ();
+				if (td == null)
+					continue;
+
+				MetadataToken scope = GetExportedTypeScope (td);
+
+				ExportedTypeRow etRow = m_rowWriter.CreateExportedTypeRow (
+					td.Attributes,
+					0,
+					m_mdWriter.AddString (td.Name),
+					m_mdWriter.AddString (td.Namespace),
+					scope);
+
+				etTable.Rows.Add (etRow);
+				ext.MetadataToken = new MetadataToken (TokenType.ExportedType, (uint) etTable.Rows.Count);
+			}
 		}
 
-		public override void VisitExternType (TypeReference externType)
+		MetadataToken GetExportedTypeScope (TypeDefinition t)
 		{
-			// TODO
+			if (t.DeclaringType != null)
+				return t.DeclaringType.MetadataToken;
+
+			if (t.Scope is AssemblyNameReference)
+				return new MetadataToken (TokenType.AssemblyRef, GetRidFor ((AssemblyNameReference) t.Scope));
+
+			if (t.Scope is ModuleDefinition)
+				return new MetadataToken (TokenType.Module, GetRidFor ((ModuleDefinition) t.Scope));
+
+			throw new NotImplementedException ();
 		}
 
 		public override void VisitOverrideCollection (OverrideCollection meths)
@@ -859,6 +888,9 @@ namespace Mono.Cecil {
 				VisitSecurityDeclarationCollection (module.Assembly.SecurityDeclarations);
 			if (module.HasCustomAttributes)
 				VisitCustomAttributeCollection (module.CustomAttributes);
+
+			if (module.ExternTypes.Count > 0)
+				VisitExternTypeCollection (module.ExternTypes);
 
 			CompleteGenericTables ();
 			SortTables ();

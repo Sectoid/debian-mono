@@ -1,6 +1,146 @@
-2010-01-11  Sebastien Pouliot  <sebastien@ximian.com>
+2010-08-31  Andrew Jorgensen  <ajorgensen@novell.com>
 
-	* Makefile: For 2.1 build System.Core.dll before System.Net.dll
+	aot-compiler was not getting included in dist
+
+	dist-local: dist-default fixes dist of this dir
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Really disable AOT on platforms which doesn't support it.
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	AOT mscorlib along with gmcs.
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix make dist.
+
+2010-08-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Install the generated gmcs.exe.so.
+
+2010-08-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Delete gmcs.exe.so on make clean.
+
+2010-08-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Use $(PROFILE)/gmcs.exe as INTERNAL_GMCS for consistency.
+
+2010-08-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a new directory which is used for AOTing the c# compiler
+	before compiling most of the class libs. This cuts the mcs build
+	time by about 30%.
+
+2010-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	Copyright: the actual owner is Chris Bacon, not Novell, fix this
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Merge CodeContracts
+
+2010-08-13  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Removed code that is no longer required due to change to Cecil
+	0.6.*
+
+2010-08-12  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Moved back to Cecil version 0.6.* PDB files are not supported any
+	more. Symbol writing is not supported.
+
+2010-08-12  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Tidy up
+
+2010-08-12  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Minor updates
+
+2010-08-12  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Minor changes
+
+2010-08-12  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Improvements as suggested by Marek
+
+2010-08-11  Chris  <chris@ubuntuPC.(none)>
+
+	Added ccrewrite library, tool and tests.
+
+2010-08-10  Marek Safar  <marek.safar@gmail.com>
+
+	Add Mono code contracts skeletons.
+
+2010-08-04  atsushieno  <atsushi@ximian.com>
+
+	Add System.ServiceModel.Discovery (now that it builds fine).
+
+2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: move back Mvc2.
+
+2010-06-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile: add S.R.DurableInstancing dir to 4.0.
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (common_dirs): added System.Web.ApplicationServices
+
+2010-04-14  Ankit Jain  <jankit@novell.com>
+
+	* Makefile: Add Moonlight.Build.Tasks to net_2_0_dirs and
+	net_3_5_dirs.
+	* Moonlight.Build.Tasks: New.
+
+2010-04-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : add 4.0 System.Xaml.
+
+2010-03-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Makefile: Add System.Xml.Serialization to the Moonlight build.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+
+2010-03-15  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (net_2_0_dirs): added System.Web.Mvc2
+
+2010-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : build Sys.Json after Sys.SM.Web.
+
+2010-03-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Makefile: For NET_2_1 build System.XML before System.Net
+
+2010-01-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : added System.ServiceModel.Routing (4.0).
+
+2009-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add System.Core to 2.1 bootstrap.
+
+2009-12-07  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add System.Core to basic.
+
+2009-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add Mono.CSharp.
+
+2009-11-09  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: dist dlr subdirs.
 
 2009-11-07  Zoltan Varga  <vargaz@gmail.com>
 
@@ -8,11 +148,11 @@
 
 2009-11-02  Zoltan Varga  <vargaz@gmail.com>
 
-	* Makefile: Move Mono.Debugger.Soft to net_2_0_dirs for 2.6.
-
-2009-11-02  Zoltan Varga  <vargaz@gmail.com>
-
 	* Makefile: Add Mono.Debugger.Soft.
+
+2009-10-30  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Add System.Windows.Forms.DataVisualization
 
 2009-10-14  Jonathan Pryor  <jpryor@novell.com>
 
@@ -22,6 +162,10 @@
 2009-10-08  Jb Evain  <jbevain@novell.com>
 
 	* Makefile: build the i18n assemblies on MonoTouch.
+
+2009-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Updated a copy of monolite.
 
 2009-09-24  Marek Safar  <marek.safar@gmail.com>
 

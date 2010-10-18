@@ -266,11 +266,11 @@ namespace Mono.Data.Tds.Protocol {
 		{
 			DateTime epoch = new DateTime (1900,1,1);
 			
-			TimeSpan span = t - epoch; 
+			TimeSpan span = t - epoch; //new TimeSpan (t.Ticks - epoch.Ticks);
 			int days, hours, minutes, secs;
 			long msecs;
-			int val = 0;    
- 
+			int val = 0;	
+
 			days = span.Days;
 			hours = span.Hours;
 			minutes = span.Minutes;
@@ -278,7 +278,7 @@ namespace Mono.Data.Tds.Protocol {
 			msecs = span.Milliseconds;
 			
 			if (epoch > t) {
-				// If t.Hour is > 0, days points to the next day and hence, 
+				// If t.Hour/Min/Sec/MSec is > 0, days points to the next day and hence, 
 				// we move it back by a day - otherwise, no change
 				days = (t.Hour > 0 || t.Minute > 0 || t.Second > 0 || t.Millisecond > 0) ? days-1: days;
 				hours = t.Hour;
@@ -286,10 +286,10 @@ namespace Mono.Data.Tds.Protocol {
 				secs = t.Second;
 				msecs = t.Millisecond;
 			}
-			
+
 			SendIfFull (bytes);
 			if (bytes == 8) {
-			       long ms = (hours * 3600 + minutes * 60 + secs)*1000L + (long)msecs;			
+				long ms = (hours * 3600 + minutes * 60 + secs)*1000L + (long)msecs;
 				val = (int) ((ms*300)/1000);
 				AppendInternal ((int) days);
 				AppendInternal ((int) val);

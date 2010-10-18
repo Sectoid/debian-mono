@@ -36,54 +36,21 @@ using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpBinaryOperationBinder : BinaryOperationBinder
+	class CSharpBinaryOperationBinder : BinaryOperationBinder
 	{
 		IList<CSharpArgumentInfo> argumentInfo;
-		bool is_checked, is_member_access;
+		readonly CSharpBinderFlags flags;
+		readonly Type context;
 		
-		public CSharpBinaryOperationBinder (ExpressionType operation, bool isChecked, bool isMemberAccess, IEnumerable<CSharpArgumentInfo> argumentInfo)
+		public CSharpBinaryOperationBinder (ExpressionType operation, CSharpBinderFlags flags, Type context, IEnumerable<CSharpArgumentInfo> argumentInfo)
 			: base (operation)
 		{
 			this.argumentInfo = new ReadOnlyCollectionBuilder<CSharpArgumentInfo> (argumentInfo);
 			if (this.argumentInfo.Count != 2)
-				throw new ArgumentException ("argumentInfo != 2");
+				throw new ArgumentException ("Binary operation requires 2 arguments");
 
-			this.is_checked = isChecked;
-			this.is_member_access = isMemberAccess;
-		}
-		
-		public IList<CSharpArgumentInfo> ArgumentInfo {
-			get {
-				return argumentInfo;
-			}
-		}
-
-		public bool IsChecked {
-			get {
-				return is_checked;
-			}
-		}
-		
-		public bool IsMemberAccess {
-			get {
-				return is_member_access;
-			}
-		}
-
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpBinaryOperationBinder;
-			return other != null && base.Equals (obj) && other.is_checked == is_checked && other.is_member_access == is_member_access &&
-				other.argumentInfo.SequenceEqual (argumentInfo);
-		}
-		
-		public override int GetHashCode ()
-		{
-			return Extensions.HashCode (
-				base.GetHashCode (),
-				is_checked.GetHashCode (),
-				is_member_access.GetHashCode (),
-				argumentInfo[0].GetHashCode (), argumentInfo[1].GetHashCode ());
+			this.flags = flags;
+			this.context = context;
 		}
 
 		Compiler.Binary.Operator GetOperator (out bool isCompound)
@@ -96,7 +63,8 @@ namespace Microsoft.CSharp.RuntimeBinder
 				isCompound = true;
 				return Compiler.Binary.Operator.Addition;
 			case ExpressionType.And:
-				return Compiler.Binary.Operator.BitwiseAnd;
+				return (flags & CSharpBinderFlags.BinaryOperationLogical) != 0 ?
+					Compiler.Binary.Operator.LogicalAnd : Compiler.Binary.Operator.BitwiseAnd;
 			case ExpressionType.AndAssign:
 				isCompound = true;
 				return Compiler.Binary.Operator.BitwiseAnd;
@@ -138,7 +106,8 @@ namespace Microsoft.CSharp.RuntimeBinder
 			case ExpressionType.NotEqual:
 				return Compiler.Binary.Operator.Inequality;
 			case ExpressionType.Or:
-				return Compiler.Binary.Operator.BitwiseOr;
+				return (flags & CSharpBinderFlags.BinaryOperationLogical) != 0 ?
+					Compiler.Binary.Operator.LogicalOr : Compiler.Binary.Operator.BitwiseOr;
 			case ExpressionType.OrAssign:
 				isCompound = true;
 				return Compiler.Binary.Operator.BitwiseOr;
@@ -161,33 +130,31 @@ namespace Microsoft.CSharp.RuntimeBinder
 		
 		public override DynamicMetaObject FallbackBinaryOperation (DynamicMetaObject target, DynamicMetaObject arg, DynamicMetaObject errorSuggestion)
 		{
-			var left = CSharpBinder.CreateCompilerExpression (argumentInfo [0], target, true);
-			var right = CSharpBinder.CreateCompilerExpression (argumentInfo [1], arg, true);
+			var ctx = DynamicContext.Create ();
+			var left = ctx.CreateCompilerExpression (argumentInfo [0], target);
+			var right = ctx.CreateCompilerExpression (argumentInfo [1], arg);
 			
 			bool is_compound;
 			var oper = GetOperator (out is_compound);
 			Compiler.Expression expr;
 
 			if (is_compound) {
-				var target_expr = CSharpBinder.CreateCompilerExpression (argumentInfo[0], target, false);
-				expr = new Compiler.CompoundAssign (oper, target_expr, right, left);
+				var target_expr = ctx.CreateCompilerExpression (argumentInfo[0], target);
+				expr = new Compiler.CompoundAssign (oper, target_expr, right, left, Compiler.Location.Null);
 			} else {
-				expr = new Compiler.Binary (oper, left, right);
-				expr = new Compiler.Cast (new Compiler.TypeExpression (typeof (object), Compiler.Location.Null), expr);
+				expr = new Compiler.Binary (oper, left, right, Compiler.Location.Null);
 			}
+
+			expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (ReturnType), Compiler.Location.Null), expr, Compiler.Location.Null);
 			
-			if (is_checked)
+			if ((flags & CSharpBinderFlags.CheckedContext) != 0)
 				expr = new Compiler.CheckedExpr (expr, Compiler.Location.Null);
 
-			var restrictions = CreateRestrictionsOnTarget (target).Merge (CreateRestrictionsOnTarget (arg));
-			return CSharpBinder.Bind (target, expr, restrictions, errorSuggestion);
-		}
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+			binder.AddRestrictions (arg);
 
-		static BindingRestrictions CreateRestrictionsOnTarget (DynamicMetaObject arg)
-		{
-			return arg.HasValue && arg.Value == null ?
-				BindingRestrictions.GetInstanceRestriction (arg.Expression, null) :
-				BindingRestrictions.GetTypeRestriction (arg.Expression, arg.LimitType);
+			return binder.Bind (ctx, context);
 		}
 	}
 }

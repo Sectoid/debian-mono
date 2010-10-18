@@ -30,12 +30,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
-using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace System.Collections.Generic {
 	[Serializable]
+	[DebuggerDisplay ("{value}", Name="[{key}]")]	
 	public struct KeyValuePair<TKey,TValue> {
 		private TKey key;
 		private TValue value;
@@ -52,8 +52,8 @@ namespace System.Collections.Generic {
 		
 		public KeyValuePair (TKey key, TValue value)
 		{
-			Key = key;
-			Value = value;
+			this.key = key;
+			this.value = value;
 		}
 
 		public override string ToString()
@@ -62,4 +62,3 @@ namespace System.Collections.Generic {
 		}
 	}
 }
-#endif

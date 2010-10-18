@@ -36,7 +36,6 @@ using System.Configuration;
 using System.Net.Configuration;
 using System.Security.Cryptography.X509Certificates;
 
-#if NET_2_0
 using System.Globalization;
 using System.Net.Security;
 #if SECURITY_DEP
@@ -46,7 +45,6 @@ using Mono.Security.Cryptography;
 using Mono.Security.X509.Extensions;
 using Mono.Security.Protocol.Tls;
 using MSX = Mono.Security.X509;
-#endif
 #endif
 
 //
@@ -69,8 +67,11 @@ using MSX = Mono.Security.X509;
 
 namespace System.Net 
 {
-	public class ServicePointManager
-	{
+#if MOONLIGHT
+	internal class ServicePointManager {
+#else
+	public class ServicePointManager {
+#endif
 		class SPKey {
 			Uri uri; // schema/host/port
 			bool use_connect;
@@ -121,23 +122,21 @@ namespace System.Net
 #endif
 		static bool useNagle;
 #endif
-#if NET_2_0
 		static RemoteCertificateValidationCallback server_cert_cb;
-#endif
 
 		// Fields
 		
 		public const int DefaultNonPersistentConnectionLimit = 4;
 		public const int DefaultPersistentConnectionLimit = 2;
 
-#if !MONOTOUCH
+#if !NET_2_1
 		const string configKey = "system.net/connectionManagement";
 		static ConnectionManagementData manager;
 #endif
 		
 		static ServicePointManager ()
 		{
-#if !MONOTOUCH
+#if !NET_2_1
 #if NET_2_0 && CONFIGURATION_DEP
 			object cfg = ConfigurationManager.GetSection (configKey);
 			ConnectionManagementSection s = cfg as ConnectionManagementSection;
@@ -258,7 +257,6 @@ namespace System.Net
 			set { _securityProtocol = value; }
 		}
 
-#if NET_2_0
 		public static RemoteCertificateValidationCallback ServerCertificateValidationCallback
 		{
 			get {
@@ -268,7 +266,6 @@ namespace System.Net
 				server_cert_cb = value;
 			}
 		}
-#endif
 
 #if NET_1_1
 		public static bool Expect100Continue {
@@ -326,7 +323,7 @@ namespace System.Net
 					throw new InvalidOperationException ("maximum number of service points reached");
 
 				string addr = address.ToString ();
-#if MONOTOUCH
+#if NET_2_1
 				int limit = defaultConnectionLimit;
 #else
 				int limit = (int) manager.GetMaxConnections (addr);
@@ -380,11 +377,42 @@ namespace System.Net
 					servicePoints.Remove (list.GetByIndex (i));
 			}
 		}
-#if NET_2_0 && SECURITY_DEP
+#if MOONLIGHT && SECURITY_DEP
+		internal class ChainValidationHelper {
+			object sender;
+
+			public ChainValidationHelper (object sender)
+			{
+				this.sender = sender;
+			}
+
+			// no need to check certificates since we are either
+			// (a) loading from the site of origin (and we accepted its certificate to load from it)
+			// (b) loading from a cross-domain site and we downloaded the policy file using the browser stack
+			//     i.e. the certificate was accepted (or the policy would not be valid)
+			internal ValidationResult ValidateChain (Mono.Security.X509.X509CertificateCollection certs)
+			{
+				return new ValidationResult (true, false, 0);
+			}
+		}
+#elif NET_2_0 && SECURITY_DEP
 		internal class ChainValidationHelper {
 			object sender;
 			string host;
 			static bool is_macosx = System.IO.File.Exists (MSX.OSX509Certificates.SecurityLibrary);
+			static X509RevocationMode revocation_mode;
+
+			static ChainValidationHelper ()
+			{
+				revocation_mode = X509RevocationMode.NoCheck;
+				try {
+					string str = Environment.GetEnvironmentVariable ("MONO_X509_REVOCATION_MODE");
+					if (String.IsNullOrEmpty (str))
+						return;
+					revocation_mode = (X509RevocationMode) Enum.Parse (typeof (X509RevocationMode), str, true);
+				} catch {
+				}
+			}
 
 			public ChainValidationHelper (object sender)
 			{
@@ -415,6 +443,7 @@ namespace System.Net
 
 				X509Chain chain = new X509Chain ();
 				chain.ChainPolicy = new X509ChainPolicy ();
+				chain.ChainPolicy.RevocationMode = revocation_mode;
 				for (int i = 1; i < certs.Count; i++) {
 					X509Certificate2 c2 = new X509Certificate2 (certs [i].RawData);
 					chain.ChainPolicy.ExtraStore.Add (c2);

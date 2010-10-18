@@ -1,3 +1,41 @@
+2010-08-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Update the message in the mcs dir-check.
+
+2010-08-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Ignore TestResult.xml too
+
+2010-04-03  Ankit Jain  <jankit@novell.com>
+
+	* Makefile: Process tools/xbuild for 3.5 also.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Makefile: rename the net_2_1 profile to moonlight.
+
+2010-03-03  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Makefile: Make basic the bootstrapping profile for net_2_1_bootstrap.
+
+2010-03-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* docs/Makefile : drop Mono.Data.SqliteClient.
+
+2010-02-28  Miguel de Icaza  <miguel@novell.com>
+
+	* docs/Makefile: install during the 4.0 build now.
+
+	* Makefile: Process `docs' now on the 4.0 profile.
+
+2010-01-25  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Makefile : finally System.ServiceModel.dll is on the centum tests.
+
+2009-10-01  Marek Safar  <marek.safar@gmail.com>
+
+	* Makefile: Removed net_1_1 bootstrap.
+
 2009-09-07  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* Makefile: add some WCF assemblies to centum_tests.

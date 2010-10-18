@@ -26,7 +26,18 @@
 #include <mono/metadata/rand.h>
 #include <mono/metadata/exception.h>
 
-#if !defined(PLATFORM_WIN32)
+#if defined(__native_client__)
+#include <errno.h>
+
+static void
+get_entropy_from_server (const char *path, guchar *buf, int len)
+{
+    return;
+}
+
+#else /* defined(__native_client__) */
+
+#if !defined(HOST_WIN32)
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <errno.h>
@@ -96,8 +107,9 @@ get_entropy_from_server (const char *path, guchar *buf, int len)
     close (file);
 }
 #endif
+#endif /* __native_client__ */
 
-#if defined (PLATFORM_WIN32)
+#if defined (HOST_WIN32)
 
 #include <windows.h>
 #include <wincrypt.h>

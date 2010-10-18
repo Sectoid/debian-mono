@@ -36,10 +36,8 @@ using System.Runtime.Serialization;
 
 namespace System
 {
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
 	[Serializable]
-#endif
 	public abstract class MulticastDelegate : Delegate
 	{
 		private MulticastDelegate prev;
@@ -71,6 +69,9 @@ namespace System
 			return base.DynamicInvokeImpl (args);
 		}
 
+		internal bool HasSingleTarget {
+			get { return prev == null; }
+		}
 		// <remarks>
 		//   Equals: two multicast delegates are equal if their base is equal
 		//   and their invocations list is equal.

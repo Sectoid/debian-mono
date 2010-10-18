@@ -70,6 +70,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -111,7 +112,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -143,6 +143,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -165,6 +166,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -202,7 +204,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -258,12 +259,11 @@ sources_DATA = \
 	monoapi.source \
 	$(ASSEMBLED_DOCS)
 
-@DISABLE_MCS_DOCS_FALSE@ASSEMBLED_DOCS = \
-@DISABLE_MCS_DOCS_FALSE@	mono-file-formats.tree mono-file-formats.zip  \
-@DISABLE_MCS_DOCS_FALSE@	mono-tools.tree mono-tools.zip                \
-@DISABLE_MCS_DOCS_FALSE@	monoapi.tree monoapi.zip
+ASSEMBLED_DOCS = \
+	mono-file-formats.tree mono-file-formats.zip  \
+	mono-tools.tree mono-tools.zip                \
+	monoapi.tree monoapi.zip
 
-@DISABLE_MCS_DOCS_TRUE@ASSEMBLED_DOCS = 
 EXTRA_DIST = \
 	abc-removal.txt		\
 	api-style.css		\
@@ -523,21 +523,21 @@ clean-local:
 
 monoapi.zip: monoapi.tree
 	@test -f $@ || { rm -f $(srcdir)/monoapi.tree && $(MAKE) monoapi.tree; }
-monoapi.tree: docs.make Makefile.am toc.xml $(srcdir)/deploy/.stamp
-	cd $(srcdir) && cp api-style.css deploy
+monoapi.tree: docs.make Makefile.am toc.xml $(srcdir)/deploy/.stamp perms
+	cd $(srcdir) && cp -f api-style.css deploy
 	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) $@
 
 mono-tools.zip: mono-tools.tree
 	@test -f $@ || { rm -f $(srcdir)/mono-tools.tree && $(MAKE) mono-tools.tree; }
-mono-tools.tree: docs.make Makefile.am $(srcdir)/deploy/.stamp
+mono-tools.tree: docs.make Makefile.am $(srcdir)/deploy/.stamp perms
 	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) $@
 
-mono-file-formats.zip: mono-file-formats.tree
+mono-file-formats.zip: mono-file-formats.tree perms
 	@test -f $@ || { rm -f $(srcdir)/mono-file-formats.tree && $(MAKE) mono-file-formats.tree; }
 mono-file-formats.tree: docs.make Makefile.am $(srcdir)/deploy/.stamp
 	cd $(srcdir) && $(MAKE) -f docs.make topdir=$(mcs_topdir_from_srcdir) $@
 
-$(srcdir)/deploy/.stamp: convert.exe Makefile.am
+$(srcdir)/deploy/.stamp: convert.exe Makefile.am perms
 	$(mkdir_p) $(srcdir)/html
 	runtimedir=`cd ../runtime && pwd`; export runtimedir; \
 	cd $(srcdir) && MONO_PATH=$(mcs_topdir_from_srcdir)/class/lib/net_2_0 perl ./exdoc -h . ../mono/*/*.c
@@ -545,11 +545,15 @@ $(srcdir)/deploy/.stamp: convert.exe Makefile.am
 
 extract: $(srcdir)/deploy/.stamp
 
-convert.exe: convert.cs AgilityPack.dll
+convert.exe: convert.cs AgilityPack.dll perms
 	cd $(srcdir) && $(MAKE) PROFILE=net_2_0 -f docs.make topdir=$(mcs_topdir_from_srcdir) convert.exe
 
-AgilityPack.dll:
+AgilityPack.dll: perms
 	cd $(srcdir) && $(MAKE) PROFILE=net_2_0 -f docs.make topdir=$(mcs_topdir_from_srcdir) AgilityPack.dll
+
+.PHONY: perms
+perms:
+	-@test -w $(srcdir) || chmod a+w $(srcdir)
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

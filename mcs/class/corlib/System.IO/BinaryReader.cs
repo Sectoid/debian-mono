@@ -33,14 +33,10 @@ using System;
 using System.Text;
 using System.Globalization;
 using Mono.Security;
-#if NET_2_0
 using System.Runtime.InteropServices;
-#endif
 
 namespace System.IO {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class BinaryReader : IDisposable {
 		Stream m_stream;
 		Encoding m_encoding;
@@ -96,7 +92,11 @@ namespace System.IO {
 			charBuffer = null;
 		}
 
+#if NET_4_0
+		public void Dispose ()
+#else
 		void IDisposable.Dispose() 
+#endif
 		{
 			Dispose (true);
 		}

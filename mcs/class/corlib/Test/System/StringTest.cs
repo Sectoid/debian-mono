@@ -2297,6 +2297,7 @@ public class StringTest
 		Assert.IsTrue ("ABC".Contains ("ABC"));
 		Assert.IsTrue ("ABC".Contains ("AB"));
 		Assert.IsTrue (!"ABC".Contains ("AD"));
+		Assert.IsTrue (!"encyclopædia".Contains("encyclopaedia"));
 	}
 
 	[Test]
@@ -2656,6 +2657,8 @@ public class StringTest
 
 		string s3 = "test123";
 		Assert.AreEqual (0, s3.LastIndexOf ("test123"), "bug #77412");
+
+		Assert.AreEqual (1, "\u267B RT \u30FC".LastIndexOf ("\u267B RT "), "bug #605094");
 	}
 
 #if NET_2_0
@@ -4225,7 +4228,6 @@ public class StringTest
 		Assert.AreEqual (2, res.Length, "#11-09-3");
 	}
 	
-#if NET_2_0
 	[Test]
 	public void SplitStringStrings ()
 	{
@@ -4330,7 +4332,6 @@ public class StringTest
 		Assert.AreEqual ("..", res[1], "#11-09-2");
 		Assert.AreEqual (2, res.Length, "#11-09-3");
 	}
-#endif
 
 	[Test]
 	[Category ("NotDotNet")]
@@ -4372,6 +4373,56 @@ public class StringTest
 		Assert.AreEqual (formKD, s.Normalize (NormalizationForm.FormKD), "#3");
 		Assert.AreEqual (formKC, s.Normalize (NormalizationForm.FormKC), "#4");
 	}
+
+	[Test] // bug #480152, test cases by David Mitchell
+	public void NormalizeFormD ()
+	{
+		Assert.AreEqual ("\u212B".Normalize (NormalizationForm.FormD), "\u0041\u030A", "#1");
+		Assert.AreEqual ("\u1E69".Normalize (NormalizationForm.FormD), "\u0073\u0323\u0307", "#2");
+		Assert.AreEqual ("\u1e4e".Normalize (NormalizationForm.FormD), "\u004f\u0303\u0308", "#3");
+		Assert.AreEqual ("\u1e2f".Normalize (NormalizationForm.FormD), "\u0069\u0308\u0301", "#4");
+	}
+
+	[Test] // bug #480152, test cases by David Mitchell
+	public void NormalizeFormC ()
+	{
+		Assert.AreEqual ("\u0041\u030a\u0061\u030a".Normalize (NormalizationForm.FormC), "\u00c5\u00e5", "#1");
+		Assert.AreEqual ("\u006E\u0303".Normalize (NormalizationForm.FormC), "\u00F1", "#2");
+		Assert.AreEqual ("\u03B7\u0313\u0300\u0345".Normalize (NormalizationForm.FormC), "\u1F92", "#3");
+	}
+
+        [Test] // bug #480152, test cases by Tom Philpot
+        public void NormalizeFormCCrashers ()
+        {
+		string[][] entries = new string[][] {
+			new string[] { "\u05d0\u0307\u05dc", "#1" },
+			new string[] { "\u05d0\u0307\u05dc\u05d9\u05d9\u05df", "#2" },
+			new string[] { "\u05d4\u05d0\u0307\u05dc\u0307\u05d9\u0307\u05df\u0307", "#3" },
+			new string[] { "\u05d9\u05e9\u05de\u05e2\u0307\u05d0\u0307\u05dc\u0307", "#4" },
+			new string[] { "\u05d9\u05e9\u05e8\u05d0\u0307\u05dc\u0307", "#5" },
+		};
+
+		foreach (string[] entry in entries)
+			entry [0].Normalize (NormalizationForm.FormC);
+	}
+
+	[Test]
+	public void NormalizeFormCHangul ()
+	{
+		Assert.AreEqual ("\u1100\u116C".Normalize (NormalizationForm.FormC), "\uAD34", "#1");
+		Assert.AreEqual ("\u1100\u116B\u11C2".Normalize (NormalizationForm.FormC), "\uAD33", "#2");
+		Assert.AreEqual ("\u1100!".Normalize (NormalizationForm.FormC), "\u1100!", "#3");
+		Assert.AreEqual ("\u1100\u116B!".Normalize (NormalizationForm.FormC), "\uAD18\u0021", "#4");
+		Assert.AreEqual ("!\u116C".Normalize (NormalizationForm.FormC), "!\u116C", "#5");
+		Assert.AreEqual ("!\u116B\u11C2".Normalize (NormalizationForm.FormC), "!\u116B\u11C2", "#6");
+	}
+
+	[Test]
+	public void MoreNormalizeFormC ()
+	{
+		Assert.AreEqual ("\u1E0A\u0323".Normalize (NormalizationForm.FormC), "\u1E0C\u0307", "#1");
+		Assert.AreEqual ("\u0044\u0323\u0307".Normalize (NormalizationForm.FormC), "\u1E0C\u0307", "#2");
+	}
 #endif
 	[Test]
 	public void Emptiness ()
@@ -4408,10 +4459,9 @@ public class StringTest
 		Assert.AreSame (String.Empty, "".ToUpper (), "ToUpper");
 		Assert.AreSame (String.Empty, "".ToLower (CultureInfo.CurrentCulture), "ToLower(CultureInfo)");
 		Assert.AreSame (String.Empty, "".ToUpper (CultureInfo.CurrentCulture), "ToUpper(CultureInfo)");
-#if NET_2_0
 		Assert.AreSame (String.Empty, "".ToLowerInvariant (), "ToLowerInvariant");
 		Assert.AreSame (String.Empty, "".ToUpperInvariant (), "ToUpperInvariant");
-#endif
+
 		Assert.AreSame (String.Empty, "".Trim (), "Trim()");
 		Assert.AreSame (String.Empty, "a".Trim ('a'), "Trim(char)");
 		Assert.AreSame (String.Empty, "a".TrimEnd ('a'), "TrimEnd(char)");

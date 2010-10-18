@@ -32,12 +32,8 @@ using System.Runtime.InteropServices;
 namespace System.Security.Permissions {
 
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public sealed class IsolatedStorageFilePermission : IsolatedStoragePermission, IBuiltInPermission {
-
-		private const int version = 1;
 
 		// Constructors
 
@@ -116,14 +112,12 @@ namespace System.Security.Permissions {
 			return p;
 		}
 
-#if NET_2_0
 		[MonoTODO ("(2.0) new override - something must have been added ???")]
 		[ComVisible (false)]
 		public override SecurityElement ToXml ()
 		{
 			return base.ToXml ();
 		}
-#endif
 
 		// IBuiltInPermission
 		int IBuiltInPermission.GetTokenIndex ()

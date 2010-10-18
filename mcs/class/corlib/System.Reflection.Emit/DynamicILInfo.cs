@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -82,7 +80,14 @@ namespace System.Reflection.Emit {
 		public int GetTokenFor (RuntimeMethodHandle method, RuntimeTypeHandle contextType) {
 			throw new NotImplementedException ();
 		}
-		
+
+#if NET_4_0
+		[MonoTODO]
+		public int GetTokenFor (RuntimeFieldHandle field, RuntimeTypeHandle contextType) {
+			throw new NotImplementedException ();
+		}
+#endif
+
 		[MonoTODO]
 		public void SetCode (byte[] code, int maxStackSize) {
 			throw new NotImplementedException ();
@@ -118,4 +123,3 @@ namespace System.Reflection.Emit {
 	}
 }
 
-#endif

@@ -53,6 +53,22 @@ static void* marshal_alloc (gsize size)
 #endif
 }
 
+static char* marshal_strdup (const char *str)
+{
+#ifdef WIN32
+	int len;
+	char *buf;
+
+	if (!str)
+		return NULL;
+
+	len = strlen (str);
+	buf = (char *) CoTaskMemAlloc (len + 1);
+	return strcpy (buf, str);
+#else
+	return g_strdup (str);
+#endif
+}
 
 static gunichar2* marshal_bstr_alloc(const gchar* str)
 {
@@ -403,6 +419,12 @@ mono_test_marshal_inout_array (int *a1)
 	return sum;
 }
 
+LIBTEST_API int /* cdecl */
+mono_test_marshal_inout_array_cdecl (int *a1)
+{
+	return mono_test_marshal_inout_array (a1);
+}
+
 LIBTEST_API int STDCALL  
 mono_test_marshal_out_array (int *a1)
 {
@@ -474,7 +496,7 @@ mono_test_return_string (ReturnStringDelegate func)
 	marshal_free (res);
 
 	// printf ("got string: %s\n", res);
-	return g_strdup ("12345");
+	return marshal_strdup ("12345");
 }
 
 typedef int (STDCALL *RefVTypeDelegate) (int a, simplestruct *ss, int b);
@@ -549,7 +571,7 @@ mono_test_marshal_byref_struct (simplestruct *ss, int a, int b, int c, char *d)
 	ss->a = !ss->a;
 	ss->b = !ss->b;
 	ss->c = !ss->c;
-	ss->d = g_strdup ("DEF");
+	ss->d = marshal_strdup ("DEF");
 
 	return res ? 0 : 1;
 }
@@ -654,7 +676,7 @@ mono_test_marshal_class (int i, int j, int k, simplestruct2 *ss, int l)
 
 	res = g_new0 (simplestruct2, 1);
 	memcpy (res, ss, sizeof (simplestruct2));
-	res->d = g_strdup ("TEST");
+	res->d = marshal_strdup ("TEST");
 	return res;
 }
 
@@ -671,7 +693,7 @@ mono_test_marshal_byref_class (simplestruct2 **ssp)
 
 	res = g_new0 (simplestruct2, 1);
 	memcpy (res, ss, sizeof (simplestruct2));
-	res->d = g_strdup ("TEST-RES");
+	res->d = marshal_strdup ("TEST-RES");
 
 	*ssp = res;
 	return 0;
@@ -1002,7 +1024,7 @@ mono_test_marshal_stringbuilder_out (char **s)
 	const char m[] = "This is my message.  Isn't it nice?";
 	char *str;
 
-	str = g_malloc (strlen (m) + 1);
+	str = marshal_alloc (strlen (m) + 1);
 	memcpy (str, m, strlen (m) + 1);
 	
 	*s = str;
@@ -1018,7 +1040,7 @@ mono_test_marshal_stringbuilder_out_unicode (gunichar2 **s)
 	s2 = g_utf8_to_utf16 (m, -1, NULL, &len, NULL);
 	
 	len = (len * 2) + 2;
-	*s = g_malloc (len);
+	*s = marshal_alloc (len);
 	memcpy (*s, s2, len);
 
 	g_free (s2);
@@ -1154,7 +1176,8 @@ mono_test_byvalstr_check (ByValStrStruct* data, char* correctString)
 	// printf ("T1: %s\n", data->a);
 	// printf ("T2: %s\n", correctString);
 
-	marshal_free (data);
+	/* we need g_free because the allocation was performed by mono_test_byvalstr_gen */
+	g_free (data);
 	return (ret != 0);
 }
 
@@ -1295,7 +1318,7 @@ class_marshal_test1 (SimpleObj **obj1)
 {
 	SimpleObj *res = malloc (sizeof (SimpleObj));
 
-	res->str = g_strdup ("ABC");
+	res->str = marshal_strdup ("ABC");
 	res->i = 5;
 
 	*obj1 = res;
@@ -1326,7 +1349,7 @@ string_marshal_test0 (char *str)
 LIBTEST_API void STDCALL
 string_marshal_test1 (const char **str)
 {
-	*str = g_strdup ("TEST1");
+	*str = marshal_strdup ("TEST1");
 }
 
 LIBTEST_API int STDCALL 
@@ -1535,6 +1558,10 @@ mono_test_asany (void *ptr, int what)
 		char *s;
 
 		s = g_utf16_to_utf8 (ptr, -1, NULL, NULL, &error);
+
+		if (!s)
+			return 1;
+
 		if (!strcmp (s, "ABC")) {
 			g_free (s);
 			return 0;
@@ -2299,8 +2326,9 @@ mono_safe_handle_ref (void **handle)
 }
 
 LIBTEST_API double STDCALL
-mono_test_marshal_date_time (double d)
+mono_test_marshal_date_time (double d, double *d2)
 {
+	*d2 = d;
 	return d;
 }
 
@@ -3214,7 +3242,7 @@ lookup_mono_symbol (const char *symbol_name)
 		return NULL;
 }
 
-gpointer
+LIBTEST_API gpointer STDCALL
 mono_test_marshal_lookup_symbol (const char *symbol_name)
 {
 	return lookup_mono_symbol (symbol_name);

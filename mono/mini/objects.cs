@@ -1433,5 +1433,56 @@ ncells ) {
 			return 1;
 		return 0;
 	}
+
+	struct VTypePhi {
+		public int i;
+	}
+
+	static int vtype_phi (VTypePhi v1, VTypePhi v2, bool first) {
+		VTypePhi v = first ? v1 : v2;
+
+		return v.i;
+	}
+
+	static int test_0_vtype_phi ()
+	{
+		VTypePhi v1 = new VTypePhi () { i = 1 };
+		VTypePhi v2 = new VTypePhi () { i = 2 };
+
+		if (vtype_phi (v1, v2, true) != 1)
+			return 1;
+		if (vtype_phi (v1, v2, false) != 2)
+			return 2;
+
+		return 0;
+	}
+
+	[MethodImplAttribute (MethodImplOptions.NoInlining)]
+	static void UseValue (int index)
+	{
+	}
+
+	[MethodImplAttribute (MethodImplOptions.NoInlining)]
+	static bool IsFalse ()
+	{
+		return false;
+	}
+
+	static int test_0_llvm_moving_faulting_loads ()
+	{
+		int[] indexes = null;
+
+		if (IsFalse ()) {
+			indexes = new int[0];
+		}
+			
+		while (IsFalse ()) {
+			UseValue (indexes[0]);
+			UseValue (indexes[0]);
+		}
+
+		return 0;
+	}
+
 }
 

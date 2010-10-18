@@ -77,7 +77,7 @@ namespace MonoTests.System
 		private int [] partsMaxValue = { -1, -1, -1, 0 };
 		private int [] partsMinValue = { -1, -1, -1, negativeBitValue };
 		private int [] parts6 = { 1234, 5678, 8888, negativeScale4Value };
-		private NumberFormatInfo NfiUser;
+		private NumberFormatInfo NfiUser, NfiBroken;
 
 		private CultureInfo old_culture;
 
@@ -108,6 +108,12 @@ namespace MonoTests.System
 			NfiUser.PercentNegativePattern = 2;
 			NfiUser.PercentPositivePattern = 2;
 			NfiUser.PercentSymbol = "%%%";
+
+			NfiBroken = new NumberFormatInfo ();
+			NfiBroken.NumberDecimalSeparator = ".";
+			NfiBroken.NumberGroupSeparator = ".";
+			NfiBroken.CurrencyDecimalSeparator = ".";
+			NfiBroken.CurrencyGroupSeparator = ".";
 		}
 
 		[TestFixtureTearDown]
@@ -276,6 +282,12 @@ namespace MonoTests.System
 		}
 
 		[Test]
+		public void TestBrokenNFI ()
+		{
+			Assert.AreEqual (5.3m, decimal.Parse ("5.3", NumberStyles.Number, NfiBroken), "Parsing with broken NFI");
+		}
+		
+		[Test]
 		[Category ("TargetJvmNotWorking")]
 		public void TestPercentPattern ()
 		{
@@ -309,6 +321,8 @@ namespace MonoTests.System
 
 		ParseTest [] tab = {
 				new ParseTest("1.2345", 1.2345m),
+				new ParseTest("1.2345\0", 1.2345m),
+				new ParseTest("1.2345\0\0\0\0", 1.2345m),
 				new ParseTest("-9876543210", -9876543210m),
 				new ParseTest(NumberFormatInfo.InvariantInfo.CurrencySymbol 
 					+ " (  79,228,162,514,264,337,593,543,950,335.000 ) ", 
@@ -363,6 +377,13 @@ namespace MonoTests.System
 				d = Decimal.Parse ("79228162514264337593543950336");
 				Assert.Fail ("Expected OverflowException" + d);
 			} catch (OverflowException) {
+				//ok
+			}
+
+			try {
+				d = Decimal.Parse ("5\05");
+				Assert.Fail ("Expected FormatException" + d);
+			} catch (FormatException) {
 				//ok
 			}
 		}
@@ -656,6 +677,29 @@ namespace MonoTests.System
 			d = new Decimal (1.2342278901234e-25);
 			Assert.AreEqual (d, 1.234e-25m, "A10");
 
+			//
+			// Make sure that 0.6 is turned into
+			// the 96 bit value 6 with the magnitude set to
+			//
+			double mydouble = 0.6;
+			d = new Decimal (mydouble);
+			int [] bits = Decimal.GetBits (d);
+			Assert.AreEqual (bits [0], 6, "f1");
+			Assert.AreEqual (bits [1], 0, "f2");
+			Assert.AreEqual (bits [2], 0, "f3");
+			Assert.AreEqual (bits [3], 65536, "f4");
+
+			//
+			// Make sure that we properly parse this value
+			// this in particular exposes a bug in the
+			// unmanaged version which rounds to 1234 instead
+			// of 1235, here to make sure we do not regress
+			// on the future.
+			//
+			mydouble = 1.2345679329684657e-25;
+			d = new Decimal (mydouble);
+			Assert.AreEqual (d.ToString (), "0.0000000000000000000000001235", "f5");
+			
 			// test exceptions
 			try {
 				d = new Decimal (8e28);

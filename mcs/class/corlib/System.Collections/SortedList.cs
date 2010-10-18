@@ -32,6 +32,7 @@
 
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace System.Collections {
 
@@ -41,10 +42,9 @@ namespace System.Collections {
 	///  and by index.
 	/// </summary>
 	[Serializable]
-#if NET_2_0
 	[ComVisible(true)]
-	[System.Diagnostics.DebuggerDisplay ("Count={Count}")]	
-#endif
+	[DebuggerDisplay ("Count={Count}")]
+	[DebuggerTypeProxy (typeof (CollectionDebuggerView))]
 	public class SortedList : IDictionary, ICollection,
 	                          IEnumerable, ICloneable {
 
@@ -55,7 +55,7 @@ namespace System.Collections {
 			internal Object value;
 		}
 
-		private readonly static int INITIAL_SIZE = 16;
+		const int INITIAL_SIZE = 16;
 
 		private enum EnumeratorMode : int { KEY_MODE = 0, VALUE_MODE, ENTRY_MODE }
 
@@ -208,13 +208,6 @@ namespace System.Collections {
                                         Array.Copy (table, newTable, inUse);
                                         this.table = newTable;
 				}
-#if NET_1_0
-				else if (current > defaultCapacity && value < current) {
-                                        Slot [] newTable = new Slot [defaultCapacity];
-                                        Array.Copy (table, newTable, inUse);
-                                        this.table = newTable;
-                                }
-#endif
 				else if (value > inUse) {
                                         Slot [] newTable = new Slot [value];
                                         Array.Copy (table, newTable, inUse);

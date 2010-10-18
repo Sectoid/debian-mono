@@ -49,6 +49,14 @@ using MonoTests.stand_alone.WebHarness;
 
 namespace MonoTests.System.Web.UI.WebControls
 {
+	class EncodingTest
+	{
+		public override string ToString ()
+		{
+			return "<EncodingTest>&";
+		}
+	}
+
 	class PokerBoundField : BoundField
 	{
 		public Button bindbutoon;
@@ -100,6 +108,11 @@ namespace MonoTests.System.Web.UI.WebControls
 
 		public Control GetControl {
 			get { return base.Control; }
+		}
+
+		public object DoSaveViewState ()
+		{
+			return SaveViewState ();
 		}
 	}
 
@@ -299,6 +312,53 @@ namespace MonoTests.System.Web.UI.WebControls
 			bf.DataFormatString = "-{0,8:G}-";
 			result = bf.DoFormatDataValue (10, false);
 			Assert.AreEqual ("-      10-", result, "FormatDataValueWithFormat");
+
+			bf.DataFormatString = "-{0:X}-";
+			result = bf.DoFormatDataValue (10, true);
+			Assert.AreEqual ("-A-", result, "FormatDataValueWithFormatAndHtmlEncode");
+
+			bf.DataFormatString = "-{0:X}-";
+			result = bf.DoFormatDataValue (10, false);
+			Assert.AreEqual ("-A-", result, "FormatDataValueWithFormatAndNoHtmlEncode");
+
+			bf.HtmlEncodeFormatString = false;
+			bf.DataFormatString = "-{0:X}-";
+			result = bf.DoFormatDataValue (10, true);
+			Assert.AreEqual ("-10-", result, "NoHtmlEncodeFormatString_HtmlEncode");
+
+			bf.DataFormatString = "-{0:X}-";
+			result = bf.DoFormatDataValue (10, false);
+			Assert.AreEqual ("-A-", result, "NoHtmlEncodeFormatString_NoHtmlEncode");
+		}
+
+		[Test]
+		public void HtmlEncodeFormatString ()
+		{
+			string formatString = "<script>alert ('{0}');</script>"; 
+			var bf = new PokerBoundField ();
+
+			Assert.IsTrue (bf.HtmlEncodeFormatString, "#A1-2");
+			Assert.IsTrue (bf.HtmlEncode, "#A1-2");
+			Assert.IsTrue (bf.DoSupportsHtmlEncode, "#A1-3");
+
+			bf.DataFormatString = formatString;
+#if NET_4_0
+			Assert.AreEqual ("&lt;script&gt;alert (&#39;&lt;test&gt;&#39;);&lt;/script&gt;", bf.DoFormatDataValue ("<test>", true), "#A2");
+#else
+			Assert.AreEqual ("&lt;script&gt;alert ('&lt;test&gt;');&lt;/script&gt;", bf.DoFormatDataValue ("<test>", true), "#A2");
+#endif
+			Assert.AreEqual (String.Format (formatString, "<test>"), bf.DoFormatDataValue ("<test>", false), "#A3");
+
+			bf.HtmlEncodeFormatString = false;
+			Assert.AreEqual ("<script>alert ('&lt;test&gt;');</script>", bf.DoFormatDataValue ("<test>", true), "#A4");
+
+			var ec = new EncodingTest ();
+			bf.HtmlEncodeFormatString = true;
+#if NET_4_0
+			Assert.AreEqual ("&lt;script&gt;alert (&#39;&lt;EncodingTest&gt;&amp;&#39;);&lt;/script&gt;", bf.DoFormatDataValue (ec, true), "#A4");
+#else
+			Assert.AreEqual ("&lt;script&gt;alert ('&lt;EncodingTest&gt;&amp;');&lt;/script&gt;", bf.DoFormatDataValue (ec, true), "#A4");
+#endif
 		}
 
 		[Test]
@@ -310,7 +370,7 @@ namespace MonoTests.System.Web.UI.WebControls
 		}
 
 		[Test]
-		[ExpectedException(typeof(HttpException), "A data item was not found in the container. The container must either implement IDataItemContainer, or have a property named DataItem.")]
+		[ExpectedException(typeof(HttpException), ExpectedMessage="A data item was not found in the container. The container must either implement IDataItemContainer, or have a property named DataItem.")]
 		public void BoundField_GetValueNull () {
 			PokerBoundField bf = new PokerBoundField ();
 			SimpleSpreadsheetRow ds = new SimpleSpreadsheetRow (0, null);
@@ -367,21 +427,7 @@ namespace MonoTests.System.Web.UI.WebControls
 		public void BoundField_NullValueRender ()
 		{
 			string html = new WebTest (PageInvoker.CreateOnLoad (new PageDelegate (BasicRenderTestInit))).Run ();
-			string orightml = @"<div>
-				<table cellspacing=""0"" rules=""all"" border=""1"" id=""GridView1"" style=""border-collapse:collapse;"">
-					<tr>
-						<th scope=""col"">&nbsp;</th><th scope=""col"">&nbsp;</th>
-					</tr><tr>
-						<td>Norway</td><td>Norway</td>
-					</tr><tr>
-						<td>Sweden</td><td>Sweden</td>
-					</tr><tr>
-						<td>EMPTY</td><td>&nbsp;</td>
-					</tr><tr>
-						<td>Italy</td><td>Italy</td>
-					</tr>
-				</table>
-				</div>";
+			string orightml = "<div>\r\n\t<table cellspacing=\"0\" rules=\"all\" border=\"1\" style=\"border-collapse:collapse;\">\r\n\t\t<tr>\r\n\t\t\t<th scope=\"col\">&nbsp;</th><th scope=\"col\">&nbsp;</th>\r\n\t\t</tr><tr>\r\n\t\t\t<td>Norway</td><td>Norway</td>\r\n\t\t</tr><tr>\r\n\t\t\t<td>Sweden</td><td>Sweden</td>\r\n\t\t</tr><tr>\r\n\t\t\t<td>EMPTY</td><td>&nbsp;</td>\r\n\t\t</tr><tr>\r\n\t\t\t<td>Italy</td><td>Italy</td>\r\n\t\t</tr>\r\n\t</table>\r\n</div>";
 			html = HtmlDiff.GetControlFromPageHtml (html);
 			HtmlDiff.AssertAreEqual (orightml, html, "NullValueRender");
 		}

@@ -1,10 +1,10 @@
 
-if PLATFORM_WIN32
+if HOST_WIN32
 export HOST_CC
 endif
 
 if JIT_SUPPORTED
-runtime_lib=../mini/libmono.la
+runtime_lib=../mini/libmono-$(API_VER).la
 else
 runtime_lib=../interpreter/libmint.la
 endif
@@ -18,6 +18,7 @@ INCLUDES = 				\
 monograph_LDADD = \
 	$(runtime_lib)			\
 	$(GLIB_LIBS)			\
+	$(LLVM_LIBS)			\
 	-lm
 
 GRAPHS=System.Object System.Enum System.Attribute System.ValueType System.Reflection.MemberInfo

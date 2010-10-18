@@ -63,16 +63,12 @@ namespace System.ServiceModel.Configuration
 		// Properties
 		public abstract Type BindingElementType { get; }
 
-		[MonoTODO]
 		public virtual void ApplyConfiguration (BindingElement bindingElement) {
-			throw new NotImplementedException ();
 		}
 
 		protected internal abstract BindingElement CreateBindingElement ();
 
-		[MonoTODO]
 		protected internal virtual void InitializeFrom (BindingElement bindingElement) {
-			throw new NotImplementedException ();
 		}
 
 		internal override string GetConfigurationElementName () {

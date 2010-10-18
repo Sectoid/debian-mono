@@ -57,7 +57,7 @@ am__installdirs = "$(DESTDIR)$(libdir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libmono_profiler_aot_la_DEPENDENCIES =  \
-	$(top_builddir)/mono/mini/libmono.la
+	$(top_builddir)/mono/mini/libmono-$(API_VER).la
 am_libmono_profiler_aot_la_OBJECTS = mono-profiler-aot.lo
 libmono_profiler_aot_la_OBJECTS =  \
 	$(am_libmono_profiler_aot_la_OBJECTS)
@@ -66,7 +66,7 @@ libmono_profiler_aot_la_OBJECTS =  \
 @DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_aot_la_rpath = -rpath \
 @DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
 libmono_profiler_cov_la_DEPENDENCIES =  \
-	$(top_builddir)/mono/mini/libmono.la
+	$(top_builddir)/mono/mini/libmono-$(API_VER).la
 am_libmono_profiler_cov_la_OBJECTS = mono-cov.lo
 libmono_profiler_cov_la_OBJECTS =  \
 	$(am_libmono_profiler_cov_la_OBJECTS)
@@ -74,8 +74,17 @@ libmono_profiler_cov_la_OBJECTS =  \
 @DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@	$(libdir)
 @DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_cov_la_rpath = -rpath \
 @DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
+libmono_profiler_iomap_la_DEPENDENCIES =  \
+	$(top_builddir)/mono/mini/libmono-$(API_VER).la
+am_libmono_profiler_iomap_la_OBJECTS = mono-profiler-iomap.lo
+libmono_profiler_iomap_la_OBJECTS =  \
+	$(am_libmono_profiler_iomap_la_OBJECTS)
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@am_libmono_profiler_iomap_la_rpath = -rpath \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@	$(libdir)
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_iomap_la_rpath = -rpath \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
 libmono_profiler_logging_la_DEPENDENCIES =  \
-	$(top_builddir)/mono/mini/libmono.la
+	$(top_builddir)/mono/mini/libmono-$(API_VER).la
 am_libmono_profiler_logging_la_OBJECTS = mono-profiler-logging.lo
 libmono_profiler_logging_la_OBJECTS =  \
 	$(am_libmono_profiler_logging_la_OBJECTS)
@@ -92,9 +101,11 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libmono_profiler_aot_la_SOURCES) \
 	$(libmono_profiler_cov_la_SOURCES) \
+	$(libmono_profiler_iomap_la_SOURCES) \
 	$(libmono_profiler_logging_la_SOURCES)
 DIST_SOURCES = $(libmono_profiler_aot_la_SOURCES) \
 	$(libmono_profiler_cov_la_SOURCES) \
+	$(libmono_profiler_iomap_la_SOURCES) \
 	$(libmono_profiler_logging_la_SOURCES)
 ETAGS = etags
 CTAGS = ctags
@@ -109,6 +120,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -150,7 +162,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -182,6 +193,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -204,6 +216,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -241,7 +254,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -295,16 +307,18 @@ INCLUDES = \
 	-I$(top_srcdir) 	\
 	$(GLIB_CFLAGS)
 
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la libmono-profiler-logging.la
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la libmono-profiler-iomap.la
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la libmono-profiler-logging.la libmono-profiler-iomap.la
 
 # Do something that uses OPROFILE_CFLAGS and OPROFILE_LIBS
 libmono_profiler_cov_la_SOURCES = mono-cov.c
-libmono_profiler_cov_la_LIBADD = $(top_builddir)/mono/mini/libmono.la
+libmono_profiler_cov_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
 libmono_profiler_aot_la_SOURCES = mono-profiler-aot.c
-libmono_profiler_aot_la_LIBADD = $(top_builddir)/mono/mini/libmono.la
+libmono_profiler_aot_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
 libmono_profiler_logging_la_SOURCES = mono-profiler-logging.c
-libmono_profiler_logging_la_LIBADD = $(top_builddir)/mono/mini/libmono.la
+libmono_profiler_logging_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
+libmono_profiler_iomap_la_SOURCES = mono-profiler-iomap.c
+libmono_profiler_iomap_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
 all: all-am
 
 .SUFFIXES:
@@ -369,6 +383,8 @@ libmono-profiler-aot.la: $(libmono_profiler_aot_la_OBJECTS) $(libmono_profiler_a
 	$(LINK) $(am_libmono_profiler_aot_la_rpath) $(libmono_profiler_aot_la_OBJECTS) $(libmono_profiler_aot_la_LIBADD) $(LIBS)
 libmono-profiler-cov.la: $(libmono_profiler_cov_la_OBJECTS) $(libmono_profiler_cov_la_DEPENDENCIES) 
 	$(LINK) $(am_libmono_profiler_cov_la_rpath) $(libmono_profiler_cov_la_OBJECTS) $(libmono_profiler_cov_la_LIBADD) $(LIBS)
+libmono-profiler-iomap.la: $(libmono_profiler_iomap_la_OBJECTS) $(libmono_profiler_iomap_la_DEPENDENCIES) 
+	$(LINK) $(am_libmono_profiler_iomap_la_rpath) $(libmono_profiler_iomap_la_OBJECTS) $(libmono_profiler_iomap_la_LIBADD) $(LIBS)
 libmono-profiler-logging.la: $(libmono_profiler_logging_la_OBJECTS) $(libmono_profiler_logging_la_DEPENDENCIES) 
 	$(LINK) $(am_libmono_profiler_logging_la_rpath) $(libmono_profiler_logging_la_OBJECTS) $(libmono_profiler_logging_la_LIBADD) $(LIBS)
 
@@ -380,6 +396,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-cov.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-profiler-aot.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-profiler-iomap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-profiler-logging.Plo@am__quote@
 
 .c.o:

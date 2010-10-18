@@ -13,6 +13,7 @@
 #include <mono/metadata/object.h>
 #include <mono/io-layer/io-layer.h>
 #include "mono/utils/mono-compiler.h"
+#include <glib.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -24,7 +25,7 @@
 
 G_BEGIN_DECLS
 
-gboolean ves_icall_System_IO_FSW_SupportsFSW (void) MONO_INTERNAL;
+gint ves_icall_System_IO_FSW_SupportsFSW (void) MONO_INTERNAL;
 
 gboolean ves_icall_System_IO_FAMW_InternalFAMNextEvent (gpointer conn,
 							MonoString **filename,

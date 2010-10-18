@@ -1,3 +1,7 @@
+2010-08-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix running of tests under net 4.0.
+
 2008-09-14  Gert Driesen  <drieseng@users.sourceforge.net>
 
 	* ConfigXmlDocumentTest.cs: Added test for Load (String).

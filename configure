@@ -785,9 +785,7 @@ ac_includes_default="\
 #endif"
 
 enable_option_checking=no
-ac_subst_vars='DISABLE_MCS_DOCS_FALSE
-DISABLE_MCS_DOCS_TRUE
-LTLIBOBJS
+ac_subst_vars='LTLIBOBJS
 LIBOBJS
 mono_cfg_dir
 mono_runtime
@@ -838,10 +836,10 @@ INSTALL_MONOTOUCH_FALSE
 INSTALL_MONOTOUCH_TRUE
 INSTALL_4_0_FALSE
 INSTALL_4_0_TRUE
-INSTALL_2_1_FALSE
-INSTALL_2_1_TRUE
-INSTALL_2_0_FALSE
-INSTALL_2_0_TRUE
+ONLY_MOONLIGHT_FALSE
+ONLY_MOONLIGHT_TRUE
+MOONLIGHT_FALSE
+MOONLIGHT_TRUE
 OPROFILE_LIBS
 OPROFILE_CFLAGS
 HAVE_OPROFILE_FALSE
@@ -853,6 +851,11 @@ libsuffix
 XMKMF
 USE_JIT_FALSE
 USE_JIT_TRUE
+SUPPORT_SGEN_FALSE
+SUPPORT_SGEN_TRUE
+SGEN_DEFINES
+LOADED_LLVM_FALSE
+LOADED_LLVM_TRUE
 ENABLE_LLVM_FALSE
 ENABLE_LLVM_TRUE
 LLVM_LDFLAGS
@@ -860,6 +863,9 @@ LLVM_LIBS
 LLVM_CXXFLAGS
 LLVM_CFLAGS
 LLVM_CONFIG
+MONO_NACL_ALIGN_MASK_OFF
+NACL_CODEGEN_FALSE
+NACL_CODEGEN_TRUE
 DTRACE_G_REQUIRED_FALSE
 DTRACE_G_REQUIRED_TRUE
 ENABLE_DTRACE_FALSE
@@ -872,28 +878,25 @@ DISABLE_SHARED_HANDLES
 XATTR_LIB
 ikvm_native_dir
 MONO_DL_NEED_USCORE
+BOEHM_DEFINES
 libgc_dir
 LIBGC_STATIC_LIBS
 LIBGC_LIBS
 LIBGC_CFLAGS
 INCLUDED_LIBGC_FALSE
 INCLUDED_LIBGC_TRUE
-HAVE_BOEHM_GC
 DISABLE_JIT_FALSE
 DISABLE_JIT_TRUE
 DISABLE_PROFILER_FALSE
 DISABLE_PROFILER_TRUE
 STATIC_MONO_FALSE
 STATIC_MONO_TRUE
-eglib_dir
 BUILD_GLIB_LIBS
 BUILD_GLIB_CFLAGS
 GMODULE_LIBS
 GMODULE_CFLAGS
 GLIB_LIBS
 GLIB_CFLAGS
-EGLIB_BUILD_FALSE
-EGLIB_BUILD_TRUE
 subdirs
 PKG_CONFIG
 libgdiplus_loc
@@ -984,8 +987,10 @@ PLATFORM_DARWIN_FALSE
 PLATFORM_DARWIN_TRUE
 PLATFORM_LINUX_FALSE
 PLATFORM_LINUX_TRUE
-PLATFORM_WIN32_FALSE
-PLATFORM_WIN32_TRUE
+TARGET_WIN32_FALSE
+TARGET_WIN32_TRUE
+HOST_WIN32_FALSE
+HOST_WIN32_TRUE
 reloc_libdir
 libmono_ldflags
 libmono_cflags
@@ -1077,6 +1082,7 @@ with_pic
 enable_fast_install
 with_gnu_ld
 enable_libtool_lock
+with_mcs_path
 enable_solaris_tar_check
 enable_nls
 with_libgdiplus
@@ -1089,6 +1095,8 @@ with_static_mono
 enable_mcs_build
 with_xen_opt
 enable_quiet_build
+enable_small_config
+enable_system_aot
 enable_minimal
 enable_parallel_mark
 with_large_heap
@@ -1098,17 +1106,20 @@ enable_shared_handles
 enable_nunit_tests
 enable_big_arrays
 enable_dtrace
+enable_nacl_codegen
 enable_llvm
+enable_loadedllvm
+with_sgen
 with_jit
 with_interp
 with_x
-with_profile2
+enable_mono_debugger
 with_profile4
-with_moonlight
 with_monotouch
 with_oprofile
 with_malloc_mempools
 with_mcs_docs
+with_moonlight
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1773,6 +1784,8 @@ Optional Features:
   --disable-nls           do not use Native Language Support
   --disable-mcs-build disable the build of the mcs directory
   --enable-quiet-build  Enable quiet runtime build (on by default)
+  --enable-small-config Enable tweaks to reduce requirements (and capabilities)
+  --enable-system-aot  Enable the Ahead-Of-Time compilation of system assemblies during the build (on by default on some platforms)
   --enable-minimal=LIST      drop support for LIST subsystems.
      LIST is a comma-separated list from: aot, profiler, decimal, pinvoke, debug,
      reflection_emit, reflection_emit_save, large_code, logging, com, ssa, generics, attach, jit, simd, soft_debug, normalization.
@@ -1782,7 +1795,10 @@ Optional Features:
   --enable-nunit-tests	Run the nunit tests of the class library on 'make check'
   --enable-big-arrays	Enable the allocation and indexing of arrays greater than Int32.MaxValue
   --enable-dtrace	Enable DTrace probes
+  --enable-nacl-codegen      Enable Native Client code generation
   --enable-llvm	Enable the experimental LLVM back-end
+  --enable-loadedllvm	Load the LLVM back-end dynamically
+  --disable-mono-debugger disable support for the mdb debugger
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1790,26 +1806,27 @@ Optional Packages:
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
+  --with-mcs-path=/path/to/mcs      Specify an alternate mcs source tree
   --with-libgdiplus=installed|sibling|<path>	Override the libgdiplus used for System.Drawing tests (defaults to installed)
   --with-crosspkgdir=/path/to/pkg-config/dir      Change pkg-config dir to custom dir
-  --with-glib=embedded|system    Choose glib API: system or embedded (default to system)
-  --with-gc=boehm,included,none  Defaults to included
+  --with-glib=embedded|system    Choose glib API: system or embedded (default to embedded)
+  --with-gc=boehm,included,none  Controls the Boehm GC config, default=included
   --with-tls=__thread,pthread    select Thread Local Storage implementation (defaults to __thread)
   --with-sigaltstack=yes,no      enable/disable support for sigaltstack (defaults to yes)
   --with-static_mono=yes,no      link mono statically to libmono (faster) (defaults to yes)
   --with-xen_opt=yes,no          Enable Xen-specific behaviour (defaults to yes)
   --with-large-heap=yes,no       Enable support for GC heaps larger than 3GB (defaults to no)
   --with-ikvm-native=yes,no      build the IKVM JNI interface library (defaults to yes)
+  --with-sgen=yes,no             Extra Generational GC, default=yes
   --with-jit=yes,no              If you want to build scripts that default to the JIT (defaults to no)
   --with-interp=yes,no           If you want to build scripts that default to the interpreter (defaults to no)
   --with-x                use the X Window System
-  --with-profile2=yes,no          If you want to install the 2.0 FX (defaults to yes)
-  --with-profile4=yes,no          If you want to install the 4.0 FX (defaults to no)
-  --with-moonlight=yes,no         If you want to build the Moonlight 2.1 assemblies (defaults to yes)
+  --with-profile4=yes,no          If you want to install the 4.0 FX (defaults to yes)
   --with-monotouch=yes,no         If you want to build the raw MonoTouch 2.1 assemblies (defaults to no)
   --with-oprofile=no,<oprofile install dir>   Enable oprofile support (defaults to no)
   --with-malloc-mempools=yes,no  Use malloc for each single mempool allocation (only for runtime debugging, defaults to no)
   --with-mcs-docs=yes,no         If you want to build the documentation under mcs (defaults to yes)
+  --with-moonlight=yes|no|only         If you want to build Mono for Moonlight (defaults to no)
 
 Some influential environment variables:
   CC          C compiler command
@@ -2747,7 +2764,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=mono
- VERSION=2.6.7
+ VERSION=2.8
 
 
 cat >>confdefs.h <<_ACEOF
@@ -2993,7 +3010,7 @@ fi
 
 
 
-API_VER=1.0
+API_VER=2.0
 
 
 { $as_echo "$as_me:$LINENO: checking whether ln -s works" >&5
@@ -3015,9 +3032,9 @@ case $host_os in
 esac
 
 
-
 gc_headers=no
 gc=included
+gc_msg="included Boehm"
 use_included_gc=no
 libgc_configure_args=
 
@@ -3058,6 +3075,7 @@ $as_echo_n "checking host platform characteristics... " >&6; }
 libgc_threads=no
 has_dtrace=no
 parallel_mark=yes
+ikvm_native=yes
 
 case "$host" in
 	powerpc*-*-linux*)
@@ -3066,17 +3084,13 @@ case "$host" in
 	;;
 esac
 
+host_win32=no
+target_win32=no
 case "$host" in
-	*-*-mingw*|*-*-cygwin*)
-		platform_win32=yes
+	*-mingw*|*-*-cygwin*)
 
 cat >>confdefs.h <<\_ACEOF
-#define PLATFORM_WIN32 1
-_ACEOF
-
-
-cat >>confdefs.h <<\_ACEOF
-#define TARGET_WIN32 1
+#define HOST_WIN32 1
 _ACEOF
 
 
@@ -3089,17 +3103,38 @@ cat >>confdefs.h <<\_ACEOF
 #define PLATFORM_NO_SYMLINKS 1
 _ACEOF
 
+		host_win32=yes
 		if test "x$cross_compiling" = "xno"; then
+			target_win32=yes
+			if test "x$host" == "x$target"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define TARGET_WIN32 1
+_ACEOF
+
+			fi
 			CC="gcc -mno-cygwin -g"
 			CXX="g++ -mno-cygwin -g"
 			# So libgc configure gets -mno-cygwin
 			export CC
 			export CXX
+		else
+			target_win32=yes
+
+cat >>confdefs.h <<\_ACEOF
+#define TARGET_WIN32 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define MINGW_CROSS_COMPILE 1
+_ACEOF
+
 		fi
 		HOST_CC="gcc"
 		# Windows 2000 is required that includes Internet Explorer 5.01
 		CPPFLAGS="$CPPFLAGS -DWINVER=0x0500 -D_WIN32_WINNT=0x0500 -D_WIN32_IE=0x0501 -D_UNICODE -DUNICODE -DWIN32_THREADS -DFD_SETSIZE=1024"
-		LDFLAGS="$LDFLAGS -lmswsock"
+		LDFLAGS="$LDFLAGS -lmswsock -lws2_32 -lole32 -loleaut32 -lpsapi -lversion -ladvapi32 -lwinmm -lkernel32"
 		libmono_cflags="-mno-cygwin -mms-bitfields -mwindows"
 		libmono_ldflags="-mno-cygwin -mms-bitfields -mwindows"
 		libdl=
@@ -3111,7 +3146,7 @@ _ACEOF
 		libgc_configure_args="$libgc_configure_args --enable-win32-dllmain=yes"
 		;;
 	*-*-*netbsd*)
-		platform_win32=no
+		host_win32=no
 		CPPFLAGS="$CPPFLAGS -D_REENTRANT -DGC_NETBSD_THREADS -D_GNU_SOURCE"
 		libmono_cflags="-D_REENTRANT"
 		LDFLAGS="$LDFLAGS -pthread"
@@ -3124,7 +3159,7 @@ _ACEOF
 		use_sigposix=yes
 		;;
 	*-*-*freebsd*)
-		platform_win32=no
+		host_win32=no
 		if test "x$PTHREAD_CFLAGS" = "x"; then
 			CPPFLAGS="$CPPFLAGS -DGC_FREEBSD_THREADS"
 			libmono_cflags=
@@ -3157,8 +3192,8 @@ _ACEOF
 		use_sigposix=yes
 		;;
 	*-*-*openbsd*)
-		platform_win32=no
-		CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE -DGC_OPENBSD_THREADS -DPLATFORM_BSD -D_GNU_SOURCE -D_REENTRANT -DUSE_MMAP"
+		host_win32=no
+		CPPFLAGS="$CPPFLAGS -D_THREAD_SAFE -DGC_OPENBSD_THREADS -DPLATFORM_BSD -D_REENTRANT -DUSE_MMAP"
 		if test "x$disable_munmap" != "xyes"; then
 		CPPFLAGS="$CPPFLAGS -DUSE_MUNMAP"
 		fi
@@ -3176,7 +3211,7 @@ _ACEOF
 		use_sigposix=yes
 		;;
 	*-*-linux*)
-		platform_win32=no
+		host_win32=no
 		CPPFLAGS="$CPPFLAGS -DGC_LINUX_THREADS -D_GNU_SOURCE -D_REENTRANT -DUSE_MMAP"
 		if test "x$disable_munmap" != "xyes"; then
 			CPPFLAGS="$CPPFLAGS -DUSE_MUNMAP"
@@ -3187,8 +3222,27 @@ _ACEOF
 		AOT_SUPPORTED="yes"
 		use_sigposix=yes
 		;;
+	*-*-nacl*)
+		host_win32=no
+		CPPFLAGS="$CPPFLAGS -DGC_LINUX_THREADS -D_GNU_SOURCE -D_REENTRANT -DUSE_MMAP"
+		if test "x$disable_munmap" != "xyes"; then
+			CPPFLAGS="$CPPFLAGS -DUSE_MUNMAP"
+		fi
+		libmono_cflags="-D_REENTRANT"
+		libdl=
+		libgc_threads=pthreads
+		AOT_SUPPORTED="yes"
+		gc_default=boehm
+		use_sigposix=yes
+		ikvm_native=no
+
+cat >>confdefs.h <<\_ACEOF
+#define DISABLE_SOCKETS 1
+_ACEOF
+
+		;;
 	*-*-hpux*)
-	        platform_win32=no
+	        host_win32=no
 		CPPFLAGS="$CPPFLAGS -DGC_HPUX_THREADS -D_HPUX_SOURCE -D_XOPEN_SOURCE_EXTENDED -D_REENTRANT"
 		# +ESdbgasm only valid on bundled cc on RISC
 		# silently ignored for ia64
@@ -3207,7 +3261,7 @@ _ACEOF
 		use_sigposix=yes
 		;;
 	*-*-solaris*)
-		platform_win32=no
+		host_win32=no
 		CPPFLAGS="$CPPFLAGS -DGC_SOLARIS_THREADS -DGC_SOLARIS_PTHREADS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS -DUSE_MMAP -DUSE_MUNMAP -DPLATFORM_SOLARIS"
 		need_link_unlink=yes
 		libmono_cflags="-D_REENTRANT"
@@ -3220,7 +3274,7 @@ _ACEOF
 		;;
 	*-*-darwin*)
 		parallel_mark="Disabled_Currently_Hangs_On_MacOSX"
-		platform_win32=no
+		host_win32=no
 		platform_darwin=yes
 		CPPFLAGS="$CPPFLAGS -no-cpp-precomp -D_THREAD_SAFE -DGC_MACOSX_THREADS -DPLATFORM_MACOSX -DUSE_MMAP -DUSE_MUNMAP"
 		CPPFLAGS="$CPPFLAGS -DGetCurrentProcess=MonoGetCurrentProcess -DGetCurrentThread=MonoGetCurrentThread -DCreateEvent=MonoCreateEvent"
@@ -3245,7 +3299,7 @@ _ACEOF
 			has_broken_apple_cpp=yes
 		fi
 								case "$host" in
-			i*86-*-darwin10*)
+						i*86-*-darwin10*)
 				BROKEN_DARWIN_FLAGS="-arch i386 -D_XOPEN_SOURCE -mmacosx-version-min=10.5"
 				CPPFLAGS="$CPPFLAGS $BROKEN_DARWIN_FLAGS"
 				CFLAGS="$CFLAGS $BROKEN_DARWIN_FLAGS"
@@ -3258,10 +3312,24 @@ _ACEOF
 				;;
 		esac
 		;;
+	*-*-haiku*)
+		host_win32=no
+		CPPFLAGS="$CPPFLAGS -D_REENTRANT -D_THREAD_SAFE"
+		libmono_cflags="-D_REENTRANT -D_THREAD_SAFE"
+		libdl=
+		LIBS="$LIBS -lnetwork"
+		need_link_unlink=yes
+		cat >>confdefs.h <<\_ACEOF
+#define PTHREAD_POINTER_ID 1
+_ACEOF
+
+		libgc_threads=pthreads
+		use_sigposix=yes
+		;;
 	*)
 		{ $as_echo "$as_me:$LINENO: WARNING: *** Please add $host to configure.in checks!" >&5
 $as_echo "$as_me: WARNING: *** Please add $host to configure.in checks!" >&2;}
-		platform_win32=no
+		host_win32=no
 		libdl="-ldl"
 		;;
 esac
@@ -3276,12 +3344,20 @@ _ACEOF
 
 fi
 
- if test x$platform_win32 = xyes; then
-  PLATFORM_WIN32_TRUE=
-  PLATFORM_WIN32_FALSE='#'
+ if test x$host_win32 = xyes; then
+  HOST_WIN32_TRUE=
+  HOST_WIN32_FALSE='#'
 else
-  PLATFORM_WIN32_TRUE='#'
-  PLATFORM_WIN32_FALSE=
+  HOST_WIN32_TRUE='#'
+  HOST_WIN32_FALSE=
+fi
+
+ if test x$target_win32 = xyes; then
+  TARGET_WIN32_TRUE=
+  TARGET_WIN32_FALSE='#'
+else
+  TARGET_WIN32_TRUE='#'
+  TARGET_WIN32_FALSE=
 fi
 
  if echo x$target_os | grep -q linux; then
@@ -6127,13 +6203,15 @@ done
 
 
 # AC_PROG_CXX helpfully sets CXX to g++ even if no c++ compiler is found so check
-# GXX instead
-if test "$GXX" != "yes"; then
-   # automake/libtool is so broken, it requires g++ even if the c++ sources
-   # are inside automake conditionals
-   { { $as_echo "$as_me:$LINENO: error: You need to install g++" >&5
+# GXX instead. See http://lists.gnu.org/archive/html/bug-autoconf/2002-04/msg00056.html
+if test "x$CXX" = "xg++"; then
+	if test "x$GXX" != "xyes"; then
+		# automake/libtool is so broken, it requires g++ even if the c++ sources
+		# are inside automake conditionals
+		{ { $as_echo "$as_me:$LINENO: error: You need to install g++" >&5
 $as_echo "$as_me: error: You need to install g++" >&2;}
    { (exit 1); exit 1; }; }
+	fi
 fi
 
 # Extract the first word of "bison", so it can be a program name with args.
@@ -6202,7 +6280,7 @@ else
   CROSS_COMPILING_FALSE=
 fi
 
- if test x$platform_win32 = xyes -a x$cross_compiling = xyes; then
+ if test x$host_win32 = xyes -a x$cross_compiling = xyes; then
   USE_BATCH_FILES_TRUE=
   USE_BATCH_FILES_FALSE='#'
 else
@@ -7552,13 +7630,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:7555: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:7633: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:7558: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:7636: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:7561: output\"" >&5)
+  (eval echo "\"\$as_me:7639: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -8749,7 +8827,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 8752 "configure"' > conftest.$ac_ext
+  echo '#line 8830 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -10908,11 +10986,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10911: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10989: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:10915: \$? = $ac_status" >&5
+   echo "$as_me:10993: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -11247,11 +11325,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11250: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:11328: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:11254: \$? = $ac_status" >&5
+   echo "$as_me:11332: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -11352,11 +11430,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11355: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:11433: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:11359: \$? = $ac_status" >&5
+   echo "$as_me:11437: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -11407,11 +11485,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11410: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:11488: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:11414: \$? = $ac_status" >&5
+   echo "$as_me:11492: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14207,7 +14285,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 14210 "configure"
+#line 14288 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14303,7 +14381,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 14306 "configure"
+#line 14384 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -16323,11 +16401,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16326: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16404: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16330: \$? = $ac_status" >&5
+   echo "$as_me:16408: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -16422,11 +16500,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16425: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16503: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:16429: \$? = $ac_status" >&5
+   echo "$as_me:16507: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16474,11 +16552,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16477: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16555: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:16481: \$? = $ac_status" >&5
+   echo "$as_me:16559: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -17802,7 +17880,8 @@ fi
 
 
 
-for ac_header in sys/filio.h sys/sockio.h netdb.h utime.h sys/utime.h semaphore.h sys/un.h linux/rtc.h sys/syscall.h sys/mkdev.h sys/uio.h
+
+for ac_header in sys/filio.h sys/sockio.h netdb.h utime.h sys/utime.h semaphore.h sys/un.h linux/rtc.h sys/syscall.h sys/mkdev.h sys/uio.h sys/param.h
 do
 as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -20063,6 +20142,16 @@ else
   mcsdir=../mcs
 fi
 
+
+# Check whether --with-mcs-path was given.
+if test "${with_mcs_path+set}" = set; then
+  withval=$with_mcs_path; if test x$with_mcs_path != "x" -a -d $with_mcs_path ; then
+		mcsdir=$with_mcs_path
+	fi
+
+fi
+
+
 #
 # A sanity check to catch cases where the package was unpacked
 # with an ancient tar program (Solaris)
@@ -20078,7 +20167,7 @@ fi
 if test x"$do_solaris_tar_check" = xyes -a x"$enable_solaris_tar_check" = xyes; then
    	{ $as_echo "$as_me:$LINENO: checking integrity of package" >&5
 $as_echo_n "checking integrity of package... " >&6; }
-   	if test -f $srcdir/$mcsdir/class/System.Runtime.Serialization.Formatters.Soap/System.Runtime.Serialization.Formatters.Soap/SoapTypeMapper.cs
+	if test -f $mcsdir/class/System.Runtime.Serialization.Formatters.Soap/System.Runtime.Serialization.Formatters.Soap/SoapTypeMapper.cs
    	then
 		{ $as_echo "$as_me:$LINENO: result: ok" >&5
 $as_echo "ok" >&6; }
@@ -20090,8 +20179,23 @@ $as_echo "$as_me: error: $errorm" >&2;}
 	fi
 fi
 
-mcs_topdir='$(top_srcdir)/'$mcsdir
-mcs_topdir_from_srcdir='$(top_builddir)/'$mcsdir
+if test "x$with_mcs_path" != "x"; then
+mcs_topdir=$(cd "$mcsdir" && pwd)
+mcs_topdir_from_srcdir=$mcs_topdir
+else
+mcs_topdir=$(cd "$srcdir/$mcsdir" && pwd)
+mcs_topdir_from_srcdir='$(top_builddir)'/$mcsdir
+fi
+
+# Convert mcs_topdir* paths to Windows syntax.
+if test x$cross_compiling$host_win32 = xnoyes; then
+  mcs_topdir=$(cygpath -m $mcs_topdir)
+  case $mcs_topdir_from_srcdir in
+    /cygdrive/*)
+	mcs_topdir_from_srcdir=$(cygpath -m $mcs_topdir_from_srcdir)
+	;;
+  esac
+fi
 
 ## Maybe should also disable if mcsdir is invalid.  Let's punt the issue for now.
  if test x$cross_compiling = xno && test x$enable_mcs_build != xno; then
@@ -20525,11 +20629,6 @@ $as_echo "no" >&6; }
 fi
 
 
-if test "x$PKG_CONFIG" = "xno"; then
-	{ { $as_echo "$as_me:$LINENO: error: You need to install pkg-config" >&5
-$as_echo "$as_me: error: You need to install pkg-config" >&2;}
-   { (exit 1); exit 1; }; }
-fi
 
 pkg_config_path=
 
@@ -20553,11 +20652,15 @@ fi
 if test "${with_glib+set}" = set; then
   withval=$with_glib;
 else
-  with_glib=system
+  with_glib=embedded
 fi
 
 
-eglib_dir=
+ac_configure_args="$ac_configure_args \"CPPFLAGS_FOR_EGLIB=$EGLIB_CPPFLAGS\" \"CFLAGS_FOR_EGLIB=$CFLAGS_FOR_EGLIB\""
+
+
+subdirs="$subdirs eglib"
+
 
 case $with_glib in
 embedded)
@@ -20567,51 +20670,17 @@ embedded)
   BUILD_GLIB_LIBS="$GLIB_LIBS"
   GMODULE_CFLAGS="$GLIB_CFLAGS"
   GMODULE_LIBS="$GLIB_LIBS"
-  eglib_dir=eglib
-  ac_configure_args="$ac_configure_args \"CPPFLAGS_FOR_EGLIB=$EGLIB_CPPFLAGS\" \"CFLAGS_FOR_EGLIB=$CFLAGS_FOR_EGLIB\""
-
-
-subdirs="$subdirs eglib"
-
   ;;
 system)
-  if test "x$cross_compiling" = "xyes"; then
-    pkg_config_path="$PKG_CONFIG_PATH"
-    unset PKG_CONFIG_PATH
-  fi
-  BUILD_GLIB_CFLAGS=`$PKG_CONFIG --cflags glib-2.0 gthread-2.0`
-  BUILD_GLIB_LIBS=`$PKG_CONFIG --libs glib-2.0 gthread-2.0`
-  if test "x$cross_compiling" = "xyes"; then
-    PKG_CONFIG_PATH=$pkg_config_path
-    export PKG_CONFIG_PATH
-  fi
-
-  ## Versions of dependencies
-  GLIB_REQUIRED_VERSION=2.4.0
-
-        if $PKG_CONFIG --atleast-version=$GLIB_REQUIRED_VERSION glib-2.0; then
-      GLIB_CFLAGS=`$PKG_CONFIG --cflags glib-2.0 gthread-2.0`
-      GLIB_LIBS=`$PKG_CONFIG --libs glib-2.0 gthread-2.0`
-      GMODULE_CFLAGS=`$PKG_CONFIG --cflags gmodule-2.0`
-      GMODULE_LIBS=`$PKG_CONFIG --libs gmodule-2.0`
-  else
-	{ { $as_echo "$as_me:$LINENO: error: You need at least glib-2.0 $GLIB_REQUIRED_VERSION" >&5
-$as_echo "$as_me: error: You need at least glib-2.0 $GLIB_REQUIRED_VERSION" >&2;}
+  { { $as_echo "$as_me:$LINENO: error: --with-glib=system is no longer supported as of Mono 2.8" >&5
+$as_echo "$as_me: error: --with-glib=system is no longer supported as of Mono 2.8" >&2;}
    { (exit 1); exit 1; }; }
-  fi
   ;;
 *)
   { { $as_echo "$as_me:$LINENO: error: Invalid argument to --with-glib." >&5
 $as_echo "$as_me: error: Invalid argument to --with-glib." >&2;}
    { (exit 1); exit 1; }; }
 esac
- if test x$with_glib = xembedded; then
-  EGLIB_BUILD_TRUE=
-  EGLIB_BUILD_FALSE='#'
-else
-  EGLIB_BUILD_TRUE='#'
-  EGLIB_BUILD_FALSE=
-fi
 
 
 
@@ -20620,9 +20689,7 @@ fi
 
 
 
-
-
-if test x$cross_compiling$platform_win32 = xnoyes; then
+if test x$cross_compiling$host_win32 = xnoyes; then
    { $as_echo "$as_me:$LINENO: checking for cygwin glib2-dev package" >&5
 $as_echo_n "checking for cygwin glib2-dev package... " >&6; }
    if  cygcheck --f /usr/lib/libglib-2.0.dll.a | grep -q glib2-devel ; then
@@ -20697,7 +20764,7 @@ if test "x$enable_static" = "xno"; then
    with_static_mono=no
 fi
 
-if test "x$platform_win32" = "xyes"; then
+if test "x$host_win32" = "xyes"; then
    # Boehm GC requires the runtime to be in its own dll
    with_static_mono=no
 fi
@@ -20796,6 +20863,34 @@ if test "${enable_quiet_build+set}" = set; then
   enableval=$enable_quiet_build; enable_quiet_build=$enableval
 else
   enable_quiet_build=yes
+fi
+
+# Check whether --enable-small-config was given.
+if test "${enable_small_config+set}" = set; then
+  enableval=$enable_small_config; enable_small_config=$enableval
+else
+  enable_small_config=no
+fi
+
+
+if test x$enable_small_config = xyes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define MONO_SMALL_CONFIG 1
+_ACEOF
+
+	CFLAGS_FOR_LIBGC="$CFLAGS_FOR_LIBGC -DSMALL_CONFIG"
+fi
+
+if test x$AOT_SUPPORTED != xyes; then
+   AOT_SUPPORTED=no
+fi
+
+# Check whether --enable-system-aot was given.
+if test "${enable_system_aot+set}" = set; then
+  enableval=$enable_system_aot; enable_system_aot=$enableval
+else
+  enable_system_aot=$AOT_SUPPORTED
 fi
 
 
@@ -21103,6 +21198,64 @@ fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
+{ $as_echo "$as_me:$LINENO: checking for deprecated __attribute__" >&5
+$as_echo_n "checking for deprecated __attribute__... " >&6; }
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+     int doit (void) __attribute__ ((deprecated));
+     int doit (void) { return 0; }
+
+int
+main ()
+{
+
+	return 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+
+   have_deprecated=yes
+   { $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+   have_deprecated=no
+   { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
 # Check whether --enable-parallel-mark was given.
 if test "${enable_parallel_mark+set}" = set; then
   enableval=$enable_parallel_mark; enable_parallel_mark=$enableval
@@ -21348,15 +21501,10 @@ $as_echo "$as_me: error: \"GC requested but header files not found! You may need
    { (exit 1); exit 1; }; }
 		fi
 
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_BOEHM_GC 1
-_ACEOF
-
-
 		LIBGC_LIBS="-lgc $libdl"
 		LIBGC_STATIC_LIBS="$LIBGC_LIBS"
 		libmono_ldflags="$libmono_ldflags -lgc"
+		BOEHM_DEFINES="-DHAVE_BOEHM_GC"
 
 		# AC_CHECK_FUNCS does not work for some reason...
 		{ $as_echo "$as_me:$LINENO: checking for GC_gcj_malloc in -lgc" >&5
@@ -21429,22 +21577,20 @@ if test "x$ac_cv_lib_gc_GC_gcj_malloc" = x""yes; then
 fi
 
 		if test "x$found_gcj_malloc" = "xyes"; then
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_GC_GCJ_MALLOC 1
-_ACEOF
-
+			BOEHM_DEFINES="-DHAVE_GC_GCJ_MALLOC $BOEHM_DEFINES"
 
 cat >>confdefs.h <<_ACEOF
-#define USED_GC_NAME "System Boehm (with typed GC)"
+#define DEFAULT_GC_NAME "System Boehm (with typed GC)"
 _ACEOF
 
+			gc_msg="System Boehm with typed GC"
 		else
 
 cat >>confdefs.h <<_ACEOF
-#define USED_GC_NAME "System Boehm (no typed GC)"
+#define DEFAULT_GC_NAME "System Boehm (no typed GC)"
 _ACEOF
 
+			gc_msg="System Boehm (without typed GC)"
 		fi
 		{ $as_echo "$as_me:$LINENO: checking for GC_enable in -lgc" >&5
 $as_echo_n "checking for GC_enable in -lgc... " >&6; }
@@ -21516,17 +21662,11 @@ if test "x$ac_cv_lib_gc_GC_enable" = x""yes; then
 fi
 
 		if test "x$found_gc_enable" = "xyes"; then
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_GC_ENABLE 1
-_ACEOF
-
+			BOEHM_DEFINES="-DHAVE_GC_ENABLE $BOEHM_DEFINES"
 		fi
 		;;
 
 	xincluded)
-		found_boehm=yes
-		gc_headers=yes
 		use_included_gc=yes
 		libgc_dir=libgc
 
@@ -21534,74 +21674,28 @@ _ACEOF
 		LIBGC_LIBS='$(top_builddir)/libgc/libmonogc.la'
 		LIBGC_STATIC_LIBS='$(top_builddir)/libgc/libmonogc-static.la'
 
+		BOEHM_DEFINES="-DHAVE_BOEHM_GC -DHAVE_GC_H -DUSE_INCLUDED_LIBGC -DHAVE_GC_GCJ_MALLOC -DHAVE_GC_ENABLE"
 
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_BOEHM_GC 1
-_ACEOF
-
-
-
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_GC_H 1
-_ACEOF
-
-
-cat >>confdefs.h <<\_ACEOF
-#define USE_INCLUDED_LIBGC 1
-_ACEOF
-
-
-		# The included libgc contains GCJ support
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_GC_GCJ_MALLOC 1
-_ACEOF
-
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_GC_ENABLE 1
-_ACEOF
-
+		gc_msg="bundled Boehm GC with typed GC"
 		if test x$enable_parallel_mark = xyes; then
 
 cat >>confdefs.h <<_ACEOF
-#define USED_GC_NAME "Included Boehm (with typed GC and Parallel Mark)"
+#define DEFAULT_GC_NAME "Included Boehm (with typed GC and Parallel Mark)"
 _ACEOF
 
+			gc_msg="$gc_msg and parallel mark"
 		else
 
 cat >>confdefs.h <<_ACEOF
-#define USED_GC_NAME "Included Boehm (with typed GC)"
+#define DEFAULT_GC_NAME "Included Boehm (with typed GC)"
 _ACEOF
 
 		fi
 		;;
 
 	xsgen)
-		found_boehm=no
-		gc_headers=no
-		use_included_gc=no
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_SGEN_GC 1
-_ACEOF
-
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_MOVING_COLLECTOR 1
-_ACEOF
-
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_WRITE_BARRIERS 1
-_ACEOF
-
-
-cat >>confdefs.h <<_ACEOF
-#define USED_GC_NAME "Simple generational"
-_ACEOF
-
+		{ $as_echo "$as_me:$LINENO: WARNING: \"Use --with-sgen instead" >&5
+$as_echo "$as_me: WARNING: \"Use --with-sgen instead" >&2;}
 		;;
 
 	xnone)
@@ -21609,7 +21703,7 @@ _ACEOF
 $as_echo "$as_me: WARNING: \"Compiling mono without GC.\"" >&2;}
 
 cat >>confdefs.h <<_ACEOF
-#define USED_GC_NAME "none"
+#define DEFAULT_GC_NAME "none"
 _ACEOF
 
 
@@ -21634,7 +21728,6 @@ else
 fi
 
 if test "x$large_heap" = "xyes"; then
-   echo "FOO"
    CPPFLAGS="$CPPFLAGS -DLARGE_CONFIG"
 fi
 
@@ -21652,7 +21745,74 @@ fi
 
 
 
-if test x$platform_win32 = xno; then
+
+{ $as_echo "$as_me:$LINENO: checking whether $CC supports zero length arrays" >&5
+$as_echo_n "checking whether $CC supports zero length arrays... " >&6; }
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+	struct s {
+		int  length;
+		char data [0];
+	};
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+
+	{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define MONO_ZERO_LEN_ARRAY 0
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+	{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define MONO_ZERO_LEN_ARRAY 1
+_ACEOF
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+if test x$target_win32 = xno; then
 
 		{ $as_echo "$as_me:$LINENO: checking for library containing clock_gettime" >&5
 $as_echo_n "checking for library containing clock_gettime... " >&6; }
@@ -22085,7 +22245,7 @@ $as_echo "$ac_cv_func_dlerror" >&6; }
 if test "${with_ikvm_native+set}" = set; then
   withval=$with_ikvm_native; with_ikvm_native=$withval
 else
-  with_ikvm_native=yes
+  with_ikvm_native=$ikvm_native
 fi
 
 
@@ -23659,6 +23819,208 @@ fi
 done
 
 
+for ac_func in dl_iterate_phdr
+do
+as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+{ $as_echo "$as_me:$LINENO: checking for $ac_func" >&5
+$as_echo_n "checking for $ac_func... " >&6; }
+if { as_var=$as_ac_var; eval "test \"\${$as_var+set}\" = set"; }; then
+  $as_echo_n "(cached) " >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define $ac_func to an innocuous variant, in case <limits.h> declares $ac_func.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define $ac_func innocuous_$ac_func
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char $ac_func (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef $ac_func
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char $ac_func ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_$ac_func || defined __stub___$ac_func
+choke me
+#endif
+
+int
+main ()
+{
+return $ac_func ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  eval "$as_ac_var=yes"
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	eval "$as_ac_var=no"
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+fi
+ac_res=`eval 'as_val=${'$as_ac_var'}
+		 $as_echo "$as_val"'`
+	       { $as_echo "$as_me:$LINENO: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+as_val=`eval 'as_val=${'$as_ac_var'}
+		 $as_echo "$as_val"'`
+   if test "x$as_val" = x""yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
+for ac_func in sysconf
+do
+as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+{ $as_echo "$as_me:$LINENO: checking for $ac_func" >&5
+$as_echo_n "checking for $ac_func... " >&6; }
+if { as_var=$as_ac_var; eval "test \"\${$as_var+set}\" = set"; }; then
+  $as_echo_n "(cached) " >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define $ac_func to an innocuous variant, in case <limits.h> declares $ac_func.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define $ac_func innocuous_$ac_func
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char $ac_func (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef $ac_func
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char $ac_func ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_$ac_func || defined __stub___$ac_func
+choke me
+#endif
+
+int
+main ()
+{
+return $ac_func ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  eval "$as_ac_var=yes"
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	eval "$as_ac_var=no"
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+fi
+ac_res=`eval 'as_val=${'$as_ac_var'}
+		 $as_echo "$as_val"'`
+	       { $as_echo "$as_me:$LINENO: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+as_val=`eval 'as_val=${'$as_ac_var'}
+		 $as_echo "$as_val"'`
+   if test "x$as_val" = x""yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
 
 for ac_func in sched_setaffinity
 do
@@ -25068,72 +25430,6 @@ cat >>confdefs.h <<_ACEOF
 #define MONO_SIZEOF_SUNPATH $mono_cv_sizeof_sunpath
 _ACEOF
 
-
-				{ $as_echo "$as_me:$LINENO: checking whether $CC supports zero length arrays" >&5
-$as_echo_n "checking whether $CC supports zero length arrays... " >&6; }
-	cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-                struct s {
-                        int  length;
-                        char data [0];
-                };
-
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-
-		{ $as_echo "$as_me:$LINENO: result: yes" >&5
-$as_echo "yes" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define MONO_ZERO_ARRAY_LENGTH 0
-_ACEOF
-
-
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-
-		{ $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define MONO_ZERO_ARRAY_LENGTH 1
-_ACEOF
-
-
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 				case "${host}" in
 		*solaris* )
@@ -26984,7 +27280,93 @@ $as_echo "$as_me: error: unable to find a way to determine timezone" >&2;}
 		fi
 	fi
 
-			        LIBS="$LIBS -lm";
+				{ $as_echo "$as_me:$LINENO: checking for library containing sqrtf" >&5
+$as_echo_n "checking for library containing sqrtf... " >&6; }
+if test "${ac_cv_search_sqrtf+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char sqrtf ();
+int
+main ()
+{
+return sqrtf ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' m; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  ac_cv_search_sqrtf=$ac_res
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext
+  if test "${ac_cv_search_sqrtf+set}" = set; then
+  break
+fi
+done
+if test "${ac_cv_search_sqrtf+set}" = set; then
+  :
+else
+  ac_cv_search_sqrtf=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_search_sqrtf" >&5
+$as_echo "$ac_cv_search_sqrtf" >&6; }
+ac_res=$ac_cv_search_sqrtf
+if test "$ac_res" != no; then
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+fi
+
 	if test "x$has_broken_apple_cpp" != "xyes"; then
 
 for ac_func in finite
@@ -37477,11 +37859,11 @@ $as_echo "$try_dev_random" >&6; }
 
 case "{$target}" in
     *-openbsd*)
-    NAME_DEV_RANDOM="/dev/arandom"
+    NAME_DEV_RANDOM="/dev/srandom"
     ;;
 
 
-    *-*-mingw*|*-*-cygwin*)
+    *-mingw*|*-*-cygwin*)
     ac_cv_have_dev_random=no
     ;;
 
@@ -37524,7 +37906,7 @@ $as_echo_n "checking for random device... " >&6; }
 $as_echo "has been disabled" >&6; }
 fi
 
-if test "x$platform_win32" = "xyes"; then
+if test "x$host_win32" = "xyes"; then
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_CRYPT_RNG 1
 _ACEOF
@@ -37532,7 +37914,7 @@ _ACEOF
 fi
 
 if test "x$ac_cv_have_dev_random" = "xno" \
-    && test "x$platform_win32" = "xno"; then
+    && test "x$host_win32" = "xno"; then
     { $as_echo "$as_me:$LINENO: WARNING:
 ***
 *** A system-provided entropy source was not found on this system.
@@ -37579,14 +37961,6 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-fi
-
-if test x$gc = xsgen; then
-   if test x$with_tls != x__thread; then
-	  { { $as_echo "$as_me:$LINENO: error: The SGEN garbage collector depends on a working __thread implementation, and either --with-thread=pthread was passed to configure, or the configure test for __thread failed." >&5
-$as_echo "$as_me: error: The SGEN garbage collector depends on a working __thread implementation, and either --with-thread=pthread was passed to configure, or the configure test for __thread failed." >&2;}
-   { (exit 1); exit 1; }; }
-   fi
 fi
 
 # Check whether --enable-nunit-tests was given.
@@ -37689,7 +38063,7 @@ fi
    	  { $as_echo "$as_me:$LINENO: result: dtrace utility not found, dtrace support disabled." >&5
 $as_echo "dtrace utility not found, dtrace support disabled." >&6; }
 	  enable_dtrace=no
-   elif ! $DTRACE -h $srcdir/data/mono.d > /dev/null 2>&1; then
+   elif ! $DTRACE -h -s $srcdir/data/mono.d > /dev/null 2>&1; then
 	  { $as_echo "$as_me:$LINENO: result: dtrace doesn't support -h option, dtrace support disabled." >&5
 $as_echo "dtrace doesn't support -h option, dtrace support disabled." >&6; }
 	  enable_dtrace=no
@@ -37900,11 +38274,48 @@ fi
 
 
 
+# Check whether --enable-nacl_codegen was given.
+if test "${enable_nacl_codegen+set}" = set; then
+  enableval=$enable_nacl_codegen; enable_nacl_codegen=$enableval
+else
+  enable_nacl_codegen=no
+fi
+
+
+ if test x$enable_nacl_codegen != xno; then
+  NACL_CODEGEN_TRUE=
+  NACL_CODEGEN_FALSE='#'
+else
+  NACL_CODEGEN_TRUE='#'
+  NACL_CODEGEN_FALSE=
+fi
+
+if test "x$enable_nacl_codegen" = "xyes"; then
+   MONO_NACL_ALIGN_MASK_OFF=1
+   CPPFLAGS="$CPPFLAGS -D__native_client_codegen__"
+
+cat >>confdefs.h <<\_ACEOF
+#define TARGET_NACL 1
+_ACEOF
+
+else
+   MONO_NACL_ALIGN_MASK_OFF=0
+fi
+
+
+
 # Check whether --enable-llvm was given.
 if test "${enable_llvm+set}" = set; then
   enableval=$enable_llvm; enable_llvm=$enableval
 else
   enable_llvm=no
+fi
+
+# Check whether --enable-loadedllvm was given.
+if test "${enable_loadedllvm+set}" = set; then
+  enableval=$enable_loadedllvm; enable_llvm=$enableval && enable_loadedllvm=$enableval
+else
+  enable_loadedllvm=no
 fi
 
 
@@ -37958,7 +38369,9 @@ $as_echo "$as_me: error: llvm-config not found." >&2;}
 
    # The output of --cflags seems to include optimizations flags too
    LLVM_CFLAGS=`$LLVM_CONFIG --cflags | sed -e 's/-O2//g' | sed -e 's/-O0//g' | sed -e 's/-fomit-frame-pointer//g' | sed -e 's/-fPIC//g'`
-   LLVM_CXXFLAGS=`$LLVM_CONFIG --cxxflags`
+   # LLVM is compiled with -fno-rtti, so we need this too, since our classes inherit
+   # from LLVM classes.
+   LLVM_CXXFLAGS="`$LLVM_CONFIG --cxxflags` -fno-rtti"
    LLVM_LDFLAGS=`$LLVM_CONFIG --ldflags`
    LLVM_LIBS=`$LLVM_CONFIG --libs core bitwriter jit x86codegen`
    LLVM_LIBS="$LLVM_LDFLAGS $LLVM_LIBS -lstdc++"
@@ -37967,6 +38380,14 @@ $as_echo "$as_me: error: llvm-config not found." >&2;}
    llvm_version=`$LLVM_CONFIG --version`
    major_version=`echo $llvm_version | cut -c 1`
    minor_version=`echo $llvm_version | cut -c 3`
+   if echo $llvm_version | grep -q 'mono'; then
+
+cat >>confdefs.h <<\_ACEOF
+#define LLVM_MONO_BRANCH 1
+_ACEOF
+
+	  LLVM_CXXFLAGS="$LLVM_CXXFLAGS -DLLVM_MONO_BRANCH"
+   fi
 
 
 cat >>confdefs.h <<_ACEOF
@@ -37976,6 +38397,11 @@ _ACEOF
 
 cat >>confdefs.h <<_ACEOF
 #define LLVM_MINOR_VERSION $minor_version
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define LLVM_VERSION "$llvm_version"
 _ACEOF
 
 
@@ -38002,6 +38428,21 @@ else
   ENABLE_LLVM_FALSE=
 fi
 
+if test "x$enable_loadedllvm" = "xyes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define MONO_LLVM_LOADED 1
+_ACEOF
+
+fi
+ if test x$enable_loadedllvm = xyes; then
+  LOADED_LLVM_TRUE=
+  LOADED_LLVM_FALSE='#'
+else
+  LOADED_LLVM_TRUE='#'
+  LOADED_LLVM_FALSE=
+fi
+
 
 TARGET="unknown"
 ACCESS_UNALIGNED="yes"
@@ -38018,6 +38459,7 @@ sizeof_register="SIZEOF_VOID_P"
 
 jit_wanted=false
 interp_wanted=false
+sgen_supported=false
 case "$host" in
 #	mips-sgi-irix5.* | mips-sgi-irix6.*)
 #		TARGET=MIPS;
@@ -38113,7 +38555,16 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 			# foo.c:6: warning: visibility attribute not supported in this configuration; ignored
 			# ld: fatal: relocation error: R_386_GOTOFF: file /var/tmp//ccxYR96k.o: symbol astruct: relocation must bind locally
 			have_visibility_hidden=no
-
+			;;
+		  cygwin*)
+			have_visibility_hidden=no
+			;;
+		  haiku*)
+			LIBC=libroot.so
+			;;
+		  linux*|darwin*|openbsd*)
+			sgen_supported=true
+		        ;;
 		esac
 		;;
 	x86_64-*-* | amd64-*-*)
@@ -38121,6 +38572,11 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 		arch_target=amd64;
 		JIT_SUPPORTED=yes
 		jit_wanted=true
+		case $host_os in
+		  linux*|darwin*|openbsd*)
+			sgen_supported=true
+			;;
+		esac
 		;;
 	ia64-*-*)
 		TARGET=IA64
@@ -38250,7 +38706,7 @@ $as_echo "$as_me: error: The required utility 'ar' is not found in your PATH. Us
 			INTL="libc.so.6.1"
 		esac
 	       ;;
-	*-*-mingw*|*-*-cygwin*)
+	*-mingw*|*-*-cygwin*)
 		# When this is enabled, it leads to very strange crashes at runtime (gcc-3.4.4)
 		have_visibility_hidden=no
 		INTL="intl"
@@ -38265,18 +38721,13 @@ $as_echo "$as_me: error: The required utility 'ar' is not found in your PATH. Us
 		;;
 	hppa*linux*)
 		TARGET=HPPA;
-
-cat >>confdefs.h <<\_ACEOF
-#define MONO_ARCH_REGPARMS 1
-_ACEOF
-
 		arch_target=hppa;
 		ACCESS_UNALIGNED="no"
 		JIT_SUPPORTED=yes
 		jit_wanted=true
 		;;
 	macppc-*-openbsd* | powerpc*-*-linux* | powerpc-*-openbsd* | \
-        powerpc-*-sysv* | powerpc-*-darwin* | powerpc-*-netbsd* )
+        powerpc-*-sysv* | powerpc-*-darwin* | powerpc-*-netbsd* | powerpc-*-freebsd* )
 		if test "x$ac_cv_sizeof_void_p" = "x8"; then
 			TARGET=POWERPC64;
 			CPPFLAGS="$CPPFLAGS -D__mono_ppc__ -D__mono_ppc64__"
@@ -38285,14 +38736,14 @@ _ACEOF
 			TARGET=POWERPC;
 			CPPFLAGS="$CPPFLAGS -D__mono_ppc__"
 		fi
-
-cat >>confdefs.h <<\_ACEOF
-#define MONO_ARCH_REGPARMS 1
-_ACEOF
-
 		arch_target=ppc;
 		JIT_SUPPORTED=yes
 		jit_wanted=true
+		case $host_os in
+		  linux*|darwin*)
+			sgen_supported=true
+			;;
+		esac
 		;;
 	arm*-darwin*)
 		TARGET=ARM;
@@ -38301,6 +38752,7 @@ _ACEOF
 		JIT_SUPPORTED=yes
 		CPPFLAGS="$CPPFLAGS -DARM_FPU_NONE=1"
 		jit_wanted=true
+		sgen_supported=true
 		;;
 	arm*-linux*)
 		TARGET=ARM;
@@ -38308,35 +38760,83 @@ _ACEOF
 		ACCESS_UNALIGNED="no"
 		JIT_SUPPORTED=yes
 		jit_wanted=true
+		sgen_supported=true
 		;;
 	s390-*-linux*)
 		TARGET=S390;
-
-cat >>confdefs.h <<\_ACEOF
-#define MONO_ARCH_REGPARMS 1
-_ACEOF
-
 		arch_target=s390;
-		ACCESS_UNALIGNED="no"
+		ACCESS_UNALIGNED="yes"
 		JIT_SUPPORTED=yes
 		jit_wanted=true
+		sgen_supported=true
 		# Required CFLAGS for s390[x].  USE_STRING_INLINES is automatic with gcc 4.1
 		CFLAGS="$CFLAGS -mbackchain -D__USE_STRING_INLINES"
 		;;
 	s390x-*-linux*)
 		TARGET=S390x;
-
-cat >>confdefs.h <<\_ACEOF
-#define MONO_ARCH_REGPARMS 1
-_ACEOF
-
 		arch_target=s390x;
-		ACCESS_UNALIGNED="no"
+		ACCESS_UNALIGNED="yes"
 		JIT_SUPPORTED=yes
 		jit_wanted=true
+		sgen_supported=true
 		CFLAGS="$CFLAGS -mbackchain -D__USE_STRING_INLINES"
 		;;
 esac
+
+if test "x$host" != "x$target"; then
+   case "$target" in
+   powerpc64-ps3-linux-gnu)
+		TARGET=POWERPC64
+		arch_target=powerpc64
+
+cat >>confdefs.h <<\_ACEOF
+#define TARGET_PS3 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define MONO_CROSS_COMPILE 1
+_ACEOF
+
+		# It would be better to just use TARGET_POWERPC64, but lots of code already
+		# uses this define
+
+cat >>confdefs.h <<\_ACEOF
+#define __mono_ppc64__ 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define __mono_ilp32__ 1
+_ACEOF
+
+		sizeof_register=8
+		target_byte_order=G_BIG_ENDIAN
+		;;
+
+   powerpc64-xbox360-linux-gnu)
+		TARGET=POWERPC64
+		arch_target=powerpc64
+
+cat >>confdefs.h <<\_ACEOF
+#define TARGET_XBOX360 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define MONO_CROSS_COMPILE 1
+_ACEOF
+
+		# It would be better to just use TARGET_POWERPC64, but lots of code already
+		# uses this define
+		sizeof_register=8
+		target_byte_order=G_BIG_ENDIAN
+		;;
+	*)
+		{ $as_echo "$as_me:$LINENO: WARNING: Cross compiling is only supported for targets matching 'powerpc64-{ps3,xbox360}-linux-gnu'" >&5
+$as_echo "$as_me: WARNING: Cross compiling is only supported for targets matching 'powerpc64-{ps3,xbox360}-linux-gnu'" >&2;}
+	esac
+fi
 
 # FIXME: Define the others as well
 case "$TARGET" in
@@ -38430,6 +38930,43 @@ _ACEOF
 
 fi
 
+if test "x$have_deprecated" = "xyes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_DEPRECATED 1
+_ACEOF
+
+fi
+
+SGEN_DEFINES=
+
+# Check whether --with-sgen was given.
+if test "${with_sgen+set}" = set; then
+  withval=$with_sgen; buildsgen=$with_sgen
+else
+  buildsgen=yes
+fi
+
+if test x$buildsgen = xyes; then
+   if $sgen_supported; then
+       SGEN_DEFINES="-DHAVE_SGEN_GC -DHAVE_MOVING_COLLECTOR -DHAVE_WRITE_BARRIERS"
+       gc_msg="sgen and $gc_msg"
+   else
+       buildsgen=no
+       { $as_echo "$as_me:$LINENO: WARNING: \"Sgen is not supported on this platform\"" >&5
+$as_echo "$as_me: WARNING: \"Sgen is not supported on this platform\"" >&2;}
+   fi
+fi
+
+ if test x$buildsgen = xyes; then
+  SUPPORT_SGEN_TRUE=
+  SUPPORT_SGEN_FALSE='#'
+else
+  SUPPORT_SGEN_TRUE='#'
+  SUPPORT_SGEN_FALSE=
+fi
+
+
 
 # Check whether --with-jit was given.
 if test "${with_jit+set}" = set; then
@@ -38507,10 +39044,14 @@ case "$host" in
     *-*-*freebsd*)
     	LIBC="libc.so"
 	INTL="libintl.so"
+	SQLITE="libsqlite.so"
+	SQLITE3="libsqlite3.so"
 	;;
     *-*-*openbsd*)
     	LIBC="libc.so"
 	INTL="libintl.so"
+        SQLITE="libsqlite.so"
+        SQLITE3="libsqlite3.so"
 	;;
     *-*-*linux*)
 	{ $as_echo "$as_me:$LINENO: checking for X" >&5
@@ -38779,153 +39320,6 @@ esac
 
 
 
-
-for ac_header in valgrind/memcheck.h
-do
-as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
-if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
-  { $as_echo "$as_me:$LINENO: checking for $ac_header" >&5
-$as_echo_n "checking for $ac_header... " >&6; }
-if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
-  $as_echo_n "(cached) " >&6
-fi
-ac_res=`eval 'as_val=${'$as_ac_Header'}
-		 $as_echo "$as_val"'`
-	       { $as_echo "$as_me:$LINENO: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-else
-  # Is the header compilable?
-{ $as_echo "$as_me:$LINENO: checking $ac_header usability" >&5
-$as_echo_n "checking $ac_header usability... " >&6; }
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-$ac_includes_default
-#include <$ac_header>
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_header_compiler=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_header_compiler=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-{ $as_echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
-$as_echo "$ac_header_compiler" >&6; }
-
-# Is the header present?
-{ $as_echo "$as_me:$LINENO: checking $ac_header presence" >&5
-$as_echo_n "checking $ac_header presence... " >&6; }
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <$ac_header>
-_ACEOF
-if { (ac_try="$ac_cpp conftest.$ac_ext"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
-$as_echo "$ac_try_echo") >&5
-  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } >/dev/null && {
-	 test -z "$ac_c_preproc_warn_flag$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       }; then
-  ac_header_preproc=yes
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-  ac_header_preproc=no
-fi
-
-rm -f conftest.err conftest.$ac_ext
-{ $as_echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
-$as_echo "$ac_header_preproc" >&6; }
-
-# So?  What about this header?
-case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
-  yes:no: )
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&5
-$as_echo "$as_me: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&2;}
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the compiler's result" >&5
-$as_echo "$as_me: WARNING: $ac_header: proceeding with the compiler's result" >&2;}
-    ac_header_preproc=yes
-    ;;
-  no:yes:* )
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header: present but cannot be compiled" >&5
-$as_echo "$as_me: WARNING: $ac_header: present but cannot be compiled" >&2;}
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header:     check for missing prerequisite headers?" >&5
-$as_echo "$as_me: WARNING: $ac_header:     check for missing prerequisite headers?" >&2;}
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header: see the Autoconf documentation" >&5
-$as_echo "$as_me: WARNING: $ac_header: see the Autoconf documentation" >&2;}
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&5
-$as_echo "$as_me: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&2;}
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
-$as_echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
-    { $as_echo "$as_me:$LINENO: WARNING: $ac_header: in the future, the compiler will take precedence" >&5
-$as_echo "$as_me: WARNING: $ac_header: in the future, the compiler will take precedence" >&2;}
-
-    ;;
-esac
-{ $as_echo "$as_me:$LINENO: checking for $ac_header" >&5
-$as_echo_n "checking for $ac_header... " >&6; }
-if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
-  $as_echo_n "(cached) " >&6
-else
-  eval "$as_ac_Header=\$ac_header_preproc"
-fi
-ac_res=`eval 'as_val=${'$as_ac_Header'}
-		 $as_echo "$as_val"'`
-	       { $as_echo "$as_me:$LINENO: result: $ac_res" >&5
-$as_echo "$ac_res" >&6; }
-
-fi
-as_val=`eval 'as_val=${'$as_ac_Header'}
-		 $as_echo "$as_val"'`
-   if test "x$as_val" = x""yes; then
-  cat >>confdefs.h <<_ACEOF
-#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
-_ACEOF
-
-fi
-
-done
-
-
 if test "x$TARGET" = "xAMD64" -o "x$TARGET" = "xX86"; then
 	if test "x$with_tls" = "x__thread"; then
 		#
@@ -38947,30 +39341,34 @@ $as_echo "$as_me: WARNING: Disabling usage of __thread." >&2;};
 fi
 
 mono_debugger_supported=no
-if test "x$TARGET" = "xAMD64" -o "x$TARGET" = "xX86" -o "x$TARGET" = "xALPHA"; then
-	if test x$use_included_gc = xyes; then
-		case "$host" in
-		*-*-*linux*)
-			mono_debugger_supported=yes
-			;;
-		*86-apple-darwin*)
-			mono_debugger_supported=yes
-			;;
-		esac
+# Check whether --enable-mono-debugger was given.
+if test "${enable_mono_debugger+set}" = set; then
+  enableval=$enable_mono_debugger; try_mono_debugger=$enableval
+else
+  try_mono_debugger=yes
+fi
+
+if test "x$try_mono_debugger" = "xyes"; then
+	if test "x$TARGET" = "xAMD64" -o "x$TARGET" = "xX86" -o "x$TARGET" = "xALPHA"; then
+		if test x$use_included_gc = xyes; then
+			case "$host" in
+			*-*-*linux*)
+				mono_debugger_supported=yes
+				;;
+			*86-apple-darwin*)
+				mono_debugger_supported=yes
+				;;
+			esac
+		fi
 	fi
 fi
 
 { $as_echo "$as_me:$LINENO: checking if the Mono Debugger is supported on this platform" >&5
 $as_echo_n "checking if the Mono Debugger is supported on this platform... " >&6; }
 if test "x$mono_debugger_supported" = "xyes"; then
-
-cat >>confdefs.h <<\_ACEOF
-#define MONO_DEBUGGER_SUPPORTED 1
-_ACEOF
-
+	BOEHM_DEFINES="$BOEHM_DEFINES -DMONO_DEBUGGER_SUPPORTED"
+	NESTED_LIBGC_FLAGS="-DMONO_DEBUGGER_SUPPORTED"
 fi
-{ $as_echo "$as_me:$LINENO: result: $mono_debugger_supported" >&5
-$as_echo "$mono_debugger_supported" >&6; }
  if test x$mono_debugger_supported = xyes; then
   MONO_DEBUGGER_SUPPORTED_TRUE=
   MONO_DEBUGGER_SUPPORTED_FALSE='#'
@@ -38979,6 +39377,8 @@ else
   MONO_DEBUGGER_SUPPORTED_FALSE=
 fi
 
+{ $as_echo "$as_me:$LINENO: result: $mono_debugger_supported" >&5
+$as_echo "$mono_debugger_supported" >&6; }
 
 if test "x$with_tls" = "x__thread"; then
 
@@ -39120,7 +39520,7 @@ case "x$gc" in
 		# The problem with this approach, is that during a reconfigure, the main
 		# configure scripts gets invoked with these arguments, so we use separate
 		# variables understood by libgc's configure to pass CPPFLAGS and CFLAGS.
-		LIBGC_CPPFLAGS=$CPPFLAGS
+		LIBGC_CPPFLAGS="$CPPFLAGS $NESTED_LIBGC_FLAGS"
 		if test x$TARGET = xSPARC -o x$TARGET = xSPARC64; then
 			LIBGC_CPPFLAGS=`echo $LIBGC_CPPFLAGS | sed -e 's/-D_FILE_OFFSET_BITS=64//g'`
 		fi
@@ -39130,28 +39530,13 @@ case "x$gc" in
 		;;
 esac
 
-
-# Check whether --with-profile2 was given.
-if test "${with_profile2+set}" = set; then
-  withval=$with_profile2;
-else
-  with_profile2=yes
-fi
-
+#AC_ARG_WITH(profile2,  [  --with-profile2=yes,no          If you want to install the 2.0 FX (defaults to yes)],                 [], [with_profile2=yes])
 
 # Check whether --with-profile4 was given.
 if test "${with_profile4+set}" = set; then
   withval=$with_profile4;
 else
-  with_profile4=no
-fi
-
-
-# Check whether --with-moonlight was given.
-if test "${with_moonlight+set}" = set; then
-  withval=$with_moonlight;
-else
-  with_moonlight=yes
+  with_profile4=yes
 fi
 
 
@@ -39215,9 +39600,32 @@ if test "${with_mcs_docs+set}" = set; then
 		DISABLE_MCS_DOCS=yes
 	fi
 
+fi
+
+
+
+# Check whether --with-moonlight was given.
+if test "${with_moonlight+set}" = set; then
+  withval=$with_moonlight;
+	if test "x$with_moonlight" = "xyes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define MOONLIGHT 1
+_ACEOF
+
+	elif test "x$with_moonlight" = "xonly"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define MOONLIGHT 1
+_ACEOF
+
+	fi
+
 else
   with_moonlight=no
 fi
+
+
 
 
 if test "${ac_cv_header_malloc_h+set}" = set; then
@@ -39359,6 +39767,9 @@ fi
 
 if test x$cross_compiling = xyes -o x$enable_mcs_build = xno; then
    DISABLE_MCS_DOCS=yes
+fi
+
+if test x$DISABLE_MCS_DOCS = xyes; then
    docs_dir=""
 else
    docs_dir=docs
@@ -39378,20 +39789,20 @@ fi
 
 libmono_ldflags="$libmono_ldflags $LIBS"
 
- if test "x$with_profile2" = xyes; then
-  INSTALL_2_0_TRUE=
-  INSTALL_2_0_FALSE='#'
+ if test "x$with_moonlight" != "xno"; then
+  MOONLIGHT_TRUE=
+  MOONLIGHT_FALSE='#'
 else
-  INSTALL_2_0_TRUE='#'
-  INSTALL_2_0_FALSE=
+  MOONLIGHT_TRUE='#'
+  MOONLIGHT_FALSE=
 fi
 
- if test "x$with_moonlight" = xyes; then
-  INSTALL_2_1_TRUE=
-  INSTALL_2_1_FALSE='#'
+ if test "x$with_moonlight" = "xonly"; then
+  ONLY_MOONLIGHT_TRUE=
+  ONLY_MOONLIGHT_FALSE='#'
 else
-  INSTALL_2_1_TRUE='#'
-  INSTALL_2_1_FALSE=
+  ONLY_MOONLIGHT_TRUE='#'
+  ONLY_MOONLIGHT_FALSE=
 fi
 
  if test "x$with_profile4" = xyes; then
@@ -39591,7 +40002,7 @@ fi
 
 
 mono_cfg_root=$mono_build_root/runtime
-if test x$platform_win32 = xyes; then
+if test x$host_win32 = xyes; then
   if test "x$cross_compiling" = "xno"; then
     mono_cfg_dir=`cygpath -w -a $mono_cfg_root`\\etc
   else
@@ -39638,7 +40049,7 @@ if test x$enable_quiet_build = xyes; then
 
 fi
 
-ac_config_files="$ac_config_files Makefile mono-core.spec mono-uninstalled.pc scripts/mono-find-provides scripts/mono-find-requires mono/Makefile mono/utils/Makefile mono/metadata/Makefile mono/dis/Makefile mono/cil/Makefile mono/arch/Makefile mono/arch/x86/Makefile mono/arch/amd64/Makefile mono/arch/hppa/Makefile mono/arch/ppc/Makefile mono/arch/sparc/Makefile mono/arch/s390/Makefile mono/arch/s390x/Makefile mono/arch/arm/Makefile mono/arch/alpha/Makefile mono/arch/ia64/Makefile mono/arch/mips/Makefile mono/interpreter/Makefile mono/tests/Makefile mono/tests/tests-config mono/tests/assemblyresolve/Makefile mono/tests/cas/Makefile mono/tests/cas/assembly/Makefile mono/tests/cas/demand/Makefile mono/tests/cas/inheritance/Makefile mono/tests/cas/linkdemand/Makefile mono/tests/cas/threads/Makefile mono/benchmark/Makefile mono/monograph/Makefile mono/io-layer/Makefile mono/mini/Makefile mono/profiler/Makefile ikvm-native/Makefile scripts/Makefile man/Makefile web/Makefile docs/Makefile data/Makefile data/net_1_1/Makefile data/net_2_0/Makefile data/net_4_0/Makefile data/net_2_0/Browsers/Makefile data/mint.pc data/mono.pc data/mono-cairo.pc data/mono-nunit.pc data/mono-options.pc data/mono-lineeditor.pc data/monodoc.pc data/mono.web.pc data/dotnet.pc data/dotnet35.pc data/wcf.pc data/cecil.pc data/system.web.extensions_1.0.pc data/system.web.extensions.design_1.0.pc data/system.web.mvc.pc samples/Makefile support/Makefile data/config tools/Makefile tools/locale-builder/Makefile runtime/Makefile msvc/Makefile po/Makefile"
+ac_config_files="$ac_config_files Makefile mono-core.spec mono-uninstalled.pc scripts/mono-find-provides scripts/mono-find-requires mono/Makefile mono/utils/Makefile mono/metadata/Makefile mono/dis/Makefile mono/cil/Makefile mono/arch/Makefile mono/arch/x86/Makefile mono/arch/amd64/Makefile mono/arch/hppa/Makefile mono/arch/ppc/Makefile mono/arch/sparc/Makefile mono/arch/s390/Makefile mono/arch/s390x/Makefile mono/arch/arm/Makefile mono/arch/alpha/Makefile mono/arch/ia64/Makefile mono/arch/mips/Makefile mono/interpreter/Makefile mono/tests/Makefile mono/tests/tests-config mono/tests/assemblyresolve/Makefile mono/tests/cas/Makefile mono/tests/cas/assembly/Makefile mono/tests/cas/demand/Makefile mono/tests/cas/inheritance/Makefile mono/tests/cas/linkdemand/Makefile mono/tests/cas/threads/Makefile mono/benchmark/Makefile mono/monograph/Makefile mono/io-layer/Makefile mono/mini/Makefile mono/profiler/Makefile ikvm-native/Makefile scripts/Makefile man/Makefile web/Makefile docs/Makefile data/Makefile data/net_2_0/Makefile data/net_4_0/Makefile data/net_2_0/Browsers/Makefile data/mint.pc data/mono-2.pc data/mono.pc data/mono-cairo.pc data/mono-nunit.pc data/mono-options.pc data/mono-lineeditor.pc data/monodoc.pc data/mono.web.pc data/dotnet.pc data/dotnet35.pc data/wcf.pc data/cecil.pc data/system.web.extensions_1.0.pc data/system.web.extensions.design_1.0.pc data/system.web.mvc.pc data/system.web.mvc2.pc samples/Makefile support/Makefile data/config tools/Makefile tools/locale-builder/Makefile tools/sgen/Makefile runtime/Makefile msvc/Makefile po/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -39744,10 +40155,17 @@ $as_echo "$as_me: error: conditional \"MAINTAINER_MODE\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
-if test -z "${PLATFORM_WIN32_TRUE}" && test -z "${PLATFORM_WIN32_FALSE}"; then
-  { { $as_echo "$as_me:$LINENO: error: conditional \"PLATFORM_WIN32\" was never defined.
+if test -z "${HOST_WIN32_TRUE}" && test -z "${HOST_WIN32_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"HOST_WIN32\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
-$as_echo "$as_me: error: conditional \"PLATFORM_WIN32\" was never defined.
+$as_echo "$as_me: error: conditional \"HOST_WIN32\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${TARGET_WIN32_TRUE}" && test -z "${TARGET_WIN32_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"TARGET_WIN32\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"TARGET_WIN32\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -39849,13 +40267,6 @@ $as_echo "$as_me: error: conditional \"BUILD_MCS\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
-if test -z "${EGLIB_BUILD_TRUE}" && test -z "${EGLIB_BUILD_FALSE}"; then
-  { { $as_echo "$as_me:$LINENO: error: conditional \"EGLIB_BUILD\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-$as_echo "$as_me: error: conditional \"EGLIB_BUILD\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
 if test -z "${STATIC_MONO_TRUE}" && test -z "${STATIC_MONO_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"STATIC_MONO\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
@@ -39905,10 +40316,31 @@ $as_echo "$as_me: error: conditional \"DTRACE_G_REQUIRED\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
+if test -z "${NACL_CODEGEN_TRUE}" && test -z "${NACL_CODEGEN_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"NACL_CODEGEN\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"NACL_CODEGEN\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
 if test -z "${ENABLE_LLVM_TRUE}" && test -z "${ENABLE_LLVM_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_LLVM\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"ENABLE_LLVM\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${LOADED_LLVM_TRUE}" && test -z "${LOADED_LLVM_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"LOADED_LLVM\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"LOADED_LLVM\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${SUPPORT_SGEN_TRUE}" && test -z "${SUPPORT_SGEN_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"SUPPORT_SGEN\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"SUPPORT_SGEN\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -39933,17 +40365,17 @@ $as_echo "$as_me: error: conditional \"HAVE_OPROFILE\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
-if test -z "${INSTALL_2_0_TRUE}" && test -z "${INSTALL_2_0_FALSE}"; then
-  { { $as_echo "$as_me:$LINENO: error: conditional \"INSTALL_2_0\" was never defined.
+if test -z "${MOONLIGHT_TRUE}" && test -z "${MOONLIGHT_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"MOONLIGHT\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
-$as_echo "$as_me: error: conditional \"INSTALL_2_0\" was never defined.
+$as_echo "$as_me: error: conditional \"MOONLIGHT\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
-if test -z "${INSTALL_2_1_TRUE}" && test -z "${INSTALL_2_1_FALSE}"; then
-  { { $as_echo "$as_me:$LINENO: error: conditional \"INSTALL_2_1\" was never defined.
+if test -z "${ONLY_MOONLIGHT_TRUE}" && test -z "${ONLY_MOONLIGHT_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ONLY_MOONLIGHT\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
-$as_echo "$as_me: error: conditional \"INSTALL_2_1\" was never defined.
+$as_echo "$as_me: error: conditional \"ONLY_MOONLIGHT\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -41028,11 +41460,11 @@ do
     "web/Makefile") CONFIG_FILES="$CONFIG_FILES web/Makefile" ;;
     "docs/Makefile") CONFIG_FILES="$CONFIG_FILES docs/Makefile" ;;
     "data/Makefile") CONFIG_FILES="$CONFIG_FILES data/Makefile" ;;
-    "data/net_1_1/Makefile") CONFIG_FILES="$CONFIG_FILES data/net_1_1/Makefile" ;;
     "data/net_2_0/Makefile") CONFIG_FILES="$CONFIG_FILES data/net_2_0/Makefile" ;;
     "data/net_4_0/Makefile") CONFIG_FILES="$CONFIG_FILES data/net_4_0/Makefile" ;;
     "data/net_2_0/Browsers/Makefile") CONFIG_FILES="$CONFIG_FILES data/net_2_0/Browsers/Makefile" ;;
     "data/mint.pc") CONFIG_FILES="$CONFIG_FILES data/mint.pc" ;;
+    "data/mono-2.pc") CONFIG_FILES="$CONFIG_FILES data/mono-2.pc" ;;
     "data/mono.pc") CONFIG_FILES="$CONFIG_FILES data/mono.pc" ;;
     "data/mono-cairo.pc") CONFIG_FILES="$CONFIG_FILES data/mono-cairo.pc" ;;
     "data/mono-nunit.pc") CONFIG_FILES="$CONFIG_FILES data/mono-nunit.pc" ;;
@@ -41047,11 +41479,13 @@ do
     "data/system.web.extensions_1.0.pc") CONFIG_FILES="$CONFIG_FILES data/system.web.extensions_1.0.pc" ;;
     "data/system.web.extensions.design_1.0.pc") CONFIG_FILES="$CONFIG_FILES data/system.web.extensions.design_1.0.pc" ;;
     "data/system.web.mvc.pc") CONFIG_FILES="$CONFIG_FILES data/system.web.mvc.pc" ;;
+    "data/system.web.mvc2.pc") CONFIG_FILES="$CONFIG_FILES data/system.web.mvc2.pc" ;;
     "samples/Makefile") CONFIG_FILES="$CONFIG_FILES samples/Makefile" ;;
     "support/Makefile") CONFIG_FILES="$CONFIG_FILES support/Makefile" ;;
     "data/config") CONFIG_FILES="$CONFIG_FILES data/config" ;;
     "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
     "tools/locale-builder/Makefile") CONFIG_FILES="$CONFIG_FILES tools/locale-builder/Makefile" ;;
+    "tools/sgen/Makefile") CONFIG_FILES="$CONFIG_FILES tools/sgen/Makefile" ;;
     "runtime/Makefile") CONFIG_FILES="$CONFIG_FILES runtime/Makefile" ;;
     "msvc/Makefile") CONFIG_FILES="$CONFIG_FILES msvc/Makefile" ;;
     "po/Makefile") CONFIG_FILES="$CONFIG_FILES po/Makefile" ;;
@@ -43071,7 +43505,7 @@ $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
 
-if test x$platform_win32 = xyes; then
+if test x$host_win32 = xyes; then
    # Get rid of 'cyg' prefixes in library names
    sed -e "s/\/cyg\//\/\//" libtool > libtool.new; mv libtool.new libtool; chmod 755 libtool
    # libtool seems to inherit -mno-cygwin from our CFLAGS, and uses it to compile its executable
@@ -43088,28 +43522,30 @@ fi
   NONE) exec_prefix='${prefix}' ;;
   esac
 
-  test -w $srcdir/$mcsdir/build || chmod +w $srcdir/$mcsdir/build
-
   #
   # If we are cross compiling, we don't build in the mcs/ tree.  Let us not clobber
   # any existing config.make.  This allows people to share the same source tree
   # with different build directories, one native and one cross
   #
   if test x$cross_compiling = xno && test x$enable_mcs_build != xno; then
-    echo "prefix=$prefix" > $srcdir/$mcsdir/build/config.make
-    echo "exec_prefix=$exec_prefix" >> $srcdir/$mcsdir/build/config.make
-    echo "sysconfdir=$sysconfdir" >> $srcdir/$mcsdir/build/config.make
-    echo 'mono_libdir=${exec_prefix}/lib' >> $srcdir/$mcsdir/build/config.make
-    echo 'MCS_FLAGS = $(PLATFORM_DEBUG_FLAGS)' >> $srcdir/$mcsdir/build/config.make
-    echo 'IL_FLAGS = /debug' >> $srcdir/$mcsdir/build/config.make
-    echo "RUNTIME = $mono_build_root/runtime/mono-wrapper" >> $srcdir/$mcsdir/build/config.make
-    echo "ILDISASM = $mono_build_root/runtime/monodis-wrapper" >> $srcdir/$mcsdir/build/config.make
+
+    test -w $mcs_topdir/build || chmod +w $mcs_topdir/build
+
+    echo "prefix=$prefix" > $mcs_topdir/build/config.make
+    echo "exec_prefix=$exec_prefix" >> $mcs_topdir/build/config.make
+    echo "sysconfdir=$sysconfdir" >> $mcs_topdir/build/config.make
+    echo 'mono_libdir=${exec_prefix}/lib' >> $mcs_topdir/build/config.make
+    echo 'MCS_FLAGS = $(PLATFORM_DEBUG_FLAGS)' >> $mcs_topdir/build/config.make
+    echo 'IL_FLAGS = /debug' >> $mcs_topdir/build/config.make
+    echo "RUNTIME = $mono_build_root/runtime/mono-wrapper" >> $mcs_topdir/build/config.make
+    echo "ILDISASM = $mono_build_root/runtime/monodis-wrapper" >> $mcs_topdir/build/config.make
+
     case $INSTALL in
     [\\/$]* | ?:[\\/]* ) mcs_INSTALL=$INSTALL ;;
     *) mcs_INSTALL=$mono_build_root/$INSTALL ;;
     esac
 
-    echo "INSTALL = $mcs_INSTALL" >> $srcdir/$mcsdir/build/config.make
+    echo "INSTALL = $mcs_INSTALL" >> $mcs_topdir/build/config.make
 
     export VERSION
     myver=$($AWK 'BEGIN {
@@ -43120,91 +43556,71 @@ fi
       print vsplit [1] "." vsplit [2] "." vsplit [3] "." vsplit [4]
     }')
 
-    echo "MONO_VERSION = $myver" >> $srcdir/$mcsdir/build/config.make
-  fi
+    echo "MONO_VERSION = $myver" >> $mcs_topdir/build/config.make
 
-  if test x$platform_darwin = xyes; then
-	echo "PLATFORM = darwin" >> $srcdir/$mcsdir/build/config.make
-  fi
+    if test x$platform_darwin = xyes; then
+      echo "PLATFORM = darwin" >> $mcs_topdir/build/config.make
+    fi
 
-  if test x$TARGET = xAMD64 -a x$platform_win32 = xno -a "x$AOT_SUPPORTED" = "xyes"; then
-  	 echo "ENABLE_AOT = 1" >> $srcdir/$mcsdir/build/config.make
+    if test x$host_win32 = xno -a x$platform_darwin != xyes -a "x$AOT_SUPPORTED" = "xyes" -a x$enable_system_aot = xyes; then
+      echo "ENABLE_AOT = 1" >> $mcs_topdir/build/config.make
+    fi
+
+    if test x$DISABLE_MCS_DOCS = xyes; then
+      echo "DISABLE_MCS_DOCS = yes" >> $mcs_topdir/build/config.make
+    fi
+
+    if test x$with_moonlight != xno; then
+      echo "MOONLIGHT = 1" >> $srcdir/$mcsdir/build/config.make
+    fi
+
   fi
 
   # if we have an olive folder, override the default settings
   if test -d $olivedir; then
 
-    test -w $srcdir/$olivedir/build || chmod +w $srcdir/$olivedir/build
-
     if test x$cross_compiling = xno && test x$enable_olive_build != xno; then
+
+      test -w $srcdir/$olivedir/build || chmod +w $srcdir/$olivedir/build
+
       echo "prefix=$prefix" > $srcdir/$olivedir/build/config.make
       echo "exec_prefix=$exec_prefix" >> $srcdir/$olivedir/build/config.make
       echo 'mono_libdir=${exec_prefix}/lib' >> $srcdir/$olivedir/build/config.make
       echo 'MCS_FLAGS = $(PLATFORM_DEBUG_FLAGS)' >> $srcdir/$olivedir/build/config.make
       echo "RUNTIME = $mono_build_root/runtime/mono-wrapper" >> $srcdir/$olivedir/build/config.make
       echo "MONO_VERSION = $myver" >> $srcdir/$olivedir/build/config.make
-      if test x$with_moonlight = xyes; then
-        echo "WITH_MOONLIGHT = yes" >> $srcdir/$olivedir/build/config.make
-      fi
     fi
   fi
 
-  if test x$DISABLE_MCS_DOCS = xyes; then
-	echo "DISABLE_MCS_DOCS = yes" >> $srcdir/$mcsdir/build/config.make
-  fi
 )
-
- if test x$DISABLE_MCS_DOCS = xyes; then
-  DISABLE_MCS_DOCS_TRUE=
-  DISABLE_MCS_DOCS_FALSE='#'
-else
-  DISABLE_MCS_DOCS_TRUE='#'
-  DISABLE_MCS_DOCS_FALSE=
-fi
-
 
 libgdiplus_msg=${libgdiplus_loc:-assumed to be installed}
 
 echo "
-        mcs source:    $mcs_topdir
+        mcs source:    $mcsdir
         olive source:  $olive_topdir
 
-	GC:	       $gc
+   Engine:
+	GC:	       $gc_msg
 	GLIB:	       $with_glib
 	TLS:           $with_tls
 	SIGALTSTACK:   $with_sigaltstack
 	Engine:        $jit_status
-	2.0 Profile:   $with_profile2
-	Moon Profile:  $with_moonlight
-	4.0 Alpha:     $with_profile4
-	MonoTouch:     $with_monotouch
-	JNI support:   $jdk_headers_found
-	libgdiplus:    $libgdiplus_msg
-	zlib:          $zlib_msg
 	oprofile:      $OPROFILE
 	BigArrays:     $enable_big_arrays
 	DTrace:        $enable_dtrace
 	Parallel Mark: $enable_parallel_mark
-	LLVM Back End: $enable_llvm
-	$disabled
+	LLVM Back End: $enable_llvm (dynamically loaded: $enable_loadedllvm)
 
+    Libraries:
+	Moon Profile:  $with_moonlight
+	MonoTouch:     $with_monotouch
+	JNI support:   $jdk_headers_found
+	libgdiplus:    $libgdiplus_msg
+	zlib:          $zlib_msg
+	$disabled
 "
-if test x$with_static_mono = xno -a "x$platform_win32" != "xyes"; then
+if test x$with_static_mono = xno -a "x$host_win32" != "xyes"; then
    { $as_echo "$as_me:$LINENO: WARNING: Turning off static Mono is a risk" >&5
 $as_echo "$as_me: WARNING: Turning off static Mono is a risk" >&2;}
-fi
-
-if test x$gc = xsgen; then
-        echo IMPORTANT:
-	echo IMPORTANT: You have selected an experimental, work-in-progress
-	echo IMPORTANT: GC engine.  This GC engine is currently not supported
-	echo IMPORTANT: and is not yet ready for use.
-	echo IMPORTANT:
-	echo IMPORTANT: There are known problems with it, use at your own risk.
-fi
-
-if test x$enable_llvm = xyes; then
-   echo IMPORTANT:
-   echo IMPORTANT: The LLVM Back End is experimental and has known problems.
-   echo IMPORTANT:
 fi

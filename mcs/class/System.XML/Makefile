@@ -7,15 +7,7 @@ LIBRARY_USE_INTERMEDIATE_FILE = yes
 
 lib_file := $(wildcard ../lib/$(PROFILE)/System.Xml.dll)
 ifndef lib_file
-# In the basic profile, System.Xml.dll is _not_ a dependency of mcs.exe.  So, don't use boot compilation.
-# In other profiles, it _is_ a dependency of mcs.exe.  So, use boot compilation.
-ifneq (basic, $(PROFILE))
 USE_BOOT_COMPILE = yes
-endif
-endif
-
-ifeq (net_2_0, $(PROFILE))
-BOOTSTRAP_MCS = MONO_PATH="$(topdir)/class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$(topdir)/class/lib/net_2_0_bootstrap$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" $(INTERNAL_GMCS)
 endif
 
 ifeq (monotouch, $(PROFILE))
@@ -102,7 +94,7 @@ Mono.Xml.Xsl/PatternTokenizer.cs: System.Xml.XPath/Tokenizer.cs
 	echo "#define XSLT_PATTERN" > $@
 	cat $< >>$@
 
-ifneq (net_2_1_raw, $(PROFILE))
+ifneq (moonlight_raw, $(PROFILE))
 BUILT_SOURCES = System.Xml.XPath/Parser.cs \
 	Mono.Xml.Xsl/PatternParser.cs \
 	Mono.Xml.Xsl/PatternTokenizer.cs

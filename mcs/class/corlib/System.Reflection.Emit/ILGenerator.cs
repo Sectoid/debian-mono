@@ -184,10 +184,8 @@ namespace System.Reflection.Emit {
 		int GetToken (SignatureHelper helper);
 	}		
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_ILGenerator))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public class ILGenerator: _ILGenerator {
 		private struct LabelFixup {
@@ -459,23 +457,13 @@ namespace System.Reflection.Emit {
 		public virtual void BeginScope ()
 		{ }
 
-#if NET_2_0
-		public virtual
-#else
-		public
-#endif
-		LocalBuilder DeclareLocal (Type localType)
+		public virtual LocalBuilder DeclareLocal (Type localType)
 		{
 			return DeclareLocal (localType, false);
 		}
 
 
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		virtual LocalBuilder DeclareLocal (Type localType, bool pinned)
+		public virtual LocalBuilder DeclareLocal (Type localType, bool pinned)
 		{
 			if (localType == null)
 				throw new ArgumentNullException ("localType");
@@ -525,9 +513,7 @@ namespace System.Reflection.Emit {
 			code [code_len++] = arg;
 		}
 		
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public virtual void Emit (OpCode opcode, ConstructorInfo con)
 		{
 			int token = token_gen.GetToken (con);
@@ -673,21 +659,22 @@ namespace System.Reflection.Emit {
 		{
 			if (local == null)
 				throw new ArgumentNullException ("local");
+			if (local.ilgen != this)
+				throw new ArgumentException ("Trying to emit a local from a different ILGenerator.");
 
 			uint pos = local.position;
 			bool load_addr = false;
 			bool is_store = false;
+			bool is_load = false;
 			make_room (6);
-
-			if (local.ilgen != this)
-				throw new ArgumentException ("Trying to emit a local from a different ILGenerator.");
 
 			/* inline the code from ll_emit () to optimize il code size */
 			if (opcode.StackBehaviourPop == StackBehaviour.Pop1) {
 				cur_stack --;
 				is_store = true;
-			} else {
+			} else if (opcode.StackBehaviourPush == StackBehaviour.Push1 || opcode.StackBehaviourPush == StackBehaviour.Pushi) {
 				cur_stack++;
+				is_load = true;
 				if (cur_stack > max_stack)
 					max_stack = cur_stack;
 				load_addr = opcode.StackBehaviourPush == StackBehaviour.Pushi;
@@ -715,7 +702,7 @@ namespace System.Reflection.Emit {
 						code [code_len++] = (byte)(pos & 0xff);
 						code [code_len++] = (byte)((pos >> 8) & 0xff);
 					}
-				} else {
+				} else if (is_load) {
 					if (pos < 4) {
 						code [code_len++] = (byte)(0x06 + pos);
 					} else if (pos < 256) {
@@ -727,6 +714,8 @@ namespace System.Reflection.Emit {
 						code [code_len++] = (byte)(pos & 0xff);
 						code [code_len++] = (byte)((pos >> 8) & 0xff);
 					}
+				} else {
+					ll_emit (opcode);
 				}
 			}
 		}
@@ -736,11 +725,9 @@ namespace System.Reflection.Emit {
 			if (meth == null)
 				throw new ArgumentNullException ("meth");
 
-#if NET_2_0
 			// For compatibility with MS
 			if ((meth is DynamicMethod) && ((opcode == OpCodes.Ldftn) || (opcode == OpCodes.Ldvirtftn) || (opcode == OpCodes.Ldtoken)))
 				throw new ArgumentException ("Ldtoken, Ldftn and Ldvirtftn OpCodes cannot target DynamicMethods.");
-#endif
 
 			int token = token_gen.GetToken (meth);
 			make_room (6);
@@ -819,28 +806,24 @@ namespace System.Reflection.Emit {
 
 		public virtual void Emit (OpCode opcode, Type cls)
 		{
+			if (cls != null && cls.IsByRef)
+				throw new ArgumentException ("Cannot get TypeToken for a ByRef type.");
+
 			make_room (6);
 			ll_emit (opcode);
 			emit_int (token_gen.GetToken (cls));
 		}
 
 		[MonoLimitation ("vararg methods are not supported")]
-#if NET_2_0
-		public virtual
-#else
-		public
-#endif
-		void EmitCall (OpCode opcode, MethodInfo methodInfo, Type[] optionalParameterTypes)
+		public virtual void EmitCall (OpCode opcode, MethodInfo methodInfo, Type[] optionalParameterTypes)
 		{
 			if (methodInfo == null)
 				throw new ArgumentNullException ("methodInfo");
 			short value = opcode.Value;
 			if (!(value == OpCodes.Call.Value || value == OpCodes.Callvirt.Value))
 				throw new NotSupportedException ("Only Call and CallVirt are allowed");
-#if NET_2_0
 			if ((methodInfo.CallingConvention & CallingConventions.VarArgs)  == 0)
 				optionalParameterTypes = null;
-#endif
 			if (optionalParameterTypes != null){
 				if ((methodInfo.CallingConvention & CallingConventions.VarArgs)  == 0){
 					throw new InvalidOperationException ("Method is not VarArgs method and optional types were passed");
@@ -853,23 +836,13 @@ namespace System.Reflection.Emit {
 			Emit (opcode, methodInfo);
 		}
 
-#if NET_2_0
-		public virtual
-#else
-		public
-#endif
-		void EmitCalli (OpCode opcode, CallingConvention unmanagedCallConv, Type returnType, Type[] parameterTypes)
+		public virtual void EmitCalli (OpCode opcode, CallingConvention unmanagedCallConv, Type returnType, Type[] parameterTypes)
 		{
 			SignatureHelper helper = SignatureHelper.GetMethodSigHelper (module, 0, unmanagedCallConv, returnType, parameterTypes);
 			Emit (opcode, helper);
 		}
 
-#if NET_2_0
-		public virtual
-#else
-		public
-#endif
-		void EmitCalli (OpCode opcode, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, Type[] optionalParameterTypes)
+		public virtual void EmitCalli (OpCode opcode, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, Type[] optionalParameterTypes)
 		{
 			if (optionalParameterTypes != null)
 				throw new NotImplementedException ();
@@ -1007,12 +980,7 @@ namespace System.Reflection.Emit {
 		}
 
 		[MonoTODO("Not implemented")]
-#if NET_2_0
-		public virtual
-#else
-		public
-#endif
-		void UsingNamespace (String usingNamespace)
+		public virtual void UsingNamespace (String usingNamespace)
 		{
 			throw new NotImplementedException ();
 		}
@@ -1035,17 +1003,21 @@ namespace System.Reflection.Emit {
 			}
 		}
 
-		[Obsolete ("Use ILOffset")]
+		// Still used by symbolwriter
+		[Obsolete ("Use ILOffset", true)]
 		internal static int Mono_GetCurrentOffset (ILGenerator ig)
 		{
 			return ig.code_len;
-		}
-		
+		}	
+
 #if NET_4_0 || BOOTSTRAP_NET_4_0
-		public int ILOffset {
+		public
+#else
+		internal
+#endif
+		virtual int ILOffset {
 			get { return code_len; }
 		}
-#endif
 
 		void _ILGenerator.GetIDsOfNames ([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{

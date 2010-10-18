@@ -32,13 +32,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
 using System.Runtime.InteropServices;
 
 namespace System.Collections.Generic
 {
-#if NET_4_0
+#if NET_4_0 || BOOTSTRAP_NET_4_0
 	public interface IEnumerable<out T> : IEnumerable
 #else
 	public interface IEnumerable<T> : IEnumerable
@@ -47,4 +46,3 @@ namespace System.Collections.Generic
 		new IEnumerator<T> GetEnumerator ();
 	}
 }
-#endif

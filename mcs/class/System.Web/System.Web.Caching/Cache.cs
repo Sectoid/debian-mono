@@ -3,8 +3,9 @@
 //
 // Author(s):
 //  Lluis Sanchez (lluis@ximian.com)
+//  Marek Habersack <mhabersack@novell.com>
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2009 Novell, Inc (http://novell.com)
 //
 //
 // Permission is hereby granted, free of charge, to any person obtaining
@@ -29,10 +30,9 @@
 
 using System.Threading;
 using System.Collections;
-using System.Security.Permissions;
-#if NET_2_0
 using System.Collections.Generic;
-#endif
+using System.Security.Permissions;
+using System.Web.Configuration;
 
 namespace System.Web.Caching
 {
@@ -40,24 +40,93 @@ namespace System.Web.Caching
 	[AspNetHostingPermission (SecurityAction.LinkDemand, Level = AspNetHostingPermissionLevel.Minimal)]
 	public sealed class Cache: IEnumerable
 	{
-#if NET_2_0
-		Dictionary <string, CacheItem> cache;
-#else
-		Hashtable cache;
-#endif
-		Cache dependencyCache;
 		public static readonly DateTime NoAbsoluteExpiration = DateTime.MaxValue;
 		public static readonly TimeSpan NoSlidingExpiration = TimeSpan.Zero;
+
+		// cacheLock will be released in the code below without checking whether it was
+		// actually acquired. The API doesn't offer a reliable way to check whether the lock
+		// is being held by the current thread and since Mono does't implement CER
+		// (Constrained Execution Regions -
+		// http://msdn.microsoft.com/en-us/library/ms228973.aspx) currently, we have no
+		// reliable way of recording the information that the lock has been successfully
+		// acquired.
+		// It can happen that a Thread.Abort occurs while acquiring the lock and the lock
+		// isn't  actually held. In this case the attempt to release a lock will throw an
+		// exception. It's better than a race of setting a boolean flag  after acquiring the
+		// lock and then relying upon it here to release it - that may cause a deadlock
+		// should we fail to release the lock  which was successfully acquired but
+		// Thread.Abort happened right after that during the stloc instruction to set the
+		// boolean flag. Once CERs are supported we can use the boolean flag reliably.
+		ReaderWriterLockSlim cacheLock;
+		Dictionary <string, CacheItem> cache;
+		CacheItemPriorityQueue timedItems;
+		Timer expirationTimer;
+		long expirationTimerPeriod = 0;
+		Cache dependencyCache;
+		bool? disableExpiration;
+		long privateBytesLimit = -1;
+		long percentagePhysicalMemoryLimit = -1;
+		
+		bool DisableExpiration {
+			get {
+				if (disableExpiration == null) {
+					var cs = WebConfigurationManager.GetWebApplicationSection ("system.web/caching/cache") as CacheSection;
+					if (cs == null)
+						disableExpiration = false;
+					else
+						disableExpiration = (bool)cs.DisableExpiration;
+				}
+
+				return (bool)disableExpiration;
+			}
+		}
+
+		public long EffectivePrivateBytesLimit {
+			get {
+				if (privateBytesLimit == -1) {
+					var cs = WebConfigurationManager.GetWebApplicationSection ("system.web/caching/cache") as CacheSection;
+					if (cs == null)
+						privateBytesLimit = 0;
+					else
+						privateBytesLimit = cs.PrivateBytesLimit;
+
+					if (privateBytesLimit == 0) {
+						// http://blogs.msdn.com/tmarq/archive/2007/06/25/some-history-on-the-asp-net-cache-memory-limits.aspx
+						// TODO: calculate
+						privateBytesLimit = 734003200;
+					}
+				}
+
+				return privateBytesLimit;
+			}
+		}
+
+		public long EffectivePercentagePhysicalMemoryLimit {
+			get {
+				if (percentagePhysicalMemoryLimit == -1) {
+					var cs = WebConfigurationManager.GetWebApplicationSection ("system.web/caching/cache") as CacheSection;
+					if (cs == null)
+						percentagePhysicalMemoryLimit = 0;
+					else
+						percentagePhysicalMemoryLimit = cs.PercentagePhysicalMemoryUsedLimit;
+
+					if (percentagePhysicalMemoryLimit == 0) {
+						// http://blogs.msdn.com/tmarq/archive/2007/06/25/some-history-on-the-asp-net-cache-memory-limits.aspx
+						// TODO: calculate
+						percentagePhysicalMemoryLimit = 97;
+					}
+				}
+
+				return percentagePhysicalMemoryLimit;
+			}
+		}
 		
 		public Cache ()
 		{
-#if NET_2_0
-			cache = new Dictionary <string, CacheItem> ();
-#else
-			cache = new Hashtable ();
-#endif
+			cacheLock = new ReaderWriterLockSlim ();
+			cache = new Dictionary <string, CacheItem> (StringComparer.Ordinal);
 		}
-		
+
 		public int Count {
 			get { return cache.Count; }
 		}
@@ -66,82 +135,139 @@ namespace System.Web.Caching
 			get { return Get (key); }
 			set { Insert (key, value); }
 		}
+
+		CacheItem GetCacheItem (string key)
+		{
+			if (key == null)
+				return null;
+			
+			CacheItem ret;
+			if (cache.TryGetValue (key, out ret))
+				return ret;
+			return null;
+		}
+
+		CacheItem RemoveCacheItem (string key)
+		{
+			if (key == null)
+				return null;
+
+			CacheItem ret = null;
+			if (!cache.TryGetValue (key, out ret))
+				return null;
+			if (timedItems != null)
+				timedItems.OnItemDisable (ret);
+			
+			ret.Disabled = true;
+			cache.Remove (key);
+			
+			return ret;
+		}
 		
 		public object Add (string key, object value, CacheDependency dependencies, DateTime absoluteExpiration, TimeSpan slidingExpiration, CacheItemPriority priority, CacheItemRemovedCallback onRemoveCallback)
 		{
 			if (key == null)
 				throw new ArgumentNullException ("key");
+			
+			try {
+				cacheLock.EnterWriteLock ();
+				CacheItem it = GetCacheItem (key);
 
-			lock (cache) {
-				CacheItem it;
-
-#if NET_2_0
-				cache.TryGetValue (key, out it);
-#else
-				it = (CacheItem) cache [key];
-#endif
 				if (it != null)
 					return it.Value;
-				Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, priority, onRemoveCallback, false);
+				Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, priority, onRemoveCallback, null, false);
+			} finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitWriteLock ();
 			}
+				
 			return null;
 		}
 		
 		public object Get (string key)
 		{
-			lock (cache) {
-				CacheItem it;
-#if NET_2_0
-				if (!cache.TryGetValue (key, out it))
-					return null;
-#else
-				it = (CacheItem) cache [key];
+			try {
+				cacheLock.EnterUpgradeableReadLock ();
+				CacheItem it = GetCacheItem (key);
 				if (it == null)
 					return null;
-#endif
 				
 				if (it.Dependency != null && it.Dependency.HasChanged) {
-					Remove (it.Key, CacheItemRemovedReason.DependencyChanged, false);
+					try {
+						cacheLock.EnterWriteLock ();
+						if (!NeedsUpdate (it, CacheItemUpdateReason.DependencyChanged, false))
+							Remove (it.Key, CacheItemRemovedReason.DependencyChanged, false, true);
+					} finally {
+						// See comment at the top of the file, above cacheLock declaration
+						cacheLock.ExitWriteLock ();
+					}
+					
 					return null;
 				}
 
-				if (it.SlidingExpiration != NoSlidingExpiration) {
-					it.AbsoluteExpiration = DateTime.Now + it.SlidingExpiration;
-					// Cast to long is ok since we know that sliding expiration
-					// is less than 365 days (31536000000ms)
-					it.Timer.Change ((long)it.SlidingExpiration.TotalMilliseconds, Timeout.Infinite);
-				} else if (DateTime.Now >= it.AbsoluteExpiration) {
-					Remove (key, CacheItemRemovedReason.Expired, false);
-					return null;
-				}
+				if (!DisableExpiration) {
+					if (it.SlidingExpiration != NoSlidingExpiration) {
+						it.AbsoluteExpiration = DateTime.Now + it.SlidingExpiration;
+						// Cast to long is ok since we know that sliding expiration
+						// is less than 365 days (31536000000ms)
+						long remaining = (long)it.SlidingExpiration.TotalMilliseconds;
+						it.ExpiresAt = it.AbsoluteExpiration.Ticks;
+						
+						if (expirationTimer != null && (expirationTimerPeriod == 0 || expirationTimerPeriod > remaining)) {
+							expirationTimerPeriod = remaining;
+							expirationTimer.Change (expirationTimerPeriod, expirationTimerPeriod);
+						}
+					
+					} else if (DateTime.Now >= it.AbsoluteExpiration) {
+						try {
+							cacheLock.EnterWriteLock ();
+							if (!NeedsUpdate (it, CacheItemUpdateReason.Expired, false))
+								Remove (key, CacheItemRemovedReason.Expired, false, true);
+						} finally {
+							// See comment at the top of the file, above cacheLock declaration
+							cacheLock.ExitWriteLock ();
+						}
 
+						return null;
+					}
+				}
+				
 				return it.Value;
+			} finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitUpgradeableReadLock ();
 			}
 		}
 		
 		public void Insert (string key, object value)
 		{
-			Insert (key, value, null, NoAbsoluteExpiration, NoSlidingExpiration, CacheItemPriority.Normal, null, true);
+			Insert (key, value, null, NoAbsoluteExpiration, NoSlidingExpiration, CacheItemPriority.Normal, null, null, true);
 		}
 		
 		public void Insert (string key, object value, CacheDependency dependencies)
 		{
-			Insert (key, value, dependencies, NoAbsoluteExpiration, NoSlidingExpiration, CacheItemPriority.Normal, null, true);
+			Insert (key, value, dependencies, NoAbsoluteExpiration, NoSlidingExpiration, CacheItemPriority.Normal, null, null, true);
 		}
 		
 		public void Insert (string key, object value, CacheDependency dependencies, DateTime absoluteExpiration, TimeSpan slidingExpiration)
 		{
-			Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, CacheItemPriority.Normal, null, true);
+			Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, CacheItemPriority.Normal, null, null, true);
+		}
+
+		public void Insert (string key, object value, CacheDependency dependencies, DateTime absoluteExpiration, TimeSpan slidingExpiration,
+				    CacheItemUpdateCallback onUpdateCallback)
+		{
+			Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, CacheItemPriority.Normal, null, onUpdateCallback, true);
 		}
 		
 		public void Insert (string key, object value, CacheDependency dependencies, DateTime absoluteExpiration, TimeSpan slidingExpiration,
 				    CacheItemPriority priority, CacheItemRemovedCallback onRemoveCallback)
 		{
-			Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, CacheItemPriority.Normal, onRemoveCallback, true);
+			Insert (key, value, dependencies, absoluteExpiration, slidingExpiration, priority, onRemoveCallback, null, true);
 		}
 
 		void Insert (string key, object value, CacheDependency dependencies, DateTime absoluteExpiration, TimeSpan slidingExpiration,
-			     CacheItemPriority priority, CacheItemRemovedCallback onRemoveCallback, bool doLock)
+			     CacheItemPriority priority, CacheItemRemovedCallback onRemoveCallback, CacheItemUpdateCallback onUpdateCallback, bool doLock)
 		{
 			if (key == null)
 				throw new ArgumentNullException ("key");
@@ -163,44 +289,46 @@ namespace System.Web.Caching
 			}
 
 			ci.Priority = priority;
-			SetItemTimeout (ci, absoluteExpiration, slidingExpiration, onRemoveCallback, key, doLock);
+			SetItemTimeout (ci, absoluteExpiration, slidingExpiration, onRemoveCallback, onUpdateCallback, key, doLock);
 		}
 		
 		internal void SetItemTimeout (string key, DateTime absoluteExpiration, TimeSpan slidingExpiration, bool doLock)
 		{
-			CacheItem ci = null;
-
+			CacheItem ci = null;			
 			try {
 				if (doLock)
-					Monitor.Enter (cache);
-#if NET_2_0
-				cache.TryGetValue (key, out ci);
-#else
-				ci = (CacheItem) cache [key];
-#endif
-
+					cacheLock.EnterWriteLock ();
+				
+				ci = GetCacheItem (key);
 				if (ci != null)
-					SetItemTimeout (ci, absoluteExpiration, slidingExpiration, ci.OnRemoveCallback, null, false);
+					SetItemTimeout (ci, absoluteExpiration, slidingExpiration, ci.OnRemoveCallback, null, key, false);
 			} finally {
-				if (doLock)
-					Monitor.Exit (cache);
+				if (doLock) {
+					// See comment at the top of the file, above cacheLock declaration
+					cacheLock.ExitWriteLock ();
+				}
 			}
 		}
 
 		void SetItemTimeout (CacheItem ci, DateTime absoluteExpiration, TimeSpan slidingExpiration, CacheItemRemovedCallback onRemoveCallback,
-				     string key, bool doLock)
+				     CacheItemUpdateCallback onUpdateCallback, string key, bool doLock)
 		{
-			ci.SlidingExpiration = slidingExpiration;
-			if (slidingExpiration != NoSlidingExpiration)
-				ci.AbsoluteExpiration = DateTime.Now + slidingExpiration;
-			else
-				ci.AbsoluteExpiration = absoluteExpiration;			
+			bool disableExpiration = DisableExpiration;
 
+			if (!disableExpiration) {
+				ci.SlidingExpiration = slidingExpiration;
+				if (slidingExpiration != NoSlidingExpiration)
+					ci.AbsoluteExpiration = DateTime.Now + slidingExpiration;
+				else
+					ci.AbsoluteExpiration = absoluteExpiration;			
+			}
+			
 			ci.OnRemoveCallback = onRemoveCallback;
+			ci.OnUpdateCallback = onUpdateCallback;
 			
 			try {
 				if (doLock)
-					Monitor.Enter (cache);
+					cacheLock.EnterWriteLock ();
 				
 				if (ci.Timer != null) {
 					ci.Timer.Dispose ();
@@ -211,43 +339,60 @@ namespace System.Web.Caching
 					cache [key] = ci;
 				
 				ci.LastChange = DateTime.Now;
-				if (ci.AbsoluteExpiration != NoAbsoluteExpiration) {
-					long remaining = Math.Max (0, (long)(ci.AbsoluteExpiration - DateTime.Now).TotalMilliseconds);
-					if (remaining > 4294967294L)
-						// Maximum due time for timer
-						// Item will expire properly anyway, as the timer will be
-						// rescheduled for the item's expiration time once that item is
-						// bubbled to the top of the priority queue.
-						remaining = 4294967294L;
-					ci.Timer = new Timer (new TimerCallback (ItemExpired), ci, remaining, Timeout.Infinite);
-				}
+				if (!disableExpiration && ci.AbsoluteExpiration != NoAbsoluteExpiration)
+					EnqueueTimedItem (ci);
 			} finally {
-				if (doLock)
-					Monitor.Exit (cache);
+				if (doLock) {
+					// See comment at the top of the file, above cacheLock declaration
+					cacheLock.ExitWriteLock ();
+				}
 			}
 		}
-		
+
+		// MUST be called with cache lock held
+		void EnqueueTimedItem (CacheItem item)
+		{
+			long remaining = Math.Max (0, (long)(item.AbsoluteExpiration - DateTime.Now).TotalMilliseconds);
+			item.ExpiresAt = item.AbsoluteExpiration.Ticks;
+			
+			if (timedItems == null)
+				timedItems = new CacheItemPriorityQueue ();
+			
+			if (remaining > 4294967294)
+				// Maximum due time for timer
+				// Item will expire properly anyway, as the timer will be
+				// rescheduled for the item's expiration time once that item is
+				// bubbled to the top of the priority queue.
+				expirationTimerPeriod = 4294967294;
+			else
+				expirationTimerPeriod = remaining;
+
+			if (expirationTimer == null)
+				expirationTimer = new Timer (new TimerCallback (ExpireItems), null, expirationTimerPeriod, expirationTimerPeriod);
+			else
+				expirationTimer.Change (expirationTimerPeriod, expirationTimerPeriod);
+			
+			timedItems.Enqueue (item);
+		}
+
 		public object Remove (string key)
 		{
-			return Remove (key, CacheItemRemovedReason.Removed, true);
+			return Remove (key, CacheItemRemovedReason.Removed, true, true);
 		}
 		
-		object Remove (string key, CacheItemRemovedReason reason, bool doLock)
+		object Remove (string key, CacheItemRemovedReason reason, bool doLock, bool invokeCallback)
 		{
 			CacheItem it = null;
-
 			try {
 				if (doLock)
-					Monitor.Enter (cache);
-#if NET_2_0
-				cache.TryGetValue (key, out it);
-#else
-				it = (CacheItem) cache [key];
-#endif
-				cache.Remove (key);
+					cacheLock.EnterWriteLock ();
+				
+				it = RemoveCacheItem (key);
 			} finally {
-				if (doLock)
-					Monitor.Exit (cache);
+				if (doLock) {
+					// See comment at the top of the file, above cacheLock declaration
+					cacheLock.ExitWriteLock ();
+				}
 			}
 
 			if (it != null) {
@@ -256,20 +401,25 @@ namespace System.Web.Caching
 					t.Dispose ();
 				
 				if (it.Dependency != null) {
-#if NET_2_0
 					it.Dependency.SetCache (null);
-#endif
 					it.Dependency.DependencyChanged -= new EventHandler (OnDependencyChanged);
 					it.Dependency.Dispose ();
 				}
-				if (it.OnRemoveCallback != null) {
+				if (invokeCallback && it.OnRemoveCallback != null) {
 					try {
 						it.OnRemoveCallback (key, it.Value, reason);
 					} catch {
 						//TODO: anything to be done here?
 					}
 				}
-				return it.Value;
+				object ret = it.Value;
+				it.Value = null;
+				it.Key = null;
+				it.Dependency = null;
+				it.OnRemoveCallback = null;
+				it.OnUpdateCallback = null;
+
+				return ret;
 			} else
 				return null;
 		}
@@ -279,15 +429,13 @@ namespace System.Web.Caching
 		internal void InvokePrivateCallbacks ()
 		{
 			CacheItemRemovedReason reason = CacheItemRemovedReason.Removed;
-			lock (cache) {
+			try {
+				cacheLock.EnterReadLock ();
 				foreach (string key in cache.Keys) {
-					CacheItem item;
-#if NET_2_0
-					cache.TryGetValue (key, out item);
-#else
-					item = (CacheItem) cache [key];
-#endif
-
+					CacheItem item = GetCacheItem (key);
+					if (item.Disabled)
+						continue;
+					
 					if (item != null && item.OnRemoveCallback != null) {
 						try {
 							item.OnRemoveCallback (key, item.Value, reason);
@@ -296,20 +444,24 @@ namespace System.Web.Caching
 						}
 					}
 				}
+			}  finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitReadLock ();
 			}
 		}
 
 		public IDictionaryEnumerator GetEnumerator ()
 		{
 			ArrayList list = new ArrayList ();
-			lock (cache) {
-#if NET_2_0
+			try {
+				cacheLock.EnterReadLock ();
 				foreach (CacheItem it in cache.Values)
 					list.Add (it);
-#else
-				list.AddRange (cache.Values);
-#endif
+			} finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitReadLock ();
 			}
+			
 			return new CacheItemEnumerator (list);
 		}
 		
@@ -322,56 +474,130 @@ namespace System.Web.Caching
 		{
 			CheckDependencies ();
 		}
+
+		bool NeedsUpdate (CacheItem item, CacheItemUpdateReason reason, bool needLock)
+		{
+			try {
+				if (needLock)
+					cacheLock.EnterWriteLock ();
+				
+				if (item == null || item.OnUpdateCallback == null)
+					return false;
+
+				object expensiveObject;
+				CacheDependency dependency;
+				DateTime absoluteExpiration;
+				TimeSpan slidingExpiration;
+				string key = item.Key;
+				CacheItemUpdateCallback updateCB = item.OnUpdateCallback;
+				
+				updateCB (key, reason, out expensiveObject, out dependency, out absoluteExpiration, out slidingExpiration);
+				if (expensiveObject == null)
+					return false;
+
+				CacheItemPriority priority = item.Priority;
+				CacheItemRemovedCallback removeCB = item.OnRemoveCallback;
+				CacheItemRemovedReason whyRemoved;
+
+				switch (reason) {
+					case CacheItemUpdateReason.Expired:
+						whyRemoved = CacheItemRemovedReason.Expired;
+						break;
+
+					case CacheItemUpdateReason.DependencyChanged:
+						whyRemoved = CacheItemRemovedReason.DependencyChanged;
+						break;
+
+					default:
+						whyRemoved = CacheItemRemovedReason.Removed;
+						break;
+				}
+				
+				Remove (key, whyRemoved, false, false);
+				Insert (key, expensiveObject, dependency, absoluteExpiration, slidingExpiration, priority, removeCB, updateCB, false);
+				
+				return true;
+			} catch (Exception) {
+				return false;
+			} finally {
+				if (needLock) {
+					// See comment at the top of the file, above cacheLock declaration
+					cacheLock.ExitWriteLock ();
+				}
+			}
+		}
 		
-		void ItemExpired(object cacheItem) {
-			CacheItem ci = (CacheItem)cacheItem;
-			long remaining = Math.Max (0, (long)(ci.AbsoluteExpiration - DateTime.Now).TotalMilliseconds);
-			if (remaining > 4294967294L)
-				remaining = 4294967294L;
+		void ExpireItems (object data)
+		{
+			DateTime now = DateTime.Now;
+			CacheItem item = timedItems.Peek ();
 
-			if (remaining <= 0) {
-				ci.Timer.Dispose();
-				ci.Timer = null;
+			try {
+				cacheLock.EnterWriteLock ();
 
-				Remove (ci.Key, CacheItemRemovedReason.Expired, true);
+				while (item != null) {
+					if (!item.Disabled && item.ExpiresAt > now.Ticks)
+						break;
+					if (item.Disabled) {
+						item = timedItems.Dequeue ();
+						continue;
+					}
+
+					item = timedItems.Dequeue ();
+					if (!NeedsUpdate (item, CacheItemUpdateReason.Expired, false))
+						Remove (item.Key, CacheItemRemovedReason.Expired, false, true);
+					item = timedItems.Peek ();
+				}
+			} finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitWriteLock ();
 			}
 
-			ci.Timer.Change (remaining, Timeout.Infinite);
+			if (item != null) {
+				long remaining = Math.Max (0, (long)(item.AbsoluteExpiration - now).TotalMilliseconds);
+				if (expirationTimerPeriod != remaining && remaining > 0) {
+					expirationTimerPeriod = remaining;
+					expirationTimer.Change (expirationTimerPeriod, expirationTimerPeriod);
+				}
+				return;
+			}
+
+			expirationTimer.Change (Timeout.Infinite, Timeout.Infinite);
+			expirationTimerPeriod = 0;
 		}
 		
 		internal void CheckDependencies ()
 		{
-			ArrayList list;
-			lock (cache) {
-				list = new ArrayList ();
-#if NET_2_0
+			IList list;
+			try {
+				cacheLock.EnterWriteLock ();
+				list = new List <CacheItem> ();
 				foreach (CacheItem it in cache.Values)
 					list.Add (it);
-#else
-				list.AddRange (cache.Values);
-#endif
 			
 				foreach (CacheItem it in list) {
-					if (it.Dependency != null && it.Dependency.HasChanged)
-						Remove (it.Key, CacheItemRemovedReason.DependencyChanged, false);
+					if (it.Dependency != null && it.Dependency.HasChanged && !NeedsUpdate (it, CacheItemUpdateReason.DependencyChanged, false))
+						Remove (it.Key, CacheItemRemovedReason.DependencyChanged, false, true);
 				}
+			} finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitWriteLock ();
 			}
 		}
 		
 		internal DateTime GetKeyLastChange (string key)
 		{
-			lock (cache) {
-				CacheItem it;
-#if NET_2_0
-				if (!cache.TryGetValue (key, out it))
-					return DateTime.MaxValue;
-#else
-				it = (CacheItem) cache [key];
-#endif
+			try {
+				cacheLock.EnterReadLock ();
+				CacheItem it = GetCacheItem (key);
+
 				if (it == null)
 					return DateTime.MaxValue;
 				
 				return it.LastChange;
+			} finally {
+				// See comment at the top of the file, above cacheLock declaration
+				cacheLock.ExitReadLock ();
 			}
 		}
 
@@ -383,64 +609,6 @@ namespace System.Web.Caching
 				return dependencyCache;
 			}
 			set { dependencyCache = value; }
-		}
-	}
-
-	sealed class CacheItem
-	{
-		public object Value;
-		public string Key;
-		public CacheDependency Dependency;
-		public DateTime AbsoluteExpiration;
-		public TimeSpan SlidingExpiration;
-		public CacheItemPriority Priority;
-		public CacheItemRemovedCallback OnRemoveCallback;
-		public DateTime LastChange;
-		public Timer Timer;
-	}
-		
-	sealed class CacheItemEnumerator: IDictionaryEnumerator
-	{
-		ArrayList list;
-		int pos = -1;
-		
-		public CacheItemEnumerator (ArrayList list)
-		{
-			this.list = list;
-		}
-		
-		CacheItem Item {
-			get {
-				if (pos < 0 || pos >= list.Count)
-					throw new InvalidOperationException ();
-				return (CacheItem) list [pos];
-			}
-		}
-		
-		public DictionaryEntry Entry {
-			get { return new DictionaryEntry (Item.Key, Item.Value); }
-		}
-		
-		public object Key {
-			get { return Item.Key; }
-		}
-		
-		public object Value {
-			get { return Item.Value; }
-		}
-		
-		public object Current {
-			get { return Entry; }
-		}
-		
-		public bool MoveNext ()
-		{
-			return (++pos < list.Count);
-		}
-		
-		public void Reset ()
-		{
-			pos = -1;
 		}
 	}
 }

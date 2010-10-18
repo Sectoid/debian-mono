@@ -1,3 +1,81 @@
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Get rid of a possible (although unlikely) race condition
+	when acquiring locks
+
+	The patch removes a small race condition where a boolean flag is
+	set after acquiring a lock to indicate to code executing in the
+	finally {} block that it should release the lock. The boolean
+	variable is now removed and the lock is released unconditionally.
+	It carries a potential to throw an exception when the lock is not
+	held, but it's better than to fail to release it and lead the
+	application to a deadlock.
+
+2010-08-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #633756. Children processed as properties
+	must be instantiated before using.
+
+	When a server-side control processes its children (in the markup)
+	as properties, it needs to instantiate an object of the property
+	type and assign it to the appropriate property of the control.
+	Failing to do so will cause markup which references properties to
+	fail in certain cases (for instance when the control's property
+	type is a class and it is not instantiated by the control's
+	constructor).
+
+2010-08-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #628683. Do not ignore whitespace between
+	<%: %> blocks
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] Added support for setting default base types for
+	various kinds of resources.
+
+	ASP.NET 4.0 allows one to set base types for Pages, User Controls,
+	Application and PageParserFilter from the pre-application start
+	method(s). This commit implements support for this mechanism.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	* TemplateControlCompiler.cs: StaticPartialCachingControl
+	instantiation now uses the constructor overloads which accept
+	sqlDependency (2.0+) and providerName (4.0+) *
+	UserControlCompiler.cs: added code to output
+	PartialCachingAttribute which accepts sqlDependency (2.0+) and
+	ProviderName (4.0+) arguments * PartialCachingAttribute.cs added
+	the 4.0 ProviderName property * StaticPartialCachingControl.cs:
+	implemented two missing constructors (one 2.0 and the other 4.0)
+	Added a missing BuildCachedControl overload which accepts
+	providerName (4.0) * TemplateParser.cs: factored out OutputCache
+	attribute processing to a separate internal virtual method. *
+	UserControlParser.cs: added support for the ProviderName attribute
+	of the OutputCache directive.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	* BuildProvider.cs: factored out build provider type retrieval
+	code to a separate method * BuildProviderCollection.cs: factored
+	out build provider type retrieval code to a separate method *
+	BuildManagerDirectoryBuilder.cs: system.web/compilation section is
+	not an application section - it can be defined in web.config on
+	any level.
+
+2010-07-16  Marek Habersack  <mhabersack@novell.com>
+
+	* FolderLevelBuildProviderAppliesTo.cs,
+	FolderLevelBuildProviderAppliesToAttribute.cs: added
+
+2010-07-02  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: added support for ClientIDMode 4.0
+	property
+
+	* PageCompiler.cs, UserControlCompiler.cs: AddStatementsToInitTop
+	must call the base implementation.
+
 2010-06-15  Marek Habersack  <mhabersack@novell.com>
 
 	* ResourceExpressionBuilder.cs: cast the return value of
@@ -5,6 +83,24 @@
 
 	* TemplateControlCompiler.cs: made CreateConvertToCall internal
 	static, so that it can be used from ResourceExpressionBuilder
+
+2010-06-05  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: expression evaluation results are
+	wrapped in a Convert.ConvertTo* call or a typecast.
+
+	* RouteValueExpressionBuilder.cs: implemented
+
+	* RouteUrlExpressionBuilder.cs: added missing custom attributes
+
+2010-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: added new virtual method, 
+	AddStatementsToInitMethodBottom and renamed
+	AddStatementsToInitMethod to AddStatementsToInitMethodTop.
+
+	* PageCompiler.cs: code to set Meta{Description,Keywords}
+	properties, if present.
 
 2010-05-19  Marek Habersack  <mhabersack@novell.com>
 
@@ -18,6 +114,37 @@
 	* AspGenerator.cs, TagAttributes.cs: use IDictionary instead of
 	Hashtable
 
+2010-05-17  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildProvider.cs: implemented a 4.0 method RegisterBuildProvider
+
+	* BuildManager.cs: separated dynamically registered assemblies
+	store from the referenced assemblies cache.
+
+2010-05-16  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: do not cache referenced assemblies until it's
+	safe.
+
+2010-05-15  Marek Habersack  <mhabersack@novell.com>
+
+	* RouteValueExpressionBuilder.cs: added
+
+	* RouteUrlExpressionBuilder.cs: implemented
+
+2010-05-12  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: implemented a 4.0 feature - pre-application
+	start methods.
+
+2010-05-07  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: implemented 4.0 methods {Create,Read}CacheFile.
+	Fixed signature of the GetVirtualPathDependencies method.
+	Implemented 4.0 methods GetGlobalAsaxType, AddReferencedAssembly,
+	GetObjectFactory, GetCachedBuildDependencySet and properties
+	BatchCompilationEnabled, TargetFramework
+
 2010-04-29  Marek Habersack  <mhabersack@novell.com>
 
 	* AppResourcesAssemblyBuilder.cs: when running on windows,
@@ -29,12 +156,20 @@
 	* PageCompiler.cs: if EnableViewStateMac is set in the page
 	source, generate relevant code.
 
+2010-03-17  Marek Habersack  <mhabersack@novell.com>
+
+	* AspGenerator.cs, AspParser.cs, TemplateControlCompiler.cs, TagType.cs, CodeRenderBuilder.cs: implemented the new <%: %> 4.0 html-encoded code render expression.
+
 2010-03-06  Marek Habersack  <mhabersack@novell.com>
 
 	* TemplateControlCompiler.cs: AssignPropertyForResources localizes
 	a property even if the Localized attribute is absent. If the
 	attribute is present, it checks its IsLocalizable property to
 	decide if localization should be performed. Fixes bug #585933
+
+2010-03-04  Marek Habersack  <mhabersack@novell.com>
+
+	* BuildManager.cs: do less work in the static constructor
 
 2010-02-27  Marek Habersack  <mhabersack@novell.com>
 
@@ -45,7 +180,10 @@
 
 	* TemplateControlCompiler.cs: GetConverterForMember now completely
 	relies on TypeDescriptor and description providers to retrieve
-	converter for a property (2.0+). Fixes bug #578586
+	converter for a property. Fixes bug #578586
+	If UrlPropertyAttribute is found for a member,
+	GetExpressionFromString uses the preconverted value, if any, as
+	parameter to HandleUrlProperty.
 
 2010-02-11  Marek Habersack  <mhabersack@novell.com>
 
@@ -102,6 +240,14 @@
 	* AspGenerator.cs: AspParser inner parser constructor takes 5
 	parameters now - accepts character offset of the current outer
 	parser's position.
+
+2009-12-08  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlCompiler.cs: GetConverterForMember looks up
+	member type converters using type description providers in
+	addition to custom attributes.
+	Result of GenerateInstance isn't cast to the target type if the
+	type isn't public.
 
 2009-11-13  Marek Habersack  <mhabersack@novell.com>
 

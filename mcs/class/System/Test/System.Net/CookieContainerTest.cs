@@ -463,9 +463,7 @@ namespace MonoTests.System.Net {
 			cookie.CommentUri = new Uri ("http://localhost");
 			cookie.Discard = true;
 			cookie.Expires = DateTime.MaxValue;
-#if NET_2_0
 			cookie.HttpOnly = true;
-#endif
 			cookie.Secure = true;
 			// except version
 			cookie.Version = 1;
@@ -488,9 +486,7 @@ namespace MonoTests.System.Net {
 			Assert.IsNull (cookie.CommentUri, "Clone-CommentUri");
 			Assert.IsFalse (cookie.Discard, "Clone-Discard");
 			Assert.AreEqual (DateTime.MinValue, cookie.Expires, "Clone-Expires");
-#if NET_2_0
 			Assert.IsFalse (cookie.HttpOnly, "Clone-HttpOnly");
-#endif
 			Assert.IsFalse (cookie.Secure, "Clone-Secure");
 			// except version
 			Assert.AreEqual (1, cookie.Version, "Clone-Version");
@@ -1119,6 +1115,7 @@ namespace MonoTests.System.Net {
 		}
 
 		[Test]
+		//		[Category ("NotWorking")]
 		public void SetCookies ()
 		{
 			Uri uri = new Uri ("http://dev.test.mono.com/Whatever/Do/You");
@@ -1423,9 +1420,6 @@ namespace MonoTests.System.Net {
 		}
 
 		[Test]
-#if !NET_2_0
-		[Category ("NotWorking")] // old 1.x behavior is not implemented
-#endif
 		public void SetCookies_DomainMatchesHost ()
 		{
 			CookieContainer cc = new CookieContainer ();
@@ -1579,12 +1573,8 @@ namespace MonoTests.System.Net {
 			Cookie cookie = new Cookie ("name", "value")
 			{
 				Domain = ".example.com",
-#if NET_2_0
 				Expires = new DateTime (2015, 1, 1, 0, 0, 0, DateTimeKind.Utc),
 				HttpOnly = true,
-#else
-				Expires = new DateTime (2015, 1, 1, 0, 0, 0).ToUniversalTime (),
-#endif
 				Secure = true,
 			};
 
@@ -1601,9 +1591,7 @@ namespace MonoTests.System.Net {
 			Assert.AreEqual (cookie.Discard, cloned.Discard, "#A5");
 			Assert.AreEqual (cookie.Expired, cloned.Expired, "#A6");
 			Assert.AreEqual (cookie.Expires.ToUniversalTime (), cloned.Expires.ToUniversalTime (), "#A7");
-#if NET_2_0
 			Assert.AreEqual (cookie.HttpOnly, cloned.HttpOnly, "#A8");
-#endif
 			Assert.AreEqual (cookie.Name, cloned.Name, "#A9");
 			Assert.AreEqual (cookie.Path, cloned.Path, "#A10");
 			Assert.AreEqual (cookie.Port, cloned.Port, "#A11");
@@ -1618,12 +1606,8 @@ namespace MonoTests.System.Net {
 			Cookie cookie = new Cookie ("name", "value")
 			{
 				Domain = ".example.com",
-#if NET_2_0
 				Expires = new DateTime (2015, 1, 1, 0, 0, 0, DateTimeKind.Utc),
 				HttpOnly = true,
-#else
-				Expires = new DateTime (2015, 1, 1, 0, 0, 0).ToUniversalTime (),
-#endif
 				Secure = true,
 			};
 
@@ -1640,9 +1624,7 @@ namespace MonoTests.System.Net {
 			Assert.AreEqual (cookie.Discard, cloned.Discard, "#A5");
 			Assert.AreEqual (cookie.Expired, cloned.Expired, "#A6");
 			Assert.AreEqual (cookie.Expires.ToUniversalTime (), cloned.Expires.ToUniversalTime (), "#A7");
-#if NET_2_0
 			Assert.AreEqual (cookie.HttpOnly, cloned.HttpOnly, "#A8");
-#endif
 			Assert.AreEqual (cookie.Name, cloned.Name, "#A9");
 			Assert.AreEqual (cookie.Path, "", "#A10");
 			Assert.AreEqual (cloned.Path, "/path/file", "#A11");

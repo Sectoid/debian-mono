@@ -37,8 +37,8 @@ using System.Runtime.InteropServices;
 namespace System
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
+#if !NET_4_0
 	[Obsolete ("this type is obsoleted in 2.0 profile")]
 #endif
 	public class ContextMarshalException : SystemException

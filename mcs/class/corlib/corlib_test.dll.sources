@@ -10,6 +10,7 @@ System/ApplicationIdentityTest.cs
 System/ApplicationIdTest.cs
 System/ArgumentExceptionTest.cs
 System/ArrayTest.cs
+System/ArraySortArgChecks.cs
 System/ArraySegmentTest.cs
 System/AttributeTest.cs
 System/BadImageFormatExceptionTest.cs
@@ -59,6 +60,14 @@ System.Diagnostics/DebugTest.cs
 System.Diagnostics/StackFrameTest.cs
 System.Diagnostics/StackTraceTest.cs
 System.Diagnostics/TextWriterTraceListenerTest.cs
+System.Diagnostics.Contracts/ContractAssertTest.cs
+System.Diagnostics.Contracts/ContractAssumeTest.cs
+System.Diagnostics.Contracts/ContractCollectionMethodsTest.cs
+System.Diagnostics.Contracts/ContractHelperTest.cs
+System.Diagnostics.Contracts/ContractMarkerMethodsTest.cs
+System.Diagnostics.Contracts/ContractMustUseRewriterTest.cs
+System.Diagnostics.Contracts/Helpers/RunAgainstReferenceAttribute.cs
+System.Diagnostics.Contracts/Helpers/TestContractBase.cs
 System/DoubleFormatterTest.cs
 System/DoubleTest.cs
 System/EnumTest.cs
@@ -158,6 +167,7 @@ System.Resources/ResourceManagerTest.cs
 System.Resources/ResourceReaderTest.cs
 System.Resources/ResourceSetTest.cs
 System.Resources/ResourceWriterTest.cs
+System.Runtime.CompilerServices/ConditionalWeakTableTest.cs
 System.Runtime.CompilerServices/InternalsVisibleToAttributeTest.cs
 System.Runtime.CompilerServices/RuntimeHelpersTest.cs
 System.Runtime.CompilerServices/RuntimeWrappedExceptionTest.cs
@@ -174,6 +184,8 @@ System.Runtime.Remoting.Contexts/SynchronizationAttributeTest.cs
 System.Runtime.Remoting.Metadata.W3cXsd2001/SoapHexBinaryTest.cs
 System.Runtime.Serialization/FormatterServicesTests.cs
 System.Runtime.Serialization/ObjectIDGeneratorTests.cs
+System.Runtime.Serialization/SerializationBinderTest.cs
+System.Runtime.Serialization/SerializationInfoTest.cs
 System.Runtime.Serialization/SerializationTest.cs
 System.Runtime.Serialization/SerializationTest2.cs
 System.Runtime.Serialization/SerializationCallbackTest.cs
@@ -182,6 +194,7 @@ System.Runtime.Serialization/ObjectManagerTest.cs
 System.Runtime.Serialization.Formatters.Binary/BinaryFormatterTest.cs
 System.Runtime.Versioning/ResourceConsumptionAttributeTest.cs
 System.Runtime.Versioning/ResourceExposureAttributeTest.cs
+System.Runtime.Versioning/TargetFrameworkAttributeTest.cs
 System.Runtime.Versioning/VersioningHelperTest.cs
 System/SByteTest.cs
 System.Security/CodeAccessPermissionTest.cs
@@ -418,10 +431,12 @@ System.Threading/ExecutionContextCas.cs
 System.Threading/MutexCas.cs
 System.Threading/ThreadCas.cs
 System.Threading/WaitHandleCas.cs
-
 System.Threading.Tasks/TaskTest.cs
+System.Threading.Tasks/TaskFactoryTest.cs
 System.Threading.Tasks/FutureTests.cs
 System.Threading.Tasks/TaskCompletionSourceTests.cs
+System.Threading.Tasks/ParallelTestHelper.cs
+System.Threading.Tasks/ParallelTests.cs
 System.Collections.Concurrent/ParallelConcurrentStackTests.cs
 System.Collections.Concurrent/ConcurrentSkipListTests.cs
 ../System.Collections.Concurrent/ConcurrentSkipList.cs
@@ -434,8 +449,8 @@ System.Collections.Concurrent/ParallelConcurrentQueueTests.cs
 System.Threading/CancellationTokenTests.cs
 System.Threading/ManualResetEventSlimTests.cs
 System.Threading/SemaphoreSlimTests.cs
-System.Threading/ParallelTests.cs
 System.Threading/CountdownEventTests.cs
 System/AggregateExceptionTests.cs
-System.Threading/ThreadLazyTests.cs
-System.Threading/ParallelTestHelper.cs
+System.Threading/ThreadLocalTests.cs
+System.Threading/SpinLockTests.cs
+

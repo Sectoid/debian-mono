@@ -353,7 +353,6 @@ namespace MonoTests.System.Xml
 		}
 
 		[Test]
-		[Category ("NotWorking")]
 		public void Create_XmlWriter2 ()
 		{
 			MemoryStream ms = new MemoryStream ();
@@ -368,10 +367,12 @@ namespace MonoTests.System.Xml
 			ms = new MemoryStream ();
 			settings = new XmlWriterSettings ();
 			settings.CloseOutput = true;
+			settings.OmitXmlDeclaration = true;
 			xw = XmlWriter.Create (ms, settings);
 			writer = XmlWriter.Create (xw, new XmlWriterSettings ());
 			Assert.IsNotNull (writer.Settings, "#B1");
 			Assert.IsTrue (writer.Settings.CloseOutput, "#B2");
+			Assert.IsTrue (writer.Settings.OmitXmlDeclaration, "#B3");
 			writer.Close ();
 			Assert.IsFalse (ms.CanWrite, "#B3");
 		}
@@ -574,6 +575,209 @@ namespace MonoTests.System.Xml
 			xw.Close ();
 			AssertType.AreEqual ("<?xml version='1.0' encoding='utf-16'?><foo></foo>".Replace ('\'', '"'), sw.ToString ());
 		}
+
+		//          |       |      |returns the same reader
+		// source   |wrapper|result| |checks state (and err)
+		// overrides|setting|      | | |test name
+		// ---------+----------------------------
+		//      -   | -(Doc)| Doc  | |x|0:CreateNOCL
+		//          | Auto  | Doc  | |x|1:CreateNOCLSettingsCLAuto
+		//          | Doc   | Doc  | |x|2:CreateNOCLSettingsCLDoc
+		//          | Frag  | Doc  | |x|3:CreateNOCLSettingsCLFrag
+		// Auto     | -(Doc)| Doc  | | |4:CreateCLAuto
+		//          | Auto  | Auto |=|x|5:CreateCLAutoSettingsCLAuto
+		//          | Doc   | Doc  | | |6:CreateCLAutoSettingsCLDoc
+		//          | Frag  | Frag | | |7:CreateCLAutoSettingsCLFrag
+		// Document | -(Doc)| Doc  |=|x|8:CreateCLDoc
+		//          | Auto  | Doc  |=|x|9:CreateCLDocSettingsCLAuto
+		//          | Doc   | Doc  |=|x|A:CreateCLDocSettingsCLDoc
+		//          | Frag  | Frag | | |B:CreateCLDocSettingsCLFrag
+		// Fragment | -(Doc)| Doc  | | |C:CreateCLFrag
+		//          | Auto  | Frag |=|x|D:CreateCLFragSettingsCLAuto
+		//          | Doc   | Doc  | | |E:CreateCLFragSettingsCLDoc
+		//          | Frag  | Frag |=|x|F:CreateCLFragSettingsCLFrag
+		//
+		// What we can see from above:
+		// - default ConformanceLevel is Document. (0 4 8 C)
+		// - If wrapper is Auto, it delegates to source. (1 5 9 D)
+		//   - Auto can happen only if both inputs are Auto (5)
+		// - If wrapper is Frag, all but default becomes Frag (7 B F)
+		//   - with default it becomes Document (3)
+		//     So a default value is likely stronger(!)
+		// - Basically, when there is no difference between the wrapper
+		//   and the source settings, it does not create wrapper.
+
+		[Test]
+		public void CreateCLAuto ()
+		{
+			ConformanceLevelAuto cl = new ConformanceLevelAuto ();
+			XmlWriter xw = XmlWriter.Create (cl);
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateCLDoc ()
+		{
+			ConformanceLevelDocument cl = new ConformanceLevelDocument ();
+			XmlWriter xw = XmlWriter.Create (cl);
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreEqual (xw, cl, "#2"); // equal
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		public void CreateCLFrag ()
+		{
+			ConformanceLevelFragment cl = new ConformanceLevelFragment ();
+			XmlWriter xw = XmlWriter.Create (cl);
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateNOCL ()
+		{
+			InvalidWriteState cl = new InvalidWriteState ();
+			Assert.IsNull (cl.Settings, "#0");
+			XmlWriter xw = XmlWriter.Create (cl);
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateNOCLSettingsCLAuto ()
+		{
+			InvalidWriteState cl = new InvalidWriteState ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Auto });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateNOCLSettingsCLDoc ()
+		{
+			InvalidWriteState cl = new InvalidWriteState ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Document });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateNOCLSettingsCLFrag ()
+		{
+			InvalidWriteState cl = new InvalidWriteState ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Fragment });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateCLAutoSettingsCLAuto ()
+		{
+			ConformanceLevelAuto cl = new ConformanceLevelAuto ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Auto });
+			Assert.AreEqual (ConformanceLevel.Auto, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreEqual (xw, cl, "#2"); // equal
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		public void CreateCLAutoSettingsCLDoc ()
+		{
+			ConformanceLevelAuto cl = new ConformanceLevelAuto ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Document });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		public void CreateCLAutoSettingsCLFrag ()
+		{
+			ConformanceLevelAuto cl = new ConformanceLevelAuto ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Fragment });
+			Assert.AreEqual (ConformanceLevel.Fragment, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateCLDocSettingsCLAuto ()
+		{
+			ConformanceLevelDocument cl = new ConformanceLevelDocument ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Auto });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreEqual (xw, cl, "#2"); // equal
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateCLDocSettingsCLDoc ()
+		{
+			ConformanceLevelDocument cl = new ConformanceLevelDocument ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Document });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreEqual (xw, cl, "#2"); // equal
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		public void CreateCLDocSettingsCLFrag ()
+		{
+			ConformanceLevelDocument cl = new ConformanceLevelDocument ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Fragment });
+			Assert.AreEqual (ConformanceLevel.Fragment, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateCLFragSettingsCLAuto ()
+		{
+			ConformanceLevelFragment cl = new ConformanceLevelFragment ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Auto });
+			Assert.AreEqual (ConformanceLevel.Fragment, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreEqual (xw, cl, "#2"); // equal
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		public void CreateCLFragSettingsCLDoc ()
+		{
+			ConformanceLevelFragment cl = new ConformanceLevelFragment ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Document });
+			Assert.AreEqual (ConformanceLevel.Document, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreNotEqual (xw, cl, "#2");
+			WriteState state = xw.WriteState;
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void CreateCLFragSettingsCLFrag ()
+		{
+			ConformanceLevelFragment cl = new ConformanceLevelFragment ();
+			XmlWriter xw = XmlWriter.Create (cl, new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Fragment });
+			Assert.AreEqual (ConformanceLevel.Fragment, xw.Settings.ConformanceLevel, "#1");
+			Assert.AreEqual (xw, cl, "#2"); // equal
+			WriteState state = xw.WriteState;
+		}
+
 #endif
 
 	}
@@ -720,4 +924,62 @@ namespace MonoTests.System.Xml
 		}
 
 	}
+
+
+	class InvalidWriteState : XmlWriter {
+		public override void Close () { }
+		public override void Flush () { }
+		public override string LookupPrefix (string ns) { return null; }
+		public override void WriteBase64 (byte [] buffer, int index, int count) { }
+		public override void WriteCData (string text) { }
+		public override void WriteCharEntity (char ch) { }
+		public override void WriteChars (char [] buffer, int index, int count) { }
+		public override void WriteComment (string text) { }
+		public override void WriteDocType (string name, string pubid, string sysid, string subset) { }
+		public override void WriteEndAttribute () { }
+		public override void WriteEndDocument () { }
+		public override void WriteEndElement () { }
+		public override void WriteEntityRef (string name) { }
+		public override void WriteFullEndElement () { }
+		public override void WriteProcessingInstruction (string name, string text) {}
+		public override void WriteRaw (string data) {}
+		public override void WriteRaw (char [] buffer, int index, int count) {}
+		public override void WriteStartAttribute (string prefix, string localName, string ns) {}
+		public override void WriteStartDocument (bool standalone) {}
+		public override void WriteStartDocument () {}
+		public override void WriteStartElement (string prefix, string localName, string ns) {}
+		public override void WriteString (string text) {}
+		public override void WriteSurrogateCharEntity (char lowChar, char highChar) {}
+		public override void WriteWhitespace (string ws) {}
+
+		public override WriteState WriteState {
+			get { throw new InvalidOperationException (); }
+		}
+	}
+
+	class ConformanceLevelAuto : InvalidWriteState {
+		public override XmlWriterSettings Settings {
+			get {
+				return new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Auto };
+			}
+		}
+	}
+
+	class ConformanceLevelDocument : InvalidWriteState {
+		public override XmlWriterSettings Settings {
+			get {
+				return new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Document };
+			}
+		}
+	}
+
+	class ConformanceLevelFragment : InvalidWriteState {
+		public override XmlWriterSettings Settings {
+			get {
+				return new XmlWriterSettings () { ConformanceLevel = ConformanceLevel.Fragment };
+			}
+		}
+	}
+
 }
+

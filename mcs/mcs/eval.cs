@@ -11,7 +11,7 @@
 //
 using System;
 using System.Threading;
-using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.IO;
@@ -54,12 +54,12 @@ namespace Mono.CSharp {
 		static string current_debug_name;
 		static int count;
 		static Thread invoke_thread;
-		
-		static ArrayList using_alias_list = new ArrayList ();
-		internal static ArrayList using_list = new ArrayList ();
-		static Hashtable fields = new Hashtable ();
 
-		static Type   interactive_base_class = typeof (InteractiveBase);
+		static List<NamespaceEntry.UsingAliasEntry> using_alias_list = new List<NamespaceEntry.UsingAliasEntry> ();
+		internal static List<NamespaceEntry.UsingEntry> using_list = new List<NamespaceEntry.UsingEntry> ();
+		static Dictionary<string, Tuple<FieldSpec, FieldInfo>> fields = new Dictionary<string, Tuple<FieldSpec, FieldInfo>> ();
+
+		static TypeSpec interactive_base_class;
 		static Driver driver;
 		static bool inited;
 
@@ -85,6 +85,10 @@ namespace Mono.CSharp {
 			InitAndGetStartupFiles (args);
 		}
 
+		internal static ReportPrinter SetPrinter (ReportPrinter report_printer)
+		{
+			return ctx.Report.SetPrinter (report_printer);
+		}				
 
 		/// <summary>
 		///   Optional initialization for the Evaluator.
@@ -113,22 +117,29 @@ namespace Mono.CSharp {
 				if (driver == null)
 					throw new Exception ("Failed to create compiler driver with the given arguments");
 
-				RootContext.ToplevelTypes = new ModuleContainer (ctx, true);
+				ctx = driver.ctx;
+
+				RootContext.ToplevelTypes = new ModuleCompiled (ctx, true);
 				
 				driver.ProcessDefaultConfig ();
 
-				ArrayList startup_files = new ArrayList ();
+				var startup_files = new List<string> ();
 				foreach (CompilationUnit file in Location.SourceFiles)
 					startup_files.Add (file.Path);
 				
 				CompilerCallableEntryPoint.Reset ();
-				RootContext.ToplevelTypes = new ModuleContainer (ctx, true);
+				RootContext.ToplevelTypes = new ModuleCompiled (ctx, true);
+				var ctypes = TypeManager.InitCoreTypes ();
 
+				ctx.MetaImporter.Initialize ();
 				driver.LoadReferences ();
+				TypeManager.InitCoreTypes (ctx, ctypes);
+				TypeManager.InitOptionalCoreTypes (ctx);
+
 				RootContext.EvalMode = true;
 				inited = true;
 
-				return (string []) startup_files.ToArray (typeof (string));
+				return startup_files.ToArray ();
 			}
 		}
 
@@ -140,22 +151,10 @@ namespace Mono.CSharp {
 		static void Reset ()
 		{
 			CompilerCallableEntryPoint.PartialReset ();
+			RootContext.PartialReset ();
 			
-			// Workaround for API limitation where full message printer cannot be passed
-			ReportPrinter printer = MessageOutput == Console.Out || MessageOutput == Console.Error ?
-				new ConsoleReportPrinter (MessageOutput) :
-				new StreamReportPrinter (MessageOutput);
+			RootContext.ToplevelTypes = new ModuleCompiled (ctx, true);
 
-			ctx = new CompilerContext (new Report (printer));
-			RootContext.ToplevelTypes = new ModuleContainer (ctx, true);
-
-			//
-			// PartialReset should not reset the core types, this is very redundant.
-			//
-			if (!TypeManager.InitCoreTypes (ctx))
-				throw new Exception ("Failed to InitCoreTypes");
-			TypeManager.InitOptionalCoreTypes (ctx);
-			
 			Location.AddFile (null, "{interactive}");
 			Location.Initialize ();
 
@@ -180,18 +179,22 @@ namespace Mono.CSharp {
 		///   base class and the static members that are
 		///   available to your evaluated code.
 		/// </remarks>
-		static public Type InteractiveBaseClass {
+		static public TypeSpec InteractiveBaseClass {
 			get {
-				return interactive_base_class;
-			}
+				if (interactive_base_class != null)
+					return interactive_base_class;
 
-			set {
-				if (value == null)
-					throw new ArgumentNullException ();
-
-				lock (evaluator_lock)
-					interactive_base_class = value;
+				return ctx.MetaImporter.ImportType (typeof (InteractiveBase));
 			}
+		}
+
+		public static void SetInteractiveBaseClass (Type type)
+		{
+			if (type == null)
+				throw new ArgumentNullException ();
+
+			lock (evaluator_lock)
+				interactive_base_class = ctx.MetaImporter.ImportType (type);
 		}
 
 		/// <summary>
@@ -305,7 +308,7 @@ namespace Mono.CSharp {
 			// Either null (on error) or the compiled method.
 			return compiled;
 		}
-		
+
 		//
 		// Todo: Should we handle errors, or expect the calling code to setup
 		// the recording themselves?
@@ -351,7 +354,7 @@ namespace Mono.CSharp {
 			// The code execution does not need to keep the compiler lock
 			//
 			object retval = typeof (NoValueSet);
-			
+
 			try {
 				invoke_thread = System.Threading.Thread.CurrentThread;
 				invoking = true;
@@ -428,7 +431,7 @@ namespace Mono.CSharp {
 					} catch (CompletionResult cr){
 						prefix = cr.BaseText;
 						return cr.Result;
-					}
+					} 
 				} finally {
 					parser.undo.ExecuteUndo ();
 				}
@@ -610,6 +613,7 @@ namespace Mono.CSharp {
 			partial_input = false;
 			Reset ();
 			queued_fields.Clear ();
+			Tokenizer.LocatedToken.Initialize ();
 
 			Stream s = new MemoryStream (Encoding.Default.GetBytes (input));
 			SeekableStreamReader seekable = new SeekableStreamReader (s, Encoding.Default);
@@ -649,10 +653,10 @@ namespace Mono.CSharp {
 
 			if (mode == ParseMode.GetCompletions)
 				parser.Lexer.CompleteOnEOF = true;
-				
+
 			ReportPrinter old_printer = null;
 			if ((mode == ParseMode.Silent || mode == ParseMode.GetCompletions) && CSharpParser.yacc_verbose_flag == 0)
-				old_printer = ctx.Report.SetPrinter (new StreamReportPrinter (TextWriter.Null));
+				old_printer = SetPrinter (new StreamReportPrinter (TextWriter.Null));
 
 			try {
 				parser.parse ();
@@ -666,7 +670,7 @@ namespace Mono.CSharp {
 				}
 
 				if (old_printer != null)
-					ctx.Report.SetPrinter (old_printer);
+					SetPrinter (old_printer);
 			}
 			return parser;
 		}
@@ -676,7 +680,7 @@ namespace Mono.CSharp {
 		// or reflection gets confused (it basically gets confused, and variables override each
 		// other).
 		//
-		static ArrayList queued_fields = new ArrayList ();
+		static List<Field> queued_fields = new List<Field> ();
 		
 		//static ArrayList types = new ArrayList ();
 
@@ -717,10 +721,12 @@ namespace Mono.CSharp {
 			}
 			
 			RootContext.EmitCode ();
-			if (Report.Errors != 0)
+			if (Report.Errors != 0){
+				undo.ExecuteUndo ();
 				return null;
+			}
 			
-			RootContext.CloseTypes ();
+			RootContext.CloseTypes (ctx);
 
 			if (Environment.GetEnvironmentVariable ("SAVE") != null)
 				CodeGen.Save (current_debug_name, false, Report);
@@ -732,31 +738,33 @@ namespace Mono.CSharp {
 			// Unlike Mono, .NET requires that the MethodInfo is fetched, it cant
 			// work from MethodBuilders.   Retarded, I know.
 			//
-			Type tt = CodeGen.Assembly.Builder.GetType (tb.Name);
+			var tt = CodeGen.Assembly.Builder.GetType (tb.Name);
 			MethodInfo mi = tt.GetMethod (mb.Name);
 			
 			// Pull the FieldInfos from the type, and keep track of them
 			foreach (Field field in queued_fields){
 				FieldInfo fi = tt.GetField (field.Name);
-				
-				FieldInfo old = (FieldInfo) fields [field.Name];
+
+				Tuple<FieldSpec, FieldInfo> old;
 				
 				// If a previous value was set, nullify it, so that we do
 				// not leak memory
-				if (old != null){
-					if (TypeManager.IsStruct (old.FieldType)){
+				if (fields.TryGetValue (field.Name, out old)) {
+					if (old.Item1.MemberType.IsStruct) {
 						//
 						// TODO: Clear fields for structs
 						//
 					} else {
 						try {
-							old.SetValue (null, null);
+							old.Item2.SetValue (null, null);
 						} catch {
 						}
 					}
+
+					fields [field.Name] = Tuple.Create (old.Item1, fi);
+				} else {
+					fields.Add (field.Name, Tuple.Create (field.Spec, fi));
 				}
-				
-				fields [field.Name] = fi;
 			}
 			//types.Add (tb);
 
@@ -779,10 +787,10 @@ namespace Mono.CSharp {
 		public class NoValueSet {
 		}
 
-		static internal FieldInfo LookupField (string name)
+		static internal Tuple<FieldSpec, FieldInfo> LookupField (string name)
 		{
-			FieldInfo fi =  (FieldInfo) fields [name];
-
+			Tuple<FieldSpec, FieldInfo> fi;
+			fields.TryGetValue (name, out fi);
 			return fi;
 		}
 
@@ -825,9 +833,9 @@ namespace Mono.CSharp {
 			}
 		}
 
-		static internal ICollection GetUsingList ()
+		static internal ICollection<string> GetUsingList ()
 		{
-			ArrayList res = new ArrayList (using_list.Count);
+			var res = new List<string> (using_list.Count);
 			foreach (object ue in using_list)
 				res.Add (ue.ToString ());
 			return res;
@@ -836,7 +844,7 @@ namespace Mono.CSharp {
 		static internal string [] GetVarNames ()
 		{
 			lock (evaluator_lock){
-				return (string []) new ArrayList (fields.Keys).ToArray (typeof (string));
+				return new List<string> (fields.Keys).ToArray ();
 			}
 		}
 		
@@ -845,25 +853,19 @@ namespace Mono.CSharp {
 			lock (evaluator_lock){
 				StringBuilder sb = new StringBuilder ();
 				
-				foreach (DictionaryEntry de in fields){
-					FieldInfo fi = LookupField ((string) de.Key);
-					object value = null;
-					bool error = false;
-					
+				foreach (var de in fields){
+					var fi = LookupField (de.Key);
+					object value;
 					try {
-						if (value == null)
-							value = "null";
-						value = fi.GetValue (null);
+						value = fi.Item2.GetValue (null);
 						if (value is string)
 							value = Quote ((string)value);
 					} catch {
-						error = true;
+						value = "<error reading value>";
 					}
-					
-					if (error)
-						sb.Append (String.Format ("{0} {1} <error reading value>", TypeManager.CSharpName(fi.FieldType), de.Key));
-					else
-						sb.Append (String.Format ("{0} {1} = {2}", TypeManager.CSharpName(fi.FieldType), de.Key, value));
+
+					sb.AppendFormat ("{0} {1} = {2}", fi.Item1.MemberType.GetSignatureForError (), de.Key, value);
+					sb.AppendLine ();
 				}
 				
 				return sb.ToString ();
@@ -877,7 +879,7 @@ namespace Mono.CSharp {
 		{
 			lock (evaluator_lock){
 				driver.LoadAssembly (file, false);
-				GlobalRootNamespace.Instance.ComputeNamespaces (ctx);
+				ctx.GlobalRootNamespace.ComputeNamespaces (ctx);
 			}
 		}
 
@@ -887,11 +889,17 @@ namespace Mono.CSharp {
 		static public void ReferenceAssembly (Assembly a)
 		{
 			lock (evaluator_lock){
-				GlobalRootNamespace.Instance.AddAssemblyReference (a);
-				GlobalRootNamespace.Instance.ComputeNamespaces (ctx);
+//				GlobalRootNamespace.Instance.AddAssemblyReference (a);
+//				GlobalRootNamespace.Instance.ComputeNamespaces (ctx);
+				ctx.MetaImporter.ImportAssembly (a, ctx.GlobalRootNamespace);
 			}
 		}
-		
+
+		/// <summary>
+		///   If true, turns type expressions into valid expressions
+		///   and calls the describe method on it
+		/// </summary>
+		public static bool DescribeTypeExpressions;
 	}
 
 	
@@ -1028,17 +1036,17 @@ namespace Mono.CSharp {
 		/// </summary>
 		static public string help {
 			get {
-				return  "Static methods:\n"+
-					"  Describe(obj)      - Describes the object's type\n" + 
-					"  LoadPackage (pkg); - Loads the given Package (like -pkg:FILE)\n" +
-					"  LoadAssembly (ass) - Loads the given assembly (like -r:ASS)\n" + 
-					"  ShowVars ();       - Shows defined local variables.\n" +
-					"  ShowUsing ();      - Show active using decltions.\n" +
-					"  Prompt             - The prompt used by the C# shell\n" +
-					"  ContinuationPrompt - The prompt for partial input\n" +
-					"  Time(() -> { })    - Times the specified code\n" +
-					"  quit;\n" +
-					"  help;\n";
+				return "Static methods:\n" +
+					"  Describe (object)       - Describes the object's type\n" +
+					"  LoadPackage (package);  - Loads the given Package (like -pkg:FILE)\n" +
+					"  LoadAssembly (assembly) - Loads the given assembly (like -r:ASSEMBLY)\n" +
+					"  ShowVars ();            - Shows defined local variables.\n" +
+					"  ShowUsing ();           - Show active using declarations.\n" +
+					"  Prompt                  - The prompt used by the C# shell\n" +
+					"  ContinuationPrompt      - The prompt for partial input\n" +
+					"  Time(() -> { })         - Times the specified code\n" +
+					"  quit;                   - You'll never believe it - this quits the repl!\n" +
+					"  help;                   - This help text\n";
 			}
 		}
 
@@ -1048,7 +1056,9 @@ namespace Mono.CSharp {
 		static public object quit {
 			get {
 				QuitRequested = true;
-				return null;
+
+				// To avoid print null at the exit
+				return typeof (Evaluator.NoValueSet);
 			}
 		}
 
@@ -1066,14 +1076,12 @@ namespace Mono.CSharp {
 		static public string Describe (object x)
 		{
 			if (x == null)
-				return "";
-			
-			Type t = x as Type;
-			if (t == null)
-				t = x.GetType ();
+				return "<null>";
+
+			var type = x as Type ?? x.GetType ();
 
 			StringWriter sw = new StringWriter ();
-			new Outline (t, sw, true, false, false).OutlineType ();
+			new Outline (type, sw, true, false, false).OutlineType ();
 			return sw.ToString ();
 		}
 #endif
@@ -1144,50 +1152,54 @@ namespace Mono.CSharp {
 		{
 		}
 
-		public override Expression DoResolve (ResolveContext ec)
+		protected override Expression DoResolve (ResolveContext ec)
 		{
 			CloneContext cc = new CloneContext ();
 			Expression clone = source.Clone (cc);
 
-			clone = clone.Resolve (ec);
-			if (clone == null)
-				return null;
-
+			//
+			// A useful feature for the REPL: if we can resolve the expression
+			// as a type, Describe the type;
+			//
+			if (Evaluator.DescribeTypeExpressions){
+				var old_printer = Evaluator.SetPrinter (new StreamReportPrinter (TextWriter.Null));
+				clone = clone.Resolve (ec);
+				if (clone == null){
+					clone = source.Clone (cc);
+					clone = clone.Resolve (ec, ResolveFlags.Type);
+					if (clone == null){
+						Evaluator.SetPrinter (old_printer);
+						clone = source.Clone (cc);
+						clone = clone.Resolve (ec);
+						return null;
+					}
+					
+					Arguments args = new Arguments (1);
+					args.Add (new Argument (new TypeOf ((TypeExpr) clone, Location)));
+					source = new Invocation (new SimpleName ("Describe", Location), args).Resolve (ec);
+				}
+				Evaluator.SetPrinter (old_printer);
+			} else {
+				clone = clone.Resolve (ec);
+				if (clone == null)
+					return null;
+			}
+	
 			// This means its really a statement.
-			if (clone.Type == TypeManager.void_type){
-				source = source.Resolve (ec);
-				target = null;
-				type = TypeManager.void_type;
-				eclass = ExprClass.Value;
-				return this;
+			if (clone.Type == TypeManager.void_type || clone is DynamicInvocation || clone is Assign) {
+				return clone;
 			}
 
 			return base.DoResolve (ec);
 		}
-
-		public override void Emit (EmitContext ec)
-		{
-			if (target == null)
-				source.Emit (ec);
-			else
-				base.Emit (ec);
-		}
-
-		public override void EmitStatement (EmitContext ec)
-		{
-			if (target == null)
-				source.Emit (ec);
-			else
-				base.EmitStatement (ec);
-		}
 	}
 
 	public class Undo {
-		ArrayList undo_types;
+		List<KeyValuePair<TypeContainer, TypeContainer>> undo_types;
 		
 		public Undo ()
 		{
-			undo_types = new ArrayList ();
+			undo_types = new List<KeyValuePair<TypeContainer, TypeContainer>> ();
 		}
 
 		public void AddTypeContainer (TypeContainer current_container, TypeContainer tc)
@@ -1196,10 +1208,11 @@ namespace Mono.CSharp {
 				Console.Error.WriteLine ("Internal error: inserting container into itself");
 				return;
 			}
-			
+
 			if (undo_types == null)
-				undo_types = new ArrayList ();
-			undo_types.Add (new Pair (current_container, tc));
+				undo_types = new List<KeyValuePair<TypeContainer, TypeContainer>> ();
+
+			undo_types.Add (new KeyValuePair<TypeContainer, TypeContainer> (current_container, tc));
 		}
 
 		public void ExecuteUndo ()
@@ -1207,10 +1220,10 @@ namespace Mono.CSharp {
 			if (undo_types == null)
 				return;
 
-			foreach (Pair p in undo_types){
-				TypeContainer current_container = (TypeContainer) p.First;
+			foreach (var p in undo_types){
+				TypeContainer current_container = p.Key;
 
-				current_container.RemoveTypeContainer ((TypeContainer) p.Second);
+				current_container.RemoveTypeContainer (p.Value);
 			}
 			undo_types = null;
 		}

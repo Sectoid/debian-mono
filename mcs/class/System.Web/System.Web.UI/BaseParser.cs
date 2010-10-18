@@ -6,7 +6,7 @@
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //
 // (C) 2002 Ximian, Inc. (http://www.ximian.com)
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -47,9 +47,6 @@ namespace System.Web.UI
 		string baseDir;
 		string baseVDir;
 		ILocation location;
-#if !NET_2_0
-		CompilationConfiguration compilationConfig;
-#endif
 
 		internal string MapPath (string path)
 		{
@@ -130,15 +127,14 @@ namespace System.Web.UI
 			return IsDirective (value, '#');
 		}
 
-#if NET_2_0
 		internal static bool IsExpression (string value)
 		{
 			return IsDirective (value, '$');
 		}
-#endif
+		
 		internal void ThrowParseException (string message, params object[] parms)
 		{
-			if (parms == null || parms.Length == 0)
+			if (parms == null)
 				throw new ParseException (location, message);
 			throw new ParseException (location, String.Format (message, parms));
 		}
@@ -191,7 +187,6 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
 		internal TSection GetConfigSection <TSection> (string section) where TSection: global::System.Configuration.ConfigurationSection
 		{
 			VirtualPath vpath = VirtualPath;
@@ -210,17 +205,6 @@ namespace System.Web.UI
 		internal CompilationSection CompilationConfig {
 			get { return GetConfigSection <CompilationSection> ("system.web/compilation"); }
 		}
-
-#else
-		internal CompilationConfiguration CompilationConfig {
-			get {
-				if (compilationConfig == null)
-					compilationConfig = CompilationConfiguration.GetInstance (context);
-
-				return compilationConfig;
-			}
-		}
-#endif
 	}
 }
 

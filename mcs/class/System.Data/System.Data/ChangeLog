@@ -1,3 +1,9 @@
+2010-07-23  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	** Fixes #623451
+	* DataColumnCollection.cs (MoveColumn): Fix shifting of DataColumn  
+	according to the direction of movement.
+	
 2010-06-23  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #581679
@@ -7,7 +13,7 @@
 2010-04-11  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #591443
-	* DataColumn.cs (Clone): Use property to clone Expression as it builds 
+	* DataColumn.cs (Clone): Use propert to clone Expression as it builds 
 	compiled expression also, if any. 
 	
 2010-04-10  Veerapuram Varadhan  <vvaradhan@novell.com>
@@ -20,16 +26,11 @@
 
 	** Fixes #576520 - Based on a patch by Greg SIROU <gspam@secway.fr>
 	* DataSet.cs (WriteColumnAsElement): Handle system.object types sanely.
-	
-2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
 
-	** DataColumn.cs (Clone): Fix a typo - use the member directly 
-	instead of get/set property.
-	
 2010-04-09  Veerapuram Varadhan  <vvaradhan@novell.com>
 
 	** Fixes #590232
-	* DataColumn.cs (Clone): Clone Extended properties as well. 
+	* DataColumn.cs (Clone): Clone extended properties as well
 	
 2010-02-10  Marek Habersack  <mhabersack@novell.com>
 

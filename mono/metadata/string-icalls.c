@@ -22,6 +22,9 @@
 #include <mono/metadata/object.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/debug-helpers.h>
+#include <mono/metadata/profiler.h>
+#include <mono/metadata/profiler-private.h>
+#include <mono/metadata/gc-internal.h>
 
 /* Internal helper methods */
 
@@ -207,8 +210,6 @@ string_icall_is_in_array (MonoArray *chars, gint32 arraylength, gunichar2 chr)
 MonoString *
 ves_icall_System_String_InternalAllocateStr (gint32 length)
 {
-	MONO_ARCH_SAVE_REGS;
-
 	return mono_string_new_size(mono_domain_get (), length);
 }
 
@@ -228,3 +229,14 @@ ves_icall_System_String_InternalIsInterned (MonoString *str)
 	return mono_string_is_interned(str);
 }
 
+int
+ves_icall_System_String_GetLOSLimit (void)
+{
+#ifdef HAVE_SGEN_GC
+	int limit = mono_gc_get_los_limit ();
+
+	return (limit - 2 - sizeof (MonoString)) / 2;
+#else
+	return G_MAXINT;
+#endif
+}

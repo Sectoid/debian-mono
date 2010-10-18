@@ -20,6 +20,10 @@ ifeq (2.0, $(FRAMEWORK_VERSION))
 LIB_MCS_FLAGS += -d:NET_3_5
 endif
 
+ifeq (4, $(FRAMEWORK_VERSION_MAJOR))
+LIB_MCS_FLAGS += -r:System.Web.ApplicationServices.dll
+endif
+
 # Use genresources.sh to generate the list below
 TEST_RESOURCE_FILES = \
 	Test/WebPages/DynamicData/Content/FilterUserControl.ascx,MonoTests.WebPages.DynamicData.Content.FilterUserControl.ascx	\
@@ -159,6 +163,10 @@ TEST_RESOURCE_FILES = \
 	Test/WebPages/ListView_DynamicControl_09.aspx.cs,MonoTests.WebPages.ListView_DynamicControl_09.aspx.cs	\
 	Test/WebPages/ListView_DynamicControl_10.aspx,MonoTests.WebPages.ListView_DynamicControl_10.aspx	\
 	Test/WebPages/ListView_DynamicControl_10.aspx.cs,MonoTests.WebPages.ListView_DynamicControl_10.aspx.cs	\
+	Test/WebPages/DynamicValidator_01.aspx,MonoTests.WebPages.DynamicValidator_01.aspx			\
+	Test/WebPages/DynamicValidator_01.aspx.cs,MonoTests.WebPages.DynamicValidator_01.aspx.cs		\
+	Test/WebPages/DynamicValidator_02.aspx,MonoTests.WebPages.DynamicValidator_02.aspx			\
+	Test/WebPages/DynamicValidator_02.aspx.cs,MonoTests.WebPages.DynamicValidator_02.aspx.cs		\
 	Test/WebPages/Site.css,MonoTests.WebPages.Site.css	\
 	Test/WebPages/Site.master,MonoTests.WebPages.Site.master	\
 	Test/WebPages/Site.master.cs,MonoTests.WebPages.Site.master.cs	\
@@ -167,6 +175,10 @@ TEST_RESOURCE_FILES = \
 NUNIT_RESOURCE_FILES = $(TEST_RESOURCE_FILES)
 
 TEST_MCS_FLAGS = $(LIB_MCS_FLAGS) -r:System.ComponentModel.DataAnnotations.dll -r:System.Configuration.dll $(NUNIT_RESOURCE_FILES:%=/resource:%) -r:SystemWebTestShim.dll
+
+ifeq (4, $(FRAMEWORK_VERSION_MAJOR))
+TEST_MCS_FLAGS += -r:System.Web.ApplicationServices.dll
+endif
 
 EXTRA_DISTFILES = $(foreach resource,$(TEST_RESOURCE_FILES), $(shell echo $(subst \`,\\\`,$(resource)) | cut -d ',' -f 1))
 

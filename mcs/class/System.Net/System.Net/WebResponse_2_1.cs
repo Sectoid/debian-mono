@@ -30,7 +30,6 @@
 
 #if NET_2_1
 
-using System;
 using System.IO;
 
 namespace System.Net {
@@ -41,7 +40,14 @@ namespace System.Net {
 		public abstract string ContentType { get; }
 		public abstract Uri ResponseUri { get; }
 
-		public virtual WebHeaderCollection Headers { get; internal set; }
+		public virtual WebHeaderCollection Headers {
+			get { throw NotImplemented (); }
+			internal set { ; }
+		}
+
+		public virtual bool SupportsHeaders {
+			get { return false; }
+		}
 
 		protected WebResponse ()
 		{
@@ -53,6 +59,12 @@ namespace System.Net {
 		void IDisposable.Dispose ()
 		{
 			Close ();
+		}
+
+		static Exception NotImplemented ()
+		{
+			// hide the "normal" NotImplementedException from corcompare-like tools
+			return new NotImplementedException ();
 		}
 	}
 }

@@ -31,13 +31,10 @@ using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography {
 	
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class SHA256Managed : SHA256 {
 
 		private const int BLOCK_SIZE_BYTES =  64;
-		private const int HASH_SIZE_BYTES  =  32;
 		private uint[] _H;
 		private ulong count;
 		private byte[] _ProcessingBuffer;   // Used to start data when passed less than a block worth.

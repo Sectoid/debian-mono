@@ -1278,7 +1278,7 @@ namespace MonoTests.System.Xml.Linq
 			DateTime rz = DateTime.UtcNow;
 
 			XElement a = new XElement ("a", "1987-01-23T21:45:36.089");
-			XElement b = new XElement ("b", "2001-02-03T04:05:06.789" + DateTime.Now.ToString ("zzz"));
+			XElement b = new XElement ("b", "2001-02-03T04:05:06.789" + rb.ToString ("zzz"));
 			XElement c = new XElement ("c", "2010-01-02T00:00:00Z");
 			XElement d = new XElement ("d", "  Nov 2, 1956  12:34 AM \r\n   \t");
 			XElement e = new XElement ("e", "  2013-07-04T05:06:08.3456297Z   ");  // UTC, all the way
@@ -1575,6 +1575,31 @@ namespace MonoTests.System.Xml.Linq
 			container.ReplaceNodes (result);
 
 			Assert.AreEqual (2, container.Elements ().Count (), "#3");
+		}
+
+		[Test]
+		public void ReplaceCreatesSnapshotBeforeRemoval ()
+		{
+			// bug #592435
+			XElement data1 = new XElement ("A");
+			XElement data3 = new XElement ("C");
+			XElement data4 = new XElement ("D");
+			XElement root = new XElement ("rt", 
+			                              new XElement ("z", new XElement ("Name", data1), new XElement ("Desc", data4)), data3);
+			var elements = root.Elements ().Elements ();
+			root.ReplaceNodes (elements);
+			root.Add (elements);
+			string xml = @"<rt>
+  <Name>
+    <A />
+  </Name>
+  <Desc>
+    <D />
+  </Desc>
+  <A />
+  <D />
+</rt>";
+			Assert.AreEqual (xml, root.ToString ().Replace ("\r\n", "\n"), "#1");
 		}
 	}
 }

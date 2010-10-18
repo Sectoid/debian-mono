@@ -45,11 +45,7 @@ namespace System.Drawing {
 			if ((htmlColor == null) || (htmlColor.Length == 0))
 				return Color.Empty;
 
-#if NET_2_0
 			switch (htmlColor.ToLowerInvariant ()) {
-#else
-			switch (htmlColor.ToLower ()) {
-#endif
 			case "buttonface":
 			case "threedface":		
 				return SystemColors.Control;

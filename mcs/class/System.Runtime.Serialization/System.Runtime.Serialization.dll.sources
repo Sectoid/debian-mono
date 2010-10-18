@@ -2,6 +2,7 @@
 ../../build/common/Locale.cs
 ../../build/common/MonoTODOAttribute.cs
 Assembly/AssemblyInfo.cs
+System.Runtime.Serialization.Configuration/DataContractSerializerSection.cs
 System.Runtime.Serialization.Configuration/DeclaredTypeElement.cs
 System.Runtime.Serialization.Configuration/DeclaredTypeElementCollection.cs
 System.Runtime.Serialization.Configuration/ParameterElement.cs
@@ -9,7 +10,6 @@ System.Runtime.Serialization.Configuration/ParameterElementCollection.cs
 System.Runtime.Serialization.Configuration/SerializationSectionGroup.cs
 System.Runtime.Serialization.Configuration/TypeElement.cs
 System.Runtime.Serialization.Configuration/TypeElementCollection.cs
-System.Runtime.Serialization.Configuration/XmlFormatterSection.cs
 System.Runtime.Serialization/CollectionDataContractAttribute.cs
 System.Runtime.Serialization/ContractNamespaceAttribute.cs
 System.Runtime.Serialization/DataContractAttribute.cs
@@ -27,11 +27,12 @@ System.Runtime.Serialization/KnownTypeAttribute.cs
 System.Runtime.Serialization/KnownTypeCollection.cs
 System.Runtime.Serialization/NetDataContractSerializer.cs
 System.Runtime.Serialization/SerializationMap.cs
+System.Runtime.Serialization/SerializationMap.XsdExporter.cs
 System.Runtime.Serialization/XmlFormatterDeserializer.cs
 System.Runtime.Serialization/XmlFormatterSerializer.cs
 System.Runtime.Serialization/XmlObjectSerializer.cs
 System.Runtime.Serialization/XmlSerializableServices.cs
-System.Runtime.Serialization/XsdDataContractExporter.cs
+System.Runtime.Serialization/XsdDataContractExporter-new.cs
 System.Runtime.Serialization/XsdDataContractImporter.cs
 System.Xml/IFragmentCapableXmlDictionaryWriter.cs
 System.Xml/IStreamProvider.cs

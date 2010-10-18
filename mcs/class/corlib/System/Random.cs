@@ -36,14 +36,11 @@ using System.Runtime.InteropServices;
 namespace System
 {
 	[Serializable]
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	public class Random
 	{
 		const int MBIG = int.MaxValue;
 		const int MSEED = 161803398;
-		const int MZ = 0;
 
 		int inext, inextp;
 		int [] SeedArray = new int [56];

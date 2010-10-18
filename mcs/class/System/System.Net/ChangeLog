@@ -1,3 +1,86 @@
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Invoke the callback in separate threads
+
+	The callbacks need to be invoked in different threads to avoid
+	clogging the IO pool.
+
+	Fixes bug #639656.
+
+2010-09-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert my last patch
+
+	Not only it didn't fix anything but it broke a test.
+
+2010-09-16  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix typo. It has been there for 4 years.
+
+	Why on earth this wasn't found earlier? $20 reward to whoever
+	gives a plausible explanation.
+
+2010-09-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove Content-Length header when not needed
+
+	If we are redirecting to a GET from a POST, the Content-Length
+	header might have stale data and it will be sent. Some servers,
+	instead of ignoring it, keep waiting for the data to be sent (for
+	a GET!).
+
+	Fixes bug #636219.
+
+2010-09-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid sending data in the challenge phase of NTLM
+
+	If there's a POST/PUT request that gets a NTLM 401, we save the
+	data and don't send it again until after the challenge phase. Ie,
+	instead of sending all the data 3 times, we only send it at most
+	twice.
+
+2010-08-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add env.var. to control revocation mode.
+
+	Added a new environment variable, MONO_X509_REVOCATION_MODE that
+	lets the user choose the default validation mode for X509 chains.
+
+2010-08-20  Geoff Norton  <gnorton@novell.com>
+
+	Ensure that we only reflect into monotouch if the type exists.
+
+	There is a possible crash using this profile if the monotouch.dll
+	isn't loaded into the process space. We will null guard the type
+	and only call start_wwan if its present.
+
+2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Adapt to new exception in threadpool behavior.
+
+	Since an exception in the threadpool can kill the application,
+	silently ignore it when we know it is not harmful.
+
+2010-08-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	* WebClient.cs: the last delimiter has 2 hyphens appended to the
+	boundary to signal it is indeed the last one. Fixes bug #554817.
+
+2010-07-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ServicePointManager.cs: Add special validation for Moonlight
+	* WebConnection.cs: Change a define to NET_2_1
+
+2010-07-16 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: ignore values set in CachePolicy and
+	UseDefaultCredentials instead of throwing NIEX.
+
+2010-07-14 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* IPAddress.cs: allow values out of range as MS does.
+
 2010-07-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* WebClient.cs: handle compressed streams when automatic decompression
@@ -7,6 +90,11 @@
 
 	* WebRequest.cs: DefaultCachePolicy and CachePolicy return a
 	NoCacheNoStore policy in all cases now. Workaround for bug #583934
+
+2010-06-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ServicePointManager.cs: Remove NET_2_0 defines around 
+	RemoteCertificateValidationCallback
 
 2010-06-28 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -21,6 +109,16 @@
 2010-06-15 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* HttpWebRequest.cs: 307 does not change request method.
+
+2010-06-11 Jonathan Chambers  <joncham@gmail.com>
+
+	* HttpListenerRequest.cs: Assign default value to variable before using.
+
+2010-05-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* FtpDataStream.cs:
+	* FtpWebRequest.cs: properly close the data connection even when
+	nothing is read from it. Refixes bug #598908.
 
 2010-04-23 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -45,11 +143,66 @@
 	* ServicePointManager.cs: obtain the SubjectAltName extension the
 	right way. Fixes bug #594110.
 
+2010-03-27 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* HttpWebRequest.cs: when PreAuthenticate is true, don't remove the
+	existing authorization related headers until we know we have a
+	replacement. Fixes bug #591633.
+
 2010-03-26 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* ServicePointManager.cs: errors parsing the certificate don't prevent
 	calling the callback now. Exceptions thrown parsing the certificate
 	are printed to stderr in case they are library errors.
+
+2010-03-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* WebClient.cs: fix handling of query string, whether it comes from
+	the address used or is part of the QueryString.
+
+2010-03-20  Miguel de Icaza  <miguel@novell.com>
+
+	* WebConnection.cs: Drop pre-2.0 and pre-1.1 support, and remove
+	warnings. 
+
+	* WebClient.cs: Drop the pre-2.0 support
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AuthenticationManager.cs: Internal type for Moonlight.
+	Add BasicClient, DigestClient, NtlmClient for NET_2_1 since
+	this applies to both monotouch and moonlight (client stack).
+	Removed unneeded NET_2_0 defines
+	* CookieContainer.cs: For Moonlight it needs to be internal in 
+	System.dll and public in System.Net.dll. Removed unneeded NET_2_0
+	defines
+	* HttpContinueDelegate.cs: Internal type for Moonlight.
+	* HttpRequestCreator.cs: Remove a MOONLIGHT define
+	* HttpStatusCode.cs: For Moonlight it needs to be internal in 
+	System.dll and public in System.Net.dll
+	* HttpWebRequest.cs: Internal type for Moonlight. Change S.Config
+	to NET_2_1 defines (applies to both monotouch and moonlight).
+	Removed unneeded NET_2_0 and NET_1_1 defines
+	* HttpWebResponse.cs: Internal type for Moonlight. Removed 
+	unneeded NET_2_0 defines
+	* IAuthenticationModule.cs: Internal type for Moonlight.
+	* ICertificatePolicy.cs: Internal type for Moonlight.
+	* ICredentialPolicy.cs: Internal type for Moonlight. Removed 
+	unneeded NET_2_0 defines
+	* IWebRequestCreate.cs: For Moonlight it needs to be internal in 
+	System.dll and public in System.Net.dll
+	* ServicePoint.cs: Internal type for Moonlight. Change S.Config
+	to NET_2_1 defines (applies to both monotouch and moonlight)
+	* ServicePointManager.cs: Remove a MOONLIGHT define
+	* WebException.cs: For Moonlight it needs to be internal in 
+	System.dll and public in System.Net.dll. Removed unneeded NET_2_0
+	defines
+	* WebHeaderCollection.cs: Internal type for Moonlight. Removed 
+	unneeded NET_2_0 defines
+	* WebRequest.cs: Internal type for Moonlight. Change S.Config
+	to NET_2_1 defines (applies to both monotouch and moonlight)
+	* WebResponse.cs: Internal type for Moonlight. Removed unneeded
+	NET_2_0 defines
 
 2010-03-18 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -57,6 +210,11 @@
 	* FtpWebRequest.cs: for non-data operations, make sure we send the
 	QUIT command upon completion when KeepAlive is false.
 	Fixes bug #589305.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* Dns.cs, HttpRequestCreator.cs, ServicePoint.cs: use MOONLIGHT
+	symbol to disambiguate MonoTouch and Moonlight code.
 
 2010-03-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -90,6 +248,31 @@
 	* WebClient.cs: fix for UploadStringAsync(). Closes bug #577818.
 	Patch by Atsushi.
 
+2010-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* HttpListenerContext.cs : WWW-Authenticate header should not be
+	  limited to Basic.
+
+2010-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* HttpListenerContext.cs : The header line here is already trimmed
+	  "Authorization:" , so do not try to remove it.
+
+2010-03-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* HttpListener.cs, ListenerAsyncResult.cs : fix authentication
+	  scheme selection mismatch.
+
+2010-03-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* HttpListenerContext.cs, HttpListener.cs :
+	  support AuthenticationSchemeSelectorDelegate.
+
+2010-03-01  Miguel de Icaza  <miguel@novell.com>
+
+	* WebHeaderCollection.cs: Apply 2 year old patch from Yves Bastide
+	that fixes the keys casing in the collection; Fixes 325491
+
 2010-03-01 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* WebConnection.cs: attach a validation callback to the new
@@ -101,18 +284,22 @@
 
 	Fixes bug #584050.
 
+2010-01-29  Mike Kestner <mkestner@novell.com>
+
+	* HttpUtility.cs: port more of the methods from System.Web file.
+	* WebUtility.cs: new 4.0 class.
+
 2010-01-21  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* IPEndPoint.cs: When throwing an ArgumentException in Create()
 	because of a mismatch in the address family, use a more informative
-	message. Patch by Juho Vähä-Herttu<juhovh@iki.fi>.
+	message. Patch by Juho Vaha-Herttu<juhovh@iki.fi>.
 	Fixes #505105.
 
 2010-01-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CookieContainer.cs: Fix to cloning and expiration. Patch
 	by Tom Philpot <tom.philpot@logos.com>
-	[Backport r149976 + NET_1_1 fixes]
 
 2010-01-13 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -124,24 +311,25 @@
 
 	* NetworkCredential.cs: Fix properties to never return null.
 
-2009-12-28  Sebastien Pouliot  <sebastien@ximian.com>
-
-	* Cookie.cs: Don't use automatic properties to let older mcs
-	(e.g. bootstrap) compile this for NET_1_1 profile
-
 2009-12-24  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Cookie.cs: Re-work ToString to be useable in more cases. Fix
 	some issues found by Gendarme.
-	* CookieContainer.cs: Fix 2.0 NonWorking (and new) unit tests.
+	* CookieContainer.cs: Fix all NonWorking (and new) unit tests.
 	Implement removing oldest cookies when limits are reached.
-	* CookieCollection.cs: Fix sort to be closer to MS implementation
-	(but still not 100% identical). Fix some issues found by Gendarme
+	* CookieCollection.cs: Move to generics internally. Fix sort to 
+	be closer to MS implementation (but still not 100% identical).
+	Fix some issues found by Gendarme.
 
 2009-12-21 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* WebConnectionGroup.cs:
 	* ServicePoint.cs: implemented CloseConnectionGroup().
+
+2009-12-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/DnsEndPoint.cs: Moved from System.Net (where the
+	type resides in Moonlight) so it's available for 4.0
 
 2009-11-30  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -149,7 +337,6 @@
 	* IPAddress.cs: Avoid multiple casts in Equals
 	* SocketAddress.cs: Avoid multiple casts in Equals
 	[Found using Gendarme]
-	[Backport r147163]
 
 2009-10-23  Alexandre Gomes  <alexmipego@gmail.com>
 
@@ -369,7 +556,7 @@
 	Clear the ip_to_endpoints hashtable if there are no more prefixes
 	listening on that address.
 
-2009-06-16 Andrés G. Aragoneses <aaragoneses@novell.com>
+2009-06-16 Andres G. Aragoneses <aaragoneses@novell.com>
 
 	* WebConnection.cs: propagate the exception to the request.
 	* WebException.cs: new internal ctor.

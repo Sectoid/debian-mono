@@ -78,7 +78,7 @@ namespace System.Runtime.Serialization
 	  exists (and raises InvalidOperationException if required).
 
 */
-	internal abstract class SerializationMap
+	internal abstract partial class SerializationMap
 	{
 		public const BindingFlags AllInstanceFlags =
 			BindingFlags.Public | BindingFlags.NonPublic |
@@ -106,7 +106,17 @@ namespace System.Runtime.Serialization
 
 			XmlName = qname;
 			Members = new List<DataMemberInfo> ();
+
+			foreach (var mi in type.GetMethods (AllInstanceFlags)) {
+				if (mi.GetCustomAttributes (typeof (OnDeserializingAttribute), false).Length > 0)
+					OnDeserializing = mi;
+				else if (mi.GetCustomAttributes (typeof (OnDeserializedAttribute), false).Length > 0)
+					OnDeserialized = mi;
+			}
 		}
+
+		public MethodInfo OnDeserializing { get; set; }
+		public MethodInfo OnDeserialized { get; set; }
 
 		public virtual bool OutputXsiType {
 			get { return true; }
@@ -296,16 +306,9 @@ namespace System.Runtime.Serialization
 		public virtual void Serialize (object graph,
 			XmlFormatterSerializer serializer)
 		{
-			string label = null;
-			if (IsReference) {
-				label = (string) serializer.References [graph];
-				if (label != null) {
-					serializer.Writer.WriteAttributeString ("z", "Ref", KnownTypeCollection.MSSimpleNamespace, label);
-					return;
-				}
-				label = "i" + (serializer.References.Count + 1);
-				serializer.References.Add (graph, label);
-			}
+			string label;
+			if (serializer.TrySerializeAsReference (IsReference, graph, out label))
+				return;
 			else if (serializer.SerializingObjects.Contains (graph))
 				throw new SerializationException (String.Format ("Circular reference of an object in the object graph was found: '{0}' of type {1}", graph, graph.GetType ()));
 			serializer.SerializingObjects.Add (graph);
@@ -383,6 +386,10 @@ namespace System.Runtime.Serialization
 			XmlFormatterDeserializer deserializer, bool empty)
 		{
 			object instance = FormatterServices.GetUninitializedObject (RuntimeType);
+
+			if (OnDeserializing != null)
+				OnDeserializing.Invoke (instance, new object [] {new StreamingContext (StreamingContextStates.All)});
+
 			int depth = reader.NodeType == XmlNodeType.None ? reader.Depth : reader.Depth - 1;
 			bool [] filled = new bool [Members.Count];
 			int memberInd = -1, ordered = -1;
@@ -393,7 +400,7 @@ namespace System.Runtime.Serialization
 					if (Members [i].Order >= 0)
 						break;
 					if (reader.LocalName == Members [i].XmlName &&
-						reader.NamespaceURI == Members [i].XmlRootNamespace) {
+						(Members [i].XmlRootNamespace == null || reader.NamespaceURI == Members [i].XmlRootNamespace)) {
 						memberInd = i;
 						dmi = Members [i];
 						break;
@@ -403,7 +410,7 @@ namespace System.Runtime.Serialization
 					if (dmi != null)
 						break;
 					if (reader.LocalName == Members [i].XmlName &&
-						reader.NamespaceURI == Members [i].XmlRootNamespace) {
+						(Members [i].XmlRootNamespace == null || reader.NamespaceURI == Members [i].XmlRootNamespace)) {
 						memberInd = i;
 						ordered = i;
 						dmi = Members [i];
@@ -422,6 +429,9 @@ namespace System.Runtime.Serialization
 			for (int i = 0; i < Members.Count; i++)
 				if (!filled [i] && Members [i].IsRequired)
 					throw MissingRequiredMember (Members [i], reader);
+
+			if (OnDeserialized != null)
+				OnDeserialized.Invoke (instance, new object [] {new StreamingContext (StreamingContextStates.All)});
 
 			return instance;
 		}
@@ -461,7 +471,7 @@ namespace System.Runtime.Serialization
 		}
 	}
 
-	internal class XmlSerializableMap : SerializationMap
+	internal partial class XmlSerializableMap : SerializationMap
 	{
 		public XmlSerializableMap (Type type, QName qname, KnownTypeCollection knownTypes)
 			: base (type, qname, knownTypes)
@@ -480,7 +490,11 @@ namespace System.Runtime.Serialization
 
 		public override object DeserializeObject (XmlReader reader, XmlFormatterDeserializer deserializer)
 		{
-			IXmlSerializable ixs = (IXmlSerializable) FormatterServices.GetUninitializedObject (RuntimeType);
+#if NET_2_1
+			IXmlSerializable ixs = (IXmlSerializable) Activator.CreateInstance (RuntimeType);
+#else
+			IXmlSerializable ixs = (IXmlSerializable) Activator.CreateInstance (RuntimeType, true);
+#endif
 			ixs.ReadXml (reader);
 			return ixs;
 		}
@@ -494,7 +508,7 @@ namespace System.Runtime.Serialization
 #endif
 	}
 
-	internal class SharedContractMap : SerializationMap
+	internal partial class SharedContractMap : SerializationMap
 	{
 		public SharedContractMap (
 			Type type, QName qname, KnownTypeCollection knownTypes)
@@ -559,10 +573,10 @@ namespace System.Runtime.Serialization
 		}
 	}
 
-	internal class DefaultTypeMap : SerializationMap
+	internal partial class DefaultTypeMap : SerializationMap
 	{
 		public DefaultTypeMap (Type type, KnownTypeCollection knownTypes)
-			: base (type, KnownTypeCollection.GetContractQName (type, null, null), knownTypes)
+			: base (type, KnownTypeCollection.GetStaticQName (type), knownTypes)
 		{
 			Members.AddRange (GetDefaultMembers ());
 		}
@@ -590,13 +604,16 @@ namespace System.Runtime.Serialization
 
 	// FIXME: it still needs to consider ItemName/KeyName/ValueName
 	// (especially Dictionary collection is not likely considered yet.)
-	internal class CollectionContractTypeMap : CollectionTypeMap
+	internal partial class CollectionContractTypeMap : CollectionTypeMap
 	{
+		CollectionDataContractAttribute a;
+
 		public CollectionContractTypeMap (
 			Type type, CollectionDataContractAttribute a, Type elementType,
 			QName qname, KnownTypeCollection knownTypes)
 			: base (type, elementType, qname, knownTypes)
 		{
+			this.a = a;
 			IsReference = a.IsReference;
 		}
 
@@ -609,7 +626,7 @@ namespace System.Runtime.Serialization
 	{
 	}
 
-	internal class CollectionTypeMap : SerializationMap, ICollectionTypeMap
+	internal partial class CollectionTypeMap : SerializationMap, ICollectionTypeMap
 	{
 		Type element_type;
 		internal QName element_qname;
@@ -692,12 +709,25 @@ namespace System.Runtime.Serialization
 
 		public override object DeserializeEmptyContent (XmlReader reader, XmlFormatterDeserializer deserializer)
 		{
-			return CreateInstance ();
+			var instance = CreateInstance ();
+			if (OnDeserializing != null)
+				OnDeserializing.Invoke (instance, new object [] {new StreamingContext (StreamingContextStates.All)});
+			try {
+				if (RuntimeType.IsArray)
+					return ((ArrayList)instance).ToArray (element_type);
+				else
+					return instance;
+			} finally {
+				if (OnDeserialized != null)
+					OnDeserialized.Invoke (instance, new object [] {new StreamingContext (StreamingContextStates.All)});
+			}
 		}
 
 		public override object DeserializeContent (XmlReader reader, XmlFormatterDeserializer deserializer)
 		{
 			object instance = CreateInstance ();
+			if (OnDeserializing != null)
+				OnDeserializing.Invoke (instance, new object [] {new StreamingContext (StreamingContextStates.All)});
 			int depth = reader.NodeType == XmlNodeType.None ? reader.Depth : reader.Depth - 1;
 			while (reader.NodeType == XmlNodeType.Element && reader.Depth > depth) {
 				object elem = deserializer.Deserialize (element_type, reader);
@@ -709,9 +739,14 @@ namespace System.Runtime.Serialization
 					throw new NotImplementedException (String.Format ("Type {0} is not supported", RuntimeType));
 				reader.MoveToContent ();
 			}
-			if (RuntimeType.IsArray)
-				return ((ArrayList)instance).ToArray (element_type);
-			return instance;
+			try {
+				if (RuntimeType.IsArray)
+					return ((ArrayList)instance).ToArray (element_type);
+				return instance;
+			} finally {
+				if (OnDeserialized != null)
+					OnDeserialized.Invoke (instance, new object [] {new StreamingContext (StreamingContextStates.All)});
+			}
 		}
 
 		public override List<DataMemberInfo> GetMembers ()
@@ -765,10 +800,10 @@ namespace System.Runtime.Serialization
 #endif
 	}
 
-	internal class DictionaryTypeMap : SerializationMap, ICollectionTypeMap
+	internal partial class DictionaryTypeMap : SerializationMap, ICollectionTypeMap
 	{
 		Type key_type, value_type;
-		QName dict_qname, item_qname, key_qname, value_qname;
+		QName item_qname, key_qname, value_qname;
 		MethodInfo add_method;
 		CollectionDataContractAttribute a;
 
@@ -818,35 +853,48 @@ namespace System.Runtime.Serialization
 		public Type KeyType { get { return key_type; } }
 		public Type ValueType { get { return value_type; } }
 
-		static readonly QName kvpair_key_qname = new QName ("Key", KnownTypeCollection.MSArraysNamespace);
-		static readonly QName kvpair_value_qname = new QName ("Value", KnownTypeCollection.MSArraysNamespace);
-
 		internal virtual QName GetDictionaryQName ()
 		{
-			if (a != null && !String.IsNullOrEmpty (a.Name))
-				return new QName (a.Name, ContractNamespace);
-			return new QName ("ArrayOf" + GetItemQName ().Name, KnownTypeCollection.MSArraysNamespace);
+			string name = a != null ? a.Name : null;
+			string ns = a != null ? a.Namespace : null;
+			if (RuntimeType.IsGenericType && RuntimeType.GetGenericTypeDefinition () != typeof (Dictionary<,>))
+				name = name ?? KnownTypeCollection.GetDefaultName (RuntimeType);
+			else
+				name = "ArrayOf" + GetItemQName ().Name;
+			ns = ns ?? KnownTypeCollection.MSArraysNamespace;
+
+			return new QName (name, ns);
 		}
 
 		internal virtual QName GetItemQName ()
 		{
-			if (a != null && !String.IsNullOrEmpty (a.ItemName))
-				return new QName (a.ItemName, ContractNamespace);
-			return new QName ("KeyValueOf" + KnownTypes.GetQName (key_type).Name + KnownTypes.GetQName (value_type).Name, KnownTypeCollection.MSArraysNamespace);
+			string name = a != null ? a.ItemName : null;
+			string ns = a != null ? a.Namespace : null;
+
+			name = name ?? "KeyValueOf" + KnownTypes.GetQName (key_type).Name + KnownTypes.GetQName (value_type).Name;
+			ns = ns ?? (a != null ? ContractNamespace : KnownTypeCollection.MSArraysNamespace);
+
+			return new QName (name, ns);
 		}
 
 		internal virtual QName GetKeyQName ()
 		{
-			if (a != null && !String.IsNullOrEmpty (a.KeyName))
-				return new QName (a.KeyName, ContractNamespace);
-			return kvpair_key_qname;
+			string name = a != null ? a.KeyName : null;
+			string ns = a != null ? a.Namespace : null;
+
+			name = name ?? "Key";
+			ns = ns ?? (a != null ? ContractNamespace : KnownTypeCollection.MSArraysNamespace);
+			return new QName (name, ns);
 		}
 
 		internal virtual QName GetValueQName ()
 		{
-			if (a != null && !String.IsNullOrEmpty (a.ValueName))
-				return new QName (a.ValueName, ContractNamespace);
-			return kvpair_value_qname;
+			string name = a != null ? a.ValueName : null;
+			string ns = a != null ? a.Namespace : null;
+
+			name = name ?? "Value";
+			ns = ns ?? (a != null ? ContractNamespace : KnownTypeCollection.MSArraysNamespace);
+			return new QName (name, ns);
 		}
 
 		internal virtual string CurrentNamespace {
@@ -955,32 +1003,36 @@ namespace System.Runtime.Serialization
 #endif
 	}
 
-	internal class SharedTypeMap : SerializationMap
+	internal partial class SharedTypeMap : SerializationMap
 	{
 		public SharedTypeMap (
 			Type type, QName qname, KnownTypeCollection knownTypes)
 			: base (type, qname, knownTypes)
 		{
-			Members = GetMembers (type, XmlName, false);
+		}
+
+		public void Initialize ()
+		{
+			Members = GetMembers (RuntimeType, XmlName, false);
 		}
 
 		List<DataMemberInfo> GetMembers (Type type, QName qname, bool declared_only)
 		{
 			List<DataMemberInfo> data_members = new List<DataMemberInfo> ();
-			BindingFlags flags = AllInstanceFlags;
-			if (declared_only)
-				flags |= BindingFlags.DeclaredOnly;
+			BindingFlags flags = AllInstanceFlags | BindingFlags.DeclaredOnly;
 			
-			foreach (FieldInfo fi in type.GetFields (flags)) {
-				if (fi.GetCustomAttributes (
-					typeof (NonSerializedAttribute),
-					false).Length > 0)
-					continue;
+			for (Type t = type; t != null; t = t.BaseType) {
+				foreach (FieldInfo fi in t.GetFields (flags)) {
+					if (fi.GetCustomAttributes (
+						typeof (NonSerializedAttribute),
+						false).Length > 0)
+						continue;
 
-				if (fi.IsInitOnly)
-					throw new InvalidDataContractException (String.Format ("DataMember field {0} must not be read-only.", fi));
-				DataMemberAttribute dma = new DataMemberAttribute ();
-				data_members.Add (CreateDataMemberInfo (dma, fi, fi.FieldType));
+					if (fi.IsInitOnly)
+						throw new InvalidDataContractException (String.Format ("DataMember field {0} must not be read-only.", fi));
+					DataMemberAttribute dma = new DataMemberAttribute ();
+					data_members.Add (CreateDataMemberInfo (dma, fi, fi.FieldType));
+				}
 			}
 
 			data_members.Sort (DataMemberInfo.DataMemberInfoComparer.Instance); // alphabetic order.
@@ -996,7 +1048,7 @@ namespace System.Runtime.Serialization
 		}
 	}
 
-	internal class EnumMap : SerializationMap
+	internal partial class EnumMap : SerializationMap
 	{
 		List<EnumMemberInfo> enum_members;
 		bool flag_attr;
@@ -1141,7 +1193,7 @@ namespace System.Runtime.Serialization
 			Order = dma.Order;
 			Member = member;
 			IsRequired = dma.IsRequired;
-			XmlName = dma.Name != null ? dma.Name : member.Name;
+			XmlName = XmlConvert.EncodeLocalName (dma.Name != null ? dma.Name : member.Name);
 			XmlNamespace = ns;
 			XmlRootNamespace = rootNamespce;
 			if (Member is FieldInfo)

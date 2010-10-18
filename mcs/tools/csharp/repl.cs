@@ -28,7 +28,6 @@ using System.Net.Sockets;
 using System.Collections.Generic;
 
 using Mono.CSharp;
-using Mono.Attach;
 
 namespace Mono {
 
@@ -36,23 +35,32 @@ namespace Mono {
 		
 		static int Main (string [] args)
 		{
+#if !ON_DOTNET
 			if (args.Length > 0 && args [0] == "--attach") {
 				new ClientCSharpShell (Int32.Parse (args [1])).Run (null);
 				return 0;
-			} else if (args.Length > 0 && args [0].StartsWith ("--agent:")) {
+			}
+
+			if (args.Length > 0 && args [0].StartsWith ("--agent:")) {
 				new CSharpAgent (args [0]);
 				return 0;
-			} else {
-				string [] startup_files;
-				try {
-					startup_files = Evaluator.InitAndGetStartupFiles (args);
-					Evaluator.InteractiveBaseClass = typeof (InteractiveBaseShell);
-				} catch {
-					return 1;
-				}
-
-				return new CSharpShell ().Run (startup_files);
 			}
+#endif
+			return Startup(args);
+		}
+
+		static int Startup (string[] args)
+		{
+			string[] startup_files;
+			try {
+				startup_files = Evaluator.InitAndGetStartupFiles (args);
+				Evaluator.DescribeTypeExpressions = true;
+				Evaluator.SetInteractiveBaseClass (typeof (InteractiveBaseShell));
+			} catch {
+				return 1;
+			}
+
+			return new CSharpShell ().Run (startup_files);
 		}
 	}
 
@@ -87,7 +95,7 @@ namespace Mono {
 	}
 	
 	public class CSharpShell {
-		static bool isatty = true;
+		static bool isatty = true, is_unix = false;
 		string [] startup_files;
 		
 		Mono.Terminal.LineEditor editor;
@@ -103,8 +111,11 @@ namespace Mono {
 		
 		void SetupConsole ()
 		{
-			string term = Environment.GetEnvironmentVariable ("TERM");
-			dumb = term == "dumb" || term == null || isatty == false;
+			if (is_unix){
+				string term = Environment.GetEnvironmentVariable ("TERM");
+				dumb = term == "dumb" || term == null || isatty == false;
+			} else
+				dumb = false;
 			
 			editor = new Mono.Terminal.LineEditor ("csharp", 300);
 			InteractiveBaseShell.Editor = editor;
@@ -164,7 +175,18 @@ namespace Mono {
 
 		void InitTerminal ()
 		{
-			isatty = UnixUtils.isatty (0) && UnixUtils.isatty (1);
+#if ON_DOTNET
+			is_unix = false;
+			isatty = true;
+#else
+			int p = (int) Environment.OSVersion.Platform;
+			is_unix = (p == 4) || (p == 128);
+
+			if (is_unix)
+				isatty = UnixUtils.isatty (0) && UnixUtils.isatty (1);
+			else
+				isatty = true;
+#endif
 
 			// Work around, since Console is not accounting for
 			// cursor position when writing to Stderr.  It also
@@ -406,6 +428,7 @@ namespace Mono {
 		
 	}
 
+#if !ON_DOTNET
 	//
 	// A shell connected to a CSharpAgent running in a remote process.
 	//  - maybe add 'class_name' and 'method_name' arguments to LoadAgent.
@@ -428,7 +451,7 @@ namespace Mono {
 							  ((IPEndPoint)listener.Server.LocalEndPoint).Port,
 							  ((IPEndPoint)interrupt_listener.Server.LocalEndPoint).Port);
 	
-			VirtualMachine vm = new VirtualMachine (pid);
+			var vm = new Attach.VirtualMachine (pid);
 			vm.Attach (agent_assembly, agent_arg);
 	
 			/* Wait for the client to connect */
@@ -681,6 +704,7 @@ namespace Mono {
 			}
 		}
 	}
+#endif
 }
 	
 namespace Mono.Management
@@ -689,5 +713,4 @@ namespace Mono.Management
 		void LoadAgent (string filename, string args);
 	}
 }
-
 

@@ -1,3 +1,17 @@
+2010-08-18  Mark Mason  <mmason@upwardaccess.com>
+
+	Simplify test for MIPS imm16 operands.
+
+	Code contributed under the MIT/X11 license.
+
+2010-08-09  Elijah Taylor  <elijahtaylor@google.com>
+
+	Add hooks to the codegen macros to support NACL codegen.
+
+2010-05-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* ppc/ppc-codegen.h (ppc_load_func): Fix ilp32 support.
+
 2010-03-30  Zoltan Varga  <vargaz@gmail.com>
 
 	* arm/*.sh: Remove bash dependency.

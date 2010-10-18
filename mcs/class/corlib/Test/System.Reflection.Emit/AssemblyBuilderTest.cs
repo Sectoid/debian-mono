@@ -1684,11 +1684,10 @@ public class AssemblyBuilderTest
 	}
 
 	[Test]
-	[Category ("NotDotNet")]
 	public void GetType_IgnoreCase ()
 	{
 		TypeBuilder tb = mb.DefineType ("Foo.Test2", TypeAttributes.Public, typeof (object));
-		// the previous line throws a TypeLoadException under MS 1.1 SP1
+		tb.CreateType ();
 
 		Type t;
 
@@ -1700,6 +1699,66 @@ public class AssemblyBuilderTest
 
 		t = ab.GetType ("Foo.test2", true, true);
 		Assert.AreEqual ("Test2", t.Name, "#3");
+	}
+
+
+	[Test]
+	public void TestGetType ()
+	{
+		TypeBuilder tb = mb.DefineType ("Test", TypeAttributes.Public);
+
+		Assert.IsNull (ab.GetType ("Test", false, true), "#1");
+		try {
+			ab.GetType ("Test", true, true);
+			Assert.Fail ("#2");
+		} catch (TypeLoadException) { }
+
+		var res = tb.CreateType ();
+
+		Assert.AreSame (res, ab.GetType ("Test", false, true), "#3");
+	}
+
+	[Test]
+	public void GetModule ()
+	{
+		var ab = genAssembly ();
+		Assert.IsNull (ab.GetModule ("Foo"), "#1");
+
+		var modA = ab.DefineDynamicModule ("Foo");
+		var modB = ab.DefineDynamicModule ("Bar");
+
+		Assert.AreSame (modA, ab.GetModule ("Foo"), "#2"); 
+		Assert.AreSame (modB, ab.GetModule ("Bar"), "#3"); 
+		Assert.IsNull (ab.GetModule ("FooBar"), "#4");
+	}
+	
+	[Test]
+	public void GetModules2 ()
+	{
+		//XXX this is not the v4 behavior since it returns
+		//the manifest module in the place of the first one
+		var ab = genAssembly ();
+		var modA = ab.DefineDynamicModule ("Foo");
+		var modB = ab.DefineDynamicModule ("Bar");
+		Assert.AreEqual (2, ab.GetModules ().Length, "#1");
+		Assert.AreSame (modA, ab.GetModules () [0], "#2");
+		Assert.AreSame (modB, ab.GetModules () [1], "#3");
+	}
+
+	[Test]
+	[Category ("NotDotNet")] // MS returns the real deal
+	public void GetReferencedAssemblies_Trivial ()
+	{
+		Assert.IsNotNull (ab.GetReferencedAssemblies (), "#1");
+	}
+	
+	[Test]
+	public void GetLoadedModules ()
+	{
+		var res = ab.GetLoadedModules (true);
+		Assert.IsNotNull (res, "#1");
+		Assert.AreEqual (1, res.Length, "#2");
+		Assert.AreEqual (mb, res [0], "#3");
 	}
 
 	[ExpectedException (typeof (TypeLoadException))]
@@ -1715,6 +1774,32 @@ public class AssemblyBuilderTest
 		ab.SetCustomAttribute (cab);
 
 		ab.GetCustomAttributes (true);
+	}
+
+
+	[Test]
+	public void GetTypesWithUnfinishedTypeBuilder ()
+	{
+		AssemblyBuilder ab = genAssembly ();
+		ModuleBuilder mb = ab.DefineDynamicModule("tester", "tester.dll", false);
+		mb.DefineType ("K").CreateType ();
+		var tb = mb.DefineType ("T");
+
+		try {
+			ab.GetTypes ();
+			Assert.Fail ("#1");
+		} catch (ReflectionTypeLoadException ex) {
+			Assert.AreEqual (1, ex.Types.Length, "#2");
+			Assert.AreEqual (1, ex.LoaderExceptions.Length, "#3");
+			Assert.IsNull (ex.Types [0], "#4");
+			Assert.IsTrue (ex.LoaderExceptions [0] is TypeLoadException, "#5");
+		}
+
+		tb.CreateType ();
+		var types = ab.GetTypes ();
+		Assert.AreEqual (2, types.Length, "#5");
+		foreach (var t in types)
+			Assert.IsFalse (t is TypeBuilder, "#6_" + t.Name);
 	}
 
 	private static void AssertAssemblyName (string tempDir, AssemblyName assemblyName, string abName, string fullName)

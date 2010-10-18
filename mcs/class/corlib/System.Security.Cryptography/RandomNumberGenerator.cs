@@ -31,16 +31,12 @@ using System.Runtime.InteropServices;
 
 namespace System.Security.Cryptography {
 	
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 	[ComVisible (true)]
 #endif
 	public abstract class RandomNumberGenerator {
 
-#if NET_2_0
 		protected RandomNumberGenerator ()
-#else
-		public RandomNumberGenerator ()
-#endif
 		{
 		}
 

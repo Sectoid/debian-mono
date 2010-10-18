@@ -27,6 +27,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
@@ -34,39 +35,48 @@ namespace Microsoft.CSharp.RuntimeBinder
 	class RuntimeBinderContext : Compiler.IMemberContext
 	{
 		readonly Compiler.CompilerContext ctx;
+		readonly Compiler.TypeSpec currentType;
 
-		public RuntimeBinderContext (Compiler.CompilerContext ctx)
+		public RuntimeBinderContext (DynamicContext ctx, Compiler.TypeSpec currentType)
 		{
-			this.ctx = ctx;
+			this.ctx = ctx.CompilerContext;
+			this.currentType = currentType;
 		}
 
 		#region IMemberContext Members
 
-		public Type CurrentType {
-			// null for operators
-			get { return null; }
+		public Compiler.TypeSpec CurrentType {
+			get { return currentType; }
 		}
 
-		public Compiler.TypeParameter[] CurrentTypeParameters
-		{
+		public Compiler.TypeParameter[] CurrentTypeParameters {
 			get { throw new NotImplementedException (); }
 		}
 
-		public Compiler.TypeContainer CurrentTypeDefinition {
+		public Compiler.MemberCore CurrentMemberDefinition {
 			get {
-				// TODO: only for operators
-				return new Compiler.ModuleContainer (Compiler, true);
+				// For operators and methods
+				return new Compiler.ModuleContainer (currentType.Assembly);
+			}
+		}
+
+		public bool HasUnresolvedConstraints {
+			get {
+				return false;
 			}
 		}
 
 		public bool IsObsolete {
-			get { throw new NotImplementedException (); }
+			get {
+				// Always true to ignore obsolete attribute checks
+				return true;
+			}
 		}
 
 		public bool IsUnsafe {
 			get {
-				// Always true to pass all unsafe checks
-				return true;
+				// Dynamic cannot be used with pointers
+				return false;
 			}
 		}
 
@@ -79,12 +89,13 @@ namespace Microsoft.CSharp.RuntimeBinder
 			throw new NotImplementedException ();
 		}
 
-		public Compiler.ExtensionMethodGroupExpr LookupExtensionMethod (Type extensionType, string name, Mono.CSharp.Location loc)
+		public IList<Compiler.MethodSpec> LookupExtensionMethod (Compiler.TypeSpec extensionType, string name, int arity, ref Compiler.NamespaceEntry scope)
 		{
-			throw new NotImplementedException ();
+			// No extension method lookup in this context
+			return null;
 		}
 
-		public Compiler.FullNamedExpression LookupNamespaceOrType (string name, Mono.CSharp.Location loc, bool ignore_cs0104)
+		public Compiler.FullNamedExpression LookupNamespaceOrType (string name, int arity, Mono.CSharp.Location loc, bool ignore_cs0104)
 		{
 			throw new NotImplementedException ();
 		}

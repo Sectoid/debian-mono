@@ -11,10 +11,10 @@
 //
 // Authors:
 //     Tim Coleman <tim@timcoleman.com>
-//     Daniel Morgan <danielmorgan@verizon.net>
+//     Daniel Morgan <monodanmorg@yahoo.com>
 //
 // Copyright (C) Tim Coleman, 2003
-// Copyright (C) Daniel Morgan, 2004
+// Copyright (C) Daniel Morgan, 2004, 2009
 //
 
 using System;
@@ -43,13 +43,14 @@ namespace System.Data.OracleClient.Oci
 		Type fieldType;
 		//string name;
 
-		// Oracle defines the LONG VARCHAR have a size of 2 to the 31 power - 5
-		// maybe this should settable via a config file for System.Data.OracleClient.dll
-		// see DefineLong.  Or if the a truncate sql error occurs, then retry?
-		// or maybe allocate the memory yourself and then let oracle return error more data,
-		// then try to get some more data
+		// Oracle defines the LONG VARCHAR and LONG VARRAW to have a size of 2 to the 31 power - 5
+		// see DefineLongVarChar and DefineLongVarRaw
+		// TODO: see OCI Programmers Guide on how to do a piece-wise operations
+		//       instead of using the below.  Or better yet, convert
+		//       your LONG/LONG VARCHAR to CLOB and LONG RAW/LONG VARRAW to BLOB.
 		internal static int LongVarCharMaxValue = (int) Int16.MaxValue - 5;
-
+		internal static int LongVarRawMaxValue = (int) Int16.MaxValue - 5;
+		
 		OciErrorHandle errorHandle;
 
 		OciLobLocator lobLocator;
@@ -135,7 +136,12 @@ namespace System.Data.OracleClient.Oci
 				DefineLob (position, definedType, connection);
 				return;
 			case OciDataType.Raw:
+			case OciDataType.VarRaw:
 				DefineRaw( position, connection);
+				return;
+			case OciDataType.LongRaw:
+			case OciDataType.LongVarRaw:
+				DefineLongVarRaw (position, connection);
 				return;
 			case OciDataType.RowIdDescriptor:
 				definedSize = 10;
@@ -144,6 +150,8 @@ namespace System.Data.OracleClient.Oci
 			case OciDataType.Integer:
 			case OciDataType.Number:
 			case OciDataType.Float:
+			case OciDataType.VarNum:
+			case OciDataType.UnsignedInt:
 				DefineNumber (position, connection);
 				return;
 			case OciDataType.Long:
@@ -238,6 +246,8 @@ namespace System.Data.OracleClient.Oci
 			// until after you get the value.  This could be why Oracle deprecated LONG VARCHAR.
 			// If you specify a definedSize less then the length of the column value,
 			// then you will get an OCI_ERROR ORA-01406: fetched column value was truncated
+			
+			// TODO: get via piece-wise - a chunk at a time
 			definedSize = LongVarCharMaxValue;
 
 			value = OciCalls.AllocateClear (definedSize);
@@ -374,7 +384,36 @@ namespace System.Data.OracleClient.Oci
 							ErrorHandle,
 							position + 1,
 							value,
-							definedSize * 2,
+							definedSize,
+							ociType,
+							ref indicator,
+							ref rlenp,
+							IntPtr.Zero, 0);
+
+			if (status != 0) {
+				OciErrorInfo info = ErrorHandle.HandleError ();
+				throw new OracleException (info.ErrorCode, info.ErrorMessage);
+			}
+		}
+
+		void DefineLongVarRaw (int position, OracleConnection connection)
+		{
+			ociType = OciDataType.LongVarRaw;
+			fieldType = typeof (byte[]);
+
+			// TODO: get via piece-wise - a chunk at a time
+			definedSize = LongVarRawMaxValue;
+
+			value = OciCalls.AllocateClear (definedSize);
+
+			int status = 0;
+
+			status = OciCalls.OCIDefineByPos (Parent,
+							out handle,
+							ErrorHandle,
+							position + 1,
+							value,
+							definedSize,
 							ociType,
 							ref indicator,
 							ref rlenp,
@@ -506,6 +545,8 @@ namespace System.Data.OracleClient.Oci
 			case OciDataType.Integer:
 			case OciDataType.Number:
 			case OciDataType.Float:
+			case OciDataType.VarNum:
+			case OciDataType.UnsignedInt:
 				tmp = Marshal.PtrToStringAnsi (Value, Size);
 				if (tmp != null)
 					return Decimal.Parse (String.Copy ((string) tmp), formatProvider);
@@ -515,9 +556,24 @@ namespace System.Data.OracleClient.Oci
 			case OciDataType.Date:
 				return UnpackDate ();
 			case OciDataType.Raw:
+			case OciDataType.VarRaw:
 				byte [] raw_buffer = new byte [Size];
 				Marshal.Copy (Value, raw_buffer, 0, Size);
 				return raw_buffer;
+			case OciDataType.LongRaw:
+			case OciDataType.LongVarRaw:
+				buffer = new byte [LongVarRawMaxValue];
+				Marshal.Copy (Value, buffer, 0, buffer.Length);
+
+				int longrawSize = 0;
+				if (BitConverter.IsLittleEndian)
+					longrawSize = BitConverter.ToInt32 (new byte[]{buffer[0], buffer[1], buffer[2], buffer[3]}, 0);
+				else
+					longrawSize = BitConverter.ToInt32 (new byte[]{buffer[3], buffer[2], buffer[1], buffer[0]}, 0);
+
+				byte[] longraw_buffer = new byte [longrawSize];
+				Array.ConstrainedCopy (buffer, 4, longraw_buffer, 0, longrawSize);
+				return longraw_buffer;
 			case OciDataType.Blob:
 			case OciDataType.Clob:
 				return GetOracleLob ();
@@ -538,8 +594,12 @@ namespace System.Data.OracleClient.Oci
 
 			switch (DataType) {
 			case OciDataType.Raw:
+			case OciDataType.VarRaw:
+			case OciDataType.LongRaw:
+			case OciDataType.LongVarRaw:
 				return new OracleBinary ((byte[]) ovalue);
 			case OciDataType.Date:
+			case OciDataType.TimeStamp:
 				return new OracleDateTime ((DateTime) ovalue);
 			case OciDataType.Blob:
 			case OciDataType.Clob:
@@ -548,6 +608,8 @@ namespace System.Data.OracleClient.Oci
 			case OciDataType.Integer:
 			case OciDataType.Number:
 			case OciDataType.Float:
+			case OciDataType.VarNum:
+			case OciDataType.UnsignedInt:
 				return new OracleNumber ((decimal) ovalue);
 			case OciDataType.VarChar2:
 			case OciDataType.String:

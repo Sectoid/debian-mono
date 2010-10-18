@@ -4,7 +4,7 @@ include ../build/rules.make
 
 BUILT_FILES = common/Consts.cs
 
-all-local install-local test-local run-test-local run-test-ondotnet-local uninstall-local doc-update-local: $(BUILT_FILES)
+all-local install-local test-local run-test-local csproj-local run-test-ondotnet-local uninstall-local doc-update-local: $(BUILT_FILES)
 	@:
 
 clean-local:
@@ -17,14 +17,11 @@ common/Consts.cs: common/Consts.cs.in $(wildcard config.make)
 PLATFORMS = darwin linux win32
 PROFILES = \
 	basic \
-	net_1_1_bootstrap \
-	net_1_1	\
 	net_2_0_bootstrap \
 	net_2_0 \
-	net_2_1_bootstrap \
-	net_2_1_raw \
-	net_2_1 \
-	net_1_0	\
+	moonlight_bootstrap \
+	moonlight_raw \
+	moonlight \
 	net_3_5	\
 	net_4_0_bootstrap \
 	net_4_0	
@@ -32,7 +29,8 @@ PROFILES = \
 COMMON_SRCS = \
 	Consts.cs.in			\
 	Locale.cs			\
-	MonoTODOAttribute.cs
+	MonoTODOAttribute.cs \
+	basic-profile-check.cs
 
 DISTFILES = \
 	README.makefiles		\
@@ -42,6 +40,7 @@ DISTFILES = \
 	corcompare.make			\
 	corcompare-api.xsl		\
 	executable.make			\
+	gensources.sh			\
 	library.make			\
 	nunit-summary.xsl		\
 	rules.make			\

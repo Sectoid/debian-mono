@@ -32,33 +32,21 @@
 #if !NET_2_1
 
 using System;
-
-#if NET_2_0
 using System.Runtime.InteropServices;
-#endif
 
 namespace Microsoft.Win32
 {
-#if NET_2_0
 	[ComVisible (true)]
-#endif
-	public
-#if NET_2_0
-	static
-#else
-	sealed
-#endif
-	class Registry
+	public static class Registry
 	{
-#if !NET_2_0
-		private Registry () { }
-#endif
 		public static readonly RegistryKey ClassesRoot = new RegistryKey (
 				RegistryHive.ClassesRoot);
 		public static readonly RegistryKey CurrentConfig = new RegistryKey (
 				RegistryHive.CurrentConfig);
 		public static readonly RegistryKey CurrentUser = new RegistryKey (
 				RegistryHive.CurrentUser);
+
+		[Obsolete ("Use PerformanceData instead")]
 		public static readonly RegistryKey DynData = new RegistryKey (
 				RegistryHive.DynData);
 		public static readonly RegistryKey LocalMachine = new RegistryKey (
@@ -68,7 +56,6 @@ namespace Microsoft.Win32
 		public static readonly RegistryKey Users = new RegistryKey (
 				RegistryHive.Users);
 
-#if NET_2_0
 		static RegistryKey ToKey (string keyName, bool setting)
 		{
 			if (keyName == null)
@@ -147,7 +134,6 @@ namespace Microsoft.Win32
 			
 			return key.GetValue (valueName, defaultValue);
 		}
-#endif
 	}
 }
 

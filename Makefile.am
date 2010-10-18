@@ -1,32 +1,44 @@
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I .
 
-SUBDIRS = po $(libgc_dir) $(eglib_dir) mono $(ikvm_native_dir) support data runtime scripts man samples web msvc $(docs_dir)
+MOONLIGHT_SUBDIRS =    $(libgc_dir) eglib mono $(ikvm_native_dir)         data
 
+if CROSS_COMPILING
+SUBDIRS = po $(libgc_dir) eglib mono $(ikvm_native_dir) data runtime scripts man samples web msvc $(docs_dir)
 # Keep in sync with SUBDIRS
 ## 'tools' is not normally built
-DIST_SUBDIRS = po libgc $(eglib_dir) mono ikvm-native support data runtime scripts man samples web tools msvc docs
+DIST_SUBDIRS = po libgc eglib mono ikvm-native         data runtime scripts man samples web tools msvc docs
+else
+if ONLY_MOONLIGHT
+SUBDIRS = $(MOONLIGHT_SUBDIRS) runtime
+else
+SUBDIRS = po $(libgc_dir) eglib mono $(ikvm_native_dir) support data runtime scripts man samples web msvc $(docs_dir)
+# Keep in sync with SUBDIRS
+## 'tools' is not normally built
+DIST_SUBDIRS = po libgc eglib mono ikvm-native support data runtime scripts man samples web tools msvc docs
+endif
+endif
 
-EXTRA_DIST= nls.m4 po.m4 progtest.m4 mono-uninstalled.pc.in build-mingw32.sh LICENSE mkinstalldirs
+EXTRA_DIST= nls.m4 po.m4 progtest.m4 mono-uninstalled.pc.in build-mingw32.sh LICENSE mkinstalldirs autogen.sh 
 
 DISTCHECK_CONFIGURE_FLAGS = EXTERNAL_MCS=false EXTERNAL_RUNTIME=false
 
 # Distribute the 'mcs' tree too
+GIT_DIR ?= $(srcdir)/.git
 dist-hook:
 	test -d $(distdir)/mcs || mkdir $(distdir)/mcs
-	d=`cd $(distdir)/mcs && pwd`; cd $(mcs_topdir) && $(MAKE) PROFILE=net_1_1 distdir=$$d dist-recursive
-	d=`cd $(distdir)/mcs && pwd`; cd $(mcs_topdir) && $(MAKE) PROFILE=net_2_0 distdir=$$d dist-recursive
+	d=`cd $(distdir)/mcs && pwd`; cd $(mcs_topdir) && $(MAKE) distdir=$$d dist-recursive
+	test ! -d $(GIT_DIR) || ./scripts/commits-to-changelog.py --root=$(distdir) last-commit-with-compulsory-changelog-entry
 
 pkgconfigdir = $(libdir)/pkgconfig
 noinst_DATA = mono-uninstalled.pc
 DISTCLEANFILES= mono-uninstalled.pc
 
-.PHONY: get-monolite-latest mcs-do-compiler-tests compiler-tests bootstrap-world
-
 # building with monolite
 mcslib = $(mcs_topdir)/class/lib
 monolite = $(mcslib)/monolite
 monolite_url = http://mono.ximian.com/daily/monolite-latest.tar.gz
+.PHONY: get-monolite-latest 
 get-monolite-latest:
 	-rm -fr $(mcslib)/monolite-*
 	-mkdir -p $(mcslib)
@@ -35,42 +47,43 @@ get-monolite-latest:
 	cd $(mcslib) && { (wget -O- $(monolite_url) || curl $(monolite_url)) | gzip -d | tar xf - ; }
 	cd $(mcslib) && mv -f monolite-* monolite
 
-compiler-tests: build-test-mono-mcs-moon
-
-compiler-tests-net_2_0:
-	-rm -f $(mcs_topdir)/build/common/Consts.cs.save
-	-mv -f $(mcs_topdir)/build/common/Consts.cs $(mcs_topdir)/build/common/Consts.cs.save
-	cd $(mcs_topdir) && $(MAKE) PROFILE=net_2_0_bootstrap clean
-	cd $(mcs_topdir) && $(MAKE) PROFILE=net_2_0 clean
-	-mv -f $(mcs_topdir)/build/common/Consts.cs.save $(mcs_topdir)/build/common/Consts.cs
-	$(MAKE) all
-	$(MAKE) test_profiles=net_2_0 mcs-do-compiler-tests
-
-bootstrap-world: compiler-tests
-	$(MAKE) install
-
-bootstrap-world-net_2_0: compiler-tests-net_2_0
-	$(MAKE) install
-
-# internal targets
-.PHONY: build-test-mono-mcs-moon
-build-test-mono-mcs-moon: do-build-moon-maybe
-	$(MAKE) mcs-do-compiler-tests
-
-.PHONY: do-build-mono-mcs
+.PHONY: validate do-build-mono-mcs mcs-do-clean mcs-do-tests
+validate: do-build-mono-mcs
+	$(MAKE) mcs-do-tests
 do-build-mono-mcs: mcs-do-clean
 	$(MAKE) all
-
-.PHONY: do-build-moon-maybe
-do-build-moon-maybe: do-build-mono-mcs
-	cd runtime && $(MAKE) moon-do-build
-
 mcs-do-clean:
 	cd runtime && $(MAKE) clean-local
 	cd mono/tests && $(MAKE) clean
-mcs-do-compiler-tests:
-	cd runtime && $(MAKE) test_select='TEST_SUBDIRS="tests errors"' check-local
+mcs-do-tests:
+	cd runtime && $(MAKE) check-local
 	cd mono/tests && $(MAKE) check
+
+.PHONY: compiler-tests mcs-do-compiler-tests
+compiler-tests:
+	$(MAKE) test_select='TEST_SUBDIRS="tests errors"' validate
+mcs-do-compiler-tests:
+	$(MAKE) test_select='TEST_SUBDIRS="tests errors"' mcs-do-tests
+
+.PHONY: bootstrap-world
+bootstrap-world: compiler-tests
+	$(MAKE) install
+
+if MOONLIGHT
+moon-do-build: config.h
+	@list='$(MOONLIGHT_SUBDIRS)'; for subdir in $$list; do \
+	  echo "Making all in $$subdir"; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) all); \
+        done;
+	cd $(mcs_topdir) && NO_DIR_CHECK=1 $(MAKE) PROFILE=moonlight_raw all
+
+moon-do-clean:
+	@list='$(MOONLIGHT_SUBDIRS)'; for subdir in $$list; do \
+	  echo "Making clean in $$subdir"; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) clean); \
+        done;
+	cd $(mcs_topdir) && NO_DIR_CHECK=1 $(MAKE) PROFILE=moonlight_raw clean
+endif
 
 win32getdeps:
 	wget http://www.go-mono.com/archive/pkgconfig-0.11-20020310.zip
@@ -88,10 +101,6 @@ win32getdeps:
 
 win32setup:
 	makensis /DMILESTONE=$(VERSION) /DSOURCE_INSTALL_DIR=$(SOURCE_INSTALL_DIR) /DBUILDNUM=$(BUILDNUM) monowiz.win32.nsi
-
-bootstrap: all
-	@echo "*** 'make bootstrap' is obsolete.  Just run 'make' to perform a combined mono+mcs build"
-	exit 1
 
 patch-quiet:
 	find mono -name Makefile -exec scripts/patch-quiet.sh {} \;

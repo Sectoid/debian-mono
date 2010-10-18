@@ -18,6 +18,12 @@ libs=	\
 	$(GLIB_LIBS)	\
 	$(libgc_libs)
 
+sgen_libs = \
+	$(monodir)/mono/metadata/libmonoruntimesgen.la	\
+	$(monodir)/mono/io-layer/libwapi.la	\
+	$(monodir)/mono/utils/libmonoutils.la \
+	$(GLIB_LIBS)
+
 static_libs=	\
 	$(monodir)/mono/metadata/libmonoruntime-static.la	\
 	$(monodir)/mono/io-layer/libwapi.la	\
@@ -25,24 +31,31 @@ static_libs=	\
 	$(GLIB_LIBS)	\
 	$(libgc_static_libs)
 
+sgenstatic_libs = \
+	$(monodir)/mono/metadata/libmonoruntimesgen-static.la	\
+	$(monodir)/mono/io-layer/libwapi.la	\
+	$(monodir)/mono/utils/libmonoutils.la \
+	$(GLIB_LIBS)
+
 CLASS=$(mcs_topdir)/class/lib/net_2_0
 
-RUNTIME = MONO_PATH=$(CLASS) $(top_builddir)/runtime/mono-wrapper
-RUNTIME_AOTCHECK = MONO_PATH=$(CLASS):. $(top_builddir)/runtime/mono-wrapper
+RUNTIME_EXECUTABLE = $(if $(SGEN),$(top_builddir)/mono/mini/mono-sgen,$(top_builddir)/runtime/mono-wrapper)
+
+RUNTIME = MONO_PATH=$(CLASS) $(RUNTIME_EXECUTABLE)
+RUNTIME_AOTCHECK = MONO_PATH=$(CLASS):. $(RUNTIME_EXECUTABLE)
 
 MCS = $(RUNTIME) $(CLASS)/gmcs.exe -unsafe -nowarn:0162
 ILASM = $(RUNTIME) $(CLASS)/ilasm.exe
 
 AM_CFLAGS = \
 	-I$(top_srcdir) 	\
-	$(LIBGC_CFLAGS)		\
 	$(GLIB_CFLAGS)		\
 	$(LLVM_CFLAGS)		\
 	$(PLATFORM_CFLAGS) $(ARCH_CFLAGS)
 
 AM_CXXFLAGS = $(LLVM_CXXFLAGS) $(GLIB_CFLAGS)
 
-if PLATFORM_WIN32
+if HOST_WIN32
 export HOST_CC
 # The mingw math.h has "extern inline" functions that dont appear in libs, so
 # optimisation is required to actually inline them
@@ -60,35 +73,58 @@ monoldflags=-Wl,-version-script=$(srcdir)/ldscript $(export_ldflags)
 monobinldflags=-Wl,-version-script=$(srcdir)/ldscript.mono $(export_ldflags)
 endif
 
-if PLATFORM_WIN32
-libmono_la_LDFLAGS=-no-undefined -avoid-version -Wl,--kill-at $(monoldflags)
+if HOST_WIN32
+libmono_2_0_la_LDFLAGS=-no-undefined -avoid-version -Wl,--kill-at $(monoldflags)
 else
-libmono_la_LDFLAGS=$(monoldflags)
+libmono_2_0_la_LDFLAGS=$(monoldflags) -version-info 1:0:0
 endif
 
 if JIT_SUPPORTED
 
-if PLATFORM_WIN32
+if SUPPORT_SGEN
+sgen_binaries = mono-sgen
+sgen_libraries = libmonosgen-2.0.la
+sgen_static_libraries = libmonosgen-static.la
+endif
+
+if HOST_WIN32
 bin_PROGRAMS = mono monow
 else
-bin_PROGRAMS = mono
+bin_PROGRAMS = mono $(sgen_binaries)
 endif
 
 noinst_PROGRAMS = genmdesc
 
-lib_LTLIBRARIES = libmono.la
-noinst_LTLIBRARIES = libmono-static.la
+lib_LTLIBRARIES = libmono-2.0.la $(sgen_libraries)
+noinst_LTLIBRARIES = libmono-static.la $(sgen_static_libraries)
+
+if MOONLIGHT
+noinst_LTLIBRARIES += libmono-moon.la
+endif
+
+if LOADED_LLVM
+lib_LTLIBRARIES += libmono-llvm.la
+libmono_llvm_la_SOURCES = mini-llvm.c mini-llvm-cpp.cpp
+libmono_llvm_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(LLVM_LIBS) $(LLVM_LDFLAGS) $(libs)
+endif
+
 endif
 
 mono_SOURCES = \
 	main.c
+
+mono_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+
+mono_sgen_SOURCES = $(mono_SOURCES)
+mono_sgen_CFLAGS = $(SGEN_DEFINES) $(AM_CFLAGS)
 
 # We build this after libmono was built so it contains the date when the final
 # link was done
 buildver.h: libmono-static.la
 	@echo "const char *build_date = \"`date`\";" > buildver.h
 
-main.$(OBJEXT): buildver.h
+mono-main.$(OBJEXT): buildver.h
+mono_sgen-main.$(OBJEXT): buildver.h
 
 if DTRACE_G_REQUIRED
 LIBMONO_DTRACE_OBJECT = .libs/mono-dtrace.$(OBJEXT)
@@ -106,20 +142,36 @@ if STATIC_MONO
 # Link libmono into mono statically
 # This leads to higher performance, especially with TLS
 MONO_LIB=libmono-static.la
+MONO_SGEN_LIB=libmonosgen-static.la
 else 
-MONO_LIB=libmono.la
+MONO_LIB=libmono-2.0.la
+MONO_SGEN_LIB=libmonosgen-2.0.la
+endif
+
+if LOADED_LLVM
+LLVMMONOF=
+else
+LLVMMONOF=$(LLVM_LIBS) $(LLVM_LDFLAGS)
 endif
 
 mono_LDADD = \
-	$(MONO_LIB)			\
+	$(MONO_LIB)		\
 	$(GLIB_LIBS)		\
-	$(LLVM_LIBS)		\
-	-lm	\
-	$(MONO_DTRACE_OBJECT) \
-	$(LLVM_LDFLAGS)
+	$(LLVMMONOF)		\
+	-lm			\
+	$(MONO_DTRACE_OBJECT)
 
 mono_LDFLAGS = \
 	$(static_flags) -export-dynamic $(monobinldflags) $(monobin_platform_ldflags)
+
+mono_sgen_LDADD = \
+	$(MONO_SGEN_LIB)	\
+	$(GLIB_LIBS)		\
+	$(LLVMMONOF)		\
+	-lm			\
+	$(MONO_DTRACE_OBJECT)
+
+mono_sgen_LDFLAGS = $(static_flags) -export-dynamic $(monobinldflags) $(monobin_platform_ldflags)
 
 if DTRACE_G_REQUIRED
 
@@ -134,7 +186,7 @@ mono-dtrace.$(OBJEXT): $(top_srcdir)/data/mono.d mini.lo $(monodir)/mono/metadat
 endif
 
 # Create monow.exe, linked for the 'windows' subsystem
-if PLATFORM_WIN32
+if HOST_WIN32
 monow_LDADD = $(mono_LDADD)
 monow_LDFLAGS = $(mono_LDFLAGS) -mwindows
 monow_SOURCES = $(mono_SOURCES)
@@ -143,11 +195,12 @@ endif
 genmdesc_SOURCES = \
 	mini.h		\
 	genmdesc.c	\
-	helpers.c
+	helpers.c	\
+	../metadata/opcodes.c
 
 # Don't link this against libmonoruntime to speed up rebuilds
 genmdesc_LDADD = \
-	$(monodir)/mono/utils/libmonoutils.la $(monodir)/mono/metadata/opcodes.lo -lm	\
+	$(monodir)/mono/utils/libmonoutils.la -lm	\
 	$(GLIB_LIBS)
 
 x86_sources = \
@@ -226,9 +279,13 @@ posix_sources = \
 	mini-posix.c
 
 if ENABLE_LLVM
+if LOADED_LLVM
+llvm_sources =
+else
 llvm_sources = \
 	mini-llvm.c		\
 	mini-llvm-cpp.cpp
+endif
 endif
 
 common_sources = \
@@ -278,16 +335,21 @@ common_sources = \
 	tasklets.c		\
 	tasklets.h		\
 	simd-intrinsics.c	\
-	unwind.h		\
+	mini-unwind.h		\
 	unwind.c		\
-	image-writer.h	\
-	image-writer.c	\
-	dwarfwriter.h	\
-	dwarfwriter.c	\
+	image-writer.h		\
+	image-writer.c		\
+	dwarfwriter.h		\
+	dwarfwriter.c		\
 	mini-gc.h		\
 	mini-gc.c		\
-	debugger-agent.h \
-	debugger-agent.c
+	debugger-agent.h 	\
+	debugger-agent.c	\
+	debug-debugger.c	\
+	debug-debugger.h	\
+	xdebug.c			\
+	mini-llvm.h			\
+	mini-llvm-cpp.h
 
 test_sources = 			\
 	basic-calls.cs 		\
@@ -306,33 +368,30 @@ test_sources = 			\
 	generics-variant-types.il\
 	basic-simd.cs
 
+regtests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe iltests.exe devirtualization.exe generics.exe basic-simd.exe
+fsatests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe devirtualization.exe basic-simd.exe
+
+if X86
 if MONO_DEBUGGER_SUPPORTED
 if PLATFORM_DARWIN
-mono_debugger_arch_sources = mdb-debug-info32-darwin.s
+mdb_x86 = mdb-debug-info32-darwin.s
 else
-if AMD64
-mono_debugger_arch_sources = mdb-debug-info64.s
+mdb_x86 = mdb-debug-info32.s
+endif
 else
-if X86
-mono_debugger_arch_sources = mdb-debug-info32.s
+mdb_x86 = 
 endif
-endif
-endif
-mono_debugger_sources = debug-debugger.c debug-debugger.h $(mono_debugger_arch_sources)
-else
-mono_debugger_sources =
-endif
-
-regtests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe iltests.exe devirtualization.exe generics.exe basic-simd.exe
-
-if X86
-arch_sources = $(x86_sources) $(mono_debugger_sources)
+arch_sources = $(x86_sources) $(mdb_x86)
 arch_built=cpu-x86.h
 arch_define=__i386__
 endif
 
 if AMD64
-arch_sources = $(amd64_sources) $(mono_debugger_sources)
+if MONO_DEBUGGER_SUPPORTED
+arch_sources = $(amd64_sources) mdb-debug-info64.s
+else
+arch_sources = $(amd64_sources)
+endif
 arch_built=cpu-amd64.h
 arch_define=__x86_64__
 endif
@@ -406,7 +465,7 @@ arch_built = cpu-hppa.h
 arch_define=__hppa__
 endif
 
-if PLATFORM_WIN32
+if HOST_WIN32
 os_sources = $(windows_sources)
 monobin_platform_ldflags=
 endif
@@ -418,16 +477,33 @@ endif
 
 if PLATFORM_DARWIN
 os_sources = $(darwin_sources) $(posix_sources)
-#monobin_platform_ldflags=-sectcreate __TEXT __info_plist $(top_srcdir)/mono/mini/Info.plist
-monobin_platform_ldflags=
+#monobin_platform_ldflags=-sectcreate __TEXT __info_plist $(top_srcdir)/mono/mini/Info.plist -framework CoreFoundation
+monobin_platform_ldflags=-framework CoreFoundation
 endif
 
-libmono_la_SOURCES = $(common_sources) $(llvm_sources) $(arch_sources) $(os_sources)
+libmono_2_0_la_SOURCES = $(common_sources) $(llvm_sources) $(arch_sources) $(os_sources)
+libmono_2_0_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
 
-libmono_static_la_SOURCES = $(libmono_la_SOURCES)
-nodist_libmono_static_la_SOURCES = $(nodist_libmono_la_SOURCES)
+libmonosgen_2_0_la_SOURCES = $(libmono_2_0_la_SOURCES)
+libmonosgen_2_0_la_CFLAGS = $(AM_CFLAGS) $(SGEN_DEFINES)
+
+if MOONLIGHT
+libmono_moon_la_SOURCES = $(libmono_2_0_la_SOURCES)
+libmono_moon_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+endif
+
+libmono_static_la_SOURCES = $(libmono_2_0_la_SOURCES)
+libmono_static_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
 libmono_static_la_LDFLAGS = -static
 libmono_static_la_LIBADD = $(static_libs) $(MONO_DTRACE_OBJECT)
+
+libmonosgen_static_la_SOURCES = $(libmono_2_0_la_SOURCES)
+libmonosgen_static_la_CFLAGS = $(AM_CFLAGS) $(SGEN_DEFINES)
+libmonosgen_static_la_LDFLAGS = -static
+libmonosgen_static_la_LIBADD = $(sgenstatic_libs) $(MONO_DTRACE_OBJECT)
+
+nodist_libmono_static_la_SOURCES = $(nodist_libmono_la_SOURCES)
+nodist_libmono_static_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
 
 BURGSRC= $(common_BURGSRC) $(arch_BURGSRC)
 
@@ -435,8 +511,15 @@ libmonoincludedir = $(includedir)/mono-$(API_VER)/mono/jit
 
 libmonoinclude_HEADERS = jit.h
 
-libmono_la_LIBADD = \
+libmono_2_0_la_LIBADD = \
 	$(libs) $(LIBMONO_DTRACE_OBJECT)
+
+libmonosgen_2_0_la_LIBADD = \
+	$(sgen_libs) $(LIBMONO_DTRACE_OBJECT)
+
+if MOONLIGHT
+libmono_moon_la_LIBADD = $(libmono_2_0_la_LIBADD)
+endif
 
 basic-simd.exe: basic-simd.cs
 	$(MCS) -out:$@ $< -r:TestDriver.dll -r:Mono.Simd.dll
@@ -460,14 +543,20 @@ TestDriver.dll: $(srcdir)/TestDriver.cs
 generics-variant-types.dll: generics-variant-types.il
 	$(ILASM) -dll -output=$@ $<
 
+if NACL_CODEGEN
+GENMDESC_OPTS=--nacl
+else !NACL_CODEGEN
+GENMDESC_OPTS=
+endif !NACL_CODEGEN
+
 # we don't always use the perl impl because it's an additional
 # build dependency for the poor windows users
 # $(arch_define) is the preprocessor symbol that enables all the opcodes
 # for the specific platform in mini-ops.h
 if CROSS_COMPILING
-GENMDESC_PRG=perl $(srcdir)/genmdesc.pl $(arch_define) $(srcdir)
+GENMDESC_PRG=perl $(srcdir)/genmdesc.pl $(arch_define) $(srcdir) $(GENMDESC_OPTS)
 else !CROSS_COMPILING
-GENMDESC_PRG=./genmdesc
+GENMDESC_PRG=./genmdesc $(GENMDESC_OPTS)
 endif !CROSS_COMPILING
 
 cpu-x86.h: cpu-x86.md genmdesc$(EXEEXT)
@@ -531,6 +620,20 @@ fullaotcheck: mono $(regtests)
 	MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper --aot=full fullaot-tmp/* || exit 1
 	for i in $(regtests); do echo $$i; MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper --full-aot fullaot-tmp/$$i --exclude '!FULLAOT' || exit 1; done
 
+fsacheck: mono $(fsatests) fsacheck.c generics.exe
+	rm -rf fsa-tmp
+	mkdir fsa-tmp
+	cp $(CLASS)/mscorlib.dll $(CLASS)/System.Core.dll $(CLASS)/System.dll $(CLASS)/Mono.Posix.dll $(CLASS)/System.Configuration.dll $(CLASS)/System.Security.dll $(CLASS)/System.Xml.dll $(CLASS)/Mono.Security.dll $(CLASS)/Mono.Simd.dll \
+	$(fsatests) generics-variant-types.dll TestDriver.dll fsa-tmp/
+	cp $(fsatests) fsa-tmp/
+	MONO_PATH=fsa-tmp $(top_builddir)/runtime/mono-wrapper --aot=full,static fsa-tmp/*.dll || exit 1
+	MONO_PATH=fsa-tmp $(top_builddir)/runtime/mono-wrapper --aot=full,static fsa-tmp/*.exe || exit 1
+	$(CC) -o $@.out -g -static $(VPATH)/fsacheck.c fsa-tmp/*.o \
+	-lmono-2.0 -lpthread -lm -ldl -lrt \
+	-DTARGET_X86 -L.libs -I${prefix}/include/mono-2.0 \
+	-I${prefix} -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
+	for i in $(fsatests); do echo $$i; MONO_PATH=fsa-tmp ./$@.out $$i || exit 1; done
+
 bench: mono test.exe
 	time env $(RUNTIME) --ncompile $(count) --compile Test:$(mtest) test.exe
 
@@ -566,33 +669,31 @@ BUILT_SOURCES = version.h
 endif
 
 CLEANFILES= $(BUILT_SOURCES) *.exe *.dll
-EXTRA_DIST = $(common_BURGSRC) cprop.c TestDriver.cs ldscript ldscript.mono \
-	genmdesc.pl	\
-	$(test_sources) \
-	$(x86_sources) cpu-x86.md \
-	$(amd64_sources) cpu-amd64.md \
-	$(ppc_sources) cpu-ppc.md cpu-ppc64.md \
-	$(arm_sources) cpu-arm.md \
-	$(mips_sources) cpu-mips.md \
-	$(sparc_sources) cpu-sparc.md \
-	$(s390_sources) cpu-s390.md \
-	$(s390x_sources) cpu-s390x.md \
-	$(ia64_sources) cpu-ia64.md \
-	$(alpha_sources) cpu-alpha.md \
-	$(hppa_sources) cpu-hppa.md 	\
-	$(windows_sources)		\
-	$(darwin_sources) Info.plist	\
+EXTRA_DIST = $(common_BURGSRC) TestDriver.cs ldscript ldscript.mono \
+	genmdesc.pl				\
+	$(test_sources) 			\
+	$(x86_sources) cpu-x86.md 		\
+	$(amd64_sources) cpu-amd64.md 		\
+	$(ppc_sources) cpu-ppc.md cpu-ppc64.md 	\
+	$(arm_sources) cpu-arm.md 		\
+	$(mips_sources) cpu-mips.md 		\
+	$(sparc_sources) cpu-sparc.md 		\
+	$(s390_sources) cpu-s390.md 		\
+	$(s390x_sources) cpu-s390x.md 		\
+	$(ia64_sources) cpu-ia64.md 		\
+	$(alpha_sources) cpu-alpha.md 		\
+	$(hppa_sources) cpu-hppa.md 		\
+	$(windows_sources)			\
+	$(darwin_sources) Info.plist		\
 	$(posix_sources)
 
 version.h: Makefile
-	if test -d $(top_srcdir)/.git/svn; then svn_info="git log --no-color --first-parent -n1 --grep=git-svn-id: --pretty=format:%b | sed -n -e 's,git-svn-id: \(.*\)@\(.*\) .*,URL: \1 Revision: \2,p'"; fi; \
-	if test -d $(srcdir)/.svn; then svn_info='svn info'; fi; \
-	if test -n "$$svn_info"; then \
+	if test -d $(top_srcdir)/.git; then \
 		(cd $(top_srcdir); \
 			LANG=C; export LANG; \
-			branch=`eval $$svn_info | sed -n -e '/URL/ s,.*source/\(.*\)/mono.*,/\1/mono,p'`; \
-			version=`eval $$svn_info | sed -n -e '/Revision/ s/.*: //p'`; \
-			echo "#define FULL_VERSION \"$$branch r$$version\""; \
+			branch=`git branch | grep '^\*' | cut -d ' ' -f 2`; \
+			version=`git log --no-color --first-parent -n1 --pretty=format:%h`; \
+			echo "#define FULL_VERSION \"$$branch/$$version\""; \
 		); \
 	else \
 		echo "#define FULL_VERSION \"tarball\""; \

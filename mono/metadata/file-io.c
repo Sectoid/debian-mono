@@ -305,6 +305,18 @@ ves_icall_System_IO_MonoIO_RemoveDirectory (MonoString *path, gint32 *error)
 	return(ret);
 }
 
+static gchar *
+get_search_dir (MonoString *pattern)
+{
+	gchar *p;
+	gchar *result;
+
+	p = mono_string_to_utf8 (pattern);
+	result = g_path_get_dirname (p);
+	g_free (p);
+	return result;
+}
+
 MonoArray *
 ves_icall_System_IO_MonoIO_GetFileSystemEntries (MonoString *path,
 						 MonoString *path_with_pattern,
@@ -344,7 +356,7 @@ ves_icall_System_IO_MonoIO_GetFileSystemEntries (MonoString *path,
 		return(NULL);
 	}
 
-	utf8_path = mono_string_to_utf8 (path); /*If this raises there is not memory to release*/
+	utf8_path = get_search_dir (path_with_pattern);
 	names = g_ptr_array_new ();
 
 	do {
@@ -383,6 +395,115 @@ ves_icall_System_IO_MonoIO_GetFileSystemEntries (MonoString *path,
 	g_free (utf8_path);
 	
 	return result;
+}
+
+typedef struct {
+	MonoDomain *domain;
+	gchar *utf8_path;
+	HANDLE find_handle;
+} IncrementalFind;
+	
+static gboolean
+incremental_find_check_match (IncrementalFind *handle, WIN32_FIND_DATA *data, MonoString **result)
+{
+	gchar *utf8_result;
+	gchar *full_name;
+	
+	if ((data->cFileName[0] == '.' && data->cFileName[1] == 0) || (data->cFileName[0] == '.' && data->cFileName[1] == '.' && data->cFileName[2] == 0))
+		return FALSE;
+
+	utf8_result = g_utf16_to_utf8 (data->cFileName, -1, NULL, NULL, NULL);
+	if (utf8_result == NULL) 
+		return FALSE;
+	
+	full_name = g_build_filename (handle->utf8_path, utf8_result, NULL);
+	g_free (utf8_result);
+	*result = mono_string_new (mono_domain_get (), full_name);
+	g_free (full_name);
+	
+	return TRUE;
+}
+
+MonoString *
+ves_icall_System_IO_MonoIO_FindFirst (MonoString *path,
+				      MonoString *path_with_pattern,
+				      gint32 *result_attr, gint32 *error,
+				      gpointer *handle)
+{
+	WIN32_FIND_DATA data;
+	HANDLE find_handle;
+	IncrementalFind *ifh;
+	MonoString *result;
+	
+	*error = ERROR_SUCCESS;
+	
+	find_handle = FindFirstFile (mono_string_chars (path_with_pattern), &data);
+	
+	if (find_handle == INVALID_HANDLE_VALUE) {
+		gint32 find_error = GetLastError ();
+		*handle = NULL;
+		
+		if (find_error == ERROR_FILE_NOT_FOUND) 
+			return NULL;
+		
+		*error = find_error;
+		return NULL;
+	}
+
+	ifh = g_new (IncrementalFind, 1);
+	ifh->find_handle = find_handle;
+	ifh->utf8_path = mono_string_to_utf8 (path);
+	ifh->domain = mono_domain_get ();
+	*handle = ifh;
+
+	while (incremental_find_check_match (ifh, &data, &result) == 0){
+		if (FindNextFile (find_handle, &data) == FALSE){
+			int e = GetLastError ();
+			if (e != ERROR_NO_MORE_FILES)
+				*error = e;
+			return NULL;
+		}
+	}
+	*result_attr = data.dwFileAttributes;
+	
+	return result;
+}
+
+MonoString *
+ves_icall_System_IO_MonoIO_FindNext (gpointer handle, gint32 *result_attr, gint32 *error)
+{
+	IncrementalFind *ifh = handle;
+	WIN32_FIND_DATA data;
+	MonoString *result;
+
+	error = ERROR_SUCCESS;
+	do {
+		if (FindNextFile (ifh->find_handle, &data) == FALSE){
+			int e = GetLastError ();
+			if (e != ERROR_NO_MORE_FILES)
+				*error = e;
+			return NULL;
+		}
+	} while (incremental_find_check_match (ifh, &data, &result) == 0);
+
+	*result_attr = data.dwFileAttributes;
+	return result;
+}
+
+int
+ves_icall_System_IO_MonoIO_FindClose (gpointer handle)
+{
+	IncrementalFind *ifh = handle;
+	gint32 error;
+	
+	if (FindClose (ifh->find_handle) == FALSE){
+		error = GetLastError ();
+	} else
+		error = ERROR_SUCCESS;
+	g_free (ifh->utf8_path);
+	g_free (ifh);
+
+	return error;
 }
 
 MonoString *
@@ -697,6 +818,8 @@ ves_icall_System_IO_MonoIO_Read (HANDLE handle, MonoArray *dest,
 	MONO_ARCH_SAVE_REGS;
 
 	*error=ERROR_SUCCESS;
+
+	MONO_CHECK_ARG_NULL (dest);
 	
 	if (dest_offset + count > mono_array_length (dest))
 		return 0;
@@ -724,6 +847,8 @@ ves_icall_System_IO_MonoIO_Write (HANDLE handle, MonoArray *src,
 	MONO_ARCH_SAVE_REGS;
 
 	*error=ERROR_SUCCESS;
+
+	MONO_CHECK_ARG_NULL (src);
 	
 	if (src_offset + count > mono_array_length (src))
 		return 0;
@@ -750,7 +875,7 @@ ves_icall_System_IO_MonoIO_Seek (HANDLE handle, gint64 offset, gint32 origin,
 	*error=ERROR_SUCCESS;
 	
 	offset_hi = offset >> 32;
-	offset = SetFilePointer (handle, offset & 0xFFFFFFFF, &offset_hi,
+	offset = SetFilePointer (handle, (gint32) (offset & 0xFFFFFFFF), &offset_hi,
 				 convert_seekorigin (origin));
 
 	if(offset==INVALID_SET_FILE_POINTER) {
@@ -949,7 +1074,7 @@ MonoBoolean ves_icall_System_IO_MonoIO_DuplicateHandle (HANDLE source_process_ha
 gunichar2 
 ves_icall_System_IO_MonoIO_get_VolumeSeparatorChar ()
 {
-#if defined (PLATFORM_WIN32)
+#if defined (TARGET_WIN32)
 	return (gunichar2) ':';	/* colon */
 #else
 	return (gunichar2) '/';	/* forward slash */
@@ -959,7 +1084,7 @@ ves_icall_System_IO_MonoIO_get_VolumeSeparatorChar ()
 gunichar2 
 ves_icall_System_IO_MonoIO_get_DirectorySeparatorChar ()
 {
-#if defined (PLATFORM_WIN32)
+#if defined (TARGET_WIN32)
 	return (gunichar2) '\\';	/* backslash */
 #else
 	return (gunichar2) '/';	/* forward slash */
@@ -969,7 +1094,7 @@ ves_icall_System_IO_MonoIO_get_DirectorySeparatorChar ()
 gunichar2 
 ves_icall_System_IO_MonoIO_get_AltDirectorySeparatorChar ()
 {
-#if defined (PLATFORM_WIN32)
+#if defined (TARGET_WIN32)
 	return (gunichar2) '/';	/* forward slash */
 #else
 	return (gunichar2) '/';	/* slash, same as DirectorySeparatorChar */
@@ -979,7 +1104,7 @@ ves_icall_System_IO_MonoIO_get_AltDirectorySeparatorChar ()
 gunichar2 
 ves_icall_System_IO_MonoIO_get_PathSeparator ()
 {
-#if defined (PLATFORM_WIN32)
+#if defined (TARGET_WIN32)
 	return (gunichar2) ';';	/* semicolon */
 #else
 	return (gunichar2) ':';	/* colon */
@@ -988,7 +1113,7 @@ ves_icall_System_IO_MonoIO_get_PathSeparator ()
 
 static const gunichar2
 invalid_path_chars [] = {
-#if defined (PLATFORM_WIN32)
+#if defined (TARGET_WIN32)
 	0x0022,				/* double quote, which seems allowed in MS.NET but should be rejected */
 	0x003c,				/* less than */
 	0x003e,				/* greater than */

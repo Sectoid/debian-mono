@@ -22,10 +22,6 @@
 #include <sys/time.h>
 #endif
 
-#ifdef HAVE_VALGRIND_MEMCHECK_H
-#include <valgrind/memcheck.h>
-#endif
-
 #include <mono/metadata/assembly.h>
 #include <mono/metadata/loader.h>
 #include <mono/metadata/tabledefs.h>
@@ -47,10 +43,11 @@
 #include <mono/metadata/verify-internals.h>
 #include <mono/metadata/mempool-internals.h>
 #include <mono/metadata/attach.h>
+#include <mono/metadata/gc-internal.h>
 #include <mono/utils/mono-math.h>
 #include <mono/utils/mono-compiler.h>
 #include <mono/utils/mono-counters.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/utils/mono-mmap.h>
 #include <mono/utils/dtrace.h>
 
@@ -69,12 +66,6 @@
 #include <mach/task.h>
 #include <pthread.h>
 #include <dlfcn.h>
-
-#ifdef HAVE_SGEN_GC
-#undef pthread_create
-#undef pthread_join
-#undef pthread_detach
-#endif
 
 /*
  * This code disables the CrashReporter of MacOS X by installing
@@ -189,7 +180,12 @@ macosx_register_exception_handler ()
 					    mach_exception_port,
 					    EXCEPTION_DEFAULT,
 					    MACHINE_THREAD_STATE) == KERN_SUCCESS);
+
+	mono_gc_register_mach_exception_thread (thread);
 }
+
+/* This is #define'd by Boehm GC to _GC_dlopen. */
+#undef dlopen
 
 void
 mono_runtime_install_handlers (void)
@@ -216,34 +212,7 @@ mono_runtime_install_handlers (void)
 pid_t
 mono_runtime_syscall_fork ()
 {
-#if defined(__i386__)
-	/* Apple's fork syscall returns a regpair in EAX:EDX.
-	 *  EAX == pid of caller always
-	 *  EDX == 0 for parent, 1 for child
-	 */             
-	register_t eax;
-	register_t edx;
-	pid_t pid;
-
-	__asm__  __volatile__ (
-		"mov $0x2, %%eax;"
-		"int $0x80;"
-		"mov %%eax, %0;"
-		"mov %%edx, %1;"
-		: "=m" (eax), "=m" (edx));
-
-	if (edx == 0) {
-		pid = eax;
-	} else if (edx == 1) {
-		pid = 0;
-	} else {
-		g_assert_not_reached ();
-	}
-
-	return pid;
-#else
-	g_assert_not_reached ();
-#endif
+	return (pid_t) fork ();
 }
 
 gboolean

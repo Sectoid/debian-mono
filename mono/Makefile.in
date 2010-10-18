@@ -59,7 +59,6 @@ RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -71,6 +70,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BISON = @BISON@
+BOEHM_DEFINES = @BOEHM_DEFINES@
 BUILD_EXEEXT = @BUILD_EXEEXT@
 BUILD_GLIB_CFLAGS = @BUILD_GLIB_CFLAGS@
 BUILD_GLIB_LIBS = @BUILD_GLIB_LIBS@
@@ -112,7 +112,6 @@ GMODULE_LIBS = @GMODULE_LIBS@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
 GREP = @GREP@
-HAVE_BOEHM_GC = @HAVE_BOEHM_GC@
 HAVE_MSGFMT = @HAVE_MSGFMT@
 HOST_CC = @HOST_CC@
 INSTALL = @INSTALL@
@@ -144,6 +143,7 @@ MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
+MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -166,6 +166,7 @@ PKG_CONFIG = @PKG_CONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
+SGEN_DEFINES = @SGEN_DEFINES@
 SHELL = @SHELL@
 SQLITE = @SQLITE@
 SQLITE3 = @SQLITE3@
@@ -203,7 +204,6 @@ datarootdir = @datarootdir@
 docdir = @docdir@
 docs_dir = @docs_dir@
 dvidir = @dvidir@
-eglib_dir = @eglib_dir@
 exec_prefix = @exec_prefix@
 export_ldflags = @export_ldflags@
 host = @host@
@@ -252,9 +252,10 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = utils io-layer cil metadata \
-      arch interpreter mini dis monograph tests benchmark profiler
-
+@CROSS_COMPILING_FALSE@@MOONLIGHT_FALSE@SUBDIRS = utils io-layer cil metadata arch $(interpreter_dir) mini dis monograph tests benchmark profiler
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@SUBDIRS = utils io-layer     metadata arch $(interpreter_dir) mini
+@CROSS_COMPILING_TRUE@SUBDIRS = utils io-layer cil metadata arch $(interpreter_dir) mini dis
+DIST_SUBDIRS = utils io-layer cil metadata arch interpreter mini dis monograph tests benchmark profiler
 all: all-recursive
 
 .SUFFIXES:

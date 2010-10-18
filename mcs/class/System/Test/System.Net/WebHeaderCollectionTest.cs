@@ -162,14 +162,14 @@ namespace MonoTests.System.Net
 		[Test]
 		public void Indexers ()
 		{
-#if NET_2_0
-		Assert.AreEqual ("Value1", ((NameValueCollection)col)[0], "#1.1");
-		//FIXME: test also HttpRequestHeader and HttpResponseHeader
-#else
-			Assert.AreEqual ("Value1", col [0], "#1");
-#endif
-			Assert.AreEqual ("Value1", col ["Name1"], "#2");
-			Assert.AreEqual ("Value1", col ["NAME1"], "#3");
+			Assert.AreEqual ("Value1", ((NameValueCollection)col)[0], "#1.1");
+			//FIXME: test also HttpRequestHeader and HttpResponseHeader
+			//FIXME: is this enough?
+			WebHeaderCollection w = new WebHeaderCollection ();
+			w [HttpRequestHeader.CacheControl] = "Value2";
+			Assertion.AssertEquals ("#1.2", "Value2", w [HttpRequestHeader.CacheControl]);
+			w [HttpResponseHeader.Pragma] = "Value3";
+			Assertion.AssertEquals ("#1.3", "Value3", w [HttpResponseHeader.Pragma]);
 		}
 
 		[Test]
@@ -217,6 +217,15 @@ namespace MonoTests.System.Net
 			col.Add ("Name3", "Value3a\r\n Value3b");
 			col.Add ("Name4", "   Value4   ");
 			Assert.AreEqual ("Name1: Value1,Value1b\r\nName2: Value2\r\nName3: Value3a\r\n Value3b\r\nName4: Value4\r\n\r\n", col.ToString (), "#1");
+			WebHeaderCollection w;
+			w = new WebHeaderCollection ();
+			w.Add (HttpResponseHeader.KeepAlive, "Value1");
+			w.Add (HttpResponseHeader.WwwAuthenticate, "Value2");
+			Assertion.AssertEquals ("#2", "Keep-Alive: Value1\r\nWWW-Authenticate: Value2\r\n\r\n", w.ToString ());
+			w = new WebHeaderCollection ();
+			w.Add (HttpRequestHeader.UserAgent, "Value1");
+			w.Add (HttpRequestHeader.ContentMd5, "Value2");
+			Assertion.AssertEquals ("#2", "User-Agent: Value1\r\nContent-MD5: Value2\r\n\r\n", w.ToString ());
 		}
 
 		[Test]
@@ -328,7 +337,11 @@ namespace MonoTests.System.Net
 			0x00, 0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x01, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x02, 0x00, 0x00, 0x00,
 			0x49, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d, 0x2c, 0x20, 0x56, 0x65,
+#if NET_4_0
+			0x72, 0x73, 0x69, 0x6f, 0x6e, 0x3d, 0x34, 0x2e, 0x30, 0x2e, 0x30,
+#else
 			0x72, 0x73, 0x69, 0x6f, 0x6e, 0x3d, 0x32, 0x2e, 0x30, 0x2e, 0x30,
+#endif
 			0x2e, 0x30, 0x2c, 0x20, 0x43, 0x75, 0x6c, 0x74, 0x75, 0x72, 0x65,
 			0x3d, 0x6e, 0x65, 0x75, 0x74, 0x72, 0x61, 0x6c, 0x2c, 0x20, 0x50,
 			0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x54, 0x6f, 0x6b,

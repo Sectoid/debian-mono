@@ -8,7 +8,7 @@
 //
 
 //
-// Copyright (C) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -40,8 +40,8 @@ using System.Threading;
 using System.Web.Configuration;
 using System.Web.SessionState;
 
-namespace System.Web {
-
+namespace System.Web
+{
 	//
 	// Methods exposed through HttpContext.Server property
 	//
@@ -89,19 +89,12 @@ namespace System.Web {
 			Execute (path, writer, true);
 		}
 
-#if NET_2_0
 		public void Execute (string path, bool preserveForm)
 		{
 			Execute (path, null, preserveForm);
 		}
-#endif
-		
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		void Execute (string path, TextWriter writer, bool preserveForm)
+
+		public void Execute (string path, TextWriter writer, bool preserveForm)
 		{			
 			Execute (path, writer, preserveForm, false);
 		}
@@ -123,14 +116,9 @@ namespace System.Web {
 
 			string exePath = UrlUtils.Combine (context.Request.BaseVirtualDir, path);
 			bool cookieless = false;
-			
-#if NET_2_0
 			SessionStateSection config = WebConfigurationManager.GetWebApplicationSection ("system.web/sessionState") as SessionStateSection;
 			cookieless = SessionStateModule.IsCookieLess (context, config);
-#else
-			SessionConfig config = HttpContext.GetAppConfig ("system.web/sessionState") as SessionConfig;
-			cookieless = config.CookieLess;
-#endif
+			
 			if (cookieless)
 				exePath = UrlUtils.RemoveSessionId (VirtualPathUtility.GetDirectory (exePath), exePath);
 			
@@ -138,8 +126,9 @@ namespace System.Web {
 			Execute (handler, writer, preserveForm, exePath, queryString, isTransfer, true);
 		}
 
-		internal void Execute (IHttpHandler handler, TextWriter writer, bool preserveForm, string exePath, string queryString, bool isTransfer, bool isInclude) {
-#if NET_2_0 && !TARGET_J2EE
+		internal void Execute (IHttpHandler handler, TextWriter writer, bool preserveForm, string exePath, string queryString, bool isTransfer, bool isInclude)
+		{
+#if !TARGET_J2EE
 			// If the target handler is not Page, the transfer must not occur.
 			// InTransit == true means we're being called from Transfer
 			bool is_static = (handler is StaticFileHandler);
@@ -169,11 +158,10 @@ namespace System.Web {
 			string oldExePath = request.CurrentExecutionFilePath;
 			bool oldIsInclude = context.IsProcessingInclude;
 			try {
-#if NET_2_0
 				context.PushHandler (handler);
 				if (is_static) // Not sure if this should apply to Page too
 					request.SetFilePath (exePath);
-#endif
+
 				request.SetCurrentExePath (exePath);
 				context.IsProcessingInclude = isInclude;
 				
@@ -199,9 +187,8 @@ namespace System.Web {
 				response.SetTextWriter (previous);
 				if (!preserveForm)
 					request.SetForm (oldForm);
-#if NET_2_0
+
 				context.PopHandler ();
-#endif
 				request.SetCurrentExePath (oldExePath);
 				context.IsProcessingInclude = oldIsInclude;
 			}
@@ -239,6 +226,23 @@ namespace System.Web {
 			return context.Request.MapPath (path);
 		}
 
+		
+		public void TransferRequest (string path)
+		{
+			TransferRequest (path, false, null, null);
+		}
+		
+		public void TransferRequest (string path, bool preserveForm)
+		{
+			TransferRequest (path, preserveForm, null, null);
+		}
+
+		[MonoTODO ("Always throws PlatformNotSupportedException.")]
+		public void TransferRequest (string path, bool preserveForm, string method, NameValueCollection headers)
+		{
+			throw new PlatformNotSupportedException ();
+		}
+		
 		public void Transfer (string path)
 		{
 			Transfer (path, true);
@@ -248,7 +252,7 @@ namespace System.Web {
 			Execute (path, null, preserveForm, true);
 			context.Response.End ();
 		}
-#if NET_2_0
+
 		public void Transfer (IHttpHandler handler, bool preserveForm)
 		{
 			if (handler == null)
@@ -348,7 +352,6 @@ namespace System.Web {
 			}
 			return new string (chars);
 		}
-#endif
 
 		public string UrlDecode (string s)
 		{

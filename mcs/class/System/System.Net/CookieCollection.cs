@@ -31,11 +31,9 @@
 //
 
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.Serialization;
-#if NET_2_0
-using System.Collections.Generic;
-#endif
 
 namespace System.Net 
 {
@@ -46,7 +44,6 @@ namespace System.Net
 	public class CookieCollection : ICollection, IEnumerable {
 #endif
 		// not 100% identical to MS implementation
-#if NET_2_0
 		sealed class CookieCollectionComparer : IComparer<Cookie> {
 			public int Compare (Cookie x, Cookie y)
 			{
@@ -60,34 +57,13 @@ namespace System.Net
 			}
 		}
 
+		static CookieCollectionComparer Comparer = new CookieCollectionComparer ();
+
 		List<Cookie> list = new List<Cookie> ();
 
 		internal IList<Cookie> List {
 			get { return list; }
 		}
-#else
-		sealed class CookieCollectionComparer : IComparer {
-			public int Compare (object x, object y)
-			{
-				if (x == null || y == null)
-					return 0;
-				
-				Cookie c1 = (Cookie) x;
-				Cookie c2 = (Cookie) y;
-
-				return (c1.Name.Length + c1.Value.Length - c2.Name.Length - c2.Value.Length);
-			}
-		}
-
-		ArrayList list = new ArrayList ();
-
-		internal IList List {
-			get { return list; }
-		}
-#endif
-
-		static CookieCollectionComparer Comparer = new CookieCollectionComparer ();
-
 		// ICollection
 		public int Count {
 			get { return list.Count; }
@@ -151,7 +127,7 @@ namespace System.Net
 			string path = cookie.Path;
 
 			for (int i = list.Count - 1; i >= 0; i--) {
-				Cookie c = (Cookie) list [i];
+				Cookie c = list [i];
 				if (c.Version != cookie.Version)
 					continue;
 
@@ -184,7 +160,7 @@ namespace System.Net
 				if (index < 0 || index >= list.Count)
 					throw new ArgumentOutOfRangeException ("index");
 
-				return (Cookie) list [index];
+				return list [index];
 			}
 		}
 

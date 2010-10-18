@@ -31,6 +31,7 @@ using NUnit.Framework;
 using System;
 using System.Threading;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
@@ -526,6 +527,37 @@ namespace MonoTests.System.Reflection
 			}
 		}
 
+		[Test]
+		public void MakeGenericMethodWithNonGenericMethodDefinitionMethod ()
+		{
+			MethodInfo gmi = this.GetType ().GetMethod ("SimpleGenericMethod");
+			MethodInfo inst = gmi.MakeGenericMethod (typeof (int), typeof (double));
+			try {
+				inst.MakeGenericMethod (typeof (int), typeof (double));
+				Assert.Fail ("#1");
+			} catch (InvalidOperationException ex) {
+			}
+		}
+
+		public TFoo SimpleGenericMethod2<TFoo, TBar> () { return default (TFoo); }
+		/*Test for the uggly broken behavior of SRE.*/
+		[Test]
+		public void MakeGenericMethodWithSreTypeResultsInStupidMethodInfo ()
+		{
+			AssemblyName assemblyName = new AssemblyName ();
+			assemblyName.Name = "MonoTests.System.Reflection.Emit.MethodInfoTest";
+			AssemblyBuilder assembly = Thread.GetDomain ().DefineDynamicAssembly (assemblyName, AssemblyBuilderAccess.RunAndSave, ".");
+			ModuleBuilder module = assembly.DefineDynamicModule ("module1", "tst.dll");
+			TypeBuilder tb = module.DefineType ("Test", TypeAttributes.Public);
+
+			MethodInfo gmi = this.GetType ().GetMethod ("SimpleGenericMethod2");
+			MethodInfo ins = gmi.MakeGenericMethod (typeof (int), tb);
+
+			Assert.AreSame (tb, ins.GetGenericArguments () [1], "#1");
+			/*broken ReturnType*/
+			Assert.AreSame (gmi.GetGenericArguments () [0], ins.ReturnType, "#2");
+		}
+
 		public static int? pass_nullable (int? i)
 		{
 			return i;
@@ -682,6 +714,32 @@ namespace MonoTests.System.Reflection
 			}
 		}
 #endif
+#if NET_4_0
+		interface IMethodInvoke<out T>
+		{
+		    T Test ();
+		}
+
+		class MethodInvoke : IMethodInvoke<string>
+		{
+		    public string Test ()
+		    {
+		        return "MethodInvoke";
+		    }
+		}
+
+		[Test]
+		public void GetInterfaceMapWorksWithVariantIfaces ()
+		{
+			var m0 = typeof (IMethodInvoke<object>).GetMethod ("Test");
+			var m1 = typeof (IMethodInvoke<string>).GetMethod ("Test");
+			var obj = new MethodInvoke ();
+
+			Assert.AreEqual ("MethodInvoke", m0.Invoke (obj, new Object [0]));
+			Assert.AreEqual ("MethodInvoke", m1.Invoke (obj, new Object [0]));
+		}
+#endif
+
 	}
 	
 #if NET_2_0

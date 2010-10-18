@@ -33,39 +33,24 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterfaceAttribute (typeof (_ConstructorInfo))]	
-#endif
 	[Serializable]
 	[ClassInterface(ClassInterfaceType.None)]
 	public abstract class ConstructorInfo : MethodBase, _ConstructorInfo {
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static readonly string ConstructorName = ".ctor";
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public static readonly string TypeConstructorName = ".cctor";
 
 		protected ConstructorInfo() {
 		}
 		
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public override MemberTypes MemberType {
 			get {return MemberTypes.Constructor;}
 		}
-
-#if ONLY_1_1
-		public new Type GetType ()
-		{
-			return base.GetType ();
-		}
-#endif
 
 		[DebuggerStepThrough]
 		[DebuggerHidden]
@@ -119,5 +104,36 @@ namespace System.Reflection {
 		{
 			return this.Invoke (parameters);
 		}
+
+#if NET_4_0
+		public override bool Equals (object obj)
+		{
+			return obj == this;
+		}
+
+		public override int GetHashCode ()
+		{
+			return base.GetHashCode ();
+		}
+
+		public static bool operator == (ConstructorInfo left, ConstructorInfo right)
+		{
+			if ((object)left == (object)right)
+				return true;
+			if ((object)left == null ^ (object)right == null)
+				return false;
+			return left.Equals (right);
+		}
+
+		public static bool operator != (ConstructorInfo left, ConstructorInfo right)
+		{
+			if ((object)left == (object)right)
+				return false;
+			if ((object)left == null ^ (object)right == null)
+				return true;
+			return !left.Equals (right);
+		}
+#endif
+
 	}
 }

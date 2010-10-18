@@ -43,9 +43,6 @@ namespace System.ServiceModel.Channels
 
 		WebRequest web_request;
 
-		// FIXME: supply maxSizeOfHeaders.
-		int max_headers = 0x10000;
-
 		// Constructor
 
 		public HttpRequestChannel (HttpChannelFactory<IRequestChannel> factory,
@@ -53,10 +50,6 @@ namespace System.ServiceModel.Channels
 			: base (factory, address, via)
 		{
 			this.source = factory;
-		}
-
-		public int MaxSizeOfHeaders {
-			get { return max_headers; }
 		}
 
 		public MessageEncoder Encoder {
@@ -93,7 +86,7 @@ namespace System.ServiceModel.Channels
 				((HttpWebRequest) web_request).CookieContainer = cmgr.CookieContainer;
 #endif
 
-#if !NET_2_1 || MONOTOUCH // until we support NetworkCredential like SL4 will do.
+#if !MOONLIGHT // until we support NetworkCredential like SL4 will do.
 			// client authentication (while SL3 has NetworkCredential class, it is not implemented yet. So, it is non-SL only.)
 			var httpbe = (HttpTransportBindingElement) source.Transport;
 			string authType = null;
@@ -205,37 +198,44 @@ namespace System.ServiceModel.Channels
 			}
 
 			var hrr = (HttpWebResponse) res;
-			if ((int) hrr.StatusCode >= 400) {
+			if ((int) hrr.StatusCode >= 400 && (int) hrr.StatusCode < 500) {
 				channelResult.Complete (new WebException (String.Format ("There was an error on processing web request: Status code {0}({1}): {2}", (int) hrr.StatusCode, hrr.StatusCode, hrr.StatusDescription)));
 			}
 
 			try {
-				using (var responseStream = resstr) {
-					MemoryStream ms = new MemoryStream ();
-					byte [] b = new byte [65536];
-					int n = 0;
+				Message ret;
 
-					while (true) {
-						n = responseStream.Read (b, 0, 65536);
-						if (n == 0)
-							break;
-						ms.Write (b, 0, n);
+				// TODO: unit test to make sure an empty response never throws
+				// an exception at this level
+				if (hrr.ContentLength == 0) {
+					ret = Message.CreateMessage (MessageVersion.Default, String.Empty);
+				} else {
+
+					using (var responseStream = resstr) {
+						MemoryStream ms = new MemoryStream ();
+						byte [] b = new byte [65536];
+						int n = 0;
+
+						while (true) {
+							n = responseStream.Read (b, 0, 65536);
+							if (n == 0)
+								break;
+							ms.Write (b, 0, n);
+						}
+						ms.Seek (0, SeekOrigin.Begin);
+
+						ret = Encoder.ReadMessage (
+							ms, (int) source.Transport.MaxReceivedMessageSize, res.ContentType);
 					}
-					ms.Seek (0, SeekOrigin.Begin);
-
-					channelResult.Response = Encoder.ReadMessage (
-						//responseStream, MaxSizeOfHeaders);
-						ms, MaxSizeOfHeaders, res.ContentType);
-/*
-MessageBuffer buf = ret.CreateBufferedCopy (0x10000);
-ret = buf.CreateMessage ();
-System.Xml.XmlTextWriter w = new System.Xml.XmlTextWriter (Console.Out);
-w.Formatting = System.Xml.Formatting.Indented;
-buf.CreateMessage ().WriteMessage (w);
-w.Close ();
-*/
-					channelResult.Complete ();
 				}
+
+				var rp = new HttpResponseMessageProperty () { StatusCode = hrr.StatusCode, StatusDescription = hrr.StatusDescription };
+				foreach (var key in hrr.Headers.AllKeys)
+					rp.Headers [key] = hrr.Headers [key];
+				ret.Properties.Add (HttpResponseMessageProperty.Name, rp);
+
+				channelResult.Response = ret;
+				channelResult.Complete ();
 			} catch (Exception ex) {
 				channelResult.Complete (ex);
 			} finally {
@@ -283,12 +283,15 @@ w.Close ();
 
 		protected override IAsyncResult OnBeginClose (TimeSpan timeout, AsyncCallback callback, object state)
 		{
-			throw new NotImplementedException ();
+			if (web_request != null)
+				web_request.Abort ();
+			web_request = null;
+			return base.OnBeginClose (timeout, callback, state);
 		}
 
 		protected override void OnEndClose (IAsyncResult result)
 		{
-			throw new NotImplementedException ();
+			base.OnEndClose (result);
 		}
 
 		// Open
@@ -297,14 +300,16 @@ w.Close ();
 		{
 		}
 
+		[MonoTODO ("find out what to do here")]
 		protected override IAsyncResult OnBeginOpen (TimeSpan timeout, AsyncCallback callback, object state)
 		{
-			throw new NotImplementedException ();
+			return base.OnBeginOpen (timeout, callback, state);
 		}
 
+		[MonoTODO ("find out what to do here")]
 		protected override void OnEndOpen (IAsyncResult result)
 		{
-			throw new NotImplementedException ();
+			base.OnEndOpen (result);
 		}
 
 		class HttpChannelRequestAsyncResult : IAsyncResult
@@ -320,16 +325,15 @@ w.Close ();
 			AsyncCallback callback;
 			ManualResetEvent wait;
 			Exception error;
+			object locker = new object ();
+			bool is_completed;
 
 			public HttpChannelRequestAsyncResult (Message message, TimeSpan timeout, AsyncCallback callback, object state)
 			{
-				CompletedSynchronously = true;
 				Message = message;
 				Timeout = timeout;
 				this.callback = callback;
 				AsyncState = state;
-
-				wait = new ManualResetEvent (false);
 			}
 
 			public Message Response {
@@ -337,7 +341,13 @@ w.Close ();
 			}
 
 			public WaitHandle AsyncWaitHandle {
-				get { return wait; }
+				get {
+					lock (locker) {
+						if (wait == null)
+							wait = new ManualResetEvent (is_completed);
+					}
+					return wait;
+				}
 			}
 
 			public object AsyncState {
@@ -358,7 +368,6 @@ w.Close ();
 				error = error ?? ex;
 
 				IsCompleted = true;
-				wait.Set ();
 				if (callback != null)
 					callback (this);
 			}
@@ -368,7 +377,14 @@ w.Close ();
 			}
 
 			public bool IsCompleted {
-				get; private set;
+				get { return is_completed; }
+				set {
+					is_completed = value;
+					lock (locker) {
+						if (is_completed && wait != null)
+							wait.Set ();
+					}
+				}
 			}
 
 			public void WaitEnd ()
@@ -377,11 +393,11 @@ w.Close ();
 					// FIXME: Do we need to use the timeout? If so, what happens when the timeout is reached.
 					// Is the current request cancelled and an exception thrown? If so we need to pass the
 					// exception to the Complete () method and allow the result to complete 'normally'.
-#if NET_2_1 || MONOTOUCH
+#if NET_2_1
 					// neither Moonlight nor MonoTouch supports contexts (WaitOne default to false)
-					bool result = wait.WaitOne (Timeout);
+					bool result = AsyncWaitHandle.WaitOne (Timeout);
 #else
-					bool result = wait.WaitOne (Timeout, true);
+					bool result = AsyncWaitHandle.WaitOne (Timeout, true);
 #endif
 					if (!result)
 						throw new TimeoutException ();

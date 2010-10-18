@@ -1,0 +1,99 @@
+2010-08-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid NRE when converting contract-based instances to
+	contract-neutral objects. Add Windows async workaround all around
+	to not block further hacking.
+
+2010-08-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Add integrated test case.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Add timeout in duplex (UDP) client. Set Via URI to not raise
+	scheme mismatch.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Prepare duplex client types for Adhoc mode for DiscoveryClient.
+
+2010-08-25  Atsushi Eno  <atsushi@ximian.com>
+
+	flush pending DiscoveryClientBindingElement work.
+
+2010-08-25  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryClientBindingElement implementation.
+
+2010-08-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing discovery client and service implementation.
+
+2010-08-23  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing Announcement fixes. Now it accepts messages from .NET
+	AnnouncementClient (does not process them yet).
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Several fixes to get client Via URI used correctly.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceDiscoveryBehavior hosting test case.
+
+2010-08-17  Atsushi Eno  <atsushi@ximian.com>
+
+	implement ServiceDiscoveryBehavior and EndpointDiscoveryBehavior.
+
+2010-08-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Flush DiscoveryProxy work.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement discovery contract interfaces in DiscoveryService.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add simplex Discovery contract interfaces.
+
+2010-08-14  Atsushi Eno  <atsushi@ximian.com>
+
+	forgot to add some files.
+
+2010-08-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing DiscoveryEndpoint work.
+
+2010-08-13  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing announcement and discovery work as well as several
+	bugfixes.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to create InnerChannel when not necessary. Add more
+	AnnouncementClient tests.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing AnnouncementClient implementation.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing AnnouncementService work.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	flush ongoing hack. add UDP transport. Headers on configuration
+	sources.
+
+2010-08-11  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing endpoint implementation.
+
+2010-03-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* : initial checkin (mostly stubs).
+

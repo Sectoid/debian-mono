@@ -1,21 +1,404 @@
-2010-07-12  Andrew Jorgensen  <ajorgensen@novell.com>
+2010-09-23  Andrew Jorgensen  <ajorgensen@novell.com>
 
-	* mono-core.spec.in: Updates, including breaking a circular dep.
+	move DynamicData to mvc because it depends on Extensions
+
+2010-09-20  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	put the x11 devel package back in buildrequires and a couple other
+	spec fixes
+
+2010-09-17  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	errant file
+
+2010-09-16  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	More .spec reorgs
+
+2010-09-15  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	mono-configuration-crypto is a 4.0 assembly, not 2.0
+
+2010-09-09  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Various cleanup and addition
+
+2010-08-31  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Version 2.8
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Reenable system AOT on x86/amd64 which accidently got disabled.
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable system aot on darwin.
+
+2010-08-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable aot-ing of mscorlib+gmcs on all architectures where AOT is
+	supported.
+
+2010-08-30  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Relatively major overhaul of the .spec file
+
+	Cleanup of legacy conditionals, addition of llvm and sgen
+	conditionals
+
+2010-08-26  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* Makefile.am: Check for GIT_DIR if defined (rather than .git) *
+	commits-to-changelog.py: BUILD_REVISION rather than HEAD if
+	defined
+
+2010-08-26  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Bump version to 2.8.1
+
+	2.8.ODD will mean git master and 2.8.EVEN will mean a release
+	branch
+
+2010-08-26  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add the mono-api-info man page
+
+2010-08-25  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Remove mono-abi-info from the .spec file
+
+2010-08-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Ignore removed ChangeLog files
+
+	If a ChangeLog has been removed, don't try to open the file.
+
+2010-08-25  Robert Nagy  <robert@bsd.hu>
+
+	Make sgen compile on OpenBSD, by adding the missing stuff
+
+2010-08-23  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[tools] Merge mono-abi-info tool into a "--abi" flag for
+	mono-api-info
+
+	This commit also includes a brief (help welcome!) man page for
+	mono-api-info that explains its usage.
+
+2010-08-23  Robert Nagy  <robert@bsd.hu>
+
+	fix openbsd CPPFLAGS and check for sys/param.h
+
+2010-08-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Update get-cygwin-deps.sh after a filename change.
+
+2010-08-20  Mark Probst  <mark.probst@gmail.com>
+
+	[scripts] Don't use saxutils in mono-heapviz.
+
+	Some Pythons don't have saxutils.DefaultHandler, so don't use it.
+
+2010-08-17  Jb Evain  <jbevain@gmail.com>
+
+	update ignore files
+
+2010-08-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove support for building with system glib.
+
+2010-08-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable building of ikvm-native and define DISABLE_SOCKETS when
+	using NACL.
+
+2010-08-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add ccrewrite manpage to spec
+
+2010-08-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add ccrewrite wrapper
+
+2010-08-13  Marek Safar  <marek.safar@gmail.com>
+
+	Add ccrewrite script
+
+2010-08-12  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add mono-abi-info and Mono.CodeContracts to spec
+
+2010-08-09  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Bump version to 2.7.1
+
+2010-08-09  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* mono-core.spec.in: Add System.ServiceModel.Discovery
+
+2010-08-09  Miguel de Icaza  <miguel@gnome.org>
+
+	Update README
+
+2010-08-09  Elijah Taylor  <elijahtaylor@google.com>
+
+	Add configure support for Google Native Client (NACL).
+
+2010-08-08  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Fix sgen-grep-binprot.
+
+	The refactoring that occurred with addition of parallel mark left
+	sgen-grep-binprot in an uncompilable state. Fix.
+
+2010-08-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Reenable LLVM+AOT again, the latest LLVM branch code works fine.
+
+2010-08-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable system aot when LLVM is enabled for now.
+
+2010-08-05  Mark Probst  <mark.probst@gmail.com>
+
+	[dist] Only run the commit-to-changelog script if there's a
+	repository.
+
+	Since "make dist" should also work from a tarball we must only
+	call the commit-to-changelog script if there's a git repository
+	present. If we're already in a disted tree, the script has already
+	run.
+
+2010-08-04  Mark Probst  <mark.probst@gmail.com>
+
+	[scripts] commit-to-changelog fails if git is too old
+
+	We need a git that supports the %B format specifier, which seems
+	to be 1.7.2. Fail if it's not supported.
+
+2010-08-04  Mark Probst  <mark.probst@gmail.com>
+
+	[scripts] commit-to-changelog fails if git fails
+
+	The commit-to-changelog script now fails if git fails for whatever
+	reason. The most important reasons would be that git isn't
+	installed, and that the script is called without a repository.
+
+2010-08-04  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Don't call commit-to-changelog until after mcs is dist'd
+
+2010-08-02  Mark Probst  <mark.probst@gmail.com>
+
+	[commit-to-changelog] Bugfix.
+
+	The commit-to-changelog script would crash for commits that
+	already contain ChangeLog entries.
+
+2010-08-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	Re-enable 'crlf' attributes on *.cs
+
+	This fixes EOL conversions flagged by git 1.7.1
+	core.autocrlf=true. At this point, neither git 1.7.1 nor 1.7.2
+	show any automatic CRLF normalization. I think we're ready for
+	another experiment.
+
+	There seems to be a difference in the handling of mixed
+	line-ending files between git 1.7.2 and older versions, when
+	core.autocrlf is set to true.
+
+2010-07-30  Mark Probst  <mark.probst@gmail.com>
+
+	Don't generate empty ChangeLog entries, insert the whole message
+	instead.
+
+	The commits-to-changelog script previously generated ChangeLog
+	entries with a FIXME if it couldn't find anything applicable for
+	that particular ChangeLog. Since we want to use the script for
+	"make dist" it shouldn't do this. Instead it now just inserts the
+	whole commit message in those ChangeLogs.
+
+2010-07-30  Mark Probst  <mark.probst@gmail.com>
+
+	"make dist" updates the ChangeLogs automatically.
+
+	When creating a distribution "make dist" now uses the
+	commits-to-changelog script to automatically update all ChangeLog
+	files since the last commit marked with the
+	"last-commit-with-compulsory-changelog-entry" tag.
+
+2010-07-29  Mark Probst  <mark.probst@gmail.com>
+
+	commits-to-changelog script.
+
+	This script converts git commit messages to ChangeLog entries.
+	That will hopefully allow us to forego adding ChangeLog entries in
+	our commits, which always leads to merge conflicts.
+
+2010-07-24  Gonzalo Paniagua Javier  <gonzalo@novell.com>
+
+	TEST 5
+
+2010-07-24  Gonzalo Paniagua Javier  <gonzalo@novell.com>
+
+	TEST 4
+
+2010-07-24  Gonzalo Paniagua Javier  <gonzalo@novell.com>
+
+	TEST 3
+
+2010-07-24  Gonzalo Paniagua Javier  <gonzalo@novell.com>
+
+	TEST 2
+
+2010-07-24  Gonzalo Paniagua Javier  <gonzalo@novell.com>
+
+	TEST
+
+2010-08-05  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* scripts/.gitignore: added mono-abi-info.
+	* scripts/Makefile.am: added mono-abi-info autofoo.
+
+2010-07-16  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Remove the 'LLVM backend is experimental' warning.
+
+2010-07-08  Neale Ferguson <neale@sinenomine.net>
+
+	* configure.in: Add sgen_supported=true for s390x.
+
+2010-07-05  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* configure.in: Restore the AM_CONDITIONAL debugger supported, we need it to
+	include/exclude assembler files from the build in the makefile.
+
+2010-06-29  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add a define for the full LLVM version to config.h.
+
+2010-06-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Make sgen_supported default to false to fix non-x86 builds.
+
+2010-06-25  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/patch-quiet.sh: Fix this up after the build changes.
+
+2010-06-23  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: By default, we will now also buils an SGen-aware
+	VM by default.   This can be turned off by using the
+	--with-sgen=no command line option.
+
+	Two binaries are produced now: mono and mono-sgen
+
+	--- First Pass ---
+
+	* configure.in: Remove redundant setting of variables in non-Boehm
+	cases.
+
+	First pass at supporting the compilation of both
+	the Boehm-powered Mono VM and the Sgen-powered one.
+
+	The Boehm configuration flags are no longer part of the config.h
+	that we generate, but instead they are part of the CFLAGS
+	variables that are used for the following components:
+
+		* io-layer/ because it uses the pthread APIs that are
+		wrapped by using utils/gc_wrapper.h
+
+		* metatada/ because we have plenty of GC-specific code
+
+		* mini/ the VM itself
+
+	The patch currently only changes the way that Boehm is compiled,
+	no changes for Sgen have been done yet.
+
+	We now pass Boehm CFLAG settings as "BOEHM_DEFINES" which need to
+	be added to the three Makefiles above.
+
+	When building the bundled and modified libgc, we also need to pass
+	MONO_DEBUGGER_SUPPORTED as it triggers some special features in
+	the libgc.
+
+	Simplify the build also by removing the AM_CONDITIONAL debugger
+	supported, we now merely check this on the source file and wrap
+	the entire debug-debugger.c in an ifdef.
+
+2010-06-05  Mark Probst  <mark.probst@gmail.com>
+
+	* tools/sgen/sgen-grep-binprot.c: Updated for degraded and pinned
+	allocations.
+
+2010-06-02  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Check whenever we are using mono's LLVM branch.
+
+2010-05-31  Robert Jordan  <robertj@gmx.net>
+
+	* configure.in: Windows: mcs_topdir_from_srcdir must not be
+	converted to a Win32 path unless it's already a cygwin path.
+	Fixes --with-mcs-docs for in-tree mcs builds.
+
+2010-05-28  Robert Jordan  <robertj@gmx.net>
+
+	* configure.in: Fix mcs_topdir* for the Windows build.
+
+2010-05-28  Mark Probst  <mark.probst@gmail.com>
+
+	* tools/sgen/sgen-grep-binprot.c (main): Use strtoul(), not
+	strtol(), to parse addresses from the command line.
+
+2010-05-20  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: drop again the pkg.m4 dependency and for eglib
+	cases (and not-Windows) make it entirely optional.
+
+2010-05-11  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* scripts/mono-find-*.in: Look for libmono-2.0.so.1, not libmono.so
+	and set MONO_PATH to ensure that mscorlib.dll can be found
+
+2010-04-29  Andreas Färber  <andreas.faerber@web.de>
+
+	* configure.in: Check for -lm necessity.
+	Fixes linking on Haiku.
+
+	Contributed under MIT/X11 license.
+
+2010-04-27  Mark Probst  <mark.probst@gmail.com>
+
+	* scripts/mono-heapviz: If the major sections are too small, use a
+	larger width.
+
+2010-04-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Switch to eglib by default.
+
+2010-04-26  Geoff Norton  <gnorton@novell.com>
+
+	* configure.in: Allow cross compiling osx for 64-bit
 
 2010-04-26  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Applied patch from Robert Nagy (robert@openbsd.org). Add
 	sys/param.h dependencies to a few checks.
 
-2010-04-21  Andrés G. Aragoneses  <andres@lindenlab.com>
+2010-04-25  Mark Probst  <mark.probst@gmail.com>
 
-	* configure.in: Propagate DISABLE_MCS_DOCS to makefiles so mono/docs
-	can be disabled. Fixes the build '--with-profile2=no' using
-	'--with-mcs-docs=no' as a workaround.
+	* tools/sgen/sgen-grep-binprot.c: Support for major Mark&Sweep
+	collector.
 
 2010-04-20  Jonathan Pryor  <jpryor@novell.com>
 
 	* configure.in: Check for the asm/sigcontext.h header.
+
+2010-04-20  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* README: Replace --with-profile2 with --with-profile4.
 
 2010-04-20  Jonathan Pryor  <jpryor@novell.com>
 
@@ -24,10 +407,15 @@
 
 2010-04-20  Jonathan Pryor  <jpryor@novell.com>
 
-	* configure.in: For Linux hosts, remove AC_CHECK_LIB(pthread...) in the
-	  primary `case "$host"` block.  Using AC_CHECK_LIB() here breaks *BSD,
-	  and it's unnecessary (for !target_win32, pthreads are checked again 
-	  later in configure.in).
+	* configure.in: For Linux hosts, remove libmono_ldflags="-lpthread".
+	  It's unnecessary (for !target_win32, pthreads are checked again 
+	  later in configure.in), and it breaks Android (which doesn't have
+	  libpthread, but DOES have pthreads in libc).
+
+2010-04-19  Jonathan Pryor  <jpryor@novell.com>
+
+	* configure.in: Disable AC_CHECK_LIB() for pthread, as this breaks
+	  autoconf on BSD platforms.  (Why?  Who knows -- it's AutoConf!)
 
 2010-04-19  Jonathan Pryor  <jpryor@novell.com>
 
@@ -50,6 +438,47 @@
 	* configure.in: Add a --enable-minimal=normalization option to disable support
 	for string normalization.
 
+2010-04-16  Marek Habersack  <mhabersack@novell.com>
+
+	* configure.in: added a check for sysconf(3)
+
+2010-04-14  Miguel de Icaza  <miguel@novell.com>
+
+	* configure.in: turn the AC_MSG_ERROR into a AC_MSG_WARN since in
+	Andrew's configuration this aborts the build:
+
+	 host=i686-pc-linux-gnu != target=i586-suse-linux
+
+	And I no longer remember why I added that error in the first
+	place (we need to determine perhaps the arch/OS but it is
+	difficult with those strings).
+
+2010-04-08  Andreia Gaita  <avidigal@novell.com>
+
+	* configure.in: Add an extra "only" option to --with-moonlight. This
+	will configure mono to only build moonlight-specific stuff and
+	nothing else. --with-moonlight=yes now just adds the moon profile to
+	the build
+
+	* Makefile.am: Add moonlight-specific rules that only build what
+	moon needs. These are called directly from moon, to do fast
+	moon+mono+mcs builds
+
+	* runtime/Makefile.am: Change the build rules to have a moonlight-only
+	build configuration, as well as a normal build that optionally includes
+	it
+
+2010-04-07  Raja R Harinath  <harinath@hurrynot.org>
+
+	* runtime/Makefile.am ($(tmpinst)/bin/dmcs): Add.
+
+2010-04-06  Andreia Gaita  <avidigal@novell.com>
+
+	* configure.in: add --with-mcs-path option to specify where the mcs
+	source can be found, if not on ./mcs or ../mcs.
+	Only touch the mcs and/or olive dirs and config files if we're
+	actually building them
+
 2010-04-05  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Append -lgc to libmono_ldflags if using an external libgc.
@@ -66,18 +495,154 @@
 	* configure.in: Applied some openbsd changes from Robert Nagy
 	<robert@openbsd.org>.
 
-2010-01-22  Zoltan Varga  <vargaz@gmail.com>
+2010-04-03  Marek Habersack  <mhabersack@novell.com>
 
-	* configure.in: Check whenever g++ is installed, since libtool requires it
-	even if no c++ files will be compiled.
+	* configure.in: TARGET_WIN32 and MINGW_CROSS_COMPILE are defined
+	when cross-compiling with MinGW 
+
+	* build-mingw32.sh: include the 4.0 profile in the zip.
+	Remove cross-compilation environment bin path from PATH before
+	compiling native Mono.
+	Remove autotools cache directory before each compilation phase.
+
+2010-04-02  Marek Habersack  <mhabersack@novell.com>
+
+	* configure.in: include -lkernel32 in LDFLAGS when cross-compiling
+	with MINGW or compiling on Cygwin.
+
+	* build-mingw32.sh: some changes to make the compilation work
+	better on non-SuSE systems.
+
+2010-04-01  Mark Probst  <mark.probst@gmail.com>
+
+	* scripts/mono-heapviz: Process and output detailed pinning
+	statistics.
+
+2010-03-29  Andreas Färber  <andreas.faerber@web.de>
+
+	* configure.in: Add support for Haiku
+
+	Contributed under MIT/X11 license.
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add a --enable-system-aot option to control the generation of
+	AOT images during the build.
 
 2010-03-26  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Apply some openbsd changes from openbsd ports.
 
+2010-03-23  Neale Ferguson <neale@sinenomine.net>
+
+	* configure.in: Change ACCESS_UNALINGED to "yes" for s390/s390x.
+
+2010-03-22  Andreia Gaita  <avidigal@gmail.com>
+
+	* configure.in: fix build when doing with-mcs-docs=no on a clean tree
+
+2010-03-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* autogen.sh: Pass -Wno-portability to automake to quiet some warnings.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* runtime/Makefile.am, build-mingw32.sh: rename
+	the net_2_1 profile to moonlight.
+
+2010-03-10  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* configure.in: configure eglib even when we are not building
+	it (fixes dist)
+
+Fri Mar 5 18:58:15 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* configure.in: introduce the --enable-small-config option
+	to reduce runtime requirements (and capabilities).
+
+2010-03-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* Makefile.am (DIST_SUBDIRS): Add eglib.
+
+	* autogen.sh: Run eglib's autogen.sh too.
+
+2010-03-02  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Makefile.am:
+	* mono/Makefile.am: Only build some subdirs when configured for
+	moonlight.
+
+	* configure.in: If configured --with-moonlight=yes, define MOONLIGHT and
+	use that variable instead of INSTALL_2_1.
+
+	* runtime/Makefile.am: If configured for moonlight, only build
+	net_2_1_raw.
+
+2010-03-02  Mark Probst  <mark.probst@gmail.com>
+
+	* tools/sgen-grep-binprot.c: Tool for searching through the binary
+	protocol files generated by SGen.
+
+2010-02-26  Miguel de Icaza  <miguel@novell.com>
+
+	* Make the scripts default to 4.0 now.
+
+2009-05-21  Miguel de Icaza  <miguel@novell.com>
+
+	* Check for sys/select.h as well
+
+Wed Feb 24 15:47:16 CET 2010 Paolo Molaro <lupus@ximian.com>
+
+	* configure.in, data/mono-2.pc.in, data/Makefile.am,
+	samples/embed/*: increase the API version.
+
+2010-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* scripts/mono-configuration-crypto.in: added
+
+	* scripts/Makefile.am: added mono-configuration-crypto targets
+
+2010-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Fix the setting of LLVM_CXXFLAGS.
+
+2010-01-22  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	* configure.in: Improve r150055 by checking for CXX=g++ as well, according to
+	http://lists.gnu.org/archive/html/bug-autoconf/2002-04/msg00077.html
+
 2010-01-22  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Disable the solaris tar check on !solaris platforms.
+
+2010-01-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Check whenever g++ is installed, since libtool requires it
+	even if no c++ files will be compiled.
+	See BNC#572871.
+
+2010-01-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add -fno-rrti to CXXFLAGS.
+
+2010-01-20  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* configure.in: Add support for disabling mdb support.
+
+2010-01-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Don't define TARGET_WIN32 when --target is used.
+
+2010-01-15  Zoltan Varga  <vargaz@gmail.com>
+
+	* scripts/get-cygwin-deps.sh: New file. Contains a script to download and setup
+	the dependencies needed for compiling mono on cygwin.
+
+2010-01-06  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* scripts/Makefile.am: Add peverify script.
+
+	* scripts/peverify.in: Added.
 
 2009-12-22  Geoff Norton  <gnorton@novell.com>
 
@@ -88,11 +653,32 @@
 
 	* configure.in: Add an LLVM_CFLAGS automake variable.
 
+2009-12-18  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Remove the check for valgrind/memcheck.h, we include the file
+	in our sources now.
+
 2009-12-11  Zoltan Varga  <vargaz@gmail.com>
 
 	* configure.in: Applied patch from Matt McClellan (matt@mc-c.net). Add a check
 	for 2 parameter sched_setaffinity in older glibc versions. Fixes
 	#564000.
+
+2009-11-22  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Disable visibility attributes on cygwin.
+
+2009-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* scripts/Makefile.am: Put mono-heapviz into EXTRA_DIST as well.
+
+2009-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* scripts/Makefile.am: mono-heapviz is not a managed executable.
+
+2009-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	* configure.in: Allow SGen without __thread.
 
 2009-11-17  Marek Habersack  <mhabersack@novell.com>
 
@@ -103,9 +689,52 @@
 
 	* configure.in: Add a --enable-minimal=soft-debug option.
 
+2009-11-15  Andreas Faerber  <andreas.faerber@web.de>
+
+	* configure.in (DTrace): Add missing -s switch for dtrace -h.
+	Fixes BNC #445074.
+	
+	Contributed under MIT/X11 license.
+
 2009-11-12  Zoltan Varga  <vargaz@gmail.com>
 
 	* acinclude.m4 (dolt_supported): Handle 'i686-pc-cygwin' too.
+
+2009-11-12  Mark Probst  <mark.probst@gmail.com>
+
+	* scripts/mono-heapviz: New script for generating SGen heap
+	visualizations.
+
+	* scripts/Makefile.am: mono-heapviz added.
+
+2009-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add checks for link.h and dl_iterate_phdr.
+
+2009-11-10  Jonathan Chambers  <joncham@gmail.com>
+
+	* winconfig.h: Bump version string to 2.7.
+
+	Contributed under MIT/X11 license.
+
+2009-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Define LLVM_MAJOR/MINOR_VERSION defines to allow working
+	around changes in LLVM APIs.
+	
+	* configure.in: Remove the MONO_ARCH_REGPARMS define.
+
+	* configure.in (MONO_ARCH_REGPARMS): Set MONO_ARCH_REGPARS on ARM.
+
+2009-11-08  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* configure.in: Add check for FreeBSD/ppc64.
+
+	Patch by Justin Hibbits <chmeeedalf@gmail.com>.
+
+2009-11-05  Miguel de Icaza  <miguel@novell.com>
+
+	* Add configure check for xbox360
 
 2009-11-04  Zoltan Varga  <vargaz@gmail.com>
 
@@ -127,12 +756,36 @@
 	* configure.in: Pass -mno-cygwin to CXX too on windows. Enable AC_PROG_CXX
 	since it now works on windows too.
 
+2009-10-27  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Add support for cross-compiling to ppc.
+
+2009-10-22  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* configure.in: Add check for the deprecated attribute.
+
 2009-10-12  Zoltan Varga  <vargaz@gmail.com>
 
 	* data/Makefile.am (gdb_DATA): Install mono-gdb.py alongside the mono executable.
 
 	* data/gdb-pre7.0: New directory, containing the mono support files for
 	gdb versions before 7.0.
+
+2009-10-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* */CMakeLists.txt: Update this to latest autoconf files.
+
+2009-10-06  Zoltan Varga  <vargaz@gmail.com>
+
+	* configure.in: Bump version to 2.7.
+
+2009-10-01  Raja R Harinath  <harinath@hurrynot.org>
+
+	* scripts/Makefile.am: Use 'mv -f' instead of 'mv'.
+
+2009-09-30  Marek Safar  <marek.safar@gmail.com>
+
+	* runtime/Makefile.am, configure.in: Don't build 1.1 profile
 
 2009-09-29  Ankit Jain  <jankit@novell.com>
 
@@ -5310,5 +5963,3 @@ Wed Jul 11 00:36:36 CEST 2001 Paolo Molaro <lupus@ximian.com>
 2001-05-30  Miguel de Icaza  <miguel@ximian.com>
 
 	* NEWS: 
-
-

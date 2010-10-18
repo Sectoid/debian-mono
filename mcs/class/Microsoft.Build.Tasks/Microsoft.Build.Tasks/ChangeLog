@@ -1,3 +1,41 @@
+2010-08-31  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Task 'Touch' should pass even if the file already exists.
+
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/Touch.cs: Task should
+	'succeed' even if the files already exist.
+
+2010-08-31  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Quote filenames for resgen.
+
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/GenerateResource.cs:
+	Quote filenames passed to resgen.
+
+2010-08-18  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add env var to dump details of reference resolution.
+
+	If xbuild is unable to resolve a reference, then it dumps details
+	of why it failed. This adds a env var
+	XBUILD_LOG_REFERENCE_RESOLVER, which if set, logs those details of
+	why a particular search path was used to resolve the reference.
+
+	Update the man page also.
+
+2010-08-03  Ankit Jain  <radical@corewars.org>
+
+	[xbuild]When invoking resgen, set MONO_IOMAP only if its not
+	already set.
+
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/GenerateResource.cs:
+	Set MONO_IOMAP only if its unset, allowing it to be set from
+	command line etc.
+
+2010-06-10  Ankit Jain  <jankit@novell.com>
+
+	* Csc.cs: Quote -define: arguments.
+
 2010-06-09  Ankit Jain  <jankit@novell.com>
 
 	* ToolTask.cs: Don't check for tool's existence, as we might

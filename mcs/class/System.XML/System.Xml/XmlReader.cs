@@ -35,7 +35,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 using System.Xml.Schema; // only required for NET_2_0 (SchemaInfo)
 using System.Xml.Serialization; // only required for NET_2_0 (SchemaInfo)
 using Mono.Xml.Schema; // only required for NET_2_0
@@ -186,7 +186,7 @@ namespace System.Xml
 		public abstract ReadState ReadState { get; }
 
 #if NET_2_0
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public virtual IXmlSchemaInfo SchemaInfo {
 			get { return null; }
 		}
@@ -414,7 +414,7 @@ namespace System.Xml
 
 		private static XmlReader CreateValidatingXmlReader (XmlReader reader, XmlReaderSettings settings)
 		{
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			return reader;
 #else
 			XmlValidatingReader xvr = null;
@@ -963,7 +963,7 @@ namespace System.Xml
 		{
 			bool isEmpty = IsEmptyElement;
 			ReadStartElement ();
-			object obj = ValueAs (isEmpty ? String.Empty : ReadContentString (false), type, resolver);
+			object obj = ValueAs (isEmpty ? String.Empty : ReadContentString (false), type, resolver, false);
 			if (!isEmpty)
 				ReadEndElement ();
 			return obj;
@@ -979,20 +979,33 @@ namespace System.Xml
 
 		public virtual object ReadContentAs (Type type, IXmlNamespaceResolver resolver)
 		{
-			return ValueAs (ReadContentString (), type, resolver);
+			return ValueAs (ReadContentString (), type, resolver, false);
 		}
 
-		private object ValueAs (string text, Type type, IXmlNamespaceResolver resolver)
+		private object ValueAs (string text, Type type, IXmlNamespaceResolver resolver, bool isArrayItem)
 		{
 			try {
 				if (type == typeof (object))
 					return text;
+				if (type.IsArray && !isArrayItem) {
+					var elemType = type.GetElementType ();
+					var sarr = text.Split ((string []) null, StringSplitOptions.RemoveEmptyEntries);
+					var ret = Array.CreateInstance (elemType, sarr.Length);
+					for (int i = 0; i < ret.Length; i++)
+						ret.SetValue (ValueAs (sarr [i], elemType, resolver, true), i);
+					return ret;
+				}
+
 				if (type == typeof (XmlQualifiedName)) {
 					if (resolver != null)
-						return XmlQualifiedName.Parse (text, resolver);
+						return XmlQualifiedName.Parse (text, resolver, true);
 					else
-						return XmlQualifiedName.Parse (text, this);
+						return XmlQualifiedName.Parse (text, this, true);
 				}
+				if (type == typeof (Uri))
+					return XmlConvert.ToUri (text);
+				if (type == typeof (TimeSpan))
+					return XmlConvert.ToTimeSpan (text);
 				if (type == typeof (DateTimeOffset))
 					return XmlConvert.ToDateTimeOffset (text);
 

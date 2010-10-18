@@ -1,3 +1,93 @@
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix references to Microsoft.Build.* assemblies for 3.5 .
+
+2010-08-13  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix a string format issue with guid.
+
+	Make sure that the format string doesn't have guid in "{...}"
+	format or String.Format gets confused.
+
+2010-08-13  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Handle references to vc*proj projects.
+
+	If a project references an unsupported project, like a .vcproj or
+	.vcxproj, then raise the appropriate warning for that.
+
+2010-08-05  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix #628525. Fix incremental rebuild.
+
+	When doing a rebuild for an already built project, the common
+	files (CopyLocal) should not be deleted by a project, as other
+	projects might be depending on them. This becomes a problem when a
+	common output dir is used.
+
+2010-08-04  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Ignore missing imports when parsing solution file.
+
+	When loading projects specified in the solution file, to find
+	their dependencies, missing imports cause an exception to be
+	thrown and so the deps are not available in the project instance.
+
+2010-08-03  Ankit Jain  <radical@corewars.org>
+
+	* xbuild/xbuild/*/Microsoft.Common.targets: Rename item
+	@(TargetFrameworkDirectories) to @(_TargetFrameworkDirectories) to
+	*mark* it as private, and use the new $(TargetFrameworkDirectory)
+	property instead. Reported by mhutch. *
+	xbuild/xbuild/*/Microsoft.Silverlight.Common.targets: Update to
+	track the changes.
+
+2010-07-28  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.CSharp.targets: Use '*mcs.bat' on windows.
+
+2010-07-22  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Silverlight.Common.targets(GenerateMoonlightManifest):
+	Set Inputs/Outputs for the target.
+
+2010-07-22  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.CSharp.targets (CoreCompile): Add
+	$(MSBuildAllProjects) to inputs.
+	* xbuild/Microsoft.VisualBasic.targets (CoreCompile): Likewise.
+
+2010-07-22  Ankit Jain  <jankit@novell.com>
+
+	* Parameters.cs (ProcessConsoleLoggerParameters): Correctly split arg.
+
+2010-07-22  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/*/Microsoft.Common.targets: Set MSBuildAllProjects property.
+	* xbuild/Microsoft.CSharp.targets: Likewise.
+
+2010-07-21  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Silverlight.Common.targets: Set AssemblySearchPaths
+	to the default value except PkgConfig and GAC. Suggested by Rolf.
+
+2010-07-16  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.Silverlight.Common.targets: Set Inputs/Outputs
+	for GenerateXap target.
+
+2010-07-09  Ankit Jain  <jankit@novell.com>
+
+	* Main.cs: Use tools version specified on the command line, if
+	any.
+	* xbuild.exe.sources: Include UnknownToolsVersionException.cs from
+	MS.B.Engine
+
+2010-06-23  Ankit Jain  <jankit@novell.com>
+
+	* xbuild/Microsoft.CSharp.targets (CoreCompile): Fix inputs.
+	* xbuild/Microsoft.VisualBasic.targets (CoreCompile): Fix inputs.
+
 2010-06-18  Ankit Jain  <jankit@novell.com>
 
 	Fix bug #615420.

@@ -160,7 +160,7 @@ namespace System.Windows.Forms {
 		//private static IntPtr _NET_SHOWING_DESKTOP;
 		//private static IntPtr _NET_CLOSE_WINDOW;
 		//private static IntPtr _NET_MOVERESIZE_WINDOW;
-		//private static IntPtr _NET_WM_MOVERESIZE;
+		private static IntPtr _NET_WM_MOVERESIZE;
 		//private static IntPtr _NET_RESTACK_WINDOW;
 		//private static IntPtr _NET_REQUEST_FRAME_EXTENTS;
 		private static IntPtr _NET_WM_NAME;
@@ -577,7 +577,7 @@ namespace System.Windows.Forms {
 				//"_NET_SHOWING_DESKTOP",
 				//"_NET_CLOSE_WINDOW",
 				//"_NET_MOVERESIZE_WINDOW",
-				//"_NET_WM_MOVERESIZE",
+				"_NET_WM_MOVERESIZE",
 				//"_NET_RESTACK_WINDOW",
 				//"_NET_REQUEST_FRAME_EXTENTS",
 				"_NET_WM_NAME",
@@ -653,7 +653,7 @@ namespace System.Windows.Forms {
 			//_NET_SHOWING_DESKTOP = atoms [off++];
 			//_NET_CLOSE_WINDOW = atoms [off++];
 			//_NET_MOVERESIZE_WINDOW = atoms [off++];
-			//_NET_WM_MOVERESIZE = atoms [off++];
+			_NET_WM_MOVERESIZE = atoms [off++];
 			//_NET_RESTACK_WINDOW = atoms [off++];
 			//_NET_REQUEST_FRAME_EXTENTS = atoms [off++];
 			_NET_WM_NAME = atoms [off++];
@@ -718,6 +718,10 @@ namespace System.Windows.Forms {
 		}
 
 		private void SendNetWMMessage(IntPtr window, IntPtr message_type, IntPtr l0, IntPtr l1, IntPtr l2) {
+			SendNetWMMessage (window, message_type, l0, l1, l2, IntPtr.Zero);
+		}
+
+		private void SendNetWMMessage(IntPtr window, IntPtr message_type, IntPtr l0, IntPtr l1, IntPtr l2, IntPtr l3) {
 			XEvent	xev;
 
 			xev = new XEvent();
@@ -729,6 +733,7 @@ namespace System.Windows.Forms {
 			xev.ClientMessageEvent.ptr1 = l0;
 			xev.ClientMessageEvent.ptr2 = l1;
 			xev.ClientMessageEvent.ptr3 = l2;
+			xev.ClientMessageEvent.ptr4 = l3;
 			XSendEvent(DisplayHandle, RootWindow, false, new IntPtr ((int) (EventMask.SubstructureRedirectMask | EventMask.SubstructureNotifyMask)), ref xev);
 		}
 
@@ -1247,13 +1252,15 @@ namespace System.Windows.Forms {
 
 			if ((long)nitems > 0) {
 				if (property == (IntPtr)Atom.XA_STRING) {
-					Clipboard.Item = Marshal.PtrToStringAnsi(prop);
+					// Some X managers/apps pass unicode chars as escaped strings, so
+					// we may need to unescape them.
+					Clipboard.Item = UnescapeUnicodeFromAnsi (Marshal.PtrToStringAnsi(prop));
 				} else if (property == (IntPtr)Atom.XA_BITMAP) {
 					// FIXME - convert bitmap to image
 				} else if (property == (IntPtr)Atom.XA_PIXMAP) {
 					// FIXME - convert pixmap to image
 				} else if (property == OEMTEXT) {
-					Clipboard.Item = Marshal.PtrToStringAnsi(prop);
+					Clipboard.Item = UnescapeUnicodeFromAnsi (Marshal.PtrToStringAnsi(prop));
 				} else if (property == UTF8_STRING) {
 					byte [] buffer = new byte [(int)nitems];
 					for (int i = 0; i < (int)nitems; i++)
@@ -1278,6 +1285,48 @@ namespace System.Windows.Forms {
 
 				XFree(prop);
 			}
+		}
+
+		private string UnescapeUnicodeFromAnsi (string value)
+		{
+			if (value == null || value.IndexOf ("\\u") == -1)
+				return value;
+
+			StringBuilder sb = new StringBuilder (value.Length);
+			int start, pos;
+
+			start = pos = 0;
+			while (start < value.Length) {
+				pos = value.IndexOf ("\\u", start);
+				if (pos == -1)
+					break;
+
+				sb.Append (value, start, pos - start);
+				pos += 2;
+				start = pos;
+
+				int length = 0;
+				while (pos < value.Length) {
+					if (!Char.IsLetterOrDigit (value [pos]))
+						break;
+					length++;
+					pos++;
+				}
+
+				int res;
+				if (!Int32.TryParse (value.Substring (start, length), System.Globalization.NumberStyles.HexNumber, 
+							null, out res))
+					return value; // Error, return the unescaped original value.
+				
+				sb.Append ((char)res);
+				start = pos;
+			}
+
+			// Append any remaining data.
+			if (start < value.Length)
+				sb.Append (value, start, value.Length - start);
+
+			return sb.ToString ();
 		}
 
 		private void AddExpose (Hwnd hwnd, bool client, int x, int y, int width, int height) {
@@ -2481,7 +2530,7 @@ namespace System.Windows.Forms {
 				XFree(prop);
 
 				XGetWindowProperty(DisplayHandle, RootWindow, _NET_WORKAREA, IntPtr.Zero, new IntPtr (256), false, (IntPtr)Atom.XA_CARDINAL, out actual_atom, out actual_format, out nitems, out bytes_after, ref prop);
-				if ((long)nitems < 4 * current_desktop) {
+				if ((long)nitems < 4 * (current_desktop + 1)) {
 					goto failsafe;
 				}
 
@@ -4613,6 +4662,22 @@ namespace System.Windows.Forms {
 							       (IntPtr) (screen_y << 16 | screen_x & 0xFFFF));
 		}
 
+		// Our very basic implementation of MoveResize - we can extend it later
+		// *if* needed
+		internal override void BeginMoveResize (IntPtr handle)
+		{
+			// We *need* to ungrab the pointer in the current display
+			XplatUI.UngrabWindow (Grab.Hwnd);
+
+			int x_root, y_root;
+			GetCursorPos (IntPtr.Zero, out x_root, out y_root);
+
+			Hwnd hwnd = Hwnd.ObjectFromHandle (handle);
+			SendNetWMMessage (hwnd.whole_window, _NET_WM_MOVERESIZE, (IntPtr) x_root, (IntPtr) y_root,
+					(IntPtr) NetWmMoveResize._NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT, 
+					(IntPtr) 1); // left button
+		}
+
 		internal override bool GetText(IntPtr handle, out string text) {
 
 			lock (XlibLock) {
@@ -6000,6 +6065,10 @@ namespace System.Windows.Forms {
 						hwnd.Queue.Paint.Remove (hwnd);
 				}
 
+				// We are going to be directly mapped by the system tray, so mark as mapped
+				// so we can later properly unmap it.
+				hwnd.mapped = true;
+
 				size_hints = new XSizeHints();
 
 				size_hints.flags = (IntPtr)(XSizeHintsFlags.PMinSize | XSizeHintsFlags.PMaxSize | XSizeHintsFlags.PBaseSize);
@@ -6065,6 +6134,10 @@ namespace System.Windows.Forms {
 				tt.Dispose();
 				tt = null;
 			}
+#if NET_2_0
+			// Close any balloon window *we* fired.
+			ThemeEngine.Current.HideBalloonWindow (handle);
+#endif
 		}
 
 #if NET_2_0

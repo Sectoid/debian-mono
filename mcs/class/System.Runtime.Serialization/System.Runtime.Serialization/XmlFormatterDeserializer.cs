@@ -165,7 +165,8 @@ namespace System.Runtime.Serialization
 		object DeserializeByMap (QName name, Type type, XmlReader reader)
 		{
 			SerializationMap map = types.FindUserMap (name);
-			if (map == null && (name.Namespace == KnownTypeCollection.MSArraysNamespace ||
+			if (map == null && (name.Name.StartsWith ("ArrayOf", StringComparison.Ordinal) ||
+			    name.Namespace == KnownTypeCollection.MSArraysNamespace ||
 			    name.Namespace.StartsWith (KnownTypeCollection.DefaultClrNamespaceBase, StringComparison.Ordinal))) {
 				var it = GetTypeFromNamePair (name.Name, name.Namespace);
 				types.TryRegister (it);
@@ -182,19 +183,40 @@ namespace System.Runtime.Serialization
 			Type p = KnownTypeCollection.GetPrimitiveTypeFromName (name); // FIXME: namespace?
 			if (p != null)
 				return p;
-			if (name.StartsWith ("ArrayOf", StringComparison.Ordinal) && ns == KnownTypeCollection.MSArraysNamespace)
-				return GetTypeFromNamePair (name.Substring (7), String.Empty).MakeArrayType ();
+			bool makeArray = false;
+			if (name.StartsWith ("ArrayOf", StringComparison.Ordinal)) {
+				name = name.Substring (7); // strip "ArrayOf"
+				if (ns == KnownTypeCollection.MSArraysNamespace)
+					return GetTypeFromNamePair (name, String.Empty).MakeArrayType ();
+				makeArray = true;
+			}
 
-			int xlen = KnownTypeCollection.DefaultClrNamespaceBase.Length;
-			string clrns = ns.Length > xlen ?  ns.Substring (xlen) : null;
+			string dnsb = KnownTypeCollection.DefaultClrNamespaceBase;
+			string clrns = ns.StartsWith (dnsb, StringComparison.Ordinal) ?  ns.Substring (dnsb.Length) : ns;
 
 			foreach (var ass in AppDomain.CurrentDomain.GetAssemblies ()) {
 				foreach (var t in ass.GetTypes ()) {
-					var dca = t.GetCustomAttribute<DataContractAttribute> (true);
-					if (dca != null && dca.Name == name && dca.Namespace == ns)
-						return t;
+					// there can be null entries or exception throw to access the attribute - 
+					// at least when some referenced assemblies could not be loaded (affects moonlight)
+					if (t == null)
+						continue;
+
+					try {
+						var dca = t.GetCustomAttribute<DataContractAttribute> (true);
+						if (dca != null && dca.Name == name && dca.Namespace == ns)
+							return makeArray ? t.MakeArrayType () : t;
+					}
+					catch (TypeLoadException tle) {
+						Console.Error.WriteLine (tle);
+						continue;
+					}
+					catch (FileNotFoundException fnfe) {
+						Console.Error.WriteLine (fnfe);
+						continue;
+					}
+
 					if (clrns != null && t.Name == name && t.Namespace == clrns)
-						return t;
+						return makeArray ? t.MakeArrayType () : t;
 				}
 			}
 			throw new XmlException (String.Format ("Type not found; name: {0}, namespace: {1}", name, ns));

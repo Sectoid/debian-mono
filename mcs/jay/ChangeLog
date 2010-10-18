@@ -1,6 +1,15 @@
+2010-08-29  Marek Safar  <marek.safar@gmail.com>
+
+	Wrap any non-trivial rule into a method, speeds up the parser by
+	10-20%.
+
 2010-04-05  Zoltan Varga  <vargaz@gmail.com>
 
 	* defs.h: Quiet warnings which might bother rpm.
+
+2009-11-27  Marek Safar  <marek.safar@gmail.com>
+
+	* skeleton.cs: Add global state stacks.
 
 2008-10-17  Jonathan Pryor  <jpryor@novell.com>
 
