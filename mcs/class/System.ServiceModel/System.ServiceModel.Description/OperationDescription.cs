@@ -59,12 +59,14 @@ namespace System.ServiceModel.Description
 			is_initiating = true;
 		}
 
+		internal bool InOrdinalContract { get; set; }
+		internal bool InCallbackContract { get; set; }
+
 		public MethodInfo BeginMethod {
 			get { return begin_method; }
 			set { begin_method = value; }
 		}
 
-		[MonoTODO]
 		public KeyedByTypeCollection<IOperationBehavior> Behaviors {
 			get { return behaviors; }
 		}
@@ -79,7 +81,6 @@ namespace System.ServiceModel.Description
 			set { end_method = value; }
 		}
 
-		[MonoTODO]
 		public FaultDescriptionCollection Faults {
 			get { return faults; }
 		}
@@ -105,7 +106,6 @@ namespace System.ServiceModel.Description
 			set { is_terminating = value; }
 		}
 
-		[MonoTODO]
 		public Collection<Type> KnownTypes {
 			get { return known_types; }
 		}
@@ -130,5 +130,11 @@ namespace System.ServiceModel.Description
 			get { return sync_method; }
 			set { sync_method = value; }
 		}
+
+		#region internal members for moonlight compatibility
+
+		internal object FormatterBehavior { get; set; }
+
+		#endregion
 	}
 }

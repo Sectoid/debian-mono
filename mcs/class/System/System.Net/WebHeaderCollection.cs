@@ -33,9 +33,7 @@
 
 using System;
 using System.Collections;
-#if NET_2_0
 using System.Collections.Generic;
-#endif
 using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -45,15 +43,16 @@ using System.Text;
     
 namespace System.Net 
 {
+#if MOONLIGHT
+	internal class WebHeaderCollection : NameValueCollection, ISerializable {
+#else
 	[Serializable]
 	[ComVisible(true)]
-	public class WebHeaderCollection : NameValueCollection, ISerializable
-	{
+	public class WebHeaderCollection : NameValueCollection, ISerializable {
+#endif
 		private static readonly Hashtable restricted;
 		private static readonly Hashtable multiValue;
-#if NET_2_0
 		static readonly Dictionary<string, bool> restricted_response;
-#endif
 		private bool internallyCreated = false;
 		
 		// Static Initializer
@@ -80,12 +79,11 @@ namespace System.Net
 			restricted.Add ("proxy-connection", true);			
 
 			//
-#if NET_2_0
 			restricted_response = new Dictionary<string, bool> (StringComparer.InvariantCultureIgnoreCase);
 			restricted_response.Add ("Content-Length", true);
 			restricted_response.Add ("Transfer-Encoding", true);
 			restricted_response.Add ("WWW-Authenticate", true);
-#endif
+
 			// see par 14 of RFC 2068 to see which header names
 			// accept multiple values each separated by a comma
 			multiValue = new Hashtable (CaseInsensitiveHashCodeProvider.DefaultInvariant,
@@ -263,7 +261,6 @@ namespace System.Net
 			return restricted.ContainsKey (headerName);
 		}
 
-#if NET_2_0
 		public static bool IsRestricted (string headerName, bool response)
 		{
 			if (String.IsNullOrEmpty (headerName))
@@ -277,7 +274,6 @@ namespace System.Net
 				return restricted_response.ContainsKey (headerName);
 			return restricted.ContainsKey (headerName);
 		}
-#endif
 
 		public override void OnDeserialization (object sender)
 		{
@@ -380,7 +376,6 @@ namespace System.Net
 			return(base.GetKey (index));
 		}
 
-#if NET_2_0
 		public void Add (HttpRequestHeader header, string value)
 		{
 			Add (RequestHeaderToString (header), value);
@@ -415,87 +410,87 @@ namespace System.Net
 		{
 			switch (value){
 			case HttpRequestHeader.CacheControl:
-				return "cache-control";
+				return "Cache-Control";
 			case HttpRequestHeader.Connection:
-				return "connection";
+				return "Connection";
 			case HttpRequestHeader.Date:
-				return "date";
+				return "Date";
 			case HttpRequestHeader.KeepAlive:
-				return "keep-alive";
+				return "Keep-Alive";
 			case HttpRequestHeader.Pragma:
-				return "pragma";
+				return "Pragma";
 			case HttpRequestHeader.Trailer:
-				return "trailer";
+				return "Trailer";
 			case HttpRequestHeader.TransferEncoding:
-				return "transfer-encoding";
+				return "Transfer-Encoding";
 			case HttpRequestHeader.Upgrade:
-				return "upgrade";
+				return "Upgrade";
 			case HttpRequestHeader.Via:
-				return "via";
+				return "Via";
 			case HttpRequestHeader.Warning:
-				return "warning";
+				return "Warning";
 			case HttpRequestHeader.Allow:
-				return "allow";
+				return "Allow";
 			case HttpRequestHeader.ContentLength:
-				return "content-length";
+				return "Content-Length";
 			case HttpRequestHeader.ContentType:
-				return "content-type";
+				return "Content-Type";
 			case HttpRequestHeader.ContentEncoding:
-				return "content-encoding";
+				return "Content-Encoding";
 			case HttpRequestHeader.ContentLanguage:
-				return "content-language";
+				return "Content-Language";
 			case HttpRequestHeader.ContentLocation:
-				return "content-location";
+				return "Content-Location";
 			case HttpRequestHeader.ContentMd5:
-				return "content-md5";
+				return "Content-MD5";
 			case HttpRequestHeader.ContentRange:
-				return "content-range";
+				return "Content-Range";
 			case HttpRequestHeader.Expires:
-				return "expires";
+				return "Expires";
 			case HttpRequestHeader.LastModified:
-				return "last-modified";
+				return "Last-Modified";
 			case HttpRequestHeader.Accept:
-				return "accept";
+				return "Accept";
 			case HttpRequestHeader.AcceptCharset:
-				return "accept-charset";
+				return "Accept-Charset";
 			case HttpRequestHeader.AcceptEncoding:
-				return "accept-encoding";
+				return "Accept-Encoding";
 			case HttpRequestHeader.AcceptLanguage:
 				return "accept-language";
 			case HttpRequestHeader.Authorization:
-				return "authorization";
+				return "Authorization";
 			case HttpRequestHeader.Cookie:
-				return "cookie";
+				return "Cookie";
 			case HttpRequestHeader.Expect:
-				return "expect";
+				return "Expect";
 			case HttpRequestHeader.From:
-				return "from";
+				return "From";
 			case HttpRequestHeader.Host:
-				return "host";
+				return "Host";
 			case HttpRequestHeader.IfMatch:
-				return "if-match";
+				return "If-Match";
 			case HttpRequestHeader.IfModifiedSince:
-				return "if-modified-since";
+				return "If-Modified-Since";
 			case HttpRequestHeader.IfNoneMatch:
-				return "if-none-match";
+				return "If-None-Match";
 			case HttpRequestHeader.IfRange:
-				return "if-range";
+				return "If-Range";
 			case HttpRequestHeader.IfUnmodifiedSince:
-				return "if-unmodified-since";
+				return "If-Unmodified-Since";
 			case HttpRequestHeader.MaxForwards:
-				return "max-forwards";
+				return "Max-Forwards";
 			case HttpRequestHeader.ProxyAuthorization:
-				return "proxy-authorization";
+				return "Proxy-Authorization";
 			case HttpRequestHeader.Referer:
-				return "referer";
+				return "Referer";
 			case HttpRequestHeader.Range:
-				return "range";
+				return "Range";
 			case HttpRequestHeader.Te:
-				return "te";
+				return "TE";
 			case HttpRequestHeader.Translate:
-				return "translate";
+				return "Translate";
 			case HttpRequestHeader.UserAgent:
-				return "user-agent";
+				return "User-Agent";
 			default:
 				throw new InvalidOperationException ();
 			}
@@ -517,65 +512,65 @@ namespace System.Net
 		{
 			switch (value){
 			case HttpResponseHeader.CacheControl:
-				return "cache-control";
+				return "Cache-Control";
 			case HttpResponseHeader.Connection:
-				return "connection";
+				return "Connection";
 			case HttpResponseHeader.Date:
-				return "date";
+				return "Date";
 			case HttpResponseHeader.KeepAlive:
-				return "keep-alive";
+				return "Keep-Alive";
 			case HttpResponseHeader.Pragma:
-				return "pragma";
+				return "Pragma";
 			case HttpResponseHeader.Trailer:
-				return "trailer";
+				return "Trailer";
 			case HttpResponseHeader.TransferEncoding:
-				return "transfer-encoding";
+				return "Transfer-Encoding";
 			case HttpResponseHeader.Upgrade:
-				return "upgrade";
+				return "Upgrade";
 			case HttpResponseHeader.Via:
-				return "via";
+				return "Via";
 			case HttpResponseHeader.Warning:
-				return "warning";
+				return "Warning";
 			case HttpResponseHeader.Allow:
-				return "allow";
+				return "Allow";
 			case HttpResponseHeader.ContentLength:
-				return "content-length";
+				return "Content-Length";
 			case HttpResponseHeader.ContentType:
-				return "content-type";
+				return "Content-Type";
 			case HttpResponseHeader.ContentEncoding:
-				return "content-encoding";
+				return "Content-Encoding";
 			case HttpResponseHeader.ContentLanguage:
-				return "content-language";
+				return "Content-Language";
 			case HttpResponseHeader.ContentLocation:
-				return "content-location";
+				return "Content-Location";
 			case HttpResponseHeader.ContentMd5:
-				return "content-md5";
+				return "Content-MD5";
 			case HttpResponseHeader.ContentRange:
-				return "content-range";
+				return "Content-Range";
 			case HttpResponseHeader.Expires:
-				return "expires";
+				return "Expires";
 			case HttpResponseHeader.LastModified:
-				return "last-modified";
+				return "Last-Modified";
 			case HttpResponseHeader.AcceptRanges:
-				return "accept-ranges";
+				return "Accept-Ranges";
 			case HttpResponseHeader.Age:
-				return "age";
+				return "Age";
 			case HttpResponseHeader.ETag:
-				return "etag";
+				return "ETag";
 			case HttpResponseHeader.Location:
-				return "location";
+				return "Location";
 			case HttpResponseHeader.ProxyAuthenticate:
-				return "proxy-authenticate";
+				return "Proxy-Authenticate";
 			case HttpResponseHeader.RetryAfter:
-				return "RetryAfter";
+				return "Retry-After";
 			case HttpResponseHeader.Server:
-				return "server";
+				return "Server";
 			case HttpResponseHeader.SetCookie:
-				return "set-cookie";
+				return "Set-Cookie";
 			case HttpResponseHeader.Vary:
-				return "vary";
+				return "Vary";
 			case HttpResponseHeader.WwwAuthenticate:
-				return "www-authenticate";
+				return "WWW-Authenticate";
 			default:
 				throw new InvalidOperationException ();
 			}
@@ -603,7 +598,6 @@ namespace System.Net
 		{
 			return(base.GetEnumerator ());
 		}
-#endif
 
 		// Internal Methods
 		

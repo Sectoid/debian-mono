@@ -246,7 +246,7 @@ float_clt_membase: dest:i src1:f src2:b len:35
 float_clt_un_membase: dest:i src1:f src2:b len:42
 float_conv_to_u: dest:i src1:f len:46
 fmove: dest:f src1:f len:8
-call_handler: len:14
+call_handler: len:14 clob:c
 aot_const: dest:i len:10
 x86_test_null: src1:i len:5
 x86_compare_membase_reg: src1:b src2:i len:9
@@ -289,8 +289,8 @@ atomic_exchange_i4: src1:b src2:i dest:a len:32
 atomic_add_i8: src1:b src2:i dest:i len:32
 atomic_add_new_i8: src1:b src2:i dest:i len:32
 atomic_exchange_i8: src1:b src2:i dest:a len:32
-atomic_cas_i4: src1:b src2:i src3:a dest:i len:24
-atomic_cas_i8: src1:b src2:i src3:a dest:i len:24
+atomic_cas_i4: src1:b src2:i src3:a dest:a len:24
+atomic_cas_i8: src1:b src2:i src3:a dest:a len:24
 memory_barrier: len:16
 adc: dest:i src1:i src2:i len:3 clob:1
 addcc: dest:i src1:i src2:i len:3 clob:1

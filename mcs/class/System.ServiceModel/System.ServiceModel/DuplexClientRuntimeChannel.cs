@@ -34,19 +34,18 @@ using System.ServiceModel.Security;
 using System.Threading;
 using System.Xml;
 
-namespace System.ServiceModel
+namespace System.ServiceModel.MonoInternal
 {
-	internal class DuplexClientRuntimeChannel
+	// FIXME: This is a quick workaround for bug #571907
+	public class DuplexClientRuntimeChannel
 		: ClientRuntimeChannel, IDuplexContextChannel
 	{
 		public DuplexClientRuntimeChannel (ServiceEndpoint endpoint,
 			ChannelFactory factory, EndpointAddress remoteAddress, Uri via)
 			: base (endpoint, factory, remoteAddress, via)
 		{
-			var cd = ContractDescription.GetContract (endpoint.Contract.CallbackContractType);
-			var se = new ServiceEndpoint (cd, factory.Endpoint.Binding, remoteAddress);
-			var ed = new EndpointDispatcher (remoteAddress, cd.Name, cd.Namespace);
-			ed.InitializeServiceEndpoint (true, null, se);
+			var ed = new EndpointDispatcher (remoteAddress, endpoint.Contract.Name, endpoint.Contract.Namespace);
+			ed.InitializeServiceEndpoint (true, null, endpoint);
 			Runtime.CallbackDispatchRuntime = ed.DispatchRuntime;
 		}
 

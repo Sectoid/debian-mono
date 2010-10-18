@@ -7,6 +7,8 @@
  * (C) 2002 Ximian, Inc.
  */
 
+#ifndef DISABLE_SOCKETS
+
 #include <config.h>
 #include <glib.h>
 #include <pthread.h>
@@ -14,10 +16,12 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#ifdef HAVE_SYS_UIO_H
+#  include <sys/uio.h>
+#endif
 #ifdef HAVE_SYS_IOCTL_H
 #  include <sys/ioctl.h>
 #endif
-#include <sys/poll.h>
 #ifdef HAVE_SYS_FILIO_H
 #include <sys/filio.h>     /* defines FIONBIO and FIONREAD */
 #endif
@@ -36,6 +40,7 @@
 #include <mono/io-layer/socket-private.h>
 #include <mono/io-layer/handles-private.h>
 #include <mono/io-layer/socket-wrappers.h>
+#include <mono/utils/mono-poll.h>
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -308,7 +313,7 @@ int _wapi_connect(guint32 fd, const struct sockaddr *serv_addr,
 	}
 	
 	if (connect (fd, serv_addr, addrlen) == -1) {
-		struct pollfd fds;
+		mono_pollfd fds;
 		int so_error;
 		socklen_t len;
 		
@@ -349,7 +354,7 @@ int _wapi_connect(guint32 fd, const struct sockaddr *serv_addr,
 
 		fds.fd = fd;
 		fds.events = POLLOUT;
-		while (poll (&fds, 1, -1) == -1 &&
+		while (mono_poll (&fds, 1, -1) == -1 &&
 		       !_wapi_thread_cur_apc_pending ()) {
 			if (errno != EINTR) {
 				errnum = errno_to_WSA (errno, __func__);
@@ -711,6 +716,15 @@ int _wapi_send(guint32 fd, const void *msg, size_t len, int send_flags)
 		g_message ("%s: send error: %s", __func__, strerror (errno));
 #endif
 
+		/* At least linux returns EAGAIN/EWOULDBLOCK when the timeout has been set on
+		 * a blocking socket. See bug #599488 */
+		if (errnum == EAGAIN) {
+			gboolean nonblock;
+
+			ret = ioctlsocket (fd, FIONBIO, (gulong *) &nonblock);
+			if (ret != SOCKET_ERROR && !nonblock)
+				errnum = ETIMEDOUT;
+		}
 		errnum = errno_to_WSA (errnum, __func__);
 		WSASetLastError (errnum);
 		
@@ -1578,3 +1592,5 @@ int WSASend (guint32 fd, WapiWSABuf *buffers, guint32 count, guint32 *sent,
 	*sent = ret;
 	return 0;
 }
+
+#endif /* ifndef DISABLE_SOCKETS */

@@ -30,14 +30,15 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpSetIndexBinder : SetIndexBinder
+	class CSharpSetIndexBinder : SetIndexBinder
 	{
 		IList<CSharpArgumentInfo> argumentInfo;
 		Type callingContext;
-		
+
 		public CSharpSetIndexBinder (Type callingContext, IEnumerable<CSharpArgumentInfo> argumentInfo)
 			: base (CSharpArgumentInfo.CreateCallInfo (argumentInfo, 2))
 		{
@@ -45,34 +46,30 @@ namespace Microsoft.CSharp.RuntimeBinder
 			this.argumentInfo = argumentInfo.ToReadOnly ();
 		}
 		
-		public IList<CSharpArgumentInfo> ArgumentInfo {
-			get {
-				return argumentInfo;
-			}
-		}
-
-		public Type CallingContext {
-			get {
-				return callingContext;
-			}
-		}
-		
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpSetIndexBinder;
-			return other != null && base.Equals (obj) && other.callingContext == callingContext && 
-				other.argumentInfo.SequenceEqual (argumentInfo);
-		}
-
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
-		}
-		
-		[MonoTODO]
 		public override DynamicMetaObject FallbackSetIndex (DynamicMetaObject target, DynamicMetaObject[] indexes, DynamicMetaObject value, DynamicMetaObject errorSuggestion)
 		{
-			throw new NotImplementedException ();
+			if (argumentInfo.Count != indexes.Length + 2) {
+				if (errorSuggestion == null)
+					throw new NotImplementedException ();
+
+				return errorSuggestion;
+			}
+
+			var ctx = DynamicContext.Create ();
+			var expr = ctx.CreateCompilerExpression (argumentInfo [0], target);
+			var args = ctx.CreateCompilerArguments (argumentInfo.Skip (1), indexes);
+			expr = new Compiler.ElementAccess (expr, args, Compiler.Location.Null);
+
+			var source = ctx.CreateCompilerExpression (argumentInfo [indexes.Length + 1], value);
+			expr = new Compiler.SimpleAssign (expr, source);
+			expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (ReturnType), Compiler.Location.Null), expr, Compiler.Location.Null);
+
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+			binder.AddRestrictions (value);
+			binder.AddRestrictions (indexes);
+
+			return binder.Bind (ctx, callingContext);
 		}
 	}
 }

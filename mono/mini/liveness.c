@@ -11,7 +11,7 @@
 
 #define SPILL_COST_INCREMENT (1 << (bb->nesting << 1))
 
-//#define DEBUG_LIVENESS
+#define DEBUG_LIVENESS
 
 #define BITS_PER_CHUNK MONO_BITSET_BITS_PER_CHUNK
 
@@ -52,13 +52,17 @@ G_GNUC_UNUSED static void
 mono_bitset_print (MonoBitSet *set)
 {
 	int i;
+	gboolean first = TRUE;
 
 	printf ("{");
 	for (i = 0; i < mono_bitset_size (set); i++) {
 
-		if (mono_bitset_test (set, i))
-			printf ("%d, ", i);
-
+		if (mono_bitset_test (set, i)) {
+			if (!first)
+				printf (", ");
+			printf ("%d", i);
+			first = FALSE;
+		}
 	}
 	printf ("}\n");
 }
@@ -90,6 +94,11 @@ visit_bb (MonoCompile *cfg, MonoBasicBlock *bb, GSList **visited)
 			MonoMethodVar *vi = MONO_VARINFO (cfg, idx);
 
 			cfg->varinfo [vi->idx]->flags |= MONO_INST_VOLATILE;
+			if (SIZEOF_REGISTER == 4 && (var->type == STACK_I8 || (var->type == STACK_R8 && COMPILE_SOFT_FLOAT (cfg)))) {
+				/* Make the component vregs volatile as well (#612206) */
+				get_vreg_to_inst (cfg, var->dreg + 1)->flags |= MONO_INST_VOLATILE;
+				get_vreg_to_inst (cfg, var->dreg + 2)->flags |= MONO_INST_VOLATILE;
+			}
 		}
 			
 		/* SREGS */
@@ -104,6 +113,11 @@ visit_bb (MonoCompile *cfg, MonoBasicBlock *bb, GSList **visited)
 				MonoMethodVar *vi = MONO_VARINFO (cfg, idx);
 
 				cfg->varinfo [vi->idx]->flags |= MONO_INST_VOLATILE;
+				if (SIZEOF_REGISTER == 4 && (var->type == STACK_I8 || (var->type == STACK_R8 && COMPILE_SOFT_FLOAT (cfg)))) {
+					/* Make the component vregs volatile as well (#612206) */
+					get_vreg_to_inst (cfg, var->dreg + 1)->flags |= MONO_INST_VOLATILE;
+					get_vreg_to_inst (cfg, var->dreg + 2)->flags |= MONO_INST_VOLATILE;
+				}
 			}
 		}
 	}
@@ -167,7 +181,10 @@ analyze_liveness_bb (MonoCompile *cfg, MonoBasicBlock *bb)
 		int sregs [MONO_MAX_SRC_REGS];
 
 #ifdef DEBUG_LIVENESS
-			printf ("\t"); mono_print_ins (ins);
+		if (cfg->verbose_level > 1) {
+			printf ("\t");
+			mono_print_ins (ins);
+		}
 #endif
 
 		if (ins->opcode == OP_NOP)
@@ -179,7 +196,8 @@ analyze_liveness_bb (MonoCompile *cfg, MonoBasicBlock *bb)
 			MonoMethodVar *vi = MONO_VARINFO (cfg, idx);
 
 #ifdef DEBUG_LIVENESS
-			printf ("\tGEN: R%d(%d)\n", var->dreg, idx);
+			if (cfg->verbose_level > 1)
+				printf ("\tGEN: R%d(%d)\n", var->dreg, idx);
 #endif
 			update_live_range (&vars [idx], abs_pos + inst_num); 
 			if (!mono_bitset_test_fast (bb->kill_set, idx))
@@ -197,7 +215,8 @@ analyze_liveness_bb (MonoCompile *cfg, MonoBasicBlock *bb)
 				MonoMethodVar *vi = MONO_VARINFO (cfg, idx);
 
 #ifdef DEBUG_LIVENESS
-				printf ("\tGEN: R%d(%d)\n", sreg, idx);
+				if (cfg->verbose_level > 1)
+					printf ("\tGEN: R%d(%d)\n", sreg, idx);
 #endif
 				update_live_range (&vars [idx], abs_pos + inst_num); 
 				if (!mono_bitset_test_fast (bb->kill_set, idx))
@@ -219,7 +238,8 @@ analyze_liveness_bb (MonoCompile *cfg, MonoBasicBlock *bb)
 				vi->spill_costs += SPILL_COST_INCREMENT;
 			} else {
 #ifdef DEBUG_LIVENESS
-				printf ("\tKILL: R%d(%d)\n", ins->dreg, idx);
+				if (cfg->verbose_level > 1)
+					printf ("\tKILL: R%d(%d)\n", ins->dreg, idx);
 #endif
 				update_live_range (&vars [idx], abs_pos + inst_num + 1); 
 				mono_bitset_set_fast (bb->kill_set, idx);
@@ -244,7 +264,8 @@ mono_analyze_liveness (MonoCompile *cfg)
 	int bitsize;
 
 #ifdef DEBUG_LIVENESS
-	printf ("LIVENESS %s\n", mono_method_full_name (cfg->method, TRUE));
+	if (cfg->verbose_level > 1)
+		printf ("\nLIVENESS:\n");
 #endif
 
 	g_assert (!(cfg->comp_done & MONO_COMP_LIVENESS));
@@ -268,16 +289,23 @@ mono_analyze_liveness (MonoCompile *cfg)
 		bb->gen_set = mono_bitset_mp_new (cfg->mempool, bitsize, max_vars);
 		bb->kill_set = mono_bitset_mp_new (cfg->mempool, bitsize, max_vars);
 
+#ifdef DEBUG_LIVENESS
+		if (cfg->verbose_level > 1) {
+			printf ("BLOCK BB%d (", bb->block_num);
+			for (j = 0; j < bb->out_count; j++) 
+				printf ("BB%d, ", bb->out_bb [j]->block_num);
+		
+			printf ("):\n");
+		}
+#endif
+
 		analyze_liveness_bb (cfg, bb);
 
 #ifdef DEBUG_LIVENESS
-		printf ("BLOCK BB%d (", bb->block_num);
-		for (j = 0; j < bb->out_count; j++) 
-			printf ("BB%d, ", bb->out_bb [j]->block_num);
-		
-		printf (")\n");
-		printf ("GEN  BB%d: ", bb->block_num); mono_bitset_print (bb->gen_set);
-		printf ("KILL BB%d: ", bb->block_num); mono_bitset_print (bb->kill_set);
+		if (cfg->verbose_level > 1) {
+			printf ("GEN  BB%d: ", bb->block_num); mono_bitset_print (bb->gen_set);
+			printf ("KILL BB%d: ", bb->block_num); mono_bitset_print (bb->kill_set);
+		}
 #endif
 	}
 
@@ -304,6 +332,9 @@ mono_analyze_liveness (MonoCompile *cfg)
 
 	out_iter = 0;
 
+	if (cfg->verbose_level > 1)
+		printf ("\nITERATION:\n");
+
 	while (l_end != 0) {
 		MonoBasicBlock *bb = worklist [--l_end];
 		MonoBasicBlock *out_bb;
@@ -312,13 +343,15 @@ mono_analyze_liveness (MonoCompile *cfg)
 		in_worklist [bb->dfn] = FALSE;
 
 #ifdef DEBUG_LIVENESS
-		printf ("P: %d(%d): IN: ", bb->block_num, bb->dfn);
-		for (j = 0; j < bb->in_count; ++j) 
-			printf ("BB%d ", bb->in_bb [j]->block_num);
-		printf ("OUT:");
-		for (j = 0; j < bb->out_count; ++j) 
-			printf ("BB%d ", bb->out_bb [j]->block_num);
-		printf ("\n");
+		if (cfg->verbose_level > 1) {
+			printf ("P: BB%d(%d): IN: ", bb->block_num, bb->dfn);
+			for (j = 0; j < bb->in_count; ++j) 
+				printf ("BB%d ", bb->in_bb [j]->block_num);
+			printf ("OUT:");
+			for (j = 0; j < bb->out_count; ++j) 
+				printf ("BB%d ", bb->out_bb [j]->block_num);
+			printf ("\n");
+		}
 #endif
 
 
@@ -347,7 +380,11 @@ mono_analyze_liveness (MonoCompile *cfg)
 				mono_bitset_union_fast (out_bb->live_in_set, out_bb->gen_set);
 			}
 
-			mono_bitset_union_fast (bb->live_out_set, out_bb->live_in_set);
+			// FIXME: Do this somewhere else
+			if (bb->last_ins && bb->last_ins->opcode == OP_NOT_REACHED) {
+			} else {
+				mono_bitset_union_fast (bb->live_out_set, out_bb->live_in_set);
+			}
 		}
 				
 		if (changed || !mono_bitset_equal (old_live_out_set, bb->live_out_set)) {
@@ -365,7 +402,8 @@ mono_analyze_liveness (MonoCompile *cfg)
 				 */
 				if (in_bb->gen_set && !in_worklist [in_bb->dfn]) {
 #ifdef DEBUG_LIVENESS
-					printf ("\tADD: %d\n", in_bb->block_num);
+					if (cfg->verbose_level > 1)
+						printf ("\tADD: %d\n", in_bb->block_num);
 #endif
 					/*
 					 * Put the block at the top of the stack, so it
@@ -376,9 +414,15 @@ mono_analyze_liveness (MonoCompile *cfg)
 				}
 			}
 		}
+
+		if (G_UNLIKELY (cfg->verbose_level > 1)) {
+			printf ("\tLIVE IN  BB%d: ", bb->block_num); 
+			mono_bitset_print (bb->live_in_set); 
+		}			
 	}
 
 #ifdef DEBUG_LIVENESS
+	if (cfg->verbose_level > 1)
 		printf ("IT: %d %d.\n", cfg->num_bblocks, out_iter);
 #endif
 
@@ -458,13 +502,21 @@ mono_analyze_liveness (MonoCompile *cfg)
 	}
 
 #ifdef DEBUG_LIVENESS
-	for (i = cfg->num_bblocks - 1; i >= 0; i--) {
-		MonoBasicBlock *bb = cfg->bblocks [i];
+	if (cfg->verbose_level > 1) {
+		for (i = cfg->num_bblocks - 1; i >= 0; i--) {
+			MonoBasicBlock *bb = cfg->bblocks [i];
 		
-		printf ("LIVE IN  BB%d: ", bb->block_num); 
-		mono_bitset_print (bb->live_in_set); 
-		printf ("LIVE OUT BB%d: ", bb->block_num); 
-		mono_bitset_print (bb->live_out_set); 
+			printf ("LIVE IN  BB%d: ", bb->block_num); 
+			mono_bitset_print (bb->live_in_set); 
+			printf ("LIVE OUT BB%d: ", bb->block_num); 
+			mono_bitset_print (bb->live_out_set); 
+		}
+
+		for (i = 0; i < max_vars; i ++) {
+			MonoMethodVar *vi = MONO_VARINFO (cfg, i);
+
+			printf ("V%d: [0x%x - 0x%x]\n", i, vi->range.first_use.abs_pos, vi->range.last_use.abs_pos);
+		}
 	}
 #endif
 
@@ -516,6 +568,8 @@ optimize_initlocals (MonoCompile *cfg)
 
 			if (var && !mono_bitset_test_fast (used, ins->dreg) && !mono_bitset_test_fast (initlocals_bb->live_out_set, var->inst_c0) && (var != cfg->ret) && !(var->flags & (MONO_INST_VOLATILE|MONO_INST_INDIRECT))) {
 				//printf ("DEAD: "); mono_print_ins (ins);
+				if (cfg->disable_initlocals_opt_refs && var->type == STACK_OBJ)
+					continue;
 				if ((ins->opcode == OP_ICONST) || (ins->opcode == OP_I8CONST) || (ins->opcode == OP_R8CONST)) {
 					NULLIFY_INS (ins);
 					MONO_VARINFO (cfg, var->inst_c0)->spill_costs -= 1;

@@ -121,20 +121,29 @@ namespace System.Xml
 			string prefix = index < 0 ? String.Empty : name.Substring (0, index);
 			string localName = index < 0 ? name : name.Substring (index + 1);
 			string ns = resolver.LookupNamespace (prefix);
-			if (ns == null)
-				throw new ArgumentException ("Invalid qualified name.");
+			if (ns == null) {
+				if (prefix.Length > 0)
+					throw new ArgumentException ("Invalid qualified name.");
+				else
+					ns = String.Empty;
+			}
 			return new XmlQualifiedName (localName, ns);
 		}
 
 		internal static XmlQualifiedName Parse (string name, XmlReader reader)
 		{
+			return Parse (name, reader, false);
+		}
+
+		internal static XmlQualifiedName Parse (string name, XmlReader reader, bool considerDefaultNamespace)
+		{
 			int index = name.IndexOf (':');
-			if (index < 0)
+			if (index < 0 && !considerDefaultNamespace)
 				return new XmlQualifiedName (name);
-			string ns = reader.LookupNamespace (name.Substring (0, index));
-			if (ns == null)
+			string ns = reader.LookupNamespace (index < 0 ? String.Empty : name.Substring (0, index));
+			if (ns == null && index > 0)
 				throw new ArgumentException ("Invalid qualified name.");
-			return new XmlQualifiedName (name.Substring (index + 1), ns);
+			return new XmlQualifiedName (index < 0 ? name : name.Substring (index + 1), ns);
 		}
 
 		// Operators

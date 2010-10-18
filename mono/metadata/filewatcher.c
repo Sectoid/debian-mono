@@ -16,7 +16,7 @@
 #include <mono/metadata/filewatcher.h>
 #include <mono/metadata/marshal.h>
 #include <mono/utils/mono-dl.h>
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 
 /*
  * TODO:
@@ -155,7 +155,7 @@ int ves_icall_System_IO_InotifyWatcher_AddWatch (int fd, MonoString *directory, 
 	return -1;
 }
 
-int ves_icall_System_IO_InotifyWatcher_RemoveWatch (int fd, int watch_descriptor)
+int ves_icall_System_IO_InotifyWatcher_RemoveWatch (int fd, gint32 watch_descriptor)
 {
 	return -1;
 }

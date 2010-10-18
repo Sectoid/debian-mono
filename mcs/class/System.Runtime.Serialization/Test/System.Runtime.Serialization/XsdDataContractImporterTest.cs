@@ -409,8 +409,6 @@ namespace MonoTests.System.Runtime.Serialization
 			Assert.IsTrue (t, "te");
 		}
 
-#if false // FIXME: enable when we switch to the new implementation.
-
 		CodeCompileUnit DoImport (params string [] schemaFiles)
 		{
 			var ccu = new CodeCompileUnit ();
@@ -609,7 +607,30 @@ namespace MonoTests.System.Runtime.Serialization
 			DoImport ("Test/Resources/Schemas/ns27.xsd");
 		}
 
-#endif
+		[Test]
+		public void ImportTestX28 ()
+		{
+			DoImport ("Test/Resources/Schemas/ns28.xsd");
+		}
+
+		[Test]
+		[ExpectedException (typeof (InvalidDataContractException))]
+		public void ImportTestX29 ()
+		{
+			DoImport ("Test/Resources/Schemas/ns29.xsd");
+		}
+
+		[Test]
+		public void ImportTestX30 ()
+		{
+			DoImport ("Test/Resources/Schemas/ns30.xsd");
+		}
+
+		[Test]
+		public void ImportTestX31 ()
+		{
+			DoImport ("Test/Resources/Schemas/ns31.xsd");
+		}
 
 		/* Helper methods */
 		private void CheckDC (CodeTypeDeclaration type, string name, Dictionary<string, string> members, string msg)

@@ -113,6 +113,9 @@ namespace System.Windows.Forms
 		private int virtual_list_size;
 		private bool right_to_left_layout;
 #endif
+		// selection is available after the first time the handle is created, *even* if later
+		// the handle is either recreated or destroyed - so keep this info around.
+		private bool is_selection_available;
 
 		// internal variables
 		internal ImageList large_image_list;
@@ -1207,7 +1210,7 @@ namespace System.Windows.Forms
 
 		internal void OnSelectedIndexChanged ()
 		{
-			if (IsHandleCreated)
+			if (is_selection_available)
 				OnSelectedIndexChanged (EventArgs.Empty);
 		}
 
@@ -1381,9 +1384,9 @@ namespace System.Windows.Forms
 		{
 			int max;
 			if (scrollbar == h_scroll)
-				max = h_scroll.Maximum - item_control.Width;
+				max = h_scroll.Maximum - h_scroll.LargeChange + 1;
 			else
-				max = v_scroll.Maximum - item_control.Height;
+				max = v_scroll.Maximum - v_scroll.LargeChange + 1;
 
 			if (val > max)
 				val = max;
@@ -1406,6 +1409,7 @@ namespace System.Windows.Forms
 			Rectangle client_area = ClientRectangle;
 			int height = client_area.Height;
 			int width = client_area.Width;
+			Size item_size;
 			
 			if (!scrollable) {
 				h_scroll.Visible = false;
@@ -1439,6 +1443,8 @@ namespace System.Windows.Forms
 			}
 
 
+			item_size = ItemSize;
+
 			if (h_scroll.is_visible) {
 				h_scroll.Location = new Point (client_area.X, client_area.Bottom - h_scroll.Height);
 				h_scroll.Minimum = 0;
@@ -1454,25 +1460,37 @@ namespace System.Windows.Forms
 					h_scroll.Width = client_area.Width;
 				}
 
+				if (view == View.List)
+					h_scroll.SmallChange = item_size.Width + ThemeEngine.Current.ListViewHorizontalSpacing;
+				else
+					h_scroll.SmallChange = Font.Height;
+
 				h_scroll.LargeChange = client_area.Width;
-				h_scroll.SmallChange = item_size.Width + ThemeEngine.Current.ListViewHorizontalSpacing;
 				height -= h_scroll.Height;
 			}
 
 			if (v_scroll.is_visible) {
 				v_scroll.Location = new Point (client_area.Right - v_scroll.Width, client_area.Y);
 				v_scroll.Minimum = 0;
-				v_scroll.Maximum = layout_ht;
 
 				// if h_scroll is visible, adjust the height of
 				// v_scroll to account for the height of h_scroll
-				if (h_scroll.Visible)
+				if (h_scroll.Visible) {
+					v_scroll.Maximum = layout_ht + h_scroll.Height;
 					v_scroll.Height = client_area.Height - h_scroll.Height;
-				else
+				} else {
+					v_scroll.Maximum = layout_ht;
 					v_scroll.Height = client_area.Height;
+				}
 
-				v_scroll.LargeChange = client_area.Height;
-				v_scroll.SmallChange = Font.Height;
+				if (view == View.Details) {
+					// Need to update Maximum if using LargeChange with value other than the visible area
+					v_scroll.LargeChange = v_scroll.Height - (header_control.Height + item_size.Height);
+					v_scroll.Maximum -= header_control.Height + item_size.Height;
+				} else
+					v_scroll.LargeChange = v_scroll.Height;
+
+				v_scroll.SmallChange = item_size.Height;
 				width -= v_scroll.Width;
 			}
 			
@@ -2023,6 +2041,7 @@ namespace System.Windows.Forms
 			item_control.Visible = true;
 			item_control.Location = Point.Empty;
 			item_control.Width = ClientRectangle.Width;
+			AdjustChildrenZOrder ();
 
 			int item_height = GetDetailsItemHeight ();
 			ItemSize = new Size (0, item_height); // We only cache Height for details view
@@ -2077,6 +2096,17 @@ namespace System.Windows.Forms
 				item.SetPosition (new Point (0, item_y));
 #endif					
 			}
+		}
+
+		// Need to make sure HeaderControl is on top, and we can't simply use BringToFront since
+		// these controls are implicit, so we need to re-populate our collection.
+		void AdjustChildrenZOrder ()
+		{
+			SuspendLayout ();
+			Controls.ClearImplicit ();
+			Controls.AddImplicit (header_control);
+			Controls.AddImplicit (item_control);
+			ResumeLayout ();
 		}
 
 		private void AdjustItemsPositionArray (int count)
@@ -2826,6 +2856,9 @@ namespace System.Windows.Forms
 						if (owner.LabelEdit && !changed)
 							BeginEdit (clicked_item); // this is probably not the correct place to execute BeginEdit
 					}
+
+					drag_begin = me.Location;
+					dragged_item_index = clicked_item.Index;
 				} else {
 					if (owner.MultiSelect)
 						box_selecting = true;
@@ -2892,13 +2925,7 @@ namespace System.Windows.Forms
 				}
 
 				if (me.Button == MouseButtons.Left || me.Button == MouseButtons.Right) {
-					if (drag_begin.X == -1 && drag_begin.Y == -1) {
-						if (item != null) {
-							drag_begin = new Point (me.X, me.Y);
-							dragged_item_index = item.Index;
-						}
-
-					} else {
+					if (drag_begin != new Point (-1, -1)) {
 						Rectangle r = new Rectangle (drag_begin, SystemInformation.DragSize);
 						if (!r.Contains (me.X, me.Y)) {
 							ListViewItem dragged_item  = owner.items [dragged_item_index];
@@ -3506,6 +3533,7 @@ namespace System.Windows.Forms
 		protected override void CreateHandle ()
 		{
 			base.CreateHandle ();
+			is_selection_available = true;
 			for (int i = 0; i < SelectedItems.Count; i++)
 				OnSelectedIndexChanged (EventArgs.Empty);
 		}
@@ -3513,9 +3541,6 @@ namespace System.Windows.Forms
 		protected override void Dispose (bool disposing)
 		{
 			if (disposing) {
-				h_scroll.Dispose ();
-				v_scroll.Dispose ();
-				
 				large_image_list = null;
 				small_image_list = null;
 				state_image_list = null;
@@ -5682,6 +5707,9 @@ namespace System.Windows.Forms
 				if (is_main_collection || item.ListView != null)
 					CollectionChanged (true);
 
+				// force an update of the selected info if the new item is selected.
+				if (item.Selected)
+					item.SetSelectedCore (true);
 #if NET_2_0
 				//UIA Framework event: Item Added
 				OnUIACollectionChangedEvent (new CollectionChangeEventArgs (CollectionChangeAction.Add, item));
@@ -5832,6 +5860,9 @@ namespace System.Windows.Forms
 
 				list.Add (value);
 
+				// force an update of the selected info if the new item is selected.
+				if (value.Selected)
+					value.SetSelectedCore (true);
 			}
 
 			void CollectionChanged (bool sort)
@@ -5854,6 +5885,7 @@ namespace System.Windows.Forms
 				ListViewItem retval = args.Item;
 				retval.Owner = owner;
 				retval.DisplayIndex = displayIndex;
+				retval.Layout ();
 
 				return retval;
 			}
@@ -5900,7 +5932,7 @@ namespace System.Windows.Forms
 			[Browsable (false)]
 			public int Count {
 				get {
-					if (!owner.IsHandleCreated)
+					if (!owner.is_selection_available)
 						return 0;
 
 					return List.Count;
@@ -5919,7 +5951,7 @@ namespace System.Windows.Forms
 
 			public int this [int index] {
 				get {
-					if (!owner.IsHandleCreated || index < 0 || index >= List.Count)
+					if (!owner.is_selection_available || index < 0 || index >= List.Count)
 						throw new ArgumentOutOfRangeException ("index");
 
 					return (int) List [index];
@@ -5957,12 +5989,12 @@ namespace System.Windows.Forms
 				if (itemIndex < 0 || itemIndex >= owner.Items.Count)
 					throw new ArgumentOutOfRangeException ("index");
 
-				if (owner.virtual_mode && !owner.IsHandleCreated)
+				if (owner.virtual_mode && !owner.is_selection_available)
 					return -1;
 
 				owner.Items [itemIndex].Selected = true;
 
-				if (!owner.IsHandleCreated)
+				if (!owner.is_selection_available)
 					return 0;
 
 				return List.Count;
@@ -5976,7 +6008,7 @@ namespace System.Windows.Forms
 #endif	
 			void Clear ()
 			{
-				if (!owner.IsHandleCreated)
+				if (!owner.is_selection_available)
 					return;
 
 				int [] indexes = (int []) List.ToArray (typeof (int));
@@ -6040,7 +6072,7 @@ namespace System.Windows.Forms
 
 			public int IndexOf (int selectedIndex)
 			{
-				if (!owner.IsHandleCreated)
+				if (!owner.is_selection_available)
 					return -1;
 
 				return List.IndexOf (selectedIndex);
@@ -6144,7 +6176,7 @@ namespace System.Windows.Forms
 
 			public ListViewItem this [int index] {
 				get {
-					if (!owner.IsHandleCreated || index < 0 || index >= Count)
+					if (!owner.is_selection_available || index < 0 || index >= Count)
 						throw new ArgumentOutOfRangeException ("index");
 
 					int item_index = owner.SelectedIndices [index];
@@ -6202,7 +6234,7 @@ namespace System.Windows.Forms
 
 			public void CopyTo (Array dest, int index)
 			{
-				if (!owner.IsHandleCreated)
+				if (!owner.is_selection_available)
 					return;
 				if (index > Count) // Throws ArgumentException instead of IOOR exception
 					throw new ArgumentException ("index");
@@ -6213,7 +6245,7 @@ namespace System.Windows.Forms
 
 			public IEnumerator GetEnumerator ()
 			{
-				if (!owner.IsHandleCreated)
+				if (!owner.is_selection_available)
 					return (new ListViewItem [0]).GetEnumerator ();
 
 				ListViewItem [] items = new ListViewItem [Count];
@@ -6259,7 +6291,7 @@ namespace System.Windows.Forms
 
 			public int IndexOf (ListViewItem item)
 			{
-				if (!owner.IsHandleCreated)
+				if (!owner.is_selection_available)
 					return -1;
 
 				for (int i = 0; i < Count; i++)
@@ -6272,7 +6304,7 @@ namespace System.Windows.Forms
 #if NET_2_0
 			public virtual int IndexOfKey (string key)
 			{
-				if (!owner.IsHandleCreated || key == null || key.Length == 0)
+				if (!owner.is_selection_available || key == null || key.Length == 0)
 					return -1;
 
 				for (int i = 0; i < Count; i++) {

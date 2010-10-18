@@ -1,4 +1,3 @@
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 // ConcurrentQueue.cs
 //
 // Copyright (c) 2008 Jérémie "Garuma" Laval
@@ -23,6 +22,8 @@
 //
 //
 
+#if NET_4_0 || BOOTSTRAP_NET_4_0
+
 using System;
 using System.Threading;
 using System.Collections;
@@ -33,7 +34,7 @@ namespace System.Collections.Concurrent
 {
 	
 	public class ConcurrentQueue<T> : IProducerConsumerCollection<T>, IEnumerable<T>, ICollection,
-	                                  IEnumerable, ISerializable, IDeserializationCallback
+	                                  IEnumerable
 	{
 		class Node
 		{
@@ -56,16 +57,8 @@ namespace System.Collections.Concurrent
 				Enqueue (item);
 		}
 		
-		[MonoTODO]
-		protected ConcurrentQueue (SerializationInfo info, StreamingContext context)
-		{
-			throw new NotImplementedException ();
-		}
-		
 		public void Enqueue (T item)
 		{
-			Interlocked.Increment (ref count);
-			
 			Node node  = new Node ();
 			node.Value = item;
 			
@@ -90,6 +83,8 @@ namespace System.Collections.Concurrent
 			}
 			// At this point we added correctly our node, now we have to update tail. If it fails then it will be done by another thread
 			Interlocked.CompareExchange (ref tail, node, oldTail);
+
+			Interlocked.Increment (ref count);
 		}
 		
 		bool IProducerConsumerCollection<T>.TryAdd (T item)
@@ -97,14 +92,12 @@ namespace System.Collections.Concurrent
 			Enqueue (item);
 			return true;
 		}
-		
-		/// <summary>
-		/// </summary>
-		/// <returns></returns>
+
 		public bool TryDequeue (out T value)
 		{
 			value = default (T);
 			bool advanced = false;
+
 			while (!advanced) {
 				Node oldHead = head;
 				Node oldTail = tail;
@@ -128,12 +121,10 @@ namespace System.Collections.Concurrent
 			}
 
 			Interlocked.Decrement (ref count);
+
 			return true;
 		}
 		
-		/// <summary>
-		/// </summary>
-		/// <returns></returns>
 		public bool TryPeek (out T value)
 		{
 			if (IsEmpty) {
@@ -155,11 +146,6 @@ namespace System.Collections.Concurrent
 		IEnumerator IEnumerable.GetEnumerator ()
 		{
 			return (IEnumerator)InternalGetEnumerator ();
-		}
-		
-		IEnumerator<T> IEnumerable<T>.GetEnumerator ()
-		{
-			return InternalGetEnumerator ();
 		}
 		
 		public IEnumerator<T> GetEnumerator ()
@@ -199,31 +185,8 @@ namespace System.Collections.Concurrent
 			return dest;
 		}
 		
-		[MonoTODO]
-		protected virtual void GetObjectData (SerializationInfo info, StreamingContext context)
-		{
-			throw new NotImplementedException ();
-		}
-		
-		[MonoTODO]
-		void ISerializable.GetObjectData (SerializationInfo info, StreamingContext context)
-		{
-			GetObjectData (info, context);
-		}
-		
 		bool ICollection.IsSynchronized {
 			get { return true; }
-		}
-
-		[MonoTODO]
-		protected virtual void OnDeserialization (object sender)
-		{
-			throw new NotImplementedException ();
-		}
-		
-		void IDeserializationCallback.OnDeserialization (object sender)
-		{
-			OnDeserialization (sender);
 		}
 
 		bool IProducerConsumerCollection<T>.TryTake (out T item)

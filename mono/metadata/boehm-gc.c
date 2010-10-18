@@ -6,6 +6,9 @@
  */
 
 #include "config.h"
+
+#include <string.h>
+
 #define GC_I_HIDE_POINTERS
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/mono-gc.h>
@@ -16,9 +19,11 @@
 #include <mono/metadata/opcodes.h>
 #include <mono/metadata/domain-internals.h>
 #include <mono/metadata/metadata-internals.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/metadata/marshal.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/utils/mono-time.h>
 #include <mono/utils/dtrace.h>
+#include <mono/utils/gc_wrapper.h>
 
 #if HAVE_BOEHM_GC
 
@@ -84,6 +89,17 @@ mono_gc_base_init (void)
 	}
 #elif defined(HAVE_PTHREAD_GET_STACKSIZE_NP) && defined(HAVE_PTHREAD_GET_STACKADDR_NP)
 		GC_stackbottom = (char*)pthread_get_stackaddr_np (pthread_self ());
+#elif defined(__OpenBSD__)
+#  include <pthread_np.h>
+	{
+		stack_t ss;
+		int rslt;
+
+		rslt = pthread_stackseg_np(pthread_self(), &ss);
+		g_assert (rslt == 0);
+
+		GC_stackbottom = (char*)ss.ss_sp;
+	}
 #else
 	{
 		int dummy;
@@ -152,13 +168,13 @@ mono_gc_add_memory_pressure (gint64 value)
 {
 }
 
-gint64
+int64_t
 mono_gc_get_used_size (void)
 {
 	return GC_get_heap_size () - GC_get_free_bytes ();
 }
 
-gint64
+int64_t
 mono_gc_get_heap_size (void)
 {
 	return GC_get_heap_size ();
@@ -222,7 +238,7 @@ mono_gc_register_thread (void *baseptr)
 #else
 	if (mono_gc_is_gc_thread())
 		return TRUE;
-#if defined(USE_INCLUDED_LIBGC) && !defined(PLATFORM_WIN32)
+#if defined(USE_INCLUDED_LIBGC) && !defined(HOST_WIN32)
 	return GC_thread_register_foreign (baseptr);
 #else
 	return FALSE;
@@ -302,7 +318,7 @@ mono_gc_register_root (char *start, size_t size, void *descr)
 void
 mono_gc_deregister_root (char* addr)
 {
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 	/* FIXME: libgc doesn't define this work win32 for some reason */
 	/* FIXME: No size info */
 	GC_remove_roots (addr, addr + sizeof (gpointer) + 1);
@@ -535,9 +551,9 @@ mono_gc_wbarrier_set_arrayref (MonoArray *arr, gpointer slot_ptr, MonoObject* va
 }
 
 void
-mono_gc_wbarrier_arrayref_copy (MonoArray *arr, gpointer slot_ptr, int count)
+mono_gc_wbarrier_arrayref_copy (gpointer dest_ptr, gpointer src_ptr, int count)
 {
-	/* no need to do anything */
+	memmove (dest_ptr, src_ptr, count * sizeof (gpointer));
 }
 
 void
@@ -554,16 +570,30 @@ mono_gc_wbarrier_generic_nostore (gpointer ptr)
 void
 mono_gc_wbarrier_value_copy (gpointer dest, gpointer src, int count, MonoClass *klass)
 {
+	memmove (dest, src, count * mono_class_value_size (klass, NULL));
 }
 
 void
-mono_gc_wbarrier_object (MonoObject *object)
+mono_gc_wbarrier_object_copy (MonoObject* obj, MonoObject *src)
 {
+	/* do not copy the sync state */
+	memcpy ((char*)obj + sizeof (MonoObject), (char*)src + sizeof (MonoObject),
+			mono_object_class (obj)->instance_size - sizeof (MonoObject));
 }
 
 void
 mono_gc_clear_domain (MonoDomain *domain)
 {
+}
+
+int
+mono_gc_get_suspend_signal (void)
+{
+#ifdef USE_INCLUDED_GC
+	return GC_get_suspend_signal ();
+#else
+	return -1;
+#endif
 }
 
 #if defined(USE_INCLUDED_LIBGC) && defined(USE_COMPILER_TLS) && defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
@@ -597,6 +627,7 @@ create_allocator (int atype, int offset)
 	MonoMethodBuilder *mb;
 	MonoMethod *res;
 	MonoMethodSignature *csig;
+	AllocatorWrapperInfo *info;
 
 	if (atype == ATYPE_STRING) {
 		csig = mono_metadata_signature_alloc (mono_defaults.corlib, 2);
@@ -784,6 +815,12 @@ create_allocator (int atype, int offset)
 	res = mono_mb_create_method (mb, csig, 8);
 	mono_mb_free (mb);
 	mono_method_get_header (res)->init_locals = FALSE;
+
+	info = mono_image_alloc0 (mono_defaults.corlib, sizeof (AllocatorWrapperInfo));
+	info->gc_name = "boehm";
+	info->alloc_type = atype;
+	mono_marshal_set_wrapper_info (res, info);
+
 	return res;
 }
 
@@ -837,28 +874,10 @@ mono_gc_get_managed_allocator (MonoVTable *vtable, gboolean for_box)
 	return mono_gc_get_managed_allocator_by_type (atype);
 }
 
-/**
- * mono_gc_get_managed_allocator_id:
- *
- *   Return a type for the managed allocator method MANAGED_ALLOC which can later be passed
- * to mono_gc_get_managed_allocator_by_type () to get back this allocator method. This can be
- * used by the AOT code to encode references to managed allocator methods.
- */
-int
-mono_gc_get_managed_allocator_type (MonoMethod *managed_alloc)
+MonoMethod*
+mono_gc_get_managed_array_allocator (MonoVTable *vtable, int rank)
 {
-	int i;
-
-	mono_loader_lock ();
-	for (i = 0; i < ATYPE_NUM; ++i) {
-		if (alloc_method_cache [i] == managed_alloc) {
-			mono_loader_unlock ();
-			return i;
-		}
-	}
-	mono_loader_unlock ();
-
-	return -1;
+	return NULL;
 }
 
 /**
@@ -887,6 +906,13 @@ mono_gc_get_managed_allocator_types (void)
 	return ATYPE_NUM;
 }
 
+MonoMethod*
+mono_gc_get_write_barrier (void)
+{
+	g_assert_not_reached ();
+	return NULL;
+}
+
 #else
 
 MonoMethod*
@@ -895,10 +921,10 @@ mono_gc_get_managed_allocator (MonoVTable *vtable, gboolean for_box)
 	return NULL;
 }
 
-int
-mono_gc_get_managed_allocator_type (MonoMethod *managed_alloc)
+MonoMethod*
+mono_gc_get_managed_array_allocator (MonoVTable *vtable, int rank)
 {
-	return -1;
+	return NULL;
 }
 
 MonoMethod*
@@ -913,7 +939,84 @@ mono_gc_get_managed_allocator_types (void)
 	return 0;
 }
 
+MonoMethod*
+mono_gc_get_write_barrier (void)
+{
+	g_assert_not_reached ();
+	return NULL;
+}
+
+#endif
+
+const char *
+mono_gc_get_gc_name (void)
+{
+	return "boehm";
+}
+
+void*
+mono_gc_invoke_with_gc_lock (MonoGCLockedCallbackFunc func, void *data)
+{
+	return GC_call_with_alloc_lock (func, data);
+}
+
+char*
+mono_gc_get_description (void)
+{
+	return g_strdup (DEFAULT_GC_NAME);
+}
+
+void
+mono_gc_set_desktop_mode (void)
+{
+	GC_dont_expand = 1;
+}
+
+gboolean
+mono_gc_is_moving (void)
+{
+	return FALSE;
+}
+
+gboolean
+mono_gc_is_disabled (void)
+{
+	if (GC_dont_gc || g_getenv ("GC_DONT_GC"))
+		return TRUE;
+	else
+		return FALSE;
+}
+
+void
+mono_gc_wbarrier_value_copy_bitmap (gpointer _dest, gpointer _src, int size, unsigned bitmap)
+{
+	g_assert_not_reached ();
+}
+
+/*
+ * These will call the redefined versions in libgc.
+ */
+
+#ifndef HOST_WIN32
+
+int
+mono_gc_pthread_create (pthread_t *new_thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
+{
+	return pthread_create (new_thread, attr, start_routine, arg);
+}
+
+int
+mono_gc_pthread_join (pthread_t thread, void **retval)
+{
+	return pthread_join (thread, retval);
+}
+
+int
+mono_gc_pthread_detach (pthread_t thread)
+{
+	return pthread_detach (thread);
+}
+
 #endif
 
 #endif /* no Boehm GC */
-

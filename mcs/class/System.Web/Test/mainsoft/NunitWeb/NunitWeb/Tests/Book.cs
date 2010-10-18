@@ -1,4 +1,3 @@
-#if NET_2_0
 // Book.cs
 using System;
 using System.ComponentModel;
@@ -193,4 +192,3 @@ namespace Samples.AspNet.CS.Controls
 
     }
 }
-#endif

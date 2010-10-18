@@ -7,7 +7,7 @@
 //
 // (C) Nick Drochak
 // Portions (C) 2004 Motus Technologies Inc. (http://www.motus.com)
-// Copyright (C) 2004-2005, 2009 Novell, Inc (http://www.novell.com)
+// Copyright (C) 2004-2005, 2009-2010 Novell, Inc (http://www.novell.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the
@@ -29,7 +29,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -47,11 +47,46 @@ namespace System.Security {
 
 	internal static class SecurityManager {
 
+		static SecurityManager ()
+		{
+			// if the security manager (coreclr) is not active then the application has elevated permissions
+			HasElevatedPermissions = !SecurityEnabled;
+		}
+
 		// note: this let us differentiate between running in the browser (w/CoreCLR) and 
 		// running on the desktop (e.g. smcs compiling stuff)
 		extern public static bool SecurityEnabled {
 			[MethodImplAttribute (MethodImplOptions.InternalCall)]
 			get;
+		}
+
+		internal static bool HasElevatedPermissions {
+			get; set;
+		}
+
+		extern static bool RequiresElevatedPermissions {
+			[MethodImplAttribute (MethodImplOptions.InternalCall)]
+			get;
+		}
+
+		[MethodImpl (MethodImplOptions.NoInlining)]
+		internal static bool CheckElevatedPermissions ()
+		{
+			if (HasElevatedPermissions)
+				return true;
+
+			return !RequiresElevatedPermissions;
+		}
+
+		[MethodImpl (MethodImplOptions.NoInlining)]
+		internal static void EnsureElevatedPermissions ()
+		{
+			// shortcut (to avoid the stack walk) if we are running with elevated trust
+			if (HasElevatedPermissions)
+				return;
+
+			if (RequiresElevatedPermissions)
+				throw new SecurityException ("This operation requires elevated permissions");
 		}
 
 		internal static IPermission CheckPermissionSet (Assembly a, PermissionSet ps, bool noncas)

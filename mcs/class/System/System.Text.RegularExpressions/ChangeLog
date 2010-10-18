@@ -1,3 +1,61 @@
+2010-07-20  Miguel de Icaza  <miguel@novell.com>
+
+	* parser.cs (ParseEscape): Now parses with some context, whether
+	we are parsing inside a character range which can not contain
+	back-references or when we are parsing on a string context which
+	can contain back references.
+
+	This fixes bug #577346 which exposed a bug parsing this:
+
+	new Regex("[\\177-\\377]")
+
+2010-06-29  Raja R Harinath  <harinath@hurrynot.org>
+
+	Mitigate a possible source of unbounded memory growth
+	* interpreter.cs (Backtrack): Move mark_start back, and invalidate
+	discarded marks.
+
+2010-06-29  Raja R Harinath  <harinath@hurrynot.org>
+
+	Make trace output resemble assembler listing
+	* compiler.cs (LinkRef.ToString) [TRACE_REGEX]: Add pretty-printer
+	in TRACE_REGEX mode.
+	(TraceRegexp): Indent the output.
+	(TraceRegexpLabel): New.  Prints out a line label.
+	(EmitCount): Don't trace.  All callers are traced.
+	(ResolveLink): Trace line labels.
+
+2010-06-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* compiler.cs: Use conditional compilation to enable
+	tracing to avoid code bloat.
+
+2010-06-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* parser.cs: Handle repetition of position assertions.
+
+	Fixes #610587.
+
+2010-06-21  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* compiler.cs: Add new internal flag to switch on regexp tracing.
+	The code is a statc readonly variable so the JIT can eliminate
+	all tracing code during normal runs.
+
+2010-03-20  Miguel de Icaza  <miguel@novell.com>
+
+	* RxInterpreter.cs: Removed warnings.
+
+2010-02-03  Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* BaseMachine.cs (Split): Don't add empty strings if they don't come from
+	the first capture group. Fixes #566117.
+
+2010-01-12  Miguel de Icaza  <miguel@novell.com>
+
+	* Regex.cs: Re-enable the new regex compiler as the bug seems to
+	be gone now.
+
 2009-09-07  Raja R Harinath  <harinath@hurrynot.org>
 
 	* Regex.cs (Escape, Unescape): Add null checks.

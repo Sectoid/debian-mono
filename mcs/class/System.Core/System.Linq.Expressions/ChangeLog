@@ -1,9 +1,16 @@
+2010-07-26  Jb Evain  <jbevain@novell.com>
+
+	* EmitContext.cs: Properly call methods on enumerations.
+	Fixes #625367.
+
+2010-05-19  Jb Evain  <jbevain@novell.com>
+
+	* ConstantExpression.cs: fix emission of nullable constants.
+
 2010-01-08  Jb Evain  <jbevain@novell.com>
 
 	* Expression.cs (Call): properly deal with zero length array
 	of type arguments for non generic methods. Fixes #568989.
-
-	backport r149241.
 
 2009-12-02 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
@@ -12,15 +19,11 @@
 
 2009-11-15  Jb Evain  <jbevain@novell.com>
 
-	backport of 146225.
-
 	* Expression (Call): deal with lambda expression <> delegate
 	comparison when filtering methods.
 	Fixes #536637.
 
 2009-11-15  Jb Evain  <jbevain@novell.com>
-
-	backport of 146222.
 
 	* Expression (Call): better filtering of generic methods.
 	Fixes #537768.
@@ -31,6 +34,12 @@
 	* EmitContext.cs (ParameterReplacer): new helper type
 	to replace the parameters of isolated expressions.
 	Fix #550722.
+
+2009-11-14  Jb Evain  <jbevain@novell.com>
+
+	* ExpressionTransformer.cs: adjust return type of all
+	 tranformation methods to make the transformer actually
+	 useful.
 
 2009-10-08  Jb Evain  <jbevain@novell.com>
 

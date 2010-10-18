@@ -34,14 +34,20 @@ using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Permissions;
+using System.Diagnostics;
 
 // HashSet is basically implemented as a reduction of Dictionary<K, V>
 
 namespace System.Collections.Generic {
 
 	[Serializable, HostProtection (SecurityAction.LinkDemand, MayLeakOnAbort = true)]
-	public class HashSet<T> : ICollection<T>, ISerializable, IDeserializationCallback {
-
+	[DebuggerDisplay ("Count={Count}")]
+	[DebuggerTypeProxy (typeof (CollectionDebuggerView<,>))]
+	public class HashSet<T> : ICollection<T>, ISerializable, IDeserializationCallback
+#if NET_4_0 || MOONLIGHT
+							, ISet<T>
+#endif
+	{
 		const int INITIAL_SIZE = 10;
 		const float DEFAULT_LOAD_FACTOR = (90f / 100);
 		const int NO_SLOT = -1;
@@ -353,17 +359,16 @@ namespace System.Collections.Generic {
 
 			int counter = 0;
 
-			var copy = new T [count];
-			CopyTo (copy, 0);
+			var candidates = new List<T> ();
 
-			foreach (var item in copy) {
-				if (predicate (item)) {
-					Remove (item);
-					counter++;
-				}
-			}
+			foreach (var item in this)
+				if (predicate (item)) 
+					candidates.Add (item);
 
-			return counter;
+			foreach (var item in candidates)
+				Remove (item);
+
+			return candidates.Count;
 		}
 
 		public void TrimExcess ()
@@ -378,16 +383,9 @@ namespace System.Collections.Generic {
 			if (other == null)
 				throw new ArgumentNullException ("other");
 
-			var copy = new T [count];
-			CopyTo (copy, 0);
+			var other_set = ToSet (other);
 
-			foreach (var item in copy)
-				if (!other.Contains (item))
-					Remove (item);
-
-			foreach (var item in other)
-				if (!Contains (item))
-					Remove (item);
+			RemoveWhere (item => !other_set.Contains (item));
 		}
 
 		public void ExceptWith (IEnumerable<T> other)
@@ -416,11 +414,13 @@ namespace System.Collections.Generic {
 			if (other == null)
 				throw new ArgumentNullException ("other");
 
-			if (count != other.Count ())
+			var other_set = ToSet (other);
+
+			if (count != other_set.Count)
 				return false;
 
 			foreach (var item in this)
-				if (!other.Contains (item))
+				if (!other_set.Contains (item))
 					return false;
 
 			return true;
@@ -431,12 +431,18 @@ namespace System.Collections.Generic {
 			if (other == null)
 				throw new ArgumentNullException ("other");
 
-			foreach (var item in other) {
-				if (Contains (item))
+			foreach (var item in ToSet (other))
+				if (!Add (item))
 					Remove (item);
-				else
-					Add (item);
-			}
+		}
+
+		HashSet<T> ToSet (IEnumerable<T> enumerable)
+		{
+			var set = enumerable as HashSet<T>;
+			if (set == null || !Comparer.Equals (set.Comparer))
+				set = new HashSet<T> (enumerable);
+
+			return set;
 		}
 
 		public void UnionWith (IEnumerable<T> other)
@@ -448,7 +454,7 @@ namespace System.Collections.Generic {
 				Add (item);
 		}
 
-		bool CheckIsSubsetOf (IEnumerable<T> other)
+		bool CheckIsSubsetOf (HashSet<T> other)
 		{
 			if (other == null)
 				throw new ArgumentNullException ("other");
@@ -468,10 +474,12 @@ namespace System.Collections.Generic {
 			if (count == 0)
 				return true;
 
-			if (count > other.Count ())
+			var other_set = ToSet (other);
+
+			if (count > other_set.Count)
 				return false;
 
-			return CheckIsSubsetOf (other);
+			return CheckIsSubsetOf (other_set);
 		}
 
 		public bool IsProperSubsetOf (IEnumerable<T> other)
@@ -482,13 +490,15 @@ namespace System.Collections.Generic {
 			if (count == 0)
 				return true;
 
-			if (count >= other.Count ())
+			var other_set = ToSet (other);
+
+			if (count >= other_set.Count)
 				return false;
 
-			return CheckIsSubsetOf (other);
+			return CheckIsSubsetOf (other_set);
 		}
 
-		bool CheckIsSupersetOf (IEnumerable<T> other)
+		bool CheckIsSupersetOf (HashSet<T> other)
 		{
 			if (other == null)
 				throw new ArgumentNullException ("other");
@@ -505,10 +515,12 @@ namespace System.Collections.Generic {
 			if (other == null)
 				throw new ArgumentNullException ("other");
 
-			if (count < other.Count ())
+			var other_set = ToSet (other);
+
+			if (count < other_set.Count)
 				return false;
 
-			return CheckIsSupersetOf (other);
+			return CheckIsSupersetOf (other_set);
 		}
 
 		public bool IsProperSupersetOf (IEnumerable<T> other)
@@ -516,10 +528,12 @@ namespace System.Collections.Generic {
 			if (other == null)
 				throw new ArgumentNullException ("other");
 
-			if (count <= other.Count ())
+			var other_set = ToSet (other);
+
+			if (count <= other_set.Count)
 				return false;
 
-			return CheckIsSupersetOf (other);
+			return CheckIsSupersetOf (other_set);
 		}
 
 		[MonoTODO]

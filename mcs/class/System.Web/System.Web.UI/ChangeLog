@@ -1,3 +1,193 @@
+2010-10-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #643298. A typo prevented the
+	EnableViewStateMac from being recognized in the Page directive.
+
+2010-09-07  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #636709. ClientID must be reset when ID is
+	assigned.
+
+2010-08-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #633756. Children processed as properties
+	must be instantiated before using.
+
+	When a server-side control processes its children (in the markup)
+	as properties, it needs to instantiate an object of the property
+	type and assign it to the appropriate property of the control.
+	Failing to do so will cause markup which references properties to
+	fail in certain cases (for instance when the control's property
+	type is a class and it is not instantiated by the control's
+	constructor).
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	* ApplicationFileParser.cs: added override of DefaultBaseType
+	property which checks whether
+	PageParser.DefaultApplicationBaseType is set and, if yes, uses it
+	to set application base type if there's no custom Global.asax *
+	PageParser.cs: implemented the EnableLongStringsAsResources,
+	DefaultPageBaseType, DefaultApplicationBaseType,
+	DefaultPageParserFilterType and DefaultUserControlBaseType
+	properties. * TemplateParser.cs: if
+	PageParser.DefaultPageParserFilterType is set, use it as the
+	default type to create instance of the page parser filter * Added
+	tests for the new properties. * Added support in standalone runner
+	for setting custom application domain data on domain creation,
+	just before the test is ran.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Made TemplateParser.CompileIntoType internal
+
+	This method was present only in 1.0 and 1.1 profiles. It's made
+	internal because we use it throughout our code.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] Added support for declarative per-user control
+	output cache provider selection
+
+	This adds support for the ProviderName attribute of the
+	OutputCache directive in user controls. Also implemented missing
+	support for SqlDependency attribute.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] added ability to store cached user controls in
+	specified output cache provider
+
+	This commit implements the ability to programmatically set the
+	name of the output cache provider to hold cached control data.
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] use auto-generated backing fields for all properties
+
+2010-08-05  Marek Habersack  <grendel@twistedcode.net>
+
+	* BoundPropertyEntry.cs: implemented the ControlID, ControlType,
+	ExpressionBuilder, FieldName, FormatString, ParsedExpressionData,
+	ReadOnlyProperty and TwoWayBound properties (2.0+)
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] implemented
+	BaseTemplateParser.{GetReferencedType,GetUserControlType} methods
+
+2010-07-23  Marek Habersack  <mhabersack@novell.com>
+
+	* ClientScriptManager.cs: 4.0 adds a class="aspNetHidden"
+	attribute to the div element surrounding the hidden elements.
+
+2010-07-14  Marek Habersack  <mhabersack@novell.com>
+
+	* DataKeyPropertyAttribute.cs: added (4.0)
+
+2010-07-13  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: moved 4.0 ClientID code to a separate method, so
+	that the ID_SET flag isn't set when necessary.
+
+2010-07-10  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: when setting ClientIDMode remember the value when
+	setting the property for the first time.
+
+2010-07-08  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: if generating a predictable ID and the current
+	control is a naming container, ensure that an ID is generated if
+	not specified by user.
+
+2010-07-02  Marek Habersack  <mhabersack@novell.com>
+
+	* TemplateControlParser.cs: added support for ClientIDMode
+	property
+
+	* Control.cs: implemented 4.0 features - ClientIDMode and
+	RenderingCompatibility.
+
+	* ClientIDMode.cs, IDataKeysControl.cs: added
+
+2010-06-17  Marek Habersack  <mhabersack@novell.com>
+
+	* RootBuilder.cs: both LINK and META HTML tags must be represented
+	as instances of HtmlGenericControl. Fixes bug #603541
+
+2010-06-02  Marek Habersack  <mhabersack@novell.com>
+
+	* ViewStateMode.cs: added
+
+	* Control.cs: implemented 4.0 ViewStateMode
+
+	* Page.cs: implemented 4.0 properties AutoPostBackControl and
+	RouteData
+
+2010-06-01  Marek Habersack  <mhabersack@novell.com>
+
+	* PageParser.cs: added support for MetaDescription and
+	MetaKeywords main directive attributes
+
+	* Page.cs: implemented MetaDescription and MetaKeywords
+	4.0 properties. 
+
+2010-05-19  Marek Habersack  <mhabersack@novell.com>
+
+	* DataSourceCacheDurationConverter.cs: implemented. Fixes bug
+	#603083
+
+	* PageParser.cs: handle several main directive attributes
+	specially, as they can have expressions as their values. Fixes bug
+	#603532
+
+	* MainDirectiveAttribute.cs: added - helper class to handle
+	directive attributes which can take either a value or an
+	expression.
+
+	* BaseParser.cs: IsDirective, IsExpression and IsDataBound methods
+	moved to here from TemplateControlCompiler.
+
+2010-05-15  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: implemented 4.0 GetRouteUrl overloads and
+	GetUniqueIDRelativeTo
+
+2010-05-05  Marek Habersack  <mhabersack@novell.com>
+
+	* CollectionBuilder.cs: if a type has more than on indexer, check
+	all of them for type compliance in GetChildControlType. Fixes bug
+	#601290. Patch from Kalyanov Dmitry <Kalyanov.Dmitry@gmail.com>,
+	thanks!
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* KeyedList.cs: do not implement IStateManager in 4.0
+
+2010-04-12  Marek Habersack  <mhabersack@novell.com>
+
+	* PageParser.cs: if EnableViewStateMac option is present in the
+	directive, remember it for later use by the compiler.
+
+	* Page.cs: initialize EnableViewStateMac with the default read
+	from the config.
+
+	The above fix cross-site scripting vulnerability (CVE: CVE-2010-1459)
+	Credits: Web Security Research Group (WSRG) of Hewlett Packard
+	(HP)
+
+2010-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: control cache must be filled using the local
+	_controls collection instead of the virtual Controls
+	property. Fixes bug #594238
+	Check if _controls isn't null before using it.
+
+2010-04-06  Marek Safar  <marek.safar@gmail.com>
+
+	* FileLevelControlBuilderAttribute.cs: Use reference comparison.
+
 2010-01-20  Marek Habersack  <mhabersack@novell.com>
 
 	* ObjectStateFormatter.cs: implemented support for IndexedString
@@ -58,6 +248,11 @@
 	* ObjectStateFormatter.cs: if a type is associated with a type
 	converter, do not check if the converter can convert FROM the type
 	in question, as this is implied. Fixes bug #545979
+
+2009-10-09  Marek Habersack  <mhabersack@novell.com>
+
+	* Control.cs: implemented the LoadViewStateByID property as well
+	as saving/restoring the view state by control's ID.
 
 2009-09-22  Marek Habersack  <mhabersack@novell.com>
 

@@ -56,6 +56,9 @@ namespace System.Web.Configuration
 		static ConfigurationProperty urlLinePragmasProp;
 		static ConfigurationProperty codeSubDirectoriesProp;
 		static ConfigurationProperty optimizeCompilationsProp;
+#if NET_4_0
+		static ConfigurationProperty targetFrameworkProp;
+#endif
 		
 		static CompilationSection ()
 		{
@@ -96,6 +99,12 @@ namespace System.Web.Configuration
 			// this hotfix: http://support.microsoft.com/kb/961884
 			optimizeCompilationsProp = new ConfigurationProperty ("optimizeCompilations", typeof (bool), false);
 
+#if NET_4_0
+			// Mono ignores this as there is no way to switch the runtime version
+			// dynamically while application is running
+			targetFrameworkProp = new ConfigurationProperty ("targetFramework", typeof (string), null);
+#endif
+
 			properties = new ConfigurationPropertyCollection ();
 			properties.Add (assembliesProp);
 			properties.Add (assemblyPostProcessorTypeProp);
@@ -117,6 +126,9 @@ namespace System.Web.Configuration
 			properties.Add (tempDirectoryProp);
 			properties.Add (urlLinePragmasProp);
 			properties.Add (optimizeCompilationsProp);
+#if NET_4_0
+			properties.Add (targetFrameworkProp);
+#endif
 		}
 
 		public CompilationSection ()
@@ -228,6 +240,14 @@ namespace System.Web.Configuration
 			get { return (bool) base [strictProp]; }
 			set { base [strictProp] = value; }
 		}
+
+#if NET_4_0
+		[ConfigurationProperty ("targetFramework", DefaultValue = null)]
+		public string TargetFramework {
+			get { return (string) base [targetFrameworkProp]; }
+			set { base [targetFrameworkProp] = value; }
+		}
+#endif
 		
 		[ConfigurationProperty ("tempDirectory", DefaultValue = "")]
 		public string TempDirectory {

@@ -36,6 +36,7 @@ using System.Collections;
 
 namespace System.Collections.Generic
 {
+	[Serializable]
 	internal class RBTree : IEnumerable, IEnumerable<RBTree.Node> {
 		public interface INodeHelper<T> {
 			int Compare (T key, Node node);
@@ -221,6 +222,22 @@ namespace System.Collections.Generic
 			return current;
 		}
 
+		public void Bound<T> (T key, ref Node lower, ref Node upper)
+		{
+			INodeHelper<T> hlp = (INodeHelper<T>) this.hlp;
+			Node current = root;
+			while (current != null) {
+				int c = hlp.Compare (key, current);
+				if (c <= 0)
+					upper = current;
+				if (c >= 0)
+					lower = current;
+				if (c == 0)
+					break;
+				current = c < 0 ? current.left : current.right;
+			}
+		}
+
 		public int Count {
 			get { return root == null ? 0 : (int) root.Size; }
 		}
@@ -249,6 +266,23 @@ namespace System.Collections.Generic
 		public NodeEnumerator GetEnumerator ()
 		{
 			return new NodeEnumerator (this);
+		}
+
+		// Get an enumerator that starts at 'key' or the next higher element in the tree
+		public NodeEnumerator GetSuffixEnumerator<T> (T key)
+		{
+			var pennants = new Stack<Node> ();
+			INodeHelper<T> hlp = (INodeHelper<T>) this.hlp;
+			Node current = root;
+			while (current != null) {
+				int c = hlp.Compare (key, current);
+				if (c <= 0)
+					pennants.Push (current);
+				if (c == 0)
+					break;
+				current = c < 0 ? current.left : current.right;
+			}
+			return new NodeEnumerator (this, pennants);
 		}
 
 		IEnumerator<Node> IEnumerable<Node>.GetEnumerator ()
@@ -365,8 +399,11 @@ namespace System.Collections.Generic
 			for (int i = 0; i < path.Count - 2; i += 2)
 				-- path [i].Size;
 
-			if (curpos != 0 && current.IsBlack)
-				rebalance_delete (path);
+			if (current.IsBlack) {
+				current.IsBlack = false;
+				if (curpos != 0)
+					rebalance_delete (path);
+			}
 
 			if (root != null && !root.IsBlack)
 				throw new SystemException ("Internal Error: root is not black");
@@ -576,17 +613,24 @@ namespace System.Collections.Generic
 			}
 		}
 
+		[Serializable]
 		public struct NodeEnumerator : IEnumerator, IEnumerator<Node> {
 			RBTree tree;
 			uint version;
 
-			Stack<Node> pennants;
+			Stack<Node> pennants, init_pennants;
 
 			internal NodeEnumerator (RBTree tree)
+				: this ()
 			{
 				this.tree = tree;
 				version = tree.version;
-				pennants = null;
+			}
+
+			internal NodeEnumerator (RBTree tree, Stack<Node> init_pennants)
+				: this (tree)
+			{
+				this.init_pennants = init_pennants;
 			}
 
 			public void Reset ()
@@ -614,6 +658,11 @@ namespace System.Collections.Generic
 				if (pennants == null) {
 					if (tree.root == null)
 						return false;
+					if (init_pennants != null) {
+						pennants = init_pennants;
+						init_pennants = null;
+						return pennants.Count != 0;
+					}
 					pennants = new Stack<Node> ();
 					next = tree.root;
 				} else {
@@ -812,10 +861,13 @@ namespace Mono.ValidationTest {
 			Dictionary<int, int> d = new Dictionary<int, int> ();
 			TreeSet<int> t = new TreeSet<int> ();
 			int iters = args.Length == 0 ? 100000 : Int32.Parse (args [0]);
+			int watermark = 1;
 
 			for (int i = 0; i < iters; ++i) {
-				if ((i % 100) == 0)
+				if (i >= watermark) {
+					watermark += 1 + watermark/4;
 					t.VerifyInvariants ();
+				}
 
 				int n = r.Next ();
 				if (d.ContainsKey (n))
@@ -866,14 +918,18 @@ namespace Mono.ValidationTest {
 				}
 			}
 
-			int j = 0;
+			int count = t.Count;
 			foreach (int n in d.Keys) {
-				if ((j++ % 100) == 0)
+				if (count <= watermark) {
+					watermark -= watermark/4;
 					t.VerifyInvariants ();
+				}
 				try {
 					if (!t.Remove (n))
 						throw new Exception ("tree says it doesn't have a number it should");
-
+					--count;
+					if (t.Count != count)
+						throw new Exception ("Remove didn't remove exactly one element");
 				} catch {
 					Console.Error.WriteLine ("While trying to remove {0} from tree of size {1}", n, t.Count);
 					t.Dump ();

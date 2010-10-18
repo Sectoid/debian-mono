@@ -1,13 +1,81 @@
+2010-06-29  Marek Safar <marek.safar@gmail.com>
+
+	* List.cs: Optimize IEnumerable<T> ctor.
+
+2010-05-15  Marek Safar <marek.safar@gmail.com>
+
+	* KeyValuePair.cs: Initialize fields definitely.
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CollectionDebuggerView.cs: Change to internal so we can avoid
+	a duplicating the type in assemblies that have [InternalsVisibleTo]
+
+2010-01-25 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* EqualityComparer.cs: (Equals) the arguments are checked to be
+	the correct type.
+
+2010-01-24  Robert Jordan  <robertj@gmx.net>
+
+	* Dictionary.cs: Fix deserialization compatibility with MS.NET.
+	Fixes bug #474009.
+
+2010-01-20  Miguel de Icaza  <miguel@novell.com>
+
+	* Dictionary.cs: Always create the keys, fixes compatibility
+	between Mono and .NET.  Patch from John Lenz <jlenz2@math.uiuc.edu>
+
 2009-12-06  Chris Toshok  <toshok@ximian.com>
 
 	* KeyValuePair.cs: we need setters for Key and Value so they can
 	be set via reflection from
 	System.ServiceModel.System.Runtime.Serialization.Json.TypeMap.cs.
 
+2009-11-26  Marek Safar <marek.safar@gmail.com>
+	
+	* CollectionDebuggerView.cs: Removed limit restriction.
+
+2009-11-23   Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* Comparer.cs: Our DefaultComparer class should be serializable just
+	as the generic one is.
+	Fixes #503585.
+
+2009-11-23  Juraj Skripsky <js@hotfeet.ch>
+
+	* List.cs (Sort): Call more appropriate overload of Array.Sort<T>.
+	Array.Sort<T> should be able to determine the comparison itself.
+	Speeds up the sorting for items of primitive type. 
+	Fixes #530450.
+
+2009-11-08  Juraj Skripsky <js@hotfeet.ch>
+
+	* List.cs (Sort): Sync to latest changes in Array.Sort.
+
+2009-10-20  Marek Safar <marek.safar@gmail.com>
+	
+	* List.cs, CollectionDebuggerView.cs, KeyValuePair.cs, Dictionary.cs
+	Improve debugging experience.
+
+2009-10-19  Marek Safar <marek.safar@gmail.com>
+	
+	* CollectionDebuggerView.cs: New file.
+
 2009-10-17  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* EqualityComparer.cs: Seal internal classes
-	[Backport r144308]
+
+2009-10-02  Raja R Harinath  <harinath@hurrynot.org>
+
+	* Dictionary.cs (Do_ICollectionCopyTo): Revert 2009-10-01 change.
+	Use BOOTSTRAP_BASIC to hide code from gmcs 2.4.x.
+
+2009-10-01  Marek Habersack  <mhabersack@novell.com>
+
+	* Dictionary.cs: cast target array to TRet[] instead of object[] -
+	may fail, but otherwise it doesn't compile with 2.4 (e.g. when
+	bootstrapping trunk)
 
 2009-09-22  Raja R Harinath  <harinath@hurrynot.org>
 

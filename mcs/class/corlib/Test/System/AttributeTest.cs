@@ -726,7 +726,6 @@ namespace MonoTests.System
 			Assert.IsFalse (a.Equals (null), "#8");
 		}
 
-#if NET_2_0
 		class UserType : TypeDelegator {
 			public int GetCattr1;
 			public int GetCattr2;
@@ -847,7 +846,6 @@ namespace MonoTests.System
 		}
 
 		[Test]
-		[Category ("NotDotNet")]
 		public void GetCustomAttributeOnBadSreTypes ()
 		{
 			AssemblyName assemblyName = new AssemblyName ();
@@ -859,10 +857,49 @@ namespace MonoTests.System
 			var tb = module.DefineType ("ns.type", TypeAttributes.Public);
 			tb.DefineGenericParameters ("T");
 			var ginst = tb.MakeGenericType (typeof (int));
-			Assert.IsNull (Attribute.GetCustomAttribute (ginst, typeof (ObsoleteAttribute)), "#1");
+			try {
+				Attribute.GetCustomAttribute (ginst, typeof (ObsoleteAttribute));
+				Assert.Fail ("#1");
+			} catch (NotSupportedException) {}
 		}
-#endif
 
+		[Test] //Regression test for #499569
+		public void GetCattrOnPropertyAndInheritance ()
+		{
+			var m = typeof(Sub).GetProperty ("Name");
+			var res = Attribute.GetCustomAttributes (m, typeof(MyAttribute), true);
+			Assert.AreEqual (1, res.Length, "#1");
+		}
+
+		abstract class Abs
+		{
+			public abstract string Name { get; set; }
+		}
+		
+		class Base: Abs
+		{
+			[MyAttribute]
+			public override string Name {
+				get { return ""; }
+				set {}
+			}
+		}
+		
+		class Sub: Base
+		{
+			public override string Name {
+				get { return ""; }
+				set {}
+			}
+		}
+		
+		class MySubAttribute: MyAttribute
+		{
+		}
+		
+		class MyAttribute: Attribute
+		{
+		}
 
 		private int GetAttributeCount (object[] attributes, Type attributeType)
 		{
@@ -916,6 +953,171 @@ namespace MonoTests.System
 		[DerivedTestCustomAttributeMultipleInherit ()]
 		private class ClassC : ClassB
 		{
+		}
+
+		[Test]
+		public void EmptyNonOverridenGetHashCode ()
+		{
+			MyAttribute a1 = new MyAttribute ();
+			MyAttribute a2 = new MyAttribute ();
+			Assert.AreEqual (a1.GetHashCode (), a2.GetHashCode (), "identical argument-less");
+			Assert.AreEqual (a1.GetHashCode (), a1.TypeId.GetHashCode (), "Empty/TypeId");
+
+			MySubAttribute b1 = new MySubAttribute ();
+			Assert.AreNotEqual (a1.GetHashCode (), b1.GetHashCode (), "non-identical-types");
+			Assert.AreEqual (b1.GetHashCode (), b1.TypeId.GetHashCode (), "Empty/TypeId/Sub");
+		}
+
+		class MyOwnCustomAttribute : MyCustomAttribute {
+
+			public MyOwnCustomAttribute (string s)
+				: base (s)
+			{
+			}
+		}
+
+		[Test]
+		public void NonEmptyNonOverridenGetHashCode ()
+		{
+			MyCustomAttribute a1 = new MyCustomAttribute (null);
+			MyCustomAttribute a2 = new MyCustomAttribute (null);
+			Assert.AreEqual (a1.GetHashCode (), a2.GetHashCode (), "identical arguments");
+			Assert.AreEqual (a1.GetHashCode (), a1.TypeId.GetHashCode (), "TypeId");
+
+			MyCustomAttribute a3 = new MyCustomAttribute ("a");
+			MyCustomAttribute a4 = new MyCustomAttribute ("b");
+			Assert.AreNotEqual (a3.GetHashCode (), a4.GetHashCode (), "non-identical-arguments");
+
+			MyOwnCustomAttribute b1 = new MyOwnCustomAttribute (null);
+			Assert.AreNotEqual (a1.GetHashCode (), b1.GetHashCode (), "non-identical-types");
+		}
+	}
+
+	namespace ParamNamespace {
+
+		class FooAttribute : Attribute {}
+		class BarAttribute : Attribute {}
+
+		class DataAttribute : Attribute {
+
+			public string Data { get; set; }
+
+			public DataAttribute (string data)
+			{
+				this.Data = data;
+			}
+		}
+
+		class UltraBase {
+
+			public virtual void Bar ([Foo] string bar, [Data ("UltraBase.baz")] string baz)
+			{
+			}
+		}
+
+		class Base : UltraBase {
+
+			public override void Bar ([Data ("Base.bar")] string bar, string baz)
+			{
+			}
+		}
+
+		class Derived : Base {
+
+			public override void Bar ([Bar] string bar, [Data ("Derived.baz")] string baz)
+			{
+			}
+		}
+	}
+
+	[TestFixture]
+	public class ParamAttributeTest {
+
+		static ParameterInfo GetParameter (Type type, string method_name, string param_name)
+		{
+			foreach (var method in type.GetMethods ()) {
+				if (method.Name != method_name)
+					continue;
+
+				foreach (var parameter in method.GetParameters ())
+					if (parameter.Name == param_name)
+						return parameter;
+			}
+
+			return null;
+		}
+
+		[Test]
+		public void IsDefinedTopLevel ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "bar");
+
+			Assert.IsNotNull (parameter);
+			Assert.IsTrue (Attribute.IsDefined (parameter, typeof (ParamNamespace.BarAttribute)));
+		}
+
+		[Test]
+		public void IsDefinedHierarchy ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "bar");
+
+			Assert.IsNotNull (parameter);
+			Assert.IsTrue (Attribute.IsDefined (parameter, typeof (ParamNamespace.FooAttribute)));
+		}
+
+		[Test]
+		public void IsDefinedHierarchyMultiple ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "baz");
+
+			Assert.IsNotNull (parameter);
+			Assert.IsTrue (Attribute.IsDefined (parameter, typeof (ParamNamespace.DataAttribute)));
+		}
+
+		[Test]
+		public void GetCustomAttributeTopLevel ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "bar");
+
+			Assert.IsNotNull (Attribute.GetCustomAttribute (parameter, typeof (ParamNamespace.BarAttribute)));
+		}
+
+		[Test]
+		public void GetCustomAttributeHierarchy ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "bar");
+			var data = (ParamNamespace.DataAttribute) Attribute.GetCustomAttribute (parameter, typeof (ParamNamespace.DataAttribute));
+			Assert.IsNotNull (data);
+			Assert.AreEqual ("Base.bar", data.Data);
+		}
+
+		[Test]
+		public void GetCustomAttributeHierarchyMultiple ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "baz");
+			var data = (ParamNamespace.DataAttribute) Attribute.GetCustomAttribute (parameter, typeof (ParamNamespace.DataAttribute));
+			Assert.IsNotNull (data);
+			Assert.AreEqual ("Derived.baz", data.Data);
+		}
+
+		[Test]
+		public void GetAllCustomAttributes ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "bar");
+			var attributes = (Attribute []) Attribute.GetCustomAttributes (parameter, true);
+			Assert.AreEqual (3, attributes.Length);
+			Assert.AreEqual (typeof (ParamNamespace.BarAttribute), attributes [0].GetType ());
+			Assert.AreEqual (typeof (ParamNamespace.DataAttribute), attributes [1].GetType ());
+			Assert.AreEqual (typeof (ParamNamespace.FooAttribute), attributes [2].GetType ());
+		}
+
+		[Test]
+		public void GetDataCustomAttributes ()
+		{
+			var parameter = GetParameter (typeof (ParamNamespace.Derived), "Bar", "baz");
+			var attributes = (ParamNamespace.DataAttribute []) Attribute.GetCustomAttributes (parameter, typeof (ParamNamespace.DataAttribute), true);
+			Assert.AreEqual (1, attributes.Length);
+			Assert.AreEqual ("Derived.baz", attributes [0].Data);
 		}
 	}
 }

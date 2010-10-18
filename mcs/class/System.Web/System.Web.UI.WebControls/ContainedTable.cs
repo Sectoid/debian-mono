@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -38,18 +36,17 @@ namespace System.Web.UI.WebControls
 	{
 		WebControl _container;
 
-		public ContainedTable (WebControl container) {
+		public ContainedTable (WebControl container)
+		{
 			_container = container;
 		}
 
-		protected override void AddAttributesToRender (HtmlTextWriter writer) {
-
+		protected override void AddAttributesToRender (HtmlTextWriter writer)
+		{
 			ControlStyle.CopyFrom (_container.ControlStyle);
-			writer.AddAttribute (HtmlTextWriterAttribute.Id, _container.ClientID);
-
 			base.AddAttributesToRender (writer);
+			writer.AddAttribute (HtmlTextWriterAttribute.Id, _container.ClientID);
 		}
 	}
 }
 
-#endif

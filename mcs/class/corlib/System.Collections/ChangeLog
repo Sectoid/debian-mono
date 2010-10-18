@@ -1,3 +1,38 @@
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* IStructuralComparable.cs:
+	* IStructuralEquatable.cs: Add BOOTSTRAP_NET_4_0 define
+
+2010-03-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* CollectionDebuggerView.cs: Change to internal so we can avoid
+	a duplicating the type in assemblies that have [InternalsVisibleTo]
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* IStructuralComparable.cs, IStructuralEquatable.cs: use
+	MOONLIGHT symbol to disambiguate MonoTouch and Moonlight code.
+
+2010-03-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* IStructuralComparable.cs, IStructuralEquatable.cs: Add them to
+	NET_2_1 since they are parts of SL4
+
+2009-11-26  Marek Safar <marek.safar@gmail.com>
+	
+	* CollectionDebuggerView.cs: Removed limit restriction.
+
+2009-10-22  Marek Safar  <marek.safar@gmail.com>
+
+	* StructuralComparisons.cs: Implemented.
+
+	* SortedList.cs Add nicer debug view for tools which support it.
+
+2009-10-16  Miguel de Icaza  <miguel@novell.com>
+
+	* Jumbo patch to elimiante more dead code now that we have dropped
+	pre-2.0 profiles.
+
 2009-09-30 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* Hashtable.cs: MS (at least latest and greatest) does not always

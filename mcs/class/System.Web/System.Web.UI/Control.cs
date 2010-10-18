@@ -3,13 +3,14 @@
 //
 // Authors:
 //   Bob Smith <bob@thestuff.net>
-//   Gonzalo Paniagua Javier (gonzalo@ximian.com
+//   Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //   Andreas Nahr (ClassDevelopment@A-SoftTech.com)
 //   Sanjay Gupta (gsanjay@novell.com)
+//   Marek Habersack <mhabersack@novell.com>
 //
 // (C) Bob Smith
 // (c) 2002,2003 Ximian, Inc. (http://www.ximian.com)
-// (C) 2004 Novell, Inc. (http://www.novell.com)
+// (C) 2004-2010 Novell, Inc. (http://www.novell.com)
 //
 
 //
@@ -34,16 +35,22 @@
 //
 
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
-using System.Security.Permissions;
-using System.Web;
-using System.Web.Util;
 using System.Globalization;
-#if NET_2_0
-using System.Web.UI.Adapters;
 using System.IO;
+using System.Security.Permissions;
+using System.Text;
+using System.Web;
+using System.Web.Configuration;
+using System.Web.UI.Adapters;
+using System.Web.UI.WebControls;
+using System.Web.Util;
+
+#if NET_4_0
+using System.Web.Routing;
 #endif
 
 namespace System.Web.UI
@@ -55,19 +62,11 @@ namespace System.Web.UI
 	[DefaultProperty ("ID"), DesignerCategory ("Code"), ToolboxItemFilter ("System.Web.UI", ToolboxItemFilterType.Require)]
 	[ToolboxItem ("System.Web.UI.Design.WebControlToolboxItem, " + Consts.AssemblySystem_Design)]
 	[Designer ("System.Web.UI.Design.ControlDesigner, " + Consts.AssemblySystem_Design, "System.ComponentModel.Design.IDesigner")]
-#if NET_2_0
 	[DesignerSerializer ("Microsoft.VisualStudio.Web.WebForms.ControlCodeDomSerializer, " + Consts.AssemblyMicrosoft_VisualStudio_Web,
 				"System.ComponentModel.Design.Serialization.CodeDomSerializer, " + Consts.AssemblySystem_Design)]
 	[Bindable (true)]
 	[Themeable (false)]
-#else
-	[DesignerSerializer ("Microsoft.VSDesigner.WebForms.ControlCodeDomSerializer, " + Consts.AssemblyMicrosoft_VSDesigner,
-				"System.ComponentModel.Design.Serialization.CodeDomSerializer, " + Consts.AssemblySystem_Design)]
-#endif
-	public partial class Control : IComponent, IDisposable, IParserAccessor, IDataBindingsAccessor
-#if NET_2_0
-, IUrlResolutionService, IControlBuilderAccessor, IControlDesignerAccessor, IExpressionsAccessor
-#endif
+	public partial class Control : IComponent, IDisposable, IParserAccessor, IDataBindingsAccessor, IUrlResolutionService, IControlBuilderAccessor, IControlDesignerAccessor, IExpressionsAccessor
 	{
 		internal static readonly object DataBindingEvent = new object ();
 		internal static readonly object DisposedEvent = new object ();
@@ -86,7 +85,11 @@ namespace System.Web.UI
 		const int unload_mask = 1 << 5;
 		/* */
 
+		[ThreadStatic]
+		static Dictionary <Type, bool> loadViewStateByIDCache;
+		bool? loadViewStateByID;
 		string uniqueID;
+		string clientID;
 		string _userId;
 		ControlCollection _controls;
 		Control _namingContainer;
@@ -101,14 +104,16 @@ namespace System.Web.UI
 
 		DataBindingCollection dataBindings;
 		Hashtable pendingVS; // may hold unused viewstate data from child controls
-
-
-#if NET_2_0
 		TemplateControl _templateControl;
 		bool _isChildControlStateCleared;
-#endif
 		string _templateSourceDirectory;
-
+#if NET_4_0
+		ViewStateMode viewStateMode;
+		ClientIDMode? clientIDMode;
+		ClientIDMode? effectiveClientIDMode;
+		Version renderingCompatibility;
+		bool? renderingCompatibilityOld;
+#endif
 		/*************/
 		int stateMask;
 		const int ENABLE_VIEWSTATE = 1;
@@ -127,9 +132,7 @@ namespace System.Web.UI
 		const int VIEWSTATE_LOADED = 1 << 13;
 		const int LOADED = 1 << 14;
 		const int PRERENDERED = 1 << 15;
-#if NET_2_0
 		const int ENABLE_THEMING = 1 << 16;
-#endif
 		const int AUTOID_SET = 1 << 17;
 		const int REMOVED = 1 << 18;
 		/*************/
@@ -138,11 +141,7 @@ namespace System.Web.UI
 		{
 			defaultNameArray = new string [100];
 			for (int i = 0; i < 100; i++)
-#if NET_2_0
 				defaultNameArray [i] = String.Concat ("ctl", i.ToString ("D2"));
-#else
-				defaultNameArray [i] = "_ctl" + i;
-#endif
 		}
 
 		public Control ()
@@ -150,9 +149,11 @@ namespace System.Web.UI
 			stateMask = ENABLE_VIEWSTATE | VISIBLE | AUTOID | BINDING_CONTAINER | AUTO_EVENT_WIREUP;
 			if (this is INamingContainer)
 				stateMask |= IS_NAMING_CONTAINER;
+#if NET_4_0
+			viewStateMode = ViewStateMode.Inherit;
+#endif
 		}
 		
-#if NET_2_0
 		ControlAdapter adapter;
 		bool did_adapter_lookup;
 		protected internal ControlAdapter Adapter {
@@ -195,10 +196,11 @@ namespace System.Web.UI
 			}
 		}
 
-#endif
-
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[EditorBrowsable (EditorBrowsableState.Never), Browsable (false)]
+#if NET_4_0
+		[Bindable (true)]
+#endif
 		public Control BindingContainer {
 			get {
 				Control container = NamingContainer;
@@ -214,31 +216,255 @@ namespace System.Web.UI
 		[WebSysDescription ("An Identification of the control that is rendered.")]
 		public virtual string ClientID {
 			get {
-				string client = UniqueID;
-
-				if (client != null)
-#if NET_2_0
-					client = UniqueID2ClientID (client);
+				if (clientID != null)
+					return clientID;
+#if NET_4_0
+				clientID = GetClientID ();
 #else
-					client = client.Replace (':', ClientIDSeparator);
-#endif
-
+				clientID = UniqueID2ClientID (UniqueID);
+#endif				
 				stateMask |= ID_SET;
-				return client;
+				return clientID;
+			}
+		}
+#if NET_4_0
+		[Bindable (false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		public virtual Version RenderingCompatibility {
+			get {
+				if (renderingCompatibility == null) {
+					var ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+					renderingCompatibility = ps != null ? ps.ControlRenderingCompatibilityVersion : new Version (4, 0);
+				}
+
+				return renderingCompatibility;
+			}
+			
+			set {
+				renderingCompatibility = value;
+				renderingCompatibilityOld = null;
 			}
 		}
 
-#if NET_2_0
+		internal bool RenderingCompatibilityLessThan40 {
+			get {
+				if (!renderingCompatibilityOld.HasValue)
+					renderingCompatibilityOld = RenderingCompatibility < new Version (4, 0);
+
+				return renderingCompatibilityOld.Value;
+			}
+		}
+		
+		[Bindable (false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[EditorBrowsableAttribute (EditorBrowsableState.Never)]
+		public Control DataItemContainer {
+			get {
+				Control container = NamingContainer;
+				if (container == null)
+					return null;
+
+				if (container is IDataItemContainer)
+					return container;
+
+				return container.DataItemContainer;
+			}
+		}
+
+		[Bindable (false)]
+		[Browsable (false)]
+		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+		[EditorBrowsableAttribute (EditorBrowsableState.Never)]
+		public Control DataKeysContainer {
+			get {
+				Control container = NamingContainer;
+				if (container == null)
+					return null;
+
+				if (container is IDataKeysControl)
+					return container;
+
+				return container.DataKeysContainer;
+			}
+		}
+
+		[Themeable (false)]
+		[DefaultValue (ClientIDMode.Inherit)]
+		public virtual ClientIDMode ClientIDMode {
+			get {
+				if (!clientIDMode.HasValue)
+					return ClientIDMode.Inherit;
+
+				return clientIDMode.Value;
+			}
+			
+			set {
+				if (!clientIDMode.HasValue || clientIDMode.Value != value) {
+					ClearCachedClientID ();
+					ClearEffectiveClientIDMode ();
+					clientIDMode = value;
+				}
+			}
+		}
+
+		internal ClientIDMode EffectiveClientIDMode {
+			get {
+				if (effectiveClientIDMode.HasValue)
+					return effectiveClientIDMode.Value;
+				
+				ClientIDMode ret = ClientIDMode;
+				if (ret != ClientIDMode.Inherit) {
+					effectiveClientIDMode = ret;
+					return ret;
+				}
+				
+				// not sure about this, but it seems logical as INamingContainer is
+				// the top of the hierarchy and it should "reset" the mode.
+				Control container = NamingContainer;
+				if (container != null) {
+					effectiveClientIDMode = container.EffectiveClientIDMode;
+					return effectiveClientIDMode.Value;
+				}
+
+				var ps = WebConfigurationManager.GetSection ("system.web/pages") as PagesSection;
+				effectiveClientIDMode = ps.ClientIDMode;
+
+				return effectiveClientIDMode.Value;
+			}	
+		}
+
+		protected void ClearCachedClientID ()
+		{
+			clientID = null;
+			if (!HasControls ())
+				return;
+
+			for (int i = 0; i < _controls.Count; i++)
+				_controls [i].ClearCachedClientID ();
+		}
+
+		protected void ClearEffectiveClientIDMode ()
+		{
+			effectiveClientIDMode = null;
+			if (!HasControls ())
+				return;
+
+			for (int i = 0; i < _controls.Count; i++)
+				_controls [i].ClearEffectiveClientIDMode ();
+		}
+
+		string GetClientID ()
+		{
+			switch (EffectiveClientIDMode) {
+				case ClientIDMode.AutoID:
+					return UniqueID2ClientID (UniqueID);
+
+				case ClientIDMode.Predictable:
+					EnsureID ();
+					return GeneratePredictableClientID ();
+
+				case ClientIDMode.Static:
+					EnsureID ();
+					return ID;
+
+				default:
+					throw new InvalidOperationException ("Unsupported ClientIDMode value.");
+			}
+		}
+		
+		string GeneratePredictableClientID ()
+		{
+			string myID = ID;
+			bool haveMyID = !String.IsNullOrEmpty (myID);
+			char separator = ClientIDSeparator;
+
+			var sb = new StringBuilder ();
+			Control container = NamingContainer;
+			if (this is INamingContainer && !haveMyID) {
+				if (container != null)
+					EnsureIDInternal ();
+				myID = _userId;
+			}
+			
+			if (container != null && container != Page) {
+				string containerID = container.ID;
+				if (!String.IsNullOrEmpty (containerID)) {
+					sb.Append (container.GetClientID ());
+					sb.Append (separator);
+				} else {
+					sb.Append (container.GeneratePredictableClientID ());
+					if (sb.Length > 0)
+						sb.Append (separator);
+				}
+			}
+
+			if (!haveMyID) {
+				if (this is INamingContainer || !AutoID)
+					sb.Append (myID);
+				else {
+					int length = sb.Length;
+					if (length > 0 && sb [length - 1] == separator)
+						sb.Length = length - 1;
+				}
+				
+				return sb.ToString ();
+			}
+			
+			sb.Append (myID);
+			IDataItemContainer dataItemContainer = DataItemContainer as IDataItemContainer;
+			if (dataItemContainer == null)
+				return sb.ToString ();
+			
+			IDataKeysControl dataKeysContainer = DataKeysContainer as IDataKeysControl;
+			GetDataBoundControlFieldValue (sb, separator, dataItemContainer, dataKeysContainer);
+			
+			return sb.ToString ();
+		}
+
+		void GetDataBoundControlFieldValue (StringBuilder sb, char separator, IDataItemContainer dataItemContainer, IDataKeysControl dataKeysContainer)
+		{
+			if (dataItemContainer is IDataBoundItemControl)
+				return;
+			
+			int index = dataItemContainer.DisplayIndex;
+			if (dataKeysContainer == null) {
+				if (index >= 0) {
+					sb.Append (separator);
+					sb.Append (index);
+				}
+				return;
+			}
+			
+			string[] suffixes = dataKeysContainer.ClientIDRowSuffix;
+			DataKeyArray keys = dataKeysContainer.ClientIDRowSuffixDataKeys;
+			if (keys == null || suffixes == null || suffixes.Length == 0) {
+				sb.Append (separator);
+				sb.Append (index);
+				return;
+			}
+
+			object value;
+			DataKey key = keys [index];
+			foreach (string suffix in suffixes) {
+				sb.Append (separator);
+				value = key != null ? key [suffix] : null;
+				if (value == null)
+					continue;
+				sb.Append (value.ToString ());
+			}
+		}
+#endif
 		internal string UniqueID2ClientID (string uniqueId)
 		{
+			if (String.IsNullOrEmpty (uniqueId))
+				return null;
+			
 			return uniqueId.Replace (IdSeparator, ClientIDSeparator);
 		}
 
-		protected char ClientIDSeparator
-#else
-		char ClientIDSeparator
-#endif
-		{
+		protected char ClientIDSeparator {
 			get { return '_'; }
 		}
 
@@ -254,18 +480,14 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
 		[MonoTODO ("revisit once we have a real design strategy")]
 		protected internal bool DesignMode {
 			get { return false; }
 		}
-#endif
 
 		[DefaultValue (true), WebCategory ("Behavior")]
 		[WebSysDescription ("An Identification of the control that is rendered.")]
-#if NET_2_0
 		[Themeable (false)]
-#endif
 		public virtual bool EnableViewState {
 			get { return ((stateMask & ENABLE_VIEWSTATE) != 0); }
 			set { SetMask (ENABLE_VIEWSTATE, value); }
@@ -273,15 +495,12 @@ namespace System.Web.UI
 
 		[MergableProperty (false), ParenthesizePropertyName (true)]
 		[WebSysDescription ("The name of the control that is rendered.")]
-#if NET_2_0
 		[Filterable (false), Themeable (false)]
-#endif
-
 		public virtual string ID {
 			get { return (((stateMask & ID_SET) != 0) ? _userId : null); }
 
 			set {
-				if (value == "")
+				if (value != null && value.Length == 0)
 					value = null;
 
 				stateMask |= ID_SET;
@@ -290,42 +509,45 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
 		protected internal bool IsChildControlStateCleared {
 			get { return _isChildControlStateCleared; }
 		}
 
 		protected bool LoadViewStateByID {
-			get { return false; }
-		}
-#endif
-
-#if NET_2_0
-		protected internal
-#endif
-		bool IsViewStateEnabled {
 			get {
-				for (Control control = this; control != null; control = control.Parent)
+				if (loadViewStateByID == null)
+					loadViewStateByID = IsLoadViewStateByID ();
+
+				return (bool)loadViewStateByID;
+			}
+		}
+
+		protected internal bool IsViewStateEnabled {
+			get {
+				for (Control control = this; control != null; control = control.Parent) {
 					if (!control.EnableViewState)
 						return false;
-
+#if NET_4_0
+					ViewStateMode vsm = control.ViewStateMode;
+					if (vsm != ViewStateMode.Inherit)
+						return vsm == ViewStateMode.Enabled;
+#endif
+				}
+				
 				return true;
 			}
 		}
 
-#if NET_2_0
 		protected char IdSeparator {
 			get { return '$'; }
 		}
-#else
-		internal char IdSeparator {
-			get { return ':'; }
-		}
-#endif
 
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[Browsable (false)]
 		[WebSysDescription ("The container that this control is part of. The control's name has to be unique within the container.")]
+#if NET_4_0
+		[Bindable (true)]
+#endif
 		public virtual Control NamingContainer {
 			get {
 				if (_namingContainer == null && _parent != null) {
@@ -342,9 +564,7 @@ namespace System.Web.UI
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[Browsable (false)]
 		[WebSysDescription ("The webpage that this control resides on.")]
-#if NET_2_0
 		[Bindable (false)]
-#endif
 		public virtual Page Page { //DIT
 			get {
 				if (_page == null){
@@ -362,6 +582,9 @@ namespace System.Web.UI
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[Browsable (false)]
 		[WebSysDescription ("The parent control of this control.")]
+#if NET_4_0
+		[Bindable (true)]
+#endif
 		public virtual Control Parent { //DIT
 			get { return _parent; }
 		}
@@ -374,9 +597,11 @@ namespace System.Web.UI
 			set { _site = value; }
 		}
 
-#if NET_2_0
 		[Browsable (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
+#if NET_4_0
+		[Bindable (true)]
+#endif
 		public TemplateControl TemplateControl {
 			get { return TemplateControlInternal; }
 
@@ -393,7 +618,6 @@ namespace System.Web.UI
 				return null;
 			}
 		}
-#endif
 
 #if !TARGET_J2EE
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
@@ -401,7 +625,6 @@ namespace System.Web.UI
 		[WebSysDescription ("A virtual directory containing the parent of the control.")]
 		public virtual string TemplateSourceDirectory {
 			get {
-#if NET_2_0
 				if (_templateSourceDirectory == null) {
 					TemplateControl tc = TemplateControl;
 
@@ -430,19 +653,6 @@ namespace System.Web.UI
 				}
 
 				return _templateSourceDirectory;
-#else
-				if (_templateSourceDirectory == null) {
-					HttpContext ctx = HttpContext.Current;
-					HttpRequest req = ctx != null ? ctx.Request : null;
-					
-					_templateSourceDirectory = (_parent == null)
-						? req != null ? VirtualPathUtility.RemoveTrailingSlash (
-							VirtualPathUtility.GetDirectory (
-								HttpContext.Current.Request.CurrentExecutionFilePath)) : String.Empty
-						: _parent.TemplateSourceDirectory;
-				}
-				return _templateSourceDirectory;
-#endif
 			}
 		}
 #endif
@@ -455,13 +665,13 @@ namespace System.Web.UI
 				if (uniqueID != null)
 					return uniqueID;
 
-				if (NamingContainer == null)
+				Control container = NamingContainer;
+				if (container == null)
 					return _userId;
 
 				EnsureIDInternal ();
-
-				string prefix = NamingContainer.UniqueID;
-				if (NamingContainer == Page || prefix == null) {
+				string prefix = container.UniqueID;
+				if (container == Page || prefix == null) {
 					uniqueID = _userId;
 #if TARGET_J2EE
 					if (getFacesContext () != null)
@@ -510,8 +720,9 @@ namespace System.Web.UI
 			get { return ((stateMask & CHILD_CONTROLS_CREATED) != 0); }
 			set {
 				if (value == false && (stateMask & CHILD_CONTROLS_CREATED) != 0) {
-					if (_controls != null)
-						_controls.Clear ();
+					ControlCollection cc = Controls;
+					if (cc != null)
+						cc.Clear ();
 				}
 
 				SetMask (CHILD_CONTROLS_CREATED, value);
@@ -520,24 +731,11 @@ namespace System.Web.UI
 
 		[Browsable (false)]
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual HttpContext Context { //DIT
+		protected internal virtual HttpContext Context { //DIT
 			get {
-#if NET_2_0
 				Page page = Page;
 				if (page != null)
 					return page.Context;
-#else
-				if (_parent == null)
-					return HttpContext.Current;
-				HttpContext context = _parent.Context;
-				if (context != null)
-					return context;
-#endif
 				
 				return HttpContext.Current;
 			}
@@ -611,21 +809,21 @@ namespace System.Web.UI
 		string GetDefaultName ()
 		{
 			string defaultName;
-			if (defaultNumberID > 99) {
-#if NET_2_0
+			if (defaultNumberID > 99)
 				defaultName = "ctl" + defaultNumberID++;
-#else
-				defaultName = "_ctl" + defaultNumberID++;
-#endif
-			} else {
+			else
 				defaultName = defaultNameArray [defaultNumberID++];
-			}
 			return defaultName;
 		}
 
 		void NullifyUniqueID ()
 		{
 			uniqueID = null;
+#if NET_4_0
+			ClearCachedClientID ();
+#else
+			clientID = null;
+#endif
 			if (!HasControls ())
 				return;
 
@@ -633,6 +831,32 @@ namespace System.Web.UI
 				_controls [i].NullifyUniqueID ();
 		}
 
+		bool IsLoadViewStateByID ()
+		{
+			if (loadViewStateByIDCache == null)
+				loadViewStateByIDCache = new Dictionary <Type, bool> ();
+
+			bool ret;
+			Type myType = GetType ();
+			if (loadViewStateByIDCache.TryGetValue (myType, out ret))
+				return ret;
+
+			System.ComponentModel.AttributeCollection attrs = TypeDescriptor.GetAttributes (myType);
+			if (attrs != null || attrs.Count > 0) {
+				ret = false;
+				foreach (Attribute attr in attrs) {
+					if (attr is ViewStateModeByIdAttribute) {
+						ret = true;
+						break;
+					}
+				}
+			} else
+				ret = false;
+			
+			loadViewStateByIDCache.Add (myType, ret);
+			return ret;
+		}
+		
 		protected internal virtual void AddedControl (Control control, int index)
 		{
 			ResetControlsCache ();
@@ -655,9 +879,25 @@ namespace System.Web.UI
 
 			if ((stateMask & (VIEWSTATE_LOADED | LOADED)) != 0) {
 				if (pendingVS != null) {
-					object vs = pendingVS [index];
+					object vs;
+					bool byId = LoadViewStateByID;
+					string id;
+					
+					if (byId) {
+						control.EnsureID ();
+						id = control.ID;
+						vs = pendingVS [id];
+					} else {
+						id = null;
+						vs = pendingVS [index];
+					}
+					
 					if (vs != null) {
-						pendingVS.Remove (index);
+						if (byId)
+							pendingVS.Remove (id);
+						else
+							pendingVS.Remove (index);
+						
 						if (pendingVS.Count == 0)
 							pendingVS = null;
 
@@ -689,7 +929,6 @@ namespace System.Web.UI
 				Controls.Add (c);
 		}
 
-#if NET_2_0
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
 		public virtual void ApplyStyleSheetSkin (Page page)
 		{
@@ -706,14 +945,12 @@ namespace System.Web.UI
 					cs.ApplySkin (this);
 			}
 		}
-#endif
 
+		[MonoTODO]
 		protected void BuildProfileTree (string parentId, bool calcViewState)
 		{
-			//TODO
 		}
 
-#if NET_2_0
 		protected void ClearChildControlState ()
 		{
 			_isChildControlStateCleared = true;
@@ -724,19 +961,13 @@ namespace System.Web.UI
 			ClearChildViewState ();
 			ClearChildControlState ();
 		}
-#endif
 
 		protected void ClearChildViewState ()
 		{
 			pendingVS = null;
 		}
 
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual void CreateChildControls () //DIT
+		protected internal virtual void CreateChildControls () //DIT
 		{
 		}
 
@@ -749,11 +980,9 @@ namespace System.Web.UI
 		{
 			if (ChildControlsCreated == false && (stateMask & CREATING_CONTROLS) == 0) {
 				stateMask |= CREATING_CONTROLS;
-#if NET_2_0
 				if (Adapter != null)
 					Adapter.CreateChildControls ();
 				else
-#endif
 					CreateChildControls ();
 				ChildControlsCreated = true;
 				stateMask &= ~CREATING_CONTROLS;
@@ -769,7 +998,6 @@ namespace System.Web.UI
 			SetMask (AUTOID_SET, true);
 		}
 
-#if NET_2_0
 		protected void EnsureID ()
 		{
 			if (NamingContainer == null)
@@ -782,7 +1010,6 @@ namespace System.Web.UI
 		{
 			return _events != null;
 		}
-#endif
 
 		void ResetControlsCache ()
 		{
@@ -799,11 +1026,7 @@ namespace System.Web.UI
 
 			if ((this.stateMask & IS_NAMING_CONTAINER) != 0 || Parent == null)
 				//LAMESPEC: MS' docs don't mention it, but FindControl is case insensitive.
-#if NET_2_0
 				_controlsCache = new Hashtable (StringComparer.OrdinalIgnoreCase);
-#else
-				_controlsCache = new Hashtable (CaseInsensitiveHashCodeProvider.Default, CaseInsensitiveComparer.Default);
-#endif
 			else
 				_controlsCache = Parent.InitControlsCache ();
 
@@ -816,12 +1039,15 @@ namespace System.Web.UI
 				return;
 
 			InitControlsCache ();
-			FillControlCache (Controls);
 
+			FillControlCache (_controls);
 		}
 
 		void FillControlCache (ControlCollection controls)
 		{
+			if (controls == null || controls.Count == 0)
+				return;
+			
 			foreach (Control c in controls) {
 				try {
 					if (c._userId != null)
@@ -840,7 +1066,7 @@ namespace System.Web.UI
 
 		protected bool IsLiteralContent ()
 		{
-			if (HasControls () && _controls.Count == 1 && (_controls [0] is LiteralControl))
+			if (_controls != null && _controls.Count == 1 && _controls [0] is LiteralControl)
 				return true;
 
 			return false;
@@ -935,12 +1161,7 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
-		protected internal
-#else		
-                protected
-#endif
-		virtual void OnInit (EventArgs e)
+		protected internal virtual void OnInit (EventArgs e)
 		{
 			if ((event_mask & init_mask) != 0) {
 				EventHandler eh = (EventHandler) (_events [InitEvent]);
@@ -958,12 +1179,7 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual void OnLoad (EventArgs e)
+		protected internal virtual void OnLoad (EventArgs e)
 		{
 			if ((event_mask & load_mask) != 0) {
 				EventHandler eh = (EventHandler) (_events [LoadEvent]);
@@ -981,12 +1197,7 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual void OnPreRender (EventArgs e)
+		protected internal virtual void OnPreRender (EventArgs e)
 		{
 			if ((event_mask & prerender_mask) != 0) {
 				EventHandler eh = (EventHandler) (_events [PreRenderEvent]);
@@ -1004,12 +1215,7 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual void OnUnload (EventArgs e)
+		protected internal virtual void OnUnload (EventArgs e)
 		{
 			if ((event_mask & unload_mask) != 0) {
 				EventHandler eh = (EventHandler) (_events [UnloadEvent]);
@@ -1027,7 +1233,6 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
 		protected internal Stream OpenFile (string path)
 		{
 			try {
@@ -1079,7 +1284,6 @@ namespace System.Web.UI
 			
 			return page != null ? page.MapPath (path) : Context.Server.MapPath (path);
 		}
-#endif
 
 		protected void RaiseBubbleEvent (object source, EventArgs args)
 		{
@@ -1108,44 +1312,35 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual void Render (HtmlTextWriter writer) //DIT
+		protected internal virtual void Render (HtmlTextWriter writer) //DIT
 		{
 			RenderChildren (writer);
 		}
 
-#if NET_2_0
-		protected internal
-#else
-		protected
-#endif
-		virtual void RenderChildren (HtmlTextWriter writer) //DIT
+		protected internal virtual void RenderChildren (HtmlTextWriter writer) //DIT
 		{
 			if (_renderMethodDelegate != null) {
 				_renderMethodDelegate (writer, this);
-			} else if (_controls != null) {
-				int len = _controls.Count;
-				Control c;
-				for (int i = 0; i < len; i++) {
-					c = _controls [i];
-					if (c == null)
-						continue;
-#if NET_2_0
-					ControlAdapter tmp = c.Adapter;
-					if (tmp != null)
-						c.RenderControl (writer, tmp);
-					else
-#endif
-						c.RenderControl (writer);
-				}
+				return;
+			}
+
+			if (_controls == null)
+				return;
+
+			int len = _controls.Count;
+			Control c;
+			for (int i = 0; i < len; i++) {
+				c = _controls [i];
+				if (c == null)
+					continue;
+				ControlAdapter tmp = c.Adapter;
+				if (tmp != null)
+					c.RenderControl (writer, tmp);
+				else
+					c.RenderControl (writer);
 			}
 		}
 
-#if NET_2_0
 		protected virtual ControlAdapter ResolveAdapter ()
 		{
 			HttpContext context = Context;
@@ -1170,7 +1365,6 @@ namespace System.Web.UI
 				a = (ControlAdapter)Activator.CreateInstance (adapterType);
 			return a;
 		}
-#endif
 
 		protected virtual object SaveViewState ()
 		{
@@ -1257,24 +1451,15 @@ namespace System.Web.UI
 
 		public virtual void DataBind () //DIT
 		{
-#if NET_2_0
 			DataBind (true);
-#else
-			OnDataBinding (EventArgs.Empty);
-			DataBindChildren();
-#endif
 		}
 
-#if NET_2_0
-		protected virtual
-#endif
-
-		void DataBindChildren ()
+		protected virtual void DataBindChildren ()
 		{
 			if (!HasControls ())
 				return;
 
-			int len = _controls.Count;
+			int len = _controls != null ? _controls.Count : 0;
 			for (int i = 0; i < len; i++) {
 				Control c = _controls [i];
 				c.DataBind ();
@@ -1285,20 +1470,13 @@ namespace System.Web.UI
 		{
 			return (_controls != null && _controls.Count > 0);
 		}
-
-#if NET_2_0
-		public virtual
-#else
-		public
-#endif
-		void RenderControl (HtmlTextWriter writer)
+		
+		public virtual void RenderControl (HtmlTextWriter writer)
 		{
-#if NET_2_0
 			if (this.adapter != null) {
 				RenderControl (writer, this.adapter);
 				return;
 			}
-#endif
 
 			if ((stateMask & VISIBLE) != 0) {
 				HttpContext ctx = Context;
@@ -1315,7 +1493,6 @@ namespace System.Web.UI
 			}
 		}
 
-#if NET_2_0
 		protected void RenderControl (HtmlTextWriter writer, ControlAdapter adapter)
 		{
 			if ((stateMask & VISIBLE) != 0) {
@@ -1324,7 +1501,6 @@ namespace System.Web.UI
 				adapter.EndRender (writer);
 			}
 		}
-#endif
 
 		public string ResolveUrl (string relativeUrl)
 		{
@@ -1340,12 +1516,7 @@ namespace System.Web.UI
 			if (relativeUrl [0] == '#')
 				return relativeUrl;
 
-#if NET_2_0
 			string ts = AppRelativeTemplateSourceDirectory;
-#else
-			string ts = TemplateSourceDirectory;
-#endif
-
 			HttpContext ctx = Context;
 			HttpResponse resp = ctx != null ? ctx.Response : null;
 			if (ts == null || ts.Length == 0 || resp == null || relativeUrl.IndexOf (':') >= 0)
@@ -1358,12 +1529,7 @@ namespace System.Web.UI
 		}
 
 
-#if NET_2_0
-		public
-#else
-		internal
-#endif
-		string ResolveClientUrl (string relativeUrl)
+		public string ResolveClientUrl (string relativeUrl)
 		{
 			if (relativeUrl == null)
 				throw new ArgumentNullException ("relativeUrl");
@@ -1452,18 +1618,14 @@ namespace System.Web.UI
 				trace.Write ("control", String.Concat ("LoadRecursive ", _userId, " ", type_name));
 			}
 #endif
-#if NET_2_0
 			if (Adapter != null)
 				Adapter.OnLoad (EventArgs.Empty);
 			else
-#endif
 				OnLoad (EventArgs.Empty);
-			if (HasControls ()) {
-				int len = _controls.Count;
-				for (int i = 0; i < len; i++) {
-					Control c = _controls [i];
-					c.LoadRecursive ();
-				}
+			int ccount = _controls != null ? _controls.Count : 0;
+			for (int i = 0; i < ccount; i++) {
+				Control c = _controls [i];
+				c.LoadRecursive ();
 			}
 
 #if MONO_TRACE
@@ -1483,24 +1645,20 @@ namespace System.Web.UI
 				trace.Write ("control", String.Concat ("UnloadRecursive ", _userId, " ", type_name));
 			}
 #endif
-			if (HasControls ()) {
-				int len = _controls.Count;
-				for (int i = 0; i < len; i++) {
-					Control c = _controls [i];
-					c.UnloadRecursive (dispose);
-				}
+			int ccount = _controls != null ? _controls.Count : 0;
+			for (int i = 0; i < ccount; i++) {
+				Control c = _controls [i];
+				c.UnloadRecursive (dispose);
 			}
 
 #if MONO_TRACE
 			if (trace != null)
 				trace.Write ("control", String.Concat ("End UnloadRecursive ", _userId, " ", type_name));
 #endif
-#if NET_2_0
 			ControlAdapter tmp = Adapter;
 			if (tmp != null)
 				tmp.OnUnload (EventArgs.Empty);
 			else
-#endif
 				OnUnload (EventArgs.Empty);
 			if (dispose)
 				Dispose ();
@@ -1510,16 +1668,9 @@ namespace System.Web.UI
 		{
 			bool visible;
 
-#if NET_2_0
-			visible = Visible;
-#else
-			visible = (stateMask & VISIBLE) != 0;
-#endif
-			
+			visible = Visible;			
 			if (visible) {
-#if NET_2_0
 				SetMask (VISIBLE, true);
-#endif
 				EnsureChildControls ();
 #if MONO_TRACE
 				TraceContext trace = (Context != null && Context.Trace.IsEnabled) ? Context.Trace : null;
@@ -1529,16 +1680,14 @@ namespace System.Web.UI
 					trace.Write ("control", String.Concat ("PreRenderRecursive ", _userId, " ", type_name));
 				}
 #endif
-#if NET_2_0
 				if (Adapter != null)
 					Adapter.OnPreRender (EventArgs.Empty);
 				else
-#endif
 					OnPreRender (EventArgs.Empty);
 				if (!HasControls ())
 					return;
 
-				int len = _controls.Count;
+				int len = _controls != null ? _controls.Count : 0;
 				for (int i = 0; i < len; i++) {
 					Control c = _controls [i];
 					c.PreRenderRecursiveInternal ();
@@ -1547,16 +1696,17 @@ namespace System.Web.UI
 				if (trace != null)
 					trace.Write ("control", String.Concat ("End PreRenderRecursive ", _userId, " ", type_name));
 #endif
-			}
-#if NET_2_0
-			else
+			} else
 				SetMask (VISIBLE, false);
-#endif
 			
 			stateMask |= PRERENDERED;
 		}
-
-		internal void InitRecursive (Control namingContainer)
+#if NET_4_0
+		internal virtual
+#else
+		internal
+#endif
+		void InitRecursive (Control namingContainer)
 		{
 #if MONO_TRACE
 			TraceContext trace = (Context != null && Context.Trace.IsEnabled) ? Context.Trace : null;
@@ -1572,7 +1722,7 @@ namespace System.Web.UI
 				if ((stateMask & IS_NAMING_CONTAINER) != 0)
 					namingContainer = this;
 
-				int len = _controls.Count;
+				int len = _controls != null ? _controls.Count : 0;
 				for (int i = 0; i < len; i++) {
 					Control c = _controls [i];
 					c.InitRecursive (namingContainer);
@@ -1581,13 +1731,11 @@ namespace System.Web.UI
 
 			if ((stateMask & REMOVED) == 0 && (stateMask & INITED) != INITED) {
 				stateMask |= INITING;
-#if NET_2_0
 				ApplyTheme ();
 				ControlAdapter tmp = Adapter;
 				if (tmp != null)
 					tmp.OnInit (EventArgs.Empty);
 				else
-#endif
 					OnInit (EventArgs.Empty);
 				TrackViewState ();
 				stateMask |= INITED;
@@ -1611,40 +1759,36 @@ namespace System.Web.UI
 			}
 #endif
 
-			ArrayList controlList = null;
 			ArrayList controlStates = null;
-			
-			int idx = -1;
+			bool byId = LoadViewStateByID;
 			if (HasControls ()) {
-				int len = _controls.Count;
+				int len = _controls != null ? _controls.Count : 0;
 				for (int i = 0; i < len; i++) {
 					Control ctrl = _controls [i];
 					object ctrlState = ctrl.SaveViewStateRecursive ();
-					idx++;
 					if (ctrlState == null)
 						continue;
 
-					if (controlList == null) {
-						controlList = new ArrayList ();
+					if (controlStates == null)
 						controlStates = new ArrayList ();
-					}
-
-					controlList.Add (idx);
-					controlStates.Add (ctrlState);
+					if (byId) {
+						ctrl.EnsureID ();
+						controlStates.Add (new Pair (ctrl.ID, ctrlState));
+					} else
+						controlStates.Add (new Pair (i, ctrlState));
 				}
 			}
 
-#if NET_2_0
 			object thisAdapterViewState = null;
 			if (Adapter != null)
 				thisAdapterViewState = Adapter.SaveAdapterViewState ();
-#endif
+
 			object thisState = null;
 
 			if (IsViewStateEnabled)
 				thisState = SaveViewState ();
 
-			if (thisState == null && controlList == null && controlStates == null) {
+			if (thisState == null && controlStates == null) {
 				if (trace != null) {
 #if MONO_TRACE
 					trace.Write ("control", "End SaveViewStateRecursive " + _userId + " " + type_name + " saved nothing");
@@ -1660,10 +1804,8 @@ namespace System.Web.UI
 #endif
 				trace.SaveViewState (this, thisState);
 			}
-#if NET_2_0
 			thisState = new object[] { thisState, thisAdapterViewState };
-#endif
-			return new Triplet (thisState, controlList, controlStates);
+			return new Pair (thisState, controlStates);
 		}
 
 		internal void LoadViewStateRecursive (object savedState)
@@ -1679,32 +1821,52 @@ namespace System.Web.UI
 				trace.Write ("control", String.Concat ("LoadViewStateRecursive ", _userId, " ", type_name));
 			}
 #endif
-			Triplet savedInfo = (Triplet) savedState;
-#if NET_2_0
+			Pair savedInfo = (Pair) savedState;
 			object[] controlAndAdapterViewStates = (object [])savedInfo.First;
 			if (Adapter != null)
 				Adapter.LoadAdapterViewState (controlAndAdapterViewStates [1]);
 			LoadViewState (controlAndAdapterViewStates [0]);
-#else
-			LoadViewState (savedInfo.First);
-#endif
 
-			ArrayList controlList = savedInfo.Second as ArrayList;
-			if (controlList == null)
+			ArrayList controlStates = savedInfo.Second as ArrayList;
+			if (controlStates == null)
 				return;
-			ArrayList controlStates = savedInfo.Third as ArrayList;
-			int nControls = controlList.Count;
-			for (int i = 0; i < nControls; i++) {
-				int k = (int) controlList [i];
-				if (k < Controls.Count && controlStates != null) {
-					Control c = Controls [k];
-					c.LoadViewStateRecursive (controlStates [i]);
-				}
-				else {
-					if (pendingVS == null)
-						pendingVS = new Hashtable ();
 
-					pendingVS [k] = controlStates [i];
+			int nControls = controlStates.Count;
+			bool byId = LoadViewStateByID;
+			for (int i = 0; i < nControls; i++) {
+				Pair p = controlStates [i] as Pair;
+				if (p == null)
+					continue;
+
+				if (byId) {
+					string id = (string)p.First;
+					bool found = false;
+					
+					foreach (Control c in Controls) {
+						c.EnsureID ();
+						if (c.ID == id) {
+							found = true;
+							c.LoadViewStateRecursive (p.Second);
+							break;
+						}
+					}
+
+					if (!found) {
+						if (pendingVS == null)
+							pendingVS = new Hashtable ();
+						pendingVS [id] = p.Second;
+					}
+				} else {
+					int k = (int) p.First;
+					if (k < Controls.Count) {
+						Control c = Controls [k];
+						c.LoadViewStateRecursive (p.Second);
+					} else {
+						if (pendingVS == null)
+							pendingVS = new Hashtable ();
+
+						pendingVS [k] = p.Second;
+					}
 				}
 			}
 
@@ -1715,7 +1877,6 @@ namespace System.Web.UI
 			stateMask |= VIEWSTATE_LOADED;
 		}
 
-#if NET_2_0
 		internal ControlSkin controlSkin;
 
 		internal void ApplyTheme ()
@@ -1740,7 +1901,6 @@ namespace System.Web.UI
 				trace.Write ("control", String.Concat ("End ApplyThemeRecursive ", _userId, " ", type_name));
 #endif
 		}
-#endif
 
 		internal bool AutoID {
 			get { return (stateMask & AUTOID) != 0; }
@@ -1767,7 +1927,6 @@ namespace System.Web.UI
 			ResetControlsCache ();
 		}
 		
-#if NET_2_0
 		string skinId = string.Empty;
 		bool _enableTheming = true;
 
@@ -1918,7 +2077,7 @@ namespace System.Web.UI
 			if (page != null && CheckForValidationSupport ())
 				page.ClientScript.ValidateEvent (uniqueId, argument);
 		}
-#endif
+
 		void IParserAccessor.AddParsedSubObject (object obj)
 		{
 			this.AddParsedSubObject (obj);
@@ -1941,5 +2100,73 @@ namespace System.Web.UI
 				return false;
 			}
 		}
+#if NET_4_0
+		[ThemeableAttribute(false)]
+		[DefaultValue ("0")]
+		public virtual ViewStateMode ViewStateMode {
+			get { return viewStateMode;  }
+			set {
+				if (value < ViewStateMode.Inherit || value > ViewStateMode.Disabled)
+					throw new ArgumentOutOfRangeException ("An attempt was made to set this property to a value that is not in the ViewStateMode enumeration.");
+
+				viewStateMode = value;
+			}
+		}
+
+		public string GetRouteUrl (object routeParameters)
+		{
+			return GetRouteUrl (null, new RouteValueDictionary (routeParameters));
+		}
+
+		public string GetRouteUrl (RouteValueDictionary routeParameters)
+		{
+			return GetRouteUrl (null, routeParameters);
+		}
+
+		public string GetRouteUrl (string routeName, object routeParameters)
+		{
+			return GetRouteUrl (routeName, new RouteValueDictionary (routeParameters));
+		}
+
+		public string GetRouteUrl (string routeName, RouteValueDictionary routeParameters)
+		{
+			HttpContext ctx = Context ?? HttpContext.Current;
+			HttpRequest req = ctx != null ? ctx.Request : null;
+
+			if (req == null)
+				return null;
+
+			VirtualPathData vpd = RouteTable.Routes.GetVirtualPath (req.RequestContext, routeName, routeParameters);
+			if (vpd == null)
+				return null;
+
+			return vpd.VirtualPath;
+		}
+
+		public string GetUniqueIDRelativeTo (Control control)
+		{
+			if (control == null)
+				throw new ArgumentNullException ("control");
+
+			Control parent = this;
+			Page page = Page;
+			Control namingContainer = control.NamingContainer;
+			
+			if (namingContainer != null)
+				while (parent != null && parent != namingContainer)
+					parent = parent.Parent;
+
+			if (parent != namingContainer)
+				throw new InvalidOperationException (
+					String.Format ("This control is not a descendant of the NamingContainer of '{0}'", control.UniqueID)
+				);
+
+			int idx = control.UniqueID.LastIndexOf (IdSeparator);
+			if (idx < 0)
+				return UniqueID;
+
+			return UniqueID.Substring (idx + 1);
+		}
+#endif
 	}
 }

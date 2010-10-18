@@ -23,13 +23,13 @@
 #include <mono/metadata/mono-mlist.h>
 #include <mono/metadata/threadpool.h>
 #include <mono/metadata/threads-types.h>
-#include <mono/utils/mono-logger.h>
+#include <mono/utils/mono-logger-internal.h>
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/marshal.h> /* for mono_delegate_free_ftnptr () */
 #include <mono/metadata/attach.h>
 #include <mono/utils/mono-semaphore.h>
 
-#ifndef PLATFORM_WIN32
+#ifndef HOST_WIN32
 #include <pthread.h>
 #endif
 
@@ -56,7 +56,7 @@ static CRITICAL_SECTION finalizer_mutex;
 static GSList *domains_to_finalize= NULL;
 static MonoMList *threads_to_finalize = NULL;
 
-static MonoThread *gc_thread;
+static MonoInternalThread *gc_thread;
 
 static void object_register_finalizer (MonoObject *obj, void (*callback)(void *, void*));
 
@@ -68,7 +68,7 @@ static HANDLE shutdown_event;
 #endif
 
 static void
-add_thread_to_finalize (MonoThread *thread)
+add_thread_to_finalize (MonoInternalThread *thread)
 {
 	mono_finalizer_lock ();
 	if (!threads_to_finalize)
@@ -137,10 +137,10 @@ mono_gc_run_finalize (void *obj, void *data)
 	/* make sure the finalizer is not called again if the object is resurrected */
 	object_register_finalizer (obj, NULL);
 
-	if (o->vtable->klass == mono_get_thread_class ()) {
-		MonoThread *t = (MonoThread*)o;
+	if (o->vtable->klass == mono_defaults.internal_thread_class) {
+		MonoInternalThread *t = (MonoInternalThread*)o;
 
-		if (mono_gc_is_finalizer_thread (t))
+		if (mono_gc_is_finalizer_internal_thread (t))
 			/* Avoid finalizing ourselves */
 			return;
 
@@ -228,7 +228,7 @@ void
 mono_gc_finalize_threadpool_threads (void)
 {
 	while (threads_to_finalize) {
-		MonoThread *thread = (MonoThread*) mono_mlist_get_data (threads_to_finalize);
+		MonoInternalThread *thread = (MonoInternalThread*) mono_mlist_get_data (threads_to_finalize);
 
 		/* Force finalization of the thread. */
 		thread->threadpool_thread = FALSE;
@@ -336,7 +336,7 @@ mono_domain_finalize (MonoDomain *domain, guint32 timeout)
 	guint32 res;
 	HANDLE done_event;
 
-	if (mono_thread_current () == gc_thread)
+	if (mono_thread_internal_current () == gc_thread)
 		/* We are called from inside a finalizer, not much we can do here */
 		return FALSE;
 
@@ -459,7 +459,7 @@ ves_icall_System_GC_WaitForPendingFinalizers (void)
 	if (!mono_gc_pending_finalizers ())
 		return;
 
-	if (mono_thread_current () == gc_thread)
+	if (mono_thread_internal_current () == gc_thread)
 		/* Avoid deadlocks */
 		return;
 
@@ -469,6 +469,21 @@ ves_icall_System_GC_WaitForPendingFinalizers (void)
 	WaitForSingleObjectEx (pending_done_event, INFINITE, TRUE);
 	/* g_print ("Done pending....\n"); */
 #endif
+}
+
+void
+ves_icall_System_GC_register_ephemeron_array (MonoObject *array)
+{
+#ifdef HAVE_SGEN_GC
+	if (!mono_gc_ephemeron_array_add (array))
+		mono_raise_exception (mono_object_domain (array)->out_of_memory_ex);
+#endif
+}
+
+MonoObject*
+ves_icall_System_GC_get_ephemeron_tombstone (void)
+{
+	return mono_domain_get ()->ephemeron_tombstone;
 }
 
 #define mono_allocator_lock() EnterCriticalSection (&allocator_section)
@@ -626,9 +641,20 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 
 		/* resize and copy the entries */
 		if (handles->type > HANDLE_WEAK_TRACK) {
+			gsize *gc_bitmap;
 			gpointer *entries;
-			entries = mono_gc_alloc_fixed (sizeof (gpointer) * new_size, NULL);
+			void *descr;
+
+			/* Create a GC descriptor */
+			gc_bitmap = g_malloc (new_size / 8);
+			memset (gc_bitmap, 0xff, new_size / 8);
+			descr = mono_gc_make_descr_from_bitmap (gc_bitmap, new_size);
+			g_free (gc_bitmap);
+
+			entries = mono_gc_alloc_fixed (sizeof (gpointer) * new_size, descr);
 			memcpy (entries, handles->entries, sizeof (gpointer) * handles->size);
+
+			mono_gc_free_fixed (handles->entries);
 			handles->entries = entries;
 		} else {
 			gpointer *entries;
@@ -1054,10 +1080,6 @@ finalizer_thread (gpointer unused)
 	return 0;
 }
 
-#ifdef HAVE_SGEN_GC
-#define GC_dont_gc 0
-#endif
-
 void
 mono_gc_init (void)
 {
@@ -1071,7 +1093,7 @@ mono_gc_init (void)
 
 	mono_gc_base_init ();
 
-	if (GC_dont_gc || g_getenv ("GC_DONT_GC")) {
+	if (mono_gc_is_disabled ()) {
 		gc_disabled = TRUE;
 		return;
 	}
@@ -1099,7 +1121,7 @@ mono_gc_cleanup (void)
 	if (!gc_disabled) {
 		ResetEvent (shutdown_event);
 		finished = TRUE;
-		if (mono_thread_current () != gc_thread) {
+		if (mono_thread_internal_current () != gc_thread) {
 			mono_gc_finalize_notify ();
 			/* Finishing the finalizer thread, so wait a little bit... */
 			/* MS seems to wait for about 2 seconds */
@@ -1110,7 +1132,7 @@ mono_gc_cleanup (void)
 				suspend_finalizers = TRUE;
 
 				/* Try to abort the thread, in the hope that it is running managed code */
-				mono_thread_stop (gc_thread);
+				mono_thread_internal_stop (gc_thread);
 
 				/* Wait for it to stop */
 				ret = WaitForSingleObjectEx (gc_thread->handle, 100, TRUE);
@@ -1162,6 +1184,12 @@ void mono_gc_cleanup (void)
 
 #endif
 
+gboolean
+mono_gc_is_finalizer_internal_thread (MonoInternalThread *thread)
+{
+	return thread == gc_thread;
+}
+
 /**
  * mono_gc_is_finalizer_thread:
  * @thread: the thread to test.
@@ -1175,5 +1203,21 @@ void mono_gc_cleanup (void)
 gboolean
 mono_gc_is_finalizer_thread (MonoThread *thread)
 {
-	return thread == gc_thread;
+	return mono_gc_is_finalizer_internal_thread (thread->internal_thread);
 }
+
+#if defined(__MACH__)
+static pthread_t mach_exception_thread;
+
+void
+mono_gc_register_mach_exception_thread (pthread_t thread)
+{
+	mach_exception_thread = thread;
+}
+
+pthread_t
+mono_gc_get_mach_exception_thread (void)
+{
+	return mach_exception_thread;
+}
+#endif

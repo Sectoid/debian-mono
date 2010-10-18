@@ -10,7 +10,7 @@
  |
  | Author: Sergey Chaban
  |
- | $Id: make-opcode-def.xsl 36980 2004-12-03 01:08:33Z benm $
+ | $Id$
   -->
 
 

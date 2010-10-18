@@ -39,6 +39,7 @@ using System.Runtime.Serialization;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Cryptography;
@@ -90,10 +91,121 @@ namespace System.Reflection.Emit
 		}
 	}
 
-#if NET_2_0
+	internal class GenericInstanceKey {
+		Type gtd;
+		internal Type[] args;
+		int hash_code;
+
+		internal GenericInstanceKey (Type gtd, Type[] args)
+		{
+			this.gtd = gtd;
+			this.args = args;
+
+			hash_code = gtd.GetHashCode ();
+			for (int i = 0; i < args.Length; ++i)
+				hash_code ^= args [i].GetHashCode ();
+		}
+
+		static bool IsBoundedVector (Type type) {
+			ArrayType at = type as ArrayType;
+			if (at != null)
+				return at.GetEffectiveRank () == 1;
+			return type.ToString ().EndsWith ("[*]", StringComparison.Ordinal); /*Super uggly hack, SR doesn't allow one to query for it */
+		}
+
+		static bool TypeEquals (Type a, Type b) {
+			if (a == b)
+				return true;
+
+			if (a.HasElementType) {
+				if (!b.HasElementType)
+					return false;
+				if (!TypeEquals (a.GetElementType (), b.GetElementType ()))
+					return false;
+				if (a.IsArray) {
+					if (!b.IsArray)
+						return false;
+					int rank = a.GetArrayRank ();
+					if (rank != b.GetArrayRank ())
+						return false;
+					if (rank == 1 && IsBoundedVector (a) != IsBoundedVector (b))
+						return false;
+				} else if (a.IsByRef) {
+					if (!b.IsByRef)
+						return false;
+				} else if (a.IsPointer) {
+					if (!b.IsPointer)
+						return false;
+				}
+				return true;
+			}
+
+			if (a.IsGenericType) {
+				if (!b.IsGenericType)
+					return false;
+				if (a.IsGenericParameter)
+					return a == b;
+				if (a.IsGenericParameter) //previous test should have caught it
+					return false;
+
+				if (a.IsGenericTypeDefinition) {
+					if (!b.IsGenericTypeDefinition)
+						return false;
+				} else {
+					if (b.IsGenericTypeDefinition)
+						return false;
+					if (!TypeEquals (a.GetGenericTypeDefinition (), b.GetGenericTypeDefinition ()))
+						return false;
+
+					Type[] argsA = a.GetGenericArguments ();
+					Type[] argsB = b.GetGenericArguments ();
+					for (int i = 0; i < argsA.Length; ++i) {
+						if (!TypeEquals (argsA [i], argsB [i]))
+							return false;
+					}
+				}
+			}
+
+			/*
+			Now only non-generic, non compound types are left. To properly deal with user
+			types we would have to call UnderlyingSystemType, but we let them have their
+			own instantiation as this is MS behavior and mcs (pre C# 4.0, at least) doesn't
+			depend on proper UT canonicalization.
+			*/
+			return a == b;
+		}
+
+		public override bool Equals (object obj)
+		{
+			GenericInstanceKey other = obj as GenericInstanceKey;
+			if (other == null)
+				return false;
+			if (gtd != other.gtd)
+				return false;
+			for (int i = 0; i < args.Length; ++i) {
+				Type a = args [i];
+				Type b = other.args [i];
+				/*
+				We must cannonicalize as much as we can. Using equals means that some resulting types
+				won't have the exact same types as the argument ones. 
+				For example, flyweight types used array, pointer and byref will should this behavior.
+				MCS seens to be resilient to this problem so hopefully this won't show up.   
+				*/
+				if (a != b && !a.Equals (b))
+					return false;
+			}
+			return true;
+		}
+
+		public override int GetHashCode ()
+		{
+			return hash_code;
+		}
+	}
+
+
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_AssemblyBuilder))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public sealed class AssemblyBuilder : Assembly, _AssemblyBuilder {
 #pragma warning disable 169, 414
@@ -138,6 +250,7 @@ namespace System.Reflection.Emit
 		NativeResourceType native_resource;
 		readonly bool is_compiler_context;
 		string versioninfo_culture;
+		Hashtable generic_instances = new Hashtable ();
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern void basic_init (AssemblyBuilder ab);
@@ -147,28 +260,22 @@ namespace System.Reflection.Emit
 
 		internal AssemblyBuilder (AssemblyName n, string directory, AssemblyBuilderAccess access, bool corlib_internal)
 		{
-#if BOOTSTRAP_WITH_OLDLIB
-			is_compiler_context = true;
-#else
 			is_compiler_context = (access & COMPILER_ACCESS) != 0;
-#endif
 
 			// remove Mono specific flag to allow enum check to pass
 			access &= ~COMPILER_ACCESS;
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			// only "Run" is supported by Silverlight
 			// however SMCS requires more than this but runs outside the CoreCLR sandbox
 			if (SecurityManager.SecurityEnabled && (access != AssemblyBuilderAccess.Run))
 				throw new ArgumentException ("access");
 #endif
 
-#if NET_2_0
 			if (!Enum.IsDefined (typeof (AssemblyBuilderAccess), access))
 				throw new ArgumentException (string.Format (CultureInfo.InvariantCulture,
 					"Argument value {0} is not valid.", (int) access),
 					"access");
-#endif
 
 #if NET_4_0
 			if ((access & AssemblyBuilderAccess.RunAndCollect) == AssemblyBuilderAccess.RunAndCollect)
@@ -242,21 +349,17 @@ namespace System.Reflection.Emit
 			}
 		}
 
-#if NET_1_1
 		/* This is to keep signature compatibility with MS.NET */
 		public override string ImageRuntimeVersion {
 			get {
 				return base.ImageRuntimeVersion;
 			}
 		}
-#endif
 
-#if NET_2_0
 		[MonoTODO]
 		public override bool ReflectionOnly {
 			get { return base.ReflectionOnly; }
 		}
-#endif
 
 		public void AddResourceFile (string name, string fileName)
 		{
@@ -368,10 +471,11 @@ namespace System.Reflection.Emit
 			resources [p].data = blob;
 		}
 
-#if NET_2_0
 		internal void AddTypeForwarder (Type t) {
 			if (t == null)
 				throw new ArgumentNullException ("t");
+			if (t.IsNested)
+				throw new ArgumentException ();
 
 			if (type_forwarders == null) {
 				type_forwarders = new Type [1] { t };
@@ -382,7 +486,6 @@ namespace System.Reflection.Emit
 				type_forwarders = arr;
 			}
 		}
-#endif
 
 		public ModuleBuilder DefineDynamicModule (string name)
 		{
@@ -723,6 +826,19 @@ namespace System.Reflection.Emit
 				}
 			}
 
+			if (res != null) {
+				List<Exception> exceptions = null;
+				foreach (var type in res) {
+					if (type is TypeBuilder) {
+						if (exceptions == null)
+							exceptions = new List <Exception> ();
+						exceptions.Add (new TypeLoadException (string.Format ("Type '{0}' is not finished", type.FullName))); 
+					}
+				}
+				if (exceptions != null)
+					throw new ReflectionTypeLoadException (new Type [exceptions.Count], exceptions.ToArray ());
+			}
+			
 			return res == null ? Type.EmptyTypes : res;
 		}
 
@@ -787,7 +903,6 @@ namespace System.Reflection.Emit
 			}
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		ModuleBuilder manifest_module;
 
 		//
@@ -799,14 +914,9 @@ namespace System.Reflection.Emit
 				manifest_module = DefineDynamicModule ("Default Dynamic Module");
 			return manifest_module;
 		}
-#endif
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 		[MonoLimitation ("No support for PE32+ assemblies for AMD64 and IA64")]
 		public 
-#else
-		internal
-#endif
 		void Save (string assemblyFileName, PortableExecutableKinds portableExecutableKind, ImageFileMachine imageFileMachine)
 		{
 			this.peKind = portableExecutableKind;
@@ -933,11 +1043,9 @@ namespace System.Reflection.Emit
 					flags |= ((uint) data [pos + 2]) << 16;
 					flags |= ((uint) data [pos + 3]) << 24;
 
-#if NET_2_0
 					// ignore PublicKey flag if assembly is not strongnamed
 					if (sn == null)
 						flags &= ~(uint) AssemblyNameFlags.PublicKey;
-#endif
 				}
 			}
 
@@ -952,9 +1060,7 @@ namespace System.Reflection.Emit
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public void SetCustomAttribute ( ConstructorInfo con, byte[] binaryAttribute) {
 			if (con == null)
 				throw new ArgumentNullException ("con");
@@ -1073,6 +1179,21 @@ namespace System.Reflection.Emit
 			return an;
 		}
 
+		/*Warning, @typeArguments must be a mscorlib internal array. So make a copy before passing it in*/
+		internal Type MakeGenericType (Type gtd, Type[] typeArguments)
+		{
+			if (!IsCompilerContext)
+				return new MonoGenericClass (gtd, typeArguments);
+
+			GenericInstanceKey key = new GenericInstanceKey (gtd, typeArguments);
+			MonoGenericClass res = (MonoGenericClass)generic_instances [key];
+			if (res == null) {
+				res = new MonoGenericClass (gtd, typeArguments);
+				generic_instances [key] = res;
+			}
+			return res;
+		}
+
 		void _AssemblyBuilder.GetIDsOfNames([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
 		{
 			throw new NotImplementedException ();
@@ -1092,5 +1213,93 @@ namespace System.Reflection.Emit
 		{
 			throw new NotImplementedException ();
 		}
+
+#if NET_4_0 || MOONLIGHT
+		public override Type GetType (string name, bool throwOnError, bool ignoreCase)
+		{
+			if (name == null)
+				throw new ArgumentNullException (name);
+			if (name.Length == 0)
+			throw new ArgumentException ("name", "Name cannot be empty");
+
+			var res = InternalGetType (null, name, throwOnError, ignoreCase);
+			if (res is TypeBuilder) {
+				if (throwOnError)
+					throw new TypeLoadException (string.Format ("Could not load type '{0}' from assembly '{1}'", name, this.name));
+				return null;
+			}
+			return res;
+		}
+
+		public override Module GetModule (String name)
+		{
+			if (name == null)
+				throw new ArgumentNullException ("name");
+			if (name.Length == 0)
+				throw new ArgumentException ("Name can't be empty");
+
+			if (modules == null)
+				return null;
+
+			foreach (Module module in modules) {
+				if (module.ScopeName == name)
+					return module;
+			}
+
+			return null;
+		}
+
+		public override Module[] GetModules (bool getResourceModules)
+		{
+			Module[] modules = GetModulesInternal ();
+
+			if (!getResourceModules) {
+				ArrayList result = new ArrayList (modules.Length);
+				foreach (Module m in modules)
+					if (!m.IsResource ())
+						result.Add (m);
+				return (Module[])result.ToArray (typeof (Module));
+			}
+			return modules;
+		}
+
+		[MonoTODO ("This always returns an empty array")]
+		public override AssemblyName[] GetReferencedAssemblies () {
+			return GetReferencedAssemblies (this);
+		}
+
+		public override Module[] GetLoadedModules (bool getResourceModules)
+		{
+			return GetModules (getResourceModules);
+		}
+
+		//FIXME MS has issues loading satelite assemblies from SRE
+		public override Assembly GetSatelliteAssembly (CultureInfo culture)
+		{
+			return GetSatelliteAssembly (culture, null, true);
+		}
+
+		//FIXME MS has issues loading satelite assemblies from SRE
+		public override Assembly GetSatelliteAssembly (CultureInfo culture, Version version)
+		{
+			return GetSatelliteAssembly (culture, version, true);
+		}
+
+		public override Module ManifestModule {
+			get {
+				return GetManifestModule ();
+			}
+		}
+
+		public override bool GlobalAssemblyCache {
+			get {
+				return false;
+			}
+		}
+
+		public override bool IsDynamic {
+			get { return true; }
+		}
+#endif
 	}
 }

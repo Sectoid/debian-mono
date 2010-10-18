@@ -1015,9 +1015,6 @@ namespace System.Windows.Forms
 			EventHandler eh = (EventHandler)(Events [DoubleClickEvent]);
 			if (eh != null)
 				eh (this, e);
-
-			if (!double_click_enabled)
-				OnClick (e);
 		}
 
 		[EditorBrowsable (EditorBrowsableState.Advanced)]
@@ -1178,12 +1175,18 @@ namespace System.Windows.Forms
 			this.CalculateAutoSize ();
 			OnFontChanged (EventArgs.Empty);
 		}
-		
-		protected virtual void OnPaint (PaintEventArgs e)
+
+		void OnPaintInternal (PaintEventArgs e)
 		{
+			// Have the background rendered independently from OnPaint
 			if (this.parent != null)
 				this.parent.Renderer.DrawItemBackground (new ToolStripItemRenderEventArgs (e.Graphics, this));
-				
+
+			OnPaint (e);
+		}
+
+		protected virtual void OnPaint (PaintEventArgs e)
+		{
 			PaintEventHandler eh = (PaintEventHandler)(Events [PaintEvent]);
 			if (eh != null)
 				eh (this, e);
@@ -1773,7 +1776,7 @@ namespace System.Windows.Forms
 				
 			switch (met) {
 				case ToolStripItemEventType.MouseUp:
-					this.HandleClick (e);
+					this.HandleClick (((MouseEventArgs)e).Clicks, e);
 					this.OnMouseUp ((MouseEventArgs)e);
 					break;
 				case ToolStripItemEventType.MouseDown:
@@ -1792,18 +1795,21 @@ namespace System.Windows.Forms
 					this.OnMouseMove ((MouseEventArgs)e);
 					break;
 				case ToolStripItemEventType.Paint:
-					this.OnPaint ((PaintEventArgs)e);
+					this.OnPaintInternal ((PaintEventArgs)e);
 					break;
 				case ToolStripItemEventType.Click:
-					this.HandleClick (e);
+					this.HandleClick (1, e);
 					break;
 			}
 		}
 		
-		internal virtual void HandleClick (EventArgs e)
+		internal virtual void HandleClick (int mouse_clicks, EventArgs e)
 		{
 			this.Parent.HandleItemClick (this);
-			this.OnClick (e);
+			if (mouse_clicks == 2 && double_click_enabled)
+				this.OnDoubleClick (e);
+			else
+				this.OnClick (e);
 		}
 		
 		internal virtual void SetPlacement (ToolStripItemPlacement placement)

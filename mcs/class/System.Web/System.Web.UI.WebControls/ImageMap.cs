@@ -4,7 +4,7 @@
 // Authors:
 //	Lluis Sanchez Gual (lluis@novell.com)
 //
-// (C) 2005 Novell, Inc (http://www.novell.com)
+// (C) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -28,8 +28,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.ComponentModel;
 using System.Security.Permissions;
 
@@ -48,8 +46,7 @@ namespace System.Web.UI.WebControls
 		static readonly object ClickEvent = new object();
 		
 		[Category ("Action")]
-		public event ImageMapEventHandler Click
-		{
+		public event ImageMapEventHandler Click {
 			add { Events.AddHandler (ClickEvent, value); }
 			remove { Events.RemoveHandler (ClickEvent, value); }
 		}
@@ -58,30 +55,35 @@ namespace System.Web.UI.WebControls
 		{
 			if (Events != null) {
 				ImageMapEventHandler eh = (ImageMapEventHandler) Events [ClickEvent];
-				if (eh!= null) eh (this, e);
+				if (eh!= null)
+					eh (this, e);
 			}
 		}
 
+		// Why override?
+		[Browsable (true)]
+		[EditorBrowsable (EditorBrowsableState.Always)]
+		public override bool Enabled {
+			get { return base.Enabled; }
+			set { base.Enabled = value; }
+		}
+		
 		[DefaultValueAttribute (HotSpotMode.NotSet)]
 		public virtual HotSpotMode HotSpotMode {
 			get {
 				object o = ViewState ["HotSpotMode"];
 				return o != null ? (HotSpotMode) o : HotSpotMode.NotSet;
 			}
-			set {
-				ViewState ["HotSpotMode"] = value;
-			}
+			set { ViewState ["HotSpotMode"] = value; }
 		}
 		
 		[DefaultValueAttribute ("")]
 		public virtual string Target {
 			get {
 				object o = ViewState ["Target"];
-				return o != null ? (string) o : "";
+				return o != null ? (string) o : String.Empty;
 			}
-			set {
-				ViewState ["Target"] = value;
-			}
+			set { ViewState ["Target"] = value; }
 		}
 
 		[NotifyParentPropertyAttribute (true)]
@@ -101,7 +103,8 @@ namespace System.Web.UI.WebControls
 		protected override void TrackViewState ()
 		{
 			base.TrackViewState ();
-			if (spots != null) ((IStateManager)spots).TrackViewState ();
+			if (spots != null)
+				((IStateManager)spots).TrackViewState ();
 		}
 		
 		protected override object SaveViewState ()
@@ -126,14 +129,19 @@ namespace System.Web.UI.WebControls
 			base.LoadViewState (pair.First);
 			((IStateManager)HotSpots).LoadViewState (pair.Second);
 		}
-		
-		public void RaisePostBackEvent (string eventArgument)
+
+		protected virtual void RaisePostBackEvent (string eventArgument)
 		{
 			ValidateEvent (UniqueID, eventArgument);
 			HotSpot spot = HotSpots [int.Parse (eventArgument)];
 			OnClick (new ImageMapEventArgs (spot.PostBackValue));
 		}
 
+		void IPostBackEventHandler.RaisePostBackEvent (string eventArgument)
+		{
+			RaisePostBackEvent (eventArgument);
+		}
+		
 		protected override void AddAttributesToRender (HtmlTextWriter writer)
 		{
 			base.AddAttributesToRender (writer);
@@ -146,6 +154,8 @@ namespace System.Web.UI.WebControls
 			base.Render (writer);
 
 			if (spots != null && spots.Count > 0) {
+				bool enabled = Enabled;
+				writer.AddAttribute (HtmlTextWriterAttribute.Id, "ImageMap" + ClientID);
 				writer.AddAttribute (HtmlTextWriterAttribute.Name, "ImageMap" + ClientID);
 				writer.RenderBeginTag (HtmlTextWriterTag.Map);
 				for (int n=0; n<spots.Count; n++) {
@@ -168,12 +178,18 @@ namespace System.Web.UI.WebControls
 							string target = spot.Target.Length > 0 ? spot.Target : Target;
 							if (!String.IsNullOrEmpty (target))
 								writer.AddAttribute (HtmlTextWriterAttribute.Target, target);
-#if TARGET_J2EE
-							string navUrl = ResolveClientUrl (spot.NavigateUrl, String.Compare (target, "_blank", StringComparison.InvariantCultureIgnoreCase) != 0);
-#else
-							string navUrl = ResolveClientUrl (spot.NavigateUrl);
+#if NET_4_0
+							if (enabled) {
 #endif
-							writer.AddAttribute (HtmlTextWriterAttribute.Href, navUrl);
+#if TARGET_J2EE
+								string navUrl = ResolveClientUrl (spot.NavigateUrl, String.Compare (target, "_blank", StringComparison.InvariantCultureIgnoreCase) != 0);
+#else
+								string navUrl = ResolveClientUrl (spot.NavigateUrl);
+#endif
+								writer.AddAttribute (HtmlTextWriterAttribute.Href, navUrl);
+#if NET_4_0
+							}
+#endif
 							break;
 						case HotSpotMode.PostBack:
 							writer.AddAttribute (HtmlTextWriterAttribute.Href, Page.ClientScript.GetPostBackClientHyperlink (this, n.ToString(), true));
@@ -189,4 +205,3 @@ namespace System.Web.UI.WebControls
 	}
 }
 
-#endif

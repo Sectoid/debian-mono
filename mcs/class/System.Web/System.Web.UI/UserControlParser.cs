@@ -38,33 +38,10 @@ namespace System.Web.UI
 {
 	internal class UserControlParser : TemplateControlParser
 	{
-#if NET_2_0
 		string masterPage;
+#if NET_4_0
+		string providerName;
 #endif
-
-
-#if !NET_2_0
-		internal UserControlParser (string virtualPath, string inputFile, HttpContext context)
-			: this (virtualPath, inputFile, context, null)
-		{
-		}
-
-		internal UserControlParser (string virtualPath, string inputFile, ArrayList deps, HttpContext context)
-			: this (virtualPath, inputFile, context, null)
-		{
-			this.Dependencies = deps;
-		}
-
-		internal UserControlParser (string virtualPath, string inputFile, HttpContext context, string type)
-		{
-			Context = context;
-			BaseVirtualDir = VirtualPathUtility.GetDirectory (virtualPath, false);
-			InputFile = inputFile;
-			SetBaseType (type);
-			AddApplicationAssembly ();
-		}
-
-#else
 		internal UserControlParser (VirtualPath virtualPath, string inputFile, HttpContext context)
 			: this (virtualPath, inputFile, context, null)
 		{
@@ -132,64 +109,68 @@ namespace System.Web.UI
 			UserControlParser ucp = new UserControlParser (reader, inputHashCode, context);
 			return ucp.CompileIntoType ();
 		}
-#endif
 		
 		internal static Type GetCompiledType (string virtualPath, string inputFile, ArrayList deps, HttpContext context)
 		{
-#if NET_2_0
 			UserControlParser ucp = new UserControlParser (new VirtualPath (virtualPath), inputFile, deps, context);
-#else
-			UserControlParser ucp = new UserControlParser (virtualPath, inputFile, deps, context);
-#endif
+
 			return ucp.CompileIntoType ();
 		}
 
 		public static Type GetCompiledType (string virtualPath, string inputFile, HttpContext context)
 		{
-#if NET_2_0
 			UserControlParser ucp = new UserControlParser (new VirtualPath (virtualPath), inputFile, context);
-#else
-			UserControlParser ucp = new UserControlParser (virtualPath, inputFile, context);
-#endif
+
 			return ucp.CompileIntoType ();
 		}
 
-		protected override Type CompileIntoType ()
+		internal override Type CompileIntoType ()
 		{
 			AspGenerator generator = new AspGenerator (this);
 			return generator.GetCompiledType ();
 		}
 
-		internal override void ProcessMainAttributes (Hashtable atts)
+		internal override void ProcessMainAttributes (IDictionary atts)
 		{
-#if NET_2_0
 			masterPage = GetString (atts, "MasterPageFile", null);
 			if (masterPage != null)
 				AddDependency (masterPage);
-#endif
 
 			base.ProcessMainAttributes (atts);
 		}
+#if NET_4_0
+		internal override void ProcessOutputCacheAttributes (IDictionary atts)
+		{
+			providerName = GetString (atts, "ProviderName", null);
+			base.ProcessOutputCacheAttributes (atts);
+		}
 
-#if NET_2_0
+		internal override Type DefaultBaseType {
+			get {
+				Type ret = PageParser.DefaultUserControlBaseType;
+				if (ret == null)
+					return base.DefaultBaseType;
+
+				return ret;
+			}
+		}
+#endif
 		internal override string DefaultBaseTypeName {
 			get { return PagesConfig.UserControlBaseType; }
 		}
-#else
-		internal override string DefaultBaseTypeName {
-			get { return "System.Web.UI.UserControl"; }
-		}
-#endif
+
 		internal override string DefaultDirectiveName {
 			get { return "control"; }
 		}
 
-#if NET_2_0
 		internal string MasterPageFile {
 			get { return masterPage; }
 		}
+#if NET_4_0
+		internal string ProviderName {
+			get { return providerName; }
+		}
 #endif
-
 	}
 }
 

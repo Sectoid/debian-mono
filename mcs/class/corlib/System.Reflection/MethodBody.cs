@@ -26,7 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 
 using System;
 using System.Collections.Generic;
@@ -35,10 +34,12 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
+	public
+#if !NET_4_0
+	sealed
 #endif
-	public sealed class MethodBody {
+	class MethodBody {
 #pragma warning disable 649
 		#region Sync with reflection.h
 		ExceptionHandlingClause[] clauses;
@@ -50,45 +51,74 @@ namespace System.Reflection {
 		#endregion
 #pragma warning restore 649
 
-		internal MethodBody () {
+#if NET_4_0
+		protected
+#else
+		internal
+#endif
+		MethodBody () {
 		}
 
-		public IList<ExceptionHandlingClause> ExceptionHandlingClauses {
+		public
+#if NET_4_0
+	virtual
+#endif
+		IList<ExceptionHandlingClause> ExceptionHandlingClauses {
 			get {
 				return Array.AsReadOnly<ExceptionHandlingClause> (clauses);
 			}
 		}
 
-		public IList<LocalVariableInfo> LocalVariables {
+		public
+#if NET_4_0
+		virtual
+#endif
+		IList<LocalVariableInfo> LocalVariables {
 			get {
 				return Array.AsReadOnly<LocalVariableInfo> (locals);
 			}
 		}
 
-		public bool InitLocals {
+		public
+#if NET_4_0
+		virtual
+#endif
+		bool InitLocals {
 			get {
 				return init_locals;
 			}
 		}
 
-		public int LocalSignatureMetadataToken {
+		public
+#if NET_4_0
+		virtual
+#endif
+		int LocalSignatureMetadataToken {
 			get {
 				return sig_token;
 			}
 		}
 
-		public int MaxStackSize {
+
+		public
+#if NET_4_0
+		virtual
+#endif
+		int MaxStackSize {
 			get {
 				return max_stack;
 			}
 		}
 
-		public byte[] GetILAsByteArray () {
+		public
+#if NET_4_0
+		virtual
+#endif
+		byte[] GetILAsByteArray () {
 			return il;
 		}
 	}
 
 }
 
-#endif
 

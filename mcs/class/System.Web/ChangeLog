@@ -1,9 +1,68 @@
+2010-08-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #633756. Children processed as properties
+	must be instantiated before using.
+
+	When a server-side control processes its children (in the markup)
+	as properties, it needs to instantiate an object of the property
+	type and assign it to the appropriate property of the control.
+	Failing to do so will cause markup which references properties to
+	fail in certain cases (for instance when the control's property
+	type is a class and it is not instantiated by the control's
+	constructor).
+
+2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Adapt to new exception in threadpool behavior.
+
+	Since an exception in the threadpool can kill the application,
+	silently ignore it when we know it is not harmful.
+
+2010-08-06  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,4.0] Added support for setting default base types for
+	various kinds of resources.
+
+	ASP.NET 4.0 allows one to set base types for Pages, User Controls,
+	Application and PageParserFilter from the pre-application start
+	method(s). This commit implements support for this mechanism.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net, 4.0] Implemented OrderedList and UnorderedList layouts
+	for RepeatInfo
+
+	Also added auto-generated tests for the new layouts and updated
+	the test generator to account for the new layouts in 4.0.
+
+2010-08-03  Marek Habersack  <grendel@twistedcode.net>
+
+	Test commit - please ignore
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (OTHER_LIB_MCS_FLAGS): added a reference to
+	System.Web.ApplicationServices in the 4.0 profile.
+
+2010-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile: moved App_* test resources to separate variables -
+	whatever is contained in those variables is preprocessed before
+	embedding as resource to include appropriate resource name prefix
+	(App_Code/, App_GlobalResources/ for now). This is used in WebTest
+	to automatically populate the relevant directories when running
+	the test suite.
+
 2010-02-18  Marek Habersack  <mhabersack@novell.com>
 
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/CheckBoxList_Bug377703_1.aspx,
 	Test/mainsoft/NunitWebResources/CheckBoxList_Bug377703_2.aspx and
 	Test/mainsoft/NunitWebResources/CheckBoxList_Bug578770.aspx
+
+2010-02-12  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile (EXTRA_DISTFILES): ignore .svn directories
 
 2010-02-11  Marek Habersack  <mhabersack@novell.com>
 
@@ -21,6 +80,14 @@
 
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/ChangePasswordContainer_FindControl.aspx
+
+2010-01-14  Marek Habersack  <mhabersack@novell.com>
+
+	* System.Web_standalone_test.dll.sources,
+	standalone-runner-support.dll.sources: added
+
+	* Makefile: Added targets to build and run standalone tests.
+	Added standalone tests and test tools to EXTRA_DISTFILES
 
 2009-12-18  Marek Habersack  <mhabersack@novell.com>
 
@@ -45,6 +112,15 @@
 	* Makefile (TEST_RESOURCE_FILES): added
 	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx
 	Test/mainsoft/NunitWebResources/TableSections_Bug551666.aspx.cs
+
+2009-10-19  Marek Habersack  <mhabersack@novell.com>
+
+	* ASPState.sql: added - schema for the SQL session state server
+	database.
+
+2009-10-06  Marek Habersack  <mhabersack@novell.com>
+
+	* Makefile: added PIPELINE_TIMER define
 
 2009-10-05  Marek Habersack  <mhabersack@novell.com>
 

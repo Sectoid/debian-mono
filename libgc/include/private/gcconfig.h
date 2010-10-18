@@ -327,14 +327,14 @@
 #    endif
 #    include <unistd.h>
 #    define GETPAGESIZE() getpagesize()
-      /* There seems to be some issues with trylock hanging on darwin. This
-         should be looked into some more */
-#     define NO_PTHREAD_TRYLOCK
 #   elif defined(__arm__)
 #    define ARM
 #    define mach_type_known
 #    define DARWIN_DONT_PARSE_STACK
 #    define GC_DONT_REGISTER_MAIN_STATIC_DATA
+#   elif defined(__x86_64)
+#    define X86_64
+#    define mach_type_known
 #   endif
 # endif
 # if defined(NeXT) && defined(mc68000)
@@ -713,6 +713,9 @@
 #	     if defined(__GLIBC__)&& __GLIBC__>=2
 #              define SEARCH_FOR_DATA_START
 #	     else /* !GLIBC2 */
+#              if defined(PLATFORM_ANDROID)
+#                      define __environ environ
+#              endif
                extern char **__environ;
 #              define DATASTART ((ptr_t)(&__environ))
                              /* hideous kludge: __environ is the first */
@@ -2037,6 +2040,27 @@
 #	    define PREFETCH_FOR_WRITE(x) __builtin_prefetch((x), 1)
 #	endif
 #   endif
+#   ifdef DARWIN
+#     define OS_TYPE "DARWIN"
+#     define DARWIN_DONT_PARSE_STACK
+#     define DYNAMIC_LOADING
+      /* XXX: see get_end(3), get_etext() and get_end() should not be used.
+         These aren't used when dyld support is enabled (it is by default) */
+#     define DATASTART ((ptr_t) get_etext())
+#     define DATAEND    ((ptr_t) get_end())
+#     define STACKBOTTOM ((ptr_t) 0x7fff5fc00000)
+#     ifndef USE_MMAP
+#       define USE_MMAP
+#     endif
+#     define USE_MMAP_ANON
+#     ifdef GC_DARWIN_THREADS
+#       define MPROTECT_VDB
+#     endif
+#     include <unistd.h>
+#     define GETPAGESIZE() getpagesize()
+      /* There seems to be some issues with trylock hanging on darwin. This
+         should be looked into some more */
+#   endif
 #   ifdef FREEBSD
 #	define OS_TYPE "FREEBSD"
 #	ifndef GC_FREEBSD_THREADS
@@ -2233,7 +2257,7 @@
 
 # if defined(PCR) || defined(SRC_M3) || \
 		defined(GC_SOLARIS_THREADS) || defined(GC_WIN32_THREADS) || \
-		defined(GC_PTHREADS)
+		defined(GC_PTHREADS) || defined(SN_TARGET_PS3)
 #   define THREADS
 # endif
 

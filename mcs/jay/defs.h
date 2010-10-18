@@ -43,6 +43,11 @@
 #include <string.h>
 #include <errno.h>
 
+/* Quiet warnings which might bother rpm */
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif
 
 /*  machine-dependent definitions			*/
 /*  the following definitions are for the Tahoe		*/
@@ -244,6 +249,7 @@ extern int nsyms;
 extern int ntokens;
 extern int nvars;
 extern int ntags;
+extern int nmethods;
 
 extern char *line_format;
 extern char *default_line_format;
@@ -253,6 +259,7 @@ extern char  **symbol_name;
 extern short *symbol_value;
 extern short *symbol_prec;
 extern char  *symbol_assoc;
+extern char  **methods;
 
 extern short *ritem;
 extern short *rlhs;

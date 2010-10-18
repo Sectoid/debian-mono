@@ -85,7 +85,10 @@ namespace System.Web.UI.WebControls
 		Style staticSelectedLinkStyle;
 		Style dynamicHoverLinkStyle;
 		Style staticHoverLinkStyle;
-
+#if NET_4_0
+		bool includeStyleBlock = true;
+		MenuRenderingMode renderingMode = MenuRenderingMode.Default;
+#endif
 		static readonly object MenuItemClickEvent = new object();
 		static readonly object MenuItemDataBoundEvent = new object();
 		
@@ -116,7 +119,25 @@ namespace System.Web.UI.WebControls
 				if (eh != null) eh (this, e);
 			}
 		}
+#if NET_4_0
+		[DefaultValue (true)]
+		[Description ("Determines whether or not to render the inline style block (only used in standards compliance mode)")]
+		public bool IncludeStyleBlock {
+			get { return includeStyleBlock; }
+			set { includeStyleBlock = value; }
+		}
 
+		[DefaultValue (MenuRenderingMode.Default)]
+		public MenuRenderingMode RenderingMode {
+			get { return renderingMode; }
+			set {
+				if (value < MenuRenderingMode.Default || value > MenuRenderingMode.List)
+					throw new ArgumentOutOfRangeException ("value");
+
+				renderingMode = value;
+			}
+		}
+#endif
 		[DefaultValueAttribute (null)]
 		[PersistenceMode (PersistenceMode.InnerProperty)]
 		[EditorAttribute ("System.Web.UI.Design.WebControls.MenuBindingsEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
@@ -160,7 +181,7 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-	    [DefaultValueAttribute ("")]
+		[DefaultValueAttribute ("")]
 		public string DynamicItemFormatString {
 			get {
 				object o = ViewState ["DynamicItemFormatString"];
@@ -243,7 +264,7 @@ namespace System.Web.UI.WebControls
 			}
 		}
 
-	    [DefaultValueAttribute ("")]
+		[DefaultValueAttribute ("")]
 		public string StaticItemFormatString {
 			get {
 				object o = ViewState ["StaticItemFormatString"];
@@ -260,8 +281,14 @@ namespace System.Web.UI.WebControls
 		public Unit StaticSubMenuIndent {
 			get {
 				object o = ViewState ["StaticSubMenuIndent"];
-				if (o != null) return (Unit)o;
+				if (o != null)
+					return (Unit)o;
+				// LAMESPEC: on 4.0 it returns Unit.Empty and on 3.5 16px
+#if NET_4_0
+				return Unit.Empty;
+#else
 				return new Unit (16);
+#endif
 			}
 			set {
 				ViewState["StaticSubMenuIndent"] = value;
@@ -535,7 +562,7 @@ namespace System.Web.UI.WebControls
 
 		[DefaultValue (null)]
 		[PersistenceMode (PersistenceMode.InnerProperty)]
-	    [Editor ("System.Web.UI.Design.WebControls.MenuItemStyleCollectionEditor," + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		[Editor ("System.Web.UI.Design.WebControls.MenuItemStyleCollectionEditor," + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 		public MenuItemStyleCollection LevelMenuItemStyles {
 			get {
 				if (levelMenuItemStyles == null) {
@@ -549,7 +576,7 @@ namespace System.Web.UI.WebControls
 
 		[DefaultValue (null)]
 		[PersistenceMode (PersistenceMode.InnerProperty)]
-	    [Editor ("System.Web.UI.Design.WebControls.MenuItemStyleCollectionEditor," + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		[Editor ("System.Web.UI.Design.WebControls.MenuItemStyleCollectionEditor," + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 		public MenuItemStyleCollection LevelSelectedStyles {
 			get {
 				if (levelSelectedStyles == null) {
@@ -563,7 +590,7 @@ namespace System.Web.UI.WebControls
 
 		[DefaultValue (null)]
 		[PersistenceMode (PersistenceMode.InnerProperty)]
-	    [Editor ("System.Web.UI.Design.WebControls.SubMenuStyleCollectionEditor," + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
+		[Editor ("System.Web.UI.Design.WebControls.SubMenuStyleCollectionEditor," + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 		public SubMenuStyleCollection LevelSubMenuStyles {
 			get {
 				if (levelSubMenuStyles == null) {
@@ -699,7 +726,7 @@ namespace System.Web.UI.WebControls
 				ViewState ["spoitf"] = value;
 			}
 		}
-		
+
 
 		[DefaultValue ("")]
 		[UrlProperty]
@@ -730,7 +757,7 @@ namespace System.Web.UI.WebControls
 		[DefaultValue (null)]
 		[TemplateContainer (typeof(MenuItemTemplateContainer), BindingDirection.OneWay)]
 		[PersistenceMode (PersistenceMode.InnerProperty)]
-	    [Browsable (false)]
+		[Browsable (false)]
 		public ITemplate StaticItemTemplate {
 			get { return staticItemTemplate; }
 			set { staticItemTemplate = value; }
@@ -739,7 +766,7 @@ namespace System.Web.UI.WebControls
 		[DefaultValue (null)]
 		[TemplateContainer (typeof(MenuItemTemplateContainer), BindingDirection.OneWay)]
 		[PersistenceMode (PersistenceMode.InnerProperty)]
-	    [Browsable (false)]
+		[Browsable (false)]
 		public ITemplate DynamicItemTemplate {
 			get { return dynamicItemTemplate; }
 			set { dynamicItemTemplate = value; }
@@ -903,7 +930,7 @@ namespace System.Web.UI.WebControls
 		protected internal virtual void RaisePostBackEvent (string eventArgument)
 		{
 			ValidateEvent (UniqueID, eventArgument);
-			if (!Enabled)
+			if (!IsEnabled)
 				return;
 
 			EnsureChildControls();
@@ -1316,19 +1343,30 @@ namespace System.Web.UI.WebControls
 		
 		public override void RenderBeginTag (HtmlTextWriter writer)
 		{
-			if (SkipLinkText != "") {
-				System.Web.UI.HtmlControls.HtmlAnchor anchor = new System.Web.UI.HtmlControls.HtmlAnchor ();
-				anchor.HRef = "#" + ClientID + "_SkipLink";
-
-				Image img = new Image ();
-				ClientScriptManager csm = new ClientScriptManager (null);
-				img.ImageUrl = csm.GetWebResourceUrl (typeof (SiteMapPath), "transparent.gif");
-				img.Attributes.Add ("height", "0");
-				img.Attributes.Add ("width", "0");
-				img.AlternateText = SkipLinkText;
-
-				anchor.Controls.Add (img);
-				anchor.Render (writer);
+			string skipLinkText = SkipLinkText;
+			if (!String.IsNullOrEmpty (skipLinkText)) {
+				// <a href="#ID_SkipLink">
+				writer.AddAttribute (HtmlTextWriterAttribute.Href, "#" + ClientID + "_SkipLink");
+				writer.RenderBeginTag (HtmlTextWriterTag.A);
+				
+				// <img alt="" height="0" width="0" src="" style="border-width:0px;"/>
+				writer.AddAttribute (HtmlTextWriterAttribute.Alt, skipLinkText);
+				writer.AddAttribute (HtmlTextWriterAttribute.Height, "0");
+				writer.AddAttribute (HtmlTextWriterAttribute.Width, "0");
+				
+				Page page = Page;
+				ClientScriptManager csm;
+				
+				if (page != null)
+					csm = page.ClientScript;
+				else
+					csm = new ClientScriptManager (null);
+				writer.AddAttribute (HtmlTextWriterAttribute.Src, csm.GetWebResourceUrl (typeof (SiteMapPath), "transparent.gif"));
+				writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0px");
+				writer.RenderBeginTag (HtmlTextWriterTag.Img);
+				writer.RenderEndTag ();
+				
+				writer.RenderEndTag (); // </a>
 			}
 			base.RenderBeginTag (writer);
 		}
@@ -1340,10 +1378,11 @@ namespace System.Web.UI.WebControls
 			if (StaticDisplayLevels == 1 && MaximumDynamicDisplayLevels > 0)
 				RenderDynamicMenu (writer, Items);
 
-			if (SkipLinkText != "") {
-				System.Web.UI.HtmlControls.HtmlAnchor anchor = new System.Web.UI.HtmlControls.HtmlAnchor ();
-				anchor.ID = ClientID + "_SkipLink";
-				anchor.Render (writer);
+			string skipLinkText = SkipLinkText;
+			if (!String.IsNullOrEmpty (skipLinkText)) {
+				writer.AddAttribute (HtmlTextWriterAttribute.Id, "SkipLink");
+				writer.RenderBeginTag (HtmlTextWriterTag.A);
+				writer.RenderEndTag ();
 			}
 		}
 		
@@ -1813,8 +1852,18 @@ namespace System.Web.UI.WebControls
 			writer.AddAttribute ("id", GetItemClientId (item, "l"));
 			
 			if (item.Depth > 0 && !isDynamicItem) {
-				Unit indent = new Unit (StaticSubMenuIndent.Value * item.Depth, StaticSubMenuIndent.Type);
-				writer.AddStyleAttribute ("margin-left", indent.ToString ());
+				double value;
+#if NET_4_0
+				Unit unit = StaticSubMenuIndent;
+				if (unit == Unit.Empty)
+					value = 16;
+				else
+					value = unit.Value;
+#else
+				value = StaticSubMenuIndent.Value;
+#endif
+				Unit indent = new Unit (value * item.Depth, StaticSubMenuIndent.Type);
+				writer.AddStyleAttribute (HtmlTextWriterStyle.MarginLeft, indent.ToString ());
 			}
 			writer.RenderBeginTag (HtmlTextWriterTag.A);
 			RenderItemContent (writer, item, isDynamicItem);

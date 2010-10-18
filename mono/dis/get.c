@@ -1276,7 +1276,11 @@ get_type (MonoImage *m, const char *ptr, char **result, gboolean is_def, MonoGen
 	case MONO_TYPE_CLASS: {
 		guint32 token = mono_metadata_parse_typedef_or_ref (m, ptr, &ptr);
 		MonoClass *klass = mono_class_get (m, token);
-		char *temp = dis_stringify_object_with_class (m, klass, TRUE, FALSE);
+		char *temp;
+		if (klass)
+			temp = dis_stringify_object_with_class (m, klass, TRUE, FALSE);
+ 		else
+			temp = g_strdup_printf ("<BROKEN CLASS token_%8x>", token);
 
 		if (show_tokens) {
 			*result = g_strdup_printf ("%s/*%08x*/", temp, token);
@@ -1618,7 +1622,15 @@ static dis_map_t field_flags_map [] = {
 	{ FIELD_ATTRIBUTE_SPECIAL_NAME,        "specialname " },
 	{ FIELD_ATTRIBUTE_PINVOKE_IMPL,        "FIXME:pinvokeimpl " },
 	{ FIELD_ATTRIBUTE_RT_SPECIAL_NAME,        "rtspecialname " },
-	/*{ FIELD_ATTRIBUTE_HAS_FIELD_MARSHAL,        "hasfieldmarshal " },*/
+
+	/* This is set when a MarshalAs attribute is seen. FIXME: round-trip?  */
+	{ FIELD_ATTRIBUTE_HAS_FIELD_MARSHAL,        "" },
+
+	/* This seems to be set if LITERAL is set. FIXME: round-trip? */
+	{ FIELD_ATTRIBUTE_HAS_DEFAULT, 		"" },
+
+	/* This seems to be set on compiler-generated array initializer fields. FIXME: round-trip? */
+	{ FIELD_ATTRIBUTE_HAS_FIELD_RVA, 		"" },
 	{ 0, NULL }
 };
 
@@ -1632,11 +1644,12 @@ field_flags (guint32 f)
 {
 	char buffer [1024];
 	int access = f & FIELD_ATTRIBUTE_FIELD_ACCESS_MASK;
+	int rest = f & ~access;
 	
 	buffer [0] = 0;
 
 	strcat (buffer, map (access, field_access_map));
-	strcat (buffer, flags (f, field_flags_map));
+	strcat (buffer, flags (rest, field_flags_map));
 	return g_strdup (buffer);
 }
 
@@ -2890,6 +2903,7 @@ init_key_table (void)
 	g_hash_table_insert (key_table, (char *) "ldvirtftn", GINT_TO_POINTER (TRUE));
 	g_hash_table_insert (key_table, (char *) "leave", GINT_TO_POINTER (TRUE));
 	g_hash_table_insert (key_table, (char *) "leave.s", GINT_TO_POINTER (TRUE));
+	g_hash_table_insert (key_table, (char *) "legacy", GINT_TO_POINTER (TRUE));
 	g_hash_table_insert (key_table, (char *) "linkcheck", GINT_TO_POINTER (TRUE));
 	g_hash_table_insert (key_table, (char *) "literal", GINT_TO_POINTER (TRUE));
 	g_hash_table_insert (key_table, (char *) "localloc", GINT_TO_POINTER (TRUE));
@@ -3156,4 +3170,46 @@ cant_print_generic_param_name (MonoGenericParam *gparam)
 			g_hash_table_lookup (mono_generic_params_with_ambiguous_names, gparam)));
 }
 
+
+static dis_map_t method_impl_map [] = {
+	{ METHOD_IMPL_ATTRIBUTE_IL,              "cil " },
+	{ METHOD_IMPL_ATTRIBUTE_NATIVE,          "native " },
+	{ METHOD_IMPL_ATTRIBUTE_OPTIL,           "optil " },
+	{ METHOD_IMPL_ATTRIBUTE_RUNTIME,         "runtime " },
+	{ 0, NULL }
+};
+
+static dis_map_t managed_type_map [] = {
+	{ METHOD_IMPL_ATTRIBUTE_UNMANAGED,       "unmanaged " },
+	{ METHOD_IMPL_ATTRIBUTE_MANAGED,         "managed " },
+	{ 0, NULL }
+};
+
+static dis_map_t managed_impl_flags [] = {
+	{ METHOD_IMPL_ATTRIBUTE_FORWARD_REF,     "fwdref " },
+	{ METHOD_IMPL_ATTRIBUTE_PRESERVE_SIG,    "preservesig " },
+	{ METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL,   "internalcall " },
+	{ METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED,    "synchronized " },
+	{ METHOD_IMPL_ATTRIBUTE_NOINLINING,      "noinlining " },
+	{ METHOD_IMPL_ATTRIBUTE_NOOPTIMIZATION,  "nooptimization " },
+	{ 0, NULL }
+};
+
+char *
+get_method_impl_flags (guint32 f)
+{
+	GString *str = g_string_new ("");
+	char *s;
+	int code_type = f & METHOD_IMPL_ATTRIBUTE_CODE_TYPE_MASK;
+	int managed_type = f & METHOD_IMPL_ATTRIBUTE_MANAGED_MASK;
+	int rest = f & ~(code_type | managed_type);
+
+	g_string_append (str, map (code_type, method_impl_map));
+	g_string_append (str, map (managed_type, managed_type_map));
+	g_string_append (str, flags (rest, managed_impl_flags));
+	
+	s = str->str;
+	g_string_free (str, FALSE);
+	return s;
+}
 

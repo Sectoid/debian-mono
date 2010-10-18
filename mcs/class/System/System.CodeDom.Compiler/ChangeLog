@@ -1,3 +1,24 @@
+2010-04-13  Jonathan Pryor  <jpryor@novell.com>
+
+	* CodeGenerator.cs: Clear out the current member when beginning Type
+	  generation.  This prevents "invalid" `#endregion`s; if the
+	  CodeGenerator instance is reused for multiple types, the last member
+	  of the first type has an EndDirective, then the EndDirectvies will
+	  be generated before any members of the 2nd type.  Don't do that.
+
+2010-04-07  Jb Evain  <jbevain@novell.com>
+
+	* Executor.cs: make class static.
+
+2010-04-01  Jb Evain  <jbevain@novell.com>
+
+	* CodeDomProvider.cs, CompilerInfo.cs: add .net 4.0 overloads.
+
+2010-03-06  Marek Habersack  <mhabersack@novell.com>
+
+	* CompilerCollection.cs: in the 4.0 profile, the latest C#
+	standard is the compiler's default.
+
 2008-10-09  Marek Habersack  <mhabersack@novell.com>
 
 	* CompilerCollection.cs: use all the compiler information from

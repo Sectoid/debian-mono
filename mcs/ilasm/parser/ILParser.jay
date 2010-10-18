@@ -305,7 +305,7 @@ namespace Mono.ILASM {
 %token K_OUT
 %token K_OPT
 // %token K_LCID
-%token K_RETVAL
+//%token K_RETVAL
 %token K_STATIC
 %token K_PUBLIC
 %token K_PRIVATE
@@ -2158,9 +2158,7 @@ method_decl		: D_EMITBYTE int32
 
                                 if (param == null) {
                                         Report.Warning (tokenizer.Location, String.Format ("invalid param index ({0}) with .param", index));
-                                        break;
-                                }
-                                if ($5 != null)
+                                } else if ($5 != null)
                                         param.AddDefaultValue ((Constant) $5);
                           }
 			| param_type_decl
@@ -3274,7 +3272,7 @@ float64			: FLOAT64
                           {
                                 int i = (int) $3;
                                 byte[] intb = BitConverter.GetBytes (i);
-                                $$ = (double) BitConverter.ToSingle (intb, BitConverter.IsLittleEndian ? 0 : 4);
+                                $$ = (double) BitConverter.ToSingle (intb, 0);
                           }
                         | K_FLOAT32 OPEN_PARENS INT64 CLOSE_PARENS
                           {
@@ -3285,12 +3283,12 @@ float64			: FLOAT64
 			| K_FLOAT64 OPEN_PARENS INT64 CLOSE_PARENS
                           {
                                 byte[] intb = BitConverter.GetBytes ((long) $3);
-				$$ = BitConverter.ToDouble (intb, BitConverter.IsLittleEndian ? 0 : 4);
+				$$ = BitConverter.ToDouble (intb, 0);
                           }
                         | K_FLOAT64 OPEN_PARENS INT32 CLOSE_PARENS
                           {
                                 byte[] intb = BitConverter.GetBytes ((int) $3);
-                                $$ = (double) BitConverter.ToSingle (intb, BitConverter.IsLittleEndian ? 0 : 4);
+                                $$ = (double) BitConverter.ToSingle (intb, 0);
                           }
 			;
 

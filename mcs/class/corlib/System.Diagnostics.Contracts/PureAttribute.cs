@@ -26,14 +26,13 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_2_1 || NET_4_0 || BOOTSTRAP_NET_4_0
 
 using System;
 
 namespace System.Diagnostics.Contracts
 {
 	[ConditionalAttribute("CONTRACTS_FULL")]
-	[ConditionalAttribute("CONTRACTS_PRECONDITIONS")]
 	[AttributeUsageAttribute (AttributeTargets.Class | AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Event | AttributeTargets.Parameter | AttributeTargets.Delegate)]
 	public sealed class PureAttribute : Attribute
 	{

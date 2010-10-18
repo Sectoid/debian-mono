@@ -1,3 +1,301 @@
+2010-08-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Add workaround for bug #633945. On Windows async operation does
+	not work.
+
+2010-08-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Add IsSystemEndpoint property and treat system endpoints as
+	non-service.
+
+2010-08-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing constructors (new in 4.0 ones as well as old 3.0
+	ones).
+
+2010-08-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Use expected MessageVersion for OutgoingMessageHeaders (and raise
+	errors whenever expected).
+
+2010-08-19  Atsushi Eno  <atsushi@ximian.com>
+
+	TargetInvocationException is often unexpected. Throw
+	InnerException if applicable.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not overwrite Via URI on ClientRuntime after applying
+	behaviors.
+
+2010-08-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Request-reply channel factory should not reject one-way operation.
+	It should just ignore the void reply.
+
+2010-08-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not expect non-null ChannelDispatcherBase.Listener property.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	ContractDescription aren't compared decently. Compare their types
+	instead.
+
+2010-08-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add contract existence check when calling
+	AddServiceEndpoint(ServiceEndpoint).
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to create InnerChannel while retrieving State. It tries
+	to change the state itself and moreover causes invalid operations.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	ChannelFactory<T> and ClientBase<T> do not reject ServiceEndpoint
+	with null Binding or Address.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new constructors in 4.0.
+
+2010-08-12  Atsushi Eno  <atsushi@ximian.com>
+
+	add new AddServiceEndpoint() overload in 4.0.
+
+2010-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHost.cs, ServiceHostBase.cs : handle ListenUri to give
+	  correct Uri. Reject wrong service endpoint configuration.
+	* ClientCredentialSecurityTokenManager.cs : give a bit kind error.
+
+2010-07-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FederatedMessageSecurityOverHttp.cs, OptionalReliableSession.cs,
+	  ReliableSession.cs, WSFederationHttpBinding.cs:
+	  filled couple of missing members.
+
+2010-07-08  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs, NetNamedPipeBinding.cs,
+	  ClientProxyGenerator.cs NetPeerTcpBinding.cs, DuplexClientBase.cs:
+	  couple of warning cleanups.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : give non-null Via uri.
+
+2010-06-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceBehaviorAttribute.cs : do not overwrite existing properties
+	  which may have been set by preceding behaviors. Fix WSDL output.
+	* EnvelopeVersion.cs : fix name and namespace for None property.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : remove TODOs and unused code.
+	  Remove comment that is not true.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* EndpointAddress.cs : implement remaining ReadFrom() overloads.
+	* ServiceHostBase.cs : remove extra TODOs.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : remove extra throttling field.
+
+2010-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : Do not build more than one ChannelDispatcher
+	  for a Binding. Then check duplicate listen URIs, excluding mex ones.
+
+2010-06-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : retrieve MessageVersion and raise an error
+	  if there is none. (Check this earlier than building a listener.)
+
+2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* NetTcpBinding.cs : remove pointless EnvelopeVersion field.
+	* ClientRuntimeChannel.cs : disable MessageId output. It does not
+	  happen on TCP transport. Added FIXME comment to verify this.
+
+	  This fix makes non-first-time calls from mono client working.
+
+2010-06-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientRuntimeChannel.cs : do not create and use extraneous
+	  ContractDescription for callback contract. Non-callback ones now
+	  works fine.
+
+2010-06-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : CreateProxyType now carefully considers
+	  requested proxy type, contract type and callback contract type.
+	  i.e. now the resulting proxy has implemented methods for callbacks
+	  that are also filled at ContractDescription.
+	* ClientRuntimeChannel.cs : reflect some method call changes.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : replace GetFormatter() with Formatter.
+
+2010-05-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs : remove unused members for refactoring.
+	* OperationContext.cs : add comment on GetCallbackChannel<T>().
+
+2010-05-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : revert the previous change. It was
+	  actually sent.
+
+2010-05-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : do not add implicit ReplyTo on output
+	  channels.
+
+2010-05-21  Geoff Norton  <gnorton@novell.com>
+
+	* BasicHttpBinding.cs: Transport mode supports authentication as well.
+
+2010-05-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : ServiceMetadataBehavior and ServiceDebugBehavior
+	  are special. They must be applied in prior to other behaviors so that
+	  newly populated ChannelDispatchers are applied behaviors accordingly.
+
+2010-05-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : remove Sleep() hack and wait channels to get
+	  opened to proceed.
+
+2010-05-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DuplexClientBase.cs : implement InnerDuplexChannel and
+	  CreateChannel(), by Pieter van der Berg.
+
+2010-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : revert the previous change, caused regressions.
+
+2010-05-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : do not arbitrarily add ServiceDebugBehavior
+	  on all configuration-based services. .NET doesn't do that.
+
+2010-04-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs:
+	  actually it should be ChannelDispatcher-to-HttpChannelListener,
+	  to identify which dispatcher to send reqs.
+
+2010-04-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : add host-to-http-listener mapping so that
+	  they can be managed per host.
+
+2010-04-05  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ChannelTerminatedException.cs : new class.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : hush on non-ml profile.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs :
+	  use DataContractSerializer.IsStartObject() to check if the fault
+	  detail reader is for the fault contract, in addition to Action.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : fix moonlight build.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : use FaultContractInfos to create custom
+	  FaultException<T>. (It's not picking the expected FCI yet.)
+
+2010-03-30  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : use correct buffer size.
+
+2010-03-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs : use FaultConverter as documented at:
+	  http://msdn.microsoft.com/en-us/library/ms789039%28VS.100%29.aspx
+	  (Though I found _no_ use of this FC class in the world...)
+
+2010-03-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : if there is an existing ChannelDispatcher
+	  for the same endpoint URI, reuse it. Patch by Matt Dargavel.
+
+2010-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Constants.cs : add more.
+
+2010-03-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* Dummy.cs : removed some dummy types (not dummy anymore).
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : use namespace for mex binding comparison, to
+	  cover other bindings than http (such as https).
+	* WSHttpBindingBase.cs : add some comment.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* ClientBase.cs, ClientRuntimeChannel.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceHostBase.cs : do not reject endpoints with an identical
+	  contract to existing ones but with different binding, address or
+	  listen URI.
+
+2010-03-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* HttpTransportSecurity.cs : remove MonoTODOs.
+
+2010-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs, ServiceProxyGenerator.cs:
+	  make them public and add Contract property for service callback
+	  proxies too for the same reason.
+
+2010-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientProxyGenerator.cs : type cache should be like this
+	  (by kumpera).
+
+2010-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientRuntimeChannel.cs, ClientProxyGenerator.cs:
+	  Add disabled code, enabled by -d:USE_OD_REFERENCE_IN_PROXY:
+
+	  In generated proxy, avoid using GetCurrentMethod() and pass
+	  interface methods to the base ClientRuntimeChannel.
+
+	  (Disabled by default for breakage at
+	   CallbackBehaviorAttributeTest.CallbackExample1.)
+
+2010-02-26  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceRuntimeChannel.cs, DuplexChannelFactory.cs,
+	  DuplexClientRuntimeChannel.cs, ClientRuntimeChannel.cs,
+	  ClientProxyGenerator.cs, ClientBase.cs : add workaround fix for
+	  bug #571907, making [Duplex]ClientRuntimeChannel public.
+
+	  Generated proxy type must be stored to not get GCed.
+
 2010-02-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ClientRuntimeChannel.cs : and "To" header is also automatically

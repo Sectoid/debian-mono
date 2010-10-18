@@ -1,8 +1,244 @@
-2010-02-28  Jonathan Pryor <jpryor@novell.com>
+2010-09-01  Jonathan Pryor  <jonpryor@vt.edu>
 
+	[mdoc-update] Only check for duplicate elements, not duplicate
+	nodes.
+
+	The duplicate-element checking algorithm wasn't restricted to just
+	elements; consequently, an 'invalid token' exception was generated
+	from XPath because we were trying to call
+	XmlNode.SelectNodes("#text"), and '#' isn't valid. Oops.
+
+	Fixes building gendarme from mono-tools.
+
+2010-08-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update-ecma-xml] Sort libraries and types.
+
+	This should help with any comparison tools as we ensure that
+	libraries and types are in a consistent order.
+
+2010-08-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Remove unused code.
+
+2010-08-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update-ecma-xml] Do updates in-memory before writing.
+
+	Previously, in a (misguided) effort to reduce memory requirements,
+	I loaded the source document into an XDocument, then wrote it
+	piecemeal to an output XmlWriter.
+
+	- Pro: only one document needed to be kept in memory, and
+	additional memory was only needed to write replacement //Type
+	nodes.
+
+	- Con: since the output document isn't kept in memory, we can't do
+	any post-processing before writing.
+
+	Unfortunately, post-processing is what I want to do: I want to
+	order the //Type elements by //Type/@Name, which means I need the
+	entire document in memory _anyway_.
+
+	Sorting //Type elements is for the next patch; this just migrates
+	to the "do everything in-memory" logic.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update-ecma-xml] Generate additional //Type/AssemblyInfo
+	data.
+
+	Generate the //Type/AssemblyInfo/AssemblyPublicKey and
+	//Type/AssemblyInfo/AssemblyCulture elements based on the values
+	stored in the index.xml file (which is why we updated mdoc-update
+	to store this).
+
+	If index.xml doesn't contain the //AssemblyCulture element, input
+	a default <AssemblyCulture>neutral</AssemblyCulture> element.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc] Enhance monodoc-ecma.xsd to support XML used by .NET inline
+	docs.
+
+	With these changes, we can import the .NET 4.0 reference assembly
+	documentation and validate the output w/o getting any errors.
+
+	Yes, this means we now accept several elements that aren't part of
+	the ECMA standard, but at least the primary source of information
+	for ECMA will sanely validate...
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update] Support importing //returns & // value for "void"
+	methods.
+
+	Screwy docs be screwy, but crashing is worse than importing odd
+	docs.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update] Fix location of //Member/Attributes on properties,
+	events.
+
+	The //Member/Attributes element would "move" from after
+	//Member/AssemblyInfo to the last element within //Member when
+	updating properties and events. This would result in overly large
+	diff's when no other changes occurred, and results in 'mdoc
+	validate' stating that the file is invalid.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update] Normalize //returns and //value when importing XML
+	docs.
+
+	Some source XML documentation uses //returns when it should use
+	//value, so normalize these values on import so we don't get both
+	by mistake.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update] Try to avoid importing the same element multiple
+	times.
+
+	This way if we import the same documentation file multiple times
+	we won't get duplicate elements into the XML files.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update] Don't generate //AssemblyCulture if it's neutral.
+
+	This prevents a file format change for most use cases, and reduces
+	file size diffs when updating assemblies.
+
+2010-08-30  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-update] Generate //AssemblyPublicKey && //AssemblyCulture in
+	index.xml.
+
+	This is so that `mdoc update-ecma-xml` can use this information
+	when generating the /Library/Types/Type elements, as
+	//AssemblyPublicKey and //AssemblyCulture are currently missing
+	from `mdoc update-ecma-xml` output.
+
+2010-08-28  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[update-ecma-xml] Generate //Type/MemberOfLibrary and
+	//Type/TypeExcluded.
+
+	These elements are needed for some ECMA processes.
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[update-ecma-xml] Generate the //Type/@FullNameSP attribute if not
+	present.
+
+	This is required by the ECMA DTD.
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-validate] Support & validate the ECMA XML dialect.
+
+	This required adding some elements from the ECMA DTD.
+
+	We also add trivial XSLT support for things like <leq/> to ≤,
+	etc.
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[update-ecma-xml] Don't generate <Type/>s for types we've already
+	generated.
+
+	Fixes a duplicate System.Action within
+	CLILibraryTypes.Updated.xml.
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc] Add response file support to all mdoc commands.
+
+	...because it's so much easier dealing with 77 arguments for
+	mdoc-update-ecma-xml when I can use a text editor instead of
+	bash...
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[update-ecma-xml] Implement support for updating an existing file.
+
+	First, we refactor out the "overwrite only if content has changed"
+	logic in monodocer into MdocFile.UpdateFile() so that we can reuse
+	this same logic.
+
+	After that, it's primary all about
+	MDocUpdateEcmaXml.UpdateExistingLibraries(): scan through the
+	document looking for libraries we're interested in. If we
+	encounter one we don't care about, copy directly. If we do,
+	enumerate it's contents looking for types we care about, and
+	either copy the old version as-is if we don't care, or copy over
+	the mdoc(5) version if we do.
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[update-ecma-xml] Fix nested type documentation lookup.
+
+	Attempting to load docs for e.g. System.Environment.SpecialFolder
+	resulted in an infinite loop. Oops. Also support "global" types.
+
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Add 'mdoc update-ecma-xml' command.
+
+	This is for ECMA support: it's intended to take an existing
+	CLILibraryTypes.xml file (from the ECMA 335 standard) and update
+	the specified types within it. If no existing file is specified,
+	it'll generate a new one based on command-line arguments.
+
+	Update support is currently lacking, but it'll generate a new
+	document with:
+
+	mono mdoc.exe update-ecma-xml -o - \ --library BCL
+	--type=System.Environment Test/en.expected
+
+2010-08-25  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Flush updated expected output due to compiler /doc improvements.
+
+	'gmcs /doc' now properly generates explicitly implemented
+	interface member //member/@name values, so mdoc-update can now
+	find them for the import. Yay!
+
+2010-08-24  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Flush expected output for mdoc unit tests.
+
+	No mdoc changes, but since 'mdoc update --exceptions=all' scans
+	across assemblies, and since System.Delegate.Combine() now throws
+	additional exceptions (according to our IL scanning algorithm),
+	the expected output differs, leading to false negatives about
+	regressions.
+
+	Furthermore, 'gmcs /doc' has been fixed (it used to cause a
+	compilation error) and improved, so more XML documentation is now
+	imported because gmcs is generating the correct XML documentation
+	crefs. (Go gmcs, go!)
+
+2010-06-10  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Regenerate all index.{opts.ext}
+	  files if any of the source .xml files have changed.  This allows
+	  new <summary/> values to be inserted into the index.{opts.ext}
+	  files, instead of the index files being "stale".  Fixes #573121.
+
+2010-04-16  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: Add System.Xml.Linq.dll to the referenced assemblies.
 	* Mono.Documentation/webdoc.cs: Allow .source files to be provided to
 	  'mdoc export-html-webdoc', which will cause the .source files to be
 	  read and all referenced .tree/.zip files to be processed.
+
+2010-04-16  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: Use Int64 instead of UInt64 for
+	  enum values, so that we can properly capture negative values.
 
 2010-02-28  Jonathan Pryor <jpryor@novell.com>
 
@@ -31,6 +267,87 @@
 	* Mono.Documentation/monodocs2slashdoc.cs: Fix NamespaceSummaries.xml
 	  generation to look at the ns-NAMESPACE.xml files, not just
 	  NAMESPACE.xml files.
+
+2009-12-03  Jonathan Pryor <jpryor@novell.com>
+
+	* Resources/stylesheet.xsl: Add support for generating namespace links
+	  for <see cref="N:..." />.
+	* Test/DocTest-v1.cs: Add namespace links for testing.
+	* Test/en.expected.importslashdoc/Mono.DocTest/Color.xml,
+	  Test/en.expected.importslashdoc/NoNamespace.xml,
+	  Test/html.expected/index.html,
+	  Test/html.expected/Mono.DocTest/Color.html,
+	  Test/html.expected/NoNamespace.html,
+	  Test/msxdoc-expected.importslashdoc.xml: Flush.
+
+2009-12-03  Jonathan Pryor <jpryor@novell.com>
+
+	* Test/html.expected/Mono.DocTest.Generic/MyList`1.html,
+	  Test/html.expected/Mono.DocTest.Generic/MyList`2.html: Flush to sync
+	  with updated mdoc.  Inherited members are now shown (as they were
+	  supposed to be, but a bug had prevented from being found).
+
+2009-12-02  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Enable debug output in
+	  XslCompiledTransform when --debug is specified.
+	* Resources/overview.xsl: Add xmlns, exclude-result-prefixes so that
+	  .NET won't complain about the stylesheet.  (Why's it complain?)
+	* Resources/stylesheet.xsl: .NET compatibility fixes:
+	  - Use msxsl:node-set() when necessary.
+	  - Change XPath expressions so that they work properly everywhere.
+	* Makefile: Don't build an 'mdoc-net.exe' anymore, as the normal
+	  mdoc.exe can now run normally under .NET.
+
+2009-11-25  Jonathan Pryor <jpryor@novell.com>
+
+	* Makefile: When copying mdoc-net.exe into ./mdoc-net, rename it to
+	  mdoc.exe so that .NET users continue to use the name 'mdoc'.  This
+	  will make documentation easier, etc.
+
+2009-11-25  Jonathan Pryor <jpryor@novell.com>
+
+	+ Giving up on getting mdoc to fully work under .NET; specifically,
+	  mdoc-export-html makes use of many Mono XSLT "extensions" (part of
+	  XSLT 2.0, apparently) which .NET doesn't support.  To run mdoc under
+	  .NET, use mdoc-net.exe, which is a "static" mdoc.exe, including the 
+	  sources for BOTH monodoc.dll AND Mono's System.Xml.dll in the binary.
+	  Yes, this makes it huge.
+
+	* . (svn:ignore): Ignore generated files.
+	* Makefile: If the NET variable is present (e.g. 'make NET=1'),
+	  generate mdoc-net.exe instead of mdoc.exe, otherwise generate
+	  mdoc.exe (the default, with normal dependencies).  When NET is
+	  present, also create a 'mdoc-net' directory which contains
+	  mdoc-net.exe and all assembly dependencies (to make it easier to
+	  grab all the deps at once).
+	* mdoc-net.exe.sources: Added; sources to use for mdoc-net.exe.
+	* Mono.Documentation/monodocs2html.cs: Ensure that the "Index" XSLT
+	  variable is set before generating output.
+
+2009-11-24  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocs2html.cs: Use XslCompiledTransform, as
+	  it's *significantly* faster under .NET than XslTransform -- 
+	  1.7s vs ~3 minutes 7s (for a trivial test case).
+
+2009-11-23  Jonathan Pryor <jpryor@novell.com>
+
+	* Resources/overview.xsl, Resources/stylesheet.xsl: Remove the 'ext'
+	  and 'language' global <xsl:param>'s, as they cause "variable 'foo' 
+	  was duplicated within the same scope" errors under .NET.
+
+2009-11-23  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: ".NET support": ensure that we
+	  always get Unix line endings so that we can update documentation
+	  under both Mono & .NET w/o continually changing the file due to
+	  line-ending differences.
+
+2009-11-06  Jonathan Pryor <jpryor@novell.com>
+
+	* Mono.Documentation/monodocer.cs: When deleting the ExtensionMethods
+	  element, remove it from the correct parent XML node.  Fixes #553144.
 
 2009-09-19  Jonathan Pryor <jpryor@novell.com>
 

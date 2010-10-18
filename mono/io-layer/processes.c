@@ -35,10 +35,12 @@
 #include <sys/resource.h>
 #endif
 
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
 #include <sys/proc.h>
 #include <sys/sysctl.h>
-#include <sys/utsname.h>
+#  if !defined(__OpenBSD__)
+#    include <sys/utsname.h>
+#  endif
 #endif
 
 #ifdef PLATFORM_SOLARIS
@@ -50,6 +52,10 @@
 #else
 #include <procfs.h>
 #endif
+#endif
+
+#ifdef __HAIKU__
+#include <KernelKit.h>
 #endif
 
 #include <mono/io-layer/wapi.h>
@@ -64,7 +70,7 @@
 #include <mono/io-layer/timefuncs-private.h>
 
 /* The process' environment strings */
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined (__arm__)
 /* Apple defines this in crt_externs.h but doesn't provide that header for 
  * arm-apple-darwin9.  We'll manually define the symbol on Apple as it does
  * in fact exist on all implementations (so far) 
@@ -78,7 +84,11 @@ extern char **environ;
 #undef DEBUG
 
 static guint32 process_wait (gpointer handle, guint32 timeout);
-FILE *open_process_map (int pid, const char *mode);
+
+#if !defined(__OpenBSD__)
+static FILE *
+open_process_map (int pid, const char *mode);
+#endif
 
 struct _WapiHandleOps _wapi_process_ops = {
 	NULL,				/* close_shared */
@@ -1511,32 +1521,53 @@ static gboolean process_enum (gpointer handle, gpointer user_data)
 }
 #endif /* UNUSED_CODE */
 
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
 
 gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 {
 	guint32 count, fit, i, j;
 	gint32 err;
 	gboolean done;
+	size_t proclength, size;
+#if defined(__OpenBSD__)
+	struct kinfo_proc2 *result;
+	int name[6];
+	name[0] = CTL_KERN;
+	name[1] = KERN_PROC2;
+	name[2] = KERN_PROC_ALL;
+	name[3] = 0;
+	name[4] = sizeof(struct kinfo_proc2);
+	name[5] = 0;
+#else
 	struct kinfo_proc *result;
-	size_t proclength;
 	static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
-	
+#endif
+
 	mono_once (&process_current_once, process_set_current);
-	
+
 	result = NULL;
 	done = FALSE;
-	
+
 	do {
 		proclength = 0;
-		err = sysctl ((int *)name, (sizeof(name) / sizeof(*name)) - 1, NULL, &proclength, NULL, 0);
+#if defined(__OpenBSD__)
+		size = (sizeof(name) / sizeof(*name));
+#else
+		size = (sizeof(name) / sizeof(*name)) - 1;
+#endif
+		err = sysctl ((int *)name, size, NULL, &proclength, NULL, 0);
 
 		if (err == 0) {
 			result = malloc (proclength);
+
 			if (result == NULL)
 				return FALSE;
-			
-			err = sysctl ((int *) name, (sizeof(name) / sizeof(*name)) - 1, result, &proclength, NULL, 0);
+
+#if defined(__OpenBSD__)
+			name[5] = (int)(proclength / sizeof(struct kinfo_proc2));
+#endif
+
+			err = sysctl ((int *) name, size, result, &proclength, NULL, 0);
 
 			if (err == 0) 
 				done = TRUE;
@@ -1552,17 +1583,43 @@ gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 		}
 		return(FALSE);
 	}	
-	
+
+#if defined(__OpenBSD__)
+	count = proclength / sizeof(struct kinfo_proc2);
+#else
 	count = proclength / sizeof(struct kinfo_proc);
+#endif
 	fit = len / sizeof(guint32);
 	for (i = 0, j = 0; j< fit && i < count; i++) {
+#if defined(__OpenBSD__)
+		pids [j++] = result [i].p_pid;
+#else
 		pids [j++] = result [i].kp_proc.p_pid;
+#endif
 	}
 	free (result);
 	result = NULL;
 	*needed = j * sizeof(guint32);
 	
 	return(TRUE);
+}
+#elif defined(__HAIKU__)
+
+gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
+{
+	guint32 fit, i = 0;
+	int32 cookie = 0;
+	team_info teamInfo;
+
+	mono_once (&process_current_once, process_set_current);
+
+	fit = len / sizeof (guint32);
+	while (get_next_team_info (&cookie, &teamInfo) == B_OK && i < fit) {
+		pids [i++] = teamInfo.team;
+	}
+	*needed = i * sizeof (guint32);
+
+	return TRUE;
 }
 #else
 gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
@@ -1633,10 +1690,20 @@ static gboolean process_open_compare (gpointer handle, gpointer user_data)
 	}
 }
 
+gboolean CloseProcess(gpointer handle)
+{
+	if ((GPOINTER_TO_UINT (handle) & _WAPI_PROCESS_UNHANDLED) == _WAPI_PROCESS_UNHANDLED) {
+		/* This is a pseudo handle */
+		return(TRUE);
+	}
+
+	return CloseHandle (handle);
+}
+
 gpointer OpenProcess (guint32 req_access G_GNUC_UNUSED, gboolean inherit G_GNUC_UNUSED, guint32 pid)
 {
 	/* Find the process handle that corresponds to pid */
-	gpointer handle;
+	gpointer handle = NULL;
 	
 	mono_once (&process_current_once, process_set_current);
 
@@ -1648,8 +1715,15 @@ gpointer OpenProcess (guint32 req_access G_GNUC_UNUSED, gboolean inherit G_GNUC_
 				      process_open_compare,
 				      GUINT_TO_POINTER (pid), NULL, TRUE);
 	if (handle == 0) {
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
+		if ((kill(pid, 0) == 0) || (errno == EPERM)) {
+#elif defined(__HAIKU__)
+		team_info teamInfo;
+		if (get_team_info ((team_id)pid, &teamInfo) == B_OK) {
+#else
 		gchar *dir = g_strdup_printf ("/proc/%d", pid);
 		if (!access (dir, F_OK)) {
+#endif
 			/* Return a pseudo handle for processes we
 			 * don't have handles for
 			 */
@@ -1827,15 +1901,24 @@ static GSList *load_modules (void)
 	int i = 0;
 
 	for (i = 0; i < count; i++) {
+#if SIZEOF_VOID_P == 8
+		const struct mach_header_64 *hdr;
+		const struct section_64 *sec;
+#else
 		const struct mach_header *hdr;
 		const struct section *sec;
+#endif
 		const char *name;
 		intptr_t slide;
 
 		slide = _dyld_get_image_vmaddr_slide (i);
 		name = _dyld_get_image_name (i);
 		hdr = _dyld_get_image_header (i);
+#if SIZEOF_VOID_P == 8
+		sec = getsectbynamefromheader_64 (hdr, SEG_DATA, SECT_DATA);
+#else
 		sec = getsectbynamefromheader (hdr, SEG_DATA, SECT_DATA);
+#endif
 
 		/* Some dynlibs do not have data sections on osx (#533893) */
 		if (sec == 0) {
@@ -1861,6 +1944,98 @@ static GSList *load_modules (void)
 	ret = g_slist_reverse (ret);
 	
 	return(ret);
+}
+#elif defined(__OpenBSD__)
+#include <link.h>
+static int load_modules_callback (struct dl_phdr_info *info, size_t size, void *ptr)
+{
+	if (size < offsetof (struct dl_phdr_info, dlpi_phnum)
+	    + sizeof (info->dlpi_phnum))
+		return (-1);
+
+	struct dl_phdr_info *cpy = calloc(1, sizeof(struct dl_phdr_info));
+	if (!cpy)
+		return (-1);
+
+	memcpy(cpy, info, sizeof(*info));
+
+	g_ptr_array_add ((GPtrArray *)ptr, cpy);
+
+	return (0);
+}
+
+static GSList *load_modules (void)
+{
+	GSList *ret = NULL;
+	WapiProcModule *mod;
+	GPtrArray *dlarray = g_ptr_array_new();
+	int i;
+
+	if (dl_iterate_phdr(load_modules_callback, dlarray) < 0)
+		return (ret);
+
+	for (i = 0; i < dlarray->len; i++) {
+		struct dl_phdr_info *info = g_ptr_array_index (dlarray, i);
+
+		mod = g_new0 (WapiProcModule, 1);
+		mod->address_start = (gpointer)(info->dlpi_addr + info->dlpi_phdr[0].p_vaddr);
+		mod->address_end = (gpointer)(info->dlpi_addr +
+                                       info->dlpi_phdr[info->dlpi_phnum - 1].p_vaddr);
+		mod->perms = g_strdup ("r--p");
+		mod->address_offset = 0;
+		mod->inode = (ino_t) i;
+		mod->filename = g_strdup (info->dlpi_name); 
+
+#ifdef DEBUG
+		g_message ("%s: inode=%d, filename=%s, address_start=%p, address_end=%p", __func__,
+				   mod->inode, mod->filename, mod->address_start, mod->address_end);
+#endif
+
+		free(info);
+
+		if (g_slist_find_custom (ret, mod, find_procmodule) == NULL) {
+			ret = g_slist_prepend (ret, mod);
+		} else {
+			free_procmodule (mod);
+		}
+	}
+
+	g_ptr_array_free (dlarray, TRUE);
+
+	ret = g_slist_reverse (ret);
+
+	return(ret);
+}
+#elif defined(__HAIKU__)
+
+static GSList *load_modules (void)
+{
+	GSList *ret = NULL;
+	WapiProcModule *mod;
+	int32 cookie = 0;
+	image_info imageInfo;
+
+	while (get_next_image_info (B_CURRENT_TEAM, &cookie, &imageInfo) == B_OK) {
+		mod = g_new0 (WapiProcModule, 1);
+		mod->device = imageInfo.device;
+		mod->inode = imageInfo.node;
+		mod->filename = g_strdup (imageInfo.name);
+		mod->address_start = MIN (imageInfo.text, imageInfo.data);
+		mod->address_end = MAX ((uint8_t*)imageInfo.text + imageInfo.text_size,
+			(uint8_t*)imageInfo.data + imageInfo.data_size);
+		mod->perms = g_strdup ("r--p");
+		mod->address_offset = 0;
+
+		if (g_slist_find_custom (ret, mod, find_procmodule) == NULL) {
+			ret = g_slist_prepend (ret, mod);
+		} else {
+			free_procmodule (mod);
+		}
+	}
+
+	ret = g_slist_reverse (ret);
+
+	return ret;
 }
 #else
 static GSList *load_modules (FILE *fp)
@@ -2012,7 +2187,9 @@ static gboolean match_procname_to_modulename (gchar *procname, gchar *modulename
 	return result;
 }
 
-FILE *open_process_map (int pid, const char *mode)
+#if !defined(__OpenBSD__)
+static FILE *
+open_process_map (int pid, const char *mode)
 {
 	FILE *fp = NULL;
 	const gchar *proc_path[] = {
@@ -2031,13 +2208,16 @@ FILE *open_process_map (int pid, const char *mode)
 
 	return fp;
 }
+#endif
 
 gboolean EnumProcessModules (gpointer process, gpointer *modules,
 			     guint32 size, guint32 *needed)
 {
 	struct _WapiHandle_process *process_handle;
 	gboolean ok;
+#if !defined(__OpenBSD__)
 	FILE *fp;
+#endif
 	GSList *mods = NULL;
 	WapiProcModule *module;
 	guint32 count, avail = size / sizeof(gpointer);
@@ -2075,7 +2255,7 @@ gboolean EnumProcessModules (gpointer process, gpointer *modules,
 		proc_name = process_handle->proc_name;
 	}
 	
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__) || defined(__HAIKU__)
 	{
 		mods = load_modules ();
 #else
@@ -2123,10 +2303,12 @@ gboolean EnumProcessModules (gpointer process, gpointer *modules,
 
 static gchar *get_process_name_from_proc (pid_t pid)
 {
-	gchar *filename = NULL;
-	gchar *ret = NULL;
-	gchar buf[256];
+#if !defined(__OpenBSD__)
 	FILE *fp;
+	gchar *filename = NULL;
+	gchar buf[256];
+#endif
+	gchar *ret = NULL;
 
 #if defined(PLATFORM_SOLARIS)
 	filename = g_strdup_printf ("/proc/%d/psinfo", pid);
@@ -2144,11 +2326,52 @@ static gchar *get_process_name_from_proc (pid_t pid)
 	g_free (filename);
 #elif defined(PLATFORM_MACOSX)
 	memset (buf, '\0', sizeof(buf));
-#  if !defined (__mono_ppc__)
+#  if !defined (__mono_ppc__) && !defined(__arm__)
 	proc_name (pid, buf, sizeof(buf));
 #  endif
 	if (strlen (buf) > 0)
 		ret = g_strdup (buf);
+#elif defined(__OpenBSD__)
+	int mib [6];
+	size_t size;
+	struct kinfo_proc2 *pi;
+
+	mib [0] = CTL_KERN;
+	mib [1] = KERN_PROC2;
+	mib [2] = KERN_PROC_PID;
+	mib [3] = pid;
+	mib [4] = sizeof(struct kinfo_proc2);
+	mib [5] = 0;
+
+retry:
+	if (sysctl(mib, 6, NULL, &size, NULL, 0) < 0)
+		return(ret);
+
+	if ((pi = malloc(size)) == NULL)
+		return(ret);
+
+	mib[5] = (int)(size / sizeof(struct kinfo_proc2));
+
+	if ((sysctl (mib, 6, pi, &size, NULL, 0) < 0) ||
+		(size != sizeof (struct kinfo_proc2))) {
+		if (errno == ENOMEM) {
+			free(pi);
+			goto retry;
+		}
+		return(ret);
+	}
+
+	if (strlen (pi->p_comm) > 0)
+		ret = g_strdup (pi->p_comm);
+
+	free(pi);
+#elif defined(__HAIKU__)
+	image_info imageInfo;
+	int32 cookie = 0;
+
+	if (get_next_image_info ((team_id)pid, &cookie, &imageInfo) == B_OK) {
+		ret = g_strdup (imageInfo.name);
+	}
 #else
 	memset (buf, '\0', sizeof(buf));
 	filename = g_strdup_printf ("/proc/%d/exe", pid);
@@ -2214,7 +2437,9 @@ static guint32 get_module_name (gpointer process, gpointer module,
 	gchar *procname_ext = NULL;
 	glong len;
 	gsize bytes;
+#if !defined(__OpenBSD__)
 	FILE *fp;
+#endif
 	GSList *mods = NULL;
 	WapiProcModule *found_module;
 	guint32 count;
@@ -2254,7 +2479,7 @@ static guint32 get_module_name (gpointer process, gpointer module,
 	}
 
 	/* Look up the address in /proc/<pid>/maps */
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__) || defined(__HAIKU__)
 	{
 		mods = load_modules ();
 #else
@@ -2366,7 +2591,9 @@ gboolean GetModuleInformation (gpointer process, gpointer module,
 	struct _WapiHandle_process *process_handle;
 	gboolean ok;
 	pid_t pid;
+#if !defined(__OpenBSD__)
 	FILE *fp;
+#endif
 	GSList *mods = NULL;
 	WapiProcModule *found_module;
 	guint32 count;
@@ -2404,7 +2631,7 @@ gboolean GetModuleInformation (gpointer process, gpointer module,
 		proc_name = g_strdup (process_handle->proc_name);
 	}
 
-#ifdef PLATFORM_MACOSX
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__) || defined(__HAIKU__)
 	{
 		mods = load_modules ();
 #else

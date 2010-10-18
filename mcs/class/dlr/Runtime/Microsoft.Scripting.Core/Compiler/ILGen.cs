@@ -12,40 +12,26 @@
  *
  *
  * ***************************************************************************/
-using System; using Microsoft;
 
-
-#if MICROSOFT_SCRIPTING_CORE || SILVERLIGHT
-#if CODEPLEX_40
-using ILGenerator = System.Linq.Expressions.Compiler.OffsetTrackingILGenerator;
-#else
-using ILGenerator = Microsoft.Linq.Expressions.Compiler.OffsetTrackingILGenerator;
-#endif
-#endif
-
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-#if CODEPLEX_40
 using System.Dynamic.Utils;
-#else
-using Microsoft.Scripting.Utils;
-#endif
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-#if !CODEPLEX_40
-using Microsoft.Runtime.CompilerServices;
-#endif
-
 
 #if SILVERLIGHT
 using System.Core;
 #endif
 
-#if CODEPLEX_40
-namespace System.Linq.Expressions.Compiler {
+#if CLR2
+namespace Microsoft.Scripting.Ast.Compiler {
 #else
-namespace Microsoft.Linq.Expressions.Compiler {
+namespace System.Linq.Expressions.Compiler {
+#endif
+#if CLR2 || SILVERLIGHT
+    using ILGenerator = OffsetTrackingILGenerator;
 #endif
 
     internal static class ILGen {
@@ -322,7 +308,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
             ContractUtils.RequiresNotNull(paramTypes, "paramTypes");
 
             ConstructorInfo ci = type.GetConstructor(paramTypes);
-            ContractUtils.Requires(ci != null, "type", Strings.TypeDoesNotHaveConstructorForTheSignature);
+            if (ci == null) throw Error.TypeDoesNotHaveConstructorForTheSignature();
             il.EmitNew(ci);
         }
 
@@ -625,7 +611,9 @@ namespace Microsoft.Linq.Expressions.Compiler {
             if (typeFrom.IsInterface || // interface cast
                typeTo.IsInterface ||
                typeFrom == typeof(object) || // boxing cast
-               typeTo == typeof(object)) {
+               typeTo == typeof(object) ||
+               TypeUtils.IsLegalExplicitVariantDelegateConversion(typeFrom, typeTo))
+            {
                 il.EmitCastToType(typeFrom, typeTo);
             } else if (isTypeFromNullable || isTypeToNullable) {
                 il.EmitNullableConversion(typeFrom, typeTo, isChecked);
@@ -675,6 +663,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
             } else {
                 TypeCode tc = Type.GetTypeCode(typeTo);
                 if (isChecked) {
+                    // Overflow checking needs to know if the source value on the IL stack is unsigned or not.
                     if (isFromUnsigned) {
                         switch (tc) {
                             case TypeCode.SByte:
@@ -737,55 +726,46 @@ namespace Microsoft.Linq.Expressions.Compiler {
                         }
                     }
                 } else {
-                    if (isFromUnsigned) {
-                        switch (tc) {
-                            case TypeCode.SByte:
-                            case TypeCode.Byte:
-                                il.Emit(OpCodes.Conv_U1);
-                                break;
-                            case TypeCode.Int16:
-                            case TypeCode.UInt16:
-                            case TypeCode.Char:
-                                il.Emit(OpCodes.Conv_U2);
-                                break;
-                            case TypeCode.Int32:
-                            case TypeCode.UInt32:
-                                il.Emit(OpCodes.Conv_U4);
-                                break;
-                            case TypeCode.Int64:
-                            case TypeCode.UInt64:
+                    switch (tc) {
+                        case TypeCode.SByte:
+                            il.Emit(OpCodes.Conv_I1);
+                            break;
+                        case TypeCode.Byte:
+                            il.Emit(OpCodes.Conv_U1);
+                            break;
+                        case TypeCode.Int16:
+                            il.Emit(OpCodes.Conv_I2);
+                            break;
+                        case TypeCode.UInt16:
+                        case TypeCode.Char:
+                            il.Emit(OpCodes.Conv_U2);
+                            break;
+                        case TypeCode.Int32:
+                            il.Emit(OpCodes.Conv_I4);
+                            break;
+                        case TypeCode.UInt32:
+                            il.Emit(OpCodes.Conv_U4);
+                            break;
+                        case TypeCode.Int64:
+                            if (isFromUnsigned) {
                                 il.Emit(OpCodes.Conv_U8);
-                                break;
-                            default:
-                                throw Error.UnhandledConvert(typeTo);
-                        }
-                    } else {
-                        switch (tc) {
-                            case TypeCode.SByte:
-                            case TypeCode.Byte:
-                                il.Emit(OpCodes.Conv_I1);
-                                break;
-                            case TypeCode.Int16:
-                            case TypeCode.UInt16:
-                            case TypeCode.Char:
-                                il.Emit(OpCodes.Conv_I2);
-                                break;
-                            case TypeCode.Int32:
-                            case TypeCode.UInt32:
-                                il.Emit(OpCodes.Conv_I4);
-                                break;
-                            case TypeCode.Int64:
-                            case TypeCode.UInt64:
+                            } else {
                                 il.Emit(OpCodes.Conv_I8);
-                                break;
-                            default:
-                                throw Error.UnhandledConvert(typeTo);
-                        }
+                            }
+                            break;
+                        case TypeCode.UInt64:
+                            if (isFromUnsigned || isFromFloatingPoint) {
+                                il.Emit(OpCodes.Conv_U8);
+                            } else {
+                                il.Emit(OpCodes.Conv_I8);
+                            }
+                            break;
+                        default:
+                            throw Error.UnhandledConvert(typeTo);
                     }
                 }
             }
         }
-
 
         private static void EmitNullableToNullableConversion(this ILGenerator il, Type typeFrom, Type typeTo, bool isChecked) {
             Debug.Assert(TypeUtils.IsNullableType(typeFrom));
@@ -929,7 +909,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
         internal static void EmitArray(this ILGenerator il, Type elementType, int count, Action<int> emit) {
             ContractUtils.RequiresNotNull(elementType, "elementType");
             ContractUtils.RequiresNotNull(emit, "emit");
-            ContractUtils.Requires(count >= 0, "count", Strings.CountCannotBeNegative);
+            if (count < 0) throw Error.CountCannotBeNegative();
 
             il.EmitInt(count);
             il.Emit(OpCodes.Newarr, elementType);
@@ -950,7 +930,7 @@ namespace Microsoft.Linq.Expressions.Compiler {
         /// </summary>
         internal static void EmitArray(this ILGenerator il, Type arrayType) {
             ContractUtils.RequiresNotNull(arrayType, "arrayType");
-            ContractUtils.Requires(arrayType.IsArray, "arrayType", Strings.ArrayTypeMustBeArray);
+            if (!arrayType.IsArray) throw Error.ArrayTypeMustBeArray();
 
             int rank = arrayType.GetArrayRank();
             if (rank == 1) {

@@ -27,7 +27,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if NET_2_0
+
 using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
@@ -281,7 +281,7 @@ namespace System.Web.Compilation
 			if (file == null || file.Length == 0 || buildProviders == null || buildProviders.Count == 0)
 				return null;
 
-			BuildProvider ret = buildProviders.GetProviderForExtension (Path.GetExtension (file));
+			BuildProvider ret = buildProviders.GetProviderInstanceForExtension (Path.GetExtension (file));
 			if (ret != null && IsCorrectBuilderType (ret)) {
 				ret.SetVirtualPath (PhysicalToVirtual (file));
 				return ret;
@@ -746,4 +746,4 @@ namespace System.Web.Compilation
 		}
 	}
 }
-#endif
+

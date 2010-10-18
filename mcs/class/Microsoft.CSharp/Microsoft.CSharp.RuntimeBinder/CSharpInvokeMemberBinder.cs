@@ -30,53 +30,24 @@ using System;
 using System.Dynamic;
 using System.Collections.Generic;
 using System.Linq;
+using Compiler = Mono.CSharp;
 
 namespace Microsoft.CSharp.RuntimeBinder
 {
-	public class CSharpInvokeMemberBinder : InvokeMemberBinder
+	class CSharpInvokeMemberBinder : InvokeMemberBinder
 	{
-		CSharpCallFlags flags;
+		readonly CSharpBinderFlags flags;
 		IList<CSharpArgumentInfo> argumentInfo;
 		IList<Type> typeArguments;
 		Type callingContext;
 		
-		public CSharpInvokeMemberBinder (CSharpCallFlags flags, string name, Type callingContext, IEnumerable<Type> typeArguments, IEnumerable<CSharpArgumentInfo> argumentInfo)
+		public CSharpInvokeMemberBinder (CSharpBinderFlags flags, string name, Type callingContext, IEnumerable<Type> typeArguments, IEnumerable<CSharpArgumentInfo> argumentInfo)
 			: base (name, false, CSharpArgumentInfo.CreateCallInfo (argumentInfo, 1))
 		{
 			this.flags = flags;
 			this.callingContext = callingContext;
 			this.argumentInfo = argumentInfo.ToReadOnly ();
 			this.typeArguments = typeArguments.ToReadOnly ();
-		}
-		
-		public IList<CSharpArgumentInfo> ArgumentInfo {
-			get {
-				return argumentInfo;
-			}
-		}
-
-		public Type CallingContext {
-			get {
-				return callingContext;
-			}
-		}
-		
-		public override bool Equals (object obj)
-		{
-			var other = obj as CSharpInvokeMemberBinder;
-			return other != null && base.Equals (obj) && other.flags == flags && other.callingContext == callingContext && 
-				other.argumentInfo.SequenceEqual (argumentInfo) && other.typeArguments.SequenceEqual (typeArguments);
-		}
-
-		public CSharpCallFlags Flags {
-			get {
-				return flags;
-			}
-		}
-		
-		public override int GetHashCode ()
-		{
-			return base.GetHashCode ();
 		}
 		
 		public override DynamicMetaObject FallbackInvoke (DynamicMetaObject target, DynamicMetaObject[] args, DynamicMetaObject errorSuggestion)
@@ -89,13 +60,42 @@ namespace Microsoft.CSharp.RuntimeBinder
 		
 		public override DynamicMetaObject FallbackInvokeMember (DynamicMetaObject target, DynamicMetaObject[] args, DynamicMetaObject errorSuggestion)
 		{
-			return CSharpBinder.Bind (target, errorSuggestion, args);
-		}
-		
-		public IList<Type> TypeArguments {
-			get {
-				return typeArguments;
+			var ctx = DynamicContext.Create ();
+			var c_args = ctx.CreateCompilerArguments (argumentInfo.Skip (1), args);
+			var t_args = typeArguments == null ?
+				null :
+				new Compiler.TypeArguments (typeArguments.Select (l => new Compiler.TypeExpression (ctx.ImportType (l), Compiler.Location.Null)).ToArray ());
+
+			var expr = ctx.CreateCompilerExpression (argumentInfo[0], target);
+
+			//
+			// Simple name invocation is actually member access invocation
+ 			// to capture original this argument. This  brings problem when
+			// simple name is resolved as a static invocation and member access
+			// has to be reduced back to simple name without reporting an error
+			//
+			if ((flags & CSharpBinderFlags.InvokeSimpleName) != 0) {
+				var value = expr as Compiler.RuntimeValueExpression;
+				if (value != null)
+					value.IsSuggestionOnly = true;
 			}
+
+			expr = new Compiler.MemberAccess (expr, Name, t_args, Compiler.Location.Null);
+			expr = new Compiler.Invocation (expr, c_args);
+
+			if ((flags & CSharpBinderFlags.ResultDiscarded) == 0)
+				expr = new Compiler.Cast (new Compiler.TypeExpression (ctx.ImportType (ReturnType), Compiler.Location.Null), expr, Compiler.Location.Null);
+			else
+				expr = new Compiler.DynamicResultCast (ctx.ImportType (ReturnType), expr);
+
+			var binder = new CSharpBinder (this, expr, errorSuggestion);
+			binder.AddRestrictions (target);
+			binder.AddRestrictions (args);
+
+			if ((flags & CSharpBinderFlags.InvokeSpecialName) != 0)
+				binder.ResolveOptions |= Compiler.ResolveContext.Options.InvokeSpecialName;
+
+			return binder.Bind (ctx, callingContext);
 		}
 	}
 }

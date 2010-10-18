@@ -26,8 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -35,10 +33,13 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection {
 
-#if NET_2_0
 	[ComVisible (true)]
+#if NET_4_0
+	public
+#else
+	public sealed
 #endif
-	public sealed class ExceptionHandlingClause {
+	class ExceptionHandlingClause {
 		#region Sync with reflection.h
 		internal Type catch_type;
 		internal int filter_offset;
@@ -49,46 +50,79 @@ namespace System.Reflection {
 		internal int handler_length;
 		#endregion
 
-		internal ExceptionHandlingClause () {
+#if NET_4_0
+		protected
+#else
+		internal
+#endif
+		ExceptionHandlingClause () {
 		}
 
-		public Type CatchType {
+		public
+#if NET_4_0
+		virtual
+#endif
+		Type CatchType {
 			get {
 				return catch_type;
 			}
 		}
 
-		public int FilterOffset {
+		public
+#if NET_4_0
+		virtual
+#endif
+		int FilterOffset {
 			get {
 				return filter_offset;
 			}
 		}
 
-		public ExceptionHandlingClauseOptions Flags {
+		public
+#if NET_4_0
+		virtual
+#endif
+		ExceptionHandlingClauseOptions Flags {
 			get {
 				return flags;
 			}
 		}
 
-		public int HandlerLength {
+		public
+#if NET_4_0
+		virtual
+#endif
+		int HandlerLength {
 			get {
 				return handler_length;
 			}
 		}
 
-		public int HandlerOffset {
+		public
+#if NET_4_0
+		virtual
+#endif
+		int HandlerOffset {
 			get {
 				return handler_offset;
 			}
 		}
 
-		public int TryLength {
+		public
+#if NET_4_0
+		virtual
+#endif
+		int TryLength {
 			get {
 				return try_length;
 			}
 		}
 
-		public int TryOffset {
+		public
+#if NET_4_0
+		virtual
+#endif
+		int TryOffset {
 			get {
 				return try_offset;
 			}
@@ -107,5 +141,3 @@ namespace System.Reflection {
 	}
 
 }
-
-#endif

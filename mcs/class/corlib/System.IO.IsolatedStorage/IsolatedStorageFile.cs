@@ -27,7 +27,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 using System.Collections;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -47,9 +47,7 @@ namespace System.IO.IsolatedStorage {
 	// much as a directory
 
 
-#if NET_2_0
 	[ComVisible (true)]
-#endif
 	// FIXME: Further limit the assertion when imperative Assert is implemented
 	[FileIOPermission (SecurityAction.Assert, Unrestricted = true)]
 	public sealed class IsolatedStorageFile : IsolatedStorage, IDisposable {
@@ -58,6 +56,10 @@ namespace System.IO.IsolatedStorage {
 		private ulong _maxSize;
 		private Evidence _fullEvidences;
 		private static Mutex mutex = new Mutex ();
+#if NET_4_0
+		private bool closed;
+		private bool disposed;
+#endif
 
 		public static IEnumerator GetEnumerator (IsolatedStorageScope scope)
 		{
@@ -66,9 +68,7 @@ namespace System.IO.IsolatedStorage {
 			switch (scope) {
 			case IsolatedStorageScope.User:
 			case IsolatedStorageScope.User | IsolatedStorageScope.Roaming:
-#if NET_2_0
 			case IsolatedStorageScope.Machine:
-#endif
 				break;
 			default:
 				string msg = Locale.GetText ("Invalid scope, only User, User|Roaming and Machine are valid");
@@ -162,7 +162,6 @@ namespace System.IO.IsolatedStorage {
 			storageFile.PostInit ();
 			return storageFile;
 		}
-#if NET_2_0
 		public static IsolatedStorageFile GetStore (IsolatedStorageScope scope, object applicationIdentity)
 		{
 			Demand (scope);
@@ -232,7 +231,7 @@ namespace System.IO.IsolatedStorage {
 			storageFile.PostInit ();
 			return storageFile;
 		}
-#endif
+
 		[IsolatedStorageFilePermission (SecurityAction.Demand, UsageAllowed = IsolatedStorageContainment.AssemblyIsolationByUser)]
 		public static IsolatedStorageFile GetUserStoreForAssembly ()
 		{
@@ -258,10 +257,25 @@ namespace System.IO.IsolatedStorage {
 			return storageFile;
 		}
 
+#if NET_4_0
+		[ComVisible (false)]
+		public static IsolatedStorageFile GetUserStoreForSite ()
+		{
+			throw new NotSupportedException ();
+		}
+#endif
+
 		public static void Remove (IsolatedStorageScope scope)
 		{
 			string dir = GetIsolatedStorageRoot (scope);
-			Directory.Delete (dir, true);
+			if (!Directory.Exists (dir))
+				return;
+
+			try {
+				Directory.Delete (dir, true);
+			} catch (IOException) {
+				throw new IsolatedStorageException ("Could not remove storage.");
+			}
 		}
 
 		// internal static stuff
@@ -282,10 +296,8 @@ namespace System.IO.IsolatedStorage {
 				} else {
 					root = Environment.InternalGetFolderPath (Environment.SpecialFolder.ApplicationData);
 				}
-#if NET_2_0
 			} else if ((scope & IsolatedStorageScope.Machine) != 0) {
 				root = Environment.InternalGetFolderPath (Environment.SpecialFolder.CommonApplicationData);
-#endif
 			}
 
 			if (root == null) {
@@ -316,7 +328,6 @@ namespace System.IO.IsolatedStorage {
 				return IsolatedStorageContainment.DomainIsolationByRoamingUser;
 			case IsolatedStorageScope.Assembly | IsolatedStorageScope.User | IsolatedStorageScope.Roaming:
 				return IsolatedStorageContainment.AssemblyIsolationByRoamingUser;
-#if NET_2_0
 			case IsolatedStorageScope.Application | IsolatedStorageScope.User:
 				return IsolatedStorageContainment.ApplicationIsolationByUser;
 			case IsolatedStorageScope.Domain | IsolatedStorageScope.Assembly | IsolatedStorageScope.Machine:
@@ -327,7 +338,6 @@ namespace System.IO.IsolatedStorage {
 				return IsolatedStorageContainment.ApplicationIsolationByMachine;
 			case IsolatedStorageScope.Application | IsolatedStorageScope.User | IsolatedStorageScope.Roaming:
 				return IsolatedStorageContainment.ApplicationIsolationByRoamingUser;
-#endif
 			default:
 				// unknown ?!?! then ask for maximum (unrestricted)
 				return IsolatedStorageContainment.UnrestrictedIsolatedStorage;
@@ -375,12 +385,9 @@ namespace System.IO.IsolatedStorage {
 		{
 			string root = GetIsolatedStorageRoot (Scope);
 			string dir = null;
-#if NET_2_0
 			if (_applicationIdentity != null) {
 				dir = String.Format ("a{0}{1}", SeparatorInternal, GetNameFromIdentity (_applicationIdentity));
-			} else
-#endif
-			if (_domainIdentity != null) {
+			} else if (_domainIdentity != null) {
 				dir = String.Format ("d{0}{1}{0}{2}", SeparatorInternal,
 					GetNameFromIdentity (_domainIdentity), GetNameFromIdentity (_assemblyIdentity));
 			} else if (_assemblyIdentity != null) {
@@ -404,11 +411,17 @@ namespace System.IO.IsolatedStorage {
 		}
 
 		[CLSCompliant(false)]
+#if NET_4_0
+		[Obsolete]
+#endif
 		public override ulong CurrentSize {
 			get { return GetDirectorySize (directory); }
 		}
 
 		[CLSCompliant(false)]
+#if NET_4_0
+		[Obsolete]
+#endif
 		public override ulong MaximumSize {
 			// return an ulong but default is signed long
 			get {
@@ -456,10 +469,65 @@ namespace System.IO.IsolatedStorage {
 			get { return directory.FullName; }
 		}
 
+#if NET_4_0
+		[ComVisible (false)]
+		public override long AvailableFreeSpace {
+			get {
+				CheckOpen ();
+
+				// See the notes for 'Quota'
+				return Int64.MaxValue;
+
+			}
+		}
+
+		[ComVisible (false)]
+		public override long Quota {
+			get {
+				CheckOpen ();
+
+				// Since we don't fully support CAS, we are likely
+				// going to return Int64.MaxValue always, but we return
+				// MaximumSize just in case.
+				return (long)MaximumSize;
+			}
+		}
+
+		[ComVisible (false)]
+		public override long UsedSize {
+			get {
+				CheckOpen ();
+				return (long)GetDirectorySize (directory);
+			}
+		}
+
+		[ComVisible (false)]
+		public static bool IsEnabled {
+			get {
+				return true;
+			}
+		}
+
+		internal bool IsClosed {
+			get {
+				return closed;
+			}
+		}
+
+		internal bool IsDisposed {
+			get {
+				return disposed;
+			}
+		}
+#endif
+
 		// methods
 
 		public void Close ()
 		{
+#if NET_4_0
+			closed = true;
+#endif
 		}
 
 		public void CreateDirectory (string dir)
@@ -469,7 +537,11 @@ namespace System.IO.IsolatedStorage {
 
 			if (dir.IndexOfAny (Path.PathSeparatorChars) < 0) {
 				if (directory.GetFiles (dir).Length > 0)
+#if NET_4_0
+					throw new IsolatedStorageException ("Unable to create directory.");
+#else
 					throw new IOException (Locale.GetText ("Directory name already exists as a file."));
+#endif
 				directory.CreateSubdirectory (dir);
 			} else {
 				string[] dirs = dir.Split (Path.PathSeparatorChars);
@@ -477,12 +549,64 @@ namespace System.IO.IsolatedStorage {
 
 				for (int i = 0; i < dirs.Length; i++) {
 					if (dinfo.GetFiles (dirs [i]).Length > 0)
+#if NET_4_0
+						throw new IsolatedStorageException ("Unable to create directory.");
+#else
 						throw new IOException (Locale.GetText (
 							"Part of the directory name already exists as a file."));
+#endif
 					dinfo = dinfo.CreateSubdirectory (dirs [i]);
 				}
 			}
 		}
+
+#if NET_4_0
+		[ComVisible (false)]
+		public void CopyFile (string sourceFileName, string destinationFileName)
+		{
+			CopyFile (sourceFileName, destinationFileName, false);
+		}
+
+		[ComVisible (false)]
+		public void CopyFile (string sourceFileName, string destinationFileName, bool overwrite)
+		{
+			if (sourceFileName == null)
+				throw new ArgumentNullException ("sourceFileName");
+			if (destinationFileName == null)
+				throw new ArgumentNullException ("destinationFileName");
+			if (sourceFileName.Trim ().Length == 0)
+				throw new ArgumentException ("An empty file name is not valid.", "sourceFileName");
+			if (destinationFileName.Trim ().Length == 0)
+				throw new ArgumentException ("An empty file name is not valid.", "destinationFileName");
+
+			CheckOpen ();
+
+			string source_full_path = Path.Combine (directory.FullName, sourceFileName);
+			string dest_full_path = Path.Combine (directory.FullName, destinationFileName);
+
+			if (!IsPathInStorage (source_full_path) || !IsPathInStorage (dest_full_path))
+				throw new IsolatedStorageException ("Operation not allowed.");
+			// These excs can be thrown from File.Copy, but we can try to detect them from here.
+			if (!Directory.Exists (Path.GetDirectoryName (source_full_path)))
+				throw new DirectoryNotFoundException ("Could not find a part of path '" + sourceFileName + "'.");
+			if (!File.Exists (source_full_path))
+				throw new FileNotFoundException ("Could not find a part of path '" + sourceFileName + "'.");
+			if (File.Exists (dest_full_path) && !overwrite)
+				throw new IsolatedStorageException ("Operation not allowed.");
+
+			try {
+				File.Copy (source_full_path, dest_full_path, overwrite);
+			} catch (IOException) {
+				throw new IsolatedStorageException ("Operation not allowed.");
+			}
+		}
+
+		[ComVisible (false)]
+		public IsolatedStorageFileStream CreateFile (string path)
+		{
+			return new IsolatedStorageFileStream (path, FileMode.Create, FileAccess.ReadWrite, FileShare.None, this);
+		}
+#endif
 
 		public void DeleteDirectory (string dir)
 		{
@@ -498,19 +622,122 @@ namespace System.IO.IsolatedStorage {
 
 		public void DeleteFile (string file)
 		{
-			File.Delete (Path.Combine (directory.FullName, file));
+			if (file == null)
+				throw new ArgumentNullException ("file");
+
+			string full_path = Path.Combine (directory.FullName, file);
+			if (!File.Exists (full_path))
+				throw new IsolatedStorageException (Locale.GetText ("Could not delete file '{0}'", file));
+
+			try {
+				File.Delete (Path.Combine (directory.FullName, file));
+			} catch {
+				// hide the internal exception, just as DeleteDirectory does.
+				throw new IsolatedStorageException (Locale.GetText ("Could not delete file '{0}'", file));
+			}
 		}
 
 		public void Dispose ()
 		{
+#if NET_4_0
+			// Dispose may be calling Close, but we are not sure
+			disposed = true;
+#endif
 			// nothing to dispose, anyway we want to please the tools
 			GC.SuppressFinalize (this);
 		}
+
+#if NET_4_0
+		[ComVisible (false)]
+		public bool DirectoryExists (string path)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+
+			CheckOpen ();
+
+			string full_path = Path.Combine (directory.FullName, path);
+			if (!IsPathInStorage (full_path))
+				return false;
+
+			return Directory.Exists (full_path);
+		}
+
+		[ComVisible (false)]
+		public bool FileExists (string path)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+
+			CheckOpen ();
+
+			string full_path = Path.Combine (directory.FullName, path);
+			if (!IsPathInStorage (full_path))
+				return false;
+
+			return File.Exists (full_path);
+		}
+
+		[ComVisible (false)]
+		public DateTimeOffset GetCreationTime (string path)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+			if (path.Trim ().Length == 0)
+				throw new ArgumentException ("An empty path is not valid.");
+
+			CheckOpen ();
+
+			string full_path = Path.Combine (directory.FullName, path);
+			if (File.Exists (full_path))
+				return File.GetCreationTime (full_path);
+
+			return Directory.GetCreationTime (full_path);
+		}
+
+		[ComVisible (false)]
+		public DateTimeOffset GetLastAccessTime (string path)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+			if (path.Trim ().Length == 0)
+				throw new ArgumentException ("An empty path is not valid.");
+
+			CheckOpen ();
+
+			string full_path = Path.Combine (directory.FullName, path);
+			if (File.Exists (full_path))
+				return File.GetLastAccessTime (full_path);
+
+			return Directory.GetLastAccessTime (full_path);
+		}
+
+		[ComVisible (false)]
+		public DateTimeOffset GetLastWriteTime (string path)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+			if (path.Trim ().Length == 0)
+				throw new ArgumentException ("An empty path is not valid.");
+
+			CheckOpen ();
+
+			string full_path = Path.Combine (directory.FullName, path);
+			if (File.Exists (full_path))
+				return File.GetLastWriteTime (full_path);
+
+			return Directory.GetLastWriteTime (full_path);
+		}
+#endif
 
 		public string[] GetDirectoryNames (string searchPattern)
 		{
 			if (searchPattern == null)
 				throw new ArgumentNullException ("searchPattern");
+#if NET_4_0
+			if (searchPattern.Contains (".."))
+				throw new ArgumentException ("Search pattern cannot contain '..' to move up directories.", "searchPattern");
+#endif
 
 			// note: IsolatedStorageFile accept a "dir/file" pattern which is not allowed by DirectoryInfo
 			// so we need to split them to get the right results
@@ -534,6 +761,14 @@ namespace System.IO.IsolatedStorage {
 			return GetNames (adi);
 		}
 
+#if NET_4_0
+		[ComVisible (false)]
+		public string [] GetDirectoryNames ()
+		{
+			return GetDirectoryNames ("*");
+		}
+#endif
+
 		private string[] GetNames (FileSystemInfo[] afsi)
 		{
 			string[] r = new string[afsi.Length];
@@ -546,6 +781,10 @@ namespace System.IO.IsolatedStorage {
 		{
 			if (searchPattern == null)
 				throw new ArgumentNullException ("searchPattern");
+#if NET_4_0
+			if (searchPattern.Contains (".."))
+				throw new ArgumentException ("Search pattern cannot contain '..' to move up directories.", "searchPattern");
+#endif
 
 			// note: IsolatedStorageFile accept a "dir/file" pattern which is not allowed by DirectoryInfo
 			// so we need to split them to get the right results
@@ -569,9 +808,120 @@ namespace System.IO.IsolatedStorage {
 			return GetNames (afi);
 		}
 
+#if NET_4_0
+		[ComVisible (false)]
+		public string [] GetFileNames ()
+		{
+			return GetFileNames ("*");
+		}
+
+		[ComVisible (false)]
+		public override bool IncreaseQuotaTo (long newQuotaSize)
+		{
+			if (newQuotaSize < Quota)
+				throw new ArgumentException ();
+
+			CheckOpen ();
+
+			// .Net is supposed to be returning false, as mentioned in the docs.
+			return false;
+		}
+
+		[ComVisible (false)]
+		public void MoveDirectory (string sourceDirectoryName, string destinationDirectoryName)
+		{
+			if (sourceDirectoryName == null)
+				throw new ArgumentNullException ("sourceDirectoryName");
+			if (destinationDirectoryName == null)
+				throw new ArgumentNullException ("sourceDirectoryName");
+			if (sourceDirectoryName.Trim ().Length == 0)
+				throw new ArgumentException ("An empty directory name is not valid.", "sourceDirectoryName");
+			if (destinationDirectoryName.Trim ().Length == 0)
+				throw new ArgumentException ("An empty directory name is not valid.", "destinationDirectoryName");
+
+			CheckOpen ();
+
+			string src_full_path = Path.Combine (directory.FullName, sourceDirectoryName);
+			string dest_full_path = Path.Combine (directory.FullName, destinationDirectoryName);
+
+			if (!IsPathInStorage (src_full_path) || !IsPathInStorage (dest_full_path))
+				throw new IsolatedStorageException ("Operation not allowed.");
+			if (!Directory.Exists (src_full_path))
+				throw new DirectoryNotFoundException ("Could not find a part of path '" + sourceDirectoryName + "'.");
+			if (!Directory.Exists (Path.GetDirectoryName (dest_full_path)))
+				throw new DirectoryNotFoundException ("Could not find a part of path '" + destinationDirectoryName + "'.");
+
+			try {
+				Directory.Move (src_full_path, dest_full_path);
+			} catch (IOException) {
+				throw new IsolatedStorageException ("Operation not allowed.");
+			}
+		}
+
+		[ComVisible (false)]
+		public void MoveFile (string sourceFileName, string destinationFileName)
+		{
+			if (sourceFileName == null)
+				throw new ArgumentNullException ("sourceFileName");
+			if (destinationFileName == null)
+				throw new ArgumentNullException ("sourceFileName");
+			if (sourceFileName.Trim ().Length == 0)
+				throw new ArgumentException ("An empty file name is not valid.", "sourceFileName");
+			if (destinationFileName.Trim ().Length == 0)
+				throw new ArgumentException ("An empty file name is not valid.", "destinationFileName");
+
+			CheckOpen ();
+
+			string source_full_path = Path.Combine (directory.FullName, sourceFileName);
+			string dest_full_path = Path.Combine (directory.FullName, destinationFileName);
+
+			if (!IsPathInStorage (source_full_path) || !IsPathInStorage (dest_full_path))
+				throw new IsolatedStorageException ("Operation not allowed.");
+			if (!File.Exists (source_full_path))
+				throw new FileNotFoundException ("Could not find a part of path '" + sourceFileName + "'.");
+			// I expected a DirectoryNotFound exception.
+			if (!Directory.Exists (Path.GetDirectoryName (dest_full_path)))
+				throw new IsolatedStorageException ("Operation not allowed.");
+
+			try {
+				File.Move (source_full_path, dest_full_path);
+			} catch (IOException) {
+				throw new IsolatedStorageException ("Operation not allowed.");
+			}
+		}
+
+		[ComVisible (false)]
+		public IsolatedStorageFileStream OpenFile (string path, FileMode mode)
+		{
+			return new IsolatedStorageFileStream (path, mode, this);
+		}
+
+		[ComVisible (false)]
+		public IsolatedStorageFileStream OpenFile (string path, FileMode mode, FileAccess access)
+		{
+			return new IsolatedStorageFileStream (path, mode, access, this);
+		}
+
+		[ComVisible (false)]
+		public IsolatedStorageFileStream OpenFile (string path, FileMode mode, FileAccess access, FileShare share)
+		{
+			return new IsolatedStorageFileStream (path, mode, access, share, this);
+		}
+#endif
+
 		public override void Remove ()
 		{
-			directory.Delete (true);
+#if NET_4_0
+			CheckOpen (false);
+#endif
+			try {
+				directory.Delete (true);
+			} catch {
+				throw new IsolatedStorageException ("Could not remove storage.");
+			}
+
+			// It seems .Net is calling Close from here.
+			Close ();
 		}
 
 
@@ -583,6 +933,27 @@ namespace System.IO.IsolatedStorage {
 		}
 
 		// internal stuff
+#if NET_4_0
+		void CheckOpen ()
+		{
+			CheckOpen (true);
+		}
+
+		void CheckOpen (bool checkDirExists)
+		{
+			if (disposed)
+				throw new ObjectDisposedException ("IsolatedStorageFile");
+			if (closed)
+				throw new InvalidOperationException ("Storage needs to be open for this operation.");
+			if (checkDirExists && !Directory.Exists (directory.FullName))
+				throw new IsolatedStorageException ("Isolated storage has been removed or disabled.");
+		}
+
+		bool IsPathInStorage (string path)
+		{
+			return Path.GetFullPath (path).StartsWith (directory.FullName);
+		}
+#endif
 
 		private string GetNameFromIdentity (object identity)
 		{

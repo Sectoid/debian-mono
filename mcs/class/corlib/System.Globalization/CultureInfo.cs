@@ -37,16 +37,12 @@ using System.Runtime.InteropServices;
 
 namespace System.Globalization
 {
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
 	[Serializable]
 	public class CultureInfo : ICloneable, IFormatProvider
 	{
 		static volatile CultureInfo invariant_culture_info;
-#if NET_2_0		
 		static object shared_table_lock = new object ();
-#endif		
 		internal static int BootstrapCultureID;
 
 		const int NumOptionalCalendars = 5;
@@ -174,7 +170,7 @@ namespace System.Globalization
 			get { return territory; }
 		}
 
-#if NET_2_0 && !NET_2_1
+#if !NET_2_1
 		// FIXME: It is implemented, but would be hell slow.
 		[ComVisible (false)]
 		public CultureTypes CultureTypes {
@@ -270,7 +266,7 @@ namespace System.Globalization
 
 		public virtual string Name {
 			get {
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 				if (m_name == "zh-CHS")
 					return "zh-Hans";
 				if (m_name == "zh-CHT")
@@ -408,7 +404,7 @@ namespace System.Globalization
 			return false;
 		}
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 		public static CultureInfo[] GetCultures(CultureTypes types)
 		{
 			bool neutral=((types & CultureTypes.NeutralCultures)!=0);
@@ -421,9 +417,6 @@ namespace System.Globalization
 			// since it must not be read-only
 			if (neutral && infos.Length > 0 && infos [0] == null) {
 				infos [0] = (CultureInfo) InvariantCulture.Clone ();
-#if ONLY_1_1
-				infos [0].m_useUserOverride = true;
-#endif
 			}
 
 			return infos;
@@ -450,11 +443,9 @@ namespace System.Globalization
 					new_ci.numInfo = NumberFormatInfo.ReadOnly (new_ci.numInfo);
 				if (new_ci.dateTimeInfo != null)
 					new_ci.dateTimeInfo = DateTimeFormatInfo.ReadOnly (new_ci.dateTimeInfo);
-#if NET_2_0
 				// TextInfo doesn't have a ReadOnly method in 1.1...
 				if (new_ci.textInfo != null)
 					new_ci.textInfo = TextInfo.ReadOnly (new_ci.textInfo);
-#endif
 				return(new_ci);
 			}
 		}
@@ -503,7 +494,7 @@ namespace System.Globalization
 
 		internal void CheckNeutral ()
 		{
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 			if (IsNeutralCulture) {
 				throw new NotSupportedException ("Culture \"" + m_name + "\" is " +
 						"a neutral culture. It can not be used in formatting " +
@@ -592,11 +583,7 @@ namespace System.Globalization
 
 		public static CultureInfo InstalledUICulture
 		{
-#if NET_2_0
 			get { return GetCultureInfo (BootstrapCultureID); }
-#else
-			get { return new CultureInfo (BootstrapCultureID); }
-#endif
 		}
 		public bool IsReadOnly 
 		{
@@ -632,7 +619,7 @@ namespace System.Globalization
 			// It is sort of hack to get those new pseudo-alias
 			// culture names that are not supported in good old
 			// Windows.
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			if (locale == "zh-chs" || locale == "zh-cht")
 				return false;
 #endif
@@ -784,7 +771,6 @@ namespace System.Globalization
 		// current locale so we can initialize the object without
 		// doing any member initialization
 		private CultureInfo () { constructed = true; }
-#if NET_2_0
 		static Hashtable shared_by_number, shared_by_name;
 		
 		static void insert_into_shared_tables (CultureInfo c)
@@ -856,7 +842,6 @@ namespace System.Globalization
 				return GetCultureInfo (name);
 			}
 		}
-#endif
 
 		// used in runtime (icall.c) to construct CultureInfo for
 		// AssemblyName of assemblies
@@ -867,18 +852,9 @@ namespace System.Globalization
 
 			bool invariant = name.Length == 0;
 			if (reference) {
-#if NET_2_0
 				use_user_override = invariant ? false : true;
-#else
-				use_user_override = true;
-#endif
 				read_only = false;
 			} else {
-#if ONLY_1_1
-				/* Short circuit the invariant culture */
-				if (invariant)
-					return CultureInfo.InvariantCulture;
-#endif
 				read_only = false;
 				use_user_override = invariant ? false : true;
 			}

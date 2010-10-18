@@ -12,6 +12,7 @@
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/mempool.h>
 #include <mono/metadata/opcodes.h>
+#include <mono/metadata/mempool-internals.h>
 
 #include <config.h>
 
@@ -214,27 +215,6 @@ print_evaluation_area_contexts (MonoVariableRelationsEvaluationArea *area) {
 }
 #endif
 
-static inline GSList*
-g_slist_append_mempool (MonoMemPool *mp, GSList *list, gpointer data)
-{
-	GSList *new_list;
-	GSList *last;
-	
-	new_list = mono_mempool_alloc (mp, sizeof (GSList));
-	new_list->data = data;
-	new_list->next = NULL;
-	
-	if (list) {
-		last = list;
-		while (last->next)
-			last = last->next;
-		last->next = new_list;
-		
-		return list;
-	} else
-		return new_list;
-}
-
 /*
  * Check if the delta of an integer variable value is safe with respect
  * to the variable size in bytes and its kind (signed or unsigned).
@@ -340,6 +320,62 @@ get_relation_from_ins (MonoVariableRelationsEvaluationArea *area, MonoInst *ins,
 
 		/* FIXME: Add more opcodes */
 	default:
+		/* These opcodes are not currently handled while running SciMark, first
+		 * column is the number of times the warning was shown:
+		 *
+		 *       1 add_imm
+		 *       1 float_conv_to_i8
+		 *       1 int_mul_ovf_un
+		 *       1 int_neg
+		 *       1 int_or
+		 *       1 int_shr_un
+		 *       1 localloc
+		 *       1 long_ceq
+		 *       1 long_rem
+		 *       1 long_sub
+		 *       2 int_ceq
+		 *       2 int_conv_to_i2
+		 *       2 int_min
+		 *       2 lcall
+		 *       2 long_div
+		 *       3 int_conv_to_u2
+		 *       3 long_shr_imm
+		 *       4 int_rem
+		 *       4 int_rem_imm
+		 *       4 loadi1_membase
+		 *       4 loadu4_membase
+		 *       5 int_div
+		 *       5 shl_imm
+		 *       6 int_div_imm
+		 *       6 int_mul
+		 *       9 int_mul_imm
+		 *       9 zext_i4
+		 *      10 int_shr_imm
+		 *      12 int_shr_un_imm
+		 *      12 long_add_imm
+		 *      12 outarg_vtretaddr
+		 *      12 strlen
+		 *      13 int_or_imm
+		 *      23 call_membase
+		 *      23 int_conv_to_u1
+		 *      23 long_add
+		 *      24 int_and_imm
+		 *      24 int_shl_imm
+		 *      24 loadu2_membase
+		 *      29 loadi8_membase
+		 *      31 llvm_outarg_vt
+		 *      34 int_sub
+		 *      34 loadu1_membase
+		 *      42 int_add
+		 *      85 ldaddr
+		 *     116 loadi4_membase
+		 *     159 x86_lea
+		 *     179 sext_i4
+		 *     291 load_membase
+		 *     462 i8const
+		 *     472 call
+		 */
+		
 		break;
 	}
 	return value_kind;
@@ -963,6 +999,34 @@ remove_abc_from_inst (MonoInst *ins, MonoVariableRelationsEvaluationArea *area)
 	}
 }
 
+static gboolean
+eval_non_null (MonoVariableRelationsEvaluationArea *area, int reg)
+{
+	MonoRelationsEvaluationContext *context = &(area->contexts [reg]);
+
+	clean_contexts (area->contexts, area->cfg->next_vreg);
+	evaluate_relation_with_target_variable (area, reg, reg, NULL);
+				
+	return context->ranges.zero.lower > 0;
+}
+
+static void
+add_non_null (MonoVariableRelationsEvaluationArea *area, MonoCompile *cfg, int reg,
+			  GSList **check_relations)
+{
+	MonoAdditionalVariableRelation *rel;
+
+	rel = mono_mempool_alloc0 (cfg->mempool, sizeof (MonoAdditionalVariableRelation));
+	rel->variable = reg;
+	rel->relation.relation = MONO_GT_RELATION;
+	rel->relation.related_value.type = MONO_CONSTANT_SUMMARIZED_VALUE;
+	rel->relation.related_value.value.constant.value = 0;
+
+	apply_change_to_evaluation_area (area, rel);
+
+	*check_relations = g_slist_append_mempool (cfg->mempool, *check_relations, rel);
+}
+
 /*
  * Process a BB removing bounds checks from array accesses.
  * It does the following (in sequence):
@@ -987,6 +1051,9 @@ process_block (MonoCompile *cfg, MonoBasicBlock *bb, MonoVariableRelationsEvalua
 	if (TRACE_ABC_REMOVAL) {
 		printf ("\nProcessing block %d [dfn %d]...\n", bb->block_num, bb->dfn);
 	}
+
+	if (bb->region != -1)
+		return;
 
 	get_relations_from_previous_bb (area, bb, &additional_relations);
 	if (TRACE_ABC_REMOVAL) {
@@ -1050,29 +1117,49 @@ process_block (MonoCompile *cfg, MonoBasicBlock *bb, MonoVariableRelationsEvalua
 		}
 
 		if (ins->opcode == OP_CHECK_THIS) {
-			MonoRelationsEvaluationContext *context = &(area->contexts [ins->sreg1]);
-
-			clean_contexts (area->contexts, area->cfg->next_vreg);
-			evaluate_relation_with_target_variable (area, ins->sreg1, ins->sreg1, NULL);
-				
-			if (context->ranges.zero.lower > 0) {
+			if (eval_non_null (area, ins->sreg1)) {
 				if (REPORT_ABC_REMOVAL)
 					printf ("ARRAY-ACCESS: removed check_this instruction.\n");
 				NULLIFY_INS (ins);
 			}
 		}
 
-		if (ins->opcode == OP_NOT_NULL) {
-			rel = mono_mempool_alloc0 (cfg->mempool, sizeof (MonoAdditionalVariableRelation));
-			rel->variable = ins->sreg1;
-			rel->relation.relation = MONO_GT_RELATION;
-			rel->relation.related_value.type = MONO_CONSTANT_SUMMARIZED_VALUE;
-			rel->relation.related_value.value.constant.value = 0;
+		if (ins->opcode == OP_NOT_NULL)
+			add_non_null (area, cfg, ins->sreg1, &check_relations);
 
-			apply_change_to_evaluation_area (area, rel);
+		/* 
+		 * This doesn't work because LLVM can move the non-faulting loads before the faulting
+		 * ones (test_0_llvm_moving_faulting_loads ()).
+		 * FIXME: This also doesn't work because abcrem equates an array with its length,
+		 * so a = new int [100] implies a != null, but a = new int [0] doesn't.
+		 */
+#if 0
+		/*
+		 * Eliminate MONO_INST_FAULT flags if possible.
+		 */
+		if (COMPILE_LLVM (cfg) && (ins->opcode == OP_LDLEN ||
+								   ins->opcode == OP_BOUNDS_CHECK ||
+								   ins->opcode == OP_STRLEN ||
+								   (MONO_IS_LOAD_MEMBASE (ins) && (ins->flags & MONO_INST_FAULT)) ||
+								   (MONO_IS_STORE_MEMBASE (ins) && (ins->flags & MONO_INST_FAULT)))) {
+			int reg;
 
-			check_relations = g_slist_append_mempool (cfg->mempool, check_relations, rel);
+			if (MONO_IS_STORE_MEMBASE (ins))
+				reg = ins->inst_destbasereg;
+			else if (MONO_IS_LOAD_MEMBASE (ins))
+				reg = ins->inst_basereg;
+			else
+				reg = ins->sreg1;
+
+			if (eval_non_null (area, reg)) {
+				if (REPORT_ABC_REMOVAL)
+					printf ("ARRAY-ACCESS: removed MONO_INST_FAULT flag.\n");
+				ins->flags &= ~MONO_INST_FAULT;
+			} else {
+				add_non_null (area, cfg, reg, &check_relations);
+			}
 		}
+#endif
 	}	
 	
 	if (TRACE_ABC_REMOVAL) {

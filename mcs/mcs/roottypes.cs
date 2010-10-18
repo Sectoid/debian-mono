@@ -11,7 +11,7 @@
 //
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
@@ -19,31 +19,60 @@ using System.Runtime.InteropServices;
 namespace Mono.CSharp
 {
 	//
-	// Compiled top-level types
+	// Module container, it can be used as a top-level type
 	//
-	public sealed class ModuleContainer : TypeContainer
+	public class ModuleContainer : TypeContainer
 	{
-		// TODO: It'd be so nice to have generics
-		Hashtable anonymous_types;
-		public ModuleBuilder Builder;
-		readonly bool is_unsafe;
-		readonly CompilerContext context;
-
-		bool has_default_charset;
-
 		public CharSet DefaultCharSet = CharSet.Ansi;
 		public TypeAttributes DefaultCharSetType = TypeAttributes.AnsiClass;
 
+		protected Assembly assembly;
+
+		public ModuleContainer (Assembly assembly)
+			: base (null, null, MemberName.Null, null, 0)
+		{
+			this.assembly = assembly;
+		}
+
+		public override Assembly Assembly {
+			get { return assembly; }
+		}
+
+		// FIXME: Remove this evil one day
+		public ModuleCompiled Compiled {
+			get { return (ModuleCompiled) this; }
+		}
+
+		public override ModuleContainer Module {
+			get {
+				return this;
+			}
+		}
+	}
+
+	//
+	// Compiled top-level types
+	//
+	public class ModuleCompiled : ModuleContainer
+	{
+		Dictionary<int, List<AnonymousTypeClass>> anonymous_types;
+		readonly bool is_unsafe;
+		readonly CompilerContext context;
+
+		ModuleBuilder builder;
+
+		bool has_default_charset;
+
 		static readonly string[] attribute_targets = new string[] { "module" };
 
-		public ModuleContainer (CompilerContext context, bool isUnsafe)
-			: base (null, null, MemberName.Null, null, Kind.Root)
+		public ModuleCompiled (CompilerContext context, bool isUnsafe)
+			: base (null)
 		{
 			this.is_unsafe = isUnsafe;
 			this.context = context;
 
-			types = new ArrayList ();
-			anonymous_types = new Hashtable ();
+			types = new List<TypeContainer> ();
+			anonymous_types = new Dictionary<int, List<AnonymousTypeClass>> ();
 		}
 
  		public override AttributeTargets AttributeTargets {
@@ -54,15 +83,17 @@ namespace Mono.CSharp
 
 		public void AddAnonymousType (AnonymousTypeClass type)
 		{
-			ArrayList existing = (ArrayList)anonymous_types [type.Parameters.Count];
+			List<AnonymousTypeClass> existing;
+			if (!anonymous_types.TryGetValue (type.Parameters.Count, out existing))
 			if (existing == null) {
-				existing = new ArrayList ();
+				existing = new List<AnonymousTypeClass> ();
 				anonymous_types.Add (type.Parameters.Count, existing);
 			}
+
 			existing.Add (type);
 		}
 
-		public void AddAttributes (ArrayList attrs)
+		public void AddAttributes (List<Attribute> attrs)
 		{
 			foreach (Attribute a in attrs)
 				a.AttachTo (this, CodeGen.Assembly);
@@ -80,7 +111,7 @@ namespace Mono.CSharp
 			return AddPartial (nextPart, nextPart.Name);
 		}
 
-		public override void ApplyAttributeBuilder (Attribute a, CustomAttributeBuilder cb, PredefinedAttributes pa)
+		public override void ApplyAttributeBuilder (Attribute a, MethodSpec ctor, byte[] cdata, PredefinedAttributes pa)
 		{
 			if (a.Type == pa.CLSCompliant) {
 				if (CodeGen.Assembly.ClsCompliantAttribute == null) {
@@ -92,7 +123,18 @@ namespace Mono.CSharp
 				}
 			}
 
-			Builder.SetCustomAttribute (cb);
+			builder.SetCustomAttribute ((ConstructorInfo) ctor.GetMetaInfo (), cdata);
+		}
+
+		public ModuleBuilder Builder {
+			get {
+				return builder;
+			}
+
+			set {
+				builder = value;
+				assembly = builder.Assembly;
+			}
 		}
 
 		public override CompilerContext Compiler {
@@ -105,19 +147,19 @@ namespace Mono.CSharp
 				OptAttributes.Emit ();
 
 			if (is_unsafe) {
-				Type t = TypeManager.CoreLookupType (context, "System.Security", "UnverifiableCodeAttribute", Kind.Class, true);
+				TypeSpec t = TypeManager.CoreLookupType (context, "System.Security", "UnverifiableCodeAttribute", MemberKind.Class, true);
 				if (t != null) {
-					ConstructorInfo unverifiable_code_ctor = TypeManager.GetPredefinedConstructor (t, Location.Null, Type.EmptyTypes);
+					var unverifiable_code_ctor = TypeManager.GetPredefinedConstructor (t, Location.Null, TypeSpec.EmptyTypes);
 					if (unverifiable_code_ctor != null)
-						Builder.SetCustomAttribute (new CustomAttributeBuilder (unverifiable_code_ctor, new object [0]));
+						builder.SetCustomAttribute (new CustomAttributeBuilder ((ConstructorInfo) unverifiable_code_ctor.GetMetaInfo (), new object[0]));
 				}
 			}
 		}
 
-		public AnonymousTypeClass GetAnonymousType (ArrayList parameters)
+		public AnonymousTypeClass GetAnonymousType (IList<AnonymousTypeParameter> parameters)
 		{
-			ArrayList candidates = (ArrayList) anonymous_types [parameters.Count];
-			if (candidates == null)
+			List<AnonymousTypeClass> candidates;
+			if (!anonymous_types.TryGetValue (parameters.Count, out candidates))
 				return null;
 
 			int i;
@@ -134,11 +176,6 @@ namespace Mono.CSharp
 			return null;
 		}
 
-		public override bool GetClsCompliantAttributeValue ()
-		{
-			return CodeGen.Assembly.IsClsCompliant;
-		}
-
 		public bool HasDefaultCharSet {
 			get {
 				return has_default_charset;
@@ -152,20 +189,14 @@ namespace Mono.CSharp
 
 		public override bool IsClsComplianceRequired ()
 		{
-			return true;
+			return CodeGen.Assembly.IsClsCompliant;
 		}
 
-		public override ModuleContainer Module {
-			get {
-				return this;
-			}
-		}
-
-		protected override bool AddMemberType (DeclSpace ds)
+		protected override bool AddMemberType (TypeContainer ds)
 		{
 			if (!AddToContainer (ds, ds.Name))
 				return false;
-			ds.NamespaceEntry.NS.AddDeclSpace (ds.Basename, ds);
+			ds.NamespaceEntry.NS.AddType (ds.Definition);
 			return true;
 		}
 
@@ -186,7 +217,7 @@ namespace Mono.CSharp
 			if (!OptAttributes.CheckTargets ())
 				return;
 
-			Attribute a = ResolveAttribute (PredefinedAttributes.Get.DefaultCharset);
+			Attribute a = ResolveAttribute (Compiler.PredefinedAttributes.DefaultCharset);
 			if (a != null) {
 				has_default_charset = true;
 				DefaultCharSet = a.GetCharSetValue ();
@@ -223,9 +254,9 @@ namespace Mono.CSharp
 		}
 	}
 
-	class RootDeclSpace : DeclSpace {
+	class RootDeclSpace : TypeContainer {
 		public RootDeclSpace (NamespaceEntry ns)
-			: base (ns, null, MemberName.Null, null)
+			: base (ns, null, MemberName.Null, null, 0)
 		{
 			PartialContainer = RootContext.ToplevelTypes;
 		}
@@ -244,29 +275,20 @@ namespace Mono.CSharp
 			get { throw new InternalErrorException ("should not be called"); }
 		}
 
-		public override bool Define ()
-		{
-			throw new InternalErrorException ("should not be called");
-		}
+		//public override bool Define ()
+		//{
+		//    throw new InternalErrorException ("should not be called");
+		//}
 
 		public override TypeBuilder DefineType ()
 		{
 			throw new InternalErrorException ("should not be called");
 		}
 
-		public override MemberCache MemberCache {
-			get { return PartialContainer.MemberCache; }
-		}
-
 		public override ModuleContainer Module {
 			get {
 				return PartialContainer.Module;
 			}
-		}
-
-		public override bool GetClsCompliantAttributeValue ()
-		{
-			return PartialContainer.GetClsCompliantAttributeValue ();
 		}
 
 		public override bool IsClsComplianceRequired ()

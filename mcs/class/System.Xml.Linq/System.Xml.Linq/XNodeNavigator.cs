@@ -24,7 +24,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 
 using System;
 using System.IO;
@@ -280,7 +280,7 @@ namespace System.Xml.Linq
 		public override bool MoveToFirstChild ()
 		{
 			XContainer c = node as XContainer;
-			if (c == null)
+			if (c == null || c.FirstNode == null)
 				return false;
 			node = c.FirstNode;
 			attr = null;

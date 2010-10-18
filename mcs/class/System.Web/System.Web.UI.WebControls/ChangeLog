@@ -1,3 +1,291 @@
+2010-09-07  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #636475. A typo caused ads not to be matched
+	in ChooseAd
+
+	The second loop over the ads hashtable must not reject an app if
+	the keyword filter is empty.
+
+2010-08-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #626829. Nodes need to be re-populated on
+	postback, with populate on demand active
+
+	When one clicks on the plus sign in the tree with populate on
+	demand active and then clicks on the node's text, the resulting
+	post back is a plain one, not a callback. In this case all the
+	nodes need to be repopulated or they will vanish from the
+	rendering. At the same time, the nodes have to be simply marked as
+	populated when a post back in callback mode is processed.
+
+	Disabled one test and a small chunk of code in TreeView.RenderNode
+	- it needs more investigation (nothing critical though)
+
+2010-08-12  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #617746. GridRow must auto-bind only
+	properties directly declared in item type
+
+	When GridView auto-generates columns it uses reflection to
+	retrieve list of public properties present in the item type. Only
+	the properties that have bindable type and are declared directly
+	in the item type must be considered for column auto-generation.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net, 4.0] Added support for RepeatLayout lists to the list
+	controls.
+
+2010-08-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net, 4.0] Implemented OrderedList and UnorderedList layouts
+	for RepeatInfo
+
+	Also added auto-generated tests for the new layouts and updated
+	the test generator to account for the new layouts in 4.0.
+
+2010-08-03  Marek Habersack  <grendel@twistedcode.net>
+
+	Removed a few ONLY_1_1 ifdefs
+
+2010-08-03  Marek Habersack  <grendel@twistedcode.net>
+
+	Removed 1.1 code and NET_2_0 ifdefs
+
+2010-07-23  Marek Habersack  <mhabersack@novell.com>
+
+	* MenuItemBindingCollection.cs: added the OnClear,
+	OnRemoveComplete and OnValidate methods (2.0+)
+
+	* MenuItemStyleCollection.cs: added the OnInsert method (2.0+)
+
+	* TreeNodeStyleCollection.cs: added the OnInsert method (2.0+)
+
+	* TreeNodeBindingCollection.cs: added the OnClear,
+	OnRemoveComplete and OnValidate methods (2.0+)
+
+	* ValidationSummary.cs: implemented OnInit (4.0)
+
+	* WizardStepBase.cs: added the LoadViewState, OnLoad and
+	RenderChildren methods (2.0+)
+
+2010-07-22  Marek Habersack  <mhabersack@novell.com>
+
+	* MenuItemBinding.cs: made code a bit more compact.
+	Implemented ToString (4.0)
+
+	* MenuRenderingMode.cs: added (4.0)
+
+	* Menu.cs: added the IncludeStyleBlock and RenderingMode 4.0
+	properties (not used in the code yet).
+
+2010-07-21  Marek Habersack  <mhabersack@novell.com>
+
+	* Wizard.cs: made rendering 100% compliant with .NET (button IDs,
+	2.0+)
+	Implemented LayoutTemplate (4.0+)
+
+	* LinkButton.cs: render id first
+
+	* CreateUserWizard.cs: CreateUserNavigationContainer.UpdateState
+	doesn't add a previous button if we're on the first step.
+
+2010-07-20  Marek Habersack  <mhabersack@novell.com>
+
+	* StyleCollection.cs: added
+
+2010-07-19  Marek Habersack  <mhabersack@novell.com>
+
+	* SqlDataSourceView.cs: added the RaiseUnsupportedCapabilityError
+	method (2.0+)
+
+	* RoleGroupCollection.cs: added OnValidate (undocumented) overload
+
+	* ParameterCollection.cs: added missing Add method overload (2.0+)
+
+	* LiteralControlBuilder.cs: added the AppendLiteralString method
+	override (2.0+)
+
+	* DataKey.cs: implemented IEquatable interface methods (4.0)
+
+	* XmlDataSource.cs: implemented CacheKeyContext property (4.0)
+
+2010-07-16  Marek Habersack  <mhabersack@novell.com>
+
+	* Login.cs, PasswordRecovery.cs: implemented RenderOuterTable
+	(4.0)
+
+	* FormViewRow.cs: added internal property RenderJustCellContents
+	which makes the control render only its children (4.0)
+
+	* FormView.cs: implemented RenderOuterTable property and the
+	ModifiedOuterTableStylePropertyName method (4.0)
+
+2010-07-15  Marek Habersack  <mhabersack@novell.com>
+
+	* WebControl.cs: implemented verifying that no inline style
+	property is set for controls which support the RenderOuterTable
+	property (4.0)
+
+	* IRenderOuterTable.cs: internal helper interface for controls
+	which support the RenderOuterTable property (for now only
+	ChangePassword, 3 more to come)
+
+	* ChangePassword.cs: implemented RenderOuterTable property and the
+	corresponding behavior of not rendering surrounding table when the
+	property is set to false (4.0).
+	Modified BaseChangePasswordContainer to not inherit from Table
+	anymore. Table is an instance variable (always used as the
+	template container in 2.0) which is optionally (and by default)
+	used to contain the templates.
+
+	* PlaceHolder.cs, View.cs, WizardStepBase: added EnableTheming
+	property
+
+	* MultiViewControlBuilder.cs: added
+
+2010-07-14  Marek Habersack  <mhabersack@novell.com>
+
+	* Menu.cs: fixed skip link rendering (no child controls are added
+	in the process, writing directly to HtmlTextWriter). Fixes tests
+	for 4.0
+	If StaticSubMenuIndent equals Unit.Empty on 4.0, default to using
+	16px as the value of the margin-left CSS attribute.
+
+2010-07-13  Marek Habersack  <mhabersack@novell.com>
+
+	* BoundField.cs: implemented HtmlEncodeFormatString property
+	(3.5+) and modified the way FormatDataValue works accordingly.
+
+	* ListBox.cs, CheckBoxList.cs, ListControl.cs: VerifyMultiSelect
+	is not part of the official API. MultiSelect capability validation
+	is performed using an internal virtual method MultiSelectOk ().
+
+	* BaseDataList.cs: OnPagePreLoad is not part of the official API
+
+	* BaseDataBoundControl.cs, BaseDataList.cs, DataListItem.cs,
+	ValidationSummary.cs: implemented 4.0 SupportsDisabledAttribute
+	property.
+
+	* Wizard.cs: wizard table doesn't contain any instances of
+	HtmlAnchor or Image controls. Moved rendering of the skip link
+	anchor to the TableCellNamingContainer class, which does that in
+	RenderChildren by directly writing to the passed writer. Fixes 4.0
+	rendering and all the failing Wizard tests.
+
+2010-07-08  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBoxList.cs: RepeatLayout property update for new values of
+	the RepeatLayout enum in 4.0
+
+	* TreeView.cs: in 4.0, checkbox renders the value of the current
+	node's ToolTip, if anything, and not Text.
+
+	* RepeatLayout.cs: added two new members, UnorderedList and
+	OrderedList (4.0)
+
+	* ImageMap.cs: implemented missing Enabled property (2.0+)
+	RaisePostBackEvent must be protected and virtual (2.0+)
+	NavigateUrl is ignored if the control is disabled (4.0)
+
+2010-07-07  Marek Habersack  <mhabersack@novell.com>
+
+	* TreeView.cs: 4.0 rendering changes.
+	When using registered CSS classes, the node style must use them in
+	reverse order.
+
+2010-07-06  Marek Habersack  <mhabersack@novell.com>
+
+	* HyperLink.cs: the associated image is not rendered using the
+	Image control.
+
+2010-07-02  Marek Habersack  <mhabersack@novell.com>
+
+	* Menu.cs: 4.0 API updates.
+
+	* GridView.cs: implemented 4.0 properties -
+	SortedAscendingCellStyle, SortedAscendingHeaderStyle,
+	SortedDescendingCellStyle, SortedDescendingHeaderStyle,
+	ClientIDRowSuffix, ClientIDRowSuffixDataKeys, ShowHeaderWhenEmpty
+	along with associated rendering changes.
+
+	* DetailsView.cs, FormView.cs, GridView.cs: 4.0 API changes -
+	renamed ShowPage to SetPageIndex and made it public.
+	Added 4.0 interfaces to inheritance list and implemented them.
+
+	* DataKeyArray.cs: added internal constructor which accepts IList
+	instead of ArrayList. Changed the 'keys' field type to IList.
+
+	* ContainedTable.cs: the 'id' attribute must be rendered last.
+
+	* CheckBox.cs, CheckBoxList.cs, SiteMapPath.cs, Table.cs,
+	TableStyle.cs, TextBox.cs, WebControl.cs: 4.0 rendering changes.
+
+	* Calendar.cs, CompositeControl.cs, DropDownList.cs, HyperLink.cs,
+	Image.cs, ImageButton.cs, Label.cs, LinkButton.cs, LoginName.cs,
+	Panel.cs, Table.cs, TableCell.cs, TableRow.cs:
+	added new 4.0 property, SupportsDisabledAttribute.
+
+2010-06-21  Marek Habersack  <mhabersack@novell.com>
+
+	* BaseValidator.cs, BulletedList.cs, Calendar.cs, CheckBox.cs,
+	CheckBoxList.cs, DataGrid.cs, DropDownList.cs, GridView.cs,
+	HyperLink.cs, ImageButton.cs, LinkButton.cs, ListBox.cs,
+	ListControl.cs, Menu.cs, RadioButton.cs, RadioButtonList.cs,
+	RepeatInfo.cs, Repeater.cs, TextBox.cs, TreeView.cs,
+	ValidationSummary.cs, WebControl.cs: use WebControl.IsEnabled
+	instead of Enabled wherever necessary.
+
+2010-06-16  Marek Habersack  <mhabersack@novell.com>
+
+	* FormView.cs: row values must be retrieved with inclusion of
+	keys. Fixes bug #607722
+
+2010-06-03  Marek Habersack  <mhabersack@novell.com>
+
+	* Parameter.cs, ControlParameter.cs, SessionParameter.cs,
+	CookieParameter.cs, FormParameter.cs, ProfileParameter.cs,
+	QueryStringParameter.cs: Evaluate is 'protected internal virtual'
+	in 4.0.
+
+	* RouteParameter.cs: implemented.
+
+2010-04-28  Marek Habersack  <mhabersack@novell.com>
+
+	* CheckBoxList.cs: do not modify list item status in LoadPostData
+	when the list control is disabled.
+	If an item is selected and it was unchecked by the user, deselect
+	it. Fixes bug #600415
+
+2010-04-13  Marek Habersack  <mhabersack@novell.com>
+
+	* GridView.cs: make sure Header and Footer visibility are set when
+	binding the data. Fixes bug #595567
+
+	* ImageField.cs, CheckBoxField.cs: OnDataBindField must expect
+	sender to be something else than DataControlFieldCell. Fixes bug
+	#595568
+
+2010-04-07  Marek Habersack  <mhabersack@novell.com>
+
+	* FormParameter.cs, CookieParameter.cs, ProfileParameter.cs,
+	QueryStringParameter.cs, SessionParameter.cs: implemented
+	constructor overloads which take DbType as one of the arguments.
+
+2010-04-01  Marek Habersack  <mhabersack@novell.com>
+
+	* FormView.cs: do not show the pager if PagerSettings.Visible is
+	false. Fixes bug #578863
+
+2010-03-29  Marek Habersack  <mhabersack@novell.com>
+
+	* GridView.cs: main table must be created and added to the
+	controls collection before any OnRowCreated event is fired.
+
+2010-03-19 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* TreeView.cs: use enums instead of strings for attributes.
+
 2010-03-06  Marek Habersack  <mhabersack@novell.com>
 
 	* XmlDataSource.cs: reload document when one of Data, DataFile,
@@ -128,6 +416,13 @@
 	Map "captiontext" and "background" color names to
 	"ActiveCaptionText" and "Desktop", respectively, before passing
 	them to Color.FromName (). Fixes bug #546173
+
+2009-10-02  Marek Habersack  <mhabersack@novell.com>
+
+	* GridView.cs: added two 3.5 properties - SelectedPersistedDataKey
+	and IPersistedSelector.DataKey.
+
+	* BaseDataBoundControl.cs: slight optimizations to FindDataSource
 
 2009-09-28  Marek Habersack  <mhabersack@novell.com>
 

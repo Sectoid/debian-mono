@@ -1,3 +1,11 @@
+2010-08-01  Marek Safar  <marek.safar@gmail.com>
+
+	Update SymbolWriter to use generics collections
+
+2010-01-20  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* Makefile: Specify the path to Mono.Cecil.dll when referencing it.
+
 2009-02-02  Jb Evain  <jbevain@novell.com>
 
 	* Mono.Cecil.Mdb/MdbWriter.cs: add a GetDebugHeader method

@@ -1,22 +1,334 @@
+2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Report the broken type name instead of assembly's.
+
+2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Use List<Exception> instead of ArrayList to make things prettier.
+
+2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* AssemblyBuilder.cs (GetTypes): Raise ReflectionTypeLoadException
+	if any type was not finished.
+
+2010-09-15  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilder.cs (GetTypeCodeInternal): New method that handles
+	enums correctly.
+
+	This change is required because calling into the runtime with
+	incomplete TypeBuilders cause the runtime to crash.
+
+2010-08-31  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilder.cs (DefineDefaultConstructor): If the resolved type
+	is either typeof (object) or typeof (ValueType) we backout to the
+	non resolved type as it might be one of the corlib's typebuilders.
+
+	In mcs/mcs:
+
+2010-06-22  Jb Evain  <jbevain@novell.com>
+
+	* ModuleBuilder.cs
+	* AssemblyBuilder.cs:
+		properly override the new net_4_0 methods in moonlight.
+
+2010-05-27  Jb Evain  <jbevain@novell.com>
+
+	* EnumBuilder.cs (GetEnumUnderlyingType): override.
+
+2010-05-18  Marek Safar  <marek.safar@gmail.com>
+
+	* TypeBuilder.cs, PropertyBuilder.cs: Add DefineProperty overloads.
+
+2010-04-27  Marek Safar  <marek.safar@gmail.com>
+
+	* TypeBuilder.cs: StructLayoutAttribute ctor can be builder when
+	compiling corlib.
+
+2010-04-20 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (CreateType): Move default constructor
+	and createTypeCalled assignment to before the parent checks.
+
+	* TypeBuilder.cs (is_created): Return true even if creation
+	fails.
+
+	Fixes #331126
+
+2010-04-09 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (IsValueTypeImpl): Don't depend on
+	type_is_subtype_of icall. Fixes corlib compilation.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EnumBuilder.cs:
+	* GenericTypeParameterBuilder.cs:
+	* DerivedTypes.cs:
+	* TypeBuilder.cs: Add ResolveInternal virtual call that
+	resolves a given type to it's concrete type.
+
+	* TypeBuilder.cs (DefineDefaultConstructor): Use
+	ResolveInternal on parent to do the lookup on a
+	finished type.
+
+	Fixes #591225.
+
+2010-04-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs (GenericInstanceKey): Precalculate
+	GenericInstanceKey hash code since this can cause infinite
+	recursion when inflating "Foo<T> : Bar<Foo<T>>" parent.
+
+	* TypeBuilder.cs (IsSubclassOf): Don't delegate to base class
+	since the unmanaged information can be out of sync.
+
+	* TypeBuilder.cs (UnderlyingSystemType): Invert the test order
+	since IsEnum now is potentialy more expensive.
+
+	Fixes #594728.
+
+2010-04-06  Marek Safar  <marek.safar@gmail.com>
+
+	* ModuleBuilder.cs: Use Dictionary.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement Resolve*.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement ModuleVersionId.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement ResolveType.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement GetMethodImpl.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs (DefineType): Raise the correct exception
+	when name is null.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement IsResource.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement ScopedName property.
+
+2010-04-01 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement Name property.
+
+2010-03-31 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* ModuleBuilder.cs: Implement Assembly property.
+
+2010-04-01  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeBuilder.cs (GetField): Avoid a crash if this is called on a
+	FieldOnTypeBuilderInst. Fixes #586944.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* ModuleBuilder.cs (DefinedType): Lookup inside the name_cache before creating
+	the TypeBuilder since the runtime code can't handle a duplicate type name.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeType.cs (IsValidType): Implement proper checking for value types
+	as well.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeBuilder.cs: Fix the calls to IsValidType, some were passing
+	in DeclaringType instead of PropertyType/FieldType.
+
+	* CustomAttributeType.cs (IsValidType): Implement proper checking for reference
+	types. Fixes #591788.
+
+2010-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeBuilder.cs (IsValidType): Call Enum.GetUnderlyingType () for
+	dynamic enums to avoid crashes in the unmanaged code. Fixes #591800.
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Add IsDynamic.
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Implement v4 GetSatelliteAssembly,
+	ManifestModule, GlobalAssemblyCache.
+
+2010-03-26 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Implement v4 GetReferencedAssemblies
+	and GetLoadedModules.
+
+2010-03-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Implement v4 GetModules().
+
+2010-03-25 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Implement v4 GetType.
+
+2010-03-23 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs (ContainsGenericParameters): Check
+	the base_method first.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* AssemblyBuilder.cs, ModuleBuilder.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-12  Jb Evain  <jbevain@novell.com>
+
+	* AssemblyBuilder.cs (AddTypeForwarder): throw if the
+	type is a nested type.
+
+2010-03-11 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetMethod): Allow type to be the typebuilder itself.
+	Add better error checking to GetConstructor and GetField.
+
+	Fixes #587106.
+
 2010-02-09  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* ModuleBuilder.cs: Do not use reflection to create SymbolWriterImpl
 	for Moonlight since the code is bundled inside mscorlib.dll to avoid
 	having a non-platform assembly poking the internals of mscorlib.dll
-	[Backport r151176]
+
+2010-01-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* CustomAttributeBuilder.cs (Initialize): Add more argument checking to avoid
+	assertions in the runtime. Fixes #574353.
+
+2010-01-19 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* EventOnTypeBuilderInst.cs: Fix build.
+
+2010-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	* ILGenerator.cs (Emit): Disallow byref types. Fixes #564411.
+
+2009-12-16 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* FieldOnTypeBuilderInst.cs: Add more CompilerContext hacks.
+
+2009-12-14 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* TypeBuilder.cs (GetConstructor/GetMethod): Fail with a NRE if method/ctor
+	is null.
+
+2009-12-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs (MakeGenericType): Accept a Type as argument.
+
+	* ConstructorOnTypeBuilderInst.cs: Change it to support an underlying
+	non-sre constructor.
+
+	* MethodOnTypeBuilderInst.cs: Change it to support an underlying
+	non-sre method.
+
+	* FieldOnTypeBuilderInst.cs: Change it to support an underlying
+	non-sre field.
+
+	* EventOnTypeBuilderInst.cs: Change it to support an underlying
+	non-sre event.
+
+2009-12-10 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* AssemblyBuilder.cs: Add MakeGenericType method while takes care of doing
+	generic instance canonicalization under compiler context.
+
+	* DerivedTypes.cs: Add ArrayType::GetEffectiveRank to make it possible to
+	distinguish between [] and [*].
+
+	* TypeBuilder.cs: Implement MakeGenericType in managed code.
+
+2009-12-09  Jb Evain  <jbevain@novell.com>
+
+	* ILGenerator.cs (Emit(OpCode,LocalBuilder)): deal with
+	opcodes not related to locals.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Add new constructor that takes a MethodInfo
+	as base method. Change how compiler context is calculated to take the
+	instantiation vector into account.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Change base_method type from MethodBuilder to
+	MethodInfo.
+
+2009-12-08 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* DerivedTypes.cs: Implement IsCompilerContext property and replace
+	all checks to use it.
+
+	* EnumBuilder.cs: Ditto.
+
+	* GenericTypeParameterBuilder.cs: Ditto.
+
+	* TypeBuilder.cs: Ditto.
+
+	* FieldOnTypeBuilderInst.cs: Replace ad-hoc check for compiler context
+	with proper call to generic instance type.
+
+	* MethodOnTypeBuilderInst.cs: Ditto.
+
+	* ConstructorOnTypeBuilderInst.cs: Ditto.
+
+2009-12-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodBuilder.cs (MakeGenericMethod): Don't rely on the runtime to
+	inflate a MethodBuilder. Create directly an instance of MethodOnTypeBuilderInst.
+
+	* MethodOnTypeBuilderInst.cs (MakeGenericMethod): Cleanup this method and support
+	inflating already inflated methods under compiler context.
+
+2009-12-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Change instantiation field type to System.Type.
+
+	* MethodOnTypeBuilderInst.cs (MetadataToken): Explicitly throw if not under
+	compiler context.
+
+2009-12-04 Rodrigo Kumpera  <rkumpera@novell.com>
+
+	* MethodOnTypeBuilderInst.cs: Rename mb to base_method to better reflect
+	it's meaning. Introduce IsCompilerContext method and apply it's usage.
+
+2009-11-16  Marek Safar  <marek.safar@gmail.com>
+
+	* ILGenerator.cs, DynamicMethod.cs, MethodBuilder.cs,
+	ConstructorBuilder.cs: Some 4.0 changes.
 
 2009-10-30  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* MethodBuilder.cs: Add missing 'names' validations in 
 	DefineGenericParameters
-	[Backport r145118]
 
 2009-10-29  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* ModuleBuilder.cs: Add missing 'className' validations in GetType
 	* TypeBuilder.cs: Add missing 'names' validations in 
 	DefineGenericParameters
-	[Backport r145013]
+
+2009-10-27  Marek Safar  <marek.safar@gmail.com>
+
+	* GenericTypeParameterBuilder.cs: Attributes work under NET_4_0.
 
 2009-10-24  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -24,7 +336,6 @@
 	is supported (browser-side) but we still allow other values when
 	compiling (e.g. smcs) outside the browser (wo coreclr)
 	* TypeBuilder.cs (GetConstructor): Fix validations
-	[Backport r144791]
 
 2009-09-18  Sebastien Pouliot  <sebastien@ximian.com>
 

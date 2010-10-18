@@ -26,11 +26,9 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 namespace System.Security {
 
-#if !NET_2_1 || MONOTOUCH
+#if !MOONLIGHT
 	[MonoTODO ("Only supported by the runtime when CoreCLR is enabled")]
 #endif
 	[AttributeUsage (AttributeTargets.All, AllowMultiple=false, Inherited=false)]
@@ -42,4 +40,3 @@ namespace System.Security {
 	}
 }
 
-#endif

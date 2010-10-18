@@ -36,10 +36,7 @@ using System.Reflection;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Reflection.Emit;
-
-#if  NET_2_0
 using System.Collections.Generic;
-#endif
 
 namespace System
 {
@@ -64,7 +61,6 @@ namespace System
 		internal static extern object[] GetCustomAttributesInternal (ICustomAttributeProvider obj, Type attributeType, bool pseudoAttrs);
 
 		internal static object[] GetPseudoCustomAttributes (ICustomAttributeProvider obj, Type attributeType) {
-#if NET_2_0 || BOOTSTRAP_NET_2_0
 			object[] pseudoAttrs = null;
 
 			/* FIXME: Add other types */
@@ -88,9 +84,6 @@ namespace System
 			}
 			else
 				return pseudoAttrs;
-#else
-			return null;
-#endif
 		}
 
 		internal static object[] GetCustomAttributesBase (ICustomAttributeProvider obj, Type attributeType)
@@ -146,6 +139,9 @@ namespace System
 			// shortcut
 			if (!inherit && res.Length == 1)
 			{
+				if (res [0] == null)
+					throw new CustomAttributeFormatException ("Invalid custom attribute format");
+
 				if (attributeType != null)
 				{
 					if (attributeType.IsAssignableFrom (res[0].GetType ()))
@@ -191,6 +187,8 @@ namespace System
 				foreach (object attr in res)
 				{
 					AttributeUsageAttribute usage;
+					if (attr == null)
+						throw new CustomAttributeFormatException ("Invalid custom attribute format");
 
 					Type attrType = attr.GetType ();
 					if (attributeType != null)
@@ -267,7 +265,6 @@ namespace System
 			return GetCustomAttributes (obj, typeof (MonoCustomAttrs), inherit);
 		}
 
-#if NET_2_0
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		static extern CustomAttributeData [] GetCustomAttributesDataInternal (ICustomAttributeProvider obj);
 
@@ -279,7 +276,6 @@ namespace System
 			CustomAttributeData [] attrs = GetCustomAttributesDataInternal (obj);
 			return Array.AsReadOnly<CustomAttributeData> (attrs);
 		}
-#endif
 
 		internal static bool IsDefined (ICustomAttributeProvider obj, Type attributeType, bool inherit)
 		{
@@ -336,7 +332,7 @@ namespace System
 			if (method == null || !method.IsVirtual)
 				return null;
 
-			MethodInfo baseMethod = method.GetBaseDefinition ();
+			MethodInfo baseMethod = method.GetBaseMethod ();
 			if (baseMethod != null && baseMethod != method) {
 				ParameterInfo[] parameters = property.GetIndexParameters ();
 				if (parameters != null && parameters.Length > 0) {

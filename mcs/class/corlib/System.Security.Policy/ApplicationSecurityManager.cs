@@ -26,7 +26,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 
 using System.Runtime.InteropServices;
 using System.Security.Permissions;
@@ -36,7 +35,7 @@ namespace System.Security.Policy {
 	[ComVisible (true)]
 	public static class ApplicationSecurityManager {
 
-		private const string config = "ApplicationTrust.config";
+//		private const string config = "ApplicationTrust.config";
 
 		static private IApplicationTrustManager _appTrustManager;
 		static private ApplicationTrustCollection _userAppTrusts;
@@ -79,4 +78,3 @@ namespace System.Security.Policy {
 	}
 }
 
-#endif

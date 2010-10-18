@@ -5,6 +5,7 @@ using System.ServiceModel.Channels;
 using System.ServiceModel.Security;
 using System.ServiceModel.Security.Tokens;
 using System.Text;
+using System.ServiceModel.MonoInternal;
 
 namespace System.ServiceModel.Dispatcher
 {
@@ -22,8 +23,7 @@ namespace System.ServiceModel.Dispatcher
 
 			//processing
 			ProcessingChain.AddHandler (new PostReceiveRequestHandler ()).
-							AddHandler(new SecurityHandler ()).
-							AddHandler(new OperationInvokerHandler (replyOrInput));
+							AddHandler (new OperationInvokerHandler (replyOrInput));
 
 			//errors
 			ErrorChain.AddHandler (new ErrorProcessingHandler (replyOrInput));
@@ -54,7 +54,7 @@ namespace System.ServiceModel.Dispatcher
 		OperationContext CreateOperationContext (Message incoming)
 		{
 			ServiceRuntimeChannel contextChannel;
-			if (dispatch_runtime.HasCallbackRuntime) {
+			if (dispatch_runtime.CallbackClientRuntime.CallbackClientType != null) {
 				var type = ServiceProxyGenerator.CreateCallbackProxyType (dispatch_runtime.Type, dispatch_runtime.CallbackClientRuntime.CallbackClientType);
 				contextChannel = (ServiceRuntimeChannel) Activator.CreateInstance (type, new object [] {reply_or_input, dispatch_runtime});
 			}

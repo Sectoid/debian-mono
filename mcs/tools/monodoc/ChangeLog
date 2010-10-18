@@ -1,8 +1,37 @@
+2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc-validate] Support & validate the ECMA XML dialect.
+
+	This required adding some elements from the ECMA DTD.
+
+	We also add trivial XSLT support for things like <leq/> to ≤,
+	etc.
+
+2010-06-11  Jonathan Pryor  <jpryor@novell.com>
+
+	* Monodoc/ecma-provider.cs: Reduce memory requirements when assembling
+	  ECMA documentation.  The problem was that we parse all the XML files
+	  in order to extract //summary and //remarks members, and then stored
+	  the XmlNodes for these members.  XmlNode keeps a ref to the creating
+	  XmlDocument, thus keeping the XmlNode around requires keeping the
+	  entire XmlDocument around; result: ~350+MB RAM is needed to assemble
+	  netdocs.zip (in ../../docs).  To fix, import the XmlNodes that we
+	  actually care about into an otherwise empty XmlDocument, so that we 
+	  only save the nodes we need. Result: ~32MB RAM is needed.
+	  Fixes #602560.
+
+2010-04-25  Jonathan Pryor  <jpryor@novell.com>
+
+	* Monodoc/ecma-provider.cs: Support the full set of possible operator
+	  names within EcmaHelpSource.MakeOperatorSignature() (where "full" is
+	  "whatever is included in ECMA-335 §10.3.1 through §10.3.3").
+	  Fixes InvalidOperationException reported to mono-docs-list.
+
 2010-02-28  Jonathan Pryor  <jpryor@novell.com>
 
-	* Makefile: Remove System.Core.dll reference.
-	* Monodoc/provider.cs: Fix the build: monodoc.dll is build for the 1.1
-	  profile in Mono 2.6, so remove use of generics/etc.
+	* Monodoc/provider.cs: Add
+	  RootTree.LoadTree(string,string,IEnumerable) for compatibility with
+	  Mono 2.6's monodoc.dll.
 
 2010-02-26  Jonathan Pryor  <jpryor@novell.com>
 
@@ -57,6 +86,53 @@
 	* Lucene.Net/Lucene.Net/QueryParser/QueryParser.cs: Fix crash when 
 	  searching for "()".  Fixes #423853.  
 	  Thanks to Benoît Tuduri <bento78@gmail.com>.
+
+2009-12-03  Jonathan Pryor  <jpryor@novell.com>
+
+	* Resources/mdoc-html-utils.xsl: Add support for generating namespace
+	  links via <see cref="N:..." />
+
+2009-12-03  Jonathan Pryor  <jpryor@novell.com>
+
+	* Resources/mdoc-html-utils.xsl: Fix link-id generation of conversion
+	  operators.
+
+2009-12-02  Jonathan Pryor  <jpryor@novell.com>
+
+	* Mono.Documentation/ManifestResourceResolver.cs:
+	  Assembly.GetManifestResourceStream() throws an exception if the
+	  resource isn't present (instead of returning null), so don't just
+	  call it to see if the resource exists.
+	* Resources/mdoc-html-utils.xsl: .NET compatibility fixes (so that
+	  mdoc can run under .NET w/o bundling Mono's System.Xml):
+	  - Use msxsl:node-set() when required.
+	  - Use <xsl:variable/> not <xsl:param/> when a variable is needed.
+	  - Change semantics of GetLinkTarget(): instead of returning
+	    javascript code (previous behavior) or '--not-available--' (did
+	    this ever happen), return "" if the target can't be found.
+	  - Add GetLinkTargetHtml() to wrap GetLinkTarget() and return the
+	    previous javascript if the target couldn't be found.
+
+2009-11-24  Jonathan Pryor  <jpryor@novell.com>
+
+	* Monodoc/ecma-provider.cs: Use XslCompiledTransform instead of
+	  XslTransform, as XslCompiledTransform is *significantly* faster
+	  under .NET (3m7s -> 1.7s for some tests).
+
+2009-10-02  Jonathan Pryor  <jpryor@novell.com>
+
+	* Mono.Documentation/XmlDocUtils.cs: GetInterfaces() can throw if the
+	  type we're trying to load can't be found (e.g. if a type implements
+	  an internal interface, there won't be an XML file for that internal
+	  interface).  Ignore the exception.
+
+2009-09-25  Jonathan Pryor  <jpryor@novell.com>
+
+	* Monodoc/ecma-provider.cs: Don't return 'null' from GetPublicUrl(),
+	  but instead provide a decent URL even if the url isn't to a single
+	  member, but instead to show all members, e.g. T:System.String/*.
+	* Monodoc/provider.cs: Obsolete Node.URL.  It's too variable for sane
+	  use; use Node.PublicUrl.
 
 2009-09-09  Jonathan Pryor  <jpryor@novell.com>
 

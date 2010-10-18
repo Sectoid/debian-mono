@@ -1,9 +1,45 @@
+
+Wed Jul 21 16:00:08 CEST 2010 Paolo Molaro <lupus@ximian.com>
+
+	* SecurityRuleSet.cs: this enum is actually a byte, the msdn docs are
+	wrong.
+
+2010-05-27  Jb Evain  <jbevain@novell.com>
+
+	* SecurityContextSource.cs: add new enum in net_4_0.
+
+2010-04-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityManager.cs: Add stub for new methods (so code compiles
+	correctly under other profiles)
+	* SecurityManager_2_1.cs: Implement [Check|Ensure]ElevatedPermissions
+	for Moonlight Elevated Trust
+
+2010-03-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityManager_2_1.cs: Add an internal HasElevatedPermissions 
+	property to mscorlib since the "real" (i.e. visible) one in 
+	System.Windows.dll is not accessible by most code.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* SecurityTransparentAttribute.cs
+	* SecurityFrame.cs
+	* IPermission.cs
+	* SecurityManager.cs
+	* SecurityManager_2_1.cs
+	* SecuritySafeCriticalAttribute.cs:
+		use MOONLIGHT symbol to disambiguate MonoTouch and Moonlight code.
+
+2009-10-30	Marek Safar  <marek.safar@gmail.com>
+
+	* SecurityRuleSet.cs, SecurityRulesAttribute.cs: Implemented.
+
 2009-10-23  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* SecurityManager_2_1.cs: Return to duty for SecurityEnabled, it
 	will allow us to distinguish between running in the browser
 	(coreclr active) and on the console (e.g. smcs) from managed code
-	[Backport r144732]
 
 2009-09-23  Sebastien Pouliot  <sebastien@ximian.com>
 

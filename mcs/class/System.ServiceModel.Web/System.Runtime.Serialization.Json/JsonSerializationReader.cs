@@ -71,6 +71,8 @@ namespace System.Runtime.Serialization.Json
 			if (serialized_object_count ++ == serializer.MaxItemsInObjectGraph)
 				throw SerializationError (String.Format ("The object graph exceeded the maximum object count '{0}' specified in the serializer", serializer.MaxItemsInObjectGraph));
 
+			bool isNull = reader.GetAttribute ("type") == "null";
+
 			switch (Type.GetTypeCode (type)) {
 			case TypeCode.DBNull:
 				string dbn = reader.ReadElementContentAsString ();
@@ -78,7 +80,17 @@ namespace System.Runtime.Serialization.Json
 					throw new SerializationException (String.Format ("The only expected DBNull value string is '{{}}'. Tha actual input was '{0}'.", dbn));
 				return DBNull.Value;
 			case TypeCode.String:
-				return reader.ReadElementContentAsString ();
+				if (isNull) {
+					reader.ReadElementContentAsString ();
+					return null;
+				}
+				else
+					return reader.ReadElementContentAsString ();
+			case TypeCode.Char:
+				var c = reader.ReadElementContentAsString ();
+				if (c.Length > 1)
+					throw new XmlException ("Invalid JSON char");
+				return Char.Parse(c);
 			case TypeCode.Single:
 				return reader.ReadElementContentAsFloat ();
 			case TypeCode.Double:
@@ -105,13 +117,24 @@ namespace System.Runtime.Serialization.Json
 					return Convert.ChangeType (l, type, null);
 			case TypeCode.Boolean:
 				return reader.ReadElementContentAsBoolean ();
+			case TypeCode.DateTime:
+				// it does not use ReadElementContentAsDateTime(). Different string format.
+				var s = reader.ReadElementContentAsString ();
+				if (s.Length < 2 || !s.StartsWith ("/Date(", StringComparison.Ordinal) || !s.EndsWith (")/", StringComparison.Ordinal))
+					throw new XmlException ("Invalid JSON DateTime format. The value format should be '/Date(UnixTime)/'");
+				return new DateTime (1970, 1, 1).AddMilliseconds (long.Parse (s.Substring (6, s.Length - 8)));
 			default:
 				if (type == typeof (Guid)) {
 					return new Guid (reader.ReadElementContentAsString ());
 				} else if (type == typeof (Uri)) {
-					return new Uri (reader.ReadElementContentAsString ());
+					if (isNull) {
+						reader.ReadElementContentAsString ();
+						return null;
+					}
+					else
+						return new Uri (reader.ReadElementContentAsString ());
 				} else if (type == typeof (XmlQualifiedName)) {
-					string s = reader.ReadElementContentAsString ();
+					s = reader.ReadElementContentAsString ();
 					int idx = s.IndexOf (':');
 					return idx < 0 ? new XmlQualifiedName (s) : new XmlQualifiedName (s.Substring (0, idx), s.Substring (idx + 1));
 				} else if (type != typeof (object)) {
@@ -241,6 +264,8 @@ namespace System.Runtime.Serialization.Json
 		{
 			reader.ReadStartElement ();
 			object ret;
+			if (collectionType.IsInterface)
+				collectionType = typeof (List<>).MakeGenericType (elementType);
 			if (typeof (IList).IsAssignableFrom (collectionType)) {
 #if NET_2_1
 				Type listType = collectionType.IsArray ? typeof (List<>).MakeGenericType (elementType) : null;
@@ -266,6 +291,23 @@ namespace System.Runtime.Serialization.Json
 #else
 				ret = collectionType.IsArray ? ((ArrayList) c).ToArray (elementType) : c;
 #endif
+			} else if (typeof (IDictionary).IsAssignableFrom(collectionType)) {
+				IDictionary id = (IDictionary)Activator.CreateInstance (collectionType);
+
+				for (reader.MoveToContent (); reader.NodeType != XmlNodeType.EndElement; reader.MoveToContent ()) {
+					if (!reader.IsStartElement ("item"))
+						throw SerializationError (String.Format ("Expected element 'item', but found '{0}' in namespace '{1}'", reader.LocalName, reader.NamespaceURI));
+
+					// reading a KeyValuePair in the form of <Key .../><Value .../>
+					reader.Read ();
+					reader.MoveToContent ();
+					object key = ReadObject (elementType.GetGenericArguments ()[0]);
+					reader.MoveToContent ();
+					object val = ReadObject (elementType.GetGenericArguments ()[1]);
+					reader.Read ();
+					id[key] = val;
+				}
+				ret = id;
 			} else {
 				object c = Activator.CreateInstance (collectionType);
 				MethodInfo add = collectionType.GetMethod ("Add", new Type [] {elementType});

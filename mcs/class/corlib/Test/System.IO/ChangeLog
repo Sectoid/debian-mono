@@ -1,13 +1,40 @@
+2010-05-27  William Holmes  <billholmes54@gmail.com>
+
+	* DirectoryTest.cs: Adding test for bug 580090.
+
+	Code is contributed under MIT/X11 license.
+
+2010-05-08  Marek Habersack  <mhabersack@novell.com>
+
+	* PathTest.cs: added tests for the 4.0 Combine overloads.
+
+2010-03-17 Gonzalo Paniagua Javier <gonzalo@novell.com>
+
+	* StreamReaderTest.cs: test for bug 589236. The detected encoding is
+	different from the one provided in the ctor.
+
 2010-02-22  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* MemoryStreamTest.cs: Add a new test for Capacity.
+
+2010-01-23  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* StreamReaderTest.cs: New test for encoding detection.
+
+2010-01-03  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* MemoryStreamTest.cs: Activate ZeroingOnExpandTest as we have fixed
 	this issue.
+
+2009-12-01  Carlos Alberto Cortez <calberto.cortez@gmail.com>
+
+	* FileTest.cs: New test for File.Copy throwing an exception if src and
+	dest are the same.
 
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* UnmanagedMemoryStreamTest.cs: Add more test cases to cover all
 	validations
-	[Backport r144226]
 
 2009-06-25  Robert Jordan  <robertj@gmx.net>
 

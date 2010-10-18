@@ -22,10 +22,15 @@
 #include <mono/metadata/locales.h>
 #include <mono/metadata/culture-info.h>
 #include <mono/metadata/culture-info-tables.h>
-#include <mono/metadata/normalization-tables.h>
 
+#ifndef DISABLE_NORMALIZATION
+#include <mono/metadata/normalization-tables.h>
+#endif
 
 #include <locale.h>
+#if defined(__APPLE__)
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
 #undef DEBUG
 
@@ -374,17 +379,61 @@ get_posix_locale (void)
 	return g_strdup (posix_locale);
 }
 
+#if defined (__APPLE__)
+static gchar*
+get_darwin_locale (void)
+{
+	static gchar *darwin_locale = NULL;
+	CFLocaleRef locale = NULL;
+	CFStringRef locale_cfstr = NULL;
+	CFIndex len;
+	int i;
+
+	if (darwin_locale != NULL)
+		return g_strdup (darwin_locale);
+
+	locale = CFLocaleCopyCurrent ();
+
+	if (locale) {
+		locale_cfstr = CFLocaleGetIdentifier (locale);
+
+		if (locale_cfstr) {
+			len = CFStringGetMaximumSizeForEncoding (CFStringGetLength (locale_cfstr), kCFStringEncodingMacRoman) + 1;
+			darwin_locale = (char *) malloc (len);
+			if (!CFStringGetCString (locale_cfstr, darwin_locale, len, kCFStringEncodingMacRoman)) {
+				free (darwin_locale);
+				CFRelease (locale);
+				darwin_locale = NULL;
+				return NULL;
+			}
+
+			for (i = 0; i < strlen (darwin_locale); i++)
+				if (darwin_locale [i] == '_')
+					darwin_locale [i] = '-';
+		}
+
+		CFRelease (locale);
+	}
+
+	return g_strdup (darwin_locale);
+}
+#endif
+
 static gchar*
 get_current_locale_name (void)
 {
 	gchar *locale;
 	gchar *corrected = NULL;
 	const gchar *p;
-        gchar *c;
+	gchar *c;
 
-#ifdef PLATFORM_WIN32
+#ifdef HOST_WIN32
 	locale = g_win32_getlocale ();
-#else	
+#elif defined (__APPLE__)	
+	locale = get_darwin_locale ();
+	if (!locale)
+		locale = get_posix_locale ();
+#else
 	locale = get_posix_locale ();
 #endif	
 
@@ -932,12 +981,16 @@ void load_normalization_resource (guint8 **argProps,
 				  guint8 **argMapIdxToComposite,
 				  guint8 **argCombiningClass)
 {
+#ifdef DISABLE_NORMALIZATION
+	mono_raise_exception (mono_get_exception_not_supported ("This runtime has been compiled without string normalization support."));
+#else
 	*argProps = (guint8*)props;
 	*argMappedChars = (guint8*) mappedChars;
 	*argCharMapIndex = (guint8*) charMapIndex;
 	*argHelperIndex = (guint8*) helperIndex;
 	*argMapIdxToComposite = (guint8*) mapIdxToComposite;
 	*argCombiningClass = (guint8*)combiningClass;
+#endif
 }
 
 

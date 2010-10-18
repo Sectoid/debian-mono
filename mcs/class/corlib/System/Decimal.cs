@@ -37,13 +37,12 @@ using System;
 using System.Globalization;
 using System.Text;
 using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
+
 #if MSTEST
 using System.Runtime.InteropServices;
 #endif
 
-#if NET_2_0
-using System.Runtime.ConstrainedExecution;
-#endif
 
 namespace System
 {
@@ -52,47 +51,21 @@ namespace System
 	/// digits, suitable for financial and commercial calculations
 	/// </summary>
 	[Serializable]
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
-	public struct Decimal: IFormattable, IConvertible, IComparable
-#if NET_2_0
-	, IComparable<Decimal>, IEquatable <Decimal>
-#endif
+	public struct Decimal: IFormattable, IConvertible, IComparable, IComparable<Decimal>, IEquatable <Decimal>
 	{
-#if BOOTSTRAP_WITH_OLDLIB
-
-		// LAMESPEC: the attributes aren't mentioned, but show up in CorCompare
-		// Unfortunately, corcompare starts throwing security exceptions when
-		// these attributes are present...
-
-		[DecimalConstantAttribute(0, 1, unchecked((uint)-1), unchecked((uint)-1), unchecked((uint)-1))]
-		public static readonly Decimal MinValue = new Decimal(-1, -1, -1, true, 0);
-		[DecimalConstantAttribute(0, 0, unchecked((uint)-1), unchecked((uint)-1), unchecked((uint)-1))]
-		public static readonly Decimal MaxValue = new Decimal(-1, -1, -1, false, 0);
-		[DecimalConstantAttribute(0, 1, 0, 0, 1)]
-		public static readonly Decimal MinusOne = new Decimal(1, 0, 0, true, 0);
-		[DecimalConstantAttribute(0, 0, 0, 0, 1)]
-		public static readonly Decimal One = new Decimal(1, 0, 0, false, 0);
-		[DecimalConstantAttribute(0, 0, 0, 0, 0)]
-		public static readonly Decimal Zero = new Decimal(0, 0, 0, false, 0);
-#else
 		public const decimal MinValue = -79228162514264337593543950335m;
 		public const decimal MaxValue =  79228162514264337593543950335m;
 
 		public const decimal MinusOne = -1;
 		public const decimal One = 1;
 		public const decimal Zero = 0;
-#endif
 
 		private static readonly Decimal MaxValueDiv10 = MaxValue / 10;
 
 		// some constants
-		private const int DECIMAL_DIVIDE_BY_ZERO = 5;
 		private const uint MAX_SCALE = 28;
-		private const int iMAX_SCALE = 28;
 		private const uint SIGN_FLAG = 0x80000000;
-		private const uint SCALE_MASK = 0x00FF0000;
 		private const int SCALE_SHIFT = 16;
 		private const uint RESERVED_SS32_BITS = 0x7F00FFFF;
 
@@ -179,11 +152,28 @@ namespace System
 
 		public Decimal (float value) 
 		{
+#if false
+			//
+			// We cant use the double2decimal method
+			// because it incorrectly turns the floating point
+			// value 1.23456789E-25F which should be:
+			//    0.0000000000000000000000001235
+			// into the incorrect:
+			//   0.0000000000000000000000001234
+			//
+			//    The code currently parses the double value 0.6 as
+			//    0.600000000000000
+			//
+			// And we have a patch for that called (trim
+			if (double2decimal (out this, value, 7) != 0)
+				throw new OverflowException ();
+#else
 			if (value > (float)Decimal.MaxValue || value < (float)Decimal.MinValue ||
 				float.IsNaN (value) || float.IsNegativeInfinity (value) || float.IsPositiveInfinity (value)) {
 				throw new OverflowException (Locale.GetText (
 					"Value {0} is greater than Decimal.MaxValue or less than Decimal.MinValue", value));
 			}
+			
 			// we must respect the precision (double2decimal doesn't)
 			Decimal d = Decimal.Parse (value.ToString (CultureInfo.InvariantCulture),
 					NumberStyles.Float, CultureInfo.InvariantCulture);
@@ -191,10 +181,27 @@ namespace System
 			hi = d.hi;
 			lo = d.lo;
 			mid = d.mid;
+#endif
 		}
 
 		public Decimal (double value) 
 		{
+#if false
+			//
+			// We cant use the double2decimal method
+			// because it incorrectly turns the floating point
+			// value 1.23456789E-25F which should be:
+			//    0.0000000000000000000000001235
+			// into the incorrect:
+			//   0.0000000000000000000000001234
+			//
+			//    The code currently parses the double value 0.6 as
+			//    0.600000000000000
+			//
+			// And we have a patch for that called (trim
+			if (double2decimal (out this, value, 15) != 0)
+				throw new OverflowException ();
+#else
 			if (value > (double)Decimal.MaxValue || value < (double)Decimal.MinValue ||
 				double.IsNaN (value) || double.IsNegativeInfinity (value) || double.IsPositiveInfinity (value)) {
 				throw new OverflowException (Locale.GetText (
@@ -207,6 +214,7 @@ namespace System
 			hi = d.hi;
 			lo = d.lo;
 			mid = d.mid;
+#endif
 		}
 
 		public Decimal (int[] bits) 
@@ -538,7 +546,6 @@ namespace System
 
 		public static Decimal Round (Decimal d, int decimals) 
 		{
-#if NET_2_0
 			return Round (d, decimals, MidpointRounding.ToEven);
 		}
 
@@ -547,7 +554,6 @@ namespace System
 			if ((mode != MidpointRounding.ToEven) && (mode != MidpointRounding.AwayFromZero))
 				throw new ArgumentException ("The value '" + mode + "' is not valid for this usage of the type MidpointRounding.", "mode");
 
-#endif
 			if (decimals < 0 || decimals > 28) {
 				throw new ArgumentOutOfRangeException ("decimals", "[0,28]");
 			}
@@ -564,11 +570,7 @@ namespace System
 			dec_part *= 10000000000000000000000000000M;
 			dec_part = Decimal.Floor(dec_part);
 			dec_part /= (10000000000000000000000000000M / p);
-#if NET_2_0
 			dec_part = Math.Round (dec_part, mode);
-#else
-			dec_part = Math.Round (dec_part);
-#endif
 			dec_part /= p;
 			decimal result = int_part + dec_part;
 
@@ -598,7 +600,6 @@ namespace System
 			return result;
 		}
 
-#if NET_2_0
 		public static Decimal Round (Decimal d)
 		{
 			return Math.Round (d);
@@ -608,7 +609,6 @@ namespace System
 		{
 			return Math.Round (d, mode);
 		}
-#endif
 
 		public static Decimal Multiply (Decimal d1, Decimal d2) 
 		{
@@ -671,9 +671,7 @@ namespace System
 			return result;
 		}
 
-#if NET_2_0
 		[ReliabilityContractAttribute (Consistency.WillNotCorruptState, Cer.Success)]
-#endif
 		public static int Compare (Decimal d1, Decimal d2) 
 		{
 			return decimalCompare (ref d1, ref d2);
@@ -690,7 +688,6 @@ namespace System
 			return Compare (this, (Decimal)value);
 		}
 
-#if NET_2_0
 		public int CompareTo (Decimal value)
 		{
 			return Compare (this, value);
@@ -705,7 +702,6 @@ namespace System
 		{
 			return Math.Ceiling (d);
 		}
-#endif
 
 		public static Decimal Parse (string s) 
 		{
@@ -847,7 +843,7 @@ namespace System
 					sb.Append(ch);
 					pos++;
 				}
-				else if (allowedThousands && ch == groupSep[0]) 
+				else if (allowedThousands && ch == groupSep[0] && ch != decimalSep [0]) 
 				{
 					int slen = groupSep.Length;
 					if (slen != 1 && s.IndexOf(groupSep, pos, slen) != pos) 
@@ -974,6 +970,14 @@ namespace System
 				}
 				else
 				{
+					// trailing zero characters are allowed
+					if (ch == 0){
+						while (++pos < len && s [pos] == 0)
+							;
+						if (pos == len)
+							break;
+					}
+					
 					if (throwex)
 						ThrowAtPos (pos);
 					else
@@ -1007,7 +1011,6 @@ namespace System
 			return result;
 		}
 	
-#if NET_2_0
 		public static bool TryParse (string s, out Decimal result)
 		{
 			if (s == null){
@@ -1026,7 +1029,6 @@ namespace System
 
 			return PerformParse (s, style, provider, out result, false);
 		}
-#endif
 
 		static bool PerformParse (string s, NumberStyles style, IFormatProvider provider, out Decimal res, bool throwex) 
 		{
@@ -1290,58 +1292,30 @@ namespace System
 			return Convert.ToInt64 (this);
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		sbyte IConvertible.ToSByte (IFormatProvider provider)
 		{
 			return Convert.ToSByte (this);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
 		float IConvertible.ToSingle (IFormatProvider provider)
 		{
 			return Convert.ToSingle (this);
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		ushort IConvertible.ToUInt16 (IFormatProvider provider)
 		{
 			return Convert.ToUInt16 (this);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		uint IConvertible.ToUInt32 (IFormatProvider provider)
 		{
 			return Convert.ToUInt32 (this);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		ulong IConvertible.ToUInt64 (IFormatProvider provider)
 		{
 			return Convert.ToUInt64 (this);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
 		public string ToString (string format, IFormatProvider provider) 
 		{
@@ -1370,8 +1344,8 @@ namespace System
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern int decimal2Int64 (ref Decimal val, out long result);
 
-//		[MethodImplAttribute(MethodImplOptions.InternalCall)]
-//		private static extern int double2decimal (out Decimal erg, double val, int digits);
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private static extern int double2decimal (out Decimal erg, double val, int digits);
 
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		private static extern int decimalIncr (ref Decimal d1, ref Decimal d2);

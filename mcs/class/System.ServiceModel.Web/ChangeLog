@@ -1,14 +1,41 @@
+2010-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* net_2_0_System.ServiceModel.Web.dll.sources,
+	  common_System.ServiceModel.Web.dll.sources : UriTemplates are
+	  moved to Sys.SM.dll in 4.0 profile.
+
+2010-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* monotouch_System.ServiceModel.Web.dll.sources :
+	  This also needs new files.
+
+2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* net_2_0_System.ServiceModel.Web.dll.sources,
+	  net_2_1_raw_System.ServiceModel.Web.dll.sources :
+	  move JsonReader.cs as Sys.R.S.Json/JavaScriptReader.cs
+
+2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* net_2_0_System.ServiceModel.Web.dll.sources,
+	  net_2_1_raw_System.ServiceModel.Web.dll.sources :
+	  add JavaScriptObjectDeserializer.cs and JsonReader in Sys.Json
+	  (which is to be moved later).
+
+2010-03-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* System.ServiceModel.Web_test.dll.sources : add new test.
+	* Makefile : add new extra dist.
+
 2010-01-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* monotouch_System.ServiceModel.Web.dll.sources: Don't inherit from
 	net_2_1_raw*.sources when you require a superset of moonlight API
-	[Backport r150214]
 
 2010-01-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* net_2_1_raw_System.ServiceModel.Web.dll.sources: Use custom
 	version of DataContractJsonSerializer for Moonlight
-	[Backport r150153]
 
 2009-11-12  Atsushi Enomoto  <atsushi@ximian.com>
 

@@ -31,7 +31,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -158,26 +157,32 @@ namespace System.Collections.ObjectModel
 
 		protected override void InsertItem (int index, TItem item)
 		{
-			if (dictionary != null)
-			{
-				dictionary.Add (GetKeyForItem (item), item);
-			}
-			else
-			{
-				if (dictionaryCreationThreshold != -1 && Count + 1 > dictionaryCreationThreshold)
-				{
-					dictionary = new Dictionary<TKey, TItem> (comparer);
+			TKey key = GetKeyForItem (item);
+			if (key == null)
+				throw new ArgumentNullException ("GetKeyForItem(item)");
 
-					for (int i = Count - 1; i >= 0; i--)
-					{
-						TItem dictitem = this[i];
-						dictionary.Add(GetKeyForItem(dictitem), dictitem);
+			if (dictionary != null && dictionary.ContainsKey (key))
+				throw new ArgumentException ("An element with the same key already exists in the dictionary.");
+
+			if (dictionary == null)
+				for (int i = 0; i < Count; ++i) {
+					if (comparer.Equals (key, GetKeyForItem (this [i]))) {
+						throw new ArgumentException ("An element with the same key already exists in the dictionary.");
 					}
+				}
 
-					dictionary.Add (GetKeyForItem (item), item);
+			base.InsertItem (index, item);
+
+			if (dictionary != null)
+				dictionary.Add (key, item);
+			else if (dictionaryCreationThreshold != -1 && Count > dictionaryCreationThreshold) {
+				dictionary = new Dictionary<TKey, TItem> (comparer);
+
+				for (int i = 0; i < Count; ++i) {
+					TItem dictitem = this [i];
+					dictionary.Add (GetKeyForItem (dictitem), dictitem);
 				}
 			}
-			base.InsertItem (index, item);
 		}
 
 		protected override void RemoveItem (int index)
@@ -207,4 +212,3 @@ namespace System.Collections.ObjectModel
 		}
 	}
 }
-#endif

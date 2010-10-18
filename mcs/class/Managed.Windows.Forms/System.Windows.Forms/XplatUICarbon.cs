@@ -795,6 +795,9 @@ namespace System.Windows.Forms {
 			AlertSoundPlay ();
 		}
 
+		internal override void BeginMoveResize (IntPtr handle) {
+		}
+
 		internal override void CaretVisible (IntPtr hwnd, bool visible) {
 			if (Caret.Hwnd == hwnd) {
 				if (visible) {
@@ -1356,8 +1359,9 @@ namespace System.Windows.Forms {
 				ReleaseEvent (evtRef);
 			}
 			
+			object queueobj;
+			loop:
 			lock (queuelock) {
-				loop:
 
 				if (MessageQueue.Count <= 0) {
 					if (Idle != null) 
@@ -1379,13 +1383,13 @@ namespace System.Windows.Forms {
 					msg.message = Msg.WM_ENTERIDLE;
 					return GetMessageResult;
 				}
-				object queueobj = MessageQueue.Dequeue ();
-				if (queueobj is GCHandle) {
-					XplatUIDriverSupport.ExecuteClientMessage((GCHandle)queueobj);
-					goto loop;
-				} else {
-					msg = (MSG)queueobj;
-				}
+				queueobj = MessageQueue.Dequeue ();
+			}
+			if (queueobj is GCHandle) {
+				XplatUIDriverSupport.ExecuteClientMessage((GCHandle)queueobj);
+				goto loop;
+			} else {
+				msg = (MSG)queueobj;
 			}
 			return GetMessageResult;
 		}
@@ -1533,7 +1537,11 @@ namespace System.Windows.Forms {
 				clip_region.MakeEmpty();
 
 				foreach (Rectangle r in hwnd.ClipRectangles) {
-					clip_region.Union (r);
+					/* Expand the region slightly.
+					 * See bug 464464.
+					 */
+					Rectangle r2 = Rectangle.FromLTRB (r.Left, r.Top, r.Right, r.Bottom + 1);
+					clip_region.Union (r2);
 				}
 
 				if (hwnd.UserClip != null) {

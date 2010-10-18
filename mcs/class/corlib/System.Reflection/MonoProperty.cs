@@ -29,6 +29,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -39,6 +40,7 @@ namespace System.Reflection {
 	
 	internal struct MonoPropertyInfo {
 		public Type parent;
+		public Type declaring_type;
 		public String name;
 		public MethodInfo get_method;
 		public MethodInfo set_method;
@@ -51,6 +53,8 @@ namespace System.Reflection {
 		[MethodImplAttribute (MethodImplOptions.InternalCall)]
 		internal static extern Type[] GetTypeModifiers (MonoProperty prop, bool optional);
 
+		[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		internal static extern object get_default_value (MonoProperty prop);
 	}
 
 	[Flags]
@@ -64,10 +68,8 @@ namespace System.Reflection {
 		
 	}
 
-#if NET_2_0
 	internal delegate object GetterAdapter (object _this);
 	internal delegate R Getter<T,R> (T _this);
-#endif
 
 	[Serializable]
 	internal class MonoProperty : PropertyInfo, ISerializable {
@@ -76,9 +78,7 @@ namespace System.Reflection {
 		internal IntPtr prop;
 		MonoPropertyInfo info;
 		PInfo cached;
-#if NET_2_0
 		GetterAdapter cached_getter;
-#endif
 
 #pragma warning restore 649
 
@@ -135,7 +135,7 @@ namespace System.Reflection {
 		public override Type DeclaringType {
 			get {
 				CachePropertyInfo (PInfo.DeclaringType);
-				return info.parent;
+				return info.declaring_type;
 			}
 		}
 		
@@ -205,6 +205,17 @@ namespace System.Reflection {
 				return null;
 		}
 
+
+		/*TODO verify for attribute based default values, just like ParameterInfo*/
+		public override object GetConstantValue ()
+		{
+			return MonoPropertyInfo.get_default_value (this);
+		}
+
+		public override object GetRawConstantValue() {
+			return MonoPropertyInfo.get_default_value (this);
+		}
+
 		// According to MSDN the inherit parameter is ignored here and
 		// the behavior always defaults to inherit = false
 		//
@@ -224,11 +235,12 @@ namespace System.Reflection {
 		}
 
 
-#if NET_2_0
 		delegate object GetterAdapter (object _this);
 		delegate R Getter<T,R> (T _this);
 		delegate R StaticGetter<R> ();
 
+#pragma warning disable 169
+		// Used via reflection
 		static object GetterAdapterFrame<T,R> (Getter<T,R> getter, object obj)
 		{
 			return getter ((T)obj);
@@ -238,6 +250,7 @@ namespace System.Reflection {
 		{
 			return getter ();
 		}
+#pragma warning restore 169
 
 		/*
 		 * The idea behing this optimization is to use a pair of delegates to simulate the same effect of doing a reflection call.
@@ -299,7 +312,6 @@ namespace System.Reflection {
 
 			return GetValue (obj, BindingFlags.Default, null, index, null);
 		}
-#endif
 
 		public override object GetValue (object obj, BindingFlags invokeAttr, Binder binder, object[] index, CultureInfo culture)
 		{
@@ -345,8 +357,6 @@ namespace System.Reflection {
 			return PropertyType.ToString () + " " + Name;
 		}
 
-#if NET_2_0 || BOOTSTRAP_NET_2_0
-
 		public override Type[] GetOptionalCustomModifiers () {
 			Type[] types = MonoPropertyInfo.GetTypeModifiers (this, true);
 			if (types == null)
@@ -360,7 +370,6 @@ namespace System.Reflection {
 				return Type.EmptyTypes;
 			return types;
 		}
-#endif
 
 		// ISerializable
 		public void GetObjectData (SerializationInfo info, StreamingContext context) 
@@ -368,5 +377,11 @@ namespace System.Reflection {
 			MemberInfoSerializationHolder.Serialize (info, Name, ReflectedType,
 				ToString(), MemberTypes.Property);
 		}
+
+#if NET_4_0
+		public override IList<CustomAttributeData> GetCustomAttributesData () {
+			return CustomAttributeData.GetCustomAttributes (this);
+		}
+#endif
 	}
 }

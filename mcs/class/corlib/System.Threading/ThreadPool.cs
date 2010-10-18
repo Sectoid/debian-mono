@@ -38,26 +38,13 @@ using System.Security.Permissions;
 
 namespace System.Threading {
 
-#if NET_2_0
 	public static class ThreadPool {
-#else
-	public sealed class ThreadPool {
-
-		private ThreadPool ()
-		{
-			/* nothing to do */
-		}
-#endif
-
-#if NET_2_0
 		[Obsolete("This method is obsolete, use BindHandle(SafeHandle) instead")]
-#endif
 		public static bool BindHandle (IntPtr osHandle)
 		{
 			return true;
 		}
 
-#if NET_2_0
 		public static bool BindHandle (SafeHandle osHandle)
 		{
 			if (osHandle == null)
@@ -65,7 +52,6 @@ namespace System.Threading {
 			
 			return true;
 		}
-#endif
 
 #if !NET_2_1		
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -82,12 +68,9 @@ namespace System.Threading {
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public static extern bool SetMinThreads (int workerThreads, int completionPortThreads);
 
-#if NET_2_0
-		[MonoTODO("The max number of threads cannot be decremented.")]
 		[MethodImplAttribute(MethodImplOptions.InternalCall)]
 		[SecurityPermission (SecurityAction.Demand, ControlThread=true)]
 		public static extern bool SetMaxThreads (int workerThreads, int completionPortThreads);
-#endif
 			
 		public static bool QueueUserWorkItem (WaitCallback callBack)
 		{
@@ -99,14 +82,25 @@ namespace System.Threading {
 			if (callBack == null)
 				throw new ArgumentNullException ("callBack");
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 			callBack = MoonlightHandler (callBack);
 #endif
-			IAsyncResult ar = callBack.BeginInvoke (state, null, null);
-			if (ar == null)
-				return false;
+			if (callBack.IsTransparentProxy ()) {
+				IAsyncResult ar = callBack.BeginInvoke (state, null, null);
+				if (ar == null)
+					return false;
+			} else {
+				if (!callBack.HasSingleTarget)
+					throw new Exception ("The delegate must have only one target");
+
+				AsyncResult ares = new AsyncResult (callBack, state, true);
+				pool_queue (ares);
+			}
 			return true;
 		}
+
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		static extern void pool_queue (AsyncResult ares);
 
 		public static RegisteredWaitHandle RegisterWaitForSingleObject (WaitHandle waitObject,
 										WaitOrTimerCallback callBack,
@@ -162,30 +156,35 @@ namespace System.Threading {
 
 #if !NET_2_1
 
-#if NET_2_0
 		[CLSCompliant (false)]
 		unsafe public static bool UnsafeQueueNativeOverlapped (NativeOverlapped *overlapped)
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 
 		[SecurityPermission (SecurityAction.Demand, ControlEvidence=true, ControlPolicy=true)]
 		public static bool UnsafeQueueUserWorkItem (WaitCallback callBack, object state)
 		{
 			// no stack propagation here (that's why it's unsafe and requires extra security permissions)
-			IAsyncResult ar = null;
+			if (!callBack.IsTransparentProxy ()) {
+				if (!callBack.HasSingleTarget)
+					throw new Exception ("The delegate must have only one target");
+
+				AsyncResult ares = new AsyncResult (callBack, state, false);
+				pool_queue (ares);
+				return true;
+			}
 			try {
 				if (!ExecutionContext.IsFlowSuppressed ())
 					ExecutionContext.SuppressFlow (); // on current thread only
-
-				ar = callBack.BeginInvoke (state, null, null);
-			}
-			finally {
+				IAsyncResult ar = callBack.BeginInvoke (state, null, null);
+				if (ar == null)
+					return false;
+			} finally {
 				if (ExecutionContext.IsFlowSuppressed ())
 					ExecutionContext.RestoreFlow ();
 			}
-			return (ar != null);
+			return true;
 		}
 		
 		[MonoTODO("Not implemented")]
@@ -227,7 +226,7 @@ namespace System.Threading {
 
 #endif
 
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		static WaitCallback MoonlightHandler (WaitCallback callback)
 		{
 			return delegate (object o) {

@@ -35,10 +35,8 @@ namespace System.Security.Cryptography {
 
 		public static byte[] EncodeOID (string str)
 		{
-#if NET_2_0
 			if (str == null)
 				throw new ArgumentNullException ("str");
-#endif
 			char[] delim = { '.' };
 			string[] parts = str.Split (delim);
 			// according to X.208 n is always at least 2
@@ -126,7 +124,7 @@ namespace System.Security.Cryptography {
 			}
 			return num;
 		}
-#if NET_2_1 && !MONOTOUCH
+#if MOONLIGHT
 		// we need SHA1 support to verify the codecs binary integrity
 		public static string MapNameToOID (string name)
 		{
@@ -134,6 +132,8 @@ namespace System.Security.Cryptography {
 				return "1.3.14.3.2.26";
 			return String.Empty;
 		}
+
+		private const string AES = "System.Security.Cryptography.AesManaged, System.Core, Version=2.0.5.0, Culture=neutral, PublicKeyToken=b77a5c561934e089";
 
 		// non-configurable (versus machine.config) mappings for Moonlight (to avoid loading custom code)
 		public static object CreateFromName (string name)
@@ -152,6 +152,8 @@ namespace System.Security.Cryptography {
 				return new RNGCryptoServiceProvider ();
 			case "System.Security.Cryptography.RSA":
 				return new Mono.Security.Cryptography.RSAManaged ();
+			case "AES":
+				return (Aes) Activator.CreateInstance (Type.GetType (AES), null);
 			default:
 				throw new NotImplementedException (name);
 			}

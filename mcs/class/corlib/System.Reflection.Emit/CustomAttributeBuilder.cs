@@ -38,10 +38,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Reflection.Emit {
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_CustomAttributeBuilder))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public class CustomAttributeBuilder : _CustomAttributeBuilder {
 		ConstructorInfo ctor;
@@ -93,6 +91,29 @@ namespace System.Reflection.Emit {
 			/* FIXME: Add more checks */
 			if (t.IsArray && t.GetArrayRank () > 1)
 				return false;
+			if (t is TypeBuilder && t.IsEnum) {
+				// Check that the enum is properly constructed, the unmanaged code
+				// depends on this
+				Enum.GetUnderlyingType (t);
+			}
+			if (t.IsClass && !(t.IsArray || t == typeof (object) || t == typeof (Type) || t == typeof (string) || t.Assembly.GetName ().Name == "mscorlib"))
+				return false;
+			if (t.IsValueType && !(t.IsPrimitive || t.IsEnum || ((t.Assembly is AssemblyBuilder) && t.Assembly.GetName ().Name == "mscorlib")))
+				return false;
+			return true;
+		}
+
+		private bool IsValidParam (object o, Type paramType)
+		{
+			Type t = o.GetType ();
+			if (!IsValidType (t))
+				return false;
+			if (paramType == typeof (object)) {
+				if (t.IsArray && t.GetArrayRank () == 1)
+					return IsValidType (t.GetElementType ());
+				if (!t.IsPrimitive && !typeof (Type).IsAssignableFrom (t) && t != typeof (string) && !t.IsEnum)
+					return false;
+			}
 			return true;
 		}
 
@@ -131,10 +152,10 @@ namespace System.Reflection.Emit {
 			i = 0;
 			foreach (FieldInfo fi in namedFields) {
 				Type t = fi.DeclaringType;
-				if (!IsValidType (t))
-					throw new ArgumentException ("Field '" + fi.Name + "' does not have a valid type.");
 				if ((atype != t) && (!t.IsSubclassOf (atype)) && (!atype.IsSubclassOf (t)))
 					throw new ArgumentException ("Field '" + fi.Name + "' does not belong to the same class as the constructor");
+				if (!IsValidType (fi.FieldType))
+					throw new ArgumentException ("Field '" + fi.Name + "' does not have a valid type.");
 				// FIXME: Check enums and TypeBuilders as well
 				if (fieldValues [i] != null)
 					// IsEnum does not seem to work on TypeBuilders
@@ -154,10 +175,10 @@ namespace System.Reflection.Emit {
 				if (!pi.CanWrite)
 					throw new ArgumentException ("Property '" + pi.Name + "' does not have a setter.");
 				Type t = pi.DeclaringType;
-				if (!IsValidType (t))
-					throw new ArgumentException ("Property '" + pi.Name + "' does not have a valid type.");
 				if ((atype != t) && (!t.IsSubclassOf (atype)) && (!atype.IsSubclassOf (t)))
 					throw new ArgumentException ("Property '" + pi.Name + "' does not belong to the same class as the constructor");
+				if (!IsValidType (pi.PropertyType))
+					throw new ArgumentException ("Property '" + pi.Name + "' does not have a valid type.");
 				if (propertyValues [i] != null) {
 					if (!(pi.PropertyType is TypeBuilder) && !pi.PropertyType.IsEnum && !pi.PropertyType.IsInstanceOfType (propertyValues [i]))
 						if (!pi.PropertyType.IsArray)
@@ -171,11 +192,14 @@ namespace System.Reflection.Emit {
 				if (pi != null) {
 					Type paramType = pi.ParameterType;
 					if (!IsValidType (paramType))
-						throw new ArgumentException ("Argument " + i + " does not have a valid type.");
-					if (constructorArgs [i] != null)
+						throw new ArgumentException ("Parameter " + i + " does not have a valid type.");
+					if (constructorArgs [i] != null) {
 						if (!(paramType is TypeBuilder) && !paramType.IsEnum && !paramType.IsInstanceOfType (constructorArgs [i]))
 							if (!paramType.IsArray)
 								throw new ArgumentException ("Value of argument " + i + " does not match parameter type: " + paramType + " -> " + constructorArgs [i]);
+						if (!IsValidParam (constructorArgs [i], paramType))
+							throw new ArgumentException ("Cannot emit a CustomAttribute with argument of type " + constructorArgs [i].GetType () + ".");
+					}
 				}
 				i ++;
 			}

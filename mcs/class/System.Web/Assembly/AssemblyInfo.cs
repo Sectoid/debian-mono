@@ -5,6 +5,7 @@
 //   Andreas Nahr (ClassDevelopment@A-SoftTech.com)
 //
 // (C) 2003 Ximian, Inc.  http://www.ximian.com
+// (C) 2003-2009 Novell, Inc (http://novell.com)
 //
 
 //
@@ -29,9 +30,11 @@
 //
 
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Resources;
 using System.Security;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Web.UI;
@@ -43,11 +46,15 @@ using System.Web.UI;
 
 [assembly: AssemblyTitle("System.Web.dll")]
 [assembly: AssemblyDescription("System.Web.dll")]
+#if !NET_4_0
 [assembly: AssemblyConfiguration("Development version")]
+#endif
 [assembly: AssemblyCompany("MONO development team")]
 [assembly: AssemblyProduct("MONO CLI")]
 [assembly: AssemblyCopyright("(c) 2003 Various Authors")]
+#if !NET_4_0
 [assembly: AssemblyTrademark("")]
+#endif
 #if TARGET_JVM
 [assembly: CLSCompliant(false)]
 #else
@@ -64,17 +71,38 @@ using System.Web.UI;
 [assembly: AssemblyDelaySign(true)]
 [assembly: AssemblyKeyFile("../msfinal.pub")]
 
-#if NET_2_0
+#if NET_4_0
+[assembly: Debuggable (true, false)]
+[assembly: AssemblyFileVersion (Consts.FxVersion)]
+[assembly: AssemblyTargetedPatchBand ("1.0.21-0")]
+[assembly: CompilationRelaxations (CompilationRelaxations.NoStringInterning)]
+[assembly: Dependency ("System", LoadHint.Always)]
+[assembly: TypeLibVersion (4, 2)]
+[assembly: SecurityRules (SecurityRuleSet.Level2, SkipVerificationInFullTrust=true)]
+
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipPasswordException))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.RoleProvider))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipCreateStatus))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipCreateUserException))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipPasswordFormat))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.ValidatePasswordEventArgs))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipValidatePasswordEventHandler))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipUser))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipUserCollection))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipProviderCollection))]
+[assembly: TypeForwardedTo (typeof (System.Web.Security.MembershipProvider))]
+#endif
+
 [assembly: InternalsVisibleTo ("System.Web.Extensions, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b5fc90e7027f67871e773a8fde8938c81dd402ba65b9201d60593e96c492651e889cc13f1415ebb53fac1131ae0bd333c5ee6021672d9718ea31a8aebd0da0072f25d87dba6fc90ffd598ed4da35e44c398c454307e8e33b8426143daec9f596836f97c8f74750e5975c64e2189f45def46b2a2b1247adc3652bf5c308055da9")]
 [assembly: InternalsVisibleTo ("System.Web.DynamicData, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b5fc90e7027f67871e773a8fde8938c81dd402ba65b9201d60593e96c492651e889cc13f1415ebb53fac1131ae0bd333c5ee6021672d9718ea31a8aebd0da0072f25d87dba6fc90ffd598ed4da35e44c398c454307e8e33b8426143daec9f596836f97c8f74750e5975c64e2189f45def46b2a2b1247adc3652bf5c308055da9")]
 
+#endif
+
 [assembly: InternalsVisibleTo ("SystemWebTestShim, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b5fc90e7027f67871e773a8fde8938c81dd402ba65b9201d60593e96c492651e889cc13f1415ebb53fac1131ae0bd333c5ee6021672d9718ea31a8aebd0da0072f25d87dba6fc90ffd598ed4da35e44c398c454307e8e33b8426143daec9f596836f97c8f74750e5975c64e2189f45def46b2a2b1247adc3652bf5c308055da9")]
-#endif
-#endif
+[assembly: InternalsVisibleTo ("System.Web_test_net_2_0, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b5fc90e7027f67871e773a8fde8938c81dd402ba65b9201d60593e96c492651e889cc13f1415ebb53fac1131ae0bd333c5ee6021672d9718ea31a8aebd0da0072f25d87dba6fc90ffd598ed4da35e44c398c454307e8e33b8426143daec9f596836f97c8f74750e5975c64e2189f45def46b2a2b1247adc3652bf5c308055da9")]
+[assembly: InternalsVisibleTo ("System.Web_test_net_4_0, PublicKey=0024000004800000940000000602000000240000525341310004000001000100b5fc90e7027f67871e773a8fde8938c81dd402ba65b9201d60593e96c492651e889cc13f1415ebb53fac1131ae0bd333c5ee6021672d9718ea31a8aebd0da0072f25d87dba6fc90ffd598ed4da35e44c398c454307e8e33b8426143daec9f596836f97c8f74750e5975c64e2189f45def46b2a2b1247adc3652bf5c308055da9")]
 
 // Resources
-
-#if NET_2_0
 
 [assembly: WebResource ("TreeView_noexpand.gif", "image/gif")]
 [assembly: WebResource ("TreeView_dash.gif", "image/gif")]
@@ -114,15 +142,8 @@ using System.Web.UI;
 [assembly: WebResource ("file.gif", "image/gif")]
 [assembly: WebResource ("folder.gif", "image/gif")]
 [assembly: WebResource ("computer.gif", "image/gif")]
-
 [assembly: WebResource ("TreeView.js", "text/javascript")]
 [assembly: WebResource ("Menu.js", "text/javascript")]
 [assembly: WebResource ("GridView.js", "text/javascript")]
 [assembly: WebResource ("webform.js", "text/javascript")]
-#endif
-
-#if NET_2_0
 [assembly: WebResource ("WebUIValidation_2.0.js", "text/javascript")]
-#else
-[assembly: WebResource ("WebUIValidation.js", "text/javascript")]
-#endif

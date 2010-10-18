@@ -1,6 +1,147 @@
+2010-09-02  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page to add "/tv:" option.
+
+	Add option to specify toolsversion from the command line, to the
+	man page.
+
+2010-08-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add env.var. to control revocation mode.
+
+	Added a new environment variable, MONO_X509_REVOCATION_MODE that
+	lets the user choose the default validation mode for X509 chains.
+
+2010-08-20  Mark Probst  <mark.probst@gmail.com>
+
+	[Documentation] Update man page with write barrier setting.
+
+2010-08-23  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[tools] Merge mono-abi-info tool into a "--abi" flag for
+	mono-api-info
+
+	This commit also includes a brief (help welcome!) man page for
+	mono-api-info that explains its usage.
+
+2010-08-19  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Support extra paths for MSBuildExtensionsPath32/64 .
+
+	Support extra search paths via env variables for
+	MSBuildExtensionsPath32/64 also.
+
+	Update man page.
+
+2010-08-18  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page.
+
+2010-08-18  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add env var to dump details of reference resolution.
+
+	If xbuild is unable to resolve a reference, then it dumps details
+	of why it failed. This adds a env var
+	XBUILD_LOG_REFERENCE_RESOLVER, which if set, logs those details of
+	why a particular search path was used to resolve the reference.
+
+	Update the man page also.
+
+2010-08-17  Miguel de Icaza  <miguel@gnome.org>
+
+	Copyright fix: the owner is Chris, not Novell
+
+2010-08-13  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Added ccrewrite.1 man page to makefile
+
+2010-08-13  Chris Bacon  <chrisbacon76@gmail.com>
+
+	Added man page for ccrewrite
+
+2010-08-10  Mark Probst  <mark.probst@gmail.com>
+
+	[Documentation] Explain nursery size a bit in man page.
+
+2010-08-08  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Fixed heap for Mark&Sweep.
+
+	This is a new variant of Mark&Sweep which uses a pre-allocated
+	fixed-size heap instead of a dynamically grown, segmented one. The
+	main advantage of this heap organization is that it takes only one
+	pointer comparison to determine whether an object is on the small
+	object heap or in the LOS, instead of inspecting the object's
+	size, which requires three loads. Since that determination is
+	required for every marked object, speeding it up can improve
+	performance significantly.
+
+2010-08-06  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make parallel vs non-parallel mark&sweep selectable.
+
+	Make the parallel Mark&Sweep collector selectable with the "major"
+	option of the "MONO_GC_PARAMS" variable as "marksweep-par". The
+	serial Mark&Sweep collector remains the default as "marksweep".
+
+2010-08-05  Mark Probst  <mark.probst@gmail.com>
+
+	[Documentation] Document SGen environment variables.
+
+	Document the MONO_GC_PARAMS variable in the man page and the
+	"major" option of this variable in the error message.
+
+2010-08-03  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* monolinker.1: Add the name="..." notation to the field examples too
+	(besides the signature="..." one).
+
+2010-07-12  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* mono.1: Document MONO_DEBUG's new reverse-pinvoke-exceptions option.
+
+2010-04-23  Miguel de Icaza  <miguel@novell.com>
+
+	* mono.1: Sort environment variables, update a couple of docs.
+
+2010-04-07  Andrés G. Aragoneses  <andres@lindenlab.com>
+
+	* monolinker.1: Fix typo.
+
+2010-04-01  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mono.1: Document the new "security" option for logging
+
+2010-03-26  Zoltan Varga  <vargaz@gmail.com>
+
+	* mono.1: Document the MONO_ENABLE_SHM env variable.
+
+2010-03-03  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* mono.1: Document exception tracing.
+
+2010-02-18  Marek Habersack  <mhabersack@novell.com>
+
+	* mono-configuration-crypto.1: added
+
+	* Makefile.am (man_MANS): added mono-configuration-crypto.1
+
 2010-02-10  Geoff Norton  <gnorton@novell.com>
 
 	* mono.1: Document the aot compiler options.
+
+2010-02-08  Ankit Jain  <jankit@novell.com>
+
+	* lc.1: Fix typos.
+
+2009-12-11  Marek Habersack  <mhabersack@novell.com>
+
+	* mono.1: documented the IOMAP report profiler module
+
+2009-11-23  Marek Habersack  <mhabersack@novell.com>
+
+	* mono.1: documented the 'report' option for MONO_IOMAP
 
 2009-10-11  Ankit Jain  <jankit@novell.com>
 

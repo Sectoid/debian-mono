@@ -172,11 +172,20 @@ This is Mono.
 	The following are the configuration options that someone
 	building Mono might want to use:
 	
+	--with-sgen=yes,no
+
+		Generational GC support: Used to enable or disable the
+		compilation of a Mono runtime with the SGen garbage collector.
+
+		On platforms that support it, after building Mono, you
+		will have both a mono binary and a mono-sgen binary.
+		Mono uses Boehm, while mono-sgen uses the Simple
+		Generational GC.
 
 	--with-gc=[boehm, included, sgen, none]
 
-		Selects the garbage collector engine to use, the
-	  	default is the "included" value.
+		Selects the default Boehm garbage collector engine to
+	  	use, the default is the "included" value.
 	
 		included: 
 			This is the default value, and its
@@ -191,10 +200,6 @@ This is Mono.
 			it is useful to test new features available in
 			Boehm GC, but we do not recommend that people
 			use this, as it disables a few features.
-
-		sgen:
-			The under-development Generational GC for
-		  	Mono, do not use this in production.
 
 		none:
 			Disables the inclusion of a garbage
@@ -259,6 +264,17 @@ This is Mono.
 
 		This value is set to `no' by default.
 
+	--enable-small-config=yes,no
+
+		Enable some tweaks to reduce memory usage and disk footprint at
+		the expense of some capabilities. Typically this means that the
+		number of threads that can be created is limited (256), that the
+		maxmimum heap size is also reduced (256 MB) and other such limitations
+		that still make mono useful, but more suitable to embedded devices
+		(like mobile phones).
+
+		This value is set to `no' by default.
+
 	--with-ikvm-native=yes,no
 
 		Controls whether the IKVM JNI interface library is
@@ -267,10 +283,10 @@ This is Mono.
 
 		This defaults to `yes'.
 
-	--with-profile2=yes,no
+	--with-profile4=yes,no
 
-		Whether you want to build the 2.x libraries (support
-		for Generics and the 2.0/3.5 APIS).
+		Whether you want to build the 4.x profile libraries
+		and runtime.
 
 	  	It defaults to `yes'.
 
@@ -396,6 +412,24 @@ This is Mono.
 			framework, and the various SSA-based
 		  	optimizations.
 
+	--enable-llvm
+	--enable-loadedllvm
+
+		This enables the use of LLVM as a code generation engine
+		for Mono.  The LLVM code generator and optimizer will be 
+		used instead of Mono's built-in code generator for both
+		Just in Time and Ahead of Time compilations.
+
+		See the http://www.mono-project.com/Mono_LLVM for the 
+		full details and up-to-date information on this feature.
+
+		You will need to have an LLVM built that Mono can link
+		against,
+
+		The --enable-loadedllvm variant will make the llvm backend
+		into a runtime-loadable module instead of linking it directly
+		into the main mono binary.
+
 	--enable-big-arrays
 
 		This enables the use arrays whose indexes are larger
@@ -439,6 +473,15 @@ This is Mono.
 		There are a number of runtime options to control this
 	  	also, see the man page.
 
+	--enable-nacl
+
+		This configures the Mono compiler to generate code
+		suitable to be used by Google's Native Client:
+
+			 http://code.google.com/p/nativeclient/
+
+		Currently this is used with Mono's AOT engine as
+		Native Client does not support JIT engines yet.
 
 2. Using Mono
 =============
@@ -522,4 +565,6 @@ This is Mono.
 		independent checkout) from the Mono module, that
 		directory is automatically configured to share the
 		same prefix than this module gets.
+
+
 

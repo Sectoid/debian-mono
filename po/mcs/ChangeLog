@@ -1,3 +1,7 @@
+2010-08-04  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	* POTFILES.in: mcs lives under mono now, so the ../ gets dropped
+
 2008-10-03  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ja.po : ok, having pending translation could result

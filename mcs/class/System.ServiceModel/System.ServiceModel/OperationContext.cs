@@ -124,7 +124,7 @@ namespace System.ServiceModel
 		public MessageHeaders OutgoingMessageHeaders {
 			get {
 				if (outgoing_headers == null)
-					outgoing_headers = new MessageHeaders (MessageVersion.Default);
+					outgoing_headers = new MessageHeaders (channel.GetProperty<MessageVersion> () ?? MessageVersion.Default);
 				return outgoing_headers;
 			}
 		}
@@ -157,6 +157,7 @@ namespace System.ServiceModel
 
 		public T GetCallbackChannel<T> ()
 		{
+			// It is correct; OperationContext.Channel and OperationContext.GetCallbackChannel<T>() returns the same instance on .NET. (at least as far as I tested.)
 			return (T) (object) channel;
 		}
 

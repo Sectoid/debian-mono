@@ -28,10 +28,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Text;
 
 namespace System.Web.UI.WebControls
 {
+	[DefaultProperty ("PropertyName")]
 	public class ProfileParameter : Parameter
 	{
 		public ProfileParameter ()
@@ -57,12 +60,22 @@ namespace System.Web.UI.WebControls
 			this.PropertyName = propertyName;
 		}
 
+		public ProfileParameter (string name, DbType dbType, string propertyName)
+			: base (name, dbType)
+		{
+			this.PropertyName = propertyName;
+		}
+		
 		protected override Parameter Clone ()
 		{
 			return new ProfileParameter (this);
 		}
-
-		protected override object Evaluate (HttpContext context, Control control)
+#if NET_4_0
+		protected internal
+#else
+		protected
+#endif
+		override object Evaluate (HttpContext context, Control control)
 		{
 			if (context == null || context.Profile == null)
 				return null;
@@ -73,10 +86,9 @@ namespace System.Web.UI.WebControls
 			return context.Profile [PropertyName];
 		}
 
-		public string PropertyName
-		{
-			get
-			{
+		[DefaultValue ("")]
+		public string PropertyName {
+			get {
 				object o = ViewState ["PropertyName"];
 				return (o != null) ? (string) o : string.Empty;
 			}

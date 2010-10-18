@@ -41,8 +41,12 @@ using System.Text.RegularExpressions;
 namespace System.Net 
 {
 	[Serializable]
-#if NET_2_1
+#if MOONLIGHT
+	#if INSIDE_SYSTEM
+	internal sealed class CookieContainer {
+	#else 
 	public sealed class CookieContainer {
+	#endif
 #else
 	public class CookieContainer {
 #endif
@@ -63,11 +67,7 @@ namespace System.Net
 		public CookieContainer (int capacity)
 		{
 			if (capacity <= 0)
-#if NET_2_0
 				throw new ArgumentException ("Must be greater than zero", "Capacity");
-#else
-				throw new ArgumentException ("Capacity");
-#endif
 
 			this.capacity = capacity;
 		}
@@ -76,21 +76,13 @@ namespace System.Net
 			: this (capacity)
 		{
 			if (perDomainCapacity != Int32.MaxValue && (perDomainCapacity <= 0 || perDomainCapacity > capacity))
-#if NET_2_0
 				throw new ArgumentOutOfRangeException ("perDomainCapacity",
 					string.Format ("PerDomainCapacity must be " +
 					"greater than {0} and less than {1}.", 0,
 					capacity));
-#else
-				throw new ArgumentException ("PerDomainCapacity");
-#endif
 
 			if (maxCookieSize <= 0)
-#if NET_2_0
 				throw new ArgumentException ("Must be greater than zero", "MaxCookieSize");
-#else
-				throw new ArgumentException ("MaxCookieSize");
-#endif
 
 			this.perDomainCapacity = perDomainCapacity;
 			this.maxCookieSize = maxCookieSize;
@@ -138,11 +130,7 @@ namespace System.Net
 				throw new ArgumentNullException ("cookie");
 
 			if (cookie.Domain.Length == 0)
-#if NET_2_0
 				throw new ArgumentException ("Cookie domain not set.", "cookie.Domain");
-#else
-				throw new ArgumentException ("cookie.Domain");
-#endif
 
 			if (cookie.Value.Length > maxCookieSize)
 				throw new CookieException ("value is larger than MaxCookieSize.");
@@ -183,9 +171,7 @@ namespace System.Net
 			c.CommentUri = cookie.CommentUri;
 			c.Comment = cookie.Comment;
 			c.Discard = cookie.Discard;
-#if NET_2_0
 			c.HttpOnly = cookie.HttpOnly;
-#endif
 			c.Secure = cookie.Secure;
 
 			cookies.Add (c);
@@ -241,7 +227,7 @@ namespace System.Net
 
 		void Cook (Uri uri, Cookie cookie)
 		{
-			if (IsNullOrEmpty (cookie.Name))
+			if (String.IsNullOrEmpty (cookie.Name))
 				throw new CookieException ("Invalid cookie: name");
 
 			if (cookie.Value == null)
@@ -250,7 +236,7 @@ namespace System.Net
 			if (uri != null && cookie.Domain.Length == 0)
 				cookie.Domain = uri.Host;
 
-			if (cookie.Version == 0 && IsNullOrEmpty (cookie.Path)) {
+			if (cookie.Version == 0 && String.IsNullOrEmpty (cookie.Path)) {
 				if (uri != null) {
 					cookie.Path = uri.AbsolutePath;
 				} else {
@@ -322,12 +308,11 @@ namespace System.Net
 				return false;
 
 			if (exact)
-				return (String.Compare (host, domain, true, CultureInfo.InvariantCulture) == 0);
+				return (String.Compare (host, domain, StringComparison.InvariantCultureIgnoreCase) == 0);
 
 			// check for allowed sub-domains - without string allocations
-			if (!CultureInfo.InvariantCulture.CompareInfo.IsSuffix (host, domain, CompareOptions.IgnoreCase))
+			if (!host.EndsWith (domain, StringComparison.InvariantCultureIgnoreCase))
 				return false;
-
 			// mono.com -> www.mono.com is OK but supermono.com NOT OK
 			if (domain [0] == '.')
 				return true;
@@ -450,7 +435,7 @@ namespace System.Net
 					value = parts [i].Substring (sep + 1).Trim ();
 				}
 
-				switch (key.ToLower (CultureInfo.InvariantCulture)) {
+				switch (key.ToLowerInvariant ()) {
 				case "path":
 				case "$path":
 					if (c.Path.Length == 0)
@@ -466,21 +451,13 @@ namespace System.Net
 					break;
 				case "expires":
 				case "$expires":
-					if (c.Expires == DateTime.MinValue) {
-#if NET_2_0
+					if (c.Expires == DateTime.MinValue)
 						c.Expires = DateTime.SpecifyKind (DateTime.ParseExact (value,
 							@"ddd, dd-MMM-yyyy HH:mm:ss G\MT", CultureInfo.InvariantCulture), DateTimeKind.Utc);
-#else
-						c.Expires = DateTime.ParseExact (value, @"ddd, dd-MMM-yyyy HH:mm:ss G\MT", 
-							CultureInfo.InvariantCulture).ToUniversalTime ();
-#endif
-					}
-					break;
-#if NET_2_0
+						break;
 				case "httponly":
 					c.HttpOnly = true;
 					break;
-#endif
 				case "secure":
 					c.Secure = true;
 					break;
@@ -493,11 +470,6 @@ namespace System.Net
 				}
 			}
 			return c;
-		}
-
-		static bool IsNullOrEmpty (string s)
-		{
-			return ((s == null) || (s.Length == 0));
 		}
 	}
 }

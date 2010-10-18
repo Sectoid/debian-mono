@@ -1,3 +1,224 @@
+2010-08-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Add IsSystemEndpoint property and treat system endpoints as
+	non-service.
+
+2010-08-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid NRE when ServiceEndpoint neither have Binding nor Contract.
+
+2010-08-13  Atsushi Eno  <atsushi@ximian.com>
+
+	ChannelDispatcherBase could be non-ChannelDispatcher. In WCF
+	Discovery such type actually seems to exist, so it's not
+	theoretical anymore.
+
+2010-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDebugBehavior.cs, ServiceMetadataExtension.cs :
+	  remove invalid comments.
+
+2010-07-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceDescription.cs : fill Name and Namespace. Remove extra code.
+
+2010-07-19  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ClientCredentials.cs: Fix NET_2_1 builds
+
+2010-07-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ClientCredentials.cs : implement Clone() here too.
+
+2010-07-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceCredentials.cs : implement Clone().
+
+2010-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : Reduced not a few lines of code,
+	  now that we know wsdl and help do not have to be differentiated,
+	  this extension support can be a lot simpler.
+
+2010-06-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : add Instance field for simplification.
+
+2010-06-21  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceThrottlingBehavior.cs : pass channel dispatcher for .ctor.
+
+2010-06-18  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : use simple ChannelDispatcher.IsMex field.
+
+2010-06-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : overwrite MessageVersion to use None.
+	  (The only special case I found for ChannelDispatcher.MessageVersion.)
+
+2010-06-04  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationDescription.cs : add contract origin flags to identify
+	  which operation should be used for client operations (and dispatch
+	  too in the future).
+	* MessageDescription.cs : add IsRequest flag to indicate if it is
+	  for request or not.
+	* ServiceContractGenerator.cs, ContractDescriptionGenerator.cs :
+	  make use of above changes.
+	* ContractDescription.cs : don't create extraneous ClientOperations
+	  in irrelevant message direction.
+
+2010-06-03  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : Now callback contract methods are
+	  also reflected into OperationDescription as well as those from non-
+	  callback contract. Callback methods have reverse MessageDirection,
+	  so adjust them.
+	* ContractDescription.cs, ServiceEndpoint.cs, TypedMessageConverter.cs :
+	  A bit of renaming / reflect method call changes.
+
+2010-05-28  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescription.cs : fill ClientOperation.Formatter here.
+	  (It is hacky, see additional comment.)
+
+2010-04-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : raise an error if it failed to set
+	  mex info. (Make it safer.)
+
+2010-04-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : reflect DispatcherBuilder change.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescriptionGenerator.cs : fill FaultDescription action,
+	  name and namespace as expected.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ContractDescription.cs : fill FaultContractInfos in ClientOperation.
+
+2010-04-02  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* FaultDescription.cs : fill Action.
+	* ContractDescriptionGenerator.cs : do not fill Faults from service
+	  impl. method. Do this from contract method instead.
+	* OperationDescription.cs : remove extra TODOs.
+
+2010-03-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs : compare "wsdl" parameter in case-
+	  insensitive manner.
+
+2010-03-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* HostedBindingBehavior.cs : remove unused class.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlExporter.cs : allow identical contract while exporting a set
+	  of endpoints, while reject identical ones when calling
+	  ExportEndpoint() individually.
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeBindings.cs : use WSHttpBinding (it works if other
+	  parts gets fixed).
+
+2010-03-17  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceMetadataExtension.cs, WsdlExporter.cs :
+	  implement ExportEndpoints() and use it.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* ClientCredentials.cs, ContractDescription.cs,
+	IEndpointBehavior.cs: use MOONLIGHT symbol to disambiguate
+	MonoTouch and Moonlight code.
+
+2010-03-15  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceEndpointCollection.cs : those overrides are rather to check
+	  null arguments, not to skip contract duplicates.
+
+2010-03-12  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MessageDescription.cs : implement MessageName.
+
+2010-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* BaseMessagesFormatter.cs : add internal OperationFormatter type
+	  for moonlight/silverlight-sdk compatibility. It mostly wraps
+	  the existing the return value by BaseMessagesFormatter.Create().
+	* DispatchOperation.cs, ClientOperation.cs, EndpointDispatcher.cs:
+	  use above new type.
+
+2010-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* OperationDescription.cs, MessagePartDescription.cs,
+	  MessageDescription.cs : add internal moonlight compat stuff.
+
+2010-03-11  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* XmlName.cs : new internal type for moonlight/SL SDK compatibility.
+
+2010-02-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataResolver.cs : fix BeginResolve() overloads and use
+	  arguments as expected in Resolve().
+
+2010-02-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeClient.cs : add missing members and implement some.
+
+2010-02-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* WsdlImporter.cs : handle soapAction in operation binding too.
+	  Now it successfully generates proxy generation for Twitterlight:
+	  http://twitterlight.claritycon.com/TwitterWebService.asmx?WSDL
+
+2010-02-23  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs :
+	  consider schemas in wsdl documents.
+
+2010-02-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* MetadataExchangeClient.cs, MetadataExchangeBindings.cs:
+	  support https.
+
+2010-02-22  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : fix duplicate output.
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs :
+	  Pick correct elements to import. Not wrapper elements but each
+	  parameter and return value elements.
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractSerializerMessageContractImporter.cs :
+	  remove extra parameter passing.
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs : add missing #ifs.
+
+2010-02-19  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* ServiceContractGenerator.cs, MessagePartDescription.cs,
+	  DataContractSerializerMessageContractImporter.cs :
+	  add alternative implementation to use XsdDataContractImporter
+	  instead of XmlSchemaImporter hack.
+
+	  It requires -d:USE_DATA_CONTRACT_IMPORTER and not enabled yet, as
+	  it breaks some WSDL imports (such as memorabilia.hardrock.com).
+
 2010-02-11  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* DataContractSerializerMessageContractImporter.cs : handle duration

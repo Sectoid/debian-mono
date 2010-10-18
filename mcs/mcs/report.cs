@@ -10,38 +10,34 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Collections;
-using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using System.Reflection.Emit;
 
 namespace Mono.CSharp {
 
 	//
 	// Errors and warnings manager
 	//
-	public class Report {
-		/// <summary>  
-		///   Whether errors should be throw an exception
-		/// </summary>
-		public bool Fatal;
-		
+	public class Report
+	{
 		/// <summary>  
 		///   Whether warnings should be considered errors
 		/// </summary>
 		public bool WarningsAreErrors;
-		ArrayList warnings_as_error;
-		ArrayList warnings_only;
+		List<int> warnings_as_error;
+		List<int> warnings_only;
 
 		public static int DebugFlags = 0;
+
+		public const int RuntimeErrorId = 10000;
 
 		//
 		// Keeps track of the warnings that we are ignoring
 		//
-		public Hashtable warning_ignore_table;
+		HashSet<int> warning_ignore_table;
 
-		Hashtable warning_regions_table;
+		Dictionary<int, WarningRegions> warning_regions_table;
 
 		int warning_level;
 
@@ -52,7 +48,7 @@ namespace Mono.CSharp {
 		/// <summary>
 		/// List of symbols related to reported error/warning. You have to fill it before error/warning is reported.
 		/// </summary>
-		ArrayList extra_information = new ArrayList ();
+		List<string> extra_information = new List<string> ();
 
 		// 
 		// IF YOU ADD A NEW WARNING YOU HAVE TO ADD ITS ID HERE
@@ -61,30 +57,21 @@ namespace Mono.CSharp {
 			28, 67, 78,
 			105, 108, 109, 114, 162, 164, 168, 169, 183, 184, 197,
 			219, 251, 252, 253, 278, 282,
-			419, 420, 429, 436, 440, 465, 467, 469, 472,
-			612, 618, 626, 628, 642, 649, 652, 658, 659, 660, 661, 665, 672, 675,
+			402, 414, 419, 420, 429, 436, 440, 458, 464, 465, 467, 469, 472,
+			612, 618, 626, 628, 642, 649, 652, 658, 659, 660, 661, 665, 672, 675, 693,
 			809,
-			1030, 1066,
+			1030, 1058, 1066,
 			1522, 1570, 1571, 1572, 1573, 1574, 1580, 1581, 1584, 1587, 1589, 1590, 1591, 1592,
-			1616, 1633, 1634, 1635, 1685, 1690, 1691, 1692,
-			1717, 1718, 1720,
-			1901,
+			1616, 1633, 1634, 1635, 1685, 1690, 1691, 1692, 1695, 1696, 1699,
+			1700, 1709, 1717, 1718, 1720,
+			1901, 1981,
 			2002, 2023, 2029,
 			3000, 3001, 3002, 3003, 3005, 3006, 3007, 3008, 3009,
 			3010, 3011, 3012, 3013, 3014, 3015, 3016, 3017, 3018, 3019,
-			3021, 3022, 3023, 3026, 3027,
-			
-			414,	// Non ISO-1 warnings
-#if GMCS_SOURCE
-			402, 458, 464, 693, 1058, 1700, 3024
-#endif
+			3021, 3022, 3023, 3024, 3026, 3027
 		};
 
-		static Report ()
-		{
-			// Just to be sure that binary search is working
-			Array.Sort (AllWarnings);
-		}
+		static HashSet<int> AllWarningsHashSet;
 
 		public Report (ReportPrinter printer)
 		{
@@ -134,30 +121,27 @@ namespace Mono.CSharp {
 				feature);
 		}
 		
-		static bool IsValidWarning (int code)
-		{	
-			return Array.BinarySearch (AllWarnings, code) >= 0;
-		}
-
 		bool IsWarningEnabled (int code, int level, Location loc)
 		{
 			if (WarningLevel < level)
 				return false;
 
-			if (warning_ignore_table != null) {
-				if (warning_ignore_table.Contains (code)) {
-					return false;
-				}
-			}
+			if (IsWarningDisabledGlobally (code))
+				return false;
 
 			if (warning_regions_table == null || loc.IsNull)
 				return true;
 
-			WarningRegions regions = (WarningRegions) warning_regions_table [loc.Name];
-			if (regions == null)
+			WarningRegions regions;
+			if (!warning_regions_table.TryGetValue (loc.File, out regions))
 				return true;
 
 			return regions.IsWarningEnabled (code, loc.Row);
+		}
+
+		public bool IsWarningDisabledGlobally (int code)
+		{
+			return warning_ignore_table != null && warning_ignore_table.Contains (code);
 		}
 
 		bool IsWarningAsError (int code)
@@ -189,66 +173,27 @@ namespace Mono.CSharp {
 			SymbolRelatedToPreviousError (loc.ToString (), symbol);
 		}
 
-		public void SymbolRelatedToPreviousError (MemberInfo mi)
+		public void SymbolRelatedToPreviousError (MemberSpec ms)
 		{
 			if (reporting_disabled > 0 || !printer.HasRelatedSymbolSupport)
 				return;
 
-			Type dt = TypeManager.DropGenericTypeArguments (mi.DeclaringType);
-			if (TypeManager.IsDelegateType (dt)) {
-				SymbolRelatedToPreviousError (dt);
-				return;
-			}			
-			
-			DeclSpace temp_ds = TypeManager.LookupDeclSpace (dt);
-			if (temp_ds == null) {
-				SymbolRelatedToPreviousError (dt.Assembly.Location, TypeManager.GetFullNameSignature (mi));
-			} else {
-				MethodBase mb = mi as MethodBase;
-				if (mb != null) {
-					mb = TypeManager.DropGenericMethodArguments (mb);
-					IMethodData md = TypeManager.GetMethod (mb);
-					if (md != null)
-						SymbolRelatedToPreviousError (md.Location, md.GetSignatureForError ());
+			var mc = ms.MemberDefinition as MemberCore;
+			while (ms is ElementTypeSpec) {
+				ms = ((ElementTypeSpec) ms).Element;
+				mc = ms.MemberDefinition as MemberCore;
+			}
 
-					return;
-				}
-
-				// FIXME: Completely wrong, it has to use FindMembers
-				MemberCore mc = temp_ds.GetDefinition (mi.Name);
-				if (mc != null)
-					SymbolRelatedToPreviousError (mc);
+			if (mc != null) {
+				SymbolRelatedToPreviousError (mc);
+			} else if (ms.MemberDefinition != null) {
+				SymbolRelatedToPreviousError (ms.MemberDefinition.Assembly.Location, "");
 			}
 		}
 
 		public void SymbolRelatedToPreviousError (MemberCore mc)
 		{
 			SymbolRelatedToPreviousError (mc.Location, mc.GetSignatureForError ());
-		}
-
-		public void SymbolRelatedToPreviousError (Type type)
-		{
-			if (reporting_disabled > 0 || !printer.HasRelatedSymbolSupport)
-				return;
-
-			type = TypeManager.DropGenericTypeArguments (type);
-
-			if (TypeManager.IsGenericParameter (type)) {
-				TypeParameter tp = TypeManager.LookupTypeParameter (type);
-				if (tp != null) {
-					SymbolRelatedToPreviousError (tp.Location, "");
-					return;
-				}
-			}
-
-			if (type is TypeBuilder) {
-				DeclSpace temp_ds = TypeManager.LookupDeclSpace (type);
-				SymbolRelatedToPreviousError (temp_ds.Location, TypeManager.CSharpName (type));
-			} else if (TypeManager.HasElementType (type)) {
-				SymbolRelatedToPreviousError (TypeManager.GetElementType (type));
-			} else {
-				SymbolRelatedToPreviousError (type.Assembly.Location, TypeManager.CSharpName (type));
-			}
 		}
 
 		void SymbolRelatedToPreviousError (string loc, string symbol)
@@ -266,14 +211,15 @@ namespace Mono.CSharp {
 			try {
 				id = int.Parse (warningId);
 			} catch {
-				id = -1;
+				CheckWarningCode (warningId, Location.Null);
+				return;
 			}
 
-			if (!CheckWarningCode (id, warningId, Location.Null))
+			if (!CheckWarningCode (id, Location.Null))
 				return;
 
 			if (warnings_as_error == null)
-				warnings_as_error = new ArrayList ();
+				warnings_as_error = new List<int> ();
 			
 			warnings_as_error.Add (id);
 		}
@@ -284,30 +230,34 @@ namespace Mono.CSharp {
 			try {
 				id = int.Parse (warningId);
 			} catch {
-				id = -1;
+				CheckWarningCode (warningId, Location.Null);
+				return;
 			}
 
-			if (!CheckWarningCode (id, warningId, Location.Null))
+			if (!CheckWarningCode (id, Location.Null))
 				return;
 
 			if (warnings_only == null)
-				warnings_only = new ArrayList ();
+				warnings_only = new List<int> ();
 
 			warnings_only.Add (id);
 		}
 
-		public bool CheckWarningCode (int code, Location loc)
+		public bool CheckWarningCode (string code, Location loc)
 		{
-			return CheckWarningCode (code, code.ToString (), loc);
+			Warning (1691, 1, loc, "`{0}' is not a valid warning number", code);
+			return false;
 		}
 
-		public bool CheckWarningCode (int code, string scode, Location loc)
+		public bool CheckWarningCode (int code, Location loc)
 		{
-			if (IsValidWarning (code))
+			if (AllWarningsHashSet == null)
+				AllWarningsHashSet = new HashSet<int> (AllWarnings);
+
+			if (AllWarningsHashSet.Contains (code))
 				return true;
 
-			Warning (1691, 1, loc, "`{0}' is not a valid warning number", scode);
-			return false;
+			return CheckWarningCode (code.ToString (), loc);
 		}
 
 		public void ExtraInformation (Location loc, string msg)
@@ -317,14 +267,19 @@ namespace Mono.CSharp {
 
 		public WarningRegions RegisterWarningRegion (Location location)
 		{
-			if (warning_regions_table == null)
-				warning_regions_table = new Hashtable ();
+			WarningRegions regions;
+			if (warning_regions_table == null) {
+				regions = null;
+				warning_regions_table = new Dictionary<int, WarningRegions> ();
+			} else {
+				warning_regions_table.TryGetValue (location.File, out regions);
+			}
 
-			WarningRegions regions = (WarningRegions)warning_regions_table [location.Name];
 			if (regions == null) {
 				regions = new WarningRegions ();
-				warning_regions_table.Add (location.Name, regions);
+				warning_regions_table.Add (location.File, regions);
 			}
+
 			return regions;
 		}
 
@@ -397,9 +352,6 @@ namespace Mono.CSharp {
 			extra_information.Clear ();
 
 			printer.Print (msg);
-
-			if (Fatal)
-				throw new Exception (msg.Text);
 		}
 
 		public void Error (int code, Location loc, string format, string arg)
@@ -412,7 +364,7 @@ namespace Mono.CSharp {
 			Error (code, loc, String.Format (format, arg1, arg2));
 		}
 
-		public void Error (int code, Location loc, string format, params object[] args)
+		public void Error (int code, Location loc, string format, params string[] args)
 		{
 			Error (code, loc, String.Format (format, args));
 		}
@@ -444,6 +396,12 @@ namespace Mono.CSharp {
 			get { return printer.ErrorsCount; }
 		}
 
+		public bool IsDisabled {
+			get {
+				return reporting_disabled > 0;
+			}
+		}
+
 		public ReportPrinter Printer {
 			get { return printer; }
 		}
@@ -451,9 +409,9 @@ namespace Mono.CSharp {
 		public void SetIgnoreWarning (int code)
 		{
 			if (warning_ignore_table == null)
-				warning_ignore_table = new Hashtable ();
+				warning_ignore_table = new HashSet<int> ();
 
-			warning_ignore_table [code] = true;
+			warning_ignore_table.Add (code);
 		}
 
 		public ReportPrinter SetPrinter (ReportPrinter printer)
@@ -462,7 +420,7 @@ namespace Mono.CSharp {
 			this.printer = printer;
 			return old;
 		}
-		
+
 		public int WarningLevel {
 			get {
 				return warning_level;
@@ -497,8 +455,8 @@ namespace Mono.CSharp {
 						sb.Append (", ");
 					if (arg == null)
 						sb.Append ("null");
-					else if (arg is ICollection)
-						sb.Append (PrintCollection ((ICollection) arg));
+//					else if (arg is ICollection)
+//						sb.Append (PrintCollection ((ICollection) arg));
 					else
 						sb.Append (arg);
 				}
@@ -506,7 +464,7 @@ namespace Mono.CSharp {
 
 			Console.WriteLine (sb.ToString ());
 		}
-
+/*
 		static public string PrintCollection (ICollection collection)
 		{
 			StringBuilder sb = new StringBuilder ();
@@ -526,6 +484,7 @@ namespace Mono.CSharp {
 			sb.Append (")");
 			return sb.ToString ();
 		}
+*/ 
 	}
 
 	public abstract class AbstractMessage
@@ -535,7 +494,7 @@ namespace Mono.CSharp {
 		protected readonly Location location;
 		readonly string message;
 
-		protected AbstractMessage (int code, Location loc, string msg, ArrayList extraInfo)
+		protected AbstractMessage (int code, Location loc, string msg, List<string> extraInfo)
 		{
 			this.code = code;
 			if (code < 0)
@@ -544,7 +503,7 @@ namespace Mono.CSharp {
 			this.location = loc;
 			this.message = msg;
 			if (extraInfo.Count != 0) {
-				this.extra_info = (string[])extraInfo.ToArray (typeof (string));
+				this.extra_info = extraInfo.ToArray ();
 			}
 		}
 
@@ -593,7 +552,7 @@ namespace Mono.CSharp {
 
 	sealed class WarningMessage : AbstractMessage
 	{
-		public WarningMessage (int code, Location loc, string message, ArrayList extra_info)
+		public WarningMessage (int code, Location loc, string message, List<string> extra_info)
 			: base (code, loc, message, extra_info)
 		{
 		}
@@ -611,7 +570,7 @@ namespace Mono.CSharp {
 
 	sealed class ErrorMessage : AbstractMessage
 	{
-		public ErrorMessage (int code, Location loc, string message, ArrayList extraInfo)
+		public ErrorMessage (int code, Location loc, string message, List<string> extraInfo)
 			: base (code, loc, message, extraInfo)
 		{
 		}
@@ -635,8 +594,7 @@ namespace Mono.CSharp {
 	//
 	// Generic base for any message writer
 	//
-	public abstract class ReportPrinter
-	{
+	public abstract class ReportPrinter {
 		/// <summary>  
 		///   Whether to dump a stack trace on errors. 
 		/// </summary>
@@ -704,26 +662,26 @@ namespace Mono.CSharp {
 	//
 	class SessionReportPrinter : ReportPrinter
 	{
-		ArrayList session_messages;
+		List<AbstractMessage> session_messages;
 		//
 		// A collection of exactly same messages reported in all sessions
 		//
-		ArrayList common_messages;
+		List<AbstractMessage> common_messages;
 
 		//
 		// A collection of unique messages reported in all sessions
 		//
-		ArrayList merged_messages;
+		List<AbstractMessage> merged_messages;
 
 		public override void Print (AbstractMessage msg)
 		{
 			//
 			// This line is useful when debugging recorded messages
 			//
-			// Console.WriteLine ("RECORDING: {0} {1} {2}", code, location, message);
+			// Console.WriteLine ("RECORDING: {0}", msg.ToString ());
 
 			if (session_messages == null)
-				session_messages = new ArrayList ();
+				session_messages = new List<AbstractMessage> ();
 
 			session_messages.Add (msg);
 
@@ -739,7 +697,7 @@ namespace Mono.CSharp {
 			// Handles the first session
 			//
 			if (common_messages == null) {
-				common_messages = new ArrayList (session_messages);
+				common_messages = new List<AbstractMessage> (session_messages);
 				merged_messages = session_messages;
 				session_messages = null;
 				return;
@@ -749,7 +707,7 @@ namespace Mono.CSharp {
 			// Store common messages if any
 			//
 			for (int i = 0; i < common_messages.Count; ++i) {
-				AbstractMessage cmsg = (AbstractMessage) common_messages[i];
+				AbstractMessage cmsg = common_messages[i];
 				bool common_msg_found = false;
 				foreach (AbstractMessage msg in session_messages) {
 					if (cmsg.Equals (msg)) {
@@ -766,7 +724,7 @@ namespace Mono.CSharp {
 			// Merge session and previous messages
 			//
 			for (int i = 0; i < session_messages.Count; ++i) {
-				AbstractMessage msg = (AbstractMessage) session_messages[i];
+				AbstractMessage msg = session_messages[i];
 				bool msg_found = false;
 				for (int ii = 0; ii < merged_messages.Count; ++ii) {
 					if (msg.Equals (merged_messages[ii])) {
@@ -791,7 +749,7 @@ namespace Mono.CSharp {
 		//
 		public bool Merge (ReportPrinter dest)
 		{
-			ArrayList messages_to_print = merged_messages;
+			var messages_to_print = merged_messages;
 			if (common_messages != null && common_messages.Count > 0) {
 				messages_to_print = common_messages;
 			}
@@ -799,10 +757,13 @@ namespace Mono.CSharp {
 			if (messages_to_print == null)
 				return false;
 
-			foreach (AbstractMessage msg in messages_to_print)
+			bool error_msg = false;
+			foreach (AbstractMessage msg in messages_to_print) {
 				dest.Print (msg);
+				error_msg |= !msg.IsWarning;
+			}
 
-			return true;
+			return error_msg;
 		}
 	}
 
@@ -881,6 +842,8 @@ namespace Mono.CSharp {
 			: base (writer)
 		{
 		}
+
+		public int Fatal { get; set; }
 
 		static int NameToCode (string s)
 		{
@@ -962,8 +925,8 @@ namespace Mono.CSharp {
 					if (!first)
 						sb.Append (", ");
 					first = false;
-					
-					sb.Append (TypeManager.CSharpName (pi.ParameterType));
+
+					sb.Append (pi.ParameterType.FullName);
 				}
 				sb.Append (")\n");
 			}
@@ -971,12 +934,16 @@ namespace Mono.CSharp {
 			return sb.ToString ();
 		}
 
+		int print_count;
 		public override void Print (AbstractMessage msg)
 		{
 			base.Print (msg);
 
 			if (Stacktrace)
 				Console.WriteLine (FriendlyStackTrace (new StackTrace (true)));
+
+			if (++print_count == Fatal)
+				throw new Exception (msg.Text);
 		}
 
 		public static string FriendlyStackTrace (Exception e)
@@ -1094,7 +1061,13 @@ namespace Mono.CSharp {
 
 		public InternalErrorException (string message, params object[] args)
 			: base (String.Format (message, args))
-		{ }
+		{
+		}
+
+		public InternalErrorException (Exception exception, string message, params object[] args)
+			: base (String.Format (message, args), exception)
+		{
+		}
 		
 		public InternalErrorException (Exception e, Location loc)
 			: base (loc.ToString (), e)
@@ -1172,7 +1145,7 @@ namespace Mono.CSharp {
 		}
 
 
-		ArrayList regions = new ArrayList ();
+		List<PragmaCmd> regions = new List<PragmaCmd> ();
 
 		public void WarningDisable (int line)
 		{
@@ -1192,8 +1165,13 @@ namespace Mono.CSharp {
 
 		public void WarningEnable (Location location, int code, Report Report)
 		{
-			if (Report.CheckWarningCode (code, location))
-				regions.Add (new Enable (location.Row, code));
+			if (!Report.CheckWarningCode (code, location))
+				return;
+
+			if (Report.IsWarningDisabledGlobally (code))
+				Report.Warning (1635, 1, location, "Cannot restore warning `CS{0:0000}' because it was disabled globally", code);
+
+			regions.Add (new Enable (location.Row, code));
 		}
 
 		public bool IsWarningEnabled (int code, int src_line)

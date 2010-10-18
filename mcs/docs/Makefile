@@ -32,11 +32,11 @@ MONODOC_SOURCES_INSTALL_FILES = \
 
 CLEAN_FILES += $(ASSEMBLED_DOCS)
 
-ifeq (net_2_0, $(PROFILE))
+ifeq (net_4_0, $(PROFILE))
 all-local: build-documentation
 endif
 
-all-local test-local run-test-local run-test-ondotnet-local doc-update:
+all-local csproj-local test-local run-test-local run-test-ondotnet-local doc-update:
 
 clean-local:
 	-rm -f $(CLEAN_FILES)
@@ -89,15 +89,15 @@ NETDOCS_DIRS = \
 MONO_DIRS = \
 	$(classdir)/Commons.Xml.Relaxng/$(doc_en)          \
 	$(classdir)/Mono.Cairo/$(doc_en)                   \
-	$(classdir)/Mono.Data.SqliteClient/$(doc_en)       \
-	$(classdir)/Mono.GetOptions/$(doc_en)              \
+	$(classdir)/Mono.Cecil/$(doc_en)                   \
 	$(classdir)/Mono.Options/$(doc_en)                 \
 	$(classdir)/Mono.Posix/$(doc_en)                   \
 	$(classdir)/Mono.Security.Win32/$(doc_en)          \
 	$(classdir)/Mono.Security/$(doc_en)                \
 	$(classdir)/Mono.Simd/$(doc_en)                    \
+	$(classdir)/Mono.CSharp/$(doc_en)                  \
 	$(classdir)/Npgsql/$(doc_en)                       \
-	$(topdir)/tools/csharplib/en
+	$(classdir)/Mono.Debugger.Soft/$(doc_en)
 
 NOVELL_DIRS = \
 	$(topdir)/class/Novell.Directory.Ldap/Documentation/en

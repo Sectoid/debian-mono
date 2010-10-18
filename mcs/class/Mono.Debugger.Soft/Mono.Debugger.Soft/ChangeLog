@@ -1,3 +1,71 @@
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Bump minor version to 2 to be compatible with the runtime.
+
+2010-06-17  Zoltan Varga  <vargaz@gmail.com>
+
+	* VirtualMachine.cs Connection.cs: Group events received together into an EventSet,
+	like it is done in JDI. Add a GetNextEventSet () method.
+
+2010-06-04  Zoltan Varga  <vargaz@gmail.com>
+
+	* StackFrame.cs (GetVisibleVariables): New method to return the set of variables
+	visible at the current stack frame.
+
+2010-05-24  Martin Baulig  <martin@ximian.com>
+
+	* Connection.cs (VersionInfo): Make this public.
+
+	* VirtualMachine.cs (Version): New public property.
+
+2010-05-07  Zoltan Varga  <vargaz@gmail.com>
+
+	* VirtualMachine.cs (ErrorHandler): Convert ABSENT_INFORMATION to
+	AbsentInformationException.
+
+	* AbsentInformationException.cs: New file.
+
+2010-04-30  Zoltan Varga  <vargaz@gmail.com>
+
+	* TypeMirror.cs: Add new overload for GetSourceFiles () which returns full paths.
+
+2010-04-27  Lluis Sanchez  <lluis@novell.com>
+
+	* ITargetProcess.cs:
+	* VirtualMachine.cs:
+	* VirtualMachineManager.cs:
+	Restored old API. Renamed IProcess to ITargetProcess everywhere
+	to avoid naming conflicts.
+
+2010-04-26  Lluis Sanchez  <lluis@novell.com>
+
+	* IProcess.cs:
+	* VirtualMachine.cs:
+	* VirtualMachineManager.cs:
+	Added new IProcess interface which wraps the debugged process.
+	This abstraction makes it easier to support debugging processes
+	for which we don't have a direct Process reference (for example,
+	if the process is remote).
+
+2010-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	* ThreadMirror.cs: Add a ThreadId property.
+
+2010-03-05  Martin Baulig  <martin@ximian.com>
+
+	Add support for aborting invocations.
+
+	* IInvokeAsyncResult.cs: New file.
+	(IInvokeAsyncResult): New public interface; derives from
+	`IAsyncResult' and contains an Abort() method.
+
+	* Connection.cs
+	(Connection.VM_BeginInvokeMethod): Return the `id'.
+	(Connection.VM_AbortInvoke): New method.
+
+	* ObjectMirror.cs
+	(ObjectMirror.AbortInvoke): New internal static method.
+
 2010-03-01  Zoltan Varga  <vargaz@gmail.com>
 
 	* VirtualMachine.cs: Allow working with runtimes implementing a different

@@ -30,7 +30,7 @@ using System.Threading;
 
 using NUnit.Framework;
 
-namespace ParallelFxTests
+namespace MonoTests.System.Threading
 {
 	[TestFixtureAttribute]
 	public class CancellationTokenTests

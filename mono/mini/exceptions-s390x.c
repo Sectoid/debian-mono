@@ -27,7 +27,7 @@
 
 #define S390_THROWSTACK_ACCPRM		S390_MINIMAL_STACK_SIZE
 #define S390_THROWSTACK_FPCPRM		(S390_THROWSTACK_ACCPRM+sizeof(gpointer))
-#define S390_THROWSTACK_RETHROW		(S390_THROWSTACK_FPCPRM+sizeof(gint32))
+#define S390_THROWSTACK_RETHROW		(S390_THROWSTACK_FPCPRM+sizeof(gulong))
 #define S390_THROWSTACK_INTREGS		(S390_THROWSTACK_RETHROW+sizeof(gboolean))
 #define S390_THROWSTACK_FLTREGS		(S390_THROWSTACK_INTREGS+(16*sizeof(gulong)))
 #define S390_THROWSTACK_ACCREGS		(S390_THROWSTACK_FLTREGS+(16*sizeof(gdouble)))
@@ -74,6 +74,11 @@ gboolean mono_arch_handle_exception (void     *ctx,
 /*                 G l o b a l   V a r i a b l e s                  */
 /*------------------------------------------------------------------*/
 
+typedef enum {
+	by_none,
+	by_token
+} throwType;
+
 /*====================== End of Global Variables ===================*/
 
 /*------------------------------------------------------------------*/
@@ -105,12 +110,16 @@ mono_arch_has_unwind_info (gconstpointer addr)
 /*------------------------------------------------------------------*/
 
 gpointer
-mono_arch_get_call_filter (void)
+mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 {
 	static guint8 *start;
 	static int inited = 0;
 	guint8 *code;
 	int alloc_size, pos, i;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	if (inited)
 		return start;
@@ -128,21 +137,21 @@ mono_arch_get_call_filter (void)
 	/*------------------------------------------------------*/
 	/* save general registers on stack			*/
 	/*------------------------------------------------------*/
-	s390_stmg (code, s390_r0, s390_r13, STK_BASE, S390_CALLFILTER_INTREGS);
+	s390_stmg (code, s390_r0, STK_BASE, STK_BASE, S390_CALLFILTER_INTREGS);
 
 	/*------------------------------------------------------*/
 	/* save floating point registers on stack		*/
 	/*------------------------------------------------------*/
-//	pos = S390_CALLFILTER_FLTREGS;
-//	for (i = 0; i < 16; ++i) {
-//		s390_std (code, i, 0, STK_BASE, pos);
-//		pos += sizeof (gdouble);
-//	}
+	pos = S390_CALLFILTER_FLTREGS;
+	for (i = 0; i < 16; ++i) {
+		s390_std (code, i, 0, STK_BASE, pos);
+		pos += sizeof (gdouble);
+	}
 
 	/*------------------------------------------------------*/
 	/* save access registers on stack       		*/
 	/*------------------------------------------------------*/
-//	s390_stam (code, s390_a0, s390_a15, STK_BASE, S390_CALLFILTER_ACCREGS);
+	s390_stam (code, s390_a0, s390_a15, STK_BASE, S390_CALLFILTER_ACCREGS);
 
 	/*------------------------------------------------------*/
 	/* Get A(Context)					*/
@@ -171,7 +180,7 @@ mono_arch_get_call_filter (void)
 	}
 	
 	/*------------------------------------------------------*/
-	/* Point at the copied stack frame and call the filter	*/
+	/* Go call filter   					*/
 	/*------------------------------------------------------*/
 	s390_lgr  (code, s390_r1, s390_r0);
 	s390_basr (code, s390_r14, s390_r1);
@@ -185,14 +194,14 @@ mono_arch_get_call_filter (void)
 	/* Restore all the regs from the stack 			*/
 	/*------------------------------------------------------*/
 	s390_lmg  (code, s390_r0, s390_r13, STK_BASE, S390_CALLFILTER_INTREGS);
-//	pos = S390_CALLFILTER_FLTREGS;
-//	for (i = 0; i < 16; ++i) {
-//		s390_ld (code, i, 0, STK_BASE, pos);
-//		pos += sizeof (gdouble);
-//	}
+	pos = S390_CALLFILTER_FLTREGS;
+	for (i = 0; i < 16; ++i) {
+		s390_ld (code, i, 0, STK_BASE, pos);
+		pos += sizeof (gdouble);
+	}
 
 	s390_lgr  (code, s390_r2, s390_r14);
-//	s390_lam  (code, s390_a0, s390_a15, STK_BASE, S390_CALLFILTER_ACCREGS);
+	s390_lam  (code, s390_a0, s390_a15, STK_BASE, S390_CALLFILTER_ACCREGS);
 	s390_aghi (code, s390_r15, alloc_size);
 	s390_lmg  (code, s390_r6, s390_r14, STK_BASE, S390_REG_SAVE_OFFSET);
 	s390_br   (code, s390_r14);
@@ -218,13 +227,17 @@ throw_exception (MonoObject *exc, unsigned long ip, unsigned long sp,
 {
 	MonoContext ctx;
 	int iReg;
+	static void (*restore_context) (MonoContext *);
+
+	if (!restore_context)
+		restore_context = mono_get_restore_context();
 	
 	memset(&ctx, 0, sizeof(ctx));
 
 	getcontext(&ctx);
 
 	/* adjust eip so that it point into the call instruction */
-	ip -= 6;
+	ip -= 2;
 
 	for (iReg = 0; iReg < 16; iReg++) {
 		ctx.uc_mcontext.gregs[iReg]  	    = int_regs[iReg];
@@ -243,7 +256,7 @@ throw_exception (MonoObject *exc, unsigned long ip, unsigned long sp,
 			mono_ex->stack_trace = NULL;
 	}
 	mono_arch_handle_exception (&ctx, exc, FALSE);
-	setcontext(&ctx);
+	restore_context(&ctx);
 
 	g_assert_not_reached ();
 }
@@ -263,31 +276,30 @@ throw_exception (MonoObject *exc, unsigned long ip, unsigned long sp,
 /*------------------------------------------------------------------*/
 
 static gpointer 
-get_throw_exception_generic (guint8 *start, int size, 
-			     int by_name, gboolean rethrow)
+mono_arch_get_throw_exception_generic (int size, MonoTrampInfo **info, 
+				int corlib, gboolean rethrow, gboolean aot)
 {
-	guint8 *code;
+	guint8 *code, *start;
 	int alloc_size, pos, i;
 
-	code = start;
+	code = start = mono_global_codeman_reserve(size);
 
 	s390_stmg (code, s390_r6, s390_r14, STK_BASE, S390_REG_SAVE_OFFSET);
 	alloc_size = S390_ALIGN(S390_THROWSTACK_SIZE, S390_STACK_ALIGNMENT);
 	s390_lgr  (code, s390_r14, STK_BASE);
 	s390_aghi (code, STK_BASE, -alloc_size);
 	s390_stg  (code, s390_r14, 0, STK_BASE, 0);
-	if (by_name) {
-		s390_lgr  (code, s390_r4, s390_r2);
+	s390_lgr  (code, s390_r3, s390_r2);
+	if (corlib) {
 		s390_basr (code, s390_r13, 0);
-		s390_j    (code, 14);
-		s390_llong(code, mono_defaults.corlib);
-		s390_llong(code, "System");
-		s390_llong(code, mono_exception_from_name);
+		s390_j    (code, 10);
+		s390_llong(code, mono_defaults.exception_class->image);
+		s390_llong(code, mono_exception_from_token);
 		s390_lg   (code, s390_r2, 0, s390_r13, 4);
-		s390_lg   (code, s390_r3, 0, s390_r13, 12);
-		s390_lg   (code, s390_r1, 0, s390_r13, 20);
+		s390_lg   (code, s390_r1, 0, s390_r13, 12);
 		s390_basr (code, s390_r14, s390_r1);
 	}
+
 	/*------------------------------------------------------*/
 	/* save the general registers on the stack 		*/
 	/*------------------------------------------------------*/
@@ -314,10 +326,11 @@ get_throw_exception_generic (guint8 *start, int size,
 	s390_stam (code, s390_r0, s390_r15, STK_BASE, S390_THROWSTACK_ACCREGS);
 
 	/*------------------------------------------------------*/
-	/* call throw_exception (exc, ip, sp, gr, fr, ar)       */
-	/* exc is already in place in r2 			*/
+	/* call throw_exception (tkn, ip, sp, gr, fr, ar, re)   */
+	/* - r2 already contains *exc				*/
 	/*------------------------------------------------------*/
 	s390_lgr  (code, s390_r4, s390_r1);        /* caller sp */
+
 	/*------------------------------------------------------*/
 	/* pointer to the saved int regs 			*/
 	/*------------------------------------------------------*/
@@ -325,7 +338,7 @@ get_throw_exception_generic (guint8 *start, int size,
 	s390_la   (code, s390_r6, 0, STK_BASE, S390_THROWSTACK_FLTREGS);
 	s390_la   (code, s390_r7, 0, STK_BASE, S390_THROWSTACK_ACCREGS);
 	s390_stg  (code, s390_r7, 0, STK_BASE, S390_THROWSTACK_ACCPRM);
-	s390_stfpc(code, STK_BASE, S390_THROWSTACK_FPCPRM);
+	s390_stfpc(code, STK_BASE, S390_THROWSTACK_FPCPRM+4);
 	s390_lghi (code, s390_r7, rethrow);
 	s390_stg  (code, s390_r7, 0, STK_BASE, S390_THROWSTACK_RETHROW);
 	s390_basr (code, s390_r13, 0);
@@ -352,18 +365,15 @@ get_throw_exception_generic (guint8 *start, int size,
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
-gpointer 
-mono_arch_get_throw_exception (void)
+gpointer
+mono_arch_get_throw_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8 *start;
-	static int inited = 0;
 
-	if (inited)
-		return start;
-	start = mono_global_codeman_reserve (SZ_THROW);
-	get_throw_exception_generic (start, SZ_THROW, FALSE, FALSE);
-	inited = 1;
-	return start;
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
+
+	return (mono_arch_get_throw_exception_generic (SZ_THROW, info, FALSE, FALSE, aot));
 }
 
 /*========================= End of Function ========================*/
@@ -380,44 +390,36 @@ mono_arch_get_throw_exception (void)
 /*------------------------------------------------------------------*/
 
 gpointer 
-mono_arch_get_rethrow_exception (void)
+mono_arch_get_rethrow_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8 *start;
-	static int inited = 0;
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
-	if (inited)
-		return start;
-	start = mono_global_codeman_reserve (SZ_THROW);
-	get_throw_exception_generic (start, SZ_THROW, FALSE, TRUE);
-	inited = 1;
-	return start;
+	return (mono_arch_get_throw_exception_generic (SZ_THROW, info, FALSE, FALSE, aot));
 }
 
 /*========================= End of Function ========================*/
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- arch_get_throw_exception_by_name                  */
+/* Name		- arch_get_corlib_exception                         */
 /*                                                                  */
 /* Function	- Return a function pointer which can be used to    */
 /*                raise corlib exceptions. The return function has  */
 /*                the following signature:                          */
-/*                void (*func) (char *exc_name);                    */
+/*                void (*func) (guint32 token, guint32 offset)	    */
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
-gpointer 
-mono_arch_get_throw_exception_by_name (void)
+gpointer
+mono_arch_get_throw_corlib_exception (MonoTrampInfo **info, gboolean aot)
 {
-	static guint8 *start;
-	static int inited = 0;
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
-	if (inited)
-		return start;
-	start = mono_global_codeman_reserve (SZ_THROW);
-	get_throw_exception_generic (start, SZ_THROW, TRUE, FALSE);
-	inited = 1;
-	return start;
+	return (mono_arch_get_throw_exception_generic (SZ_THROW, info, TRUE, FALSE, aot));
 }	
 
 /*========================= End of Function ========================*/
@@ -531,6 +533,39 @@ mono_arch_handle_exception (void *uc, gpointer obj, gboolean test_only)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
+/* Name		- mono_arch_sigctx_to_monoctx.                      */
+/*                                                                  */
+/* Function	- Called from the signal handler to convert signal  */
+/*                context to MonoContext.                           */
+/*                                                                  */
+/*------------------------------------------------------------------*/
+
+void
+mono_arch_sigctx_to_monoctx (void *ctx, MonoContext *mctx)
+{
+	memcpy (mctx, ctx, sizeof(MonoContext));
+}
+
+/*========================= End of Function ========================*/
+
+/*------------------------------------------------------------------*/
+/*                                                                  */
+/* Name		- mono_arch_monoctx_to_sigctx.                      */
+/*                                                                  */
+/* Function	- Convert MonoContext structure to signal context.  */
+/*                                                                  */
+/*------------------------------------------------------------------*/
+
+void
+mono_arch_monoctx_to_sigctx (MonoContext *mctx, void *ctx)
+{
+	memcpy (ctx, mctx, sizeof(MonoContext));
+}
+
+/*========================= End of Function ========================*/
+
+/*------------------------------------------------------------------*/
+/*                                                                  */
 /* Name		- mono_arch_ip_from_context                         */
 /*                                                                  */
 /* Function	- Return the instruction pointer from the context.  */
@@ -550,7 +585,7 @@ mono_arch_ip_from_context (void *sigctx)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_get_restore_context                     */
+/* Name		- mono_arch_get_restore_context                    */
 /*                                                                  */
 /* Function	- Return the address of the routine that will rest- */
 /*                ore the context.                                  */
@@ -558,11 +593,14 @@ mono_arch_ip_from_context (void *sigctx)
 /*------------------------------------------------------------------*/
 
 gpointer
-mono_arch_get_restore_context ()
+mono_arch_get_restore_context (MonoTrampInfo **info, gboolean aot)
 {
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
+
 	return setcontext;
 }
-
 
 /*========================= End of Function ========================*/
 

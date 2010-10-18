@@ -1,16 +1,101 @@
+2010-07-27  Andreia Gaita  <avidigal@novell.com>
+
+	* JsonSerializationReader.cs: Add Char type to the switch. Reads the
+	  content as a string and validates its length
+
+2010-07-27  Andreia Gaita  <avidigal@novell.com>
+
+	* JsonSerializationReader.cs, JsonSerializationWriter.cs:
+	  Add a special case for IDictionary, since KeyValuePair objects
+	  have private setters and can't be processed via the normal
+	  object code path.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeMap.cs :
+	  Do not try to add static members as serialization targets.
+	  Support OnDeserializing and OnDeserialized. Fixed bug #615800.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonSerializationWriter.cs : it cannot serialize DateTime in
+	  double, which causes crash in deserializer.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* TypeMap.cs : when an object is null, return null, not just an 
+	  uninitialized object.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractJsonSerializer_2_1.cs : add extra methods for
+	  Sys.SM.Web.Extensions build.
+
+2010-07-06  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonReader.cs : do not keep Attribute state once Read() is called.
+
+2010-04-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonSerializationReader.cs : use List<T> if the contract member
+	  type is interface.
+
+2010-03-16  Jb Evain  <jbevain@novell.com>
+
+	* DataContractJsonSerializer.cs: use MOONLIGHT symbol to
+	disambiguate MonoTouch and Moonlight code.
+
+2010-03-13  Kornél Pál  <kornelpal@gmail.com>
+
+	* JavaScriptReader.cs: Deserialize "false" correctly.
+	  Fixed bug #586712.
+
+2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JavaScriptReader.cs : moved from Sys.Json/JsonReader.cs.
+
+2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JavaScriptObjectDeserializer.cs : new internal file, which is
+	  used by System.Json (for moonlight compatibility).
+
+2010-03-09  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonSerializationWriter.cs, JsonSerializationReader.cs,
+	  JsonWriter.cs : Fix DateTime serialization and "\/" string escape
+	  issues. Fixed bug #586169.
+
+2010-02-24  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonWriter.cs : write NaN, INF, -INF as JSON string, not JSON number.
+	  Fixed bug #573691.
+
+2010-01-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* DataContractJsonSerializer.cs : KnownTypes does not include root
+	  type. Fixed bug #573689.
+
+2010-01-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonSerializationReader.cs : oops, wrong fix, should consume the
+	  reader.
+
+2010-01-27  Atsushi Enomoto  <atsushi@ximian.com>
+
+	* JsonSerializationReader.cs : "null" for string should be read as
+	  null, not String.Empty. Fixed bug #573690.
+
 2010-01-26  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* DataContractJsonSerializer_2_1.cs: Don't hide [Field|Method]
 	AccessException inside a SerializationException but in a 
 	SecurityException.
-	[Backport r150219]
 
 2010-01-25  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* DataContractJsonSerializer_2_1.cs: New. Simpler version for 
 	Moonlight since it does not inherit from the same base type nor
 	does it overrides any base methods.
-	[Backport r150149]
 
 2010-01-08  Atsushi Enomoto  <atsushi@ximian.com>
 

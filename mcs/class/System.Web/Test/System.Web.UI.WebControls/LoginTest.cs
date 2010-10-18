@@ -45,56 +45,56 @@ namespace MonoTests.System.Web.UI.WebControls {
     public class LoginTemplate :WebControl, ITemplate {
 		public LoginTemplate() {
 			ID = "kuku";
-        }
-        void ITemplate.InstantiateIn(Control container) {
+	}
+	void ITemplate.InstantiateIn(Control container) {
 			container.Controls.Add(this);
 		}
     }
 
     public class LayoutTemplate :WebControl, ITemplate
     {
-        TextBox user;
-        TextBox pass;
-        CheckBox remme;
-        Button login;
-        Literal failure;
+	TextBox user;
+	TextBox pass;
+	CheckBox remme;
+	Button login;
+	Literal failure;
 
-        public LayoutTemplate(){
-            Buildcontrols();
-            Addtocontainer();
-        }
+	public LayoutTemplate(){
+	    Buildcontrols();
+	    Addtocontainer();
+	}
 
-        #region build
-        public void Buildcontrols()
-        {
-            user = new TextBox();
-            pass = new TextBox();
-            remme = new CheckBox();
-            login = new Button();
-            failure = new Literal();
+	#region build
+	public void Buildcontrols()
+	{
+	    user = new TextBox();
+	    pass = new TextBox();
+	    remme = new CheckBox();
+	    login = new Button();
+	    failure = new Literal();
 
-            ID = "Template";
-            user.ID = "UserName";
-            pass.ID = "Password";
-            remme.ID = "RememberMe";
-            login.ID = "Login";
-            failure.ID = "FailureText";
-        }
+	    ID = "Template";
+	    user.ID = "UserName";
+	    pass.ID = "Password";
+	    remme.ID = "RememberMe";
+	    login.ID = "Login";
+	    failure.ID = "FailureText";
+	}
 
-        public void Addtocontainer()
-        {
-            this.Controls.Add(user);
-            this.Controls.Add(pass);
-            this.Controls.Add(remme);
-            this.Controls.Add(login);
-            this.Controls.Add(failure);
-        }
-        #endregion
+	public void Addtocontainer()
+	{
+	    this.Controls.Add(user);
+	    this.Controls.Add(pass);
+	    this.Controls.Add(remme);
+	    this.Controls.Add(login);
+	    this.Controls.Add(failure);
+	}
+	#endregion
 
-        void ITemplate.InstantiateIn(Control container)
-        {
-            container.Controls.Add(this);
-        }
+	void ITemplate.InstantiateIn(Control container)
+	{
+	    container.Controls.Add(this);
+	}
     }
     
     public class TestLogin : Login {
@@ -261,11 +261,8 @@ namespace MonoTests.System.Web.UI.WebControls {
 		[TestFixtureSetUp]
 		public void SetUp ()
 		{
-#if VISUAL_STUDIO
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.NoEventValidation.aspx", "NoEventValidation.aspx");
-#else
 			WebTest.CopyResource (GetType (), "NoEventValidation.aspx", "NoEventValidation.aspx");
-#endif
+			WebTest.CopyResource (GetType (), "LoginDisplayRememberMe.aspx", "LoginDisplayRememberMe.aspx");
 		}
 #endif
 
@@ -633,19 +630,19 @@ namespace MonoTests.System.Web.UI.WebControls {
 			l.FailureAction = (LoginFailureAction) Int32.MinValue;
 		}
 
-        [Test]
-        public void LayoutTemplate()
-        {
-            TestLogin l = new TestLogin();
-            l.LayoutTemplate = new LayoutTemplate();
-            l.DoEnsureChildControls();
-            Assert.IsNotNull(l.FindControl("Template"), "LoginTemplate");
-            Assert.IsNotNull(l.FindControl("UserName"), "UserName");
-        }
+	[Test]
+	public void LayoutTemplate()
+	{
+	    TestLogin l = new TestLogin();
+	    l.LayoutTemplate = new LayoutTemplate();
+	    l.DoEnsureChildControls();
+	    Assert.IsNotNull(l.FindControl("Template"), "LoginTemplate");
+	    Assert.IsNotNull(l.FindControl("UserName"), "UserName");
+	}
 
 
 	[Test]
-        [ExpectedException(typeof(HttpException))]
+	[ExpectedException(typeof(HttpException))]
 		public void LayoutTemplateException ()
 		{
 			TestLogin l = new TestLogin ();
@@ -1116,12 +1113,6 @@ namespace MonoTests.System.Web.UI.WebControls {
 		[Category ("NunitWeb")]
 		public void DisplayRememberMe ()
 		{
-#if VISUAL_STUDIO
-			WebTest.CopyResource (GetType (), "MonoTests.System.Web.UI.WebControls.Resources.LoginDisplayRememberMe.aspx", "LoginDisplayRememberMe.aspx");
-#else
-			WebTest.CopyResource (GetType (), "LoginDisplayRememberMe.aspx", "LoginDisplayRememberMe.aspx");
-#endif
-
 			WebTest t = new WebTest ("LoginDisplayRememberMe.aspx");
 			string html = t.Run ();
 

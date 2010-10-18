@@ -74,7 +74,7 @@
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_get_unbox_trampoline                        */
+/* Name		- mono_arch_get_unbox_trampoline                    */
 /*                                                                  */
 /* Function	- Return a pointer to a trampoline which does the   */
 /*		  unboxing before calling the method.		    */
@@ -94,10 +94,6 @@ mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *me
 	guint8 *code, *start;
 	int this_pos = s390_r2;
 	MonoDomain *domain = mono_domain_get ();
-
-	start = addr;
-	if (MONO_TYPE_ISSTRUCT (mono_method_signature (method)->ret))
-		this_pos = s390_r3;
 
 	start = code = mono_domain_code_reserve (domain, 28);
 
@@ -119,9 +115,9 @@ mono_arch_get_unbox_trampoline (MonoGenericSharingContext *gsctx, MonoMethod *me
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_patch_callsite                              */
+/* Name		- mono_arch_patch_callsite                          */
 /*                                                                  */
-/* Function	- Patch a non-virtual callsite so it calls @addr.       */
+/* Function	- Patch a non-virtual callsite so it calls @addr.   */
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
@@ -157,6 +153,14 @@ mono_arch_patch_callsite (guint8 *method_start, guint8 *orig_code, guint8 *addr)
 
 /*========================= End of Function ========================*/
 
+/*------------------------------------------------------------------*/
+/*                                                                  */
+/* Name		- mono_arch_patch_plt_entry.                        */
+/*                                                                  */
+/* Function	- Patch a PLT entry - unused as yet.                */
+/*                                                                  */
+/*------------------------------------------------------------------*/
+
 void
 mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *addr)
 {
@@ -167,9 +171,9 @@ mono_arch_patch_plt_entry (guint8 *code, gpointer *got, mgreg_t *regs, guint8 *a
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_nullify_class_init_trampoline               */
+/* Name		- mono_arch_nullify_class_init_trampoline           */
 /*                                                                  */
-/* Function	- Nullify a call which calls a class init trampoline    */
+/* Function	- Nullify a call which calls a class init trampoline*/
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
@@ -185,6 +189,14 @@ mono_arch_nullify_class_init_trampoline (guint8 *code, mgreg_t *regs)
 
 /*========================= End of Function ========================*/
 
+/*------------------------------------------------------------------*/
+/*                                                                  */
+/* Name		- mono_arch_nullify_plt_entry			    */
+/*                                                                  */
+/* Function	- Nullify a PLT entry call.			    */
+/*                                                                  */
+/*------------------------------------------------------------------*/
+
 void
 mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 {
@@ -195,103 +207,22 @@ mono_arch_nullify_plt_entry (guint8 *code, mgreg_t *regs)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_get_vcall_slot                              */
-/*                                                                  */
-/* Function	- This method is called by the arch independent         */
-/*            trampoline code to determine the vtable slot used by  */
-/*            the call which invoked the trampoline.                */
-/*                                                                  */
-/* Parameters   - code   - Pointer into caller code                 */
-/*                regs   - Register state at the point of the call  */
-/*                displacement - Out parameter which will receive   */
-/*                the displacement of the vtable slot               */
-/*                                                                  */
-/*------------------------------------------------------------------*/
-
-gpointer
-mono_arch_get_vcall_slot (guint8 *code, mgreg_t *regs, int *displacement)
-{
-	int reg, lkReg;
-	guchar* base;
-	unsigned short opcode;
-	char *sp;
-
-	// We are passed sp instead of the register array
-	sp = (char*)regs;
-
-	*displacement = 0;
-
-	opcode = *((unsigned short *) (code - 6));
-	if (opcode == 0xc0e5)
-		/* This is the 'brasl' instruction */
-		return NULL;
-
-	/*-----------------------------------*/
-	/* This is a bras r14,Rz instruction */
-	/* If it's preceded by a LG Rx,d(Ry) */
-	/* If Rz == 1 then this is virtual   */
-	/* call.                             */
-	/*-----------------------------------*/
-	code    -= 6;
-
-	/*-----------------------------------*/
-	/* If call is preceded by LGR then   */
-	/* there's nothing to patch          */
-	/*-----------------------------------*/
-	if ((code[0] == 0xb9) &&
-		(code[1] == 0x04))
-		return NULL;
-
-	/*-----------------------------------*/
-	/* We back up until we're pointing at*/
-	/* the base/displacement portion of  */
-	/* the LG instruction                */
-	/*-----------------------------------*/
-	lkReg    = code[5] & 0x0f;
-
-	/*-----------------------------------*/
-	/* The LG instruction has format:    */
-	/* E3x0ylllhh04 - where:             */
-	/* x = Rx; y = Ry;                   */
-	/* lll = low 12 bits of displacement */
-	/* hh  = high 8 bits of displacement */
-	/*-----------------------------------*/
-	reg      = code[0] >> 4;
-	*displacement = (code[2] << 12) +
-		((code[0] & 0x0f) << 8) +
-		code[1];
-
-	if (reg > 5)
-		base = *((guchar **) (sp + S390_REG_SAVE_OFFSET +
-							  sizeof(long)*(reg-6)));
-	else
-		base = *((guchar **) ((sp - CREATE_STACK_SIZE) +
-							  CREATE_GR_OFFSET +
-							  sizeof(long)*(reg-2)));
-	if (lkReg != 1)
-		/* Non virtual call */
-		return NULL;
-
-	return base;
-}
-
-/*========================= End of Function ========================*/
-
-/*------------------------------------------------------------------*/
-/*                                                                  */
-/* Name		- mono_arch_create_trampoline_code                            */
+/* Name		- mono_arch_create_trampoline_code                  */
 /*                                                                  */
 /* Function	- Create the designated type of trampoline according*/
 /*                to the 'tramp_type' parameter.                    */
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
-guchar *
-mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
+guchar*
+mono_arch_create_generic_trampoline (MonoTrampolineType tramp_type, MonoTrampInfo **info, gboolean aot)
 {
-
 	guint8 *buf, *tramp, *code;
 	int i, offset, lmfOffset;
+
+	g_assert (!aot);
+	if (info)
+		*info = NULL;
 
 	/* Now we'll create in 'buf' the S/390 trampoline code. This
 	   is the trampoline code common to all methods  */
@@ -303,7 +234,7 @@ mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
 	  stack size big enough to save our registers.
 	  -----------------------------------------------------------*/
 		
-	s390_stmg (buf, s390_r6, s390_r14, STK_BASE, S390_REG_SAVE_OFFSET);
+	s390_stmg (buf, s390_r6, s390_r15, STK_BASE, S390_REG_SAVE_OFFSET);
 	s390_lgr  (buf, s390_r11, s390_r15);
 	s390_aghi (buf, STK_BASE, -CREATE_STACK_SIZE);
 	s390_stg  (buf, s390_r11, 0, STK_BASE, 0);
@@ -388,12 +319,14 @@ mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
 	/*---------------------------------------------------------------*/	
 	/* Save general and floating point registers			 */	
 	/*---------------------------------------------------------------*/	
-	s390_stmg  (buf, s390_r2, s390_r12, s390_r13,
-			    G_STRUCT_OFFSET(MonoLMF, gregs[2]));		
-	for (i = 0; i < 16; i++) {
-		s390_std  (buf, i, 0, s390_r13,
-				   G_STRUCT_OFFSET(MonoLMF, fregs[i]));
-	}						
+	s390_mvc   (buf, 4*sizeof(gulong), s390_r13, G_STRUCT_OFFSET(MonoLMF, gregs[2]), 
+		    STK_BASE, CREATE_GR_OFFSET);
+	s390_mvc   (buf, 10*sizeof(gulong), s390_r13, G_STRUCT_OFFSET(MonoLMF, gregs[6]), 
+		    s390_r11, S390_REG_SAVE_OFFSET);
+
+	/* Simply copy fpregs already saved above			 */
+	s390_mvc   (buf, 16*sizeof(double), s390_r13, G_STRUCT_OFFSET(MonoLMF, fregs[0]),
+		    STK_BASE, CREATE_FP_OFFSET);
 
 	/*---------------------------------------------------------------*/
 	/* STEP 2: call the C trampoline function                        */
@@ -402,8 +335,7 @@ mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
 	/* Set arguments */
 
 	/* Arg 1: mgreg_t *regs. We pass sp instead */
-	s390_lgr  (buf, s390_r2, STK_BASE);
-	s390_ahi  (buf, s390_r2, CREATE_STACK_SIZE);
+	s390_la  (buf, s390_r2, 0, STK_BASE, CREATE_STACK_SIZE);
 		
 	/* Arg 2: code (next address to the instruction that called us) */
 	if (tramp_type == MONO_TRAMPOLINE_JUMP) {
@@ -474,9 +406,9 @@ mono_arch_create_trampoline_code (MonoTrampolineType tramp_type)
 
 /*------------------------------------------------------------------*/
 /*                                                                  */
-/* Name		- mono_arch_create_specific_trampoline                  */
+/* Name		- mono_arch_create_specific_trampoline              */
 /*                                                                  */
-/* Function	- Creates the given kind of specific trampoline         */
+/* Function	- Creates the given kind of specific trampoline     */
 /*                                                                  */
 /*------------------------------------------------------------------*/
 
@@ -516,10 +448,20 @@ mono_arch_create_specific_trampoline (gpointer arg1, MonoTrampolineType tramp_ty
 
 /*========================= End of Function ========================*/
 
+/*------------------------------------------------------------------*/
+/*                                                                  */
+/* Name		- mono_arch_create_rgctx_lazy_fetch_trampoline      */
+/*                                                                  */
+/* Function	- 						    */
+/*                                                                  */
+/*------------------------------------------------------------------*/
+
 gpointer
-mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 encoded_offset)
+mono_arch_create_rgctx_lazy_fetch_trampoline (guint32 slot, MonoTrampInfo **info, gboolean aot)
 {
 	/* FIXME: implement! */
 	g_assert_not_reached ();
 	return NULL;
-}
+}	
+
+/*========================= End of Function ========================*/

@@ -37,14 +37,17 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Xml;
-using NUnit.Framework;
-using System.Xml.Serialization;
 using System.Xml.Schema;
+using System.Xml.Serialization;
+using NUnit.Framework;
+
+[assembly: ContractNamespace ("http://www.u2u.be/samples/wcf/2009", ClrNamespace = "U2U.DataContracts")] // bug #599889
 
 namespace MonoTests.System.Runtime.Serialization
 {
@@ -76,10 +79,10 @@ namespace MonoTests.System.Runtime.Serialization
 		[Test]
 		public void ConstructorKnownTypesNull ()
 		{
-			// null knownTypes is allowed.
-			new DataContractSerializer (typeof (Sample1), null);
-			new DataContractSerializer (typeof (Sample1), "Foo", String.Empty, null);
-			new DataContractSerializer (typeof (Sample1), new XmlDictionary ().Add ("Foo"), XmlDictionaryString.Empty, null);
+			// null knownTypes is allowed. Though the property is filled.
+			Assert.IsNotNull (new DataContractSerializer (typeof (Sample1), null).KnownTypes, "#1");
+			Assert.IsNotNull (new DataContractSerializer (typeof (Sample1), "Foo", String.Empty, null).KnownTypes, "#2");
+			Assert.IsNotNull (new DataContractSerializer (typeof (Sample1), new XmlDictionary ().Add ("Foo"), XmlDictionaryString.Empty, null).KnownTypes, "#3");
 		}
 
 		[Test]
@@ -1355,8 +1358,128 @@ namespace MonoTests.System.Runtime.Serialization
 			}
 			Assert.AreEqual (@"<MemberIgnored xmlns:i=""http://www.w3.org/2001/XMLSchema-instance"" xmlns=""http://schemas.datacontract.org/2004/07/MonoTests.System.Runtime.Serialization""><body><Bar>bar</Bar></body></MemberIgnored>", sw.ToString (), "#1");
 		}
-	}
 
+		[Test]
+		public void DeserializeEmptyArray ()
+		{
+			var ds = new DataContractSerializer (typeof (string []));
+			var sw = new StringWriter ();
+			var xw = XmlWriter.Create (sw);
+			ds.WriteObject (xw, new string [] {});
+			xw.Close ();
+			Console.WriteLine (sw.ToString ());
+			var sr = new StringReader (sw.ToString ());
+			var xr = XmlReader.Create (sr);
+			var ret = ds.ReadObject (xr);
+			Assert.AreEqual (typeof (string []), ret.GetType (), "#1");
+		}
+		
+		[Test]
+		public void ContractNamespaceAttribute ()
+		{
+			var ds = new DataContractSerializer (typeof (U2U.DataContracts.Person));
+			string xml = "<?xml version='1.0' encoding='utf-16'?><Person xmlns:i='http://www.w3.org/2001/XMLSchema-instance' xmlns='http://www.u2u.be/samples/wcf/2009'><Name>Rupert</Name><Occupation><Description>Monkey</Description></Occupation></Person>";
+			var person = new U2U.DataContracts.Person () {
+				Name = "Rupert",
+				Occupation = new U2U.DataContracts.Job () { Description = "Monkey" }
+				};
+			var sw = new StringWriter ();
+			using (var xw = XmlWriter.Create (sw))
+				ds.WriteObject (xw, person);
+			Assert.AreEqual (xml, sw.ToString ().Replace ('"', '\''), "#1");
+		}
+
+		[Test]
+		public void Bug610036 ()
+		{
+			var ms = new MemoryStream ();
+			Type [] knownTypes = new Type [] { typeof (ParentClass), typeof (Foo), typeof (Bar) };
+
+            		var ds = new DataContractSerializer (typeof (Root), "Root", "Company.Foo", knownTypes, 1000, false, true, null);
+
+			var root = new Root ("root");
+			var bar1 = new Bar ("bar1");
+			var bar2 = new Bar ("bar2");
+			var bar3 = new Bar ("bar3");
+			
+			var foo1 = new Foo ("foo1");
+			var foo2 = new Foo ("foo2");
+			
+			foo1.FDict.Add (bar1);
+			foo1.FDict.Add (bar2);
+			
+			foo2.FDict.Add (bar1);
+			foo2.FDict.Add (bar3);
+			
+			root.FDict.Add (foo1);
+			root.FDict.Add (foo2);
+
+			ds.WriteObject (ms, root);
+			string result = Encoding.UTF8.GetString (ms.ToArray ());
+			ms.Position = 0;
+
+			root = (Root) ds.ReadObject (ms);
+
+			Assert.AreEqual (2, root.FDict.Count, "#1");
+			int idx = result.IndexOf ("foo1");
+			Assert.IsTrue (idx >= 0, "#2");
+			// since "foo1" is stored as z:Ref for string, it must not occur twice.
+			int idx2 = result.IndexOf ("foo1", idx + 1);
+			Assert.IsTrue (idx2 < 0, "idx2 should not occur at " + idx2);
+		}
+
+		[Test]
+		public void IXmlSerializableCallConstructor ()
+		{
+			IXmlSerializableCallConstructor  (false);
+			IXmlSerializableCallConstructor (true);
+		}
+		
+		void IXmlSerializableCallConstructor (bool binary)
+		{
+			Stream s = IXmlSerializableCallConstructorSerialize (binary);
+			var a = new byte [s.Length];
+			s.Position = 0;
+			s.Read (a, 0, a.Length);
+			s.Position = 0;
+			IXmlSerializableCallConstructorDeserialize (s, binary);
+		}
+
+		public Stream IXmlSerializableCallConstructorSerialize (bool binary)
+		{
+			var ds = new DataSet ("ds");
+			var dt = new DataTable ("dt");
+			ds.Tables.Add (dt);
+			dt.Columns.Add ("n", typeof (int));
+			dt.Columns.Add ("s", typeof (string));
+			
+			dt.Rows.Add (5, "five");
+			dt.Rows.Add (10, "ten");
+			
+			ds.AcceptChanges ();
+			
+			var s = new MemoryStream ();
+			
+			var w = binary ? XmlDictionaryWriter.CreateBinaryWriter (s) : XmlDictionaryWriter.CreateTextWriter (s);
+			
+			var x = new DataContractSerializer (typeof (DataSet));
+			x.WriteObject (w, ds);
+			w.Flush ();
+	
+			return s;
+		}
+		
+		public void IXmlSerializableCallConstructorDeserialize (Stream s, bool binary)
+		{
+			var r = binary ? XmlDictionaryReader.CreateBinaryReader (s, XmlDictionaryReaderQuotas.Max)
+				: XmlDictionaryReader.CreateTextReader (s, XmlDictionaryReaderQuotas.Max);
+			
+			var x = new DataContractSerializer (typeof (DataSet));
+			
+			var ds = (DataSet) x.ReadObject (r);
+		}
+	}
+	
 	[DataContract]
 	public class MemberIgnored
 	{
@@ -1736,3 +1859,99 @@ public class Person
 		return string.Format ("name={0},id={1}", name, Id);
 	}
 }
+
+// bug #599889
+namespace U2U.DataContracts
+{
+	[DataContract]
+	public class Person
+	{
+		[DataMember]
+		public string Name { get; set; }
+
+		[DataMember]
+		public Job Occupation { get; set; }
+	}
+
+	[DataContract]
+	public class Job
+	{
+		[DataMember]
+		public string Description { get; set; }
+	}
+}
+
+#region bug #610036
+//parent class with a name property
+[DataContract (Namespace = "Company.Foo")]
+public abstract class ParentClass
+{
+	
+	//constructor
+	public ParentClass (string name)
+	{
+		Name = name;
+	}
+	
+	//the name
+	[DataMember]
+	public string Name{ get; set; }
+
+}
+
+//root object
+[DataContract (Namespace = "Company.Foo")]
+public class Root : ParentClass
+{
+	//dict
+	[DataMember]
+	public Dict<Foo> FDict;	
+	
+	//constructor
+	public Root (string name)
+		: base (name)
+	{
+		FDict = new Dict<Foo> ();
+	}
+}
+
+
+//subclass
+[DataContract (Namespace = "Company.Foo")]
+public class Foo : ParentClass
+{
+	//here is one dict
+	[DataMember]
+	public Dict<Bar> FDict;
+	
+	//constructor
+	public Foo (string name) 
+		: base (name)
+	{
+		FDict = new Dict<Bar> ();
+	}
+	
+}
+
+//another sublass
+[DataContract (Namespace = "Company.Foo")]
+public class Bar : ParentClass
+{
+	//constructor
+	public Bar (string name)
+		: base (name)
+	{
+	}
+	
+}
+//the custom dictionary
+[CollectionDataContract (ItemName = "DictItem", Namespace = "Company.Foo")]
+public class Dict<T> : Dictionary<string, T> where T : ParentClass
+{
+	public void Add (T item)
+	{
+		Add (item.Name, item);
+	}
+	
+}
+#endregion

@@ -34,13 +34,8 @@ namespace System
 {
 	[Serializable]
 	[CLSCompliant (false)]
-#if NET_2_0
 	[System.Runtime.InteropServices.ComVisible (true)]
-#endif
-	public struct UInt64 : IFormattable, IConvertible, IComparable
-#if NET_2_0
-		, IComparable<UInt64>, IEquatable <UInt64>
-#endif
+	public struct UInt64 : IFormattable, IConvertible, IComparable, IComparable<UInt64>, IEquatable <UInt64>
 	{
 		public const ulong MaxValue = 0xffffffffffffffff;
 		public const ulong MinValue = 0;
@@ -76,7 +71,6 @@ namespace System
 			return (int)(m_value & 0xffffffff) ^ (int)(m_value >> 32);
 		}
 
-#if NET_2_0
 		public int CompareTo (ulong value)
 		{
 			if (m_value == value)
@@ -91,12 +85,91 @@ namespace System
 		{
 			return obj == m_value;
 		}
-#endif
 
 		[CLSCompliant (false)]
 		public static ulong Parse (string s)
 		{
-			return Parse (s, NumberStyles.Integer, null);
+			Exception exc;
+			ulong result;
+
+			if (!Parse (s, false, out result, out exc))
+				throw exc;
+
+			return result;
+		}
+
+		internal static bool Parse (string s, bool tryParse, out ulong result, out Exception exc)
+		{
+			ulong val = 0;
+			int len;
+			int i;
+			bool digits_seen = false;
+			bool has_negative_sign = false;
+
+			exc = null;
+			result = 0;
+
+			if (s == null) {
+				if (!tryParse)
+					exc = new ArgumentNullException ("s");
+				return false;
+			}
+
+			len = s.Length;
+
+			char c;
+			for (i = 0; i < len; i++) {
+				c = s [i];
+				if (!Char.IsWhiteSpace (c))
+					break;
+			}
+
+			if (i == len) {
+				if (!tryParse)
+					exc = Int32.GetFormatException ();
+				return false;
+			}
+
+			if (s [i] == '+')
+				i++;
+			else if (s [i] == '-') {
+				i++;
+				has_negative_sign = true;
+			}
+
+			// Actual number stuff
+			for (; i < len; i++) {
+				c = s [i];
+
+				if (c >= '0' && c <= '9') {
+					uint d = (uint) (c - '0');
+
+					if (val > MaxValue / 10 || (val == MaxValue / 10 && d > MaxValue % 10)) {
+						if (!tryParse)
+							exc = new OverflowException ("Value is too large.");
+						return false;
+					}
+
+					val = (val * 10) + d;
+					digits_seen = true;
+				} else if (!Int32.ProcessTrailingWhitespace (tryParse, s, i, ref exc))
+					return false;
+			}
+
+			if (!digits_seen) {
+				if (!tryParse)
+					exc = Int32.GetFormatException ();
+				return false;
+			}
+
+			if (has_negative_sign && val > 0) {
+				if (!tryParse)
+					exc = new OverflowException ("Negative number.");
+				return false;
+			}
+
+			result = val;
+			return true;
 		}
 
 		[CLSCompliant (false)]
@@ -128,12 +201,12 @@ namespace System
 				return false;
 			}
 
-			NumberFormatInfo nfi;
+			NumberFormatInfo nfi = null;
 			if (provider != null) {
 				Type typeNFI = typeof (NumberFormatInfo);
 				nfi = (NumberFormatInfo) provider.GetFormat (typeNFI);
 			}
-			else
+			if (nfi == null)
 				nfi = Thread.CurrentThread.CurrentCulture.NumberFormat;
 
 			if (!Int32.CheckStyle (style, tryParse, ref exc))
@@ -354,12 +427,11 @@ namespace System
 		}
 
 
-#if NET_2_0
 		[CLSCompliant (false)]
 		public static bool TryParse (string s, out ulong result) 
 		{
 			Exception exc;
-			if (!Parse (s, NumberStyles.Integer, null, true, out result, out exc)) {
+			if (!Parse (s, true, out result, out exc)) {
 				result = 0;
 				return false;
 			}
@@ -378,7 +450,6 @@ namespace System
 
 			return true;
 		}
-#endif
 
 		public override string ToString ()
 		{
@@ -469,40 +540,19 @@ namespace System
 			return System.Convert.ToType (m_value, targetType, provider, false);
 		}
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		ushort IConvertible.ToUInt16 (IFormatProvider provider)
 		{
 			return System.Convert.ToUInt16 (m_value);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		uint IConvertible.ToUInt32 (IFormatProvider provider)
 		{
 			return System.Convert.ToUInt32 (m_value);
 		}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 
-#if ONLY_1_1
-#pragma warning disable 3019
-		[CLSCompliant (false)]
-#endif
 		ulong IConvertible.ToUInt64 (IFormatProvider provider)
 		{
 			return m_value;
 		}
 	}
-#if ONLY_1_1
-#pragma warning restore 3019
-#endif
 }

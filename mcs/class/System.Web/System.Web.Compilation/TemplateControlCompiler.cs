@@ -32,23 +32,22 @@ using System;
 using System.CodeDom;
 using System.Collections;
 using System.ComponentModel;
+using System.Configuration;
+using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Reflection;
+using System.Resources;
 using System.Text;
 using System.Web;
+using System.Web.Caching;
+using System.Web.Configuration;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Web.Util;
 using System.ComponentModel.Design.Serialization;
 using System.Text.RegularExpressions;
-#if NET_2_0
-using System.Configuration;
-using System.Collections.Specialized;
-using System.Collections.Generic;
-using System.Web.Configuration;
-using System.Resources;
-#endif
 
 namespace System.Web.Compilation
 {
@@ -66,17 +65,14 @@ namespace System.Web.Compilation
 
 		internal static CodeVariableReferenceExpression ctrlVar = new CodeVariableReferenceExpression ("__ctrl");
 		
-#if NET_2_0
 		List <string> masterPageContentPlaceHolders;
 		static Regex startsWithBindRegex = new Regex (@"^Bind\s*\(", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		// When modifying those, make sure to look at the SanitizeBindCall to make sure it
 		// picks up correct groups.
 		static Regex bindRegex = new Regex (@"Bind\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)\s*%>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		static Regex bindRegexInValue = new Regex (@"Bind\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-#endif
 		static Regex evalRegexInValue = new Regex (@"(.*)Eval\s*\(\s*[""']+(.*?)[""']+((\s*,\s*[""']+(.*?)[""']+)?)\s*\)(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-#if NET_2_0
 		List <string> MasterPageContentPlaceHolders {
 			get {
 				if (masterPageContentPlaceHolders == null)
@@ -84,7 +80,7 @@ namespace System.Web.Compilation
 				return masterPageContentPlaceHolders;
 			}
 		}
-#endif
+
 		public TemplateControlCompiler (TemplateControlParser parser)
 			: base (parser)
 		{
@@ -93,7 +89,8 @@ namespace System.Web.Compilation
 
 		protected void EnsureID (ControlBuilder builder)
 		{
-			if (builder.ID == null || builder.ID.Trim () == "")
+			string id = builder.ID;
+			if (id == null || id.Trim () == String.Empty)
 				builder.ID = builder.GetNextID (null);
 		}
 
@@ -101,10 +98,9 @@ namespace System.Web.Compilation
 		{
 			if (builder == null || builder.ID == null || builder.ControlType == null)
 				return;
-#if NET_2_0
+
 			if (partialNameOverride [builder.ID] != null)
 				return;
-#endif
 
 			MemberAttributes ma = MemberAttributes.Family;
 			currentLocation = builder.Location;
@@ -114,13 +110,11 @@ namespace System.Web.Compilation
 			CodeMemberField field;
 			field = new CodeMemberField (builder.ControlType.FullName, builder.ID);
 			field.Attributes = ma;
-#if NET_2_0
 			field.Type.Options |= CodeTypeReferenceOptions.GlobalReference;
 
 			if (partialClass != null)
 				partialClass.Members.Add (AddLinePragma (field, builder));
 			else
-#endif
 				mainClass.Members.Add (AddLinePragma (field, builder));
 		}
 
@@ -144,15 +138,8 @@ namespace System.Web.Compilation
 				return false;
 
 			if (!other.IsAssignableFrom (type)) {
-#if NET_2_0
 				ma |= MemberAttributes.New;
 				return false;
-#else
-				string msg = String.Format ("The base class includes the field '{0}', but its " +
-							    "type '{1}' is not compatible with {2}",
-							    id, other, type);
-				throw new ParseException (currentLocation, msg);
-#endif
 			}
 
 			return true;
@@ -174,12 +161,35 @@ namespace System.Web.Compilation
 			invoke.Parameters.Add (expr);
 			builder.MethodStatements.Add (AddLinePragma (invoke, builder));
 		}
+
+		CodeStatement CreateControlVariable (Type type, ControlBuilder builder, CodeMemberMethod method, CodeTypeReference ctrlTypeRef)
+		{
+			CodeObjectCreateExpression newExpr = new CodeObjectCreateExpression (ctrlTypeRef);
+
+			object [] atts = type != null ? type.GetCustomAttributes (typeof (ConstructorNeedsTagAttribute), true) : null;
+			if (atts != null && atts.Length > 0) {
+				ConstructorNeedsTagAttribute att = (ConstructorNeedsTagAttribute) atts [0];
+				if (att.NeedsTag)
+					newExpr.Parameters.Add (new CodePrimitiveExpression (builder.TagName));
+			} else if (builder is DataBindingBuilder) {
+				newExpr.Parameters.Add (new CodePrimitiveExpression (0));
+				newExpr.Parameters.Add (new CodePrimitiveExpression (1));
+			}
+
+			method.Statements.Add (new CodeVariableDeclarationStatement (ctrlTypeRef, "__ctrl"));
+			CodeAssignStatement assign = new CodeAssignStatement ();
+			assign.Left = ctrlVar;
+			assign.Right = newExpr;
+
+			return assign;
+		}
 		
 		void InitMethod (ControlBuilder builder, bool isTemplate, bool childrenAsProperties)
 		{
 			currentLocation = builder.Location;
-			
-			string tailname = ((builder is RootBuilder) ? "Tree" : ("_" + builder.ID));
+			bool inBuildControlTree = builder is RootBuilder;
+			string tailname = (inBuildControlTree ? "Tree" : ("_" + builder.ID));
+			bool isProperty = builder.IsProperty;
 			CodeMemberMethod method = new CodeMemberMethod ();
 			builder.Method = method;
 			builder.MethodStatements = method.Statements;
@@ -187,15 +197,13 @@ namespace System.Web.Compilation
 			method.Name = "__BuildControl" + tailname;
 			method.Attributes = MemberAttributes.Private | MemberAttributes.Final;
 			Type type = builder.ControlType;
-
+			
 			/* in the case this is the __BuildControlTree
 			 * method, allow subclasses to insert control
 			 * specific code. */
-			if (builder is RootBuilder) {
-#if NET_2_0
+			if (inBuildControlTree) {
 				SetCustomAttributes (method);
-#endif
-				AddStatementsToInitMethod (method);
+				AddStatementsToInitMethodTop (builder, method);
 			}
 			
 			if (builder.HasAspCode) {
@@ -214,51 +222,54 @@ namespace System.Web.Compilation
 				mainClass.Members.Add (renderMethod);
 			}
 			
-			if (childrenAsProperties || builder.ControlType == null) {
+			if (childrenAsProperties || type == null) {
 				string typeString;
-				if (builder is RootBuilder)
+				bool isGlobal = true;
+				bool returnsControl;
+
+				if (builder is RootBuilder) {
 					typeString = parser.ClassName;
-				else {
-					if (builder.ControlType != null && builder.IsProperty &&
-					    !typeof (ITemplate).IsAssignableFrom (builder.ControlType))
-						typeString = builder.ControlType.FullName;
-					else 
+					isGlobal = false;
+					returnsControl = false;
+				} else {
+					returnsControl = builder.PropertyBuilderShouldReturnValue;
+					if (type != null && builder.IsProperty && !typeof (ITemplate).IsAssignableFrom (type)) {
+						typeString = type.FullName;
+						isGlobal = !type.IsPrimitive;
+					} else 
 						typeString = "System.Web.UI.Control";
 					ProcessTemplateChildren (builder);
 				}
+				CodeTypeReference ctrlTypeRef = new CodeTypeReference (typeString);
+				if (isGlobal)
+					ctrlTypeRef.Options |= CodeTypeReferenceOptions.GlobalReference;
+				
+				if (returnsControl) {
+					method.ReturnType = ctrlTypeRef;
 
-				method.Parameters.Add (new CodeParameterDeclarationExpression (typeString, "__ctrl"));
+					// $controlType _ctrl = new $controlType ($parameters);
+					//
+					method.Statements.Add (CreateControlVariable (type, builder, method, ctrlTypeRef));
+				} else
+					method.Parameters.Add (new CodeParameterDeclarationExpression (typeString, "__ctrl"));
 			} else {
+				CodeTypeReference ctrlTypeRef = new CodeTypeReference (type.FullName);
+				if (!type.IsPrimitive)
+					ctrlTypeRef.Options |= CodeTypeReferenceOptions.GlobalReference;
 				
 				if (typeof (Control).IsAssignableFrom (type))
-					method.ReturnType = new CodeTypeReference (typeof (Control));
+					method.ReturnType = ctrlTypeRef;
 
-				// _ctrl = new $controlType ($parameters);
+				// $controlType _ctrl = new $controlType ($parameters);
 				//
-				CodeObjectCreateExpression newExpr = new CodeObjectCreateExpression (type);
-
-				object [] atts = type.GetCustomAttributes (typeof (ConstructorNeedsTagAttribute), true);
-				if (atts != null && atts.Length > 0) {
-					ConstructorNeedsTagAttribute att = (ConstructorNeedsTagAttribute) atts [0];
-					if (att.NeedsTag)
-						newExpr.Parameters.Add (new CodePrimitiveExpression (builder.TagName));
-				} else if (builder is DataBindingBuilder) {
-					newExpr.Parameters.Add (new CodePrimitiveExpression (0));
-					newExpr.Parameters.Add (new CodePrimitiveExpression (1));
-				}
-
-				method.Statements.Add (new CodeVariableDeclarationStatement (builder.ControlType, "__ctrl"));
-				CodeAssignStatement assign = new CodeAssignStatement ();
-				assign.Left = ctrlVar;
-				assign.Right = newExpr;
-				method.Statements.Add (AddLinePragma (assign, builder));
+				method.Statements.Add (AddLinePragma (CreateControlVariable (type, builder, method, ctrlTypeRef), builder));
 								
 				// this.$builderID = _ctrl;
 				//
 				CodeFieldReferenceExpression builderID = new CodeFieldReferenceExpression ();
 				builderID.TargetObject = thisRef;
 				builderID.FieldName = builder.ID;
-				assign = new CodeAssignStatement ();
+				CodeAssignStatement assign = new CodeAssignStatement ();
 				assign.Left = builderID;
 				assign.Right = ctrlVar;
 				method.Statements.Add (AddLinePragma (assign, builder));
@@ -272,7 +283,6 @@ namespace System.Web.Compilation
 					method.Statements.Add (initAsControl);
 				}
 
-#if NET_2_0
 				if (builder.ParentTemplateBuilder is System.Web.UI.WebControls.ContentBuilderInternal) {
 					PropertyInfo pi;
 
@@ -313,7 +323,6 @@ namespace System.Web.Compilation
 						applyStyleSheetSkin.Parameters.Add (new CodePropertyReferenceExpression (thisRef, "Page"));
 					method.Statements.Add (applyStyleSheetSkin);
 				}
-#endif
 
 				// Process template children before anything else
 				ProcessTemplateChildren (builder);
@@ -324,9 +333,7 @@ namespace System.Web.Compilation
 				string ctl_id = builder.GetAttribute ("id");
 				if (ctl_id != null && ctl_id.Length != 0)
 					CreateAssignStatementFromAttribute (builder, "id");
-
 				
-#if NET_2_0
 				if (typeof (ContentPlaceHolder).IsAssignableFrom (type)) {
 					List <string> placeHolderIds = MasterPageContentPlaceHolders;
 					string cphID = builder.ID;
@@ -395,8 +402,10 @@ namespace System.Web.Compilation
 					// this is the bit that causes the following stuff to end up in the else { }
 					builder.MethodStatements = condStatement.FalseStatements;
 				}
-#endif
 			}
+
+			if (inBuildControlTree)
+				AddStatementsToInitMethodBottom (builder, method);
 			
 			mainClass.Members.Add (method);
 		}
@@ -407,18 +416,15 @@ namespace System.Web.Compilation
 			if (templates != null && templates.Count > 0) {
 				foreach (TemplateBuilder tb in templates) {
 					CreateControlTree (tb, true, false);
-#if NET_2_0
 					if (tb.BindingDirection == BindingDirection.TwoWay) {
 						string extractMethod = CreateExtractValuesMethod (tb);
 						AddBindableTemplateInvocation (builder, tb.TagName, tb.Method.Name, extractMethod);
 					} else
-#endif
 						AddTemplateInvocation (builder, tb.TagName, tb.Method.Name);
 				}
 			}
 		}
 		
-#if NET_2_0
 		void SetCustomAttribute (CodeMemberMethod method, UnknownAttributeDescriptor uad)
 		{
 			CodeAssignStatement assign = new CodeAssignStatement ();
@@ -443,12 +449,28 @@ namespace System.Web.Compilation
 			foreach (UnknownAttributeDescriptor uad in attrs)
 				SetCustomAttribute (method, uad);
 		}
-#endif
 		
-		protected virtual void AddStatementsToInitMethod (CodeMemberMethod method)
+		protected virtual void AddStatementsToInitMethodTop (ControlBuilder builder, CodeMemberMethod method)
 		{
+#if NET_4_0
+			ClientIDMode? mode = parser.ClientIDMode;
+			if (mode.HasValue) {
+				var cimRef = new CodeTypeReferenceExpression (typeof (ClientIDMode));
+				cimRef.Type.Options = CodeTypeReferenceOptions.GlobalReference;
+				
+				var assign = new CodeAssignStatement ();
+				assign.Left = new CodePropertyReferenceExpression (thisRef, "ClientIDMode");
+				assign.Right = new CodeFieldReferenceExpression (cimRef, mode.Value.ToString ());
+
+				method.Statements.Add (assign);
+			}
+#endif
 		}
 
+		protected virtual void AddStatementsToInitMethodBottom (ControlBuilder builder, CodeMemberMethod method)
+		{
+		}
+		
 		void AddLiteralSubObject (ControlBuilder builder, string str)
 		{
 			if (!builder.HasAspCode) {
@@ -483,10 +505,8 @@ namespace System.Web.Compilation
 		{
 			Match match = regex.Match (value);
 			if (!match.Success) {
-#if NET_2_0
 				if (isBind)
 					throw new HttpParseException ("Bind invocation wasn't formatted properly.");
-#endif
 				return null;
 			}
 			
@@ -522,14 +542,12 @@ namespace System.Web.Compilation
 			CodeExpression valueExpression = null;
 			value = value.Trim ();
 			
-#if NET_2_0
 			bool need_if = false;
 			if (startsWithBindRegex.Match (value).Success) {
 				valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, true);
 				if (valueExpression != null)
 					need_if = true;
 			} else
-#endif
 				if (StrUtils.StartsWith (value, "Eval", true))
 					valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, false);
 			
@@ -553,16 +571,13 @@ namespace System.Web.Compilation
 				expr = new CodeCastExpression (type, valueExpression);
 
 			CodeAssignStatement assign = new CodeAssignStatement (field, expr);
-#if NET_2_0
 			if (need_if) {
 				CodeExpression page = new CodePropertyReferenceExpression (thisRef, "Page");
 				CodeExpression left = new CodeMethodInvokeExpression (page, "GetDataItem");
 				CodeBinaryOperatorExpression ce = new CodeBinaryOperatorExpression (left, CodeBinaryOperatorType.IdentityInequality, new CodePrimitiveExpression (null));
 				CodeConditionStatement ccs = new CodeConditionStatement (ce, assign);
 				method.Statements.Add (ccs);
-			}
-			else
-#endif
+			} else
 				method.Statements.Add (assign);
 
 			mainClass.Members.Add (method);
@@ -578,13 +593,10 @@ namespace System.Web.Compilation
 				string dbMethodName = DataBoundProperty (builder, type, var_name, att);
 				AddEventAssign (method, builder, "DataBinding", typeof (EventHandler), dbMethodName);
 				return;
-			}
-#if NET_2_0
-			else if (isExpression && isWritable) {
+			} else if (isExpression && isWritable) {
 				AddExpressionAssign (method, builder, member, type, var_name, att);
 				return;
 			}
-#endif
 
 			CodeAssignStatement assign = new CodeAssignStatement ();
 			assign.Left = new CodePropertyReferenceExpression (ctrlVar, var_name);
@@ -593,43 +605,6 @@ namespace System.Web.Compilation
 
 			method.Statements.Add (AddLinePragma (assign, builder));
 		}
-
-		bool IsDirective (string value, char directiveChar)
-		{
-			if (value == null || value == String.Empty)
-				return false;
-			
-			value = value.Trim ();
-			if (!StrUtils.StartsWith (value, "<%") || !StrUtils.EndsWith (value, "%>"))
-				return false;
-
-			int dcIndex = value.IndexOf (directiveChar, 2);
-			if (dcIndex == -1)
-				return false;
-
-			if (dcIndex == 2)
-				return true;
-			dcIndex--;
-			
-			while (dcIndex >= 2) {
-				if (!Char.IsWhiteSpace (value [dcIndex]))
-					return false;
-				dcIndex--;
-			}
-
-			return true;
-		}
-		
-		bool IsDataBound (string value)
-		{
-			return IsDirective (value, '#');
-		}
-
-#if NET_2_0
-		bool IsExpression (string value)
-		{
-			return IsDirective (value, '$');
-		}		
 
 		void RegisterBindingInfo (ControlBuilder builder, string propName, ref string value)
 		{
@@ -654,7 +629,6 @@ namespace System.Web.Compilation
 				}
 			}
 		}
-#endif
 
 		/*
 		static bool InvariantCompare (string a, string b)
@@ -668,7 +642,7 @@ namespace System.Web.Compilation
 			return (0 == String.Compare (a, b, true, Helpers.InvariantCulture));
 		}
 
-		static MemberInfo GetFieldOrProperty (Type type, string name)
+		internal static MemberInfo GetFieldOrProperty (Type type, string name)
 		{
 			MemberInfo member = null;
 			try {
@@ -701,12 +675,8 @@ namespace System.Web.Compilation
 		{
 			int hyphen = id.IndexOf ('-');
 			bool isPropertyInfo = (member is PropertyInfo);
-			bool isDataBound = IsDataBound (attValue);
-#if NET_2_0
-			bool isExpression = !isDataBound && IsExpression (attValue);
-#else
-			bool isExpression = false;
-#endif
+			bool isDataBound = BaseParser.IsDataBound (attValue);
+			bool isExpression = !isDataBound && BaseParser.IsExpression (attValue);
 			Type type;
 			if (isPropertyInfo) {
 				type = ((PropertyInfo) member).PropertyType;
@@ -715,11 +685,9 @@ namespace System.Web.Compilation
 			}
 
 			if (InvariantCompareNoCase (member.Name, id)) {
-#if NET_2_0
 				if (isDataBound)
-					RegisterBindingInfo (builder, member.Name, ref attValue);
-				
-#endif
+					RegisterBindingInfo (builder, member.Name, ref attValue);				
+
 				if (!IsWritablePropertyOrField (member))
 					return false;
 				
@@ -762,10 +730,10 @@ namespace System.Web.Compilation
 			string val = attValue;
 			if (attValue == null && is_bool)
 				val = "true"; // Font-Bold <=> Font-Bold="true"
-#if NET_2_0
+
 			if (isDataBound)
 				RegisterBindingInfo (builder, prefix + member.Name + "." + subprop.Name, ref attValue);
-#endif
+
 			AddCodeForPropertyOrField (builder, subprop.PropertyType,
 						   prefix + member.Name + "." + subprop.Name,
 						   val, subprop, isDataBound, isExpression);
@@ -773,8 +741,7 @@ namespace System.Web.Compilation
 			return true;
 		}
 
-#if NET_2_0
-		CodeExpression CompileExpression (MemberInfo member, Type type, string value, bool useSetAttribute)
+		internal CodeExpression CompileExpression (MemberInfo member, Type type, string value, bool useSetAttribute)
 		{
 			// First let's find the correct expression builder
 			value = value.Substring (3, value.Length - 5).Trim ();
@@ -832,11 +799,96 @@ namespace System.Web.Compilation
 			
 			CodeAssignStatement assign = new CodeAssignStatement ();
 			assign.Left = new CodePropertyReferenceExpression (ctrlVar, name);
-			assign.Right = expr;
+
+			TypeCode typeCode = Type.GetTypeCode (type);
+			if (typeCode != TypeCode.Empty && typeCode != TypeCode.Object && typeCode != TypeCode.DBNull)
+				assign.Right = CreateConvertToCall (typeCode, expr);
+			else 
+				assign.Right = new CodeCastExpression (type, expr);
 			
 			builder.Method.Statements.Add (AddLinePragma (assign, builder));
 		}
 
+		internal static CodeMethodInvokeExpression CreateConvertToCall (TypeCode typeCode, CodeExpression expr)
+		{
+			var ret = new CodeMethodInvokeExpression ();
+			string methodName;
+
+			switch (typeCode) {
+				case TypeCode.Boolean:
+					methodName = "ToBoolean";
+					break;
+
+				case TypeCode.Char:
+					methodName = "ToChar";
+					break;
+
+				case TypeCode.SByte:
+					methodName = "ToSByte";
+					break;
+
+				case TypeCode.Byte:
+					methodName = "ToByte";
+					break;
+					
+				case TypeCode.Int16:
+					methodName = "ToInt16";
+					break;
+
+				case TypeCode.UInt16:
+					methodName = "ToUInt16";
+					break;
+
+				case TypeCode.Int32:
+					methodName = "ToInt32";
+					break;
+
+				case TypeCode.UInt32:
+					methodName = "ToUInt32";
+					break;
+
+				case TypeCode.Int64:
+					methodName = "ToInt64";
+					break;
+					
+				case TypeCode.UInt64:
+					methodName = "ToUInt64";
+					break;
+
+				case TypeCode.Single:
+					methodName = "ToSingle";
+					break;
+
+				case TypeCode.Double:
+					methodName = "ToDouble";
+					break;
+
+				case TypeCode.Decimal:
+					methodName = "ToDecimal";
+					break;
+
+				case TypeCode.DateTime:
+					methodName = "ToDateTime";
+					break;
+
+				case TypeCode.String:
+					methodName = "ToString";
+					break;
+
+				default:
+					throw new InvalidOperationException (String.Format ("Unsupported TypeCode '{0}'", typeCode));
+			}
+
+			var typeRef = new CodeTypeReferenceExpression (typeof (Convert));
+			typeRef.Type.Options = CodeTypeReferenceOptions.GlobalReference;
+			
+			ret.Method = new CodeMethodReferenceExpression (typeRef, methodName);
+			ret.Parameters.Add (expr);
+			ret.Parameters.Add (new CodePropertyReferenceExpression (new CodeTypeReferenceExpression (typeof (System.Globalization.CultureInfo)), "CurrentCulture"));
+			
+			return ret;
+		}
+		
 		BoundPropertyEntry CreateBoundPropertyEntry (PropertyInfo pi, string prefix, string expr, bool useSetAttribute)
 		{
 			BoundPropertyEntry ret = new BoundPropertyEntry ();
@@ -892,7 +944,7 @@ namespace System.Web.Compilation
 				return;			
 
 			object[] attrs = mi.GetCustomAttributes (typeof (LocalizableAttribute), true);
-			if (attrs == null && attrs.Length == 0 && !((LocalizableAttribute)attrs [0]).IsLocalizable)
+			if (attrs != null && attrs.Length > 0 && !((LocalizableAttribute)attrs [0]).IsLocalizable)
 				return;
 			
 			string memberName = mi.Name;
@@ -957,7 +1009,6 @@ namespace System.Web.Compilation
 
 			AssignPropertiesFromResources (builder, controlType, attvalue);
 		}
-#endif
 		
 		void AddEventAssign (CodeMemberMethod method, ControlBuilder builder, string name, Type type, string value)
 		{
@@ -996,12 +1047,10 @@ namespace System.Web.Compilation
 
 			}
 
-#if NET_2_0
 			if (String.Compare (id, "meta:resourcekey", StringComparison.OrdinalIgnoreCase) == 0) {
 				AssignPropertiesFromResources (builder, attvalue);
 				return;
 			}
-#endif
 			
 			int hyphen = id.IndexOf ('-');
 			string alt_id = id;
@@ -1018,21 +1067,17 @@ namespace System.Web.Compilation
 				throw new ParseException (builder.Location, "Unrecognized attribute: " + id);
 
 			CodeMemberMethod method = builder.Method;
-			bool isDatabound = IsDataBound (attvalue);
-#if NET_2_0
-			bool isExpression = !isDatabound && IsExpression (attvalue);
-#endif
+			bool isDatabound = BaseParser.IsDataBound (attvalue);
+			bool isExpression = !isDatabound && BaseParser.IsExpression (attvalue);
 
 			if (isDatabound) {
 				string value = attvalue.Substring (3, attvalue.Length - 5).Trim ();
 				CodeExpression valueExpression = null;
-#if NET_2_0
 				if (startsWithBindRegex.Match (value).Success)
 					valueExpression = CreateEvalInvokeExpression (bindRegexInValue, value, true);
 				else
-#endif
-				if (StrUtils.StartsWith (value, "Eval", true))
-					valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, false);
+					if (StrUtils.StartsWith (value, "Eval", true))
+						valueExpression = CreateEvalInvokeExpression (evalRegexInValue, value, false);
 				
 				if (valueExpression == null && value != null && value.Trim () != String.Empty)
 					valueExpression = new CodeSnippetExpression (value);
@@ -1049,12 +1094,10 @@ namespace System.Web.Compilation
 				expr.Parameters.Add (new CodePrimitiveExpression (id));
 
 				CodeExpression valueExpr = null;
-#if NET_2_0
 				if (isExpression)
 					valueExpr = CompileExpression (null, typeof (string), attvalue, true);
 
 				if (valueExpr == null)
-#endif
 					valueExpr = new CodePrimitiveExpression (attvalue);
 				
 				expr.Parameters.Add (valueExpr);
@@ -1074,16 +1117,14 @@ namespace System.Web.Compilation
 					continue;
 				// ID is assigned in BuildControltree
 				if (InvariantCompareNoCase (id, "id"))
-					continue;
-				
-#if NET_2_0
+					continue;				
+
 				/* we skip SkinID here as it's assigned in BuildControlTree */
 				if (InvariantCompareNoCase (id, "skinid"))
 					continue;
 				if (InvariantCompareNoCase (id, "meta:resourcekey"))
 					continue; // ignore, this one's processed at the very end of
 						  // the method
-#endif
 				CreateAssignStatementFromAttribute (builder, id);
 			}
 		}
@@ -1099,9 +1140,8 @@ namespace System.Web.Compilation
 			AddEventAssign (method, builder, "DataBinding", typeof (EventHandler), dbMethodName);
 
 			method = CreateDBMethod (builder, dbMethodName, GetContainerType (builder), builder.ControlType);
-#if NET_2_0
 			builder.DataBindingMethod = method;
-#endif
+
 			CodeCastExpression cast;
 			CodeMethodReferenceExpression methodExpr;
 			CodeMethodInvokeExpression expr;
@@ -1140,7 +1180,8 @@ namespace System.Web.Compilation
 		{
 			if (parent == null || child == null)
 				return;
-			
+
+			CodeStatementCollection methodStatements = parent.MethodStatements;
 			CodeMethodReferenceExpression m = new CodeMethodReferenceExpression (thisRef, child.Method.Name);
 			CodeMethodInvokeExpression expr = new CodeMethodInvokeExpression (m);
 
@@ -1153,43 +1194,67 @@ namespace System.Web.Compilation
 				PartialCachingAttribute pca = (PartialCachingAttribute) atts [0];
 				CodeTypeReferenceExpression cc = new CodeTypeReferenceExpression("System.Web.UI.StaticPartialCachingControl");
 				CodeMethodInvokeExpression build = new CodeMethodInvokeExpression (cc, "BuildCachedControl");
-				build.Parameters.Add (new CodeArgumentReferenceExpression("__ctrl"));
-				build.Parameters.Add (new CodePrimitiveExpression (child.ID));
-#if NET_1_1
+				CodeExpressionCollection parms = build.Parameters;
+				
+				parms.Add (new CodeArgumentReferenceExpression("__ctrl"));
+				parms.Add (new CodePrimitiveExpression (child.ID));
+
 				if (pca.Shared)
-					build.Parameters.Add (new CodePrimitiveExpression (child.ControlType.GetHashCode ().ToString ()));
+					parms.Add (new CodePrimitiveExpression (child.ControlType.GetHashCode ().ToString ()));
 				else
-#endif
-					build.Parameters.Add (new CodePrimitiveExpression (Guid.NewGuid ().ToString ()));
+					parms.Add (new CodePrimitiveExpression (Guid.NewGuid ().ToString ()));
 					
-				build.Parameters.Add (new CodePrimitiveExpression (pca.Duration));
-				build.Parameters.Add (new CodePrimitiveExpression (pca.VaryByParams));
-				build.Parameters.Add (new CodePrimitiveExpression (pca.VaryByControls));
-				build.Parameters.Add (new CodePrimitiveExpression (pca.VaryByCustom));
-				build.Parameters.Add (new CodeDelegateCreateExpression (
+				parms.Add (new CodePrimitiveExpression (pca.Duration));
+				parms.Add (new CodePrimitiveExpression (pca.VaryByParams));
+				parms.Add (new CodePrimitiveExpression (pca.VaryByControls));
+				parms.Add (new CodePrimitiveExpression (pca.VaryByCustom));
+				parms.Add (new CodePrimitiveExpression (pca.SqlDependency));
+				parms.Add (new CodeDelegateCreateExpression (
 							      new CodeTypeReference (typeof (System.Web.UI.BuildMethod)),
 							      thisRef, child.Method.Name));
-
-				parent.MethodStatements.Add (AddLinePragma (build, parent));
+#if NET_4_0
+				string value = pca.ProviderName;
+				if (!String.IsNullOrEmpty (value) && String.Compare (OutputCache.DEFAULT_PROVIDER_NAME, value, StringComparison.Ordinal) != 0)
+					parms.Add (new CodePrimitiveExpression (value));
+				else
+					parms.Add (new CodePrimitiveExpression (null));
+#endif
+				methodStatements.Add (AddLinePragma (build, parent));
 				if (parent.HasAspCode)
 					AddRenderControl (parent);
 				return;
 			}
                                 
 			if (child.IsProperty || parent.ChildrenAsProperties) {
-				expr.Parameters.Add (new CodeFieldReferenceExpression (ctrlVar, child.TagName));
-				parent.MethodStatements.Add (AddLinePragma (expr, parent));
+				if (!child.PropertyBuilderShouldReturnValue) {
+					expr.Parameters.Add (new CodeFieldReferenceExpression (ctrlVar, child.TagName));
+					parent.MethodStatements.Add (AddLinePragma (expr, parent));
+				} else {
+					string localVarName = parent.GetNextLocalVariableName ("__ctrl");
+					methodStatements.Add (new CodeVariableDeclarationStatement (child.Method.ReturnType, localVarName));
+					CodeVariableReferenceExpression localVarRef = new CodeVariableReferenceExpression (localVarName);
+					CodeAssignStatement assign = new CodeAssignStatement ();
+					assign.Left = localVarRef;
+					assign.Right = expr;
+					methodStatements.Add (AddLinePragma (assign, parent));
+
+					assign = new CodeAssignStatement ();
+					assign.Left = new CodeFieldReferenceExpression (ctrlVar, child.TagName);
+					assign.Right = localVarRef;
+					methodStatements.Add (AddLinePragma (assign, parent));
+				}
+				
 				return;
 			}
 
-			parent.MethodStatements.Add (AddLinePragma (expr, parent));
+			methodStatements.Add (AddLinePragma (expr, parent));
 			CodeFieldReferenceExpression field = new CodeFieldReferenceExpression (thisRef, child.ID);
 			if (parent.ControlType == null || typeof (IParserAccessor).IsAssignableFrom (parent.ControlType))
 				AddParsedSubObjectStmt (parent, field);
 			else {
 				CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression (ctrlVar, "Add");
 				invoke.Parameters.Add (field);
-				parent.MethodStatements.Add (AddLinePragma (invoke, parent));
+				methodStatements.Add (AddLinePragma (invoke, parent));
 			}
 				
 			if (parent.HasAspCode)
@@ -1210,7 +1275,6 @@ namespace System.Web.Compilation
 			builder.Method.Statements.Add (AddLinePragma (assign, builder));
 		}
 
-#if NET_2_0
 		void AddBindableTemplateInvocation (ControlBuilder builder, string name, string methodName, string extractMethodName)
 		{
 			CodePropertyReferenceExpression prop = new CodePropertyReferenceExpression (ctrlVar, name);
@@ -1303,7 +1367,6 @@ namespace System.Web.Compilation
 
 			method.Statements.Add (AddLinePragma (invoke, cbuilder));
 		}
-#endif
 
 		void AddCodeRender (ControlBuilder parent, CodeRenderBuilder cr)
 		{
@@ -1321,49 +1384,25 @@ namespace System.Web.Compilation
 							new CodeArgumentReferenceExpression ("__output"),
 							"Write");
 
-			expr.Parameters.Add (new CodeSnippetExpression (cr.Code));
+			expr.Parameters.Add (GetWrappedCodeExpression (cr));
 			parent.RenderMethod.Statements.Add (AddLinePragma (expr, cr));
 		}
 
-#if !NET_2_0
-		static PropertyInfo GetContainerProperty (Type type, string[] propNames)
+		CodeExpression GetWrappedCodeExpression (CodeRenderBuilder cr)
 		{
-			PropertyInfo prop;
-			
-			foreach (string name in propNames) {
-				prop = type.GetProperty (name, noCaseFlags & ~BindingFlags.NonPublic);
-				if (prop != null)
-					return prop;
-			}
-
-			return null;
-		}
-
-		static string[] containerPropNames = {"Items", "Rows"};
+			var ret = new CodeSnippetExpression (cr.Code);
+#if NET_4_0
+			if (cr.HtmlEncode) {
+				var encodeRef = new CodeMethodReferenceExpression (new CodeTypeReferenceExpression (typeof (HttpUtility)), "HtmlEncode");
+				return new CodeMethodInvokeExpression (encodeRef, new CodeExpression[] { ret });
+			} else
 #endif
+				return ret;
+		}
 		
 		static Type GetContainerType (ControlBuilder builder)
 		{
-			Type type = builder.BindingContainerType;
-			
-#if NET_2_0
-			return type;
-#else
-			
-			PropertyInfo prop = GetContainerProperty (type, containerPropNames);
-			if (prop == null)
-				return type;
-
-			Type ptype = prop.PropertyType;
-			if (!typeof (ICollection).IsAssignableFrom (ptype))
-				return type;
-
-			prop = ptype.GetProperty ("Item", noCaseFlags & ~BindingFlags.NonPublic);
-			if (prop == null)
-				return type;
-
-			return prop.PropertyType;
-#endif
+			return builder.BindingContainerType;
 		}
 		
 		CodeMemberMethod CreateDBMethod (ControlBuilder builder, string name, Type container, Type target)
@@ -1419,9 +1458,8 @@ namespace System.Web.Compilation
 
 			// Add the DataBind handler
 			method = CreateDBMethod (builder, dbMethodName, GetContainerType (builder), typeof (DataBoundLiteralControl));
-#if NET_2_0
 			builder.DataBindingMethod = method;
-#endif
+
 			CodeVariableReferenceExpression targetExpr = new CodeVariableReferenceExpression ("target");
 			CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression ();
 			invoke.Method = new CodeMethodReferenceExpression (targetExpr, "SetDataBoundString");
@@ -1451,14 +1489,12 @@ namespace System.Web.Compilation
 		protected void CreateControlTree (ControlBuilder builder, bool inTemplate, bool childrenAsProperties)
 		{
 			EnsureID (builder);
-			bool isTemplate = (typeof (TemplateBuilder).IsAssignableFrom (builder.GetType ()));
+			bool isTemplate = builder.IsTemplate;
 			
 			if (!isTemplate && !inTemplate) {
 				CreateField (builder, true);
 			} else if (!isTemplate) {
-				bool doCheck = false;
-				
-#if NET_2_0
+				bool doCheck = false;				
 				bool singleInstance = false;
 				ControlBuilder pb = builder.ParentBuilder;
 				TemplateBuilder tpb;
@@ -1475,12 +1511,10 @@ namespace System.Web.Compilation
 				}
 				
 				if (!singleInstance)
-#endif
 					builder.ID = builder.GetNextID (null);
-#if NET_2_0
 				else
 					doCheck = true;
-#endif
+
 				CreateField (builder, doCheck);
 			}
 
@@ -1511,15 +1545,13 @@ namespace System.Web.Compilation
 							assign.Right = new CodePrimitiveExpression (asb.ToString ());
 							method.Statements.Add (AddLinePragma (assign, builder));
 						}
-					}
-#if NET_2_0
-					else if (b is ContentBuilderInternal) {
+					} else if (b is ContentBuilderInternal) {
 						ContentBuilderInternal cb = (ContentBuilderInternal) b;
 						CreateControlTree (cb, false, true);
 						AddContentTemplateInvocation (cb, builder.Method, cb.Method.Name);
 						continue;
 					}
-#endif
+
 					// Ignore TemplateBuilders - they are processed in InitMethod
 					else if (b is TemplateBuilder) {
 					} else if (b is CodeRenderBuilder) {
@@ -1534,10 +1566,8 @@ namespace System.Web.Compilation
 					} else
 						throw new Exception ("???");
 
-#if NET_2_0
 					ControlBuilder bldr = b as ControlBuilder;
 					bldr.ProcessGeneratedCode (CompileUnit, BaseType, DerivedType, bldr.Method, bldr.DataBindingMethod);
-#endif
 				}
 
 				FlushText (builder, sb);
@@ -1567,24 +1597,19 @@ namespace System.Web.Compilation
 				builder.MethodStatements.Add (invoke);
 			}
 
-#if NET_2_0
 			if (builder is RootBuilder)
 				if (!String.IsNullOrEmpty (parser.MetaResourceKey))
 					AssignPropertiesFromResources (builder, parser.BaseType, parser.MetaResourceKey);
 			
 			if ((!isTemplate || builder is RootBuilder) && !String.IsNullOrEmpty (builder.GetAttribute ("meta:resourcekey")))
 				CreateAssignStatementFromAttribute (builder, "meta:resourcekey");
-#endif
-
-			if (!childrenAsProperties && typeof (Control).IsAssignableFrom (builder.ControlType))
+			
+			if ((childrenAsProperties && builder.PropertyBuilderShouldReturnValue) || (!childrenAsProperties && typeof (Control).IsAssignableFrom (builder.ControlType)))
 				builder.Method.Statements.Add (new CodeMethodReturnStatement (ctrlVar));
 
-#if NET_2_0
 			builder.ProcessGeneratedCode (CompileUnit, BaseType, DerivedType, builder.Method, builder.DataBindingMethod);
-#endif
 		}
 
-#if NET_2_0
 		protected override void AddStatementsToConstructor (CodeConstructor ctor)
 		{
 			if (masterPageContentPlaceHolders == null || masterPageContentPlaceHolders.Count == 0)
@@ -1606,7 +1631,6 @@ namespace System.Web.Compilation
 				statements.Add (mcall);
 			}
 		}
-#endif
 		
 		protected internal override void CreateMethods ()
 		{
@@ -1617,7 +1641,6 @@ namespace System.Web.Compilation
 			CreateFrameworkInitializeMethod ();
 		}
 
-#if NET_2_0
 		protected override void InitializeType ()
 		{
 			List <string> registeredTagNames = parser.RegisteredTagNames;
@@ -1642,7 +1665,6 @@ namespace System.Web.Compilation
 			CodeMethodInvokeExpression invoke = new CodeMethodInvokeExpression (baseRef, "FrameworkInitialize");
 			method.Statements.Add (invoke);
 		}
-#endif
 		
 		void CallSetStringResourcePointer (CodeMemberMethod method)
 		{
@@ -1661,9 +1683,7 @@ namespace System.Web.Compilation
 			method.Name = "FrameworkInitialize";
 			method.Attributes = MemberAttributes.Family | MemberAttributes.Override;
 			PrependStatementsToFrameworkInitialize (method);
-#if NET_2_0
 			CallBaseFrameworkInitialize (method);
-#endif
 			CallSetStringResourcePointer (method);
 			AppendStatementsToFrameworkInitialize (method);
 			mainClass.Members.Add (method);
@@ -1741,15 +1761,12 @@ namespace System.Web.Compilation
 
 			CodeCastExpression cast = new CodeCastExpression (appType.FullName, propRef);
 			prop.GetStatements.Add (new CodeMethodReturnStatement (cast));
-#if NET_2_0
 			if (partialClass != null)
 				partialClass.Members.Add (prop);
 			else
-#endif
-			mainClass.Members.Add (prop);
+				mainClass.Members.Add (prop);
 		}
 
-#if NET_2_0
 		void CreateContentPlaceHolderTemplateProperty (string backingField, string name)
 		{
 			CodeMemberProperty prop = new CodeMemberProperty ();
@@ -1778,7 +1795,6 @@ namespace System.Web.Compilation
 
 			mainClass.Members.Add (prop);
 		}
-#endif
 		
 		void CreateAutoHandlers ()
 		{
@@ -1795,11 +1811,8 @@ namespace System.Web.Compilation
 			prop.GetStatements.Add (ret);
 			prop.SetStatements.Add (new CodeAssignStatement (fldRef, new CodePropertySetValueReferenceExpression ()));
 
-#if NET_2_0
 			CodeAttributeDeclaration attr = new CodeAttributeDeclaration ("System.Obsolete");
-			prop.CustomAttributes.Add (attr);
-#endif
-			
+			prop.CustomAttributes.Add (attr);			
 			mainClass.Members.Add (prop);
 
 			// Add the __autoHandlers field
@@ -1819,19 +1832,13 @@ namespace System.Web.Compilation
 			mainClass.Members.Add (prop);
 		}
 
-#if NET_2_0
 		protected virtual string HandleUrlProperty (string str, MemberInfo member)
 		{
 			return str;
 		}
-#endif
 
 		TypeConverter GetConverterForMember (MemberInfo member)
 		{
-			TypeConverterAttribute tca = null;
-			object[] attrs;
-			
-#if NET_2_0
 			TypeDescriptionProvider prov = TypeDescriptor.GetProvider (member.ReflectedType);
 			if (prov == null)
 				return null;
@@ -1847,53 +1854,14 @@ namespace System.Web.Compilation
 				return null;
 
 			return pd.Converter;
-#else
-			attrs = member.GetCustomAttributes (true);
-			
-			foreach (object attr in attrs) {
-				tca = attr as TypeConverterAttribute;
-				
-				if (tca != null)
-					break;
-			}
-
-			if (tca == TypeConverterAttribute.Default)
-				tca = null;
-			
-			if (tca == null)
-				return null;
-
-			string typeName = tca.ConverterTypeName;
-			if (typeName == null || typeName.Length == 0)
-				return null;
-
-			Type t = null;
-			try {
-				t = HttpApplication.LoadType (typeName);
-			} catch (Exception) {
-				// ignore
-			}
-
-			if (t == null)
-				return null;
-
-			return (TypeConverter) Activator.CreateInstance (t);
-#endif
 		}
 		
 		CodeExpression CreateNullableExpression (Type type, CodeExpression inst, bool nullable)
 		{
-#if NET_2_0
 			if (!nullable)
 				return inst;
 			
-			return new CodeObjectCreateExpression (
-				type,
-				new CodeExpression[] {inst}
-			);
-#else
-			return inst;
-#endif
+			return new CodeObjectCreateExpression (type, new CodeExpression[] {inst});
 		}
 
 		bool SafeCanConvertFrom (Type type, TypeConverter cvt)
@@ -1932,26 +1900,23 @@ namespace System.Web.Compilation
 
 			bool wasNullable = false;
 			Type originalType = type;
-#if NET_2_0
+
 			if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
 				Type[] types = type.GetGenericArguments();
 				originalType = type;
 				type = types[0]; // we're interested only in the first type here
 				wasNullable = true;
 			}
-#endif
+
 			if (type == typeof (string)) {
-#if NET_2_0
 				object[] urlAttr = member.GetCustomAttributes (typeof (UrlPropertyAttribute), true);
 				if (urlAttr.Length != 0)
-					str = HandleUrlProperty ((preConverted && convertedFromAttr is string) ? (string) convertedFromAttr : str, member);
-				else
-#endif
-				if (preConverted)
+					str = HandleUrlProperty ((preConverted && convertedFromAttr is string) ? (string)convertedFromAttr : str, member);
+				else if (preConverted)
 					return CreateNullableExpression (originalType,
 									 new CodePrimitiveExpression ((string) convertedFromAttr),
 									 wasNullable);
-				
+
 				return CreateNullableExpression (originalType, new CodePrimitiveExpression (str), wasNullable);
 			} else if (type == typeof (bool)) {
 				if (preConverted)
@@ -1963,10 +1928,8 @@ namespace System.Web.Compilation
 					return CreateNullableExpression (originalType, new CodePrimitiveExpression (true), wasNullable);
 				else if (InvariantCompareNoCase (str, "false"))
 					return CreateNullableExpression (originalType, new CodePrimitiveExpression (false), wasNullable);
-#if NET_2_0
 				else if (wasNullable && InvariantCompareNoCase(str, "null"))
 					return new CodePrimitiveExpression (null);
-#endif
 				else
 					throw new ParseException (currentLocation,
 							"Value '" + str  + "' is not a valid boolean.");
@@ -2102,7 +2065,11 @@ namespace System.Web.Compilation
 						return CreateNullableExpression (originalType, GenerateInstance (idesc, true),
 										 wasNullable);
 
-					return new CodeCastExpression (type, GenerateInstance (idesc, true));
+					CodeExpression instance = GenerateInstance (idesc, true);
+					if (type.IsPublic)
+						return new CodeCastExpression (type, instance);
+					else
+						return instance;
 				}
 
 				CodeExpression exp = GenerateObjectInstance (value, false);

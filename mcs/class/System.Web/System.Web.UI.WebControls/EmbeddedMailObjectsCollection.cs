@@ -26,15 +26,15 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text;
 using System.Collections;
 
 namespace System.Web.UI.WebControls
 {
+	[Editor ("System.Web.UI.Design.EmbeddedMailObjectCollectionEditor, " + Consts.AssemblySystem_Design, "System.Drawing.Design.UITypeEditor, " + Consts.AssemblySystem_Drawing)]
 	public sealed class EmbeddedMailObjectsCollection : CollectionBase
 	{
 		[MonoTODO("Not implemented")]
@@ -80,4 +80,3 @@ namespace System.Web.UI.WebControls
 	}
 }
 
-#endif

@@ -349,18 +349,6 @@ dump_verify_info (MonoImage *image, int flags)
 		"Ok", "Error", "Warning", NULL, "CLS", NULL, NULL, NULL, "Not Verifiable"
 	};
 
-	if (verify_metadata) {
-		errors = mono_image_verify_tables (image, flags);
-	
-		for (tmp = errors; tmp; tmp = tmp->next) {
-			MonoVerifyInfo *info = tmp->data;
-			g_print ("%s: %s\n", desc [info->status], info->message);
-			if (info->status == MONO_VERIFY_ERROR)
-				count++;
-		}
-		mono_free_verify_list (errors);
-	}
-
 	if (verify_code) { /* verify code */
 		int i;
 		MonoTableInfo *m = &image->tables [MONO_TABLE_METHOD];
@@ -475,6 +463,13 @@ verify_image_file (const char *fname)
 			continue;
 		}
 		mono_class_init (class);
+		if (class->exception_type != MONO_EXCEPTION_NONE || mono_loader_get_last_error ()) {
+			printf ("Error verifying class(0x%08x) %s.%s a type load error happened\n", token, class->name_space, class->name);
+			mono_loader_clear_error ();
+			++count;
+		}
+
+		mono_class_setup_vtable (class);
 		if (class->exception_type != MONO_EXCEPTION_NONE || mono_loader_get_last_error ()) {
 			printf ("Error verifying class(0x%08x) %s.%s a type load error happened\n", token, class->name_space, class->name);
 			mono_loader_clear_error ();

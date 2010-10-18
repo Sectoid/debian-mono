@@ -72,7 +72,7 @@ struct _MonoDebugDataTable {
 
 typedef struct {
 	const gchar *method_name;
-	const gchar *cil_code;
+	const gchar *obsolete_cil_code;
 	guint32 wrapper_type;
 } MonoDebugWrapperData;
 
@@ -110,7 +110,7 @@ gint32 mono_debug_debugger_version = 5;
 gint32 _mono_debug_using_mono_debugger = 0;
 
 static gboolean mono_debug_initialized = FALSE;
-GHashTable *mono_debug_handles = NULL;
+static GHashTable *mono_debug_handles = NULL;
 
 static GHashTable *data_table_hash = NULL;
 static int next_symbol_file_id = 0;
@@ -159,7 +159,6 @@ free_header_data (gpointer key, gpointer value, gpointer user_data)
 
 	if (header->wrapper_data) {
 		g_free ((gpointer)header->wrapper_data->method_name);
-		g_free ((gpointer)header->wrapper_data->cil_code);
 		g_slist_free (header->address_list);
 		g_free (header->wrapper_data);
 	}
@@ -292,8 +291,13 @@ mono_debug_cleanup (void)
 		data_table_hash = NULL;
 	}
 
-	g_free (mono_symbol_table);
-	mono_symbol_table = NULL;
+	if (mono_symbol_table) {
+		if (mono_symbol_table->global_data_table)
+			free_data_table (mono_symbol_table->global_data_table);
+
+		g_free (mono_symbol_table);
+		mono_symbol_table = NULL;
+	}
 }
 
 void
@@ -654,20 +658,13 @@ mono_debug_add_method (MonoMethod *method, MonoDebugMethodJitInfo *jit, MonoDoma
 		g_hash_table_insert (table->method_hash, declaring, header);
 
 		if (is_wrapper) {
-			const unsigned char* il_code;
-			MonoMethodHeader *mheader;
 			MonoDebugWrapperData *wrapper;
-			guint32 il_codesize;
-
-			mheader = mono_method_get_header (declaring);
-			il_code = mono_method_header_get_code (mheader, &il_codesize, NULL);
 
 			header->wrapper_data = wrapper = g_new0 (MonoDebugWrapperData, 1);
 
 			wrapper->wrapper_type = method->wrapper_type;
 			wrapper->method_name = mono_method_full_name (declaring, TRUE);
-			wrapper->cil_code = mono_disasm_code (
-				NULL, declaring, il_code, il_code + il_codesize);
+			wrapper->obsolete_cil_code = "";
 		}
 	} else {
 		address->header.wrapper_data = header->wrapper_data;
@@ -1034,7 +1031,7 @@ mono_debug_lookup_source_location (MonoMethod *method, guint32 address, MonoDoma
 
 	mono_debugger_lock ();
 	minfo = _mono_debug_lookup_method (method);
-	if (!minfo || !minfo->handle || !minfo->handle->symfile || !minfo->handle->symfile->offset_table) {
+	if (!minfo || !minfo->handle || !minfo->handle->symfile || !mono_debug_symfile_is_loaded (minfo->handle->symfile)) {
 		mono_debugger_unlock ();
 		return NULL;
 	}
@@ -1054,31 +1051,25 @@ mono_debug_lookup_source_location (MonoMethod *method, guint32 address, MonoDoma
  * mono_debug_lookup_locals:
  *
  *   Return information about the local variables of MINFO.
- * NAMES and INDEXES are set to g_malloc-ed arrays containing the local names and
- * their IL indexes.
- * Returns: the number of elements placed into the arrays, or -1 if there is no
- * local variable info.
+ * The result should be freed using mono_debug_symfile_free_locals ().
  */
-int
-mono_debug_lookup_locals (MonoMethod *method, char ***names, int **indexes)
+MonoDebugLocalsInfo*
+mono_debug_lookup_locals (MonoMethod *method)
 {
 	MonoDebugMethodInfo *minfo;
-	int res;
-
-	*names = NULL;
-	*indexes = NULL;
+	MonoDebugLocalsInfo *res;
 
 	if (mono_debug_format == MONO_DEBUG_FORMAT_NONE)
-		return -1;
+		return NULL;
 
 	mono_debugger_lock ();
 	minfo = _mono_debug_lookup_method (method);
-	if (!minfo || !minfo->handle || !minfo->handle->symfile || !minfo->handle->symfile->offset_table) {
+	if (!minfo || !minfo->handle || !minfo->handle->symfile || !mono_debug_symfile_is_loaded (minfo->handle->symfile)) {
 		mono_debugger_unlock ();
-		return -1;
+		return NULL;
 	}
 
-	res = mono_debug_symfile_lookup_locals (minfo, names, indexes);
+	res = mono_debug_symfile_lookup_locals (minfo);
 	mono_debugger_unlock ();
 
 	return res;

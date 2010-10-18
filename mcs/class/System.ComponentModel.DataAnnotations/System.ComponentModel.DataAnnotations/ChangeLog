@@ -1,3 +1,34 @@
+2010-08-21  Marek Habersack  <grendel@twistedcode.net>
+
+	Implemented the StringLengthAttribute
+
+2010-08-20  Marek Habersack  <grendel@twistedcode.net>
+
+	All ValidationAttribute and RangeAttribute 3.5 and 4.0 tests run
+	without errors now.
+
+2010-08-20  Marek Habersack  <grendel@twistedcode.net>
+
+	Implemented the RangeAttribute class.
+
+2010-05-26  Marek Habersack  <mhabersack@novell.com>
+
+	* ValidationAttribute.cs: cope with null/empty ErrorMessageString
+	in FormatErrorMessage
+
+2010-05-12  Marek Habersack  <mhabersack@novell.com>
+
+	* ValidationException.cs: partially implemented
+
+	* ValidationAttribute.cs: implemented
+
+	* RequiredAttribute.cs: implemented. Fixes bug #604100
+
+	* AssociationAttribute.cs, ConcurrencyCheckAttribute.cs,
+	CustomValidationAttribute.cs, EditableAttribute.cs,
+	EnumDataTypeAttribute.cs, IValidatableObject.cs,
+	ValidationContext.cs, ValidationResult.cs: added
+
 2009-09-15  Marek Habersack  <mhabersack@novell.com>
 
 	* DataTypeAttribute.cs: implemented GetDataTypeName

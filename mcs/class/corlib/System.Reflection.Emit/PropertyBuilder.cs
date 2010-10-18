@@ -39,10 +39,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Reflection.Emit {
-#if NET_2_0
 	[ComVisible (true)]
 	[ComDefaultInterface (typeof (_PropertyBuilder))]
-#endif
 	[ClassInterface (ClassInterfaceType.None)]
 	public sealed class PropertyBuilder : PropertyInfo, _PropertyBuilder {
 
@@ -62,10 +60,13 @@ namespace System.Reflection.Emit {
 		private Type[][] paramModReq;
 		private Type[][] paramModOpt;
 #pragma warning restore 169, 414
+		CallingConventions callingConvention;	// TODO: Implement
 		
-		internal PropertyBuilder (TypeBuilder tb, string name, PropertyAttributes attributes, Type returnType, Type[] returnModReq, Type[] returnModOpt, Type[] parameterTypes, Type[][] paramModReq, Type[][] paramModOpt) {
+		internal PropertyBuilder (TypeBuilder tb, string name, PropertyAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] returnModReq, Type[] returnModOpt, Type[] parameterTypes, Type[][] paramModReq, Type[][] paramModOpt)
+		{
 			this.name = name;
 			this.attrs = attributes;
+			this.callingConvention = callingConvention;
 			this.type = returnType;
 			this.returnModReq = returnModReq;
 			this.returnModOpt = returnModOpt;
@@ -136,13 +137,12 @@ namespace System.Reflection.Emit {
 			def_value = defaultValue;
 		}
 		public void SetCustomAttribute( CustomAttributeBuilder customBuilder) {
-#if NET_2_0
 			string attrname = customBuilder.Ctor.ReflectedType.FullName;
 			if (attrname == "System.Runtime.CompilerServices.SpecialNameAttribute") {
 				attrs |= PropertyAttributes.SpecialName;
 				return;
 			}
-#endif
+
 			if (cattrs != null) {
 				CustomAttributeBuilder[] new_array = new CustomAttributeBuilder [cattrs.Length + 1];
 				cattrs.CopyTo (new_array, 0);
@@ -154,9 +154,7 @@ namespace System.Reflection.Emit {
 			}
 		}
 
-#if NET_2_0
 		[ComVisible (true)]
-#endif
 		public void SetCustomAttribute( ConstructorInfo con, byte[] binaryAttribute) {
 			SetCustomAttribute (new CustomAttributeBuilder (con, binaryAttribute));
 		}
@@ -171,13 +169,11 @@ namespace System.Reflection.Emit {
 		public override void SetValue( object obj, object value, BindingFlags invokeAttr, Binder binder, object[] index, CultureInfo culture) {
 		}
 
-#if NET_2_0
 		public override Module Module {
 			get {
 				return base.Module;
 			}
 		}
-#endif
 
                 void _PropertyBuilder.GetIDsOfNames([In] ref Guid riid, IntPtr rgszNames, uint cNames, uint lcid, IntPtr rgDispId)
                 {

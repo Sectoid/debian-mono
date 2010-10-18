@@ -30,13 +30,14 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#if NET_2_0
-
 using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace System.Collections.Generic {
 	[Serializable]
+	[DebuggerDisplay ("Count={Count}")]
+	[DebuggerTypeProxy (typeof (CollectionDebuggerView<>))]
 	public class List <T> : IList <T>, IList, ICollection {
 		T [] _items;
 		int _size;
@@ -52,19 +53,18 @@ namespace System.Collections.Generic {
 		
 		public List (IEnumerable <T> collection)
 		{
-			CheckCollection (collection);
+			if (collection == null)
+				throw new ArgumentNullException ("collection");
 
 			// initialize to needed size (if determinable)
 			ICollection <T> c = collection as ICollection <T>;
-			if (c == null)
-			{
+			if (c == null) {
 				_items = EmptyArray;
 				AddEnumerable (collection);
-			}
-			else
-			{
-				_items = new T [c.Count];
-				AddCollection (c);
+			} else {
+				_size = c.Count;
+				_items = new T [Math.Max (_size, DefaultCapacity)];
+				c.CopyTo (_items, 0);
 			}
 		}
 		
@@ -80,6 +80,7 @@ namespace System.Collections.Generic {
 			_items = data;
 			_size = size;
 		}
+		
 		public void Add (T item)
 		{
 			// If we check to see if we need to grow before trying to grow
@@ -130,7 +131,8 @@ namespace System.Collections.Generic {
 
 		public void AddRange (IEnumerable <T> collection)
 		{
-			CheckCollection (collection);
+			if (collection == null)
+				throw new ArgumentNullException ("collection");
 			
 			ICollection <T> c = collection as ICollection <T>;
 			if (c != null)
@@ -425,16 +427,12 @@ namespace System.Collections.Generic {
 			_items[index] = item;
 			_version++;
 		}
-
-		void CheckCollection (IEnumerable <T> collection)
-		{
-			if (collection == null)
-				throw new ArgumentNullException ("collection");
-		}
 		
 		public void InsertRange (int index, IEnumerable <T> collection)
 		{
-			CheckCollection (collection);
+			if (collection == null)
+				throw new ArgumentNullException ("collection");
+
 			CheckIndex (index);
 			if (collection == this) {
 				T[] buffer = new T[_size];
@@ -460,6 +458,7 @@ namespace System.Collections.Generic {
 			Shift (index, collectionCount);
 			collection.CopyTo (_items, index);
 		}
+		
 		void InsertEnumeration (int index, IEnumerable <T> enumerable)
 		{
 			foreach (T t in enumerable)
@@ -562,7 +561,7 @@ namespace System.Collections.Generic {
 		
 		public void Sort ()
 		{
-			Array.Sort<T> (_items, 0, _size, Comparer <T>.Default);
+			Array.Sort<T> (_items, 0, _size);
 			_version++;
 		}
 		public void Sort (IComparer <T> comparer)
@@ -573,7 +572,10 @@ namespace System.Collections.Generic {
 
 		public void Sort (Comparison <T> comparison)
 		{
-			Array.Sort<T> (_items, _size, comparison);
+			if (comparison == null)
+				throw new ArgumentNullException ("comparison");
+
+			Array.SortImpl<T> (_items, _size, comparison);
 			_version++;
 		}
 		
@@ -813,4 +815,3 @@ namespace System.Collections.Generic {
 		}
 	}
 }
-#endif
