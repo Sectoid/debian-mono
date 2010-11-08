@@ -220,6 +220,7 @@ Depends: ${misc:Depends},
          libmono-data-tds2.0-cil (= ${source:Version}),
          libmono-system-data1.0-cil (= ${source:Version}),
          libmono-system-data2.0-cil (= ${source:Version}),
+         libmono-system-data-linq2.0-cil (= ${source:Version}),
          libmono-system-web1.0-cil (= ${source:Version}),
          libmono-system-web2.0-cil (= ${source:Version}),
          libmono-system-web-mvc1.0-cil (= ${source:Version}),
@@ -771,6 +772,24 @@ Description: Mono System.Data Library (for CLI 2.0)
  bytecode (aka assemblies), and a class library.
  .
  This package contains the Mono System.Data library for CLI 2.0.
+
+Package: libmono-system-data-linq2.0-cil
+Architecture: all
+Replaces: mono-classlib-2.0 (<< 1.1.13.6),
+          mono-classlib-2.0-dbg (<< 1.1.13.6),
+          libmono-system-data2.0-cil (<< 2.6.7-4)
+Suggests: ${cli:Suggests}
+Depends: ${misc:Depends}, ${cli:Depends}
+Description: Mono System.Data.Linq Library
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Mono System.Data.Linq library which implements
+ LINQ to SQL. LINQ to SQL allows one to query relational databases using the
+ language-integrated query (LINQ) extension of the C# programming language.
 
 Package: libmono-system-web1.0-cil
 Architecture: all
