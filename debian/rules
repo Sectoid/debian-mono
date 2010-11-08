@@ -57,6 +57,24 @@ else
 	MONO_TEST = cd mono/tests && make test
 endif
 
+FIREBIRDSQL_REL = libmono-firebirdsql1.7-cil (= $${source:Version})
+ifeq ($(DISTRO), Ubuntu))
+	FIREBIRDSQL_VARS =  -Vfirebirdsql:Suggests=$(FIREBIRDSQL_REL)
+	FIREBIRDSQL_VARS += -Vfirebirdsql:Recommends=
+else
+	FIREBIRDSQL_VARS =  -Vfirebirdsql:Suggests=
+	FIREBIRDSQL_VARS += -Vfirebirdsql:Recommends=$(FIREBIRDSQL_REL)
+endif
+
+MDB_REL = mono-debugger
+ifeq ($(DISTRO), Ubuntu))
+	MDB_VARS =  -Vmdb:Suggests=$(MDB_REL)
+	MDB_VARS += -Vmdb:Recommends=
+else
+	MDB_VARS =  -Vmdb:Suggests=
+	MDB_VARS += -Vmdb:Recommends=$(MDB_REL)
+endif
+
 CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		./configure $(CONF_FLAGS) --prefix=/usr \
 		  --mandir=\$${prefix}/share/man \
@@ -344,7 +362,8 @@ binary-indep: build-stamp install-arch install-indep
 	# mono-1.0/2.0-gac needs special runtime dep, to prevent circular dep (mono-runtime <-> mono-1.0/2.0-gac)
 	debian/dh_clideps -p mono-1.0-gac -r $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_clideps -p mono-2.0-gac -r $(DH_INTERNAL_MONO_PARAM)
-	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION)
+	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION) \
+	  $(FIREBIRDSQL_VARS) $(MDB_VARS)
 	dh_md5sums -i
 	dh_builddeb -i
 

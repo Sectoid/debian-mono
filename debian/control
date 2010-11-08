@@ -186,7 +186,8 @@ Replaces: libmono-nunit2.2-cil (<< 2.4.3),
           libmono-dev (<< 2.4.3)
 Conflicts: libmono-nunit2.2-cil,
            libmono-nunit2.4-cil
-Recommends: libmono-firebirdsql1.7-cil (= ${source:Version})
+Suggests: ${firebirdsql:Suggests}
+Recommends: ${firebirdsql:Recommends}
 Depends: ${misc:Depends},
          libmono1.0-cil (= ${source:Version}),
          libmono2.0-cil (= ${source:Version}),
@@ -1372,7 +1373,8 @@ Package: mono-dbg
 Priority: extra
 Section: debug
 Architecture: all
-Recommends: mono-debugger
+Suggests: ${mdb:Suggests}
+Recommends: ${mdb:Recommends}
 Depends: ${misc:Depends}
 Replaces: libmono1.0-cil (<< 1.2.4-1),
  libmono2.0-cil (<< 1.2.4-1),
