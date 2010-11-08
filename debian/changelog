@@ -1,3 +1,15 @@
+mono (2.6.7-4) unstable; urgency=medium
+
+  * [63821a1] Added libmono-nunit2.2-cil to conflicts and replaces of
+    libmono-cil-dev for smooth upgrade from lenny (closes: #602024)
+  * [0089f11] Moved the System.Data.Linq library into libmono-system-
+    data-linq2.0-cil to avoid an unneeded dependency chain for most
+    applications.
+  * [393dc41] Demote libmono-firebirdsql1.7-cil and mono-debugger from
+    recommends to suggests if built on Ubuntu.
+
+ -- Mirco Bauer <meebey@debian.org>  Tue, 09 Nov 2010 00:13:38 +0100
+
 mono (2.6.7-3) unstable; urgency=low
 
   * The "welcome to new java refugees" release
