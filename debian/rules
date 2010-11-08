@@ -58,7 +58,7 @@ else
 endif
 
 FIREBIRDSQL_REL = libmono-firebirdsql1.7-cil (= $${source:Version})
-ifeq ($(DISTRO), Ubuntu))
+ifeq ($(DISTRO), Ubuntu)
 	FIREBIRDSQL_VARS =  -Vfirebirdsql:Suggests=$(FIREBIRDSQL_REL)
 	FIREBIRDSQL_VARS += -Vfirebirdsql:Recommends=
 else
@@ -67,7 +67,7 @@ else
 endif
 
 MDB_REL = mono-debugger
-ifeq ($(DISTRO), Ubuntu))
+ifeq ($(DISTRO), Ubuntu)
 	MDB_VARS =  -Vmdb:Suggests=$(MDB_REL)
 	MDB_VARS += -Vmdb:Recommends=
 else
