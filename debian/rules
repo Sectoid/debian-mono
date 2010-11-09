@@ -57,7 +57,7 @@ else
 	MONO_TEST = cd mono/tests && make test
 endif
 
-FIREBIRDSQL_REL = "libmono-firebirdsql1.7-cil (= $${source:Version})"
+FIREBIRDSQL_REL = "libmono-firebirdsql1.7-cil (= $(VERSION))"
 ifeq ($(DISTRO), Ubuntu)
 	FIREBIRDSQL_VARS =  -Vfirebirdsql:Suggests=$(FIREBIRDSQL_REL)
 	FIREBIRDSQL_VARS += -Vfirebirdsql:Recommends=
