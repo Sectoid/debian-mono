@@ -1,3 +1,28 @@
+2010-10-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Security/FormsAuthentication.cs: Fix typo
+	(MD5->SHA1). I suspect the later is not used very much by mono
+	users
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Security/FormsAuthentication.cs: Use the new common
+	cryptographic code and base64 the signed and/or encrypted data.
+
+	* System.Web.Security/MembershipHelper.cs: Use the new common
+	cryptographic code - this should be 100% compatible with existing
+	data.
+
+	* System.Web.Security/RolePrincipal.cs: Use the new common
+	cryptographic code.
+
+	* System.Web.Security/SqliteMembershipProvider.cs: Adapt code for
+	internal API change.
+
 2010-06-19  Marek Habersack  <mhabersack@novell.com>
 
 	* FormsAuthentication.cs: Authenticate must compare stored and

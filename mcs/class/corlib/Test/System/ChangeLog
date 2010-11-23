@@ -1,3 +1,8 @@
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix another regression in the Array.Sort () methods, allow keys
+	and items to be of different length. Fixes #648828.
+
 2010-08-07  Zoltan Varga  <vargaz@gmail.com>
 
 	Fix Math.Log (2, 1). Fixes #626944.

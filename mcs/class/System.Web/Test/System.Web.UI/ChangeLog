@@ -1,3 +1,8 @@
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Web.UI/LosFormatterTest.cs: Add some rountrip test
+	cases with the different ctors
+
 2010-04-07  Marek Habersack  <mhabersack@novell.com>
 
 	* ControlTest.cs: added test for bug #594238

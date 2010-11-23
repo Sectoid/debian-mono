@@ -1,3 +1,21 @@
+2010-11-02  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] 4.0-only types don't need the NET_4_0 ifdef and should
+	be in net_4_0_System.Web.dll.sources
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Makefile: Compile tests with TEST defined (to include
+	System.Web.Util. MachineKeySectionUtils unit tests) *
+	System.Web.dll.sources: Move MachineKeySectionUtils.cs from
+	System. Web.Configuration_2.0 to System.Web.Util *
+	System.Web_test.dll.sources: Move MachineKeySectionUtilsTest.cs
+	from System.Web.Configuration_2.0 to System.Web.Util
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Normalization of cryptographic uses in asp.net
+
 2010-08-24  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #633756. Children processed as properties

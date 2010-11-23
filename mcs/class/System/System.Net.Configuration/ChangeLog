@@ -1,3 +1,9 @@
+2010-10-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add support for EnableSsl in smtp config.
+
+	Ditto. Fixes bug #644816.
+
 2009-12-11  Miguel de Icaza  <miguel@novell.com>
 
 	* SmtpNetworkElement.cs: Add new "targetName" property for smtp. 

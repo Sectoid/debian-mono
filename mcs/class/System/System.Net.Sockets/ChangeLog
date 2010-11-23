@@ -1,3 +1,25 @@
+2010-09-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	UDP sockets allow connections to Any
+
+	UDP sockets that call Connect() to set a default address for
+	datagrams sent, can call Connect() again with IPv6Any or Any to
+	'disconnect'.
+
+	Fixes bug #639098.
+
+2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle special case when disposing a socket.
+
+	When disposing a socket that has more than one asynchronous
+	read/write pending, one of the callbacks could call
+	DisposeAllOnClose() while another one is waiting on the lock. Once
+	the lock is acquired, queue.Count will be 0 and Dequeue would
+	fail. This is fixed now.
+
+	Fixes bug #645675.
+
 2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Invoke the callback in separate threads

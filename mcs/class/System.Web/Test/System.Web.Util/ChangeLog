@@ -1,3 +1,9 @@
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Web.Util/MachineKeySectionUtilsTest.cs: Moved from
+	Test/ System.Web.Configuration/MachineKeySectionTest.cs. Add test
+	case for TripleDES versus 3DES
+
 2010-03-06  Marek Habersack  <mhabersack@novell.com>
 
 	* RequestValidatorTest.cs: added

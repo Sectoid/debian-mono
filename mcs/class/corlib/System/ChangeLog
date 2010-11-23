@@ -1,3 +1,29 @@
+2010-11-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert change in FromBinary
+
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix another regression in the Array.Sort () methods, allow keys
+	and items to be of different length. Fixes #648828.
+
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	FromBinary does not need ToLocalTime
+
+	When converting to DateTime from a long, we don't need
+	ToLocalTime(). Setting the kind to Local is enough. Patch from
+	Mig.
+
+	Fixes bug #648252.
+
+2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Able to read MS serialized nullable<primitive>
+
+	Handle boxed primitive types for nullable fields. Fixes bug
+	#646556.
+
 2010-09-15  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* Type.cs (GetTypeCodeImpl): If the type is a TypeBuilder call

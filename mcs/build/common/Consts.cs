@@ -34,7 +34,7 @@ static class Consts
 	// Use these assembly version constants to make code more maintainable.
 	//
 
-	public const string MonoVersion = "2.8.0.0";
+	public const string MonoVersion = "2.8.1.0";
 	public const string MonoCompany = "MONO development team";
 	public const string MonoProduct = "MONO Common language infrastructure";
 	public const string MonoCopyright = "(c) various MONO Authors";

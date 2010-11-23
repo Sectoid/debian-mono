@@ -1,3 +1,9 @@
+2010-11-02  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Map libcups for mac
+
+	Fixes bnc#649994
+
 2010-08-30  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	Remove obsolete Microsoft.Vsa and Microsoft.JScript

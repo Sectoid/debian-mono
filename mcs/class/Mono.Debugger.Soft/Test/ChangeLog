@@ -1,3 +1,17 @@
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	When single stepping from a exception throw site, single step to
+	the catch site. Fixes #652590.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix gshared support in the soft debugger. Fixes #651251.
+
+2010-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix encoding of large strings in the soft debugger api. Fixes
+	#648832.
+
 2010-06-17  Zoltan Varga  <vargaz@gmail.com>
 
 	* dtest.cs: Add an EventSet test.

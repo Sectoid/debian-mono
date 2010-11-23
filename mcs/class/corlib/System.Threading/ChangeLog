@@ -1,3 +1,12 @@
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the collision handling code
+
+	After the fix for bug #605092, inserting timers with an equal due
+	time was failing because searching in the list was also using a
+	reference comparison. Now, when adding a new timer, we search
+	using just the due time. Fixes bug #648130.
+
 2010-08-31  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Fix non 4.0 build of ReaderWriterLockSlim.

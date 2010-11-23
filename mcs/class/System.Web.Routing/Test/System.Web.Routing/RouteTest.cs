@@ -908,6 +908,59 @@ namespace MonoTests.System.Web.Routing
 		}
 
 		[Test]
+		public void GetRouteData44 ()
+		{
+			// {} matches and substitutes even at partial state ...
+			var r = new Route ("{foo}/bartes{baz}", null);
+			var hc = new HttpContextStub ("~/x/bartest/", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("t", rd.Values ["baz"], "#4-2");
+		}
+
+		[Test]
+		public void GetRouteData45 ()
+		{
+			var r = new Route ("{foo}/{bar}", null);
+			var hc = new HttpContextStub ("~/x/y/", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNotNull (rd, "#1");
+			Assert.AreEqual (r, rd.Route, "#2");
+			Assert.AreEqual (0, rd.DataTokens.Count, "#3");
+			Assert.AreEqual (2, rd.Values.Count, "#4");
+			Assert.AreEqual ("x", rd.Values ["foo"], "#4-1");
+			Assert.AreEqual ("y", rd.Values ["bar"], "#4-2");
+		}
+
+		[Test (Description="Bug #651593")]
+		public void GetRouteData46 ()
+		{
+			var r = new Route ("Foo", null) {
+				Defaults = new RouteValueDictionary (new {
+					controller = "Foo",
+					action = "Index"
+				})
+			};
+			var hc = new HttpContextStub ("/Foo/123", String.Empty);
+			var rd = r.GetRouteData (hc);
+			Assert.IsNull (rd, "#1");
+
+			r = new Route ("Foo", null) {
+				Defaults = new RouteValueDictionary (new {
+					controller = "Foo",
+					action = "Index"
+				})
+			};
+			hc = new HttpContextStub ("~/Foo/123", String.Empty);
+			rd = r.GetRouteData (hc);
+			Assert.IsNull (rd, "#2");
+		}
+
+		[Test]
 		[ExpectedException (typeof (ArgumentNullException))]
 		public void GetVirtualPathNullContext ()
 		{

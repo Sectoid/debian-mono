@@ -1,3 +1,29 @@
+2010-11-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't cache child nodes when security trimming is enabled.
+
+	When SecurityTrimmingEnabled is set to true for the node, the
+	cached children collection also depends on the IPrincipal set for
+	the current context.
+
+	Fixes bug #641449.
+
+2010-10-24  Marek Habersack  <grendel@twistedcode.net>
+
+	* HttpRuntime.cs: disable filesystem watchers on appdomain
+	shutdown and refuse to process requests while the current
+	AppDomain is unloading * HttpApplicationFactory.cs: if the current
+	AppDomain is unloading, ignore FileSystemWatcher notifications *
+	WebConfigurationManager.cs: work around a deadlock issue when
+	entering a ReaderWriterLockSlim upgradeable read lock very early
+	during ASP.NET runtime/AppDomain initialization. Every few runs
+	the attempt would lock up and since adding a section to cache is
+	not a critical operation we can afford timing the lock out in this
+	case. The lockup is probably due to the fact that RWLS is using
+	thread local storage to store the current thread's lock status and
+	it may happen that the TLS is not cleared during thread object
+	finalization (see metadata/threads.c, the start_wrapper function)
+
 2010-08-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Call SetEndOfSendNotification

@@ -1,3 +1,17 @@
+2010-09-16  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use files referenced by resx for dependency check.
+
+	For .resx resource files, check files referenced by the resx file
+	also, to determine whether to resgen it or not.
+
+	IsResgenRequired () has been taken from MonoDevelop
+	(main/src/core/MonoDevelop.Core/MonoDevelop.Projects.Formats.MD1/MD1DotNetProjectHandler.cs)
+
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add ToolTask.EnvironmentVariables property.
+
 2010-08-31  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Task 'Touch' should pass even if the file already exists.

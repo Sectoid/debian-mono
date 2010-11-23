@@ -1,3 +1,17 @@
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Handlers/AssemblyResourceLoader.cs: Use the new
+	common cryptographic code and base64 the encrypted data.
+
+2010-10-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] make sure the string we pass to DecryptAssemblyResource
+	is a valid Base64 string
+
 2009-07-08 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* AssemblyResourceLoader.cs: send minimal headers set and don't call

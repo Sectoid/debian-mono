@@ -1,3 +1,16 @@
+2010-11-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid killing the thread if socket already null
+
+	In some weird cases socket is null when we try to close it.
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Set have_response
+
+	Set have_response to true when there's a protocol error or a
+	previous exception for POST/PUT. Patch by Bassam Tabbara.
+
 2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Invoke the callback in separate threads

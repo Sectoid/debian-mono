@@ -1,3 +1,17 @@
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Linux /proc/mounts might have escaped characters
+
+	Translate escaped characters in mount paths.
+
+	Fixes bug #637078.
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use UTF8 instead of ASCII when reading mount info
+
+	This allows for mount points with UTF8 characters in them.
+
 2010-05-27  William Holmes  <billholmes54@gmail.com>
 
 	* Directory.cs (ValidateDirectoryListing): Removing an unnecessary

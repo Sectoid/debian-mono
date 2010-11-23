@@ -1,3 +1,54 @@
+2010-11-11  Daniel J Sell  <dredd422@gmail.com>
+
+	[asp.net] Fix for bug #653192. making MasterPageFile handle
+	relative paths
+
+	MasterPageFile should be relative to the file being parsed, not
+	the request path
+
+2010-10-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] ObjectStateFormatter.{De}serialize methods taking stream
+	use a magic value to mark the stream.
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	A few moves/changes following previous patch review
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.UI/LosFormatter.cs: Adapt code for internal API
+	change. Fix some small behaviro changes wrt NET_4_0
+
+	* System.Web.UI/ObjectStateFormatter.cs: Use the new common
+	cryptographic code.
+
+	* System.Web.UI/Page.cs: Remove code that is now unneeded (with
+	the new common cryptogrraphic code).
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649551. The LosFormatter (bool, string)
+	constructor does not expect a base64-encoded string.
+
+	Telerik controls pass the string "string" as the macKeyModifier
+	parameter to the constructor. Tests show that .NET accepts such
+	input without throwing an error. The passed string is now
+	converted into a byte array and passed to the LosFormatter (bool,
+	byte[]) constructor.
+
+	This is a backport of 19e5207189c6905bd72e31e457450546b662e79d
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649034. Control.FindControl continues to
+	search for controls above itself if it's a naming container.
+
+	When a control is a naming container and an attempt to find a
+	control with non-segmented id (e.g. 'myControl') is made, the
+	search continues to the control's naming container if pathOffset
+	is 0, that is we're at the start of the search.
+
 2010-10-05  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #643298. A typo prevented the

@@ -1,3 +1,10 @@
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,wcf] WCF proxies are generated using a slightly different
+	mode of operation.
+
+	WCF proxies don't include full namespace of the contract.
+
 2010-01-18  Marek Habersack  <mhabersack@novell.com>
 
 	* LogicalTypeInfo.cs: partial revert of r146546. The 'd' wrapper

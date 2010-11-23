@@ -1,3 +1,121 @@
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	When single stepping from a exception throw site, single step to
+	the catch site. Fixes #652590.
+
+2010-11-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a typo in process_breakpoint_inner which doesn't break our
+	tests for some reason.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Enlarge try-finally blocks preceeded by a Monitor.Enter () call to
+	include the call itself, to avoid races inherent in such code.
+	Fixes #651546.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a bug introduced by the previous change to
+	mono_jit_walk_stack_from_ctx_in_thread ().
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix crashes in the debugger stack walk code if a gshared method
+	calls another using a managed-to-native translation.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix more gshared problems in the soft debugger.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix gshared support in the soft debugger. Fixes #651251.
+
+2010-11-02  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] mono_cfg_set_exception is not present in 2.8. Fixes the
+	build.
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Cache the array of classes in find_typespec_for_class ().
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid asserts if a forced inline fails. Fix typos. Fixes #650407.
+
+2010-10-30  Brian Luczkiewicz  <brian@sooloos.com>
+
+	Enable --aot (but not --aot=full) on osx/x86
+
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the generation of GenericEqualityComparer () instances in AOT.
+
+2010-10-30  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the build
+
+2010-10-28  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Fix debug=casts on OSX (Bug: 639172)
+
+	mono --debug=casts requires fast tls access and the jit tls
+	intrinsic. We already had support for OP_TLS_GET on darwin/x86,
+	but we did not expose the "tls offset (pthread_key_t)" from mini
+	to the intrinsic, instead falling back on the io-layer keys. We
+	now store mono_lmf_addr in a pthread_key for darwin/x86 so that we
+	can do fast-tls in the jit and fix this feature. X86 only for now.
+
+	r: kumpera
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix some counters under 32bits.
+
+2010-10-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable catchpoints when the DISABLE_BREAKPOINTS flag is used
+	during an invoke. Fixes #632224.
+
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement memory barriers for amd64/x86. Fixes #648831.
+
+2010-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit GenericEqualityComparer<T> instances for each
+	EqualityComparer<T> instance in AOT, the former is created
+	dynamically by the latter.
+
+2010-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an assert in the LLVM backend if a long value was passed to
+	'localloc'.
+
+2010-10-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid trying to read the gc name in the AOT runtime from older AOT
+	images. Fixes #647918.
+
+2010-10-19  Tak  <levi@unity3d.com>
+
+	[Fix] Ensure that exceptions are propagated when embedding
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix crashes in the AOT compiler when the loaded LLVM module is
+	used. Fixes #646314.
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Update the IMT thunk creation code on sparc to support net 4.0.
+
+2010-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the sparc build.
+
 2010-10-01  Zoltan Varga  <vargaz@gmail.com>
 
 	Check the debugger_thread_exited condition in a loop to guard

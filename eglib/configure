@@ -11103,9 +11103,8 @@ BREAKPOINT="G_STMT_START { raise (SIGTRAP); } G_STMT_END"
 if test x$GCC = xyes; then
    GNUC_UNUSED='__attribute__((__unused__))'
    GNUC_NORETURN='__attribute__((__noreturn__))'
-   echo target_cpu=$target_cpu
    case $target_cpu in
-     i*86) BREAKPOINT="G_STMT_START { __asm__ (\"int \$03\"); } G_STMT_END" ;;
+     i*86|x86_64) BREAKPOINT="G_STMT_START { __asm__ (\"int \$03\"); } G_STMT_END" ;;
    esac
 fi
 
@@ -12939,7 +12938,8 @@ fi
 
 
 
-for ac_header in getopt.h sys/time.h sys/wait.h pwd.h langinfo.h iconv.h
+
+for ac_header in getopt.h sys/time.h sys/wait.h pwd.h langinfo.h iconv.h localcharset.h
 do
 as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then

@@ -1,3 +1,40 @@
+2010-10-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #646941. Add explicit System.Core for >=3.5
+	projects.
+
+	For projects targeting TargetFrameworkVersion >= 3.5,
+	automatically add a reference to System.Core . This can be
+	controlled via two properties:
+
+	$(AddAdditionalExplicitAssemblyReferences) and
+	$(AdditionalExplicitAssemblyReferences) .
+
+	This is used only for projects built with ToolsVersion=4.0 .
+
+2010-10-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Set default TargetFrameworkVersion=4.0 for
+	ToolsVersion=4.0
+
+2010-10-14  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add ResolveAssemblyReferencesDependsOn .
+
+	Add GetFrameworkPaths and PrepareForBuild as dependencies for the
+	ResolveAssemblyReferences target. This is required when it is
+	invoked directly from MD.
+
+	Patch from Michael Hutchinson (mhutchinson@novell.com).
+
+2010-10-05  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update regex to not require EndProject in a sln file.
+
+	In a solution file, a Project might not have a corresponding
+	EndProject. This seems to be supported by VS, so updating xbuild
+	to support that too. Updated the regex.
+
 2010-09-15  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Fix references to Microsoft.Build.* assemblies for 3.5 .

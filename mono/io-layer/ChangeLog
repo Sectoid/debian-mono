@@ -1,3 +1,40 @@
+2010-11-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Renaming a dangling symlink works now
+
+	Ditto.
+
+	Fixes bug #650779.
+
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Replace EnumProcesses with OpenProcess
+
+	namedmutex_prewait was (partially) listing the running processes
+	and then searching through them. Now we use OpenProcess to verify
+	the owner of the mutex is still alive.
+
+	Fixes bug #648133 (note that you need MONO_ENABLE_SHM for this to
+	work)
+
+2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fixed GetLogicalDriveString
+
+	When calling GetLogicalDriveString, icall.c was passing the length
+	in the wrong units.
+
+	GetLogicalDriveString now translates any octal sequence found into
+	its corresponding byte. Use the UTF16 length ('items_written')
+	instead of the UTF8 input string length ('items_read') when
+	computing the total size.
+
+2010-09-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	GetProcessById now works on the Mac too
+
+	Ditto. This should fix MD problems when SHM is disabled.
+
 2010-10-05  Michael Hutchinson  <mhutchinson@novell.com>
 
 	[io-layer] Cope with pids > 16 bits

@@ -1,3 +1,9 @@
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Enlarge try-finally blocks preceeded by a Monitor.Enter () call to
+	include the call itself, to avoid races inherent in such code.
+	Fixes #651546.
+
 2010-08-24  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Add regression test for 633291.

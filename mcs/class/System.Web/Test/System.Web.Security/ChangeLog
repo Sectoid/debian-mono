@@ -1,3 +1,14 @@
+2010-10-04  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Web.Security/FormsAuthenticationTest.cs: Small
+	change to make sure the hash name is not case sensitive
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Web.Security/FormsAuthenticationTest.cs: Add test
+	case to ensure HashPasswordForStoringInConfigFile is not case
+	sensitive.
+
 2010-02-11  Marek Habersack  <mhabersack@novell.com>
 
 	* RolesTest.cs: added a test for IsUserInRole. Patch from Tiaan

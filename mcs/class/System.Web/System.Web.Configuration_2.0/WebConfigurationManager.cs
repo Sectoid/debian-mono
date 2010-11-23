@@ -63,6 +63,7 @@ namespace System.Web.Configuration {
 		}
 		
 		const int SAVE_LOCATIONS_CHECK_INTERVAL = 6000; // milliseconds
+		const int SECTION_CACHE_LOCK_TIMEOUT = 200; // milliseconds
 
 		static readonly char[] pathTrimChars = { '/' };
 		static readonly object suppressAppReloadLock = new object ();
@@ -585,8 +586,9 @@ namespace System.Web.Configuration {
 			HttpContext ctx = HttpContext.Current;
 			HttpRequest req = ctx != null ? ctx.Request : null;
 			string physPath = req != null ? VirtualPathUtility.AppendTrailingSlash (MapPath (req, path)) : null;
+			string appDomainPath = HttpRuntime.AppDomainAppPath;
 			
-			if (physPath != null && !physPath.StartsWith (HttpRuntime.AppDomainAppPath, StringComparison.Ordinal))
+			if (physPath != null && appDomainPath != null && !physPath.StartsWith (appDomainPath, StringComparison.Ordinal))
 				inAnotherApp = true;
 			
 			string dir;
@@ -685,19 +687,29 @@ namespace System.Web.Configuration {
 			object cachedSection;
 
 			try {
-				sectionCacheLock.EnterUpgradeableReadLock ();
+				if (!sectionCacheLock.TryEnterUpgradeableReadLock (SECTION_CACHE_LOCK_TIMEOUT))
+					return;
 					
 				if (sectionCache.TryGetValue (key, out cachedSection) && cachedSection != null)
 					return;
 
 				try {
-					sectionCacheLock.EnterWriteLock ();
+					if (!sectionCacheLock.TryEnterWriteLock (SECTION_CACHE_LOCK_TIMEOUT))
+						return;
 					sectionCache.Add (key, section);
 				} finally {
-					sectionCacheLock.ExitWriteLock ();
+					try {
+						sectionCacheLock.ExitWriteLock ();
+					} catch (SynchronizationLockException) {
+						// we can ignore it here
+					}
 				}
 			} finally {
-				sectionCacheLock.ExitUpgradeableReadLock ();
+				try {
+					sectionCacheLock.ExitUpgradeableReadLock ();
+				} catch (SynchronizationLockException) {
+					// we can ignore it here
+				}
 			}
 		}
 		

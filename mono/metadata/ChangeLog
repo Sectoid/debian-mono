@@ -1,3 +1,65 @@
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix DISABLE_REFLECTION_EMIT build.
+
+2010-10-12  Paolo Molaro  <lupus@oddwiz.org>
+
+	* loader.c: we don't search the current directory anymore for
+	shared libraries referenced in DllImport attributes, as it has a
+	slight security risk. We search in the same directory where the
+	referencing image was loaded from, instead. Fixes bug# 641915.
+
+2010-10-21  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Disable cardtable unde 64bits as it is broken for 2.8.
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Allow ordinal entry points in windows.
+
+	Windows allows entry point names like "#10" which refer to the Nth
+	function (n > 1 and less than the highest ordinal value in the
+	.def file).
+
+	Fixes bug #636966.
+
+2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fixed GetLogicalDriveString
+
+	When calling GetLogicalDriveString, icall.c was passing the length
+	in the wrong units.
+
+	GetLogicalDriveString now translates any octal sequence found into
+	its corresponding byte. Use the UTF16 length ('items_written')
+	instead of the UTF8 input string length ('items_read') when
+	computing the total size.
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Map SO_EXCLUSIVEADDRUSE to !SO_REUSEADDR
+
+	This will make windows app that use that property work on *nix.
+	Fixes bug #643475.
+
+2010-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid caching stuff in socket-io.c in static variables, since the
+	socket assembly can be unloaded, cache them in MonoDomain instead.
+
+2010-10-19  Tak  <levi@unity3d.com>
+
+	* metadata/object.c: * mini/mini.c: Ensure that exceptions get
+	propagated back to the caller when mono is being embedded.
+	License: MIT/X11
+
+2010-10-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[ThreadPool] Clear the thread state
+
+	Clear the thread state after finishing a work item. We were only
+	resetting the background state.
+
 2010-10-05  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Fix the build on windows
@@ -827,6 +889,12 @@
 	token.
 
 	Fixes #560348
+
+2010-11-03  Martin Baulig  <martin@ximian.com>
+
+	* mono-debug.c (mono_register_symfile_for_assembly): New method.
+	This is used together with mono_register_bundled_assemblies() and
+	mono_register_config_for_assembly() to support bundles.
 
 2010-07-30  Mark Probst  <mark.probst@gmail.com>
 

@@ -1,3 +1,8 @@
+2010-10-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid calling sem_post on a uninitialized semaphore during thread
+	attach, it works under linux, but fails under *bsd. Fixes #647248.
+
 2010-08-26  Zoltan Varga  <vargaz@gmail.com>
 
 	Avoid warnings on machines with cpus > 16.

@@ -1,3 +1,37 @@
+2010-10-01  Geoff Norton  <gnorton@novell.com>
+
+	Fix a crash when using the embedding api
+
+	error_msg is null when passed into this function from a few
+	places, so lets not do a null deref here.
+
+2010-09-13  Michael Hutchinson  <mhutchinson@novell.com>
+
+	[Embedding] Make mono-dl-fallback.h public-safe
+
+2010-09-11  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not install sample header, add to EXTRA_DIST
+
+2010-09-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[Embedded] Add new fallback API to allow hooking up to the
+	P/Invoke lookup system
+
+	This patch allows a developer to register a fallback for P/Invoke
+	when embedding Mono. Typically this is done when you statically
+	link all of your libraries in some embedded systems and you need
+	to dynamically resolve symbol names.
+
+	There is a *sample* API included (but not compiled into Mono
+	itself) called mono-embed.c that shows a layman use of the API. A
+	full implementation would mandate sorted tables, and would use a
+	bsearch or a hashtable instead of having linear searches.
+
+2010-10-13  Robert Nagy  <robert@bsd.hu>
+
+	merge from head
+
 2010-08-25  Robert Nagy  <robert@bsd.hu>
 
 	Make sgen compile on OpenBSD, by adding the missing stuff

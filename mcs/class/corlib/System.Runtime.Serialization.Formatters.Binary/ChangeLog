@@ -1,3 +1,10 @@
+2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Able to read MS serialized nullable<primitive>
+
+	Handle boxed primitive types for nullable fields. Fixes bug
+	#646556.
+
 2010-08-30  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* ObjectWriter.cs: Actually take SerializationBinder.BindToName

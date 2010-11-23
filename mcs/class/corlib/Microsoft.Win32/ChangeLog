@@ -1,3 +1,8 @@
+2010-11-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib] Fix for bug #652807. Handle RegistryValueKind.QWord in
+	Win32RegistryApi.{Get,Set}Value
+
 2010-08-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* Microsoft.Win32/Win32RegistryApi.cs: *

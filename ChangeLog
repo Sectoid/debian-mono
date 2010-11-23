@@ -1,3 +1,7 @@
+2010-10-21  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Bump version to 2.8.1
+
 2010-09-23  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	move DynamicData to mvc because it depends on Extensions

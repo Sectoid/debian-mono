@@ -1,3 +1,7 @@
+2010-10-21  Miguel de Icaza  <miguel@gnome.org>
+
+	Document server option to --debugger-agent
+
 2010-09-02  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Update man page to add "/tv:" option.

@@ -4689,7 +4689,7 @@ check_inline_caller_method_name_limit (MonoMethod *caller_method)
 
 static int
 inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig, MonoInst **sp,
-		guchar *ip, guint real_offset, GList *dont_inline, gboolean inline_allways)
+		guchar *ip, guint real_offset, GList *dont_inline, gboolean inline_always)
 {
 	MonoInst *ins, *rvar = NULL;
 	MonoMethodHeader *cheader;
@@ -4711,11 +4711,11 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	g_assert (cfg->exception_type == MONO_EXCEPTION_NONE);
 
 #if (MONO_INLINE_CALLED_LIMITED_METHODS)
-	if ((! inline_allways) && ! check_inline_called_method_name_limit (cmethod))
+	if ((! inline_always) && ! check_inline_called_method_name_limit (cmethod))
 		return 0;
 #endif
 #if (MONO_INLINE_CALLER_LIMITED_METHODS)
-	if ((! inline_allways) && ! check_inline_caller_method_name_limit (cfg->method))
+	if ((! inline_always) && ! check_inline_caller_method_name_limit (cfg->method))
 		return 0;
 #endif
 
@@ -4731,8 +4731,13 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	cheader = mono_method_get_header (cmethod);
 
 	if (cheader == NULL || mono_loader_get_last_error ()) {
+		MonoLoaderError *error = mono_loader_get_last_error ();
+
 		if (cheader)
 			mono_metadata_free_mh (cheader);
+		if (inline_always && error)
+			cfg->exception_type = error->exception_type;
+
 		mono_loader_clear_error ();
 		return 0;
 	}
@@ -4791,7 +4796,7 @@ inline_method (MonoCompile *cfg, MonoMethod *cmethod, MonoMethodSignature *fsig,
 	cfg->ret_var_set = prev_ret_var_set;
 	cfg->inline_depth --;
 
-	if ((costs >= 0 && costs < 60) || inline_allways) {
+	if ((costs >= 0 && costs < 60) || inline_always) {
 		if (cfg->verbose_level > 2)
 			printf ("INLINE END %s -> %s\n", mono_method_full_name (cfg->method, TRUE), mono_method_full_name (cmethod, TRUE));
 		
@@ -5512,6 +5517,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			MonoExceptionClause *clause = &header->clauses [i];
 			GET_BBLOCK (cfg, try_bb, ip + clause->try_offset);
 			try_bb->real_offset = clause->try_offset;
+			try_bb->try_start = TRUE;
+			try_bb->region = ((i + 1) << 8) | clause->flags;
 			GET_BBLOCK (cfg, tblock, ip + clause->handler_offset);
 			tblock->real_offset = clause->handler_offset;
 			tblock->flags |= BB_EXCEPTION_HANDLER;
@@ -5524,6 +5531,10 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			if (clause->flags == MONO_EXCEPTION_CLAUSE_FINALLY ||
 			    clause->flags == MONO_EXCEPTION_CLAUSE_FILTER ||
 			    clause->flags == MONO_EXCEPTION_CLAUSE_FAULT) {
+				if (seq_points) {
+					NEW_SEQ_POINT (cfg, ins, clause->handler_offset, TRUE);
+					MONO_ADD_INS (tblock, ins);
+				}
 				MONO_INST_NEW (cfg, ins, OP_START_HANDLER);
 				MONO_ADD_INS (tblock, ins);
 
@@ -6631,6 +6642,33 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				break;
 			}
 
+			/*
+			 * Implement a workaround for the inherent races involved in locking:
+			 * Monitor.Enter ()
+			 * try {
+			 * } finally {
+			 *    Monitor.Exit ()
+			 * }
+			 * If a thread abort happens between the call to Monitor.Enter () and the start of the
+			 * try block, the Exit () won't be executed, see:
+			 * http://www.bluebytesoftware.com/blog/2007/01/30/MonitorEnterThreadAbortsAndOrphanedLocks.aspx
+			 * To work around this, we extend such try blocks to include the last x bytes
+			 * of the Monitor.Enter () call.
+			 */
+			if (cmethod && cmethod->klass == mono_defaults.monitor_class && !strcmp (cmethod->name, "Enter") && mono_method_signature (cmethod)->param_count == 1) {
+				MonoBasicBlock *tbb;
+
+				GET_BBLOCK (cfg, tbb, ip + 5);
+				/* 
+				 * Only extend try blocks with a finally, to avoid catching exceptions thrown
+				 * from Monitor.Enter like ArgumentNullException.
+				 */
+				if (tbb->try_start && MONO_REGION_FLAGS(tbb->region) == MONO_EXCEPTION_CLAUSE_FINALLY) {
+					/* Mark this bblock as needing to be extended */
+					tbb->extend_try_block = TRUE;
+				}
+			}
+
 			/* Conversion to a JIT intrinsic */
 			if (cmethod && (cfg->opt & MONO_OPT_INTRINS) && (ins = mini_emit_inst_for_method (cfg, cmethod, fsig, sp))) {
 				bblock = cfg->cbb;
@@ -6653,17 +6691,17 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			    mono_method_check_inlining (cfg, cmethod) &&
 				 !g_list_find (dont_inline, cmethod)) {
 				int costs;
-				gboolean allways = FALSE;
+				gboolean always = FALSE;
 
 				if ((cmethod->iflags & METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL) ||
 					(cmethod->flags & METHOD_ATTRIBUTE_PINVOKE_IMPL)) {
 					/* Prevent inlining of methods that call wrappers */
 					INLINE_FAILURE;
 					cmethod = mono_marshal_get_native_wrapper (cmethod, check_for_pending_exc, FALSE);
-					allways = TRUE;
+					always = TRUE;
 				}
 
- 				if ((costs = inline_method (cfg, cmethod, fsig, sp, ip, cfg->real_offset, dont_inline, allways))) {
+ 				if ((costs = inline_method (cfg, cmethod, fsig, sp, ip, cfg->real_offset, dont_inline, always))) {
 					ip += 5;
 					cfg->real_offset += 5;
 					bblock = cfg->cbb;
@@ -7850,7 +7888,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				iargs [0] = sp [0];
 				
 				costs = inline_method (cfg, mono_castclass, mono_method_signature (mono_castclass), 
-							   iargs, ip, cfg->real_offset, dont_inline, TRUE);			
+							   iargs, ip, cfg->real_offset, dont_inline, TRUE);
+				CHECK_CFG_EXCEPTION;
 				g_assert (costs > 0);
 				
 				ip += 5;
@@ -7904,7 +7943,8 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				iargs [0] = sp [0];
 
 				costs = inline_method (cfg, mono_isinst, mono_method_signature (mono_isinst), 
-							   iargs, ip, cfg->real_offset, dont_inline, TRUE);			
+							   iargs, ip, cfg->real_offset, dont_inline, TRUE);
+				CHECK_CFG_EXCEPTION;
 				g_assert (costs > 0);
 				
 				ip += 5;
@@ -7949,7 +7989,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 
 					costs = inline_method (cfg, mono_castclass, mono_method_signature (mono_castclass), 
 										   iargs, ip, cfg->real_offset, dont_inline, TRUE);
-			
+					CHECK_CFG_EXCEPTION;
 					g_assert (costs > 0);
 				
 					ip += 5;
@@ -8180,6 +8220,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					if (cfg->opt & MONO_OPT_INLINE || cfg->compile_aot) {
 						costs = inline_method (cfg, stfld_wrapper, mono_method_signature (stfld_wrapper), 
 								       iargs, ip, cfg->real_offset, dont_inline, TRUE);
+						CHECK_CFG_EXCEPTION;
 						g_assert (costs > 0);
 						      
 						cfg->real_offset += 5;
@@ -8226,6 +8267,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				if (cfg->opt & MONO_OPT_INLINE || cfg->compile_aot) {
 					costs = inline_method (cfg, wrapper, mono_method_signature (wrapper), 
 										   iargs, ip, cfg->real_offset, dont_inline, TRUE);
+					CHECK_CFG_EXCEPTION;
 					bblock = cfg->cbb;
 					g_assert (costs > 0);
 						      
@@ -9194,7 +9236,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 					NEW_BBLOCK (cfg, dont_throw);
 
 					/*
-					 * Currently, we allways rethrow the abort exception, despite the 
+					 * Currently, we always rethrow the abort exception, despite the 
 					 * fact that this is not correct. See thread6.cs for an example. 
 					 * But propagating the abort exception is more important than 
 					 * getting the sematics right.

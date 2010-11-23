@@ -1,3 +1,20 @@
+2010-11-01  Marek Safar  <marek.safar@gmail.com>
+
+	Set correct result type for chained folded enum subtraction
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	[646997] Correctly emit platform ILOnly flag
+
+2010-10-14  Marek Safar  <marek.safar@gmail.com>
+
+	[646298] Compile multiple interface event declarators
+
+2010-10-08  Marek Safar  <marek.safar@gmail.com>
+
+	[642975] Fix initializer of partially static multidimensional
+	arrays
+
 2010-09-29  Marek Safar  <marek.safar@gmail.com>
 
 	[642437] Nested types have to check type arguments only and not

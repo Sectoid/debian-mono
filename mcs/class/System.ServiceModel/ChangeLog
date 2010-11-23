@@ -1,3 +1,21 @@
+2010-10-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] make /js and /jsdebug dispatchers work.
+
+	There were several issues here:
+
+	- The IChannelDispatcherBoundListener was defined twice, in two
+	different namespaces, and it caused code in
+	ChannelDispatcher.Attach not to set its associated listener's
+	ChannelDispatcher property to the correct value. This, in turn,
+	caused incorrect HttpListenerManagerTable operation, where it
+	would put the "/js" and "/jsdebug" dispatchers in separate
+	HttpListenerManagers, instead of in the main (base) service's one.
+	- After fixing the above, it turned out that SvcHttpHandler
+	selected the manager based on the host's base address, when it
+	should first try to find one whose URL matches the current request
+	exactly.
+
 2010-07-30  Astushi Enomoto  <atsushi@ximian.com>
 
 	* System.ServiceModel.dll.sources: add 4.0 standard endpoint types.

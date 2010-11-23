@@ -1,3 +1,66 @@
+2010-11-02  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] 4.0-only types don't need the NET_4_0 ifdef and should
+	be in net_4_0_System.Web.dll.sources
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Configuration_2.0/MachineKeySection.cs: Adjust using
+	clauses. Uncomment some code. Fix TripleDES versus 3DES for
+	Validation under NET_4_0. Remove 'private' on fields/methods. *
+	System.Web.Handlers/AssemblyResourceLoader.cs: Adjust using
+	clauses * System.Web.Security/MembershipHelper.cs: Adjust using
+	clauses * System.Web.Security/RolePrincipal.cs: Adjust using
+	clauses * System.Web.SessionState_2.0/SessionId.cs: Adjust using
+	clauses * System.Web.UI/LosFormatter.cs: Adjust using clauses. *
+	System.Web.Util/MachineKeySectionUtils.cs: Moved from System.Web.
+	Configuration_2.0. Rename namespace and remove 'internal' on type
+	declaration
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Web.Configuration_2.0/MachineKeyRegistryStorage.cs:
+	Remove key length check and generic key generation.
+
+	* System.Web.Configuration_2.0/MachineKeySection.cs: Add support
+	for 4.0 ValidationAlgorithm and the use of custom algorithms
+	(validation and decryption). Allow the use of any, valid, key
+	length (based on the algorithm). Let each algorithm creates its
+	own key (e.g. special needs, default length...)
+
+	* System.Web.Configuration_2.0/MachineKeySectionUtils.cs: Remove
+	key generation (from random) code and 192bits key length hack
+	(won't work with custom algorithms). Add support for new (4.0)
+	algorithms, including custom ones. Provide uniform/shared code to
+	Encrypt/Decrypt, Sign/Verify and EncryptSign/VerifyDecrypt using
+	MachineKeySection data.
+
+	* System.Web.Configuration_2.0/MachineKeyValidation.cs: Add new
+	(4.0) values.
+
+	* System.Web.Configuration_2.0/MachineKeyValidationConverter.cs:
+	Add support for new (4.0) algorithms.
+
+	* System.Web.Configuration_2.0/MachineKeyCompatibilityMode.cs:
+	New.
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRuntime.AppDomainAppPath may be null during tests,
+	check it before using.
+
+2010-10-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Better handling of application's AppDomain restart
+
+2010-10-04  Marek Habersack  <grendel@twistedcode.net>
+
+	* AuthorizationRule.cs: if the configuration save is not Full,
+	SerializeElement checks whether the rule being serialized is
+	modified. If it isn't, validation and serialization are not
+	performed. * AuthorizationRuleCollection.cs: there is no element
+	name for the collection.
+
 2010-09-28  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Get rid of a possible (although unlikely) race condition

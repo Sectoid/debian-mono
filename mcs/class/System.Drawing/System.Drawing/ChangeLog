@@ -1,3 +1,11 @@
+2010-10-29  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Reintroduce Cocoa System.Drawing support
+
+	The old Cocoa backend for System.Drawing appears to still work.
+	You must pass in a NSView.Handle while in the DrawRect method, or
+	with lockFocus called to prepare the NSGraphicsContext.
+
 2010-07-19  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Icon.cs: Remove width==height check when deserializing (uncommon

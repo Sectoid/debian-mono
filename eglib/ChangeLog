@@ -1,3 +1,26 @@
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Use int 3 as G_BREAKPOINT on x86-64 too. Hopefully fixes #648838.
+
+2010-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Use locale_charset() from iconv which will use nl_langinfo
+	(CODESET) anyways but it will do canonicalization so we will get
+	the correct charset name, because nl_langinfo (CODESET) can return
+	different things on different systems. This at least fixes
+	OpenBSD.
+
+2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix return value of items_read
+
+	items_read was not being initialized and it was not being set in
+	the fast common case of g_utf8_to_utf16().
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid a crash in g_convert () if iconv_open () fails.
+
 2010-09-10  Miguel de Icaza  <miguel@gnome.org>
 
 	[Fix] Correct fix for the g_shell_parse_argv bug
