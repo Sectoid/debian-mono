@@ -1,5 +1,6 @@
-mono (2.6.7-4) unstable; urgency=medium
+mono (2.6.7-4) unstable; urgency=high
 
+  [ Mirco Bauer ]
   * [63821a1] Added libmono-nunit2.2-cil to conflicts and replaces of
     libmono-cil-dev for smooth upgrade from lenny (closes: #602024)
   * [0089f11] Moved the System.Data.Linq library into libmono-system-
@@ -8,7 +9,19 @@ mono (2.6.7-4) unstable; urgency=medium
   * [393dc41] Demote libmono-firebirdsql1.7-cil and mono-debugger from
     recommends to suggests if built on Ubuntu.
 
- -- Mirco Bauer <meebey@debian.org>  Tue, 09 Nov 2010 00:13:38 +0100
+  [ Paolo Molaro ]
+  * [52727f0] Search for dllimported shared libs in the base directory,
+    not cwd. * loader.c: we don't search the current directory anymore
+    for shared libraries referenced in DllImport attributes, as it has a
+    slight security risk. We search in the same directory where the
+    referencing image was loaded from, instead.
+    (CVE-2010-4159, closes: #605097)
+
+  [ Zoltan Varga ]
+  * [f17ab04] Fix stack alignment when resuming from a signal handler in
+    the soft debugger.
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 06 Dec 2010 23:34:16 +0100
 
 mono (2.6.7-3) unstable; urgency=low
 
