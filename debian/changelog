@@ -1,3 +1,22 @@
+mono (2.6.7-5) unstable; urgency=low
+
+  [ Zoltan Varga ]
+  * [7453b31] Fix a merge problem which broke tailcalls and F# support.
+    (closes: #607465)
+
+  [ Rodrigo Kumpera ]
+  * [e32c3aa] Check generic instantions for constraint violations.
+    (CVE-2010-4254, closes: #608288)
+  * [7905343] Fix corlib testsuite crash.
+  * [6eb9cab] Handle invalid instantiation of generic methods.
+  * [fbba0ca] Disable generic instance verification is security is off.
+
+  [ Mirco Bauer ]
+  * [ec09641] Disable the use of shared memory to make Mono reliable
+    even when /dev/shm gets exhausted.  (closes: #587948)
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 09 Jan 2011 19:38:15 +0100
+
 mono (2.6.7-4) unstable; urgency=high
 
   [ Mirco Bauer ]
