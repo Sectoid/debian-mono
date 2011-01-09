@@ -83,7 +83,8 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		  --with-libgdiplus=installed --with-x=yes \
 		  --with-profile4=no \
 		  --with-moonlight=no \
-		  --enable-quiet-build=no
+		  --enable-quiet-build=no \
+		  --disable-shared-handles
 
 # Mono's build system doesn't like -j > 1
 MAKE_FLAGS += -j1
