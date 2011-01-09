@@ -6483,6 +6483,25 @@ mono_verifier_verify_class (MonoClass *class)
 		return FALSE;
 	return TRUE;
 }
+
+gboolean
+mono_verifier_class_is_valid_generic_instantiation (MonoClass *class)
+{
+	if (!mono_verifier_is_enabled_for_class (class))
+		return TRUE;
+	return mono_class_is_valid_generic_instantiation (NULL, class);
+}
+
+gboolean
+mono_verifier_is_method_valid_generic_instantiation (MonoMethod *method)
+{
+	if (!method->is_inflated)
+		return TRUE;
+	if (!mono_verifier_is_enabled_for_method (method))
+		return TRUE;
+	return mono_method_is_valid_generic_instantiation (NULL, method);
+}
+
 #else
 
 gboolean
@@ -6554,4 +6573,19 @@ mono_image_verify_tables (MonoImage *image, int level)
 	/* The verifier was disabled at compile time */
 	return NULL;
 }	
+
+gboolean
+mono_verifier_class_is_valid_generic_instantiation (MonoClass *class)
+{
+	return TRUE;
+}
+
+gboolean
+mono_verifier_is_method_valid_generic_instantiation (MonoMethod *method)
+{
+	return TRUE;
+}
+
+
+
 #endif
