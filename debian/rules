@@ -113,6 +113,7 @@ configure-stamp: autoreconf-stamp
 build: build-stamp
 build-stamp: configure-stamp
 	dh_testdir
+	cd libgc && $(MAKE)
 	cd mono && $(MAKE) $(MONO_MAKE_FLAGS)
 	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
 
