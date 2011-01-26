@@ -1,3 +1,12 @@
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Add existing class to System.Net build
+
+2010-11-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_raw_System.Net.dll.sources: Add new CookieParser to
+	the build
+
 2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* moonlight_raw_System.Net.dll.sources: Add System.Net.Sockets/

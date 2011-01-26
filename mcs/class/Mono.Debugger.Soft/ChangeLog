@@ -1,3 +1,20 @@
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Add AssemblyLoadEventRequest () type to the sdb api, and use it to
+	fix the test suite.
+
+2010-12-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Update sdb API documentation.
+
+2010-12-16  Martin Baulig  <martin@novell.com>
+
+	Improve support for exception filters.
+
+2010-10-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a test for #632224. Fix dtest-app.exe dependencies.
+
 2010-06-15  Zoltan Varga  <vargaz@gmail.com>
 
 	* *: Add testing infrastructure by moving the tests from mono/tests.

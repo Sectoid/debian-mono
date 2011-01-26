@@ -1,3 +1,7 @@
+2011-01-05  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix failing test in msbuild.tasks .
+
 2010-07-09  Ankit Jain  <jankit@novell.com>
 
 	* MessageTest (TestExecution): Additional messages with 'low'

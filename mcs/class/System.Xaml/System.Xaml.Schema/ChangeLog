@@ -1,3 +1,58 @@
+2010-11-25  Atsushi Eno  <atsushi@ximian.com>
+
+	ParseNameList() failed to parse nested generic type names.
+
+2010-11-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Parse() and ToString() array type name correctly.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Rewrote ValueSerializer.GetSerializerFor() with couple of tests.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new ValueSerializerContext and use it everywhere appropriate.
+
+	This change was basically for string serialization of
+	XamlTypeName, namely PropertyDefinition serialization. Turned out
+	it should be used in a lot of places where IServiceProvider and
+	ITypeDescriptorContext is expected. IServiceProvider
+	implementations in XamlWriters are replaced.
+
+2010-11-11  Atsushi Eno  <atsushi@ximian.com>
+
+	When collection instance returned null, do not try to GetItems().
+
+2010-11-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix generic XamlTypeName output and GetType() to get some xml
+	reader case working.
+
+2010-11-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Dictionary key might be inappropriately serialized into an
+	attribute.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Uncommend code that prohibits XamlMemberInvoker.GetValue() on
+	XamlDirective.
+
+2010-10-27  Atsushi Eno  <atsushi@ximian.com>
+
+	XamlLanguage.Items is not correctly supported in XamlObjectReader.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Significant XamlObjectWriter rewrite for solid state transition.
+	And now it supports Array(Extension) and other MarkupExtension
+	types.
+
 2010-04-22  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XamlMemberInvoker.cs : make sure GetValue() is not supported

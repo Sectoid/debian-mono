@@ -1,3 +1,180 @@
+2010-11-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest.cs: More test cases for GetComponents wrt
+	different UriFormat
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Fix ASP.NET HttpResponse not to depend on a (fixed) bug in
+	UriBuilder
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test case where host name is β
+	(beta)
+
+2010-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases with different, mostly
+	invalid, ports (e.g. negative, float, too big...)
+
+2010-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add some test cases for host names
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test case where an original URI
+	contains an escaped path.
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases for Fragment and Query
+	when special characters are used. Most of them are not escaped in
+	ToString * Test/System/UriTest3.cs: Uncomment an Assert that is
+	now fixed.
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test case with an empty UserInfo
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest.cs: Adjust some test cases wrt Win32 *
+	Test/System/UriTest2.cs: Adjust a test case wrt Win32
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest.cs: Remove NET_2_0 and ONLY_1_1
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases where some bad (if
+	absolute) URI are valid when merged (as relative) with an absolute
+	URI
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test case to show that a relative
+	URI is NOT escaped by ToString
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add DnsSafeHost test cases for IPv6
+	address, one without scope id, another with a scope id
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases where an URI contains a
+	':' but is not followed by a port number
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriBuilderTest.cs: Add regression test for that
+	.ctor
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriBuilderTest.cs: Add test case with string URI
+	that do not provide a scheme - UriBuilder will default them to
+	http:// even if Uri would not parse them
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriBuilderTest.cs: Add test cases with incomplete
+	IPv6 addresses. Add test case with a relative Uri used in
+	UriBuilder ctor
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriBuilderTest.cs: Add test case with path missing
+	the initial / which shows the UriBuilder.Path property is being
+	updated after the creation of the Uri instance.
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriBuilderTest.cs: Add test case with IPv6 host
+	(address) which shows the UriBuilder.Host property is being
+	updated after the creation of the Uri instance.
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriBuilderTest.cs: Drop NET_2_0 defines and add new
+	ones for NET_4_0. Add more asserts in the test cases that were
+	failing.
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test case where %2e and %2E are
+	used
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Remove NET_2_0 and ONLY_1_1 defines
+	from tests * Test/System/UriTest3.cs: Remove NET_2_0 and
+	[Category("NotWorking")] from tests. Merge
+	MakeRelativeUri_Uri_Null_[MS|Mono] together since the (reported)
+	issue was fixed in NET_4_0
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add new test case for 'file' URIs and
+	some asserts on "custom" URI (which do support queries)
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add new test case for 'ftp' including
+	dealing with custom port and user/password data.
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases for 'nntp://'
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test case for 'news:' showing the
+	lack of Query and Port (but support for Fragment) and the
+	escape-ing differences.
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest.cs: Add test case to show that the segments
+	cannot be modified by accessing the elements of the Segment
+	property.
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Fix Uri.ToString when forward slashes are used
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases for segments on an URI
+	that contains a drive letter and (forward) slashes.
+
+2010-09-15  Raja R Harinath  <harinath@hurrynot.org>
+
+	Fix a few CRLF issues
+
+2010-09-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Correctly handle the (uncommon) 4 slashes //// case in Uri
+
+2010-09-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Fix some (long standing) NotWorking test cases on Uri
+
+2010-09-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest2.cs: Add test cases for drives versus hosts
+
+2010-09-13  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System/UriTest.cs: Adjust test cases to work with 4.0. Mark
+	with NotDotNet two test cases that are Mono/Unix-specific *
+	Test/System/UriTest2.cs: Add new test cases where a relative Uri
+	is merged with an absolute Uri (some changes in SL4/FX4 wrt FX2) *
+	Test/System/UriTest3.cs: Adjust for bugs fixed after FX 2.0.
+
 2010-08-31  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	Trim the uri in UriParser::GetComponents, just like we do in

@@ -1,3 +1,29 @@
+2011-01-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented the 4.0 type,
+	FileLevelMasterPageControlBuilder
+
+2010-12-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add support for storing elements with the same hashcode in
+	ConcurrentDictionary. Add corresponding unit test.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Plug SplitOrderedList inside TemplateControl.
+
+2010-11-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Part of fix for bug #653013. StateManagedCollection must
+	perform a full clear in LoadViewState
+
+	If all the items in the collections were saved to the view state,
+	the collection must call the Clear () method in order for the
+	OnClear and OnClearComplete methods to be invoked. Telerik
+	RadComboBox depends on it to remove dynamically added entries
+	before they are recreated when the view state is loaded by the
+	control.
+
 2010-11-11  Daniel J Sell  <dredd422@gmail.com>
 
 	[asp.net] Fix for bug #653192. making MasterPageFile handle
@@ -6,10 +32,78 @@
 	MasterPageFile should be relative to the file being parsed, not
 	the request path
 
+2010-11-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A micro-optimization to not call String.Format too much
+	in a loop.
+
+2010-11-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid locking in WireupAutomaticEvents
+
+	Replace a big lock with a ReaderWriterLockSlim.
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649551. The LosFormatter (bool, string)
+	constructor does not expect a base64-encoded string.
+
+	Telerik controls pass the string "string" as the macKeyModifier
+	parameter to the constructor. Tests show that .NET accepts such
+	input without throwing an error. The passed string is now
+	converted into a byte array and passed to the LosFormatter (bool,
+	byte[]) constructor.
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649034. Control.FindControl continues to
+	search for controls above itself if it's a naming container.
+
+	When a control is a naming container and an attempt to find a
+	control with non-segmented id (e.g. 'myControl') is made, the
+	search continues to the control's naming container if pathOffset
+	is 0, that is we're at the start of the search.
+
+2010-10-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646479. Do not call control's OnLoad twice
+	when it is dynamically added.
+
+	Control.AddedControl will call the new control's LoadRecursive
+	which would trigger its OnLoad handler. OnLoad must be called only
+	if control hasn't already been loaded.
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646984. Theme stylesheets must be output in
+	correct order.
+
+	This patch changes the way we output theme stylesheets to match
+	.NET behavior. Theme .css files are sorted using an ordinal and
+	case-insensitive comparer and are output to the page at the top of
+	the <head> element's contents instead of at the end.
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added encryption notes to
+	ObjectStateFormatter.{Serialize,Deserialize}
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649198. Implement
+	MasterPage.InstantiateInContentPlaceHolder
+
+	Code based on patch from Rikard Johansson <rajoo@mail.com>,
+	thanks!
+
 2010-10-21  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] ObjectStateFormatter.{De}serialize methods taking stream
 	use a magic value to mark the stream.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
 
 2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -26,28 +120,10 @@
 	* System.Web.UI/Page.cs: Remove code that is now unneeded (with
 	the new common cryptogrraphic code).
 
-2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+2010-10-12  Marek Habersack  <grendel@twistedcode.net>
 
-	[asp.net] Fix for bug #649551. The LosFormatter (bool, string)
-	constructor does not expect a base64-encoded string.
-
-	Telerik controls pass the string "string" as the macKeyModifier
-	parameter to the constructor. Tests show that .NET accepts such
-	input without throwing an error. The passed string is now
-	converted into a byte array and passed to the LosFormatter (bool,
-	byte[]) constructor.
-
-	This is a backport of 19e5207189c6905bd72e31e457450546b662e79d
-
-2010-10-29  Marek Habersack  <grendel@twistedcode.net>
-
-	[asp.net] Fix for bug #649034. Control.FindControl continues to
-	search for controls above itself if it's a naming container.
-
-	When a control is a naming container and an attempt to find a
-	control with non-segmented id (e.g. 'myControl') is made, the
-	search continues to the control's naming container if pathOffset
-	is 0, that is we're at the start of the search.
+	[asp.net] HiddenFieldPageStatePersister must not attempt to
+	deserialize an empty/null string
 
 2010-10-05  Marek Habersack  <grendel@twistedcode.net>
 

@@ -1,14 +1,24 @@
-using System.Collections;
-class Foo {
-	static public IEnumerable foo ()
+public class Foo
+{
+	public static class Nested
 	{
-		try { yield break; } catch { } finally { }
+		public static int Bar {
+			get {
+				// bar should be referring to Foo.Nested.bar here
+				return bar.value;
+			}
+		} 
+
+		static class bar {
+			// The desired
+			public const int value = 3;
+		}
 	}
-	static int Main ()
+
+	// The undesired
+	int bar; 
+
+	public static void Main ()
 	{
-		int i = 0;
-		foreach (object o in foo ())
-			++i;
-		return i;
 	}
 }

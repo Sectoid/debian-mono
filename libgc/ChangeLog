@@ -1,7 +1,86 @@
+2011-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	Ignore more files
+
+2010-12-16  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merged in rest of Native Client changes, untested
+
+2010-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Really fix the ia64 build.
+
+2010-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Hopefully fix the ia64 libgc build.
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Fix the OSC build breakage by only compiling mach_dep.c on
+	openbsd."
+
+	This reverts commit 103450e4a270ed47fa93fc0a99fcdb95e602c5fa.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the OSC build breakage by only compiling mach_dep.c on
+	openbsd.
+
+2010-11-29  Robert Nagy  <robert@openbsd.org>
+
+	Add support for the internal boehm-gc on OpenBSD
+
+2010-11-29  Robert Nagy  <robert@openbsd.org>
+
+	Add support for the internal boehm-gc on OpenBSD
+
+2010-11-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Make libgc use dolt too.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	make -jX should work in libgc/ now.
+
 2010-10-18  Zoltan Varga  <vargaz@gmail.com>
 
 	Avoid calling sem_post on a uninitialized semaphore during thread
 	attach, it works under linux, but fails under *bsd. Fixes #647248.
+
+2010-10-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[android] pthread_kill cannot be used safely on android
+
+	Android's fork() function does not properly update the
+	pthread_internal_t->threadid variable to point to the tid of the
+	fork()'d thread, and instead still points to the pid of zygote. As
+	a result we need to track the android tid's manually since
+	gettid() is sane, and use an alternate to pthread_kill on android
+	Additionally, disable sgen support on android until the same work
+	has been done there
+
+	r: kumpera, vargaz
+
+2010-10-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Undo mach_dep change.
+
+2010-10-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Allow -jX when compiling libgc
+
+	Add mach_dep.c to the sources. Fixes bug #644933. Thanks to
+	Mathias Ruediger.
+
+2010-09-29  Koushik Dutta  <koushd@gmail.com>
+
+	Work around Android's pthread/kernel_id/fork bug to fix mono
+	multithreading and GC_stop_world in processes that have been
+	forked.
 
 2010-08-26  Zoltan Varga  <vargaz@gmail.com>
 

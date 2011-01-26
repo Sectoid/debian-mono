@@ -1,3 +1,26 @@
+2010-11-22  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Remove IVT from System.ServiceModel on MonoDroid, MonoTouch
+	profiles.
+
+	This is ~identical to commit
+	a3ba2ab7a091b96c9e8917aab9bd9ad042a5d639, just applied to the
+	MonoDroid and MonoTouch profiles.
+
+	Furthermore, without this patch the MonoDroid & MonoTouch profiles
+	fail to build, as current versions of mcs (nicely) attempt to
+	verify that the output assembly name matches the IVT of a
+	referenced assembly, which isn't possible when System.Xml.dll has
+	an IVT entry for System.ServiceModel.Web.dll which differs from
+	System.ServiceModel.dll's IVT entry for
+	System.ServiceModel.Web.dll.
+
+2010-11-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* AssemblyInfo.cs: Remove IVT from System.ServiceModel on
+	Moonlight profile since SL use a different public key and it is
+	not required for the limited build provided by SL.
+
 2010-07-30  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* AssemblyInfo.cs : add InternalVisibleTo(sys.sm.discovery).

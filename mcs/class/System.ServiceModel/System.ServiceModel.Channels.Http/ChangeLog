@@ -1,3 +1,12 @@
+2010-11-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] AJAX GET requests work now.
+
+	HttpListenerManagerTable always looked up HttpListerManager
+	instances using the full URI while it should have disregarded the
+	/operation?parameters part of the request in order to match the
+	service endpoint's base address.
+
 2010-10-20  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] make /js and /jsdebug dispatchers work.
@@ -29,6 +38,10 @@
 2010-10-01  Atsushi Eno  <atsushi@ximian.com>
 
 	Remove extra call to HttpResponse.Flush() which would crash.
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Filter requests only by paths, excluding host and port.
 
 2010-08-30  Atsushi Eno  <atsushi@ximian.com>
 

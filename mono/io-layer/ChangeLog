@@ -1,3 +1,47 @@
+2011-01-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[sockets] Fixed reading blocking flag
+
+	Calling ioctlsocket() would set the flag... Thanks to Thad
+	Thompson for finding this.
+
+2010-12-21  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Add block device support to file_getfilesize on Linux
+
+	FileStream.Length for a block device (such as '/dev/sr0') now
+	returns actual size, rather than Zero on Linux.
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	Changes to get NaCl builds working minimally
+
+2010-12-14  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merge mono/io-layer, mono/metadata, mono/arch/x86 and configure.in
+	for Native Client
+
+2010-12-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix Process.HasExited regression
+
+	When we have a pseudo handle, we can at least check whether the
+	process is alive or not, instead of always returning FALSE.
+
+	Fixes bug #650979.
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Unref all handles on shutdown so their memory is freed.
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the thumb build.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
 2010-11-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Renaming a dangling symlink works now
@@ -5,6 +49,14 @@
 	Ditto.
 
 	Fixes bug #650779.
+
+2010-10-29  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Fix DriveInfo.GetDrives on OSX [Bug #643910]
+
+	Merge a patch from John Labovitz <johnl@johnlabovitz.com> which
+	correctly populates the DriveInfo structure on OSX instead of
+	returning random values.
 
 2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
@@ -17,23 +69,12 @@
 	Fixes bug #648133 (note that you need MONO_ENABLE_SHM for this to
 	work)
 
-2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
-	Fixed GetLogicalDriveString
+	No need to use a GArray in EnumProcesses
 
-	When calling GetLogicalDriveString, icall.c was passing the length
-	in the wrong units.
-
-	GetLogicalDriveString now translates any octal sequence found into
-	its corresponding byte. Use the UTF16 length ('items_written')
-	instead of the UTF8 input string length ('items_read') when
-	computing the total size.
-
-2010-09-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
-
-	GetProcessById now works on the Mac too
-
-	Ditto. This should fix MD problems when SHM is disabled.
+	Use the provided array instead of creating a new one and then
+	copying it to the result.
 
 2010-10-05  Michael Hutchinson  <mhutchinson@novell.com>
 
@@ -73,6 +114,18 @@
 
 	The wapi init functions call this even when shared is compiled
 	out, lets just return FALSE to get into the right codepaths.
+
+2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fixed GetLogicalDriveString
+
+	When calling GetLogicalDriveString, icall.c was passing the length
+	in the wrong units.
+
+	GetLogicalDriveString now translates any octal sequence found into
+	its corresponding byte. Use the UTF16 length ('items_written')
+	instead of the UTF8 input string length ('items_read') when
+	computing the total size.
 
 2010-08-26  Zoltan Varga  <vargaz@gmail.com>
 

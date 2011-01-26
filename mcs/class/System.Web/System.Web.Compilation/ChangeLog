@@ -1,3 +1,32 @@
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use faster string comparison in caches in
+	System.Web.Compilation
+
+2010-10-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646810. Implemented
+	FormsAuthentication.EnableFormsAUthentication + tests
+
+2010-10-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646984. Theme stylesheets must be output in
+	correct order.
+
+	This patch changes the way we output theme stylesheets to match
+	.NET behavior. Theme .css files are sorted using an ordinal and
+	case-insensitive comparer and are output to the page at the top of
+	the <head> element's contents instead of at the end.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-08  Kornél Pál  <kornelpal@gmail.com>
+
+	[asp.net] Fix for bug #643763. BuildManager must not fail with
+	BuildProviders lacking the BuildProviderAppliesTo attribute.
+
 2010-09-28  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Get rid of a possible (although unlikely) race condition

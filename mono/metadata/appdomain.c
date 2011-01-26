@@ -73,7 +73,7 @@
  * Changes which are already detected at runtime, like the addition
  * of icalls, do not require an increment.
  */
-#define MONO_CORLIB_VERSION 93
+#define MONO_CORLIB_VERSION 94
 
 typedef struct
 {
@@ -990,7 +990,7 @@ add_assemblies_to_domain (MonoDomain *domain, MonoAssembly *ass, GHashTable *ht)
 		mono_assembly_addref (ass);
 		g_hash_table_insert (ht, ass, ass);
 		domain->domain_assemblies = g_slist_prepend (domain->domain_assemblies, ass);
-		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Assembly %s %p added to domain %s, ref_count=%d\n", ass->aname.name, ass, domain->friendly_name, ass->ref_count);
+		mono_trace (G_LOG_LEVEL_INFO, MONO_TRACE_ASSEMBLY, "Assembly %s[%p] added to domain %s, ref_count=%d", ass->aname.name, ass, domain->friendly_name, ass->ref_count);
 	}
 
 	if (ass->image->references) {
@@ -2173,7 +2173,6 @@ typedef struct unload_data {
 	char *failure_reason;
 } unload_data;
 
-#ifdef HAVE_SGEN_GC
 static void
 deregister_reflection_info_roots_nspace_table (gpointer key, gpointer value, gpointer image)
 {
@@ -2237,7 +2236,6 @@ deregister_reflection_info_roots (MonoDomain *domain)
 	mono_domain_assemblies_unlock (domain);
 	mono_loader_unlock ();
 }
-#endif
 
 static guint32 WINAPI
 unload_thread_main (void *arg)
@@ -2293,9 +2291,10 @@ unload_thread_main (void *arg)
 #endif
 	for (i = 0; i < domain->class_vtable_array->len; ++i)
 		clear_cached_vtable (g_ptr_array_index (domain->class_vtable_array, i));
-#ifdef HAVE_SGEN_GC
 	deregister_reflection_info_roots (domain);
-#endif
+
+	mono_assembly_cleanup_domain_bindings (domain->domain_id);
+
 	mono_domain_unlock (domain);
 	mono_loader_unlock ();
 
@@ -2312,7 +2311,7 @@ unload_thread_main (void *arg)
 
 	mono_gc_collect (mono_gc_max_generation ());
 
-	mono_thread_detach  (thread);
+	mono_thread_detach (thread);
 
 	return 0;
 }

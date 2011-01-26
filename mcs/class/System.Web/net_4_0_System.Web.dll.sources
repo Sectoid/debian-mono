@@ -22,6 +22,7 @@ System.Web.SessionState_2.0/SessionStateBehavior.cs
 System.Web.Routing/PageRouteHandler.cs
 System.Web.UI/ClientIDMode.cs
 System.Web.UI/DataKeyPropertyAttribute.cs
+System.Web.UI/FileLevelMasterPageControlBuilder.cs
 System.Web.UI/IDataKeysControl.cs
 System.Web.UI/ViewStateMode.cs
 System.Web.UI.WebControls/IDataBoundControl.cs
@@ -29,8 +30,11 @@ System.Web.UI.WebControls/IDataBoundItemControl.cs
 System.Web.UI.WebControls/IDataBoundListControl.cs
 System.Web.UI.WebControls/IFieldControl.cs
 System.Web.UI.WebControls/IRenderOuterTable.cs
+System.Web.UI.WebControls/MenuListRenderer.cs
 System.Web.UI.WebControls/MenuRenderingMode.cs
+System.Web.UI.WebControls/NamedCssStyleCollection.cs
 System.Web.UI.WebControls/RouteParameter.cs
+System.Web.UI.WebControls/StyleBlock.cs
 System.Web.UI.WebControls/WizardLayoutContainer.cs
 System.Web.UI.WebControls/WizardLayoutNavigationContainer.cs
 System.Web.Util/RequestValidationSource.cs

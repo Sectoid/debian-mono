@@ -1,3 +1,12 @@
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Copy metadata from Project items to target outputs.
+
+	Copy metadata from Project items to the corresponding target
+	outputs in MSBuild task.
+
+	Fix the corresponding test also.
+
 2010-08-04  Ankit Jain  <radical@corewars.org>
 
 	* Test/*/EngineTest.cs (TestGlobalPropertiesImport*): New tests.

@@ -14,6 +14,7 @@
 
 @SET_MAKE@
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -33,6 +34,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@bin_PROGRAMS = mprof-report$(EXEEXT)
 subdir = mono/profiler
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in ChangeLog
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -53,7 +55,7 @@ am__vpath_adj = case $$p in \
     *) f=$$p;; \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
-am__installdirs = "$(DESTDIR)$(libdir)"
+am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libmono_profiler_aot_la_DEPENDENCIES =  \
@@ -61,37 +63,40 @@ libmono_profiler_aot_la_DEPENDENCIES =  \
 am_libmono_profiler_aot_la_OBJECTS = mono-profiler-aot.lo
 libmono_profiler_aot_la_OBJECTS =  \
 	$(am_libmono_profiler_aot_la_OBJECTS)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@am_libmono_profiler_aot_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@	$(libdir)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_aot_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@am_libmono_profiler_aot_la_rpath =  \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@	-rpath $(libdir)
 libmono_profiler_cov_la_DEPENDENCIES =  \
 	$(top_builddir)/mono/mini/libmono-$(API_VER).la
 am_libmono_profiler_cov_la_OBJECTS = mono-cov.lo
 libmono_profiler_cov_la_OBJECTS =  \
 	$(am_libmono_profiler_cov_la_OBJECTS)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@am_libmono_profiler_cov_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@	$(libdir)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_cov_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@am_libmono_profiler_cov_la_rpath =  \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@	-rpath $(libdir)
+am__DEPENDENCIES_1 =
 libmono_profiler_iomap_la_DEPENDENCIES =  \
-	$(top_builddir)/mono/mini/libmono-$(API_VER).la
+	$(top_builddir)/mono/mini/libmono-$(API_VER).la \
+	$(am__DEPENDENCIES_1)
 am_libmono_profiler_iomap_la_OBJECTS = mono-profiler-iomap.lo
 libmono_profiler_iomap_la_OBJECTS =  \
 	$(am_libmono_profiler_iomap_la_OBJECTS)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@am_libmono_profiler_iomap_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@	$(libdir)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_iomap_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
-am__DEPENDENCIES_1 =
-libmono_profiler_logging_la_DEPENDENCIES =  \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@am_libmono_profiler_iomap_la_rpath =  \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@	-rpath $(libdir)
+libmono_profiler_log_la_DEPENDENCIES =  \
 	$(top_builddir)/mono/mini/libmono-$(API_VER).la \
 	$(am__DEPENDENCIES_1)
-am_libmono_profiler_logging_la_OBJECTS = mono-profiler-logging.lo
-libmono_profiler_logging_la_OBJECTS =  \
-	$(am_libmono_profiler_logging_la_OBJECTS)
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@am_libmono_profiler_logging_la_rpath = -rpath \
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@	$(libdir)
+am_libmono_profiler_log_la_OBJECTS = proflog.lo
+libmono_profiler_log_la_OBJECTS =  \
+	$(am_libmono_profiler_log_la_OBJECTS)
+libmono_profiler_log_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(libmono_profiler_log_la_LDFLAGS) $(LDFLAGS) -o $@
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@am_libmono_profiler_log_la_rpath =  \
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@	-rpath $(libdir)
+binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
+PROGRAMS = $(bin_PROGRAMS)
+am_mprof_report_OBJECTS = decode.$(OBJEXT)
+mprof_report_OBJECTS = $(am_mprof_report_OBJECTS)
+mprof_report_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -104,11 +109,11 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 SOURCES = $(libmono_profiler_aot_la_SOURCES) \
 	$(libmono_profiler_cov_la_SOURCES) \
 	$(libmono_profiler_iomap_la_SOURCES) \
-	$(libmono_profiler_logging_la_SOURCES)
+	$(libmono_profiler_log_la_SOURCES) $(mprof_report_SOURCES)
 DIST_SOURCES = $(libmono_profiler_aot_la_SOURCES) \
 	$(libmono_profiler_cov_la_SOURCES) \
 	$(libmono_profiler_iomap_la_SOURCES) \
-	$(libmono_profiler_logging_la_SOURCES)
+	$(libmono_profiler_log_la_SOURCES) $(mprof_report_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -196,6 +201,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -304,23 +310,39 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+@HAVE_ZLIB_FALSE@Z_LIBS = 
+@HAVE_ZLIB_TRUE@Z_LIBS = -lz
 INCLUDES = \
 	-fexceptions -DMONO_USE_EXC_TABLES	\
 	-I$(top_srcdir) 	\
 	$(GLIB_CFLAGS)
 
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_FALSE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la libmono-profiler-iomap.la
-@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_LINUX_TRUE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la libmono-profiler-logging.la libmono-profiler-iomap.la
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@lib_LTLIBRARIES = libmono-profiler-cov.la libmono-profiler-aot.la libmono-profiler-iomap.la libmono-profiler-log.la
+@DISABLE_PROFILER_FALSE@@JIT_SUPPORTED_TRUE@@PLATFORM_DARWIN_TRUE@libmono_profiler_log_la_LDFLAGS = -Wl,-undefined -Wl,suppress -Wl,-flat_namespace
 
 # Do something that uses OPROFILE_CFLAGS and OPROFILE_LIBS
 libmono_profiler_cov_la_SOURCES = mono-cov.c
 libmono_profiler_cov_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
 libmono_profiler_aot_la_SOURCES = mono-profiler-aot.c
 libmono_profiler_aot_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
-libmono_profiler_logging_la_SOURCES = mono-profiler-logging.c
-libmono_profiler_logging_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(GLIB_LIBS)
+#libmono_profiler_logging_la_SOURCES = mono-profiler-logging.c
+#libmono_profiler_logging_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(GLIB_LIBS)
 libmono_profiler_iomap_la_SOURCES = mono-profiler-iomap.c
-libmono_profiler_iomap_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la
+libmono_profiler_iomap_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(GLIB_LIBS)
+libmono_profiler_log_la_SOURCES = proflog.c
+libmono_profiler_log_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(Z_LIBS)
+mprof_report_SOURCES = decode.c
+mprof_report_LDADD = $(Z_LIBS)
+PLOG_TESTS_SRC = test-alloc.cs test-busy.cs test-monitor.cs test-excleave.cs \
+	test-heapshot.cs test-traces.cs
+
+PLOG_TESTS = $(PLOG_TESTS_SRC:.cs=.exe)
+with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/net_2_0
+RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper
+MCS = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/gmcs.exe -unsafe -nowarn:0162 -nowarn:0168 -nowarn:0219 -debug
+EXTRA_DIST = utils.c utils.h proflog.h log-profiler.txt perf_event.h \
+	$(PLOG_TESTS_SRC) ptestrunner.pl
+
 all: all-am
 
 .SUFFIXES:
@@ -387,8 +409,39 @@ libmono-profiler-cov.la: $(libmono_profiler_cov_la_OBJECTS) $(libmono_profiler_c
 	$(LINK) $(am_libmono_profiler_cov_la_rpath) $(libmono_profiler_cov_la_OBJECTS) $(libmono_profiler_cov_la_LIBADD) $(LIBS)
 libmono-profiler-iomap.la: $(libmono_profiler_iomap_la_OBJECTS) $(libmono_profiler_iomap_la_DEPENDENCIES) 
 	$(LINK) $(am_libmono_profiler_iomap_la_rpath) $(libmono_profiler_iomap_la_OBJECTS) $(libmono_profiler_iomap_la_LIBADD) $(LIBS)
-libmono-profiler-logging.la: $(libmono_profiler_logging_la_OBJECTS) $(libmono_profiler_logging_la_DEPENDENCIES) 
-	$(LINK) $(am_libmono_profiler_logging_la_rpath) $(libmono_profiler_logging_la_OBJECTS) $(libmono_profiler_logging_la_LIBADD) $(LIBS)
+libmono-profiler-log.la: $(libmono_profiler_log_la_OBJECTS) $(libmono_profiler_log_la_DEPENDENCIES) 
+	$(libmono_profiler_log_la_LINK) $(am_libmono_profiler_log_la_rpath) $(libmono_profiler_log_la_OBJECTS) $(libmono_profiler_log_la_LIBADD) $(LIBS)
+install-binPROGRAMS: $(bin_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
+	@list='$(bin_PROGRAMS)'; for p in $$list; do \
+	  p1=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  if test -f $$p \
+	     || test -f $$p1 \
+	  ; then \
+	    f=`echo "$$p1" | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'`; \
+	   echo " $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(binPROGRAMS_INSTALL) '$$p' '$(DESTDIR)$(bindir)/$$f'"; \
+	   $(INSTALL_PROGRAM_ENV) $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(binPROGRAMS_INSTALL) "$$p" "$(DESTDIR)$(bindir)/$$f" || exit 1; \
+	  else :; fi; \
+	done
+
+uninstall-binPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(bin_PROGRAMS)'; for p in $$list; do \
+	  f=`echo "$$p" | sed 's,^.*/,,;s/$(EXEEXT)$$//;$(transform);s/$$/$(EXEEXT)/'`; \
+	  echo " rm -f '$(DESTDIR)$(bindir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(bindir)/$$f"; \
+	done
+
+clean-binPROGRAMS:
+	@list='$(bin_PROGRAMS)'; for p in $$list; do \
+	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
+	  echo " rm -f $$p $$f"; \
+	  rm -f $$p $$f ; \
+	done
+mprof-report$(EXEEXT): $(mprof_report_OBJECTS) $(mprof_report_DEPENDENCIES) 
+	@rm -f mprof-report$(EXEEXT)
+	$(LINK) $(mprof_report_OBJECTS) $(mprof_report_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -396,10 +449,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/decode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-cov.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-profiler-aot.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-profiler-iomap.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mono-profiler-logging.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proflog.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -502,10 +556,13 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) check-local
 check: check-am
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LTLIBRARIES) $(PROGRAMS)
+install-binPROGRAMS: install-libLTLIBRARIES
+
 installdirs:
-	for dir in "$(DESTDIR)$(libdir)"; do \
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -534,8 +591,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
-	mostlyclean-am
+clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
+	clean-libtool mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -557,7 +614,7 @@ install-data-am:
 
 install-dvi: install-dvi-am
 
-install-exec-am: install-libLTLIBRARIES
+install-exec-am: install-binPROGRAMS install-libLTLIBRARIES
 
 install-html: install-html-am
 
@@ -589,15 +646,16 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-libLTLIBRARIES
+uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libLTLIBRARIES clean-libtool ctags distclean \
-	distclean-compile distclean-generic distclean-libtool \
-	distclean-tags distdir dvi dvi-am html html-am info info-am \
-	install install-am install-data install-data-am install-dvi \
+.PHONY: CTAGS GTAGS all all-am check check-am check-local clean \
+	clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
+	clean-libtool ctags distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-binPROGRAMS install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-info install-info-am \
 	install-libLTLIBRARIES install-man install-pdf install-pdf-am \
@@ -605,8 +663,17 @@ uninstall-am: uninstall-libLTLIBRARIES
 	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-libLTLIBRARIES
+	tags uninstall uninstall-am uninstall-binPROGRAMS \
+	uninstall-libLTLIBRARIES
 
+
+%.exe: %.cs
+	$(MCS) -out:$@ $<
+
+testlog: $(PLOG_TESTS)
+	$(with_mono_path) perl $(srcdir)/ptestrunner.pl $(top_builddir)
+
+check-local: testlog
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

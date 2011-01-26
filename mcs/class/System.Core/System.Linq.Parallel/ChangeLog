@@ -1,3 +1,65 @@
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Wrap PLinq processing task body in a try/finally so that
+	endAction is always called no matter what happen.
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Cleanup and prettify code from earlier commit
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove debugging spew wrongly introduced by earlier commit
+
+2010-11-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Remove layer of unneeded indirections in
+	OrderingEnumerator
+
+2010-11-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use a custom-wrapper for Aggregate operation invocation
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Use a custom loop for iterating in ProcessAndAggregate to
+	avoid the if cost at each round.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Check ExecutionMode before executing sequentially
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add automatic sequential processing of query
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add the plumbery for checking source data size when
+	possible and setting ShouldBeSequential appropriately
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Sanitize QueryOptions to use property everywhere and add
+	ShouldBeSequential option.
+
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert "[PLinq] Honor WithDegreeOfParallelism if present"
+
+	This reverts commit 59260b1df7d7ddfeb38cd616b883755d49e150c2.
+
+	The degree of parallelism value was actually already registered
+	somewhere else.
+
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Honor WithDegreeOfParallelism if present
+
 2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	[PLinq] Add Cancellation checks even deeper. Introduce merge

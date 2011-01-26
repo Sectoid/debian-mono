@@ -1,3 +1,38 @@
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix continuation not being scheduled because of too early and too
+	greedy disposing.
+
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove now unused internal classes
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add unit test for nested Parallel.For execution
+
+2011-01-05  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Ensure task wait chain isn't executed out of order in scheduler
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use proper pattern for executing synchronous Task
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fixicate some unit test
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Slight tweak of WaitAny unit test
+
+2010-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use Task helper methods in TaskCompletionSource instead of manual
+	setting, allow continuation flow to happen smoothly and task
+	status to be set accordingly.
+
 2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Increase the number of repeated run in stress test.

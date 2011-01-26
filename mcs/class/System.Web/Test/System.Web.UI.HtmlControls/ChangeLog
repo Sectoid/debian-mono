@@ -1,3 +1,12 @@
+2011-01-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #662918. Do not create the HtmlTitle child
+	control for HtmlHead if <title> wasn't used in the page code.
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more missing protected internal modifiers
+
 2010-06-21  Marek Habersack  <mhabersack@novell.com>
 
 	* HtmlImageTest.cs: fixed an invalid test.

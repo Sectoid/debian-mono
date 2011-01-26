@@ -428,12 +428,13 @@ namespace System.Reflection.Emit
 #endif
 		}
 
+		// Still in use by al.exe
 		internal void EmbedResourceFile (string name, string fileName)
 		{
 			EmbedResourceFile (name, fileName, ResourceAttributes.Public);
 		}
 
-		internal void EmbedResourceFile (string name, string fileName, ResourceAttributes attribute)
+		void EmbedResourceFile (string name, string fileName, ResourceAttributes attribute)
 		{
 			if (resources != null) {
 				MonoResource[] new_r = new MonoResource [resources.Length + 1];
@@ -452,10 +453,9 @@ namespace System.Reflection.Emit
 				s.Read (resources [p].data, 0, (int)len);
 				s.Close ();
 			} catch {
-				/* do something */
 			}
 		}
-
+/*
 		internal void EmbedResource (string name, byte[] blob, ResourceAttributes attribute)
 		{
 			if (resources != null) {
@@ -470,7 +470,7 @@ namespace System.Reflection.Emit
 			resources [p].attrs = attribute;
 			resources [p].data = blob;
 		}
-
+*/
 		internal void AddTypeForwarder (Type t) {
 			if (t == null)
 				throw new ArgumentNullException ("t");
@@ -610,6 +610,8 @@ namespace System.Reflection.Emit
 			/*
 			 * The format of the argument byte array is not documented
 			 * so this method is impossible to implement.
+			 *
+			 * https://connect.microsoft.com/VisualStudio/feedback/details/95784/fatal-assemblybuilder-defineunmanagedresource-byte-and-modulebuilder-defineunmanagedresource-byte-bugs-renders-them-useless
 			 */
 
 			throw new NotImplementedException ();
@@ -1254,11 +1256,11 @@ namespace System.Reflection.Emit
 			Module[] modules = GetModulesInternal ();
 
 			if (!getResourceModules) {
-				ArrayList result = new ArrayList (modules.Length);
+				var result = new List<Module> (modules.Length);
 				foreach (Module m in modules)
 					if (!m.IsResource ())
 						result.Add (m);
-				return (Module[])result.ToArray (typeof (Module));
+				return result.ToArray ();
 			}
 			return modules;
 		}

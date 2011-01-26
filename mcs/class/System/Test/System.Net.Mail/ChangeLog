@@ -1,3 +1,12 @@
+2010-10-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Misc. fixes
+
+	-Fix validation of display name and email. -Cache user, host and
+	ToString() values. -Fix Equals and GetHashCode.
+
+	Fixes bug 645871.
+
 2010-08-04  Raja R Harinath  <harinath@hurrynot.org>
 
 	Implement envelope sender semantics in SmtpClient

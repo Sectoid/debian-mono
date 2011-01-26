@@ -1,3 +1,86 @@
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Build culevel in basic as well
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	[661642] Fixed v4 resgen compilation
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
+2010-09-22  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Revert "mdoc 2.0-only profile build support, take 3!"
+
+	We'll instead just disable the docs build entirely if
+	--with-profile4=no is specified [future commit, not this one].
+
+2010-09-22  Jonathan Pryor  <jonpryor@vt.edu>
+
+	mdoc 2.0-only profile build support, take 3!
+
+	Further discussion suggested that, even if mdoc 2.0 works, it
+	hasn't gotten widespread testing (as it's been a 4.0 app for
+	months), so it would be preferable to keep it as a 4.0 app.
+
+	However, it still needs to be built under 2.0 so that a
+	--with-profile4=no build can...build...without errors.
+
+	Thus, the compromise: build mdoc twice, once for each profile.
+	This will ensure that *some* version of mdoc is around when
+	mcs/docs is built.
+
+	Unfortunately we can't place mdoc into $(per_profile_dirs), as
+	these are built before $(net_2_0_dirs) (and thus before monodoc,
+	which needs to be built before mdoc). Thus the compromise of
+	listing mdoc in *both* $(net_2_0_dirs) and $(net_4_0_dirs),
+	allowing build dependencies to be met.
+
+2010-09-22  Marek Habersack  <grendel@twistedcode.net>
+
+	Revert "mdoc 2.0-only profile build support, take 2!"
+
+	This reverts commit 313633fc67cf1479514019a56143e5ad1643d28f
+	because it breaks the build.
+
+2010-09-21  Jonathan Pryor  <jonpryor@vt.edu>
+
+	mdoc 2.0-only profile build support, take 2!
+
+	Further discussion suggested that, even if mdoc 2.0 works, it
+	hasn't gotten widespread testing (as it's been a 4.0 app for
+	months), so it would be preferable to keep it as a 4.0 app.
+
+	However, it still needs to be built under 2.0 so that a
+	--with-profile4=no build can...build...without errors.
+
+	Thus, the compromise: build mdoc twice, once for each profile.
+	This will ensure that *some* version of mdoc is around when
+	mcs/docs is built.
+
+2010-09-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Build monodoc before mdoc.
+
+	mdoc deps on monodoc. Doh!
+
+2010-09-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Make mdoc a 2.0 app, not a 4.0 app.
+
+	The problem is build sanity: it's possible to disable the 4.0
+	profile (--with-profile4=no) while not disabling documentation
+	building (--with-mcs-docs=yes is the default). The result would be
+	a 4.0-less build, and thus no mdoc, and thus no mdoc to assemble
+	the documentation, and thus a build break as we attempted to use
+	an app during the build which didn't exist.
+
+	Oops.
+
+	mdoc doesn't need to be a 4.0 app anyway...
+
 2010-08-13  Marek Safar  <marek.safar@gmail.com>
 
 	Remove Mono.Options.dll dependency

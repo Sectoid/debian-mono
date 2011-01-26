@@ -1,14 +1,53 @@
-2010-09-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
 
-	UDP sockets allow connections to Any
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
 
-	UDP sockets that call Connect() to set a default address for
-	datagrams sent, can call Connect() again with IPv6Any or Any to
-	'disconnect'.
+2011-01-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
-	Fixes bug #639098.
+	Socket is not connected after error
 
-2010-10-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+2010-12-13  Michael Hutchinson  <mhutchinson@novell.com>
+
+	Socket.Dispose is public in 4.0.
+
+2010-12-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't throw in EndReceive/EndSend + out error
+
+	The overloads of EndReceive and EndSend that have an out
+	SocketError parameter do not throw.
+
+	Patch by Sven Groot that fixes bug #659056.
+
+2010-12-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle closed sockets in the callbacks
+
+	Accept returns a Socket in AcceptSocket even when the listener is
+	closed. Handle ObjectDisposedException for the other callbacks.
+
+	Fixes bug #657593.
+
+2010-11-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Sockets] Support Remote/LocalEndPoint for AF_UNIX
+
+	We were not handling correctly the AF_UNIX family when getting the
+	socket name or the peer name.
+
+	Fixes bug #655637.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-13  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SocketAsyncEventArgs.cs: Remove TODO on SocketClientAccessPolicy
+	Protocol property
+
+2010-10-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Handle special case when disposing a socket.
 
@@ -16,9 +55,30 @@
 	read/write pending, one of the callbacks could call
 	DisposeAllOnClose() while another one is waiting on the lock. Once
 	the lock is acquired, queue.Count will be 0 and Dequeue would
-	fail. This is fixed now.
+	fail. This if fixed now.
 
 	Fixes bug #645675.
+
+2010-10-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	The EndPoint cannot be null
+
+	The EndPoint argument in Begin/EndSendTo cannot be null.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle error in BeginAcceptReceive
+
+	We were ignore possible errors when reading after a socket has
+	been accepted.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Schedule the user callback from unmanaged code
+
+	When possible, schedule the user callback from unmanaged code. We
+	pass it from the IO pool to the regular pool after our internal
+	callback is finished.
 
 2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
@@ -28,6 +88,126 @@
 	clogging the IO pool.
 
 	Fixes bug #639656.
+
+2010-09-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Fix, by explicitely throwing
+	an NRE, the checks in [Receive|Send]Async methods - otherwise an
+	exception would occur later, on another thread and close the
+	socket (leading to other, unexpected, exceptions)
+
+2010-09-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/SocketAsyncEventArgs.cs: Move policy
+	restriction and elevated trust check outside of loop since its
+	value won't change based on the ipaddress
+
+2010-09-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Do not #id-def out
+	[Receive|Send] Generic from moonlight build
+
+2010-09-24  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/SocketAsyncEventArgs.cs: Set the Socket
+	RemoteEndPoint to our RemoteEndPoint on Connect operation. *
+	System.Net.Sockets/Socket_2_1.cs: Return the 'candidate' EndPoint
+	provided by SocketAsyncEventArgs in ConnectAsync (intead of null)
+	until the connection is completed.
+
+2010-09-27  Jb Evain  <jbevain@gmail.com>
+
+	Fix the moonlight build
+
+2010-09-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Set LastOperation properly
+
+	SocketAsyncEventArgs.LastOperation is set when the operation is
+	invoked. Reset the error status before each new *Async() call.
+
+2010-09-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Bypass BeginInvoke for asynch. operations
+
+	The code involved in a delegate BeginInvoke is too heavy and of no
+	use for socket asynchronous operations. With these changes, we
+	bypass all that and send the work items directly to the
+	asynchronous IO queue, improving performance and lowering memory
+	use.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	ConnectAsync() security checks
+
+	-ConnectAsync() changed to make security checks for all endpoints
+	before trying to connect for the first time. -Use the socket
+	Connect() call instead of repeating the same stuff. Connect should
+	be splitted in 2 pieces (DNS + Connection attempts).
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Added support for ArraySegment
+
+	-Removed NET_2_0 -Implemented support for the Receive/Send
+	overloads that take a list of ArraySegments.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Made the moonlight profile happy.
+
+	Disabled operations not allowed under moonlight.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Move async IO code to Socket_2_1
+
+	Moved internal classes to Socket_2_1.
+
+2010-09-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Rework SocketAsyncEventArgs internals
+
+	-Removed #if NET_2_0 -All the *Async() calls but ConnectAsync()
+	are routed through the asynch IO threadpool instead of creating a
+	new short-lived thread for every operation. -When reusing a
+	SocketAsyncEventArgs only 1 new object, a delegate, is created.
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Sockets/Socket_2_1.cs: Add checks for invalid
+	AddressFamily, SocketType and ProtocolType (to throw
+	ArgumentException). Add negative check for Ttl property. Add
+	AddressFamily mismatch checks to ConnectAsync methods
+
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	LocalEndPoint works now for non-blocking connects
+
+	We didn't keep the endpoint around for non-blocking connects and
+	later, when Poll() was called, we didn't have the information.
+	Also 'isbound' wasn't being set in a few places and UDP sockets
+	needed to be marked as not connected after a call to Connect()
+	with an Any address.
+
+	Removed an old test for Connect(Any) with UDP sockets, since this
+	is used to disconnect them now.
+
+	Fixes bug #640749.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Fix the moonlight build
+
+2010-09-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	UDP sockets allow connections to Any
+
+	UDP sockets that call Connect() to set a default address for
+	datagrams sent, can call Connect() again with IPv6Any or Any to
+	'disconnect'.
+
+	Fixes bug #639098.
 
 2010-04-21  Sebastien Pouliot  <sebastien@ximian.com>
 

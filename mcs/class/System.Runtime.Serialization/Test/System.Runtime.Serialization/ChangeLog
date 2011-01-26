@@ -1,3 +1,18 @@
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix DataContractResolver.ResolveName() support in deserializer.
+	Add roundtrip test.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement DataContractResolver support. At least TryResolveType in
+	serializer should work.
+
+2010-09-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Add DataContractResolver stuff (dummy), and fix Id reference from
+	inside the referenced object.
+
 2010-08-06  Atsushi Eno  <atsushi@ximian.com>
 
 	KnownTypes should return the actual types.

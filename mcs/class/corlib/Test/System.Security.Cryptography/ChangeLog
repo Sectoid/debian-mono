@@ -1,3 +1,35 @@
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Buffer sizes
+
+	workingBlock should be the InputBlockSize and currentBlock the
+	OutputBlockSize. Allocate currentBlock lazily.
+
+	Test contributed by Bassam Tabbara. Fixes bug #644740.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[CryptoStream] Invalid enum in ctor
+
+	Throw on invalid enum value in the ctor.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Dispose calls FlushFinalBlock
+
+	Dispose calls FlushFinalBlock (even for Read mode) and this in
+	turn calls either FlushFinalBlock or Flush on the underlying
+	stream.
+
+2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix CryptoStream.Dispose
+
+	-Dispose will call TransformFinalBlock() for Read streams. Fixes
+	bug #644648. -Dispose () will call Dispose (bool). Fixes bug
+	#644654. -Stream.Close calls GC.SuppressFinalize(). Fixes bug
+	#644660.
+
 2009-09-22  Sebastien Pouliot  <sebastien@ximian.com> 
 
 	* CryptoStreamTest.cs: Add (nunit-ized) test cases provided by

@@ -1,3 +1,64 @@
+2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the win32 build
+
+2011-01-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add vcxproj files for msbuild
+
+2011-01-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	Add __default_codegen__ to *all* msvc profiles.
+
+2011-01-07  Jonathan Pobst  <monkey@jpobst.com>
+
+	Add __default_codegen__ define to fix the msvc build.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Update for moving \mcs to \mono\mcs.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	mono.dll -> mono-2.0.dll
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	All the other vcxproj files seem to be build to $(Platform)
+	instead of $(Platform)_$(Configuration), so make this one match.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Remove obsolete files from MSVC build.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Build 'eglib' in the Win32|Release profile.
+
+2010-12-22  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing files needed for windows to the tarball
+
+2010-11-17  joncham  <joncham@gmail.com>
+
+	Update vcxproj files.
+
+2010-09-10  joncham  <joncham@gmail.com>
+
+	Update mono.sln for 2010
+
+2010-09-10  joncham  <joncham@gmail.com>
+
+	Add vcxproj files
+
+2010-09-07  joncham  <joncham@gmail.com>
+
+	Migrate vcproj files to VS2010
+
+2010-09-10  unknown  <Michael@.(none)>
+
+	[windows] Update Mono.def
+
 2010-06-28  Robert Jordan  <robertj@gmx.net>
 
 	* mono.def: Add mono_free symbol (exposed by mono-publib.h).

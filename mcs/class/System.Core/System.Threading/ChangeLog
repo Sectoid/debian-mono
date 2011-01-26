@@ -1,3 +1,70 @@
+2010-12-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[ReaderWriterLockSlim] Fix for #656353. Add corresponding unit
+	test.
+
+	When in SupportsRecursion mode, a test was not including proper
+	state check for short-circuiting.
+
+2010-11-23  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix ReaderWriterLockSlim Exit methods in SupportsRecursion mode
+	and add corresponding unit tests
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Another fix related to the rebase
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix compile error introduced by rebasing
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect ExitUpgradeable part of ReaderWriterLockSlim against
+	asynchronous exception.
+
+	This ensure that the lock state remains consistent even when it's
+	interrupted by an async exception (such as ThreadAbortException).
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect Enter/Exit write part of ReaderWriterLockSlim against
+	asynchronous exception.
+
+	This ensure that the lock state remains consistent even when it's
+	interrupted by an async exception (such as ThreadAbortException).
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect Enter/Exit read part of ReaderWriterLockSlim against
+	asynchronous exception.
+
+	This ensure that the lock state remains consistent even when it's
+	interrupted by an async exception (such as ThreadAbortException).
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Final performance improvement on ReaderWriterLockSlim
+
+2010-11-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove CurrentLockState in ReaderWriterLockSlim and reuse
+	ThreadLockState instance more often.
+
+2010-11-08  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Small condition fix in ReaderWriterLockSlim, avoid an extra loop
+	pass.
+
+2010-11-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	ReaderWriterLockSlim performance improvements
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add tiny bit of doc on ReaderWriterLockSlim.
+
 2010-09-29  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	[ReaderWriterLockSlim] Fix state corruption and race in a special
@@ -9,14 +76,14 @@
 	step in the middle of Upgradeable actually upgrading to write
 	mode.
 
-	Conflicts:
-
-	mcs/class/System.Core/System.Threading/ReaderWriterLockSlim.cs
-
 2010-09-28  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Turn Is*LockHeld properties into thread-specific values in
 	ReaderWriterLockSlim. Add corresponding unit tests.
+
+2010-09-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add tidbits of documentation to ReaderWriterLockSlim.
 
 2010-09-22  Jérémie Laval  <jeremie.laval@gmail.com>
 
@@ -27,10 +94,6 @@
 	before RwRead was removed and another Upgradeable operation
 	happened at the same time.
 
-2010-09-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
-
-	From master
-
 2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Allow recursive Write + n * Read lock pattern for
@@ -40,6 +103,14 @@
 
 	Generalize ThreadLockState to include recursive count informations
 	and update them accordingly in the different Enter/Exit methods
+
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Change the key of the inner dictionary to an int id instead of the
+	instance itself
+
+	It prevents object references to the rwlslim to be kept and thus
+	not GC'ed
 
 2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
 

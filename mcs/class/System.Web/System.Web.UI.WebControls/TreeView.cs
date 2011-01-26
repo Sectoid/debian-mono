@@ -1390,8 +1390,9 @@ namespace System.Web.UI.WebControls
 			writer.AddStyleAttribute (HtmlTextWriterStyle.BorderWidth, "0");
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
 
-			Unit nodeSpacing = GetNodeSpacing (node);
 #if !NET_4_0
+			Unit nodeSpacing = GetNodeSpacing (node);
+
 			if (nodeSpacing != Unit.Empty && (node.Depth > 0 || node.Index > 0))
 				RenderMenuItemSpacing (writer, nodeSpacing);
 #endif
@@ -1621,7 +1622,7 @@ namespace System.Web.UI.WebControls
 				return;
 
 			writer.RenderBeginTag (HtmlTextWriterTag.Table);
-			writer.AddAttribute (HtmlTextWriterAttribute.Height, ((int) value).ToString () + "dupa1", false);
+			writer.AddAttribute (HtmlTextWriterAttribute.Height, ((int) value).ToString (), false);
 			writer.RenderBeginTag (HtmlTextWriterTag.Tr);
 			writer.RenderBeginTag (HtmlTextWriterTag.Td);
 			writer.RenderEndTag (); // td

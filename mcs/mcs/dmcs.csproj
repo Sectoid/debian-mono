@@ -53,6 +53,7 @@
       <Link>MonoSymbolWriter.cs</Link>
     </Compile>
     <Compile Include="argument.cs" />
+    <Compile Include="assembly.cs" />
     <Compile Include="AssemblyInfo.cs">
     </Compile>
     <Compile Include="anonymous.cs">
@@ -122,6 +123,7 @@
     <Compile Include="pending.cs">
     </Compile>
     <Compile Include="property.cs" />
+    <Compile Include="reflection.cs" />
     <Compile Include="report.cs">
     </Compile>
     <Compile Include="rootcontext.cs">

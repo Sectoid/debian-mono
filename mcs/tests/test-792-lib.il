@@ -8,6 +8,7 @@
 
 .assembly 'test-792-lib'
 {
+//	.custom instance void ['missing-lib']System.Runtime.CompilerServices.ExtensionAttribute::.ctor() = ( 01 00 00 00 ) 
 }
 
 .module 'test-792-lib.dll'
@@ -35,13 +36,21 @@
   .custom instance void [mscorlib]System.ObsoleteAttribute::.ctor() = ( 01 00 00 00 ) 
   .field private class [mscorlib]System.Collections.Generic.List`1<valuetype ['missing-lib']XX> field2
   .field private class ['missing-lib']XX field3
+  .field public class MembersDelayed[] fooArray
+  .field private static initonly class['missing-lib']XX field4
+  
   .method public hidebysig specialname rtspecialname 
           instance void  .ctor() cil managed
   {
-    .maxstack  8
     IL_0000:  ldarg.0
     IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
     IL_0006:  ret
+  }
+  
+  .method private hidebysig specialname
+          instance void  PrivateMissing(class ['missing-lib']XX p) cil managed
+  {
+    IL_0000:  ret
   }
 }
 
@@ -53,9 +62,74 @@
   .method public hidebysig specialname rtspecialname 
           instance void  .ctor() cil managed
   {
-    .maxstack  8
     IL_0000:  ldarg.0
     IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
     IL_0006:  ret
   }  
 }
+
+.class public auto ansi beforefieldinit Another extends ['missing-lib']XXBase
+{
+  .class auto ansi nested public beforefieldinit Nested extends [mscorlib]System.Object
+  {
+    .method public hidebysig specialname rtspecialname instance void  .ctor() cil managed
+    {
+      IL_0000:  ldarg.0
+      IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
+      IL_0006:  ret
+    }
+  }
+
+  .method public hidebysig specialname rtspecialname instance void  .ctor() cil managed
+  {
+    IL_0000:  ldarg.0
+    IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
+    IL_0006:  ret
+  }
+}
+
+.class public auto ansi beforefieldinit MembersDelayed extends [mscorlib]System.Object
+{
+  .field public class ['missing-lib']Missing foo
+  
+  .method public hidebysig specialname rtspecialname instance void  .ctor() cil managed
+  {
+    IL_0000:  ldarg.0
+    IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
+    IL_0006:  ret
+  }
+}
+
+.class public auto ansi beforefieldinit G`1<T> extends [mscorlib]System.Object
+{
+  .field public class ['missing-lib']Missing foo
+  
+  .method public hidebysig specialname rtspecialname instance void  .ctor() cil managed
+  {
+    IL_0000:  ldarg.0
+    IL_0001:  call       instance void [mscorlib]System.Object::.ctor()
+    IL_0006:  ret
+  }
+}
+
+.class interface public abstract auto ansi IMemberDelayed
+{
+  .method public hidebysig newslot abstract virtual 
+          instance class MembersDelayed[] 
+          foo(class [mscorlib]System.Object t) cil managed
+  {
+  }
+
+  .method public hidebysig newslot abstract virtual 
+          instance class [mscorlib]System.Object[] 
+          Working() cil managed
+  {
+  }
+  
+  .method public hidebysig newslot abstract virtual 
+          instance class [mscorlib]System.Object[] 
+          Working(class G`1<class MembersDelayed> arg) cil managed
+  {
+  } 
+}
+

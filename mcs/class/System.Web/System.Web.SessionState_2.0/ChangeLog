@@ -1,3 +1,17 @@
+2010-12-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Get system.web/httpRuntime only once
+
+	Get that section only once and keep it in HttpRuntime.
+
+2010-11-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A few memory usage optimizations.
+
+2010-11-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Cache + SessionInProcHandler memory usage improvements
+
 2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	A few moves/changes following previous patch review
@@ -5,6 +19,10 @@
 2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
 
 	Normalization of cryptographic uses in asp.net
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Remove unneeded 'using' clauses
 
 2010-08-10  Marek Habersack  <grendel@twistedcode.net>
 

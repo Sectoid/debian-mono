@@ -10,6 +10,7 @@
 #include <config.h>
 #include <glib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/mono-gc.h>
@@ -27,6 +28,7 @@
 #include <mono/metadata/gc-internal.h>
 #include <mono/metadata/marshal.h> /* for mono_delegate_free_ftnptr () */
 #include <mono/metadata/attach.h>
+#include <mono/metadata/console-io.h>
 #include <mono/utils/mono-semaphore.h>
 
 #ifndef HOST_WIN32
@@ -72,7 +74,7 @@ add_thread_to_finalize (MonoInternalThread *thread)
 {
 	mono_finalizer_lock ();
 	if (!threads_to_finalize)
-		MONO_GC_REGISTER_ROOT (threads_to_finalize);
+		MONO_GC_REGISTER_ROOT_SINGLE (threads_to_finalize);
 	threads_to_finalize = mono_mlist_append (threads_to_finalize, (MonoObject*)thread);
 	mono_finalizer_unlock ();
 }
@@ -601,11 +603,12 @@ static guint32
 alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 {
 	gint slot, i;
+	guint32 res;
 	lock_handles (handles);
 	if (!handles->size) {
 		handles->size = 32;
 		if (handles->type > HANDLE_WEAK_TRACK) {
-			handles->entries = mono_gc_alloc_fixed (sizeof (gpointer) * handles->size, NULL);
+			handles->entries = mono_gc_alloc_fixed (sizeof (gpointer) * handles->size, mono_gc_make_root_descr_all_refs (handles->size));
 		} else {
 			handles->entries = g_malloc0 (sizeof (gpointer) * handles->size);
 			handles->domain_ids = g_malloc0 (sizeof (guint16) * handles->size);
@@ -641,17 +644,9 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 
 		/* resize and copy the entries */
 		if (handles->type > HANDLE_WEAK_TRACK) {
-			gsize *gc_bitmap;
 			gpointer *entries;
-			void *descr;
 
-			/* Create a GC descriptor */
-			gc_bitmap = g_malloc (new_size / 8);
-			memset (gc_bitmap, 0xff, new_size / 8);
-			descr = mono_gc_make_descr_from_bitmap (gc_bitmap, new_size);
-			g_free (gc_bitmap);
-
-			entries = mono_gc_alloc_fixed (sizeof (gpointer) * new_size, descr);
+			entries = mono_gc_alloc_fixed (sizeof (gpointer) * new_size, mono_gc_make_root_descr_all_refs (new_size));
 			memcpy (entries, handles->entries, sizeof (gpointer) * handles->size);
 
 			mono_gc_free_fixed (handles->entries);
@@ -692,6 +687,8 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 	slot = slot * 32 + i;
 	handles->entries [slot] = obj;
 	if (handles->type <= HANDLE_WEAK_TRACK) {
+		/*FIXME, what to use when obj == null?*/
+		handles->domain_ids [slot] = (obj ? mono_object_get_domain (obj) : mono_domain_get ())->domain_id;
 		if (obj)
 			mono_gc_weak_link_add (&(handles->entries [slot]), obj, track);
 	}
@@ -699,7 +696,9 @@ alloc_handle (HandleData *handles, MonoObject *obj, gboolean track)
 	mono_perfcounters->gc_num_handles++;
 	unlock_handles (handles);
 	/*g_print ("allocated entry %d of type %d to object %p (in slot: %p)\n", slot, handles->type, obj, handles->entries [slot]);*/
-	return (slot << 3) | (handles->type + 1);
+	res = (slot << 3) | (handles->type + 1);
+	mono_profiler_gc_handle (MONO_PROFILER_GC_HANDLE_CREATED, handles->type, res, obj);
+	return res;
 }
 
 /**
@@ -817,6 +816,8 @@ mono_gchandle_set_target (guint32 gchandle, MonoObject *obj)
 				mono_gc_weak_link_remove (&handles->entries [slot]);
 			if (obj)
 				mono_gc_weak_link_add (&handles->entries [slot], obj, handles->type == HANDLE_WEAK_TRACK);
+			/*FIXME, what to use when obj == null?*/
+			handles->domain_ids [slot] = (obj ? mono_object_get_domain (obj) : mono_domain_get ())->domain_id;
 		} else {
 			handles->entries [slot] = obj;
 		}
@@ -903,6 +904,7 @@ mono_gchandle_free (guint32 gchandle)
 	mono_perfcounters->gc_num_handles--;
 	/*g_print ("freed entry %d of type %d\n", slot, handles->type);*/
 	unlock_handles (handles);
+	mono_profiler_gc_handle (MONO_PROFILER_GC_HANDLE_DESTROYED, handles->type, gchandle, NULL);
 }
 
 /**
@@ -1051,6 +1053,8 @@ finalizer_thread (gpointer unused)
 		WaitForSingleObjectEx (finalizer_event, INFINITE, FALSE);
 #endif
 
+		mono_console_handle_async_ops ();
+
 #ifndef DISABLE_ATTACH
 		mono_attach_maybe_start ();
 #endif
@@ -1088,8 +1092,8 @@ mono_gc_init (void)
 
 	InitializeCriticalSection (&finalizer_mutex);
 
-	MONO_GC_REGISTER_ROOT (gc_handles [HANDLE_NORMAL].entries);
-	MONO_GC_REGISTER_ROOT (gc_handles [HANDLE_PINNED].entries);
+	MONO_GC_REGISTER_ROOT_FIXED (gc_handles [HANDLE_NORMAL].entries);
+	MONO_GC_REGISTER_ROOT_FIXED (gc_handles [HANDLE_PINNED].entries);
 
 	mono_gc_base_init ();
 
@@ -1109,6 +1113,7 @@ mono_gc_init (void)
 #endif
 
 	gc_thread = mono_thread_create_internal (mono_domain_get (), finalizer_thread, NULL, FALSE);
+	ves_icall_System_Threading_Thread_SetName_internal (gc_thread, mono_string_new (mono_domain_get (), "Finalizer"));
 }
 
 void
@@ -1219,5 +1224,65 @@ pthread_t
 mono_gc_get_mach_exception_thread (void)
 {
 	return mach_exception_thread;
+}
+#endif
+
+/**
+ * mono_gc_parse_environment_string_extract_number:
+ *
+ * @str: points to the first digit of the number
+ * @out: pointer to the variable that will receive the value
+ *
+ * Tries to extract a number from the passed string, taking in to account m, k
+ * and g suffixes
+ *
+ * Returns true if passing was successful
+ */
+gboolean
+mono_gc_parse_environment_string_extract_number (const char *str, glong *out)
+{
+	char *endptr;
+	int len = strlen (str), shift = 0;
+	glong val;
+	gboolean is_suffix = FALSE;
+	char suffix;
+
+	switch (str [len - 1]) {
+		case 'g':
+		case 'G':
+			shift += 10;
+		case 'm':
+		case 'M':
+			shift += 10;
+		case 'k':
+		case 'K':
+			shift += 10;
+			is_suffix = TRUE;
+			suffix = str [len - 1];
+			break;
+	}
+
+	errno = 0;
+	val = strtol (str, &endptr, 10);
+
+	if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
+			|| (errno != 0 && val == 0) || (endptr == str))
+		return FALSE;
+
+	if (is_suffix) {
+		if (*(endptr + 1)) /* Invalid string. */
+			return FALSE;
+		val <<= shift;
+	}
+
+	*out = val;
+	return TRUE;
+}
+
+#ifndef HAVE_SGEN_GC
+void*
+mono_gc_alloc_mature (MonoVTable *vtable)
+{
+	return mono_object_new_specific (vtable);
 }
 #endif

@@ -53,7 +53,7 @@ mono_wsq_create ()
 
 	wsq = g_new0 (MonoWSQ, 1);
 	wsq->mask = INITIAL_LENGTH - 1;
-	MONO_GC_REGISTER_ROOT (wsq->queue);
+	MONO_GC_REGISTER_ROOT_SINGLE (wsq->queue);
 	root = mono_get_root_domain ();
 	wsq->queue = mono_array_new_cached (root, mono_defaults.object_class, INITIAL_LENGTH);
 	MONO_SEM_INIT (&wsq->lock, 1);
@@ -191,7 +191,7 @@ mono_wsq_try_steal (MonoWSQ *wsq, void **ptr, guint32 ms_timeout)
 	if (TlsGetValue (wsq_tlskey) == wsq)
 		return;
 
-	if (MONO_SEM_TIMEDWAIT (&wsq->lock, ms_timeout)) {
+	if (mono_sem_timedwait (&wsq->lock, ms_timeout, FALSE) == 0) {
 		int head;
 
 		head = wsq->head;

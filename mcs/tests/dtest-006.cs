@@ -309,7 +309,7 @@ class Tester
 
 		dynamic d2 = (MyEnumUlong?) MyEnumUlong.Value_1;
 		Assert (d2 + (byte) 1, MyEnumUlong.Value_2, "#2");
-		Assert<MyEnumUlong?> (d2 + (object) null, null, "#2a");
+		Assert<MyEnumUlong?> (d2 + null, null, "#2a");
 		
 		// CSC: Invalid System.InvalidOperationException
 		Assert<MyEnum?> (d + null, null, "#1");
@@ -1759,7 +1759,7 @@ class Tester
 		Assert (d || d, true, "#2");
 
 		dynamic d3 = new MyType (-7);
-		Assert<MyType> (d3 || new MyType (6), new MyType (-1), "#3");
+		Assert<MyType> (d3 || new MyType (6), new MyType (-7), "#3");
 	}
 
 	void RightShiftTest ()
@@ -1878,7 +1878,7 @@ class Tester
 
 		dynamic d2 = (MyEnumUlong?) MyEnumUlong.Value_2;
 		Assert (d2 - (byte) 1, MyEnumUlong.Value_1, "#2");
-		Assert<MyEnumUlong?> (d2 - (object) null, null, "#2a");
+		Assert<MyEnumUlong?> (d2 - null, null, "#2a");
 		
 		// CSC: Invalid System.InvalidOperationException
 		Assert<MyEnum?> (d - null, null, "#3");

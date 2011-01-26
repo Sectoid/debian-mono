@@ -1,3 +1,16 @@
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Use AttributeSchemaType as it is 2.0 API. This fixes incorrectly
+	skipped type validation.
+
+2010-11-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Handle more type conversion.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
 2010-06-14  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlSchemaValidator.cs : limit validity initialization. In some

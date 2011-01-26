@@ -1,27 +1,38 @@
-// Compiler options: -unsafe
-
-using System.Runtime.InteropServices;
-
-public unsafe struct A
+interface IA<T>
 {
-	fixed byte fileid [DbConst.DB_FILE_ID_LEN];
+	T Method (int index);
 }
 
-public static class DbConst
+interface IB
 {
-	public const int DB_FILE_ID_LEN = 20;
+	void Method (int index);
 }
 
-[StructLayout(LayoutKind.Sequential, Size=92)]
-internal unsafe struct hci_dev_info {
-	public fixed sbyte name[8];
-	private fixed byte bdaddr[6];
-	hci_dev_info* foo;
+interface IC : IA<string>, IB
+{
+	void Method (params int[] index);
 }
 
-class M
+class M : IC
 {
+
+	void IC.Method (params int[] index)
+	{
+	}
+
+	string IA<string>.Method (int index)
+	{
+		throw new System.NotImplementedException ();
+	}
+
+	void IB.Method (int index)
+	{
+		throw new System.NotImplementedException ();
+	}
+
 	public static void Main ()
 	{
+		IC ic = new M ();
+		ic.Method (1);
 	}
 }

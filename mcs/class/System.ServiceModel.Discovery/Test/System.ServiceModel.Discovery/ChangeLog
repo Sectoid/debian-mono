@@ -1,3 +1,21 @@
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing Discovery duplex (UDP) implementation (not working yet).
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Close AnnouncementService in the test cases. Assert that relevant
+	ports become available.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill Duration value. Got managed mode use case working.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
 2010-08-31  Atsushi Eno  <atsushi@ximian.com>
 
 	Avoid NRE when converting contract-based instances to

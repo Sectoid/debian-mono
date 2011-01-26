@@ -1,3 +1,138 @@
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove now unused internal classes
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add missing Debugger and ReliabilityContract attributes to .NET 4
+	types
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use while loop instead of if for removing as much stalled tickets
+	as possible
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix comments
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect SpinLock's Enter method against asynchronous exception
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update ThreadLocal to use default(T) for initialization with
+	parameterless ctor following comment on
+	https://connect.microsoft.com/VisualStudio/feedback/details/630350/threadlocal-documentation-and-actual-behavior-mismatch
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Some 4.0 API tweaks
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	More parameter renaming
+
+2010-12-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Increment Count even on single-processor in SpinWait. Fix #624849.
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix semantic of CountdownEvent Reset methods. Fix #658244.
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix corlib regression
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Thread.cs: Move culture data from InternalThread to Thread and
+	thus completely avoid the whole caching and serialization
+	nightmare. Even thou this is a cleanup it should speed up
+	multi-appdomain setups.
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adjust sleeping values
+
+2010-11-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Timer] Use a WaitHandle instead of Wait/Pulse
+
+	Notifications of changes were sent using Monitor.Pulse() while the
+	scheduler thread was in a Monitor.Wait(). The way we handle
+	Monitor.Wait() internally involves creating an manual-reset event
+	and waiting on it each time Monitor.Wait() is called.
+
+	With this change, one 1 event is created for the lifetime of the
+	appdomain. These seems to help avoiding contention when there are
+	a lot of timers in play.
+
+2010-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	[fix] Fix build.
+
+2010-11-18  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Revert the CER-like changes made to SpinLock.Enter method and
+	document the problem.
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Protect TryEnter and Exit methods of SpinLock against asynchronous
+	exceptions.
+
+2010-11-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[CancellationToken] Speed up ThrowIfCancellationRequested
+	operation
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Simplify Parallel.For execution.
+
+	This commit remove the stealing path until a better solution for
+	it is devised.
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Final performance improvement on ReaderWriterLockSlim
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous change.
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Speed up Thread.ManagedThreadId.
+
+2010-11-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	ManualResetEventSlim performance improvements
+
+2010-11-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	SpinLock performance improvements
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Monitor.cs (TryEnter): Implement v4 overloads that take a "ref
+	book lookTaken" var. Setting this flag must be done in the runtime
+	to avoid async exceptions.
+
+	* Monitor.cs (Enter): Fix v4 overload to be async exception safe.
+
+2010-10-25  Marek Safar  <marek.safar@gmail.com>
+
+	Keep only 1 Dispose implementation
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use test-and-test-and-set pattern in
+	LazyInitializer::EnsureInitialized
+
 2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Fix the collision handling code

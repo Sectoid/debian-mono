@@ -300,6 +300,16 @@ dword_align (const char *ptr)
 #endif
 }
 
+static void
+add_from_mono_error (VerifyContext *ctx, MonoError *error)
+{
+	if (mono_error_ok (error))
+		return;
+
+	ADD_ERROR (ctx, g_strdup (mono_error_get_message (error)));
+	mono_error_cleanup (error);
+}
+
 static guint32
 pe_signature_offset (VerifyContext *ctx)
 {
@@ -928,20 +938,29 @@ get_metadata_stream (VerifyContext *ctx, MonoStreamHeader *header)
 }
 
 static gboolean
-is_valid_string_full (VerifyContext *ctx, guint32 offset, gboolean allow_empty)
+is_valid_string_full_with_image (MonoImage *image, guint32 offset, gboolean allow_empty)
 {
-	OffsetAndSize strings = get_metadata_stream (ctx, &ctx->image->heap_strings);
+	guint32 heap_offset = (char*)image->heap_strings.data - image->raw_data;
+	guint32 heap_size = image->heap_strings.size;
+
 	glong length;
-	const char *data = ctx->data + strings.offset;
+	const char *data = image->raw_data + heap_offset;
 
-	if (offset >= strings.size)
+	if (offset >= heap_size)
 		return FALSE;
-	if (data + offset < data) //FIXME, use a generalized and smart unsigned add with overflow check and fix the whole thing  
+	if (CHECK_ADDP_OVERFLOW_UN (data, offset))
 		return FALSE;
 
-	if (!mono_utf8_validate_and_len_with_bounds (data + offset, strings.size - offset, &length, NULL))
+	if (!mono_utf8_validate_and_len_with_bounds (data + offset, heap_size - offset, &length, NULL))
 		return FALSE;
 	return allow_empty || length > 0;
+}
+
+
+static gboolean
+is_valid_string_full (VerifyContext *ctx, guint32 offset, gboolean allow_empty)
+{
+	return is_valid_string_full_with_image (ctx->image, offset, allow_empty);
 }
 
 static gboolean
@@ -994,7 +1013,7 @@ make_coded_token (int kind, guint32 table, guint32 table_idx)
 }
 
 static gboolean
-is_valid_coded_index (VerifyContext *ctx, int token_kind, guint32 coded_token)
+is_valid_coded_index_with_image (MonoImage *image, int token_kind, guint32 coded_token)
 {
 	guint32 bits = coded_index_desc [token_kind++];
 	guint32 table_count = coded_index_desc [token_kind++];
@@ -1009,7 +1028,13 @@ is_valid_coded_index (VerifyContext *ctx, int token_kind, guint32 coded_token)
 
 	if (table == INVALID_TABLE)
 		return FALSE;
-	return token <= ctx->image->tables [table].rows;
+	return token <= image->tables [table].rows;
+}
+
+static gboolean
+is_valid_coded_index (VerifyContext *ctx, int token_kind, guint32 coded_token)
+{
+	return is_valid_coded_index_with_image (ctx->image, token_kind, coded_token);
 }
 
 typedef struct {
@@ -1205,7 +1230,7 @@ parse_custom_mods (VerifyContext *ctx, const char **_ptr, const char *end)
 		if (!safe_read_cint (token, ptr, end))
 			FAIL (ctx, g_strdup ("CustomMod: Not enough room for the token"));
 	
-		if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, token))
+		if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, token) || !get_coded_index_token (TYPEDEF_OR_REF_DESC, token))
 			FAIL (ctx, g_strdup_printf ("CustomMod: invalid TypeDefOrRef token %x", token));
 	}
 
@@ -1262,7 +1287,7 @@ parse_generic_inst (VerifyContext *ctx, const char **_ptr, const char *end)
 	if (!safe_read_cint (token, ptr, end))
 		FAIL (ctx, g_strdup ("GenericInst: Not enough room for type token"));
 
-	if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, token))
+	if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, token) || !get_coded_index_token (TYPEDEF_OR_REF_DESC, token))
 		FAIL (ctx, g_strdup_printf ("GenericInst: invalid TypeDefOrRef token %x", token));
 
 	if (ctx->token) {
@@ -1278,6 +1303,9 @@ parse_generic_inst (VerifyContext *ctx, const char **_ptr, const char *end)
 		FAIL (ctx, g_strdup ("GenericInst: Zero arguments generic instance"));
 
 	for (i = 0; i < count; ++i) {
+		if (!parse_custom_mods (ctx, &ptr, end))
+			FAIL (ctx, g_strdup ("Type: Failed to parse pointer custom attr"));
+
 		if (!parse_type (ctx, &ptr, end))
 			FAIL (ctx, g_strdup_printf ("GenericInst: invalid generic argument %d", i + 1));
 	}
@@ -1321,12 +1349,15 @@ parse_type (VerifyContext *ctx, const char **_ptr, const char *end)
 		if (!safe_read_cint (token, ptr, end))
 			FAIL (ctx, g_strdup ("Type: Not enough room for the type token"));
 	
-		if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, token))
+		if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, token) || !get_coded_index_token (TYPEDEF_OR_REF_DESC, token))
 			FAIL (ctx, g_strdup_printf ("Type: invalid TypeDefOrRef token %x", token));
+
+		if (!get_coded_index_token (TYPEDEF_OR_REF_DESC, token))
+			FAIL (ctx, g_strdup_printf ("Type: zero TypeDefOrRef token %x", token));
 		if (ctx->token) {
 			if (mono_metadata_token_index (ctx->token) == get_coded_index_token (TYPEDEF_OR_REF_DESC, token) &&
 				mono_metadata_token_table (ctx->token) == get_coded_index_table (TYPEDEF_OR_REF_DESC, token))
-				FAIL (ctx, g_strdup_printf ("Type: Recurside type specification (%x). A type signature can't reference itself", ctx->token));
+				FAIL (ctx, g_strdup_printf ("Type: Recursive type specification (%x). A type signature can't reference itself", ctx->token));
 		}
 		break;
 
@@ -1408,8 +1439,11 @@ parse_param (VerifyContext *ctx, const char **_ptr, const char *end)
 	}
 
 	//it's a byref, update the cursor ptr
-	if (type == MONO_TYPE_BYREF)
+	if (type == MONO_TYPE_BYREF) {
 		*_ptr = ptr;
+		if (!parse_custom_mods (ctx, _ptr, end))
+			return FALSE;
+	}
 
 	return parse_type (ctx, _ptr, end);
 }
@@ -1498,6 +1532,8 @@ parse_property_signature (VerifyContext *ctx, const char **_ptr, const char *end
 		FAIL (ctx, g_strdup ("PropertySig: Could not parse property type"));
 
 	for (i = 0; i < param_count; ++i) {
+		if (!parse_custom_mods (ctx, &ptr, end))
+			FAIL (ctx, g_strdup ("Type: Failed to parse pointer custom attr"));
 		if (!parse_type (ctx, &ptr, end))
 			FAIL (ctx, g_strdup_printf ("PropertySig: Error parsing arg %d", i));
 	}
@@ -1615,6 +1651,20 @@ is_valid_method_signature (VerifyContext *ctx, guint32 offset)
 
 	return parse_method_signature (ctx, &ptr, end, FALSE, FALSE);
 }
+
+static gboolean
+is_valid_memberref_method_signature (VerifyContext *ctx, guint32 offset)
+{
+	guint32 size = 0;
+	const char *ptr = NULL, *end;
+
+	if (!decode_signature_header (ctx, offset, &size, &ptr))
+		FAIL (ctx, g_strdup ("MemberRefSig: Could not decode signature header"));
+	end = ptr + size;
+
+	return parse_method_signature (ctx, &ptr, end, TRUE, FALSE);
+}
+
 
 static gboolean
 is_valid_method_or_field_signature (VerifyContext *ctx, guint32 offset)
@@ -1828,6 +1878,8 @@ handle_enum:
 				klass = get_enum_by_encoded_name (ctx, &ptr, end);
 				if (!klass)
 					return FALSE;
+			} else if (etype == 0x50 || etype == MONO_TYPE_CLASS) {
+				klass = mono_defaults.systemtype_class;
 			} else if ((etype >= MONO_TYPE_BOOLEAN && etype <= MONO_TYPE_STRING) || etype == 0x51) {
 				simple_type.type = etype == 0x51 ? MONO_TYPE_OBJECT : etype;
 				klass = mono_class_from_mono_type (&simple_type);
@@ -1955,6 +2007,8 @@ is_valid_cattr_content (VerifyContext *ctx, MonoMethod *ctor, const char *ptr, g
 				klass = get_enum_by_encoded_name (ctx, &ptr, end);
 				if (!klass)
 					return FALSE;
+			} else if (etype == 0x50 || etype == MONO_TYPE_CLASS) {
+				klass = mono_defaults.systemtype_class;
 			} else if ((etype >= MONO_TYPE_BOOLEAN && etype <= MONO_TYPE_STRING) || etype == 0x51) {
 				simple_type.type = etype == 0x51 ? MONO_TYPE_OBJECT : etype;
 				klass = mono_class_from_mono_type (&simple_type);
@@ -2087,6 +2141,8 @@ is_valid_methodspec_blob (VerifyContext *ctx, guint32 offset)
 		FAIL (ctx, g_strdup ("MethodSpec: Zero generic argument count"));
 
 	for (i = 0; i < count; ++i) {
+		if (!parse_custom_mods (ctx, &ptr, end))
+			return FALSE;
 		if (!parse_type (ctx, &ptr, end))
 			FAIL (ctx, g_strdup_printf ("MethodSpec: Could not parse parameter %d", i + 1));
 	}
@@ -2182,12 +2238,14 @@ is_valid_constant (VerifyContext *ctx, guint32 type, guint32 offset)
 #define SECTION_HEADER_INVALID_FLAGS 0x3E
 
 static gboolean
-is_valid_method_header (VerifyContext *ctx, guint32 rva)
+is_valid_method_header (VerifyContext *ctx, guint32 rva, guint32 *locals_token)
 {
 	unsigned local_vars_tok, code_size, offset = mono_cli_rva_image_map (ctx->image, rva);
 	unsigned header = 0;
 	unsigned fat_header = 0, size = 0, max_stack;
 	const char *ptr = NULL, *end;
+
+	*locals_token = 0;
 
 	if (offset == INVALID_ADDRESS)
 		FAIL (ctx, g_strdup ("MethodHeader: Invalid RVA"));
@@ -2231,6 +2289,9 @@ is_valid_method_header (VerifyContext *ctx, guint32 rva)
 			FAIL (ctx, g_strdup_printf ("MethodHeader: Invalid local vars signature table 0x%x", ((local_vars_tok >> 24) & 0xFF)));
 		if ((local_vars_tok & 0xFFFFFF) > ctx->image->tables [MONO_TABLE_STANDALONESIG].rows)	
 			FAIL (ctx, g_strdup_printf ("MethodHeader: Invalid local vars signature points to invalid row 0x%x", local_vars_tok & 0xFFFFFF));
+		if (!(local_vars_tok & 0xFFFFFF))
+			FAIL (ctx, g_strdup_printf ("MethodHeader: Invalid local vars signature with zero index"));
+		*locals_token = local_vars_tok & 0xFFFFFF;
 	}
 
 	if (fat_header & FAT_HEADER_INVALID_FLAGS)
@@ -2325,22 +2386,12 @@ static void
 verify_typeref_table (VerifyContext *ctx)
 {
 	MonoTableInfo *table = &ctx->image->tables [MONO_TABLE_TYPEREF];
-	guint32 data [MONO_TYPEREF_SIZE];
-	int i;
+	MonoError error;
+	guint32 i;
 
 	for (i = 0; i < table->rows; ++i) {
-		mono_metadata_decode_row (table, i, data, MONO_TYPEREF_SIZE);
-		if (!is_valid_coded_index (ctx, RES_SCOPE_DESC, data [MONO_TYPEREF_SCOPE]))
-			ADD_ERROR (ctx, g_strdup_printf ("Invalid typeref row %d coded index 0x%08x", i, data [MONO_TYPEREF_SCOPE]));
-		
-		if (!get_coded_index_token (RES_SCOPE_DESC, data [MONO_TYPEREF_SCOPE]))
-			ADD_ERROR (ctx, g_strdup_printf ("The metadata verifier doesn't support null ResolutionScope tokens for typeref row %d", i));
-
-		if (!data [MONO_TYPEREF_NAME] || !is_valid_non_empty_string (ctx, data [MONO_TYPEREF_NAME]))
-			ADD_ERROR (ctx, g_strdup_printf ("Invalid typeref row %d name token 0x%08x", i, data [MONO_TYPEREF_NAME]));
-
-		if (data [MONO_TYPEREF_NAMESPACE] && !is_valid_non_empty_string (ctx, data [MONO_TYPEREF_NAMESPACE]))
-			ADD_ERROR (ctx, g_strdup_printf ("Invalid typeref row %d namespace token 0x%08x", i, data [MONO_TYPEREF_NAMESPACE]));
+		mono_verifier_verify_typeref_row (ctx->image, i, &error);
+		add_from_mono_error (ctx, &error);
 	}
 }
 
@@ -2382,6 +2433,9 @@ verify_typedef_table (VerifyContext *ctx)
 
 		if (data [MONO_TYPEDEF_EXTENDS] && !is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, data [MONO_TYPEDEF_EXTENDS]))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid typedef row %d extend field coded index 0x%08x", i, data [MONO_TYPEDEF_EXTENDS]));
+
+		if (data [MONO_TYPEDEF_EXTENDS] && !get_coded_index_token (TYPEDEF_OR_REF_DESC, data [MONO_TYPEDEF_EXTENDS]))
+			ADD_ERROR (ctx, g_strdup_printf ("Invalid typedef row %d zero coded extend field coded index 0x%08x", i, data [MONO_TYPEDEF_EXTENDS]));
 
 		visibility = data [MONO_TYPEDEF_FLAGS] & TYPE_ATTRIBUTE_VISIBILITY_MASK;
 		if ((visibility >= TYPE_ATTRIBUTE_NESTED_PUBLIC && visibility <= TYPE_ATTRIBUTE_NESTED_FAM_OR_ASSEM) &&
@@ -2673,7 +2727,7 @@ static void
 verify_method_table_full (VerifyContext *ctx)
 {
 	MonoTableInfo *table = &ctx->image->tables [MONO_TABLE_METHOD];
-	guint32 data [MONO_METHOD_SIZE], rva;
+	guint32 data [MONO_METHOD_SIZE], rva, locals_token;
 	int i;
 
 	for (i = 0; i < table->rows; ++i) {
@@ -2683,7 +2737,7 @@ verify_method_table_full (VerifyContext *ctx)
 		if (!data [MONO_METHOD_SIGNATURE] || !is_valid_method_signature (ctx, data [MONO_METHOD_SIGNATURE]))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid method row %d invalid signature token 0x%08x", i, data [MONO_METHOD_SIGNATURE]));
 
-		if (rva && !is_valid_method_header (ctx, rva))
+		if (rva && !is_valid_method_header (ctx, rva, &locals_token))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid method row %d RVA points to an invalid method header", i));
 	}
 }
@@ -2772,7 +2826,7 @@ verify_interfaceimpl_table (VerifyContext *ctx)
 	for (i = 0; i < table->rows; ++i) {
 		mono_metadata_decode_row (table, i, data, MONO_INTERFACEIMPL_SIZE);
 		if (data [MONO_INTERFACEIMPL_CLASS] && data [MONO_INTERFACEIMPL_CLASS] > ctx->image->tables [MONO_TABLE_TYPEDEF].rows)
-			ADD_ERROR (ctx, g_strdup_printf ("Invalid InterfaceImpl row %d Class field 0x%08x", i, data [MONO_TABLE_TYPEDEF]));
+			ADD_ERROR (ctx, g_strdup_printf ("Invalid InterfaceImpl row %d Class field 0x%08x", i, data [MONO_INTERFACEIMPL_CLASS]));
 
 		if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, data [MONO_INTERFACEIMPL_INTERFACE]))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid InterfaceImpl row %d Inteface field coded index 0x%08x", i, data [MONO_INTERFACEIMPL_INTERFACE]));
@@ -2860,8 +2914,8 @@ verify_cattr_table (VerifyContext *ctx)
 		if (!is_valid_coded_index (ctx, HAS_CATTR_DESC, data [MONO_CUSTOM_ATTR_PARENT]))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid CustomAttribute row %d Parent field 0x%08x", i, data [MONO_CUSTOM_ATTR_PARENT]));
 
-		if (!is_valid_coded_index (ctx, CATTR_TYPE_DESC, data [MONO_CUSTOM_ATTR_TYPE]))
-			ADD_ERROR (ctx, g_strdup_printf ("Invalid CustomAttribute row %d Parent field 0x%08x", i, data [MONO_CUSTOM_ATTR_PARENT]));
+		if (!is_valid_coded_index (ctx, CATTR_TYPE_DESC, data [MONO_CUSTOM_ATTR_TYPE]) || !get_coded_index_token (CATTR_TYPE_DESC, data [MONO_CUSTOM_ATTR_TYPE]))
+			ADD_ERROR (ctx, g_strdup_printf ("Invalid CustomAttribute row %d Type field 0x%08x", i, data [MONO_CUSTOM_ATTR_TYPE]));
 
 		if (data [MONO_CUSTOM_ATTR_VALUE] && !is_valid_blob_object (ctx, data [MONO_CUSTOM_ATTR_VALUE], 0))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid CustomAttribute row %d invalid value blob 0x%x", i, data [MONO_CUSTOM_ATTR_VALUE]));
@@ -3227,7 +3281,7 @@ verify_moduleref_table (VerifyContext *ctx)
 		mono_metadata_decode_row (table, i, data, MONO_MODULEREF_SIZE);
 
 		if (!is_valid_non_empty_string (ctx, data[MONO_MODULEREF_NAME]))
-			ADD_ERROR (ctx, g_strdup_printf ("Invalid MethodImpl row %d Class field %08x", i, data [MONO_TABLE_TYPEDEF]));
+			ADD_ERROR (ctx, g_strdup_printf ("Invalid ModuleRef row %d name field %08x", i, data [MONO_MODULEREF_NAME]));
 	}
 }
 
@@ -3292,7 +3346,7 @@ verify_implmap_table (VerifyContext *ctx)
 		if (!is_valid_non_empty_string (ctx, data [MONO_IMPLMAP_NAME]))
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid ImplMap row %d ImportName Token %x", i, data [MONO_IMPLMAP_NAME]));
 
-		if (!data [MONO_IMPLMAP_SCOPE] || data [MONO_IMPLMAP_SCOPE] > ctx->image->tables [MONO_TABLE_MODULEREF].rows + 1)
+		if (!data [MONO_IMPLMAP_SCOPE] || data [MONO_IMPLMAP_SCOPE] > ctx->image->tables [MONO_TABLE_MODULEREF].rows)
 			ADD_ERROR (ctx, g_strdup_printf ("Invalid ImplMap row %d Invalid ImportScope token %x", i, data [MONO_IMPLMAP_SCOPE]));
 	}
 }
@@ -3315,7 +3369,7 @@ verify_fieldrva_table (VerifyContext *ctx)
 	}
 }
 
-#define INVALID_ASSEMBLY_FLAGS_BITS ~((1 << 0) | (1 << 4) | (1 << 8) | (1 << 14) | (1 << 15))
+#define INVALID_ASSEMBLY_FLAGS_BITS ~((1 << 0) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 14) | (1 << 15))
 static void
 verify_assembly_table (VerifyContext *ctx)
 {
@@ -3576,7 +3630,7 @@ verify_generic_param_constraint_table (VerifyContext *ctx)
 		mono_metadata_decode_row (table, i, data, MONO_GENPARCONSTRAINT_SIZE);
 
 		if (!data [MONO_GENPARCONSTRAINT_GENERICPAR] || data [MONO_GENPARCONSTRAINT_GENERICPAR] > ctx->image->tables [MONO_TABLE_GENERICPARAM].rows)
-			ADD_ERROR (ctx, g_strdup_printf ("GenericParamConstraint table row %d has invalid Owner token %08x", i, data [MONO_TABLE_GENERICPARAM]));
+			ADD_ERROR (ctx, g_strdup_printf ("GenericParamConstraint table row %d has invalid Owner token %08x", i, data [MONO_GENPARCONSTRAINT_GENERICPAR]));
 
 		if (!is_valid_coded_index (ctx, TYPEDEF_OR_REF_DESC, data [MONO_GENPARCONSTRAINT_CONSTRAINT]))
 			ADD_ERROR (ctx, g_strdup_printf ("GenericParamConstraint table row %d has invalid Constraint token %08x", i, data [MONO_GENPARCONSTRAINT_CONSTRAINT]));
@@ -3685,6 +3739,7 @@ verify_tables_data_global_constraints (VerifyContext *ctx)
 static void
 verify_tables_data_global_constraints_full (VerifyContext *ctx)
 {
+	verify_typeref_table (ctx);
 	verify_typeref_table_global_constraints (ctx);
 }
 
@@ -3715,8 +3770,9 @@ verify_tables_data (VerifyContext *ctx)
 
 	verify_module_table (ctx);
 	CHECK_ERROR ();
+	/*Obfuscators love to place broken stuff in the typeref table
 	verify_typeref_table (ctx);
-	CHECK_ERROR ();
+	CHECK_ERROR ();*/
 	verify_typedef_table (ctx);
 	CHECK_ERROR ();
 	verify_field_table (ctx);
@@ -3958,6 +4014,7 @@ gboolean
 mono_verifier_verify_method_header (MonoImage *image, guint32 offset, GSList **error_list)
 {
 	VerifyContext ctx;
+	guint32 locals_token;
 
 	if (!mono_verifier_is_enabled_for_image (image))
 		return TRUE;
@@ -3965,7 +4022,12 @@ mono_verifier_verify_method_header (MonoImage *image, guint32 offset, GSList **e
 	init_verify_context (&ctx, image, error_list != NULL);
 	ctx.stage = STAGE_TABLES;
 
-	is_valid_method_header (&ctx, offset);
+	is_valid_method_header (&ctx, offset, &locals_token);
+	if (locals_token) {
+		guint32 sig_offset = mono_metadata_decode_row_col (&image->tables [MONO_TABLE_STANDALONESIG], locals_token - 1, MONO_STAND_ALONE_SIGNATURE);
+		is_valid_standalonesig_blob (&ctx, sig_offset);
+	}
+
 	return cleanup_context (&ctx, error_list);
 }
 
@@ -3988,7 +4050,7 @@ mono_verifier_verify_method_signature (MonoImage *image, guint32 offset, MonoErr
 }
 
 gboolean
-mono_verifier_verify_memberref_signature (MonoImage *image, guint32 offset, GSList **error_list)
+mono_verifier_verify_memberref_method_signature (MonoImage *image, guint32 offset, GSList **error_list)
 {
 	VerifyContext ctx;
 
@@ -3998,7 +4060,22 @@ mono_verifier_verify_memberref_signature (MonoImage *image, guint32 offset, GSLi
 	init_verify_context (&ctx, image, error_list != NULL);
 	ctx.stage = STAGE_TABLES;
 
-	is_valid_method_or_field_signature (&ctx, offset);
+	is_valid_memberref_method_signature (&ctx, offset);
+	return cleanup_context (&ctx, error_list);
+}
+
+gboolean
+mono_verifier_verify_memberref_field_signature (MonoImage *image, guint32 offset, GSList **error_list)
+{
+	VerifyContext ctx;
+
+	if (!mono_verifier_is_enabled_for_image (image))
+		return TRUE;
+
+	init_verify_context (&ctx, image, error_list != NULL);
+	ctx.stage = STAGE_TABLES;
+
+	is_valid_field_signature (&ctx, offset);
 	return cleanup_context (&ctx, error_list);
 }
 
@@ -4145,6 +4222,104 @@ mono_verifier_is_sig_compatible (MonoImage *image, MonoMethod *method, MonoMetho
 	return TRUE;
 }
 
+gboolean
+mono_verifier_verify_typeref_row (MonoImage *image, guint32 row, MonoError *error)
+{
+	MonoTableInfo *table = &image->tables [MONO_TABLE_TYPEREF];
+	guint32 data [MONO_TYPEREF_SIZE];
+
+	mono_error_init (error);
+
+	if (!mono_verifier_is_enabled_for_image (image))
+		return TRUE;
+
+	if (row >= table->rows) {
+		mono_error_set_bad_image (error, image, "Invalid typeref row %d - table has %d rows", row, table->rows);
+		return FALSE;
+	}
+
+	mono_metadata_decode_row (table, row, data, MONO_TYPEREF_SIZE);
+	if (!is_valid_coded_index_with_image (image, RES_SCOPE_DESC, data [MONO_TYPEREF_SCOPE])) {
+		mono_error_set_bad_image (error, image, "Invalid typeref row %d coded index 0x%08x", row, data [MONO_TYPEREF_SCOPE]);
+		return FALSE;
+	}
+
+	if (!get_coded_index_token (RES_SCOPE_DESC, data [MONO_TYPEREF_SCOPE])) {
+		mono_error_set_bad_image (error, image, "The metadata verifier doesn't support null ResolutionScope tokens for typeref row %d", row);
+		return FALSE;
+	}
+
+	if (!data [MONO_TYPEREF_NAME] || !is_valid_string_full_with_image (image, data [MONO_TYPEREF_NAME], FALSE)) {
+		mono_error_set_bad_image (error, image, "Invalid typeref row %d name token 0x%08x", row, data [MONO_TYPEREF_NAME]);
+		return FALSE;
+	}
+
+	if (data [MONO_TYPEREF_NAMESPACE] && !is_valid_string_full_with_image (image, data [MONO_TYPEREF_NAMESPACE], FALSE)) {
+		mono_error_set_bad_image (error, image, "Invalid typeref row %d namespace token 0x%08x", row, data [MONO_TYPEREF_NAMESPACE]);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+/*Perform additional verification including metadata ones*/
+gboolean
+mono_verifier_verify_methodimpl_row (MonoImage *image, guint32 row, MonoError *error)
+{
+	MonoMethod *declaration, *body;
+	MonoMethodSignature *body_sig, *decl_sig;
+	MonoTableInfo *table = &image->tables [MONO_TABLE_METHODIMPL];
+	guint32 data [MONO_METHODIMPL_SIZE];
+
+	mono_error_init (error);
+
+	if (!mono_verifier_is_enabled_for_image (image))
+		return TRUE;
+
+	if (row >= table->rows) {
+		mono_error_set_bad_image (error, image, "Invalid methodimpl row %d - table has %d rows", row, table->rows);
+		return FALSE;
+	}
+
+	mono_metadata_decode_row (table, row, data, MONO_METHODIMPL_SIZE);
+
+	body = method_from_method_def_or_ref (image, data [MONO_METHODIMPL_BODY], NULL);
+	if (mono_loader_get_last_error ()) {
+		mono_loader_clear_error ();
+		mono_error_set_bad_image (error, image, "Invalid methodimpl body for row %x", row);
+		return FALSE;
+	}
+
+	declaration = method_from_method_def_or_ref (image, data [MONO_METHODIMPL_DECLARATION], NULL);
+	if (mono_loader_get_last_error ()) {
+		mono_loader_clear_error ();
+		mono_error_set_bad_image (error, image, "Invalid methodimpl declaration for row %x", row);
+		return FALSE;
+	}
+
+	/* FIXME
+	mono_class_setup_supertypes (class);
+	if (!mono_class_has_parent (class, body->klass)) {
+		mono_error_set_bad_image (error, image, "Invalid methodimpl body doesn't belong to parent for row %x", row);
+		return FALSE;
+	}*/
+
+	if (!(body_sig = mono_method_signature_checked (body, error))) {
+		return FALSE;
+	}
+
+	if (!(decl_sig = mono_method_signature_checked (declaration, error))) {
+		return FALSE;
+	}
+
+	if (!mono_verifier_is_signature_compatible (decl_sig, body_sig)) {
+		mono_error_set_bad_image (error, image, "Invalid methodimpl body signature not compatible with declaration row %x", row);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 #else
 gboolean
 mono_verifier_verify_table_data (MonoImage *image, GSList **error_list)
@@ -4190,12 +4365,6 @@ mono_verifier_verify_method_signature (MonoImage *image, guint32 offset, MonoErr
 }
 
 gboolean
-mono_verifier_verify_memberref_signature (MonoImage *image, guint32 offset, GSList **error_list)
-{
-	return TRUE;
-}
-
-gboolean
 mono_verifier_verify_standalone_signature (MonoImage *image, guint32 offset, GSList **error_list)
 {
 	return TRUE;
@@ -4237,5 +4406,31 @@ mono_verifier_is_sig_compatible (MonoImage *image, MonoMethod *method, MonoMetho
 	return TRUE;
 }
 
+
+gboolean
+mono_verifier_verify_typeref_row (MonoImage *image, guint32 row, MonoError *error)
+{
+	mono_error_init (error);
+	return TRUE;
+}
+
+gboolean
+mono_verifier_verify_methodimpl_row (MonoImage *image, guint32 row, MonoError *error)
+{
+	mono_error_init (error);
+	return TRUE;
+}
+
+gboolean
+mono_verifier_verify_memberref_method_signature (MonoImage *image, guint32 offset, GSList **error_list)
+{
+	return TRUE;
+}
+
+gboolean
+mono_verifier_verify_memberref_field_signature (MonoImage *image, guint32 offset, GSList **error_list)
+{
+	return TRUE;
+}
 
 #endif /* DISABLE_VERIFIER */

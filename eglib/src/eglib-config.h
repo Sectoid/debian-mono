@@ -19,6 +19,10 @@
 #define GINT_TO_POINTER(v)     ((gpointer)(glong) (v))
 #define GUINT_TO_POINTER(v)    ((gpointer)(gulong) (v))
 
+#if 1 == 1
+#define G_HAVE_ALLOCA_H
+#endif
+
 typedef unsigned long gsize;
 typedef signed   long gssize;
 

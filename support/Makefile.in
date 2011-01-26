@@ -67,7 +67,7 @@ am__libMonoPosixHelper_la_SOURCES_DIST = errno.c map.c map.h mph.h \
 	sys-mman.c sys-sendfile.c sys-stat.c sys-statvfs.c sys-time.c \
 	sys-utsname.c sys-wait.c sys-xattr.c syslog.c time.c unistd.c \
 	utime.c x-struct-str.c zlib-helper.c adler32.c compress.c \
-	crc32.c gzio.c uncompr.c deflate.c trees.c zutil.c inflate.c \
+	crc32.c uncompr.c deflate.c trees.c zutil.c inflate.c \
 	infback.c inftrees.c inffast.c crc32.h deflate.h inffast.h \
 	inffixed.h inflate.h inftrees.h trees.h zconf.h zlib.h zutil.h \
 	minizip/crypt.h minizip/ioapi.c minizip/ioapi.h \
@@ -80,9 +80,8 @@ am__objects_2 = dirent.lo fcntl.lo fstab.lo grp.lo macros.lo \
 	x-struct-str.lo
 @HOST_WIN32_FALSE@am__objects_3 = $(am__objects_1) $(am__objects_2)
 @HOST_WIN32_TRUE@am__objects_3 = $(am__objects_1)
-am__objects_4 = adler32.lo compress.lo crc32.lo gzio.lo uncompr.lo \
-	deflate.lo trees.lo zutil.lo inflate.lo infback.lo inftrees.lo \
-	inffast.lo
+am__objects_4 = adler32.lo compress.lo crc32.lo uncompr.lo deflate.lo \
+	trees.lo zutil.lo inflate.lo infback.lo inftrees.lo inffast.lo
 @HAVE_ZLIB_FALSE@am__objects_5 = zlib-helper.lo $(am__objects_4)
 @HAVE_ZLIB_TRUE@am__objects_5 = zlib-helper.lo
 am__objects_6 = ioapi.lo unzip.lo zip.lo
@@ -199,6 +198,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -375,7 +375,6 @@ ZLIB_SOURCES = \
 	adler32.c	\
 	compress.c	\
 	crc32.c		\
-	gzio.c		\
 	uncompr.c	\
 	deflate.c	\
 	trees.c		\
@@ -501,7 +500,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fcntl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fstab.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/grp.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gzio.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/infback.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inffast.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/inflate.Plo@am__quote@

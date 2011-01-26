@@ -1,3 +1,8 @@
+2010-11-29  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* MachineKeySectionUtilsTest.cs: Do not assume xor will change a
+	byte
+
 2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Test/System.Web.Util/MachineKeySectionUtilsTest.cs: Moved from

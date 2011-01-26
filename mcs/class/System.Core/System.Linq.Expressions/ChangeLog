@@ -1,3 +1,21 @@
+2010-12-30  Jb Evain  <jbevain@gmail.com>
+
+	[LINQ] Fix non generic AsQueryable issue #661462
+
+2010-11-29  Daniel Sell  <dredd422@gmail.com>
+
+	Fix Expression.MakeBinary so it can return ArrayIndex nodes
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-13  Jb Evain  <jbevain@gmail.com>
+
+	Add support for hoisted variables in the ET interpreter
+
+	This fixes #645765.
+
 2010-07-26  Jb Evain  <jbevain@novell.com>
 
 	* EmitContext.cs: Properly call methods on enumerations.

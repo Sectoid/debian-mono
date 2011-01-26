@@ -45,8 +45,27 @@ namespace System.Xaml.Schema
 
 			result = null;
 			IList<XamlTypeName> args = null;
+			int nArray = 0;
+			int idx;
 
-			int idx = typeName.IndexOf ('(');
+			if (typeName.Length > 2 && typeName [typeName.Length - 1] == ']') {
+				idx = typeName.LastIndexOf ('[');
+				if (idx < 0)
+					return false; // mismatch brace
+				nArray = 1;
+				for (int i = idx + 1; i < typeName.Length - 1; i++) {
+					if (typeName [i] != ',')
+						return false; // only ',' is expected
+					nArray++;
+				}
+				if (!TryParse (typeName.Substring (0, idx), namespaceResolver, out result))
+					return false;
+				// Weird result, but Name ends with '[]'
+				result = new XamlTypeName (result.Namespace, result.Name + '[' + new string (',', nArray - 1) + ']', result.TypeArguments);
+				return true;
+			}
+
+			idx = typeName.IndexOf ('(');
 			if (idx >= 0) {
 				if (typeName [typeName.Length - 1] != ')')
 					return false;
@@ -76,8 +95,6 @@ namespace System.Xaml.Schema
 			return true;
 		}
 
-		static readonly char [] commas = {','};
-
 		public static IList<XamlTypeName> ParseList (string typeNameList, IXamlNamespaceResolver namespaceResolver)
 		{
 			IList<XamlTypeName> list;
@@ -85,6 +102,8 @@ namespace System.Xaml.Schema
 				throw new FormatException (String.Format ("Invalid type name list: '{0}'", typeNameList));
 			return list;
 		}
+
+		static readonly char [] comma_or_parens = new char [] {',', '(', ')'};
 
 		public static bool TryParseList (string typeNameList, IXamlNamespaceResolver namespaceResolver, out IList<XamlTypeName> list)
 		{
@@ -94,21 +113,47 @@ namespace System.Xaml.Schema
 				throw new ArgumentNullException ("namespaceResolver");
 
 			list = null;
-			var split = typeNameList.Split (commas);
-			if (split.Length == 0)
-				return false;
+			int idx = 0;
+			int parens = 0;
+			XamlTypeName tn;
 
-			var arr = new XamlTypeName [split.Length];
-
-			for (int i = 0; i < split.Length; i++) {
-				var s = split [i].Trim ();
-				XamlTypeName tn;
-				if (!TryParse (s, namespaceResolver, out tn))
-					return false;
-				arr [i] = tn;
+			List<string> l = new List<string> ();
+			int lastToken = 0;
+			while (true) {
+				int i = typeNameList.IndexOfAny (comma_or_parens, idx);
+				if (i < 0) {
+					l.Add (typeNameList.Substring (lastToken));
+					break;
+				}
+				
+				switch (typeNameList [i]) {
+				case ',':
+					if (parens != 0)
+						break;
+					l.Add (typeNameList.Substring (idx, i - idx));
+					break;
+				case '(':
+					parens++;
+					break;
+				case ')':
+					parens--;
+					break;
+				}
+				idx = i + 1;
+				while (idx < typeNameList.Length && typeNameList [idx] == ' ')
+					idx++;
+				if (parens == 0 && typeNameList [i] == ',')
+					lastToken = idx;
 			}
 
-			list = arr;
+			var ret = new List<XamlTypeName> ();
+		 	foreach (var s in l) {
+				if (!TryParse (s, namespaceResolver, out tn))
+					return false;
+				ret.Add (tn);
+			}
+
+			list = ret;
 			return true;
 		}
 
@@ -140,11 +185,13 @@ namespace System.Xaml.Schema
 
 		public XamlTypeName ()
 		{
+			TypeArguments = empty_type_args;
 		}
 
 		static readonly XamlTypeName [] empty_type_args = new XamlTypeName [0];
 
 		public XamlTypeName (XamlType xamlType)
+			: this ()
 		{
 			if (xamlType == null)
 				throw new ArgumentNullException ("xamlType");
@@ -155,8 +202,6 @@ namespace System.Xaml.Schema
 				l.AddRange (from x in xamlType.TypeArguments.AsQueryable () select new XamlTypeName (x));
 				TypeArguments = l;
 			}
-			else
-				TypeArguments = empty_type_args;
 		}
 		
 		public XamlTypeName (string xamlNamespace, string name)
@@ -165,6 +210,7 @@ namespace System.Xaml.Schema
 		}
 
 		public XamlTypeName (string xamlNamespace, string name, IEnumerable<XamlTypeName> typeArguments)
+			: this ()
 		{
 			Namespace = xamlNamespace;
 			Name = name;
@@ -175,8 +221,6 @@ namespace System.Xaml.Schema
 				l.AddRange (typeArguments);
 				TypeArguments = l;
 			}
-			else
-				TypeArguments = empty_type_args;
 		}
 
 		public string Name { get; set; }
@@ -204,11 +248,17 @@ namespace System.Xaml.Schema
 					throw new InvalidOperationException (String.Format ("Could not lookup prefix for namespace '{0}'", Namespace));
 				ret = p.Length == 0 ? Name : p + ":" + Name;
 			}
+			string arr = null;
+			if (ret [ret.Length - 1] == ']') {
+				int idx = ret.LastIndexOf ('[');
+				arr = ret.Substring (idx);
+				ret = ret.Substring (0, idx);
+			}
 
 			if (TypeArguments.Count > 0)
 				ret += String.Concat ("(", DoToString (TypeArguments, prefixLookup), ")");
 
-			return ret;
+			return ret + arr;
 		}
 	}
 }

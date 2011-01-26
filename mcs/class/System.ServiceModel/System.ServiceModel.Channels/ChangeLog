@@ -1,3 +1,26 @@
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-11-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* HttpRequestChannel.cs: Do not use CookieContainer unless we know
+	its supported (e.g. client stack) otherwise we'll throw (browser
+	stack)
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* MsmqBindingElementBase.cs: Implement ExportPolicy.
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* ConnectionOrientedTransportBindingElement.cs: Implement
+	ExportPolicy.
+
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* HttpTransportBindingElement.cs: Implement ExportPolicy.
+
 2010-10-20  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] make /js and /jsdebug dispatchers work.
@@ -16,9 +39,64 @@
 	should first try to find one whose URL matches the current request
 	exactly.
 
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ExtendedProtectionPolicy members. Required by .config files by
+	.NET svcutil.
+
 2010-10-18  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] ServiceHost directive can span several lines.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	fixity fix.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix 2.1 build.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable SecurityBindingElement.CanBuildChannelListener
+	implementation again with fix.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	The previous changes somehow regressed on olive samples, so give
+	quick fixes.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement NetTcpBinding.CanBuildChannelFactory/Listener and
+	several related stuff.
+
+	SecurityTokenParameters.InitializeSecurityTokenRequirement() needs
+	to become protected internal, so changed all overrides as well.
+
+	Some implementation in WindowsStreamSecurityBindingElement is
+	needed only for NetTcpBinding implementation.
+
+	Had to disable a test in SymmetricSecurityBindingElement that
+	depended on OneWay support (which is not yet done).
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill NetTcpBinding security implementation a bit.
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Add missing members.
+
+2010-09-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Make sure context exists in the dictionary getting its
+	associated wait handle.
+
+	SvcHttpHandler maintains a mapping of HttpContext to
+	ManualResetEvent. Entries are removed from the cache in
+	EndHttpRequest. The code makes sure the context exists in the
+	cache before attempting to access it.
 
 2010-09-29  Alan McGovern  <alan.mcgovern@gmail.com>
 
@@ -39,6 +117,38 @@
 
 	Rework TCP listening model, and fix AcceptTcpClient() to not drop
 	timed out requests that actually steals next requests in the air.
+
+2010-09-28  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.ServiceModel.Channels/HttpRequestChannel.cs: For
+	Moonlight use the WebResponse.SupportsHeaders before accessing the
+	Headers collection. This is needed because (the default) browser
+	stack does not expose the headers from its responses. Fix bug
+	#642193
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Override IsContentTypeSupported() in per-encoding-binding-element
+	implementation to work as expected.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Avoid holding WebRequest. This should fix part of bug #636500.
+
+2010-09-03  Jb Evain  <jbevain@gmail.com>
+
+	Remove workaround for moonlight now that System.dll's
+	WebExceptionStatus is properly compiled
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	moonlight build workaround: smcs somehow rejects to compile this
+	code.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Throw EndpointNotFoundException when it cannot connect to the
+	remote server.
 
 2010-08-11  Atsushi Eno  <atsushi@ximian.com>
 

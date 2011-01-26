@@ -1079,7 +1079,7 @@ namespace System.Windows.Forms {
 			create_params.Width = Width;
 			create_params.Height = Height;
 
-			create_params.ClassName=XplatUI.DefaultClassName;
+			create_params.ClassName=XplatUI.GetDefaultClassName (GetType ());
 			create_params.ClassStyle = 0;
 			create_params.ExStyle=0;
 			create_params.Parent=IntPtr.Zero;
@@ -2071,13 +2071,11 @@ namespace System.Windows.Forms {
 			throw new NotImplementedException();
 		}
 
-#if NET_2_0
 		[MonoTODO]
 		internal override void SystrayBalloon(IntPtr hwnd, int timeout, string title, string text, ToolTipIcon icon)
 		{
 			throw new NotImplementedException ();
 		}
-#endif
 		
 		internal override bool Text(IntPtr handle, string text) {
 			Hwnd hwnd = Hwnd.ObjectFromHandle (handle);

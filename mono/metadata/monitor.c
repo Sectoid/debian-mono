@@ -125,12 +125,26 @@ mono_monitor_init (void)
 void
 mono_monitor_cleanup (void)
 {
-	MonitorArray *marray, *next = NULL;
+	MonoThreadsSync *mon;
+	/* MonitorArray *marray, *next = NULL; */
 
 	/*DeleteCriticalSection (&monitor_mutex);*/
 
-	/* FIXME: This seems to cause crashes with SGEN
+	/* The monitors on the freelist don't have weak links - mark them */
+	for (mon = monitor_freelist; mon; mon = mon->data)
+		mon->wait_list = (gpointer)-1;
+
+	/* FIXME: This still crashes with sgen (async_read.exe) */
+	/*
 	for (marray = monitor_allocated; marray; marray = next) {
+		int i;
+
+		for (i = 0; i < marray->num_monitors; ++i) {
+			mon = &marray->monitors [i];
+			if (mon->wait_list != (gpointer)-1)
+				mono_gc_weak_link_remove (&mon->data);
+		}
+
 		next = marray->next;
 		g_free (marray);
 	}
@@ -254,6 +268,7 @@ mon_new (gsize id)
 							new->wait_list = g_slist_remove (new->wait_list, new->wait_list->data);
 						}
 					}
+					mono_gc_weak_link_remove (&new->data);
 					new->data = monitor_freelist;
 					monitor_freelist = new;
 				}
@@ -1141,6 +1156,20 @@ ves_icall_System_Threading_Monitor_Monitor_try_enter (MonoObject *obj, guint32 m
 	} while (res == -1);
 	
 	return res == 1;
+}
+
+void
+ves_icall_System_Threading_Monitor_Monitor_try_enter_with_atomic_var (MonoObject *obj, guint32 ms, char *lockTaken)
+{
+	gint32 res;
+	do {
+		res = mono_monitor_try_enter_internal (obj, ms, TRUE);
+		/*This means we got interrupted during the wait and didn't got the monitor.*/
+		if (res == -1)
+			mono_thread_interruption_checkpoint ();
+	} while (res == -1);
+	/*It's safe to do it from here since interruption would happen only on the wrapper.*/
+	*lockTaken = res == 1;
 }
 
 gboolean 

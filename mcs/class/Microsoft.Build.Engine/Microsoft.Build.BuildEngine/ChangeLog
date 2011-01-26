@@ -1,3 +1,62 @@
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the backing field directly to avoid evaluating again.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.BuildEngine/Project.cs (BuildInternal): Set
+	needToReevaluate to false, when reevaluating.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.BuildEngine/Engine.cs
+	(ClearBuiltTargetsForProject): New. *
+	Microsoft.Build.BuildEngine/Project.cs (BuiltTargetKeys): Remove.
+	(RemoveBuiltTargets): Use Engine.ClearBuiltTargetsForProject . *
+	Microsoft.Build.BuildEngine/Target.cs: Track api changes. *
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ConsoleLogger - Correctly indent multi-line messages.
+
+	Split and correctly indent multi-line messages in ConsoleLogger.
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Import.cs:
+	Change the order of paths. *
+	Microsoft.Build.Engine/Microsoft.Build.Engine.dll.sources: Use
+	MS.Build.Tasks/Utilities.cs, for using RunningOnMac . *
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/PcFileCache.cs: Look
+	in "/Library/Frameworks/Mono.framework/External/pkgconfig" for .pc
+	files, on Mac. *
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/Utilities.cs
+	(RunningOnMac): New.
+
+2011-01-10  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.BuildEngine/Token.cs: Add position information.
+	* Microsoft.Build.BuildEngine/ConditionParser.cs: Track api
+	changes. Improve error messages. (ExpectToken): Rename to ..
+	(IsAtToken): .. this, to better reflect its behavior. *
+	Microsoft.Build.BuildEngine/ConditionTokenizer.cs: Track api
+	changes and improve error messages. *
+	Microsoft.Build.BuildEngine/ConditionFactorExpresion.cs: Track api
+	changes
+
+2011-01-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #663180 .
+
+	Add "/Library/Frameworks/Mono.framework/External/xbuild" to
+	MSBuildExtensionsPath on MacOSX.
+
+	From the bug report: The purpose of this directory is to provide a
+	place for third-party installers to place extensions where they
+	will not be removed by Mono upgrades. MonoDevelop patches this
+	into the xbuild MSBuildExtensionsPath for builds within MD but it
+	would be useful to have it work outside of MD.
+
 2010-10-13  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Reset cache of built targets, on a new project build.

@@ -1,3 +1,11 @@
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Add some missing StructLayoutAttributes.
+
+2010-09-06  Atsushi Eno  <atsushieno@Atsushi-Eno-no-MacBook.local>
+
+	Fix NetworkInterface marshaling size on OSX and avoid crash.
+
 2010-08-11  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix pinvoked function name and marshaling of MIB stats.

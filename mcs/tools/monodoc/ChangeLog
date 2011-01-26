@@ -1,3 +1,66 @@
+2011-01-10  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[monodoc/osx] Look for docs in additional directories.
+
+	Fixes #663182.
+
+	OSX allows multiple framework versions to be installed
+	side-by-side, and the current version is available through
+	/Library/Frameworks/Mono.framework/Versions/Current.
+
+	However, documentation installed into
+	/L/F/M.f/V/C/lib/monodoc/sources is specific for that Mono
+	version; upgrade Mono.framework, and the documentation is "lost,"
+	not visible to the newly installed version.
+
+	To fix this, we're creating an *unversioned* directory to contain
+	documentation, which will thus be persistent across Mono.framework
+	upgrades: /Library/Frameworks/Mono.framework/External/monodoc
+
+	This will allow Mono.framework to be upgraded without "losing" the
+	documentation visible within monodoc.
+
+2010-12-29  Miguel de Icaza  <miguel@gnome.org>
+
+	[monodoc] Use points instead of relative-sizing, so that we render
+	the same on web browsers and on WebKit
+
+2010-12-28  Miguel de Icaza  <miguel@gnome.org>
+
+	Revert accidental patch
+
+2010-12-28  Miguel de Icaza  <miguel@gnome.org>
+
+	[monodoc] Update the stylesheets to use Jonathan Pobst's UI
+	design.
+
+	This is a temporary measure, as we only use 1/10th of Jonathan's
+	icons and style, but will do while we get Kipunji deployed.
+
+	The major benefit is that the native Linux and MacOS Monodoc
+	clients when using Gecko or WebKit can render something that is
+	not hideous.
+
+2010-12-28  Miguel de Icaza  <miguel@gnome.org>
+
+	[monodoc] Header no longer needed, we now keep it on the top
+
+2010-12-28  Miguel de Icaza  <miguel@gnome.org>
+
+	[monodoc] Fix the root display once and for all: web does not do
+	editing
+
+2010-11-18  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[mdoc export-html] Fixup href generation for nested generics.
+
+	In certain situations, the type-parameter counting code doesn't
+	skip tokens properly. In some circumstances, this results in
+	invalid links (e.g. refing KeyValuePair`1, not KeyValuePair`2), in
+	others it results in an XSLT error with "!WTF 2".
+
+	The problem was we weren't properly checking for nested types.
+
 2010-08-27  Jonathan Pryor  <jonpryor@vt.edu>
 
 	[mdoc-validate] Support & validate the ECMA XML dialect.

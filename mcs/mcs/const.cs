@@ -9,9 +9,11 @@
 // Copyright 2003-2008 Novell, Inc.
 //
 
-using System;
+#if STATIC
+using IKVM.Reflection;
+#else
 using System.Reflection;
-using System.Reflection.Emit;
+#endif
 
 namespace Mono.CSharp {
 
@@ -86,31 +88,12 @@ namespace Mono.CSharp {
 		{
 			var c = ((ConstSpec) spec).Value as Constant;
 			if (c.Type == TypeManager.decimal_type) {
-				FieldBuilder.SetCustomAttribute (CreateDecimalConstantAttribute (c, Compiler.PredefinedAttributes));
+				Module.PredefinedAttributes.DecimalConstant.EmitAttribute (FieldBuilder, (decimal) c.GetValue (), c.Location);
 			} else {
-				FieldBuilder.SetConstant (c.GetTypedValue ());
+				FieldBuilder.SetConstant (c.GetValue ());
 			}
 
 			base.Emit ();
-		}
-
-		public static CustomAttributeBuilder CreateDecimalConstantAttribute (Constant c, PredefinedAttributes pa)
-		{
-			PredefinedAttribute attr = pa.DecimalConstant;
-			if (attr.Constructor == null &&
-				!attr.ResolveConstructor (c.Location, TypeManager.byte_type, TypeManager.byte_type,
-					TypeManager.uint32_type, TypeManager.uint32_type, TypeManager.uint32_type))
-				return null;
-
-			Decimal d = (Decimal) c.GetValue ();
-			int [] bits = Decimal.GetBits (d);
-			object [] args = new object [] { 
-				(byte) (bits [3] >> 16),
-				(byte) (bits [3] >> 31),
-				(uint) bits [2], (uint) bits [1], (uint) bits [0]
-			};
-
-			return new CustomAttributeBuilder (attr.Constructor, args);
 		}
 
 		public static void Error_InvalidConstantType (TypeSpec t, Location loc, Report Report)
@@ -224,7 +207,7 @@ namespace Mono.CSharp {
 			}
 
 			if (expr == null) {
-				expr = New.Constantify (field.MemberType);
+				expr = New.Constantify (field.MemberType, Location);
 				if (expr == null)
 					expr = Constant.CreateConstantFromValue (field.MemberType, null, Location);
 				expr = expr.Resolve (rc);

@@ -2,6 +2,7 @@ using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
@@ -65,57 +66,56 @@ namespace Mono.ServiceContractTool
 
 			// For now only assemblyPath is supported.
 			foreach (string arg in co.RemainingArguments) {
-				Uri uri = null;
-				if (Uri.TryCreate (arg, UriKind.Absolute, out uri)) {
-					metadata = ResolveWithDisco (arg);
-					if (metadata == null)
-						metadata = ResolveWithWSMex (arg);
+				if (!File.Exists (arg)) {
+					Uri uri = null;
+					if (Uri.TryCreate (arg, UriKind.Absolute, out uri)) {
+						metadata = ResolveWithDisco (arg);
+						if (metadata == null)
+							metadata = ResolveWithWSMex (arg);
 
-					continue;
-				}
-
-				FileInfo fi = new FileInfo (arg);
-				if (!fi.Exists)
-				switch (fi.Extension) {
-				case ".exe":
-				case ".dll":
-					GenerateContractType (fi.FullName);
-					break;
-				default:
-					throw new NotSupportedException ("Not supported file extension: " + fi.Extension);
+							continue;
+					}
+				} else {
+					FileInfo fi = new FileInfo (arg);
+					switch (fi.Extension) {
+					case ".exe":
+					case ".dll":
+						GenerateContractType (fi.FullName);
+						break;
+					default:
+						throw new NotSupportedException ("Not supported file extension: " + fi.Extension);
+					}
 				}
 			}
 
-			if (metadata == null)
-				return;
-			
-			List<IWsdlImportExtension> list = new List<IWsdlImportExtension> ();
-			list.Add (new TransportBindingElementImporter ());
-			//list.Add (new DataContractSerializerMessageContractImporter ());
-			list.Add (new XmlSerializerMessageContractImporter ());
+			if (metadata != null)
+			{
+				List<IWsdlImportExtension> list = new List<IWsdlImportExtension> ();
+				list.Add (new TransportBindingElementImporter ());
+				//list.Add (new DataContractSerializerMessageContractImporter ());
+				list.Add (new XmlSerializerMessageContractImporter ());
 
-			//WsdlImporter importer = new WsdlImporter (metadata, null, list);
-			WsdlImporter importer = new WsdlImporter (metadata);
-			//ServiceEndpointCollection endpoints = importer.ImportAllEndpoints ();
+				//WsdlImporter importer = new WsdlImporter (metadata, null, list);
+				WsdlImporter importer = new WsdlImporter (metadata);
+				ServiceEndpointCollection endpoints = importer.ImportAllEndpoints ();
+				Collection<ContractDescription> contracts = new Collection<ContractDescription> ((from se in endpoints select se.Contract).ToArray ());
 
-			Console.WriteLine ("Generating files..");
-			/*foreach (ServiceEndpoint se in endpoints)
-				generator.GenerateServiceContractType (se.Contract);*/
+				Console.WriteLine ("Generating files..");
 
-			Collection<ContractDescription> contracts = importer.ImportAllContracts ();
-			foreach (ContractDescription cd in contracts) {
-				if (co.GenerateMoonlightProxy) {
-					var moonctx = new MoonlightChannelBaseContext ();
-					cd.Behaviors.Add (new MoonlightChannelBaseContractExtension (moonctx, co.GenerateMonoTouchProxy));
-					foreach (var od in cd.Operations)
-						od.Behaviors.Add (new MoonlightChannelBaseOperationExtension (moonctx, co.GenerateMonoTouchProxy));
-					generator.GenerateServiceContractType (cd);
-					moonctx.Fixup ();
+				// FIXME: could better become IWsdlExportExtension
+				foreach (ContractDescription cd in contracts) {
+					if (co.GenerateMoonlightProxy) {
+						var moonctx = new MoonlightChannelBaseContext ();
+						cd.Behaviors.Add (new MoonlightChannelBaseContractExtension (moonctx, co.GenerateMonoTouchProxy));
+						foreach (var od in cd.Operations)
+							od.Behaviors.Add (new MoonlightChannelBaseOperationExtension (moonctx, co.GenerateMonoTouchProxy));
+						generator.GenerateServiceContractType (cd);
+						moonctx.Fixup ();
+					}
+					else
+						generator.GenerateServiceContractType (cd);
 				}
-				else
-					generator.GenerateServiceContractType (cd);
 			}
-
 			/*if (cns.Types.Count == 0) {
 				Console.Error.WriteLine ("Argument assemblies have no types.");
 				Environment.Exit (1);

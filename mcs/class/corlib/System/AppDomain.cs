@@ -226,7 +226,7 @@ namespace System {
 
 #if NET_4_0
 		public PermissionSet PermissionSet {
-			get { return this.GrantedPermissionSet; }
+			get { return _granted ?? (_granted = new PermissionSet (PermissionState.Unrestricted)); }
 		}
 #endif
 
@@ -390,11 +390,11 @@ namespace System {
 			                                     culture, activationAttributes, null);
 		}
 
-		public object CreateInstanceFromAndUnwrap (string assemblyName, string typeName, bool ignoreCase,
+		public object CreateInstanceFromAndUnwrap (string assemblyFile, string typeName, bool ignoreCase,
 		                                           BindingFlags bindingAttr, Binder binder, object[] args,
 		                                           CultureInfo culture, object[] activationAttributes)
 		{
-			ObjectHandle oh = CreateInstanceFrom (assemblyName, typeName, ignoreCase, bindingAttr, binder, args,
+			ObjectHandle oh = CreateInstanceFrom (assemblyFile, typeName, ignoreCase, bindingAttr, binder, args,
 				culture, activationAttributes);
 
 			return (oh != null) ? oh.Unwrap () : null;
@@ -1374,7 +1374,7 @@ namespace System {
 		[method: SecurityPermission (SecurityAction.LinkDemand, ControlAppDomain = true)]
 		public event UnhandledExceptionEventHandler UnhandledException;
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0
 		[MonoTODO]
 		public bool IsHomogenous {
 			get { return true; }
@@ -1537,13 +1537,22 @@ namespace System {
 #endif
 
 #if NET_4_0 || MOONLIGHT
-		[MonoTODO ("Currently always returns false")]
+		List<string> compatibility_switch;
+
 		public bool? IsCompatibilitySwitchSet (string value)
 		{
 			if (value == null)
 				throw new ArgumentNullException ("value");
+
 			// default (at least for SL4) is to return false for unknown values (can't get a null out of it)
-			return false;
+			return ((compatibility_switch != null) && compatibility_switch.Contains (value));
+		}
+
+		internal void SetCompatibilitySwitch (string value)
+		{
+			if (compatibility_switch == null)
+				compatibility_switch = new List<string> ();
+			compatibility_switch.Add (value);
 		}
 
 		[MonoTODO ("Currently always returns false")]

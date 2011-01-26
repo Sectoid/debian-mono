@@ -12,9 +12,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection;
+
+#if STATIC
+using IKVM.Reflection.Emit;
+#else
 using System.Reflection.Emit;
+#endif
 
 namespace Mono.CSharp {
 
@@ -89,7 +92,7 @@ namespace Mono.CSharp {
 			return ImplicitReferenceConversionExists (MyEmptyExpr, arg_type) || ExplicitReferenceConversionExists (array.Element, arg_type);
 		}
 
-		static Expression ImplicitTypeParameterConversion (Expression expr, TypeSpec target_type)
+		public static Expression ImplicitTypeParameterConversion (Expression expr, TypeSpec target_type)
 		{
 			var expr_type = (TypeParameterSpec) expr.Type;
 
@@ -129,7 +132,7 @@ namespace Mono.CSharp {
 			// From T to any interface implemented by C
 			//
 			var base_type = expr_type.GetEffectiveBase ();
-			if (base_type == target_type || TypeSpec.IsBaseClass (base_type, target_type, false) || base_type.ImplementsInterface (target_type)) {
+			if (base_type == target_type || TypeSpec.IsBaseClass (base_type, target_type, false) || base_type.ImplementsInterface (target_type, true)) {
 				if (expr_type.IsReferenceType)
 					return new ClassCast (expr, target_type);
 
@@ -178,7 +181,7 @@ namespace Mono.CSharp {
 			return null;
 		}
 
-		static Expression ImplicitReferenceConversion (Expression expr, TypeSpec target_type, bool explicit_cast)
+		public static Expression ImplicitReferenceConversion (Expression expr, TypeSpec target_type, bool explicit_cast)
 		{
 			TypeSpec expr_type = expr.Type;
 
@@ -239,7 +242,7 @@ namespace Mono.CSharp {
 
 			// from any class-type S to any interface-type T.
 			if (target_type.IsInterface) {
-				if (expr_type.ImplementsInterface (target_type)){
+				if (expr_type.ImplementsInterface (target_type, true)){
 					return !TypeManager.IsValueType (expr_type);
 				}
 			}
@@ -316,12 +319,15 @@ namespace Mono.CSharp {
 				return false;
 			}
 
+			if (TypeSpecComparer.IsEqual (expr_type, target_type))
+				return true;
+
 			if (TypeSpecComparer.Variant.IsEqual (expr_type, target_type))
 				return true;
 
 			// from any interface type S to interface-type T.
 			if (expr_type.IsInterface && target_type.IsInterface) {
-				return expr_type.ImplementsInterface (target_type);
+				return expr_type.ImplementsInterface (target_type, true);
 			}
 
 			// from any delegate type to System.Delegate
@@ -403,7 +409,7 @@ namespace Mono.CSharp {
 
 			// from any class-type S to any interface-type T.
 			if (target_type.IsInterface) {
-				if (expr_type.ImplementsInterface (target_type) &&
+				if (expr_type.ImplementsInterface (target_type, true) &&
 					(TypeManager.IsGenericParameter (expr_type) || TypeManager.IsValueType (expr_type))) {
 					return expr == null ? EmptyExpression.Null : new BoxedCast (expr, target_type);
 				}
@@ -436,7 +442,7 @@ namespace Mono.CSharp {
 
 			// conversion exists only mode
 			if (ec == null) {
-				if (expr_type == t_el)
+				if (TypeSpecComparer.IsEqual (expr_type, t_el))
 					return EmptyExpression.Null;
 
 				if (expr is Constant)
@@ -452,7 +458,7 @@ namespace Mono.CSharp {
 				unwrap = expr;
 
 			Expression conv = unwrap;
-			if (expr_type != t_el) {
+			if (!TypeSpecComparer.IsEqual (expr_type, t_el)) {
 				if (conv is Constant)
 					conv = ((Constant)conv).ConvertImplicitly (ec, t_el);
 				else
@@ -569,9 +575,9 @@ namespace Mono.CSharp {
 				if (target_type == TypeManager.uint64_type)
 					return expr == null ? EmptyExpression.Null : new OpcodeCast (expr, target_type, OpCodes.Conv_U8);
 				if (target_type == TypeManager.double_type)
-					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R8);
+					return expr == null ? EmptyExpression.Null : new OpcodeCastDuplex (expr, target_type, OpCodes.Conv_R_Un, OpCodes.Conv_R8);
 				if (target_type == TypeManager.float_type)
-					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R4);
+					return expr == null ? EmptyExpression.Null : new OpcodeCastDuplex (expr, target_type, OpCodes.Conv_R_Un, OpCodes.Conv_R4);
 				if (target_type == TypeManager.decimal_type)
 					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.int64_type){
@@ -589,9 +595,9 @@ namespace Mono.CSharp {
 				// From ulong to float, double
 				//
 				if (target_type == TypeManager.double_type)
-					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R8);
+					return expr == null ? EmptyExpression.Null : new OpcodeCastDuplex (expr, target_type, OpCodes.Conv_R_Un, OpCodes.Conv_R8);
 				if (target_type == TypeManager.float_type)
-					return expr == null ? EmptyExpression.Null : new OpcodeCast (new OpcodeCast (expr, target_type, OpCodes.Conv_R_Un), target_type, OpCodes.Conv_R4);
+					return expr == null ? EmptyExpression.Null : new OpcodeCastDuplex (expr, target_type, OpCodes.Conv_R_Un, OpCodes.Conv_R4);
 				if (target_type == TypeManager.decimal_type)
 					return expr == null ? EmptyExpression.Null : new CastToDecimal (expr);
 			} else if (expr_type == TypeManager.char_type){
@@ -765,15 +771,18 @@ namespace Mono.CSharp {
 			// If `expr_type' implements `target_type' (which is an iface)
 			// see TryImplicitIntConversion
 			//
-			if (target_type.IsInterface && expr_type.ImplementsInterface (target_type))
+			if (target_type.IsInterface && expr_type.ImplementsInterface (target_type, true))
 				return true;
 
-			if (target_type == TypeManager.void_ptr_type && expr_type.IsPointer)
+			if (target_type.IsPointer && expr_type.IsPointer && ((PointerContainer) target_type).Element.BuildinType == BuildinTypeSpec.Type.Void)
 				return true;
 
 			// Conversion from __arglist to System.ArgIterator
 			if (expr_type == InternalType.Arglist)
 				return target_type == TypeManager.arg_iterator_type;
+
+			if (TypeSpecComparer.IsEqual (expr_type, target_type))
+				return true;
 
 			return false;
 		}
@@ -855,27 +864,25 @@ namespace Mono.CSharp {
 			return best;
 		}
 
-		/// <summary>
-		///   Finds the most specific source Sx according to the rules of the spec (13.4.4)
-		///   by making use of FindMostEncomp* methods. Applies the correct rules separately
-		///   for explicit and implicit conversion operators.
-		/// </summary>
-		static TypeSpec FindMostSpecificSource (IList<MethodSpec> list,
-							   Expression source, bool apply_explicit_conv_rules)
+		//
+		// Finds the most specific source Sx according to the rules of the spec (13.4.4)
+		// by making use of FindMostEncomp* methods. Applies the correct rules separately
+		// for explicit and implicit conversion operators.
+		//
+		static TypeSpec FindMostSpecificSource (List<MethodSpec> list, TypeSpec sourceType, Expression source, bool apply_explicit_conv_rules)
 		{
-			var src_types_set = new List<TypeSpec> ();
+			var src_types_set = new TypeSpec [list.Count];
 
 			//
-			// If any operator converts from S then Sx = S
+			// Try exact match first, if any operator converts from S then Sx = S
 			//
-			TypeSpec source_type = source.Type;
-			foreach (var mb in list){
-				TypeSpec param_type = mb.Parameters.Types [0];
+			for (int i = 0; i < src_types_set.Length; ++i) {
+				TypeSpec param_type = list [i].Parameters.Types [0];
 
-				if (param_type == source_type)
+				if (param_type == sourceType)
 					return param_type;
 
-				src_types_set.Add (param_type);
+				src_types_set [i] = param_type;
 			}
 
 			//
@@ -1018,15 +1025,20 @@ namespace Mono.CSharp {
 				if (t.IsInterface)
 					continue;
 
-				if (target != t && !ImplicitStandardConversionExists (new EmptyExpression (t), target)) {
-					if (implicitOnly)
-						continue;
+				if (target != t) {
+					if (TypeManager.IsNullableType (t))
+						t = Nullable.NullableInfo.GetUnderlyingType (t);
 
-					if (texpr == null)
-						texpr = new EmptyExpression (target);
+					if (!ImplicitStandardConversionExists (new EmptyExpression (t), target)) {
+						if (implicitOnly)
+							continue;
 
-					if (!ImplicitStandardConversionExists (texpr, t))
-						continue;
+						if (texpr == null)
+							texpr = new EmptyExpression (target);
+
+						if (!ImplicitStandardConversionExists (texpr, t))
+							continue;
+					}
 				}
 
 				if (candidates == null)
@@ -1044,22 +1056,22 @@ namespace Mono.CSharp {
 			List<MethodSpec> candidates = null;
 
 			//
-			// If S or T are nullable types, S0 and T0 are their underlying types
-			// otherwise S0 and T0 are equal to S and T respectively.
+			// If S or T are nullable types, source_type and target_type are their underlying types
+			// otherwise source_type and target_type are equal to S and T respectively.
 			//
 			TypeSpec source_type = source.Type;
 			TypeSpec target_type = target;
-			Expression unwrap;
+			Expression source_type_expr;
 
 			if (TypeManager.IsNullableType (source_type)) {
 				// No implicit conversion S? -> T for non-reference types
 				if (implicitOnly && !TypeManager.IsReferenceType (target_type) && !TypeManager.IsNullableType (target_type))
 					return null;
 
-				unwrap = source = Nullable.Unwrap.Create (source);
-				source_type = source.Type;
+				source_type_expr = Nullable.Unwrap.Create (source);
+				source_type = source_type_expr.Type;
 			} else {
-				unwrap = null;
+				source_type_expr = source;
 			}
 
 			if (TypeManager.IsNullableType (target_type))
@@ -1073,29 +1085,29 @@ namespace Mono.CSharp {
 
 				var operators = MemberCache.GetUserOperator (source_type, Operator.OpType.Implicit, declared_only);
 				if (operators != null) {
-					FindApplicableUserDefinedConversionOperators (operators, source, target_type, implicitOnly, ref candidates);
+					FindApplicableUserDefinedConversionOperators (operators, source_type_expr, target_type, implicitOnly, ref candidates);
 				}
 
 				if (!implicitOnly) {
 					operators = MemberCache.GetUserOperator (source_type, Operator.OpType.Explicit, declared_only);
 					if (operators != null) {
-						FindApplicableUserDefinedConversionOperators (operators, source, target_type, false, ref candidates);
+						FindApplicableUserDefinedConversionOperators (operators, source_type_expr, target_type, false, ref candidates);
 					}
 				}
 			}
 
-			if ((target.Kind & user_conversion_kinds) != 0 && target != TypeManager.decimal_type) {
+			if ((target.Kind & user_conversion_kinds) != 0 && target_type != TypeManager.decimal_type) {
 				bool declared_only = target.IsStruct || implicitOnly;
 
 				var operators = MemberCache.GetUserOperator (target_type, Operator.OpType.Implicit, declared_only);
 				if (operators != null) {
-					FindApplicableUserDefinedConversionOperators (operators, source, target_type, implicitOnly, ref candidates);
+					FindApplicableUserDefinedConversionOperators (operators, source_type_expr, target_type, implicitOnly, ref candidates);
 				}
 
 				if (!implicitOnly) {
 					operators = MemberCache.GetUserOperator (target_type, Operator.OpType.Explicit, declared_only);
 					if (operators != null) {
-						FindApplicableUserDefinedConversionOperators (operators, source, target_type, false, ref candidates);
+						FindApplicableUserDefinedConversionOperators (operators, source_type_expr, target_type, false, ref candidates);
 					}
 				}
 			}
@@ -1113,7 +1125,11 @@ namespace Mono.CSharp {
 				s_x = most_specific_operator.Parameters.Types[0];
 				t_x = most_specific_operator.ReturnType;
 			} else {
-				s_x = FindMostSpecificSource (candidates, source, !implicitOnly);
+				//
+				// Pass original source type to find the best match against input type and
+				// not the unwrapped expression
+				//
+				s_x = FindMostSpecificSource (candidates, source.Type, source_type_expr, !implicitOnly);
 				if (s_x == null)
 					return null;
 
@@ -1121,23 +1137,40 @@ namespace Mono.CSharp {
 				if (t_x == null)
 					return null;
 
-				most_specific_operator = candidates[0];
-
-				for (int i = 1; i < candidates.Count; ++i) {
+				most_specific_operator = null;
+				for (int i = 0; i < candidates.Count; ++i) {
 					if (candidates[i].ReturnType == t_x && candidates[i].Parameters.Types[0] == s_x) {
 						most_specific_operator = candidates[i];
 						break;
 					}
+				}
+
+				if (most_specific_operator == null) {
+					MethodSpec ambig_arg = null;
+					foreach (var candidate in candidates) {
+						if (candidate.ReturnType == t_x)
+							most_specific_operator = candidate;
+						else if (candidate.Parameters.Types[0] == s_x)
+							ambig_arg = candidate;
+					}
+
+					ec.Report.Error (457, loc,
+						"Ambiguous user defined operators `{0}' and `{1}' when converting from `{2}' to `{3}'",
+						ambig_arg.GetSignatureForError (), most_specific_operator.GetSignatureForError (),
+						source.Type.GetSignatureForError (), target.GetSignatureForError ());
 				}
 			}
 
 			//
 			// Convert input type when it's different to best operator argument
 			//
-			if (s_x != source.Type)
+			if (s_x != source_type)
 				source = implicitOnly ?
-					ImplicitConversionStandard (ec, source, s_x, loc) :
-					ExplicitConversionStandard (ec, source, s_x, loc);
+					ImplicitConversionStandard (ec, source_type_expr, s_x, loc) :
+					ExplicitConversionStandard (ec, source_type_expr, s_x, loc);
+			else {
+				source = source_type_expr;
+			}
 
 			source = new UserCast (most_specific_operator, source, loc).Resolve (ec);
 
@@ -1154,13 +1187,17 @@ namespace Mono.CSharp {
 				source = implicitOnly ?
 					ImplicitConversionStandard (ec, source, target_type, loc) :
 					ExplicitConversionStandard (ec, source, target_type, loc);
+
+				if (source == null)
+					return null;
 			}
 
 			//
-			// Source expression is of nullable type, lift the result in case of it's null
+			// Source expression is of nullable type, lift the result in the case it's null and
+			// not nullable/lifted user operator is used
 			//
-			if (unwrap != null && (TypeManager.IsReferenceType (target) || target_type != target))
-				source = new Nullable.Lifted (source, unwrap, target).Resolve (ec);
+			if (source_type_expr is Nullable.Unwrap && !TypeManager.IsNullableType (s_x) && (TypeManager.IsReferenceType (target) || target_type != target))
+				source = new Nullable.Lifted (source, source_type_expr, target).Resolve (ec);
 			else if (target_type != target)
 				source = Nullable.Wrap.Create (source, target);
 
@@ -1244,6 +1281,11 @@ namespace Mono.CSharp {
 
 					goto case MemberKind.Struct;
 				case MemberKind.Struct:
+					// TODO: Should really introduce MemberKind.Void
+					if (target_type == TypeManager.void_type)
+						return null;
+
+					goto case MemberKind.Enum;
 				case MemberKind.Delegate:
 				case MemberKind.Enum:
 				case MemberKind.Interface:
@@ -1298,24 +1340,24 @@ namespace Mono.CSharp {
 			}
 
 			if (ec.IsUnsafe) {
-				if (expr_type.IsPointer){
-					if (target_type == TypeManager.void_ptr_type)
-						return EmptyCast.Create (expr, target_type);
-
-					//
-					// yep, comparing pointer types cant be done with
-					// t1 == t2, we have to compare their element types.
-					//
-					if (target_type.IsPointer){
-						if (TypeManager.GetElementType(target_type) == TypeManager.GetElementType(expr_type))
+				var target_pc = target_type as PointerContainer;
+				if (target_pc != null) {
+					if (expr_type.IsPointer) {
+						//
+						// Pointer types are same when they have same element types
+						//
+						if (expr_type == target_pc)
 							return expr;
+
+						if (target_pc.Element.BuildinType == BuildinTypeSpec.Type.Void)
+							return EmptyCast.Create (expr, target_type);
 
 						//return null;
 					}
-				}
 
-				if (expr_type == InternalType.Null && target_type.IsPointer)
-					return EmptyCast.Create (new NullPointer (loc), target_type);
+					if (expr_type == InternalType.Null)
+						return EmptyCast.Create (new NullPointer (loc), target_type);
+				}
 			}
 
 			if (expr_type == InternalType.AnonymousMethod){
@@ -1326,6 +1368,9 @@ namespace Mono.CSharp {
 			}
 
 			if (expr_type == InternalType.Arglist && target_type == TypeManager.arg_iterator_type)
+				return expr;
+
+			if (TypeSpecComparer.IsEqual (expr_type, target_type))
 				return expr;
 
 			return null;
@@ -1661,12 +1706,16 @@ namespace Mono.CSharp {
 			//
 			// From object or dynamic to any reference type or value type (unboxing)
 			//
-			if (source_type == TypeManager.object_type || source_type == InternalType.Dynamic)
+			if (source_type == TypeManager.object_type || source_type == InternalType.Dynamic) {
+				if (target_type.IsPointer)
+					return null;
+
 				return
 					source == null ? EmptyExpression.Null :
 					target_is_value_type ? new UnboxCast (source, target_type) :
 					source is Constant ? (Expression) new EmptyConstantCast ((Constant) source, target_type) :
 					new ClassCast (source, target_type);
+			}
 
 			//
 			// From any class S to any class-type T, provided S is a base class of T
@@ -1679,15 +1728,15 @@ namespace Mono.CSharp {
 			// sealed, or provided T implements S.
 			//
 			if (source_type.IsInterface) {
-				if (!target_type.IsSealed || target_type.ImplementsInterface (source_type)) {
-					if (target_type.IsClass)
-						return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
+				if (!target_type.IsSealed || target_type.ImplementsInterface (source_type, true)) {
+					if (source == null)
+						return EmptyExpression.Null;
 
 					//
 					// Unboxing conversion from any interface-type to any non-nullable-value-type that
 					// implements the interface-type
 					//
-					return source == null ? EmptyExpression.Null : new UnboxCast (source, target_type);
+					return target_is_value_type ? new UnboxCast (source, target_type) : (Expression) new ClassCast (source, target_type);
 				}
 
 				//
@@ -1750,7 +1799,7 @@ namespace Mono.CSharp {
 			// From any class type S to any interface T, provides S is not sealed
 			// and provided S does not implement T.
 			//
-			if (target_type.IsInterface && !source_type.IsSealed && !source_type.ImplementsInterface (target_type)) {
+			if (target_type.IsInterface && !source_type.IsSealed && !source_type.ImplementsInterface (target_type, true)) {
 				return source == null ? EmptyExpression.Null : new ClassCast (source, target_type);
 			}
 
@@ -1960,7 +2009,7 @@ namespace Mono.CSharp {
 			if (ne != null)
 				return ne;
 
-			if (ec.IsUnsafe && expr.Type == TypeManager.void_ptr_type && target_type.IsPointer)
+			if (ec.IsUnsafe && expr.Type.IsPointer && target_type.IsPointer && ((PointerContainer)expr.Type).Element.BuildinType == BuildinTypeSpec.Type.Void)
 				return EmptyCast.Create (expr, target_type);
 
 			expr.Error_ValueCannotBeConverted (ec, l, target_type, true);

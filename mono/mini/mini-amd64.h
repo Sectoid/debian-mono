@@ -5,6 +5,18 @@
 #include <mono/utils/mono-sigcontext.h>
 #include <glib.h>
 
+#ifdef __native_client_codegen__
+#define kNaClAlignmentAMD64 32
+#define kNaClAlignmentMaskAMD64 (kNaClAlignmentAMD64 - 1)
+
+/* TODO: use kamd64NaClLengthOfCallImm    */
+/* temporarily using kNaClAlignmentAMD64 so padding in */
+/* image-writer.c doesn't happen                       */
+#define kNaClLengthOfCallImm kNaClAlignmentAMD64
+
+int is_nacl_call_reg_sequence(guint8* code);
+#endif
+
 #ifdef HOST_WIN32
 #include <windows.h>
 /* use SIG* defines if possible */
@@ -146,7 +158,13 @@ struct MonoLMF {
 	gpointer    lmf_addr;
 	/* This is only set in trampoline LMF frames */
 	MonoMethod *method;
+#if defined(__default_codegen__) || defined(HOST_WIN32)
 	guint64     rip;
+#elif defined(__native_client_codegen__)
+	/* On 64-bit compilers, default alignment is 8 for this field, */
+	/* this allows the structure to match for 32-bit compilers.    */
+	guint64     rip __attribute__ ((aligned(8)));
+#endif
 	guint64     rbx;
 	guint64     rbp;
 	guint64     rsp;
@@ -165,6 +183,7 @@ typedef struct MonoCompileArch {
 	gint32 localloc_offset;
 	gint32 reg_save_area_offset;
 	gint32 stack_alloc_size;
+	gint32 sp_fp_offset;
 	gboolean omit_fp, omit_fp_computed, no_pushes;
 	gpointer cinfo;
 	gint32 async_point_count;
@@ -232,21 +251,12 @@ typedef struct {
 #endif
 
 /*
- * This structure is an extension of MonoLMF and contains extra information.
- */
-typedef struct {
-	struct MonoLMF lmf;
-	gboolean debugger_invoke;
-	MonoContext ctx; /* if debugger_invoke is TRUE */
-} MonoLMFExt;
-
-/*
  * some icalls like mono_array_new_va needs to be called using a different 
  * calling convention.
  */
 #define MONO_ARCH_VARARG_ICALLS 1
 
-#ifndef HOST_WIN32
+#if !defined( HOST_WIN32 ) && !defined(__native_client__) && !defined(__native_client_codegen__)
 
 #define MONO_ARCH_USE_SIGACTION 1
 
@@ -256,7 +266,7 @@ typedef struct {
 
 #endif
 
-#endif /* HOST_WIN32 */
+#endif /* !HOST_WIN32 && !__native_client__ */
 
 #if defined (__APPLE__)
 
@@ -343,6 +353,7 @@ typedef struct {
 #define MONO_ARCH_HAVE_IMT 1
 #define MONO_ARCH_HAVE_TLS_GET 1
 #define MONO_ARCH_IMT_REG AMD64_R10
+#define MONO_ARCH_IMT_SCRATCH_REG AMD64_R11
 #define MONO_ARCH_VTABLE_REG MONO_AMD64_ARG_REG1
 /*
  * We use r10 for the imt/rgctx register rather than r11 because r11 is
@@ -365,12 +376,11 @@ typedef struct {
 #define MONO_ARCH_HAVE_GET_TRAMPOLINES 1
 
 #define MONO_ARCH_AOT_SUPPORTED 1
-#ifndef HOST_WIN32
+#if !defined( HOST_WIN32 ) && !defined( __native_client__ )
 #define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
 #else
 #define DISABLE_DEBUGGER_AGENT 1
 #endif
-#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 
 #if !defined(HOST_WIN32) || defined(__sun)
 #define MONO_ARCH_ENABLE_MONITOR_IL_FASTPATH 1
@@ -389,8 +399,15 @@ typedef struct {
 #define MONO_ARCH_HAVE_LLVM_IMT_TRAMPOLINE 1
 #define MONO_ARCH_LLVM_SUPPORTED 1
 #define MONO_ARCH_THIS_AS_FIRST_ARG 1
+#define MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD 1
+#define MONO_ARCH_HAVE_CARD_TABLE_WBARRIER 1
+#define MONO_ARCH_HAVE_SETUP_RESUME_FROM_SIGNAL_HANDLER_CTX 1
+#define MONO_ARCH_GC_MAPS_SUPPORTED 1
 
-#define MONO_ARCH_USE_OP_TAIL_CALL(caller_sig, callee_sig) mono_metadata_signature_equal ((caller_sig), (callee_sig))
+gboolean
+mono_amd64_tail_call_supported (MonoMethodSignature *caller_sig, MonoMethodSignature *callee_sig) MONO_INTERNAL;
+
+#define MONO_ARCH_USE_OP_TAIL_CALL(caller_sig, callee_sig) mono_amd64_tail_call_supported (caller_sig, callee_sig)
 
 /* Used for optimization, not complete */
 #define MONO_ARCH_IS_OP_MEMBASE(opcode) ((opcode) == OP_X86_PUSH_MEMBASE)
@@ -425,6 +442,9 @@ mono_amd64_get_original_ip (void) MONO_INTERNAL;
 
 guint8*
 mono_amd64_emit_tls_get (guint8* code, int dreg, int tls_offset) MONO_INTERNAL;
+
+GSList*
+mono_amd64_get_exception_trampolines (gboolean aot) MONO_INTERNAL;
 
 typedef struct {
 	guint8 *address;

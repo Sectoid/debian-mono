@@ -1,7 +1,89 @@
+2011-01-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Properly search overwrites for custom attributes.
+
+2011-01-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib] Fix for bug #659061. Adjust size of the last group when
+	formatting numbers with group separators.
+
+	When the number format includes several groups make sure that the
+	last (leftmost) one is adjusted so that its width is not larger
+	than the number of remaining characters.
+
+2010-12-22  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed corlib tests to run on en-gb
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #317488
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #655741
+
+2010-11-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* DelegateTest.cs: Add tests for the previous change.
+
+	Fixes #655439
+
+2010-11-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* StringTest.cs: Add tests for the above.
+
+	Fixes #605340
+
+2010-11-04  Marek Safar  <marek.safar@gmail.com>
+
+	For some strange reason Console.Write(Line) allows null params
+	formatter arguments
+
 2010-10-23  Zoltan Varga  <vargaz@gmail.com>
 
 	Fix another regression in the Array.Sort () methods, allow keys
 	and items to be of different length. Fixes #648828.
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix make test for corlib.
+
+2010-10-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeTest.cs: Add regression test.
+
+	Fixes #643890
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeTest.cs: Fix a test that had a broken assumption.
+
+	Fix #642130
+
+2010-09-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Remove "NotWorking" from a test that now works.
+
+2010-09-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Enable test that has been fixed in the runtime.
+
+2010-09-02  Jb Evain  <jbevain@gmail.com>
+
+	Add a test for the regression to Delegate.CreateDelegate triggered
+	by 2ec0ab59fe4aecf5507a81846a66de1a658bbfd2
+
+2010-09-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add missing DT format
+
+	The datetime format having a numeric timezone after the
+	milliseconds was missing. Fixes bug #479061.
+
+2010-09-01  Jb Evain  <jbevain@gmail.com>
+
+	Add NotWorking test for bugs #635349 and #605936
 
 2010-08-07  Zoltan Varga  <vargaz@gmail.com>
 

@@ -1,3 +1,7 @@
+2010-12-26  Luke Halliwell  <luke.j.halliwell@gmail.com>
+
+	Fix for bug 349053 - unable to serialize SortedDictionary
+
 2010-04-09  Raja R Harinath  <harinath@hurrynot.org>
 
 	Don't maintain state in the view

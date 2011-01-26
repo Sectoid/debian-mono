@@ -69,6 +69,20 @@ namespace System.ServiceModel.Configuration
 			get { return (ExtensionsSection) GetSection ("system.serviceModel/extensions"); }
 		}
 
+#if NET_4_0
+		public static ProtocolMappingSection ProtocolMappingSection {
+			get {
+				return (ProtocolMappingSection) GetSection ("system.serviceModel/protocolMapping");
+			}
+		}
+
+		public static StandardEndpointsSection StandardEndpointsSection {
+			get {
+				return (StandardEndpointsSection) GetSection ("system.serviceModel/standardEndpoints");
+			}
+		}
+#endif
+
 		public static Binding CreateBinding (string binding, string bindingConfiguration)
 		{
 			BindingCollectionElement section = ConfigUtil.BindingsSection [binding];
@@ -84,6 +98,32 @@ namespace System.ServiceModel.Configuration
 			return b;
 		}
 
+#if NET_4_0
+		public static ServiceEndpoint ConfigureStandardEndpoint (ContractDescription cd, ServiceEndpointElement element)
+		{
+			string kind = element.Kind;
+			string endpointConfiguration = element.EndpointConfiguration;
+
+			EndpointCollectionElement section = ConfigUtil.StandardEndpointsSection [kind];
+			if (section == null)
+				throw new ArgumentException (String.Format ("standard endpoint section for '{0}' was not found.", kind));
+
+			StandardEndpointElement e = section.GetDefaultStandardEndpointElement ();
+
+			ServiceEndpoint inst = e.CreateServiceEndpoint (cd);
+
+			foreach (StandardEndpointElement el in section.ConfiguredEndpoints) {
+				if (el.Name == endpointConfiguration) {
+					el.InitializeAndValidate (element);
+					el.ApplyConfiguration (inst, element);
+					break;
+				}
+			}
+			
+			return inst;
+		}
+#endif
+
 		public static KeyedByTypeCollection<IEndpointBehavior>  CreateEndpointBehaviors (string bindingConfiguration)
 		{
 			var ec = BehaviorsSection.EndpointBehaviors [bindingConfiguration];
@@ -98,6 +138,30 @@ namespace System.ServiceModel.Configuration
 		public static EndpointAddress CreateInstance (this EndpointAddressElementBase el)
 		{
 			return new EndpointAddress (el.Address, el.Identity.CreateInstance (), el.Headers.Headers);
+		}
+
+		public static void CopyFrom (this ChannelEndpointElement to, ChannelEndpointElement from)
+		{
+			to.Address = from.Address;
+			to.BehaviorConfiguration = from.BehaviorConfiguration;
+			to.Binding = from.Binding;
+			to.BindingConfiguration = from.BindingConfiguration;
+			to.Contract = from.Contract;
+			if (from.Headers != null)
+				to.Headers.Headers = from.Headers.Headers;
+			if (from.Identity != null)
+				to.Identity.InitializeFrom (from.Identity.CreateInstance ());
+			to.Name = from.Name;
+		}
+
+		public static EndpointAddress CreateEndpointAddress (this ChannelEndpointElement el)
+		{
+			return new EndpointAddress (el.Address, el.Identity != null ? el.Identity.CreateInstance () : null, el.Headers.Headers);
+		}
+
+		public static EndpointAddress CreateEndpointAddress (this ServiceEndpointElement el)
+		{
+			return new EndpointAddress (el.Address, el.Identity != null ? el.Identity.CreateInstance () : null, el.Headers.Headers);
 		}
 
 		public static EndpointIdentity CreateInstance (this IdentityElement el)

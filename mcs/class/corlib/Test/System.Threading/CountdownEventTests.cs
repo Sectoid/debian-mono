@@ -105,7 +105,7 @@ namespace MonoTests.System.Threading
 					e.Wait();
 					s = true;
 				}
-			});
+			}, 3);
 			
 			Assert.IsTrue(s, "#1");
 			Assert.IsTrue(evt.IsSet, "#2");
@@ -125,6 +125,24 @@ namespace MonoTests.System.Threading
 			
 			Assert.AreEqual(4, evt.CurrentCount, "#1");
 			Assert.IsFalse(evt.IsSet, "#2");
+		}
+
+		[Test]
+		public void ResetTest ()
+		{
+			Assert.AreEqual (5, evt.CurrentCount);
+			evt.Signal ();
+			Assert.AreEqual (4, evt.CurrentCount);
+			evt.Reset ();
+			Assert.AreEqual (5, evt.CurrentCount);
+			Assert.AreEqual (5, evt.InitialCount);
+			evt.Signal ();
+			evt.Signal ();
+			Assert.AreEqual (3, evt.CurrentCount);
+			Assert.AreEqual (5, evt.InitialCount);
+			evt.Reset (10);
+			Assert.AreEqual (10, evt.CurrentCount);
+			Assert.AreEqual (10, evt.InitialCount);
 		}
 	}
 }

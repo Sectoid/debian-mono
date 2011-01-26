@@ -111,6 +111,9 @@ get_default_ctor (MonoClass *klass)
 		MonoMethodSignature *sig;
 		MonoMethod *method = klass->methods [i];
 
+		if (!method)
+			continue;
+
 		if ((method->flags & METHOD_ATTRIBUTE_SPECIAL_NAME) == 0)
 			continue;
 		if ((method->name[0] != '.') || strcmp (".ctor", method->name))
@@ -404,7 +407,17 @@ check_field_access (MonoMethod *caller, MonoClassField *field)
 {
 	/* if get_reflection_caller returns NULL then we assume the caller has NO privilege */
 	if (caller) {
-		MonoClass *klass = (mono_field_get_flags (field) & FIELD_ATTRIBUTE_STATIC) ? NULL : mono_field_get_parent (field);
+		MonoError error;
+		MonoClass *klass;
+
+		/* this check can occur before the field's type is resolved (and that can fail) */
+		mono_field_get_type_checked (field, &error);
+		if (!mono_error_ok (&error)) {
+			mono_error_cleanup (&error);
+			return FALSE;
+		}
+
+		klass = (mono_field_get_flags (field) & FIELD_ATTRIBUTE_STATIC) ? NULL : mono_field_get_parent (field);
 		return mono_method_can_access_field_full (caller, field, klass);
 	}
 	return FALSE;

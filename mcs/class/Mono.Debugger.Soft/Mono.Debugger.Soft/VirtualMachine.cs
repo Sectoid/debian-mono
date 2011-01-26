@@ -188,9 +188,16 @@ namespace Mono.Debugger.Soft
 			return new ExceptionEventRequest (this, exc_type, caught, uncaught);
 		}
 
+		public AssemblyLoadEventRequest CreateAssemblyLoadRequest () {
+			return new AssemblyLoadEventRequest (this);
+		}
+
 		public void EnableEvents (params EventType[] events) {
-			foreach (EventType etype in events)
+			foreach (EventType etype in events) {
+				if (etype == EventType.Breakpoint)
+					throw new ArgumentException ("Breakpoint events cannot be requested using EnableEvents", "events");
 				conn.EnableEvent (etype, SuspendPolicy.All, null);
+			}
 		}
 
 		public BreakpointEventRequest SetBreakpoint (MethodMirror method, long il_offset) {
@@ -224,6 +231,8 @@ namespace Mono.Debugger.Soft
 				throw new NotSupportedException ("This request is not supported by the protocol version implemented by the debuggee.");
 			case ErrorCode.ABSENT_INFORMATION:
 				throw new AbsentInformationException ();
+			case ErrorCode.NO_SEQ_POINT_AT_IL_OFFSET:
+				throw new ArgumentException ("Cannot set breakpoint on the specified IL offset.");
 			default:
 				throw new CommandException (args.ErrorCode);
 			}

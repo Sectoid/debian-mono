@@ -23,8 +23,6 @@
 //
 
 
-#if NET_2_0
-
 using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -577,20 +575,14 @@ namespace System.Windows.Forms
 					style = cell.InheritedStyle;
 
 				object value;
-				object formattedValue;
-				string errorText;
 				DataGridViewElementStates cellState;
 				
 				if (cell.RowIndex == -1) {
 					// TODO: Look up value if databound.
 					value = null;
-					formattedValue = null;
-					errorText = null;
 					cellState = cell.State;
 				} else {
 					value = cell.Value;
-					formattedValue = cell.FormattedValue;
-					errorText = cell.ErrorText;
 					cellState = cell.InheritedState;
 				}
 
@@ -771,4 +763,3 @@ namespace System.Windows.Forms
 	}
 }
 
-#endif

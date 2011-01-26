@@ -1,3 +1,22 @@
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	The Hashtable is back
+
+	But this time it is using a hash code provider and a comparer that
+	don't invoke the object's methods. Thanks to Paolo for pointing
+	this out.
+
+2010-09-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't store objects in a Hashtable.
+
+	Storing the objects in Hashtable causes the GetHashCode() and may
+	be Equals() methods to be called on the object, which MS does not
+	do. I'm using a list holding WeakReferences. Not sure if hard
+	references would be ok.
+
+	Fixes bug #640688.
+
 2010-08-25  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* SerializationInfo.cs: Set/reset the new 4.0 members in SetType

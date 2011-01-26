@@ -1,3 +1,20 @@
+2010-10-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not reject contract from the same method, could happen by a
+	type with multiple service contracts within the typie hierarchy.
+
+	For details, see:
+	http://lists.ximian.com/pipermail/mono-devel-list/2010-September/035940.html
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Add another roundtrip case.
+
 2010-06-24  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* MetadataExchangeBindingsTest.cs : make sure that the target port

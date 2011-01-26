@@ -1,3 +1,46 @@
+2010-12-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Delete end local endpoint when stopping the server
+
+	Fixes bug #647204.
+
+2010-11-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Sockets] Support Remote/LocalEndPoint for AF_UNIX
+
+	We were not handling correctly the AF_UNIX family when getting the
+	socket name or the peer name.
+
+	Fixes bug #655637.
+
+2010-09-16  Miguel de Icaza  <miguel@gnome.org>
+
+	Reuse the same delegate for checking if the runtime is shutting
+	down.
+
+	Instead of creating a new delegate every time that WaitAny is
+	invoked, reuse the same delegate. We also keep a permanent
+	reference to prevent this delegate being collected.
+
+	Thsi should fix 592981
+
+2010-09-15  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Ensure that the GC doesn't collect the delegate we pass off to
+	native code.
+
+	(Hopefully) Fixes #592981.
+
+	This is esoteric, with no test case, so I can only assume that the
+	cause for the crash reported in #592981 is that Boehm is
+	collecting the shutting_down delegate reference while we're still
+	in native code (which sounds more like a Boehm bug, as it
+	shouldn't be collecting memory while we're in a P/Invoke).
+
+	Hopefully making the delegate more explicit and using
+	GC.KeepAlive() will keep the delegate from being collected by the
+	GC during the P/Invoke call.
+
 2010-04-15  Jonathan Pryor  <jpryor@novell.com>
 
 	* UnixSignal.cs: Change the native WaitAny() method to accept a

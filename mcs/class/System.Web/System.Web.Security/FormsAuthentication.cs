@@ -5,7 +5,7 @@
 //	Gonzalo Paniagua Javier (gonzalo@ximian.com)
 //
 // (C) 2002,2003 Ximian, Inc (http://www.ximian.com)
-// Copyright (c) 2005 Novell, Inc (http://www.novell.com)
+// Copyright (c) 2005-2010 Novell, Inc (http://www.novell.com)
 //
 
 //
@@ -36,8 +36,10 @@ using System.Security.Permissions;
 using System.Text;
 using System.Web;
 using System.Web.Configuration;
+using System.Web.Compilation;
 using System.Web.Util;
 using System.Globalization;
+using System.Collections.Specialized;
 
 namespace System.Web.Security
 {
@@ -47,6 +49,7 @@ namespace System.Web.Security
 	{
 		static string authConfigPath = "system.web/authentication";
 		static string machineKeyConfigPath = "system.web/machineKey";
+		static object locker = new object ();
 #if TARGET_J2EE
 		const string Forms_initialized = "Forms.initialized";
 		const string Forms_cookieName = "Forms.cookieName";
@@ -84,17 +87,7 @@ namespace System.Web.Security
 			get { return (FormsProtectionEnum) AppDomain.CurrentDomain.GetData (Forms_protection); }
 			set { AppDomain.CurrentDomain.SetData (Forms_protection, value); }
 		}
-		static object locker = new object ();
-#else
-		static bool initialized;
-		static string cookieName;
-		static string cookiePath;
-		static int timeout;
-		static FormsProtectionEnum protection;
-		static object locker = new object ();
-#endif
-#if NET_1_1
-#if TARGET_J2EE
+
 		const string Forms_requireSSL = "Forms.requireSSL";
 		const string Forms_slidingExpiration = "Forms.slidingExpiration";
 
@@ -114,13 +107,7 @@ namespace System.Web.Security
 			}
 			set { AppDomain.CurrentDomain.SetData (Forms_slidingExpiration, value); }
 		}
-#else
-		static bool requireSSL;
-		static bool slidingExpiration;
-#endif
-#endif
-#if NET_2_0
-#if TARGET_J2EE
+
 		const string Forms_cookie_domain = "Forms.cookie_domain";
 		const string Forms_cookie_mode = "Forms.cookie_mode";
 		const string Forms_cookies_supported = "Forms.cookies_supported";
@@ -164,6 +151,13 @@ namespace System.Web.Security
 			set { AppDomain.CurrentDomain.SetData (Forms_login_url, value); }
 		}
 #else
+		static bool initialized;
+		static string cookieName;
+		static string cookiePath;
+		static int timeout;
+		static FormsProtectionEnum protection;
+		static bool requireSSL;
+		static bool slidingExpiration;
 		static string cookie_domain;
 		static HttpCookieMode cookie_mode;
 		static bool cookies_supported;
@@ -171,14 +165,28 @@ namespace System.Web.Security
 		static bool enable_crossapp_redirects;
 		static string login_url;
 #endif
-#endif
 		// same names and order used in xsp
 		static string [] indexFiles = { "index.aspx",
 						"Default.aspx",
 						"default.aspx",
 						"index.html",
 						"index.htm" };
+#if NET_4_0
+		public static void EnableFormsAuthentication (NameValueCollection configurationData)
+		{
+			BuildManager.AssertPreStartMethodsRunning ();
+			if (configurationData == null || configurationData.Count == 0)
+				return;
 
+			string value = configurationData ["loginUrl"];
+			if (!String.IsNullOrEmpty (value))
+				login_url = value;
+
+			value = configurationData ["defaultUrl"];
+			if (!String.IsNullOrEmpty (value))
+				default_url = value;
+		}
+#endif
 		public FormsAuthentication ()
 		{
 		}
@@ -194,7 +202,7 @@ namespace System.Web.Security
 				throw new HttpException ("Context is null!");
 
 			name = name.ToLower (Helpers.InvariantCulture);
-#if NET_2_0
+
 			AuthenticationSection section = (AuthenticationSection) WebConfigurationManager.GetSection (authConfigPath);
 			FormsAuthenticationCredentials config = section.Forms.Credentials;
 			FormsAuthenticationUser user = config.Users[name];
@@ -202,26 +210,22 @@ namespace System.Web.Security
 
 			if (user != null)
 				stored = user.Password;
-#else
-			AuthConfig config = context.GetConfig (authConfigPath) as AuthConfig;
-			Hashtable users = config.CredentialUsers;
-			string stored = users [name] as string;
-#endif
+
 			if (stored == null)
 				return false;
 
 			bool caseInsensitive = true;
 			switch (config.PasswordFormat) {
-			case FormsAuthPasswordFormat.Clear:
-				caseInsensitive = false;
-				/* Do nothing */
-				break;
-			case FormsAuthPasswordFormat.MD5:
-				password = HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.MD5);
-				break;
-			case FormsAuthPasswordFormat.SHA1:
-				password = HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.SHA1);
-				break;
+				case FormsAuthPasswordFormat.Clear:
+					caseInsensitive = false;
+					/* Do nothing */
+					break;
+				case FormsAuthPasswordFormat.MD5:
+					password = HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.MD5);
+					break;
+				case FormsAuthPasswordFormat.SHA1:
+					password = HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.SHA1);
+					break;
 			}
 
 			return String.Compare (password, stored, caseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) == 0;
@@ -232,12 +236,7 @@ namespace System.Web.Security
 			if (protection == FormsProtectionEnum.None)
 				return FormsAuthenticationTicket.FromByteArray (bytes);
 
-#if NET_2_0
 			MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetWebApplicationSection (machineKeyConfigPath);
-#else
-			MachineKeyConfig config = HttpContext.GetAppConfig (machineKeyConfigPath) as MachineKeyConfig;
-#endif
-
 			byte [] result = null;
 			if (protection == FormsProtectionEnum.All) {
 				result = MachineKeySectionUtils.VerifyDecrypt (config, bytes);
@@ -252,7 +251,7 @@ namespace System.Web.Security
 
 		public static FormsAuthenticationTicket Decrypt (string encryptedTicket)
 		{
-			if (encryptedTicket == null || encryptedTicket == String.Empty)
+			if (String.IsNullOrEmpty (encryptedTicket))
 				throw new ArgumentException ("Invalid encrypted ticket", "encryptedTicket");
 
 			Initialize ();
@@ -280,11 +279,8 @@ namespace System.Web.Security
 				return Convert.ToBase64String (ticket_bytes);
 
 			byte [] result = null;
-#if NET_2_0
 			MachineKeySection config = (MachineKeySection) WebConfigurationManager.GetWebApplicationSection (machineKeyConfigPath);
-#else
-			MachineKeyConfig config = HttpContext.GetAppConfig (machineKeyConfigPath) as MachineKeyConfig;
-#endif
+
 			if (protection == FormsProtectionEnum.All) {
 				result = MachineKeySectionUtils.EncryptSign (config, ticket_bytes);
 			} else if (protection == FormsProtectionEnum.Encryption) {
@@ -332,15 +328,13 @@ namespace System.Web.Security
 			HttpCookie cookie = new HttpCookie (cookieName, Encrypt (ticket), strCookiePath, then);
 			if (requireSSL)
 				cookie.Secure = true;
-#if NET_2_0
 			if (!String.IsNullOrEmpty (cookie_domain))
 				cookie.Domain = cookie_domain;
-#endif
+
 			return cookie;
 		}
 
-		internal static string ReturnUrl
-		{
+		internal static string ReturnUrl {
 			get { return HttpContext.Current.Request ["RETURNURL"]; }
 		}
 
@@ -404,9 +398,9 @@ namespace System.Web.Security
 			if (passwordFormat == null)
 				throw new ArgumentNullException ("passwordFormat");
 
-			if (String.Compare (passwordFormat, "MD5", true, Helpers.InvariantCulture) == 0) {
+			if (String.Compare (passwordFormat, "MD5", StringComparison.OrdinalIgnoreCase) == 0) {
 				return HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.MD5);
-			} else if (String.Compare (passwordFormat, "SHA1", true, Helpers.InvariantCulture) == 0) {
+			} else if (String.Compare (passwordFormat, "SHA1", StringComparison.OrdinalIgnoreCase) == 0) {
 				return HashPasswordForStoringInConfigFile (password, FormsAuthPasswordFormat.SHA1);
 			} else {
 				throw new ArgumentException ("The format must be either MD5 or SHA1", "passwordFormat");
@@ -422,7 +416,6 @@ namespace System.Web.Security
 				if (initialized)
 					return;
 
-#if NET_2_0
 				AuthenticationSection section = (AuthenticationSection)WebConfigurationManager.GetSection (authConfigPath);
 				FormsAuthenticationConfiguration config = section.Forms;
 
@@ -435,44 +428,30 @@ namespace System.Web.Security
 				cookie_domain = config.Domain;
 				cookie_mode = config.Cookieless;
 				cookies_supported = true; /* XXX ? */
-				default_url = MapUrl(config.DefaultUrl);
+#if NET_4_0
+				if (!String.IsNullOrEmpty (default_url))
+					default_url = MapUrl (default_url);
+				else
+#endif
+					default_url = MapUrl(config.DefaultUrl);
 				enable_crossapp_redirects = config.EnableCrossAppRedirects;
-				login_url = MapUrl(config.LoginUrl);
-#else
-				HttpContext context = HttpContext.Current;
-				AuthConfig authConfig = context.GetConfig (authConfigPath) as AuthConfig;
-				if (authConfig != null) {
-					cookieName = authConfig.CookieName;
-					timeout = authConfig.Timeout;
-					cookiePath = authConfig.CookiePath;
-					protection = authConfig.Protection;
-#if NET_1_1
-					requireSSL = authConfig.RequireSSL;
-					slidingExpiration = authConfig.SlidingExpiration;
+#if NET_4_0
+				if (!String.IsNullOrEmpty (login_url))
+					login_url = MapUrl (login_url);
+				else
 #endif
-				} else {
-					cookieName = ".MONOAUTH";
-					timeout = 30;
-					cookiePath = "/";
-					protection = FormsProtectionEnum.All;
-#if NET_1_1
-					slidingExpiration = true;
-#endif
-				}
-#endif
+					login_url = MapUrl(config.LoginUrl);
 
 				initialized = true;
 			}
 		}
 
-#if NET_2_0
 		static string MapUrl (string url) {
 			if (UrlUtils.IsRelativeUrl (url))
 				return UrlUtils.Combine (HttpRuntime.AppDomainAppVirtualPath, url);
 			else
 				return UrlUtils.ResolveVirtualPathFromAppAbsolute (url);
 		}
-#endif
 
 		public static void RedirectFromLoginPage (string userName, bool createPersistentCookie)
 		{
@@ -541,15 +520,10 @@ namespace System.Web.Security
 			HttpCookie expiration_cookie = new HttpCookie (cookieName, String.Empty);
 			expiration_cookie.Expires = new DateTime (1999, 10, 12);
 			expiration_cookie.Path = cookiePath;
-#if NET_2_0
 			if (!String.IsNullOrEmpty (cookie_domain))
 				expiration_cookie.Domain = cookie_domain;
-#endif
 			cc.Add (expiration_cookie);
-
-#if NET_2_0
 			Roles.DeleteCookie ();
-#endif
 		}
 
 		public static string FormsCookieName
@@ -567,7 +541,7 @@ namespace System.Web.Security
 				return cookiePath;
 			}
 		}
-#if NET_1_1
+
 		public static bool RequireSSL {
 			get {
 				Initialize ();
@@ -581,9 +555,7 @@ namespace System.Web.Security
 				return slidingExpiration;
 			}
 		}
-#endif
 
-#if NET_2_0
 		public static string CookieDomain {
 			get { Initialize (); return cookie_domain; }
 		}
@@ -624,7 +596,6 @@ namespace System.Web.Security
 		{
 			HttpContext.Current.Response.Redirect (url);
 		}
-#endif
 
 		static void Redirect (string url, bool end)
 		{

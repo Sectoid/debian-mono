@@ -1,3 +1,15 @@
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] UriTemplate must trim the first leading slash in the
+	rendered template.
+
+	When using BindBy{Name,Position} UriTemplate must remove the the
+	first slash from the rendered URI. This fixes the 4 failing tests.
+
+2010-12-04  Joe Dluzen  <jdluzen@gmail.com>
+
+	Fix for #656021.
+
 2010-05-25  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* UriTemplate.cs : safe-unescape template parameters.

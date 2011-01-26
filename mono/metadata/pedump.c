@@ -39,6 +39,10 @@ gboolean verify_metadata = FALSE;
 gboolean verify_code = FALSE;
 gboolean verify_partial_md = FALSE;
 
+static MonoAssembly *pedump_preload (MonoAssemblyName *aname, gchar **assemblies_path, gpointer user_data);
+static void pedump_assembly_load_hook (MonoAssembly *assembly, gpointer user_data);
+static MonoAssembly *pedump_assembly_search_hook (MonoAssemblyName *aname, gpointer user_data);
+
 /* unused
 static void
 hex_dump (const char *buffer, int base, int count)
@@ -445,14 +449,26 @@ verify_image_file (const char *fname)
 
 	mono_image_load_names (image);
 
-	if (!verify_partial_md && !mono_verifier_verify_full_table_data (image, &errors))
-		goto invalid_image;
-
 	/*fake an assembly for class loading to work*/
 	assembly = g_new0 (MonoAssembly, 1);
 	assembly->in_gac = FALSE;
 	assembly->image = image;
 	image->assembly = assembly;
+
+	/*Finish initializing the runtime*/
+	mono_install_assembly_load_hook (pedump_assembly_load_hook, NULL);
+	mono_install_assembly_search_hook (pedump_assembly_search_hook, NULL);
+
+	mono_init_version ("pedump", image->version);
+
+	mono_install_assembly_preload_hook (pedump_preload, GUINT_TO_POINTER (FALSE));
+
+	mono_marshal_init ();
+
+
+	if (!verify_partial_md && !mono_verifier_verify_full_table_data (image, &errors))
+		goto invalid_image;
+
 
 	table = &image->tables [MONO_TABLE_TYPEDEF];
 	for (i = 1; i <= table->rows; ++i) {
@@ -675,14 +691,6 @@ main (int argc, char *argv [])
 	}
 
 	if (verify_pe || run_new_metadata_verifier) {
-		mono_install_assembly_load_hook (pedump_assembly_load_hook, NULL);
-		mono_install_assembly_search_hook (pedump_assembly_search_hook, NULL);
-
-		mono_init_version ("pedump", "v2.0.50727");
-
-		mono_install_assembly_preload_hook (pedump_preload, GUINT_TO_POINTER (FALSE));
-
-		mono_marshal_init ();
 		run_new_metadata_verifier = 1;
 	}
 	

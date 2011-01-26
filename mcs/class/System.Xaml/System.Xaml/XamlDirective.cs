@@ -36,6 +36,7 @@ namespace System.Xaml
 			XamlDirective directive;
 
 			public DirectiveMemberInvoker (XamlDirective directive)
+				: base (directive)
 			{
 			}
 		}
@@ -78,7 +79,7 @@ namespace System.Xaml
 
 		public override int GetHashCode ()
 		{
-			throw new NotImplementedException ();
+			return ToString ().GetHashCode ();
 		}
 
 		public override IList<string> GetXamlNamespaces ()

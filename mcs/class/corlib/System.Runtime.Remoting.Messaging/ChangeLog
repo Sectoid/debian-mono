@@ -1,3 +1,7 @@
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
 2010-08-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Adapt to new exception in threadpool behavior.

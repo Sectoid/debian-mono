@@ -1,3 +1,7 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
 2009-11-09  Jb Evain  <jbevain@novell.com>
 
 	* XslCompiledTransform.cs: ifdef the temporary files collection

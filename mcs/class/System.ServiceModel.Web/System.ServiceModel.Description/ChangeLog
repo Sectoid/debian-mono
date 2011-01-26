@@ -16,6 +16,16 @@
 	should first try to find one whose URL matches the current request
 	exactly.
 
+2010-10-15  Frank Wilhelm  <fwilhelm@nowisys.de>
+
+	Make Validate() less restrictive for contracts with explicit
+	UriTemplate.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
 2010-08-11  Jb Evain  <jbevain@gmail.com>
 
 	fix the net_2_1 build

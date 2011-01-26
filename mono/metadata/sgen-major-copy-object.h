@@ -77,7 +77,7 @@ par_copy_object_no_checks (char *destination, MonoVTable *vt, void *obj, mword o
 		mono_sgen_register_moved_object (obj, destination);
 	obj = destination;
 	if (queue) {
-		DEBUG (9, fprintf (gc_debug_file, "Enqueuing gray object %p (%s)\n", obj, safe_name (obj)));
+		DEBUG (9, fprintf (gc_debug_file, "Enqueuing gray object %p (%s)\n", obj, mono_sgen_safe_name (obj)));
 		GRAY_OBJECT_ENQUEUE (queue, obj);
 	}
 }
@@ -89,6 +89,11 @@ copy_object_no_checks (void *obj, SgenGrayQueue *queue)
 	gboolean has_references = SGEN_VTABLE_HAS_REFERENCES (vt);
 	mword objsize = SGEN_ALIGN_UP (mono_sgen_par_object_get_size (vt, (MonoObject*)obj));
 	char *destination = major_alloc_object (objsize, has_references);
+
+	if (G_UNLIKELY (!destination)) {
+		mono_sgen_pin_object (obj, queue);
+		return obj;
+	}
 
 	par_copy_object_no_checks (destination, vt, obj, objsize, has_references ? queue : NULL);
 
@@ -142,14 +147,14 @@ copy_object (void **obj_slot, SgenGrayQueue *queue)
 	 */
 
 	if ((forwarded = SGEN_OBJECT_IS_FORWARDED (obj))) {
-		DEBUG (9, g_assert (((MonoVTable*)LOAD_VTABLE(obj))->gc_descr));
+		DEBUG (9, g_assert (((MonoVTable*)SGEN_LOAD_VTABLE(obj))->gc_descr));
 		DEBUG (9, fprintf (gc_debug_file, " (already forwarded to %p)\n", forwarded));
 		HEAVY_STAT (++stat_nursery_copy_object_failed_forwarded);
 		*obj_slot = forwarded;
 		return;
 	}
 	if (SGEN_OBJECT_IS_PINNED (obj)) {
-		DEBUG (9, g_assert (((MonoVTable*)LOAD_VTABLE(obj))->gc_descr));
+		DEBUG (9, g_assert (((MonoVTable*)SGEN_LOAD_VTABLE(obj))->gc_descr));
 		DEBUG (9, fprintf (gc_debug_file, " (pinned, no change)\n"));
 		HEAVY_STAT (++stat_nursery_copy_object_failed_pinned);
 		return;

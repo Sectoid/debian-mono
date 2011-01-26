@@ -1,3 +1,7 @@
+2010-11-23  Jb Evain  <jbevain@gmail.com>
+
+	Remove the processing of the Cecil docs
+
 2010-06-05  Zoltan Varga  <vargaz@gmail.com>
 
 	* Makefile (MONO_DIRS): Add Mono.Debugger.Soft.

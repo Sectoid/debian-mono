@@ -1,3 +1,29 @@
+2011-01-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix ToDateTime() with serialization mode to not mess hour based on
+	timezone.
+
+	Fixed bug #661787.
+
+2010-11-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Return different instances of XmlSchemaInfo for each validated
+	node in XmlSchemaValidatingReader.
+
+2010-11-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not add 'zzz' to all DateTime formats blindly. Fixed bug
+	#655089.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	The test is network dependent.
+
+2010-10-27  Andreia Gaita  <shana@jitted.com>
+
+	[Xml] Fix GetAttribute to handle null namespaces properly, add
+	unit test.
+
 2010-08-09  atsushieno  <atsushi@ximian.com>
 
 	Parse list type, and parse QName without prefix, as expected.

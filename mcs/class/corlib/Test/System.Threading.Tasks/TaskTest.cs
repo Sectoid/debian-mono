@@ -69,9 +69,9 @@ namespace MonoTests.System.Threading.Tasks
 				
 				int index = Task.WaitAny(tasks);
 				
-				Assert.IsTrue (flag == 1, "#1");
-				Assert.AreEqual (1, finished, "#2");
 				Assert.AreNotEqual (-1, index, "#3");
+				Assert.AreEqual (1, flag, "#1");
+				Assert.AreEqual (1, finished, "#2");
 				
 				Task.WaitAll (tasks);
 			});
@@ -194,6 +194,21 @@ namespace MonoTests.System.Threading.Tasks
 			});
 		}
 
+		[Test]
+		public void ContinueWithChildren ()
+		{
+			ParallelTestHelper.Repeat (delegate {
+			    bool result = false;
+
+			    var t = Task.Factory.StartNew (() => Task.Factory.StartNew (() => Thread.Sleep (100), TaskCreationOptions.AttachedToParent));
+			    t.ContinueWith (_ => result = true);
+			    while (!t.IsCompleted)
+				    Thread.Sleep (200);
+
+			    Assert.IsTrue (result);
+			}, 2);
+		}
+
 		[TestAttribute]
 		public void MultipleTaskTestCase()
 		{
@@ -248,7 +263,17 @@ namespace MonoTests.System.Threading.Tasks
 				Assert.IsTrue(r3, "#2");
 				Assert.IsTrue(r1, "#3");
 				Assert.AreEqual (TaskStatus.RanToCompletion, t.Status, "#4");
-			}, 10);
+				}, 10);
+		}
+
+		[Test]
+		public void ExecuteSynchronouslyTest ()
+		{
+			var val = 0;
+			Task t = new Task (() => { Thread.Sleep (100); val = 1; });
+			t.RunSynchronously ();
+
+			Assert.AreEqual (1, val);
 		}
 	}
 }

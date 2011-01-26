@@ -1,3 +1,7 @@
+2010-09-01  Jb Evain  <jbevain@gmail.com>
+
+	Fix the NET_2_1 build of System.Json
+
 2010-03-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* AssemblyInfo.cs : use the same pub key in 2.0 (dummy), to ease

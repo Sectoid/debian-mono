@@ -1,7 +1,29 @@
+2011-01-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mcs] Fixed 'protected internal' build errors and removed
+	System.Web-specific hack from mcs
+
+2010-11-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't throw when unable to write autogen keys
+
+	It is possible that the user running the ASP.NET application does
+	not have permission to write to the registry. In this case, the
+	auto generated keys will be created on every application start.
+
 2010-11-02  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] 4.0-only types don't need the NET_4_0 ifdef and should
 	be in net_4_0_System.Web.dll.sources
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRuntime.AppDomainAppPath may be null during tests,
+	check it before using.
+
+2010-10-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Better handling of application's AppDomain restart
 
 2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
 
@@ -43,15 +65,6 @@
 
 	* System.Web.Configuration_2.0/MachineKeyCompatibilityMode.cs:
 	New.
-
-2010-10-26  Marek Habersack  <grendel@twistedcode.net>
-
-	[asp.net] HttpRuntime.AppDomainAppPath may be null during tests,
-	check it before using.
-
-2010-10-24  Marek Habersack  <grendel@twistedcode.net>
-
-	[asp.net] Better handling of application's AppDomain restart
 
 2010-10-04  Marek Habersack  <grendel@twistedcode.net>
 

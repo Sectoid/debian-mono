@@ -1,3 +1,36 @@
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[System.Drawing] Remove unnecessary verbosity
+
+2010-12-10  Ralph Leckett  <rleckett@gmail.com>
+
+	[System.Drawing] On image load from stream errors, return null,
+	not an exception
+
+2010-12-09  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Ensure we always save the GState, not just when the context is
+	flipped
+
+2010-12-06  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Ensure we save and restore the gstate
+
+2010-12-05  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Ensure we properly translate the CTM for NSView's when dealing
+	with flipped views
+
+	Patch from James Clancey <james.clancey@gmail.com>
+
+2010-11-19  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix a potential NRE when using bitmap contexts
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
 2010-10-29  Geoff Norton  <grompf@sublimeintervention.com>
 
 	[OSX] Reintroduce Cocoa System.Drawing support

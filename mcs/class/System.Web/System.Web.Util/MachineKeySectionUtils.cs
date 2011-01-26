@@ -102,12 +102,12 @@ namespace System.Web.Util {
 				break;
 			default:
 #if NET_4_0
-				if (name.StartsWith ("alg:"))
+				if (name.StartsWith ("alg:")) {
 					sa = SymmetricAlgorithm.Create (name.Substring (4));
-				else
+					break;
+				}
 #endif
-					throw new ConfigurationErrorsException ();
-				break;
+				throw new ConfigurationErrorsException ();
 			}
 			return sa;
 		}
@@ -182,7 +182,7 @@ namespace System.Web.Util {
 			return section.GetDecryptionKey ();
 		}
 
-		static byte [] GetValidationKey (MachineKeySection section)
+		public static byte [] GetValidationKey (MachineKeySection section)
 		{
 			return section.GetValidationKey ();
 		}

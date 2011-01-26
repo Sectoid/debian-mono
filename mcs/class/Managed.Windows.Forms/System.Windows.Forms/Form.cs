@@ -103,6 +103,10 @@ namespace System.Windows.Forms {
 		private Rectangle		restore_bounds;
 		private bool			autoscale_base_size_set;
 #endif
+
+		internal ArrayList disabled_by_showdialog = new ArrayList();
+		internal static ArrayList modal_dialogs = new ArrayList();
+		
 		#endregion	// Local Variables
 
 		#region Private & Internal Methods
@@ -708,7 +712,8 @@ namespace System.Windows.Forms {
 							typeof (DialogResult));
 
 				dialog_result = value;
-				closing = (dialog_result != DialogResult.None && is_modal);
+				if (dialog_result != DialogResult.None && is_modal)
+					RaiseCloseEvents (false, false); // .Net doesn't send WM_CLOSE here.
 			}
 		}
 
@@ -1396,7 +1401,7 @@ namespace System.Windows.Forms {
 				if (Text != null)
 					cp.Caption = Text.Replace (Environment.NewLine, string.Empty);
 				
-				cp.ClassName = XplatUI.DefaultClassName;
+				cp.ClassName = XplatUI.GetDefaultClassName (GetType ());
 				cp.ClassStyle = 0;
 				cp.Style = 0;
 				cp.ExStyle = 0;
@@ -1786,6 +1791,16 @@ namespace System.Windows.Forms {
 			if (capture_window != IntPtr.Zero) {
 				XplatUI.UngrabWindow(capture_window);
 			}
+
+			foreach (Form form in Application.OpenForms)
+			{
+				if (form.Enabled == true)
+				{
+					disabled_by_showdialog.Add(form);
+					form.Enabled = false;
+				}
+			}
+			modal_dialogs.Add(this);
 
 #if not
 			// Commented out; we instead let the Visible=true inside the runloop create the control
@@ -2660,6 +2675,9 @@ namespace System.Windows.Forms {
 
 		private void WmClose (ref Message m)
 		{
+			if (this.Enabled == false)
+				return; // prevent closing a disabled form.
+
 			Form act = Form.ActiveForm;
 			// Don't close this form if there's another modal form visible.
 			if (act != null && act != this && act.Modal == true) {
@@ -2744,6 +2762,12 @@ namespace System.Windows.Forms {
 #endif	
 		private void WmActivate (ref Message m)
 		{
+			if (!this.Enabled && modal_dialogs.Count > 0)
+			{
+				(modal_dialogs[modal_dialogs.Count -1] as Form).Activate ();
+				return; // prevent Activating of disabled form.
+			}
+
 			if (m.WParam != (IntPtr)WindowActiveFlags.WA_INACTIVE) {
 				if (is_loaded) {
 					SelectActiveControl ();
@@ -2854,11 +2878,8 @@ namespace System.Windows.Forms {
 		private void WmNcPaint (ref Message m)
 		{
 			if (ActiveMenu != null) {
-				PaintEventArgs pe;
-				Point pnt;
-
-				pe = XplatUI.PaintEventStart (ref m, Handle, false);
-				pnt = XplatUI.GetMenuOrigin (window.Handle);
+				PaintEventArgs pe = XplatUI.PaintEventStart (ref m, Handle, false);
+				Point pnt = XplatUI.GetMenuOrigin (window.Handle);
 
 				// The entire menu has to be in the clip rectangle because the 
 				// control buttons are right-aligned and otherwise they would
@@ -2870,9 +2891,8 @@ namespace System.Windows.Forms {
 
 				ActiveMenu.Draw (pe, new Rectangle (pnt.X, pnt.Y, ClientSize.Width, 0));
 
-				if (ActiveMaximizedMdiChild != null) {
+				if (ActiveMaximizedMdiChild != null)
 					ActiveMaximizedMdiChild.DrawMaximizedButtons (ActiveMenu, pe);
-				}
 
 				XplatUI.PaintEventEnd (ref m, Handle, false);
 			}
@@ -3241,6 +3261,14 @@ namespace System.Windows.Forms {
 			FormClosedEventHandler eh = (FormClosedEventHandler)(Events[FormClosedEvent]);
 			if (eh != null)
 				eh (this, e);
+
+			foreach (Form form in disabled_by_showdialog)
+			{
+				form.Enabled = true;
+			}
+			disabled_by_showdialog.Clear();
+			if (modal_dialogs.Contains(this))
+				modal_dialogs.Remove(this);
 		}
 		
 		// Consider calling FireClosingEvents instead of calling this directly.

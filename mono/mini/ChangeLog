@@ -1,18 +1,1447 @@
+2011-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Make the stacks of aot image non-executable.
+
+2011-01-17  Zoltan Varga  <vargaz@gmail.com>
+
+	OP_LCOMPARE_IM has type 'L', not 'I'. Fixes #664630.
+
+	This is the same as 6c02c15153, but only for ia64, to avoid
+	destabilizing the branch.
+
+2011-01-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid another case of infinite recursion in AOT.
+
+2011-01-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Make OP_CHECK_THIS do a byte load on arm, since the source
+	argument might point to a vtype if a vtype method is inlined.
+
+2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix win32 build
+
+2011-01-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Add null check to stelem_ref_check () jit icall. Fixes #664297.
+
+2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix AOT on OSX/x86
+
+2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fixed loadedllvm on OSX
+
+	The default build of libmono-llvm.dylib includes libmono and all
+	its dependencies, but our statically compiled mono binary does as
+	well. OSX can actually load both into its process space, and get
+	confused as to which symbol it should call, leading to
+	non-deterministic crashes. We'll remove all the mono dependencies,
+	and use -undefined suppress to mitigate this on OSX.
+
+2011-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement all SIMD intrinsics in LLVM used by basic-simd.exe.
+
+2011-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the loadable llvm build.
+
+2011-01-09  Martin Baulig  <martin@novell.com>
+
+	Fix short trampoline branch.
+
+2011-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Add another bunch of SIMD intrinsics to the LLVM backend.
+
+2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-exceptions.c (mono_walk_stack): Change the do_il_offset
+	parameter into unwind_options which is an enum that allows
+	multiple options to be passed.
+
+	* mini-exceptions.c (mono_jit_walk_stack_from_ctx): Ditto.
+
+	* mini.h: Introduce MonoUnwindOptions which allow stack unwinding
+	callers to specify that they don't want precise method lookup
+	(IOW, no need to deal with gsharing) which allow those functions
+	to be signal safe.
+
+	* mini-exceptions.c (mono_install_handler_block_guard): Ask
+	mono_walk_stack to perform signal safe unwinding.
+
+	Fixes #662741
+
+2011-01-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark mono_print_method_from_ip () with __attribute__((used)) to
+	prevent the linker from optimizing it away in embedding setups.
+
+2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement mono.simd new conversion ops on amd64
+
+2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement a few conversion operations.
+
+	Add conversion operations between 4f, 2d and 4i. Implemented only
+	on x86 for now.
+
+2011-01-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix 64bits Shuffle/3 when simd intrinsics are disabled
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Pass -relocation-model=static to llc in static mode.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Apply .no_dead_strip to all symbols. Unify __APPLE__/__MACH__
+	defines.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit .no_dead_strip directives for all LLVM methods on OSX.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit .no_dead_strip directives for all LLVM methods on OSX.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid an assert if System.Diagnostics.DebuggableAttribute is
+	linked away.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the arm dyncall code after the this passing changes.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Disallow loading of non-llvm compiled aot modules into llvm
+	runtimes on arm.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Tidy up AOT trace messages a bit more.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Generate an icall wrapper for CompareExchange<object> into the
+	mscorlib image.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Make an AOT trace message shorter.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous fix.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the apple aot problem.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Include the assembly name in AOT symbol names in static mode to
+	avoid duplicate symbol errors.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Change how double/long alignment is saved in the AOT image on arm
+	to support cross-compilation.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Various changes to make thumb work under osx.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit thumb unbox trampolines for thumb functions.
+
+2011-01-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Use 'globals' instead of '.Lglobals' to name an aot symbol.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add 'no-write-symbols' aot option.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an 'llvm-path' aot option.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid 0b notation, older gcc's can't handle it.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Use emit_zero_bytes () instead of .skip directive.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Make 'mono_aot_assembly_name' a local symbol as well.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the DISABLE_JIT build.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Reorganize the static AOT support a bit more: the
+	'mono_aot_.._info' symbol will now point the MonoAotFileInfo
+	structure itself, not to a table of globals.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add sanity check to AOT for long/double alignment.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Disallow the 'soft-debug' aot option when compiling using LLVM.
+
+2011-01-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Use symbolic constants and sizeof(mgreg_t) instead of
+	4/sizeof(gpointer)/sizeof(gulong) in the arm backend.
+
+2011-01-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	AMD64 version of the new mono.simd ops
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	remove stupid debug spew
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-ops.h: Add OP_SHUPD.
+
+	* cpu-x86.md: * mini-x86.h: Implement x86 support.
+
+	* simd-intrinsics.c: Handle shuffle on 64bit types.
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* cpu-x86.md: Add shufps.
+
+	* mini-ops.h: Add OP_SHUFPS.
+
+	* mini-x86.c (mono_arch_output_basic_block): Emit OP_SHUFPS.
+
+	* simd-intrinsics.c (simd_intrinsic_emit_shuffle): Handle 3 args
+	variant.
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add test for call clobbering of XMM regs
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-codegen.c (free_up_hreg): Use the bank argument instead of
+	a hardcoded one.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix x86 build.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix warnings introduced by the NACL merge.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an uninitialized memory error in the aot compiler.
+
+2011-01-05  Mark Probst  <mark.probst@gmail.com>
+
+	Don't assert in mono_get_lmf() if there is no LMF.
+
+	This function is called from mini-gc.c when a collection is
+	triggered, which can happen before any managed call is executed by
+	the thread. At least the allocation of the thread object happens
+	in unmanaged code.
+
+2011-01-04  Elijah Taylor  <elijahtaylor@google.com>
+
+	Replace SIZEOF_REGISTER with sizeof(mgreg_t) for consistency with
+	sizeof(gpointer)
+
+2011-01-04  Elijah Taylor  <elijahtaylor@google.com>
+
+	more ilp32 defines
+
+2011-01-04  Elijah Taylor  <elijahtaylor@google.com>
+
+	change first batch of __native_client_codegen__ && TARGET_AMD64 to
+	__mono_ilp32__ where appropriate
+
+2011-01-04  Elijah Taylor  <elijahtaylor@google.com>
+
+	fix IMT_REG assignments that got switched for non-nacl builds,
+	provide no-op versions of nacl routines to avoid #ifdef's all over
+
+2011-01-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix win32 build
+
+2011-01-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini.h: Introduce a new MonoContext variable to be used by the
+	interrupt protection code.
+
+	* mini-exceptions.c: Use new field.
+
+	* mini-trampolines.c: Ditto.
+
+	This fixes finally_guard.exe on OSX.
+
+2011-01-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* tramp-x86.c (mono_arch_create_handler_block_trampoline): Make
+	sure we call the target with a properly aligned frame.
+
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Eliminate the first PLT entry, it is no longer used.
+
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit separate thumb2 plt entries called by LLVM code.
+
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid thumb->arm trampolines when calling between llvm methods.
+
+2011-01-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-x86.h: Define MONO_ARCH_MONITOR_ENTER_ADJUSTMENT to cover
+	the whole stack adjustment add that comes after call.
+
+	* mini.c (create_jit_info): Use an ARCH define for how big the try
+	block adjustment needs to be as x86 is more spacy than amd64.
+
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix ia64 build.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Add more comments for the fields of MonoAotFileInfo.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't make the 'thumb_end' symbol global.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Reorganize the AOT file format once more, get rid of most globals,
+	store them as pointers inside MonoAotFileInfo instead.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid mixing llvm aot code and non-llvm code on arm. Clean up the
+	printing of AOT messages.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement support for llvm+thumb2+aot on arm.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Add thumb2 support for ARM EH code.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement support for NULL pointers in the bin_writer_emit_pointer
+	().
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid computing GC maps if precise stack marking is disabled.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an assert which can be hit for types unloadable types.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Add 'save_locations' to mono_arch_find_jit_info () signature on
+	all platforms.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some merge problems.
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't set 'last' after emitting the OP_GC_SPILL_SLOT_LIVENESS_DEF
+	() opcode.
+
+2010-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a merge problem.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Properly copy the contexts for FRAME_TYPE_MANAGED_TO_NATIVE.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some merge problems.
+
+2010-10-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement AOT support.
+
+2010-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix formatting.
+
+2010-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement x86 support.
+
+2010-10-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove unused DEBUG_GC_MAP macros.
+
+2010-10-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Share the log file between sgen and the stack marking code.
+
+2010-10-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't crash in one place if logging is turned on. Add some FIXMEs.
+
+2010-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Use sizeof (mgreg_t) in a few more places.
+
+2010-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Print frame info during the precise pass as well.
+
+2010-10-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a MONO_GCMAP_DEBUG env variable. Redirect debug messages to a
+	logfile. Fix tracking of registers through managed-to-native
+	transitions.
+
+2010-10-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Allocate a few more vregs as REF/MP.
+
+2010-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	Improve logging even more. Fix a crash which happened when
+	tls->nframes was not initialized in a code path.
+
+2010-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	Improve logging, really set vtype slots without liveness info to
+	PIN.
+
+2010-09-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't treat arguments in registers live for the whole method.
+
+2010-09-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Make gshared variables GC tracked.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Add stats for the size of the scanned native stacks.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the computation of frame start so some areas are not scanned
+	twice.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Log if the frame stack is full.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Move the handling of finally clauses into a separate function.
+	Treat the frame pointer as a precise reg.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Make a log statement depend on cfg->verbose_level.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the handling of methods with finally clauses so it is correct
+	and reasonable efficient: only callsites inside finally blocks are
+	treated conservatively.
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark the dreg of OP_NEWARR as a ref.
+
+2010-09-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Improve logging. Treat the result of an LDIND.REF as a ref. Treat
+	methods with finally clauses very conservatively again.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Rename a few fields.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Make GC maps for methods with finally clauses more precise.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Optimize the frames with finally clauses a bit so at least the
+	non-ref slots are scanned precisely.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow wrapper frames to be precisely tracked.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix regressions introduced by the last few changes. Mark
+	THROW/RETHROW as call sites.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Treat the frame reg as precisely tracked.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Encode regmasks compactly.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Registers are now NOREF by default outside their live range.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove a debug printf.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable heavy logging.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix logging and add more logging to the liveness pass.
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Create GC maps for methods with nono-finally clauses.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Add comments about reducing the size of the GC maps.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some FIXMEs.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a free callback to sgen, use it to free our TLS data.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Optimize the size of TlsData.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Optimize GC map memory usage a bit more, add more memory usage
+	stats.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Update some comments.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Rename StackSlotType to GCSlotType.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Refactor mini_gc_create_gc_map () into smaller functions.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement precise scanning of param area slots. Fix lots of bugs.
+
+2010-09-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't treat the saved ebp slot as pinned. Fix support for noref
+	structs smaller than a pointer. Don't treat 'this' in gshared
+	methods as pinned. Fix the handling of volatile variables.
+
+2010-09-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix order of entries in GCEncodedMap.
+
+2010-09-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Update comments.
+
+2010-09-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Split the marking function into two functions, save information
+	during the conservative pass to avoid doing a stack walk during
+	the precise pass.
+
+2010-09-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Omit empty columns from the register bitmaps.
+
+2010-09-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a typo.
+
+2010-09-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Embed the callsite table after the gc map.
+
+2010-09-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement compression of the fixed fields in the GCMap struct.
+
+2010-09-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Compute the GC bitmap offsets instead of storing them inside the
+	GCMap structure, to reduce its size.
+
+2010-09-18  Zoltan Varga  <vargaz@gmail.com>
+
+	First pass at reducing the memory usage of GC Maps. Remove
+	constants fields, embed the bitmap array after the structure, use
+	offsets into the bitmap array instead of pointers, encode the
+	callsites table using i8/i16 if possible.
+
+2010-09-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Rewrite everything. Instead of computing liveness intervals,
+	compute the set of live variables at each call site, and use this
+	to create gc bitmaps which are only precise at call sites.
+
+2010-09-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Trim starting and ending NOREF columns from the GC bitmaps.
+
+2010-09-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Merge process_locals () and process_arguments ().
+
+2010-09-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't treat 'this' as byref. Don't treat ref regs as pinned.
+
+2010-09-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a new regbank for spill slots holding managed pointers. Treat
+	those as PIN. Make LDELEMA return an MP.
+
+2010-09-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Generate liveness info for non-ref variables allocated to
+	registers.
+
+2010-09-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Update comments.
+
+2010-09-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement precise scanning of registers by scanning the stack
+	slots where they are saved.
+
+2010-09-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark some LMF fields as NOREF.
+
+2010-09-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark non-ref spill slots as NOREF. Mark copies of ref vregs as ref
+	during SSA construction. Treat 'this' as a ref.
+
+2010-09-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for GC tracking of some spill slots.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark stack slots allocated to dead locals as noref.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Rename locals_start/end to frame_start/end.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add more logging code.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add infrastructure for marking the whole frame, not just the
+	locals. Mark arguments plus a few stack slots initialized in the
+	prolog precisely.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Use mono_find_jit_info_ext ().
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Align 'nslots' properly.
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an uninitialized memory bug.
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the computation of the stack space statistics.
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark only the ref slots of a vtype with uncertain liveness as
+	pinned.
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Use two bitmaps instead of the 'slots' array, this makes it
+	possible for a slot to start out as 'pin' and later change to
+	'ref' after it was defined.
+
+2010-09-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Compute approximate liveness intervals for vtypes and volatile
+	variables.
+
+2010-09-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Add infrastructure for marking vregs as holding a GC refs. Use
+	this to avoid pinning variables of type I. Add more GC map stats.
+
+2010-09-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a test for JIT temporaries.
+
+2010-09-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable GC maps for methods with causes for now.
+
+2010-09-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a [NotWorking] test for liveness + finally clauses.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't treat U/PTR as a managed ref.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Add further comments/fixmes.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Really fix the computation of statistics.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Update 'Problems' section.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Compute the stack scanning stats correctly, handle threads without
+	a saved context.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Update comments.
+
+2010-09-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Store the liveness information in a two dimensional bitmap in the
+	GC map. Fix a few problems in the liveness calculation. Turn on
+	precise stack scanning by default.
+
+2010-09-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a MONO_INST_GC_TRACK inst flag to mark variables needing GC
+	tracking, use it in various places to avoid inserting and
+	processing GC_LIVENESS instructions.
+
+2010-09-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a modified liveness analysis pass to compute precise liveness
+	intervals for variables which need GC tracking.
+
+2010-09-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Ongoing work.
+
+2010-12-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Use a more compact encoding for references to
+	icall/ptr-to-struct/struct-to-ptr wrappers, this saves about 50k
+	from the full-aot mscorlib image size.
+
+2010-12-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the fullaotcheck target.
+
+2010-12-21  Elijah Taylor  <elijahtaylor@google.com>
+
+	fix comment
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merge selective files from fsa branch
+
+2010-12-21  Andreia Gaita  <shana@jitted.com>
+
+	Moonlight build fixes and cleanup
+
+2010-12-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Pass -verbose-asm=false to llc, since verbose assembly slows it
+	down greatly.
+
+2010-12-20  Elijah Taylor  <elijahtaylor@google.com>
+
+	Changes to get NaCl builds working minimally
+
+2010-12-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for accessing ThreadStatic fields in sdb. Fixes
+	#645217.
+
+2010-12-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a buffer overflow in the aot compiler.
+
+2010-12-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Name the llvm methods using the debug symbol by default, instead
+	of using the cryptic m_<token> name.
+
+2010-12-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Support passing vtypes on llvm/arm.
+
+2010-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Support methods returning vtypes by addr on arm/LLVM.
+
+2010-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for OP_SETFRET to the llvm backend.
+
+2010-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix OP_LCONV_TO_OVF_I4 under LLVM. Don't use the Mono LLVM calling
+	convention for pinvoke calls.
+
+2010-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow decomposition of some complex 64 bit opcodes on 32 bit
+	platforms when running with llvm.
+
+2010-12-17  Andreia Gaita  <shana@jitted.com>
+
+	Add --with-moon-gc to select the gc to use with moon (boehm/sgen)
+
+2010-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Send back an error instead of asserting when a breakpoint cannot
+	be set at an il offset because it has no seq point. Fixes #620099.
+
+2010-12-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Reserve r7 on arm/darwin even if iphone_abi is disabled.
+
+2010-12-16  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merged in rest of Native Client changes, untested
+
+2010-12-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't put llvm type infos into the text segment, it is no longer
+	needed.
+
+2010-12-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Null out trace_ips after freeing it to avoid crashes.
+
+2010-12-16  Martin Baulig  <martin@novell.com>
+
+	Add documentation for my new exception filter code.
+
+2010-12-16  Martin Baulig  <martin@novell.com>
+
+	* mini-exceptions.c (mono_handle_exception_internal_first_pass):
+	Store the exception object in bp + ei->exvar_offset before
+	invoking an exception filter. Use
+	mono_debugger_agent_exception_filter().
+
+	* debugger-agent.c: Add mono_debugger_agent_exception_filter();
+	stores the original context in `tls->filter_ctx' while invoking
+	the filter.
+
+2010-12-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Modify the Mono EH Frame decoding so it handles the LSDA+type_info
+	embedded into the FDE.
+
+2010-12-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add llvm_label_prefix to a few symbols.
+
+2010-12-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Put llvm type infos into the .text section.
+
+2010-12-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for an additional TType encoding.
+
+2010-12-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't prepend llvm_label_prefix to plt symbol names.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit a seq_point after OP_START_HANDLER, not before.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid passing a name to mono_register_jit_icall () which is later
+	freed.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement support for the .mono_eh_frame created by llc on LLVM
+	mono branch.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix full-aot+llvm support on arm.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid registering sequence points in the per-domain hash when AOT
+	compiling.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix ARM build.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix full-aot+llvm support on amd64.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Add targets to run aot/full-aot tests with LLVM.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a patch each time a plt entry is requested in the llvm
+	backend, so wrappers can be generated in full aot.
+
+2010-12-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a Make variable to run the aot tests using --llvm.
+
+2010-12-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't make the mtriple argument mandatory, clean up processing of
+	llc arguments.
+
+2010-12-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an 'mtriple' aot option to set the target triple used by the
+	AOT compiler in LLVM mode.
+
+2010-12-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a mono_arch_set_target () function to set the target triple
+	which should be targeted by the JIT in AOT mode on ARM.
+
+2010-12-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix handling of gshared methods declared in generic superclasses
+	of nongeneric classes in stack traces. Fixes #658645.
+
+2010-12-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Use the mono calling convention for all LLVM methods, not just
+	ones with rgctx/imt arguments.
+
+2010-12-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Unify the rgctx/non-rgctx call emission functions in the JIT.
+
+2010-12-08  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking our unwind ops when not populating the trampoline
+	info
+
+2010-12-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini.c: A monomac leak detector depends on -v not leaking
+	memory, so lets fix some of those.
+
+2010-12-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Get rid of the 'is_pinvoke' argument to get_call_info (), use
+	sig->pinvoke instead.
+
+2010-12-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some small memory leaks.
+
+2010-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Call mini_parse_debug_options () earlier.
+
+2010-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Add more logging to the soft debugger code.
+
+2010-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a debug log message in the soft debugger.
+
+2010-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove a dead variable.
+
+2010-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix ia64 build.
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove unused lmf->ebp field on ia64.
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix another AOT crash if a signature cannot be loaded.
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Parse custom modifiers in mono_type_create_from_typespec ().
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a crash in the AOT compiler if a method cannot be loaded.
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Make the debugger agent at least compile on the ps3.
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a typo.
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow breakpoints set using --break in wrappers.
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Move the identical MonoLMFExt declarations to mini.h.
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Split the exception handling code into test_only and !test_only
+	passes, ending up with two simpler/shorter functions.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Save the original throw context into TLS so stack walks done from
+	profiler functions work during exception handling.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an asm (""); to the body of __jit_debug_register_code () to
+	prevent gcc from eliminating calls to it.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Export mono_xdebug_flush ().
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Emit write barriers for multi-dim Array.Set (). Fixes #656128.
+
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-trampolines.c (mono_delegate_trampoline): A ldftn is only
+	to be promoted to a ldvirtftn if the target method belongs to an
+	abstract class. This fixes mcs/test/test-283.
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini.c (mini_method_compile): Add a BR to all basic blocks that
+	fallthru blocks that are out of line.
+
+	* branch-opts.c (mono_optimize_branches): Don't eliminate a BR to
+	the next block if is out of line.
+
+	Fixes #318677
+
+2010-11-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an aot crash if field->type is not initialized.
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-trampolines.c (mono_delegate_trampoline): Handle the case
+	of a delegate created with ldftn on which the method token points
+	to an abstract method. This case behaves in the same way as
+	ldvirtftn.
+
+	Fixes #317488
+
+2010-11-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Update the help message for --verify-all.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Define MONO_ARCH_INIT_TOP_LMF_ENTRY for all architectures.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove unused lmf->ebp field on arm.
+
+2010-11-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Check if TOS is store
+	compatible with the return type of the current method.
+
+	Fixes #655497
+
+2010-11-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini.c (mini_assembly_can_skip_verification): Dynamic methods
+	have a different wrapper kind than regular methods.
+
+	FIxes #655497 under sandbox.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid parsing of /proc entries on ppc when cross-compiling.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid emitting uninitialized memory into the AOT image.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Make Int32.MinValue/-1 throw OverflowException on ppc too.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Update a http link.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Commit the iphone abi support changes for ARM.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Simplify the arm prolog/epilog generation by not saving the sp to
+	the stack, its not needed.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement frame pointer elimination for arm.
+
+2010-11-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix stack alignment when resuming from a signal handler in the
+	soft debugger. Fixes #647464.
+
+2010-11-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix another place.
+
+2010-11-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Throw an OverflowException on Int32.MinValue/-1 when using the JIT
+	icall too.
+
+2010-11-24  Andreia Gaita  <shana@jitted.com>
+
+	[Moon] Speed up the moonlight build by stripping it down to the
+	bare basics
+
+2010-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Make some changes to the stack overflow handling code so it works
+	to some degree even if the kernel doesn't give us the fault
+	address.
+
+2010-11-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable a test which exposes mcs bug #646744.
+
+2010-11-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable a PS3 test, fix up the argument processing in the Test
+	Driver.
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Free the JIT tls data for the main thread.
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some small memory leaks.
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Increase maximum size of ppc prolog. Fixes #654460.
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous arm EH change.
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Load dependent assemblies of an aot image from the assembly's
+	basedir. Fixes #654850.
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Set the thumb bit in the CPSR when resuming from a signal handler
+	to a thumb function on arm.
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Improve tail call support on x86 too.
+
+2010-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an assert in single stepping if an IL offset doesn't
+	correspond to a seq point. Fixes #654694.
+
+2010-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix infinite recursion in the CompareExchange aot code.
+
+2010-11-18  Paolo Molaro  <lupus@oddwiz.org>
+
+	Provide better coverage of jitted methods to the profiler.
+
+	Sometimes we use wrapper methods or other tricks under the hood,
+	but we provided to the profiler some inconsistent information, for
+	example the MonoMethod pointer in enter/leave events could be
+	different from the one used in reporting jit compilation. This
+	patch introduces a concept of aliased methods: more than one
+	MonoMethod pointer could correspond to the same jit info and as
+	such, more end_jit notifications can happen for the same compiled
+	code. This also means, in turn, that you can get a end_jit
+	notification for MonoMethod pointers that weren't reported in a
+	start_jit event. This partially reverts the change in
+	2e0067422b9cb, which doesn't have an associated bug report anyway
+	(this change instead fixes the issue with unresolved methods in
+	the log profiler).
+
+2010-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Pop the arguments to the throw trampoline from the stack on x86.
+	Fixes #654322.
+
+2010-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Bump the max size of the arm prolog to prevent overflows.
+
+2010-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove a debug printf.
+
+2010-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Fail LLVM compilation when using sgen + OP_STOREV_MEMBASE with
+	structs with reference fields. Fixes #653842.
+
+2010-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Special case Interlocked.CompareExchange<T> in the aot runtime.
+
+2010-11-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Improve tail call support on amd64 to support more methods, not
+	just ones whose signature is equal to their caller.
+
+2010-11-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove an unneccesary assert which is hit when a double is passed
+	in split reg-stack in soft-float mode on non-EABI arm.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the DISABLE_JIT build.
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous change.
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix build breakage on platforms without execvp.
+
+2010-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a ppc cross compile problem.
+
+2010-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove one more compile-time dependency on sgen.
+
+2010-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Define mono_gc_get_card_table () for boehm/null gc too, to reduce
+	the number of sgen dependencies in mini/.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle OOM with string interning.
+
 2010-11-10  Zoltan Varga  <vargaz@gmail.com>
 
 	When single stepping from a exception throw site, single step to
 	the catch site. Fixes #652590.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the --enable-shared=no build.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an AOT flag for aot images compiled with soft-debugging
+	support, and avoid loading aot images without this flag when
+	running with the soft debugger.
+
+2010-11-09  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Prevent an invalid write to mono_lmf_addr
+
+	mono_set_lmf () calls *(mono_get_lmf_addr ()) = lmf, but
+	mono_get_lmf_addr could potentially point to the address we just
+	g_free'd. Ensure that we clear the settings, before freeing the
+	memory.
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a workaround for a failed assert in the amd64 EH code which
+	happens when running under the soft debugger.
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
 
 2010-11-08  Zoltan Varga  <vargaz@gmail.com>
 
 	Fix a typo in process_breakpoint_inner which doesn't break our
 	tests for some reason.
 
+2010-11-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Transition ves_icall_get_frame_info () to use find_jit_info_ext
+	(), remove the managed->native wrapper hacks.
+
+2010-11-08  Paolo Molaro  <lupus@oddwiz.org>
+
+	* mini-exceptions.c: sometimes an allocation happens at thread
+	startup where the data structures are not yet setup to allow stack
+	walking. If we request a stack trace there, we'd crash. To
+	reproduce the crash without this change, just run xsp with the log
+	profiler with the nocalls option.
+
+2010-11-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Make frames of type FRAME_TYPE_MANAGED_TO_NATIVE act as a marker,
+	i.e. the caller should ignore them and unwind once more to get the
+	last managed frame and its associated context.
+
+2010-11-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix llvm build with LLVM 2.8.
+
+2010-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the s390 hacks from the EH code by decreasing the ip stored
+	into ctx->ip by 1, as it is done on all other platforms.
+
+2010-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Add another assert to the amd64 EH code.
+
+2010-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a few exceptions to the EH code to determine whenever they
+	hold on all platforms in all cases.
+
+2010-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Reorganize mono_handle_exception_internal (): * Use
+	mono_find_jit_info_ext () * Avoid putting the main body of code
+	inside two if's.
+
+2010-11-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Rework an if () inside an #ifdef since it confuses emacs.
+
 2010-11-05  Zoltan Varga  <vargaz@gmail.com>
 
 	Enlarge try-finally blocks preceeded by a Monitor.Enter () call to
 	include the call itself, to avoid races inherent in such code.
 	Fixes #651546.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Get rid of gregs_from_ucontext (), use the normal UCONTEXT_REG_...
+	macros instead.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Unify stack walking functions: * Rename
+	mono_jit_walk_stack_from_ctx_in_thread to mono_walk_stack. * Make
+	the old stack walker use this one. * Remove the old
+	mono_walk_stack functions.
 
 2010-11-05  Zoltan Varga  <vargaz@gmail.com>
 
@@ -32,10 +1461,28 @@
 
 	Fix gshared support in the soft debugger. Fixes #651251.
 
-2010-11-02  Marek Habersack  <grendel@twistedcode.net>
+2010-11-04  Geoff Norton  <grompf@sublimeintervention.com>
 
-	[runtime] mono_cfg_set_exception is not present in 2.8. Fixes the
-	build.
+	[RUNTIME] Ensure that we initialize the cpu for every thread [Bug
+	#650439]
+
+	It appears that on OSX the FPU settings on x86/amd64 are not
+	inherited to child threads of a process, leading to differences in
+	precision between the main thread and the sub thread. We now call
+	mono_arch_cpu_init on every thread on every platform
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Include JIT time in --stats output.
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid adding generic classes during non-full AOT, since it leads
+	to a huge code blowup.
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't save xdebug info during AOT compilation.
 
 2010-11-01  Zoltan Varga  <vargaz@gmail.com>
 
@@ -45,17 +1492,53 @@
 
 	Avoid asserts if a forced inline fails. Fix typos. Fixes #650407.
 
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable inlining if the assembly has a DebuggableAttribute with
+	the IsJITOptimizerDisabled flag set. Fixes #604486.
+
 2010-10-30  Brian Luczkiewicz  <brian@sooloos.com>
 
 	Enable --aot (but not --aot=full) on osx/x86
 
 2010-10-31  Zoltan Varga  <vargaz@gmail.com>
 
+	Fix the amd64 dyn call code after the this passing changes.
+
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Return information from decode_method_ref () in a MethodRef
+	structure instead of a bunch of arguments.
+
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
 	Fix the generation of GenericEqualityComparer () instances in AOT.
+
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Rework decoding of method references in the AOT runtime. * Improve
+	the hashing of methods to include generic arguments * Get rid of
+	can_method_ref_match_method (), use a 'target' argument to
+	decode_method_ref () instead. * Bump corlib file format version.
 
 2010-10-30  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Fix the build
+
+2010-10-30  Koushik Dutta  <koushd@gmail.com>
+
+	Fix Android build. MINI_THREAD_VAR_OFFSET needs to be defined as
+	MONO_THREAD_VAR_OFFSET (which returns -1).
+
+2010-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Int32.MinValue/-1 should throw OverflowException, not
+	ArithmeticException. Our tests didn't catch this because the
+	former is a subclass of the latter. Fixes #649889.
+
+2010-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Update the LLVM backend to latest LLVM SVN.
 
 2010-10-28  Geoff Norton  <grompf@sublimeintervention.com>
 
@@ -73,6 +1556,10 @@
 2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Fix some counters under 32bits.
+
+2010-10-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark tls_get with clob:c on arm.
 
 2010-10-25  Zoltan Varga  <vargaz@gmail.com>
 
@@ -99,9 +1586,76 @@
 	Avoid trying to read the gc name in the AOT runtime from older AOT
 	images. Fixes #647918.
 
+2010-10-19  Zoltan Varga  <vargaz@gmail.com>
+
+	* mini/exceptions-x86.c: Turn off exception callback filtering on
+	WoW64. This allows managed exceptions to actually work when using
+	32bit mono on 64bit Windows.
+
+	License: MIT/X11
+
 2010-10-19  Tak  <levi@unity3d.com>
 
 	[Fix] Ensure that exceptions are propagated when embedding
+
+2010-10-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable a more specialized version of the MONO_INST_FAULT removal
+	optimization which is safe in the face of llvm optimizations.
+	Flush stdout before dumping llvm methods since LLVM's outs ()
+	seems to use a different fd/stream.
+
+2010-10-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement passing of this as the first argument for ia64
+	correctly.
+
+2010-10-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Really fix the ia64 build.
+
+2010-10-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable MONO_ARCH_HAVE_TLS_GET on arm platforms that support it.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix LLVM backend build with latest LLVM SVN.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix ia64 build.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Rename find_jit_info_no_ext to simply find_jit_info ().
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Get rid of the old mono_arch_find_jit_info functions + defines as
+	all platforms support the new API now.
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Transition s390/mips/ia64 to use mono_arch_find_jit_info_ext.
+
+2010-10-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-amd64.c (mono_arch_install_handler_block_guard): Implement
+	this is the same fashion as of x86.
+
+	* tramp-amd64.c (mono_arch_create_handler_block_trampoline): Same
+	as x86 just taking call conv into account.
+
+	* mini-amd64.h: Enable guard support.
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Transition sparc to use mono_arch_find_jit_info_ext.
 
 2010-10-14  Zoltan Varga  <vargaz@gmail.com>
 
@@ -112,9 +1666,132 @@
 
 	Update the IMT thunk creation code on sparc to support net 4.0.
 
+2010-10-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[android] pthread_kill cannot be used safely on android
+
+	Android's fork() function does not properly update the
+	pthread_internal_t->threadid variable to point to the tid of the
+	fork()'d thread, and instead still points to the pid of zygote. As
+	a result we need to track the android tid's manually since
+	gettid() is sane, and use an alternate to pthread_kill on android
+	Additionally, disable sgen support on android until the same work
+	has been done there
+
+	r: kumpera, vargaz
+
+2010-10-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Move the helper signatures along with their init function to
+	method-to-ir.c.
+
+2010-10-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-exceptions.c (mono_find_jit_info): Treat dynamic method
+	wrappers as managed methods.
+
+2010-10-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove warnings
+
+2010-10-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix full-aot support for the stelemref wrappers.
+
+2010-10-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Emit a virtual call to the
+	new faster stelemref wrapper.
+
+	This schema uses 4 wrappers instead of one and puts it into the
+	vtable of vectors of reference types.
+
+	This change improves a synthetic benchmark of an equal mix of
+	stores as compiling corlib by 25%.
+
+	It improves pystones by 3-4%.
+
 2010-10-08  Zoltan Varga  <vargaz@gmail.com>
 
 	Fix the sparc build.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c: Call those functions instead of their icall
+	versions. This speeds up non gshared cases by up to 3x and gshared
+	by up to 2x.
+
+	Those wrappers are not inlined since the register allocator
+	doesn't handle well so the minor speedup is not worth be
+	significant bloat introduced.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (handle_castclass): Emit gsharing code for cast
+	with caching.
+
+	* method-to-ir.c (handle_isinst):
+
+	* mini-generic-sharing.c: Implement MONO_RGCTX_INFO_CAST_CACHE
+	slot type. It's a 2 word domain allocated memory block with the
+	cache on the first word and the vtable on the second.
+
+	This design does a single rgctx fetch instead of two. It's a bit
+	faster and can potentialy save some slots.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* jit-icalls.h: Export new icalls.
+
+	* mini.c (mini_init): Register new icalls.
+
+	* method-to-ir.c: Call into cache aware version of type test ops
+	for types with variant generic arguments.
+
+	This patch replaces direct calls to mono_object_castclass
+	mono_object_isisnt to functions that check a cache first. The
+	cache is per managed code callsite so the hit ratio is very high.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c: Casts to generic types with variant argument can
+	use the regular fast path if all variant arguments are valuetypes.
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add --debug=casts support for ArrayTypeMismatchException's.
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Centralize the setting of cfg->exception_type and the branching to
+	load_error to ease debugging.
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the MonoGenericContext/MonoMethod arguments from the
+	get_this_arg () and get_unbox_trampoline () family of functions,
+	they are no longer needed after the this parameter passing
+	changes.
+
+2010-10-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-10-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement asm monitor/enter exit for amd64-sgen.
+
+2010-10-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Implement x86 support for monitor enter/exit fastpaths under sgen
+
+2010-09-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (handle_delegate_ctor): Emit write barriers under
+	sgen.
+
+	* method-to-ir.c (mono_method_to_ir): Enable delegate .ctor
+	optimization under sgen.
 
 2010-10-01  Zoltan Varga  <vargaz@gmail.com>
 
@@ -125,12 +1802,138 @@
 
 	Fix code buffer reallocation check for OP_SWITCH on arm.
 
+2010-09-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix arm and ppc builds
+
+2010-09-29  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle error creating xdb.il
+
+	If creating the xdb.il file fails, disable the mono support for
+	debugging in gdb. Managed symbol names won't be displayed in stack
+	traces.
+
+	Fixes bug #642625.
+
+2010-09-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add comment on the reason of a non obvious check.
+
+2010-09-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (mono_method_to_ir): Check for null on delegate
+	construction so closed-on-null is not allowed when using the
+	delegate .ctor.
+
+	If the delegate been constructed is open-on-target then the null
+	check must not be applied as the IL pattern is:
+
+	ldnull ldftn void Bla::Foo(int) newobj Bar (object, native int) //
+	delegate void Bar(Bla,int)
+
+2010-09-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Mov the jit map generation code from tramp-x86.c to
+	mini-trampolines.c, add amd64 support.
+
+2010-09-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Record all trampolines to the jitmap.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable support for wrapping non Exception subclasses in
+	RuntimeWrappedException objects, implement support for
+	RuntimeCompatibilityAttribute.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix AOT support for OP_GC_CARD_TABLE on amd64.
+
+2010-09-24  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* cpu-amd64.md: Add card_table_wbarrier.
+
+	* mini-amd64.c (mono_arch_output_basic_block): Emit the new OP.
+
+	* mini-amd64.c (mono_arch_emit_exceptions): Handle another kind of
+	patch-info - GC_CARD_TABLE_ADDR. This is required because we can
+	neither have 64bits immediates with amd64 or 2 scratch regiters
+	with current regalloc.
+
+	* mini-amd64.h: Define MONO_ARCH_HAVE_CARD_TABLE_WBARRIER.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a few variants of the MONO_GC_REGISTER_ROOT () to make most
+	roots precisely tracked and to avoid registering locations
+	pointing to memory allocated by mono_gc_alloc_fixed () as roots
+	under SGEN.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable the wrapped exception code for now, it break some of our
+	tests.
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Wrap thrown objects which do not derive from Exception into a
+	RuntimeWrappedException. Fixes #640687.
+
+2010-09-21  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini.c (mini_method_compile): Break on verification failure.
+
+2010-09-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* cpu-x86.md: Increase the max size of OP_CARDTABLE.
+
+	* mini-x86.c (mono_arch_output_basic_block): If a mask is
+	returned, emit code for it.
+
+2010-09-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Add store_mem_imm to the x86 machine description. Fixes #640377.
+
+2010-09-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Move the setting of mono_lmf, mono_lmf_addr and mono_jit_tls into
+	separate functions to reduce the number of #ifdefs.
+
+2010-09-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Make MonoThreadCleanupFunc take an InternalThread instead of a
+	Thread. Move its definition to threads-types.h since it is not
+	public API. Use this to remove the workaround in thread_cleanup ()
+	so the JIT info for threads is properly cleaned up at shutdown.
+
+2010-09-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Only build one version of libmonoruntimemoon.la (the convenience
+	lib)
+
+2010-09-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Add a configure option to disable building the shared libmono
+	library
+
+2010-09-14  Chris Toshok  <toshok@gmail.com>
+
+	built a separate libmonoruntime for moonlight, so we can do
+	-DMOONLIGHT just in the moonlight lib instead of globally.
+
 2010-09-13  Geoff Norton  <gnorton@novell.com>
 
 	The tid is passed around internally as a unsigned value.
 
 	We were having a crash on OSX due to thread->tid not equalling the
 	passed tid due to a signedness issue.
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a problem in mono_arch_get_argument_info () introduced by the
+	last change.
 
 2010-09-10  Geoff Norton  <gnorton@novell.com>
 
@@ -139,6 +1942,49 @@
 2009-12-22  Geoff Norton  <grompf@sublimeintervention.com>
 
 	fix typo
+
+2010-09-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix x86 trace support after the callconv changes.
+
+2010-09-09  Chris Toshok  <toshok@gmail.com>
+
+	move the call to mono_gc_base_init into mono_debug_init
+
+	mono_debug_init is a public embedding interface and calls into
+	mono_debugger_initialize, which registers a GC root. driver.c
+	calls mono_gc_base_init before calling mono_debug_init for this
+	reason, but that's not an option for embedding (as
+	mono_gc_base_init is internal.)
+
+	since mono_gc_base_init is idempotent, just add a call to
+	mono_debug_init (and remove the driver.c call). Document (in
+	sgen-gc and sgen-gc.h) the fact that although mono_gc_base_init is
+	idempotent, changing LOCK_INIT to something non-idempotent will
+	break this.
+
+2010-09-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (inline_method): We verify the inlined method
+	before variables are created for locals since this can assert.
+	Some check on locals are only done by the IL verifier so it's not
+	enough to just check if the header decoded fine.
+
+	* mini.c (mini_method_verify): Add parameter telling if we should
+	fail the compile or not.
+
+	* mini.c (mono_compile_is_broken): Pass the method explicitly as
+	it now can be diferent than cfg->method.
+
+	* mini.h: Export mono_compile_is_broken instead of
+	mini_method_verify.
+
+	Fixes #560200
+
+2010-09-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Add some comments about the current state of the precise stack
+	scanning code.
 
 2010-09-01  Geoff Norton  <gnorton@novell.com>
 

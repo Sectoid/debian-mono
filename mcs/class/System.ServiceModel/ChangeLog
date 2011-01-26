@@ -1,3 +1,10 @@
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.ServiceModel_test.dll.sources: Add
+	MsmqTransportSecurityTest.cs, CustomPolicyConversionContext.cs,
+	ConnectionOrientedTransportBindingElementTest.cs, and
+	MsmqBindingElementBaseTest.cs to our test build.
+
 2010-10-20  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] make /js and /jsdebug dispatchers work.
@@ -15,6 +22,37 @@
 	selected the manager based on the host's base address, when it
 	should first try to find one whose URL matches the current request
 	exactly.
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add SecurityDuplexSessionChannel, and making room for duplex
+	channel, phase 2.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ProtocolMapping support.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove USE_DATA_CONTRACT_IMPORTER conditional compilation flag.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	Add another stub for the compatibility with the SL SDK
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.ServiceModel monotouch and monodroid sources
+	into a mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.ServiceModel build for monodroid
 
 2010-07-30  Astushi Enomoto  <atsushi@ximian.com>
 

@@ -1,3 +1,49 @@
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	[wcf-discovery] ExclusiveAddressUse won't work. AcceptChannel()
+	should nreturn null when it is being closed.
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	[wcf-discovery] Fix MessageEncoder retrieval, failure on
+	EndReceive and ExclusiveAddressUse.
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Assign identical operation name for each contract version so that
+	they don't conflict each other.
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix (isolate) internal namespace for Udp transport.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove unnecessary common types (as they are imported from
+	internal-visible ones).
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing WCF discovery configuration implementation.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing Discovery duplex (UDP) implementation (not working yet).
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic exception type change and suppress test failures.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Repeat UDP message sending, and do not process duplicate messages
+	received. Makes UDP transmit robust.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
 2010-08-30  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix a couple of Hello/Probe serialization issues.

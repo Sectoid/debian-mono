@@ -80,6 +80,12 @@ mono_gc_register_thread (void *baseptr)
 	return TRUE;
 }
 
+int
+mono_gc_walk_heap (int flags, MonoGCReferences callback, void *data)
+{
+	return 1;
+}
+
 gboolean
 mono_object_is_alive (MonoObject* o)
 {
@@ -140,6 +146,12 @@ mono_gc_make_descr_for_array (int vector, gsize *elem_bitmap, int numbits, size_
 
 void*
 mono_gc_make_descr_from_bitmap (gsize *bitmap, int numbits)
+{
+	return NULL;
+}
+
+void*
+mono_gc_make_root_descr_all_refs (int numbits)
 {
 	return NULL;
 }
@@ -301,6 +313,19 @@ void
 mono_gc_wbarrier_value_copy_bitmap (gpointer _dest, gpointer _src, int size, unsigned bitmap)
 {
 	g_assert_not_reached ();
+}
+
+guint8*
+mono_gc_get_card_table (int *shift_bits, gpointer *card_mask)
+{
+	g_assert_not_reached ();
+	return NULL;
+}
+
+void*
+mono_gc_get_nursery (int *shift_bits, size_t *size)
+{
+	return NULL;
 }
 
 #ifndef HOST_WIN32

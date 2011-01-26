@@ -7,14 +7,16 @@ AM_MAINTAINER_MODE
 
 AC_PROG_CC
 AM_PROG_LIBTOOL
-CFLAGS="$CFLAGS -g -O0 -D_GNU_SOURCE"
+# Use dolt (http://dolt.freedesktop.org/) instead of libtool for building.
+DOLT
+CFLAGS="$CFLAGS -O0"
 GNUC_PRETTY=
 GNUC_UNUSED=
 BREAKPOINT="G_STMT_START { raise (SIGTRAP); } G_STMT_END"
 if test x$GCC = xyes; then
    GNUC_UNUSED='__attribute__((__unused__))'
    GNUC_NORETURN='__attribute__((__noreturn__))'
-   case $target_cpu in
+   case $host_cpu in
      i*86|x86_64) BREAKPOINT="G_STMT_START { __asm__ (\"int \$03\"); } G_STMT_END" ;;
    esac
 fi
@@ -32,14 +34,24 @@ if test "x$CFLAGS_FOR_EGLIB" != "x"; then
    CFLAGS=$CFLAGS_FOR_EGLIB
 fi
 
+CFLAGS="$CFLAGS -g -D_GNU_SOURCE"
+
 AM_CONDITIONAL(CROSS_COMPILING, [test x$cross_compiling = xyes])
 AC_C_BIGENDIAN([ORDER=G_BIG_ENDIAN],[ORDER=G_LITTLE_ENDIAN])
+
+platform_darwin=no
 
 case $host in
 *-*-msdos* | *-*-go32* | *-*-mingw32* | *-*-cygwin* | *-*-windows*)
     PATHSEP='\\'
     SEARCHSEP=';'
     OS="WIN32"
+    ;;
+*-*darwin*)
+    platform_darwin=yes
+    PATHSEP='/'
+    SEARCHSEP=':'
+    OS="UNIX"
     ;;
 *)
     PATHSEP='/'
@@ -74,6 +86,7 @@ AC_SUBST(SEARCHSEP)
 AC_SUBST(OS)
 AM_CONDITIONAL(HOST_WIN32, test x$OS = xWIN32)
 AM_CONDITIONAL(TARGET_WIN32, test x$OS = xWIN32)
+AM_CONDITIONAL(PLATFORM_DARWIN, test x$platform_darwin = xyes)
 
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(void *)
@@ -81,6 +94,10 @@ AC_CHECK_FUNCS(strndup strlcpy getpwuid_r strtok_r rewinddir vasprintf)
 AM_CONDITIONAL(NEED_VASPRINTF, test x$have_vasprintf = x )
 AC_CHECK_LIB(iconv, iconv_open, LIBS="$LIBS -liconv")
 AC_CHECK_LIB(iconv, libiconv_open, LIBS="$LIBS -liconv")
+AC_CHECK_LIB(iconv, iconv_open, ICONV_LIBS="-liconv")
+AC_CHECK_LIB(iconv, libiconv_open, ICONV_LIBS="-liconv")
+AC_SUBST(ICONV_LIBS)
+LIBS="$LIBS $ICONV_LIBS"
 AC_SEARCH_LIBS(sqrtf, m)
 
 # nanosleep may not be part of libc, also search it in other libraries
@@ -110,6 +127,8 @@ fi
 AC_SUBST(G_HAVE_ISO_VARARGS)
 
 AC_CHECK_HEADERS(getopt.h sys/time.h sys/wait.h pwd.h langinfo.h iconv.h localcharset.h)
+AC_CHECK_HEADER(alloca.h, [HAVE_ALLOCA_H=1], [HAVE_ALLOCA_H=0])
+AC_SUBST(HAVE_ALLOCA_H)
 
 if test $ac_cv_sizeof_void_p != $ac_cv_sizeof_int; then
    GPOINTER_TO_INT="((gint)(long) (ptr))"

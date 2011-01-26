@@ -1,3 +1,8 @@
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	* System.Web.Extensions_1.0/Makefile: use the 1.0 Microsoft AJAX
+	library for this compat assembly
+
 2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
 
 	Adjust System.Web.Extensions[_1.0].dll.sources wrt

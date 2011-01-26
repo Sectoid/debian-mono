@@ -89,9 +89,13 @@ namespace System.ServiceModel.Channels
 
 		public void EndHttpRequest (HttpContext context)
 		{
-			var wait = wcf_wait_handles [context];
+			ManualResetEvent wait;
+			if (!wcf_wait_handles.TryGetValue (context, out wait))
+				return;
+
 			wcf_wait_handles.Remove (context);
-			wait.Set ();
+			if (wait != null)
+				wait.Set ();
 		}
 
 		// called from SvcHttpHandlerFactory's remove callback (i.e.
@@ -124,10 +128,10 @@ namespace System.ServiceModel.Channels
 
 			//ServiceHost for this not created yet
 			var baseUri = new Uri (new Uri (HttpContext.Current.Request.Url.GetLeftPart (UriPartial.Authority)), path);
-			if (factory_type != null) {
-				host = ((ServiceHostFactory) Activator.CreateInstance (factory_type)).CreateServiceHost (type, new Uri [] {baseUri});
-			}
-			else
+//			if (factory_type != null) {
+//				host = ((ServiceHostFactory) Activator.CreateInstance (factory_type)).CreateServiceHost (type, new Uri [] {baseUri});
+//			}
+//			else
 				host = new ServiceHost (type, baseUri);
 			host.Extensions.Add (new VirtualPathExtension (baseUri.AbsolutePath));
 

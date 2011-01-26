@@ -1,6 +1,28 @@
+2010-12-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] .NET 4.0 declares the <system.web.extensions> section in
+	machine.config
+
+2010-11-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Web service help fix
+
+	Generate the wsdl document with UTF8 encoding.
+
+2010-09-18  Atsushi Eno  <atsushi@ximian.com>
+
+	ProtocolMapping needed config section, default items and support
+	in ServiceHostBase.
+
 2010-09-17  Atsushi Eno  <atsushi@ximian.com>
 
-	Add working .svc handler in 4.0 web.config.
+	Add working .svc handler in 4.0 web.config, fix standard endpoint
+	handling and get xsp4 working.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
 
 2010-09-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 

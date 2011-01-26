@@ -1,3 +1,19 @@
+2011-01-13  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add vcxproj files for msbuild
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Do previous SKEL_DIRECTORY change for Release profile as well.
+
+2010-12-29  Jonathan Pobst  <monkey@jpobst.com>
+
+	Escape SKEL_DIRECTORY define.
+
+2010-11-17  joncham  <joncham@gmail.com>
+
+	Update vcxproj files.
+
 2010-08-29  Marek Safar  <marek.safar@gmail.com>
 
 	Wrap any non-trivial rule into a method, speeds up the parser by

@@ -1,3 +1,19 @@
+2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Check that the default from is not empty
+
+	This should fix a bunch of tests failing since MailAddress parsing
+	was fixed.
+
+2010-10-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Misc. fixes
+
+	-Fix validation of display name and email. -Cache user, host and
+	ToString() values. -Fix Equals and GetHashCode.
+
+	Fixes bug 645871.
+
 2010-10-08  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Add support for EnableSsl in smtp config.

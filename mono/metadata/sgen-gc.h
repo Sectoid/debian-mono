@@ -26,6 +26,9 @@
 
 /* pthread impl */
 #include "config.h"
+
+#ifdef HAVE_SGEN_GC
+
 #include <glib.h>
 #include <pthread.h>
 #include <signal.h>
@@ -49,14 +52,6 @@
 
 //#define SGEN_BINARY_PROTOCOL
 
-#if SIZEOF_VOID_P == 4
-#define SGEN_HAVE_CARDTABLE	1
-#endif
-
-#if SIZEOF_VOID_P == 8
-#define SGEN_HAVE_OVERLAPPING_CARDS	1
-#endif
-
 #define SGEN_MAX_DEBUG_LEVEL 2
 
 #define THREAD_HASH_SIZE 11
@@ -72,6 +67,11 @@ typedef guint32 mword;
 #else
 typedef guint64 mword;
 #endif
+
+#define SGEN_TV_DECLARE(name) gint64 name
+#define SGEN_TV_GETTIME(tv) tv = mono_100ns_ticks ()
+#define SGEN_TV_ELAPSED(start,end) (int)((end-start) / 10)
+#define SGEN_TV_ELAPSED_MS(start,end) ((SGEN_TV_ELAPSED((start),(end)) + 500) / 1000)
 
 /* for use with write barriers */
 typedef struct _RememberedSet RememberedSet;
@@ -182,7 +182,7 @@ struct _GCMemSection {
 
 typedef struct _SgenPinnedChunk SgenPinnedChunk;
 
-#if defined(__APPLE__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__OpenBSD__) || defined(__FreeBSD__)
 const static int suspend_signal_num = SIGXFSZ;
 #else
 const static int suspend_signal_num = SIGPWR;
@@ -193,6 +193,8 @@ const static int restart_signal_num = SIGXCPU;
  * Recursion is not allowed for the thread lock.
  */
 #define LOCK_DECLARE(name) pthread_mutex_t name = PTHREAD_MUTEX_INITIALIZER
+/* if changing LOCK_INIT to something that isn't idempotent, look at
+   its use in mono_gc_base_init in sgen-gc.c */
 #define LOCK_INIT(name)
 #define LOCK_GC pthread_mutex_lock (&gc_mutex)
 #define UNLOCK_GC pthread_mutex_unlock (&gc_mutex)
@@ -222,6 +224,15 @@ extern long long stat_objects_copied_major;
 #else
 #define HEAVY_STAT(x)
 #endif
+
+#define DEBUG(level,a) do {if (G_UNLIKELY ((level) <= SGEN_MAX_DEBUG_LEVEL && (level) <= gc_debug_level)) a;} while (0)
+
+extern int gc_debug_level;
+extern FILE* gc_debug_file;
+
+extern int current_collection_generation;
+
+extern gboolean conservative_stack_mark;
 
 #define SGEN_ALLOC_ALIGN		8
 #define SGEN_ALLOC_ALIGN_BITS	3
@@ -341,6 +352,7 @@ enum {
 };
 
 #define SGEN_VTABLE_HAS_REFERENCES(vt)	(((MonoVTable*)(vt))->gc_descr != (void*)DESC_TYPE_RUN_LENGTH)
+#define SGEN_CLASS_HAS_REFERENCES(c)	((c)->gc_descr != (void*)DESC_TYPE_RUN_LENGTH)
 
 /* helper macros to scan and traverse objects, macros because we resue them in many functions */
 #define OBJ_RUN_LEN_SIZE(size,desc,obj) do { \
@@ -576,7 +588,7 @@ void mono_sgen_update_heap_boundaries (mword low, mword high) MONO_INTERNAL;
 void mono_sgen_register_major_sections_alloced (int num_sections) MONO_INTERNAL;
 mword mono_sgen_get_minor_collection_allowance (void) MONO_INTERNAL;
 
-void mono_sgen_scan_area_with_callback (char *start, char *end, IterateObjectCallbackFunc callback, void *data) MONO_INTERNAL;
+void mono_sgen_scan_area_with_callback (char *start, char *end, IterateObjectCallbackFunc callback, void *data, gboolean allow_flags) MONO_INTERNAL;
 void mono_sgen_check_section_scan_starts (GCMemSection *section) MONO_INTERNAL;
 
 /* Keep in sync with mono_sgen_dump_internal_mem_usage() in dump_heap()! */
@@ -610,6 +622,12 @@ struct _SgenInternalAllocator {
 	SgenPinnedChunk *free_lists [SGEN_INTERNAL_FREELIST_NUM_SLOTS];
 	void *delayed_free_lists [SGEN_INTERNAL_FREELIST_NUM_SLOTS];
 	long small_internal_mem_bytes [INTERNAL_MEM_MAX];
+};
+
+enum {
+	GENERATION_NURSERY,
+	GENERATION_OLD,
+	GENERATION_MAX
 };
 
 void mono_sgen_init_internal_allocator (void) MONO_INTERNAL;
@@ -648,6 +666,8 @@ gboolean mono_sgen_parse_environment_string_extract_number (const char *str, glo
 void mono_sgen_internal_scan_objects (SgenInternalAllocator *alc, IterateObjectCallbackFunc callback, void *callback_data) MONO_INTERNAL;
 void mono_sgen_internal_scan_pinned_objects (SgenInternalAllocator *alc, IterateObjectCallbackFunc callback, void *callback_data) MONO_INTERNAL;
 
+void mono_sgen_internal_update_heap_boundaries (SgenInternalAllocator *alc) MONO_INTERNAL;
+
 void** mono_sgen_find_optimized_pin_queue_area (void *start, void *end, int *num) MONO_INTERNAL;
 void mono_sgen_find_section_pin_queue_start_end (GCMemSection *section) MONO_INTERNAL;
 void mono_sgen_pin_objects_in_section (GCMemSection *section, SgenGrayQueue *queue) MONO_INTERNAL;
@@ -656,26 +676,21 @@ void mono_sgen_pin_stats_register_object (char *obj, size_t size);
 
 void mono_sgen_add_to_global_remset (gpointer ptr) MONO_INTERNAL;
 
-#ifdef SGEN_HAVE_CARDTABLE
-void sgen_card_table_reset_region (mword start, mword end) MONO_INTERNAL;
-guint8* sgen_card_table_get_card_address (mword address) MONO_INTERNAL;
-void* sgen_card_table_align_pointer (void *ptr) MONO_INTERNAL;
-void sgen_card_table_mark_address (mword address) MONO_INTERNAL;
-void sgen_card_table_mark_range (mword address, mword size) MONO_INTERNAL;
-gboolean sgen_card_table_card_begin_scanning (mword address) MONO_INTERNAL;
-gboolean sgen_card_table_region_begin_scanning (mword start, mword size) MONO_INTERNAL;
+int mono_sgen_get_current_collection_generation (void) MONO_INTERNAL;
+
 typedef void (*sgen_cardtable_block_callback) (mword start, mword size);
-
-#define CARD_BITS 9
-#define CARD_SIZE_IN_BYTES (1 << CARD_BITS)
-#endif
-
 
 typedef struct _SgenMajorCollector SgenMajorCollector;
 struct _SgenMajorCollector {
 	size_t section_size;
 	gboolean is_parallel;
 	gboolean supports_cardtable;
+
+	/*
+	 * This is set to TRUE if the sweep for the last major
+	 * collection has been completed.
+	 */
+	gboolean *have_swept;
 
 	void* (*alloc_heap) (mword nursery_size, mword nursery_align, int nursery_bits);
 	gboolean (*is_object_live) (char *obj);
@@ -693,7 +708,7 @@ struct _SgenMajorCollector {
 	void (*find_pin_queue_start_ends) (SgenGrayQueue *queue);
 	void (*pin_objects) (SgenGrayQueue *queue);
 	void (*scan_card_table) (SgenGrayQueue *queue);
-	void (*iterate_live_block_ranges) (sgen_cardtable_block_callback);
+	void (*iterate_live_block_ranges) (sgen_cardtable_block_callback callback);
 	void (*init_to_space) (void);
 	void (*sweep) (void);
 	void (*check_scan_starts) (void);
@@ -701,13 +716,16 @@ struct _SgenMajorCollector {
 	gint64 (*get_used_size) (void);
 	void (*start_nursery_collection) (void);
 	void (*finish_nursery_collection) (void);
+	void (*start_major_collection) (void);
 	void (*finish_major_collection) (void);
+	void (*have_computed_minor_collection_allowance) (void);
 	gboolean (*ptr_is_in_non_pinned_space) (char *ptr);
 	gboolean (*obj_is_from_pinned_alloc) (char *obj);
 	void (*report_pinned_memory_usage) (void);
 	int (*get_num_major_sections) (void);
 	gboolean (*handle_gc_param) (const char *opt);
 	void (*print_gc_param_usage) (void);
+	gboolean (*is_worker_thread) (pthread_t thread);
 };
 
 void mono_sgen_marksweep_init (SgenMajorCollector *collector) MONO_INTERNAL;
@@ -747,5 +765,46 @@ mono_sgen_par_object_get_size (MonoVTable *vtable, MonoObject* o)
 }
 
 #define mono_sgen_safe_object_get_size(o)		mono_sgen_par_object_get_size ((MonoVTable*)SGEN_LOAD_VTABLE ((o)), (o))
+
+const char* mono_sgen_safe_name (void* obj) MONO_INTERNAL;
+
+enum {
+	SPACE_MAJOR,
+	SPACE_LOS
+};
+
+gboolean mono_sgen_try_alloc_space (mword size, int space) MONO_INTERNAL;
+void mono_sgen_release_space (mword size, int space) MONO_INTERNAL;
+void mono_sgen_pin_object (void *object, SgenGrayQueue *queue) MONO_INTERNAL;
+void sgen_collect_major_no_lock (const char *reason) MONO_INTERNAL;
+gboolean mono_sgen_need_major_collection (mword space_needed) MONO_INTERNAL;
+
+/* LOS */
+
+typedef struct _LOSObject LOSObject;
+struct _LOSObject {
+	LOSObject *next;
+	mword size; /* this is the object size */
+	guint16 huge_object;
+	int dummy; /* to have a sizeof (LOSObject) a multiple of ALLOC_ALIGN  and data starting at same alignment */
+	char data [MONO_ZERO_LEN_ARRAY];
+};
+
+#define ARRAY_OBJ_INDEX(ptr,array,elem_size) (((char*)(ptr) - ((char*)(array) + G_STRUCT_OFFSET (MonoArray, vector))) / (elem_size))
+
+extern LOSObject *los_object_list;
+extern mword los_memory_usage;
+extern mword last_los_memory_usage;
+
+void mono_sgen_los_free_object (LOSObject *obj) MONO_INTERNAL;
+void* mono_sgen_los_alloc_large_inner (MonoVTable *vtable, size_t size) MONO_INTERNAL;
+void mono_sgen_los_sweep (void) MONO_INTERNAL;
+gboolean mono_sgen_ptr_is_in_los (char *ptr, char **start) MONO_INTERNAL;
+void mono_sgen_los_iterate_objects (IterateObjectCallbackFunc cb, void *user_data) MONO_INTERNAL;
+void mono_sgen_los_iterate_live_block_ranges (sgen_cardtable_block_callback callback) MONO_INTERNAL;
+void mono_sgen_los_scan_card_table (SgenGrayQueue *queue) MONO_INTERNAL;
+FILE *mono_sgen_get_logfile (void) MONO_INTERNAL;
+
+#endif /* HAVE_SGEN_GC */
 
 #endif /* __MONO_SGENGC_H__ */
