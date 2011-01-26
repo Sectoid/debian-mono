@@ -1,3 +1,17 @@
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement NetTcpBinding.CanBuildChannelFactory/Listener and
+	several related stuff.
+
+	SecurityTokenParameters.InitializeSecurityTokenRequirement() needs
+	to become protected internal, so changed all overrides as well.
+
+	Some implementation in WindowsStreamSecurityBindingElement is
+	needed only for NetTcpBinding implementation.
+
+	Had to disable a test in SymmetricSecurityBindingElement that
+	depended on OneWay support (which is not yet done).
+
 2010-07-28  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SecurityTokenParameters.cs, SupportingTokenParameters.cs,

@@ -1,3 +1,117 @@
+2010-12-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Workaround bug in AcquireWriterLock
+
+	AcquireWriteLock should be the same as UpgradeToWriterLock when
+	the thread is already a reader.
+
+	Fixes bug #656850.
+
+2010-11-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Reduce the code inside lock {}
+
+	Avoid nesting locks when they are not needed.
+
+2010-11-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Use RWL instead of lock()
+
+	Most of the time we just want to read the prefixes instead of
+	adding/removing one.
+
+2010-11-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/CookieParser.cs: Add more common/shared code *
+	System.Net/HttpWebResponse.cs: Move out CookieParser class and
+	some utility methods so they can be shared with Moonlight http
+	client stack
+
+2010-11-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid killing the thread if socket already null
+
+	In some weird cases socket is null when we try to close it.
+
+2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	More StringComparison.Ordinal
+
+	Use StringComparison.Ordinal when calling IndexOf to find the
+	index of an ASCII string.
+
+2010-10-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use ordinal comparison when looking for "::"
+
+	This should fix 650355, but it might just hide the actual problem
+	which seems to be related to loading CJK encodings data.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Send Keep-Alive when reusing
+
+	Send Keep-Alive headers when reusing a connection and limit reuses
+	to 100.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add connection timers and reuses
+
+	Use a timer to handle read timeouts and extend reuses to regular
+	connections, not just chunked. The timer is set to 90s for the
+	first request and 15s for subsequent requests.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Implemente HttpListenerRequest.KeepAlive
+
+	Ditto.
+
+2010-10-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Use SocketAsyncEventArgs
+
+	BeginAccept/EndAccept replaced by AcceptAsync.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-10-12  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Add preliminary HTTPS handling support for Android.
+
+	The problem is that Android only exposes Java APIs for ~everything
+	of consequence, including/especially X509 Certificate validation.
+	Since we want Mono-based HTTPS support to use the underlying
+	platform certificates, this requires some amount of Java-using
+	glue. However, we don't want to pull in a ton of Java glue into
+	System.dll (bleh!), so we'll instead place the glue into
+	Mono.Android.dll's
+	Android.Runtime.AndroidEnvironment.TrustEvaluateSsl(), and instead
+	create a delegate which will invoke TrustEvaluateSsl() when
+	needed.
+
+2010-10-07  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Expose ICredentialsByHost on NetworkCredential in the MOBILE
+	profiles
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Set have_response
+
+	Set have_response to true when there's a protocol error or a
+	previous exception for POST/PUT. Patch by Bassam Tabbara.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Create only 1 callback instance for read/write
+
+	Read/Write were creating one callback instance per call. Now we
+	keep the same delegate around for all the calls.
+
 2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Invoke the callback in separate threads
@@ -6,6 +120,12 @@
 	clogging the IO pool.
 
 	Fixes bug #639656.
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/IPAddress.cs: ScopeId can only be set on IPv6 or it
+	throws a SocketException (not an Exception). ScopeId is also
+	limited from 0 to 2^32.
 
 2010-09-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
@@ -19,6 +139,15 @@
 
 	Why on earth this wasn't found earlier? $20 reward to whoever
 	gives a plausible explanation.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System build for monodroid
+
+2010-09-03  Jb Evain  <jbevain@gmail.com>
+
+	Fix the visiblity of WebExceptionStatus for moonlight in the same
+	way as WebException
 
 2010-09-01  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 

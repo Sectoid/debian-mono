@@ -12,8 +12,12 @@
 //
 
 using System;
-using System.Reflection;
+
+#if STATIC
+using IKVM.Reflection.Emit;
+#else
 using System.Reflection.Emit;
+#endif
 	
 namespace Mono.CSharp.Nullable
 {
@@ -35,13 +39,12 @@ namespace Mono.CSharp.Nullable
 
 		protected override TypeExpr DoResolveAsTypeStep (IMemberContext ec)
 		{
-			if (TypeManager.generic_nullable_type == null) {
-				TypeManager.generic_nullable_type = TypeManager.CoreLookupType (ec.Compiler,
-					"System", "Nullable", 1, MemberKind.Struct, true);
-			}
+			var type = ec.Module.PredefinedTypes.Nullable.Resolve (loc);
+			if (type == null)
+				return null;
 
 			TypeArguments args = new TypeArguments (underlying);
-			GenericTypeExpr ctype = new GenericTypeExpr (TypeManager.generic_nullable_type, args, loc);
+			GenericTypeExpr ctype = new GenericTypeExpr (type, args, loc);
 			return ctype.ResolveAsTypeTerminal (ec, false);
 		}
 	}
@@ -198,7 +201,7 @@ namespace Mono.CSharp.Nullable
 		public void AddressOf (EmitContext ec, AddressOp mode)
 		{
 			IMemoryLocation ml = expr as VariableReference;
-			if (ml != null) 
+			if (ml != null)
 				ml.AddressOf (ec, mode);
 			else
 				LocalVariable.AddressOf (ec, mode);
@@ -261,6 +264,32 @@ namespace Mono.CSharp.Nullable
 		}
 	}
 
+	//
+	// Calls get_Value method on nullable expression
+	//
+	public class UnwrapCall : CompositeExpression
+	{
+		public UnwrapCall (Expression expr)
+			: base (expr)
+		{
+		}
+
+		protected override Expression DoResolve (ResolveContext rc)
+		{
+			base.DoResolve (rc);
+
+			if (type != null)
+				type = NullableInfo.GetUnderlyingType (type);
+
+			return this;
+		}
+
+		public override void Emit (EmitContext ec)
+		{
+			Invocation.EmitCall (ec, Child, NullableInfo.GetValue (Child.Type), null, loc);
+		}
+	}
+
 	public class Wrap : TypeCast
 	{
 		private Wrap (Expression expr, TypeSpec type)
@@ -315,7 +344,7 @@ namespace Mono.CSharp.Nullable
 			return new LiftedNull (nullable, loc);
 		}
 
-		public static Expression CreateFromExpression (ResolveContext ec, Expression e)
+		public static Constant CreateFromExpression (ResolveContext ec, Expression e)
 		{
 			ec.Report.Warning (458, 2, e.Location, "The result of the expression is always `null' of type `{0}'",
 				TypeManager.CSharpName (e.Type));
@@ -536,7 +565,6 @@ namespace Mono.CSharp.Nullable
 	public class LiftedBinaryOperator : Binary
 	{
 		Unwrap left_unwrap, right_unwrap;
-		bool left_null_lifted, right_null_lifted;
 		Expression left_orig, right_orig;
 		Expression user_operator;
 		MethodSpec wrap_ctor;
@@ -544,6 +572,26 @@ namespace Mono.CSharp.Nullable
 		public LiftedBinaryOperator (Binary.Operator op, Expression left, Expression right, Location loc)
 			: base (op, left, right, loc)
 		{
+		}
+
+		bool IsBitwiseBoolean {
+			get {
+				return (Oper == Operator.BitwiseAnd || Oper == Operator.BitwiseOr) &&
+				((left_unwrap != null && left_unwrap.Type == TypeManager.bool_type) ||
+				 (right_unwrap != null && right_unwrap.Type == TypeManager.bool_type));
+			}
+		}
+
+		bool IsLeftNullLifted {
+			get {
+				return (state & State.LeftNullLifted) != 0;
+			}
+		}
+
+		bool IsRightNullLifted {
+			get {
+				return (state & State.RightNullLifted) != 0;
+			}
 		}
 
 		public override Expression CreateExpressionTree (ResolveContext ec)
@@ -559,7 +607,7 @@ namespace Mono.CSharp.Nullable
 		// with the null literal *outside* of a generics context and
 		// inlines that as true or false.
 		//
-		Expression CreateNullConstant (ResolveContext ec, Expression expr)
+		Constant CreateNullConstant (ResolveContext ec, Expression expr)
 		{
 			// FIXME: Handle side effect constants
 			Constant c = new BoolConstant (Oper == Operator.Inequality, loc).Resolve (ec);
@@ -602,15 +650,19 @@ namespace Mono.CSharp.Nullable
 			// Arguments can be lifted for equal operators when the return type is bool and both
 			// arguments are of same type
 			//	
-			if (left_orig.IsNull) {
+			if (left_orig is NullLiteral) {
 				left = right;
-				left_null_lifted = true;
+				state |= State.LeftNullLifted;
 				type = TypeManager.bool_type;
 			}
 
 			if (right_orig.IsNull) {
-				right = left;
-				right_null_lifted = true;
+				if ((Oper & Operator.ShiftMask) != 0)
+					right = new EmptyExpression (TypeManager.int32_type);
+				else
+					right = left;
+
+				state |= State.RightNullLifted;
 				type = TypeManager.bool_type;
 			}
 
@@ -624,11 +676,21 @@ namespace Mono.CSharp.Nullable
 			Label load_right = ec.DefineLabel ();
 			Label end_label = ec.DefineLabel ();
 
+			// null & value, null | value
+			if (left_unwrap == null) {
+				left_unwrap = right_unwrap;
+				right_unwrap = null;
+				right = left;
+			}
+
 			left_unwrap.Emit (ec);
 			ec.Emit (OpCodes.Brtrue_S, load_right);
 
-			right_unwrap.Emit (ec);
-			ec.Emit (OpCodes.Brtrue_S, load_left);
+			// value & null, value | null
+			if (right_unwrap != null) {
+				right_unwrap.Emit (ec);
+				ec.Emit (OpCodes.Brtrue_S, load_left);
+			}
 
 			left_unwrap.EmitCheck (ec);
 			ec.Emit (OpCodes.Brfalse_S, load_right);
@@ -639,14 +701,30 @@ namespace Mono.CSharp.Nullable
 			if (Oper == Operator.BitwiseAnd) {
 				left_unwrap.Load (ec);
 			} else {
-				right_unwrap.Load (ec);
-				right_unwrap = left_unwrap;
+				if (right_unwrap == null) {
+					right.Emit (ec);
+					if (right is EmptyConstantCast || right is EmptyCast)
+						ec.Emit (OpCodes.Newobj, NullableInfo.GetConstructor (type));
+				} else {
+					right_unwrap.Load (ec);
+					right_unwrap = left_unwrap;
+				}
 			}
 			ec.Emit (OpCodes.Br_S, end_label);
 
 			// load right
 			ec.MarkLabel (load_right);
-			right_unwrap.Load (ec);
+			if (right_unwrap == null) {
+				if (Oper == Operator.BitwiseAnd) {
+					right.Emit (ec);
+					if (right is EmptyConstantCast || right is EmptyCast)
+						ec.Emit (OpCodes.Newobj, NullableInfo.GetConstructor (type));
+				} else {
+					left_unwrap.Load (ec);
+				}
+			} else {
+				right_unwrap.Load (ec);
+			}
 
 			ec.MarkLabel (end_label);
 		}
@@ -659,7 +737,7 @@ namespace Mono.CSharp.Nullable
 			//
 			// Either left or right is null
 			//
-			if (left_unwrap != null && (right_null_lifted || right.IsNull)) {
+			if (left_unwrap != null && (IsRightNullLifted || right.IsNull)) {
 				left_unwrap.EmitCheck (ec);
 				if (Oper == Binary.Operator.Equality) {
 					ec.Emit (OpCodes.Ldc_I4_0);
@@ -668,7 +746,7 @@ namespace Mono.CSharp.Nullable
 				return;
 			}
 
-			if (right_unwrap != null && (left_null_lifted || left.IsNull)) {
+			if (right_unwrap != null && (IsLeftNullLifted || left.IsNull)) {
 				right_unwrap.EmitCheck (ec);
 				if (Oper == Binary.Operator.Equality) {
 					ec.Emit (OpCodes.Ldc_I4_0);
@@ -789,13 +867,6 @@ namespace Mono.CSharp.Nullable
 			base.EmitOperator (ec, l);
 		}
 
-		bool IsBitwiseBoolean {
-			get {
-				return (Oper & Operator.BitwiseMask) != 0 && left_unwrap != null && right_unwrap != null &&
-				left_unwrap.Type == TypeManager.bool_type && right_unwrap.Type == TypeManager.bool_type;
-			}
-		}
-
 		Expression LiftResult (ResolveContext ec, Expression res_expr)
 		{
 			TypeExpr lifted_type;
@@ -803,7 +874,7 @@ namespace Mono.CSharp.Nullable
 			//
 			// Avoid double conversion
 			//
-			if (left_unwrap == null || left_null_lifted || left_unwrap.Type != left.Type || (left_unwrap != null && right_null_lifted)) {
+			if (left_unwrap == null || IsLeftNullLifted || left_unwrap.Type != left.Type || (left_unwrap != null && IsRightNullLifted)) {
 				lifted_type = new NullableType (left.Type, loc);
 				lifted_type = lifted_type.ResolveAsTypeTerminal (ec, false);
 				if (lifted_type == null)
@@ -815,14 +886,18 @@ namespace Mono.CSharp.Nullable
 					left = EmptyCast.Create (left, lifted_type.Type);
 			}
 
-			if (left != right && (right_unwrap == null || right_null_lifted || right_unwrap.Type != right.Type || (right_unwrap != null && left_null_lifted))) {
+			if (left != right && (right_unwrap == null || IsRightNullLifted || right_unwrap.Type != right.Type || (right_unwrap != null && IsLeftNullLifted))) {
 				lifted_type = new NullableType (right.Type, loc);
 				lifted_type = lifted_type.ResolveAsTypeTerminal (ec, false);
 				if (lifted_type == null)
 					return null;
 
-				if (right is UserCast || right is TypeCast)
-					right.Type = lifted_type.Type;
+				var r = right;
+				if (r is ReducedExpression)
+					r = ((ReducedExpression) r).OriginalExpression;
+
+				if (r is UserCast || r is TypeCast)
+					r.Type = lifted_type.Type;
 				else
 					right = EmptyCast.Create (right, lifted_type.Type);
 			}
@@ -837,8 +912,15 @@ namespace Mono.CSharp.Nullable
 				type = res_expr.Type = lifted_type.Type;
 			}
 
-			if (left_null_lifted) {
+			if (IsLeftNullLifted) {
 				left = LiftedNull.Create (right.Type, left.Location);
+
+				//
+				// Special case for bool?, the result depends on both null right side and left side value
+				//
+				if ((Oper == Operator.BitwiseAnd || Oper == Operator.BitwiseOr) && NullableInfo.GetUnderlyingType (type) == TypeManager.bool_type) {
+					return res_expr;
+				}
 
 				if ((Oper & (Operator.ArithmeticMask | Operator.ShiftMask | Operator.BitwiseMask)) != 0)
 					return LiftedNull.CreateFromExpression (ec, res_expr);
@@ -850,8 +932,15 @@ namespace Mono.CSharp.Nullable
 					return CreateNullConstant (ec, right_orig).Resolve (ec);
 			}
 
-			if (right_null_lifted) {
+			if (IsRightNullLifted) {
 				right = LiftedNull.Create (left.Type, right.Location);
+
+				//
+				// Special case for bool?, the result depends on both null right side and left side value
+				//
+				if ((Oper == Operator.BitwiseAnd || Oper == Operator.BitwiseOr) && NullableInfo.GetUnderlyingType (type) == TypeManager.bool_type) {
+					return res_expr;
+				}
 
 				if ((Oper & (Operator.ArithmeticMask | Operator.ShiftMask | Operator.BitwiseMask)) != 0)
 					return LiftedNull.CreateFromExpression (ec, res_expr);
@@ -881,18 +970,43 @@ namespace Mono.CSharp.Nullable
 			// (in unlifted or lifted form) exists for the operation.
 			//
 			if (e == null && (Oper & Operator.EqualityMask) != 0) {
-				if ((left_null_lifted && right_unwrap != null) || (right_null_lifted && left_unwrap != null))
+				if ((IsLeftNullLifted && right_unwrap != null) || (IsRightNullLifted && left_unwrap != null))
 					return LiftResult (ec, this);
 			}
 
 			return e;
 		}
 
-		protected override Expression ResolveUserOperator (ResolveContext ec, TypeSpec l, TypeSpec r)
+		protected override Expression ResolveUserOperator (ResolveContext ec, Expression left, Expression right)
 		{
-			Expression expr = base.ResolveUserOperator (ec, l, r);
+			//
+			// Try original types first for exact match without unwrapping
+			//
+			Expression expr = base.ResolveUserOperator (ec, left_orig, right_orig);
+			if (expr != null)
+				return expr;
+
+			State orig_state = state;
+
+			//
+			// One side is a nullable type, try to match underlying types
+			//
+			if (left_unwrap != null || right_unwrap != null || (state & (State.RightNullLifted | State.LeftNullLifted)) != 0) {
+				expr = base.ResolveUserOperator (ec, left, right);
+			}
+
 			if (expr == null)
 				return null;
+
+			//
+			// Lift the result in the case it can be null and predefined or user operator
+			// result type is of a value type
+			//
+			if (!TypeManager.IsValueType (expr.Type))
+				return null;
+
+			if (state != orig_state)
+				return expr;
 
 			expr = LiftResult (ec, expr);
 			if (expr is Constant)
@@ -958,29 +1072,56 @@ namespace Mono.CSharp.Nullable
 				if (unwrap == null)
 					return null;
 
+				//
+				// Reduce (left ?? null) to left
+				//
+				if (right.IsNull)
+					return ReducedExpression.Create (left, this);
+
 				if (Convert.ImplicitConversionExists (ec, right, unwrap.Type)) {
 					left = unwrap;
-					type = left.Type;
-					right = Convert.ImplicitConversion (ec, right, type, loc);
+					ltype = left.Type;
+
+					//
+					// If right is a dynamic expression, the result type is dynamic
+					//
+					if (right.Type == InternalType.Dynamic) {
+						type = right.Type;
+
+						// Need to box underlying value type
+						left = Convert.ImplicitBoxingConversion (left, ltype, type);
+						return this;
+					}
+
+					right = Convert.ImplicitConversion (ec, right, ltype, loc);
+					type = ltype;
 					return this;
 				}
 			} else if (TypeManager.IsReferenceType (ltype)) {
 				if (Convert.ImplicitConversionExists (ec, right, ltype)) {
 					//
-					// Reduce (constant ?? expr) to constant
+					// If right is a dynamic expression, the result type is dynamic
+					//
+					if (right.Type == InternalType.Dynamic) {
+						type = right.Type;
+						return this;
+					}
+
+					//
+					// Reduce ("foo" ?? expr) to expression
 					//
 					Constant lc = left as Constant;
 					if (lc != null && !lc.IsDefaultValue)
-						return new SideEffectConstant (lc, right, loc).Resolve (ec);
+						return ReducedExpression.Create (lc, this).Resolve (ec);
 
 					//
 					// Reduce (left ?? null) to left OR (null-constant ?? right) to right
 					//
 					if (right.IsNull || lc != null)
-						return ReducedExpression.Create (lc != null ? right : left, this);
+						return ReducedExpression.Create (lc != null ? right : left, this).Resolve (ec);
 
 					right = Convert.ImplicitConversion (ec, right, ltype, loc);
-					type = left.Type;
+					type = ltype;
 					return this;
 				}
 			} else {
@@ -995,7 +1136,7 @@ namespace Mono.CSharp.Nullable
 			// Reduce (null ?? right) to right
 			//
 			if (left.IsNull)
-				return ReducedExpression.Create (right, this);
+				return ReducedExpression.Create (right, this).Resolve (ec);
 
 			left = Convert.ImplicitConversion (ec, unwrap != null ? unwrap : left, rtype, loc);
 			type = rtype;

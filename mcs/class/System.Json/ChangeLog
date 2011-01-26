@@ -1,3 +1,7 @@
+2010-09-01  Jb Evain  <jbevain@gmail.com>
+
+	Fix the NET_2_1 build of System.Json
+
 2010-08-11  Jb Evain  <jbevain@gmail.com>
 
 	[hygiene] simplify the code dealing with internal collections

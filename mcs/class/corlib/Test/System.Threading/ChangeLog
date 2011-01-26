@@ -1,3 +1,17 @@
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Avoid random failure in CountdownEvent unit test
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update ThreadLocal to use default(T) for initialization with
+	parameterless ctor following comment on
+	https://connect.microsoft.com/VisualStudio/feedback/details/630350/threadlocal-documentation-and-actual-behavior-mismatch
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix semantic of CountdownEvent Reset methods. Fix #658244.
+
 2010-08-13  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Force usage of 2 threads in one of ManualResetEventSlim unit test.

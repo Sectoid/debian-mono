@@ -1,3 +1,44 @@
+2011-01-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Add AssemblyLoadEventRequest () type to the sdb api, and use it to
+	fix the test suite.
+
+2010-12-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for accessing ThreadStatic fields in sdb. Fixes
+	#645217.
+
+2010-12-16  Martin Baulig  <martin@novell.com>
+
+	Improve support for exception filters.
+
+2010-11-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an assert in single stepping if an IL offset doesn't
+	correspond to a seq point. Fixes #654694.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	When single stepping from a exception throw site, single step to
+	the catch site. Fixes #652590.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix gshared support in the soft debugger. Fixes #651251.
+
+2010-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix encoding of large strings in the soft debugger api. Fixes
+	#648832.
+
+2010-10-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a test for #632224. Fix dtest-app.exe dependencies.
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't allow EventType.Breakpoint in vm.EnableEvents ().
+
 2010-06-17  Zoltan Varga  <vargaz@gmail.com>
 
 	* dtest.cs: Add an EventSet test.

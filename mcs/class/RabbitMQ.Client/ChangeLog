@@ -1,3 +1,7 @@
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2010-07-09  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	* Makefile: Fix make dist again (IntAllocator.cs)

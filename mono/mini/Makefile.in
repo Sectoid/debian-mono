@@ -42,6 +42,7 @@ target_triplet = @target@
 @JIT_SUPPORTED_TRUE@noinst_PROGRAMS = genmdesc$(EXEEXT)
 @JIT_SUPPORTED_TRUE@@MOONLIGHT_TRUE@am__append_1 = libmono-moon.la
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@am__append_2 = libmono-llvm.la
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@@PLATFORM_DARWIN_FALSE@am__append_3 = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(libs)
 subdir = mono/mini
 DIST_COMMON = README $(libmonoinclude_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in ChangeLog TODO
@@ -187,20 +188,35 @@ libmono_2_0_la_OBJECTS = $(am_libmono_2_0_la_OBJECTS)
 libmono_2_0_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(libmono_2_0_la_LDFLAGS) $(LDFLAGS) -o $@
-@JIT_SUPPORTED_TRUE@am_libmono_2_0_la_rpath = -rpath $(libdir)
-@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@libmono_llvm_la_DEPENDENCIES = $(top_builddir)/mono/mini/libmono-$(API_VER).la \
+@JIT_SUPPORTED_TRUE@@SHARED_MONO_TRUE@am_libmono_2_0_la_rpath =  \
+@JIT_SUPPORTED_TRUE@@SHARED_MONO_TRUE@	-rpath $(libdir)
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@@PLATFORM_DARWIN_FALSE@am__DEPENDENCIES_5 = $(top_builddir)/mono/mini/libmono-$(API_VER).la \
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@@PLATFORM_DARWIN_FALSE@	$(am__DEPENDENCIES_3)
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@libmono_llvm_la_DEPENDENCIES =  \
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(am__DEPENDENCIES_1) \
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(am__DEPENDENCIES_1) \
-@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(am__DEPENDENCIES_3)
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(am__DEPENDENCIES_5)
 am__libmono_llvm_la_SOURCES_DIST = mini-llvm.c mini-llvm-cpp.cpp
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@am_libmono_llvm_la_OBJECTS =  \
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	mini-llvm.lo \
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	mini-llvm-cpp.lo
 libmono_llvm_la_OBJECTS = $(am_libmono_llvm_la_OBJECTS)
+libmono_llvm_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(libmono_llvm_la_LDFLAGS) $(LDFLAGS) -o $@
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@am_libmono_llvm_la_rpath =  \
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	-rpath $(libdir)
-am__DEPENDENCIES_5 = $(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4)
-@MOONLIGHT_TRUE@libmono_moon_la_DEPENDENCIES = $(am__DEPENDENCIES_5)
+@MOONLIGHT_TRUE@am__DEPENDENCIES_6 = $(monodir)/mono/metadata/libmonoruntimemoon.la \
+@MOONLIGHT_TRUE@	$(monodir)/mono/io-layer/libwapi.la \
+@MOONLIGHT_TRUE@	$(monodir)/mono/utils/libmonoutils.la \
+@MOONLIGHT_TRUE@	$(am__DEPENDENCIES_1)
+@MOONLIGHT_BOEHM_FALSE@@MOONLIGHT_TRUE@libmono_moon_la_DEPENDENCIES =  \
+@MOONLIGHT_BOEHM_FALSE@@MOONLIGHT_TRUE@	$(am__DEPENDENCIES_6) \
+@MOONLIGHT_BOEHM_FALSE@@MOONLIGHT_TRUE@	$(am__DEPENDENCIES_4)
+@MOONLIGHT_BOEHM_TRUE@@MOONLIGHT_TRUE@libmono_moon_la_DEPENDENCIES =  \
+@MOONLIGHT_BOEHM_TRUE@@MOONLIGHT_TRUE@	$(am__DEPENDENCIES_6) \
+@MOONLIGHT_BOEHM_TRUE@@MOONLIGHT_TRUE@	$(am__DEPENDENCIES_2) \
+@MOONLIGHT_BOEHM_TRUE@@MOONLIGHT_TRUE@	$(am__DEPENDENCIES_4)
 am__libmono_moon_la_SOURCES_DIST = mini.c ir-emit.h method-to-ir.c \
 	decompose.c mini.h version.h optflags-def.h jit-icalls.h \
 	jit-icalls.c trace.c trace.h patch-info.h mini-ops.h \
@@ -311,17 +327,17 @@ am__objects_38 = $(am__objects_20) $(am__objects_21) $(am__objects_33) \
 @MOONLIGHT_TRUE@am_libmono_moon_la_OBJECTS = $(am__objects_38)
 libmono_moon_la_OBJECTS = $(am_libmono_moon_la_OBJECTS)
 @JIT_SUPPORTED_TRUE@@MOONLIGHT_TRUE@am_libmono_moon_la_rpath =
-@INCLUDED_LIBGC_FALSE@am__DEPENDENCIES_6 = $(am__DEPENDENCIES_1)
-@INCLUDED_LIBGC_TRUE@am__DEPENDENCIES_6 =  \
+@INCLUDED_LIBGC_FALSE@am__DEPENDENCIES_7 = $(am__DEPENDENCIES_1)
+@INCLUDED_LIBGC_TRUE@am__DEPENDENCIES_7 =  \
 @INCLUDED_LIBGC_TRUE@	$(monodir)/libgc/libmonogc-static.la
-am__DEPENDENCIES_7 =  \
+am__DEPENDENCIES_8 =  \
 	$(monodir)/mono/metadata/libmonoruntime-static.la \
 	$(monodir)/mono/io-layer/libwapi.la \
 	$(monodir)/mono/utils/libmonoutils.la $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_6)
-@DTRACE_G_REQUIRED_TRUE@@STATIC_MONO_TRUE@am__DEPENDENCIES_8 = mono-dtrace.$(OBJEXT)
-libmono_static_la_DEPENDENCIES = $(am__DEPENDENCIES_7) \
-	$(am__DEPENDENCIES_8)
+	$(am__DEPENDENCIES_7)
+@DTRACE_G_REQUIRED_TRUE@@STATIC_MONO_TRUE@am__DEPENDENCIES_9 = mono-dtrace.$(OBJEXT)
+libmono_static_la_DEPENDENCIES = $(am__DEPENDENCIES_8) \
+	$(am__DEPENDENCIES_9)
 am__libmono_static_la_SOURCES_DIST = mini.c ir-emit.h method-to-ir.c \
 	decompose.c mini.h version.h optflags-def.h jit-icalls.h \
 	jit-icalls.c trace.c trace.h patch-info.h mini-ops.h \
@@ -446,10 +462,10 @@ libmono_static_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(libmono_static_la_LDFLAGS) $(LDFLAGS) -o $@
 @JIT_SUPPORTED_TRUE@am_libmono_static_la_rpath =
-am__DEPENDENCIES_9 = $(monodir)/mono/metadata/libmonoruntimesgen.la \
+am__DEPENDENCIES_10 = $(monodir)/mono/metadata/libmonoruntimesgen.la \
 	$(monodir)/mono/io-layer/libwapi.la \
 	$(monodir)/mono/utils/libmonoutils.la $(am__DEPENDENCIES_1)
-libmonosgen_2_0_la_DEPENDENCIES = $(am__DEPENDENCIES_9) \
+libmonosgen_2_0_la_DEPENDENCIES = $(am__DEPENDENCIES_10) \
 	$(am__DEPENDENCIES_4)
 am__libmonosgen_2_0_la_SOURCES_DIST = mini.c ir-emit.h method-to-ir.c \
 	decompose.c mini.h version.h optflags-def.h jit-icalls.h \
@@ -572,14 +588,14 @@ am__objects_76 = $(am__objects_58) $(am__objects_59) $(am__objects_71) \
 	$(am__objects_75)
 am_libmonosgen_2_0_la_OBJECTS = $(am__objects_76)
 libmonosgen_2_0_la_OBJECTS = $(am_libmonosgen_2_0_la_OBJECTS)
-@JIT_SUPPORTED_TRUE@@SUPPORT_SGEN_TRUE@am_libmonosgen_2_0_la_rpath =  \
-@JIT_SUPPORTED_TRUE@@SUPPORT_SGEN_TRUE@	-rpath $(libdir)
-am__DEPENDENCIES_10 =  \
+@JIT_SUPPORTED_TRUE@@SHARED_MONO_TRUE@@SUPPORT_SGEN_TRUE@am_libmonosgen_2_0_la_rpath = -rpath \
+@JIT_SUPPORTED_TRUE@@SHARED_MONO_TRUE@@SUPPORT_SGEN_TRUE@	$(libdir)
+am__DEPENDENCIES_11 =  \
 	$(monodir)/mono/metadata/libmonoruntimesgen-static.la \
 	$(monodir)/mono/io-layer/libwapi.la \
 	$(monodir)/mono/utils/libmonoutils.la $(am__DEPENDENCIES_1)
-libmonosgen_static_la_DEPENDENCIES = $(am__DEPENDENCIES_10) \
-	$(am__DEPENDENCIES_8)
+libmonosgen_static_la_DEPENDENCIES = $(am__DEPENDENCIES_11) \
+	$(am__DEPENDENCIES_9)
 am__libmonosgen_static_la_SOURCES_DIST = mini.c ir-emit.h \
 	method-to-ir.c decompose.c mini.h version.h optflags-def.h \
 	jit-icalls.h jit-icalls.c trace.c trace.h patch-info.h \
@@ -727,10 +743,10 @@ genmdesc_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 am_mono_OBJECTS = mono-main.$(OBJEXT)
 mono_OBJECTS = $(am_mono_OBJECTS)
-@LOADED_LLVM_FALSE@am__DEPENDENCIES_11 = $(am__DEPENDENCIES_1) \
+@LOADED_LLVM_FALSE@am__DEPENDENCIES_12 = $(am__DEPENDENCIES_1) \
 @LOADED_LLVM_FALSE@	$(am__DEPENDENCIES_1)
 mono_DEPENDENCIES = $(MONO_LIB) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_11) $(am__DEPENDENCIES_8)
+	$(am__DEPENDENCIES_12) $(am__DEPENDENCIES_9)
 mono_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(mono_CFLAGS) $(CFLAGS) $(mono_LDFLAGS) \
 	$(LDFLAGS) -o $@
@@ -738,7 +754,7 @@ am__objects_96 = mono_sgen-main.$(OBJEXT)
 am_mono_sgen_OBJECTS = $(am__objects_96)
 mono_sgen_OBJECTS = $(am_mono_sgen_OBJECTS)
 mono_sgen_DEPENDENCIES = $(MONO_SGEN_LIB) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_11) $(am__DEPENDENCIES_8)
+	$(am__DEPENDENCIES_12) $(am__DEPENDENCIES_9)
 mono_sgen_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(mono_sgen_CFLAGS) \
 	$(CFLAGS) $(mono_sgen_LDFLAGS) $(LDFLAGS) -o $@
@@ -746,9 +762,9 @@ am__monow_SOURCES_DIST = main.c
 am__objects_97 = main.$(OBJEXT)
 @HOST_WIN32_TRUE@am_monow_OBJECTS = $(am__objects_97)
 monow_OBJECTS = $(am_monow_OBJECTS)
-am__DEPENDENCIES_12 = $(MONO_LIB) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_11) $(am__DEPENDENCIES_8)
-@HOST_WIN32_TRUE@monow_DEPENDENCIES = $(am__DEPENDENCIES_12)
+am__DEPENDENCIES_13 = $(MONO_LIB) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_12) $(am__DEPENDENCIES_9)
+@HOST_WIN32_TRUE@monow_DEPENDENCIES = $(am__DEPENDENCIES_13)
 monow_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(monow_LDFLAGS) \
 	$(LDFLAGS) -o $@
@@ -872,6 +888,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -1002,6 +1019,12 @@ sgen_libs = \
 	$(monodir)/mono/utils/libmonoutils.la \
 	$(GLIB_LIBS)
 
+@MOONLIGHT_TRUE@moon_libs = \
+@MOONLIGHT_TRUE@	$(monodir)/mono/metadata/libmonoruntimemoon.la	\
+@MOONLIGHT_TRUE@	$(monodir)/mono/io-layer/libwapi.la	\
+@MOONLIGHT_TRUE@	$(monodir)/mono/utils/libmonoutils.la \
+@MOONLIGHT_TRUE@	$(GLIB_LIBS)
+
 static_libs = \
 	$(monodir)/mono/metadata/libmonoruntime-static.la	\
 	$(monodir)/mono/io-layer/libwapi.la	\
@@ -1043,12 +1066,17 @@ genmdesc_CFLAGS = $(AM_CFLAGS)
 @JIT_SUPPORTED_TRUE@@SUPPORT_SGEN_TRUE@sgen_binaries = mono-sgen
 @JIT_SUPPORTED_TRUE@@SUPPORT_SGEN_TRUE@sgen_libraries = libmonosgen-2.0.la
 @JIT_SUPPORTED_TRUE@@SUPPORT_SGEN_TRUE@sgen_static_libraries = libmonosgen-static.la
-@JIT_SUPPORTED_TRUE@lib_LTLIBRARIES = libmono-2.0.la $(sgen_libraries) \
+@JIT_SUPPORTED_TRUE@@SHARED_MONO_TRUE@shared_libraries = libmono-2.0.la $(sgen_libraries)
+@JIT_SUPPORTED_TRUE@lib_LTLIBRARIES = $(shared_libraries) \
 @JIT_SUPPORTED_TRUE@	$(am__append_2)
 @JIT_SUPPORTED_TRUE@noinst_LTLIBRARIES = libmono-static.la \
 @JIT_SUPPORTED_TRUE@	$(sgen_static_libraries) $(am__append_1)
 @JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@libmono_llvm_la_SOURCES = mini-llvm.c mini-llvm-cpp.cpp
-@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@libmono_llvm_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(LLVM_LIBS) $(LLVM_LDFLAGS) $(libs)
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@libmono_llvm_la_LIBADD =  \
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(LLVM_LIBS) \
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(LLVM_LDFLAGS) \
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@	$(am__append_3)
+@JIT_SUPPORTED_TRUE@@LOADED_LLVM_TRUE@@PLATFORM_DARWIN_TRUE@libmono_llvm_la_LDFLAGS = -undefined suppress
 mono_SOURCES = \
 	main.c
 
@@ -1265,7 +1293,6 @@ test_sources = \
 	basic-simd.cs
 
 regtests = basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe iltests.exe devirtualization.exe generics.exe basic-simd.exe
-fsatests = basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe devirtualization.exe basic-simd.exe
 @MONO_DEBUGGER_SUPPORTED_FALSE@@X86_TRUE@mdb_x86 = 
 @MONO_DEBUGGER_SUPPORTED_TRUE@@PLATFORM_DARWIN_FALSE@@X86_TRUE@mdb_x86 = mdb-debug-info32.s
 @MONO_DEBUGGER_SUPPORTED_TRUE@@PLATFORM_DARWIN_TRUE@@X86_TRUE@mdb_x86 = mdb-debug-info32-darwin.s
@@ -1322,31 +1349,29 @@ fsatests = basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe 
 @PLATFORM_DARWIN_TRUE@monobin_platform_ldflags = -framework CoreFoundation
 @PLATFORM_SIGPOSIX_TRUE@monobin_platform_ldflags = 
 libmono_2_0_la_SOURCES = $(common_sources) $(llvm_sources) $(arch_sources) $(os_sources)
-libmono_2_0_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+libmono_2_0_la_CFLAGS = $(mono_CFLAGS)
+libmono_2_0_la_LIBADD = $(libs) $(LIBMONO_DTRACE_OBJECT)
 libmonosgen_2_0_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmonosgen_2_0_la_CFLAGS = $(AM_CFLAGS) $(SGEN_DEFINES)
+libmonosgen_2_0_la_CFLAGS = $(mono_sgen_CFLAGS)
+libmonosgen_2_0_la_LIBADD = $(sgen_libs) $(LIBMONO_DTRACE_OBJECT)
 @MOONLIGHT_TRUE@libmono_moon_la_SOURCES = $(libmono_2_0_la_SOURCES)
-@MOONLIGHT_TRUE@libmono_moon_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+@MOONLIGHT_BOEHM_FALSE@@MOONLIGHT_TRUE@libmono_moon_la_CFLAGS = $(mono_sgen_CFLAGS) $(MOONLIGHT_DEFINES)
+@MOONLIGHT_BOEHM_TRUE@@MOONLIGHT_TRUE@libmono_moon_la_CFLAGS = $(mono_CFLAGS) $(MOONLIGHT_DEFINES)
+@MOONLIGHT_BOEHM_FALSE@@MOONLIGHT_TRUE@libmono_moon_la_LIBADD = $(moon_libs) $(LIBMONO_DTRACE_OBJECT)
+@MOONLIGHT_BOEHM_TRUE@@MOONLIGHT_TRUE@libmono_moon_la_LIBADD = $(moon_libs) $(libgc_libs) $(LIBMONO_DTRACE_OBJECT)
 libmono_static_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmono_static_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+libmono_static_la_CFLAGS = $(mono_CFLAGS)
 libmono_static_la_LDFLAGS = -static
 libmono_static_la_LIBADD = $(static_libs) $(MONO_DTRACE_OBJECT)
 libmonosgen_static_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmonosgen_static_la_CFLAGS = $(AM_CFLAGS) $(SGEN_DEFINES)
+libmonosgen_static_la_CFLAGS = $(mono_sgen_CFLAGS)
 libmonosgen_static_la_LDFLAGS = -static
 libmonosgen_static_la_LIBADD = $(sgenstatic_libs) $(MONO_DTRACE_OBJECT)
 nodist_libmono_static_la_SOURCES = $(nodist_libmono_la_SOURCES)
-nodist_libmono_static_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+nodist_libmono_static_la_CFLAGS = $(mono_CFLAGS)
 BURGSRC = $(common_BURGSRC) $(arch_BURGSRC)
 libmonoincludedir = $(includedir)/mono-$(API_VER)/mono/jit
 libmonoinclude_HEADERS = jit.h
-libmono_2_0_la_LIBADD = \
-	$(libs) $(LIBMONO_DTRACE_OBJECT)
-
-libmonosgen_2_0_la_LIBADD = \
-	$(sgen_libs) $(LIBMONO_DTRACE_OBJECT)
-
-@MOONLIGHT_TRUE@libmono_moon_la_LIBADD = $(libmono_2_0_la_LIBADD)
 @NACL_CODEGEN_FALSE@GENMDESC_OPTS = 
 @NACL_CODEGEN_TRUE@GENMDESC_OPTS = --nacl
 @CROSS_COMPILING_FALSE@GENMDESC_PRG = ./genmdesc $(GENMDESC_OPTS)
@@ -1356,6 +1381,7 @@ libmonosgen_2_0_la_LIBADD = \
 # $(arch_define) is the preprocessor symbol that enables all the opcodes
 # for the specific platform in mini-ops.h
 @CROSS_COMPILING_TRUE@GENMDESC_PRG = perl $(srcdir)/genmdesc.pl $(arch_define) $(srcdir) $(GENMDESC_OPTS)
+LLVM_AOT_RUNTIME_OPTS = $(if $(LLVM),--llvm,)
 pkgconfigdir = $(libdir)/pkgconfig
 @JIT_SUPPORTED_FALSE@BUILT_SOURCES = version.h
 @JIT_SUPPORTED_TRUE@BUILT_SOURCES = version.h $(arch_built)
@@ -1451,7 +1477,7 @@ clean-noinstLTLIBRARIES:
 libmono-2.0.la: $(libmono_2_0_la_OBJECTS) $(libmono_2_0_la_DEPENDENCIES) 
 	$(libmono_2_0_la_LINK) $(am_libmono_2_0_la_rpath) $(libmono_2_0_la_OBJECTS) $(libmono_2_0_la_LIBADD) $(LIBS)
 libmono-llvm.la: $(libmono_llvm_la_OBJECTS) $(libmono_llvm_la_DEPENDENCIES) 
-	$(CXXLINK) $(am_libmono_llvm_la_rpath) $(libmono_llvm_la_OBJECTS) $(libmono_llvm_la_LIBADD) $(LIBS)
+	$(libmono_llvm_la_LINK) $(am_libmono_llvm_la_rpath) $(libmono_llvm_la_OBJECTS) $(libmono_llvm_la_LIBADD) $(LIBS)
 libmono-moon.la: $(libmono_moon_la_OBJECTS) $(libmono_moon_la_DEPENDENCIES) 
 	$(CXXLINK) $(am_libmono_moon_la_rpath) $(libmono_moon_la_OBJECTS) $(libmono_moon_la_LIBADD) $(LIBS)
 libmono-static.la: $(libmono_static_la_OBJECTS) $(libmono_static_la_DEPENDENCIES) 
@@ -4820,6 +4846,10 @@ uninstall-am: uninstall-binPROGRAMS uninstall-libLTLIBRARIES \
 
 
 @HOST_WIN32_TRUE@export HOST_CC
+@JIT_SUPPORTED_TRUE@@MOONLIGHT_TRUE@moon-do-build: $(BUILT_SOURCES) mono libmono-moon.la
+@JIT_SUPPORTED_TRUE@@MOONLIGHT_TRUE@moon-do-clean: maintainer-clean-generic
+@JIT_SUPPORTED_TRUE@@MOONLIGHT_TRUE@	-test -z "mono$(EXEEXT)" || rm -f mono$(EXEEXT)
+@JIT_SUPPORTED_TRUE@@MOONLIGHT_TRUE@	-test -z "libmono-moon.la" || rm -f libmono-moon.la
 
 # We build this after libmono was built so it contains the date when the final
 # link was done
@@ -4838,6 +4868,9 @@ mono_sgen-main.$(OBJEXT): buildver.h
 @DTRACE_G_REQUIRED_TRUE@	--pic $@ $(top_srcdir)/data/mono.d $(monodir)/mono/metadata/libmonoruntime.la mini.lo
 
 basic-simd.exe: basic-simd.cs
+	$(MCS) -out:$@ $< -r:TestDriver.dll -r:Mono.Simd.dll
+
+nacl.exe: nacl.cs
 	$(MCS) -out:$@ $< -r:TestDriver.dll -r:Mono.Simd.dll
 
 generics.exe: generics.cs TestDriver.dll generics-variant-types.dll
@@ -4907,9 +4940,12 @@ rcheck: mono $(regtests)
 
 aotcheck: mono $(regtests)
 	rm -f *.exe.so
-	$(RUNTIME) --aot $(regtests) || exit 1
+	$(RUNTIME) $(LLVM_AOT_RUNTIME_OPTS) --aot $(regtests) || exit 1
 	for i in $(regtests); do $(RUNTIME_AOTCHECK) --regression $$i || exit 1; done
 	rm -f *.exe.so
+
+llvmaotcheck:
+	$(MAKE) aotcheck LLVM=1
 
 # This currently only works on amd64/arm
 fullaotcheck: mono $(regtests)
@@ -4917,22 +4953,11 @@ fullaotcheck: mono $(regtests)
 	mkdir fullaot-tmp
 	cp $(CLASS)/mscorlib.dll $(CLASS)/System.Core.dll $(CLASS)/System.dll $(CLASS)/Mono.Posix.dll $(CLASS)/System.Configuration.dll $(CLASS)/System.Security.dll $(CLASS)/System.Xml.dll $(CLASS)/Mono.Security.dll $(CLASS)/Mono.Simd.dll $(regtests) generics-variant-types.dll TestDriver.dll fullaot-tmp/
 	cp $(regtests) fullaot-tmp/
-	MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper --aot=full fullaot-tmp/* || exit 1
+	MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper $(LLVM_AOT_RUNTIME_OPTS) --aot=full fullaot-tmp/* || exit 1
 	for i in $(regtests); do echo $$i; MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper --full-aot fullaot-tmp/$$i --exclude '!FULLAOT' || exit 1; done
 
-fsacheck: mono $(fsatests) fsacheck.c generics.exe
-	rm -rf fsa-tmp
-	mkdir fsa-tmp
-	cp $(CLASS)/mscorlib.dll $(CLASS)/System.Core.dll $(CLASS)/System.dll $(CLASS)/Mono.Posix.dll $(CLASS)/System.Configuration.dll $(CLASS)/System.Security.dll $(CLASS)/System.Xml.dll $(CLASS)/Mono.Security.dll $(CLASS)/Mono.Simd.dll \
-	$(fsatests) generics-variant-types.dll TestDriver.dll fsa-tmp/
-	cp $(fsatests) fsa-tmp/
-	MONO_PATH=fsa-tmp $(top_builddir)/runtime/mono-wrapper --aot=full,static fsa-tmp/*.dll || exit 1
-	MONO_PATH=fsa-tmp $(top_builddir)/runtime/mono-wrapper --aot=full,static fsa-tmp/*.exe || exit 1
-	$(CC) -o $@.out -g -static $(VPATH)/fsacheck.c fsa-tmp/*.o \
-	-lmono-2.0 -lpthread -lm -ldl -lrt \
-	-DTARGET_X86 -L.libs -I${prefix}/include/mono-2.0 \
-	-I${prefix} -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
-	for i in $(fsatests); do echo $$i; MONO_PATH=fsa-tmp ./$@.out $$i || exit 1; done
+llvmfullaotcheck:
+	$(MAKE) fullaotcheck LLVM=1
 
 bench: mono test.exe
 	time env $(RUNTIME) --ncompile $(count) --compile Test:$(mtest) test.exe

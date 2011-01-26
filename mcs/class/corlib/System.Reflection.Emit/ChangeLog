@@ -1,3 +1,88 @@
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2010-12-13  Marek Safar  <marek.safar@gmail.com>
+
+	Re-enable EmbedResourceFile overload used by al.exe
+
+2010-12-03  Marek Safar  <marek.safar@gmail.com>
+
+	Don't throw an obsolete exception
+
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* CustomAttributeBuilder.cs (Initialize): Check if we are not
+	passing null as values to valuetypes as this is invalid.
+
+	Fixes #515938
+
+2010-11-26  Marek Safar  <marek.safar@gmail.com>
+
+	Switch symbol writer to public api
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Removed SetCharSet
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Comment out no longer used code
+
+2010-11-22  Marek Safar  <marek.safar@gmail.com>
+
+	Add comment details to DefineUnmanagedResource
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
+2010-10-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ModuleBuilder.cs: Add missing 'same-module' check for
+	GetConstructorToken just like methods and fields already have
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix exception message
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilder.cs (GetField): Check if the declaring type matches
+	the supplied type gtd.
+
+2010-10-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* ILGenerator.cs (TokenGenerator): GetToken now taken an extra
+	argument create_open_instance if it should encode a gtd as a
+	generic instance.
+
+	* ILGenerator.cs (ILGenerator): Ask TokenGenerator to create an
+	open instance under all cases but if the opcode is ldtoken.
+
+	* ModuleBuilder.cs: Adjust to signature change.
+
+	* DynamicMethod.cs: Ditto.
+
+2010-10-22  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilder.cs (GetConstructor): Check if the ctor declaring
+	type is the right one and the same as type.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] FieldBuilder.ctor: properly register FieldBuilder token.
+
+	We were previously relying on the runtime to register the token
+	for FieldBuilders, but this has issues with fields on generics
+	types as it would create a MemberRef token instead of a Field
+	token.
+
 2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Report the broken type name instead of assembly's.
@@ -18,6 +103,16 @@
 
 	This change is required because calling into the runtime with
 	incomplete TypeBuilders cause the runtime to crash.
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MethodBuilder.cs (GetGenericArguments): No need to check for
+	compiler context. It's gone.
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MethodBuilder.cs (GetGenericArguments): Return null if not
+	generic.
 
 2010-08-31  Rodrigo Kumpera  <kumpera@gmail.com>
 

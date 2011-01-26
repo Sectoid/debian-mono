@@ -69,11 +69,11 @@ am__libmonoutils_la_SOURCES_DIST = mono-md5.c mono-sha1.c \
 	mono-value-hash.c freebsd-elf_common.h freebsd-elf32.h \
 	freebsd-elf64.h freebsd-dwarf.h dtrace.h gc_wrapper.h \
 	mono-error.c mono-error-internals.h monobitset.h \
-	mono-codeman.h mono-counters.h mono-digest.h mono-embed.h \
-	mono-error.h mono-math.h mono-membar.h mono-path.h mono-poll.h \
-	mono-uri.h mono-stdlib.h valgrind.h mach-support.c \
-	mach-support.h memcheck.h mach-support-x86.c \
-	mach-support-amd64.c mach-support-arm.c
+	mono-codeman.h mono-counters.h mono-digest.h mono-error.h \
+	mono-math.h mono-membar.h mono-path.h mono-poll.h mono-uri.h \
+	mono-stdlib.h valgrind.h mach-support.c mach-support.h \
+	memcheck.h mach-support-x86.c mach-support-amd64.c \
+	mach-support-arm.c
 am__objects_1 = mono-md5.lo mono-sha1.lo mono-logger.lo \
 	mono-codeman.lo dlmalloc.lo mono-counters.lo mono-dl.lo \
 	mono-internal-hash.lo mono-io-portability.lo monobitset.lo \
@@ -196,6 +196,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -363,7 +364,6 @@ monoutils_sources = \
 	mono-codeman.h	\
 	mono-counters.h	\
 	mono-digest.h	\
-	mono-embed.h	\
 	mono-error.h	\
 	mono-math.h	\
 	mono-membar.h	\
@@ -380,11 +380,12 @@ arch_sources = $(am__append_1) $(am__append_2) $(am__append_3)
 libmonoutils_la_SOURCES = $(monoutils_sources) $(arch_sources)
 libmonoutilsincludedir = $(includedir)/mono-$(API_VER)/mono/utils
 libmonoutilsinclude_HEADERS = \
-	mono-logger.h	\
-	mono-error.h	\
-	mono-publib.h
+	mono-logger.h		\
+	mono-error.h		\
+	mono-publib.h		\
+	mono-dl-fallback.h
 
-EXTRA_DIST = ChangeLog
+EXTRA_DIST = ChangeLog mono-embed.h mono-embed.c
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 

@@ -3,6 +3,14 @@
 
 #include <mono/arch/x86/x86-codegen.h>
 #include <mono/utils/mono-sigcontext.h>
+
+#ifdef __native_client_codegen__
+#define kNaClAlignmentX86 32
+#define kNaClAlignmentMaskX86 (kNaClAlignmentX86 - 1)
+
+#define kNaClLengthOfCallImm kx86NaClLengthOfCallImm
+#endif
+
 #ifdef HOST_WIN32
 #include <windows.h>
 /* use SIG* defines if possible */
@@ -57,12 +65,6 @@ struct sigcontext {
 
 #if defined(__native_client__)
 #undef MONO_ARCH_USE_SIGACTION
-#endif
-
-#if defined(__native_client_codegen__) || defined(__native_client__)
-#define NACL_SIZE(a, b) (b)
-#else
-#define NACL_SIZE(a, b) (a)
 #endif
 
 #ifndef HOST_WIN32
@@ -145,6 +147,11 @@ struct sigcontext {
 
 /*This is the max size of the locals area of a given frame. I think 1MB is a safe default for now*/
 #define MONO_ARCH_MAX_FRAME_SIZE 0x100000
+
+/*This is how much a try block must be extended when is is preceeded by a Monitor.Enter() call.
+It's 4 bytes as this is how many bytes + 1 that 'add 0x10, %esp' takes. It is used to pop the arguments from
+the monitor.enter call and must be already protected.*/
+#define MONO_ARCH_MONITOR_ENTER_ADJUSTMENT 4
 
 struct MonoLMF {
 	/* 
@@ -248,14 +255,7 @@ typedef struct {
 
 #endif
 
-/*
- * This structure is an extension of MonoLMF and contains extra information.
- */
-typedef struct {
-	struct MonoLMF lmf;
-	gboolean debugger_invoke;
-	MonoContext ctx; /* if debugger_invoke is TRUE */
-} MonoLMFExt;
+#define MONO_ARCH_INIT_TOP_LMF_ENTRY(lmf) do { (lmf)->ebp = -1; } while (0)
 
 /* Enables OP_LSHL, OP_LSHL_IMM, OP_LSHR, OP_LSHR_IMM, OP_LSHR_UN, OP_LSHR_UN_IMM */
 #define MONO_ARCH_NO_EMULATE_LONG_SHIFT_OPS
@@ -265,7 +265,9 @@ typedef struct {
 #define MONO_ARCH_HAVE_IS_INT_OVERFLOW 1
 #define MONO_ARCH_HAVE_INVALIDATE_METHOD 1
 #define MONO_ARCH_NEED_GOT_VAR 1
+#if !defined(__APPLE__)
 #define MONO_ARCH_ENABLE_MONO_LMF_VAR 1
+#endif
 #define MONO_ARCH_HAVE_CREATE_DELEGATE_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_ATOMIC_ADD 1
 #define MONO_ARCH_HAVE_ATOMIC_EXCHANGE 1
@@ -283,7 +285,9 @@ typedef struct {
 #define MONO_ARCH_MONITOR_OBJECT_REG X86_EAX
 #endif
 #define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
+#if !defined (__APPLE__) || defined(__native_client_codegen__)
 #define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
+#endif
 #define MONO_ARCH_GOT_REG X86_EBX
 #define MONO_ARCH_HAVE_GET_TRAMPOLINES 1
 
@@ -295,9 +299,7 @@ typedef struct {
 
 #define MONO_ARCH_HAVE_DECOMPOSE_LONG_OPTS 1
 
-#if !defined(__APPLE__) || defined(__native_client_codegen__)
 #define MONO_ARCH_AOT_SUPPORTED 1
-#endif
 
 #if defined(__linux__) || defined(__sun)
 #define MONO_ARCH_ENABLE_MONITOR_IL_FASTPATH 1
@@ -312,11 +314,16 @@ typedef struct {
 #define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
 #endif
 
-#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 #define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
 #define MONO_ARCH_HAVE_HANDLER_BLOCK_GUARD 1
 
 #define MONO_ARCH_HAVE_CARD_TABLE_WBARRIER 1
+#define MONO_ARCH_GC_MAPS_SUPPORTED 1
+
+gboolean
+mono_x86_tail_call_supported (MonoMethodSignature *caller_sig, MonoMethodSignature *callee_sig) MONO_INTERNAL;
+
+#define MONO_ARCH_USE_OP_TAIL_CALL(caller_sig, callee_sig) mono_x86_tail_call_supported (caller_sig, callee_sig)
 
 /* Used for optimization, not complete */
 #define MONO_ARCH_IS_OP_MEMBASE(opcode) ((opcode) == OP_X86_PUSH_MEMBASE)

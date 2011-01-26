@@ -51,15 +51,15 @@ namespace System.Web
 				headerValue = hvalue;
 			}
 		}
-	  
+/*	  
 		static bool headerCheckingEnabled;
 		
 		static BaseResponseHeader ()
 		{
-			HttpRuntimeSection section = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
+			HttpRuntimeSection section = HttpRuntime.Section;
 			headerCheckingEnabled = section == null || section.EnableHeaderChecking;
 		}
-
+*/
 
 		internal BaseResponseHeader (string val)
 		{

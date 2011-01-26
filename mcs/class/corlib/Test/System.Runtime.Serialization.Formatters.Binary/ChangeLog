@@ -1,3 +1,13 @@
+2010-09-21  Andrés G. Aragoneses  <knocte@gmail.com>
+
+	[corlib] Prevent BinaryFormatter to throw on missing fields
+
+	This commit includes unit tests that were run in MS.NET > 2.0. The
+	old behaviour of MS.NET 1.1 is still included in the patch as an
+	ONLY_1_1 define, to be backport-friendly to other branches (but
+	can be removed from now on in next commits, as mono master doesn't
+	include this profile anymore). Fixes BNC#324144.
+
 2010-08-30  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* BinaryFormatterTest.cs: Add tests for

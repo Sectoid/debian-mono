@@ -1,3 +1,48 @@
+2010-09-16  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix case sensitive environment variables for ToolTask.
+
+	Use ProcessStringDictionary in ToolTask for EnvironmentVariables,
+	as this retains the original case of the keys. Without this
+	environment vars would all be passed as lowercase!
+
+	This was removed in a previous patch by mistake.
+
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	*
+	class/Microsoft.Build.Utilities/Microsoft.Build.Utilities/ToolTask.cs
+	(EnvironmentVariables): New. (ExecuteTool): Merge
+	EnvironmentVariables with EnvironmentOverride *
+	class/Microsoft.Build.Tasks/Microsoft.Build.Tasks/GenerateResource.cs
+	(Resgen.Execute): Use EnvironmentVariables to set MONO_IOMAP=drive
+	.
+
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	*
+	class/Microsoft.Build.Utilities/Microsoft.Build.Utilities/ToolTask.cs
+	(ExecuteTool): When StartProcess returns, the process has already
+	.Start()'ed If we subscribe to the output events after that, then
+	for processes that finish executing before we can subscribe, we
+	won't get the output/error events at all! So, pass the handlers to
+	StartProcess itself, so that they get added before the process is
+	started.
+
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix handling of tool output.
+
+	The *StreamChanged event for ProcessWrapper may get parts of long
+	lines, so process the complete ones that we have (for matching
+	error/warning), and save rest for processing when the rest of it
+	is received.
+
+	Also, don't ignore empty lines.
+
+	*
+	class/Microsoft.Build.Utilities/Microsoft.Build.Utilities/ToolTask.cs
+
 2010-08-05  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Handle multi-line output from tool.

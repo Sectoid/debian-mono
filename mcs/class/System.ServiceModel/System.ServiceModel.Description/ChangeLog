@@ -1,3 +1,87 @@
+2010-11-10  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] .NET allows for service contract methods to be decorated
+	only by Web{Get,Invoke}Attribute
+
+	Usually WCF requires that each service method is marked with the
+	OperationContract attribute with the exception of methods
+	decorated with the Web{Get,Invoke}Attribute attributes which are
+	defined in System.ServiceModel.Web. This patch adds a simple way
+	to extend the ContractDescriptionGenerator in order to provide
+	this functionality without circular dependency of
+	System.ServiceModel on System.ServiceModel.Web. Several extenders
+	can be registered with the description generator and they will be
+	invoked in the registration order until any of them returns
+	'true'. Extenders are passed a reference to the OperationContract
+	attribute with which the current method is decorated - if the
+	reference is null, the extender should create a default instance
+	of the attribute so that the description generator considers the
+	method as one to be included in the contract description.
+
+2010-10-22  Atsushi Eno  <atsushi@ximian.com>
+
+	It should not have to import all schema elements, but those only
+	used by contracts.
+
+2010-10-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Small refactoring on enumerating message schema element contents.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	OnEndXxx() methods should not try to let void return to a local
+	variable.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Void event should not have Result of type void.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Make generated type names unique.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Add #if NET_2_1 and SupportFaults member for Silverlight SlSvcUtil
+	proxy.
+
+2010-10-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not reject contract from the same method, could happen by a
+	type with multiple service contracts within the typie hierarchy.
+
+	For details, see:
+	http://lists.ximian.com/pipermail/mono-devel-list/2010-September/035940.html
+
+2010-09-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Add DataContractResolver stuff (dummy), and fix Id reference from
+	inside the referenced object.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Contract is settable in 4.0.
+
+2010-09-13  Atsushi Eno  <atsushi@ximian.com>
+
+	implemented large parts of WCF standard endpoints and
+	configuration support.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove USE_DATA_CONTRACT_IMPORTER conditional compilation flag.
+
+2010-09-09  Atsushi Eno  <atsushi@ximian.com>
+
+	It should not fail to generate client proxy generation for having
+	two "IsRequest=false" messages (it is set only in
+	ContractDescriptionGenerator).
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Add some argument check. RemoteAddress could be null for callback
+	client runtime channel.
+
 2010-08-27  Atsushi Eno  <atsushi@ximian.com>
 
 	Add IsSystemEndpoint property and treat system endpoints as

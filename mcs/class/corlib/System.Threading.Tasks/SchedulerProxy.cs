@@ -24,7 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0
 using System;
 
 namespace System.Threading.Tasks
@@ -47,33 +47,27 @@ namespace System.Threading.Tasks
 		
 		public void ParticipateUntil (Task task)
 		{
-			ParticipateUntil (() => task.IsCompleted);
+			ManualResetEventSlim evt = new ManualResetEventSlim (false);
+			task.ContinueWith (_ => evt.Set (), TaskContinuationOptions.ExecuteSynchronously);
+
+			ParticipateUntil (evt, -1);
 		}
 		
-		public bool ParticipateUntil (Task task, Func<bool> predicate)
+		public bool ParticipateUntil (Task task, ManualResetEventSlim evt, int millisecondsTimeout)
 		{
-			bool fromPredicate = false;
-			
-			ParticipateUntil (() => {
-				if (predicate ()) {
-					fromPredicate = true;
-					return true;
-				}
-				
-				return task.IsCompleted;
-			});
-			
+			bool fromPredicate = true;
+			task.ContinueWith (_ => { fromPredicate = false; evt.Set (); }, TaskContinuationOptions.ExecuteSynchronously);
+
+			ParticipateUntil (evt, millisecondsTimeout);
+
 			return fromPredicate;
 		}
-		
-		public void ParticipateUntil (Func<bool> predicate)
+
+		void ParticipateUntil (ManualResetEventSlim evt, int millisecondsTimeout)
 		{
-			SpinWait sw = new SpinWait ();
-			
-			while (!predicate ())
-				sw.SpinOnce ();
+			evt.Wait (millisecondsTimeout);
 		}
-		
+
 		public void PulseAll ()
 		{
 			

@@ -1393,6 +1393,8 @@ ncells ) {
 		return array [1].val;
 	}
 
+	/* mcs can't compile this (#646744) */
+#if FALSE
 	static void InitMe (out Gamma noMercyWithTheStack) {
 		noMercyWithTheStack = new Gamma ();
 	}
@@ -1433,6 +1435,7 @@ ncells ) {
 			return 1;
 		return 0;
 	}
+#endif
 
 	struct VTypePhi {
 		public int i;

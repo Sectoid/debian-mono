@@ -1,3 +1,7 @@
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #655669
+
 2009-10-15  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* GCHandleTest.cs: Add more test cases for validations

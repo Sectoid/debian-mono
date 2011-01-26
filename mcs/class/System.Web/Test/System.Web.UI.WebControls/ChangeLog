@@ -1,3 +1,28 @@
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more protected internal modifiers
+
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more missing protected internal modifiers
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646505. BoundField must not assume the
+	sender of the OnDataBindField is DataControlFieldCell.
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #649198. Implement
+	MasterPage.InstantiateInContentPlaceHolder
+
+	Code based on patch from Rikard Johansson <rajoo@mail.com>,
+	thanks!
+
+2010-08-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Menu 4.0 List mode rendering
+
 2010-08-13  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #626829. Nodes need to be re-populated on

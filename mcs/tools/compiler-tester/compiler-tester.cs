@@ -35,6 +35,7 @@ using System.Reflection;
 using System.Text;
 using System.Collections;
 using System.Xml;
+using System.Collections.Generic;
 
 namespace TestRunner {
 
@@ -1141,7 +1142,7 @@ namespace TestRunner {
 			ArrayList ld = new ArrayList ();
 			CompilerError result = CompilerError.Missing;
 			while (line != null) {
-				if (ld.Contains (line)) {
+				if (ld.Contains (line) && result == CompilerError.Expected) {
 					if (line.IndexOf ("Location of the symbol related to previous") == -1)
 						return CompilerError.Duplicate;
 				}
@@ -1362,7 +1363,7 @@ namespace TestRunner {
 				return 1;
 			}
 
-			ArrayList files = new ArrayList ();
+			var files = new List<string> ();
 			switch (test_pattern) {
 			case "v1":
 				files.AddRange (Directory.GetFiles (".", positive ? "test*.cs" : "cs*.cs"));
@@ -1384,7 +1385,19 @@ namespace TestRunner {
 			}
 
 			checker.Initialize ();
+/*
+			files.Sort ((a, b) => {
+				if (a.EndsWith ("-lib.cs", StringComparison.Ordinal)) {
+					if (!b.EndsWith ("-lib.cs", StringComparison.Ordinal))
+						return -1;
+				} else if (b.EndsWith ("-lib.cs", StringComparison.Ordinal)) {
+					if (!a.EndsWith ("-lib.cs", StringComparison.Ordinal))
+						return 1;
+				}
 
+				return a.CompareTo (b);
+			});
+*/
 			foreach (string s in files) {
 				string filename = Path.GetFileName (s);
 				if (Char.IsUpper (filename, 0)) { // Windows hack

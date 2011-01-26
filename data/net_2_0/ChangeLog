@@ -1,3 +1,9 @@
+2010-11-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Web service help fix
+
+	Generate the wsdl document with UTF8 encoding.
+
 2009-08-11 Gonzalo Paniagua Javier <gonzalo@novell.com>
 
 	* DefaultWsdlHelpGenerator.aspx: the 'Message Layout' can now handle

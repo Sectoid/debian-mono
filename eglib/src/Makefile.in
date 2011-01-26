@@ -37,7 +37,8 @@ subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/eglib-config.h.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/../mkinstalldirs
@@ -45,16 +46,17 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES = eglib-config.h
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-libeglib_static_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+@HOST_WIN32_TRUE@am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+libeglib_static_la_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am__libeglib_static_la_SOURCES_DIST = eglib-config.h eglib-remap.h \
-	sort.frag.h glib.h garray.c gerror.c ghashtable.c gmem.c \
-	gmodule.h goutput.c gstr.c gslist.c gstring.c gptrarray.c \
-	glist.c gqueue.c gpath.c gshell.c gspawn.c gfile.c \
+	sort.frag.h glib.h garray.c gbytearray.c gerror.c ghashtable.c \
+	gmem.c gmodule.h goutput.c gstr.c gslist.c gstring.c \
+	gptrarray.c glist.c gqueue.c gpath.c gshell.c gspawn.c gfile.c \
 	gfile-posix.c gpattern.c gmarkup.c gutf8.c gunicode.c \
 	unicode-data.h gdate-unix.c gdir-unix.c gfile-unix.c \
-	gmisc-unix.c gmodule-unix.c gtimer-unix.c gdate-win32.c \
-	gdir-win32.c gfile-win32.c gmisc-win32.c gmodule-win32.c \
-	gtimer-win32.c vasprintf.c
+	gmisc-unix.c gmodule-unix.c gtimer-unix.c eglib-config.hw \
+	gdate-win32.c gdir-win32.c gfile-win32.c gmisc-win32.c \
+	gmodule-win32.c gtimer-win32.c vasprintf.c
 am__objects_1 = libeglib_static_la-gdate-unix.lo \
 	libeglib_static_la-gdir-unix.lo \
 	libeglib_static_la-gfile-unix.lo \
@@ -71,14 +73,14 @@ am__objects_2 = libeglib_static_la-gdate-win32.lo \
 @HOST_WIN32_TRUE@am__objects_3 = $(am__objects_2)
 @NEED_VASPRINTF_TRUE@am__objects_4 = libeglib_static_la-vasprintf.lo
 am__objects_5 = libeglib_static_la-garray.lo \
-	libeglib_static_la-gerror.lo libeglib_static_la-ghashtable.lo \
-	libeglib_static_la-gmem.lo libeglib_static_la-goutput.lo \
-	libeglib_static_la-gstr.lo libeglib_static_la-gslist.lo \
-	libeglib_static_la-gstring.lo libeglib_static_la-gptrarray.lo \
-	libeglib_static_la-glist.lo libeglib_static_la-gqueue.lo \
-	libeglib_static_la-gpath.lo libeglib_static_la-gshell.lo \
-	libeglib_static_la-gspawn.lo libeglib_static_la-gfile.lo \
-	libeglib_static_la-gfile-posix.lo \
+	libeglib_static_la-gbytearray.lo libeglib_static_la-gerror.lo \
+	libeglib_static_la-ghashtable.lo libeglib_static_la-gmem.lo \
+	libeglib_static_la-goutput.lo libeglib_static_la-gstr.lo \
+	libeglib_static_la-gslist.lo libeglib_static_la-gstring.lo \
+	libeglib_static_la-gptrarray.lo libeglib_static_la-glist.lo \
+	libeglib_static_la-gqueue.lo libeglib_static_la-gpath.lo \
+	libeglib_static_la-gshell.lo libeglib_static_la-gspawn.lo \
+	libeglib_static_la-gfile.lo libeglib_static_la-gfile-posix.lo \
 	libeglib_static_la-gpattern.lo libeglib_static_la-gmarkup.lo \
 	libeglib_static_la-gutf8.lo libeglib_static_la-gunicode.lo \
 	$(am__objects_3) $(am__objects_4)
@@ -88,16 +90,16 @@ libeglib_static_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(libeglib_static_la_CFLAGS) $(CFLAGS) \
 	$(libeglib_static_la_LDFLAGS) $(LDFLAGS) -o $@
-libeglib_la_DEPENDENCIES =
+@HOST_WIN32_TRUE@libeglib_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am__libeglib_la_SOURCES_DIST = eglib-config.h eglib-remap.h \
-	sort.frag.h glib.h garray.c gerror.c ghashtable.c gmem.c \
-	gmodule.h goutput.c gstr.c gslist.c gstring.c gptrarray.c \
-	glist.c gqueue.c gpath.c gshell.c gspawn.c gfile.c \
+	sort.frag.h glib.h garray.c gbytearray.c gerror.c ghashtable.c \
+	gmem.c gmodule.h goutput.c gstr.c gslist.c gstring.c \
+	gptrarray.c glist.c gqueue.c gpath.c gshell.c gspawn.c gfile.c \
 	gfile-posix.c gpattern.c gmarkup.c gutf8.c gunicode.c \
 	unicode-data.h gdate-unix.c gdir-unix.c gfile-unix.c \
-	gmisc-unix.c gmodule-unix.c gtimer-unix.c gdate-win32.c \
-	gdir-win32.c gfile-win32.c gmisc-win32.c gmodule-win32.c \
-	gtimer-win32.c vasprintf.c
+	gmisc-unix.c gmodule-unix.c gtimer-unix.c eglib-config.hw \
+	gdate-win32.c gdir-win32.c gfile-win32.c gmisc-win32.c \
+	gmodule-win32.c gtimer-win32.c vasprintf.c
 am__objects_6 = libeglib_la-gdate-unix.lo libeglib_la-gdir-unix.lo \
 	libeglib_la-gfile-unix.lo libeglib_la-gmisc-unix.lo \
 	libeglib_la-gmodule-unix.lo libeglib_la-gtimer-unix.lo
@@ -107,7 +109,8 @@ am__objects_7 = libeglib_la-gdate-win32.lo libeglib_la-gdir-win32.lo \
 @HOST_WIN32_FALSE@am__objects_8 = $(am__objects_6)
 @HOST_WIN32_TRUE@am__objects_8 = $(am__objects_7)
 @NEED_VASPRINTF_TRUE@am__objects_9 = libeglib_la-vasprintf.lo
-am_libeglib_la_OBJECTS = libeglib_la-garray.lo libeglib_la-gerror.lo \
+am_libeglib_la_OBJECTS = libeglib_la-garray.lo \
+	libeglib_la-gbytearray.lo libeglib_la-gerror.lo \
 	libeglib_la-ghashtable.lo libeglib_la-gmem.lo \
 	libeglib_la-goutput.lo libeglib_la-gstr.lo \
 	libeglib_la-gslist.lo libeglib_la-gstring.lo \
@@ -127,9 +130,6 @@ depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -156,6 +156,7 @@ CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -177,6 +178,8 @@ GUINT_TO_POINTER = @GUINT_TO_POINTER@
 G_GINT64_FORMAT = @G_GINT64_FORMAT@
 G_GUINT64_FORMAT = @G_GUINT64_FORMAT@
 G_HAVE_ISO_VARARGS = @G_HAVE_ISO_VARARGS@
+HAVE_ALLOCA_H = @HAVE_ALLOCA_H@
+ICONV_LIBS = @ICONV_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -189,6 +192,8 @@ LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
+LTCOMPILE = @LTCOMPILE@
+LTCXXCOMPILE = @LTCXXCOMPILE@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
@@ -275,6 +280,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 noinst_LTLIBRARIES = libeglib.la libeglib-static.la
 win_files = \
+	eglib-config.hw \
 	gdate-win32.c gdir-win32.c gfile-win32.c gmisc-win32.c \
 	gmodule-win32.c gtimer-win32.c
 
@@ -295,6 +301,7 @@ libeglib_la_SOURCES = \
 	sort.frag.h	\
 	glib.h	     	\
 	garray.c	\
+	gbytearray.c	\
 	gerror.c	\
 	ghashtable.c 	\
 	gmem.c       	\
@@ -319,11 +326,11 @@ libeglib_la_SOURCES = \
 	$(os_files)	\
 	$(vasprintf_files)
 
-libeglib_la_CFLAGS = -Wall -D_FORTIFY_SOURCE=2
+libeglib_la_CFLAGS = -g -Wall -D_FORTIFY_SOURCE=2
 libeglib_static_la_SOURCES = $(libeglib_la_SOURCES)
 libeglib_static_la_CFLAGS = $(libeglib_la_CFLAGS)
 INCLUDES = -I$(srcdir)
-@HOST_WIN32_TRUE@libeglib_la_LIBADD = -lm -liconv -lpsapi
+@HOST_WIN32_TRUE@libeglib_la_LIBADD = -lm $(ICONV_LIBS) -lpsapi
 libeglib_static_la_LIBADD = $(libeglib_la_LIBADD)
 libeglib_static_la_LDFLAGS = -static
 MAINTAINERCLEANFILES = Makefile.in
@@ -384,6 +391,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-garray.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-gbytearray.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-gdate-unix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-gdate-win32.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-gdir-unix.Plo@am__quote@
@@ -417,6 +425,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-gutf8.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_la-vasprintf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_static_la-garray.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_static_la-gbytearray.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_static_la-gdate-unix.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_static_la-gdate-win32.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libeglib_static_la-gdir-unix.Plo@am__quote@
@@ -477,6 +486,13 @@ libeglib_static_la-garray.lo: garray.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='garray.c' object='libeglib_static_la-garray.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_static_la_CFLAGS) $(CFLAGS) -c -o libeglib_static_la-garray.lo `test -f 'garray.c' || echo '$(srcdir)/'`garray.c
+
+libeglib_static_la-gbytearray.lo: gbytearray.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_static_la_CFLAGS) $(CFLAGS) -MT libeglib_static_la-gbytearray.lo -MD -MP -MF $(DEPDIR)/libeglib_static_la-gbytearray.Tpo -c -o libeglib_static_la-gbytearray.lo `test -f 'gbytearray.c' || echo '$(srcdir)/'`gbytearray.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libeglib_static_la-gbytearray.Tpo $(DEPDIR)/libeglib_static_la-gbytearray.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gbytearray.c' object='libeglib_static_la-gbytearray.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_static_la_CFLAGS) $(CFLAGS) -c -o libeglib_static_la-gbytearray.lo `test -f 'gbytearray.c' || echo '$(srcdir)/'`gbytearray.c
 
 libeglib_static_la-gerror.lo: gerror.c
 @am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_static_la_CFLAGS) $(CFLAGS) -MT libeglib_static_la-gerror.lo -MD -MP -MF $(DEPDIR)/libeglib_static_la-gerror.Tpo -c -o libeglib_static_la-gerror.lo `test -f 'gerror.c' || echo '$(srcdir)/'`gerror.c
@@ -708,6 +724,13 @@ libeglib_la-garray.lo: garray.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='garray.c' object='libeglib_la-garray.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_la_CFLAGS) $(CFLAGS) -c -o libeglib_la-garray.lo `test -f 'garray.c' || echo '$(srcdir)/'`garray.c
+
+libeglib_la-gbytearray.lo: gbytearray.c
+@am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_la_CFLAGS) $(CFLAGS) -MT libeglib_la-gbytearray.lo -MD -MP -MF $(DEPDIR)/libeglib_la-gbytearray.Tpo -c -o libeglib_la-gbytearray.lo `test -f 'gbytearray.c' || echo '$(srcdir)/'`gbytearray.c
+@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/libeglib_la-gbytearray.Tpo $(DEPDIR)/libeglib_la-gbytearray.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='gbytearray.c' object='libeglib_la-gbytearray.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_la_CFLAGS) $(CFLAGS) -c -o libeglib_la-gbytearray.lo `test -f 'gbytearray.c' || echo '$(srcdir)/'`gbytearray.c
 
 libeglib_la-gerror.lo: gerror.c
 @am__fastdepCC_TRUE@	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libeglib_la_CFLAGS) $(CFLAGS) -MT libeglib_la-gerror.lo -MD -MP -MF $(DEPDIR)/libeglib_la-gerror.Tpo -c -o libeglib_la-gerror.lo `test -f 'gerror.c' || echo '$(srcdir)/'`gerror.c

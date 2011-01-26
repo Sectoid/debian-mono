@@ -50,12 +50,13 @@ namespace System.Net {
 		Version version;
 		NameValueCollection query_string; // check if null is ok, check if read-only, check case-sensitiveness
 		string raw_url;
-		Guid identifier;
 		Uri url;
 		Uri referrer;
 		string [] user_languages;
 		HttpListenerContext context;
 		bool is_chunked;
+		bool ka_set;
+		bool keep_alive;
 		static byte [] _100continue = Encoding.ASCII.GetBytes ("HTTP/1.1 100 Continue\r\n\r\n");
 		static readonly string [] no_body_methods = new string [] {
 			"GET", "HEAD", "DELETE" };
@@ -258,22 +259,22 @@ namespace System.Net {
 						if (str.Length == 0)
 							continue;
 						if (str.StartsWith ("$Version")) {
-							version = Int32.Parse (Unquote (str.Substring (str.IndexOf ("=") + 1)));
+							version = Int32.Parse (Unquote (str.Substring (str.IndexOf ('=') + 1)));
 						} else if (str.StartsWith ("$Path")) {
 							if (current != null)
-								current.Path = str.Substring (str.IndexOf ("=") + 1).Trim ();
+								current.Path = str.Substring (str.IndexOf ('=') + 1).Trim ();
 						} else if (str.StartsWith ("$Domain")) {
 							if (current != null)
-								current.Domain = str.Substring (str.IndexOf ("=") + 1).Trim ();
+								current.Domain = str.Substring (str.IndexOf ('=') + 1).Trim ();
 						} else if (str.StartsWith ("$Port")) {
 							if (current != null)
-								current.Port = str.Substring (str.IndexOf ("=") + 1).Trim ();
+								current.Port = str.Substring (str.IndexOf ('=') + 1).Trim ();
 						} else {
 							if (current != null) {
 								cookies.Add (current);
 							}
 							current = new Cookie ();
-							int idx = str.IndexOf ("=");
+							int idx = str.IndexOf ('=');
 							if (idx > 0) {
 								current.Name = str.Substring (0, idx).Trim ();
 								current.Value =  str.Substring (idx + 1).Trim ();
@@ -385,7 +386,26 @@ namespace System.Net {
 		}
 
 		public bool KeepAlive {
-			get { return false; }
+			get {
+				if (ka_set)
+					return keep_alive;
+
+				ka_set = true;
+				// 1. Connection header
+				// 2. Protocol (1.1 == keep-alive by default)
+				// 3. Keep-Alive header
+				string cnc = headers ["Connection"];
+				if (!String.IsNullOrEmpty (cnc)) {
+					keep_alive = (0 == String.Compare (cnc, "keep-alive", StringComparison.OrdinalIgnoreCase));
+				} else if (version == HttpVersion.Version11) {
+					keep_alive = true;
+				} else {
+					cnc = headers ["keep-alive"];
+					if (!String.IsNullOrEmpty (cnc))
+						keep_alive = (0 != String.Compare (cnc, "closed", StringComparison.OrdinalIgnoreCase));
+				}
+				return keep_alive;
+			}
 		}
 
 		public IPEndPoint LocalEndPoint {
@@ -408,8 +428,9 @@ namespace System.Net {
 			get { return context.Connection.RemoteEndPoint; }
 		}
 
+		[MonoTODO ("Always returns Guid.Empty")]
 		public Guid RequestTraceIdentifier {
-			get { return identifier; }
+			get { return Guid.Empty; }
 		}
 
 		public Uri Url {

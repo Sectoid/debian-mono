@@ -134,6 +134,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -258,7 +259,8 @@ VCPROJS = \
 	test_eglib.vcproj			\
 	teste.vcproj
 
-EXTRA_DIST = create-windef.pl mono.def README mono.sln $(VCPROJS)
+VCXPROJS = $(wildcard *.vcxproj)
+EXTRA_DIST = create-windef.pl mono.def README mono.sln winsetup.bat $(VCPROJS) $(VCXPROJS)
 all: all-am
 
 .SUFFIXES:

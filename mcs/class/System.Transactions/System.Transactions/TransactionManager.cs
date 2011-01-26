@@ -9,18 +9,45 @@
 // (C)2006 Novell Inc,
 //
 #if NET_2_0
+using System.Configuration;
+#if !MOBILE
+using System.Transactions.Configuration;
+#endif
 
 namespace System.Transactions
 {
 	public static class TransactionManager
 	{
-		/* 60 secs */
-		static TimeSpan defaultTimeout = new TimeSpan (0, 1, 0);
-		/* 10 mins */
-		static TimeSpan maxTimeout = new TimeSpan (0, 10, 0);
+		static TransactionManager ()
+		{
+#if !MOBILE
+			defaultSettings = ConfigurationManager.GetSection ("system.transactions/defaultSettings") as DefaultSettingsSection;
+			machineSettings = ConfigurationManager.GetSection ("system.transactions/machineSettings") as MachineSettingsSection;
+#endif
+		}
+
+#if !MOBILE
+		static DefaultSettingsSection defaultSettings;
+		static MachineSettingsSection machineSettings;
+#endif
+
+		static TimeSpan defaultTimeout = new TimeSpan (0, 1, 0); /* 60 secs */
+		static TimeSpan maxTimeout = new TimeSpan (0, 10, 0); /* 10 mins */
 
 		public static TimeSpan DefaultTimeout {
-			get { return defaultTimeout; }
+			get {
+				// Obtain timeout from configuration setting..
+				//		- http://msdn.microsoft.com/en-us/library/ms973865.aspx
+				//		- http://sankarsan.wordpress.com/2009/02/01/transaction-timeout-in-systemtransactions/
+				//	1. sys.txs/defaultSettings[@timeout]
+				//	2. defaultTimeout
+#if !MOBILE
+				if (defaultSettings != null)
+					return defaultSettings.Timeout;
+#endif
+
+				return defaultTimeout; 
+			}
 		}
 
 		[MonoTODO ("Not implemented")]
@@ -30,7 +57,14 @@ namespace System.Transactions
 		}
 
 		public static TimeSpan MaximumTimeout {
-			get { return maxTimeout; }
+			get {
+#if !MOBILE
+				if (machineSettings != null)
+					return machineSettings.MaxTimeout;
+#endif
+
+				return maxTimeout; 
+			}
 		}
 
 		[MonoTODO ("Not implemented")]

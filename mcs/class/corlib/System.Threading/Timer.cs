@@ -186,6 +186,7 @@ namespace System.Threading
 		sealed class Scheduler {
 			static Scheduler instance;
 			SortedList list;
+			ManualResetEvent changed;
 
 			static Scheduler ()
 			{
@@ -198,6 +199,7 @@ namespace System.Threading
 
 			private Scheduler ()
 			{
+				changed = new ManualResetEvent (false);
 				list = new SortedList (new TimerComparer (), 1024);
 				Thread thread = new Thread (SchedulerThread);
 				thread.IsBackground = true;
@@ -219,6 +221,7 @@ namespace System.Threading
 
 			public void Change (Timer timer, long new_next_run)
 			{
+				bool wake = false;
 				lock (this) {
 					InternalRemove (timer);
 					if (new_next_run == Int64.MaxValue) {
@@ -231,17 +234,53 @@ namespace System.Threading
 						timer.next_run = new_next_run;
 						Add (timer);
 						// If this timer is next in line, wake up the scheduler
-						if (list.GetByIndex (0) == timer)
-							Monitor.Pulse (this);
+						wake = (list.GetByIndex (0) == timer);
 					}
 				}
+				if (wake)
+					changed.Set ();
+			}
+
+			// lock held by caller
+			int FindByDueTime (long nr)
+			{
+				int min = 0;
+				int max = list.Count - 1;
+				if (max < 0)
+					return -1;
+
+				if (max < 20) {
+					while (min <= max) {
+						Timer t = (Timer) list.GetByIndex (min);
+						if (t.next_run == nr)
+							return min;
+						if (t.next_run > nr)
+							return -1;
+						min++;
+					}
+					return -1;
+				}
+
+				while (min <= max) {
+					int half = min + ((max - min) >> 1);
+					Timer t = (Timer) list.GetByIndex (half);
+					if (nr == t.next_run)
+						return half;
+					if (nr > t.next_run)
+						min = half + 1;
+					else
+						max = half - 1;
+				}
+
+				return -1;
 			}
 
 			// This should be the only caller to list.Add!
 			void Add (Timer timer)
 			{
 				// Make sure there are no collisions (10000 ticks == 1ms, so we should be safe here)
-				int idx = list.IndexOfKey (timer);
+				// Do not use list.IndexOfKey here. See bug #648130
+				int idx = FindByDueTime (timer.next_run);
 				if (idx != -1) {
 					bool up = (Int64.MaxValue - timer.next_run) > 20000 ? true : false;
 					while (true) {
@@ -275,8 +314,10 @@ namespace System.Threading
 				Thread.CurrentThread.Name = "Timer-Scheduler";
 				ArrayList new_time = new ArrayList (512);
 				while (true) {
+					int ms_wait = -1;
 					long ticks = DateTime.GetTimeMonotonic ();
 					lock (this) {
+						changed.Reset ();
 						//PrintList ();
 						int i;
 						int count = list.Count;
@@ -324,17 +365,16 @@ namespace System.Threading
 							min_next_run = ((Timer) list.GetByIndex (0)).next_run;
 
 						//PrintList ();
-						int ms_wait = -1;
+						ms_wait = -1;
 						if (min_next_run != Int64.MaxValue) {
 							long diff = min_next_run - DateTime.GetTimeMonotonic (); 
 							ms_wait = (int)(diff / TimeSpan.TicksPerMillisecond);
 							if (ms_wait < 0)
 								ms_wait = 0;
 						}
-
-						// Wait until due time or a timer is changed and moves from/to the first place in the list.
-						Monitor.Wait (this, ms_wait);
 					}
+					// Wait until due time or a timer is changed and moves from/to the first place in the list.
+					changed.WaitOne (ms_wait);
 				}
 			}
 

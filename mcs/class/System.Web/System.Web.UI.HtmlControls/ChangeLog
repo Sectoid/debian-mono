@@ -1,3 +1,13 @@
+2011-01-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #662918. Do not create the HtmlTitle child
+	control for HtmlHead if <title> wasn't used in the page code.
+
+2010-10-30  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #650050. HtmlSelect must render non-standard
+	attributes of every ListItem.
+
 2010-07-09  Marek Habersack  <mhabersack@novell.com>
 
 	* HtmlInputButton.cs: if ServerClick handler is found, do NOT

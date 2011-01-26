@@ -1,6 +1,1696 @@
+2011-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable some of the FastCopy fast paths since they are racy.
+
+2011-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow only primitive types/enums in RuntimeHelpers.InitializeArray
+	().
+
+2011-01-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Make runtime invoke wrappers use cdecl cconv on windows.
+
+2011-01-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (is_valid_generic_instantiation): Don't check if any
+	argument is broken during constraint check as an instance should
+	be valid, but not realizable, even if it has broken arguments.
+
+	Fixes one of the issues with #664612
+
+2011-01-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous marshalling change so it only applies to chars,
+	not structures which contain char fields.
+
+2011-01-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Pass the string encoding to emit_struct_conv () so marshalling of
+	char arrays works on big-ending machines like s390/ppc64.
+
+2011-01-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix 2.0 remapping of System.Transations to 2.0 and not 3.5.
+
+2011-01-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c: mono_class_is_assignable_from can't handle
+	IList<GTD<T>> x GTD[] since GTD[] won't have the right iface slots
+	set. This isn't a problem for the runtime since GTD[] will never
+	happen as it's an unrealizable type.
+
+	Fixes #663815
+
+2011-01-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_type_is_valid_type_in_context_full): The trick of
+	encoding the GTD as an instantiation over its own arguments is
+	also valid for component types such as GTD[] GTD[,] and Foo<GTD>.
+
+2011-01-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix cygwin build.
+
+2011-01-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a regression introduced by db4299a1.
+
+2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* assembly.c: * domain.c: * image.c: * coree.c: Coree funcionality
+	is now under the ENABLE_COREE define that is not set by default.
+	The current code breaks the verification infrastructure.
+
+2011-01-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_get_virtual_methods): Handle missing methods
+	in the methods array.
+
+	Fixes #572223
+
+	Patch by Sebastien Pouliot <spouliot@novell.com>
+
+2011-01-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Remove debug spew
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (emit_marshal_custom): If the lookup for
+	ICustomMarshaler fails, emit code to raise an exception instead of
+	asserting.
+
+	Fixes #560334
+
+2011-01-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_method_verify): If neither the method or its
+	class is generic a signature can't have type parametets.
+
+	Fixes #662238
+
+2011-01-05  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Always use the GC descriptor instead of
+	MonoClass.has_references.
+
+	has_references can be set even though the class has no references
+	registered by the GC. One case is Ephemeron. Now we always go by
+	the GC descriptor which holds the information relevant to SGen.
+
+	This fixes a crash in the 4.0 corlib testsuite.
+
+2011-01-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_generic_class_get_class): Use the checked version
+	of mono_class_inflate_generic_class to avoid aborting on error.
+
+	Fixes #560327
+
+2011-01-04  Elijah Taylor  <elijahtaylor@google.com>
+
+	fix IMT_REG assignments that got switched for non-nacl builds,
+	provide no-op versions of nacl routines to avoid #ifdef's all over
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement VBByRefStr marshalling. Fixes #661917.
+
+2011-01-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c: The copy versions of type/hash functions is no
+	longer needed. Just get rid of them which brings some niceties
+	such such as support for FNPTR.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2011-01-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_implement_interface_slow): If the reflection
+	type has not been realized, ignore it since can't affort to do it
+	from here.
+
+	Fixes #656262
+
+2011-01-03  Paolo Molaro  <lupus@oddwiz.org>
+
+	Allow the special ECMA key when parsing assembly names
+	(bug#660570).
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid computing GC maps if precise stack marking is disabled.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Make conservative stack marking the default for now.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some merge problems.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove obsolete conservative-stack-mark MONO_GC_DEBUG option, it
+	is superseded by a MONO_GC_PARAMS option.
+
+2010-10-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Add stats for the number of pinned objects during all collections.
+	Avoid scanning the frames above the start_wrapper () frame. Rework
+	start_wrapper () to avoid references to the Thread object, so
+	hopefully it won't get pinned.
+
+2010-10-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Log to stdout by default, so it matches up with the output of the
+	program.
+
+2010-10-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Share the log file between sgen and the stack marking code.
+
+2010-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Flush the actual file too in binary_protocol_flush_buffers
+	()."
+
+	This reverts commit 27bb69444433cd4eda1fccfcd45fcc619559a29d.
+
+2010-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Flush the actual file too in binary_protocol_flush_buffers ().
+
+2010-10-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Allow an argument to collect-before-allocs to force sgen to do a
+	minor collection every N allocations. Implement
+	major_ptr_is_in_non_pinned_space ().
+
+2010-09-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an option to turn on CLEAR_AT_GC.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't assert in describe_ptr () for oldspace pointers.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a free callback to sgen, use it to free our TLS data.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Add the conservative-stack-mark option to the MONO_GC_DEBUG help.
+
+2010-09-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Ongoing work.
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[mscorlib] inside mscorlib Platform's value will be correct for
+	OSX, but userland still gets Unix.
+
+	This change allows mscorlib to get the real PlatformID, to split
+	code between OSX and general Unix. We continue to expose the value
+	4 (Unix) to usercode as changing this might break user
+	applications.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	.gitignore.
+
+2010-12-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Partially revert 759ebbb3df836e82fac2443dea23659ede972ce7: pass
+	the 'err' argument to mono_dl_open () again. Fixes #661356.
+
+2010-12-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove an obsolete comment.
+
+2010-12-21  Andreia Gaita  <shana@jitted.com>
+
+	Moonlight build fixes and cleanup
+
+2010-12-20  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make Mark&Sweep compile without card tables.
+
+2010-12-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Add functions to access values of ThreadStatic fields from another
+	threads.
+
+2010-12-17  Andreia Gaita  <shana@jitted.com>
+
+	Add --with-moon-gc to select the gc to use with moon (boehm/sgen)
+
+2010-12-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[ThreadPool] Reset the abort state when unloading a domain
+
+	Properly reset the abort state of threadpool threads that
+	processed domain unloading or were running in a domain that was
+	being unloaded.
+
+	Thanks go to Kumpera for finding this out.
+
+2010-12-14  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merge mono/io-layer, mono/metadata, mono/arch/x86 and configure.in
+	for Native Client
+
+2010-12-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* appdomain.c (unload_thread_main): Call function bindings
+	cleanup.
+
+	* assembly.c (mono_assembly_apply_binding): Dupe the content of
+	per-domain bindings. Assign a domain_id on such entries to be
+	possible to track them later.
+
+	* assembly.c (mono_assembly_cleanup_domain_bindings): New function
+	that removes per-domain bindings on unload.
+
+	* metadata-internals.h (MonoAssemblyBindingInfo): Add domain_id
+	field so it's possible to track if an entry is appdomain bound.
+
+2010-12-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (emit_struct_conv): Take the native type of the field
+	to decide what kind of conv to use if field is of type char.
+
+	* marshal.c (mono_pinvoke_is_unicode): Unify auto and default.
+
+	* marshal.c (emit_struct_conv_full): Kill this variant that
+	doesn't make any sense as structures are marshaled in the same way
+	regardless of the charset of the method.
+
+	* metadata.c (mono_type_to_unmanaged): Handle marshalspec for
+	char.
+
+	Fixes the regression on MD caused by 1f3cfba.
+
+2010-12-12  Bojan Rajkovic  <bojan@airpoweranalytics.com>
+
+	Use SIGXFSZ on FreeBSD too by checking for the __FreeBSD__ define.
+	Like Apple and OpenBSD, it doesn't have SIGPWR.
+
+2010-12-10  joncham  <joncham@gmail.com>
+
+	Use 2.0 instead of 1.0 when probing install dirs.
+
+2010-12-10  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* security-core-clr.c: call mono_field_get_type_checked to ensure
+	the field's type is resolved since coreclr checks can occurs
+	before the "normal" check done by mono. Fix crashes in DRT#8005
+
+2010-12-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (emit_struct_conv): Add _full variant that takes an
+	extra boolean argument to tell if char is to be marshaled with one
+	or two bytes.
+
+	* marshal.c (emit_marshal_array): Use emit_struct_conv_full to
+	correctly marshal ansi char arrays.
+
+2010-12-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add a few more undocumented bits to allowed AssemblyFlags
+
+	Fixes #657516
+
+2010-12-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (verify_typedef_table): Fail if the token
+	index is encoded as zero.
+
+	Fixes #651682
+
+2010-12-08  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking the name buffer since we already resolve this below
+
+2010-12-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (lookup_custom_attr): Since we memdup the returned
+	cattr, we better mark it as not cached.
+
+2010-12-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_type_is_valid_type_in_context): Refuse a GTD if
+	not at a root positision.
+
+	Fixes #656913
+
+2010-12-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark runtime invoke wrappers as pinvoke, since they are called
+	from native code.
+
+2010-12-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Update a comment.
+
+2010-12-08  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Have an allocated block list for fixed-heap M&S, too.
+
+	It turns out we iterate over all allocated blocks often enough
+	that the way we did it for fixed-heap Mark&Sweep (iterating over
+	all blocks and jumping over the non-allocated ones) slows us down
+	considerably. So, use the same allocated block list as "regular"
+	Mark&Sweep, which also unifies the code a bit.
+
+2010-12-08  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Don't increase degraded_mode in alloc_degraded().
+
+	Mature allocation uses the degraded allocation machinery to
+	allocate objects in the major space. Modifying degraded_mode in
+	those cases will actually put us into degraded mode which slows us
+	down immensely.
+
+2010-12-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Tidy up the assembly loading log messages a bit.
+
+2010-12-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Log images still loaded during shutdown.
+
+2010-12-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some small memory leaks.
+
+2010-12-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c
+	(mono_verifier_verify_memberref_method_signature): Memberref
+	method signatures allow sentinels.
+
+2010-12-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_delegate_type_equal): Properly check if candidate
+	is a pointer type.
+
+	Fixes #657746
+
+2010-12-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_create_from_typedef): Set failed enums to
+	extends int32 as the whole runtime can't handle this been null.
+
+	Fixes #657745
+
+2010-12-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_newobj): Honor skip visibility request.
+
+	* verify.c (do_load_function_ptr): Ditto.
+
+	Fixes #657694
+
+2010-12-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* loader.c: Use new split functions.
+
+	* metadata-verify.c (parse_custom_mods): Make sure encoded type
+	tokens are not zero.
+
+	* metadata-verify.c (parse_generic_inst): Ditto.
+
+	* metadata-verify.c (parse_type): Ditto.
+
+	* metadata-verify.c (mono_verifier_verify_memberref_signature):
+	Replace this function with a pair that does field or method
+	verification.
+
+	Fixes #656914
+
+2010-12-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a few SRE memory leaks.
+
+2010-12-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove some #ifdef HAVE_SGEN_GC deps, centralize others to
+	gc-internal.h.
+
+2010-12-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Make sgen-protocol.c into its own module.
+
+2010-12-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-12-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_ldstr): We encode string tokens in a weird way in
+	dynamic modules.
+
+2010-12-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle one more case we cmods can appear in odd places.
+
+2010-12-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (parse_generic_inst): A ginst param can have a
+	cmod.
+
+	* metadata-verify.c (parse_param): We can have a cmod after the
+	byref.
+
+	* metadata-verify.c (parse_property_signature): A property
+	signature can have a cmod on the parameters.
+
+	Fixes the verifier for #656787
+
+2010-12-03  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make concurrent sweep user-selectable.
+
+	It's off by default for now.
+
+2010-12-02  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Compute allowance when sweeping is finished.
+
+	Before sweeping hasn't finished we don't know how many major
+	blocks are in use, so we delay computing the minor collection
+	allowance until sweeping is done. In the mean time we use the
+	minimum allowance.
+
+2010-12-01  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Concurrent sweep.
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Parse custom modifiers in mono_type_create_from_typespec ().
+
+2010-12-01  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Remove skip_size in sgen-scan-object.h.
+
+	Dead code.
+
+2010-12-01  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Handle forwarding in mono_gc_scan_for_specific_ref().
+
+	This function is used for debugging purposes only. Previously it
+	didn't handle forwarding which meant that it couldn't be used
+	during a collection.
+
+2010-12-01  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Zero freed blocks in fixed heap Mark&Sweep.
+
+	Fresh blocks must be zeroed, which means that when we free blocks
+	we must ensure that they are zeroed before they are used again.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Make sgen-los.c into a proper C module.
+
+2010-12-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix thread attaching
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Move the DEBUG() macro to sgen-gc.h and resurrect debug logging in
+	the major collectors.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some warnings.
+
+2010-12-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Handle LOS objects in describe_ptr ().
+
+2010-12-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_load_function_ptr): Handle wrappers correctly.
+
+	* verify.c (do_sizeof): Remove superfluous check.
+
+	* verify.c (do_ldstr): Handle wrappers correctly.
+
+2010-12-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata.c (mono_type_to_unmanaged): Return the appropriate type
+	for char based on unicode option.
+
+	* marshal.c (emit_marshal_array): Calculate char size based on
+	marshaling preferences.
+
+	Fixes #647267
+
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc.c: Implement mono_gc_alloc_mature for boehm and null-gc.
+
+	* sgen-gc.c (mono_gc_alloc_mature): Alloc using the degrated
+	machinery.
+
+	* threads.c (create_internal_thread_object): Alloc using
+	mono_gc_alloc_mature instead of mono_gc_alloc_pinned_obj as the
+	later requires explicit freeing and we don't do it.
+
+	* threads.c (create_thread_object): Ditto.
+
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (check_interface_method_override): Check if signatures
+	decoded correctly before comparing them.
+
+	Fixes #541815
+
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix token checking for dynamic methods.
+
+2010-11-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (token_bounds_check): Check if token index is zero.
+
+	Fixes #651682
+
+2010-11-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Remove some junk I left by accident
+
+2010-11-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* security-core-clr.c (get_default_ctor): Handle nulls in
+	MonoClass::methods.
+
+	Fixes #569542
+
+2010-11-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (mono_image_create_token): Don't mono_class_init
+	here as it's not needed and break mcs for cases doing typeof()
+	over broken types.
+
+	Fixes a TLE in #653211
+
+2010-11-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	WIP
+
+2010-11-25  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Recompute heap boundaries at each major collection.
+
+	Previously we updated heap boundaries when a new block was
+	allocated, but no updates were performed for freed blocks,
+	resulting in a constant increase in the heap boundaries which can
+	lead to unnecessary work during pinning.
+
+	Now we recompute the heap boundaries during the sweep phase at
+	each major collection.
+
+2010-11-29  Paolo Molaro  <lupus@oddwiz.org>
+
+	Forgot old header file in profiler.c.
+
+2010-11-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (make_generic_param_class): Don't assert if parent is
+	broken.
+
+	Fixes #653211
+
+2010-11-29  Paolo Molaro  <lupus@oddwiz.org>
+
+	Profiler: reomved the old builtin default profiler.
+
+	The new log profiler is now used automatically instead of the old
+	default profiler.
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Remove some culture caching dead code
+
+2010-11-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* threads.c: Remove culture caching machinery.
+
+	* icall-def.h: Ditto.
+
+	Fixes #318750 as a byproduct.
+
+2010-11-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Throw an exception if a custom attr cannot be decoded. Fixes
+	#656058.
+
+2010-11-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_verifier_is_enabled_for_method): A dynamic method
+	has a different wrapper kind than regular methods.
+
+	* verify.c (mono_verifier_is_method_full_trust): Dynamic methods
+	can't be handled as fulltrust since they don't store proper origin
+	for verifying it.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the DISABLE_REFLECTION_EMIT build.
+
+2010-11-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix crashes inside find_method_in_metadata (). Fixes #561728.
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_System_Delegate_CreateDelegate_internal):
+	CreateDelegate can be called with an abstract method in a similar
+	fashion to how ldvirtftn works.
+
+	Fixes #655741
+
+2010-11-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a bug introduced by the last change to
+	mono_marshal_get_virtual_stelemref () in
+	r038598e503d3db631224288ca5295988c3d22288.
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c: Add new function to internal verifier API to check
+	method instantiations.
+
+	* reflection.c (mono_reflection_bind_generic_method_parameters):
+	Check the instantiation before returning it.
+
+	Fixes #655847
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix argument name on the exception
+
+2010-11-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc.c (alloc_handle): Set domain_ids if it's a weak ref handle.
+
+	* gc.c (mono_gchandle_set_target): Ditto.
+
+	Fixes #655669
+
+2010-11-24  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_setup_interfaces): Don't free
+	MonoClass::interfaces on failure since this is now allocated from
+	a mempool.
+
+	Fixes #655749
+
+2010-11-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Sockets] Support Remote/LocalEndPoint for AF_UNIX
+
+	We were not handling correctly the AF_UNIX family when getting the
+	socket name or the peer name.
+
+	Fixes bug #655637.
+
+2010-11-24  Andreia Gaita  <shana@jitted.com>
+
+	[Moon] Speed up the moonlight build by stripping it down to the
+	bare basics
+
+2010-11-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_Type_MakeGenericType): We can inflate into
+	the gtd and the verifier function is not able to handle it.
+
+2010-11-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix typo.
+
+2010-11-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix some array overflow bugs
+
+2010-11-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_init): Check instantiations of generic
+	instances.
+
+	* icall.c (ves_icall_Type_MakeGenericType): Ditto.
+
+	* verify.c: Add mono_verifier_class_is_valid_generic_instantiation
+	to the internal API so generic instances can be checked.
+
+	Fixes #654136
+
+2010-11-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a memory leak.
+
+2010-11-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Allocate memory for generic instances from the mempool of the
+	image set they belong to. Use this to simplify the freeing of
+	these instances.
+
+2010-11-22  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (is_valid_fixed_param): Handle arrays of
+	types. They can be encoded as 0x1B or 0x50.
+
+	* metadata-verify.c (is_valid_cattr_content): Ditto.
+
+	Fixes #655159
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Allocate generic param constraint data from the image mempool.
+
+2010-11-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some small memory leaks.
+
+2010-11-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for the processorArchitecture field in assembly names.
+	Fixes #655096.
+
+2010-11-19  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Implement evacuation for parallel mark.
+
+2010-11-18  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Use bit fields for the booleans in MSBlockInfo.
+
+2010-11-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* loader.c (method_from_methodspec): Don't crash if parsing of the
+	generic instance fails.
+
+	Fixed #560834
+
+2010-11-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_invoke_method): Make sure the returned value is
+	valid in the caller's context.
+
+	Fixes #562324
+
+2010-11-17  joncham  <joncham@gmail.com>
+
+	Undefine AF_INET6 on windows to disable IPv6 for now.
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Updated remove_wsq.
+
+	remove_wsq() should only clean up the queue when the runtime is
+	shutting down. In any other case, removing a queue that still
+	contains work items is an error.
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix typo.
+
+	Thanks Rolf debugging this.
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Wrong return value in mono_sem_timedwait()
+
+	The return value of mono_sem_timedwait() with a timeout 0 was
+	incorrect (0=failure, !0=success instead of 0=success). This
+	worked on non-Windows platforms because the only call with timeout
+	0 was expecting the incorrect return value, but it made the mono
+	threadpool in Windows fail.
+
+	Fixes bug #653928.
+
+2010-11-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* loader.c (find_method_in_class): Properly handle failure of
+	loading a method.
+
+	* loader.c (find_method_in_class): Handle method load failure. We
+	can't just bail out since working code depends on working while
+	having broken methods in the mix.
+
+	Fixes #562009
+
+2010-11-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* loader.c (find_method): Instead of asserting when a type has its
+	interfaces missing, ignore them and keep searching.
+
+	Fixes #560346
+
+2010-11-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_is_assignable_from): Simply return false if
+	any of the arguments is broken.
+
+	Fixes #651287
+
+2010-11-16  Paolo Molaro  <lupus@oddwiz.org>
+
+	* profiler-private.h, profiler.c, profiler.h: added API to
+	enumerate the roots used during a garbage collection. * sgen-gc.c:
+	enumerate roots if requested by the profiler.
+
+2010-11-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (verify_cattr_table): Type column can't have a
+	zero index.
+
+	Fixes #651682
+
+2010-11-15  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (mono_reflection_method_on_tb_inst_get_handle):
+	Ensure the typebuilder had it's generic arguments initialized.
+
+	Fixes #652952
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-13  Vincent Povirk  <madewokherd@gmail.com>
+
+	Convert MONO_MARSHAL_CONV_LPSTR_STR to mono_string_to_utf16 on
+	windows.
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a typo (DISABLE_SOCKET->DISABLE_SOCKETS).
+
+2010-11-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Use CloseHandle () for closing process handles if HOST_WIN32 is
+	defined, so it works on windows based cross compilers.
+
+2010-11-12  Paolo Molaro  <lupus@oddwiz.org>
+
+	GC: changed the heap walk API to also report the offset of
+	referenced objects.
+
+2010-11-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (major_copy_or_mark_object): Stop evacuating
+	major objects if we fail to alloc them.
+
+2010-11-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Don't disable IPv6 if bulding with VS.
+
+	When building with Cygwin or a cross-compiler there are at least 4
+	functions that are not present (inet_ntop, getaddrinfo,
+	getnameinfo and freeaddringo) so in these cases we just disable
+	IPv6. Note that Socket.OSSupportsIPv6 will still return true.
+
+	When building with VS, IPv6 will be supported without a problem.
+
+2010-11-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Define mono_gc_get_card_table () for boehm/null gc too, to reduce
+	the number of sgen dependencies in mini/.
+
+2010-11-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (major_copy_or_mark_object): Until we figure
+	out how to handle OOM while evacuating major objects lets assert.
+
+2010-11-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle OOM on string intern icall.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle OOM with string interning.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle OOM with string interning.
+
+2010-11-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (major_copy_or_mark_object): Use a loop around
+	CAS'ng on failed memory allocation to make sure we have the right
+	behavior in place.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (collect_nursery): If any object was pinned after
+	initial pinning, sort the queue so build_nursery_fragments will
+	see the aditional objects. If pinning due to OOM happened ask for
+	a major collection.
+
+	* sgen-gc.c (major_do_collection): Adjust the pin queue if OOM
+	happened. Here we have to clean discarded entries before
+	optimizing the queue or we might end with interior pointers in the
+	mix.
+
+	* sgen-gc.c (sgen_collect_major_no_lock): New function so major
+	collectors can trigger a collection. They can't use public API
+	since the gc lock is not meant to be reentrant.
+
+	* sgen-major-copy-object.h (copy_object_no_checks): Pin the object
+	if we can't promote it.
+
+	* sgen-marksweep.c (alloc_obj): Return null if we fail to allocate
+	a block for a given freelist size.
+
+	* sgen-marksweep.c (major_alloc_degraded): Ditto.
+
+	* sgen-marksweep.c (major_copy_or_mark_object): Handle OOM.
+
+	* sgen-marksweep.c (major_alloc_small_pinned_obj): If allocation
+	fails, try a major collection since this is memory requested by
+	the runtime and it's much harder to handle failure.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (need_major_collection): Add a space_needed parameter
+	that is checked against the available space quota.
+
+	* sgen-gc.c (alloc_degraded): Adjust call to
+	need_major_collection. Pass zero as space_needed since it's won't
+	help to do a major gc if we're already doing degrated alloc and
+	old gen is full.
+
+	* sgen-gc.c (alloc_large_inner): Pass size to
+	need_major_collection as shrinking major might be needed to meet
+	the space quota for.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c: Simple accounting with no los/major reserve.
+
+	* sgen-los.c: * sgen-marksweep.c: Account for allocation and
+	release of memory. Fail to allocate if above alloc quota.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (mono_gc_alloc_obj_nolock): * sgen-gc.c
+	(mono_gc_alloc_obj): * sgen-gc.c (mono_gc_alloc_vector): *
+	sgen-gc.c (mono_gc_alloc_array): * sgen-gc.c
+	(mono_gc_alloc_string): * sgen-gc.c (mono_gc_alloc_pinned_obj):
+	Handle allocation failure.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (mono_gc_base_init): Added new parameter. Right now it
+	is not used.
+
+2010-10-28  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add boehm support for max-heap-size.
+
+	boehm-gc.c (mono_gc_base_init): Check MONO_GC_PARAMS environment
+	variable for max-heap-size.
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (mono_sgen_parse_environment_string_extract_number):
+	Move this function to gc.c and rename.
+
+2010-10-28  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* object.c (mono_print_unhandled_exception): We can't really do a
+	ToString () during an OOM.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Allocate MonoInternalThread/MonoThread objects using
+	mono_gc_alloc_pinned () when using sgen, since they will be pinned
+	anyway.
+
+2010-11-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-11-10  Paolo Molaro  <lupus@oddwiz.org>
+
+	* gc.c: set the name of the finalizer thread. * threadpool.c: set
+	the name of the threadpool worker threads.
+
+2010-11-10  Paolo Molaro  <lupus@oddwiz.org>
+
+	* profiler-private.h, profiler.c, profiler.h: users can now get a
+	callback when the name of a thread gets set when
+	MONO_PROFILE_THREADS is enabled. * threads.c: notify profilers
+	about thread name changes.
+
+2010-11-09  Paolo Molaro  <lupus@oddwiz.org>
+
+	* profiler-private.h, profiler.c, profiler.h: new API to get
+	notiffications when GC handles are created or destroyed. * gc.c:
+	notify the profiler on GC handle creation/destruction.
+
+2010-11-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_generic_param_is_constraint_compatible): Handle
+	transitive constraints where one type can only satisfy the
+	constraints required by means of the other types it's constainted
+	to. For example:
+
+	Bar<K> where K : IFace Foo<T, U> where T : U where U : IFace
+	Bar<T>
+
+	On the above example, T can only satisfy K constraint by means of
+	the constraints that U has.
+
+2010-11-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the DISABLE_REFLECTION_EMIT build. Fixes #652188.
+
+2010-11-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (verifier_load_field): Fail if the field is literal.
+
+	Fixes #595044
+
+2010-11-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (is_valid_method_header): The local token
+	cannot have a zero index.
+
+	* metadata.c (mono_metadata_parse_mh_full): Fail if locals token
+	index is zero.
+
+	Fixes #651682
+
+2010-11-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata.c (do_mono_metadata_parse_type): It's possible that
+	we're decoding a reference to a class that it's currently been
+	loaded so byval_arg.type will be zero.
+
+2010-11-06  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Don't compile evacuation for parallel mark.
+
+	Parallel Mark doesn't yet support evacuation, so don't compile it
+	in.
+
+2010-10-30  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] User-settable evacuation threshold.
+
+	A MONO_GC_PARAMS option for setting the evacuation threshold.
+
+2010-10-30  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Mark&Sweep evacuation.
+
+	When the occupancy for some block size falls below a certain
+	threshold the objects in that block size will be evacuated in the
+	next major collection, resulting in optimal occupancy.
+
+2010-10-29  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Function for querying current collection generation.
+
+	This lets the major collector query whether the current collection
+	is a minor or a major one.
+
+2010-10-18  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Dump Mark&Sweep heap occupancy.
+
+	For each block size dump the occupancy to the heap-dump file.
+
+2010-10-20  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Flush the binary protocol file when protocol is flushed.
+
+2010-11-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix DISABLE_REFLECTION_EMIT build.
+
+2010-11-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata.c (do_mono_metadata_parse_type): Fail if a valuetype is
+	encoded as MONO_TYPE_CLASS and vice-versa. This can't be done
+	easily in the verifier since it requires resolving the destination
+	type.
+
+	Fixes #650936
+
+2010-11-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (parse_type): Don't allow zero index type
+	tokens.
+
+	* metadata.c (mono_metadata_decode_row): Assert on negative
+	indexes.
+
+	Fixes #560359
+
+2010-11-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* pedump.c (verify_image_file): Finish initializing the runtime
+	here since at this point we can safely query what version the
+	supplied image requires.
+
+	Fixes #650916
+
+2010-11-02  Paolo Molaro  <lupus@oddwiz.org>
+
+	Introduced a GC heap walk API.
+
+	This API is currently only implemented for the sgen GC. It can be
+	used to iterate over all the managed objects in the heap and it
+	allows to also easily track object references.
+
+2010-11-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] System.Web.Extensions must not be remapped to the
+	current framework.
+
+	The reason for this is applications which still use Sys.Web.Ext
+	1.0* (note: 1.0 does NOT mean the assembly is for the 1.x runtime
+	- it's for 2.0). Remapping would cause 1.0* not to be loaded,
+	instead a 3.5 or 4.0 assembly would be fetched.
+
+2010-11-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the text of the Signatures size stat.
+
+2010-11-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a stat for the memory occupied by MonoMethodSignature
+	structures.
+
+2010-11-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a stat for the the memory occupied by MonoMethod structures.
+
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable inlining if the assembly has a DebuggableAttribute with
+	the IsJITOptimizerDisabled flag set. Fixes #604486.
+
+2010-10-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Call mono_field_get_type () in one place to fix an aot problem.
+
+2010-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some copyright messages.
+
+2010-10-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_MonoField_SetValueInternal): Handle lazy
+	field loading. Fixes buildbot crash.
+
+2010-10-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_Type_GetGenericTypeDefinition_impl): Don't
+	mono_class_init the type. Fixes test-792.
+
+2010-10-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_get_method_info): Use _checked variant and
+	avoid the assert.
+
+2010-10-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_check_vtable_constraints): Only fetch the
+	class of generic arguments as those are the only ones we care
+	about. This fixes the case where a generic arguments has its
+	container as a constraint and we crash with a stackoverflow.
+
+2010-10-28  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_create_from_typedef): If the type fails due
+	to a problem with the parent make sure we have byval_arg and
+	this_arg are setup properly as the whole runtime requires those
+	two to be setup even for broken types.
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_create_from_typedef): Avoid a loader leak on
+	parent load.
+
+	* class.c (mono_method_signature_checked): Avoid a loader leak if
+	type parsing fails.
+
+2010-10-27  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the profiler thread start/end hooks for threadpool threads
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Only set lockTaken to TRUE if it did not timeout.
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (mono_param_get_objects_internal): Use checked
+	variant of mono_method_signature.
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_Type_GetField): Use code path that lazy load
+	the field type.
+
+	Fixes #649522
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* loader.c (mono_loader_set_error_assembly_load): Don't g_warning
+	on failure. Use our tracing facility instead.
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c: New icall to resolve ::Attributes so it can avoid
+	loading the signature and work around methods with broken
+	signatures.
+
+	Fixes #649527
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* monitor.c: New icall for the above.
+
+	Fixes #649159
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (field_encode_signature): If the field was
+	constructed with a GTD, encode it as an open instance.
+
+	Fixes #649233
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_MonoType_GetArrayRank): Don't mono_class_init
+	the class as it's not needed.
+
+	* icall.c (ves_icall_Type_make_array_type): Ditto.
+
+	Fixes #648833
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_cast): The casted to type must be a boxable type.
+
+	Fixes #649014
+
+2010-10-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Rename create_methodspec to create_open_instance.
+
+2010-10-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* appdomain.c: Ditto.
+
+	* icall.c: Pass the new value forward to mono_image_create_token.
+
+	* reflection.c (mono_image_create_token): Handle create_methodspec
+	for TypeBuilder and MonoType.
+
+	Fixes #649017
+
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Extract the default profiler into its own file.
+
+2010-10-22  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_MonoType_GetGenericArguments): Don't
+	mono_class_init here since it's not needed.
+
+	Fixes #648725
+
+2010-10-22  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (mono_image_get_generic_field_token): If the field
+	type is a GTD, ensure its generic_container is properly
+	initialized.
+
+	Fixes #648616
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove arbitrary 1024 limit in GetProcesses
+
+	Reallocate the array of PIDs if EnumProcesses used all of it and
+	try again.
+
+2010-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the assembly/class caching problems in the threadpool code
+	too.
+
+2010-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an assert to mono_class_from_name_cached () to make sure it is
+	only called for mscorlib.
+
+2010-10-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid caching stuff in socket-io.c in static variables, since the
+	socket assembly can be unloaded, cache them in MonoDomain instead.
+
+2010-10-20  Tak  <levi@unity3d.com>
+
+	* metadata/threads.c: Ensure correct stack pointer initialization
+	on !POSIX. This fixes some random crashes with embedded,
+	release-optimized binaries on windows.
+
+	License: MIT/X11
+
+2010-10-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c: Add mono_verifier_verify_methodimpl_row.
+
+	* metadata.c (mono_class_get_overrides_full): Call in the
+	verifier.
+
+	* verify.c: Add mono_verifier_is_signature_compatible that does
+	propery signature variance checking.
+
+2010-10-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c: Pass around a list of currently been built vtables to
+	really avoid going into loop.
+
+	* reflection.c: Adjust to extra arguments.
+
+	* object.c: Ditto.
+
+2010-10-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Temporarily disable iface check o generic instances
+
+2010-10-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the duplicate assembly name->string code from two places,
+	uses mono_stringify_assembly_name ().
+
+2010-10-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (ensure_runtime_vtable): When recalculating method
+	slots, ignore static methods.
+
+	Fixes #640780
+
+2010-10-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid crashes in the assembly name->string code if aname->name is
+	NULL.
+
+2010-10-19  Tak  <levi@unity3d.com>
+
+	* metadata/object.c: * mini/mini.c: Ensure that exceptions get
+	propagated back to the caller when mono is being embedded.
+	License: MIT/X11
+
+2010-10-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (collect_implemented_interfaces_aux): Fail if any of the
+	collected interfaces is broken.
+
+	* class.c (mono_class_init): Don't bother initing if the class is
+	broken. Don't assert on cycles, fail the type instead.
+
+	Fixes #568025
+
+2010-10-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_newobj): Check if the .ctor signature is hasthis.
+	Even thou this is not a string 335 requirement our runtime asserts
+	otherwise.
+
+	Fixes #568004
+
+2010-10-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_setup_vtable): Check generic instances using
+	mono_class_check_vtable_constraints.
+
+	* object.c (mono_class_create_runtime_vtable): Check generic
+	instance arguments since creating the rumtime vtable doesn't
+	require resolving the metadata one.
+
+	Fixes #644915
+
+2010-10-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some warnings.
+
+2010-10-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Fix for bug 646075. Added support for short version
+	string in the <supportedRuntime> element
+
+	Starting from .NET 4.0, the <supportedRuntime/> 'version'
+	attribute accepts a shorter runtime version string - v4.0 - in
+	addition to the previously accepted vX.Y.Z format.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a regression introduced by the assembly name parsing changes.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for assembly names with embedded and starting spaces.
+
+2010-10-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[ThreadPool] Clear the thread state
+
+	Clear the thread state after finishing a work item. We were only
+	resetting the background state.
+
+2010-10-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix windows build
+
+2010-10-14  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[android] pthread_kill cannot be used safely on android
+
+	Android's fork() function does not properly update the
+	pthread_internal_t->threadid variable to point to the tid of the
+	fork()'d thread, and instead still points to the pid of zygote. As
+	a result we need to track the android tid's manually since
+	gettid() is sane, and use an alternate to pthread_kill on android
+	Additionally, disable sgen support on android until the same work
+	has been done there
+
+	r: kumpera, vargaz
+
+2010-10-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_is_open_constructed_type): Treat generic
+	type definition as an open type too. All code that checks is_open
+	does to make sure the generic instance is realizable.
+
+2010-10-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (mono_marshal_get_castclass_with_cache): Use the right
+	parameter for the cache.
+
+	* marshal.c (mono_marshal_get_isinst_with_cache): Use the right
+	parameter for the cache. In the negative case store the obj_vtable
+	and not the cache address.
+
+2010-10-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (is_valid_generic_instantiation): If the generic
+	instantiation is open, GTDs can appear in mutual types.
+
+2010-10-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_verifier_verify_class): The generic instance over
+	its parent generic arguments will end up extending a GTD. The
+	check against not extending a GTD is only valid for not generic
+	instance types.
+
+2010-10-12  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	The System.Net.Sockets.Socket type lives in both System.dll and
+	System.Net.dll for moonlight
+
+2010-10-12  Paolo Molaro  <lupus@oddwiz.org>
+
+	* console-io.h, console-null.c, console-unix.c, console-win32.c,
+	gc.c: instead of executing tons of managed code in signal context,
+	we wake up the finalizer thread and any complex console-specific
+	code will be handled there. This can cause a (usually small)
+	delay, but it's much better than deadlocking.
+
+2010-10-12  Paolo Molaro  <lupus@oddwiz.org>
+
+	* loader.c: we don't search the current directory anymore for
+	shared libraries referenced in DllImport attributes, as it has a
+	slight security risk. We search in the same directory where the
+	referencing image was loaded from, instead. Fixes bug# 641915.
+
+2010-10-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Load vtable->max_interface_id using LDIND_U2.
+
+2010-10-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_setup_vtable): Fail the class if we fail to
+	load its overloads.
+
+	Fixes #562156
+
+2010-10-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_verifier_verify_class): Don't allow parent to be
+	a GTD.
+
+	Fixes #562150
+
+2010-10-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (is_valid_generic_instantiation): A GTD cannot be used
+	as generic argument. Check for those conditions even if the
+	argument has no constraints.
+
+	Fixes #562771
+
+2010-10-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (verify_generic_parameters): If a generic constraint is
+	a generic instance, it must respect the constraint of that type
+	too.
+
+	Fixes #644935
+
+2010-10-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Set the wrapper info for the virtual stelemref wrappers to a
+	non-NULL value.
+
+2010-10-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (mono_marshal_get_virtual_stelemref): Add a custom
+	wrapper for interface casts.
+
+	This was the most frequent array kind left without a fast
+	stelem.ref wrapper. During testing the only easy target left was
+	arrays of arrays, but those are so rare that won't make a
+	different on any workload.
+
+2010-10-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_setup_vtable_general): Inject the array
+	stelemref method on vectors of reference types.
+
+	* class.c (mono_class_init): Properly handle the fact that arrays
+	have different vtable sizes.
+
+	* marshal.c (mono_marshal_get_virtual_stelemref): New function
+	that returns a better tailored stelemref wrapper for a given array
+	type.
+
+2010-10-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix Marshal.SizeOf() for structs with explicit layout
+
+	Marshal.SizeOf is now returning the expected values for explicit
+	layout in 32 and 64 bits systems.
+
+	Fixes bug #641535.
+
+2010-10-08  Jb Evain  <jbevain@gmail.com>
+
+	Add support generic arguments in ModuleBuilder.Resolve*Token
+	icalls
+
+	For ResolveTypeToken, ResolveFieldToken and ResolveMethodToken,
+	resolve definitions directly and try to instantiate only types
+	that can be instantiated, such as MemberRef, MethodSpec and
+	TypeSpec. Also validate the memberref token type for ResolveField
+	and ResolveMethod when passing them a MemberRef token.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c: Add mono_marshal_get_isinst_with_cache and
+	mono_marshal_get_castclass_with_cache.
+
+	* marshal.h: Export those 2 new functions.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class-internals.h: Add new kind of rgctx slot.
+
+2010-10-07  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (mono_marshal_load_type_info): Properly check for
+	array types.
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	Fix resolution of memberref tokens in the dynamic case.
+
+	mono_metadata_memberref_is_method: rename to
+	mono_memberref_is_method and deal with the case where the assembly
+	is dynamic. This prevents a runtime crash when calling
+	ModuleBuilder.ResolveMemberToken with a MemberRef token pointing
+	to a field.
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] Properly compute the tokens for FieldBuilders.
+
+	mono_reflection_get_token: For FieldBuilders, now reuse the token
+	computed when the FieldBuilder are instantiated, instead of
+	re-creating them. This avoids registering field definitions as
+	MemberRefs.
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Clear the domain before unloading assemblies in mono_domain_free
+	().
+
+2010-10-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix more wrappers of dynamic methods.
+
+2010-09-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid clearing nursery fragments before pinning, instead place
+	arrays at the start of each fragment which cover the whole
+	fragment.
+
+2010-10-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid a warning
+
+	Use MONO_TYPE_BOOLEAN instead of MONO_NATIVE_BOOLEAN. Same value,
+	different enums.
+
 2010-10-05  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Fix the build on windows
+
+2010-10-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_generic_class_get_class): Don't inflated nested_in
+	since it's not the expected behavior from managed land. It's a
+	safety issue as well since the outer type can have more generic
+	arguments.
 
 2010-10-05  Geoff Norton  <grompf@sublimeintervention.com>
 
@@ -12,19 +1702,321 @@
 	in CloseProcess, which could lead to calling unref on a fake
 	handle.
 
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Make cards_in_range more accurate
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_card_table_is_range_marked): Use
+	card_in_range here since this is used for objects that can start
+	at the middle of a card.
+
+	* sgen-cardtable.c (move_cards_to_shadow_table): Properly copy the
+	tail bytes of an object that spam around the cardtable. Don't copy
+	more bytes than required.
+
+	* sgen-cardtable.c (sgen_cardtable_scan_object): Add extra_idx
+	variable that tracks the card offset that we're scanning. This is
+	required when we wrap around.
+
+	* sgen-cardtable.c (sgen_cardtable_scan_object): Properly reset
+	card_base when at wrap around.
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Kill some dead code and fix a function name
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* loader.c (mono_lookup_pinvoke_call): Don't assert on bad row
+	indexes.
+
+	* metadata-verify.c (verify_implmap_table): Fix the bounds check
+	for the module table.
+
+	Fix #563956
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Map SO_EXCLUSIVEADDRUSE to !SO_REUSEADDR
+
+	This will make windows app that use that property work on *nix.
+	Fixes bug #643475.
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Check no longer needed.
+
+	The is_* function takes care of this check now.
+
+2010-10-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Check class names in a better way
+
+	Verify image, nesting status, namespace and class for the types
+	used in threadpool.c
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Schedule the user callback from unmanaged code
+
+	When possible, schedule the user callback from unmanaged code. We
+	pass it from the IO pool to the regular pool after our internal
+	callback is finished.
+
+2010-09-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid a few warnings
+
+2010-09-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable the freeing of monitors again, it still crashes with sgen
+	when running tests/async_read.exe.
+
+2010-09-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix AOT support for delegates
+
+2010-09-29  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (mono_marshal_get_delegate_invoke): Properly handle a
+	static method that has it's first argument bound.
+
+	* marshal.c (mono_marshal_free_inflated_wrappers): Free from the
+	new hashtable too.
+
+	* image.c (mono_image_close_except_pools): Free the new hash
+	table.
+
+	* metadata-internals.h (MonoImage): Add new hashtable to store the
+	new kind of invoke wrappers.
+
+2010-09-28  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Allow mono_install_assembly_preload_hook() to provide mscorlib.dll
+
+	In some embedding scenarios, mscorlib.dll may be present in a
+	non-standard location (outside of MONO_PATH) or with an alternate
+	filename.
+
+	Use the installed assembly preload hooks to search for
+	mscorlib.dll before falling back to the default lookup strategy.
+
+2010-09-29  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix 'thread may have been prematurely finalized' warnings when a
+	GC happens during thread attach in sgen.
+
+2010-09-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* icall.c (ves_icall_get_enum_info): All instance fields should be
+	ignored here.
+
+	Fixes #604218
+
+2010-09-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Update the comment explaining why the small_id_table uses
+	conservative GC tracking.
+
+2010-09-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Bypass BeginInvoke for asynch. operations
+
+	The code involved in a delegate BeginInvoke is too heavy and of no
+	use for socket asynchronous operations. With these changes, we
+	bypass all that and send the work items directly to the
+	asynchronous IO queue, improving performance and lowering memory
+	use.
+
+2010-09-25  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Added support for ArraySegment
+
+	-Removed NET_2_0 -Implemented support for the Receive/Send
+	overloads that take a list of ArraySegments.
+
+2010-09-25  Zoltan Varga  <vargaz@gmail.com>
+
+	Enable support for wrapping non Exception subclasses in
+	RuntimeWrappedException objects, implement support for
+	RuntimeCompatibilityAttribute.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the setting of pointer type fields using reflection. Fixes
+	#641590.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid making the small_id table precisely GC tracked, some runtime
+	code can't handle MonoInternalThread's being moved.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable make_root_descr_all_refs () for now since it seems to
+	cause crashes.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Use g_malloc0 in mono_gc_make_root-descr_all_refs ().
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove a debug printf.
+
+2010-09-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a few variants of the MONO_GC_REGISTER_ROOT () to make most
+	roots precisely tracked and to avoid registering locations
+	pointing to memory allocated by mono_gc_alloc_fixed () as roots
+	under SGEN.
+
+2010-09-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_type_is_valid_type_in_context): Handle types such
+	as VAR and MVAR encoded as CLASS or VALUETYPE. This encoding is
+	not the canonical one, but works and must be properly verified.
+
+	Fixes #601970
+
+2010-09-23  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Remove unwanted debug spew.
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Wrap thrown objects which do not derive from Exception into a
+	RuntimeWrappedException. Fixes #640687.
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Add missing SocketOptionName_HopLimit definition for IPv6
+
+2010-09-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Convert ERROR_PATH_NOT_FOUND to ENOENT too.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Set errno correctly when loading an image fails on windows. Fixes
+	#362607.
+
+2010-09-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Call the thread cleanup at the end as it was done before, call it
+	even if handle_remove () fails.
+
+2010-09-21  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (mono_sgen_marksweep_init): Enable cardtable
+	for the parallel collector.
+
+	This closes by 50% the gap in binary-tree against the serial
+	collector.
+
+2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c: The typeref table is now lazily verified thanks to some
+	awesome obfuscators that love to produce junk. So it has to be
+	checked everytime before usage instead of at loading time.
+
+2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c: Add mono_verifier_verify_typeref_row that
+	checks the metadata of a single row. Fix code around to couple
+	with this new function.
+
+	* verify-internals.h: Export it.
+
+2010-09-20  Paolo Molaro  <lupus@oddwiz.org>
+
+	* sgen-gc.c, sgen-los.c: added hooks for the important GC events.
+	Update some of the GC-related performance counters, too.
+
+2010-09-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (major_scan_card_table): Avoid an extra copy
+	under overlapping card.
+
+2010-09-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.h: Auto detect the need for
+	SGEN_HAVE_OVERLAPPING_CARDS.
+
+	* sgen-cardtable.h: Add CARD_TABLE_BITS and make CARD_COUNT_BITS
+	depend on it.
+
+	* sgen-cardtable.h: Document which and how each tunable affect
+	runtime of sgen.
+
+2010-09-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_cardtable_scan_object): If the card range
+	overflows the cardtable, split the scanning in two steps.
+
+2010-09-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_cardtable_scan_object): Use the card
+	pointer as the loop induction variable so it's easier handle
+	overlapping cards and overflow.
+
+2010-09-16  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c: The copy/clear functions may write into
+	invalid memory if a block lives across the edges of the cardtable
+	address range.
+
+2010-09-15  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Document some cardtable requirements and add an assert.
+
+2010-09-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Make MonoThreadCleanupFunc take an InternalThread instead of a
+	Thread. Move its definition to threads-types.h since it is not
+	public API. Use this to remove the workaround in thread_cleanup ()
+	so the JIT info for threads is properly cleaned up at shutdown.
+
+2010-09-17  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Fix typo in Makefile causing build breakage
+
+2010-09-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Only build one version of libmonoruntimemoon.la (the convenience
+	lib)
+
+2010-09-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Add a configure option to disable building the shared libmono
+	library
+
+2010-09-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Add configure option for disabling assembly remapping
+
+2010-09-15  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove 2 extra calls to gettimeofday.
+
+2010-08-26  Mark Probst  <mark.probst@gmail.com>
+
+	Remove weak links for monitors.
+
+	mono_runtime_cleanup() calls mono_monitor_cleanup(), which frees
+	the memory associated with monitors. Some of them still have weak
+	links registered, which leads to a crash when calling
+	mono_domain_free() later on.
+
+2010-09-16  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Avoid doing an unnecessary gettimeofday().
+
 2010-09-15  Miguel de Icaza  <miguel@gnome.org>
 
 	Revert
-
-2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
-
-	* threads.c (mono_thread_suspend_all_other_threads): wait_data
-	must not be malloc'd since it holds managed pointers. Alloc it on
-	stack since the struct is about 512/1024 bytes long.
-
-	* threads.c (mono_thread_manage): Ditto.
-
-	* threads.c (mono_threads_request_thread_dump): Ditto.
 
 2010-09-15  Miguel de Icaza  <miguel@gnome.org>
 
@@ -49,9 +2041,40 @@
 	/Library/Frameworks/Mono.framework. We now resolve the symlink
 	before allowing the embedding code to proceed.
 
-2010-09-13  Geoff Norton  <gnorton@novell.com>
+2010-09-15  Paolo Molaro  <lupus@oddwiz.org>
 
-	Fix a typo in my last commit
+	Documentation for a few garbage collector APIs.
+
+2010-09-10  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	mono_trace already adds a newline to trace messages, don't add
+	another one
+
+2010-09-14  Chris Toshok  <toshok@gmail.com>
+
+	built a separate libmonoruntime for moonlight, so we can do
+	-DMOONLIGHT just in the moonlight lib instead of globally.
+
+2010-09-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* pedump.c (verify_image_file): Setup the fake assembly before
+	doing full metadata verification since it does type loading.
+
+	Fixes #598228
+
+2010-09-14  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_card_table_get_card_data): Start must be
+	incremented with and without overlapping cards.
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add v4.0 beta to runtime versions list.
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (mono_method_verify): Only skip dead code after
+	checking for fallthru.
 
 2010-09-13  Geoff Norton  <gnorton@novell.com>
 
@@ -59,10 +2082,6 @@
 
 	We were having a crash on OSX due to thread->tid not equalling the
 	passed tid due to a signedness issue.
-
-2010-09-13  Geoff Norton  <gnorton@novell.com>
-
-	Mono 2.8 has a few more usages of the old type
 
 2010-09-13  Geoff Norton  <gnorton@novell.com>
 
@@ -75,6 +2094,70 @@
 	Not every architecture/platform has ucontext_t, so lets not
 	strongly type our contexts to that and let the macros do their
 	job.
+
+2010-09-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* threads.c (mono_thread_suspend_all_other_threads): wait_data
+	must not be malloc'd since it holds managed pointers. Alloc it on
+	stack since the struct is about 512/1024 bytes long.
+
+	* threads.c (mono_thread_manage): Ditto.
+
+	* threads.c (mono_threads_request_thread_dump): Ditto.
+
+2010-09-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Log the clearing of nursery fragments, avoid clearing small
+	fragments twice.
+
+2010-09-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (major_scan_card_table): Rework the small
+	object size loop to have a single induction variable. In adition
+	to that, add a fast initial card skip code.
+
+2010-09-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_card_table_get_card_data): Check if any
+	card is marked and return it.
+
+	* sgen-marksweep.c (major_scan_card_table): Don't waste time
+	scanning a block if no card was marked.
+
+2010-09-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_cardtable_scan_object): Lookup the card
+	once and then bump over it. This saves a bunch of stores and opens
+	up for later improvements.
+
+	* sgen-marksweep.c (major_scan_card_table): Ditto.
+
+	* sgen-cardtable.h: Add new inline function to return the card
+	scan pointer of a given adddress.
+
+2010-09-10  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist sgen-cardtable.h
+
+2010-09-09  Chris Toshok  <toshok@gmail.com>
+
+	move the call to mono_gc_base_init into mono_debug_init
+
+	mono_debug_init is a public embedding interface and calls into
+	mono_debugger_initialize, which registers a GC root. driver.c
+	calls mono_gc_base_init before calling mono_debug_init for this
+	reason, but that's not an option for embedding (as
+	mono_gc_base_init is internal.)
+
+	since mono_gc_base_init is idempotent, just add a call to
+	mono_debug_init (and remove the driver.c call). Document (in
+	sgen-gc and sgen-gc.h) the fact that although mono_gc_base_init is
+	idempotent, changing LOCK_INIT to something non-idempotent will
+	break this.
 
 2010-09-09  Zoltan Varga  <vargaz@gmail.com>
 
@@ -90,6 +2173,177 @@
 	(sgen-gc.c:1400) ==29095== by 0x6DE2DC: major_iterate_objects
 	(sgen-marksweep.c:692) ==29095== by 0x67E00B: mono_gc_clear_domain
 	(sgen-gc.c:1459)
+
+2010-09-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.h (sgen_card_table_get_card_address): This needs
+	marking under SGEN_HAVE_OVERLAPPING_CARDS too.
+
+2010-09-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_class_create_from_typedef): If if any parent
+	doesn't extend the generic instantiation.
+
+	Fixes #604270
+
+2010-09-06  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* verify.c (do_leave): Set the target of leave.
+
+	* verify.c (mono_method_verify): Merge the resulting empty stack
+	of a leave instruction with it's target.
+
+	Fixes #633248
+
+2010-09-05  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the build.
+
+2010-09-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c: Introduce dummy_use function that forces the compiler
+	to keep a given value alive until the call to it.
+
+	* sgen-gc.c (mono_gc_wbarrier_set_field): Use dummy_use to avoid
+	race condition between the store and the barrier.
+
+	* sgen-gc.c (mono_gc_wbarrier_set_arrayref): Ditto.
+
+	* sgen-gc.c (mono_gc_wbarrier_arrayref_copy): Ditto.
+
+	* sgen-gc.c (mono_gc_wbarrier_arrayref_copy): Ditto.
+
+	* sgen-gc.c (mono_gc_wbarrier_generic_store): Ditto.
+
+	This pattern of usage is the same we do with managed code write
+	barrier. The race condition is extremely race and requires the
+	thread to be interrupted in between the store and the barrier,
+	which is a very tiny narrow window.
+
+2010-09-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (mono_gc_wbarrier_arrayref_copy): Avoid locking if
+	using cardtables. Even thou the new code looks slower than a plain
+	memmove, it has the advantage of not taking locks, which means
+	it's much more scalable.
+
+	Array copy under sgen/cardtables was 1.6x slower than with boehm.
+	With this patch it reduces to 1.54x. The serial performance
+	speedup is nice, but it is much more helpfull in multi-threaded
+	workloads.
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix a warning
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c: Avoid taking locks for single pointer barriers.
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c: Move a bunch of stuff to new header.
+
+	* sgen-cardtable.h: New header with functions meant to be inlined.
+
+	* sgen-gc.c: Use new header.
+
+	* sgen-marksweep.c (major_scan_card_table): Introduce fast version
+	of some macros that avoid a few indirections.
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Better cardtable stats gathering codebase.
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-cardtable.c (sgen_cardtable_scan_object): The source of the
+	cardtable can now be supplied, this is needed since major blocks
+	can't use regular card checking code here.
+
+	* sgen-los.c (los_scan_card_table): Adjust to signature change in
+	sgen_cardtable_scan_object.
+
+	* sgen-marksweep.c (major_scan_card_table): If the block size is
+	larger than a card it makes more sense to loop around objects and
+	not cards since objects might be scanned twice since a card can be
+	shared between two of them.
+
+	In such case the cards of a block must be copied to a side buffer
+	since we are no longer looping one by one. This ia a problem when
+	two objects share a marked card as the first can cause it to be
+	left cleared and not have the second one scanned.
+
+	Another advantage of this patch is that it enables partial
+	scanning of larger array in the major heap.
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-los.c (los_scan_card_table): Move meat of this function
+	into a separate one.
+
+	* sgen-cardtable.c: New function sgen_cardtable_scan_object.
+
+	* sgen-gc.h: Add sgen_cardtable_scan_object.
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-marksweep.c (major_scan_card_table): Don't load some fields
+	if the block has no references.
+
+2010-09-02  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add stats for cardtable processing time
+
+2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fixed GetLogicalDriveString
+
+	When calling GetLogicalDriveString, icall.c was passing the length
+	in the wrong units.
+
+	GetLogicalDriveString now translates any octal sequence found into
+	its corresponding byte. Use the UTF16 length ('items_written')
+	instead of the UTF8 input string length ('items_read') when
+	computing the total size.
+
+2010-09-03  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Allow ordinal entry points in windows.
+
+	Windows allows entry point names like "#10" which refer to the Nth
+	function (n > 1 and less than the highest ordinal value in the
+	.def file).
+
+	Fixes bug #636966.
+
+2010-09-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a crash when the signature of the Main method could not be
+	loaded. Fixes #636794.
+
+2010-09-02  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Return IPv6 addresses
+
+	We were not returning IPv6 addresses if there was no IPv6
+	configured interface. Now we will return those addresses if ipv6
+	is enabled by configuration.
+
+	Fixes bug #636517.
+
+2010-09-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata-verify.c (mono_verifier_verify_method_header): If the
+	header has a locals token, verify the corresponding row in the
+	standalonesig table.
+
+2010-08-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Handle WAIT_IO_TIMEOUT in WaitAny call
+
+	WaitForMultipleObjectsEx might return WAIT_IO_COMPLETION if an APC
+	is queued. Fixes bug #549807.
 
 2010-08-30  Rodrigo Kumpera  <kumpera@gmail.com>
 
@@ -827,6 +3081,19 @@
 	token.
 
 	Fixes #560348
+
+2011-01-04  Veerapuram Varadhan  <v.varadhan@gmail.com>
+
+	* assembly.c (framework_assemblies): Map System.Transactions to
+	4.0 framework assemblies.
+
+	Fixes #635335
+
+2010-11-03  Martin Baulig  <martin@ximian.com>
+
+	* mono-debug.c (mono_register_symfile_for_assembly): New method.
+	This is used together with mono_register_bundled_assemblies() and
+	mono_register_config_for_assembly() to support bundles.
 
 2010-07-30  Mark Probst  <mark.probst@gmail.com>
 

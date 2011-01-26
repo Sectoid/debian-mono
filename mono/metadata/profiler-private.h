@@ -42,6 +42,7 @@ int  mono_profiler_stat_get_call_chain_depth (void) MONO_INTERNAL;
 MonoProfilerCallChainStrategy  mono_profiler_stat_get_call_chain_strategy (void) MONO_INTERNAL;
 void mono_profiler_thread_start    (gsize tid) MONO_INTERNAL;
 void mono_profiler_thread_end      (gsize tid) MONO_INTERNAL;
+void mono_profiler_thread_name     (gsize tid, const char *name) MONO_INTERNAL;
 
 void mono_profiler_exception_thrown         (MonoObject *exception) MONO_INTERNAL;
 void mono_profiler_exception_method_leave   (MonoMethod *method) MONO_INTERNAL;
@@ -67,6 +68,8 @@ void                     mono_profiler_coverage_free  (MonoMethod *method) MONO_
 void mono_profiler_gc_event       (MonoGCEvent e, int generation) MONO_INTERNAL;
 void mono_profiler_gc_heap_resize (gint64 new_size) MONO_INTERNAL;
 void mono_profiler_gc_moves       (void **objects, int num) MONO_INTERNAL;
+void mono_profiler_gc_handle      (int op, int type, uintptr_t handle, MonoObject *obj) MONO_INTERNAL;
+void mono_profiler_gc_roots       (int num, void **objects, int *root_types, uintptr_t *extra_info) MONO_INTERNAL;
 
 void mono_profiler_code_chunk_new (gpointer chunk, int size) MONO_INTERNAL;
 void mono_profiler_code_chunk_destroy (gpointer chunk) MONO_INTERNAL;

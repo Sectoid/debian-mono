@@ -1,3 +1,109 @@
+2011-01-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented the 4.0 type,
+	FileLevelMasterPageControlBuilder
+
+2011-01-11  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #662918. Do not create the HtmlTitle child
+	control for HtmlHead if <title> wasn't used in the page code.
+
+2011-01-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Rewrote CacheItemPriorityQueue tests generator to
+	produce simpler test case.
+
+	The new test case uses arrays and postpones creation of
+	CacheItemPriorityQueueTestItem and TestCacheItem instances till
+	the actual test is ran. This reduces complexity of the
+	CacheItemPrioritQueueTest class constructor and allows the code to
+	run successfully on 32 bit machines.
+
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Don't attempt to use System.Web resources in
+	System.Web.Extensions test build
+
+	WebTest is now a partial class and every code outside System.Web
+	that uses it can copy its own resources in addition to the common
+	ones by implementing the CopyResourcesLocal partial method.
+
+2010-12-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added verbose mode to the standalone test runner
+
+2010-12-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Test suite configuration updates for 4.0
+
+	When running the tests on the 4.0 profile, the configuration must
+	no longer include the System.Web.Extensions section declarations
+	as they are merged with machine.config right now.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add a default implementation of SpinWait when SplitOrderedList is
+	built with Sys.Web 2.0 and add it to the build
+
+2010-11-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] New version of code to purge underused entries from the
+	cache.
+
+	This version uses an LRU cache to hold the cache items. Priority
+	is not taken into account when removing the underused entries
+	(with the exception of the CacheItemPriority.NotRemovable - items
+	with this priority are never purged), they are treated equally. A
+	separate thread is not used to perform purging, instead the
+	collection happens in the current requests's thread. Minor
+	improvements to cache item enumerator and to the CheckDependencies
+	method.
+
+2010-11-02  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] 4.0-only types don't need the NET_4_0 ifdef and should
+	be in net_4_0_System.Web.dll.sources
+
+2010-10-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646505. BoundField must not assume the
+	sender of the OnDataBindField is DataControlFieldCell.
+
+2010-10-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #646810. Implemented
+	FormsAuthentication.EnableFormsAUthentication + tests
+
+2010-10-12  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Makefile: Compile tests with TEST defined (to include
+	System.Web.Util. MachineKeySectionUtils unit tests) *
+	System.Web.dll.sources: Move MachineKeySectionUtils.cs from
+	System. Web.Configuration_2.0 to System.Web.Util *
+	System.Web_test.dll.sources: Move MachineKeySectionUtilsTest.cs
+	from System.Web.Configuration_2.0 to System.Web.Util
+
+2010-10-08  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Normalization of cryptographic uses in asp.net
+
+2010-09-10  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist the 2.0 resource files also
+
+2010-09-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Onobtrusive JavaScript for the 4.0 Menu control List
+	mode
+
+2010-08-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Menu 4.0 List mode rendering
+
+2010-09-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added first test for Menu list rendering in 4.0
+
 2010-08-24  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Fix for bug #633756. Children processed as properties

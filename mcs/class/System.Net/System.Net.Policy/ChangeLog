@@ -1,3 +1,28 @@
+2010-12-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* ClientAccessPolicy.cs: Remove special case for scheme *
+	ClientAccessPolicyParser.cs: Add scheme-only entries like full URI
+
+2010-09-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Policy/CrossDomainPolicyManager.cs: Use same socket
+	family as the endpoint when retrieving the policy. Also do not try
+	to create a policy out of an empty stream (avoid misleading
+	exceptions in logs)
+
+2010-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net.Policy/CrossDomainPolicyManager.cs: Use
+	InternalHeaders, instead of Headers, since we always use the
+	browser stack to download the security policies.
+
+2010-09-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mcs/class/System.Net/System.Net.Policy/ClientAccessPolicy.cs: Do
+	not throw a NotSupportedException here since it regress some DRT
+	(like 656). The (hopefully) correct fix (for DRT3001) will be
+	committed inside moon
+
 2010-07-23  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* BaseDomainPolicy.cs: Add internal setter for Exception property

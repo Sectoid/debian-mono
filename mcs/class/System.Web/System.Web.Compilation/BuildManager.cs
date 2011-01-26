@@ -118,8 +118,7 @@ namespace System.Web.Compilation
 
 #if NET_4_0
 		internal static bool PreStartMethodsRunning {
-			get { return preStartMethodsRunning;
-			}
+			get { return preStartMethodsRunning; }
 		}
 		
 		public static bool? BatchCompilationEnabled {
@@ -188,7 +187,7 @@ namespace System.Web.Compilation
 		static BuildManager ()
 		{
 			hosted = (AppDomain.CurrentDomain.GetData (ApplicationHost.MonoHostedDataKey) as string) == "yes";
-			buildCache = new Dictionary <string, BuildManagerCacheItem> (RuntimeHelpers.StringEqualityComparerCulture);
+			buildCache = new Dictionary <string, BuildManagerCacheItem> (RuntimeHelpers.StringEqualityComparer);
 #if SYSTEMCORE_DEP
 			buildCacheLock = new ReaderWriterLockSlim ();
 #else
@@ -658,7 +657,6 @@ namespace System.Web.Compilation
 			if (assembly == null)
 				throw new ArgumentNullException ("assembly");
 
-			Type ret = HttpApplicationFactory.AppType;
 			if (preStartMethodsDone)
 				throw new InvalidOperationException ("This method cannot be called after the application's pre-start initialization stage.");
 

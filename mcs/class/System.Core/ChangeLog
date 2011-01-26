@@ -1,3 +1,69 @@
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Directly use ConcurrentDictionary with PLinq set operations
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
+2010-12-16  Jonathan Pryor  <jonpryor@vt.edu>
+
+	[monodroid] Add support for the Android TimeZone file format.
+
+	Fixes #657609.
+
+	Android uses "ye standard" timezone file format, but instead of
+	using a directory + file structure as libc uses, they throw
+	everything into two files, a "zoneinfo.dat" and a "zoneinfo.idx",
+	where "zoneinfo.dat" is the concatenation of all the TZIF files
+	and "zoneinfo.idx" contains the timezone names and offsets into
+	"zoneinfo.dat". From the ZoneInfoDB documentation:
+
+	However, to conserve disk space the data for all time zones are
+	concatenated into a single file, and a second file is used to
+	indicate the starting position of each time zone record. A third
+	file indicates the version of the zoneinfo databse used to
+	generate the data.
+
+	TimeZoneInfo.Android.cs is a C# port of the corresponding Android
+	ZoneInfoDB type so that Mono can use Android's timezone DB.
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Sys.Core parameters fixup
+
+2010-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add TaskExtensions class and Unwrap extension methods
+
+2010-10-13  Jb Evain  <jbevain@gmail.com>
+
+	Add support for hoisted variables in the ET interpreter
+
+	This fixes #645765.
+
+2010-09-09  Jb Evain  <jbevain@gmail.com>
+
+	Fix System.Core usage of bootstrap .sources from the normal
+	.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the System.Core monotouch and monodroid sources into a
+	mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Core build for monodroid
+
+2010-09-01  Jb Evain  <jbevain@gmail.com>
+
+	Fix the System.Core build for the monotouch profile
+
 2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Split ReaderWriterLockSlim helper classes into their own files

@@ -1,3 +1,17 @@
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Assign identical operation name for each contract version so that
+	they don't conflict each other.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic exception type change and suppress test failures.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
 2010-08-30  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix a couple of Hello/Probe serialization issues.

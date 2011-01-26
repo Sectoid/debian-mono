@@ -1,3 +1,10 @@
+2010-10-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	X509Chain always uses the LM store
+
+	X509Chain will now add the LM store certificates always, even when
+	the CU store is selected.
+
 2010-06-11 Jonathan Chambers  <joncham@gmail.com>
 
 	* X509Certificate2Collection.cs: Add {} around default switch case.

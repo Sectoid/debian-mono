@@ -1,3 +1,81 @@
+2010-12-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Actually we have almost what we need on mobile profiles.
+
+2010-12-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Add experimental "#if NET_2_1" mode (it builds w/o
+	s.x.permissions).
+
+2010-12-06  Atsushi Eno  <atsushi@ximian.com>
+
+	Finally got XData tests that make sense. Implemented IsXData.
+
+2010-11-19  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix TypeValueSerializer and ValueSerializerContext to work fine
+	with XamlObjectWriter.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Add TypeValueSerializer, as it does not seem to work fine with
+	TypeConverter. And tests.
+
+2010-11-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Rewrote ValueSerializer.GetSerializerFor() with couple of tests.
+
+2010-11-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Made a couple of PositionalParameter related fixes, disabling
+	test, etc.
+
+2010-11-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove some illogical hacks in GetSerializerFor().
+
+2010-11-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Pass IValueSerializerContext as ITypeDescriptorContext.
+
+2010-11-12  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new ValueSerializerContext and use it everywhere appropriate.
+
+	This change was basically for string serialization of
+	XamlTypeName, namely PropertyDefinition serialization. Turned out
+	it should be used in a lot of places where IServiceProvider and
+	ITypeDescriptorContext is expected. IServiceProvider
+	implementations in XamlWriters are replaced.
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	GetAllMSeveral fixes regarding property readability and
+	writability.
+
+	XamlMember.IsReadOnly returns false if there is private get
+	accessor. This is used to filter nonpublic accessors out, so
+	replaced its usage with !IsWritePublic to check truly read-only
+	members.
+
+	This fix also required some changes in markup types (as IsReadOnly
+	value now differs).
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Use ArrayList like .NET (no practical changes).
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ArrayExtension Items and GetObject node in
+	XamlObjectReader.
+
+2010-10-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Significant XamlObjectWriter rewrite for solid state transition.
+	And now it supports Array(Extension) and other MarkupExtension
+	types.
+
 2010-04-22  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XamlObjectReader.cs, TypeExtensionMethods.cs : now it can return

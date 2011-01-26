@@ -1,3 +1,30 @@
+2010-10-05  Martin Baulig  <martin@novell.com>
+
+	Fix my previous commit.
+
+2010-10-05  Martin Baulig  <martin@novell.com>
+
+	Disable System.Configuration on the mobile profiles.
+
+2010-10-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix line endings.
+
+2010-10-04  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	Fixed conding style and added license/copyright header to new
+	files
+
+2010-10-04  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[FIX] Fixes https://bugzilla.novell.com/show_bug.cgi?id=643368
+	(Transaction.TransactionCompleted not firing
+
+2010-10-04  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[API] Implemented System.Transactions (tx preparation) timeout
+	handling
+
 2010-01-03  Zoltan Varga  <vargaz@gmail.com>
 
 	* TransactionAbortedException.cs: Make the default ctor public. Fixes #567872.

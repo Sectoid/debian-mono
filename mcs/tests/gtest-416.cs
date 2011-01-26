@@ -1,43 +1,23 @@
-// Compiler options: -unsafe
+public class Z { }
 
-using System;
-
-namespace Bug
+public class A<X, Y>
+	where Y : Z
+	where X : Y
 {
-	unsafe struct Demo
+	public X Foo (Y y)
 	{
-		fixed bool test [4];
-	
-		bool Fixed ()
-		{
-			fixed (bool* data_ptr = test)
-			{
-				return true;
-			}
-		}
-		
-		static bool Foo (int [] data)
-		{
-			fixed (int* data_ptr = data)
-			{
-				return data_ptr == null ? true : false;
-			}
-		}
-		
-		public static int Main ()
-		{
-			if (!Foo (null))
-				return 1;
-			
-			if (!Foo (new int [0]))
-				return 2;
-			
-			if (!new Demo().Fixed ())
-				return 3;
-			
-			Console.WriteLine ("OK");
-			return 0;
-		}
+		return y as X;
 	}
 }
 
+public class Foo
+{
+	public static int Main ()
+	{
+		var a = new A<Z, Z> ();
+		if (a.Foo (new Z ()) == null)
+			return 1;
+		
+		return 0;
+	}
+}

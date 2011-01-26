@@ -42,59 +42,20 @@ namespace Mono.Linker.Steps {
 
 		static void CleanAssembly (AssemblyDefinition asm)
 		{
-			CleanMemberReferences (asm.MainModule);
 			foreach (TypeDefinition type in asm.MainModule.Types)
 				CleanType (type);
 		}
 
-		static void CleanMemberReferences (ModuleDefinition module)
-		{
-			var references = module.MemberReferences;
-
-			for (int i = 0; i < references.Count; i++) {
-				var reference = references [i];
-				GenericInstanceType git = reference.DeclaringType as GenericInstanceType;
-				if (git == null)
-					continue;
-
-				foreach (TypeReference arg in git.GenericArguments)
-					if (!CheckType (module, arg))
-						references.RemoveAt (i--);
-			}
-		}
-
-		static bool CheckType (ModuleDefinition module, TypeReference reference)
-		{
-			TypeSpecification spec = reference as TypeSpecification;
-			if (spec != null)
-				return CheckType (module, spec.ElementType);
-
-			TypeDefinition type = reference as TypeDefinition;
-			if (type == null)
-				return true;
-
-			return module.Types.Contains (type);
-		}
-
 		static void CleanType (TypeDefinition type)
 		{
-			if (type.HasNestedTypes)
-				CleanNestedTypes (type);
 			if (type.HasProperties)
 				CleanProperties (type);
 			if (type.HasEvents)
 				CleanEvents (type);
-		}
 
-		static void CleanNestedTypes (TypeDefinition type)
-		{
-			var nested_types = type.NestedTypes;
-
-			for (int i = 0; i < nested_types.Count; i++) {
-				var nested_type = nested_types [i];
-				if (!type.Module.Types.Contains (nested_type))
-					nested_types.RemoveAt (i--);
-			}
+			if (type.HasNestedTypes)
+				foreach (var nested in type.NestedTypes)
+					CleanType (nested);
 		}
 
 		static MethodDefinition CheckMethod (TypeDefinition type, MethodDefinition method)

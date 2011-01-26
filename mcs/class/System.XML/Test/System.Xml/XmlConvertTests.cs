@@ -684,6 +684,13 @@ namespace MonoTests.System.Xml
 		}
 		
 		[Test]
+		public void XmlDateTimeSerializationModeLocal ()
+		{
+			XmlConvert.ToDateTime ("2010-11-10", XmlDateTimeSerializationMode.Local); // bug #655089
+			XmlConvert.ToDateTime ("2010-11", XmlDateTimeSerializationMode.Local);
+		}
+		
+		[Test]
 		public void XmlDateTimeSerializationModeUtc ()
 		{
 			Assert.AreEqual (27, XmlConvert.ToString (new DateTime (DateTime.MaxValue.Ticks, DateTimeKind.Utc), XmlDateTimeSerializationMode.Unspecified).Length, "#1");
@@ -755,6 +762,14 @@ namespace MonoTests.System.Xml
 		{
 			var s = "   2010-01-02T00:00:00Z \t";
 			XmlConvert.ToDateTime (s);
+		}
+		
+		[Test]
+		public void ToDateTimeUtc ()
+		{
+			// bug #661787
+			var date = XmlConvert.ToDateTime ("2010-12-29T22:01:15.1619814", XmlDateTimeSerializationMode.Utc);
+			Assert.AreEqual (22, date.Hour, "#1");
 		}
 #endif
 	}

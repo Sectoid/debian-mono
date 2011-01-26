@@ -34,7 +34,12 @@ namespace System.Windows.Markup
 	{
 		public override bool CanConvertFrom (ITypeDescriptorContext context, Type sourceType)
 		{
-			return false;
+			// unlike implied at http://msdn.microsoft.com/en-us/library/ee621338.aspx , it does not support IXamlTypeResolver.
+			//if (sourceType == typeof (string) && context != null) {
+			//	var xtr = context.GetService (typeof (IXamlTypeResolver)) as IXamlTypeResolver;
+			//	return xtr != null;
+			//}
+			return base.CanConvertFrom (context, sourceType);
 		}
 
 		public override bool CanConvertTo (ITypeDescriptorContext context, Type destinationType)
@@ -44,19 +49,17 @@ namespace System.Windows.Markup
 
 		public override object ConvertFrom (ITypeDescriptorContext context, CultureInfo culture, object value)
 		{
-			throw new NotSupportedException (String.Format ("Conversion from type {0} is not supported", value != null ? value.GetType () : null));
+			return base.ConvertFrom (context, culture, value);
 		}
 
 		public override object ConvertTo (ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
 		{
-			var xt = value as XamlType;
-			if (xt != null) {
-				if (destinationType == typeof (string))
-					return xt.ToString ();
-				throw new NotSupportedException (String.Format ("Conversion to type {0} is not supported", destinationType));
-			}
-			else
+			var tx = value as TypeExtension;
+			if (!CanConvertTo (context, destinationType) || tx == null)
 				return base.ConvertTo (context, culture, value, destinationType); // it seems it still handles not-supported types (such as int).
+			var vctx = (IValueSerializerContext) context;
+			var lookup = vctx != null ? (INamespacePrefixLookup) vctx.GetService (typeof (INamespacePrefixLookup)) : null;
+			return tx.TypeName ?? new XamlTypeName ((XamlType) tx.ProvideValue (vctx)).ToString (lookup);
 		}
 	}
 }

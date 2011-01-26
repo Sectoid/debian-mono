@@ -89,6 +89,17 @@ namespace System.Xaml
 		}
 	}
 
+	internal enum XamlWriteState
+	{
+		Initial,
+		ObjectStarted,
+		MemberStarted,
+		ObjectWritten,
+		ValueWritten,
+		MemberDone,
+		End
+	}
+
 	internal abstract class XamlWriterStateManager
 	{
 		public XamlWriterStateManager (bool isXmlWriter)
@@ -97,25 +108,26 @@ namespace System.Xaml
 			allow_object_after_value = isXmlWriter;
 			allow_parallel_values = !isXmlWriter;
 			allow_empty_member = !isXmlWriter;
-		}
-
-		enum XamlWriteState
-		{
-			Initial,
-			ObjectStarted,
-			MemberStarted,
-			ObjectWritten,
-			ValueWritten,
-			MemberDone,
-			End
+			allow_multiple_results = !isXmlWriter;
 		}
 
 		// configuration
-		bool allow_ns_at_value, allow_object_after_value, allow_parallel_values, allow_empty_member;
+		bool allow_ns_at_value, allow_object_after_value, allow_parallel_values, allow_empty_member, allow_multiple_results;
 
 		// state
 		XamlWriteState state = XamlWriteState.Initial;
 		bool ns_pushed;
+		bool accept_multiple_values; // It is PositionalParameters-specific state.
+
+		public XamlWriteState State {
+			get { return state; }
+		}
+		
+		// FIXME: actually this property is a hack. It should preserve stacked flag values for each nested member in current tree state.
+		public bool AcceptMultipleValues {
+			get { return accept_multiple_values; }
+			set { accept_multiple_values = value; }
+		}
 
 		public void OnClosingItem ()
 		{
@@ -135,7 +147,7 @@ namespace System.Xaml
 		{
 			RejectNamespaces (XamlNodeType.EndObject);
 			CheckState (XamlNodeType.EndObject);
-			state = hasMoreNodes ? XamlWriteState.ObjectWritten : XamlWriteState.End;
+			state = hasMoreNodes ? XamlWriteState.ObjectWritten : allow_multiple_results ? XamlWriteState.Initial : XamlWriteState.End;
 		}
 
 		public void GetObject ()
@@ -217,7 +229,7 @@ namespace System.Xaml
 			case XamlWriteState.ValueWritten:
 				switch (next) {
 				case XamlNodeType.Value:
-					if (allow_parallel_values)
+					if (allow_parallel_values | accept_multiple_values)
 						return;
 					break;
 				case XamlNodeType.StartObject:

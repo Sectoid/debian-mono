@@ -1,3 +1,70 @@
+2010-12-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix enum serialization too.
+
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Fix flags enum deserialization
+
+	Flag enums values can be a composition of several values separated
+	by spaces. The deserializer now properly handles this case.
+
+2010-10-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Don't put KnownTypeAttributes on enums.
+
+2010-10-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Make generated type names unique.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	When finding SerializationMap for resolved type, use type as the
+	key rather than name.
+
+	Make the fixed WCF test show more specific failure details.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix DataContractResolver.ResolveName() support in deserializer.
+	Add roundtrip test.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement DataContractResolver support. At least TryResolveType in
+	serializer should work.
+
+2010-10-01  Atsushi Eno  <atsushi@ximian.com>
+
+	rename source file.
+
+2010-10-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove old code.
+
+2010-10-01  Atsushi Eno  <atsushi@ximian.com>
+
+	[wcf] serialization member namespace was wrong when root namesp
+	ace is given. Fixed possible infinite loop during DefaultTypeMap
+	initialization.
+
+	MS Basic/Contract/Data/POCO sample got working fine.
+
+2010-09-30  Atsushi Eno  <atsushi@ximian.com>
+
+	Add DataContractResolver stuff (dummy), and fix Id reference from
+	inside the referenced object.
+
+2010-09-10  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	XmlFormatterDeserializer: handle ReflectionTypeLoadExceptions
+	better
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Use CollectionDataContractAttribute.ItemName for collection item
+	serialization.
+
 2010-08-28  Atsushi Eno  <atsushi@ximian.com>
 
 	ISerializable type didn't iterate all base types to pick up all

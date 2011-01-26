@@ -1,3 +1,7 @@
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2009-12-10  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* IDuplexSessionRouter.cs

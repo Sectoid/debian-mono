@@ -113,9 +113,11 @@
 #ifdef __GNUC__
 
 /* namespace and name should be a constant */
+/* image must be mscorlib since other assemblies can be unloaded */
 #define mono_class_from_name_cached(image,namespace,name) ({ \
 			static MonoClass *tmp_klass; \
 			if (!tmp_klass) { \
+				g_assert (image == mono_defaults.corlib); \
 				tmp_klass = mono_class_from_name ((image), (namespace), (name)); \
 				g_assert (tmp_klass); \
 			}; \
@@ -259,6 +261,11 @@ typedef struct {
 } MonoTypeLoadException;
 
 typedef struct {
+	MonoException base;
+	MonoObject *wrapped_exception;
+} MonoRuntimeWrappedException;
+
+typedef struct {
 	MonoObject   object;
 	MonoObject  *async_state;
 	MonoObject  *handle;
@@ -396,11 +403,11 @@ struct _MonoInternalThread {
 	MonoThread *root_domain_thread;
 	gpointer interrupt_on_stop;
 	gsize    flags;
+	gpointer android_tid;
 	/* 
 	 * These fields are used to avoid having to increment corlib versions
 	 * when a new field is added to the unmanaged MonoThread structure.
 	 */
-	gpointer unused4;
 	gpointer unused5;
 	gpointer unused6;
 };
@@ -640,6 +647,9 @@ mono_type_initialization_init (void) MONO_INTERNAL;
 
 void
 mono_type_initialization_cleanup (void) MONO_INTERNAL;
+
+int
+mono_thread_kill           (MonoInternalThread *thread, int signal) MONO_INTERNAL;
 
 guint32
 mono_thread_get_tls_key    (void) MONO_INTERNAL;
@@ -1384,6 +1394,9 @@ MonoType*
 mono_reflection_type_get_handle (MonoReflectionType *ref) MONO_INTERNAL;
 
 void
+mono_reflection_free_dynamic_generic_class (MonoGenericClass *gclass) MONO_INTERNAL;
+
+void
 mono_image_build_metadata (MonoReflectionModuleBuilder *module) MONO_INTERNAL;
 
 int
@@ -1519,6 +1532,12 @@ mono_class_set_ref_info (MonoClass *klass, gpointer obj) MONO_INTERNAL;
 
 void
 mono_class_free_ref_info (MonoClass *klass) MONO_INTERNAL;
+
+MonoObject *
+mono_object_new_pinned (MonoDomain *domain, MonoClass *klass) MONO_INTERNAL;
+
+void
+mono_field_static_get_value_for_thread (MonoInternalThread *thread, MonoVTable *vt, MonoClassField *field, void *value) MONO_INTERNAL;
 
 #endif /* __MONO_OBJECT_INTERNALS_H__ */
 

@@ -29,7 +29,8 @@ typedef enum {
 	MONO_PROFILE_METHOD_EVENTS    = 1 << 16,
 	MONO_PROFILE_MONITOR_EVENTS   = 1 << 17,
 	MONO_PROFILE_IOMAP_EVENTS     = 1 << 18, /* this should likely be removed, too */
-	MONO_PROFILE_GC_MOVES         = 1 << 19
+	MONO_PROFILE_GC_MOVES         = 1 << 19,
+	MONO_PROFILE_GC_ROOTS         = 1 << 20
 } MonoProfileFlags;
 
 typedef enum {
@@ -83,6 +84,24 @@ typedef enum {
 	MONO_PROFILER_CALL_CHAIN_INVALID = 4
 } MonoProfilerCallChainStrategy;
 
+typedef enum {
+	MONO_PROFILER_GC_HANDLE_CREATED,
+	MONO_PROFILER_GC_HANDLE_DESTROYED
+} MonoProfileGCHandleEvent;
+
+typedef enum {
+	MONO_PROFILE_GC_ROOT_PINNING  = 1 << 8,
+	MONO_PROFILE_GC_ROOT_WEAKREF  = 2 << 8,
+	MONO_PROFILE_GC_ROOT_INTERIOR = 4 << 8,
+	/* the above are flags, the type is in the low 2 bytes */
+	MONO_PROFILE_GC_ROOT_STACK = 0,
+	MONO_PROFILE_GC_ROOT_FINALIZER = 1,
+	MONO_PROFILE_GC_ROOT_HANDLE = 2,
+	MONO_PROFILE_GC_ROOT_OTHER = 3,
+	MONO_PROFILE_GC_ROOT_MISC = 4, /* could be stack, handle, etc. */
+	MONO_PROFILE_GC_ROOT_TYPEMASK = 0xff
+} MonoProfileGCRootType;
+
 /*
  * Functions that the runtime will call on the profiler.
  */
@@ -109,12 +128,15 @@ typedef void (*MonoProfileAssemblyResult) (MonoProfiler *prof, MonoAssembly *ass
 typedef void (*MonoProfileMethodInline)   (MonoProfiler *prof, MonoMethod   *parent, MonoMethod *child, int *ok);
 
 typedef void (*MonoProfileThreadFunc)     (MonoProfiler *prof, uintptr_t tid);
+typedef void (*MonoProfileThreadNameFunc) (MonoProfiler *prof, uintptr_t tid, const char *name);
 typedef void (*MonoProfileAllocFunc)      (MonoProfiler *prof, MonoObject *obj, MonoClass *klass);
 typedef void (*MonoProfileStatFunc)       (MonoProfiler *prof, mono_byte *ip, void *context);
 typedef void (*MonoProfileStatCallChainFunc) (MonoProfiler *prof, int call_chain_depth, mono_byte **ip, void *context);
 typedef void (*MonoProfileGCFunc)         (MonoProfiler *prof, MonoGCEvent event, int generation);
 typedef void (*MonoProfileGCMoveFunc)     (MonoProfiler *prof, void **objects, int num);
 typedef void (*MonoProfileGCResizeFunc)   (MonoProfiler *prof, int64_t new_size);
+typedef void (*MonoProfileGCHandleFunc)   (MonoProfiler *prof, int op, int type, uintptr_t handle, MonoObject *obj);
+typedef void (*MonoProfileGCRootFunc)     (MonoProfiler *prof, int num_roots, void **objects, int *root_types, uintptr_t *extra_info);
 
 typedef void (*MonoProfileIomapFunc) (MonoProfiler *prof, const char *report, const char *pathname, const char *new_pathname);
 
@@ -149,6 +171,7 @@ void mono_profiler_install_method_free (MonoProfileMethodFunc callback);
 void mono_profiler_install_method_invoke (MonoProfileMethodFunc start, MonoProfileMethodFunc end);
 void mono_profiler_install_enter_leave (MonoProfileMethodFunc enter, MonoProfileMethodFunc fleave);
 void mono_profiler_install_thread      (MonoProfileThreadFunc start, MonoProfileThreadFunc end);
+void mono_profiler_install_thread_name (MonoProfileThreadNameFunc thread_name_cb);
 void mono_profiler_install_transition  (MonoProfileMethodResult callback);
 void mono_profiler_install_allocation  (MonoProfileAllocFunc callback);
 void mono_profiler_install_monitor     (MonoProfileMonitorFunc callback);
@@ -159,6 +182,7 @@ void mono_profiler_install_coverage_filter (MonoProfileCoverageFilterFunc callba
 void mono_profiler_coverage_get  (MonoProfiler *prof, MonoMethod *method, MonoProfileCoverageFunc func);
 void mono_profiler_install_gc    (MonoProfileGCFunc callback, MonoProfileGCResizeFunc heap_resize_callback);
 void mono_profiler_install_gc_moves    (MonoProfileGCMoveFunc callback);
+void mono_profiler_install_gc_roots    (MonoProfileGCHandleFunc handle_callback, MonoProfileGCRootFunc roots_callback);
 void mono_profiler_install_runtime_initialized (MonoProfileFunc runtime_initialized_callback);
 
 void mono_profiler_install_code_chunk_new (MonoProfilerCodeChunkNew callback);

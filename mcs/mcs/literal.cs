@@ -19,9 +19,11 @@
 // and are fully resolved when born.
 //
 
-using System;
-using System.Reflection;
+#if STATIC
+using IKVM.Reflection.Emit;
+#else
 using System.Reflection.Emit;
+#endif
 
 namespace Mono.CSharp {
 

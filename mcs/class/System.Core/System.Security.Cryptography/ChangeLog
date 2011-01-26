@@ -1,3 +1,7 @@
+2010-12-14  Jeffrey Stedfast  <fejj@gnome.org>
+
+	Fixed AesManaged parameter names to make gui-compare happy
+
 2010-03-18  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* Aes.cs: Build here before NET_4_0 (or MOONLIGHT) otherwise 

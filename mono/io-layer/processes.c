@@ -1624,8 +1624,7 @@ gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 #else
 gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 {
-	GArray *processes = g_array_new (FALSE, FALSE, sizeof(pid_t));
-	guint32 fit, i, j;
+	guint32 fit, i;
 	DIR *dir;
 	struct dirent *entry;
 	
@@ -1635,29 +1634,22 @@ gboolean EnumProcesses (guint32 *pids, guint32 len, guint32 *needed)
 	if (dir == NULL) {
 		return(FALSE);
 	}
-	while((entry = readdir (dir)) != NULL) {
-		if (isdigit (entry->d_name[0])) {
-			char *endptr;
-			pid_t pid = (pid_t)strtol (entry->d_name, &endptr, 10);
 
-			if (*endptr == '\0') {
-				/* Name was entirely numeric, so was a
-				 * process ID
-				 */
-				g_array_append_val (processes, pid);
-			}
-		}
+	i = 0;
+	fit = len / sizeof (guint32);
+	while(i < fit && (entry = readdir (dir)) != NULL) {
+		pid_t pid;
+		char *endptr;
+
+		if (!isdigit (entry->d_name[0]))
+			continue;
+
+		pid = (pid_t) strtol (entry->d_name, &endptr, 10);
+		if (*endptr == '\0')
+			pids [i++] = (guint32) pid;
 	}
 	closedir (dir);
-
-	fit=len/sizeof(guint32);
-	for (i = 0, j = 0; j < fit && i < processes->len; i++) {
-		pids[j++] = g_array_index (processes, pid_t, i);
-	}
-
-	g_array_free (processes, TRUE);
-	
-	*needed = j * sizeof(guint32);
+	*needed = i * sizeof(guint32);
 	
 	return(TRUE);
 }
@@ -1748,6 +1740,7 @@ gboolean GetExitCodeProcess (gpointer process, guint32 *code)
 {
 	struct _WapiHandle_process *process_handle;
 	gboolean ok;
+	guint32 pid = -1;
 	
 	mono_once (&process_current_once, process_set_current);
 
@@ -1755,13 +1748,27 @@ gboolean GetExitCodeProcess (gpointer process, guint32 *code)
 		return(FALSE);
 	}
 	
+	pid = GPOINTER_TO_UINT (process) - _WAPI_PROCESS_UNHANDLED;
 	if ((GPOINTER_TO_UINT (process) & _WAPI_PROCESS_UNHANDLED) == _WAPI_PROCESS_UNHANDLED) {
 		/* This is a pseudo handle, so we don't know what the
-		 * exit code was
+		 * exit code was, but we can check whether it's alive or not
 		 */
-		return(FALSE);
+#if defined(PLATFORM_MACOSX) || defined(__OpenBSD__)
+		if ((kill(pid, 0) == 0) || (errno == EPERM)) {
+#elif defined(__HAIKU__)
+		team_info teamInfo;
+		if (get_team_info ((team_id)pid, &teamInfo) == B_OK) {
+#else
+		gchar *dir = g_strdup_printf ("/proc/%d", pid);
+		if (!access (dir, F_OK)) {
+#endif
+			*code = STILL_ACTIVE;
+			return TRUE;
+		} else {
+			return FALSE;
+		}
 	}
-	
+
 	ok=_wapi_lookup_handle (process, WAPI_HANDLE_PROCESS,
 				(gpointer *)&process_handle);
 	if(ok==FALSE) {

@@ -25,7 +25,6 @@
 //
 
 
-#if NET_2_0
 
 using System;
 using System.Drawing;
@@ -805,7 +804,7 @@ namespace System.Windows.Forms {
 			string value = null;
 			
 			if (Selected) {
-				DataGridViewCellStyle style = GetInheritedStyle (null, rowIndex, false);
+//				DataGridViewCellStyle style = GetInheritedStyle (null, rowIndex, false);
 				value = GetEditedFormattedValue (rowIndex, DataGridViewDataErrorContexts.ClipboardContent | DataGridViewDataErrorContexts.Formatting) as string;
 			}
 
@@ -1587,5 +1586,3 @@ namespace System.Windows.Forms {
 	}
 
 }
-
-#endif

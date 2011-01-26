@@ -1,3 +1,96 @@
+2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* MsmqTransportSecurity.cs: Use the proper default values for this
+	class.
+
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Add #if NET_2_1 and SupportFaults member for Silverlight SlSvcUtil
+	proxy.
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ExtendedProtectionPolicy members. Required by .config files by
+	.NET svcutil.
+
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement NetTcpBinding.CanBuildChannelFactory/Listener and
+	several related stuff.
+
+	SecurityTokenParameters.InitializeSecurityTokenRequirement() needs
+	to become protected internal, so changed all overrides as well.
+
+	Some implementation in WindowsStreamSecurityBindingElement is
+	needed only for NetTcpBinding implementation.
+
+	Had to disable a test in SymmetricSecurityBindingElement that
+	depended on OneWay support (which is not yet done).
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill NetTcpBinding security implementation a bit.
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix the issue that callback contract often gets confused by
+	picking unexpected contract type.
+
+	The problem is that DispatchRuntime.Type is a service
+	implementation type that could implement two or more contract
+	interfaces, and it was in random order how ServiceProxyGenerator
+	picks up the contract type. Now it looks for correct contract type
+	instead of the service type by exactly looking for the target
+	contract in the endpoint (dispatcher).
+
+2010-09-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Make simplified configuration for behaviors work (4.0)
+
+2010-09-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix duplex proxy constructor arg names.
+
+2010-09-18  Atsushi Eno  <atsushi@ximian.com>
+
+	ProtocolMapping needed config section, default items and support
+	in ServiceHostBase.
+
+2010-09-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Add working .svc handler in 4.0 web.config, fix standard endpoint
+	handling and get xsp4 working.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ProtocolMapping support.
+
+2010-09-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement some additional logic around AddServiceEndpoint() to
+	achive standard endpoint support.
+
+2010-09-15  Atsushi Eno  <atsushi@ximian.com>
+
+	add more NET_4_0.
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing standard endpoint configuration support work.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix another non-null RemoteAddress dependency.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Add some argument check. RemoteAddress could be null for callback
+	client runtime channel.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix parameter order for TempAsyncResult.
+
 2010-08-30  Atsushi Eno  <atsushi@ximian.com>
 
 	Add workaround for bug #633945. On Windows async operation does

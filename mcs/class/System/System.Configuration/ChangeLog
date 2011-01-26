@@ -1,3 +1,45 @@
+2010-08-22  Carsten Schlote  <schlote@vahanus.net>
+
+	[System.Configuration] Added check for SettingProviderAttribute on
+	settings class
+
+	There is no checkfor the SettingProviderAttribute attached to a
+	Settings class. .NET uses this to replace the default
+	LocalSettingsProvider with your own SettingsProvider.
+
+	The patch adds this feature.
+
+	Signed-off-by: Carsten Schlote <schlote@vahanus.net>
+
+2010-08-22  Carsten Schlote  <schlote@vahanus.net>
+
+	[System.Configuration] Fixed GetProductName() function
+
+	Added missing check for empty strongname. This case is now handled
+	the same way as a missing strongname.
+
+	GetProductName() now correctly uses _Url_ and
+	assembly.EscapedCodeBase for its output.
+
+	Signed-off-by: Carsten Schlote <schlote@vahanus.net>
+
+2010-08-22  Carsten Schlote  <schlote@vahanus.net>
+
+	[System.Configuration] Fixed GetEvidenceHash() function to produce
+	valid filenames
+
+	The previous implementation creates eventually invalid filenames
+	in a random fashion on linux, mac, windows by having '/' or '\'
+	chars in the base64 output. As a result you can't save or retrieve
+	your settings due to filesystem errors.
+
+	This patch changes the output to plain hex values. This is a bit
+	longer then a base64 string, but also 100% filesystem safe.
+
+	Might
+
+	Signed-off-by: Carsten Schlote <schlote@vahanus.net>
+
 2010-02-16 Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* CustomizableLocalFileSettingsProvider.cs: When saving the

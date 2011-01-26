@@ -44,10 +44,25 @@ namespace System
 #if !NET_2_1
 		private class WindowsConsole
 		{
+			public static bool ctrlHandlerAdded = false;
+			private delegate bool WindowsCancelHandler (int keyCode);
+			private static WindowsCancelHandler cancelHandler = new WindowsCancelHandler (DoWindowsConsoleCancelEvent);
+
 			[DllImport ("kernel32.dll", CharSet=CharSet.Auto, ExactSpelling=true)]
 			private static extern int GetConsoleCP ();
 			[DllImport ("kernel32.dll", CharSet=CharSet.Auto, ExactSpelling=true)]
 			private static extern int GetConsoleOutputCP ();
+
+			[DllImport ("kernel32.dll", CharSet=CharSet.Auto, ExactSpelling=true)]
+			private static extern bool SetConsoleCtrlHandler (WindowsCancelHandler handler, bool addHandler);
+
+			// Only call the event handler if Control-C was pressed (code == 0), nothing else
+			private static bool DoWindowsConsoleCancelEvent (int keyCode)
+			{
+				if (keyCode == 0)
+					DoConsoleCancelEvent ();
+				return keyCode == 0;
+			}
 
 			[MethodImpl (MethodImplOptions.NoInlining)]
 			public static int GetInputCodePage ()
@@ -59,6 +74,18 @@ namespace System
 			public static int GetOutputCodePage ()
 			{
 				return GetConsoleOutputCP ();
+			}
+
+			public static void AddCtrlHandler ()
+			{
+				SetConsoleCtrlHandler (cancelHandler, true);
+				ctrlHandlerAdded = true;
+			}
+			
+			public static void RemoveCtrlHandler ()
+			{
+				SetConsoleCtrlHandler (cancelHandler, false);
+				ctrlHandlerAdded = false;
 			}
 		}
 #endif
@@ -304,7 +331,10 @@ namespace System
 
 		public static void Write (string format, params object[] arg)
 		{
-			stdout.Write (format, arg);
+			if (arg == null)
+				stdout.Write (format);
+			else
+				stdout.Write (format, arg);
 		}
 
 		public static void Write (char[] buffer, int index, int count)
@@ -415,7 +445,10 @@ namespace System
 
 		public static void WriteLine (string format, params object[] arg)
 		{
-			stdout.WriteLine (format, arg);
+			if (arg == null)
+				stdout.WriteLine (format);
+			else
+				stdout.WriteLine (format, arg);
 		}
 
 		public static void WriteLine (char[] buffer, int index, int count)
@@ -676,12 +709,22 @@ namespace System
 					ConsoleDriver.Init ();
 
 				cancel_event += value;
+
+				if (Environment.IsRunningOnWindows && !WindowsConsole.ctrlHandlerAdded)
+					WindowsConsole.AddCtrlHandler();
 			}
 			remove {
 				if (ConsoleDriver.Initialized == false)
 					ConsoleDriver.Init ();
 
 				cancel_event -= value;
+
+				if (cancel_event == null && Environment.IsRunningOnWindows)
+				{
+					// Need to remove our hook if there's nothing left in the event
+					if (WindowsConsole.ctrlHandlerAdded)
+						WindowsConsole.RemoveCtrlHandler();
+				}
 			}
 		}
 

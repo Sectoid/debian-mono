@@ -12,12 +12,16 @@
 #define G_SEARCHPATH_SEPARATOR   ':'
 #define G_DIR_SEPARATOR          '/'
 #define G_DIR_SEPARATOR_S        "/"
-#define G_BREAKPOINT()           G_STMT_START { raise (SIGTRAP); } G_STMT_END
+#define G_BREAKPOINT()           G_STMT_START { __asm__ ("int $03"); } G_STMT_END
 #define G_OS_UNIX
 #define GPOINTER_TO_INT(ptr)   ((gint)(long) (ptr))
 #define GPOINTER_TO_UINT(ptr)  ((guint)(long) (ptr))
 #define GINT_TO_POINTER(v)     ((gpointer)(glong) (v))
 #define GUINT_TO_POINTER(v)    ((gpointer)(gulong) (v))
+
+#if 1 == 1
+#define G_HAVE_ALLOCA_H
+#endif
 
 typedef unsigned long gsize;
 typedef signed   long gssize;

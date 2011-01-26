@@ -72,10 +72,12 @@ namespace System.ServiceModel.MonoInternal
 
 		public ClientRuntimeChannel (ClientRuntime runtime, ContractDescription contract, TimeSpan openTimeout, TimeSpan closeTimeout, IChannel contextChannel, IChannelFactory factory, MessageVersion messageVersion, EndpointAddress remoteAddress, Uri via)
 		{
+			if (runtime == null)
+				throw new ArgumentNullException ("runtime");
 			this.runtime = runtime;
 			this.remote_address = remoteAddress;
 			if (runtime.Via == null)
-				runtime.Via = via ?? remote_address.Uri;
+				runtime.Via = via ?? (remote_address != null ?remote_address.Uri : null);
 			this.contract = contract;
 			this.message_version = messageVersion;
 			default_open_timeout = openTimeout;
@@ -444,7 +446,7 @@ namespace System.ServiceModel.MonoInternal
 				return _processDelegate.BeginInvoke (method, operationName, parameters, callback, asyncState);
 			default:
 				var result = Process (method, operationName, parameters);
-				var ret = new TempAsyncResult (asyncState, result);
+				var ret = new TempAsyncResult (result, asyncState);
 				if (callback != null)
 					callback (ret);
 				return ret;
@@ -650,7 +652,7 @@ namespace System.ServiceModel.MonoInternal
 					msg.Headers.MessageId = new UniqueId ();
 				if (msg.Headers.ReplyTo == null)
 					msg.Headers.ReplyTo = new EndpointAddress (Constants.WsaAnonymousUri);
-				if (msg.Headers.To == null)
+				if (msg.Headers.To == null && RemoteAddress != null)
 					msg.Headers.To = RemoteAddress.Uri;
 			}
 

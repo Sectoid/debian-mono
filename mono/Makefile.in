@@ -144,6 +144,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -253,7 +254,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 @CROSS_COMPILING_FALSE@@MOONLIGHT_FALSE@SUBDIRS = utils io-layer cil metadata arch $(interpreter_dir) mini dis monograph tests benchmark profiler
-@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@SUBDIRS = utils io-layer     metadata arch $(interpreter_dir) mini
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@SUBDIRS = utils io-layer metadata arch mini
 @CROSS_COMPILING_TRUE@SUBDIRS = utils io-layer cil metadata arch $(interpreter_dir) mini dis
 DIST_SUBDIRS = utils io-layer cil metadata arch interpreter mini dis monograph tests benchmark profiler
 all: all-recursive
@@ -568,6 +569,28 @@ uninstall-am:
 	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
 	uninstall uninstall-am
 
+
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@moon-do-build:
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	@list='$(SUBDIRS)'; for subdir in $$list; do \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  case "x$$subdir" in \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@		xmetadata ) target="moon-do-build" ;; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@		xmini ) target="moon-do-build" ;; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@		* ) target="all" ;; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  esac; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  echo "Making $$target in $$subdir"; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$target); \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@    done;
+
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@moon-do-clean:
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	@list='$(SUBDIRS)'; for subdir in $$list; do \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  case "x$$subdir" in \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@		xmetadata ) target="moon-do-clean" ;; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@		xmini ) target="moon-do-clean" ;; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@		* ) target="clean" ;; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  esac; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  echo "Making $$target in $$subdir"; \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$target); \
+@CROSS_COMPILING_FALSE@@MOONLIGHT_TRUE@    done;
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

@@ -73,7 +73,6 @@ namespace Microsoft.Build.BuildEngine {
 		XmlDocument			xmlDocument;
 		bool				unloaded;
 		bool				initialTargetsBuilt;
-		List<string>			builtTargetKeys;
 		bool				building;
 		BuildSettings			current_settings;
 		Stack<Batch>			batches;
@@ -111,7 +110,6 @@ namespace Microsoft.Build.BuildEngine {
 
 			encoding = null;
 
-			builtTargetKeys = new List<string> ();
 			initialTargets = new List<string> ();
 			defaultTargets = new string [0];
 			batches = new Stack<Batch> ();
@@ -301,8 +299,10 @@ namespace Microsoft.Build.BuildEngine {
 				   BuildSettings buildFlags)
 		{
 			CheckUnloaded ();
-			if (buildFlags == BuildSettings.None)
+			if (buildFlags == BuildSettings.None) {
+				needToReevaluate = false;
 				Reevaluate ();
+			}
 			
 			if (targetNames == null || targetNames.Length == 0) {
 				if (defaultTargets != null && defaultTargets.Length != 0)
@@ -352,8 +352,15 @@ namespace Microsoft.Build.BuildEngine {
 
 		internal string GetKeyForTarget (string target_name)
 		{
+			return GetKeyForTarget (target_name, true);
+		}
+
+		internal string GetKeyForTarget (string target_name, bool include_global_properties)
+		{
 			// target name is case insensitive
-			return fullFileName + ":" + target_name.ToLower () + ":" + GlobalPropertiesToString (GlobalProperties);
+			return fullFileName + ":" + target_name.ToLower () +
+					(include_global_properties ? (":" + GlobalPropertiesToString (GlobalProperties))
+					 			   : String.Empty);
 		}
 
 		string GlobalPropertiesToString (BuildPropertyGroup bgp)
@@ -896,8 +903,7 @@ namespace Microsoft.Build.BuildEngine {
 		// Removes entries of all earlier built targets for this project
 		void RemoveBuiltTargets ()
 		{
-			foreach (string key in builtTargetKeys)
-				ParentEngine.BuiltTargetsOutputByName.Remove (key);
+			ParentEngine.ClearBuiltTargetsForProject (this);
 		}
 
 		void InitializeProperties (string effective_tools_version)
@@ -908,7 +914,7 @@ namespace Microsoft.Build.BuildEngine {
 
 			foreach (BuildProperty gp in GlobalProperties) {
 				bp = new BuildProperty (gp.Name, gp.Value, PropertyType.Global);
-				EvaluatedProperties.AddProperty (bp);
+				evaluatedProperties.AddProperty (bp);
 			}
 			
 			foreach (BuildProperty gp in GlobalProperties)
@@ -917,38 +923,38 @@ namespace Microsoft.Build.BuildEngine {
 			// add properties that we dont have from parent engine's
 			// global properties
 			foreach (BuildProperty gp in ParentEngine.GlobalProperties) {
-				if (EvaluatedProperties [gp.Name] == null) {
+				if (evaluatedProperties [gp.Name] == null) {
 					bp = new BuildProperty (gp.Name, gp.Value, PropertyType.Global);
-					EvaluatedProperties.AddProperty (bp);
+					evaluatedProperties.AddProperty (bp);
 				}
 			}
 
 			foreach (DictionaryEntry de in Environment.GetEnvironmentVariables ()) {
 				bp = new BuildProperty ((string) de.Key, (string) de.Value, PropertyType.Environment);
-				EvaluatedProperties.AddProperty (bp);
+				evaluatedProperties.AddProperty (bp);
 			}
 
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectFile", Path.GetFileName (fullFileName),
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectFile", Path.GetFileName (fullFileName),
 						PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectFullPath", fullFileName, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectName",
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectFullPath", fullFileName, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectName",
 						Path.GetFileNameWithoutExtension (fullFileName),
 						PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectExtension",
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectExtension",
 						Path.GetExtension (fullFileName),
 						PropertyType.Reserved));
 
 			string toolsPath = parentEngine.Toolsets [effective_tools_version].ToolsPath;
 			if (toolsPath == null)
 				throw new Exception (String.Format ("Invalid tools version '{0}', no tools path set for this.", effective_tools_version));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildBinPath", toolsPath, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsPath", toolsPath, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsVersion", effective_tools_version, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath", ExtensionsPath, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath32", ExtensionsPath, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath64", ExtensionsPath, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectDefaultTargets", DefaultTargets, PropertyType.Reserved));
-			EvaluatedProperties.AddProperty (new BuildProperty ("OS", OS, PropertyType.Environment));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildBinPath", toolsPath, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsPath", toolsPath, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildToolsVersion", effective_tools_version, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath", ExtensionsPath, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath32", ExtensionsPath, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildExtensionsPath64", ExtensionsPath, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectDefaultTargets", DefaultTargets, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("OS", OS, PropertyType.Environment));
 
 			// FIXME: make some internal method that will work like GetDirectoryName but output String.Empty on null/String.Empty
 			string projectDir;
@@ -957,7 +963,7 @@ namespace Microsoft.Build.BuildEngine {
 			else
 				projectDir = Path.GetDirectoryName (FullFileName);
 
-			EvaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectDirectory", projectDir, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectDirectory", projectDir, PropertyType.Reserved));
 		}
 
 		// precedence:
@@ -1394,10 +1400,6 @@ namespace Microsoft.Build.BuildEngine {
 		
 		public string ToolsVersion {
 			get; internal set;
-		}
-
-		internal List<string> BuiltTargetKeys {
-			get { return builtTargetKeys; }
 		}
 
 		internal Dictionary <string, BuildItemGroup> LastItemGroupContaining {

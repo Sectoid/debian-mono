@@ -120,6 +120,7 @@ namespace System.Web
 		static bool assemblyMappingEnabled;
 		static object assemblyMappingLock = new object ();
 		static object appOfflineLock = new object ();
+		static HttpRuntimeSection runtime_section;
 		
 		public HttpRuntime ()
 		{
@@ -136,6 +137,7 @@ namespace System.Web
 #if MONOWEB_DEP
 				SettingsMappingManager.Init ();
 #endif
+				runtime_section = (HttpRuntimeSection) WebConfigurationManager.GetSection ("system.web/httpRuntime");
 			} catch (Exception ex) {
 				initialException = ex;
 			}
@@ -305,6 +307,8 @@ namespace System.Web
 			}
 		}
 
+		internal static HttpRuntimeSection Section { get { return runtime_section; } }
+
 		public static bool UsingIntegratedPipeline { get { return false; } }
 		
 		[SecurityPermission (SecurityAction.Demand, UnmanagedCode = true)]
@@ -441,6 +445,11 @@ namespace System.Web
 		
 		static void RealProcessRequest (object o)
 		{
+			if (domainUnloading) {
+				Console.Error.WriteLine ("Domain is unloading, not processing the request.");
+				return;
+			}
+
 			HttpWorkerRequest req = (HttpWorkerRequest) o;
 			bool started_internally = req.StartedInternally;
 			do {
@@ -584,6 +593,7 @@ namespace System.Web
 			// TODO: call ReleaseResources
 			//
 			domainUnloading = true;
+			HttpApplicationFactory.DisableWatchers ();
 			ThreadPool.QueueUserWorkItem (delegate {
 				try {
 					ShutdownAppDomain ();

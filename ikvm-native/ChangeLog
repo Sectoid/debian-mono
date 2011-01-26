@@ -1,3 +1,7 @@
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
 2006-09-11  Zoltan Varga  <vargaz@gmail.com>
 
 	* jni.c: Apply a patch from the freebsd ports tree. Include the proper

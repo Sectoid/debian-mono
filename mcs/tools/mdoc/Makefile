@@ -9,12 +9,13 @@ MDOC_COMMON_FLAGS = \
 	/resource:../monodoc/Resources/mono-ecma-css.xsl,mono-ecma-css.xsl          \
 	/resource:Resources/defaulttemplate.xsl,defaulttemplate.xsl                 \
 	/resource:Resources/monodoc-ecma.xsd,monodoc-ecma.xsd                       \
+	/resource:Resources/msitomsx.xsl,msitomsx.xsl                               \
 	/resource:Resources/overview.xsl,overview.xsl                               \
 	/resource:Resources/stylesheet.xsl,stylesheet.xsl                           \
 	/r:System.Web.dll                                                           \
 	/r:System.Xml.Linq.dll                                                      \
 	/r:ICSharpCode.SharpZipLib.dll                                              \
-	/r:$(topdir)/class/lib/net_4_0/Mono.Cecil.dll
+	/r:Mono.Cecil.dll
 
 LOCAL_MCS_FLAGS = $(MDOC_COMMON_FLAGS) \
 	/r:$(topdir)/class/lib/net_2_0/monodoc.dll
@@ -41,6 +42,7 @@ MONODOC_RESOURCES = \
 MDOC_RESOURCES = \
 	Resources/defaulttemplate.xsl     \
 	Resources/monodoc-ecma.xsd        \
+	Resources/msitomsx.xsl            \
 	Resources/overview.xsl            \
 	Resources/stylesheet.xsl
 
@@ -64,7 +66,7 @@ include ../../build/executable.make
 $(PROGRAM) : Makefile
 
 MONO = \
-	MONO_PATH="$(topdir)/class/lib/2.0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" \
+	MONO_PATH="$(topdir)/class/lib/net_2_0$(PLATFORM_PATH_SEPARATOR)$$MONO_PATH" \
 	$(RUNTIME) $(RUNTIME_FLAGS)
 
 dist-local: dist-default dist-tests

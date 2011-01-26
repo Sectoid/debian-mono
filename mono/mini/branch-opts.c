@@ -815,6 +815,15 @@ replace_in_block (MonoBasicBlock *bb, MonoBasicBlock *orig, MonoBasicBlock *repl
 static void
 replace_out_block_in_code (MonoBasicBlock *bb, MonoBasicBlock *orig, MonoBasicBlock *repl) {
 	MonoInst *ins;
+
+#if defined(__native_client_codegen__)
+	/* Need to maintain this flag for the new block because */
+	/* we can't jump indirectly to a non-aligned block.     */
+	if (orig->flags & BB_INDIRECT_JUMP_TARGET)
+	{
+		repl->flags |= BB_INDIRECT_JUMP_TARGET;
+	}
+#endif
 	
 	for (ins = bb->code; ins != NULL; ins = ins->next) {
 		switch (ins->opcode) {
@@ -1280,7 +1289,7 @@ mono_optimize_branches (MonoCompile *cfg)
 					/* the block are in sequence anyway ... */
 
 					/* branches to the following block can be removed */
-					if (bb->last_ins && bb->last_ins->opcode == OP_BR) {
+					if (bb->last_ins && bb->last_ins->opcode == OP_BR && !bbn->out_of_line) {
 						bb->last_ins->opcode = OP_NOP;
 						changed = TRUE;
 						if (cfg->verbose_level > 2)

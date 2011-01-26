@@ -1,3 +1,232 @@
+2010-11-18  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Add support for 'safe' unescaping rules *
+	System/UriParser.cs: Add support for SafeUnescaped in Format.
+	Avoid escaping the # when adding a fragment at the end of the Uri
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
+2010-09-27  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Avoid the culture-specific String.EndsWith when
+	reducing an URI
+
+2010-09-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Improve the Uri parsing speed
+
+	This affects MonoTouch startup as our dictionaries are a little
+	bit slow to be created now that we use Dictionary<> hashes for
+	switch statements.
+
+	Some timings:
+
+	Using a simple block of if's is twice as slow as the compiler
+	generated switch statement. But using this tuned code is faster
+	than the compiler generated code, with a million loops on x86-64:
+
+	With "http": .10 vs .51 (first check) with "https": .16 vs .51
+	(second check) with "foo": .22 vs .31 (never found) with "mailto":
+	.12 vs .51 (last check)
+
+2010-09-24  Andreia Gaita  <shana@jitted.com>
+
+	Fix UriParser.GetComponents for the PathAndQuery case
+
+	PathAndQuery should always return the path starting with /, even
+	when it's empty
+
+2010-09-22  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix escaping non-ascii host names. Avoid memory
+	allocations (UTF8.GetBytes) when it is not necessary while
+	escaping.
+
+2010-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Update some NET_4_0 to include MOONLIGHT too
+
+2010-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: A bit more strict when parsing the port number
+
+2010-09-21  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix host name checks. Delay port check until the
+	host name is checked (compatibility). Fix exception messages to
+	match the expected values from the NCL tests.
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Unescape LocalPath
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Compute the expected OriginalString when an
+	absolute URI is merged with a (String or Uri) relative Uri to
+	create a new Uri instance. Keep original fragment around for
+	ToString
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Exception message does not specify Authority when
+	a file:// URI is parsed
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: An empty username/password is treated differently
+	than having none, i.e. the '@' character is kept present in the
+	URI
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: IsUnc returns true for file:/// URI on Windows
+	only. This makes us closer to Mac-behavior (see NCL tests) since
+	the other properties, e.g. LocalPath, match this. Also fix some
+	exception text where the values are checked by some test cases.
+
+2010-09-20  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix merging URI where a relative URI contains a
+	':' but no valid scheme
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: While parsing only escape the path for absolute
+	URI. Do not unescape relative URI in ToString and avoid calling
+	AppendQueryAndFragment on them (relative) since both are not
+	parsed as such.
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix DnsSafeHost for IPv6 addresses, removing the
+	[] brackets and adding, when available, the scope id
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix parsing the port/host when a ':' is present
+	without a port number on non-file:// URI
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/UriBuilder.cs: Fix typo from previous change
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/UriBuilder.cs: Refactor constructors to share
+	Initialization methods. Allow a second chance to .ctor(string) to
+	parse an URI by assuming it's an HTTP URI
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/UriBuilder.cs: Fix Host property to add the missing
+	brackets on IPv6 address (if missing from input)
+
+2010-09-17  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/UriBuilder.cs: Update UriBuilder.Path once the Uri has
+	been created using Uri.AbsolutePath
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/UriBuilder.cs: Update UriBuilder.Host once the Uri has
+	been created
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Add EscapeCommonHexBracketsQuery constant since ?
+	also needs to be escaped from UriBuilder * System/UriBuilder.cs:
+	Fix Equals (escaping '?') and UserInfo. Fix NRE in ctor that was
+	fixed in FX4. Drop NET_2_0 defines.
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/UriBuilder.cs: Fix line endings
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs (Reduce): Process %2E while reducing a path.
+	Avoid, when possible, the creation of StringBuilder and replace
+	ArrayList with generics
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix TryCreate overloads wrt NotWorking unit tests
+
+2010-09-16  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix 'file' URI since they can't have a query
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix 'ftp' support, mostly same fixes as 'nntp'
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix 'nntp' support which is close to 'news' (no
+	query) but still has an Host, Autority, Port...
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Remove condition/code wrt 'news:' that occurs
+	after the new "shortcut".
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Make it easier to reuse EscapeString without
+	adding new boolean parameters. Shortcut parsing for 'news' since
+	it's simpler (no query, host, authority...) Avoid creating
+	StringBuilder instance when [un]escape-ing empty strings *
+	System/UriBuilder.cs: Adjust for EscapeString API change *
+	System/UriParser.cs: Fix default news port and adjust for
+	EscapeString API change
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Keep the cached 'segments' as a List<string> and
+	return a new array (ToArray) when the Segment propery is called.
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix ToString (Unescape) to ignore '\\' and let it
+	be outputed as %5C * Test/System/UriTest2.cs: Add test case for
+	above
+
+2010-09-15  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Reimplement Segment property to reduce copying
+	and string allocations. Fix case with slashes (separate, not
+	single, segments)
+
+2010-09-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Handle multiple starting slash correctly *
+	Test/System/UriTest2.cs: Add test cases with multiple slashes
+
+2010-09-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix Segments and username/password (unsupported)
+	on file:// URI * Test/System/UriTest.cs: Remove
+	[Category("NotWorking")] from some tests and add a few additional
+	(helpful) asserts.
+
+2010-09-14  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: For most scheme a drive letter is converted into
+	an host name (minus the ':' character)
+
+2010-09-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove Console.WriteLine.
+
+2010-09-13  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System/Uri.cs: Fix some "bugs" that are not part of FX4 anymore.
+	Change how Query/Fragment are merged to match FX4 (while keeping
+	it compatible with buggy FX2 under the NET_2_0 profile)
+
 2010-08-31  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	Trim the uri in UriParser::GetComponents, just like we do in

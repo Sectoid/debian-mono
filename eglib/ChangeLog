@@ -1,3 +1,183 @@
+2011-01-11  Christian Hergert  <chris@dronelabs.com>
+
+	Fix broken g_int_hash/g_int_equal semantics
+
+	Both g_int_hash and g_int_equal used the semantics that an integer
+	is stored directly in the pointer. This is incorrect as the
+	pointer actually points to a location containing an integer.
+
+	For those wanting the previous (incorrect) implementation, they
+	should look at g_direct_hash and g_direct_equal.
+
+2011-01-08  Miguel de Icaza  <miguel@gnome.org>
+
+	[eglib] Another bug fix for g_shell_parse
+
+	We do not create a new string after a quotation, unless the next
+	character after a closing quote is a space. This allows parsing
+	the string: "foo","bar"
+
+	As: foo,bar
+
+	This fixes #655896
+
+	1# Explicit paths specified without -i nor -o; assuming --only
+	paths...
+
+2011-01-08  Miguel de Icaza  <miguel@gnome.org>
+
+	[eglib] Add more tests for the g_shell_parse
+
+2011-01-07  Marek Safar  <marek.safar@gmail.com>
+
+	Ignore more files
+
+2010-12-22  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add some missing files needed for windows to the tarball
+
+2010-12-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Include alloca.h into glib.h if needed.
+
+2010-11-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix g_hash_table_remove_all ().
+
+2010-11-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix g_dir_open et al for windows.
+
+	This was using the *A functiones instead of the *W ones and
+	passing in UTF16. It was also opening and closing the directory
+	just to check that it was there and then open it again !?.
+
+	Fixes bug #645189.
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	User name and home directory initialization
+
+	User name and home directory are initialized at the same time from
+	the information in /etc/passwd if possible.
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Get the user name from the UID not the USER env
+
+	Fixes bug #653564.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the definition of G_BREAKPOINT on x86 when cross compiling.
+
+2010-11-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Use dolt for eglib too.
+
+2010-11-09  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Disabled eglib tests build by default
+
+	On OSX our local system glib might be 32 or 64 bit, and we have no
+	simple way of testing wether it meeds the needs of the current
+	built, lets just disable tests by default for now
+
+2010-10-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a g_hash_iter symbols to the eglib remapper.
+
+2010-10-23  Zoltan Varga  <vargaz@gmail.com>
+
+	Use int 3 as G_BREAKPOINT on x86-64 too. Hopefully fixes #648838.
+
+2010-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Use locale_charset() from iconv which will use nl_langinfo
+	(CODESET) anyways but it will do canonicalization so we will get
+	the correct charset name, because nl_langinfo (CODESET) can return
+	different things on different systems. This at least fixes
+	OpenBSD.
+
+2010-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix test compilation with older glibs.
+
+2010-10-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement GHashTable iterators.
+
+2010-10-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix typo
+
+	element_size is not a boolean.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix warnings by defining GNU_SOURCE in eglib's configure.
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add -g to eglib cflags.
+
+2010-10-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid a crash in g_convert () if iconv_open () fails.
+
+2010-10-08  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2010-09-24  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	* eglib/src/glib.h: * eglib/src/gmem.c: Make g_malloc and friends
+	abort in case of failure, like glib does.
+
+	* eglib/src/eglib-remap.h: Remap all allocation functions.
+
+2010-10-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid warning
+
+	_GNU_SOURCE was redefined
+
+2010-10-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the handling of varargs in g_set_error ().
+
+2010-09-25  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	Remap more eglib symbols
+
+2010-09-23  Hib Eris  <hib@hiberis.nl>
+
+	* configure.ac: iconv check creates variable ICONV_LIBS *
+	src/Makefile.am: only link eglib to iconv when iconv is found
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* glib.h: Fix propotype.
+
+2010-09-11  Geoff Norton  <gnorton@novell.com>
+
+	Implement GByteArray, g_hash_table_remove_all, g_queue_foreach and
+	some missing byteswap macros.
+
+2010-09-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove -Werror from the eglib tests too.
+
+2010-09-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the windows build
+
+	Avoid warnings in windows.
+
 2010-09-10  Miguel de Icaza  <miguel@gnome.org>
 
 	[Fix] Correct fix for the g_shell_parse_argv bug
@@ -19,6 +199,12 @@
 
 	This should fix #637680
 
+2010-09-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Add tests for g_strdupv
+
+	Add test for g_strdupv and check for NULL in g_strdupv.
+
 2010-09-07  Zoltan Varga  <vargaz@gmail.com>
 
 	Add a few more remaps.
@@ -26,6 +212,13 @@
 2010-09-07  Zoltan Varga  <vargaz@gmail.com>
 
 	Remap g_strdupv too.
+
+2010-09-04  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix return value of items_read
+
+	items_read was not being initialized and it was not being set in
+	the fast common case of g_utf8_to_utf16().
 
 2010-08-28  Zoltan Varga  <vargaz@gmail.com>
 

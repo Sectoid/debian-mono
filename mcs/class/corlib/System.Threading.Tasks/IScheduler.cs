@@ -22,7 +22,7 @@
 //
 //
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0
 using System;
 using System.Threading;
 using System.Collections.Generic;
@@ -33,8 +33,7 @@ namespace System.Threading.Tasks
 	{
 		void AddWork (Task t);
 		void ParticipateUntil (Task task);
-		bool ParticipateUntil (Task task, Func<bool> predicate);
-		void ParticipateUntil (Func<bool> predicate);
+		bool ParticipateUntil (Task task, ManualResetEventSlim predicateEvt, int millisecondsTimeout);
 		void PulseAll ();
 	}
 }

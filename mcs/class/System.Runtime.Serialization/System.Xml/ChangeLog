@@ -1,3 +1,13 @@
+2010-12-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Use DateTime ToBinary() and FromBinary() for DateTime
+	serialization.
+
+2010-10-05  Atsushi Eno  <atsushi@ximian.com>
+
+	Adjust namespace prefix indexes as it is repeatedly used. (It
+	could result in duplicate prefix.)
+
 2010-06-02 Atsushi Enomoto  <atsushi@ximian.com>
 
 	 * XmlBinaryDictionaryReader.cs : reset name in Reset().

@@ -39,7 +39,8 @@ target_triplet = @target@
 subdir = test
 DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/../mkinstalldirs
@@ -94,9 +95,6 @@ depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
@@ -121,6 +119,7 @@ CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -142,6 +141,8 @@ GUINT_TO_POINTER = @GUINT_TO_POINTER@
 G_GINT64_FORMAT = @G_GINT64_FORMAT@
 G_GUINT64_FORMAT = @G_GUINT64_FORMAT@
 G_HAVE_ISO_VARARGS = @G_HAVE_ISO_VARARGS@
+HAVE_ALLOCA_H = @HAVE_ALLOCA_H@
+ICONV_LIBS = @ICONV_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -154,6 +155,8 @@ LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
+LTCOMPILE = @LTCOMPILE@
+LTCXXCOMPILE = @LTCXXCOMPILE@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
@@ -268,7 +271,7 @@ SOURCES = \
 	memory.c
 
 test_eglib_SOURCES = $(SOURCES)
-test_eglib_CFLAGS = -Wall -Werror -D_FORTIFY_SOURCE=2 -I$(srcdir)/../src -I../src -DDRIVER_NAME=\"EGlib\"
+test_eglib_CFLAGS = -Wall -D_FORTIFY_SOURCE=2 -I$(srcdir)/../src -I../src -DDRIVER_NAME=\"EGlib\"
 test_eglib_LDADD = ../src/libeglib.la
 @HAVE_GLIB_TRUE@test_glib_SOURCES = $(SOURCES)
 @HAVE_GLIB_TRUE@test_glib_CFLAGS = `pkg-config --cflags glib-2.0` -DDRIVER_NAME=\"GLib\"

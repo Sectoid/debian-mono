@@ -52,16 +52,15 @@ namespace System.ServiceModel.Discovery.Configuration
 			get { return (DiscoveryClientSettingsElement) base [discovery_client_settings]; }
 		}
 		
-		protected override Type EndpointType {
+		protected internal override Type EndpointType {
 			get { return typeof (DynamicEndpoint); }
 		}
 		
-		protected override ServiceEndpoint CreateServiceEndpoint (ContractDescription contractDescription)
-		{
-			throw new NotImplementedException ();
+		protected override ConfigurationPropertyCollection Properties {
+			get { return properties; }
 		}
 		
-		protected override void InitializeFrom (ServiceEndpoint endpoint)
+		protected internal override ServiceEndpoint CreateServiceEndpoint (ContractDescription contractDescription)
 		{
 			throw new NotImplementedException ();
 		}
@@ -78,12 +77,12 @@ namespace System.ServiceModel.Discovery.Configuration
 		
 		protected override void OnInitializeAndValidate (ChannelEndpointElement channelEndpointElement)
 		{
-			throw new NotImplementedException ();
+			// There seems nothing to do here.
 		}
 		
 		protected override void OnInitializeAndValidate (ServiceEndpointElement serviceEndpointElement)
 		{
-			throw new NotImplementedException ();
+			// There seems nothing to do here.
 		}
 	}
 }

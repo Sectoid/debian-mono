@@ -1,3 +1,21 @@
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update mappings after latest changes to Mono.Posix
+
+	New mappings created for the epoll code.
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update
+
+2010-10-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Update zlib to version 1.2.5
+
 2010-06-28  Zoltan Varga  <vargaz@gmail.com>
 
 	* Makefile.am (patch-libtool): Fix this up after the dolt changes.

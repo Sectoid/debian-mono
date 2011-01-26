@@ -115,8 +115,31 @@ namespace System.Web
 			get { return validateRequestNewMode; }
 		}
 
-		internal static char[] RequestPathInvalidCharacters {
-			get; private set;
+		private static char[] RequestPathInvalidCharacters {
+			get; set;
+		}
+
+		private static char[] CharsFromList (string list)
+		{
+			// List format is very strict and enforced by the Configuration	
+			// there must be a single char separated by commas with no trailing comma
+			// whitespace is allowed though and should be trimmed.
+			
+			string [] pieces = list.Split (',');
+
+			char [] chars = new char [pieces.Length];
+			for (int i = 0; i < chars.Length; i++) {
+				string trimmed = pieces [i].Trim ();
+				if (trimmed.Length != 1) {
+					// This should have been caught by System.Web.Configuration
+					// and throw a configuration error. This is just here for sanity
+					throw new System.Configuration.ConfigurationErrorsException ();
+				}
+
+				chars [i] = trimmed [0];
+			}
+
+			return chars;
 		}
 #endif
 
@@ -131,14 +154,13 @@ namespace System.Web
 				}
 
 #if NET_4_0
-				HttpRuntimeSection runtimeConfig = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;
-				Version validationMode = runtimeConfig.RequestValidationMode;
+				Version validationMode = HttpRuntime.Section.RequestValidationMode;
 
 				if (validationMode >= new Version (4, 0)) {
 					validateRequestNewMode = true;
-					string invalidChars = runtimeConfig.RequestPathInvalidCharacters;
+					string invalidChars = HttpRuntime.Section.RequestPathInvalidCharacters;
 					if (!String.IsNullOrEmpty (invalidChars))
-						RequestPathInvalidCharacters = invalidChars.ToCharArray ();
+						RequestPathInvalidCharacters = CharsFromList (invalidChars);
 				}
 #endif
 			} catch {
@@ -685,7 +707,7 @@ namespace System.Web
 					// Setting this before calling the validator prevents
 					// possible endless recursion
 					checked_form = true;
-					ValidateNameValueCollection ("Form", query_string_nvc, RequestValidationSource.Form);
+					ValidateNameValueCollection ("Form", form, RequestValidationSource.Form);
 				} else
 #endif
 					if (validate_form && !checked_form){
@@ -796,7 +818,7 @@ namespace System.Web
 			//
 			int content_length = ContentLength;
 			int content_length_kb = content_length / 1024;
-			HttpRuntimeSection config = (HttpRuntimeSection) WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime");
+			HttpRuntimeSection config = HttpRuntime.Section;
 			if (content_length_kb > config.MaxRequestLength)
 				throw HttpException.NewWithCode (400, "Upload size exceeds httpRuntime limit.", WebEventCodes.RuntimeErrorPostTooLarge);
 
@@ -1343,12 +1365,17 @@ namespace System.Web
 			} else if (!VirtualPathUtility.IsAbsolute (virtualPath))
 				virtualPath = VirtualPathUtility.ToAbsolute (virtualPath);
 
+			bool isAppVirtualPath = String.Compare (virtualPath, appVirtualPath, RuntimeHelpers.StringComparison) == 0;
+			appVirtualPath = VirtualPathUtility.AppendTrailingSlash (appVirtualPath);
 			if (!allowCrossAppMapping){
 				if (!StrUtils.StartsWith (virtualPath, appVirtualPath, true))
-					throw HttpException.NewWithCode ("MapPath: Mapping across applications not allowed", WebEventCodes.RuntimeErrorRequestAbort);
+					throw new ArgumentException ("MapPath: Mapping across applications not allowed");
 				if (appVirtualPath.Length > 1 && virtualPath.Length > 1 && virtualPath [0] != '/')
 					throw HttpException.NewWithCode ("MapPath: Mapping across applications not allowed", WebEventCodes.RuntimeErrorRequestAbort);
 			}
+			
+			if (!isAppVirtualPath && !virtualPath.StartsWith (appVirtualPath, RuntimeHelpers.StringComparison))
+				throw new InvalidOperationException (String.Format ("Failed to map path '{0}'", virtualPath));
 #if TARGET_JVM
 			return worker_request.MapPath (virtualPath);
 #else
@@ -1414,7 +1441,7 @@ namespace System.Web
 #if NET_4_0
 		internal void Validate ()
 		{
-			var cfg = WebConfigurationManager.GetSection ("system.web/httpRuntime") as HttpRuntimeSection;
+			var cfg = HttpRuntime.Section;
 			string query = UrlComponents.Query;
 			
 			if (query != null && query.Length > cfg.MaxQueryStringLength)

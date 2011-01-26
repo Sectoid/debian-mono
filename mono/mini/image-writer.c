@@ -113,7 +113,7 @@
 #define USE_ELF_RELA 1
 #endif
 
-#if defined(TARGET_X86) && !defined(TARGET_WIN32)
+#if defined(TARGET_X86) && !defined(TARGET_WIN32) && !defined(__APPLE__)
 #define USE_ELF_WRITER 1
 #endif
 
@@ -381,9 +381,11 @@ bin_writer_emit_pointer_unaligned (MonoImageWriter *acfg, const char *target)
 {
 	BinReloc *reloc;
 
-	if (!target)
-		// FIXME:
-		g_assert_not_reached ();
+	if (!target) {
+		acfg->cur_section->cur_offset += sizeof (gpointer);
+		return;
+	}
+
 	reloc = g_new0 (BinReloc, 1);
 	reloc->val1 = g_strdup (target);
 	reloc->section = acfg->cur_section;
@@ -1068,7 +1070,7 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 {
 	FILE *file;
 	ElfHeader header;
-	ElfProgHeader progh [3];
+	ElfProgHeader progh [4];
 	ElfSectHeader secth [SECT_NUM];
 #ifdef USE_ELF_RELA
 	ElfRelocA *relocs;
@@ -1334,7 +1336,7 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 	header.e_phoff = sizeof (header);
 	header.e_ehsize = sizeof (header);
 	header.e_phentsize = sizeof (ElfProgHeader);
-	header.e_phnum = 3;
+	header.e_phnum = 4;
 	header.e_entry = secth [SECT_TEXT].sh_addr;
 	header.e_shstrndx = SECT_SHSTRTAB;
 	header.e_shentsize = sizeof (ElfSectHeader);
@@ -1404,6 +1406,13 @@ bin_writer_emit_writeout (MonoImageWriter *acfg)
 	progh [2].p_filesz = progh [2].p_memsz = secth [SECT_DYNAMIC].sh_size;
 	progh [2].p_align = SIZEOF_VOID_P;
 	progh [2].p_flags = 6;
+
+	progh [3].p_type = PT_GNU_STACK;
+	progh [3].p_offset = secth [SECT_DYNAMIC].sh_offset;
+	progh [3].p_vaddr = progh [3].p_paddr = secth [SECT_DYNAMIC].sh_addr;
+	progh [3].p_filesz = progh [3].p_memsz = secth [SECT_DYNAMIC].sh_size;
+	progh [3].p_align = SIZEOF_VOID_P;
+	progh [3].p_flags = 6;
 
 	/* Compute the addresses of the bin sections, so relocation can be done */
 	for (i = 0; i < SECT_NUM; ++i) {
@@ -1576,7 +1585,7 @@ static void
 asm_writer_emit_global (MonoImageWriter *acfg, const char *name, gboolean func)
 {
 	asm_writer_emit_unset_mode (acfg);
-#if  (defined(__ppc__) && defined(TARGET_ASM_APPLE)) || (defined(HOST_WIN32) && !defined(MONO_CROSS_COMPILE))
+#if  ((defined(__ppc__) || defined(TARGET_X86)) && defined(TARGET_ASM_APPLE)) || (defined(HOST_WIN32) && !defined(MONO_CROSS_COMPILE))
     // mach-o always uses a '_' prefix.
 	fprintf (acfg->fp, "\t.globl _%s\n", name);
 #else
@@ -1612,7 +1621,13 @@ static void
 asm_writer_emit_label (MonoImageWriter *acfg, const char *name)
 {
 	asm_writer_emit_unset_mode (acfg);
-#if defined(HOST_WIN32) && (defined(TARGET_X86) || defined(TARGET_AMD64))
+#if (defined(TARGET_X86) && defined(TARGET_ASM_APPLE))
+        name = get_label(name);
+        fprintf (acfg->fp, "%s:\n", name);
+        if (name[0] != 'L')
+            fprintf (acfg->fp, "_%s:\n", name);
+
+#elif (defined(HOST_WIN32) && (defined(TARGET_X86) || defined(TARGET_AMD64))) || (defined(TARGET_X86) && defined(TARGET_ASM_APPLE))
 	fprintf (acfg->fp, "_%s:\n", name);
 #if defined(HOST_WIN32)
 	/* Emit a normal label too */
@@ -1771,6 +1786,17 @@ asm_writer_emit_symbol_diff (MonoImageWriter *acfg, const char *end, const char*
 #else
 	start = get_label (start);
 	end = get_label (end);
+
+	if (offset == 0 && strcmp (start, ".") != 0) {
+		char symbol [128];
+		sprintf (symbol, ".LDIFF_SYM%d", acfg->label_gen);
+		acfg->label_gen ++;
+		fprintf (acfg->fp, "\n%s=%s - %s", symbol, end, start);
+		fprintf (acfg->fp, "\n\t%s ", AS_INT32_DIRECTIVE);
+		fprintf (acfg->fp, "%s", symbol);
+		return;
+	}
+
 	if ((acfg->col_count++ % 8) == 0)
 		fprintf (acfg->fp, "\n\t%s ", AS_INT32_DIRECTIVE);
 	else

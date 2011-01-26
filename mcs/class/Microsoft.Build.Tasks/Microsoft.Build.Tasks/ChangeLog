@@ -1,3 +1,52 @@
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Copy metadata from Project items to target outputs.
+
+	Copy metadata from Project items to the corresponding target
+	outputs in MSBuild task.
+
+	Fix the corresponding test also.
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #663180, second part.
+
+	Fix the way RunningOnMac is detected (use `uname`=="Darwin"),
+	thanks to Michael Hutchinson. And use
+	"/Library/Frameworks/Mono.framework/External/pkgconfig" as a
+	search path for pkg-config files on MacOSX.
+
+2011-01-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Sync *PcFileCache.cs changes from monodevelop.
+
+2011-01-05  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #662355.
+
+	Support reference aliases in Csc task.
+
+2010-11-10  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Emit /platform: for *mcs
+
+	Emit /platform:foo for the *mcs. Based on patch from
+	technomage1972 <dellis1972@googlemail.com> .
+
+2010-09-16  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use files referenced by resx for dependency check.
+
+	For .resx resource files, check files referenced by the resx file
+	also, to determine whether to resgen it or not.
+
+	IsResgenRequired () has been taken from MonoDevelop
+	(main/src/core/MonoDevelop.Core/MonoDevelop.Projects.Formats.MD1/MD1DotNetProjectHandler.cs)
+
+2010-09-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add ToolTask.EnvironmentVariables property.
+
 2010-08-31  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Task 'Touch' should pass even if the file already exists.

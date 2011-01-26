@@ -1435,14 +1435,6 @@ namespace System.Reflection.Emit
 			}
 		}
 		
-		//
-		// Used internally by mcs only
-		//
-		internal void SetCharSet (TypeAttributes ta)
-		{
-			this.attrs = ta;
-		}
-
 		public void SetCustomAttribute (CustomAttributeBuilder customBuilder)
 		{
 			if (customBuilder == null)
@@ -1827,6 +1819,11 @@ namespace System.Reflection.Emit
 			if (constructor == null)
 				throw new NullReferenceException (); //MS raises this instead of an ArgumentNullException
 
+			if (!constructor.DeclaringType.IsGenericTypeDefinition)
+				throw new ArgumentException ("constructor declaring type is not a generic type definition", "constructor");
+			if (constructor.DeclaringType != type.GetGenericTypeDefinition ())
+				throw new ArgumentException ("constructor declaring type is not the generic type definition of type", "constructor");
+
 			ConstructorInfo res = type.GetConstructor (constructor);
 			if (res == null)
 				throw new ArgumentException ("constructor not found");
@@ -1889,6 +1886,9 @@ namespace System.Reflection.Emit
 
 			if (field is FieldOnTypeBuilderInst)
 				throw new ArgumentException ("The specified field must be declared on a generic type definition.", "field");
+
+			if (field.DeclaringType != type.GetGenericTypeDefinition ())
+				throw new ArgumentException ("field declaring type is not the generic type definition of type", "method");
 
 			FieldInfo res = type.GetField (field);
 			if (res == null)

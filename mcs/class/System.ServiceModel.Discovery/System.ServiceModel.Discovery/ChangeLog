@@ -1,3 +1,38 @@
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	[wcf discovery] Use appropriate MessageVersion defined in
+	DiscoveryVersion.
+
+2010-09-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix (isolate) internal namespace for Udp transport.
+
+2010-09-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Cosmetic warning cleanups.
+
+2010-09-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing Discovery duplex (UDP) implementation (not working yet).
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill Duration value. Got managed mode use case working.
+
+2010-09-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of fixes in FindCriteria and relevant contract types for
+	Find operation.
+
+2010-09-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Add a bunch of missing configuration members etc. based on
+	corcompare results.
+
 2010-09-01  Atsushi Eno  <atsushi@ximian.com>
 
 	implement Find operation in request-reply contract in Discovery
