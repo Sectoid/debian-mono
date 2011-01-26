@@ -1,3 +1,36 @@
+2010-09-27  Marek Habersack  <grendel@twistedcode.net>
+
+	[bug workaround] Fix the build of System.Web.Mvc by renaming
+	internal StringComparer class to InternalStringComparer
+
+	The build fails because of what seems to be a bug in gmcs. The
+	compiler reports that the StringComparer.OrdinalIgnoreCase
+	property doesn't exist and it does so because gmcs loads the
+	internal System.Collections.Generic.StringComparer from
+	EqualitComparer.cs instead of the System.StringComparer one.
+
+2010-09-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix EqualityComparer for strings.
+
+	It turns out that Strings need to explicitly use a version that
+	does implement EqualityComparer<string> since string is an
+	IEquatable.
+
+	Do this, and to avoid the reflection mess, cast to object, then
+	cast to the real type
+
+2010-09-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Optimize EqualityComparer for strings
+
+	This shortcut prevents the reflection system to kick into action
+	for compiler generated string switch statements.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Remove no-op code
+
 2010-06-29  Marek Safar <marek.safar@gmail.com>
 
 	* List.cs: Optimize IEnumerable<T> ctor.

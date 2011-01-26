@@ -56,7 +56,7 @@ namespace System.ServiceModel.Discovery.Configuration
 			set { base [discovery_version] = value; }
 		}
 
-		protected override Type EndpointType {
+		protected internal override Type EndpointType {
 			get { return typeof (AnnouncementEndpoint); }
 		}
 		
@@ -67,34 +67,61 @@ namespace System.ServiceModel.Discovery.Configuration
 			set { base [max_announcement_delay] = value; }
 		}
 		
-		protected override ServiceEndpoint CreateServiceEndpoint (ContractDescription contractDescription)
-		{
-			throw new NotImplementedException ();
+		protected override ConfigurationPropertyCollection Properties {
+			get { return properties; }
 		}
 		
-		protected override void InitializeFrom (ServiceEndpoint endpoint)
+		protected internal override ServiceEndpoint CreateServiceEndpoint (ContractDescription contractDescription)
 		{
-			throw new NotImplementedException ();
+			if (contractDescription == null)
+				throw new ArgumentNullException ("contractDescription");
+			var ret = new AnnouncementEndpoint (DiscoveryVersion) { MaxAnnouncementDelay = this.MaxAnnouncementDelay };
+			if (ret.Contract.ContractType != contractDescription.ContractType)
+				throw new ArgumentException ("The argument contractDescription does not represent the expected Announcement contract");
+			return ret;
+		}
+		
+		protected internal override void InitializeFrom (ServiceEndpoint endpoint)
+		{
+			if (endpoint == null)
+				throw new ArgumentNullException ("endpoint");
+			AnnouncementEndpoint ae = (AnnouncementEndpoint) endpoint;
+			DiscoveryVersion = ae.DiscoveryVersion;
+			MaxAnnouncementDelay = ae.MaxAnnouncementDelay;
 		}
 		
 		protected override void OnApplyConfiguration (ServiceEndpoint endpoint, ChannelEndpointElement serviceEndpointElement)
 		{
-			throw new NotImplementedException ();
+			if (endpoint == null)
+				throw new ArgumentNullException ("endpoint");
+			AnnouncementEndpoint ae = (AnnouncementEndpoint) endpoint;
+			if (!ae.DiscoveryVersion.Equals (DiscoveryVersion))
+				throw new ArgumentException ("Argument AnnouncementEndpoint is initialized with different DiscoveryVersion");
+			ae.MaxAnnouncementDelay = MaxAnnouncementDelay;
+			ae.Address = serviceEndpointElement.CreateEndpointAddress (); // it depends on InternalVisibleTo(System.ServiceModel)
+			ae.Binding = ConfigUtil.CreateBinding (serviceEndpointElement.Binding, serviceEndpointElement.BindingConfiguration); // it depends on InternalVisibleTo(System.ServiceModel)
 		}
 
 		protected override void OnApplyConfiguration (ServiceEndpoint endpoint, ServiceEndpointElement serviceEndpointElement)
 		{
-			throw new NotImplementedException ();
+			if (endpoint == null)
+				throw new ArgumentNullException ("endpoint");
+			AnnouncementEndpoint ae = (AnnouncementEndpoint) endpoint;
+			if (!ae.DiscoveryVersion.Equals (DiscoveryVersion))
+				throw new ArgumentException ("Argument AnnouncementEndpoint is initialized with different DiscoveryVersion");
+			ae.MaxAnnouncementDelay = MaxAnnouncementDelay;
+			ae.Address = serviceEndpointElement.CreateEndpointAddress (); // it depends on InternalVisibleTo(System.ServiceModel)
+			ae.Binding = ConfigUtil.CreateBinding (serviceEndpointElement.Binding, serviceEndpointElement.BindingConfiguration); // it depends on InternalVisibleTo(System.ServiceModel)
 		}
 		
 		protected override void OnInitializeAndValidate (ChannelEndpointElement channelEndpointElement)
 		{
-			throw new NotImplementedException ();
+			// It seems to do nothing.
 		}
 		
 		protected override void OnInitializeAndValidate (ServiceEndpointElement serviceEndpointElement)
 		{
-			throw new NotImplementedException ();
+			// It seems to do nothing.
 		}
 	}
 }

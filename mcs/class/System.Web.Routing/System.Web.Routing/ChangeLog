@@ -1,3 +1,20 @@
+2011-01-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Make StopRoutingHandler actually stop the routing
+	instead of throwing an exception
+
+	Patch from Damir Simunic <damir.simunic@wa-research.ch>, thanks!
+
+2010-11-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,routing] Fix for bug #651593. Don't match all-literal
+	routes for URLs with excessive segments.
+
+2010-10-26  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,routing] Fix for bug #648901. Matching engine must ignore
+	trailing slash in the URLs.
+
 2010-06-05  Marek Habersack  <mhabersack@novell.com>
 
 	* UrlRoutingModule.cs: 4.0 doesn't do the UrlRouting.axd magic, it

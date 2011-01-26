@@ -1,3 +1,15 @@
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-12-09  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement CreateSetComparer method in HashSet
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2010-08-19  Jb Evain  <jbevain@gmail.com>
 
 	[Fix] HashSet: fix different sets operations. Fixes #572084

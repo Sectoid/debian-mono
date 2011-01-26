@@ -1,3 +1,11 @@
+2010-10-29  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[OSX] Reintroduce Cocoa System.Drawing support
+
+	The old Cocoa backend for System.Drawing appears to still work.
+	You must pass in a NSView.Handle while in the DrawRect method, or
+	with lockFocus called to prepare the NSGraphicsContext.
+
 2009-07-08  Carlos Alberto Cortez <calberto.cortez@gmail.com>
 
 	* System.Drawing_test.dll.sources: Add PageSourceTest.cs and

@@ -12,6 +12,9 @@
 /* Disable AOT Compiler */
 #undef DISABLE_AOT_COMPILER
 
+/* Disable assembly remapping. */
+#undef DISABLE_ASSEMBLY_REMAPPING
+
 /* Disable agent attach support */
 #undef DISABLE_ATTACH
 
@@ -129,6 +132,9 @@
 /* Define to 1 if you have the <dirent.h> header file. */
 #undef HAVE_DIRENT_H
 
+/* Define to 1 if you have the `dladdr' function. */
+#undef HAVE_DLADDR
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
@@ -158,6 +164,9 @@
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
+
+/* Define to 1 if you have the `execvp' function. */
+#undef HAVE_EXECVP
 
 /* Define to 1 if you have the `fgetgrent' function. */
 #undef HAVE_FGETGRENT
@@ -383,6 +392,9 @@
 
 /* Define to 1 if you have the `round' function. */
 #undef HAVE_ROUND
+
+/* Define to 1 if you have the `sched_getcpu' function. */
+#undef HAVE_SCHED_GETCPU
 
 /* Define to 1 if you have the `sched_setaffinity' function. */
 #undef HAVE_SCHED_SETAFFINITY
@@ -627,6 +639,9 @@
 /* Define to 1 if you have the <sys/xattr.h> header file. */
 #undef HAVE_SYS_XATTR_H
 
+/* Have system zlib */
+#undef HAVE_SYS_ZLIB
+
 /* Define to 1 if you have the `telldir' function. */
 #undef HAVE_TELLDIR
 
@@ -720,9 +735,6 @@
 
 /* Length of zero length arrays */
 #undef MONO_ZERO_LEN_ARRAY
-
-/* Building for Moonlight */
-#undef MOONLIGHT
 
 /* Name of /dev/random */
 #undef NAME_DEV_RANDOM

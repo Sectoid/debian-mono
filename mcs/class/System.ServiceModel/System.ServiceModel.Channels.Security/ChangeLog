@@ -1,3 +1,18 @@
+2010-10-15  Atsushi Eno  <atsushi@ximian.com>
+
+	The previous changes somehow regressed on olive samples, so give
+	quick fixes.
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add SecurityDuplexSessionChannel, and making room for duplex
+	channel, phase 2.
+
+2010-10-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Eliminate IReplyChannel dependency in security support and make
+	room for (TCP) duplex channel.
+
 2010-07-15  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* SecurityReplyChannel.cs : when the inner channel gave null

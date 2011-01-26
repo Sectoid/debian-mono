@@ -209,6 +209,7 @@ System.ComponentModel/DataObjectFieldAttribute.cs
 System.ComponentModel/DataObjectMethodAttribute.cs
 System.ComponentModel/DataObjectMethodType.cs
 System.ComponentModel/DateTimeConverter.cs
+System.ComponentModel/DateTimeOffsetConverter.cs
 System.ComponentModel/DecimalConverter.cs
 System.ComponentModel/DefaultBindingPropertyAttribute.cs
 System.ComponentModel/DefaultEventAttribute.cs
@@ -239,6 +240,8 @@ System.ComponentModel.Design/DesignerVerbCollection.cs
 System.ComponentModel.Design/DesignerVerb.cs
 System.ComponentModel.Design/DesigntimeLicenseContext.cs
 System.ComponentModel.Design/DesigntimeLicenseContextSerializer.cs
+System.ComponentModel.Design/IDesignerHostTransactionState.cs
+System.ComponentModel.Design/TypeDescriptionProviderService.cs
 System.ComponentModel/DesignerAttribute.cs
 System.ComponentModel/DesignerCategoryAttribute.cs
 System.ComponentModel/DesignerSerializationVisibilityAttribute.cs
@@ -279,6 +282,7 @@ System.ComponentModel.Design.Serialization/ContextStack.cs
 System.ComponentModel.Design.Serialization/DesignerLoader.cs
 System.ComponentModel.Design.Serialization/DesignerSerializerAttribute.cs
 System.ComponentModel.Design.Serialization/IDesignerLoaderHost.cs
+System.ComponentModel.Design.Serialization/IDesignerLoaderHost2.cs
 System.ComponentModel.Design.Serialization/IDesignerLoaderService.cs
 System.ComponentModel.Design.Serialization/IDesignerSerializationManager.cs   
 System.ComponentModel.Design.Serialization/IDesignerSerializationProvider.cs
@@ -675,6 +679,7 @@ System.Net/CookieCollection.cs
 System.Net/CookieContainer.cs
 System.Net/Cookie.cs
 System.Net/CookieException.cs
+System.Net/CookieParser.cs
 System.Net/CredentialCache.cs
 System.Net/DecompressionMethods.cs
 System.Net/DefaultCertificatePolicy.cs
@@ -887,6 +892,16 @@ System.Security.Authentication/HashAlgorithmType.cs
 System.Security.Authentication/SslProtocols.cs
 System.Security.Authentication/InvalidCredentialException.cs
 System.Security.Authentication.ExtendedProtection/ChannelBinding.cs
+System.Security.Authentication.ExtendedProtection/ChannelBindingKind.cs
+System.Security.Authentication.ExtendedProtection/ExtendedProtectionPolicy.cs
+System.Security.Authentication.ExtendedProtection/ExtendedProtectionPolicyTypeConverter.cs
+System.Security.Authentication.ExtendedProtection/PolicyEnforcement.cs
+System.Security.Authentication.ExtendedProtection/ProtectionScenario.cs
+System.Security.Authentication.ExtendedProtection/ServiceNameCollection.cs
+System.Security.Authentication.ExtendedProtection.Configuration/ConfigUtil.cs
+System.Security.Authentication.ExtendedProtection.Configuration/ExtendedProtectionPolicyElement.cs
+System.Security.Authentication.ExtendedProtection.Configuration/ServiceNameElement.cs
+System.Security.Authentication.ExtendedProtection.Configuration/ServiceNameElementCollection.cs
 System.Security.Cryptography/AsnEncodedDataCollection.cs
 System.Security.Cryptography/AsnEncodedData.cs
 System.Security.Cryptography/AsnEncodedDataEnumerator.cs

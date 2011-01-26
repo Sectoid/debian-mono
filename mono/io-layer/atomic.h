@@ -92,7 +92,7 @@ static inline gpointer InterlockedCompareExchangePointer(volatile gpointer *dest
 	gpointer old;
 
 	__asm__ __volatile__ ("lock; "
-#ifdef __x86_64__
+#if defined(__x86_64__)  && !defined(__native_client__)
 			      "cmpxchgq"
 #else
 			      "cmpxchgl"
@@ -154,7 +154,7 @@ static inline gpointer InterlockedExchangePointer(volatile gpointer *val,
 	gpointer ret;
 	
 	__asm__ __volatile__ ("1:; lock; "
-#ifdef __x86_64__
+#if defined(__x86_64__)  && !defined(__native_client__)
 			      "cmpxchgq"
 #else
 			      "cmpxchgl"
@@ -752,6 +752,7 @@ static inline gint32 InterlockedCompareExchange(volatile gint32 *dest, gint32 ex
 				"mov	%0, #0\n"
 				"ldrex %1, [%2]\n"
 				"teq	%1, %3\n"
+				"it eq\n"
 				"strexeq %0, %4, [%2]\n"
 				"teq %0, #0\n"
 				"bne 1b\n"
@@ -789,6 +790,7 @@ static inline gpointer InterlockedCompareExchangePointer(volatile gpointer *dest
 				"mov	%0, #0\n"
 				"ldrex %1, [%2]\n"
 				"teq	%1, %3\n"
+				"it eq\n"
 				"strexeq %0, %4, [%2]\n"
 				"teq %0, #0\n"
 				"bne 1b\n"

@@ -1,3 +1,15 @@
+2010-09-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix the issue that callback contract often gets confused by
+	picking unexpected contract type.
+
+	The problem is that DispatchRuntime.Type is a service
+	implementation type that could implement two or more contract
+	interfaces, and it was in random order how ServiceProxyGenerator
+	picks up the contract type. Now it looks for correct contract type
+	instead of the service type by exactly looking for the target
+	contract in the endpoint (dispatcher).
+
 2010-06-22  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* DispatchRuntimeTest.cs : add another line of assertion.

@@ -1,3 +1,89 @@
+2011-01-04  Marek Habersack  <grendel@twistedcode.net>
+
+	[system] Unbreak a 4.0 System.ServiceModel test.
+
+	This type is instantiated by one of the tests for the
+	System.ServiceModel.Channels.HttpTransportBindingElement type.
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
+2010-11-05  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.dll.sources: * mobile_System.dll.sources: *
+	moonlight_shared_System.dll.sources: Add new CookieParser.cs to
+	the build
+
+2010-10-26  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* moonlight_shared_System.dll.sources: Add Stopwatch to fix the
+	build
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	ExtendedProtection Configuration types are also used in WCF 4.0.
+
+2010-10-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Add System.Security.Authentication.ExtendedProtection stubs,
+	referenced by WCF 4.0.
+
+2010-09-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	LocalEndPoint works now for non-blocking connects
+
+	We didn't keep the endpoint around for non-blocking connects and
+	later, when Poll() was called, we didn't have the information.
+	Also 'isbound' wasn't being set in a few places and UDP sockets
+	needed to be marked as not connected after a call to Connect()
+	with an Any address.
+
+	Removed an old test for Connect(Any) with UDP sockets, since this
+	is used to disconnect them now.
+
+	Fixes bug #640749.
+
+2010-09-21  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.dll.sources: Add IDesignerLoaderHost2.cs to our build.
+
+2010-09-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.dll.sources: Add IDesignerHostTransactionState.cs and
+	TypeDescriptionProviderService.cs to our build.
+
+2010-09-13  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System_test.dll.sources: Include TypeDescriptionProviderTest.cs
+	in our build.
+
+2010-09-09  Jb Evain  <jbevain@gmail.com>
+
+	Fix System usage of bootstrap .sources from the normal .sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monodroid and monotouch profile builds
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Factorize the monotouch and monodroid sources into a
+	mobile.sources
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System build for monodroid
+
+2010-09-07  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System.dll.sources: Add DateTimeOffsetConverter.cs. *
+	System_test.dll.sources: Add DateTimeOffsetConverterTests.cs.
+
+2010-09-03  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* System_test.dll.sources: Add AttributeCollectionTest.cs.
+
 2010-08-17  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Update file hierarchy change in System too

@@ -1,3 +1,40 @@
+2010-10-29  Andreia Gaita  <shana@jitted.com>
+
+	[JsonWriter] Fix JsonWriter yet again. Behaviour of WriteRaw on
+	.net and sl is different, so ifdef to make everyone happy!
+
+2010-10-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix JsonWriterTest.WriteRaw() regression. WriteRaw() is (looking)
+	almost identical to WriteString() here.
+
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Add support for calling external json (de)serialization
+	methods
+
+	On Moonlight, ScriptObject types have custom (de)serialization
+	methods that need to be called whenever a user object includes
+	properties of that type. This patch creates a TypeMap subclass
+	(ExternalTypeMap) and exposes a method that can be called from
+	moon's System.Windows.Browser to register custom serialization and
+	deserialization methods, keyed by type. These are called whenever
+	a property is found with a type (or base type) that has custom
+	methods registered.
+
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Fix decimal type serialization
+
+2010-09-30  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Fix uint type conversion when reading, should be mapped to
+	long, not int
+
+2010-09-24  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	JsonSerializationWriter: handle char values
+
 2010-07-27  Andreia Gaita  <avidigal@novell.com>
 
 	* JsonSerializationReader.cs: Add Char type to the switch. Reads the

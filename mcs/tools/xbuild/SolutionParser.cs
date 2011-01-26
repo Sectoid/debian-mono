@@ -93,7 +93,7 @@ namespace Mono.XBuild.CommandLine {
 		static string guidExpression = "{[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}}";
 
 		static Regex slnVersionRegex = new Regex (@"Microsoft Visual Studio Solution File, Format Version (\d?\d.\d\d)");
-		static Regex projectRegex = new Regex ("Project\\(\"(" + guidExpression + ")\"\\) = \"(.*?)\", \"(.*?)\", \"(" + guidExpression + ")\"(\\s*?)((\\s*?)ProjectSection\\((.*?)\\) = (.*?)EndProjectSection(\\s*?))*(\\s*?)EndProject?", RegexOptions.Singleline);
+		static Regex projectRegex = new Regex ("Project\\(\"(" + guidExpression + ")\"\\) = \"(.*?)\", \"(.*?)\", \"(" + guidExpression + ")\"(\\s*?)((\\s*?)ProjectSection\\((.*?)\\) = (.*?)EndProjectSection(\\s*?))*(\\s*?)(EndProject)?", RegexOptions.Singleline);
 		static Regex projectDependenciesRegex = new Regex ("ProjectSection\\((.*?)\\) = \\w*(.*?)EndProjectSection", RegexOptions.Singleline);
 		static Regex projectDependencyRegex = new Regex ("\\s*(" + guidExpression + ") = (" + guidExpression + ")");
 		static Regex projectSectionPropertiesRegex = new Regex ("\\s*(?<name>.*) = \"(?<value>.*)\"");
@@ -751,20 +751,10 @@ namespace Mono.XBuild.CommandLine {
 					string target_name = GetTargetNameForProject (project.Name, buildTarget);
 					Target target = p.Targets.AddNewTarget (target_name);
 					target.Condition = "'$(CurrentSolutionConfigurationContents)' != ''"; 
-
-					if (project.Dependencies.Count > 0) {
-						StringBuilder dependencies = new StringBuilder ();
-						foreach (ProjectInfo dependentInfo in project.Dependencies.Values) {
-							if (dependencies.Length > 0)
-								dependencies.Append (";");
-							if (IsBuildTargetName (dependentInfo.Name))
-								dependencies.Append ("Solution:");
-							dependencies.Append (dependentInfo.Name);
-							if (buildTarget != "Build")
-								dependencies.Append (":" + buildTarget);
-						}
-						target.DependsOnTargets = dependencies.ToString ();
-					}
+					if (project.Dependencies.Count > 0)
+						target.DependsOnTargets = String.Join (";",
+								project.Dependencies.Values.Select (
+									di => GetTargetNameForProject (di.Name, buildTarget)).ToArray ());
 
 					foreach (TargetInfo targetInfo in solutionTargets) {
 						BuildTask task = null;

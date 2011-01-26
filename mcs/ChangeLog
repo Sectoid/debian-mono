@@ -1,3 +1,54 @@
+2011-01-05  Marek Safar  <marek.safar@gmail.com>
+
+	Build mcs before docs
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Build culevel in basic as well
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	[661642] Fixed v4 resgen compilation
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Fix resgen build order
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-12-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove unused nunit.key file.
+
+2010-11-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove obsolete mcs/configure script. Fixes #650806.
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up test files
+
+2010-10-20  Marek Safar  <marek.safar@gmail.com>
+
+	[601801] Fixes for parsing nant documentation
+
+	Gleb Golubitsky <rush.william@gmail.com>
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	There are actually some 3.5 only dlls, thanks to ankit for poiting
+	out.
+
+2010-09-15  Marek Safar  <marek.safar@gmail.com>
+
+	Removed class from net_3_5 subdirs
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Orchestrate the monodroid build bootstrap
+
 2010-08-24  Zoltan Varga  <vargaz@gmail.com>
 
 	Update the message in the mcs dir-check.

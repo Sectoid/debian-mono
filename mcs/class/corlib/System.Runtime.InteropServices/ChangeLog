@@ -1,3 +1,24 @@
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[SafeHandle] Fixing docs
+
+2010-12-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[SafeHandle] Add bits of documentation
+
+2010-12-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[SafeHandle] Make success parameter setting atomic wrt async
+	exception in DangerousAddRef
+
+2010-12-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[SafeHandle] Protect Close against asynchronous exceptions
+
 2010-08-23  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Type is sealed, forgot to make it so.

@@ -1,3 +1,7 @@
+2010-10-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Add some WCF types in moonlight_raw System.Xml.Serialization.dll.
+
 2010-03-16  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	* Makefile: 

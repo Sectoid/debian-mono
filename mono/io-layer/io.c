@@ -28,6 +28,10 @@
 #include <fnmatch.h>
 #include <stdio.h>
 #include <utime.h>
+#ifdef __linux__
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#endif
 
 #include <mono/io-layer/wapi.h>
 #include <mono/io-layer/wapi-private.h>
@@ -797,6 +801,34 @@ static guint32 file_getfilesize(gpointer handle, guint32 *highsize)
 		_wapi_set_last_error_from_errno ();
 		return(INVALID_FILE_SIZE);
 	}
+	
+	/* fstat indicates block devices as zero-length, so go a different path */
+#ifdef BLKGETSIZE64
+	if (S_ISBLK(statbuf.st_mode)) {
+		guint64 bigsize;
+		if (ioctl(fd, BLKGETSIZE64, &bigsize) < 0) {
+#ifdef DEBUG
+			g_message ("%s: handle %p ioctl BLKGETSIZE64 failed: %s",
+				   __func__, handle, strerror(errno));
+#endif
+
+			_wapi_set_last_error_from_errno ();
+			return(INVALID_FILE_SIZE);
+		}
+		
+		size = bigsize & 0xFFFFFFFF;
+		if (highsize != NULL) {
+			*highsize = bigsize>>32;
+		}
+
+#ifdef DEBUG
+		g_message ("%s: Returning block device size %d/%d",
+			   __func__, size, *highsize);
+#endif
+	
+		return(size);
+	}
+#endif
 	
 #ifdef HAVE_LARGE_FILE_SUPPORT
 	size = statbuf.st_size & 0xFFFFFFFF;
@@ -1817,10 +1849,12 @@ gboolean MoveFile (const gunichar2 *name, const gunichar2 *dest_name)
 	 * the same file as src.
 	 */
 	if (_wapi_stat (utf8_name, &stat_src) < 0) {
-		_wapi_set_last_path_error_from_errno (NULL, utf8_name);
-		g_free (utf8_name);
-		g_free (utf8_dest_name);
-		return FALSE;
+		if (errno != ENOENT || _wapi_lstat (utf8_name, &stat_src) < 0) {
+			_wapi_set_last_path_error_from_errno (NULL, utf8_name);
+			g_free (utf8_name);
+			g_free (utf8_dest_name);
+			return FALSE;
+		}
 	}
 	
 	if (!_wapi_stat (utf8_dest_name, &stat_dest)) {
@@ -3553,6 +3587,34 @@ guint32 GetTempPath (guint32 len, gunichar2 *buf)
 	return(ret);
 }
 
+/* In-place octal sequence replacement */
+static void
+unescape_octal (gchar *str)
+{
+	gchar *rptr;
+	gchar *wptr;
+
+	if (str == NULL)
+		return;
+
+	rptr = wptr = str;
+	while (*rptr != '\0') {
+		if (*rptr == '\\') {
+			char c;
+			rptr++;
+			c = (*(rptr++) - '0') << 6;
+			c += (*(rptr++) - '0') << 3;
+			c += *(rptr++) - '0';
+			*wptr++ = c;
+		} else if (wptr != rptr) {
+			*wptr++ = *rptr++;
+		} else {
+			rptr++; wptr++;
+		}
+	}
+	*wptr = '\0';
+}
+
 gint32
 GetLogicalDriveStrings (guint32 len, gunichar2 *buf)
 {
@@ -3588,10 +3650,12 @@ GetLogicalDriveStrings (guint32 len, gunichar2 *buf)
 			continue;
 		}
 
-		dir = g_utf8_to_utf16 (*(splitted + 1), -1, &length, NULL, NULL);
+		unescape_octal (*(splitted + 1));
+		dir = g_utf8_to_utf16 (*(splitted + 1), -1, NULL, &length, NULL);
 		g_strfreev (splitted);
 		if (total + length + 1 > len) {
 			fclose (fp);
+			g_free (dir);
 			return len * 2; /* guess */
 		}
 
@@ -3650,6 +3714,7 @@ gboolean GetDiskFreeSpaceEx(const gunichar2 *path_name, WapiULargeInteger *free_
 	gboolean isreadonly;
 	gchar *utf8_path_name;
 	int ret;
+	unsigned long block_size;
 
 	if (path_name == NULL) {
 		utf8_path_name = g_strdup (g_get_current_dir());
@@ -3674,9 +3739,11 @@ gboolean GetDiskFreeSpaceEx(const gunichar2 *path_name, WapiULargeInteger *free_
 #ifdef HAVE_STATVFS
 		ret = statvfs (utf8_path_name, &fsstat);
 		isreadonly = ((fsstat.f_flag & ST_RDONLY) == ST_RDONLY);
+		block_size = fsstat.f_frsize;
 #elif defined(HAVE_STATFS)
 		ret = statfs (utf8_path_name, &fsstat);
 		isreadonly = ((fsstat.f_flags & MNT_RDONLY) == MNT_RDONLY);
+		block_size = fsstat.f_bsize;
 #endif
 	} while(ret == -1 && errno == EINTR);
 
@@ -3696,13 +3763,13 @@ gboolean GetDiskFreeSpaceEx(const gunichar2 *path_name, WapiULargeInteger *free_
 			free_bytes_avail->QuadPart = 0;
 		}
 		else {
-			free_bytes_avail->QuadPart = fsstat.f_bsize * fsstat.f_bavail;
+			free_bytes_avail->QuadPart = block_size * (guint64)fsstat.f_bavail;
 		}
 	}
 
 	/* total number of bytes available for non-root */
 	if (total_number_of_bytes != NULL) {
-		total_number_of_bytes->QuadPart = fsstat.f_bsize * fsstat.f_blocks;
+		total_number_of_bytes->QuadPart = block_size * (guint64)fsstat.f_blocks;
 	}
 
 	/* total number of bytes available for root */
@@ -3711,7 +3778,7 @@ gboolean GetDiskFreeSpaceEx(const gunichar2 *path_name, WapiULargeInteger *free_
 			total_number_of_free_bytes->QuadPart = 0;
 		}
 		else {
-			total_number_of_free_bytes->QuadPart = fsstat.f_bsize * fsstat.f_bfree;
+			total_number_of_free_bytes->QuadPart = block_size * (guint64)fsstat.f_bfree;
 		}
 	}
 	

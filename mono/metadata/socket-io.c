@@ -71,7 +71,7 @@
 
 #include "mono/io-layer/socket-wrappers.h"
 
-#ifdef HOST_WIN32
+#if defined(HOST_WIN32)
 /* This is a kludge to make this file build under cygwin:
  * w32api/ws2tcpip.h has definitions for some AF_INET6 values and
  * prototypes for some but not all required functions (notably
@@ -553,6 +553,7 @@ static gint32 convert_sockopt_level_and_name(MonoSocketOptionLevel mono_level,
 
 		switch(mono_name) {
 		case SocketOptionName_IpTimeToLive:
+		case SocketOptionName_HopLimit:
 			*system_name = IPV6_UNICAST_HOPS;
 			break;
 		case SocketOptionName_MulticastInterface:
@@ -659,14 +660,16 @@ static MonoImage *get_socket_assembly (void)
 {
 	static const char *version = NULL;
 	static gboolean moonlight;
-	static MonoImage *socket_assembly = NULL;
+	MonoDomain *domain = mono_domain_get ();
 	
 	if (version == NULL) {
 		version = mono_get_runtime_info ()->framework_version;
 		moonlight = !strcmp (version, "2.1");
 	}
 	
-	if (socket_assembly == NULL) {
+	if (domain->socket_assembly == NULL) {
+		MonoImage *socket_assembly;
+
 		if (moonlight) {
 			socket_assembly = mono_image_loaded ("System.Net");
 			if (!socket_assembly) {
@@ -690,9 +693,11 @@ static MonoImage *get_socket_assembly (void)
 				}
 			}
 		}
+
+		domain->socket_assembly = socket_assembly;
 	}
 	
-	return(socket_assembly);
+	return domain->socket_assembly;
 }
 
 #ifdef AF_INET6
@@ -902,17 +907,21 @@ static MonoObject *create_object_from_sockaddr(struct sockaddr *saddr,
 {
 	MonoDomain *domain = mono_domain_get ();
 	MonoObject *sockaddr_obj;
-	MonoClass *sockaddr_class;
-	MonoClassField *field;
 	MonoArray *data;
 	MonoAddressFamily family;
 
 	/* Build a System.Net.SocketAddress object instance */
-	sockaddr_class=mono_class_from_name_cached (get_socket_assembly (), "System.Net", "SocketAddress");
-	sockaddr_obj=mono_object_new(domain, sockaddr_class);
+	if (!domain->sockaddr_class) {
+		domain->sockaddr_class=mono_class_from_name (get_socket_assembly (), "System.Net", "SocketAddress");
+		g_assert (domain->sockaddr_class);
+	}
+	sockaddr_obj=mono_object_new(domain, domain->sockaddr_class);
 	
 	/* Locate the SocketAddress data buffer in the object */
-	field=mono_class_get_field_from_name_cached (sockaddr_class, "data");
+	if (!domain->sockaddr_data_field) {
+		domain->sockaddr_data_field=mono_class_get_field_from_name (domain->sockaddr_class, "data");
+		g_assert (domain->sockaddr_data_field);
+	}
 
 	/* Make sure there is space for the family and size bytes */
 #ifdef HAVE_SYS_UN_H
@@ -960,7 +969,7 @@ static MonoObject *create_object_from_sockaddr(struct sockaddr *saddr,
 		mono_array_set(data, guint8, 6, (address>>8) & 0xff);
 		mono_array_set(data, guint8, 7, (address) & 0xff);
 	
-		mono_field_set_value (sockaddr_obj, field, data);
+		mono_field_set_value (sockaddr_obj, domain->sockaddr_data_field, data);
 
 		return(sockaddr_obj);
 #ifdef AF_INET6
@@ -990,7 +999,7 @@ static MonoObject *create_object_from_sockaddr(struct sockaddr *saddr,
 		mono_array_set(data, guint8, 27,
 			       (sa_in->sin6_scope_id >> 24) & 0xff);
 
-		mono_field_set_value (sockaddr_obj, field, data);
+		mono_field_set_value (sockaddr_obj, domain->sockaddr_data_field, data);
 
 		return(sockaddr_obj);
 #endif
@@ -1002,7 +1011,7 @@ static MonoObject *create_object_from_sockaddr(struct sockaddr *saddr,
 			mono_array_set (data, guint8, i+2, saddr->sa_data[i]);
 		}
 		
-		mono_field_set_value (sockaddr_obj, field, data);
+		mono_field_set_value (sockaddr_obj, domain->sockaddr_data_field, data);
 
 		return sockaddr_obj;
 #endif
@@ -1012,52 +1021,88 @@ static MonoObject *create_object_from_sockaddr(struct sockaddr *saddr,
 	}
 }
 
-extern MonoObject *ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal(SOCKET sock, gint32 *error)
+static int
+get_sockaddr_size (int family)
 {
-	gchar sa[32];	/* sockaddr in not big enough for sockaddr_in6 */
+	int size;
+
+	size = 0;
+	if (family == AF_INET) {
+		size = sizeof (struct sockaddr_in);
+#ifdef AF_INET6
+	} else if (family == AF_INET6) {
+		size = sizeof (struct sockaddr_in6);
+#endif
+#ifdef HAVE_SYS_UN_H
+	} else if (family == AF_UNIX) {
+		size = sizeof (struct sockaddr_un);
+#endif
+	}
+	return size;
+}
+
+extern MonoObject *ves_icall_System_Net_Sockets_Socket_LocalEndPoint_internal(SOCKET sock, gint32 af, gint32 *error)
+{
+	gchar *sa;
 	socklen_t salen;
 	int ret;
+	MonoObject *result;
 	
 	MONO_ARCH_SAVE_REGS;
 
 	*error = 0;
 	
-	salen=sizeof(sa);
+	salen = get_sockaddr_size (convert_family (af));
+	if (salen == 0) {
+		*error = WSAEAFNOSUPPORT;
+		return NULL;
+	}
+	sa = g_malloc0 (salen);
 	ret = _wapi_getsockname (sock, (struct sockaddr *)sa, &salen);
 	
 	if(ret==SOCKET_ERROR) {
 		*error = WSAGetLastError ();
+		g_free (sa);
 		return(NULL);
 	}
 	
 	LOGDEBUG (g_message("%s: bound to %s port %d", __func__, inet_ntoa(((struct sockaddr_in *)&sa)->sin_addr), ntohs(((struct sockaddr_in *)&sa)->sin_port)));
 
-	return(create_object_from_sockaddr((struct sockaddr *)sa, salen,
-					   error));
+	result = create_object_from_sockaddr((struct sockaddr *)sa, salen, error);
+	g_free (sa);
+	return result;
 }
 
-extern MonoObject *ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal(SOCKET sock, gint32 *error)
+extern MonoObject *ves_icall_System_Net_Sockets_Socket_RemoteEndPoint_internal(SOCKET sock, gint32 af, gint32 *error)
 {
-	gchar sa[32];	/* sockaddr in not big enough for sockaddr_in6 */
+	gchar *sa;
 	socklen_t salen;
 	int ret;
+	MonoObject *result;
 	
 	MONO_ARCH_SAVE_REGS;
 
 	*error = 0;
 	
-	salen=sizeof(sa);
+	salen = get_sockaddr_size (convert_family (af));
+	if (salen == 0) {
+		*error = WSAEAFNOSUPPORT;
+		return NULL;
+	}
+	sa = g_malloc0 (salen);
+	/* Note: linux returns just 2 for AF_UNIX. Always. */
 	ret = _wapi_getpeername (sock, (struct sockaddr *)sa, &salen);
-	
 	if(ret==SOCKET_ERROR) {
 		*error = WSAGetLastError ();
+		g_free (sa);
 		return(NULL);
 	}
 	
 	LOGDEBUG (g_message("%s: connected to %s port %d", __func__, inet_ntoa(((struct sockaddr_in *)&sa)->sin_addr), ntohs(((struct sockaddr_in *)&sa)->sin_port)));
 
-	return(create_object_from_sockaddr((struct sockaddr *)sa, salen,
-					   error));
+	result = create_object_from_sockaddr((struct sockaddr *)sa, salen, error);
+	g_free (sa);
+	return result;
 }
 
 static struct sockaddr *create_sockaddr_from_object(MonoObject *saddr_obj,
@@ -1790,8 +1835,18 @@ void ves_icall_System_Net_Sockets_Socket_GetSocketOption_obj_internal(SOCKET soc
 
 	*error = 0;
 	
-	ret=convert_sockopt_level_and_name(level, name, &system_level,
-					   &system_name);
+#if !defined(SO_EXCLUSIVEADDRUSE) && defined(SO_REUSEADDR)
+	if (level == SocketOptionLevel_Socket && name == SocketOptionName_ExclusiveAddressUse) {
+		system_level = SOL_SOCKET;
+		system_name = SO_REUSEADDR;
+		ret = 0;
+	} else
+#endif
+	{
+
+		ret = convert_sockopt_level_and_name (level, name, &system_level, &system_name);
+	}
+
 	if(ret==-1) {
 		*error = WSAENOPROTOOPT;
 		return;
@@ -1898,9 +1953,12 @@ void ves_icall_System_Net_Sockets_Socket_GetSocketOption_obj_internal(SOCKET soc
 #endif
 
 	default:
+#if !defined(SO_EXCLUSIVEADDRUSE) && defined(SO_REUSEADDR)
+		if (level == SocketOptionLevel_Socket && name == SocketOptionName_ExclusiveAddressUse)
+			val = val ? 0 : 1;
+#endif
 		obj = int_to_object (domain, val);
 	}
-
 	*obj_val=obj;
 }
 
@@ -2015,6 +2073,15 @@ void ves_icall_System_Net_Sockets_Socket_SetSocketOption_internal(SOCKET sock, g
 
 	ret=convert_sockopt_level_and_name(level, name, &system_level,
 					   &system_name);
+
+#if !defined(SO_EXCLUSIVEADDRUSE) && defined(SO_REUSEADDR)
+	if (level == SocketOptionLevel_Socket && name == SocketOptionName_ExclusiveAddressUse) {
+		system_name = SO_REUSEADDR;
+		int_val = int_val ? 0 : 1;
+		ret = 0;
+	}
+#endif
+
 	if(ret==-1) {
 		*error = WSAENOPROTOOPT;
 		return;
@@ -2783,7 +2850,7 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = get_family_hint ();
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_CANONNAME | AI_ADDRCONFIG;
+	hints.ai_flags = AI_CANONNAME;
 
 	if (*hostname && getaddrinfo(hostname, NULL, &hints, &info) == -1) {
 		return(FALSE);

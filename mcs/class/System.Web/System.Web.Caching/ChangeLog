@@ -1,3 +1,76 @@
+2010-11-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Disabled array clearing on heap resize in
+	CacheItemPriorityQueue as it causes NREX to be thrown with > 8192
+	items in the queue.
+
+	- Rewrote the CacheItem priority queue test generator to generate
+	better code. - CacheItem in System.Web doesn't have the unused
+	Guid field now (the field is used only for tests) - Added a huge
+	sequence to CacheItem priority queue tests (10k entries)
+
+2010-11-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added a reminder comment about stack scanning in
+	CacheItemPriorityQueue.ResizeHeap
+
+2010-11-18  Marek Habersack  <grendel@twistedcode.net>
+
+	* System.Web.Caching/CacheItemPriorityQueue.cs: when the heap is
+	resized, the old heap memory is cleared. *
+	System.Web.SessionState_2.0/SessionInProcHandler.cs: the session
+	items collection is cleared when the InProcSessionItem is
+	destroyed * System.Web/HttpApplicationState.cs: instantiate
+	SessionObjects and StaticObjects collections only on demand.
+	Replaced ReaderWriterLock with ReaderWriterLockSlim. Removed a few
+	variables which aren't needed. *
+	System.Web/HttpStaticObjectsCollection.cs: replaced a Hashtable
+	with a Dictionary <string, object>. The objects dictionary is
+	created on demand only.
+
+2010-11-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Removed the DEBUG ifdefs, for the tests to compile.
+
+	This is temporary until the tests are rewritten (soon)
+
+2010-11-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] New version of code to purge underused entries from the
+	cache.
+
+	This version uses an LRU cache to hold the cache items. Priority
+	is not taken into account when removing the underused entries
+	(with the exception of the CacheItemPriority.NotRemovable - items
+	with this priority are never purged), they are treated equally. A
+	separate thread is not used to perform purging, instead the
+	collection happens in the current requests's thread. Minor
+	improvements to cache item enumerator and to the CheckDependencies
+	method.
+
+2010-11-15  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Remove unnecessary try/catch block from the old entries
+	expiration code.
+
+2010-11-13  Marek Habersack  <grendel@twistedcode.net>
+
+	* Cache.cs: cache removes old/least recently used items when the
+	item count exceeds 15000. Items are removed until they reach the
+	count of 10000. * SessionInProcHandler.cs: replaced
+	ReaderWriterLock with ReaderWriterLockSlim and added a Dispose
+	method to the InProcSessionItem type which disposes the associated
+	lock and other resources.
+
+2010-11-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Expire items must always check if the dequeued item is
+	not null before using it.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2010-09-28  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Remove lock recursion in Cache.ExpireItems

@@ -24,6 +24,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Markup;
@@ -33,14 +34,6 @@ namespace System.Xaml
 {
 	static class TypeExtensionMethods
 	{
-		// FIXME: this likely needs to be replaced with XamlTypeName
-		public static string GetXamlName (this Type type)
-		{
-			if (!type.IsNested)
-				return type.Name;
-			return type.DeclaringType.GetXamlName () + "+" + type.Name;
-		}
-
 		#region inheritance search and custom attribute provision
 
 		public static T GetCustomAttribute<T> (this ICustomAttributeProvider type, bool inherit) where T : Attribute
@@ -55,7 +48,7 @@ namespace System.Xaml
 			if (type.UnderlyingType == null)
 				return null;
 
-			T ret = type.CustomAttributeProvider.GetCustomAttribute<T> (true);
+			T ret = type.GetCustomAttributeProvider ().GetCustomAttribute<T> (true);
 			if (ret != null)
 				return ret;
 			if (type.BaseType != null)
@@ -74,6 +67,8 @@ namespace System.Xaml
 				throw new ArgumentNullException ("type");
 			if (definition == null)
 				throw new ArgumentNullException ("definition");
+			if (type == definition)
+				return true;
 
 			foreach (var iface in type.GetInterfaces ())
 				if (iface == definition || (iface.IsGenericType && iface.GetGenericTypeDefinition () == definition))
@@ -85,101 +80,102 @@ namespace System.Xaml
 		
 		#region type conversion and member value retrieval
 		
-		public static string GetStringValue (this XamlType xt, object obj, INamespacePrefixLookup prefixLookup)
+		static readonly NullExtension null_value = new NullExtension ();
+
+		public static object GetExtensionWrapped (object o)
+		{
+			// FIXME: should this manually checked, or is there any way to automate it?
+			// Also XamlSchemaContext might be involved but this method signature does not take it consideration.
+			if (o == null)
+				return null_value;
+			if (o is Array)
+				return new ArrayExtension ((Array) o);
+			if (o is Type)
+				return new TypeExtension ((Type) o);
+			return o;
+		}
+		
+		public static string GetStringValue (XamlType xt, XamlMember xm, object obj, IValueSerializerContext vsctx)
 		{
 			if (obj == null)
 				return String.Empty;
 			if (obj is Type)
-				return new XamlTypeName (xt.SchemaContext.GetXamlType ((Type) obj)).ToString (prefixLookup);
+				return new XamlTypeName (xt.SchemaContext.GetXamlType ((Type) obj)).ToString (vsctx != null ? vsctx.GetService (typeof (INamespacePrefixLookup)) as INamespacePrefixLookup : null);
 
-			if (obj is DateTime)
-				// FIXME: DateTimeValueSerializer should apply
-				return (string) TypeDescriptor.GetConverter (typeof (DateTime)).ConvertToInvariantString (obj);
-			else
-				return (string) xt.ConvertObject (obj, typeof (string));
-		}
+			var vs = (xm != null ? xm.ValueSerializer : null) ?? xt.ValueSerializer;
+			if (vs != null)
+				return vs.ConverterInstance.ConvertToString (obj, vsctx);
 
-		public static object ConvertObject (this XamlType xt, object target, Type explicitTargetType)
-		{
-			return DoConvert (xt.TypeConverter, target, explicitTargetType ?? xt.UnderlyingType);
+			// FIXME: does this make sense?
+			var vc = (xm != null ? xm.TypeConverter : null) ?? xt.TypeConverter;
+			var tc = vc != null ? vc.ConverterInstance : null;
+			if (tc != null && typeof (string) != null && tc.CanConvertTo (vsctx, typeof (string)))
+				return (string) tc.ConvertTo (vsctx, CultureInfo.InvariantCulture, obj, typeof (string));
+			if (obj is string || obj == null)
+				return (string) obj;
+			throw new InvalidCastException (String.Format ("Cannot cast object '{0}' to string", obj.GetType ()));
 		}
 		
-		public static object GetMemberValueForObjectReader (this XamlMember xm, XamlType xt, object target, INamespacePrefixLookup prefixLookup)
+		public static TypeConverter GetTypeConverter (this Type type)
 		{
-			object native = GetPropertyOrFieldValueForObjectReader (xm, xt, target, prefixLookup);
-			var convertedType = xm.Type == null ? null : xm.Type.UnderlyingType;
-			return DoConvert (xm.TypeConverter, native, convertedType);
+#if MOONLIGHT
+			if (typeof (IConvertible).IsAssignableFrom (type))
+				return (TypeConverter) Activator.CreateInstance (typeof (ConvertibleTypeConverter<>).MakeGenericType (new Type [] {type}));
+			var name = type.GetCustomAttribute<TypeConverterAttribute> (true).ConverterTypeName;
+			return (TypeConverter) Activator.CreateInstance (type.Assembly.GetType (name) ?? Type.GetType (name));
+#else
+			return TypeDescriptor.GetConverter (type);
+#endif
 		}
 		
-		static object DoConvert (XamlValueConverter<TypeConverter> converter, object value, Type targetType)
+		// FIXME: I want this to cover all the existing types and make it valid in both NET_2_1 and !NET_2_1.
+		class ConvertibleTypeConverter<T> : TypeConverter
 		{
-			// First get member value, then convert it to appropriate target type.
-			var tc = converter != null ? converter.ConverterInstance : null;
-			if (tc != null && targetType != null && tc.CanConvertTo (targetType))
-				return tc.ConvertTo (value, targetType);
-			return value;
-		}
-
-		static object GetPropertyOrFieldValueForObjectReader (this XamlMember xm, XamlType xt, object target, INamespacePrefixLookup prefixLookup)
-		{
-			// FIXME: should this be done here??
-			if (xm == XamlLanguage.Initialization)
-				return target;
-			if (xm == XamlLanguage.PositionalParameters) {
-				var argdefs = xt.GetConstructorArguments ().ToArray ();
-				string [] args = new string [argdefs.Length];
-				for (int i = 0; i < args.Length; i++) {
-					var am = argdefs [i];
-					args [i] = GetStringValue (am.Type, GetMemberValueForObjectReader (am, xt, target, prefixLookup), prefixLookup);
-				}
-				return String.Join (", ", args);
+			Type type;
+			public ConvertibleTypeConverter ()
+			{
+				this.type = typeof (T);
 			}
-
-			var mi = xm.UnderlyingMember;
-			var fi = mi as FieldInfo;
-			if (fi != null)
-				return fi.GetValue (target);
-			var pi = mi as PropertyInfo;
-			if (pi != null)
-				return pi.GetValue (target, null);
-
-			throw new NotImplementedException (String.Format ("Cannot get value for {0}", xm));
+			public override bool CanConvertFrom (ITypeDescriptorContext context, Type sourceType)
+			{
+				return sourceType == typeof (string);
+			}
+			public override bool CanConvertTo (ITypeDescriptorContext context, Type destinationType)
+			{
+				return destinationType == typeof (string);
+			}
+			public override object ConvertFrom (ITypeDescriptorContext context, CultureInfo culture, object value)
+			{
+				if (type == typeof (DateTime))
+					return System.Xml.XmlConvert.ToDateTime ((string) value, System.Xml.XmlDateTimeSerializationMode.Unspecified);
+				return ((IConvertible) value).ToType (type, CultureInfo.InvariantCulture);
+			}
+			public override object ConvertTo (ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
+			{
+				if (value is DateTime)
+					return System.Xml.XmlConvert.ToString ((DateTime) value);
+				return ((IConvertible) value).ToType (destinationType, CultureInfo.InvariantCulture);
+			}
 		}
-		
+
 		#endregion
 
-		public static bool IsContentValue (this XamlMember member)
+		public static bool IsContentValue (this XamlMember member, IValueSerializerContext vsctx)
 		{
 			if (member == XamlLanguage.Initialization)
 				return true;
-			if (member == XamlLanguage.PositionalParameters)
+			if (member == XamlLanguage.PositionalParameters || member == XamlLanguage.Arguments)
+				return false; // it's up to the argument (no need to check them though, as IList<object> is not of value)
+			if (member.TypeConverter != null && member.TypeConverter.ConverterInstance != null && member.TypeConverter.ConverterInstance.CanConvertTo (vsctx, typeof (string)))
 				return true;
-			return IsContentValue (member.Type);
+			return IsContentValue (member.Type,vsctx);
 		}
 
-		public static bool IsContentValue (this XamlType type)
+		public static bool IsContentValue (this XamlType type, IValueSerializerContext vsctx)
 		{
-			var t = type.UnderlyingType;
-			if (Type.GetTypeCode (t) != TypeCode.Object)
-				return true;
-			else if (t == typeof (Type) || t == typeof (TimeSpan) || t == typeof (Uri)) // special predefined types
+			if (type.TypeConverter != null && type.TypeConverter.ConverterInstance != null && type.TypeConverter.ConverterInstance.CanConvertTo (vsctx, typeof (string)))
 				return true;
 			return false;
-		}
-
-		public static IEnumerable<XamlMember> GetAllReadWriteMembers (this XamlType type)
-		{
-			// FIXME: find out why only TypeExtension yields this directive. Seealso XamlObjectReaderTest
-			if (type == XamlLanguage.Type) {
-				yield return XamlLanguage.PositionalParameters;
-				yield break;
-			}
-
-			if (type.IsContentValue ())
-				yield return XamlLanguage.Initialization;
-
-			foreach (var m in type.GetAllMembers ())
-				yield return m;
 		}
 
 		public static bool ListEquals (this IList<XamlType> a1, IList<XamlType> a2)
@@ -195,5 +191,116 @@ namespace System.Xaml
 					return false;
 			return true;
 		}
+
+		public static bool HasPositionalParameters (this XamlType type, IValueSerializerContext vsctx)
+		{
+			// FIXME: find out why only TypeExtension and StaticExtension yield this directive. Seealso XamlObjectReaderTest.Read_CustomMarkupExtension*()
+			return  type == XamlLanguage.Type ||
+				type == XamlLanguage.Static ||
+				ExaminePositionalParametersApplicable (type, vsctx) && type.ConstructionRequiresArguments;
+		}
+		
+		static bool ExaminePositionalParametersApplicable (this XamlType type, IValueSerializerContext vsctx)
+		{
+			if (!type.IsMarkupExtension || type.UnderlyingType == null)
+				return false;
+
+			var args = type.GetSortedConstructorArguments ();
+			if (args == null)
+				return false;
+
+			foreach (var arg in args)
+				if (arg.Type != null && !arg.Type.IsContentValue (vsctx))
+					return false;
+
+			Type [] argTypes = (from arg in args select arg.Type.UnderlyingType).ToArray ();
+			if (argTypes.Any (at => at == null))
+				return false;
+			var ci = type.UnderlyingType.GetConstructor (argTypes);
+			return ci != null;
+		}
+		
+		public static IEnumerable<XamlMember> GetConstructorArguments (this XamlType type)
+		{
+			return type.GetAllMembers ().Where (m => m.UnderlyingMember != null && m.GetCustomAttributeProvider ().GetCustomAttribute<ConstructorArgumentAttribute> (false) != null);
+		}
+
+		public static IEnumerable<XamlMember> GetSortedConstructorArguments (this XamlType type)
+		{
+			var args = type.GetConstructorArguments ().ToArray ();
+			foreach (var ci in type.UnderlyingType.GetConstructors ().Where (c => c.GetParameters ().Length == args.Length)) {
+				var pis = ci.GetParameters ();
+				if (args.Length != pis.Length)
+					continue;
+				bool mismatch = false;
+				foreach (var pi in pis)
+				for (int i = 0; i < args.Length; i++)
+					if (!args.Any (a => a.ConstructorArgumentName () == pi.Name))
+						mismatch = true;
+				if (mismatch)
+					continue;
+				return args.OrderBy (c => pis.FindParameterWithName (c.ConstructorArgumentName ()).Position);
+			}
+			return null;
+		}
+
+		static ParameterInfo FindParameterWithName (this IEnumerable<ParameterInfo> pis, string name)
+		{
+			return pis.FirstOrDefault (pi => pi.Name == name);
+		}
+
+		public static string ConstructorArgumentName (this XamlMember xm)
+		{
+			var caa = xm.GetCustomAttributeProvider ().GetCustomAttribute<ConstructorArgumentAttribute> (false);
+			return caa.ArgumentName;
+		}
+		
+
+		internal static int CompareMembers (XamlMember m1, XamlMember m2)
+		{
+			// ConstructorArguments and PositionalParameters go first.
+			if (m1 == XamlLanguage.PositionalParameters)
+				return -1;
+			if (m2 == XamlLanguage.PositionalParameters)
+				return 1;
+			if (m1.IsConstructorArgument ()) {
+				if (!m2.IsConstructorArgument ())
+					return -1;
+			}
+			else if (m2.IsConstructorArgument ())
+				return 1;
+
+			// ContentProperty is returned at last.
+			if (m1.DeclaringType != null && m1.DeclaringType.ContentProperty == m1)
+				return 1;
+			if (m2.DeclaringType != null && m2.DeclaringType.ContentProperty == m2)
+				return -1;
+
+			// then, compare names.
+			return String.CompareOrdinal (m1.Name, m2.Name);
+		}
+
+		internal static bool IsConstructorArgument (this XamlMember xm)
+		{
+			var ap = xm.GetCustomAttributeProvider ();
+			return ap != null && ap.GetCustomAttributes (typeof (ConstructorArgumentAttribute), false).Length > 0;
+		}
+
+		internal static string GetInternalXmlName (this XamlMember xm)
+		{
+			return xm.IsAttachable ? String.Concat (xm.DeclaringType.GetInternalXmlName (), ".", xm.Name) : xm.Name;
+		}
+
+#if DOTNET
+		internal static ICustomAttributeProvider GetCustomAttributeProvider (this XamlType type)
+		{
+			return type.UnderlyingType;
+		}
+		
+		internal static ICustomAttributeProvider GetCustomAttributeProvider (this XamlMember member)
+		{
+			return member.UnderlyingMember;
+		}
+#endif
 	}
 }

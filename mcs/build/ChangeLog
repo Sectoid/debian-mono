@@ -1,3 +1,52 @@
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	[661642] Fixed v4 resgen compilation
+
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Remove no longer used bootstrap profiles
+
+2010-12-17  Marek Safar  <marek.safar@gmail.com>
+
+	Update mcs name for monolite build
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Adjust MONO_PATH, it's still needed for all profiles
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Fix resgen build order
+
+2010-12-16  Marek Safar  <marek.safar@gmail.com>
+
+	Switch to single mcs compiler for all managed code build
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Don't be too verbose when building response files
+
+2010-09-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Clean the aot log file too.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monodroid profile's defines
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Define MOBILE for the monotouch build as a shared symbol between
+	MonoTouch and MonoDroid
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Add the monodroid profile
+
+2010-09-01  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monotouch build
+
 2010-08-31  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	Revert "Make the 'LABELS' make variable the same as the

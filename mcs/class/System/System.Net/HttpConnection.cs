@@ -32,6 +32,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Mono.Security.Protocol.Tls;
@@ -51,10 +52,12 @@ namespace System.Net {
 		RequestStream i_stream;
 		ResponseStream o_stream;
 		bool chunked;
-		int chunked_uses;
+		int reuses;
 		bool context_bound;
 		bool secure;
 		AsymmetricAlgorithm key;
+		int s_timeout = 90000; // 90k ms for first request, 15k ms from then on
+		Timer timer;
 
 		public HttpConnection (Socket sock, EndPointListener epl, bool secure, X509Certificate2 cert, AsymmetricAlgorithm key)
 		{
@@ -69,6 +72,7 @@ namespace System.Net {
 				ssl_stream.PrivateKeyCertSelectionDelegate += OnPVKSelection;
 				stream = ssl_stream;
 			}
+			timer = new Timer (OnTimeout, null, Timeout.Infinite, Timeout.Infinite);
 			Init ();
 		}
 
@@ -91,8 +95,8 @@ namespace System.Net {
 			context = new HttpListenerContext (this);
 		}
 
-		public int ChunkedUses {
-			get { return chunked_uses; }
+		public int Reuses {
+			get { return reuses; }
 		}
 
 		public IPEndPoint LocalEndPoint {
@@ -112,14 +116,26 @@ namespace System.Net {
 			set { prefix = value; }
 		}
 
+		void OnTimeout (object unused)
+		{
+			Unbind ();
+			try {
+				sock.Close (); // stream disposed
+			} catch {
+			}
+		}
+
 		public void BeginReadRequest ()
 		{
 			if (buffer == null)
 				buffer = new byte [BufferSize];
 			try {
+				if (reuses == 1)
+					s_timeout = 15000;
+				timer.Change (s_timeout, Timeout.Infinite);
 				stream.BeginRead (buffer, 0, BufferSize, OnRead, this);
 			} catch {
-				sock.Close (); // stream disposed
+				CloseSocket ();
 			}
 		}
 
@@ -153,6 +169,7 @@ namespace System.Net {
 
 		void OnRead (IAsyncResult ares)
 		{
+			timer.Change (Timeout.Infinite, Timeout.Infinite);
 			HttpConnection cnc = (HttpConnection) ares.AsyncState;
 			int nread = -1;
 			try {
@@ -167,14 +184,14 @@ namespace System.Net {
 				if (ms != null && ms.Length > 0)
 					SendError ();
 				if (sock != null)
-					sock.Close ();
+					CloseSocket ();
 				return;
 			}
 
 			if (nread == 0) {
 				//if (ms.Length > 0)
 				//	SendError (); // Why bother?
-				sock.Close ();
+				CloseSocket ();
 				return;
 			}
 
@@ -343,6 +360,19 @@ namespace System.Net {
 			Close (false);
 		}
 
+		void CloseSocket ()
+		{
+			if (sock == null)
+				return;
+
+			try {
+				sock.Close ();
+			} catch {
+			} finally {
+				sock = null;
+			}
+		}
+
 		internal void Close (bool force_close)
 		{
 			if (sock != null) {
@@ -352,26 +382,30 @@ namespace System.Net {
 			}
 
 			if (sock != null) {
-				force_close |= (context.Request.Headers ["connection"] == "close");
+				force_close |= !context.Request.KeepAlive;
+				if (!force_close)
+					force_close = (context.Response.Headers ["connection"] == "close");
+				/*
 				if (!force_close) {
-					int status_code = context.Response.StatusCode;
-					bool conn_close = (status_code == 400 || status_code == 408 || status_code == 411 ||
-							status_code == 413 || status_code == 414 || status_code == 500 ||
-							status_code == 503);
+//					bool conn_close = (status_code == 400 || status_code == 408 || status_code == 411 ||
+//							status_code == 413 || status_code == 414 || status_code == 500 ||
+//							status_code == 503);
 
 					force_close |= (context.Request.ProtocolVersion <= HttpVersion.Version10);
 				}
+				*/
 
 				if (!force_close && context.Request.FlushInput ()) {
 					if (chunked && context.Response.ForceCloseChunked == false) {
 						// Don't close. Keep working.
-						chunked_uses++;
+						reuses++;
 						Unbind ();
 						Init ();
 						BeginReadRequest ();
 						return;
 					}
 
+					reuses++;
 					Unbind ();
 					Init ();
 					BeginReadRequest ();
@@ -381,10 +415,12 @@ namespace System.Net {
 				Socket s = sock;
 				sock = null;
 				try {
-					s.Shutdown (SocketShutdown.Both);
+					if (s != null)
+						s.Shutdown (SocketShutdown.Both);
 				} catch {
 				} finally {
-					s.Close ();
+					if (s != null)
+						s.Close ();
 				}
 				Unbind ();
 				return;

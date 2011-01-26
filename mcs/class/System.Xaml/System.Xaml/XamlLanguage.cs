@@ -39,6 +39,38 @@ namespace System.Xaml
 		public const string Xml1998Namespace = "http://www.w3.org/XML/1998/namespace";
 		internal const string Xmlns2000Namespace = "http://www.w3.org/2000/xmlns/";
 
+		// FIXME: I'm not sure if these "special names" should be resolved like this. I couldn't find any rule so far.
+		internal static readonly SpecialTypeNameList SpecialNames;
+
+		internal class SpecialTypeNameList : List<SpecialTypeName>
+		{
+			internal SpecialTypeNameList ()
+			{
+				Add (new SpecialTypeName ("Member", XamlLanguage.Member));
+				Add (new SpecialTypeName ("Property", XamlLanguage.Property));
+			}
+
+			public XamlType Find (string name, string ns)
+			{
+				if (ns != XamlLanguage.Xaml2006Namespace)
+					return null;
+				var stn = this.FirstOrDefault (s => s.Name == name);
+				return stn != null ? stn.Type : null;
+			}
+		}
+
+		internal class SpecialTypeName
+		{
+			public SpecialTypeName (string name, XamlType type)
+			{
+				Name = name;
+				Type = type;
+			}
+			
+			public string Name { get; private set; }
+			public XamlType Type { get; private set; }
+		}
+
 		static readonly XamlSchemaContext sctx = new XamlSchemaContext (new Assembly [] {typeof (XamlType).Assembly});
 
 		static XamlType XT<T> ()
@@ -52,6 +84,7 @@ namespace System.Xaml
 		static XamlLanguage ()
 		{
 			InitializingTypes = true;
+
 			// types
 
 			Array = XT<ArrayExtension> ();
@@ -117,6 +150,8 @@ namespace System.Xaml
 			AllDirectives = new ReadOnlyCollection<XamlDirective> (new XamlDirective [] {Arguments, AsyncRecords, Base, Class, ClassAttributes, ClassModifier, Code, ConnectionId, FactoryMethod, FieldModifier, Initialization, Items, Key, Lang, Members, Name, PositionalParameters, Space, Subclass, SynchronousMode, Shared, TypeArguments, Uid, UnknownContent});
 
 			InitializingDirectives = false;
+
+			SpecialNames = new SpecialTypeNameList ();
 		}
 
 		static readonly string [] xaml_nss = new string [] {Xaml2006Namespace};
@@ -213,74 +248,6 @@ namespace System.Xaml
 			default:
 				return false;
 			}
-		}
-
-		internal static XamlType GetSpecialXaml2006Type (string name)
-		{
-			// FIXME: I'm not really sure if these *special* names 
-			// should be resolved here and there. There just does
-			// not seem to be any other appropriate places.
-			switch (name) {
-			case "Array":
-				return XamlLanguage.Array;
-			case "Member":
-				return XamlLanguage.Member;
-			case "Null":
-				return XamlLanguage.Null;
-			case "Property":
-				return XamlLanguage.Property;
-			case "Static":
-				return XamlLanguage.Static;
-			case "Type":
-				return XamlLanguage.Type;
-			}
-			return null;
-		}
-
-		static readonly int clr_ns_len = "clr-namespace:".Length;
-		static readonly int clr_ass_len = "assembly=".Length;
-
-		internal static Type ResolveXamlTypeName (string xmlNamespace, string xmlLocalName, IList<XamlTypeName> typeArguments, IXamlNamespaceResolver nsResolver)
-		{
-			string ns = xmlNamespace;
-			string name = xmlLocalName;
-
-			if (ns == XamlLanguage.Xaml2006Namespace) {
-				var xt = GetSpecialXaml2006Type (name);
-				if (xt == null)
-					xt = AllTypes.FirstOrDefault (t => t.Name == xmlLocalName);
-				if (xt == null)
-					throw new FormatException (string.Format ("There is no type '{0}' in XAML namespace", name));
-				return xt.UnderlyingType;
-			}
-			else if (!ns.StartsWith ("clr-namespace:", StringComparison.Ordinal))
-				throw new FormatException (string.Format ("Unexpected XAML namespace '{0}'", ns));
-
-			Type [] genArgs = null;
-			if (typeArguments != null) {
-				var xtns = typeArguments;
-				genArgs = new Type [xtns.Count];
-				for (int i = 0; i < genArgs.Length; i++) {
-					var xtn = xtns [i];
-					genArgs [i] = ResolveXamlTypeName (xtn.Namespace, xtn.Name, xtn.TypeArguments, nsResolver);
-				}
-			}
-
-			// convert xml namespace to clr namespace and assembly
-			string [] split = ns.Split (';');
-			if (split.Length != 2 || split [0].Length <= clr_ns_len || split [1].Length <= clr_ass_len)
-				throw new XamlParseException (string.Format ("Cannot resolve runtime namespace from XML namespace '{0}'", ns));
-			string tns = split [0].Substring (clr_ns_len);
-			string aname = split [1].Substring (clr_ass_len);
-
-			string tfn = tns.Length > 0 ? tns + '.' + name : name;
-			if (genArgs != null)
-				tfn += "`" + genArgs.Length;
-			string taqn = tfn + (aname.Length > 0 ? ", " + aname : string.Empty);
-			var ret = System.Type.GetType (taqn);
-			if (ret == null)
-				throw new XamlParseException (string.Format ("Cannot resolve runtime type from XML namespace '{0}', local name '{1}' with {2} type arguments ({3})", ns, name, typeArguments.Count, taqn));
-			return genArgs == null ? ret : ret.MakeGenericType (genArgs);
 		}
 	}
 }

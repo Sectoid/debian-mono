@@ -1,3 +1,7 @@
+2011-01-08  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed missing protected internal modifier
+
 2009-10-02  Marek Habersack  <mhabersack@novell.com>
 
 	* DynamicValidator.cs: initial implementation

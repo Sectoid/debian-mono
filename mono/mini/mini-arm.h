@@ -43,11 +43,13 @@
 #define MONO_MAX_IREGS 16
 #define MONO_MAX_FREGS 16
 
-#define MONO_SAVED_GREGS 10 /* r4-411, ip, lr */
+#define MONO_SAVED_GREGS 10 /* r4-r11, ip, lr */
 #define MONO_SAVED_FREGS 8
 
 /* r4-r11, ip, lr: registers saved in the LMF  */
 #define MONO_ARM_REGSAVE_MASK 0x5ff0
+#define MONO_ARM_FIRST_SAVED_REG ARMREG_R4
+#define MONO_ARM_NUM_SAVED_REGS 10
 
 /* Parameters used by the register allocator */
 
@@ -102,8 +104,6 @@ struct MonoLMF {
 	/* This is only set in trampoline LMF frames */
 	MonoMethod *method;
 	gulong     esp;
-	/* Unused */
-	gulong     ebp;
 	gulong     eip;
 	/* all but sp and pc: matches the PUSH instruction layout in the trampolines
 	 * 0-4 should be considered undefined (execpt in the magic tramp)
@@ -127,6 +127,7 @@ typedef struct {
 
 typedef struct MonoCompileArch {
 	gpointer seq_point_info_var, ss_trigger_page_var;
+	gboolean omit_fp, omit_fp_computed;
 	gpointer cinfo;
 } MonoCompileArch;
 
@@ -167,8 +168,13 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_DYN_CALL_PARAM_AREA 24
 
 #define MONO_ARCH_SOFT_DEBUG_SUPPORTED 1
-#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 #define MONO_ARCH_HAVE_EXCEPTIONS_INIT 1
+#define MONO_ARCH_HAVE_GET_TRAMPOLINES 1
+
+/* Matches the HAVE_AEABI_READ_TP define in mini-arm.c */
+#if defined(__ARM_EABI__) && defined(__linux__) && !defined(PLATFORM_ANDROID)
+#define MONO_ARCH_HAVE_TLS_GET 1
+#endif
 
 /* ARM doesn't have too many registers, so we have to use a callee saved one */
 #define MONO_ARCH_RGCTX_REG ARMREG_V5
@@ -192,14 +198,7 @@ typedef struct MonoCompileArch {
 		MONO_CONTEXT_SET_IP ((ctx), (func));	\
 	} while (0)
 
-/*
- * This structure is an extension of MonoLMF and contains extra information.
- */
-typedef struct {
-	struct MonoLMF lmf;
-	gboolean debugger_invoke;
-	MonoContext ctx; /* if debugger_invoke is TRUE */
-} MonoLMFExt;
+#define MONO_ARCH_INIT_TOP_LMF_ENTRY(lmf)
 
 void
 mono_arm_throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs);
@@ -207,8 +206,17 @@ mono_arm_throw_exception (MonoObject *exc, unsigned long eip, unsigned long esp,
 void
 mono_arm_throw_exception_by_token (guint32 type_token, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs);
 
+void
+mono_arm_resume_unwind (guint32 dummy1, unsigned long eip, unsigned long esp, gulong *int_regs, gdouble *fp_regs);
+
 gboolean
 mono_arm_thumb_supported (void);
+
+GSList*
+mono_arm_get_exception_trampolines (gboolean aot) MONO_INTERNAL;
+
+guint8*
+mono_arm_get_thumb_plt_entry (guint8 *code) MONO_INTERNAL;
 
 #endif /* __MONO_MINI_ARM_H__ */
 

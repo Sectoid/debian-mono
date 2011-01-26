@@ -1,3 +1,11 @@
+2010-10-20  Jb Evain  <jbevain@gmail.com>
+
+	Fix tuner build
+
+2010-10-05  Jb Evain  <jbevain@gmail.com>
+
+	Update the tuner to cecil-light
+
 2009-11-03  Jb Evain  <jbevain@novell.com>
 
 	* Mono.Tuner/CheckVisibility.cs: detect a throw_on_visibility_error

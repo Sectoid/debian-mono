@@ -41,7 +41,8 @@ DIST_COMMON = README $(am__configure_deps) $(srcdir)/../config.guess \
 	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL NEWS \
 	TODO
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -90,6 +91,7 @@ CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
+DOLT_BASH = @DOLT_BASH@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -111,6 +113,8 @@ GUINT_TO_POINTER = @GUINT_TO_POINTER@
 G_GINT64_FORMAT = @G_GINT64_FORMAT@
 G_GUINT64_FORMAT = @G_GUINT64_FORMAT@
 G_HAVE_ISO_VARARGS = @G_HAVE_ISO_VARARGS@
+HAVE_ALLOCA_H = @HAVE_ALLOCA_H@
+ICONV_LIBS = @ICONV_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -123,6 +127,8 @@ LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
+LTCOMPILE = @LTCOMPILE@
+LTCXXCOMPILE = @LTCXXCOMPILE@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
@@ -207,10 +213,11 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@CROSS_COMPILING_FALSE@@HOST_WIN32_FALSE@SUBDIRS = src test
-@CROSS_COMPILING_TRUE@@HOST_WIN32_FALSE@SUBDIRS = src
+@CROSS_COMPILING_FALSE@@HOST_WIN32_FALSE@@PLATFORM_DARWIN_FALSE@SUBDIRS = src test
+@CROSS_COMPILING_TRUE@@HOST_WIN32_FALSE@@PLATFORM_DARWIN_FALSE@SUBDIRS = src
+@HOST_WIN32_FALSE@@PLATFORM_DARWIN_TRUE@SUBDIRS = src
 @HOST_WIN32_TRUE@SUBDIRS = src
-EXTRA_DIST = autogen.sh README NEWS AUTHORS ChangeLog
+EXTRA_DIST = autogen.sh README NEWS AUTHORS ChangeLog winconfig.h
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 

@@ -31,6 +31,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using Mono.XBuild.Utilities;
@@ -126,6 +127,7 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			if (project == null)
 				throw new ArgumentException ("project");
+			builtTargetsOutputByName.Clear ();
 			return project.Build ();
 		}
 		
@@ -163,6 +165,9 @@ namespace Microsoft.Build.BuildEngine {
 				throw new ArgumentException ("project");
 			if (targetNames == null)
 				return false;
+
+			if ((buildFlags & BuildSettings.DoNotResetPreviouslyBuiltTargets) != BuildSettings.DoNotResetPreviouslyBuiltTargets)
+				builtTargetsOutputByName.Clear ();
 
 			if (defaultToolsVersion != null)
 				// it has been explicitly set, xbuild does this..
@@ -224,6 +229,9 @@ namespace Microsoft.Build.BuildEngine {
 					      IDictionary targetOutputs,
 					      BuildSettings buildFlags, string toolsVersion)
 		{
+			if ((buildFlags & BuildSettings.DoNotResetPreviouslyBuiltTargets) != BuildSettings.DoNotResetPreviouslyBuiltTargets)
+				builtTargetsOutputByName.Clear ();
+
 			Project project;
 
 			bool newProject = false;
@@ -301,8 +309,10 @@ namespace Microsoft.Build.BuildEngine {
 
 		internal void RemoveLoadedProject (Project p)
 		{
-			if (p.FullFileName != String.Empty)
+			if (!String.IsNullOrEmpty (p.FullFileName)) {
+				ClearBuiltTargetsForProject (p);
 				projects.Remove (p.FullFileName);
+			}
 		}
 
 		internal void AddLoadedProject (Project p)
@@ -321,8 +331,7 @@ namespace Microsoft.Build.BuildEngine {
 			
 			project.CheckUnloaded ();
 			
-			if (project.FullFileName != String.Empty)
-				projects.Remove (project.FullFileName);
+			RemoveLoadedProject (project);
 			
 			project.Unload ();
 		}
@@ -392,6 +401,14 @@ namespace Microsoft.Build.BuildEngine {
 				LogBuildFinished (succeeded);
 				buildStarted = false;
 			}
+		}
+
+		internal void ClearBuiltTargetsForProject (Project project)
+		{
+			string project_key = project.GetKeyForTarget (String.Empty, false);
+			var to_remove_keys = BuiltTargetsOutputByName.Keys.Where (key => key.StartsWith (project_key)).ToList ();
+			foreach (string to_remove_key in to_remove_keys)
+				BuiltTargetsOutputByName.Remove (to_remove_key);
 		}
 
 		void LogProjectStarted (Project project, string [] target_names)

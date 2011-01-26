@@ -1,3 +1,7 @@
+2010-12-02  Jb Evain  <jbevain@gmail.com>
+
+	[ilasm] fix the metadata version for v4 assemblies
+
 2009-03-31  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* Code.cs (CILLabel): Add new constructor to signal that

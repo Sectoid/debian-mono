@@ -27,9 +27,10 @@
 using System;
 using System.Threading;
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
+#if NET_4_0
 namespace System.Threading
 {
+	[System.Diagnostics.DebuggerDisplay ("IsCancellationRequested = {IsCancellationRequested}")]
 	public struct CancellationToken
 	{
 		public CancellationToken (bool canceled)
@@ -73,7 +74,8 @@ namespace System.Threading
 
 		public void ThrowIfCancellationRequested ()
 		{
-			Source.ThrowIfCancellationRequested ();
+			if (Source.IsCancellationRequested)
+				throw new OperationCanceledException (this);
 		}
 
 		public bool Equals (CancellationToken other)
@@ -81,9 +83,9 @@ namespace System.Threading
 			return this.Source == other.Source;
 		}
 
-		public override bool Equals (object obj)
+		public override bool Equals (object other)
 		{
-			return (obj is CancellationToken) ? Equals ((CancellationToken)obj) : false;
+			return (other is CancellationToken) ? Equals ((CancellationToken)other) : false;
 		}
 
 		public override int GetHashCode ()
@@ -91,14 +93,14 @@ namespace System.Threading
 			return Source.GetHashCode ();
 		}
 
-		public static bool operator == (CancellationToken lhs, CancellationToken rhs)
+		public static bool operator == (CancellationToken left, CancellationToken right)
 		{
-			return lhs.Equals (rhs);
+			return left.Equals (right);
 		}
 
-		public static bool operator != (CancellationToken lhs, CancellationToken rhs)
+		public static bool operator != (CancellationToken left, CancellationToken right)
 		{
-			return !lhs.Equals (rhs);
+			return !left.Equals (right);
 		}
 
 		public bool CanBeCanceled {

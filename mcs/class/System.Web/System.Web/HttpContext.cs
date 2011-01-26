@@ -674,10 +674,8 @@ namespace System.Web
 
 		internal TimeSpan ConfigTimeout {
 			get {
-				if (config_timeout == null) {
-					HttpRuntimeSection section = (HttpRuntimeSection)WebConfigurationManager.GetSection ("system.web/httpRuntime");
-					config_timeout = section.ExecutionTimeout;
-				}
+				if (config_timeout == null)
+					config_timeout = HttpRuntime.Section.ExecutionTimeout;
 
 				return (TimeSpan) config_timeout;
 			}
@@ -710,7 +708,8 @@ namespace System.Web
 		void TimeoutReached(object state) {
 			HttpRuntime.QueuePendingRequest (false);
 			if (Interlocked.CompareExchange (ref timeout_possible, 0, 0) == 0) {
-				timer.Change(2000, 0);
+				if (timer != null)
+					timer.Change(2000, 0);
 				return;			
 			}
 			StopTimeoutTimer();

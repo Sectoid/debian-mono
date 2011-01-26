@@ -34,8 +34,6 @@ namespace System.Web.Util
 {
 	public class RequestValidator
 	{
-		static readonly object currentCreationLock = new object();
-		
 		static RequestValidator current;
 		static Lazy <RequestValidator> lazyLoader;
 
@@ -105,7 +103,7 @@ namespace System.Web.Util
 		
 		static RequestValidator LoadConfiguredValidator ()
 		{
-			HttpRuntimeSection runtimeConfig = WebConfigurationManager.GetWebApplicationSection ("system.web/httpRuntime") as HttpRuntimeSection;			
+			HttpRuntimeSection runtimeConfig = HttpRuntime.Section;
 			Type validatorType = null;
 			string typeSpec = runtimeConfig.RequestValidationType;
 			

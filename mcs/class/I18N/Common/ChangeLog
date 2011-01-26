@@ -1,3 +1,7 @@
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Clean up few more warnings
+
 2006-08-24  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* ByteEncoding.cs : Implemented IsAlwaysNormalized().

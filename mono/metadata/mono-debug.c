@@ -17,6 +17,7 @@
 #include <mono/metadata/mono-debug.h>
 #include <mono/metadata/mono-debug-debugger.h>
 #include <mono/metadata/mono-endian.h>
+#include <mono/metadata/gc-internal.h>
 #include <string.h>
 
 #define DATA_TABLE_CHUNK_SIZE		16384
@@ -122,6 +123,8 @@ static void                 mono_debug_add_assembly    (MonoAssembly *assembly,
 							gpointer user_data);
 static void                 mono_debug_add_type        (MonoClass *klass);
 
+static MonoDebugHandle     *open_symfile_from_bundle   (MonoImage *image);
+
 void _mono_debug_init_corlib (MonoDomain *domain);
 
 extern void (*mono_debugger_class_init_func) (MonoClass *klass);
@@ -159,9 +162,9 @@ free_header_data (gpointer key, gpointer value, gpointer user_data)
 
 	if (header->wrapper_data) {
 		g_free ((gpointer)header->wrapper_data->method_name);
-		g_slist_free (header->address_list);
 		g_free (header->wrapper_data);
 	}
+	g_slist_free (header->address_list);
 }
 
 static void
@@ -227,6 +230,12 @@ mono_debug_init (MonoDebugFormat format)
 
 	mono_debug_initialized = TRUE;
 	mono_debug_format = format;
+
+	/*
+	 * This must be called before mono_debugger_initialize(), because the
+	 * latter registers GC roots.
+	 */
+	mono_gc_base_init ();
 
 	mono_debugger_initialize (_mono_debug_using_mono_debugger);
 
@@ -422,8 +431,14 @@ mono_debug_open_image (MonoImage *image, const guint8 *raw_contents, int size)
 static void
 mono_debug_add_assembly (MonoAssembly *assembly, gpointer user_data)
 {
+	MonoDebugHandle *handle;
+	MonoImage *image;
+
 	mono_debugger_lock ();
-	mono_debug_open_image (mono_assembly_get_image (assembly), NULL, 0);
+	image = mono_assembly_get_image (assembly);
+	handle = open_symfile_from_bundle (image);
+	if (!handle)
+		mono_debug_open_image (image, NULL, 0);
 	mono_debugger_unlock ();
 }
 
@@ -1181,3 +1196,45 @@ mono_is_debugger_attached (void)
 	return is_attached;
 }
 
+/*
+ * Bundles
+ */
+
+typedef struct _BundledSymfile BundledSymfile;
+
+struct _BundledSymfile {
+	BundledSymfile *next;
+	const char *aname;
+	const mono_byte *raw_contents;
+	int size;
+};
+
+static BundledSymfile *bundled_symfiles = NULL;
+
+void
+mono_register_symfile_for_assembly (const char *assembly_name, const mono_byte *raw_contents, int size)
+{
+	BundledSymfile *bsymfile;
+
+	bsymfile = g_new0 (BundledSymfile, 1);
+	bsymfile->aname = assembly_name;
+	bsymfile->raw_contents = raw_contents;
+	bsymfile->size = size;
+	bsymfile->next = bundled_symfiles;
+	bundled_symfiles = bsymfile;
+}
+
+static MonoDebugHandle *
+open_symfile_from_bundle (MonoImage *image)
+{
+	BundledSymfile *bsymfile;
+
+	for (bsymfile = bundled_symfiles; bsymfile; bsymfile = bsymfile->next) {
+		if (strcmp (bsymfile->aname, image->module_name))
+			continue;
+
+		return mono_debug_open_image (image, bsymfile->raw_contents, bsymfile->size);
+	}
+
+	return NULL;
+}

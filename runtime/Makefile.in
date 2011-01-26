@@ -38,7 +38,8 @@ target_triplet = @target@
 @MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@am__append_3 = moonlight_raw
 @INSTALL_4_0_TRUE@@ONLY_MOONLIGHT_FALSE@am__append_4 = net_4_0
 #test_profiles += net_4_0
-@INSTALL_MONOTOUCH_TRUE@@ONLY_MOONLIGHT_FALSE@am__append_5 = monotouch
+@INSTALL_MONODROID_TRUE@@ONLY_MOONLIGHT_FALSE@am__append_5 = monodroid
+@INSTALL_MONOTOUCH_TRUE@@ONLY_MOONLIGHT_FALSE@am__append_6 = monotouch
 subdir = runtime
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(srcdir)/mono-wrapper.in $(srcdir)/monodis-wrapper.in
@@ -142,6 +143,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MONO_DL_NEED_USCORE = @MONO_DL_NEED_USCORE@
 MONO_NACL_ALIGN_MASK_OFF = @MONO_NACL_ALIGN_MASK_OFF@
+MOONLIGHT_DEFINES = @MOONLIGHT_DEFINES@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
 MSGMERGE = @MSGMERGE@
@@ -261,13 +263,15 @@ symlinks = etc/mono/1.0/machine.config etc/mono/2.0/machine.config \
 	etc/mono/2.0/Browsers/Compat.browser $(am__append_1)
 SUPPORT_FILES = $(symlinks) mono-wrapper etc/mono/config
 @ONLY_MOONLIGHT_FALSE@build_profiles = net_2_0 net_3_5 $(am__append_2) \
-@ONLY_MOONLIGHT_FALSE@	$(am__append_4) $(am__append_5)
+@ONLY_MOONLIGHT_FALSE@	$(am__append_4) $(am__append_5) \
+@ONLY_MOONLIGHT_FALSE@	$(am__append_6)
 @ONLY_MOONLIGHT_TRUE@build_profiles = moonlight_raw $(am__append_2) \
-@ONLY_MOONLIGHT_TRUE@	$(am__append_4) $(am__append_5)
+@ONLY_MOONLIGHT_TRUE@	$(am__append_4) $(am__append_5) \
+@ONLY_MOONLIGHT_TRUE@	$(am__append_6)
 @ONLY_MOONLIGHT_FALSE@test_profiles = $(build_profiles) \
 @ONLY_MOONLIGHT_FALSE@	$(am__append_3)
 @ONLY_MOONLIGHT_TRUE@test_profiles = moonlight_raw $(am__append_3)
-TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs $(tmpinst)/bin/dmcs $(tmpinst)/bin/al2
+TEST_SUPPORT_FILES = $(tmpinst)/bin/mono $(tmpinst)/bin/ilasm $(tmpinst)/bin/gmcs $(tmpinst)/bin/dmcs $(tmpinst)/bin/al2 $(tmpinst)/bin/al
 @ENABLE_NUNIT_TESTS_FALSE@test_select = ONLY_CENTUM_TESTS=yes
 
 # now a misnomer, but it'll go away soon enough.
@@ -441,6 +445,27 @@ etc/mono/4.0/web.config: $(top_srcdir)/data/net_4_0/web.config
 $(symlinks):
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
+@MOONLIGHT_TRUE@moon-do-basic: Makefile $(SUPPORT_FILES)
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/class/Mono.Cecil && $(MAKE) PROFILE=basic
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/class/Mono.Cecil.Mdb && $(MAKE) PROFILE=basic
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/tools/linker && $(MAKE) PROFILE=basic
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/tools/tuner && $(MAKE) PROFILE=basic
+
+@MOONLIGHT_TRUE@moon-do-basic-clean:
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/class/Mono.Cecil && $(MAKE) PROFILE=basic clean
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/class/Mono.Cecil.Mdb && $(MAKE) PROFILE=basic clean
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/tools/linker && $(MAKE) PROFILE=basic clean
+@MOONLIGHT_TRUE@	cd $(mcs_topdir)/tools/tuner && $(MAKE) PROFILE=basic clean
+
+@MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@moon-do-moonlight-raw: Makefile $(SUPPORT_FILES)
+@MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='moonlight_raw' CC='$(CC)' all-profiles
+
+@MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@moon-do-moonlight-raw-clean:
+@MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@	cd $(mcs_topdir) && $(MAKE) NO_DIR_CHECK=1 PROFILES='moonlight_raw' CC='$(CC)' clean-profiles
+
+@MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@moon-do-build: moon-do-moonlight-raw moon-do-basic
+@MOONLIGHT_TRUE@@ONLY_MOONLIGHT_FALSE@moon-do-clean: moon-do-moonlight-raw-clean moon-do-basic-clean
+
 # The write check is to foil 'make distcheck'
 @BUILD_MCS_TRUE@all-local: $(SUPPORT_FILES) $(TEST_SUPPORT_FILES)
 @BUILD_MCS_TRUE@	if test -w $(mcs_topdir); then :; else chmod -R +w $(mcs_topdir); fi
@@ -536,6 +561,12 @@ $(tmpinst)/bin/al2: $(tmpinst)/bin/mono Makefile
 	echo '#! /bin/sh' > $@ ; \
 	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
 	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_2_0/al.exe"'" "$$@"' >> $@ ; \
+	chmod +x $@
+
+$(tmpinst)/bin/al: $(tmpinst)/bin/mono Makefile
+	echo '#! /bin/sh' > $@ ; \
+	r=`pwd`; m=`cd $(mcs_topdir) && pwd`; \
+	echo 'exec "'"$$r/$(tmpinst)/bin/mono"'" "'"$$m/class/lib/net_4_0/al.exe"'" "$$@"' >> $@ ; \
 	chmod +x $@
 
 test-support-files: $(TEST_SUPPORT_FILES)

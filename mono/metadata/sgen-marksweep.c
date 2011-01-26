@@ -29,15 +29,18 @@
 #ifdef HAVE_SGEN_GC
 
 #include <math.h>
+#include <errno.h>
 
 #include "utils/mono-counters.h"
+#include "utils/mono-semaphore.h"
+#include "utils/mono-time.h"
 #include "metadata/object-internals.h"
 #include "metadata/profiler-private.h"
 
 #include "metadata/sgen-gc.h"
 #include "metadata/sgen-protocol.h"
-
-#define DEBUG(l,x)
+#include "metadata/sgen-cardtable.h"
+#include "metadata/gc-internal.h"
 
 #define MS_BLOCK_SIZE	(16*1024)
 #define MS_BLOCK_SIZE_SHIFT	14
@@ -76,18 +79,21 @@
 typedef struct _MSBlockInfo MSBlockInfo;
 struct _MSBlockInfo {
 	int obj_size;
-	gboolean pinned;
-	gboolean has_references;
+	int obj_size_index;
+	int pin_queue_num_entries;
+	unsigned int pinned : 1;
+	unsigned int has_references : 1;
+	unsigned int has_pinned : 1;	/* means cannot evacuate */
+	unsigned int is_to_space : 1;
 #ifdef FIXED_HEAP
-	gboolean used;
-#else
-	MSBlockInfo *next;
+	unsigned int used : 1;
+	unsigned int zeroed : 1;
 #endif
+	MSBlockInfo *next;
 	char *block;
 	void **free_list;
 	MSBlockInfo *next_free;
 	void **pin_queue_start;
-	int pin_queue_num_entries;
 	mword mark_words [MS_NUM_MARK_WORDS];
 };
 
@@ -180,7 +186,16 @@ static int nursery_bits;
 static char *nursery_start;
 static char *nursery_end;
 
+static gboolean *evacuate_block_obj_sizes;
+static float evacuation_threshold = 0.666;
+
+static gboolean concurrent_sweep = FALSE;
+static gboolean have_swept;
+
 #define ptr_in_nursery(p)	(SGEN_PTR_IN_NURSERY ((p), nursery_bits, nursery_start, nursery_end))
+
+/* all allocated blocks in the system */
+static MSBlockInfo *all_blocks;
 
 #ifdef FIXED_HEAP
 /* non-allocated block free-list */
@@ -188,22 +203,11 @@ static MSBlockInfo *empty_blocks = NULL;
 #else
 /* non-allocated block free-list */
 static void *empty_blocks = NULL;
-/* all allocated blocks in the system */
-static MSBlockInfo *all_blocks;
 static int num_empty_blocks = 0;
 #endif
 
-#ifdef FIXED_HEAP
-#define FOREACH_BLOCK(bl)	{					\
-		int __block_i;						\
-		for (__block_i = 0; __block_i < ms_heap_num_blocks; ++__block_i) { \
-			(bl) = &block_infos [__block_i];		\
-			if (!(bl)->used) continue;
-#define END_FOREACH_BLOCK	}}
-#else
 #define FOREACH_BLOCK(bl)	for ((bl) = all_blocks; (bl); (bl) = (bl)->next) {
 #define END_FOREACH_BLOCK	}
-#endif
 
 static int num_major_sections = 0;
 /* one free block list for each block object size */
@@ -211,6 +215,58 @@ static MSBlockInfo **free_block_lists [MS_BLOCK_TYPE_MAX];
 
 static long long stat_major_blocks_alloced = 0;
 static long long stat_major_blocks_freed = 0;
+static long long stat_major_objects_evacuated = 0;
+static long long stat_time_wait_for_sweep = 0;
+
+static gboolean ms_sweep_in_progress = FALSE;
+static pthread_t ms_sweep_thread;
+static MonoSemType ms_sweep_cmd_semaphore;
+static MonoSemType ms_sweep_done_semaphore;
+
+static void
+ms_signal_sweep_command (void)
+{
+	if (!concurrent_sweep)
+		return;
+
+	g_assert (!ms_sweep_in_progress);
+	ms_sweep_in_progress = TRUE;
+	MONO_SEM_POST (&ms_sweep_cmd_semaphore);
+}
+
+static void
+ms_signal_sweep_done (void)
+{
+	if (!concurrent_sweep)
+		return;
+
+	MONO_SEM_POST (&ms_sweep_done_semaphore);
+}
+
+static void
+ms_wait_for_sweep_done (void)
+{
+	SGEN_TV_DECLARE (atv);
+	SGEN_TV_DECLARE (btv);
+	int result;
+
+	if (!concurrent_sweep)
+		return;
+
+	if (!ms_sweep_in_progress)
+		return;
+
+	SGEN_TV_GETTIME (atv);
+	while ((result = MONO_SEM_WAIT (&ms_sweep_done_semaphore)) != 0) {
+		if (errno != EINTR)
+			g_error ("MONO_SEM_WAIT");
+	}
+	SGEN_TV_GETTIME (btv);
+	stat_time_wait_for_sweep += SGEN_TV_ELAPSED_MS (atv, btv);
+
+	g_assert (ms_sweep_in_progress);
+	ms_sweep_in_progress = FALSE;
+}
 
 static int
 ms_find_block_obj_size_index (int size)
@@ -258,6 +314,7 @@ major_alloc_heap (mword nursery_size, mword nursery_align, int the_nursery_bits)
 			block_infos [i].next_free = &block_infos [i + 1];
 		else
 			block_infos [i].next_free = NULL;
+		block_infos [i].zeroed = TRUE;
 	}
 
 	empty_blocks = &block_infos [0];
@@ -280,6 +337,12 @@ major_alloc_heap (mword nursery_size, mword nursery_align, int the_nursery_bits)
 }
 #endif
 
+static void
+update_heap_boundaries_for_block (MSBlockInfo *block)
+{
+	mono_sgen_update_heap_boundaries ((mword)block->block, (mword)block->block + MS_BLOCK_SIZE);
+}
+
 #ifdef FIXED_HEAP
 static MSBlockInfo*
 ms_get_empty_block (void)
@@ -293,7 +356,8 @@ ms_get_empty_block (void)
 
 	block->used = TRUE;
 
-	mono_sgen_update_heap_boundaries ((mword)block->block, (mword)block->block + MS_BLOCK_SIZE);
+	if (!block->zeroed)
+		memset (block->block, 0, MS_BLOCK_SIZE);
 
 	return block;
 }
@@ -304,6 +368,8 @@ ms_free_block (MSBlockInfo *block)
 	block->next_free = empty_blocks;
 	empty_blocks = block;
 	block->used = FALSE;
+	block->zeroed = FALSE;
+	mono_sgen_release_space (MS_BLOCK_SIZE, SPACE_MAJOR);
 }
 #else
 static void*
@@ -350,8 +416,6 @@ ms_get_empty_block (void)
 
 	g_assert (!((mword)block & (MS_BLOCK_SIZE - 1)));
 
-	mono_sgen_update_heap_boundaries ((mword)block, (mword)block + MS_BLOCK_SIZE);
-
 	return block;
 }
 
@@ -360,6 +424,7 @@ ms_free_block (void *block)
 {
 	void *empty;
 
+	mono_sgen_release_space (MS_BLOCK_SIZE, SPACE_MAJOR);
 	memset (block, 0, MS_BLOCK_SIZE);
 
 	do {
@@ -391,14 +456,13 @@ check_block_free_list (MSBlockInfo *block, int size, gboolean pinned)
 		/* the block must not be in the empty_blocks list */
 		for (b = empty_blocks; b; b = b->next_free)
 			g_assert (b != block);
-#else
+#endif
 		/* the block must be in the all_blocks list */
 		for (b = all_blocks; b; b = b->next) {
 			if (b == block)
 				break;
 		}
 		g_assert (b == block);
-#endif
 	}
 }
 
@@ -461,32 +525,44 @@ consistency_check (void)
 }
 #endif
 
-static void
+static gboolean
 ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 {
 	int size = block_obj_sizes [size_index];
 	int count = MS_BLOCK_FREE / size;
-#ifdef FIXED_HEAP
-	MSBlockInfo *info = ms_get_empty_block ();
-#else
-	MSBlockInfo *info = mono_sgen_alloc_internal (INTERNAL_MEM_MS_BLOCK_INFO);
+	MSBlockInfo *info;
+#ifndef FIXED_HEAP
 	MSBlockHeader *header;
 #endif
 	MSBlockInfo **free_blocks = FREE_BLOCKS (pinned, has_references);
 	char *obj_start;
 	int i;
 
+	if (!mono_sgen_try_alloc_space (MS_BLOCK_SIZE, SPACE_MAJOR))
+		return FALSE;
+
+#ifdef FIXED_HEAP
+	info = ms_get_empty_block ();
+#else
+	info = mono_sgen_alloc_internal (INTERNAL_MEM_MS_BLOCK_INFO);
+#endif
+
 	DEBUG (9, g_assert (count >= 2));
 
 	info->obj_size = size;
+	info->obj_size_index = size_index;
 	info->pinned = pinned;
 	info->has_references = has_references;
+	info->has_pinned = pinned;
+	info->is_to_space = (mono_sgen_get_current_collection_generation () == GENERATION_OLD);
 #ifndef FIXED_HEAP
 	info->block = ms_get_empty_block ();
 
 	header = (MSBlockHeader*) info->block;
 	header->info = info;
 #endif
+
+	update_heap_boundaries_for_block (info);
 
 	/* build free list */
 	obj_start = info->block + MS_BLOCK_SKIP;
@@ -503,12 +579,11 @@ ms_alloc_block (int size_index, gboolean pinned, gboolean has_references)
 	info->next_free = free_blocks [size_index];
 	free_blocks [size_index] = info;
 
-#ifndef FIXED_HEAP
 	info->next = all_blocks;
 	all_blocks = info;
-#endif
 
 	++num_major_sections;
+	return TRUE;
 }
 
 static gboolean
@@ -530,8 +605,14 @@ alloc_obj (int size, gboolean pinned, gboolean has_references)
 
 	LOCK_MS_BLOCK_LIST;
 
-	if (!free_blocks [size_index])
-		ms_alloc_block (size_index, pinned, has_references);
+	g_assert (!ms_sweep_in_progress);
+
+	if (!free_blocks [size_index]) {
+		if (G_UNLIKELY (!ms_alloc_block (size_index, pinned, has_references))) {
+			UNLOCK_MS_BLOCK_LIST;
+			return NULL;
+		}
+	}
 
 	block = free_blocks [size_index];
 	DEBUG (9, g_assert (block));
@@ -600,7 +681,19 @@ major_free_non_pinned_object (char *obj, size_t size)
 static void*
 major_alloc_small_pinned_obj (size_t size, gboolean has_references)
 {
-	return alloc_obj (size, TRUE, has_references);
+	void *res;
+
+	ms_wait_for_sweep_done ();
+
+	res = alloc_obj (size, TRUE, has_references);
+	 /*If we failed to alloc memory, we better try releasing memory
+	  *as pinned alloc is requested by the runtime.
+	  */
+	 if (!res) {
+		 sgen_collect_major_no_lock ("pinned alloc failure");
+		 res = alloc_obj (size, TRUE, has_references);
+	 }
+	 return res;
 }
 
 static void
@@ -616,13 +709,20 @@ static void*
 major_alloc_degraded (MonoVTable *vtable, size_t size)
 {
 	void *obj;
-	int old_num_sections = num_major_sections;
-	obj = alloc_obj (size, FALSE, vtable->klass->has_references);
-	*(MonoVTable**)obj = vtable;
-	HEAVY_STAT (++stat_objects_alloced_degraded);
-	HEAVY_STAT (stat_bytes_alloced_degraded += size);
-	g_assert (num_major_sections >= old_num_sections);
-	mono_sgen_register_major_sections_alloced (num_major_sections - old_num_sections);
+	int old_num_sections;
+
+	ms_wait_for_sweep_done ();
+
+	old_num_sections = num_major_sections;
+
+	obj = alloc_obj (size, FALSE, SGEN_VTABLE_HAS_REFERENCES (vtable));
+	if (G_LIKELY (obj)) {
+		*(MonoVTable**)obj = vtable;
+		HEAVY_STAT (++stat_objects_alloced_degraded);
+		HEAVY_STAT (stat_bytes_alloced_degraded += size);
+		g_assert (num_major_sections >= old_num_sections);
+		mono_sgen_register_major_sections_alloced (num_major_sections - old_num_sections);
+	}
 	return obj;
 }
 
@@ -667,13 +767,21 @@ major_is_object_live (char *obj)
 static gboolean
 major_ptr_is_in_non_pinned_space (char *ptr)
 {
-	g_assert_not_reached ();
+	MSBlockInfo *block;
+
+	FOREACH_BLOCK (block) {
+		if (ptr >= (char*)block && ptr <= (char*)block + MS_BLOCK_SIZE)
+			return TRUE;
+	} END_FOREACH_BLOCK;
+	return FALSE;
 }
 
 static void
 major_iterate_objects (gboolean non_pinned, gboolean pinned, IterateObjectCallbackFunc callback, void *data)
 {
 	MSBlockInfo *block;
+
+	ms_wait_for_sweep_done ();
 
 	FOREACH_BLOCK (block) {
 		int count = MS_BLOCK_FREE / block->obj_size;
@@ -701,6 +809,30 @@ static void
 major_dump_heap (FILE *heap_dump_file)
 {
 	MSBlockInfo *block;
+	int *slots_available = alloca (sizeof (int) * num_block_obj_sizes);
+	int *slots_used = alloca (sizeof (int) * num_block_obj_sizes);
+	int i;
+
+	for (i = 0; i < num_block_obj_sizes; ++i)
+		slots_available [i] = slots_used [i] = 0;
+
+	FOREACH_BLOCK (block) {
+		int index = ms_find_block_obj_size_index (block->obj_size);
+		int count = MS_BLOCK_FREE / block->obj_size;
+
+		slots_available [index] += count;
+		for (i = 0; i < count; ++i) {
+			if (MS_OBJ_ALLOCED (MS_BLOCK_OBJ (block, i), block))
+				++slots_used [index];
+		}
+	} END_FOREACH_BLOCK;
+
+	fprintf (heap_dump_file, "<occupancies>\n");
+	for (i = 0; i < num_block_obj_sizes; ++i) {
+		fprintf (heap_dump_file, "<occupancy size=\"%d\" available=\"%d\" used=\"%d\" />\n",
+				block_obj_sizes [i], slots_available [i], slots_used [i]);
+	}
+	fprintf (heap_dump_file, "</occupancies>\n");
 
 	FOREACH_BLOCK (block) {
 		int count = MS_BLOCK_FREE / block->obj_size;
@@ -778,25 +910,53 @@ major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 	DEBUG (9, g_assert (obj));
 	DEBUG (9, g_assert (current_collection_generation == GENERATION_OLD));
 
+	if (vtable_word & SGEN_FORWARDED_BIT) {
+		*ptr = (void*)vt;
+		return;
+	}
+
 	if (ptr_in_nursery (obj)) {
 		int word, bit;
 		gboolean has_references;
 		void *destination;
-
-		if (vtable_word & SGEN_FORWARDED_BIT) {
-			*ptr = (void*)vt;
-			return;
-		}
 
 		if (vtable_word & SGEN_PINNED_BIT)
 			return;
 
 		HEAVY_STAT (++stat_objects_copied_major);
 
+	do_copy_object:
 		objsize = SGEN_ALIGN_UP (mono_sgen_par_object_get_size (vt, (MonoObject*)obj));
 		has_references = SGEN_VTABLE_HAS_REFERENCES (vt);
 
 		destination = major_alloc_object (objsize, has_references);
+		if (G_UNLIKELY (!destination)) {
+			if (!ptr_in_nursery (obj)) {
+				int size_index;
+				block = MS_BLOCK_FOR_OBJ (obj);
+				size_index = block->obj_size_index;
+				evacuate_block_obj_sizes [size_index] = FALSE;
+			}
+
+			do {
+				if (SGEN_CAS_PTR (obj, (void*)((mword)vt | SGEN_PINNED_BIT), vt) == vt) {
+					mono_sgen_pin_object (obj, queue);
+					break;
+				}
+
+				vtable_word = *(mword*)obj;
+				/*someone else forwarded it, update the pointer and bail out*/
+				if (vtable_word & SGEN_FORWARDED_BIT) {
+					*ptr = (void*)(vtable_word & ~SGEN_VTABLE_BITS_MASK);
+					break;
+				}
+
+				/*someone pinned it, nothing to do.*/
+				if (vtable_word & SGEN_PINNED_BIT)
+					break;
+			} while (TRUE);
+			return;
+		}
 
 		if (SGEN_CAS_PTR (obj, (void*)((mword)destination | SGEN_FORWARDED_BIT), vt) == vt) {
 			gboolean was_marked;
@@ -838,8 +998,19 @@ major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 		if (objsize <= SGEN_MAX_SMALL_OBJ_SIZE)
 #endif
 		{
+			int size_index;
+
 			block = MS_BLOCK_FOR_OBJ (obj);
-			MS_PAR_MARK_OBJECT_AND_ENQUEUE (obj, block, queue);
+			size_index = block->obj_size_index;
+
+			if (!block->has_pinned && evacuate_block_obj_sizes [size_index]) {
+				if (block->is_to_space)
+					return;
+				HEAVY_STAT (++stat_major_objects_evacuated);
+				goto do_copy_object;
+			} else {
+				MS_PAR_MARK_OBJECT_AND_ENQUEUE (obj, block, queue);
+			}
 		} else {
 			if (vtable_word & SGEN_PINNED_BIT)
 				return;
@@ -858,7 +1029,6 @@ static void
 major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 {
 	void *obj = *ptr;
-	mword objsize;
 	MSBlockInfo *block;
 
 	HEAVY_STAT (++stat_copy_object_called_major);
@@ -868,7 +1038,7 @@ major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 
 	if (ptr_in_nursery (obj)) {
 		int word, bit;
-		char *forwarded;
+		char *forwarded, *old_obj;
 
 		if ((forwarded = SGEN_OBJECT_IS_FORWARDED (obj))) {
 			*ptr = forwarded;
@@ -879,7 +1049,20 @@ major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 
 		HEAVY_STAT (++stat_objects_copied_major);
 
+	do_copy_object:
+		old_obj = obj;
 		obj = copy_object_no_checks (obj, queue);
+		if (G_UNLIKELY (old_obj == obj)) {
+			/*If we fail to evacuate an object we just stop doing it for a given block size as all other will surely fail too.*/
+			if (!ptr_in_nursery (obj)) {
+				int size_index;
+				block = MS_BLOCK_FOR_OBJ (obj);
+				size_index = block->obj_size_index;
+				evacuate_block_obj_sizes [size_index] = FALSE;
+				MS_MARK_OBJECT_AND_ENQUEUE (obj, block, queue);
+			}
+			return;
+		}
 		*ptr = obj;
 
 		/*
@@ -893,6 +1076,16 @@ major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 		DEBUG (9, g_assert (!MS_MARK_BIT (block, word, bit)));
 		MS_SET_MARK_BIT (block, word, bit);
 	} else {
+		char *forwarded;
+#ifndef FIXED_HEAP
+		mword objsize;
+#endif
+
+		if ((forwarded = SGEN_OBJECT_IS_FORWARDED (obj))) {
+			*ptr = forwarded;
+			return;
+		}
+
 #ifdef FIXED_HEAP
 		if (MS_PTR_IN_SMALL_MAJOR_HEAP (obj))
 #else
@@ -901,8 +1094,19 @@ major_copy_or_mark_object (void **ptr, SgenGrayQueue *queue)
 		if (objsize <= SGEN_MAX_SMALL_OBJ_SIZE)
 #endif
 		{
+			int size_index;
+
 			block = MS_BLOCK_FOR_OBJ (obj);
-			MS_MARK_OBJECT_AND_ENQUEUE (obj, block, queue);
+			size_index = block->obj_size_index;
+
+			if (!block->has_pinned && evacuate_block_obj_sizes [size_index]) {
+				if (block->is_to_space)
+					return;
+				HEAVY_STAT (++stat_major_objects_evacuated);
+				goto do_copy_object;
+			} else {
+				MS_MARK_OBJECT_AND_ENQUEUE (obj, block, queue);
+			}
 		} else {
 			if (SGEN_OBJECT_IS_PINNED (obj))
 				return;
@@ -922,11 +1126,15 @@ mark_pinned_objects_in_block (MSBlockInfo *block, SgenGrayQueue *queue)
 {
 	int i;
 	int last_index = -1;
-	int count = MS_BLOCK_FREE / block->obj_size;
+
+	if (!block->pin_queue_num_entries)
+		return;
+
+	block->has_pinned = TRUE;
 
 	for (i = 0; i < block->pin_queue_num_entries; ++i) {
 		int index = MS_BLOCK_OBJ_INDEX (block->pin_queue_start [i], block);
-		DEBUG (9, g_assert (index >= 0 && index < count));
+		DEBUG (9, g_assert (index >= 0 && index < MS_BLOCK_FREE / block->obj_size));
 		if (index == last_index)
 			continue;
 		MS_MARK_OBJECT_AND_ENQUEUE_CHECKED (MS_BLOCK_OBJ (block, index), block, queue);
@@ -935,14 +1143,18 @@ mark_pinned_objects_in_block (MSBlockInfo *block, SgenGrayQueue *queue)
 }
 
 static void
-major_sweep (void)
+ms_sweep (void)
 {
 	int i;
-#ifdef FIXED_HEAP
-	int j;
-#else
 	MSBlockInfo **iter;
-#endif
+
+	/* statistics for evacuation */
+	int *slots_available = alloca (sizeof (int) * num_block_obj_sizes);
+	int *slots_used = alloca (sizeof (int) * num_block_obj_sizes);
+	int *num_blocks = alloca (sizeof (int) * num_block_obj_sizes);
+
+	for (i = 0; i < num_block_obj_sizes; ++i)
+		slots_available [i] = slots_used [i] = num_blocks [i] = 0;
 
 	/* clear all the free lists */
 	for (i = 0; i < MS_BLOCK_TYPE_MAX; ++i) {
@@ -953,22 +1165,21 @@ major_sweep (void)
 	}
 
 	/* traverse all blocks, free and zero unmarked objects */
-#ifdef FIXED_HEAP
-	for (j = 0; j < ms_heap_num_blocks; ++j) {
-		MSBlockInfo *block = &block_infos [j];
-#else
 	iter = &all_blocks;
 	while (*iter) {
 		MSBlockInfo *block = *iter;
-#endif
 		int count;
 		gboolean have_live = FALSE;
+		gboolean has_pinned;
 		int obj_index;
+		int obj_size_index;
 
-#ifdef FIXED_HEAP
-		if (!block->used)
-			continue;
-#endif
+		obj_size_index = block->obj_size_index;
+
+		has_pinned = block->has_pinned;
+		block->has_pinned = block->pinned;
+
+		block->is_to_space = FALSE;
 
 		count = MS_BLOCK_FREE / block->obj_size;
 		block->free_list = NULL;
@@ -981,6 +1192,8 @@ major_sweep (void)
 			if (MS_MARK_BIT (block, word, bit)) {
 				DEBUG (9, g_assert (MS_OBJ_ALLOCED (obj, block)));
 				have_live = TRUE;
+				if (!has_pinned)
+					++slots_used [obj_size_index];
 			} else {
 				/* an unmarked object */
 				if (MS_OBJ_ALLOCED (obj, block)) {
@@ -1001,9 +1214,12 @@ major_sweep (void)
 		 */
 
 		if (have_live) {
-#ifndef FIXED_HEAP
+			if (!has_pinned) {
+				++num_blocks [obj_size_index];
+				slots_available [obj_size_index] += count;
+			}
+
 			iter = &block->next;
-#endif
 
 			/*
 			 * If there are free slots in the block, add
@@ -1015,22 +1231,74 @@ major_sweep (void)
 				block->next_free = free_blocks [index];
 				free_blocks [index] = block;
 			}
+
+			update_heap_boundaries_for_block (block);
 		} else {
 			/*
 			 * Blocks without live objects are removed from the
 			 * block list and freed.
 			 */
+			*iter = block->next;
+
 #ifdef FIXED_HEAP
 			ms_free_block (block);
 #else
-			*iter = block->next;
-
 			ms_free_block (block->block);
+
 			mono_sgen_free_internal (block, INTERNAL_MEM_MS_BLOCK_INFO);
 #endif
 
 			--num_major_sections;
 		}
+	}
+
+	for (i = 0; i < num_block_obj_sizes; ++i) {
+		float usage = (float)slots_used [i] / (float)slots_available [i];
+		if (num_blocks [i] > 5 && usage < evacuation_threshold) {
+			evacuate_block_obj_sizes [i] = TRUE;
+			/*
+			g_print ("slot size %d - %d of %d used\n",
+					block_obj_sizes [i], slots_used [i], slots_available [i]);
+			*/
+		} else {
+			evacuate_block_obj_sizes [i] = FALSE;
+		}
+	}
+
+	have_swept = TRUE;
+}
+
+static void*
+ms_sweep_thread_func (void *dummy)
+{
+	g_assert (concurrent_sweep);
+
+	for (;;) {
+		int result;
+
+		while ((result = MONO_SEM_WAIT (&ms_sweep_cmd_semaphore)) != 0) {
+			if (errno != EINTR)
+				g_error ("MONO_SEM_WAIT");
+		}
+
+		ms_sweep ();
+
+		ms_signal_sweep_done ();
+	}
+
+	return NULL;
+}
+
+static void
+major_sweep (void)
+{
+	if (concurrent_sweep) {
+		if (!ms_sweep_thread)
+			pthread_create (&ms_sweep_thread, NULL, ms_sweep_thread_func, NULL);
+
+		ms_signal_sweep_command ();
+	} else {
+		ms_sweep ();
 	}
 }
 
@@ -1112,6 +1380,8 @@ static int old_num_major_sections;
 static void
 major_start_nursery_collection (void)
 {
+	ms_wait_for_sweep_done ();
+
 #ifdef MARKSWEEP_CONSISTENCY_CHECK
 	consistency_check ();
 #endif
@@ -1129,10 +1399,36 @@ major_finish_nursery_collection (void)
 }
 
 static void
+major_start_major_collection (void)
+{
+	int i;
+
+	ms_wait_for_sweep_done ();
+
+	/* clear the free lists */
+	for (i = 0; i < num_block_obj_sizes; ++i) {
+		if (!evacuate_block_obj_sizes [i])
+			continue;
+
+		free_block_lists [0][i] = NULL;
+		free_block_lists [MS_BLOCK_FLAG_REFS][i] = NULL;
+	}
+}
+
+static void
 major_finish_major_collection (void)
+{
+}
+
+static void
+major_have_computer_minor_collection_allowance (void)
 {
 #ifndef FIXED_HEAP
 	int section_reserve = mono_sgen_get_minor_collection_allowance () / MS_BLOCK_SIZE;
+
+	g_assert (have_swept);
+	ms_wait_for_sweep_done ();
+	g_assert (!ms_sweep_in_progress);
 
 	/*
 	 * FIXME: We don't free blocks on 32 bit platforms because it
@@ -1212,17 +1508,34 @@ get_num_major_sections (void)
 	return num_major_sections;
 }
 
-#ifdef FIXED_HEAP
 static gboolean
 major_handle_gc_param (const char *opt)
 {
+#ifdef FIXED_HEAP
 	if (g_str_has_prefix (opt, "major-heap-size=")) {
 		const char *arg = strchr (opt, '=') + 1;
 		glong size;
-		if (!mono_sgen_parse_environment_string_extract_number (arg, &size))
+		if (!mono_gc_parse_environment_string_extract_number (arg, &size))
 			return FALSE;
 		ms_heap_num_blocks = (size + MS_BLOCK_SIZE - 1) / MS_BLOCK_SIZE;
 		g_assert (ms_heap_num_blocks > 0);
+		return TRUE;
+	} else
+#endif
+	if (g_str_has_prefix (opt, "evacuation-threshold=")) {
+		const char *arg = strchr (opt, '=') + 1;
+		int percentage = atoi (arg);
+		if (percentage < 0 || percentage > 100) {
+			fprintf (stderr, "evacuation-threshold must be an integer in the range 0-100.\n");
+			exit (1);
+		}
+		evacuation_threshold = (float)percentage / 100.0;
+		return TRUE;
+	} else if (!strcmp (opt, "concurrent-sweep")) {
+		concurrent_sweep = TRUE;
+		return TRUE;
+	} else if (!strcmp (opt, "no-concurrent-sweep")) {
+		concurrent_sweep = FALSE;
 		return TRUE;
 	}
 
@@ -1232,9 +1545,15 @@ major_handle_gc_param (const char *opt)
 static void
 major_print_gc_param_usage (void)
 {
-	fprintf (stderr, "  major-heap-size=N (where N is an integer, possibly with a k, m or a g suffix)\n");
-}
+	fprintf (stderr,
+			""
+#ifdef FIXED_HEAP
+			"  major-heap-size=N (where N is an integer, possibly with a k, m or a g suffix)\n"
 #endif
+			"  evacuation-threshold=P (where P is a percentage, an integer in 0-100)\n"
+			"  (no-)concurrent-sweep\n"
+			);
+}
 
 #ifdef SGEN_HAVE_CARDTABLE
 static void
@@ -1248,42 +1567,147 @@ major_iterate_live_block_ranges (sgen_cardtable_block_callback callback)
 	} END_FOREACH_BLOCK;
 }
 
+#define CARD_WORDS_PER_BLOCK (CARDS_PER_BLOCK / SIZEOF_VOID_P)
+/*
+ * MS blocks are 16K aligned.
+ * Cardtables are 4K aligned, at least.
+ * This means that the cardtable of a given block is 32 bytes aligned.
+ */
+static guint8*
+initial_skip_card (guint8 *card_data)
+{
+	mword *cards = (mword*)card_data;
+	mword card;
+	int i;
+	for (i = 0; i < CARD_WORDS_PER_BLOCK; ++i) {
+		card = cards [i];
+		if (card)
+			break;
+	}
+
+	if (i == CARD_WORDS_PER_BLOCK)
+		return card_data + CARDS_PER_BLOCK;
+
+#if defined(__i386__) && defined(__GNUC__)
+	return card_data + i * 4 +  (__builtin_ffs (card) - 1) / 8;
+#elif defined(__x86_64__) && defined(__GNUC__)
+	return card_data + i * 8 +  (__builtin_ffsll (card) - 1) / 8;
+#else
+	for (i = i * SIZEOF_VOID_P; i < CARDS_PER_BLOCK; ++i) {
+		if (card_data [i])
+			return &card_data [i];
+	}
+	return card_data;
+#endif
+}
+
+
+static G_GNUC_UNUSED guint8*
+skip_card (guint8 *card_data, guint8 *card_data_end)
+{
+	while (card_data < card_data_end && !*card_data)
+		++card_data;
+	return card_data;
+}
+
+#define MS_BLOCK_OBJ_INDEX_FAST(o,b,os)	(((char*)(o) - ((b) + MS_BLOCK_SKIP)) / (os))
+#define MS_BLOCK_OBJ_FAST(b,os,i)			((b) + MS_BLOCK_SKIP + (os) * (i))
+#define MS_OBJ_ALLOCED_FAST(o,b)		(*(void**)(o) && (*(char**)(o) < (b) || *(char**)(o) >= (b) + MS_BLOCK_SIZE))
+
 static void
 major_scan_card_table (SgenGrayQueue *queue)
 {
 	MSBlockInfo *block;
 
 	FOREACH_BLOCK (block) {
-		int i;
-		int block_obj_size = block->obj_size;
-		char *start = block->block;
+		int block_obj_size;
+		char *block_start;
 
 		if (!block->has_references)
 			continue;
 
-		for (i = 0; i < CARDS_PER_BLOCK; ++i, start += CARD_SIZE_IN_BYTES) {
-			int index;
-			char *obj, *end;
+		block_obj_size = block->obj_size;
+		block_start = block->block;
 
-			if (!sgen_card_table_card_begin_scanning ((mword)start))
+		if (block_obj_size >= CARD_SIZE_IN_BYTES) {
+			guint8 *cards;
+#ifndef SGEN_HAVE_OVERLAPPING_CARDS
+			guint8 cards_data [CARDS_PER_BLOCK];
+#endif
+			char *obj, *end, *base;
+
+			/*We can avoid the extra copy since the remark cardtable was cleaned before */
+#ifdef SGEN_HAVE_OVERLAPPING_CARDS
+			cards = sgen_card_table_get_card_scan_address ((mword)block_start);
+#else
+			cards = cards_data;
+			if (!sgen_card_table_get_card_data (cards_data, (mword)block_start, CARDS_PER_BLOCK))
 				continue;
+#endif
 
-			end = start + CARD_SIZE_IN_BYTES;
-			if (i == 0)
-				index = 0;
-			else
-				index = MS_BLOCK_OBJ_INDEX (start, block);
+			obj = (char*)MS_BLOCK_OBJ_FAST (block_start, block_obj_size, 0);
+			end = block_start + MS_BLOCK_SIZE;
+			base = sgen_card_table_align_pointer (obj);
 
-			obj = (char*)MS_BLOCK_OBJ (block, index);
 			while (obj < end) {
-				if (MS_OBJ_ALLOCED (obj, block))
-					minor_scan_object (obj, queue);
+				if (MS_OBJ_ALLOCED_FAST (obj, block_start)) {
+					int card_offset = (obj - base) >> CARD_BITS;
+					sgen_cardtable_scan_object (obj, block_obj_size, cards + card_offset, queue);
+				}
 				obj += block_obj_size;
+			}
+		} else {
+			guint8 *card_data, *card_base;
+			guint8 *card_data_end;
+
+			/*
+			 * This is safe in face of card aliasing for the following reason:
+			 *
+			 * Major blocks are 16k aligned, or 32 cards aligned.
+			 * Cards aliasing happens in powers of two, so as long as major blocks are aligned to their
+			 * sizes, they won't overflow the cardtable overlap modulus.
+			 */
+			card_data = card_base = sgen_card_table_get_card_scan_address ((mword)block_start);
+			card_data_end = card_data + CARDS_PER_BLOCK;
+
+			for (card_data = initial_skip_card (card_data); card_data < card_data_end; ++card_data) { //card_data = skip_card (card_data + 1, card_data_end)) {
+				int index;
+				int idx = card_data - card_base;
+				char *start = (char*)(block_start + idx * CARD_SIZE_IN_BYTES);
+				char *end = start + CARD_SIZE_IN_BYTES;
+				char *obj;
+
+				if (!*card_data)
+					continue;
+				sgen_card_table_prepare_card_for_scanning (card_data);
+
+				if (idx == 0)
+					index = 0;
+				else
+					index = MS_BLOCK_OBJ_INDEX_FAST (start, block_start, block_obj_size);
+
+				obj = (char*)MS_BLOCK_OBJ_FAST (block_start, block_obj_size, index);
+				while (obj < end) {
+					if (MS_OBJ_ALLOCED_FAST (obj, block_start))
+						minor_scan_object (obj, queue);
+					obj += block_obj_size;
+				}
 			}
 		}
 	} END_FOREACH_BLOCK;
 }
 #endif
+
+static gboolean
+major_is_worker_thread (pthread_t thread)
+{
+	if (concurrent_sweep)
+		return thread == ms_sweep_thread;
+	else
+		return FALSE;
+}
+
+#undef pthread_create
 
 void
 #ifdef SGEN_PARALLEL_MARK
@@ -1311,6 +1735,10 @@ mono_sgen_marksweep_init
 	block_obj_sizes = mono_sgen_alloc_internal_dynamic (sizeof (int) * num_block_obj_sizes, INTERNAL_MEM_MS_TABLES);
 	ms_calculate_block_obj_sizes (MS_BLOCK_OBJ_SIZE_FACTOR, block_obj_sizes);
 
+	evacuate_block_obj_sizes = mono_sgen_alloc_internal_dynamic (sizeof (gboolean) * num_block_obj_sizes, INTERNAL_MEM_MS_TABLES);
+	for (i = 0; i < num_block_obj_sizes; ++i)
+		evacuate_block_obj_sizes [i] = FALSE;
+
 	/*
 	{
 		int i;
@@ -1332,6 +1760,15 @@ mono_sgen_marksweep_init
 
 	mono_counters_register ("# major blocks allocated", MONO_COUNTER_GC | MONO_COUNTER_LONG, &stat_major_blocks_alloced);
 	mono_counters_register ("# major blocks freed", MONO_COUNTER_GC | MONO_COUNTER_LONG, &stat_major_blocks_freed);
+	mono_counters_register ("# major objects evacuated", MONO_COUNTER_GC | MONO_COUNTER_LONG, &stat_major_objects_evacuated);
+	mono_counters_register ("Wait for sweep time", MONO_COUNTER_GC | MONO_COUNTER_LONG, &stat_time_wait_for_sweep);
+
+	/*
+	 * FIXME: These are superfluous if concurrent sweep is
+	 * disabled.  We might want to create them lazily.
+	 */
+	MONO_SEM_INIT (&ms_sweep_cmd_semaphore, 0);
+	MONO_SEM_INIT (&ms_sweep_done_semaphore, 0);
 
 	collector->section_size = MAJOR_SECTION_SIZE;
 #ifdef SGEN_PARALLEL_MARK
@@ -1339,7 +1776,9 @@ mono_sgen_marksweep_init
 #else
 	collector->is_parallel = FALSE;
 #endif
-	collector->supports_cardtable = !collector->is_parallel;
+	collector->supports_cardtable = TRUE;
+
+	collector->have_swept = &have_swept;
 
 	collector->alloc_heap = major_alloc_heap;
 	collector->is_object_live = major_is_object_live;
@@ -1354,7 +1793,7 @@ mono_sgen_marksweep_init
 	collector->pin_objects = major_pin_objects;
 #ifdef SGEN_HAVE_CARDTABLE
 	collector->scan_card_table = major_scan_card_table;
-	collector->iterate_live_block_ranges = major_iterate_live_block_ranges;
+	collector->iterate_live_block_ranges = (void*)(void*) major_iterate_live_block_ranges;
 #endif
 	collector->init_to_space = major_init_to_space;
 	collector->sweep = major_sweep;
@@ -1363,21 +1802,24 @@ mono_sgen_marksweep_init
 	collector->get_used_size = major_get_used_size;
 	collector->start_nursery_collection = major_start_nursery_collection;
 	collector->finish_nursery_collection = major_finish_nursery_collection;
+	collector->start_major_collection = major_start_major_collection;
 	collector->finish_major_collection = major_finish_major_collection;
+	collector->have_computed_minor_collection_allowance = major_have_computer_minor_collection_allowance;
 	collector->ptr_is_in_non_pinned_space = major_ptr_is_in_non_pinned_space;
 	collector->obj_is_from_pinned_alloc = obj_is_from_pinned_alloc;
 	collector->report_pinned_memory_usage = major_report_pinned_memory_usage;
 	collector->get_num_major_sections = get_num_major_sections;
-#ifdef FIXED_HEAP
 	collector->handle_gc_param = major_handle_gc_param;
 	collector->print_gc_param_usage = major_print_gc_param_usage;
-#else
-	collector->handle_gc_param = NULL;
-	collector->print_gc_param_usage = NULL;
-#endif
+	collector->is_worker_thread = major_is_worker_thread;
 
 	FILL_COLLECTOR_COPY_OBJECT (collector);
 	FILL_COLLECTOR_SCAN_OBJECT (collector);
+
+#ifdef SGEN_HAVE_CARDTABLE
+	/*cardtable requires major pages to be 8 cards aligned*/
+	g_assert ((MS_BLOCK_SIZE % (8 * CARD_SIZE_IN_BYTES)) == 0);
+#endif
 }
 
 #endif

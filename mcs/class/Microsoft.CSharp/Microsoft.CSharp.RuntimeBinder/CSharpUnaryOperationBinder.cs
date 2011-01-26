@@ -76,6 +76,8 @@ namespace Microsoft.CSharp.RuntimeBinder
 
 			if (Operation == ExpressionType.IsTrue) {
 				expr = new Compiler.BooleanExpression (expr);
+			} else if (Operation == ExpressionType.IsFalse) {
+				expr = new Compiler.BooleanExpressionFalse (expr);
 			} else {
 				if (Operation == ExpressionType.Increment)
 					expr = new Compiler.UnaryMutator (Compiler.UnaryMutator.Mode.PreIncrement, expr, Compiler.Location.Null);

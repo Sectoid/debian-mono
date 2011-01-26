@@ -36,7 +36,6 @@ using System.ComponentModel;
 using System.Web.Configuration;
 using System.Web.Caching;
 using System.Web.Util;
-using System.Security.Cryptography;
 using System.Security.Permissions;
 using System.Threading;
 using System.Configuration;
@@ -174,7 +173,7 @@ namespace System.Web.SessionState
 			}
 
 			supportsExpiration = handler.SetItemExpireCallback (OnSessionExpired);
-			HttpRuntimeSection runtime = WebConfigurationManager.GetSection ("system.web/httpRuntime") as HttpRuntimeSection;
+			HttpRuntimeSection runtime = HttpRuntime.Section;
 			executionTimeout = runtime.ExecutionTimeout;
 			//executionTimeoutMS = executionTimeout.Milliseconds;
 

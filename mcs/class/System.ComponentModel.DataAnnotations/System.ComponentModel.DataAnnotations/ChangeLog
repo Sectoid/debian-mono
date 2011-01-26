@@ -1,3 +1,16 @@
+2011-01-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[data-annotations] Added some missing 4.0 members
+
+2010-12-10  Marek Safar  <marek.safar@gmail.com>
+
+	Base constructor method calls have to be static
+
+2010-10-25  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[API] Fix for bug:
+	https://bugzilla.novell.com/show_bug.cgi?id=648888
+
 2010-08-21  Marek Habersack  <grendel@twistedcode.net>
 
 	Implemented the StringLengthAttribute

@@ -1,3 +1,31 @@
+2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Directly use ConcurrentDictionary with PLinq set operations
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Cleanup and prettify code from earlier commit
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Remove double delegate cost when non indexed in SelectMany
+	query node
+
+2010-11-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Fix the mess out of SelectMany node and speed it up (avoid
+	Tuples creation)
+
+2010-11-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Improve Where query node speed by avoiding creation of
+	dozen of Tuples everytime and instead use static struct
+
+2010-09-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[PLinq] Add the plumbery for checking source data size when
+	possible and setting ShouldBeSequential appropriately
+
 2010-08-26  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	[PLinq] Add Cancellation checks even deeper. Introduce merge

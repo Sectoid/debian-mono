@@ -1,3 +1,8 @@
+2010-12-07  Guillaume Pouillet  <nekresh@gmail.com>
+
+	Fix bug in BlockingCollection<T>.TryTake Add corresponding unit
+	test
+
 2010-04-23  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	* BlockingCollectionTests.cs: Add IsCompletedEmptyTestCase,

@@ -22,7 +22,7 @@
 //
 
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using System.Runtime.Serialization;
 using System.Runtime.CompilerServices;
@@ -45,8 +45,18 @@ namespace System.IO {
 
 		public DriveInfo (string driveName)
 		{
-			DriveInfo [] drives = GetDrives ();
+			if (!Environment.IsUnix) {
+				if (driveName == null || driveName.Length == 0)
+					throw new ArgumentException ("The drive name is null or empty", "driveName");
 
+				if (driveName.Length >= 2 && driveName [1] != ':')
+					throw new ArgumentException ("Invalid drive name", "driveName");
+
+				// Convert the path to a standard format so we can find it later.
+				driveName = String.Concat (Char.ToUpper (driveName [0]).ToString (), ":\\");
+			}
+
+			DriveInfo [] drives = GetDrives ();
 			foreach (DriveInfo d in drives){
 				if (d.path == driveName){
 					this.path = d.path;
@@ -155,39 +165,54 @@ namespace System.IO {
 		static StreamReader TryOpen (string name)
 		{
 			if (File.Exists (name))
-				return new StreamReader (name, Encoding.ASCII);
+				return new StreamReader (name);
 			return null;
 		}
 
+		static char [] space = { ' ' };
 		static DriveInfo [] LinuxGetDrives ()
 		{
 			using (StreamReader mounts = TryOpen ("/proc/mounts")){
-				ArrayList drives = new ArrayList ();
+				var drives = new List<DriveInfo> ();
 				string line;
 				
 				while ((line = mounts.ReadLine ()) != null){
 					if (line.StartsWith ("rootfs"))
 						continue;
-					int p;
-
-					p = line.IndexOf (' ');
-					if (p == -1)
+					string [] parts = line.Split (space, 4);
+					if (parts.Length < 3)
 						continue;
-					string rest = line.Substring (p+1);
-					p = rest.IndexOf (' ');
-					if (p == -1)
-						continue;
-					string path = rest.Substring (0, p);
-					rest = rest.Substring (p+1);
-					p = rest.IndexOf (' ');
-					if (p == -1)
-						continue;
-					string fstype = rest.Substring (0, p);
+					string path = Unescape (parts [1]);
+					string fstype = parts [2];
 					drives.Add (new DriveInfo (_DriveType.Linux, path, fstype));
 				}
 
-				return (DriveInfo []) drives.ToArray (typeof (DriveInfo));
+				return drives.ToArray ();
 			}
+		}
+
+		static string Unescape (string path)
+		{
+			StringBuilder sb = null;
+			int start = 0;
+			do {
+				int slash = path.IndexOf ('\\', start);
+				if (slash >= 0) {
+					if (sb == null)
+						sb = new StringBuilder ();
+					sb.Append (path.Substring (start, slash - start));
+					char c = (char) ((path [slash + 1] - '0') << 6);
+					c += (char) ((path [slash + 2] - '0') << 3);
+					c += (char) (path [slash + 3] - '0');
+					sb.Append (c);
+					start = slash + 4;
+					continue;
+				}
+				if (start == 0)
+					return path;
+				sb.Append (path.Substring (start));
+				return sb.ToString ();
+			} while (true);
 		}
 		
 		static DriveInfo [] UnixGetDrives ()
@@ -217,10 +242,16 @@ namespace System.IO {
 
 		static DriveInfo [] WindowsGetDrives ()
 		{
-			throw new NotImplementedException ();
+			string [] drives = Environment.GetLogicalDrives ();
+			DriveInfo [] infos = new DriveInfo [drives.Length];
+			int i = 0;
+			foreach (string s in drives) {
+				infos [i++] = new DriveInfo (_DriveType.Windows, s, "Fixed");
+			}
+			return infos;
 		}
 		
-		[MonoTODO("Currently only implemented on Mono/Linux")]
+		[MonoTODO("In windows, alldrives are 'Fixed'")]
 		public static DriveInfo[] GetDrives ()
 		{
 			if (Environment.IsUnix)

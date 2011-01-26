@@ -55,15 +55,6 @@ typedef struct {
 	double fregs [MONO_SAVED_FREGS];
 } MonoContext;
 
-/*
- * This structure is an extension of MonoLMF and contains extra information.
- */
-typedef struct {
-	struct MonoLMF lmf;
-	gboolean debugger_invoke;
-	MonoContext ctx; /* if debugger_invoke is TRUE */
-} MonoLMFExt;
-
 typedef struct MonoCompileArch {
 	int fp_conv_var_offset;
 } MonoCompileArch;
@@ -206,7 +197,6 @@ typedef struct MonoCompileArch {
 #define MONO_ARCH_HAVE_STATIC_RGCTX_TRAMPOLINE 1
 #define MONO_ARCH_HAVE_FULL_AOT_TRAMPOLINES 1
 #define MONO_ARCH_HAVE_XP_UNWIND 1
-#define MONO_ARCH_HAVE_FIND_JIT_INFO_EXT 1
 
 #define MONO_ARCH_GSHARED_SUPPORTED 1
 
@@ -284,6 +274,8 @@ typedef struct {
 
 #endif
 #endif
+
+#define MONO_ARCH_INIT_TOP_LMF_ENTRY(lmf) do { (lmf)->ebp = -1; } while (0)
 
 typedef struct {
 	gint8 reg;

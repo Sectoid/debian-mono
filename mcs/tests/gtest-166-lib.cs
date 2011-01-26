@@ -1,6 +1,19 @@
-// Compiler options: -t:library -unsafe
+// Compiler options: -t:library
 
-public unsafe struct ExternalStruct
+using System;
+
+public class TestClass
 {
-    public fixed double double_buffer [4];
+	public class B : A<Nested>
+	{
+	}
+	
+	public abstract class A<T>
+	{
+		public static Comparison<A<T>> Compare;
+	}
+	
+	public class Nested
+	{
+	}
 }

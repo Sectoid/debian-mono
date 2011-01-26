@@ -1,3 +1,7 @@
+2011-01-10  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed more protected internal modifiers
+
 2010-01-19  Marek Habersack  <mhabersack@novell.com>
 
 	* TemplateControlCompilerTest.cs: added test for bug #568631

@@ -1,3 +1,11 @@
+2010-09-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* IDesignerHostTransactionState.cs: New 4.0 interface.
+
+2010-09-20  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
+
+	* TypeDescriptionProviderService.cs: New class.
+
 2009-10-21  Carlo Kok  <ck@remobjects.com>
 
 	* RuntimeLicenseContext.cs: Support for the resourceAssembly parameter.

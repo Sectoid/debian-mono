@@ -1,3 +1,20 @@
+2010-12-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[ReaderWriterLockSlim] Fix for #656353. Add corresponding unit
+	test.
+
+	When in SupportsRecursion mode, a test was not including proper
+	state check for short-circuiting.
+
+2010-11-23  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix ReaderWriterLockSlim Exit methods in SupportsRecursion mode
+	and add corresponding unit tests
+
+2010-10-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix a dodgy ReaderWriterLockSlim unit test
+
 2010-09-28  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Turn Is*LockHeld properties into thread-specific values in
@@ -7,6 +24,10 @@
 
 	Allow recursive Write + n * Read lock pattern for
 	ReaderWriterLockSlim and add corresponding unit test
+
+2010-09-01  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Check Recursive counts for ReaderWriterLockSlim in unit tests
 
 2010-08-31  Jérémie Laval  <jeremie.laval@gmail.com>
 

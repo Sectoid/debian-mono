@@ -29,6 +29,7 @@ using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.ServiceModel.Dispatcher;
+using System.ServiceModel.Discovery.Udp;
 
 namespace System.ServiceModel.Discovery
 {
@@ -40,6 +41,21 @@ namespace System.ServiceModel.Discovery
 		}
 
 		public abstract DiscoveryEndpoint GetDiscoveryEndpoint ();
+	}
+
+	internal class SimpleDiscoveryEndpointProvider : DiscoveryEndpointProvider
+	{
+		public SimpleDiscoveryEndpointProvider (DiscoveryEndpoint value)
+		{
+			this.value = value;
+		}
+		
+		DiscoveryEndpoint value;
+		
+		public override DiscoveryEndpoint GetDiscoveryEndpoint ()
+		{
+			return value;
+		}
 	}
 
 	internal class UdpDiscoveryEndpointProvider : DiscoveryEndpointProvider

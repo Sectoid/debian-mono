@@ -1,3 +1,98 @@
+2011-01-17  Marek Safar  <marek.safar@gmail.com>
+
+	Add new mcs -sdk option
+
+2011-01-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update man page, new search paths for extensions and .pc
+	files.
+
+2010-10-06  Miguel de Icaza  <miguel@gnome.org>
+
+	Update docs
+
+2010-12-03  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make concurrent sweep user-selectable.
+
+	It's off by default for now.
+
+2010-11-29  Paolo Molaro  <lupus@oddwiz.org>
+
+	* man/mprof-report.1: updated the documentation. * decode.c: added
+	jit report and sample report. * proflog.h, proflog.c: implemented
+	statistical sampling mode, using either the mono built-in signal
+	based sampling and the Linux perforamnce counters perf subsystem.
+	Unmanaged symbols are currently available for ELF systems
+	implementing dl_iterate_phdr() or systems implementing dladdr().
+
+2010-11-19  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Implement evacuation for parallel mark.
+
+2010-11-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Remove mentions of Logging and Heap Shot profilers from man page
+
+2010-11-12  Paolo Molaro  <lupus@oddwiz.org>
+
+	Log profiler: removed the hsmode option, use heapshot=MODE
+	instead.
+
+2010-11-11  Paolo Molaro  <lupus@oddwiz.org>
+
+	Added the mprof-report manpage.
+
+2010-10-30  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] User-settable evacuation threshold.
+
+	A MONO_GC_PARAMS option for setting the evacuation threshold.
+
+2010-10-20  Pablo Ruiz Garcia  <pablo.ruiz@gmail.com>
+
+	[API] X509 related enhacemnts to allow 1) associating keystore's
+	private keys with their corresponding public certificates found at
+	X509Stores, and 2) importing private keys to X509Stores along with
+	certificates.
+
+	mcs/class/corlib/Mono.Security.X509/X509Store.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509Store.cs:
+	mcs/class/corlib/Mono.Security.X509/X509StoreManager.cs:
+	mcs/class/Mono.Security/Mono.Security.X509/X509StoreManager.cs:
+	Modified MSX.X509Store to allow importing privateKeys along
+	certificates (by using RSACryptoServiceProvider and
+	KeyPairPersister). Fixed X509Store to use certificate's hash as
+	CspParameters.KeyContainerName.
+
+	mcs/tools/security/certmgr.cs: Added a new -importKey action to
+	certmgr, which allows importing a PKCS12 contained key into our
+	KeyPair store. Added a more (verbose) output to certmgr's -list
+	action.
+
+	man/certmgr.1: Updated certmgr man page ti reflect -importKey
+	addition.
+
+	mcs/class/corlib/System.Security.Cryptography/CspParameters.cs:
+	mcs/class/corlib/System.Security.Cryptography/RSACryptoServiceProvider.cs:
+	Implemented RSACryptoServiceProvider.CspKeyContainerInfo getter
+	RSACryptoServiceProvider will not take into account
+	CspParameterFlags.UseExistingKey by throwing a
+	CryptographicException if keyset identified by KeyContainerName
+	does not exists.
+
+2010-10-21  Miguel de Icaza  <miguel@gnome.org>
+
+	Document server option to --debugger-agent
+
+2010-09-07  Miguel de Icaza  <miguel@gnome.org>
+
+	Add profile docs
+
+2010-09-03  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add notes when to use cardtable and remset.
+
 2010-09-02  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Update man page to add "/tv:" option.

@@ -22,11 +22,14 @@
 //
 //
 
+#if NET_4_0
+
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
-#if NET_4_0 || BOOTSTRAP_NET_4_0
 namespace System.Threading
 {
 	[StructLayout(LayoutKind.Explicit)]
@@ -39,15 +42,23 @@ namespace System.Threading
 		public int Users;
 	}
 
-	// Implement the ticket SpinLock algorithm described on http://locklessinc.com/articles/locks/
-	// This lock is usable on both endianness
-	// TODO: some 32 bits platform apparently doesn't support CAS with 64 bits value
+	/* Implement the ticket SpinLock algorithm described on http://locklessinc.com/articles/locks/
+	 * This lock is usable on both endianness.
+	 * All the try/finally patterns in this class and various extra gimmicks compared to the original
+	 * algorithm are here to avoid problems caused by asynchronous exceptions.
+	 */
+	[System.Diagnostics.DebuggerDisplay ("IsHeld = {IsHeld}")]
+	[System.Diagnostics.DebuggerTypeProxy ("System.Threading.SpinLock+SystemThreading_SpinLockDebugView")]
 	public struct SpinLock
 	{
 		TicketType ticket;
 
 		int threadWhoTookLock;
 		readonly bool isThreadOwnerTrackingEnabled;
+
+		static Watch sw = Watch.StartNew ();
+
+		ConcurrentOrderedList<int> stallTickets;
 
 		public bool IsThreadOwnerTrackingEnabled {
 			get {
@@ -72,14 +83,15 @@ namespace System.Threading
 			}
 		}
 
-		public SpinLock (bool trackId)
+		public SpinLock (bool enableThreadOwnerTracking)
 		{
-			this.isThreadOwnerTrackingEnabled = trackId;
+			this.isThreadOwnerTrackingEnabled = enableThreadOwnerTracking;
 			this.threadWhoTookLock = 0;
 			this.ticket = new TicketType ();
+			this.stallTickets = null;
 		}
 
-		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
+		[MonoTODO ("Not safe against async exceptions")]
 		public void Enter (ref bool lockTaken)
 		{
 			if (lockTaken)
@@ -87,71 +99,99 @@ namespace System.Threading
 			if (isThreadOwnerTrackingEnabled && IsHeldByCurrentThread)
 				throw new LockRecursionException ();
 
-			int slot = Interlocked.Increment (ref ticket.Users) - 1;
+			int slot = -1;
 
-			SpinWait wait = new SpinWait ();
-			while (slot != ticket.Value)
-				wait.SpinOnce ();
-			
-			lockTaken = true;
-			
-			threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {
+				slot = Interlocked.Increment (ref ticket.Users) - 1;
+
+				SpinWait wait = new SpinWait ();
+				while (slot != ticket.Value) {
+					wait.SpinOnce ();
+
+					while (stallTickets != null && stallTickets.TryRemove (ticket.Value))
+						++ticket.Value;
+				}
+			} finally {
+				if (slot == ticket.Value) {
+					lockTaken = true;
+					threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
+				} else if (slot != -1) {
+					// We have been interrupted, initialize stallTickets
+					if (stallTickets == null)
+						Interlocked.CompareExchange (ref stallTickets, new ConcurrentOrderedList<int> (), null);
+					stallTickets.TryAdd (slot);
+				}
+			}
 		}
 
-		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
 		public void TryEnter (ref bool lockTaken)
 		{
 			TryEnter (0, ref lockTaken);
 		}
 
-		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
 		public void TryEnter (TimeSpan timeout, ref bool lockTaken)
 		{
 			TryEnter ((int)timeout.TotalMilliseconds, ref lockTaken);
 		}
 
-		[MonoTODO("This method is not rigorously correct. Need CER treatment")]
-		public void TryEnter (int milliSeconds, ref bool lockTaken)
+		public void TryEnter (int millisecondsTimeout, ref bool lockTaken)
 		{
-			if (milliSeconds < -1)
+			if (millisecondsTimeout < -1)
 				throw new ArgumentOutOfRangeException ("milliSeconds", "millisecondsTimeout is a negative number other than -1");
 			if (lockTaken)
 				throw new ArgumentException ("lockTaken", "lockTaken must be initialized to false");
 			if (isThreadOwnerTrackingEnabled && IsHeldByCurrentThread)
 				throw new LockRecursionException ();
 
-			Watch sw = Watch.StartNew ();
+			long start = millisecondsTimeout == -1 ? 0 : sw.ElapsedMilliseconds;
+			bool stop = false;
 
 			do {
+				while (stallTickets != null && stallTickets.TryRemove (ticket.Value))
+					++ticket.Value;
+
 				long u = ticket.Users;
 				long totalValue = (u << 32) | u;
 				long newTotalValue
 					= BitConverter.IsLittleEndian ? (u << 32) | (u + 1) : ((u + 1) << 32) | u;
 				
-				lockTaken = Interlocked.CompareExchange (ref ticket.TotalValue, newTotalValue, totalValue) == totalValue;
+				RuntimeHelpers.PrepareConstrainedRegions ();
+				try {}
+				finally {
+					lockTaken = Interlocked.CompareExchange (ref ticket.TotalValue, newTotalValue, totalValue) == totalValue;
 				
-				if (lockTaken) {
-					threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
-					break;
+					if (lockTaken) {
+						threadWhoTookLock = Thread.CurrentThread.ManagedThreadId;
+						stop = true;
+					}
 				}
-			} while (milliSeconds == -1 || (milliSeconds > 0 && sw.ElapsedMilliseconds < milliSeconds));
+	        } while (!stop && (millisecondsTimeout == -1 || (sw.ElapsedMilliseconds - start) < millisecondsTimeout));
 		}
 
+		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
 		public void Exit ()
 		{
 			Exit (false);
 		}
 
-		public void Exit (bool flushReleaseWrites)
+		[ReliabilityContract (Consistency.WillNotCorruptState, Cer.Success)]
+		public void Exit (bool useMemoryBarrier)
 		{
-			if (isThreadOwnerTrackingEnabled && !IsHeldByCurrentThread)
-				throw new SynchronizationLockException ("Current thread is not the owner of this lock");
+			RuntimeHelpers.PrepareConstrainedRegions ();
+			try {}
+			finally {
+				if (isThreadOwnerTrackingEnabled && !IsHeldByCurrentThread)
+					throw new SynchronizationLockException ("Current thread is not the owner of this lock");
 
-			threadWhoTookLock = int.MinValue;
-			if (flushReleaseWrites)
-				Interlocked.Increment (ref ticket.Value);
-			else
-				ticket.Value++;
+				threadWhoTookLock = int.MinValue;
+				do {
+					if (useMemoryBarrier)
+						Interlocked.Increment (ref ticket.Value);
+					else
+						ticket.Value++;
+				} while (stallTickets != null && stallTickets.TryRemove (ticket.Value));
+			}
 		}
 	}
 

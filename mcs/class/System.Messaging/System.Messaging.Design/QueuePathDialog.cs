@@ -27,11 +27,10 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-
+#if !NO_WINFORMS_DEPENDENCY
 using System.ComponentModel;
 using System.Drawing.Design;
 using System.Windows.Forms;
-//using System.Windows.Forms.Design;
 
 namespace System.Messaging.Design
 {
@@ -45,7 +44,7 @@ namespace System.Messaging.Design
 		}
 
 		[MonoTODO]
-		public QueuePathDialog ()//IUIService uiService)
+		public QueuePathDialog (System.Windows.Forms.Design.IUIService uiService)
 		{
 			throw new NotImplementedException ();
 		}
@@ -76,3 +75,4 @@ namespace System.Messaging.Design
 		}
 	}
 }
+#endif

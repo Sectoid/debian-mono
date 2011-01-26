@@ -1,9 +1,63 @@
+2010-11-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Check for null and valuetypes.
+
+2010-10-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilderTest.cs: Add regression test.
+
+	Fixes #649237
+
+2010-10-25  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #649017.
+
+2010-10-22  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* TypeBuilderTest.cs: Add regression test.
+
+	Fixes #648391
+
+2010-10-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add regression test for #640780
+
+2010-10-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* DynamicMethodTest.cs: Add test for GetCurrentMethod.
+
+	Fixes #640702
+
+2010-10-08  Jb Evain  <jbevain@gmail.com>
+
+	Add tests for ModuleBuilder.ResolveMember on different kind of
+	tokens
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	Add tests for ModuleBuilder.ResolveMemberToken
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	Fix test
+
+2010-10-07  Jb Evain  <jbevain@gmail.com>
+
+	[Test] Add test for ModuleBuilder.ResolveFieldToken on generic
+	fields.
+
 2010-09-20  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* AssemblyBuilderTest.cs: Add test for GetTypes () and incomplete
 	TypeBuilders'.
 
 	Fixes #640288
+
+2010-09-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MethodBuilderTest.cs: Add test for #384127.
+
+	Fixes bug #384127.
 
 2010-08-18  Zoltan Varga  <vargaz@gmail.com>
 

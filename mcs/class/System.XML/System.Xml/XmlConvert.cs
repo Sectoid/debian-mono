@@ -166,7 +166,7 @@ namespace System.Xml {
 			unspecifiedDateTimeFormats = new string [l * 4];
 			for (int i = 0; i < l; i++) {
 				string s = defaultDateTimeFormats [i];
-				localDateTimeFormats [i] = s + "zzz";
+				localDateTimeFormats [i] = s + (s [s.Length - 1] == 's' || s [s.Length - 1] == 'F' ? "zzz" : String.Empty);
 				roundtripDateTimeFormats [i] = s + 'K';
 				utcDateTimeFormats [i * 3] = s;
 				utcDateTimeFormats [i * 3 + 1] = s + 'Z';
@@ -369,12 +369,12 @@ namespace System.Xml {
 			switch (mode) {
 			case XmlDateTimeSerializationMode.Local:
 				dt = ToDateTime (value, localDateTimeFormats);
-				return dt == DateTime.MinValue || dt == DateTime.MaxValue ? dt : dt.ToLocalTime ();
+				return new DateTime (dt.Ticks, DateTimeKind.Local);
 			case XmlDateTimeSerializationMode.RoundtripKind:
 				return ToDateTime (value, roundtripDateTimeFormats, _defaultStyle | DateTimeStyles.RoundtripKind);
 			case XmlDateTimeSerializationMode.Utc:
 				dt = ToDateTime (value, utcDateTimeFormats);
-				return dt == DateTime.MinValue || dt == DateTime.MaxValue ? dt : dt.ToUniversalTime ();
+				return new DateTime (dt.Ticks, DateTimeKind.Utc);
 			case XmlDateTimeSerializationMode.Unspecified:
 				return ToDateTime (value, unspecifiedDateTimeFormats);
 			default:
@@ -399,7 +399,11 @@ namespace System.Xml {
 
 		private static DateTime ToDateTime (string s, string [] formats, DateTimeStyles style) 
 		{
-			return DateTime.ParseExact (s, formats, DateTimeFormatInfo.InvariantInfo, style);
+			try {
+				return DateTime.ParseExact (s, formats, DateTimeFormatInfo.InvariantInfo, style);
+			} catch (ArgumentOutOfRangeException) {
+				return DateTime.MinValue;
+			}
 		}
 		
 		public static Decimal ToDecimal(string s)

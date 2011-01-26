@@ -1,3 +1,12 @@
+2010-11-29  Atsushi Eno  <atsushi@ximian.com>
+
+	Return different instances of XmlSchemaInfo for each validated
+	node in XmlSchemaValidatingReader.
+
+2010-11-12  myeisha  <github@quasiparticle.net>
+
+	Don't add IDREFs to set of missing IDs multiple times
+
 2009-01-30  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XsdValidatingReader.cs : when xsi:nil is true, do not validate

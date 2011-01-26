@@ -318,6 +318,20 @@ struct _MonoDomain {
 	/* Assembly bindings, the per-domain part */
 	GSList *assembly_bindings;
 	gboolean assembly_bindings_parsed;
+
+	/* Used by socket-io.c */
+	/* These are domain specific, since the assembly can be unloaded */
+	MonoImage *socket_assembly;
+	MonoClass *sockaddr_class;
+	MonoClassField *sockaddr_data_field;
+
+	/* Used by threadpool.c */
+	MonoImage *system_image;
+	MonoImage *system_net_dll;
+	MonoClass *corlib_asyncresult_class;
+	MonoClass *socket_class;
+	MonoClass *ad_unloaded_ex_class;
+	MonoClass *process_class;
 };
 
 typedef struct  {
@@ -406,6 +420,12 @@ mono_domain_code_reserve_align (MonoDomain *domain, int size, int alignment) MON
 
 void
 mono_domain_code_commit (MonoDomain *domain, void *data, int size, int newsize) MONO_INTERNAL;
+
+void *
+nacl_domain_get_code_dest (MonoDomain *domain, void *data) MONO_INTERNAL;
+
+void 
+nacl_domain_code_validate (MonoDomain *domain, guint8 **buf_base, int buf_size, guint8 **code_end) MONO_INTERNAL;
 
 void
 mono_domain_code_foreach (MonoDomain *domain, MonoCodeManagerFunc func, void *user_data) MONO_INTERNAL;
@@ -551,5 +571,7 @@ void mono_set_private_bin_path_from_config (MonoDomain *domain) MONO_INTERNAL;
 int mono_framework_version (void) MONO_INTERNAL;
 
 void mono_reflection_cleanup_domain (MonoDomain *domain) MONO_INTERNAL;
+
+void mono_assembly_cleanup_domain_bindings (guint32 domain_id) MONO_INTERNAL;;
 
 #endif /* __MONO_METADATA_DOMAIN_INTERNALS_H__ */

@@ -1,3 +1,11 @@
+2010-12-29  Marek Safar  <marek.safar@gmail.com>
+
+	Add few more missing references
+
+2010-12-09  Marek Safar  <marek.safar@gmail.com>
+
+	Add missing dependency
+
 2007-09-11  Marek Habersack  <mhabersack@novell.com>
 
 	* Assembly/AssemblyInfo.cs: added

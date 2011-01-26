@@ -1,3 +1,38 @@
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Fix several issues in the code generator
+
+	Issues include: casts not being properly generated for nullable
+	types, missing cast when the type of a member does not match the
+	forced serialization type, and incorrect code generated for
+	handling [XmlText] members.
+
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Fix code generation issue with nested generic types
+
+	The type argument list for generic nested types include all types
+	arguments for the whole declaring type chain. When generating the
+	C# name of the class, each type argument has to be assigned to the
+	correct class in the chain.
+
+2010-12-13  Lluis Sanchez  <lluis@novell.com>
+
+	Throw correct exceptions when using generated serializer
+
+	Invocations to generated serializers are done through reflection,
+	so exceptions are masked by TargetInvocationException. The inner
+	exception has to be rethrown so that the client code gets the
+	correct exception.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monodroid and monotouch profile builds
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Xml build for monodroid
+
 2010-03-29  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* XmlTypeMapping.cs, XmlReflectionImporter.cs: XmlRoot takes higher

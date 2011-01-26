@@ -118,6 +118,9 @@ namespace System.Net.Mail {
 			if (cfg != null) {
 				this.host = cfg.Network.Host;
 				this.port = cfg.Network.Port;
+#if NET_4_0
+				this.enableSsl = cfg.Network.EnableSsl;
+#endif
 				TargetName = cfg.Network.TargetName;
 				if (this.TargetName == null)
 					TargetName = "SMTPSVC/" + (host != null ? host : "");
@@ -132,7 +135,7 @@ namespace System.Net.Mail {
 					Credentials = new CCredentialsByHost (cfg.Network.UserName, password);
 				}
 
-				if (cfg.From != null)
+				if (!String.IsNullOrEmpty (cfg.From))
 					defaultFrom = new MailAddress (cfg.From);
 			}
 #else

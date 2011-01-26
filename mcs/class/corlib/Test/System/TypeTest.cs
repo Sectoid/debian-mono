@@ -168,6 +168,8 @@ namespace MonoTests.System
 		{
 			return a;
 		}
+		
+		public class Nested<K> {}
 	}
 	
 	class Foo<T, U>
@@ -2961,13 +2963,11 @@ PublicKeyToken=b77a5c561934e089"));
 		public void MakeGenericType_BadUserType ()
 		{
 			Type ut = new UserType (null);
-			try {
-				Type t = typeof (Foo<>).MakeGenericType (ut);
-				Assert.Fail ("#1");
-			} catch (ArgumentException) {
-			}
+			Type t = typeof (Foo<>).MakeGenericType (ut);
+			var g0 = t.GetGenericArguments () [0];
+			Assert.AreSame (g0, ut, "#1");
 		}
-	
+
 		[Test]
 		public void MakeGenericType_WrongNumOfArguments ()
 		{
@@ -3339,6 +3339,13 @@ PublicKeyToken=b77a5c561934e089"));
 	        Assert.Fail ("#3");
 		} catch (TypeLoadException) { }
 
+		}
+		
+		[Test] //Bug643890
+		public void DeclaringTypeOfGenericNestedTypeInstanceIsOpen ()
+		{
+			var type = typeof (Foo<int>.Nested<string>);
+			Assert.AreSame (typeof (Foo<>), type.DeclaringType, "#1");
 		}
 
 #if NET_4_0

@@ -1,3 +1,19 @@
+2011-01-09  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* SecurityManager.cs: Add new stubs for 4.0 methods. Add
+	[Obsolete] attributes on most methods (new in 4.0)
+
+2011-01-03  Miguel de Icaza  <miguel@gnome.org>
+
+	[GetFolderPath] Handful of .NET 4 changes
+
+	* Actually use the SpecialFolderPathOptions where we need them ->
+	Create is acknowledged -> DoNotVerify is ignored, as Mono
+	historically did not throw an exception on missing directories. *
+	Rename InternalGetFolderPath to UnixGetFolderPath as this is what
+	it is. * Fix existing references to the code * Fix indentation in
+	routine that was never properly formatted (ReadXdgUserDir)
+
 
 Wed Jul 21 16:00:08 CEST 2010 Paolo Molaro <lupus@ximian.com>
 

@@ -792,6 +792,9 @@ USE_LIBDIR_FALSE
 USE_LIBDIR_TRUE
 UNWINDLIBS
 MY_CFLAGS
+LTCXXCOMPILE
+LTCOMPILE
+DOLT_BASH
 CXXCPP
 CPP
 OTOOL64
@@ -811,10 +814,11 @@ EGREP
 GREP
 SED
 LIBTOOL
+TARGET_IA64_FALSE
+TARGET_IA64_TRUE
 addtests
 addlibs
 addincludes
-addobjs
 CXXINCLUDES
 INCLUDES
 CPLUSPLUS_FALSE
@@ -4806,7 +4810,7 @@ _ACEOF
 _ACEOF
 
 	;;
-     *-*-linux*)
+     *-*-linux* | *-*-nacl*)
 	cat >>confdefs.h <<\_ACEOF
 #define GC_LINUX_THREADS 1
 _ACEOF
@@ -4904,6 +4908,22 @@ _ACEOF
      *-*-netbsd*)
 	cat >>confdefs.h <<\_ACEOF
 #define GC_NETBSD_THREADS 1
+_ACEOF
+
+	if test "${enable_parallel_mark}" = yes; then
+	  cat >>confdefs.h <<\_ACEOF
+#define PARALLEL_MARK 1
+_ACEOF
+
+	fi
+	cat >>confdefs.h <<\_ACEOF
+#define THREAD_LOCAL_ALLOC 1
+_ACEOF
+
+	;;
+     *-*-openbsd*)
+	cat >>confdefs.h <<\_ACEOF
+#define GC_OPENBSD_THREADS 1
 _ACEOF
 
 	if test "${enable_parallel_mark}" = yes; then
@@ -5329,7 +5349,14 @@ _ACEOF
     machdep="sparc_mach_dep.lo"
     ;;
  ia64-*-*)
-    machdep="mach_dep.lo ia64_save_regs_in_stack.lo"
+     machdep="mach_dep.lo ia64_save_regs_in_stack.lo"
+	target_ia64=true
+    ;;
+ *-*-nacl*)
+    cat >>confdefs.h <<\_ACEOF
+#define NO_EXECUTE_PERMISSION 1
+_ACEOF
+
     ;;
 esac
 if test x"$machdep" = x; then
@@ -5338,9 +5365,23 @@ $as_echo "$machdep" >&6; }
    machdep="mach_dep.lo"
 fi
 addobjs="$addobjs $machdep"
+#
+# Adding object files directly to _LIBADD breaks -j builds, so we need to add the sources
+# instead, but _SOURCES can't contain autoconf substitutions, so add them using automake
+# conditionals.
+#
+#AC_SUBST(addobjs)
 
 
 
+
+ if test x$target_ia64 = xtrue; then
+  TARGET_IA64_TRUE=
+  TARGET_IA64_FALSE='#'
+else
+  TARGET_IA64_TRUE='#'
+  TARGET_IA64_FALSE=
+fi
 
 
 case `pwd` in
@@ -5962,13 +6003,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5965: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:6006: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5968: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:6009: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5971: output\"" >&5)
+  (eval echo "\"\$as_me:6012: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -7173,7 +7214,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 7176 "configure"' > conftest.$ac_ext
+  echo '#line 7217 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -9715,11 +9756,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9718: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9759: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9722: \$? = $ac_status" >&5
+   echo "$as_me:9763: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -10054,11 +10095,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10057: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10098: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:10061: \$? = $ac_status" >&5
+   echo "$as_me:10102: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -10159,11 +10200,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10162: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10203: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:10166: \$? = $ac_status" >&5
+   echo "$as_me:10207: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10214,11 +10255,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:10217: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:10258: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:10221: \$? = $ac_status" >&5
+   echo "$as_me:10262: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13014,7 +13055,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13017 "configure"
+#line 13058 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13110,7 +13151,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 13113 "configure"
+#line 13154 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -15130,11 +15171,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15133: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15174: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15137: \$? = $ac_status" >&5
+   echo "$as_me:15178: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -15229,11 +15270,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15232: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15273: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15236: \$? = $ac_status" >&5
+   echo "$as_me:15277: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15281,11 +15322,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15284: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15325: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15288: \$? = $ac_status" >&5
+   echo "$as_me:15329: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16265,6 +16306,208 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Only expand once:
 
 
+# Use dolt (http://dolt.freedesktop.org/) instead of libtool for building.
+
+
+# dolt, a replacement for libtool
+# Josh Triplett <josh@freedesktop.org>
+# Extract the first word of "bash", so it can be a program name with args.
+set dummy bash; ac_word=$2
+{ $as_echo "$as_me:$LINENO: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_path_DOLT_BASH+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  case $DOLT_BASH in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_DOLT_BASH="$DOLT_BASH" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_DOLT_BASH="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+DOLT_BASH=$ac_cv_path_DOLT_BASH
+if test -n "$DOLT_BASH"; then
+  { $as_echo "$as_me:$LINENO: result: $DOLT_BASH" >&5
+$as_echo "$DOLT_BASH" >&6; }
+else
+  { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+{ $as_echo "$as_me:$LINENO: checking if dolt supports this host" >&5
+$as_echo_n "checking if dolt supports this host... " >&6; }
+dolt_supported=yes
+if test x$DOLT_BASH = x; then
+    dolt_supported=no
+fi
+if test x$GCC != xyes; then
+    dolt_supported=no
+fi
+case $host in
+i?86-*-linux*|x86_64-*-linux*|powerpc-*-linux*|powerpc64-*-linux* \
+|amd64-*-freebsd*|i?86-*-freebsd*|ia64-*-freebsd*|arm*-*-linux*|sparc*-*-linux*|mips*-*-linux*)
+    pic_options='-fPIC'
+    ;;
+?86-pc-cygwin*|i?86-pc-cygwin*)
+    pic_options='-DDLL_EXPORT'
+    ;;
+i?86-apple-darwin*)
+    pic_options='-fno-common'
+    ;;
+*)
+    dolt_supported=no
+    ;;
+esac
+if test x$dolt_supported = xno ; then
+    { $as_echo "$as_me:$LINENO: result: no, falling back to libtool" >&5
+$as_echo "no, falling back to libtool" >&6; }
+    LTCOMPILE='$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(COMPILE)'
+    LTCXXCOMPILE='$(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXXCOMPILE)'
+else
+    { $as_echo "$as_me:$LINENO: result: yes, replacing libtool" >&5
+$as_echo "yes, replacing libtool" >&6; }
+
+    cat <<__DOLTCOMPILE__EOF__ >doltcompile
+#!$DOLT_BASH
+__DOLTCOMPILE__EOF__
+    cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+args=("$@")
+for ((arg=0; arg<${#args[@]}; arg++)) ; do
+    if test x"${args[$arg]}" = x-o ; then
+        objarg=$((arg+1))
+        break
+    fi
+done
+if test x$objarg = x ; then
+    echo 'Error: no -o on compiler command line' 1>&2
+    exit 1
+fi
+lo="${args[$objarg]}"
+obj="${lo%.lo}"
+if test x"$lo" = x"$obj" ; then
+    echo "Error: libtool object file name \"$lo\" does not end in .lo" 1>&2
+    exit 1
+fi
+objbase="${obj##*/}"
+__DOLTCOMPILE__EOF__
+
+    if test x$enable_shared = xyes; then
+        cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+libobjdir="${obj%$objbase}.libs"
+if test ! -d "$libobjdir" ; then
+    mkdir_out="$(mkdir "$libobjdir" 2>&1)"
+    mkdir_ret=$?
+    if test "$mkdir_ret" -ne 0 && test ! -d "$libobjdir" ; then
+	echo "$mkdir_out" 1>&2
+        exit $mkdir_ret
+    fi
+fi
+pic_object="$libobjdir/$objbase.o"
+args[$objarg]="$pic_object"
+__DOLTCOMPILE__EOF__
+    cat <<__DOLTCOMPILE__EOF__ >>doltcompile
+"\${args[@]}" $pic_options -DPIC || exit \$?
+__DOLTCOMPILE__EOF__
+    fi
+
+    if test x$enable_static = xyes; then
+        cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+non_pic_object="$obj.o"
+args[$objarg]="$non_pic_object"
+__DOLTCOMPILE__EOF__
+        if test x$enable_shared = xyes; then
+            cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+"${args[@]}" >/dev/null 2>&1 || exit $?
+__DOLTCOMPILE__EOF__
+        else
+            cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+"${args[@]}" || exit $?
+__DOLTCOMPILE__EOF__
+        fi
+    fi
+
+    cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+{
+echo "# $lo - a libtool object file"
+echo "# Generated by doltcompile, not libtool"
+__DOLTCOMPILE__EOF__
+
+    if test x$enable_shared = xyes; then
+        cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+echo "pic_object='.libs/${objbase}.o'"
+__DOLTCOMPILE__EOF__
+    else
+        cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+echo pic_object=none
+__DOLTCOMPILE__EOF__
+    fi
+
+    if test x$enable_static = xyes; then
+        cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+echo "non_pic_object='${objbase}.o'"
+__DOLTCOMPILE__EOF__
+    else
+        cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+echo non_pic_object=none
+__DOLTCOMPILE__EOF__
+    fi
+
+    cat <<'__DOLTCOMPILE__EOF__' >>doltcompile
+} > "$lo"
+__DOLTCOMPILE__EOF__
+
+    chmod +x doltcompile
+    LTCOMPILE='$(top_builddir)/doltcompile $(COMPILE)'
+    LTCXXCOMPILE='$(top_builddir)/doltcompile $(CXXCOMPILE)'
+
+    cat <<__DOLTLIBTOOL__EOF__ > doltlibtool
+#!$DOLT_BASH
+__DOLTLIBTOOL__EOF__
+    cat <<'__DOLTLIBTOOL__EOF__' >>doltlibtool
+top_builddir_slash="${0%%doltlibtool}"
+: ${top_builddir_slash:=./}
+args=()
+modeok=false
+tagok=false
+for arg in "$@"; do
+    case "$arg" in
+        --mode=compile) modeok=true ;;
+        --tag=CC|--tag=CXX) tagok=true ;;
+        --quiet) ;;
+        *) args[${#args[@]}]="$arg" ;;
+    esac
+done
+if $modeok && $tagok ; then
+    . ${top_builddir_slash}doltcompile "${args[@]}"
+else
+    exec ${top_builddir_slash}libtool "$@"
+fi
+__DOLTLIBTOOL__EOF__
+
+    chmod +x doltlibtool
+    LIBTOOL='$(top_builddir)/doltlibtool'
+fi
+
+
+# end dolt
+
 
 #
 # Check for AViiON Machines running DGUX
@@ -16916,6 +17159,13 @@ if test -z "${CPLUSPLUS_TRUE}" && test -z "${CPLUSPLUS_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"CPLUSPLUS\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"CPLUSPLUS\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${TARGET_IA64_TRUE}" && test -z "${TARGET_IA64_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"TARGET_IA64\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"TARGET_IA64\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi

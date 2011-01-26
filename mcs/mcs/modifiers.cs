@@ -1,8 +1,22 @@
 //
-// modifiers.cs: Modifier handling.
-// 
+// modifiers.cs: Modifiers handling
+//
+// Authors: Miguel de Icaza (miguel@gnu.org)
+//          Marek Safar (marek.safar@gmail.com)
+//
+// Dual licensed under the terms of the MIT X11 or GNU GPL
+//
+// Copyright 2001, 2002, 2003 Ximian, Inc (http://www.ximian.com)
+// Copyright 2004-2010 Novell, Inc
+//
+
 using System;
+
+#if STATIC
+using IKVM.Reflection;
+#else
 using System.Reflection;
+#endif
 
 namespace Mono.CSharp
 {
@@ -30,6 +44,7 @@ namespace Mono.CSharp
 		//
 		PROPERTY_CUSTOM 		= 0x4000,
 
+		ASYNC					= 0x10000,
 		PARTIAL					= 0x20000,
 		DEFAULT_ACCESS_MODIFER	= 0x40000,
 		METHOD_EXTENSION		= 0x80000,

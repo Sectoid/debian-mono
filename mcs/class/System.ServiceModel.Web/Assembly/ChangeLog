@@ -1,3 +1,17 @@
+2010-10-15  Andreia Gaita  <shana@jitted.com>
+
+	[Json] Add support for calling external json (de)serialization
+	methods
+
+	On Moonlight, ScriptObject types have custom (de)serialization
+	methods that need to be called whenever a user object includes
+	properties of that type. This patch creates a TypeMap subclass
+	(ExternalTypeMap) and exposes a method that can be called from
+	moon's System.Windows.Browser to register custom serialization and
+	deserialization methods, keyed by type. These are called whenever
+	a property is found with a type (or base type) that has custom
+	methods registered.
+
 2010-08-27  Sebastien Pouliot  <sebastien@ximian.com>
 
 	Fix public key in [InternalsVisibleTo] attribute

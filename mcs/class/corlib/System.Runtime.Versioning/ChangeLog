@@ -1,3 +1,16 @@
+2010-12-23  Marek Safar  <marek.safar@gmail.com>
+
+	Fixed wrong AttributeUsageAttribute
+
+2010-12-23  Marek Safar  <marek.safar@gmail.com>
+
+	Implement missing v4 attribute types
+
+2010-09-20  Geoff Norton  <gnorton@novell.com>
+
+	Include TargetFrameworkAttribute in monotouch and monodroid as
+	well
+
 2009-12-03  Marek Habersack  <mhabersack@novell.com>
 
 	* FrameworkName.cs: added

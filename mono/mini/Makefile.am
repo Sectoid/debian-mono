@@ -24,6 +24,14 @@ sgen_libs = \
 	$(monodir)/mono/utils/libmonoutils.la \
 	$(GLIB_LIBS)
 
+if MOONLIGHT
+moon_libs = \
+	$(monodir)/mono/metadata/libmonoruntimemoon.la	\
+	$(monodir)/mono/io-layer/libwapi.la	\
+	$(monodir)/mono/utils/libmonoutils.la \
+	$(GLIB_LIBS)
+endif
+
 static_libs=	\
 	$(monodir)/mono/metadata/libmonoruntime-static.la	\
 	$(monodir)/mono/io-layer/libwapi.la	\
@@ -95,17 +103,30 @@ endif
 
 noinst_PROGRAMS = genmdesc
 
-lib_LTLIBRARIES = libmono-2.0.la $(sgen_libraries)
+if SHARED_MONO
+shared_libraries = libmono-2.0.la $(sgen_libraries)
+endif
+
+lib_LTLIBRARIES = $(shared_libraries)
 noinst_LTLIBRARIES = libmono-static.la $(sgen_static_libraries)
 
 if MOONLIGHT
 noinst_LTLIBRARIES += libmono-moon.la
+moon-do-build: $(BUILT_SOURCES) mono libmono-moon.la
+moon-do-clean: maintainer-clean-generic
+	-test -z "mono$(EXEEXT)" || rm -f mono$(EXEEXT)
+	-test -z "libmono-moon.la" || rm -f libmono-moon.la
 endif
 
 if LOADED_LLVM
 lib_LTLIBRARIES += libmono-llvm.la
 libmono_llvm_la_SOURCES = mini-llvm.c mini-llvm-cpp.cpp
-libmono_llvm_la_LIBADD = $(top_builddir)/mono/mini/libmono-$(API_VER).la $(LLVM_LIBS) $(LLVM_LDFLAGS) $(libs)
+libmono_llvm_la_LIBADD = $(LLVM_LIBS) $(LLVM_LDFLAGS)
+if PLATFORM_DARWIN
+libmono_llvm_la_LDFLAGS=-undefined suppress
+else
+libmono_llvm_la_LIBADD += $(top_builddir)/mono/mini/libmono-$(API_VER).la $(libs)
+endif
 endif
 
 endif
@@ -369,7 +390,6 @@ test_sources = 			\
 	basic-simd.cs
 
 regtests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe iltests.exe devirtualization.exe generics.exe basic-simd.exe
-fsatests=basic.exe basic-float.exe basic-long.exe basic-calls.exe objects.exe arrays.exe basic-math.exe exceptions.exe devirtualization.exe basic-simd.exe
 
 if X86
 if MONO_DEBUGGER_SUPPORTED
@@ -482,28 +502,36 @@ monobin_platform_ldflags=-framework CoreFoundation
 endif
 
 libmono_2_0_la_SOURCES = $(common_sources) $(llvm_sources) $(arch_sources) $(os_sources)
-libmono_2_0_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+libmono_2_0_la_CFLAGS = $(mono_CFLAGS)
+libmono_2_0_la_LIBADD = $(libs) $(LIBMONO_DTRACE_OBJECT)
 
 libmonosgen_2_0_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmonosgen_2_0_la_CFLAGS = $(AM_CFLAGS) $(SGEN_DEFINES)
+libmonosgen_2_0_la_CFLAGS = $(mono_sgen_CFLAGS)
+libmonosgen_2_0_la_LIBADD = $(sgen_libs) $(LIBMONO_DTRACE_OBJECT)
 
 if MOONLIGHT
 libmono_moon_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmono_moon_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+if MOONLIGHT_BOEHM
+libmono_moon_la_CFLAGS = $(mono_CFLAGS) $(MOONLIGHT_DEFINES)
+libmono_moon_la_LIBADD = $(moon_libs) $(libgc_libs) $(LIBMONO_DTRACE_OBJECT)
+else
+libmono_moon_la_CFLAGS = $(mono_sgen_CFLAGS) $(MOONLIGHT_DEFINES)
+libmono_moon_la_LIBADD = $(moon_libs) $(LIBMONO_DTRACE_OBJECT)
+endif
 endif
 
 libmono_static_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmono_static_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+libmono_static_la_CFLAGS = $(mono_CFLAGS)
 libmono_static_la_LDFLAGS = -static
 libmono_static_la_LIBADD = $(static_libs) $(MONO_DTRACE_OBJECT)
 
 libmonosgen_static_la_SOURCES = $(libmono_2_0_la_SOURCES)
-libmonosgen_static_la_CFLAGS = $(AM_CFLAGS) $(SGEN_DEFINES)
+libmonosgen_static_la_CFLAGS = $(mono_sgen_CFLAGS)
 libmonosgen_static_la_LDFLAGS = -static
 libmonosgen_static_la_LIBADD = $(sgenstatic_libs) $(MONO_DTRACE_OBJECT)
 
 nodist_libmono_static_la_SOURCES = $(nodist_libmono_la_SOURCES)
-nodist_libmono_static_la_CFLAGS = $(AM_CFLAGS) $(BOEHM_DEFINES) $(LIBGC_CFLAGS)
+nodist_libmono_static_la_CFLAGS = $(mono_CFLAGS)
 
 BURGSRC= $(common_BURGSRC) $(arch_BURGSRC)
 
@@ -511,17 +539,10 @@ libmonoincludedir = $(includedir)/mono-$(API_VER)/mono/jit
 
 libmonoinclude_HEADERS = jit.h
 
-libmono_2_0_la_LIBADD = \
-	$(libs) $(LIBMONO_DTRACE_OBJECT)
-
-libmonosgen_2_0_la_LIBADD = \
-	$(sgen_libs) $(LIBMONO_DTRACE_OBJECT)
-
-if MOONLIGHT
-libmono_moon_la_LIBADD = $(libmono_2_0_la_LIBADD)
-endif
-
 basic-simd.exe: basic-simd.cs
+	$(MCS) -out:$@ $< -r:TestDriver.dll -r:Mono.Simd.dll
+
+nacl.exe: nacl.cs
 	$(MCS) -out:$@ $< -r:TestDriver.dll -r:Mono.Simd.dll
 
 generics.exe: generics.cs TestDriver.dll generics-variant-types.dll
@@ -605,11 +626,16 @@ checktests: $(regtests)
 rcheck: mono $(regtests)
 	$(RUNTIME) --regression $(regtests)
 
+LLVM_AOT_RUNTIME_OPTS=$(if $(LLVM),--llvm,)
+
 aotcheck: mono $(regtests)
 	rm -f *.exe.so
-	$(RUNTIME) --aot $(regtests) || exit 1
+	$(RUNTIME) $(LLVM_AOT_RUNTIME_OPTS) --aot $(regtests) || exit 1
 	for i in $(regtests); do $(RUNTIME_AOTCHECK) --regression $$i || exit 1; done
 	rm -f *.exe.so
+
+llvmaotcheck:
+	$(MAKE) aotcheck LLVM=1
 
 # This currently only works on amd64/arm
 fullaotcheck: mono $(regtests)
@@ -617,22 +643,11 @@ fullaotcheck: mono $(regtests)
 	mkdir fullaot-tmp
 	cp $(CLASS)/mscorlib.dll $(CLASS)/System.Core.dll $(CLASS)/System.dll $(CLASS)/Mono.Posix.dll $(CLASS)/System.Configuration.dll $(CLASS)/System.Security.dll $(CLASS)/System.Xml.dll $(CLASS)/Mono.Security.dll $(CLASS)/Mono.Simd.dll $(regtests) generics-variant-types.dll TestDriver.dll fullaot-tmp/
 	cp $(regtests) fullaot-tmp/
-	MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper --aot=full fullaot-tmp/* || exit 1
+	MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper $(LLVM_AOT_RUNTIME_OPTS) --aot=full fullaot-tmp/* || exit 1
 	for i in $(regtests); do echo $$i; MONO_PATH=fullaot-tmp $(top_builddir)/runtime/mono-wrapper --full-aot fullaot-tmp/$$i --exclude '!FULLAOT' || exit 1; done
 
-fsacheck: mono $(fsatests) fsacheck.c generics.exe
-	rm -rf fsa-tmp
-	mkdir fsa-tmp
-	cp $(CLASS)/mscorlib.dll $(CLASS)/System.Core.dll $(CLASS)/System.dll $(CLASS)/Mono.Posix.dll $(CLASS)/System.Configuration.dll $(CLASS)/System.Security.dll $(CLASS)/System.Xml.dll $(CLASS)/Mono.Security.dll $(CLASS)/Mono.Simd.dll \
-	$(fsatests) generics-variant-types.dll TestDriver.dll fsa-tmp/
-	cp $(fsatests) fsa-tmp/
-	MONO_PATH=fsa-tmp $(top_builddir)/runtime/mono-wrapper --aot=full,static fsa-tmp/*.dll || exit 1
-	MONO_PATH=fsa-tmp $(top_builddir)/runtime/mono-wrapper --aot=full,static fsa-tmp/*.exe || exit 1
-	$(CC) -o $@.out -g -static $(VPATH)/fsacheck.c fsa-tmp/*.o \
-	-lmono-2.0 -lpthread -lm -ldl -lrt \
-	-DTARGET_X86 -L.libs -I${prefix}/include/mono-2.0 \
-	-I${prefix} -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
-	for i in $(fsatests); do echo $$i; MONO_PATH=fsa-tmp ./$@.out $$i || exit 1; done
+llvmfullaotcheck:
+	$(MAKE) fullaotcheck LLVM=1
 
 bench: mono test.exe
 	time env $(RUNTIME) --ncompile $(count) --compile Test:$(mtest) test.exe

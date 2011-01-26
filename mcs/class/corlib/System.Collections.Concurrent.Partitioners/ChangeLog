@@ -1,0 +1,26 @@
+2010-12-07  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix behavior of Partitioner.Create when more than one partition is
+	requested and used
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove debugging spew wrongly introduced by earlier commit
+
+2010-11-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add a fast path in EnumerablePartitioner for strip partitioning
+
+2010-11-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Partitioner] Use custom made enumerator for GetPartitions
+	proxying from GetOrderablePartitions
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ListPartitioner.cs: Remove playground code
+
+2010-04-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	* ListPartitioner.cs:
+	* EnumerablePartitioner.cs: Add internal behavior specific to PLinq

@@ -1,3 +1,118 @@
+2011-01-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Make the stacks of aot image non-executable.
+
+2011-01-08  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add CPSR to Apple arm ucontext macros as well
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Re-enable and fix the nacl changes.
+
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert a nacl change which is causing crashes.
+
+2011-01-03  Zoltan Varga  <vargaz@gmail.com>
+
+	.gitignore.
+
+2010-12-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Previous patch was wrong.
+
+2010-12-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[OSX] semaphore_timedwait might return > 0 for errors
+
+	Errors, including timeout, are reported with a positive return in
+	semaphore_timedwait.
+
+2010-12-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Mach uses wait_time not abs_time
+
+	The time to wait is relative in the Mac functions.
+
+2010-12-16  Elijah Taylor  <elijahtaylor@google.com>
+
+	Merged in rest of Native Client changes, untested
+
+2010-11-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Set the thumb bit in the CPSR when resuming from a signal handler
+	to a thumb function on arm.
+
+2010-11-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Hush cross-compilation warnings
+
+2010-11-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Wrong return value in mono_sem_timedwait()
+
+	The return value of mono_sem_timedwait() with a timeout 0 was
+	incorrect (0=failure, !0=success instead of 0=success). This
+	worked on non-Windows platforms because the only call with timeout
+	0 was expecting the incorrect return value, but it made the mono
+	threadpool in Windows fail.
+
+	Fixes bug #653928.
+
+2010-11-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove the unused and incomplete CMake build scripts for now.
+
+2010-11-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Print double stats with more precision.
+
+2010-10-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some copyright messages.
+
+2010-10-01  Geoff Norton  <gnorton@novell.com>
+
+	Fix a crash when using the embedding api
+
+	error_msg is null when passed into this function from a few
+	places, so lets not do a null deref here.
+
+2010-09-15  Zoltan Varga  <vargaz@gmail.com>
+
+	UCONTEXT_REG_RCX was defined twice on OpenBSD, and RBX was
+	missing. Fix that.
+
+2010-09-14  Zoltan Varga  <vargaz@gmail.com>
+
+	Add casts to the macros on netbsd so the caller doesn't have to
+	reference ucontext_t which is not available on some platforms like
+	android.
+
+2010-09-13  Michael Hutchinson  <mhutchinson@novell.com>
+
+	[Embedding] Make mono-dl-fallback.h public-safe
+
+2010-09-11  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not install sample header, add to EXTRA_DIST
+
+2010-09-10  Miguel de Icaza  <miguel@gnome.org>
+
+	[Embedded] Add new fallback API to allow hooking up to the
+	P/Invoke lookup system
+
+	This patch allows a developer to register a fallback for P/Invoke
+	when embedding Mono. Typically this is done when you statically
+	link all of your libraries in some embedded systems and you need
+	to dynamically resolve symbol names.
+
+	There is a *sample* API included (but not compiled into Mono
+	itself) called mono-embed.c that shows a layman use of the API. A
+	full implementation would mandate sorted tables, and would use a
+	bsearch or a hashtable instead of having linear searches.
+
 2010-08-25  Robert Nagy  <robert@bsd.hu>
 
 	Make sgen compile on OpenBSD, by adding the missing stuff

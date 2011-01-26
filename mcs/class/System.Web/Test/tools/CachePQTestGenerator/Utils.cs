@@ -41,6 +41,8 @@ using System.Web.Caching;
 using System.Xml;
 using System.Xml.XPath;
 
+using MonoTests.System.Web.Caching;
+
 namespace Tester
 {
 	static class Utils
@@ -89,36 +91,33 @@ namespace Tester
 		public static void FormatQueueSize (this StringBuilder sb, string indent, PriorityQueueState qs)
 		{
 			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Count, \"Queue size after sequence\");\n\n",
-					 qs.Queue.Count, qs.QueueName);
+			var ti = new CacheItemPriorityQueueTestItem () {
+				Operation = QueueOperation.QueueSize,
+				QueueCount = qs.Queue.Count
+			};
+			sb.AppendFormat ("\"{0}\",", ti.Serialize ());
+			sb.AppendLine ();
 		}
 		
 		public static void FormatDisableItem (this StringBuilder sb, string indent, PriorityQueueState qs, List <CacheItem> list, int index)
 		{
 			CacheItem item = list [index];
 			sb.Append (indent);
-			sb.AppendFormat ("{0} = {1} [{2}];\n", qs.ItemName, qs.ListName, index);
-			sb.Append (indent);
-			
-			if (item == null) {
-				sb.AppendFormat ("Assert.IsNull ({0}, \"Disable-{1:0000}-1\");\n",
-						 qs.ItemName, qs.DisableCount);
-				return;
-			}
-			
-			sb.AppendFormat ("Assert.IsNotNull ({0}, \"Disable-{1:0000}-1\");\n",
-					 qs.ItemName, qs.DisableCount);
 
-			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual (\"{0}\", {1}.Guid.ToString(), \"Disable-{2:0000}-3\");\n",
-					 item.Guid.ToString (), qs.ItemName, qs.DisableCount);
-			
-			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Disabled, \"Disable-{2:0000}-3\");\n",
-					 item.Disabled.ToString ().ToLowerInvariant (),
-					 qs.ItemName, qs.DisableCount);
-			sb.Append (indent);
-			sb.AppendFormat ("{0}.Disabled = true;\n\n", qs.ItemName);
+			var ti = new CacheItemPriorityQueueTestItem () {
+				Operation = QueueOperation.Disable,
+				QueueCount = qs.Queue.Count,
+				ListIndex = index
+			};
+			if (item == null)
+				ti.IsNull = true;
+			else {
+				ti.Guid = item.Guid.ToString ();
+				ti.IsDisabled = item.Disabled;
+				ti.Disable = true;
+			}
+			sb.AppendFormat ("\"{0}\",", ti.Serialize ());
+			sb.AppendLine ();
 
 			item.Disabled = true;
 			
@@ -128,27 +127,21 @@ namespace Tester
 		public static void FormatDequeue (this StringBuilder sb, string indent, PriorityQueueState qs)
 		{
 			CacheItem item = qs.Dequeue ();
-
-			sb.Append (indent);
-			sb.AppendFormat ("{0} = {1}.Dequeue ();\n", qs.ItemName, qs.QueueName);
-			sb.Append (indent);
-			if (item != null)
-				sb.AppendFormat ("Assert.IsNotNull ({0}, \"Dequeue-{1:0000}-1\");\n", qs.ItemName, qs.DequeueCount);
-			else
-				sb.AppendFormat ("Assert.IsNull ({0}, \"Dequeue-{1:0000}-1\");\n", qs.ItemName, qs.DequeueCount);
 			
 			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Count, \"Dequeue-{2:0000}-2\");\n",
-					 qs.Queue.Count, qs.QueueName, qs.DequeueCount);
-
+			var ti = new CacheItemPriorityQueueTestItem () {
+				Operation = QueueOperation.Dequeue,
+				QueueCount = qs.Queue.Count,
+				OperationCount = qs.DequeueCount
+			};
 			if (item != null) {
-				sb.Append (indent);
-				sb.AppendFormat ("Assert.AreEqual (\"{0}\", {1}.Guid.ToString (), \"Dequeue-{2:0000}-3\");\n",
-						 item.Guid.ToString (), qs.ItemName, qs.DequeueCount);
-				sb.Append (indent);
-				sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Disabled, \"Dequeue-{2:0000}-4\");\n\n",
-						 item.Disabled.ToString ().ToLowerInvariant (), qs.ItemName, qs.DequeueCount);
-			}
+				ti.Guid = item.Guid.ToString ();
+				ti.IsDisabled = item.Disabled;
+			} else
+				ti.IsNull = true;
+			
+			sb.AppendFormat ("\"{0}\",", ti.Serialize ());
+			sb.AppendLine ();
 			
 			qs.DequeueCount++;
 		}
@@ -156,27 +149,22 @@ namespace Tester
 		public static void FormatPeek (this StringBuilder sb, string indent, PriorityQueueState qs)
 		{
 			CacheItem item = qs.Peek ();
-
+			
 			sb.Append (indent);
-			sb.AppendFormat ("{0} = {1}.Peek ();\n", qs.ItemName, qs.QueueName);
-			sb.Append (indent);
-			if (item != null)
-				sb.AppendFormat ("Assert.IsNotNull ({0}, \"Peek-{1:0000}-1\");\n", qs.ItemName, qs.PeekCount);
-			else
-				sb.AppendFormat ("Assert.IsNull ({0}, \"Peek-{1:0000}-1\");\n", qs.ItemName, qs.PeekCount);
-
-			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Count, \"Peek-{2:0000}-2\");\n", qs.Queue.Count, qs.QueueName, qs.PeekCount);
-
+			var ti = new CacheItemPriorityQueueTestItem () {
+				Operation = QueueOperation.Peek,
+				QueueCount = qs.Queue.Count,
+				OperationCount = qs.PeekCount
+			};
 			if (item != null) {
-				sb.Append (indent);
-				sb.AppendFormat ("Assert.AreEqual (\"{0}\", {1}.Guid.ToString (), \"Peek-{2:0000}-3\");\n",
-						 item.Guid.ToString (), qs.ItemName, qs.PeekCount);
-				sb.Append (indent);
-				sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Disabled, \"Peek-{2:0000}-4\");\n\n",
-						 item.Disabled.ToString ().ToLowerInvariant (), qs.ItemName, qs.PeekCount);
-			}
-
+				ti.Guid = item.Guid.ToString ();
+				ti.IsDisabled = item.Disabled;
+			} else
+				ti.IsNull = true;
+			
+			sb.AppendFormat ("\"{0}\",", ti.Serialize ());
+			sb.AppendLine ();
+			
 			qs.PeekCount++;
 		}
 		
@@ -184,25 +172,31 @@ namespace Tester
 		{
 			qs.Enqueue (list [index]);
 			sb.Append (indent);
-			sb.AppendFormat ("{0}.Enqueue ({1} [{2}]);\n", qs.QueueName, qs.ListName, index);
-			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual ({0}, {1}.Count, \"Enqueue-{2:0000}-1\");\n",
-					 qs.Queue.Count, qs.QueueName, qs.EnqueueCount);
-			sb.Append (indent);
-			sb.AppendFormat ("Assert.AreEqual (\"{0}\", {1}.Peek ().Guid.ToString(), \"Enqueue-{2:0000}-2\");\n\n",
-					 qs.Peek ().Guid.ToString (), qs.QueueName, qs.EnqueueCount);
 
+			var ti = new CacheItemPriorityQueueTestItem () {
+				Operation = QueueOperation.Enqueue,
+				QueueCount = qs.Queue.Count,
+				ListIndex = index,
+				Guid = qs.Peek ().Guid.ToString (),
+				OperationCount = qs.EnqueueCount
+			};
+			
+			sb.AppendFormat ("\"{0}\",", ti.Serialize ());
+			sb.AppendLine ();
+			
 			qs.EnqueueCount++;
 		}
-
+		
 		public static void FormatList (this StringBuilder sb, string indent, string listName, List <CacheItem> list)
 		{
 			if (list == null || list.Count == 0) {
-				sb.AppendFormat (indent + "var {0} = new List <CacheItem> ();\n", listName);
+				sb.AppendFormat (indent + "object[] {0} = {{};\n", listName);
 				return;
 			}
 
-			sb.AppendFormat (indent + "var {0} = new List <CacheItem> {{\n", listName);
+			sb.Append (indent + "// Each row contains TestCacheItem fields, in the following order:\n");
+			sb.Append (indent + "// Key, AbsoluteExpiration, SlidingExpiration, Priority, LastChange, ExpiresAt, Disabled, Guid\n");
+			sb.AppendFormat (indent + "object[] {0} = {{\n", listName);
 
 			foreach (CacheItem ci in list)
 				CreateNewCacheItemInstanceCode (indent + "\t", sb, ci);
@@ -211,15 +205,15 @@ namespace Tester
 
 		static void CreateNewCacheItemInstanceCode (string indent, StringBuilder sb, CacheItem item)
 		{
-			sb.Append (indent + "new CacheItem {");
-			sb.AppendFormat ("Key = \"{0}\", ", item.Key.Replace ("\n", "\\n").Replace ("\r", "\\r"));
-			sb.AppendFormat ("AbsoluteExpiration = DateTime.Parse (\"{0}\"), ", item.AbsoluteExpiration.ToString ());
-			sb.AppendFormat ("SlidingExpiration = TimeSpan.Parse (\"{0}\"), ", item.SlidingExpiration.ToString ());
-			sb.AppendFormat ("Priority = CacheItemPriority.{0}, ", item.Priority);
-			sb.AppendFormat ("LastChange = DateTime.Parse (\"{0}\"), ", item.LastChange.ToString ());
-			sb.AppendFormat ("ExpiresAt = {0}, ", item.ExpiresAt);
-			sb.AppendFormat ("Disabled = {0}, ", item.Disabled.ToString ().ToLowerInvariant ());
-			sb.AppendFormat ("Guid = new Guid (\"{0}\")}}, \n", item.Guid.ToString ());
+			sb.Append (indent);
+			sb.AppendFormat ("\"{0}\", ", item.Key.Replace ("\n", "\\n").Replace ("\r", "\\r"));
+			sb.AppendFormat ("\"{0}\", ", item.AbsoluteExpiration.ToString ());
+			sb.AppendFormat ("\"{0}\", ", item.SlidingExpiration.ToString ());
+			sb.AppendFormat ("CacheItemPriority.{0}, ", item.Priority);
+			sb.AppendFormat ("\"{0}\", ", item.LastChange.ToString ());
+			sb.AppendFormat ("{0}, ", item.ExpiresAt);
+			sb.AppendFormat ("{0}, ", item.Disabled.ToString ().ToLowerInvariant ());
+			sb.AppendFormat ("\"{0}\",\n", item.Guid.ToString ());
 		}
 	}
 }

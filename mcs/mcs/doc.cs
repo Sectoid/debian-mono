@@ -13,17 +13,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Security;
-using System.Security.Permissions;
 using System.Text;
 using System.Xml;
 using System.Linq;
 
-using Mono.CompilerServices.SymbolWriter;
 
 namespace Mono.CSharp {
 
@@ -321,6 +314,17 @@ namespace Mono.CSharp {
 			int index = identifier.LastIndexOf ('.');
 			if (index < 0)
 				return null;
+
+			var nsName = identifier.Substring (0, index);
+			var typeName = identifier.Substring (index + 1);
+			Namespace ns = ds.NamespaceEntry.NS.GetNamespace (nsName, false);
+			ns = ns ?? mc.Module.GlobalRootNamespace.GetNamespace(nsName, false);
+			if (ns != null) {
+				var te = ns.LookupType(mc.Compiler, typeName, 0, true, mc.Location);
+				if(te != null)
+					return te.Type;
+			}
+
 			int warn;
 			TypeSpec parent = FindDocumentedType (mc, identifier.Substring (0, index), ds, cref, r);
 			if (parent == null)
@@ -616,7 +620,7 @@ namespace Mono.CSharp {
 				xref.SetAttribute ("cref", "N:" + ns.GetSignatureForError ());
 				return; // a namespace
 			}
-			if (mc.Compiler.GlobalRootNamespace.IsNamespace (name)) {
+			if (mc.Module.GlobalRootNamespace.IsNamespace (name)) {
 				xref.SetAttribute ("cref", "N:" + name);
 				return; // a namespace
 			}

@@ -1,3 +1,11 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Fix the monodroid and monotouch profile builds
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the System.Web.Services build for monodroid
+
 2010-03-03  Lluis Sanchez Gual <lluis@novell.com> 
 
 	* ServiceDescriptionCollection.cs: When looking for bindings and other

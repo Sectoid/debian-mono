@@ -1,3 +1,55 @@
+2011-01-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some usages of ArrayList to List<T> to avoid calls to the
+	slow ArrayList.ToArray(Type) method.
+
+2011-01-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix operator != handling of LHS null
+
+2010-12-15  Marek Safar  <marek.safar@gmail.com>
+
+	Some .net 4.0 api compatibility fixes
+
+2010-11-08  Marek Safar  <marek.safar@gmail.com>
+
+	API compatibility work
+
+2010-10-27  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoMethod.cs: Add new icall for ::Attributes.
+
+2010-10-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for assembly names with embedded and starting spaces.
+
+2010-10-15  Marek Safar  <marek.safar@gmail.com>
+
+	Warnings cleanup
+
+2010-10-04  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoGenericClass.cs (.ctor): Only register with the runtime when
+	the underlying TB is not finished.
+
+2010-09-20  Jb Evain  <jbevain@gmail.com>
+
+	Revert "[Fix] Fix the default binder when selecting params
+	methods."
+
+	This reverts commit 6a7443d8089c92f722d87c81f6c7d22c2c0deafb.
+
+2010-09-10  Jb Evain  <jbevain@gmail.com>
+
+	[Fix] Fix the default binder when selecting params methods.
+
+	Use full assignability check instead of type equality when
+	selecting methods with a params array parameter. Fixes #636939.
+
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the corlib build for monodroid
+
 2010-08-25  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* MonoProperty.cs: Don't share the same field with DeclaringType

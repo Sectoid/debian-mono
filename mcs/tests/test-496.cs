@@ -1,41 +1,13 @@
-using System;
-using System.Collections;
+// Compiler options: -unsafe
 
-public class Test
+unsafe class Baz
 {
-	public IEnumerator GetEnumerator ()
+	struct Foo
 	{
-		yield return "TEST";
-		try {
-			int.Parse (arg);
-		} catch {
-			yield break;
-		}
-		yield return "TEST2";
+		public Foo *next;
 	}
-
-	static void Main ()
+	
+	public static void Main ()
 	{
-		new Test ().Run ();
-	}
-
-	string arg;
-
-	void Run ()
-	{
-		int i = 0;
-		foreach (string s in this)
-			i++;
-		if (i != 1)
-			throw new Exception ();
-
-		arg = "1";
-		i = 0;
-		foreach (string s in this)
-			i++;
-		if (i != 2)
-			throw new Exception ();
 	}
 }
-
-

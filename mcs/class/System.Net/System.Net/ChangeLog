@@ -1,3 +1,26 @@
+2010-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/WebRequest_2_1.cs: (Create) Find the prefix that is
+	the closest match to the specified Uri and use it's associated
+	creator. (RegisterPrefix) We cannot register 'http[s]:' even if
+	registering 'http[s]' is possible (but does not work as expected)
+	as are the (fully) valid 'http[s]:/[/]' values.
+
+2010-09-23  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Net/WebClient_2_1.cs: Throw a NotImplementedException
+	from ResponseHeaders if the response does not support them. *
+	System.Net/WebResponse_2_1.cs: Make Headers property smart to
+	throw a NotImplementedException if SupportsHeaders return false.
+	Add a new InternalHeaders property since the response headers are
+	needed, internally (e.g. policies), even if not exposed to the
+	outside world.
+
+2010-09-02  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* mcs/class/System.Net/System.Net/WebClient_2_1.cs: Use
+	sync_context to post the call to OnUploadProgressChanged
+
 2010-08-31  Sebastien Pouliot  <sebastien@ximian.com>
 
 	*

@@ -12,10 +12,14 @@
 //
 
 using System;
-using System.Collections.Generic;
+
+#if STATIC
+using MetaType = IKVM.Reflection.Type;
+using IKVM.Reflection;
+#else
+using MetaType = System.Type;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Globalization;
+#endif
 
 namespace Mono.CSharp {
 
@@ -63,7 +67,7 @@ namespace Mono.CSharp {
 			}
 
 			if (expr == null)
-				expr = New.Constantify (underlying);
+				expr = New.Constantify (underlying, Location);
 
 			return new EnumConstant (expr, MemberType).Resolve (rc);
 		}
@@ -110,7 +114,7 @@ namespace Mono.CSharp {
 			{
 				// We are the first member
 				if (prev == null) {
-					return New.Constantify (current.Parent.Definition).Resolve (rc);
+					return New.Constantify (current.Parent.Definition, Location).Resolve (rc);
 				}
 
 				var c = ((ConstSpec) prev.Spec).GetConstant (rc) as EnumConstant;
@@ -121,7 +125,7 @@ namespace Mono.CSharp {
 						"The enumerator value `{0}' is outside the range of enumerator underlying type `{1}'",
 						current.GetSignatureForError (), ((Enum) current.Parent).UnderlyingType.GetSignatureForError ());
 
-					return New.Constantify (current.Parent.Definition).Resolve (rc);
+					return New.Constantify (current.Parent.Definition, current.Location).Resolve (rc);
 				}
 			}
 
@@ -204,7 +208,7 @@ namespace Mono.CSharp {
 				FieldAttributes.Public | FieldAttributes.SpecialName | FieldAttributes.RTSpecialName);
 
 			if (!RootContext.StdLib)
-				RootContext.hack_corlib_enums.Add (this);
+				Module.hack_corlib_enums.Add (this);
 
 			return true;
 		}
@@ -256,7 +260,7 @@ namespace Mono.CSharp {
 	{
 		TypeSpec underlying;
 
-		public EnumSpec (TypeSpec declaringType, ITypeDefinition definition, TypeSpec underlyingType, Type info, Modifiers modifiers)
+		public EnumSpec (TypeSpec declaringType, ITypeDefinition definition, TypeSpec underlyingType, MetaType info, Modifiers modifiers)
 			: base (MemberKind.Enum, declaringType, definition, info, modifiers | Modifiers.SEALED)
 		{
 			this.underlying = underlyingType;

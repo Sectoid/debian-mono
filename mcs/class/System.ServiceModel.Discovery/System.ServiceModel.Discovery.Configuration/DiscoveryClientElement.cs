@@ -63,8 +63,56 @@ namespace System.ServiceModel.Discovery.Configuration
 			get { return (FindCriteriaElement) base [find_criteria]; }
 		}
 		
-		protected override BindingElement CreateBindingElement ()
+		protected override ConfigurationPropertyCollection Properties {
+			get { return properties; }
+		}
+		
+		public override void ApplyConfiguration (BindingElement bindingElement)
 		{
+			if (bindingElement == null)
+				throw new ArgumentNullException ("bindingElement");
+			if (DiscoveryEndpoint == null)
+				throw new ArgumentNullException ("'endpoint' configuration element is missing.");
+			var be = (DiscoveryClientBindingElement) bindingElement;
+
+			base.ApplyConfiguration (bindingElement);
+
+			if (FindCriteria != null)
+				be.FindCriteria = FindCriteria.CreateInstance ();
+
+			// FIXME: apply DiscoveryEndpoint
+			throw new NotImplementedException ();
+		}
+
+		public override void CopyFrom (ServiceModelExtensionElement from)
+		{
+			if (from == null)
+				throw new ArgumentNullException ("from");
+			var ce = (DiscoveryClientElement) from;
+			FindCriteria.CopyFrom (ce.FindCriteria);
+		}
+
+		protected internal override BindingElement CreateBindingElement ()
+		{
+			var be = new DiscoveryClientBindingElement ();
+			ApplyConfiguration (be);
+			return be;
+		}
+
+		protected internal override void InitializeFrom (BindingElement bindingElement)
+		{
+			if (bindingElement == null)
+				throw new ArgumentNullException ("bindingElement");
+			if (DiscoveryEndpoint == null)
+				throw new ArgumentNullException ("'endpoint' configuration element is missing.");
+			var be = (DiscoveryClientBindingElement) bindingElement;
+
+			base.InitializeFrom (be);
+
+			if (be.FindCriteria != null)
+				FindCriteria.InitializeFrom (be.FindCriteria);
+
+			// FIXME: initialize DiscoveryEndpoint
 			throw new NotImplementedException ();
 		}
 	}

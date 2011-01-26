@@ -1,3 +1,179 @@
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make use of the wait changes in the internal TaskScheduler ->
+	IScheduler proxy.
+
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Rework internal wait mechanism in thread workers participation
+	code
+
+2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix continuation not being scheduled because of too early and too
+	greedy disposing.
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Explicitely attach loop underlying tasks to their eventual parent
+
+2011-01-06  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use wider acceptance criteria to cope with nested child Task
+	waiting and external task waiting
+
+2011-01-05  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Ensure task wait chain isn't executed out of order in scheduler
+
+2011-01-04  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use proper pattern for executing synchronous Task
+
+2010-12-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Clean and finish TaskFactory
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add prototype for Parallel.For long overloads
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	More parameter renaming
+
+2010-12-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Update Task parameter names
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task scheduler] Change waiting layout/wakeup point and use
+	adaptative deep sleeping
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task Scheduler] Revisit Task waiting in Scheduler using
+	ManualResetEventSlim
+
+2010-12-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task Scheduler] Track re-entrant call to WorkerMethod from normal
+	ThreadWorker and make them use their deque
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Add an extra check in Task.WaitAny to make sure the index
+	returned is valid
+
+2010-12-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Dumb bugfix when checking timeout in Task.WaitAny
+
+2010-11-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Fix typo
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] In every TaskFactory method accepting a Task array, we have
+	to make a private copy to avoid changes to the array content from
+	the moment we register the continuation to when we call the
+	callback
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Check if Task isn't finished before going into the
+	Scheduler for Wait
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Set continuation status to WaitingForActivation in
+	ContinueWithCore
+
+2010-11-26  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task] Only launch continuation synchronously when the
+	corresponding option in TaskContinuationOptions is set
+
+2010-11-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove AreTasksFinished in Scheduler and directly use a non
+	volatile version of IsCompleted
+
+2010-11-19  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Increase the deepSleepTime of ThreadWorker
+
+2010-11-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	[Task scheduler] Refactoring and cleanup. Removed a bunch of
+	not-so needed lambdas to avoid delegate invocation cost.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Throw an an exception when Break and Stop are used in combination.
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Simplify Parallel.ForEach loop execution
+
+2010-11-12  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Cleanup ForEach overloads in Parallel
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refine precedent algorithm for Parallel.For index stealing.
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add a new lightweight stealing algorithm to Parallel.For
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	In Parallel.For, returns immediately if the initial bound is
+	superior or equal to the upper bound.
+
+2010-11-11  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Small logic fix in choosing step in Parallel.For
+
+2010-11-10  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Simplify Parallel.For execution.
+
+	This commit remove the stealing path until a better solution for
+	it is devised.
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement Partitioner.Create int and long overloads. Add
+	corresponding unit tests.
+
+2010-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add TaskExtensions class and Unwrap extension methods
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refactor Task.Wait and Task.WaitAny methods and add support for
+	scheduler-less waiting.
+
+	A scheduler-less waiting is useful for instance in case Tasks are
+	waited upon without having being started (like in some
+	continuation chaining case).
+
+2010-11-03  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Set more state on TaskCompletionSource inner Task<T>
+
+2010-11-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Use Task helper methods in TaskCompletionSource instead of manual
+	setting, allow continuation flow to happen smoothly and task
+	status to be set accordingly.
+
 2010-08-27  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Move the predicate call under launched.TrySet protection in Task's

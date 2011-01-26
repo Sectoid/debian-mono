@@ -1,3 +1,4 @@
+#define g_array_append monoeg_g_array_append
 #define g_array_append_vals monoeg_g_array_append_vals
 #define g_array_free monoeg_g_array_free
 #define g_array_insert_vals monoeg_g_array_insert_vals
@@ -20,6 +21,7 @@
 #define g_direct_hash monoeg_g_direct_hash
 #define g_error_free monoeg_g_error_free
 #define g_error_new monoeg_g_error_new
+#define g_error_vnew monoeg_g_error_vnew
 #define g_file_error_from_errno monoeg_g_file_error_from_errno
 #define g_file_get_contents monoeg_g_file_get_contents
 #define g_file_open_tmp monoeg_g_file_open_tmp
@@ -51,6 +53,9 @@
 #define g_hash_table_remove monoeg_g_hash_table_remove
 #define g_hash_table_size monoeg_g_hash_table_size
 #define g_hash_table_print_stats monoeg_g_hash_table_print_stats
+#define g_hash_table_remove_all monoeg_g_hash_table_remove_all
+#define g_hash_table_iter_init monoeg_g_hash_table_iter_init
+#define g_hash_table_iter_next monoeg_g_hash_table_iter_next
 #define g_int_equal monoeg_g_int_equal
 #define g_int_hash monoeg_g_int_hash
 #define g_list_alloc monoeg_g_list_alloc
@@ -116,6 +121,7 @@
 #define g_ptr_array_sort_with_data monoeg_g_ptr_array_sort_with_data
 #define g_queue_free monoeg_g_queue_free
 #define g_queue_is_empty monoeg_g_queue_is_empty
+#define g_queue_foreach monoeg_g_queue_foreach
 #define g_queue_new monoeg_g_queue_new
 #define g_queue_pop_head monoeg_g_queue_pop_head
 #define g_queue_push_head monoeg_g_queue_push_head
@@ -219,7 +225,11 @@
 #define g_malloc0 monoeg_malloc0
 #define g_ptr_array_grow monoeg_ptr_array_grow
 #define g_realloc monoeg_realloc
+#define g_try_malloc monoeg_try_malloc
+#define g_try_realloc monoeg_try_realloc
 #define g_strdup monoeg_strdup
 #define g_ucs4_to_utf16_len monoeg_ucs4_to_utf16_len
 #define g_utf16_to_ucs4_len monoeg_utf16_to_ucs4_len
+#define g_byte_array_free monoeg_g_byte_array_free
+#define g_byte_array_new monoeg_g_byte_array_new
 

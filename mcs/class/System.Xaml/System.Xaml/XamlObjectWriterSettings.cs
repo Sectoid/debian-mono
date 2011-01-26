@@ -25,7 +25,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 using System.Windows.Markup;
+#if !NET_2_1
 using System.Xaml.Permissions;
+#endif
 using System.Xaml.Schema;
 
 namespace System.Xaml
@@ -40,7 +42,9 @@ namespace System.Xaml
 			: base (settings)
 		{
 			var s = settings;
+#if !NET_2_1
 			AccessLevel = s.AccessLevel;
+#endif
 			AfterBeginInitHandler = s.AfterBeginInitHandler;
 			AfterEndInitHandler = s.AfterEndInitHandler;
 			AfterPropertiesHandler = s.AfterPropertiesHandler;
@@ -55,19 +59,29 @@ namespace System.Xaml
 			XamlSetValueHandler = s.XamlSetValueHandler;
 		}
 
-		public XamlAccessLevel AccessLevel { get; set; }
 		public EventHandler<XamlObjectEventArgs> AfterBeginInitHandler { get; set; }
 		public EventHandler<XamlObjectEventArgs> AfterEndInitHandler { get; set; }
 		public EventHandler<XamlObjectEventArgs> AfterPropertiesHandler { get; set; }
 		public EventHandler<XamlObjectEventArgs> BeforePropertiesHandler { get; set; }
-		public INameScope ExternalNameScope { get; set; }
-		public bool IgnoreCanConvert { get; set; }
-		public bool PreferUnconvertedDictionaryKeys { get; set; }
-		public bool RegisterNamesOnExternalNamescope { get; set; }
-		public object RootObjectInstance { get; set; }
-		public bool SkipDuplicatePropertyCheck { get; set; }
-		public bool SkipProvideValueOnRoot { get; set; }
 		public EventHandler<XamlSetValueEventArgs> XamlSetValueHandler { get; set; }
 
+#if !NET_2_1
+		[MonoTODO ("Ignored")]
+		public XamlAccessLevel AccessLevel { get; set; }
+#endif
+		[MonoTODO ("Ignored")]
+		public INameScope ExternalNameScope { get; set; }
+		[MonoTODO ("Ignored")]
+		public bool IgnoreCanConvert { get; set; }
+		[MonoTODO ("Ignored")]
+		public bool PreferUnconvertedDictionaryKeys { get; set; }
+		[MonoTODO ("Ignored")]
+		public bool RegisterNamesOnExternalNamescope { get; set; }
+		[MonoTODO ("Ignored")]
+		public object RootObjectInstance { get; set; }
+		[MonoTODO ("Ignored")]
+		public bool SkipDuplicatePropertyCheck { get; set; }
+		[MonoTODO ("Ignored")]
+		public bool SkipProvideValueOnRoot { get; set; }
 	}
 }

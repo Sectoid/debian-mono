@@ -1,3 +1,12 @@
+2010-10-24  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	BinaryWriter.BaseStream calls Flush()
+
+	Before returning the base stream, BinaryWriter.BaseStream calls
+	Flush on it. Added test for this.
+
+	Fixes bug #647948.
+
 2010-05-27  William Holmes  <billholmes54@gmail.com>
 
 	* DirectoryTest.cs: Adding test for bug 580090.

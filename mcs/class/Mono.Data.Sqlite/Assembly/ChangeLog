@@ -1,3 +1,7 @@
+2010-09-08  Jb Evain  <jbevain@gmail.com>
+
+	Enable the Mono.Data.Sqlite build for monodroid
+
 2009-12-14  Marek Habersack  <mhabersack@novell.com>
 
 	* AssemblyInfo.cs: 4.0 assembly must have a different version than 2.0
