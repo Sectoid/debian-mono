@@ -142,7 +142,7 @@ mono_sgen_CFLAGS = $(SGEN_DEFINES) $(AM_CFLAGS)
 # We build this after libmono was built so it contains the date when the final
 # link was done
 buildver.h: libmono-static.la
-	@echo "const char *build_date = \"`date`\";" > buildver.h
+	@echo "const char *build_date;" > buildver.h
 
 mono-main.$(OBJEXT): buildver.h
 mono_sgen-main.$(OBJEXT): buildver.h
@@ -711,7 +711,7 @@ version.h: Makefile
 			echo "#define FULL_VERSION \"$$branch/$$version\""; \
 		); \
 	else \
-		echo "#define FULL_VERSION \"tarball\""; \
+		echo "#define FULL_VERSION \"Debian $$(dpkg-parsechangelog -l$(top_srcdir)/debian/changelog | grep ^Vers | cut -d\  -f2)\""; \
 	fi > version.h
 
 # Utility target for patching libtool to speed up linking
