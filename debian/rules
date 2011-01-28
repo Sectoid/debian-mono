@@ -409,6 +409,7 @@ binary-arch: build-stamp install-arch test-stamp
 	fi
 
 	dh_fixperms -s
+	dpkg-gensymbols -plibmono-2.0-1 -edebian/tmp/usr/lib/libmono-2.0.so.1 -c4
 	dh_makeshlibs -s -V
 	dh_makeshlibs -plibmono-2.0-1 -V 'libmono-2.0-1 (>= $(UPVERSION))'
 	dh_installdeb -s
