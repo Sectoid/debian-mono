@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        
+        if [ "$2" = "" ]; then
+            /usr/bin/dpkg-trigger --by-package=monodoc-base /usr/lib/monodoc/sources
+        fi
+
+        ;;
+
+    triggered)
+
+        /usr/bin/update-monodoc
+
+        ;;
+
+esac
+
+#DEBHELPER#

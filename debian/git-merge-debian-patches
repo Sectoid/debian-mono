@@ -1,0 +1,6 @@
+#!/bin/sh
+
+DEBIAN_PATCHES=$(git branch -l | egrep '\s+debian/patches/')
+for DEBIAN_PATCH in $DEBIAN_PATCHES; do
+	git merge --no-ff $DEBIAN_PATCH
+done 

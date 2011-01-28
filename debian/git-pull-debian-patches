@@ -1,0 +1,7 @@
+#!/bin/sh -e
+
+DEBIAN_PATCHES=$(git branch -l | egrep '\s+debian/patches/')
+for DEBIAN_PATCH in $DEBIAN_PATCHES; do
+	git checkout $DEBIAN_PATCH
+	git pull
+done 
