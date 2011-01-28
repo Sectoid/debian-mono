@@ -397,7 +397,7 @@ binary-arch: build-stamp install-arch test-stamp
 	dh_installexamples -s
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
 	dh_strip -pmono-runtime --dbg-package=mono-runtime-dbg
-	dh_strip -plibmono0 --dbg-package=libmono0-dbg
+	dh_strip -plibmono-2.0-1 --dbg-package=libmono-2.0-1-dbg
 	dh_strip -s
 	dh_compress -s -Xskeleton.cs
 
@@ -410,9 +410,9 @@ binary-arch: build-stamp install-arch test-stamp
 
 	dh_fixperms -s
 	dh_makeshlibs -s -V
-	dh_makeshlibs -plibmono0 -V 'libmono0 (>= $(UPVERSION))'
+	dh_makeshlibs -plibmono-2.0-1 -V 'libmono-2.0-1 (>= $(UPVERSION))'
 	dh_installdeb -s
-	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono0/usr/lib
+	dh_shlibdeps -s -Xlibmono-profiler-cov -ldebian/libmono-2.0-1/usr/lib
 	dh_gencontrol -s
 	dh_md5sums -s
 	dh_builddeb -s
