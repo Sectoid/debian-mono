@@ -90,6 +90,11 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 MAKE_FLAGS += -j1
 export MAKEFLAGS=$(MAKE_FLAGS)
 
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+	NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+	MONO_MAKE_FLAGS += -j$(NUMJOBS)
+endif
+
 #ifeq ($(DEB_BUILD_ARCH), i386)
 #	MAKE_FLAGS += RUNTIME=$(CURDIR)/debian/mono-aot-wrapper
 #endif
@@ -108,6 +113,8 @@ configure-stamp: autoreconf-stamp
 build: build-stamp
 build-stamp: configure-stamp
 	dh_testdir
+	cd libgc && $(MAKE)
+	cd mono && $(MAKE) $(MONO_MAKE_FLAGS)
 	LC_ALL=C $(MAKE) $(MAKE_FLAGS) EXTERNAL_MCS=false EXTERNAL_MONO=false
 
 	cd debian/detector && \
