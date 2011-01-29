@@ -2,7 +2,7 @@ Source: mono
 Section: cli-mono
 Priority: optional
 Maintainer: Debian Mono Group <pkg-mono-group@lists.alioth.debian.org>
-Uploaders: Mirco Bauer <meebey@debian.org>, Sebastian Dröge <slomo@debian.org>, Jo Shields <directhex@apebox.org>
+Uploaders: Mirco Bauer <meebey@debian.org>, Jo Shields <directhex@apebox.org>
 Build-Depends: debhelper (>= 7),
 	dpkg-dev (>= 1.13.19),
 	libglib2.0-dev (>= 2.4),
