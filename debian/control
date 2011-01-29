@@ -147,11 +147,11 @@ Description: Mono JIT library, debugging symbols
  runtime, which can produce and execute CIL (Common Intermediate Language)
  bytecode (aka assemblies), and a class library.
 
-Package: libmono-dev
+Package: libmono-2.0-dev
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
-Depends: ${misc:Depends}, libmono-2.0-1 (= ${binary:Version}), libglib2.0-dev
+Depends: ${misc:Depends}, libmono-2.0-1 (= ${binary:Version})
 Description: Mono JIT library - Development files
- Header files and static libraries for libmono.
+ Header files and static libraries for libmono-2.0.
  .
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
@@ -1550,7 +1550,7 @@ Depends: ${misc:Depends},
          ${cli:Depends},
          mono-mcs (= ${source:Version}),
          mono-1.0-gac (= ${source:Version}),
-         libmono-dev (>= ${source:Version}),
+         libmono-2.0-dev (>= ${source:Version}),
          pkg-config
 Replaces: mono-mcs (<< 1.2.6-1)
 Description: Mono development tools for CLI 1.0
@@ -1569,7 +1569,7 @@ Depends: ${misc:Depends},
          ${cli:Depends},
          mono-gmcs (= ${source:Version}),
          mono-2.0-gac (= ${source:Version}),
-         libmono-dev (>= ${source:Version}),
+         libmono-2.0-dev (>= ${source:Version}),
          pkg-config
 Replaces: mono-gmcs (<< 1.2.6-1), mono-common (<< 1.2.6-2)
 Description: Mono development tools for CLI 2.0
@@ -1696,7 +1696,7 @@ Description: LALR(1) parser generator oriented to Java/CLI
 Package: prj2make-sharp
 Section: devel
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, pkg-config, libmono-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, pkg-config, libmono-2.0-dev
 Description: Convert VS.NET solution files to Makefiles
  prj2make-solution is a utility used to read a "solution" file created
  with Visual Studio .NET and generate a usual Makefile suitable for
