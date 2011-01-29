@@ -1,7 +1,6 @@
 #!/usr/bin/make -f
 
 #export DH_VERBOSE=1
-export MONO_SHARED_DIR=$(CURDIR)
 
 # Assume Debian behaviour by default.
 DISTRO = $(shell lsb_release -si)
@@ -81,10 +80,6 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 	MONO_MAKE_FLAGS += -j$(NUMJOBS)
 endif
 
-#ifeq ($(DEB_BUILD_ARCH), i386)
-#	MAKE_FLAGS += RUNTIME=$(CURDIR)/debian/mono-aot-wrapper
-#endif
-
 autoreconf: autoreconf-stamp
 autoreconf-stamp:
 	autoreconf -f -i -s
@@ -130,19 +125,14 @@ clean:
 	[ ! -f Makefile ] || $(MAKE) distclean
 	# distclean misses stuff
 	find -name "*.mdb" -delete
-	# AOT stuff we created using mono-aot-wrapper/mono-aot-bootstrap
-	find mcs/class/lib -name "*.so" -delete
+	rm -rf mcs/class/lib/basic/ \
+	       mcs/class/lib/net_2_0/ \
+	       mcs/class/lib/net_3_5/ \
+	       mcs/class/lib/net_4_0/
+
 	-cd debian/detector && $(MAKE) clean
 	rm -f debian/MonoGetAssemblyName.exe \
 	      debian/mono-api-diff.exe
-	rm -rf $(MONO_SHARED_DIR)/.wapi
-
-	rm -f mcs/class/lib/default/mono-api-info.exe               \
-	      mcs/class/lib/net_2_0/mono-api-info.exe               \
-	      mcs/class/Managed.Windows.Forms/resources/*.resources \
-	      mcs/class/Mono.Data.Sqlite/resources/SR.resources     \
-	      mcs/class/Novell.Directory.Ldap/Novell.Directory.Ldap.Utilclass/ResultCodeMessages.resources \
-	      mcs/class/System.Web/resources/TranslationResources.resources
 
 	# clean stuff handled by autoreconf
 	rm -rf configure config.sub config.guess ltmain.sh aclocal.m4 autom4te.cache/
@@ -180,21 +170,11 @@ install-indep-stamp:
 	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0 && \
 	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_3_5
 
-	# upstream forgot to remove this one
-	rm -f debian/tmp/usr/bin/mbas
 	# don't want docs of bundled libgc
 	rm -rf debian/tmp/usr/share/libgc-mono
-	# Mono.WebBrowser.dll is linked with CLI 2.0, thus the symlink in 1.0/ doesn't make sense
-	rm -f debian/tmp/usr/lib/mono/1.0/Mono.WebBrowser.dll
 	# Mono.Security.Win32.dll is only useful on windows, as it wrap the win api
-	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Security.Win32/1.0.5000.0__*/ \
-	       $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Security.Win32/2.0.0.0__*/
-	rm -f $(CURDIR)/debian/tmp/usr/lib/mono/1.0/Mono.Security.Win32.dll \
-	      $(CURDIR)/debian/tmp/usr/lib/mono/2.0/Mono.Security.Win32.dll
-	# bug in Mono 2.4: <kangaroo> if you meant on 2.4 that was a bug
-	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.CompilerServices.SymbolWriter/2.0.5.0__*/
-	# CLI 1.0 is only kept for compat, don't ship new 1.0 libs
-	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Messaging/1.0.5000.0__*/
+	rm -rf $(CURDIR)/debian/tmp/usr/lib/mono/gac/Mono.Security.Win32/2.0.0.0__*/
+	rm -f  $(CURDIR)/debian/tmp/usr/lib/mono/2.0/Mono.Security.Win32.dll
 
 	# copy missing 2.0 manpages
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/al.1 \
