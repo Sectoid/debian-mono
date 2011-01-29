@@ -277,13 +277,6 @@ binary-indep: build-stamp install-arch install-indep
 	debian/dh_clistrip -i --dbg-package=mono-dbg
 	dh_compress -i
 	
-	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)
-	if [ "$(DISTRO)" = "Ubuntu" ]; then \
-	  for p in $$(dh_listpackages -i); do \
-	    sed "s/#PACKAGENAME#/$$p/g" $(CURDIR)/debian/preinst.ubuntu >> debian/$$p.preinst.debhelper; \
-	  done; \
-	fi
-
 	dh_fixperms -i
 	debian/dh_clifixperms -i
 	dh_installdeb -i
@@ -363,13 +356,6 @@ binary-arch: build-stamp install-arch test-stamp
 	dh_strip -plibmono-2.0-1 --dbg-package=libmono-2.0-1-dbg
 	dh_strip -s -Xbin/mono-sgen
 	dh_compress -s -Xskeleton.cs
-
-	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)
-	if [ "$(DISTRO)" = "Ubuntu" ]; then \
-	  for p in $$(dh_listpackages -a); do \
-	    sed "s/#PACKAGENAME#/$$p/g" $(CURDIR)/debian/preinst.ubuntu >> debian/$$p.preinst.debhelper; \
-	  done; \
-	fi
 
 	dh_fixperms -s
 	dpkg-gensymbols -plibmono-2.0-1 -edebian/tmp/usr/lib/libmono-2.0.so.1 -c4

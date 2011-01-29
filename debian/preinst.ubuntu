@@ -1,6 +1,0 @@
-# revert Ubuntu doc dir symlinking to Debian style
-if [ "$1" = "upgrade" ]
-    then if dpkg --compare-versions $2 lt 2.4 && [ -L /usr/share/doc/#PACKAGENAME# ]
-        then rm -fr /usr/share/doc/#PACKAGENAME#
-    fi
-fi
