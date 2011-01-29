@@ -398,7 +398,7 @@ binary-arch: build-stamp install-arch test-stamp
 	dh_installexamples -pmono-jay $(CURDIR)/mcs/jay/skeleton.cs
 	dh_strip -pmono-runtime --dbg-package=mono-runtime-dbg
 	dh_strip -plibmono-2.0-1 --dbg-package=libmono-2.0-1-dbg
-	dh_strip -s
+	dh_strip -s -Xbin/mono-sgen
 	dh_compress -s -Xskeleton.cs
 
 	# Hack workaround to allow Ubuntu to run its own preinst (e.g. to kill symlinked docdirs)

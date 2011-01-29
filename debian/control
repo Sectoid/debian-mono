@@ -48,6 +48,29 @@ Description: Mono runtime
  Mono currently only supports the X86, PowerPC, ARM, SPARC, S/390, AMD64 and
  IA64 architectures. Optionally this package configures BINFMT support.
 
+Package: mono-runtime-sgen
+Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         mono-runtime (= ${binary:Version})
+Homepage: http://www.mono-project.com/Compacting_GC
+Description: Mono runtime - SGen (experimental)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the Virtual Machine, JIT (Just-in-Time) and
+ AOT (Ahead-of-Time) code generator "mono-sgen".
+ mono-sgen executes applications for the CLI (Common Language Infrastructure).
+ Mono currently only supports the X86, PowerPC, ARM, SPARC, S/390, AMD64 and
+ IA64 architectures.
+ .
+ This package uses SGen which is Mono's new simple generational garbage collector
+ instead of Boehm's conservative garbage collector. SGen is currently only
+ for testing and thus should not be used in production.
+
 Package: mono-runtime-dbg
 Priority: extra
 Section: debug
@@ -84,6 +107,7 @@ Package: mono-complete
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${misc:Depends},
          mono-runtime (= ${binary:Version}),
+         mono-runtime-sgen (= ${binary:Version}),
          libmono-2.0-1 (= ${binary:Version}),
          libmono-profiler (= ${binary:Version}),
          mono-utils (= ${binary:Version}),
