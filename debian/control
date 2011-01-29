@@ -212,8 +212,6 @@ Replaces: libmono-nunit2.2-cil (<< 2.4.3),
 Breaks: libmono-dev (<< 2.10~)
 Conflicts: libmono-nunit2.2-cil,
            libmono-nunit2.4-cil
-Suggests: ${firebirdsql:Suggests}
-Recommends: ${firebirdsql:Recommends}
 Depends: ${misc:Depends},
          libmono1.0-cil (= ${source:Version}),
          libmono2.0-cil (= ${source:Version}),
@@ -1104,19 +1102,6 @@ Description: Mono ByteFX.Data library (for CLI 2.0)
  .
  This package contains the Mono ByteFX.Data library version 0.7.6.2, for CLI
  2.0.
-
-Package: libmono-firebirdsql1.7-cil
-Architecture: all
-Replaces: mono-classlib-1.0 (<< 1.1.13.4-1), mono-classlib-2.0 (<< 1.1.13.4-1), mono-classlib-2.0-dbg (<< 1.1.13.4-1)
-Depends: ${misc:Depends}, ${cli:Depends}
-Description: Mono FirebirdSql library
- Mono is a platform for running and developing applications based on the
- ECMA/ISO Standards. Mono is an open source effort led by Novell.
- Mono provides a complete CLR (Common Language Runtime) including compiler and
- runtime, which can produce and execute CIL (Common Intermediate Language)
- bytecode (aka assemblies), and a class library.
- .
- This package contains the Mono FirebirdSql library.
 
 Package: libmono-db2-1.0-cil
 Architecture: all

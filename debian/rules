@@ -57,15 +57,6 @@ else
 	MONO_TEST = cd mono/tests && make test
 endif
 
-FIREBIRDSQL_REL = "libmono-firebirdsql1.7-cil (= $(VERSION))"
-ifeq ($(DISTRO), Ubuntu)
-	FIREBIRDSQL_VARS =  -Vfirebirdsql:Suggests=$(FIREBIRDSQL_REL)
-	FIREBIRDSQL_VARS += -Vfirebirdsql:Recommends=
-else
-	FIREBIRDSQL_VARS =  -Vfirebirdsql:Suggests=
-	FIREBIRDSQL_VARS += -Vfirebirdsql:Recommends=$(FIREBIRDSQL_REL)
-endif
-
 MDB_REL = mono-debugger
 ifeq ($(DISTRO), Ubuntu)
 	MDB_VARS =  -Vmdb:Suggests=$(MDB_REL)
@@ -305,7 +296,6 @@ binary-indep: build-stamp install-arch install-indep
 	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
 	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/1.0.*/
 	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/2.0.*/
-	install -m 644 debian/FirebirdSql.Data.Firebird.dll.config debian/libmono-firebirdsql1.7-cil/usr/lib/mono/gac/FirebirdSql.Data.Firebird/1.7.*/
 	
 	dh_link -i
 	dh_installchangelogs -i -X ChangeLog
@@ -374,7 +364,7 @@ binary-indep: build-stamp install-arch install-indep
 	debian/dh_clideps -p mono-1.0-gac -r $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_clideps -p mono-2.0-gac -r $(DH_INTERNAL_MONO_PARAM)
 	dh_gencontrol -i -- -Vmono:upversion=$(UPVERSION) -Vmono:next-upversion=$(NEXT_UPVERSION) \
-	  $(FIREBIRDSQL_VARS) $(MDB_VARS)
+	  $(MDB_VARS)
 	dh_md5sums -i
 	dh_builddeb -i
 
