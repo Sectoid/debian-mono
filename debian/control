@@ -183,7 +183,9 @@ Replaces: libmono-nunit2.2-cil (<< 2.4.3),
           libmono-wcf3.0-cil (<< 2.4.3),
           libmono2.0-cil (<< 2.4.3),
           mono-devel (<< 2.4.3),
-          libmono-dev (<< 2.4.3)
+          libmono-dev (<< 2.4.3),
+          libmono-dev (<< 2.10~)
+Breaks: libmono-dev (<< 2.10~)
 Conflicts: libmono-nunit2.2-cil,
            libmono-nunit2.4-cil
 Suggests: ${firebirdsql:Suggests}

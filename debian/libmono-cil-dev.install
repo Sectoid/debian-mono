@@ -1,3 +1,4 @@
+/usr/lib/pkgconfig/mono.pc
 /usr/lib/pkgconfig/mono-cairo.pc
 /usr/lib/pkgconfig/cecil.pc
 /usr/lib/pkgconfig/system.web.extensions_1.0.pc
