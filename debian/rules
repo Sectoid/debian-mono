@@ -38,9 +38,6 @@ endif
 
 ifeq ($(DEB_BUILD_ARCH), armel)
 	CONF_FLAGS += --with-fpu=NONE
-	# the build-system picks __thread for armel which is not working,
-	# thus we have to explicitly pick pthread
-	CONF_FLAGS += --with-tls=pthread
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
@@ -70,12 +67,8 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		./configure $(CONF_FLAGS) --prefix=/usr \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
-		  --with-jit=yes --with-ikvm-native=no --with-preview=yes \
-		  --with-libgdiplus=installed --with-x=yes \
-		  --with-profile4=no \
-		  --with-moonlight=no \
-		  --enable-quiet-build=no \
-		  --disable-shared-handles
+		  --with-ikvm-native=no \
+		  --disable-quiet-build
 
 # Mono's build system doesn't like -j > 1
 MAKE_FLAGS += -j1
