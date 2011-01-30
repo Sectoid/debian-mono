@@ -60,6 +60,9 @@ else
 	MONO_BOEHM_TEST = cd mono/tests && MONO_ENV_OPTIONS=--gc=boehm make test
 	MONO_SGEN_TEST = cd mono/tests && MONO_ENV_OPTIONS=--gc=sgen make test
 endif
+ifeq ($(DEB_BUILD_ARCH), powerpc)
+	MONO_SGEN_TEST = true
+endif
 
 MDB_REL = mono-debugger
 ifeq ($(DISTRO), Ubuntu)
