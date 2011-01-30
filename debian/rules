@@ -51,10 +51,12 @@ endif
 
 ifneq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
 	MINI_TEST = true
-	MONO_TEST = true
+	MONO_BOEHM_TEST = true
+	MONO_SGEN_TEST = true
 else
 	MINI_TEST = cd mono/mini && make check
-	MONO_TEST = cd mono/tests && make test
+	MONO_BOEHM_TEST = cd mono/tests && MONO_ENV_OPTIONS=--gc=boehm make test
+	MONO_SGEN_TEST = cd mono/tests && MONO_ENV_OPTIONS=--gc=sgen make test
 endif
 
 MDB_REL = mono-debugger
@@ -117,7 +119,8 @@ build-stamp: configure-stamp
 test: test-stamp
 test-stamp: build-stamp
 	-$(MINI_TEST)
-	-$(MONO_TEST)
+	-$(MONO_BOEHM_TEST)
+	-$(MONO_SGEN_TEST)
 	# funny bug-459094.cs creates too long directory names which
 	# pbuilder is unable to remove, eh
 	rm -rf mono/tests/abcde12345abcde12345abcde12345abcde12345/
