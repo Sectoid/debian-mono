@@ -146,30 +146,14 @@ clean:
 
 	dh_clean
 
-install: install-all
-install-all: install-arch install-indep
-
-install-arch: install-arch-stamp
-install-arch-stamp:
+install: install-stamp
+install-stamp:
 	dh_testdir
 	dh_testroot
-	#dh_clean -k -s
-	dh_installdirs -s
+	dh_clean -k
+	dh_installdirs
+
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	cd mcs/jay && \
-	  $(MAKE) install DESTDIR=$(CURDIR)/debian/tmp prefix=/usr INSTALL=../../install-sh
-	touch install-arch-stamp
-
-install-indep: install-indep-stamp
-install-indep-stamp:
-	dh_testdir
-	dh_testroot
-	#dh_clean -k -i
-	dh_installdirs -i
-	cd mcs && \
-	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_1_1 && \
-	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_2_0 && \
-	  $(MAKE) install NO_DIR_CHECK=1 DESTDIR=$(CURDIR)/debian/tmp PROFILE=net_3_5
 
 	# don't want docs of bundled libgc
 	rm -rf debian/tmp/usr/share/libgc-mono
@@ -202,39 +186,11 @@ install-indep-stamp:
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/genxs2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/xsd.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/xsd2.1
-	# copy missing 1.0 manpages
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/al.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/al1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/genxs.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/genxs1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/monop.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/monop1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/resgen.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/resgen1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl1.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/xsd.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/xsd1.1
-	# copy missing default scripts
-	cp $(CURDIR)/debian/tmp/usr/bin/xsd \
-	   $(CURDIR)/debian/tmp/usr/bin/xsd1
-	# gacutil should be 2.0 by default (like all other development tools)
-	mv $(CURDIR)/debian/tmp/usr/bin/gacutil \
-	   $(CURDIR)/debian/tmp/usr/bin/gacutil1
-	cp $(CURDIR)/debian/tmp/usr/bin/gacutil2 \
-	   $(CURDIR)/debian/tmp/usr/bin/gacutil
-
-	touch install-indep-stamp
+	touch $@
 
 binary: binary-arch binary-indep
 
-binary-indep: build-stamp install-arch install-indep
+binary-indep: build-stamp install-stamp
 	dh_testdir
 	dh_testroot
 
@@ -335,7 +291,7 @@ binary-indep: build-stamp install-arch install-indep
 	dh_md5sums -i
 	dh_builddeb -i
 
-binary-arch: build-stamp install-arch test-stamp
+binary-arch: build-stamp install-stamp test-stamp
 	dh_testdir
 	dh_testroot
 	
