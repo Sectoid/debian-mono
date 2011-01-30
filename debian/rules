@@ -38,6 +38,10 @@ endif
 ifeq ($(DEB_BUILD_ARCH), armel)
 	CONF_FLAGS += --with-fpu=NONE
 endif
+ifeq ($(DEB_BUILD_ARCH), powerpc)
+	# libgc with parallel mark FTBFS on ppc
+	CONF_FLAGS += --disable-parallel-mark
+endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0 -g
