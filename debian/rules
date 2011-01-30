@@ -41,6 +41,8 @@ endif
 ifeq ($(DEB_BUILD_ARCH), powerpc)
 	# libgc with parallel mark FTBFS on ppc
 	CONF_FLAGS += --disable-parallel-mark
+	# mono with sgen FTBFS on ppc
+	CONF_FLAGS += --with-sgen=no
 endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))

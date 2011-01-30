@@ -49,7 +49,7 @@ Description: Mono runtime
  IA64 architectures. Optionally this package configures BINFMT support.
 
 Package: mono-runtime-sgen
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: i386 lpia kfreebsd-i386 amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          mono-runtime (= ${binary:Version})
@@ -107,7 +107,7 @@ Package: mono-complete
 Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
 Depends: ${misc:Depends},
          mono-runtime (= ${binary:Version}),
-         mono-runtime-sgen (= ${binary:Version}),
+         mono-runtime-sgen (= ${binary:Version}) [!powerpc],
          libmono-2.0-1 (= ${binary:Version}),
          libmono-profiler (= ${binary:Version}),
          mono-utils (= ${binary:Version}),
