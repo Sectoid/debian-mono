@@ -67,7 +67,8 @@ CONFIGURE =	CFLAGS="$(CFLAGS)" \
 		  --mandir=\$${prefix}/share/man \
 		  --infodir=\$${prefix}/share/info --sysconfdir=/etc \
 		  --with-ikvm-native=no \
-		  --disable-quiet-build
+		  --disable-quiet-build \
+		  --disable-system-aot
 
 # Mono's build system doesn't like -j > 1
 MAKE_FLAGS += -j1
