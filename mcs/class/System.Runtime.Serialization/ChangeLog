@@ -1,3 +1,10 @@
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	There's a tricky namespace-mismatching deserialization in .NET
+	implementation.
+
+	Fixed bug #666333.
+
 2010-10-05  Atsushi Eno  <atsushi@ximian.com>
 
 	Implement DataContractResolver support. At least TryResolveType in

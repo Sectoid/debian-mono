@@ -1,3 +1,14 @@
+2011-02-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Now operations are collected per corresponding
+	ContractDescription.
+
+	This fixes naming of MessageDescription Action URI from its type.
+
+2011-02-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement GetInheritedContracts(), towards bugfix #668089.
+
 2010-10-08  Atsushi Eno  <atsushi@ximian.com>
 
 	Do not reject contract from the same method, could happen by a

@@ -1,3 +1,12 @@
+2011-02-09  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented CustomErrorsRedirectMode
+
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HttpRuntimeSection.RequestPathInvalidCharacters default
+	value is different
+
 2011-01-10  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net,mcs] Fixed 'protected internal' build errors and removed

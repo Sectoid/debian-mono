@@ -1,3 +1,7 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
 2010-11-18  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* System/Uri.cs: Add support for 'safe' unescaping rules *

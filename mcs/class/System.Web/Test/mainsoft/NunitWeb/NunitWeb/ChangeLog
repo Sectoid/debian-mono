@@ -1,3 +1,7 @@
+2011-01-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Avoid passing duplicate assemblies on mcs command line.
+
 2011-01-10  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed another missing protected internal modifier

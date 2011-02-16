@@ -1,3 +1,11 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
 2010-11-08  Marek Safar  <marek.safar@gmail.com>
 
 	API compatibility work

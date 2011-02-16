@@ -1,3 +1,17 @@
+2011-02-11  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* Thread.cs (.ctor): Check if maxStackSize is negative and raise
+	and AOORE. Silently use a saner minimum size of 128k as mono can't
+	really run with much less than that.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
 2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Remove now unused internal classes

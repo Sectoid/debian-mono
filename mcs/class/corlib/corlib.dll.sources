@@ -251,6 +251,7 @@ System/TimeSpan.cs
 System/TimeZone.cs
 ../System.Core/System/TimeZoneInfo.cs
 ../System.Core/System/TimeZoneInfo.AdjustmentRule.cs
+../System.Core/System/TimeZoneInfo.Android.cs
 ../System.Core/System/TimeZoneInfo.TransitionTime.cs
 System/TimeZoneNotFoundException.cs
 System/TimeoutException.cs
@@ -1219,6 +1220,7 @@ System.Security.AccessControl/RegistryAuditRule.cs
 System.Security.AccessControl/RegistryRights.cs
 System.Security.AccessControl/RegistrySecurity.cs
 System.Security.AccessControl/ResourceType.cs
+System.Security.AccessControl/SddlAccessRight.cs
 System.Security.AccessControl/SecurityInfos.cs
 System.Security.AccessControl/SystemAcl.cs
 ../System.Core/System.Security.Cryptography/Aes.cs
@@ -1422,6 +1424,7 @@ System.Security.Principal/PrincipalPolicy.cs
 System.Security.Principal/SecurityIdentifier.cs
 System.Security.Principal/TokenAccessLevels.cs
 System.Security.Principal/TokenImpersonationLevel.cs
+System.Security.Principal/WellKnownAccount.cs
 System.Security.Principal/WellKnownSidType.cs
 System.Security.Principal/WindowsAccountType.cs
 System.Security.Principal/WindowsBuiltInRole.cs

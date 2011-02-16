@@ -1,3 +1,11 @@
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Simple content restriction was not validated when it is in further
+	reference.
+
+	Fixed bug #595947. It was complexType [base]-> complexType
+	[base]-> simpleType.
+
 2009-04-22  Atsushi Enomoto <atsushi@ximian.com>
 
 	* 496192.xml, 496192.xsd : new test files.

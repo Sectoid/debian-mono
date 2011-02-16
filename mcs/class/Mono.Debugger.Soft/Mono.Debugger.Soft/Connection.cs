@@ -21,6 +21,16 @@ namespace Mono.Debugger.Soft
 		public int MinorVersion {
 			get; set;
 		}
+
+		/*
+		 * Check that this version is at least major:minor
+		 */
+		public bool AtLeast (int major, int minor) {
+			if ((MajorVersion > major) || ((MajorVersion == major && MinorVersion >= minor)))
+				return true;
+			else
+				return false;
+		}
 	}
 
 	class DebugInfo {
@@ -308,7 +318,7 @@ namespace Mono.Debugger.Soft
 		 * with newer runtimes, and vice versa.
 		 */
 		public const int MAJOR_VERSION = 2;
-		public const int MINOR_VERSION = 2;
+		public const int MINOR_VERSION = 3;
 
 		enum WPSuspendPolicy {
 			NONE = 0,
@@ -380,7 +390,9 @@ namespace Mono.Debugger.Soft
 			GET_STATE = 3,
 			GET_INFO = 4,
 			/* FIXME: Merge into GET_INFO when the major protocol version is increased */
-			GET_ID = 5
+			GET_ID = 5,
+			/* Ditto */
+			GET_TID = 6
 		}
 
 		enum CmdEventRequest {
@@ -1553,6 +1565,10 @@ namespace Mono.Debugger.Soft
 
 		public long Thread_GetId (long id) {
 			return SendReceive (CommandSet.THREAD, (int)CmdThread.GET_ID, new PacketWriter ().WriteId (id)).ReadLong ();
+		}
+
+		public long Thread_GetTID (long id) {
+			return SendReceive (CommandSet.THREAD, (int)CmdThread.GET_TID, new PacketWriter ().WriteId (id)).ReadLong ();
 		}
 
 		/*

@@ -1,3 +1,11 @@
+2011-02-12  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[gzip] Allow partial flush
+
+	When Flush() is called explicitly, do a Z_PARTIAL_FLUSH to force
+	gzip into giving us whatever is available. Less efficient, but
+	compatible with MS.
+
 2010-11-14  Zoltan Varga  <vargaz@gmail.com>
 
 	Remove the unused and incomplete CMake build scripts for now.

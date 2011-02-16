@@ -1,3 +1,8 @@
+2011-02-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	Continue X509Chain processing even if the local machine directory
+	does not exists
+
 2010-11-03  Sebastien Pouliot  <sebastien@ximian.com>
 
 	Fix condition so the new feature is available outside NET_2_1

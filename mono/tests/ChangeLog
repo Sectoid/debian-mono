@@ -1,3 +1,15 @@
+2011-02-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix reading of cattr arguments of type Type[]. Fixes #670331.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix compilation of tests/assemblyresolve with newer mcs-es.
+
+2011-01-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Dist finally_guard.cs.
+
 2011-01-04  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Make test messages more usefull

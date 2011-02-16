@@ -1,3 +1,13 @@
+2011-01-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Use IOAMP-aware method of looking for domain
+	configuration file
+
+2011-01-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking the vmmap allocated by the kernel for the
+	thread_act_array_t
+
 2011-01-18  Zoltan Varga  <vargaz@gmail.com>
 
 	Make the stacks of aot image non-executable.

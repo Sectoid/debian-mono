@@ -1,3 +1,18 @@
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	support UdpTranspoerSettings.MulticastInterfaceId. This should fix
+	bug #669328.
+
+2011-02-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix a couple of addressing namespace fixes (found in April2005
+	version).
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
 2011-01-08  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed missing protected internal modifier

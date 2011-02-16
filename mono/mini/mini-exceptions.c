@@ -1469,6 +1469,13 @@ mono_handle_exception_internal (MonoContext *ctx, gpointer obj, gpointer origina
 			if (mono_break_on_exc)
 				G_BREAKPOINT ();
 			mono_debugger_agent_handle_exception (obj, ctx, NULL);
+
+			if (mini_get_debug_options ()->suspend_on_unhandled) {
+				fprintf (stderr, "Unhandled exception, suspending...");
+				while (1)
+					;
+			}
+
 			// FIXME: This runs managed code so it might cause another stack overflow when
 			// we are handling a stack overflow
 			mono_unhandled_exception (obj);
@@ -1991,6 +1998,76 @@ mono_handle_soft_stack_ovf (MonoJitTlsData *jit_tls, MonoJitInfo *ji, void *ctx,
 	return FALSE;
 }
 
+typedef struct {
+	FILE *stream;
+	MonoMethod *omethod;
+	int count;
+} PrintOverflowUserData;
+
+static gboolean
+print_overflow_stack_frame (MonoMethod *method, gint32 native_offset, gint32 il_offset, gboolean managed, gpointer data)
+{
+	PrintOverflowUserData *user_data = data;
+	FILE *stream = user_data->stream;
+	gchar *location;
+
+	if (method) {
+		if (user_data->count == 0) {
+			/* The first frame is in its prolog, so a line number cannot be computed */
+			user_data->count ++;
+			return FALSE;
+		}
+
+		/* If this is a one method overflow, skip the other instances */
+		if (method == user_data->omethod)
+			return FALSE;
+
+		location = mono_debug_print_stack_frame (method, native_offset, mono_domain_get ());
+		fprintf (stream, "  %s\n", location);
+		g_free (location);
+
+		if (user_data->count == 1) {
+			fprintf (stream, "  <...>\n");
+			user_data->omethod = method;
+		} else {
+			user_data->omethod = NULL;
+		}
+
+		user_data->count ++;
+	} else
+		fprintf (stream, "  at <unknown> <0x%05x>\n", native_offset);
+
+	return FALSE;
+}
+
+void
+mono_handle_hard_stack_ovf (MonoJitTlsData *jit_tls, MonoJitInfo *ji, void *ctx, guint8* fault_addr)
+{
+	PrintOverflowUserData ud;
+	MonoContext mctx;
+
+	/* we don't do much now, but we can warn the user with a useful message */
+	fprintf (stderr, "Stack overflow: IP: %p, fault addr: %p\n", mono_arch_ip_from_context (ctx), fault_addr);
+
+#ifdef MONO_ARCH_HAVE_SIGCTX_TO_MONOCTX
+	mono_arch_sigctx_to_monoctx (ctx, &mctx);
+			
+	fprintf (stderr, "Stacktrace:\n");
+
+	memset (&ud, 0, sizeof (ud));
+	ud.stream = stderr;
+
+	mono_jit_walk_stack_from_ctx (print_overflow_stack_frame, &mctx, MONO_UNWIND_LOOKUP_ACTUAL_METHOD, &ud);
+#else
+	if (ji && ji->method)
+		fprintf (stderr, "At %s\n", mono_method_full_name (ji->method, TRUE));
+	else
+		fprintf (stderr, "At <unmanaged>.\n");
+#endif
+
+	_exit (1);
+}
+
 static gboolean
 print_stack_frame (MonoMethod *method, gint32 native_offset, gint32 il_offset, gboolean managed, gpointer data)
 {
@@ -2199,6 +2276,11 @@ mono_print_thread_dump_internal (void *sigctx, MonoContext *start_ctx)
 #endif
 
 	fprintf (stdout, "%s", text->str);
+
+#if PLATFORM_WIN32 && TARGET_WIN32 && _DEBUG
+	OutputDebugStringA(text->str);
+#endif
+
 	g_string_free (text, TRUE);
 	fflush (stdout);
 }
@@ -2361,4 +2443,16 @@ mono_install_handler_block_guard (MonoInternalThread *thread, MonoContext *ctx)
 }
 
 #endif
+
+void
+mono_set_cast_details (MonoClass *from, MonoClass *to)
+{
+	MonoJitTlsData *jit_tls = NULL;
+
+	if (mini_get_debug_options ()->better_cast_details) {
+		jit_tls = TlsGetValue (mono_jit_tls_id);
+		jit_tls->class_cast_from = from;
+		jit_tls->class_cast_to = to;
+	}
+}
 

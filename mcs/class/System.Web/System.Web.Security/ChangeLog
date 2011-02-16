@@ -1,3 +1,17 @@
+2011-02-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] FormsAuthenticationTicket.FromByteArray stops early if
+	it is passed a null parameter
+
+2011-01-31  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented 4.0 types
+	System.Web.Security.{MachineKey,MachineKeyProtection} plus tests
+
+2011-01-20  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[System.Web] Razor works now (modulo DB)
+
 2010-10-28  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Cosmetics + dead code removal

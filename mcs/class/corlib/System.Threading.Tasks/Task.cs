@@ -22,7 +22,7 @@
 //
 //
 
-#if NET_4_0
+#if NET_4_0 || MOBILE
 
 using System;
 using System.Threading;
@@ -329,8 +329,7 @@ namespace System.Threading.Tasks
 		
 		void CheckAndSchedule (Task continuation, TaskContinuationOptions options, TaskScheduler scheduler, bool fromCaller)
 		{
-			if (!fromCaller 
-			    && (options & TaskContinuationOptions.ExecuteSynchronously) > 0)
+			if ((options & TaskContinuationOptions.ExecuteSynchronously) > 0)
 				continuation.ThreadStart ();
 			else
 				continuation.Start (scheduler);

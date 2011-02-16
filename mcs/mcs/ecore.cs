@@ -1986,7 +1986,7 @@ namespace Mono.CSharp {
 	//
 	public abstract class CompositeExpression : Expression
 	{
-		Expression expr;
+		protected Expression expr;
 
 		protected CompositeExpression (Expression expr)
 		{
@@ -3688,7 +3688,7 @@ namespace Mono.CSharp {
 			var best_def_pd = ((IParametersMember) best.MemberDefinition).Parameters;
 
 			bool specific_at_least_once = false;
-			for (j = 0; j < candidate_param_count; ++j) {
+			for (j = 0; j < args_count; ++j) {
 				NamedArgument na = args_count == 0 ? null : args [j] as NamedArgument;
 				if (na != null) {
 					ct = candidate_def_pd.Types[cparam.GetParameterIndexByName (na.Name)];
@@ -3750,20 +3750,18 @@ namespace Mono.CSharp {
 					}
 				}
 
-				int args_gap = System.Math.Abs (arg_count - param_count);
 				if (optional_count != 0) {
-					if (args_gap > optional_count)
-						return int.MaxValue - 10000 + args_gap - optional_count;
-
 					// Readjust expected number when params used
 					if (cpd.HasParams) {
 						optional_count--;
 						if (arg_count < param_count)
 							param_count--;
 					} else if (arg_count > param_count) {
+						int args_gap = System.Math.Abs (arg_count - param_count);
 						return int.MaxValue - 10000 + args_gap;
 					}
 				} else if (arg_count != param_count) {
+					int args_gap = System.Math.Abs (arg_count - param_count);
 					if (!cpd.HasParams)
 						return int.MaxValue - 10000 + args_gap;
 					if (arg_count < param_count - 1)
@@ -5156,7 +5154,7 @@ namespace Mono.CSharp {
 			bool need_copy;
 			if (spec.IsReadOnly){
 				need_copy = true;
-				if (ec.HasSet (EmitContext.Options.ConstructorScope)){
+				if (ec.HasSet (EmitContext.Options.ConstructorScope) && spec.DeclaringType == ec.CurrentType) {
 					if (IsStatic){
 						if (ec.IsStatic)
 							need_copy = false;

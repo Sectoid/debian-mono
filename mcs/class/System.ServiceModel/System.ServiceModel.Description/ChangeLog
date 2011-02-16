@@ -1,3 +1,14 @@
+2011-02-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Now operations are collected per corresponding
+	ContractDescription.
+
+	This fixes naming of MessageDescription Action URI from its type.
+
+2011-02-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement GetInheritedContracts(), towards bugfix #668089.
+
 2010-11-10  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] .NET allows for service contract methods to be decorated

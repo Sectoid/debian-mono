@@ -1,3 +1,20 @@
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	support UdpTranspoerSettings.MulticastInterfaceId. This should fix
+	bug #669328.
+
+2011-02-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong async completion handling in UDP channel receive.
+
+	After AsyncWaitHandle.Set(), order of filling results and
+	WaitOne() are undefined.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
 2010-09-29  Atsushi Eno  <atsushi@ximian.com>
 
 	[wcf-discovery] ExclusiveAddressUse won't work. AcceptChannel()

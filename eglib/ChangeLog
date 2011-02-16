@@ -1,3 +1,22 @@
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Do not distribute eglib-config.h
+
+	The file eglib-config.h is generated when running configure.
+	Distributing eglib-config.h in tarballs causes errors when
+	building out of the source tree.
+
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Use _vscprintf() for mingw-w64 compilers
+
+	The mingw-w64 compilers implement a vsnprintf() function that do
+	not conform to the C99 standard (just like MSVC).
+
+2011-02-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Include sys/types.h for pid_t on mingw. Fixes #670076.
+
 2011-01-11  Christian Hergert  <chris@dronelabs.com>
 
 	Fix broken g_int_hash/g_int_equal semantics

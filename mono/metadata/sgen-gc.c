@@ -202,6 +202,7 @@
 #include "metadata/sgen-cardtable.h"
 #include "metadata/sgen-protocol.h"
 #include "metadata/sgen-archdep.h"
+#include "metadata/sgen-bridge.h"
 #include "metadata/mono-gc.h"
 #include "metadata/method-builder.h"
 #include "metadata/profiler-private.h"
@@ -825,7 +826,7 @@ static void find_pinning_ref_from_thread (char *obj, size_t size);
 static void update_current_thread_stack (void *start);
 static void finalize_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int generation, GrayQueue *queue);
 static void add_or_remove_disappearing_link (MonoObject *obj, void **link, gboolean track, int generation);
-static void null_link_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int generation, GrayQueue *queue);
+static void null_link_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int generation, gboolean before_finalization, GrayQueue *queue);
 static void null_links_for_domain (MonoDomain *domain, int generation);
 static gboolean search_fragment_for_size (size_t size);
 static int search_fragment_for_size_range (size_t desired_size, size_t minimum_size);
@@ -2443,6 +2444,28 @@ get_finalize_entry_hash_table (int generation)
 	}
 }
 
+static MonoObject **finalized_array = NULL;
+static int finalized_array_capacity = 0;
+static int finalized_array_entries = 0;
+
+static void
+bridge_register_finalized_object (MonoObject *object)
+{
+	if (!finalized_array)
+		return;
+
+	if (finalized_array_entries >= finalized_array_capacity) {
+		MonoObject **new_array;
+		g_assert (finalized_array_entries == finalized_array_capacity);
+		finalized_array_capacity *= 2;
+		new_array = mono_sgen_alloc_internal_dynamic (sizeof (MonoObject*) * finalized_array_capacity, INTERNAL_MEM_BRIDGE_DATA);
+		memcpy (new_array, finalized_array, sizeof (MonoObject*) * finalized_array_entries);
+		mono_sgen_free_internal_dynamic (finalized_array, sizeof (MonoObject*) * finalized_array_entries, INTERNAL_MEM_BRIDGE_DATA);
+		finalized_array = new_array;
+	}
+	finalized_array [finalized_array_entries++] = object;
+}
+
 static void
 finish_gray_stack (char *start_addr, char *end_addr, int generation, GrayQueue *queue)
 {
@@ -2450,6 +2473,7 @@ finish_gray_stack (char *start_addr, char *end_addr, int generation, GrayQueue *
 	TV_DECLARE (btv);
 	int fin_ready;
 	int ephemeron_rounds = 0;
+	int num_loops;
 	CopyOrMarkObjectFunc copy_func = current_collection_generation == GENERATION_NURSERY ? major_collector.copy_object : major_collector.copy_or_mark_object;
 
 	/*
@@ -2468,6 +2492,21 @@ finish_gray_stack (char *start_addr, char *end_addr, int generation, GrayQueue *
 	drain_gray_stack (queue);
 	TV_GETTIME (atv);
 	DEBUG (2, fprintf (gc_debug_file, "%s generation done\n", generation_name (generation)));
+
+	/*
+	We must clear weak links that don't track resurrection before processing object ready for
+	finalization so they can be cleared before that.
+	*/
+	null_link_in_range (copy_func, start_addr, end_addr, generation, TRUE, queue);
+	if (generation == GENERATION_OLD)
+		null_link_in_range (copy_func, start_addr, end_addr, GENERATION_NURSERY, TRUE, queue);
+
+	if (finalized_array == NULL && mono_sgen_need_bridge_processing ()) {
+		finalized_array_capacity = 32;
+		finalized_array = mono_sgen_alloc_internal_dynamic (sizeof (MonoObject*) * finalized_array_capacity, INTERNAL_MEM_BRIDGE_DATA);
+	}
+	finalized_array_entries = 0;
+
 	/* walk the finalization queue and move also the objects that need to be
 	 * finalized: use the finalized objects as new roots so the objects they depend
 	 * on are also not reclaimed. As with the roots above, only objects in the nursery
@@ -2475,6 +2514,7 @@ finish_gray_stack (char *start_addr, char *end_addr, int generation, GrayQueue *
 	 * We need a loop here, since objects ready for finalizers may reference other objects
 	 * that are fin-ready. Speedup with a flag?
 	 */
+	num_loops = 0;
 	do {
 		/*
 		 * Walk the ephemeron tables marking all values with reachable keys. This must be completely done
@@ -2495,10 +2535,19 @@ finish_gray_stack (char *start_addr, char *end_addr, int generation, GrayQueue *
 		if (generation == GENERATION_OLD)
 			finalize_in_range (copy_func, nursery_start, nursery_real_end, GENERATION_NURSERY, queue);
 
+		if (fin_ready != num_ready_finalizers) {
+			++num_loops;
+			if (finalized_array != NULL)
+				mono_sgen_bridge_processing (finalized_array_entries, finalized_array);
+		}
+
 		/* drain the new stack that might have been created */
 		DEBUG (6, fprintf (gc_debug_file, "Precise scan of gray area post fin\n"));
 		drain_gray_stack (queue);
 	} while (fin_ready != num_ready_finalizers);
+
+	if (mono_sgen_need_bridge_processing ())
+		g_assert (num_loops <= 1);
 
 	/*
 	 * Clear ephemeron pairs with unreachable keys.
@@ -2519,9 +2568,9 @@ finish_gray_stack (char *start_addr, char *end_addr, int generation, GrayQueue *
 	 */
 	g_assert (gray_object_queue_is_empty (queue));
 	for (;;) {
-		null_link_in_range (copy_func, start_addr, end_addr, generation, queue);
+		null_link_in_range (copy_func, start_addr, end_addr, generation, FALSE, queue);
 		if (generation == GENERATION_OLD)
-			null_link_in_range (copy_func, start_addr, end_addr, GENERATION_NURSERY, queue);
+			null_link_in_range (copy_func, start_addr, end_addr, GENERATION_NURSERY, FALSE, queue);
 		if (gray_object_queue_is_empty (queue))
 			break;
 		drain_gray_stack (queue);
@@ -4061,6 +4110,7 @@ finalize_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int g
 					num_ready_finalizers++;
 					hash_table->num_registered--;
 					queue_finalization_entry (entry);
+					bridge_register_finalized_object ((MonoObject*)copy);
 					/* Make it survive */
 					from = entry->object;
 					entry->object = copy;
@@ -4113,6 +4163,16 @@ object_is_reachable (char *object, char *start, char *end)
 	if (object < start || object >= end)
 		return TRUE;
 	return !object_is_fin_ready (object) || major_collector.is_object_live (object);
+}
+
+gboolean
+mono_sgen_object_is_live (void *obj)
+{
+	if (ptr_in_nursery (obj))
+		return object_is_pinned (obj);
+	if (current_collection_generation == GENERATION_NURSERY)
+		return FALSE;
+	return major_collector.is_object_live (obj);
 }
 
 /* LOCKING: requires that the GC lock is held */
@@ -4276,7 +4336,7 @@ mark_ephemerons_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end
 
 /* LOCKING: requires that the GC lock is held */
 static void
-null_link_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int generation, GrayQueue *queue)
+null_link_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int generation, gboolean before_finalization, GrayQueue *queue)
 {
 	DisappearingLinkHashTable *hash = get_dislink_hash_table (generation);
 	DisappearingLink **disappearing_link_hash = hash->table;
@@ -4288,9 +4348,17 @@ null_link_in_range (CopyOrMarkObjectFunc copy_func, char *start, char *end, int 
 	for (i = 0; i < disappearing_link_hash_size; ++i) {
 		prev = NULL;
 		for (entry = disappearing_link_hash [i]; entry;) {
-			char *object = DISLINK_OBJECT (entry);
+			char *object;
+			gboolean track = DISLINK_TRACK (entry);
+			if (track == before_finalization) {
+				prev = entry;
+				entry = entry->next;
+				continue;
+			}
+
+			object = DISLINK_OBJECT (entry);
+
 			if (object >= start && object < end && !major_collector.is_object_live (object)) {
-				gboolean track = DISLINK_TRACK (entry);
 				if (!track && object_is_fin_ready (object)) {
 					void **p = entry->link;
 					DisappearingLink *old;
@@ -5768,7 +5836,15 @@ unregister_current_thread (void)
 static void
 unregister_thread (void *k)
 {
-	g_assert (!mono_domain_get ());
+	/* If a delegate is passed to native code and invoked on a thread we dont
+	 * know about, the jit will register it with mono_jit_thead_attach, but
+	 * we have no way of knowing when that thread goes away.  SGen has a TSD
+	 * so we assume that if the domain is still registered, we can detach
+	 * the thread
+	 */
+	if (mono_domain_get ())
+		mono_thread_detach (mono_thread_current ());
+
 	LOCK_GC;
 	unregister_current_thread ();
 	UNLOCK_GC;
@@ -6909,10 +6985,6 @@ mono_gc_base_init (void)
 	struct sigaction sinfo;
 	glong max_heap = 0;
 
-#ifdef PLATFORM_ANDROID
-	g_assert_not_reached ();
-#endif
-
 	/* the gc_initialized guard seems to imply this method is
 	   idempotent, but LOCK_INIT(gc_mutex) might not be.  It's
 	   defined in sgen-gc.h as nothing, so there's no danger at
@@ -7531,7 +7603,7 @@ mono_gc_get_managed_array_allocator (MonoVTable *vtable, int rank)
 		return NULL;
 	if (collect_before_allocs)
 		return NULL;
-	g_assert (!klass->has_finalize && !klass->marshalbyref);
+	g_assert (!mono_class_has_finalizer (klass) && !klass->marshalbyref);
 
 	return mono_gc_get_managed_allocator_by_type (ATYPE_VECTOR);
 #else

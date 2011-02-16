@@ -27,6 +27,7 @@
 //
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Security;
 using System.Reflection;
 using System.ServiceModel;
@@ -422,11 +423,29 @@ namespace MonoTests.System.ServiceModel.Description
 		}
 		
 		[Test]
-		public static void MultipleContractsInTypeHierarchy ()
+		public void MultipleContractsInTypeHierarchy ()
 		{
 			ContractDescription.GetContract (typeof (DuplicateCheckClassWrapper.ServiceInterface));
 
 			var host = new ServiceHost (typeof (DuplicateCheckClassWrapper.DummyService)); // fine in MS, fails in Mono with "A contract cannot have two operations that have the identical names and different set of parameters"
+		}
+
+		[Test]
+		public void GetInheritedContracts ()
+		{
+			var cd = ContractDescription.GetContract (typeof (IService));
+			var ccd = cd.GetInheritedContracts ();
+			Assert.AreEqual (1, ccd.Count, "#1");
+			Assert.AreEqual (typeof (IServiceBase), ccd [0].ContractType, "#2");
+		}
+
+		[Test]
+		public void InheritedContractAndNamespaces ()
+		{
+			var cd = ContractDescription.GetContract (typeof (IService));
+			Assert.IsTrue (cd.Operations.Any (od => od.Messages.Any (md => md.Action == "http://tempuri.org/IServiceBase/Say")), "#1"); // inherited
+			Assert.IsTrue (cd.Operations.Any (od => od.SyncMethod == typeof (IService).GetMethod ("Join") && od.Messages.Any (md => md.Action == "http://tempuri.org/IService/Join")), "#2"); // self
+			Assert.IsTrue (cd.Operations.Any (od => od.SyncMethod == typeof (IService2).GetMethod ("Join") && od.Messages.Any (md => md.Action == "http://tempuri.org/IService/Join")), "#3"); // callback
 		}
 
 		// It is for testing attribute search in interfaces.
@@ -663,6 +682,34 @@ namespace MonoTests.System.ServiceModel.Description
 
 				public void Foo() { }
 			}
+		}
+
+		[ServiceContract]
+		public interface IServiceBase
+		{
+			[OperationContract (IsOneWay = true)]
+			void Say (string word);
+		}
+
+		[ServiceContract (CallbackContract = typeof (IService2))]
+		public interface IService : IServiceBase
+		{
+			[OperationContract]
+			void Join ();
+		}
+
+		[ServiceContract]
+		public interface IServiceBase2
+		{
+			[OperationContract (IsOneWay = true)]
+			void Say (string word);
+		}
+
+		[ServiceContract]
+		public interface IService2 : IServiceBase2
+		{
+			[OperationContract]
+			void Join ();
 		}
 	}
 }

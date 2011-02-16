@@ -75,6 +75,7 @@ namespace System.Net
 		bool preAuthenticate;
 		bool usedPreAuth;
 		Version version = HttpVersion.Version11;
+		bool force_version;
 		Version actualVersion;
 		IWebProxy proxy;
 		bool sendChunked;
@@ -450,6 +451,7 @@ namespace System.Net
 				if (value != HttpVersion.Version10 && value != HttpVersion.Version11)
 					throw new ArgumentException ("value");
 
+				force_version = true;
 				version = value; 
 			}
 		}
@@ -1073,7 +1075,7 @@ namespace System.Net
 									   actualUri.PathAndQuery);
 			}
 			
-			if (servicePoint.ProtocolVersion != null && servicePoint.ProtocolVersion < version) {
+			if (!force_version && servicePoint.ProtocolVersion != null && servicePoint.ProtocolVersion < version) {
 				actualVersion = servicePoint.ProtocolVersion;
 			} else {
 				actualVersion = version;
@@ -1178,7 +1180,11 @@ namespace System.Net
 				// The request has not been completely sent and we got here!
 				// We should probably just close and cause an error in any case,
 				saved_exc = new WebException (data.StatusDescription, null, WebExceptionStatus.ProtocolError, webResponse); 
-				webResponse.ReadAll ();
+				if (allowBuffering || sendChunked || writeStream.totalWritten >= contentLength) {
+					webResponse.ReadAll ();
+				} else {
+					writeStream.IgnoreIOErrors = true;
+				}
 			}
 		}
 
@@ -1221,11 +1227,9 @@ namespace System.Net
 			}
 
 			if (wexc == null && (method == "POST" || method == "PUT")) {
-				lock (locker) {
-					CheckSendError (data);
-					if (saved_exc != null)
-						wexc = (WebException) saved_exc;
-				}
+				CheckSendError (data);
+				if (saved_exc != null)
+					wexc = (WebException) saved_exc;
 			}
 
 			WebAsyncResult r = asyncRead;
@@ -1241,7 +1245,8 @@ namespace System.Net
 			if (r != null) {
 				if (wexc != null) {
 					haveResponse = true;
-					r.SetCompleted (false, wexc);
+					if (!r.IsCompleted)
+						r.SetCompleted (false, wexc);
 					r.DoCallback ();
 					return;
 				}

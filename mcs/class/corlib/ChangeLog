@@ -1,3 +1,41 @@
+2010-09-24  Kyle Ambroff  <kyle@ambroff.com>
+
+	version tolerant serialization fails with missing primitive
+	members
+
+	Modifies ObjectReader so that when it encounters a primitive typed
+	member in an object stream which has no corresponding member in
+	the app domain, it will read the value anyway and throw it away.
+	That way it can read the next block from the stream.
+
+	Added a unit test which passes with the changes to ObjectReader.
+
+	Fixes bug #641821.
+
+2010-12-04  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Implement RawSecurityDescriptor.
+
+	* Marshals to/from SDDL and binary form.
+
+	* Supports 'Common' ACEs and 'Object' ACEs
+
+2010-12-04  Kenneth Bell  <ken.git@chezbell.org.uk>
+
+	Implement SecurityIdentifier and improve NTAccount.
+
+	* Only translates between SecurityIdentifier and NTAccount for
+	well-known accounts.
+
+	* NTAccount changed to not upper-case values to match behaviour
+	observed in Microsoft's .NET (see also unit tests)
+
+	* Add unit tests for both classes
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
 2011-01-07  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Remove now unused internal classes

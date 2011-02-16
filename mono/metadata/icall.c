@@ -77,6 +77,7 @@
 #include <mono/utils/mono-string.h>
 #include <mono/utils/mono-error-internals.h>
 #include <mono/utils/mono-mmap.h>
+#include <mono/utils/mono-io-portability.h>
 
 #if defined (HOST_WIN32)
 #include <windows.h>
@@ -245,7 +246,8 @@ ves_icall_System_Array_SetValueImpl (MonoArray *this, MonoObject *value, guint32
 			"value", "not a widening conversion")); \
 }G_STMT_END
 
-#define INVALID_CAST G_STMT_START{\
+#define INVALID_CAST G_STMT_START{ \
+		mono_get_runtime_callbacks ()->set_cast_details (vc, ec); \
 	mono_raise_exception (mono_get_exception_invalid_cast ()); \
 }G_STMT_END
 
@@ -6920,7 +6922,7 @@ get_bundled_app_config (void)
 	const gchar *app_config;
 	MonoDomain *domain;
 	MonoString *file;
-	gchar *config_file;
+	gchar *config_file_name, *config_file_path;
 	gsize len;
 	gchar *module;
 
@@ -6932,15 +6934,20 @@ get_bundled_app_config (void)
 		return NULL;
 
 	// Retrieve config file and remove the extension
-	config_file = mono_string_to_utf8 (file);
-	len = strlen (config_file) - strlen (".config");
+	config_file_name = mono_string_to_utf8 (file);
+	config_file_path = mono_portability_find_file (config_file_name, TRUE);
+	if (!config_file_path)
+		config_file_path = config_file_name;
+	len = strlen (config_file_path) - strlen (".config");
 	module = g_malloc0 (len + 1);
-	memcpy (module, config_file, len);
+	memcpy (module, config_file_path, len);
 	// Get the config file from the module name
 	app_config = mono_config_string_for_assembly_file (module);
 	// Clean-up
 	g_free (module);
-	g_free (config_file);
+	if (config_file_name != config_file_path)
+		g_free (config_file_name);
+	g_free (config_file_path);
 
 	if (!app_config)
 		return NULL;
@@ -7058,6 +7065,7 @@ ves_icall_MonoMethod_get_base_method (MonoReflectionMethod *m, gboolean definiti
 	MonoClass *klass, *parent;
 	MonoMethod *method = m->method;
 	MonoMethod *result = NULL;
+	int slot;
 
 	MONO_ARCH_SAVE_REGS;
 
@@ -7069,6 +7077,10 @@ ves_icall_MonoMethod_get_base_method (MonoReflectionMethod *m, gboolean definiti
 	    method->flags & METHOD_ATTRIBUTE_NEW_SLOT)
 		return m;
 
+	slot = mono_method_get_vtable_slot (method);
+	if (slot == -1)
+		return m;
+
 	klass = method->klass;
 	if (klass->generic_class)
 		klass = klass->generic_class->container_class;
@@ -7077,7 +7089,7 @@ ves_icall_MonoMethod_get_base_method (MonoReflectionMethod *m, gboolean definiti
 		/* At the end of the loop, klass points to the eldest class that has this virtual function slot. */
 		for (parent = klass->parent; parent != NULL; parent = parent->parent) {
 			mono_class_setup_vtable (parent);
-			if (parent->vtable_size <= method->slot)
+			if (parent->vtable_size <= slot)
 				break;
 			klass = parent;
 		}
@@ -7093,15 +7105,17 @@ ves_icall_MonoMethod_get_base_method (MonoReflectionMethod *m, gboolean definiti
 	/*This is possible if definition == FALSE.
 	 * Do it here to be really sure we don't read invalid memory.
 	 */
-	if (method->slot >= klass->vtable_size)
+	if (slot >= klass->vtable_size)
 		return m;
 
-	result = klass->vtable [method->slot];
+	mono_class_setup_vtable (klass);
+
+	result = klass->vtable [slot];
 	if (result == NULL) {
 		/* It is an abstract method */
 		gpointer iter = NULL;
 		while ((result = mono_class_get_methods (klass, &iter)))
-			if (result->slot == method->slot)
+			if (result->slot == slot)
 				break;
 	}
 

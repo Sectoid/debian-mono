@@ -76,7 +76,7 @@ namespace System.Reflection {
 		private bool fromByteArray;
 		private string assemblyName;
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		protected
 #else
 		internal
@@ -506,6 +506,13 @@ namespace System.Reflection {
 #endif
 
 #if NET_4_0
+		public static Assembly UnsafeLoadFrom (String assemblyFile)
+		{
+			return LoadFrom (assemblyFile);
+		}
+#endif
+
+#if NET_4_0
 		[Obsolete]
 #endif
 		public static Assembly LoadFile (String path, Evidence securityEvidence)
@@ -608,7 +615,7 @@ namespace System.Reflection {
 
 		[MonoTODO ("Not implemented")]
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		virtual
 #endif
 		Module LoadModule (string moduleName, byte [] rawModule, byte [] rawSymbolStore)
@@ -663,7 +670,7 @@ namespace System.Reflection {
 		}
 
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		virtual
 #endif
 		Object CreateInstance (String typeName, Boolean ignoreCase,
@@ -753,7 +760,7 @@ namespace System.Reflection {
 		[MonoTODO ("Currently it always returns zero")]
 		[ComVisible (false)]
 		public
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		virtual
 #endif
 		long HostContext {
@@ -792,7 +799,7 @@ namespace System.Reflection {
 		}
 		
 #if NET_4_0
-#if MOONLIGHT
+#if MOONLIGHT || MOBILE
 		public virtual IList<CustomAttributeData> GetCustomAttributesData () {
 			return CustomAttributeData.GetCustomAttributes (this);
 		}
@@ -890,7 +897,7 @@ namespace System.Reflection {
 		}
 #endif
 
-#if NET_4_0 || MOONLIGHT
+#if NET_4_0 || MOONLIGHT || MOBILE
 		static Exception CreateNIE ()
 		{
 			return new NotImplementedException ("Derived classes must implement it");

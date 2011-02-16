@@ -1,3 +1,7 @@
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
 2010-09-29  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix the issue that callback contract often gets confused by

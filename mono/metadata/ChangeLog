@@ -1,3 +1,229 @@
+2011-02-13  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Register the main_thread as a GC root. Fixes shutdown
+	crashes.
+
+2011-02-13  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix reading of cattr arguments of type Type[]. Fixes #670331.
+
+2011-02-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix token generation for TypeBuilder's in another assembly. Fixes
+	#671245.
+
+2011-02-09  Hib Eris  <hib@hiberis.nl>
+
+	Earlier undefine HAVE_GETPROCESSID when cross compiling
+
+2011-02-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Make the wait in the finalizer thread alertable to fix sdb on
+	windows. Fixes #670619.
+
+2011-02-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle assignment check of variant type and its gtd.
+
+2011-02-09  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc.c (finalize_domain_objects): Clear reference queues on domain
+	unload after running all finalizers.
+
+2011-02-08  Miguel de Icaza  <miguel@gnome.org>
+
+	Update docs
+
+2011-02-03  Miguel de Icaza  <miguel@gnome.org>
+
+	Add prototype to .h file
+
+2011-01-31  Lucas Meijer  <lucas@unity3d.com>
+
+	implement mono_set_assemblies_path for platforms that cannot set
+	MONO_PATH environment variable.
+
+2011-02-08  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc.c (finalizer_thread): Clean reference queues after finalizers
+	are called to give boehm a chance to resurrect it.
+
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Use winternl.h instead of ddk (when available)
+
+	These changes are nescessary for compiling with a mingw-w64
+	compiler.
+
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Remove implementation details from public header io-layer.h
+
+	The macro HAVE_GETPROCESSID is defined in config.h and should not
+	be exposed in public headers.
+
+2011-02-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Use mono_method_get_vtable_slot () instead of accessing
+	method->slot directly. Fixes #669808.
+
+2011-02-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for --debug=casts to Array:SetValue (). Fixes #668851.
+
+2011-02-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a warning.
+
+2011-02-02  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc.c (mono_gc_cleanup): Cleanup all reference queues after
+	regular finalization.
+
+	* reflection.c: The dynamic method ref queue is finalized by the
+	runtime itself.
+
+	* runtime.c: Ditto.
+
+2011-02-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c: Use a reference queue to cleanup dynamic methods
+	instead of finalization.
+
+	* runtime.c: Shutdown the dynamic method queue before runtime
+	cleanup begins.
+
+	* icall-def.h: Remove unused dynamic method icall.
+
+	Fixes #660422
+
+2011-02-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gc.c: A reference queue allows one to queue callbcks for when
+	objects are collected. It allows for safe cleanup of objects that
+	can only be done when it is effectively collected. The major
+	difference with regular finalization is that the collector makes
+	sure the object was collected - and can't be resurrected.
+
+	* gc-internal.h: Export entrypoints for the new API.
+
+2011-02-01  Zoltan Varga  <vargaz@gmail.com>
+
+	Make caching in mono_marshal_get_virtual_stelemref () thread-safe.
+	Fixes #668489.
+
+2011-01-31  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] AddWatcher icall must look up the path in an IOMAP-aware
+	way
+
+2011-01-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Use IOAMP-aware method of looking for domain
+	configuration file
+
+2011-01-30  Jo Shields  <directhex@apebox.org>
+
+	Really fix sgen on PowerPC Linux. Assembler on Linux requires that
+	register names are just bare numbers, unlike OSX, i.e. "r0" must
+	be "0" on Linux.
+
+2011-01-29  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Typo
+
+2011-01-28  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid a crash when shutting down jit attached threads
+
+2011-01-28  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Ensure we setup the vtable before accessing it
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix AOT support for types in the EXPORTEDTYPE table.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Applied patch from Burkhard Linke
+	<blinke@cebitec.uni-bielefeld.de>. Add support for newer boehm-gc
+	versions.
+
+2011-01-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* marshal.c (mono_marshal_get_delegate_invoke): If the target is a
+	static method with first arg bound and it belongs to a different
+	assembly than the delegate we might end up with a freed signature
+	in the hashtable.
+
+	Fix a moonlight crash.
+
+2011-01-24  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Don't assert when on Android.
+
+2011-01-20  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make the second bridge DFS pass use an implicit stack to
+	avoid stack overflow.
+
+2011-01-19  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Use an explicit stack instead of recursion for the first
+	DFS pass in the bridge code.
+
+2011-01-19  Mark Probst  <mark.probst@gmail.com>
+
+	[build] pkg-config support for libmonosgen.
+
+2011-01-16  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Bridge cross references pass.
+
+	This is an extension for the benefit of the Mono/Java bridge on
+	MonoDroid. We go through all finalizable objects and report the
+	strongly connected components of bridge objects and their
+	connections between each other.
+
+2011-01-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking the vmmap allocated by the kernel for the
+	thread_act_array_t
+
+2011-01-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix a mach port leak
+
+2011-01-21  Bassam Tabbara  <bassam@symform.com>
+
+	Fix for 666225
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Transition non perf-critical users of klass->has_finalize over to
+	mono_class_has_finalizer ().
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Initialize klass->has_finalizer lazily. This allows us to remove
+	the find_method_in_metadata () optimization without a perf cost
+	which is broken in the presence of overrides. Fixes #665769.
+
+2011-01-20  Jb Evain  <jbevain@gmail.com>
+
+	[bug] Prevent a GetMethodBody call on a dynamic method. Fixes
+	665788
+
+2011-01-19  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (finish_gray_stack): We must clear weak refs that
+	don't track resurrection before processing finalizable objects
+	otherwise we'll copy/mark them and the weak ref won't be cleared
+	until after finalization.
+
+	Fixes #657408
+
 2011-01-18  Zoltan Varga  <vargaz@gmail.com>
 
 	Disable some of the FastCopy fast paths since they are racy.

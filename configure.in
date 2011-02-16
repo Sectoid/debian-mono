@@ -851,6 +851,14 @@ case "x$gc" in
 		if test "x$found_gc_enable" = "xyes"; then
 			BOEHM_DEFINES="-DHAVE_GC_ENABLE $BOEHM_DEFINES"
 		fi
+
+		# check whether we need to explicitly allow
+               	# thread registering
+               	AC_CHECK_LIB(gc, GC_allow_register_threads, found_allow_register_threads="yes",,$libdl)
+               	if test "x$found_allow_register_threads" = "xyes"; then
+                        AC_DEFINE(HAVE_GC_ALLOW_REGISTER_THREADS, 1, [GC requires thread registration])
+               	fi
+
 		;;
 
 	xincluded)
@@ -1746,6 +1754,11 @@ if test x$target_win32 = xno; then
 	dnl * on xp+
 	AC_DEFINE(HAVE_GETPROCESSID, 1, [Define if GetProcessId is available])
 else
+	dnl *********************************
+	dnl *** Checks for Windows compilation ***
+	dnl *********************************
+	AC_CHECK_HEADERS(winternl.h)
+
 	jdk_headers_found=no
 	AC_CHECK_LIB(ws2_32, main, LIBS="$LIBS -lws2_32", AC_ERROR(bad mingw install?))
 	AC_CHECK_LIB(psapi, main, LIBS="$LIBS -lpsapi", AC_ERROR(bad mingw install?))
@@ -2876,6 +2889,7 @@ data/net_4_0/Makefile
 data/net_2_0/Browsers/Makefile
 data/mint.pc
 data/mono-2.pc
+data/monosgen-2.pc
 data/mono.pc
 data/mono-cairo.pc
 data/mono-nunit.pc

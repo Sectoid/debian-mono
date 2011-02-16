@@ -32,6 +32,7 @@ using Mono.CSharp;
 namespace Mono {
 
 	public class Driver {
+		public static string StartupEvalExpression;
 		
 		static int Main (string [] args)
 		{
@@ -53,15 +54,24 @@ namespace Mono {
 		{
 			string[] startup_files;
 			try {
-				startup_files = Evaluator.InitAndGetStartupFiles (args);
+				startup_files = Evaluator.InitAndGetStartupFiles (args, HandleExtraArguments);
 				Evaluator.DescribeTypeExpressions = true;
 				Evaluator.SetInteractiveBaseClass (typeof (InteractiveBaseShell));
 			} catch {
 				return 1;
 			}
-
 			return new CSharpShell ().Run (startup_files);
 		}
+
+		static int HandleExtraArguments (string [] args, int pos)
+		{
+			if (args [pos] == "-e" && pos+1 < args.Length){
+				StartupEvalExpression = args [pos+1];
+				return pos+1;
+			}
+			return -1;
+		}
+		
 	}
 
 	public class InteractiveBaseShell : InteractiveBase {
@@ -173,7 +183,7 @@ namespace Mono {
 			Evaluate ("using System; using System.Linq; using System.Collections.Generic; using System.Collections;");
 		}
 
-		void InitTerminal ()
+		void InitTerminal (bool show_banner)
 		{
 #if ON_DOTNET
 			is_unix = false;
@@ -195,7 +205,7 @@ namespace Mono {
 //			Report.Stderr = Console.Out;
 			SetupConsole ();
 
-			if (isatty)
+			if (isatty && show_banner)
 				Console.WriteLine ("Mono C# Shell, type \"help;\" for help\n\nEnter statements below.");
 
 		}
@@ -205,8 +215,17 @@ namespace Mono {
 			foreach (string file in sources){
 				try {
 					try {
+						bool first = true;
+			
 						using (System.IO.StreamReader r = System.IO.File.OpenText (file)){
-							ReadEvalPrintLoopWith (p => r.ReadLine ());
+							ReadEvalPrintLoopWith (p => {
+								var line = r.ReadLine ();
+								if (first && line.StartsWith ("#!")){
+									line = r.ReadLine ();
+									first = false;
+								}
+								return line;
+							});
 						}
 					} catch (FileNotFoundException){
 						Console.Error.WriteLine ("cs2001: Source file `{0}' not found", file);
@@ -265,18 +284,21 @@ namespace Mono {
 		public int ReadEvalPrintLoop ()
 		{
 			if (startup_files != null && startup_files.Length == 0)
-				InitTerminal ();
+				InitTerminal (startup_files.Length == 0 && Driver.StartupEvalExpression == null);
 
 			InitializeUsing ();
 
 			LoadStartupFiles ();
 
-			//
-			// Interactive or startup files provided?
-			//
 			if (startup_files.Length != 0)
 				ExecuteSources (startup_files, false);
-			else
+			else if (Driver.StartupEvalExpression != null){
+				ReadEvalPrintLoopWith (p => {
+					var ret = Driver.StartupEvalExpression;
+					Driver.StartupEvalExpression = null;
+					return ret;
+					});
+			} else
 				ReadEvalPrintLoopWith (GetLine);
 
 			return 0;

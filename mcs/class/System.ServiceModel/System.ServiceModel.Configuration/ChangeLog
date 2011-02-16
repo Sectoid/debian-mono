@@ -1,3 +1,10 @@
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	standard endpoint and protocol mapping support were lacking at
+	client side.
+
+	Turned out that they had nothing to do with #668089..
+
 2010-10-20  Atsushi Eno  <atsushi@ximian.com>
 
 	Forgot #if NET_4_0.

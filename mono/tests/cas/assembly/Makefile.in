@@ -247,7 +247,7 @@ with_mono_path = MONO_PATH=$(mcs_topdir)/class/lib/net_2_0
 RUNTIME = $(with_mono_path) $(top_builddir)/runtime/mono-wrapper --debug
 CAS_RUNTIME = $(RUNTIME) --security
 CSCOMPILE = $(RUNTIME) $(mcs_topdir)/class/lib/net_2_0/gmcs.exe -debug
-PERMVIEW = $(RUNTIME2) $(mcs_topdir)/tools/security/permview.exe
+PERMVIEW = $(RUNTIME) $(mcs_topdir)/tools/security/permview.exe
 PROFILE = net_2_0
 TEST_FILES = all min opt ref none
 EXTRA_DIST = all.cs min.cs opt.cs ref.cs none.cs \

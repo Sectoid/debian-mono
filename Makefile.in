@@ -282,7 +282,17 @@ MOONLIGHT_SUBDIRS = $(libgc_dir) eglib/src mono
 @CROSS_COMPILING_FALSE@@ONLY_MOONLIGHT_FALSE@DIST_SUBDIRS = po libgc eglib mono ikvm-native support data runtime scripts man samples tools msvc docs
 # Keep in sync with SUBDIRS
 @CROSS_COMPILING_TRUE@DIST_SUBDIRS = po libgc eglib mono ikvm-native         data runtime scripts man samples tools msvc docs
-EXTRA_DIST = nls.m4 po.m4 progtest.m4 mono-uninstalled.pc.in build-mingw32.sh LICENSE mkinstalldirs autogen.sh 
+EXTRA_DIST = \
+	    LICENSE \
+	    autogen.sh \
+	    build-mingw32.sh \
+	    mkinstalldirs \
+	    mono-uninstalled.pc.in \
+	    nls.m4 \
+	    po.m4 \
+	    progtest.m4 \
+	    winconfig.h
+
 DISTCHECK_CONFIGURE_FLAGS = EXTERNAL_MCS=false EXTERNAL_RUNTIME=false
 pkgconfigdir = $(libdir)/pkgconfig
 noinst_DATA = mono-uninstalled.pc

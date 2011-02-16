@@ -189,6 +189,9 @@
 /* Define to 1 if you have the `futimes' function. */
 #undef HAVE_FUTIMES
 
+/* GC requires thread registration */
+#undef HAVE_GC_ALLOW_REGISTER_THREADS
+
 /* Define to 1 if you have the <gc/gc.h> header file. */
 #undef HAVE_GC_GC_H
 
@@ -686,6 +689,9 @@
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #undef HAVE_WCHAR_H
+
+/* Define to 1 if you have the <winternl.h> header file. */
+#undef HAVE_WINTERNL_H
 
 /* Have a working sigaltstack */
 #undef HAVE_WORKING_SIGALTSTACK

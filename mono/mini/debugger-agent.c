@@ -252,7 +252,7 @@ typedef struct {
 #define HEADER_LENGTH 11
 
 #define MAJOR_VERSION 2
-#define MINOR_VERSION 2
+#define MINOR_VERSION 3
 
 typedef enum {
 	CMD_SET_VM = 1,
@@ -366,7 +366,8 @@ typedef enum {
 	CMD_THREAD_GET_NAME = 2,
 	CMD_THREAD_GET_STATE = 3,
 	CMD_THREAD_GET_INFO = 4,
-	CMD_THREAD_GET_ID = 5
+	CMD_THREAD_GET_ID = 5,
+	CMD_THREAD_GET_TID = 6
 } CmdThread;
 
 typedef enum {
@@ -931,7 +932,7 @@ mono_debugger_agent_cleanup (void)
 #ifdef HOST_WIN32
 			if (WAIT_TIMEOUT == WaitForSingleObject(debugger_thread_exited_cond, 0)) {
 				mono_mutex_unlock (&debugger_thread_exited_mutex);
-				Sleep(0);
+				Sleep(1);
 				mono_mutex_lock (&debugger_thread_exited_mutex);
 			}
 #else
@@ -2301,7 +2302,7 @@ suspend_current (void)
 		if (WAIT_TIMEOUT == WaitForSingleObject(suspend_cond, 0))
 		{
 			mono_mutex_unlock (&suspend_mutex);
-			Sleep(0);
+			Sleep(1);
 			mono_mutex_lock (&suspend_mutex);
 		}
 		else
@@ -6422,7 +6423,10 @@ method_commands_internal (int command, MonoMethod *method, MonoDomain *domain, g
 
 			if (handle_class == mono_defaults.typehandle_class) {
 				buffer_add_byte (buf, TOKEN_TYPE_TYPE);
-				buffer_add_typeid (buf, domain, mono_class_from_mono_type ((MonoType*)val));
+				if (method->wrapper_type == MONO_WRAPPER_DYNAMIC_METHOD)
+					buffer_add_typeid (buf, domain, (MonoClass *) val);
+				else
+					buffer_add_typeid (buf, domain, mono_class_from_mono_type ((MonoType*)val));
 			} else if (handle_class == mono_defaults.fieldhandle_class) {
 				buffer_add_byte (buf, TOKEN_TYPE_FIELD);
 				buffer_add_fieldid (buf, domain, val);
@@ -6554,6 +6558,9 @@ thread_commands (int command, guint8 *p, guint8 *end, Buffer *buf)
 		break;
 	case CMD_THREAD_GET_ID:
 		buffer_add_long (buf, (guint64)(gsize)thread);
+		break;
+	case CMD_THREAD_GET_TID:
+		buffer_add_long (buf, (guint64)thread->tid);
 		break;
 	default:
 		return ERR_NOT_IMPLEMENTED;

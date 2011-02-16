@@ -6,7 +6,7 @@
  *   Dietmar Maurer (dietmar@ximian.com)
  *
  * Copyright 2002-2003 Ximian, Inc.
- * Coprygith 2003-2010 Novell, Inc.
+ * Copyright 2003-2010 Novell, Inc.
  */
 
 #define MONO_LLVM_IN_MINI 1
@@ -2860,10 +2860,11 @@ mono_patch_info_hash (gconstpointer data)
 	switch (ji->type) {
 	case MONO_PATCH_INFO_RVA:
 	case MONO_PATCH_INFO_LDSTR:
-	case MONO_PATCH_INFO_TYPE_FROM_HANDLE:
 	case MONO_PATCH_INFO_LDTOKEN:
 	case MONO_PATCH_INFO_DECLSEC:
 		return (ji->type << 8) | ji->data.token->token;
+	case MONO_PATCH_INFO_TYPE_FROM_HANDLE:
+		return (ji->type << 8) | ji->data.token->token | (ji->data.token->has_context ? (gsize)ji->data.token->context.class_inst : 0);
 	case MONO_PATCH_INFO_INTERNAL_METHOD:
 		return (ji->type << 8) | g_str_hash (ji->data.name);
 	case MONO_PATCH_INFO_VTABLE:
@@ -3230,6 +3231,10 @@ mono_resolve_patch_target (MonoMethod *method, MonoDomain *domain, guint8 *code,
 		target = mono_gc_get_card_table (&card_table_shift_bits, &card_table_mask);
 		break;
 	}
+	case MONO_PATCH_INFO_CASTCLASS_CACHE: {
+		target = mono_domain_alloc0 (domain, sizeof (gpointer));
+		break;
+	}
 	default:
 		g_assert_not_reached ();
 	}
@@ -3549,6 +3554,17 @@ mono_codegen (MonoCompile *cfg)
 	MonoBasicBlock *bb;
 	int max_epilog_size;
 	guint8 *code;
+	MonoDomain *code_domain;
+
+	if (mono_using_xdebug)
+		/*
+		 * Recent gdb versions have trouble processing symbol files containing
+		 * overlapping address ranges, so allocate all code from the code manager
+		 * of the root domain. (#666152).
+		 */
+		code_domain = mono_get_root_domain ();
+	else
+		code_domain = cfg->domain;
 
 #if defined(__native_client_codegen__) && defined(__native_client__)
 	void *code_dest;
@@ -3636,13 +3652,17 @@ mono_codegen (MonoCompile *cfg)
 		mono_dynamic_code_hash_insert (cfg->domain, cfg->method, cfg->dynamic_info);
 		mono_domain_unlock (cfg->domain);
 
-		code = mono_code_manager_reserve (cfg->dynamic_info->code_mp, cfg->code_size + unwindlen);
+		if (mono_using_xdebug)
+			/* See the comment for cfg->code_domain */
+			code = mono_domain_code_reserve (code_domain, cfg->code_size + unwindlen);
+		else
+			code = mono_code_manager_reserve (cfg->dynamic_info->code_mp, cfg->code_size + unwindlen);
 	} else {
 		guint unwindlen = 0;
 #ifdef MONO_ARCH_HAVE_UNWIND_TABLE
 		unwindlen = mono_arch_unwindinfo_get_size (cfg->arch.unwindinfo);
 #endif
-		code = mono_domain_code_reserve (cfg->domain, cfg->code_size + unwindlen);
+		code = mono_domain_code_reserve (code_domain, cfg->code_size + unwindlen);
 	}
 #if defined(__native_client_codegen__) && defined(__native_client__)
 	nacl_allow_target_modification (TRUE);
@@ -3715,9 +3735,12 @@ if (valgrind_register){
 	mono_arch_patch_code (cfg->method, cfg->domain, cfg->native_code, cfg->patch_info, cfg->run_cctors);
 
 	if (cfg->method->dynamic) {
-		mono_code_manager_commit (cfg->dynamic_info->code_mp, cfg->native_code, cfg->code_size, cfg->code_len);
+		if (mono_using_xdebug)
+			mono_domain_code_commit (code_domain, cfg->native_code, cfg->code_size, cfg->code_len);
+		else
+			mono_code_manager_commit (cfg->dynamic_info->code_mp, cfg->native_code, cfg->code_size, cfg->code_len);
 	} else {
-		mono_domain_code_commit (cfg->domain, cfg->native_code, cfg->code_size, cfg->code_len);
+		mono_domain_code_commit (code_domain, cfg->native_code, cfg->code_size, cfg->code_len);
 	}
 #if defined(__native_client_codegen__) && defined(__native_client__)
 	cfg->native_code = code_dest;
@@ -5801,20 +5824,14 @@ SIG_HANDLER_SIGNATURE (mono_sigsegv_signal_handler)
 	}
 #endif
 
-	/* The hard-guard page has been hit: there is not much we can do anymore
-	 * Print a hopefully clear message and abort.
-	 */
 	if (jit_tls->stack_size && 
 		ABS ((guint8*)fault_addr - ((guint8*)jit_tls->end_of_stack - jit_tls->stack_size)) < 8192 * sizeof (gpointer)) {
-		const char *method;
-		/* we don't do much now, but we can warn the user with a useful message */
-		fprintf (stderr, "Stack overflow: IP: %p, fault addr: %p\n", mono_arch_ip_from_context (ctx), (gpointer)info->si_addr);
-		if (ji && ji->method)
-			method = mono_method_full_name (ji->method, TRUE);
-		else
-			method = "Unmanaged";
-		fprintf (stderr, "At %s\n", method);
-		_exit (1);
+		/*
+		 * The hard-guard page has been hit: there is not much we can do anymore
+		 * Print a hopefully clear message and abort.
+		 */
+		mono_handle_hard_stack_ovf (jit_tls, ji, ctx, (guint8*)info->si_addr);
+		g_assert_not_reached ();
 	} else {
 		/* The original handler might not like that it is executed on an altstack... */
 		if (!ji && mono_chain_signal (SIG_HANDLER_PARAMS))
@@ -5944,6 +5961,8 @@ mini_parse_debug_options (void)
 			debug_options.no_gdb_backtrace = TRUE;
 		else if (!strcmp (arg, "suspend-on-sigsegv"))
 			debug_options.suspend_on_sigsegv = TRUE;
+		else if (!strcmp (arg, "suspend-on-unhandled"))
+			debug_options.suspend_on_unhandled = TRUE;
 		else if (!strcmp (arg, "dont-free-domains"))
 			mono_dont_free_domains = TRUE;
 		else if (!strcmp (arg, "dyn-runtime-invoke"))
@@ -5960,7 +5979,7 @@ mini_parse_debug_options (void)
 			debug_options.better_cast_details = TRUE;
 		else {
 			fprintf (stderr, "Invalid option for the MONO_DEBUG env variable: %s\n", arg);
-			fprintf (stderr, "Available options: 'handle-sigint', 'keep-delegates', 'reverse-pinvoke-exceptions', 'collect-pagefault-stats', 'break-on-unverified', 'no-gdb-backtrace', 'dont-free-domains', 'suspend-on-sigsegv', 'dyn-runtime-invoke', 'gdb', 'explicit-null-checks', 'init-stacks'\n");
+			fprintf (stderr, "Available options: 'handle-sigint', 'keep-delegates', 'reverse-pinvoke-exceptions', 'collect-pagefault-stats', 'break-on-unverified', 'no-gdb-backtrace', 'dont-free-domains', 'suspend-on-sigsegv', 'suspend-on-unhandled', 'dyn-runtime-invoke', 'gdb', 'explicit-null-checks', 'init-stacks'\n");
 			exit (1);
 		}
 	}
@@ -6151,6 +6170,7 @@ mini_init (const char *filename, const char *runtime_version)
 	callbacks.create_ftnptr = mini_create_ftnptr;
 	callbacks.get_addr_from_ftnptr = mini_get_addr_from_ftnptr;
 	callbacks.get_runtime_build_info = mono_get_runtime_build_info;
+	callbacks.set_cast_details = mono_set_cast_details;
 
 #ifdef MONO_ARCH_HAVE_IMT
 	if (mono_use_imt) {

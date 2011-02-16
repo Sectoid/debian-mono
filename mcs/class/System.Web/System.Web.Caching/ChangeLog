@@ -1,3 +1,7 @@
+2011-01-20  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Don't throw NREX when a cache item to be removed is null
+
 2010-11-19  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Disabled array clearing on heap resize in

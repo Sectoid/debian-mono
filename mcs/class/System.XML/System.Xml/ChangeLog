@@ -1,3 +1,21 @@
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[xml]
+	XmlReaderSettings.{DtdProcessing,MaxCharactersFromEntities,MaxCharactersInDocument}
+	are present in 3.5+
+
+	With the exception of DtdProcessing, the properties are part of
+	.NET 3.5+. DtdProcessing appeared in 4.0.
+
+2011-01-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not return DocumentFragment from AppendChild() etc. Fixed bug
+	#666249.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
 2011-01-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Revert

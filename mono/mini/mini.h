@@ -4,6 +4,9 @@
 #include "config.h"
 #include <glib.h>
 #include <signal.h>
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
 #include <mono/metadata/loader.h>
 #include <mono/metadata/mempool.h>
 #include <mono/utils/monobitset.h>
@@ -799,6 +802,7 @@ struct MonoCallInst {
 	regmask_t used_fregs;
 	GSList *out_ireg_args;
 	GSList *out_freg_args;
+	GSList *outarg_vts;
 #ifdef ENABLE_LLVM
 	LLVMCallInfo *cinfo;
 	int rgctx_arg_reg, imt_arg_reg;
@@ -1581,6 +1585,7 @@ typedef struct {
 	gboolean mdb_optimizations;
 	gboolean no_gdb_backtrace;
 	gboolean suspend_on_sigsegv;
+	gboolean suspend_on_unhandled;
 	gboolean dyn_runtime_invoke;
 	gboolean gdb;
 	gboolean gen_seq_points;
@@ -1969,6 +1974,7 @@ void     *mono_arch_instrument_epilog           (MonoCompile *cfg, void *func, v
 void     *mono_arch_instrument_epilog_full     (MonoCompile *cfg, void *func, void *p, gboolean enable_arguments, gboolean preserve_argument_registers) MONO_INTERNAL;
 void      mono_codegen                          (MonoCompile *cfg) MONO_INTERNAL;
 void      mono_call_inst_add_outarg_reg         (MonoCompile *cfg, MonoCallInst *call, int vreg, int hreg, int bank) MONO_LLVM_INTERNAL;
+void      mono_call_inst_add_outarg_vt          (MonoCompile *cfg, MonoCallInst *call, MonoInst *outarg_vt) MONO_INTERNAL;
 const char *mono_arch_regname                   (int reg) MONO_INTERNAL;
 const char *mono_arch_fregname                  (int reg) MONO_INTERNAL;
 void      mono_arch_exceptions_init             (void) MONO_INTERNAL;
@@ -2050,6 +2056,7 @@ gpointer  mono_arch_get_throw_pending_exception (MonoTrampInfo **info, gboolean 
 gboolean mono_arch_handle_exception             (void *sigctx, gpointer obj, gboolean test_only) MONO_INTERNAL;
 void     mono_arch_handle_altstack_exception    (void *sigctx, gpointer fault_addr, gboolean stack_ovf) MONO_INTERNAL;
 gboolean mono_handle_soft_stack_ovf             (MonoJitTlsData *jit_tls, MonoJitInfo *ji, void *ctx, guint8* fault_addr) MONO_INTERNAL;
+void     mono_handle_hard_stack_ovf             (MonoJitTlsData *jit_tls, MonoJitInfo *ji, void *ctx, guint8* fault_addr) MONO_INTERNAL;
 gpointer mono_arch_ip_from_context              (void *sigctx) MONO_INTERNAL;
 void     mono_arch_sigctx_to_monoctx            (void *sigctx, MonoContext *ctx) MONO_INTERNAL;
 void     mono_arch_monoctx_to_sigctx            (MonoContext *mctx, void *ctx) MONO_INTERNAL;
@@ -2140,6 +2147,7 @@ MonoBoolean ves_icall_get_frame_info            (gint32 skip, MonoBoolean need_f
 						 gint32 *iloffset, gint32 *native_offset,
 						 MonoString **file, gint32 *line, gint32 *column) MONO_INTERNAL;
 MonoString *ves_icall_System_Exception_get_trace (MonoException *exc) MONO_INTERNAL;
+void mono_set_cast_details                      (MonoClass *from, MonoClass *to) MONO_INTERNAL;
 
 /* Dominator/SSA methods */
 void        mono_compile_dominator_info         (MonoCompile *cfg, int dom_flags) MONO_INTERNAL;
@@ -2431,6 +2439,7 @@ enum {
 	MONO_AOT_WRAPPER_ELEMENT_ADDR,
 	MONO_AOT_WRAPPER_PTR_TO_STRUCTURE,
 	MONO_AOT_WRAPPER_STRUCTURE_TO_PTR,
+	MONO_AOT_WRAPPER_CASTCLASS_WITH_CACHE,
 	MONO_AOT_WRAPPER_LAST
 };
 

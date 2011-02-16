@@ -1,3 +1,17 @@
+2011-02-11  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update Utilities.FromMSBuildPath from monodevelop.
+
+	Updating FromMSBuildPath also fixes a bug on windows.
+
+2011-01-26  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Improve error messages for condition evaluation.
+
+	Also, add new ExpressionEvaluationException class. Wrap
+	Expression*Exceptions in InvalidProjectFileException with info
+	about the full condition being evaluated.
+
 2011-01-11  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Fix bug #663180, second part.

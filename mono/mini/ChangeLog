@@ -1,3 +1,181 @@
+2011-02-13  Alexandre Mutel  <alexandre_mutel@yahoo.fr>
+
+	Fix sizeof(T) in non-gshared code. Fixes #580189.
+
+2011-02-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Change some Sleep(0)'s to Sleep(1) in the soft-debugger code to
+	avoid 100% cpu utilization on windows.
+
+2011-02-09  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable OP_INEG cfolding on 32 bit arches, as it breaks the LNEG
+	decomposition. The previous special casing didn't work as the
+	spill pass could insert a store between the ineg and the adc_imm.
+	Fixes #670479.
+
+2011-02-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Cast the result of MONO_CONTEXT_GET_SP () to an int to fix the
+	windows build.
+
+2011-02-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Include sys/types.h for pid_t on mingw. Fixes #670076.
+
+2011-02-06  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the ia64 build.
+
+2011-02-05  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-trampolines.c (mono_delegate_trampoline): The ldftn to
+	ldvtftn conversion must check if the method is abstract, otherwise
+	it breaks delegate to base classes.
+
+	Fixes #666008
+
+2011-02-04  Zoltan Varga  <vargaz@gmail.com>
+
+	Print a normal stack trace even if a hard stack overflow happens
+	in unmanaged code.
+
+2011-02-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Print a normal stack trace on a hard stack overflow.
+
+2011-02-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the handling of CompareExchange icalls in AOT, we were using
+	the 'object' versions for everything, which broke with 64 bit
+	types on 32 bit platforms.
+
+2011-02-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the passing of vtype arguments for methods which return floats
+	in soft-float mode. Fixes #668905.
+
+2011-02-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Add support for --debug=casts to Array:SetValue (). Fixes #668851.
+
+2011-02-02  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* mini-x86.c (emit_call): Align call instructions on 3 mod 4 so
+	the address is 4 bytes aligned and can't span two cache lines.
+	This is required for proper SMP support as CAS is not atomic
+	across cache lines.
+
+	Fixes one of the crashes due to #667921.
+
+2010-10-26  Lucas Meijer  <lucas@unity3d.com>
+
+	make mono_print_thread_dump output to the visualstudio debugger
+	window, for better debugger experience
+
+2011-01-31  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix stack walks on sparc.
+
+2011-01-31  Zoltan Varga  <vargaz@gmail.com>
+
+	When using xdebug, allocate all code from the code manager of the
+	root domain. Hopefully fixes #666152.
+
+2011-01-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix some quadratic behavior in the AOT compiler.
+
+2011-01-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Improve hashing of MONO_PATCH_INFO_TYPE_FROM_HANDLE.
+
+2011-01-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark a newly added test as !FULLAOT.
+
+2011-01-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Don't crash when inlining static methods called using callvirt.
+	Fixes #668170.
+
+2011-01-29  Zoltan Varga  <vargaz@gmail.com>
+
+	Clear the 'need_rgctx_tramp' flag when creating a synchronized
+	wrapper. Fixes
+
+2011-01-28  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Bump SDB protocol so MonoDevelop can guard IL inspection of
+	dynamic methods
+
+2011-01-27  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Dont leak loader errors in the aot compiler, as it could cause
+	later methods to not get compiled erroneously
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Increase an aot buffer size again.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Add AOT support for castclass_with_cache wrappers.
+
+2011-01-26  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Ensure we properly align the stack before resuming from breakpoint
+	signal handlers
+
+2011-01-26  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Dynamic methods are classes already here
+
+2011-01-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a 'suspend-on-unhandled' MONO_DEBUG option to help track down
+	the random build failures on ia64.
+
+2011-01-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix an assert which happens when a call is made to Nullable.Unbox
+	from gshared code in AOT.
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous aot fix.
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a test for infinite generic recursion + AOT.
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Only add imt items whose is_equal flag is set to the array passed
+	to the full-aot imt thunk.
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid emitting .note.GNU-stack on arm.
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Detect inifinite generic recursion differently in the AOT
+	compiler.
+
+2011-01-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Properly align the stack in the arm generic trampoline.
+
+2011-01-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a TID field to ThreadMirror which returns the system thread
+	id.
+
+2011-01-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Happy new year.
+
 2011-01-18  Zoltan Varga  <vargaz@gmail.com>
 
 	Make the stacks of aot image non-executable.

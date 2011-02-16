@@ -1,3 +1,26 @@
+2011-01-21  Ankit Jain  <radical@corewars.org>
+
+	* tools/xbuild/xbuild/Microsoft.CSharp.targets: $(CscToolExe) is
+	set depending on the value of $(TargetFrameworkVersion). Since,
+	$(TargetFrameworkVersion)'s default value is set by
+	MS.Common.targets, set $(CscToolExe) *after* importing
+	MS.Common.targets .
+
+2011-01-20  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #665637.
+
+	Pass $(WarningsNotAsErrors) to Csc task.
+
+2011-01-19  Ankit Jain  <radical@corewars.org>
+
+	* tools/xbuild/Parameters.cs (DisplayVersion): Remove, not
+	required.
+
+2011-01-14  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Update Novell copyright.
+
 2011-01-14  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Add $(TargetDir) property.

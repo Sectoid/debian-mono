@@ -1,3 +1,11 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Work around a full-aot issue for monotouch System.Json
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	backport JavaScriptObjectDeserializer encoding detection fix.
+
 2010-10-29  Andreia Gaita  <shana@jitted.com>
 
 	[JsonWriter] Fix JsonWriter yet again. Behaviour of WriteRaw on
