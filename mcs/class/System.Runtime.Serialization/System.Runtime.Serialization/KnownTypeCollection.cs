@@ -76,10 +76,18 @@ namespace System.Runtime.Serialization
 */
 	internal static class TypeExtensions
 	{
-		public static T GetCustomAttribute<T> (this Type type, bool inherit)
+		public static T GetCustomAttribute<T> (this MemberInfo type, bool inherit)
 		{
 			var arr = type.GetCustomAttributes (typeof (T), inherit);
 			return arr != null && arr.Length == 1 ? (T) arr [0] : default (T);
+		}
+
+		public static IEnumerable<Type> GetInterfacesOrSelfInterface (this Type type)
+		{
+			if (type.IsInterface)
+				yield return type;
+			foreach (var t in type.GetInterfaces ())
+				yield return t;
 		}
 	}
 
@@ -386,8 +394,12 @@ namespace System.Runtime.Serialization
 
 		protected override void InsertItem (int index, Type type)
 		{
-			if (!Contains (type) && TryRegister (type))
+			if (ShouldNotRegister (type))
+				return;
+			if (!Contains (type)) {
+				TryRegister (type);
 				base.InsertItem (index, type);
+			}
 		}
 
 		// FIXME: it could remove other types' dependencies.
@@ -407,6 +419,13 @@ namespace System.Runtime.Serialization
 
 		protected override void SetItem (int index, Type type)
 		{
+			if (ShouldNotRegister (type))
+				return;
+
+			// Since this collection is not assured to be ordered, it ignores the whole Set operation if the type already exists.
+			if (Contains (type))
+				return;
+
 			if (index != Count)
 				RemoveItem (index);
 			if (TryRegister (type))
@@ -420,6 +439,8 @@ namespace System.Runtime.Serialization
 
 		internal Type GetSerializedType (Type type)
 		{
+			if (IsPrimitiveNotEnum (type))
+				return type;
 			Type element = GetCollectionElementType (type);
 			if (element == null)
 				return type;
@@ -605,10 +626,15 @@ namespace System.Runtime.Serialization
 			return false;
 		}
 
+		bool ShouldNotRegister (Type type)
+		{
+			return IsPrimitiveNotEnum (type);
+		}
+
 		internal bool TryRegister (Type type)
 		{
 			// exclude predefined maps
-			if (IsPrimitiveNotEnum (type))
+			if (ShouldNotRegister (type))
 				return false;
 
 			if (FindUserMap (type) != null)
@@ -645,10 +671,9 @@ namespace System.Runtime.Serialization
 		{
 			if (type.IsArray)
 				return type.GetElementType ();
-
-			Type [] ifaces = type.GetInterfaces ();
+			var ifaces = type.GetInterfacesOrSelfInterface ();
 			foreach (Type i in ifaces)
-				if (i.IsGenericType && i.GetGenericTypeDefinition ().Equals (typeof (ICollection<>)))
+				if (i.IsGenericType && i.GetGenericTypeDefinition ().Equals (typeof (IEnumerable<>)))
 					return i.GetGenericArguments () [0];
 			foreach (Type i in ifaces)
 				if (i == typeof (IList))
@@ -676,8 +701,12 @@ namespace System.Runtime.Serialization
 
 			QName qname = GetCollectionContractQName (type);
 			CheckStandardQName (qname);
-			if (FindUserMap (qname) != null)
-				throw new InvalidOperationException (String.Format ("Failed to add type {0} to known type collection. There already is a registered type for XML name {1}", type, qname));
+			var map = FindUserMap (qname);
+			if (map != null) {
+				var cmap = map as CollectionContractTypeMap;
+				if (cmap == null) // The runtime type may still differ (between array and other IList; see bug #670560)
+					throw new InvalidOperationException (String.Format ("Failed to add type {0} to known type collection. There already is a registered type for XML name {1}", type, qname));
+			}
 
 			var ret = new CollectionContractTypeMap (type, cdca, element, qname, this);
 			contracts.Add (ret);
@@ -697,7 +726,7 @@ namespace System.Runtime.Serialization
 			var map = FindUserMap (qname);
 			if (map != null) {
 				var cmap = map as CollectionTypeMap;
-				if (cmap == null || cmap.RuntimeType != type)
+				if (cmap == null) // The runtime type may still differ (between array and other IList; see bug #670560)
 					throw new InvalidOperationException (String.Format ("Failed to add type {0} to known type collection. There already is a registered type for XML name {1}", type, qname));
 				return cmap;
 			}
@@ -710,7 +739,7 @@ namespace System.Runtime.Serialization
 
 		static bool TypeImplementsIDictionary (Type type)
 		{
-			foreach (var iface in type.GetInterfaces ())
+			foreach (var iface in type.GetInterfacesOrSelfInterface ())
 				if (iface == typeof (IDictionary) || (iface.IsGenericType && iface.GetGenericTypeDefinition () == typeof (IDictionary<,>)))
 					return true;
 
@@ -728,12 +757,16 @@ namespace System.Runtime.Serialization
 			DictionaryTypeMap ret =
 				new DictionaryTypeMap (type, cdca, this);
 
-			if (FindUserMap (ret.XmlName) != null)
-				throw new InvalidOperationException (String.Format ("Failed to add type {0} to known type collection. There already is a registered type for XML name {1}", type, ret.XmlName));
-			contracts.Add (ret);
-
 			TryRegister (ret.KeyType);
 			TryRegister (ret.ValueType);
+
+			var map = FindUserMap (ret.XmlName);
+			if (map != null) {
+				var dmap = map as DictionaryTypeMap;
+				if (dmap == null) // The runtime type may still differ (between array and other IList; see bug #670560)
+					throw new InvalidOperationException (String.Format ("Failed to add type {0} to known type collection. There already is a registered type for XML name {1}", type, ret.XmlName));
+			}
+			contracts.Add (ret);
 
 			return ret;
 		}

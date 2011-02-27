@@ -1,3 +1,27 @@
+2011-02-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid returning TRUE from mono_domain_finalize () if it is
+	interrupted by sdb. Fixes #673592.
+
+2011-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Make the var/mvar caches per-image, since the generic params they
+	refer to can be freed on domain unload. Fixes part of #672939.
+
+2011-02-08  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Fix some debug functions.
+
+2011-02-16  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix ARCH_STORE_REGS on arm to save r0->r12 properly
+
+2011-02-11  Hib Eris  <hib@hiberis.nl>
+
+	Decorate _image_base__ with __MINGW_LSYMBOL
+
+	This fix is needed in compiling for x86_x64.
+
 2011-02-13  Mark Probst  <mark.probst@gmail.com>
 
 	[sgen] Register the main_thread as a GC root. Fixes shutdown

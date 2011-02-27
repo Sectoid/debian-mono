@@ -1,3 +1,26 @@
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	MakXsdDataContractExporter refactoring to generally use
+	SerializationMap.XmlName.
+
+	Fixed bug #670539.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Don't reject serialization map for existing different (but
+	same-purpose) type.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	xsi:type parsing is wrong in default namespace resolution.
+
+	Fixed case #3 in bug #652331.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	KnownTypeCollection; recursively registered type was not added to
+	the collection while it is "registered" state.
+
 2011-02-08  Atsushi Eno  <atsushi@ximian.com>
 
 	There's a tricky namespace-mismatching deserialization in .NET

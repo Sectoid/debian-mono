@@ -1,3 +1,37 @@
+2011-02-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Fix win32 build
+
+2011-02-22  Miguel de Icaza  <miguel@gnome.org>
+
+	Avoid warnings, should fix OpenSUSE builds
+
+2011-02-13  Hib Eris  <hib@hiberis.nl>
+
+	Fix gsize for 64-bit Windows
+
+2011-02-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "[Win64] Compilation fix for eglib in win64"
+
+	This reverts commit 97bc578e86afdc6a16cfa129753ff110e69abe1d.
+
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[eglib] Move definition of GPid to eglib-config.h
+
+	This new patch moves the definition of GPid from glib.h to
+	eglib-config.h and determines the the type of pid_t in configure.
+
+	Pach from Hib Eris that fixes bug #670076.
+
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Win64] Compilation fix for eglib in win64
+
+	Compiling for 64 bit windows breaks on incorrect gsize. Patch by
+	Hib Eris that fixes bug #673581.
+
 2011-02-07  Hib Eris  <hib@hiberis.nl>
 
 	Do not distribute eglib-config.h

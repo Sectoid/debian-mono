@@ -1,3 +1,42 @@
+2011-02-23  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #674337.
+
+	Use appropriate path separator for handling environment variable
+	MSBuildExtensionsPath.
+
+2011-02-23  Ankit Jain  <radical@corewars.org>
+
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/BuildChoose.cs:
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/BuildItemGroup.cs:
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/BuildPropertyGroup.cs:
+	Add DefinedInFileName property.
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Project.cs:
+	Add a stack to keep track the "current" file, which is used to set
+	the $(MSBuildThisFile*) properties. Update the properties on
+	Push/Pop.
+
+	*
+	Microsoft.Build.Engine/Microsoft.Build.BuildEngine/GroupingCollection.cs:
+	Push/Pop the "current" file, when evaluating a property/item/etc.
+
+	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Target.cs:
+	Push/Pop the "current" file, when building. This ensures that the
+	references in the target definition get evaluated correctly.
+
+2011-02-22  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the env var $MSBuildExtensionsPath before trying
+	other paths.
+
+	Change the order of the "search paths", so that the environment
+	variable can always override it. Update the man page to reflect
+	the change.
+
 2011-02-11  Ankit Jain  <radical@corewars.org>
 
 	* Microsoft.Build.Engine/Microsoft.Build.BuildEngine/Utilities.cs:

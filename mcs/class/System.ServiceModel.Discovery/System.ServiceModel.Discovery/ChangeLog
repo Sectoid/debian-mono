@@ -1,3 +1,11 @@
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix infinite loop in DiscoveryMessageSequence equality comparison.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wrong element name (AppSequenceType->AppSequence).
+
 2011-02-15  Atsushi Eno  <atsushi@ximian.com>
 
 	support UdpTranspoerSettings.MulticastInterfaceId. This should fix

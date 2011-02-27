@@ -1,3 +1,8 @@
+2011-02-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #669807. Cache session item locks as the
+	item might be cleared before the lock needs to be released.
+
 2010-12-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Get system.web/httpRuntime only once

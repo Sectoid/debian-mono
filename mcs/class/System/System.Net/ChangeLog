@@ -1,3 +1,17 @@
+2011-02-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] UserHostName includes the port.
+
+2011-02-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] EndGetResponse already does this.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Use the timeout in GetResponse()
+
+	The timeout was not being used in GetResponse. Fixes bug #603794.
+
 2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	[HttpWebRequest] Avoid nullref on empty cookie header.

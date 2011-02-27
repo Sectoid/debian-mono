@@ -1,3 +1,33 @@
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Almost eliminate wrong use of Constants.WsaNamespace.
+
+	They should be addressing-version-aware.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	EndpointAddressAugust2004 was not serialized correctly.
+
+	Well, Actually unified the implementation with 10.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of corcompare fixes.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	implement some ServiceHostBase public methods that already existed
+	internally.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	When the callback contract type is the same as the contract, do
+	not block replies.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	EndpointAddress could be empty on opening the factory.
+
 2011-02-07  Atsushi Eno  <atsushi@ximian.com>
 
 	Open and close client/service runtime channels in chains. Fixed

@@ -1,3 +1,12 @@
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to serialize null header item.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Message headers are now serialized and deserialized for
+	MessageHeaderDescription.
+
 2011-02-09  Atsushi Eno  <atsushi@ximian.com>
 
 	Support ServiceKnownTypes. Fixed another case on bug #652331.

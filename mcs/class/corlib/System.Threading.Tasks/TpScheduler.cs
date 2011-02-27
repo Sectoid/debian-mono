@@ -1,6 +1,6 @@
-// IScheduler.cs
+// TpScheduler.cs
 //
-// Copyright (c) 2008 Jérémie "Garuma" Laval
+// Copyright (c) 2011 Jérémie "Garuma" Laval
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,55 @@
 
 #if NET_4_0 || MOBILE
 using System;
-using System.Threading;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace System.Threading.Tasks
 {
-	internal interface IScheduler: IDisposable
+	internal class TpScheduler: TaskScheduler
 	{
-		void AddWork (Task t);
-		void ParticipateUntil (Task task);
-		bool ParticipateUntil (Task task, ManualResetEventSlim predicateEvt, int millisecondsTimeout);
-		void PulseAll ();
+		static readonly WaitCallback callback = TaskExecuterCallback;
+
+		protected internal override void QueueTask (Task task)
+		{
+			ThreadPool.QueueUserWorkItem (callback, task);
+		}
+
+		static void TaskExecuterCallback (object obj)
+		{
+			Task task = obj as Task;
+			if (task == null)
+				return;
+			task.Execute (null);
+		}
+
+		protected override System.Collections.Generic.IEnumerable<Task> GetScheduledTasks ()
+		{
+			throw new System.NotImplementedException();
+		}
+
+		protected internal override bool TryDequeue (Task task)
+		{
+			throw new System.NotImplementedException();
+		}
+
+		protected override bool TryExecuteTaskInline (Task task, bool taskWasPreviouslyQueued)
+		{
+			if (task.IsCompleted)
+				return false;
+
+			if (task.Status == TaskStatus.WaitingToRun) {
+				task.Execute (null);
+				return true;
+			}
+
+			return false;
+		}
+
+		public override int MaximumConcurrencyLevel {
+			get {
+				return base.MaximumConcurrencyLevel;
+			}
+		}
 	}
 }
 #endif

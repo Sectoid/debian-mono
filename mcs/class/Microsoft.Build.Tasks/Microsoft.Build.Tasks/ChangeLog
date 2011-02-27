@@ -1,3 +1,12 @@
+2011-02-15  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #671700, resource naming in presence of "Link".
+
+	AssignTargetPath.cs: If 'Link' metadata is present, then use that
+	as the target path.
+
+	Add relevant test.
+
 2011-02-11  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Update Utilities.FromMSBuildPath from monodevelop.

@@ -1,3 +1,7 @@
+2011-02-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement TaskFactory.FromAsync
+
 2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Fix continuation not being scheduled because of too early and too

@@ -1,3 +1,14 @@
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Almost eliminate wrong use of Constants.WsaNamespace.
+
+	They should be addressing-version-aware.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	PeeDuplex ChannelFactory must be opened in prior to create
+	channels.
+
 2011-01-21  Atsushi Eno  <atsushi@ximian.com>
 
 	Avoid possible list modification error during close process.

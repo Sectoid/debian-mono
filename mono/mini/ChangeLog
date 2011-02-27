@@ -1,3 +1,56 @@
+2011-02-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the passing of the mrgctx argument in case of a
+	virtual->nonvirtual optimization. Fixes #672446.
+
+2011-02-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix arm thunk creation in dynamic methods. Fixes #673828.
+
+2011-02-20  Geoff Norton  <grompf@sublimeintervention.com>
+
+	OSX 10.6 properly respected signal handlers before invoking the
+	crash reporter
+
+2011-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement mono_memory_barrier () and OP_MEMORY_BARRIER for ARM.
+
+2011-02-19  Zoltan Varga  <vargaz@gmail.com>
+
+	Reorganize the way jump_target_hash is stored in the JIT. Free
+	entries in jump_target_hash which point inside a dynamic method
+	when it is freed. Fixes #669815.
+
+2011-02-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Set cfg->uses_rgctx_reg in another code path too on arm, to fix
+	--regression generics.exe.
+
+2011-02-18  Zoltan Varga  <vargaz@gmail.com>
+
+	Work around a gcc bug on arm.
+
+2011-02-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (mono_emit_method_call_full): Non virtual marshal
+	by ref methods with gsharing context must always be called using
+	indirect calls.
+
+	Fixes #665893
+
+2011-02-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* method-to-ir.c (mono_emit_method_call_full): Make sure we keep a
+	root for delegates when calling them using the fast delegate
+	dispatch.
+
+	Fixes #667921
+
+2011-02-16  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Remove dead code
+
 2011-02-13  Alexandre Mutel  <alexandre_mutel@yahoo.fr>
 
 	Fix sizeof(T) in non-gshared code. Fixes #580189.

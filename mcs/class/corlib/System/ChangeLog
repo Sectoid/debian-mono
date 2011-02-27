@@ -1,3 +1,16 @@
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the check for version and PublicKeyToken
+
+	When loading an assembly we were comparing Version(0,0,0,0) with
+	null and a 0 length PKT with an actual one when those two cases
+	are the default. Fixes bug #661461.
+
+2011-02-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* MonoCustomAttrs.cs (GetBase): Special case events when
+	retrieving the base event to lookup cattrs.
+
 2011-02-08  Miguel de Icaza  <miguel@gnome.org>
 
 	Fix Enum.HasValue, previous version crashed with negative values

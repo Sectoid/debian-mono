@@ -1,3 +1,20 @@
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc3] Fix for bug #668655. Implemented a few more
+	NameValueCollection method overloads.
+
+2011-02-15  Marek Safar  <marek.safar@gmail.com>
+
+	[671878] Fixes IKVM ordering of catch clauses
+
 2011-02-01  Atsushi Eno  <atsushi@ximian.com>
 
 	quick build workaround.

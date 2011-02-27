@@ -1,3 +1,12 @@
+2011-02-22  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Use the env var $MSBuildExtensionsPath before trying
+	other paths.
+
+	Change the order of the "search paths", so that the environment
+	variable can always override it. Update the man page to reflect
+	the change.
+
 2011-01-30  Miguel de Icaza  <miguel@gnome.org>
 
 	[repl] Add support for -e EXPRESSION to the csharp command

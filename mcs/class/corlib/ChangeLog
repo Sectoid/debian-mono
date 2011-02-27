@@ -1,3 +1,20 @@
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Threadpool Task scheduler
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement properly TaskScheduler's
+	FromCurrentSynchronizationContext
+
 2010-09-24  Kyle Ambroff  <kyle@ambroff.com>
 
 	version tolerant serialization fails with missing primitive
