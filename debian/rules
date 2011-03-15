@@ -148,7 +148,7 @@ clean:
 	      debian/mono-api-diff.exe
 
 	# clean stuff handled by autoreconf
-	rm -rf configure config.sub config.guess ltmain.sh aclocal.m4 autom4te.cache/
+	rm -rf configure config.sub config.guess aclocal.m4 autom4te.cache/
 	find . -name "Makefile.in" -delete
 
 	rm -f autoreconf-stamp
