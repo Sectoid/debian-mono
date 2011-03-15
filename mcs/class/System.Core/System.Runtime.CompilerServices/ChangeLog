@@ -1,3 +1,7 @@
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
 2010-06-18  Rolf Bjarne Kvinge  <RKvinge@novell.com>
 
 	* ExecutionScope.cs: This class exists in Moonlight, but isn't supported.

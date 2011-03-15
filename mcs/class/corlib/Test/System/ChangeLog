@@ -1,3 +1,9 @@
+2011-02-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* AttributeTest.cs: Add regression test.
+
+	Fixes #662867
+
 2011-01-07  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	Properly search overwrites for custom attributes.

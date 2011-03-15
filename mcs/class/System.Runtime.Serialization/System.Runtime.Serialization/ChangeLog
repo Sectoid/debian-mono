@@ -1,3 +1,55 @@
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	MakXsdDataContractExporter refactoring to generally use
+	SerializationMap.XmlName.
+
+	Fixed bug #670539.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Don't reject serialization map for existing different (but
+	same-purpose) type.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	xsi:type parsing is wrong in default namespace resolution.
+
+	Fixed case #3 in bug #652331.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	KnownTypeCollection; recursively registered type was not added to
+	the collection while it is "registered" state.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	There's a tricky namespace-mismatching deserialization in .NET
+	implementation.
+
+	Fixed bug #666333.
+
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Contract-based type must ensure that the base type is also
+	contract-based.
+
+	Fixed bug #661987 on WCF side.
+
+	Conflicts:
+
+	mcs/class/System.Runtime.Serialization/Test/System.Runtime.Serialization/XmlObjectSerializerTest.cs
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Members in the base type in different namespace are serialized in
+	base ns.
+
+	When the serializer serializes a Type B which is derived from A,
+	it used to serialize member M in A as in namespace_of_B, not in
+	namespace_of_A.
+
+	This should fix bug #652331.
+
 2010-12-14  Atsushi Eno  <atsushi@ximian.com>
 
 	Fix enum serialization too.

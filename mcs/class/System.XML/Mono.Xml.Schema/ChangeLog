@@ -1,3 +1,11 @@
+2011-02-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Simple content restriction was not validated when it is in further
+	reference.
+
+	Fixed bug #595947. It was complexType [base]-> complexType
+	[base]-> simpleType.
+
 2010-11-29  Atsushi Eno  <atsushi@ximian.com>
 
 	Return different instances of XmlSchemaInfo for each validated

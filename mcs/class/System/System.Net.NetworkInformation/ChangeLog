@@ -1,3 +1,9 @@
+2011-02-19  Miguel de Icaza  <miguel@gnome.org>
+
+	[594642]
+	System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces
+	fix for MacOS X
+
 2010-09-29  Atsushi Eno  <atsushi@ximian.com>
 
 	Add some missing StructLayoutAttributes.

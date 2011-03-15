@@ -1,3 +1,48 @@
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not try to serialize null header item.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Message headers are now serialized and deserialized for
+	MessageHeaderDescription.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	handle IsTerminating.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Callback contract should be distinguished from others for
+	DispatchOperation.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix regression, avoid null key.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	And rename source file name.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename InstanceBhavior, too ambiguous among IXxxBehavior
+	interfaces.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Sessions should not be keyed by MessageId but be done by channel
+	SessionId.
+
 2010-10-20  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] make /js and /jsdebug dispatchers work.

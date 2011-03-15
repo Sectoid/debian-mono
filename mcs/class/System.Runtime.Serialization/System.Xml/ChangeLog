@@ -1,3 +1,19 @@
+2011-02-14  Miguel de Icaza  <miguel@gnome.org>
+
+	[670974] Use the underlying BaseStream to read bytes instead of
+	trying to peek a character.
+
+	Peeking a character as it turns out is a really bad idea as it
+	involves the encoder to pull characters. If the PeekChar happens
+	to read a byte that is part of a UTF8 string that needs more
+	characters to process we would end up with the reported crash.
+
+	Atsushi Enomoto tracked this down, and the fix is to use the
+	binaryreader.BaseStream to directly call into ReadByte and Read
+	without ever probing with PeekChar (). It is not really possible
+	to use BinaryReader.ReadByte since this one can throw on
+	end-of-buffer conditions instead of returning -1
+
 2010-12-20  Atsushi Eno  <atsushi@ximian.com>
 
 	Use DateTime ToBinary() and FromBinary() for DateTime

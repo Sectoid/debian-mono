@@ -1,3 +1,20 @@
+2011-02-03  Marek Habersack  <grendel@twistedcode.net>
+
+	[reflection] Default binder's AdjustArguments method treats
+	ParamArray parameters which are already arrays properly
+
+	Such parameters are not adjusted as it would lead to an
+	InvalidCastException whenever an attempt to set an array index's
+	value would be made.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Add NET 4.0 Assembly.UnsafeLoadFrom () method.
+
 2011-01-06  Zoltan Varga  <vargaz@gmail.com>
 
 	Change some usages of ArrayList to List<T> to avoid calls to the

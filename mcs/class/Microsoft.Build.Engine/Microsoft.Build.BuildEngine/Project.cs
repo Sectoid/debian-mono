@@ -76,6 +76,11 @@ namespace Microsoft.Build.BuildEngine {
 		bool				building;
 		BuildSettings			current_settings;
 		Stack<Batch>			batches;
+
+		// This is used to keep track of "current" file,
+		// which is then used to set the reserved properties
+		// $(MSBuildThisFile*)
+		Stack<string> this_file_property_stack;
 		ProjectLoadSettings		project_load_settings;
 
 
@@ -113,6 +118,7 @@ namespace Microsoft.Build.BuildEngine {
 			initialTargets = new List<string> ();
 			defaultTargets = new string [0];
 			batches = new Stack<Batch> ();
+			this_file_property_stack = new Stack<string> ();
 
 			globalProperties = new BuildPropertyGroup (null, this, null, false);
 			foreach (BuildProperty bp in parentEngine.GlobalProperties)
@@ -277,6 +283,11 @@ namespace Microsoft.Build.BuildEngine {
 		{
 			bool result = false;
 			ParentEngine.StartProjectBuild (this, targetNames);
+
+			// Invoking this to emit a warning in case of unsupported
+			// ToolsVersion
+			GetToolsVersionToUse (true);
+
 			string current_directory = Environment.CurrentDirectory;
 			try {
 				current_settings = buildFlags;
@@ -305,12 +316,18 @@ namespace Microsoft.Build.BuildEngine {
 			}
 			
 			if (targetNames == null || targetNames.Length == 0) {
-				if (defaultTargets != null && defaultTargets.Length != 0)
+				if (defaultTargets != null && defaultTargets.Length != 0) {
 					targetNames = defaultTargets;
-				else if (firstTargetName != null)
+				} else if (firstTargetName != null) {
 					targetNames = new string [1] { firstTargetName};
-				else
+				} else {
+					if (targets == null || targets.Count == 0) {
+						LogError (fullFileName, "No target found in the project");
+						return false;
+					}
+
 					return false;
+				}
 			}
 
 			if (!initialTargetsBuilt) {
@@ -452,6 +469,7 @@ namespace Microsoft.Build.BuildEngine {
 						"projectFileName");
 
 			this.fullFileName = Utilities.FromMSBuildPath (Path.GetFullPath (projectFileName));
+			PushThisFileProperty (fullFileName);
 
 			string filename = fullFileName;
 			if (String.Compare (Path.GetExtension (fullFileName), ".sln", true) == 0) {
@@ -805,7 +823,7 @@ namespace Microsoft.Build.BuildEngine {
 			targets = new TargetCollection (this);
 			last_item_group_containing = new Dictionary <string, BuildItemGroup> ();
 			
-			string effective_tools_version = GetToolsVersionToUse ();
+			string effective_tools_version = GetToolsVersionToUse (false);
 			taskDatabase = new TaskDatabase ();
 			taskDatabase.CopyTasks (ParentEngine.GetDefaultTasks (effective_tools_version));
 
@@ -870,7 +888,7 @@ namespace Microsoft.Build.BuildEngine {
 						AddPropertyGroup (xe, ip);
 						break;
 					case  "Choose":
-						AddChoose (xe);
+						AddChoose (xe, ip);
 						break;
 					default:
 						throw new InvalidProjectFileException (String.Format ("Invalid element '{0}' in project file.", xe.Name));
@@ -964,13 +982,18 @@ namespace Microsoft.Build.BuildEngine {
 				projectDir = Path.GetDirectoryName (FullFileName);
 
 			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildProjectDirectory", projectDir, PropertyType.Reserved));
+
+			if (this_file_property_stack.Count > 0)
+				// Just re-inited the properties, but according to the stack,
+				// we should have a MSBuild*This* property set
+				SetMSBuildThisFileProperties (this_file_property_stack.Peek ());
 		}
 
 		// precedence:
 		// ToolsVersion property
 		// ToolsVersion attribute on the project
 		// parentEngine's DefaultToolsVersion
-		string GetToolsVersionToUse ()
+		string GetToolsVersionToUse (bool emitWarning)
 		{
 			if (!String.IsNullOrEmpty (ToolsVersion))
 				return ToolsVersion;
@@ -979,7 +1002,8 @@ namespace Microsoft.Build.BuildEngine {
 				return parentEngine.DefaultToolsVersion;
 
 			if (parentEngine.Toolsets [DefaultToolsVersion] == null) {
-				LogWarning (FullFileName, "Project has unknown ToolsVersion '{0}'. Using the default tools version '{1}' instead.",
+				if (emitWarning)
+					LogWarning (FullFileName, "Project has unknown ToolsVersion '{0}'. Using the default tools version '{1}' instead.",
 						DefaultToolsVersion, parentEngine.DefaultToolsVersion);
 				return parentEngine.DefaultToolsVersion;
 			}
@@ -1054,9 +1078,9 @@ namespace Microsoft.Build.BuildEngine {
 			PropertyGroups.Add (bpg);
 		}
 		
-		void AddChoose (XmlElement xmlElement)
+		void AddChoose (XmlElement xmlElement, ImportedProject importedProject)
 		{
-			BuildChoose bc = new BuildChoose (xmlElement, this);
+			BuildChoose bc = new BuildChoose (xmlElement, this, importedProject);
 			groupingCollection.Add (bc);
 		}
 		
@@ -1248,6 +1272,41 @@ namespace Microsoft.Build.BuildEngine {
 
 			return default (T);
 		}
+
+		// Used for MSBuild*This* set of properties
+		internal void PushThisFileProperty (string full_filename)
+		{
+			string last_file = this_file_property_stack.Count == 0 ? String.Empty : this_file_property_stack.Peek ();
+			this_file_property_stack.Push (full_filename);
+			if (last_file != full_filename)
+				// first time, or different from previous one
+				SetMSBuildThisFileProperties (full_filename);
+		}
+
+		internal void PopThisFileProperty ()
+		{
+			string last_file = this_file_property_stack.Pop ();
+			if (this_file_property_stack.Count > 0 && last_file != this_file_property_stack.Peek ())
+				SetMSBuildThisFileProperties (this_file_property_stack.Peek ());
+		}
+
+		void SetMSBuildThisFileProperties (string full_filename)
+		{
+			if (String.IsNullOrEmpty (full_filename))
+				return;
+
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildThisFile", Path.GetFileName (full_filename), PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildThisFileFullPath", full_filename, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildThisFileName", Path.GetFileNameWithoutExtension (full_filename), PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildThisFileExtension", Path.GetExtension (full_filename), PropertyType.Reserved));
+
+			string project_dir = Path.GetDirectoryName (full_filename) + Path.DirectorySeparatorChar;
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildThisFileDirectory", project_dir, PropertyType.Reserved));
+			evaluatedProperties.AddProperty (new BuildProperty ("MSBuildThisFileDirectoryNoRoot",
+						project_dir.Substring (Path.GetPathRoot (project_dir).Length),
+						PropertyType.Reserved));
+		}
+
 
 		internal void LogWarning (string filename, string message, params object[] messageArgs)
 		{

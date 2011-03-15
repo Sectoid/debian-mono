@@ -1,3 +1,22 @@
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	To header seems mandatory in April2005, so fill it.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	April2005 AppSequence needs default constructor for
+	deserialization.
+
+2011-02-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix a couple of addressing namespace fixes (found in April2005
+	version).
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
 2010-09-24  Atsushi Eno  <atsushi@ximian.com>
 
 	Assign identical operation name for each contract version so that

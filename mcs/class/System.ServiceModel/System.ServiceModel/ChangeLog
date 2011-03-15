@@ -1,3 +1,79 @@
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	Almost eliminate wrong use of Constants.WsaNamespace.
+
+	They should be addressing-version-aware.
+
+2011-02-18  Atsushi Eno  <atsushi@ximian.com>
+
+	EndpointAddressAugust2004 was not serialized correctly.
+
+	Well, Actually unified the implementation with 10.
+
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Couple of corcompare fixes.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	implement some ServiceHostBase public methods that already existed
+	internally.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	When the callback contract type is the same as the contract, do
+	not block replies.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	EndpointAddress could be empty on opening the factory.
+
+2011-02-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Open and close client/service runtime channels in chains. Fixed
+	bug #663278.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Duplex client has its own listener loop, so special care on reply
+	is needed.
+
+2011-02-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Callback contract should be distinguished from others for
+	DispatchOperation.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	standard endpoint and protocol mapping support were lacking at
+	client side.
+
+	Turned out that they had nothing to do with #668089..
+
+2011-01-22  Atsushi Eno  <atsushi@ximian.com>
+
+	Manage opened proxy channels and close them when ChannelFactory is
+	closed.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Implemented a couple of async methods in InstanceContext as well
+	as disposing.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Rename InstanceBhavior, too ambiguous among IXxxBehavior
+	interfaces.
+
+2011-01-31  Atsushi Eno  <atsushi@ximian.com>
+
+	add public NetTcpSecurity .ctor() and close #667429.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	MonoTouch doesnt support SRE, so we need to disable this code on
+	MT
+
 2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* MsmqTransportSecurity.cs: Use the proper default values for this

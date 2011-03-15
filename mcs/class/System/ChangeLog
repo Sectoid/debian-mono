@@ -1,3 +1,9 @@
+2011-01-20  Miguel de Icaza  <miguel@gnome.org>
+
+	[sockets] Implement DuplicateAndClose and Socket
+	(SocketInformation) constructor for in-process socket passing
+	(AppDomains)
+
 2011-01-04  Marek Habersack  <grendel@twistedcode.net>
 
 	[system] Unbreak a 4.0 System.ServiceModel test.

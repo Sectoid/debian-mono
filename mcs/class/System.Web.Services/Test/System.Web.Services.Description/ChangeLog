@@ -1,3 +1,7 @@
+2011-02-04  Ankit Jain  <radical@corewars.org>
+
+	[webservices] Extensions can be unknown XmlElements also, fix.
+
 2009-06-26  Robert Jordan  <robertj@gmx.net>
 
 	* *.cs: Upgrade to new NUnit style.

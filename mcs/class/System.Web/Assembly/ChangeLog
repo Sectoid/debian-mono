@@ -1,3 +1,8 @@
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] System.Web and Microsoft.Web.Infrastructure are now
+	friends
+
 2011-01-08  Marek Safar  <marek.safar@gmail.com>
 
 	Fixed missing protected internal modifier

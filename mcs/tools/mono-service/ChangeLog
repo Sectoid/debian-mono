@@ -1,3 +1,9 @@
+2011-01-31  Bit Diff  <lists@bitdiff.com>
+
+	Fixes #527447 whereby it was not possible to pass additional
+	arguments to mono-service2 (if your executable required
+	command-line arguments of it's own).
+
 2008-02-08  Jonathan Pryor  <pryorj@novell.com>
 
 	* mono-service.cs: The return value of UnixSignal.WaitAny() changed; cope.

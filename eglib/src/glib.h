@@ -13,10 +13,6 @@
 #pragma include_alias(<eglib-config.h>, <eglib-config.hw>)
 #else
 #include <stdint.h>
-/* For pid_t */
-#ifndef WIN32
-#include <unistd.h>
-#endif
 #endif
 
 #include <eglib-config.h>
@@ -715,8 +711,6 @@ typedef enum {
 	G_SPAWN_CHILD_INHERITS_STDIN   = 1 << 5,
 	G_SPAWN_FILE_AND_ARGV_ZERO     = 1 << 6
 } GSpawnFlags;
-
-typedef pid_t GPid;
 
 typedef void (*GSpawnChildSetupFunc) (gpointer user_data);
 

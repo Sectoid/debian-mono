@@ -1,3 +1,21 @@
+2011-01-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix the basic-profile build.
+
+2011-01-31  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Fix the MonoDroid build.
+
+	Most System.TimeZoneInfo members weren't being included.
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Further .NET 4.0 ification of the mobile profile
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix the mobile build
+
 2010-12-16  Jonathan Pryor  <jonpryor@vt.edu>
 
 	[monodroid] Add support for the Android TimeZone file format.

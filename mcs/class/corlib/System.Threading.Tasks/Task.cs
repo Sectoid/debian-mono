@@ -22,7 +22,7 @@
 //
 //
 
-#if NET_4_0
+#if NET_4_0 || MOBILE
 
 using System;
 using System.Threading;
@@ -51,8 +51,7 @@ namespace System.Threading.Tasks
 		int                 taskId;
 		TaskCreationOptions taskCreationOptions;
 		
-		IScheduler          scheduler;
-		TaskScheduler       taskScheduler;
+		TaskScheduler       scheduler;
 
 		ManualResetEventSlim schedWait = new ManualResetEventSlim (false);
 		
@@ -63,6 +62,7 @@ namespace System.Threading.Tasks
 		
 		Action<object> action;
 		object         state;
+		AtomicBooleanValue executing;
 
 		ConcurrentQueue<EventHandler> completed = new ConcurrentQueue<EventHandler> ();
 
@@ -142,31 +142,15 @@ namespace System.Threading.Tasks
 		
 		public void Start (TaskScheduler scheduler)
 		{
-			Start (ProxifyScheduler (scheduler));
-		}
-		
-		void Start (IScheduler scheduler)
-		{
 			SetupScheduler (scheduler);
 			Schedule ();
 		}
 
-		internal void SetupScheduler (TaskScheduler tscheduler)
-		{
-			SetupScheduler (ProxifyScheduler (tscheduler));
-		}
-
-		internal void SetupScheduler (IScheduler scheduler)
+		internal void SetupScheduler (TaskScheduler scheduler)
 		{
 			this.scheduler = scheduler;
 			status = TaskStatus.WaitingForActivation;
 			schedWait.Set ();
-		}
-		
-		IScheduler ProxifyScheduler (TaskScheduler tscheduler)
-		{
-			IScheduler sched = tscheduler as IScheduler;
-			return sched != null ? sched : new SchedulerProxy (tscheduler);
 		}
 		
 		public void RunSynchronously ()
@@ -257,8 +241,7 @@ namespace System.Threading.Tasks
 		                                TaskScheduler scheduler, Func<bool> predicate)
 		{
 			// Already set the scheduler so that user can call Wait and that sort of stuff
-			continuation.taskScheduler = scheduler;
-			continuation.scheduler = ProxifyScheduler (scheduler);
+			continuation.scheduler = scheduler;
 			continuation.schedWait.Set ();
 			continuation.status = TaskStatus.WaitingForActivation;
 			
@@ -329,8 +312,7 @@ namespace System.Threading.Tasks
 		
 		void CheckAndSchedule (Task continuation, TaskContinuationOptions options, TaskScheduler scheduler, bool fromCaller)
 		{
-			if (!fromCaller 
-			    && (options & TaskContinuationOptions.ExecuteSynchronously) > 0)
+			if ((options & TaskContinuationOptions.ExecuteSynchronously) > 0)
 				continuation.ThreadStart ();
 			else
 				continuation.Start (scheduler);
@@ -357,7 +339,7 @@ namespace System.Threading.Tasks
 			
 			// If worker is null it means it is a local one, revert to the old behavior
 			if (childWorkAdder == null || CheckTaskOptions (taskCreationOptions, TaskCreationOptions.PreferFairness)) {
-				scheduler.AddWork (this);
+				scheduler.QueueTask (this);
 			} else {
 				/* Like the semantic of the ABP paper describe it, we add ourselves to the bottom 
 				 * of our Parent Task's ThreadWorker deque. It's ok to do that since we are in
@@ -369,8 +351,15 @@ namespace System.Threading.Tasks
 		
 		void ThreadStart ()
 		{
+			/* Allow scheduler to break fairness of deque ordering without
+			 * breaking its semantic (the task can be executed twice but the
+			 * second time it will return immediately
+			 */
+			if (!executing.TryRelaxedSet ())
+				return;
+
 			current = this;
-			TaskScheduler.Current = taskScheduler;
+			TaskScheduler.Current = scheduler;
 			
 			if (!token.IsCancellationRequested) {
 				
@@ -474,7 +463,7 @@ namespace System.Threading.Tasks
 		{
 			exception = e;
 			status = TaskStatus.Faulted;
-			if (taskScheduler != null && taskScheduler.FireUnobservedEvent (exception).Observed)
+			if (scheduler != null && scheduler.FireUnobservedEvent (exception).Observed)
 				exceptionObserved = true;
 		}
 		
@@ -640,7 +629,7 @@ namespace System.Threading.Tasks
 			int numFinished = 0;
 			int indexFirstFinished = -1;
 			int index = 0;
-			IScheduler sched = null;
+			TaskScheduler sched = null;
 			Task task = null;
 			Watch watch = Watch.StartNew ();
 			ManualResetEventSlim predicateEvt = new ManualResetEventSlim (false);

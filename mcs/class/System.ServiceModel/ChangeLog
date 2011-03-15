@@ -1,3 +1,17 @@
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	xsi:type parsing is wrong in default namespace resolution.
+
+	Fixed case #3 in bug #652331.
+
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Support ServiceKnownTypes. Fixed another case on bug #652331.
+
+2011-01-21  Atsushi Eno  <atsushi@ximian.com>
+
+	And rename source file name.
+
 2010-11-04  Carlos Alberto Cortez  <calberto.cortez@gmail.com>
 
 	* System.ServiceModel_test.dll.sources: Add

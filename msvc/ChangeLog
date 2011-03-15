@@ -1,3 +1,7 @@
+2011-01-19  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist more files needed by MSVC build
+
 2011-01-11  Geoff Norton  <grompf@sublimeintervention.com>
 
 	Fix the win32 build

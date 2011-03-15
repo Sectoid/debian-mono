@@ -1,3 +1,9 @@
+2011-02-23  Ankit Jain  <radical@corewars.org>
+
+	*
+	Microsoft.Build.Engine/Test/Microsoft.Build.BuildEngine/ProjectTest.cs:
+	Add corresponding test.
+
 2011-01-11  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Copy metadata from Project items to target outputs.

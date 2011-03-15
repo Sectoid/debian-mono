@@ -1,3 +1,16 @@
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Remove implementation details from public header io-layer.h
+
+	The macro HAVE_GETPROCESSID is defined in config.h and should not
+	be exposed in public headers.
+
+2011-01-26  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Prevent abort
+
+	When cleaning up the sockets we no longer have access to Tls.
+
 2011-01-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	[sockets] Fixed reading blocking flag

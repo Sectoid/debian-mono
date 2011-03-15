@@ -1,3 +1,27 @@
+2011-01-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Add an AtLeast version to sdb's VersionInfo class.
+
+2011-01-28  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Bump SDB protocol so MonoDevelop can guard IL inspection of
+	dynamic methods
+
+2011-01-26  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Include operands when emitting the IL stream to sdb clients
+
+2011-01-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Obsolete VirtualMachine.GetNextEvent () as it is impossible to
+	determine when to resume after an event, since the debuggee
+	suspends only once per event-set.
+
+2011-01-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a TID field to ThreadMirror which returns the system thread
+	id.
+
 2011-01-04  Zoltan Varga  <vargaz@gmail.com>
 
 	Add AssemblyLoadEventRequest () type to the sdb api, and use it to

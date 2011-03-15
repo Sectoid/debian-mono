@@ -1,3 +1,31 @@
+2011-02-21  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Implement proper TSD lookup for arm-darwin
+
+2011-02-20  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement mono_memory_barrier () and OP_MEMORY_BARRIER for ARM.
+
+2011-02-19  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking a mach_port every time we query the counters
+
+2011-02-19  Miguel de Icaza  <miguel@gnome.org>
+
+	Backport support for add support for new
+	PerformanceCounter("Process", "% Processor Time", "<process id as
+	string>" on OS X
+
+2011-01-29  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Use IOAMP-aware method of looking for domain
+	configuration file
+
+2011-01-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Avoid leaking the vmmap allocated by the kernel for the
+	thread_act_array_t
+
 2011-01-18  Zoltan Varga  <vargaz@gmail.com>
 
 	Make the stacks of aot image non-executable.

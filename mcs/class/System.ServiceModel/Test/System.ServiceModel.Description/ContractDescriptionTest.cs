@@ -27,6 +27,7 @@
 //
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Security;
 using System.Reflection;
 using System.ServiceModel;
@@ -422,11 +423,74 @@ namespace MonoTests.System.ServiceModel.Description
 		}
 		
 		[Test]
-		public static void MultipleContractsInTypeHierarchy ()
+		public void MultipleContractsInTypeHierarchy ()
 		{
 			ContractDescription.GetContract (typeof (DuplicateCheckClassWrapper.ServiceInterface));
 
 			var host = new ServiceHost (typeof (DuplicateCheckClassWrapper.DummyService)); // fine in MS, fails in Mono with "A contract cannot have two operations that have the identical names and different set of parameters"
+		}
+
+		[Test]
+		public void GetInheritedContracts ()
+		{
+			var cd = ContractDescription.GetContract (typeof (IService));
+			var ccd = cd.GetInheritedContracts ();
+			Assert.AreEqual (1, ccd.Count, "#1");
+			Assert.AreEqual (typeof (IServiceBase), ccd [0].ContractType, "#2");
+		}
+
+		[Test]
+		public void InheritedContractAndNamespaces ()
+		{
+			var cd = ContractDescription.GetContract (typeof (IService));
+			Assert.IsTrue (cd.Operations.Any (od => od.Messages.Any (md => md.Action == "http://tempuri.org/IServiceBase/Say")), "#1"); // inherited
+			Assert.IsTrue (cd.Operations.Any (od => od.SyncMethod == typeof (IService).GetMethod ("Join") && od.Messages.Any (md => md.Action == "http://tempuri.org/IService/Join")), "#2"); // self
+			Assert.IsTrue (cd.Operations.Any (od => od.SyncMethod == typeof (IService2).GetMethod ("Join") && od.Messages.Any (md => md.Action == "http://tempuri.org/IService/Join")), "#3"); // callback
+		}
+
+		[Test]
+		public void MessageContractAttributes ()
+		{
+			var cd = ContractDescription.GetContract (typeof (IFoo2));
+			var od = cd.Operations.First (o => o.Name == "Nanoda");
+			var md = od.Messages.First (m => m.Direction == MessageDirection.Input);
+			Assert.AreEqual (typeof (OregoMessage), md.MessageType, "message type");
+			Assert.AreEqual ("http://tempuri.org/IFoo2/Nanoda", md.Action, "action");
+			Assert.AreEqual (1, md.Headers.Count, "headers");
+			Assert.AreEqual (3, md.Body.Parts.Count, "body parts");
+			Assert.AreEqual (0, md.Properties.Count, "properties");
+		}
+
+		// .NET complains: The operation Nanoda2 either has a parameter or a return type that is attributed with MessageContractAttribute.  In order to represent the request message using a Message Contract, the operation must have a single parameter attributed with MessageContractAttribute.  In order to represent the response message using a Message Contract, the operation's return value must be a type that is attributed with MessageContractAttribute and the operation may not have any out or ref parameters.
+		[Test]
+		[ExpectedException (typeof (InvalidOperationException))]
+		public void MessageContractAttributes2 ()
+		{
+			ContractDescription.GetContract (typeof (IFoo2_2));
+		}
+
+		[Test]
+		public void MessageContractAttributes3 ()
+		{
+			ContractDescription.GetContract (typeof (IFoo2_3));
+		}
+
+		[Test]
+		public void MessageContractAttributes4 ()
+		{
+			ContractDescription.GetContract (typeof (IFoo2_4));
+		}
+
+		[Test]
+		public void MessageContractAttributes5 ()
+		{
+			ContractDescription.GetContract (typeof (IFoo2_5));
+		}
+
+		[Test]
+		public void MessageContractAttributes6 ()
+		{
+			ContractDescription.GetContract (typeof (IFoo2_6));
 		}
 
 		// It is for testing attribute search in interfaces.
@@ -479,11 +543,42 @@ namespace MonoTests.System.ServiceModel.Description
 
 			// FIXME: it does not pass yet
 			[OperationContract]
-			OregoMessage Nanoda2 (OregoMessage msg1, OregoMessage msg2);
-
-			// FIXME: it does not pass yet
-			[OperationContract]
 			Mona NewMona (Mona source);
+		}
+
+		[ServiceContract]
+		public interface IFoo2_2
+		{
+			[OperationContract] // wrong operation contract, must have only one parameter with MessageContractAttribute
+			OregoMessage Nanoda2 (OregoMessage msg1, OregoMessage msg2);
+		}
+
+		[ServiceContract]
+		public interface IFoo2_3
+		{
+			[OperationContract]
+			string Nanoda2 (OregoMessage msg1);
+		}
+
+		[ServiceContract]
+		public interface IFoo2_4
+		{
+			[OperationContract]
+			OregoMessage Nanoda2 (string s, string s2);
+		}
+
+		[ServiceContract]
+		public interface IFoo2_5
+		{
+			[OperationContract]
+			Message Nanoda2 (OregoMessage msg1);
+		}
+
+		[ServiceContract]
+		public interface IFoo2_6
+		{
+			[OperationContract]
+			OregoMessage Nanoda2 (Message msg1);
 		}
 
 		[ServiceContract]
@@ -511,6 +606,8 @@ namespace MonoTests.System.ServiceModel.Description
 		[MessageContract]
 		public class OregoMessage
 		{
+			[MessageHeader]
+			public string Head;
 			[MessageBodyMember]
 			public string Neutral;
 			[MessageBodyMember]
@@ -663,6 +760,34 @@ namespace MonoTests.System.ServiceModel.Description
 
 				public void Foo() { }
 			}
+		}
+
+		[ServiceContract]
+		public interface IServiceBase
+		{
+			[OperationContract (IsOneWay = true)]
+			void Say (string word);
+		}
+
+		[ServiceContract (CallbackContract = typeof (IService2))]
+		public interface IService : IServiceBase
+		{
+			[OperationContract]
+			void Join ();
+		}
+
+		[ServiceContract]
+		public interface IServiceBase2
+		{
+			[OperationContract (IsOneWay = true)]
+			void Say (string word);
+		}
+
+		[ServiceContract]
+		public interface IService2 : IServiceBase2
+		{
+			[OperationContract]
+			void Join ();
 		}
 	}
 }

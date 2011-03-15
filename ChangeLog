@@ -1,3 +1,75 @@
+2011-02-22  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Version 2.10.1
+
+2011-02-10  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Mono.Debugger.Soft.dll is installed for 4.0 also.
+
+2011-02-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[cross-compilation] Added some flexibility regarding the location
+	of development packages
+
+	The script now supports an extra cross-compilation directory in
+	which you can unpack the library and development packages
+	necessary for the build to succeed (glib, zlib etc). Also
+	supported now is specifying the location at which Mono will be
+	installed on Windows. Replaced SVN and GIT-SVN version checks with
+	git checks.
+
+2010-06-14  Hib Eris  <hib@hiberis.nl>
+
+	Fix build-mingw32.sh for CROSS_PKG_CONFIG_DIR without *.pc files
+
+2010-06-14  Hib Eris  <hib@hiberis.nl>
+
+	No longer include glib binaries in build-mingw32.sh builds.
+
+	By default, Mono now uses an embedded glib implementation, so
+	there is no need to ship external glib libraries anymore.
+
+2010-06-14  Hib Eris  <hib@hiberis.nl>
+
+	Let build-mingw32.sh script also work on dist tarballs
+
+2011-02-07  Hib Eris  <hib@hiberis.nl>
+
+	Use winternl.h instead of ddk (when available)
+
+	These changes are nescessary for compiling with a mingw-w64
+	compiler.
+
+2011-01-27  Zoltan Varga  <vargaz@gmail.com>
+
+	Applied patch from Burkhard Linke
+	<blinke@cebitec.uni-bielefeld.de>. Add support for newer boehm-gc
+	versions.
+
+2011-01-26  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add 2.0 and 4.0 S.D.S.C
+
+2011-01-24  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Add WebMatrix.Data to spec
+
+2011-01-19  Mark Probst  <mark.probst@gmail.com>
+
+	[build] pkg-config support for libmonosgen.
+
+2011-01-21  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Oops, Microsoft.Web.Infrastructure, not System.
+
+2011-01-21  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	add Microsoft.Web.Infrastructure
+
+2011-01-19  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Dist more files needed by MSVC build
+
 2011-01-13  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	2.10

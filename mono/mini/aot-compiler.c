@@ -144,7 +144,7 @@ typedef struct MonoAotCompile {
 	GPtrArray *extra_methods;
 	GPtrArray *image_table;
 	GPtrArray *globals;
-	GList *method_order;
+	GPtrArray *method_order;
 	guint32 *plt_got_info_offsets;
 	guint32 got_offset, plt_offset, plt_got_offset_base;
 	guint32 final_got_size;
@@ -526,7 +526,7 @@ arch_init (MonoAotCompile *acfg)
 	acfg->need_no_dead_strip = TRUE;
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) && !defined(TARGET_ARM)
 	acfg->need_pt_gnu_stack = TRUE;
 #endif
 }
@@ -2036,6 +2036,13 @@ encode_method_ref (MonoAotCompile *acfg, MonoMethod *method, guint8 *buf, guint8
 				g_assert_not_reached ();
 			}
 			break;
+		case MONO_WRAPPER_CASTCLASS:
+			if (!strcmp (method->name, "__castclass_with_cache")) {
+				encode_value (MONO_AOT_WRAPPER_CASTCLASS_WITH_CACHE, p, &p);
+			} else {
+				g_assert_not_reached ();
+			}
+			break;
 		default:
 			g_assert_not_reached ();
 		}
@@ -2317,8 +2324,7 @@ add_method_full (MonoAotCompile *acfg, MonoMethod *method, gboolean extra, int d
 	index = acfg->method_index;
 	add_method_with_index (acfg, method, index, extra);
 
-	/* FIXME: Fix quadratic behavior */
-	acfg->method_order = g_list_append (acfg->method_order, GUINT_TO_POINTER (index));
+	g_ptr_array_add (acfg->method_order, GUINT_TO_POINTER (index));
 
 	g_hash_table_insert (acfg->method_depth, method, GUINT_TO_POINTER (depth));
 
@@ -2609,7 +2615,12 @@ add_wrappers (MonoAotCompile *acfg)
 			klass = mono_class_get (acfg->image, token);
 			if (klass)
 				add_method (acfg, mono_marshal_get_virtual_stelemref (mono_array_class_get (klass, 1)));
+			else
+				mono_loader_clear_error ();
 		}
+
+		/* castclass_with_check wrapper */
+		add_method (acfg, mono_marshal_get_castclass_with_cache ());
 	}
 
 	/* 
@@ -2641,6 +2652,11 @@ add_wrappers (MonoAotCompile *acfg)
 		
 		token = MONO_TOKEN_TYPE_DEF | (i + 1);
 		klass = mono_class_get (acfg->image, token);
+
+		if (!klass) {
+			mono_loader_clear_error ();
+			continue;
+		}
 
 		if (klass->delegate && klass != mono_defaults.delegate_class && klass != mono_defaults.multicastdelegate_class && !klass->generic_container) {
 			method = mono_get_delegate_invoke (klass);
@@ -2749,6 +2765,11 @@ add_wrappers (MonoAotCompile *acfg)
 		token = MONO_TOKEN_TYPE_DEF | (i + 1);
 		klass = mono_class_get (acfg->image, token);
 
+		if (!klass) {
+			mono_loader_clear_error ();
+			continue;
+		}
+
 		if (klass->valuetype && !klass->generic_container && can_marshal_struct (klass)) {
 			add_method (acfg, mono_marshal_get_struct_to_ptr (klass));
 			add_method (acfg, mono_marshal_get_ptr_to_struct (klass));
@@ -2807,6 +2828,34 @@ add_generic_class (MonoAotCompile *acfg, MonoClass *klass, gboolean force)
 	add_generic_class_with_depth (acfg, klass, 0);
 }
 
+static gboolean
+check_type_depth (MonoType *t, int depth)
+{
+	int i;
+
+	if (depth > 8)
+		return TRUE;
+
+	switch (t->type) {
+	case MONO_TYPE_GENERICINST: {
+		MonoGenericClass *gklass = t->data.generic_class;
+		MonoGenericInst *ginst = gklass->context.class_inst;
+
+		if (ginst) {
+			for (i = 0; i < ginst->type_argc; ++i) {
+				if (check_type_depth (ginst->type_argv [i], depth + 1))
+					return TRUE;
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
+
+	return FALSE;
+}
+
 /*
  * add_generic_class:
  *
@@ -2818,9 +2867,6 @@ add_generic_class_with_depth (MonoAotCompile *acfg, MonoClass *klass, int depth)
 	MonoMethod *method;
 	gpointer iter;
 
-	if (depth > 8)
-		return;
-
 	mono_class_init (klass);
 
 	if (klass->generic_class && klass->generic_class->context.class_inst->is_open)
@@ -2830,6 +2876,9 @@ add_generic_class_with_depth (MonoAotCompile *acfg, MonoClass *klass, int depth)
 		return;
 
 	if (!klass->generic_class && !klass->rank)
+		return;
+
+	if (check_type_depth (&klass->byval_arg, 0))
 		return;
 
 	iter = NULL;
@@ -3080,8 +3129,10 @@ add_generic_instances (MonoAotCompile *acfg)
 		token = MONO_TOKEN_TYPE_SPEC | (i + 1);
 
 		klass = mono_class_get (acfg->image, token);
-		if (!klass || klass->rank)
+		if (!klass || klass->rank) {
+			mono_loader_clear_error ();
 			continue;
+		}
 
 		add_generic_class (acfg, klass, FALSE);
 	}
@@ -3479,6 +3530,7 @@ encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info, guint8 *buf, guint
 		break;
 	case MONO_PATCH_INFO_MSCORLIB_GOT_ADDR:
 	case MONO_PATCH_INFO_GC_CARD_TABLE_ADDR:
+	case MONO_PATCH_INFO_CASTCLASS_CACHE:
 		break;
 	case MONO_PATCH_INFO_METHOD_REL:
 		encode_value ((gint)patch_info->data.offset, p, &p);
@@ -3770,7 +3822,7 @@ emit_exception_debug_info (MonoAotCompile *acfg, MonoCompile *cfg)
 
 	seq_points = cfg->seq_point_info;
 
-	buf_size = header->num_clauses * 256 + debug_info_size + 1024 + (seq_points ? (seq_points->len * 64) : 0) + cfg->gc_map_size;
+	buf_size = header->num_clauses * 256 + debug_info_size + 2048 + (seq_points ? (seq_points->len * 64) : 0) + cfg->gc_map_size;
 	p = buf = g_malloc (buf_size);
 
 #ifdef MONO_ARCH_HAVE_XP_UNWIND
@@ -3950,6 +4002,8 @@ emit_klass_info (MonoAotCompile *acfg, guint32 token)
 	gpointer iter = NULL;
 
 	if (!klass) {
+		mono_loader_clear_error ();
+
 		buf_size = 16;
 
 		p = buf = g_malloc (buf_size);
@@ -4613,6 +4667,11 @@ can_encode_patch (MonoAotCompile *acfg, MonoJumpInfo *patch_info)
 					return TRUE;
 				else
 					return FALSE;
+			case MONO_WRAPPER_CASTCLASS:
+				if (!strcmp (method->name, "__castclass_with_cache"))
+					return TRUE;
+				else
+					return FALSE;
 			default:
 				//printf ("Skip (wrapper call): %d -> %s\n", patch_info->type, mono_method_full_name (patch_info->data.method, TRUE));
 				return FALSE;
@@ -4716,6 +4775,7 @@ compile_method (MonoAotCompile *acfg, MonoMethod *method)
 		return;
 	}
 	if (cfg->exception_type != MONO_EXCEPTION_NONE) {
+		//printf ("E: %s\n", mono_method_full_name (method, TRUE));
 		/* Let the exception happen at runtime */
 		return;
 	}
@@ -4968,7 +5028,8 @@ load_profile_files (MonoAotCompile *acfg)
 	int file_index, res, method_index, i;
 	char ver [256];
 	guint32 token;
-	GList *unordered;
+	GList *unordered, *l;
+	gboolean found;
 
 	file_index = 0;
 	while (TRUE) {
@@ -5014,9 +5075,15 @@ load_profile_files (MonoAotCompile *acfg)
 				token = mono_method_get_token (method);
 				method_index = mono_metadata_token_index (token) - 1;
 
-				if (!g_list_find (acfg->method_order, GUINT_TO_POINTER (method_index))) {
-					acfg->method_order = g_list_append (acfg->method_order, GUINT_TO_POINTER (method_index));
+				found = FALSE;
+				for (i = 0; i < acfg->method_order->len; ++i) {
+					if (g_ptr_array_index (acfg->method_order, i) == GUINT_TO_POINTER (method_index)) {
+						found = TRUE;
+						break;
+					}
 				}
+				if (!found)
+					g_ptr_array_add (acfg->method_order, GUINT_TO_POINTER (method_index));
 			} else {
 				//printf ("No method found matching '%s'.\n", name);
 			}
@@ -5026,15 +5093,20 @@ load_profile_files (MonoAotCompile *acfg)
 
 	/* Add missing methods */
 	unordered = NULL;
-	for (i = 0; i < acfg->image->tables [MONO_TABLE_METHOD].rows; ++i) {
-		if (!g_list_find (acfg->method_order, GUINT_TO_POINTER (i)))
-			unordered = g_list_prepend (unordered, GUINT_TO_POINTER (i));
+	for (method_index = 0; method_index < acfg->image->tables [MONO_TABLE_METHOD].rows; ++method_index) {
+		found = FALSE;
+		for (i = 0; i < acfg->method_order->len; ++i) {
+			if (g_ptr_array_index (acfg->method_order, i) == GUINT_TO_POINTER (method_index)) {
+				found = TRUE;
+				break;
+			}
+		}
+		if (!found)
+			unordered = g_list_prepend (unordered, GUINT_TO_POINTER (method_index));
 	}
 	unordered = g_list_reverse (unordered);
-	if (acfg->method_order)
-		g_list_last (acfg->method_order)->next = unordered;
-	else
-		acfg->method_order = unordered;
+	for (l = unordered; l; l = l->next)
+		g_ptr_array_add (acfg->method_order, l->data);
 }
  
 /* Used by the LLVM backend */
@@ -5154,7 +5226,7 @@ emit_llvm_file (MonoAotCompile *acfg)
 	 * then removing tailcallelim + the global opts, and adding a second gvn.
 	 */
 	opts = g_strdup ("-instcombine -simplifycfg");
-	opts = g_strdup ("-simplifycfg -domtree -domfrontier -scalarrepl -instcombine -simplifycfg -basiccg -prune-eh -inline -functionattrs -domtree -domfrontier -scalarrepl -simplify-libcalls -instcombine -simplifycfg -instcombine -simplifycfg -reassociate -domtree -loops -loopsimplify -domfrontier -loopsimplify -lcssa -loop-rotate -licm -lcssa -loop-unswitch -instcombine -scalar-evolution -loopsimplify -lcssa -iv-users -indvars -loop-deletion -loopsimplify -lcssa -loop-unroll -instcombine -memdep -gvn -memdep -memcpyopt -sccp -instcombine -domtree -memdep -dse -adce -gvn -simplifycfg -preverify -domtree -verify");
+	opts = g_strdup ("-simplifycfg -domtree -domfrontier -scalarrepl -instcombine -simplifycfg -basiccg -prune-eh -inline -functionattrs -domtree -domfrontier -scalarrepl -simplify-libcalls -instcombine -simplifycfg -instcombine -simplifycfg -reassociate -domtree -loops -loopsimplify -domfrontier -loopsimplify -lcssa -loop-rotate -licm -lcssa -loop-unswitch -instcombine -scalar-evolution -loopsimplify -lcssa -iv-users -indvars -loop-deletion -loopsimplify -lcssa -loop-unroll -instcombine -memdep -gvn -memdep -memcpyopt -sccp -instcombine -domtree -memdep -dse -adce -simplifycfg -preverify -domtree -verify");
 #if 1
 	command = g_strdup_printf ("%sopt -f %s -o temp.opt.bc temp.bc", acfg->aot_opts.llvm_path, opts);
 	printf ("Executing opt: %s\n", command);
@@ -5192,10 +5264,9 @@ emit_llvm_file (MonoAotCompile *acfg)
 static void
 emit_code (MonoAotCompile *acfg)
 {
-	int i;
+	int oindex, i;
 	char symbol [256];
 	char end_symbol [256];
-	GList *l;
 
 #if defined(TARGET_POWERPC64)
 	sprintf (symbol, ".Lgot_addr");
@@ -5241,13 +5312,12 @@ emit_code (MonoAotCompile *acfg)
 		emit_bytes (acfg, pad_buffer, kPaddingSize);
 	}
 #endif
-	
 
-	for (l = acfg->method_order; l != NULL; l = l->next) {
+	for (oindex = 0; oindex < acfg->method_order->len; ++oindex) {
 		MonoCompile *cfg;
 		MonoMethod *method;
 
-		i = GPOINTER_TO_UINT (l->data);
+		i = GPOINTER_TO_UINT (g_ptr_array_index (acfg->method_order, oindex));
 
 		cfg = acfg->cfgs [i];
 
@@ -5330,15 +5400,14 @@ emit_code (MonoAotCompile *acfg)
 static void
 emit_info (MonoAotCompile *acfg)
 {
-	int i;
+	int oindex, i;
 	char symbol [256];
-	GList *l;
 	gint32 *offsets;
 
 	offsets = g_new0 (gint32, acfg->nmethods);
 
-	for (l = acfg->method_order; l != NULL; l = l->next) {
-		i = GPOINTER_TO_UINT (l->data);
+	for (oindex = 0; oindex < acfg->method_order->len; ++oindex) {
+		i = GPOINTER_TO_UINT (g_ptr_array_index (acfg->method_order, oindex));
 
 		if (acfg->cfgs [i]) {
 			emit_method_info (acfg, acfg->cfgs [i]);
@@ -5860,8 +5929,10 @@ emit_class_name_table (MonoAotCompile *acfg)
 	for (i = 0; i < acfg->image->tables [MONO_TABLE_TYPEDEF].rows; ++i) {
 		token = MONO_TOKEN_TYPE_DEF | (i + 1);
 		klass = mono_class_get (acfg->image, token);
-		if (!klass)
+		if (!klass) {
+			mono_loader_clear_error ();
 			continue;
+		}
 		full_name = mono_type_get_name_full (mono_class_get_type (klass), MONO_TYPE_NAME_FORMAT_FULL_NAME);
 		hash = mono_metadata_str_hash (full_name) % table_size;
 		g_free (full_name);
@@ -6647,6 +6718,7 @@ acfg_create (MonoAssembly *ass, guint32 opts)
 	acfg->unwind_info_offsets = g_hash_table_new (NULL, NULL);
 	acfg->unwind_ops = g_ptr_array_new ();
 	acfg->method_label_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+	acfg->method_order = g_ptr_array_new ();
 	InitializeCriticalSection (&acfg->mutex);
 
 	return acfg;

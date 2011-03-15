@@ -27,11 +27,11 @@
 using System;
 using System.Runtime.CompilerServices;
 
-#if !INSIDE_CORLIB && (NET_4_0 || MOONLIGHT)
+#if !INSIDE_CORLIB && (NET_4_0 || MOONLIGHT || MOBILE)
 
 [assembly:TypeForwardedTo (typeof(TimeZoneInfo))]
 
-#elif NET_3_5 || (MOBILE && !INSIDE_CORLIB) || (MOONLIGHT && INSIDE_CORLIB)
+#elif (INSIDE_CORLIB && (NET_4_0 || MOONLIGHT || MOBILE)) || (!INSIDE_CORLIB && (NET_3_5 && !NET_4_0 && !MOBILE))
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -50,7 +50,7 @@ namespace System
 {
 #if NET_4_0
 	[TypeForwardedFrom (Consts.AssemblySystemCore_3_5)]
-#elif MOONLIGHT
+#elif MOONLIGHT || MOBILE
 	[TypeForwardedFrom (Consts.AssemblySystem_Core)]
 #endif
 	[SerializableAttribute]
@@ -528,8 +528,9 @@ namespace System
 				}
 #endif
 #if MONODROID
-			systemTimeZones.AddRange (ZoneInfoDB.GetAvailableIds ()
-					.Select (id => ZoneInfoDB.GetTimeZone (id)));
+			foreach (string id in ZoneInfoDB.GetAvailableIds ()) {
+				systemTimeZones.Add (ZoneInfoDB.GetTimeZone (id));
+			}
 #elif LIBC
 				string[] continents = new string [] {"Africa", "America", "Antarctica", "Arctic", "Asia", "Atlantic", "Brazil", "Canada", "Chile", "Europe", "Indian", "Mexico", "Mideast", "Pacific", "US"};
 				foreach (string continent in continents) {

@@ -1,3 +1,20 @@
+2011-02-08  Marek Habersack  <grendel@twistedcode.net>
+
+	[crypto] Added missing 4.0 algorithm names
+
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[corlib,crypto] RandomNumberGenerator implements IDisposable in
+	4.0
+
+2011-01-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* System.Security.Cryptography/CryptoConfig.cs: Add OID for
+	RIPEMD160 *
+	System.Security.Cryptography/RSACryptoServiceProvider.cs: Update
+	GetHashNameFromOID to include SHA2-family OIDs. Remove historical
+	comments about 1.x FX behavior.
+
 2010-11-11  Sebastien Pouliot  <sebastien@ximian.com>
 
 	* CryptoConfig_2_1.cs: Add fully qualified name (to simple name)

@@ -1,3 +1,87 @@
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow people to optionally fallback to the old scheduler with an
+	environment variable
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Remove ctors in TpScheduler
+
+	This also remove the capping of the ThreadPool, problem needs to
+	be fixed in the pool itself.
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make TryExecuteTaskInline a bit smarter
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Refactor common code block of TpScheduler and SyncContextScheduler
+	in SchedulerProxy
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	When finding best worker number in Parallel loops use current
+	TaskScheduler instead of default TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adapt TpScheduler to the new API in TaskScheduler
+
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Cache callback delegate in TpScheduler when passing Task to
+	QueueUserWorkItem
+
+2011-02-14  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Don't create a new lambda everytime when queuing Task via
+	ThreadPool QueueUserWorkItem
+
+2011-02-14  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Try to execute task inline when they are ready to run and we wait
+	on them with no timeout
+
+2011-02-02  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Threadpool Task scheduler
+
+2011-02-16  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement properly TaskScheduler's
+	FromCurrentSynchronizationContext
+
+2011-01-31  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Adapt Parallel.For stealing to all processor flavors
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Allow multiple invocation of Task Execute method to allow
+	short-circuiting without breaking deque ordering
+
+2011-02-15  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Implement TaskFactory.FromAsync
+
+2011-01-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Add pfx to the mobile profile
+
+2011-01-24  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Make sure a synchronous continuation get executed synchronously in
+	all cases
+
 2011-01-13  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Make use of the wait changes in the internal TaskScheduler ->

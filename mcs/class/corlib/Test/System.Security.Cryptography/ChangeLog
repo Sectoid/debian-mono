@@ -1,3 +1,15 @@
+2011-01-11  Sebastien Pouliot  <sebastien@ximian.com>
+
+	* Test/System.Security.Cryptography/CryptoConfigTest.cs: Add test
+	cases wrt RIPEMD160 OID *
+	Test/System.Security.Cryptography/RSACryptoServiceProviderTest.cs:
+	Add test case for SignHash with all FX-provided hash
+	implementations (all working except RIPEMD160). Remove some
+	NET_2_0/NET_1_1 defines. *
+	Test/System.Security.Cryptography/RSAPKCS1SignatureFormatterTest.cs:
+	Remove hacks that were needed for running the tests under FX 1.x.
+	Remove some NET_2_0/NET_1_1 defines.
+
 2010-10-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Buffer sizes

@@ -1,3 +1,129 @@
+2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Kill old IScheduler interface.
+
+	We still use the ParticipateUntil facility of IScheduler
+	internally and provide a default implementation for pure
+	TaskScheduler
+
+2011-02-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc3] Fix for bug #668655. Implemented a few more
+	NameValueCollection method overloads.
+
+2011-02-15  Marek Safar  <marek.safar@gmail.com>
+
+	[671878] Fixes IKVM ordering of catch clauses
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	quick build workaround.
+
+2011-02-01  Atsushi Eno  <atsushi@ximian.com>
+
+	in NET_4_0, remove types that went into System.Xaml.dll. Change
+	build order.
+
+2011-01-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Leave db connection opened until requested to close it and add
+	more unit tests
+
+2011-01-25  Miguel de Icaza  <miguel@gnome.org>
+
+	Restoring some of the formal beauty of this text document as we
+	carefully restore the missing tabs that helped carefully align the
+	continuation characters in a list of assemblies.
+
+	As we align these newline separators, suddenly, a new form emerges
+	from the chaos, something that gives us the illusion that this
+	stream of bytes is indeed almost like a dawn of a new day as we
+	breathe the air in a valley overlooking a beautiful mountain at
+	the beginning of the spring.
+
+2011-01-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[wcf] Install the System.Data.Services.Client properly.
+
+2011-01-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add unit test for Database
+
+2011-01-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add unit tests for DynamicRecord
+
+2011-01-22  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Just fixup comment
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add GetLastInsertId
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Foobar trigger connection
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add Close method
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add ConnectionOpened event to Database
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix up compilation of Database and DynamicRecord
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add Dispose calls to Database
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add Database type
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Complete base DynamicRecord API
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Stub DynamicRecord
+
+2011-01-21  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add WebMatrix.Data assembly skeleton
+
+2011-01-20  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	remove conflict marker
+
+2011-01-19  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net,mvc] Make unobtrustive request validation in MVC v3
+	possible
+
+	Validation is enabled early in the pipeline during request.
+	ValidationUtility makes sure that validation is indeed enabled and
+	replaces the default form and query string collections with a lazy
+	version which will validate values only when an existing key is
+	found and requested.
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] ValidationUtility implementation
+
+2011-01-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Implemented dynamic HTTP module registration
+
+2011-01-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Added the Microsoft.Web.Infrastructure assembly
+
 2011-01-17  Marek Safar  <marek.safar@gmail.com>
 
 	Update IKVM.Reflection

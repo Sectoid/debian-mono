@@ -1,3 +1,8 @@
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	HTTP authentication in HttpListener had dropped during
+	refactoring. Now it's back.
+
 2010-11-09  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] AJAX GET requests work now.

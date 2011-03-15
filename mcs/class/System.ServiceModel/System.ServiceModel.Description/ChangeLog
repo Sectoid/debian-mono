@@ -1,3 +1,39 @@
+2011-02-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Only use non-null values in ServiceAuthorizationBehavior.
+
+2011-02-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Operation interface methods also have ServiceKnownType attributes.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Async MessageContract pattern needs more sophisticated contract
+	validity check.
+
+	It totally killed discovery.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	ServiceDescription.cs does not exist in moonlight, so move
+	TypeExtension.
+
+2011-02-15  Atsushi Eno  <atsushi@ximian.com>
+
+	MessageHeaderDescription were not filled in message contract.
+	Reject wrong contracts.
+
+2011-02-03  Atsushi Eno  <atsushi@ximian.com>
+
+	Now operations are collected per corresponding
+	ContractDescription.
+
+	This fixes naming of MessageDescription Action URI from its type.
+
+2011-02-02  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement GetInheritedContracts(), towards bugfix #668089.
+
 2010-11-10  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] .NET allows for service contract methods to be decorated

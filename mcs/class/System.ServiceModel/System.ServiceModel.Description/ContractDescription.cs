@@ -29,6 +29,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net.Security;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -38,6 +39,16 @@ using System.ServiceModel.Dispatcher;
 
 namespace System.ServiceModel.Description
 {
+	internal static class Extensions
+	{
+		public static T GetCustomAttribute<T> (this MemberInfo mi, bool inherit) where T : Attribute
+		{
+			foreach (T att in mi.GetCustomAttributes (typeof (T), inherit))
+				return att;
+			return null;
+		}
+	}
+
 	public class ContractDescription
 	{		
 		[MonoTODO]
@@ -139,10 +150,15 @@ namespace System.ServiceModel.Description
 			set { session = value; }
 		}
 
-		[MonoTODO]
 		public Collection<ContractDescription> GetInheritedContracts ()
 		{
-			throw new NotImplementedException ();
+			var ret = new Collection<ContractDescription> ();
+			foreach (var it in ContractType.GetInterfaces ()) {
+				var icd = ContractDescriptionGenerator.GetContractInternal (it, null, null);
+				if (icd != null)
+					ret.Add (icd);
+			}
+			return ret;
 		}
 
 		internal ClientRuntime CreateClientRuntime (object callbackDispatchRuntime)

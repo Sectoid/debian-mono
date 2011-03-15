@@ -1,3 +1,7 @@
+2011-01-19  Mark Probst  <mark.probst@gmail.com>
+
+	[build] pkg-config support for libmonosgen.
+
 2010-12-01  Jonathan Pryor  <jonpryor@vt.edu>
 
 	Add response file suport to Mono.Options.

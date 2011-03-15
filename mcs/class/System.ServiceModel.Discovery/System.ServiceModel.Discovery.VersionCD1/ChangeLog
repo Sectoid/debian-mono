@@ -1,3 +1,8 @@
+2011-02-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Recent ContractDescription fix uncovered wrong contracts in
+	discovery.
+
 2010-09-24  Atsushi Eno  <atsushi@ximian.com>
 
 	Assign identical operation name for each contract version so that

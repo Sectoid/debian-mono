@@ -1,3 +1,71 @@
+2011-02-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] UserHostName includes the port.
+
+2011-02-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] EndGetResponse already does this.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Use the timeout in GetResponse()
+
+	The timeout was not being used in GetResponse. Fixes bug #603794.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Avoid nullref on empty cookie header.
+
+	If the Set-Cookie header is empty, the cookie instance is not
+	created. Fixes bug #670189.
+
+2011-02-13  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListenre] Avoid multiple calls to Close()
+
+	HttpListenerResponse could be calling HttpConnection.Close() more
+	than once.
+
+2011-02-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Can't ignore erros here
+
+2011-02-10  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpWebRequest] Error handling for POST/PUT
+
+	When we get an error from the server before writing an entire
+	unbuffered response, the server might close the connection leading
+	to write errors. Ignore those and return the actual HTTP status
+	code from the original server error.
+
+2011-01-31  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Allow forcing HTTP protocol version
+
+	If the version is manually set, ignore the version from the
+	service point when set.
+
+	Fixes bug #668199.
+
+2011-01-27  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Set each cookie in its own header
+
+	Send a Set-Cookie header per cookie instead of a Set-Cookie2 with
+	multiple cookies.
+
+	Fixes bug #667550.
+
+2011-01-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[HttpListener] Fix incorrect 411 error
+
+	Don't send a 411 for unknown methods without content length. No
+	need to assign input_stream until requested.
+
+	Fixes bug #666251.
+
 2010-12-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
 
 	Workaround bug in AcquireWriterLock
