@@ -768,6 +768,7 @@ libmono-2.0.so.1 libmono-2.0-1 #MINVER#
  mono_sem_post@VER_1 2.10~rc1
  mono_sem_timedwait@VER_1 2.10~rc1
  mono_sem_wait@VER_1 2.10~rc1
+ mono_set_assemblies_path@VER_1 2.10.1
  mono_set_break_policy@VER_1 2.10~rc1
  mono_set_config_dir@VER_1 2.10~rc1
  mono_set_defaults@VER_1 2.10~rc1
