@@ -29,3 +29,10 @@ debian/tmp/usr/share/man/man1/soapsuds.1
 debian/tmp/usr/share/man/man1/sqlsharp.1
 debian/tmp/usr/share/man/man1/wsdl.1
 debian/tmp/usr/share/man/man1/xsd.1
+debian/tmp/usr/share/man/man1/al2.1
+debian/tmp/usr/share/man/man1/httpcfg.1
+debian/tmp/usr/share/man/man1/mconfig.1
+debian/tmp/usr/share/man/man1/monop2.1
+debian/tmp/usr/share/man/man1/resgen2.1
+debian/tmp/usr/share/man/man1/sgen.1
+debian/tmp/usr/share/man/man1/wsdl2.1
