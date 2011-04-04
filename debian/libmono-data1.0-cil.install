@@ -1,6 +1,0 @@
-debian/tmp/usr/lib/mono/1.0/Mono.Data.SybaseClient.dll
-debian/tmp/usr/lib/mono/1.0/Mono.Data.TdsClient.dll
-debian/tmp/usr/lib/mono/1.0/Mono.Data.dll
-debian/tmp/usr/lib/mono/gac/Mono.Data.SybaseClient/1.0.5000.0__*/
-debian/tmp/usr/lib/mono/gac/Mono.Data.TdsClient/1.0.5000.0__*/
-debian/tmp/usr/lib/mono/gac/Mono.Data/1.0.5000.0__*/

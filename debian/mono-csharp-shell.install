@@ -1,4 +1,2 @@
 /usr/bin/csharp
-/usr/lib/mono/2.0/csharp.exe*
-/usr/lib/mono/2.0/Mono.CSharp.dll
-/usr/lib/mono/gac/Mono.CSharp/
+/usr/lib/mono/4.0/csharp.exe*

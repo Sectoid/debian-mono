@@ -1,2 +1,2 @@
-debian/tmp/usr/bin/mcs
-debian/tmp/usr/lib/mono/1.0/mcs.exe*
+/usr/bin/mcs
+/usr/lib/mono/2.0/mcs.exe*

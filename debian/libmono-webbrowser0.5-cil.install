@@ -1,2 +1,2 @@
-debian/tmp/usr/lib/mono/gac/Mono.WebBrowser/0.5.0.0__*/
-debian/tmp/usr/lib/mono/2.0/Mono.WebBrowser.dll
+/usr/lib/mono/4.0/Mono.WebBrowser.dll*
+/usr/lib/mono/gac/Mono.WebBrowser/0.5.0.0__*/
