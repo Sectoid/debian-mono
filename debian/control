@@ -124,7 +124,6 @@ Depends: ${misc:Depends},
          mono-2.0-devel (= ${source:Version}),
          monodoc-base (= ${source:Version}),
          monodoc-manual (= ${source:Version}),
-         prj2make-sharp (= ${source:Version}),
          libmono-cil-dev (= ${source:Version})
 Description: complete Mono runtime, development tools and all libraries
  Mono is a platform for running and developing applications based on the
@@ -1648,15 +1647,6 @@ Description: LALR(1) parser generator oriented to Java/CLI
  and generates tables and an interpreter which recognizes the language
  defined by the grammar and executes the semantic actions as their
  corresponding phrases are recognized.
-
-Package: prj2make-sharp
-Section: devel
-Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${cli:Depends}, pkg-config, libmono-2.0-dev
-Description: Convert VS.NET solution files to Makefiles
- prj2make-solution is a utility used to read a "solution" file created
- with Visual Studio .NET and generate a usual Makefile suitable for
- compilation with a C# compiler.
 
 Package: mono-csharp-shell
 Section: shells
