@@ -242,18 +242,15 @@ binary-indep: build-stamp install-stamp
 	# Late GAC
 	install -D -m 755 debian/mono.runtime-script debian/mono-gac/usr/share/cli-common/runtimes.d/mono
 
-	install -m 644 debian/System.Data.dll.config debian/libmono-system-data1.0-cil/usr/lib/mono/gac/System.Data/1.0.*/
 	install -m 644 debian/System.Data.dll.config debian/libmono-system-data2.0-cil/usr/lib/mono/gac/System.Data/2.0.*/
-	install -m 644 debian/System.Drawing.dll.config debian/libmono-system1.0-cil/usr/lib/mono/gac/System.Drawing/1.0.*/
+	install -m 644 debian/System.Data.dll.config debian/libmono-system-data4.0-cil/usr/lib/mono/gac/System.Data/4.0.*/
 	install -m 644 debian/System.Drawing.dll.config debian/libmono-system2.0-cil/usr/lib/mono/gac/System.Drawing/2.0.*/
-	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms1.0-cil/usr/lib/mono/gac/System.Windows.Forms/1.0.*/
+	install -m 644 debian/System.Drawing.dll.config debian/libmono-system-drawing4.0-cil/usr/lib/mono/gac/System.Drawing/4.0.*/
 	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-winforms2.0-cil/usr/lib/mono/gac/System.Windows.Forms/2.0.*/
-	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo1.0-cil/usr/lib/mono/gac/Mono.Cairo/1.0.*/
+	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-system-windows-forms4.0-cil/usr/lib/mono/gac/System.Windows.Forms/4.0.*/
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo2.0-cil/usr/lib/mono/gac/Mono.Cairo/2.0.*/
-	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/1.0.*/
-	install -m 644 debian/Mono.Data.SqliteClient.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.SqliteClient/2.0.*/
-	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite1.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/1.0.*/
-	install -m 644 debian/Mono.Data.Sqlite.dll.config debian/libmono-sqlite2.0-cil/usr/lib/mono/gac/Mono.Data.Sqlite/2.0.*/
+	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo4.0-cil/usr/lib/mono/gac/Mono.Cairo/4.0.*/
+	install -m 644 debian/Mono.WebBrowser.dll.config debian/libmono-webbrowser0.5-cil/usr/lib/mono/gac/Mono.WebBrowser/0.5.*/
 	
 	dh_link -i
 	dh_installchangelogs -i -X ChangeLog
