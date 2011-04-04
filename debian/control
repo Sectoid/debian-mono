@@ -2369,7 +2369,8 @@ Architecture: all
 Depends: ${misc:Depends},
          ${cli:Depends},
          libmono-corlib4.0-cil (>= ${mono:upversion}),
-         libmono-corlib4.0-cil (<< ${mono:next-upversion})
+         libmono-corlib4.0-cil (<< ${mono:next-upversion}),
+         libmono-microsoft-csharp4.0-cil
 Recommends: pkg-config
 Description: Mono C# 4.0 compiler for CLI 4.0
  This is the Mono C# (C-Sharp) 4.0 compiler, a platform-independent compiler
