@@ -1,3 +1,96 @@
+mono (2.10.1-1) experimental; urgency=low
+
+  * The "size does matter" release
+
+  [ Mirco Bauer ]
+  * New upstream release
+    + For release highlights see the NEWS.Debian file of the
+      mono-runtime package
+
+  [ Jo Shields ]
+  * [5c6aba5] Imported Upstream version 2.8
+  * [f85b0b1] Imported Upstream version 2.8.1
+
+  [ Mirco Bauer ]
+  * [01df276] Pass parallel variable in DEB_BUILD_OPTIONS to mono/Makefile
+  * [e3871f8] Build libgc before mono
+
+  [ Jo Shields ]
+  * [98cb87c] Imported Upstream version 2.10~rc1
+  * [b401a2a] Add test which is missing from 2.10~rc1 tarballs, causing test
+              suite to fail to build
+
+  [ Mirco Bauer ]
+  * [79f2862] Build eglib before libgc and made them parallel buildable
+  * [58bf7d7] Renamed libmono0 package to libmono-2.0-1 following the new
+              soname
+  * [f1e4e50] Provide deb-symbols for libmono-2.0-1
+  * [7be8ed1] Renamed libmono-dev package to libmono-2.0-dev and dropped
+              libglib2.0-dev dependency as Mono no longer makes use of the glib
+  * [d97f372] Moved mono.pc to libmono-cil-dev
+  * [3cd11ad] New mono-runtime-sgen package which contains the Mono VM with
+              a new garbage collector
+  * [7f3919a] Dropped libmono-firebirdsql1.7-cil package
+  * [c31f6e2] Stick to upstream's configure defaults except for ikvm and
+              quiet builds
+  * [de8c9aa] Removed obsolete cleanups
+  * [97c07fa] Removed obsolete doc dir symlinking removal code for Ubuntu
+  * [e6e31ff] Cleaned up Uploaders
+  * [3c24df0] Disable automatic AOT on "make install" as this needs to be done
+              on package install time
+  * [1ced0ac] Merged the install-arch and install-indep target into a single
+              install target
+  * [3a2409b] Disable libgc's parallel mark on powerpc as it FTBFS
+  * [97c6760] Added a 2nd test-suite pass with sgen
+  * [af7129a] Disable sgen on powerpc for now as it needs further porting
+  * [3f99e0e] Don't run the test-suite with sgen on powerpc
+
+  [ Jo Shields ]
+  * [9a320e5] Imported Upstream version 2.10.1
+
+  [ Mirco Bauer ]
+  * [e618805] Don't delete ltmain.sh in clean target as autoreconf is not
+              recreating it
+  * [38ccb49] Updated libmono-2.0-1.symbols for 2.10.1
+  * [0472e8b] Dropped license and copyright information of no longer
+              distributed FirebirdSql.Data.Firebird and Microsoft.JScript
+              assemblies
+  * [cb9cfec] Moved license and copyright information of RabbitMQ.Client to
+              distinct copyright files
+  * [d191bb3] Moved changelog entries older than 2.6.7-1 to changelog.1
+  * [4b69b38] Dropped mono-1.0-devel and merged mono-2.0-devel into mono-devel
+  * [f8e8352] Re-synced debhelper tools from cli-common 0.8~git.ca22e7 with
+              .NET 4.0 support
+  * [dac60fb] Ignore temporarily package build directories
+  * [78db0f9] Replaced depcrecated dh_clean -k call with dh_prep
+  * [4cd31f2] Forcely install jay
+  * [3e69ed3] Drop unwanted/incorrectly shipped files from upstream
+  * [a27bef2] Dropped obsolete and added missing manpages
+  * [b407a26] Make use of dh_install's --list-missing feature
+  * [37638d7] Dropped obsolete and added missing dllmaps
+  * [1597015] Bumped clilibs to >= 2.10.1 where needed
+  * [953569a] Dropped obsolete replaces << 1.2.4-1 lines from mono-dbg
+  * [ee0cbf6] Dropped prj2make-sharp package
+  * [61a9ed1] Updated debian/shlibs.local for Mono 2.10.1
+  * [0fa85d7] Updated mono-runtime.NEWS for Mono 2.10, 2.8 and 2.6
+  * [15fe448] Dropped all CLI 1.0 library and C# 1.0 compiler packages as
+              Mono 2.10 no longer supports the 1.0 runtime, added new packages
+              for all CLI 4.0 libraries and the C# 4.0 compiler and made
+              C# 4.0 the new default C# compiler.
+              All CLI 2.0 library packages are left for ABI and backwards
+              compatibility.
+  * [59b28b7] Sorted dependencies of libmono-cil-dev for easier tracking
+  * [9288af2] Added missing libmono-microsoft-csharp4.0-cil to libmono-cil-dev
+              dependencies
+  * [30cd43e] Added libmono-microsoft-csharp4.0-cil as manual dependency to
+              mono-dmcs as needed for dynamic types
+  * [f262b9f] Added debian/find-icalls.sh helper script which finds internal
+              calls from the source tree
+  * [ce1e2f5] Force the debian version. $(top_srcdir)/.git is no longer a good
+              indicator if this is an upstream git clone or a debian git clone
+
+ -- Mirco Bauer <meebey@debian.org>  Mon, 04 Apr 2011 22:26:28 +0200
+
 mono (2.6.7-5) unstable; urgency=low
 
   [ Zoltan Varga ]
