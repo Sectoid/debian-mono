@@ -88,8 +88,9 @@ mono (2.10.1-1) experimental; urgency=low
               calls from the source tree
   * [ce1e2f5] Force the debian version. $(top_srcdir)/.git is no longer a good
               indicator if this is an upstream git clone or a debian git clone
+  * [ebf531b] Switch to dpkg-source 3.0 (quilt) format
 
- -- Mirco Bauer <meebey@debian.org>  Mon, 04 Apr 2011 22:26:28 +0200
+ -- Mirco Bauer <meebey@debian.org>  Mon, 04 Apr 2011 23:33:35 +0200
 
 mono (2.6.7-5) unstable; urgency=low
 
