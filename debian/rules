@@ -166,6 +166,8 @@ install-stamp:
 	dh_installdirs
 
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	cd mcs/jay && \
+		$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 
 	# don't want docs of bundled libgc
 	rm -rf debian/tmp/usr/share/libgc-mono
