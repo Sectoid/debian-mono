@@ -200,28 +200,20 @@ install-stamp:
 	# copy missing 2.0 manpages
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/al.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/al2.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/gmcs.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mcs.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/smcs.1
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/dmcs.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/mono-service2.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/mkbundle2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/wsdl2.1
+	cp $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil.1 \
+	   $(CURDIR)/debian/tmp/usr/share/man/man1/gacutil2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/monop.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/monop2.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/ilasm2.1
 	cp $(CURDIR)/debian/tmp/usr/share/man/man1/resgen.1 \
 	   $(CURDIR)/debian/tmp/usr/share/man/man1/resgen2.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/genxs.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/genxs2.1
-	cp $(CURDIR)/debian/tmp/usr/share/man/man1/xsd.1 \
-	   $(CURDIR)/debian/tmp/usr/share/man/man1/xsd2.1
 	touch $@
 
 binary: binary-arch binary-indep
