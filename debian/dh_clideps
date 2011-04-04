@@ -156,10 +156,11 @@ if (defined($dh{INTERNAL_MONO_FLAG}) ||
 {
   local $/="";
   open(FILE, 'debian/control');
-  my @filedata = <FILE>;
+  my $srcblock = <FILE>;
   close(FILE);
-  if (!($filedata[0] =~ /Build-Depends(-Indep)?: .*cli-common-dev \(>= 0\.4\.4\)/)) {
-      warning("Warning! No Build-Depends(-Indep) on cli-common-dev (>= 0.4.4)!");
+  if ($srcblock =~ m/Build-Depends(?:\-Indep)?\:(?:.*\n\s+)*.*cli\-common\-dev\s*\(>=\s*([^\)]+)\)/ &&
+      system("dpkg", "--compare-versions", $1, ">=", "0.4.4") != 0) {
+    warning("Warning! No Build-Depends(-Indep) on cli-common-dev (>= 0.4.4)!");
   }
 }
 
@@ -220,6 +221,7 @@ close($fh);
 our $needs_net_1_0;
 our $needs_net_2_0;
 our $needs_net_2_1;
+our $needs_net_4_0;
 
 foreach my $package (@{$dh{DOPACKAGES}}) {
   my $tmp = tmpdir($package);
@@ -230,6 +232,7 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
   $needs_net_1_0 = 0;
   $needs_net_2_0 = 0;
   $needs_net_2_1 = 0;
+  $needs_net_4_0 = 0;
   
   # for idempotency
   delsubstvar($package, "cli:Depends");
@@ -264,7 +267,9 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
   my $vm_ref = "";
   if (!defined($dh{R_FLAG}) && $found_exe) {
     if ($clr eq "mono") {
-      if ($needs_net_2_1) {
+      if ($needs_net_4_0) {
+        $vm_ref = "mono-runtime (>= 2.10.1), ";
+      } elsif ($needs_net_2_1) {
         $vm_ref = "mono-runtime (>= 1.2.6), ";
       } elsif ($needs_net_2_0) {
         $vm_ref = "mono-runtime (>= 1.1.8.1), ";
@@ -370,8 +375,22 @@ sub loadDllMap {
    foreach my $mapentry (@mapentries) {
      my $dll = $mapentry->getAttribute("dll");
      my $target = $mapentry->getAttribute("target");
-     #verbose_print("DLL map: '$dll' target: '$target'");
-     $dllmapdata->{$dll} = $target;
+     my $os = $mapentry->getAttribute("os");
+     my $valid = 1;
+     if ($os) {
+       $valid = ($os =~ m/^!/);
+       $os =~ s/^!//;
+       foreach (split(/,/, $os)) {
+         if ($_ eq "linux") {
+           $valid = !$valid;
+           last;
+         }
+       }
+     }
+     if ($valid) {
+       verbose_print("DLL map: '$dll' target: '$target'");
+       $dllmapdata->{$dll} = $target;
+     }
    }
 }
 
@@ -504,6 +523,8 @@ sub resolveClilibRefs {
           $needs_net_2_0 = 1;
         } elsif ($ver eq "2.1.0.0") {
           $needs_net_2_1 = 1;
+        } elsif ($ver eq "4.0.0.0") {
+          $needs_net_4_0 = 1;
         } else {
           warning("Warning: Unknown mscorlib version: $ver!");
         }

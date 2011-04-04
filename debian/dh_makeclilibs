@@ -134,9 +134,9 @@ my $sn = 'sn';
 if (defined($dh{INTERNAL_MONO_FLAG}) ||
     (defined($ARGV[0]) && $ARGV[0] eq "internal-mono")) {
     $clr = "mono";
-    my $mono_path = "LD_LIBRARY_PATH=debian/tmp/usr/lib MONO_PATH=debian/tmp/usr/lib/mono/1.0:debian/tmp/usr/lib/mono/2.0";
+    my $mono_path = "LD_LIBRARY_PATH=debian/tmp/usr/lib MONO_PATH=debian/tmp/usr/lib/mono/4.0 MONO_CFG_DIR=debian/tmp/etc";
     $cli_parser = "$mono_path debian/tmp/usr/bin/monodis";
-    $sn = "$mono_path debian/tmp/usr/bin/mono debian/tmp/usr/lib/mono/1.0/sn.exe";
+    $sn = "$mono_path debian/tmp/usr/bin/mono debian/tmp/usr/lib/mono/4.0/sn.exe";
     verbose_print("Will use build Mono (debian/tmp/usr/bin/monodis) for CIL parsing.");
 } elsif (-x "/usr/bin/monodis") {
     $clr = "mono";
@@ -153,10 +153,11 @@ if (defined($dh{INTERNAL_MONO_FLAG}) ||
 {
   local $/="";
   open(FILE, 'debian/control');
-  my @filedata = <FILE>;
-  close FILE;
-  if (!($filedata[0] =~ /Build-Depends(-Indep)?: .*cli-common-dev \(>= 0\.4\.4\)/)) {
-      warning("Warning! No Build-Depends(-Indep) on cli-common-dev (>= 0.4.4)!");
+  my $srcblock = <FILE>;
+  close(FILE);
+  if ($srcblock =~ m/Build-Depends(?:\-Indep)?\:(?:.*\n\s+)*.*cli\-common\-dev\s*\(>=\s*([^\)]+)\)/ &&
+      system("dpkg", "--compare-versions", $1, ">=", "0.4.4") != 0) {
+    warning("Warning! No Build-Depends(-Indep) on cli-common-dev (>= 0.4.4)!");
   }
 }
 
@@ -193,31 +194,43 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
             chomp;
             my ($library, $ver, $libfile);
             $libfile = $_;
-            my $sig = `$sn -T $_ 2> /dev/null`;
-            $sig =~ s/.*key token: (\w+).*/$1/is;
-            if ($sig=~/\s/) {
-               warning "$libfile has no valid signature, ignoring";
-               next dll;
-            }
-            my $dis = `$cli_parser --assembly $libfile 2>&1`;
-            if ($dis =~ m/Name:\s+(\S+)/) {
-               $library = $1;
-               $dis =~ m/Version:\s+(\S+)/;
-               $ver = $1;
+
+            my $sig;
+            my $command = "$sn -T $libfile 2>&1";
+            verbose_print("running signature reader command: $command");
+            my $output = `$command`;
+            if ($? == 0) {
+                $sig = $output;
+                if ($sig !~ s/.*key token: (\w+).*/$1/is) {
+                   warning "$libfile has no signature, ignoring";
+                   next dll;
+                }
             } else {
-               # completely broken code, we need a mature app not
-               # depending on assembly loading
-               # verbose_print("trouble parsing monodis output, components not installed? Fallback to parsing the pure monodis output.");
-               # $dis = `monodis $libfile 2>&1`;
-               # $dis =~ /^module (\S+)/is;
-               # $library = $1;
-               # $library =~ s/'|"//;
-               warning("$cli_parser could not open $libfile, maybe some components not installed yet. Using filename to guess the assembly name :(");
-               $libfile=~ m,/(\d+\.\d+.\d+.\d+)__(\w+)/([^/]+)\.dll$,is;
-               next dll if (!($1 && $2 && $3));
-               $ver=$1;
-               $sig=$2;
-               $library=$3;
+                error("signature reader call failed: '$command' rc: $? output:\n$output");
+                return;
+            }
+
+            $command = "$sn -v $libfile 2>&1";
+            verbose_print("running signature verifier command: $command");
+            $output = `$command`;
+            if ($? != 0) {
+                verbose_print("signature verifier call failed: '$command' rc: $? output:\n$output");
+                warning("$libfile has no valid signature, ignoring");
+                next dll;
+            }
+
+            $command = "LANG=C MONO_GAC_PREFIX=\$MONO_GAC_PREFIX:$tmp/usr $cli_parser --assembly $libfile 2>&1";
+            verbose_print("running CLI parser command: $command");
+
+            $output = `$command`;
+            if ($? == 0) {
+                $output =~ m/Name:\s+(\S+)/;
+                $library = $1;
+                $output =~ m/Version:\s+(\S+)/;
+                $ver = $1;
+            } else {
+                error("cli_parser call failed: '$command' rc: $? output:\n$output");
+                return;
             }
 
             if (!-d "$tmp/DEBIAN") {

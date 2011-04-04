@@ -49,10 +49,10 @@ foreach my $package (@{$dh{DOPACKAGES}}) {
 	# Fix the permissions of various CLI-based files
 	for my $ext (qw(dll mdb cs config aspx))
 	{
-	    complex_doit("find $tmp $find_options -name \"*.$ext\" -print0",
+	    complex_doit("find $tmp $find_options -name \"*.$ext\" -type f -print0",
 			 "2>/dev/null | xargs -0r chmod 0644");
 	}
-	complex_doit("find $tmp $find_options -name \"*.exe\" -print0",
+	complex_doit("find $tmp $find_options -name \"*.exe\" -type f -print0",
 		     "2>/dev/null | xargs -0r chmod 0755");
 }
 
