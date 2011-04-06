@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
-
 #export DH_VERBOSE=1
+
+include debian/mono-archs.make
 
 # Assume Debian behaviour by default.
 DISTRO = $(shell lsb_release -si)
@@ -41,7 +42,11 @@ endif
 ifeq ($(DEB_BUILD_ARCH), powerpc)
 	# libgc with parallel mark FTBFS on ppc
 	CONF_FLAGS += --disable-parallel-mark
-	# mono with sgen FTBFS on ppc
+endif
+
+ifneq (,$(findstring $(DEB_BUILD_ARCH),$(DEB_MONO_SGEN_ARCHS)))
+	CONF_FLAGS += --with-sgen=yes
+else
 	CONF_FLAGS += --with-sgen=no
 endif
 

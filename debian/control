@@ -24,7 +24,7 @@ Vcs-Browser: http://git.debian.org/?p=pkg-mono/packages/mono.git
 
 Package: mono-runtime
 Provides: cli-runtime, cli-virtual-machine
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Replaces: mono-common (<< 2.4), mono-jit (<< 2.4), libmono0 (<< 2.4)
 Conflicts: mono-common (<< 2.4),
            mono-jit (<< 2.4),
@@ -49,7 +49,7 @@ Description: Mono runtime
  IA64 architectures. Optionally this package configures BINFMT support.
 
 Package: mono-runtime-sgen
-Architecture: i386 lpia kfreebsd-i386 amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 kfreebsd-amd64 kfreebsd-i386 s390x
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          mono-runtime (= ${binary:Version})
@@ -74,7 +74,7 @@ Description: Mono runtime - SGen (experimental)
 Package: mono-runtime-dbg
 Priority: extra
 Section: debug
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Replaces: mono-jit-dbg (<< 2.4)
 Conflicts: mono-jit-dbg (<< 2.4)
 Depends: ${misc:Depends}, mono-runtime (= ${binary:Version})
@@ -90,7 +90,7 @@ Description: Mono runtime, debugging symbols
 
 Package: mono-utils
 Provides: cil-disassembler
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Replaces: mono-mcs (<= 1.1.6-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}, libmono-2.0-1 (= ${binary:Version}),
  libmono-corlib4.0-cil (= ${source:Version}) | libmono-corlib2.0-cil (= ${source:Version})
@@ -105,10 +105,10 @@ Description: Mono utilities
  pedump, monodis and monograph.
 
 Package: mono-complete
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Depends: ${misc:Depends},
          mono-runtime (= ${binary:Version}),
-         mono-runtime-sgen (= ${binary:Version}) [!powerpc],
+         mono-runtime-sgen (= ${binary:Version}) [amd64 armel armhf i386 kfreebsd-amd64 kfreebsd-i386 s390x],
          libmono-2.0-1 (= ${binary:Version}),
          libmono-profiler (= ${binary:Version}),
          mono-utils (= ${binary:Version}),
@@ -143,7 +143,7 @@ Description: complete Mono runtime, development tools and all libraries
  You should build-depend on cli-common-dev and the needed libraries instead.
 
 Package: libmono-2.0-1
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Replaces: libmono-dev (<= 1.1.6-4)
 Conflicts: mono-utils (<< 1.2.3.1-4)
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -159,7 +159,7 @@ Description: Mono JIT library
 Package: libmono-2.0-1-dbg
 Priority: extra
 Section: debug
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Depends: ${misc:Depends}, libmono-2.0-1 (= ${binary:Version})
 Recommends: gdb
 Description: Mono JIT library, debugging symbols
@@ -172,7 +172,7 @@ Description: Mono JIT library, debugging symbols
  bytecode (aka assemblies), and a class library.
 
 Package: libmono-2.0-dev
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Depends: ${misc:Depends}, libmono-2.0-1 (= ${binary:Version})
 Description: Mono JIT library - Development files
  Header files and static libraries for libmono-2.0.
@@ -184,7 +184,7 @@ Description: Mono JIT library - Development files
  bytecode (aka assemblies), and a class library.
 
 Package: libmono-profiler
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Replaces: mono-runtime (<< 2.4.2.3)
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Mono profiler libraries
@@ -2515,7 +2515,7 @@ Description: Mono GAC tool (for CLI 4.0)
  libraries, for CLI 4.0
 
 Package: mono-jay
-Architecture: i386 lpia kfreebsd-i386 powerpc amd64 kfreebsd-amd64 ia64 arm armeb armel sparc s390
+Architecture: amd64 armel armhf i386 ia64 kfreebsd-amd64 kfreebsd-i386 powerpc ppc64 s390x sparc
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: LALR(1) parser generator oriented to Java/CLI
  Mono is a platform for running and developing applications based on the
