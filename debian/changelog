@@ -1,3 +1,14 @@
+mono (2.10.1-2) experimental; urgency=low
+
+  * [aba0fce] Dropped obsolete archs: arm, armeb and lpia;
+              no longer supported arch: s390;
+              added potential new archs: armhf, ppc64 and s390x;
+              only build and install sgen on supported archs
+  * [66a0541] kfreebsd support for Mono 2.10.1 - mainly backport of gc 6.8
+              (closes: #621031)
+
+ -- Mirco Bauer <meebey@debian.org>  Thu, 07 Apr 2011 01:33:02 +0200
+
 mono (2.10.1-1) experimental; urgency=low
 
   * The "size does matter" release
