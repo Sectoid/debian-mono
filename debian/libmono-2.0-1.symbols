@@ -77,8 +77,6 @@ libmono-2.0.so.1 libmono-2.0-1 #MINVER#
  mono_break_at_bb_bb_num@VER_1 2.10~rc1
  mono_break_at_bb_method@VER_1 2.10~rc1
  mono_break_on_exc@VER_1 2.10~rc1
- mono_breakpoint_clean_code@VER_1 2.10~rc1
- mono_breakpoint_info@VER_1 2.10~rc1
  mono_breakpoint_info_index@VER_1 2.10~rc1
  mono_build_date@VER_1 2.10~rc1
  mono_check_corlib_version@VER_1 2.10~rc1
