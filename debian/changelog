@@ -1,3 +1,20 @@
+mono (2.10.1-4) experimental; urgency=low
+
+  [ Zoltan Varga ]
+  * [db3ee8c] Only use memory barriers on arm when running on armv6 or later.
+  * [cf1d8e8] Add a membar to libgc's UNLOCK () on arm. Fixes Mono#683409.
+
+  [ Jo Shields ]
+  * [0e3d427] Ensure SIGXFSZ is used instead of SIGPWR on kFreeBSD.
+              (Closes: #621907)
+  * [8cd4f00] Define CPU registers on kFreeBSD/AMD64, to prevent build
+              failures.
+
+  [ Mirco Bauer ]
+  * [9546eb7] Added armel specific symbols to libmono-2.0-1.symbols.armel
+
+ -- Mirco Bauer <meebey@debian.org>  Sun, 10 Apr 2011 17:16:47 +0200
+
 mono (2.10.1-3) experimental; urgency=low
 
   [ Jo Shields ]
