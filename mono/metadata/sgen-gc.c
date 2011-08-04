@@ -256,6 +256,8 @@ gboolean conservative_stack_mark = FALSE;
 /* If set, do a plausibility check on the scan_starts before and after
    each collection */
 static gboolean do_scan_starts_check = FALSE;
+static gboolean disable_minor_collections = FALSE;
+static gboolean disable_major_collections = FALSE;
 
 #ifdef HEAVY_STATISTICS
 static long long stat_objects_alloced = 0;
@@ -2974,6 +2976,9 @@ collect_nursery (size_t requested_size)
 	TV_DECLARE (atv);
 	TV_DECLARE (btv);
 
+	if (disable_minor_collections)
+		return TRUE;
+
 	mono_perfcounters->gc_collections0++;
 
 	current_collection_generation = GENERATION_NURSERY;
@@ -3392,7 +3397,7 @@ major_do_collection (const char *reason)
 static void
 major_collection (const char *reason)
 {
-	if (g_getenv ("MONO_GC_NO_MAJOR")) {
+	if (disable_major_collections) {
 		collect_nursery (0);
 		return;
 	}
@@ -4003,6 +4008,9 @@ mono_gc_alloc_mature (MonoVTable *vtable)
 	res = alloc_degraded (vtable, size);
 	*res = vtable;
 	UNLOCK_GC;
+	if (G_UNLIKELY (vtable->klass->has_finalize))
+		mono_object_register_finalizer ((MonoObject*)res);
+
 	return res;
 }
 
@@ -4995,7 +5003,7 @@ static int
 restart_threads_until_none_in_managed_allocator (void)
 {
 	SgenThreadInfo *info;
-	int i, result, num_threads_died = 0;
+	int i, num_threads_died = 0;
 	int sleep_duration = -1;
 
 	for (;;) {
@@ -5004,17 +5012,19 @@ restart_threads_until_none_in_managed_allocator (void)
 		   allocator */
 		for (i = 0; i < THREAD_HASH_SIZE; ++i) {
 			for (info = thread_table [i]; info; info = info->next) {
+				gboolean result;
+
 				if (info->skip)
 					continue;
 				if (!info->stack_start || info->in_critical_region ||
 						is_ip_in_managed_allocator (info->stopped_domain, info->stopped_ip)) {
 					binary_protocol_thread_restart ((gpointer)info->id);
 #if defined(__MACH__) && MONO_MACH_ARCH_SUPPORTED
-					result = thread_resume (pthread_mach_thread_np (info->id));
+					result = thread_resume (pthread_mach_thread_np (info->id)) == KERN_SUCCESS;
 #else
-					result = pthread_kill (info->id, restart_signal_num);
+					result = pthread_kill (info->id, restart_signal_num) == 0;
 #endif
-					if (result == 0) {
+					if (result) {
 						++restart_count;
 					} else {
 						info->skip = 1;
@@ -5052,14 +5062,15 @@ restart_threads_until_none_in_managed_allocator (void)
 		/* stop them again */
 		for (i = 0; i < THREAD_HASH_SIZE; ++i) {
 			for (info = thread_table [i]; info; info = info->next) {
+				gboolean result;
 				if (info->skip || info->stopped_ip == NULL)
 					continue;
 #if defined(__MACH__) && MONO_MACH_ARCH_SUPPORTED
-				result = thread_suspend (pthread_mach_thread_np (info->id));
+				result = mono_sgen_suspend_thread (info);
 #else
-				result = pthread_kill (info->id, suspend_signal_num);
+				result = pthread_kill (info->id, suspend_signal_num) == 0;
 #endif
-				if (result == 0) {
+				if (result) {
 					++restarted_count;
 				} else {
 					info->skip = 1;
@@ -5727,6 +5738,10 @@ gc_register_current_thread (void *addr)
 	store_remset_buffer_index_addr = &store_remset_buffer_index;
 #endif
 
+#if defined(__MACH__)
+	info->mach_port = mach_thread_self ();
+#endif
+
 	/* try to get it with attributes first */
 #if defined(HAVE_PTHREAD_GETATTR_NP) && defined(HAVE_PTHREAD_ATTR_GETSTACK)
 	{
@@ -5811,6 +5826,10 @@ unregister_current_thread (void)
 	} else {
 		prev->next = p->next;
 	}
+
+#if defined(__MACH__)
+	mach_port_deallocate (current_task (), p->mach_port);
+#endif
 
 	if (gc_callbacks.thread_detach_func) {
 		gc_callbacks.thread_detach_func (p->runtime_data);
@@ -7178,6 +7197,10 @@ mono_gc_base_init (void)
 				nursery_clear_policy = CLEAR_AT_GC;
 			} else if (!strcmp (opt, "check-scan-starts")) {
 				do_scan_starts_check = TRUE;
+			} else if (!strcmp (opt, "disable-minor")) {
+				disable_minor_collections = TRUE;
+			} else if (!strcmp (opt, "disable-major")) {
+				disable_major_collections = TRUE;
 			} else if (g_str_has_prefix (opt, "heap-dump=")) {
 				char *filename = strchr (opt, '=') + 1;
 				nursery_clear_policy = CLEAR_AT_GC;
@@ -7192,7 +7215,13 @@ mono_gc_base_init (void)
 			} else {
 				fprintf (stderr, "Invalid format for the MONO_GC_DEBUG env variable: '%s'\n", env);
 				fprintf (stderr, "The format is: MONO_GC_DEBUG=[l[:filename]|<option>]+ where l is a debug level 0-9.\n");
-				fprintf (stderr, "Valid options are: collect-before-allocs[=<n>], check-at-minor-collections, xdomain-checks, clear-at-gc.\n");
+				fprintf (stderr, "Valid options are:\n");
+				fprintf (stderr, "  collect-before-allocs[=<n>]\n");
+				fprintf (stderr, "  check-at-minor-collections\n");
+				fprintf (stderr, "  disable-minor\n");
+				fprintf (stderr, "  disable-major\n");
+				fprintf (stderr, "  xdomain-checks\n");
+				fprintf (stderr, "  clear-at-gc\n");
 				exit (1);
 			}
 		}

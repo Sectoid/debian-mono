@@ -71,7 +71,7 @@ utf8_to_utf16_len (const gchar *str, glong len, glong *items_read, GError **erro
 	ret = 0;
 
 	/* Common case */
-	for (in_pos = 0; in_pos < len && str [in_pos] < 0x80; in_pos++)
+	for (in_pos = 0; in_pos < len && (guchar) str [in_pos] < 0x80; in_pos++)
 		ret ++;
 
 	if (in_pos == len) {
@@ -338,6 +338,7 @@ g_utf16_to_utf8 (const gunichar2 *str, glong len, glong *items_read, glong *item
 			} else {
 				surrogate = 0;
 				/* invalid surrogate pair */
+				++in_pos;
 				continue;
 			}
 		} else {
@@ -354,6 +355,7 @@ g_utf16_to_utf8 (const gunichar2 *str, glong len, glong *items_read, glong *item
 			else if (ch >= 0xD800 && ch <= 0xDBFF)
 				surrogate = ch;
 			else if (ch >= 0xDC00 && ch <= 0xDFFF) {
+				++in_pos;
 				/* invalid surrogate pair */
 				continue;
 			}

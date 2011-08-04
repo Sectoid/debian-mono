@@ -41,7 +41,7 @@ using System.Text;
 using System.Threading;
 using System.Xml;
 
-namespace System.ServiceModel.Channels
+namespace System.ServiceModel.Channels.NetTcp
 {
 	internal class TcpDuplexSessionChannel : DuplexChannelBase, IDuplexSessionChannel
 	{
@@ -147,6 +147,9 @@ namespace System.ServiceModel.Channels
 			}
 
 			client.SendTimeout = (int) timeout.TotalMilliseconds;
+
+			Logger.LogMessage (MessageLogSourceKind.TransportSend, ref message, info.BindingElement.MaxReceivedMessageSize);
+
 			frame.WriteSizedMessage (message);
 		}
 		
@@ -164,12 +167,16 @@ namespace System.ServiceModel.Channels
 			if (timeout <= TimeSpan.Zero)
 				throw new ArgumentException (String.Format ("Timeout value must be positive value. It was {0}", timeout));
 			client.ReceiveTimeout = (int) timeout.TotalMilliseconds;
+
 			message = frame.ReadSizedMessage ();
 			// FIXME: this may not be precise, but connection might be reused for some weird socket state transition (that's what happens). So as a workaround, avoid closing the session by sending EndRecord from this channel at OnClose().
 			if (message == null) {
 				session = null;
 				return false;
 			}
+
+			Logger.LogMessage (MessageLogSourceKind.TransportReceive, ref message, info.BindingElement.MaxReceivedMessageSize);
+
 			return true;
 		}
 		

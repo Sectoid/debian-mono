@@ -161,6 +161,16 @@ namespace Mono.Debugger.Soft
 		}
 
 		//
+		// Enable send and receive timeouts on the connection and send a keepalive event
+		// every 'keepalive_interval' milliseconds.
+		//
+
+		public void SetSocketTimeouts (int send_timeout, int receive_timeout, int keepalive_interval)
+		{
+			conn.SetSocketTimeouts (send_timeout, receive_timeout, keepalive_interval);
+		}
+
+		//
 		// Methods to create event request objects
 		//
 		public BreakpointEventRequest CreateBreakpointRequest (MethodMirror method, long il_offset) {
@@ -200,8 +210,8 @@ namespace Mono.Debugger.Soft
 
 		public void EnableEvents (params EventType[] events) {
 			foreach (EventType etype in events) {
-				if (etype == EventType.Breakpoint)
-					throw new ArgumentException ("Breakpoint events cannot be requested using EnableEvents", "events");
+				if (etype == EventType.Breakpoint || etype == EventType.Step)
+					throw new ArgumentException ("Breakpoint/Step events cannot be requested using EnableEvents", "events");
 				conn.EnableEvent (etype, SuspendPolicy.All, null);
 			}
 		}

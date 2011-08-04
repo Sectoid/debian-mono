@@ -1,3 +1,408 @@
+2011-07-26  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	OSX won't expose IPV6_PKTINFO unless __APPLE_USE_RFC_3542 is
+	defined.
+
+2011-07-26  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Use the proper object size when scanning arrays from a card
+	table.
+
+	Using the block object size is incorrect since we might scan
+	beyond the end of the array.
+
+2011-07-26  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Make mono_sgen_safe_object_get_size() handle forwarded
+	objects.
+
+	This is sometimes called on forwarded objects from the major
+	collector during finalization. Now it doesn't crash anymore.
+
+2011-07-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix caching in mono_marshal_get_array_address ().
+
+2011-06-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Allow AssemblyRef flags to have at least ECMA's values. Fixes
+	#684613.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Simplify building with the Android NDK.
+
+	Check --host against *-*-linux-android* for Android-specific
+	configure fixes, and improve **/Makefile.am to simplify Android
+	support:
+
+	./configure \ --build=`./config.guess` \
+	--host=armv5-linux-androideabi \ --target=armv5-linux-androideabi
+	\ --enable-nls=no --with-mcs-docs=no --enable-mcs-build=no \
+	CC="/path/to/ndk/arm-linux-androideabi-gcc
+	--sysroot=/path/to/sysroot" \ AR="..." AS="..." CPP="..."
+	CXX="..." LD="..." RANLIB="..." STRIP="..."
+	CFLAGS="-DARM_FPU_NONE=1" CXXFLAGS="-DARM_FPU_NONE=1"
+
+	See also Android NDK docs/STANDALONE-TOOLCHAIN.html.
+
+	The Android NDK/bionic is "interesting", in that it's lacking
+	header files and macros normally present on Linux which otherwise
+	break the build (e.g. no <link.h> which breaks Boehm support).
+	Using --host with an android target works around the known issues,
+	simplifying the building of libmonosgen-2.0.so with the Android
+	NDK toolchain.
+
+2011-06-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Handle a vtable layout corner case.
+
+	class.c (mono_class_inflate_generic_method_full_checked): Don't
+	inflate a method if the provided context won't change it. This
+	change, in particular, avoid inflating a generic method of a
+	non-generic class if the context has class only vars.
+
+	This fixes #696593 as the above was causing the vtable of Class3
+	ending up with an inflated Class1::Method<> that comes from
+	inflated Class2<object> parent. Then the parent override pass
+	would collect a non-inflated Class1::Method<> overide that would
+	then not match the one on the vtable causing Class3 to have an
+	abstract method on its vtable and thus failing to load.
+
+	Big explanation means tricky change, might break tons of stuff.
+
+2011-05-30  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* reflection.c (typebuilder_setup_fields): Alloc RVA data on the
+	image mempool so it works with a moving collector.
+
+	Fixes #696817
+
+2011-05-18  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] When shadow-copying assemblies, use the io portability
+	function to find the file.
+
+	This is necessary in situations when managed code pases
+	case-insenstive file name and the file on disk uses different
+	case. stat(2) would return an error in such situation and, in
+	effect, the stat structure would get invalid/random values in its
+	fields.
+
+2011-05-15  Zoltan Varga  <vargaz@gmail.com>
+
+	Avoid a crash in Field:GetRawConstantValue () if the field type
+	couldn't be loaded. Fixes #693894.
+
+2011-05-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement BSTR icalls even when COM is disabled. Fixes #690255.
+
+2011-05-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix support for parameters with generic constraints in
+	Type.IsAssignableFrom (). Fixes #691119.
+
+2011-04-29  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Remove debug spew
+
+2011-04-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Modify fixup_cattrs () to handle a corner case where a
+	cattr is created using a MonoCMethod instead of a
+	ConstructorBuilder. Fixes #689533."
+
+	This reverts commit 046ff98055aff6f49037fe612b6f32271678e8c6.
+
+	This seems to break smcs.exe.
+
+2011-04-26  Zoltan Varga  <vargaz@gmail.com>
+
+	Modify fixup_cattrs () to handle a corner case where a cattr is
+	created using a MonoCMethod instead of a ConstructorBuilder. Fixes
+	#689533.
+
+2011-04-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix AOT support for isinst_with_cache wrappers. Fixes #687865.
+
+2011-04-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix Object.MemberwiseClone () on arrays. Fixes #688033.
+
+2011-04-15  Rolf Bjarne Kvinge  <RKvinge@novell.com>
+
+	[corlib] Ensure Thread.ManagedThreadId is unique per thread.
+
+	This fixes bug #667329.
+
+	The problem was that ManagedThreadId was created from a
+	per-appdomain counter, but stored in a per-thread storage, so if
+	two threads could end up with the same ManagedThreadId if a second
+	appdomain executed on the second thread first.
+
+2011-04-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Clearing the queue messed up with the per-domain job count
+
+	Fixes bug #687399.
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime,IO] Filesystem entries can only be sought for in
+	directories, not files.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.c (restart_threads_until_none_in_managed_allocator): On
+	mach we used to simply call thread_suspend/thread_resume without
+	updating the thread context, which would result in sgen getting
+	hang.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Extract suspend code from mono_sgen_thread_handshake.
+
+	sgen-os-mach.c (mono_sgen_thread_handshake): Extract suspend code
+	into new function mono_sgen_suspend_thread.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-gc.h: Since darwin doesn't use signals to stop the target
+	threads, we must reserve space for register in SgenThreadInfo.
+
+	* sgen-os-mach.c (mono_sgen_thread_handshake): Don't alloca inside
+	the loop. Make sure each thread registers are copied to the right
+	place.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* sgen-os-mach.c (mono_sgen_thread_handshake): Loop over the
+	registered threads insted of asking the kernel to enumerate them.
+	Avoid calling pthread_from_mach_thread_np which takes a lock and
+	is O(n) on the number of threads.
+
+2011-04-01  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Store the mach port on SgenThreadInfo
+
+2011-03-30  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove printf's
+
+2011-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Add some checks to the
+	ActivationServices:AllocateUninitializedClassInstance () icall to
+	avoid instantiating interfaces/abstract types.
+
+2011-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the previous change.
+
+2011-03-30  Zoltan Varga  <vargaz@gmail.com>
+
+	Call SleepEx in a loop in the Thread.Sleep () icall, to avoid a
+	race when the sleep is interrupted. Fixes #683519.
+
+2011-03-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Remove some unused fields from MonoDynamicGenericClass.
+
+2011-03-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix a case where class->instance_size was not set for dynamic
+	classes.
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	.gitignore
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Avoid creating a thread in init
+
+2011-03-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Make the connect hack work again.
+
+2011-03-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert "Replace old connect hack with _pipe on windows."
+
+	This reverts commit 169183740002a0a38245e0fd045bd51c8be1c200.
+
+2011-03-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Revert "Remove unneeded function and use same code for win/lin"
+
+	This reverts commit 59c30ca79c6d9f005b852d071bc26267ca3f192e.
+
+2011-03-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove unneeded function and use same code for win/lin
+
+2011-03-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Replace old connect hack with _pipe on windows.
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Don't start all the IO threads on first request.
+
+	The IO threadpool behaves as the regular one now: threads are
+	created on demand up to the default and then they are throttled
+	based on load unless Set(Min|Max)Threads is used.
+
+	Fix the stack size for threadpool threads when Set(Min|Max)threads
+	is used.
+
+2011-03-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Some changes to the threadpool
+
+	-Reduce stack size for IO threads. -Create threads on demand up to
+	min_threads, then throttle.
+
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Add support for kqueue asynch. IO.
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Split the socket code in separate files.
+
+2011-03-23  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Fix compilation
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	OSX, Win32: Implements support for DriveInfo
+
+	This implements support for DriveInfo for OSX and Windows.
+
+	On OSX we use statfs system call that provides the filesystem type
+	information that we need. On Linux, we continue to fallback to
+	mtab parsing
+
+2011-03-22  Zoltan Varga  <vargaz@gmail.com>
+
+	Implement OperatingSystem.ServicePack. Fixes #681552.
+
+2011-03-22  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Avoid the infame assert in mono-wsq.
+
+	Fixes bug #677746.
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Avoid creating a thread in init.
+
+2011-03-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix the host name returned in GetHostEntry.
+
+	GetHostEntry() was setting the HostName to the last IP address
+	returned for the requested host name.
+
+2011-03-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[Threadpool] Handle multiple calls to cleanup
+
+	Don't fail if mono_thread_pool_cleanup() is called more than once.
+	Fixes bug #678662.
+
+2011-03-16  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a cache for virtual generic thunks to avoid freeing those
+	created by AOT.
+
+2011-03-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Appdomain refs can be NULL in pop_refs
+
+	This fixes a bunch of test I broke with my previoius commit.
+
+2011-03-14  Mark Probst  <mark.probst@gmail.com>
+
+	[sgen] Debug options for disabling minor and/or major collection.
+
+2011-03-14  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threads] appdomain_refs push/pop speedup
+
+	Replace the GSList with an array to avoid malloc/free on every
+	push/pop call.
+
+2011-03-11  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Cache NewLine per AppDomain.
+
+2011-02-05  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Added dynamic concurrent queue implementation
+
+	Replace the big lock around the list+array used to queue work
+	items with a dynamic concurrent queue to reduce contention.
+
+2011-03-10  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix ARCH_STORE_REGS on arm
+
+2011-03-10  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	mono_gc_alloc_mature must check if the object needs to be
+	registered for finalization
+
+2011-03-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Use mono_field_get_type () in one place to fix a crash. Fixes
+	#678269.
+
+2011-03-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	IO threads have their own name
+
+2011-03-09  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Some changes to the threadpool
+
+	-Reduce stack size for IO threads. -Create threads on demand up to
+	min_threads, then throttle.
+
+2011-03-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Host name is the same when querying localhost
+
+	The host name is set to the queried host name when it is the local
+	machine name. Fixes bug #676260.
+
+2011-03-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Resurrect THREAD_DEBUG.
+
+2011-03-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Change an #ifdef DEBUG to THREAD_DEBUG(). Fixes #676615.
+
+2011-03-02  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* class.c (mono_get_unique_iid): Don't store the iid of generic
+	instances on their GTD image since they can be unloaded before.
+
+	* metadata.c (free_generic_class): Reset the iid used by
+	interfaces.
+
+2011-02-28  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* metadata.c (do_mono_metadata_parse_type): NET 1.1 assemblies can
+	have string and object encoded in a denormalized way.
+
+	Fixes #675464.
+
 2011-02-22  Zoltan Varga  <vargaz@gmail.com>
 
 	Avoid returning TRUE from mono_domain_finalize () if it is

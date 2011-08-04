@@ -1,3 +1,17 @@
+2011-04-11  Zoltan Varga  <vargaz@gmail.com>
+
+	Revert "Add checks to ParameterBuilder.SetConstant () to avoid an
+	assert in the runtime. Fixes #684438."
+
+	This reverts commit c5c488ec9d93d7003f28ac246813a469c4b7b088.
+
+	This seems to break IronRuby.
+
+2011-04-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Add checks to ParameterBuilder.SetConstant () to avoid an assert
+	in the runtime. Fixes #684438.
+
 2011-02-01  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* DynamicMethod.cs: No longer finalizable.

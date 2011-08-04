@@ -107,11 +107,11 @@ namespace System.ServiceModel.Channels.Http
 
 	internal class HttpStandaloneListenerManager : HttpListenerManager
 	{
-		public HttpStandaloneListenerManager (Uri uri)
+		public HttpStandaloneListenerManager (Uri uri, HttpTransportBindingElement element)
 		{
 			var l = new HttpListener ();
 
-			string uriString = uri.ToString ();
+			string uriString = element.HostNameComparisonMode == HostNameComparisonMode.Exact ? uri.ToString () : uri.Scheme + "://*" + uri.GetComponents (UriComponents.Port | UriComponents.Path, UriFormat.SafeUnescaped);
 			if (!uriString.EndsWith ("/", StringComparison.Ordinal))
 				uriString += "/"; // HttpListener requires this mess.
 

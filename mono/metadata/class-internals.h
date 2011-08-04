@@ -549,10 +549,6 @@ struct _MonoGenericClass {
  */
 struct _MonoDynamicGenericClass {
 	MonoGenericClass generic_class;
-	int count_methods;
-	MonoMethod **methods;
-	int count_ctors;
-	MonoMethod **ctors;
 	int count_fields;
 	MonoClassField *fields;
 	guint initialized;
@@ -1301,5 +1297,8 @@ mono_class_check_vtable_constraints (MonoClass *class, GList *in_setup) MONO_INT
 
 gboolean
 mono_class_has_finalizer (MonoClass *klass) MONO_INTERNAL;
+
+void
+mono_unload_interface_id (MonoClass *class) MONO_INTERNAL;
 
 #endif /* __MONO_METADATA_CLASS_INTERBALS_H__ */

@@ -1,3 +1,11 @@
+2011-04-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fixed a thinko in one of the previous commits
+
+2011-04-13  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] A more effective way of looking for web.config
+
 2011-01-31  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Ignore directories that don't exist instead of throwing.

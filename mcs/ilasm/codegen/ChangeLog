@@ -1,3 +1,7 @@
+2010-12-30  Jb Evain  <jbevain@gmail.com>
+
+	Fix output of local variable names in debugging symbols
+
 2009-05-27  Rodrigo Kumpera  <rkumpera@novell.com>
 
 	* TypeDef.cs: Add field method_list to preserve definition

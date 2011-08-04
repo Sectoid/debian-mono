@@ -13,6 +13,10 @@
 
 #ifndef DISABLE_SOCKETS
 
+#ifdef __APPLE__
+#define __APPLE_USE_RFC_3542
+#endif
+
 #include <glib.h>
 #include <string.h>
 #include <stdlib.h>
@@ -2806,6 +2810,7 @@ addrinfo_to_IPHostEntry(struct addrinfo *info, MonoString **h_name,
 		mono_array_setref (*h_addr_list, addr_index, addr_string);
 
 		if(!i) {
+			i++;
 			if (ai->ai_canonname != NULL) {
 				*h_name=mono_string_new(domain, ai->ai_canonname);
 			} else {
@@ -2838,12 +2843,16 @@ MonoBoolean ves_icall_System_Net_Dns_GetHostByName_internal(MonoString *host, Mo
 	MONO_ARCH_SAVE_REGS;
 	
 	hostname=mono_string_to_utf8 (host);
-	if (*hostname == '\0')
+	if (*hostname == '\0') {
 		add_local_ips = TRUE;
+		*h_name = host;
+	}
 #ifdef HAVE_SIOCGIFCONF
 	if (!add_local_ips && gethostname (this_hostname, sizeof (this_hostname)) != -1) {
-		if (!strcmp (hostname, this_hostname))
+		if (!strcmp (hostname, this_hostname)) {
 			add_local_ips = TRUE;
+			*h_name = host;
+		}
 	}
 #endif
 

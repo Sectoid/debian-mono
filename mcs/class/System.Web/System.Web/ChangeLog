@@ -1,3 +1,44 @@
+2011-04-21  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Inform user about all exceptions thrown during
+	HttpRuntime static initialization
+
+2011-04-05  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #684803. XmlSiteMapProvider must take its
+	root node into account when matching an URL.
+
+2011-04-02  Tomasz Kubacki  <tomasz.kubacki@gmail.com>
+
+	[asp.net] HttpApplication.InitOnce must ensure that
+	HttpApplication.Context does not return null.
+
+	HttpApplication.Context != null is assumed by
+	System.Web.WebPages.WebPagesHttpModule Init method
+
+2011-03-17  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[asp.net] Return the correct Mime type for 304.
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	Removed debug noise
+
+2011-03-17  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #678473. Do not map paths of absolute file
+	paths when passed to HttpRequest.WriteFile
+
+2011-03-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #668696. Handle recursive locks gracefully.
+
+2011-03-14  Kornél Pál  <kornelpal@gmail.com>
+
+	[asp.net] Fix for bug #650695. Implements the
+	System.Web.{HttpNotFoundHandler,HttpNotImplementedHandler}
+	classes.
+
 2011-02-09  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Implemented CustomErrorsRedirectMode

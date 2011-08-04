@@ -1,3 +1,115 @@
+2011-07-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wsdl import wrt element qname (!= type name).
+
+2011-06-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Flush some ongoing changes for XmlSerializer support in svcutil.
+
+2011-05-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Fill type info in MessagePartDescription from XmlSerializer-based
+	wsdl importer.
+
+	It still needs some fixes to import message elements.
+
+2011-05-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement XmlSerializerMessageContractImporter, round 2.
+
+	This time it is XmlSerializer-based, got it somewhat working.
+
+2011-05-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement WsdlContractConversionContext, and ignore message
+	importer for now.
+
+2011-05-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Revert previous XmlSerializerMessageContractImporter
+	implementation.
+
+	XsdDataContractImporter is not XmlSerializer-based, while this
+	class is.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix common issue in MetadataSet - call MoveToContent() while
+	iterating nodes.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add new MetadataSetTest and fix couple of minor issues.
+
+2011-05-09  Atsushi Eno  <atsushi@ximian.com>
+
+	ongoing XmlSerializerMessageContractImporter work.
+
+	It is part of bugfix #670945.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ServiceKnownTypeAttribute.MethodName was used way different to
+	lookup method.
+
+2011-04-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Add XmlSerializerFormatAttribute support in mobile profiles.
+
+	Unlike moonlight, XmlSerializer is in the framework lib (sys.xml),
+	so we don't have to split them out to Sys.Xml.Serialization.dll.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix moonlight_raw build in Sys.Xml.Serialization.dll (NIE!)
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	DataContractSerializerOperationBehavior is done too. Fix
+	moonlight_raw build.
+
+2011-04-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Some XmlSerializerFormatAttribute and
+	XmlSerializerOperationBehavior refactoring.
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Less !NET_2_1/!MOONLIGHT to improve SL4 WCF compatibility.
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement ConfigurationName support for ChannelFactory.
+
+	It is required for MoonlightDrtViewer bugfixing.
+
+2011-04-01  Peter Gerbrandt  <pg@viadux.de>
+
+	Fix contract description for contracts with deep inheritance
+	hierarchy.
+
+2011-03-17  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix build; remove extra !NET_2_1.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable more behavior interface member in NET_2_1.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable more behaviors use in NET_2_1 land, toward WebHttpBinding.
+
+2011-03-16  Atsushi Eno  <atsushi@ximian.com>
+
+	Add endpoint behavior support in NET_2_1, which involved not a few
+	additions.
+
+2011-03-07  Peter Gerbrandt  <pg@viadux.de>
+
+	Support for the same interface as service contract and as callback
+	contract.
+
 2011-02-17  Atsushi Eno  <atsushi@ximian.com>
 
 	Only use non-null values in ServiceAuthorizationBehavior.

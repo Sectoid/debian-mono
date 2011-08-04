@@ -1,3 +1,101 @@
+2011-06-15  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix crash when there's a \' in the arguments.
+
+	Fixes crash when calling Process.Start on a file with a ' in the
+	path when UseShellExecute is set to false.
+
+	Patch by Tom Philpot.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Simplify building with the Android NDK.
+
+	Check --host against *-*-linux-android* for Android-specific
+	configure fixes, and improve **/Makefile.am to simplify Android
+	support:
+
+	./configure \ --build=`./config.guess` \
+	--host=armv5-linux-androideabi \ --target=armv5-linux-androideabi
+	\ --enable-nls=no --with-mcs-docs=no --enable-mcs-build=no \
+	CC="/path/to/ndk/arm-linux-androideabi-gcc
+	--sysroot=/path/to/sysroot" \ AR="..." AS="..." CPP="..."
+	CXX="..." LD="..." RANLIB="..." STRIP="..."
+	CFLAGS="-DARM_FPU_NONE=1" CXXFLAGS="-DARM_FPU_NONE=1"
+
+	See also Android NDK docs/STANDALONE-TOOLCHAIN.html.
+
+	The Android NDK/bionic is "interesting", in that it's lacking
+	header files and macros normally present on Linux which otherwise
+	break the build (e.g. no <link.h> which breaks Boehm support).
+	Using --host with an android target works around the known issues,
+	simplifying the building of libmonosgen-2.0.so with the Android
+	NDK toolchain.
+
+2011-04-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Do not go beyond our string boundaries
+
+2011-04-07  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Remove printf
+
+2011-04-07  Miguel de Icaza  <miguel@gnome.org>
+
+	Revert broken patch 34f18b68 that caused random bugs in assembly
+	loading, but could crash the runtime as well
+
+2011-04-07  Miguel de Icaza  <miguel@gnome.org>
+
+	Add test to prevent future problems, this fixes the random MacOSX
+	crashes with assembly loading, but likely everywhere else as well
+
+2011-04-06  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[eglib] The last argument can be empty and quoted.
+
+	Fixes bug #669303.
+
+2011-03-28  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix vasprintf() for empty strings.
+
+	James Bellinger entered bug #682963 and he ended up debugging it
+	and providing the solution.
+
+2011-02-13  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* gutf8.c (g_utf16_to_utf8): Increase the input counter when
+	encountering broken surrogates head or tails to make sure we don't
+	end in an infinite loop.
+
+2011-02-18  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Avoid 'comparison always true...'
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Wrong LoadLibrary being called.
+
+	We were calling LoadLibraryA instead of the W version.
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[windows] Get rid of a lot of warnings
+
+2011-03-16  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	Fix g_get_charset for windows.
+
+	Patch by Horst Kakuschke that fixes bug #660412.
+
+2011-02-23  Levi Bard  <levi@unity3d.com>
+
+	* src/gpath.c: Make path building on windows behave the same as
+	stock mono+glib.
+
+	License: MIT/X11
+
 2011-02-23  Miguel de Icaza  <miguel@gnome.org>
 
 	Fix win32 build

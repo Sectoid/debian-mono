@@ -1,3 +1,11 @@
+2011-04-04  Jb Evain  <jbevain@gmail.com>
+
+	Fix net_2_0 build
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
 2006-06-30  Atsushi Enomoto  <atsushi@ximian.com>
 
 	* PerformanceCounterScope.cs : new namespace/type in June CTP.

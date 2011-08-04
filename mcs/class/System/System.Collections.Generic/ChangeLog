@@ -1,3 +1,7 @@
+2011-04-19  Lluis Sanchez  <lluis@novell.com>
+
+	Fix ICollection.CopyTo in the Stack class
+
 2010-12-26  Luke Halliwell  <luke.j.halliwell@gmail.com>
 
 	Fix for bug 349053 - unable to serialize SortedDictionary

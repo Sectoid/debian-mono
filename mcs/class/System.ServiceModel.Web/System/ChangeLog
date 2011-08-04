@@ -1,3 +1,29 @@
+2011-05-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Support named wildcard in UriTemplate matching. Fixed bug #693996.
+
+2011-05-13  Atsushi Eno  <atsushi@ximian.com>
+
+	Do not take host part into consideration on comparing URLs.
+
+	It blocks access by different host name (e.g. localhost vs. IP).
+	This was part of bugfix #687580 (forgot to commit).
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Prefer immutable string return for ease of debugging in
+	UriTemplate.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix regression for counter case to 6005f0a7.
+
+	http://localhost/x + X should not result in http://localhost/xX.
+
+2011-04-02  Atsushi Eno  <atsushi@ximian.com>
+
+	A bit less !NET_2_1 and !MOONLIGHT in Sys.ServiceModel.Web.
+
 2011-01-04  Marek Habersack  <grendel@twistedcode.net>
 
 	[wcf] UriTemplate must trim the first leading slash in the

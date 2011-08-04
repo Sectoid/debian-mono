@@ -1,3 +1,8 @@
+2011-06-30  Jb Evain  <jbevain@gmail.com>
+
+	Fix handling of null in the non generic implementation of
+	EqualityComparer. Fixes 703027.
+
 2011-02-22  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* List.cs (ICollection.CopyTo): Properly check the array argument
