@@ -3,7 +3,7 @@ set -e
 
 update-alternatives \
 	--install /usr/bin/cli-csc c-sharp-compiler /usr/bin/mono-csc 10 \
-	--slave /usr/share/man/man1/cli-csc.1.gz cli-csc.1.gz /usr/share/man/man1/csc.1.gz
+	--slave /usr/share/man/man1/cli-csc.1.gz cli-csc.1.gz /usr/share/man/man1/dmcs.1.gz
 
 update-alternatives \
         --install /usr/bin/cli-resgen resource-file-generator /usr/bin/resgen 10 \
