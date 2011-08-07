@@ -1636,7 +1636,8 @@ Suggests: ${cli:Suggests},
           shared-mime-info
 Depends: ${misc:Depends},
          ${cli:Depends},
-         libgdiplus
+         libgdiplus,
+         libmono-i18n-west4.0-cil
 Homepage: http://www.mono-project.com/Winforms
 Description: Mono System.Windows.Forms Library (for CLI 4.0)
  Mono is a platform for running and developing applications based on the
@@ -1756,7 +1757,8 @@ Suggests: ${cli:Suggests},
           shared-mime-info
 Depends: ${misc:Depends},
          ${cli:Depends},
-         libgdiplus
+         libgdiplus,
+         libmono-i18n-west2.0-cil
 Description: Mono System.Windows.Forms library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
