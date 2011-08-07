@@ -194,7 +194,6 @@ install-stamp:
 
 	# mono 2.10.1 bug, this lib is really linked against corlib 4.0
 	rm -f $(CURDIR)/debian/tmp/usr/lib/mono/2.0/Mono.C5.dll
-	rm -f $(CURDIR)/debian/tmp/usr/lib/mono/2.0/Mono.WebBrowser.dll
 	# mono 2.10.1 bug, prj2make was removed but the start script not
 	rm -f $(CURDIR)/debian/tmp/usr/bin/prj2make
 	# mono 2.10.1 bug, this lib doesn't exist for .NET 4.0 and also has
@@ -255,7 +254,8 @@ binary-indep: build-stamp install-stamp
 	install -m 644 debian/System.Windows.Forms.dll.config debian/libmono-system-windows-forms4.0-cil/usr/lib/mono/gac/System.Windows.Forms/4.0.*/
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo2.0-cil/usr/lib/mono/gac/Mono.Cairo/2.0.*/
 	install -m 644 debian/Mono.Cairo.dll.config debian/libmono-cairo4.0-cil/usr/lib/mono/gac/Mono.Cairo/4.0.*/
-	install -m 644 debian/Mono.WebBrowser.dll.config debian/libmono-webbrowser0.5-cil/usr/lib/mono/gac/Mono.WebBrowser/0.5.*/
+	install -m 644 debian/Mono.WebBrowser.dll.config debian/libmono-webbrowser2.0-cil/usr/lib/mono/gac/Mono.WebBrowser/2.0.*/
+	install -m 644 debian/Mono.WebBrowser.dll.config debian/libmono-webbrowser4.0-cil/usr/lib/mono/gac/Mono.WebBrowser/4.0.*/
 	
 	dh_link -i
 	dh_installchangelogs -i -X ChangeLog
@@ -300,7 +300,6 @@ binary-indep: build-stamp install-stamp
 	debian/dh_makeclilibs -p libmono-security4.0-cil -m 2.10.1 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-sqlite4.0-cil -m 2.10.1 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-webbrowser0.5-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-winforms4.0-cil -m 2.10.1 $(DH_INTERNAL_MONO_PARAM)
 	# unstable and preview APIs get tighter clilibs

@@ -334,7 +334,8 @@ Depends: ${misc:Depends},
          libmono-tasklets4.0-cil (= ${source:Version}),
          libmono-wcf3.0-cil (= ${source:Version}),
          libmono-web4.0-cil (= ${source:Version}),
-         libmono-webbrowser0.5-cil (= ${source:Version}),
+         libmono-webbrowser2.0-cil (= ${source:Version}),
+         libmono-webbrowser4.0-cil (= ${source:Version}),
          libmono-webmatrix-data4.0-cil (= ${source:Version}),
          libmono-windowsbase3.0-cil (= ${source:Version}),
          libmono-windowsbase4.0-cil (= ${source:Version}),
@@ -494,12 +495,12 @@ Description: Mono C5 library
  .
  This package contains the Mono C5 library.
 
-Package: libmono-webbrowser0.5-cil
+Package: libmono-webbrowser2.0-cil
 Architecture: all
 Depends: ${misc:Depends},
          ${cli:Depends}
 Recommends: ${cli:Recommends}
-Description: Mono Web Browser library
+Description: Mono Web Browser library (for CLI 2.0)
  Mono is a platform for running and developing applications based on the
  ECMA/ISO Standards. Mono is an open source effort led by Novell.
  Mono provides a complete CLR (Common Language Runtime) including compiler and
@@ -507,7 +508,22 @@ Description: Mono Web Browser library
  bytecode (aka assemblies), and a class library.
  .
  This package contains the implementation of the WebControl class based on the
- Mozilla engine using libgluezilla.
+ Mozilla engine using libgluezilla for CLI 2.0.
+
+Package: libmono-webbrowser4.0-cil
+Architecture: all
+Depends: ${misc:Depends},
+         ${cli:Depends}
+Recommends: ${cli:Recommends}
+Description: Mono Web Browser library (for CLI 4.0)
+ Mono is a platform for running and developing applications based on the
+ ECMA/ISO Standards. Mono is an open source effort led by Novell.
+ Mono provides a complete CLR (Common Language Runtime) including compiler and
+ runtime, which can produce and execute CIL (Common Intermediate Language)
+ bytecode (aka assemblies), and a class library.
+ .
+ This package contains the implementation of the WebControl class based on the
+ Mozilla engine using libgluezilla for CLI 4.0.
 
 Package: libmono-management2.0-cil
 Architecture: all
