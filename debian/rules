@@ -301,7 +301,6 @@ binary-indep: build-stamp install-stamp
 	debian/dh_makeclilibs -p libmono-sqlite2.0-cil -m 1.2.6 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-sqlite4.0-cil -m 2.10.1 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-winforms2.0-cil -m 2.4 $(DH_INTERNAL_MONO_PARAM)
-	debian/dh_makeclilibs -p libmono-winforms4.0-cil -m 2.10.1 $(DH_INTERNAL_MONO_PARAM)
 	# unstable and preview APIs get tighter clilibs
 	debian/dh_makeclilibs -p libmono-cecil-private-cil -m 2.6.3 $(DH_INTERNAL_MONO_PARAM)
 	debian/dh_makeclilibs -p libmono-microsoft-build2.0-cil -m 2.6.7 $(DH_INTERNAL_MONO_PARAM)
