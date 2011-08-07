@@ -1,3 +1,11 @@
+2011-04-01  Marek Habersack  <grendel@twistedcode.net>
+
+	[mvc3] Part of fix for bug #683339. Override more
+	NameValueCollection methods.
+
+	Without those overrides, merging collections in
+	System.Web.HttpParamsCollection fails.
+
 2011-02-17  Jérémie Laval  <jeremie.laval@gmail.com>
 
 	Kill old IScheduler interface.

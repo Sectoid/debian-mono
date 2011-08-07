@@ -1,3 +1,18 @@
+2011-04-27  Martin Baulig  <martin@novell.com>
+
+	Add socket timeouts to the soft debugger.
+
+	SDB now support setting a send/receive timeout on the client's
+	side of the communication socket. To make this work, the server
+	sends a special 'keepalive' event when using receive timeouts.
+
+	There's a new method VirtualMachine.SetSocketTimeouts() to enable
+	this feature.
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Disallow EventType.Step in EnableEvents (). Fixes #674490.
+
 2011-01-28  Zoltan Varga  <vargaz@gmail.com>
 
 	Add an AtLeast version to sdb's VersionInfo class.

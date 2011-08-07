@@ -1,3 +1,13 @@
+2011-03-16  Bassam Tabbara  <bassam@symform.com>
+
+	[asp.net] Fix for bug #667513. Implement support for PathInfo in
+	Route.GetRouteData
+
+2011-02-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #671753. Route.GetVirtualPath must take
+	ambient values into account.
+
 2011-01-22  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net,routing] Fix for bug #651966. Regular expression

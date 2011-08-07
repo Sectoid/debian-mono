@@ -1,3 +1,13 @@
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ToolTask - make error column check a little non-specific.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.Utilities/Microsoft.Build.Utilities/ToolTask.cs
+	(GetProcessStartInfo): Add missing api. This allows more control
+	over the execution of the tool.
+
 2010-09-16  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Fix case sensitive environment variables for ToolTask.

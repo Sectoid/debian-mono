@@ -1,3 +1,7 @@
+2011-07-20  Martinho Fernandes  <martinho.fernandes@gmail.com>
+
+	Test for bug #706877
+
 2011-01-26  Marek Safar  <marek.safar@gmail.com>
 
 	Optimized constructor readonly access has to be inside same

@@ -1,3 +1,20 @@
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add (not-working) callback instance context mode test and FIXME
+	comment.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	Add ServiceKnownTypeAttributeTest.
+
 2011-02-07  Atsushi Eno  <atsushi@ximian.com>
 
 	Open and close client/service runtime channels in chains. Fixed

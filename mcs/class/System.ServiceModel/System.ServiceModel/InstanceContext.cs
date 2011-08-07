@@ -41,6 +41,7 @@ namespace System.ServiceModel
 		InstanceManager instance_manager;
 		bool is_user_instance_provider;
 		bool is_user_context_provider;
+		ExtensionCollection<InstanceContext> _extensions;
 
 		static InstanceContextIdleCallback idle_callback = new InstanceContextIdleCallback(NotifyIdle);
 
@@ -90,7 +91,11 @@ namespace System.ServiceModel
 		}
 
 		public IExtensionCollection<InstanceContext> Extensions {
-			get { throw new NotImplementedException (); }
+			get {
+				if (_extensions == null)
+					_extensions = new ExtensionCollection<InstanceContext> (this);
+				return _extensions;
+			}
 		}
 
 		public ServiceHostBase Host {
@@ -153,7 +158,7 @@ namespace System.ServiceModel
 		public void ReleaseServiceInstance ()
 		{
 			instance_manager.ReleaseServiceInstance (this, implementation);
-			// FIXME: should Dispose() be invoked here?
+			// This does NOT dispose the instance implementation. See DispatrchRuntimeTest.TestInstanceBehavior2 (which never reports "Dispose").
 			implementation = null;
 		}
 
@@ -162,6 +167,7 @@ namespace System.ServiceModel
 			var disp = implementation as IDisposable;
 			if (disp != null)
 				disp.Dispose ();
+			implementation = null;
 		}
 
 		protected override void OnAbort ()

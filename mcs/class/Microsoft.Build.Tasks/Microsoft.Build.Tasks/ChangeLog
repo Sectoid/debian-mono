@@ -1,3 +1,89 @@
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix warnings.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix assembly name comparison when resolving references.
+
+	AssemblyResolver.cs (AssemblyNamesCompatible): If either of the
+	references don't have a public key token, then ignore that.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Vbc task - make error column check a little non-specific.
+
+2011-03-01  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Exec task - add support for custom error/warning regex.
+
+	Add 4.0 api, CustomErrorRegularExpression and
+	CustomWarningRegularExpression.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ResolveAssemblyReference - log task parameters
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] ResolveAssemblyReference - add missing api.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] GetReferenceAssemblyPaths - add missing license header.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add support for multi-targeting arbitrary frameworks.
+
+	ToolsVersion 4.0 supports targeting arbitrary frameworks defined
+	by FrameworkList.xml files and referenced by
+	$(TargetFrameworkMoniker), which is of the format:
+	Identifier,Version=<version>[,Profile=<profile>]
+
+	built as:
+	$(TargetFrameworkIdentifier),Version=$(TargetFrameworkVersion)[,Profile=$(TargetFrameworkProfile)]
+
+	eg. '.NETFramework,Version=v4.0' .
+
+	Frameworks are searched for in (order):
+
+	1. Paths specified in the environment variable
+	$XBUILD_FRAMEWORK_FOLDERS_PATH 2.
+	/Library/Frameworks/Mono.framework/External/xbuild-frameworks on
+	Mac OSX. 3. MSBuild property $(TargetFrameworkRoot) 4.
+	$prefix/lib/mono/xbuild-frameworks (default location)
+
+	.NET frameworks 2.0/3.0/3.5/4.0 have corresponding
+	FrameworkList.xml files now, which allows projects to target them.
+	Custom frameworks like MonoDroid can install suitable
+	FrameworkList.xml files, and projects can target them using the
+	correct $(TargetFrameworkIdentifier) and
+	$(TargetFrameworkVersion).
+
+	Update man page.
+
+2011-02-28  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Add missing property to Error/Warning tasks.
+
+2011-02-24  Ankit Jain  <radical@corewars.org>
+
+	* Microsoft.Build.Tasks/Microsoft.Build.Tasks/AssemblyResolver.cs
+	(GetAssemblyNameFromFile): Rename to ..
+	(TryGetAssemblyNameFromFile): .. this, to make it consistent with
+	the similar method TryGetAssemblyNameFromFullName . Track api
+	changes. *
+	Microsoft.Build.Tasks/Microsoft.Build.Tasks/ResolveAssemblyReference.cs:
+	Track api changes.
+
+2011-02-24  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Fix bug #674630.
+
+	Handle errors in trying to create AssemblyName from invalid full
+	names.
+
 2011-02-15  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Fix bug #671700, resource naming in presence of "Link".

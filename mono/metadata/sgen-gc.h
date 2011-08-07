@@ -35,6 +35,10 @@
 #include <mono/utils/mono-compiler.h>
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/object-internals.h>
+#include <mono/metadata/sgen-archdep.h>
+#if defined(__MACH__)
+	#include <mach/mach_port.h>
+#endif
 
 /*
  * Turning on heavy statistics will turn off the managed allocator and
@@ -88,6 +92,10 @@ typedef struct _SgenThreadInfo SgenThreadInfo;
 struct _SgenThreadInfo {
 	SgenThreadInfo *next;
 	ARCH_THREAD_TYPE id;
+#if defined(__MACH__)
+	thread_port_t mach_port;
+#endif
+	
 	unsigned int stop_count; /* to catch duplicate signals */
 	int signal;
 	int skip;
@@ -105,6 +113,11 @@ struct _SgenThreadInfo {
 	gpointer runtime_data;
 	gpointer stopped_ip;	/* only valid if the thread is stopped */
 	MonoDomain *stopped_domain; /* ditto */
+
+#if defined(__MACH__)
+	gpointer regs[ARCH_NUM_REGS];	    /* ditto */
+#endif
+
 	gpointer *stopped_regs;	    /* ditto */
 #ifndef HAVE_KW_THREAD
 	char *tlab_start;
@@ -579,6 +592,9 @@ void mono_sgen_free_os_memory (void *addr, size_t size) MONO_INTERNAL;
 int mono_sgen_thread_handshake (int signum) MONO_INTERNAL;
 SgenThreadInfo* mono_sgen_thread_info_lookup (ARCH_THREAD_TYPE id) MONO_INTERNAL;
 SgenThreadInfo** mono_sgen_get_thread_table (void) MONO_INTERNAL;
+gboolean mono_sgen_suspend_thread (SgenThreadInfo *info) MONO_INTERNAL;
+
+
 void mono_sgen_wait_for_suspend_ack (int count) MONO_INTERNAL;
 
 gboolean mono_sgen_is_worker_thread (pthread_t thread) MONO_INTERNAL;
@@ -765,7 +781,16 @@ mono_sgen_par_object_get_size (MonoVTable *vtable, MonoObject* o)
 	}
 }
 
-#define mono_sgen_safe_object_get_size(o)		mono_sgen_par_object_get_size ((MonoVTable*)SGEN_LOAD_VTABLE ((o)), (o))
+static inline guint
+mono_sgen_safe_object_get_size (MonoObject *obj)
+{
+       char *forwarded;
+
+       if ((forwarded = SGEN_OBJECT_IS_FORWARDED (obj)))
+               obj = (MonoObject*)forwarded;
+
+       return mono_sgen_par_object_get_size ((MonoVTable*)SGEN_LOAD_VTABLE (obj), obj);
+}
 
 const char* mono_sgen_safe_name (void* obj) MONO_INTERNAL;
 

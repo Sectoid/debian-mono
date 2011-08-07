@@ -1,3 +1,7 @@
+2011-03-20  Jb Evain  <jbevain@gmail.com>
+
+	[linker] always preserve System.MonoCQItem
+
 2011-01-11  Jb Evain  <jbevain@gmail.com>
 
 	Remove custom ResolutionException now that Cecil is providing one

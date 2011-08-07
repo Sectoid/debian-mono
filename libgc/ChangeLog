@@ -1,3 +1,19 @@
+2011-04-29  Geoff Norton  <grompf@sublimeintervention.com>
+
+	[boehm] Avoid a ENOMEM when allocating across an unallocated page
+
+	A very rare allocation pattern could cause the boehm free list to
+	call the GC_unmap_gap function, which actually calls down into
+	munmap(). Darwins virtual memory manager will return a
+	KERN_INVALID_ADDRESS which is translated into a ENOMEM, if
+	mprotect attempts to change the protection of a range which
+	includes an unallocated page. We address this by just mmap() back
+	to ANON, instead of actually unallocating the page.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a membar to libgc's UNLOCK () on arm. Fixes #683409.
+
 2011-01-07  Marek Safar  <marek.safar@gmail.com>
 
 	Ignore more files

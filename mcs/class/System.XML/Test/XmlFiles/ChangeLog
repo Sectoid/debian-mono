@@ -1,3 +1,7 @@
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Forgot to add test xml files.
+
 2011-02-08  Atsushi Eno  <atsushi@ximian.com>
 
 	Simple content restriction was not validated when it is in further

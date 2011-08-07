@@ -1,3 +1,23 @@
+2011-04-28  Atsushi Eno  <atsushi@ximian.com>
+
+	Extend supported XmlDateTimeSerialization formats. Fixed bug
+	#690475.
+
+2011-03-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Auto detect BOM-less utf-16 and utf-32. Fixed bug #674580.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove wrong buffer size check in XmlTextReader.ReadChrs().
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	XmlReader.ReadToNextSibling() saved wrong Depth and failed to
+	proceed.
+
+	Fixed bug #676020.
+
 2011-01-31  Atsushi Eno  <atsushi@ximian.com>
 
 	Do not return DocumentFragment from AppendChild() etc. Fixed bug

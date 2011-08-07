@@ -1,3 +1,103 @@
+2011-07-27  Alex Corrado  <alexc@xamarin.com>
+
+	2.10.3
+
+2011-02-25  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Fix configure check for darwin to support all variants
+
+2011-07-12  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Add shared_perfcounters option to enable minimal.
+
+2011-06-28  Zoltan Varga  <vargaz@gmail.com>
+
+	Really fix the -Wno-unused-but-set-variable check.
+
+2011-06-12  Zoltan Varga  <vargaz@gmail.com>
+
+	Clean up the cross-compile configure.in code. Add a TARGET_ANDROID
+	define.
+
+2011-06-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the check for the -Wno-unused-but-set-variable gcc option.
+
+2011-05-21  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable the -Wunused-by-set-variable warning supported by newer
+	gcc versions.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Allow Android'd support_boehm=no to work.
+
+	The AC_ARG_ENABLE(boehm, ..., ..., support_boehm=yes) resulted in
+	support_boehm always being 'yes', even for
+	`--host=arm-linux-androidabi`, which was not the intention. Using
+	`support_boehm=${support_boehm:-yes}` generates correct behavior.
+
+2011-06-03  Jonathan Pryor  <jonpryor@vt.edu>
+
+	Simplify building with the Android NDK.
+
+	Check --host against *-*-linux-android* for Android-specific
+	configure fixes, and improve **/Makefile.am to simplify Android
+	support:
+
+	./configure \ --build=`./config.guess` \
+	--host=armv5-linux-androideabi \ --target=armv5-linux-androideabi
+	\ --enable-nls=no --with-mcs-docs=no --enable-mcs-build=no \
+	CC="/path/to/ndk/arm-linux-androideabi-gcc
+	--sysroot=/path/to/sysroot" \ AR="..." AS="..." CPP="..."
+	CXX="..." LD="..." RANLIB="..." STRIP="..."
+	CFLAGS="-DARM_FPU_NONE=1" CXXFLAGS="-DARM_FPU_NONE=1"
+
+	See also Android NDK docs/STANDALONE-TOOLCHAIN.html.
+
+	The Android NDK/bionic is "interesting", in that it's lacking
+	header files and macros normally present on Linux which otherwise
+	break the build (e.g. no <link.h> which breaks Boehm support).
+	Using --host with an android target works around the known issues,
+	simplifying the building of libmonosgen-2.0.so with the Android
+	NDK toolchain.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Pass HAVE_ARMV6 to libgc on darwin too.
+
+2011-04-07  Zoltan Varga  <vargaz@gmail.com>
+
+	Add a membar to libgc's UNLOCK () on arm. Fixes #683409.
+
+2011-03-28  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Bump to 2.10.2
+
+2011-03-21  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	.gitignore
+
+2011-02-19  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[threadpool] Add support for kqueue asynch. IO.
+
+2011-03-07  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	Fix up devel packages in spec file
+
+2011-03-01  Andrew Jorgensen  <ajorgensen@novell.com>
+
+	add xbuild-frameworks to rpm
+
+2011-02-24  Geoff Norton  <grompf@sublimeintervention.com>
+
+	Enable ARMv6 for arm*-darwin
+
+2011-02-24  Zoltan Varga  <vargaz@gmail.com>
+
+	Only use memory barriers on arm when running on armv6 or later.
+
 2011-02-22  Andrew Jorgensen  <ajorgensen@novell.com>
 
 	Version 2.10.1

@@ -1,3 +1,9 @@
+2011-03-09  Ankit Jain  <radical@corewars.org>
+
+	[xbuild] Clean up test logs.
+
+	Remove unnecessary debug spew for tests that pass.
+
 2011-01-26  Ankit Jain  <radical@corewars.org>
 
 	[xbuild] Improve error messages for condition evaluation.

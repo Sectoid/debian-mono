@@ -108,6 +108,7 @@ System.ServiceModel.Description/ContractDescriptionTest.cs
 System.ServiceModel.Description/FaultDescriptionTest.cs
 System.ServiceModel.Description/MetadataExchangeBindingsTest.cs
 System.ServiceModel.Description/MetadataResolverTest.cs
+System.ServiceModel.Description/MetadataSetTest.cs
 System.ServiceModel.Description/OperationDescriptionTest.cs
 System.ServiceModel.Description/ServiceAuthorizationBehaviorTest.cs
 System.ServiceModel.Description/ServiceContractGeneratorTest.cs
@@ -190,6 +191,7 @@ System.ServiceModel/ServiceEndpointCollectionTest.cs
 System.ServiceModel/ServiceEndpointTest.cs
 System.ServiceModel/ServiceHostBaseTest.cs
 System.ServiceModel/ServiceHostTest.cs
+System.ServiceModel/ServiceKnownTypeAttributeTest.cs
 System.ServiceModel/SynchronizedReadOnlyCollectionTest.cs
 System.ServiceModel/TransactionProtocolTest.cs
 System.ServiceModel/UriSchemeKeyedCollectionTest.cs

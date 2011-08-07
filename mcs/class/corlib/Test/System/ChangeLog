@@ -1,3 +1,20 @@
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Add test for various AggregateException ctor exception situations
+
+2011-07-27  Jérémie Laval  <jeremie.laval@gmail.com>
+
+	Fix AggregateException behavior
+
+2011-05-02  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix support for parameters with generic constraints in
+	Type.IsAssignableFrom (). Fixes #691119.
+
+2011-04-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix Object.MemberwiseClone () on arrays. Fixes #688033.
+
 2011-02-18  Rodrigo Kumpera  <kumpera@gmail.com>
 
 	* AttributeTest.cs: Add regression test.

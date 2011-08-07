@@ -99,6 +99,9 @@ namespace System.Runtime.Serialization
 			"http://schemas.microsoft.com/2003/10/Serialization/Arrays";
 		internal const string DefaultClrNamespaceBase =
 			"http://schemas.datacontract.org/2004/07/";
+		internal const string DefaultClrNamespaceSystem =
+			"http://schemas.datacontract.org/2004/07/System";
+
 
 		static QName any_type, bool_type,
 			byte_type, date_type, decimal_type, double_type,
@@ -110,14 +113,13 @@ namespace System.Runtime.Serialization
 			// custom in ms nsURI schema
 			char_type, guid_type,
 			// not in ms nsURI schema
-			dbnull_type;
+			dbnull_type, date_time_offset_type;
+
+		// XmlSchemaType.GetBuiltInPrimitiveType() does not exist in moonlight, so I had to explicitly add them. And now that we have it, it does not make much sense to use #if MOONLIGHT ... #endif for XmlSchemaType anymore :-(
+		static Dictionary<string,Type> xs_predefined_types = new Dictionary<string,Type> ();
 
 		static KnownTypeCollection ()
 		{
-			//any_type, bool_type,	byte_type, date_type, decimal_type, double_type,	float_type, string_type,
-			// short_type, int_type, long_type, 	ubyte_type, ushort_type, uint_type, ulong_type,
-			// 	any_uri_type, base64_type, duration_type, qname_type,
-			// 	char_type, guid_type,	dbnull_type;
 			string s = MSSimpleNamespace;
 			any_type = new QName ("anyType", s);
 			any_uri_type = new QName ("anyURI", s);
@@ -141,7 +143,57 @@ namespace System.Runtime.Serialization
 			guid_type = new QName ("guid", s);
 			char_type = new QName ("char", s);
 
-			dbnull_type = new QName ("DBNull", MSSimpleNamespace + "System");
+			dbnull_type = new QName ("DBNull", DefaultClrNamespaceBase + "System");
+			date_time_offset_type = new QName ("DateTimeOffset", DefaultClrNamespaceBase + "System");
+
+			xs_predefined_types.Add ("string", typeof (string));
+			xs_predefined_types.Add ("boolean", typeof (bool));
+			xs_predefined_types.Add ("float", typeof (float));
+			xs_predefined_types.Add ("double", typeof (double));
+			xs_predefined_types.Add ("decimal", typeof (decimal));
+			xs_predefined_types.Add ("duration", typeof (TimeSpan));
+			xs_predefined_types.Add ("dateTime", typeof (DateTime));
+			xs_predefined_types.Add ("date", typeof (DateTime));
+			xs_predefined_types.Add ("time", typeof (DateTime));
+			xs_predefined_types.Add ("gYearMonth", typeof (DateTime));
+			xs_predefined_types.Add ("gYear", typeof (DateTime));
+			xs_predefined_types.Add ("gMonthDay", typeof (DateTime));
+			xs_predefined_types.Add ("gDay", typeof (DateTime));
+			xs_predefined_types.Add ("gMonth", typeof (DateTime));
+			xs_predefined_types.Add ("hexBinary", typeof (byte []));
+			xs_predefined_types.Add ("base64Binary", typeof (byte []));
+			xs_predefined_types.Add ("anyURI", typeof (Uri));
+			xs_predefined_types.Add ("QName", typeof (QName));
+			xs_predefined_types.Add ("NOTATION", typeof (string));
+
+			xs_predefined_types.Add ("normalizedString", typeof (string));
+			xs_predefined_types.Add ("token", typeof (string));
+			xs_predefined_types.Add ("language", typeof (string));
+			xs_predefined_types.Add ("IDREFS", typeof (string []));
+			xs_predefined_types.Add ("ENTITIES", typeof (string []));
+			xs_predefined_types.Add ("NMTOKEN", typeof (string));
+			xs_predefined_types.Add ("NMTOKENS", typeof (string []));
+			xs_predefined_types.Add ("Name", typeof (string));
+			xs_predefined_types.Add ("NCName", typeof (string));
+			xs_predefined_types.Add ("ID", typeof (string));
+			xs_predefined_types.Add ("IDREF", typeof (string));
+			xs_predefined_types.Add ("ENTITY", typeof (string));
+
+			xs_predefined_types.Add ("integer", typeof (decimal));
+			xs_predefined_types.Add ("nonPositiveInteger", typeof (int));
+			xs_predefined_types.Add ("negativeInteger", typeof (int));
+			xs_predefined_types.Add ("long", typeof (long));
+			xs_predefined_types.Add ("int", typeof (int));
+			xs_predefined_types.Add ("short", typeof (short));
+			xs_predefined_types.Add ("byte", typeof (sbyte));
+			xs_predefined_types.Add ("nonNegativeInteger", typeof (decimal));
+			xs_predefined_types.Add ("unsignedLong", typeof (ulong));
+			xs_predefined_types.Add ("unsignedInt", typeof (uint));
+			xs_predefined_types.Add ("unsignedShort", typeof (ushort));
+			xs_predefined_types.Add ("unsignedByte", typeof (byte));
+			xs_predefined_types.Add ("positiveInteger", typeof (decimal));
+
+			xs_predefined_types.Add ("anyType", typeof (object));
 		}
 
 		// FIXME: find out how QName and guid are processed
@@ -161,6 +213,8 @@ namespace System.Runtime.Serialization
 				return name;
 			if (type == typeof (DBNull))
 				return dbnull_type;
+			if (type == typeof (DateTimeOffset))
+				return date_time_offset_type;
 			return QName.Empty;
 		}
 
@@ -274,55 +328,67 @@ namespace System.Runtime.Serialization
 			}
 		}
 
-		// FIXME: xsd types and ms serialization types should be differentiated.
-		internal static Type GetPrimitiveTypeFromName (string name)
+		internal static Type GetPrimitiveTypeFromName (QName name)
 		{
-			switch (name) {
-			case "anyURI":
-				return typeof (Uri);
-			case "boolean":
-				return typeof (bool);
-			case "base64Binary":
-				return typeof (byte []);
-			case "dateTime":
-				return typeof (DateTime);
-			case "duration":
-				return typeof (TimeSpan);
-			case "QName":
-				return typeof (QName);
-			case "decimal":
-				return typeof (decimal);
-			case "double":
-				return typeof (double);
-			case "float":
-				return typeof (float);
-			case "byte":
-				return typeof (sbyte);
-			case "short":
-				return typeof (short);
-			case "int":
-				return typeof (int);
-			case "long":
-				return typeof (long);
-			case "unsignedByte":
-				return typeof (byte);
-			case "unsignedShort":
-				return typeof (ushort);
-			case "unsignedInt":
-				return typeof (uint);
-			case "unsignedLong":
-				return typeof (ulong);
-			case "string":
-				return typeof (string);
-			case "anyType":
-				return typeof (object);
-			case "guid":
-				return typeof (Guid);
-			case "char":
-				return typeof (char);
-			default:
-				return null;
+			switch (name.Namespace) {
+			case DefaultClrNamespaceSystem:
+				switch (name.Name) {
+				case "DBNull":
+					return typeof (DBNull);
+				case "DateTimeOffset":
+					return typeof (DateTimeOffset);
+				}
+				break;
+			case XmlSchema.Namespace:
+				return xs_predefined_types.FirstOrDefault (p => p.Key == name.Name).Value;
+			case MSSimpleNamespace:
+				switch (name.Name) {
+				case "anyURI":
+					return typeof (Uri);
+				case "boolean":
+					return typeof (bool);
+				case "base64Binary":
+					return typeof (byte []);
+				case "dateTime":
+					return typeof (DateTime);
+				case "duration":
+					return typeof (TimeSpan);
+				case "QName":
+					return typeof (QName);
+				case "decimal":
+					return typeof (decimal);
+				case "double":
+					return typeof (double);
+				case "float":
+					return typeof (float);
+				case "byte":
+					return typeof (sbyte);
+				case "short":
+					return typeof (short);
+				case "int":
+					return typeof (int);
+				case "long":
+					return typeof (long);
+				case "unsignedByte":
+					return typeof (byte);
+				case "unsignedShort":
+					return typeof (ushort);
+				case "unsignedInt":
+					return typeof (uint);
+				case "unsignedLong":
+					return typeof (ulong);
+				case "string":
+					return typeof (string);
+				case "anyType":
+					return typeof (object);
+				case "guid":
+					return typeof (Guid);
+				case "char":
+					return typeof (char);
+				}
+				break;
 			}
+			return null;
 		}
 
 
@@ -405,6 +471,12 @@ namespace System.Runtime.Serialization
 		// FIXME: it could remove other types' dependencies.
 		protected override void RemoveItem (int index)
 		{
+			lock (this)
+				DoRemoveItem (index);
+		}
+
+		void DoRemoveItem (int index)
+		{
 			Type t = base [index];
 			List<SerializationMap> l = new List<SerializationMap> ();
 			foreach (SerializationMap m in contracts) {
@@ -434,7 +506,8 @@ namespace System.Runtime.Serialization
 
 		internal SerializationMap FindUserMap (QName qname)
 		{
-			return contracts.FirstOrDefault (c => c.XmlName == qname);
+			lock (this)
+				return contracts.FirstOrDefault (c => c.XmlName == qname);
 		}
 
 		internal Type GetSerializedType (Type type)
@@ -453,10 +526,12 @@ namespace System.Runtime.Serialization
 
 		internal SerializationMap FindUserMap (Type type)
 		{
-			for (int i = 0; i < contracts.Count; i++)
-				if (type == contracts [i].RuntimeType)
-					return contracts [i];
-			return null;
+			lock (this) {
+				for (int i = 0; i < contracts.Count; i++)
+					if (type == contracts [i].RuntimeType)
+						return contracts [i];
+				return null;
+			}
 		}
 
 		internal QName GetQName (Type type)
@@ -516,6 +591,12 @@ namespace System.Runtime.Serialization
 		{
 			if (name == null)
 				name = GetDefaultName (type);
+			else if (type.IsGenericType) {
+				var args = type.GetGenericArguments ();
+				for (int i = 0; i < args.Length; i++)
+					name = name.Replace ("{" + i + "}", GetStaticQName (args [i]).Name);
+			}
+			
 			if (ns == null)
 				ns = GetDefaultNamespace (type);
 			return new QName (name, ns);
@@ -581,7 +662,7 @@ namespace System.Runtime.Serialization
 
 		static QName GetSerializableQName (Type type)
 		{
-#if !NET_2_1
+#if !MOONLIGHT
 			// First, check XmlSchemaProviderAttribute and try GetSchema() to see if it returns a schema in the expected format.
 			var xpa = type.GetCustomAttribute<XmlSchemaProviderAttribute> (true);
 			if (xpa != null) {
@@ -620,6 +701,11 @@ namespace System.Runtime.Serialization
 				return true;
 			if (type == typeof (Guid) || type == typeof (object) || type == typeof(TimeSpan) || type == typeof(byte[]) || type==typeof(Uri)) // special primitives
 				return true;
+#if !MOONLIGHT
+			// DOM nodes
+			if (type == typeof (XmlElement) || type == typeof (XmlNode []))
+				return true;
+#endif
 			// nullable
 			if (type.IsGenericType && type.GetGenericTypeDefinition () == typeof (Nullable<>))
 				return IsPrimitiveNotEnum (type.GetGenericArguments () [0]);
@@ -632,6 +718,13 @@ namespace System.Runtime.Serialization
 		}
 
 		internal bool TryRegister (Type type)
+		{
+			lock (this) {
+				return DoTryRegister (type);
+			}
+		}
+
+		bool DoTryRegister (Type type)
 		{
 			// exclude predefined maps
 			if (ShouldNotRegister (type))
@@ -834,7 +927,8 @@ namespace System.Runtime.Serialization
 			object [] attrs = type.GetCustomAttributes (typeof (KnownTypeAttribute), true);
 			for (int i = 0; i < attrs.Length; i++) {
 				KnownTypeAttribute kt = (KnownTypeAttribute) attrs [i];
-				TryRegister (kt.Type);
+				foreach (var t in kt.GetTypes (type))
+					TryRegister (t);
 			}
 
 			return ret;

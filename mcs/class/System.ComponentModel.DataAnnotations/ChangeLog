@@ -1,3 +1,8 @@
+2011-03-28  Marek Habersack  <grendel@twistedcode.net>
+
+	[DataAnnotations] Implemented the Validator and
+	CustomValidationAttribute 4.0 classes
+
 2011-01-26  Antoine Cailliau  <antoine.cailliau@uclouvain.be>
 
 	Implements

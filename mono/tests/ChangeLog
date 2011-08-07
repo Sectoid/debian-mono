@@ -1,3 +1,12 @@
+2011-03-10  Zoltan Varga  <vargaz@gmail.com>
+
+	Mark threads created when calling from native code into the
+	runtime as background threads. Fixes #678164.
+
+2011-03-03  Zoltan Varga  <vargaz@gmail.com>
+
+	Disable testbundle for powerpc too.
+
 2011-02-13  Zoltan Varga  <vargaz@gmail.com>
 
 	Fix reading of cattr arguments of type Type[]. Fixes #670331.

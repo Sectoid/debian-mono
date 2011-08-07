@@ -901,7 +901,16 @@ mono_class_inflate_generic_method_full_checked (MonoMethod *method, MonoClass *k
 		method = imethod->declaring;
 	}
 
-	if (!method->is_generic && !method->klass->generic_container)
+	/*
+	 * A method only needs to be inflated if the context has argument for which it is
+	 * parametric. Eg:
+	 * 
+	 * class Foo<T> { void Bar(); } - doesn't need to be inflated if only mvars' are supplied
+	 * class Foo { void Bar<T> (); } - doesn't need to be if only vars' are supplied
+	 * 
+	 */
+	if (!((method->is_generic && context->method_inst) || 
+		(method->klass->generic_container && context->class_inst)))
 		return method;
 
 	/*
@@ -1668,10 +1677,16 @@ mono_class_layout_fields (MonoClass *class)
 		if (layout != TYPE_ATTRIBUTE_AUTO_LAYOUT)
 			passes = 1;
 
-		if (class->parent)
+		if (class->parent) {
+			mono_class_setup_fields (class->parent);
+			if (class->parent->exception_type) {
+				mono_class_set_failure (class, MONO_EXCEPTION_TYPE_LOAD, NULL);
+				return;
+			}
 			real_size = class->parent->instance_size;
-		else
+		} else {
 			real_size = sizeof (MonoObject);
+		}
 
 		for (pass = 0; pass < passes; ++pass) {
 			for (i = 0; i < top; i++){
@@ -2392,6 +2407,16 @@ mono_unload_interface_ids (MonoBitSet *bitset)
 	mono_loader_unlock ();
 }
 
+void
+mono_unload_interface_id (MonoClass *class)
+{
+	if (class->interface_id) {
+		mono_loader_lock ();
+		mono_bitset_clear (global_interface_bitset, class->interface_id);
+		mono_loader_unlock ();
+	}
+}
+
 /*
  * mono_get_unique_iid:
  * @class: interface
@@ -2422,16 +2447,18 @@ mono_get_unique_iid (MonoClass *class)
 	}
 	mono_bitset_set (global_interface_bitset, iid);
 	/* set the bit also in the per-image set */
-	if (class->image->interface_bitset) {
-		if (iid >= mono_bitset_size (class->image->interface_bitset)) {
-			MonoBitSet *new_set = mono_bitset_clone (class->image->interface_bitset, iid + 1);
-			mono_bitset_free (class->image->interface_bitset);
-			class->image->interface_bitset = new_set;
+	if (!class->generic_class) {
+		if (class->image->interface_bitset) {
+			if (iid >= mono_bitset_size (class->image->interface_bitset)) {
+				MonoBitSet *new_set = mono_bitset_clone (class->image->interface_bitset, iid + 1);
+				mono_bitset_free (class->image->interface_bitset);
+				class->image->interface_bitset = new_set;
+			}
+		} else {
+			class->image->interface_bitset = mono_bitset_new (iid + 1, 0);
 		}
-	} else {
-		class->image->interface_bitset = mono_bitset_new (iid + 1, 0);
+		mono_bitset_set (class->image->interface_bitset, iid);
 	}
-	mono_bitset_set (class->image->interface_bitset, iid);
 
 #ifndef MONO_SMALL_CONFIG
 	if (mono_print_vtable) {
@@ -7281,8 +7308,20 @@ mono_class_is_assignable_from (MonoClass *klass, MonoClass *oklass)
 		return klass == oklass;
 
 	if (MONO_CLASS_IS_INTERFACE (klass)) {
-		if ((oklass->byval_arg.type == MONO_TYPE_VAR) || (oklass->byval_arg.type == MONO_TYPE_MVAR))
+		if ((oklass->byval_arg.type == MONO_TYPE_VAR) || (oklass->byval_arg.type == MONO_TYPE_MVAR)) {
+			MonoGenericParam *gparam = oklass->byval_arg.data.generic_param;
+			MonoClass **constraints = mono_generic_container_get_param_info (gparam->owner, gparam->num)->constraints;
+			int i;
+
+			if (constraints) {
+				for (i = 0; constraints [i]; ++i) {
+					if (mono_class_is_assignable_from (klass, constraints [i]))
+						return TRUE;
+				}
+			}
+
 			return FALSE;
+		}
 
 		/* interface_offsets might not be set for dynamic classes */
 		if (oklass->ref_info_handle && !oklass->interface_bitmap)

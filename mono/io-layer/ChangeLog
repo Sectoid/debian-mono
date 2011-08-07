@@ -1,3 +1,70 @@
+2011-07-01  Duane Wandless  <dwandless@pixmaclt10.local>
+
+	Fix crash on Lion when exiting
+
+2011-04-18  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	* handles.c (handle_cleanup): When the runtime exit(), not
+	everything is shutdown and the main thread might be waiting on
+	other threads to finish. On this case, io-layer cleanup with
+	assert as a mutex will be in use. The work-around is to be lenient
+	to busy resources during shutdown.
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Make this OSX specific instead
+
+2011-03-23  Marek Habersack  <grendel@twistedcode.net>
+
+	[runtime] Fix compilation
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	OSX, Win32: Implements support for DriveInfo
+
+	This implements support for DriveInfo for OSX and Windows.
+
+	On OSX we use statfs system call that provides the filesystem type
+	information that we need. On Linux, we continue to fallback to
+	mtab parsing
+
+2011-03-23  Miguel de Icaza  <miguel@gnome.org>
+
+	Add OSX support to the io-layer: supports getting a list of
+	mounted file systems, and OSX-specific file system types
+
+2011-03-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Revert "[io-layer] Handle process waits when SHM is disabled."
+
+	This reverts commit 2bb69090d7955869779445e9f13a311119b9f79b.
+
+2011-03-17  Rodrigo Kumpera  <kumpera@gmail.com>
+
+	Revert "[io-layer] Make my previous patch signal safe."
+
+	This reverts commit c183437b7755525c5dfeeecd8e76f7ac16b9cfcb.
+
+2011-03-16  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[io-layer] Don't use Get/SetLastError after wapi shutdown.
+
+	handle_cleanup() is called at exit and might try to clean things
+	up twice, causes a WSANOTUNITIALISED and then a segmentation fault
+	trying to use a pthread key that has already been freed.
+
+2011-03-16  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[io-layer] Make my previous patch signal safe.
+
+2011-03-16  Gonzalo Paniagua Javier  <gonzalo.mono@gmail.com>
+
+	[io-layer] Handle process waits when SHM is disabled.
+
+	When SHM is disabled, handle SIGCHLD and either fill the info for
+	the process handle or just wait for the process to avoid zombies.
+	Fixes bug #668867.
+
 2011-02-07  Hib Eris  <hib@hiberis.nl>
 
 	Remove implementation details from public header io-layer.h

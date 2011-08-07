@@ -1,3 +1,7 @@
+2011-03-17  Zoltan Varga  <vargaz@gmail.com>
+
+	Fix the title of the Mono.Debugger.Soft assembly monodoc.
+
 2011-02-13  Zoltan Varga  <vargaz@gmail.com>
 
 	Add an assembly version to Mono.Debugger.Soft. Fixes #671536.

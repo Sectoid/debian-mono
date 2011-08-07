@@ -1,3 +1,54 @@
+2011-04-16  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] MinimizableAttributeTypeConverter only converts from
+	strings.
+
+	It returns a boolean 'false' when the passed string matches
+	(case-insensitively) 'false' or is empty, returns 'true'
+	otherwise. All the other types (and a null value) cause it to
+	throw the NotSupportedException.
+
+2011-04-14  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #685267. ClientScriptManager generates
+	correct post-back event reference for cross-page post-backs.
+
+2011-03-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] HtmlForum.Name rendering updates + test updates
+
+2011-03-25  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #681553. Look for direct child controls
+	before calling up on the NamingContainer
+
+2011-03-24  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #681164. Page.InitOutputCache ignores calls
+	with duration <= 0
+
+	It is ok to ignore such calls for two reasons - the cache with
+	duration <= 0 will not be effective anyway and the @OutputCache
+	directive throws an exception for duration <= 0
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Fix for bug #681421. Use
+	VirtualPathProvider.CombineVirtualPaths
+
+	The method is used by the parsers to look up dependencies,
+	sources, controls and master pages.
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep assembly
+	locations in TemplateParser
+
+2011-03-22  Marek Habersack  <grendel@twistedcode.net>
+
+	[asp.net] Use List <string> instead of ArrayList to keep file
+	dependencies
+
 2011-01-13  Marek Habersack  <grendel@twistedcode.net>
 
 	[asp.net] Implemented the 4.0 type,

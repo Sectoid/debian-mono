@@ -1,3 +1,133 @@
+2011-07-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix wsdl import wrt element qname (!= type name).
+
+2011-05-31  Atsushi Eno  <atsushi@ximian.com>
+
+	Ref parameter was not covered by ParameterInfo.IsOut. Fixed bug
+	#696784.
+
+2011-05-11  Atsushi Eno  <atsushi@ximian.com>
+
+	Add PipeException. fixed bug #692987 by Eberhard Beilharz.
+
+2011-05-10  Atsushi Eno  <atsushi@ximian.com>
+
+	Add (not-working) callback instance context mode test and FIXME
+	comment.
+
+2011-04-27  Atsushi Eno  <atsushi@ximian.com>
+
+	Handle fault messages in duplex callback channel.
+
+2011-04-26  Atsushi Eno  <atsushi@ximian.com>
+
+	Fix monodroid/monotouch build.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Make our own simple log format actually diagnostics-compatible.
+
+	So MS ServiceTraceViewer.exe can open our log now.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	minor diagnostic log format brush up.
+
+2011-04-25  Atsushi Eno  <atsushi@ximian.com>
+
+	Enable environment-controled output on non-moon profile too. Add
+	error logging.
+
+2011-04-23  Atsushi Eno  <atsushi@ximian.com>
+
+	Log HTTP reply Message too. Make logging customizible on under the
+	moon.
+
+	Logging is done only when requested by
+	MOON_WCF_TRACE=[stdout|stderr] environment variable.
+
+2011-04-21  Atsushi Eno  <atsushi@ximian.com>
+
+	Use XPathNavigator output in WCF diagnostics. Got sorta-valid
+	message trace.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Get real fix for bug #687902. Revert request processor
+	IDisposable.
+
+	and handle session shutdown when creating InstanceContext. Also
+	add note on DisposeInstance(), which got me stuck.
+
+2011-04-20  Atsushi Eno  <atsushi@ximian.com>
+
+	Ongoing service channel closing fix and session management in
+	ChannelDispatcher.
+
+	It is part of bugfix 687902.
+
+	To get the bug fixed, the new "using" sections in
+	ChannelDispatcher.cs to explicitly dispose channels. But this
+	causes regression in PerSession-based tests. So some new session
+	management code is (likely) required as well.
+
+	It will also alter "mixed" MaxConcurrentCalls and
+	MaxConcurrentSessions with correct management code.
+
+2011-04-15  Atsushi Eno  <atsushi@ximian.com>
+
+	One more step to enable WCF diagnostics in Logger, and add
+	HttpReplyChannel log.
+
+2011-04-14  Atsushi Eno  <atsushi@ximian.com>
+
+	ServiceKnownTypeAttribute.MethodName was used way different to
+	lookup method.
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	unlike told by docs.mono-android.net Trace does not exist in
+	mobile profile.
+
+2011-04-04  Atsushi Eno  <atsushi@ximian.com>
+
+	Add WCF diagnostics implementation (not working yet).
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Less !NET_2_1/!MOONLIGHT to improve SL4 WCF compatibility.
+
+2011-04-01  Atsushi Eno  <atsushi@ximian.com>
+
+	Implement ConfigurationName support for ChannelFactory.
+
+	It is required for MoonlightDrtViewer bugfixing.
+
+2011-03-09  Atsushi Eno  <atsushi@ximian.com>
+
+	Remove old windows threading workaround.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Empty element is valid here in silverlight secrity element.
+
+2011-03-08  Atsushi Eno  <atsushi@ximian.com>
+
+	Forgot to add the actual new client proxy.
+
+2011-03-07  Atsushi Eno  <atsushi@ximian.com>
+
+	Replace SRE-based client proxy generator with RealProxy.
+
+	Now PE verified workaround should be unnecessary.
+
+2011-02-24  Atsushi Eno  <atsushi@ximian.com>
+
+	Simple InstanceContext.Extensions implementation by David Schmitt.
+
+	Fixed bug #674057.
+
 2011-02-18  Atsushi Eno  <atsushi@ximian.com>
 
 	Almost eliminate wrong use of Constants.WsaNamespace.
